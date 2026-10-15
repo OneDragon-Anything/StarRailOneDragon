@@ -59,7 +59,7 @@
 
 ## 7. 语义验证
 
-写入方归属完备性 = 双层防漂移锁:`EQUIP_WRITE_SIDES` 键集恰等于 `EQUIP_REWRITE_DECLARATIONS`(逐件恰一个代码写入方,登记值四形封闭 + 目标函数可解析校验,import 时即显式报错),扫描命中集 vs 申报键集对齐归测试锁(`test_cw_affix_spec_registry`);桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷记录表,不静默不改道)。落地真值(消耗没消耗/变换没变换)= 下一帧装备区读数观察覆盖。
+写入方归属完备性 = 双层防漂移测试:`EQUIP_WRITE_SIDES` 键集恰等于 `EQUIP_REWRITE_DECLARATIONS`(逐件恰一个代码写入方,登记值四形封闭 + 目标函数可解析校验,import 时即显式报错),扫描命中集 vs 申报键集对齐归测试(`test_cw_affix_spec_registry`);桥/组合写的等价性 = 窗口独占契约(完全预测,失配等价推算 bug 走缺陷记录表,不静默不改道)。落地真值(消耗没消耗/变换没变换)= 下一帧装备区读数观察覆盖。
 
 ## 8. 判例注记(动作发出阶段)
 
@@ -67,4 +67,4 @@
 
 ## 9. 依据
 
-`kernel/cw_affix_effects.py` `_validate_equip_write_sides`(防漂移锁)与 `EQUIP_WRITE_SIDES`(效果写入桥申报);`kernel/cw_action_report/tool_use.py` 模块头(上报写入方正本:合并单笔/获得走链/变异面不走链/零写保留证据);`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类覆盖七行);[fields.md](../fields.md) §4.2 RunTools 行/ §5.3(效果族归属四选一);[op-effects.md](op-effects.md) §4(写入桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。
+`kernel/cw_affix_effects.py` `_validate_equip_write_sides`(防漂移测试)与 `EQUIP_WRITE_SIDES`(效果写入桥申报);`kernel/cw_action_report/tool_use.py` 模块头(上报写入方正本:合并单笔/获得走链/变异面不走链/零写保留证据);`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据);`operations/cw_tool_use_action.py` 模块头(一类覆盖七行);[fields.md](../fields.md) §4.2 RunTools 行/ §5.3(效果族归属四选一);[op-effects.md](op-effects.md) §4(写入桥机理);`research/equipment_mechanics.md` §5(工具 7 件全量)。

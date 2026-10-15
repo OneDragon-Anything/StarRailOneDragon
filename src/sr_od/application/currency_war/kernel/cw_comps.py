@@ -153,7 +153,7 @@ class Comp:
     equip_assign: dict[str, list[str | EquipChoice]] = field(default_factory=dict)
     """装备到人(C4 最大新增):角色名 → 装备序列(str=fixed 首选 / EquipChoice 两档)。
     键 ⊆ core_chars ∪ shared_chars ∪ substitute_plan 替班者;**本字段一旦非空,
-    ``key_equips`` 必须恒等于 ``derive_key_equips(comp)``(C5 兼容地基,恒等测试锁)。"""
+    ``key_equips`` 必须恒等于 ``derive_key_equips(comp)``(C5 兼容地基,恒等测试)。"""
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
     equip_synergy: dict[str, str] = field(default_factory=dict)
@@ -267,13 +267,13 @@ def derive_key_equips(comp: Comp) -> list[str]:
     语义(C4 冻结):key_equips 不再是独立维护字段,而是 equip_assign(装备到人)的
     投影——「汇总 + 去到人」:
     - equip_assign **为空**(长尾/未迁移套)→ 返回旧手编 ``comp.key_equips`` 原值
-      (C5 兼容:旧策略/旧测试锁读它不炸);
+      (C5 兼容:旧策略/旧测试读它不炸);
     - equip_assign **非空** → 按字典序展开:fixed 条目原样,pool 条目贡献**全部候选**
       (候选池内每件都是关键件,黄泉第四件类), EquipChoice 展开顺序 = choices 优先序。
 
     恒等约束(C5 冻结):``comp.key_equips == derive_key_equips(阵容)`` 对全库成立
     (多重集口径——equip_fit/合成材料判定消费均为多重集语义;顺序仅影响 equip_allocation
-    的 carry 按序取件微差)。恒等测试锁此不变量,任何一侧单独改动即测试红(防双源漂移)。
+    的 carry 按序取件微差)。恒等测试此不变量,任何一侧单独改动即测试红(防双源漂移)。
     """
     if not comp.equip_assign:
         return list(comp.key_equips)
@@ -2837,7 +2837,7 @@ def target_committed(target: Comp, gs: GameState) -> bool:
     commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
     轮数兜底要求 form_progress>0 —— 防零投入误锁:board 全倒在别的阵容上(target 零投入)时不应算 commit
     (明显错配,该 pivot;轮数兜底若不要求 fp>0,COMMIT_ROUND=2 绝对兜底会误杀信号1,
-    test_maybe_pivot_better_comp_emerges 锁此)。
+    test_maybe_pivot_better_comp_emerges 校验此)。
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
     fp = form_progress(target, gs)

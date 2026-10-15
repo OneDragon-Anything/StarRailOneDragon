@@ -262,7 +262,7 @@ def _hold_qualification_ok(name: str, star: int | None, cost: int | None,
                            counters: dict | None,
                            session: StrategySession) -> bool:
     """hold 类登记资格 = 名字腿 ∧ 硬闸腿(V2-06 合取;缺合取则 2★
-    转线登记恒绿 = 锁恒绿形态,红对由硬闸腿补齐)。registry_core 层
+    转线登记恒绿 = 测试恒绿形态,红对由硬闸腿补齐)。registry_core 层
     恒买无星闸(裁定410);其余已登记档(transition)按 1★ 全额退硬闸;
     星/费缺读 = fail-closed 拒登记(资格判据禁缺读放行)。
 
@@ -813,7 +813,7 @@ def dead_pair_exit_release(session: StrategySession,
             _kept('no_entry', name)     # 账覆盖缺口(含缺读 fail-closed)
             continue
         if cur_round - int(seen_round) < DEAD_PAIR_EXIT_MIN_AGE:
-            _kept('young', name)        # 真窗内:N 下界保护(锁②)
+            _kept('young', name)        # 真窗内:N 下界保护(测试②)
             continue
         if same_star_count(name, 2, _bench, _deployed) >= 1:
             _kept('chain', name)        # 3★ 链 1★ 腿保守保留(N4 全场域)
@@ -841,7 +841,7 @@ def _resolve_base(session: StrategySession,
     终局阵容锁定态 = ``locked_buy_membership(ist, cap_hold=传参)`` 截断义务集
     B'(**必改位**:零参宽集形态已被取代——宽−窄成员 M2 不再义务重买,
     其保护必要性消失;不改 = M4/凑息/funding 全通道对被截成员持续禁卖
-    且 P60/单帧锁观测面照常零异常 = 静默半修,对抗审查阻断③定案),
+    且 P60/单帧测试观测面照常零异常 = 静默半修,对抗审查阻断③定案),
     未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧现读
     (``cw_intention.locked_buy_cap_hold(state)``;板面容量是帧事实,
     session 无公共权威链,禁加镜像读——显式传参是唯一合法通道),

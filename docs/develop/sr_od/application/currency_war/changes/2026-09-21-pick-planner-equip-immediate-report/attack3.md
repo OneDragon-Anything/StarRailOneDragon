@@ -13,7 +13,7 @@
 - **位置**:design.md §2.2 表「`EVIDENCE_OVERLAY_CLOSED`(pick_planner.py 自持)」行;landing.md 3.2 文件面/验收凭据。
 - **问题**:全仓 grep(本轮实测)显示 `sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py:40-43` `from ...pick_planner import (EVIDENCE_OVERLAY_CLOSED, report_action_pick_planner_param)`,并以 `evidence=EVIDENCE_OVERLAY_CLOSED` 调用 **10 处**(:615/:633/:646/:654/:661/:684/:713/:732/:757/:782,joy rider 授予测试族)。该消费面随 commit 14dd40977「欢愉契约条件腿 rider 建模」**已入库**(attack2 复核时点在 joy 批提交之前,其「src+test 无遗漏」结论因此过期)。后果三连:①3.2 删 `evidence` 参数后这 10 处调用直接 TypeError → 「L1 全绿含其测试」不可达;②design 验收锚 3「`EVIDENCE_OVERLAY_CLOSED` 全域 grep 零命中(范围含 sr-od-test)」永红;③§2.2 表把 planner 侧消费点枚举为「`cw_screen_yinlang.py` import+调用;`test_cw_yinlang_phase32.py`(10+ 处)」,worker 按表执行改完两文件后 grep 仍剩一整文件,停手令。landing 3.2 文件面「受影响测试(含 test_cw_yinlang_phase32.py)」未点名该文件。
 - **权威源证据**:test_cw_gain_chain.py :40-43/:615-782(本轮实读);`git log --oneline -- .../pick_planner.py` 首行 = 14dd40977;action_ops.md §1 禁止清单 + design §3 锚 3。
-- **建议修法**:§2.2 该行现消费点补「`test_cw_gain_chain.py`(joy rider 测试族,import+10 调用,commit 14dd40977 已入库)」;landing 3.2 文件面与验收凭据点名该文件(改写 = 删 `evidence=` kwarg,断言本体即 rider 行为锁,锁面归属按 F4 澄清)。
+- **建议修法**:§2.2 该行现消费点补「`test_cw_gain_chain.py`(joy rider 测试族,import+10 调用,commit 14dd40977 已入库)」;landing 3.2 文件面与验收凭据点名该文件(改写 = 删 `evidence=` kwarg,断言本体即 rider 行为测试,测试面归属按 F4 澄清)。
 
 ### F2 [阻塞] 正本更新清单对 `logic-updates/pick-planner.md` 条目口径过窄:§3 :23 `_confirm_pending` 步、§5 :33 重入裁决表述、文件头 :3「两相上报」均不在清单与兜底 grep 覆盖内;且 :14 锚内容与描述错位
 
@@ -27,14 +27,14 @@
 - **位置**:design.md §2.2 表「`_pick_pending`/`_pending_pick`(equip_pick)| 本文件读写点 | 删」;landing.md 3.1 文件面。
 - **问题**:`test_cw_screen_two_node_family.py::test_equip_act_decides_from_container_and_round_wait` 对 `CwScreenEquipPick` 断言 `rs.result == WAIT`(:346)与 `op._pick_pending is True`(:348)——3.1 删属性 + act 改 `round_success` 后双断言必红。§2.2 表声明消费点 =「本文件读写点」是事实性不完备(误导 worker 以为测试面只剩 t60 EQUIP_EVIDENCE);landing 3.1 文件面「受影响测试(含…)」未点名。可由通用工程门跑测试发现,故降为建议。
 - **权威源证据**:test_cw_screen_two_node_family.py :296-348(本轮实读);cw_screen_equip_pick.py :74/:79/:125-129/:169/:180。
-- **建议修法**:§2.2 该行现消费点补「`test_cw_screen_two_node_family.py` equip act 锁(:346/:348)」;landing 3.1 文件面点名并声明改写为「派发即 round_success + 零重入裁决标志」断言。
+- **建议修法**:§2.2 该行现消费点补「`test_cw_screen_two_node_family.py` equip act 测试(:346/:348)」;landing 3.1 文件面点名并声明改写为「派发即 round_success + 零重入裁决标志」断言。
 
-### F4 [建议] joy rider「未提交改动在盘」申报事实已过期(rider 已随 commit 14dd40977 提交);joy 批测试面的改写归属与「rider 腿行为锁归 joy 批」边界未澄清
+### F4 [建议] joy rider「未提交改动在盘」申报事实已过期(rider 已随 commit 14dd40977 提交);joy 批测试面的改写归属与「rider 腿行为测试归 joy 批」边界未澄清
 
 - **位置**:design.md §2.1 planner 条「joy rider 在盘申报(attack2 F4 事实化):…已以未提交改动在盘」、§2.3 收口序①「joy 批先提交其 rider」;landing.md 3.2 依赖。
-- **问题**:git 实况:`pick_planner.py` 工作树干净,`_grant_joy_conditional`(+rng)与 `test_cw_gain_chain.py` evidence 调用均已入库(14dd40977)。收口序①实际已满足——设计前提陈述失真(方向无害:依赖已达成,比「待提交」更安全)。但衍生一点:3.2 必须机械改写 joy 批的 `test_cw_gain_chain.py`(删 `evidence=` kwarg,见 F1),与「rider 腿行为锁归 joy 批验收面、本批验收锚不含 rider 专锁」的边界声明存在字面张力——宜显式声明「3.2 对该文件仅做调用签名机械改写,断言语义(rider 行为)不改不锁」。
+- **问题**:git 实况:`pick_planner.py` 工作树干净,`_grant_joy_conditional`(+rng)与 `test_cw_gain_chain.py` evidence 调用均已入库(14dd40977)。收口序①实际已满足——设计前提陈述失真(方向无害:依赖已达成,比「待提交」更安全)。但衍生一点:3.2 必须机械改写 joy 批的 `test_cw_gain_chain.py`(删 `evidence=` kwarg,见 F1),与「rider 腿行为测试归 joy 批验收面、本批验收锚不含 rider 专项测试」的边界声明存在字面张力——宜显式声明「3.2 对该文件仅做调用签名机械改写,断言语义(rider 行为)不改不校验」。
 - **权威源证据**:`git log` 14dd40977;`git status --short` 无 src 改动;pick_planner.py :94/:107-142(在盘即已提交形态)。
-- **建议修法**:§2.1/§2.3/landing 3.2 依赖措辞改为「rider 已随 commit 14dd40977 提交(原『未提交在盘』申报截至本稿时点已过期);3.2 对 `test_cw_gain_chain.py` 仅删 `evidence` kwarg 机械改写,rider 行为锁归 joy 批验收面」。
+- **建议修法**:§2.1/§2.3/landing 3.2 依赖措辞改为「rider 已随 commit 14dd40977 提交(原『未提交在盘』申报截至本稿时点已过期);3.2 对 `test_cw_gain_chain.py` 仅删 `evidence` kwarg 机械改写,rider 行为测试归 joy 批验收面」。
 
 ### F5 [建议] cw_vocab 两个 param docstring 内「落地相/两相语义」措辞不在申报注释连带面,兜底 grep 亦不覆盖
 
@@ -64,7 +64,7 @@
 
 ## ④ 试读结论(逐阶段)
 
-- **3.1 worker**:能开工——pick_equip 单相语义、归一换源、文件面、判据均可执行;风险 = 按 §2.2 表以为测试面仅 t60 EQUIP_EVIDENCE,漏 two_node_family equip act 锁(F3),跑测试可兜住;norm_item 注释改写口径歧义(F5)。
+- **3.1 worker**:能开工——pick_equip 单相语义、归一换源、文件面、判据均可执行;风险 = 按 §2.2 表以为测试面仅 t60 EQUIP_EVIDENCE,漏 two_node_family equip act 测试(F3),跑测试可兜住;norm_item 注释改写口径歧义(F5)。
 - **3.2 worker**:能开工,单相语义与 rider 迁移挂点描述充分;但按现稿改完 yinlang + phase32 后,`test_cw_gain_chain.py` 10 处调用崩(evidence 参数已删)且任何清单条目都不指向它(F1)——worker 要么自行越发现、要么判据红停手。依赖声明「joy 批提交在飞改动」与树况不符(F4,核树即释)。
 - **正本更新批 worker**:action_ops/action_exec/op-layer/planner.md/equip_pick.md 条目凭现稿可开工(锚齐);`logic-updates/pick-planner.md` 条目按字面执行 = :14 改不动(无该句)、:23/:33/:3/:41 永不清(F2)——「看情况」级歧义,不可开工。
 - **验收者**:锚 1/2 行为级可判;锚 3 grep 在 sr-od-test 范围永红(F1),不可判。

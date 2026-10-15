@@ -2,7 +2,7 @@
 
 data 层:只有表和常量,零包内依赖(§3.2 依赖矩阵);消费方 =
 kernel/cw_battle_calib(校准函数族)、cw_sim(Δ池采样/结算)、
-decision_v2.handoff(深度分桶)、测试锁。行段历史与语料 provenance
+decision_v2.handoff(深度分桶)、测试。行段历史与语料 provenance
 随原注释保留在条目上;数值变更须走标定批 + ADR,禁散改。
 """
 from __future__ import annotations

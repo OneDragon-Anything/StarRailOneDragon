@@ -57,7 +57,7 @@ action = strategy.decide_shop_action()     # 零参；读自己 → 发一个动
 
 - **基型事实**：商店四动作（BuyCard/LevelUp/RefreshShop/CloseShop）**已属 CwAction 族**（既有事实，非本批改动）；备战词表同理。真正缺口 = 选择族。
 - **选择族动作化（8 个非 CwAction 选择入口 + invest 对齐）**：`PickOption(idx: int, reason: str = '')` 基类（CwAction 子类）+ per-screen 子类型——`PickEncounter` / `PickSupply` / `PickInvest`（invest 双入口共用，`PickEvent` 退役）/ `PickMegastar` / `PickPartner` / `PickPlanner` / `PickStarTome` / `PickWishTrial` / `PickBoxCard`。子类即执行注册表的分发键：**五条注册行换键名，注册表结构零改动**（用户裁定，方案 B）；invest 双入口/star_tome/wish_trial/box_card 现不走注册表（handler 自管确认链/直点），返回子类型后消费方式不变。**双词表处置**：`PICK_ACTION_TYPES`（cw_events）与 `CW_ACTION_TYPES` 随批收敛为 `CW_ACTION_TYPES` 单表（九 Pick 子类 + 三刷新动作 + HoldFrame 全量入册）。
-- **刷新建议动作化（用户裁定）**：三条通道各自动作型——`RefreshNodeOptions()`（encounter 刷新建议，替代 `EncounterPick.refresh=True`）、`RefreshSupply()`（替代 `SupplyPick.refresh=True`）、`RefreshInvestCards(slots: tuple[int, ...], reason: str = '')`（替代 `PickEvent.refresh_slots` 逐卡槽位，画面三闸点击链留在 handler）。均为 CwAction 子类；`CW_ACTION_TYPES` 白名单与注册完备锁随批纳入（新类型全量入册，例外申报）。
+- **刷新建议动作化（用户裁定）**：三条通道各自动作型——`RefreshNodeOptions()`（encounter 刷新建议，替代 `EncounterPick.refresh=True`）、`RefreshSupply()`（替代 `SupplyPick.refresh=True`）、`RefreshInvestCards(slots: tuple[int, ...], reason: str = '')`（替代 `PickEvent.refresh_slots` 逐卡槽位，画面三闸点击链留在 handler）。均为 CwAction 子类；`CW_ACTION_TYPES` 白名单与注册完备测试随批纳入（新类型全量入册，例外申报）。
 - **备战 None 显式化**：`decide_prep_screen()` 空发射帧返回 `HoldFrame()`（CwAction 子类，语义 = 本帧无动作交回外循环重观察），None 退役。现状 None → `round_success(wait=1.0)` 直接交回，无连续 None 计数器（ABC docstring「stall 兜底归外循环防线」为失实声明，随批修正）；终态 = 决策环分支判等对象从 `result is None` 换 `isinstance(result, HoldFrame)`，`round_success(wait=1.0)` 路径逐字相同，round 日志文本随批更新，系统级 `stall_watch`/`NODE-DWELL` 哨兵对其透明。HoldFrame 不进 validate、不进 `_act_execute`、不查动作注册表、不写续段 token/动作记录（等待帧非动作）。`decide_shop_action()` 恒不 None 现状不变（CloseShop 终结）。
 - **kernel 纯函数零触碰**：`decide_event` 族返回 Pick 族的现状不动，策略入口负责 Pick → CwAction 包装（数据组装职责归入口）。reason 字段随动作保留（判读面 parity）。
 - **等价性主张**：输出载体变化但决策不变——四格/同帧对照逐格断言「同槽产物 → 同 idx/同刷新槽位/同动作语义」。
@@ -109,12 +109,12 @@ action = strategy.decide_shop_action()     # 零参；读自己 → 发一个动
 | kernel/执行层/遥测 StrategyState 读者 | §2.5 迁移 |
 | game_state_of 旁口 | §2.6 退役 |
 | sim / 回放 | **现行 sim 零策略构造**（引擎自有 stream rng），sim 侧零改动核对申报；回放现行 `--run/--rounds` 面构造随批（`create_session` 退役） |
-| 测试仓 | 契约形状锁（12 零参 + 构造形态 + 输出词表）、单帧锁构造（`cls(gs, cfg)` → 调方法）、handler 锁、普查对账表 |
+| 测试仓 | 契约形状测试（12 零参 + 构造形态 + 输出词表）、单帧测试构造（`cls(gs, cfg)` → 调方法）、handler 测试、普查对账表 |
 
 ### 2.8 验证
 
 - **行为变化申报（scoped 零行为）**：①正常识别路径 = 每帧同输入值、同选择 idx、同动作语义（零变化）；②识别失准路径 = 防御缓存删除后的表现变化（**用户裁定接受项**，§1.3 登记）；③装备账完整度降级（`last_owned_equips` 删）= 行为变化登记。载体变化（动作词表/构造形态）为可判读形态差。
-- **主凭据**：①decide 层四格对照（encounter 首调/累计闸命中/刷新重决策/重入重走首调；invest 拆分同帧对照；其余入口同槽产物 → 同动作）；②handler 级行为锁（逐 handler 剧本 + 写槽-决策单源 + encounter 四格）；③StrategyState 迁移对账表 + game_state_of 退役对账表 + 锚删除普查表零未承载项；④L1 + L3。
+- **主凭据**：①decide 层四格对照（encounter 首调/累计闸命中/刷新重决策/重入重走首调；invest 拆分同帧对照；其余入口同槽产物 → 同动作）；②handler 级行为测试（逐 handler 剧本 + 写槽-决策单源 + encounter 四格）；③StrategyState 迁移对账表 + game_state_of 退役对账表 + 锚删除普查表零未承载项；④L1 + L3。
 - **旁证**：回放（现行 `--run` 面）改前/改后逐轮 plan 串文本 diff——辖域 = shop 驱动器路径，对 pick 链/session 解散结构性零覆盖（显式申报）。
 - **终验**：实机一局 smoke（**锚 = journal 动作行**——journal 状态流水为现行唯一在产决策记录载体；`cw_decision_trace` 模块零接线不引用；与改前同难度局对照）；候实机窗口，不阻代码收口、阻迭代收尾。
 - **可观测性申报**：journal 行量/write_seq 位移/快照新域行/动作词表形态变化/`ChannelSig.group_id` 位移；路由清点每槽每「在屏→离屏」转换至多一行 + 交回重入型识别瞬态轮多对行（形态预期）；HoldFrame 帧以 round 日志文本可见（不写容器、决策迹模块未接线不入册）。
@@ -140,6 +140,6 @@ action = strategy.decide_shop_action()     # 零参；读自己 → 发一个动
 > 本节为迭代内附记，寿命 = 本迭代；正本（flow/README §2.2）随正本更新批收敛。
 
 - **扩员动因** = 策略侧内容回流普查对抗裁决 F-overlay-01/02/03（三条均 CONFIRMED，裁决过程档 = `.debug/temp/audit-sweep/adjudication-1.md` §2，寿命随迭代）：命运卜者强化三选一 / 专家邀请函选卡 / 选择装备三选一三屏的选卡判据原住画面 handler（选择打分 / 第二实现 / 意向消费错位三类全中），修正落点 = 判据迁 kernel 新纯函数 + handler 改「写槽 → 零参 decide」，契约面需为三屏补零参入口。走 flow/README §2.2「新事件面优先归并进既有 pick 接口或走契约改版」两路预授权中的**契约改版路**（三屏各有独立 payload 槽与判据域，归并进既有九口会错位）。
-- **扩员内容**：新增三个零参入口 `decide_fortune()`（候选 = `gs.fortune_opts` OCR 卡文）/ `decide_expert_invite()`（候选 = `gs.expert_invite` 弹窗载体 = 卡羁绊解析 + 板面计数；idx = -1 表现金为王，PickOption idx 值域扩展申报）/ `decide_equip_pick()`（候选 = `gs.equip_pick_opts` OCR 卡名带）；抽象 12 → 15。词表新增 per-screen 子类型 `PickFortune` / `PickExpertInvite` / `PickEquip`，入 `CW_ACTION_TYPES` + `PICK_ACTION_TYPES`；三屏确认链/直点均 handler 自管消费，与 StarTome/WishTrial/BoxCard 同豁免类（注册完备锁豁免集随迁）。
+- **扩员内容**：新增三个零参入口 `decide_fortune()`（候选 = `gs.fortune_opts` OCR 卡文）/ `decide_expert_invite()`（候选 = `gs.expert_invite` 弹窗载体 = 卡羁绊解析 + 板面计数；idx = -1 表现金为王，PickOption idx 值域扩展申报）/ `decide_equip_pick()`（候选 = `gs.equip_pick_opts` OCR 卡名带）；抽象 12 → 15。词表新增 per-screen 子类型 `PickFortune` / `PickExpertInvite` / `PickEquip`，入 `CW_ACTION_TYPES` + `PICK_ACTION_TYPES`；三屏确认链/直点均 handler 自管消费，与 StarTome/WishTrial/BoxCard 同豁免类（注册完备测试豁免集随迁）。
 - **判据落点**：fortune 关键词权重表 → `cw_events.decide_fortune`；expert 三级语义（在场计数 → 同线 → 现金为王）→ `cw_events.choose_expert_index` 整函数平移；equip key_fit+100 / 泛用关键词+1.0 → `cw_equip_value.decide_equip_overlay_pick`（收 `locked_comp` 参数，意向读迁策略入口自 `self.state` 注入——§2.5 参数注入桶）。equip 与 `pick_equipment` 序数分档语义不可合一（子串命中制 vs 精确名制、泛用关键词腿 vs 名键先验），新立函数不并轨，合一属轻微行为变化另裁。
 - **口径** = ABC 返回注解沿用子类型联合先例（§2.2 输出统一）；验收结论 B 条已定调**行为保持优先**：三件判据原样迁移（当前行为逐位复刻），禁顺带改策略语义。已知分叉单列挂账：expert_invite 实码（在场浓度版）与 E9 在案规格（目标线优先版，13_pick_family.md §2）分叉 = 独立行为变更挂账（迁移保持实码行为，规格切换另批裁定）。payload 三新槽入 `_PAYLOAD_DOMAINS` 路由清点 + `DEFAULT_GS_SCHEMA`。

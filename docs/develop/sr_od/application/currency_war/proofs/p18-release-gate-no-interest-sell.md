@@ -70,7 +70,7 @@ tag ∈ {off_target, for_gold} ∧ spend_gate_active(…)  → 返回 None
 | 构造路径 | 结果 |
 |---|---|
 | 备战席循环产 off_target/for_gold 候选 | ②③ 拦截(tag=None) |
-| free_bench 卖「其实也返金」 | ③ 透传,但动机=腾 slot 非「以凑利息为目的」,属显式豁免面(锁 B `test_release_gate_spares_free_bench_sell` 互证)——非反例 |
+| free_bench 卖「其实也返金」 | ③ 透传,但动机=腾 slot 非「以凑利息为目的」,属显式豁免面(测试 B `test_release_gate_spares_free_bench_sell` 互证)——非反例 |
 | 演进事务卖/谷底回滚卖凑利息 | 不经生成器(演进引擎/strategy 动作发出点),适用范围外——非反例 |
 | 开关关帧(|门 no-op)| 不满足前提(非门生效帧),命题空洞真——非反例 |
 
@@ -89,7 +89,7 @@ tag ∈ {off_target, for_gold} ∧ spend_gate_active(…)  → 返回 None
 
 ## 检验点
 
-1. **单帧实例**:锁 B(门生效帧断言 sell tag 集 ⊆ {free_bench})是命题在
+1. **单帧实例**:测试 B(门生效帧断言 sell tag 集 ⊆ {free_bench})是命题在
    单帧上的实例;门生效帧内出现 off_target/for_gold 卖候选即违命题(可机检)。
 2. **管辖集完备性(结构检验)**:向 `sell_tag_priority` 新增涨金向 tag 时,
    必须同步进 `_release_sell_gate` 的管辖集字面量,否则违命题——可机检:

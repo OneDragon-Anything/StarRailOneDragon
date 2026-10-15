@@ -1320,7 +1320,7 @@ _validate_env_ore_grants()
 # cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现常数非金流期望
 # (定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
 # (gift_hit_tier 包装;28 号稿 §2 与 29 号稿 §2.3)。
-# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯);锁 = 测试仓
+# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯);校验 = 测试仓
 # test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
 ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/

@@ -65,8 +65,8 @@ class CwActionStartBattleOp(CwOperation):
     #: 终结动作(发出即本备战访问终结)。
     terminal = True
 
-    #: 终结返回等待秒数(备战画面 op 返回节奏,现状等价锁 =
-    #: test_action_registry 终结集锁)。
+    #: 终结返回等待秒数(备战画面 op 返回节奏,现状等价测试 =
+    #: test_action_registry 终结集测试)。
     terminal_wait = 3
 
     #: 出战点击后的弹窗渲染等待(步 3)。单帧截图判定,不轮询(op 零判效):

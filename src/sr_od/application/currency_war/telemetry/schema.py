@@ -43,11 +43,11 @@ RHO_SYSTEM_KEYS: tuple[str, ...] = (
 派生自单一源,不手写名单)。"""
 
 RHO_SHOP_OBS_FIELDS: tuple[str, ...] = ('systems', 'pair', 'n_shop')
-"""shop_snapshots 行 ``rho_obs`` 键面单一源(测试锁面;语义见 rho_shop_obs)。"""
+"""shop_snapshots 行 ``rho_obs`` 键面单一源(测试面;语义见 rho_shop_obs)。"""
 
 
 P26_PREP_OBS_FIELDS: tuple[str, ...] = ('node_type_next',)
-"""decisions 行 ``p26_prep_obs`` 键面单一源(P26 采集批测试锁面;语义见
+"""decisions 行 ``p26_prep_obs`` 键面单一源(P26 采集批测试面;语义见
 DecisionTrace.p26_prep_obs 注)。禁第二语义键——键集扩条只改本元组。"""
 
 
@@ -298,7 +298,7 @@ def serialize_action(action: Action) -> dict[str, Any]:
 ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
     'reason', 'route_tag', 'auth_basis', 'convert_reason',
 )
-"""动作项理由溯源提取键序单一源(提取语义见下;原过程件测试锁已随
+"""动作项理由溯源提取键序单一源(提取语义见下;原过程件测试已随
 09-13 清理删除,定谳不恢复)。
 
 - 语义:序列化动作项统一附 ``reason`` 键(判据命中 id 持久索引),取值 =

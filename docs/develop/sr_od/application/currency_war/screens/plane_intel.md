@@ -85,8 +85,8 @@
 
 点卡转移证据(详情条节点编号联动,防在错误位面上继续跑);位置先验失效 retry 兜底(点到的非首领节点);识别失败响亮失败(无 None/占位/降级,瞬时噪声由框架 node 重试覆盖);编排真值跳过门 + 详情屏留场自愈;委派失败透传(prep 侧不自旋、无自带计数/放弃分支)。守卫细则指针 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「货币战争-位面情报采集」(采集子 op,随宿主编排访问的 `[cw-op]` 行承载)与「货币战争-接管补采位面情报」(编排);日志前缀 `[cw-plane-intel]` / `[cw-takeover]`。
-- 测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_plane_intel_pipeline.py`(6 node 流程 / 识别失败响亮失败 / entry 编排真值跳过 / prep 委派透传行为锁)。
+- 测试 = `sr-od-test/test/sr_od/application/currency_war/test_plane_intel_pipeline.py`(6 node 流程 / 识别失败响亮失败 / entry 编排真值跳过 / prep 委派透传行为测试)。
 - game 侧知识:画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md);位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md)(台账容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面建档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。

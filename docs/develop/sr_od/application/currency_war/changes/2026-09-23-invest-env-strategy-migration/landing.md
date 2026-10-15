@@ -22,7 +22,7 @@
 **完成判据**：
 - 全仓 grep：`ENV_FACTION_MATCH_FLOOR`/`GIFT_FLOOR_`/`cw_env_economy`（kernel 侧 import）/`candidate_faction_universe`/`candidate_char_universe` 零残留；`cw_events` 无 env 轴分支
 - L1 快速集全绿（`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`）
-- 行为对照 §2.10 行为变化申报表四条方向（序变化可从表 1-3 推导预期，非复刻旧序）+ flow 消费侧测试锁四条（env 帧路由与动作包装/memo 三态/decide-decide_pick 零漂移含全排除退化帧/策略轴回归）
+- 行为对照 §2.10 行为变化申报表四条方向（序变化可从表 1-3 推导预期，非复刻旧序）+ flow 消费侧测试四条（env 帧路由与动作包装/memo 三态/decide-decide_pick 零漂移含全排除退化帧/策略轴回归）
 - §12 通用工程门（引用，不复述）
 **验收凭据形式**：grep 清零记录 + L1 通过 + 申报表对照
 **注意**：改代码后 MCP server 必须重启才生效（runtime-ops）；本阶段 commit 内新旧不并存。

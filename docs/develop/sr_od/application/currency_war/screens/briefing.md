@@ -57,8 +57,8 @@
 
 `node_max_retry_times=10` 在用值仅框架异常路径消费;点采对注册表比对自身幂等(复查轮重复点采无重复收集);采集/登记/首领读空全部 best-effort 或可见化(首领空读日志与读得覆写可区分),零停机钩子。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「位面简报」;日志前缀全集:`[cw-flow-briefing]`(act 落地复查 1 行)+ `[cw-briefing]`(词缀效果采集与账本登记,宿主 = `operations/cw_screen/cw_screen_briefing.py`)+ `[cw][briefing]` / `[cw!][briefing]`(新词条注册 / 垃圾值拒写 / 与已有读数不一致时不覆盖 / boss 名两段归一失败,宿主 = `obs/cw_briefing_obs.py`);观察三读数日志(「简报词缀读得(观察)」/「简报首领读得(位面序…)」/「简报首领未读到…」/「简报敌人难度读得(观察)」)及 boss 两段归一失败 warning(「简报首领 boss 名两段归一失败…」,观察失败不写不上报返回主循环重新识别画面)无前缀,检索键 = journal op 名 + 日志文本。
-- 测试锁:两 node 行为锁 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(简报观察门 miss 早退/report/三字段写语义交叉核对;`_collect_affix_effects` 以 monkeypatch 摘除点采)。
+- 测试:两 node 行为测试 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(简报观察门 miss 早退/report/三字段写语义交叉核对;`_collect_affix_effects` 以 monkeypatch 摘除点采)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #1;画面档 = `assets/game_data/screen_info/currency_war_briefing.yml`。

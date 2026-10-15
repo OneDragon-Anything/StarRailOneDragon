@@ -43,7 +43,7 @@
   session 无独立字段——历史兼容读取入口 property 已撤,写读直经
   `game_state_of(session).effects`(同一实例,防第二账本)。
 - 写入方(接入点)六处在用,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
-  效果域直摸锁(journal.md §6 硬约束①族)。
+  效果域直摸测试(journal.md §6 硬约束①族)。
 - 读取入口 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/
   `predict_for`;`by_source` 按 source='strategy'/'affix' 取值分源读,词缀源读取入口)。
   对决策的输出 = 在场事实与进展读数;哪些效果需要决策姿态响应,由效果规格 duties
@@ -61,7 +61,7 @@
 
 - 策略行为观测键与效果域键**零交集**:键级审计已定案「游戏效果键 0 键」(效果域键的
   载体独立 = `cw_effect_inventory.py`,CounterKey 写入位置经 `effects.bump_key`,与
-  cw4_counters 无共同键);机器锁 = sr-od-test `test_cw4_key_closure.py::test_effect_
+  cw4_counters 无共同键);机器测试 = sr-od-test `test_cw4_key_closure.py::test_effect_
   domain_zero_keys_d1_idle_declaration`(:809)。**键并入写入代码后无迁入效果域之键**。
 - 未来新游戏效果键(新卡/词缀/环境源建模批产出)一律按本文语义入域:规格入注册表
   (`STRATEGY_EFFECTS` 或对应源注册表)+ 实例经登记接入点入清单,禁旁落行为观测容器。
@@ -284,7 +284,7 @@
   `register_affixes_from_names`(简报屏/位面详情屏两词缀读链产出点,best-effort
   同登记接入点纪律);**读取入口** = `by_source('affix')`。
 - **词缀与装备改写成员的扫描纪律**:词缀谓词扫描 `scan_rewrite_affixes` ∪ 装备谓词
-  扫描 `scan_rewrite_equipments`(申报表 `EQUIP_REWRITE_DECLARATIONS` 恰等锁看管)
+  扫描 `scan_rewrite_equipments`(申报表 `EQUIP_REWRITE_DECLARATIONS` 恰等测试看管)
   是效果面完备性判据(fields.md §7)源 c/源 e 的代码化——新词缀/装备改写成员入册
   时同批入申报表,防「没被点名就无人看管」。
 - **改写面写入方归属**:按 fields.md §5.3 归属判据逐条成文于各 spec notes——成长的

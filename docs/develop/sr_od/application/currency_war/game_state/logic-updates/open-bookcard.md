@@ -35,7 +35,7 @@
 
 ## 7. 语义验证
 
-腾位写入语义单一源 = `report_action_open_bookcard_param`(bench kind 'bookcard' → 'empty',陈旧提案零写;行为锁 = `test_cw_unified_action_2c::test_open_bookcard_logic_state_frees_slot`,容器版腾位锁)。选卡后果归观察(选择落地不记预期值)。原聚合写入入口分支与 sim 整帧副本载体(simulate)已随动作 op 重组与 sim 重做停用,考古归 git。
+腾位写入语义单一源 = `report_action_open_bookcard_param`(bench kind 'bookcard' → 'empty',陈旧提案零写;行为测试 = `test_cw_unified_action_2c::test_open_bookcard_logic_state_frees_slot`,容器版腾位测试)。选卡后果归观察(选择落地不记预期值)。原聚合写入入口分支与 sim 整帧副本载体(simulate)已随动作 op 重组与 sim 重做停用,考古归 git。
 
 ## 8. 判例注记(动作发出阶段)
 

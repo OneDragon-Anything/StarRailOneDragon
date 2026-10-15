@@ -10,7 +10,7 @@
 
 ### A1 [核一] [阻断] §1 症状 1「STRATEGY_GRANTS 29 条」与代码真值 83 条不符
 
-- 证据:design.md:16-17「策略打分表 `STRATEGY_GRANTS`(cw_investments.py:1369,**29 条**)现役只登记角色发放,无箱腿」。实核:cw_investments.py:1358-1368 底册注释「双母体对账(**83 条**):68 白得 + 11 顾问 + 4 反扫补网」;表体 :1369-1488 逐段计数一致(11+22+21+16+9+4 = 83);测试双锁 test_cw_invest_strategy.py:253-254(docstring「83 条 = 11 顾问 + 68 绑定母体白得 + 4 反扫补网」+ `assert len(STRATEGY_GRANTS) == 83`)。「29」与任何现役口径均不符(疑为「29 号稿」文档号误植入计数位)。
+- 证据:design.md:16-17「策略打分表 `STRATEGY_GRANTS`(cw_investments.py:1369,**29 条**)现役只登记角色发放,无箱腿」。实核:cw_investments.py:1358-1368 底册注释「双母体对账(**83 条**):68 白得 + 11 顾问 + 4 反扫补网」;表体 :1369-1488 逐段计数一致(11+22+21+16+9+4 = 83);双测试 test_cw_invest_strategy.py:253-254(docstring「83 条 = 11 顾问 + 68 绑定母体白得 + 4 反扫补网」+ `assert len(STRATEGY_GRANTS) == 83`)。「29」与任何现役口径均不符(疑为「29 号稿」文档号误植入计数位)。
 - 修订建议:改「83 条」。三件套是账本唯一源,症状陈述的数字失真须修正后定稿。
 
 ### A2 [核一] [建议] §2.4 惯用法引用失真:test_strategy_pick_chain_burst_gold 原文无 declare_world 步骤
@@ -23,20 +23,20 @@
 - 证据:design.md:101-102。实核:test_cw_sim_backend.py:665 `test_full_walk_terminates_with_p3_disclosure`——sim 世界现役可走完整三局(P3 带披露);全树检索无「第一期辖域 P1+P2」的明文出处;skill sim-testing.md:12 的未建模面口径为「P2/P3 专属」。实质主张本身成立:offer 日程 `((1,3),(2,2),(3,2))`(cw_sim_backend.py:388 ✓)使三卡在 P1/P2 槽可达,品质掷点均匀含棱彩(:402-404 ✓)。
 - 修订建议:删「sim 第一期辖域(P1+P2)」历史口径,只留可核事实「offer 日程 (1,3)/(2,2) 落 P1/P2,棱彩品质掷点可达,端到端可测」。
 
-### A4 [核一] [建议] 效果体发放名与登记表名双源,无一致性锁,且 supply_box 断言发现不了名字漂移
+### A4 [核一] [建议] 效果体发放名与登记表名双源,无一致性测试,且 supply_box 断言发现不了名字漂移
 
 - 证据:design.md §2.1(:53-58)登记 `GiftGrant(items_immediate=('进阶武装箱',))` 与 §2.3(:87-88)「效果体 = 共享工厂生成的闭包(**item 常量** + evidence 销 per 卡)」——同一道具名在两处以独立字面量维护。词表 `BENCH_ITEM_NAMES` 派生自登记表(cw_investments.py:1501-1504),溢出位身份 kind 判定消费它(gain-chain.md §4);效果体实际发放名走 `gain_bench_item` 参数——两处不一致时落位照常(kind='supply_box' 在 cw_gain_chain.py:633 **硬编码**,与道具名解耦),landing 3.1 的「bench supply_box×1」断言仍绿,只有溢出落位写 `overflow_card` 时身份误判才暴露。
-- 修订建议:补一条测试锁「三卡效果体实际发放的道具名 == `STRATEGY_GRANTS[键].items_immediate` 元素」(或效果体工厂从登记表读 item,消双源)。
+- 修订建议:补一条测试「三卡效果体实际发放的道具名 == `STRATEGY_GRANTS[键].items_immediate` 元素」(或效果体工厂从登记表读 item,消双源)。
 
 ### A5 [核一] [建议] landing 正本清单「三卡未建模腿申报」在 strategy-env-impacts.md 无挂载形状——「若义眼族行已在册」分支实为必走新立行,新立行的节/形状/状态未定
 
 - 证据:landing.md:70-73。实核:strategy-env-impacts.md 全文 grep「义眼/保守派/快请专家」**零命中**——「已在册则并行补列」分支不成立;三卡也不在 §4 目录口径内(§4 目录 = `STRATEGY_EFFECTS ∪ STRATEGY_ECONOMY` 全集,strategy-env-impacts.md:156-158;grep cw_investments.py 两表均无三卡条目)。该正本 §3 只收「已确认条目」(四槽,§5 流程要求确定性结论经用户/实机采证确认,:180-191)——「战斗被动腿 = 策略效果建模批」是未完成的归属申报,不是已确认效果。申报行立在哪一节、按什么条目形状、状态标什么,landing 未回答。
 - 修订建议:landing 该行钉死挂载形状(例:「§3 新增三行四槽,机制槽申报未建模腿归属与禁猜腿;或 §4 目录口径注扩注 PICK_INVEST_EFFECTS 箱腿卡」),实现者不再设计正本结构。
 
-### A6 [核一] [建议] 既有计数锁 83→86 与底册收录判据注释的同步修订,landing 未显式申报
+### A6 [核一] [建议] 既有计数测试 83→86 与底册收录判据注释的同步修订,landing 未显式申报
 
 - 证据:test_cw_invest_strategy.py:251-259(`test_grant_registry_counts_and_closed_set`:计数 83 + docstring 分类「11+68+4」)与 cw_investments.py:1358-1368(底册注释收录判据 = 「获得…**角色名**直读才入册」)。新增三条 items-only 腿卡后:计数 83→86、分类 +「3 箱腿」、收录判据扩为「角色发放 + 占席道具发放」两形态——表头注释与测试 docstring 均须改写。landing 3.1 文件面已含该测试文件(全绿判据会逼出同步),但完成判据未点名这条既有断言。
-- 修订建议:landing 3.1 完成判据补一行「底册计数锁 83→86 + 分类注记同步」。
+- 修订建议:landing 3.1 完成判据补一行「底册计数测试 83→86 + 分类注记同步」。
 
 ### A7 [核一] [建议] §1「明确不解决」打分条目「档位机器恒 off 裁定沿用」无裁定指针
 
@@ -50,7 +50,7 @@
 
 ## 试读记录
 
-**landing 3.1(kernel:登记+原语+效果体)**:能开工。语义选择全部可答——校验扩法有 `_validate_env_gifts` 同款先例(cw_investments.py:1344-1348);`_place_bench_item` 现役签名(cw_gain_chain.py:619-620)与 producer 形参化改法明确,现调用点(on_env_gained :718-719、discharge :763-765)不传新参即行为不变;效果体签名 `(gs, *, sig, rng)` 与分派 `fn(gs, sig=sig, rng=roll_rng)`(:813-817)严格吻合,惰性 import 有骇客卡 :97-100 先例;校验注入测试落点 test_cw_invest_strategy.py 真实存在且有孤儿键注入先例(:262-297),空发放集测试注入 `GiftGrant()` 全空形态在四通道判定下仍炸不破。卡点 = A6(计数锁同步未点名,撞上后处理显然)。
+**landing 3.1(kernel:登记+原语+效果体)**:能开工。语义选择全部可答——校验扩法有 `_validate_env_gifts` 同款先例(cw_investments.py:1344-1348);`_place_bench_item` 现役签名(cw_gain_chain.py:619-620)与 producer 形参化改法明确,现调用点(on_env_gained :718-719、discharge :763-765)不传新参即行为不变;效果体签名 `(gs, *, sig, rng)` 与分派 `fn(gs, sig=sig, rng=roll_rng)`(:813-817)严格吻合,惰性 import 有骇客卡 :97-100 先例;校验注入测试落点 test_cw_invest_strategy.py 真实存在且有孤儿键注入先例(:262-297),空发放集测试注入 `GiftGrant()` 全空形态在四通道判定下仍炸不破。卡点 = A6(计数测试同步未点名,撞上后处理显然)。
 
 **landing 3.2(sim E2E)**:能开工。注入惯用法三种同族先例(burst_gold :447 / hacker :495 / scheduled :387),supply_box 断言形态有姊妹迭代现役用例(:440-442)可照抄;`pending_item_grants` 开局种子 `[]` 断言可行;session 传/不传两态均有先例(:463 传、:506-508 不传)。卡点 = A2(declare_world 表述失真,不卡)。
 
@@ -68,12 +68,12 @@
 
 ### 修订逐条核验
 
-- **A1 ✓ 落地**:design.md:17-18「83 条 = 68 白得 + 11 顾问 + 4 反扫补网,计数锁 test_cw_invest_strategy.py」——与 cw_investments.py:1359-1362 底册注释及 test_cw_invest_strategy.py:253-254 计数锁口径一致。
+- **A1 ✓ 落地**:design.md:17-18「83 条 = 68 白得 + 11 顾问 + 4 反扫补网,计数测试 test_cw_invest_strategy.py」——与 cw_investments.py:1359-1362 底册注释及 test_cw_invest_strategy.py:253-254 计数测试口径一致。
 - **A2 ✓ 落地**:design.md:111-113「沿 test_strategy_pick_chain_burst_gold:`invest_strategy_opts` 写入 + `report_action_pick_invest_strategy_param`,该用例无 declare_world 步」——与该用例原文(test_cw_sim_backend.py:447-469,实无 declare_world)一致;landing 3.2 范围(:45)仅写「沿…惯用法」未声明 declare_world,与 design 新表述不矛盾,无需改。
 - **A3 ✓ 落地**:design.md:110「offer 槽在 P1/P2 即存在,三卡端到端可测」——「第一期辖域(P1+P2)」已删;事实成立(日程 ((1,3),(2,2),(3,2)),cw_sim_backend.py:388)。
-- **A4 ✓ 落地且 design↔landing 同步**:design.md:93-98 新增「发放名单单一源」(`_STRATEGY_BOX_GRANTS: dict[str,str]` 三键,注册表三条由工厂从该表生成)+ 一致性锁测试(逐对相等 + 席满行为锁 `overflow_card == '进阶武装箱'`);landing.md:11(范围)、:34-36(判据「一致性锁」)同步。技术可行:工厂读表消双源;席满行为锁可构造(bench 填满 + 溢出位空 → 落位写 `overflow_card`,cw_gain_chain.py:654;溢出位占用检查 :639)——名字经溢出真值暴露的锁法与 BenchSlot kind 硬编码(:633)的名-型解耦面吻合。
+- **A4 ✓ 落地且 design↔landing 同步**:design.md:93-98 新增「发放名单单一源」(`_STRATEGY_BOX_GRANTS: dict[str,str]` 三键,注册表三条由工厂从该表生成)+ 一致性测试(逐对相等 + 席满行为测试 `overflow_card == '进阶武装箱'`);landing.md:11(范围)、:34-36(判据「一致性测试」）同步。技术可行:工厂读表消双源;席满行为测试可构造(bench 填满 + 溢出位空 → 落位写 `overflow_card`,cw_gain_chain.py:654;溢出位占用检查 :639)——名字经溢出真值暴露的测试法与 BenchSlot kind 硬编码(:633)的名-型解耦面吻合。
 - **A5 ✓ 落地且与正本结构相容**:landing.md:77-83 钉死「strategy-env-impacts.md §3 新增三卡四槽条目(形状沿 §2 四槽表,先例 = 大裁员条)+ 机制槽内标注未建模腿 + 三卡均新立行(§4 目录口径两注册表均不含三卡,无并列可补)」。复核:strategy-env-impacts.md §2 四槽(:19-28)、§3 大裁员先例(:55)、「部分确认 + 余腿候逐条确定」条目在 §3 有现役先例(双手狸开键盘条 :96「卡文其余句……不在本条确认范围,候逐条确定」;伟大征服零建模条 :145-152)——「箱腿已建模 + 战斗腿候批」入 §3 与正本确认语义相容;「两注册表均不含三卡」与代码一致(cw_investments.py 全量 grep 仅注释与反扫白名单命中)。残留注记(不升级为发现):第四槽「策略层消费」的内容未钉,按正本既有惯例回填「候策略侧/不进打分」即可(先例 :143/:152),实现者可循。
-- **A6 ✓ 落地**:landing.md:11-13(范围「计数面同步:计数锁 83→86、底册收录判据注释与计数 docstring 两形态化」)、:25-26(判据「计数同步」条);文件面(:16-19)已含两目标文件,与 design 无需同步处(design §2.1 不涉计数)。
+- **A6 ✓ 落地**:landing.md:11-13(范围「计数面同步:计数测试 83→86、底册收录判据注释与计数 docstring 两形态化」)、:25-26(判据「计数同步」条);文件面(:16-19)已含两目标文件,与 design 无需同步处(design §2.1 不涉计数)。
 - **A7 ✓ 落地,新指针实核在册**:design.md:138-142 取舍 3 改机制表述 + 指针 gift_value.py:52-63 / cw_comps.py:1253-1257(复核确认:items 两通道不参与档位判定,chars 全空 → 'off' → 0 分)+ 裁定登记处 = cw_investments.py ENV_GIFTS 道具通道注释——实核 **:1291「道具 = 占席待开箱,非角色非经济,档位机器恒 off(不进[打分])」在册,指针真实**。残留注记(不升级为发现):design.md:50-51(§1 明确不解决打分条)仍保留「裁定沿用」简写未附指针,全指针在同文档 §3 取舍 3,可达、无矛盾。
 - **A8 ✗ 未达成,修订引入新失真(见 B1)**。
 
@@ -124,7 +124,7 @@
 - design.md 全文抽查:§2.3 名单单一源(:92-97)/§2.4 两处修订(:109/:111-113)/§2.5 均未被本次改动波及,与前轮复核所见逐字一致;行数 142→141 = 打分面行并入指针的行数变化,无其他删改。
 - landing.md:行数 88→89 = impacts 条策略层消费槽一行;正本清单其余行、3.1/3.2 范围与判据未动。
 - README.md:仅进度两行变更,文档节未动。
-- 三件套互引无新断链:design §1 ↔ §3 取舍 3(指针可达)、design §2.3 ↔ landing 3.1 判据「一致性锁」、landing 正本清单 ↔ design §2.3(:103-104「未建模申报归 impacts 正本,见 landing 正本清单」与清单 :77-84 对应)。
+- 三件套互引无新断链:design §1 ↔ §3 取舍 3(指针可达)、design §2.3 ↔ landing 3.1 判据「一致性测试」、landing 正本清单 ↔ design §2.3(:103-104「未建模申报归 impacts 正本,见 landing 正本清单」与清单 :77-84 对应)。
 
 ### 增量终验结论
 

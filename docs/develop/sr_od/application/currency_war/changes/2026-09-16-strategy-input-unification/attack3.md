@@ -20,7 +20,7 @@
 修正方向：3.2 文件面补 `kernel/cw_game_state.py`（或把该字段新增显式划入 3.1 并同步修改 3.1 的排除句——二者取一，设计↔landing 同步改）。
 
 **B2**｜blocker｜landing.md §3.3（文件面）× design.md §2.5（驱动器行）
-商店线切换漏掉 `strategies/impl/mandate_v1/bridge.py` 的 `decide_shop_screen` 覆写：该覆写循环体内逐帧调 `self.decide_shop_action(session, config)`（HEAD :277，实读确认；工作树在飞改动未触及此调用点）。3.3 把 `decide_shop_action` 签名切为 `(gs, session, config)` 后，此调用点变参错（TypeError / 形参错位）——而 `MandateV1Strategy.decide_shop_screen` 正是 sim 回放（sim/cw_replay.py:112 实调 `strat.decide_shop_screen`）与既有序列锁的消费入口。结果：3.3 交付态下回放/序列锁路径不可运行，直接违反 landing 首节自立的「每阶段交付态生产链可运行、通用工程门可绿」与「同一契约的迁移不得跨阶段拆分」（该契约的调用点一半在 flow.py〔3.3 已列〕、一半在 bridge.py〔未列，被整体划给 3.4〕）。design §2.5 的驱动器行只写了「flow.py decide_shop_screen…内部调用点传 gs」，未覆盖 bridge 覆写体的同款义务。
+商店线切换漏掉 `strategies/impl/mandate_v1/bridge.py` 的 `decide_shop_screen` 覆写：该覆写循环体内逐帧调 `self.decide_shop_action(session, config)`（HEAD :277，实读确认；工作树在飞改动未触及此调用点）。3.3 把 `decide_shop_action` 签名切为 `(gs, session, config)` 后，此调用点变参错（TypeError / 形参错位）——而 `MandateV1Strategy.decide_shop_screen` 正是 sim 回放（sim/cw_replay.py:112 实调 `strat.decide_shop_screen`）与既有序列测试的消费入口。结果：3.3 交付态下回放/序列测试路径不可运行，直接违反 landing 首节自立的「每阶段交付态生产链可运行、通用工程门可绿」与「同一契约的迁移不得跨阶段拆分」（该契约的调用点一半在 flow.py〔3.3 已列〕、一半在 bridge.py〔未列，被整体划给 3.4〕）。design §2.5 的驱动器行只写了「flow.py decide_shop_screen…内部调用点传 gs」，未覆盖 bridge 覆写体的同款义务。
 修正方向：3.3 文件面补 `strategies/impl/mandate_v1/bridge.py`（限 decide_shop_screen 覆写内部调用点），design §2.5 驱动器行同步覆盖 mandate 覆写体。
 
 ### major（须修）

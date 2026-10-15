@@ -47,7 +47,7 @@
   1. **精确快道**：text 与注册表键名全等 → 直返。理由 = 纯「LCS 0.75 + 唯一命中」直移 158 名键集，完美 OCR 下实测 79/158 名多命中拒识（垃圾袋/金垃圾袋、生命之花/生命之环 0.75、追击/击破星徽互撞、昼/夜之半神星徽互撞、36 个特权名全撞进阶基名、白昼/极·白昼、Max/Pro 后缀族、命运族、穿刺/穿越死棘之枪）——相似判据不得为首层；
   2. **containment longest-first**：注册表名 contained in text 取最长唯一（`classify_planner_leg` 判定序第 1 步先例；「·特权」类装饰噪声由本层消解）；并列最长 → 落相似层；
   3. **相似救援**：LCS ≥ 0.75 唯一命中 → 返回；多命中/零命中 → ''（禁猜，fail-closed）。
-  行为锁 = 特权/后缀族/互撞族完美 OCR 命中 + 形变救援 + 多命中拒识（landing 3.1）。残余申报：OCR 把一件误读成另一件规范名（生命之花→生命之环类）归一层原理不可辨，入账暂态错名由观察覆盖自愈（覆盖序论证 = §2.3）。
+  行为测试 = 特权/后缀族/互撞族完美 OCR 命中 + 形变救援 + 多命中拒识（landing 3.1）。残余申报：OCR 把一件误读成另一件规范名（生命之花→生命之环类）归一层原理不可辨，入账暂态错名由观察覆盖自愈（覆盖序论证 = §2.3）。
   handler 组装点换用分层归一，param 现有字段（`char_name` roster 校验产物 + `norm_item` 分层归一）即 report 全部输入——**不扩 raw_item/has_diamond**。
 - **report 函数单相化**：`kernel/cw_action_report/pick_supply.py` 删 `evidence` 参数与 `EVIDENCE_OVERLAY_CLOSED` 常量（**仅本文件的同名常量**；pick_equip/pick_planner 各自同名常量属彼辖不动）；一口写序 = ⓪`char_name` 与 `norm_item` 双空（兜底点卡路径）→ 现行「内容全未知」分支逐位保持（bench/equips 值不变翻来源 + `pick_supply_content_unresolved` 缺陷行）→ ①`owned += norm_item`（**规范名**；'' = 未解析不写 + 翻来源留证缺陷行——fail-closed：错名不入账，观察覆盖自愈，覆盖序论证见 §2.3）②单位腿 `grant_bench_unit_cascade`（`char_name` 命中时）③装备后果腿 `apply_equip_acquire_consequence`（`norm_item` 命中时）；单位腿 char_name 未命中 → 现行翻来源留证语义保持。
 - **chosen_supply 不进 report**：留守画面 op 选卡分支确认即写（现状写点、时机均已合规——`screens/op-layer.md` §2.2 动作事实边界硬规则零改动）。
@@ -105,7 +105,7 @@
 
 ## 3. 验收锚（行为级；验收凭据形式见 landing 各阶段）
 
-1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；注册表级分层归一行为锁：特权/后缀族/互撞族（垃圾袋/金垃圾袋、生命之花/生命之环、追击/击破星徽）完美 OCR 恒命中、OCR 形变救援命中、多命中拒识返回 ''；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
+1. 补给选卡：确认点击后（不等下一帧）容器即持效果逻辑态——owned 含装备规范名（norm_item 命中时）+ bench 含角色（合成级联后）；`chosen_supply` 三元组在派发前已由画面 op 写（现状时机不变）；注册表级分层归一行为测试：特权/后缀族/互撞族（垃圾袋/金垃圾袋、生命之花/生命之环、追击/击破星徽）完美 OCR 恒命中、OCR 形变救援命中、多命中拒识返回 ''；supply 链无落地相补写面（`kernel/cw_action_report/pick_supply.py` 的 `EVIDENCE_OVERLAY_CLOSED` 及其在 supply 链的导入点零残留；pick_equip/pick_planner 同名常量不在辖内）。
 2. 补给刷新：剩余 1 → 建议刷新 → 点钮恰一次 → 访问终结交回；剩余 0 或 None → 零点击不终结，按原评分选卡。
 3. 遭遇刷新：点钮恰一次 → 访问终结交回（无同访问重读、无二次覆盖写、无重决策）；剩余 0 或 None → 按原评分选卡。入口门命中即读（无 2s 稳定期）；**候选读缺（options 空）= 零点击 round_success 终结交回（禁盲选派发确认）**。选卡：派发即 `round_success` 终结（零重入裁决轮）；确认点击后（不等下一帧）容器即持 `chosen_encounter` = payload 槽所选 (难度, 奖励文本)；payload 离屏/idx 越界 = 缺陷留证不写。奖励兑现：遭遇结算确认 ∧（node 镜像='encounter' ∧ settlement_ring 尾行 node_type='遭遇'）∧ `progress_delta>0` → 容器即持 `encounter_reward_claimed` = 所选 (难度, 奖励文本)，**且 `chosen_encounter` 随即被清（单次消费）**；未达标/删失/无 chosen → 不写不清。
 4. 全链零已用计数残留：`supply_refresh_used`/`encounter_refresh_used`/`encounter_refreshed_in_visit` 三符号零命中（grep 范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）。

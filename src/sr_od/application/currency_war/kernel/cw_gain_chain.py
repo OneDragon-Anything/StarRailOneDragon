@@ -116,7 +116,7 @@ class GainOutcome:
 # 到底的不动点推演无回调时机——故此处独立实现单级函数,规则逐条对齐
 # merge_simulate 不动点合并段(:206-279:分组键 (char_id, star)、场上载体
 # 优先、全备战取最左、溢出件合成腾槽归位优先、装备继承并入、场上同名
-# 同星 ≤1 不变量),对齐由交叉核对测试锁「同池同输入下,单级×N 次 ==
+# 同星 ≤1 不变量),对齐由交叉核对测试「同池同输入下,单级×N 次 ==
 # merge_simulate 终态」——禁第二套语义漂移。)
 
 
@@ -160,7 +160,7 @@ def merge_step_once(bench: list[BenchSlot | None],
     产物身份 ``(char_id, star+1)``;无同名同星 3 只 → None(链终止)。
 
     规则逐条对齐 ``cw_merge_simulate.merge_simulate`` 不动点合并段
-    (:206-279;交叉核对测试锁同池同输入终态一致,禁第二套语义):
+    (:206-279;交叉核对测试校验同池同输入终态一致,禁第二套语义):
     - 合成池 = bench ∪ deployed ∪ overflow(满栏溢出件必须进池,否则
       合成永不触发);分组键 = (char_id, star);扫描序 = bench 槽位升序
       → deployed 下标升序 → overflow 表序(与 merge_simulate 内部扫描

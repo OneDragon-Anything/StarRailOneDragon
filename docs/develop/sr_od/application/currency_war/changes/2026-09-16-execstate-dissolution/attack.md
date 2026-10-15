@@ -31,7 +31,7 @@
 
 **证据**:`sr-od-test/` 全仓 grep `register_round_sold|record_fresh_buy|fresh_buys_of|round_ledger` = 零命中。
 
-**修复建议**:判据改为「新增轮键自校验行为测试 + record_fresh_buy 宿主切换同口测试」并列入文件面;或删去测试凭据、说明为何该机制无测试锁(与发现 [1] 的处置联动)。
+**修复建议**:判据改为「新增轮键自校验行为测试 + record_fresh_buy 宿主切换同口测试」并列入文件面;或删去测试凭据、说明为何该机制无测试(与发现 [1] 的处置联动)。
 
 ### [3] 重要 | landing 3.5 文件面 | 缺 #16 的两个消费文件
 
@@ -207,7 +207,7 @@
 | [3] | **闭合** | 3.5 文件面补 cw_screen_buy_cards.py + cw_shop_action_ops.py,标注 = #16 消费点。 |
 | [4] | **闭合(已实证)** | 3.1 文件面补 cw_op_equip_all.py + mandate.py;「已落地」申报属实——commit 83ea60e5d 实改恰 4 文件(cw_equip_wear_plan/cw_exec_state/cw_op_equip_all/mandate.py),与文件面逐一吻合。 |
 | [5] | **闭合** | 判据改「三字段(supply/encounter/strategy)写端在产;env_refresh_used 维持零写端申报不动」,3.3 边界显式排除 env。 |
-| [6] | **闭合** | #5/#6 行 + §2.2-3 双计毒化红线条款闭合(「只删 ExecState 置位/清零/add 行,禁新增第二容器写点」);#6 读写点标注修正;新增判据「单次刷新恰 +1 无双计——测试断言」可验;「测试在锁」申报属实(test_cw_obs_arch_phase_screens.py:34/:445 发射型接线锁在册)。 |
+| [6] | **闭合** | #5/#6 行 + §2.2-3 双计毒化红线条款闭合(「只删 ExecState 置位/清零/add 行,禁新增第二容器写点」);#6 读写点标注修正;新增判据「单次刷新恰 +1 无双计——测试断言」可验;「测试在册」申报属实(test_cw_obs_arch_phase_screens.py:34/:445 发射型接线测试在册)。 |
 | [7] | **闭合** | #15 族标签改「留证采样簿记」并注明 attack [7] 修正;「不评估本迭代删」显式声明为战术取舍(退役前置 = SIFT 修复,另批)——符合「症状修法须声明权衡 + 排期」;`star_pending_regression` 入 §1 明确不解决④。 |
 | [8] | **闭合** | 全文 MandateState → StrategyState(design/landing/正本清单),§1② 注明正本 flow/README §2.5 旧名随正本批修正。 |
 | [9] | **闭合** | #8 行「3.2 仅删 xp 字段;refreshed 归 3.3(防遥测空窗)」;landing 3.2/3.3 范围与文件面归属注同步。 |

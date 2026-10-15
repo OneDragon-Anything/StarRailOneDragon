@@ -10,8 +10,8 @@
 > 代码锚:`pair_target_comp`(kernel/cw_intention.py,伪 comp 物化单一
 > 写端;希儿系对 form_tiers 只含他体系档 + `SEELE_OR_LEGS` or_legs +
 > `required_deployed=('希儿',)`)/ `form_progress`(kernel/cw_comps.py,
-> 成型判据唯一折法,fp=1.0 ⟺ 成型谓词);行为锁 =
-> sr-od-test test_cw_form_or.py(28 锁,变异红证在)。
+> 成型判据唯一折法,fp=1.0 ⟺ 成型谓词);行为测试 =
+> sr-od-test test_cw_form_or.py(28 条测试,变异红证在)。
 
 ## 命题(形式化)
 
@@ -99,5 +99,5 @@ P(Bin(5N, q̄) ≥ n),N = T·(1+ρ)。主窗口 T=9 ρ=0:非希儿对 0.83-0.86
 - E/form_ok 偏开分量联审接口项:本命题放宽 form_ok
   后,e_rounds/form_progress 只读 form_tiers 的 AND 账对希儿系对存在
   已知偏开分量——处置 3 交付报告);
-- 行为锁:sr-od-test test_cw_t171_form_or.py(伪 comp 构造/四象限/
-  嵌套网格/两端口切分;变异「OR 退 AND」10 锁红亲测)。
+- 行为测试:sr-od-test test_cw_t171_form_or.py(伪 comp 构造/四象限/
+  嵌套网格/两端口切分;变异「OR 退 AND」10 条测试红亲测)。

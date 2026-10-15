@@ -90,7 +90,7 @@ _UNIT_PLUGINS: tuple[PluginEntry, ...] = (
 # T1 全队通用(仅 3)/T2 混合型+双向效果/T3 队员口径(只 buff 本羁绊成员,对症才碰);
 # 另有角色特定型 2 个。出池:巡海游侠1(自 buff 不给全队,「槽位效率最高」作废);
 # DOT2 归体系卡(P1 层);独立羁绊 7 个绑死单卡,不进池。
-# 注:名单共 15 个,与三C T3 定稿名单对齐(测试锁 smalls==15)。
+# 注:名单共 15 个,与三C T3 定稿名单对齐(测试 smalls==15)。
 _SMALL_FACTION_PLUGINS: tuple[PluginEntry, ...] = (
     # --- T1 全队通用(3)---
     PluginEntry("列车2", "small_faction", "T1", "team", source="三C T1:撞击+20% 全体强度"),
@@ -161,7 +161,7 @@ def cross_line_skeleton() -> tuple[str, ...]:
       本就含它,无跨线信息)→ 双身份 2 张(三月七/藿藿;开拓者·欢愉
       两线同族 1 键,天然不进边界)。
 
-    派生结果与原手写 10 名快照一致(cw_intention 测试锁;不等 = 数据错)。
+    派生结果与原手写 10 名快照一致(cw_intention 测试;不等 = 数据错)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     carries = {c.plaza_carry for c in COMP_LIBRARY if getattr(c, 'plaza_carry', '')}
@@ -177,7 +177,7 @@ PLUGIN_LIBRARY: dict[str, PluginEntry] = {p.plugin_id: p for p in (*_UNIT_PLUGIN
 # 单卡插件的 majority_lines 与过半线统计表**程序同步**
 # (单一写入口——过半线刷新只改 W16_MAJORITY_LINES,上方的字面量
 # 被全集覆盖;小羁绊插件的 majority_lines 仍手注[三C 口径,无单卡
-# 统计])。锁测试交叉核对两侧一致。
+# 统计])。测试交叉核对两侧一致。
 
 PLUGIN_LIBRARY.update({
     p.plugin_id: replace(p, majority_lines=W16_MAJORITY_LINES[p.plugin_id])

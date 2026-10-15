@@ -21,7 +21,7 @@
 | F-7 | 正本更新清单漏 4 处 | **消解** | landing 正本更新清单扩为 9 行：§0 头注定位句、不变式3（明确"改写为 Snapshot 隔离承诺…不变式本体不消失"的改写形态）、不变式5、§4.1（补前置发射位与披露落点）、G7、flow/README live 链（补前置发射位）、依赖方向段（同时删 L92 装配链句与 L93 obs→Snapshot 半部句）、篇导读行。 |
 | F-8 | adapter.py 全孤儿未申报归宿 | **消解** | §2.1 #10 整模块删除裁定（含"零 import 方、零调用点"依据）；§1.3 解决到哪与外溢清单同步更新（"adapter.py 已随本批删除，不在其列"）；§1.3 外溢立项输入修正为"src 级生产消费方 = 零（曾有的模块级 import 方 adapter.py 随本批删除）"；§2.4 新增取舍行。r2 已复核无隐藏消费方：`strategies/impl/mandate_v1/__init__.py` 仅注册 StrategyState 工厂、不转出 adapter 符号；sr-od-test 对 `mandate_v1.adapter|action_to_atomop|PREP_SUBSTATE_NAME` 零命中（r1 grep 沿用）。 |
 | F-9 | 在飞协调缺账本载体 | **消解** | landing §3.2 依赖栏："阶段1；execstate-dissolution 对应在飞阶段（同文件在飞面 = `cw_exec_state.py` + `telemetry/schema.py`，防冲突最小前置，两迭代账本对齐后开工）"——两文件齐、载体入依赖栏。 |
-| F-10 | ADR-0571 死指针 | **消解** | §0/§1.3/§2.2/§2.3 统一改"裁决语义锚 = mandate_state.py 披露字段注释 + 守卫锁 test_cw_budget_disclosure；ADR-0571 档案已按用户令退役，历史副本不入 git"；§1.3 外溢表述同步（"牵接口形态历史裁决（ADR 档案已退役）"）；landing 判据豁免行改为"历史 ADR 记录/decisions 遗留/changes/ 豁免"。 |
+| F-10 | ADR-0571 死指针 | **消解** | §0/§1.3/§2.2/§2.3 统一改"裁决语义锚 = mandate_state.py 披露字段注释 + 守卫测试 test_cw_budget_disclosure；ADR-0571 档案已按用户令退役，历史副本不入 git"；§1.3 外溢表述同步（"牵接口形态历史裁决（ADR 档案已退役）"）；landing 判据豁免行改为"历史 ADR 记录/decisions 遗留/changes/ 豁免"。 |
 | F-11 | 通用工程门缺失且指针不可解析 | **消解** | landing 首节"通用工程门（单一定义；源 = 项目 AGENTS.md「测试规范」10.4 与「提交流程与协作边界」11）"，内容与源相符（grep 消费点/ruff/受影响测试+全量/逐文件点名/git show --stat）；三阶段判据各加"通用工程门：本文件「通用工程门」节"引用行。 |
 | F-12 | "均已亲读核实"过程叙事 | **消解** | §1.1 改"（依据 = projection_contract.md §6 G7 + 代码锚，锚以符号名定位）"。 |
 | F-13 | §2.5 两处处置表述与实况偏差 | **消解** | migration_direction_layer 行补"保留测试同步清 assembly/contracts import 与失活助手（防 ImportError 连坐全文件）"；budget_disclosure 行补"断言右端 `turn.budget.*` 改独立现算 oracle（文件内已有 kernel 独立重算先例可循）"。 |
@@ -35,8 +35,8 @@
 
 ### R2-1 [低] [核一·试读] 阶段1 判据"test_cw_budget_disclosure 原样全绿——断言载体未改"与阶段1 自身选择矛盾（monkeypatch 接线缝必断）
 
-- **发现**：修订稿把阶段1 定为原签名搬迁 + "cw_screen_buy_cards 调用点仅改 import 路径"（design §2.2 阶段1）。生产侧店开帧披露是函数内**懒加载**（cw_screen_buy_cards.py:1033-1037 每次调用取模块属性）；测试的两个接线锁正是经该缝注入替身——`monkeypatch.setattr(assembly_mod, 'disclose_budget_at_shop_frame', …)`（test_cw_budget_disclosure.py:162-163，宿主构造 :112-114）。import 改指 economy_cycle 后，patch assembly_mod 不再拦截生产调用 → `test_shop_frame_disclosure_wired_at_shop_entry` 与 `test_shop_frame_disclosure_failure_degrades_with_warning` 必红，缝目标须随迁 economy_cycle_mod。故"原样全绿/断言载体未改"（landing §3.1 判据 1）按文字不成立；文件虽在面内（"如涉 import 路径"），缝目标改写不属"import 路径"字面。
-- **修正方向**：二选一——①判据 1 改"断言载体语义未改；monkeypatch 接线缝目标随 import 路径同步改 economy_cycle（两接线锁预期先红后绿）"；②更简方案：阶段1 保持 cw_screen_buy_cards 懒加载源为 assembly（assembly 转出 re-export），import 改路延至阶段2——则"原样全绿"字面成立、阶段1 生产面零编辑。
+- **发现**：修订稿把阶段1 定为原签名搬迁 + "cw_screen_buy_cards 调用点仅改 import 路径"（design §2.2 阶段1）。生产侧店开帧披露是函数内**懒加载**（cw_screen_buy_cards.py:1033-1037 每次调用取模块属性）；两个接线测试正是经该缝注入替身——`monkeypatch.setattr(assembly_mod, 'disclose_budget_at_shop_frame', …)`（test_cw_budget_disclosure.py:162-163，宿主构造 :112-114）。import 改指 economy_cycle 后，patch assembly_mod 不再拦截生产调用 → `test_shop_frame_disclosure_wired_at_shop_entry` 与 `test_shop_frame_disclosure_failure_degrades_with_warning` 必红，缝目标须随迁 economy_cycle_mod。故"原样全绿/断言载体未改"（landing §3.1 判据 1）按文字不成立；文件虽在面内（"如涉 import 路径"），缝目标改写不属"import 路径"字面。
+- **修正方向**：二选一——①判据 1 改"断言载体语义未改；monkeypatch 接线缝目标随 import 路径同步改 economy_cycle（两接线测试预期先红后绿）"；②更简方案：阶段1 保持 cw_screen_buy_cards 懒加载源为 assembly（assembly 转出 re-export），import 改路延至阶段2——则"原样全绿"字面成立、阶段1 生产面零编辑。
 
 ### R2-2 [低] [核一] 「engine_p1 读端已亡」的更正未传导到随迁注释；反查样式缺 `engine_p1`
 
@@ -51,7 +51,7 @@
 ### R2-4 [低] [核一] 新增判据"armed 短路帧不披露语义逐位保持"无具名验证载体
 
 - **发现**：landing §3.2 判据新增该行为保持项，但验收凭据形式（grep 清单 + L3 全量 + sim 批头分布对照）无一辖它：sim 对该面结构性不可见（设计自报）；既有测试不辖 armed 分支（test_cw_prep_contract_shape 走非 armed 桩路径；无任何测试断言"armed 帧披露零调用"）。该判据现状只能靠 code review 承载，而设计未明示。
-- **修正方向**：§2.5 增一条单帧锁（armed 态 session 桩披露缝断言零调用 + 非 armed 帧断言恰一次调用；锁出处 = design §2.2 落点规则），或在判据旁明示"以 code review 承载，无测试载体"。
+- **修正方向**：§2.5 增一条单帧测试（armed 态 session 桩披露缝断言零调用 + 非 armed 帧断言恰一次调用；测试出处 = design §2.2 落点规则），或在判据旁明示"以 code review 承载，无测试载体"。
 
 ### R2-5 [低] [核一] 阶段1/阶段2 验收凭据"sim batch 批头分布对照"缺对照基线来源
 
@@ -93,7 +93,7 @@
 
 | 阶段 | 判定 | 说明 |
 |---|---|---|
-| 阶段1（原签名搬迁） | **过** | 搬迁形态自洽、供给链判据有具体载体（migration tests 原样绿）、零行为变化可验（披露语义锁原样跑）。R2-1（判据"原样全绿"措辞）、R2-5（对照基线）为验收口径修订建议，不阻开工。 |
+| 阶段1（原签名搬迁） | **过** | 搬迁形态自洽、供给链判据有具体载体（migration tests 原样绿）、零行为变化可验（披露语义测试原样跑）。R2-1（判据"原样全绿"措辞）、R2-5（对照基线）为验收口径修订建议，不阻开工。 |
 | 阶段2（物理删除） | **有条件过** | 删除面 #1-#10、反查收口、依赖栏、判据均齐；但 R2-8（economy_cycle.py 漏列文件面，合并步撞墙）与 R2-9（assembly.py 整删未申报，空壳处置撞停手令）两处落在文件面/停手令射程——两行修订后全过。 |
 | 末阶段（正本更新） | **过** | 清单 9 行齐备（含不变式3 改写形态、前置发射位补画），对照实现清零可验收。 |
 
@@ -122,7 +122,7 @@
 | R2-1 | 阶段1 判据"原样全绿"与缝必断矛盾 | **消解** | landing §3.1 判据改"test_cw_budget_disclosure 全绿——缝目标随迁后断言本体原样"；文件面改"（monkeypatch 缝目标随迁）"；design §2.5 行写明"懒加载 import 改指后原缝必断"。措辞与实况相容（先红后绿被预告）。 |
 | R2-2 | engine_p1 更正未随迁 + 反查样式缺样式 | **消解** | design §2.3 反查样式加 `engine_p1`；新增"过期读端叙事随迁面"条（economy_cycle 迁入 docstring 读端句 → 阶段2 更正）；mandate_state 条目扩"读端半句 → 新读端口径"；§2.2 现状行改"该过期句随逐字搬迁进入 economy_cycle，阶段2 按 §2.3 更正"——r2 指出的"消亡 vs 搬迁"自相矛盾已消除。 |
 | R2-3 | decision_assembly"随模块删除消亡"表述错误 | **消解** | §2.3 末条拆分：decision_assembly"模块本体因 install_obs_ports 存活，按反查样式改写"；adapter 随 #10 消亡。§2.1 #8 同步改"模块本体因 install_obs_ports 存活（仅删半部）"。 |
-| R2-4 | armed 不披露判据无验证载体 | **消解** | design §2.5 budget_disclosure 行补"armed 短路帧不披露单帧锁（armed 帧入口断言披露字段零写，承载 §2.2 落点规则的验证）"；landing §3.2 判据挂"载体 = §2.5 新增单帧锁"、验收凭据含"armed 单帧锁"。断言目标与出处明确，实现自由度（真 armed 判定 vs 桩前置发射位）不构成再设计项——两者证同一性质（短路先于披露）。 |
+| R2-4 | armed 不披露判据无验证载体 | **消解** | design §2.5 budget_disclosure 行补"armed 短路帧不披露单帧测试（armed 帧入口断言披露字段零写，承载 §2.2 落点规则的验证）"；landing §3.2 判据挂"载体 = §2.5 新增单帧测试"、验收凭据含"armed 单帧测试"。断言目标与出处明确，实现自由度（真 armed 判定 vs 桩前置发射位）不构成再设计项——两者证同一性质（短路先于披露）。 |
 | R2-5 | sim 分布对照缺基线且无鉴别力 | **消解** | design §2.5 验收总门降格"冒烟跑通（分布对照无鉴别力、不作判据，冒烟仅证流程不炸）"；landing §3.1/§3.2 判据与验收凭据同步改"冒烟跑通（记录）"，分布对照撤销。 |
 | R2-6 | design §0 与 README 状态失同步 | **消解** | README 进度改"迭代设计:对抗审中"，与 design §0 一致。 |
 | R2-7 | match_archive 规则改写分支缺目标 + 混合句无桶 | **消解** | §2.3 判别规则扩三支：纯历史口径 = 保留；纯现行声明 = 改写；混合句 = "保留语义、符号锚改纯语义描述（去符号名，语义自足）"——与 AGENTS 注释规范"持久索引或纯语义描述"对齐。 |
@@ -141,7 +141,7 @@
 | 阶段 | 判定 | 说明 |
 |---|---|---|
 | 阶段1 | **过** | 搬迁形态、缝目标随迁、判据载体全部就位。 |
-| 阶段2 | **有条件过** | 删除面 #1-#10、文件面（含 economy_cycle/assembly 整删/decision_assembly 存活申报）、armed 单帧锁载体齐备；唯 R3-1 使 grep 判据按面不可关闭——一行修订后全过。 |
+| 阶段2 | **有条件过** | 删除面 #1-#10、文件面（含 economy_cycle/assembly 整删/decision_assembly 存活申报）、armed 单帧测试载体齐备；唯 R3-1 使 grep 判据按面不可关闭——一行修订后全过。 |
 | 末阶段 | **过** | 清单 9 行未动，仍与实现后一致。 |
 
 ## 四、r3 收敛判定

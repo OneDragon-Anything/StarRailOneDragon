@@ -21,7 +21,7 @@
 ### F3【design.md §2.6 合并清单 DeployMove 行】统一类签名 ≠ 族A 现役签名,faction/to_row 去向未申报,与「sim 消费面零改动」自相矛盾
 - **攻击内容**:设计统一类 = `DeployMove(from_bench_idx, to_deployed_idx)`;族A 现役 = `DeployMove(bench_idx, to_row, faction)`(to_row = 'front'/'back' 语义排,faction 供 board 重算)。这不是「归一到族A」,是重新设计族A:faction 字段被静默删除(simulate 的 board 重算要从哪拿阵营?从 bench 槽位对象现取?未写),to_row 改由下标推导,字段名整体改。若按设计改签名,`cw_vocab.simulate`、mutate/投影面、序列化形状都要动——直接推翻 §2.6「规范系 = 族A ⇒ sim 决策/投影/引擎面零改动」的主张(该主张对 SellBench/LevelUp/SellDeployed 三行成立,唯独 DeployMove 行自相矛盾)。且设计未披露一个关键事实:DeployMove 现役**全仓零构造点**(族A 族B 都无人构造,腾席部署实际走 RunDeploy 组合壳)——为一个死类改签名,成本/风险描述失真。
 - **证据**:`kernel/cw_vocab.py:466-478`(族A DeployMove = bench_idx/to_row/faction);`kernel/cw_prep_actions.py:135-140`(族B = from_slot/to_row/to_slot);全仓 grep `DeployMove(` 仅命中类定义行(cw_prep_actions.py:136),零构造;`kernel/cw_vocab.py:933` simulate(DeployMove) 消费 to_row/faction。
-- **建议修法**:DeployMove 行改为「统一类 = 现役族A 原样,族B 物理槽位参数由执行边换算吸收」;或若坚持改签名,把 faction/to_row 的推导口径、simulate/mutate/投影面波及清单、sim 行为锁的适用性逐项写进 §2.6。
+- **建议修法**:DeployMove 行改为「统一类 = 现役族A 原样,族B 物理槽位参数由执行边换算吸收」;或若坚持改签名,把 faction/to_row 的推导口径、simulate/mutate/投影面波及清单、sim 行为测试的适用性逐项写进 §2.6。
 
 ### F4【landing.md §3.2 文件面】批2 文件面 ≠ §2.6 改动面,至少漏四个必改文件
 - **攻击内容**:批2 词表归一必然波及以下文件,均不在批2 文件面清单内:
@@ -61,7 +61,7 @@
 ### F8【design.md §2.4/§2.5 OpenShop】OpenShopOp 的 execute 体与 read_only 两形态无定义;流程层编排与工厂的关系未定
 - **攻击内容**:专项质疑面证实:OpenShop 现役不经执行器分派(cw_screen_prep.py:2037 截流 → `_open_shop_phase` 流程层编排 :2405-2450,read_only=True 走 CwOpOpenShop→heavy 观察→CwOpCloseShop→回备战,read_only=False 走商店单动作循环)。设计 §2.4 给 OpenShopOp 置 terminal=True,但:(a) 它的 execute 体是什么?流程编排是画面 op 的流程职责,塞进动作 op 违反设计自己的「执行包络/流程编排留守」划分;留空则注册表里是个不可执行的死行。(b) 注册表按词表类一行,OpenShop 一个类带 read_only 两个形态——一行怎么表达两形态语义?(c) 现行结束判定 StartBattle 与 OpenShop 的等待时长不同(wait=3 vs wait=1.0,cw_screen_prep.py:1760-1767),只把类型集合换成 terminal 布尔属性,时长差异由谁承载未写。
 - **证据**:cw_screen_prep.py:2037/:2405-2450/:1760-1767;prep_actions.py:810-812。
-- **建议修法**:§2.4 显式写:OpenShopOp 注册为「terminal 承载行」,execute = 显式抛错或固定 detail + emitted=False(流程层截流在前,该行本就不可达,与 ControlFlowOp 同款防静默纪律);terminal 属性之外补「终结等待时长随 op 类属性」或保留消费点按类型查表的现状并锁等价。
+- **建议修法**:§2.4 显式写:OpenShopOp 注册为「terminal 承载行」,execute = 显式抛错或固定 detail + emitted=False(流程层截流在前,该行本就不可达,与 ControlFlowOp 同款防静默纪律);terminal 属性之外补「终结等待时长随 op 类属性」或保留消费点按类型查表的现状并校验等价。
 
 ### F9【design.md §2.2/§2.4 StartBattle】「恒 True 零判效」基类契约与 StartBattle 出战链 as-built 直接冲突,无例外条款
 - **攻击内容**:批1 把「恒 True 零判效」docstring 契约上收基类(§2.2);批3 要求 StartBattleOp.execute = `_start_battle` 逐字迁移。但 `_start_battle/_launch_attempt`(prep_actions.py:1563-1701)含:落地判效轮询(6×0.5s 查备战标识消失)、失败原样重发(长按下加固)、连败停机留证(stop_running + flag,`_launch_dead_escalate`)、免战子态 fallback(按钮-跳过)、未达上限警告处理。逐字保留 = 该 op 违反基类契约且内部含在册判效面(prep_actions.py:639-641 明示这是批4 挂账的 A6 出战链判效面,候消费端同退役);遵守基类契约 = 砍掉重发/停机/免战防线 = 行为变化,与「全程零行为」矛盾。设计对这对矛盾零字处理——批3 实现者撞上必停手。
@@ -73,15 +73,15 @@
 - **证据**:`kernel/cw_prep_actions.py:258-263`(BenchChar.slot 1-based);prep_actions.py:1278/:1289/:1298-1299/:1345-1371(tracked/坐标消费);mandate_v1 发射点 9 处 `SellBench(slot=bc.slot)`(mandate.py:888/:1148/:1251,entry.py:551/:821/:832/:1138/:1192/:1204)。
 - **建议修法**:§2.6 与批2 判据改为「发射/决策面产容器下标;物理换算仅存于观察写入边与执行坐标边,且各只允许一处(函数化)」;验收改查「换算函数唯一 + 散点换算零残留」。
 
-### F11【design.md §2.6 词表模块归一】SELL_BENCH_REASONS / SELL_BENCH_ORPHAN_REASONS 常量新居未定;牵动 sim/checks(「sim 只加锁不改实现」边界)
-- **攻击内容**:两个值域闭集现住 cw_prep_actions(词表模块);sim 侧检查器(sim/checks/suspects.py:106、ledger.py:550/:994)import 之。归一后若常量随词表迁入 cw_vocab,sim/checks 的 import 断裂 = sim 侧被改(与「sim 侧只加锁不改实现」及批2 文件面无 sim/checks 冲突);若留守 cw_prep_actions(已「退役词表职责」的模块),归一后的单一词表主张留尾巴。设计对这两个常量只写了「值域不变」,没写住哪。
+### F11【design.md §2.6 词表模块归一】SELL_BENCH_REASONS / SELL_BENCH_ORPHAN_REASONS 常量新居未定;牵动 sim/checks(「sim 只加测试不改实现」边界)
+- **攻击内容**:两个值域闭集现住 cw_prep_actions(词表模块);sim 侧检查器(sim/checks/suspects.py:106、ledger.py:550/:994)import 之。归一后若常量随词表迁入 cw_vocab,sim/checks 的 import 断裂 = sim 侧被改(与「sim 侧只加测试不改实现」及批2 文件面无 sim/checks 冲突);若留守 cw_prep_actions(已「退役词表职责」的模块),归一后的单一词表主张留尾巴。设计对这两个常量只写了「值域不变」,没写住哪。
 - **证据**:`kernel/cw_prep_actions.py:102-125`;`sim/checks/suspects.py:106`;`sim/checks/ledger.py:550/:994`。
 - **建议修法**:§2.6 写死常量归宿(建议随词表迁 cw_vocab,并把 sim/checks 三个 import 点列入批2 文件面显式申报「仅 import 路径翻转,零语义」;或明确 shim 过渡)。
 
 ### F12【design.md §2.6 合并类基类承载】统一类的基类/route_tag/action_key_exclude metadata 归属未定义
 - **攻击内容**:族B 动作带 PrepAction 基类(kw_only route_tag 字段,bridge.py:279-280 发射位回写;action_key_exclude metadata 排除归因)。统一类住 cw_vocab 后:它还是不是 PrepAction 子类?route_tag 字段还带不带?族B SellBench.reason 的 action_key_exclude metadata 合并后保不保留(族A 的 reason 现在没有该 metadata——若按族A 定义合入,prep 发射的 `SellBench(reason='line_switch_collapse')` 会分裂幂等/记账键,与 §2.6「归因字段不入幂等键」口径冲突)?统一词表的家族树(PrepAction 基座覆盖全动作?Action 联合类型怎么表达?)设计只字未提。
 - **证据**:`kernel/cw_prep_actions.py:27-42`(route_tag + metadata);bridge.py:273-281;`kernel/cw_vocab.py:373`(族A reason 无 metadata);`kernel/cw_prep_actions.py:216-234`(action_key 消费 metadata)。
-- **建议修法**:§2.6 增「统一词表家族树」小节:基类、route_tag 承载、metadata 逐字段裁定(建议统一类 = PrepAction 后代,reason/convert_reason/auth_basis/route_tag 全部保留 action_key_exclude),并附 action_key 输出前后对照锁。
+- **建议修法**:§2.6 增「统一词表家族树」小节:基类、route_tag 承载、metadata 逐字段裁定(建议统一类 = PrepAction 后代,reason/convert_reason/auth_basis/route_tag 全部保留 action_key_exclude),并附 action_key 输出前后对照测试。
 
 ### 核一·已核实成立的主张(明写,避免「全盘否定」误读)
 - **批1→批2 依赖(专项质疑面⑦)成立**:统一 SellBench/LevelUp = 现役族A 类本身(除 F1/F2 的字段申报问题,类身份不变),批1 商店六行(BuyCard/LevelUp/RefreshShop/SellBench/CloseShop/CompTransaction,cw_shop_actions.py:39-46)在批2 后键稳定;SellDeployed/DeployMove 不在批1 表,无冲突。
@@ -96,7 +96,7 @@
 ## 二、核二·规范遵循攻击(对照 iteration-design.md §3/§5/§7)
 
 ### F13【design.md §2.6 LevelUp 粒度衔接】硬规则2「实现者无需再设计」直接违例
-- **攻击内容**:「两形态择一并测试锁,禁第三形态」= 把形态选择推迟到实现期观察后拍板,规范原文「看情况/待定/酌情 = 未定稿」逐字命中。**批2 凭 §2.6 现状不能开工**:LevelUp 一项上,实现者要自行决定 cost 填充源(F2)、血闸/金地板/击数推导归属、投影是否补建模、发射面 stall/授权机制重推(F6)。
+- **攻击内容**:「两形态择一并测试,禁第三形态」= 把形态选择推迟到实现期观察后拍板,规范原文「看情况/待定/酌情 = 未定稿」逐字命中。**批2 凭 §2.6 现状不能开工**:LevelUp 一项上,实现者要自行决定 cost 填充源(F2)、血闸/金地板/击数推导归属、投影是否补建模、发射面 stall/授权机制重推(F6)。
 - **证据**:iteration-design.md §5 规则2;F2/F6 全部证据。
 - **建议修法**:见 F6。
 
@@ -108,7 +108,7 @@
   4. OpenShopOp execute 体与两形态表达(F8);
   5. terminal 化后 StartBattle/OpenShop 等待时长(3s/1s)差异的承载(F8);
   6. StartBattle 基类契约例外(F9);
-  7. 落地批2 判据「动作序列对照不变」与 LevelUp 逐帧单击(改变发射序列)的关系——判据无豁免条款,照字面批2 必然验收失败或逼实现者放弃 §2.6 的粒度衔接;landing 需显式写「LevelUp 发射序列按 §2.6 定案形态豁免序列不变判据,以专门锁替代」。
+  7. 落地批2 判据「动作序列对照不变」与 LevelUp 逐帧单击(改变发射序列)的关系——判据无豁免条款,照字面批2 必然验收失败或逼实现者放弃 §2.6 的粒度衔接;landing 需显式写「LevelUp 发射序列按 §2.6 定案形态豁免序列不变判据,以专门测试替代」。
 - **证据**:landing.md §3.2 完成判据第 3 条 vs design.md §2.6。
 - **建议修法**:逐条补写进 design.md 对应节;landing 判据补 LevelUp 豁免口径。
 
@@ -143,8 +143,8 @@
 
 ### 结论:方向治本成立;两处表述需要按代码真值收敛后,治本论证才完整
 
-1. **归层成立**:§1 根因归层 = 约定层,判据充分——同名四类差异仅在坐标系约定(双族对照表,cw_vocab.py:315-332),sim 已单边消费族A(构造点实证),两域执行端口分叉非领域必需。修法 = 单一词表 + 单一坐标系 + 执行边换算,修的是约定/表示本身,不是再加一层包装;与统一观察架构 §6.1 词表纪律(「先改契约再落码」「禁适配器私有动作类型」)方向一致,AST 锁正是该纪律「验收挂 AST 扫描」申报(§6.1)的机械化兑现——一致性成立。
-2. **批序论证成立**:先归一(批2,独立语义批 + 全仓扫描 + sim seed 锁)后收编(批3/批4,形态批),归因不混淆;批1 注册表先行、批2 键稳定(F12 已核实)。代价申报诚实:批2/批3 会先后两次动 executor 同一批方法(批2 改字段消费、批3 迁体),设计未点出这层「同文件两批税」,但不构成批序否决。
+1. **归层成立**:§1 根因归层 = 约定层,判据充分——同名四类差异仅在坐标系约定(双族对照表,cw_vocab.py:315-332),sim 已单边消费族A(构造点实证),两域执行端口分叉非领域必需。修法 = 单一词表 + 单一坐标系 + 执行边换算,修的是约定/表示本身,不是再加一层包装;与统一观察架构 §6.1 词表纪律(「先改契约再落码」「禁适配器私有动作类型」)方向一致,AST 测试正是该纪律「验收挂 AST 扫描」申报(§6.1)的机械化兑现——一致性成立。
+2. **批序论证成立**:先归一(批2,独立语义批 + 全仓扫描 + sim seed 测试)后收编(批3/批4,形态批),归因不混淆;批1 注册表先行、批2 键稳定(F12 已核实)。代价申报诚实:批2/批3 会先后两次动 executor 同一批方法(批2 改字段消费、批3 迁体),设计未点出这层「同文件两批税」,但不构成批序否决。
 3. **两处折扣**(已在核一立案,治本口径下复述):
    - DeployMove 行不是归一而是重新设计族A(F3)——治本叙事里混入了一段未论证的表示重设计,且与「sim 零改动」冲突;
    - 「调用点换算全数消灭」强于实际(F10)——换算是收拢改归属,不是消灭;治本主张的表述强于方案本体,会被实现者按字面执行出错。
@@ -158,7 +158,7 @@
 |---|---|
 | §2.6 合并清单与代码真值 | **不通过**:SellBench 漏 convert_reason+顺序不符(F1);LevelUp 漏 auth_basis+cost 填充源未定(F2);DeployMove 签名 ≠ 族A 且 faction 去向未申报(F3);SellDeployed 行成立;换算恒等式写对(核一·已核实节) |
 | landing 文件面覆盖 §2.6 改动面 | **不通过**:漏 cw_prep_expect/cw_exec_state/cw_game_state/cw_loop(+import 策略未定)(F4) |
-| 判据可验证性 | **不通过**:「动作序列对照不变」与 LevelUp 粒度变更冲突无豁免(F14-7);「slot-1 零残留」按字面不可达成(F10);其余判据(扫描报告/AST 等价比对/sim seed 锁)可验证 |
+| 判据可验证性 | **不通过**:「动作序列对照不变」与 LevelUp 粒度变更冲突无豁免(F14-7);「slot-1 零残留」按字面不可达成(F10);其余判据(扫描报告/AST 等价比对/sim seed 测试)可验证 |
 | LevelUp 两步走 | **不通过**:前提(幂等拦截)在活跃路径不存在、商店先例因投影边界不可平移、择一 = 未定稿、血闸/金地板/stall 授权消费面零覆盖(F6/F13) |
 | SellDeployed 统一后部署面调用点迁移 | **担忧解除**:部署面零构造词表类;消费面在执行器/期望态/投影,批2 文件面修正 F4 后可覆盖 |
 | OpenShop read_only 两形态 / StartBattle fallback / DeferSpheres 控制流 | DeferSpheres **通过**(设计与现行 dispatch 软拒逐字对齐);OpenShop **不通过**(execute 体/两形态/等待时长未定,F8);StartBattle **不通过**(基类契约矛盾无例外条款,F9) |

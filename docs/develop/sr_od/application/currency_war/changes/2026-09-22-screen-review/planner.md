@@ -268,7 +268,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 
 | # | 位置 | 现文 | 目标文本 |
 |---|---|---|---|
-| 1 | `game_state/logic-updates/pick-planner.md` §1 | 「op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_yinlang.py::CwScreenYinLang._handle_overlay` 点卡确认尾段,**替身缝 = 方法级桩保留**;域 env = `OverlayPickExecEnv`)」 | 「op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(域 env = `OverlayPickExecEnv`);发射位 = `operations/cw_screen/cw_screen_yinlang.py::CwScreenYinLang.act` 决策动作 node 经注册表工厂 `action_op_for` 派发(替身缝 = 工厂派发调用点,测试经 monkeypatch `action_op_for` 承接,锁 = `test_cw_screen_two_node_family`)」 |
+| 1 | `game_state/logic-updates/pick-planner.md` §1 | 「op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(体迁自 `cw_screen_yinlang.py::CwScreenYinLang._handle_overlay` 点卡确认尾段,**替身缝 = 方法级桩保留**;域 env = `OverlayPickExecEnv`)」 | 「op 载体 = `operations/cw_op/cw_overlay_pick_action.py::CwActionPickPlannerOp`(域 env = `OverlayPickExecEnv`);发射位 = `operations/cw_screen/cw_screen_yinlang.py::CwScreenYinLang.act` 决策动作 node 经注册表工厂 `action_op_for` 派发(替身缝 = 工厂派发调用点,测试经 monkeypatch `action_op_for` 承接,测试 = `test_cw_screen_two_node_family`)」 |
 | 2 | `cw_screen_yinlang.py` act 注(点名同款措辞) | 「# 点卡选中 → 确认链经工厂(统一动作工厂批4:体迁 ``cw_overlay_pick_action.CwActionPickPlannerOp``,方法级替身缝保留);」 | 「# 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发 ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经 monkeypatch ``action_op_for`` 承接);」 |
 
 **(3) 连带 `logic-updates/pick-planner.md` §4 首句**(同文件已在触碰面;审查未列,同型扩展先例 = §2.3 类体扩展;不登记 = F-2 落地后正本链同口径而该句留反口径残留):
@@ -288,7 +288,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 6. **F-3 四点位整体归属本稿、T-6 侧销项**:本稿目标文本 = 语义改写 + 编号清出一体(T-6 自申报「只清编号、语义归 T-10」),整体归属使四点位恰有一份落笔文本;备选「编号归 T-6、语义归本稿」会把同句拆两次触碰,违背一次成文且实施顺序耦合。归口 T-37 登记保序。
 7. **F-4 清单扩中文形态与裸节号 + 门同源扩模式**:「设计 §N」与裸「§N」同属指向过程件的不可重建指针,清拉丁留中文 = 同语义指针残留且门绿盲区;裸节号经人工归属复核豁免带文档名的正本指针,机械门与人工门双保险(T-5 §2.7「清单与验证门同源」同款承诺)。
 8. **F-3/F-4 只清策划域自持命中点**:同族扩散(cw_overlay_pick_action.py 非策划类、全仓正本与注释的 W/rN 与 changes/ 引用)已有 T-3 §2.6(全仓注释卫生批)与 T-5 §2.7(全仓 changes/ 引用清理批)建议在册;单屏稿越权扩面会与全仓批重复劳动,且让审查与设计辖域错位。
-9. **F-5 缝锚改「工厂派发调用点 + 测试 monkeypatch」而非删句**:缝位置申报 = 测试 mock 点的导航(两 node 形态锁靠它定位替换点),删句丢导航;改锚修指针保语义。「体迁自」叙事随死指针一并清出(变更史归 git);同专篇 §4 反口径句为已知矛盾面,借同文件触碰一并收口,不留「修 §1 留 §4」的半新半旧。
+9. **F-5 缝锚改「工厂派发调用点 + 测试 monkeypatch」而非删句**:缝位置申报 = 测试 mock 点的导航(两 node 形态测试靠它定位替换点),删句丢导航;改锚修指针保语义。「体迁自」叙事随死指针一并清出(变更史归 git);同专篇 §4 反口径句为已知矛盾面,借同文件触碰一并收口,不留「修 §1 留 §4」的半新半旧。
 
 ## 3. 新规范增补(2026-09-22 两条款)
 
@@ -324,7 +324,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 
 **登记(本节即登记面,原文同 §3.5 报 T-37 台账)**:本屏现役 `CwScreenYinLang.act` 无 match else 支(`cw_screen_yinlang.py:185-202`,kernel 直调 `decide_planner` → 包装 → 派发)= op-layer.md §1.1 :37 违规欠账;处置归属 = pick 族族级批(「:36 局外支收敛 + :34 登记族级批」,T-37 已有归口面);本批(零行为)不动行为、只改申报(§3.1 两落点)。
 
-依据(respec-T9-T15.md §2.2 Q2 增补 B)。验收锚:本节登记在案 + §3.5 台账行;族级批落地验收 = 无 match → round_success、零派发零点击(共享测试锁模板,§3.4)。
+依据(respec-T9-T15.md §2.2 Q2 增补 B)。验收锚:本节登记在案 + §3.5 台账行;族级批落地验收 = 无 match → round_success、零派发零点击(共享测试模板,§3.4）。
 
 ### 3.3 增补 C(:34 欠账注:机械参数辖域段 + fields §4 策划子句)
 
@@ -344,7 +344,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 ### 3.4 :37 行为改写归属与族级批合流申报(G1 跨屏共性②)
 
 - 本稿为零行为批,respec 报告 §2.8 共性②明示「T-10 为零行为批,只做申报级增补」——:37 行为改写不在本稿施工面。
-- **归属 = pick 族族级批**:5 屏(T-11/T-12/T-13/T-14/T-15;T-9 随装备屏撤销除名)的 :37 行为改写为同一形态(else 支/守卫臂 → round_success 终结交回),一次族级批实施 + 共享测试锁模板(无 match → round_success 零派发零点击);本屏 else 支随该批一并改写,族级口径已由 :37 统一(kernel 判据直调支不豁免),不留候裁措辞。
+- **归属 = pick 族族级批**:5 屏(T-11/T-12/T-13/T-14/T-15;T-9 随装备屏撤销除名)的 :37 行为改写为同一形态(else 支/守卫臂 → round_success 终结交回),一次族级批实施 + 共享测试模板(无 match → round_success 零派发零点击);本屏 else 支随该批一并改写,族级口径已由 :37 统一(kernel 判据直调支不豁免),不留候裁措辞。
 - **行为批落地时的注释同步义务**:§3.1 两落点的欠账申报文本(「归族级批改……」)在族级批落地时同步改为现役形态申报(else 支 = 零决策零点击 round_success 终结交回),防注释申报滞后于行为(同批一次成文)。
 - 与 §1.6「已核对一致面」的关系:「本屏无盲选回退(决策出口合规)」结论辖对局内决策出口(策略返回 None/非法类型/idx 越界 = 响亮暴露),:37 面为局外支(kernel 直调兜底决策路径),两不相涉——§1.6 结论维持,:37 欠账面以 §3.2 登记为准。
 

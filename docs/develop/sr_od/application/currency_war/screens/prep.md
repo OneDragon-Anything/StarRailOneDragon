@@ -94,8 +94,8 @@ action = strategy.decide_prep_screen(容器 game state 直读;
 - 失配告警面已停用(原执行失败失配告警:动作 op 机械执行后无成败判定输入,未建档实证的故障形态不作兜底理由;细则 = [../flow/guards.md](../flow/guards.md))。
 - 停机钩子 = [临时段·特殊投资策略商店停机钩子](`_spec_invest_shop_stop_hook`,挂点 = `visit_open_shop` 首部;临时段·采够删整段)——非备战环守卫,商店访问编排域。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「备战」(dispatch 包装统一落 `[cw-op]` 主日志行);商店开画面分支分键 branch_shop_open_hit / branch_shop_open_visit_ok / branch_shop_open_visit_fail;发出域分键 deploy_emit_* / deploy_exec_*;板满拒因 = cw4_counters `deploy_cap_full`(帧级去重)。
-- 测试锁:动作类型清单覆盖锁(写口两集)、部署 cap 板满门与 prep 节点链专锁等,锁面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_deploy_cap_gate.py / test_cw_unified_action_2a.py / test_cw_prep_node_chain.py 等;原黑板帧代次写点集契约锁随黑板停用删除)。
+- 测试:动作类型清单覆盖测试(写口两集)、部署 cap 板满门与 prep 节点链专项测试等,测试面 = `sr-od-test/test/sr_od/application/currency_war/`(test_cw_deploy_cap_gate.py / test_cw_unified_action_2a.py / test_cw_prep_node_chain.py 等;原黑板帧代次写点集契约测试随黑板停用删除)。
 - game 侧知识:过渡体系/战斗机制 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md);画面建档 = `assets/game_data/screen_info/currency_war_battle_prep.yml`。

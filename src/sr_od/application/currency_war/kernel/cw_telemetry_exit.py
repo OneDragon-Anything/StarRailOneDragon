@@ -31,7 +31,7 @@ SEVERITY_L1_ALERT: str = 'L1_alert'
 SEVERITY_L2_RECORD: str = 'L2_record'
 
 # ===== 仲裁分键常量(布局档;15 号稿。obs 布局面经本出口上行,
-# 缺陷台账/出口双侧同引此处=字符串单一源;互不混流锁钉值)=====
+# 缺陷台账/出口双侧同引此处=字符串单一源;互不混流测试钉值)=====
 
 #: 布局双通道分歧(公式 vs CV 占用态门,三信号梯裁决)。
 DEFECT_KIND_BACK_LAYOUT_DIVERGENCE: str = 'back_layout_divergence'

@@ -74,8 +74,8 @@
 ## 检验点
 
 1. `p_bar_faction` 交叉核对:任取 (tag, level),与 `ev_proto.p_at_least_one` 逐位一致;lv6「持续伤害」:实现(并集上界口径)=0.3502 复现,**数学锚点=精确式 0.3241**(iid 闭式 0.3237;换算与三法交叉核对见 `tools/cw/proofs/p16/pbar_exact.py`);
-2. 稳定性锁:构造 (e_cur, e_alt) 对称对断言双向 switch 条件互斥(θ>0);D_min 锁:dwell<D_min 时无论差多大不切;
-3. 单调性锁:E_rounds 对 distance 单调增、对 p̄/rolls 单调减;distance=0→0.0、p̄=0→inf 的边界分支;
+2. 稳定性测试:构造 (e_cur, e_alt) 对称对断言双向 switch 条件互斥(θ>0);D_min 测试:dwell<D_min 时无论差多大不切;
+3. 单调性测试:E_rounds 对 distance 单调增、对 p̄/rolls 单调减;distance=0→0.0、p̄=0→inf 的边界分支;
 4. sim 参数门(设计稿 §⑥):θ∈{0.5,1,2}×D_min∈{1,2,3}×δ∈{0.10,0.15,0.20} 网格,振荡率与假阴性率双指标(Wilson 95% 上界 ≤15%)——本命题预测:任何网格点振荡率 ≤ 1/(2·D_min) 的局占比上限,违例即命题证伪。
 
 ## 关联

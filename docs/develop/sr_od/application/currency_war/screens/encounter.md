@@ -71,9 +71,9 @@
 - 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):确认后零判效;刷新「刷没刷成」不判(点偏 = 重进重读);落地判定归观察侧。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「遭遇节点」;op 内日志 tag = `[cw-encounter]`(options/pick/refresh、刷新圆钮坐标、不点击终结归因)。
 - 兑现回调归因串可见化:`[cw-settle-confirm]` 行(claimed/未触发归因)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_event_screens.py`(门/观察接线+left 摄入/发出即终结/空候选不点击/刷新终结恰一次/闸拒绝/闸不一致防线 round_fail/兑现回调/决策无输出具名 fail/idx 越界断言九个断言点)+ `test_screen_report_ports.py`(摄入序:空候选整函数早退含 left)+ `test_cw_game_state_consume.py`(chosen 记录面:report 直调真选/离屏/越界)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_event_screens.py`(门/观察接线+left 摄入/发出即终结/空候选不点击/刷新终结恰一次/闸拒绝/闸不一致防线 round_fail/兑现回调/决策无输出具名 fail/idx 越界断言九个断言点)+ `test_screen_report_ports.py`(摄入序:空候选整函数早退含 left)+ `test_cw_game_state_consume.py`(chosen 记录面:report 直调真选/离屏/越界)。
 - game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../../game/currency_war/data/competitors.md);遭遇奖励达标制 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3;时序口径(含 #23 取代关系)= [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md)。

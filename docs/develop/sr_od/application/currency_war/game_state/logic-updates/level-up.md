@@ -41,9 +41,9 @@
 
 `kernel/cw_action_report/level_up.py::report_action_level_up_param`(同字段双类型 LevelUpShop 经 `level_up_shop.py::report_action_level_up_shop_param` 一行委托);`kernel/cw_economy.py::xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `XP_PER_BUY` / `XP_TO_NEXT_LEVEL` / `XP_CLICK_COST_FALLBACK` / `MAX_PLAYER_LEVEL` / `blood_xp_gate` / `blood_xp_gate_for`;`prep_actions.py::PrepActionExecutor._level_up`;发出方 cost 装载 = `strategies/impl/mandate_v1/shop.py`(xp_click_cost 现算 → LevelUpShop)与 `strategies/impl/mandate_v1/entry.py`。
 
-## 7. 语义验证(M1 直锁)
+## 7. 语义验证(M1 测试)
 
-买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影直锁 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在锁内)。`LevelUpShop ≡ LevelUp`(同字段双类型,动作类型同一语义)。
+买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在校验内)。`LevelUpShop ≡ LevelUp`(同字段双类型,动作类型同一语义)。
 
 ## 8. 判例注记(动作发出阶段)
 

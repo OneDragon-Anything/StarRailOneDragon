@@ -3,7 +3,7 @@
 ## 0. 元信息
 
 - 迭代目标:货币战争全画面规范符合性审查(2026-09-22-screen-review)·只设计不落码,待用户裁决
-- 状态:**已实施**(落地 = commit f41c40250「CW 投资环境观察标准化门落地(F-4)+ 局外单跑退役 + 正本四文档同步」;落码验收通过 1 低偏差 = 本状态行未翻转,已随验收收口翻转。2026-09-22 用户裁定:F-4/§1.7① 裁决 + F-2 补测认同 + 整体定稿通过。)修订后经无前提对抗审(高1中3低5,#1-#8 采纳修订:字段退役拆分仅环境类/碰撞边界入正本/contract 冒烟锁登记/判据直调型 T-37 登记/归一单一源/死码清单等),实体修法方向与代码锚全部核实成立(对抗轨迹:r1 未收敛 6 条→修订→r2 未收敛 3 条→修订→r3 未收敛 1 条低→修订→r4 收敛 0 条→裁决后对抗审 9 条全闭环)
+- 状态:**已实施**(落地 = commit f41c40250「CW 投资环境观察标准化门落地(F-4)+ 局外单跑退役 + 正本四文档同步」;落码验收通过 1 低偏差 = 本状态行未翻转,已随验收收口翻转。2026-09-22 用户裁定:F-4/§1.7① 裁决 + F-2 补测认同 + 整体定稿通过。)修订后经无前提对抗审(高1中3低5,#1-#8 采纳修订:字段退役拆分仅环境类/碰撞边界入正本/contract 冒烟测试登记/判据直调型 T-37 登记/归一单一源/死码清单等),实体修法方向与代码锚全部核实成立(对抗轨迹:r1 未收敛 6 条→修订→r2 未收敛 3 条→修订→r3 未收敛 1 条低→修订→r4 收敛 0 条→裁决后对抗审 9 条全闭环)
 - 发现源:`.debug/progress/2026-09-22-cw-screen-review/reports/T-7-r1.md`(F-1..F-6;总判定「有问题(高0 中3 低3)」)。涉事代码与代码内文档以仓库现状为真值逐处核读(含对审查报告命中点的复核);本文定位一律符号锚 / 文档节号 + 内容引文(行号仅定位辅助,随代码漂移)。文档路径根 = `docs/develop/sr_od/application/currency_war/`,代码路径根 = `src/sr_od/application/currency_war/`(下文反引号短路径均相对此两根,同迭代设计稿以裸文件名引用)。
 - 真值基线 = 本稿撰写时点工作树;落地批动笔前若代码/正本已再变,以落地时点现状重新对账后再动笔,禁按本文过期症状照稿落地(与 T-1/T-3/T-6 稿同款条款)。
 - 修法性质:F-1/F-2/F-6 = 文档语义更新;F-3 = 改判非偏差·销项(零修法,§2.3);F-5 = 注释清理;F-4 = 观察标准化门落地 + 动作链收窄纯 idx + 链内防御纵深(用户裁决 2026-09-22 修订扩项,行为变化申报见 §2.4)+ 局外分支删除(§1.7① 裁决并入)。除 F-4/局外删除外全部零行为变化。
@@ -17,12 +17,12 @@
 - 解决到哪:invest_env.md 两处改写为现役归属(§2.1),指针 = gain-chain.md §3。
 - 明确不解决:gain-chain.md §3 / `game_state/logic-updates/pick-planner.md` / `screens/planner.md` 等其余正本(本稿已对 `docs/` 树 grep「条件腿|欢愉契约」全量核对,归属错写仅本篇两处);代码零改动;其余环境的条件腿族建模(在册「族批候裁」面,非本稿辖域)。
 
-### 1.2 F-2(中)invest_env.md §9 测试锁宣称的覆盖面与实际不符
+### 1.2 F-2(中)invest_env.md §9 测试宣称的覆盖面与实际不符
 
-- 现状症状(核读证实):§9 把「report 含 refresh 摄入 / 空候选零盲发」记为在册锁面,实际两侧均无 env 覆盖——①`env_refresh_left` 观察写端双腿零断言:行为锁侧 `test_cw_obs_arch_phase_screens.py::_make_env` 把 `read_invest_refresh_counts` 桩为恒 `[]`(obs.refresh=None → report 跳写);report ports 侧 `test_cw_screen_report_ports.py::_case_invest_env` 的 obs 未设 `refresh` 字段、空桩用例只断 `invest_env_opts`;全测试树 grep `env_refresh_left` 仅开局种子字段清单命中(对照 supply 屏同腿在 ports 有值写入锁:`_case_supply_node` 断言 `supply_refresh_left`)。②env 屏无空候选零盲发锁:同形锁在册仅策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`。行为代码本身合规(报告 §1 表③/⑥),缺的是 §9 宣称与实际覆盖相符。
+- 现状症状(核读证实):§9 把「report 含 refresh 摄入 / 空候选零盲发」记为在册测试面,实际两侧均无 env 覆盖——①`env_refresh_left` 观察写端双腿零断言:行为测试侧 `test_cw_obs_arch_phase_screens.py::_make_env` 把 `read_invest_refresh_counts` 桩为恒 `[]`(obs.refresh=None → report 跳写);report ports 侧 `test_cw_screen_report_ports.py::_case_invest_env` 的 obs 未设 `refresh` 字段、空桩用例只断 `invest_env_opts`;全测试树 grep `env_refresh_left` 仅开局种子字段清单命中(对照 supply 屏同腿在 ports 有值写入测试:`_case_supply_node` 断言 `supply_refresh_left`)。②env 屏无空候选零盲发测试:同形测试在册仅策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`。行为代码本身合规(报告 §1 表③/⑥),缺的是 §9 宣称与实际覆盖相符。
 - 根因归层:**约定层**(文档宣称先行于/超出测试落地,虚增回归信任面)。
-- 解决到哪:§9 宣称修正为 as-built(方案②:正本不虚报)+ 锁面缺口如实登记,补测方向一并给出(补测 = 落码,属「待用户认同后落地」面,§2.2)。
-- 明确不解决:行为代码(审查已判合规);supply/encounter 屏的既有锁(在册先例,不动);其他屏的锁面缺口(各屏审查辖域)。
+- 解决到哪:§9 宣称修正为 as-built(方案②:正本不虚报)+ 测试面缺口如实登记,补测方向一并给出(补测 = 落码,属「待用户认同后落地」面,§2.2)。
+- 明确不解决:行为代码(审查已判合规);supply/encounter 屏的既有测试(在册先例,不动);其他屏的测试面缺口(各屏审查辖域)。
 
 ### 1.3 F-3(中;经词义定谳与在册判例核:改判非偏差·销项,零修法)invest_env.md §2 画面形态声明与 op-layer §3 分型总表不一致
 
@@ -55,7 +55,7 @@
 
 ### 1.7 同族联动面与跨稿冲突登记(不立修法,提请裁决)
 
-1. **局外防御分支归属冲突(已裁决终结,用户裁定 2026-09-22)**:原分歧 = 本报告 §3.6 判「无 match 局外防御 = 裸空容器 decide_event」在册合规(依据 = 屏文档 §4 自申报 + 投资策略孪生屏同构)vs T-6 稿 §1.1 对孪生屏同款判**流程层违例**(依据 = 决策控制分层铁律 + op-layer.md §1.1,屏文档 as-built 自申报不等于正本背书)。用户裁决:**不支持单独调用具体画面 op 进行调试,相关支持代码不做,规范入正本**——局外分支的独立跑选卡价值不成立,删除方向(T-6 方向①)为唯一解,冲突终结。规范条已入 op-layer.md §1.1「画面 op 不支持局外单独调用」(2026-09-22);T-37 登记改记「已裁决,族内按删除方向收敛」(祈愿/巨星/伙伴/卜者/星徽等纯常量盲发型局外支按同口径归各族稿/T-37 收敛,禁两屏两态)。**本稿修法(并入落地批)**:`operations/cw_screen/cw_screen_invest_env.py::_decide_and_act` 局外 else 分支整段删除(含内嵌 `GameState`/`GAME_STATE_SCHEMA_VERSION` 局部 import,及随 else 死码化的函数头 `config = CurrencyWarConfig(...)` 构造与文件级 `decide_event`/`CurrencyWarConfig` import——现仅 else 分支消费)、match 判空(∨ `match.gs` 缺席,对齐遭遇屏先例宽度 `cw_screen_encounter.py` 局外支三判)提前为早退出口(置于空候选检查之后——空候选 = OCR 读缺 bug 面,契约与局外无关)→ 零决策零点击 round_success 终结交回(遭遇屏在册先例同款);刷新臂守卫 `and match is not None` 死码化删除;`screens/invest_env.md` §4 伪代码行与 §5 终结表同步;补一锁(match=None + 非空候选 → round_success、点击记录为空,T-6 稿 handback 锁同构)。**判据直调型局外支去向登记(T-37)**:T-9 装备稿保留的 kernel 判据直调型局外支,与本正本新规范条「不设任何兜底决策路径」的字面相容性候 T-37 裁(或按正本字面同归删除方向);wish_trial.md §2.2 族级判据建议中「判据直调支可豁免保留」的一半随本裁决失效,失效对账随 T-37——防 T-37 对账时正本规范条与在册稿建议两口令来源冲突。
+1. **局外防御分支归属冲突(已裁决终结,用户裁定 2026-09-22)**:原分歧 = 本报告 §3.6 判「无 match 局外防御 = 裸空容器 decide_event」在册合规(依据 = 屏文档 §4 自申报 + 投资策略孪生屏同构)vs T-6 稿 §1.1 对孪生屏同款判**流程层违例**(依据 = 决策控制分层铁律 + op-layer.md §1.1,屏文档 as-built 自申报不等于正本背书)。用户裁决:**不支持单独调用具体画面 op 进行调试,相关支持代码不做,规范入正本**——局外分支的独立跑选卡价值不成立,删除方向(T-6 方向①)为唯一解,冲突终结。规范条已入 op-layer.md §1.1「画面 op 不支持局外单独调用」(2026-09-22);T-37 登记改记「已裁决,族内按删除方向收敛」(祈愿/巨星/伙伴/卜者/星徽等纯常量盲发型局外支按同口径归各族稿/T-37 收敛,禁两屏两态)。**本稿修法(并入落地批)**:`operations/cw_screen/cw_screen_invest_env.py::_decide_and_act` 局外 else 分支整段删除(含内嵌 `GameState`/`GAME_STATE_SCHEMA_VERSION` 局部 import,及随 else 死码化的函数头 `config = CurrencyWarConfig(...)` 构造与文件级 `decide_event`/`CurrencyWarConfig` import——现仅 else 分支消费)、match 判空(∨ `match.gs` 缺席,对齐遭遇屏先例宽度 `cw_screen_encounter.py` 局外支三判)提前为早退出口(置于空候选检查之后——空候选 = OCR 读缺 bug 面,契约与局外无关)→ 零决策零点击 round_success 终结交回(遭遇屏在册先例同款);刷新臂守卫 `and match is not None` 死码化删除;`screens/invest_env.md` §4 伪代码行与 §5 终结表同步;补一测试(match=None + 非空候选 → round_success、点击记录为空,T-6 稿 handback 测试同构）。**判据直调型局外支去向登记(T-37)**:T-9 装备稿保留的 kernel 判据直调型局外支,与本正本新规范条「不设任何兜底决策路径」的字面相容性候 T-37 裁(或按正本字面同归删除方向);wish_trial.md §2.2 族级判据建议中「判据直调支可豁免保留」的一半随本裁决失效,失效对账随 T-37——防 T-37 对账时正本规范条与在册稿建议两口令来源冲突。
 2. **族面形态标签统一裁决面(F-3 销项后的唯一残留)**:F-3 经词义定谳与在册判例核改判非偏差(§2.3),invest_env/invest_strategy/encounter/supply 各屏 §2 现状均判读合规、零改写义务;「全族画面篇 §2 是否统一前置分类层」= 用户裁决面,**唯一落点 = T-37 汇总登记并由其指派施工稿**(原「invest_strategy §2 补分类层归 T-6 稿增补」指针撤销——T-6 修订版全文无此施工项,指针落空);词义定谳(§2.3 判读框架)为该裁决的判读输入。
 3. **共享文件一次成文**:`cw_overlay_pick_action.py` 的 F-5 命中面执行权 = T-6 §2.5(其清单 + 全文件扫描 + T-3 §2.6 准则已覆盖本报告点名各点:L227 T# / L282 task#+W / L342 日期+rN / 模块头批史);两稿禁重复触碰同段,先落者为准、后落者按落地时点现状对账销项。
 4. **观察标准化门族面收敛(本稿升格产出的全域义务)**:观察标准化已入正本规范(op-layer.md §1.1「观察标准化门」,用户裁定 2026-09-22),投资环境屏随本稿落地批首个收敛。①投资策略屏孪生同构改造(观察层标准化 + `norm_name` 载荷退役 + `kernel/cw_action_report/pick_invest_strategy.py` 同款纯 idx 收窄 + `cw_vocab.py` 同字段退役)= **T-6 稿扩项**,随 T-37 登记移交,两屏修法口径必须一致;②其余名字类观察屏(角色/装备/事件选项等)的存量收敛 = 各屏审查批/T-37 汇总分配;规范已立、新增禁令即日生效(禁新增未标准化直报)。
@@ -77,21 +77,21 @@
 
 **取舍**:备选 = 仅删两句错句、不补正确归属——放弃:§6 是「状态上报面」,获得链效果腿的归属申报是本节职责;删句留白则读者仍须自行考古触发时点,只修了「错」没修「误导」(报告差距说明的病灶在触发时点理解);补一句 + 指针,零复述链参数细节(候选集/采样/rand 纪律单一源仍在 gain-chain.md §3 与 `cw_investments.py` 数据表)。
 
-### 2.2 F-2 修法:§9 宣称修正为 as-built + 锁面缺口登记
+### 2.2 F-2 修法:§9 宣称修正为 as-built + 测试面缺口登记
 
-**文档面**(`screens/invest_env.md` §9 测试锁行,一条替换为两条;零代码改动):
+**文档面**(`screens/invest_env.md` §9 测试行,一条替换为两条;零代码改动):
 
-> - 测试锁(逐项与测试实存对齐):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_cw_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;派发即终结 + 派发时点写入对拍(active_env 已写) = 同文件 `test_invest_env_active_env_written_at_dispatch`;机械链与类型分派 + 刷新零效果对账留证(`invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py`(投资 op 锁 + `test_invest_env_refresh_no_effect_reconcile_records_defect`);portal 链与防污染 = `test_cw_yinlang_phase32.py`;命名/sig/写入域完备锁 = `test_cw_screen_report_ports.py`。
-> - 锁面缺口(登记,自带消亡判据:**消亡条件 = 对应测试锁在册**,补测落地时由该批摘除本条):①`env_refresh_left` 观察写端双腿(值写入 / 读缺跳写)零断言——观察行为锁的计数读桩恒空、report ports 用例 obs 未设 refresh 字段;②本屏空候选零盲发锁缺位(同形锁在册先例 = 策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`)。
+> - 测试(逐项与测试实存对齐):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_cw_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;派发即终结 + 派发时点写入对拍(active_env 已写) = 同文件 `test_invest_env_active_env_written_at_dispatch`;机械链与类型分派 + 刷新零效果对账留证(`invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py`(投资 op 测试 + `test_invest_env_refresh_no_effect_reconcile_records_defect`);portal 链与防污染 = `test_cw_yinlang_phase32.py`;命名/sig/写入域完备测试 = `test_cw_screen_report_ports.py`。
+> - 测试面缺口(登记,自带消亡判据:**消亡条件 = 对应测试在册**,补测落地时由该批摘除本条):①`env_refresh_left` 观察写端双腿(值写入 / 读缺跳写)零断言——观察行为测试的计数读桩恒空、report ports 用例 obs 未设 refresh 字段;②本屏空候选零盲发测试缺位(同形测试在册先例 = 策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`)。
 
-依据:逐项对齐实测 = `test_cw_obs_arch_phase_screens.py::_make_env`(计数桩恒 `[]`,L225-226)/ `test_cw_screen_report_ports.py`(`_case_invest_env` L223-225 obs 无 refresh、空桩 L325-326 只断 opts、supply 同腿锁 `_case_supply_node` L214-220)/ 全测试树 grep `env_refresh_left` 仅 `test_cw_game_state_opening_seed.py` 字段清单;规范 = screens/README.md §2 模板第 9 节(测试锁文件指针)与「as-built 无状态」纪律、`game_state/fields.md` §3.4.3(该写端应可被锁验证)。
+依据:逐项对齐实测 = `test_cw_obs_arch_phase_screens.py::_make_env`(计数桩恒 `[]`,L225-226)/ `test_cw_screen_report_ports.py`(`_case_invest_env` L223-225 obs 无 refresh、空桩 L325-326 只断 opts、supply 同腿测试 `_case_supply_node` L214-220)/ 全测试树 grep `env_refresh_left` 仅 `test_cw_game_state_opening_seed.py` 字段清单;规范 = screens/README.md §2 模板第 9 节(测试文件指针)与「as-built 无状态」纪律、`game_state/fields.md` §3.4.3(该写端应可被测试验证)。
 
 **补测方向(登记于本稿;实现者无需再设计;用户已认同落地[2026-09-22],随本稿落地批实施,落点 = 测试仓)**:
 
 1. `test_cw_screen_report_ports.py::_case_invest_env`:obs 补 `refresh=(2, x, y)` → 期望表补 `{'env_refresh_left': (2, 'logic')}`(supply 同腿先例 = 同文件 `_case_supply_node`);空桩表 `_EMPTY_OBS_CASES['invest_env']` 的 obs 补 `refresh=(3, x, y)` → 期望补 `env_refresh_left=None`(摄入序先例 = 同表 encounter 行:options 空 = 整函数早退不写含 left)。
-2. `test_cw_obs_arch_phase_screens.py::_make_env`:`read_invest_refresh_counts` 桩恒 `[]` 参数化(缺省行为不变);观察锁或新增一锁走真计数值,断言 report 落 `env_refresh_left`(值 = 桩读数首条)。
-3. env 空候选零盲发锁(建议名 `test_invest_env_empty_opts_fail_not_blindfire`):obs 装载 `options=[]` → act = round_fail 读缺文案、零派发零点击(策略屏同形锁同构,`_make_env` 桩面直接承载)。
-4. **缺口登记条的寿命义务**:§9「锁面缺口」条自身 = 会失效的现状快照,故其条文自带消亡判据(消亡条件 = 对应测试锁在册);补测批落地时**同步摘除该条**(摘除义务列入补测批 landing 清单)——防补测落地后 §9 新增 F-6 同类无主存量。依据 = AGENTS.md §9(会失效的现状快照禁入正文)+ screens/README.md §8(篇末缺口申报面在册:「测试锁断档等见各篇文末」)。
+2. `test_cw_obs_arch_phase_screens.py::_make_env`:`read_invest_refresh_counts` 桩恒 `[]` 参数化(缺省行为不变);观察测试或新增一测试走真计数值,断言 report 落 `env_refresh_left`(值 = 桩读数首条)。
+3. env 空候选零盲发测试(建议名 `test_invest_env_empty_opts_fail_not_blindfire`):obs 装载 `options=[]` → act = round_fail 读缺文案、零派发零点击(策略屏同形测试同构,`_make_env` 桩面直接承载)。
+4. **缺口登记条的寿命义务**:§9「测试面缺口」条自身 = 会失效的现状快照,故其条文自带消亡判据(消亡条件 = 对应测试在册);补测批落地时**同步摘除该条**(摘除义务列入补测批 landing 清单)——防补测落地后 §9 新增 F-6 同类无主存量。依据 = AGENTS.md §9(会失效的现状快照禁入正文)+ screens/README.md §8(篇末缺口申报面在册:「测试断档等见各篇文末」)。
 
 **取舍**:方向②(修正宣称)+ 缺口登记,弃方向①(只登记缺口、宣称不动)——正本宣称与实际覆盖相符是 as-built 纪律的直接要求,只登记不修 = §9 继续虚报,回归信任面虚增原样保留(报告 F-2 病灶);补测方向随缺口一并写死 = 补测批无需再设计,但补测是落码,须过用户认同门(本迭代只设计不落码)。备选②的子选项「直接补齐测试」不在本稿——越权落码,同违迭代边界。
 
@@ -150,10 +150,10 @@ if not canon or canon == '?':
 3. **正本登记面**:`game_state/gain-chain.md` §2.1 插步 0(措辞镜像 §2.4-0:「**无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷留证(`kind = pick_invest_invalid_payload`)——无效输入拒绝,非防重复保护」,后续三步语义不变);**同节尾段随步 0 收敛**(「直接写语义(零幂等闸):无条件注册 + 无条件触发效果——…」与步 0 字面冲突,改写为:「直接写语义(零幂等闸):**有效载荷**无条件注册 + 无条件触发效果(无效载荷拒绝见步 0,输入校验非防重复保护)——投资环境不会第二次给相同牌(游戏事实),重复上报只可能是代码 bug,按 bug 治理(action_ops.md §1 增补 2)」);§6 尾句「无效载荷拒绝(§2.4-0)」→「(§2.1-0/§2.4-0)」。`flow/action_ops.md` §4.5 PickInvestEnv 行:补「无效载荷拒绝 = 链内零写留证 `pick_invest_invalid_payload`」与「观察层标准化门 = 标准名直传,上报 = idx,名字自容器标准名单一源(规范 = op-layer.md §1.1)」。`screens/invest_env.md`:§3 观察段补标准化门语义、§4 决策输入改标准名口径、§5 终结表补「观察转换失败 = round_fail 交回重观察」行、§6 active_env 条补括注「(链内无效载荷拒绝 = 零写留证,正本 = gain-chain.md §2.1 步 0)」。
 
 **测试面**(用户已认同[2026-09-22],随本稿落地批实施):
-1. 观察标准化锁:候选含可转换名 → 容器存标准名(LCS 命中路径含内);候选含转换失败名(乱串/未注册)→ round_fail、零点击零写;两候选重复命中同一注册名 → round_fail;
-2. 动作纯 idx 上报锁:idx → 链收容器同序标准名;容器缺读/idx 越界 → 响亮失败;锁族指正——param 字段面锁 = `test_cw_action_report_contract.py`(参数冒烟锁遍历全部动作类型以裸容器调真上报函数,随「按 idx 取名」新契约改造:容器播种,或按「容器缺读 = 响亮失败」断言;**该文件必须列入落地批**,否则 F-4 落地冒烟锁必红),`test_cw_screen_report_ports.py` 实辖 obs 类/report 函数在场面、不辖 param 字段;字段退役随 T-6 批(本批消费退役、字段保留为死字段,字段面锁零变化);
-3. 链拒绝锁:`test_cw_gain_chain.py` 增 env 支拒绝锁——`gain_invest_env(gs, None, '', rand=False, sig)` → `detail == 'invalid_payload'`、`active_env` 值不变、缺陷行 `pick_invest_invalid_payload`(策略支同形先例同文件);
-4. 局外 handback 锁:match=None + 非空候选 → round_success、点击记录为空、零派发零上报(§1.7①)。
+1. 观察标准化测试:候选含可转换名 → 容器存标准名(LCS 命中路径含内);候选含转换失败名(乱串/未注册)→ round_fail、零点击零写;两候选重复命中同一注册名 → round_fail;
+2. 动作纯 idx 上报测试:idx → 链收容器同序标准名;容器缺读/idx 越界 → 响亮失败;测试族指正——param 字段面测试 = `test_cw_action_report_contract.py`(参数冒烟测试遍历全部动作类型以裸容器调真上报函数,随「按 idx 取名」新契约改造:容器播种,或按「容器缺读 = 响亮失败」断言;**该文件必须列入落地批**,否则 F-4 落地冒烟测试必红),`test_cw_screen_report_ports.py` 实辖 obs 类/report 函数在场面、不辖 param 字段;字段退役随 T-6 批(本批消费退役、字段保留为死字段,字段面测试零变化);
+3. 链拒绝测试:`test_cw_gain_chain.py` 增 env 支拒绝测试——`gain_invest_env(gs, None, '', rand=False, sig)` → `detail == 'invalid_payload'`、`active_env` 值不变、缺陷行 `pick_invest_invalid_payload`(策略支同形先例同文件);
+4. 局外 handback 测试:match=None + 非空候选 → round_success、点击记录为空、零派发零上报(§1.7①)。
 
 **行为变化申报**:①垃圾名/未注册名从「照选照点、效果不记账、容器留脏值」变「观察失败零点击零写交回重观察」;②OCR 偶发误读从「可能照选(fallback 分不低时)」变「该访问 round_fail 重读」——随机误读有自愈机会,持续误读或注册表缺数据 = 循环失败至哨兵报警逼修数据(与空候选判法「没有选到就是代码 bug」同款);③名字转换点从动作侧两处收敛为零(观察一处),noop 假成功形态消灭;④局外单跑不再选卡(零决策交回,§1.7① 裁决);⑤生产选卡路径点击行为零变化(标准名命中时,原路径归一名与标准名同值)。
 
@@ -223,8 +223,8 @@ if not canon or canon == '?':
 | `operations/cw_screen/cw_screen_invest_env.py` | F-4(观察层标准化门 + 局外 else 分支删除 + 派发处 norm_name 组装删除)+ F-5 注释卫生 | 行为变更 + 注释 |
 | `kernel/cw_screen_report/invest_env.py` | F-5 注释卫生 | 注释 |
 | (执行权 T-6 §2.5)`operations/cw_op/cw_overlay_pick_action.py` | F-5 登记面(§2.5,禁重复触碰) | 注释 |
-| (已认同随落地批)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py`、`test_cw_action_report_contract.py`、`test_cw_yinlang_phase32.py`(批 1 实施发现的稿面外消费点:三处直调上报传 norm_name,随纯 idx 契约播种容器适配,断言语义不变——门 1 对抗审核实等价) | F-2 补测(§2.2 三条)+ F-4 观察标准化锁(含歧义拒判锁)/纯 idx 上报锁(含 contract 冒烟锁改造 + 容器缺读/越界响亮失败锁)/handback 锁(§2.4 测试面 1/2/4) | 测试 |
-| (已认同随落地批)`sr-od-test/.../test_cw_gain_chain.py` | F-4 env 拒绝锁(§2.4 测试面 3) | 测试 |
+| (已认同随落地批)`sr-od-test/.../test_cw_obs_arch_phase_screens.py`、`test_cw_screen_report_ports.py`、`test_cw_action_report_contract.py`、`test_cw_yinlang_phase32.py`(批 1 实施发现的稿面外消费点:三处直调上报传 norm_name,随纯 idx 契约播种容器适配,断言语义不变——门 1 对抗审核实等价) | F-2 补测(§2.2 三条)+ F-4 观察标准化测试(含歧义拒判测试)/纯 idx 上报测试(含 contract 冒烟测试改造 + 容器缺读/越界响亮失败测试)/handback 测试(§2.4 测试面 1/2/4) | 测试 |
+| (已认同随落地批)`sr-od-test/.../test_cw_gain_chain.py` | F-4 env 拒绝测试(§2.4 测试面 3) | 测试 |
 | (登记面,不落本稿)全族画面篇 §2 标签统一裁决面(T-37 汇总裁决并指派施工稿;含 invest_strategy.md §2,判例同款覆盖)、gain-chain.md §8 自身 changes/ 引用(正本禁引面残留,归正本维护)、T-6 稿孪生扩项(投资策略屏观察标准化 + norm_name 退役,§1.7④)、其余名字类观察屏标准化收敛分配 | §1.7①②④ / §2.5 | 登记面 |
 
-统一验收:除 F-4/局外删除外全部零行为变化(`git diff` 无逻辑 diff);F-4 以其行为变化申报与测试锁验收;文档面互查——invest_env.md 修后与 op-layer.md §1.1(两新规范条)/§2.2/§3、gain-chain.md §2.1/§3、action_ops.md §4.5、README.md §6 口径一致。
+统一验收:除 F-4/局外删除外全部零行为变化(`git diff` 无逻辑 diff);F-4 以其行为变化申报与测试验收;文档面互查——invest_env.md 修后与 op-layer.md §1.1(两新规范条)/§2.2/§3、gain-chain.md §2.1/§3、action_ops.md §4.5、README.md §6 口径一致。

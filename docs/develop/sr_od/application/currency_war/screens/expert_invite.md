@@ -87,8 +87,8 @@ pick = decide_expert_invite()(零参;候选读容器 expert_invite 槽;
 - 落地判定点写(防未落地轮留下假记录);记录面失败不阻塞收案。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「专家邀请函」;op 内日志 tag = `[cw-bookcard]`(board/卡羁绊/选卡描述)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态锁:观察上报容器含坐标域/入口门 miss fail)、test_cw_unified_action_2c.py(决策出口守卫锁组 `test_expert_invite_decision_*`:返回契约/值域/异常传播/正路两态/局外无早退支自然失败 + report 双写同门等长守卫锁)、test_cw_unified_action_4.py(expert 容器双源取点与缺席/越界守卫二态锁)、test_cw_game_state_consume.py(chosen_expert 接线锁);`choose_expert_index` 纯函数行为锁同仓。代码注引的接线锁(test_cw_node_screens)已不已登记(开放设计注)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报容器含坐标域/入口门 miss fail)、test_cw_unified_action_2c.py(决策出口守卫测试组 `test_expert_invite_decision_*`:返回契约/值域/异常传播/正路两态/局外无早退支自然失败 + report 双写同门等长守卫测试)、test_cw_unified_action_4.py(expert 容器双源取点与缺席/越界守卫二态测试)、test_cw_game_state_consume.py(chosen_expert 接线测试);`choose_expert_index` 纯函数行为测试同仓。代码注引的接线测试(test_cw_node_screens)已不已登记(开放设计注)。
 - game 侧知识:画面与书册卡机制 = [../../../../game/screens/currency_war_expert_invitation.md](../../../../../game/screens/currency_war_expert_invitation.md)。

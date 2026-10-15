@@ -12,7 +12,7 @@
   star_tome/wish_trial/box_card + 契约扩员两口 fortune/expert_invite,
   普查迁移);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC;
-  回放/序列锁消费,mandate 记账在其覆写)与商店单动作
+  回放/序列测试消费,mandate 记账在其覆写)与商店单动作
   接口 decide_shop_action(委托 mandate_v1/shop)。
 
 - live 备战决策链 = cw_screen_prep → mandate_v1.bridge → entry.emit
@@ -102,7 +102,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
     携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁定约束)。
 
-    行为锚见各方法 docstring 与 sim 契约锁。
+    行为锚见各方法 docstring 与 sim 契约测试。
     """
 
     STRATEGY_ID: str = ''            # 中间辅助 ABC,不注册(_abstract=True)
@@ -812,9 +812,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            config: CurrencyWarConfig | None = None
                            ) -> list[Action]:
         """商店序列兼容驱动器(缺省实现;降格出 ABC;形参 = 兼容宿主
-        (回放/序列锁调用面照旧传),决策已零参化,本体不消费)。
+        (回放/序列测试调用面照旧传),决策已零参化,本体不消费)。
 
-        回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
+        回放/既有序列测试消费(生产执行侧走单动作循环):逐帧调
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 逐动作
         直调上报函数推进期望态(kernel/cw_action_report 函数族;零
         simulate 前瞻消费),终结动作(CwActionRefreshShopParam)截停、
@@ -843,8 +843,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         )
         # 驱动器同路(设计件 §2.2-3):决策读容器单例 + 期望态
         # 推进 = 逐动作直调上报函数(动作 op 重组:快照三件组已内聚
-        # 买牌上报,双抄写段停用);逐域期望态由投影直锁钉住
-        # (test_shop_projection_logic,锁 M1)。帧缺失 = 容器离屏 =
+        # 买牌上报,双抄写段停用);逐域期望态由投影测试钉住
+        # (test_shop_projection_logic,测试 M1)。帧缺失 = 容器离屏 =
         # 观察层失约同型抛错(在屏前置)。
         gs = self.gs
         if gs.shop.value is None:

@@ -106,7 +106,7 @@ v5 语义修复的根)。
   python cw_sentinel.py --selftest: 内置回归(15 用例:局后空窗→IDLE /
   局中静默→SILENCE / 信道漂移[含漂移后 CONT 去重清零轻断言] / 活跃循环→LOOP /
   无操作成功循环→STALL 不被假推进掩盖 / 节点滞留→NODE-DWELL / 备战空转→PREP-SPIN / 正常推进→不误报 /
-  v5.1 七锁:轮转锚尾 L1 / 武装锚尾脏纪元 L2 / 新行双路命中 L3 /
+  v5.1 七项自检测试:轮转锚尾 L1 / 武装锚尾脏纪元 L2 / 新行双路命中 L3 /
   同因去重+运行边界清零 L4 / 异因仍报 L5 / 升级通道 L6 / 终局标记 L7)。
   python cw_sentinel.py --replay <日志文件>: 历史日志回放——全文件喂行处理逻辑,
   打印全部报警位点(每卡死段一次;不退出不 stop,验证用)。
@@ -812,7 +812,7 @@ def _replay(path: str) -> int:
 
 def _selftest() -> int:
     """v5.1 内置回归(17 用例):空窗/静默/漂移[含漂移清零轻断言]/循环/
-    无操作成功 STALL/节点滞留/正常推进 + 七锁(轮转锚尾/武装锚尾/新行双路/
+    无操作成功 STALL/节点滞留/正常推进 + 七项自检测试(轮转锚尾/武装锚尾/新行双路/
     同因去重+运行边界清零/异因仍报/升级通道/终局标记)。"""
     import subprocess
     import tempfile
@@ -822,17 +822,17 @@ def _selftest() -> int:
 
     def _now_hms() -> str:
         """当前时刻的日志时间戳前缀。历史行时间戳一律用当前时刻——绕过
-        陈旧行防线:锁必须证明游标层独自防住重放,不许搭防线便车。"""
+        陈旧行防线:该测试必须证明游标层独自防住重放,不许搭防线便车。"""
         lt = time.localtime()
         return f'[{lt.tm_hour:02d}:{lt.tm_min:02d}:{lt.tm_sec:02d}]'
 
     def _spawn_resident(d: Path, name: str,
                         extra_env: dict[str, str] | None = None,
                         ) -> tuple[subprocess.Popen, Path]:
-        """续侦类用例(漂移/七锁)共用子进程启动。
+        """续侦类用例(漂移/七项自检测试)共用子进程启动。
 
         stdout/stderr 重定向临时文件+父进程轮读——现有 PIPE+communicate 技术
-        阻塞到进程退出,做不了「存活期」断言,续侦类锁必须观测存活态。
+        阻塞到进程退出,做不了「存活期」断言,续侦类测试必须观测存活态。
         env 全量重定向(日志/水位/锁/遥测/三份证据):测试零真实副作用,
         HIT 证据同样必须重定向,不许写生产 cw_hit_alert.md。
         """
@@ -953,7 +953,7 @@ def _selftest() -> int:
         print(f"  {'PASS' if ok else 'FAIL'} {name}: 期望 {expect} | 尾行: {last[:110]}")
     # v3.7 信道漂移回归 + v5.1 漂移纪元清零轻断言:武装盯 A → A 上见 CONT#1 →
     # B 变最新触发漂移切换(锚尾+清 CONT 去重表)→ B 上追加同签名行 → CONT#2
-    # 复现=漂移纪元边界确实清了表(去重表清零点之「信道漂移」,锁面原本无覆盖);
+    # 复现=漂移纪元边界确实清了表(去重表清零点之「信道漂移」,测试面原本无覆盖);
     # 随后按新信道静默走 IDLE 退出。
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_drift_') as td:
         d = Path(td)
@@ -1086,7 +1086,7 @@ def _selftest() -> int:
             last = out.strip().splitlines()[-1] if out.strip() else ''
             print(f"  {'PASS' if ok else 'FAIL'} {name}: 期望 {expect_tag or '零报警'} | 尾行: {last[:110]}")
             cases.append((name, expect_tag or 'no-alarm', ok, last))
-    # ── v5.1 七锁(2026-09-09 01:13 脏纪元三连自退 + 2026-09-08 70min 补位
+    # ── v5.1 七项自检测试(2026-09-09 01:13 脏纪元三连自退 + 2026-09-08 70min 补位
     #    空窗实证驱动;构造与变异纪律=文件头 v5.1 语义)。续侦类存活断言全走
     #    「stdout 重定向临时文件+轮读」;历史行时间戳一律当前时刻(不搭陈旧
     #    防线便车,锁死的是游标层/分级层本身)。────────────────────────────
@@ -1095,7 +1095,7 @@ def _selftest() -> int:
     _CRIT = '[prep_director.py 1] [ERROR]: Traceback (most recent call last):'
     _BOUNDARY = '[run_context.py 88] [INFO]: run 已停止[mcp:stop_run]'
 
-    # L1 轮转锚尾锁:arm(无 pos)→ 过 2 轮询 → 更小文件整替(模拟轮转,内含
+    # L1 轮转锚尾测试:arm(无 pos)→ 过 2 轮询 → 更小文件整替(模拟轮转,内含
     # 新鲜 Traceback)→ 过 3 轮询 → 追加良性新行。锚尾语义必须:全程零 HIT*、
     # 出现轮转锚尾打印、进程存活且良性行后仍在岗。
     # 变异 M1:轮转分支回退 pos=0 → 整替件内 Traceback 被重放 HIT,红。
@@ -1122,7 +1122,7 @@ def _selftest() -> int:
               f" 期望 零HIT*+锚尾打印+存活 | 尾行: {_last_line(o)}")
         cases.append(('L1_rotation_anchor_tail', '零HIT*+锚尾打印+存活', ok, _last_line(o)))
 
-    # L2 武装锚尾锁(脏纪元验收主锁,criteria 前半「arm 后 ≤60s 无重放 HIT」):
+    # L2 武装锚尾测试(脏纪元验收主测试,criteria 前半「arm 后 ≤60s 无重放 HIT」):
     # 预填新鲜历史(Traceback+执行失败)→ 无 pos 武装 → POLL=1s 观测 60s:
     # 零 [SENTINEL-HIT] 且零 [SENTINEL-HIT-CONT](历史一个不咬)+心跳 mtime 推进
     # +武装打印锚尾语义。
@@ -1152,7 +1152,7 @@ def _selftest() -> int:
         cases.append(('L2_armed_anchor_tail', '脏纪元60s零HIT*+心跳推进+存活',
                       ok, _last_line(o)))
 
-    # L3 新行命中锁(验收后半「新行仍能命中」):脏历史在场的前提下新行双路——
+    # L3 新行命中测试(验收后半「新行仍能命中」):脏历史在场的前提下新行双路——
     # 追加新鲜 执行失败 → CONT 且进程存活(驻留);追加新鲜 Traceback → HIT 且
     # exit(0)(关键即时推送不弱化)。
     # 变异 M3:续侦词并入关键表 → 执行失败处直接退,存活断言红。
@@ -1177,9 +1177,9 @@ def _selftest() -> int:
               f" 期望 CONT存活+HIT退出 | 尾行: {_last_line(o)}")
         cases.append(('L3_newline_dual_path', 'CONT存活+HIT退出', ok, _last_line(o)))
 
-    # L4 同因去重锁 + 运行边界清零轻断言:同签名两条(仅时间戳不同)→ CONT 恰
+    # L4 同因去重测试 + 运行边界清零轻断言:同签名两条(仅时间戳不同)→ CONT 恰
     # 1 次;喂终态行(运行边界=纪元边界,与 _dwell_reset 同点)后同签名再现 →
-    # CONT 第 2 次=边界确实清了表(去重表清零点之「运行边界」,锁面原本无覆盖)。
+    # CONT 第 2 次=边界确实清了表(去重表清零点之「运行边界」,测试面原本无覆盖)。
     # 变异 M4:去重表查找短路(每见必报)→ 3 报即红;边界清零缺失 → 1 报即红。
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_L4_') as td:
         d = Path(td)
@@ -1207,7 +1207,7 @@ def _selftest() -> int:
         cases.append(('L4_dedup_boundary_reset', '同因恰1报+边界后复现共2报+存活',
                       ok, _last_line(o)))
 
-    # L5 异因仍报锁:执行失败 后跟不同签名 stall_watch 行 → 两个不同 CONT 各 1 次。
+    # L5 异因仍报测试:执行失败 后跟不同签名 stall_watch 行 → 两个不同 CONT 各 1 次。
     # 变异 M5:去重键退化为全局单键 → 第二异因被吞,1 报即红。
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_L5_') as td:
         d = Path(td)
@@ -1228,7 +1228,7 @@ def _selftest() -> int:
               f" 期望 异因两报各1次+存活 | 尾行: {_last_line(o)}")
         cases.append(('L5_distinct_cause_reported', '异因两报各1次+存活', ok, _last_line(o)))
 
-    # L6 升级通道锁:10 条同签名 [ERROR] 执行失败(单窗内、无实质推进)→
+    # L6 升级通道测试:10 条同签名 [ERROR] 执行失败(单窗内、无实质推进)→
     # 第 10 条触发 STALL 且进程退——证明续侦不吞升级(STALL 判据与去重正交:
     # WARNING/ERROR 全量进 recent,不看是否 CONT 报过)。
     # 变异 M6:续侦分支提前 return → recent 不进 → STALL 不触发,存活即红。
@@ -1249,7 +1249,7 @@ def _selftest() -> int:
               f" 期望 第10条STALL退出+CONT恰1 | 尾行: {_last_line(o)}")
         cases.append(('L6_stall_escalation', '第10条STALL退出+CONT恰1', ok, _last_line(o)))
 
-    # L7 终局标记修复锁(行为增量):『指令[...] 执行失败』行喂到后进入静默
+    # L7 终局标记修复测试(行为增量):『指令[...] 执行失败』行喂到后进入静默
     # 双窗(短阈值;journal 尾实机段未收尾使 _run_ended() 为假(v5.2);
     # 夹具不得混入『执行成功』——该行在 v5/v5.1 都会置位标记,混入即毁判别力)。
     # v5 下该行的标记置位到不了(HIT 判定即提前返回,准确说是仅 执行失败 行
@@ -1288,7 +1288,7 @@ def _selftest() -> int:
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--selftest':
     print('[selftest] v5.4 十七用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
-          ' + 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
+          ' + 七项自检测试(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
     sys.exit(_selftest())
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':

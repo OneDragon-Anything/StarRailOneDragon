@@ -11,7 +11,7 @@
 ## 3.1 kernel 条件发放与登记表
 **范围**:登记表 ENV_STREAK_GRANTS(三条校验)、GameState 新域 env_grants_done(种子/恢复/schema/审计四件套)、触发检查函数、宝钻获得回调函数(纯 kernel 面,无接线)。边界——不含 live/sim 接线、不含 supply 采纳。
 **设计依据**:design.md §2;details/env-conditional-grant.md §1–§4。
-**文件面**:`kernel/cw_investments.py`(ENV_STREAK_GRANTS + 校验)、`kernel/cw_game_state.py`(新域四件套)、`kernel/cw_env_grants.py`(新模块:触发检查 + 回调)、`kernel/cw_projection_audit.py`(完备性锁强制新域行)、`sr-od-test/test/sr_od/application/currency_war/test_cw_env_grants.py`(新)、`test_cw_game_state_opening_seed.py`(种子枚举扩员先例)。
+**文件面**:`kernel/cw_investments.py`(ENV_STREAK_GRANTS + 校验)、`kernel/cw_game_state.py`(新域四件套)、`kernel/cw_env_grants.py`(新模块:触发检查 + 回调)、`kernel/cw_projection_audit.py`(完备性测试强制新域行）、`sr-od-test/test/sr_od/application/currency_war/test_cw_env_grants.py`(新)、`test_cw_game_state_opening_seed.py`(种子枚举扩员先例)。
 **依赖**:无。
 **优先级建议**:10
 **完成判据**:
@@ -28,7 +28,7 @@
 **依赖**:3.1。
 **优先级建议**:5
 **完成判据**:
-- 触发检查调用点 = apply_settlement_cover 之后(次序断言真锁——**测试构造约束:fake 结算路径必须真实携带 streak_after 并走真覆盖写端,防姊妹迭代实证的假绿形态:fake 不写前置状态、断言恒绿**);
+- 触发检查调用点 = apply_settlement_cover 之后(次序断言真测试——**测试构造约束:fake 结算路径必须真实携带 streak_after 并走真覆盖写端,防姊妹迭代实证的假绿形态:fake 不写前置状态、断言恒绿**);
 - 随机态发放 + equips 观察整表覆盖纠偏测试(猜错自愈);
 - streak_after None 的结算不调;
 - 完成前常规检查(本文首节)。

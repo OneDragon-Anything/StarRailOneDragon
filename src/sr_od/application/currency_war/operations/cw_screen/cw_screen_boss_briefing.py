@@ -24,7 +24,7 @@ match/gs 缺席跳过)→ obs 挂实例属性进
 ``is_boss_briefing_texts`` 判别面——三处消费同源(op 内锚兜底/
 ``CwScreenBattleWait._hit_completion_anchor`` 完成白名单/loop 阶段一位
 面过渡身份分支排他)不变。本屏 sim 腿 = 不适用(sim 无对应画面段),等价
-判据主要支撑 = 实机已登记行为锁(锁面 = sr-od-test test_cw_obs_arch_phase_
+判据主要支撑 = 实机已登记行为测试(测试面 = sr-od-test test_cw_obs_arch_phase_
 screens.py + test_cw_anchor_exclusion.py)。
 """
 import time

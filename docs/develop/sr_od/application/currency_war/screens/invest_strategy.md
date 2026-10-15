@@ -105,9 +105,9 @@ act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_stra
 - 未注册卡名告警(注册表数据缺口可见化,不阻塞)。
 - 守卫总册域(停机钩子/失配告警/预算)不设本屏专属防线,细则 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「投资策略」(dispatch 包装统一落 `[cw-op]` 主日志行);op 内日志 tag = `[cw-strat]`(options/chose/reason、槽位刷新结束本次访问);获得链侧 tag = `[cw-gain]`(效果账本登记/板面重写桥/策略落地分步)。
 - 缺陷面:登记分支失败 = `gain_chain_strategy_register_failed`;无效载荷 = `pick_invest_invalid_payload`(不发出无依据的动作的配套)。
-- 测试锁:两 node 行为锁 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(发出即终结+发出时点写入交叉核对/空候选不发出无依据的动作/无 match 局外无早退支沿正常链路失败/观察复探窗与 report 含 left 摄入/刷新结束本次访问);即时上报与去重链锁 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链锁 = `test_gain_chain.py`(gain_invest_strategy/gain_invest_env 链内写入分支);动作 op 类型分派 = `test_cw_unified_action_4.py`。
+- 测试:两 node 行为测试 + 写入流交叉核对 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(发出即终结+发出时点写入交叉核对/空候选不发出无依据的动作/无 match 局外无早退支沿正常链路失败/观察复探窗与 report 含 left 摄入/刷新结束本次访问);即时上报与去重链测试 = `test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链);获得链测试 = `test_gain_chain.py`(gain_invest_strategy/gain_invest_env 链内写入分支);动作 op 类型分派 = `test_cw_unified_action_4.py`。
 - game 侧知识:画面建档与交互 = [../../../../game/screens/currency_war_invest_strategy.md](../../../../../game/screens/currency_war_invest_strategy.md);刷新判据数学 = [../proofs/p81-invest-refresh-dominance.md](../proofs/p81-invest-refresh-dominance.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md)。

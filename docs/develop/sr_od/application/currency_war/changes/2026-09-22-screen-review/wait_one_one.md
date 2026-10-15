@@ -13,7 +13,7 @@
 ### 1.1 F-1 观察 node 轮询实态与 op-layer §1.1「无循环」条款字面相抵,变体偏离未登记(低)
 
 - **现状症状**(审查报告 F-1):`screens/wait_one_one.md` §2 自引「两 node 直继承 `SrOperation`(合同 = op-layer.md §1.1)」,而本屏观察 node 是全部画面 op 中唯一以 `round_wait` 自环轮询为承载的观察 node——`operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne.observe` 未就绪未超时尾行 `return self.round_wait(wait=ONE_ONE_POLL_INTERVAL_S)`,门语义 = 「就绪门 miss = round_wait 等下一帧」,既非 op-layer §1.1 流程图门语义二分(「身份门 miss = round_fail 交回外循环重判 / 完成门 miss = 画面已离开,round_success 交回」)的任一支,亦违同节「两 node 职责」条款「观察 node = 门 + 读屏 + 观察结果上报,**无循环、小预算**」字面。op-layer §1.1 概括条款与 §3 全形态行均未给「等待 1-1 = 观察轮询 + act 零动作」留变体注(对比:`CwScreenBattleWait` 驻留状态机豁免在 §3 有显式「用户裁定豁免两 node」标注)——偏离本身无一句话声明,后继按 §1.1 执法者(审查/重构)必误判本屏违规。
-- **行为本体无恙**(审查三证,本稿修法前提 = 代码零改动):①文档-代码一致——`wait_one_one.md` §2 显式申报「空决策纯等待形态」,轮询等待语义/固定超时兜底逐位申报;②行为锁逐位锁定——`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py::test_wait_one_one_anchor_hit_and_poll_round_wait`(锚 miss → 观察轮 round_wait 轮询不吃 retry 预算)+ `::test_wait_one_one_timeout_leaves_evidence`(假时钟超时留证 fail);③本屏存在根 = 用户裁定的特殊等待(`cw_screen_wait_one_one.py` 模块头「开局补给动画长且无结束标志(用户裁定特殊等待)」;game 侧 `docs/game/currency_war/research/screen_flow_timing.md` #5/#29:1-1 是唯一不自动开商店、动画最长的开局节点)。
+- **行为本体无恙**(审查三证,本稿修法前提 = 代码零改动):①文档-代码一致——`wait_one_one.md` §2 显式申报「空决策纯等待形态」,轮询等待语义/固定超时兜底逐位申报;②行为测试逐位锁定——`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py::test_wait_one_one_anchor_hit_and_poll_round_wait`(锚 miss → 观察轮 round_wait 轮询不吃 retry 预算)+ `::test_wait_one_one_timeout_leaves_evidence`(假时钟超时留证 fail);③本屏存在根 = 用户裁定的特殊等待(`cw_screen_wait_one_one.py` 模块头「开局补给动画长且无结束标志(用户裁定特殊等待)」;game 侧 `docs/game/currency_war/research/screen_flow_timing.md` #5/#29:1-1 是唯一不自动开商店、动画最长的开局节点)。
 - **根因归层**(根源两问):①根在哪层 = **约定层**——op-layer §1.1 的概括条款(两 node 职责/门语义二分)按「决策-动作族」制定,等待 1-1(用户裁定特殊等待屏)入册时行为正确落地、结构变体未回填层合同;不是表示层(无陈旧指称)、不是流程层(两 node 规则本身无恙)、不是语义层(行为语义画面篇已如实申报且与代码一致)。②修的是根还是症状 = 修根:登记面缺口恰在执法面——§1.1 是审查/重构据以判违规的合同正本,把变体登记进 §1.1 即消除误判源;只在画面篇自声明偏离(备选,取舍见 §2.1)则 §1.1 字面仍绝对,只读正本的执法者照样误判,那是症状侧登记。
 - **解决到哪**:op-layer §1.1 三处(流程图门行增第三支、「两 node 职责」bullet 加例外标记、新增一条变体注 bullet 作口径与边界唯一源)+ §3 全形态行空决策变体括注一枚指针 + `wait_one_one.md` §2 合同自引句一枚变体标记(五点位见 §2.1 主表)。
 - **明确不解决**:任何行为变化(轮询住观察 node 即正确形态,迁移动议的否决理由见 §2.1 取舍备选 D);§3「空决策变体 = 重入裁决 + 固定推进」对本屏 act(零动作零重入零推进)的概括句——审查已裁定由同句「与各屏文档『空决策形态』声明同义」委托条款吸收、不计,不动;`CwScreenBattleWait` 驻留状态机行与其余各屏形态申报;`ONE_ONE_MAX_WAIT_S`/`ONE_ONE_POLL_INTERVAL_S` 的实机校准(审查 §4 无法核对面,静态不可判,常量单一源在 `operations/cw_screen/cw_flow_const.py`);超时 fail 交回后外循环重派链的运行时行为(外循环域);审查附带观察的 op-layer §3 标题计数「37」vs 正文「36」(非本屏发现,归 op-layer 正本维护批裁决,本稿修法不含);`wait_one_one.md` 其余八节(审查报告 §3 项 6 已核逐节一致,零 diff)。
@@ -36,7 +36,7 @@
 
 【变体注目标全文】(#3 新 bullet;语义唯一,行文可微调;加粗关键措辞与四条边界为验证门锚点,不可删):
 
-> - **在册变体:等待 1-1 就绪等待(全部画面 op 中唯一观察轮询;用户裁定特殊等待)**:`operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne` 的观察 node = 就绪轮询主体。存在根 = 1-1 开局补给动画长且无结束标志(`docs/game/currency_war/research/screen_flow_timing.md` #5/#29;op 模块头「用户裁定特殊等待」):无身份门可判——备战锚「货币战争-备战.标识-备战阶段」两档同址无画面判别力,只判「备战面板就绪」非画面分发;无完成门可判——未就绪 ≠ 画面已离开,miss 即 success 交回会落未知画面重判;无动作可迭代——act 零动作,循环无处挂靠。故本屏轮询住观察 node,为「观察 node 无循环」的唯一在册变体。口径:锚命中 = obs 装载 + 占位 report → `round_success` 进 act(零动作 success 交回);未就绪未超时 = `round_wait(ONE_ONE_POLL_INTERVAL_S)` 等下一帧(wait 语义不耗框架 retry 预算);超时 ≥ `ONE_ONE_MAX_WAIT_S` = 存图留证 + `round_fail` 交外循环(失败治理出口)。边界:①闭集 = 本条唯一,新增观察轮询屏先登记本条再落码;②固定超时 = 失败治理出口非迭代上限,与「循环无上限规范」不冲突(彼条辖决策动作 node 循环与外循环轮次推进,失败类出口不属于迭代上限);③轮询轮与超时轮不装载 obs,锚判定外零读屏——读屏点纪律不放宽;④超时后重派预算归外循环(`operations/cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT` 网)不变。as-built 细节单一源 = [wait_one_one.md](wait_one_one.md);行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py::test_wait_one_one_anchor_hit_and_poll_round_wait` / `::test_wait_one_one_timeout_leaves_evidence`。
+> - **在册变体:等待 1-1 就绪等待(全部画面 op 中唯一观察轮询;用户裁定特殊等待)**:`operations/cw_screen/cw_screen_wait_one_one.py::CwScreenWaitOneOne` 的观察 node = 就绪轮询主体。存在根 = 1-1 开局补给动画长且无结束标志(`docs/game/currency_war/research/screen_flow_timing.md` #5/#29;op 模块头「用户裁定特殊等待」):无身份门可判——备战锚「货币战争-备战.标识-备战阶段」两档同址无画面判别力,只判「备战面板就绪」非画面分发;无完成门可判——未就绪 ≠ 画面已离开,miss 即 success 交回会落未知画面重判;无动作可迭代——act 零动作,循环无处挂靠。故本屏轮询住观察 node,为「观察 node 无循环」的唯一在册变体。口径:锚命中 = obs 装载 + 占位 report → `round_success` 进 act(零动作 success 交回);未就绪未超时 = `round_wait(ONE_ONE_POLL_INTERVAL_S)` 等下一帧(wait 语义不耗框架 retry 预算);超时 ≥ `ONE_ONE_MAX_WAIT_S` = 存图留证 + `round_fail` 交外循环(失败治理出口)。边界:①闭集 = 本条唯一,新增观察轮询屏先登记本条再落码;②固定超时 = 失败治理出口非迭代上限,与「循环无上限规范」不冲突(彼条辖决策动作 node 循环与外循环轮次推进,失败类出口不属于迭代上限);③轮询轮与超时轮不装载 obs,锚判定外零读屏——读屏点纪律不放宽;④超时后重派预算归外循环(`operations/cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT` 网)不变。as-built 细节单一源 = [wait_one_one.md](wait_one_one.md);行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py::test_wait_one_one_anchor_hit_and_poll_round_wait` / `::test_wait_one_one_timeout_leaves_evidence`。
 
 依据(就地分列):
 
@@ -51,14 +51,14 @@
 1. `screens/op-layer.md` grep `就绪等待` ≥3 命中(流程图门行 / §1.1 变体注 / §3 指针);grep `唯一观察轮询` 恰 1 命中(变体注闭集申报在档,防第二源);grep `在册变体例外唯一` 恰 1 命中(#2 括注在档)。
 2. `screens/wait_one_one.md` grep `在册就绪等待变体` 恰 1 命中(§2 自引句);`git diff` 确认该文件仅 §2 首句一处改动。
 3. 三方口径互查一致:`screens/wait_one_one.md` §2 ↔ `screens/op-layer.md` §1.1 变体注 ↔ `cw_screen_wait_one_one.py` 模块头(用户裁定特殊等待/等待语义/固定超时兜底)无新分叉。
-4. 零行为变化:`git diff` 于 `src/sr_od/application/currency_war/` 与 `sr-od-test/` 为空;两支行为锁文件零 diff。
+4. 零行为变化:`git diff` 于 `src/sr_od/application/currency_war/` 与 `sr-od-test/` 为空;两支行为测试文件零 diff。
 
 **取舍**:
 
 - **主取舍:正本登记变体(选)vs 仅画面篇自声明偏离(备选 B,审查修法建议第二支)——选登记**。理由:①执法面修复——F-1 预言的伤害是「后继按 §1.1 执法者必误判本屏违规」,误判源在 §1.1 字面绝对化,只有把例外写进 §1.1 才消除;画面篇自声明后正本仍绝对,只读 op-layer 的审查/重构照样误判,属症状侧登记。②先例一致——同层已有两类「偏离两 node 概括」的正本登记先例:`CwScreenBattleWait` 驻留状态机豁免登记于 §3(显式「用户裁定豁免两 node」标注)、读屏点例外闭集登记于 §1.1 同 bullet;例外登记散落画面篇会破坏登记纪律的单一机制。③AGENTS.md §9 正本必须自足——层合同含静默例外 = 正本缺陷,登记是义务非优化。
 - **变体注落位:§1.1(选)vs §3(备选 C,审查修法建议另一支)——选 §1.1 为语义唯一源,§3 只留指针**。理由:字面冲突条款在 §1.1(「无循环」+ 门语义二分),例外紧邻条款登记才对执法者可见;§1.1 读屏点例外的「同节登记 + 闭集 + 新增先登记」是现成同构范式;§3 = 分型总表,act 概括差已由既有委托条款消化,再承接口径即语义双源漂移面(本审查全批猎杀的正是双源漂移)。
 - **登记形态:闭集单变体(选)vs 改写「无循环」条款为一般性允许(备选 A)——选闭集**。理由:「无循环」是执法判据,「默认 + 一个具名例外」仍可机械执法;改成一般性允许(如「观察 node 可轮询」)即放弃判据,任何新屏都可无结构理由地把循环塞进观察 node,规范失效。就绪等待是有存在根的特殊形态(用户裁定 + 动画无结束标志 + 三无:无身份门/无完成门/无动作),闭集登记恰表达「此类形态须逐个裁定」。
-- **备选 D:改代码把轮询循环迁进决策动作 node,以字面符合 §1.1 默认形态——放弃**。理由:act 零动作,循环迁入后每轮无可决策无可执行,轮询实质 = 就绪判定 + obs 装载 + report = 观察工作;观察工作落决策动作 node 即绕开「显式读屏只在观察 node」与「观察进容器经 report 的观察边界」两条 §1.1 硬规则,为凑字面而破坏更深的契约;代码现形态(审查三证 + 行为锁两支)即结构最忠实的映射,修文档不修代码。
+- **备选 D:改代码把轮询循环迁进决策动作 node,以字面符合 §1.1 默认形态——放弃**。理由:act 零动作,循环迁入后每轮无可决策无可执行,轮询实质 = 就绪判定 + obs 装载 + report = 观察工作;观察工作落决策动作 node 即绕开「显式读屏只在观察 node」与「观察进容器经 report 的观察边界」两条 §1.1 硬规则,为凑字面而破坏更深的契约;代码现形态(审查三证 + 行为测试两支）即结构最忠实的映射,修文档不修代码。
 
 ### 2.2 落地文件面总表(单文档方案的修正面汇总)
 
@@ -68,4 +68,4 @@
 | `screens/wait_one_one.md` | §2 首句自引句(#5;其余行零 diff) | 画面篇自引对齐 |
 | `src/`、`sr-od-test/` | 零触碰 | — |
 
-统一验收:验证门 1-4 全过;修后口径互查——`wait_one_one.md` §2 ↔ op-layer §1.1 变体注/§3 指针 ↔ `cw_screen_wait_one_one.py` 模块头 ↔ 行为锁申报四方一致;全部修法零行为变化。
+统一验收:验证门 1-4 全过;修后口径互查——`wait_one_one.md` §2 ↔ op-layer §1.1 变体注/§3 指针 ↔ `cw_screen_wait_one_one.py` 模块头 ↔ 行为测试申报四方一致;全部修法零行为变化。

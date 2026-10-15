@@ -517,7 +517,7 @@
 - 抽牌核心:`REFRESH_PROB` 定档 + 池内均匀抽名(`sim/pool.py draw_shop` 骨架,M05/M06);
 - 容器 `GameState` + 单一转移函数 `apply_shop_action_logic` 全动作族腿 + `LogicOutcome` 拒绝语义(`sim/sim-design.md` §2 契约整体平移);
 - kernel 全部单一源(§2.0.3 清单);
-- 结构锁与行为锁的**契约**(引擎动作必经单一转移函数、金样对拍)——锁文件随测试批重挂,契约不变;
+- 结构测试与行为测试的**契约**(引擎动作必经单一转移函数、金样对拍)——测试文件随测试批重挂,契约不变;
 - `cw_opening_hp` 表、`cw_plane_table` 日程、`cw_reward_node` 扑满面、`cw_merge_simulate` 合成链、`cw_bond_equips` 羁绊口径;
 - 决策回放工具 `sim/cw_replay.py` 的**能力**(历史局容器真值重放)——本体迁出 sim(验证工具非游戏本体,归宿随 T-274 容器侧整理,本迭代只声明不搬迁)。
 

@@ -41,13 +41,13 @@
 - `sim/cw_sim_special.py`:两符号已删;留守三符号 `SILVER_WOLF_ID`/`planner_overlay_due`/`trailblazer_form_of` 齐全。头注 M21 段整段重写:新口径 = 费用档 = 容器推演状态(`gs.lv999_cost_tier`/`effective_cost`,2026-09-18 定谳)、池桶归属经 `kernel.cw_pool` 承接、旧「星级×上场态」「池过滤器语义」句已清除;试用句指针 = `docs/game/gameplay/currency_war.md`「试用角色」行 :81(实测该行内容 = 试用角色机制行,指针有效)。
 - `cw_sim_engine.py` :159-162 import 面(仅 `SILVER_WOLF_ID`+`planner_overlay_due`)与 :473 附近 `planner_overlay_due` 消费点核验不受影响。✅
 
-### 5. 测试等价锁真实性 — 通过
+### 5. 测试等价真实性 — 通过
 
-- `git diff --no-index` 前后版 `test_cw_sim_pool.py`:原 7 测**断言零改**,唯一既有面变化 = import 块(`sim.cw_sim_pool` → `kernel.cw_pool` + 新增 `grant_bucket_names` import);三新锁纯追加。等价锁成立。
-- 三新锁构造真实性:
-  - **档感知锁**:`write_logic(gs.lv999_cost_tier, 4)` 后 `drawable_names(4)` 含银狼 / `(3)` 不含;未写档 gs 归约 3 费桶——与 §2.4 逐条对应;
-  - **双出口分野锁**:1 费卡 3★ 构造 held=9(断言 `held_copies == 9`)、断言 `remaining_pool == POOL_COPIES_PER_CARD[1] - 9`(27−9=18>0,共享条件在场)→ 商店出口清空、授予出口在册——正是设计点名的 held=9/剩余=18 形态,分野纯由 ≥9 过滤产生;
-  - **守恒跨档锁**:2★(held=3)→ 写档 4 → 1★(held=1),断言剩余 = 9−1 不炸、旧档账面无负、双出口档=4 在册——与 §2.4 对应。
+- `git diff --no-index` 前后版 `test_cw_sim_pool.py`:原 7 测**断言零改**,唯一既有面变化 = import 块(`sim.cw_sim_pool` → `kernel.cw_pool` + 新增 `grant_bucket_names` import);三新测试纯追加。等价测试成立。
+- 三新测试构造真实性:
+  - **档感知测试**:`write_logic(gs.lv999_cost_tier, 4)` 后 `drawable_names(4)` 含银狼 / `(3)` 不含;未写档 gs 归约 3 费桶——与 §2.4 逐条对应;
+  - **双出口分野测试**:1 费卡 3★ 构造 held=9(断言 `held_copies == 9`)、断言 `remaining_pool == POOL_COPIES_PER_CARD[1] - 9`(27−9=18>0,共享条件在场)→ 商店出口清空、授予出口在册——正是设计点名的 held=9/剩余=18 形态,分野纯由 ≥9 过滤产生;
+  - **守恒跨档测试**:2★(held=3)→ 写档 4 → 1★(held=1),断言剩余 = 9−1 不炸、旧档账面无负、双出口档=4 在册——与 §2.4 对应。
 
 ### 6. 爆炸半径 — 通过
 
@@ -57,7 +57,7 @@
 ### 7. worker 两点边界申报复核 — 通过
 
 - 披露键常量形态:两键以 `GRANT_BUCKET_*_V0` 模块常量承载、字符串值与设计点名一致,带注释——最小且正当;
-- `test_cw_sim_equips.py` 头注同步:锁面行从「U26 银狼升费口径」改为「银狼策划触发判据……当前档 = 容器推演状态,读口 = `kernel.cw_economy.effective_cost`」,与符号退役事实一致、最小改面。✅
+- `test_cw_sim_equips.py` 头注同步:测试面行从「U26 银狼升费口径」改为「银狼策划触发判据……当前档 = 容器推演状态,读口 = `kernel.cw_economy.effective_cost`」,与符号退役事实一致、最小改面。✅
 
 ## 发现清单
 
@@ -72,4 +72,4 @@
 
 ## 总结论
 
-**通过**。七项审查清单全部核验通过;唯二发现均为 minor 观察项(其一系契约措辞自我互斥所致的正确取舍,其二为本批范围外的既有欠账),无打回项。逐字迁移等价、双出口语义与披露、M21 退役、测试等价锁、爆炸半径、边界申报全部与定稿设计一致。
+**通过**。七项审查清单全部核验通过;唯二发现均为 minor 观察项(其一系契约措辞自我互斥所致的正确取舍,其二为本批范围外的既有欠账),无打回项。逐字迁移等价、双出口语义与披露、M21 退役、测试等价、爆炸半径、边界申报全部与定稿设计一致。

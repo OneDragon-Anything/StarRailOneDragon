@@ -1,6 +1,6 @@
 # 设计对抗报告
 
-> 审查对象 = 本目录 design.md / landing.md / README.md(草案态)。审查基线:docs/develop/harness/iteration-design.md 全文(§5 写作硬规则四条 / §7 三核)、项目 AGENTS.md(§8/§9/§10)。判据源全部直调复核:三份设计文档、op-layer.md(§1.1/§2.1/§2.2/§3)、plane_intel.md、prep.md、fields.md(§6.4/附录表)、docs/game/screens/货币战争-位面详情.md、代码锚逐个打开(cw_screen_plane_intel.py / cw_screen_prep.py / cw_entry_plane_intel.py / kernel 三屏文件 / cw_game_state.py / cw_projection_audit.py / cw_briefing_obs.py / cw_comps.py / telemetry/schema.py / briefing·encounter·megastar 屏文件)、sr-od-test 契约与形态锁测试、fixture 目录 glob + **read_image 亲验**。零转述。
+> 审查对象 = 本目录 design.md / landing.md / README.md(草案态)。审查基线:docs/develop/harness/iteration-design.md 全文(§5 写作硬规则四条 / §7 三核)、项目 AGENTS.md(§8/§9/§10)。判据源全部直调复核:三份设计文档、op-layer.md(§1.1/§2.1/§2.2/§3)、plane_intel.md、prep.md、fields.md(§6.4/附录表)、docs/game/screens/货币战争-位面详情.md、代码锚逐个打开(cw_screen_plane_intel.py / cw_screen_prep.py / cw_entry_plane_intel.py / kernel 三屏文件 / cw_game_state.py / cw_projection_audit.py / cw_briefing_obs.py / cw_comps.py / telemetry/schema.py / briefing·encounter·megastar 屏文件)、sr-od-test 契约与形态测试、fixture 目录 glob + **read_image 亲验**。零转述。
 
 ## 发现清单
 
@@ -35,9 +35,9 @@
 
 - 核:核一·无前提(判据可达成性)
 - 位置:design.md §2.4;landing.md §3.4 文件面/判据
-- 问题:①kernel/cw_projection_audit.py:146-151 有 `takeover_collect_done`/`takeover_tries` 两行申报,且该表自带字段退役完备性锁——`audit_stale_keys`(:347-349,「本表中已不存在的字段键(字段退役后残留)」)在字段删除后必报孤儿键;3.4 文件面(cw_screen_prep.py、kernel/cw_screen_report/prep.py、kernel/cw_game_state.py、kernel/cw_comps.py、telemetry/schema.py + 测试)**不含 cw_projection_audit.py** → 「全库零残留」判据在本阶段文件面内不可达成(worker 越面改或停手申报,两者都是本可一行修掉的流程损耗)。②两字段宿主 = match_facts 域(cw_game_state.py:2169-2171,域版本 2),删域内字段 = 域内容变更,按仓内既定约定需 bump `DEFAULT_GS_SCHEMA['match_facts']`(先例 = 载体解散迭代 3.5「接管/恢复三字段迁入 = 域内容变更」即 bump 至 2;test_cw_game_state_contract.py:180 钉死 `== 2` 断言)——bump 则该断言必翻新,不 bump 则行内嵌 gs_schema 快照与域内容失配;design/landing 均未提。
+- 问题:①kernel/cw_projection_audit.py:146-151 有 `takeover_collect_done`/`takeover_tries` 两行申报,且该表自带字段退役完备性测试——`audit_stale_keys`(:347-349,「本表中已不存在的字段键(字段退役后残留)」)在字段删除后必报孤儿键;3.4 文件面(cw_screen_prep.py、kernel/cw_screen_report/prep.py、kernel/cw_game_state.py、kernel/cw_comps.py、telemetry/schema.py + 测试)**不含 cw_projection_audit.py** → 「全库零残留」判据在本阶段文件面内不可达成(worker 越面改或停手申报,两者都是本可一行修掉的流程损耗)。②两字段宿主 = match_facts 域(cw_game_state.py:2169-2171,域版本 2),删域内字段 = 域内容变更,按仓内既定约定需 bump `DEFAULT_GS_SCHEMA['match_facts']`(先例 = 载体解散迭代 3.5「接管/恢复三字段迁入 = 域内容变更」即 bump 至 2;test_cw_game_state_contract.py:180 钉死 `== 2` 断言)——bump 则该断言必翻新,不 bump 则行内嵌 gs_schema 快照与域内容失配;design/landing 均未提。
 - 证据:cw_projection_audit.py:25(维护纪律)/:146-151/:347-349;cw_game_state.py:158/:164/:2169-2188;test_cw_game_state_contract.py:170-194。
-- 建议:§2.4 补两行(审计申报行随字段退役;match_facts bump + 合同断言翻新);landing 3.4 文件面补 kernel/cw_projection_audit.py,判据补域版本与完备性锁绿。
+- 建议:§2.4 补两行(审计申报行随字段退役;match_facts bump + 合同断言翻新);landing 3.4 文件面补 kernel/cw_projection_audit.py,判据补域版本与完备性测试绿。
 - 已消解:§2.4 补 bump(2→3)+ 合同断言翻新 + audit 两行申报;landing 3.2④ 收录(文件面含 cw_projection_audit.py,判据含域版本断言与 audit_stale_keys 绿)。
 
 ### A5 prep 侧新触发判定与委派失败语义未定稿(定稿试读不过)

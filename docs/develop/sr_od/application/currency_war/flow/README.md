@@ -101,14 +101,14 @@
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族;快照三件组与升星连锁写内聚于买牌上报),终结动作截停、CloseShop 收尾不入序列。回放/既有序列锁消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族;快照三件组与升星连锁写内聚于买牌上报),终结动作截停、CloseShop 收尾不入序列。回放/既有序列测试消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**(方向节拍 = 每游戏轮只做一次的贵段):方向重估开销大,用两个标记槽记录最近一次备战/商店观察是新是旧（`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none）:决策入口据此每游戏轮只做一次贵段,其余帧只刷新便宜的派生视图;标记读完即清,只有观察装配点和决策环能写（驱动器不写帧类槽）。批 3.7(迭代 2026-10-12-prep-shop-workflow-redesign)后贵段 = **P1 过渡配方链驱动**(`update_p1_recipe`,位面辖域 = `plane2_started_of` 窗口谓词)——终局线选择(候选-锁定制)在 session_scope 前置段(`refresh_line_if_needed`,两入口先于本段执行),不占本节拍;派生视图 = `opening_recipe_comp` 物化(配方对伪 comp;锁定线槽 `target_comp` 的终态单写者 = `session_scope.write_line_lock`,本段零写)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(停用批)**:结算策略半惰性加工(掉血三个分支/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记分支前置零写端/三分支零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
 
 注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一的每局新建入口/局终收尾);旧 `on_round_end` 拆两半——观察半 = battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点 → `performance.record`;同点过 hp 置信门更新 `SettlementState.last_outcome_hp`),策略半(`session.pending_round_outcomes` 待加工槽惰性 drain)已随消费侧停用**整删——槽与写半均不存在**。旧 `decide_prep_action` 薄委托已删(git 历史可溯)。
 
-**序列语义(历史注——旧批量序列时代的冻结条款,从旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段反推)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列锁与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察)停用,现行控制流 = 终结动作 + 机械执行零判效（零判效 = 执行代码只点击、不判断动作是否生效,真值归下一帧观察）】:
+**序列语义(历史注——旧批量序列时代的冻结条款,从旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段反推)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列测试与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察)停用,现行控制流 = 终结动作 + 机械执行零判效（零判效 = 执行代码只点击、不判断动作是否生效,真值归下一帧观察）】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发出时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已停用,截断点语义由终结动作吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结动作。
 - **fail-stop**(已停用):原「任一动作未落地 → 恢复原语(关已知弹层)→ 返回主循环 heavy 重观察重调接口」随零验证批删除;现行 = 动作机械发出零判效,落地判定归观察侧对账(../screens/op-layer.md §1)。参数非法拒绝仍为执行前契约检查。
 - **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 自上报(`report_action_<snake>_param`,每动作一个具名接口)直写容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目停用(git 历史可溯)。
@@ -172,7 +172,7 @@ CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3；`operation_n
 
 ### 5.2 弹窗守卫族（注册表 `ENTRY_POPUP_GUARDS` + 统一入口 `try_handle_entry_popups`，`cw_entry_start.py`）
 
-四挂点各一行调用 `try_handle_entry_popups(op, screen)`；识别→动作→具名 retry 的参数住在注册表数据行（`EntryPopupGuardSpec`），元组顺序 = 挂点执行序（supply 在 detail 族前，领取优先；序位机械防线 = 测试仓守卫序位锁，元组重排即红）：
+四挂点各一行调用 `try_handle_entry_popups(op, screen)`；识别→动作→具名 retry 的参数住在注册表数据行（`EntryPopupGuardSpec`），元组顺序 = 挂点执行序（supply 在 detail 族前，领取优先；序位机械防线 = 测试仓守卫序位测试，元组重排即红）：
 
 | 注册表项 | 识别（同帧命中全部 id_mark） | 动作 | 返回 |
 |---|---|---|---|
@@ -183,4 +183,4 @@ CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3；`operation_n
 - `try_handle_train_supply_popup` 薄包装仅保留给 CW 之外的真实消费方 `back_to_normal_world_plus`（只管 supply 语义不变）；jade/badge 无 CW 外消费方不设包装。
 - **挂点序位**：守卫列位于各节点一切既有分支之前（模态弹窗盖场时背景 id_mark 全部不可命中，守卫不接则兜底空烧节点预算）；`advance_to_prep` 内先于一切状态分支，且守卫轮不烧 `_advance_steps` 推进预算。
 - **返回语义**：守卫一律 `round_retry`（计入 `node_max_retry_times`），禁 `round_wait`（框架对 WAIT 不计 retry 且归零计数 → 无界空转）；守卫×领取交替循环每圈耗 2 次预算，任一节点预算内具名 FAIL。
-- **对局屏白名单口径**：`cw_screen_state.LOBBY_STATE_SCREENS` 显式排除入口链可达的非对局屏（大厅/攻略系/列车补给弹窗/星琼详情/星徽详情/积分奖励等）；带 `货币战争-` 前缀的新建档屏默认进对局屏集，入口链可达的弹窗/奖励页漏排除 = 误判「已在对局中」跳过 enter（锁测试钉死）。
+- **对局屏白名单口径**：`cw_screen_state.LOBBY_STATE_SCREENS` 显式排除入口链可达的非对局屏（大厅/攻略系/列车补给弹窗/星琼详情/星徽详情/积分奖励等）；带 `货币战争-` 前缀的新建档屏默认进对局屏集，入口链可达的弹窗/奖励页漏排除 = 误判「已在对局中」跳过 enter(由测试钉死)。

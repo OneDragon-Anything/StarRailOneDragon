@@ -99,7 +99,7 @@ if TYPE_CHECKING:
 # **派生**自 ``cw_plugins.W16_MAJORITY_LINES``
 # (≥3 线过半 8 张 + 恰 2 家族过半且非线级 carry 的边界 2 张);
 # 派生规则与 ``cw_plugins`` 内同源裁决口径见 ``cw_plugins.cross_line_skeleton``。
-# 快照测试锁派生结果(不等 = 数据错)。
+# 快照测试校验派生结果(不等 = 数据错)。
 CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
 
@@ -128,7 +128,7 @@ class IntentionState:
       (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
       (与 ``cw_battle_calib._engines_count`` 同口径)。
     - 遥测:``serialize_intention`` 字段全量序列化自动
-      携带(不隐式——单帧锁测试断言 p1_pair 落 decisions 行)。
+      携带(不隐式——单帧测试断言 p1_pair 落 decisions 行)。
     - **后续「通道约束批」(迁移期补充判读:决策通道两面孔按锁定目标约束/
       末轮禁用)以本字段为约束基准**——opportunistic/bond_fallback 通道
       的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp。
@@ -178,7 +178,7 @@ class IntentionState:
       跨局随 IntentionState 新建自然清零。
     - **只承归因不作行为**:任何判定/发射逻辑禁消费本字段(行为交付面
       = P65 直证批另行立项,届时按设计稿改 ``p1_pair`` 退场语义,不改
-      本快照);grep 守卫锁钉住唯一写入端与本函数族唯一读端。"""
+      本快照);grep 守卫钉住唯一写入端与本函数族唯一读端。"""
 
     p1_pair_frozen: bool = False
     """命题 1b 冻结闩 F:True=方向
@@ -1175,7 +1175,7 @@ def line_completion_feasibility(gs: GameState,
 # 四分键禁合并为单一「终局阵容锁定失败」键(设计稿 §6 断点定位粒度确认);全部
 # 只承归因不作目标值——42 跳对照警示:有锁对照批 hp 中位反而 0.0,锁定率
 # 与结局无单调关系,禁入验收通过线禁作优化目标。零行为守卫:观测位只
-# 计数,不改任何判定/发出结果(守卫锁 = sr-od-test test_cw_lock_path_obs_keys)。
+# 计数,不改任何判定/发出结果(守卫测试 = sr-od-test test_cw_lock_path_obs_keys)。
 
 #: 观测分键前缀全集(strategy_state_of(session).cw4_counters;与既有键族零交集,设计稿 §4 条款③)。
 LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
@@ -1421,7 +1421,7 @@ def hub_option_names(gs: GameState, ist: IntentionState) -> tuple[str, ...]:
 
     输入面 = (COMP_LIBRARY, ist.evicted, plane_of(gs), weak_planes,
     CORE_SINGLE_CARD_REGISTRY)——G/``_core_reachable`` 禁入(定理 B2
-    解耦独立性的实现守卫,静态锁 = test_no_target_three_arms.py 锁 2)。
+    解耦独立性的实现守卫,静态测试 = test_no_target_three_arms.py 测试 2)。
     返回序 = 注册表声明序(逐套 core∪shared 首现序;同帧仲裁第三层的
     确定性序,证明批 §4.4)。
     """
@@ -1634,7 +1634,7 @@ def committed_authority(state: GameState | None,
       保留项)。
     - **缺供给帧 = 保守侧 False**(=双轨=攒息):策略状态/ist 不可得或
       字段缺失时**禁止**缺省 True——True=已定型=激进侧,攒息门/双轨
-      买门全开(供给点清单 D2:拔掉供给探针下必须落保守侧,变异锁钉住)。
+      买门全开(供给点清单 D2:拔掉供给探针下必须落保守侧,变异测试钉住)。
     - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
       .committed_from``(唯一读端,内部委托本函数)取值。
     - **state 形态 = 容器单例**(波3 切换;禁新消费点再喂旧帧或手造
@@ -1657,9 +1657,9 @@ def committed_from(session: StrategySession,
     - 无现读 state 的调用面:plane 取 session 容器单例(game_state_of),
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
-    grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
-    变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧
-    (穿透锁=test_cw_session_separation 的 committed_authority 直锁
+    grep 守卫「session 侧双轨字段直读点归零(本函数之外)」;
+    变异测试:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧
+    (穿透测试=test_cw_session_separation 的 committed_authority 直接校验
     + test_intention 交叉核对帧)。
     decision_v2.prep_brain 本名保留 import 重定向,消费方调用零改。
     """
@@ -1905,7 +1905,7 @@ def alloc_reason_consistency(session, target_faction: str = '',
       ——弱意向期的跨线骨架/弱占位本身在语义集内,不覆盖;
     - 阵容来源目标的主档键或目标 faction 与锁定体系集有交集 → '';
     - 否则返回脱节报警标签 ``'off_lock:<目标>'``(消费方 =
-      execute_replacement 构造事务时的观察日志 + sim 检查网/测试锁)。
+      execute_replacement 构造事务时的观察日志 + sim 检查网/测试)。
     """
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     scope = locked_faction_scope(ist if isinstance(ist, IntentionState)

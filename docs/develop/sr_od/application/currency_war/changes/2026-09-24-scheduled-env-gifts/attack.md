@@ -16,7 +16,7 @@
   - `data/cw_equipment_data.py` 特权装备 36 件中 5 件基名 6 字,加「·特权」后全名 **9 字**:`:156` 战场进化手册·特权、`:158` 反卫星狙击枪·特权、`:160` 自适应外骨骼·特权、`:169` 痛觉阻断芯片·特权、`:175` 虫洞掘进钻头·特权(`len('自适应外骨骼·特权') == 9 > 8`)。
   - design.md:143-151——§2.7 断言「OCR 全名(『反重力皮靴·特权』形)精确命中」并给出「零改动认定」;所举示例恰为 8 字(能过闸),未查 9 字反例。风险登记(:149-151)称「现有读数闸……保证不选错卡,最坏 = 重读不收敛响亮暴露」——9 字名的真实失败形态是**静默缩集**:该候选从 `names`/坐标对中消失,四选一变三选一,策略在残缺候选集上照常选卡并成功落地,既不重读也不响亮。
   - landing.md:68-69——3.3 范围显式「**不含**:选卡 op 改动(零改动认定)」→ 若认定推翻,该修订**无阶段归属**。
-- **修订建议**:§2.7 改为非零改动——`_read_card_names` 字长上限放宽(上限对齐注册表最长名,或卡名行读数不设上界、交归一门判失败),补一条 9 字特权名用例锁「长名候选可达决策面」;landing 3.3(或 3.1)范围/文件面纳入 `cw_screen_box_pick.py` 与对应测试;§2.7 风险登记措辞同步改写。
+- **修订建议**:§2.7 改为非零改动——`_read_card_names` 字长上限放宽(上限对齐注册表最长名,或卡名行读数不设上界、交归一门判失败),补一条 9 字特权名用例断言「长名候选可达决策面」;landing 3.3(或 3.1)范围/文件面纳入 `cw_screen_box_pick.py` 与对应测试;§2.7 风险登记措辞同步改写。
 
 ### 发现 2 [核一] [建议] §1.1 例证失实:增发货币不堵在 GiftGrant 缺口;红钻/蓝钻闪耀属本迭代显式不解决的形态
 
@@ -29,7 +29,7 @@
 ### 发现 3 [核一] [建议] design §2 未申报 PROJECTION_AUDIT 强制伴随改动与人读镜像义务;正本更新清单漏镜像
 
 - **证据**:
-  - `kernel/cw_projection_audit.py:25-28`——模块维护纪律:「新增 GameState 容器字段必须在 PROJECTION_AUDIT 登记行(登记缺失 = 完备性锁红)」「人读镜像 = 迭代目录 projection-audit.md,改表须同步改镜像」;:58-60 双向对齐锁(全部 Field 域 ⊆ 本表且反向)。
+  - `kernel/cw_projection_audit.py:25-28`——模块维护纪律:「新增 GameState 容器字段必须在 PROJECTION_AUDIT 登记行(登记缺失 = 完备性测试红）」「人读镜像 = 迭代目录 projection-audit.md,改表须同步改镜像」;:58-60 双向对齐测试(全部 Field 域 ⊆ 本表且反向)。
   - landing.md:16——3.1 范围含「cw_projection_audit `pending_item_grants` 行」(实现面已覆盖),但 design.md §2.1–2.3 通篇未提该申报;按 §2.2 新字段「唯一逻辑写端 + 无观察读端」的申报,其 status/basis 取值(应落 process_only)属「设计应答而未答」的语义选择。
   - landing.md:97-113 正本更新清单——六行均无 `projection-audit.md` 镜像(现存镜像 = `.debug/progress/2026-09-16-strategy-terminal-contract/projection-audit.md`);3.1 改表后镜像必失同步。
 - **修订建议**:design §2.2 补一句「新增容器字段按 cw_projection_audit 维护纪律登记 process_only 行(basis = 获得链逻辑写端、无观察读端)并同步人读镜像」;正本更新清单补镜像行。
@@ -76,7 +76,7 @@
 
 ### 逐条核验
 
-1. **发现 1(阻断)→ 已落地**。design.md:29-32(§1 症状 3 补暗闸事实:8 字上限先于归一化、9 字名静默丢弃)、:42(解决到哪第四条:读数闸上限放宽至注册表最长名)、:155-173(§2.7 整节重写:闸现值与失败形态如实转述首轮证据;5 件 9 字名及行号 cw_equipment_data.py:156/158/160/169/175 实档核对一致;修法 `_CARD_NAME_LEN_MAX = max(len(n) for n in _EQUIP_ROSTER_LIST)`——`_EQUIP_ROSTER_LIST` 实存 cw_screen_box_pick.py:80,派生式成立、新长名自动跟上)。landing.md:67-96(3.3 改题「弹窗锚泛化 + 选卡读数闸放宽」;范围②纳入 cw_screen_box_pick.py;文件面纳入 cw_screen_box_pick.py 与 test_cw_screen_progression_inline.py(文件实存);判据新增 9 字名(「战场进化手册·特权」)经闸存活用例 + `_CARD_NAME_LEN_MAX` 与注册表最长名一致性锁)。**真实落地**。残留一处引用笔误,见 R1。
+1. **发现 1(阻断)→ 已落地**。design.md:29-32(§1 症状 3 补暗闸事实:8 字上限先于归一化、9 字名静默丢弃)、:42(解决到哪第四条:读数闸上限放宽至注册表最长名)、:155-173(§2.7 整节重写:闸现值与失败形态如实转述首轮证据;5 件 9 字名及行号 cw_equipment_data.py:156/158/160/169/175 实档核对一致;修法 `_CARD_NAME_LEN_MAX = max(len(n) for n in _EQUIP_ROSTER_LIST)`——`_EQUIP_ROSTER_LIST` 实存 cw_screen_box_pick.py:80,派生式成立、新长名自动跟上)。landing.md:67-96(3.3 改题「弹窗锚泛化 + 选卡读数闸放宽」;范围②纳入 cw_screen_box_pick.py;文件面纳入 cw_screen_box_pick.py 与 test_cw_screen_progression_inline.py(文件实存);判据新增 9 字名(「战场进化手册·特权」)经闸存活用例 + `_CARD_NAME_LEN_MAX` 与注册表最长名一致性测试）。**真实落地**。残留一处引用笔误,见 R1。
 2. **发现 2(建议)→ 已落地**。design.md:17-21 勘误界定:增发货币已走 `ENV_ECONOMY['增发货币'].gold_per_plane_start=(6,8,12)`(cw_investments.py:1161 实核一致)不在本缺口;策略侧定时族(军备供应链「接下来5个节点开始时」= cw_invest_data.py:311、红钻/蓝钻闪耀「3个节点后」= :192-193)为相对/重复形态归「明确不解决」,与 :46 第一条衔接自洽。
 3. **发现 3(建议)→ 已落地(带一处引用名笔误,见 R2)**。design.md:89-94 新增对账申报段(PROJECTION_AUDIT 行 + process_only 推论「无观察读端」成立 + 镜像路径 `.debug/progress/2026-09-16-strategy-terminal-contract/projection-audit.md` 实存);landing.md:16-18(3.1 范围补对账行与镜像同步)、:25(文件面补镜像文件)、:41-42(判据「PROJECTION_AUDIT 含 pending_item_grants 行(process_only)且人读镜像同步(行集与代码表一致)」——可验证)。
 4. **发现 4(建议)→ 已落地**。landing.md:100-102(末阶段范围:T-421 为 dag 账本任务(wait、非 checklist 行),范围收窄经该任务后续流转 why 携带,账本不新增行)、:124-127(清单只收 T-3 行收口;T-421 括注说明)。与 dag.jsonl:435(T-421,status=wait)相符。
@@ -88,9 +88,9 @@
 - **R1 [核一] [建议] §2.7 测试惯用法括注部分失实:`_ocr` 桩不在被引文件,且被引装配桩恰好绕开读数闸**
   - 证据:design.md:166-167 引「按 test_cw_screen_progression_inline.py 的 `_make_box_pick`/`_ocr` 桩惯用法」。实核:该文件有 `_make_box_pick`(:341)但**无任何 `_ocr` 桩**(全文 `_ocr` 仅命中 `round_by_ocr` 方法桩,非 cw_obs_core `_ocr`);且 `_make_box_pick` 默认 `monkeypatch.setattr(op, '_read_card_names', lambda s: cards)`(:355)——把本用例要测的读数闸整个桩掉,照搬测不出「9 字名经闸存活」。`_ocr` 桩惯用法实际住 test_cw_takeover_intel_pipeline.py:301(`monkeypatch.setattr(cw_obs_core, '_ocr', ...)`)。
   - 修订建议:该括注改为「`_make_box_pick` 装配 + 还原 `_read_card_names` 桩 + 沿 test_cw_takeover_intel_pipeline.py:301 的 `cw_obs_core._ocr` 桩喂 9 字名直调真读数闸」;landing 3.3 判据不用动。
-- **R2 [核一] [建议] §2.2 锁测试名笔误:reconcile 应为 reorder**
-  - 证据:design.md:91 引「锁 = test_cw_board_derived_and_reconcile.py」——全仓无此文件(glob + grep 双零命中);权威名 = **test_cw_board_derived_and_reorder.py**(其自述源 cw_projection_audit.py:22 + sr-od-test 实档,均 reorder)。
-  - 修订建议:一词改正;依据内容(登记缺失 = 完备性锁红)本身属实。
+- **R2 [核一] [建议] §2.2 测试名笔误:reconcile 应为 reorder**
+  - 证据:design.md:91 引「测试 = test_cw_board_derived_and_reconcile.py」——全仓无此文件(glob + grep 双零命中);权威名 = **test_cw_board_derived_and_reorder.py**(其自述源 cw_projection_audit.py:22 + sr-od-test 实档,均 reorder)。
+  - 修订建议:一词改正;依据内容(登记缺失 = 完备性测试红）本身属实。
 
 ### 全量同步复查
 

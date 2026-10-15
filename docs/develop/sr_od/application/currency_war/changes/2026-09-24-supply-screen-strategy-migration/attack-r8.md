@@ -1,6 +1,6 @@
 # 设计对抗报告 · 第 8 轮（attack-r8）
 
-> 审查日期 2026-09-24。无前提独立审查：攻击对象 = 本目录 design.md / landing.md / README.md（当前工作区状态，r7 修订后的文本）。判据源自取并全部直调复核，未采信任何前轮报告结论。规范源：docs/develop/harness/iteration-design.md（四硬规则/§7 三核/阶段七件/正本清单）、.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md（§1 零调参/§4 验证阶梯与可观测性声明/§5 单帧锁/§6 对抗纪律）、strategy-docs/00_framework.md（宪法五/六）、项目 AGENTS.md。行号锚按任务纪律以符号锚优先，±3 漂移且语义锚成立者不登记。
+> 审查日期 2026-09-24。无前提独立审查：攻击对象 = 本目录 design.md / landing.md / README.md（当前工作区状态，r7 修订后的文本）。判据源自取并全部直调复核，未采信任何前轮报告结论。规范源：docs/develop/harness/iteration-design.md（四硬规则/§7 三核/阶段七件/正本清单）、.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md（§1 零调参/§4 验证阶梯与可观测性声明/§5 单帧测试/§6 对抗纪律）、strategy-docs/00_framework.md（宪法五/六）、项目 AGENTS.md。行号锚按任务纪律以符号锚优先，±3 漂移且语义锚成立者不登记。
 
 ## 发现清单
 
@@ -45,7 +45,7 @@
 7. **死代码与退役面**：`supply_reroll_decision` :46-56 src+测试仓 grep 零消费、唯一 import 点 cw_events.py:552 只取 `encounter_tier_score`、cw_survey19_hooks 模块头 ：1-8；`sim/checks/ledger.py` 与 `check_equip_value` src+测试仓零命中；`cw_replay.py:10-12` `--diff` 退役、回放面只辖商店——三项删除/豁免申报成立。
 8. **文档面锚**：25 号稿 :3-4/:11/:18（辖 11 屏清点核对）、13 号稿 :20/:40（「组件/成品需求」与实码不符核实）、08 号稿 :19（E4 行结构与替锚文本核对）、16 号稿 :74、strategy-docs/README §2 分篇表、screens/supply.md :12/:33/:40/:63/:80/:88、docs/game/screens 两份 :19/:37/:39/:57/:32——全部存在且过期描述属实。
 9. **跨批协调**：env 批/29 批「明确不解决」登记补给迁移（两批 design 实文核实）；29 批 landing:32-33（decide_event 约 270 行删除、flow.py/cw_vocab.py 双批编辑面、13 号稿增补共用判据节、行号锚漂移重核义务、sim-redesign 批改指先例）与本批 §2.7 表述逐条对上；29 号稿编号占用（29 批 landing 3.3 规划件）；宪法五/六先例（env 批 design:5、00_framework §1 第 5/6 条）。
-10. **宪法/纪律符合性**：零调参（新判据零自由参数、+10 死、通用值表保留 = 16 号稿 §1.8 在册处置 + 本批仅消费申报）、未证即退役（带钻支配论证留 E4 批的边界申报）、验证阶梯（sim 可观测性声明 + 占位分布盲区申报 + 实机锚事前写定 + cw_replay 豁免依据）、验收线保全盘点（三入口申报 + 全 progress 抽查未见以补给选择为判据面的在册验收线）、单帧锁 9 项与 design §2.2-§2.5 逐条映射、landing 七件套/末阶段/正本清单、README 模板与链接存在性（attack.md…r7 在册）、硬规则 3（design/landing 无「第 N 轮/已改」叙事）、行为变化申报 ①-⑤ 与锚 ①-⑤ 篇内一致性互核、核三治本（根因归层成立；修复 = 迁移 + 模型重建非症状补丁；逐画面推进 = 宪法六裁定节奏非逐件修）。
+10. **宪法/纪律符合性**：零调参（新判据零自由参数、+10 死、通用值表保留 = 16 号稿 §1.8 在册处置 + 本批仅消费申报）、未证即退役（带钻支配论证留 E4 批的边界申报）、验证阶梯（sim 可观测性声明 + 占位分布盲区申报 + 实机锚事前写定 + cw_replay 豁免依据）、验收线保全盘点（三入口申报 + 全 progress 抽查未见以补给选择为判据面的在册验收线）、单帧测试 9 项与 design §2.2-§2.5 逐条映射、landing 七件套/末阶段/正本清单、README 模板与链接存在性（attack.md…r7 在册）、硬规则 3（design/landing 无「第 N 轮/已改」叙事）、行为变化申报 ①-⑤ 与锚 ①-⑤ 篇内一致性互核、核三治本（根因归层成立；修复 = 迁移 + 模型重建非症状补丁；逐画面推进 = 宪法六裁定节奏非逐件修）。
 
 ## 结论
 

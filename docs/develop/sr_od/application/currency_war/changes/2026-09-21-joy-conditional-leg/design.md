@@ -196,17 +196,17 @@
 
 - **通道语义(rand=True 恒 logic_rand)**:种子容器 + 欢愉契约在册 + 落地相上报 →
   授予落 bench source=logic_rand;`gs.prep_anchored = True` 直赋后同路径
-  **source 仍 = logic_rand**(rand 形参优先于闩,与既有臂 3 锁同语义)——授予校准
+  **source 仍 = logic_rand**(rand 形参优先于闩,与既有臂 3 测试同语义)——授予校准
   面断言 = 覆盖时落 `logic_rand_outcome` 行(零 observe_vs_logic_mismatch);
 - **在册判定**:active_env 空/其他环境 → 零授予;欢愉契约 → 恰一次授予;
 - **rng 注入**:同 seed 同单位;两候选均可达;
 - **触发计数封闭清单**:落地相入口 `{equip, upgrade, unknown}` 各断言 rider 恰一次
   授予;发射相断言零授予;`leg_type=''` 直调落地相断言 rider 仍触发(兜底形态);
-- **weaken 退役锁**:`classify_planner_leg('使后续节点【弱化】')` → `('unknown','')`
+- **weaken 退役测试**:`classify_planner_leg('使后续节点【弱化】')` → `('unknown','')`
   (不再 weaken);含弱化词已知装备名(破解芯片)仍 → equip(碰撞治理不回退);
   `decide_planner` 对无名弱化卡文零弱化档分;`report_action_pick_planner_param`
   终态兜底 reason = `unrouted_leg_zero_write`;
-- **时序锁**:授予走获得链固定时序(落位 → 回调 → 合成);
+- **时序测试**：授予走获得链固定时序(落位 → 回调 → 合成);
 - **rider 失败语义**:gain_character 注入异常(桩)→ 腿型分派照常执行 + 
   `joy_conditional_grant_failed` 缺陷行;
 - **撤闩**:`on_env_gained` 欢愉契约仅 immediate 腿(零翻面/零标记行);
@@ -214,7 +214,7 @@
   等价形式:对欢愉契约落地调用断言零 provisional 行);
 - **既有测试随迁**:joy 临时闩断言唯一面 = `test_cw_yinlang_phase32.py`
   (:456-475 留证行 + :23-24 文件头注释)改写(判定「测试过时」纪律,commit
-  message 注明);新增 rider 测试落 `test_cw_gain_chain.py`(链行为锁归并)或
+  message 注明);新增 rider 测试落 `test_cw_gain_chain.py`(链行为测试归并)或
   新文件,随批申报。
 
 ### 2.7 与相邻批的关系

@@ -573,7 +573,7 @@ class PrepActionExecutor:
 
     def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;替身缝保留)。终结动作:结束本次访问等待 = CwActionOpenBoxOp.
-        terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价锁已登记)。"""
+        terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价测试已登记)。"""
         return self._dispatch_action(action)
 
     def _open_tome(self, action: CwActionOpenTomeParam) -> tuple[str, bool]:

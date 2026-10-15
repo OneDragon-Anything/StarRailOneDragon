@@ -3,7 +3,7 @@
 ## 0. 元信息
 
 - 迭代目标:货币战争全画面规范符合性审查(2026-09-22-screen-review)·只设计不落码,待用户裁决
-- 状态:对抗收敛待用户裁决+新规范增补待裁决+坐标规范增补待裁决(对抗轨迹:r1 收敛;攻击者附 4 条低级文字修订建议[A-1..A-4:局外语境口径统一/清理站点补漏/守卫②非 int 失败形态/残余申报补录],定稿前文字级落实,见 reviews/T-15-attack-r1.md;增补节定点对抗(`respec-attack-C16.md`)未收敛 5 条低→按攻击结论修订 §3[F-5(T-15 半边)落本稿 §3.3 增补 §2.4 锁组计数连带「四锁→五锁」;F-1/F-2/F-3/F-4/F-5(T-14 半边)落 wish_trial/bookcard/box_pick];新规范增补 = §3,依据 = 重审报告 respec-T9-T15.md §2.7 + op-layer.md §1.1 :34/:36;坐标规范增补(:35/:48)= §4,依据 = 前置底册 coord-norm-addenda-plan.md §2.3 + op-layer.md §1.1 :35/§1.2 :48;坐标增补节定点对抗(`.debug/progress/2026-09-22-cw-screen-review/reviews/coord-attack-T15-16-17.md`)未收敛 6 条低(本稿 A-1/A-2)→按攻击结论修订 §4[A-1 上报宿主锚纠偏(zero_writes 容器零写占位)+ A-2 同判句族两注释站点入改文删除面 + §4.4③ grep 门补词目;§4 preamble :48 计数随正本现值 12→11 对账],状态维持待用户裁决)
+- 状态:对抗收敛待用户裁决+新规范增补待裁决+坐标规范增补待裁决(对抗轨迹:r1 收敛;攻击者附 4 条低级文字修订建议[A-1..A-4:局外语境口径统一/清理站点补漏/守卫②非 int 失败形态/残余申报补录],定稿前文字级落实,见 reviews/T-15-attack-r1.md;增补节定点对抗(`respec-attack-C16.md`)未收敛 5 条低→按攻击结论修订 §3[F-5(T-15 半边)落本稿 §3.3 增补 §2.4 测试组计数连带「四测试→五测试」;F-1/F-2/F-3/F-4/F-5(T-14 半边)落 wish_trial/bookcard/box_pick];新规范增补 = §3,依据 = 重审报告 respec-T9-T15.md §2.7 + op-layer.md §1.1 :34/:36;坐标规范增补(:35/:48)= §4,依据 = 前置底册 coord-norm-addenda-plan.md §2.3 + op-layer.md §1.1 :35/§1.2 :48;坐标增补节定点对抗(`.debug/progress/2026-09-22-cw-screen-review/reviews/coord-attack-T15-16-17.md`)未收敛 6 条低(本稿 A-1/A-2)→按攻击结论修订 §4[A-1 上报宿主锚纠偏(zero_writes 容器零写占位)+ A-2 同判句族两注释站点入改文删除面 + §4.4③ grep 门补词目;§4 preamble :48 计数随正本现值 12→11 对账],状态维持待用户裁决)
 - 发现源:`.debug/progress/2026-09-22-cw-screen-review/reports/T-15-r1.md`(F-1/F-2;总判定 = 有问题,高1 低1)。涉事代码与代码内文档以审查时点工作树为真值;本文定位一律符号锚 / 文档节号(行号仅定位辅助)。代码路径根 = `src/sr_od/application/currency_war/`,文档路径根 = `docs/develop/sr_od/application/currency_war/`(下文反引号短路径均相对此两根)。
 - 修法性质:F-1 = 行为变更(本屏决策动作 node 决策出口守卫化,唯一变更面;零策略判据改动、零容器写语义改动、零上报形态改动、零建档改动);F-2 = 注释纪律清理,零行为变更。
 
@@ -12,8 +12,8 @@
 ### F-1 画面 op 决策出口:策略异常/None/非法类型被宽 except 吞掉转 kernel 兜底续跑 + 值域外负 idx 静默并入现金分支(高)
 
 - **现状症状**:`operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite.act`(match 在场臂决策段)四条路径——①策略器 `decide_expert_invite()` 抛出的任何异常(含策略侧按契约**故意抛出**的「离屏 None = 观察层失约」ValueError,`strategies/impl/flow.py::_require_slot_options`)被宽 `except Exception` 吸收,`log.warning` 后 kernel 直调 `choose_expert_index(card_bonds, board)` 兜底,照常派发,未走异常 fail 出口;②返回 `None`/词表外类型时 `.idx` AttributeError 落入同一 except → 同上兜底续跑,策略器 bug 以 warning 降级消化;③词表值域 = `0..3 ∨ -1`(`kernel/cw_vocab.py::CwActionPickExpertInviteParam` [索引定义]),决策返回 -2 等域外负值被 `area = CASH_AREA if idx < 0 else ...` **静默并入「卡-现金为王」派发** = 流程侧值域改写;④正值 idx 越界(≥4)→ `CARD_AREAS[idx]` IndexError 意外上抛(响亮但非在册守卫断言)。派发即点卡机械链(点卡即选,落地 = 一次选卡/到账消耗,重入裁决自愈仅覆盖「点击未落地」,不覆盖「决策错误」),兜底续跑 = 不可逆消耗建立在流程侧代行的决策上。
-- **根因归层(根源两问)**:根在**流程层**——handler 时代「决策失败安全兜底」在画面 op 化迁移中的残留,且本屏为 pick 族家族模式的**变体**(§2.2):兜底判据 = kernel `choose_expert_index` 本体(默认策略判据,非姊妹屏的盲选 idx0/钳位),兜底输入 = 实例局部 obs(`self._obs` 解出的 `card_bonds`/`board`)而非容器槽 = 决策输入的第二条旁路(策略器正路消费容器 `expert_invite` 槽,兜底旁路消费局部快照)。违例实质不变:「决策失败 → 流程侧自代决策并续跑」;三条正本反向禁止——`screens/op-layer.md` §1.1 出口③(「异常 fail(策略异常/执行异常,错误传播交外循环……**决策无有效输出也走此出口——零盲发**)」)、§1.3(「非法返回 = 策略器 bug 响亮暴露(**禁静默跳过或降级续跑**)」)、`flow/README.md` §1 决策控制分层铁律(「动作值域过滤必须在策略侧实现……流程侧禁止任何形式的决策闸门与政策判断」);`flow/README.md` §2.2 在册对照形态(备战入口)给定的策略异常处置 = 本轮 fail 交外循环 retry 链,非兜底续跑。act 内注释自述「可直调因防御路径豁免在案」「catch 降级同属防御面(fortune/equip 两姊妹 handler 同姿态)」不成立:8 篇正本无任何条款背书该豁免;`test_cw_unified_action_2c.py` 降级锁与 `screens/expert_invite.md` §4「决策链异常降级同直调」均为实现位/as-built 互认,画面文档非行为规范正本,申报与测试锁不构成合规(判例 = fortune.md §1 F-1、T-9 对装备屏「判据侧同款」辩护已裁不成立)。修法 = 删兜底、换守卫,修根非症状。
-- **解决到哪**:决策出口两守卫(返回 None/词表外 = 具名 round_fail 零盲发;idx 域外 = 守卫断言恒炸)+ 删宽 except 全体(策略异常自然传播 = 出口③)+ 值域消费点 `idx < 0` 改 `idx == -1`(域内现金语义单一表达);派发改直发策略产实例(删重建构造点);④径 IndexError 收编进注册守卫断言;`screens/expert_invite.md` as-built 申报守卫出口;`test_cw_unified_action_2c.py` 降级锁原位改写为守卫锁组;`screens/op-layer.md` §1.3 守卫清单登记(§2.1 文档面)。
+- **根因归层(根源两问)**:根在**流程层**——handler 时代「决策失败安全兜底」在画面 op 化迁移中的残留,且本屏为 pick 族家族模式的**变体**(§2.2):兜底判据 = kernel `choose_expert_index` 本体(默认策略判据,非姊妹屏的盲选 idx0/钳位),兜底输入 = 实例局部 obs(`self._obs` 解出的 `card_bonds`/`board`)而非容器槽 = 决策输入的第二条旁路(策略器正路消费容器 `expert_invite` 槽,兜底旁路消费局部快照)。违例实质不变:「决策失败 → 流程侧自代决策并续跑」;三条正本反向禁止——`screens/op-layer.md` §1.1 出口③(「异常 fail(策略异常/执行异常,错误传播交外循环……**决策无有效输出也走此出口——零盲发**)」)、§1.3(「非法返回 = 策略器 bug 响亮暴露(**禁静默跳过或降级续跑**)」)、`flow/README.md` §1 决策控制分层铁律(「动作值域过滤必须在策略侧实现……流程侧禁止任何形式的决策闸门与政策判断」);`flow/README.md` §2.2 在册对照形态(备战入口)给定的策略异常处置 = 本轮 fail 交外循环 retry 链,非兜底续跑。act 内注释自述「可直调因防御路径豁免在案」「catch 降级同属防御面(fortune/equip 两姊妹 handler 同姿态)」不成立:8 篇正本无任何条款背书该豁免;`test_cw_unified_action_2c.py` 降级测试与 `screens/expert_invite.md` §4「决策链异常降级同直调」均为实现位/as-built 互认,画面文档非行为规范正本,申报与测试不构成合规(判例 = fortune.md §1 F-1、T-9 对装备屏「判据侧同款」辩护已裁不成立)。修法 = 删兜底、换守卫,修根非症状。
+- **解决到哪**:决策出口两守卫(返回 None/词表外 = 具名 round_fail 零盲发;idx 域外 = 守卫断言恒炸)+ 删宽 except 全体(策略异常自然传播 = 出口③)+ 值域消费点 `idx < 0` 改 `idx == -1`(域内现金语义单一表达);派发改直发策略产实例(删重建构造点);④径 IndexError 收编进注册守卫断言;`screens/expert_invite.md` as-built 申报守卫出口;`test_cw_unified_action_2c.py` 降级测试原位改写为守卫测试组;`screens/op-layer.md` §1.3 守卫清单登记(§2.1 文档面)。
 - **明确不解决**:观察 node 板面读数失败 except(board 读数失败 = {} 走现金为王 = kernel 判据侧合法缺省 `choose_expert_index` board 空返 -1,`kernel/cw_events.py::choose_expert_index` docstring 在册;报告检查⑤一致面,非决策出口兜底);`_record_chosen_expert` 记录面 except(「记录面失败不阻塞收案」,报告检查②一致面);无 match 局外 kernel 直调 `else` 分支(族级候裁在册,报告 §3.8「T-12 同口径不单独立发现」,原样保留,§2.2);`_require_slot_options` 离屏抛错口径本体(修法 = 不再被吞,不改口径);kernel 判据与 13_pick_family.md E9 在案规格的行为分叉(在册挂账,报告 §3.8);重入裁决 / `round_wait` 循环无防御上限 / `node_max_retry_times=6` 现役值(报告 §3.1 一致面);chosen_expert 留守写点与 ConfirmExpertCash 到账登记(报告检查②/④一致面);报告 §4 无法核对面(实机时序归运行期)。
 
 ### F-2 画面 op 注释引用会话局部编号与已退役号制(低)
@@ -25,13 +25,13 @@
 
 ### 在册核对结论
 
-报告 §3 一致面(节点循环形态 / 重入裁决与动作事实边界 / 容器写三触点 / 观察上报与 sig 完备锁 / 动作 op 行 / 九节 as-built 主体 / 注释纪律除 F-2 外)核对通过,不立修法;在册欠账四件(无 match 局外分支候裁 / E9 行为分叉挂账 / logic-updates README 整体过时 / 零写占位上报形态)现状与在册一致,本稿不消费;本稿全部修法不回退任何一致面。
+报告 §3 一致面(节点循环形态 / 重入裁决与动作事实边界 / 容器写三触点 / 观察上报与 sig 完备测试 / 动作 op 行 / 九节 as-built 主体 / 注释纪律除 F-2 外)核对通过,不立修法;在册欠账四件(无 match 局外分支候裁 / E9 行为分叉挂账 / logic-updates README 整体过时 / 零写占位上报形态)现状与在册一致,本稿不消费;本稿全部修法不回退任何一致面。
 
 ## 2. 方案
 
 ### 2.0 系统级变化(读一遍知全貌)
 
-本稿落地后:①本屏决策出口零兜底零值域改写——match 臂 = 零参决策 → 守卫①(返回契约)→ 守卫②(值域 `0..3 ∨ -1`)→ 直发策略产实例的顺序链,策略异常自然传播,「决策链异常降级」「idx<0 并入现金」两通道全符号清零;②文件注释达 AGENTS §8 纪律(R10/批2c/0k 四站点清零);③守卫出口登记入 `screens/op-layer.md` §1.3 守卫清单(落地批正本更新阶段必做,§2.2 归口③);④`test_cw_unified_action_2c.py` 降级锁原位改写为守卫锁组。**零策略判据改动、零容器写语义改动、零上报形态改动、零建档改动**;唯一行为变化 = §2.1 申报的守卫化路径(含局外语境直跑行为变化,取舍 7)。
+本稿落地后:①本屏决策出口零兜底零值域改写——match 臂 = 零参决策 → 守卫①(返回契约)→ 守卫②(值域 `0..3 ∨ -1`)→ 直发策略产实例的顺序链,策略异常自然传播,「决策链异常降级」「idx<0 并入现金」两通道全符号清零;②文件注释达 AGENTS §8 纪律(R10/批2c/0k 四站点清零);③守卫出口登记入 `screens/op-layer.md` §1.3 守卫清单(落地批正本更新阶段必做,§2.2 归口③);④`test_cw_unified_action_2c.py` 降级测试原位改写为守卫测试组。**零策略判据改动、零容器写语义改动、零上报形态改动、零建档改动**;唯一行为变化 = §2.1 申报的守卫化路径(含局外语境直跑行为变化,取舍 7)。
 
 ### 2.1 F-1 本屏修法(核心)
 
@@ -95,18 +95,18 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 - **§4 动作面**:伪码块「idx = decide_expert_invite()(……决策链异常降级同直调)」行改写为「pick = decide_expert_invite()(零参;候选读容器 expert_invite 槽;判据本体 = kernel choose_expert_index;屏内无兜底)+ 守卫①(pick 非 `CwActionPickExpertInviteParam` → round_fail 含原值零盲发)+ 守卫②(pick.idx 域外 0..3 ∨ -1 → AssertionError)→ idx = pick.idx」;「area = 『卡-现金为王』(idx<0)∨『卡-1..4』」行改「(idx=-1)」;「→ 置选卡 pending → 派发」行改「→ 置选卡 pending → 直发策略产实例派发」。对照表 `CwActionPickExpertInviteOp` 行「发出方式」列补「派发实例 = 策略产 `CwActionPickExpertInviteParam`(两守卫后直发;无 match 局外臂 = idx 组装实例)」。
 - **§5 终结与交回表**补一行:`| 决策无有效输出(返回词表外/None)/ idx 域外 / 策略异常 | 守卫 fail(op FAIL) | round_fail(含原值)交回外循环 / 框架异常路径(留证截图 + node_max_retry_times=6 预算耗尽)fail;连续 fail 由外环 fail 重派网兜底(flow/README §4) |`。
 - **§8 守卫与防线**:首条「板面读数失败 → 现金为王兜底」补层级限定「(kernel 判据侧合法缺省 = `choose_expert_index` board 空返 -1,观察域语义,非流程侧决策兜底;决策出口处置见守卫两条)」;补两条:①决策返回契约守卫:decide_expert_invite 返回 None/词表外 = 具名 round_fail 零盲发、策略异常自然传播(原「决策链异常降级同直调」退役申报);②值域守卫:pick idx 域外 = 守卫断言 AssertionError,域 = 0..3 ∨ -1(原「idx<0 静默并入现金分支」退役申报)。其余三条(area 缺坐标 fail/落地裁决点写/无本屏停机钩子)不动。
-- **§9 遥测与锁面**:测试锁清单补「test_cw_unified_action_2c.py::test_expert_invite_decision_*(决策出口守卫锁组:返回契约/值域/异常传播/正路两态,§2.1 测试锁)」;journal op 名与 `[cw-bookcard]` tag 行不动。
+- **§9 遥测与测试面**:测试清单补「test_cw_unified_action_2c.py::test_expert_invite_decision_*(决策出口守卫测试组:返回契约/值域/异常传播/正路两态,§2.1 测试)」;journal op 名与 `[cw-bookcard]` tag 行不动。
 
 **正本登记**(`screens/op-layer.md` §1.3 守卫清单,落地批正本更新阶段):补本屏两条守卫出口条目(返回契约守卫 + 值域守卫)。登记 = 无条件默认动作非开放裁决——现役清单仅 `guard_proposal_vs_expected` 单例枚举,守卫落地不登记 = 正本缺员(先例 = equip_pick.md §2.2②、bookcard.md §2.2 归口④既裁);逐屏条目 vs 族级统一条目形态归 T-37 裁(§2.2)。
 
-**测试锁**(`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`,实现随功能写,锁设计约定 = sr-od-test/README「新功能锁设计约定」;装配复用现役降级锁 harness:obs 读链桩 + `area_center` 桩 + 注册表 `action_op_for` 派发捕获桩 + `fast_sleep`,本文件现役 act 驱动装配零新增):
+**测试**(`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`,实现随功能写,钉住设计约定 = sr-od-test/README「新功能钉住设计约定」;装配复用现役降级测试 harness:obs 读链桩 + `area_center` 桩 + 注册表 `action_op_for` 派发捕获桩 + `fast_sleep`,本文件现役 act 驱动装配零新增):
 
-1. **改写现役锁**(原 `test_expert_invite_decision_chain_error_falls_cash`,2c 文件「决策链异常降级」锁):该锁断言的恰是被查处的不合规形态(「异常被吸收,round 照常机械交回」「兜底应落现金为王」),按 sr-od-test/README「测试红了,先判断再改」判代码对、锁过时行为——原位改写为守卫锁组(非改期望值迁就让绿);锁名与 docstring 的「三姊妹 handler catch→fallback 姿态对齐」自述随批退役。同文件 `test_expert_invite_entry_select_only` docstring「选卡成功链的行为面由决策链降级锁承重」一句随锁组更名同步。
-2. **锁A(异常传播)**:策略桩 `decide_expert_invite` 抛 RuntimeError → `act` 异常传播(pytest.raises)、零派发、`_pick_pending` 保持 None。替代原「异常不出 op」断言。
-3. **锁B(返回契约)**:策略桩返 `None` 与词表外对象(如 `SimpleNamespace(idx=0)`)两子态 → `act` 返回 round_fail(消息含「决策无有效输出」与原值)、零派发零点击、`_pick_pending` None。
-4. **锁C(值域)**:真词表类 `CwActionPickExpertInviteParam(idx=-2)`(报告差距③原静默并入路径)与 `idx=4`(原 IndexError 意外出口)→ AssertionError 传播、零派发零点击;`idx=-1` 不炸(域内现金语义,归锁D)。
-5. **锁D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、target = 「卡-现金为王」area 中心、round WAIT;`idx=1` → `env.idx == 1`、target = 「卡-2」area 中心、`_pick_pending` 置位。
-6. **在册锁不回退核对**:观察上报接线锁(two_node_family `_OBS_ROWS['expert_invite']` 行)/ 入口门语义锁(two_node_family `_GATE_ROWS` expert 行)/ sig 完备锁(`test_cw_screen_report_ports.py` expert 行)/ flow 侧契约锁(`test_cw_overlay_judgement_migration.py` 离屏抛错与写槽两锁——真词表类与直抛 ValueError,不经画面 op 守卫,不受影响且离屏响亮面变强)/ chosen_expert 四路锁(`test_cw_game_state_consume.py`)/ 机械链锁(`test_cw_unified_action_4.py` expert pick 行,直构动作 op 不经 act)全部不受影响。
+1. **改写现役测试**(原 `test_expert_invite_decision_chain_error_falls_cash`,2c 文件「决策链异常降级」测试):该测试断言的恰是被查处的不合规形态(「异常被吸收,round 照常机械交回」「兜底应落现金为王」),按 sr-od-test/README「测试红了,先判断再改」判代码对、测试过时行为——原位改写为守卫测试组(非改期望值迁就让绿);测试名与 docstring 的「三姊妹 handler catch→fallback 姿态对齐」自述随批退役。同文件 `test_expert_invite_entry_select_only` docstring「选卡成功链的行为面由决策链降级测试承重」一句随测试组更名同步。
+2. **测试A(异常传播)**:策略桩 `decide_expert_invite` 抛 RuntimeError → `act` 异常传播(pytest.raises)、零派发、`_pick_pending` 保持 None。替代原「异常不出 op」断言。
+3. **测试B(返回契约)**:策略桩返 `None` 与词表外对象(如 `SimpleNamespace(idx=0)`)两子态 → `act` 返回 round_fail(消息含「决策无有效输出」与原值)、零派发零点击、`_pick_pending` None。
+4. **测试C(值域)**:真词表类 `CwActionPickExpertInviteParam(idx=-2)`(报告差距③原静默并入路径)与 `idx=4`(原 IndexError 意外出口)→ AssertionError 传播、零派发零点击;`idx=-1` 不炸(域内现金语义,归测试D)。
+5. **测试D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、target = 「卡-现金为王」area 中心、round WAIT;`idx=1` → `env.idx == 1`、target = 「卡-2」area 中心、`_pick_pending` 置位。
+6. **在册测试不回退核对**:观察上报接线测试(two_node_family `_OBS_ROWS['expert_invite']` 行)/ 入口门语义测试(two_node_family `_GATE_ROWS` expert 行)/ sig 完备测试(`test_cw_screen_report_ports.py` expert 行)/ flow 侧契约测试(`test_cw_overlay_judgement_migration.py` 离屏抛错与写槽两测试——真词表类与直抛 ValueError,不经画面 op 守卫,不受影响且离屏响亮面变强)/ chosen_expert 四路测试(`test_cw_game_state_consume.py`)/ 机械链测试(`test_cw_unified_action_4.py` expert pick 行,直构动作 op 不经 act)全部不受影响。
 
 **关键取舍**:
 
@@ -122,8 +122,8 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 
 - **模式认定**:pick 族画面 op 决策出口兜底残留为家族性模式,本屏 = **第 9 例变体**(宽 except 吞异常)。已查成员 = 遭遇(T-4-r1.md F-1,encounter.md §2.1)、盛会之星(T-8-r1.md,megastar.md)、选择装备(T-9-r1.md,equip_pick.md)、选择伙伴(T-11-r1.md,partner.md)、命运卜者(T-12-r1.md,fortune.md)、祈愿试炼(T-13-r1.md,wish_trial.md)、星徽秘典书册卡(T-14-r1.md,bookcard.md,第 8 例);跨稿计数口径不一(bookcard.md §2.2 已在册申报),族级全集与计数归 T-37 对账,本稿不固化成员数。**变体两处**:①兜底判据 = kernel `choose_expert_index` 本体(默认策略判据,非盲选 idx0/静默钳位);②兜底输入 = 实例局部 obs 而非容器槽 = 决策输入第二条旁路。违例实质与家族同根:「决策失败 → 流程侧自代决策并续跑」正是出口③/§1.3 所禁,兜底判据再正统也不改变「禁降级续跑」条款文字(T-9 对装备屏「判据侧同款」辩护已裁不成立,报告 F-1 差距说明)。
 - **族级统一修法建议**(承 megastar.md §2.2 / equip_pick.md §2.2 / fortune.md §2.2 / bookcard.md §2.2 既裁方向,本稿为变体实例):①决策无有效输出(返回侧 None/词表外)= 具名 round_fail 零盲发交外循环,消息含策略器原值 repr;②值域非法 = 守卫断言 AssertionError 响亮暴露——**值域按各屏词表 [索引定义] 在册写**,本屏特形 = `0..3 ∨ -1`(特形不通用,禁家族模板硬套);③删全部宽 except/默认初值/钳位句/并入句,策略异常自然传播 = 出口③;守卫均在派发前、零点击(依据统一 = op-layer.md §1.1 出口③/§1.3、flow/README.md §1 铁律)。屏幕特形出口以正本在册申报为准(遭遇「空候选 = 零点击终结交回重读」;本屏「board 空 = 判据侧合法缺省」)——特形互不通用,无在册申报的屏一律走 fail 出口。跨件半问已过:家族各例同根(handler 时代决策失败安全兜底残留),根的载体是各屏 act 内残留代码而非更高层抽象缺位(画面 op 层不设共享基类/端口 = op-layer.md §1.1 在册),不升架构级设计件,以**族级形态统一**收敛、不建共享守卫函数(各守卫 2-4 行,各屏词表类/值域特形/日志 tag 不同,共享 helper 去重收益低于新跨屏依赖与消息语境损失;先例 = bookcard.md §2.2)。
-- **兄弟屏连带面(本稿辖内一处 + 挂账两处)**:①**本稿认领**——`test_cw_unified_action_2c.py` 降级锁 docstring 的「三姊妹 handler catch→fallback 姿态对齐」自述(fortune.md §2.2② 记「归 expert_invite 屏修法随批处理」),随 §2.1 改写一并退役;②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞 = pick 族共享面,本屏删兜底后 env.idx = 守卫后原值(含 -1),措辞对本屏同样失真——承 equip_pick.md §2.2① 挂账(单屏改必致共享注与未修屏临时不一致),归 T-37 族级批一次改净,本稿不单独触;③op-layer.md §1.3 守卫清单登记 = 无条件默认动作(equip_pick.md §2.2② 既裁),候裁面仅逐屏/族级条目形态。
-- **归口 = 汇总任务 T-37**:①裁决是否合并为一次族级实施批(统一守卫形态、共享测试锁模板、一次对抗)——本稿 §2.1 独立可实施;若裁族级合并,本稿即族级形态在专家邀请函的实例,以族级批统一口径为准、不另立第二套;②「无 match 局外分支」归属跨稿分歧对账(equip_pick.md 判「代码自申报豁免面保留」vs megastar/partner/bookcard 守卫①收编 vs fortune/本稿原样保留)——本屏立场 = 原样保留(报告 §3.8「T-12 同口径」),随族级批统一裁决,不单方定论。
+- **兄弟屏连带面(本稿辖内一处 + 挂账两处)**:①**本稿认领**——`test_cw_unified_action_2c.py` 降级测试 docstring 的「三姊妹 handler catch→fallback 姿态对齐」自述(fortune.md §2.2② 记「归 expert_invite 屏修法随批处理」),随 §2.1 改写一并退役;②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞 = pick 族共享面,本屏删兜底后 env.idx = 守卫后原值(含 -1),措辞对本屏同样失真——承 equip_pick.md §2.2① 挂账(单屏改必致共享注与未修屏临时不一致),归 T-37 族级批一次改净,本稿不单独触;③op-layer.md §1.3 守卫清单登记 = 无条件默认动作(equip_pick.md §2.2② 既裁),候裁面仅逐屏/族级条目形态。
+- **归口 = 汇总任务 T-37**:①裁决是否合并为一次族级实施批(统一守卫形态、共享测试模板、一次对抗)——本稿 §2.1 独立可实施;若裁族级合并,本稿即族级形态在专家邀请函的实例,以族级批统一口径为准、不另立第二套;②「无 match 局外分支」归属跨稿分歧对账(equip_pick.md 判「代码自申报豁免面保留」vs megastar/partner/bookcard 守卫①收编 vs fortune/本稿原样保留)——本屏立场 = 原样保留(报告 §3.8「T-12 同口径」),随族级批统一裁决,不单方定论。
 
 ### 2.3 F-2 修法(逐站点目标文本)
 
@@ -141,7 +141,7 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 ### 2.4 实施文件面全集(合并实施对账用)
 
 - **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_expert_invite.py`(删兜底/两守卫/值域消费点改写/直发/docstring 与注释同步)。
-- **测试(F-1)**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`(现役降级锁原位改写为守卫锁组四锁 + 入口门锁 docstring 一句同步)。
+- **测试(F-1)**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`(现役降级测试原位改写为守卫测试组四测试 + 入口门测试 docstring 一句同步)。
 - **正本文档(F-1 as-built)**:`screens/expert_invite.md`(§2/§4/§5/§8/§9);`screens/op-layer.md`(§1.3 守卫清单补本屏两守卫条目,落地批正本更新阶段)。
 - **注释(F-2,零行为变更)**:`operations/cw_screen/cw_screen_expert_invite.py` 模块/类/observe docstring 四站点(§2.3,与 F-1 同文件一并施工)。
 - **零触碰申报**:`strategies/impl/flow.py`(`decide_expert_invite` docstring 无兜底自述子句,实查免连带;行为分叉申报不动)、kernel 侧全零(`cw_events.py`/`cw_vocab.py`/`cw_game_state.py`)、词表/注册表/建档零触碰、`cw_overlay_pick_action.py`(共享注释挂 T-37)、`_overlay_confirm.py`(到账登记一致面)。
@@ -183,7 +183,7 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
    c. **§2.0①**句尾「两通道全符号清零」后补「;无 match else 臂 = 局外零决策零点击 round_success 终结交回(:36,§3-①)」。
 
 **依据**:重审报告 §2.7 Q2/增补 A;op-layer.md §1.1 :36;先例代码锚 = `cw_screen_encounter.py::CwScreenEncounter.act`(:156-165,实查在册)。
-**验收锚**:落地批后 ①无 match 臂返回 round_success、零派发零点击、kernel `choose_expert_index` 零调用(测试锁 §3-③);②本稿 §2.1/文档面无「kernel 直调局外支」现役指向残留。
+**验收锚**:落地批后 ①无 match 臂返回 round_success、零派发零点击、kernel `choose_expert_index` 零调用(测试 §3-③);②本稿 §2.1/文档面无「kernel 直调局外支」现役指向残留。
 
 ### 3.2 增补点②(:36)六处 stance 改写(取舍 3/7 + 归口② + 文档面 §2 + §1 F-1 明确不解决;第六处 = §3-① 的 else 臂注释)
 
@@ -202,16 +202,16 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 **依据**:重审报告 §2.7 增补 B/Q3;op-layer.md §1.1 :36。
 **验收锚**:本稿全文无「原样保留/豁免面在册/分支归属候裁」stance 残留(grep 三词组零命中);§2.2 归口③守卫清单登记义务句不受影响。
 
-### 3.3 增补点③(:36)测试锁补局外臂 + §2.4 锁组计数连带
+### 3.3 增补点③(:36)测试补局外臂 + §2.4 测试组计数连带
 
-**§2.1 测试锁清单**新增一条(插于锁 D 与「在册锁不回退核对」之间):
+**§2.1 测试清单**新增一条(插于测试 D 与「在册测试不回退核对」之间):
 
-> 6. **锁 E(局外臂,:36 增补)**:`cw_match = None`(观察链桩照常给 obs)→ `act` 返回 round_success(局外终结交回)、零派发零点击、`_pick_pending` 保持 None;补一断言 = kernel `choose_expert_index` 桩零调用(兜底判据支随 :36 退役的回归锁)。(原第 6 条「在册锁不回退核对」顺延为第 7 条。)
+> 6. **测试 E(局外臂,:36 增补)**:`cw_match = None`(观察链桩照常给 obs)→ `act` 返回 round_success(局外终结交回)、零派发零点击、`_pick_pending` 保持 None;补一断言 = kernel `choose_expert_index` 桩零调用(兜底判据支随 :36 退役的回归测试)。(原第 6 条「在册测试不回退核对」顺延为第 7 条。)
 
-**§2.4 测试行计数连带**(定点攻击 F-5/T-15 半边):「**测试(F-1)**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`(现役降级锁原位改写为守卫锁组四锁 + 入口门锁 docstring 一句同步)。」中「守卫锁组四锁」改「守卫锁组五锁(锁 A 异常传播/B 返回契约/C 值域/D 正路两态/E 局外臂,锁 E 见本节)」——锁 E 增补使四锁计数失真,§2.4 实施文件面全集为合并实施对账清单,计数随增补同步。
+**§2.4 测试行计数连带**(定点攻击 F-5/T-15 半边):「**测试(F-1)**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_2c.py`(现役降级测试原位改写为守卫测试组四测试 + 入口门测试 docstring 一句同步)。」中「守卫测试组四测试」改「守卫测试组五测试(测试 A 异常传播/B 返回契约/C 值域/D 正路两态/E 局外臂,测试 E 见本节)」——测试 E 增补使四测试计数失真,§2.4 实施文件面全集为合并实施对账清单,计数随增补同步。
 
-**依据**:重审报告 §2.7 增补 C;共享测试锁模板(无 match → round_success、零派发零点击)见 §3-⑤ 合流申报;harness 复用现役装配(obs 读链桩 + `area_center` 桩 + 注册表派发捕获桩 + `fast_sleep`),零新增;定点攻击 F-5(respec-attack-C16.md,file-face 锁计数连带)。
-**验收锚**:锁 E 独立可跑;断言面 = 出口语义(round_success)+ 零派发零点击 + pending 保持 None + 兜底判据零调用。
+**依据**:重审报告 §2.7 增补 C;共享测试模板(无 match → round_success、零派发零点击)见 §3-⑤ 合流申报;harness 复用现役装配(obs 读链桩 + `area_center` 桩 + 注册表派发捕获桩 + `fast_sleep`),零新增;定点攻击 F-5(respec-attack-C16.md,file-face 测试计数连带)。
+**验收锚**:测试 E 独立可跑;断言面 = 出口语义(round_success)+ 零派发零点击 + pending 保持 None + 兜底判据零调用。
 
 ### 3.4 增补点④(:34)失败语义 None/{} 照报欠账登记
 
@@ -227,12 +227,12 @@ return self.round_wait('邀请函选卡点击已发,重入观察裁决', wait=1)
 ### 3.5 T-37 登记行(原文)
 
 ```text
-T-15 专家邀请函:op-layer.md §1.1 两条款落地增补——:36 else 支 kernel 直调兜底退役改 round_success 终结交回(先例 = cw_screen_encounter.py::CwScreenEncounter.act :156-165),原「原样保留候裁」立场与「报告 §3.8 T-12 同口径」引据随 :36 销项;行为改写归 6 屏同形态族级实施批(T-9/T-11/T-12/T-13/T-14/T-15),与本稿 §2.2 归口①「族级合并实施批」裁决面合流,共享测试锁模板(无 match → round_success、零派发零点击),候裁面销项;:34 登记面 = 观察读数转换失败态 None/{} 照报欠账(转换点已在观察侧、动作上报仅 idx,失败语义不一致),收敛方向 = 转换失败 round_fail 零写零上报或屏契约登记转换成功性边界,本批零观察行为改动,落地批 screens/expert_invite.md §3/§8 登记。设计稿增补节 = changes/2026-09-22-screen-review/expert_invite.md §3(待用户裁决)。
+T-15 专家邀请函:op-layer.md §1.1 两条款落地增补——:36 else 支 kernel 直调兜底退役改 round_success 终结交回(先例 = cw_screen_encounter.py::CwScreenEncounter.act :156-165),原「原样保留候裁」立场与「报告 §3.8 T-12 同口径」引据随 :36 销项;行为改写归 6 屏同形态族级实施批(T-9/T-11/T-12/T-13/T-14/T-15),与本稿 §2.2 归口①「族级合并实施批」裁决面合流,共享测试模板(无 match → round_success、零派发零点击),候裁面销项;:34 登记面 = 观察读数转换失败态 None/{} 照报欠账(转换点已在观察侧、动作上报仅 idx,失败语义不一致),收敛方向 = 转换失败 round_fail 零写零上报或屏契约登记转换成功性边界,本批零观察行为改动,落地批 screens/expert_invite.md §3/§8 登记。设计稿增补节 = changes/2026-09-22-screen-review/expert_invite.md §3(待用户裁决)。
 ```
 
 ### 3.6 合流申报(:36 行为改写 × 既有族级合并裁决面)
 
-- 本增补点①的行为改写与 §2.2 归口①「是否合并为一次族级实施批」裁决面天然合流:重审报告 §2.8 认定 6 屏(T-9/T-11/T-12/T-13/T-14/T-15)的 :36 行为改写为同一形态(else 支/守卫臂 → 零决策零点击 round_success 终结交回),建议一次族级批实施 + 共享测试锁模板(无 match → round_success、零派发零点击);T-10 为零行为批,不在该批。
+- 本增补点①的行为改写与 §2.2 归口①「是否合并为一次族级实施批」裁决面天然合流:重审报告 §2.8 认定 6 屏(T-9/T-11/T-12/T-13/T-14/T-15)的 :36 行为改写为同一形态(else 支/守卫臂 → 零决策零点击 round_success 终结交回),建议一次族级批实施 + 共享测试模板(无 match → round_success、零派发零点击);T-10 为零行为批,不在该批。
 - 若 T-37 裁族级合并:本稿即族级形态在专家邀请函的实例,以族级批统一口径为准、不另立第二套(§2.2 归口①既判);若裁独立实施:本节随本稿单独落地,出口语义与改写文本不变(:36 已是正本裁定,不留候裁措辞——报告 §2.8 共性 1)。
 - §2.2 归口③ op-layer.md §1.3 守卫清单登记义务不受本次重审影响,维持(报告 §1 卷首注);共享面 `OverlayPickExecEnv.idx` 注释挂账不变(§2.2 兄弟屏连带面②)。
 
@@ -285,7 +285,7 @@ T-15 专家邀请函:op-layer.md §1.1 两条款落地增补——:36 else 支 k
 - §2.1 文档面 §4 伪码行:现文「「area = 『卡-现金为王』(idx<0)∨『卡-1..4』」行改「(idx=-1)」」→ 改文「「area = 『卡-现金为王』(idx<0)∨『卡-1..4』」行整体改「坐标 = 容器 `expert_invite.card_points[idx]` ∨ `cash_point`(idx=-1;动作 op 内取,缺席 = 守卫断言,本文 §4.3)」(原「(idx<0)→(idx=-1)」词内改写随 area 行消亡,不再单独成项)」。
 - 对照表 `CwActionPickExpertInviteOp` 行「发出方式」列(§3-① 6.a 落笔后形态)尾补一句:「;`OverlayPickExecEnv` = idx-only(零 target,坐标由动作 op 自容器取,本文 §4.3)」。
 
-**(4)测试锁 D(§2.1 测试锁第 5 条)目标文本改写**:现文「5. **锁D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、target = 「卡-现金为王」area 中心、round WAIT;`idx=1` → `env.idx == 1`、target = 「卡-2」area 中心、`_pick_pending` 置位。」→ 改文「5. **锁D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、派发后动作 op 消费容器 `cash_point`(坐标源断言 = 容器值,不再断言 env.target)、round WAIT;`idx=1` → `env.idx == 1`、动作 op 消费容器 `card_points[1]`、`_pick_pending` 置位。锁 D 装配的 `area_center` 桩相应迁观察链(观察上报桩给 obs 坐标,4.2;act 决策段零 area_center 可桩);§3.3 依据句 harness 列举(「obs 读链桩 + `area_center` 桩 + 注册表派发捕获桩 + `fast_sleep`」)中 `area_center` 桩同步迁观察链。」
+**(4)测试 D(§2.1 测试第 5 条)目标文本改写**:现文「5. **测试D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、target = 「卡-现金为王」area 中心、round WAIT;`idx=1` → `env.idx == 1`、target = 「卡-2」area 中心、`_pick_pending` 置位。」→ 改文「5. **测试D(正路两态)**:`CwActionPickExpertInviteParam(idx=-1)` → 恰一次派发、派发 param 即策略产实例、`env.idx == -1`、派发后动作 op 消费容器 `cash_point`(坐标源断言 = 容器值,不再断言 env.target)、round WAIT;`idx=1` → `env.idx == 1`、动作 op 消费容器 `card_points[1]`、`_pick_pending` 置位。测试 D 装配的 `area_center` 桩相应迁观察链(观察上报桩给 obs 坐标,4.2;act 决策段零 area_center 可桩);§3.3 依据句 harness 列举(「obs 读链桩 + `area_center` 桩 + 注册表派发捕获桩 + `fast_sleep`」)中 `area_center` 桩同步迁观察链。」
 
 **(5)§2.2 兄弟屏连带面②挂账扩双面(附 §3.6 尾句连带)**:现文「②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞 = pick 族共享面,本屏删兜底后 env.idx = 守卫后原值(含 -1),措辞对本屏同样失真——承 equip_pick.md §2.2① 挂账(单屏改必致共享注与未修屏临时不一致),归 T-37 族级批一次改净,本稿不单独触;」→ 改文「②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞 = pick 族共享面,本屏删兜底后 env.idx = 守卫后原值(含 -1),措辞对本屏同样失真;叠加 :35 增补(本文 §4)后挂账扩为双面——idx 注释现值化(「守卫后策略产值原值」)+ `target` 字段退役申报(注释补「退役中(:35 坐标单一真相源收敛,逐屏停喂)」,底册 §1.5)——归 T-37 族级批 + 收敛尾批一次改净,本稿不单独触;」;§3.6 尾句连带改写:现文「共享面 `OverlayPickExecEnv.idx` 注释挂账不变(§2.2 兄弟屏连带面②)。」→ 改文「共享面 `OverlayPickExecEnv.idx` 注释挂账不变(§2.2 兄弟屏连带面②;:35 增补后挂账扩为 idx+target 双面,本文 §4.1(5))。」
 
@@ -329,10 +329,10 @@ T-15 专家邀请函:op-layer.md §1.1 两条款落地增补——:36 else 支 k
 
 ### 4.4 验收锚(含过渡期铁律)
 
-1. **report 双写锁**:同调用同门写 `ExpertInvitePayload` 四字段(card_bonds/board/card_points/cash_point);转换失败双零写(名字与坐标同进退);等长断言(定长 4)触发即红。
-2. **动作 op 双源取点锁**:idx=-1 → 恰消费 `cash_point`、点击坐标 = 容器值;idx ∈ 0..3 → 消费 `card_points[idx]`;缺席(payload/cash_point None、card_points 长度≠4、idx 越界)→ AssertionError 且零点击。
+1. **report 双写测试**:同调用同门写 `ExpertInvitePayload` 四字段(card_bonds/board/card_points/cash_point);转换失败双零写(名字与坐标同进退);等长断言(定长 4)触发即红。
+2. **动作 op 双源取点测试**:idx=-1 → 恰消费 `cash_point`、点击坐标 = 容器值;idx ∈ 0..3 → 消费 `card_points[idx]`;缺席(payload/cash_point None、card_points 长度≠4、idx 越界)→ AssertionError 且零点击。
 3. **grep 零残留(本屏收敛批门)**:`cw_screen_expert_invite.py` 决策段无 `area_center`、无 `CASH_AREA if`、无 `Point(`;env 构造无 `target=`;动作 op 无 `env.target` 消费;同判句族文字申报零命中——「决策半现算|经 env 显式传入|双输入」于 `cw_screen_expert_invite.py` 全文件 grep 零命中(拦收敛批后注释/docstring 仍申报已退役坐标形态;验收词目对应 4.1(1) 补录两站点,对齐 T-16 §4.4③ 对称处置,coord-attack A-2;「双输入」取宽词目而非「双输入打包」——站点② 现文「payload 双输入\n打包」跨行断字,打包全词单行 grep 测不到;「双输入」现役恰命中 :32 一处,收敛批改文后归零)。
-4. **全绿门槛** = 锁 A-E(§3 增补节清单;锁 D 按 4.1(4) 改写)+ §2.1 测试锁第 6 条在册锁不回退清单 + 新双锁(1/2)。
+4. **全绿门槛** = 测试 A-E(§3 增补节清单;测试 D 按 4.1(4) 改写)+ §2.1 测试第 6 条在册测试不回退清单 + 新双测试(1/2)。
 5. **过渡期铁律**(底册 §1.7):批1(字段骨架)落地至本屏收敛批完成之间 = 合法过渡(现役坐标链未断);**任何新屏/新 op 不得再走「决策半现算经 env.target」**(禁新增第二坐标源,新写法直接按底册骨架);**半截状态禁止**——本屏收敛批必须「观察上报(坐标)+ act 删现算 + 动作 op 自容器取点」三件同一批做完,只加观察上报不删现算 = 双坐标源并存 = 违规(逐屏批硬验收判据)。
 
 ### 4.5 fields.md 增补条目指针(引用不重复设计)

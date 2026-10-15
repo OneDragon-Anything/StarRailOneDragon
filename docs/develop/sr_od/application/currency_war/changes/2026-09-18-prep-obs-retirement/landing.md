@@ -2,14 +2,14 @@
 
 ## 3.1 部署名单换源 + cap 门槛（事故修复）
 
-**范围**：决策帧组装层名单换容器源（entry.py:607-608）、wanted 臂实参换源（entry.py:574）、M7 的 deployed 读点换源（cw_equip_wear_plan.py:182）、cap 键单一源与 10^6 死分支退役（mandate.py `_deploy_plan_inputs`）、显式板满门（`deployed_count_of >= max_units_of`）与 `deploy_cap_full` 拒因落账（cw4_counters 计划级分键、帧级去重）、三锁测试与既有测试适配。**不含**：黑板字段删除（批 5 面）、晶矿路径腾席死码（不动）、停买/线状态判据式变更（只换输入源）。
+**范围**：决策帧组装层名单换容器源（entry.py:607-608）、wanted 臂实参换源（entry.py:574）、M7 的 deployed 读点换源（cw_equip_wear_plan.py:182）、cap 键单一源与 10^6 死分支退役（mandate.py `_deploy_plan_inputs`）、显式板满门（`deployed_count_of >= max_units_of`）与 `deploy_cap_full` 拒因落账（cw4_counters 计划级分键、帧级去重）、三个测试与既有测试适配。**不含**：黑板字段删除（批 5 面）、晶矿路径腾席死码（不动）、停买/线状态判据式变更（只换输入源）。
 **设计依据**：`details/cap-fix.md` 全文（总纲 §2 契约 1/2/3）。
 **文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`、`.../mandate_v1/mandate.py`、`kernel/cw_equip_wear_plan.py`（:182 读点）、`sr-od-test/test/sr_od/application/currency_war/`（部署相关测试文件）。
 **依赖**：无
 **优先级建议**：9
 **完成判据**：
 - 行为对照 `details/cap-fix.md` §方案-1~4：容器 3/3 满帧零拖拽发射、放行 False；未满帧照常部署；`deploy_cap_full` 落账帧级去重。
-- 测试三锁（cap-fix.md §测试-1~3）全绿；失读等价性论证核对（cap-fix.md §方案-6）。
+- 三个测试（cap-fix.md §测试-1~3）全绿；失读等价性论证核对（cap-fix.md §方案-6）。
 - 通用工程门：ruff 改面文件 + 直接受影响测试 + 相关测试全量（sr-od-test 基线 646 passed 不回退），依据项目 AGENTS.md §10。
 **验收凭据形式**：新增测试名 + 全量 pytest 输出数字对照。
 

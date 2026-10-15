@@ -42,7 +42,7 @@
 ### 门④ 实证 vs 三轮账本 —— **无数据(结构性休眠,不可判)**
 
 - 三轮 AB 账本(AB_cw3_n40_{s0,r2,r3} / AB_legacy_v2 同构,decisions.jsonl 合计 6 臂):`line_gate_blocked` 恒 false、`line_gate_cf_blocked` 恒 false、`v3_intention` 恒 null,换线/门事件 **0 起**——E_rounds 换线预测在账本中无任何触发面,与 W597(触发面 0,sim 结构不可测)、w634(撤销/振荡机器在新栈 P1 段结构性休眠)结论同型。
-- 落地链核:`should_switch_e`(θ/δ/D_min 判据本体)在 `src/` **零生产调用点**(仅测试消费:test_cw_release_endgame L470-505 等行为锁);生产 v2 链消费的是 `e_rounds`+`survival_gate`(cw_intention L1004-1015)与排序层 θ 滞回(`_pair_hysteresis`,L641-655,P31 复用),θ/δ/D_min 的完整滞回判据未接线(w665 DESIGN R4「D_min/θ 的 v2 补线挂账」、w683/w670 确认)。
+- 落地链核:`should_switch_e`(θ/δ/D_min 判据本体)在 `src/` **零生产调用点**(仅测试消费:test_cw_release_endgame L470-505 等行为测试);生产 v2 链消费的是 `e_rounds`+`survival_gate`(cw_intention L1004-1015)与排序层 θ 滞回(`_pair_hysteresis`,L641-655,P31 复用),θ/δ/D_min 的完整滞回判据未接线(w665 DESIGN R4「D_min/θ 的 v2 补线挂账」、w683/w670 确认)。
 - 判定:**命题描述的机制(should_switch_e)当前是测试专用件,换线行为实证=无数据**。「已证」状态不因此翻——数学命题不需实机背书——但索引行「已证」不应被读作「已实证」,检验点 4 的 sim 参数门也从未跑过(见门⑤),实证面整体挂账。
 
 ### 门⑤ 参数溯源 —— **需修(挂账未清,索引行声明不足)**

@@ -72,7 +72,7 @@
 
 ### 发现 8 [应修] | design §2.5/§2.7 + landing 3.2 | 直构容器上 `rand=False` 链写被闩全局改道,测试域「如何建立已锚定前提」未定义 = 实现者再设计点
 
-- **问题**:`_select_write(gs, rand)` 按 `prep_anchored_of(gs)` 判道;直构 `GameState()`(sim/测试/草稿视图)恒 `prep_anchored=False` → **rand=False 的链写也全部走 logic_rand**。HEAD 测试 `test_rand_passthrough_and_flip` 锁「rand=True→logic_rand / rand=False→logic」双臂;landing 3.2 只申报「未观察用例改写为种子路径断言」,未申报 rand 透传用例的改写,也没定义测试/直构容器把闩置为 True 的手段(直接赋值簿记位?经 reconcile?)。「锚定后 rand=False 链写走 logic」(§2.7)在直构容器上按现文不可达。sim 现不消费链(grep 零命中)故引擎域今日无碰撞,但队列①迁链后同题即现。
+- **问题**:`_select_write(gs, rand)` 按 `prep_anchored_of(gs)` 判道;直构 `GameState()`(sim/测试/草稿视图)恒 `prep_anchored=False` → **rand=False 的链写也全部走 logic_rand**。HEAD 测试 `test_rand_passthrough_and_flip` 断言「rand=True→logic_rand / rand=False→logic」双臂;landing 3.2 只申报「未观察用例改写为种子路径断言」,未申报 rand 透传用例的改写,也没定义测试/直构容器把闩置为 True 的手段(直接赋值簿记位?经 reconcile?)。「锚定后 rand=False 链写走 logic」(§2.7)在直构容器上按现文不可达。sim 现不消费链(grep 零命中)故引擎域今日无碰撞,但队列①迁链后同题即现。
 - **证据**:`cw_gain_chain.py` 四处写选择持直构容器即被改道;`sr-od-test/.../test_cw_gain_chain.py`(HEAD)`test_rand_passthrough_and_flip`;design §2.7/landing 3.2 范围句无对应申报。
 - **处置方向**:写死测试域契约——(a) 测试直构容器以何种语句置闩(如 `gs.prep_anchored = True` 直赋,并声明其为测试专口);(b) landing 3.2 范围补「rand 透传用例双臂改写:直构(未闩)断言 logic_rand / 置闩后断言 logic」;(c) §2.5 补一句「直构容器视同未锚定」的显式语义。
 

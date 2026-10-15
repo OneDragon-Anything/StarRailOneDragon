@@ -41,7 +41,7 @@
 | 6 | 状态上报面 | 动作 → 哪个上报函数(`kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`),指向 [../game_state/logic-updates/](../game_state/logic-updates/README.md) 对应篇 |
 | 7 | 子态与 overlay | 本屏的子态(如备战-开商店、暗色锁定)与本屏会被哪些 overlay 覆盖、命中时结束本次访问还是自处理 |
 | 8 | 守卫与防线 | 本屏的停机钩子/失配告警/预算(细则指针 = [../flow/guards.md](../flow/guards.md)) |
-| 9 | 遥测与锁面 | journal op 名、branch 分键、缺陷键、测试锁文件指针、game 侧知识指针 |
+| 9 | 遥测与测试面 | journal op 名、branch 分键、缺陷键、测试文件指针、game 侧知识指针 |
 
 纪律:as-built 无状态(事故史/裁定日期不进正文);坐标一律 `画面名.area名`;分发判定不复制外循环表。
 
@@ -176,4 +176,4 @@
 简报与过场:[briefing.md](briefing.md) / [boss_briefing.md](boss_briefing.md) / [plane_transition.md](plane_transition.md) / [plane_detail.md](plane_detail.md) / [plane_intel.md](plane_intel.md) / [wait_one_one.md](wait_one_one.md) / [next_button.md](next_button.md)。
 弹窗与部署:[armory_box.md](armory_box.md) / [consumable_overlay.md](consumable_overlay.md) / [aha_equip_pick.md](aha_equip_pick.md) / [emblem_detail_popup.md](emblem_detail_popup.md) / [item_detail_popup.md](item_detail_popup.md) / [role_detail_overlay.md](role_detail_overlay.md) / [shop_card_detail.md](shop_card_detail.md) / [refresh_odds_popup.md](refresh_odds_popup.md) / [prep_locked_return.md](prep_locked_return.md) / [interrupt_dialog.md](interrupt_dialog.md) / [deploy.md](deploy.md) / [deploy_not_full.md](deploy_not_full.md)。
 
-开放设计注:补给刷新的终结语义(原待裁决项)已定案落 [supply.md](supply.md);boss 简报去向已裁([boss_briefing.md](boss_briefing.md),README 已按 as-built 修正);各族其余申报面(换血卖出接缝/建档缺口/测试锁断档等)见各篇文末。
+开放设计注:补给刷新的终结语义(原待裁决项)已定案落 [supply.md](supply.md);boss 简报去向已裁([boss_briefing.md](boss_briefing.md),README 已按 as-built 修正);各族其余申报面(换血卖出接缝/建档缺口/测试断档等)见各篇文末。

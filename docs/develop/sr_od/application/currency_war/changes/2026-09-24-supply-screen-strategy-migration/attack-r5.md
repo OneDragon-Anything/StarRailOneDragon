@@ -16,7 +16,7 @@
 
 - **位置**:design.md §2.6(sim 可观测性申报 :90、验收线保全申报 :92)与 landing.md 全部验收凭据形式(:24、:36、:48)均无改动影响面步骤;规范出处 = .dsh/skills/sr-od-currency-war-dev/references/strategy-work.md:50「改动影响面:改动后必跑 `cw_replay --diff`(秒级)看行为漂移首发点」。
 - **发现**:①策略行为改动批(strategy-work §6 对象三档之「实现」档)按 §4 硬门应跑 `cw_replay --diff` 看漂移首发点,本批 design/landing 全无此步骤,亦未声明豁免理由。②直调 src/sr_od/application/currency_war/sim/cw_replay.py:10-12:`--diff 分歧对比` 已在退役面清单(「旧 decisions.jsonl 源与其整帧重建/会话恢复面已随本切源退役……退役面 = _rebuild_state/_restore_session/--diff 分歧对比/意向 latch 回读/执行态可信位回读」),且现役回放面只覆盖商店黑板决策(decide_shop_screen),根本不经过补给决策——§4 的必跑项指向一个已不存在的旗标。规范自身已申报「批跑 CLI 已删、A/B 挂起」(§4 括注),但 --diff 退役未同步,规范处于半更新态。③本批对 sim 读数的盲区申报(sim 恒置一带钻槽 → 新旧读数恰同)是诚实且正确的,但那只覆盖 A/B 面,不覆盖「改动影响面必跑」义务的处置。
-- **修正方向**:①design §2.6 验收线保全申报(或 landing 3.2 验收凭据)补一行申报:「strategy-work §4 改动影响面步骤的现状 = cw_replay --diff 旗标已随切源退役(cw_replay.py 退役面清单在册)、现役回放面不辖补给轴,本批影响面改由单帧锁(3.1)+ sim 盲区申报 + 实机判读锚点①-⑤ 承载」;②规范侧 = 按 skill 反馈流程把 strategy-work §4 的 --diff 必跑行与 cw_replay 现状对齐(根在规范半更新,逐批静默跳过 = 症状漂移)。
+- **修正方向**:①design §2.6 验收线保全申报(或 landing 3.2 验收凭据)补一行申报:「strategy-work §4 改动影响面步骤的现状 = cw_replay --diff 旗标已随切源退役(cw_replay.py 退役面清单在册)、现役回放面不辖补给轴,本批影响面改由单帧测试(3.1)+ sim 盲区申报 + 实机判读锚点①-⑤ 承载」;②规范侧 = 按 skill 反馈流程把 strategy-work §4 的 --diff 必跑行与 cw_replay 现状对齐(根在规范半更新,逐批静默跳过 = 症状漂移)。
 
 ### R5-3 [中] §2.7 跨批共享编辑面枚举不完备:漏 08_events.md 与 kernel/cw_events.py 模块 docstring,两处均为与在飞 29 号稿批的实共享面(核一·边界完整性)
 
@@ -38,7 +38,7 @@
 - **位置**:design.md:100(supply.md 锚 = `:12`/`:33`/`:40`;currency_war_supply.md 锚 = `:37`/`:57`/`:39`;货币战争-补给.md 锚 = `:32`/`:39`)。对照实读:
   - `docs/develop/sr_od/application/currency_war/screens/supply.md:63`(§5 终结与交回表行「闸数据不一致(重调仍建议刷新)」)——闸内嵌后 decide 与容器不可能不一致,该行残留触发面只剩「建议刷 ∧ 锚点缺」,行名与成因已过期;
   - `screens/supply.md:80`(§8「拒绝 → 重调一次落选卡;重调仍建议刷新 → 零点击终结交回」)——「拒绝 → 重调落选卡」分支不可达(与设计对 cw_screen_supply_node.py:272-280 内联注的判定同款:读缺分支与按评分选均不可达),文档侧同语义未入清单;
-  - `screens/supply.md:88`(§9 测试锁描述「0 与 None 零点击按原评分选」)——锁本体(op 防御面)仍有效,但文档对锁语义的描述按旧端到端行为写,随批应改写为新闸语义(建议刷不可能出自 0/None);
+  - `screens/supply.md:88`(§9 测试描述「0 与 None 零点击按原评分选」)——测试本体(op 防御面）仍有效,但文档对测试语义的描述按旧端到端行为写,随批应改写为新闸语义(建议刷不可能出自 0/None);
   - `docs/game/screens/currency_war_supply.md:19`(「bot 流程缺口(待 Loop 接线):Loop 现在在补给节点备战走 备战分支误派 → 出战(失败)」)——接线早已完成(cw_loop.py:1610-1619 在册派发),与本文件 :37/:57 同代的陈旧现状断言,不在锚清单。
 - **发现**:设计对代码注释自称「已知点全列;末阶段另有全仓复扫兜底」,对画面文档给出了逐行锚却漏上述四处同语义面;末阶段复扫兜底可接住,但「全列」申报与实际清单不符。
 - **修正方向**:§2.7 画面文档收口补锚(supply.md :63/:80/:88、currency_war_supply.md :19),改写口径 = 新闸语义(建议刷仅出自 left ≥ 1 帧;op 侧唯一拒绝面 = 锚点缺)与现状流程。
@@ -52,7 +52,7 @@
 ## 攻击过的面清单(码点/文档点全部直调亲验)
 
 **代码面(src)**:
-- `kernel/cw_events.py`:1(模块 docstring 补给句)/:552(唯一 cw_survey19_hooks import 点,只取 encounter_tier_score)/:583(段头)/:585-596(SupplyOption)/:599-605(SupplyPick)/:609-612(`_equip_value` 委托壳)/:616-647(decide_supply 全文——只消费 equip/has_diamond,char 未触;:627-628 空帧 idx=0 no-options;:633-635 无钻必刷;:637/:641-642 key_fit set 隶属 +10)/:786(`_equip_value` 的 planner 装备档回落消费,保留后唯一消费点)/:1002-1007(EVENT_PICK_TYPES/EventPick,登记面摘位安全——完备锁遍历不走本表)
+- `kernel/cw_events.py`:1(模块 docstring 补给句)/:552(唯一 cw_survey19_hooks import 点,只取 encounter_tier_score)/:583(段头)/:585-596(SupplyOption)/:599-605(SupplyPick)/:609-612(`_equip_value` 委托壳)/:616-647(decide_supply 全文——只消费 equip/has_diamond,char 未触;:627-628 空帧 idx=0 no-options;:633-635 无钻必刷;:637/:641-642 key_fit set 隶属 +10)/:786(`_equip_value` 的 planner 装备档回落消费,保留后唯一消费点)/:1002-1007(EVENT_PICK_TYPES/EventPick,登记面摘位安全——完备测试遍历不走本表）
 - `kernel/cw_equip_value.py`:36(「V4.4 meta 先验;实玩校准」表自注)/:42-80(EQUIP_GENERIC_VALUE 表体)/:163-189(equip_tier 档位语义、key 可含重复、需求按计数、空 key 序列恒 tier 0)/:192-210(pick_equipment (tier, base) 字典序——箱选卡消费面不受本批影响)
 - `kernel/cw_survey19_hooks.py`:1-8(模块头 P8 句)/:46-56(supply_reroll_decision 三支);全仓消费面 = src 唯一 import 点 cw_events.py:552 + sr-od-test 零命中(grep 双仓亲跑)——死代码判定成立
 - `kernel/cw_node_obs.py`(obs/):21(SupplyOption import)/:206(「decide_supply 建模残缺」)/:215(三钻集合)/:260-304(read_supply_options——char roster 校验、has_diamond 双通道、按 x 左→右)
@@ -77,8 +77,8 @@
 
 **测试仓(sr-od-test)**:
 - test_cw_unified_action_4.py:27-33(SupplyPick 类型 import)/:303(实例构造)——随删面恰此两处 ✓
-- test_cw_obs_arch_event_screens_step3.py:47/:61(decide_supply stub)/:130-181(supply 刷新闸行为锁——桩在 flow 方法名,op 侧防御面语义,3.2 后继续有效 ✓)
-- test_cw_supply_pick_immediate_report.py:125(stub)✓;test_cw_supply_advance_wiring.py(零 decide_supply 消费,不受影响 ✓);全仓 grep `decide_supply|SupplyPick|supply_reroll` 双仓核对,design §2.6 测试面申报(「在册无 kernel 侧 supply 决策专用锁」)属实 ✓
+- test_cw_obs_arch_event_screens_step3.py:47/:61(decide_supply stub)/:130-181(supply 刷新闸行为测试——桩在 flow 方法名,op 侧防御面语义,3.2 后继续有效 ✓)
+- test_cw_supply_pick_immediate_report.py:125(stub)✓;test_cw_supply_advance_wiring.py(零 decide_supply 消费,不受影响 ✓);全仓 grep `decide_supply|SupplyPick|supply_reroll` 双仓核对,design §2.6 测试面申报(「在册无 kernel 侧 supply 决策专项测试」）属实 ✓
 - test/harness/sim_backend_runner.py:314-381(真 CwLoop + 真 MandateV1Strategy 装配——sim 申报的装配依据属实 ✓)
 
 **文档面**:
@@ -89,5 +89,5 @@
 - 在飞批:changes/2026-09-23-invest-strategy-screen-migration/design.md + landing.md(29 号稿占用、共享编辑面真实清单——R5-3 证据)
 
 **规范面**:
-- iteration-design.md 全文(四条写作硬规则/阶段七件/三核/引用寿命);strategy-work.md §1(零调参两分类、未证即退役——+10 随删件退役、EQUIP_GENERIC_VALUE 按 16 号稿在册处置降格定序常数,均走的在册通道)/§3(无开关直落)/§4(验证阶梯——R5-2)/§5(单帧锁与出处纪律——landing 3.1 凭据①-⑨逐条引 design 节 ✓)/§6(对抗纪律);AGENTS.md(注释/文档/测试规范)
+- iteration-design.md 全文(四条写作硬规则/阶段七件/三核/引用寿命);strategy-work.md §1(零调参两分类、未证即退役——+10 随删件退役、EQUIP_GENERIC_VALUE 按 16 号稿在册处置降格定序常数,均走的在册通道)/§3(无开关直落)/§4(验证阶梯——R5-2)/§5(单帧测试与出处纪律——landing 3.1 凭据①-⑨逐条引 design 节 ✓)/§6(对抗纪律);AGENTS.md(注释/文档/测试规范)
 - README.md 索引(链接目标实存性——attack.md/r2/r3/r4 在册,attack-r5 待本报告创建,「启动后创建」申报属实;轮次计数内部自洽)

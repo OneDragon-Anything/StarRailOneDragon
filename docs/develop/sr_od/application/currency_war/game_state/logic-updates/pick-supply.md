@@ -37,7 +37,7 @@
 
 ## 7. 语义验证
 
-行为锁 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_obs_arch_event_screens.py`(chosen 确认即写),已登记路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
+行为测试 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_obs_arch_event_screens.py`(chosen 确认即写),已登记路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
 
 ## 8. 判例注记(动作发出阶段)
 

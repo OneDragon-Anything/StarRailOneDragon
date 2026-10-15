@@ -5,7 +5,7 @@
 > [21]/[23]/[36]/[37]/[38])与 `docs/game/currency_war/research/final_comps/`(逐家族打法);
 > 代码注册 = `src/sr_od/application/currency_war/kernel/cw_comps.py`(COMP_LIBRARY)、
 > `kernel/cw_intention.py`(锁线状态机)、`kernel/cw_recipe.py`(决策目标单一入口)、
-> `knowledge/cw_line_facts.py`(线事实,含花火量子线修正);测试锁 =
+> `knowledge/cw_line_facts.py`(线事实,含花火量子线修正);测试 =
 > `sr-od-test/test/sr_od/application/currency_war/test_cw_framework_decision.py`。
 > 本文档不作长期引用源;下文代码路径省略前缀 `src/sr_od/application/currency_war/`。
 
@@ -27,7 +27,7 @@
 1. **分支① 位面 ≥ 2**:进位面 2 起恒定型(定型边界 = 进位面 2,严于玩法文档 P2-P3 分段口径);
 2. **分支② 锁线态**:意向状态机 `phase == 'locked'`(P1 内证据门已锁线同样成立)。
 
-两分支有测试锁:`test_decision_target_committed_returns_terminal_line`(两分支同返回 target_comp 本体)与 `test_decision_target_recipe_in_dual_track`(双轨期配方伪 comp/散件口径),见 `sr-od-test/test/sr_od/application/currency_war/test_cw_framework_decision.py`(账本 T-16 锁)。
+两分支有测试:`test_decision_target_committed_returns_terminal_line`(两分支同返回 target_comp 本体)与 `test_decision_target_recipe_in_dual_track`(双轨期配方伪 comp/散件口径),见 `sr-od-test/test/sr_od/application/currency_war/test_cw_framework_decision.py`(账本 测试 T-16)。
 
 边界说明:committed 分支返回的 `target_comp` 在不同帧位物化对象不同——P1 配方锁帧物化为配方对伪 comp(`strategies/impl/flow.py` `_refresh_direction_views`,经 `pair_target_comp`);位面 2+ 与 comp 锁帧物化为 COMP_LIBRARY 终局套本体。另 `committed_authority` 权威序还有第三形态:P1 配方锁产物 `p1_pair` 非空亦计定型(ADR-0357 产物形态),本文定型判据按契约两分支表述。
 
@@ -49,7 +49,7 @@
 
 ### 2.1 已证面(相对强)
 
-- **机制面(代码 + 测试锁)**:定型权威两分支、决策目标单一入口、锁线状态机(锁定/撤销/强制锁线/降格终局/弱面过滤)均有现行实现与测试锁覆盖(`test_cw_framework_decision.py` 四符号锁)。「机制上的选择契约」成立。
+- **机制面(代码 + 测试)**:定型权威两分支、决策目标单一入口、锁线状态机(锁定/撤销/强制锁线/降格终局/弱面过滤)均有现行实现与测试覆盖(`test_cw_framework_decision.py` 四符号测试)。「机制上的选择契约」成立。
 - **知识面(攻略统计校准)**:COMP_LIBRARY 手判层校准自 ADR-0152(plaza 784 篇)+ V4.4 权威评级;终局家族打法逐篇在册(`final_comps/`);过渡与终局的分界有数据实证——`transition_combos.md`:四体系都不含的 49 帖全为直通线(carry 单卡自带输出),无通用羁绊组合过位面 1。
 - **sim 就绪面(P1 末对终局线的准备度;两份找问题报告,均为 P1-only 载体)**:
   - 旧引擎批(`.debug/temp/currency_war/sim_find_issues_20260918_030035/report.md`,n=300):终局阵容完成率镜像口径 96%,按帧末口径修正后 97.7%(4 局为观察帧滞后假阴性);出口金中位 122.5。
@@ -76,7 +76,7 @@
 |---|---|---|
 | E9 切换 | 专家邀请函解锁判据分叉:实码 = 在场浓度版,在案规格 = 目标线成员优先版(本迭代 `design.md` 已知分叉挂账行;规格源 = strategy-docs `13_pick_family.md` §2 / `08_events.md` E9 行) | 影响终局件获取通道的定向度:若切换规格版,锁线后邀请函解锁定向服务 `locked_comp` 成员;锁定机制与候选集零变化。切换对成型速度的影响未量化,归后续 sim/实机验证 |
 | 泛用腿并轨 | 装备选择锁线态(锁定线 key_fit 命中 +100 压倒泛用腿)与未锁态(仅泛用腿)两态判据是否并轨(`kernel/cw_equip_value.py` `decide_equip_overlay_pick` 双态注;消费位 `operations/cw_screen/cw_screen_equip_pick.py`) | 影响装备向终局线 key_equips 的转移定向;并轨裁决须保锁线态「目标线装备优先」语义不回退,否则削弱终局套成型强度(注册评级前提含装备 top 口径) |
-| 预囤加分 | 预囤模式(框架未定)下通用件仍得 +0.15 加分的分叉待裁(测试文件 `test_transition_score_tiers_and_prehoard` ⚠️ 注已申报) | 影响 P1 预囤期囤货构成(通用插件 vs 纯档位件)→ 影响终局线就绪前的存货面与完成率读数;不改变锁线判据。裁决后同步改对应断言(锁注释已申报改法) |
+| 预囤加分 | 预囤模式(框架未定)下通用件仍得 +0.15 加分的分叉待裁(测试文件 `test_transition_score_tiers_and_prehoard` ⚠️ 注已申报) | 影响 P1 预囤期囤货构成(通用插件 vs 纯档位件)→ 影响终局线就绪前的存货面与完成率读数;不改变锁线判据。裁决后同步改对应断言(测试注释已申报改法) |
 
 - **位面 3 实证归 T-12**:本定版不预支位面 3 的任何实证结论;T-12 通关如暴露定版偏差(如评分排序系统性偏航、强制锁线对象限定在位面 3 误判、weak_planes 注册失真),按锁线机制修评分/信号注册,本文档随迭代收尾更新。
 - **其他边界**:①本文与 `transition-lineup-final.md` 同寿命,`changes/` 内容不作长期引用,长期引用指向文首单一源;②「主口径 = 列车同行」是注册面默认首选,若 T-12 前出现注册层改判(评级/家族重构),以 COMP_LIBRARY 现行注册为准,本文不构成对注册层的约束。

@@ -46,7 +46,7 @@
    - 合成池 = 备战槽 ∪ 上阵 ∪ 溢出(链内溢出单位含链记星级;观察来源的溢出卡星级缺读按 1 兜底,现行口径锚 cw_game_state.py:2004-2006);
    - 恰有同名同星 3 只 → 消耗三只、载体升星;载体选择/落点/装备继承规则逐条对齐 `kernel/cw_merge_simulate.py::merge_simulate` 不动点合并段(:206-279:含场上载体优先、全备战取最左、溢出件合成腾槽归位优先、装备继承并入、分组键 (char_id, star));
    - **升星产物 = 获得一只高一星角色 → 递归走 `gain_character`**(回调 → 升星判断 → …,裁定「升星也会触发获得角色的回调,类似之前的再继续」);无三连同名同星 → 终止。递归深度有界(星级上限)。
-   - 与 merge_simulate 的关系:merge_simulate 是一次到底的不动点推演、无回调时机;链式版需要「**单级合成 + 产物回调**」——实现 = cw_gain_chain 内新增单级合并函数,规则逐条对齐 merge_simulate(禁第二套语义),并以**对拍测试**锁「同池同输入下,单级×N 次 == merge_simulate 终态」。
+   - 与 merge_simulate 的关系:merge_simulate 是一次到底的不动点推演、无回调时机;链式版需要「**单级合成 + 产物回调**」——实现 = cw_gain_chain 内新增单级合并函数,规则逐条对齐 merge_simulate(禁第二套语义),并以**对拍测试**断言「同池同输入下,单级×N 次 == merge_simulate 终态」。
 4. 每次容器写按 rand 走 `gs.write_logic` / `gs.write_logic_rand`(通道语义锚 cw_effect_inventory.py:1461-1464)。
 
 **`gain_equipment(gs, item, *, rand, sig, evidence, producer) -> GainOutcome`**
@@ -108,7 +108,7 @@
 ### 2.8 测试面
 
 - 单级合成 × N 与 merge_simulate 终态对拍(同池同输入);溢出落位/归位/溢出位被占留证;
-- 递归调用序桩测(落位 → 回调 → 升星 → 产物递归的顺序断言;回调补齐第三只后再合成的时序锁);
+- 递归调用序桩测(落位 → 回调 → 升星 → 产物递归的顺序断言;回调补齐第三只后再合成的时序测试);
 - rand 翻转传播(采样效果子链 rand=True、其余透传);
-- 未观察留证;落地相 portal 接线(active_env 写时点迁移锁:点卡前无写、落地相有写);
+- 未观察留证;落地相 portal 接线(active_env 写时点迁移测试:点卡前无写、落地相有写);
 - 欢愉契约迁移等价(现役 `test_cw_yinlang_phase32` 落地链改写);ENV_GIFTS advisor/非 advisor 分道。

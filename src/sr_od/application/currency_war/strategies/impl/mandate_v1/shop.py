@@ -284,7 +284,7 @@ def p92_seat_recoverable(session: StrategySession,
     误拦(方向 = 过度拦刷,失刷新机会);②布尔化——「Σ退金>0」是
     资金量语义非席可落能力布尔(零费候选角帧同误判)。本判定直引
     腾席分支同参资格面,两向漂移一次消除;行为差方向 = P92 在 T3 活跃
-    帧少拦(差帧 ② 通道真实可达,旧拦为误拦),行为差锁 =
+    帧少拦(差帧 ② 通道真实可达,旧拦为误拦),行为差测试 =
     sr-od-test test_seat_recoverable_narrow.py。
     ``counters``/``dedup_names`` 照传帧级共享载体
     (``merge_material_guard_blocked`` 事件口径每帧每素材至多 1,与

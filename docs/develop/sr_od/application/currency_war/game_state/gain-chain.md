@@ -105,7 +105,7 @@ rand=True(§5)。
 工作表,返回升星产物身份 `(char_id, star+1)`;无同名同星 3 只 → None。规则逐条
 对齐 `kernel/cw_merge_simulate.py::merge_simulate` 不动点合并段(分组键
 `(char_id, star)`、场上载体优先、全备战取最左、溢出件合成腾槽归位优先、装备继承
-并入、场上同名同星 ≤1 不变量),对齐由比对测试锁「同池同输入下,单级 ×N 次 ==
+并入、场上同名同星 ≤1 不变量),对齐由比对测试「同池同输入下,单级 ×N 次 ==
 merge_simulate 终态」——禁第二套语义。merge_simulate 是一次到底的不动点推演、无
 回调时机;链式版需要「单级合成 + 产物回调」,故独立实现单级函数。
 
@@ -250,7 +250,7 @@ import 即炸)防漂移。
   `box_grant:<道具名>(placed=<是否落位>)`),发放名单单一源 =
   cw_gain_effects `_STRATEGY_BOX_GRANTS`(卡规范名 → 道具名;与登记面镜像
   `cw_investments.STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等,
-  一致性锁测试)。三卡的战斗被动效果(能量恢复/伤害减免)非「获得时点」效果,
+  一致性测试)。三卡的战斗被动效果(能量恢复/伤害减免)非「获得时点」效果,
   不在效果体(获得时点容器写分支适用范围外);快请专家·彩的好运令牌分支(非占席
   道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。

@@ -4,14 +4,14 @@
 
 **范围**：`WorldDecl` dataclass（kernel 新增）+ `LogicOutcome.world_decl` 字段 + 端口 `declare_world` + `SimBackend.advance` 骨架（分派表空实现，case 随后续批增量填充）+ `advance` 对账面骨架。边界：不动任何上报函数、不摘任何装饰器、不改派发点——本阶段产物全部处于「在库未接线」态。
 **设计依据**：design.md §2.2 契约 1/2/3；details/world-decl.md §1、§3（对账面）。
-**文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`（LogicOutcome）、`kernel/cw_event_hooks.py`（WorldDecl 落位，或独立小模块）、`sim/cw_sim_ports.py`、`sim/cw_sim_backend.py`、`sr-od-test/`（对照锁骨架）。
+**文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`（LogicOutcome）、`kernel/cw_event_hooks.py`（WorldDecl 落位，或独立小模块）、`sim/cw_sim_ports.py`、`sim/cw_sim_backend.py`、`sr-od-test/`（对照测试骨架）。
 **依赖**：无。
 **优先级建议**：5。
 **完成判据**：
 - `WorldDecl`/`world_decl` 字段/端口/advance 骨架与 design.md §2.2 契约 1/2/3 逐条一致；
 - 端口未装时 `declare_world` no-op（实机零行为变化的机制前提）；
 - 全量测试通过（新增字段不破坏既有构造点）。
-**验收凭据形式**：测试名（对照锁骨架 + L1 全量）。
+**验收凭据形式**：测试名（对照测试骨架 + L1 全量）。
 
 ## 3.2 主链声明化（出战 / 遭遇 / 结算-节点推进 / 补给）
 
@@ -21,7 +21,7 @@
 **依赖**：3.1。
 **优先级建议**：5。
 **完成判据**：
-- 四动作声明与 details/world-decl.md §2 表 #1-#4 逐位一致（对照锁；局终分支按推导规则确定性锁定：eff 超总长 → next_screen=''）；
+- 四动作声明与 details/world-decl.md §2 表 #1-#4 逐位一致（对照测试；局终分支按推导规则确定性锁定：eff 超总长 → next_screen=''）；
 - 四动作端到端只有声明一条驱动路径（事件 case 已摘）；
 - sim e2e 种子 `container_snapshot` 与改前对拍逐位一致；
 - 实机流程测试期望不改全过。
@@ -35,14 +35,14 @@
 **依赖**：3.2。
 **优先级建议**：5。
 **完成判据**：
-- 18 动作对照锁全绿（按对照表回填终值）；
+- 18 动作对照测试全绿（按对照表回填终值）；
 - 18 动作全部单轨（事件 case 摘净，`on_transition_event` 剩空链或已删）；
 - sim e2e 多种子对拍逐位一致；实机流程测试全过。
 **验收凭据形式**：测试名 + e2e 对拍输出。
 
 ## 3.4 转移事件退役
 
-**范围**：`cw_event_hooks.py` 转移半部删除（机制本体 + 模块头转移描述）；`SimBackend.on_transition_event` 与 `install_backend` 转移 sink 订阅删除；测试仓转移事件断言盘点（平移为声明对照锁或退役）；退役归零探针。事实事件半部与 overlay 评估器**零改动**。
+**范围**：`cw_event_hooks.py` 转移半部删除（机制本体 + 模块头转移描述）；`SimBackend.on_transition_event` 与 `install_backend` 转移 sink 订阅删除；测试仓转移事件断言盘点（平移为声明对照测试或退役）；退役归零探针。事实事件半部与 overlay 评估器**零改动**。
 **设计依据**：details/world-decl.md §6 退役清单、§7 验收面。
 **文件面**：`kernel/cw_event_hooks.py`、`sim/cw_sim_backend.py`、`sim/cw_sim_ports.py`（如 install 契约涉及）、`sr-od-test/`。
 **依赖**：3.3。

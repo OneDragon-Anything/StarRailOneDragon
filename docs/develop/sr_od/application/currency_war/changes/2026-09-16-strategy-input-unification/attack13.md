@@ -20,7 +20,7 @@
 
 1. **`encounter_refreshed_in_visit` 走 write_logic**（design §2.1-4 明示「渠道 = logic_action 动作上报族」）。journal.md §6 :138-144：「write_logic **仅限设计显式申报豁免的写端**（事件屏 chosen 族/局级事实写端/**刷新计数组**/效果写端申报行/动作发射写点 receipts/账本→字段桥），**其余禁走此口**」。新字段是 **per-visit bool 位**（首调前置写 False × 两路径 + 刷新发射前写 True），语义是「访问内一次性旗标复位/置位」，不是「计数」——豁免类「刷新计数组」字面是否覆盖 bool 位，是实现者必须自行裁定的语义选择（硬规则 2「实现者无需再设计」的违例形态）；且「首调前置复位」作为一类 write_logic 用户（决策路径前置段直写，非发射型）在豁免面无归属类。设计未申报「豁免类扩 bool 位」或「新立『访问内旗标』类」，journal.md 无从跟上。
 2. **路由清点挂点经 leave_screen 写入**（渠道①，无需豁免），但 landing 3.1 仅申报「写入口经 leave_screen 同口径带具名 sig」——**family/mode/actor 三元未钉死**。现行唯一 live 离屏先例 = CloseShop 逻辑腿（`cw_game_state.py:2031-2033`：`family='obs', mode='read', actor=沿写链`），「同口径」读者需自行考古该先例；挂点 actor（CwLoop，:324 在册）与 obs/read 口径应一句话定死。
-3. journal.md §6 :146-147 硬约束③「域准入白名单（逐格以实码写点全集核源，禁凭概念断格）」自称「机器面=测试锁」——本批写点全集变化（10 域路由清点 + 8 新槽离屏合法化 + 新旗标两写点）后，该白名单的纸面/机器面均需随批对账，landing 3.1/3.4 的测试判据均未点名。
+3. journal.md §6 :146-147 硬约束③「域准入白名单（逐格以实码写点全集核源，禁凭概念断格）」自称「机器面=测试」——本批写点全集变化（10 域路由清点 + 8 新槽离屏合法化 + 新旗标两写点）后，该白名单的纸面/机器面均需随批对账，landing 3.1/3.4 的测试判据均未点名。
 
 **修正方向**：①正本更新清单补行「`game_state/journal.md` §6（write_logic 豁免类补 per-visit 旗标写端申报行；路由清点 leave_screen 行 sig 口径 = obs/read/actor=CwLoop 先例指针）← 3.1/3.4」；②design §2.1-4 一句话钉死豁免类归属（如「豁免归属 = 刷新计数组域类扩『节点屏访问内旗标』子类」）；③landing 3.1 判据补「路由清点写行 sig 形态与 CloseShop 腿先例一致」断言。
 
@@ -95,7 +95,7 @@
 - **四硬规则**：依据就地标注（抽验 20+ 处主张的锚全部可解析：execstate #12-#14 域 bump 先例、#20 非 Field 先例、fields.md §2.2/§3.4/§3.4.4/§3.7.1/§8.1-8.5/§8.8/§9.4、game_state/README §3.3 两条先例行、flow/README §2.4 注册面封闭集、session.md §5.1 B4、ShopPayload.cards asdict 先例、carry None 跳过先例）；无过程叙事（design/landing 正文零「本轮/已改/第 N 轮」措辞，用户裁定指针为权威锚非过程件）；实现者无需再设计试读（例外即 m3/m6/B2-1，已列）；修订后全量同步复查（design↔landing↔README 三向对账，例外即 m5/m7）。
 - **形式项**：标题层级合规；README 构成 = 文档+进度两节、无详设行合规、进度单点在 README；landing 六个小节（3.1-3.5+末阶段）七件齐逐一在；attack12.md 实文 4 条（major 1/minor 3）与 README 进度行一致；attack12 四条消解逐项复核落地（A1 登记移 3.1、A2「非穷尽示例」改写、A3 契约 g 辖域扩五槽、A4 表格连续性恢复）。
 - **词表普查兜底独立复跑**：`prep_obs_frame` src 23 命中逐条归类全落 3.2 文件面；`decide_` 前缀 src 契约调用点全集落 3.3/3.4/清单一行；`PickBoxCard` 正本残留（18 号篇 §7 :186/:188、25 号篇 :19、box_pick.md:34 删除申报锚、action-logic-state.md:214/:330）被词表+清单两行兜住；计数词五形态命中面（flow/README 六处、session.md:14、strategy-docs/README :33/:60、13/25 号篇、screens/README :107、expert_invite :12、fortune :11）全兜；screens/ 目录 22 篇未列清单者（equip_pick/armory_box/aha_equip_pick/plane_intel/deploy 等）经 `decide_` 前缀/「九接口」普查可达（plane_intel 的 `decide_plane_skip` 非契约 helper 会被普查命中归类，无假零）；`refresh_used` 与 `encounter_refreshed_in_visit` 分词收录正确（后者不含前者子串，单靠 refresh_used 会漏——已分列）。
-- **design↔landing↔README 判据同步**：四格对照、单帧锁构造、写槽-决策点计数对账（grep 调用点数 = 写槽点数）、普查范围「两仓 + 正本树（含 docs/game/currency_war/，排除 sources//changes/）」、 proofs/ 排除理由（「非零命中依据」）——多文档口径逐字一致；3.5 回放旁证辖域局限申报与 §2.6 逐字一致。
+- **design↔landing↔README 判据同步**：四格对照、单帧测试构造、写槽-决策点计数对账（grep 调用点数 = 写槽点数）、普查范围「两仓 + 正本树（含 docs/game/currency_war/，排除 sources//changes/）」、 proofs/ 排除理由（「非零命中依据」）——多文档口径逐字一致；3.5 回放旁证辖域局限申报与 §2.6 逐字一致。
 - **兼容裁定**：干净断申报与 session.md §5.1 B4 原条款的收缩关系在清单行在册；「注册面封闭集 {mandate_v1}」与 flow/README §2.4 及 cw_strategy_manager 现状一致；B4 缺省保留面（create_state）与本批 abstract 面扩张的边界申报清晰。
 
 ### 行为零变化申报专攻零发现面（m2/m3/m4 之外）

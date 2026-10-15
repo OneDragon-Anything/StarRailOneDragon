@@ -460,7 +460,7 @@ def fuel_sell_candidates(bench: list[BenchSlot],
     候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
 
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
-    释放集——G-S1 判据处的**条件旁路**(先旁路后装配,序由行为锁③钉
+    释放集——G-S1 判据处的**条件旁路**(先旁路后装配,序由行为测试③钉
     死):拒因命中 ∧ 名在释放集 ⇒ 跳过拒入、不计数(资格子谓词旁路,
     非新通道;单一源 = sell_gate.dead_pair_exit_release,消费位禁自算
     第二份)。旁路只撕 G-S1 一道子谓词,下游装配 A 排除(exclude_names)
@@ -716,13 +716,13 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 # ===== 终局阵容锁定转型域收窄适用范围(P88)=====
 
 #: 收窄集 S_spec(P88 §0;键域 = 买因闭集 ``sell_gate.LAUNCH_CAUSE_
-#: BY_ARM``,收窄集必须 ⊆ 闭集——闭集对账锁 = 测试仓
+#: BY_ARM``,收窄集必须 ⊆ 闭集——闭集对账测试 = 测试仓
 #: test_sell_window_launch.py::test_launch_cause_closed_set,收窄域
-#: 行为锁 = test_front_window_predicates.py,新买入分支先入映射表归
-#: 因果类才可发出[A4 硬闸],越出闭集的收窄键 = 锁红面)。
+#: 行为测试 = test_front_window_predicates.py,新买入分支先入映射表归
+#: 因果类才可发出[A4 硬闸],越出闭集的收窄键 = 测试红面)。
 #: 豁免 ⇔ reason ∈ 闭集 ∖ S_spec,由「仅两 S_spec 动作发出点挂适用范围前置、
 #: 他分支零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,
-#: 对账 = 闭集锁按符号差集断言)。
+#: 对账 = 闭集测试按符号差集断言)。
 PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
     'dominance_buy',
     # hub_option_buy 随 P86 乙分支并入移除(动作发出点并入序 1,
@@ -1040,7 +1040,7 @@ def run_mandate(frame: MandateFrame,
     #(金位缺口触发/目标量止盈/资格谓词族/刚买件优先/血线地板禁令全
     # 继承,B3 禁第二套卖件通道)。state 必传(N1):血线地板判据输入,
     # 漏传 = sell.py 首闸 fail-closed 返回 blood_floor,prep 凑息结构性
-    # 哑火(Z1 回归锁以「须产生 CwActionSellBenchParam」断言兜住此漏接)。
+    # 哑火(Z1 回归测试以「须产生 CwActionSellBenchParam」断言兜住此漏接)。
     # 接线位 = 备战环首个 _emit_open_shop 发出之前:CwActionOpenShopParam 是帧稳定
     # 契约截断点(M7 回排申报在案,truncate_frame_stable 其后必截),
     # 卖出须先于本轮开店到账,与 M4「prep 卖出恒先于本轮买入」域序

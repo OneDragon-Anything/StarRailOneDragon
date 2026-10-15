@@ -22,7 +22,7 @@
 - **位置**:design.md §2 方案 3(L24)、行为变化申报 L32、关键取舍 3(L43)。
 - **问题**:新形态发射条件 = 次帧 armed ∧ 金 ≤ 息线,引入旧形态没有的活性前提:
   1. **发射永不到来的形态存在**:预算闸拦截一切可购时(店无 1 费牌 ∧ 溢出金额 < 最低在售价等;闸拒 = 消费终止非跳过续试,cw_launch_arbitrage.py:107-120),金永不回落 g* → 每帧重发访问意图 → 无发射帧。旧形态仲裁后同帧照发(readiness_battle_launch 无金条件,cw_loop.py:1976),不依赖金回落。「发射恰一次」等价申报在此形态为假。
-  2. **新通道无防重开节流**:run_mandate 的 OpenShop 发射节流与开店闩(mandate.py:725 `_emit_open_shop` 节流;:861 S1 闩挡重开;entry.py:922 OpenShop 计入消费面)不辖前置发射位;S1 闩清否 = route_tag 消费(cw_vocab.py:360-371,白名单锁 test_route_tag_whitelist),受限访问意图的 route_tag 值域未定。连访循环无任何节流面。
+  2. **新通道无防重开节流**:run_mandate 的 OpenShop 发射节流与开店闩(mandate.py:725 `_emit_open_shop` 节流;:861 S1 闩挡重开;entry.py:922 OpenShop 计入消费面)不辖前置发射位;S1 闩清否 = route_tag 消费(cw_vocab.py:360-371,白名单测试 test_route_tag_whitelist),受限访问意图的 route_tag 值域未定。连访循环无任何节流面。
   3. **次帧 armed 破功未分析**:访问买牌改变承重/计划可用性 → `quality.defer_by_quality` 翻转(cw_launch_admission.py:211-212)→ 破功帧落常规三遍,发射推迟无界;设计「次帧复判再发射」未论证 armed 持续性。
 - **严重度**:重要。
 - **建议**:补活性论证,或给显式兜底判据(如连续 N 次零消费访问帧后的带内发射条件,零自由参数口径);申报受限访问意图与节流/开店闩/route_tag 的关系。

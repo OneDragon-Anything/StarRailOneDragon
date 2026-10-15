@@ -104,7 +104,7 @@
 - **确定性通道**（planner 装备腿、选择装备屏、补给确认等件名已知入栏）：随 `write_logic` 入栏同链应用后果（同源 `write_logic`）。**通道宿主迁移（对抗审⑤）**：选择装备屏/补给确认现役零写零挂点（两 pick 均零写族，审查实证）→ 迁出零写族接后果应用；好运令牌既有 `grant_equip_item` 渠道（`cw_effect_inventory.py:1047`）同纳后果链锚；
 - **随机通道**（骇客专家改件等采样到货）：在采样链内应用（§2.4），随链 `write_logic_rand`；
 - **下游语义**：授予单位 = 普通备战单位（分配/W3 门/合成升星与购买单位同一套，零特殊建模——定谳「与商店购买完全一致」）；
-- **注册表注同步**：`EQUIP_REWRITE_DECLARATIONS` 分身墨镜系/数据拷贝仪Max 三行读法统一为「获得后果 = 装备数据行后果应用」；`EQUIP_WRITE_SIDES` 分身墨镜/分身墨镜Max 两行值 `bridge:spawn_equip_bench_unit` → **`bridge:apply_equip_acquire_consequence`**（后果应用函数落 `cw_effect_inventory`——bridge 形过校验器；`observation` 形与校验器「观察收口+逻辑写」注硬约束相撞，弃，对抗审④）；数据拷贝仪Max 行保持 `bridge:spawn_equip_bench_unit`（辖计数臂腿），其获得后果由后果函数按数据行统一辖（不经本表双登记）。键集不变 → `scan_rewrite_equipments` 恰等锁不受影响。
+- **注册表注同步**：`EQUIP_REWRITE_DECLARATIONS` 分身墨镜系/数据拷贝仪Max 三行读法统一为「获得后果 = 装备数据行后果应用」；`EQUIP_WRITE_SIDES` 分身墨镜/分身墨镜Max 两行值 `bridge:spawn_equip_bench_unit` → **`bridge:apply_equip_acquire_consequence`**（后果应用函数落 `cw_effect_inventory`——bridge 形过校验器；`observation` 形与校验器「观察收口+逻辑写」注硬约束相撞，弃，对抗审④）；数据拷贝仪Max 行保持 `bridge:spawn_equip_bench_unit`（辖计数臂腿），其获得后果由后果函数按数据行统一辖（不经本表双登记）。键集不变 → `scan_rewrite_equipments` 恰等测试不受影响。
 
 ### 2.3 投资确认动作报告：`pick_invest.py`（迁出零写族）
 

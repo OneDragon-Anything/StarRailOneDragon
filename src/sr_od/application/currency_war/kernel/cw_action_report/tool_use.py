@@ -535,7 +535,7 @@ def report_action_lucky_token_use_param(gs: GameState, param: Any,
                                         sig: ChannelSig) -> LogicOutcome:
     """好运令牌上报:**零写 + 留存证据**(kind=``tool_token_not_admitted``
     注记)。动作发出点判据面 fail-closed 永不准入(R9 判据批待办,禁无判据
-    发出),写端随 R9 判据批;本函数在场 = 命名规约完备锁对象。"""
+    发出),写端随 R9 判据批;本函数在场 = 命名规约完备测试对象。"""
     _validate_sig(sig, ('logic_action',))
     _ = gs
     _emit_defect(field_name='equips',

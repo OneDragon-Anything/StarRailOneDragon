@@ -33,7 +33,7 @@
 
 ### S2. 恢复局(快照含 done)不重发——**闭合 ✅(辖域 = 离线/回放恢复面)**
 
-full_state_snapshot 存非 None 值(种子底座保三域恒非 None)→ restore_state_snapshot 经 rebuild 表按字段名重建(tuple-of-tuple);恢复后的 gs 里 (env,plane) ∈ done → 电平不重入队。登记缺失则 tuple 域恢复成 list-of-lists(`(env,plane)` 元组对 list 元员恒不等 → 双守卫第二腿静默失效),故工程面三件的恢复登记**是功能件不只是判读面件**,landing 3.1 :21 的类型断言判据正确锁住。注意:该路径的生产消费方 = sim 回放(cw_replay.py :118),见 S3。
+full_state_snapshot 存非 None 值(种子底座保三域恒非 None)→ restore_state_snapshot 经 rebuild 表按字段名重建(tuple-of-tuple);恢复后的 gs 里 (env,plane) ∈ done → 电平不重入队。登记缺失则 tuple 域恢复成 list-of-lists(`(env,plane)` 元组对 list 元员恒不等 → 双守卫第二腿静默失效),故工程面三件的恢复登记**是功能件不只是判读面件**,landing 3.1 :21 的类型断言判据正确钉住。注意:该路径的生产消费方 = sim 回放(cw_replay.py :118),见 S3。
 
 ### S3. live 接管残局——**零多发 ✅,但闭合腿与文档叙述不同(F2)**
 

@@ -93,22 +93,22 @@
   landing 3.1 只预登记了 `CwScreenYinLang`/`CwScreenBoxPick`。
 - **修正方向**：landing 3.1 actor 预登记行补 `'cw_loop_route_clear'`（或改用已在册的 `CwLoop` 并同步设计文）。
 
-### M4 输出词表入册形态未定义：8 个不走注册表的新动作类型与 `CW_ACTION_TYPES` 白名单 / 注册完备锁 / `PICK_ACTION_TYPES` 的关系无承载
+### M4 输出词表入册形态未定义：8 个不走注册表的新动作类型与 `CW_ACTION_TYPES` 白名单 / 注册完备测试 / `PICK_ACTION_TYPES` 的关系无承载
 
-- **位置**：design.md §2.2（「CW_ACTION_TYPES 白名单与注册完备锁随批纳入（新类型全量入册，例外申报）」）、landing 3.1 判据；
+- **位置**：design.md §2.2（「CW_ACTION_TYPES 白名单与注册完备测试随批纳入（新类型全量入册，例外申报）」）、landing 3.1 判据；
   代码锚 `kernel/cw_vocab.py:828-837`（CW_ACTION_TYPES 现值 22 类，**不含** PickEvent）、
   `kernel/cw_events.py:895-900`（`PICK_ACTION_TYPES` + `EventPick` 联合）、
-  `operations/cw_op/cw_action_registry.py:7-13`（注册完备锁 = 遍历 `CW_ACTION_TYPES` **+ `cw_events.PICK_ACTION_TYPES`**
+  `operations/cw_op/cw_action_registry.py:7-13`（注册完备测试 = 遍历 `CW_ACTION_TYPES` **+ `cw_events.PICK_ACTION_TYPES`**
   逐类断言注册表可命中）、`:149-153`（五条 pick 注册行）。
 - **发现内容**：新词表 13 类中仅 5 个（PickEncounter/PickSupply/PickMegastar/PickPartner/PickPlanner）有注册行承接；
   `PickInvest`/`PickStarTome`/`PickWishTrial`/`PickBoxCard`/`RefreshNodeOptions`/`RefreshSupply`/`RefreshInvestCards`/
-  `HoldFrame` 共 8 类是 handler 自管消费（无动作 op）。「全量入册」若指入 `CW_ACTION_TYPES`，注册完备锁逐类断言注册命中
-  即红——需要一个**指名道姓的豁免/锁改形规格**（哪些类豁免、锁的遍历源怎么改），「例外申报」四字不是规格。
-  且 `PickEvent` 退役后 `cw_events.PICK_ACTION_TYPES`/`EventPick` 的退役或换名零申报（锁的第二个遍历源、
+  `HoldFrame` 共 8 类是 handler 自管消费（无动作 op）。「全量入册」若指入 `CW_ACTION_TYPES`，注册完备测试逐类断言注册命中
+  即红——需要一个**指名道姓的豁免/测试改形规格**（哪些类豁免、测试的遍历源怎么改），「例外申报」四字不是规格。
+  且 `PickEvent` 退役后 `cw_events.PICK_ACTION_TYPES`/`EventPick` 的退役或换名零申报（测试的第二个遍历源、
   `action_op_for` 的 `Action | EventPick` 形参联合都要跟着变）。attack1 m10/attack2 m10 均触此面，
   现文仍未给出可执行形态。
-- **修正方向**：details 补一节「新词表 × 白名单 × 完备锁」：8 个 handler 自管类是否入 `CW_ACTION_TYPES`（建议：入册 +
-  锁加显式豁免名单常量，锁测试逐名断言）；`PICK_ACTION_TYPES`/`EventPick` 随 Pick 族改名的处置行；`HoldFrame` 不入
+- **修正方向**：details 补一节「新词表 × 白名单 × 完备测试」：8 个 handler 自管类是否入 `CW_ACTION_TYPES`（建议：入册 +
+  测试加显式豁免名单常量，测试逐名断言）；`PICK_ACTION_TYPES`/`EventPick` 随 Pick 族改名的处置行；`HoldFrame` 不入
   validate/`_act_execute`/注册表的实现约束（分支判等先于 validate 的顺序申报）。
 
 ### M5 `performance` 的换宿主面漏掉唯一 kernel 读者；reconcile_hp 对账层的整体改形（保旧不写/下行背书/上行留证/帧龄门）无落位说明
@@ -176,7 +176,7 @@
   selected_difficulty）、`kernel/cw_game_state.py:3188`（`GameState.relay`）、fields.md §2.1（载体中继约定 + 五镜像封闭集）。
 - **发现内容**：relay 机制的输入侧 100% 是 session 字段——session 解散后机制结构性死亡，但：① relay 块的处置
   （整删 or 各字段改直写）未在 §B 逐字段申报；②「接线滞后窗值冻结申报」（equips 中继兜底，fields.md §3.2.15 在册）
-  随之消失未申报；③五镜像封闭集（锁锚 = test_cw_game_state_batch4）的规格本体在 fields.md §2.1，
+  随之消失未申报；③五镜像封闭集（测试锚 = test_cw_game_state_batch4）的规格本体在 fields.md §2.1，
   正本更新清单的 fields.md 行**不含 §2.1**；④末阶段普查词表不含 relay/session_carrier/五镜像——
   正本残留只能靠运气。
 - **修正方向**：details §B 补「relay 块整删 + 五镜像喂入点改各画面直写」申报；正本清单 fields.md 行补 §2.1；

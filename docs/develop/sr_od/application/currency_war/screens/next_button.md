@@ -40,6 +40,6 @@
 
 无专属防线(兜底分支本性;`node_max_retry_times=2` 在用值仅框架异常路径消费)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-journal op 名 = 「前进按钮」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,next_button 已登记)。
+journal op 名 = 「前进按钮」;测试 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,next_button 已登记)。

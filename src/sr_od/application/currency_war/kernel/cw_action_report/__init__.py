@@ -3,7 +3,7 @@
 
 规约:词表类 ``CwActionXxxParam`` 恰有一个具名上报函数
 ``report_action_<snake>_param``(snake = 去前缀/后缀转下划线,
-机械可推导;完备锁 = sr-od-test test_action_report,
+机械可推导;完备测试 = sr-od-test test_action_report,
 经包级属性解析)。文件布局:
 - 有容器写语义的动作 = 一动作一文件(文件名 = snake);
 - ``level_up_shop`` = level_up 同字段双类型别名,独立文件保持
@@ -24,9 +24,9 @@
 # ============================================================ 动作上报接口(每动作一个具名函数)
 #
 # 命名规约 = ``report_action_<snake>_param``:词表类 ``CwActionXxxParam`` 去前后缀
-# 转 snake,机械可推导(完备锁测试遍历 CW_ACTION_TYPES 逐类断言函数在场)。
+# 转 snake,机械可推导(完备测试遍历 CW_ACTION_TYPES 逐类断言函数在场)。
 # 消费面 = 实机动作 op(组装时已知自身类型,直调本函数)与商店序列驱动器
-# (回放/既有序列锁消费面)直调。**禁新增按类型聚合的转移函数**——语义
+# (回放/既有序列测试消费面)直调。**禁新增按类型聚合的转移函数**——语义
 # 全部住本函数族,现无任何聚合分派点(正本口径 =
 # game_state/logic-updates/README.md 总则 1)。
 #

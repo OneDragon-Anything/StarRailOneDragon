@@ -10,17 +10,17 @@
 
 ### F-1 画面 op 决策出口:策略异常/None/非法类型盲选 idx0 回退 + idx 越界静默钳位(高)
 
-- **现状症状**:`operations/cw_screen/cw_screen_fortune.py::CwScreenFortune.act` 的 `_match` 在场臂三条违规路径——①决策抛异常(含 `strategies/impl/flow.py::_require_slot_options` 按契约对「离屏 None = 观察层失约」故意抛出的 ValueError)被宽 `except Exception` 吞掉,`log.warning` 后 `best_i = 0` 盲选首卡照常派发,未走异常 fail 出口;②返回 `None`/词表外类型时 `.idx` 属性错同样落入该 except 盲选首卡;③idx 越界被 `best_i = 0` 静默钳位续跑 = 流程侧值域改写。派发即 `CwActionPickFortuneOp` 点卡+确认机械链,盲选/越界放行 = 不可逆消耗一张强化效果。辅助实现位互认:`flow.py::decide_fortune` docstring 自述「handler 侧越界防御同落首卡」、`test_cw_unified_action_2c.py::test_expert_invite_decision_chain_error_falls_cash` 锁姊妹屏同款 catch→fallback 并自称三姊妹对齐——均无正本在册背书;`screens/fortune.md` §2/§8 未申报该回退面。
+- **现状症状**:`operations/cw_screen/cw_screen_fortune.py::CwScreenFortune.act` 的 `_match` 在场臂三条违规路径——①决策抛异常(含 `strategies/impl/flow.py::_require_slot_options` 按契约对「离屏 None = 观察层失约」故意抛出的 ValueError)被宽 `except Exception` 吞掉,`log.warning` 后 `best_i = 0` 盲选首卡照常派发,未走异常 fail 出口;②返回 `None`/词表外类型时 `.idx` 属性错同样落入该 except 盲选首卡;③idx 越界被 `best_i = 0` 静默钳位续跑 = 流程侧值域改写。派发即 `CwActionPickFortuneOp` 点卡+确认机械链,盲选/越界放行 = 不可逆消耗一张强化效果。辅助实现位互认:`flow.py::decide_fortune` docstring 自述「handler 侧越界防御同落首卡」、`test_cw_unified_action_2c.py::test_expert_invite_decision_chain_error_falls_cash` 校验姊妹屏同款 catch→fallback 并自称三姊妹对齐——均无正本在册背书;`screens/fortune.md` §2/§8 未申报该回退面。
 - **根因归层(根源两问)**:根在**流程层**——handler 时代「决策失败安全兜底」在画面 op 化迁移中的残留(同装备屏判,equip_pick.md §1 F-1)。三条正本反向禁止:op-layer.md §1.1 出口③(「决策无有效输出也走此出口——零盲发」)、§1.3(「非法返回 = 策略器 bug 响亮暴露(禁静默跳过或降级续跑)」)、flow/README.md §1 决策控制分层铁律(「动作值域过滤必须在策略侧实现……流程侧禁止任何形式的决策闸门与政策判断」)。act 内注释自述「越界防御 = 缺省首卡(判据侧无匹配同款)」**不成立**:kernel `cw_events.decide_fortune` 的「无匹配缺省卡 1」是判据对(可能为空的)候选输入的确定性决策语义,与「决策失败后兜底首卡」两回事(T-9-r1 F-1 同判)。修法 = 删兜底、换守卫,修根非症状。
-- **解决到哪**:决策出口两守卫(返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言恒炸)+ 删宽 except(策略异常自然传播 = 出口③)+ 删默认初值与钳位句;派发改直发策略产实例;`flow.py::decide_fortune` docstring 失效子句随批同步;`screens/fortune.md` as-built 申报守卫出口;补三臂测试锁。
-- **明确不解决**:无 match 局外 kernel 直调 `else` 分支(豁免面在册,分支归属候裁 = 报告 §3 在册欠账 4,原样保留);空候选/OCR 空文本帧 = 全零打分落首卡(kernel 判据侧合法缺省,报告 F-1 差距说明明示不辖,fortune.md §8 在册);「离屏 None = 观察层失约抛错」口径本体(修法 = 不再被吞,不改口径);重入裁决/`round_wait` 循环形态与 `node_max_retry_times=5`(一致面,报告 §3.1);expert_invite 姊妹锁与其同款 fallback(归其屏审查与 T-37 家族批);报告 §4 无法核对面(实机验证归运行期)。
+- **解决到哪**:决策出口两守卫(返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言恒炸)+ 删宽 except(策略异常自然传播 = 出口③)+ 删默认初值与钳位句;派发改直发策略产实例;`flow.py::decide_fortune` docstring 失效子句随批同步;`screens/fortune.md` as-built 申报守卫出口;补三臂测试。
+- **明确不解决**:无 match 局外 kernel 直调 `else` 分支(豁免面在册,分支归属候裁 = 报告 §3 在册欠账 4,原样保留);空候选/OCR 空文本帧 = 全零打分落首卡(kernel 判据侧合法缺省,报告 F-1 差距说明明示不辖,fortune.md §8 在册);「离屏 None = 观察层失约抛错」口径本体(修法 = 不再被吞,不改口径);重入裁决/`round_wait` 循环形态与 `node_max_retry_times=5`(一致面,报告 §3.1);expert_invite 姊妹测试与其同款 fallback(归其屏审查与 T-37 家族批);报告 §4 无法核对面(实机验证归运行期)。
 
 ### F-2 fortune.md §9 遥测声明与代码不符(中)
 
 - **现状症状**:`screens/fortune.md` §9 申报「op 内日志 tag = `[cw-fortune]`」——全 src grep `cw-fortune` 零命中,读者按文档定位不到任何遥测行。实际两个 tag:画面 op = `[cw][fortune]`(`cw_screen_fortune.py` 选卡 log.info 行;F-1 落地后 `log.warning` 兜底行退役)、选卡确认链 = `cw-pick-fortune`(`cw_overlay_pick_action.py::CwActionPickFortuneOp.run` 的 `safe_click` 与 `emit_overlay_confirm`)。附带:§8「有界重试兜底」与 §2「round_wait 循环推进(无防御上限)」同文档表述张力。
-- **根因归层**:**约定层(as-built 申报面漂移)**——screens/README.md §2 九节模板第 9 节 = 遥测与锁面 as-built 义务 + AGENTS.md §9(文档与代码现状一致)。
+- **根因归层**:**约定层(as-built 申报面漂移)**——screens/README.md §2 九节模板第 9 节 = 遥测与测试面 as-built 义务 + AGENTS.md §9(文档与代码现状一致)。
 - **解决到哪**:§9 tag 行按实际两 tag 改写;§8「有界重试兜底」句按层级归位改写(判据侧缺省 ≠ 流程侧循环兜底),与 F-1 的 §8 增补同文件一次施工(§2.3)。
-- **明确不解决**:journal op 名「命运卜者」(与 `cw_loop.py` 分发注册一致,报告 §3.7 核对一致);§9 测试锁指针与 game 侧指针行(一致面);其余屏 tag 申报面(各归其屏)。
+- **明确不解决**:journal op 名「命运卜者」(与 `cw_loop.py` 分发注册一致,报告 §3.7 核对一致);§9 测试指针与 game 侧指针行(一致面);其余屏 tag 申报面(各归其屏)。
 
 ### F-3 注释含变更史/过程编号引用,无持久指针(低)
 
@@ -96,12 +96,12 @@ return self.round_wait()
 - **§8 守卫与防线**补两条:①决策返回契约守卫:decide_fortune 返回 None/词表外 = 具名 round_fail 零盲发、策略异常自然传播(原「越界防御/策略失败 fallback 第1张」退役申报);②值域守卫:pick idx 越界 = 守卫断言 AssertionError(原「静默钳 0」退役申报)。
 - op-layer.md 改动 = §1.3 守卫清单登记本屏两条守卫出口(现役清单仅 `guard_proposal_vs_expected` 单例枚举,守卫落地不登记 = 正本缺员;登记 = 无条件默认动作非开放裁决,对齐 equip_pick.md §2.2② 既裁规范;逐屏条目/族级统一条目形态归 T-37 裁)。屏级行为申报归 fortune.md(正本分层 = op-layer 行为规范 + 各屏 as-built)。
 
-**测试锁**(`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py` 新增 fortune act 臂,实现随功能写):
+**测试**(`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py` 新增 fortune act 臂,实现随功能写):
 
-1. 补锁①(返回契约):`decide_fortune` 桩返 `None` 与词表外 `SimpleNamespace(idx=0, reason='stub')` 两子态合一锁 → act 返回 round_fail(消息含「决策无有效输出」)、派发桩零调用;`_confirm_pending` 保持未置位。
-2. 补锁②(值域):真词表类 `CwActionPickFortuneParam(idx=3)`(`len(CARD_XS)=3` 越界)→ AssertionError 传播、零派发零点击。
-3. 补锁③(正路形态):`CwActionPickFortuneParam(idx=1, reason='stub')` → 恰一次派发且派发 param 即策略产实例、`env.idx == 1`、target = `(CARD_XS[1], CARD_Y)`、`rs.result == WAIT`、`_confirm_pending` 置位。驱动形态 = 同文件祈愿锁先例(装备屏已退役删除):`op._obs` 注入 `CwScreenFortuneObs` + `_make_match` 决策桩 + 注册表 `action_op_for` monkeypatch 派发捕获。
-4. 现役锁无回退核对:fortune 现役三锁不触守卫——观察接线锁(two_node_family `_OBS_ROWS['fortune']` 行,observe 面)、sig 锁(`test_cw_screen_report_ports.py:530`)、机械链锁(`test_cw_unified_action_4.py::test_fortune_pick_op_clicks_card_confirms_and_self_reports`,直构动作 op 不经 act 决策出口);全仓无 `decide_fortune` 的 SimpleNamespace 决策桩(唯一其余消费 = `test_cw_overlay_judgement_migration.py` 契约锁,返真词表类),**无桩型同型化义务**(与装备屏差异,省一项施工)。
+1. 补测试①(返回契约):`decide_fortune` 桩返 `None` 与词表外 `SimpleNamespace(idx=0, reason='stub')` 两子态合一测试 → act 返回 round_fail(消息含「决策无有效输出」)、派发桩零调用;`_confirm_pending` 保持未置位。
+2. 补测试②(值域):真词表类 `CwActionPickFortuneParam(idx=3)`(`len(CARD_XS)=3` 越界)→ AssertionError 传播、零派发零点击。
+3. 补测试③(正路形态):`CwActionPickFortuneParam(idx=1, reason='stub')` → 恰一次派发且派发 param 即策略产实例、`env.idx == 1`、target = `(CARD_XS[1], CARD_Y)`、`rs.result == WAIT`、`_confirm_pending` 置位。驱动形态 = 同文件祈愿测试先例(装备屏已退役删除):`op._obs` 注入 `CwScreenFortuneObs` + `_make_match` 决策桩 + 注册表 `action_op_for` monkeypatch 派发捕获。
+4. 现役测试无回退核对:fortune 现役三测试不触守卫——观察接线测试(two_node_family `_OBS_ROWS['fortune']` 行,observe 面)、sig 测试(`test_cw_screen_report_ports.py:530`)、机械链测试(`test_cw_unified_action_4.py::test_fortune_pick_op_clicks_card_confirms_and_self_reports`,直构动作 op 不经 act 决策出口);全仓无 `decide_fortune` 的 SimpleNamespace 决策桩(唯一其余消费 = `test_cw_overlay_judgement_migration.py` 契约测试,返真词表类),**无桩型同型化义务**(与装备屏差异,省一项施工)。
 
 **关键取舍**:
 
@@ -115,8 +115,8 @@ return self.round_wait()
 
 - **模式认定**:pick 族画面 op 决策出口「盲选 idx0 回退 + idx 静默钳位」——已查出成员:遭遇(T-4-r1.md F-1,修法 = 本目录 encounter.md §2.1)、盛会之星(T-8-r1.md F-1,megastar.md §2.1)、选择装备(T-9-r1.md F-1,equip_pick.md §2.1)、选择伙伴(T-11-r1.md F-1,partner.md §2.1)、祈愿试炼(T-13-r1.md F-1,wish_trial.md §2.1);审查账本记本屏为家族第 6 例、祈愿为第 7 例(迭代账本 dag.jsonl T-12/T-13 条)。序列为修订时点快照,T-37 汇总以最新报告/设计稿目录为准(megastar.md 同款限定语)。
 - **族级统一修法建议**(承 megastar.md §2.2 / equip_pick.md §2.2 既裁方向,本稿为家族实例):①决策无有效输出(返回侧 None/词表外)= 具名 round_fail 零盲发交外循环,消息含策略器原值 repr;②值域非法(idx 越界)= 守卫断言 AssertionError 响亮暴露;③删全部默认 idx 初值/钳位句/宽 except,策略异常自然传播 = 出口③;两守卫均在派发前、零点击,禁钳位禁盲选(依据统一 = op-layer.md §1.1 出口③/§1.3、flow/README.md §1 铁律)。屏幕特形出口以其正本在册申报为准(遭遇「空候选 = 零点击终结交回重读」;本屏「空候选 = 判据侧合法缺省」)——两特形互不通用,无在册申报的屏一律走 fail 出口。跨件半问已过:家族各例同根(handler 时代决策失败安全兜底残留),根的载体是各屏 act 内残留代码而非更高层抽象缺位(画面 op 层不设共享基类/端口 = op-layer.md §4 在册),故不升架构级设计件,以**族级形态统一**收敛、不建共享守卫函数(先例 = equip_pick.md §2.2)。
-- **兄弟屏连带面(归 T-37,本稿不触)**:①实现位互认的家族性失效——`flow.py` 各 `decide_*` docstring 的「handler 侧兜底」类子句(本稿辖 `decide_fortune` 一处,其余屏各归其稿);②`test_cw_unified_action_2c.py::test_expert_invite_decision_chain_error_falls_cash` 锁 expert_invite 的 catch→fallback 并自称与 fortune/equip 姿态对齐——家族批落地后该锁的自述与被锁行为双双过期,归 expert_invite 屏修法随批处理;③op-layer.md §1.3 守卫清单登记 = 无条件默认动作(equip_pick.md §2.2② 既裁,非开放裁决),候裁面仅登记形态(逐屏/族级条目);④`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 的 [索引定义]「决策半现算快照(钳位后生效值)」措辞随家族批改净——本修法删钳位后 fortune 派发的 env.idx = 守卫后原值,共享注释对本屏失真;承 equip_pick.md §2.2① 挂账(单屏改会让共享注释与未修屏临时不一致),本稿不单独触。
-- **归口 = 汇总任务 T-37**:裁决是否合并为一次族级实施批(统一守卫形态、共享测试锁模板、一次对抗)。本稿 §2.1 独立可实施;若 T-37 裁决族级合并,本稿即族级形态在命运卜者的实例,以族级批统一口径为准、不另立第二套。
+- **兄弟屏连带面(归 T-37,本稿不触)**:①实现位互认的家族性失效——`flow.py` 各 `decide_*` docstring 的「handler 侧兜底」类子句(本稿辖 `decide_fortune` 一处,其余屏各归其稿);②`test_cw_unified_action_2c.py::test_expert_invite_decision_chain_error_falls_cash` 校验 expert_invite 的 catch→fallback 并自称与 fortune/equip 姿态对齐——家族批落地后该测试的自述与被测行为双双过期,归 expert_invite 屏修法随批处理;③op-layer.md §1.3 守卫清单登记 = 无条件默认动作(equip_pick.md §2.2② 既裁,非开放裁决),候裁面仅登记形态(逐屏/族级条目);④`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 的 [索引定义]「决策半现算快照(钳位后生效值)」措辞随家族批改净——本修法删钳位后 fortune 派发的 env.idx = 守卫后原值,共享注释对本屏失真;承 equip_pick.md §2.2① 挂账(单屏改会让共享注释与未修屏临时不一致),本稿不单独触。
+- **归口 = 汇总任务 T-37**:裁决是否合并为一次族级实施批(统一守卫形态、共享测试模板、一次对抗)。本稿 §2.1 独立可实施;若 T-37 裁决族级合并,本稿即族级形态在命运卜者的实例,以族级批统一口径为准、不另立第二套。
 
 ### 2.3 F-2 修法
 
@@ -127,7 +127,7 @@ return self.round_wait()
 | §9 首条 | 「op 内日志 tag = `[cw-fortune]`(卡文/选卡序号)。」 | 「画面 op 日志 tag = `[cw][fortune]`(选卡行:卡文与选卡序号);选卡确认链(`cw_overlay_pick_action.py::CwActionPickFortuneOp`)日志 tag = `cw-pick-fortune`(点卡 `safe_click` 与确认 `emit_overlay_confirm`)。」 |
 | §8 第三条 | 「OCR 空文本帧 = 全零打分落首卡(有界重试兜底,非盲选禁令屏——…)」 | 「OCR 空文本帧 = 全零打分落首卡(kernel 判据侧合法缺省 = `cw_events.decide_fortune` 无匹配缺省卡 1,非流程侧兜底;决策出口处置见本节守卫两条)——与 box_pick 的「OCR 未读 = fail 交回」纪律不同,本屏选错代价低。」 |
 
-依据:代码 tag 实值(`cw_screen_fortune.py` 选卡行 / `cw_overlay_pick_action.py::CwActionPickFortuneOp.run`)、screens/README.md §2(第 9 节 as-built 义务)、AGENTS.md §9。「有界重试兜底」与 §2「round_wait 循环推进(无防御上限)」的张力随层级归位消解(判据侧缺省 ≠ 循环兜底机制)。§9 journal op 名与测试锁指针行核对一致不动。
+依据:代码 tag 实值(`cw_screen_fortune.py` 选卡行 / `cw_overlay_pick_action.py::CwActionPickFortuneOp.run`)、screens/README.md §2(第 9 节 as-built 义务)、AGENTS.md §9。「有界重试兜底」与 §2「round_wait 循环推进(无防御上限)」的张力随层级归位消解(判据侧缺省 ≠ 循环兜底机制)。§9 journal op 名与测试指针行核对一致不动。
 
 ### 2.4 F-3 修法(逐站点目标文本)
 
@@ -155,10 +155,10 @@ return self.round_wait()
 
 ### 2.6 实施文件面全集(合并实施对账用)
 
-- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_fortune.py`(两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三锁)。
+- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_fortune.py`(两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三测试)。
 - **零行为变更的代码内文档**:`strategies/impl/flow.py::decide_fortune` docstring(F-1 配套)、`cw_screen_fortune.py` 注释面(F-3,与 F-1 同文件一并施工)、`kernel/cw_game_state.py` `chosen_fortune` 行注与 `kernel/cw_projection_audit.py` basis(F-4)。
 - **正本文档**:`docs/develop/sr_od/application/currency_war/screens/fortune.md`(F-1 as-built §2/§4/§5/§8 + F-2 §9/§8,合并施工)、`docs/develop/sr_od/application/currency_war/screens/op-layer.md`(§1.3 守卫清单,F-1 登记本屏两条守卫出口,依据 = §2.1 文档面末条)。
-- **跨稿共享面(本稿不独立实施)**:族级实施批归口 T-37(§2.2);expert_invite 姊妹锁归其屏修法;`chosen_hack`/`chosen_equip` 注释与 audit 行失真归各屏稿/T-37。
+- **跨稿共享面(本稿不独立实施)**:族级实施批归口 T-37(§2.2);expert_invite 姊妹测试归其屏修法;`chosen_hack`/`chosen_equip` 注释与 audit 行失真归各屏稿/T-37。
 - 其余文件零触碰;F-2..F-4 零行为变更。
 
 ## 3. 新规范增补(2026-09-22 两条款)
@@ -249,40 +249,40 @@ return self.round_wait()
 
 **落点 3.2-g = §2.6 实施文件面全集三行(局部扩写,逐字)**:
 
-- 行为变更行,现「`operations/cw_screen/cw_screen_fortune.py`(两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三锁)」→ 改「`operations/cw_screen/cw_screen_fortune.py`(局外臂 :37 round_success 交回 + 两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三锁 + 局外臂锁④,本稿 §3 增补③)」。
+- 行为变更行,现「`operations/cw_screen/cw_screen_fortune.py`(两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三测试)」→ 改「`operations/cw_screen/cw_screen_fortune.py`(局外臂 :37 round_success 交回 + 两守卫/直发/删兜底/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(新增 fortune act 臂三测试 + 局外臂测试④,本稿 §3 增补③)」。
 - 代码内文档行,现「`cw_screen_fortune.py` 注释面(F-3,与 F-1 同文件一并施工)」→ 改「`cw_screen_fortune.py` 注释面(F-3,与 F-1 同文件一并施工)+ observe docstring 局外句(本稿 §3 增补② 落点 3.2-f)」。
 - 正本文档行,现「`docs/develop/sr_od/application/currency_war/screens/fortune.md`(F-1 as-built §2/§4/§5/§8 + F-2 §9/§8,合并施工)」→ 改「`docs/develop/sr_od/application/currency_war/screens/fortune.md`(F-1 as-built §2/§4/§5/§8 + F-2 §9/§8 + §3 局外句(本稿 §3 增补② 落点 3.2-f),合并施工)」。
 
-**验收锚**:①§1 明确不解决清单无局外分支条目;②3.2-f 两站点目标文本在稿且均含「op-layer.md §1.1 :37」;③§2.6 三行扩写后文件集完整覆盖 3.2-f 两站点与锁④。
+**验收锚**:①§1 明确不解决清单无局外分支条目;②3.2-f 两站点目标文本在稿且均含「op-layer.md §1.1 :37」;③§2.6 三行扩写后文件集完整覆盖 3.2-f 两站点与测试④。
 
-### 3.3 增补③(:37 条款):测试锁补局外臂(锁④)
+### 3.3 增补③(:37 条款):测试补局外臂(测试④)
 
-**落点 = §2.1 测试锁清单(在「补锁③」与「现役锁无回退核对」之间插入一条,编号顺延;逐字)**:
+**落点 = §2.1 测试清单(在「补测试③」与「现役测试无回退核对」之间插入一条,编号顺延;逐字)**:
 
-> 4. 补锁④(局外臂,op-layer.md §1.1 :37):`cw_match=None`(无 strategy 属性即可,局外臂先于任何决策消费)→ act 返回 round_success(消息含「零决策零点击终结交回」)、派发桩零调用零点击、`_confirm_pending` 保持未置位;装配同补锁③先例(`op._obs` 注入可省——match-None 臂不消费 texts,保持同构注入亦可)。
+> 4. 补测试④(局外臂,op-layer.md §1.1 :37):`cw_match=None`(无 strategy 属性即可,局外臂先于任何决策消费)→ act 返回 round_success(消息含「零决策零点击终结交回」)、派发桩零调用零点击、`_confirm_pending` 保持未置位;装配同补测试③先例(`op._obs` 注入可省——match-None 臂不消费 texts,保持同构注入亦可)。
 
-依据:现稿测试锁清单锁组(补锁①②③)无局外臂;:37 出口 = round_success 终结交回,与守卫 fail 臂出口不同形,须独立锁面(报告 §2.4 增补 C);锁形与族级共享测试锁模板一致(无 match → round_success + 零派发,见 §3.4 合流申报);补锁①②③与「现役锁无回退核对」文本零改动。
+依据:现稿测试清单测试组(补测试①②③)无局外臂;:37 出口 = round_success 终结交回,与守卫 fail 臂出口不同形,须独立测试面(报告 §2.4 增补 C);测试形与族级共享测试模板一致(无 match → round_success + 零派发,见 §3.4 合流申报);补测试①②③与「现役测试无回退核对」文本零改动。
 
-**验收锚**:锁④断言三件套(round_success / 零派发零点击 / `_confirm_pending` 未置位)在稿;补锁①②③文本零改动。
+**验收锚**:测试④断言三件套(round_success / 零派发零点击 / `_confirm_pending` 未置位)在稿;补测试①②③文本零改动。
 
 ### 3.4 :37 行为改写与族级合并裁决面合流申报(跨屏共性)
 
 - 本屏 :37 行为改写 = else 支(kernel 直调兜底派发)退役、前置 match-None 臂 round_success 终结交回,属 **6 屏同形态改写族**(T-9 选择装备 / T-11 选择伙伴 / T-12 本屏 / T-13 祈愿试炼 / T-14 星徽秘典 / T-15 专家邀请函;形态 = 局外支/守卫臂 → 零决策零点击 round_success 终结交回;依据 = respec 报告 §2.8 跨屏共性 2;T-10 为零行为批不在内)。
-- 与 §2.2 既有「族级合并实施批」裁决面**合流**:归 T-37 时并入族级实施批一次施工(统一 :37 改写形态 + 共享测试锁模板「无 match → round_success + 零派发」断言);「报告 §3 在册欠账 4(局外分支候裁)」销项。族级修法建议(T-37 汇总时)增补一条族级口径:「④局外支(op-layer.md §1.1 :37):无 match = 零决策零点击 round_success 终结交回(遭遇屏先例同款;各稿原『保留/候裁』分歧已被 :37 裁定终结,归族级批一次施工)」。
-- 本屏与 T-13 同为 6 屏中「条款①不适用」屏,无 :34 登记面;兄弟屏连带(`flow.py::decide_fortune` docstring 失效子句、expert_invite 姊妹锁)维持 §2.2 现款归口,不受 :37 影响。
+- 与 §2.2 既有「族级合并实施批」裁决面**合流**:归 T-37 时并入族级实施批一次施工(统一 :37 改写形态 + 共享测试模板「无 match → round_success + 零派发」断言);「报告 §3 在册欠账 4(局外分支候裁)」销项。族级修法建议(T-37 汇总时)增补一条族级口径:「④局外支(op-layer.md §1.1 :37):无 match = 零决策零点击 round_success 终结交回(遭遇屏先例同款;各稿原『保留/候裁』分歧已被 :37 裁定终结,归族级批一次施工)」。
+- 本屏与 T-13 同为 6 屏中「条款①不适用」屏,无 :34 登记面;兄弟屏连带(`flow.py::decide_fortune` docstring 失效子句、expert_invite 姊妹测试)维持 §2.2 现款归口,不受 :37 影响。
 
 ### 3.5 T-37 登记行原文(T-37 汇总按行抄录,不改写)
 
 - T-12①(:37):fortune.md §2.1 目标代码 else 支(kernel 直调兜底派发)退役,前置 match-None 臂 round_success(`'[cw][fortune] 局外无 match,零决策零点击终结交回(op-layer §1.1 :37)'`);取舍 3 后半与条目 3/4/5/6 连带改写,逐字见本稿 §3.1。
 - T-12②(:37):fortune.md §1 F-1 明确不解决首条删除、在册核对结论局外句改写、§2.1 文档面 §2/§4 补句尾改 :37 口径、§5 追加局外行;连带新增站点——`screens/fortune.md` §3 局外句 + `cw_screen_fortune.py::observe` docstring 同句(3.2-f),§2.6 文件面三行收录。
-- T-12③(:37):fortune.md §2.1 测试锁补锁④——无 match → round_success、零派发零点击、`_confirm_pending` 未置位。
-- T-12合流::37 行为改写(else 支)并入 6 屏(T-9/T-11/T-12/T-13/T-14/T-15)族级实施批一次施工,共享测试锁模板;「报告 §3 在册欠账 4」候裁销项;条款①不适用(关键词打分面无标准注册表,`FORTUNE_KEYWORD_WEIGHTS` 判据在册),无 :34 登记面。
+- T-12③(:37):fortune.md §2.1 测试补测试④——无 match → round_success、零派发零点击、`_confirm_pending` 未置位。
+- T-12合流::37 行为改写(else 支)并入 6 屏(T-9/T-11/T-12/T-13/T-14/T-15)族级实施批一次施工,共享测试模板;「报告 §3 在册欠账 4」候裁销项;条款①不适用(关键词打分面无标准注册表,`FORTUNE_KEYWORD_WEIGHTS` 判据在册),无 :34 登记面。
 
 ## 4. 新规范增补二(2026-09-22 用户裁定两条款:选项坐标观察上报 + 动作 op 单文件)
 
 ### 4.0 前置裁决与条款基准
 
-- **批形态前置裁决(2026-09-22 用户裁决)**:单屏独立实施,本稿只辖本屏(T-12)——§2.2「归口 = 汇总任务 T-37」(族级合并实施批裁决面)与 §3.4(六屏 :37 合流申报)随之**销项**:本屏 F-1 两守卫 + §3 :37 局外支改写 + 本节增补 = 本屏独立实施批一次落地。连带口径:①守卫① fail 语义(不烧节点重试预算,响亮性载体 = 外环 fail 重派网)经裁决确认;②在册欠账(三卡文本读区未 area 化/chosen 写端未接线/logic-updates 索引过时)维持不消费;③env.idx 字段注释已由家族批改净(commit dbffcb326「退役中停喂」新形态,对停喂屏准确),本批零动作;字段本体删除仍随族级批(§4.7);④op-layer.md §1.3 守卫清单登记按**逐屏条目**落(原 §2.2③「登记形态」候裁随单屏裁决自然收敛为逐屏);⑤expert_invite 姊妹锁与兄弟屏 docstring 子句仍归各自稿;⑥§3.5「T-12合流」登记行(六屏族级批一次施工)随单屏裁决一并销项,不再按行抄录传播。
+- **批形态前置裁决(2026-09-22 用户裁决)**:单屏独立实施,本稿只辖本屏(T-12)——§2.2「归口 = 汇总任务 T-37」(族级合并实施批裁决面)与 §3.4(六屏 :37 合流申报)随之**销项**:本屏 F-1 两守卫 + §3 :37 局外支改写 + 本节增补 = 本屏独立实施批一次落地。连带口径:①守卫① fail 语义(不烧节点重试预算,响亮性载体 = 外环 fail 重派网)经裁决确认;②在册欠账(三卡文本读区未 area 化/chosen 写端未接线/logic-updates 索引过时)维持不消费;③env.idx 字段注释已由家族批改净(commit dbffcb326「退役中停喂」新形态,对停喂屏准确),本批零动作;字段本体删除仍随族级批(§4.7);④op-layer.md §1.3 守卫清单登记按**逐屏条目**落(原 §2.2③「登记形态」候裁随单屏裁决自然收敛为逐屏);⑤expert_invite 姊妹测试与兄弟屏 docstring 子句仍归各自稿;⑥§3.5「T-12合流」登记行(六屏族级批一次施工)随单屏裁决一并销项,不再按行抄录传播。
 - **基准** = 用户裁定 2026-09-22 原文,条款**已先期入正本**(「选择坐标观察上报」= op-layer.md §1.1 :35、「每个动作 op 单独一个文件」= §1.2 :48;commit 9c8e9016b,2026-09-22 17:35,先于本稿入库;action_ops.md §1 已同落增补 4/5,commit 97c81cdf3)。同源裁定稿 = planner.md §4;equip 屏已随裁定退役删除(commit d37d78fab「删除『选择装备』屏全套」),其稿不复在册——本稿 §1-§3 内 equip_pick.md 诸引据 = 引据时点在册先例的历史引文,现役家族守卫先例以 megastar.md §2.1 / partner.md §2.1 为准,不再回溯 equip 稿。下文简称「坐标随报条款」/「一文件条款」,条款效力以正本为准;整理文本与正本入册文的差异(整理多「选中几何归观察侧」句)= 正本「动作/上报层零坐标现算」之推论申报,非条款文本出入。用户裁定原文(裁定记录,口语):「观察上报选项时候,除了要将识别内容归一化到标准注册数据外,还需要上报具体的坐标,存到 game state,即选中这种选项具体的坐标,这里包括商店、各个需要选择的 overlay,这样策略侧,只需要输出下标就可以了,执行的动作 op,也可以根据下标,从 game state 获取坐标来执行。另外就是必须每个动作 op 单独一个文件。」据此整理:
 >
 > **坐标随报条款(整理文本;正本 = op-layer.md §1.1 :35)**:观察上报选项时,除将识别内容归一化到标准注册数据(op-layer.md §1.1 :34)外,必须上报每个选项的可点击坐标并存入 game state(逐选项一坐标,与选项列表同序、同坐标系、同一写点);选中几何(如避开卡内详情钮的点位推导)归观察侧、随观察入容器。策略侧只输出下标;执行的动作 op 按下标从 game state 读坐标执行——决策半与动作 op 均不自算选项坐标。辖域 = 商店与各需要选择的 overlay。
@@ -332,13 +332,13 @@ return self.round_wait()
 8. **类常量注释**(`cw_screen_fortune.py` `CARD_XS`/`CARD_Y` 注释,F-1/§2.4 修订后文本再修):消费申报改「消费点 = 观察 node 坐标上报(area 主源 + 兜底,坐标随报条款)与守卫②槽数界;执行侧不自算坐标」。
 9. **docstring 观察句连带**(坐标读/双写使「观察面 = OCR 卡名」三处申报失全,随批改写):①`kernel/cw_screen_report/fortune.py` 模块 docstring 观察面句「观察面 = overlay 门判定 + 三卡位 OCR 卡名(入口帧一次读)。」→「观察面 = overlay 门判定 + 三卡位 OCR 卡名 + 三卡点击坐标(入口帧一次读;坐标单一源 = 建档「卡-强化1/2/3」area,主源 + 兜底常量)。」;②`cw_screen_fortune.py` 模块 docstring 形态段观察半句「观察 node = 三卡位 OCR 一次读(入口帧一次读,与现役决策体读同帧等价)」→「观察 node = 三卡位 OCR 一次读 + 三卡点击坐标(入口帧一次读,与现役决策体读同帧等价;坐标 = area 主源 + 兜底)」;③observe docstring 主句「三卡位 OCR 一次读 → report 落容器(」→「三卡位 OCR 一次读 + 三卡点击坐标 → report 双写容器 `fortune_opts`/`fortune_opts_xy`(」——3.2-f 改写的句尾局外括注不变,本点只改主句。
 
-### 4.3 测试锁(§2.1 测试锁组与 §3.3 锁④之上修订/追加)
+### 4.3 测试(§2.1 测试组与 §3.3 测试④之上修订/追加)
 
-- **观察上报锁**(`test_cw_screen_two_node_family.py` `_OBS_ROWS` 表 fortune 行 :121-126):期望容器面扩为双域——`fortune_opts`(现值)+ `fortune_opts_xy`(3 槽定值;area 读桩 = monkeypatch `area_center` 回定值,恒稳断言不读真实建档);表驱动形状(5 元组)若不容双域,该行拆独立锁(实施时定,锁语义不变)。
-- **锁③修订**(§2.1 补锁③正路形态):删 `env.idx == 1` 与 `target = (CARD_XS[1], CARD_Y)` 两断言,增断言「env 仅携 op(零 target 零 idx;entry_keyword 参数已随 commit 543affce6 退役,断言无此参)」;「恰一次派发且派发 param 即策略产实例」「`rs.result == WAIT`」「`_confirm_pending` 置位」断言保持(逐字落点 = §4.4 落点 d)。
-- **动作 op 坐标锁(新,`test_cw_unified_action_4.py`)**:①行为锁 fortune 行适配(:458 `test_fortune_pick_op_clicks_card_confirms_and_self_reports`)——gs 桩携 `fortune_opts_xy` 种子坐标(3 槽定值),点击点断言改自容器值(`env.target` 不再是坐标源;monkeypatch 目标 = `cw_pick_fortune_action`,import 已在册);②守卫锁二态——容器缺域/空、idx 越界 → AssertionError 且零点击(A 类伴随域无 None 元素,口径 = §4.2 第 7 点)。
-- **锁①②④(守卫两锁/局外臂锁)与「现役锁无回退核对」**:锁面语义不变;机械链锁归上条①适配,不再是独立核对面。
-- **不受影响面复核**:sig 锁(`test_cw_screen_report_ports.py`,actor 类名不变)与 overlay_judgement_migration 契约锁(返真词表类,§2.1 现役锁核对在册)零触碰;`_WRITE_CASES`/`_EMPTY_OBS_CASES` 形状经 r1 已攻不立 3/4 在档。
+- **观察上报测试**(`test_cw_screen_two_node_family.py` `_OBS_ROWS` 表 fortune 行 :121-126):期望容器面扩为双域——`fortune_opts`(现值)+ `fortune_opts_xy`(3 槽定值;area 读桩 = monkeypatch `area_center` 回定值,恒稳断言不读真实建档);表驱动形状(5 元组)若不容双域,该行拆独立测试(实施时定,测试语义不变）。
+- **测试③修订**(§2.1 补测试③正路形态):删 `env.idx == 1` 与 `target = (CARD_XS[1], CARD_Y)` 两断言,增断言「env 仅携 op(零 target 零 idx;entry_keyword 参数已随 commit 543affce6 退役,断言无此参)」;「恰一次派发且派发 param 即策略产实例」「`rs.result == WAIT`」「`_confirm_pending` 置位」断言保持(逐字落点 = §4.4 落点 d)。
+- **动作 op 坐标测试(新,`test_cw_unified_action_4.py`)**:①行为测试 fortune 行适配(:458 `test_fortune_pick_op_clicks_card_confirms_and_self_reports`)——gs 桩携 `fortune_opts_xy` 种子坐标(3 槽定值),点击点断言改自容器值(`env.target` 不再是坐标源;monkeypatch 目标 = `cw_pick_fortune_action`,import 已在册);②守卫测试二态——容器缺域/空、idx 越界 → AssertionError 且零点击(A 类伴随域无 None 元素,口径 = §4.2 第 7 点)。
+- **测试①②④(守卫两测试/局外臂测试)与「现役测试无回退核对」**:测试面语义不变;机械链测试归上条①适配,不再是独立核对面。
+- **不受影响面复核**:sig 测试(`test_cw_screen_report_ports.py`,actor 类名不变)与 overlay_judgement_migration 契约测试(返真词表类,§2.1 现役测试核对在册)零触碰;`_WRITE_CASES`/`_EMPTY_OBS_CASES` 形状经 r1 已攻不立 3/4 在档。
 
 ### 4.4 既有正文落点修订(逐字;v3 = 合成终态)
 
@@ -435,7 +435,7 @@ return self.round_wait()
   (重入裁决块 :112-117 与删兜底面 = §2.1 条目 1/5 + §3.1-a/3.1-d 既有落点,注释面随块替换逐字落;§3.2-f observe 括注、3.1-b..3.1-f 各连带落点照旧执行。)
 - **落点 b(§2.1 条目 5 派发注,§3.1-d 改写后文本再修)**——现文尾「与派发注「派发实例 = 策略产 ``CwActionPickFortuneParam``(守卫后直发;上报 param 即真实选择)」」→ 改「与派发注「派发实例 = 策略产 ``CwActionPickFortuneParam``(守卫后直发;上报 param 即真实选择);env 仅携 op,点击坐标 = 动作 op 自容器 `fortune_opts_xy` 读(坐标随报条款)」」。
 - **落点 c(§2.1 条目 6 act docstring 同步句,§3.1-e 改写后文本再修)**——现文尾「——守卫均在派发前、零点击」→ 改「——守卫均在派发前、零点击;派发 env 仅携 op,点击坐标 = 动作 op 自容器读(坐标随报条款)」。
-- **落点 d(§2.1 测试锁清单补锁③条目)**——现文「、`env.idx == 1`、target = `(CARD_XS[1], CARD_Y)`、」→ 改「、env 仅携 op(零 target 零 idx,§4.3)、」。
+- **落点 d(§2.1 测试清单补测试③条目)**——现文「、`env.idx == 1`、target = `(CARD_XS[1], CARD_Y)`、」→ 改「、env 仅携 op(零 target 零 idx,§4.3)、」。
 - **落点 e(F-2 修法表 §9 行确认面随迁)**——2.3 表 §9 行目标文本「选卡确认链(`cw_overlay_pick_action.py::CwActionPickFortuneOp`)日志 tag = `cw-pick-fortune`(点卡 `safe_click` 与确认 `emit_overlay_confirm`)」→「选卡确认链(`cw_pick_fortune_action.py::CwActionPickFortuneOp`)日志 tag = `cw-pick-fortune`(点卡 `safe_click`;确认 = 「按钮-确认选择」`round_by_find_and_click_area` 建档查找点击,全族统一)」(纯现值;卜者确认链已随统一改 `round_by_find_and_click_area`,`emit_overlay_confirm` 不再为本屏消费面——函数本体在册,`cw_screen_deploy_not_full.py` 仍消费)。
 - **落点 f(§2.1 文档面 screens/fortune.md §4 伪码块,F-1 目标文本再修为合成终态)**——2.1 文档面 §4 伪码块以本块为实施文本(与 §4.2 第 6/7 点互证;现块 :27-36 含 emit_overlay_confirm 行,整块替换):
 
@@ -472,7 +472,7 @@ return self.round_wait()
 - **行为变更(F-1 两守卫 + :37 局外支 + 坐标随报适配)+ 同文件注释面(F-3)**:`operations/cw_screen/cw_screen_fortune.py`(act 守卫/直发/局外臂 round_success/observe 坐标读/`_env = OverlayPickExecEnv(op=self)`/Point import 退役;docstring 面 = act(落点 c)、模块观察半句与 observe 主句(§4.2 第 9 点)、observe 局外句(§3.2-f 专站);类常量注释)。
 - **kernel**:`kernel/cw_screen_report/fortune.py`(obs 载荷 + 同序等长守卫 + report 双写 + 模块 docstring 观察面句〔§4.2 第 1/9 点〕)、`kernel/cw_game_state.py`(`fortune_opts_xy` 三镜像 + F-4 `chosen_fortune` 行注)、`kernel/cw_projection_audit.py`(`fortune_opts_xy` 对账行 + F-4 basis)、`strategies/impl/flow.py`(`decide_fortune` docstring,F-1 配套零行为)。
 - **动作 op(现文件适配,零迁移)**:`operations/cw_op/cw_pick_fortune_action.py`(容器取点守卫 + `safe_click` 源改容器 + import 增 Point;确认段/自上报零触碰)。`cw_overlay_pick_action.py`/`cw_action_registry.py`/`cw_overlay_pick_env.py` 零触碰(已随家族批落地)。
-- **测试**:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(锁①②③④ + 观察双域/锁③修订,§4.3)、`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py`(fortune 行适配 + 二态守卫锁)。
+- **测试**:`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(测试①②③④ + 观察双域/测试③修订,§4.3)、`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py`(fortune 行适配 + 二态守卫测试）。
 - **正本文档**:`docs/develop/sr_od/application/currency_war/screens/fortune.md`(F-1 as-built §2/§4/§5/§8 + F-2 §9/§8 + §3 局外句 + §3 坐标申报 + §4 伪码块终态,合并施工)、`docs/develop/sr_od/application/currency_war/game_state/fields.md` **零触碰**(xy 登记面已由 §3.4.5a A 类集中点名 + §3.4 头注 xy 总声明覆盖——家族批后正本登记惯例集中化,wish_trial/star_tome 落地同判,逐屏清单/各屏行均无 xy 字样;§3.4.5「缺三卡文本读区」欠账维持;F-4 两站点均在代码面〔已列 kernel 行〕)、`docs/develop/sr_od/application/currency_war/screens/op-layer.md`(§1.3 守卫清单补本屏守卫出口逐屏条目)、`docs/develop/sr_od/application/currency_war/flow/action_ops.md`(§4.5 :139/:154 两行,落点 i)。
 - **其余文件零触碰**:kernel 判据本体(`kernel/cw_events.py`);策略决策逻辑(`flow.py` 仅已列 docstring 面);共享 env(`cw_overlay_pick_env.py`);兄弟屏与商店(两条款家族面归各自批,§4.7);F-2..F-4 零行为变更。
 

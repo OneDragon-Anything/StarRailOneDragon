@@ -38,6 +38,6 @@
 
 ## 未归档义务（全部在 landing.md 清单内，此处仅记指针）
 
-- 落地期：3.1（83 条对账凭据、P81 换基重演必答六件含 is_economy_engine 终裁、【拍】章程六处联动与立场表同 commit）、3.2（kernel 删除面 + grep 清零 + 行为锁重写）、3.3（全仓注释级复扫 + 29 号稿正本 + 实机一局对照）。
+- 落地期：3.1（83 条对账凭据、P81 换基重演必答六件含 is_economy_engine 终裁、【拍】章程六处联动与立场表同 commit）、3.2（kernel 删除面 + grep 清零 + 行为测试重写）、3.3（全仓注释级复扫 + 29 号稿正本 + 实机一局对照）。
 - 在飞批交接：sim-redesign（复用面改指策略层）、supply 批（cw_events 行号锚候重核）——landing 3.3 跨批状态节。
 - 攻击复核脚本存档：`.debug/temp/cw_att_v24_probe*.py`、`.debug/temp/cw_advcheck_conv25.py` 等（各轮审查者留存）。

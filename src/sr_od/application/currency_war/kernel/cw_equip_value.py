@@ -91,7 +91,7 @@ def equip_material_generality(name: str) -> int:
     诚实派生,手工梯度表已停用。直调现状(2026-09-12 实跑):简易 8 件
     各 10 条完全同值、蓝钻/红钻各 11 条、垃圾袋 2 条、进阶 0 条——简易域
     内恒值无序,故箱打分不消费本函数(design §2.1);保留供非箱消费位
-    与注册表形态审计(V2 快照锁)。
+    与注册表形态审计(V2 快照测试)。
     """
     count = 0
     for eq in EQUIPMENTS.values():

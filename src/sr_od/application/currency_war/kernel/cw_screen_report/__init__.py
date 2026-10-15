@@ -7,6 +7,6 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 - 函数命名规约 = ``report_screen_<snake>_obs``(obs 类去前缀 ``CwScreen``
   去后缀 ``Obs`` 转 snake),与动作上报函数族 ``kernel/cw_action_report``
   同约定:一个「上报」概念一个形状,两族互不混用,都禁按类型聚合的
-  分派转移函数;完备锁测试遍历包内全部 obs 类断言函数在场/不在场分侧;
+  分派转移函数;完备测试遍历包内全部 obs 类断言函数在场/不在场分侧;
 - 本包不暴露模块(项目惯例):消费方按画面文件名直接 import。
 """

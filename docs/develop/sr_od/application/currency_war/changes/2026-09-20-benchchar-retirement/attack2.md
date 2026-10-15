@@ -26,9 +26,9 @@
 - 测试仓独立 grep：`CwSimFrame` **87 处 / 19 个测试文件**（大量直接构造，如 test_cw_budget_disclosure.py:208 `CwSimFrame(gold=0, gold_readable=False, ...)`、test_cw_pair_progressive.py:55、test_cw_p2_blood_band.py:65）；`BenchChar(` 直接构造 **120 处 / ~30 文件**，且 kwargs 含 `faction=`（test_cw_loop_op_fail_redispatch_cap.py:227-229、test_cw_sim_engine.py:190 faction='散'）、`position_pref=`（test_cw_unified_action_2b.py:201、test_cw_exclusive_wear_gate.py:81）、`is_item_slot=True`（test_cw_sell_item_slot_predicate.py:58、test_cw_seat_recoverable_narrow.py:73）、**注册表外角色名**（test_cw_unified_action_2b.py:112/115/151「注册表外散件」）。
 - 而 `cw4_feed`/`cw4_box` 词表实测仅 77 行 / 15 文件（含 _cw_helpers 自身）——申报「87 处/18 文件」的数字与 CwSimFrame 引用数（87）吻合、与 cw4 系词表不吻合，口径疑混用。
 
-**杀伤说明**：① T-4 删帧时，`synthesize_from_game_state` 必须同步重写（输入形状未设计 = 卡死或现场设计）；② 直接构造 `CwSimFrame`/`BenchChar` 的 ~35 文件测试全部要改写，其中 faction/position_pref 直种与注册表外名在「faction/position_pref 不入形状、经注册表派生」的终态下**没有表达通道**（`bench_slots_to_legacy` 对未知名派生 faction='?'，cw_game_state.py:1522-1523）——这些测试锁的现状语义（faction 分桶计数、front 位选排）在终态种子层不可复现，要么测试被迫删锁（覆盖率倒退），要么设计被迫开洞（faction 可种）——两者都是本设计未裁决的分支。
+**杀伤说明**：① T-4 删帧时，`synthesize_from_game_state` 必须同步重写（输入形状未设计 = 卡死或现场设计）；② 直接构造 `CwSimFrame`/`BenchChar` 的 ~35 文件测试全部要改写，其中 faction/position_pref 直种与注册表外名在「faction/position_pref 不入形状、经注册表派生」的终态下**没有表达通道**（`bench_slots_to_legacy` 对未知名派生 faction='?'，cw_game_state.py:1522-1523）——这些测试的现状语义（faction 分桶计数、front 位选排）在终态种子层不可复现，要么测试被迫删除（覆盖率倒退），要么设计被迫开洞（faction 可种）——两者都是本设计未裁决的分支。
 
-**修复方向**：T-4 明确删帧后 `synthesize_from_game_state` 的新输入契约（或另立种子构造器），并显式裁决测试侧 faction/position_pref/注册表外名的表达通道（测试专用注入口或改写锁面）。
+**修复方向**：T-4 明确删帧后 `synthesize_from_game_state` 的新输入契约（或另立种子构造器），并显式裁决测试侧 faction/position_pref/注册表外名的表达通道（测试专用注入口或改写测试面）。
 
 ### [major] A3. §2「position_pref …现 `bench_slots_to_legacy` 同款派生搬进消费点」主张失真——bench 侧现状是**不派生**（恒缺省 'back'），照「单一源 = get_char(char_id).position_pref()」实施 = 部署选排隐藏行为变化
 
@@ -36,13 +36,13 @@
 
 **杀伤说明**：实现者面对自相矛盾的指令（「同款派生」vs 单一源注册表）二选一：搬现状 = 全 'back'（与「单一源 get_char」句冲突，review 必打回）；用注册表 = 部署拖拽选排行为静默改变，违反 §3「语义逐位不变、禁顺带改行为」——§3.5 只申报了开拓者归一的统一，未申报此差异。
 
-**修复方向**：明确裁决 bench 侧选排偏好终态（恒 'back' 照旧 or 注册表派生并作为行为变化显式申报 + 补锁），删除「同款派生」失真表述。
+**修复方向**：明确裁决 bench 侧选排偏好终态（恒 'back' 照旧 or 注册表派生并作为行为变化显式申报 + 补测试），删除「同款派生」失真表述。
 
 ### [major] A4. faction 消费面界定为「部署装配需要时」失真——faction 的非装配消费（board 阵营计数/羁绊）大量在案且无迁移设计
 
 **证据**：cw_system_cards.py:224 `board_by_row(deployed_slots_of(gs)).count(faction)`（阵营 floor 判据）；cw_bond_equips.py:112-132（羁绊按 faction、开拓者归一）；cw_board_by_row.py:11-44（羁绊标签全集，防御性再归一）；测试侧 faction 直种（test_cw_loop_op_fail_redispatch_cap.py:227）。设计 §2 只写「部署装配需要时经注册表按 char_id 派生」。
 
-**杀伤说明**：board 计数/羁绊链的 faction 读取不属于「部署装配」，照设计 grep「部署装配」找不到这些点；若这些消费点改为注册表派生，未知名（SIFT 直读名、注册表外名）从现值（obs 构造期已派生或 '?'）变成另一条派生路径的值——阵营计数行为漂移无锁可拦。
+**杀伤说明**：board 计数/羁绊链的 faction 读取不属于「部署装配」，照设计 grep「部署装配」找不到这些点；若这些消费点改为注册表派生，未知名（SIFT 直读名、注册表外名）从现值（obs 构造期已派生或 '?'）变成另一条派生路径的值——阵营计数行为漂移无测试可拦。
 
 **修复方向**：faction 派生点清单按真实消费面枚举（装配/board 计数/羁绊三类），逐类声明派生式与未知名缺省口径。
 
@@ -88,6 +88,6 @@
 
 ## 三核小结
 
-- **核一·无前提**：非零发现（A1/A2/A3/A4/A5/A8/A9）。攻击面：退役符号全集 grep 普查（换形函数族/形状助手族/逆换算）、消费面普查（bench_slots_of/deployed_slots_of/faction/position_pref/tracked_books/CwSimFrame/BenchChar 含测试仓）、逐条事实主张对码（serialize_state 委托 ✓ schema.py:236-252、cw_replay ✓、三死函数零调用 ✓ 含测试仓、sim 两处 bench_place 直调 ✓、`_bench_view_keep_items` ✓、swap 有归一/deploy_move 缺归一 ✓ swap_deploy.py:78 vs deploy_move.py:63-68、T-0 两锁现状主张 ✓——这些主张核过为真，未列发现）。
+- **核一·无前提**：非零发现（A1/A2/A3/A4/A5/A8/A9）。攻击面：退役符号全集 grep 普查（换形函数族/形状助手族/逆换算）、消费面普查（bench_slots_of/deployed_slots_of/faction/position_pref/tracked_books/CwSimFrame/BenchChar 含测试仓）、逐条事实主张对码（serialize_state 委托 ✓ schema.py:236-252、cw_replay ✓、三死函数零调用 ✓ 含测试仓、sim 两处 bench_place 直调 ✓、`_bench_view_keep_items` ✓、swap 有归一/deploy_move 缺归一 ✓ swap_deploy.py:78 vs deploy_move.py:63-68、T-0 两测试现状主张 ✓——这些主张核过为真，未列发现）。
 - **核二·规范遵循**：A5（未定稿/待定）、A6（过程叙事+状态枚举+依据形态，§5 规则 1/3）、A7（landing 缺失+七件不全，§1/§3.1）、A9（依据标注，规则 1）；AGENTS.md 文档规范（直白表述/as-built 无状态）同 A6 判。
 - **核三·治本核验**：§1 归层成立——信息销毁点确在表示层（BenchChar 装不下五分类，`bench_slots_to_legacy` 压成布尔，collect_ore.py:62 在案），§2 消灭换形 = 修根而非症状，方向治本。但「完成容器化迁移的计算层收编」这一雄心与阶段闭合集的真实覆盖之间断裂（A1/A2）：治本方案被未闭合的执行设计拖累，按现稿开工的最大风险不是方向错，而是 T-4/T-6 两个巨型无设计批。跨件半问：无同族第 N 件症状补丁迹象。

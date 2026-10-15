@@ -29,8 +29,8 @@
 点击后立即上报完整效果腿,零落地复查、零落地补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
 本屏 sim 腿 = 不适用(sim 无对应画面段,事件
-浮层族即时落定),等价判据主要支撑 = 实机已登记行为锁
-(test_screen_two_node_family 两 node 形态锁;接线/基建锁补档 =
+浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试
+(test_screen_two_node_family 两 node 形态测试;接线/基建测试补档 =
 开放设计注,见 screens/planner.md §9)。
 """
 from typing import ClassVar

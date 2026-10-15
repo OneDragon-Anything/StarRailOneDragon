@@ -48,9 +48,9 @@
 
 `node_max_retry_times=2` 在用值仅框架异常路径消费;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,prep_locked_return 已登记);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
+- journal op 名 = 「备战暗色锁定」;frame_tag = `overlay_lock`(dispatch 包装,on_result 闭包记录命中画面档)。测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,prep_locked_return 已登记);暗色态时序 = `docs/game/currency_war/research/screen_flow_timing.md` #18/#12/#20。
 
 ## 开放设计注
 

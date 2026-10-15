@@ -923,7 +923,7 @@ DIAMOND_PHASE_STEP: int = 3
 #: 员工投影仪拖动目标费用门(官方文「拖动到一个3费及以下的角色上使用」;
 #: 完美投影仪无此限,同文「拖动到一个任意角色上使用」)。
 STAFF_PROJECTOR_COST_GATE: int = 3
-#: 进阶→特权装备映射后缀(注册表 36 进阶 ↔ 36 特权全量双射,覆盖率由测试锁
+#: 进阶→特权装备映射后缀(注册表 36 进阶 ↔ 36 特权全量双射,覆盖率由测试
 #: 对 cw_equipment_data 钉死;特权赋予卡确定性变换的映射单一源)。
 EQUIP_PRIVILEGE_SUFFIX: str = '·特权'
 
@@ -1106,7 +1106,7 @@ def grant_equip_item(gs: GameState, name: str, *, frame: str = '') -> bool:
 
 def privilege_counterpart(name: str) -> str:
     """进阶 → 对应特权装备名(:data:`EQUIP_PRIVILEGE_SUFFIX` 后缀映射;
-    36 进阶 ↔ 36 特权全量双射由测试锁对注册表钉死,非进阶名入参得到
+    36 进阶 ↔ 36 特权全量双射由测试对注册表钉死,非进阶名入参得到
     无意义拼接,调用侧保证键域)。"""
     return name + EQUIP_PRIVILEGE_SUFFIX
 

@@ -64,7 +64,7 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 #: 形态的落位),框架(kernel/one_dragon)不感知具体类型、零 import 具体
 #: 类——具体绑定由各策略实现在自己的类声明上完成(内置 =
 #: ``strategies/impl/mandate_v1/mandate_state.StrategyState``,经
-#: CwFlowStrategy 链绑定)。布局守卫 = sr-od-test 布局/泛型约束锁。
+#: CwFlowStrategy 链绑定)。布局守卫 = sr-od-test 布局/泛型约束测试。
 _TState = TypeVar('_TState')
 
 

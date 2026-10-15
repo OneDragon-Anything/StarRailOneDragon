@@ -441,7 +441,7 @@ def choose_expert_index(card_bonds: list[str | None],
 # ===== 事件线 pick 族运行时元组(kernel 纯函数返回载体
 # ===== 元组。终态契约 §2.2:策略器产出 = cw_vocab 词表 Pick 子类型并
 # ===== 收敛单表 CW_ACTION_TYPES,本表 = kernel decide_* 返回载体的
-# ===== 运行时登记,注册完备锁遍历走词表单表)=====
+# ===== 运行时登记,注册完备测试遍历走词表单表)=====
 
 #: 事件线 kernel pick 全类(kernel ``decide_*`` 纯函数返回载体;策略入口
 #: 负责包装成词表动作子类型——kernel 判据零触碰,§2.2)。

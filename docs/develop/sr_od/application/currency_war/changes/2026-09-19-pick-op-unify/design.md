@@ -5,7 +5,7 @@
 
 ## 0. 已定裁决(禁重开)
 
-1. **范围 = 选择族 13 屏**:5 个在册 pick op(遭遇/补给/盛会之星/伙伴/策划)补自上报 + 巨星选中半迁入 op;8 个内联画面(投资环境/投资策略/命运卜者/祈愿试炼/选择装备/武装箱/星徽秘典/专家邀请函)各建 pick 动作 op。**刷新三动作不入本批**(`CwActionRefreshNodeOptionsParam`/`CwActionRefreshSupplyParam`/`CwActionRefreshInvestCardsParam`):刷新链 = 独立动作族(分屏形态各异:同访问重决策/终结交回),留守画面 op,锁面豁免保持。
+1. **范围 = 选择族 13 屏**:5 个在册 pick op(遭遇/补给/盛会之星/伙伴/策划)补自上报 + 巨星选中半迁入 op;8 个内联画面(投资环境/投资策略/命运卜者/祈愿试炼/选择装备/武装箱/星徽秘典/专家邀请函)各建 pick 动作 op。**刷新三动作不入本批**(`CwActionRefreshNodeOptionsParam`/`CwActionRefreshSupplyParam`/`CwActionRefreshInvestCardsParam`):刷新链 = 独立动作族(分屏形态各异:同访问重决策/终结交回),留守画面 op,测试面豁免保持。
 2. **上报 = 零写自上报**:op 机械链发出后直调自己的上报函数 `report_action_pick_<snake>_param`(`kernel/cw_action_report/zero_writes.py`,零容器写)。统一的是**契约面**(与 buy_card 等同形:机械执行 → op 内直调上报),不改容器写语义。
 3. **确认后容器写全部留守画面 op**:`chosen_*`/`active_*`/效果账本登记/置闩/`register_confirm_arrival`(Confirm* 到账)的写点、时点、actor(`produced_by`/`ChannelSig.actor`)逐位不动——journal 连续,`REGISTERED_ACTORS` 零扩面。若将来要统一 chosen_* 写时点(「确认点击后即写」),另立迭代。
 4. **机械链语义逐位保留**:safe_click / emit_overlay_confirm / round_by_find_and_click_area / 各固定等待时长原值原序迁移;本批不改任何点击链的判效/重试/验证形态(那归既有裁定:验证废除,落地归重入裁决)。
@@ -63,24 +63,24 @@ class CwActionPickXxxOp(SrOperation):
 
 **partner 细节**:确认点 OCR 读缺分支(零点击 → round_retry 旁路)不上报——「点击确认之后上报」字面语义;脉冲计数/pending 置位宿主(画面 op 实例属性)经 env.op 消费,原样。
 
-## 3. 注册表与锁面
+## 3. 注册表与测试面
 
 - `cw_action_registry._REGISTRY` 追加 7 行(PickInvest/PickStarTome/PickWishTrial/PickBoxCard/PickFortune/PickExpertInvite/PickEquip → 对应新 op 类);`cw_overlay_pick_action.py` 模块头删「零上报例外登记」段,改记自上报统一。
-- **锁面更新**(`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py`):`_TERMINAL_CONTRACT_REGISTRY_EXEMPT` 收窄为 `{RefreshNodeOptions, RefreshSupply, RefreshInvestCards, HoldFrame}`(豁免理由注释同步:7 pick 已收编入表);7 pick 类从豁免集移出后自动进「有行」断言臂。新增/更新 pick op 机械行为锁(桩宿主记录点击,先例 = §3 五屏锁)覆盖新 7 op:点击序列 + env 旁路 + 自上报调用(桩 report 函数记录)。
-- `test_cw_action_report_contract.py`(命名完备锁)零改动(上报函数族不动)。
+- **测试面更新**(`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py`):`_TERMINAL_CONTRACT_REGISTRY_EXEMPT` 收窄为 `{RefreshNodeOptions, RefreshSupply, RefreshInvestCards, HoldFrame}`(豁免理由注释同步:7 pick 已收编入表);7 pick 类从豁免集移出后自动进「有行」断言臂。新增/更新 pick op 机械行为测试(桩宿主记录点击,先例 = §3 五屏测试)覆盖新 7 op:点击序列 + env 旁路 + 自上报调用(桩 report 函数记录)。
+- `test_cw_action_report_contract.py`(命名完备测试)零改动(上报函数族不动)。
 
 ## 4. 批次与验收
 
 | 批 | 内容 | 验收门 |
 |---|---|---|
 | T-1 | 现有 5 op 自上报 + 巨星选中半迁入 + env 扩展 + 真实 idx | `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` 绿 + ruff 改动文件 |
-| T-2 | PickInvestOp + 投资两屏改派发 + 注册行 + 豁免集收窄(PickInvest)+ 投资 op 行为锁 | 同上 |
-| T-3 | Fortune/WishTrial 两 op + 画面 op 改派发 + 豁免收窄 + 行为锁 | 同上 |
-| T-4 | Equip/BoxCard/StarTome/ExpertInvite 四 op + 画面 op 改派发 + 豁免收窄 + 行为锁 | 同上 |
-| T-5 | 受影响测试全量复核(行为锁齐 7 新 op、锁豁免集终形 = 三刷新+HoldFrame) | 同上 |
+| T-2 | PickInvestOp + 投资两屏改派发 + 注册行 + 豁免集收窄(PickInvest)+ 投资 op 行为测试 | 同上 |
+| T-3 | Fortune/WishTrial 两 op + 画面 op 改派发 + 豁免收窄 + 行为测试 | 同上 |
+| T-4 | Equip/BoxCard/StarTome/ExpertInvite 四 op + 画面 op 改派发 + 豁免收窄 + 行为测试 | 同上 |
+| T-5 | 受影响测试全量复核(行为测试齐 7 新 op、测试豁免集终形 = 三刷新+HoldFrame) | 同上 |
 | T-6 | 文档同步 + L3 全量 `uv run pytest sr-od-test/ -m "not slow"` | 全量绿 |
 
-锁面豁免集收窄随批进行(每收编一类即自豁免集移除,保持每批全量绿)。
+测试面豁免集收窄随批进行(每收编一类即自豁免集移除,保持每批全量绿)。
 
 主仓/测试仓逐文件点名 add,每批各一 commit。
 

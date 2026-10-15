@@ -43,7 +43,7 @@ _ADVANCE_RECIPES: dict[str, tuple[tuple[str, ...], ...]] = {
 }
 
 # 全量拆分:自配(a==b)/交叉(a!=b)。当前数据每件进阶恰 1 条配方;若未来出现
-# 多条冲突配方的同名进阶,这里会静默取末条——由测试仓 K8 闭合锁兜住该漂移。
+# 多条冲突配方的同名进阶,这里会静默取末条——由测试仓 K8 闭合测试兜住该漂移。
 _ALL_SELF_RECIPES: dict[str, str] = {}
 _ALL_CROSS_RECIPES: dict[str, tuple[str, str]] = {}
 for _adv, _recipes in _ADVANCE_RECIPES.items():

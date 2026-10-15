@@ -14,24 +14,24 @@
 - 通用工程门(引用 = 项目 AGENTS.md「测试规范」§10.3 与「MCP」节;不复述)。
 **验收凭据形式**:测试名(L1 全绿)+ grep 复核(关键词集 = `空批`/`取首项`/`契约 §`/`契约 v`/`序列契约`/`list[CwAction]`/`结算惰性 drain`/`§4.1`,作用于 diff **新增行/本批改写行**,要求零命中——定稿文本已按 design §2.1-§2.3 规避全部关键词;被删行与未改行不在判据域;豁免申报:`decide_from_turn` 签名 `-> list[CwAction]` 系决策核内 list 发射组织合法保留(design §3 备选 A),且非本批改动行)+ 四文件全文扫尾 grep 输出(逐命中三分处置记录)
 
-## 3.2 锁与实机验证
+## 3.2 测试与实机验证
 
-**范围**:新增契约形状锁(§2.5 三个用例:单动作返回/空发射态 None/非法返回 F3 fail);实机烟雾一局跑判读锚点(§2.6)。
+**范围**:新增契约形状测试(§2.5 三个用例:单动作返回/空发射态 None/非法返回 F3 fail);实机烟雾一局跑判读锚点(§2.6)。
 **设计依据**:design.md §2.5-§2.6
-**文件面**:`sr-od-test/test/sr_od/application/currency_war/`(新增/扩展锁文件)
+**文件面**:`sr-od-test/test/sr_od/application/currency_war/`(新增/扩展测试文件)
 **依赖**:3.1
 **优先级建议**:5
 **完成判据**:
-- 新锁绿且 docstring 出处指针写死 = `flow/README.md` §2.2 备战接口行(3.3 更新后的正本;本阶段先指向、3.3 落位后复验,不引 changes/ 内容);
+- 新增测试绿且 docstring 出处指针写死 = `flow/README.md` §2.2 备战接口行(3.3 更新后的正本;本阶段先指向、3.3 落位后复验,不引 changes/ 内容);
 - L1 全量绿;
 - 实机烟雾局判读锚点 3 条全中(§2.6 申报的文案变化除外),异常条目当场定位。
 **验收凭据形式**:测试名 + 实机局判读记录(锚点逐条对照)
 
 ## 3.3 正本更新
 
-**范围**:按「正本更新清单」逐条更新正本文档;复验 3.2 锁 docstring 出处指针已指向正本。
+**范围**:按「正本更新清单」逐条更新正本文档;复验 3.2 测试 docstring 出处指针已指向正本。
 **设计依据**:本文件「正本更新清单」节
-**文件面**:清单所列正本文档;`sr-od-test/test/sr_od/application/currency_war/`(仅锁 docstring 指针复验,如有偏差则修)
+**文件面**:清单所列正本文档;`sr-od-test/test/sr_od/application/currency_war/`(仅测试 docstring 指针复验,如有偏差则修)
 **依赖**:3.1、3.2
 **优先级建议**:0
 **完成判据**:清单清零;机械闭域检查 = `docs/develop/sr_od/application/currency_war/` 全树 grep「首项 / 空批 / list[PrepAction]」命中逐条三分处置——清单内条目已修 / 豁免表已录 / 新发现(补入清单修毕);豁免表 = flow/README §2.2 序列语义历史注节、changes/ 全目录、`proofs/validations/P51_V3_REBUILD.md` L391(「首项」系拟合器标签数值序位,非动作选序语义);PrepAction 裸名人工复核(禁直接 grep 裸名——`PrepActionExecutor` 等合法名大量误中;排除执行器/观察器合法名后逐处核,已知位 = `projection_contract.md` §4.1、`action_exec.md` §1、`game_state/action-logic-state.md` §3;裸名候选形大小写不敏感全形扫描:PrepAction/PREP_ACTION_TYPES 等);「正本与实现一致」的验收域 = 本清单条目 + 闭域检查面 + 裸名人工复核位,验收中新发现的正本-实现矛盾同走「补入清单修毕」,不作无限全域承诺。
@@ -56,7 +56,7 @@
 13. `game_state/action-logic-state.md`(L163 区域):「备战环逐帧取决策输出首项执行」→「备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,交回外循环重观察)」← 3.1
 14. `game_state/logic-updates/prep-executor-actions.md`(L13 区域):同 #13 口径;同文件 L9「文档-实现偏差(词表白名单载体)」注所引 §3 头原文随 #19 改写后过时,偏差注联动处置(偏差已消除则删注,仍在则按新原文更新)← 3.1
 15. `strategy-docs/02_mandate_layer.md` §7(L82):「**策略器 = 全函数**(f(期望态) → 动作,永不返回 None;『无动作可做』的表达 = 直接选终结 op)」→ 分域表述「商店域策略器 = 全函数(f(期望态) → 动作,恒可用 CloseShop 表达『无动作可做』);备战域策略器返回恰一个动作(`CwAction | None`),`None` = 本帧无动作,合法交回外循环重观察」;同句「逐帧取最优首项」→「逐帧恰取一个动作」(None 通道半句机械 grep 不可见,靠本条目覆盖)← 3.1
-16. 锁 docstring 出处指针复验:`sr-od-test` 新锁引 `flow/README.md` §2.2(非 changes/)← 3.2
+16. 测试 docstring 出处指针复验:`sr-od-test` 新增测试引 `flow/README.md` §2.2(非 changes/)← 3.2
 17. `screens/README.md` 三处 OpenBox 终结性按注册表现值更正(实码 `terminal`=True,R7 终结化,策略发射经 `_terminal_exit` 交回;落笔前直调 `operations/cw_op/cw_action_registry.py` OpenBox 行复核):§4 词表-注册表总表领取类行(L52)——OpenBox 单列标终结,ClickSpheres/OpenTome/OpenBookcard 维持非终结;§5.3(L91 区域)「开补给箱…|非终结」行同口径拆分;§6 终结集总表(L122-133)补 OpenBox 行(级别与措辞按复核结果)← 3.3
 18. `flow/README.md` 卷首迁移注(L6):删「未建模面保守回退」半句(R9 已删分支死口径,与 §2.2 收敛清单同族)← 3.3
 19. `game_state/action-logic-state.md` §3(L161 区域):「备战域动作词表 = `kernel/cw_prep_actions.py::PREP_ACTION_TYPES` 白名单」→「备战域动作词表 = `kernel/cw_vocab.py::CW_ACTION_TYPES` 备战域子集」(PREP_ACTION_TYPES 已亡,单一真相源迁 cw_vocab;裸名大小写敏感 grep 不命中,靠本条目覆盖)← 3.3

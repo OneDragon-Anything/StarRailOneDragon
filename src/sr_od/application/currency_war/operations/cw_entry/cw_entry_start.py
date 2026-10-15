@@ -104,7 +104,7 @@ _STAR_BADGE_GUARD = EntryPopupGuardSpec(
 # 注册表元组顺序 = 挂点执行序:supply 在 detail 族之前(领取优先,
 # 挂点约定;叠层语义:supply 弹窗被 detail 盖住时其背景锚 OCR 不命中,
 # 自然让位给 detail,序位无害)。序位知识只住这一处数据;机械防线 = 测试仓
-# test_cw_screens_entry.py 的守卫序位锁(元组重排即红)。升级依据:
+# test_cw_screens_entry.py 的守卫序位测试(元组重排即红)。升级依据:
 # 预约「第三个同族弹窗出现时升级为注册表」,由星徽落位触发。
 ENTRY_POPUP_GUARDS: tuple[EntryPopupGuardSpec, ...] = (
     _TRAIN_SUPPLY_GUARD,

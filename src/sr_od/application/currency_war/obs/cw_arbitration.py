@@ -7,9 +7,9 @@
 ——原始证据行仍走 ``kernel.cw_observe.obs_conflict``,不一致率分键仍走
 ``telemetry.defects``,注册面只统一「谁在什么键下调用它们」。
 
-**本批严格零行为变更**:迁移语义不变性由交叉核对测试锁(注册面语义/迁移
+**本批严格零行为变更**:迁移语义不变性由交叉核对测试(注册面语义/迁移
 交叉核对:deployed 全格交叉核对 + board 分歧帧×帧态矩阵)钉死;裁决值/schema/分键
-锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不锁)。
+锁死,obs_conflict 的 verdict 提示文本允许随迁移改写(A13 声明,交叉核对不校验)。
 
 量纲四类(§2.2):count(计数,朝声明方向取值或弃权)/nominal(标称,优先级+
 否决+帧态门)/scalar(连续标量,显式通道优先序)/layout(布局,实测>推导+
@@ -76,7 +76,7 @@ def get_rule(key: str) -> ArbitrationRule | None:
 
 
 def registered_keys() -> list[str]:
-    """已注册量键(分键互不混流锁的清点面)。"""
+    """已注册量键(分键互不混流测试的清点面)。"""
     return sorted(_RULES)
 
 

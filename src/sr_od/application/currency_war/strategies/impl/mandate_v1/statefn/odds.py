@@ -224,7 +224,7 @@ def slot_q_tag(tag: str, level: int,
                extra_copies_by_cost: dict[int, int] | None = None) -> float:
     """标签合格集槽级命中概率 q = Σ_c q_c(P38 ③层;分项单一源 =
     ``slot_q_tag_by_cost``)。单卡标签退化域(n_c=1)与 ``slot_q`` 同式
-    一致(测试锁)。全档不计 → 0.0(静态不可达,诚实出「锁劣」向)。"""
+    一致(测试)。全档不计 → 0.0(静态不可达,诚实出「锁劣」向)。"""
     return sum(slot_q_tag_by_cost(tag, level, held_counts,
                                   extra_copies_by_cost).values())
 

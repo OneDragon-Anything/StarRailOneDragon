@@ -254,7 +254,7 @@ arm1 前置板满(deployed = cap);Φ_stall 定义含 δ_board>0 即板未满 ⇒
 
 - **授权条件(定稿)**:`Φ_stall(§1.1 四支) ∧ 垫件在售 ∧ bench_free ≥ 1 ∧ g − cost ≥ s_reserve ∧ 围栏预检放行`。
 - **定性(写进 docstring/ADR)**:「净成本 ≤1 金(注册表派生界:利息档变化量 Δ = ⌊g/10⌋−⌊(g−cost)/10⌋ ∈ {0,1},cost ≤5、利息上限 5)的**有界成本结构改善授权**,零自由参数;严格支配(净成本=0)仅利息档变化量 Δ=0 帧(cost 不跨 10 金档)成立」——禁回退「支配性/无条件/净成本=0」措辞(r1 应修-6 + r2 N4 两轮已定案)。
-- **验证锁锚(规格面,锁值由实现批按本节口径落)**:发出谓词各支断言 + `below_reserve` 拒绝原因断言 + 利息档变化量界注释引 cw_state 利息上限常量(不写死数字)。
+- **验证测试锚(规格面,锁值由实现批按本节口径落)**:发出谓词各支断言 + `below_reserve` 拒绝原因断言 + 利息档变化量界注释引 cw_state 利息上限常量(不写死数字)。
 
 ### 7.4 细分键与遥测汇总(出口③随批落)
 
@@ -310,4 +310,4 @@ arm1 前置板满(deployed = cap);Φ_stall 定义含 δ_board>0 即板未满 ⇒
 
 | 条目 | 级别 | 处置 | 落点 |
 |---|---|---|---|
-| A 支概率对账两消费点语义分裂:①缺键形态(出口③曾当确证零 / cw_economy roll 门表值回退);②bar=0 ∧ 表值>0 形态(轮岗只翻倍不归零,概率条 0 = 采样不可信,economy `or` 回退表值) | 低-应修 | 采纳:有效概率单一源 = `cw_economy.effective_refresh_prob`(概率条实读优先;不可得 → 出口③侧 fail 向不判 A;缺键/≤0 → 表值回退;>0 → 实读真值),两消费点同源禁第二套对账语义;**bar=0 ∧ 表值>0 保持可追**(表值非零继续消费,成员留合格集,Φ_stall 不成立)。锁 = test_cw_exit3_fuel_filler TestExit3ProbBarSemantics(缺键回退/None fail 向/对账不一致 fail 向/bar=0 可追四形态) | cw_economy.effective_refresh_prob / shop.py 出口③ A 支 |
+| A 支概率对账两消费点语义分裂:①缺键形态(出口③曾当确证零 / cw_economy roll 门表值回退);②bar=0 ∧ 表值>0 形态(轮岗只翻倍不归零,概率条 0 = 采样不可信,economy `or` 回退表值) | 低-应修 | 采纳:有效概率单一源 = `cw_economy.effective_refresh_prob`(概率条实读优先;不可得 → 出口③侧 fail 向不判 A;缺键/≤0 → 表值回退;>0 → 实读真值),两消费点同源禁第二套对账语义;**bar=0 ∧ 表值>0 保持可追**(表值非零继续消费,成员留合格集,Φ_stall 不成立)。测试 = test_cw_exit3_fuel_filler TestExit3ProbBarSemantics(缺键回退/None fail 向/对账不一致 fail 向/bar=0 可追四形态) | cw_economy.effective_refresh_prob / shop.py 出口③ A 支 |

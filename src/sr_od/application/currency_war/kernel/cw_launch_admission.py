@@ -58,7 +58,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
                            fenced_offline_sellable: bool = False,
                            protect_names: frozenset[str] = frozenset()
                            ) -> bool:
-    """/:off-target 卖出候选判据(纯函数,锁测试面)。
+    """/:off-target 卖出候选判据(纯函数,测试面)。
 
     run 26 已实测确认(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
     off-target,把买/演进层仍在买入的引擎·配方体系件(仙舟三人组:藿藿×3/
@@ -288,7 +288,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     消费面拓扑(方案三混合):实机 = operations/cw_loop
     备战分支驱动执行(动作发出核 launch_prepared_battle 留 operations 不动);
     判据语义恰此处一份,
-    禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。出战就绪关闸帧
+    禁任一消费面内联第二实现(布局守卫 + 测试单一源)。出战就绪关闸帧
     (配方完备 ∧ 质量推迟)的判读观测位 = ``quality.defer_by_quality``。
 
     :param line_members: 线成员谓词注入参,单一源 =

@@ -122,7 +122,7 @@ decide(options: list[EncounterOption], gs: GameState)
 
 - 建议刷 = 且仅 = **可及集空 ∧ `gs.encounter_refresh_left ≥ 1`**（闸内嵌；None = 未观察 → 不建议刷，fail-closed）。
 - 闸拒绝帧的产出语义（照补给批同构论证）：decide 只在 left ≥ 1 时才可能返 Suggestion；left 缺/尽 → 直接落最低档。op 侧重调路径（`cw_screen_encounter` 建议刷但刷新锚点缺失时重调决策）——防线行为见下条（本批唯一 op 行为改动）。
-- **重调兜底分支（机理定谳修正，2026-09-24 用户指正）**：观察先于决策——「剩余次数：N」文本是**同源双信号**（观察轮上报容器 `encounter_refresh_left` + 存为刷新圆钮定位锚），decide 建议刷 ⟹ 文本已读到 ⟹ 锚必在位；文本读缺 ⟹ 容器 None ⟹ 闸 fail-closed 直接选卡。故「建议刷 ∧ 锚读缺」**结构性不可达**，不存在无界循环面（本设计初稿「卡死一条龙级风险」的机理叙述有误，审查链按该错误前提复核，随本条修正）。`cw_screen_encounter` 重调分支仍落 `round_fail` 兜底（防观察与动作之间画面状态错乱的纵深防御，非活跃缺陷修复）；行为锁同步改写。其余 op 层无行为改动（仅注释收口，§2.8）。
+- **重调兜底分支（机理定谳修正，2026-09-24 用户指正）**：观察先于决策——「剩余次数：N」文本是**同源双信号**（观察轮上报容器 `encounter_refresh_left` + 存为刷新圆钮定位锚），decide 建议刷 ⟹ 文本已读到 ⟹ 锚必在位；文本读缺 ⟹ 容器 None ⟹ 闸 fail-closed 直接选卡。故「建议刷 ∧ 锚读缺」**结构性不可达**，不存在无界循环面（本设计初稿「卡死一条龙级风险」的机理叙述有误，审查链按该错误前提复核，随本条修正）。`cw_screen_encounter` 重调分支仍落 `round_fail` 兜底（防观察与动作之间画面状态错乱的纵深防御，非活跃缺陷修复）；行为测试同步改写。其余 op 层无行为改动（仅注释收口，§2.8）。
 - 刷新机会成本 v1 不建模（照投资环境批同构论证：同分布假设下「留着以后刷」无期望优势；遭遇刷新每局 1 次，跨遭遇节点分布同构性高于投资环境）。
 
 ### 2.6 输出契约与接线
@@ -147,7 +147,7 @@ decide(options: list[EncounterOption], gs: GameState)
 - `strategies/impl/flow.py`：`decide_encounter` 调用行与 `refresh_used` 预计算删除；`cw_events` import **保留**（`decide_planner`/`decide_fortune`/`choose_expert_index` 仍现役消费，直调核实 flow.py:656/793/807）。
 - 注释指针收口（已知点全列；末阶段全仓复扫兜底）：`kernel/cw_vocab.py` 两处「替代 EncounterPick」表述、`obs/cw_node_obs.py` 模块 docstring「喂 `cw_events.decide_*` 等钩子」句、`read_encounter_options` docstring「decide_encounter 用 difficulty + comp 成型度选」句与「decide_encounter 按难度选」句、`kernel/cw_events.py` `EncounterOption.difficulty` docstring 三档旧知识句（「1=易/2=中/3=难」——实为六档，随载荷契约保留改写为六档事实）、`operations/cw_screen/cw_screen_encounter.py` 模块 docstring 与 act 段旧判据叙述（「全分支词缀克→刷新」「按 comp 成型度选」——均已非生产行为，改写为新判据指针）、`strategies/impl/flow.py` `decide_encounter` docstring「kernel 按原评分直接选卡」句（改写为新核语义）、`strategies/impl/mandate_v1/audit/provisional.py` 头部「新遭遇选档判据的标定注入 = kernel/cw_encounter_selection.apply_calibration」指针句（注入面迁策略层后改指——**无条件义务，EV 核两分支下都执行**）、`kernel/cw_events.py` `SupplyOption` docstring「检测集单一源 = cw_node_obs.DIAMOND_EQUIP_NAMES」句与 `strategies/impl/mandate_v1/supply.py` 同款句（钻石检测集单一源迁 kernel/cw_obs_core 后改指，§2.4）、`kernel/cw_economy.py` 败补参数 docstring「现役 6 个决策消费点…encounter.py」句（EV 核退役分支下失指，改写消费点清单；保留分支下不失指、不动）、`strategies/impl/cw_strategy.py` 接口注、`kernel/cw_difficulty_account.py` `from_strategies` docstring「挂 decide_encounter 消费批」句（消费批退役，改写为「marginal_value/DifficultyAccount 零生产消费，孤儿态登记」）。**fill 阈值形态登记义务（随 31 号稿）**：`_FILL_EDGE_THRESHOLD = 0.5` 在进度条双定谳注入后成活闸门数字——注入批须按【拟】纪律登记（CI + fail-closed 退路），31 号稿数学挂账明列该申报义务（本批 None 不激活）。
 - `cw_difficulty_account` 孤儿申报：`marginal_value` 唯一消费链 = 被删的 `encounter_tier_score`；`DifficultyAccount` 全仓零生产消费（P9 时代遗留记账件）。本批只申报孤儿态 + 注释收口，物理删除归后续清理批（不在本批扩面）。**辖域注（后续清理批义务）**：模块常量 `GROWTH_PER_STREAK` 有 sim 活消费（`sim/cw_sim_enemy.py`），清理批不得整模块物理删除——按符号逐个处置。
-- 测试面：`test_cw_obs_arch_event_screens.py` 的 `cw_encounter_selection` import 点消费**保留面符号**（`claim_encounter_reward`/`record_settlement_row`）——零改动；同文件重调行为锁（「重调仍建议刷新 → 零点击终结交回」）**随防线改写**（行为断言改写为零点击交回 → `round_fail` 交回，docstring 同步——与 §2.5 防线同一处置，非仅叙述更新）；`test_cw_unified_action_4.py` 的 `EncounterPick` 类型 import 与两处实例构造点改传词表动作实例（§2.6）；新决策本体锁随落地批落测试仓（landing 3.1）。`claim_encounter_reward` 分支锁（kernel 保留面）不动。
+- 测试面：`test_cw_obs_arch_event_screens.py` 的 `cw_encounter_selection` import 点消费**保留面符号**（`claim_encounter_reward`/`record_settlement_row`）——零改动；同文件重调行为测试（「重调仍建议刷新 → 零点击终结交回」）**随防线改写**（行为断言改写为零点击交回 → `round_fail` 交回，docstring 同步——与 §2.5 防线同一处置，非仅叙述更新）；`test_cw_unified_action_4.py` 的 `EncounterPick` 类型 import 与两处实例构造点改传词表动作实例（§2.6）；新决策本体测试随落地批落测试仓（landing 3.1）。`claim_encounter_reward` 分支测试（kernel 保留面）不动。
 
 ### 2.8 op 层收口（防线一处行为改动 + 注释收口）
 
@@ -183,14 +183,14 @@ decide(options: list[EncounterOption], gs: GameState)
 
 - **sim 结构性盲区**：sim 局结算环无写端（sim 结算腿不调 `record_settlement_row`）→ κ_S 窗口恒空 → sim 遭遇决策恒「窗口不足 → 闸 None 拒刷 → 最低档」，与改前 sim 行为（暗装：最低档 + 零刷新）**逐位一致**。本批差异 sim 不可见，不可作 A/B 判据（照补给批盲区申报口径）。
 - 可见前置 = sim 结算腿接环（单点：coarse 战斗结算输出处调 `record_settlement_row`），交接 sim 基建批。接环后 sim 可见形态 = 四档占位（`ENCOUNTER_TIER_COUNT=4`，奖励占位文本）下 κ_S 驱动选档；占位奖励文本（「金+20(占位…)」不含「金币」字面，直调 `reward_tier` 语义）全落**末档**，tiebreak 维度 sim 恒并列（全候选同档）——行为差异只在主序与刷新阀。
-- **验收 = 单帧锁 + 实机判读锚点（事前写定）**：
+- **验收 = 单帧测试 + 实机判读锚点（事前写定）**：
   1. 足量帧选最高可及档（reason `pick:t{k}|kappa=足量`）；
   2. 边缘帧 ≤ 其二（cap 生效）；
   3. 不足帧：有次数建议刷 / 无次数最低档（闸内嵌两臂）；
   4. 其五/六仅经验层放行（无 killed=True 历史行 → 不可及）；
   5. 同档并列 tiebreak 序（钻>装备>金币>末档，构造 fixture 验证）；
   6. 窗口维持普战口径（P1 首遭遇帧 = r7，窗口 = r4/r6 两场普战；奖励行不入窗）；
-  7. 重调兜底分支（结构性不可达，§2.5）：若因状态错乱到达「建议刷 ∧ 锚读缺」→ 重调后 `round_fail` 交回（纵深防御形态锁）。
+  7. 重调兜底分支（结构性不可达，§2.5）：若因状态错乱到达「建议刷 ∧ 锚读缺」→ 重调后 `round_fail` 交回（纵深防御形态测试）。
 - **验收线保全申报**：盘点当期在册验收线（当期迭代 criteria + math_proofs 判据节 + batch_stats 读数行）——**无任何在册验收线以遭遇选档为直接判据面**；遭遇档位变化影响出口金/存活的通道受 κ_S 门 + cap + 刷新阀约束（风险受控向）。P85 前置升级命题的 A/B 分键（遭遇备战帧）与 λ 死亡带面不消费选档输出，零影响。
 
 **行为变化申报（验收对照基线；①–⑤为判据语义变更或行为面变化，是本迭代目的非回归）**：

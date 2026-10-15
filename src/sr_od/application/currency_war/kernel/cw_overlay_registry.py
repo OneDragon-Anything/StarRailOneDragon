@@ -11,7 +11,7 @@ B 面(director bail 扫描,cw_screen_prep 事件 overlay 检测)已切换为消�
 (桥接点 = ``cw_screen_prep.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
 未变;2026-09-03 gate 清尾批随消费方迁址——gate 模块已停用);其余消费面
 (cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
-本表对未切换面是「声明 + 锁」,不是运行时唯一判定源。
+本表对未切换面是「声明 + 测试守卫」,不是运行时唯一判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
 ``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
@@ -244,7 +244,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         # 按钮-关闭概率表」(× 按钮,VLM 实测定位;坐标单一真相源 =
         # screen_info,cw_loop 分发分支零本条载荷消费)
         close_action=CLOSE_ACTION_POINT,
-        # 退出恢复链预留载荷(恢复链消费面未切注册表 = 模块头「声明 + 锁」;
+        # 退出恢复链预留载荷(恢复链消费面未切注册表 = 模块头「声明 + 测试守卫」;
         # RECOVERY_CLOSE = 复用 close_action 载荷离屏):现零运行时消费,
         # 值 = 上述建档 area 中心,非独立第二源
         close_point=(1501, 263),

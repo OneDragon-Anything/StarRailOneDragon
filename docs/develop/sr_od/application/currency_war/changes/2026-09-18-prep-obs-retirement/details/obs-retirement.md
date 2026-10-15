@@ -54,8 +54,8 @@
 
 ### 阶段 3.5 实施期修正（落地实况与原稿的差异，验收按本段为准）
 
-1. **词表补齐清单收缩**：`WearEquip`/工具原子族**不进写口**——正本 `action-logic-state.md` 申报「消费真值归观察」，且两者均为截断点（独占发射帧）→ 发出即 visit 结束 → 下一入口 heavy 覆盖，**零窗口暴露**；原稿列名过度设计。实际进写口的只有 `OpenTome`/`OpenBookcard` 腾席分支（bench 槽 kind → `empty` 化；OpenTome 非终结、同 visit 后续帧晶矿谓词消费 bench 席空数，存在真实窗口）。词表外防线语义 = **合法零写**（登记面申报,docstring 明列两集），非 AssertionError——AssertionError 随投影函数整体消亡。测试锚 = `test_vocab_actions_all_have_logic_state_projection`（写口分支集 write_seq 推进 + 零写集 write_seq 不变的行为锁）。
-2. **kernel 写口 bench 侧原生化（roundtrip 残余根因修）**：`SellBench`/`DeployMove` 分支原走 `bench_slots_of`→`bench_view_of_slots` legacy roundtrip——`is_item_slot` 布尔无法恢复 box/tome 类型,roundtrip 会让 kind 细分在**写口首次写后退化为 supply_box**,OpenTome 臂分派失据（T-5 实施中 2a 锁实测暴露）。修 = 两分支改原生 `BenchView.slots` 操作（Unit 直取消费）,legacy roundtrip 从写口消失。
+1. **词表补齐清单收缩**：`WearEquip`/工具原子族**不进写口**——正本 `action-logic-state.md` 申报「消费真值归观察」，且两者均为截断点（独占发射帧）→ 发出即 visit 结束 → 下一入口 heavy 覆盖，**零窗口暴露**；原稿列名过度设计。实际进写口的只有 `OpenTome`/`OpenBookcard` 腾席分支（bench 槽 kind → `empty` 化；OpenTome 非终结、同 visit 后续帧晶矿谓词消费 bench 席空数，存在真实窗口）。词表外防线语义 = **合法零写**（登记面申报,docstring 明列两集），非 AssertionError——AssertionError 随投影函数整体消亡。测试锚 = `test_vocab_actions_all_have_logic_state_projection`（写口分支集 write_seq 推进 + 零写集 write_seq 不变的行为测试）。
+2. **kernel 写口 bench 侧原生化（roundtrip 残余根因修）**：`SellBench`/`DeployMove` 分支原走 `bench_slots_of`→`bench_view_of_slots` legacy roundtrip——`is_item_slot` 布尔无法恢复 box/tome 类型,roundtrip 会让 kind 细分在**写口首次写后退化为 supply_box**,OpenTome 臂分派失据（T-5 实施中 2a 测试实测暴露）。修 = 两分支改原生 `BenchView.slots` 操作（Unit 直取消费）,legacy roundtrip 从写口消失。
 3. **`lifecycle_decision_cycle` 的 `payload` 形参保留**——基类 `cw_screen_op_base` 抽象签名（统一分发面传参）,子类覆写禁减参;本类零消费,docstring 申报。
 4. **黑板晶矿腿删除收口**：`_project_prep_obs`（含 `_project_tool_obs`）整体删除即覆盖——ClickSpheres 的黑板推进随函数消亡,容器写口（阶段 3.4）为唯一摘晶矿端。
 5. **`front_occupied`/`back_occupied` 保留**（对拍腿识别轻字段,消费在观察链内部;阶段 3.3 修正的延续）,其余字段按去向表删。

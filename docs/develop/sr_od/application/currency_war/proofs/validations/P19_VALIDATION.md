@@ -10,7 +10,7 @@
 
 ## 1. 阅读门与公理栈
 
-- 已读:`math_proofs.md` P19 索引行、`proofs/p19` 全文、`equipment_mechanics.md` §6(口述语义权威+出处声明)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图:装备全量=`cw_equipment_data.EQUIPMENTS`,plaza API 溯源)、`sim-wiring.md`「羁绊口径分层」(三侧单一源声明)、w50 测试锁(`test_cw_early_kernel.py:1351-1527`)、实现 `kernel/cw_bond_equips.py` 全文。
+- 已读:`math_proofs.md` P19 索引行、`proofs/p19` 全文、`equipment_mechanics.md` §6(口述语义权威+出处声明)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图:装备全量=`cw_equipment_data.EQUIPMENTS`,plaza API 溯源)、`sim-wiring.md`「羁绊口径分层」(三侧单一源声明)、w50 测试(`test_cw_early_kernel.py:1351-1527`)、实现 `kernel/cw_bond_equips.py` 全文。
 - 无交集跳过声明:P19 为**计数语义命题**,不含金流/EV/收益比较——economy/final_comps/transitions/plaza_methodology 等纯攻略与经济账文档与本命题辖域无交集,跳过;公理栈中「超额收益隔离」「纯金流」两条对非金流命题不可适用,同理跳过;「零调参」「参数溯源」两条适用,见门⑤。
 
 ## 2. 五门逐门判定
@@ -36,8 +36,8 @@
 
 ### 门④ 实证 vs 账本(预测可达性)——**通过;索引行"反序现 failing"已过期**
 
-- 证明记载的证伪探针复跑:`符玄 equips=['欢愉星徽','欢愉卡带'] → 欢愉×1`(证明记载修前=2)——**两遍法修复已落地**(commit `6edc6cbf` 2026-08-28「羁绊计数两遍法——修 C1 修复的顺序依赖缺陷(P19 证伪星徽幂等性)」),证明§②的"处置挂账(代码批)"已被该批兑现,含其要求补的反序对称锁。
-- 测试锁全绿:`test_cw_early_kernel.py` w50 面 8 passed(含 `tags_combo` 正序锁、`tags_combo_rev` **反序锁=1**、成员卡带双计=3、三侧 fullset);三侧消费面 `test_cw_deploy_ops.py`+`test_cw_sim_mutex_tx.py` 85 passed 1 skipped。检验点 4(三侧传导)实证过。
+- 证明记载的证伪探针复跑:`符玄 equips=['欢愉星徽','欢愉卡带'] → 欢愉×1`(证明记载修前=2)——**两遍法修复已落地**(commit `6edc6cbf` 2026-08-28「羁绊计数两遍法——修 C1 修复的顺序依赖缺陷(P19 证伪星徽幂等性)」),证明§②的"处置挂账(代码批)"已被该批兑现,含其要求补的反序对称测试。
+- 测试全绿:`test_cw_early_kernel.py` w50 面 8 passed(含 `tags_combo` 正序测试、`tags_combo_rev` **反序测试=1**、成员卡带双计=3、三侧 fullset);三侧消费面 `test_cw_deploy_ops.py`+`test_cw_sim_mutex_tx.py` 85 passed 1 skipped。检验点 4(三侧传导)实证过。
 - 检验点 2(序不变性全排列性质测试):测试仓**无**该性质测试;本批探针补做——26 件羁绊装备 × 6 角色 × 1/2/3 件全排列 = 17706 组合,逐羁绊计数违例 **0**(修后实现满足序不变性)。
 
 ### 门⑤ 参数溯源(各常量;公理判定)——**通过**
@@ -50,11 +50,11 @@
 **通过(数学本体成立;证明文档三处滞后于已落地的修复,需勘误)。**
 
 - 命题①③:现行实现下严格成立(探针 89173 点位 0 违例+边界表逐行复现)。
-- 命题②:其"证伪"在提出时点属实、根因分析正确、修法(两遍法)正确且已由 `6edc6cbf` 落地并带反序锁与三侧回归——**命题链已闭环**,但证明文件与索引行仍停留在"部分证伪/反序现 failing"的修复前状态。
+- 命题②:其"证伪"在提出时点属实、根因分析正确、修法(两遍法)正确且已由 `6edc6cbf` 落地并带反序测试与三侧回归——**命题链已闭环**,但证明文件与索引行仍停留在"部分证伪/反序现 failing"的修复前状态。
 
 ## 4. 修正建议(均为文档勘误,非数学错误;本批禁改,移交文档批)
 
-1. **`math_proofs.md` P19 索引行 + `proofs/p19` 状态行**:②应改为"已闭环:两遍法修复落地(`6edc6cbf`,2026-08-28 同日),反序对称锁过;'反序 failing 检验点'表述过期"。检验点 1 的"现行 failing"同改。
+1. **`math_proofs.md` P19 索引行 + `proofs/p19` 状态行**:②应改为"已闭环:两遍法修复落地(`6edc6cbf`,2026-08-28 同日),反序对称测试过;'反序 failing 检验点'表述过期"。检验点 1 的"现行 failing"同改。
 2. **`proofs/p19` §记号与实现模型(伪代码,L21-30)**:描述的是修复前单遍算法,与现行 `cw_bond_equips.py:134-144`(两遍法)不符——应更新为两遍伪代码或明确标注"历史态,现行实现见修法段"。
 3. **`equipment_mechanics.md` §6 L96**:「实现:`cw_bond_equips.unit_bond_tags`(卡带分支 `seen.add` 后星徽查 `seen`)」为旧实现描述,应改为两遍法描述(先收齐卡带授予集 T̄,星徽判 `x∉seen∪T̄`)。
 4. (增强,非勘误)检验点 2 的序不变性性质测试(≤3 件全排列)与检验点 3 的"两张同羁绊星徽计 1"用例,测试仓现仍缺——本批探针已各自验证通过(0 违例/计 1),建议修复批顺手固化为性质测试。
@@ -63,5 +63,5 @@
 
 - 探针:`p19_val_check.py` + 本报告 §2 各实测行(可重跑);
 - 测试:`test_cw_early_kernel.py`(w50 面 8P)、`test_cw_deploy_ops.py`+`test_cw_sim_mutex_tx.py`(85P 1S);
-- commit:`6edc6cbf`(两遍法修复+反序锁);
+- commit:`6edc6cbf`(两遍法修复+反序测试);
 - 注册表锚点:`EQUIPMENTS` 22 星徽全解析、4 卡带解析、机制原文直调行(§2 门②)。

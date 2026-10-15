@@ -19,7 +19,7 @@
 **验收凭据形式**：上述测试名 + ruff。
 
 ## 3.2 原子切换：管线接线 + cw_loop tick 块删除（同一提交）
-**范围**：`observe_screen_context` 尾段接入效果推进段；条件族采样金窗漂移为已申报接受（±1~3 档，断言不锁漂移数值，锁发放发生且余额入账）；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直调 kernel。
+**范围**：`observe_screen_context` 尾段接入效果推进段；条件族采样金窗漂移为已申报接受（±1~3 档，断言不钉漂移数值,钉住发放发生且余额入账）；cw_loop 备战分支效果账本 tick 块删除（含金结算成功 log.info 与段失败 warning 旧行）；随块失用 import 清理；sim/测试中依赖 loop tick 时序的经济断言改为直调 kernel。
 **设计依据**：design.md §2 方案 2/3、行为变化申报（四条全项）、接口契约。
 **文件面**：`src/sr_od/application/currency_war/operations/cw_loop.py`；`src/sr_od/application/currency_war/kernel/cw_game_state.py`（接线 diff）；受影响测试文件。
 **依赖**：3.1

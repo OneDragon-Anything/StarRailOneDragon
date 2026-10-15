@@ -26,7 +26,7 @@
 
 **[B2-4] encounter 刷新重决策腿的槽覆写义务未申报，且 landing 3.3 判据「无第二次识别」与既有「无条件重读」链字面冲突——按判据字面执行 = 删重读 = 行为变化；不删 = 判据不可满足**
 - 位置：design.md:102（§2.3「handler 内部重决策环如 encounter 刷新后重决策不经路由点，**槽保活**」）、design.md:115（§2.5 handler 行）、landing.md:45（3.3 完成判据「每 handler 的『OCR → 写槽 → decide』单源链在位（**无第二次识别**、无旁路）」）。
-- 内容：现码 encounter 刷新链 = 「发射即置位 → 点钮+固定等待 → **无条件重读**（`_try_refresh` 重截图重 OCR）→ 带 `refresh_used=True` 重决策」（`cw_screen_encounter.py:309-312`，旧路径 :333-337 / 五段路径 :463-467 均以 `new_opts` 重决策）。统一签名后重决策改读 `gs.encounter` 槽——**设计未写明重决策前必须以重读产物覆盖写槽**；§2.3「槽保活」按字面恰可误读为「沿用刷新前旧槽内容重决策」= 吃旧选项 = 选择可变（行为零变化证伪路径）。同时 3.3 判据「无第二次识别」与该强制重读直冲突：encounter 的重读是既有行为本体，不是双源。3.4 的 encounter 三分支锁能兜住错误实现，但设计文本先把人往错处带、再把判据写成与真行为矛盾。
+- 内容：现码 encounter 刷新链 = 「发射即置位 → 点钮+固定等待 → **无条件重读**（`_try_refresh` 重截图重 OCR）→ 带 `refresh_used=True` 重决策」（`cw_screen_encounter.py:309-312`，旧路径 :333-337 / 五段路径 :463-467 均以 `new_opts` 重决策）。统一签名后重决策改读 `gs.encounter` 槽——**设计未写明重决策前必须以重读产物覆盖写槽**；§2.3「槽保活」按字面恰可误读为「沿用刷新前旧槽内容重决策」= 吃旧选项 = 选择可变（行为零变化证伪路径）。同时 3.3 判据「无第二次识别」与该强制重读直冲突：encounter 的重读是既有行为本体，不是双源。3.4 的 encounter 三分支测试能兜住错误实现，但设计文本先把人往错处带、再把判据写成与真行为矛盾。
 - 修正方向：§2.2-c/§2.3 补一句「刷新重决策属同访问内二次『读得=覆盖』：重读产物覆盖写槽后方可再调 decide」；landing 3.3 判据改「每 handler 每次决策恰以当次观察产物为单源（encounter/supply 刷新重读链除外，既有行为原样）」。
 
 **[B2-5] prep_obs 容器化的 Field 值形状与写入机制未设计到可开工深度：PrepObservation 含 `set`/`Point`/自造载体，JSON 安全化改造未申报（违 §8.8 遥测形状规格 + execstate #18 先例）；4 写点的渠道/source/evidence 语义未定**
@@ -53,7 +53,7 @@
 
 **[B2-9] landing 3.3 判据 grep「`decide_supply(` 等带 options 实参形态归零」不可满足：kernel 同名纯函数与策略入口内部委托合法存在**
 - 位置：landing.md:44。
-- 内容：kernel `cw_events.decide_supply(options, gs, …)`（`cw_events.py:740`）与 flow 新入口体内对它的委托调用本就带 options 实参，且本批明锁 kernel 零改动（design §2.2-d/§2.6）——该 grep 模式按字面永不归零，判据不可验收。
+- 内容：kernel `cw_events.decide_supply(options, gs, …)`（`cw_events.py:740`）与 flow 新入口体内对它的委托调用本就带 options 实参，且本批明确钉住 kernel 零改动（design §2.2-d/§2.6）——该 grep 模式按字面永不归零，判据不可验收。
 - 修正方向：判据限定策略入口形态（如 `strategy.decide_supply(`/`strategy.decide_invest(`/`decide_box_card` ABC 成员调用点，配 `decide_invest` 全仓归零）。
 
 **[B2-10] 各阶段「§12 通用工程门(引用,不复述)」指针不可解析——同族缺陷第三次出现，前两轮均已裁定须换可解析形态**

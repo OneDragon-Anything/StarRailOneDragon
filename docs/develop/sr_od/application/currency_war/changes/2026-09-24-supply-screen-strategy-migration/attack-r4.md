@@ -18,14 +18,14 @@
 
 ### 发现 2(中)design §2.6 实机判读锚点①-④无 landing 阶段承接(design↔landing 判据失同步)
 
-- **位置**:design.md §2.6(sim 可观测性申报末句「验收 = 单帧锁(3.1)+ 实机判读锚点(事前写定):①…④」)对照 landing.md 3.1/3.2/3.3/末阶段。
-- **发现**:design 把「实机判读锚点」列为验收构成,但 landing 四个阶段的完成判据/验收凭据均只覆盖单帧锁、grep、文档对照,无任何阶段承载实机判读核对。阶段小节 = 账本唯一源(iteration-design §3.1),账本不立则锚点①-④核对不会发生;anchor 事前写定了,「跑完核对」无归属。env 批先例 = landing 3.3 内含「实机一局对照」判据与凭据(实机局 run_id + 抽验帧记录)。属写作硬规则 4(判据同步)违例形态。
+- **位置**:design.md §2.6(sim 可观测性申报末句「验收 = 单帧测试(3.1)+ 实机判读锚点(事前写定):①…④」)对照 landing.md 3.1/3.2/3.3/末阶段。
+- **发现**:design 把「实机判读锚点」列为验收构成,但 landing 四个阶段的完成判据/验收凭据均只覆盖单帧测试、grep、文档对照,无任何阶段承载实机判读核对。阶段小节 = 账本唯一源(iteration-design §3.1),账本不立则锚点①-④核对不会发生;anchor 事前写定了,「跑完核对」无归属。env 批先例 = landing 3.3 内含「实机一局对照」判据与凭据(实机局 run_id + 抽验帧记录)。属写作硬规则 4(判据同步)违例形态。
 - **修正方向**:landing 增补实机判读判据(可并入 3.3 或独立小节):一局内核对锚点①-④(锁线帧终局成员优先 / 手握成品·组件的无钻帧不刷 / 三级全空帧仍刷 / P1 配方锁帧按钻或通用值),凭据 = run_id + 逐锚点对账记录。
 
 ### 发现 3(中)凑星 tiebreak 标注「待用户过目确认」= 开放项,无闭环载体;landing ⑦ 已把该语义建为验收面
 
 - **位置**:design.md §2.3(「排序依据…『能凑星者先』为会话内设计细化(**待用户过目确认**)」)对照 landing.md 3.1 验收凭据⑦。
-- **发现**:这是全设计唯一开放语义项。iteration-design §6「带开放问题的定稿」不存在、硬规则 2(实现者无需再设计)以定稿为门槛——当前草案态挂起合法,但:①确认动作无载体指定(记录落在哪、回写到哪个裁定指针、由谁判定闭环)——按 strategy-work §2.6「挂确认」形态,确认须有同场记录与回写位;②landing 3.1⑦(凑星 tiebreak 单帧锁,含分跨备战席/上阵构造)已把该语义列为验收凭据,若确认不回或改序,该锁与设计 §2.3 连带返工;③2026-09-05 用户裁定已把「玩家过目」门改为编排者发起无前提对抗审(strategy-work §2.4),本设计的自设确认义务与该门的关系(额外严谨 or 遗留门形态)未申报。
+- **发现**:这是全设计唯一开放语义项。iteration-design §6「带开放问题的定稿」不存在、硬规则 2(实现者无需再设计)以定稿为门槛——当前草案态挂起合法,但:①确认动作无载体指定(记录落在哪、回写到哪个裁定指针、由谁判定闭环)——按 strategy-work §2.6「挂确认」形态,确认须有同场记录与回写位;②landing 3.1⑦(凑星 tiebreak 单帧测试,含分跨备战席/上阵构造)已把该语义列为验收凭据,若确认不回或改序,该测试与设计 §2.3 连带返工;③2026-09-05 用户裁定已把「玩家过目」门改为编排者发起无前提对抗审(strategy-work §2.4),本设计的自设确认义务与该门的关系(额外严谨 or 遗留门形态)未申报。
 - **修正方向**:二选一并写明——①指定确认载体与回写位置(如 §0 裁定指针增「凑星 tiebreak:用户 2026-09-XX 确认」行),定稿前回写;②援引 2026-09-05 裁定改由对抗审承担,删除「待用户过目确认」标记,「会话内设计细化」改为纯语义描述出处。
 
 ### 发现 4(低)`cw_screen_supply_node.py:279-280` 内联注随闸内嵌失真,不在 §2.6 注释收口清单(「已知点全列」不成立)
@@ -64,14 +64,14 @@
 - **kernel 码点**:`cw_events.py` :1(模块 docstring 补给句)/:583(段头)/:585-596(SupplyOption)/:599-605(SupplyPick)/:609-612(`_equip_value` 委托壳)/:616-647(decide_supply,只消费 equip/has_diamond,char 全程未触)/:633-635(无钻必刷)/:637/:641-642(key_fit +10 消费)/:786(`_equip_value` 唯一保留消费点 = planner)/:1002-1007(EVENT_PICK_TYPES 与 EventPick 联合;src 全仓无外部消费,safe 摘除该位)。
 - **死代码申报**:`supply_reroll_decision` 全仓(src + sr-od-test)仅定义点 `cw_survey19_hooks.py:46-56`,零消费 ✓;`cw_survey19_hooks` src 唯一 import 点 = `cw_events.py:552-554` 只取 `encounter_tier_score` ✓;`sim/checks/ledger.py` 全仓零命中(src 无 sim/checks 目录)✓。
 - **SupplyPick/SupplyOption 消费面**:src 仓 SupplyPick 无外部类型 import(仅 cw_events 内部 + cw_vocab docstring + cw_pick_supply_action.py:37 docstring)✓;SupplyOption 四方(obs `cw_node_obs.py:21`/容器 TYPE_CHECKING/sim `cw_sim_backend.py:78`/测试仓 test_cw_route_clear、test_cw_screen_report_ports)✓。
-- **测试仓**:`test_cw_unified_action_4.py:27-33`(类型 import)/:303(构造点)恰此两处 ✓;两处 strategy 级 decide_supply stub(test_cw_obs_arch_event_screens_step3.py:47/61、test_cw_supply_pick_immediate_report.py:125)桩的是 `match.strategy.decide_supply`,flow 方法名保留即继续有效 ✓;kernel 侧 supply 决策无专用锁 ✓;`:120` EVENT_PICK_TYPES docstring 不枚举成员,摘位不受影响 ✓。
+- **测试仓**:`test_cw_unified_action_4.py:27-33`(类型 import)/:303(构造点)恰此两处 ✓;两处 strategy 级 decide_supply stub(test_cw_obs_arch_event_screens_step3.py:47/61、test_cw_supply_pick_immediate_report.py:125)桩的是 `match.strategy.decide_supply`,flow 方法名保留即继续有效 ✓;kernel 侧 supply 决策无专项测试 ✓;`:120` EVENT_PICK_TYPES docstring 不枚举成员,摘位不受影响 ✓。
 - **共享机器**:`cw_equip_value.py:36`(V4.4 meta 先验表自注)/:42-80(表本体)/:163-189(equip_tier,需求按计数、key 可含重复、空序列归 0、并列取输入序)与 design 转述逐字一致 ✓;近兑现/材料档语义 ✓。
 - **两账口径与凑星**:`flow.py:712-718`(get_comp 失败回落未锁 + 告警)/:719-740(两账构造)/:729-731(`*_wf, *_wb` 展平先例)✓;`same_star_count`(`cw_merge_simulate.py:424-433`)对 list[Unit] 形状的 bench/deployed 均可读身份(`_entry_identity` :93-107,Unit 直读、非容器 fail-closed 跳过)——design「直传二元组被静默跳过」的警告经协议核实成立 ✓;`deployed_rows_of`/`bench_units_of` 签名与返回形状(`cw_game_state.py:3650/:3659`)✓;`_merge_bench` 同名同星 ≥3 合一(:337)✓;补给入席恒 1★(`pick_supply.py:48-50`)✓。
 - **意向/接线**:`cw_intention.py:2075-2077`(降格清 locked_comp)✓;`pair_target_comp`(`cw_intention.py:1123-1194`)构造不传 key_equips → 恒空,design 申报②⑤的归因(判据形态变更非参照激活;P1 帧 key 参照两侧皆空)成立 ✓;`flow.py:326`/:327/:335-352/:353(target_comp 两臂)/:516-518/:545-546 ✓;`invest_env.py:388-401`(闸内嵌 None fail-closed 先例)✓;`cw_comps.py:102/:111/:112`(core/shared/transition 字段)✓。
 - **op 层**:`cw_screen_supply_node.py:275-292`(重调路径)、闸放行条件、重调恒等返 Suggestion → 零点击,与 §2.4「op 语义不变、仅剩锚点缺触发面」推导一致 ✓;op 现行为(旧 kernel refresh_used 同源)下重调确曾落「按原评分选」,失真属注释层(发现 4)✓。
 - **注册表**:`cw_equipment_data.py:53`(财富宝钻 effect 原文逐字)/:64-65(红钻/蓝钻星徽材料)/`cw_node_obs.py:215`(三钻检测集)✓。
 - **sim**:`cw_sim_backend.py:78`/:573-585(占位分布每帧恰一带钻槽,char 恒空)→「新旧都恒选钻、刷新两侧永不触发、sim 读数恰同」的盲区机制成立 ✓;`sim_backend_runner.py:314-381`(真 CwLoop + 真 mandate_v1 装配)✓。
-- **文档锚**:25 号稿 :3(族清单 11 屏含补给)/:4(拆分头注先例)/:11/:18 ✓;13 号稿 :18(改指先例)/:20/:40(「组件/成品需求」与实码不符属实)/§0:11(OCR 未就绪纪律)✓;08 号稿 :19(P42 component_demand/hoard_gaps + P40 变体② 在册口径)✓;16 号稿 :74(挂账在册;`:293` 死引用、ledger 锁零命中的替锚申报成立)✓;strategy-docs README §2(末篇 28,30 空闲)/§3(kernel 存量 = 待迁)✓;math_proofs 索引 P42(🔴 待标定 = λ 流/partner 到位率)与 design「P42 数值标定待落地」一致 ✓;env 批 design §1(:18)/投资策略批 design §1(:23)均登记补给为后续批、29 号稿被投资策略批占用(`29_invest_strategm_screen` 新建申报在其 landing 3.3)✓。
+- **文档锚**:25 号稿 :3(族清单 11 屏含补给)/:4(拆分头注先例)/:11/:18 ✓;13 号稿 :18(改指先例)/:20/:40(「组件/成品需求」与实码不符属实)/§0:11(OCR 未就绪纪律)✓;08 号稿 :19(P42 component_demand/hoard_gaps + P40 变体② 在册口径)✓;16 号稿 :74(挂账在册;`:293` 死引用、ledger 测试零命中的替锚申报成立)✓;strategy-docs README §2(末篇 28,30 空闲)/§3(kernel 存量 = 待迁)✓;math_proofs 索引 P42(🔴 待标定 = λ 流/partner 到位率)与 design「P42 数值标定待落地」一致 ✓;env 批 design §1(:18)/投资策略批 design §1(:23)均登记补给为后续批、29 号稿被投资策略批占用(`29_invest_strategm_screen` 新建申报在其 landing 3.3)✓。
 - **规范面**:宪法五/六引用与 00_framework §1 第 5/6 条一致; kernel 零指向 strategies 的 import 现状核实 ✓;encounter.py 为已搁置历史 EV 核(:1 docstring)✓;无过程叙事检查(design/landing 无「本轮/已改/第 N 轮」措辞)✓;landing 四阶段七件齐、设计依据指向真实存在 ✓;零调参攻击:全设计无新自由参数(+10 物理删除 = 未证即退役;通用值表按 16 号稿在册处置作定序常数消费且所有权申报在位)✓;prereg 保全清单在位(§2.6 验收线保全申报)✓;kernel 删除面全仓 grep 可达成(kernel 决策面零残留判据与实况对得上)✓。
 
 ## 结论

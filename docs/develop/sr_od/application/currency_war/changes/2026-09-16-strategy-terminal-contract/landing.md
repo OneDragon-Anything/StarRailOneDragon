@@ -12,7 +12,7 @@
 **依赖**：无（本阶段面 = kernel/cw_game_state.py + cw_vocab.py + cw_strategy.py（Match 字段）+ cw_loop.py + cw_strategy_manager.py + 测试，与 unified-obs 3.4 文件面零交集；3.2–3.5 各自挂与其文件面相交的 unified-obs 3.4 项，见各阶段依赖行）
 **优先级建议**：0
 **完成判据**：
-- 十二槽/新字段/新动作类型/actor 预登记就位（ **三登记**：`CwScreenYinLang`/`CwScreenBoxPick`/`cw_loop_route_clear`——路由清点写端 actor 不预登记则首次清点写在册校验炸），注释带归属与坐标系申报；新动作类型入 `CW_ACTION_TYPES` 白名单 + 注册完备锁随批；
+- 十二槽/新字段/新动作类型/actor 预登记就位（ **三登记**：`CwScreenYinLang`/`CwScreenBoxPick`/`cw_loop_route_clear`——路由清点写端 actor 不预登记则首次清点写在册校验炸），注释带归属与坐标系申报；新动作类型入 `CW_ACTION_TYPES` 白名单 + 注册完备测试随批；
 - 属屏映射十行 + 未识别轮/早退轮剧本断言 + 已 None 跳过 + sig 形态断言；
 - 新动作类型构造单测；schema 断言（8 新域键 + 2 bump + 域 +1）随批；全量绿（纯增量零行为）。
 - 通用工程门（本文首节定义）
@@ -24,7 +24,7 @@
 ①**删除线**（details §A）：八字段 + 全部消费逻辑删（`cw_hp_policy` 新鲜度门简化为 gs.hp 直读、等级单调守卫、star 防抖窗、hp_suspect 通道、`upcoming_types` journal 行降级申报）；`last_owned_equips` 删 + 武装箱打分输入改 `gs.equips` 现值（**消费点 = `flow.py::decide_box_card`**——行为变化登记：总纲 §1.3/§2.8）。
 ②**重锚线**（details §A′，**不删**）：探针族四字段（plane_node_table/plane_node_table_plane/plane_lengths_seen/nodeseq_probe_anchor）= schedule_of/nodes_of_plane 现役唯一真值源 → gs 非 Field 簿记组 `node_books`，读者全量重锚（cw_plane_table/cw_economy/cw_intention/cw_discipline_rules/cw_line_switch/cw_screen_battle_wait/mandate_v1 判据——值等价换宿主）；`last_node_type`/`node_type_current` 重锚 `node_kind_of(gs)` 直读（现状双源并存：一半消费点已直读 gs 推导，另一半「识别值优先 + gs 兜底」换 gs 直读，删左移推断装配——`cw_screen_prep.py` 写点族）。
 **设计依据**：design.md §2.4、§1.3；details §A/§A′。
-**文件面**：`kernel/cw_strategy_session.py`（族槽删除）、`kernel/cw_game_state.py`（node_books）、`kernel/cw_hp_policy.py`、`kernel/cw_strategy.py`（**gated_hp 本体简化**）、`kernel/cw_plane_table.py`、`kernel/cw_economy.py`/`cw_intention.py`/`cw_discipline_rules.py`/`cw_line_switch.py`（重锚读口）、`kernel/cw_exec_state.py`（last_owned_equips 写腿删）、`operations/cw_op/cw_op_equip_all.py`（同写腿）、`obs/cw_observation.py`（中继读点 + last_streak 仲裁读点）、`kernel/cw_reconcile.py`（reconcile_hp 对账腿随 hp 锚删除简化）、`operations/cw_screen/cw_screen_battle_wait.py`（结算锚 + killed 判定 + 遥测读点）、`strategies/impl/flow.py`（decide_box_card 打分输入 + node 重锚读口）、`operations/cw_screen/cw_screen_prep.py`（§A 读写点 + 左移推断装配删）、`strategies/impl/mandate_v1/`（**子树授权：两 hp 消费点 + 探针消费判据 horizon/levelup/shop 等重锚 + entry 遥测读点**）、`sr-od-test` 相关锁。
+**文件面**：`kernel/cw_strategy_session.py`（族槽删除）、`kernel/cw_game_state.py`（node_books）、`kernel/cw_hp_policy.py`、`kernel/cw_strategy.py`（**gated_hp 本体简化**）、`kernel/cw_plane_table.py`、`kernel/cw_economy.py`/`cw_intention.py`/`cw_discipline_rules.py`/`cw_line_switch.py`（重锚读口）、`kernel/cw_exec_state.py`（last_owned_equips 写腿删）、`operations/cw_op/cw_op_equip_all.py`（同写腿）、`obs/cw_observation.py`（中继读点 + last_streak 仲裁读点）、`kernel/cw_reconcile.py`（reconcile_hp 对账腿随 hp 锚删除简化）、`operations/cw_screen/cw_screen_battle_wait.py`（结算锚 + killed 判定 + 遥测读点）、`strategies/impl/flow.py`（decide_box_card 打分输入 + node 重锚读口）、`operations/cw_screen/cw_screen_prep.py`（§A 读写点 + 左移推断装配删）、`strategies/impl/mandate_v1/`（**子树授权：两 hp 消费点 + 探针消费判据 horizon/levelup/shop 等重锚 + entry 遥测读点**）、`sr-od-test` 相关测试。
 **依赖**：3.1；unified-obs 3.4 落码收（cw_screen_prep.py 相交）
 **优先级建议**：1
 **完成判据**：
@@ -38,11 +38,11 @@
 
 **范围**：details §B 表（**普查词表用 session 实名**：active_strategies/active_env/briefing_affixes/briefing_bosses/enemy_difficulty/selected_difficulty/last_streak/chosen_megastar/chosen_partner——briefing 双字段消费面非机械：空门触发采集/跳过门/保位写/None 元素语义逐点保留）重复账退役，读写点换 gs 正本 + `pending_round_outcomes` 删（写入端停止）+ `prep_frame_class`/`shop_frame_class` → gs 非 Field 两槽 `frame_class_prep`/`frame_class_shop`（方向刷新触发读口换源，**不与 chain `mark_frame_obs` 合槽**——details §C）。
 **设计依据**：design.md §2.4；details §B/C。
-**文件面**：`kernel/cw_strategy_session.py`、`kernel/cw_game_state.py`、`operations/cw_screen/` 读写点、`strategies/impl/flow.py`、`obs/cw_observation.py`、`sr-od-test` 相关锁。
+**文件面**：`kernel/cw_strategy_session.py`、`kernel/cw_game_state.py`、`operations/cw_screen/` 读写点、`strategies/impl/flow.py`、`obs/cw_observation.py`、`sr-od-test` 相关测试。
 **依赖**：3.1；unified-obs 3.4 落码收（相交面以清单核对）
 **优先级建议**：1
 **完成判据**：
-- 普查对账表（**session 实名九字段** + 两帧类槽名）零未承载项；五镜像封闭集锁锚随批；
+- 普查对账表（**session 实名九字段** + 两帧类槽名）零未承载项；五镜像封闭集测试锚随批；
 - briefing 双字段非机械消费面（空门采集/跳过门/保位写/None 语义）逐点对照单测；
 - 方向重估触发行为对照不变（full/view/none 三态 × 键守卫每 game-round 恰一次）；全量绿。
 - 通用工程门（本文首节定义）
@@ -52,7 +52,7 @@
 
 **范围**：`game_state_of(session)` 的 ops/impl 调用点改经 `ctx.cw_match.gs` / 持有引用直用（普查对账表桶 1/2）；kernel fallback 暂留（桶 3 归 3.5）；session 仍存活。
 **设计依据**：design.md §2.6；details §game_state_of。
-**文件面**：`operations/`（含 `operations/cw_op/`）、`strategies/impl/`、包根 `prep_actions.py`、`obs/cw_back_layout.py`、`obs/cw_identity_obs.py`、`currency_war_app.py`（以上 = game_state_of 调用方全集，普查表实测驱动逐文件点名）、`sr-od-test` 相关锁。
+**文件面**：`operations/`（含 `operations/cw_op/`）、`strategies/impl/`、包根 `prep_actions.py`、`obs/cw_back_layout.py`、`obs/cw_identity_obs.py`、`currency_war_app.py`（以上 = game_state_of 调用方全集，普查表实测驱动逐文件点名）、`sr-od-test` 相关测试。
 **依赖**：3.1；unified-obs 3.4 落码收（operations/ 面与其 3.4 相交）
 **优先级建议**：1
 **完成判据**：ops/impl 桶对账表零未承载项（kernel 桶登记 → 3.5）；行为零变化（值同一实例）；全量绿。
@@ -61,9 +61,9 @@
 
 ### 3.5 策略终态切换（构造注入 + 零参 + 输出统一 + 状态归实例；原子）
 
-**范围**：design.md §2.1/§2.2/§2.5/§2.6/§2.7 终态大切换——ABC 重写（构造 `(gs, config)`、12 零参入口、`state`/`rng` 实例属性（`None → 0` 种子）、create_session/create_state 退役——**create_session 副作用 `reset_layout_unknown_state()` 随每局新容器 by construction 满足，函数退役 + 核对申报**）；flow/bridge 全实现改形 + invest 拆分 + kernel 注入化（桶 3 = kernel 补 state/gs 形参两子类）；**`mandate_v1/shop.py` 改形**（`decide_shop_action` 函数本体已 gs-first 零改动，模块内其余 ~68 处 session 消费随批改形，普查对账表兜底）；**输出词表接线**（pick 族 → per-screen 子类型 + 三刷新动作、prep 空发射 → HoldFrame、外循环分支判等对象替换 + round 日志文本、**stall 失实声明三副本修正**（ABC docstring + `cw_screen_prep.py` 两处同源注释）、`CW_ACTION_TYPES` 白名单随批 + **注册完备锁规格**：断言「白名单成员要么有注册行、要么在 handler 自管豁免集（PickInvest/PickStarTome/PickWishTrial/PickBoxCard/RefreshInvestCards——无 op 行例外申报）」）；payload 写槽接线（10 handler——9 个 handle/lifecycle 双路径、box_pick 单路径——actor 写端触发核对）；prep_obs 迁 `gs.prep_obs`（备战线读写点 + bridge 读点 + equip_wear_plan 换源）；StrategyState → 实例 + 读者迁移收尾（kernel 注入桶 + 遥测快照桶 + impl 桶 `self.state`）+ 对账表零未承载；game_state_of kernel 桶收尾 + **journal 装配重锚至引导漏斗 gs 构造点**；引导漏斗 `cls(gs, config)` + Match 终形 `{gs, strategy, performance}` + **buy_cards 防御路径裸 Match 构造改经引导漏斗**；12 调用点（prep×2/buy_cards 循环/10 pick handler）+ `PickXxx.idx` → 既有点击链翻译留 handler；测试仓契约锁/单帧锁/handler 锁全翻新。
+**范围**：design.md §2.1/§2.2/§2.5/§2.6/§2.7 终态大切换——ABC 重写（构造 `(gs, config)`、12 零参入口、`state`/`rng` 实例属性（`None → 0` 种子）、create_session/create_state 退役——**create_session 副作用 `reset_layout_unknown_state()` 随每局新容器 by construction 满足，函数退役 + 核对申报**）；flow/bridge 全实现改形 + invest 拆分 + kernel 注入化（桶 3 = kernel 补 state/gs 形参两子类）；**`mandate_v1/shop.py` 改形**（`decide_shop_action` 函数本体已 gs-first 零改动，模块内其余 ~68 处 session 消费随批改形，普查对账表兜底）；**输出词表接线**（pick 族 → per-screen 子类型 + 三刷新动作、prep 空发射 → HoldFrame、外循环分支判等对象替换 + round 日志文本、**stall 失实声明三副本修正**（ABC docstring + `cw_screen_prep.py` 两处同源注释）、`CW_ACTION_TYPES` 白名单随批 + **注册完备测试规格**：断言「白名单成员要么有注册行、要么在 handler 自管豁免集（PickInvest/PickStarTome/PickWishTrial/PickBoxCard/RefreshInvestCards——无 op 行例外申报）」）；payload 写槽接线（10 handler——9 个 handle/lifecycle 双路径、box_pick 单路径——actor 写端触发核对）；prep_obs 迁 `gs.prep_obs`（备战线读写点 + bridge 读点 + equip_wear_plan 换源）；StrategyState → 实例 + 读者迁移收尾（kernel 注入桶 + 遥测快照桶 + impl 桶 `self.state`）+ 对账表零未承载；game_state_of kernel 桶收尾 + **journal 装配重锚至引导漏斗 gs 构造点**；引导漏斗 `cls(gs, config)` + Match 终形 `{gs, strategy, performance}` + **buy_cards 防御路径裸 Match 构造改经引导漏斗**；12 调用点（prep×2/buy_cards 循环/10 pick handler）+ `PickXxx.idx` → 既有点击链翻译留 handler；测试仓契约测试/单帧测试/handler 测试全翻新。
 **设计依据**：design.md §2.1/§2.2/§2.5/§2.6/§2.7/§2.8；details §2/§C/§StrategyState/§game_state_of。
-**文件面**：`strategies/impl/`（cw_strategy/flow/bridge/shop/mandate_v1 子树）、`kernel/cw_game_state.py`、`kernel/cw_vocab.py`、`kernel/cw_events.py`（Pick 包装数据源核对 + `PICK_ACTION_TYPES` 收敛单表）、kernel 注入桶（`cw_hp_policy` 已于 3.2 处理）、`operations/cw_loop.py`/`cw_screen/` 全调用点、`operations/cw_op/`（注册表换键名 + `CW_ACTION_TYPES` + 完备锁 + 三处 state 读者显式化）、包根 `prep_actions.py`（执行器 HoldFrame 分支）、`obs/cw_observation.py`、`obs/cw_back_layout.py`（reset_layout_unknown_state 调用点迁引导漏斗，函数本体保留）、`kernel/cw_reconcile.py`、`telemetry/`（局终快照换源）、`strategies/impl/cw_strategy_manager.py`、`sim/cw_replay.py`、`sr-od-test` 全相关锁。
+**文件面**：`strategies/impl/`（cw_strategy/flow/bridge/shop/mandate_v1 子树）、`kernel/cw_game_state.py`、`kernel/cw_vocab.py`、`kernel/cw_events.py`（Pick 包装数据源核对 + `PICK_ACTION_TYPES` 收敛单表）、kernel 注入桶（`cw_hp_policy` 已于 3.2 处理）、`operations/cw_loop.py`/`cw_screen/` 全调用点、`operations/cw_op/`（注册表换键名 + `CW_ACTION_TYPES` + 完备测试 + 三处 state 读者显式化）、包根 `prep_actions.py`（执行器 HoldFrame 分支）、`obs/cw_observation.py`、`obs/cw_back_layout.py`（reset_layout_unknown_state 调用点迁引导漏斗，函数本体保留）、`kernel/cw_reconcile.py`、`telemetry/`（局终快照换源）、`strategies/impl/cw_strategy_manager.py`、`sim/cw_replay.py`、`sr-od-test` 全相关测试。
 **依赖**：3.1–3.4；unified-obs 3.4 落码收（telemetry/ 两文件与其 3.4 相交）
 **优先级建议**：1
 **完成判据**：
@@ -73,7 +73,7 @@
 - kernel 依赖矩阵保持；journal 装配在引导漏斗新锚落位（journal 行落账单测）；
 - 全量绿（含测试仓翻新后语义断言不变）。
 - 通用工程门（本文首节定义）
-**验收凭据形式**：普查对账表×2 + 四格/同帧对照测试 + handler 行为锁 + journal 单测 + 全量。
+**验收凭据形式**：普查对账表×2 + 四格/同帧对照测试 + handler 行为测试 + journal 单测 + 全量。
 
 ### 3.6 session 类退役与清尾
 

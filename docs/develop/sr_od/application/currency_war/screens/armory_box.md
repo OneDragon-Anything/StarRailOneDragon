@@ -40,10 +40,10 @@
 
 `node_max_retry_times=8` 在用值仅框架异常路径消费;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(武装箱两 node 形态锁:观察 report 占位 + round_wait 推进);建档 = `currency_war_armory_box_dialog.yml`。
+- journal op 名 = 「武装箱」(dispatch 包装落 `[cw-op]` 行);frame_tag = `overlay_armory_box`;日志前缀 `[cw-armbox]`。测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(武装箱两 node 形态测试:观察 report 占位 + round_wait 推进);建档 = `currency_war_armory_box_dialog.yml`。
 
 ## 开放设计注
 
-- 档案「按钮-开箱点击」定位区无生产消费点(停用或保留待建档清理批);sim 侧对应项不适用(sim 无对应画面段),等价判据承重 = 实机行为锁 + 两 node 行为锁(锁面 = §9)。
+- 档案「按钮-开箱点击」定位区无生产消费点(停用或保留待建档清理批);sim 侧对应项不适用(sim 无对应画面段),等价判据承重 = 实机行为测试 + 两 node 行为测试(测试面 = §9)。

@@ -21,7 +21,7 @@
 - 现状症状:点击解析链在契约两档(payload 定长槽阵列身份同一性 → (name, star),action_exec.md §4 BuyCard 行 / action_ops.md §4.1 同口径)之外存在三级静默兜底——①`card.slot` 旧档字段兜底(cw_buy_card_action.py :109-111,注释自称「退役过渡期保留」);②槽号失效静默点 `click_pts[0]`(:114-115,= 商店牌-1,可能错槽);③牌位点表全缺点硬编码 `_Pt(0, 288)`(:114-115)。`shop_card_click_points`(kernel/cw_obs_core.py :69-82)对缺失槽静默缩短列表、screen 缺失返回 `[]`,兜底路径可达;`run_buy_waves` 段首对 level_btn/refresh_btn 有显式缺失检查(cw_screen_buy_cards.py :673-680),独 click_pts 无检查,与同函数注释申报(:669-671「禁兜底坐标静默点击」)自相矛盾。同族「area 缺失回退兜底常量」形态在 action_ops.md 在册行另有四处平铺记载(见 §2.2 家族待裁项 #1)。
 - 规范条款:action_exec.md §4「坐标 = screen_info『商店牌-N』现取,area 缺失显式失败」;仓库 AGENTS.md §5 坐标单一真相源。
 - 根因归层:约定层(实现存在契约外的静默兜底路径,把建档漂移这一表示层缺口掩盖成静默错点)。
-- 解决到哪:三级兜底逐级删除 + 段首缺失检查补齐 + 逐形态失败语义与测试锁方向 + 返回值契约正本同步面(action_ops §2.3)+ 同族兜底常量家族待裁项登记(§2.2)。
+- 解决到哪:三级兜底逐级删除 + 段首缺失检查补齐 + 逐形态失败语义与测试方向 + 返回值契约正本同步面(action_ops §2.3)+ 同族兜底常量家族待裁项登记(§2.2)。
 - 明确不解决:买前裁片(action_ops.md §1 增补 3 在册欠账,清除随在册 landing 3.3/3.4);建档 yml 本身的完整性(建档面,走画面建档流程修档);家族待裁项四点位的修复本身(归各屏审查稿/汇总裁决,§2.2 只登记与定性)。
 
 ### 1.3 F-3(中)refresh-shop.md 专篇计数腿滞后于现役实现
@@ -98,10 +98,10 @@
 
 **返回值契约正本同步面(随本批,A-3)**:flow/action_ops.md §2.3「返回值在册例外」行现文『`CwActionBuyCardOp` / `CwActionWearEquipOp` 均回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)』与本修法冲突——随本批改写:`CwActionBuyCardOp` 移出「恒 success」名单,申报「定位缺失(点位缺失/槽解析失败/槽号越界)= round_fail 未发出事实;round 结果成功态仍 = 发出事实」形态,与 action_exec.md §2 失败通道句对齐;`CwActionWearEquipOp` 行不变。**归属**:该行不在在册 landing 正本更新清单认领面(其清单只认领 action_ops §1 增补 3/§4.1/§4.3/§4.7),归本稿落地批;在册 landing 3.4 完成判据含同款 round_fail 行为,若在册批先落地,该行失真由其行为变更造成,改写义务仍归本稿批清零(两批任一先落,本行随本稿批执行)。
 
-**测试锁方向**(现状 = 存量测试零依赖兜底路径:grep 实证 sr-od-test 无 `_Pt(0, 288)`/兜底点击断言;`click_pts=[]` 的两处 env 构造均为刷新 op 用例,不经买牌解析):
-1. A 层三支锁(扩展 `test_cw_buy_cards_defense_funnel` 离线宿主):段首牌位/升级钮/刷新钮各自缺失 → round_fail,信息带缺失 area 名;全 5 槽在 → 正常进入访问。
-2. B 层双形态锁:payload 无此牌(身份与 (name,star) 双未命中)→ round_fail 非 round_success,信息含 slot_no 形态;槽号越界(如 payload 槽号 7 对 5 点表)→ round_fail 越界形态;两形态均断言零记账、零点击。
-3. 存量锁兼容:`test_cw_action_emit_book.py` 锁1 经身份同一性命中(payload 同对象 + click_pts 长度 1),兜底删除不触及,期望不动。
+**测试方向**(现状 = 存量测试零依赖兜底路径:grep 实证 sr-od-test 无 `_Pt(0, 288)`/兜底点击断言;`click_pts=[]` 的两处 env 构造均为刷新 op 用例,不经买牌解析):
+1. A 层三支测试(扩展 `test_cw_buy_cards_defense_funnel` 离线宿主):段首牌位/升级钮/刷新钮各自缺失 → round_fail,信息带缺失 area 名;全 5 槽在 → 正常进入访问。
+2. B 层双形态测试:payload 无此牌(身份与 (name,star) 双未命中)→ round_fail 非 round_success,信息含 slot_no 形态;槽号越界(如 payload 槽号 7 对 5 点表)→ round_fail 越界形态;两形态均断言零记账、零点击。
+3. 存量测试兼容:`test_cw_action_emit_book.py` 测试1 经身份同一性命中(payload 同对象 + click_pts 长度 1),兜底删除不触及,期望不动。
 
 **家族待裁项 #1(兜底常量家族,同族防复发,A-8)**:action_ops.md 在册行平铺记载(非「欠账」标注,不属本迭代「在册欠账不重复立项」豁免面)的「area 缺失回退兜底常量」形态共四处——LevelUp 行(§4.2)、PickEncounter 行(§4.5)、PickMegastar 行(§4.5,「按钮-确认选择」)、PickFortune 行(§4.5,「建档缺失臂兜底常量」)。定性:与 F-2 被删三级兜底同病(建档漂移被掩盖成静默错点,违 AGENTS §5 坐标单一真相源与 action_exec §4「area 缺失显式失败」精神)。**处置 = 挂账待裁**:逐点位「同批修 / 挂账另批 / 裁定豁免(该钮确无稳定建档可依时)」三选一,归属 = 各点位所属屏的审查设计稿(遭遇/盛会之星/命运卜者/备战域)与 T-37 汇总裁决;本稿辖内(商店域)零该形态。**防复发声明**:新增动作 op 禁引入建档缺失兜底常量,以本条失败语义(area 缺失显式失败)为范式。
 
@@ -197,7 +197,7 @@
 4. `refresh_paid_not_fed` 全域零命中(唯一命中面 = refresh-shop.md §5,§2.3 第5条);
 5. 「37 画面|37 屏」:screens/README.md 卷首(:4,归本稿处)零命中——全域清零核验归 T-37(§2.6 认领批五处落地后);搁浅兜底已触发时全域由本稿批一次改齐后全域零命中(§2.6);
 6. action_ops.md §2.3 返回值例外行不再含 BuyCard「恒 success」表述(§2.2 同步面;文档对照);
-7. L1 快速集(`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`)全绿——覆盖 §2.2 测试锁与存量锁兼容面。
+7. L1 快速集(`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`)全绿——覆盖 §2.2 测试与存量测试兼容面。
 
 **分流面登记(r2 全量 grep 实证,src 命中逐组归属,无未归属命中)**:
 - `MAX_REFRESH` src 残余两处:`telemetry/schema.py`(在册 3.3 已认领——landing「schema.py:773 沿用已废硬墙口径的注释顺带清理」,行号漂移 773→约777,执行以「已删 MAX_REFRESH 硬墙的历史取值」语义定位)、`mandate_v1/mandate.py`(史注类比句「与 MAX_REFRESH/VISIT_ACTION_CAP 同类事故阀形态」——归属 T-1 稿 F-9 判定线②③复核,豁免或改写随 T-37 汇总裁决);

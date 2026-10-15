@@ -23,7 +23,7 @@
 ## 2. 方案
 
 ### 2.1 判定总闸：对账住在唯一写入口
-- **位置**：`GameState.observe()`——渠道①唯一观察写入口，「禁旁路直写」有 grep 守卫锁硬约束（依据：`game_state/journal.md` §6 硬约束①、`kernel/cw_game_state.py::observe`）。全部画面 op 的观察数据必然过这扇门，判定在门上做一次，全域自动生效，各 op 零对账代码。
+- **位置**：`GameState.observe()`——渠道①唯一观察写入口，「禁旁路直写」有 grep 守卫测试硬约束（依据：`game_state/journal.md` §6 硬约束①、`kernel/cw_game_state.py::observe`）。全部画面 op 的观察数据必然过这扇门，判定在门上做一次，全域自动生效，各 op 零对账代码。
 - **判定条件**（现状语义保留）：`target.source == 'logic'` 且现值非 None 且实读 ≠ 现值 → 失配。carry / leave_screen / write_prior / relay / write_logic 自身不比对（依据：`observe` docstring §2.1/§2.2 边界）。
 - **三分流接线点** = `observe()` 内现 `_emit_defect` 调用处（失配比对之后、`_swap` 覆盖之前）——覆盖先落、安灯后触发，证据在场不依赖钩子成败。
 - **比较语义**：精确等值，无容差。容差会把小分歧洗成背景噪音（真 bug 失去信号）。注意区分两个容差面：finalize 金差值双源对拍的 ±2 容差是**现役独立留证面**（2026-08-17 审计 #6 P2 引入，容忍收入/连胜金不可观项混入，依据 `cw_screen_prep.py` finalize 段注释），不在本迭代拆除；但「不可观项混入」在容器精确等值下就是失配源——其归因与建模出口见 §2.6。
@@ -56,7 +56,7 @@
 - **装配侧**：装配点 = `currency_war_app.py` `CurrencyWarApp.__init__` 装配段（与 `set_defect_sink` 等注入槽同点注入，ctx=self 在场，先例已核）。闭包职责按序：
   1. **每局闩**：载体 = 闭包内 dict（键 = run_id）；run_id 取 `current_run_id_safe()`（`cw_game_state` 公开读口），本局已触发过 → 跳过；**run_id 为空（局外）→ 只落证不停机**（与 journal 局外拒写假行同向，依据 `cw_game_state._current_run_id_safe` 缺席语义）；
   2. **截图**：帧源 = `ctx.controller.screenshot()`，闭包非 op 不走 `Op.save_screenshot`，直用 `one_dragon` 调试落盘工具（`debug_utils.save_debug_image`，同 `Op.save_screenshot` 底座），前缀 `reconcile_andon_<run_id>_<field>_`；失败不拦停机（flag 是主哨兵，先例 = exec_fail 安灯截图策略）；
-  3. **写 flag**：`.debug/temp/cw_reconcile_andon.flag`（仓根锚定绝对路径——daemon spawn 的非 CWD 进程相对路径落错，教训见 `run_state.py` flag 路径注释）。内容锁停机钩子三要素（od-dev-stop-hooks）：
+  3. **写 flag**：`.debug/temp/cw_reconcile_andon.flag`（仓根锚定绝对路径——daemon spawn 的非 CWD 进程相对路径落错，教训见 `run_state.py` flag 路径注释）。内容校验停机钩子三要素（od-dev-stop-hooks）：
      - 触发定位：`[HOOK-STOP]` 标记 + ts + run_id + 字段 + 画面/actor + 动作组 id + 逻辑写端 evidence + 逻辑值/实读值；
      - 处理步骤：两原因排查——①此前的观察态错了：查 `state/journal.jsonl` 该字段前序写入行（行行自足，含渠道签名与质量元数据）；②逻辑态推算代码错了：按 actor / group_id / logic_evidence 定位写入点修推算。归因一手数据 = journal 行（expected/actual/evidence + 写入后完整 state 快照）；
      - 移除条件：常驻兜底钩子——单次触发只删 flag；差异长期确证属游戏机制性结构 → 走豁免申报进注册表（带 reason），不留开关。

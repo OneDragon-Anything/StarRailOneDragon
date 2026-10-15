@@ -61,12 +61,12 @@
 - **3.1 关键词集 × 定稿文本互斥性**:八个关键词逐一比对 §2.1 基类 docstring 定稿、§2.2 码块(注释/detail/F3 文案)、§2.3 bridge docstring 定稿——零碰撞 ✓;`list[CwAction]` 豁免申报必要且准确(`decide_from_turn` 签名住 bridge.py L259-262,本批文件面内、非改动行)✓;「新增行/本批改写行」判据域读法唯一,被删行天然携带关键词的问题已被判据域排除 ✓。唯 F1/F2/F4 表明 diff 域 grep 对**未改行的同族残留**结构性失明,不能单独承担「死口径清零」验收(故 F1 给出全文复核补强建议)。
 - **3.3 闭域检查独立重跑**(本报告按 `首项|空批|list[PrepAction]` 全树重跑):「首项」全部命中 → 清单 #1/2/3/4/5/7/8/11/13/14/15 全覆盖 + 豁免(`proofs/validations/P51_V3_REBUILD.md` L391「R31-2 首项=1」属实系拟合器标签序位;`changes/2026-09-14-unified-action-factory/design.md` L362 归 changes/ 豁免);「空批」→ flow/README L77/L81(历史注节,豁免正当)+ #6/#8/#9/#10 全覆盖;「list[PrepAction]」→ #2/#7 全覆盖;PrepAction 裸名独立重扫(`PrepAction[^E]` 口径)→ 活正本仅 projection_contract L89(#3)/action_exec L9(#12)两处,已知位清单完备,其余命中全为 `PrepActionExecutor` 合法名 ✓。闭域检查对三关键词**完备且可执行**;其盲区(「全函数」类无关键词死口径)已由 F3 实证并给修正。
 - **判据正本引文核对**:landing 清单 16 条锚点句逐条直调(README L17-18 跨行拆分/L23/L64、projection_contract L89-90、action_exec L28/L9、op-layer L14/L21、prep.md L15/L32/L53、screens/README L130、22_prep_screen L8/L28、action-logic-state L163、prep-executor-actions L13、02_mandate_layer L82)——引文逐字存在、行号无漂移 ✓。
-- **阶段可独立验收性**:3.1(四文件改写,验收 = 测试名 + grep)/3.2(锁 + 烟雾锚点,判据不依赖 3.3 未完成部分,指针先行+复验已写明)/3.3(清单清零 + 闭域三分处置)七件齐、依赖链单线、可独立派工验收 ✓。
+- **阶段可独立验收性**:3.1(四文件改写,验收 = 测试名 + grep)/3.2(测试 + 烟雾锚点,判据不依赖 3.3 未完成部分,指针先行+复验已写明)/3.3(清单清零 + 闭域三分处置)七件齐、依赖链单线、可独立派工验收 ✓。
 
 ## 4. 三核结论
 
-- **核一(无前提)**:消费端全集直调——`decide_prep_screen` 全 src 仅 `cw_screen_prep.py` 两处调用(design 消费端枚举完备);sim/replay/tools 零消费 prep 面(§2.4 零影响成立,replay_to_md 纯 stdlib 离线渲染实证);测试影响面盘点实证(全仓仅 `test_cw_p2_blood_band.py` L215-217 `*a, **kw` 桩,空批/形状文案锁零命中)。发现 = F1/F2/F3 的清单完备性缺口(设计边界完整性)。
-- **核二(规范遵循)**:四节齐/阶段七件齐/README 进度态一致/引用寿命分层合法(锁 docstring 指针指正本不引 changes/)/无过程叙事(R196/R197 系在册缺陷类持久编号,非会话局部)。发现 = F5(changes/ 引用寿命铁律,既有债)。
+- **核一(无前提)**:消费端全集直调——`decide_prep_screen` 全 src 仅 `cw_screen_prep.py` 两处调用(design 消费端枚举完备);sim/replay/tools 零消费 prep 面(§2.4 零影响成立,replay_to_md 纯 stdlib 离线渲染实证);测试影响面盘点实证(全仓仅 `test_cw_p2_blood_band.py` L215-217 `*a, **kw` 桩,空批/形状文案测试零命中)。发现 = F1/F2/F3 的清单完备性缺口(设计边界完整性)。
+- **核二(规范遵循)**:四节齐/阶段七件齐/README 进度态一致/引用寿命分层合法(测试 docstring 指针指正本不引 changes/)/无过程叙事(R196/R197 系在册缺陷类持久编号,非会话局部)。发现 = F5(changes/ 引用寿命铁律,既有债)。
 - **核三(治本)**:§1 归层表示层成立(消费语义 2026-09-06 已迁移、签名 list 未跟,双向实证);§2 修根 = 契约面形状收口,核内 list 保留有活机制依据(首项选择序 4 调用点直调实证,`_merge_ev_before_frame_end` L1140/L903、M7 回排 L1951-1970);备选 A–D 弃因逐一核无空洞(D 的弃因与 op-layer §1.1 分域句直调吻合);None 通道三点依据全验证(⑥ 空则补 StartBattle = `entry.py` L943-944 实码;可达空边 = truncate 首位 SellBench/DeployMove 复检截空 L309-324 实码;unknown 首位边不可达 = 决策核可发射 17 类全被四分类覆盖、分类表 11+1+1+4=17 直调数过;OpenBookcard 画面 op 侧发射 = `cw_screen_prep.py` L2587 直构实证;entry.py 头注「18 类」= 备战域词表 18 类 vs 分类表 17,既有漂移申报属实);B4 第三方兼容面(封闭集 {mandate_v1}、旧 list 空否均 fail、响亮暴露不做垫片)边界申报自洽。无治本级异议。
 
 ## 5. 攻击面清单(实际攻击过的面)

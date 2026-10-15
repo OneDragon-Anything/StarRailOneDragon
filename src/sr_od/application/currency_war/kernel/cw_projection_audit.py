@@ -19,11 +19,11 @@
 
 三/四态的关系:任务口径的三分类里,「无写端无规则」= 可失配面(status ∈
 {write_end, absorb_rule} 才合法出现)中既无写端也无规则的缺口,经本次审计收束
-后**恒空**(锁 = 测试仓 test_board_derived_and_reorder.py 完备性锁);
+后**恒空**(由测试仓 test_board_derived_and_reorder.py 完备性测试);
 observation_only / process_only 是「结构上不可失配」的声明性收束,非缺口。
 
 **维护纪律**:新增 GameState 容器字段必须在 :data:`PROJECTION_AUDIT`
-登记行(登记缺失 = 完备性锁红);行内容变更走 review 可见,禁运行时
+登记行(登记缺失 = 完备性测试红);行内容变更走 review 可见,禁运行时
 改写。人读镜像 = 迭代目录 ``projection-audit.md``(生成自本表,改表须
 同步改镜像)。
 """
@@ -55,7 +55,7 @@ class ProjectionAuditRow:
     basis: str
 
 
-#: 全字段审计表(键 = GameState 容器字段名;完备性锁:GameState 全部
+#: 全字段审计表(键 = GameState 容器字段名;完备性测试:GameState 全部
 #: Field 域 ⊆ 本表,本表键 ⊆ Field 域,双向对齐)。分组注释与表行同序。
 PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 节点族(观察覆盖,派生规则写端)——
@@ -421,12 +421,12 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
 
 
 def audit_missing_fields(field_names: list[str]) -> list[str]:
-    """完备性锁半边:GameState Field 域中未在本表登记的字段名。"""
+    """完备性测试半边:GameState Field 域中未在本表登记的字段名。"""
     return [f for f in field_names if f not in PROJECTION_AUDIT]
 
 
 def audit_stale_keys(field_names: list[str]) -> list[str]:
-    """完备性锁另半边:本表中已不存在的字段键(字段停用后残留)。"""
+    """完备性测试另半边:本表中已不存在的字段键(字段停用后残留)。"""
     return [k for k in PROJECTION_AUDIT if k not in set(field_names)]
 
 
@@ -437,7 +437,7 @@ def audit_bad_status_keys() -> list[str]:
             if row.status not in AUDIT_STATUSES]
 
 
-#: 已知停局家族的机制必含关键词(完备性锁的抽检半边:五连停局各域的
+#: 已知停局家族的机制必含关键词(完备性测试的抽检半边:五连停局各域的
 #: 收束机制必须仍在其位——防后续重构悄悄拔掉吸收/派生面)。
 _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
     'bench': ('star_two_frame_gate',),
@@ -449,7 +449,7 @@ _STOP_FAMILY_MECHANISMS: dict[str, tuple[str, ...]] = {
 
 
 def audit_family_mechanism_missing() -> list[str]:
-    """抽检锁:停局家族字段的 basis 丢失机制关键词的键。"""
+    """抽检测试:停局家族字段的 basis 丢失机制关键词的键。"""
     out: list[str] = []
     for field_name, keys in _STOP_FAMILY_MECHANISMS.items():
         row = PROJECTION_AUDIT.get(field_name)

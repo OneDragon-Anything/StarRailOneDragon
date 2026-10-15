@@ -33,7 +33,7 @@ strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记�
 gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点。
 本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
-候补登记的待办),行为支撑 = 实机已登记行为锁。
+候补登记的待办),行为支撑 = 实机已登记行为测试。
 """
 import time
 from typing import ClassVar

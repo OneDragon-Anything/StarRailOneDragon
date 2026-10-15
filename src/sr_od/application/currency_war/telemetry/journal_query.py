@@ -130,7 +130,7 @@ def read_journal(replay_dir: Path | str) -> list[dict[str, Any]]:
     """读新账 → 行 dict 列表(宽容:文件缺 = [];坏行/非 dict 行跳过)。
 
     :func:`read_journal_stats` 的丢弃计数包装(判读 CLI 用;计数申报面
-    归装配消费方——CLI 行为面锁保持不变)。
+    归装配消费方——CLI 行为面测试保持不变)。
     """
     rows, _ = read_journal_stats(replay_dir)
     return rows

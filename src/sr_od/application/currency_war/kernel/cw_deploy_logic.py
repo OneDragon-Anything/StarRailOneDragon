@@ -442,7 +442,7 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
 # 卖出分支共吃同一 fenced 分支判据——判据驻 operations 桶时 kernel 谓词够不着
 # (包依赖矩阵禁 kernel→operations),自写 fp/板满组合 = 第三源(先例:
 # cw_launch_admission.py DEPLOY_FENCE 注释,r271 批同型双源清退)。
-# cw_op_deploy 保留同名 re-export,既有消费路径(生产 deploy 卖出分支/锁
+# cw_op_deploy 保留同名 re-export,既有消费路径(生产 deploy 卖出分支/
 # 测试)零迁移。
 
 def swap_arm_deployed_count(board: dict | None,
@@ -460,7 +460,7 @@ def swap_arm_deployed_count(board: dict | None,
 
 
 def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
-    """换阵卖出义务分支触发判据(纯函数,锁测试面):线成型(fp≥1.00,
+    """换阵卖出义务分支触发判据(纯函数,测试面):线成型(fp≥1.00,
     单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
     ``max_units_of``(level+宝钻、封顶 = 4+back_max 动态真值
@@ -1737,7 +1737,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
         # form``):候选集成员资格不足以防「同属候选的普通成员占位」白卖,
         # 须绑定卖出 victim 成对兑现。适用范围 = ``required_swap_arm_pending``
         # 真帧——required 在板帧完成分支仍可武装(有意设计,
-        # test_deploy 完成件让位锁钉定),此帧底线同样会覆盖;
+        # test_deploy 完成件让位测试钉定),此帧底线同样会覆盖;
         # 谓词假帧不覆盖,逐位同旧。
         if up2 and required_swap_arm_pending(ctx):
             _req = set(ctx.required_names)

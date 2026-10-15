@@ -5,7 +5,7 @@
 - 迭代目标:货币战争全画面规范符合性审查(2026-09-22-screen-review)·只设计不落码,待用户裁决
 - 状态:对抗收敛待用户裁决+新规范增补待裁决+坐标规范增补待裁决(对抗轨迹:r1 未收敛 6 条低→修订→r2 未收敛 6 条低→修订→r3 未收敛 3 条低→修订→r4 收敛 0 条;发现持续降级,无结构性返工;攻击报告 = `.debug/progress/2026-09-22-cw-screen-review/reviews/T-16-attack-r1.md`、`…/T-16-attack-r2.md`、`…/T-16-attack-r3.md`、`…/T-16-attack-r4.md`;增补节定点对抗(`respec-attack-C16.md`)未收敛 5 条低→按攻击结论修订 §3[F-3 落本稿 §3.2 行段锚改 :138-162;F-4 落本稿 §3.3 咬合表补 #14 行;F-1/F-2/F-5 落 wish_trial/bookcard/expert_invite];新规范增补(2026-09-22 两条款)= §3,重审输入 = `.debug/progress/2026-09-22-cw-screen-review/reports/respec-T16-T25.md`;坐标规范增补(:35/:48)= §4,依据 = 前置底册 coord-norm-addenda-plan.md §2.4 + op-layer.md §1.1 :35/§1.2 :48;坐标增补节定点对抗(`.debug/progress/2026-09-22-cw-screen-review/reviews/coord-attack-T15-16-17.md`)未收敛 6 条低(本稿 A-3)→按攻击结论修订 §4[A 类伴随域 `_PAYLOAD_DOMAINS` 映射登记补录为批1 义务(不入映射 = 离屏清场时坐标域跨屏携陈值),T-13/T-14 同族随 T-37 对账],状态维持待用户裁决)
 - 发现源:`.debug/progress/2026-09-22-cw-screen-review/reports/T-16-r1.md`(F-1..F-6;总判定 = 有问题,高0 中1 低5)。涉事代码与代码内文档以审查时点工作树为真值;本文定位一律符号锚 / 文档节号(行号仅定位辅助)。代码路径根 = `src/sr_od/application/currency_war/`,文档路径根 = `docs/develop/sr_od/application/currency_war/`(下文反引号短路径均相对此两根)。
-- 修法性质:**生产代码零行为变化**——F-1/F-5 = 正本文档措辞与失效节删;F-2 = 注释/docstring 卫生;F-3 = schema 登记键名纠偏 + 测试断言同步(登记面,零按键读端)+ 随批新增 schema 键对齐测试锁一条(防线,零生产行为);F-4 = 函数签名类型注解;F-6 = 跨区登记(不实施)。
+- 修法性质:**生产代码零行为变化**——F-1/F-5 = 正本文档措辞与失效节删;F-2 = 注释/docstring 卫生;F-3 = schema 登记键名纠偏 + 测试断言同步(登记面,零按键读端)+ 随批新增 schema 键对齐测试一条(防线,零生产行为);F-4 = 函数签名类型注解;F-6 = 跨区登记(不实施)。
 - 文档形态:单文档方案(无详设),§2 即完整设计。
 
 ## 1. 问题与动机
@@ -148,7 +148,7 @@ fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选�
 
 **(b)测试消费点同步**(同断言块四处一次成文,准则5):①`test_terminal_contract_schema_and_match_shape` :121 断言元组 `'box_card_opts'` → `'box_card_names'`;②:119 计数注「# 八新域键在册」→「# 七新域键在册(终态契约八新槽,invest_opts 辖两字段)」——该循环实为 7 键(invest_opts 合并两字段),既有计数失注与 :121 改键同段随批修;③:130 注释「十二槽:8 新槽(7 opts + box_card_names 经 getattr 同名域字段)在容器上可解析(声明健康性)」→「十二槽:8 新槽(经 getattr 同名域字段在容器上可解析(声明健康性);box_card_names 的 schema 键与字段同名,invest 两槽属合并域 'invest_opts' 显式例外)」——目标文本按字段口径断言 getattr 可解析性(对 8 槽全真),不把「schema 键与域字段同名」写作全称断言(invest 两槽经合并标签在册,第一循环 :120-122 本身就以合并键断言,全称断言对其中 2 槽为假);措辞当前时态,勘误过程词不入持久注释(AGENTS §8 / T-3 §2.6 准则2;测试文件在门一/门二扫描面外,无门可拦,目标文本自净);④同测试 docstring(:102-103)「(landing §3.1 判据:8 新域键 + …)」删除迭代件指向(AGENTS §9 禁引 changes/,判据语义已在本测试内自足),其中「8 新域键」计数随 :119 同步为「七新域键(终态契约八新槽,invest_opts 辖两字段)」——与 :119 同源失注,不清则修后 :119 注与 docstring 直接互相矛盾(同块一次成文)。
 
-**(c)随批新增对齐防线锁**(同文件,增于 `test_terminal_contract_schema_and_match_shape` 之后):现行测试无任何 schema 键 ↔ 字段名对齐断言(仅点键值与容器可解析性),错位残留得以长期存活正因无校验——修实例同时补该缺口,目标形态:
+**(c)随批新增对齐防线测试**(同文件,增于 `test_terminal_contract_schema_and_match_shape` 之后):现行测试无任何 schema 键 ↔ 字段名对齐断言(仅点键值与容器可解析性),错位残留得以长期存活正因无校验——修实例同时补该缺口,目标形态:
 
 ```python
 def test_single_field_slot_schema_keys_align_with_field_names():
@@ -178,11 +178,11 @@ def test_single_field_slot_schema_keys_align_with_field_names():
             assert key in field_names, key
 ```
 
-正向 = 在册九槽封闭清单双向同名断言(域键在册 ∧ 字段在册——原病「字段在、键错名」与其镜像「字段改名、键留存」均即红;新增槽域须同步扩清单,不自动受锁);反向 = `_opts` 型域键不得指向不存在字段(防孤儿键);组域键不以 `_opts` 结尾天然不入反向扫描,invest_opts 为唯一显式豁免。
+正向 = 在册九槽封闭清单双向同名断言(域键在册 ∧ 字段在册——原病「字段在、键错名」与其镜像「字段改名、键留存」均即红;新增槽域须同步扩清单,不被测试自动覆盖);反向 = `_opts` 型域键不得指向不存在字段(防孤儿键);组域键不以 `_opts` 结尾天然不入反向扫描,invest_opts 为唯一显式豁免。
 
 **判定依据(改键名,就地标注)**:①命名一致性——同区块八个单字段域键全部 = 字段名(cw_game_state.py :180-188 ↔ :2182-2192),唯一合并标签先例 `invest_opts` 辖两字段(:2180-2181),本域辖恰一字段无合并需求;②检索语义——「缺域键 = 该域未建模」(fields.md §3.7.1 + cw_game_state.py :152-153),键名错位使按字段名检索呈「未建模」,与 fields.md §3.4 候选域清单(「box_card_names(武装箱选卡)」)自相矛盾,改注无法修复该检索语义;③同域对齐锚——`_PAYLOAD_DOMAINS` 同域键已是 `'box_card_names'`(:232),两登记表同域同键;④**写端评估**:`gs_schema` 字段 default = `dict(DEFAULT_GS_SCHEMA)`(cw_game_state.py :2278-2279),改键自动生效,字段 `box_card_names` 本体与写端 `report_screen_box_pick_obs` 零改动;⑤**读端评估**:`src/`、`sr-od-test/`、`tools/` 扫描面字面消费仅两处 = 定义点 :185 + 测试断言 test_cw_route_clear.py :121(grep 核);生产读端 = 遥测透传 `'gs_schema': dict(gs.gs_schema)`(:1293)与快照(:2459)的整 dict 拷贝,零按字段名取键——改键零行为影响;⑥版本语义——域版本 bump 条件 = 「域增删或字段语义破坏性变更」(:152-153),本改动 = 登记标签纠偏(域前后同域、字段语义零变化),**保持 1 不 bump**。
 
-**取舍**:备选 = 改注方案(保留 `'box_card_opts'` 键 + 注释声明「辖 box_card_names 字段」)——放弃:①检索语义破口仍在(按字段名 grep schema 仍呈未建模);②唯一错位需唯一特例注释 = 长期税;③键名统一 = 让 schema 表的单字段 opts 型槽域键回归「域键 = 字段名」不变式(invest_opts 合并标签显式例外;组域键 node/units/economy 等为语义域名、无字段名同名事实,本就不入该对齐面)——该不变式以 §2.3(c) 对齐锁承载,同病复发即红,弃改注方案所换来的可校验性由此有落地载体。遥测标签值变化的知悉义务由落地 commit message 申报,不进注释(变更史不进注释,AGENTS §8)。
+**取舍**:备选 = 改注方案(保留 `'box_card_opts'` 键 + 注释声明「辖 box_card_names 字段」)——放弃:①检索语义破口仍在(按字段名 grep schema 仍呈未建模);②唯一错位需唯一特例注释 = 长期税;③键名统一 = 让 schema 表的单字段 opts 型槽域键回归「域键 = 字段名」不变式(invest_opts 合并标签显式例外;组域键 node/units/economy 等为语义域名、无字段名同名事实,本就不入该对齐面)——该不变式以 §2.3(c) 对齐测试承载,同病复发即红,弃改注方案所换来的可校验性由此有落地载体。遥测标签值变化的知悉义务由落地 commit message 申报,不进注释(变更史不进注释,AGENTS §8)。
 
 ### 2.4 F-4 修法:_read_card_names 参数补类型注解
 
@@ -219,14 +219,14 @@ def _read_card_names(self, screen: MatLike) -> list[tuple[str, int]]:
 | `screens/box_pick.md` | 末节「开放设计注」整节删(F-1);§2/§4 同批残留清出(F-2);§4 上报列现役口径(F-5) | 正本文档修正 |
 | `operations/cw_screen/cw_screen_box_pick.py` | 模块/类/方法 docstring 与行内注卫生(F-2);`_read_card_names` 签名注解 + import(F-4) | 注释 + 签名注解 |
 | `kernel/cw_game_state.py` | `DEFAULT_GS_SCHEMA` :185 键名一行(F-3) | 登记面 |
-| `sr-od-test/test/sr_od/application/currency_war/test_cw_route_clear.py` | 断言键同步 + :119/:130 注释随批修 + docstring 迭代件指向删(F-3(b));新增对齐防线锁(F-3(c)) | 测试同步 + 防线 |
+| `sr-od-test/test/sr_od/application/currency_war/test_cw_route_clear.py` | 断言键同步 + :119/:130 注释随批修 + docstring 迭代件指向删(F-3(b));新增对齐防线测试(F-3(c)) | 测试同步 + 防线 |
 | (登记面,不实施)`strategy-docs/13_pick_family.md` §1 接口列 | 签名列整列零参化(F-6) | 归口 T-37 |
 
 **验证门**(实施批执行;设计批不落码不跑):
 
 1. 门一·模式 grep:`cw_screen_box_pick.py` 与 `screens/box_pick.md` 对禁形模式(`screen_op\.md|R7|批 ?2a|pick-op-unify|bug#\d|2026-09-12|design\.md §` 及 T-3 §2.6 门一全模式)零命中;豁免 = CARD_Y 注「2026-08-14 实测」(语义化实证出处,检查⑧在册合规判例)。`'box_card_opts'` 于扫描根 `src/` 与 `sr-od-test/` 零命中——changes/ 论证文本与本稿自身、`.debug/` 历史进度件豁免(字面在两处必然残留,不作扫描对象;口径与 §2.3 ⑤ 消费面调查一致)。
 2. 门二·人工复查:两文件全注释段按 AGENTS §8 两禁形人工判(模式不可判形态);`screens/box_pick.md` 修后九节结构与 screens/README.md §2 模板对齐(§9 收尾、无状态节残留)。
-3. 收尾:`uv run ruff check` 两 .py 文件通过;`git diff` 确认生产代码零逻辑改动(代码面:F-3 仅常量行,F-4 仅注解;测试面 = 断言键同步 + 注释 + 新增锁一条);`test_cw_route_clear.py::test_terminal_contract_schema_and_match_shape` 与 `test_cw_route_clear.py::test_single_field_slot_schema_keys_align_with_field_names`(新增)及 `test_cw_screen_progression_inline.py`/`test_cw_screen_report_ports.py` box_pick 相关锁全绿(一致面不回退的凭据)。
+3. 收尾:`uv run ruff check` 两 .py 文件通过;`git diff` 确认生产代码零逻辑改动(代码面:F-3 仅常量行,F-4 仅注解;测试面 = 断言键同步 + 注释 + 新增测试一条);`test_cw_route_clear.py::test_terminal_contract_schema_and_match_shape` 与 `test_cw_route_clear.py::test_single_field_slot_schema_keys_align_with_field_names`(新增)及 `test_cw_screen_progression_inline.py`/`test_cw_screen_report_ports.py` box_pick 相关测试全绿(一致面不回退的凭据)。
 
 ## 3. 新规范增补(2026-09-22 两条款)
 
@@ -284,15 +284,15 @@ def _read_card_names(self, screen: MatLike) -> list[tuple[str, int]]:
 
 (c)**测试对账**(重审增补点 B3):
 
-- `test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed`(:534-554):锁局内 fail-closed(ctx 挂 match 走策略契约),删局外臂后行为不变——**不受影响,不改**。
-- `test_cw_screen_progression_inline.py` `_make_box_pick`(:336-352)恒挂 match,现役三把 box_pick 锁(观察上报接线/两道闸 skip report/点卡决策)全走局内臂——**不受影响,不改**。
-- 全测试仓排查(grep 核):`sr-od-test/` 对 `pick_equipment`/「机器空键」零命中——**无锁「局外走机器」的既有断言,无需翻转**。
-- 随批新增局外出口锁一条(防线,防兜底决策回潮;落 `test_cw_screen_progression_inline.py` box_pick 段,目标形态逐字):
+- `test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed`(:534-554):校验局内 fail-closed(ctx 挂 match 走策略契约),删局外臂后行为不变——**不受影响,不改**。
+- `test_cw_screen_progression_inline.py` `_make_box_pick`(:336-352)恒挂 match,现役三把 box_pick 测试(观察上报接线/两道闸 skip report/点卡决策)全走局内臂——**不受影响,不改**。
+- 全测试仓排查(grep 核):`sr-od-test/` 对 `pick_equipment`/「机器空键」零命中——**无「局外走机器」的既有断言,无需翻转**。
+- 随批新增局外出口测试一条(防线,防兜底决策回潮;落 `test_cw_screen_progression_inline.py` box_pick 段,目标形态逐字):
 
 ```python
 def test_box_pick_act_off_match_terminates_without_click(test_context,
                                                          monkeypatch):
-    """局外出口锁:match 缺席(局外)= 零决策零点击 round_success 终结
+    """局外出口测试:match 缺席(局外)= 零决策零点击 round_success 终结
     交回(op-layer.md §1.1「画面 op 不支持局外单独调用」;遭遇屏先例
     同款),观察 report 跳过容器零写、act 零派发。红 = 兜底决策路径
     回潮(局外调机器决策/发点击/写容器)。"""
@@ -323,7 +323,7 @@ def test_box_pick_act_off_match_terminates_without_click(test_context,
 
 1. grep `pick_equipment` 于 `operations/cw_screen/cw_screen_box_pick.py` 全文零命中;`kernel/cw_equip_value.py`(机器本体)与 `strategies/impl/flow.py`(:652-699 `decide_box_card` 薄壳,内部 :694-696 消费 `pick_equipment` = 策略器自限域,合法)**零改动**。
 2. `_decide_card_index` 全函数无 match-None 分支(唯一决策面 = 策略契约);act 体首个分支 = 局外门;新增读屏点为零。
-3. 测试全绿:`test_pick_box_decision_fail_closed` + progression inline 三把 box_pick 锁 + (c) 新增局外出口锁。
+3. 测试全绿:`test_pick_box_decision_fail_closed` + progression inline 三把 box_pick 测试 + (c) 新增局外出口测试。
 4. `kernel/cw_screen_report/box_pick.py`(report 写端)零改动——局外 report 跳过由 observe 既有 gs 门承载,不动。
 
 ### 3.2 增补 2(条款①·登记级):卡名域标准化欠账登记 + 重复名附加边界
@@ -366,9 +366,9 @@ def test_box_pick_act_off_match_terminates_without_click(test_context,
 | 5 | 本稿 §2.2(b) act docstring 行目标文本尾句 | 「本 op 只决策(fail-closed 契约)与交回。」 | 「本 op 只决策(局内;fail-closed 契约)与交回;局外(match 缺席)= 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑条款,遭遇屏先例同款)。」 | 增补 1 |
 | 6 | 本稿 §2.2(b) `_decide_card_index` docstring 行目标文本 | 「容器写归观察 node 的 ``report_screen_box_pick_obs`` 调用,本方法只决策」 | 「容器写归观察 node 的 ``report_screen_box_pick_obs`` 调用,本方法只决策(局内专用;局外出口住 act 顶部零决策零点击终结交回,本方法无兜底臂)」 | 增补 1 |
 | 7 | 本稿 §2.7 文件面表 `cw_screen_box_pick.py` 行 | 修法点位列「模块/类/方法 docstring 与行内注卫生(F-2);`_read_card_names` 签名注解 + import(F-4)」;性质列「注释 + 签名注解」 | 修法点位追加「;`_decide_card_index` 局外臂删除 + act 顶部局外门(§3.1,行为级)」;性质列改「注释 + 签名注解 + 行为级局外出口」 | 增补 1 |
-| 8 | 本稿 §2.7 文件面表(测试行后新增一行) | ——(现表无此行) | 新增表行逐字:「\| `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py` \| 新增局外出口锁 `test_box_pick_act_off_match_terminates_without_click`(§3.1(c)) \| 防线锁 \|」 | 增补 1 |
+| 8 | 本稿 §2.7 文件面表(测试行后新增一行) | ——(现表无此行) | 新增表行逐字:「\| `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_progression_inline.py` \| 新增局外出口测试 `test_box_pick_act_off_match_terminates_without_click`(§3.1(c)) \| 防线测试 \|」 | 增补 1 |
 | 9 | 本稿 §2.7 验证门门一 | ——(现门一末句为 `'box_card_opts'` 扫描) | 门一末尾追加:「`pick_equipment` 于 `cw_screen_box_pick.py` 全文零命中(豁免:`kernel/cw_equip_value.py` 机器本体与 `strategies/impl/flow.py` 策略器消费面,零改动)。」 | 增补 1 |
-| 10 | 本稿 §2.7 验证门门三收尾句 | 「`git diff` 确认生产代码零逻辑改动(代码面:F-3 仅常量行,F-4 仅注解;测试面 = 断言键同步 + 注释 + 新增锁一条)」;绿清单尾「……box_pick 相关锁全绿(一致面不回退的凭据)。」 | 前者括注后补「——辖域 = F-1..F-6;增补 1 局外出口为行为级变化,凭据 = §3.1(d) 验收锚」;绿清单尾追加「+ §3.1(c) 新增局外出口锁」。 | 增补 1 |
+| 10 | 本稿 §2.7 验证门门三收尾句 | 「`git diff` 确认生产代码零逻辑改动(代码面:F-3 仅常量行,F-4 仅注解;测试面 = 断言键同步 + 注释 + 新增测试一条)」;绿清单尾「……box_pick 相关测试全绿(一致面不回退的凭据)。」 | 前者括注后补「——辖域 = F-1..F-6;增补 1 局外出口为行为级变化,凭据 = §3.1(d) 验收锚」;绿清单尾追加「+ §3.1(c) 新增局外出口测试」。 | 增补 1 |
 | 11 | 正本 `screens/box_pick.md` §2 决策句(随批) | 「局外防御 = kernel 机器空键纯通用排序」 | 「局外(match 缺席)= 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑条款,遭遇屏先例同款,无兜底决策)」 | 增补 1 行为级清偿后正本申报过时 |
 | 12 | 正本 `screens/box_pick.md` §4 伪码块行(随批) | 「局外 = kernel pick_equipment(机器空键)」 | 「局外(match 缺席)= 零决策零点击 round_success 终结交回(op-layer.md §1.1 局外单跑条款;遭遇屏先例同款)」(缩进随伪码块同级行) | 同上 |
 | 13 | 正本 `screens/box_pick.md` 观察面节(随收敛批,非本批) | §3 观察句 report 写槽句 | 补语义句(as-built 合法面,边界登记):「卡名读数经装备注册表两段转换后上报(转换失败 = 观察失败,round_fail 零写零上报交回重读);重复名合法(四卡可能同名,同装备多张),逐候选独立归一,不适用『多候选命中同一注册名 = 转换失败』互斥判。」 | 增补 2 屏契约登记(条款①「附加边界由屏契约登记」落点;收敛批施工,本批只登记诉求) |
@@ -396,7 +396,7 @@ def test_box_pick_act_off_match_terminates_without_click(test_context,
 
 **(4)§3.2 增补 2(条款①标准化收敛批)范围扩**:§3.2 修法第 1 条(两段转换)现文句尾「……转换住观察侧(画面 op 观察 node,op-layer §2.2「生产半住观察侧」),落容器半照旧 `report_screen_box_pick_obs`。」→ 改文「……转换住观察侧(画面 op 观察 node,op-layer §2.2「生产半住观察侧」),落容器半照旧 `report_screen_box_pick_obs`,且与**坐标解析上报同一次观察一并做齐**(op-layer.md §1.1 :35「归一化与坐标在同一次观察一并入容器」硬要求;坐标解析 = 候选 x + `CARD_Y` 解点,随两段转换同门入容器 `box_card_names_xy`,本文 §4.2)。」;§3.2 修法第 2 条(失败语义)现文「2. **失败语义**:任一候选转换失败 = 观察失败——观察 node round_fail 早退、零写零上报、交外循环重观察重读(与「读空」闸同型并列;禁带病上报)。」→ 改文句尾补「;**名字与坐标同进退**——转换失败时坐标域随名字域一并零写零上报(底册 §1.4-W1),禁坐标域先于名字域单独收敛(半截状态禁止,本文 §4.4⑤)。」;§3.3 表 #13「补语义句」目标文本句尾(『……不适用「多候选命中同一注册名 = 转换失败」互斥判。』后)补:「坐标与标准名一并入容器 ``box_card_names_xy``(观察期解点、同门双写),转换失败名字坐标同进退(op-layer.md §1.1 :35)。」
 
-**(5)schema 登记连带(与 F-3 咬合)**:`DEFAULT_GS_SCHEMA` 新域键 `box_card_names_xy: 1`(批1 字段骨架批,4.5);F-3(c) 对齐锁(§2.3(c))影响核查:**反向扫描面不受影响**(`box_card_names_xy` 不以 `_opts` 结尾,不入 `endswith('_opts')` 扫描);**正向清单扩展点** = `single_field_slots` 封闭清单随批1 增补 `'box_card_names_xy'`(锁自述「新增槽域须同步扩正向清单」;底册 §1.8(b) 同判「正向清单扩展点随实施批申报」);批1 义务再补一项(coord-attack A-3)——`_PAYLOAD_DOMAINS` 映射登记 `'box_card_names_xy': ('货币战争-备战-武装箱选择', True)`(离屏清场载体,机制与不入映射的后果见 §4.2 补录条)。
+**(5)schema 登记连带(与 F-3 咬合)**:`DEFAULT_GS_SCHEMA` 新域键 `box_card_names_xy: 1`(批1 字段骨架批,4.5);F-3(c) 对齐测试(§2.3(c))影响核查:**反向扫描面不受影响**(`box_card_names_xy` 不以 `_opts` 结尾,不入 `endswith('_opts')` 扫描);**正向清单扩展点** = `single_field_slots` 封闭清单随批1 增补 `'box_card_names_xy'`(测试自述「新增槽域须同步扩正向清单」;底册 §1.8(b) 同判「正向清单扩展点随实施批申报」);批1 义务再补一项(coord-attack A-3)——`_PAYLOAD_DOMAINS` 映射登记 `'box_card_names_xy': ('货币战争-备战-武装箱选择', True)`(离屏清场载体,机制与不入映射的后果见 §4.2 补录条)。
 
 **(6)screens/box_pick.md 文档面(正本,随收敛批施工)**:§4 伪码「target mouse_move + click」行(§2.2(c) 落笔后形态「target mouse_move + click →」)行前补一行「坐标 = 容器 ``box_card_names_xy[idx]``(动作 op 内取)→」;§2 形态声明(§2.2(c) 表行落笔后形态「派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = flow/action_exec.md §2)」,链接格式保留)句尾补坐标域句「;点击坐标 = 观察上报容器 `box_card_names_xy`(op-layer.md §1.1 :35,动作 op 按下标自取)」。
 
@@ -431,14 +431,14 @@ def test_box_pick_act_off_match_terminates_without_click(test_context,
 
 ### 4.4 验收锚(含过渡期铁律)
 
-1. **report 双写锁**:同调用同门写 `box_card_names` + `box_card_names_xy`;等长断言触发即红;转换失败双零写(名字与坐标同进退,随 §3.2 标准化收敛批语义同门验收)。
-2. **动作 op 取坐标锁**:坐标域 None / idx 越界 → AssertionError 且零点击;注入容器值 → 点击坐标 = 容器值。
+1. **report 双写测试**:同调用同门写 `box_card_names` + `box_card_names_xy`;等长断言触发即红;转换失败双零写(名字与坐标同进退,随 §3.2 标准化收敛批语义同门验收)。
+2. **动作 op 取坐标测试**:坐标域 None / idx 越界 → AssertionError 且零点击;注入容器值 → 点击坐标 = 容器值。
 3. **grep 零残留(本屏收敛批门)**:「x 对留守本 op 不进容器」零命中;`cw_screen_box_pick.py` act 无 `Point(` 组装、`choose_x` 零坐标消费(chosen 名字日志留守);env 构造无 `target=`;动作 op 无 `env.target`。
-4. **全绿门槛** = §3.1(c) 局外出口锁 + `test_pick_box_decision_fail_closed` + progression inline 现役三把 box_pick 锁 + F-3 锁面(`test_terminal_contract_schema_and_match_shape`、`test_single_field_slot_schema_keys_align_with_field_names`——正向清单扩 `'box_card_names_xy'` 后)+ 新双锁(1/2)。
+4. **全绿门槛** = §3.1(c) 局外出口测试 + `test_pick_box_decision_fail_closed` + progression inline 现役三把 box_pick 测试 + F-3 测试面(`test_terminal_contract_schema_and_match_shape`、`test_single_field_slot_schema_keys_align_with_field_names`——正向清单扩 `'box_card_names_xy'` 后)+ 新双测试(1/2)。
 5. **过渡期铁律**(底册 §1.7):批1(字段骨架)落地至本屏收敛批完成之间 = 合法过渡(现役坐标链未断);**任何新屏/新 op 不得再走「决策半现算经 env.target」**(禁新增第二坐标源,新写法直接按底册骨架);**半截状态禁止**——本屏收敛批 = 「观察上报(坐标)+ act 删现算 + 动作 op 自容器取点」三件一批做完,且与 §3.2 标准化收敛批同门同批(两段转换 + 坐标解析同一次观察;只做一半 = 双坐标源/未标准化直报并存 = 违规)。
 
 ### 4.5 fields.md 增补条目指针(引用不重复设计)
 
 - 字段设计单一源 = 底册 §1(五稿共用一次定谳):本屏宿主 = A 类纯名单域伴随域——`box_card_names_xy: Field[list[tuple[int, int]] | None]`(与 `box_card_names` 同序等长;后缀随名字域本名,不强加 `_opts`);键坐标系三要素(基 = 名字域列表下标 idx,0 起左→右画面物理序,与策略器输出下标/`param.idx` 同坐标系零换算/取值时机 = 观察期快照、动作执行期恒稳/值形状 = 1080p 平铺元组)按底册 §1.2 申报。
 - fields.md 落点 = **批1 字段骨架批**(底册 §4 实施顺序):§3.4 头部引注段追加句 + 新增 §3.4.5a 小节(目标文本 = 底册 §1.8(a)/(b) 草案逐字;字段登记行含 `box_card_names_xy`;schema 登记 = 「A 类逐域新键入 `DEFAULT_GS_SCHEMA`(version 1)」;批1 随附义务(coord-attack A-3)= `_PAYLOAD_DOMAINS` 映射登记 `'box_card_names_xy': ('货币战争-备战-武装箱选择', True)` 一行(离屏清场载体,§4.2 补录条))。本稿引用不重复设计,fields.md 落笔以底册 §1.8 为准。
-- 本稿辖内 schema 连带(与 F-3 咬合,4.1(5)):新域键 `box_card_names_xy: 1`;F-3(c) 对齐锁反向扫描面不受影响(`_xy` 后缀),正向清单 `'box_card_names_xy'` 扩展随实施批申报。
+- 本稿辖内 schema 连带(与 F-3 咬合,4.1(5)):新域键 `box_card_names_xy: 1`;F-3(c) 对齐测试反向扫描面不受影响(`_xy` 后缀),正向清单 `'box_card_names_xy'` 扩展随实施批申报。

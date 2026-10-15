@@ -49,7 +49,7 @@ B 分支 C = 0(无现金支出:备战席→空槽 pop-append 不触碰金)、I =
 
 **A 的唯一名义优势已消解**:A 的全部理由 = 裁决1「显式>围栏,同轮互斥」(防同一部署通道双写)。该保护由**显式保留集**编码进候选集:显式通道刻意留在备战席的件(3合1 素材副本 + locked 持有名单的 final 买而不上件)从 up 集显式扣除后,补部署与显式动作不再有通道冲突——A 相对 B 无残余差异。□
 
-**成本侧零性核验(实现级)**:补部署动作面 = `deployed_place` + 备战席槽位置 None(代码中 bench 置 None),不经过任何 spend 记账点(金账恒等式 gold_before + inc − buys − levelup − refresh + income 各项均不受影响);回归锁 `test_cw_f1_residual_fill.py` 锁 1/锁 3 断言金不变。
+**成本侧零性核验(实现级)**:补部署动作面 = `deployed_place` + 备战席槽位置 None(代码中 bench 置 None),不经过任何 spend 记账点(金账恒等式 gold_before + inc − buys − levelup − refresh + income 各项均不受影响);回归测试 `test_cw_f1_residual_fill.py` 测试 1/测试 3 断言金不变。
 
 ## 命题分级(诚实分级纪律)
 
@@ -64,9 +64,9 @@ B 分支 C = 0(无现金支出:备战席→空槽 pop-append 不触碰金)、I =
 
 ## 检验点(已实现)
 
-1. **补部署锁**(`sr-od-test/test/sr_od/app/currency_war/test_cw_f1_residual_fill.py` 锁 1):skip 轮围栏认可件回填空槽 + 账本行在 + 零支出;
-2. **保留集锁**(锁 2):3合1 素材副本与 locked 持有名单件不被补部署(residual_held 计数)——锁「A 的名义优势已消解」的编码面;
-3. **支配性形状锁**(锁 3):B−A 的 deployed 数差 = 补上件数且 B ≥ A、金不变;
-4. **扩窗锁**(锁 4):检查器轮窗 r2-r9,r6-r7 连续短缺可报。
+1. **补部署测试**(`sr-od-test/test/sr_od/app/currency_war/test_cw_f1_residual_fill.py` 测试 1):skip 轮围栏认可件回填空槽 + 账本行在 + 零支出;
+2. **保留集测试**(测试 2):3合1 素材副本与 locked 持有名单件不被补部署(residual_held 计数)——校验「A 的名义优势已消解」的编码面;
+3. **支配性形状测试**(测试 3):B−A 的 deployed 数差 = 补上件数且 B ≥ A、金不变;
+4. **扩窗测试**(测试 4):检查器轮窗 r2-r9,r6-r7 连续短缺可报。
 
 常量不进 registry(零新常数;本命题无参数化结论)。

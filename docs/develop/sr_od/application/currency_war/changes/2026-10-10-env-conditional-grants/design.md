@@ -37,7 +37,7 @@
 
 - **触发检查单一源**:`check_env_streak_grants` 是条件判定的唯一实现,live 与 sim 都调它——同一条件两处各写一份判定 = 漂移(同 `roll_ore_reward` live/sim 共用的单一正确性来源理由,非「通用复用」);
 - **登记表** `ENV_STREAK_GRANTS`(键 = 环境规范名,值 = (阈值, 装备名));构建校验:键 ⊆ `INVESTMENT_ENVS`(孤儿键防版本更新改名后静默失联)、装备名 ∈ `EQUIPMENTS`、阈值 ≥ 1;
-- **done 标记域** `env_grants_done: Field[tuple[tuple[str, str], ...]]`(元素 (env, 条件键),条件键 = `'first_streak'`);种子 `()`、恢复 tuple 化、DEFAULT_GS_SCHEMA 独立键版本 1(**不并入 spheres/match_facts bump**)、投影审计行(完备性锁强制,晶矿迭代同款先例);
+- **done 标记域** `env_grants_done: Field[tuple[tuple[str, str], ...]]`(元素 (env, 条件键),条件键 = `'first_streak'`);种子 `()`、恢复 tuple 化、DEFAULT_GS_SCHEMA 独立键版本 1(**不并入 spheres/match_facts bump**)、投影审计行(完备性测试强制,晶矿迭代同款先例);
 - **发放写通道铁律**:装备落位不可观察 → `write_logic_rand`(用户裁定 2026-10-10);done 追加 = `write_logic`(登记事实,直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿,不属 anchor_aware 族——域无观察写端);
 - **sig 单形态(禁 obs_sig 进触发函数)**:live = logic_hook 族,group `'battle-wait:env-grant'`,actor `CwScreenBattleWait`;sim = `logic_sig('sim:env')`——`write_logic_rand` 渠道族校验会炸 obs_sig 形态;
 - **回调边界**:live **不调**回调(deploy_cap/back_layout/diamond_count 的 live 写端 = 观察识别器,逻辑侧禁写);回调 = sim 专用,仅深井发放路径调用(见第 5 条,supply 不采纳);

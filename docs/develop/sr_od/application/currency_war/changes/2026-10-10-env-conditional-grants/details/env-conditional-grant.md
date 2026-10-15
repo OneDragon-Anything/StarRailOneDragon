@@ -24,7 +24,7 @@ env_grants_done: Field[tuple[tuple[str, str], ...]] = field(default_factory=Fiel
 - **开局种子**:`_seed(gs.env_grants_done, ())`;
 - **快照恢复登记**:恢复表 tuple 化重建(`tuple(tuple(e) for e in ...)`);done 随快照存续;
 - **DEFAULT_GS_SCHEMA**:独立键 `env_grants_done: 1`(不并入他域 bump——他域本体未变);
-- **投影审计行**:完备性锁强制新域登记(先例 = cw_game_state.py 晶矿三域审计行)。
+- **投影审计行**:完备性测试强制新域登记(先例 = cw_game_state.py 晶矿三域审计行)。
 
 ### 2. 登记表(cw_investments.py)
 

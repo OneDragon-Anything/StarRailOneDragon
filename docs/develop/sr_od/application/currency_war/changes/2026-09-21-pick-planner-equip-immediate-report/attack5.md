@@ -11,7 +11,7 @@
 ### A1. [阻塞] design.md §2.2 消费点迁移总表 | `_confirm_pending` 行漏报测试消费点 `test_cw_unified_action_4.py`(3.2 删置位即红)
 
 - **位置**:design §2.2 表 `_confirm_pending`/`_pending_leg`/`_pick_param` 行——「现消费点 = 本文件读写点 + cw_overlay_pick_action.py::CwActionPickPlannerOp 体内置位」;landing 3.2 文件面「sr-od-test/ 受影响测试(含 test_cw_yinlang_phase32.py、test_cw_gain_chain.py)」。
-- **问题**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py::test_planner_pick_op_clicks_target_and_confirm`(:322-:340)是 `CwActionPickPlannerOp` 行为锁,桩宿主显式带 `_confirm_pending=False`(:333)并断言 run 后 `op._confirm_pending is True`(:339)——锁的正是 3.2 要删的「体内置位行」。3.2 按现稿执行该测试必红;总表对 EVIDENCE 两行、test_cw_gain_chain 行均逐测试点名,唯独此行漏,与攻击清单第 5 项「无遗漏」要求直接冲突。
+- **问题**:`sr-od-test/test/sr_od/application/currency_war/test_cw_unified_action_4.py::test_planner_pick_op_clicks_target_and_confirm`(:322-:340)是 `CwActionPickPlannerOp` 行为测试,桩宿主显式带 `_confirm_pending=False`(:333)并断言 run 后 `op._confirm_pending is True`(:339)——校验的正是 3.2 要删的「体内置位行」。3.2 按现稿执行该测试必红;总表对 EVIDENCE 两行、test_cw_gain_chain 行均逐测试点名,唯独此行漏,与攻击清单第 5 项「无遗漏」要求直接冲突。
 - **权威源证据**:cw_overlay_pick_action.py:408(置位行,3.2 删除对象);test_cw_unified_action_4.py:333/:339(消费断言);design §2.2 表第 4 行(消费点清单无此测试);landing 3.2 文件面(未点名)。
 - **建议修法**:design §2.2 该行「现消费点」补 `test_cw_unified_action_4.py`(:333/:339 置位断言);landing 3.2 文件面「含」清单点名该文件(改写 = 删置位断言,点击链断言 :337-:338/:340 保留)。
 - **严重级**:阻塞(表完备性破口 + 直接红;同 attack3 F1 前例同类,前例经修订收编)。
@@ -57,7 +57,7 @@
 | `normalize_equip_name` 消费点 | ✓ src 唯一组装点消费 = cw_screen_equip_pick.py:168;本体其他消费仅测试(phase32 :62/:157/:161,本体不动故不受影响)——表「无过度」成立 |
 | cw_vocab :733 供给行过期注释 | ✓ 实测在位(``normalize_equip_name`` 措辞,supply 实际用 registry 入口 cw_screen_supply_node.py:304)——「T-1 遗留」主张成立;equip param docstring :906-:911 两相措辞在位 ✓ |
 | `normalize_registry_equip_name` 复用(T-1 已建) | ✓ cw_events.py:951,158 键分层归一实现在册 |
-| joy 收口序事实化 | ✓ commit 14dd40977 在库(pick_planner/cw_events/cw_gain_chain/cw_overlay_pick_action 四文件);测试面在独立仓 sr-od-test d3f5788e(条件腿 rider 锁组)——双侧提交事实成立;挂点 = 现落地相门(pick_planner.py:94)✓;「+63 行」数值未逐行复核(差异不影响结论) |
+| joy 收口序事实化 | ✓ commit 14dd40977 在库(pick_planner/cw_events/cw_gain_chain/cw_overlay_pick_action 四文件);测试面在独立仓 sr-od-test d3f5788e(条件腿 rider 测试组)——双侧提交事实成立;挂点 = 现落地相门(pick_planner.py:94)✓;「+63 行」数值未逐行复核(差异不影响结论) |
 | 正本清单锚位逐条 | action_ops §1 增补 2/增补 3/§4.5 欠账段(:119,PickPlanner :127/PickEquip :135 两行)✓;action_exec §2 :24「其余屏(策划/补给/装备)」句 ✓;op-layer :33(已迁屏枚举)/:43(§1.2 欠账引用)/:96(§3 注悬空引用)/§3 :88(节点循环行含 YinLang/EquipPick)✓;planner.md :12/§4(:24-:31)/§5(:48-:49)/:55/:76 五处 ✓ §1 无涉 ✓;equip_pick.md :24/:26/:52 ✓;README §5.5(:105 节,:109 两相欠账句)/§6 :138(即时上报枚举)✓;fields.md §3.4 无需更新项核过(chosen 表述不辖 planner/equip,lv999 写端 :612 语义不变)✓;**pick-planner.md :14 = A2** |
 | 腿型实码口径对齐 | ✓ classify_planner_leg 四步判定序与 weaken 退役(cw_events.py:994-:1024)↔ design「unknown 留证/弱化词落此/unrouted 兜底」一致;_apply_upgrade_transform 分支(unobserved/ceiling/零/多/恰一)↔ design「三态+档行逐位保持 + 前置硬校验」以「逐位保持」兜住 ✓;§2.3 重复应用后果论证(二次 → planner_upgrade_source_missing 留证零写)与码一致 ✓ |
 | 时序等价论证(§2.0) | ✓ emit_overlay_confirm 零观察零判效(_overlay_confirm.py:91-:119),确认点击→上报窗内无容器写端;旧落地时点前亦无写(同 op round_wait 窗内仅 OCR 门)——论证成立 |

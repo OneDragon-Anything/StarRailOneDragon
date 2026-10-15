@@ -35,12 +35,12 @@
 ## 7. 子态与 overlay
 
 - 本 op 自身即 overlay 处理件;命中即自处理,底层屏返回主循环重新判定。
-- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经外循环分发;两处行为对齐为申报面,无单一源锁。
+- **同弹窗第二消费者**:出战链 `cw_op/cw_start_battle_action.py::CwActionStartBattleOp` 出战点击轮询段内嵌同款行为(勾选幂等 + 确认 + 轮询)——出战语境由出战链就地消化,不经外循环分发;两处行为对齐为申报面,无单一源测试。
 
 ## 8. 守卫与防线
 
 `node_max_retry_times=10` 在用值仅框架异常路径消费;「点了≠成了」防线 = 落地复查;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为锁 act 侧两项锁点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为测试 act 侧两个测试点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。

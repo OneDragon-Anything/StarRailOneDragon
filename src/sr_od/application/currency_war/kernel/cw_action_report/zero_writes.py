@@ -2,7 +2,7 @@
 
 族策略:视觉域/转场/选择类动作的容器写语义 = 零(逐类函数体 =
 三行委托 :func:`_report_zero_write`),集中一文件不逐类开文件
-(无逐类专覆盖内容);命名规约完备锁照样逐类点验收束 = 包级
+(无逐类专覆盖内容);命名规约完备测试照样逐类点验收束 = 包级
 ``__getattr__`` 未命中落本模块。语义正本 = 各函数 docstring
 (自 cw_game_state 逐字迁移)。
 
@@ -49,7 +49,7 @@ _DECL_PREP_PURE: WorldDecl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                                        trigger='')
 
 # —— 零写动作族(视觉域/转场/选择族:容器零写,消费真值归观察——
-#    action-logic-state.md 正本申报;函数在场 = 命名规约完备锁对象,
+#    action-logic-state.md 正本申报;函数在场 = 命名规约完备测试对象,
 #    调用方统一入口不必分型)——
 
 
@@ -202,7 +202,7 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 # —— 刷新建议三动作(遭遇/补给/投资):参数类已登记(CW_ACTION_TYPES)、
 #    生产动作发出面留在画面 op 刷新链,不经动作 op 自上报——本组函数零生产
-#    调用方,在场 = 命名规约完备锁对象(test_action_report
+#    调用方,在场 = 命名规约完备测试对象(test_action_report
 #    遍历词表逐类断言「每动作恰一个上报函数」),禁当死代码删除。——
 
 
@@ -228,5 +228,5 @@ def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: Cha
 def report_action_obs_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """重观察上报(CwActionObsParam):本动作的容器更新通道 = 观察
     漏斗本体(宿主 heavy 观察链直写,观察边界对账),动作上报面零写;
-    函数在场 = 命名规约完备锁对象 + op 自上报回执统一形态。"""
+    函数在场 = 命名规约完备测试对象 + op 自上报回执统一形态。"""
     return _report_zero_write(gs, param, sig, 'zero_write(obs)')

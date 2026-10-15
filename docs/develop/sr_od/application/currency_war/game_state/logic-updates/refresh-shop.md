@@ -37,9 +37,9 @@
 
 `kernel/cw_action_report/refresh_shop.py::report_action_refresh_shop_param`(计数 + Field 免费次数扣减 + 随机态写入单一入口);`kernel/cw_shop_deal.py::sample_shop_deal`(发牌采样器);`kernel/cw_effect_inventory.py::record_refresh`(计数入账);`kernel/cw_economy.py::REFRESH_COST_BASE`(刷价缺读回退常量);`operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`。
 
-## 7. 语义验证(M1 直锁)
+## 7. 语义验证(M1 测试)
 
-刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影直锁 M1(`test_shop_projection_logic`:付费刷新扣金/免费帧金域不写/免费次数 Field 扣减,均在锁内)。差异申报保留:金币分支仅 sim 喂 `executed.refresh_paid`——引擎差异参数通道,非规则分叉。
+刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影测试 M1(`test_shop_projection_logic`:付费刷新扣金/免费帧金域不写/免费次数 Field 扣减,均在校验内)。差异申报保留:金币分支仅 sim 喂 `executed.refresh_paid`——引擎差异参数通道,非规则分叉。
 
 ## 8. 判例注记(动作发出阶段)
 

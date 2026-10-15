@@ -14,7 +14,7 @@
 1. **授予卡零入口**:3 张棱彩策略卡的「获得1个【进阶武装箱】」腿无处登记也无从执行——
    `PICK_INVEST_EFFECTS`(策略卡获得效果注册表,现役单行骇客专家:银狼,
    cw_gain_effects.py:143)查无效果安静不写;策略打分表 `STRATEGY_GRANTS`
-   (cw_investments.py:1369,83 条 = 68 白得 + 11 顾问 + 4 反扫补网,计数锁
+   (cw_investments.py:1369,83 条 = 68 白得 + 11 顾问 + 4 反扫补网,计数测试
    test_cw_invest_strategy.py)现役只登记角色发放,无箱腿。
 2. **占席道具发放无公共原语**:kernel 落位原语 `_place_bench_item` 为模块私有
    (cw_gain_chain.py),策略效果体(cw_gain_effects.py,与链模块双向破环约束)
@@ -30,7 +30,7 @@
 
 - 3 张卡的箱腿:`STRATEGY_GRANTS` 登记(items_immediate)+ `PICK_INVEST_EFFECTS`
   箱腿效果体 ×3 + kernel 公共占席道具发放原语;
-- `BENCH_ITEM_NAMES` 经既有派生式自动覆盖进阶武装箱(零额外改动,设计断言锁);
+- `BENCH_ITEM_NAMES` 经既有派生式自动覆盖进阶武装箱(零额外改动,设计断言测试）；
 - sim E2E:选卡 → 备战席落箱(选卡时点立即发放,非定时——三卡原文均为获得时点直读)。
 
 **明确不解决**(防外溢):
@@ -65,7 +65,7 @@
 沿 `_validate_env_gifts` 同款先例);其余校验(孤儿键/角色名漂移/反扫闭集)不变
 ——反扫闭集辖「获得…角色名」直读,箱腿不受其强制,登记属机制事实留 kernel 自愿面。
 
-**BENCH_ITEM_NAMES 自动覆盖**(设计断言,测试锁):派生式
+**BENCH_ITEM_NAMES 自动覆盖**(设计断言,测试):派生式
 `(*ENV_GIFTS.values(), *STRATEGY_GRANTS.values())` 的 items_immediate
 (cw_investments.py:1502)——登记即入词表,溢出位身份 kind 判定自动正确,
 消费点(`_build_pool`/sell_bench 溢出腿)零改动即受益。
@@ -91,8 +91,8 @@ gain_bench_item(gs, item, *, rand: bool, sig: ChannelSig,
 
 - **发放名单单一源**(阻断项修订:禁效果体闭包常量与登记表双源漂移):
   模块级 `_STRATEGY_BOX_GRANTS: dict[str, str]`(卡规范名 → 发放道具名,
-  三键);注册表三条由工厂从该表生成;**一致性锁测试** = 表集与
-  `STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等 + 席满行为锁
+  三键);注册表三条由工厂从该表生成;**一致性测试** = 表集与
+  `STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等 + 席满行为测试
   (bench 满时 pick → `overflow_card == '进阶武装箱'`,名字经溢出落位
   真值暴露——BenchSlot 本身与名解耦,备战断言发现不了名字漂移);
 - 签名沿现役 `(gs, *, sig, rng) -> list[str]`(rng 不消费——箱腿确定发放,

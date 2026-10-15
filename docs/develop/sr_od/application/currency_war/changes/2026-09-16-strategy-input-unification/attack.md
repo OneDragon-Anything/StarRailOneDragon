@@ -16,7 +16,7 @@
 - 位置:design.md §2.1-④(design.md:62)、§2.5 申报「决策输出相同」(design.md:114)。
 - 内容:现状 encounter 调用方首调**不传旗标**(缺省 False,`cw_screen_encounter.py:304/439`),仅后刷重决策传字面 True(:336-337/:466-467);「已用」的闸在 handler 侧读容器计数(:320-325/:452-457,命中时打「建议刷新但本局已用→按原评分选」并**不重决策**)。改成入口内部读 `encounter_refresh_used` 后:同局第 2+ 个遭遇节点(计数>0,写端=发射型钩子,局内累计不复位)首调即见 True——
   - 现役 mandate 核(`cw_encounter_selection.py:337-389`):选择 idx 恰好两枝同为最低档,但 `PickEvent.refresh` 旗标(True→False)、reason 串、handler 的「本局已用」日志分支全部变化——decisions 行/遥测判读面可见;
-  - 基线核(`cw_events.py:670-672` 刷新建议枝返回 `idx=options[0].idx`,True 时走评分枝取最优):**选择 idx 可分叉**,flow 中间层缺省路径与既有单帧锁辖面行为改变。
+  - 基线核(`cw_events.py:670-672` 刷新建议枝返回 `idx=options[0].idx`,True 时走评分枝取最优):**选择 idx 可分叉**,flow 中间层缺省路径与既有单帧测试辖面行为改变。
   设计对这条路径零讨论;§2.5 的验证主凭据也抓不到它(见 [BLK-4])。
 - 修正方向:二选一并写入设计:①申报这是语义修正(行为批),列明分歧路径与判读锚;②保持等价语义——入口只在「本访问已发生刷新后的重决策」语境读容器,handler 闸与日志保留。
 - 附:supply 侧无此问题(调用方现状就传容器派生旗标,`cw_screen_supply_node.py:210-211,230-232`);后刷重决策路径等价(`_emit_refresh_click`→on_outcome 钩子同步写计数,`cw_screen_encounter.py:144-175`)。
@@ -28,14 +28,14 @@
 
 **[BLK-4] 验收主凭据与改动面结构错位:cw_replay 零漂移对本批实际改动面结构性零覆盖**
 - 位置:design.md §2.5「零漂移 = 本批验收主凭据」(design.md:117)、§2.4 sim 行(design.md:107)。
-- 内容:设计自证「sim 引擎不调 pick 入口、不建模 prep_obs、prep 面 sim 不可达」——即本批四大改动面(pick 族 10 handler 的写槽-调 decide 链、encounter/supply 活写端接通、离屏置 None 收口、prep_obs 迁移)全部在 sim/回放**不可达域**;replay 唯一消费的 `decide_shop_screen` 驱动器路径本批「签名不动」。故「零漂移 = 主凭据」对能出事的面**只能产出空真**(`no不变` ≠ `验证过`),strategy-work §4「缺声明的对照 = 假阴性高危」在此以验收面形态复发。单帧锁/拆分对照(landing 3.2/3.4)只锁 decide 层,handler 接线与离屏写端无锁。
-- 修正方向:把主凭据改为「单帧锁/契约锁 + handler 级行为锁(encounter 闸分支/空选项分支/写槽后调 decide 的单源链)+ L1/L3 + 实机预测锚点」;replay 零漂移降级为「shop 驱动器路径未受扰」的旁证,并在 §2.5 显式写明其辖域局限。
+- 内容:设计自证「sim 引擎不调 pick 入口、不建模 prep_obs、prep 面 sim 不可达」——即本批四大改动面(pick 族 10 handler 的写槽-调 decide 链、encounter/supply 活写端接通、离屏置 None 收口、prep_obs 迁移)全部在 sim/回放**不可达域**;replay 唯一消费的 `decide_shop_screen` 驱动器路径本批「签名不动」。故「零漂移 = 主凭据」对能出事的面**只能产出空真**(`no不变` ≠ `验证过`),strategy-work §4「缺声明的对照 = 假阴性高危」在此以验收面形态复发。单帧测试/拆分对照(landing 3.2/3.4)只校验 decide 层,handler 接线与离屏写端无测试。
+- 修正方向:把主凭据改为「单帧测试/契约测试 + handler 级行为测试(encounter 闸分支/空选项分支/写槽后调 decide 的单源链)+ L1/L3 + 实机预测锚点」;replay 零漂移降级为「shop 驱动器路径未受扰」的旁证,并在 §2.5 显式写明其辖域局限。
 
 ### major(须修)
 
 **[MAJ-1] 「invest 策略屏逐卡读 strategy_refresh_used」无消费路径,篇内自相矛盾**
 - 位置:design.md §2.1-④(design.md:62)。
-- 内容:`decide_invest` 现状无 refresh 输入(§1.1 自己也只列 supply/encounter 带该形参);kernel `cw_events.decide_event` 签名不收计数(`cw_events.py:204-206`),逐卡闸全在 handler(闸1 屏上余量现读/闸2 容器计数/闸3 L1,`cw_screen_invest_strategy.py:425-459`);设计又锁 kernel 零改动(§2.6)。则入口「读 strategy_refresh_used」读来无处可去——疑似把 execstate-dissolution #6 的 handler 闸2 误写进入口契约。实现者撞上即需再设计。
+- 内容:`decide_invest` 现状无 refresh 输入(§1.1 自己也只列 supply/encounter 带该形参);kernel `cw_events.decide_event` 签名不收计数(`cw_events.py:204-206`),逐卡闸全在 handler(闸1 屏上余量现读/闸2 容器计数/闸3 L1,`cw_screen_invest_strategy.py:425-459`);设计又钉住 kernel 零改动(§2.6)。则入口「读 strategy_refresh_used」读来无处可去——疑似把 execstate-dissolution #6 的 handler 闸2 误写进入口契约。实现者撞上即需再设计。
 - 修正方向:删去该半句,或写明它只是 handler 闸2 的既有事实引用而非入口新读。
 
 **[MAJ-2] §1.1 现状断言「调用方从执行侧旗标取值传参」与代码不符;前置依赖的实质内容被高估**

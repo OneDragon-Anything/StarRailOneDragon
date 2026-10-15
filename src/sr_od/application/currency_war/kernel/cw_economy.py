@@ -405,7 +405,7 @@ def round_base_income(round_num: int) -> int:
     当全平面规划曲线」这一申报语义)。**规划近似申报**:决策数学没有
     plane 入参,取 P1 键当通用规划曲线——对 P2/P3 的 r1/r2 轮与真值
     有差(P2r1 真值 5,本投影返 3),差异归属=决策近似口径 vs 记账
-    口径,申报面见统一观察架构 §7.1;等价性锁=
+    口径,申报面见统一观察架构 §7.1;等价性测试=
     sr-od-test test_cw_income_single_source(net_income 值域逐位不变)。
     """
     return reward_base_gold(1, round_num)
@@ -418,7 +418,7 @@ def net_income(round_num: int, streak_pre: int,
     **处置申报(统一观察架构方案审 F4-①,裁决=委托改造
     +规划近似显式化)**:base/streak 分量已改为委托 T1a 单一源函数族
     (:func:`reward_base_gold` 的 P1 规划投影 + :func:`streak_gold`),
-    消费点数值逐位不变(等价性锁已登记)。
+    消费点数值逐位不变(等价性测试已登记)。
 
     - ``round_num``:日程轮号(1 基;开局两轮基础金折半段);
     - ``streak_pre``:**决策前相**连胜数(进轮连胜,奖励轮照发不动计数,
@@ -1015,7 +1015,7 @@ def _char_synergies(name: str) -> set[str]:
 # cw_economy.get_node_goal 标量投影消费两接缝,原函数体内懒 import 决策包
 # 成环)。schedule_upgrade 纯移动;refresh_ev_budget 最小重构——应急谓词
 # is_emergency 一并下沉本文件(一行纯谓词,decision_v2.filters 改 import
-# 重定向,单一源不破),函数体零行为变化(等价锁=sr-od-test
+# 重定向,单一源不破),函数体零行为变化(等价测试=sr-od-test
 # test_cw_w695_economy_seam.py + 既有经济接缝桩点测试重钉)。
 
 #: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷同源(git prior art),
@@ -1271,7 +1271,7 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     依公式照发,停手由 arbiter 拒付层兜底(discipline.
     blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
     搜索型刷新停付)——防线在拒付层不在预算层(「血预算帧→0」系虚标
-    契约已废除,现行契约如实收窄,穿透锁=test_cw_w633_migration_b3)。
+    契约已废除,现行契约如实收窄,穿透测试=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
     1 次/轮),与本预算不相交、不合并;按该车道对归零判据
     **同判据覆盖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点待办:

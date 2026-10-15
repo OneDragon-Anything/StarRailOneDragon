@@ -41,8 +41,8 @@
 
 固定超时兜底 = 唯一防线(上界常量待实机校准只改常量);轮询不吃框架 retry 预算。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「等待1-1」;日志前缀 `[cw-flow-wait11]`。
-- 测试锁:两 node 行为锁 + 假时钟超时锁(标志命中 round_wait 轮询/超时保留证据 fail)= `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`。
+- 测试:两 node 行为测试 + 假时钟超时测试(标志命中 round_wait 轮询/超时保留证据 fail)= `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #5/#29。

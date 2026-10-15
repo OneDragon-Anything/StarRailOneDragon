@@ -21,14 +21,14 @@
 - 现场:备战帧连卖两件(回金公式各 +1),执行缝(`cw_exec_state._advance_gold`,evidence `op_effect_gold_delta`)与容器投影(`apply_prep_action_logic`,evidence `proj_sell_refund`)**各记一次** → 逻辑金 3→7(虚增 2),实读 5(= 3+1+1 真实回金)。账实差恰 −2。
 - 结构:卖出金腿历史共存三条(执行缝直推两处:prep_actions.execute 与 apply_op_effect 分支;投影一处),LevelUp 已于批 2b 翻转归一(「执行缝金差随翻转退役,本口唯一写点」),**卖腿漏改**。
 - **出口①建模补全(已落地)**:卖出回金容器唯一写点 = `apply_prep_action_logic` 投影分支;退役执行缝两腿(prep_actions.execute 直推块、apply_op_effect SellBench 分支整体与 SellDeployed 金腿;owned 装备回收腿保留 = 执行账无投影对应物)。
-- 复现载体选型:**单元级重放(测试锁)**——`test_prep_sell_gold_booked_exactly_once_across_seam_and_projection`(test_cw_unified_action_2a.py)重放「执行缝→投影」单元序列,断言恰一次 +refund;3.3 验证期实机零新增该模式行额外兜底。
+- 复现载体选型:**单元级重放(测试)**——`test_prep_sell_gold_booked_exactly_once_across_seam_and_projection`(test_cw_unified_action_2a.py)重放「执行缝→投影」单元序列,断言恰一次 +refund;3.3 验证期实机零新增该模式行额外兜底。
 
 ### 2b. 奖励节点随机收入盲区(+7/+4 两起;run_20260915_065919 / run_20260916_095808)
 
 - 现场:奖励节点(`kind='reward'`)采晶矿(ClickSpheres,2-3 个)+ 卖牌动作链后,投影金 5/7,下一备战帧实读 12/11(差 +7/+4)= 采晶矿奖励金未入逻辑账。
 - 机制:晶矿内容随机(金/装备/角色),金额执行点不可推算——**声明盲区**(持久锚:`cw_exec_state.apply_op_effect` 的 ClickSpheres 零推进申报、`prep_actions._executed_gold_delta` docstring「晶矿金通道随机……禁拍值」)。确证为游戏机制性差异且建模不可行。
-- **出口②结构性申报豁免(已落地)**:注册表条目 `('货币战争-备战', 'gold', logic_evidence='proj_sell_refund')`(kernel/cw_mismatch_policy.py EXEMPT_REGISTRY,reason 带声明盲区持久锚);该模式失配落 `exempt_mismatch` 行(可审计、无告警无停机)。逐画面申报,未用字段级通配(粒度纪律);真投影错(退款公式错)由 sim 单帧锁守,真卖出失败经 bench 维失配照停。
-- 验收:条目在册锁 `test_shipped_registry_declares_prep_reward_gold_blind_spot` + 路由/漏斗 exempt 行锁(3.1 已落)+ 3.3 实机验证期 exempt 行落证。
+- **出口②结构性申报豁免(已落地)**:注册表条目 `('货币战争-备战', 'gold', logic_evidence='proj_sell_refund')`(kernel/cw_mismatch_policy.py EXEMPT_REGISTRY,reason 带声明盲区持久锚);该模式失配落 `exempt_mismatch` 行(可审计、无告警无停机)。逐画面申报,未用字段级通配(粒度纪律);真投影错(退款公式错)由 sim 单帧测试守,真卖出失败经 bench 维失配照停。
+- 验收:条目在册测试 `test_shipped_registry_declares_prep_reward_gold_blind_spot` + 路由/漏斗 exempt 行测试(3.1 已落)+ 3.3 实机验证期 exempt 行落证。
 
 ### 残余风险申报
 
@@ -47,7 +47,7 @@
 ## 退出清单
 
 - [x] 模式一:死亡确认(零代码;3.3 验证期兜底)
-- [x] 模式 2a:出口①修模 diff + 单元重放测试锁
-- [x] 模式 2b:出口②注册表条目 diff + 在册锁 + exempt 行锁
+- [x] 模式 2a:出口①修模 diff + 单元重放测试
+- [x] 模式 2b:出口②注册表条目 diff + 在册测试 + exempt 行测试
 - [x] 直写端族逐个定性(上表)
 - [x] 统计时点与口径注记(本文件头部)

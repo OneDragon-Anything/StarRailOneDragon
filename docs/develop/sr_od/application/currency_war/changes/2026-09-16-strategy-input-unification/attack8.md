@@ -8,7 +8,7 @@
 
 ### [M1] major | design.md §2.6-1/§2.6-2 ↔ landing.md 3.4 | encounter 对照矩阵 design 侧未随重入格修复同步扩格,两处判据源数值冲突
 
-**发现内容**:attack7-B1 的修正方向②明令「同批扩 §2.6-1/-2 对照矩阵补『重入重走后再决策』格」,落地只在 landing 侧生效:landing 3.4 已是「encounter 四格对照——首调/累计闸命中/刷新重决策/**重入重走首调收 False**」(landing.md 3.4 完成判据两处),而 design §2.6-1 仍是「encounter 入口 `encounter_refreshed_in_visit` **两态对照**(False/True → 与改前首调/重决策同返回)」、§2.6-2 仍是「专锁 encounter **三分支**(首调/累计计数命中闸/刷新后重决策)与空选项分支」。3.4 的设计依据引用「design.md §2.1-4、§2.2…、§2.6(主凭据 1/2)」——worker 凭 design §2.6 建锁得三格,凭 landing 判据得四格;landing 阶段小节虽是账本唯一源,iteration-design.md 硬规则 4 明令「判据同步…禁只改触碰段」,且该规范对 design↔landing 失同步的同族失分已两次实证(其卡点原文:二次复发即流程级)。
+**发现内容**:attack7-B1 的修正方向②明令「同批扩 §2.6-1/-2 对照矩阵补『重入重走后再决策』格」,落地只在 landing 侧生效:landing 3.4 已是「encounter 四格对照——首调/累计闸命中/刷新重决策/**重入重走首调收 False**」(landing.md 3.4 完成判据两处),而 design §2.6-1 仍是「encounter 入口 `encounter_refreshed_in_visit` **两态对照**(False/True → 与改前首调/重决策同返回)」、§2.6-2 仍是「专项测试 encounter **三分支**(首调/累计计数命中闸/刷新后重决策)与空选项分支」。3.4 的设计依据引用「design.md §2.1-4、§2.2…、§2.6(主凭据 1/2)」——worker 凭 design §2.6 建测试得三格,凭 landing 判据得四格;landing 阶段小节虽是账本唯一源,iteration-design.md 硬规则 4 明令「判据同步…禁只改触碰段」,且该规范对 design↔landing 失同步的同族失分已两次实证(其卡点原文:二次复发即流程级)。
 
 **修正方向**:design §2.6-1 两态对照扩为三态(首调 False/刷新后重决策 True/重入重走首调复位 False,各与改前同返回);§2.6-2 三分支扩为四格(补重入重走格),与 landing 3.4 逐格对齐。
 

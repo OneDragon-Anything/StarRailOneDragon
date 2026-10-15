@@ -40,7 +40,7 @@
 
 `node_max_retry_times=2` 在用值仅框架异常路径消费;「放弃并结算」不可逆红线由动作面排除(唯一动作 = X)承载,无第二道防线;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「中断挑战弹窗」;frame_tag = `overlay_interrupt_dialog`(dispatch 包装)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,interrupt_dialog 已登记);建档 = `currency_war_interrupt_dialog.yml`。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,interrupt_dialog 已登记);建档 = `currency_war_interrupt_dialog.yml`。

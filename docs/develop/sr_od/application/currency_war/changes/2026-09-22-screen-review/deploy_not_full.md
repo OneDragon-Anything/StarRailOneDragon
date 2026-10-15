@@ -6,11 +6,11 @@
 - 状态:对抗收敛待用户裁决(对抗轨迹:r1 收敛;攻击者附 4 条文字级修订建议[攻-1..攻-4:依据标注错位/指针定位/验收锚行号自检/裁定日期判法分歧登记],定稿前文字级落实,见 reviews/T-24-attack-r1.md)
 - 审查输入:`.debug/progress/2026-09-22-cw-screen-review/reports/T-24-r1.md`(发现 F-1..F-4;总判定 = 有问题,高 0 中 0 低 4)
 - 真值基线:本稿全部「现状」陈述以审查时点工作树代码为准,落地时若代码已再变,以落地时点代码重新对账后再动笔。符号锚 = `文件::符号名`,行号仅作本稿定位辅助。文档路径根 = `docs/develop/sr_od/application/currency_war/`,代码路径根 = `src/sr_od/application/currency_war/`(下文反引号短路径均相对此两根)。
-- 修法性质:F-1/F-2/F-3 = 注释与正本文档文本,零行为变化;F-4 = 新增一条测试行为锁(零生产代码变化,测试随设计约定走,依据 = AGENTS.md §10.1 新功能锁设计约定)。
+- 修法性质:F-1/F-2/F-3 = 注释与正本文档文本,零行为变化;F-4 = 新增一条行为测试(零生产代码变化,测试随设计约定走,依据 = AGENTS.md §10.1 新功能钉住设计约定）。
 - 修法文件面:
   1. `operations/cw_screen/cw_screen_deploy_not_full.py`(模块 docstring 整段 + 两处行内注释,F-1/F-2/F-3)
-  2. `screens/deploy_not_full.md`(引语一句 F-3;§9 测试锁指针 F-4)
-  3. `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(新增观察侧锁一条,F-4)
+  2. `screens/deploy_not_full.md`(引语一句 F-3;§9 测试指针 F-4)
+  3. `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(新增观察侧测试一条,F-4)
 
 ## 1. 问题与动机
 
@@ -35,12 +35,12 @@
 - **解决到哪**:两处 gloss 统一为「未达上限警告」(与 action_ops §4.3、id_mark area 名、journal 名同文)。
 - **明确不解决**:`bench_full` 作为**遥测键/拒因分键**的既有语义(telemetry `bench_full_flag`、buy-card `reason='bench_full'`、策略分键族)——那是「备战席满」域的合法标识符,与本弹窗 gloss 无关,禁误伤;`docs/game/screens/currency_war_deploy_warning.md` 与 skill `references/runtime-ops.md` 的 bench-full 相关表述——game 侧与 skill 面不在本审查文件面;弹窗真实触发条件与「本局不再提示」局级抑制语义的实机核验(审查 §4.5 静态不可核);正本三称谓(未达上限弹窗/部署被拒确认弹窗/未达上限警告)并存的合并——各正本语境自洽,审查未列。
 
-### 1.4 F-4 §9 锁面申报超出实际覆盖(低)
+### 1.4 F-4 §9 测试面申报超出实际覆盖(低)
 
-- **现状症状**(审查报告 F-4):`deploy_not_full.md` §9 申报「未达上限弹窗两 node 形态锁:观察门/重入裁决组合」,但 `test_cw_obs_arch_closing_screens.py` 对本屏仅有 `test_reentry_arbitration_flag_gate_combination` 的 act 侧两腿(:143-162:门命中+pending → 裁决不触发、勾选+确认重发 round_wait;miss+pending → success 零动作)——标识门以桩参与、仅直驱 `act`;观察 node 本体三面契约(门 miss = round_fail 早退、obs 装载、占位 report 接线恰一次)零直驱断言。同文件位面过渡(:194)/武装箱(:277)/等待1-1(:365)均有观察侧锁,同族文档凡列「观察门」者均有对应观察锁。命中 screens/README.md §2 第 9 节(测试锁文件指针)+ 同节「as-built 无状态」纪律(指针须与实际锁面一致)。
-- **根因归层**:约定层——flat-report 迁移批对本屏只落了 act 侧腿,观察侧锁缺位,而 §9 申报按家族全量口径写;指针粗到「文件级 + 括注」粒度,申报与覆盖失同步无法被静态发现。修法两腿并做:补观察锁使申报成真(治本于覆盖缺口,同族对齐)+ 指针锐化到符号级(治申报-覆盖失同步的可发现性)。
-- **解决到哪**:新增观察侧锁一条(§2.4 给出全文);§9 指针改符号级双锁申报。
-- **明确不解决**:`test_cw_screen_report_ports.py` 完备锁已覆盖的 report 侧形态(登记分侧/统一签名/占位零容器写,审查 §3.1 判一致)——不重复锁;同文件其余三屏的锁面(均已覆盖);审查 §4 无法核对面(实机时序/兜底落点);op-layer §3 占位句 BossBriefing 过期项(审查范围外附注,归 T-37 分诊)。
+- **现状症状**(审查报告 F-4):`deploy_not_full.md` §9 申报「未达上限弹窗两 node 形态测试:观察门/重入裁决组合」,但 `test_cw_obs_arch_closing_screens.py` 对本屏仅有 `test_reentry_arbitration_flag_gate_combination` 的 act 侧两腿(:143-162:门命中+pending → 裁决不触发、勾选+确认重发 round_wait;miss+pending → success 零动作)——标识门以桩参与、仅直驱 `act`;观察 node 本体三面契约(门 miss = round_fail 早退、obs 装载、占位 report 接线恰一次)零直驱断言。同文件位面过渡(:194)/武装箱(:277)/等待1-1(:365)均有观察侧测试,同族文档凡列「观察门」者均有对应观察测试。命中 screens/README.md §2 第 9 节(测试文件指针)+ 同节「as-built 无状态」纪律(指针须与实际测试面一致）。
+- **根因归层**:约定层——flat-report 迁移批对本屏只落了 act 侧腿,观察侧测试缺位,而 §9 申报按家族全量口径写;指针粗到「文件级 + 括注」粒度,申报与覆盖失同步无法被静态发现。修法两腿并做:补观察测试使申报成真(治本于覆盖缺口,同族对齐)+ 指针锐化到符号级(治申报-覆盖失同步的可发现性)。
+- **解决到哪**:新增观察侧测试一条(§2.4 给出全文);§9 指针改符号级双测试申报。
+- **明确不解决**:`test_cw_screen_report_ports.py` 完备测试已覆盖的 report 侧形态(登记分侧/统一签名/占位零容器写,审查 §3.1 判一致)——不重复测试;同文件其余三屏的测试面(均已覆盖);审查 §4 无法核对面(实机时序/兜底落点);op-layer §3 占位句 BossBriefing 过期项(审查范围外附注,归 T-37 分诊)。
 - **在册一致项边界**:审查 §3 已确认一致的面(占位形态/形态归类/观察上报接线形态/分发在位/第二消费者申报/决策控制铁律/坐标纪律/0d 在册/§7 静态面)本稿不立修法,仅作为各修法不得触碰的现状边界——落地时禁借清理之名改动这些在码语义(含 :54-56 重入裁决旗标注释的语义本体、:68-69 门判据红线注释、:48-50 兜底常量申报结构)。
 
 ## 2. 方案
@@ -97,7 +97,7 @@ node = 重入裁决顶部(确认已发 → 锚不在 = 弹窗已关 → success 
 = 确认未落地 → 重做勾选确认)→ 勾「勾选-本局不再提示」safe_click+0.3s
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
 预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用
-(sim 无对应画面段),等价判据主承重 = 实机在册行为锁
+(sim 无对应画面段),等价判据主承重 = 实机在册行为测试
 (test_cw_obs_arch_closing_screens.py)。
 """
 ```
@@ -124,14 +124,14 @@ node = 重入裁决顶部(确认已发 → 锚不在 = 弹窗已关 → success 
 
 **关键取舍**:备选 = 保留 bench-full 作俗称并加定义括注——放弃:该词与弹窗语义相反(席满 vs 未达上限),定义救不了反向误导;正本称谓已对齐弹窗文案,俗称零导航价值。选「未达上限警告」而非复述全句弹窗文案:docstring 首行已含弹窗全称,短称与门 area 名、journal 名、action_ops §4.3 同文,一处词汇三面对齐。
 
-### 2.4 F-4 修法:补观察侧锁 + §9 指针锐化到符号级
+### 2.4 F-4 修法:补观察侧测试 + §9 指针锐化到符号级
 
 **新增测试**(落位 = `test_cw_obs_arch_closing_screens.py` 「未达上限弹窗」节内、`_make_deploy_not_full` 装配 helper 之后;全文如下,实现者照抄):
 
 ```python
 def test_deploy_not_full_observe_gate_and_placeholder_report(
         test_context, monkeypatch) -> None:
-    """未达上限观察 node 锁(两 node 形态,补齐观察门申报面):
+    """未达上限观察 node 测试(两 node 形态,补齐观察门申报面):
     标识门 miss = round_fail 早退(现役文案,obs 不装载、零 report);
     门 hit + gs 在场 → obs 装载 + 占位 report 接线恰一次;
     cw_match/gs 缺席 → 跳过 report 不炸(obs 仍装载,局外兜底路径)。
@@ -176,34 +176,34 @@ def test_deploy_not_full_observe_gate_and_placeholder_report(
         f'gs 缺席跳过 report,obs 仍装载:{op_s._obs!r}')
 ```
 
-装配与桩面说明:`_make_deploy_not_full` 零改动复用(门桩/`last_screenshot`/act 侧机械链桩已够;report 桩与 `cw_match` 桩按腿内置,与武装箱锁 `test_armory_box_two_node_observe_report_and_round_wait` 同款做法);本测试全桩化无真实等待,免登记 slow_marks。
+装配与桩面说明:`_make_deploy_not_full` 零改动复用(门桩/`last_screenshot`/act 侧机械链桩已够;report 桩与 `cw_match` 桩按腿内置,与武装箱测试 `test_armory_box_two_node_observe_report_and_round_wait` 同款做法);本测试全桩化无真实等待,免登记 slow_marks。
 
-**§9 指针锐化**(`deploy_not_full.md` :46,「测试锁」句替换):
+**§9 指针锐化**(`deploy_not_full.md` :46,「测试」句替换):
 
 现状:
 
-> 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(未达上限弹窗两 node 形态锁:观察门/重入裁决组合);建档 = `currency_war_deploy_not_full.yml`。
+> 测试:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(未达上限弹窗两 node 形态测试:观察门/重入裁决组合);建档 = `currency_war_deploy_not_full.yml`。
 
 改为:
 
-> 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 重入裁决×门组合行为锁 act 侧两腿;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+> 测试:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 重入裁决×门组合行为测试 act 侧两腿;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
 
-依据:被锁契约正本 = op-layer.md §1.1(观察 node = 门 + 读屏 + report 落容器「match/gs 缺席的局外兜底路径跳过」+ obs 挂实例属性;门 miss = round_fail 交回外循环)与 `kernel/cw_screen_report/deploy_not_full.py` 屏文件 docstring(统一形态占位);家族同构先例 = 同文件 :194(位面过渡)/:277(武装箱)/:365(等待1-1)观察侧锁;指针纪律 = screens/README.md §2(符号锚 = `文件::符号名`,as-built;第 9 节测试锁指针须与实际锁面一致)。测试文件模块头零改动(「观察上报接线锁(两 node 形态屏)」节为全家族通用申报,新锁即其辖内);`test_cw_screen_report_ports.py` 完备锁面(report 侧形态)不重复。
+依据:被测契约正本 = op-layer.md §1.1(观察 node = 门 + 读屏 + report 落容器「match/gs 缺席的局外兜底路径跳过」+ obs 挂实例属性;门 miss = round_fail 交回外循环)与 `kernel/cw_screen_report/deploy_not_full.py` 屏文件 docstring(统一形态占位);家族同构先例 = 同文件 :194(位面过渡)/:277(武装箱)/:365(等待1-1)观察侧测试;指针纪律 = screens/README.md §2(符号锚 = `文件::符号名`,as-built;第 9 节测试指针须与实际测试面一致)。测试文件模块头零改动(「观察上报接线测试(两 node 形态屏)」节为全家族通用申报,新测试即其辖内);`test_cw_screen_report_ports.py` 完备测试面(report 侧形态)不重复。
 
-**验收锚**(静态可判):新测试与同文件既有锁一并通过(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`);§9 含两条符号级指针且与文件内实际测试名逐一对应;:46 其余内容(journal op 名/frame_tag/dispatch wait/日志 tag/建档)逐字不变。
+**验收锚**(静态可判):新测试与同文件既有测试一并通过(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`);§9 含两条符号级指针且与文件内实际测试名逐一对应;:46 其余内容(journal op 名/frame_tag/dispatch wait/日志 tag/建档)逐字不变。
 
 **关键取舍**:
 
-- 备选 A:只缩 §9 申报(去掉「观察门」字样)——放弃:观察门无锁是本屏相对同族四屏的覆盖缺口,缩申报把缺口正当化;补锁锁的是「这段代码应该怎么表现」的设计约定(AGENTS.md §10.1),与既有 act 侧锁无重叠断言。
-- 备选 B:观察腿并入现有组合测试函数——放弃:组合锁辖「重入裁决×门」act 侧语义,观察接线是另一契约面;家族先例(武装箱 = 组合锁 + 独立观察锁两函数)即此划分,合并破坏家族同构。
-- 备选 C:③腿(gs 缺席跳过)不测——放弃:「match/gs 缺席跳过」是该接线的显式契约分支(op-layer §1.1 + kernel 屏文件 docstring 双处在册),一腿三行成本锁一个独立契约;与 ②腿(在场恰一次)不重复。
+- 备选 A:只缩 §9 申报(去掉「观察门」字样)——放弃:观察门无测试是本屏相对同族四屏的覆盖缺口,缩申报把缺口正当化;补的测试校验的是「这段代码应该怎么表现」的设计约定(AGENTS.md §10.1),与既有 act 侧锁无重叠断言。
+- 备选 B:观察腿并入现有组合测试函数——放弃:组合测试辖「重入裁决×门」act 侧语义,观察接线是另一契约面;家族先例(武装箱 = 组合测试 + 独立观察测试两函数)即此划分,合并破坏家族同构。
+- 备选 C:③腿(gs 缺席跳过)不测——放弃:「match/gs 缺席跳过」是该接线的显式契约分支(op-layer §1.1 + kernel 屏文件 docstring 双处在册),一腿三行成本校验一个独立契约;与 ②腿(在场恰一次)不重复。
 
 ### 2.5 落地文件面总表
 
 | 文件 | 修法点位 | 性质 |
 |---|---|---|
 | `operations/cw_screen/cw_screen_deploy_not_full.py` | 模块 docstring 整段替换(§2.2,并含 F-1 点位 2 / F-2 :17-20 / F-3 代码点位)、:48 注释(F-1)、:108-110 注释(§2.2) | 注释(零逻辑 diff) |
-| `screens/deploy_not_full.md` | :3 引语(F-3)、:46 §9 测试锁指针(F-4) | 正本文档 |
+| `screens/deploy_not_full.md` | :3 引语(F-3)、:46 §9 测试指针(F-4) | 正本文档 |
 | `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py` | 新增 `test_deploy_not_full_observe_gate_and_placeholder_report`(F-4) | 测试(零生产代码变化) |
 
-统一验收:生产代码零逻辑 diff(`git diff` 仅注释与 docstring);L1 快速集通过;`grep -n 'task#\|bench-full\|原单 node\|原「点了就 success」'` 对 `cw_screen_deploy_not_full.py` 与 `deploy_not_full.md` 零命中;deploy_not_full.md §9 指针与锁文件实际测试名逐一对应。
+统一验收:生产代码零逻辑 diff(`git diff` 仅注释与 docstring);L1 快速集通过;`grep -n 'task#\|bench-full\|原单 node\|原「点了就 success」'` 对 `cw_screen_deploy_not_full.py` 与 `deploy_not_full.md` 零命中;deploy_not_full.md §9 指针与测试文件实际测试名逐一对应。

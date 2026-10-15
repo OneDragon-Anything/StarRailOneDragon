@@ -67,7 +67,7 @@ q_k = p(L, c) × W_k,其中 W_k = Σ_{x∈Q_k∩c} (a_c − j_x) / (v_c·a_c −
 
 REFRESH_PROB 随等级剧烈变化(c=5:L7=0.01 → L10=0.25,25 倍),等级又是花钱决策——v0 不做内生优化(联合优化「升级 vs 刷新 vs 购买」是另一个证明的领地,P5 已给单件口径的 argmin 结构)。**本证明条件于等级日程 L(r)**(来源:调用方传入——重建后由升级 EV 引擎给出,本证明只条件于它):
 
-q_k(r) = q_k(L(r)) 逐轮取表值。视野内件 k 的命中数 = 逐轮 Binomial(5·(1+r_manual(r)), q_k(r)) 的**Poisson-binomial**(成功率逐轮不同的独立和)。闭式实现用逐轮卷积或直接用平均 q̄_k 的 Binomial 近似(误差二阶;自检脚本 tools/cw/proofs/p38_check.py 的变等级混合用例含 ≤0.4pp 断言锁,实测方向保守)。
+q_k(r) = q_k(L(r)) 逐轮取表值。视野内件 k 的命中数 = 逐轮 Binomial(5·(1+r_manual(r)), q_k(r)) 的**Poisson-binomial**(成功率逐轮不同的独立和)。闭式实现用逐轮卷积或直接用平均 q̄_k 的 Binomial 近似(误差二阶;自检脚本 tools/cw/proofs/p38_check.py 的变等级混合用例含 ≤0.4pp 断言测试,实测方向保守)。
 
 ### ⑤层 金约束:预算 → 试验次数
 

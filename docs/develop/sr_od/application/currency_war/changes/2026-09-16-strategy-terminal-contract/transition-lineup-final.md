@@ -74,7 +74,7 @@
   + `strategies/impl/mandate_v1/mandate.py`(`_deploy_plan_inputs` 接线)。
   依据与验收 = T-17 修复批报告
   (`.debug/temp/currency_war/20260918_t17_seele_pair_fix/REPORT.md`,
-  主仓提交 0a12b2572、测试仓 test_cw_deploy_required_carry.py 4 锁,
+  主仓提交 0a12b2572、测试仓 test_cw_deploy_required_carry.py 4 测试,
   语义登记 strategy-docs `24_deploy_segment.md` §1)。
 
 ## §2 证据汇总

@@ -110,13 +110,13 @@
 - **§6 状态上报面**:「objective 未读到/选中槽文本空 = 盲选 fallback 不写」→「objective 未读到/选中槽文本空不写」(「盲选 fallback」词面随行为退役;记录面测试既定口径 = 无文本不写,语义不变)。
 - op-layer.md 行为规范条款无需新增:出口③/§1.3 已辖本屏情形,屏级申报归 wish_trial.md(正本分层 = op-layer 行为规范 + 各屏 as-built);§1.3 守卫清单登记义务不随本句豁免,单一口径见 §2.2 归口④。
 
-**测试锁**(`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py` 祈愿臂,实现随功能写,锁设计约定 = sr-od-test/README.md):
+**测试**(`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py` 祈愿臂,实现随功能写,钉住设计约定 = sr-od-test/README.md):
 
-1. **桩型同型化**:`test_wish_chosen_written_at_reentry_adjudication_only` 决策桩 `SimpleNamespace(idx=0, reason='stub')` → 真词表类 `CwActionPickWishTrialParam(idx=0, reason='stub')`——守卫②收紧类型后 SimpleNamespace = 词表外返回即具名 fail,旧桩打红现役锁;`reason` 字段在册(`kernel/cw_vocab.py::CwActionPickWishTrialParam`),补 import 即可。
-2. **定位点断言换锚**:同锁 `(mod.CwScreenWishTrial.FIRST_CARD.x, .y)` → `(mod.CwScreenWishTrial.CARD_XS[0], mod.CwScreenWishTrial.CARD_Y)`——`FIRST_CARD` 随本修法删除;值等价(660/340),断言语义「定位点 = 首卡」不变。
+1. **桩型同型化**:`test_wish_chosen_written_at_reentry_adjudication_only` 决策桩 `SimpleNamespace(idx=0, reason='stub')` → 真词表类 `CwActionPickWishTrialParam(idx=0, reason='stub')`——守卫②收紧类型后 SimpleNamespace = 词表外返回即具名 fail,旧桩打红现役测试;`reason` 字段在册(`kernel/cw_vocab.py::CwActionPickWishTrialParam`),补 import 即可。
+2. **定位点断言换锚**:同测试 `(mod.CwScreenWishTrial.FIRST_CARD.x, .y)` → `(mod.CwScreenWishTrial.CARD_XS[0], mod.CwScreenWishTrial.CARD_Y)`——`FIRST_CARD` 随本修法删除;值等价(660/340),断言语义「定位点 = 首卡」不变。
 3. **直发适配**:守卫后派发 = 直发策略产实例,`dispatches[0].param` 即桩实例,`param.idx == 0` 断言零改动;其余断言面(未落地不写/WAIT 交回/落地写 chosen/pending 快照重置)全部不变。
-4. **补两锁**:①无 match / 策略返回 None / 词表外对象 → `act` 返回 round_fail 且零派发(派发桩零调用),三支合并一锁或分案均可;②策略返回 `CwActionPickWishTrialParam(idx=3)`(槽常量现值 3)→ AssertionError 传播且零派发。
-5. **在册锁不冲突核对**:`test_cw_game_state_consume.py` 祈愿案 fallbacks 全部直调 `_record_chosen`(记录面自身守卫,逻辑零改动)——零改动;`test_cw_unified_action_4.py` 祈愿 op 锁 = 机械链行为锁(直传真实词表类,不经画面 op 决策出口)——零改动;`test_cw_screen_report_ports.py` 观察上报面——零改动。
+4. **补两测试**:①无 match / 策略返回 None / 词表外对象 → `act` 返回 round_fail 且零派发(派发桩零调用),三支合并一测试或分案均可;②策略返回 `CwActionPickWishTrialParam(idx=3)`(槽常量现值 3)→ AssertionError 传播且零派发。
+5. **在册测试不冲突核对**:`test_cw_game_state_consume.py` 祈愿案 fallbacks 全部直调 `_record_chosen`(记录面自身守卫,逻辑零改动)——零改动;`test_cw_unified_action_4.py` 祈愿 op 测试 = 机械链行为测试(直传真实词表类,不经画面 op 决策出口)——零改动;`test_cw_screen_report_ports.py` 观察上报面——零改动。
 
 **关键取舍**:
 
@@ -132,7 +132,7 @@
 - **家族性模式认定**:「盲选 idx0 回退 + idx 静默钳位(伴生吞策略契约抛错)」已在七例查出——遭遇(T-4-r1 F-1;修法 = 同目录 encounter.md §2.1)、盛会之星(T-8-r1 F-1;megastar.md §2.1)、选择装备(T-9-r1 F-1;equip_pick.md §2.1)、选择伙伴(T-11-r1 F-1;设计稿在途)、命运卜者(T-12-r1 F-1;设计稿在途)、专家邀请函(同款 catch→fallback 实现位互认,T-12 报告辅助事实在册,T-15 审查辖)、本屏(第 7 例)。共同根 = handler 时代「决策失败安全兜底」在画面 op 化迁移中,观察侧失败安全已各自重立(空桶照写/离屏抛错),决策侧兜底残留为流程侧决策闸门与值域改写,违 op-layer.md §1.1 出口③/§1.3/flow/README.md §1 铁律。跨件半问已过:根同层但载体是各屏 act 内残留代码,画面 op 层「不设共享基类/端口」= op-layer.md §4 在册口径,不升架构级设计件,以族级形态统一收敛。
 - **族级统一修法建议(形态统一,不建共享代码)**:每个 pick 族画面 op 的决策动作 node 在「调策略器」与「派发」之间内联守卫——①决策无有效输出(输入侧:无策略器可问;返回侧:None/词表外)= 具名 round_fail 零盲发,消息含策略器原值 repr;②值域非法(idx 越界)= 守卫断言 AssertionError(禁钳位);③删全部默认 idx 初始化/钳位句/宽 except(策略契约抛错自然传播);守卫均在任何点击之前。屏幕特形出口以正本在册申报为准(如遭遇「空候选 = 零点击终结交回重读」op-layer §1.1 显名在册),无在册申报的屏一律走 fail 出口。不建共享守卫函数:各守卫 2-3 行、各屏词表类/槽数/日志 tag 不同,共享 helper 的去重收益低于新跨屏依赖与消息语境损失(同 T-9 判)。
 - **跨稿分歧登记(候 T-37 裁决)**:无 match 局外支的处置已现分歧——T-9 装备稿保留(kernel 判据直调 = 真实判断,豁免面在册)、T-8 巨星稿收编守卫①(屏内自定 idx0 = 流程代行)、投资环境稿已登记跨稿分歧候裁(T-12 报告 §3 在册欠账 4 汇录);本稿立场 = 收编(祈愿支 = 纯常量盲发,无判据调用可豁免)。建议族级判据 = **按支内是否含真实判据调用分流**(判据直调支可豁免保留,纯常量盲发支一律守卫收编),供 T-37 对账裁定。另一族级口径分歧一并登记:**「bug#1 缓解」标签去留**(T-7 稿判裸缺陷件编号清出 / T-11 稿判跨文件在册交互陷阱标签保留;本稿取保留,与 T-11 同派,依据见 §1 F-3/§2.4)。
-- **归口 = 汇总任务 T-37**:①伙伴/卜者两在途稿与本稿守卫形态是否并入一个族级实施批(统一守卫形态、共享测试锁模板、一次对抗);②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞随族级批一次改净——单屏改会让共享 env 注释与未修屏临时不一致,本稿 §2.1 不动它,挂本裁决面;③无 match 支族级口径(上条);④op-layer.md §1.3 守卫清单登记——**无条件默认:本屏两条守卫出口登记 = 本迭代正本更新阶段必做**(现役清单为单例枚举 `guard_proposal_vs_expected`,守卫落地后清单缺员 = 正本申报滞后);T-37 裁族级合并时该登记改族级统一条目、由族级批执行,裁独立实施时由本稿正本更新执行——登记义务不悬置、不随裁决结果消失。本稿 §2.1 独立可实施;若裁族级合并,本稿即族级形态在祈愿试炼的实例,以族级批统一口径为准、不另立第二套。
+- **归口 = 汇总任务 T-37**:①伙伴/卜者两在途稿与本稿守卫形态是否并入一个族级实施批(统一守卫形态、共享测试模板、一次对抗）；②`operations/cw_op/cw_overlay_pick_action.py::OverlayPickExecEnv.idx` 字段注释「决策半现算快照(钳位后生效值)」陈旧措辞随族级批一次改净——单屏改会让共享 env 注释与未修屏临时不一致,本稿 §2.1 不动它,挂本裁决面;③无 match 支族级口径(上条);④op-layer.md §1.3 守卫清单登记——**无条件默认:本屏两条守卫出口登记 = 本迭代正本更新阶段必做**(现役清单为单例枚举 `guard_proposal_vs_expected`,守卫落地后清单缺员 = 正本申报滞后);T-37 裁族级合并时该登记改族级统一条目、由族级批执行,裁独立实施时由本稿正本更新执行——登记义务不悬置、不随裁决结果消失。本稿 §2.1 独立可实施;若裁族级合并,本稿即族级形态在祈愿试炼的实例,以族级批统一口径为准、不另立第二套。
 - **明确不联动**:kernel 判据侧缺省(空候选 idx0 = 策略自主决策,任何屏不得借「家族统一」改判据);已合规屏(投资两屏/遭遇现役出口,T-6/T-7 报告同面核对通过)零改动。
 
 ### 2.3 F-2 修法(逐站点目标处置)
@@ -167,7 +167,7 @@
 
 ### 2.5 实施文件面全集(合并实施对账用)
 
-- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_wish_trial.py`(守卫/直发/删 `FIRST_CARD`/注释与 docstring 同步;含 F-2 同文件两站点)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(桩型同型化 + 断言换锚 + 补两锁)。
+- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_wish_trial.py`(守卫/直发/删 `FIRST_CARD`/注释与 docstring 同步;含 F-2 同文件两站点)、`sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(桩型同型化 + 断言换锚 + 补两测试）。
 - **代码内文档(零行为变更)**:`operations/cw_op/cw_overlay_pick_action.py::CwActionPickWishTrialOp` 类 docstring(F-3)、`strategies/impl/flow.py::decide_wish_trial` docstring(F-2)、`kernel/cw_screen_report/wish_trial.py` 两处「决策侧 fallback 首卡」子句(F-1 连带,见 §2.1.11④)。
 - **正本文档(F-1 as-built)**:`screens/wish_trial.md`(§2/§4/§5/§6/§8);`screens/op-layer.md` 零条款新增(§1.3 守卫清单登记义务归属本迭代正本更新阶段,见 §2.2 归口④)。
 - **跨稿共享面(本稿不独立实施)**:`OverlayPickExecEnv.idx` 字段注释(pick 族共享 env,挂 §2.2 T-37 裁决面);族级实施批归口 T-37。
@@ -219,7 +219,7 @@
 **边界注(不改写)**:§2.1 第 11 条④ kernel 侧两处 docstring 目标文本「决策侧无兜底:决策无有效输出 = 守卫 fail 零盲发(申报见 screens/wish_trial.md §8)」按守卫②辖面(返回 None/词表外)窄读成立——无 match 臂非「决策无有效输出」形态(:36 = 局外终结交回),该句无需连带改写。
 
 **依据**:重审报告 §2.5 Q2/增补 A;op-layer.md §1.1 :36 条款原文;先例代码锚 = `cw_screen_encounter.py::CwScreenEncounter.act`(:156-165)。
-**验收锚**:落地批后 ①无 match 臂返回 round_success 且零点击零派发(测试锁见 §3-③);②本稿 §1/§2.1 全部站点无「无 match = fail」残留表述(grep「无 match」逐点对照本节清单 1-10)。
+**验收锚**:落地批后 ①无 match 臂返回 round_success 且零点击零派发(测试见 §3-③);②本稿 §1/§2.1 全部站点无「无 match = fail」残留表述(grep「无 match」逐点对照本节清单 1-10)。
 
 ### 3.2 增补点②(:36)取舍 2 出口语义改写 + 族级判据提议作废 + §2.2 族级统一修法建议 bullet 拆写
 
@@ -236,24 +236,24 @@
 **依据**:重审报告 §2.5 增补 B/Q3;op-layer.md §1.1 :36;定点攻击 F-1(respec-attack-C16.md,§2.2 族级 bullet 拆写)。
 **验收锚**:本稿全文无「判据直调支可豁免」与「无 match = fail 零盲发」残留(含 §2.2 族级统一修法建议 bullet——条目 3 拆写后全稿残留清零);§2.2 归口③指针随 §2.2 改写自动指向新口径,无悬置。
 
-### 3.3 增补点③(:36)测试锁第 4 条①拆分
+### 3.3 增补点③(:36)测试第 4 条①拆分
 
-**§2.1 测试锁第 4 条**改写为:
+**§2.1 测试第 4 条**改写为:
 
-> 4. **补两锁**(①按 :36 增补拆分):①拆两锁——a 无 match(`cw_match=None`,观察链桩正常给 obs)→ `act` 返回 round_success(局外终结交回)、零派发零点击;b 策略返回 None/词表外对象 → round_fail 且零派发(派发桩零调用),b 内两支合并一锁或分案均可;②策略返回 `CwActionPickWishTrialParam(idx=3)`(槽常量现值 3)→ AssertionError 传播且零派发(不变)。
+> 4. **补两测试**(①按 :36 增补拆分):①拆两测试——a 无 match(`cw_match=None`,观察链桩正常给 obs)→ `act` 返回 round_success(局外终结交回)、零派发零点击;b 策略返回 None/词表外对象 → round_fail 且零派发(派发桩零调用),b 内两支合并一测试或分案均可;②策略返回 `CwActionPickWishTrialParam(idx=3)`(槽常量现值 3)→ AssertionError 传播且零派发(不变)。
 
-**依据**:重审报告 §2.5 增补 C;共享测试锁模板(无 match → round_success、零派发零点击)见 §3-⑤ 合流申报。
-**验收锚**:两锁分别独立可跑,断言面互不合并;无 match 锁断言 round_success 而非仅「非 fail」。
+**依据**:重审报告 §2.5 增补 C;共享测试模板(无 match → round_success、零派发零点击)见 §3-⑤ 合流申报。
+**验收锚**:两测试分别独立可跑,断言面互不合并;无 match 测试断言 round_success 而非仅「非 fail」。
 
 ### 3.4 T-37 登记行(原文)
 
 ```text
-T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补——守卫① match 臂 round_fail→round_success 终结交回(先例 = cw_screen_encounter.py::CwScreenEncounter.act :156-165);原「族级判据提议:判据直调支可豁免保留」与 T-9/T-12/T-15「保留/候裁」立场随 :36 一并销项,族级口径统一 = 无 match 零决策零点击 round_success 终结交回,T-37 仅裁实施批合并;行为改写归 6 屏同形态族级实施批(T-9/T-11/T-12/T-13/T-14/T-15),与本稿 §2.2 归口①「族级合并实施批」裁决面合流,共享测试锁模板(无 match → round_success、零派发零点击);:34 不适用(objective 自由文本,无标准注册表,无登记面)。设计稿增补节 = changes/2026-09-22-screen-review/wish_trial.md §3(待用户裁决)。
+T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补——守卫① match 臂 round_fail→round_success 终结交回(先例 = cw_screen_encounter.py::CwScreenEncounter.act :156-165);原「族级判据提议:判据直调支可豁免保留」与 T-9/T-12/T-15「保留/候裁」立场随 :36 一并销项,族级口径统一 = 无 match 零决策零点击 round_success 终结交回,T-37 仅裁实施批合并;行为改写归 6 屏同形态族级实施批(T-9/T-11/T-12/T-13/T-14/T-15),与本稿 §2.2 归口①「族级合并实施批」裁决面合流,共享测试模板(无 match → round_success、零派发零点击);:34 不适用(objective 自由文本,无标准注册表,无登记面)。设计稿增补节 = changes/2026-09-22-screen-review/wish_trial.md §3(待用户裁决)。
 ```
 
 ### 3.5 合流申报(:36 行为改写 × 既有族级合并裁决面)
 
-- 本增补点①的行为改写与 §2.2 归口①「伙伴/卜者两在途稿与本稿守卫形态是否并入一个族级实施批」裁决面天然合流:重审报告 §2.8 认定 6 屏(T-9 选择装备/T-11 选择伙伴/T-12 命运卜者/T-13 祈愿试炼/T-14 星徽秘典/T-15 专家邀请函)的 :36 行为改写为同一形态(else 支/守卫臂 → 零决策零点击 round_success 终结交回),建议一次族级批实施 + 共享测试锁模板(无 match → round_success、零派发零点击);T-10 为零行为批(申报级),不在该批。
+- 本增补点①的行为改写与 §2.2 归口①「伙伴/卜者两在途稿与本稿守卫形态是否并入一个族级实施批」裁决面天然合流:重审报告 §2.8 认定 6 屏(T-9 选择装备/T-11 选择伙伴/T-12 命运卜者/T-13 祈愿试炼/T-14 星徽秘典/T-15 专家邀请函)的 :36 行为改写为同一形态(else 支/守卫臂 → 零决策零点击 round_success 终结交回),建议一次族级批实施 + 共享测试模板(无 match → round_success、零派发零点击);T-10 为零行为批(申报级),不在该批。
 - 若 T-37 裁族级合并:本稿即族级形态在祈愿试炼的实例,以族级批统一口径为准、不另立第二套(§2.2 归口①既判),本节改写文本随族级批一次落笔;若裁独立实施:本节随本稿单独落地,出口语义与改写文本不变(:36 已是正本裁定,不留候裁措辞——报告 §2.8 共性 1)。
 - §2.2 归口④ op-layer.md §1.3 守卫清单登记义务不受本次重审影响,维持(报告 §1 卷首注)。
 
@@ -301,8 +301,8 @@ T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补—�
 
 5. **CARD_XS/CARD_Y 常量归宿改写(归宿申报,非逐字站点;底册 §2.1-6)**:§2.1 第 7 条(改写前)隐含「常量为决策半消费」——:35 后两常量**保留**,唯一**坐标**消费点迁**观察侧**(x = `CARD_XS` 桶锚、y = `CARD_Y`,观察期一次解析随 obs 上报,与 `_read_objectives` 同源);决策段零**坐标**消费(守卫③ `len(self.CARD_XS)` = 槽数值域取值,非坐标消费,维持不变)。
 
-6. **测试锁第 2 条断言锚连带改写**:
-现文:「**定位点断言换锚**:同锁 `(mod.CwScreenWishTrial.FIRST_CARD.x, .y)` → `(mod.CwScreenWishTrial.CARD_XS[0], mod.CwScreenWishTrial.CARD_Y)`——`FIRST_CARD` 随本修法删除;值等价(660/340),断言语义「定位点 = 首卡」不变。」
+6. **测试第 2 条断言锚连带改写**:
+现文:「**定位点断言换锚**:同测试 `(mod.CwScreenWishTrial.FIRST_CARD.x, .y)` → `(mod.CwScreenWishTrial.CARD_XS[0], mod.CwScreenWishTrial.CARD_Y)`——`FIRST_CARD` 随本修法删除;值等价(660/340),断言语义「定位点 = 首卡」不变。」
 改文:「**定位点断言换锚(:35 二次改写)**:断言锚 = 容器值——点击桩捕获坐标 == `gs.wish_trial_opts_xy.value[0]`(观察上报写入值;生产形态 = `CARD_XS` 桶锚 x + `CARD_Y` 卡身 y,值仍等价 660/340);断言语义改「定位点 = 观察上报坐标(动作 op 容器取点)」,不再锚类常量现算——类常量自 :35 收敛后非决策半消费面,锚常量即残留被退役形态。」
 
 7. **`screens/wish_trial.md` as-built 目标文本(落点 = §2.1「文档面」节;底册 §2.1-4)**:
@@ -317,7 +317,7 @@ T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补—�
    e. **§3 观察面 payload 字段集与 report 句(F-3;落点 = as-built 现行 :16)**:现文「观察 payload = `CwScreenWishTrialObs`(`on_screen`/`options`/`screen`,住 `kernel/cw_screen_report/wish_trial.py`);report = `report_screen_wish_trial_obs` 候选写容器 `wish_trial_opts` 槽(空桶照写;match/gs 缺席的局外兜底路径跳过)。」改「观察 payload = `CwScreenWishTrialObs`(`on_screen`/`options`/`option_points`/`screen`,住 `kernel/cw_screen_report/wish_trial.py`);report = `report_screen_wish_trial_obs` 候选与槽位坐标一并写 `wish_trial_opts` / `wish_trial_opts_xy`(同门同写,op-layer.md §1.1 :35;空桶照写;match/gs 缺席的局外兜底路径跳过)。」——obs 扩 `option_points` + report 同门双写落地后原句失真(缺坐标域字段与双写申报);§3 观察面 = 坐标快照申报的天然宿主节。
    f. **§6 候选观察句(F-3;落点 = as-built 现行 :54)**:现文「- 候选观察:`report_screen_wish_trial_obs` 候选写容器 `wish_trial_opts` 槽(空桶照写)。」改「- 候选观察:`report_screen_wish_trial_obs` 候选与槽位坐标一并写 `wish_trial_opts` / `wish_trial_opts_xy`(同门同写,op-layer.md §1.1 :35;空桶照写)。」
 
-8. **§2.5 实施文件面追加(落点 = §2.5 末尾追加,不改既有行)**::35/:48 增补新增实施面——行为变更(坐标收敛批)= `operations/cw_screen/cw_screen_wish_trial.py`(观察 node 组装坐标快照 + report 同门双写 + act 删坐标组装/env 零 target/派发括注改写)+ 动作 op 宿主 `operations/cw_op/cw_pick_wish_trial_action.py`(:48 拆分批后形态,动作 op 自容器取坐标;env import 改 `cw_overlay_pick_env.py`,底册 §3.1)+ `kernel/cw_screen_report/wish_trial.py`(obs 扩 `option_points` + report 双写 + docstring 半句)+ `kernel/cw_game_state.py`(`wish_trial_opts_xy` 域定义,归批1 字段骨架批,§4.6)+ 测试双锁(§4.5)。宿主文件名 = :48 拆分批(底册 §3,先行清场)落地后形态;若坐标批先于拆分批施工(不建议,底册 §4 顺序 = 拆分先行),落点暂为 `cw_overlay_pick_action.py` 原文件,拆分批再随迁。
+8. **§2.5 实施文件面追加(落点 = §2.5 末尾追加,不改既有行)**::35/:48 增补新增实施面——行为变更(坐标收敛批)= `operations/cw_screen/cw_screen_wish_trial.py`(观察 node 组装坐标快照 + report 同门双写 + act 删坐标组装/env 零 target/派发括注改写)+ 动作 op 宿主 `operations/cw_op/cw_pick_wish_trial_action.py`(:48 拆分批后形态,动作 op 自容器取坐标;env import 改 `cw_overlay_pick_env.py`,底册 §3.1)+ `kernel/cw_screen_report/wish_trial.py`(obs 扩 `option_points` + report 双写 + docstring 半句)+ `kernel/cw_game_state.py`(`wish_trial_opts_xy` 域定义,归批1 字段骨架批,§4.6)+ 双测试(§4.5)。宿主文件名 = :48 拆分批(底册 §3,先行清场)落地后形态;若坐标批先于拆分批施工(不建议,底册 §4 顺序 = 拆分先行),落点暂为 `cw_overlay_pick_action.py` 原文件,拆分批再随迁。
 
 ### 4.2 增补点②(:35)观察上报增补(obs 扩坐标 + report 同门双写,写端唯一)
 
@@ -332,7 +332,7 @@ T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补—�
 - **改写**:`CwActionPickWishTrialOp.run` 现消费 `env.target`(`mouse_move`/`click` 形态;本稿 §2.1-8 经 §4.1-2 改写后 env 零 target)→ :35 终态:`gs = game_state_from_ctx(self.ctx)` → `pts = gs.wish_trial_opts_xy.value` → 守卫断言(`pts is not None` 且 `0 <= action.idx < len(pts)`;缺席(None)/越界 = **AssertionError 响亮暴露**)→ `mouse_move`/`click(pts[action.idx])`;上报调用零改动(动作 op 自上报 `report_action_pick_wish_trial_param` 按 idx 写效果逻辑态,与坐标无关 = 底册 §1.4-W3)。
 - **禁回退申报(硬约束)**:禁回退 `env.target`、禁 screen_info 二次 `area_center` 现取——任一回退 = **第二坐标源**,:35 明文禁止(底册 §1.4-W2);gs 缺席(局外)= :36 已裁 act 局外门 round_success 终结交回(§3.1),动作 op 不会在局外被派发;直构动作 op 的测试语境 = 显式注入坐标域,缺席即炸 = 防线非缺陷(底册 §1.4-W2)。
 - **宿主文件(:48)**:随拆分批(底册 §3,批0 先行)迁 `operations/cw_op/cw_pick_wish_trial_action.py`,env 自 `cw_overlay_pick_env.py` import;本稿坐标改造落该新文件(§4.1-8 批序注)。
-- **测试锁连带**:§2.1 测试锁第 2 条按 §4.1-6 换锚;直构动作 op 的机械链锁(`test_cw_unified_action_4.py` 祈愿行)= 「零改动」既判(§2.1 测试锁 5)随坐标源换容器**改为补显式注入坐标域**(import 面随 :48 拆分批一并改,底册 §3.2-3;缺席即炸 = 防线非缺陷)。
+- **测试连带**:§2.1 测试第 2 条按 §4.1-6 换锚;直构动作 op 的机械链测试(`test_cw_unified_action_4.py` 祈愿行)= 「零改动」既判(§2.1 测试 5)随坐标源换容器**改为补显式注入坐标域**(import 面随 :48 拆分批一并改,底册 §3.2-3;缺席即炸 = 防线非缺陷)。
 
 ### 4.4 增补点④(:35)§2.4 F-3 docstring 目标文本纠正(欠账形态写成终态)
 
@@ -356,10 +356,10 @@ T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补—�
 ### 4.5 增补点⑤验收锚(含过渡期铁律)
 
 **验收锚**(坐标收敛批落地批后;底册 §2.1):
-1. **report 双写锁**:`report_screen_wish_trial_obs` 同一次调用同门写 `wish_trial_opts` + `wish_trial_opts_xy`(无条件同门);等长断言不等即炸。(原「任一候选转换失败 → 双零写」半句删——本屏无 :34 转换门、转换路径不可达,该测试不可构造,违背验收锚可机械执行标准;门句按屏特化见 §4.2,同门双写 + 等长断言两判据保留,F-4。)
-2. **动作 op 取坐标锁**:坐标域 None / `action.idx` 越界 → AssertionError 且零点击零派发副作用;注入合法坐标域 → 点击坐标 == 容器值。
+1. **report 双写测试**:`report_screen_wish_trial_obs` 同一次调用同门写 `wish_trial_opts` + `wish_trial_opts_xy`(无条件同门);等长断言不等即炸。(原「任一候选转换失败 → 双零写」半句删——本屏无 :34 转换门、转换路径不可达,该测试不可构造,违背验收锚可机械执行标准;门句按屏特化见 §4.2,同门双写 + 等长断言两判据保留,F-4。)
+2. **动作 op 取坐标测试**:坐标域 None / `action.idx` 越界 → AssertionError 且零点击零派发副作用;注入合法坐标域 → 点击坐标 == 容器值。
 3. **grep 零残留**:`cw_screen_wish_trial.py` 决策段无 `Point(` 组装、env 构造无 `target=`;act 内无「定位点决策半现算经 env」字样(§4.1-3 改写后)。
-4. **全绿门槛** = 祈愿臂既有锁(§2.1 测试锁清单,锁 2 按 §4.1-6 换锚、机械链锁按 §4.3 注入)+ 本节双锁。
+4. **全绿门槛** = 祈愿臂既有测试(§2.1 测试清单,测试 2 按 §4.1-6 换锚、机械链测试按 §4.3 注入)+ 本节双测试。
 
 **过渡期铁律**(底册 §1.7 / §4 衔接要点 3,批间与屏间有效):
 - **禁新增第二坐标源**:批1(字段骨架批)落地到本屏收敛批完成之间,已定义字段与未收敛屏并存 = 合法过渡(现役坐标链未断);过渡期内任何新屏/新 op **不得再走「决策半现算经 env.target」**,新写法直接按底册 §1 骨架。
@@ -370,4 +370,4 @@ T-13 祈愿试炼:op-layer.md §1.1 :36(用户裁定 2026-09-22)落地增补—�
 
 - **本域字段骨架(一次定谳,引用底册 §1.2/§1.3)**:`wish_trial_opts_xy` = A 类纯名单域(`Field[list[str]]` 名字域 `wish_trial_opts`)的坐标伴随域,形态 `Field[list[tuple[int, int]] | None]`,与名字域**同序等长**;键 = idx(0 起,左→右画面物理序,与策略器输出下标、`CwActionPickWishTrialParam.idx` **同一坐标系零换算**);值 = `tuple[int, int]`(x, y,1080p 游戏空间,平铺元组 JSON 序列化安全形);等长不变量由写端构造守卫保证,读端不做长度调和。
 - **fields.md 增补条目目标文本草案 = 底册 §1.8(a)(b)**(§3.4 头部引注段追加一句 + 新增小节 §3.4.5a「选项坐标域」,字段登记行含 `wish_trial_opts_xy`)——本稿**引用不重复设计**,条目全文以底册 §1.8 为单一源。
-- **落点 = 批1 字段骨架批**(底册 §4):`kernel/cw_game_state.py` 域定义 + `DEFAULT_GS_SCHEMA` 新域键 `wish_trial_opts_xy: 1`(version 1)+ `_PAYLOAD_DOMAINS` 新键登记(`'wish_trial_opts_xy': ('货币战争-祈愿试炼', True)`,伴随域离屏清值与名字域同格的机制载体,§4.2 A-3 申报,T-37 全域对账)+ fields.md 目标文本落笔 + schema 对齐锁(对齐锁反向扫描面不受 `_opts_xy` 尾影响 = 底册 §1.8(b) 同判,正向清单扩展随批1 申报)+ 快速集;批1 先行于本屏收敛批(批2),后续屏批不碰容器(底册 §4 衔接要点 1)。
+- **落点 = 批1 字段骨架批**(底册 §4):`kernel/cw_game_state.py` 域定义 + `DEFAULT_GS_SCHEMA` 新域键 `wish_trial_opts_xy: 1`(version 1)+ `_PAYLOAD_DOMAINS` 新键登记(`'wish_trial_opts_xy': ('货币战争-祈愿试炼', True)`,伴随域离屏清值与名字域同格的机制载体,§4.2 A-3 申报,T-37 全域对账)+ fields.md 目标文本落笔 + schema 对齐测试(对齐测试反向扫描面不受 `_opts_xy` 尾影响 = 底册 §1.8(b) 同判,正向清单扩展随批1 申报)+ 快速集;批1 先行于本屏收敛批(批2),后续屏批不碰容器(底册 §4 衔接要点 1)。

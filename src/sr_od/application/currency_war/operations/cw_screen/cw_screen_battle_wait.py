@@ -37,7 +37,7 @@ kernel/cw_screen_report/battle_wait
 注入(``__init__(ctx, st, config)``,RunLoop 持有);
 ``node_max_retry_times=400`` 归节点。本屏 sim 腿 = 不适用
 (sim 事实来源为 coarse 结算产出非画面段),等价判据主要支撑 = 实机
-已登记行为锁经 execute()/wait() 单路径全绿。
+已登记行为测试经 execute()/wait() 单路径全绿。
 """
 from __future__ import annotations
 

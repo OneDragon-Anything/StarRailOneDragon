@@ -11,7 +11,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 当次任务 | 主节(门) | 细则 |
 |---|---|---|
-| 改策略 / 迭代算法 | strategy-work 按流水线走:改前(判读上局→读文档→定位→设计)→开关落地→验证→单帧锁 | strategy-work |
+| 改策略 / 迭代算法 | strategy-work 按流水线走:改前(判读上局→读文档→定位→设计)→开关落地→验证→单帧测试 | strategy-work |
 | 改流程层(画面 op / 外循环路由 / 决策循环 / 画面流转 / 守卫) | 改前必读 `docs/develop/sr_od/application/currency_war/flow/`:README(四层结构总图+策略↔流程契约)→对应篇(outer_loop=分发路由与轮次推进 / screens/op-layer=画面 op 规范与终结动作 / action_exec=动作执行 / projection_contract=状态面板读写契约 / guards=守卫与停机)。三块高频违例面先对照:**画面识别与路由归外循环、决策归策略器、终结动作=退出画面 op 返回主循环重新观察** | flow/README §3 各篇导读 |
 | 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
 | 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序逐op记录;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选清单) | match-review |
@@ -29,7 +29,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 | 要什么 | 去哪 |
 |---|---|
-| **策略工作统一说明**(策略是什么与骨架/改前/开关落地/验证/单帧锁) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
+| **策略工作统一说明**(策略是什么与骨架/改前/开关落地/验证/单帧测试) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **测试分层**(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |

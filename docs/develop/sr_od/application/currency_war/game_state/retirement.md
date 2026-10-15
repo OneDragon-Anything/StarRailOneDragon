@@ -35,7 +35,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | exogenous | 停用(无独立事件流) | kind 逐值并入(节点推进→派生写入行/popup→obs_event/briefing→开局事实域/event_choice→chosen 域/sell_income·hp_pay·level_up→②写入行/resumed→中继行族等);battle_done 旧写入位置停写与旧流停写同批;cw_anchor 四 carrier_kind 归宿随锚处置待裁决 |
 | spend_ledger | 拆分:字段并入+部分停用 | 金真值→gold 域;计数→计数域+质量标记;plan_truncated/refresh_skipped→receipts 发射行字段;duration/boundary/progressed=纯工程面停用归日志 |
 | shop_snapshots | 字段并入候选+流停用 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不并入→判读侧离线派生 |
-| cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭锁(test_cw4_key_closure) |
+| cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭测试(test_cw4_key_closure) |
 | defect_ledger | **保留专用(待裁决)** | 案 A=并入 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 取值清单/失配告警联动(失配告警=缺陷触发的报警停机联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
 | op_journal | **停用(2026-09-15 用户裁定,写入方删除批写入代码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收尾 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账已在 state 流 receipts/gold 行登记 |
 | exec_events | 字段并入+流停用 | 发射事实→receipts 发射行(**零成败字段**);失败可见性=消费方对比语义(发射行后预期变化未出现=未落地,判定归观察侧 reconcile) |
@@ -56,7 +56,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 前由策略 state 容器承载)**:效果域 0 键(①空转,效果域 inventory 与本容器零交
 集);策略行为键 256 字面+16 闭族 80 实例+9 开放域族全保留在策略 state 容器
 (②,无消费删 0 键,弱消费键随迁);流载体停用,局终级全键聚合改由局终域行载荷
-``MatchFinal.cw4_counters`` 携带。键全集登记单一源 = 封闭锁(测试仓
+``MatchFinal.cw4_counters`` 携带。键全集登记单一源 = 封闭测试(测试仓
 test_cw4_key_closure:字面全集对齐+参数化族登记+豁免清单三层,扫描方法=审计七
 类写模式的 AST 机器化,含 helper 实参常量解析)。
 
@@ -70,7 +70,7 @@ test_cw4_key_closure:字面全集对齐+参数化族登记+豁免清单三层,�
 ## 5. 停用排期(原排期件已删)
 
 停用排期与波次的原单一源(原排期件 §2,单源直迁八波)已随过程件清理删除(考古走 git 历史);本文只记各流当前处置形态,不复写排期。
-原影子口径的旧排期框架已随直迁裁定作废(推翻影子双写;首批写面删除已按直迁口径执行 9 流写入方删除)。旧影子框架各批次的实际承载内容(按内容命名,编号已废):写入口与渠道签名/流水落盘与 journal 常开化/obs_event 登记面并入 = 交付于统一 state 直迁系列;派生规则与类型派生 = 已交付(测试锁族+落地审+实机窗口承担验收);判读/哨兵/运行时消费面切换、cw4 键级审计与键并入、决策面/sim 切换 = 各自成批交付;写面删除与 GameState 本体删除 = 删除批次收尾,归档只读保留。
+原影子口径的旧排期框架已随直迁裁定作废(推翻影子双写;首批写面删除已按直迁口径执行 9 流写入方删除)。旧影子框架各批次的实际承载内容(按内容命名,编号已废):写入口与渠道签名/流水落盘与 journal 常开化/obs_event 登记面并入 = 交付于统一 state 直迁系列;派生规则与类型派生 = 已交付(测试族+落地审+实机窗口承担验收);判读/哨兵/运行时消费面切换、cw4 键级审计与键并入、决策面/sim 切换 = 各自成批交付;写面删除与 GameState 本体删除 = 删除批次收尾,归档只读保留。
 
 链观察实施批独立切分,见 [chain-observation.md](chain-observation.md)。
 **落地状态(链观察落地批 2026-09-16)**:链写入方/查链接线/diff 证据已交付

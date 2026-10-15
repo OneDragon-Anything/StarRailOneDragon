@@ -21,7 +21,7 @@
 
 **F3【低】design.md §2.5(L122)、landing.md 3.1(L13)——L1 内联命令含不存在的标记 `legacy_baseline`**
 - 实测 sr-od-test 全仓(含 `test/conftest.py` 的 marker 注册节)对 `legacy_baseline` **零命中**;conftest 只注册 `slow`。`-m "not slow and not legacy_baseline"` 的选择集与 `-m "not slow"` 恒等、命令可执行,不构成判据失效;但 design/landing 以「CW skill『测试分层』行路径系在册笔误,以本内联命令为准」自任勘误源,却原样继承了同一行的幻影标记——判据文本不真,且若测试侧将来启用 `--strict-markers` 该命令即红(conftest 注册 `slow` 的注释明言该前景)。
-- 修正方向:内联命令删 `and not legacy_baseline`;skill 反馈条目在「路径笔误」外补记该标记同样系死词(两者大概率同源:旧 legacy 基线锁退役后残留)。
+- 修正方向:内联命令删 `and not legacy_baseline`;skill 反馈条目在「路径笔误」外补记该标记同样系死词(两者大概率同源:旧 legacy 基线测试退役后残留)。
 
 **F4【低】design.md §2.2 扫尾关键词族——「结算惰性 drain」兜不住同族变体「结算槽 drain」**
 - `flow.py:430`(`_consume_prep_direction_frame` docstring 括注「原前置的**结算槽 drain** 已删除」)与 flow.py:422-3 节头注同性质、同真值,但用词变体不在扫尾族内 → 该命中面永不浮出、永不获三分处置。该处现状为如实的删除声明(预期处置 = 保留申报),**本批零实际后果**;唯扫尾自称「枚举清单可能不全,本扫尾是完备性的机械兜底」,兜底面存在此洞。

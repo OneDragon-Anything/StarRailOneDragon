@@ -87,9 +87,9 @@
 - **§4 动作面表**:`CwActionPickEncounterOp` 行「发出方式」列改「注册表工厂 `action_op_for` 直发策略产 `CwActionPickEncounterParam` 实例(env 只携宿主 op;idx 即策略产值,流程侧零改写;越界 = 守卫断言、词表外 = 具名 fail,均在派发前)」;「上报」列补一句「画面 op 守卫先中词表/值域,report 层离屏/越界留证不写保留为字段级防线」;表末补一行:`| (决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:词表外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,交回外循环 |`。
 - **§5 终结与交回表**补一行:`| 决策无有效输出/pick idx 越界 | 守卫 fail(op FAIL) | round_fail / 框架异常路径(留证截图 + 预算耗尽)交回外循环;连续 fail 由外环重派网兜底(flow/README §4) |`——与「入口锚 miss」行同落点类,补行保表完备;「三出口均终结访问」收束句不动(fail 出口非终结动作,同类 = 入口锚 miss 行)。
 - **§8 守卫与防线**补两条:①决策词表守卫:decide_encounter 返回 None/词表外 = 具名 round_fail 零盲发——原「默认 idx0 盲选回退」退役申报;②值域守卫:pick idx 越界 = 守卫断言 AssertionError——原「静默钳 0」退役申报。原「空候选防线」条不动。
-- **§9 遥测与锁面**:测试锁清单补两臂(见下)。
+- **§9 遥测与测试面**:测试清单补两臂(见下)。
 
-**测试锁**(实现随功能写,锁设计约定 = sr-od-test/README.md):`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py` 遭遇臂补两条——①策略返回 `None`/词表外类型 → round_fail 且零点击零派发;②策略返回越界 idx → AssertionError 且零点击。现役遭遇臂清单(门/观察接线/派发即终结/空候选零点击/刷新终结/闸拒绝/闸不一致/兑现回调)无一锁回退或钳位面(单一源 = 该文件遭遇段测试清单),本改造不与在册锁冲突。
+**测试**(实现随功能写,钉住设计约定 = sr-od-test/README.md):`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py` 遭遇臂补两条——①策略返回 `None`/词表外类型 → round_fail 且零点击零派发;②策略返回越界 idx → AssertionError 且零点击。现役遭遇臂清单(门/观察接线/派发即终结/空候选零点击/刷新终结/闸拒绝/闸不一致/兑现回调)无一校验回退或钳位面(单一源 = 该文件遭遇段测试清单),本改造不与在册测试冲突。
 
 **关键取舍**:
 
@@ -107,7 +107,7 @@
 - **§3 确定面转移规则**:机械链三步保留(点卡选中 / 固定等待 0.8s / 确认机械交回,裁决词「遭遇节点」),补第 4 步「发射即写:确认点击后立即 `report_action_pick_encounter_param`」;idx 语义补「idx = 策略产候选下标,画面 op 直发策略产实例、流程侧零值域改写(词表/值域守卫在派发前,见本迭代 §2.1)」。
 - **§5 拒绝语义**:删「重入裁决 + 预算耗尽 bail 防线」句(退役);改为——派发即终结零验证:确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(op-layer.md §1.1);发射即写 = 意图记录,暂态假值窗由重派覆盖自愈 + 兑现后清单次消费双防线(fields.md §3.4.1);report 层拒绝面 = payload 离屏/越界留证不写(`pick_encounter.py` docstring);screen_info 坐标缺失兜底常量例外保留(在册,encounter.md §4)。
 - **§6 kernel 符号锚**:增 `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`、`kernel/cw_encounter_selection.py::claim_encounter_reward`;§6 全节陈旧括注与失效符号锚清零(N-r4-3 扩面)——「替身缝」挂于 `CwScreenEncounter`(替身缝/写点) 括注(`_confirm_default` 已不存在;「写点」半边随 §2 现役改写同过期)、「`/ PickOption`」死锚(类已消亡,单一源 = `kernel/cw_vocab.py` 选择族契约注);落地并删 `emit_overlay_confirm` 锚(该 op 确认已改动作 op 体内 `round_by_find_and_click_area` 查找,不再消费该 helper——落地时点现值)。
-- **§7 语义验证**:删「零写族上报函数 `zero_writes.py::report_action_pick_encounter_param`」句;改为——写语义单一源 = 具名上报函数(发射即写契约,上报函数族独占容器写,logic-updates/README.md 总则 1);验证锁 = `test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,encounter.md §9 在册)。
+- **§7 语义验证**:删「零写族上报函数 `zero_writes.py::report_action_pick_encounter_param`」句;改为——写语义单一源 = 具名上报函数(发射即写契约,上报函数族独占容器写,logic-updates/README.md 总则 1);验证测试 = `test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,encounter.md §9 在册)。
 - **§9 依据**:增 pick_encounter.py 模块头、op-layer.md §1.4/§2.2 例外三腿②、action_ops.md §4.5 PickEncounter 行;删既有「§4.4(pick 族行)」错节引用改挂 §4.5(§4.4 现为观察族,N-r4-3 清偿);「删 `_confirm_default`/zero_writes 旧指针」的落点实为 §1/§7 既有条款各自由本稿 §1/§7 规格辖及(§9 全文不含该两指针),此处按交叉引用闭合、§9 无删除动作(N-r4-3 空靶修正)。
 
 **`game_state/logic-updates/README.md`(文件级实施归 T-1,本稿只交付目标语义与口径输入)**:T-1 稿(prep.md)§2.4 条 5 现文已认领该文件统改(含事件线索引段/pick 族表),并显式声明「**T-2/T-4/T-5 三稿对该 README 的条目均并入本稿实施**——…T-4 稿事件线索引段与 pick 行分型(按其修订版)…已归口 T-4 修订版的模块头分型段(经 T-37 汇总登记)按 T-4 修订版落行,本稿不另立口径」。本稿相应收缩,向 T-1 统改批交付三项输入:
@@ -151,7 +151,7 @@
 
 ### 2.6 实施文件面全集(合并实施对账用)
 
-- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_encounter.py`(act 守卫/直发/注释/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(补两锁)。
+- **行为变更(仅 F-1)**:`operations/cw_screen/cw_screen_encounter.py`(act 守卫/直发/注释/docstring)、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(补两测试)。
 - **代码内文档(F-3/F-5,零行为变更)**:`operations/cw_op/cw_overlay_pick_action.py`(`CwActionPickEncounterOp` 类 docstring + 模块头段史述收敛,见 §2.3 残留修法 1/3;模块头语义面已随批清偿)、`operations/cw_screen/_overlay_confirm.py`(模块头分型注)、`obs/cw_node_obs.py`。
 - **正本文档(F-1 as-built / F-2 / F-4)**:`screens/encounter.md`、`game_state/logic-updates/pick-encounter.md`、`flow/session.md`(§2.4 迁出落点表行整行删 + §5.5 条目删,遭遇 + 补给半边一并自清)。
 - **跨稿共享文件(本稿不独立实施)**:`game_state/README.md` §3.3 域表行(全行落点 = T-5 稿 §2.1,T-37 登记;本稿行文本作废、遭遇侧语义输入已吸收)、`game_state/logic-updates/README.md`(统改权 = T-1 稿 §2.4;本稿交付 PickEncounter 行目标语义、计数现值口径与缺档落法指针,见 §2.2)。

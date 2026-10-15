@@ -29,7 +29,7 @@ node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail �
 §3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
 不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
 本屏 sim 腿 = 不适用(sim 端口
-适配器未建),等价判据主要支撑 = 实机已登记行为锁。
+适配器未建),等价判据主要支撑 = 实机已登记行为测试。
 """
 import time
 from typing import ClassVar

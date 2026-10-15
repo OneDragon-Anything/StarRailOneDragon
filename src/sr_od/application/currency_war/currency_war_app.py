@@ -98,7 +98,7 @@ class CurrencyWarApp(SrApplication):
     def in_match_screen_names(cls, screen_info_list) -> list[str]:
         """对局中态屏名。判定单一源 = ``cw_screen_state.in_match_screen_names``
         (货币战争- 前缀 − 大厅态白名单);本方法仅委托,签名/行为不变
-        (既有测试锁经类方法调用)。
+        (既有测试经类方法调用)。
         """
         return cw_screen_state.in_match_screen_names(screen_info_list)
 

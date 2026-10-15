@@ -22,7 +22,7 @@
 
 ### F4 [严重度:中] EV 核「保留」分支与 `EncounterPick` 无条件退役不兼容,保留代价清单漏算载体改形账
 - 位置:design §2.6(EncounterPick 退役,无条件)/ §2.7 / §2.10 裁定点 1 保留分支
-- 发现:直调 `strategies/impl/mandate_v1/encounter.py:79-82`——EV 核**顶层运行时 import** `EncounterOption, EncounterPick`,且 :264/:268/:280/:306/:308/:387 六处签名注解与实例构造消费之。§2.6/§2.7 对 `EncounterPick` 的退役不以裁定点 1 为条件;若用户裁「保留」,encounter.py 原样保留则 import 直接断。§2.10 保留分支的处置只有「本条跳过、模块头补明示」,未覆盖 EncounterPick 依赖;保留代价清单(「永不激活的判据本体 + 双标定槽 + 测试锁长期随仓」)也未含「EV 核载体须同步改形」这笔账。
+- 发现:直调 `strategies/impl/mandate_v1/encounter.py:79-82`——EV 核**顶层运行时 import** `EncounterOption, EncounterPick`,且 :264/:268/:280/:306/:308/:387 六处签名注解与实例构造消费之。§2.6/§2.7 对 `EncounterPick` 的退役不以裁定点 1 为条件;若用户裁「保留」,encounter.py 原样保留则 import 直接断。§2.10 保留分支的处置只有「本条跳过、模块头补明示」,未覆盖 EncounterPick 依赖;保留代价清单(「永不激活的判据本体 + 双标定槽 + 测试长期随仓」)也未含「EV 核载体须同步改形」这笔账。
 - 修正方向:§2.10 裁定点 1 保留分支补一条「`encounter.py` 的 `EncounterPick` 依赖同步改形(私有载体或 TYPE_CHECKING 化+改注解),随裁定结论落地」;或在 §2.6 把 EncounterPick 退役并入裁定点 1 条件。
 
 ### F5 [严重度:中] fill 分支与 `_FILL_EDGE_THRESHOLD` 的层次归属在 §2.1/§2.3/§2.7 三处之间不自洽
@@ -52,8 +52,8 @@
 
 ### F10 [严重度:中] `test_cw_obs_arch_event_screens.py` 测试面申报错误,且与本节末句自相矛盾
 - 位置:design §2.7 测试面第一条
-- 发现:直调该测试文件——全文件唯一 `cw_encounter_selection` import 点为 :417-420,import 的是 `claim_encounter_reward, record_settlement_row`,两者均为设计稿 §2.1 自列的 **kernel 保留面**,不随迁移、无需修改;而 §2.7 同段末句自己写「`claim_encounter_reward` 分支锁(kernel 保留面)不动」。前半句「该 import 点随新载体」与后半句互斥且与代码事实不符。另:设计稿测试面未提该文件 :380-404 的「重调仍建议刷新→零点击终结」op 行为锁——激活刷新阀后该锁变为在产路径的行为锁,其 docstring 旧叙述(「按原评分选」)与闸内嵌语义的收口义务同 §2.8 的 op 注释收口同面,未列。
-- 修正方向:测试面首条改为「该文件 import 点消费保留面符号,零改动」;补列「重调零点击行为锁的 docstring 旧叙述随批更新(行为断言保留)」。
+- 发现:直调该测试文件——全文件唯一 `cw_encounter_selection` import 点为 :417-420,import 的是 `claim_encounter_reward, record_settlement_row`,两者均为设计稿 §2.1 自列的 **kernel 保留面**,不随迁移、无需修改;而 §2.7 同段末句自己写「`claim_encounter_reward` 分支测试(kernel 保留面）不动」。前半句「该 import 点随新载体」与后半句互斥且与代码事实不符。另:设计稿测试面未提该文件 :380-404 的「重调仍建议刷新→零点击终结」op 行为测试——激活刷新阀后该测试变为在产路径的行为测试,其 docstring 旧叙述(「按原评分选」)与闸内嵌语义的收口义务同 §2.8 的 op 注释收口同面,未列。
+- 修正方向:测试面首条改为「该文件 import 点消费保留面符号,零改动」;补列「重调零点击行为测试的 docstring 旧叙述随批更新(行为断言保留)」。
 
 ### F11 [严重度:低] bridge.py 的 `EncounterPick` import 形态标错(顶层运行时 import,非 TYPE_CHECKING)
 - 位置:design §2.6 消费面(「bridge.py TYPE_CHECKING import」)、§2.7 同
@@ -96,4 +96,4 @@
 5. **宪法对齐**:宪法二——新判据无位面字面量,旧核 `plane_of(gs)==3` 分支退役 = 存量清除 ✓;宪法三——遭遇败局入窗为保守向的核查成立 ✓;宪法五判据线——迁移/保留面逐项归类合理(EncounterOption 观察契约、结算环裁定 9 基建、`claim_encounter_reward` 记账语义、`enemy_difficulty` 真值读口均非打分)✓;宪法六——`encounter_pick.py` 新文件 + 31 号稿新文档 + 命名避让(不复用 `encounter.py` 空名)✓;迁移节奏逐画面一批 ✓。
 6. **治本核验**:§1 归层(分层语义 + 表示)与三核并存现状逐符号证实(生产暗装核 / 基类旧核 / EV 核);§2 修根 = 宪法五兑现 + 暗装门收窄,非症状补丁;逐画面迁移是宪法六既定节奏,非逐件打补丁,跨件半问不触发 ✓。
 7. **行为变化申报完整性(除 F6 外)**:①-⑤ 与代码现状可对照,「旧核生产从未生效 + 基类兜底路径变化」双句并陈自洽(非 mandate 策略走基类)✓;`dark-install` 归因段退场已在 §2.2 申报 ✓。
-8. **测试面其余项**:`test_cw_unified_action_4.py:28/259/278` 引用属实 ✓;`test_cw_obs_arch_event_screens.py` :400-404 重调行为锁存在 ✓(申报错误见 F10);「新决策本体锁随 landing 落测试仓、`claim_encounter_reward` 分支锁不动」✓。
+8. **测试面其余项**:`test_cw_unified_action_4.py:28/259/278` 引用属实 ✓;`test_cw_obs_arch_event_screens.py` :400-404 重调行为测试存在 ✓(申报错误见 F10）;「新决策本体测试随 landing 落测试仓、`claim_encounter_reward` 分支测试不动」✓。

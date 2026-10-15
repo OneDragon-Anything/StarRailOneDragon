@@ -167,7 +167,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
     单标签(空/'?' 不计,生产 OCR 空板同形;Unit 无 faction 位,该兜底
     仅 faction 载体鸭子输入可达)。值漂移由 checks 的
-    board↔deployed 一致性锁双向暴露。"""
+    board↔deployed 一致性测试双向暴露。"""
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
     for d in (deployed or []):

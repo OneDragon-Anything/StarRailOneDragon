@@ -30,7 +30,7 @@
 **CloseShop 执行位(动作 op 真机械执行;「拦截 + no-op + 编排壳代点」旧形拆除)**:
 
 - `CwActionCloseShopOp` 执行体 = ①帧上找「按钮-收起」:miss = 店已关(幂等,无动作可发)→ exec 回执 applied=false + `report_action_close_shop_param`(leave_screen 清场,已关残留同样清)+ round_success;②命中 → 点击 + 固定等待 `SHOP_CLOSE_ANIM_S` + exec 回执 applied=true + `report_action_close_shop_param` + round_success。零转移验证(收起消失与否归下一帧观察;点击未生效 = 外循环 0n 重分发自然重派,重派即重试)。
-- `CwOpCloseShop` 编排壳**退役删除**:其存在理由(波机时代动作 op 不执行、壳代点)随执行位收编消亡,留壳 = 第二个摆设壳;幂等两出口语义逐位迁入执行体。分型表/完备锁面随正本更新调整。
+- `CwOpCloseShop` 编排壳**退役删除**:其存在理由(波机时代动作 op 不执行、壳代点)随执行位收编消亡,留壳 = 第二个摆设壳;幂等两出口语义逐位迁入执行体。分型表/完备测试面随正本更新调整。
 
 ### 2.2 生产调用点改造
 
@@ -74,12 +74,12 @@
 | 符号 | 处置 | 消费点核查 |
 |---|---|---|
 | `cw_screen_buy_cards.py::run_buy_waves` | 删除(职能迁观察 node/决策动作 node;全动作统一路径) | 调用点三处(§2.2)全改;文档引用随正本更新清理 |
-| `cw_op_close_shop.py::CwOpCloseShop` + `close_shop` 核心函数 + `_note_receipt`/`_clear_shop_payload` | 退役删除(执行位收编,§2.1 CloseShop 执行位;幂等两出口语义逐位迁入 `CwActionCloseShopOp` 执行体;`report_action_close_shop_param` 为容器清场上报) | 生产调用方 = visit_open_shop/仲裁段(随 §2.2 改造消失);分型表(推进型 37 屏名单)/完备锁面随正本更新调整 |
+| `cw_op_close_shop.py::CwOpCloseShop` + `close_shop` 核心函数 + `_note_receipt`/`_clear_shop_payload` | 退役删除(执行位收编,§2.1 CloseShop 执行位;幂等两出口语义逐位迁入 `CwActionCloseShopOp` 执行体;`report_action_close_shop_param` 为容器清场上报) | 生产调用方 = visit_open_shop/仲裁段(随 §2.2 改造消失);分型表(推进型 37 屏名单)/完备测试面随正本更新调整 |
 | `cw_screen_buy_cards.py` 节点行探针函数族:`probe_node_type`/`store_plane_table`/`_capture_unrecognized_node_icons`/`_NODE_ICON_SHOT_TS` | 迁出商店域 → 备战 heavy 观察链节点行消费位(§2.8,用户裁定:节点行是备战画面观察内容) | 消费面 = 槽序表/台账/结算回路(不变);识别器 = obs/cw_node_reader(不动) |
 | `cw_buy_card_action.py` 兜底坐标 `_Pt(0, 288)`(槽号越界/点位缺失时静默点击) | 删除(用户裁定:废弃兜底,采用 screen_info)——点位缺失/槽号越界 = 显式 round_fail(信息带 area 名,与 level_btn/refresh_btn 同款纪律) | 违反坐标单一真相源与「禁兜底坐标静默点击」同文件声明;commit 面随 3.4 |
 | `cw_loop.py` 发射帧仲裁段特殊路径 + `run_buy_waves` 的 `spend_gate` 形参 + `cw_screen_prep._act_execute_default` restricted_spend 截流分支 + `CwActionOpenShopParam.restricted_spend` 字段 | 退役(受限消费迁策略侧自限,§2.10) | 消费面 = 发射帧受限会话(改策略 StrategyState 派生标记 + decide 自限);kernel `launch_arbitration_gate` 谓词留守单一源,消费方改策略决策入口 |
 | `kernel/cw_effect_inventory.py`:`free_refresh_balance` 字段(:233)+ `grant_free_refreshes`(:456)+ `record_refresh` free 扣减腿(:441-452) | 退役/改造(次数升格 Field `gs.free_refresh_left`,三写端同格,§2.3) | 写端 = 两发放桥 + 刷新上报(全改道 Field);读端 = `cw_sim_shop.py:64-66` / `refresh_shop.py:55`(改读 Field);`cw_projection_audit.py:161` 计数组行同步 |
-| `kernel/cw_screen_report/close_shop.py`(`CwOpCloseShopObs` 孤儿 obs 类) | 随壳退役删除;完备锁面(sr-od-test `test_cw_screen_report_ports.py` 的 close_shop 文件行与 `CwOpCloseShopObs` 在册行)同步更新 | 完备锁对该侧断言 report 不在场,行删除即锁面更新(grep 实证:test_cw_screen_report_ports.py :53/:58/:69) |
+| `kernel/cw_screen_report/close_shop.py`(`CwOpCloseShopObs` 孤儿 obs 类) | 随壳退役删除;完备测试面(sr-od-test `test_cw_screen_report_ports.py` 的 close_shop 文件行与 `CwOpCloseShopObs` 在册行)同步更新 | 完备测试对该侧断言 report 不在场,行删除即测试面更新(grep 实证:test_cw_screen_report_ports.py :53/:58/:69) |
 | 决策循环 CloseShop 拦截特例(`run_buy_waves` intercept 分支) | 删除(全动作统一路径,CloseShop 经注册表真执行) | 随 run_buy_waves 解体消亡;「终结不入 decisions 行」契约保留(循环内跳过该回执调用) |
 | 同文件 `refresh_wave_is_refresh_only`/`_reconcile_refresh_pending`/`_shop_entry_names`/`_record_free_refresh_proc` | 删除(免费腿判定由次数锚定 + 失配对账取代,§2.3) | 段机器内部消费,随壳亡;proc flag 为人工判读临时通道(自述确认后删) |
 | 同文件段尾观测块:`bench_buy_slots_settle_retry`/`bench_buy_occupancy_ok`/`bench_buy_count_ok`/`bench_buy_identity_missing`/`_buy_baseline`/pixel-diff 调用块/`match.bench_slot_map` 写点 | 删除(用户裁定 ⑤:画面 op 结尾不自做对账;逻辑态上报 + 下一入口观察对账承接) | `match.bench_slot_map` 全仓仅此写点、零读端(grep 实证);`new_bench_slots`(obs/cw_observation.py)唯一消费 = 本块 → 函数随删 |

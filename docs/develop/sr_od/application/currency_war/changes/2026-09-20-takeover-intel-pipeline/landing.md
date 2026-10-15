@@ -25,7 +25,7 @@
 ④字段与通道退役:gs `takeover_tries`/`takeover_collect_done` 删除 + match_facts 域版本 bump(2→3)+ 合同断言翻新;cw_projection_audit.py 两行申报删除;CwScreenPrepObs/report_screen_prep_obs 接管域瘦身保链域;ctx 通道三文件全删;
 ⑤对账网退役:obs `reconcile_briefing_vs_plane_intel`/`briefing_reconcile_pairs` 零消费删除、entry 挂点随写回节点消亡、config `briefing_reconcile` 字段处置(唯一消费点随亡;另有消费则保字段删死路径并回报);
 ⑥None 语义注释勘误全量清零(grep『徽章态/该位面无身份』逐处改写,含 cw_game_state.py 字段注释/cw_vocab.py/cw_comps.py/telemetry/schema.py/cw_briefing_obs.py);随 cw_observation.py 在文件面内顺手改写其 :756-759 docstring 段(描述已退役的跳过机制:渲染事实"过去位面变暗识别可能退化"保留,行为指引改恒全采+响亮失败;A19);
-⑦sr-od-test 测试同步:位面 op 6 node 流程测试(桩 SIFT 未命中构造失败;fixture 不进测试面)+ 识别失败响亮失败锁 + entry 编排流程测试 + prep 触发委派测试 + 字段退役零残留断言翻新。
+⑦sr-od-test 测试同步:位面 op 6 node 流程测试(桩 SIFT 未命中构造失败;fixture 不进测试面)+ 识别失败响亮失败测试 + entry 编排流程测试 + prep 触发委派测试 + 字段退役零残留断言翻新。
 **设计依据**:design.md §2.1/§2.2/§2.3/§2.4(附属机制处置表)
 **文件面**:src/sr_od/application/currency_war/operations/cw_screen/cw_screen_plane_intel.py、operations/cw_entry/cw_entry_plane_intel.py、operations/cw_screen/cw_screen_prep.py、kernel/cw_screen_report/plane_intel.py(3.1 已建,本阶段接线)、kernel/cw_screen_report/prep.py、kernel/cw_game_state.py、kernel/cw_projection_audit.py、kernel/cw_comps.py、kernel/cw_vocab.py、obs/cw_briefing_obs.py、obs/cw_observation.py、telemetry/schema.py、currency_war_config(briefing_reconcile 字段处置)、sr-od-test 对应测试文件
 **依赖**:3.1
@@ -34,7 +34,7 @@
 - 行为对照 design.md §2.1/§2.2:6 node 流程测试走通;识别失败 → 重试耗尽 → op fail → prep 透传 fail;接管链全链(prep→entry→intel→report→容器)一次贯通
 - design.md §2.2 附属机制处置表逐行:①零残留、②④挂 node6 簇各一测、③难度参考**逐位面**落账(三识别 node 各读、node6 落账)
 - entry 真值跳过门:容器已有真值 → 零点击直通(防手动调起白开白关详情屏)
-- design.md §2.4:takeover 两字段/ctx 通道/对账网/start_plane 零残留;match_facts 域版本断言(翻新后值)绿;audit_stale_keys 完备性锁绿
+- design.md §2.4:takeover 两字段/ctx 通道/对账网/start_plane 零残留;match_facts 域版本断言(翻新后值)绿;audit_stale_keys 完备性测试绿
 - None 语义勘误清零:grep『徽章态』+『该位面无身份』src 双模式零命中(文档勘误归正本更新批)
 - 通用工程门(见首节定义)
 **验收凭据形式**:grep 零残留输出 + 测试名清单 + L1 全绿

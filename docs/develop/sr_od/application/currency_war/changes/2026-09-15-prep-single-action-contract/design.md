@@ -15,7 +15,7 @@
 - 明确不解决(防外溢):
   - 「只接收 game state」的字面化——输入经 session 黑板(容器 BoardState/obs_frame)是有意设计,决策的历史依赖性(意向状态机/defer 计数)需要跨步状态载体,规范核查已认定精神符合,不动;
   - 决策核内部发射组织(`entry.emit` 三遍编排、帧稳定分类、`_merge_ev_before_frame_end` 合并)——它们是首项选择序的活机制(取舍见 §3 备选 B);
-  - 商店 `decide_shop_screen` 驱动器(sim 引擎/回放/序列锁消费整序列,合法多动作面)与 pick 族(单选返回,已合规);
+  - 商店 `decide_shop_screen` 驱动器(sim 引擎/回放/序列测试消费整序列,合法多动作面)与 pick 族(单选返回,已合规);
   - 决策核内灭失契约工作副本引用族(`entry.py` ≥8 处「契约 v2 §3.2/§3.3/契约 §2」、`mandate.py` L1299「契约截断点」等)——既有债,归决策核行为变更大批顺带收敛,本批核内零改动边界不含(缓解在位:`entry.py` 模块头已就地自证契约工作副本灭失并重锚 `flow/action_exec.md` §1);
   - `changes/`/归档稿死指针族的**面外存量**(同族指针散布于注册表/适配器/criteria/账本/谓词等 ≥10 文件:如 `cw_action_registry.py`、`mandate_v1/adapter.py`、`criteria/contracts.py`、`criteria/levelup.py`、`criteria/sell.py`、`mandate_state.py`、`economy_cycle.py`、`sell_gate.py`、`statefn/predicates.py`)——既有债,本批只清四文件面内实态 5+4 处;面外存量归将来的全仓注释卫生批顺带,不在本批扩面;
   - 正本路径笔误族面外存量(`flow/action-logic-state.md` 误写全仓 7 处,面内 3 处本批清,面外 4 处 = `kernel/cw_game_state.py`×3 + `kernel/cw_vocab.py` L801)与已删 `decision_v2` 包死引用族面外存量(`telemetry/schema.py` L469、`cw_equip_wear_plan.py` L256、`cw_registry.py` L1317、`cw_screen_planner.py` L197)——同归全仓注释卫生批顺带;
@@ -73,7 +73,7 @@ action = result
   - 两处循环的「空批合法(契约 §4…)」注释——「契约 §4」指向已灭失的契约工作副本,改写为 None 语义注释;
   - 两处循环 F3 参数校验注释的「契约 §2:参数非法交回留证…」(与 §4 同一灭失副本)→ 删死引用、保留语义自足表述(「参数非法交回留证;执行前输入契约检查,非动作后判效」——不重锚新指针:action_exec §2 无此语义,活正本 = `screens/prep.md` §4);
   - `lifecycle_decision_cycle` docstring 整句定稿——首行死指针「(架构设计 §5.1 后三段逐动作迭代)」(§5.1 指向已灭失工作副本)随批删除;终结出口枚举定稿:「终结出口语义 = 无动作(None)/参数非法/出战(发出即终结)/开店切换/访问上限」(删「空批」→ None 口径;删「控制流」——控制流类动作已整体退役出词表;删「逻辑态未建模」——保守回退分支已随 R9 删除,孪生死口径);
-  - 主循环决策段头注释块(在 §2.2 码块替换段之外,L2004-2014 区域)整块定稿——删「三遍编排序保持(决策核输出逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级锁按锁纪律重推)」(消费端不再取首项,整句过期)与「逻辑态未建模的动作同判保守回退」(R9 已删分支),定稿文本:「③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 + 每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次建期望态 → 逐动作『决策(黑板=逻辑态)→ F3 校验 → 期望态计算 → 执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口(OpenShop/StartBattle/OpenBox)= 终结 op,执行即本访问结束交回外循环(下次入口重观察)。B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——动作机械执行(端口无成败回执),无进展治理归外循环 stall 防线(F2),落地判定归观察侧 reconcile。」;
+  - 主循环决策段头注释块(在 §2.2 码块替换段之外,L2004-2014 区域)整块定稿——删「三遍编排序保持(决策核输出逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级测试按测试纪律重推)」(消费端不再取首项,整句过期)与「逻辑态未建模的动作同判保守回退」(R9 已删分支),定稿文本:「③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 + 每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次建期望态 → 逐动作『决策(黑板=逻辑态)→ F3 校验 → 期望态计算 → 执行 → 逻辑态直写』循环,循环内零读屏。已知画面出口(OpenShop/StartBattle/OpenBox)= 终结 op,执行即本访问结束交回外循环(下次入口重观察)。B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——动作机械执行(端口无成败回执),无进展治理归外循环 stall 防线(F2),落地判定归观察侧 reconcile。」;
   - 两处循环的循环外预声明 `actions: list = []`(L2016/L2220 区域)随改写定名 `result` 成死变量,删除(ruff F841 在项目 select 内,通用工程门必红);
   - **收尾机械扫尾(防枚举漏孪生,结构性判据)**:四文件全文 grep 关键词族(`契约 §`/`契约 v`/`序列契约`/`序列发射`/`空批`/`取首项`/`drain`/`unified-action-factory`/`design.md`/`DESIGN.md`/`统一设计稿`/`action-logic-state`),命中逐处三分处置——已收敛(本批点名处)/保留申报(写明理由,如「决策核内发射组织语义,非流程侧契约」)/新发现(补收敛);禁未处置命中。枚举清单可能不全,本扫尾是完备性的机械兜底;
   - `changes/` 引用注释实态 5 处(L664「unified-action-factory 批2b」、L984「unified-action-factory…§2.6」、L2103-2106 与 L2325-2326「design.md unified-action-factory §2.4」、L2537 裸「design.md §2.6」)——「代码禁引 changes/」铁律的既有债,随本批注释收敛**全部清理**(同族同批清,不留保留申报口子):删 changes/ 指针、保留语义表述(「终结集与等待时长改读注册表 op 类 `terminal`/`terminal_wait` 类属性,消费点经注册表读类属性,禁消费点私表」等已自足);正本路径笔误同族实态 3 处(L985/L1000/L1187;首处语句起于 L984 注释行)顺带修正(「flow/action-logic-state.md」→「game_state/action-logic-state.md」);扫尾关键词族因此补 `action-logic-state`;扫尾关键词族因此补 `design.md`(裸 design.md 指针无其他词可兜);
@@ -102,7 +102,7 @@ return actions[0] if actions else None
   3. 「入口内务 = 结算惰性 drain + 备战帧代次消费」——结算惰性 drain 已删除(实码只调帧代次消费,`flow.py::_consume_prep_direction_frame` docstring 自证);
   4. 类级三处:`DESCRIPTION`「序列契约 v2 帧稳定截断发射」→「单动作循环发射(帧稳定截断为决策核内发射组织,非流程侧契约)」;裸「§4.1」两处(模块 docstring 首段 L3、类 docstring 第二段 L81「pick 族缺省实现(基线本体零改动,§4.1)」)→ 均删括注/改语义表述(指涉的方案节已灭失;「config 切 strategy_id 即换核」「pick 族缺省实现(基线零改动)」已足表意);
   5. 同族残留三处(未改行,逃过 diff 域判据,显式点名):模块 docstring L14「契约 §5 职责分界」(同族灭失契约工作副本引用)→ 改语义表述(如「生产路径职责分界:画面 op 只写黑板 + 调一个决策入口」);模块 docstring L9 引已删除的 `decision_v2/adapter.py` 作分拆先例(整包已删,先例指针死)→ 改语义表述或删;类 docstring 首句「三遍化决策序(证明→骨架→EV)+ 序列发射」→「…+ 单动作循环发射」。
-- `flow.py::decide_shop_action` docstring 顺带收敛两处(docstring-only 零行为;同 docstring 孪生):L695-696「选择序 = 既有波批优先级 逐帧取首项」→「选择序 = 决策本体候选扫描序,逐帧恰取一个动作」(商店决策本体 = mandate_v1/shop.py 顺序候选扫描,无 entry.emit 式发射组织;现行句「波批优先级」语源属实,仅换单动作口径,不虚构发射组织语义);L699「入口内务 = 结算惰性 drain + 帧代次消费」→「入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;方向刷新在决策读视图之前完成,ADR-0583 内化锚)」。另:flow.py L202-203「方法体逐字平移自 ``decision_v2/strategy.py``」(整包已删)→ 改语义表述(「平移自已退役的 decision_v2 决策包,行为锚见各方法 docstring 与 sim 契约锁」)。
+- `flow.py::decide_shop_action` docstring 顺带收敛两处(docstring-only 零行为;同 docstring 孪生):L695-696「选择序 = 既有波批优先级 逐帧取首项」→「选择序 = 决策本体候选扫描序,逐帧恰取一个动作」(商店决策本体 = mandate_v1/shop.py 顺序候选扫描,无 entry.emit 式发射组织;现行句「波批优先级」语源属实,仅换单动作口径,不虚构发射组织语义);L699「入口内务 = 结算惰性 drain + 帧代次消费」→「入口内务 = 帧代次消费(:meth:`_consume_shop_direction_frame`;方向刷新在决策读视图之前完成,ADR-0583 内化锚)」。另:flow.py L202-203「方法体逐字平移自 ``decision_v2/strategy.py``」(整包已删)→ 改语义表述(「平移自已退役的 decision_v2 决策包,行为锚见各方法 docstring 与 sim 契约测试」)。
 - `flow.py` 面③出辖观察件注释块的已归档设计稿指针四处顺带收敛(L105「p2_blood_band_unified_design/DESIGN.md §2.3-5(a)」、L112「统一设计稿 §4-8」、L133「统一设计稿 §5-F4」、L139 裸「§4-8」;指向 .debug 归档 gitignore 稿 = 死指针):判据语义已自足于代码,删指针或改语义表述。
 - `flow.py` 两处删除声明墓碑(L422-423「原前置的结算惰性 drain 已删除」、L430「结算槽 drain 已删除」)系删除声明墓碑(扫尾词族会命中),**保留申报**——语义为现行事实的出处说明,非死口径,不改。
 - `decide_prep_screen` 新 docstring 关键句定稿(核心段整段替换,不逐点拼补;防旧口径关键词回潮):「备战画面黑板决策(单动作契约接口,返回 ``CwAction | None``)。输入 = ``session.prep_obs_frame``(缺失即抛错)。输出 = 决策核发射序列的**首个动作**;空序列(含截断截空)→ ``None`` = 本帧无动作。帧稳定截断为决策核内发射组织,非流程侧契约。入口内务 = 备战帧代次消费(方向刷新先于三遍编排)。」
@@ -112,20 +112,20 @@ return actions[0] if actions else None
 - sim 引擎唯一决策入口 = 商店决策面,prep 面在 sim 无实体真值源(依据 = `flow/README.md` §2.3「sim 消费面注记」);
 - `cw_replay --diff` 只重放商店决策面(依据 = op-layer §4 次门表述),本批改动对 replay 逐位无感;
 - `tools/cw/replay_to_md.py` = 离线记录渲染工具(按 decisions 记录流渲染备战/商店/补给三类 op 段),不调用备战契约接口,零影响。
-- **可观测性声明**(对齐 strategy-work §4 A/B 申报纪律):本批改动层 = 契约形状 + 流程消费端,sim 结构性不可见,不可作 A/B 判据;验证 = 契约锁 + 实机(§2.6)。
+- **可观测性声明**(对齐 strategy-work §4 A/B 申报纪律):本批改动层 = 契约形状 + 流程消费端,sim 结构性不可见,不可作 A/B 判据;验证 = 契约测试 + 实机(§2.6)。
 
-### 2.5 测试与锁
+### 2.5 测试
 
-- 在册锁盘点:测试仓 `decide_prep_screen` 消费面仅 `test_cw_p2_blood_band.py` 的 abstract 桩子类(`*a, **kw` 签名,形状免疫);全仓 grep 无断言 list 形状/空批文案的锁。在册锁零更新义务。
-- **新增契约形状锁**(测试仓新增用例,锁 docstring 出处 = `flow/README.md` §2.2——3.3 正本更新后的备战接口行;指针纪律见 landing §3.2/§3.3):
+- 在册测试盘点:测试仓 `decide_prep_screen` 消费面仅 `test_cw_p2_blood_band.py` 的 abstract 桩子类(`*a, **kw` 签名,形状免疫);全仓 grep 无断言 list 形状/空批文案的测试。在册测试零更新义务。
+- **新增契约形状测试**(测试仓新增用例,校验 docstring 出处 = `flow/README.md` §2.2——3.3 正本更新后的备战接口行;指针纪律见 landing §3.2/§3.3):
   - mandate_v1 具现:有动作帧 → 返回恰一个 `CwAction` 实例(且 = `decide_from_turn` 输出首项);
   - 空发射态构造(决策核返回空 list 的桩/直调路径)→ 返回 None;
-  - 非 None 非 CwAction 的非法返回 → 消费端 F3 fail(消费端守卫锁,可用桩策略)。
+  - 非 None 非 CwAction 的非法返回 → 消费端 F3 fail(消费端守卫测试,可用桩策略)。
 - L1 快速集全绿(命令 = `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`。注:CW skill「测试分层」行路径 `…/sr_od/app/…` 系笔误、其 `legacy_baseline` 标记已死(全仓零命中,`-m` 与 `not slow` 恒等),两处均已在 skill 反馈队列在册候裁,以本行内联命令为准)。
 
 ### 2.6 验证(行为零变化声明)
 
-- 本批 = 纯形状收口:决策核零改动、bridge 取首项与消费端原取首项同源、空序列→None 逐义映射。行为等价不依赖 sim 分布证据(§2.4 已声明 sim 不可见),依赖**代码等价论证 + 契约锁**。
+- 本批 = 纯形状收口:决策核零改动、bridge 取首项与消费端原取首项同源、空序列→None 逐义映射。行为等价不依赖 sim 分布证据(§2.4 已声明 sim 不可见),依赖**代码等价论证 + 契约测试**。
 - **预期判读面文案变化申报**(非行为变更):空批分支 `round_success` detail 两处「空批(本帧无动作),交回外循环重观察」→「本帧无动作,交回外循环重观察」;F3 形状拒绝 warning/status「策略输出非 list[CwAction](F3)」→「策略输出非 CwAction|None(F3)」。已核无工具/测试/哨兵依赖旧文案(测试仓与 tools/ 零命中;哨兵实态 = `.dsh/skills/sr-od-currency-war-dev/scripts/` 4 件,亦零命中),journal 判读遇新文案形态不记异常。
 - 实机烟雾一局(流程回归哨兵,非策略验收;分工依据 = strategy-work §4 实机/sim 分工)。判读锚点开跑前写死:
   1. 备战节点无新增 stall 兜底触发/执行失败安灯/未知画面兜底;

@@ -80,7 +80,7 @@
 
 ## 三核结论
 
-- **核一(无前提)**:消费端全集(全 src `decide_prep_screen` 生产调用仅 cw_screen_prep 两处)、sim/replay/tools 零消费 prep 面(flow/README §2.3 L91 + op-layer §4 L153 + tools 零命中实证)、测试影响面(全仓仅 `test_cw_p2_blood_band.py` L213-218 `*a, **kw` 桩子类,形状/文案锁零命中)、正本更新清单 16 条引文/行号逐条在码在文——设计边界完整;发现 = F1-F4 的收敛完备性缺口。
+- **核一(无前提)**:消费端全集(全 src `decide_prep_screen` 生产调用仅 cw_screen_prep 两处)、sim/replay/tools 零消费 prep 面(flow/README §2.3 L91 + op-layer §4 L153 + tools 零命中实证)、测试影响面(全仓仅 `test_cw_p2_blood_band.py` L213-218 `*a, **kw` 桩子类,形状/文案测试零命中)、正本更新清单 16 条引文/行号逐条在码在文——设计边界完整;发现 = F1-F4 的收敛完备性缺口。
 - **核二(规范遵循)**:landing 阶段小节七件齐;依据就地标注(引文逐条核存在);无过程叙事;迭代内工件引 changes/ 合法、代码/正本 changes/ 引用清理符合铁律;§0 状态与 README 进度一致(除 F4)。规范遵循零违例。
 - **核三(治本)**:§1 归层表示层成立(消费语义 2026-09-06 已迁移、签名 list 未跟上,双向实证);§2 修根 = 契约面形状收口,决策核内 list 保留有活机制依据(首项选择序 4 调用点 + `_merge_ev_before_frame_end`/M7 回排实证),非症状补丁;备选 A-D 弃因逐条对权威源核验无空洞(D 的「对称不是规范条款」与 op-layer §1.1 分域表述吻合);None 通道三点依据全部直调成立(⑥ 空则补 StartBattle = entry L936-944 实码;可达空边 = truncate 首位 SellBench/DeployMove 复检截空 L309-324;unknown 首位边不可达 = 决策核可发射 17 类全被四分类覆盖 1+11+1+4 直调数过,备战词表 18 类第 18 类 = OpenBookcard 画面 op 侧发射);行为零变化论证(bridge 取首项与消费端原取首项同源同位、空序列→None 逐义映射、None 文案/fail 文案变化已申报且测试仓/tools/src 消费零依赖)成立。残留缺口 = F2 的家族清点与残留登记。
 

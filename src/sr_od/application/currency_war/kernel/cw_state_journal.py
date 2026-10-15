@@ -64,7 +64,7 @@ DEFAULT_FLUSH_EVERY: int = 64
 
 #: 实机形态 run_id 正则(实机段分型判据;telemetry/state.start_run 铸造口径
 #: ``run_%Y%m%d_%H%M%S``)。与 telemetry/match_archive._JOURNAL_RUN_ID_RE 及
-#: 三件哨兵脚本的正选口径同源,一致性由测试锁钉住(正则各自持字面量:
+#: 三件哨兵脚本的正选口径同源,一致性由测试钉住(正则各自持字面量:
 #: kernel 禁依 telemetry,哨兵是跨仓独立脚本,无共享 import 面)。
 REAL_RUN_ID_RE: re.Pattern[str] = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 

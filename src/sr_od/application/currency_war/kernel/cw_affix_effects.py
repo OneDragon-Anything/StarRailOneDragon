@@ -32,11 +32,11 @@
   (_AFFIX_HP_DELTA),再建 EffectSpec = −20 数值第二份(双源漂移),
   见 AFFIX_SPEC_EXEMPT。
 
-**防漂移锁**(sr-od-test test_cw_affix_spec_registry):谓词扫描命中集必须恰等于
+**防漂移测试**(sr-od-test test_cw_affix_spec_registry):谓词扫描命中集必须恰等于
 SPEC ∪ 豁免集(词缀)/申报表(装备)。运行时采集(write_affix_effects)向
 affix_effects_data 追加新词缀后,新改写源若未申报,下一轮测试即红、强制人工评审;
 **不设 import 即炸**——运行时采集路径不能因覆盖缺口中断(与 cw_investments
-孤儿校验「结构自洽炸、覆盖完备靠锁」分层同理)。
+孤儿校验「结构自洽炸、覆盖完备靠测试」分层同理)。
 """
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def _validate_affix_specs() -> None:
     ③ payload↔category 一致(与 STRATEGY_EFFECTS 同规则);
     ④ pending → notes 必写保守支。
     覆盖完备性(谓词扫描 vs 申报集)不在此层——运行时采集会追加新词缀,
-    覆盖缺口归测试锁(见模块 docstring「防漂移锁」)。
+    覆盖缺口归测试(见模块 docstring「防漂移测试」)。
     """
     for name, spec in AFFIX_EFFECT_SPECS.items():
         if name not in AFFIX_EFFECTS:
@@ -175,8 +175,8 @@ def _match_faces(effect_text: str,
 def scan_rewrite_affixes() -> dict[str, str]:
     """affix_effects_data 全量 × 改写谓词 → {词缀名: 命中面(逗号连)}。
 
-    命中集与申报集(SPEC ∪ EXEMPT)的恰等由测试锁看管;新增改写词缀未申报
-    时锁红(运行时采集不中断,见模块 docstring)。
+    命中集与申报集(SPEC ∪ EXEMPT)的恰等由测试看管;新增改写词缀未申报
+    时测试红(运行时采集不中断,见模块 docstring)。
     """
     return {name: ','.join(_match_faces(text, _AFFIX_REWRITE_FACES))
             for name, text in AFFIX_EFFECTS.items()
@@ -210,8 +210,8 @@ _EQUIP_REWRITE_FACES: tuple[tuple[str, tuple[tuple[str, ...], ...]], ...] = (
 def scan_rewrite_equipments() -> dict[str, str]:
     """cw_equipment_data 全量 × 改写谓词 → {装备名: 命中面(逗号连)}。
 
-    命中集与 EQUIP_REWRITE_DECLARATIONS 的恰等由测试锁看管;装备注册表为
-    生成文件(勿手改),新增改写件后锁红 → 在申报表补行评审。
+    命中集与 EQUIP_REWRITE_DECLARATIONS 的恰等由测试看管;装备注册表为
+    生成文件(勿手改),新增改写件后测试红 → 在申报表补行评审。
     """
     return {name: ','.join(_match_faces(eq.effect, _EQUIP_REWRITE_FACES))
             for name, eq in EQUIPMENTS.items()
@@ -359,7 +359,7 @@ def _validate_equip_write_sides() -> None:
     ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
        observation 形必含「观察收口」——登记与归属申报互证,防单边漂移
        (report: 随机面 write_logic_rand 属逻辑族随机写,同覆盖「逻辑写」)。
-    覆盖完备性(扫描命中集 vs 申报表键集)归测试锁(模块 docstring「防漂移锁」)。
+    覆盖完备性(扫描命中集 vs 申报表键集)归测试(模块 docstring「防漂移测试」)。
     """
     if set(EQUIP_WRITE_SIDES) != set(EQUIP_REWRITE_DECLARATIONS):
         raise ValueError(

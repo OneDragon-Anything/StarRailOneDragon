@@ -18,7 +18,7 @@
 - `references/runtime-ops.md`:实机运维细则(启动与重启、早停判据、局间交接序、残局画面清单、监控栈与哨兵脚本组)。
 - `references/data-collection.md`:数据采集全景(生成器族、图鉴实采、运行时钩子、建模增量层、钩子统一使用与产物路径)。
 - `references/compo-knowledge.md`:阵容知识工程(证据三层、三笔账、提炼/修订/版本重跑流程)。
-- `references/strategy-work.md`:策略工作统一说明(策略是什么与骨架、改前、开关落地、验证、单帧锁)。
+- `references/strategy-work.md`:策略工作统一说明(策略是什么与骨架、改前、开关落地、验证、单帧测试)。
 - `references/autonomous-loop.md`:CW 编排资产(定时任务提醒网角色与提示词模板/实机监控自执行模板/策略审查/哨兵报警消费;定时任务消费与编排者-worker 等通用机制单一源=od-dev-agent-autonomous-mode)。
 - `design/`:本文件;ADR(why)仅经用户命令创建(默认无)。
 

@@ -187,7 +187,7 @@ def apply_action_outcome(
         _ok: bool, _cur: 'GameStateReadReceipt',
         match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
         visit_actions: list) -> None:
-    """执行结果落地门(调用环单一源;审查补办清单 C1 调用环级锁的承载体。
+    """执行结果落地门(调用环单一源;审查补办清单 C1 调用环级测试的承载体。
 
     C1 语义 = 旧 return True 使期望账逻辑态与 tracked 实账分叉;应修-2 语义
     = 已买集无条件追加使检出帧名污染 prefer_names/churn(审查补办审,

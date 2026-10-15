@@ -36,9 +36,9 @@
 ### F4 [中] 测试 docstring 出处指针「design.md §2.1 → flow/README §2.2」切换无阶段归属
 
 - 位置:landing.md §3.2 完成判据 vs §3.3 范围。
-- 事实:3.2 判据「新锁绿且 docstring 引设计出处(design.md §2.1;正本化后 = flow/README §2.2)」只是括注意图:3.2 验收时 flow/README §2.2 还是旧口径(3.3 才更新),锁只能引 changes/ 内的 design.md;而 3.3 范围与文件面只含「清单所列正本文档」,不含测试文件。
+- 事实:3.2 判据「新增测试绿且 docstring 引设计出处(design.md §2.1;正本化后 = flow/README §2.2)」只是括注意图:3.2 验收时 flow/README §2.2 还是旧口径(3.3 才更新),测试只能引 changes/ 内的 design.md;而 3.3 范围与文件面只含「清单所列正本文档」,不含测试文件。
 - 影响:按现有判据走完迭代,测试 docstring 将长期引用 `changes/2026-09-15-prep-single-action-contract/design.md`——违反 AGENTS「代码与正本文档禁引 changes/ 内容(长期引用)」铁律,且 changes/ 不定期删减后引用死亡。两阶段判据都没回答「谁在何时切换指针」= 实现者需自行拍板(硬规则 2 卡点)。
-- 修正方向:二选一——① 3.3 范围/文件面扩展「测试 docstring 出处指针 design.md §2.1 → flow/README.md §2.2」;② 3.2 判据直接写死「docstring 引 flow/README.md §2.2」,3.3 完成判据加「锁 docstring 指针复验」。
+- 修正方向:二选一——① 3.3 范围/文件面扩展「测试 docstring 出处指针 design.md §2.1 → flow/README.md §2.2」;② 3.2 判据直接写死「docstring 引 flow/README.md §2.2」,3.3 完成判据加「测试 docstring 指针复验」。
 
 ### F5 [低] 状态字段不同步
 
@@ -92,7 +92,7 @@
 ### 2.4 测试影响面(§2.5 主张逐项实证)
 
 - sr-od-test 全仓 grep `decide_prep_screen`:仅 test_cw_p2_blood_band.py L246 `def decide_prep_screen(self, *a, **kw)` 桩(形状免疫),与设计主张一致。
-- 全仓无 `list[CwAction]`/`非 list`/`actions[0]` 断言,无「空批/策略输出非」文案锁——「在册锁零更新义务」成立。
+- 全仓无 `list[CwAction]`/`非 list`/`actions[0]` 断言,无「空批/策略输出非」文案测试——「在册测试零更新义务」成立。
 
 ### 2.5 docstring as-built 审计(cw_strategy.py L121-144,逐句对代码)
 
@@ -117,6 +117,6 @@
 | mandate_v1 边界与恒非空 | bridge.py L107-130、L259-291;entry.py L8-35、L200-217、L241-331、L432-446、L903、L936-946、L1157;mandate.py L1299/L1753/L1956/L1960/L1965;flow.py L32-35 |
 | None 通道依据链 | op-layer L21/L37;26_battle_settlement.md 存在性;B4 条款(flow/README L58、cw_strategy.py L111);CW_ACTION_TYPES 覆盖核算 |
 | sim/replay 可观测面 | flow/README §2.3/§2.4;op-layer §4;tools/cw/replay_to_md.py L16-17/L536/L1370 |
-| 测试与锁影响面 | sr-od-test 全仓 grep(decide_prep_screen/list 形状/空批文案);test_cw_p2_blood_band.py L239-249 |
+| 测试影响面 | sr-od-test 全仓 grep(decide_prep_screen/list 形状/空批文案);test_cw_p2_blood_band.py L239-249 |
 | docstring as-built(对象 2) | cw_strategy.py L121-144 diff ↔ 上述全部码点 |
 | 迭代规范遵循 | iteration-design.md §1-§7(四节/七件/硬规则三条);AGENTS §8 注释规范、§9 文档规范(changes/ 引用铁律) |

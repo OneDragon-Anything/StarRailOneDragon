@@ -55,7 +55,7 @@
 **能开工。** 逐项:
 
 1. **`kernel/cw_pool.py`**:五函数 + `EXPERT_COPIES_ASSUMED` 常量清单具名(签名与实况逐字吻合);头注/docstring 重写规则可执行(M06/U10/U11/M05 等 changes/ 节号 → 语义表述 + 持久索引,持久索引已给定 = `research/economy.md` §1、`data/cw_shop_odds.py`;禁携带 changes/ 引用;守恒文案改句已给);唯一语义改造点(过滤条件 → `effective_cost`)与 None 归约语义均有代码锚。
-2. **测试动作清单具名且实况吻合**:`test_cw_sim_pool.py` import 切换面 = :28-34 五个**公开**名(私有函数不在 import 面,切换无暗礁),7 测/3 直测行号(:54/:69/:89/:107/:125/:139/:148)精确;新锁四条均可构造——≥9 清空构造先例在册(:95 单 3★ = 9 副本),双出口分野锁的「held ∈ [9,26] 1/2 费卡」由 3★/2★/1★ 组合即得(27 副本卡 remaining 恒正,held=9 即触发清空边界);档 = 4 写点先例 = `pick_planner.py:213`(`write_logic(gs.lv999_cost_tier, …)`);`test_cw_sim_equips.py` 改面 = 删 :50/:53 两 import + :148-155 整测,留守三符号消费不受累。
+2. **测试动作清单具名且实况吻合**:`test_cw_sim_pool.py` import 切换面 = :28-34 五个**公开**名(私有函数不在 import 面,切换无暗礁),7 测/3 直测行号(:54/:69/:89/:107/:125/:139/:148)精确;新测试四条均可构造——≥9 清空构造先例在册(:95 单 3★ = 9 副本),双出口分野测试的「held ∈ [9,26] 1/2 费卡」由 3★/2★/1★ 组合即得(27 副本卡 remaining 恒正,held=9 即触发清空边界);档 = 4 写点先例 = `pick_planner.py:213`(`write_logic(gs.lv999_cost_tier, …)`);`test_cw_sim_equips.py` 改面 = 删 :50/:53 两 import + :148-155 整测,留守三符号消费不受累。
 3. **仅剩两处近自明微选择**(不构成阻塞):披露键常量的宿主/形态(键名已定;先例 = 假设键常量面,`cw_gain_effects.py:48`/`cw_ore_reward.py:44`);「其余函数零改动」按语义层读(见 A 表 F11)。
 
 ---
@@ -65,15 +65,15 @@
 1. **符号/锚全量核实,零漂移**(工作树实况,含在飞 commit `9e9c71db9` 后):池四函数 + 私有(:33/:54/:73/:90/:100)、档过滤行 :109、守恒炸错 :82-86、唯一消费方 `cw_sim_shop.py:43`(import)/:87(调用)、`cw_sim_special.py` :39/:45-58(两死符号)/:21-22(试用句)/:6-11(头注 M21 段)、引擎 :159-162(只 import 留守两符号)/:473/:528-529(deal_shop 不传 extra_experts)、`POOL_COPIES_PER_CARD` = `data/cw_shop_odds.py:33`({1:27,2:27,3:9,4:9,5:9})、`effective_cost` = `kernel/cw_economy.py:158`(签名 `(gs, char_id)`,None→3 归约 :175-177,docstring :159 申报「随机授予采样空间」辖域)、`cw_sim_opening.py::_uniform_char_of_cost` :87-93。
 2. **包布局与档写点复核属实**:kernel/ 全域零 sim import(grep 现树);sim/ 全域零 `lv999_cost_tier` 写点(写端仅 `pick_planner.py:213`/`deploy_move.py:131`)→ §2.3「无害透传」前提在现树成立。
 3. **双出口与在库 gain-chain 无重复桶逻辑(任务 B2 指定核)**:`cw_gain_chain.py`/`cw_gain_effects.py` 全文零 `chars_by_cost`/池派生;`gain_character` 收具体 `(name, star)`(落位→回调→合成),采样全在调用方;在库唯一另一采样 = `roll_hacker_mod`(装备硬编码名单池,非角色按档,披露键在册)。按档抽名/池派生全域 grep 对账:池出口 + sim_opening(§1.4 已点名)+ `cw_ore_reward.py:88-92`(漏点 → F18);其余 `POOL_COPIES_PER_CARD` 消费 = 估值族(`statefn/odds.py:37`/`vopt.py:95`/`cw_line_switch.py:86`)与审计行,均在不解决表既有覆盖内。
-4. **装备池排除面现态成立**:`tool_use.py` `furnace_mutate_pool`:87/`furnace_mutate_sample`:99(消费 :219/:258);同种子对拍锁在册(`test_cw_tool_use_report.py:187-209`,与 `cw_sim_equips.furnace_reroll` 逐次等值);`cw_affix_effects.py:278-282` 冶金炉行申报「采样池 = furnace_reroll 同源」——仍双实现 + 锁,与设计假设无冲突。
+4. **装备池排除面现态成立**:`tool_use.py` `furnace_mutate_pool`:87/`furnace_mutate_sample`:99(消费 :219/:258);同种子对拍测试在册(`test_cw_tool_use_report.py:187-209`,与 `cw_sim_equips.furnace_reroll` 逐次等值);`cw_affix_effects.py:278-282` 冶金炉行申报「采样池 = furnace_reroll 同源」——仍双实现 + 测试,与设计假设无冲突。
 5. **权威源对齐**:`economy.md` §1(:8 副本数逐值吻合;:10 ≥9 =「清空该牌在**商店**的库存」——商店域措辞即 §2.2 双出口分野的定谳依据;:15 派生池不变量);`equipment_mechanics.md` §7 两段定谳(:157-170);`gameplay/currency_war.md:81`(试用权威)。
-6. **治本核**:§1.3 归层(架构层/模块归属)成立——池是跨 sim/实机采样共享概念,升格 = 根因修复非症状;在飞批(晶矿采样器/gain-chain)没有绕开池另起第二份**池派生**的苗子(F18 是第二份**抽名口径**而非池派生,且自有 v0 披露域)。装备池排除面对拍锁已护、无未防护面。
+6. **治本核**:§1.3 归层(架构层/模块归属)成立——池是跨 sim/实机采样共享概念,升格 = 根因修复非症状;在飞批(晶矿采样器/gain-chain)没有绕开池另起第二份**池派生**的苗子(F18 是第二份**抽名口径**而非池派生,且自有 v0 披露域)。装备池排除面对拍测试已护、无未防护面。
 7. **A 部分附带核**:`invest_effects.md:69` 与设计授予出口 v0 口径互洽(≥9 未证 ↔ 出口不含 ≥9 + 披露键);两文件工作树未提交修订内容即定谳记档本体,与设计转述一致。
 
 ---
 
 ## 总结论
 
-**修订后收敛(无结构性返工)。** 主体方案(搬家非重写、双出口、M21 退役、透传形态、测试随迁等价锁)经第三轮全量复核继续成立;全部锚点在含并行批落地后的工作树实况上零漂移。本轮无 major;3 条 minor 均为**声明面**点状修订(F18 §1.4 边界清点按现状改写两行 / F19 grant 出口补调用前置与分布语义两句 / F20 M22 行补在架重标半句),另有两项第二轮发现的清偿缺口需补:F12 残句「旧档桶全桶不可抽」(design.md:49)删除、F17 状态行过程叙事(design.md:8-10)删除。
+**修订后收敛(无结构性返工)。** 主体方案(搬家非重写、双出口、M21 退役、透传形态、测试随迁等价测试)经第三轮全量复核继续成立;全部锚点在含并行批落地后的工作树实况上零漂移。本轮无 major;3 条 minor 均为**声明面**点状修订(F18 §1.4 边界清点按现状改写两行 / F19 grant 出口补调用前置与分布语义两句 / F20 M22 行补在架重标半句),另有两项第二轮发现的清偿缺口需补:F12 残句「旧档桶全桶不可抽」(design.md:49)删除、F17 状态行过程叙事(design.md:8-10)删除。
 
 计数:major 0,minor 3(F18 边界清点失真:晶矿采样器已在役 + 「第二处」计数失效;F19 grant 出口消费契约两维未闭;F20 在架卡重标维度未随定谳传播到 M22 边界)。A 部分 F9–F17:7 项落地(F11/F15 带备注),F12 部分落地,F17 未落地;用户新定谳记档一致性核过,无矛盾。

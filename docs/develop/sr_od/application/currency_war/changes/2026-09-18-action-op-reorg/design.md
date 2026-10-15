@@ -50,7 +50,7 @@ class CwActionSellBenchOp(SrOperation):
 - 自上报 sig = `ChannelSig(family='logic_action', actor=type(self).__name__, mode='compute')`;gs = `game_state_from_ctx(self.ctx)`(先例 = cw_op_close_shop.py::`_note_receipt`)。
 - 终结跳写语义落位:**`CwActionRefreshShopOp` 与 `CwActionCloseShopOp` 体内不调上报**(原「终结动作生产不写逻辑态」申报语义,现声明长在动作自己身上);sim/驱动器侧照常上报(它们直调上报函数,不经 op)。
 - `CwActionStartBattleOp` 自带跳过子态事实(点没点跳过按钮自己知道)→ 自上报 `report_action_start_battle_param(..., skip_substate=...)`;执行器 `last_launch_ok` 改由 round 结果映射(round_success = 已发出)。
-- **零上报例外登记**:`CwActionPickXxxOp` 族(overlay act 确认链)本批仅换壳(基类/命名/构造),上报函数为零写,调用与否随原体语义——原体无上报位,则不调,完备锁不辖 op 内接线。
+- **零上报例外登记**:`CwActionPickXxxOp` 族(overlay act 确认链)本批仅换壳(基类/命名/构造),上报函数为零写,调用与否随原体语义——原体无上报位,则不调,完备测试不辖 op 内接线。
 
 ### 1.2 类名与文件映射(旧 → 新)
 
@@ -86,7 +86,7 @@ class CwActionSellBenchOp(SrOperation):
 ### 1.4 阶段③验收
 
 - `sr-od-test` 全量绿(预期破点与裁决指引见 §3);`uv run ruff check` 改动文件。
-- 注册完备锁(`test_cw_unified_action_4`)绿 = 每参数类型在注册表可解析。
+- 注册完备测试(`test_cw_unified_action_4`)绿 = 每参数类型在注册表可解析。
 
 ## 2. 阶段④:删聚合口
 
@@ -98,7 +98,7 @@ class CwActionSellBenchOp(SrOperation):
 
 ## 3. 预期测试破点与裁决指引(先判后改,禁盲调期望)
 
-1. **test_cw_transfer_golden / test_cw_shop_projection_logic(锁 M1)**:写形态换原生 BenchSlot(kind 精确保留)= 改进;若断言 pin legacy 视图值,核实 kind 等价后更新期望。
+1. **test_cw_transfer_golden / test_cw_shop_projection_logic(测试 M1)**:写形态换原生 BenchSlot(kind 精确保留)= 改进;若断言 pin legacy 视图值,核实 kind 等价后更新期望。
 2. **备战域卖出补装备回收**:新行为(修 C6 缺口);prep 域卖出带装备的断言按新事实更新。
 3. **备战域 LevelUp 补 level_cap 拒付**:满级备战升级从「照扣」变「拒绝」= 修复;相关用例按新语义更新。
 4. **动作类型串**(action_key/produced_by/回执 op=):阶段①已随名,若仍有 pin 残留照新名更新。
@@ -126,7 +126,7 @@ class CwActionSellBenchOp(SrOperation):
   start_battle/refresh_shop/close_shop`);函数体自 cw_game_state 逐字迁移,
   语义零变化(L3 全量同基线 1185 绿)。
 - 零写族(25 类,函数体 = 三行委托)集中 `zero_writes.py`——无逐类专辖
-  内容,不逐类开文件;完备锁照常逐类点收(经包级 `__getattr__`)。
+  内容,不逐类开文件;完备测试照常逐类点收(经包级 `__getattr__`)。
 - 刷新执行计数组 `record_refresh_execution` 语义同主,并入 `refresh_shop.py`
   (刷新上报 + 计数组同文件单源);签名去 `*`(§0.3:改动签名即显式;
   两调用点均关键字传参,行为零变化)。
@@ -139,5 +139,5 @@ class CwActionSellBenchOp(SrOperation):
 - 时序:先于 ③ 接线(③ op 直调、④ sim 委托串直接 import 最终路径,
   免二次翻动)。
 - 消费面更新:`cw_screen_buy_cards`/`cw_sim_actions`(record_refresh_execution
-  导入路径)与完备锁测试(改查包级;锁变硬 = 文件在即函数在)、
+  导入路径)与完备测试(改查包级;测试变硬 = 文件在即函数在)、
   test_cw_game_state_consume(计数组导入跟包)。

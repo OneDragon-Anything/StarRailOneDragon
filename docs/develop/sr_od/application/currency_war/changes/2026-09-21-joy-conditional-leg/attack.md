@@ -31,7 +31,7 @@
 ### 发现 1 [阻断] | design §2.5-1 + §2.6 双臂判据(+§2.2-3) | rand 通道申报与实码矛盾:rand=True 锚定后仍走 write_logic_rand,「锚定后写 logic 通道走失配网」不成立,§2.6 第二臂判据不可实现
 
 - **问题**:§2.5-1 申报「锚定后写 logic 通道——若模型与真值不符将走失配网(真信号)」;§2.6 双臂判据「`gs.prep_anchored = True` 直赋后 → source=logic」。实码择道口是 `if rand or not prep_anchored_of(gs): return gs.write_logic_rand`(cw_game_state.py:1803)——**rand 形参优先于锚定状态,rand=True 无条件走 logic_rand,与闩无关**。gain_character 链内全部写经 `_select_write(gs, rand)` 继承同一通道,且 test_cw_gain_chain.py:257 已有现成测试锁死该语义(「臂 3:rand=True 恒 logic_rand(与闩无关)」)。照 §2.6 判据写测试必红;照 §2.5-1 理解行为 = 对可验证性的错误申报。实质后果:条件腿授予**锚定后也不进失配三分流**,模型错误(选错候选/星级先验错)不会被失配网暴露,只有 logic_rand_outcome 行 + 首观察静默覆盖——这恰是本批「定谳」质量主张的核心面,申报方向反了。§2.2-3「未锚定期经 anchor_aware_write 亦落 rand,通道一致」回避了锚定后的通道,三处口径互不自洽。
-- **证据**:`cw_game_state.py:1790-1805`(anchor_aware_write,`rand or` 短路)、`cw_gain_chain.py:240-251`(_select_write 委托)/:388/:332(链内写全经本口)、`sr-od-test/.../test_cw_gain_chain.py:244-261`(双臂+臂3 既有锁)、正本 gain-chain.md §5「锚定后按 rand 形参(失配网生效)」。
+- **证据**:`cw_game_state.py:1790-1805`(anchor_aware_write,`rand or` 短路)、`cw_gain_chain.py:240-251`(_select_write 委托)/:388/:332(链内写全经本口)、`sr-od-test/.../test_cw_gain_chain.py:244-261`(双臂+臂3 既有测试)、正本 gain-chain.md §5「锚定后按 rand 形参(失配网生效)」。
 - **处置方向**:§2.5-1/§2.6/§2.2-3 按实码改写——rand=True 全通道 logic_rand(效果体含采样 → 子链 rand=True 纪律的正参推论,引用 gain-chain.md §5),锚定后亦然;可验证性如实申报为「logic_rand_outcome 行 + 观察覆盖,无失配网」;双臂测试第二臂期望改 source=logic_rand(或删臂,改为「闩置位不改变 rand 写通道」断言)。若作者本意是锚定后要确定面,须显式立新裁定并与采样纪律的冲突一起申报——不能维持现文。
 
 ### 发现 2 [应修] | design §2.2-1/§2.3 | rider 置于分派前 + 「失败不阻塞各腿」+「零吞错」三句并置,catch 形态未定义 = 实现者再设计点
@@ -54,7 +54,7 @@
 
 ### 发现 5 [应修] | design §2.6「既有测试随迁」+ landing 3.1 文件面 | test_cw_gain_chain.py 无 joy 临时闩断言,随迁改写对象一半不存在
 
-- **问题**:「`test_cw_gain_chain`/`test_cw_yinlang_phase32` 中 joy 临时闩断言改写」——实读 test_cw_gain_chain.py 全文,`provisional|JOY|欢愉|on_env_gained` 零命中(该文件锁的是链原语/双臂通道/回调枚举,不含临时闩);joy 临时闩断言唯一面 = test_cw_yinlang_phase32.py:456-475(`assert 'joy_contract_provisional' in rows_sink.kinds()`)+ :23-24 文件头注释。申报失实会误导实现者去找不存在的断言(停手令浪费一轮)。
+- **问题**:「`test_cw_gain_chain`/`test_cw_yinlang_phase32` 中 joy 临时闩断言改写」——实读 test_cw_gain_chain.py 全文,`provisional|JOY|欢愉|on_env_gained` 零命中(该文件校验的是链原语/双臂通道/回调枚举,不含临时闩);joy 临时闩断言唯一面 = test_cw_yinlang_phase32.py:456-475(`assert 'joy_contract_provisional' in rows_sink.kinds()`)+ :23-24 文件头注释。申报失实会误导实现者去找不存在的断言(停手令浪费一轮)。
 - **证据**:`grep provisional|JOY|翻来源|on_env_gained|欢愉` 于 test_cw_gain_chain.py 零命中;test_cw_yinlang_phase32.py:23-24/:456-475。
 - **处置方向**:申报面改为「test_cw_yinlang_phase32 joy 临时闩断言改写;新增 rider 测试(可落 test_cw_gain_chain 或新文件,随批申报)」;landing 文件面同步措辞。
 
@@ -105,7 +105,7 @@
 - **撤闩后 on_env_gained 欢愉契约行为**:仅 chars_immediate 腿(银狼LV.999 经 gain_character 入链),advisor 分道不涉及(advisor=False);ENV_GIFTS 数据不动,chars_conditional 字段保留为声明性档案(消费面 = 本模型 + 判读)。
 - **weaken 派发分支删除后的终态兜底**:unknown 分支后的裸 return 保留,reason 更名 `unrouted_leg_zero_write` 可落;leg_type 载荷来源(classify)已无 weaken 产出点,兜底仅防非法值。
 - **decide_planner 弱化档删除的决策面影响**:含弱化词未知名回落装备档(_equip_value miss = 0 分),与「未识别 0 分 idx 兜底」等价;§2.5-5「决策影响极小」申报成立。
-- **测试随迁的可判定性**:test_cw_yinlang_phase32:160/:283-286/:475 三处断言与 design §2.6 退役锁/撤闩判据一一对应,改写方向可执行(范围申报问题归发现 5)。
+- **测试随迁的可判定性**:test_cw_yinlang_phase32:160/:283-286/:475 三处断言与 design §2.6 退役测试/撤闩判据一一对应,改写方向可执行(范围申报问题归发现 5)。
 - **接管局/3★接管/授予分布/星级先验**:§2.4 四条边界申报与实码及原文锚相符,观察覆盖兜底路径成立。
 - **正本 strategy-env-impacts.md 存在**(landing 清单引用真实);gain-chain.md §3 条件腿条目(:122-124)在末阶段更新面内。
 
@@ -149,7 +149,7 @@
 
 | 发现 | 处置核验 |
 |---|---|
-| 1 rand 通道反实码 | ✓ design 侧落对:§2.2-3(「rand 形参优先于锚定状态」「全通道 logic_rand,锚定前后同通道」引实码短路形态)/§2.5-1(无失配网辖,采样面本义)/§2.6(「置闩后同路径 source 仍 = logic_rand,与既有臂 3 锁同语义」+ 校准面 = outcome 行断言)三处口径统一且与 `anchor_aware_write` 实码(cw_game_state.py:1803)及 test_cw_gain_chain.py:244-261 既有锁一致。**✗ landing 面漏改,见 r2 发现 1** |
+| 1 rand 通道反实码 | ✓ design 侧落对:§2.2-3(「rand 形参优先于锚定状态」「全通道 logic_rand,锚定前后同通道」引实码短路形态)/§2.5-1(无失配网辖,采样面本义)/§2.6(「置闩后同路径 source 仍 = logic_rand,与既有臂 3 测试同语义」+ 校准面 = outcome 行断言)三处口径统一且与 `anchor_aware_write` 实码(cw_game_state.py:1803)及 test_cw_gain_chain.py:244-261 既有测试一致。**✗ landing 面漏改,见 r2 发现 1** |
 | 2 rider 失败语义 | ✓ 落对。§2.2-1 显式裁定段(try/except + log + `joy_conditional_grant_failed` 缺陷行 + 照常分派;零吞错的调用点级例外显式申报 + 正本 §6 申报承诺)/§2.3 末条/§2.6 失败语义测试(gain_character 注入异常 → 分派照常 + 缺陷行)三处齐。实现细节瑕疵见 r2 发现 5;承诺落点缺清单行见 r2 发现 2 |
 | 3 恰一次失效通道 | ✓ 落对。§2.3「正常保证者」与「失效通道如实申报」两段(异常重试 → 载荷重建 → 二次落地 → 重复授予 rand 静默自愈;既有腿同暴露;不做实例级拒再入 + 理由)+ §2.4 边界条。申报充分性再攻:修订采纳 (a) best-effort 后,rider 自身异常已不进重试通道,失效通道触发源收窄为腿型分派内部异常(upgrade 三态守卫外的写腿异常/merge 断言)——修订版「(升费腿有三态守卫、装备腿无)」对照仍成立,二次执行时 rider 随落地相重跑的重复授予面已覆盖。无需追加 |
 | 4 正本清单漏两份 | ✓ 落对(screens/planner.md + logic-updates/pick-planner.md 已列,落点段与 grep 实读一致) |
@@ -165,7 +165,7 @@
 
 #### r2 发现 1 [阻断] | landing §3.1 完成判据第一条 | 残留 r1 旧口径「双臂通道(未闩=rand/置闩=logic)」,与修订版 design §2.6 正面冲突——发现 1 处置在 landing 面不完整
 
-- **发现**:修订版 design §2.6 已按实码改写(「`gs.prep_anchored = True` 直赋后同路径 **source 仍 = logic_rand**」),但 landing §3.1 完成判据第一条仍写「双臂通道(未闩=rand/**置闩=logic**)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序锁」。阶段小节 = 账本立任务唯一源(iteration-design.md §3.1),照此行立任务 = 验收判据以已被推翻的通道语义为准,worker 按 design 实现则 landing 判据必红、按 landing 判据实现则复活 r1 阻断缺陷——恰是 r1 发现 1 的核心判据面在另一文档残留,全量同步复查义务(硬规则 4)违例。
+- **发现**:修订版 design §2.6 已按实码改写(「`gs.prep_anchored = True` 直赋后同路径 **source 仍 = logic_rand**」),但 landing §3.1 完成判据第一条仍写「双臂通道(未闩=rand/**置闩=logic**)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序测试」。阶段小节 = 账本立任务唯一源(iteration-design.md §3.1),照此行立任务 = 验收判据以已被推翻的通道语义为准,worker 按 design 实现则 landing 判据必红、按 landing 判据实现则复活 r1 阻断缺陷——恰是 r1 发现 1 的核心判据面在另一文档残留,全量同步复查义务(硬规则 4)违例。
 - **证据**:landing.md:28;design.md §2.6 通道语义条(:178-181);r1 发现 1。
 - **处置方向**:该行改「通道语义(rand=True 恒 logic_rand,置闩不改变通道;覆盖校准面 = logic_rand_outcome 行)」,与 design §2.6 逐字对齐;顺手核「验收凭据形式」行「rider 双臂」措辞(双臂仍在,期望同值,可保留)。
 

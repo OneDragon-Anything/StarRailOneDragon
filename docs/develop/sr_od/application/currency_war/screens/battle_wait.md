@@ -78,10 +78,10 @@
 - 结算屏点击未生效的长按兜底(宿主 = `cw_op/cw_op_settle_confirm.py`:`SETTLE_STAY_LONG_PRESS` 轮阈值 + `SETTLEMENT_NEXT` 长按点;见 §4 分支表);同屏指纹防重(`last_settle_fp`/`last_loss_fp`);败局标志 `saw_defeat_settlement` 的判定取两类证据之一:进度符号为负;或面板出现负数条目且其位置序号不小于 `SETTLE_DEFEAT_LATCH_MIN_POS`(= `(2, 5)`,按元组比较)——次级证据裁决 = `_defeat_latch_by_secondary`,节点真值键 = 容器 node 读口,证据不足时不置败局标志;relaunch 残留结算屏判据宽限 `RELAUNCH_SETTLE_GRACE_S`。
 - 自动战斗检测连续命中计时(防单帧误判);开关动作后 wait 覆盖切换生效窗。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「战斗等待」(dispatch 包装统一落 `[cw-op]` 行)+ 委托 op「货币战争-结算确认」(日志前缀 `[cw-settle-confirm]`);节点推进上报 = settle_confirm journal 行(actor 归因 = `kernel/cw_game_state.py::_NODE_ADVANCE_ACTORS` → CwOpSettleConfirm;判定语义 = [../flow/action_exec.md](../flow/action_exec.md) §2.1 / [../game_state/node-derivation.md](../game_state/node-derivation.md) §3.3);缺陷分键 = `phase_round`/`perception_conflict`(reader_source=`settlement_vs_prep_round`);结算观测日志前缀 `[cw-bwait]`,bail 保留证据 `[cw!]` 行;结算屏时序帧采集 = `operations/settle_collect_hooks.py::settle_frame_collect`(临时采集件,文件自声明清单完成后整段可删)。
-- 测试锁:bail 预算锁 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(锁面目录 = 同目录;战斗等待专属行为锁的重建归属见模块头申报)。
+- 测试:bail 预算测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(测试面目录 = 同目录;战斗等待专属行为测试的重建归属见模块头申报)。
 - game 侧知识:结算时序 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #6/#25;画面档 = `assets/game_data/screen_info/currency_war_battle.yml`/`currency_war_settlement.yml`/`currency_war_settlement_fail.yml`/`currency_war_lobby.yml`。
 
 ## 开放设计注

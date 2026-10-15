@@ -775,7 +775,7 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     cw_state.CwActionSellDeployedParam(cw_evolution 谷底回滚 / sim engine,序列化字段
     deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
     同名 row+slot 类零构造点、且策略覆盖外声明不发出(test_cw_shop_line
-    覆盖外锁),不会出现在 decisions 帧。
+    覆盖外测试),不会出现在 decisions 帧。
 
     换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩
     占用序**(None 空槽剔除),帧内列表下标 ≠ 槽位表下标;

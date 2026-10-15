@@ -62,9 +62,9 @@
 
 ### 发现 6 [minor] | design.md §2.1/§2.0 | 冶金炉 rng 注入与「七函数同形三参 + op 统一分派」未闭环;「实现时对齐」是未定稿措辞
 
-- **发现**:§2.1 先写「签名与现役零写版同形 `(gs, param, sig)`」,同段又给冶金炉加 `rng` 关键字——两句话矛盾。实机调用点是无分派的统一三参直调(`cw_tool_use_action.py:126-129`),命名规约冒烟锁对**每个**动作类以 `fn(gs, param, sig)` 三参调用(`sr-od-test/test/sr_od/application/currency_war/test_cw_action_report_contract.py:58`)——rng 若无缺省值,契约锁与 op 直调同时 TypeError。「注入源与 pick_invest 采样链同源,实现时对齐」把唯一剩余的自由度留给实现者(违反「实现者无需再设计」;草案态可,定稿不可)。
+- **发现**:§2.1 先写「签名与现役零写版同形 `(gs, param, sig)`」,同段又给冶金炉加 `rng` 关键字——两句话矛盾。实机调用点是无分派的统一三参直调(`cw_tool_use_action.py:126-129`),命名规约冒烟测试对**每个**动作类以 `fn(gs, param, sig)` 三参调用(`sr-od-test/test/sr_od/application/currency_war/test_cw_action_report_contract.py:58`)——rng 若无缺省值,契约测试与 op 直调同时 TypeError。「注入源与 pick_invest 采样链同源,实现时对齐」把唯一剩余的自由度留给实现者(违反「实现者无需再设计」;草案态可,定稿不可)。
 - **证据**:`kernel/cw_action_report/pick_invest.py:225-241`(先例形态 = `rng: random.Random | None = None` 关键字缺省,函数体内兜底 `random.Random()`);`operations/cw_op/cw_tool_use_action.py:126-129`;`test_cw_action_report_contract.py:34-60`。
-- **修正方向**:写死为 `rng: random.Random | None = None`(先例同形,实机不传 = 未播种猜测、sim/测试传流键),op 侧三参调用零改动,契约锁天然兼容;删除「实现时对齐」措辞。
+- **修正方向**:写死为 `rng: random.Random | None = None`(先例同形,实机不传 = 未播种猜测、sim/测试传流键),op 侧三参调用零改动,契约测试天然兼容;删除「实现时对齐」措辞。
 
 ### 发现 7 [minor] | design.md §2.2 | 投影仪 `gain_character` 调用形态缺必填参数,且工具域 producer 新名未定
 
@@ -108,7 +108,7 @@
 
 ## 4. 试读结论(逐节「凭这份能开工吗」)
 
-- 逐工具写端锁/扳手回区/费用门防御/原子 op 回归:**可开工**(语义表 + 实码足够)。
+- 逐工具写端测试/扳手回区/费用门防御/原子 op 回归:**可开工**(语义表 + 实码足够)。
 - 消耗腿写什么容器:**不可开工**——发现 1/2 未裁决前,照表实现即产出「成功即停局」的实机行为。
 - 申报表收口:**不可开工**——发现 3,行集与词表形态未定。
 - rng 注入/链调用形态:**不可开工**(机械层面可自行补齐,但属「实现者再设计」,发现 6/7)。

@@ -890,7 +890,7 @@ class DecisionV2Registry:
     #: H2②:库藏生锈在场(cw_comps.RUST_AFFIX_NAME ∈ enemy_affixes)时豁免
     #: opening/过渡 hold——每件 owned 滞留=敌 +3%伤/-4%减伤(competitors.md:45),
     #: 滞留的边际代价随件数单调上升,压倒「攒给成型核心」的机会成本。
-    #: 行为无条件化(恒 True);单帧锁已闭环、实机锚点预注册
+    #: 行为无条件化(恒 True);单帧测试已闭环、实机锚点预注册
     #: (w607_affix_consumption/AB_REPORT.md 开分支建议节)。
     rust_wear_release_enabled: bool = True
     #: H3:opening hold(P1 r≤2)收窄——仅「当前节点非战斗类」才 hold
@@ -906,14 +906,14 @@ class DecisionV2Registry:
     #: H2① 数据层(节):库藏生锈每件滞留的敌方增益份额与
     #: 计件上限,语义出处=competitors.md:45(敌伤 +3%/敌减伤 −4%,最多
     #: 10 件,2026-08-28 游戏内实采)。**只承载账面单一源,无行为分支**——
-    #: 第二波数学裁决(证明锁 test_cw_w607_h2o_verdict):每件滞留金当量
+    #: 第二波数学裁决(证明测试 test_cw_w607_h2o_verdict):每件滞留金当量
     #: = 本份额 × expected_battle_loss × battles_left_est × hp_to_gold
     #: = 0.75(已定案时点历史推导;式中所用旧字段已于 2026-09-04 增量 B
     #: 停用;胜率/伤害折算链已停用(随禁胜率建模链),翻案重评时须按
     #: 路径总账口径全新重算)
     #: < 补给 key_fit 边际 10、< 策划面装备类与升费/弱化的分差 19 →
     #: 现有动作空间无翻转点,H2① 行为分支不合入(无效→不合入,
-    #: strategy-work §4 兑换纪律)。重评触发器=该证明锁翻红,或 `w612_effect_inventory/`
+    #: strategy-work §4 兑换纪律)。重评触发器=该证明测试翻红,或 `w612_effect_inventory/`
     #: 效果清单批落地装备处置/inventory 动作面(届时扣减消费点挂其接口)。
     rust_hoard_damage_share: float = 0.03
     rust_hoard_penalty_cap: int = 10
@@ -922,7 +922,7 @@ class DecisionV2Registry:
     # ===== 完备性审计表(对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
     #: ('none',显式声明原因)。「无约束覆盖」必须显式声明,禁止空格。
-    #: 检查项 decision_v2_arbiter_matrix 锁「无空格 + 约束名存在」。
+    #: 检查项 decision_v2_arbiter_matrix 校验「无空格 + 约束名存在」。
     audit_matrix: dict[tuple[str, str], tuple[str, ...] | tuple[str, str]] = field(
         default_factory=lambda: {
             # (资源维,回合态维) → (约束名...) 或 ('none',原因)
@@ -954,7 +954,7 @@ class DecisionV2Registry:
         - 覆盖通道 = ``interest_floor_override``(仅纪律视图 ALL IN 清零,
           非标定旋钮);
         - 消费守卫:除本方法与本类定义处外 ``interest_floor`` 读点 = 0
-          (API 契约防线归 review 与代码规范;grep 锁系测试纪律禁源码
+          (API 契约防线归 review 与代码规范;grep 守卫系测试纪律禁源码
           扫描已停用,勿复活)。
         """
         if self.interest_floor_override is not None:

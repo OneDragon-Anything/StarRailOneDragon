@@ -21,7 +21,7 @@
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
 推进单一源 = 容器逻辑态直写(kernel/cw_action_report 上报函数族
-+ 合成升星腿);动作语义验证 = 投影直锁(M1,test_shop_projection_logic):
++ 合成升星腿);动作语义验证 = 投影测试(M1,test_shop_projection_logic):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
   (上报函数族,合成升星腿内聚 buy_card 上报)。
@@ -147,7 +147,7 @@ class ShopCard:
 # 策略内部路由键(发出分支的构造事实,不随时间漂移、不维护状态),只回答
 # 「该次落地该不该清 S1 开店标志」的环路控制路由问题,非卖出资格面(资格
 # 单一源 = sell_gate 装配 A)、非放行证据(禁检查器采信)。值域现役 =
-# m4_fuel_sell / interest_prep(单帧锁 test_route_tag_whitelist 锁映射表);
+# m4_fuel_sell / interest_prep(单帧测试 test_route_tag_whitelist 校验映射表);
 # kw_only 缺省 '' ⇒ 构造调用全向后兼容;action_key_exclude metadata =
 # 不入动作实例键,幂等粒度 = 行为参数(route_tag 与归因字段同规)。
 
@@ -180,13 +180,13 @@ class CwActionSellBenchParam:
     **防线写入端核查(N3②)**:发出点
     = mandate_v1/shop.py 卖出动作发出点(M2 腾席两处/凑利息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
-    无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
+    无实码对应,全仓 grep 仅本 docstring 自引用,测试面引用同勘误);
     prep 域动作发出点(mandate_v1/entry)构造留 expect 缺省 ''(不校验形态,
     族B 载体本无此字段,缺省即不校验)。
-    锁面 = test_sell_window_launch.py(发出登记/窗口段仲裁)与
+    测试面 = test_sell_window_launch.py(发出登记/窗口段仲裁)与
     test_shop_session_loop.py(筹资形态/兜底穷尽机会清单;原
-    test_cw_sell_reason_matrix / TestFundingHoldFallback 锁随测试批
-    并入停用,expect+income 写端正锁并入上述两文件)。
+    test_cw_sell_reason_matrix / TestFundingHoldFallback 两测试随测试批
+    并入停用,expect+income 写端校验并入上述两文件)。
     """
     bench_idx: int
     # [索引定义] 坐标系: bench 槽位表下标 0-8(定长 9 槽,空槽 None)
@@ -251,7 +251,7 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 
 # 卖出动作发出点值域闭集(发出登记门:各 CwActionSellBenchParam 动作发出点的 reason 支撑键
 # 必须是本集成员;值 = 通道名,与该动作发出点 Emitted.reason/route_tag 同键
-# 单一词汇)。新增动作发出点先在此登记再接线(值漂移由动作发出面行为锁暴露,
+# 单一词汇)。新增动作发出点先在此登记再接线(值漂移由动作发出面行为测试暴露,
 # 归因消费面按本集分桶)。记录非指令:零行为消费面,资格单一源不变
 # (sell_gate 装配 A)。
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
@@ -679,7 +679,7 @@ class CwActionStartBattleParam:
                            metadata={'action_key_exclude': True})
 
 
-# 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源;消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
+# 动作全集白名单(统一词表运行时元组;注册完备测试的遍历单一源;消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
 # ⚠️ 教训(原 PREP_ACTION_TYPES 先例):**新增动作必须同步登记本白名单**
 # —— 选择族动作化(策略器终态契约;落地 landing §3.1 纯新增零消费,
 #       decide 接线归终态切换批)=====
@@ -955,7 +955,7 @@ class CwActionObsParam:
 
     零容器动作写语义:in_place 口径的容器更新通道 = 观察漏斗本体
     (read_game_state 直写),``report_action_obs_param`` = 零写族占位
-    (命名规约完备锁对象)。现役接线域 = 备战决策环(CwScreenPrep);
+    (命名规约完备测试对象)。现役接线域 = 备战决策环(CwScreenPrep);
     in_place 在其他决策域发出 = 宿主能力缺失 AssertionError 响亮暴露
     (策略器 bug)。
     """
@@ -1008,7 +1008,7 @@ CW_ACTION_TYPES: tuple = (
 
 #: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(12 个;原 13 个,
 #: CwActionPickEquipParam 随选择装备屏误判停用删除),供 handler 分派/
-#: 注册完备锁遍历(三刷新动作走各自既有点击链不入本表;Obs = 观察请求
+#: 注册完备测试遍历(三刷新动作走各自既有点击链不入本表;Obs = 观察请求
 #: 语义,不属选择族)。
 PICK_ACTION_TYPES: tuple = (
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,

@@ -132,9 +132,9 @@ box_pick 无五段双路径（单 handle，`cw_screen_box_pick.py` 无 `run_life
 
 screens/ 目录仅 `supply.md` 一篇；「双篇」实际指 docs/game 侧 `货币战争-补给.md` + `currency_war_supply.md`（后者的 refresh_used=True 句在下一清单行已单列 `docs/game/screens/`）。修正：screens/ 行去掉「双篇」或改指 `screens/supply.md + armory_box.md`。
 
-### m10 HoldFrame/RefreshX 与 `CW_ACTION_TYPES` 白名单及注册完备锁的关系未申报
+### m10 HoldFrame/RefreshX 与 `CW_ACTION_TYPES` 白名单及注册完备测试的关系未申报
 
-`cw_vocab.py:838` 白名单 + 注册完备锁（遍历 `CW_ACTION_TYPES + PICK_ACTION_TYPES` 断言注册表可解析）。设计只说「HoldFrame 不进 validate、不查注册表」，未说它**入不入白名单**：入 = 锁要求注册行（与「不查注册表」冲突）；不入 = 违「新增动作必须同步登记」白名单纪律需显式例外申报（OpenTome 漏登记教训在册）。三个 Refresh 动作（handler isinstance 消费、不经 `_act_execute`）同题。修正：§2.2 补一句词表登记/豁免申报。
+`cw_vocab.py:838` 白名单 + 注册完备测试（遍历 `CW_ACTION_TYPES + PICK_ACTION_TYPES` 断言注册表可解析）。设计只说「HoldFrame 不进 validate、不查注册表」，未说它**入不入白名单**：入 = 测试要求注册行（与「不查注册表」冲突）；不入 = 违「新增动作必须同步登记」白名单纪律需显式例外申报（OpenTome 漏登记教训在册）。三个 Refresh 动作（handler isinstance 消费、不经 `_act_execute`）同题。修正：§2.2 补一句词表登记/豁免申报。
 
 ---
 

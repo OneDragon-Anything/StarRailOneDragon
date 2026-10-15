@@ -40,7 +40,7 @@
 
 ## 7. 语义验证
 
-WearEquip = 容器写语义动作(非零写族成员):容器 `equips` 域 owned −1(已登记才减)+ 目标角色 equips +1,两处写入内聚于上报函数 `report_action_wear_equip_param` 单点(行为锁 = `test_cw_unified_action_2a` 动作类型覆盖锁容器写集断言);落地真值(穿没穿)归观察边界 reconcile。
+WearEquip = 容器写语义动作(非零写族成员):容器 `equips` 域 owned −1(已登记才减)+ 目标角色 equips +1,两处写入内聚于上报函数 `report_action_wear_equip_param` 单点(行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试容器写集断言);落地真值(穿没穿)归观察边界 reconcile。
 
 ## 8. 判例注记(动作发出阶段)
 

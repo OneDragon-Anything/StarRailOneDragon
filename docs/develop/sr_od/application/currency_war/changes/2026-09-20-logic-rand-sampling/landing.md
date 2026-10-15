@@ -7,8 +7,8 @@
 **依赖**：无
 **优先级建议**：5
 **完成判据**：
-- `on_step` 缺省零行为：既有全量（含买牌投影直锁 `test_cw_shop_projection_logic`）绿
-- 步回调触发次数 = 合并级数（连锁两级 = 2 次调用，行为锁）；回调后调用侧按「受该级影响域各落一行」写（bench+行域双域变更 = 两行同号，行为锁）
+- `on_step` 缺省零行为：既有全量（含买牌投影直接测试 `test_cw_shop_projection_logic`）绿
+- 步回调触发次数 = 合并级数（连锁两级 = 2 次调用，行为测试）；回调后调用侧按「受该级影响域各落一行」写（bench+行域双域变更 = 两行同号，行为测试）
 - 行域 `write_logic_rand` 后 board 派生行 `source == 'logic_rand'`；行域 `write_logic` 后 board 仍 logic（回归腿）
 - `any_logic_rand` 真值表（空集/含 rand/全非 rand）
 - `_write_logic_frame` docstring「board 恒走 write_logic 不随行域随机态扩散」句与 `_resync_board_delta` docstring 写入口指针同步修订（与行为一致，禁注释打架）
@@ -22,15 +22,15 @@
 **依赖**：3.1
 **优先级建议**：5
 **完成判据**：
-- 多点逐点锁：批载荷 N 点 → 逐点独立采样与写行、evidence 点序 `#ore<k>` 递增、同组 group_id
-- 席满即止锁：前点角色耗掉空位后，后续点晶矿留在 spheres（不摘除不采样），已开点照常入账
-- 三分支写序锁：行序列 / 每行来源（rand/logic 依 §2.4 表）/ evidence 词表逐行断言
+- 多点逐点测试：批载荷 N 点 → 逐点独立采样与写行、evidence 点序 `#ore<k>` 递增、同组 group_id
+- 席满即止测试：前点角色耗掉空位后，后续点晶矿留在 spheres（不摘除不采样），已开点照常入账
+- 三分支写序测试：行序列 / 每行来源（rand/logic 依 §2.4 表）/ evidence 词表逐行断言
 - 角色分支触发合成：受影响域各落一行（双域变更 = 两行同号）、evidence `proj_ore_merge#<级>#ore<k>`、board 派生行随行继承 rand
-- None 边界锁：None 域跳写不标记；抽中域 None 跳采样写；bench 未观察整批拒 `'bench_unobserved'`
+- None 边界测试：None 域跳写不标记；抽中域 None 跳采样写；bench 未观察整批拒 `'bench_unobserved'`
 - 拒分支：level 缺读 → `'level_unread'` 整批拒（先于任何写）
-- 观察收口锁：等值观察静默翻回 observation、零缺陷行；差异观察出 `logic_rand_outcome`
-- 采样器支撑集锁：gold ∈ 1..5、equip ∈ 简易池全集、char ∈ `chars_by_cost`（按注入 rng 定种子断言）；`ORE_ASSUMPTION_KEYS` 与 §0.1 表键名一致
-- sim 接线锁：前置分派拦截 CollectOre、`eng.ore_uses` 拒分支不耗序、流键 `M1x/ore/{uses}`、apply_player_action 主表零改动
+- 观察收口测试：等值观察静默翻回 observation、零缺陷行；差异观察出 `logic_rand_outcome`
+- 采样器支撑集测试：gold ∈ 1..5、equip ∈ 简易池全集、char ∈ `chars_by_cost`（按注入 rng 定种子断言）；`ORE_ASSUMPTION_KEYS` 与 §0.1 表键名一致
+- sim 接线测试：前置分派拦截 CollectOre、`eng.ore_uses` 拒分支不耗序、流键 `M1x/ore/{uses}`、apply_player_action 主表零改动
 - 既有 collect_ore 相关测试更新至新写序；§12 通用工程门（ruff + L1 绿）
 **验收凭据形式**：测试名 + 命令复跑（同上，另加采样器单测）
 

@@ -14,9 +14,9 @@
 - 发现::122「op 侧重调路径……仍返 Suggestion → 零点击终结交回,**op 层零行为改动(仅注释收口,§2.8)**」;:123 同节「处置 = **防线随批落(op 层一处行为改动)**:`cw_screen_encounter` 重调分支改为「重调仍返 Suggestion ∧ 刷新锚读缺 → `round_fail` 交回」」。同一分支两句话给出相反的行为结论。§2.8、§2.12 验收锚⑦、landing 3.2 均一致取 round_fail,可判定 :122 为防线决策加入后未清的旧口径残句。
 - 修正方向:删改 :122 尾句为「重调分支处置见下条防线」;按 §5.4 对 §2.5 全节复扫。
 
-### R9-F3 [严重度:中] design §2.7 测试面「行为断言保留」与 §2.5/landing 3.2「重调行为锁改写(零点击交回 → fail 交回)」冲突
+### R9-F3 [严重度:中] design §2.7 测试面「行为断言保留」与 §2.5/landing 3.2「重调行为测试改写(零点击交回 → fail 交回)」冲突
 - 位置:design.md §2.7(:148)vs §2.5(:123)/landing.md §3.2 范围(:16)
-- 发现::148「同文件重调零点击行为锁(『重调仍建议刷新 → 零点击终结交回』)……随批更新(**行为断言保留**,照补给批闸叙述收口先例)」——引号内即 `test_cw_obs_arch_event_screens.py::test_encounter_refresh_gate_mismatch_zero_click_terminal` 的被锁行为(直调 :387-404:断言 `rs.is_success` + 零点击 + 零派发)。而 :123 与 landing 3.2 明文该锁「随批改写(零点击交回 → fail 交回)」。同一把锁一处说保断言、两处说改断言;若按 :148 保留断言,防线落地后该锁必红。
+- 发现::148「同文件重调零点击行为测试(『重调仍建议刷新 → 零点击终结交回』)……随批更新(**行为断言保留**,照补给批闸叙述收口先例)」——引号内即 `test_cw_obs_arch_event_screens.py::test_encounter_refresh_gate_mismatch_zero_click_terminal` 的被测行为(直调 :387-404:断言 `rs.is_success` + 零点击 + 零派发)。而 :123 与 landing 3.2 明文该测试「随批改写(零点击交回 → fail 交回)」。同一个测试一处说保断言、两处说改断言;若按 :148 保留断言,防线落地后该测试必红。
 - 修正方向::148 改为「行为断言随防线改写(round_fail 交回 + 计入重派上限),docstring 同批更新」;与 F2 同根(防线决策加入后的全量同步复查漏改),修时一并泛化复扫「零行为改动/断言保留」类表述。
 
 ### R9-F4 [严重度:中] 窗口候选 B 的否决主论据工作示例与两源日程表不符,且同句内两个窗口口径互斥
@@ -31,8 +31,8 @@
 
 ### R9-F6 [严重度:中] 立场两值注入步骤无所属阶段与文件面归属,账本立任务时无家可归
 - 位置:landing.md §3.1 依赖行(:7)、§3.2 文件面(:18)
-- 发现:landing 3.1 依赖行要求「立场两值注入随过目记录**在 3.2 接线前**完成」,但 3.1 按完成判据以 None 态收口(其判据锁含未过目分支),3.2 文件面 15 项**不含 `strategies/impl/mandate_v1/encounter_pick.py`**——注入动作(编辑该文件常量区)落在两个阶段的文件面之外。landing 规范(iteration-design §3.1)「文件面 = 本阶段允许动的文件」「阶段小节 = 账本唯一源」下,该注入 commit 无所属阶段:执行者要么违 3.1 已收口范围,要么在 3.2 动文件面外文件。
-- 修正方向:三选一并落笔:①注入归 3.2(文件面补 encounter_pick.py,范围行补「立场两值注入(过目记录凭据)」);②3.1 拆出 3.2 前置微阶段;③明确注入 = 3.1 范围内的追加交付(3.1 完成判据补「过目后注入 + 单帧锁复绿」)。
+- 发现:landing 3.1 依赖行要求「立场两值注入随过目记录**在 3.2 接线前**完成」,但 3.1 按完成判据以 None 态收口(其判据测试含未过目分支),3.2 文件面 15 项**不含 `strategies/impl/mandate_v1/encounter_pick.py`**——注入动作(编辑该文件常量区)落在两个阶段的文件面之外。landing 规范(iteration-design §3.1)「文件面 = 本阶段允许动的文件」「阶段小节 = 账本唯一源」下,该注入 commit 无所属阶段:执行者要么违 3.1 已收口范围,要么在 3.2 动文件面外文件。
+- 修正方向:三选一并落笔:①注入归 3.2(文件面补 encounter_pick.py,范围行补「立场两值注入(过目记录凭据)」);②3.1 拆出 3.2 前置微阶段;③明确注入 = 3.1 范围内的追加交付(3.1 完成判据补「过目后注入 + 单帧测试复绿」）。
 
 ### R9-F7 [严重度:低] `D_ENC_VARIANT` 保留 kernel 后注入面悬空,未来读点定谳批的注入位未指认
 - 位置:design.md §2.3(:107)、§2.7(:142 模块 docstring 重写面)
@@ -53,7 +53,7 @@
 
 1. **删除面符号全消费方盘点(逐符号全仓 grep,src + sr-od-test 双仓)**——与设计申报全部一致,零漏报:`EncounterPick`(src 仅 cw_encounter_selection/cw_events/cw_vocab 两 docstring/bridge/encounter EV 核;tests 仅 test_cw_unified_action_4 :28/:259/:278);`EVENT_PICK_TYPES`/`EventPick`(仅 cw_events 定义处,零外部消费);`encounter_tier_score`(唯一消费 = cw_events 被删 `_score`,:129/:145);`marginal_value`(唯一链 = encounter_tier_score,cw_survey19_hooks:14/:24);`DifficultyAccount`(全仓零生产消费);`GROWTH_PER_STREAK`(sim 活消费 cw_sim_enemy:33-34/:128——§2.7 辖域注「清理批不得整模块删」属实);`REWARD_TIER_LAST`(全仓零消费,孤儿申报属实);`selection_state_of`/`last_normal_battles`(唯一消费 = 判据本体 :389/:390);`game_start_reset`(src+tests 全仓零调用——「docstring 失实」申报属实);`apply_calibration`/`reset_calibration`(零外部引用,仅 provisional.py:22 指针注释);`g_ratio`/`_kappa_state`/`_lowest_idx`/`reward_tier`/`F_MIN`/`G_BASE`/`DELTA_T`(零跨文件消费;cw_synthesis 的 `_GUANGNENG_BASE` 为子串假阳性);`D_ENC_VARIANT`(kernel 外唯一消费 = cw_screen_battle_wait :303-306/:319-323,行号引注逐位准确);`DIAMOND_EQUIP_NAMES`(消费面 = obs 自身 :216/:221/:244 + reward_tier :267/:272 + 两处 docstring(cw_events:171/supply.py:12);tests 零引用——迁移面五方申报属实)。
 2. **章程与裁定引文逐字核对**:00_framework §1 第 5/6 条(判据线「换一套策略实现,会不会要不同的值/序?会 → 策略层」逐字一致;第 2 条对 P3 `plane_of(gs)==3` 分支的违例定性成立,cw_events:137 直调);01_math_framework §6(分界条款「凡『数值大小参与方向/闸门判断』的量归【推】/【拟】纪律」逐字一致;【拍】三要件与设计落点①②映射成立,「过目记录归落地验收凭据」与章程 :166 同语;【拟】三要素概括一致);04_survival_budget §7 第 9 行(授权辖域 = 敌方通道 killed/进度填充率 + 持久化、「判据正本 = kernel/cw_encounter_selection.py」失配事实,转述准确);P64(辖域 = 静态 dict[敌方难度读数→stat]、条件表不在辖域、金额侧同判、点亮前置链① = 浮层读数通道——四点转述准确;DELTA_T 判死标「引申申报,非 P64 原文结论」如实);math_proofs P15(boss 26.79 [24.25,29.23]/普战 10.45 [9.59,11.24])/P26(待证明,Δp_prep 条件表 + L_node 分位口径未采)/P85(硬节点前置命题,D_N={遭遇,boss})行。
-3. **行为锁与外循环防线语义**:`cw_loop.py:529/:830-858`——`OP_FAIL_REDISPATCH_LIMIT=5` 只计连续 fail、任一 ok 清零窗,直调核实;故「零点击 round_success 交回不计数且清零 → 无界重进循环面」论证成立(round_fail 计数路径 :852-858 同核);`cw_screen_encounter.py:180-195` 现重调分支与设计描述一致;补给孪生面在产确认(cw_screen_supply_node:284-291 同款零点击终结)。
+3. **行为测试与外循环防线语义**:`cw_loop.py:529/:830-858`——`OP_FAIL_REDISPATCH_LIMIT=5` 只计连续 fail、任一 ok 清零窗,直调核实;故「零点击 round_success 交回不计数且清零 → 无界重进循环面」论证成立(round_fail 计数路径 :852-858 同核);`cw_screen_encounter.py:180-195` 现重调分支与设计描述一致;补给孪生面在产确认(cw_screen_supply_node:284-291 同款零点击终结)。
 4. **κ_S 三态表逐位对照**:design §2.2 决策序与 kernel `_kappa_state`(:297-323)逐位一致(双删失/一败一删失 → 不足;恰一胜 → 边缘;fill 分支双定谳 None 期不激活);cap=2/6(:418)、经验层交集顺序(先 cap 后 t≤4 分支)、tiebreak `(档, idx)` 序(:441-444)、窗口 = last_normal_battles(2) 普战口径,全部「与原核逐位同构」申报属实。
 5. **sim 申报**:sim 零 `record_settlement_row` 写端、后端 `refresh_left=None`(cw_sim_backend:1377-1378)、占位四档 `ENCOUNTER_TIER_COUNT=4`/`金+20(占位…)` 不含「金币」字面(:488/:491/:536-539)→ §2.12「改前改后 sim 逐位一致 + 占位全落末档」成立。
 6. **依赖方向声明**:strategies/ 全树零 obs import;kernel 零 strategies import(cw_launch_admission 仅注释性提及注入方);obs→kernel 方向已有在册先例(cw_node_obs:23 import cw_obs_core);cw_obs_core 零兄弟观测模块依赖,接收检测集无环。
@@ -61,5 +61,5 @@
 8. **文档面现状**:25 号稿头注 9 项含 1 退役注记 + §2 表行「装备」残留(:3/:19);13 号稿 decide_encounter 行「双轨」漂移(:21);08 号稿 E3 行列结构与改写方案匹配(:18);strategy-docs README :56「18-30」导航句与分篇表 28/29/30 行;04 号稿裁定 9 行;screens/encounter.md 决策委托句(:12)与刷新闸行为句(:30/:67);docs/game/screens/currency_war_encounter.md 算法描述句(:86)——§2.9 全部收口目标在册、清单与 landing 3.3 逐行一致。
 9. **日程与机制依据**:cw_node_schedule P1(supply@r5/encounter@r7)/P2(supply@r3/encounter@r5)与 42 局/7 局口径;economy.md §10.2 P2 双遭遇行(1 帧待复核);combat.md §3 达标制(killed=True 蕴含达标方向安全);验收锚 6 的「P1 首遭遇帧窗口 = r4/r6」属实。
 10. **接线与守卫面**:flow:594-609(refresh_used 预计算 :601-602、内务 :603、_require_slot_options :414-422)、bridge 覆写形态(:252-285)、动作链与 EncounterPick 零耦合(CwActionPickEncounterOp 静态入参词表 + report param: Any 鸭子取 idx)、cw_events 保留消费 flow:656/:793/:807、测试面保留符号 import(test_cw_obs_arch_event_screens:417-420)、空候选守卫(op :166-172)——§2.6/§2.7 相关申报全部属实。
-11. **落地阶段结构**:三阶段七件齐、依赖序合理(3.1 基建无行为变化 → 3.2 原子切换 → 3.3 正本)、验收锚 1-7 分配(1-6 归 3.1 单帧锁、7 归 3.2)自洽;先例两批(supply/invest-env)承接指针(design §1「明确不解决」清单)直调属实。
+11. **落地阶段结构**:三阶段七件齐、依赖序合理(3.1 基建无行为变化 → 3.2 原子切换 → 3.3 正本)、验收锚 1-7 分配(1-6 归 3.1 单帧测试、7 归 3.2)自洽;先例两批(supply/invest-env)承接指针(design §1「明确不解决」清单)直调属实。
 12. **治本核验(核三)**:§1 归层成立——三核并存属宪法五所有权/语义层,暗装门粒度属表示层;§2 修根——判据本体迁策略层 + 三核收敛 + 门收窄,非症状补丁;`D_ENC_VARIANT` 保留有宪法五③非打分基建依据;【拍】两值未经裁定不落码,无章程真空窗;补给孪生面已按跨件半问升架构级登记(op-layer §1.4 全域条款)并给短期小批 owner/期限,合规。

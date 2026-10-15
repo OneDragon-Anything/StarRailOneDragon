@@ -413,7 +413,7 @@ def _pick_domain(cands: list[_Cand],
 
 def _breakdown(c: _Cand) -> str:
     """归因串:总分 + 五组件分解(仅观测,进 reason;形态 = 测试仓
-    行为锁 test_invest_strategy.py 锚定的 ``pick total=...`` 前缀)。"""
+    行为测试 test_invest_strategy.py 锚定的 ``pick total=...`` 前缀)。"""
     _cash, _dir, _gift, _stance, _steer = c.components
     return (f'pick total={c.total:.0f}'
             f' cash={_cash:.0f} dir={_dir:.0f} gift={_gift:.0f}'
@@ -427,7 +427,7 @@ def _pick_decision(cands: list[_Cand],
     domain, tag = _pick_domain(cands, on_dot)
     winner = _argmax_tiebreak(domain)
     # 分区退化/收缩标签前缀(仅观测归因):全禁帧退化/血强制帧/定义型分区
-    # 收缩;常规帧无前缀(reason 形态 = 测试仓行为锁锚定的 pick total=... 前缀)
+    # 收缩;常规帧无前缀(reason 形态 = 测试仓行为测试锚定的 pick total=... 前缀)
     reason = _breakdown(winner) if tag == 'eval' \
         else f'{tag} {_breakdown(winner)}'
     return InvestStrategyDecision(

@@ -33,7 +33,7 @@
 
 ## 7. 语义验证
 
-OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为锁 = `test_cw_unified_action_2a` 动作类型覆盖锁零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即返回主循环,下一入口完整观察覆盖腾位/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
+OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即返回主循环,下一入口完整观察覆盖腾位/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
 
 ## 8. 判例注记(动作发出阶段)
 

@@ -88,7 +88,7 @@ V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
 
 ## 对实现的检验点
 
-1. 单测锚:`vbar.v_bar_net(reg,5)≈24.7`、r∈[1,20] 严格递增、连胜金下界=STREAK_GOLD_TABLE 表值;R1 门行为锁=短视界深缺口关(shop_r1_account_over_vgap)/长视界浅缺口开——旧行为锁「lv5 j=1 深缺口恒拒」按锁纪律重新推导改写(被锁语义「V_gap 静态 24.7」已被本证明取代,docstring 记一句为什么)。
+1. 单测锚:`vbar.v_bar_net(reg,5)≈24.7`、r∈[1,20] 严格递增、连胜金下界=STREAK_GOLD_TABLE 表值;R1 门行为测试=短视界深缺口关(shop_r1_account_over_vgap)/长视界浅缺口开——旧行为测试「lv5 j=1 深缺口恒拒」按测试纪律重新推导改写(被测语义「V_gap 静态 24.7」已被本证明取代,docstring 记一句为什么)。
 2. 复算脚本:`tools/cw/proofs/p53_frame_horizon_vgap_check.py`(链锚 + 开门率重放 + 单调性,数据在档时全跑)。
 3. sim 判读锚(事前写):修后刷新数/局 >0、空转占比下降、出现 2★ 局;不锚 hp/胜率(验收归正式 A/B)。
 
@@ -131,7 +131,7 @@ V̄_net(r, plane) = Δp[plane] × 单战价值 × r
 
 **因子处置**:rung_value 档位流停用(收入三元分解中无 rung 确定函数:利息规则=存金函数边际 0;连胜流已由 Δp 通道计账,再立=双计;史料=rung 档位流停用裁定,git 历史可溯);h3_win_rate 被 win_rate_dp_by_plane 取代(旧 rung0=0.139 比 P1 实测 0.250 低约 44%);expected_battle_loss/hp_to_gold/rounds_left_est 随消费端死亡一并停用。
 
-**连续性锚作废**:原 §②「r=5 ⇒ 24.70=旧注入」随 slope 变化(4.939→P1 5.22)失效——旧值是旧因子组的特例,不再具锚地位;新 P1 锚 r=5 ⇒ 26.08(锁=test_cw_vgap_frame_horizon)。
+**连续性锚作废**:原 §②「r=5 ⇒ 24.70=旧注入」随 slope 变化(4.939→P1 5.22)失效——旧值是旧因子组的特例,不再具锚地位;新 P1 锚 r=5 ⇒ 26.08(测试=test_cw_vgap_frame_horizon)。
 
 **行为差**:P1 slope=0.450×11.59=5.22(CI [3.18,7.10] 覆盖旧值 4.939,决策温和);P2 slope=0(门实质关闭,与 economy「P2 少刷、多吃利息」共识同向)。生产默认 V_GAP=None ⇒ R1 门 fail-closed 关闭不变,行为影响待 V_GAP 标定注入后兑现。
 
@@ -147,4 +147,4 @@ V̄_net(r, plane) = Δp[plane] × 单战价值 × r
 
 **结构存活(由新判据继承)**:帧级视界现算纪律(R_剩余 = horizon/schedule_of 现算,禁常数视界——本篇 §①r 因子行的纪律在新账的 L 项继续生效);「本期刷窗用尽即停」边界(新门由预算比较结构承载)。
 
-**连续性锚再作废**:修订单 R1 的新 P1 锚 r=5 ⇒ 26.08 随链停用(锁=test_cw_vgap_frame_horizon 已重锚为可负担性行为锁)。
+**连续性锚再作废**:修订单 R1 的新 P1 锚 r=5 ⇒ 26.08 随链停用(测试=test_cw_vgap_frame_horizon 已重锚为可负担性行为测试)。

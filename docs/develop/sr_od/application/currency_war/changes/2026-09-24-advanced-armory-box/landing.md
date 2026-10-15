@@ -9,7 +9,7 @@
 空发放集判定并入 items)+ §2.2(`gain_bench_item` 公开原语,`_place_bench_item`
 producer 形参化,现调用点行为不变)+ §2.3(PICK_INVEST_EFFECTS 三条箱腿效果体,
 `_STRATEGY_BOX_GRANTS` 名单单一源表,惰性 import 破环)+ 计数面同步
-(test_cw_invest_strategy.py 计数锁 83→86、cw_investments.py 底册收录判据注释
+(test_cw_invest_strategy.py 计数测试 83→86、cw_investments.py 底册收录判据注释
 与计数 docstring 两形态化——「获得…角色名直读」扩「获得…角色名/占席道具直读」)。
 **不含**:sim 用例(3.2)、流程侧(零改动认定,无码)、正本文档(末阶段)。
 **设计依据**:design.md §2.1/§2.2/§2.3
@@ -17,13 +17,13 @@ producer 形参化,现调用点行为不变)+ §2.3(PICK_INVEST_EFFECTS 三条�
 kernel/cw_gain_chain.py、kernel/cw_gain_effects.py;
 sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py、
 test_cw_invest_strategy.py、test_cw_yinlang_phase32.py(T-1 交付时发现的
-同族机械同步:策略效果注册表键集锁「单行」→ 四键,编排者授权 2026-09-24)
+同族机械同步:策略效果注册表键集测试「单行」→ 四键,编排者授权 2026-09-24)
 **依赖**:无
 **优先级建议**:5
 **完成判据**:
 - 登记:三卡 `GiftGrant(items_immediate=('进阶武装箱',))` 在册;四通道全空
   条目被拒、箱腿条目通过(注入式校验测试,沿孤儿键先例)
-- 计数同步:STRATEGY_GRANTS 计数锁 86、底册注释与分类 docstring 两形态口径
+- 计数同步:STRATEGY_GRANTS 计数测试 86、底册注释与分类 docstring 两形态口径
   (83→86 差 = 本批 3 条)
 - 词表:`进阶武装箱` ∈ BENCH_ITEM_NAMES(派生自动覆盖,design §2.1 断言)
 - 原语:gain_bench_item 落位三态(备战空槽/席满溢出落位/溢出位被占零写留证)
@@ -32,8 +32,8 @@ test_cw_invest_strategy.py、test_cw_yinlang_phase32.py(T-1 交付时发现的
 - 效果体:三卡经 `on_strategy_gained`(或 gain_invest_strategy 直调)→
   bench supply_box×1 + 步串 `box_grant:进阶武装箱`;查无效果卡安静不写不变;
   骇客卡现役效果体回归不变形
-- 一致性锁:`_STRATEGY_BOX_GRANTS` 与 STRATEGY_GRANTS 三卡 items_immediate
-  逐对相等;席满行为锁(bench 满 pick → overflow_card == '进阶武装箱',
+- 一致性测试:`_STRATEGY_BOX_GRANTS` 与 STRATEGY_GRANTS 三卡 items_immediate
+  逐对相等;席满行为测试(bench 满 pick → overflow_card == '进阶武装箱',
   名字经溢出落位真值暴露)
 - L1 全量 `-m "not slow"` 全绿(基线 1654 + 本批新增)
 - §12 通用工程门

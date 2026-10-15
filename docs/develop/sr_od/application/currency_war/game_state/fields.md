@@ -50,8 +50,8 @@
   的字段——不设专用中继来源类:中继经 `GameState.relay`,source=logic
   (evidence=session_carrier),已有正式值的字段一律跳过。**空值=未知态禁中继**:
   会话默认空值('''/[])不是已知事实;**五镜像字段封闭集** = `active_strategies`/
-  `active_env`/`plane_bosses`/`enemy_affixes`/`selected_difficulty`(锁锚 =
-  sr-od-test test_cw_game_state_batch4);新增第六镜像喂入点必须同步扩本集与该锁。
+  `active_env`/`plane_bosses`/`enemy_affixes`/`selected_difficulty`(校验锚 =
+  sr-od-test test_cw_game_state_batch4);新增第六镜像喂入点必须同步扩本集与该测试。
 
 evidence 为可选来源注记,记录证据分级(帧标签稳定范围、当场读还是开局恒值、
 `superset` 标记等,随各字段申报)。
@@ -657,7 +657,7 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
 观察面=本屏替换按钮与计数;出战见 §4 出战行。**载体归一**:激活态+剩余次数权威版本 =
 effect_inventory(免战牌 EffectSpec 条目 `duration_uses=2` → `remaining_uses`,
 递减接入点=跳过执行成功回执 `consume_use`;容器内无平行 Field,骨架曾设的
-skip_battle_active/remaining 两 Field 已按权威版本移除,负向锁防复发)。
+skip_battle_active/remaining 两 Field 已按权威版本移除,负向测试防复发)。
 
 #### 3.2.20 当前局投资环境(备战屏 overlay 通道)
 
@@ -1625,7 +1625,7 @@ effect_inventory 等级日程(逻辑写入方候选)。
 **替换面=随机、不可准确算 → 不建逻辑写入方,交由观察收尾**(前台/后台所有 Unit 被替换为
 高 1 费随机角色、最大 5费,char_id/星级随之变,board 羁绊联动重算;随机性按本节
 归属判据不建逻辑写)。**实现落位**=板面重写桥 `apply_board_rewrite` 对该形态零写入
-(行为锁钉死负写入方);生产接入点=选卡登记点。附精确面:获得 2 个【拆装扳手】=精确
+(行为测试钉死负写入方);生产接入点=选卡登记点。附精确面:获得 2 个【拆装扳手】=精确
 增量、逻辑写候选(注册表未结构化=缺口登记,§5.2)。
 
 #### 人力重组(EffectSpec board_rewrite='sell_all')
@@ -1676,7 +1676,7 @@ K 方向 · 义务账本 · CommitSignals · 旗标(开店标志位 / wanted 残
 检查=不立变量**(停用标记测试已登记)——升级检查=期望态新鲜度派生,非存储
 旗标)· 刷新推论。as-built 映射(五语义槽 → mandate_state 字段族)单一源 =
 `strategies/impl/mandate_v1/mandate_state` 模块 docstring;归属判据见 §1——本结构
-归默认策略实现层,框架层零 import 具体类型(静态锁已登记)。
+归默认策略实现层,框架层零 import 具体类型(静态测试已登记)。
 
 ### 6.2 生命周期
 
@@ -1743,7 +1743,7 @@ cw_investments.STRATEGY_ECONOMY 全部非默认条目做程序化反向扫描—
 **扫描五源**:a=STRATEGY_ECONOMY 非默认条目;b=STRATEGY_EFFECTS 全条目;c=装备注册表
 效果面(判定谓词=改写金/生命/容量字段∨改写单位装备归属∨发牌进席/解锁获得单位;
 代码化=`cw_affix_effects.scan_rewrite_equipments`,申报表=`EQUIP_REWRITE_DECLARATIONS`
-恰等锁看管);d=base 注册表发牌/出售面(判定谓词=效果文本含「获得…角色」∨「出售…
+恰等测试看管);d=base 注册表发牌/出售面(判定谓词=效果文本含「获得…角色」∨「出售…
 所有角色」);e=词缀注册表(判定谓词=改写金/生命/装备/单位面;代码化=
 `scan_rewrite_affixes`)。
 

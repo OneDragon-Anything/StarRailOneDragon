@@ -11,10 +11,10 @@
 **依赖**：无
 **优先级建议**：8
 **完成判据**：
-- 行为对照 design.md §3 验收锚 1（新行为锁：fixture 剧本下确认点击后容器即持 owned+单位腿+后果腿；`chosen_supply` 三元组在派发前已写；画面 op 无落地相补写面；分层归一行为锁 = 特权/后缀族/互撞族完美 OCR 恒命中 + OCR 形变救援 + 多命中拒识返回 ''）
+- 行为对照 design.md §3 验收锚 1（新行为测试：fixture 剧本下确认点击后容器即持 owned+单位腿+后果腿；`chosen_supply` 三元组在派发前已写；画面 op 无落地相补写面；分层归一行为测试 = 特权/后缀族/互撞族完美 OCR 恒命中 + OCR 形变救援 + 多命中拒识返回 ''）
 - grep 零残留（范围 = src + sr-od-test）：`kernel/cw_action_report/pick_supply.py` 定义的 `EVIDENCE_OVERLAY_CLOSED` 及其 supply 链导入点（`cw_screen_supply_node.py`、`test_cw_pick_channels_t60.py` 的 `SUPPLY_EVIDENCE` 面）、`_pending_supply`、`_apply_supply_landing`、`set_last_supply_pick`/`_LAST_SUPPLY_PICK`（豁免 = 无）；ConfirmSupply 语义残留 = `cw_exec_state`/`_overlay_confirm` 两分支 + pick op 登记调用（豁免 = telemetry 历史数据只读注释；**pick_equip/pick_planner 各自同名 `EVIDENCE_OVERLAY_CLOSED` 常量不在辖内**）
 - 通用工程门
-**验收凭据形式**：新增 pick 即时上报行为锁测试 + 分层归一行为锁测试（互撞族/形变/多命中三型用例）+ `test_cw_supply_advance_wiring.py`/`test_cw_game_state_consume.py` 等受影响测试全绿
+**验收凭据形式**：新增 pick 即时上报行为测试 + 分层归一行为测试（互撞族/形变/多命中三型用例）+ `test_cw_supply_advance_wiring.py`/`test_cw_game_state_consume.py` 等受影响测试全绿
 
 ## 3.2 补给刷新闸观察化
 
@@ -24,11 +24,11 @@
 **依赖**：3.1（同文件 `cw_screen_supply_node.py` 防冲突串行）
 **优先级建议**：7
 **完成判据**：
-- 行为对照 design.md §3 验收锚 2（行为锁：剩余 1 → 点钮恰一次 + 终结交回；剩余 0/None → 零点击不终结按原评分选）
+- 行为对照 design.md §3 验收锚 2（行为测试：剩余 1 → 点钮恰一次 + 终结交回；剩余 0/None → 零点击不终结按原评分选）
 - grep 零命中（范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）：`supply_refresh_used`（验收锚 4 supply 半）
-- §3 验收锚 1 之选定快照：新行携 `refresh_left` 快照（行为锁断言 picked 键）
+- §3 验收锚 1 之选定快照：新行携 `refresh_left` 快照（行为测试断言 picked 键）
 - 通用工程门
-**验收凭据形式**：刷新闸行为锁测试（含 None 拒绝分支）+ sim 补给刷新段测试（初始 left=1 与 left−1 截断）+ 受影响测试全绿
+**验收凭据形式**：刷新闸行为测试（含 None 拒绝分支）+ sim 补给刷新段测试（初始 left=1 与 left−1 截断）+ 受影响测试全绿
 
 ## 3.3 遭遇链统一：刷新终结化 + 选卡派发即终结 + 奖励兑现回调
 
@@ -46,11 +46,11 @@
 **依赖**：3.2（共享 `cw_game_state.py`/`cw_projection_audit.py`/fields 域版本在飞面）
 **优先级建议**：6
 **完成判据**：
-- 行为对照 design.md §3 验收锚 3（行为锁：点钮恰一次 + 访问终结，无同访问 `screenshot()` 重读面；剩余 0/None 按原评分选；**候选读缺 = 零点击终结交回，零派发**；选卡派发即 `round_success` 零重入裁决轮；确认点击后容器即持 `chosen_encounter`；payload 离屏/越界缺陷留证不写；兑现三型 = 达标双证兑现且 `chosen_encounter` 随即清 / 未达标不写不清 / 删失或无 chosen 不写不清；重入轮二触发不重兑现）
+- 行为对照 design.md §3 验收锚 3（行为测试：点钮恰一次 + 访问终结，无同访问 `screenshot()` 重读面；剩余 0/None 按原评分选；**候选读缺 = 零点击终结交回，零派发**；选卡派发即 `round_success` 零重入裁决轮；确认点击后容器即持 `chosen_encounter`；payload 离屏/越界缺陷留证不写；兑现三型 = 达标双证兑现且 `chosen_encounter` 随即清 / 未达标不写不清 / 删失或无 chosen 不写不清；重入轮二触发不重兑现）
 - grep 零命中（范围 = src + sr-od-test；豁免 = telemetry 历史数据只读注释）：`encounter_refresh_used`/`encounter_refreshed_in_visit`（验收锚 4 收口）+ `_record_chosen`/`_confirm_pending`/`_try_refresh`（遭遇域）+ `zero_writes.py` 内 `pick_encounter` 迁出残留
 - 文档判据（attack3 X9）：`research/screen_flow_timing.md` #23 注已带 supersession 标记（用户裁定 2026-09-21）
 - 通用工程门
-**验收凭据形式**：遭遇刷新终结行为锁 + 选卡即时上报行为锁 + 空候选零点击行为锁 + 奖励兑现回调行为锁（达标/未达标/删失/重入幂等四型）+ mandate 遭遇决策受影响测试全绿
+**验收凭据形式**：遭遇刷新终结行为测试 + 选卡即时上报行为测试 + 空候选零点击行为测试 + 奖励兑现回调行为测试（达标/未达标/删失/重入幂等四型）+ mandate 遭遇决策受影响测试全绿
 
 ## 末阶段：正本更新
 
@@ -64,7 +64,7 @@
 
 ## 正本更新清单
 
-- `screens/supply.md`：§2 形态声明（派发即终结、零重入裁决）、§3 观察面（补节点条锚定写端 + refresh_left 摄入）、§4 动作面（选卡行上报改即时单相、刷新行改剩余闸）、§5 终结与交回、§6 状态上报面（ConfirmSupply 退役行 + chosen_supply 确认即写口径复核不变）、§8 守卫（活锁防线改读缺拒绝语义）、§9 锁面 ← 3.1/3.2
+- `screens/supply.md`：§2 形态声明（派发即终结、零重入裁决）、§3 观察面（补节点条锚定写端 + refresh_left 摄入）、§4 动作面（选卡行上报改即时单相、刷新行改剩余闸）、§5 终结与交回、§6 状态上报面（ConfirmSupply 退役行 + chosen_supply 确认即写口径复核不变）、§8 守卫（活锁防线改读缺拒绝语义）、§9 测试面 ← 3.1/3.2
 - `screens/encounter.md`：全文重写（入口稳定期删除、刷新链终结化 + 剩余闸、选卡派发即终结零重入裁决、chosen_encounter 迁动作侧、结算奖励兑现回调、per-visit 位退役）← 3.3
 - `screens/README.md`：§5.5 刷新行（遭遇改终结语义、两相欠账段摘 supply）、§6 终结总表「单选族确认离开」行（补给改派发即终结）← 3.2/3.3
 - `screens/op-layer.md`：§1.1（投资两屏即时上报条款扩展为事件单选族现役面 + 遭遇选卡迁派发即终结；重入裁决「仅限未迁移屏」清单收敛）、§1.2（欠账标注收窄为 planner/equip）、§1.4（遭遇刷新欠账标注摘除；chosen_* 动作事实边界条款遭遇例外改判——用户裁定迁移）、§2.1（补给确认宿主表述复核 + pick_encounter 零写例外撤销）、§2.2（刷新计数出辖节改剩余语义全域；动作事实边界条款遭遇腿迁移）、§3（分型表 supply/encounter 行）← 3.1–3.3

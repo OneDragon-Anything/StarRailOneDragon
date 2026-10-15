@@ -42,7 +42,7 @@ class CwActionOpenBookcardOp(CwOperation):
     terminal = True
 
     #: 结束本次访问等待 = 开卡动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
-    #: 逐字等价,漂移由等价锁暴露)。
+    #: 逐字等价,漂移由等价测试暴露)。
     terminal_wait = 1.8
 
     def __init__(self, ctx: SrContext, param: CwActionOpenBookcardParam,

@@ -64,7 +64,7 @@ class CwScreenXxx(SrOperation):
 
 ### 2.3 `report_screen_*_obs` 上报接口族
 
-- **形状**：`kernel/cw_screen_report/<screen>.py` 模块级函数，一画面一函数(与 obs 类同居，§2.2):`def report_screen_<snake>_obs(gs: GameState, obs: CwScreenXxxObs, *, sig: ChannelSig | None = None) -> None`。**与动作上报函数族 `report_action_*_param` 同约定**(用户裁定六:一个「上报」概念一个形状)——命名机械规约同构(obs 类 `CwScreenXxxObs` 去前缀 `CwScreen` 去后缀 `Obs` 转 snake);完备锁测试遍历包内 obs 类断言函数在场/推进型不在场;两族(动作/画面观察)互不混用,都禁按类型聚合的分派转移函数。sig 缺省 = 函数体内构造签名,**actor/ family/evidence 逐位沿用该画面现役写点原值**(如 actor='CwScreenEncounter')——REGISTERED_ACTORS 零扩面,**cw_game_state.py 本迭代零改动**(用户裁定⑦配套;并行会话在飞该文件,零触碰即零冲突),journal 写行语义与现役逐位连续。
+- **形状**：`kernel/cw_screen_report/<screen>.py` 模块级函数，一画面一函数(与 obs 类同居，§2.2):`def report_screen_<snake>_obs(gs: GameState, obs: CwScreenXxxObs, *, sig: ChannelSig | None = None) -> None`。**与动作上报函数族 `report_action_*_param` 同约定**(用户裁定六:一个「上报」概念一个形状)——命名机械规约同构(obs 类 `CwScreenXxxObs` 去前缀 `CwScreen` 去后缀 `Obs` 转 snake);完备测试遍历包内 obs 类断言函数在场/推进型不在场;两族(动作/画面观察)互不混用,都禁按类型聚合的分派转移函数。sig 缺省 = 函数体内构造签名,**actor/ family/evidence 逐位沿用该画面现役写点原值**(如 actor='CwScreenEncounter')——REGISTERED_ACTORS 零扩面,**cw_game_state.py 本迭代零改动**(用户裁定⑦配套;并行会话在飞该文件,零触碰即零冲突),journal 写行语义与现役逐位连续。
 - **辖域边界（硬规则）**：屏文件 = **该画面观察进容器的全部逻辑的家**——①写点转录；②**该屏更新逻辑**（写点之上的屏级门/派生/优先级，如幂等门/懒写/双写 baseline）；③**该屏对账逻辑**（类型化 obs 载荷之上的观察 vs 逻辑态特判，纯函数可随迁移批从 obs 桶逐步迁入，如商店池一致性核对）。判断线 = **只在类型化载荷上运算 → 进屏文件；要摸帧 → 留在观察侧**（识别机制不出端口，kernel 零像素纪律不破；依赖读帧的审计链留守 op 观察段）。kernel→obs 直依仍被分包矩阵禁止——迁入的对账纯函数以 obs 桶函数体「搬进」kernel 屏文件的方式落地，不是 import（依据：flow/README §2.3 分包矩阵）。
 - **漏斗边界**：`read_game_state` 漏斗内部的容器写端 = 既有观察边界，不动（用户裁定 #3）；prep/买牌的 report 函数只收编 op 层散落写点（接管补采写点 `takeover_*`/`plane_bosses`/`enemy_affixes`、`node_path` 写点、结算观察写点等，逐屏清单见 §2.6；重型屏辖域细化随 T-5 迁移批落地，landing 带注）。
 - **动作事实边界（硬规则）**：chosen_*（选择落地记录）留守画面 op 的重入裁决点——其值在「确认已落地」重入观察后才可信，记账随判定点走（用户裁定会话确认）。刷新计数**不适用**此边界（§2.4 出辖）。
@@ -139,8 +139,8 @@ class CwScreenXxx(SrOperation):
 
 - obs_arch 测试族（`test_cw_obs_arch_event_screens.py` / `_closing_screens.py` / `_event_screens_step3.py` / `_phase_screens.py`）随对应族迁移批改写：删端口装配与段迹断言，改桩 `op._observe`（或观察 node 的读屏函数注入点）直接注入 obs 驱动单路径；容器写入断言改经 report 接口路径。
 - `test_cw_game_ports`（端口协议守卫）随端口退役删除；`_cw_helpers.py` 的 `install_dispatch_stub_ports`/`uninstall_ports` 删除，消费方改直接驱动。
-- 收口锁变更：现役「凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代」AST 断言随基类退役删除，改为「cw_screen/ 顶层 op 类必直继承 SrOperation」的形状锁（防基类回潮）。
-- 行为锁语义保留：各屏在册行为锁的断言面（点击序列/容器终值/round 语义）不变，仅驱动方式与断言载体随新形态调整。
+- 收口测试变更：现役「凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代」AST 断言随基类退役删除，改为「cw_screen/ 顶层 op 类必直继承 SrOperation」的形状测试（防基类回潮）。
+- 行为测试语义保留：各屏在册行为测试的断言面（点击序列/容器终值/round 语义）不变，仅驱动方式与断言载体随新形态调整。
 - 每迁移批验证 = ruff（改动文件）+ 该族测试 + `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`（L1 ≈2.5min，收口跑）；收口批跑全量 L3。
 
 ### 2.9 关键取舍

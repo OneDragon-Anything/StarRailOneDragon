@@ -6,13 +6,13 @@
 ## 3.1 阶段1：预算披露面原签名搬迁（先立后破，行为等价批）
 **范围**：assembly.py 披露链三函数（`_budget`/`_disclose_budget`/`disclose_budget_at_shop_frame`）**原签名逐字迁** `economy_cycle.py`（`_budget` 仍返回 BudgetView、内嵌披露调用不变——存活至阶段2 的 `assemble` 依赖它供 `TurnState.budget` frozen 必填字段，供给链不得断）；assembly.py 改 import；cw_screen_buy_cards 调用点仅改 import 路径。不含：任何符号删除、任何签名/语义变更（合并形态归阶段2）。
 **设计依据**：design.md §2.2（阶段1 形态）
-**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（monkeypatch 缝目标随迁）、`test_cw_economy.py`（import 随迁）、`test_cw_shop_unobserved_gate.py`（monkeypatch 缝目标随迁，锁 5/6/7 断言零改）
+**文件面**：`src/.../strategies/impl/mandate_v1/{assembly.py, economy_cycle.py}`、`src/.../operations/cw_screen/cw_screen_buy_cards.py`；测试仓 `test_cw_budget_disclosure.py`（monkeypatch 缝目标随迁）、`test_cw_economy.py`（import 随迁）、`test_cw_shop_unobserved_gate.py`（monkeypatch 缝目标随迁，测试 5/6/7 断言零改）
 **依赖**：无
 **优先级建议**：6
 **完成判据**：
 - 披露四字段+键戳语义逐字段不变（design.md §2.2 语义清单；载体 = test_cw_budget_disclosure 全绿——缝目标随迁后断言本体原样，直接验证搬迁等价）
 - `assemble` 供给链不断：test_cw_migration_direction_layer 原样绿
-- 行为等价补强：当期 sim 无批跑 CLI（`sim.runner` 已随 sim-redesign 删除，commit e663515dd），本批对 sim 结构性不可见——行为等价载体 = 直接受影响测试全绿 + L1 全量（含 test_cw_sim_engine 局终锁）；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行
+- 行为等价补强：当期 sim 无批跑 CLI（`sim.runner` 已随 sim-redesign 删除，commit e663515dd），本批对 sim 结构性不可见——行为等价载体 = 直接受影响测试全绿 + L1 全量（含 test_cw_sim_engine 局终测试）；披露产出验证归 test_cw_budget_disclosure 与实机 recorder 行
 - L1 快速集绿；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节
 **验收凭据形式**：test_cw_budget_disclosure 输出 + L1 快速集输出
@@ -25,10 +25,10 @@
 **优先级建议**：6
 **完成判据**：
 - src + sr-od-test 全仓 grep `TurnState|DirectionView|BudgetView|_assemble_turn|snapshot_from_obs|hoard_consumer_domain|decide_from_turn` 零活引用（历史 ADR 记录/decisions 遗留/changes/ 豁免；flow/ 正本留末阶段；§2.3 反查样式同步清零，其中 engine_p1 辖域限定见 design.md §2.3）
-- `snapshot_copy` 活消费方不受影响（cw_game_state.py 部署装配链照常）；armed 短路帧不披露语义逐位保持（载体 = §2.5 新增单帧锁）
+- `snapshot_copy` 活消费方不受影响（cw_game_state.py 部署装配链照常）；armed 短路帧不披露语义逐位保持（载体 = §2.5 新增单帧测试）
 - L1 快速集绿 + L3 全量绿（commit 前）；触点文件 ruff 零告警
 - 通用工程门：本文件「通用工程门」节
-**验收凭据形式**：grep 输出清单 + L3 全量输出 + armed 单帧锁 + sim batch 冒烟跑通记录
+**验收凭据形式**：grep 输出清单 + L3 全量输出 + armed 单帧测试 + sim batch 冒烟跑通记录
 
 ## 末阶段：正本更新
 **范围**：按「正本更新清单」逐条更新
@@ -43,7 +43,7 @@
 - flow/projection_contract.md §0 头注定位句：去「`TurnState` 视图」 ← 阶段2
 - flow/projection_contract.md §1 四层表：删「决策视图」行；「快照视图」行产出端表述改「生产端（snapshot_from_obs）已随 turnstate-retirement 退役，契约本体候外溢批裁决」 ← 阶段2
 - flow/projection_contract.md §3 不变式3：改写为 Snapshot 隔离承诺（TurnState 前半删除；申报 snapshot_copy 现役消费方 = cw_game_state 部署装配链；快照隔离不变式本体不消失） ← 阶段2
-- flow/projection_contract.md §3 不变式5：幂等装配条改写为披露面承诺——披露唯一写点 = `economy_cycle.disclose_budget`（备战决策入口原 `_assemble_turn` 调用位 + 店开帧两调用点），禁决策消费，守卫锁 = test_cw_budget_disclosure ← 阶段2
+- flow/projection_contract.md §3 不变式5：幂等装配条改写为披露面承诺——披露唯一写点 = `economy_cycle.disclose_budget`（备战决策入口原 `_assemble_turn` 调用位 + 店开帧两调用点），禁决策消费，守卫测试 = test_cw_budget_disclosure ← 阶段2
 - flow/projection_contract.md §4.1 时间线：删 assemble 环节，补前置发射位与披露落点，改后流程 = design.md §2 数据流图 ← 阶段2
 - flow/projection_contract.md §6 G7 行：结案注（TurnState 层已随 turnstate-retirement 物理删除；hoard/hoard_readable 随 DirectionView 消亡） ← 阶段2
 - flow/README.md 备战决策 live 链口径（decide_from_turn → decide_prep_frame，去装配缝环节，补前置发射位） ← 阶段2

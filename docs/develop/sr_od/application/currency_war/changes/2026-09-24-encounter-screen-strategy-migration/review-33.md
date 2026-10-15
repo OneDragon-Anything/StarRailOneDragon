@@ -56,7 +56,7 @@
 | 4 | 08 号稿 E3 行「现有语义」格替换为能力态直通形；「判据状态」维持待 derive；锚不变 | ✓ | E3 行 = 能力态直通形四组件 + 决策本体/单一源指针；判据状态「待 derive」保留、P26 锚不变 |
 | 5 | 04 号稿裁定 9 行「判据正本」指针改策略层；同行补判据结构合法性载体分层 | ✓ | 「判据正本 = 策略层 encounter_pick.py（2026-09-24 迁移批；结算观测持久化基建留 kernel）；判据结构合法性载体 = 章程 §6 修订（闸门位立场值形态）+ 用户过目（2026-09-24），授权辖域原文不变」——与 31 号稿裁定 1 互相一致（载体本身未落正本 = F1） |
 | 6 | README §2 增 31 行；导航句 18-30 → 18-31 | ✓ | 分篇表 L53 新增 31 行；导航句 L57「18-31」 |
-| 7 | 画面文档策略指针面（screens/encounter.md 决策委托/刷新闸行为句；game/screens/currency_war_encounter.md 算法描述句，落批全路径核对） | ✓ | screens/encounter.md 6 处（§2 决策委托句改指 encounter_pick.py+31 号稿/§3 全克句改「词缀轴 = 死输入」/§4 分支刷新行改防线语义/§5 终结表+三出口句/§6 刷新单次行/§8 测试锁表述改「防线 round_fail」，与测试现态 `test_encounter_refresh_gate_mismatch_round_fail_redispatch` 一致）；game 侧算法句整句改写（能力态选档行为描述与实现一致，判据指针 = 31 号稿） |
+| 7 | 画面文档策略指针面（screens/encounter.md 决策委托/刷新闸行为句；game/screens/currency_war_encounter.md 算法描述句，落批全路径核对） | ✓ | screens/encounter.md 6 处（§2 决策委托句改指 encounter_pick.py+31 号稿/§3 全克句改「词缀轴 = 死输入」/§4 分支刷新行改防线语义/§5 终结表+三出口句/§6 刷新单次行/§8 测试表述改「防线 round_fail」，与测试现态 `test_encounter_refresh_gate_mismatch_round_fail_redispatch` 一致）；game 侧算法句整句改写（能力态选档行为描述与实现一致，判据指针 = 31 号稿） |
 
 ### 判据语义与裁定/挂账/盲区专项（判据 2）
 
@@ -65,14 +65,14 @@
 | §2.2–§2.5 判据语义转写 vs `encounter_pick.py` 现态 | ✓ | 三态表含 fill 双定谳槽门（`BAR_SEMANTICS=='node' ∧ PROGRESS_BAR_DIRECTION=='forward' ∧ fill<_FILL_EDGE_THRESHOLD`）与删失优先序；cap 过滤在前、足量态上界不设限表述与 `cap = EDGE_CAP if 边缘 else 6` 等效；经验档层 `tier_cleared` 交集；tiebreak `min((reward_tier, opt.idx))`；闸内嵌 `left is not None and left >= 1`；归因串四形态逐字一致（`pick:t{k}|kappa=<态>`/`refresh-valve:<因>`×3/`dark-fallback:<因>`/`stance-unconfirmed`） |
 | §1 裁定登记四项 vs design §2.2/§2.10 | ✓ | 裁定 1 = 04 §7 表第 9 行授权 + 辖域限定 + kernel 保留面四符号（直调 `cw_encounter_selection.py` 现符号面一致）；裁定 2 = 2026-09-21 op-layer §1.4（该节现文含「刷新闸 = 剩余语义观察真值(全域)」）；裁定 3 = 两闸绑定批准 + 章程修订申报 + 重拍回退机制（`stance-unconfirmed` 分支在码）；裁定 4 = EV 核退役（`encounter.py` 已删、provisional 双槽已删、仅余改指策略层的指针句 L23） |
 | §4 数学挂账七项 vs design §2.9/§2.11 | ✓ | 比值腿复活（P64 单篇存在 = `currency_war/proofs/`）/E-3 标定（注入位 fill 双键 vs `_CALIBRATABLE` 现态、kernel 侧仅收 `D_ENC_VARIANT` 现态、fill 阈值【拟】登记义务）/EV 形态挂 P26/档位↑采样验证/P2 两源对账/窗口变体触发器/补给孪生面防线交接（升 op-layer §1.4 全域条款批）——七项与 design §2.9 列举逐项对应 |
-| §3 sim 盲区 vs design §2.12 | ✓ | sim/ 目录 grep `record_settlement_row` 零命中——「结算环无写端 → 恒窗口不足 → 闸拒刷 → 最低档」结构性盲区断言成立；不可作 A/B 判据、验收 = 单帧锁（`test_cw_encounter_pick.py` 存在）+ 实机锚点 |
+| §3 sim 盲区 vs design §2.12 | ✓ | sim/ 目录 grep `record_settlement_row` 零命中——「结算环无写端 → 恒窗口不足 → 闸拒刷 → 最低档」结构性盲区断言成立；不可作 A/B 判据、验收 = 单帧测试（`test_cw_encounter_pick.py` 存在）+ 实机锚点 |
 
 ### 申报偏差 5 条
 
 | # | 申报 | 判定 | 依据 |
 |---|---|---|---|
 | 1 | 13 号稿头部「判据单源分轴」句补遭遇 = 策略层 | 合理 | 原句「其余 pick 族 = kernel/cw_events/cw_comps」在 kernel 遭遇核删除后会把遭遇错指已删核；补分轴消除失指，最小改动 |
-| 2 | screens/encounter.md 三处同面过期叙述随批收口（§3 全克句/§5 失锚引用/§9 测试锁表述） | 合理 | 实际落地 6 处改动，覆盖 landing 清单第 7 条全部要求（决策委托句+刷新闸行为句多处同步）；「三处」为语义面归组口径，§9 实际节号为 §8，不影响实质；防线描述与 `cw_screen_encounter.py` L198-205 现态一致 |
+| 2 | screens/encounter.md 三处同面过期叙述随批收口（§3 全克句/§5 失锚引用/§9 测试表述） | 合理 | 实际落地 6 处改动，覆盖 landing 清单第 7 条全部要求（决策委托句+刷新闸行为句多处同步）；「三处」为语义面归组口径，§9 实际节号为 §8，不影响实质；防线描述与 `cw_screen_encounter.py` L198-205 现态一致 |
 | 3 | 25 号稿 README 行一句话补「遭遇已拆 31」 | 合理 | design §2.9 只要求头注；README 分篇表 25 行描述与头注同步属一致性增强，先例同形（投资策略已拆 29、投资环境已拆 28 同行并列） |
 | 4 | 批外发现：architecture.md:144 模块地图行过期未动 | 属实，处置见 F2 | 直调证实该行与现役代码不符（本报告 F2）；批外文件不动符合逐文件点名纪律 |
 | 5 | 工作区其他批在飞未触碰 | 属实 | `git status`：2026-09-21-tool-gain-report / 2026-09-23-invest-env / uv.lock / attack*.md / review-3*.md / 2026-09-24-action-world-decl/ / supply review-33* 均未进本 commit；入库面 8 文件与申报一致 |

@@ -65,7 +65,7 @@
 
 ## ④ 试读结论（逐阶段）
 
-- **3.1（equip）实现 worker**：**可开工**。单相 report 改法、换源入口、删闩删出口门、行为锁三型用例（命中/未解析/泛用件）均凭现稿可直接落码；泛用件主张成立——`normalize_registry_equip_name` 键集 = `EQUIPMENT_ROSTER` 全量 158 键（cw_equipment_data.py :50 分类清单含简易 8/进阶 36 等泛用件），`_PLANNER_EQUIP_ANCHORS` 仅银狼 10 件锚（cw_events.py :916），「10 件锚对泛用件恒 ''、注册表级可命中」属实。卡点仅 F5（一处过期注释是否顺手改，无申报 → worker 需自拍板）。
+- **3.1（equip）实现 worker**：**可开工**。单相 report 改法、换源入口、删闩删出口门、行为测试三型用例（命中/未解析/泛用件）均凭现稿可直接落码；泛用件主张成立——`normalize_registry_equip_name` 键集 = `EQUIPMENT_ROSTER` 全量 158 键（cw_equipment_data.py :50 分类清单含简易 8/进阶 36 等泛用件），`_PLANNER_EQUIP_ANCHORS` 仅银狼 10 件锚（cw_events.py :916），「10 件锚对泛用件恒 ''、注册表级可命中」属实。卡点仅 F5（一处过期注释是否顺手改，无申报 → worker 需自拍板）。
 - **3.2（planner）实现 worker**：**可开工**。时序等价论证成立——确认点击（新时点）与重入裁决出口（旧时点）之间只有 round_wait 轮的 OCR 重入检查，容器零写入（观察只发生在两 node 观察 node 与备战 heavy 帧；report_screen_planner_obs 在派发前已写完；单线程无并发写端），`_apply_upgrade_transform` 三态前置校验读的 bench/front/back 观察态两时点等值 ✓。equip 屏删 `_pick_pending` 后「点卡未落地」治理 = 外循环重识别重派 + observe 重写 `equip_pick_opts` 槽 → `decide_equip_pick()` 零参读自洽 ✓。重复应用后果表述失实（F6）不影响开工，只影响取舍记录。
 - **末阶段正本更新批 worker**：**不可开工**。F2 条目条件求值为否即零动作（正确篇名未列）、F1 漏两个正本文件 + 判据口径永红、F3 幻影行引用——三项合计使「清单清零；正本与实现一致」判据不可达。先修清单再排批。
 

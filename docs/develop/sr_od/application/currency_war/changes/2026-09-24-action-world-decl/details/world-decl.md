@@ -130,13 +130,13 @@ cw_sim_ports.declare_world(gs_outcome.world_decl)
 | `TRANSITION_EVENT_KINDS` / `TransitionEvent` / `set_transition_event_sink` / `emit_transition_event` / `transition_event_on_applied` | `kernel/cw_event_hooks.py`（文件保留——事实事件半部 `FACT_EVENT_KINDS`/`emit_fact_event`/`FactEvent` 原样不动；模块头注转移描述删） |
 | 装饰器应用 16 处（8 具名文件各 1 + zero_writes 8）+ `report_node_advance` 内 emit 调用 1 处 | 各上报文件（3.2/3.3 已逐动作摘，本批验证归零） |
 | `SimBackend.on_transition_event` / `install_backend` 转移 sink 订阅 | `sim/cw_sim_backend.py` |
-| 测试对转移事件的断言 | `sr-od-test`（落地批 grep `transition_event` 盘点，断言平移为声明对照锁或退役） |
+| 测试对转移事件的断言 | `sr-od-test`（落地批 grep `transition_event` 盘点，断言平移为声明对照测试或退役） |
 
 ### 7. 测试与验收面
 
-- **声明对照锁**（新）：表驱动——每个转移动作构造桩 gs 触发上报，断言返回 `world_decl` 的 `trigger`/`next_screen` 与 §2 对照表逐位一致（`node_advance` 的 `next_screen` 对桩 gs 节点序按推导规则断言）；`applied=False` 路径断言 `world_decl is None`。
+- **声明对照测试**（新）：表驱动——每个转移动作构造桩 gs 触发上报，断言返回 `world_decl` 的 `trigger`/`next_screen` 与 §2 对照表逐位一致（`node_advance` 的 `next_screen` 对桩 gs 节点序按推导规则断言）；`applied=False` 路径断言 `world_decl is None`。
 - **e2e 回归**：`run_sim_full_match` 多种子（沿用现役验收种子集）跑通 P1→P2——声明驱动与现行事件驱动的世界终态对拍（`container_snapshot` 逐位一致是等价性的最强判据）。
-- **实机零变化**：现役 op 流程测试（fixture_controller 剧本）期望不改全过；派发点判断对 18 动作逐动作锁「交回结果与改前一致」。
+- **实机零变化**：现役 op 流程测试（fixture_controller 剧本）期望不改全过；派发点判断对 18 动作逐动作断言「交回结果与改前一致」。
 - **退役归零**：多形态探针（`transition_event` / `TRANSITION_EVENT` / 装饰器名）grep 归零，含跨行形态（清理批验收协议：单行 grep 被跨行绕过 = 假绿）。
 
 ## 关键取舍

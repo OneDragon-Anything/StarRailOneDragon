@@ -87,7 +87,7 @@
   **无观察写端**——队列是卡文推算知识,游戏 UI 无「待发放列表」可读。
   fields.md 新节随正本更新阶段落地。
 - 对账申报:按 `cw_projection_audit` 维护纪律,新容器字段必须在
-  `PROJECTION_AUDIT` 登记行(登记缺失 = 完备性锁红,锁 =
+  `PROJECTION_AUDIT` 登记行(登记缺失 = 完备性测试红,测试 =
   test_cw_board_derived_and_reorder.py)+ 同步人读镜像
   `.debug/progress/2026-09-16-strategy-terminal-contract/projection-audit.md`
   (模块 docstring 维护纪律:改表须同步改镜像;行状态 = `process_only`,

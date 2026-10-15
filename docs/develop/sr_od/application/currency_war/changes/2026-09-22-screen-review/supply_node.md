@@ -45,7 +45,7 @@
 
 - 现状症状:§9 记「journal op 名 =『补给节点』」,代码 `CwScreenSupplyNode.__init__` 实参 = `'货币战争-补给节点'`,运行记录按 `operation=self.op_name` 落;按文档名检索会落空(报告 F-6)。
 - 根因归层:表示层——文档少写命名空间前缀,检索面失配。
-- 解决到哪:补全前缀(见 §2.6)。明确不解决:§9 其余锁面清单(报告已核无误)。
+- 解决到哪:补全前缀(见 §2.6)。明确不解决:§9 其余测试面清单(报告已核无误）。
 
 ### 1.7 F-7(低)补给链代码注释引用 changes/ 过程件
 
@@ -55,7 +55,7 @@
 
 ### 1.8 已核对一致面
 
-报告 §3「已核对无问题项」1-15 条(两 node 形态/读屏点纪律/推进形态/确认即写行为/刷新终结臂+剩余闸/派发即终结/一口写行为/观察上报规约/决策铁律/终结语义/九节 as-built/建档/退役符号零残留/测试锁在册/迭代对照)全部不立修法,本稿不触碰其承载的代码与文档面。
+报告 §3「已核对无问题项」1-15 条(两 node 形态/读屏点纪律/推进形态/确认即写行为/刷新终结臂+剩余闸/派发即终结/一口写行为/观察上报规约/决策铁律/终结语义/九节 as-built/建档/退役符号零残留/测试在册/迭代对照)全部不立修法,本稿不触碰其承载的代码与文档面。
 
 ## 2. 方案
 
@@ -117,7 +117,7 @@ pick-supply.md 整文件替换为以下目标全文:
 
 ## 7. 语义验证
 
-行为锁 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_cw_pick_channels_t60.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_cw_obs_arch_event_screens_step3.py`(chosen 确认即写),在册路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
+行为测试 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_cw_pick_channels_t60.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_cw_obs_arch_event_screens_step3.py`(chosen 确认即写),在册路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
 
 ## 8. 判例注记(发射期)
 

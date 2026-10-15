@@ -37,7 +37,7 @@
 
 ## 7. 语义验证
 
-StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切画面不改资源),节点推进判定本体 = 终结动作上报 + 观察确认(单一源 = [../node-derivation.md](../node-derivation.md)),不经本动作承载。「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由节点边界/结算覆盖承载。无 M1 直锁对象;原 sim 整帧副本载体(simulate)已停用,考古归 git。
+StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切画面不改资源),节点推进判定本体 = 终结动作上报 + 观察确认(单一源 = [../node-derivation.md](../node-derivation.md)),不经本动作承载。「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由节点边界/结算覆盖承载。无 M1 直接校验对象;原 sim 整帧副本载体(simulate)已停用,考古归 git。
 
 ## 8. 判例注记(动作发出阶段)
 

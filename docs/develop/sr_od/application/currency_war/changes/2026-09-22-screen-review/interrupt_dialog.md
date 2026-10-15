@@ -71,6 +71,6 @@
 |---|---|---|
 | `operations/cw_screen/cw_screen_interrupt_dialog.py` | 模块 docstring「exogenous popup 行随 op 迁移」句括注内两枚编号删出、「测量链」保留(§2.1 #1) | 注释(docstring,零逻辑) |
 
-统一验收:§2.1 验证门 1-3 全过;零行为变化(src 树无逻辑 diff;完备锁 `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_report_ports.py` 的 `_SCREENS`/`_NO_REPORT`/`_PLACEHOLDERS` 与形态锁 `test_cw_screen_progression_inline.py::_OBS_ROWS` 均不读 docstring,零触碰面);`sr-od-test/` 零改动;与审查报告 §3 全部一致面零交叠;§2.1 登记行随本稿落地批原样交 T-37。
+统一验收:§2.1 验证门 1-3 全过;零行为变化(src 树无逻辑 diff;完备测试 `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_report_ports.py` 的 `_SCREENS`/`_NO_REPORT`/`_PLACEHOLDERS` 与形态测试 `test_cw_screen_progression_inline.py::_OBS_ROWS` 均不读 docstring,零触碰面);`sr-od-test/` 零改动;与审查报告 §3 全部一致面零交叠;§2.1 登记行随本稿落地批原样交 T-37。
 
 协调注(同文件在飞面):本文件模块头另有 T-26 已登记家族成员(首句「ADR-0584,A9」、L5/L97「C10」、L3「1g」)与在册合规件(bug#2/M53[按族判,见 §1.1 对照面]/迁移措辞)——本修法点位(「exogenous popup 行随 op 迁移」句)与之不同句、无交叠;同批落地时各按各自在册口径处置,禁互借名义扩面(准则 4)。

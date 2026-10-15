@@ -3,20 +3,20 @@
 > 通用工程门（各阶段判据引用项，此处单一定义）：`uv run ruff check` 改动文件全过；直接受影响测试 + L1（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow" -q`）一次通过；`git add` 逐文件点名；提交后 `git show --stat` 复核入库面 = 申报面。（源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节）
 
 ## 3.1 策略层决策本体 + flow 接线
-**范围**：新建 `strategies/impl/mandate_v1/supply.py`（三级字典序决策 + 刷新判据 + 纯值出口，design §2.2-§2.5）；`flow.py::decide_supply` 改调 `supply.decide`（意向解析照 `invest_env` 同源：`locked_comp` 套名经 `get_comp` 解析后传入、`demoted_endgame` 直通；闸前移内嵌 decide）。边界：不动 kernel（删除归 3.2）；不动动作词表 / op handler / 观察写槽。**入库豁免**：§2.6 原子切换约束下本阶段不单独 commit——完成 = 工作区自验（ruff + L1 + 新锁绿），git 提交随 3.2 一并执行，通用工程门的提交/复核两项由 3.2 承接。
+**范围**：新建 `strategies/impl/mandate_v1/supply.py`（三级字典序决策 + 刷新判据 + 纯值出口，design §2.2-§2.5）；`flow.py::decide_supply` 改调 `supply.decide`（意向解析照 `invest_env` 同源：`locked_comp` 套名经 `get_comp` 解析后传入、`demoted_endgame` 直通；闸前移内嵌 decide）。边界：不动 kernel（删除归 3.2）；不动动作词表 / op handler / 观察写槽。**入库豁免**：§2.6 原子切换约束下本阶段不单独 commit——完成 = 工作区自验（ruff + L1 + 新测试绿），git 提交随 3.2 一并执行，通用工程门的提交/复核两项由 3.2 承接。
 **设计依据**：design.md §2.2 / §2.3 / §2.4 / §2.5
-**文件面**：`strategies/impl/mandate_v1/supply.py`（新）、`strategies/impl/flow.py`、`sr-od-test/test/sr_od/application/currency_war/`（新增决策锁）
+**文件面**：`strategies/impl/mandate_v1/supply.py`（新）、`strategies/impl/flow.py`、`sr-od-test/test/sr_od/application/currency_war/`（新增决策测试）
 **依赖**：无
 **优先级建议**：5
 **完成判据**：
 - 行为对照 design §2.2（三级序与两账输入）、§2.3（凑星判据数据源 = `same_star_count`）、§2.4（三级全空 + 闸内嵌 fail-closed）
 - 通用工程门（本文首节定义）
-**验收凭据形式**：单帧锁 `sr-od-test/test/sr_od/application/currency_war/test_cw_supply_decision.py`——锁语义不锁牌面：①带钻必选（多钻按角色/装备细分）；②锁线帧终局成员卡压高价值装备卡；③未锁线/降格帧/get_comp 解析失败帧角色级空转、装备级无 key 参照；④已持够数成品不再高分、组件/近兑现升档（持有账按 design §2.2 第 3 级两账口径构造）；⑤三级全空才刷 + left 缺/尽不刷不阻塞落选卡（闸内嵌语义）；⑥席满无特殊分支（溢出席语义 = 正常选卡）；⑦凑星 tiebreak：同名 1★ 恰 2 张时该角色候选先于不凑星的终局成员候选，**含 2 张同名 1★ 分跨备战席/上阵行域的构造**（钉死 deployed 展平，防只数备战席的漏域实现）；⑧P1 配方锁帧：无钻帧建议刷（三级全空恒真）+ left 缺/尽构造下直接按「钻或通用值定序」落选卡（design §2.6 申报 ⑤ 刷新腿与闸语义）；⑨空候选帧返 idx=0 no-options（design §2.2 空帧定义）。
+**验收凭据形式**：单帧测试 `sr-od-test/test/sr_od/application/currency_war/test_cw_supply_decision.py`——测试语义不校验牌面：①带钻必选（多钻按角色/装备细分）；②锁线帧终局成员卡压高价值装备卡；③未锁线/降格帧/get_comp 解析失败帧角色级空转、装备级无 key 参照；④已持够数成品不再高分、组件/近兑现升档（持有账按 design §2.2 第 3 级两账口径构造）；⑤三级全空才刷 + left 缺/尽不刷不阻塞落选卡（闸内嵌语义）；⑥席满无特殊分支（溢出席语义 = 正常选卡）；⑦凑星 tiebreak：同名 1★ 恰 2 张时该角色候选先于不凑星的终局成员候选，**含 2 张同名 1★ 分跨备战席/上阵行域的构造**（钉死 deployed 展平，防只数备战席的漏域实现）；⑧P1 配方锁帧：无钻帧建议刷（三级全空恒真）+ left 缺/尽构造下直接按「钻或通用值定序」落选卡（design §2.6 申报 ⑤ 刷新腿与闸语义）；⑨空候选帧返 idx=0 no-options（design §2.2 空帧定义）。
 
 ## 3.2 kernel 剪除与死代码删除
-**范围**：删 `cw_events.decide_supply` 函数体 + `SupplyPick` + `EVENT_PICK_TYPES` 元组该位与 `EventPick` 联合别名该位（`SupplyOption`/`_equip_value` 按 design §2.6 保留）；删 `cw_survey19_hooks.supply_reroll_decision`；design §2.6 注释指针收口清单逐点处理；step3 幸存闸锁 docstring 过期注记（`test_cw_obs_arch_event_screens_step3.py:130-136`）。与 3.1 同一 commit 原子切换（新旧不并存）：**commit 面 = 3.1 ∪ 3.2 文件并集**（3.1 交付随本阶段一并入库，工程门提交/复核两项在此兑现）。测试面按 design §2.6 如实申报：在册无 kernel 侧 supply 决策专用锁；strategy 级 stub 两处（test_cw_obs_arch_event_screens_step3 / test_cw_supply_pick_immediate_report）不随删；`test_cw_unified_action_4.py` 类型 import 与实例构造点两处随删。
+**范围**：删 `cw_events.decide_supply` 函数体 + `SupplyPick` + `EVENT_PICK_TYPES` 元组该位与 `EventPick` 联合别名该位（`SupplyOption`/`_equip_value` 按 design §2.6 保留）；删 `cw_survey19_hooks.supply_reroll_decision`；design §2.6 注释指针收口清单逐点处理；step3 幸存闸测试 docstring 过期注记（`test_cw_obs_arch_event_screens_step3.py:130-136`）。与 3.1 同一 commit 原子切换（新旧不并存）：**commit 面 = 3.1 ∪ 3.2 文件并集**（3.1 交付随本阶段一并入库，工程门提交/复核两项在此兑现）。测试面按 design §2.6 如实申报：在册无 kernel 侧 supply 决策专项测试；strategy 级 stub 两处（test_cw_obs_arch_event_screens_step3 / test_cw_supply_pick_immediate_report）不随删；`test_cw_unified_action_4.py` 类型 import 与实例构造点两处随删。
 **设计依据**：design.md §2.6
-**文件面**：`kernel/cw_events.py`、`kernel/cw_survey19_hooks.py`、`kernel/cw_vocab.py`、`operations/cw_op/cw_pick_supply_action.py`、`operations/cw_screen/cw_screen_supply_node.py`（仅注释）、`obs/cw_node_obs.py`（仅注释）、`sr-od-test/` 内引用被删符号的旧锁（含 `test_cw_unified_action_4.py` 的 SupplyPick 类型 import `:27-33` 与实例构造点 `:303`）
+**文件面**：`kernel/cw_events.py`、`kernel/cw_survey19_hooks.py`、`kernel/cw_vocab.py`、`operations/cw_op/cw_pick_supply_action.py`、`operations/cw_screen/cw_screen_supply_node.py`（仅注释）、`obs/cw_node_obs.py`（仅注释）、`sr-od-test/` 内引用被删符号的旧测试（含 `test_cw_unified_action_4.py` 的 SupplyPick 类型 import `:27-33` 与实例构造点 `:303`）
 **依赖**：3.1
 **优先级建议**：5
 **完成判据**：

@@ -20,8 +20,8 @@
 
 ### A2【landing §3.2a/§3.2b】LevelUp cost/auth_basis 装载批归属自相矛盾,2a 中间态 cost 源悬空
 - **问题**:①2a 范围括号内出现「发射面 cost = xp_click_cost 现算,失读回退
-  XP_CLICK_COST_FALLBACK」,而 2b 判据「LevelUp 装载锁(2b 半)」把同一件事列为
-  2b 锁面——同一装载两批都申报;②2a 判据要「逻辑态 xp/level 推进」+ design 定案④
+  XP_CLICK_COST_FALLBACK」,而 2b 判据「LevelUp 装载测试(2b 半)」把同一件事列为
+  2b 测试面——同一装载两批都申报;②2a 判据要「逻辑态 xp/level 推进」+ design 定案④
   逻辑态分支 = gold −cost,但 2a 阶段族B `LevelUp()` 无 cost 字段(2b 合并才有),
   中间态金腿取值源(执行缝 `_executed_gold_delta` 延续 or 写口现算)无文字,
   实现者必须自行设计。
@@ -62,17 +62,17 @@
 **观察级(不立案)**:「G1 准入」有代码在册出处(`cw_op_tools.py:1/:11/:206`,
 ADR-0529),非会话黑话;T-203 在仓内无引用,迁移清单三面与 T-192 判效拆除保留面
 (`cw_refresh_shop_action.py:132` 「留证遥测半(候选 a)」)对应,批4 全仓扫描兜底
-闭环;R7 批次归位/批4 锁面「以实际元组为准不记账目数」防数字漂移,成立。
+闭环;R7 批次归位/批4 测试面「以实际元组为准不记账目数」防数字漂移,成立。
 
 ## 二、attack §六 8 项落文核对表
 
 | # | 项 | 结论 | 核对要点 |
 |---|---|---|---|
-| 1 | 合并清单按代码真值重写 | ✅ | 四行「族A 原样」:SellBench 五字段含 convert_reason 且顺序与 `cw_vocab.py:367-383` 逐字一致;LevelUp cost+auth_basis;SellDeployed 执行边换算;DeployMove faction/to_row 保留+发射位现取+零构造死类如实披露;家族树 CwAction+metadata 逐字段裁定+action_key 前后对照锁(F1/F2/F3/F12) |
+| 1 | 合并清单按代码真值重写 | ✅ | 四行「族A 原样」:SellBench 五字段含 convert_reason 且顺序与 `cw_vocab.py:367-383` 逐字一致;LevelUp cost+auth_basis;SellDeployed 执行边换算;DeployMove faction/to_row 保留+发射位现取+零构造死类如实披露;家族树 CwAction+metadata 逐字段裁定+action_key 前后对照测试(F1/F2/F3/F12) |
 | 2 | LevelUp 粒度定案 | ✅ | 唯一形态六条全落(单击语义/每帧一击+clicks_to_next_level 门/cost+auth_basis 口径/域集扩 xp/level+xp_apply_clicks/授权归属逐项/M2+posture+m1p 逐项);接缝残留见 A2/A3 |
 | 3 | StartBattle/OpenShop 裁定 | ✅ | OpenShopOp execute=AssertionError+read_only 动作字段(:2415 分支核真)+terminal_wait 3/1.0(:1747-1754/:1959-1963 核真);StartBattle 在册例外+消费面+退役挂账 A6(F8/F9);OpenBox 基准见 A6 |
 | 4 | 批2 文件面+import 策略 | ✅ | cw_prep_expect/cw_exec_state/cw_game_state/cw_loop/decision_assembly/sim 三 import 位全入 2b 面;「一次翻清不留 shim」写死;SELL_BENCH_* 迁居 cw_vocab(F4/F11);新遗漏见 A1 |
-| 5 | 判据修正 | ✅ | 2b 序列不变限商店域(备战域由 2a 对照锁+形态锁承接,F14-7);换算收口=两边界各一处函数化+发射/决策面散点零残留(F10) |
+| 5 | 判据修正 | ✅ | 2b 序列不变限商店域(备战域由 2a 对照测试+形态测试承接,F14-7);换算收口=两边界各一处函数化+发射/决策面散点零残留(F10) |
 | 6 | 跨批判读口径 | ✅ | 改名键清单(slot→bench_idx)+值域换算式(−1)+兼容窗落点(query/journal_query/tools/cw 双键)+「前后档不可直比」申报(F7);与 R1 不冲突(退役类旧数据可弃≠在役动作改名键) |
 | 7 | 锚点勘误 | ✅* | 45+ 处抽查:词表 13 类/两链辖 12(组合 4+直执行 8,代码逐支清点)/OpenShop 流程层截流口径全对;:990/:1023/:1267/:1355-1356/:2082 侧(:2073 除外)/:2323/:2415/:1148/:106/:612-838 等几乎全中;仅 A4 三处偏移(F5) |
 | 8 | 流程面 | ✅ | 末阶段依赖=批1-批4 全部(F16);README 阶段 0/6(批2 拆后自洽,F17) |
@@ -81,9 +81,9 @@ F1-F19 无漏网、无走样;F18(七件齐)/F19(无过程叙事)维持通过。
 
 ## 三、R1-R9 一致性结论
 
-- **无裁定间冲突**。R1(退役=删)vs 批4 注册完备锁:类不在元组即不可复活,自洽;
+- **无裁定间冲突**。R1(退役=删)vs 批4 注册完备测试:类不在元组即不可复活,自洽;
   R1 vs 遥测兼容窗分属两类(退役类可弃/在役动作改名键建窗),不矛盾。
-- R7 OpenBox 终结化 vs 批3 terminal 等价锁:2a 定值→批3 锁等价迁移,结构自洽
+- R7 OpenBox 终结化 vs 批3 terminal 等价测试:2a 定值→批3 测试等价迁移,结构自洽
   (仅 A6 时点表述歧义);2a 交回机制(结束判定集合加 OpenBox)→批3 改读
   op.terminal,行为连续。
 - R9 废除保守回退 vs 枚举文档 G1-G9:语义一致(枚举文档把「交回」降为缺口闭合前
@@ -92,15 +92,15 @@ F1-F19 无漏网、无走样;F18(七件齐)/F19(无过程叙事)维持通过。
 - 裁决3 零比对 vs 保留面迁移:三面清单与在册留证面对应,批4 扫描兜底「漏面不合格」,
   prep 域「零留证比对面」主张与 CV-diff 批2 删 + 工具对拍随原子化承接一致。
 - 裁决2 拆分:依赖链 2a←批1+枚举文档 cond、2b←2a、批3←2b、批4←批3 清晰;
-  两节点判据各自可独立验收(2a 七锁、2b 八判据+回归门);唯一悬空 = A1/A2。
+  两节点判据各自可独立验收(2a 七测试、2b 八判据+回归门);唯一悬空 = A1/A2。
 
 ## 四、试读终审
 
 - 批1:**可开工**(env 协议/注册表/薄委托/「不含」清单/文件面齐)。
 - 批2a:**补 A1/A2/A3 文字后可开工**(其余步骤——扫描、原子通路、ClickSpheres、
   武装箱全链、EXHAUSTION 重推——凭稿可施工)。
-- 批2b:**可开工**(归一删除/换算收口/装载锁/兼容窗/sim seed 锁齐)。
-- 批3/批4:**可开工**(裁定/等价锁/锁面形态齐)。
+- 批2b:**可开工**(归一删除/换算收口/装载测试/兼容窗/sim seed 测试齐)。
+- 批3/批4:**可开工**(裁定/等价测试/测试面形态齐)。
 
 ## 五、定稿判定
 

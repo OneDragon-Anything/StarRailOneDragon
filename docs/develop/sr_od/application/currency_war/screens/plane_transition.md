@@ -41,12 +41,12 @@
 
 `node_max_retry_times=8` 在用值仅框架异常路径消费;连续 fail 预算归外循环通用重派防线([../flow/guards.md](../flow/guards.md) §1);误派防线 = 阶段一身份分支 boss 判别排他(§1);节点识别标志 miss 的帧走未知兜底停机保留证据(位面过渡误读兜底已停用,证据入库后再议标志加固)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 = 「位面过渡」;日志前缀 `[cw-flow-plane]`。
-- 测试锁:两 node 行为锁 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(位面过渡观察门 miss 早退与链 report/落地复查组合)(代码注另引 `test_cw_flow_ops.py`(现状:sr-od-test 无此文件,锁面重建归测试仓批;申报见下),现状不在测试仓 = 开放设计注)。
+- 测试:两 node 行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(位面过渡观察门 miss 早退与链 report/落地复查组合)(代码注另引 `test_cw_flow_ops.py`(现状:sr-od-test 无此文件,测试面重建归测试仓批;申报见下),现状不在测试仓 = 开放设计注)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #2/#29;画面档 = `assets/game_data/screen_info/currency_war_plane_transition.yml`。
 
 ## 开放设计注
 
-代码注引用的 `test_cw_flow_ops.py` 在 sr-od-test 现状无对应文件(锁面重建归属待测试仓清理批,与 [boss_briefing.md](boss_briefing.md)/[wait_one_one.md](wait_one_one.md) 同批申报)。
+代码注引用的 `test_cw_flow_ops.py` 在 sr-od-test 现状无对应文件(测试面重建归属待测试仓清理批,与 [boss_briefing.md](boss_briefing.md)/[wait_one_one.md](wait_one_one.md) 同批申报)。

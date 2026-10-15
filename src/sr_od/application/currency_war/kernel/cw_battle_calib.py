@@ -1,5 +1,5 @@
 """货币战争战斗校准与板面聚合函数族(自 cw_sim.py 下沉;
-等价锚=同 seed 决策序列既有锁面)。
+等价锚=同 seed 决策序列既有测试面)。
 
 下沉闭包「校准+聚合族」:回退层胜负面(node_win_p/
 battle_delta/boss_delta/boss_settle_delta/node_delta)、结算成型度键

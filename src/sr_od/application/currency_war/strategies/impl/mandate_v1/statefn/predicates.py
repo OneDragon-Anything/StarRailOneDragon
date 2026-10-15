@@ -163,7 +163,7 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
     (支付变现)三通道资格循环首门,判读先于其余资格门;生产观察层
     SIFT 不产占位件条目,sim 假环境经观察面直喂 bench——本门 = 各卖出
     通道发出前唯一的占位件资格防线。新卖出通道必须经本谓词,禁第三处
-    kind 判定内联复制(静态锁 = sr-od-test
+    kind 判定内联复制(静态测试 = sr-od-test
     test_sell_candidates.py 占位件物理门段)。与部署侧 ``cw_deploy_logic``
     'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖)。
     缺省 False = 无标记形态不误伤(与部署侧同款防御读)。

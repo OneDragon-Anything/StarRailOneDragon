@@ -13,7 +13,7 @@
 **完成判据**：
 - 端口缺省 `None` 下全量 CW 测试绿（实机路径零行为变化）；
 - 桩测试：装最小假后端后 `CwOperation.screenshot` 返回哨兵帧不触 controller、直连 `ctx.controller` 即 `AssertionError`；
-- 单装配重复安装 raise、teardown 卸载复位（端口协议锁）；
+- 单装配重复安装 raise、teardown 卸载复位（端口协议测试）；
 - 换父后 grep `^class Cw\w+\(SrOperation\)` 零命中；
 - L1 全量通过（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow" -q`）。
 **验收凭据形式**：测试名 + L1。
@@ -28,7 +28,7 @@
 **优先级建议**：9
 **完成判据**：
 - 旧规则断言平移绿（收入/经验/发牌/结算/装备，自 `test_cw_sim_engine.py` 迁移）；
-- 同 seed 同 RunConfig reset 双跑容器逐位一致（确定性锁）；
+- 同 seed 同 RunConfig reset 双跑容器逐位一致（确定性测试）；
 - 获得链断言：选契约环境送卡入席、选策略卡 burst/板面重写/改件链生效（对齐 `cw_gain_chain` 现役语义）；
 - 退役模块全树零引用（grep 零命中）；
 - L1 全量通过。
@@ -44,7 +44,7 @@
 **优先级建议**：8
 **完成判据**：
 - 每生成器单测：构造世界态 → 生成 obs → 经同名 `report_screen_*` 落容器 → 容器字段断言；
-- 状态机呈现未注册屏 = 具名响错（锁）；
+- 状态机呈现未注册屏 = 具名响错（测试）；
 - 金路径清单覆盖核对（清单逐行有生成器）；
 - L1 全量通过。
 **验收凭据形式**：测试名 + 清单对照。

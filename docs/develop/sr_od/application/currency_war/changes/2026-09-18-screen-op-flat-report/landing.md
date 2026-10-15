@@ -57,7 +57,7 @@
 **优先级建议**：6。
 **完成判据**：
 - 漏斗调用链零改动（read_game_state 签名/写端）；端口消费点删净；
-- 行为锁（prep 决策循环/买牌波循环/结算链）语义逐位保留。
+- 行为测试（prep 决策循环/买牌波循环/结算链）语义逐位保留。
 **验收凭据形式**：prep/商店/结算测试族全绿 + ruff。
 **风险注记**：`cw_op/` 目录有并行会话在飞改动（动作 op 侧），动该目录两文件前先 `git status` 核对；冲突即停手上报。
 
@@ -73,7 +73,7 @@
 
 ## 3.7 退役批
 
-**范围**：删 `cw_screen_op_base.py`、`_progression_base.py`、`cw_game_ports.py`、`decision_frame_hooks.py` 假环境分支、残余适配器/旧观察类名；AST 收口锁改形（「cw_screen/ 顶层 op 类必直继承 SrOperation」）；`_cw_helpers.py` 端口桩清理、`test_cw_game_ports` 删。
+**范围**：删 `cw_screen_op_base.py`、`_progression_base.py`、`cw_game_ports.py`、`decision_frame_hooks.py` 假环境分支、残余适配器/旧观察类名；AST 收口测试改形（「cw_screen/ 顶层 op 类必直继承 SrOperation」）；`_cw_helpers.py` 端口桩清理、`test_cw_game_ports` 删。
 **设计依据**：design.md §2.5/§2.8。
 **文件面**：上述文件 + 全树 grep 兜底（基类/端口/段迹符号零残余）。
 **依赖**：T-2、T-3、T-4、T-5、T-6。

@@ -8,7 +8,7 @@
 **优先级建议**：8
 **完成判据**：
 - 单测覆盖三分流：真失配 → 落 `observe_vs_logic_mismatch` 行（含 ts + screen/actor/group_id/logic_evidence）+ hook 被调；豁免命中（精确 screen 键、`'*'` 通配键、logic_evidence 前缀命中/不命中、同 (screen, field) 多条目并存、screen=None 仅通配可命中各一例）→ `exempt_mismatch` 行（同形状换 kind）+ hook 不被调；sim 前缀 → 不落行不调 hook；hook 缺省 None 零副作用
-- 存量测试同步：`test_cw_game_state.py::test_observe_over_logic_mismatch_defect_row_and_sink_drain`、`test_cw_game_state_consume.py` 锁新行形状与抑制语义；`read_game_state(ctx, None, …)` 既有调用形态测试不变（None → sig.screen=None）
+- 存量测试同步：`test_cw_game_state.py::test_observe_over_logic_mismatch_defect_row_and_sink_drain`、`test_cw_game_state_consume.py` 校验新行形状与抑制语义；`read_game_state(ctx, None, …)` 既有调用形态测试不变（None → sig.screen=None）
 - 主喂入口补画面名后：调用点已知画面名处金字段失配行 screen 在场（非 None），精确豁免键可命中
 - L1 全绿（`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`）
 - §12 通用工程门（引用，不复述）

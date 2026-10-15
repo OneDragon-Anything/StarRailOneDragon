@@ -26,7 +26,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_level_up_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                                       executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """商店屏升级意图上报(CwActionLevelUpShopParam,同字段双类型)——
-    一行委托 :func:`report_action_level_up_param`(命名规约完备锁要求
+    一行委托 :func:`report_action_level_up_param`(命名规约完备测试要求
     每词表类恰有一个同名上报函数;语义单一源 = LevelUp 函数)。"""
     return report_action_level_up_param(gs, param, sig, executed)
 

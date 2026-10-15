@@ -311,7 +311,7 @@ C ≈ 0(乙.1 段 1:富余段持有零利息损失)、f ≥ 2 ⇒ C_sat=0、O/F/
 - 消费:P38(概率因子单一源)、P41(V_opt/V_slot/卖出不等式)、P47(L 递推)、P16(切换阵容兜底通道)、P49(B_comp)、P51(W_floor/D 形态)、P01(再遇口径);
 - 设计衔接:strategy-docs/12 §1(证据门阈值分支——本篇即其推导出处,该分支【拟】标定槽位应由 §4.3 夹界形态接替)、12 §3(切换终局阵容机制=V_F 兜底)、01 §3.7/§7(P16 消费、钩子表不受本篇增删);
 - 实现锚:proof.py::evidence_gate、cw_intention.py::line_completion_feasibility/p2_supply_horizon/P1_PAIR_LOCK_MIN_SUPPORT(§0.1 三形态);
-- 后续批(本篇不实现):夹界判据实现(evidence_gate 接线时按夹界形态实现,替换序数门/修 no_budget 分支——该门当前未接线,修正 5)、标定批(V_ms→V_C−V_F/O/F 价值因子;λ_death 连续模型→D)、专用单帧锁随实现批补。
+- 后续批(本篇不实现):夹界判据实现(evidence_gate 接线时按夹界形态实现,替换序数门/修 no_budget 分支——该门当前未接线,修正 5)、标定批(V_ms→V_C−V_F/O/F 价值因子;λ_death 连续模型→D)、专用单帧测试随实现批补。
 
 ## 修订记录(2026-09-07 对抗审后修订)
 

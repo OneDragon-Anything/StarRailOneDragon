@@ -8,7 +8,7 @@
 
 ## 1. 问题与动机（根因）
 
-**根因一（表示层）：双形状并存使 `bench_slots_to_legacy`（BenchView→BenchChar）成为信息销毁点。** 占位件 kind 三分类（tome/bookcard/supply_box）被压成布尔 `is_item_slot`，写回被迫降级 supply_box——collect_ore/buy_card/swap_deploy 三处实锁暴露（OpenTome 找不到典籍）。BenchChar 天然装不下占位件五分类，终态必然单形状；消灭换形本身即修根。本迭代完成计算层收编（观察/记录层已在此前批次完成）。
+**根因一（表示层）：双形状并存使 `bench_slots_to_legacy`（BenchView→BenchChar）成为信息销毁点。** 占位件 kind 三分类（tome/bookcard/supply_box）被压成布尔 `is_item_slot`，写回被迫降级 supply_box——collect_ore/buy_card/swap_deploy 三处实际测试暴露（OpenTome 找不到典籍）。BenchChar 天然装不下占位件五分类，终态必然单形状；消灭换形本身即修根。本迭代完成计算层收编（观察/记录层已在此前批次完成）。
 
 **根因二（层次错位，随同一迁移面归位）：部署落位决策权长在框架层。** 「上场角色去哪一排、落哪个槽」是策略知识（cw_comps.py 已有 comp 站位覆盖概念），现状却由 kernel `assign_deploy_slots` 定排、执行边按「该排首空位」定槽——策略侧对落位无发言权；且备战候选的注册表 position_pref 在此链路恒被丢弃（候选恒按后排路由，前排保证规则的「真 front 候选提前」分支永不触发）。游戏允许任意排布（含空前排、含拖到有人槽=交换），落位全是自由度，全归策略。借同一重写面归位，避免同段代码翻动两次。
 
@@ -36,14 +36,14 @@
 - **mandate_v1 内聚落位策略**（策略代码）：上场人选、每人的排（comp 站位覆盖 > 注册表 position_pref 派生 > back 兜底）、槽位选择（遍历容器行列现值自定）；原 kernel 规则中的「前排保证」（前排全空时保证前排有角色）作为策略规则随迁 mandate。
 - **选人同批迁策略**：`select_deployments`/`select_deployments_reasoned` 属策略决策，随落位归权迁入 mandate_v1，kernel 版退役；出战链不再装配选人输入。
 - **出战链**（cw_loop `_battle_chain_deploy_moves`，恢复局同步步/达标臂共用）：改为调用策略层部署计划单一源（mandate_v1 暴露计划函数），不再自带 select+assign 装配。
-- **迁移过渡口径**：P1 tracked 翻形至 P2 执行器改造之间，执行链对空槽/落位的读数一律经 §2.1 下标换算单一源（`deployed_row_slot`/`deployed_idx_of`）派生，禁对快照条目 getattr 柔取旧字段（防翻形期静默漂移，落锁入 P1）。
+- **迁移过渡口径**：P1 tracked 翻形至 P2 执行器改造之间，执行链对空槽/落位的读数一律经 §2.1 下标换算单一源（`deployed_row_slot`/`deployed_idx_of`）派生，禁对快照条目 getattr 柔取旧字段（防翻形期静默漂移，落测试入 P1）。
 - **sim 语义**：sim 引擎应用部署动作 = 忠实建模游戏拖拽语义（空=放置/占=交换），禁发明私有「占位拒绝」规则。sim 买卡入席 = 游戏自动放置规则（首空槽），非策略落位——`bench_place` 容器原生重写后保留（§2.4）。
 
 **行为变化申报（本迭代全部行为变化，共三项）**：
 
-1. mandate 落位行为变化：备战候选排路由从「恒按后排」变为注册表派生真实生效，槽位由策略显式指定。验证 = sim A/B 对照（落位改前/改后对局指标）+ 新锁（注册表前排角色在前排有空时被排到前排）。
+1. mandate 落位行为变化：备战候选排路由从「恒按后排」变为注册表派生真实生效，槽位由策略显式指定。验证 = sim A/B 对照（落位改前/改后对局指标）+ 新测试（注册表前排角色在前排有空时被排到前排）。
 2. sim 记录保真修复两处（非策略行为变化）：`cw_sim_nodes` 丢占位件槽+丢 Unit.equips、`cw_sim_equips` 丢占位件槽——随容器直构自然修复，禁刻意复刻丢弃行为；修复前后 sim 记录对照留凭据。
-3. 席空数读数统一跟随 `BenchView.capacity`（用户裁定 2026-09-20，选 B）：`cw_line_switch.e_rounds` 买刷截断、proof c_sat 席位压力项、economy_cycle `_scan_shop_buy_accounts` 三处从定长 9 基线改为 `bench_free_slots`（capacity 跟随单一源）。节省工位效果帧下空位读数 −1（可观测行为变化）。验证 = 三处消费行为锁（capacity=8 帧断言读数跟随）。
+3. 席空数读数统一跟随 `BenchView.capacity`（用户裁定 2026-09-20，选 B）：`cw_line_switch.e_rounds` 买刷截断、proof c_sat 席位压力项、economy_cycle `_scan_shop_buy_accounts` 三处从定长 9 基线改为 `bench_free_slots`（capacity 跟随单一源）。节省工位效果帧下空位读数 −1（可观测行为变化）。验证 = 三处消费行为测试（capacity=8 帧断言读数跟随）。
 
 ### 2.3 tracked_books 迁移形状（定稿）
 
@@ -72,7 +72,7 @@
 
 ### 2.5 测试种子纪律
 
-- **名字表达**：测试想要某阵营/前后排偏好，通过挑选对应注册表角色名获得（前排偏好 = 种注册表前排角色名；未知阵营 = 种注册表外名字）；占位件 = kind 直种。派生是唯一源，生产不可达的状态不锁。
+- **名字表达**：测试想要某阵营/前后排偏好，通过挑选对应注册表角色名获得（前排偏好 = 种注册表前排角色名；未知阵营 = 种注册表外名字）；占位件 = kind 直种。派生是唯一源，生产不可达的状态不校验。
 - **无注入口**：种子构造不提供绕过注册表派生的覆盖参数。
 - **载体**：`CwSimFrame`/`synthesize_from_game_state`/`feed_sim_truth` 退役后，测试经测试仓 builder 直写容器域（与观察链同写入口），不设帧→容器换形续命。
 - 现状面（2026-09-20 实测）：测试仓 CwSimFrame 引用 87 处/18 文件、`BenchChar(` 直造 116 处/32 文件，全部入 P5 重写。
@@ -82,14 +82,14 @@
 1. 合并语义：同名同星 ≥3 全场域（bench+deployed）→ 升星 +1、素材清空、装备继承载体、连锁到不动点（`_merge_bench` 现契约）。
 2. 占位件三防线：恒占 1 席（席满守卫计入）、卖恒拒、部署恒 held。
 3. 随机态采样链（logic-rand-sampling）写序/evidence/组语义不变——只换工作形状。
-4. 席满即止、逐点推演、None 域跳写等既有锁全绿。
+4. 席满即止、逐点推演、None 域跳写等既有测试全绿。
 5. 开拓者形态归一：容器行写（front_row/back_row）统一经同源归一口。swap 上报有归一、deploy_move 上报缺归一为既有不对称缺陷，随迁移统一并申报缺陷修复（弄丢即重现 cw_chars.py 登记的欢愉/记忆羁绊计数事故）。
 
-**前置锁（P0 执行；翻签名前先锁现状语义，作为迁移后不变量哨兵）**：
+**前置测试（P0 执行；翻签名前先钉住现状语义，作为迁移后不变量哨兵）**：
 
-- 装备继承载体锁：全测试仓现无 merge 装备继承断言（2026-09-20 核实），`cw_merge_simulate.py` 装备继承段是重写对象，先锁后改；
-- 部署恒 held 锁：`test_cw_sell_item_slot_predicate.py` 明文申报防线归 review；cw_deploy_logic 部署伪槽段改 kind 口无回归网，先补；
-- 开拓者归一现状锁：先锁 swap 有归一/deploy_move 缺归一的现状，翻签名后哨兵 §3.5 统一；
+- 装备继承载体测试：全测试仓现无 merge 装备继承断言（2026-09-20 核实），`cw_merge_simulate.py` 装备继承段是重写对象，先写测试后改；
+- 部署恒 held 测试：`test_cw_sell_item_slot_predicate.py` 明文申报防线归 review；cw_deploy_logic 部署伪槽段改 kind 口无回归网，先补；
+- 开拓者归一现状测试：先钉住 swap 有归一/deploy_move 缺归一的现状，翻签名后哨兵 §3.5 统一；
 - sim 保真对照凭据：§2.2 行为变化申报第 2 项两处偏差的修复前后 sim 记录对照，P1 提交说明附。
 
 ## 4. 面清单（inventory 2026-09-20 实测）
@@ -102,13 +102,13 @@
 
 ## 5. 分期
 
-阶段拆分、文件面、依赖与验收判据的唯一源 = [landing.md](landing.md)。顺序：P0 前置锁 → P1 kernel 计算层容器化 → P2 落位载荷与执行面 → P3 策略落位实现与出战链 → P4 策略与 kernel 消费面 → P5 sim 帧退役与测试种子层 → P6 观察链直产 → P7 收尾退役 → P8 正本更新。逐阶段测试全绿；每阶段独立 commit，逐文件点名 add。
+阶段拆分、文件面、依赖与验收判据的唯一源 = [landing.md](landing.md)。顺序：P0 前置测试 → P1 kernel 计算层容器化 → P2 落位载荷与执行面 → P3 策略落位实现与出战链 → P4 策略与 kernel 消费面 → P5 sim 帧退役与测试种子层 → P6 观察链直产 → P7 收尾退役 → P8 正本更新。逐阶段测试全绿；每阶段独立 commit，逐文件点名 add。
 
 ## 6. 风险
 
 - 落位行为变化（§2.2 申报第 1 项）波及对局指标 → sim A/B 门先行为主，指标异常回退裁决再议。
-- faction 派生点遗漏（§2.1 三类消费面）→ 装配/板面计数/羁绊逐类补锁。
-- 开拓者形态归一遗漏 → 欢愉/记忆羁绊计数事故重现（cw_chars.py 在案；§3 不变量 5 归一口 + P0 现状锁 + P3 统一后锁）。
+- faction 派生点遗漏（§2.1 三类消费面）→ 装配/板面计数/羁绊逐类补测试。
+- 开拓者形态归一遗漏 → 欢愉/记忆羁绊计数事故重现（cw_chars.py 在案；§3 不变量 5 归一口 + P0 现状测试 + P3 统一后测试）。
 - tracked 快照别名（equips list 共享）→ 仅测试网偶发假差（构造点新帧纪律不变）。
-- 测试种子层改造体量大（§2.5 现状面）→ M1 投影锁语义逐字节保形为先决。
+- 测试种子层改造体量大（§2.5 现状面）→ M1 投影测试语义逐字节保形为先决。
 - 体量：逐文件点名 add；每阶段独立 commit。

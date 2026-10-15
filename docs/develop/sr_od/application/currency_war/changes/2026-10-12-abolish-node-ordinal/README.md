@@ -14,4 +14,4 @@
 - 设计对抗:收敛 · 报告 = `.debug/change-reviews/2026-10-12-abolish-node-ordinal/`(r1/r2/r3 + 各阶段验收结论;本机过程档案,不入 git)
 - 落地:**完成**(2026-10-13;七阶段 T-1..T-7 全 done——3.1 键原语/3.2 换键原子批/3.3 败局闩/3.4 遥测/3.5 视界族清扫/3.6 清零核对/末阶段正本更新;独立验收逐批,全程一次打回 = T-7 node-derivation 版本链 R9 行,r2 复验过;任务账本 = `.debug/progress/2026-10-12-abolish-node-ordinal/dag.jsonl`)
 - 正本更新:完成(随末阶段 T-7,19 正本文档清零 + node-derivation 版本链 R9)
-- 遗留建议(不阻塞,候选后续批):proofs 数据源句复核线(T-6/T-7 验收两提)、invest_strategy 判别锁补定量分叉帧(T-5)、node-domain 悬空 R7 标记与 session.md 清册计数 tidy(T-7)
+- 遗留建议(不阻塞,候选后续批):proofs 数据源句复核线(T-6/T-7 验收两提)、invest_strategy 判别测试补定量分叉帧(T-5)、node-domain 悬空 R7 标记与 session.md 清册计数 tidy(T-7)

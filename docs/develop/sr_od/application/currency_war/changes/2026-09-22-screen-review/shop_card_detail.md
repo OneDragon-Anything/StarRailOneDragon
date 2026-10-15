@@ -17,7 +17,7 @@
 - **现状症状**(审查报告 F-1,三条差距):①[screens/shop_card_detail.md](../../screens/shop_card_detail.md) §1 首行判据句尾写「判据单一源 = `cw_loop.py::_shop_card_detail_anchor_hit`,`entry_ok` 同源同参」——该函数全仓检索(含 `sr-od-test/`)仅定义点(`operations/cw_loop.py` :457)+ 本文档引用,**零调用点**,「判据单一源」指向无任何消费方的死码函数(函数体 = `entry_ok` 双锚判定的重复拷贝);②现役分发判据单一源 = 阶段一身份行:建档 id_mark 组合(「按钮-购买」∧「按钮-角色详情」)经 `get_match_screen_name`(:1517,清单 = `CW_DISPATCH_SCREENS` :581 含本屏 :587)→ `screen_utils.is_target_screen` id_mark 全命中 AND → `CwLoop._dispatch_identity_screen` 身份行 `if name == '货币战争-商店卡牌详情'`(:1176)派发本 op——与死码函数零调用关系;③文档锚集**内容面**(双锚 AND、前景独有、单锚不放行)与建档及 `entry_ok` 一致,失真仅在「单一源指针」——后继按 §1 修判据者会去改一个零调用点函数而改不到真实判定链。行为面无 bug(报告:分发实际可用、op 门行为与自述一致),失真纯在 as-built 指针。
 - **根因归层**(根源两问):①根在哪层 = **表示层**——本屏分发已迁移为阶段一身份先行(outer_loop.md §2.2 两阶段分发;§2.3 已退役号表:「0t(商店卡牌详情弹窗)」现役载体 = 阶段一身份),doc §1 已按新机制起句但保留了旧机制(分支判据函数)时代的「判据单一源」指针;死码函数 = 旧机制载体残留,是失真的物质锚(文档指它、读者据它重建推导即入歧途)。②修的是根还是症状 = 判据句指针改写为现役机制陈述 + 删除死码载体(消灭复指路径)= 现值面治本;「迁移批收尾缺引用面清查门」的流程级根已由 battle_wait 稿 §2.1 跨批登记面立案(T-32 稿 §1.1 同引),本稿不重复立项(跨件半问:与 T-33 F-1 同根同模板,共用同一登记,禁第三件症状补丁)。
 - **解决到哪**:doc §1 首行「判据单一源」子句整替(目标文本 = §2.1 点位一);`_shop_card_detail_anchor_hit` 死码删除归落地代码批,并与 T-33 稿同文件删除并同一代码批一次成文(取舍 = §2.1 点位二)。
-- **明确不解决**:①doc §2「与分发判定同源同参」短语——报告 §3.5 判 as-built 一致面,语义修后仍真(两门同锚同逻辑,§1 新句给精确解读锚),零 diff(T-33 点位二改 §2 的前提 = 两门语义失洽(OR vs AND),本屏两门全等,前提不成立);②op 侧注释同形短语(`cw_screen_shop_card_detail.py` 模块 docstring「与外循环 0t 分发判定同源同参」:23-24 + `entry_ok` docstring 同款 :62-63)——注释面,报告未列发现;本屏「同源同参」内容面为真(与分发门同锚同逻辑),族级批清偿方向 = 仅清 0t 号制 token 换锚现役机制名,**非** T-33 的「删旧机制指称」方向(防族级批误用姊妹稿方向),归宿随 T-37(T-33 §2.2 登记同构),本稿不触码;③doc §3「0n」号 = 现行号(outer_loop.md §2.3 现行号表在册),非残留;④报告 §3 全部一致面(doc §2-§9、建档 yml 与 merged 同步、完备锁/形态锁、分发臂行为)为零触碰边界,禁借修法之名改动;⑤T-33 稿 changes/ 文件对本函数的登记性引用——changes/ 寿命 = 迭代,不进验收门(§2.4 第 3 条界定)。
+- **明确不解决**:①doc §2「与分发判定同源同参」短语——报告 §3.5 判 as-built 一致面,语义修后仍真(两门同锚同逻辑,§1 新句给精确解读锚),零 diff(T-33 点位二改 §2 的前提 = 两门语义失洽(OR vs AND),本屏两门全等,前提不成立);②op 侧注释同形短语(`cw_screen_shop_card_detail.py` 模块 docstring「与外循环 0t 分发判定同源同参」:23-24 + `entry_ok` docstring 同款 :62-63)——注释面,报告未列发现;本屏「同源同参」内容面为真(与分发门同锚同逻辑),族级批清偿方向 = 仅清 0t 号制 token 换锚现役机制名,**非** T-33 的「删旧机制指称」方向(防族级批误用姊妹稿方向),归宿随 T-37(T-33 §2.2 登记同构),本稿不触码;③doc §3「0n」号 = 现行号(outer_loop.md §2.3 现行号表在册),非残留;④报告 §3 全部一致面(doc §2-§9、建档 yml 与 merged 同步、完备测试/形态测试、分发臂行为)为零触碰边界,禁借修法之名改动;⑤T-33 稿 changes/ 文件对本函数的登记性引用——changes/ 寿命 = 迭代,不进验收门(§2.4 第 3 条界定)。
 
 ### 1.2 F-2 正本符号锚漂移:op-layer §3 推进型清单写「CwScreenShopCardDetail」,仓内无此符号(低)
 
@@ -117,7 +117,7 @@ F-1 修法对象 = 正本自身(as-built 缺陷),落地批直接修正 `screens/
 2. F-1 三方一致:①分发门锚集 ≡ 建档 id_mark 集(恰「按钮-购买」「按钮-角色详情」两处 `id_mark: true`);②AND 语义 ≡ `screen_utils.py::is_target_screen`;③op 门 ≡ `entry_ok` 逐表达式(同双锚 AND);
 3. 死码清零:`grep -rn "_shop_card_detail_anchor_hit" src/ sr-od-test/ docs/develop/sr_od/application/currency_war/screens/` 零命中(changes/ 在稿引用寿命 = 迭代,不进门);
 4. F-3:§2.3 验证门 1-4 全过;
-5. 零行为变化:src 树无逻辑 diff(死码删除无调用点/无测试引用 + registry 纯注释);完备锁/形态锁(`test_cw_screen_report_ports.py`/`test_cw_screen_progression_inline.py`)零改动;`sr-od-test/` 零触碰;`screens/op-layer.md` 在本稿落地批零 diff(F-2 归认领面;兜底裁决时改为「仅 §2.2 目标 token 一处 diff」);
+5. 零行为变化:src 树无逻辑 diff(死码删除无调用点/无测试引用 + registry 纯注释);完备测试/形态测试(`test_cw_screen_report_ports.py`/`test_cw_screen_progression_inline.py`)零改动;`sr-od-test/` 零触碰;`screens/op-layer.md` 在本稿落地批零 diff(F-2 归认领面;兜底裁决时改为「仅 §2.2 目标 token 一处 diff」);
 6. F-2 终态核对(认领批完成后,不进本稿验收门):op-layer.md §3 推进型行无裸名 `CwScreenShopCardDetail、`(§2.2 验收锚)。
 
 协调注(同文件在飞面):

@@ -62,7 +62,7 @@ pick_encounter.py,发出即写;确认未生效窗内为暂态意图值由重派�
 奖励兑现回调的消费防线 = 兑现后清 chosen 单次消费,见 kernel/
 cw_encounter_selection.py::claim_encounter_reward)。sim 腿:刷新链不
 适用(sim 无遭遇刷新执行面,design §2.3 申报);遭遇选档决策有 sim
-消费段,判据等价支撑 = kernel 判据函数 + 实机已登记行为锁。
+消费段,判据等价支撑 = kernel 判据函数 + 实机已登记行为测试。
 """
 import time
 from typing import TYPE_CHECKING, ClassVar

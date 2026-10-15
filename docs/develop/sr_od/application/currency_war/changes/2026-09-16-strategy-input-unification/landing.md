@@ -2,7 +2,7 @@
 
 > 通用工程门（各阶段判据引用项，此处单一定义）：`uv run ruff check` 改动文件全过；直接受影响测试 + L1（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow" -q`）一次通过；`git add` 逐文件点名；提交后 `git show --stat` 复核入库面 = 申报面。（源 = 项目 AGENTS.md「测试规范」「提交流程与协作边界」节）
 >
-> 阶段原子性总原则：3.1 为纯增量批（零行为、独立绿）；3.2/3.3/3.4 三条切换线各自原子——**每阶段交付态生产链可运行、通用工程门可绿**（该线全部读写点 + 契约签名 + 调用点 + 测试锁翻新收在同一阶段内，不跨阶段拆同一符号的迁移）。分阶段前置 = design.md §2.8 表（按文件面拆解：3.1 无前置；3.2/3.3/3.4 挂 unified-obs 3.4 落码收中相交项；正本更新批另挂其正本批先收；execstate/turnstate 均已收尾非前置）。
+> 阶段原子性总原则：3.1 为纯增量批（零行为、独立绿）；3.2/3.3/3.4 三条切换线各自原子——**每阶段交付态生产链可运行、通用工程门可绿**（该线全部读写点 + 契约签名 + 调用点 + 测试翻新收在同一阶段内，不跨阶段拆同一符号的迁移）。分阶段前置 = design.md §2.8 表（按文件面拆解：3.1 无前置；3.2/3.3/3.4 挂 unified-obs 3.4 落码收中相交项；正本更新批另挂其正本批先收；execstate/turnstate 均已收尾非前置）。
 
 ### 3.1 增量槽位面与离屏机制（纯增量，零行为）
 
@@ -21,9 +21,9 @@
 
 ### 3.2 备战线切换（原子）
 
-**范围**：design.md §2.2 #1 + §2.5 备战线全量——`StrategySession.prep_obs_frame` 槽删除 + `gs.prep_obs` **非 Field 容器字段新增**（契约 e 存储形态，落 `kernel/cw_game_state.py`）；4 写点直赋换宿主（`cw_screen_prep.py`）；读者全集换源：`bridge.py::decide_prep_screen` 缺失抛错读点、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段、`cw_screen_prep.py::_act_execute_default` OpenShop 腿死参喂死读点（换源不删死参）；`decide_prep_screen` 签名切 `(gs, session, config)`——**实现 = `bridge.py` 覆写体（唯一实现，flow.py 无此方法），契约声明 = `cw_strategy.py` ABC**；`cw_screen_prep.py` 两调用点传 gs；本阶段 docstring 实义 = `prep_obs` 历史锚改指（`mandate_v1/shop.py`/`bridge.py` 模块头等，design 契约 e 口径）——**契约计数句改写归 3.4**（成员计数 12→13 的变化点 = invest 拆分，3.2 阶段计数不变）。测试锁随批翻新（备战帧相关）。
+**范围**：design.md §2.2 #1 + §2.5 备战线全量——`StrategySession.prep_obs_frame` 槽删除 + `gs.prep_obs` **非 Field 容器字段新增**（契约 e 存储形态，落 `kernel/cw_game_state.py`）；4 写点直赋换宿主（`cw_screen_prep.py`）；读者全集换源：`bridge.py::decide_prep_screen` 缺失抛错读点、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段、`cw_screen_prep.py::_act_execute_default` OpenShop 腿死参喂死读点（换源不删死参）；`decide_prep_screen` 签名切 `(gs, session, config)`——**实现 = `bridge.py` 覆写体（唯一实现，flow.py 无此方法），契约声明 = `cw_strategy.py` ABC**；`cw_screen_prep.py` 两调用点传 gs；本阶段 docstring 实义 = `prep_obs` 历史锚改指（`mandate_v1/shop.py`/`bridge.py` 模块头等，design 契约 e 口径）——**契约计数句改写归 3.4**（成员计数 12→13 的变化点 = invest 拆分，3.2 阶段计数不变）。测试随批翻新（备战帧相关）。
 **设计依据**：design.md §2.1（签名纪律 1/2/3）、§2.2 #1 与契约 e、§2.5。
-**文件面**：`kernel/cw_game_state.py`（gs.prep_obs 非 Field 字段）、`kernel/cw_strategy_session.py`、`kernel/cw_equip_wear_plan.py`、`strategies/impl/cw_strategy.py`、`strategies/impl/mandate_v1/bridge.py`（decide_prep_screen 读点）、`strategies/impl/mandate_v1/shop.py`（模块头锚）、`operations/cw_screen/cw_screen_prep.py`、`obs/cw_observation.py`（prep_obs 注释锚改指）、`sr-od-test` 备战线相关锁。
+**文件面**：`kernel/cw_game_state.py`（gs.prep_obs 非 Field 字段）、`kernel/cw_strategy_session.py`、`kernel/cw_equip_wear_plan.py`、`strategies/impl/cw_strategy.py`、`strategies/impl/mandate_v1/bridge.py`（decide_prep_screen 读点）、`strategies/impl/mandate_v1/shop.py`（模块头锚）、`operations/cw_screen/cw_screen_prep.py`、`obs/cw_observation.py`（prep_obs 注释锚改指）、`sr-od-test` 备战线相关测试。
 **依赖**：3.1；unified-obs-reconcile 3.4 落码收（design §2.8）
 **优先级建议**：1
 **完成判据**：
@@ -35,34 +35,34 @@
 
 ### 3.3 商店线切换（原子）
 
-**范围**：design.md §2.1 商店行 + §2.5 商店调用面——`decide_shop_action` 签名切 `(gs, session, config)`（**契约声明 = `cw_strategy.py` ABC；实现 = `flow.py`**——`mandate_v1/shop.py` 本体已是 gs-first 形态，**零改动**，核对申报在判据）、`cw_screen_buy_cards.py` run_buy_waves 循环传 gs + 防御路径裸 match 构造随改、`flow.py::decide_shop_screen` 驱动器**及其 `bridge.py::MandateV1Strategy.decide_shop_screen` 覆写体**（两者内部 `decide_shop_action` 调用点随新签名传 gs——sim 回放/序列锁消费的是覆写体；sim 树唯一消费点调 decide_shop_screen 签名不变，**sim 代码零改动**，design §2.5「自动随批」在案）。测试锁随批翻新（商店线）。
+**范围**：design.md §2.1 商店行 + §2.5 商店调用面——`decide_shop_action` 签名切 `(gs, session, config)`（**契约声明 = `cw_strategy.py` ABC；实现 = `flow.py`**——`mandate_v1/shop.py` 本体已是 gs-first 形态，**零改动**，核对申报在判据）、`cw_screen_buy_cards.py` run_buy_waves 循环传 gs + 防御路径裸 match 构造随改、`flow.py::decide_shop_screen` 驱动器**及其 `bridge.py::MandateV1Strategy.decide_shop_screen` 覆写体**（两者内部 `decide_shop_action` 调用点随新签名传 gs——sim 回放/序列测试消费的是覆写体；sim 树唯一消费点调 decide_shop_screen 签名不变，**sim 代码零改动**，design §2.5「自动随批」在案）。测试随批翻新（商店线）。
 **设计依据**：design.md §2.1、§2.5。
-**文件面**：`strategies/impl/cw_strategy.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`（decide_shop_screen 覆写体调用点）、`operations/cw_screen/cw_screen_buy_cards.py`、`sr-od-test` 商店线相关锁。
+**文件面**：`strategies/impl/cw_strategy.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`（decide_shop_screen 覆写体调用点）、`operations/cw_screen/cw_screen_buy_cards.py`、`sr-od-test` 商店线相关测试。
 **依赖**：3.1；unified-obs-reconcile 3.4 落码收（design §2.8）
 **优先级建议**：1
 **完成判据**：
 - `strategy.decide_shop_action` 全仓调用点均新签名（flow 缺省体 + bridge 覆写体 + buy_cards 循环/防御）；`mandate_v1/shop.py` 本体零改动核对（已是 gs-first 形态，申报在案）；
-- 商店线流程测试过（开店→单动作循环→关店剧本）；sim 驱动器路径可运行（回放 smoke 或序列锁过）；
+- 商店线流程测试过（开店→单动作循环→关店剧本）；sim 驱动器路径可运行（回放 smoke 或序列测试过）；
 - 直接受影响测试 + 全量绿。
 - 通用工程门（本文首节定义）
 **验收凭据形式**：grep 报告 + 商店线流程测试 + 全量。
 
 ### 3.4 pick 族切换（原子）
 
-**范围**：design.md §2.1 pick 行 + §2.2/§2.3/§2.4/§2.5 pick 面——ABC 9 入口签名切 `(gs, session, config)` + invest 拆分（§2.4：共享 helper 单源，`kind` 消亡；**`cw_strategy.py` 模块头/类 docstring 契约计数句随拆分改写**——计数 12→13 变化点在本阶段）+ `refresh_used` 形参退役（supply 入口读 `gs.supply_refresh_used` 与现调用方派生式逐字节相同；encounter 入口读 `gs.encounter_refreshed_in_visit`）+ 10 个 handler 写槽改调（**旧 handle 与五段 lifecycle 两路径全部 decide 调用点接线**——encounter 单文件 4 调用点等；payload 活写端接通；`encounter_refreshed_in_visit` 写点 = 各决策路径首调前置写 False（重入重走亦复位）/ 刷新发射分支内同步直写 True（§2.1-4）；**刷新链分屏形态原样**：encounter 同访问重读重决策（覆写义务）、supply/invest 发射后交回重入型——design §2.2-c）；**actor 登记已随 3.1 落位（`kernel/cw_game_state.py` 在 3.1 文件面），本阶段仅核对接线后写端触发正常** + `decide_invest`/`decide_box_card` 注释历史锚随落码改指（`kernel/cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`，design 契约 e 口径）。测试锁随批翻新（pick 锁 + handler 级行为锁：逐 handler「观察→写槽→decide→点击」剧本、encounter 四格对照——首调/累计闸命中/刷新重决策/**重入重走首调**、空选项分支、每次决策恰以当次观察产物为单源）。
+**范围**：design.md §2.1 pick 行 + §2.2/§2.3/§2.4/§2.5 pick 面——ABC 9 入口签名切 `(gs, session, config)` + invest 拆分（§2.4：共享 helper 单源，`kind` 消亡；**`cw_strategy.py` 模块头/类 docstring 契约计数句随拆分改写**——计数 12→13 变化点在本阶段）+ `refresh_used` 形参退役（supply 入口读 `gs.supply_refresh_used` 与现调用方派生式逐字节相同；encounter 入口读 `gs.encounter_refreshed_in_visit`）+ 10 个 handler 写槽改调（**旧 handle 与五段 lifecycle 两路径全部 decide 调用点接线**——encounter 单文件 4 调用点等；payload 活写端接通；`encounter_refreshed_in_visit` 写点 = 各决策路径首调前置写 False（重入重走亦复位）/ 刷新发射分支内同步直写 True（§2.1-4）；**刷新链分屏形态原样**：encounter 同访问重读重决策（覆写义务）、supply/invest 发射后交回重入型——design §2.2-c）；**actor 登记已随 3.1 落位（`kernel/cw_game_state.py` 在 3.1 文件面），本阶段仅核对接线后写端触发正常** + `decide_invest`/`decide_box_card` 注释历史锚随落码改指（`kernel/cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`，design 契约 e 口径）。测试随批翻新（pick 测试 + handler 级行为测试：逐 handler「观察→写槽→decide→点击」剧本、encounter 四格对照——首调/累计闸命中/刷新重决策/**重入重走首调**、空选项分支、每次决策恰以当次观察产物为单源）。
 **设计依据**：design.md §2.1-4、§2.2（#3–#12 + 契约 c/d）、§2.4、§2.5、§2.6（主凭据 1/2）。
-**文件面**：`strategies/impl/cw_strategy.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`（decide_encounter 覆写随改）、`operations/cw_screen/` 10 文件、`kernel/cw_investments.py`/`kernel/cw_comps.py`/`kernel/cw_equip_value.py`/`kernel/cw_events.py`/`operations/cw_screen/cw_screen_equip_pick.py`（仅注释锚改指）、`sr-od-test` pick/handler 相关锁。
+**文件面**：`strategies/impl/cw_strategy.py`、`strategies/impl/flow.py`、`strategies/impl/mandate_v1/bridge.py`（decide_encounter 覆写随改）、`operations/cw_screen/` 10 文件、`kernel/cw_investments.py`/`kernel/cw_comps.py`/`kernel/cw_equip_value.py`/`kernel/cw_events.py`/`operations/cw_screen/cw_screen_equip_pick.py`（仅注释锚改指）、`sr-od-test` pick/handler 相关测试。
 **依赖**：3.1；3.2→3.3→3.4 串行（共用 `cw_strategy.py`/`flow.py` 文件面）
 **优先级建议**：1
 **完成判据**：
 - **全仓 grep 锚普查对账表**：`decide_` 前缀普查（覆盖旧符号 `decide_invest` 归零 + 新 12 契约符号 + 驱动器 `decide_shop_screen`，含注释形态）逐条归类——契约调用点/ kernel 纯函数（`decide_event` 族）/入口内部委托/纯注释锚/**旧口径描述句（prose 随落码同步改写）**五类，每条标注承载，表随批产出零未承载项；**普查范围 = 两仓（`src/` 树 + `sr-od-test/` 独立仓）+ 正本树（含 `docs/game/currency_war/`，排除 `sources/` 与 `changes/`）**；
 - 契约调用点形态：全仓 `strategy.decide_*` 调用均为 `(gs, session, config)` 形态；`decide_invest(` 契约调用全仓归零（kernel 判据函数 `decide_event` 族——invest 判据本体——与策略入口体内对 kernel 的委托调用除外；kernel 无 `decide_invest` 同名函数）；
-- 写槽接线点计数对账：各 handler 全部 decide 调用点（含 lifecycle 路径）均有前置写槽（grep 调用点数 = 写槽点数）；流程锁辖 handle 路径剧本，lifecycle 路径以 grep 对账 + 其在册测试面（若有）随批；
+- 写槽接线点计数对账：各 handler 全部 decide 调用点（含 lifecycle 路径）均有前置写槽（grep 调用点数 = 写槽点数）；流程测试辖 handle 路径剧本，lifecycle 路径以 grep 对账 + 其在册测试面（若有）随批；
 - encounter 刷新链与 execstate-dissolution 落地现状**对账核对**（闸留 handler 读累计计数 + per-visit 位进入口，两者并存无双计）；
 - encounter 四格对照（首调/累计闸命中/刷新重决策/**重入重走首调收 False**）与改前逐返回对照；拆分前后同帧对照（同槽产物 → 同 PickEvent）；
 - 直接受影响测试 + 全量绿。
 - 通用工程门（本文首节定义）
-**验收凭据形式**：grep 报告 + handler 级行为锁 + 对照测试 + 全量。
+**验收凭据形式**：grep 报告 + handler 级行为测试 + 对照测试 + 全量。
 
 ### 3.5 收口验证
 

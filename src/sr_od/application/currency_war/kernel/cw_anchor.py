@@ -13,7 +13,7 @@
 **观测-only 边界(§12.0,用户裁定)**:本模块只做数据采集与计数登记,
 状态改写/效果施加明确出栈(效果施加语义归 §8.2 效果结构化词表线)——
 锚行 payload 的 ``effect_ref`` 槽位预留恒空(非空 = 红,结构锁见
-emit_anchor),消费侧守卫(决策代码禁读锚行)= 测试仓 grep 锁,隔离
+emit_anchor),消费侧守卫(决策代码禁读锚行)= 测试仓 grep 守卫,隔离
 边界不是纸面声明。本模块 API 面不收 ctx/session/op 宿主对象(结构性
 写向隔离:拿不到就写不了),零 run 状态触碰(§12.5-3 停机钩子分流)。
 
@@ -258,7 +258,7 @@ def register_payload_domain_values(ref: str, values: frozenset[str]) -> None:
 
 def validate_registry(
         registry: dict[str, AnchorSpec] | None = None) -> None:
-    """登记表逐行校验(模块导入时自检 + 测试锁消费):触发时点型轴内、
+    """登记表逐行校验(模块导入时自检 + 测试消费):触发时点型轴内、
     宿主/sim 适用域非空、载体 kind 形态合法。违规 = 红(炸错不静默收下)。"""
     reg = ANCHOR_REGISTRY if registry is None else registry
     for key, spec in reg.items():

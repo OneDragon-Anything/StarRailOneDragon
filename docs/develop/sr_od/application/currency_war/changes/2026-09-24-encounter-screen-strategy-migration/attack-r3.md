@@ -66,7 +66,7 @@
 - cw_events.py：旧核四要素（词缀契合/成型度/难度账本压档/P3 `plane_of(gs)==3` 枚举违例）逐条在码（:99-155）；`EncounterOption.affixes` 死输入实锤（obs 写端恒 `affixes=[]`，cw_node_obs.py:39,73）；`EVENT_PICK_TYPES`/`EventPick` 摘位面（:538-543，全 src 零外部消费，删类不摘位 NameError 风险属实）；模块 docstring 现态含补给收口句（:3-5）。
 - flow.py：`decide_encounter`（:594-609）、`_require_slot_options` 离屏 None 抛错（:414-422）、`_consume_prep_direction_frame` 兄弟入口同款（:366）、`refresh_used` 预计算（:601-602）、cw_events 现役消费 :656/:793/:807 三行号全对；docstring「kernel 按原评分直接选卡」句在 :598（收口清单已列）。
 - bridge.py：覆写（:252-285）直调 `cw_encounter_selection`；模块头依赖矩阵句「decision 只可依 data/kernel」（:8）；不覆写 decide_supply/decide_invest_*（只覆写 prep/encounter/shop_screen）——「回落基类与营业面覆写同构」成立。
-- encounter.py EV 核：双槽 None 期恒 fail 向零刷新（:56-59 申报与实现一致）；「六处签名/构造消费」逐点核符（:264/:268/:280/:306/:308/:387）+ docstring 字样（:67）；src+测试仓双零消费 grep 定谳（decide_encounter_ev/encounter_ev_* 全仓仅定义文件命中）；「曾记的 EV 核纯函数锁不存在」属实（测试仓零命中）。
+- encounter.py EV 核：双槽 None 期恒 fail 向零刷新（:56-59 申报与实现一致）；「六处签名/构造消费」逐点核符（:264/:268/:280/:306/:308/:387）+ docstring 字样（:67）；src+测试仓双零消费 grep 定谳（decide_encounter_ev/encounter_ev_* 全仓仅定义文件命中）；「曾记的 EV 核纯函数测试不存在」属实（测试仓零命中）。
 - provisional.py：双槽登记与双槽互锁注（:98-120）、头部指针句（:22-23）——指针问题归 R3-F3。
 - cw_survey19_hooks.py：现恰 `encounter_tier_score`+`wear_discipline_alert` 两函数、supply_reroll_decision 已不在（§2.11 申报属实）；encounter_tier_score 唯一消费 = cw_events 旧核 `_score`（:128-146），测试仓零命中。
 - cw_difficulty_account.py：`from_strategies`「挂 decide_encounter 消费批」句（:58-59）、marginal_value 唯一消费链 = encounter_tier_score、DifficultyAccount 全仓零生产消费——孤儿申报全部核符。
@@ -75,7 +75,7 @@
 - sim：`ENCOUNTER_TIER_COUNT=4`（:488）、占位奖励文本「金+20(占位,…)」不含「金币」字面（:535-539）、结算环零写端（grep 零命中）、refresh_left 无 sim 写端——§2.12 盲区申报与「逐位一致」结论成立；`dark-install` 段全仓零消费方，退场无判读面破坏。
 - 消费面 grep：`last_normal_battles` 生产消费唯一 = 判据本体（:390）、`last_row` = 兑现回调（:515）；apply_calibration/reset_calibration/_kappa_state/g_ratio/_lowest_idx/_d_enc_snapshot/_FILL_EDGE_THRESHOLD 全部仅定义文件内引用——「全仓零外部引用，随迁零成本」核实为真。
 
-**测试面**：test_cw_unified_action_4.py 类型 import（:27-28）与 `:259`/`:278` 两处实例构造**逐字命中**；注册完备锁遍历 CW_ACTION_TYPES 词表单表、不遍历 EVENT_PICK_TYPES（:115-134）——摘位不破锁；test_cw_obs_arch_event_screens.py 的 cw_encounter_selection import 恰为保留面符号（:417-420）、「重调仍建议刷新→零点击终结交回」锁在册（:387-404）、闸拒绝锁 :349；EncounterOption 测试仓恰五文件引用（game_state_consume/obs_arch_event_screens/route_clear/screen_report_ports/world_decl）——「五方引用」属实；落地后无任何现存测试因删改面红（均为 stub 驱动或保留面符号）。
+**测试面**：test_cw_unified_action_4.py 类型 import（:27-28）与 `:259`/`:278` 两处实例构造**逐字命中**；注册完备测试遍历 CW_ACTION_TYPES 词表单表、不遍历 EVENT_PICK_TYPES（:115-134）——摘位不破测试；test_cw_obs_arch_event_screens.py 的 cw_encounter_selection import 恰为保留面符号（:417-420）、「重调仍建议刷新→零点击终结交回」测试在册（:387-404）、闸拒绝测试 :349；EncounterOption 测试仓恰五文件引用（game_state_consume/obs_arch_event_screens/route_clear/screen_report_ports/world_decl）——「五方引用」属实；落地后无任何现存测试因删改面红（均为 stub 驱动或保留面符号）。
 
 **文档面与先例**：13 号稿 :21「双轨」过期描述（基线核+EV 核，无 cw_encounter_selection）——「文档漂移实证」定性成立，含「M13 competitors 节点表」指针；08 号稿 E3 行（:18）现有语义/待 derive/P26 锚三格与 §2.9 改写计划逐格对应；25 号稿画面族恰 8 屏（:3）、§1 prose（:13）、§2 表行（:19）三处收口点齐全；strategy-docs/README §2 分篇表含 28/29/30 行、导航句「18-30」（:56）→「18-31」改法成立；补给批/invest-env 批 design §1 的「遭遇等其余画面后续批」承接登记实指；「纯值出口照 supply.decide/invest_env.decide 同构」成立（SupplyDecision/InvestEnvDecision/RefreshSuggestion frozen dataclass 先例，含空帧 no-options 同款）；「次数闸内嵌」先例在 30 号稿 README 行在册。
 

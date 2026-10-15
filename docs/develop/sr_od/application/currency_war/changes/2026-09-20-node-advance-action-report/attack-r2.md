@@ -40,10 +40,10 @@
 - **内容**：`cw_loop.py:598` `_launch_frame_arbitration` 在 CwScreenPrep 之外还有一次生产 `read_game_state(phase=PHASE_PREP_CLEAN)` 调用（出战前仲裁开店路径）。该路径发生在 prep 访问内、锚定已先行，**无锚定覆盖缺口**；但「唯一消费 op」是覆盖面论证的判定据句，失准表述会在后续判读中被反例击穿。改「干净备战帧的外循环分派消费 op 唯一 = CwScreenPrep（其余 prep_clean 漏斗读均发生在 prep 访问内，锚定已先行）」即可。
 - **依据**：`operations/cw_loop.py:586-599`；design §2.4-1。
 
-### R5（低）3.6 场景清单与 §2.7 行为申报对账缺两行：金采样时点（§2.7-3）与自愈路径当帧发放（§2.7-8）无场景级锁
+### R5（低）3.6 场景清单与 §2.7 行为申报对账缺两行：金采样时点（§2.7-3）与自愈路径当帧发放（§2.7-8）无场景级测试
 
 - **位置**：landing 3.6 场景清单 / design §2.7-3、§2.7-8。
-- **内容**：3.6 九条场景覆盖推进面全集，但 §2.7-3（条件族金采样 = 结算真值，`apply_settlement_cover` 先于「继续挑战」点击）与 §2.7-8（补推路径当帧补齐发放）两条**行为变化申报**没有对应场景/断言面——3.1 单测锁「发放恰一次」的量，不锁「金采样源=结算真值、早于上报」的时序。行为变化申报无验证锚 = 不可独立验收。建议 3.6 补两条剧本（结算真值金先行断言 / 恢复局补推当帧发放断言）。
+- **内容**：3.6 九条场景覆盖推进面全集，但 §2.7-3（条件族金采样 = 结算真值，`apply_settlement_cover` 先于「继续挑战」点击）与 §2.7-8（补推路径当帧补齐发放）两条**行为变化申报**没有对应场景/断言面——3.1 单测断言「发放恰一次」的量，不校验「金采样源=结算真值、早于上报」的时序。行为变化申报无验证锚 = 不可独立验收。建议 3.6 补两条剧本（结算真值金先行断言 / 恢复局补推当帧发放断言）。
 - **依据**：landing 3.6 原文清单 vs design §2.7 逐条。
 
 ## ③ 核一覆盖清单（design 各节 → 核过 → 结论）
@@ -56,7 +56,7 @@
 | §2.4 写端 1/2 | ① `observe_full` 回执真携带 plane/round_num（`cw_observe_full.py:108-133` → `GameStateReadReceipt` `cw_observation.py:2187-2188`）；CwScreenPrep 观察 node 可拿回执：`_observe` heavy 段 `_st = _of.get('read_receipt')`（`cw_screen_prep.py:262`，session 非 None 块内、reobserve_in_visit 同链）——锚定接线可行 ✓；漏斗退出节点域后 recorder 零副作用主张成立（recorder 直调 `read_game_state`，`cw_match_recorder.py:80`，节点域写入随漏斗收口消失）✓；② 补给屏节点条：观察 node 在（`cw_screen_supply_node.py:142-155`），V3 实证节点条屏显且不在 A_PHASE 区（node-derivation §④-C V3），sr-od-test fixture `货币战争-补给/default.webp` 在库可作离线对拍 ✓；③ **「唯一消费 op」= R4** | R4，余 ✓ |
 | §2.5 退役清单/切换纪律 | 五调用点 `cw_loop.py:1547/1559/1594/1605/1623` 实测吻合；上下文对开局链消费面 = 仅 `_derive_node_inferred`（退役）+ projection 审计行（非逻辑），§2.7-9「零逻辑消费」成立 ✓；共存画像（3.2 后 settle 门挡：旧备战腿 write_logic 使 source=logic ✓；3.3 后 supply 部分放行 ✓）与 landing 阶段序一致 ✓；**BOSS 迁移行 = R3** | R3，余 ✓ |
 | §2.6/§2.7 | §2.6 分家与 `apply_effect_burst_grant`（`:1204`）/`grant_effect_node_refresh_balance`（`:1223`）挂点描述相符 ✓；§2.7 九条逐条对码：1/2/6/7/9 成立（9 见上）、5 成立、8 沿原语成立、3/4 语义可核但缺验证锚（R5） | R5，余 ✓ |
-| landing 3.1-3.7 | 3.1 判据含 F2① 回归锁 ✓（但范围⑤ = R2）；3.2 剧本可判 ✓；3.3 两形态剧本+fixture 判据可独立验收 ✓；3.4 边界清晰 ✓；3.5 grep 归零判据可判定（符号集封闭：`_note_branch_screen`/`SCREEN_CONTEXT_POPUP_FAMILY`/`SCREEN_CONTEXT_GUARD_PREV`/`SCREEN_NODE_TYPE_DIRECT`/三 `_derive_node_*` 均为实名符号）✓；3.6 = R5；3.7 清单齐 ✓ | R2/R5，余 ✓ |
+| landing 3.1-3.7 | 3.1 判据含 F2① 回归测试 ✓（但范围⑤ = R2）；3.2 剧本可判 ✓；3.3 两形态剧本+fixture 判据可独立验收 ✓；3.4 边界清晰 ✓；3.5 grep 归零判据可判定（符号集封闭：`_note_branch_screen`/`SCREEN_CONTEXT_POPUP_FAMILY`/`SCREEN_CONTEXT_GUARD_PREV`/`SCREEN_NODE_TYPE_DIRECT`/三 `_derive_node_*` 均为实名符号）✓；3.6 = R5；3.7 清单齐 ✓ | R2/R5，余 ✓ |
 
 ### E 边复走（新模型；重点 = 补推时序组合 / 恢复局 / 快弹窗+补给自动弹+位面过渡复合）
 

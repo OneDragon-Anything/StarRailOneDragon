@@ -31,10 +31,10 @@
 
 ### A4 landing.md 三处残留「判重/幂等」旧口径，与裁定⑨、design §2.4 及 landing 自身判据矛盾
 
-- **攻击对象锚**：landing.md 3.1 范围（「……`gain_invest_env` 幂等闸/`DEFECT_STRATEGY_REGISTER`」）、3.2 范围⑩（「新增立即上报/终结交回/**判重幂等**/left 字段具名锁」）、正本更新清单 gain-chain.md §2 行（「四原语:新增 gain_invest_strategy;**env 幂等闸**」）。
-- **发现**：design.md §2.4 明确「`gain_invest_env` 保持现行直写（无条件写 + 无条件 `on_env_gained`，**零幂等闸**——同裁定⑨）」，裁定⑨「判重/幂等等防护性补丁一律不做」，landing 3.1 自己的完成判据也写「`gain_invest_env` 保持直写零闸」。但 landing 的范围行与正本更新清单却出现「env 幂等闸」、3.2 出现「判重幂等具名锁」——这是裁定⑨落定之前的旧口径残留，三处互相矛盾：实现者按 3.1 范围行开工要去**加**幂等闸，按同一阶段的完成判据又要**零闸**，正好踩中规范 §5-4「方案改了、派工面残留旧口径」点名的事故形态。
+- **攻击对象锚**：landing.md 3.1 范围（「……`gain_invest_env` 幂等闸/`DEFECT_STRATEGY_REGISTER`」）、3.2 范围⑩（「新增立即上报/终结交回/**判重幂等**/left 字段具名测试」）、正本更新清单 gain-chain.md §2 行（「四原语:新增 gain_invest_strategy;**env 幂等闸**」）。
+- **发现**：design.md §2.4 明确「`gain_invest_env` 保持现行直写（无条件写 + 无条件 `on_env_gained`，**零幂等闸**——同裁定⑨）」，裁定⑨「判重/幂等等防护性补丁一律不做」，landing 3.1 自己的完成判据也写「`gain_invest_env` 保持直写零闸」。但 landing 的范围行与正本更新清单却出现「env 幂等闸」、3.2 出现「判重幂等具名测试」——这是裁定⑨落定之前的旧口径残留，三处互相矛盾：实现者按 3.1 范围行开工要去**加**幂等闸，按同一阶段的完成判据又要**零闸**，正好踩中规范 §5-4「方案改了、派工面残留旧口径」点名的事故形态。
 - **依据**：design.md §2.4 第 4 条；裁定⑨（design.md §0）；landing.md 3.1 范围/完成判据对照、3.2 范围⑩、正本更新清单第 4 行；正本 gain-chain.md §2（现状本就零闸）。
-- **处置建议**：三处统一改为「零判重零幂等闸」口径；「判重幂等具名锁」如意指「锁『不存在判重/幂等分支』」，改为该语义的明确写法（如「零防重复形态具名锁」）。
+- **处置建议**：三处统一改为「零判重零幂等闸」口径；「判重幂等具名测试」如意指「断言『不存在判重/幂等分支』」，改为该语义的明确写法（如「零防重复形态具名测试」）。
 
 ### A5 正本更新清单漏项：op-layer.md §3/§4 与 action_ops.md §2.3/§4.6 在本迭代落地后即失真，未入清单
 
@@ -81,7 +81,7 @@
 ### A11 文件面缺口（条件项）：§2.9 核实项可能产生的改动面不在任何阶段文件面内；测试面「(按需)」指向不明
 
 - **攻击对象锚**：landing.md 3.2 文件面；design.md §2.9 第 3 条（consume_pending_strategy_pick 核实）。
-- **发现**：①§2.9 要求核实立即上报时点下观测自检的行为并「核实后申报留证口径（……若为死链则零改动）」——但**核实结论为要改动**时，涉及文件 `obs/cw_observe.py`（暂存槽宿主）与 `obs/cw_observation.py`（自检宿主）不在 3.1/3.2 任何文件面内，实现者按文件面纪律只能停手回提修订（规范 §5-2 卡点②），等于预埋一次必返工。②3.2 文件面的测试枚举「test_cw_yinlang_phase32/test_cw_obs_arch_phase_screens/test_cw_unified_action_4/test_cw_gain_chain(按需)」——「按需」位置不明（修饰整表还是仅末项），而实测至少 `test_cw_screen_report_ports.py`（锁两屏 obs 载荷形状与 report 摄入，:221-229/:319-322）大概率随 obs 加刷新槽需要动，未点名。
+- **发现**：①§2.9 要求核实立即上报时点下观测自检的行为并「核实后申报留证口径（……若为死链则零改动）」——但**核实结论为要改动**时，涉及文件 `obs/cw_observe.py`（暂存槽宿主）与 `obs/cw_observation.py`（自检宿主）不在 3.1/3.2 任何文件面内，实现者按文件面纪律只能停手回提修订（规范 §5-2 卡点②），等于预埋一次必返工。②3.2 文件面的测试枚举「test_cw_yinlang_phase32/test_cw_obs_arch_phase_screens/test_cw_unified_action_4/test_cw_gain_chain(按需)」——「按需」位置不明（修饰整表还是仅末项），而实测至少 `test_cw_screen_report_ports.py`（断言两屏 obs 载荷形状与 report 摄入，:221-229/:319-322）大概率随 obs 加刷新槽需要动，未点名。
 - **依据**：design.md §2.9；landing.md 3.2 文件面；sr-od-test test_cw_screen_report_ports.py:219-229、:319-322、:528-529。
 - **处置建议**：3.2 文件面补「obs/cw_observe.py、obs/cw_observation.py（仅限 §2.9 核实结论为改动时的最小接线）」；测试面写明「以下为必改面，其余测试按需不受此列」并把 test_cw_screen_report_ports.py 点名（或核实后确认零改动并记录依据）。
 

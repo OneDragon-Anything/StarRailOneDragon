@@ -34,9 +34,9 @@
 ### F4 [建议] §2.3 并行协调申报的事实句「现盘 pick_planner.py 尚无该代码」与工作区实况不符：joy rider 已作为未提交改动在盘（+63 行），且效果腿清单/验收锚 2 均未列 rider
 
 - **对象位置**：design.md :66（取舍 5）；§2.1 :44（落地效果腿逐位保持清单）；§3 验收锚 2；landing.md 3.2 范围。
-- **问题**：git 实况：`pick_planner.py` 相对 HEAD 有 **+63/-9 未提交改动**（`_grant_joy_conditional` rider + `rng` 形参 + 落地相内腿型分派前执行，另 `cw_events.py`/`cw_gain_chain.py`/`cw_overlay_pick_action.py` 同批未提交）——joy-conditional-leg 批已开始落码（第 1 轮 F7 核的「现盘无 joy 符号」已过时）。设计三处未跟上：①事实句「现盘尚无该代码」按现盘为假；②§2.1「落地效果腿逐位保持」清单只列 equip/upgrade/unknown/weaken 四腿，**未列腿型分派之前的条件腿 rider**；③验收锚 2 与 landing 3.2 行为锁同样无 rider 面。3.2 worker 在现盘执行「删 evidence 参数、一口写」时必然撞上 `_grant_joy_conditional` 与 `rng` 形参的去留拍板——按「rider 随单相调用点重挂」可**推出**保留，但这是推理不是声明；行为锁若不含 rider 面，「发射时点零授予」类回归（joy 批语义）无人锁。按任务边界 joy 批非攻击对象，如实记录现状：协调申报的方向（重挂单相调用点）成立，缺的是对「已在盘」的事实修正与一句去留口径。
+- **问题**：git 实况：`pick_planner.py` 相对 HEAD 有 **+63/-9 未提交改动**（`_grant_joy_conditional` rider + `rng` 形参 + 落地相内腿型分派前执行，另 `cw_events.py`/`cw_gain_chain.py`/`cw_overlay_pick_action.py` 同批未提交）——joy-conditional-leg 批已开始落码（第 1 轮 F7 核的「现盘无 joy 符号」已过时）。设计三处未跟上：①事实句「现盘尚无该代码」按现盘为假；②§2.1「落地效果腿逐位保持」清单只列 equip/upgrade/unknown/weaken 四腿，**未列腿型分派之前的条件腿 rider**；③验收锚 2 与 landing 3.2 行为测试同样无 rider 面。3.2 worker 在现盘执行「删 evidence 参数、一口写」时必然撞上 `_grant_joy_conditional` 与 `rng` 形参的去留拍板——按「rider 随单相调用点重挂」可**推出**保留，但这是推理不是声明；行为测试若不含 rider 面，「发射时点零授予」类回归（joy 批语义）无人校验。按任务边界 joy 批非攻击对象，如实记录现状：协调申报的方向（重挂单相调用点）成立，缺的是对「已在盘」的事实修正与一句去留口径。
 - **权威源证据**：`git diff HEAD --stat` pick_planner.py +63/-9；pick_planner.py 现盘 :94（`_grant_joy_conditional(gs, sig, rng)` 于落地相、腿型分派前）与 :107-142 定义体；design :44/:66/:71；landing :20/:26。
-- **建议修法**：design :66 事实句改「现盘已有该批未提交落码（+63 行）」；§2.1 或 landing 3.2 补一句「腿型分派前的欢愉条件腿 rider（含 `rng` 形参）随单相化保留在 report 体内、触发时点随调用点前移，行为锁口径与 joy 批对齐」。
+- **建议修法**：design :66 事实句改「现盘已有该批未提交落码（+63 行）」；§2.1 或 landing 3.2 补一句「腿型分派前的欢愉条件腿 rider（含 `rng` 形参）随单相化保留在 report 体内、触发时点随调用点前移，行为测试口径与 joy 批对齐」。
 
 ### F5 [建议] 「weaken 零写」腿描述与实码不符：weaken 不是独立零写腿，它落 unknown 腿且**有留证**；真正的零写分支是 unrouted 兜底，设计全文未提
 
@@ -73,8 +73,8 @@
 
 ## ④ 试读结论（逐阶段）
 
-- **3.1（equip）实现 worker**：**可开工**。单相 report 改法、换源入口（`normalize_registry_equip_name` 现盘 :951，分层语义与 design 引用一致）、删闩删出口门、行为锁三型（命中/未解析/泛用件）、grep 判据均可直接落码；卡点仅 F7① 措辞与 F6（模块头是否顺手，无申报需自拍板）。
-- **3.2（planner）实现 worker**：**可开工（附一句口径待补）**。时序等价论证成立（两时点间容器零写入——round_wait 轮 OCR 重入检查非容器写端；report_screen_planner_obs 派发前写完；单线程无并发写端）；唯一实拍板点 = F4：现盘函数体已含 `_grant_joy_conditional`+`rng`（joy 批未提交落码），设计的腿清单与行为锁均未列，worker 需按 §2.3 协调句**推理**出「保留在单相体内」——补一句声明即消。
+- **3.1（equip）实现 worker**：**可开工**。单相 report 改法、换源入口（`normalize_registry_equip_name` 现盘 :951，分层语义与 design 引用一致）、删闩删出口门、行为测试三型（命中/未解析/泛用件）、grep 判据均可直接落码；卡点仅 F7① 措辞与 F6（模块头是否顺手，无申报需自拍板）。
+- **3.2（planner）实现 worker**：**可开工（附一句口径待补）**。时序等价论证成立（两时点间容器零写入——round_wait 轮 OCR 重入检查非容器写端；report_screen_planner_obs 派发前写完；单线程无并发写端）；唯一实拍板点 = F4：现盘函数体已含 `_grant_joy_conditional`+`rng`（joy 批未提交落码），设计的腿清单与行为测试均未列，worker 需按 §2.3 协调句**推理**出「保留在单相体内」——补一句声明即消。
 - **末阶段正本更新批 worker**：**不可开工**。F1（action_exec.md 漏列且兜底双不覆盖）、F2（planner.md 节列举与实况错位，§2/:76 永不清）使「清单清零；正本与实现一致」不可达；F3（op-layer 枚举句/悬空引用/分型判据）按严格口径同判。先修清单再排批。
 
 ## ⑤ 零发现面声明

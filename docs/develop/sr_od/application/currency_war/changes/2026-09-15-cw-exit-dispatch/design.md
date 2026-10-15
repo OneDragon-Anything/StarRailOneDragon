@@ -77,7 +77,7 @@
 | `cw_screen_state.py` | `LOBBY_STATE_SCREENS` 增 5 张；新增 A 类名单常量（含定义注释：语义=可点门形退出的备战态） |
 | `cw_entry_exit.py` | 路由判定按 §2.1 重排；新增路由状态与两个节点（委托对局循环 / 敌人信息关闭）；删除备战双锚分发判定与 `_prep_anchors_hit` 导入；`ROUTE_BY_SCREEN` 移除战斗暂停死项；文件头节点链注释同步 |
 | `cw_loop.py` | stop_at_prep 停机位（:1693）换 A 类名单判定；停机位注释更新（穿透双锚的已知边界描述随语义修正）；`_prep_anchors_hit` 本体与其余三处调用点不动 |
-| `sr-od-test/` | 流程测试（fixture 剧本，行为锁见 landing §3.x） |
+| `sr-od-test/` | 流程测试（fixture 剧本，行为测试见 landing §3.x） |
 | `flow/` 正本 | 末阶段补「退出链」章节（见 landing 正本更新清单） |
 
 ### 2.4 关键取舍（备选与为何放弃）

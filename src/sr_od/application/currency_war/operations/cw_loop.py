@@ -473,7 +473,7 @@ def _shop_open_anchors_hit(op, screen) -> bool:
 def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
                             key: str, ok: bool) -> tuple[str | None, int]:
     """外环 op 连续 fail 计数纯函数(计数语义 = 同值累加/异值归一,
-    先例:计数语义纯函数化供锁测,包装内只做状态落位)。
+    先例:计数语义纯函数化供测试,包装内只做状态落位)。
 
     计数键 = 分发 op 行名(journal_name,分发身份单一源);计数窗口 =
     「连续 fail 运行」:

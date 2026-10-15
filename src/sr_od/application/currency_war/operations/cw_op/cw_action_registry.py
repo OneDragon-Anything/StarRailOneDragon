@@ -1,6 +1,6 @@
 """全动作单一注册表(动作 op 重组):词表类 → 动作 op 类一张表,
 ``action_op_class_for`` = 类级查询(终结判定/executor/落地门消费面),
-``action_op_class_for_type`` = 词表**类**级查询(注册完备锁消费口),
+``action_op_class_for_type`` = 词表**类**级查询(注册完备测试消费口),
 ``action_op_for`` = 构造helper(ctx + param + env 组装新壳 op)。
 
 **op 形态(sim 统一批换父)**:动作 op =
@@ -12,7 +12,7 @@
 op-layer.md §1.2)。
 
 **并入状态**:商店域五行首批已登记;备战域已并入登记;事件线 pick 族
-已并入登记。注册完备锁(测试 = sr-od-test test_action_registry)
+已并入登记。注册完备测试(sr-od-test test_action_registry)
 以本表为机械约束对象:遍历统一词表 ``cw_vocab.CW_ACTION_TYPES`` +
 事件线 pick 族 ``cw_events.PICK_ACTION_TYPES``,逐类断言本表解析可命中。
 (原 CompTransaction 行已随 unified-action-factory R3 删除——整档
@@ -212,7 +212,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
 
 
 def action_op_class_for_type(action_type: type) -> type[SrOperation]:
-    """词表**类** → 动作 op 类(类级解析,不构造动作实例;注册完备锁
+    """词表**类** → 动作 op 类(类级解析,不构造动作实例;注册完备测试
     消费口)。
 
     行序语义与 :func:`action_op_class_for` 的 isinstance 首中同构:实例

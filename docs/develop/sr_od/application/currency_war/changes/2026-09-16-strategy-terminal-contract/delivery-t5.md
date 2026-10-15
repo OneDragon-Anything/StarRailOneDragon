@@ -49,13 +49,13 @@
   调用 decide 为前提(三分语义);encounter 刷新链 = 同访问二次覆盖写槽;
   per-visit 位写点 = 首调前置段 False + 建议处置后 True(fail-loud 直写)。
 - buy_cards 循环 `decide_shop_action()` 零参;shop/prep 双形态壳删除
-  (干净断);驱动器 `decide_shop_screen`(sim/回放/序列锁)形参保留为
+  (干净断);驱动器 `decide_shop_screen`（sim/回放/序列测试）形参保留为
   兼容宿主,内部走零参单动作核。
 - buy_cards 防御路径(match=None 局外兜底建核)改经引导漏斗——落地面
   与三行为差消除详述见 §1.5(r2 返工补件)。
 - 五注册行换键名(`Encounter/Supply/Megastar/Partner/Planner Pick` → 词表
   子类型),注册表结构零改动;`PICK_ACTION_TYPES`/`CW_ACTION_TYPES` 收敛
-  单表(注册完备锁遍历单一源 = `CW_ACTION_TYPES`)。
+  单表(注册完备测试遍历单一源 = `CW_ACTION_TYPES`)。
 
 ### 1.4 本批修复的 S3 遗留生产断点(申报)
 
@@ -82,7 +82,7 @@
   by construction 消除;策略实例化同漏斗走 StrategyManager 按
   `config.strategy_id`(不再硬编 mandate_v1);状态同源接线/Match 终形/
   职级吸收均与生产唯一建立漏斗同源,零逻辑分叉。
-- 随批行为锁 = `test_cw_buy_cards_defense_funnel.py` 4 例:种子播种
+- 随批行为测试 = `test_cw_buy_cards_defense_funnel.py` 4 例:种子播种
   (seed=42 → Random(42);None → 缺省固定 0 种)、布局未知态复位触发
   (cw_vocab 槽转发计次)、遥测装配触发(建立点以遥测 `current_run_id`
   为 provider)、同 ctx 二次独立调用全量重建非复用。
@@ -90,8 +90,8 @@
 ## 2. 验证(对照 §2.8)
 
 - L1 全量:508 passed(翻新后;含四格 encounter、invest 拆分同帧对照、
-  handler 行为锁、注册完备锁单表版)。
-- handler 级行为锁:遭遇刷新语义(发射计数/前置闸/重决策恰两次)、invest
+  handler 行为测试、注册完备测试单表版）。
+- handler 级行为测试:遭遇刷新语义(发射计数/前置闸/重决策恰两次)、invest
   逐卡三闸(闸 1 计数/闸 2 容器账/终结交回单决策)、supply 刷新单点计数、
   env 选卡时点写——全部翻新为词表动作驱动后通过。
 - 普查对账(快速面):旧式 decide 调用(src)零残留;策略层 kernel pick
@@ -105,9 +105,9 @@
   1 处鸭子字符串钩子已单列);
   ②[census-vocab-registry.md](census-vocab-registry.md) —— 词表/注册面:
   `CW_ACTION_TYPES` 单表 35 成员(九 Pick + 三刷新 + HoldFrame 覆盖核对)、
-  注册表五行换键、注册完备锁豁免集(8 成员)、`EVENT_PICK_TYPES` kernel
+  注册表五行换键、注册完备测试豁免集(8 成员)、`EVENT_PICK_TYPES` kernel
   侧载体、PickEvent 退役面全量。
-- L3 语义等价:508 全绿即语义锁面通过(正式 L3 复跑归 T-7)。
+- L3 语义等价:508 全绿即语义测试面通过(正式 L3 复跑归 T-7)。
 
 ## 3. 未竟面(依赖后续阶段,非本批辖)
 
@@ -128,7 +128,7 @@
   run_buy_waves match=None 分支直调 `discard_stale_match_container` +
   `establish_new_match`,rng 种子/布局复位/遥测 run_id_provider 三行为差
   by construction 消除,防御语义(局外不复用 = 每次独立调用新建)保持;
-  随批行为锁 test_cw_buy_cards_defense_funnel.py 4 例全绿;落地面详述
+  随批行为测试 test_cw_buy_cards_defense_funnel.py 4 例全绿;落地面详述
   §1.5。提交:主仓 `7080b3a86` / 测试仓 `8e7746d9`。
 - **返工项 2(§5.2)普查对账表×2**:完成——`census-four-symbols.md`
   (四符号全仓逐文件对账,活读者=kernel 同源桥/mandate session 消费 →

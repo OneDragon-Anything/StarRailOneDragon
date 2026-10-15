@@ -22,7 +22,7 @@
 **优先级建议**:5
 **完成判据**:
 - 行为对照 design.md §2.5(portal 支走链;strategy 支与发射相零变化;画面 op 尾段零容器写)
-- §2.6 五条行为变化申报逐条有测试锁或留证(写时点迁移锁必具名)
+- §2.6 五条行为变化申报逐条有测试或留证(写时点迁移测试必具名)
 - 通用工程门(项目测试规范 §10)
 **验收凭据形式**:`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` 相关文件全绿;`active_env 写时点` 断言名对照
 

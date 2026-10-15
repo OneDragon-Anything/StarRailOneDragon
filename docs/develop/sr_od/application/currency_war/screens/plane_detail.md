@@ -41,6 +41,6 @@
 
 `node_max_retry_times=2` 在用值仅框架异常路径消费;无停机钩子——关闭不了由外循环重派/兜底链裁决。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-journal op 名 = 「位面详情」;测试锁 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,plane_detail 已登记);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。
+journal op 名 = 「位面详情」;测试 = `sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,plane_detail 已登记);画面档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`。

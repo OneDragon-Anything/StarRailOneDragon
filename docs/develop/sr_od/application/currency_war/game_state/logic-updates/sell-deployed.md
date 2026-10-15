@@ -42,9 +42,9 @@
 
 `kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(两个域写入统一为一份代码)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py` 排内槽号内联换算(工作表桥 = `cw_exec_state.deployed_indexed_of_view`/`deployed_view_of_indexed`);`operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(换血卖出 = m1p 发出分支逐件产原子,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
 
-## 7. 语义验证(M1 直锁)
+## 7. 语义验证(M1 测试)
 
-卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由直锁 M1(`test_shop_projection_logic`)锁定,v2 族金样直锁 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 停用)。
+卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`test_shop_projection_logic`)钉住,v2 族金样直接校验 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 停用)。
 
 ## 8. 判例注记(动作发出阶段)
 

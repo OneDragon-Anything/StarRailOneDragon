@@ -8,7 +8,7 @@
 
 - 位置:design §2.3(退役四槽)/§2.7(kernel 删除面)/§2.8(其余 op 层零改动);landing 3.2(文件面、零残留清单)
 - 发现:设计申报 `D_ENC_VARIANT` 物理删除且 kernel 无标定面残留,同时申报「其余 op/上报层(…、cw_battle_wait 遭遇观测面)零改动」。直调证伪:`operations/cw_screen/cw_screen_battle_wait.py:303-306` 在 `_cw_selection_write` 内 `from …kernel.cw_encounter_selection import (D_ENC_VARIANT, record_settlement_row)`,`:319-323` 按 `D_ENC_VARIANT == "i"/"ii"` 双态装填遭遇行 `difficulty_node`。全 src 词边界 grep:`D_ENC_VARIANT` 生产消费仅两处——`cw_encounter_selection.py` 本体与 `cw_screen_battle_wait.py`;测试仓零引用。该 import 在方法体内,槽物理删除后**每场结算行入环即 ImportError**,直接打断裁定 9 授权的结算观测持久化(本批自己的 kernel 保留面)。landing 3.2 文件面未列 `cw_screen_battle_wait.py`;其零残留 grep ② 网虽含 `D_ENC_VARIANT`(会拦住),但设计未给出该消费点的处置语义,实现者撞网后无答案可依(停手令回路由)。另注:现役 `D_ENC_VARIANT=None` 下遭遇行 `difficulty_node` 恒装 None(`:319-323` 两分支均不中),即现网行为 = 普战行 observation 直装、遭遇行恒 None——退化目标形态有现成定义,设计漏写。
-- 修正方向:①§2.7 增列该消费点处置:装填双态退化为定谳前形态(普战行 observation 直装不变、遭遇行 `difficulty_node` 恒 None——与现 None 拨盘行为逐位一致),或显式论证该装填位改读新归属(若定谳拨盘随迁策略层,须给出 op 层取值通道,注意决策控制分层铁律);②§2.8 撤回「cw_battle_wait 零改动」申报,改为「结算行装填双态收窄一处」;③landing 3.2 文件面增列 `operations/cw_screen/cw_screen_battle_wait.py`,测试面补结算行装填锁(普战行 diff 有值/遭遇行 diff=None)。
+- 修正方向:①§2.7 增列该消费点处置:装填双态退化为定谳前形态(普战行 observation 直装不变、遭遇行 `difficulty_node` 恒 None——与现 None 拨盘行为逐位一致),或显式论证该装填位改读新归属(若定谳拨盘随迁策略层,须给出 op 层取值通道,注意决策控制分层铁律);②§2.8 撤回「cw_battle_wait 零改动」申报,改为「结算行装填双态收窄一处」;③landing 3.2 文件面增列 `operations/cw_screen/cw_screen_battle_wait.py`,测试面补结算行装填测试(普战行 diff 有值/遭遇行 diff=None)。
 
 ### R8-F2 [严重度:中] 章程缺口申报误述 01 §6 原文——章程并非「未预见」闸门量,而是明文把「数值大小参与方向/闸门判断」的量划归【推】/【拟】纪律
 
@@ -19,7 +19,7 @@
 ### R8-F3 [严重度:中] 裁定未过的退化形态未定义且自相矛盾;landing 3.1 无裁定前置,存在「章程真空窗落码」路径
 
 - 位置:design §2.2(两闸绑定段、决策序 step 4/6);landing 3.1(范围、依赖:无、完成判据)
-- 发现:①设计自缚「修订未裁或未过 = cap 与偏好序不落码激活,遭遇选档维持 fail 向最低档(现役暗装等价保守形态)」。但按 §2.2 决策序推演:去掉边缘 cap=2 后,κ_S 足量帧仍可及 t≤4(足量 cap=6 系「档位值域上界」非【拍】申报项)、其五/六照走经验层、主序照选最高——**推不出「恒最低档」**;若反向把「无 cap」解释为可及集恒空,则刷新阀(`可及集空 ∧ left≥1`)照建议刷——也不等于暗装零刷新。两条实现路径都到不了申报的退化形态,该分支不可施工。②landing 3.1 依赖 = 「无」,但其范围含「边缘 cap 立场常量(【拍】登记表落点)」、完成判据的单帧锁覆盖 §2.12 锚点 2(边缘 cap)与锚点 5(tiebreak 序)——即**在用户裁定完成前落码并锁定两项【拍】值**,与设计自己的「禁章程真空窗落码」相抵;3.2 把「裁定点 1 结论」列为依赖,§2.2 同一裁决门(章程修订 + 两项值过目)却未列为任何阶段依赖,不对称。
+- 发现:①设计自缚「修订未裁或未过 = cap 与偏好序不落码激活,遭遇选档维持 fail 向最低档(现役暗装等价保守形态)」。但按 §2.2 决策序推演:去掉边缘 cap=2 后,κ_S 足量帧仍可及 t≤4(足量 cap=6 系「档位值域上界」非【拍】申报项)、其五/六照走经验层、主序照选最高——**推不出「恒最低档」**;若反向把「无 cap」解释为可及集恒空,则刷新阀(`可及集空 ∧ left≥1`)照建议刷——也不等于暗装零刷新。两条实现路径都到不了申报的退化形态,该分支不可施工。②landing 3.1 依赖 = 「无」,但其范围含「边缘 cap 立场常量(【拍】登记表落点)」、完成判据的单帧测试覆盖 §2.12 锚点 2(边缘 cap)与锚点 5(tiebreak 序)——即**在用户裁定完成前落码并锁定两项【拍】值**,与设计自己的「禁章程真空窗落码」相抵;3.2 把「裁定点 1 结论」列为依赖,§2.2 同一裁决门(章程修订 + 两项值过目)却未列为任何阶段依赖,不对称。
 - 修正方向:①显式定义裁定未过时的落码形态(建议:立场常量区留位 + 判据侧恒 fail 向短路,即 cap/偏好序槽位 None 语义 = 边缘态可及集空 ∧ tiebreak 全落同档,并同步关阀;或该分支 = 整批缓发,二选一写死);②landing 3.1 依赖增列「§2.2 同一裁决门完成(过目记录在册)」,或 3.1 完成判据按裁定分支双态写明。
 
 ### R8-F4 [严重度:中] 补给孪生面已落地即在产带病(零点击无界循环),本批仅无期限挂账;跨件半问未升架构级条款,修后两屏行为分叉
@@ -43,8 +43,8 @@
 ### R8-F7 [严重度:低] 「曾记的…经查不存在」勘误叙事入设计正文(写作硬规则 3 边缘)
 
 - 位置:design §1.1(历史 EV 核条)、§2.10 裁定点 1 推荐理由
-- 发现:两处「曾记的『测试仓 EV 核纯函数锁』经查不存在/(直调核实,曾记的…不存在)」——对既往记录的勘误过程叙事。事实本体(测试仓无 EV 核锁;全仓双零消费)已独立直调核实成立(本报告复核:`decide_encounter_ev` src 零调用方、测试仓 `mandate_v1.encounter`/`ENCOUNTER_DSTAT_MAP`/`encounter_ev` 零引用),勘误过程不进正文(iteration-design 硬规则 3:过程住对抗报告与账本)。
-- 修正方向:改写为纯现状事实句:「测试仓无 EV 核行为锁(src+测试仓双零消费,直调核实)」,删「曾记的」指称。
+- 发现:两处「曾记的『测试仓 EV 核纯函数测试』经查不存在/(直调核实,曾记的…不存在)」——对既往记录的勘误过程叙事。事实本体(测试仓无 EV 核测试;全仓双零消费）已独立直调核实成立(本报告复核:`decide_encounter_ev` src 零调用方、测试仓 `mandate_v1.encounter`/`ENCOUNTER_DSTAT_MAP`/`encounter_ev` 零引用),勘误过程不进正文(iteration-design 硬规则 3:过程住对抗报告与账本)。
+- 修正方向:改写为纯现状事实句:「测试仓无 EV 核行为测试(src+测试仓双零消费,直调核实)」,删「曾记的」指称。
 
 ## 零发现面申报(实际攻击过且无实质发现的面)
 
@@ -52,9 +52,9 @@
 - **授权与裁定链**:04 号稿 §7 裁定表第 9 行逐字(授权对象 = 结算观测读数作遭遇决策输入 + GameState 持久化、环深 10、「判据正本」系依据列载体登记——设计 §2.2 对该行「不构成判据结构授权」的读法与原文相符);op-layer.md §1.4 刷新剩余语义(None = 未观察、节点屏闸 None = 拒刷)与设计 §2.2/§2.5 闸内嵌一致。
 - **已证命题**:P64 单篇辖域(静态 `dict[敌方难度读数→stat]`、B/q/s/m 自由项、G_gold 金额侧、点亮前置链①②③)与设计引申申报的边界声明相符;math_proofs 索引 P15(boss 26.79 [24.25,29.23] / 普战 10.45)、P26(待证明,Δp_prep+L_node 双挂账)、P85(D_N={遭遇,boss}、A/B 分键候裁)行——设计 §1/§2.2/§2.12 引用逐项对得上。
 - **现役暗装核直调**:六标定槽全 None、门序(F_MIN→G_BASE→bar 双定谳→D_ENC_VARIANT→Δ_t)、`_kappa_state` 三态表逐位(含删失优先/fill 不激活分支)、cap 2/6 与过滤顺序(cap 在前,边缘态 t≥3 全排除含五/六)、tiebreak `(档, idx)` 序、`_lowest_idx` 并列取先读、三因词刷新阀、reason 串格式——设计 §2.2「与现役核同构,门序收窄」申报与代码逐位相符。
-- **三核架构与双零消费**:基类 flow.decide_encounter → cw_events 旧核(flow.py:594-609,含 refresh_used 预计算 :602)、bridge 覆写 → cw_encounter_selection(bridge.py:252-285,含自带离屏守卫)、EV 核 mandate_v1/encounter.py(`decide_ev` 零生产调用、测试仓零引用、「纯函数锁」不存在);bridge 仅覆写 decide_prep_screen/decide_encounter/decide_shop_screen——「删覆写后 bridge 只覆写营业面」申报成立。
+- **三核架构与双零消费**:基类 flow.decide_encounter → cw_events 旧核(flow.py:594-609,含 refresh_used 预计算 :602)、bridge 覆写 → cw_encounter_selection(bridge.py:252-285,含自带离屏守卫)、EV 核 mandate_v1/encounter.py(`decide_ev` 零生产调用、测试仓零引用、「纯函数测试」不存在）;bridge 仅覆写 decide_prep_screen/decide_encounter/decide_shop_screen——「删覆写后 bridge 只覆写营业面」申报成立。
 - **动作链解耦**:CwActionPickEncounterOp 静态入参 = 词表动作、`report_action_pick_encounter_param(param: Any)` 鸭子取 idx——生产契约与 EncounterPick 无耦合;测试替身仅 test_cw_unified_action_4.py(:28/:259/:278,行号精确)。
-- **删除面/收口清单完备性**(除 F1 外):EncounterPick 全部 src 消费点、EVENT_PICK_TYPES/EventPick 运行时构造位、cw_vocab 两处「替代 EncounterPick」(:715/:906)、flow.py:656/793/807 三符号锚、apply_calibration/reset_calibration/selection_state_of/game_start_reset/REWARD_TIER_LAST 零外部引用(全仓 grep 定谳)、注释指针收口 15 处逐一在实址核到、测试面清单(claim/record 保留符号 import 零改动、重调行为锁改写对象 = test_cw_obs_arch_event_screens.py:387-403)与实址一致。
+- **删除面/收口清单完备性**(除 F1 外):EncounterPick 全部 src 消费点、EVENT_PICK_TYPES/EventPick 运行时构造位、cw_vocab 两处「替代 EncounterPick」(:715/:906)、flow.py:656/793/807 三符号锚、apply_calibration/reset_calibration/selection_state_of/game_start_reset/REWARD_TIER_LAST 零外部引用(全仓 grep 定谳)、注释指针收口 15 处逐一在实址核到、测试面清单(claim/record 保留符号 import 零改动、重调行为测试改写对象 = test_cw_obs_arch_event_screens.py:387-403)与实址一致。
 - **kernel 保留面**:SettlementRing/EncounterLog/_RingRow/SETTLEMENT_RING_DEPTH(=10)、record_settlement_row 单一写端(cw_game_state.py:123-126 与 cw_op_settle_confirm.py:98 的消费均为保留符号)、claim_encounter_reward 兑现回调、gs.enemy_difficulty 容器——宪法五③非打分基建归层成立。
 - **refresh 阀-外循环交互**:cw_loop T-266 计数语义(只计连续 fail、零点击 round_success 清零窗,cw_loop.py:824-836/852-868)与设计 §2.5 定谳逐位一致;遭遇重调分支现态(cw_screen_encounter.py:180-195 零点击 round_success)与「由死转活」申报一致;防线条件(重调仍 Suggestion ∧ 锚读缺)与唯一可达失配子态吻合。
 - **sim 面**:结算腿零 `record_settlement_row` 调用(sim 目录 grep 零命中)、`ENCOUNTER_TIER_COUNT=4` 与占位文本「金+20(占位,…)」(cw_sim_backend.py:488/491/536-539)按 reward_tier 语义直推落末档——§2.12 sim 盲区申报成立。

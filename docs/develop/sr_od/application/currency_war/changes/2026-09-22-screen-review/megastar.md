@@ -11,7 +11,7 @@
 ### F-1 画面 op 决策出口:空候选/无 match 盲选 idx0 派发 + pick idx 静默钳位(高)
 
 - **现状症状**:`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar._do_action` 选中半访问(`need_select=True`)两条违规路径——①`idx = 0` 默认初值 + 仅 `if _match is not None and options:` 才调 `decide_megastar()`:候选空(`obs/cw_node_obs.py::read_megastar_options` OCR 失读返 [],懒读语义下容器 `megastar_opts` 亦不写)或 `ctx.cw_match` 缺席时,策略器完全不被调用,屏内自定 idx=0 盲点左候选并派发「选中+确认」链;②返回 `CwActionPickMegastarParam` 但 idx 越界时,被 `if 0 <= pick.idx < len(options): idx = pick.idx` 静默钳到 0 续跑。两路径把策略器 bug 降级为「左候选被选中并确认消耗」;确认点击不可逆推进节点。`pick=None`/缺 `.idx` 属性的 AttributeError 传播子径 = 异常 fail 出口,合规(报告 F-1②注)。
-- **根因归层(根源两问)**:根在**流程层**。兜底分支是 handler 时代「缺省支(局外兜底分支原样)」的残留(代码注释自述,`_do_action` 内);决策控制分层铁律(flow/README.md §1)已把「动作值域过滤」划归策略侧、禁流程侧任何决策闸门,流程侧合法判断面仅防 bug 守卫断言与失败治理(op-layer.md §1.1/§1.3)。megastar.md §2 在册的「未命中/OCR 空 → idx=0」是**策略侧**缺省实现(`strategy-docs/13_pick_family.md` §1 E7,`strategies/impl/flow.py::decide_megastar` 兜底支)——策略器自身值域内的决策,合法;屏内兜底分支未被任何正本或测试锁申报。本修法删兜底、立守卫,修根非症状。
+- **根因归层(根源两问)**:根在**流程层**。兜底分支是 handler 时代「缺省支(局外兜底分支原样)」的残留(代码注释自述,`_do_action` 内);决策控制分层铁律(flow/README.md §1)已把「动作值域过滤」划归策略侧、禁流程侧任何决策闸门,流程侧合法判断面仅防 bug 守卫断言与失败治理(op-layer.md §1.1/§1.3)。megastar.md §2 在册的「未命中/OCR 空 → idx=0」是**策略侧**缺省实现(`strategy-docs/13_pick_family.md` §1 E7,`strategies/impl/flow.py::decide_megastar` 兜底支)——策略器自身值域内的决策,合法;屏内兜底分支未被任何正本或测试申报。本修法删兜底、立守卫,修根非症状。
 - **解决到哪**:选中半加三道守卫(决策输入具名 fail 零盲发 / 返回契约具名 fail / idx 值域断言恒炸)+ `act` 局外交回臂(无 match/gs = 零决策零点击 round_success 交回,正本 op-layer.md §1.1「画面 op 不支持局外单独调用」裁定形态,宽判式对齐遭遇/投资环境先例;原稿「无 match → round_fail」臂随正本修订废弃),删默认 idx 与钳位;`chosen_megastar` 写端守卫条件随守卫简化;screens/megastar.md as-built 与代码内调用方行为描述(`cw_screen_megastar.py::observe` docstring「防御分支原样」、巨星观察读链 docstring「handler 退默认 idx0」)随本修法同步。
 - **明确不解决**:确认访问(`need_select=False`)路径与懒读保真语义(在册一致面,报告 §3.2/§3.3——守卫只进选中半分支);策略侧 `select_megastar` 各层选择序本体不动(策略域);idx=0 死支按用户裁定 2026-09-22 **随本批删除**(不可达断言替换,`13_pick_family.md` §1 E7 正本随批更新——§2.1 配套/§2.8);候选**检测级**读缺(regex 整行不命中 → 候选漏检)不治读,走空候选 fail 路径(无数量护栏——用户裁定 2026-09-22:候选数 = 场上盛会之星角色数(含星徽持有者),非恒值,数量不作判据;漏检自愈 = fail 交外循环重读);候选名**转换**质量归 F-6(观察标准化门,随本稿并修);门复检/重入自愈循环形态(一致面);兄弟屏同族面(→ §2.3 家族联动面,归口 T-37);报告 §4 无法核对面(实机验证归运行期)。
 
@@ -82,7 +82,7 @@
            f'[cw-megastar] 决策无有效输出零盲发(候选空 options=0)')
    ```
 
-   有策略器可问而决策无有效输出(OCR 漏检/转换门放行的合法空 = 仅确认访问,不进本分支)→ fail 零盲发。依据:op-layer.md §1.1 出口③「空候选/决策无有效输出也走此出口——零盲发」;同构在册先例 = 投资环境屏现役双臂守卫(`cw_screen_invest_env.py`:「候选 OCR 读缺(零盲发,显式失败)」/「决策无有效选卡输出」两 round_fail 在码);同构测试锁 `test_invest_strategy_empty_opts_fail_not_blindfire` = 投资策略屏臂(`test_cw_obs_arch_phase_screens.py` 在册)。**落点机制 = 一次 round_fail 即 op fail 交回外循环,不计节点重试预算**(`one_dragon/base/operation/operation.py` execute 循环仅 RETRY 计 `node_retry_times`,FAIL 直接 `_get_next_node` 收口);恢复与有界停 = 一次 fail 即重派(瞬时漏检下轮新帧重读自愈)+ 外环连续 fail 重派网(同一分发 op 连续 fail 5 显式停,flow/README.md §4 守卫总览「外环连续 fail 重派网」行,`cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`)。
+   有策略器可问而决策无有效输出(OCR 漏检/转换门放行的合法空 = 仅确认访问,不进本分支)→ fail 零盲发。依据:op-layer.md §1.1 出口③「空候选/决策无有效输出也走此出口——零盲发」;同构在册先例 = 投资环境屏现役双臂守卫(`cw_screen_invest_env.py`:「候选 OCR 读缺(零盲发,显式失败)」/「决策无有效选卡输出」两 round_fail 在码);同构测试 `test_invest_strategy_empty_opts_fail_not_blindfire` = 投资策略屏臂(`test_cw_obs_arch_phase_screens.py` 在册)。**落点机制 = 一次 round_fail 即 op fail 交回外循环,不计节点重试预算**(`one_dragon/base/operation/operation.py` execute 循环仅 RETRY 计 `node_retry_times`,FAIL 直接 `_get_next_node` 收口);恢复与有界停 = 一次 fail 即重派(瞬时漏检下轮新帧重读自愈)+ 外环连续 fail 重派网(同一分发 op 连续 fail 5 显式停,flow/README.md §4 守卫总览「外环连续 fail 重派网」行,`cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`)。
 4. **守卫②(返回契约:词表外/None = 具名 fail)**——紧随守卫①:
 
    ```python
@@ -118,16 +118,16 @@
 - **§3 观察面**:补三句——名字标准化转换门(选中半读链逐候选三判转换,失败 = 观察失败 round_fail 零写零上报;规范 = op-layer.md §1.1)、无 match/gs 零读屏(懒读先例屏特形延伸,申报见 §2.1.2)、原「match/gs 缺席的局外兜底路径跳过」句随局外交回臂改写。
 - **§5 终结与交回表**补三行(各臂分列,防预算表述串臂):`| 局外(无 match/gs) | 正本交回形态 | 零决策零点击 round_success 交回(op-layer.md §1.1;observe 零读屏,懒读屏特形) |`、`| 候选空/返回词表外 | 守卫 fail(op FAIL) | 一次 round_fail(含原值)即 op fail 交回外循环(round_fail 不计节点重试预算);连续 fail 由外环 fail 重派网兜底(flow/README §4) |`、`| pick idx 越界 | 守卫断言(op FAIL) | 框架异常路径 round_retry('异常')(留证截图)计 node_max_retry_times=8 预算,耗尽 fail 交回外循环 |`。
 - **§8 守卫与防线**补三条:①决策输入守卫:选中半访问候选空 = 具名 round_fail 零盲发(原「屏内缺省支盲选 idx0」退役申报);②返回契约守卫:词表外/None = 具名 round_fail、idx 越界 = 守卫断言 AssertionError(原「静默钳 0」退役申报);③观察标准化门:候选名转换失败/重复命中/边距拒判 = 观察 round_fail 零写零上报(§2.2)。
-- **§9 遥测与锁面**:测试锁清单补守卫两臂与标准化三锁(见下)。
+- **§9 遥测与测试面**:测试清单补守卫两臂与标准化三测试(见下)。
 - op-layer.md 无需改:出口③原则/局外交回形态/标准化门均已入正本,屏级申报归 megastar.md(正本分层 = op-layer 行为规范 + 各屏 as-built)。
 
-**测试锁**(`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py` 巨星臂,实现随功能写;全稿锁号连续,③④⑤ 在 §2.2):
+**测试**(`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py` 巨星臂,实现随功能写;全稿测试号连续,③④⑤ 在 §2.2):
 
-1. 补锁①a:选中半访问 + 无 match(或 match 无 gs)→ observe 零读屏(读链桩零调用)、act round_success 交回、零派发(派发桩零调用)。
-2. 补锁①b:选中半访问 + 策略器正常 + 候选空(读链桩返 [])→ `act` 返回 round_fail、零派发(派发桩零调用)。
-3. 补锁②:策略返回越界 idx(真实 `CwActionPickMegastarParam(idx=5)`、options 1 元)→ AssertionError 传播、零点击。
-4. 施工义务(不占锁号):桩型同型化——`test_megastar_redispatch_no_reclick_and_gate_reset` 的策略桩 `SimpleNamespace(idx=0, reason='stub')` 换为真实 `CwActionPickMegastarParam(idx=0, reason='stub')`(守卫②收紧类型后桩须同型;其 options 桩 1 元、idx=0 在界,守卫③不受影响);**同锁 reader 桩元素** `SimpleNamespace(char_id='花火')` 无 `idx`,转换门按签名读 `o.idx` 即破——换真实 `MegastarOption(idx=0, char_id='花火')`(同批施工)。
-5. 在册锁不冲突核对:`_make_megastar` 桩死 `_do_action`(计数桩)的各锁不触守卫;`test_megastar_lazy_read_skipped_on_confirm_visit` 确认访问不进守卫分支,「照发确认」语义不变;现役巨星臂无任何锁盲选/钳位面(报告 §3.5 在册清单),无回退冲突。
+1. 补测试①a:选中半访问 + 无 match(或 match 无 gs)→ observe 零读屏(读链桩零调用)、act round_success 交回、零派发(派发桩零调用)。
+2. 补测试①b:选中半访问 + 策略器正常 + 候选空(读链桩返 [])→ `act` 返回 round_fail、零派发(派发桩零调用)。
+3. 补测试②:策略返回越界 idx(真实 `CwActionPickMegastarParam(idx=5)`、options 1 元)→ AssertionError 传播、零点击。
+4. 施工义务(不占测试号):桩型同型化——`test_megastar_redispatch_no_reclick_and_gate_reset` 的策略桩 `SimpleNamespace(idx=0, reason='stub')` 换为真实 `CwActionPickMegastarParam(idx=0, reason='stub')`(守卫②收紧类型后桩须同型;其 options 桩 1 元、idx=0 在界,守卫③不受影响);**同测试 reader 桩元素** `SimpleNamespace(char_id='花火')` 无 `idx`,转换门按签名读 `o.idx` 即破——换真实 `MegastarOption(idx=0, char_id='花火')`(同批施工)。
+5. 在册测试不冲突核对:`_make_megastar` 桩死 `_do_action`(计数桩)的各测试不触守卫;`test_megastar_lazy_read_skipped_on_confirm_visit` 确认访问不进守卫分支,「照发确认」语义不变;现役巨星臂无任何测试覆盖盲选/钳位面(报告 §3.5 在册清单),无回退冲突。
 
 **关键取舍**:
 
@@ -137,21 +137,21 @@
 
 ### 2.2 F-6 修法:观察标准化门落地(镜像 invest_env.md §2.4① 家族形态,巨星范围)
 
-**观察域落位(前置,用户裁定 2026-09-22:巨星观察单独一个文件)**:巨星观察半自 `obs/cw_node_obs.py` 迁独立文件 `obs/cw_megastar_obs.py`(正本 op-layer.md §5 卷首「一屏一解析器」,同 `cw_briefing_obs.py`/`cw_settlement_obs.py` 惯例)——`read_megastar_options` + `_MEGASTAR_RE` 整体迁入,**函数体零改**;`cw_node_obs.py` 巨星段净删(含模块头「节点选项观测:遭遇/补给/巨星/伙伴」去「巨星」),其余解析器零触碰。生产消费方唯一 = `cw_screen_megastar.py`(import 行随迁更新);测试桩**目标命名空间**零改(三处 `monkeypatch.setattr(ms, 'read_megastar_options', …)` 打在画面 op 模块命名空间,与读链文件无关);**桩形态一处随转换门义务更新**(redispatch 锁 reader 桩元素换真实 `MegastarOption`,见 §2.1 施工义务 4);`MegastarOption` 宿主 = `kernel/cw_events.py` 不动。
+**观察域落位(前置,用户裁定 2026-09-22:巨星观察单独一个文件)**:巨星观察半自 `obs/cw_node_obs.py` 迁独立文件 `obs/cw_megastar_obs.py`(正本 op-layer.md §5 卷首「一屏一解析器」,同 `cw_briefing_obs.py`/`cw_settlement_obs.py` 惯例)——`read_megastar_options` + `_MEGASTAR_RE` 整体迁入,**函数体零改**;`cw_node_obs.py` 巨星段净删(含模块头「节点选项观测:遭遇/补给/巨星/伙伴」去「巨星」),其余解析器零触碰。生产消费方唯一 = `cw_screen_megastar.py`(import 行随迁更新);测试桩**目标命名空间**零改(三处 `monkeypatch.setattr(ms, 'read_megastar_options', …)` 打在画面 op 模块命名空间,与读链文件无关);**桩形态一处随转换门义务更新**(redispatch 测试 reader 桩元素换真实 `MegastarOption`,见 §2.1 施工义务 4);`MegastarOption` 宿主 = `kernel/cw_events.py` 不动。
 
 **观察侧转换门**:
 
-1. **转换函数**(`obs/cw_megastar_obs.py`,迁后巨星观察域单一文件 = reader + standardizer):`standardize_megastar_options(options: list[MegastarOption], gs: GameState | None) -> list[MegastarOption] | None`——**匹配域(①②两腿同域)= 屏合法候选域,双源并集(用户裁定 2026-09-22)**:①**盛会之星阵营成员**(静态,`cw_chars` 注册表 faction 派生,单一源禁手抄);②**场上持「盛会之星星徽」的角色**(动态,`gs.front_row`/`gs.back_row` 的 `Unit.equips` 含「盛会之星星徽」者,现读)。收窄即根除跨名误标准化通道(r4 实证:转置对「花火/火花」双在册,全表域下误读恰成另一注册名时①腿直接放行错误标准名,边距拒判对①腿不生效;「火花」域外即不可达;域形态 = invest_env 先例「注册表 = 该屏合法值域」同形)。**已知缺口(残余风险登记)**:环境卡授予的星徽穿戴只出现在左面板、行单位 `equips` 为空(实机实证,`cw_game_state.py` 注在册)——该情形合法候选域外 → 转换失败 → 响亮停逼修观察面,方向安全非无声错选;缺口收口 = 观察面扩员,另批,本稿不治。逐候选**三判**:①形变归一后**域内**精确命中 → 标准名;②不中 → 域内 LCS 评分兜底 → 过阈值命中 = 标准名;③**歧义边距拒判**:最高/次高分差 < 边距常量(命名对齐 `CwScreenInvestEnv.ENV_LCS_AMBIGUITY_MARGIN`,起步值同族 0.15,随实测误读样本校准,常量住代码)= 域内歧义不可分辨 → 转换失败(invest_env 对抗审实证:「共享词素族阈值挡不住,边距拒判为必需防线」)。**判失败集 = 任一候选①②③皆不中 ∨ ≥2 候选命中同一规范名 → 返回 None**(纯读零副作用)。实现级钉面:①**评分实现 = 手写循环镜像 invest_env `_lcs_resolve` 实形**(域内逐名 `str_utils.longest_common_subsequence_length` 算分取最高 + 次高分作边距)——`find_best_match_by_lcs` 只返回唯一下标、无次高分,边距腿经它不可实现,禁用;评分循环带固定序(平分取序首,确定性)。②归一起步族 = 去首尾空白 + 全角字母数字转半角,不做更激进形变(候选名短,误读以单字错为主,交 LCS + 边距兜底),族增补按实测误读样本且须随测试锁(禁无锁扩族)。③域派生优先复用 kernel 既有装备羁绊派生语义(`cw_bond_equips` 系「星徽 = 装备者加入该羁绊」判据),禁观察域手搓第二套羁绊逻辑。③**残余风险登记**(invest_env §2.4④ 门 2 反例同款):注册表缺新盛会之星角色 = 域内转换失败 → 观察失败响亮停逼修数据,方向安全(错标准化不可能,缺数据显式失败);域派生随注册表版本自动跟进,无手抄漂移面。
+1. **转换函数**(`obs/cw_megastar_obs.py`,迁后巨星观察域单一文件 = reader + standardizer):`standardize_megastar_options(options: list[MegastarOption], gs: GameState | None) -> list[MegastarOption] | None`——**匹配域(①②两腿同域)= 屏合法候选域,双源并集(用户裁定 2026-09-22)**:①**盛会之星阵营成员**(静态,`cw_chars` 注册表 faction 派生,单一源禁手抄);②**场上持「盛会之星星徽」的角色**(动态,`gs.front_row`/`gs.back_row` 的 `Unit.equips` 含「盛会之星星徽」者,现读)。收窄即根除跨名误标准化通道(r4 实证:转置对「花火/火花」双在册,全表域下误读恰成另一注册名时①腿直接放行错误标准名,边距拒判对①腿不生效;「火花」域外即不可达;域形态 = invest_env 先例「注册表 = 该屏合法值域」同形)。**已知缺口(残余风险登记)**:环境卡授予的星徽穿戴只出现在左面板、行单位 `equips` 为空(实机实证,`cw_game_state.py` 注在册)——该情形合法候选域外 → 转换失败 → 响亮停逼修观察面,方向安全非无声错选;缺口收口 = 观察面扩员,另批,本稿不治。逐候选**三判**:①形变归一后**域内**精确命中 → 标准名;②不中 → 域内 LCS 评分兜底 → 过阈值命中 = 标准名;③**歧义边距拒判**:最高/次高分差 < 边距常量(命名对齐 `CwScreenInvestEnv.ENV_LCS_AMBIGUITY_MARGIN`,起步值同族 0.15,随实测误读样本校准,常量住代码)= 域内歧义不可分辨 → 转换失败(invest_env 对抗审实证:「共享词素族阈值挡不住,边距拒判为必需防线」)。**判失败集 = 任一候选①②③皆不中 ∨ ≥2 候选命中同一规范名 → 返回 None**(纯读零副作用)。实现级钉面:①**评分实现 = 手写循环镜像 invest_env `_lcs_resolve` 实形**(域内逐名 `str_utils.longest_common_subsequence_length` 算分取最高 + 次高分作边距)——`find_best_match_by_lcs` 只返回唯一下标、无次高分,边距腿经它不可实现,禁用;评分循环带固定序(平分取序首,确定性)。②归一起步族 = 去首尾空白 + 全角字母数字转半角,不做更激进形变(候选名短,误读以单字错为主,交 LCS + 边距兜底),族增补按实测误读样本且须随测试(禁无测试扩族）。③域派生优先复用 kernel 既有装备羁绊派生语义(`cw_bond_equips` 系「星徽 = 装备者加入该羁绊」判据),禁观察域手搓第二套羁绊逻辑。③**残余风险登记**(invest_env §2.4④ 门 2 反例同款):注册表缺新盛会之星角色 = 域内转换失败 → 观察失败响亮停逼修数据,方向安全(错标准化不可能,缺数据显式失败);域派生随注册表版本自动跟进,无手抄漂移面。
 2. **observe node 接线**:选中半访问(未选中)读候选后、组装 obs 前调转换函数;返回 None = 观察 node `round_fail` 整函数早退——零写容器、零上报、零点击,消息含候选原值列表留证,交外循环重观察重读(瞬时误读下轮新帧自愈;持续误读/注册表缺数据 = 连续 fail 至外环重派网响亮停,逼修数据)。确认访问不读不转换(懒读保真不变,零候选合法面不误伤)。
 3. **容器值域收敛**:`megastar_opts` 自此只存规范名(值域 = 屏合法候选域派生集);契约登记 = fields.md §3.4 头注 `megastar_opts` 条目补值域括注(值域 = cw_chars「盛会之星」阵营派生规范名,**保证方 = 观察标准化门;写端 = `report_screen_megastar_obs`**——与 §3.4 头注自身「写端 = `kernel/cw_screen_report/` 的 `report_screen_*`」统一约定一致,门是值域保证方非写端)+ screens/megastar.md §3/§6。登记位置 = 头注条目(`megastar_opts` 无独立字段节,与头注枚举形态一致;施工时若设独立节则随节登记)。
 4. **下游零改(纯 idx 红利)**:动作参数 `CwActionPickMegastarParam(idx)` 本就纯序号;`chosen_megastar` 写端 `options[idx].char_id` 零改——容器收敛后即规范名(「名字由容器标准名单一源按序号提供,动作/上报层零名字转换」正本要求自然满足);`decide_megastar` 消费规范名对 `select_megastar` 各层选择序工作,零改。
 5. **`read_megastar_options` docstring 契约改写**(迁后在 `obs/cw_megastar_obs.py` 施工,与 F-1 配套注释面②同站,一次施工):补「本函数只报读数(原始 OCR 名,零转换);标准化契约 = 观察侧转换门(调用方 observe;规范 = op-layer.md §1.1 观察标准化门),转换失败 = 观察失败 round_fail 零写零上报」;「handler 退默认 idx0」句随 F-1 删。
 
-**测试锁**(镜像 invest_env 标准化锁形态,`test_cw_obs_arch_event_screens.py` 巨星臂;锁号承接 §2.1 的①②):
+**测试**(镜像 invest_env 标准化测试形态,`test_cw_obs_arch_event_screens.py` 巨星臂;测试号承接 §2.1 的①②):
 
-- 补锁③(标准化命中 + 域派生):候选含可转换名 → 容器存规范名(含域内 LCS 兜底 + 边距放行路径;评分循环固定序确定性含内);**双源域**——阵营成员静态入域,gs 桩带穿「盛会之星星徽」的场上单位 → 该角色名亦入域(用户裁定 2026-09-22 域 = 阵营 ∪ 星徽持有者)。
-- 补锁④(转换失败):候选含乱串/未注册名,**或域外注册名**(转置例:候选「火花」既非盛会之星阵营、gs 桩亦无穿徽记录)→ observe round_fail、零写零点击。
-- 补锁⑤(歧义拒判):两候选转换后命中同一规范名 ∨ 单候选最高/次高分差小于边距(桩控 LCS 分值)→ round_fail。
+- 补测试③(标准化命中 + 域派生):候选含可转换名 → 容器存规范名(含域内 LCS 兜底 + 边距放行路径;评分循环固定序确定性含内);**双源域**——阵营成员静态入域,gs 桩带穿「盛会之星星徽」的场上单位 → 该角色名亦入域(用户裁定 2026-09-22 域 = 阵营 ∪ 星徽持有者)。
+- 补测试④(转换失败):候选含乱串/未注册名,**或域外注册名**(转置例:候选「火花」既非盛会之星阵营、gs 桩亦无穿徽记录)→ observe round_fail、零写零点击。
+- 补测试⑤(歧义拒判):两候选转换后命中同一规范名 ∨ 单候选最高/次高分差小于边距(桩控 LCS 分值)→ round_fail。
 
 **行为变化申报**:①OCR 误读名从「带病进容器 → 经 `select_megastar` 层 1-3 选中或层 4 naive 直返,无声错选 + `chosen_megastar` 落脏名」变「观察失败 round_fail 零点击零写交回重观察」;②OCR 偶发误读从「可能无声错选」变「该访问 round_fail 重读」——随机误读有自愈机会,持续误读或注册表缺数据 = 循环失败至外环重派网响亮停逼修数据(与空候选判法「没有选到就是代码 bug」同款);③生产标准名命中时点击与写端行为零变化(规范名命中时,原路径 OCR 名与标准名同值);④策略器 idx0 死支删除 = 不可达代码移除 + 断言化,零实际行为变化(用户裁定 2026-09-22 裁定点④)。
 
@@ -160,8 +160,8 @@
 - **pick 族决策出口模式**:「决策无有效输出(空候选/返回 None/词表外/策略异常)→ 盲选 idx0 派发 + pick idx 静默钳位」。已查出 **6 件**(清单为修订时点快照,T-37 汇总以最新报告/设计稿目录为准):遭遇(T-4-r1.md F-1,设计 encounter.md §2.1)、盛会之星(本稿)、选择装备(T-9-r1.md F-1,设计 equip_pick.md)、选择伙伴(T-11-r1.md F-1,设计 partner.md)、命运卜者(T-12-r1.md F-1,自述同类第 4 件、点名本稿与 equip_pick.md 为已裁先例)、祈愿试炼(T-13-r1.md F-1);银狼(T-10-r1.md)决策控制铁律**合规**、无此模式不扩员(其 F-1 属动作 op 契约文档面,非族员);星徽秘典(T-14)/专家邀请函(T-15)审查进行中。
 - **族级统一修法建议**:①决策无有效输出(输入侧:空候选;返回侧:None/词表外/策略异常)= 具名 round_fail 零盲发交外循环,消息含原值留证;②值域非法(idx 越界)= 守卫断言 AssertionError 响亮暴露;③**无 match/gs = 局外交回(零决策零点击 round_success,正本 op-layer.md §1.1「画面 op 不支持局外单独调用」全族统一,判式宽度对齐遭遇/投资环境先例)**;守卫均在派发前、零点击,禁钳位禁盲选(依据统一 = op-layer.md §1.1 出口③/§1.3、flow/README.md §1 铁律);屏幕特形出口(如遭遇「空候选 = 零点击终结交回重读」)以其正本在册申报为准,无在册申报的屏一律走 fail 出口。跨件半问已过:六件根同层(流程层决策出口兜底残留),统一形态一次裁定,不逐件自定。
 - **族内原分歧面(已由正本裁决)**:「无 match 局外决策分支」归属曾有跨稿分歧在册——equip_pick.md 判「代码自申报豁免面,原样保留」vs 本稿原立「守卫①收编」;正本「画面 op 不支持局外单独调用」落地后分歧消解:**局外分支全族按正本形态删除/改交回,豁免判法被正本取代**,T-37 对账时按正本统一即可,不再待裁。
-- **名字类观察标准化族面**:巨星随本稿收敛(§2.2);其余名字类观察屏(角色/装备/事件选项等)归各自审查批收敛(用户 2026-09-22 分工,本稿不越界),T-37 汇总对账族内形态一致(转换三判 = 归一精确 → LCS 兜底 → 歧义边距拒判,匹配域 = 各屏合法值域派生/失败判定/round_fail 早退/测试锁形态对齐 invest_env 先例)。
-- **归口 = 汇总任务 T-37**:裁决是否合并为一次族级实施批(统一守卫形态、共享测试锁模板、一次对抗)。本稿 §2.1/§2.2 独立可实施;若 T-37 裁决族级合并,本稿即族级形态在巨星的实例,以族级批统一口径为准、不另立第二套。
+- **名字类观察标准化族面**:巨星随本稿收敛(§2.2);其余名字类观察屏(角色/装备/事件选项等)归各自审查批收敛(用户 2026-09-22 分工,本稿不越界),T-37 汇总对账族内形态一致(转换三判 = 归一精确 → LCS 兜底 → 歧义边距拒判,匹配域 = 各屏合法值域派生/失败判定/round_fail 早退/测试形态对齐 invest_env 先例)。
+- **归口 = 汇总任务 T-37**:裁决是否合并为一次族级实施批(统一守卫形态、共享测试模板、一次对抗)。本稿 §2.1/§2.2 独立可实施;若 T-37 裁决族级合并,本稿即族级形态在巨星的实例,以族级批统一口径为准、不另立第二套。
 
 ### 2.4 F-2 修法
 
@@ -221,7 +221,7 @@
 ### 2.8 实施文件面全集(合并实施对账用)
 
 - **真值基线**:本稿「现状/现文」摘录基线 = 2026-09-22 工作区(已含并行注释卫生批 `4dca49483` 与投资环境观察标准化在飞批);fields.md/action_ops.md 有投资环境批在飞改动——落码施工前先对账基线,漂移站现值再施工,禁按稿面现文盲改(镜像 invest_env 同款条款)。
-- **行为变更(F-1 + F-6 + 死支删除)**:`operations/cw_screen/cw_screen_megastar.py`(守卫拆臂/局外交回臂/observe 转换门接线/import 随迁更新/签名/注释/docstring)、`obs/cw_megastar_obs.py`(**新文件**:巨星观察半自 `cw_node_obs.py` 迁入,reader + regex 函数体零改 + `standardize_megastar_options` 转换函数 + reader docstring 契约改写)、`obs/cw_node_obs.py`(巨星段净删 + 模块头去「巨星」,其余解析器零触碰)、`strategies/impl/flow.py::decide_megastar`(idx0 死支删除 → 不可达断言 + docstring 重写,用户裁定 2026-09-22)、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(补锁①a/①b/②/③/④/⑤ + 桩型同型化 + reader 桩义务;既有 `read_megastar_options` 桩打在画面 op 模块命名空间,搬迁零测试改)。
+- **行为变更(F-1 + F-6 + 死支删除)**:`operations/cw_screen/cw_screen_megastar.py`(守卫拆臂/局外交回臂/observe 转换门接线/import 随迁更新/签名/注释/docstring)、`obs/cw_megastar_obs.py`(**新文件**:巨星观察半自 `cw_node_obs.py` 迁入,reader + regex 函数体零改 + `standardize_megastar_options` 转换函数 + reader docstring 契约改写)、`obs/cw_node_obs.py`(巨星段净删 + 模块头去「巨星」,其余解析器零触碰)、`strategies/impl/flow.py::decide_megastar`(idx0 死支删除 → 不可达断言 + docstring 重写,用户裁定 2026-09-22)、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_event_screens.py`(补测试①a/①b/②/③/④/⑤ + 桩型同型化 + reader 桩义务;既有 `read_megastar_options` 桩打在画面 op 模块命名空间,搬迁零测试改)。
 - **代码内文档(零行为变更)**:`cw_screen_megastar.py` 注释面(F-4 站点 + F-1 配套 `observe` docstring,与 F-1 同文件一并施工)、`operations/cw_op/cw_overlay_pick_action.py::CwActionPickMegastarOp` 注释面(F-4,含 run 体确认段注)、`kernel/cw_events.py` 巨星段三站(段头告示/`MegastarOption` docstring 首行/char_id 句,配套注释面④,零行为变更)。
 - **正本文档**:`flow/action_ops.md` §4.5 PickMegastar 行(F-2)、`game_state/fields.md` §3.4 头注(F-3 写点分列 + F-6 `megastar_opts` 值域括注,同节两处一并施工)、`screens/megastar.md`(F-1/F-6 as-built + F-5,含观察段符号锚改 `obs/cw_megastar_obs.py` 与局外零读屏特形登记)、`strategy-docs/13_pick_family.md` §1 E7(死支删除随批:E7 缺省语义改「无缺省支,非空候选恒命中,候选空画面侧 fail」)、`screens/op-layer.md` §5 工具箱清单(补 `cw_megastar_obs.py` 行 + `cw_node_obs.py` 行「管什么」去「巨星」)。
 - **跨稿共享面(本稿不独立实施)**:`cw_overlay_pick_action.py` 模块头段史述收敛归 T-4 稿 §2.3(T-37 登记),本稿不触;pick 族实施批归口 T-37(§2.3);其余名字类观察屏标准化收敛归各自审查批(用户 2026-09-22 分工,本稿只辖巨星);伙伴屏 docstring 同句式告示归 T-11。

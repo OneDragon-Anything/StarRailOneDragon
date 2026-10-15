@@ -5,8 +5,8 @@ op-layer.md §1.2 动作 op 契约)。
 
 终结动作(R7 终结化):点完「开启」本动作即返回主循环,武装箱选择
 画面由外循环按画面分发独立画面 op 选卡。terminal_wait = 开箱动画等待,
-与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试锁 =
-test_action_registry 终结集锁)。
+与 runner 包络 ``_OVERLAY_ANIM_WAIT_S`` 等价(等价测试 =
+test_action_registry 终结集测试)。
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class CwActionOpenBoxOp(CwOperation):
     terminal = True
 
     #: 返回等待 = 开箱动画等待值(与 prep_actions._OVERLAY_ANIM_WAIT_S
-    #: 逐字等价,漂移由等价锁暴露)。
+    #: 逐字等价,漂移由等价测试暴露)。
     terminal_wait = 1.8
 
     #: 「开启」文字区 = 箱 icon 下方偏移(2026-08-14 实测:槽center

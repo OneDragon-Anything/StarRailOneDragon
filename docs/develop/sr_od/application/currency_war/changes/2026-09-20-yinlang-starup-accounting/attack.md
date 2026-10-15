@@ -35,7 +35,7 @@
 ①写档时点相对 `merge_cascade_write` 的先后未定（只影响遥测行序，影响小，但顺手可定）；②现档=5 时若因 OCR 误识仍走 upgrade 腿，`现档+1=6` 越出 §2.1 声明的值域 {3,4,5}，越界写行为（钳制 / defect 留证 / 照写）未定义。正常局不可达（`gameplay/currency_war.md:77`：5 费两选项都是装备），但误识路径存在，按本项目「禁猜+留证」纪律应有定义。**修正方向**：§2.2 补一句——写档置于级联之后（或之前，定一个即可）；现档=5 进入 upgrade 腿 = 不写档 + `planner_upgrade_tier_out_of_range` 留证行。
 
 **F7. [minor] | design.md §2.2 | 测试迁移面申报不完整（不止「消费测试改走 report 落地相」一处）。**
-实际消费面：`sr-od-test/test_cw_yinlang_phase32.py` 有 8+ 处 `apply_pick_planner_landing` 直调（:173-:283）、两相 report 对照测试（:302-:320）、**上阵变换窗三测**（:325-:384）。其中变换窗测试在 §2.5 落地后会多出一条档行写（写端从 bench/front/back 三行变四行），断言面（行数/来源锁）需逐条复核；设计一句话申报未覆盖 §2.5 的测试面。反向核验：`resolve_cost_star`、`CARD_TEXT_Y_LO/HI` 的测试消费为零（grep 无命中）——§2.3/§2.4 零测试影响，可在落地文档如实申报零。**修正方向**：landing 阶段拆申报——§2.2 = `test_cw_yinlang_phase32.py` 迁移；§2.5 = 变换窗三测复核；§2.3/§2.4 = 零影响申报。
+实际消费面：`sr-od-test/test_cw_yinlang_phase32.py` 有 8+ 处 `apply_pick_planner_landing` 直调（:173-:283）、两相 report 对照测试（:302-:320）、**上阵变换窗三测**（:325-:384）。其中变换窗测试在 §2.5 落地后会多出一条档行写（写端从 bench/front/back 三行变四行），断言面（行数/来源测试）需逐条复核；设计一句话申报未覆盖 §2.5 的测试面。反向核验：`resolve_cost_star`、`CARD_TEXT_Y_LO/HI` 的测试消费为零（grep 无命中）——§2.3/§2.4 零测试影响，可在落地文档如实申报零。**修正方向**：landing 阶段拆申报——§2.2 = `test_cw_yinlang_phase32.py` 迁移；§2.5 = 变换窗三测复核；§2.3/§2.4 = 零影响申报。
 
 **F8. [minor] | design.md §2.1 | 「未注册名 → 0（沿用查表空值口径）」的「口径」归属模糊，且与并排双口的另一口口径相反。**
 库内存在两种空值口径：`bench_char_cost` 未知 → 3（`cw_economy.py:155`，中费保守估）；观察/算术面 `cost or 0`（`cw_game_state.py:1120`、`cw_intention.py:2600`）。设计选 0（行为本身明确，契约闭合），但「沿用查表空值口径」没说沿用哪个；且双口并排后，同一「查不到名字」问题 `bench_char_cost` 答 3、`effective_cost` 答 0——这个语义差值得在 docstring 边界声明里点明，防后续消费点选错口。**修正方向**：§2.1 把依据写成具体先例（`cw_game_state.py:1120` 的 `or 0` 形态），并在 docstring 边界声明中写明与 `bench_char_cost`（未知→3）的口径分野。
@@ -66,9 +66,9 @@
 | Field 默认 None 归约可行 | Field.value 默认 None（:449）；`Field[int] = field(default_factory=Field)` 现役形态（:2150、:2203） | ✓ |
 | §8.2 头注（Unit 静态属性查注册表派生/禁另存） | :454-464 | ✓ |
 | `classify_planner_leg` / PLANNER_LEG_* | cw_events.py:944 / :904-907 | ✓ |
-| `cw_projection_audit.py` 登记行机制 | :26、:164、:342（新字段不登记会红完备性锁——设计已申报登记） | ✓ |
+| `cw_projection_audit.py` 登记行机制 | :26、:164、:342（新字段不登记会红完备性测试——设计已申报登记） | ✓ |
 | yml `cw_yinlang_star_up.yml`：画面名/5 area/两卡 rect | 左卡 (560,180,1030,455)、右卡 (1065,180,1545,455)，逐字一致 | ✓ |
-| actor 遥测身份 'CwScreenYinLang' | planner.py:46（测试 test_cw_screen_report_ports.py:470 同锁） | ✓ |
+| actor 遥测身份 'CwScreenYinLang' | planner.py:46（测试 test_cw_screen_report_ports.py:470 同测试） | ✓ |
 | `POOL_COPIES_PER_CARD` @ cw_shop_odds.py:33（1/2费27、3/4/5费9） | :33 | ✓ |
 | `drawable_names` 档过滤 = 注册表 cost | cw_sim_pool.py:100-109 | ✓ |
 | `SILVER_WOLF_COST_BY_STAR` {1:3,2:4,3:5}（旧口径） | cw_sim_special.py:39 | ✓ |

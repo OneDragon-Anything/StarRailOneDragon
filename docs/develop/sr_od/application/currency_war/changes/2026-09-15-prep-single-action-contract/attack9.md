@@ -31,7 +31,7 @@
 ### A. design.md 码点主张逐条直调(全部属实)
 
 1. 消费端两处决策循环:`cw_screen_prep.py` decide 调用 L2029/L2234、try/except 异常包装两处同构(L2028-2032/L2233-2237)、F3 形状校验与文案「策略输出非 list[CwAction](F3)」(L2033-2037/L2238-2242)、空批 `round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)` 两处(L2038-2041/L2243-2246)、取首项 `actions[0]`(L2043/L2248)、预声明 `actions: list = []`(L2016/L2220)——行号全部精确。
-2. 死口径注释:两处「空批合法(契约 §4…)」(L2039/L2244)、两处「F3 校验(契约 §2…)」(L2044-2045/L2249-2250)、lifecycle docstring 终结出口枚举七项「空批/控制流/参数非法/出战(发出即终结)/开店切换/逻辑态未建模/访问上限」(L2211-2212,与 §2.2 定稿五项删三项的映射一致)、主循环头注块两句死口径(「三遍编排序保持…帧级锁按锁纪律重推」L2007-2008、「逻辑态未建模的动作同判保守回退」L2010-2011;同函数 L2112-2113 自证「保守回退分支已删」,R9 死口径定性属实)。
+2. 死口径注释:两处「空批合法(契约 §4…)」(L2039/L2244)、两处「F3 校验(契约 §2…)」(L2044-2045/L2249-2250)、lifecycle docstring 终结出口枚举七项「空批/控制流/参数非法/出战(发出即终结)/开店切换/逻辑态未建模/访问上限」(L2211-2212,与 §2.2 定稿五项删三项的映射一致)、主循环头注块两句死口径(「三遍编排序保持…帧级测试按测试纪律重推」L2007-2008、「逻辑态未建模的动作同判保守回退」L2010-2011;同函数 L2112-2113 自证「保守回退分支已删」,R9 死口径定性属实)。
 3. `changes/` 引用注释恰 5 处:L664「unified-action-factory 批2b」、L984「design.md unified-action-factory §2.6」(同行 L985「flow/action-logic-state.md」路径笔误属实,该文件实在 `game_state/`)、L2103-2106 与 L2325-2326「design.md unified-action-factory §2.4」、L2537 裸「design.md §2.6」——「全部 5 处」计数与行号全中。
 4. 契约成员数:基类 abstract 12(create_session + 11 决策入口)非 abstract 工厂 1(create_state)= 13(`cw_strategy.py` L97-204 逐一数过);与 `flow/README.md` §2.2(每局冷建 2 + 分画面决策入口 11,L53/L60/L84)及模块头 L13-16 三方一致。
 5. None 通道三点依据:① op-layer §1.1 L21 分域表述句引文逐字一致;② emit ⑥「无动作 ⇒ 出战」段在码(entry.py L936-944);可达空边 = truncate 首位 SellBench/DeployMove 名-槽复检截空(entry.py L309-324,首位截断返回空 list 实证);unknown 首位边不可达——四分类合计 17 类(_TRUNCATION_POINTS 11 + _TERMINAL 1 + _CONTINUE 1 + _CONDITIONAL 4,entry.py L200-217 实数)覆盖 CW_ACTION_TYPES 备战子集 18 类中的全部决策核可发射类,OpenBookcard 在 entry.py/mandate.py 零引用(直调),发射臂 Emitted 直构类型全集(ClickSpheres/OpenBox/OpenShop/OpenTome/SellBench/StartBattle + 部署/穿戴/工具原子臂)均在 17 类内;entry.py 头注 L15「18 类逐类表」与实态的漂移定性属实(已申报范围外,不计);③ 26_battle_settlement.md 在册承载出战标准(22 号篇 L28 互引);op-layer §1.4 L37「备战 = 开战」恒可用终结原文一致。
@@ -53,14 +53,14 @@
 
 ### D. landing.md 正本更新清单与验收可执行性
 
-1. 清单 18 条锚点逐条直调:#1 flow/README L17-18(「决策取│首项」跨行拆分属实,L18 行首「首项」单字面可命中且条目已预告归属)+ L23;#2 L64 引文逐字;#3 projection_contract L89「动作产出 = 族 B PrepAction 列表」/L90「单动作循环逐帧取首项」逐字;#4 action_exec L28;#5 op-layer L14;#6 op-layer L21 分域句逐字(与 design §2.1 依据 1 自引句一致);#7 prep.md L15「输出 `list[PrepAction]`——单动作循环取**首项**消费」;#8 prep.md L32;#9 prep.md L53;#10 screens/README L130;#11 22_prep_screen L8/L28;#12 action_exec L9「备战域 PrepAction 全集」;#13 action-logic-state L163;#14 prep-executor-actions L13;#15 02_mandate_layer L82(「永不返回 None」+「逐帧取最优首项」两半句均在码;姊妹篇 23_shop_screen L4/L10 已是商店域单独口径无需动,01 L179「三态全函数」无关不辖);#16 锁指针复验与 3.2「先指向、3.3 落位后复验」时序自洽;#17 前提属实(OpenBoxOp.terminal=True 直调;§4 L52 整行「非终结」、§5.3 L91 行尾「非终结」、§6 L122-133 无 OpenBox 行,三处实态与条目描述一致);#18 flow/README L6「未建模面保守回退」在码且 R9 死口径定性成立(prep.md §4 L45 与 op-layer §1.4 L38 同证「已删除」)。——引文逐字存在、行号无漂移。
+1. 清单 18 条锚点逐条直调:#1 flow/README L17-18(「决策取│首项」跨行拆分属实,L18 行首「首项」单字面可命中且条目已预告归属)+ L23;#2 L64 引文逐字;#3 projection_contract L89「动作产出 = 族 B PrepAction 列表」/L90「单动作循环逐帧取首项」逐字;#4 action_exec L28;#5 op-layer L14;#6 op-layer L21 分域句逐字(与 design §2.1 依据 1 自引句一致);#7 prep.md L15「输出 `list[PrepAction]`——单动作循环取**首项**消费」;#8 prep.md L32;#9 prep.md L53;#10 screens/README L130;#11 22_prep_screen L8/L28;#12 action_exec L9「备战域 PrepAction 全集」;#13 action-logic-state L163;#14 prep-executor-actions L13;#15 02_mandate_layer L82(「永不返回 None」+「逐帧取最优首项」两半句均在码;姊妹篇 23_shop_screen L4/L10 已是商店域单独口径无需动,01 L179「三态全函数」无关不辖);#16 测试指针复验与 3.2「先指向、3.3 落位后复验」时序自洽;#17 前提属实(OpenBoxOp.terminal=True 直调;§4 L52 整行「非终结」、§5.3 L91 行尾「非终结」、§6 L122-133 无 OpenBox 行,三处实态与条目描述一致);#18 flow/README L6「未建模面保守回退」在码且 R9 死口径定性成立(prep.md §4 L45 与 op-layer §1.4 L38 同证「已删除」)。——引文逐字存在、行号无漂移。
 2. 3.3 闭域检查独立重跑(排除 changes/,三关键词「首项|空批|list[PrepAction]」全树)= 恰 18 处命中,逐处归属:清单 #1×2/#2/#3/#4/#5/#6/#7/#8/#9/#10/#11/#13/#14/#15 + 豁免表(flow/README L77/L81 均在「序列语义历史注节」内;`proofs/validations/P51_V3_REBUILD.md` L391 直读确认「R31-2 首项=1」系拟合器标签序位,豁免正当)——**三关键词域内完备且判据唯一可执行**;PrepAction 裸名活正本位恰为已知两处(projection_contract L89/action_exec L9),其余命中均为 `PrepActionExecutor` 合法名(`class PrepAction` 裸类全源码零定义,已亡属实)。
 3. 3.1 验收 grep × 定稿文本互斥性:关键词集(空批/取首项/契约 §/契约 v/序列契约/list[CwAction]/结算惰性 drain/§4.1)对 §2.1 基类定稿句、§2.2 码块(含 None 分支注释——「None = 本帧无动作可发…」已不含「空批」)与头注块定稿(「序列消费」不撞「序列契约/序列发射」)、lifecycle docstring 定稿、§2.3 五处收敛新文本与定稿句(「流程侧契约」「发射序列」「单动作循环发射」均不撞相邻词关键词)、flow.py 两处定稿句逐词过 = 零碰撞;豁免申报(`decide_from_turn -> list[CwAction]` 签名,bridge L262)准确——四文件中该关键词的唯一未改行;`§4.1` 在四文件仅 bridge L3/L81 两处(均已点名收敛)。**除 F1 所指一行外,互斥性成立**。
 4. 扫尾机制(design §2.2 关键词族三分处置)可操作:四文件内未点名残余(如 flow.py L423/L430「结算惰性 drain 已删除」正面表述、散见 design.md/DESIGN.md 指针)均可经三分处置兜住,「枚举清单可能不全,本扫尾是完备性的机械兜底」定位成立。
 
 ### E. 测试与工具影响面(design §2.4/§2.5/§2.6)
 
-1. sr-od-test 全仓 grep `decide_prep_screen` 仅 `test_cw_p2_blood_band.py` L213-216 abstract 桩子类(`*a, **kw`,形状免疫);「空批/策略输出非/list[CwAction]/取首项」测试仓零命中——「在册锁零更新义务」成立。
+1. sr-od-test 全仓 grep `decide_prep_screen` 仅 `test_cw_p2_blood_band.py` L213-216 abstract 桩子类(`*a, **kw`,形状免疫);「空批/策略输出非/list[CwAction]/取首项」测试仓零命中——「在册测试零更新义务」成立。
 2. L1 命令路径 `sr-od-test/test/sr_od/application/currency_war/` 实存(Test-Path = True)。
 3. `tools/cw/replay_to_md.py`:imports 纯 stdlib(argparse/json/sys/pathlib/typing),按 decisions 记录流渲染备战/商店/补给三类 op 段(L536 起),零策略 import 零契约接口调用——§2.4 零影响成立;`telemetry/journal_query.py` 实存。
 4. sim 不可见声明:flow/README §2.3「sim 消费面注记」(L91「sim 引擎唯一决策入口 = 商店决策面(prep 面 sim 不可达)」)与 op-layer §4 次门(L153「cw_replay --diff 只重放商店决策面」)引文转述准确。
@@ -72,7 +72,7 @@
 1. 等价论证:bridge 边界取首项与消费端原取首项同源(同一 decide_from_turn 输出)同位(同 for 循环逐帧调用,次数/时序不变);异常路径仍由消费端 try/except 承接;bridge 返回值恒为 CwAction 实例或 None,恒过新校验谓词——逐位等价成立。
 2. B4 第三方面:注册面封闭集 = {mandate_v1}(flow/README §2.1 管理器行实证),「响亮暴露不做静默垫片」与 op-layer §1.3 守卫断言依据一致;`create_state` 缺省 None(B4)同源类比成立(cw_strategy.py L111-115)。
 3. 治本核:§1 归层 = 表示层成立(消费语义 2026-09-06 已迁移 vs 返回形状 list 未跟,双向实证);备选 A 修根(契约面形状 = 用户规范直接对象);备选 B 弃因有活机制依据(A.7 四调用点实证);备选 C 弃因成立(形状遗留 = 隐性 bug 温床的机理具体);备选 D 弃因与 op-layer §1.1 分域表述核验一致,「对称本身不是规范条款」无空洞。
-4. 规范遵循:design/landing/README 结构对照 iteration-design.md——文档构成(单文档方案合法)、§0-§2 齐、landing 阶段七件齐(3.1/3.2/3.3)、固定末阶段 = 正本更新、依据就地标注、无过程叙事措辞、锁 docstring 不引 changes/、状态「对抗审中」与 README 进度一致——合规。
+4. 规范遵循:design/landing/README 结构对照 iteration-design.md——文档构成(单文档方案合法)、§0-§2 齐、landing 阶段七件齐(3.1/3.2/3.3)、固定末阶段 = 正本更新、依据就地标注、无过程叙事措辞、测试 docstring 不引 changes/、状态「对抗审中」与 README 进度一致——合规。
 
 ## 结论
 

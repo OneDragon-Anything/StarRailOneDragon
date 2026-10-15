@@ -25,7 +25,7 @@
 
 ## 3. 效果写入方登记面(cw_affix_effects)
 
-**登记/申报双层**(防漂移锁 = 测试 `test_cw_affix_spec_registry`):
+**登记/申报双层**(防漂移测试 =  `test_cw_affix_spec_registry`):
 
 - `EQUIP_REWRITE_DECLARATIONS`:装备注册表改写成员 25 件逐件归属申报(键集恰等于谓词扫描 `scan_rewrite_equipments` 命中集);
 - `EQUIP_WRITE_SIDES`:逐件登记**恰一个**代码写入方,登记值共四形:`bridge:<函数>` = 触发窗口独占的确定性直写 / `contribution:<函数>` = 贡献算术零直写、组合写收尾 / `op:<符号>` = 执行域既有写入方 / `observation` = 负写入(不写)(随机面/真值同帧送达面/字段缺位面,由观察收尾);构建校验 import 时即显式报错(`_validate_equip_write_sides`:键集相等/目标函数可解析/归属成文互证);
@@ -37,7 +37,7 @@
 
 **入区桥** `grant_equip_item`:好运令牌等「选定后确定」面,装备库存追加一件直写;库存未观察 = False 零写留观察。
 
-**特权化两分支**(特权赋予卡,确定性变换):映射单一源 = `privilege_counterpart`(后缀映射,36 进阶 ↔ 36 特权全量双射由测试锁钉死)。库存分支 `transform_equip_to_privilege` = 库存中该名单件替换(库存未观察/无此件 → None 零写);已穿装备分支 `transform_worn_equip_to_privilege` = 该单位已穿**进阶**装备选定单件原位变换(单位按 frozen 全字段相等定位,定位失败 = 状态漂移零写,禁按陈旧快照盲写)。「哪件被选」(游戏自选形态)= 随机面归观察;在用执行分支只消费库存分支。
+**特权化两分支**(特权赋予卡,确定性变换):映射单一源 = `privilege_counterpart`(后缀映射,36 进阶 ↔ 36 特权全量双射由测试钉死)。库存分支 `transform_equip_to_privilege` = 库存中该名单件替换(库存未观察/无此件 → None 零写);已穿装备分支 `transform_worn_equip_to_privilege` = 该单位已穿**进阶**装备选定单件原位变换(单位按 frozen 全字段相等定位,定位失败 = 状态漂移零写,禁按陈旧快照盲写)。「哪件被选」(游戏自选形态)= 随机面归观察;在用执行分支只消费库存分支。
 
 **贡献算术三件**(零直写,组合写收尾):`equip_node_gold_grant`(财富,进新节点 +4×持有)、`equip_diamond_phase_gold`(财富宝钻,每 3 备战阶段 +1×已穿,累计口径调用方做差)、`equip_wrench_duplicate_gold`(精密扳手在场时拆装扳手获得改 +1 金)。组合写收尾两载体:
 
@@ -69,4 +69,4 @@
 
 ## 10. 依据
 
-`kernel/cw_exec_state.py::apply_confirm_effect` docstring(dict 确认族适用范围与零推进申报)与 `kernel/cw_action_report/` 各函数 docstring(动作类效果内聚申报);`kernel/cw_affix_effects.py` 模块头(适用范围/边界/防漂移锁)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据)+ `settle_node_boundary_gold` docstring;`kernel/cw_game_state.py::tick_effect_boundary`(边界金待补结算标志四重闸门);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(分道申报);[fields.md](../fields.md) §5.1(效果激活账本)/ §5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。
+`kernel/cw_exec_state.py::apply_confirm_effect` docstring(dict 确认族适用范围与零推进申报)与 `kernel/cw_action_report/` 各函数 docstring(动作类效果内聚申报);`kernel/cw_affix_effects.py` 模块头(适用范围/边界/防漂移测试)与 `EQUIP_WRITE_SIDES` 四形判据;`kernel/cw_effect_inventory.py` 写入桥段(窗口独占性分形判据)+ `settle_node_boundary_gold` docstring;`kernel/cw_game_state.py::tick_effect_boundary`(边界金待补结算标志四重闸门);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(分道申报);[fields.md](../fields.md) §5.1(效果激活账本)/ §5.3(效果族归属四选一);`docs/develop/sr_od/application/currency_war/game_state/effect-domain.md` §6.3(效果写入归属判据正本);`research/equipment_mechanics.md` §5(工具 7 件全量)/「装备转移机制」节。

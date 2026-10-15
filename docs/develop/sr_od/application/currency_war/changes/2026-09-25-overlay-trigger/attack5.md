@@ -87,7 +87,7 @@
 
 ### landing 判据与正本更新清单
 
-32. **判据可验证性**:3.1 逐槽对拍/写序断言/restore 迁移、3.2 grep 归零清单(tracked_books/_track_/mutate_bench_deployed + 五函数)、3.3 判据逐条行为锁(与 faction-trigger 判据归位表逐项对应)、3.4 宿主交回/排序提速/sim 对拍、3.5 grep 归零 + journal——均有可执行验证面;依赖序 3.1→3.2/3.3→3.4→3.5→正本无环。
+32. **判据可验证性**:3.1 逐槽对拍/写序断言/restore 迁移、3.2 grep 归零清单(tracked_books/_track_/mutate_bench_deployed + 五函数)、3.3 判据逐条行为测试(与 faction-trigger 判据归位表逐项对应)、3.4 宿主交回/排序提速/sim 对拍、3.5 grep 归零 + journal——均有可执行验证面;依赖序 3.1→3.2/3.3→3.4→3.5→正本无环。
 33. **正本更新清单 13 行锚全部真实**:fields.md §3.2.3(:239)/§3.2.4(:253)、projection_contract.md §4.1(:84)、action-logic-state.md §1.4(:45)/§3.5(:226)、screens/prep.md、screens/op-layer.md §1.2(:47)、sim-design.md §4(:121)/§6.3(:177)、sim-wiring.md §六、architecture.md、flow/action_ops.md §4.2(:83)、flow/outer_loop.md §2.2(:44)、screens/megastar.md/wish_trial.md、game/gameplay/currency_war.md 银狼段(:75-79)——全部存在且语义对口。
 34. **「外循环 28 候选」**:cw_loop.py:546-556 恰 28 项,逐项数核。
 35. **满栏例外锚**:op-layer.md:51「满栏例外:板凳满时点合成槽位,游戏机制自动多买至 3 的倍数张…一击多张 = 一个动作 op」——trigger-inventory §1.3 引用精确;代码对应 merge_buy_k(cw_buy_card_action.py:170-178)。

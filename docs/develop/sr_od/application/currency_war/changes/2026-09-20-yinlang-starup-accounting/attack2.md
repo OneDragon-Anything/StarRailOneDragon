@@ -26,7 +26,7 @@
 
 ## B. 全新发现
 
-**G1. [major] | design.md §2.3/§2.2 | 「badge=8 → 2★/8费」两处用例违反 {1,3,9} 倍数体系，与同节自述自相矛盾；按其申报落笔的新增测试将锁一个错误期望。**
+**G1. [major] | design.md §2.3/§2.2 | 「badge=8 → 2★/8费」两处用例违反 {1,3,9} 倍数体系，与同节自述自相矛盾；按其申报落笔的新增测试将钉住一个错误期望。**
 §2.3 效果行（design.md:180）同一名子里先写「badge=8 → 2★/8费 ✓」、后写「倍数 ∉ {1,3,9} 的 roster_fallback 分支保留」——前半句按「星级 = 读数 ÷ 档」的倍数即星（{1,2,3}）口径心算，后半句是代码在册的真体系。真体系（代码现值）：`_SHOP_COST_MULT_TO_STAR = {1:1, 3:2, 9:3}`（cw_observation.py:1677），2★ 费用 = 基准 ×3（cw_vocab.py:145、cw_economy.py:48 `_SELL_MULT {1:1,2:3,3:9,4:27}` 同口径）。按此，badge=8/档=4 → 8÷4=2 ∉ {1,3,9} → 修复后行为 = roster_fallback 记 **4费1★**，不是 2★/8费；4费 2★ 的徽章真值 = **12**。§2.2 申报的新增纯函数用例（design.md:168「badge=8/档=4→2★」）照抄该错值：实现者写出的断言 `resolve_cost_star(8, 4) == (8, 2, 'badge')` 对修复后实现必红；按测试纪律停下核对时会发现是设计给的期望值错了。§1.1-4 的症状描述（badge=4÷3 不整除→记 3费1★）经核是对的，错的只是修复后示例与测试申报两处。
 **证据**：design.md:180、:168；cw_observation.py:1677、:1817-1823；cw_vocab.py:145；cw_economy.py:48。
 **修正方向**：两处数字改 `badge=12/档=4→2★/12费`（1★ 侧 badge=4 用例正确保留）；顺手在 §2.3 把倍数体系一句写全（倍数 = 3^(星级−1) ∈ {1,3,9}），防实现者再犯同型心算。
@@ -40,7 +40,7 @@
 **修正方向**：§2.2 补两句——落地调用 param 实参来源（建议 `_pending_leg` 扩为三元组携带 pick 参数，一句话定点）；evidence 到达而 `_pending_leg` 为空 = 留证行（新 kind，如 `planner_landing_payload_lost`）+ 申报该形态为已知边界（或挂账）。
 
 **G4. [minor] | design.md §2.2 | 测试迁移申报残留三块：§2.5 三测断言面、zero_writes 导入面、两个新写端的随批新测试。**
-F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多一条档行写（evidence=`deploy_upgrade_tier`），三测（test_cw_yinlang_phase32.py:325-385，断言 rows_sink 留证行/落场星级/级联推演）需逐条复核——本轮预演：三测现有断言在加档行后仍应通过（档行是普通 write_logic，不进留证 sink；无写序断言），但三测恰是新行为的最自然断言宿主，申报缺失会让 §2.5 阶段的测试义务无出处；②zero_writes 函数删除后测试导入面 :55-57（`from ...zero_writes import report_action_pick_planner_param`）必断，需改指 pick_planner；两相对照测试 :292-320 同文件随迁——申报面未点名；③§2.2 的 `planner_upgrade_tier` 写端与 §2.5 的 `deploy_upgrade_tier` 写端是本批仅有的两个新容器行为，随批零新增测试申报（AGENTS §10.1：新功能测试随功能写，锁设计约定）。已有 8 处 landing 直调测试迁移后断言全部不受影响（本轮逐条预演，见 A/F7 行），此点可如实补入零影响申报。
+F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多一条档行写（evidence=`deploy_upgrade_tier`），三测（test_cw_yinlang_phase32.py:325-385，断言 rows_sink 留证行/落场星级/级联推演）需逐条复核——本轮预演：三测现有断言在加档行后仍应通过（档行是普通 write_logic，不进留证 sink；无写序断言），但三测恰是新行为的最自然断言宿主，申报缺失会让 §2.5 阶段的测试义务无出处；②zero_writes 函数删除后测试导入面 :55-57（`from ...zero_writes import report_action_pick_planner_param`）必断，需改指 pick_planner；两相对照测试 :292-320 同文件随迁——申报面未点名；③§2.2 的 `planner_upgrade_tier` 写端与 §2.5 的 `deploy_upgrade_tier` 写端是本批仅有的两个新容器行为，随批零新增测试申报（AGENTS §10.1：新功能测试随功能写，钉住设计约定）。已有 8 处 landing 直调测试迁移后断言全部不受影响（本轮逐条预演，见 A/F7 行），此点可如实补入零影响申报。
 **修正方向**：§2.2 申报面拆齐四处（§2.2 迁移 + 导入改指；§2.5 三测复核 + 档行断言；§2.3 新增 resolve_cost_star 用例——已申报；§2.4 零影响——已申报），并把两个新写端的随批测试点名。
 
 **G5. [minor] | design.md §2.4 | 「rect 包含判定」语义未定（中心点 vs 整框），且过滤域由 y∈[300,420] 静默宽化为 rect y∈[180,455]，观察捕获集变化未评估。**
@@ -67,7 +67,7 @@ F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多�
 | 四族代表锚 12 处 | 全部命中（明细见 A/F4 行） | ✓ |
 | match_facts 域版本机制 + bump 先例 | cw_game_state.py:158-205（:164 match_facts:2）、:2170 扩展先例 | ✓ |
 | match_facts 域与可变局级字段相容（active_strategies/board/shop_refresh_cost〔注「动态」〕同域在册） | :2201-2203 | ✓（lv999_cost_tier 可变语义不违域） |
-| 投影审计登记纪律 + 双向完备锁 | cw_projection_audit.py:25-28、:58-60 | ✓（设计已申报登记行） |
+| 投影审计登记纪律 + 双向完备测试 | cw_projection_audit.py:25-28、:58-60 | ✓（设计已申报登记行） |
 | `EVIDENCE_OVERLAY_CLOSED` 单一定义 @ pick_invest | :51；pick_invest 仅依赖 kernel → pick_planner 反向 import 无环 | ✓ |
 | zero_writes 现签名与新签名兼容（发射相「参数不变」） | zero_writes.py:127-129（新增 evidence kw 即目标形态） | ✓ |
 | 发射调用点 env 透传 leg_type/norm_item | cw_overlay_pick_action.py:409-415 | ✓ |
@@ -95,6 +95,6 @@ F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多�
 
 **需修订后收敛。**
 
-发现计数：**6 条 = major 1（G1 badge=8 用例违反 {1,3,9} 倍数体系、新增测试申报锁错误期望）+ minor 5（G2 依据标注失真 / G3 落地相 param 来源与载荷丢失形态未交代 / G4 测试申报残留 / G5 包含判定语义与捕获宽化未评估 / G6 变费族第二成员漏申报）**。另 A 部分附带 1 条流程同步注记（README 进度行超前记「收敛」）。
+发现计数：**6 条 = major 1（G1 badge=8 用例违反 {1,3,9} 倍数体系、新增测试申报钉住错误期望）+ minor 5（G2 依据标注失真 / G3 落地相 param 来源与载荷丢失形态未交代 / G4 测试申报残留 / G5 包含判定语义与捕获宽化未评估 / G6 变费族第二成员漏申报）**。另 A 部分附带 1 条流程同步注记（README 进度行超前记「收敛」）。
 
 第一轮八条修订质量总体良好：7 条落地、F7 部分落地，修订未引入结构性矛盾；F1 的依据链经改指后已闭合（被引处逐字承载口径 + 正本矛盾显式承认并排期清偿）。本轮唯一 major 是修订期新增内容的算术错误（badge=8 两处），修订量小（改两处数字 + 五处各一两句定点文字），不涉方案结构。修订后按 hard rule 4 再做一轮全量同步复查（含 README 进度行回改与 G4 申报面拆齐）即可收敛。

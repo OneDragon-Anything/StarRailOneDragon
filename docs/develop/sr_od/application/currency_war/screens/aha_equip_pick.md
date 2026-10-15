@@ -40,9 +40,9 @@
 
 `node_max_retry_times=2` 在用值仅框架异常路径消费;无停机钩子/失配告警面(细则 = [../flow/guards.md](../flow/guards.md))。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
-- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态锁,aha_equip_pick 已登记);锚挂备战建档 `currency_war_battle_prep.yml`。
+- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,aha_equip_pick 已登记);锚挂备战建档 `currency_war_battle_prep.yml`。
 
 ## 开放设计注
 

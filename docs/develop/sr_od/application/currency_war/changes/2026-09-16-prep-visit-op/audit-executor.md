@@ -18,7 +18,7 @@
 1. **点击链已统一**：StartBattleOp 模块头明文「备战环 / 达标臂发射核 / 恢复局锁定直出战三路径经同一注册表分派到达本 op，禁各写一套点击段」；旧发射家族（转移轮询/备战标识消失验证/拦截弹窗守卫/重发长按下/失焦守卫/launch_dead 连败停机）随出战域重设计（T-286）整删，op 零判效、交回后画面由外循环重判。
 2. **C1 单一底层发射函数已存在**：`launch_prepared_battle`（部署原子序 + StartBattle 执行核），达标臂/恢复局面两调用面共用——C1 的「禁各写一套发射位」已兑现。
 3. **「合一」的真实残余** = 包装语义三段（屏态复验/浮层安全检查/G1 预估）只在达标臂面存在；恢复局面面与策略终点路径均无。design §2.2「两调用面同保浮层检查」= 对恢复局面面的防误触补齐（行为改进，已申报）。
-4. **现存测试锁 = 空**：test 树 grep `readiness_battle_launch|launch_prepared_battle|达标臂|locked_resume|StartBattle` 零命中——landing 3.1「既有出战行为锁全绿」判据为空集，本阶段随统一执行器交付首批直测。
+4. **现存测试 = 空**：test 树 grep `readiness_battle_launch|launch_prepared_battle|达标臂|locked_resume|StartBattle` 零命中——landing 3.1「既有出战行为测试全绿」判据为空集，本阶段随统一执行器交付首批直测。
 5. **正本漂移实证**：start-battle.md §1 所述「未落地原样重发长按下/连败停机留证」与实码不符（T-286 后 op 零重发零判效）——正本清单已有修正条目。
 
 ## 3. 统一执行器规格（`launch_battle_unified`）

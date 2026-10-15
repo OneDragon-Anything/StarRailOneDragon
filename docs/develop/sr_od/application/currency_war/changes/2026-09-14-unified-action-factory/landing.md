@@ -9,9 +9,9 @@
 > `uv run pytest sr-od-test/ -m "not slow"`(CW 域测试按
 > `sr-od-test/CW_TEST_SPEC.md` 七域规范分域落位,现役代表见该文 §1);
 > ②批前/批后 diff 等价比对(逐节点 vs git HEAD,T-201 拆分批先例;审查
-> 手续,非测试件)+ 遥测键/发射序列对照;③批判据点名的行为专锁随该批
-> 交付,锁面落位遵循 CW_TEST_SPEC 域形态(源码扫描测试一律禁止,锁面
-> 只准锁运行时行为,AGENTS.md §10.3)。任务书与账本 criteria 引用判据
+> 手续,非测试件)+ 遥测键/发射序列对照;③批判据点名的行为专项测试随该批
+> 交付,测试面落位遵循 CW_TEST_SPEC 域形态(源码扫描测试一律禁止,测试面
+> 只准校验运行时行为,AGENTS.md §10.3)。任务书与账本 criteria 引用判据
 > 以本节为准。
 
 ## 3.1 批1:通用基类升格 + 注册表单一 + 商店域搬家(零行为)
@@ -101,7 +101,7 @@ EXHAUSTION_WINDOW_ACTIONS + 武装箱分发行)、
 `kernel/cw_game_state.py`(逻辑态写口 `apply_prep_action_logic`:
 域集 `PREP_PROJECTION_DOMAINS` 扩 ('xp','level') + LevelUp 分支 +
 owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)、
-`decision_assembly.py`、`sr-od-test/` 回归与专锁。
+`decision_assembly.py`、`sr-od-test/` 回归与专项测试。
 **依赖**:批1(注册表行键先行就位);`flow/action-logic-state.md` 在案
 (本节点实现规格来源;其与定案④相反的现状行随本批同步转录,见
 范围第 2 步)。
@@ -109,26 +109,26 @@ owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)�
 **完成判据**:
 - 扫描报告在案(定义/构造/消费点全量,含 telemetry 与判读工具面;
   底册供 2b 逐点闭环);
-- **LevelUp 形态锁**(2a 半):每帧至多一击;逻辑态 xp/level 推进与
+- **LevelUp 形态测试**(2a 半):每帧至多一击;逻辑态 xp/level 推进与
   下一入口 heavy 对账闭合(中间态金腿 = 执行缝金差,不写 gold,
   2b 类合并翻转切 `action.cost` 直写);posture_unfulfilled 对账按
   新口径绿;
-- **ClickSpheres 专锁**:载荷 = 有序晶矿坐标列表;执行器零读屏选晶矿;
+- **ClickSpheres 专项测试**:载荷 = 有序晶矿坐标列表;执行器零读屏选晶矿;
   逻辑态按载荷精确摘晶矿;
   观察四卡 → decide_box_card(策略侧)→ 点卡 → 确认 → 交回(选卡即
   终结,单选族例外);全仓无 PickBoxCard 构造/发射残留;
   终结,单选族例外);全仓无 PickBoxCard 构造/发射残留;
-- **逻辑态覆盖锁**(R9):词表全动作对照 `flow/action-logic-state.md`
+- **逻辑态覆盖测试**(R9):词表全动作对照 `flow/action-logic-state.md`
   逐行有逻辑态计算;未建模保守回退分支删除;无标注缺口的动作零
   「无逻辑态发射」残留;
-- **零比对出生锁**(裁决3):WearEquip 与工具原子类体内零比对(diff/
+- **零比对出生测试**(裁决3):WearEquip 与工具原子类体内零比对(diff/
   验穿面不存在);CV-diff 验穿删除;
-- **原子通路对照锁**:旧组合发射 ↔ 新原子序列逐域映射(部署 = DeployMove
+- **原子通路对照测试**:旧组合发射 ↔ 新原子序列逐域映射(部署 = DeployMove
   序;换血 = SellDeployed/SellBench 序;穿戴/工具 = 逐件序);旧 RunTools/
   RunEquip 执行序约束由发射序等价表达(对照记录);
 - `EXHAUSTION_WINDOW_ACTIONS` 重推记录在案;
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本节点文件零告警。
-**验收凭据形式**:扫描报告 + 各专锁测试名 + 原子通路对照记录 + 重推
+**验收凭据形式**:扫描报告 + 各专项测试名 + 原子通路对照记录 + 重推
 记录 + L1/回归门记录。
 
 ## 3.2b 批2b:词表归一与删除(语义批,账本节点二;裁决2)
@@ -137,7 +137,7 @@ owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)�
 1. **词表归一与删除**:四对同名合并(统一类 = 现役族A 类原样,字段/
    顺序/metadata 逐字保留);族B 专有动作迁入 `kernel/cw_vocab.py`;
    基类 `PrepAction` 随迁更名 `CwAction`,`action_key` 函数随迁
-   (附 action_key 输出前后对照锁);`SELL_BENCH_REASONS`/
+   (附 action_key 输出前后对照测试);`SELL_BENCH_REASONS`/
    `SELL_BENCH_ORPHAN_REASONS` 迁居;`RunDeploy`/`RunEquip`/`RunTools`/
    `CompTransaction`(+`FillSpec`)与族B 同名旧类删除;import 一次翻清,
    不留转发 shim。
@@ -167,7 +167,7 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
 `sim/checks/ledger.py`(CompTransaction 消费删 + SELL_BENCH_* import
 翻转)、`sim/pool.py`(注释面)、`telemetry/schema.py`、
 `telemetry/query.py`、`telemetry/journal_query.py`、`tools/cw/` 判读脚本
-(兼容窗)、`sr-od-test/` 回归与专锁。sim 侧除申报删除/翻转面外零语义。
+(兼容窗)、`sr-od-test/` 回归与专项测试。sim 侧除申报删除/翻转面外零语义。
 **依赖**:批2a(原子通路就位;LevelUp 发射面 cost/auth_basis 装载与本
 节点类合并同步翻转)。
 **优先级建议**:7。
@@ -177,18 +177,18 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
   无 shim;扫描报告逐点闭环);
 - 换算收口:物理换算仅存观察写入边与执行坐标边各一处(函数化);发射与
   决策面散点换算零残留;
-- **LevelUp 装载锁**(2b 半):发射面 cost = xp_click_cost 现算、失读
+- **LevelUp 装载测试**(2b 半):发射面 cost = xp_click_cost 现算、失读
   回退 XP_CLICK_COST_FALLBACK;auth_basis 分键装载(类合并同步翻转);
   逻辑态金腿切 `action.cost` 直写(2a 中间态执行缝金差退役);
   posture_unfulfilled 对账新口径总复验;
-- **逻辑态覆盖锁复验**(R9):合并后统一词表逐行有逻辑态计算;
+- **逻辑态覆盖测试复验**(R9):合并后统一词表逐行有逻辑态计算;
 - 商店域发射序列对照不变(CompTransaction 行消失除外);
 - sim:固定 seed 对局(动作流不含 CompTransaction)动作序列与结果逐项
   不变;sim/checks import 翻转零语义;
 - 跨批判读口径落位:判读工具双键兼容窗 + 换算式申报 diff 在案;
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本批文件零告警。
-**验收凭据形式**:各专锁测试名 + sim seed
-锁测试名 + 兼容窗申报 diff + L1/回归门记录。
+**验收凭据形式**:各专项测试名 + sim seed
+测试名 + 兼容窗申报 diff + L1/回归门记录。
 
 ## 3.2c 批2c:书册卡开卡归位(语义小批;R10)
 
@@ -197,7 +197,7 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
 执行器分支 `_open_bookcard`:`find_bookcards` 识别 + 点槽中心 + 动画等待;
 逻辑态 = 视觉域摘件,与 OpenBox/OpenTome 同形;枚举文档落行);
 `CwScreenExpertInvite` 收缩(open_card 节点拆退役,op 入口收敛为「弹窗
-已开」单一形态,申报面锁 `test_expert_open_card_node_stays_legacy` 随拆
+已开」单一形态,申报面测试 `test_expert_open_card_node_stays_legacy` 随拆
 退役);链拆编排:备战预清场(`cw_screen_prep.py::_clear_prep_cards`)
 改产 `OpenBookcard` 经执行器发射 + 交回,弹窗交 cw_loop 0k 分发选卡
 (现役 journal 包装全链路径退役;R7 OpenBox 终结化同构)。
@@ -208,18 +208,18 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
 `operations/cw_screen/cw_screen_expert_invite.py`、
 `operations/cw_screen/cw_screen_prep.py`、`operations/cw_loop.py`(0k 分发
 面核对,分发行已在其册,预计零改)、`flow/action-logic-state.md`
-(OpenBookcard 行)、`sr-od-test/` 回归与专锁。
+(OpenBookcard 行)、`sr-od-test/` 回归与专项测试。
 **依赖**:批2b(T-214;统一词表就位,新类免二次迁移)。
 **优先级建议**:6。
 **完成判据**:
 - `OpenBookcard` 词表行 + 注册行在册;备战侧发射 → 点槽 → 弹窗出现 →
   0k 接管选卡全链行为对照现役预清场全链等价(遥测动作行 OpenBookcard
   在册,op 行/journal 形态对照在案);
-- `CwScreenExpertInvite` 无开卡残留(节点/申报面锁退役,入口门 = 弹窗
+- `CwScreenExpertInvite` 无开卡残留(节点/申报面测试退役,入口门 = 弹窗
   已开单一形态);
 - 逻辑态摘件对账绿(开卡后槽位表与实机一致);
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本批文件零告警。
-**验收凭据形式**:专锁测试名 + L1/回归门记录 + 行为对照记录。
+**验收凭据形式**:专项测试名 + L1/回归门记录 + 行为对照记录。
 
 ## 3.3 批3:备战执行器收编(执行器方法 → op 类,零行为)
 
@@ -228,7 +228,7 @@ ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除
 不立 op 类;OpenBookcard 体已批2c 落定,本批只迁形;OpenBoxOp 置 terminal=True,terminal_wait 与批2a 落地
 交回等待值等价(`_OVERLAY_ANIM_WAIT_S`,来源写死见 §3.2a);`PrepExecEnv`;执行包络留守;
 分派链删除改查注册表;终结判定改读 `terminal` + `terminal_wait` 类属性
-(wait 3/1.0 等价锁;决策循环与生命周期孪生环两处对齐);OpenShop 注册行
+(wait 3/1.0 等价测试;决策循环与生命周期孪生环两处对齐);OpenShop 注册行
 = terminal 承载行(execute 抛 AssertionError,正常路径不可达;read_only
 两形态由动作字段承载,消费在流程层);StartBattle 注册行 = 基类契约在册
 例外(判效/重发/停机 as-built 保留,退役挂账指向统一观察架构 A6);
@@ -247,17 +247,17 @@ ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除
 **完成判据**:
 - 行为对照 design.md §2.4:备战动作发射行为/detail 文案/emitted 语义/
   包络账务零变化;终结集与 terminal 属性逐一等价、terminal_wait 与
-  现行 wait 值(3/1.0 与 OpenBox 批2a 落地交回等待值)逐一等价(测试锁);OpenShop 行
-  不可达性锁;StartBattle
+  现行 wait 值(3/1.0 与 OpenBox 批2a 落地交回等待值)逐一等价(测试);OpenShop 行
+  不可达性测试;StartBattle
   例外条款与 A6 挂账指向在册;
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本批文件零告警。
-**验收凭据形式**:L1 + 备战域测试记录 + terminal/terminal_wait 等价锁
-测试名 + OpenShop 不可达锁测试名 + diff 零行为审查。
+**验收凭据形式**:L1 + 备战域测试记录 + terminal/terminal_wait 等价测试
+测试名 + OpenShop 不可达测试名 + diff 零行为审查。
 
-## 3.4 批4:事件线 pick 收编 + 词表纪律注册完备锁(零行为)
+## 3.4 批4:事件线 pick 收编 + 词表纪律注册完备测试(零行为)
 
 **范围**:pick 词表 op 类注册(overlay act 经工厂,§2.5);词表纪律
-注册完备锁——运行时锁:遍历词表元组单一源(统一词表 `CW_ACTION_TYPES`,
+注册完备测试——运行时测试:遍历词表元组单一源(统一词表 `CW_ACTION_TYPES`,
 随基类迁 `cw_vocab`;pick 族新增运行时元组常量,先例 =
 `PREP_ACTION_TYPES` :174),逐类断言注册表解析可命中该类(is-a 兜底
 语义同注册表,经注册表类级查询,不构造业务动作实例);退役 = 删类,
@@ -276,18 +276,18 @@ ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除
 (`operations/cw_screen/cw_screen_encounter.py` 等 act 段)、
 `operations/cw_screen/cw_screen_invest_env.py`(refresh_no_effect 迁观察)、
 `operations/cw_op/cw_refresh_shop_action.py`(两比对面迁观察)、
-`sr-od-test/` 新锁测试(锁运行时行为,落位与写法遵循
+`sr-od-test/` 新测试(校验运行时行为,落位与写法遵循
 `sr-od-test/CW_TEST_SPEC.md` 域形态)。
 **依赖**:批3。
 **优先级建议**:4。
 **完成判据**:
-- 注册完备锁测试在册且绿(词表全类型覆盖:统一词表 `CW_ACTION_TYPES` +
+- 注册完备测试在册且绿(词表全类型覆盖:统一词表 `CW_ACTION_TYPES` +
   cw_events pick 族,遍历运行时元组,零源码读取);
 - 比对收口迁移完成(裁决3):具名三面 + 扫描补全面迁观察侧,留证语义
   由缺陷台账承接的记录在案;全仓动作 op 内比对面清零(过渡期标注面
   清零);
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本批文件零告警。
-**验收凭据形式**:锁测试名 + L1 记录。
+**验收凭据形式**:测试名 + L1 记录。
 
 ## 末阶段:正本更新
 
@@ -318,8 +318,8 @@ ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除
   runner 包络」);组合动作节删除,改原子发射通路表述(部署/穿装备/工具
   的决策核逐帧发射形态)← 批2/批3
 - `flow/统一观察架构-画面op基类设计.md` §6.1(词表纪律回填:单一词表
-  落码 + 词表边界声明 + 锁形改形申报——「AST 扫描」验收按源码扫描测试
-  禁令改形为运行时注册完备锁)与 §6.2(点击链载体清单回填 as-built =
+  落码 + 词表边界声明 + 测试改形申报——「AST 扫描」验收按源码扫描测试
+  禁令改形为运行时注册完备测试)与 §6.2(点击链载体清单回填 as-built =
   `cw_action_registry.py`)← 批4
 - `flow/prep_visit.md`:备战单动作消费段分派形态表述;LevelUp 逐帧单击
   与逻辑态建模;OpenBox 开箱交回(武装箱选择画面 op 分发);刷新终结

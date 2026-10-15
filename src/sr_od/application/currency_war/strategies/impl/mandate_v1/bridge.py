@@ -234,7 +234,7 @@ class MandateV1Strategy(CwFlowStrategy):
         # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
         # 原装配缝调用位——前置动作发出点判定之后,非出战就绪帧才到达,
         # 出战就绪短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
-        # mandate_state.py 披露字段注释与守卫锁 test_economy 预算遥测
+        # mandate_state.py 披露字段注释与守卫测试 test_economy 预算遥测
         # 披露节)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
@@ -264,15 +264,15 @@ class MandateV1Strategy(CwFlowStrategy):
     def decide_shop_screen(self, session: StrategySession | None = None,
                            config: CurrencyWarConfig | None = None) -> list:
         """商店序列兼容驱动器(mandate 覆写;迁移批 + 降格;
-        形参 = 兼容宿主(sim/回放/序列锁调用面照旧传),决策已零参化)。
+        形参 = 兼容宿主(sim/回放/序列测试调用面照旧传),决策已零参化)。
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
-        商店画面 op 决策动作 node);本驱动器保留给回放/既有序列锁——
+        商店画面 op 决策动作 node);本驱动器保留给回放/既有序列测试——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
         (逐动作直调上报函数族),终结动作(CwActionRefreshShopParam)截停
         序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
-        §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
+        §消灭的 bug 类)——帧级序列测试不预期保持绿,按测试纪律重推
         语义。观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
         覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token)。
         """

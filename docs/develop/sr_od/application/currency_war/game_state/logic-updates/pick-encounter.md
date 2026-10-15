@@ -37,7 +37,7 @@
 
 ## 7. 语义验证
 
-写语义单一源 = 具名上报函数(发出动作时立即写入契约,上报函数族独占容器写,logic-updates/README.md 总则 1);验证锁 = `sr-od-test/test/sr_od/application/currency_war/test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,锁清单 = [../../screens/encounter.md](../../screens/encounter.md) §9)。
+写语义单一源 = 具名上报函数(发出动作时立即写入契约,上报函数族独占容器写,logic-updates/README.md 总则 1);验证测试 = `sr-od-test/test/sr_od/application/currency_war/test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,测试清单 = [../../screens/encounter.md](../../screens/encounter.md) §9)。
 
 ## 8. 判例注记(动作发出阶段)
 

@@ -74,8 +74,8 @@ cards = 观察轮实例载体(标准化注册名)→ 零参决策 decide_star_to
 - 落地判定点写(防未落地轮留下假记录——选卡其实没成功的假登记);选卡名恒 = 策略产值候选名(哨兵通道停用),`_settle_picked_tome` 保留空名守卫防假记录。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「星徽秘典」;op 内日志 tag = `[cw-flow-bookcard]`(候选/选中/idx)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(bookcard 分支:观察双域上报锁/观察失败三态不写锁[标准化失败·同名同判·建档缺失]/守卫四锁——①a 无 match 局外不设早退支(自然失败)、①b 候选空 fail、②返回契约 fail、③越界断言)、test_cw_unified_action_4.py(StarTome 容器取点锁:容器值点击/缺席·越界断言零点击)、test_screen_report_ports.py(report 同门双写/等长守卫/空桩双域门)、test_cw_game_state_consume.py(chosen_tome 接线锁)。代码注引的典籍通道锁(test_cw_fake_channels_outerloop)已不已登记(开放设计注)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(bookcard 分支:观察双域上报测试/观察失败三态不写测试[标准化失败·同名同判·建档缺失]/守卫四条测试——①a 无 match 局外不设早退支(自然失败)、①b 候选空 fail、②返回契约 fail、③越界断言)、test_cw_unified_action_4.py(StarTome 容器取点测试:容器值点击/缺席·越界断言零点击)、test_screen_report_ports.py(report 同门双写/等长守卫/空桩双域门)、test_cw_game_state_consume.py(chosen_tome 接线测试)。代码注引的典籍通道测试(test_cw_fake_channels_outerloop)已不已登记(开放设计注)。
 - game 侧知识:画面与机制(星徽 = 阵营徽记装备) = [../../../../game/screens/currency_war_star_tome_popup.md](../../../../../game/screens/currency_war_star_tome_popup.md)。

@@ -313,7 +313,7 @@ def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     """把 mismatch 行落缺陷台账(kind=``faction_display_mismatch``)。
 
     已接线:生产调用方 = cw_screen_prep 羁绊对账段(与 ``compare_factions``
-    串同一链路;行为锁见测试仓 faction_reconcile/faction_wire 两锁文件)。
+    串同一链路;行为测试见测试仓 faction_reconcile/faction_wire 两个测试文件)。
     函数本身保持纯转发:
     逐 mismatch 调 ``record_defect``(kernel/cw_telemetry_exit 出口钩子位,
     零直依 telemetry;run_id 门控/分级/失配告警语义单一源在 telemetry),

@@ -67,14 +67,14 @@ idx = _decide_card_index(决策动作 node):
 
 ## 8. 守卫与防线
 
-- 决策 fail-closed 契约:策略异常/越界索引 = 保留证据后上抛,禁无声回落内联打分(策略 bug 禁遮蔽;行为锁已登记)。
+- 决策 fail-closed 契约:策略异常/越界索引 = 保留证据后上抛,禁无声回落内联打分(策略 bug 禁遮蔽;行为测试已登记)。
 - OCR 未读卡名 = 未发出通道 失败结束本次访问,返回主循环重派(选错不可逆,禁盲点兜底)。
 - 观察标准化门:卡名经装备注册表两段转换,任一候选转换失败 = fail 不写不上报返回主循环重新识别画面(禁带病上报;重复名合法,逐候选独立归一)。
 - 点击 y 避让「查看详情」按钮带(几何防线,解点住观察侧)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「武装箱选择」(阶段一身份分发);op 内日志 tag = `[cw][boxpick]`(选中卡名/结束本次访问)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门锁)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为锁 + 画面常量)、test_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点锁)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(box_pick 观察 report 接线/两道闸 skip report/点卡决策/局外无早退支自然失败/标准化门测试)、test_cw_unified_action_2a.py::test_pick_box_decision_fail_closed(fail-closed 决策契约行为测试 + 画面常量)、test_screen_report_ports.py(box_pick 同门双写/等长守卫)、test_cw_unified_action_4.py(动作 op 自容器取点测试)。
 - game 侧知识:画面与机制 = [../../../../game/screens/currency_war_battle_prep_supply_box.md](../../../../../game/screens/currency_war_battle_prep_supply_box.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18。

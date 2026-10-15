@@ -82,10 +82,10 @@ pick = match.strategy.decide_supply()(零参;候选读容器 supply 槽)
 - 兜底点卡 CARD_BODY 仅在无选项/无 match 时使用;有选项而决策越界 = target 保持兜底点(有界重试兜底,非盲选禁令屏)。
 - 无本屏专属停机钩子;守卫总册 = [../flow/guards.md](../flow/guards.md)。
 
-## 9. 遥测与锁面
+## 9. 遥测与测试面
 
 - journal op 名 =「货币战争-补给节点」;op 内日志 tag = `[cw-supply]`(options/pick/click、闸拒绝告警、闸不一致零点击告警、chosen 记录失败告警)。
-- 测试锁:`sr-od-test/test/sr_od/application/currency_war/` 下 test_obs_arch_event_screens.py(supply 两 node 行为锁:chosen 确认即写/刷新终结/act 流转形态)、test_cw_game_state_consume.py(chosen_supply 接线)、刷新对照闸行为锁(剩余 1 点钮恰一次终结/0 与 None 对照闸拒绝时不点击——行为断言保留;生产面「建议刷 ∧ 对照闸拒绝」在用代码仅定位点缺失一种触发面,次数闸内嵌 decide 后旧「按原评分选」叙述过期,过期注记在该锁 docstring)、sim 补给刷新段测试(初始 left=1 与 left−1 截断)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/` 下 test_obs_arch_event_screens.py(supply 两 node 行为测试:chosen 确认即写/刷新终结/act 流转形态)、test_cw_game_state_consume.py(chosen_supply 接线)、刷新对照闸行为测试(剩余 1 点钮恰一次终结/0 与 None 对照闸拒绝时不点击——行为断言保留;生产面「建议刷 ∧ 对照闸拒绝」在用代码仅定位点缺失一种触发面,次数闸内嵌 decide 后旧「按原评分选」叙述过期,过期注记在该测试 docstring)、sim 补给刷新段测试(初始 left=1 与 left−1 截断)。
 - game 侧知识:画面与机制(动态列数/钻) = [../../../../game/screens/currency_war_supply.md](../../../../../game/screens/currency_war_supply.md);装备价值 = [../../../../game/currency_war/research/equipment_mechanics.md](../../../../../game/currency_war/research/equipment_mechanics.md)。
 
 ## 开放设计注

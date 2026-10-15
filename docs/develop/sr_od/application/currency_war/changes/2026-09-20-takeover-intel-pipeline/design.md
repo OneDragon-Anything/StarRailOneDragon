@@ -90,7 +90,7 @@
 ### 2.4 退役清单
 
 - `ctx.cw_plane_bosses`/`ctx.cw_plane_affixes`:生产(cw_screen_plane_intel.py:695-696)、消费(cw_screen_prep.py:901-904、cw_entry_plane_intel.py:131-137)、清空(三处)全删,grep 零残留;
-- gs 字段 `takeover_tries`/`takeover_collect_done` 删除(cw_game_state.py,宿主 match_facts 域):**域内容变更 → `DEFAULT_GS_SCHEMA['match_facts']` 版本 bump(2→3)**,配套合同断言翻新(test_cw_game_state_contract.py 钉死 ==2 处);`kernel/cw_projection_audit.py:146-151` 两行申报随字段退役(该表自带退役完备性锁 audit_stale_keys,漏删必红);CwScreenPrepObs 接管域四字段删除,`report_screen_prep_obs` 瘦身保链域(kernel/cw_screen_report/prep.py);
+- gs 字段 `takeover_tries`/`takeover_collect_done` 删除(cw_game_state.py,宿主 match_facts 域):**域内容变更 → `DEFAULT_GS_SCHEMA['match_facts']` 版本 bump(2→3)**,配套合同断言翻新(test_cw_game_state_contract.py 钉死 ==2 处);`kernel/cw_projection_audit.py:146-151` 两行申报随字段退役(该表自带退役完备性测试 audit_stale_keys,漏删必红);CwScreenPrepObs 接管域四字段删除,`report_screen_prep_obs` 瘦身保链域(kernel/cw_screen_report/prep.py);
 - `_takeover_collect_if_needed` 整方法删除(cw_screen_prep.py:853-914);start_plane 全套退役(见 §2.2);
 - **对账网退役**(见 §2.3):obs 两函数零消费删除、entry 挂点随写回节点消亡、config 字段处置;
 - **None 语义注释勘误——全量清点口径**:grep『徽章态/该位面无身份』全 src 逐处改写为新语义(实采源恒全识别;None 仅可能来自简报源未读得),已知至少含:cw_game_state.py:2198(字段定义注释「该位面无身份」,字段存续)、cw_vocab.py:235、cw_observation.py:795-799、cw_comps.py:233/:1512、telemetry/schema.py:630、cw_briefing_obs.py(若对账函数已删则注释随亡);落地判据挂勘误清零(grep 双模式:『徽章态』+『该位面无身份』);

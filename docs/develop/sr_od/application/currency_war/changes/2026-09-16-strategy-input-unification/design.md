@@ -91,7 +91,7 @@
 
 - **a. gs_schema 申报**（fields.md §3.7.1 治理）：**8 个新域键**（#5–#12，各自独立域键——先例 = shop/encounter/supply 每画面一域）+ **2 个变域 bump**（#3/#4 形状升级）+ **`node_screen_refresh` 域版本 +1**（新顶层字段 `encounter_refreshed_in_visit` 入该域 = 域内容变更，execstate #12-#14「域扩展即 bump」先例）。`prep_obs` 为非 Field 容器字段（契约 e），不占域键、不入快照流水。typed option dataclass 经 asdict 序列化（`ShopPayload.cards` 先例），值形状 JSON 序列化安全。
 - **b. 离屏机制**：见 §2.3（路由点陈旧清点；prep_obs 豁免）。
-- **c. 瞬态槽三分语义**（#3–#12；fields.md §2.2「在屏失读沿用旧值」为持久事实设计，对逐访问瞬态槽细化为）：**离屏 = None**；**在屏失读帧 = 不写不读**（handler 走自身失败安全分支——现状零选项/OCR miss 即不调 decide 同型，禁把上一访问的旧选项喂本帧决策）；**在屏读得 = 覆盖**。判别信号定死 = **「写槽以该分支将调用 decide 为前提」**（写槽动作只存在于 handler 已决定调用 decide 的分支内；OCR miss 与真空选项在识别面同形返回 `[]`，现状 handler 零选项即走盲点默认**不调 decide 亦不写槽**——故本批不引入 `[]` 写入场景，空列表写槽若未来行为批引入须同步申报）。**刷新重决策腿分屏形态申报**（三屏刷新链形态不同，禁统一改形）：**encounter = 同访问内二次「读得=覆盖」**——刷新后的重决策前，必须以重读产物（重截图重 OCR，既有「无条件重读」链原样）覆盖写槽，方可再调 decide，禁沿用刷新前旧槽内容；**supply/invest = 发射后交回重入型**——刷新发射即 return（supply 经 round_retry 重入下一轮重读重决策，invest 同型），无同访问二次覆盖，重入访问走常规「OCR → 写槽 → decide」起点链天然单源。结构防线 = **「每次决策恰以当次观察产物为单源」纪律**（decide 只在写槽之后调用；encounter 同访问重读链与 supply/invest 重入链均为既有行为本体，不算双源；单帧锁/流程锁逐 handler 锁此单源性）。`prep_obs` 不适用本条（豁免域，沿用旧行为）。
+- **c. 瞬态槽三分语义**（#3–#12；fields.md §2.2「在屏失读沿用旧值」为持久事实设计，对逐访问瞬态槽细化为）：**离屏 = None**；**在屏失读帧 = 不写不读**（handler 走自身失败安全分支——现状零选项/OCR miss 即不调 decide 同型，禁把上一访问的旧选项喂本帧决策）；**在屏读得 = 覆盖**。判别信号定死 = **「写槽以该分支将调用 decide 为前提」**（写槽动作只存在于 handler 已决定调用 decide 的分支内；OCR miss 与真空选项在识别面同形返回 `[]`，现状 handler 零选项即走盲点默认**不调 decide 亦不写槽**——故本批不引入 `[]` 写入场景，空列表写槽若未来行为批引入须同步申报）。**刷新重决策腿分屏形态申报**（三屏刷新链形态不同，禁统一改形）：**encounter = 同访问内二次「读得=覆盖」**——刷新后的重决策前，必须以重读产物（重截图重 OCR，既有「无条件重读」链原样）覆盖写槽，方可再调 decide，禁沿用刷新前旧槽内容；**supply/invest = 发射后交回重入型**——刷新发射即 return（supply 经 round_retry 重入下一轮重读重决策，invest 同型），无同访问二次覆盖，重入访问走常规「OCR → 写槽 → decide」起点链天然单源。结构防线 = **「每次决策恰以当次观察产物为单源」纪律**（decide 只在写槽之后调用；encounter 同访问重读链与 supply/invest 重入链均为既有行为本体，不算双源；单帧测试/流程测试逐 handler 校验此单源性）。`prep_obs` 不适用本条（豁免域，沿用旧行为）。
 - **d. 选项数据单源**：handler 的 OCR 产物是唯一来源——写槽后调 decide。kernel 纯函数（`decide_event`/`decide_encounter` 等）签名与判据零改动，仍收 typed options 列表；策略入口从槽取列表传入（数据来源组装职责归策略入口，kernel 保持纯函数纪律）。
 - **e. prep_obs 迁移附注**：`StrategySession.prep_obs_frame` 字段删除；**存储形态 = 非 Field 容器字段**（直赋读写，与 `tracked_books`/`exec_books` 同型访问口；先例 = execstate #20 `plane_node_sequences` 非 Field 处置）。理由：`PrepObservation` 含 `set`/`Point`/`BenchChar` 非 JSON 安全形状，Field 化须值形状改造（set→list、Point→元组）——该形状进 `spheres` 发射面（ClickSpheres 排序消费 `Point`），改造 = 全链涟漪违零行为；非 Field 化则不入快照流水，可观测面与现状 session 槽完全一致（零变化）。4 写点 = 直赋换宿主，无 observe/carry/write_logic 渠道语义；「破墙派生帧」等来源分级已由 `PrepObservation` 字段注释内部承载（heavy/light 语义），不新增 evidence 面。`prep_frame_class`/`shop_frame_class` 两触发信号槽**本批不动**（非决策输入，归后批帧机制合并）。**注释历史锚处置口径（唯一）**：符号改名点随所在文件的切换阶段落码同步改指（prep_obs 锚随 3.2；`decide_invest`/`decide_box_card` 注释锚随 3.4，所在文件已入该阶段文件面）；纯叙述性历史锚随正本更新批复核清零。已知锚面（**非穷尽示例**——穷尽性由各切换线的全仓 grep 锚普查对账表保证）= `cw_strategy.py`/`cw_screen_prep.py`/`obs/cw_observation.py`/`mandate_v1/shop.py`/`bridge.py` 模块头（prep_obs，随 3.2）；`kernel/cw_events.py`/`cw_screen_equip_pick.py`/`cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`（decide_invest/decide_box_card 注释，随 3.4）。
 - **f. 新槽注释**：全部带归属申报与坐标系注释（归属判据双锚 = 「谁产生/谁消费」宿主 `flow/session.md` §2 + fields.md §8.8 字段准入四问；带索引语义者加 `[索引定义]`）。
@@ -138,20 +138,20 @@
 | `cw_screen_buy_cards.py`（run_buy_waves 单动作循环 + 防御路径裸 match 构造） | 签名随改；防御路径语义不变 |
 | `cw_screen_planner.py` / `cw_screen_invest_strategy.py` / `cw_screen_invest_env.py` 局外防御路径（无 match 语境 kernel 纯函数直调） | **零改动**（kernel 纯函数签名不变，直调不涉槽）；核对申报在案 |
 | `cw_loop.py` | 路由点陈旧清点挂点（§2.3） |
-| `flow.py` `decide_shop_screen` 驱动器 + `bridge.py` 同名覆写 | **驱动器签名不动**（非契约成员，内部已自取容器）；两者内部对 `decide_shop_action` 的调用点随新签名传 gs（flow 缺省体 + `MandateV1Strategy.decide_shop_screen` 覆写体——sim 回放/序列锁消费的正是覆写体） |
+| `flow.py` `decide_shop_screen` 驱动器 + `bridge.py` 同名覆写 | **驱动器签名不动**（非契约成员，内部已自取容器）；两者内部对 `decide_shop_action` 的调用点随新签名传 gs（flow 缺省体 + `MandateV1Strategy.decide_shop_screen` 覆写体——sim 回放/序列测试消费的正是覆写体） |
 | `strategies/impl/mandate_v1/entry.py` | **不在本批文件面**（全仓 grep 无 decide_* 契约调用点；prep 决策链参数面归 turnstate-retirement 辖——该迭代已收尾落 HEAD，无残留冲突） |
 | sim / 回放（`sim/cw_replay.py` 等） | 驱动器路径自动随批；sim 引擎不调 pick 入口、不建模 prep_obs（prep 面 sim 不可达，flow/README §2.3 sim 消费面注记 + §2.4 归因域限定）→ sim 侧改动收敛于驱动器内调用点 |
 | `kernel/cw_strategy_session.py` | `prep_obs_frame` 槽删除；`strategy_state_of` 等访问口不动 |
 
 实现位分布申报（各入口的实现位置，切换线按此覆盖）：`decide_prep_screen` = `bridge.py` 覆写体（唯一实现）；`decide_shop_action` = `flow.py` 缺省实现 + `mandate_v1/shop.py` 本体（已 gs-first 零改动）；`decide_encounter` = `flow.py` 缺省体 + `bridge.py` 覆写体（**生产在用**）；其余 pick 入口 = `flow.py` 缺省实现。
 
-测试仓（sr-od-test）随批：契约形状锁（成员计数与签名形状）、单帧锁构造翻新（断言对象不变——本批输出载体不变）、帧类写点守卫锁（prep_obs 写点改名涉及项）、handler 级行为锁（§2.6）。
+测试仓（sr-od-test）随批：契约形状测试（成员计数与签名形状）、单帧测试构造翻新（断言对象不变——本批输出载体不变）、帧类写点守卫测试（prep_obs 写点改名涉及项）、handler 级行为测试（§2.6）。
 
 ### 2.6 验证
 
 - **主凭据（可出事面的直接覆盖）**：
-  1. **decide 层语义锁**：单帧锁构造翻新后语义断言对象不变；invest 拆分同帧对照（同槽产物 → 同 PickEvent）；encounter 入口 `encounter_refreshed_in_visit` **四格对照**（首调 False / 累计闸命中后建议降格 / 刷新重决策 True / **重入重走首调复位 False**——各格与改前逐返回相同）。
-  2. **handler 级行为锁**（fixture_controller 流程测试，逐 handler 剧本：观察帧 → 写槽 → decide → 点击断言）：专锁 encounter **四格**（首调 / 累计计数命中闸「建议刷新但本局已用」/ 刷新后重决策 / **重入重走首调复位 False**）与空选项分支（不调 decide）；逐 handler 锁「每次决策恰以当次观察产物为单源」（§2.2-c 结构防线的回归化）。
+  1. **decide 层语义测试**：单帧测试构造翻新后语义断言对象不变；invest 拆分同帧对照（同槽产物 → 同 PickEvent）；encounter 入口 `encounter_refreshed_in_visit` **四格对照**（首调 False / 累计闸命中后建议降格 / 刷新重决策 True / **重入重走首调复位 False**——各格与改前逐返回相同）。
+  2. **handler 级行为测试**（fixture_controller 流程测试，逐 handler 剧本：观察帧 → 写槽 → decide → 点击断言）：专项测试 encounter **四格**（首调 / 累计计数命中闸「建议刷新但本局已用」/ 刷新后重决策 / **重入重走首调复位 False**）与空选项分支（不调 decide）；逐 handler 校验「每次决策恰以当次观察产物为单源」（§2.2-c 结构防线的回归化）。
   3. L1 快速集全绿 + 直接受影响域点名；收口 L3 全量一次。
 - **旁证（辖域局限显式申报；工具 = 现行可执行形态）**：改前/改后各跑现行回放（`python -m sr_od.application.currency_war.sim.cw_replay` 的 `--run/--rounds` 面）全 run 输出落盘 + 逐轮 plan 串文本 diff——仅覆盖 shop 驱动器路径（`decide_shop_action` 签名切换）；对 pick handler 链、payload 活写端、路由清点、prep_obs 迁移**结构性零覆盖**（sim 不调 pick 入口、不建模 prep_obs）——旁证非主凭据，防「空真当验证」。注：旧 `--diff` 分歧对比模式已退役（`sim/cw_replay.py` 模块头在册），strategy-work §4 所引 `cw_replay --diff` 条目与现行工具失同步 = 既有文档债，非本批辖。
 - **终验 = 实机一局 smoke**：预测锚点 = 决策迹（现行载体 = `kernel/cw_decision_trace`；其前身的 decisions 流写入端已随删除波 1 物理退役、在册禁复用）与改前同难度局对照无行为性分歧（识别噪声照旧）；候实机窗口执行，登记进度树——不阻代码收口，**阻迭代收尾**。

@@ -2,7 +2,7 @@
 
 > 无前提独立审查：攻击对象 = 本目录 design.md / landing.md / README.md（当前工作区状态）。
 > 判据源全部直调复核、未采信任何前轮报告结论：iteration-design.md（四硬规则/§7 三核/阶段七件）、
-> strategy-work.md（§1 零调参/§4 验证阶梯与可观测性/§5 单帧锁/§6 对抗纪律）、strategy-docs/00_framework.md
+> strategy-work.md（§1 零调参/§4 验证阶梯与可观测性/§5 单帧测试/§6 对抗纪律）、strategy-docs/00_framework.md
 > （宪法五/六）、math_proofs.md 索引（P40/P42/P81/P97 行）、同构先例 `changes/2026-09-23-invest-env-strategy-migration/design.md`
 > 与在飞 `changes/2026-09-23-invest-strategy-screen-migration/`；代码真值 = `src/sr_od/application/currency_war/` 下
 > kernel/cw_events.py、cw_equip_value.py、cw_survey19_hooks.py、cw_comps.py、cw_merge_simulate.py、cw_vocab.py、
@@ -38,10 +38,10 @@
 - **发现**：§2.4 称「op 语义不变、op 层零改动」；§2.6 与 landing 3.2 文件面均把 `cw_screen_supply_node.py` 列入（仅注释）。按字面「零改动」为假。
 - **修正方向**：改「op 层零**行为**改动（注释收口归 §2.6）」。
 
-### [R3-L5] 低 · design.md:80（§2.6 测试面）+ landing.md:15——「kernel 侧旧 supply 决策锁随删」所指在册锁不存在（直调零命中）
+### [R3-L5] 低 · design.md:80（§2.6 测试面）+ landing.md:15——「kernel 侧旧 supply 决策测试随删」所指在册测试不存在（直调零命中）
 
-- **发现**：sr-od-test 全仓 grep `decide_supply` 仅 3 行、全在 strategy 级 stub（`test_cw_obs_arch_event_screens_step3.py:47/61`、`test_cw_supply_pick_immediate_report.py:125`，桩的是 `match.strategy.decide_supply`——flow 方法名本批保留，stub 继续有效、不在删除面）；`cw_events.decide_supply`（kernel 函数）无任何测试直调锁。「kernel 侧旧 supply 决策锁随删」申报了一个不存在的东西。SupplyPick 面（`test_cw_unified_action_4.py:27-33/:303`）申报准确（直调核实恰此两处）。
-- **修正方向**：改写为「sr-od-test 无 kernel supply 决策锁（直调核实）；仅 `test_cw_unified_action_4.py:27-33/:303` 的 SupplyPick 类型 import 与构造点随删；两处 strategy 级 decide_supply stub（test_cw_obs_arch_event_screens_step3 / test_cw_supply_pick_immediate_report）因 flow 方法契约不变而不受影响」。landing 3.2 范围句同步。
+- **发现**：sr-od-test 全仓 grep `decide_supply` 仅 3 行、全在 strategy 级 stub（`test_cw_obs_arch_event_screens_step3.py:47/61`、`test_cw_supply_pick_immediate_report.py:125`，桩的是 `match.strategy.decide_supply`——flow 方法名本批保留，stub 继续有效、不在删除面）；`cw_events.decide_supply`（kernel 函数）无任何测试直调。「kernel 侧旧 supply 决策测试随删」申报了一个不存在的东西。SupplyPick 面（`test_cw_unified_action_4.py:27-33/:303`）申报准确（直调核实恰此两处）。
+- **修正方向**：改写为「sr-od-test 无 kernel supply 决策测试（直调核实）；仅 `test_cw_unified_action_4.py:27-33/:303` 的 SupplyPick 类型 import 与构造点随删；两处 strategy 级 decide_supply stub（test_cw_obs_arch_event_screens_step3 / test_cw_supply_pick_immediate_report）因 flow 方法契约不变而不受影响」。landing 3.2 范围句同步。
 
 ### [R3-L6] 低 · design.md:95（§2.7）+ landing.md:27/:36——25 号稿收口范围欠 §2 表行与 §1 prose；3.3 验收 grep 句缺可执行词表
 
@@ -64,7 +64,7 @@
 2. **码点直调（核一）**：design 引用的全部 文件：行号/函数/字段/表值逐一打开核对——cw_events.py（:1/:583/:585-596/:599-605/:609-612/:616-647/:633-635/:786/:1003/:1007）、cw_equip_value.py（:36/:42-80/:163-189 及 equip_tier 需求计数语义）、cw_survey19_hooks.py（:1-8/:46-56 + 全仓零消费 grep 含 sr-od-test）、cw_vocab.py（:729/:917）、cw_node_obs.py（:21/:206/:215 + read_supply_options roster 精确校验链 `cw_chars.py:198-200`）、cw_game_state.py（:113/:210/:2124/:2210-2229/:3648-3667）、cw_comps.py（:102-111/:108 缺省 + COMP_LIBRARY key_equips 21 处）、cw_merge_simulate.py（:93-119 身份协议 fail-closed/:337/:424-433）、cw_intention.py（:2075-2077/:2018-2033/pair_target_comp :1123-1194）、flow.py（:326-353/:516-518/:545-546/:548-553/:708-740）、cw_equipment_data.py（:53/:64-65）、pick_supply.py（:48-50/:80）、cw_sim_backend.py（:78/:172/:573-585/:1250-1257）、sim_backend_runner.py（:314-381）、cw_screen_supply_node.py（:8-14/:39-40/:187-190/:242-245/:275-292）、cw_effect_inventory.py（:1463-1513）。
 3. **行为变化申报逐条对码（核一）**：申报①③④⑤及 sim 可观测性申报（占位分布恒置一带钻槽 → 新旧 sim 读数恒同的推理链逐位验证）；申报②证伪见 R3-H1。
 4. **op 侧重调路径语义（核一）**：闸内嵌后 `cw_screen_supply_node.py:276-292` 触发面收缩论证逐步验证（left 同帧同源、纯函数重调、零点击终结）。
-5. **规范遵循（核二）**：iteration-design 四硬规则（依据标注——R3-M2/L8；无需再设计——逐阶段试读通过，含三级比较完备性/空帧/读缺/fail-closed 各边界；无过程叙事——design/landing 正文零过程句；全量同步——R3-L5/L6/L7 即复查产出）；阶段七件齐（3.1/3.2/3.3/末阶段各 7/7）；strategy-work §1 零调参（新算法零新自由参数；EQUIP_GENERIC_VALUE 按 16 号稿在册处置降格定序常数、表值零变化）、§4（sim 可观测性声明 ✓、实机锚点事前写定 ✓、验收线保全申报 ✓ 直调 batch_stats/proofs 无补给判据面、cw_replay --diff 已退役故不跑属合规——`cw_replay.py` 模块头在册）、§5 单帧锁（位置/语义锁/设计出处引用 ✓）、§6（prereg 保全清单 ✓）；AGENTS.md 双层文档流/as-built 无状态/引用寿命（无代码引 changes/ 长期引用；design 对 28/29 号稿的引用属先例指针非语义依赖）。
+5. **规范遵循（核二）**：iteration-design 四硬规则（依据标注——R3-M2/L8；无需再设计——逐阶段试读通过，含三级比较完备性/空帧/读缺/fail-closed 各边界；无过程叙事——design/landing 正文零过程句；全量同步——R3-L5/L6/L7 即复查产出）；阶段七件齐（3.1/3.2/3.3/末阶段各 7/7）；strategy-work §1 零调参（新算法零新自由参数；EQUIP_GENERIC_VALUE 按 16 号稿在册处置降格定序常数、表值零变化）、§4（sim 可观测性声明 ✓、实机锚点事前写定 ✓、验收线保全申报 ✓ 直调 batch_stats/proofs 无补给判据面、cw_replay --diff 已退役故不跑属合规——`cw_replay.py` 模块头在册）、§5 单帧测试（位置/语义测试/设计出处引用 ✓）、§6（prereg 保全清单 ✓）；AGENTS.md 双层文档流/as-built 无状态/引用寿命（无代码引 changes/ 长期引用；design 对 28/29 号稿的引用属先例指针非语义依赖）。
 6. **治本核验（核三）**：归层成立（分层语义 = 宪法五存量违例，语义 = 价值模型缺轴）；修法 = 迁移本体 + 改形判据，治根非症状；逐画面迁移节奏 = 宪法六明文规定的批结构，跨件半问不触发。
 7. **design↔landing↔README 同步（核一/规则 4）**：landing 三阶段设计依据锚全部存在且对应（§2.2-2.5/§2.6/§2.7）；正本更新清单 = §2.7 六项无缺漏；文件面路径全部真实存在（mandate_v1 目录逐文件核对，encounter.py「已搁置让位」表述与其 docstring :1 逐字一致）；README 引用的 attack/attack-r2 存在、进度与 §0 状态一致；kernel→strategies 零 import 方向 grep 核实；29 号稿占用申报与在飞批核实一致。
 8. **裁定与玩法真值对账（核三）**：宪法五/六引用与 00_framework §1 第 5/6 条逐字对上；「只为终局考虑」裁定与 user_playstyle（[13]/[23]/[29]/2026-09-07 精确化）方向一致；P40/P42/P81/P97 引用与 math_proofs 索引行一致（P42 🔴 待标定状态、P81 非 P81 辖域、P40 变体②在册）；08:19/13:20/:40/16:74/25:3-4/README §3 引文转述逐条准确（16 号稿「cw_events.py:293」死引用的现址改锚申报核实成立：实址 :616-647 与 :42-80、`sim/checks/ledger.py` 全仓零命中）。

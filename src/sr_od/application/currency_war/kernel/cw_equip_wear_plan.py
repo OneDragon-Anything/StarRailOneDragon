@@ -102,7 +102,7 @@ class EquipPlanBuild:
       不与 empty_reason 并用;
     - ``branch``: 'm7'(M7 角色级分配)| 'front_only'(身份读失败回退;
       空计划 NOOP 不挂哨兵,与今日该分支无哨兵覆盖一致);
-    - ``owned_wearable_names``: 计划面产出的本帧可穿名单快照,测试锁消费
+    - ``owned_wearable_names``: 计划面产出的本帧可穿名单快照,测试消费
       (零穿戴哨兵已停用,工具类过滤归 kernel 判据面)。
     """
     steps: list = field(default_factory=list)

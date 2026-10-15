@@ -233,7 +233,7 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
 
     node = gs.node.value
     if node is None:
-        # 位置缺失帧退化 (1, 1)(沿 env 屏先例;分支行为有单测锁)
+        # 位置缺失帧退化 (1, 1)(沿 env 屏先例;分支行为有单测)
         cur_plane, cur_round = 1, 1
     else:
         cur_plane, cur_round = int(node.plane), int(node.round_num)

@@ -489,7 +489,7 @@ def resolve_affix_priority_order(comp, view,
 #:   →逐件原子发出;消耗确认交叉核对随组合壳停用,上报 = 机械执行直接上报写
 #:   容器,容器写正本 = cw_action_report/tool_use)。
 #: 开分支后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
-#: (对照锁 sr-od-test test_cw_tools_exec_channel.py)。
+#: (对照测试 sr-od-test test_cw_tools_exec_channel.py)。
 TOOL_EXEC_CHANNEL_READY: bool = True
 
 #: 工具拒因分键(21 号稿 §4/§5 遥测:该烧没烧/误烧率/拒因分键)。

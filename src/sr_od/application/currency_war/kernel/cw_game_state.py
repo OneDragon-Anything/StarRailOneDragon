@@ -876,7 +876,7 @@ def _resolve_code_commit() -> str:
 def _normalize_stamp_value(o: Any) -> Any:
     """递归规范化为可稳定 JSON 化的结构(指纹口径,与
     telemetry/version_stamp._normalize 逐位同语义——桶依赖矩阵禁
-    kernel→telemetry import,就地复刻;等值性由局终锁交叉核对钉住):
+    kernel→telemetry import,就地复刻;等值性由局终交叉核对钉住):
     dataclass 转 dict(集合内成员 asdict 不递归,此处补)/dict 键 str 化并
     按键排序/set 先试原生排序、不可比退 JSON 串序(恒全序,default=repr
     兜住任意对象)/list·tuple 转 list。"""
@@ -960,7 +960,7 @@ class MatchFinal:
     cw4_counters: dict[str, int] | None = None
     # 策略行为观测计数局终聚合(键并入载体;键全集登记
     # 底稿 =  逐键审计 256 字面+16 闭族+9 开放族,全部=策略行为键,零
-    # 效果域键;键封闭性防线原由测试仓封闭锁承载,该锁随 09-13 有损清理
+    # 效果域键;键封闭性防线原由测试仓封闭测试承载,该测试随 09-13 有损清理
     # 删除且裁定(源码扫描形态)不恢复,防漂移归 review 与代码
     # 规范)。取值 =
     # 调用方收束时点自策略 state 容器(mandate_v1 StrategyState.cw4_counters)
@@ -1253,7 +1253,7 @@ def cost_source_group(cost_source: str) -> str:
 # ——两类型并存为长期形态,
 # **转换只许在本节两个映射函数发生**(喂入面/消费视图
 # 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内帧版类型的
-# 唯一合法引用面(静态锁适用范围,测试锁 test_cw_w5_* 守)。
+# 唯一合法引用面(静态测试适用范围,测试 test_cw_w5_* 守)。
 
 def shop_card_to_container(card) -> ShopCard:
     """旧容器牌 → 容器牌(喂入口的值构造单一源)。
@@ -1655,7 +1655,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 CwActionSellDeployedParam / CwActionSwapDeployParam
-#:   (语义源 = simulate 对应分支逐腿平移,直锁 test_gain_chain
+#:   (语义源 = simulate 对应分支逐腿平移,由 test_gain_chain 直接校验
 #:   卖/换上报 v2 族契约节钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
 #: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
@@ -3434,7 +3434,7 @@ _NODE_ADVANCE_DECL_TRIGGER: str = 'node_advance'
 _NODE_PLANE_TRANSITION_SCREEN: str = '货币战争-位面过渡'
 
 #: 节点类型 → 下一画面档名映射(推导规则第四步;与 sim 后端
-#: ``_screen_for_node`` 同映射,battle/reward 归备战档;对照锁逐值钉死)。
+#: ``_screen_for_node`` 同映射,battle/reward 归备战档;对照测试逐值钉死)。
 _NODE_KIND_NEXT_SCREENS: dict[str, str] = {
     'supply': '货币战争-补给',
     'encounter': '货币战争-遭遇节点',
@@ -4158,7 +4158,7 @@ def back_capacity_of(gs: GameState) -> int:
 
     ⚠️ 语义修正申报(调研草案 §4/风险 7):静态 6 基线
     与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
-    后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
+    后排容量门输出随之修正,行为差由 cap 域测试(test_cw_cap_domain/
     test_cap_override_link)重推语义覆盖。单一源:``max_units_of`` 封顶
     域与本读口同式,禁消费面内联第二份。"""
     back = gs.back_layout.value

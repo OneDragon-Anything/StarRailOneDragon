@@ -13,8 +13,8 @@ design.md §2.2 表;记账载体 = `gs.equips` 合并单笔写;冶金炉 rng 关
 EQUIP_WRITE_SIDES 词表扩展第五形 `report:<函数名>`(校验器同步)+ 逐行终值
 (design §2.3 表);⑤cw_vocab 七类 docstring、cw_equip_env/cw_effect_inventory/
 cw_game_state(consumables 指针)/cw_projection_audit 注释面同步(design §2.6);
-⑥测试(design §2.5:逐工具写端锁/采样对拍锁/走链锁/变异不走链锁/fail-closed 锁/
-词表校验锁/回归)。
+⑥测试(design §2.5:逐工具写端测试/采样对拍测试/走链测试/变异不走链测试/fail-closed 测试/
+词表校验测试/回归)。
 **边界**:不动 gain-chain 3.2(pick_invest 接线);不动并行批在飞面(`vopt.py`/
 `cw_screen_battle_wait.py`/`cw_op_settle_confirm.py`);正本文档归末阶段。
 **设计依据**:design.md §2.0–§2.5(全分支与失败安全)。
@@ -22,7 +22,7 @@ cw_game_state(consumables 指针)/cw_projection_audit 注释面同步(design §2
 **依赖**:gain-chain 3.1(已落地,cw_gain_chain.py 在库)。
 **优先级建议**:9
 **完成判据**:
-- design §2.5 测试面全项绿;zero_writes 七函数归零;`EQUIP_WRITE_SIDES` 校验锁绿;
+- design §2.5 测试面全项绿;zero_writes 七函数归零;`EQUIP_WRITE_SIDES` 校验测试绿;
 - L1 全量通过(`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow and not legacy_baseline" -q`)。
 **验收凭据形式**:测试名 + L1。
 

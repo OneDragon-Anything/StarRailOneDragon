@@ -34,7 +34,7 @@
 
 **A4｜对照表 #3/#4 next_screen = `'货币战争-战斗等待'` 不是 screen_info 档名，且与 sim 现役呈现矛盾**
 - 位置：details/world-decl.md §2 表 #3 start_battle、#4 pick_encounter 的 next_screen 列
-- 发现：三重错误。① 权威性：本篇自设「画面档名字面值权威 = `assets/game_data/screen_info/` 各档 + `sim/cw_sim_backend.py` 档名常量」（详设 §问题与约束），但 screen_info 档名集与 backend 常量集中**均无**「货币战争-战斗等待」——它是 journal 上下文名/op 名（cw_game_state.py:275 `BATTLE_WAIT_CONTEXT`；CwScreenBattleWait 的 op_name），非画面档。② sim 行为：`battle_resolve` 腿 `_resolve_battle` 终态呈现 `SCREEN_SETTLE = '货币战争-结算'`（cw_sim_backend.py:185,1340；模块注释还专门记录了 T-2 初版取错档名致推进链不可达的教训）→ §3 对账面「实际画面 == next_screen 等值断言」**每场战斗必失配**。③ 设计自引依据自相矛盾：#3 行内标注「sim `_resolve_battle` 呈现结算页」，结算页 = '货币战争-结算' ≠ 表值。对照锁若按表实现 = 把语义错误锁进 schema。
+- 发现：三重错误。① 权威性：本篇自设「画面档名字面值权威 = `assets/game_data/screen_info/` 各档 + `sim/cw_sim_backend.py` 档名常量」（详设 §问题与约束），但 screen_info 档名集与 backend 常量集中**均无**「货币战争-战斗等待」——它是 journal 上下文名/op 名（cw_game_state.py:275 `BATTLE_WAIT_CONTEXT`；CwScreenBattleWait 的 op_name），非画面档。② sim 行为：`battle_resolve` 腿 `_resolve_battle` 终态呈现 `SCREEN_SETTLE = '货币战争-结算'`（cw_sim_backend.py:185,1340；模块注释还专门记录了 T-2 初版取错档名致推进链不可达的教训）→ §3 对账面「实际画面 == next_screen 等值断言」**每场战斗必失配**。③ 设计自引依据自相矛盾：#3 行内标注「sim `_resolve_battle` 呈现结算页」，结算页 = '货币战争-结算' ≠ 表值。对照测试若按表实现 = 把语义错误钉进 schema。
 - 依据：grep screen_info 全部 yml `screen_name`（无「货币战争-战斗等待」，实存 = 货币战争-战斗结算/结算/结算-失败/结算-战报/结算-对局详情）；sim/cw_sim_backend.py:180-185,1340-1341；kernel/cw_game_state.py:275。
 - 修订建议：#3/#4 next_screen 改 `'货币战争-结算'`（与 trigger=battle_resolve 的 sim 呈现一致，对账可成立）；实机侧该值仅作 journal 记账料，同样以结算档为准。
 
@@ -155,11 +155,11 @@
   - **kind 映射错一位**：P1r4(battle) 确认 → 新节点 P1r5(supply)，规则读旧 kind=battle → 声明 `'货币战争-备战'`，backend 进窗呈现 `'货币战争-补给'`（cw_sim_backend.py:949-967,1250-1256）——对账系统性失配、journal 错值，A1 以「恒指旧节点」形态复发；
   - **位面切换分支失效**：P1r9(boss, plane=1) 确认 → 新节点 P2r1 应声明 `'货币战争-位面过渡'`；旧键 (1,9) 落 kind 映射 → `'货币战争-BOSS简报'`；
   - **局终分支永不可达**：旧节点 kind 恒在五类映射域内 → 「kind 不在映射域 → ''」永不触发；P2r7(boss) 末确认声明 BOSS 简报档而 backend `_game_over` → 大厅 → 详设 §3 新局终断言（`done ∧ 大厅`）必炸；
-  - **「落地核对点」不可执行**（§2:75「eff=17 时 NodeKey kind 取值/守卫分支，对照锁按核对结果锁定」）：eff=17 时容器内**不存在**对应 NodeKey（镜像停在 P2r7），预设的「取值」无从核对；且「按核对结果锁定」= 把局终语义留给实现期发现，违反 iteration-design §5 规则 2（「看情况/待定」= 未定稿）。
+  - **「落地核对点」不可执行**（§2:75「eff=17 时 NodeKey kind 取值/守卫分支，对照测试按核对结果锁定」）：eff=17 时容器内**不存在**对应 NodeKey（镜像停在 P2r7），预设的「取值」无从核对；且「按核对结果锁定」= 把局终语义留给实现期发现，违反 iteration-design §5 规则 2（「看情况/待定」= 未定稿）。
 - 「零序列表依赖」立论本身不成立：新节点的 kind 在构造时刻容器内**任何位置都不存在**——NodeKey 未写；`chain_node_type`（:3382-3405）诚实缺位 = None 禁猜，且链写端 = 过渡屏/备战帧观察（:84-85），settle 时点无「下一位面链已在位」契约。要推出新节点画面绕不开序列真值，其在役唯一宿主 = `sim/cw_sim_plane_schedule.py`（A3 的原发现仍然成立，只是换了表述藏进了「NodeKey 真值」）。
 - 修订方向（三选一，设计方裁决后全量同步 design.md 契约 1、详设 §1/§2、landing 3.2 范围与判据）：
   - **(a) 序列真值表迁 kernel**（推荐）：`cw_sim_plane_schedule.py` 纯数据零依赖已核，迁为 kernel 模块、backend 改 import；推导 = 推进后 `effective_node_ord(gs)` → kernel 公式反解 (plane, round)（`node_ordinal_of` :284-287 / `_node_key_for_ord` :3120-3126 现成；公式 = 9/位面，与 backend 变长累加在 P1+P2 域重合的前提 P1=9 须随注声明）→ 表取 kind → 映射画面；`eff > P1+P2 总长 → ''`。保住双维契约与实机 journal 记账。landing 3.1 或 3.2 文件面补该迁移。
-  - **(b) node_advance 的 next_screen 恒 ''**（改动最小）：语义 =「声明不携带，backend 自派」；backend `_on_node_advance` 自派画面、对账对其自洽（断言窗呈结果与自身推导一致）；实机 journal 对 node_advance 类无预期画面。须同步收窄总纲 §2.1 消费表（node_advance 行 sim 退化为 trigger-only）与详设 §7 对照锁（该类只锁 trigger）。
+  - **(b) node_advance 的 next_screen 恒 ''**（改动最小）：语义 =「声明不携带，backend 自派」；backend `_on_node_advance` 自派画面、对账对其自洽（断言窗呈结果与自身推导一致）；实机 journal 对 node_advance 类无预期画面。须同步收窄总纲 §2.1 消费表（node_advance 行 sim 退化为 trigger-only）与详设 §7 对照测试（该类只校验 trigger）。
   - **(c) 构造点延后到「新键已写」——否决**：不存在这样的 kernel 侧时机（新键由观察写），供裁决时排除。
 - 同步面（R1 修复时一并改）：① design.md 契约 1 的「容器 NodeKey 真值…零序列表依赖」句；② 详设 §1 单值依据段、§2 规则块与落地核对点；③ landing 3.2 范围「按 NodeKey 真值映射推导」句与完成判据「含局终分支核对——P2 末确认在现役观察态门内的形态」（同病的实现期核对措辞，改为按修订后规则确定性锁定）。
 

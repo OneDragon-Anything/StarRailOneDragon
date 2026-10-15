@@ -11,7 +11,7 @@
 **完成判据**：
 - 审计清单交付：两执行路径逐项行为对照（**部署原子序**/屏态复验/浮层安全检查/失败语义/免战子态/重发形态），每项标注归属与合并语义；**含逐调用面行为差矩阵（op 策略面 vs loop 恢复局面面）、浮层安全检查内嵌位（锚表+遭遇 OCR 兜底原样，两调用面同保）、遥测逐键宿主映射表**；失败语义按调用面分轨（以实码为准，不静默统一）；
 - 审计清单交付 = [audit-executor.md](audit-executor.md)（三路径盘点/内部序规格/宿主路由/逐键映射表）；
-- 统一执行器就位（直测；接线归 3.3）；既有出战行为锁 = 空集（审计 §2.4 实证），首批直测随本阶段交付；
+- 统一执行器就位（直测；接线归 3.3）；既有出战行为测试 = 空集（审计 §2.4 实证），首批直测随本阶段交付；
 - 日志标签审计输出（供 3.4 哨兵/正本对照）；
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：审计清单 + 测试名 + ruff。
@@ -19,17 +19,17 @@
 ## 3.2 策略发射位（发射决策入 mandate_v1，简单实现）
 **范围**：mandate 决策入口三遍编排函数（entry.py）入口最前新增前置发射位（直线判定）：消费 kernel `readiness_launch_decision` → armed ∧ `in_launch_spend_zone` 命中 → 产出受限商店访问意图（OpenShop 扩展受限字段）；armed ∧ 未命中 → 产出 StartBattle 终点意图；非 armed → 原三遍编排零变化。边界：不重构三遍化结构；`cw_launch_admission` 不动。
 **设计依据**：design.md §2 方案 3。
-**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`（决策入口三遍编排函数）；`src/sr_od/application/currency_war/kernel/cw_vocab.py`（OpenShop 受限字段）；sim 适配器动作映射（op-layer §2.5 两适配器同批）；`sr-od-test/test/sr_od/app/currency_war/`（单帧锁随迁）。
+**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`（决策入口三遍编排函数）；`src/sr_od/application/currency_war/kernel/cw_vocab.py`（OpenShop 受限字段）；sim 适配器动作映射（op-layer §2.5 两适配器同批）；`sr-od-test/test/sr_od/app/currency_war/`(单帧测试随迁)。
 **依赖**：无（与 3.1 并行可行）。
 **优先级建议**：5
 **完成判据**：
-- 单帧锁：armed 帧 → StartBattle 意图（14_p1 §7.2 达标臂锁组 W2-① 随迁新载体）；armed ∧ `in_launch_spend_zone` 命中帧 → 受限访问意图（非发射）；非 armed 帧 → 意图序与迁移前逐项一致（W2-① 非达标帧零变化锁随迁）；
+- 单帧测试：armed 帧 → StartBattle 意图（14_p1 §7.2 达标臂测试组 W2-① 随迁新载体）；armed ∧ `in_launch_spend_zone` 命中帧 → 受限访问意图（非发射）；非 armed 帧 → 意图序与迁移前逐项一致（W2-① 非达标帧零变化测试随迁）；
 - 帧级金判定直调 kernel `in_launch_spend_zone`（grep 禁内联息线比较与 launch_arbitration_gate 误用）；每武装段至多一次（段旗 = StrategySession 字段，失武装复位，复位后再武装允许新段再访）；访问意图不经 S1 闩与 OpenShop 节流；
 - 遥测：策略宿主键写点就位（执行器宿主键归 3.1；KEY_PRECHECK_SKIP/KEY_ABANDONED_LAUNCH 退役申报）；
 - 息线值源 = kernel 派生（断言经 cw_economy 读口，非手写常数——零调参纪律）；
-- 全量 CW 测试绿（含 mandate 既有锁组）；
+- 全量 CW 测试绿（含 mandate 既有测试组）；
 - §12 通用工程门（引用，不复述）。
-**验收凭据形式**：单帧锁名 + ruff。
+**验收凭据形式**：单帧测试名 + ruff。
 
 ## 3.3 op 接管 + cw_loop 备战分支收敛（原子切换，同一提交）
 **范围**：达标臂四段从 cw_loop 备战分支退役（判定消费随 3.2 入策略；浮层闸整建制内嵌统一执行器（捕获面原样）；仲裁由 3.2 意图序承载）；受限商店访问执行按意图预算闸接入；交回契约落地（`launch_fired` + loop 战斗窗置位改读契约）；`_prep_anchors_hit` 仲裁预检退役（双锚守卫由 op 入口承接）。边界：恢复局面直通形态不变（调统一执行器）、`cw_launch_admission` 不动。
@@ -38,10 +38,10 @@
 **依赖**：3.1、3.2
 **优先级建议**：5
 **完成判据**：
-- 定向回归：达标帧发射恰一次（跨帧形态 = 受限访问帧 + 次帧发射帧，两帧合计恰一次，W2 锁面）；非达标帧备战序零变化；浮层命中帧不发射且次帧重判；
+- 定向回归：达标帧发射恰一次（跨帧形态 = 受限访问帧 + 次帧发射帧，两帧合计恰一次，W2 测试面）；非达标帧备战序零变化；浮层命中帧不发射且次帧重判；
 - 交回契约：`launch_fired` 优先于 outcome（发射成功 ∧ outcome=fail 形态战斗窗照置，帧锚兜底申报保留）；op 发射后 loop 正确置战斗窗；
 - 受限访问保留 `[cw-op]` 第三载体行 op='发射帧仲裁商店访问'（口径不变）；
-- 恢复局面回归：锁定局直通行为零变化（闩只辖恢复局面的既有锁保持）；
+- 恢复局面回归：锁定局直通行为零变化（闩只辖恢复局面的既有测试保持）；
 - 全量 CW 测试绿；grep 达标臂特征符号在 cw_loop 备战分支零残留；
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：测试名 + grep 输出。

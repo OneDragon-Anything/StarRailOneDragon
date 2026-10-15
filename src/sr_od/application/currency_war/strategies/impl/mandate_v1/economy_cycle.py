@@ -253,7 +253,7 @@ def disclose_budget(state: Any, session: StrategySession,
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
     旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
     决策输入——决策输入 = obs(黑板)+ session 容器直读,披露面字段
-    禁决策消费(语义锚 = mandate_state.py 披露字段注释与守卫锁
+    禁决策消费(语义锚 = mandate_state.py 披露字段注释与守卫测试
     test_economy 预算遥测披露节;禁令防线 = review 与代码规范:禁读约束
     已申报于本包模块 docstring)。写端只有本函数与商店执行回执位
     (operations/cw_screen/cw_screen_shop.accrue_release_spent,

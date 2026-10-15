@@ -91,10 +91,10 @@ blocker × 4，major × 3，minor × 4。根因归层（语义层）成立、修
 | B2 | ✅ 已解决。§2.4「多点载荷语义」定义到可实施：逐点顺序推演、每点独立守卫/roll/写行、evidence 点序 `#ore<k>`、席满累计判（含前点角色耗位）该点跳过留 spheres、后续点继续判；引在册裁定佐证。 | design §2.4 |
 | B3 | ✅ 已解决（余一处误名，见新 minor R1）。§2.5 重写为炉先例旁路直调：引擎前置分派拦截、`eng.ore_uses`（`furnace_uses` 同型实证存在）、拒分支不耗序（与 `_apply_furnace` L418-425 先判后计次序一致）、apply_player_action 主表不动（实证其确无 CollectOre 分支，主表零改动正确）。 | design §2.5；cw_sim_engine.py L407-426 |
 | B4 | ✅ 已解决。流键 `M1x/ore/{uses}`，uses = 局内点矿动作单调序 1 基引擎计数，满足流键硬约束（模块号+局内坐标），与 `M10/炉/{uses}` 同型；批内同一 rng 实例顺序推进、跨批坐标隔离，语义完备。 | design §0 裁决7 / §2.3 / §2.5 |
-| M1 | ✅ 已解决。§2.2 #1 + §2.4 步 3c+ 明定「每级合并后每个受该级影响的域各落一行（整表值），双域变更两行同号」，board 逐级派生行申报为预期流水；landing 3.1 判据含双域两行行为锁。 | design §2.2/§2.4；landing 3.1 |
+| M1 | ✅ 已解决。§2.2 #1 + §2.4 步 3c+ 明定「每级合并后每个受该级影响的域各落一行（整表值），双域变更两行同号」，board 逐级派生行申报为预期流水；landing 3.1 判据含双域两行行为测试。 | design §2.2/§2.4；landing 3.1 |
 | M2 | ✅ 已解决。§2.4「None 域边界」：None 跳写不标记、抽中域 None 跳采样写、bench 未观察整批拒 `'bench_unobserved'`；board 无基座跳过引既有门（L2800-2802 实证）。 | design §2.4 |
 | M3 | ✅ 已解决。正本清单补 fields.md §4.2 ClickSpheres 与 action-logic-state.md §3.6 两行，改写口径明示。 | landing 正本清单 |
-| minor×4 | ✅ 全部解决：§0 元信息（目标/状态/文档清单）补齐（design L3）；game doc 落点定死新建 `research/sphere_rewards.md`；landing 3.1 判据补 `_write_logic_frame`/`_resync_board_delta` docstring 同步；披露键落点 = `ORE_ASSUMPTION_KEYS`（§0.1 末行 + landing 3.2 判据键名一致性锁）。 | design L3/§0.1；landing 3.1/3.2/清单 |
+| minor×4 | ✅ 全部解决：§0 元信息（目标/状态/文档清单）补齐（design L3）；game doc 落点定死新建 `research/sphere_rewards.md`；landing 3.1 判据补 `_write_logic_frame`/`_resync_board_delta` docstring 同步；披露键落点 = `ORE_ASSUMPTION_KEYS`（§0.1 末行 + landing 3.2 判据键名一致性测试）。 | design L3/§0.1；landing 3.1/3.2/清单 |
 
 ### ② 修订引入的新主张攻击
 
@@ -105,7 +105,7 @@ blocker × 4，major × 3，minor × 4。根因归层（语义层）成立、修
 
 ### ③ 全量同步复查（design ↔ landing ↔ README）
 
-- landing 3.2 文件面已由 `cw_sim_actions.py` 改为 `cw_sim_engine.py`，与 §2.5 一致 ✓；3.2 判据（多点锁/席满即止锁/双域行/None 边界/sim 接线锁/拒分支先于任何写）与 design §2.4/§2.5 逐条对得上 ✓；README 进度（对抗审中/0/3）仍准确 ✓；上轮核过的全部锚无回归，修订新增锚（`SPHERE_CLICK_BATCH_MAX_K`、`_apply_furnace`、`furnace_uses`、screen_flow_timing #16、`ORE_ASSUMPTION_KEYS`）全部实存 ✓。
+- landing 3.2 文件面已由 `cw_sim_actions.py` 改为 `cw_sim_engine.py`，与 §2.5 一致 ✓；3.2 判据（多点测试/席满即止测试/双域行/None 边界/sim 接线测试/拒分支先于任何写）与 design §2.4/§2.5 逐条对得上 ✓；README 进度（对抗审中/0/3）仍准确 ✓；上轮核过的全部锚无回归，修订新增锚（`SPHERE_CLICK_BATCH_MAX_K`、`_apply_furnace`、`furnace_uses`、screen_flow_timing #16、`ORE_ASSUMPTION_KEYS`）全部实存 ✓。
 
 ### 复审新发现（均 minor，定稿可带）
 

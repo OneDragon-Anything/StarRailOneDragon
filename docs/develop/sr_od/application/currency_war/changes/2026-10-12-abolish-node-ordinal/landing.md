@@ -34,11 +34,11 @@
 **依赖**:3.1
 **优先级建议**:0
 **完成判据**:
-- 行为对照 design.md §2.2(两态字段/原语处置表/终局锁)、§2.3(直定与查链)、§2.4(账本三语义 + cw_gain_chain 消费)、§2.5(锚定写端)、§2.6(sim 簿记/进窗/局终腿)、§2.8(快照往返/旧档忽略);
-- 默认环境 sim 全链回归与现役基线逐值同(design §2.11 锁 9);修饰局回归 = T-8 既有测试面全绿;
+- 行为对照 design.md §2.2(两态字段/原语处置表/终局测试）、§2.3(直定与查链)、§2.4(账本三语义 + cw_gain_chain 消费)、§2.5(锚定写端)、§2.6(sim 簿记/进窗/局终腿)、§2.8(快照往返/旧档忽略);
+- 默认环境 sim 全链回归与现役基线逐值同(design §2.11 测试 9);修饰局回归 = T-8 既有测试面全绿;
 - 本批文件内 `node_ord`/`node_hist_ord`/`node_ordinal`/`_node_key_for_ord`/`node_pos_of`/`effective_node_ord`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord` 符号零残留(grep 自证,入提交说明;`node_ordinal` 裸词覆盖 `node_ordinal_of` 与 `tick_node` 旧形参名);
 - 完成前常规检查(本文首节,含 kernel/sim 全量)。
-**验收凭据形式**:design §2.11 锁 1-6/8/9 对应测试;sim 默认局全链一条(基线数字对照)。
+**验收凭据形式**:design §2.11 测试 1-6/8/9 对应测试;sim 默认局全链一条(基线数字对照)。
 
 ## 3.3 同式岛收口(败局闩)
 
@@ -48,10 +48,10 @@
 **依赖**:无(可与 3.2 并行;建议排后只为本批文件面清晰,非硬依赖)。
 **优先级建议**:1
 **完成判据**:
-- 败局闩与旧 t 门逐值对拍((1,10)/(2,1)/(2,4)/(2,5) 边界,含修饰局形态;design §2.11 锁 7);
+- 败局闩与旧 t 门逐值对拍((1,10)/(2,1)/(2,4)/(2,5) 边界,含修饰局形态;design §2.11 测试 7);
 - 结算单调门(元组比较)与 killed 门零接触核对申报入提交说明;
 - 完成前常规检查(本文首节)。
-**验收凭据形式**:design §2.11 锁 7 测试;边界值对拍表。
+**验收凭据形式**:design §2.11 测试 7;边界值对拍表。
 
 ## 3.4 遥测与载体收口
 
@@ -76,14 +76,14 @@
 **完成判据**:
 - 门面/就地迁移行为对照 details §3-§6(签名不变/语义逐字保留/禁新公共视界口);
 - 行为变化对照 details §8 申报面(修饰局视界修正/P3 虚拟轮移除/boss 计数 kind 化/标定域收紧);
-- design §2.11 锁 10 对应测试;
+- design §2.11 测试 10 对应测试;
 - 退役 11 符号全仓 grep 零残留(自证入提交说明);
 - 完成前常规检查(本文首节,含 kernel/sim 全量)。
-**验收凭据形式**:design §2.11 锁 10 测试;门面默认表与现役 schedule_of 逐值对照表。
+**验收凭据形式**:design §2.11 测试 10;门面默认表与现役 schedule_of 逐值对照表。
 
 ## 3.6 全仓清零核对
 
-**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**合法剩余预登记**:test_cw_battle_wait_defeat_latch.py 对拍测试内嵌的旧门公式 `(p-1)*9+r` = 对拍参照(锁 7 逐值等价证明的载体),非残留,勿开修复批;`node_t_of` 的「历史消费点已删」docstring 句(cw_plane_table,T-8 落地注)同属合法历史注;**测试仓 `acquired_t` 命名残留 2 处**(T-2 验收发现,登记于 reviews/T-2-r1.md)= 判据驱动清理项,已随 3.5 清零;**p2_blood_band docstring 重复句 1 处**(T-5 验收发现,插入所致)= 注释卫生清理项,随本阶段清理。**边界**:除预登记清理项外纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收)。
+**范围**:对照 design §2.9 改清单与 §1.1 底册(14 处公式 + 具名常量几何层),全仓 grep 核对清单——编号族符号:`node_ord`/`node_hist_ord`/`effective_node_ord`/`node_ordinal_of`/`node_pos_of`/`_node_key_for_ord`/`_obs_node_ordinal`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord`/`SETTLE_DEFEAT_LATCH_MIN_T`/`AnchorEvent` 的 `node_seq`;视界族符号:`node_t_of`/`schedule_of`/`r_remaining`/`r_global`/`r_remaining_in_plane`/`plane_offsets`/`plane_end_slots`/`NODES_PER_PLANE`/`TOTAL_NODES`/`DEFAULT_PLANE_LENGTHS`/`PLANE_FALLBACK_PRIORS`;式样:`*9`/`//9`/`%9` 身份语义命中。残留学面逐处判读:叙述性历史注记(模块头版本注/退役注)合法,活代码/活契约引用 = 打回对应阶段。**合法剩余预登记**:test_cw_battle_wait_defeat_latch.py 对拍测试内嵌的旧门公式 `(p-1)*9+r` = 对拍参照(测试 7 逐值等价证明的载体）,非残留,勿开修复批;`node_t_of` 的「历史消费点已删」docstring 句(cw_plane_table,T-8 落地注)同属合法历史注;**测试仓 `acquired_t` 命名残留 2 处**(T-2 验收发现,登记于 reviews/T-2-r1.md)= 判据驱动清理项,已随 3.5 清零;**p2_blood_band docstring 重复句 1 处**(T-5 验收发现,插入所致)= 注释卫生清理项,随本阶段清理。**边界**:除预登记清理项外纯核对,零代码改动(发现残留开修复批处理完再回到本阶段验收)。
 **设计依据**:design.md §1.1(底册)/§2.9(改清单)/§1.3(清零目标)/§2.7(视界族)。
 **文件面**:无(核对报告入提交说明/迭代 README 进度注)。
 **依赖**:3.2、3.3、3.4、3.5

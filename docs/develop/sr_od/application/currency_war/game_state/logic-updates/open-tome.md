@@ -35,7 +35,7 @@
 
 ## 7. 语义验证
 
-腾位写入语义单一源 = `report_action_open_tome_param`(bench kind 'tome' → 'empty',陈旧提案零写;行为锁 = `test_cw_unified_action_2a` 动作类型覆盖锁)。触发物识别 = 容器 bench 槽 kind 细分(读链识别期定 kind,决策分支读容器分派;行为锁 = mandate_v1 决策面 bench kind 分派用例)。选卡后果归观察(ConfirmTome 登记)。
+腾位写入语义单一源 = `report_action_open_tome_param`(bench kind 'tome' → 'empty',陈旧提案零写;行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试)。触发物识别 = 容器 bench 槽 kind 细分(读链识别期定 kind,决策分支读容器分派;行为测试 = mandate_v1 决策面 bench kind 分派用例)。选卡后果归观察(ConfirmTome 登记)。
 
 ## 8. 判例注记(动作发出阶段)
 

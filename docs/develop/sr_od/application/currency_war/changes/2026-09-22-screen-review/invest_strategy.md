@@ -56,7 +56,7 @@
 **代码面**(`operations/cw_screen/cw_screen_invest_strategy.py::CwScreenInvestStrategy._decide_and_act`,本稿唯一行为变更点):
 
 1. 删局外 else 分支整段(直调 `decide_event` 组装选卡 param,含内嵌 `GameState`/`GAME_STATE_SCHEMA_VERSION` 局部 import)。
-2. match 判空提前为早退出口,置于空候选检查**之后**(顺序依据:空候选 = OCR 读缺 bug 面显式失败,契约与局外无关,在册锁 `test_invest_strategy_empty_opts_fail_not_blindfire` 不回退):
+2. match 判空提前为早退出口,置于空候选检查**之后**(顺序依据:空候选 = OCR 读缺 bug 面显式失败,契约与局外无关,在册测试 `test_invest_strategy_empty_opts_fail_not_blindfire` 不回退):
 
 ```python
 match = self.ctx.cw_match
@@ -78,13 +78,13 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 
 **行为变化申报**:独立跑该屏(经 run_operation/独立应用直跑)不再完整走选卡——原局外分支以裸空容器 decide_event 产决策并真实点击选卡确认链;生产对局(cw_loop 分发)零行为变化(路径不可达面)。
 
-**测试面**(`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py` 投资策略臂):现役测试全部经 match 桩(`SimpleNamespace(strategy=...)`)或空候选早退,无测试消费局外分支(单一源 = 该文件投资策略段核读),零回退;补一锁(建议名 `test_invest_strategy_no_match_zero_decision_handback`):ctx.cw_match = None + 非空候选 obs → act = round_success、点击记录为空、零派发零上报。
+**测试面**(`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py` 投资策略臂):现役测试全部经 match 桩(`SimpleNamespace(strategy=...)`)或空候选早退,无测试消费局外分支(单一源 = 该文件投资策略段核读),零回退;补一测试(建议名 `test_invest_strategy_no_match_zero_decision_handback`):ctx.cw_match = None + 非空候选 obs → act = round_success、点击记录为空、零派发零上报。
 
 **文档面**(`screens/invest_strategy.md`):§4 伪代码「(无 match 局外防御 = 裸空容器 decide_event,且显式跳过刷新链)」行替换为「(无 match 局外 = 零决策零点击 round_success 终结交回——遭遇屏同款;生产对局分发恒有 match,该出口仅独立跑可达)」;§5 终结表补行:`| 局外无 match(仅独立跑可达) | 访问终结 | round_success 交回(零决策零点击;画面 op 不产决策,flow/README §1 铁律) |`。
 
 **关键取舍**:
 
-1. **方向①(删局外决策、零点击交回)vs 方向②(保留通道 + op-layer §1.1 增补「局外兜底决策」条款 + 画面篇申报,as-built 背书)**:取①。①是铁律字面的唯一合理解——「决策的值域与节拍永远由策略器在决策时决定」,局外无策略器可调 = 零决策是该句的直接结论,方向②需为铁律新开例外条款;①族内一致(遭遇屏在先例,已核读);①生产不可达——独立跑非生产契约,为不可达路径扩正本条款 = 正本为死代码背书,且族内两态并存会让后续逐屏审查重复重裁(投资环境屏同病即同族第 2 件,统一按①收敛免逐屏补条款)。代价 = 独立跑行为面损失(见行为变化申报),而该面此前本无验收语义(裸空容器 decide_event 的输出无正本规格、无测试锁),选卡确认链 end-to-end 验证归局内实跑或 harness 测试(fixture_controller 桩 match)。
+1. **方向①(删局外决策、零点击交回)vs 方向②(保留通道 + op-layer §1.1 增补「局外兜底决策」条款 + 画面篇申报,as-built 背书)**:取①。①是铁律字面的唯一合理解——「决策的值域与节拍永远由策略器在决策时决定」,局外无策略器可调 = 零决策是该句的直接结论,方向②需为铁律新开例外条款;①族内一致(遭遇屏在先例,已核读);①生产不可达——独立跑非生产契约,为不可达路径扩正本条款 = 正本为死代码背书,且族内两态并存会让后续逐屏审查重复重裁(投资环境屏同病即同族第 2 件,统一按①收敛免逐屏补条款)。代价 = 独立跑行为面损失(见行为变化申报),而该面此前本无验收语义(裸空容器 decide_event 的输出无正本规格、无测试),选卡确认链 end-to-end 验证归局内实跑或 harness 测试(fixture_controller 桩 match)。
 2. **早退出口用 round_success 而非 round_fail**:局外不可决策非失败(与遭遇屏「零点击终结交回重读」同语义);round_fail 会喂外环连续 fail 重派网与哨兵噪音,且局外语境下外循环重进无重观察收益(无 match 可重建),交回即终结是唯一有意义的落点。
 
 ### 2.2 F-2 处置(修订改判:销项登记,零落地面)
@@ -125,7 +125,7 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 - **§4 随机面**:链入口 `rand=False` 确定性;效果体含采样(骇客改件)对其子链翻转 `rand=True`(gain-chain.md §5)。
 - **§5 拒绝语义**:无效载荷 = 链内零写 + 留证(输入拒绝,非防重复保护);重复上报 = 零幂等闸、跳写去重仅为数据卫生,bug 面按 bug 治理(gain-chain.md §2.4 腿 1)。
 - **§6 kernel 符号锚**:`kernel/cw_vocab.py` 两 param 类;`operations/cw_op/cw_action_registry.py` 两行;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickInvestOp`/`OverlayPickExecEnv`;`kernel/cw_action_report/pick_invest_strategy.py`/`pick_invest_env.py`;`kernel/cw_gain_chain.py::gain_invest_strategy`/`gain_invest_env`。
-- **§7 语义验证**:`test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链)+ `test_cw_gain_chain.py`(链腿)+ `test_cw_unified_action_4.py`(注册表分派)。依据拆注:test_cw_yinlang_phase32.py / test_cw_unified_action_4.py = `screens/invest_strategy.md` §9 在册申报;test_cw_gain_chain.py 实存依据 = T-6-r1 报告 §3.7(§9 测试锁清单未列——附带诉求登记:`screens/invest_strategy.md` §9 测试锁清单补该文件一行「获得链锁」,随本稿 invest_strategy.md 文档批一并落,见 §2.6 总表)。
+- **§7 语义验证**:`test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链)+ `test_cw_gain_chain.py`(链腿)+ `test_cw_unified_action_4.py`(注册表分派)。依据拆注:test_cw_yinlang_phase32.py / test_cw_unified_action_4.py = `screens/invest_strategy.md` §9 在册申报;test_cw_gain_chain.py 实存依据 = T-6-r1 报告 §3.7(§9 测试清单未列——附带诉求登记:`screens/invest_strategy.md` §9 测试清单补该文件一行「获得链测试」,随本稿 invest_strategy.md 文档批一并落,见 §2.6 总表)。
 
 **关键取舍(专篇 vs 修订规则豁免「投资两屏索引行直指 gain-chain.md」)**:取专篇。①「一行一文件」是 README 自立的完备性保障(每个注册动作在执行纪律域有语义落点),为单一家族修订规则 = 正本规则开口,后续同类链式落账动作出现时归属歧义;豁免案还需动 README 总则段映射粒度措辞,超出索引行修正的最小面。②族文件先例在册(tools.md),两行一篇不破规则。③T-4 已将 pick-encounter.md 改写为全形专篇,同族同形状降低后续审查与维护成本;索引行落点留在 logic-updates 目录内,目录自足。④双抄本漂移风险以「接线面 only + 单一源声明」对冲——专篇零复述链参数细节,四腿各一句 + 指针,二抄本面收缩到低频变更的接线事实(发射位/域集/符号锚);代价 = 多维护一个薄文件,可接受。
 
@@ -152,7 +152,7 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 
 **§8 守卫与防线补条**:`- 同帧去重契约(三闸全败重调):重调仍返回刷新 = 策略器未实现去重的 bug 面 →「决策无有效选卡输出」round_fail 显式失败;去重单一源 = 策略器(flow.py::_decide_invest scratch 键),画面 op 只重调一次、重调仍刷新即弃,零循环。` 原「空候选/决策无有效输出」条不动(重调仍刷新汇入该出口,两表行互指)。
 
-**关键取舍**:申报照实现写(单次重调 + 防御弃权 act=None),不引入「循环重调直到出选卡」之类新语义——as-built 义务是申报现役,不是 redesign;测试面零新增(该分支为文档缺口非行为变更,现役锁 `test_strategy_refresh_terminal_handback` 的 decide_calls==1 断言辖正常帧,不受影响)。
+**关键取舍**:申报照实现写(单次重调 + 防御弃权 act=None),不引入「循环重调直到出选卡」之类新语义——as-built 义务是申报现役,不是 redesign;测试面零新增(该分支为文档缺口非行为变更,现役测试 `test_strategy_refresh_terminal_handback` 的 decide_calls==1 断言辖正常帧,不受影响)。
 
 ### 2.5 F-5 修法(辖域三文件注释卫生,准则与清单)
 
@@ -184,10 +184,10 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 | 文件 | 修法点位 | 性质 |
 |---|---|---|
 | `operations/cw_screen/cw_screen_invest_strategy.py` | F-1(局外早退 + import 清理)+ F-5 注释卫生 | 行为变更(仅 F-1)+ 注释 |
-| `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py` | F-1 补一锁(局外零决策交回) | 测试 |
+| `sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py` | F-1 补一测试(局外零决策交回) | 测试 |
 | `operations/cw_op/cw_overlay_pick_action.py` | F-5 注释卫生(编号命中 + 模块头禁形引用收回处置,§2.5;与 T-37 归口协调规则同见 §2.5) | 注释 |
 | `kernel/cw_action_report/pick_invest_strategy.py` | F-5 模块头拆分史段删除 | 注释 |
-| `docs/.../screens/invest_strategy.md` | F-1(§4/§5)+ F-4(§4/§5/§8)+ §9 测试锁清单补 `test_cw_gain_chain.py` 一行(§2.3 ③ 附带诉求) | 画面篇 as-built |
+| `docs/.../screens/invest_strategy.md` | F-1(§4/§5)+ F-4(§4/§5/§8)+ §9 测试清单补 `test_cw_gain_chain.py` 一行(§2.3 ③ 附带诉求) | 画面篇 as-built |
 | `docs/.../game_state/logic-updates/pick-invest.md` | F-3 ③ 新增专篇(落地顺序约束见 §2.3 接缝登记 2) | 正本新增 |
 | (登记面)`docs/.../game_state/logic-updates/README.md` | F-3 ①②(统改权 = T-1;行级目标语义 = 本稿 §2.3;接缝三项 = §2.3 跨稿接缝登记) | 登记面 |
 | (登记面)supply_node.md §2.4 目标文本冲突、T-37 模块头归口(T-4 修订版 encounter.md §2.3) | F-2 销项连带登记(§2.2) | 登记面 |

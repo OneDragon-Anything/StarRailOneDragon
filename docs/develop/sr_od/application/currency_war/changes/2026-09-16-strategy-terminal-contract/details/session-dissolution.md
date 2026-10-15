@@ -106,7 +106,7 @@ session 实名 → gs 正本（**两套名不同，普查词表用 session 实�
 | `strategy_state` | 策略实例 `self.state`（§3 读者迁移） |
 | `pending_round_outcomes` | **删**（只写不读零消费死面，`cw_screen_battle_wait` 写入端随批停止） |
 | `prep_obs_frame` | `gs.prep_obs`（非 Field；写读者全集换宿主） |
-| `prep_frame_class` / `shop_frame_class` | gs 非 Field 两槽 `frame_class_prep`/`frame_class_shop`（直存直取；**不与 chain `mark_frame_obs` 单槽合并**——单槽已有 chain 在产写端且 view 语义异源，双消费者互偷；机制合并归统一观察架构批）；方向刷新触发读口换源，帧类写点守卫锁随批翻新 |
+| `prep_frame_class` / `shop_frame_class` | gs 非 Field 两槽 `frame_class_prep`/`frame_class_shop`（直存直取；**不与 chain `mark_frame_obs` 单槽合并**——单槽已有 chain 在产写端且 view 语义异源，双消费者互偷；机制合并归统一观察架构批）；方向刷新触发读口换源，帧类写点守卫测试随批翻新 |
 | **create_session 副作用** `reset_layout_unknown_state()` | **函数本体保留不退役**——复位对象是 `obs/cw_back_layout.py` 模块级全局 `_unknown_streak`（跨局残留防线），与 gs 容器无关（cw_vocab:961 在册）。处置 = create_session 退役后**调用点迁引导漏斗每局建立时**；测试隔离复位入口保留；`obs/cw_back_layout.py` 入 3.5 文件面 |
 
 ## §D StrategySession 类本体

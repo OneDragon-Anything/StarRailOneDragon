@@ -19,8 +19,8 @@
 ### B2 StrategyState 迁移六桶中「桶 2 执行层显式读」无任何阶段承载；cw_op 的 state 读者被 3.5 文件面用途括注排除，与完成判据「普查归零」自相矛盾
 
 - **文件:节**：landing.md §3.5（范围行/文件面行 vs 完成判据行）；details §3
-- **发现**：details §3 定义承载桶六类；landing 3.5 范围只写「读者迁移收尾（**kernel 注入桶 + 遥测快照桶 + impl 桶 self.state**）」——桶 2（执行层显式读）不在任何阶段的范围行；3.1–3.4 亦无。且 3.5 文件面对 `operations/cw_op/` 的授权括注 = 「注册表换键名 + CW_ACTION_TYPES + 完备锁」，而 cw_op 下实存 StrategyState 读者：`cw_buy_card_action.py:114`（v3_intention）、`cw_op_sell_off_target.py:58-62`（target_comp ×3）、`cw_op_tools.py:329`（target_comp）——被用途括注排除在外。同阶段完成判据却要求「`strategy_state_of`/`state_of` 符号普查归零（对账表）」：按授权面干活的 worker 必然留下 cw_op 三处未承载，验收判据不可满足。details §3 桶 2 的「预登记重载面」（cw_loop/cw_screen_deploy/cw_screen_buy_cards）也未覆盖上述 cw_op 消费点与 `cw_screen_equip_pick.py:57`、`cw_screen_battle_wait.py:419`。
-- **修正方向**：3.5 范围行补桶 2（执行层显式读）；文件面 cw_op 括注扩为「注册表换键名 + CW_ACTION_TYPES + 完备锁 + state 读者迁移（普查清单实测驱动）」；details §3 桶 2 预登记面补 cw_op 三文件与 equip_pick/battle_wait。
+- **发现**：details §3 定义承载桶六类；landing 3.5 范围只写「读者迁移收尾（**kernel 注入桶 + 遥测快照桶 + impl 桶 self.state**）」——桶 2（执行层显式读）不在任何阶段的范围行；3.1–3.4 亦无。且 3.5 文件面对 `operations/cw_op/` 的授权括注 = 「注册表换键名 + CW_ACTION_TYPES + 完备测试」，而 cw_op 下实存 StrategyState 读者：`cw_buy_card_action.py:114`（v3_intention）、`cw_op_sell_off_target.py:58-62`（target_comp ×3）、`cw_op_tools.py:329`（target_comp）——被用途括注排除在外。同阶段完成判据却要求「`strategy_state_of`/`state_of` 符号普查归零（对账表）」：按授权面干活的 worker 必然留下 cw_op 三处未承载，验收判据不可满足。details §3 桶 2 的「预登记重载面」（cw_loop/cw_screen_deploy/cw_screen_buy_cards）也未覆盖上述 cw_op 消费点与 `cw_screen_equip_pick.py:57`、`cw_screen_battle_wait.py:419`。
+- **修正方向**：3.5 范围行补桶 2（执行层显式读）；文件面 cw_op 括注扩为「注册表换键名 + CW_ACTION_TYPES + 完备测试 + state 读者迁移（普查清单实测驱动）」；details §3 桶 2 预登记面补 cw_op 三文件与 equip_pick/battle_wait。
 
 ### B3 `reset_layout_unknown_state()` 退役段三重失实：机制论证与代码事实相反、函数本体不在文件面、测试隔离消费面未申报
 
@@ -44,17 +44,17 @@
 - **发现**：details §C 写「reconcile_hp 对账腿删 = **行为变化登记 §1.3**」。直调 §1.3 与 §2.8：申报清单实有三项 = ①正常识别路径零变化；②识别失准路径（hp 门/等级守卫/star 防抖/节点探针左移）；③装备账完整度降级——**无 reconcile_hp 对账腿删除项**。银狼升费豁免消亡、upcoming_types journal 降级用「见 details §A」扩散指针，主清单同样无行。行为变化申报的单一收口面（§2.8）失去完备性，终验「与改前同难度局对照」的分歧归因清单不完整。
 - **修正方向**：§2.8 行为变化申报增列：④hp 双源对账腿删除（reconcile_hp 简化）；⑤star 回退确认链形态变化（防抖确认 → 回退即采新，含银狼豁免消亡与 ADR-0420 帧态门删除）；⑥upcoming_types journal 列 '?' 常态化；⑦B3 所涉布局未知态跨局残留窗（若裁退役）。
 
-### M3 `RefreshNodeOptions`/`RefreshSupply` 执行路径无定义：不在完备锁豁免集、亦无注册行与 op 定义——实现者面临无答案选择
+### M3 `RefreshNodeOptions`/`RefreshSupply` 执行路径无定义：不在完备测试豁免集、亦无注册行与 op 定义——实现者面临无答案选择
 
-- **文件:节**：landing §3.5（注册完备锁规格）；design §2.2；landing §3.1/§3.5 文件面
-- **发现**：完备锁规格断言「白名单成员要么有注册行、要么在 handler 自管豁免集（PickInvest/PickStarTome/PickWishTrial/PickBoxCard/**RefreshInvestCards**）」。RefreshInvestCards 因「三闸点击链留在 handler」入豁免集；`RefreshNodeOptions()`/`RefreshSupply()` 同为 handler 消费的刷新建议（design §2.2 只对 RefreshInvestCards 标注「点击链留在 handler」），既不在豁免集（=> 必须有注册行），全文档又无对应动作 op 的定义、无 `cw_op/` 新增文件授权（3.5 文件面 cw_op 括注仅「注册表换键名」）。落地时锁断言必然失败或实现者自行拍板二选一——「实现者无需再设计」违反（attack3 M4 声明消解后的残留缺口）。
+- **文件:节**：landing §3.5（注册完备测试规格）；design §2.2；landing §3.1/§3.5 文件面
+- **发现**：完备测试规格断言「白名单成员要么有注册行、要么在 handler 自管豁免集（PickInvest/PickStarTome/PickWishTrial/PickBoxCard/**RefreshInvestCards**）」。RefreshInvestCards 因「三闸点击链留在 handler」入豁免集；`RefreshNodeOptions()`/`RefreshSupply()` 同为 handler 消费的刷新建议（design §2.2 只对 RefreshInvestCards 标注「点击链留在 handler」），既不在豁免集（=> 必须有注册行），全文档又无对应动作 op 的定义、无 `cw_op/` 新增文件授权（3.5 文件面 cw_op 括注仅「注册表换键名」）。落地时测试断言必然失败或实现者自行拍板二选一——「实现者无需再设计」违反（attack3 M4 声明消解后的残留缺口）。
 - **修正方向**：二选一定死——(a) 豁免集补入 RefreshNodeOptions/RefreshSupply（与 RefreshInvestCards 同型：handler 自管点击链）；(b) 定义两个新动作 op 并扩 3.5 文件面。按现状行为等价原则推荐 (a)。
 
 ### M4 `PICK_ACTION_TYPES`（cw_events.py:895）双词表结构处置未申报
 
 - **文件:节**：design §2.2；landing §3.1/§3.5
-- **发现**：现状注册完备锁遍历「`cw_vocab.CW_ACTION_TYPES` + `cw_events.PICK_ACTION_TYPES`」双词表（cw_action_registry.py:9-11 模块头明文）。终态 Pick 族全数变为 CwAction 子类入 CW_ACTION_TYPES 后：旧 Pick 载体（EncounterPick 等）退役，PICK_ACTION_TYPES 是退役、清空保留、还是改造为新 Pick 子类索引——四份文档零提及。落地改 CW_ACTION_TYPES 时完备锁的双表遍历行为未定义（旧表含已退役类型即锁炸或锁空转）。
-- **修正方向**：landing 3.5 范围补「PICK_ACTION_TYPES 退役/并入声明 + 完备锁单表化」，消费点（cw_action_registry 完备锁、其余 grep 实测）随批处理。
+- **发现**：现状注册完备测试遍历「`cw_vocab.CW_ACTION_TYPES` + `cw_events.PICK_ACTION_TYPES`」双词表（cw_action_registry.py:9-11 模块头明文）。终态 Pick 族全数变为 CwAction 子类入 CW_ACTION_TYPES 后：旧 Pick 载体（EncounterPick 等）退役，PICK_ACTION_TYPES 是退役、清空保留、还是改造为新 Pick 子类索引——四份文档零提及。落地改 CW_ACTION_TYPES 时完备测试的双表遍历行为未定义（旧表含已退役类型即测试炸或测试空转）。
+- **修正方向**：landing 3.5 范围补「PICK_ACTION_TYPES 退役/并入声明 + 完备测试单表化」，消费点（cw_action_registry 完备测试、其余 grep 实测）随批处理。
 
 ### M5 landing 3.1/3.2 文件面「`kernel/cw_strategy.py`」为幽灵路径——Match 加字段与 gated_hp 处置两处改形无文件面承载
 
@@ -83,7 +83,7 @@
 ### M9 design §2.4 五镜像括注纳入 `enemy_difficulty` 与 fields.md §2.1 封闭集定义冲突（attack3 m3 的消解引入新失准）
 
 - **文件:节**：design §2.4 表「五镜像」行
-- **发现**：现文「五镜像（session 实名含 briefing_affixes/briefing_bosses/**enemy_difficulty** 等，逐字段见 details §B）」。正本 fields.md §2.1 五镜像封闭集 = `active_strategies/active_env/plane_bosses/enemy_affixes/selected_difficulty`（锁锚 test_cw_game_state_batch4，新增第六镜像须同步扩集与锁）。enemy_difficulty 不在封闭集；briefing_affixes/briefing_bosses 是 enemy_affixes/plane_bosses 的 session 实名（映射关系非同名字段）。括注把 enemy_difficulty 写进「五镜像（…）」内使「五镜像」一词与正本封闭集定义冲突——attack3 m3 要求的是「家族表补 enemy_difficulty 行」，不是把它塞进五镜像括注。
+- **发现**：现文「五镜像（session 实名含 briefing_affixes/briefing_bosses/**enemy_difficulty** 等，逐字段见 details §B）」。正本 fields.md §2.1 五镜像封闭集 = `active_strategies/active_env/plane_bosses/enemy_affixes/selected_difficulty`（测试锚 test_cw_game_state_batch4，新增第六镜像须同步扩集与测试）。enemy_difficulty 不在封闭集；briefing_affixes/briefing_bosses 是 enemy_affixes/plane_bosses 的 session 实名（映射关系非同名字段）。括注把 enemy_difficulty 写进「五镜像（…）」内使「五镜像」一词与正本封闭集定义冲突——attack3 m3 要求的是「家族表补 enemy_difficulty 行」，不是把它塞进五镜像括注。
 - **修正方向**：改为「五镜像（session 实名 ↔ gs 正本映射见 details §B）+ enemy_difficulty + chosen_* + last_streak + last_owned_equips」分行列举，保持「五镜像」与 fields.md §2.1 封闭集一一对应。
 
 ### M10 unified-obs-reconcile 3.4 相交面清单不全：3.5 的 telemetry/ 面与其相交零申报、依赖行不挂

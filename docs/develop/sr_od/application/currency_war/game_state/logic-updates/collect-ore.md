@@ -45,7 +45,7 @@ None 域边界:值 None(未观察)的域跳写(留空不写、等观察覆盖)�
 
 ## 7. 语义验证
 
-写序/来源/标记锁 = `test_cw_collect_ore_rand.py`(多点逐点/席满即止/三分支/双域合并行/None 边界/sim 接线);采样器支撑集与种子复现同文件;容器摘除分支存量锁 = `test_collect_ore_container_precise_drop`(已更新随机态契约);合成链步回调 = `test_cw_merge_step_callback.py`。
+写序/来源/标记测试 = `test_cw_collect_ore_rand.py`(多点逐点/席满即止/三分支/双域合并行/None 边界/sim 接线);采样器支撑集与种子复现同文件;容器摘除分支存量测试 = `test_collect_ore_container_precise_drop`(已更新随机态契约);合成链步回调 = `test_cw_merge_step_callback.py`。
 
 ## 8. 判例注记(动作发出阶段)
 

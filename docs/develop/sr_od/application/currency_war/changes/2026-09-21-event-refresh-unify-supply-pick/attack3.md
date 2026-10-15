@@ -30,8 +30,8 @@
 ### X3 [阻塞] | design.md §2.4 第四块 / landing 3.3 第四块 | `encounter_reward_claimed` 的数据载体未定义完整：写通道/sig、审计行、journal/遥测接线、生命周期全部空缺，声明的消费面没有读取路径
 
 - **问题**：设计只定义了字段形状（`tuple[int, str] | None` 顶层字段）与触发判据，以下实现者必答项全部未定义：①**写通道**——`write_logic`？sig 的 family/actor 是什么（回调挂 `CwOpSettleConfirm` 但语义值来自遭遇域；现役 `_record_chosen` 用 `ChannelSig(family='logic_action', actor='CwScreenEncounter', mode='compute')`，新写端 actor 归谁）？②**审计行**——`cw_projection_audit.py` 对本迭代其它新字段（`*_refresh_left`）均安排了行改/新增（§2.2 表在册），`encounter_reward_claimed` 无行；③**遥测/journal 接线**——声明消费面 = 「策略器收益对账/单局复盘」，但复盘协议（match-review）与遥测判读消费的是 journal/telemetry 行或容器投影，无接线声明 = 声明的消费者读不到；④**生命周期**——单槽跨遭遇覆盖（第二遭遇覆写第一）还是逐节点？`chosen_encounter` 兑现后是否清（见 X4b）？sim 侧是否有写端（supply left 有 sim 写端先例，本字段无申报）。「深度 = 实现者无需再设计」（§0）在该块不成立。
-- **权威源证据**：design.md §2.4 第四块全文（仅机制依据+判据+「不直写」取舍）；landing.md 3.3 第四块、文件面（含 `cw_projection_audit.py` 但只为 refresh 行）、完成判据（行为锁三型，无审计/遥测判据）；对照先例 = §2.2 表 `encounter_refresh_left` 行的审计行安排（本迭代自己的标准）。
-- **建议修法**：§2.4 第四块补一段「载体与接线」：写通道（write_logic + sig/actor 定值）、`cw_projection_audit` 新增行、journal/遥测落点（至少 journal 事件行或 schema 注记）、生命周期（建议 = 单槽逐遭遇覆盖 + 兑现后清 `chosen_encounter`，见 X4）、sim 侧零写端申报（若成立）；landing 3.3 完成判据补对应 grep/行为锁。
+- **权威源证据**：design.md §2.4 第四块全文（仅机制依据+判据+「不直写」取舍）；landing.md 3.3 第四块、文件面（含 `cw_projection_audit.py` 但只为 refresh 行）、完成判据（行为测试三型，无审计/遥测判据）；对照先例 = §2.2 表 `encounter_refresh_left` 行的审计行安排（本迭代自己的标准）。
+- **建议修法**：§2.4 第四块补一段「载体与接线」：写通道（write_logic + sig/actor 定值）、`cw_projection_audit` 新增行、journal/遥测落点（至少 journal 事件行或 schema 注记）、生命周期（建议 = 单槽逐遭遇覆盖 + 兑现后清 `chosen_encounter`，见 X4）、sim 侧零写端申报（若成立）；landing 3.3 完成判据补对应 grep/行为测试。
 
 ### X4 [阻塞] | design.md §2.4 第四块（回调判据与时序论证） | 「推进上报前调回调」的机制论证与代码不符 + 三条非删失误兑现路径无防线，宣称的 fail-closed 不成立
 
@@ -69,7 +69,7 @@
 
 ### X9 [建议] | design.md §2.4 第一块 / landing 3.3 第二块 | `screen_flow_timing.md #23` 口径注改写承诺未落到任何完成判据或清单条目
 
-- **问题**：§2.4 与 landing 3.3 第二块均承诺「`research/screen_flow_timing.md` #23 口径注同步改写（用户裁定 supersession）」，但 3.3 完成判据（行为锁 + grep + 通用工程门）与正本更新清单均无该文件条目——承诺无验收挂钩，落地批漏改无检出面。（research doc 非正本、不进「正本更新清单」是结构原因，但承诺既已写下就应有判据承载。）
+- **问题**：§2.4 与 landing 3.3 第二块均承诺「`research/screen_flow_timing.md` #23 口径注同步改写（用户裁定 supersession）」，但 3.3 完成判据（行为测试 + grep + 通用工程门）与正本更新清单均无该文件条目——承诺无验收挂钩，落地批漏改无检出面。（research doc 非正本、不进「正本更新清单」是结构原因，但承诺既已写下就应有判据承载。）
 - **权威源证据**：design.md §2.4 第一块、landing.md 3.3 第二块 vs 3.3 完成判据 :48-52、正本更新清单 :64-73（两处均无该文件）。
 - **建议修法**：3.3 完成判据补一条「`screen_flow_timing.md` #23 注已带 supersession 标记（用户裁定 2026-09-21）」的文档判据。
 

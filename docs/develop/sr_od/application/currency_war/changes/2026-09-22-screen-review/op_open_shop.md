@@ -108,7 +108,7 @@
 1. `cw_op_open_shop.py` 内 `self.screenshot()` 零命中(修法 A);`op.screenshot()` 恰两处且全部位于 `open_shop()` 直调体(例外③唯一成员)。
 2. `cw_op_open_shop.py` 内注释词表 `W970|W971|R2|渠道②|总纲契约|审计 P0|M1③|ADR-0634|不再验` 零命中(§2.2 改写后;`R2` 取裸 token——本文件无合法 R2 残留,裸词覆盖站点 7 的「R2:」形态)。
 3. `screens/op-layer.md` §1.1 例外清单含③,「三类/三例外」措辞与成员封闭集文本和 §2.1 一致;例外③宿主语境清单与 grep `open_shop(` 生产直调点现值一致(文档对照 + grep)。
-4. CW 快速集(`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`)全绿——注释改写零行为变化;act 改 `last_screenshot` 后帧供给路径不变(fixture harness 每轮供帧,观察 node 同款既有用法);`test_cw_unified_action_3` 终结承载行锁/备战环终结集锁不受本稿触及。
+4. CW 快速集(`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`)全绿——注释改写零行为变化;act 改 `last_screenshot` 后帧供给路径不变(fixture harness 每轮供帧,观察 node 同款既有用法);`test_cw_unified_action_3` 终结承载行测试/备战环终结集测试不受本稿触及。
 
 ## 4. 坐标规范增补(op-layer :35/:48)
 

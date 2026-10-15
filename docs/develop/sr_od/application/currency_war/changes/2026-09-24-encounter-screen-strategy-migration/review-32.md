@@ -46,13 +46,13 @@
 - `cw_events` import 保留合法 ✓：flow.py:657（decide_planner）、:794（decide_fortune）、:808（choose_expert_index）三处直调现役。
 - `bridge.decide_encounter` 覆写已删 ✓：全仓 `def decide_encounter` 仅 cw_strategy.py:178（抽象）+ flow.py:595（基类实现）两点；bridge 现 import 面（GameState/CwAction/CwActionObsParam/CwFlowStrategy/entry/state_of）ruff 实证无未用（六文件 ruff 全过）。
 - **生产链逐跳推演无断点** ✓：`cw_screen_encounter.act` 调 `match.strategy.decide_encounter()` → config `strategy_id` 值域收缩 = {'mandate_v1'}（currency_war_config.py:72-81）→ `MandateV1Live(MandateV1Strategy)` 零覆写注册壳（mandate_v1_strategy.py:17-22）→ `MandateV1Strategy(CwFlowStrategy)` 无 decide_encounter 覆写（bridge.py 现态确认）→ 基类 flow.decide_encounter → `encounter_pick.decide`（签名 `(options, gs)` 匹配；纯值出口；判据序与 design §2.2–§2.5 逐位相符：立场门→窗口→κ_S 三态→cap 过滤在前→t≤4 直判/t≥5 经验层→空集阀→difficulty 最高主序→tiebreak 小优→输入序先；reason 因词封闭枚举 `refresh-valve:{window-insufficient|kappa-不足|empty-reachable}` 与 `dark-fallback:*` 照 §2.2 契约）。
-- `EVENT_PICK_TYPES` 运行时构造合法（删类同批摘位，无 NameError 面）；注册完备锁测试（test_cw_unified_action_4.py）全绿。
+- `EVENT_PICK_TYPES` 运行时构造合法（删类同批摘位，无 NameError 面）；注册完备测试（test_cw_unified_action_4.py）全绿。
 
 ### 判据 4：防线实现 ✓
 
 - `cw_screen_encounter.py` 重调分支：重调仍返 `CwActionRefreshNodeOptionsParam` ∧ 刷新锚读缺 → `round_fail('刷新锚点读缺,交回重读')`（diff :863-870）；分支进入条件分析直调核实——left 读缺/0 帧 decide 闸内嵌不返建议、不进本分支，活面 = left≥1 ∧ 锚读缺，与 design §2.5 一致。
 - `cw_loop.py` 语义直调核 ✓：`OP_FAIL_REDISPATCH_LIMIT = 5`（:529）；分发网 ok=True（含零点击 round_success）→ 连续 fail 窗清零（:829-836），fail → 计数、达 5 → 显式 round_fail 交上层（:852-868）——旧「零点击终结交回」确对「锚持续读缺 ∧ 建议刷恒成立」无防护，改 fail 后有界收敛，design 定谳论证与代码一致。
-- 行为锁改写 ✓：`test_encounter_refresh_gate_mismatch_round_fail_redispatch` 断言 `not rs.is_success and '刷新锚点读缺'` + `clicks == []` + `dispatches == []`（零点击零派发保留）；docstring 同步改写并引持久迭代指针。
+- 行为测试改写 ✓：`test_encounter_refresh_gate_mismatch_round_fail_redispatch` 断言 `not rs.is_success and '刷新锚点读缺'` + `clicks == []` + `dispatches == []`（零点击零派发保留）；docstring 同步改写并引持久迭代指针。
 - 其余 op 路径零行为变化 ✓：`cw_screen_encounter` diff 除该分支外仅注释；`cw_pick_encounter_action`/`cw_action_report/pick_encounter.py`/`cw_battle_wait` 均不在 commit 面零改动。
 
 ### 判据 5：依赖方向 ✓
@@ -66,7 +66,7 @@
 
 ### 判据 7：测试面 ✓
 
-- 两仓 diff 对照 ✓：测试仓仅 2 文件——重调锁改写（docstring+断言+测试名）与替身改词表动作（import 摘除 + 两处实例构造改 `CwActionPickEncounterParam(idx=1)`）；`claim_encounter_reward` 分支锁（`test_claim_encounter_reward_branches`）零改动；两测试文件对 `cw_encounter_selection` 的 import 仅保留面符号（claim_encounter_reward/record_settlement_row），与 design §2.7 测试面申报一致。
+- 两仓 diff 对照 ✓：测试仓仅 2 文件——重调测试改写（docstring+断言+测试名）与替身改词表动作（import 摘除 + 两处实例构造改 `CwActionPickEncounterParam(idx=1)`）；`claim_encounter_reward` 分支测试（`test_claim_encounter_reward_branches`）零改动；两测试文件对 `cw_encounter_selection` 的 import 仅保留面符号（claim_encounter_reward/record_settlement_row），与 design §2.7 测试面申报一致。
 - 自跑验证 ✓：三受影响文件 57 passed；CW 全量 L1（`-m "not slow"`）**1156 passed**；六改动文件 ruff check 全过。
 
 ### 判据 8：超申报面两处评估 ✓（合理，见发现清单 1/2）
