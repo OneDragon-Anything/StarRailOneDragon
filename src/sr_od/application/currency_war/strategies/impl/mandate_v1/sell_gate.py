@@ -62,10 +62,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_card_identity import (
-    TIER_TRANSITION,
     is_engine_piece,
-    line_identity_tier,
     sell_hold_exclusion_names,
+)
+from sr_od.application.currency_war.kernel.cw_comps import (
+    CORE_SINGLE_CARD_REGISTRY,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     fresh_buys_sell_face,
@@ -73,6 +74,9 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     sell_refund,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    game_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_membership,
@@ -83,6 +87,9 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    protection_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
     refund_full_star_ok,
@@ -142,7 +149,9 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'scene_plugin_buy': 'press',
     'core_single_card_buy': 'hold',
     'core_single_card_buy:unlocked': 'hold',
-    'transition_component_buy': 'hold',
+    # 新囤货臂(统一保护集 design §2.2;④ 转投买臂已退役删除——期权级
+    # 囤货,因果类 hold 与 C1 持有语义同类)。
+    'protection_hoard': 'hold',
     # P86 乙分支枢纽期权行已删除:动作发出点并入序 1 候选集,买因 = m2_*;
     # 持有段保护 = hub_acquired_names_of 并集,不走动作发出登记)。
     # ②(b) 按 prio 三分(obligation/hold/press),动作发出点显式传因覆写本行。
@@ -219,13 +228,14 @@ def register_launch(session: StrategySession,
 
     ``cause`` 闭集外值抛错(登记闭集强制)。
 
-    hold 类附类资格断言(登记侧;N1/V2-06):名 ∈ 静态持有集 ∧
-    该层买入硬闸通过(transition 层 = refund_full_star_ok 1★ 全额退,
-    vopt 单一源;registry_core 层 = 恒买无星闸,裁定410/)。
-    违例 = launch_cause_mismatch 计数红 + 拒绝该笔登记,**不拦发出**
-    ——买面门槛(本体)归分支自身判据批,防范围 smuggle(方案 v3
-    §4.3 划界)。红证存在性:2★ 转线直出卡名 ∈ TRANSITION_PACK ⊆
-    静态持有集(名字腿必过),红由硬闸腿产生。
+    hold 类附类资格断言(登记侧;N1/V2-06):名 ∈ 登记资格面(保护集
+    ∪ registry 核心,design §2.3 hold 腿行迁移——hold 类买入 = C1 核心
+    + protection_hoard)∧ 该档买入硬闸通过(档位表 design §2.4:core 档
+    = 恒买无星闸;protection 档 = refund_full_star_ok 1★ 全额退,vopt
+    单一源)。违例 = launch_cause_mismatch 计数红 + 拒绝该笔登记,
+    **不拦发出**——买面门槛(本体)归分支自身判据批,防范围 smuggle
+    (方案 v3 §4.3 划界)。红证存在性:2★ 四体系直出卡名 ∈ 保护集
+    (名字腿必过),红由 protection 档硬闸腿产生。
 
     返回登记是否落账(断言拒收/空名 = False;测试断言用)。
     """
@@ -262,23 +272,36 @@ def _hold_qualification_ok(name: str, star: int | None, cost: int | None,
                            counters: dict | None,
                            session: StrategySession) -> bool:
     """hold 类登记资格 = 名字腿 ∧ 硬闸腿(V2-06 合取;缺合取则 2★
-    转线登记恒绿 = 测试恒绿形态,红对由硬闸腿补齐)。registry_core 层
-    恒买无星闸(裁定410);其余已登记档(transition)按 1★ 全额退硬闸;
-    星/费缺读 = fail-closed 拒登记(资格判据禁缺读放行)。
+    直出登记恒绿 = 测试恒绿形态,红对由硬闸腿补齐)。
+
+    名字腿(design §2.3 hold 腿行,3.2 迁移)= 保护集 ∪ registry 核心
+    ∪ 乙分支获取名集——hold 类买入 = C1 核心 + protection_hoard,两类
+    的登记资格面(原 ``sell_hold_exclusion_names`` 名字腿随 ④ 策展
+    口径退役)。硬闸档位表(design §2.4):registry 核心 → core 档
+    (恒买无星闸,现行 core 闸面延续);保护集成员 → protection 档
+    (闸 = 1★ 全额退,与囤臂同门);其余 → 闸面维持 True 无星闸语义
+    (实际不可达——「拒」本就来自名字腿非闸腿)。星/费缺读 = fail-closed
+    拒登记(资格判据禁缺读放行)。
 
     **乙分支持有腿(P86 攻击 r1 发现1 面①)**:名 ∈ 乙分支获取名集
     (``hub_acquired_names_of``,动作发出点先登记后 emit 故当笔在场)与
-    静态持有集并集构成资格域——否则覆盖数 ≥2 注册表派生枢纽中
-    TRANSITION_PACK 之外成员(瓦尔特/刻律德菈等实证)hold 登记恒拒,
-    launch_cause_mismatch 病灶信号键被乙分支常态发出逐笔污染。"""
-    name_ok = (name in sell_hold_exclusion_names()
+    保护资格面并集构成资格域——未并集时注册表派生枢纽中保护集之外
+    成员 hold 登记恒拒,launch_cause_mismatch 病灶信号键被乙分支常态
+    发出逐笔污染。"""
+    protection = protection_membership(game_state_of(session),
+                                       state_of(session))
+    name_ok = (name in protection
+               or name in CORE_SINGLE_CARD_REGISTRY
                or name in hub_acquired_names_of(session))
-    tier = line_identity_tier(name)
-    if tier == TIER_TRANSITION:
+    if name in CORE_SINGLE_CARD_REGISTRY:
+        gate = True   # core 档:恒买无星闸
+    elif name in protection:
+        # protection 档:1★ 全额退(与囤臂同门;2★/3★ 直出不可逆非
+        # 期权资产,登记拒——红证腿)。
         gate = (star is not None and cost is not None
                 and refund_full_star_ok(int(star), int(cost)))
     else:
-        # registry_core 层(裁定410 恒买)与静态集兜底域:无星闸。
+        # 名字腿拒域:闸面维持 True(语义 = 拒来自名字腿,档位表末行)。
         gate = True
     ok = name_ok and gate
     if not ok:

@@ -1417,7 +1417,8 @@ def hub_option_names(gs: GameState, ist: IntentionState) -> tuple[str, ...]:
     覆盖集 C_h(f)(注册表派生)计;银狼LV.999 型注册单卡依赖核心的
     「覆盖 2」是家族内计数不构成跨线灵活性,身份排除结构性必要(定理
     B5 三层:语义/通道[防与规则③双通道注册]/判例),禁档间谓词复用
-    (正本 §6.2-3:line_identity_tier 三分档是身份单一源)。
+    (正本 §6.2-3;身份单一源 = ``CORE_SINGLE_CARD_REGISTRY`` 直判 +
+    mandate_v1/protection.protection_membership,无独立分档 helper)。
 
     输入面 = (COMP_LIBRARY, ist.evicted, plane_of(gs), weak_planes,
     CORE_SINGLE_CARD_REGISTRY)——G/``_core_reachable`` 禁入(定理 B2

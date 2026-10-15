@@ -77,6 +77,16 @@ _FOUR_SYSTEM_MEMBERS: frozenset[str] = frozenset(
        if is_seele_system_member(name, {*ch.factions} | {*ch.flows})})
 
 
+def four_system_members() -> frozenset[str]:
+    """四体系全体成员名集只读口(:data:`_FOUR_SYSTEM_MEMBERS` 的公开形态)。
+
+    消费面 = 测试/判读侧的「非自己人」名选取(与保护集同一成员派生,
+    禁第二实现);决策面一律经 :func:`protection_membership`(带域分派),
+    不直读本集。
+    """
+    return _FOUR_SYSTEM_MEMBERS
+
+
 def protection_membership(gs: GameState, state: StrategyState) -> frozenset[str]:
     """保护集成员名集(全仓单一源;design §2.1 域分派)。
 

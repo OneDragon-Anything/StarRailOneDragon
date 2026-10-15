@@ -1,17 +1,22 @@
-"""卡牌身份分层单一源(规则③④共用判据)。
+"""卡牌静态持有排除集(凑息/筹资卖面资格的静态身份面;过渡载体)。
 
 同一「买入资格 × 卡牌身份」面上此前散布多套并列前件(M2 线内 /
-dominance 零重叠 / C1 终局阵容锁定核心 / ③ registry 核心 / ④ 转线件)——本模块
-把「非线内身份」收拢为三分档单一源,新身份类需求只扩本 helper,不再加
-并列前件(「架构归并方向」节)。
+dominance 零重叠 / C1 终局阵容锁定核心 / ③ registry 核心 / ④ 转线件)
+——三分档 helper ``line_identity_tier`` 曾是「非线内身份」单一源;统一
+保护集迭代(changes/2026-10-15-unified-protection-set design.md §2.4)
+后消费点全部迁移(②(b) prio/D7 拒因/hold 登记档位 → 保护集口径,
+C1 → ``CORE_SINGLE_CARD_REGISTRY`` 直判),函数随批退役。本模块现役
+只余卖面静态持有排除集(:func:`sell_hold_exclusion_names`),其 ④
+放行集构成随卖面五消费点迁移逐批退役(终态 = 保护集 ∪ registry 核心,
+design §2.3 表;函数本体退役归 3.3)。
 
 数据源(单一源,禁第二表):
-- registry_core 层 = ``kernel.cw_comps.CORE_SINGLE_CARD_REGISTRY``
+- registry 核心 = ``kernel.cw_comps.CORE_SINGLE_CARD_REGISTRY``
   (谓词式唯一入选规则,出处指针随值);
-- transition_component 层 = ``knowledge.cw_line_facts.TRANSITION_PACK``
-  档 ∈ {carry, partial}(规则④放行集;drop 档 = P1 末弃应急件
-  不放行,cw_line_facts.py 档位值注释语义)。禁消费 kernel/cw_transition
-  的同名迁移副本(该文件内明令「勿新增消费」,本模块是唯一新消费点)。
+- ④ 放行集 = ``knowledge.cw_line_facts.TRANSITION_PACK`` 档 ∈
+  {carry, partial}(退役中的策展口径,仅 :func:`sell_hold_exclusion_
+  names` 过渡消费)。禁消费 kernel/cw_transition 的同名迁移副本
+  (该文件内明令「勿新增消费」)。
 
 依赖方向:本模块只 import data/knowledge/kernel 注册表,不 import
 strategies 面(kernel 输入纯度,同 cw_line_facts 声明)。
@@ -28,15 +33,8 @@ from sr_od.application.currency_war.knowledge.cw_line_facts import (
     TRANSITION_PACK,
 )
 
-#: 身份档:registry 核心(③恒买适用范围;C1 通道消费层)。
-TIER_REGISTRY_CORE: str = 'registry_core'
-#: 身份档:转线前瞻件(④放行适用范围;Early 双轨期放行,定型后收窄)。
-TIER_TRANSITION: str = 'transition_component'
-#: 身份档:真无关件(维持 non_line 拒买)。
-TIER_UNRELATED: str = 'unrelated'
-
 #: ④放行档位集(TRANSITION_PACK 值元组第二位;drop 档不入选的理由见
-#: 模块 docstring)。
+#: 模块 docstring;随下方 ④ 放行集读口同批退役)。
 _TRANSITION_RELEASE_TIERS: frozenset[str] = frozenset({'carry', 'partial'})
 
 
@@ -48,6 +46,10 @@ def transition_release_names() -> frozenset[str]:
     既有「预囤不囤 drop」取向同源);计算式候选(char_routes +
     pivot_overlap)已否决——「可达」需相似度阈值 = 拍值。
     TEMPO_POOL 是本集子集,不另并(cw_comps.py 两表包含关系在案)。
+
+    退役申报(统一保护集 design §2.2/§2.4):④ 转投分支已随 3.2 退役,
+    本函数余下唯一消费 = :func:`sell_hold_exclusion_names`(过渡载体,
+    3.3 随该函数退役;身份单一源 = mandate_v1/protection)。
     """
     return frozenset(
         name for name, (_frame, tier) in TRANSITION_PACK.items()
@@ -64,6 +66,11 @@ def sell_hold_exclusion_names() -> frozenset[str]:
     name 型零重叠语义下(statefn/predicates.zero_overlap 是纯名成员判定)
     静态全集排除会把 (a) 的全部 1★ 燃料资格掏空(方案审 v3 攻击点①
     实证),静态/动态切分是不掏空的窄形态。
+
+    退役申报(统一保护集 design §2.3 五消费面表):本函数 = ④ 时代的
+    静态持有面,五消费点逐批迁移(hold 登记名字腿已迁保护集 ∪ registry
+    核心 = 3.2;余下四点归 3.3),迁毕函数退役——身份单一源 =
+    mandate_v1/protection.protection_membership。
     """
     return (frozenset(CORE_SINGLE_CARD_REGISTRY)
             | transition_release_names())
@@ -89,22 +96,3 @@ def is_engine_piece(name: str) -> bool:
         return False
     bonds = set(ch.factions) | set(ch.flows)
     return bool(bonds & set(ENGINE_FACTIONS))
-
-
-def line_identity_tier(name: str, k_members: tuple[str, ...] = ()) -> str:
-    """非线内身份三分档(③④与拒因遥测共用单一源)。
-
-    返回 ``TIER_REGISTRY_CORE`` / ``TIER_TRANSITION`` /
-    ``TIER_UNRELATED`` 之一;两注册表对表即可判定,调用方先判线内
-    (k_members/义务集)再消费本函数。
-
-    ``k_members`` 参数是**前向扩展位**(架构归并申报):当前
-    三分档判定不消费它——预留语义 = 未来若分档需要「相对目标线」的
-    语境(如转线相关性随已持线变化)在此扩展,**禁**在调用侧另挂第六套
-    并列判据;签名含参是为防实施者误以为调用侧补语境是新挂点。
-    """
-    if name in CORE_SINGLE_CARD_REGISTRY:
-        return TIER_REGISTRY_CORE
-    if name in transition_release_names():
-        return TIER_TRANSITION
-    return TIER_UNRELATED

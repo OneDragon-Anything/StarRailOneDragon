@@ -29,9 +29,10 @@ shop_swap_sell(_hit/declined)/ session_funding_sell(_fallback_sell/
 leg_reject/exhausted)/ scene_plugin_buy_hit(_no_seat/budget_exhausted)/
 core_c1_make_room_sell/core_locked_c1_make_room_sell /
 shop_refresh_*(三段式判据拒因族)/ levelup_*(会话内升级执行位族);
-承继键族(m2/m2_stockpile/m2b/transition/dead_gold_press/press_buy_
+承继键族(m2/m2_stockpile/m2b/protection_hoard/dead_gold_press/press_buy_
 deployable/m6/fuel_filler_stall/ev/core/dominance/p90-p94/p91)随各分支
-并入保留,键语义与写点注释见各分支段。P86 三分支旧键族(shop_no_target_*/
+并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
+退役删除,统一保护集 design §2.2;protection_hoard 三键 = 其语义承接)。P86 三分支旧键族(shop_no_target_*/
 hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照)。
 
 M2 停摆续段缓存:商店域 cw4_m2_stall_latch 族已停用;席满
@@ -54,13 +55,6 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 )
 from sr_od.application.currency_war.kernel import cw_intention
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
-from sr_od.application.currency_war.kernel.cw_card_identity import (
-    TIER_REGISTRY_CORE,
-    TIER_TRANSITION,
-    TIER_UNRELATED,
-    line_identity_tier,
-    transition_release_names,
-)
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
     get_comp,
@@ -147,9 +141,11 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 )
 
 # 贯穿件恒囤名单单一源已迁 protection(design §2.1 单一源搬家),此处
-# 回导维持本模块既有消费点与外部 ``shop.CROSS_LINE_KEEP_NAMES`` 读面。
+# 回导维持本模块既有消费点与外部 ``shop.CROSS_LINE_KEEP_NAMES`` 读面;
+# 保护集成员判定自同一模块单一取源(design §2.2 买面接线)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
     CROSS_LINE_KEEP_NAMES,
+    protection_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
     horizon,
@@ -342,6 +338,7 @@ def shop_unbought_reasons(gs: GameState,
                           k_members: tuple[str, ...],
                           actions: list[Action],
                           hub_names: frozenset[str] = frozenset(),
+                          protection: frozenset[str] | None = None,
                           ) -> dict[str, str]:
     """商店波未买牌拒因串(决策帧遥测字段 ``shop_rejects`` 的生产端)。
 
@@ -352,14 +349,22 @@ def shop_unbought_reasons(gs: GameState,
     门拒了」。本函数对店面每张未买牌给一个归属/拒因标签,让「线内未买
     (哪道门拒)」与「线外归属(刻意不买)」在决策帧内可辨:
 
-    - 线内缺口件(K 想买而未买):``missing_unaffordable``(金不足)/
+    - 义务面缺口件(K 想买而未买;``k_members`` 实参 = 义务面,统一
+      保护集 design §2.3 D7 迁移——宽集实参下保护集成员全部落线内
+      分支的现状消除):``missing_unaffordable``(金不足)/
       ``missing_bench_full``(席满且无可腾燃料件)/ ``missing_no_path``
       (金席俱足仍未发出 = 异常态:发出被截断丢弃等,须查);
-    - 线内已持有:``owned``;
+    - 义务面已持有:``owned``;
+    - 保护集囤货面(非义务面成员;design §2.3 D7 迁移——退役的
+      ``transition_component`` 策展键语义由本键取代,占其原键序位,
+      交集卡〔囤货面 ∧ 某阵容 transition_chars,如花火〕可辨性承继):
+      在售未买 = ``protection_member_rejected``(囤货臂精确门序以
+      protection_hoard_* 计数键为准,本键 = 帧首归属标签),已持有 =
+      中性 ``owned``;
     - transition_chars(打工后卖、刻意不入线——单一源 = cw_comps 注册表
-      + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
-    - ④转线放行集(kernel.cw_card_identity 身份分层单一源,D7 键序
-      先于 trans 分支——交集卡可辨):``transition_component``;
+      + ``predicates.line_members`` 只取 core∪shared;键保留,判定源
+      与④/策展无代码耦合):``transition_char``——非保护打工件照旧落
+      本键或 ``non_line`` 桶(可辨性申报,design §2.3);
     - 乙分支枢纽资格集(P86;入参 = kernel.no_target_arms().hub_names 直传,
       判据单一源在 kernel,本函数只挂标签):``hub_option``——空窗帧枢纽
       件从 non_line 改显式拒因(正本 §4.4 行 3 键序消费面重排;未发出
@@ -370,17 +375,27 @@ def shop_unbought_reasons(gs: GameState,
     CwActionSellBenchParam/CwActionSellDeployedParam/CwActionDeployMoveParam 的席与回金同步投影(修复:旧版只投影
     金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
     会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
-    拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
+    拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_*/protection_
+    hoard_* 各计数键为准)。
     阵容为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
 
+    ``protection`` = 保护集成员名集(帧级现算注入;None = 函数内自解析
+    ``protection_membership(gs, state_of(gs))``,生产调用点传帧级同一
+    集合保持与买面口径同源)。
+
     语境声明:本函数的拒因语义(「金席俱足仍未发出
-    =异常态」)以 cw4 M2 义务通道为参照系——M2 对线内缺件是义务买入,
+    =异常态」)以 cw4 M2 义务通道为参照系——M2 对义务面缺件是义务买入,
     唯一合法拦截集=金/席硬闸+发出截断。
     """
     # 容器单位域现读(P4 容器形):bench = 占席条目(BenchSlot),身份经
     # 解包口取;deployed = 行域单位紧缩序(本函数内多处同吃同一推导)。
     bench = bench_entries_of(gs)
     deployed = _deployed_units_of(gs)
+    if protection is None:
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of as _state_of,
+        )
+        protection = protection_membership(gs, _state_of(gs))
     owned = ({mandate._slot_cid(b) for b in bench}
              | {d.char_id or '' for d in deployed})
     gold = gold_of(gs)
@@ -455,21 +470,19 @@ def shop_unbought_reasons(gs: GameState,
                 out[name] = 'missing_no_path'
         elif name in hub_names:
             # P86 乙分支拒因键(枢纽资格件在售未买帧与真 non_line 可辨)。
-            # 键序 = 先于 ④/trans 分支(P86 正本 §4.4 行 3「键序消费面重排」:
-            # p2plus 无目标帧上 ④ 放行分支经 committed 门构造性关闭,枢纽分支
-            # 才是在售交集卡(如 花火)的活发出通道,拒因按活通道归属;P1
-            # 帧本键不产(hub_names 空集直传),④ 旧键序零变化)。判据单一
-            # 源 = kernel.hub_option_names,本函数只挂标签。
+            # 键序 = 先于 保护/trans 分支(P86 正本 §4.4 行 3「键序消费面
+            # 重排」;判据单一源 = kernel.hub_option_names,本函数只挂
+            # 标签)。
             out[name] = 'hub_option'
-        elif line_identity_tier(name) == TIER_TRANSITION:
-            # 规则④ 拒因键(D7 键序):④放行集判据先于
-            # trans 分支——交集卡(④放行件 ∧ 某阵容 transition_chars)
-            # 在旧序(k_members→trans→else)下恒落 transition_char,新键
-            # 不可达。定序理由 = 判读价值:④件被拒才是要盯的信号(席/金/
-            # 星级硬闸漏放),打工件刻意不买是常态;行为无影响(买入由
-            # 放行分支驱动),纯遥测口径。判据单一源 = line_identity_tier
-            #(与规则④买入分支同源)。
-            out[name] = 'transition_component'
+        elif name in protection:
+            # 保护集囤货面拒因键(design §2.3 D7 迁移:取代退役的
+            # transition_component 策展键,占其原键序位——囤货面成员
+            # 先于 trans 分支,交集卡可辨性承继)。已持有 = 中性 owned
+            # (同名第二张走 M6/序 5 判据,非「被拒」);在售未买帧 = 席/
+            # 金/星级硬闸拒的归属标签,帧首快照无门序投影,精确门序以
+            # protection_hoard_* 计数键为准。
+            out[name] = 'owned' if name in owned \
+                else 'protection_member_rejected'
         elif name in trans:
             out[name] = 'transition_char'
         else:
@@ -1042,10 +1055,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count(f'shop_k_fallback_{k_band}')
     _buy_members = cw_intention.locked_buy_membership(_ist) \
         if _ist is not None else None
+    # 保护集成员名集(帧级现算,买面接线单一源 = protection_membership;
+    # design §2.2)。锁定态本集无买面消费(囤臂守卫 = 未锁定帧),仍按
+    # 帧级单一读口现算供 ②(b) 保护档/计数键/拒因键消费。
+    _protection = protection_membership(gs, _st)
     if _line_view.locked:
         # 锁定态(锁定线槽非空):P1 锁定局 = 过渡配方 ∪ 锁定线名单并集
         #(配方物化链不覆盖 P1 配方件);P2 起 = 锁定线名单单源(退出条件
         # 载体 = plane2_started 窗口谓词,line_and_upgrade §1.3 分域)。
+        # 锁定态买面不动(design §2.2):义务面 = 买面名单,保护集不并入。
         if _p2_started:
             buy_members = tuple(sorted(set(_line_view.members)))
         else:
@@ -1056,8 +1074,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 set(_line_view.members) | _recipe_names))
         obligation_members = buy_members
     else:
-        # 未锁定 = 候选态:候选线成员并集 ∪ 贯穿件恒囤(空窗帧回退集
-        # 承接为候选 stand-in)。④转线件经序 1 的 ④分支并入(见下)。
+        # 未锁定 = 候选态(义务面/囤货面拆分,design §2.2——现行成员
+        # 待遇零变化,仅新增成员设级):
+        # - 义务面 = 现行口径零变化:候选线成员并集 ∪ 贯穿件恒囤(空窗
+        #   帧回退集承接为候选 stand-in)——免息 + 筹资 + 置换全待遇;
+        # - 宽集买面名单 = 义务面 ∪ 保护集(序 1 未锁定名单并集,消除
+        #   「配方对未选中体系成员」的名单缺口);
+        # - 囤货面(宽集 − 义务面)= 期权级:首副本走新囤货臂(下),
+        #   同名副本走 M6/序 5——义务类买入/筹资/排除面的比对域一律
+        #   收窄义务面(见各消费位)。
         _cand_names: set[str] = set(k_members) | set(CROSS_LINE_KEEP_NAMES)
         for _cn in _st.line_candidates:
             _comp_c = get_comp(_cn) if _cn else None
@@ -1065,30 +1090,32 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 continue
             _cand_names |= set(_comp_c.core_chars)
             _cand_names |= set(getattr(_comp_c, 'shared_chars', None) or ())
-        buy_members = tuple(sorted(_cand_names))
-        obligation_members = buy_members
+        obligation_members = tuple(sorted(_cand_names))
+        buy_members = tuple(sorted(
+            set(obligation_members) | set(_protection)))
     missing = [m for m in obligation_members if m not in owned]
 
-    # P60 容量超限告警门(检查对象 = 宽集;分母 = cap_hold 现读)。
-    if buy_members and _cap_hold_now is not None \
-            and len(buy_members) > _cap_hold_now:
+    # P60 容量超限告警门(检查对象 = 义务面,design §2.2 对象面收窄——
+    # 囤货面超容由置换账自然管理;分母 = cap_hold 现读)。
+    if obligation_members and _cap_hold_now is not None \
+            and len(obligation_members) > _cap_hold_now:
         _count('shop_hoard_over_capacity')
-        log.warning('[cw!][shop] 锁定采购集 |B|=%d > 实用容量上界 '
+        log.warning('[cw!][shop] 义务采购集 |B|=%d > 实用容量上界 '
                     'cap_hold=%d(bench 9 + 上阵 %d):义务面已截断',
-                    len(buy_members), _cap_hold_now,
+                    len(obligation_members), _cap_hold_now,
                     _cap_hold_now - BENCH_CAPACITY)
 
     # 滞留素材暴露(单一源 = count_material_stale)。
     count_material_stale(counters, session, bench, deployed,
                          int(round_num_of(gs) or 1))
-    # 方向④ 纯计数键(现行语义保留;零行为)。
-    if getattr(_ist, 'p1_pair', None):
-        _trans_names = transition_release_names()
-        _trans_n = sum(1 for b in bench
-                       if mandate._slot_cid(b) in _trans_names)
-        if _trans_n:
-            counters['transition_hold_locked_frame'] = \
-                counters.get('transition_hold_locked_frame', 0) + _trans_n
+    # 保护集纯计数键(零行为;键值重定义 = 备战席上保护集成员数——
+    # 统一保护集 design §2.4 计数键重定义,原「配方锁帧 ④ 件数」口径
+    # 随 ④ 策展名单退役)。
+    _prot_hold_n = sum(1 for b in bench
+                       if mandate._slot_cid(b) in _protection)
+    if _prot_hold_n:
+        counters['transition_hold_locked_frame'] = \
+            counters.get('transition_hold_locked_frame', 0) + _prot_hold_n
 
     # stop_buy 契约核验面(消费位历史:泄金阶梯档 0 三处消费位已摘,
     # 末位消费 = 旧筹资形态 MandateFrame,随会话内筹资重写停用——
@@ -1132,7 +1159,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count('p94_exemption_refuse')
     with contextlib.suppress(Exception):
         _st.cw4_shop_rejects = shop_unbought_reasons(
-            gs, k, buy_members, [], hub_names=frozenset())
+            gs, k, obligation_members, [], hub_names=frozenset(),
+            protection=_protection)
     _t3_protect = mandate.stall_protect_active(
         session, round_num_of(gs), counters=counters)
     _round_sold = mandate.round_sold_names(session, gs)
@@ -1407,8 +1435,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                          else 'm2_locked_member')
 
     # m2_stockpile(分支① 囤腿,j=1 第二份;现行判据本体不动——含 P77
-    # 现货比较子;席满 → 置换账,金不足 → 筹资)。
-    for m in buy_members:
+    # 现货比较子;席满 → 置换账,金不足 → 筹资。遍历域 = 义务面,design
+    # §2.2:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
+    for m in obligation_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
             continue
         all_cands = _shop_candidates(m, 'm2_stockpile')
@@ -1466,30 +1495,35 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _on_target_buy()
         return _emit_buy(card, 'm2_merge_completion')
 
-    # ④转线前瞻放行分支(并入申报:P86/承继清单——④分支 = 序 1 候选成员
-    # 集构成,未锁定期照买照囤在产;判据本体与时间适用范围现行不动)。门序
-    # = 星级→金〔筹资〕→席〔置换账〕。
-    if not cw_intention.committed_from(session, gs):
-        for card in _buy_view('transition_component_buy'):
+    # ===== 新囤货臂(④ 转投分支退役的语义承接;design §2.2)=====
+    # 位置 = M2b 后、序 2 前。守卫 = 未锁定帧(终局锁定态;锁定局过渡件
+    # 采购由配方对并集承载,囤臂不聚焦)。命中 = 保护集成员 ∧ 未持有首
+    # 副本(不限未点亮——已点亮但不在配方对体系的成员同臂承接)。门序 =
+    # 1★ 全额退(refund_full_star_ok,[11] 零息损 + P46 豁免类「资产可
+    # 逆」)→ 金可负担(期权级,无筹资特权)→ 席(席满走店内置换账,
+    # 候选 = 非保护垫件;穷尽 = 放弃并计数)。买因 protection_hoard
+    #(hold 类,LAUNCH_CAUSE_BY_ARM 单一映射);出口键 protection_hoard_
+    # hit / protection_hoard_no_fuel / protection_hoard_unaffordable。
+    if not _line_view.locked:
+        for card in _buy_view('protection_hoard'):
             name = card.name or ''
-            if not name or line_identity_tier(name) != TIER_TRANSITION:
+            if not name or name not in _protection or name in owned:
                 continue
             cost = card_cost(card)
             if not refund_full_star_ok(card.star or 1, cost):
                 continue
             if gold < cost:
-                _fd = _fund_or_none(card, 'order_1')
-                if _fd is not None:
-                    return _fd
+                _count('protection_hoard_unaffordable')
+                _record_opportunity(name, 'gold_short', cost, 'order_1')
                 continue
             if bench_free <= 0:
                 _sw = _swap_account(card, 'order_1')
                 if _sw is not None:
                     return _sw
-                _count('transition_no_fuel')
+                _count('protection_hoard_no_fuel')
                 continue
-            _count('transition_component_buy_hit')
-            return _emit_buy(card, 'transition_component_buy')
+            _count('protection_hoard_hit')
+            return _emit_buy(card, 'protection_hoard')
 
     # ===== 序 2:场况插件(板面羁绊差一人进下一档;会话累计额度)=====
     if _st.shop_plugin_budget > 0:
@@ -1547,21 +1581,30 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # —— ②(b) 死金压牌库(现行判据本体不动;消费位随会话循环接线)——
     if gold < g_star and reward_node_suppressed(gs):
         _dead_gold = gold - 10 * (gold // 10)
-        _dg_gap = {m for m in buy_members if m not in owned}
+        # prio0 缺口集推导域 = 义务面(design §2.2/§2.4,与 missing 同款
+        # 两推导同步收窄;囤货面缺口归囤臂,不入死金缺口账)。
+        _dg_gap = {m for m in obligation_members if m not in owned}
         for _dg_prio in range(3):
             for card in _buy_view('dead_gold_press_buy'):
                 name = card.name or ''
                 cost = card_cost(card)
                 if not name or cost > _dead_gold:
                     continue
-                tier = line_identity_tier(name)
                 if _dg_prio == 0:
                     _hit = name in _dg_gap
                 elif _dg_prio == 1:
-                    _hit = tier in (TIER_REGISTRY_CORE, TIER_TRANSITION)
+                    # 保护档(design §2.4 消费迁移):registry 核心 →
+                    # prio1 延续(零回退);保护集成员 → prio1(过渡优先)。
+                    # 注册表扩员成员(如桑博/椒丘等 drop/漏计档)自
+                    # unrelated(prio2)位移保护档 = 本批预期行为(身份
+                    # 升格,design §2.2 申报)。
+                    _hit = (name in CORE_SINGLE_CARD_REGISTRY
+                            or name in _protection)
                 else:
-                    _hit = (tier == TIER_UNRELATED
-                            and (card.star or 1) == 1
+                    # prio2(press):tier 腿已随 line_identity_tier 退役
+                    # 摘除——到本档的名恒为非核心非保护(其余 → prio2),
+                    # 结构腿(1★/零重叠/全额退)保持。
+                    _hit = ((card.star or 1) == 1
                             and predicates.zero_overlap(name, k_members)
                             and refund_full_star_ok(1, cost))
                     if _hit and mandate.dead_stock_pair_buy_reject_reason(
@@ -1611,8 +1654,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _pd_rf = False
             for card in _buy_view('press_buy_deployable'):
                 name = card.name or ''
-                if not name or name in buy_members:
-                    continue    # 线内件归序 1 义务通道
+                if not name or name in obligation_members:
+                    continue    # 义务面线内件归序 1 义务通道(design §2.2
+                    # 排除面收窄:囤货面成员恢复压牌库通道)
                 cost = card_cost(card)
                 _pf_ok, _ = check_settlement_line(gold, cost, g_star)
                 if not _pf_ok:
@@ -1669,11 +1713,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             name='', deployed_names=deployed_names)
         if not ok2:
             # 席满 → 置换账(shop_session §2.2 序 4 行;候选过滤 = M6
-            # 视图去线内件——压牌库判据的席位维由置换价值比较承载,
-            # 判据本体不动)。
+            # 视图去义务面线内件〔design §2.2 排除面收窄〕——压牌库判据
+            # 的席位维由置换价值比较承载,判据本体不动)。
             for card in _buy_view('m6'):
                 _m6_name = card.name or ''
-                if not _m6_name or _m6_name in buy_members:
+                if not _m6_name or _m6_name in obligation_members:
                     continue
                 if gold < card_cost(card):
                     continue
@@ -1706,7 +1750,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _m6_hit = False
             for card in _m6_cands:
                 name = card.name or ''
-                if name in buy_members:
+                if name in obligation_members:
                     _count('m6_line_member_excluded')
                     continue
                 cost = card_cost(card)
@@ -1768,7 +1812,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     if (_ff_stall_auth or _zone_hit) and _m6_exhausted:
         _ff_sale = [c for c in _buy_view('fuel_filler_stall')
                     if (c.name or '')
-                    and (c.name or '') not in buy_members
+                    and (c.name or '') not in obligation_members
                     and (c.star or 1) == 1
                     and predicates.zero_overlap(c.name or '',
                                                 k_members)
@@ -1852,7 +1896,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             cands, ckey = crit_buy.ev_buy_candidates(
                 gold, s_reserve,
                 (gs.shop.value.cards if gs.shop.value is not None else []),
-                buy_members,
+                obligation_members,
                 level=level_of(gs), window=card_w,
                 counters=counters)
             if ckey:
@@ -1952,9 +1996,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         return _core_victim_cache[0]
 
     _core_locked = _buy_members is not None
+    # C1 候选过滤直判注册表(统一保护集 design §2.4:该处语义 = 「单卡
+    # 核心身份」非「保护身份」,不迁移保护集口径——否则银狼等非四体系
+    # 核心被逐出 C1;line_identity_tier 符号随改判清零,行为零变化)。
     _core_cands = [c for c in _buy_view('core_single_card_buy')
-                   if line_identity_tier(c.name or '')
-                   == TIER_REGISTRY_CORE
+                   if (c.name or '') in CORE_SINGLE_CARD_REGISTRY
                    and (not _core_locked
                         or (c.name or '') not in buy_members)]
     if _core_cands:
@@ -2126,8 +2172,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         {int(CHARACTERS[m].cost) for m in missing
                          if CHARACTERS.get(m) is not None
                          and CHARACTERS[m].cost})
+                    # P92 拦刷门 stockpile 通道集推导域 = 义务面(design
+                    # §2.2 同族申报:囤货面成员已退出 stockpile 通道,
+                    # 判据随义务面收窄同步——反保守少拦刷向已申报)。
                     _p92_stockpile = sorted(
-                        {int(CHARACTERS[m].cost) for m in buy_members
+                        {int(CHARACTERS[m].cost) for m in obligation_members
                          if CHARACTERS.get(m) is not None
                          and CHARACTERS[m].cost
                          and _cnt(m, 1) == 1 and _cnt(m, 2) == 0})

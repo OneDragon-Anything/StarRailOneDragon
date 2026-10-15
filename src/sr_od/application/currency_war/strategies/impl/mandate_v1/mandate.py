@@ -31,9 +31,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_card_identity import (
-    transition_release_names,
-)
 from sr_od.application.currency_war.kernel.cw_comps import form_progress
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     SWAP_TRANSITION_ARM_ENABLED,
@@ -77,6 +74,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    protection_membership,
 )
 
 # 卖出排除仲裁单一源:装配 A 与动作发出登记 API 本体在
@@ -925,9 +925,10 @@ def run_mandate(frame: MandateFrame,
     事件粒度:续段缓存命中帧不增,量级骤降 ≠ 风暴消失,判读协议随批
     声明;观测对 m2_stall_cache_hit / m2_stall_cache_rederive 与重复帧
     键 m2_stall_repeat_frame 同期新增,语义与商店域一致)/
-    deadlock_only_transition_victim(方向④纯计数,零行为;design
-    §2.2.3 触发谓词:m2_retry_exhausted 事件帧 ∧ 释放集并入候选后燃料
-    资格面仍空 ∧ bench 存在 ④ 件)+ dead_pair_exit_sold_m4_fuel /
+    deadlock_only_transition_victim(保护集纯计数,零行为;统一保护集
+    design §2.4 键值重定义:m2_retry_exhausted 事件帧 ∧ 释放集并入候选
+    后燃料资格面仍空 ∧ bench 存在保护集非义务成员〔义务面 = M2 缺员源
+    k_members〕)+ dead_pair_exit_sold_m4_fuel /
     dead_pair_exit_sold_interest(释放成员实际卖出笔数,键族单一源 =
     sell_gate 键族清单)。
 
@@ -1243,12 +1244,13 @@ def run_mandate(frame: MandateFrame,
                     if no_fuel:
                         _count('m2_stall_cache_rederive')
                         _st.cw4_m2_stall_latch = (True, _seg)
-                    # 方向④ 纯计数键(零行为;design §2.2.3 触发谓词钉死):
-                    # 死锁帧 = 本事件帧;唯一可动 victim 反事实 = 释放集
-                    # 并入候选后燃料资格面仍空(no_fuel 时末次候选评估已
-                    # 含释放集,空集即谓词真)∧ bench 存在 ④ 件。
+                    # 保护集纯计数键(零行为;键值重定义 = 死锁帧释放集
+                    # 候选改保护集非义务成员——统一保护集 design §2.4,
+                    # 原「bench 存在 ④ 件」口径随 ④ 策展名单退役;义务面
+                    # = M2 缺员源 k_members)。
                     if no_fuel and any(
-                            _slot_cid(b) in transition_release_names()
+                            _slot_cid(b) in protection_membership(
+                                state, state_of(session)) - set(k)
                             for b in frame.bench):
                         _count('deadlock_only_transition_victim')
                 else:
