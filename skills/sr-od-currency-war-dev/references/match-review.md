@@ -30,7 +30,7 @@
 #### op③ …（投资选卡/补给/遭遇/战斗窗/收尾类依次）
 ```
 
-**op 边界重建规则**(档案 = `--match <game_id>` 直读,查询工具见 telemetry-reading「查询工具」节):
+**op 边界重建规则**(档案 = `--match <game_id>` 直读,查询工具见 telemetry-reading「查询工具」节;sim 单局复盘素材的采集入口 = skill 脚本 `cw_sim_match_drive.py`,见 sim-testing「单局复盘素材采集」节):
 - 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发出 OpenShop 决策行,**非 0n 分发**——旧标注「分支 0n」系错标,按显式开店通道口径已纠正;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发出 OpenShop 决策行)与**仲裁触发通道**(达标臂经帧仲裁触发的商店访问,动作名 op='发射帧仲裁商店访问')按**主日志 `[cw-op]` 行**独立计数(op_journal 流已停写,2026-09-15;局后按本局时间窗取日志行,存量旧档案 v12 内嵌的 op_journal 切片只读可用、不作新局口径)——`[cw-op]` 行为主、决策行为辅;局内佐证 = 档案 `state/journal.jsonl` 切片的 receipts 行簇(`field='receipts'` 行 action 载荷 `__type__` 序,BuyCard…/CloseShop 动作行)与 `field='gold'` 行流;**零消费访问(开店即关、无任何动作)在 receipts/gold 行零痕迹,仅 `[cw-op]` 行可见——三载体计数以日志为准**;商店访问总数 = 三载体并集(显式开店/0n 直入/仲裁触发),引用计数注明口径。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/projection_contract.md`(备战逻辑态=策略层视角的抽象局面状态;交互契约:字段消费/坐标系/快照 vs 现读时序)+ 帧时距重建);
 - 战斗窗/结算 = `CwScreenBattleWait` 一体 op(三段式,`outer_loop.md` §2.2),按 outcomes/outcome 行定位;补给(`CwScreenSupplyNode`,决策帧 `phase=supply_detour/supply_pick`)、遭遇选择(`CwScreenEncounter`,exogenous `event_choice` 行)按各自数据面定位;投资选卡:历史档案按 `invest_cards` 切片定位(冻结档案,只读)——该流已停写,新局切片零产出(断供已定案),新局定位改按 journal 行型 1 写入行:`active_strategies` 写入行(选卡名,局级累计追加,单次选择 = 相邻行差分;写入点 = cw_screen_invest_strategy.py 确认成功块)+`strategy_refresh_used` 写入行(刷新明细,行内 evidence='refresh_click@slotN';写入点 = 同文件刷新动作写入块);reason 归因串(+槽N刷新等)仅应用日志 [cw-strat]/[cw-env] 行承载不入档案(策略侧决策行文件属两文件模型规划载体,落地前无写入端);
 - **无决策行的纯路由迭代(弹窗关闭类)不逐条成节**,按轮汇总为「无决策行迭代」小清单,并入文末完整性审计的源数据缺口。

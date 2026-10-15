@@ -29,6 +29,26 @@
 - **动手判据**:patch 前先看目标调用模块顶部的 from-import,函数被谁 from-import 就 patch 谁命名空间里的名字;patch 后必跑小批(n≥10)验证落盘产物非空——捕获行数为零 = patch 面错,不是「无战斗可采」。
 - 实证:2026-09-18 的 4 个批 outcomes 全 0 字节、3100 局 killed 真值全未知,根因即捕获钩子 patch 在了定义模块;修后小批即检出采集率恢复。
 
+## 单局复盘素材采集(跑一局带遥测落盘的 sim 局)
+
+批驱动器退役后,「跑一局 sim 且产出复盘数据」的入口 = skill 脚本
+`scripts/cw_sim_match_drive.py`(项目根执行):
+
+```
+uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed <seed>
+```
+
+- 产出 = 独立批目录(`telemetry/sim/sim_match_<时刻>/`,不写生产 replay)内的
+  对局档案 `matches/match_<game_id>.json` + `state/journal.jsonl` + 决策帧;
+  stdout 附局况摘要(hp 链/节点序/金轨迹/终态,hp 写行 v 号即行锚)。
+- 局配置固定 A8/难度 108/环境在场(与测试冒烟同口径;A8 = 开局 HP 唯一
+  实证档),词缀由 seed 采样;同 seed 同局可复现。
+- 复盘按 match-review 协议吃档案;判读边界同「先知道边界」——本形态档案
+  的 `rounds`/`loss_nodes` 等派生视图为空(单一 journal 源直装),判读走
+  journal 切片,`[cw-op]` 缺席下商店访问计数退化为 receipts 单载体。
+- 批量/统计仍缺位:`cw_batch_stats` 吃旧流 `decisions.jsonl`,对本形态不
+  适用;批跑工具候补与 A/B 挂起状态不变(见「先知道边界」末条)。
+
 ## 一、找问题(三步主线)
 
 **主线**:统计指标 → 找出表现不好的指标 → 挑一局复盘归因。
