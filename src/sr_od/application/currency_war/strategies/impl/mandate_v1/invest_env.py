@@ -25,6 +25,14 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
 argmax 取最高,平分取先。禁选(env_forbid 命中)与自拆台(:func:`_counters_dot`,
 28 号稿 §3)= 排除出候选。
 
+阵容冲突护栏(changes/2026-10-17-invest-direction-guard,下称「护栏设计」
+§2.2/§2.4):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
+excluded 槽位表通道(禁选/自拆台同路)——次数闸过先建议刷新,闸尽落选时
+出域已排除,全出域帧走既有 all-excluded 回退(不制造空选);基准空帧
+(无指向持有 ∧ 未锁定)护栏不辖,行为与无护栏逐位一致。基准语义与
+策略侧(:mod:`invest_strategy` ``_conflict_basis``)同款,两屏生产模块
+平行不共享(沿本包两屏文件不互相 import 的既有结构)。
+
 刷新判据(28 号稿 §4):建议刷 = 帧内存在禁选槽 ∨ 帧最好总分 <
 :data:`REFRESH_THRESHOLD`;次数闸 = ``gs.env_refresh_left ≥ 1``。
 
@@ -42,13 +50,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY, get_comp
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ECONOMY,
     ENV_GIFTS,
     INVESTMENT_ENVS,
+    env_faction_scope,
     get_env,
+    strategy_faction_scope,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.env_economy import (
     env_economy_value,
@@ -271,15 +281,49 @@ REFRESH_THRESHOLD: float = _derive_refresh_threshold()
 
 # ===== 决策入口(28 号稿 §4)=====
 
+def _conflict_basis(gs: GameState, locked_comp: str,
+                    demoted_endgame: bool) -> frozenset[str]:
+    """冲突基准(护栏设计 §2.2;与策略侧 invest_strategy._conflict_basis
+    同款语义,两屏平行实现——基准语义单一源 = 护栏设计 §2.2,代码双份
+    沿两屏文件不互相 import 的包结构):
+
+    - 锁定帧(locked_comp 非空 ∧ 非降格)= 锁线 Comp.factions——锁定 =
+      终局方向裁定完成,历史误持不入基;
+    - 未锁定帧 = 已持有投资的指向并集(环境 + 策略,持有 append-only →
+      基准单调不减,出域判定只收紧);降格帧锁线不入基,回持有基
+      (降格 = 终局方向暂席,与模块既有 demoted 语义同构);
+    - 锁线名不可解析(OCR 漂移/非阵容名)→ 空集;基准空 = 护栏不辖,
+      行为与无护栏逐位一致。全部指向集查询经 kernel 归一口径
+      (``env_faction_scope``/``strategy_faction_scope`` 内先
+      ``normalize_invest_name``,持有名 OCR 形变不静默漏拦)。
+    """
+    if locked_comp and not demoted_endgame:
+        lc = get_comp(locked_comp)
+        return frozenset(lc.factions) if lc is not None else frozenset()
+    basis: set[str] = set()
+    env_name = gs.active_env.value or ''
+    if env_name:
+        basis |= env_faction_scope(env_name)
+    for name in (gs.active_strategies.value or []):
+        basis |= strategy_faction_scope(name)
+    return frozenset(basis)
+
+
 def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  demoted_endgame: bool, evicted: frozenset[str],
                  env_priority: list[str],
-                 env_forbid: list[str]) -> tuple[list[float], list[float],
+                 env_forbid: list[str],
+                 basis: frozenset[str]) -> tuple[list[float], list[float],
                                                  list[tuple[float, float, float, float]],
                                                  list[bool]]:
     """帧评分一次(选卡/刷新两入口共享,禁二次评分;板面 DoT/减益计数
     循环外单帧单读,沿旧机器纪律):
-    返回 (总分含转向轴,转向加分,四组件,排除标记)。"""
+    返回 (总分含转向轴,转向加分,四组件,排除标记)。
+
+    basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):出域槽
+    (候选环境有指向且与基准零交,§2.4)并入 excluded 槽位表——与禁选/
+    自拆台同通道,禁选槽触发建议刷与全排除回退两条既有路径原样复用,
+    零新出口形态。"""
     board = gs.board.value or {}
     on_dot = sum(board.get(_f, 0) for _f in ('持续伤害', '减益')) \
         >= BOARD_DOT_COUNT_THRESHOLD
@@ -292,8 +336,12 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
             _opt, gs, locked_comp, demoted_endgame, evicted)
         _steer = STEERING_PRIORITY_BONUS if any(
             _p in _opt for _p in env_priority) else 0.0
+        # 出域标记(护栏设计 §2.3 规则表):基准非空 ∧ 候选有指向 ∧ 与
+        # 基准零交;通用环境(指向集空)与基准空帧恒不标记
+        _scope = env_faction_scope(_opt)
+        _off = bool(basis) and bool(_scope) and not (_scope & basis)
         _excluded = any(_p in _opt for _p in env_forbid) \
-            or (on_dot and _counters_dot(_opt))
+            or (on_dot and _counters_dot(_opt)) or _off
         scores.append(_cash + _dir + _gift + _stance + _steer)
         steers.append(_steer)
         components.append((_cash, _dir, _gift, _stance))
@@ -326,16 +374,18 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
     刷新闸全败后的重调,28 号稿 §4「建议帧首调发建议、紧随重调落选卡」)
     时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
-    """
+    冲突基准在此入口算好(护栏设计 §2.2,:func:`_conflict_basis`)传入
+    评分帧,出域槽排除与 :func:`decide` 同基线。"""
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
     if not options:
         # 空候选帧(观察层失约形态;旧 kernel decide_event 同输入返回
         # option_idx=0 的退化行为,本函数镜像防炸,不引入新语义)
         return InvestEnvDecision(idx=0, reason='empty-frame: 无候选退化')
+    basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     scores, steers, components, excluded = _score_frame(
         options, gs, locked_comp, demoted_endgame, frozenset(evicted),
-        env_priority, env_forbid)
+        env_priority, env_forbid, basis)
     return _pick_decision(scores, steers, components, excluded)
 
 
@@ -347,11 +397,14 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
     - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
       evicted = 意向状态三参同源直通(flow 解析后传入,28 号稿 §2.9
       「意向解析留 flow」);
-    - 禁选(env_forbid 命中,子串匹配与白名单一致)与自拆台(板面
-      持续伤害+减益 ≥ 2 时克制 DoT/减益的候选)= 排除出候选;
+    - 禁选(env_forbid 命中,子串匹配与白名单一致)、自拆台(板面
+      持续伤害+减益 ≥ 2 时克制 DoT/减益的候选)与阵容冲突出域槽
+      (护栏设计 §2.4,基准 = :func:`_conflict_basis`)= 排除出候选
+      (excluded 槽位表同通道);
     - 建议刷 = 排除槽存在 ∨ 帧最好总分 < REFRESH_THRESHOLD,且次数闸
       ``gs.env_refresh_left ≥ 1``;建议刷成立 → RefreshSuggestion,
-      否则 → InvestEnvDecision(argmax 取最高,平分取先)。
+      否则 → InvestEnvDecision(argmax 取最高,平分取先;全排除退化帧
+      走既有 all-excluded 回退,不制造空选)。
     """
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
@@ -359,9 +412,12 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
         # 空候选帧(观察层失约形态;旧 kernel decide_event 同输入返回
         # option_idx=0 的退化行为,本函数镜像防炸,不引入新语义)
         return InvestEnvDecision(idx=0, reason='empty-frame: 无候选退化')
+    basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     scores, steers, components, excluded = _score_frame(
         options, gs, locked_comp, demoted_endgame, frozenset(evicted),
-        env_priority, env_forbid)
+        env_priority, env_forbid, basis)
+    # forbidden_slot 含出域槽(护栏出域并入 excluded 通道,§2.4——
+    # 出域占槽应刷掉换本线方向机会,与禁选槽同路同形,零新出口形态)
     forbidden_slot = any(excluded)
     if forbidden_slot or max(scores) < REFRESH_THRESHOLD:
         # 次数闸 = gs.env_refresh_left ≥ 1(28 号稿 §4)。Field 读数 None
