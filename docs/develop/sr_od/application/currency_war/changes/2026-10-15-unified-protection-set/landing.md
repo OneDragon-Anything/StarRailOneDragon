@@ -28,9 +28,10 @@
 **文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate.py`(计数键写点)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/sell_gate.py`(hold 登记腿 + line_identity_tier 消费迁移)、`src/sr_od/application/currency_war/kernel/cw_card_identity.py`(退役面)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/buy.py`(ev_buy 入参)、测试仓
 **依赖**:3.1
 **优先级建议**:5
+**过渡态申报**:本阶段收口至 3.3 开工的窗口内,囤货臂已购成员尚无卖面保护(保护集身份段归 3.3)——窗口内实机/sim 局的该类件无禁卖保障,属已知过渡态,3.3 完成即闭合。
 **完成判据**:
 - 单帧:r3 同构牌面(风堇/藿藿/青雀/佩拉/爻光,**owned 集钉藿藿/青雀/佩拉已持有**,帧态六元组 fixture)→ 必发 `BuyCard 爻光`(囤货臂);r6 同构牌面含饮月 → 必发 `BuyCard 饮月`(design §2.6;**方向态为设计钉死构造值**——病灶局方向态为已登记源缺,fixture 按设计 §2.2 名单构成构造同构场景,docstring 声明构造依据;单帧验证臂语义非历史复现);
-- ④分支/`transition_release_names`/`line_identity_tier` **src 代码符号消费面**零残留(grep 清零申报,域 = src + sr-od-test 消费点;kernel 注释/正本/proofs 引用归正本更新清单;sell_gate.py 两点已归本阶段,余点归 3.3 后由 3.3 判据收口);
+- ④分支/`transition_release_names`/`line_identity_tier` **src 代码符号消费面** grep 清零(3.2 与本阶段合计;域 = src + sr-od-test 消费点,**显式例外:`cw_card_identity.sell_hold_exclusion_names` 函数体内的 `transition_release_names` 调用随 3.3 函数退役收口,不计入 3.2 判据**;kernel 注释/正本/proofs 引用归正本更新清单);
 - 受影响的既有单帧/流程测试逐条判语义后修(引设计出处,禁机械跟绿);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:单帧测试名 + grep 清零申报(sell_gate 两点外)+ 受影响测试全绿
@@ -58,10 +59,10 @@
 **依赖**:3.2、3.3
 **优先级建议**:8
 **完成判据**:
-- 复现局(design §2.6 预测锚;seed 20261012 = 病灶局同一局):**爻光被买入(首个买入差异)∧ 椒丘全程不被卖**(行为锚断言 = 病灶翻转;饮月腿由 3.2 单帧 r6 fixture 承载,不设局级断言);
+- 复现局(design §2.6 预测锚;seed 20261012 = 病灶局同一局):**分叉鲁棒结构锚**——①首个买入差异的目标 ∈ 保护集;②全局长无保护集成员卖出事件(爻光/饮月精确臂归属由 3.2 单帧 fixture 承载;椒丘不作锚——分叉局可能不入场,防空转通过);
 - 冒烟批全量跑通(逐 seed 收口无崩溃),统计行齐;
 - **既有验收线保全清单逐条对照**(design §2.6 表十条:P56+T1 改域申报回填占比/刷新通道 floor/富余滞留/方向预言/命题 A 八项+目标②组全量/FM-1 补登记/零漂移豁免/P86 验收线/P96 行为线语义判修(载体 = test_dead_stock_pair.py)/M6 子门确认)——读数 vs 门要求逐条判定;
-- 观察集读数落交付报告(点亮率/成型率/形态达标率/通关率/存活带/凑息失败频率,绝对值报告无对照)。
+- 观察集读数落交付报告(**design §2.6 prereg 全集**:四体系点亮率/引擎成型率/形态达标率/通关率/存活报警线含位面 2 入口率/出口金带/凑息失败频率/买卡笔数分布,绝对值报告无对照)。
 **验收凭据形式**:交付报告(读数表 + 保全判定)
 
 ## 末阶段:正本更新
