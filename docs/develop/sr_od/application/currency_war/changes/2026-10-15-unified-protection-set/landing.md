@@ -29,8 +29,8 @@
 **依赖**:3.1
 **优先级建议**:5
 **完成判据**:
-- 单帧:r3 牌面(风堇/藿藿/青雀/佩拉/爻光,帧态六元组 fixture)→ 必发 `BuyCard 爻光`(囤货臂);r6 牌面含饮月 → 必发 `BuyCard 饮月`(design §2.6;帧态从复现局 r3/r6 决策帧提取固化,含方向态);
-- ④分支/`transition_release_names`/`line_identity_tier` 代码与消费点零残留(grep 清零申报;sell_gate.py 两点已归本阶段,余点归 3.3 后由 3.3 判据收口);
+- 单帧:r3 同构牌面(风堇/藿藿/青雀/佩拉/爻光,**owned 集钉藿藿/青雀/佩拉已持有**,帧态六元组 fixture)→ 必发 `BuyCard 爻光`(囤货臂);r6 同构牌面含饮月 → 必发 `BuyCard 饮月`(design §2.6;**方向态为设计钉死构造值**——病灶局方向态为已登记源缺,fixture 按设计 §2.2 名单构成构造同构场景,docstring 声明构造依据;单帧验证臂语义非历史复现);
+- ④分支/`transition_release_names`/`line_identity_tier` **src 代码符号消费面**零残留(grep 清零申报,域 = src + sr-od-test 消费点;kernel 注释/正本/proofs 引用归正本更新清单;sell_gate.py 两点已归本阶段,余点归 3.3 后由 3.3 判据收口);
 - 受影响的既有单帧/流程测试逐条判语义后修(引设计出处,禁机械跟绿);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:单帧测试名 + grep 清零申报(sell_gate 两点外)+ 受影响测试全绿
@@ -46,7 +46,7 @@
 - 单帧:席满 + 手上椒丘 + 店内杂件 → 置换卖杂件,椒丘不在卖出候选;凑息缺口场景全保护档 → 零卖出 + 观测键计数(design §2.6);
 - **兜底对账断言**:全场保护档帧(椒丘构造),P78-5 兜底豁免对保护件可放行(两分支必要条件满足时)——兜底池 = 保护集 ∪ registry 核心的直接验证;
 - P78 既有豁免通道测试全绿(自救/换血/兜底);
-- `sell_hold_exclusion_names`/`line_identity_tier`/`transition_release_names` 全仓 grep 清零(3.2 与本阶段合计);
+- `sell_hold_exclusion_names`/`line_identity_tier`/`transition_release_names` **src 代码符号消费面** grep 清零(3.2 与本阶段合计;kernel 注释/正本/proofs 引用归正本更新清单);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:单帧测试名 + 兜底对账断言 + grep 全清零申报 + 既有 P78 测试全绿
 
@@ -58,17 +58,17 @@
 **依赖**:3.2、3.3
 **优先级建议**:8
 **完成判据**:
-- 复现局(design §2.6 预测锚;seed 20261012 = 病灶局同一局):爻光/饮月被买入、椒丘不被卖(锚定行为断言);
+- 复现局(design §2.6 预测锚;seed 20261012 = 病灶局同一局):**爻光被买入(首个买入差异)∧ 椒丘全程不被卖**(行为锚断言 = 病灶翻转;饮月腿由 3.2 单帧 r6 fixture 承载,不设局级断言);
 - 冒烟批全量跑通(逐 seed 收口无崩溃),统计行齐;
-- **既有验收线保全清单逐条对照**(design §2.6 表七条:P56+T1 改域申报回填占比/命题 A 八项+目标②组全量/FM-1 补登记/零漂移豁免/P86 验收线/P96 行为线语义判修(载体 = test_dead_stock_pair.py)/M6 子门确认)——读数 vs 门要求逐条判定;
+- **既有验收线保全清单逐条对照**(design §2.6 表十条:P56+T1 改域申报回填占比/刷新通道 floor/富余滞留/方向预言/命题 A 八项+目标②组全量/FM-1 补登记/零漂移豁免/P86 验收线/P96 行为线语义判修(载体 = test_dead_stock_pair.py)/M6 子门确认)——读数 vs 门要求逐条判定;
 - 观察集读数落交付报告(点亮率/成型率/形态达标率/通关率/存活带/凑息失败频率,绝对值报告无对照)。
 **验收凭据形式**:交付报告(读数表 + 保全判定)
 
 ## 末阶段:正本更新
 
-**范围**:按「正本更新清单」逐条更新正本;含 **TRANSITION_PACK 全仓消费点清点与逐点裁决**(身份消费面已随 3.2/3.3 退役;非身份活消费——`cw_deploy_logic.py` fw_carry/`cw_recipe`/`cw_transition` 等——逐点定迁移或保留,清点清单进交付报告)。
+**范围**:按「正本更新清单」逐条更新正本;含 **TRANSITION_PACK 及退役符号族全仓清点与逐点裁决**(身份消费面已随 3.2/3.3 退役;非身份活消费——`cw_deploy_logic.py` fw_carry/`cw_recipe`/`cw_transition` 等——与文档/注释面引用(proofs 单篇/validations/kernel 注释)逐点定迁移或保留,清点清单进交付报告)。
 **设计依据**:本文件「正本更新清单」节 + design.md §2.4
-**文件面**:清单所列正本文档;`knowledge/cw_line_facts.py` 及清点出的非身份消费文件
+**文件面**:清单所列正本文档;`knowledge/cw_line_facts.py` 及清点出的非身份消费与文档/注释面文件(`sr-od-test` 测试文件按测试语义判修归 3.2/3.3)
 **依赖**:3.1-3.4 全部
 **优先级建议**:0
 **完成判据**:清单清零;清点清单零未裁决项;正本与实现一致
@@ -80,6 +80,7 @@
 - `strategy-docs/11_shop_decisions.md` §1(序 1 名单三态重述:未锁定候选态含过渡域全体 + 囤货臂;④转投分支退役注) ← 3.2
 - `strategy-docs/11_shop_decisions.md` §4.0/§4.1/§6.5(§4.0/§4.1:场景资格面身份源 = 保护集;静态持有两集「维持现状」裁决由本迭代推翻的申报;五消费面迁移;凑息观测键登记。§6.5:凑息门改域申报与占比回填) ← 3.3、3.4
 - `strategy-docs/12_line_and_intention.md` §1.2/§3/§4(§1.2/§4:过渡域候选/锁定状态语义 + 义务面/囤货面拆分 as-built;§3:TRANSITION_PACK「保留为未锁定期判据输入」引用面的退役收口) ← 3.1、3.2、3.3
-- `math_proofs.md` P41 行(判定域修正申报,非新命题)+ P78 行(③④构成迁移随迁注)+ P96 行(行为测试载体指针勘误:`test_cw_dead_pair_exit` → `test_dead_stock_pair.py`)+ `proofs/p86` 单篇(TRANSITION_PACK/line_identity_tier 符号名引用随退役勘误) ← 3.3
+- `math_proofs.md` P41 行(判定域修正申报,非新命题)+ P78 行(③④构成迁移随迁注)+ P96 行(行为测试载体指针勘误:`test_cw_dead_pair_exit` → `test_dead_stock_pair.py`)+ `proofs/p77`、`proofs/p96` 单篇与 `validations/P31_VALIDATION.md`(TRANSITION_PACK/静态持有两集/④门语义引用随退役勘误)+ `proofs/p86` 单篇(TRANSITION_PACK/line_identity_tier 符号名引用随退役勘误) ← 末阶段
+- `kernel/cw_intention.py` 身份单一源注释行(line_identity_tier 表述随退役勘误) ← 3.2
 - `knowledge/cw_line_facts.py` TRANSITION_PACK 及档位标签**符号删除**(身份消费面清零后;配方对引用面按清点裁决) ← 末阶段
 - 观测键登记(`transition_hold_locked_frame`/`deadlock_only_transition_victim` 重定义口径) ← 3.2
