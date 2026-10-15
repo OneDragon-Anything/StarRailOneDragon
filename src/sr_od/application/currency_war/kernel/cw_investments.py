@@ -2301,3 +2301,59 @@ def _validate_env_supply_equip_count() -> None:
 
 
 _validate_env_supply_equip_count()
+
+
+# ===== 扑满环境奖励面板矿占位增量注册表(白名单制)=====
+# 「经济过热/经济严重过热」两扑满环境局,sim 奖励面板矿在普通奖励锚
+# (sim/cw_sim_backend.REWARD_ORE_PANEL_ANCHOR,8 矿)之上的增量矿数
+# ——承载卡面「掉落(超)多战利品」幅度差异的 sim 占位:游戏 desc 无
+# 数值,值 = 用户占位拍定(2026-10-15,设计 designs/T-20-jingji-
+# yanzhong-guore.md §8),非核实游戏事实,待实机采证校准;占位申报
+# 披露键 = sim/cw_sim_backend.PIGGY_ORE_PANEL_BONUS_PLACEHOLDER。
+# 两键独立拍定、独立校准:「经济严重过热」=「经济过热」再 +4 的阶梯
+# 关系只是本轮占位取值的来历,非不变量、不校验——实采可只调一键。
+# 消费面 = sim 奖励面板装配单点(cw_sim_backend 按活跃环境查表扩尾);
+# live 面板矿 = 实机渲染观察读画面,本表不进 live 读链。表外环境一律
+# 无增量(表形状与 ENV_SUPPLY_EQUIP_COUNT 同判:禁从效果原文自动猜数)。
+ENV_ORE_PANEL_BONUS: dict[str, int] = {
+    '经济过热': 4,
+    '经济严重过热': 8,
+}
+
+
+def _validate_env_ore_panel_bonus() -> None:
+    """ENV_ORE_PANEL_BONUS 构建校验(import 即炸;沿
+    _validate_env_supply_equip_count 先例):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:≥1 的真 int(bool 排除;禁 0——表外默认即无增量,登记 0
+    与表外无差,登记笔误前置可见);
+    ③ 键集与扑满名单 PIGGY_ENV_NAMES **完全一致**(响亮向,禁 ⊆ 静默
+    向):第三扑满环境出现(名单增员)或扑满卡移除(名单减员)即
+    import 炸,强制逐环境显式拍定占位增量,防名单扩员后增量静默缺档。"""
+    orphans = [n for n in ENV_ORE_PANEL_BONUS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_ORE_PANEL_BONUS 孤儿键(base 无此环境?版本改名?):"
+            f"{sorted(orphans)}")
+    for _n, _bonus in ENV_ORE_PANEL_BONUS.items():
+        if not isinstance(_bonus, int) or isinstance(_bonus, bool) \
+                or _bonus < 1:
+            raise ValueError(
+                f"ENV_ORE_PANEL_BONUS 值形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_bonus!r}")
+    # 函数内 import:沿 _validate_env_node_seq 先例,避免 cw_reward_node
+    # → cw_game_state 一侧与本模块的潜在环(cw_reward_node 派生名单
+    # 依赖 data 表 + cw_game_state,不依赖本模块,静态无环,但保持
+    # 同先例形态)。
+    from sr_od.application.currency_war.kernel.cw_reward_node import (
+        PIGGY_ENV_NAMES,
+    )
+    if set(ENV_ORE_PANEL_BONUS) != set(PIGGY_ENV_NAMES):
+        raise ValueError(
+            f"ENV_ORE_PANEL_BONUS 键集与扑满名单 PIGGY_ENV_NAMES 不一致"
+            f"(第三扑满环境增删须逐环境显式拍定占位增量):"
+            f"仅表有 {sorted(set(ENV_ORE_PANEL_BONUS) - set(PIGGY_ENV_NAMES))},"
+            f"仅名单有 {sorted(set(PIGGY_ENV_NAMES) - set(ENV_ORE_PANEL_BONUS))}")
+
+
+_validate_env_ore_panel_bonus()

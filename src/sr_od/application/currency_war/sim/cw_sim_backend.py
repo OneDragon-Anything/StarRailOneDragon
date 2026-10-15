@@ -100,6 +100,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ORE_GRANTS,
+    ENV_ORE_PANEL_BONUS,
     ENV_POOL_REWRITE,
     ENV_REROLL_ASSUMPTION_POOL,
     ENV_REROLL_NAMES,
@@ -568,6 +569,16 @@ SUPPLY_DIAMOND_SLOT_PENDING: str = 'supply_diamond_slot_pending_u24'
 #: 要求」节;M14 豁免位由后端结算腿承载)。
 PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
 
+#: 扑满面板矿占位增量披露键(「掉落(超)多战利品」desc 无数值,sim
+#: 面板矿增量 = 用户占位拍定 2026-10-15,非核实游戏事实,待实机采证
+#: 校准)。值串 = 纯声明串不携数值:携值即与注册表双源,量级单一源 =
+#: kernel :data:`ENV_ORE_PANEL_BONUS`。不进 kernel ORE_ASSUMPTION_KEYS
+#: 汇总 tuple——该 tuple 辖 sphere 内容分布假设且现无发射接线,本键
+#: 沿 :data:`ORE_PLANE_START_PENDING` 先例住本模块、接线
+#: :data:`_BASE_DISCLOSURES`、测试直断发射(设计 designs/T-20-
+#: jingji-yanzhong-guore.md §6.1)。
+PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
+
 
 def encounter_options() -> tuple[EncounterOption, ...]:
     """遭遇档位集生成(M16;首版固定四档集,奖励包占位文本随披露)。
@@ -606,6 +617,30 @@ def reward_ore_points() -> tuple[tuple[str, int, int, int], ...]:
         for _ in range(count):
             i += 1
             points.append((color, i * 10, 10, 10))
+    return tuple(points)
+
+
+def reward_ore_panel_points(
+        env_name: str) -> tuple[tuple[str, int, int, int], ...]:
+    """奖励面板点集 = 锚 8 矿 + 扑满环境占位增量扩尾(奖励节点装配
+    单点消费;纯函数,零采样零簿记)。
+
+    [索引定义] 元素 = ``(色档, x, y, r)``,与 :func:`reward_ore_points`
+    同形同坐标系(x/y = sim 世界合成坐标,身份键无画面语义)。增量矿
+    查表 :data:`ENV_ORE_PANEL_BONUS`(量级单一源;表外环境零增量),
+    色档 = '灰'(占位呈现身份:色档无内容语义,实采校准时连色带数
+    一起校,披露键 :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER`)。
+
+    **坐标续接面板序,禁独立从 1 起号**:增量点 x 自锚点序顺延
+    ((锚点数+序)*10),与锚矿同列延伸——同批 spheres 写按 (x, y)
+    身份求交,独立起号会撞键吞点;位面开局声明矿消费方传本函数结果
+    长度续接(:meth:`SimBackend._plane_start_declared_points`),
+    扩尾加长后声明矿坐标自动跟随,联动零改码。
+    """
+    points = list(reward_ore_points())
+    bonus = ENV_ORE_PANEL_BONUS.get(str(env_name or ''), 0)
+    for _ in range(bonus):
+        points.append(('灰', (len(points) + 1) * 10, 10, 10))
     return tuple(points)
 
 
@@ -704,6 +739,8 @@ _BASE_DISCLOSURES: dict[str, object] = {
     FURNACE_CHAR_MODE_PENDING: 'furnace_drag_char_mode_unmodeled',
     NODE_XP_PENDING_U17: 'boss_xp12_composition_pending',
     PIGGY_NO_HP_LOSS: 'piggy_node_no_hp_loss_exempt',
+    # 占位增量申报:值串纯声明不携数值,量级单一源 = ENV_ORE_PANEL_BONUS
+    PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: 'user_placeholder_pending_field_sampling',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
 }
@@ -1518,6 +1555,12 @@ class SimBackend:
                 max(int(self.gs.streak.value or 0), 0),
                 income_modifiers_of(self.gs))
         else:
+            # 非扑满清递延快照(纯防御,幂等清理,现网不可达路径零行为
+            # 变化):扑满局奖励节点必走上分支;残留快照若带入非扑满
+            # 节点窗,结算腿会给战斗节点叠发一份 reward 收入——未来
+            # 新增「未结算即推进」类流程时的开口,T-6 验收遗留项清账
+            # (reviews/T-6-r1.md ⑤①)。
+            self._piggy_income_snap = None
             apply_round_start_income(
                 self.gs, plane=plane, round_num=r, node_type=kind,
                 streak=max(int(self.gs.streak.value or 0), 0),
@@ -1653,7 +1696,12 @@ class SimBackend:
         # 后续呈现自然无声明矿。备战档呈现均检查 pending 当前 plane 条目
         # (含普通 battle 备战:有条目 → 声明矿点单独呈现,子态同为
         # PREP_SUB_ORE——面板在场语义与奖励节点一致)。
-        panel = reward_ore_points() if kind == 'reward' else ()
+        # 面板矿 = 锚 8 矿 + 扑满环境占位增量(活跃环境查表扩尾,见
+        # reward_ore_panel_points);len(panel) 入参使位面开局声明矿
+        # 续接坐标随扩尾自动跟随。
+        panel = (reward_ore_panel_points(
+            str(self.gs.active_env.value or ''))
+            if kind == 'reward' else ())
         points = panel + self._plane_start_declared_points(plane, len(panel))
         # spheres 写一律过挂接入口(单一写径,禁第二写径):非 ore 备战
         # 呈现空读照写 count=0 亦过入口——空批零生成、清理上节点残留
