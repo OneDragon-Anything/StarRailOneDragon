@@ -1139,7 +1139,10 @@ done 键带节点坐标 `boss#<位面>-<轮>`,与一次性通道的 (env, 具名
 横幅早退帧不触发 = 与 boss 类型直定同覆盖面),sim =
 `cw_sim_backend._begin_node_window` boss 分支(窗口幂等守卫内,
 `logic_sig('sim:env')`,流键 `M21/env-boss/p<位面>/r<轮>`);两支天然互斥,
-done 短路兜第二层。
+done 短路兜第二层。**触发时点假设**(desc 无载申报,实采挂点):模型按
+「简报屏观察时点 = 进入首领节点」发放,desc 未写时点(实机可能为 boss
+战后)——若实机战后发则模型早发一窗,同一角色资产对照无失,sim 世界
+时序差一窗、无行为分支;证伪路径 = 实机局 boss 节点战后 bench 增量对照。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写入方 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =
