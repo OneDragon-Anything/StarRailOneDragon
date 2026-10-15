@@ -141,7 +141,7 @@ class CwScreenBossBriefing(CwOperation):
             # = 本屏观察(hist = settle_confirm 推进后的 boss 坐标,与上方
             # boss 类型直定目标同源;sim 半边在 cw_sim_backend 进窗收口,
             # 两端天然互斥零双发)。best-effort:观测面不阻塞对局
-            #(battle_wait 结算屏接线同纪律);返回值 = 角色名仅日志面消费,
+            # (battle_wait 结算屏接线同纪律);返回值 = 角色名仅日志面消费,
             # 刻意忽略。rng=None = 回退自掷(live 采样猜测口径,观察校准)。
             try:
                 check_env_boss_grants(

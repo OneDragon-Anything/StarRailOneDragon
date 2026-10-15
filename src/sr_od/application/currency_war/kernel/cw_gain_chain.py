@@ -850,8 +850,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                                      producer=GAIN_CHAIN_PRODUCER)
             # 绑定腿:发放名落 done 条件键 'star_grant#<名>'(同窗相邻写,
             # 腿2 触发依赖);equips 未观察时 gain_equipment 零写跳档
-            #(placed=False)→ 绑定同样不落,宁缺勿造与腿2 缓发口径对齐
-            #(禁「绑定在而装备未发」残缺态)。STAR_GRANT_KEY_PREFIX 函数级
+            # (placed=False)→ 绑定同样不落,宁缺勿造与腿2 缓发口径对齐
+            # (禁「绑定在而装备未发」残缺态)。STAR_GRANT_KEY_PREFIX 函数级
             # 取常量:cw_env_grants 触发函数消费本模块 gain_character,
             # 模块级互导成环(先例 = pick_invest_env.action_sampling_rng
             # 同款函数级避环)

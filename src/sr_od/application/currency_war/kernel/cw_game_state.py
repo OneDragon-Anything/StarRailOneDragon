@@ -2423,8 +2423,8 @@ class GameState:
     # 键,登记本身仍局内恒存)。幂等守卫:跨结算/跨观察重查不重发(结算
     # 低频天然幂等友好,电平 + done 直写,边沿/op 成员记忆已否定,取舍见
     # 详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants 触发函数族
-    #(发放刻追加)+ cw_gain_chain.on_env_gained 随机装备绑定腿
-    #(placed 守卫下追加),无观察写端(发放登记事实非观察投影;直写
+    # (发放刻追加)+ cw_gain_chain.on_env_gained 随机装备绑定腿
+    # (placed 守卫下追加),无观察写端(发放登记事实非观察投影;直写
     # 先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿)。恢复局随
     # 快照存续 = 中断恢复对局不重发。开局种子底座 = ()(A 类)。
     env_grants_done: Field[tuple[tuple[str, str], ...]] = field(

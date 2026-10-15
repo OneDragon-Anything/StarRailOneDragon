@@ -254,8 +254,9 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
     1. 当前环境(active_env)None/空链 → None;
     2. 环境不在登记表(ENV_BOSS_GRANTS)→ None;
     3. ``node_pos`` None → None(live hist 未建,坐标不可知禁猜);
-    4. 坐标即入参:``node_pos`` = (位面, 轮) NodePos 二元组,拆包零转换
-       (节点序列按环境派生,本触发器收坐标入参,对序列修饰天然免疫);
+    4. 坐标即入参:``node_pos`` = (位面, 轮) NodePos 二元组,拆包后
+       int 归一(纯防御,两端调用点现值均为 int,转换不涉「序号反解」);
+       节点序列按环境派生,本触发器收坐标入参,对序列修饰天然免疫;
     5. ``(env, 'boss#<位面>-<轮>') ∈ done 现值 → None``(本节点已发;
        同节点重复观察幂等短路;done None 视为空防御,沿 streak 通道
        ``value or ()`` 先例);
