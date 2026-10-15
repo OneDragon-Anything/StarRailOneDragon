@@ -15,10 +15,12 @@ v3 §3.2)。
 A 三段(方案 v3 §2.2;与 「资格判定 = 物理硬闸 ∧ 身份分层 ∧
 适用范围闸三段式」同构):
 1. 身份段(已落地):义务基座(终局阵容锁定态 = locked_buy_membership
-   锁定采购集宽集 / 未锁态 = k_members,解析单点)∪ 静态持有两集
-   (kernel.cw_card_identity.sell_hold_exclusion_names = registry 核心
-   ∪ ④放行集)。覆盖义务类 + 持有类买因(τ=∞ 至账闭合事件,P78-2a;
-   ③④ 持有件禁入一切通道燃料资格 = P41 燃料类「边际贡献≈0」资格
+   锁定采购集宽集 / 未锁态 = k_members,解析单点)∪ 保护集(
+   mandate_v1/protection.protection_membership 全仓单一源;统一保护集
+   design §2.3:保护集成员常规通道绝对禁卖)∪ registry 核心(
+   CORE_SINGLE_CARD_REGISTRY 保留——银狼LV.999 等单卡核心非四体系
+   成员,不在保护集域)。覆盖义务类 + 持有类买因(τ=∞ 至账闭合事件,
+   P78-2a;持有件禁入一切通道燃料资格 = P41 燃料类「边际贡献≈0」资格
    本义,P78-4,非 P60 新适用范围)。
 2. 窗口段(本批落地):press 与 stall_protect 两类买入共簿登记
    {名 → (买因,登记轮)},活跃判据 = 登记轮 == 当前轮(与 T3 同界,
@@ -63,7 +65,6 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_card_identity import (
     is_engine_piece,
-    sell_hold_exclusion_names,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
@@ -276,12 +277,11 @@ def _hold_qualification_ok(name: str, star: int | None, cost: int | None,
 
     名字腿(design §2.3 hold 腿行,3.2 迁移)= 保护集 ∪ registry 核心
     ∪ 乙分支获取名集——hold 类买入 = C1 核心 + protection_hoard,两类
-    的登记资格面(原 ``sell_hold_exclusion_names`` 名字腿随 ④ 策展
-    口径退役)。硬闸档位表(design §2.4):registry 核心 → core 档
-    (恒买无星闸,现行 core 闸面延续);保护集成员 → protection 档
-    (闸 = 1★ 全额退,与囤臂同门);其余 → 闸面维持 True 无星闸语义
-    (实际不可达——「拒」本就来自名字腿非闸腿)。星/费缺读 = fail-closed
-    拒登记(资格判据禁缺读放行)。
+    的登记资格面(策展过渡名单口径已随 ④ 退役)。硬闸档位表(design §2.4):
+    registry 核心 → core 档(恒买无星闸,现行 core 闸面延续);保护集成员
+    → protection 档(闸 = 1★ 全额退,与囤臂同门);其余 → 闸面维持现行
+    True 无星闸语义(实际不可达——「拒」本就来自名字腿非闸腿)。星/费
+    缺读 = fail-closed 拒登记(资格判据禁缺读放行)。
 
     **乙分支持有腿(P86 攻击 r1 发现1 面①)**:名 ∈ 乙分支获取名集
     (``hub_acquired_names_of``,动作发出点先登记后 emit 故当笔在场)与
@@ -888,25 +888,29 @@ def identity_exclusions(session: StrategySession,
                         *, cap_hold: int | None = None) -> set[str]:
     """装配 A 身份段(方案 v3 §2.2 第 1 段;P78 INV)。
 
-    = 义务基座 ∪ 静态持有两集。静态/动态切分与「禁静态全集」论证
-    (name 型零重叠语义下静态全集排除会掏空 (a) 的全部 1★ 燃料资格,
-    方案审 v3 攻击点①实证)继承 Z1;本集取窄形态 =
-    基座 ∪ 注册表两集,覆盖「已买待持有」与「在售未买」两态。
+    = 义务基座 ∪ 保护集 ∪ registry 核心。保护集 = 全仓身份单一源
+    ``protection_membership``(统一保护集 design §2.3 裁决:保护集成员
+    常规通道绝对禁卖,经本段装配;Z1 凑息排除集等静态身份消费随本单一
+    装配点同步)。registry 核心保留缘由 = 银狼LV.999 等单卡核心非四体系
+    成员,不在保护集域(design §2.3)。本集取窄形态 = 基座 ∪ 现算身份
+    两源,覆盖「已买待持有」与「在售未买」两态。
 
     附带换线闭合读点(义务类登记账对账,见
     ``_close_switched_obligations``;读端幂等,行为零面)。
 
     **乙分支持有段(P86 攻击 r1 发现1 面②)**:并集加乙分支获取名集
     (``hub_acquired_names_of``)——乙分支「获取 = 免费期权持有」语义的卖面
-    承载:未并集时 TRANSITION_PACK 之外多线复用件(瓦尔特/刻律德菈等)在下
-    一备战帧可被凑息/腾位/筹资当 1★ 燃料卖掉(fresh_buys 只保同轮),
-    期权价值被己方卖面销毁。取获取时点记录(非注册表帧集) =
+    承载:未并集时保护集之外多线复用件(瓦尔特/刻律德菈等)在下一备战帧
+    可被凑息/腾位/筹资当 1★ 燃料卖掉(fresh_buys 只保同轮),期权价值被
+    己方卖面销毁。取获取时点记录(非注册表帧集) =
     保护面只覆盖实际获取件,不随帧资格集波动扩张。
     """
     _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
     _close_switched_obligations(session, base)
     excl = set(base)
-    excl |= set(sell_hold_exclusion_names())
+    excl |= set(protection_membership(game_state_of(session),
+                                      state_of(session)))
+    excl |= set(CORE_SINGLE_CARD_REGISTRY)
     excl |= hub_acquired_names_of(session)
     return excl
 
@@ -1003,12 +1007,16 @@ def funding_hold_fallback(session: StrategySession,
     触发前提由消费位判(主路径空 ∧ 仍需筹资 = gold < need);本函数
     只承载兜底池定义与达成量化(P78-5 条③机制授权条款,V3-04):
 
-    - 兜底池 = (A 排除集 ∩ 静态持有集) − cw4_visit_bought_names(减法①,
-      本 visit 买入禁入——否则豁免机制自己制造 P78-1 同 visit 违例)
-      − 义务基座产物(减法②,locked_buy_membership;未锁态 = k_members,
-      此时与 funding 判据内部 zero_overlap 重叠,减法冗余但无害);
-      prep 位减法①实际覆盖「上一 visit」买入名(prep 卖出恒先于本轮
-      买入 + visit 入口清账,方向偏保守无害,V2-10 语义注);
+    - 兜底池 = (A 排除集 ∩〔保护集 ∪ registry 核心〕) − cw4_visit_bought_
+      names(减法①,本 visit 买入禁入——否则豁免机制自己制造 P78-1 同
+      visit 违例)− 义务基座产物(减法②,locked_buy_membership;未锁态
+      = k_members,此时与 funding 判据内部 zero_overlap 重叠,减法冗余
+      但无害);判定集改挂「保护集 ∪ registry 核心」全域 = 统一保护集
+      design §2.3 裁决(兜底 = 唯一可卖保护件的通道:最后手段在全场
+      保护档死锁帧必须可通,受 P78-5′ 两分支必要条件约束,条款本体不动,
+      构成随身份源迁移);prep 位减法①实际覆盖「上一 visit」买入名
+      (prep 卖出恒先于本轮买入 + visit 入口清账,方向偏保守无害,V2-10
+      语义注);
     - 取 (star, slot) 序首件;达成量化 = 本笔退金 ≥ need − gold——
       refund < 缺口帧不放行,否则持有件期权损失(P01)已付而义务仍未
       达成,严格有害;该量化同时封死逐帧级联清空兜底池而始终不达
@@ -1035,7 +1043,9 @@ def funding_hold_fallback(session: StrategySession,
         return (_star, _slot)
 
     _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
-    holds = sell_hold_exclusion_names()
+    holds = set(protection_membership(game_state_of(session),
+                                      state_of(session))) \
+        | set(CORE_SINGLE_CARD_REGISTRY)
     visit = set(getattr(st, 'cw4_visit_bought_names', ()) or ())
     pool = []
     for b in bench:

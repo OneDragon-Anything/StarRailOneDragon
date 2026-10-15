@@ -1336,13 +1336,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if order_class in ('order_1', 'order_2'):
                 _legs_ok = True   # 腿①:骨架义务血统(触发源 = 序 1/2)
             elif u is not None:
-                from sr_od.application.currency_war.kernel.cw_card_identity import (
-                    sell_hold_exclusion_names,
-                )
+                # 腿②对象级无损判定域 = 「保护集 ∪ registry 核心」
+                # (统一保护集 design §2.3 表:常规筹资不卖保护件与核心,
+                # 最后手段走 P78-5 通道;兜底池 ⊆ 该域 ⇒ 偏好分支结构性
+                # 恒拒,验证照落为防御性腿)。
                 _nm = str(u.char_id or '')
-                _legs_ok = (_nm not in sell_hold_exclusion_names()
-                            and _nm not in sell_gate.seed_exclusions(
-                                session, round_num_of(gs)))
+                _legs_ok = (
+                    _nm not in protection_membership(gs, state_of(gs))
+                    and _nm not in CORE_SINGLE_CARD_REGISTRY
+                    and _nm not in sell_gate.seed_exclusions(
+                        session, round_num_of(gs)))
             if _legs_ok and u is not None:
                 idx = mandate._bench_container_idx(gs, fallback[0])
                 if idx is not None:
@@ -1601,8 +1604,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     _hit = (name in CORE_SINGLE_CARD_REGISTRY
                             or name in _protection)
                 else:
-                    # prio2(press):tier 腿已随 line_identity_tier 退役
-                    # 摘除——到本档的名恒为非核心非保护(其余 → prio2),
+                    # prio2(press):档位表腿已退役摘除(design §2.4)——
+                    # 到本档的名恒为非核心非保护(其余 → prio2),
                     # 结构腿(1★/零重叠/全额退)保持。
                     _hit = ((card.star or 1) == 1
                             and predicates.zero_overlap(name, k_members)
@@ -1998,7 +2001,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     _core_locked = _buy_members is not None
     # C1 候选过滤直判注册表(统一保护集 design §2.4:该处语义 = 「单卡
     # 核心身份」非「保护身份」,不迁移保护集口径——否则银狼等非四体系
-    # 核心被逐出 C1;line_identity_tier 符号随改判清零,行为零变化)。
+    # 核心被逐出 C1;行为零变化)。
     _core_cands = [c for c in _buy_view('core_single_card_buy')
                    if (c.name or '') in CORE_SINGLE_CARD_REGISTRY
                    and (not _core_locked

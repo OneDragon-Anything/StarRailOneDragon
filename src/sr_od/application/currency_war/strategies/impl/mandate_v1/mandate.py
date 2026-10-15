@@ -1052,8 +1052,8 @@ def run_mandate(frame: MandateFrame,
     # exclude = sell_exclusions(session, k, channel='interest',
     # current_round=frame.round_num):装配 A 全量形态(已落地,单一
     # 入口 sell_gate)——义务基座(终局阵容锁定宽窄解析单点,与 shop
-    # 消费位同源——审查修复)∪ Z1 静态持有两集(③④件禁被凑息
-    # 卖回)∪ 窗口段(press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态
+    # 消费位同源——审查修复)∪ 保护集 ∪ registry 核心(持有件禁被
+    # 凑息卖回,身份单一源 = protection)∪ 窗口段(press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态
     # 登记的 F1 终局阵容锁定清空语义废除(P78-3 证其错误),修法 = 轮界过期)。
     # defer = T3 同轮保留(垫保在凑息是绝对跳过 = 通道对价语义,与窗口
     # 段排除是两个面,sell.py:140-148)。
@@ -1176,8 +1176,9 @@ def run_mandate(frame: MandateFrame,
                 # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate),
                 # 成分:义务基座(本位此前漏注入——备战 F1 主案,
                 # prep_loop 攻击报告 F1 的「两域同函数分叉」在此闭死,
-                # 与 shop 消费位同源单点)∪ 静态持有两集(P78-4:③④
-                # 持有件本非燃料类,禁卖 = 类资格本义)∪ 窗口段(
+                # 与 shop 消费位同源单点)∪ 保护集 ∪ registry 核心
+                # (P78-4:持有件本非燃料类,禁卖 = 类资格本义;身份
+                # 单一源 = protection,统一保护集 design §2.3)∪ 窗口段(
                 # press 登记活跃帧腾席同禁,P78 INV 通道无关)。T3 同轮
                 # 保护仍走 defer_names(转化类末位牺牲,通道对价语义不动)。
                 _m4_excl = sell_exclusions(session, k, channel='m4_fuel',

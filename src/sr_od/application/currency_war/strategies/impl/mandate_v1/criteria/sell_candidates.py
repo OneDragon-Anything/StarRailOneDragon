@@ -43,7 +43,6 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
 from sr_od.application.currency_war.kernel.cw_card_identity import (
     is_engine_piece,
-    sell_hold_exclusion_names,
 )
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_economy import (
@@ -66,6 +65,9 @@ from sr_od.application.currency_war.kernel.cw_plugins import PLUGIN_LIBRARY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    protection_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     EMPTY_BOARD_SELL_GUARD_KEY,
@@ -401,8 +403,9 @@ def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
       另有副本即素材对);
     - 非通用插件注册表成员(``PLUGIN_LIBRARY``——插件有座位价值不在
       垫件集);
-    - 非 registry 核心/④件(``sell_hold_exclusion_names``——核心/转线
-      件有再遇期权不在垫件集);
+    - 非保护集成员(``protection_membership``——统一保护集 design §2.3
+      垫件腿迁移:垫件 = 非自己人,registry 核心/四体系件有再遇期权不在
+      垫件集);
     - 非种子身份件(``is_engine_piece`` 引擎件身份层——裁量申报:设计
       文「非种子」按身份层取引擎件全集而非种子登记簿子集,引擎件 =
       跨线羁绊结构件有保留价值;登记簿级种子已由常规面装配 A 排除,
@@ -415,14 +418,14 @@ def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
         return False
     if char_id in sell_line_membership(gs):
         return False
+    if char_id in protection_membership(gs, state_of(gs)):
+        return False
     front, back = deployed_rows_of(gs)
     deployed = [d for d in (*front, *back) if d is not None]
     if merge_material_reject_reason(char_id, 1, bench_entries_of(gs),
                                     deployed):
         return False
     if char_id in PLUGIN_LIBRARY:
-        return False
-    if char_id in sell_hold_exclusion_names():
         return False
     return not is_engine_piece(char_id)
 

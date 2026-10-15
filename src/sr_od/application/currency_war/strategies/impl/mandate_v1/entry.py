@@ -82,10 +82,14 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
     SellCandidate,
     evaluate_sell_candidates,
+    is_field_irrelevant_unit,
     is_ore_pad_unit,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    protection_membership,
 )
 
 if TYPE_CHECKING:
@@ -729,22 +733,26 @@ def _fallback_legs_ok(session: StrategySession, gs: GameState,
     - 腿②(卖出对象级无损维,验对象非验触发分支):偏好账分支(停留门
       升级优先分支/概率账 = 优化路径;富余段-L3 = 20 号稿义务形态但
       P78-5′ 账性判别上零息损不构成「不做会输」= 偏好账——同走本
-      腿)下被放行对象须持有账 ≈ 0:非核心/非④件(``holds``)∧ 非
-      种子(P78-7 相邻轮回卖封口集)。funding_hold_fallback 兜底池
-      ⊆ hold 核心集(池条件 = holds ∩ A 排除),偏好分支下结构性
-      恒拒——验证照落为防御性腿(兜底池未来扩容非核心资产时腿②
-      自动生效)。分支键缺省 ''(异常/无分支身份)按保守侧走腿②对象验。
+      腿)下被放行对象须持有账 ≈ 0:非保护集/非 registry 核心(
+      「保护集 ∪ registry 核心」对象级无损判定域,统一保护集 design
+      §2.3 表——静态保护含银狼等核心)∧ 非种子(P78-7 相邻轮回卖
+      封口集)。funding_hold_fallback 兜底池 ⊆ 该判定域(池条件 =
+      holds ∩ A 排除),偏好分支下结构性恒拒——验证照落为防御性腿
+      (兜底池未来扩容非保护资产时腿②自动生效)。分支键缺省 ''
+      (异常/无分支身份)按保守侧走腿②对象验。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
     )
     if pre.source_arm in (levelup.ARM_POPULATION, levelup.ARM_ARM0):
         return True    # 腿①:骨架义务血统(授权文号含义务正文)
-    from sr_od.application.currency_war.kernel.cw_card_identity import (
-        sell_hold_exclusion_names,
+    from sr_od.application.currency_war.kernel.cw_comps import (
+        CORE_SINGLE_CARD_REGISTRY,
     )
-    if name in sell_hold_exclusion_names():
-        return False   # 核心/④件:持有账 > 0,腿②不成立
+    _holds = protection_membership(gs, state_of(gs)) \
+        | set(CORE_SINGLE_CARD_REGISTRY)
+    if name in _holds:
+        return False   # 保护集/registry 核心:持有账 > 0,腿②不成立
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
         sell_gate,
     )
@@ -754,13 +762,16 @@ def _fallback_legs_ok(session: StrategySession, gs: GameState,
 
 def _bench_liquid_gold(gs: GameState) -> int:
     """攒批资金的活期分量(11 号篇 §2 攒批口径):备战席
-    **非线内 1★ 活期卡**退金合计(1★ 全额退口径)。
+    **非线内非保护 1★ 活期卡**退金合计(1★ 全额退口径)。
 
     bench-only 口径——与契约 D 升级变现候选池(bench∪场上无关角色)
     是两个分立维度:场上无关角色 1★ 退金**不计入**攒批基数(保守侧,
     两处口径分立维护非同源,11 号篇 §2 攒批资金口径行)。
     线内判定 = 卖出侧线内身份集(``sell_line_membership``:锁定线成员
     ∨ 未锁定期候选 top3 成员——「卖自己人凑升级金不在语义内」)。
+    保护集腿(统一保护集 design §2.5-5 攒批资金联动申报):变现候选池
+    过滤保护集后保护件在偏好臂下不可变现,攒批基数同步剔除——否则
+    「预授权误发 → 键滞留 → 刷新预留被压制至节点末」风险链 reopening。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
@@ -774,12 +785,13 @@ def _bench_liquid_gold(gs: GameState) -> int:
         sell_line_membership,
     )
     line = sell_line_membership(gs)
+    protection = protection_membership(gs, state_of(gs))
     total = 0
     for u in bench_units_of(gs):
         name = str(u.char_id or '')
         star = int(u.star or 1)
-        if name and name not in line and refund_full_star_ok(star,
-                                                             bench_char_cost(u, gs)):
+        if name and name not in line and name not in protection \
+                and refund_full_star_ok(star, bench_char_cost(u, gs)):
             total += sell_refund(star, bench_char_cost(u, gs))
     return total
 
@@ -1346,6 +1358,53 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
 # ============================================================ 第 7 步:节末凑息
 
 
+#: 凑息保护档阻断观测键(统一保护集 design §2.3 凑息语义;分键写入端
+#: = 本写点单一源,判读侧禁另立同义键)。
+INTEREST_PROTECTED_BLOCK_KEY: str = 'interest_round_protected_block'
+
+
+def _protected_member_blocks_interest(gs: GameState, gap: int) -> bool:
+    """凑息保护档反事实支存在性(design §2.3 观测键第三合取):凑息
+    候选池同域(备战席 ∪ 场上无关角色,节末凑息无店面)内存在被保护集
+    排除、退金 ≥ 缺口的 1★ 成员——「若无保护本可跨档」的反事实存在性。
+
+    枚举域钉死(design §2.3):池族 = 节末凑息同域(备战席全量 +
+    场上无关角色谓词单一源),星级 = 1★(与凑息资格面
+    one_star_refund_only 同域,不外推);判定面 = 池族 ∧ 保护身份 ∧
+    「退金 ≥ 缺口」三腿,不重放常规面其余资格门(设计定死粒度:与
+    第二合取同用同一「退金 ≥ 缺口」筛选)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        bench_char_cost,
+        sell_refund,
+    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import Unit
+    protection = protection_membership(gs, state_of(gs))
+
+    def _viable(u: Unit) -> bool:
+        name = str(u.char_id or '')
+        return (bool(name) and name in protection
+                and int(u.star or 1) == 1
+                and sell_refund(1, bench_char_cost(u, gs)) >= gap)
+
+    for slot in bench_entries_of(gs):
+        if predicates.item_slot_unsellable(slot):
+            continue
+        u = bench_slot_unit(slot)
+        if u is not None and _viable(u):
+            return True
+    front, back = deployed_rows_of(gs)
+    for row_units, row in ((front, 'front'), (back, 'back')):
+        for u in row_units:
+            if u is not None and _viable(u) \
+                    and is_field_irrelevant_unit(gs, u, row):
+                return True
+    return False
+
+
 def _step7_node_end_interest(session: StrategySession,
                              gs: GameState) -> list[Emitted]:
     """第 7 步节末凑息(22 号篇 §1 第 7 步;候选池 = 备战席 ∪
@@ -1365,6 +1424,12 @@ def _step7_node_end_interest(session: StrategySession,
 
     金位读数门(23 号篇金位读数形态):账面失效帧无法判「缺口与候选
     退金」→ 读数开店锚定(标记不动),下帧重评。
+
+    观测键(统一保护集 design §2.3 凑息语义):无可行件帧按三合取
+    「非零缺口 ∧ 常规合格集退金 ≥ 缺口为空 ∧ 被排除保护成员存在退金
+    ≥ 缺口者」计数 ``interest_round_protected_block``——凑息在「全场
+    保护档」帧的成功率损失量化面(用户裁定:候选/锁定成员不凑息,
+    结构性少 1-2 金/轮由此键观测)。
     """
     if _step3_liquidation_pending(session, gs):
         return []
@@ -1376,8 +1441,6 @@ def _step7_node_end_interest(session: StrategySession,
         return []
     _gap = _line - _gold
     _cands, _why = evaluate_sell_candidates(gs, 'node_end_interest')
-    if not _cands:
-        return []
     from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
         sell_refund,
@@ -1388,6 +1451,19 @@ def _step7_node_end_interest(session: StrategySession,
         if _r >= _gap:
             _feasible.append((_r, _i))
     if not _feasible:
+        # 常规合格集(退金 ≥ 缺口)为空——含「合格候选全保护档」帧
+        # (评估器候选整体为空的形态,_feasible 随空候选平凡为空):
+        # 观测键三合取(统一保护集 design §2.3)= 非零缺口 ∧ 无可行件
+        # ∧ 被排除保护成员存在退金 ≥ 缺口者(反事实支,枚举域见
+        # _protected_member_blocks_interest)。
+        if _gap > 0 and _protected_member_blocks_interest(gs, _gap):
+            _st = state_of(session)
+            _ct = _st.cw4_counters
+            if not isinstance(_ct, dict):
+                _ct = {}
+                _st.cw4_counters = _ct
+            _ct[INTEREST_PROTECTED_BLOCK_KEY] = \
+                _ct.get(INTEREST_PROTECTED_BLOCK_KEY, 0) + 1
         return []
     _r, _best_i = min(_feasible)   # 退金最小;并列取评估器让位序靠前
     return _emit_sell_candidate(
