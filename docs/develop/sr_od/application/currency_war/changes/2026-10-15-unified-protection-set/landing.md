@@ -37,7 +37,7 @@
 
 ## 3.3 卖面批:保护集进资格装配 + 身份面/义务基座拆分
 
-**范围**:`sell_line_membership` 保持现行口径(base/P78-5 减法②/P96 (b) 腿基准,不扩域);保护集经独立消费口并入卖出资格装配 A 身份段(装配单一源 = `sell_gate.identity_exclusions`,`mandate.sell_hold_exclusions` 为薄再出口随迁;替换静态持有两集中的 ④放行集,registry 核心保留);`sell_hold_exclusion_names` 余下四消费面逐点迁移(funding 兜底池判定集 → 保护集 ∪ registry 核心/垫件谓词 → 非保护集/P78-5′ 腿② → 保护集/会话内筹资腿② → 保护集,design §2.3 表),函数退役;Z1 排除集同步;升级变现候选池过滤保护集,`_bench_liquid_gold` 攒批资金推导同步剔除保护件(F11 风险链闭合,design §2.5-5);新增 `interest_round_protected_block` 观测键(写点 = entry.py 节末凑息段,判定式三合取见 design §2.3,反事实支枚举域 = 凑息候选池同域)。边界:排序键结构不动;八场景参数表结构不动;自救/换血豁免不动;P78 条款本体不动(兜底池构成随身份源迁移)。
+**范围**:`sell_line_membership` 保持现行口径(base/P78-5 减法②/P96 (b) 腿基准,不扩域);保护集经独立消费口并入卖出资格装配 A 身份段(装配单一源 = `sell_gate.identity_exclusions`,`mandate.sell_hold_exclusions` 为薄再出口随迁;替换静态持有两集中的 ④放行集,registry 核心保留);`sell_hold_exclusion_names` 余下四消费面逐点迁移(funding 兜底池判定集 → 保护集 ∪ registry 核心/垫件谓词 → 非保护集/P78-5′ 腿② → 保护集 ∪ registry 核心/会话内筹资腿② → 保护集 ∪ registry 核心,design §2.3 表),函数退役;Z1 排除集同步;升级变现候选池过滤保护集,`_bench_liquid_gold` 攒批资金推导同步剔除保护件(design §2.5-5);新增 `interest_round_protected_block` 观测键(写点 = entry.py 节末凑息段,判定式三合取见 design §2.3,反事实支枚举域 = 凑息候选池同域)。边界:排序键结构不动;八场景参数表结构不动;自救/换血豁免不动;P78 条款本体不动(兜底池构成随身份源迁移)。
 **设计依据**:design.md §2.3、§2.4
 **文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/sell_candidates.py`、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/sell_gate.py`(兜底池判定集)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate.py`(排除集装配)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`(凑息观测键写点 + P78-5′ 腿②)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`(筹资腿②)、`src/sr_od/application/currency_war/kernel/cw_card_identity.py`(退役面收口)、测试仓
 **依赖**:3.1、3.2(身份消费面 grep 清零的收口判据)
@@ -80,6 +80,6 @@
 - `strategy-docs/11_shop_decisions.md` §1(序 1 名单三态重述:未锁定候选态含过渡域全体 + 囤货臂;④转投分支退役注) ← 3.2
 - `strategy-docs/11_shop_decisions.md` §4.0/§4.1/§6.5(§4.0/§4.1:场景资格面身份源 = 保护集;静态持有两集「维持现状」裁决由本迭代推翻的申报;五消费面迁移;凑息观测键登记。§6.5:凑息门改域申报与占比回填) ← 3.3、3.4
 - `strategy-docs/12_line_and_intention.md` §1.2/§3/§4(§1.2/§4:过渡域候选/锁定状态语义 + 义务面/囤货面拆分 as-built;§3:TRANSITION_PACK「保留为未锁定期判据输入」引用面的退役收口) ← 3.1、3.2、3.3
-- `math_proofs.md` P41 行(判定域修正申报,非新命题)+ P78 行(③④构成迁移随迁注)+ P96 行(行为测试载体指针勘误:`test_cw_dead_pair_exit` → `test_dead_stock_pair.py`) ← 3.3
+- `math_proofs.md` P41 行(判定域修正申报,非新命题)+ P78 行(③④构成迁移随迁注)+ P96 行(行为测试载体指针勘误:`test_cw_dead_pair_exit` → `test_dead_stock_pair.py`)+ `proofs/p86` 单篇(TRANSITION_PACK/line_identity_tier 符号名引用随退役勘误) ← 3.3
 - `knowledge/cw_line_facts.py` TRANSITION_PACK 及档位标签**符号删除**(身份消费面清零后;配方对引用面按清点裁决) ← 末阶段
 - 观测键登记(`transition_hold_locked_frame`/`deadlock_only_transition_victim` 重定义口径) ← 3.2
