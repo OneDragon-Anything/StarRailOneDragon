@@ -66,6 +66,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     BENCH_ITEM_NAMES,
     ENV_GIFTS,
+    ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
     normalize_invest_name,
@@ -91,6 +92,13 @@ DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 #: 无效载荷拒绝 kind(策略/环境名归一后为空/'?'——零写 + 留存证据;无效输入
 #: 拒绝,非防重复保护;正本 = gain-chain.md §2.4-0/§2.1-0)。
 PICK_INVEST_INVALID_PAYLOAD: str = 'pick_invest_invalid_payload'
+
+#: 追加随机环境申报行 kind(独立小块,非 DEFECT_ 词表成员:语义 = 申报
+#: 非缺陷,不入「缺陷留存证据 kind 词表」块以免破块内前缀分组,沿本模块
+#: PICK_INVEST_INVALID_PAYLOAD 先例;通道沿 advisor 申报行同族——申报行
+#: 是语义申报非缺陷告警)。追加环境真值 live 不可观察,申报留证;正本 =
+#: gain-chain.md §3 追加随机环境段/§6。
+ENV_REROLL_DECL: str = 'gain_chain_env_reroll_decl'
 
 
 @dataclass(frozen=True)
@@ -715,6 +723,13 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转停用,规则落本链为单一源);
+    - **追加随机环境申报行**(``ENV_REROLL_NAMES`` 命中,金腿之后):选卡
+      后游戏随即再随机获得一个环境,该掷骰 live 端不可观察(active_env
+      无观察覆盖通道)→ 申报留证一行(``kind = ENV_REROLL_DECL``,语义
+      申报非缺陷告警),行为 fail-closed(容器写序列与普通环境逐位一致);
+      世界掷骰 = sim 后端追加获得腿二次入链
+      (``cw_sim_backend._on_invest_picked``,原语复用),双端各产一行
+      如实记录「选择时点真值未知」;
     - **随机支**(``chars_random_immediate``,具名支之后):规格过滤池
       (random_char_pool)内均匀掷骰选名 → ``gain_character`` 落席,星级
       = spec.star;效果体含采样 → 子链 rand=True(gain-chain.md §5)——
@@ -748,6 +763,17 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         write(gs.gold, int(gs.gold.value or 0) + int(_eff.gold_instant),
               produced_by=GAIN_CHAIN_PRODUCER,
               evidence=f'on_env_gained:instant_gold:{_name}', sig=sig)
+    if _name in ENV_REROLL_NAMES:
+        # 追加随机环境型:选卡后游戏随即再随机获得一个环境,该掷骰 live 端
+        # 不可观察(active_env 无观察覆盖通道,选择事实与真值不可分辨)——
+        # 申报留证,行为 fail-closed(选卡容器写序列与普通环境逐位一致);
+        # sim 端随后由后端追加获得腿二次入链(cw_sim_backend.
+        # _on_invest_picked),本行为历史申报行双端各产一行如实记录。
+        _emit_defect(field_name='active_env',
+                     expected='追加卷中环境名(游戏侧事实)',
+                     actual=f'{_name}(选择事实;真值不可观察)',
+                     evidence=f'on_env_gained:{_name}', sig=sig,
+                     kind=ENV_REROLL_DECL)
     grant = ENV_GIFTS.get(_name)
     if grant is None:
         return ()

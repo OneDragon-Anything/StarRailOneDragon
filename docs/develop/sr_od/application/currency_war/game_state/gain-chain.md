@@ -200,6 +200,17 @@ import 即炸)防漂移。
   - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
     只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
     行仅作顾问身份输入。
+  - **追加随机环境申报行**(`cw_investments.ENV_REROLL_NAMES` 命中,与
+    ENV_GIFTS 通道无关、先于其分派):追加随机环境型环境(首例 = 蓝海,
+    id 113)选卡后游戏随即再随机获得一个环境,该掷骰 live 端不可观察
+    (`active_env` 无观察覆盖通道,选择事实与真值不可分辨)→ 申报留证一行
+    (`kind = ENV_REROLL_DECL`,独立小块形态沿 `PICK_INVEST_INVALID_PAYLOAD`
+    先例,语义申报非缺陷告警),行为 fail-closed——选卡容器写序列与普通
+    环境逐位一致。世界掷骰 = sim 后端追加获得腿二次入链(`cw_sim_backend.
+    _on_invest_picked`:原语 `gain_invest_env` 复用、显式双流键 rng
+    `M02/env-reroll`/`M02/env-reroll-gift`,卷中环境获得时效果全族照常触发),
+    双端各产一行如实记录「选择时点真值未知」;建模知识正本 =
+    invest_effects.md 蓝海条。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost, star, type_tag)` 随机赠卡规格(家族载体,首例 = 人才引进「开局拥有
     1个随机4费角色」,id 109);发放 = 规格过滤池(`random_char_pool`,注册表
@@ -316,7 +327,11 @@ best-effort 边界收在**非容器写的观测/登记分支**内(§2.1/§2.4 �
 (`pick_planner.py::_grant_joy_conditional`,try/except + 缺陷记录行
 `joy_conditional_grant_failed` 后照常分支型分派——授予与选项应用是两条独立因果,
 授予失败不得拖垮选项应用;链内部零吞错不变)。无效载荷拒绝(§2.1-0/§2.4-0)
-同属零写 + 保留证据(输入校验,非防重复保护)。
+同属零写 + 保留证据(输入校验,非防重复保护)。追加随机环境申报行
+(`kind = ENV_REROLL_DECL`,§3)同为非告警语义行:追加环境真值 live 不可观察
+(`active_env` 无观察覆盖通道),申报留证 + 行为 fail-closed,非缺陷告警——
+kind 常量取独立小块位(`PICK_INVEST_INVALID_PAYLOAD` 邻位),非 `DEFECT_`
+词表成员,不入缺陷 kind 词表块(免破块内前缀分组)。
 
 ## 7. 与旧机制的关系(grant_bench_unit_cascade 过渡期)
 

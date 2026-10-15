@@ -849,6 +849,34 @@ QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
     '彩虹时代', '黄金时代', '白银时代', '头彩', '尾彩', '银·金·彩',
 })
 
+#: 追加随机环境型环境在册名(注册表 id113 蓝海):选中后先获得本环境
+#: (其获得时效果照常触发,+6 金),随即立刻再随机获得一个环境(用户
+#: 口径 2026-10-15:两次获得事件,追加非替换;「重掷」是本卡效果的
+#: 口语名)。游戏事实名单(单一源 = 本常量位);世界掷骰消费端 = sim
+#: 后端(世界真值层),live 端只产申报行(on_env_gained,行为
+#: fail-closed——active_env 无观察覆盖通道,自掷 = 永久捏造门控输入)。
+ENV_REROLL_NAMES: frozenset[str] = frozenset({'蓝海'})
+
+#: 追加获得腿采样假设披露键(键面 = desc 未写明处的申报,消费 = sim 随局
+#: 披露面 disclosures):随机池构成/分布/呈现均 desc 未写明,按 API 裁定
+#: (invest_effects.md §5「desc 没写明的数值一律放弃建模」)不建模真值,
+#: sim 按全集去本名均匀 v0 采样、以本键申报未证面。常量落位沿
+#: ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 先例(kernel 注册表模块)。
+ENV_REROLL_ASSUMPTION_POOL: str = 'env_reroll_pool_uniform_pending'
+
+
+def _validate_env_reroll_names() -> None:
+    """ENV_REROLL_NAMES 成员校验(import 即炸,本模块 _validate_* 先例):
+    键必须在 INVESTMENT_ENVS(防注册表改名/移除后名单静默失联——失联形态
+    = sim 掷骰永不中、live 永不申报,无任何响亮信号)。"""
+    orphans = ENV_REROLL_NAMES - set(INVESTMENT_ENVS)
+    if orphans:
+        raise ValueError(
+            f"ENV_REROLL_NAMES 孤儿键(base 无此环境?):{sorted(orphans)}")
+
+
+_validate_env_reroll_names()
+
 
 # ===== 派生:ENV_FACTION_MAP(投资环境 → 加成阵营;从 INVESTMENT_ENVS 派生,单一真相源)=====
 # ===== OCR 分隔符归一(查找边界单一源;AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)=====

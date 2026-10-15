@@ -82,6 +82,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_grants,
     gain_equipment,
+    gain_invest_env,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GAME_STATE_SCHEMA_VERSION,
@@ -99,6 +100,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ORE_GRANTS,
     ENV_POOL_REWRITE,
+    ENV_REROLL_ASSUMPTION_POOL,
+    ENV_REROLL_NAMES,
     ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
@@ -1238,6 +1241,34 @@ class SimBackend:
         opts = (self.gs.invest_env_opts.value if opening
                 else self.gs.invest_strategy_opts.value) or []
         (self.excluded_env if opening else self.excluded_invest).update(opts)
+        # 追加随机环境型(在册名 = cw_investments.ENV_REROLL_NAMES,现役
+        # 唯一 = 蓝海 id113):选卡首链(上报函数)已完成「获得本环境」全部
+        # 写腿(active_env + 即时金 + 申报行);本腿紧接世界掷骰出卷中名,
+        # 原语二次入链「获得卷中环境」(gain_invest_env 一次调用完成
+        # active_env 改写 + 节点序列场改写 + 登记腿 + on_env_gained 全族
+        # 效果,零新发放实现;两次获得语义,追加非替换)。无重复发金:池
+        # 排除在册名后无任何 gold_instant 条目。session=None:本层字段面
+        # 无会话可取,登记腿跳过、容器写照常(gain_invest_env None 语义)。
+        # rng 必须显式传参:gain_invest_env/on_env_gained 的 rng
+        # 形参缺省回退自掷(random.Random()),池含随机支环境(人才引进),
+        # 不传则同 seed 不重放——双流键解耦,不走动作腿注入槽(该槽服务
+        # 上报函数族按调用序取键,本腿直调 kernel 显式流键零耦合)。门条件
+        # 读 active_env 现值:二次入链后名已非名单成员,天然不重入。
+        # 位置不变式:必须在 _after_modal_pick(进 1-1 节点窗)之前完成
+        # 改写——窗口起点起全部环境门控读 active_env 现值,先改写再进窗。
+        env_now = str(self.gs.active_env.value or '')
+        if env_now in ENV_REROLL_NAMES:
+            pool = sorted(n for n in INVESTMENT_ENVS
+                          if n not in ENV_REROLL_NAMES)
+            rolled = pool[stream_rng(
+                self.seed, 'M02/env-reroll').randrange(len(pool))]
+            self.disclosures.setdefault(ENV_REROLL_ASSUMPTION_POOL,
+                                        'uniform_v0')
+            gain_invest_env(self.gs, None, rolled, rand=False,
+                            sig=logic_sig(group_id='act:sim@env-reroll'),
+                            producer='SimBackend',
+                            rng=stream_rng(self.seed,
+                                           'M02/env-reroll-gift'))
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
