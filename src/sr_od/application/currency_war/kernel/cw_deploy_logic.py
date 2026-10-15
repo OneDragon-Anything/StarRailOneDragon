@@ -347,8 +347,9 @@ def deploy_target_sets(target_comp: object | None,
     - 定型/无框架:终局 comp all_factions(= factions ∪ flex_factions,
       与装配单一源 assemble_swap_plan_inputs 的 target 视图同链同值;
       flex 键入场是定案申报行为差③)。
-    返回 ``(target_factions, fw_carry)``:fw_carry = 框架(或通用)非 drop 件
-    (先框架非 drop + 通用 carry,散件 drop 不认;两分支同式,零漂移面)。
+    返回 ``(target_factions, fw_carry)``:fw_carry = 框架注册表成员
+    (``cw_line_facts.framework_members`` 现算;统一保护集迭代 design §2.4 ①
+    迁移,原策展档位过滤随 TRANSITION_PACK 符号退役)。
     信任边界:``fw`` 非 '' 即双轨期信号(与 ``cw_recipe.decision_target`` 的
     committed 门同向;定型后框架无写端=休眠,不存在 committed 携 fw 帧)。
     防御退型:框架无配方注册(理论态)/阵容无 all_factions 属性(鸭子型
@@ -362,7 +363,7 @@ def deploy_target_sets(target_comp: object | None,
         from sr_od.application.currency_war.kernel.cw_recipe import recipe_comp
         from sr_od.application.currency_war.knowledge.cw_line_facts import (
             FRAMEWORK_FACTIONS,
-            TRANSITION_PACK,
+            framework_members,
         )
         rc = recipe_comp(fw)
         if rc is not None:
@@ -371,8 +372,7 @@ def deploy_target_sets(target_comp: object | None,
             # 未注册框架(理论态):退旧并集语义(零漂移保守侧)
             tgt = set(getattr(target_comp, 'factions', None) or ()) \
                 | set(FRAMEWORK_FACTIONS.get(fw, ()))
-        fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
-                    if (f == fw or f == '通用') and t != 'drop'}
+        fw_carry = set(framework_members(fw))
     else:
         tgt = set(getattr(target_comp, 'all_factions', None)
                   or getattr(target_comp, 'factions', None) or ())

@@ -77,7 +77,7 @@
 - **单体系渐进通道**:|I∩Q| = 1 且挑战者空集时,第二席由 `_progressive_second_seat` 按 argmin `e_rounds`(kernel 单一估计器;希儿系不参选——E 对其结构性失真 + carry 单卡依赖)产出两体系候选对,走同一可行性门(门开 = 对升级两体系;门拒 = 保持单体系对)。
 - 早期无门槛物化面 `p1_early_pair` 同算子并批(无门槛合格集,可行性门与成型冻结不适用)。
 - **冻结语义**(user_playstyle [23] 冻结语义):form_ok 达成即事件标志位冻结方向(`p1_pair_frozen`——冻结的是方向不是板面,买入/部署继续服务冻结方向);解冻闭集恰三项 = 超窗出口(`_p1_pair_overwindow`)/位面末(P2 移交)/阵容锁定取代;`transition_pair` 帧内同算子重派生,域切换不继承冻结。
-- 配方对评估数据表(TRANSITION_PACK 候选体系表,`knowledge/cw_line_facts`)只余非身份消费面:身份消费面已全部迁保护集/注册表现算(买面序 1/囤货臂/D7 拒因/hold 登记档位),卖面静态持有集余腿随卖面批收口,符号删除 = 末阶段清点裁决;投资选卡帧喂入 CommitSignals 保留(纯遥测,决策面零消费)。
+- 配方对评估数据表引用已收口(统一保护集迭代末阶段):TRANSITION_PACK 候选体系表及档位标签符号已删除(`knowledge/cw_line_facts`,design §2.4 三判据清点裁决)——身份消费面已全部迁保护集/注册表现算(买面序 1/囤货臂/D7 拒因/hold 登记档位);非身份档位消费(配方 core_chars、部署围栏 fw_carry)迁 `framework_members` 注册表现算(bond_members 派生);零生产消费方的休眠框架选线判据族(`cw_transition.pick_framework`/`transition_score` 等)随符号退役。投资选卡帧喂入 CommitSignals 保留(纯遥测,决策面零消费)。
 - P1 锁定局配方链继续运行:`update_p1_recipe` 不受锁定辖(P1 并集消费 = `opening_recipe_comp` ∪ 锁定线名单);退场清空只在进 P2(`clear_p1_recipe`)。
 
 ## 4. 未锁定期买面接线(并入后形态)

@@ -929,23 +929,6 @@ def p1_early_pair_members(gs: GameState,
     return frozenset(_pair_members(pair)) if pair else frozenset()
 
 
-# ⚠️ 权威副本 = knowledge/cw_line_facts._bond_members(telemetry/schema ρ 实测
-# 消费已改接);本副本仅为旧判据未迁消费点保留(迁移完成后随文件删除);勿新增消费。
-def _bond_members(bond: str) -> set[str]:
-    """单羁绊成员名集(阵营∪流派全成员口径,与 ``_pair_members`` 同式;
-    希儿系=希儿∪两放大器阵营成员)。方向侧供给衰减的在店判据单一源。"""
-    if bond == SEELE_SYSTEM:
-        bonds: set[str] = {'量子同频', '贝洛伯格'}
-        out: set[str] = {'希儿'}
-    else:
-        bonds = {bond}
-        out = set()
-    for name, c in CHARACTERS.items():
-        if (set(c.factions) | set(c.flows)) & bonds:
-            out.add(name)
-    return out
-
-
 def _pair_members(pair: tuple[str, ...]) -> set[str]:
     """体系对的囤货成员集:各体系羁绊(阵营∪流派)下的注册表成员;
     希儿系 = 希儿 ∪ 量子同频 ∪ 贝洛伯格 成员(放大器池)。"""

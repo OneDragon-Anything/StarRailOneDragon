@@ -4,15 +4,17 @@
 终局线 P1 内冻结换线(定义型 augment 除外)。**
 
 架构:双 slot 解耦——
-- ``strategy_state_of(session).transition_framework``(已有):过渡框架(仙舟/量子/列车,pick_framework 滞后选择)
+- ``strategy_state_of(session).transition_framework``(已有):过渡框架
+  (仙舟/量子/列车;休眠字段,现行无写端)
 - ``strategy_state_of(session).target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
 - 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪阵容**
-  (RecipeComp:以框架羁绊为 form_tiers,TRANSITION_PACK carry/partial 为 core)——
+  (RecipeComp:以框架羁绊为 form_tiers,框架注册表成员为 core——
+  ``cw_line_facts.framework_members`` 现算)——
   消费方零改动,评分自动转向配方完成度(缺什么买什么)。
 
 配方完成度即 P1 胜利条件(user_playstyle[20]:过渡框架就是 P1 的通关阵容);
-交接(P1 末/P2):drop 件卖、carry 件继承进终局(plaza 数据:三月七/千冶刃/
-姬子/花火 Final 保留 36-64%)。
+交接(P1 末/P2):非终局线过渡件退场、贯穿/终局成员继承进终局
+(plaza 数据:三月七/千冶刃/姬子/花火 Final 保留 36-64%)。
 """
 from __future__ import annotations
 
@@ -21,25 +23,26 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.knowledge.cw_line_facts import TRANSITION_PACK
+from sr_od.application.currency_war.knowledge.cw_line_facts import framework_members
 
-# 配方伪阵容注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
-# ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
-# 瓦尔特/腾荒不在 TRANSITION_PACK,勿引用)。
+# 配方伪阵容注册表(框架 → Comp;core = 该框架注册表成员现算,
+# ``framework_members`` = bond_members 派生;form_tiers = 配方目标档)。
+# core 面随统一保护集迭代(changes/2026-10-15-unified-protection-set
+# design.md §2.4 ①)从策展档位过滤扩为注册表现算——桑博等合法拼图
+# 自然入列,策展收录纪律由概率结构与经济闸门承载(design §2.7)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
 #             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
 _RECIPES: dict[str, Comp] = {
     # 仙舟 factions 补「持续伤害」(deploy 围栏视图定案 B2 修正条件,依据 =
     # .debug/progress/2026-09-11-cw-clear-run/定谳记录-deploy围栏.md 攻击线 B2):
-    # 框架 drop 件卡芙卡(星核猎手)/椒丘(狼狩)注册表均无仙舟阵营,其围栏
+    # 框架成员卡芙卡(星核猎手)/椒丘(狼狩)注册表均无仙舟阵营,其围栏
     # tgt 身份只系于 FRAMEWORK_FACTIONS['仙舟'] 的持续伤害键;配方键面不完备时,
     # 以配方为围栏视图的路径(装配单一源)会把自家 drop 件挤出 tgt 桶(r70
     # 「框架牌不上场被卖」回归向量)。键面补全后框架并集语义被配方吸收,
     # deploy_target_sets 的显式 ∪ 停用(装配单一源纪律:并集语义只许一处)。
     '仙舟': Comp(
         name='过渡·仙舟配方', factions=['仙舟', '持续伤害'],
-        core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
-                    if fw == '仙舟' and tier in ('carry', 'partial')],
+        core_chars=framework_members('仙舟'),
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
         # 过渡期站位(爻光必后台,站位规则住在终局阵容,
@@ -48,8 +51,7 @@ _RECIPES: dict[str, Comp] = {
     ),
     '列车': Comp(
         name='过渡·列车配方', factions=['列车同行'],
-        core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
-                    if fw == '列车' and tier in ('carry', 'partial')],
+        core_chars=framework_members('列车'),
         form_tiers={'列车同行': 4},
         strength='A', form_difficulty='easy',
     ),
@@ -57,8 +59,7 @@ _RECIPES: dict[str, Comp] = {
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
     '量子': Comp(
         name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
-        core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
-                    if fw == '量子' and tier in ('carry', 'partial')],
+        core_chars=framework_members('量子'),
         form_tiers={'量子同频': 3, '贝洛伯格': 2},
         strength='A', form_difficulty='easy',
     ),
@@ -68,16 +69,6 @@ _RECIPES: dict[str, Comp] = {
 def recipe_comp(framework: str) -> Comp | None:
     """框架 → 配方伪阵容(未定框架返 None,消费方退现行为)。"""
     return _RECIPES.get(framework)
-
-
-def recipe_char_wanted(char_id: str, framework: str) -> bool:
-    """该角色是否当前配方的目标件(carry/partial/drop 全算——drop 是应急战力,
-    在店且金宽时也买;但「追买/刷新找它」只对 carry/partial)。"""
-    ent = TRANSITION_PACK.get(char_id)
-    if ent is None:
-        return False
-    fw, _tier = ent
-    return fw == framework or fw == '通用'
 
 
 # 统一化(用户定调):希儿量子并入第三过渡配方(量子),「过渡=终局雏形」
@@ -91,8 +82,8 @@ def decision_target(session, gs: GameState) -> Comp | None:
     用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
-    双轨期(配方驱动):框架已定 → 配方伪阵容(仙舟/列车/量子三选一,
-    pick_framework 按持有计数+portal 偏置选);无框架 → 终局阵容(散件口径)。
+    双轨期(配方驱动):框架已定 → 配方伪阵容(仙舟/列车/量子三选一;
+    ``transition_framework`` 为休眠字段,现行无写端);无框架 → 终局阵容(散件口径)。
     非双轨(定型/P2+):终局阵容。
 
     量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,

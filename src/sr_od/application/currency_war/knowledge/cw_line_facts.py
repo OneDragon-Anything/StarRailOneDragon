@@ -1,8 +1,9 @@
-"""货币战争 线/过渡包注册事实(知识层权威副本)。
+"""货币战争 线注册事实(知识层权威副本)。
 
 出处 = 阵容审计修正后的权威副本;旧 kernel/cw_transition 数据副本
-已停用,kernel 判据函数从本模块取数。这些符号是攻略/实盘
-数据锚(出处逐条随行注明),不是决策拍值,归知识层。
+已停用,策展过渡包(TRANSITION_PACK/档位标签)及其休眠判据族已随
+统一保护集迭代删除。这些符号是攻略/实盘数据锚(出处逐条随行注明),
+不是决策拍值,归知识层。
 
 依赖方向:本模块只 import 数据注册表(cw_chars/cw_factions),不 import
 任何 kernel 判据/决策符号(知识层单向依赖,禁反向 import 判据/决策层)。
@@ -33,48 +34,6 @@ def recipe_tier(board: dict[str, int]) -> int:
 #: 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
 
-# —— P1 过渡包(原 kernel/cw_transition.TRANSITION_PACK)——
-# P1 过渡双框架(r38 修正:plaza 549 篇阵营激活口径,主流 = 仙舟系 32% + 列车系 29%,
-# 其余各 ≤5%;用户口径「DOT 和仙舟两种」——饮月/卡芙卡等仙舟阵营 flows 带 DOT,
-# 「3仙舟+2DOT」在数据上呈现为仙舟大羁绊)。两包各自内部自洽,选其一集中买。
-# 值:角色 → (框架,档:carry=贯穿最终 / drop=P1末弃 / partial)
-# ⚠️ r100 数据复核修正(用户抓的统计错误):入包双条件 = **Early 出现率 ≥8%** AND
-# 过渡功能(保留率分档只在满足前者后才有意义)。旧口径按保留率分档混入了
-# 「终局阵容成员」——瓦尔特(5费,Early 0.2%:等级锁刷不出,保留率暴涨是反向
-# 指标=纯终局核心)被误标 列车/partial;娜塔莎(0.7%)/佩拉(1.1%)/腾荒(6.8%)
-# Early 出现率过低无过渡资格。三者移除;花火(2费,Early 20%)/姬子·启行
-# (3费,14%)数据核实无错保留。
-TRANSITION_PACK: dict[str, tuple[str, str]] = {
-    # —— 仙舟框架(32% 主流;3 仙舟大羁绊 + DOT flows)——
-    '藿藿': ('仙舟', 'carry'),          # Early 33%→Final 20%
-    '丹恒·饮月': ('仙舟', 'carry'),     # 31%→20%
-    '爻光': ('仙舟', 'partial'),        # 25%→14%
-    '卡芙卡': ('仙舟', 'drop'),         # 9%→7%(DOT 件)
-    '椒丘': ('仙舟', 'drop'),           # 21%→8%
-    # —— 列车框架(29% 主流;4 列车或 2 小羁绊)——
-    '三月七': ('列车', 'carry'),        # 23%→31% 最强贯穿
-    '姬子·启行': ('列车', 'carry'),     # 14%→39%
-    # —— 量子框架(希儿 59 帖:主流=3量子+2贝,量子契约/贝概念股环境;
-    # 「过渡=终局雏形」线——carry 档=过渡终局同体,定型零交接)——
-    '花火': ('量子', 'carry'),
-    # ↑ 框架标签依据(阵容审计修正):注册表 cw_chars 花火=盛会之星(阵营)+战技点/量子同频(流派),
-    #   **无列车阵营**——归量子框架;
-    #   其过渡/终局贡献走量子同频流派成员口径(20%→46%,Early 出现率与保留率数据不变,仅框架归属)。
-    '希儿': ('量子', 'carry'),          # 3费(Lv4 起 10%)Early 69%→贯穿 0.70(来牌即信号)
-    '缇宝': ('量子', 'partial'),        # 2费(Lv4 起 25%)48% Early(量子+群攻双 flow)
-    '符玄': ('量子', 'partial'),        # 4费(Lv5 起 2%——审计修正:非 2 费;
-    #                                    量子 core 三件两件 ≥3费 → 配方成型窗口整体偏后,
-    #                                    Lv5 前贝洛伯格档主要靠 pack 外贝件,属设计内)
-    # —— 双框架通用插件 ——
-    '千冶·刃': ('通用', 'carry'),       # 19%→51%(Final 反超:最强通用插件)
-    # 纯过渡散件(框架外,仅应急)
-    '艾丝妲': ('散件', 'drop'),         # 22%→3% 最纯过渡
-}
-# 有意不收录(Early 资格不足):瓦尔特(5费 Early 0.2%=终局 core,非过渡件;列车终局阵容
-# 已有)/娜塔莎(0.7%)/佩拉(1.1%)/丹恒·腾荒(6.8%)。
-# 注:花火阵营 = 注册表盛会之星(无列车阵营),归量子框架;策略加分统一走
-# env/augment affinity,不走 pack。
-
 # —— P1 过渡框架键面(策展知识归知识层)——
 # 框架 → 目标羁绊(Early 期 form 判定用)
 FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
@@ -85,7 +44,6 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     # 框架映射随桥删除(已封存线不再有框架豁免通道);
     # 量子键的贝洛伯格保留——那是希儿线主流构成(希儿系判据内)。
 }
-FRAMEWORKS: tuple[str, ...] = ('仙舟', '列车', '量子')
 
 # —— 体系键与成员集(原 kernel/cw_intention)——
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
@@ -110,3 +68,19 @@ def bond_members(bond: str) -> set[str]:
         if (set(c.factions) | set(c.flows)) & bonds:
             out.add(name)
     return out
+
+
+def framework_members(framework: str) -> list[str]:
+    """过渡框架成员名单(注册表现算;统一保护集迭代 design.md §2.4 ①:
+    策展档位标签消费的迁移单一源,替代已删除的 TRANSITION_PACK 过滤)。
+
+    成员 = 框架键面(:data:`FRAMEWORK_FACTIONS`)各羁绊 :func:`bond_members`
+    的并集(阵营∪流派口径);未注册框架返回空表。返回序 = ``CHARACTERS``
+    声明序——消费面(配方 core_chars)对序敏感,禁无序集合直出。"""
+    bonds = FRAMEWORK_FACTIONS.get(framework, ())
+    if not bonds:
+        return []
+    members: set[str] = set()
+    for bond in bonds:
+        members |= bond_members(bond)
+    return [name for name in CHARACTERS if name in members]
