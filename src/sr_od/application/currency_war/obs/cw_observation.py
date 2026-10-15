@@ -862,12 +862,12 @@ def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None
 
 
 def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
-    """当前敌人难度(左上角 ``文本-难度`` 敌方难度读数;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
+    """当前敌人难度(左上角 ``文本-难度`` 区域的敌方难度读数;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
 
     难度数字是白色艺术字 + 深色纹理旗底,原生直读必失(58 帧交叉核对 0/58,全是 0/1 类
     垃圾或空)→ 走敌方难度读数专用两级管线(与 ``read_level_up_cost`` 两级形状一致,便于维护;
     本场景二级二值化为主、一级放大为辅):
-    1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 有敌方难度读数帧全读对);
+    1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 个含敌方难度读数的帧全部读对);
     2. 读空 → ``_ocr_upscaled``(4x 放大,保底防 OTSU 在异常背景下反转失效)。
     合理带守卫 ``_DIFFICULTY_MIN.._DIFFICULTY_MAX`` 外 → None:根除单帧噪声读数
     (推导见常量注释)。无敌方难度读数帧(补给节点等)区域空白 → 两级皆空 → None(正确语义)。
