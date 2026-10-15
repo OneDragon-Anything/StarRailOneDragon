@@ -12,7 +12,9 @@
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
   - ``STRATEGY_GRANTS``(策略卡具名发放登记,机制事实留 kernel;「档→分」
     映射 = 策略层 gift_value,消费核 = ``strategies/impl/mandate_v1/
-    invest_strategy.py``,正本 = strategy-docs/29_invest_strategy_screen.md)。
+    invest_strategy.py``,正本 = strategy-docs/29_invest_strategy_screen.md);
+  - ``env_faction_scope``/``strategy_faction_scope``(环境/策略的阵容指向集
+    派生,零手抄登记;消费 = 投资选卡阵容冲突护栏,invest_strategy 冲突基准)。
   两屏选卡评序不在本文件(宪法五:衍生打分归策略层,正本 = strategy-docs
   28/29 号稿)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
@@ -1196,6 +1198,81 @@ def resolve_strategy_canonical(name: str) -> str | None:
     if idx is not None and abs(len(names[idx]) - len(name)) <= 3:
         return names[idx]
     return None
+
+
+# ===== 阵容指向集(投资选卡阵容冲突护栏的判据源;设计 =
+# docs/develop/sr_od/application/currency_war/changes/
+# 2026-10-17-invest-direction-guard/design.md §2.1)=====
+# 指向集 = 「这张投资服务哪些阵容阵营」的阵营名集合:非空 = 有阵容指向;
+# 空 = 通用卡(纯经济/纯战力/随机角色族/时代规则类),无冲突可判。全部
+# 派生自既有注册表(零手抄登记,版本重采自动跟);线库(cw_comps)反向
+# 引用一律函数内延迟 import——cw_comps 模块级已引 cw_investments,反向
+# 模块级即成环(augment_affinity 先例)。消费位 = strategies/impl/
+# mandate_v1/invest_strategy 冲突基准(§2.2);锁定线指向不设函数
+# (锁定 Comp.factions 消费侧现读)。
+
+def env_faction_scope(env_name: str) -> frozenset[str]:
+    """投资环境的阵容指向集(faction 腿 + 亲和腿;§2.1)。
+
+    - faction 腿:``INVESTMENT_ENVS[env].faction`` 非空入集(概念股/邀请/
+      契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);
+    - 亲和腿:``ENV_COMP_AFFINITY`` 该环境值键 = 线名,取各线 Comp.factions
+      **全集**入集——副阵营随线带入(命运圣杯邀请亲和含双王圣杯 → 指向集
+      = {命运圣杯, 能量}:能量组件卡可服务双王线的能量副羁绊,判兼容是
+      语义本意;特邀专家:桑博 faction 空但亲和专家桑博DOT,单 faction 腿
+      会误判通用)。线名缺 Comp(注册表漂移)→ 跳过不炸,指向集收窄
+      宁放行(与角色腿未注册跳过同 fail 方向)。
+
+    环境名不在注册表 → 空集;入参先 ``normalize_invest_name``——持有名
+    OCR 形变不归一 = 查表 miss → 护栏基准弱化漏拦(与 strategy_lock_hit/
+    env_fit/augment_affinity 查表先例同口径)。
+    """
+    e = INVESTMENT_ENVS.get(normalize_invest_name(env_name))
+    if e is None:
+        return frozenset()
+    from sr_od.application.currency_war.kernel.cw_comps import (
+        augment_env_affinity,
+        get_comp,
+    )
+    out: set[str] = set()
+    if e.faction:
+        out.add(e.faction)
+    for line_name in augment_env_affinity(env_name):
+        comp = get_comp(line_name)
+        if comp is not None:
+            out |= set(comp.factions)
+    return frozenset(out)
+
+
+def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
+    """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营腿 + 角色腿两源;§2.1)。
+
+    - 阵营腿:绑定阵营直接入集;
+    - 角色腿 ch 两源:① ``CHARACTERS[ch].factions`` **全集**入集(多阵营
+      角色全展开,用户裁定「从角色去关联对应的阵容」,如丹恒·饮月 =
+      仙舟/列车同行);② 成员腿:ch ∈ Comp.core_chars ∪ shared_chars 的
+      线,该线 factions 全集入集——角色是某线登记成员 = 卡服务该线
+      (装备党绑飞霄、飞霄是追击飞霄线 core 首席,该卡必须对锁定追击
+      飞霄帧判兼容)。
+
+    ch 不在 CHARACTERS → 跳过不炸(OCR 缺名 fail 方向一致:指向集收窄
+    宁放行);策略名不在注册表/无绑定 → 空集(通用卡);入参先
+    ``normalize_invest_name``(同 :func:`env_faction_scope` 口径)。
+    """
+    bind = STRATEGY_BINDINGS.get(normalize_invest_name(strategy_name))
+    if bind is None:
+        return frozenset()
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    bound_facs, bound_chars = bind
+    out: set[str] = set(bound_facs)
+    for ch in bound_chars:
+        chd = CHARACTERS.get(ch)
+        if chd is not None:
+            out |= set(chd.factions)
+        for comp in COMP_LIBRARY:
+            if ch in comp.core_chars or ch in comp.shared_chars:
+                out |= set(comp.factions)
+    return frozenset(out)
 
 
 # ===== 环境经济通道注册表(白名单制)=====
