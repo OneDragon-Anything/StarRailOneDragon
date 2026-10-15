@@ -1420,13 +1420,16 @@ _validate_env_ore_grants()
 
 
 # ===== 环境具名发放注册表(白名单制)=====
-# 送卡型环境(契约 ×7 + 特邀专家 ×4)与道具型环境(火药味)的具名发放登记,白名单制
-# (表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 =
-# cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现常数非金流期望
-# (定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
+# 送卡型环境(契约 ×7 + 特邀专家 ×4)、道具型环境(火药味即时 + 特权阶级
+# 定时)、随机角色环境(人才引进)与召唤单位环境(三星佩佩)的具名发放登记,
+# 白名单制(表外环境一律无条目,禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。
+# 档位机器 = cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现
+# 常数非金流期望(定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
 # (gift_hit_tier 包装;28 号稿 §2 与 29 号稿 §2.3)。
-# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯);校验 = 测试仓
-# test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
+# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯)。
+# 锁面(测试仓):kernel/test_gain_chain.py(ENV_GIFTS 分道/道具/定时通道 +
+# 落地相全量接入)、strategies/impl/mandate_v1/test_invest_strategy.py(档→分
+# 映射/具名分档/键完备)、sim/test_sim_backend.py(sim 世界腿到点发放)。
 ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
     # 战技点 128/星核猎手 129/欢愉 1201/命运圣杯 1202/特邀专家 141/142/143/148
@@ -1494,6 +1497,16 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # type_tag 空,池 = 4 费全档;时点「开局」= 环境注册时点,与火药味
     # 「开局时获得」同口径(items_immediate 选卡即发)
     '人才引进': GiftGrant(chars_random_immediate=(RandomCharSpec(cost=4, star=1),)),
+    # 召唤单位支首例(id 115 效果原文「获得一个穿戴三个随机星徽的佩佩。」直读,
+    # PlazaPortal('115');佩佩 ∈ CHARACTER_ROSTER(cw_chars 召唤族,0 费后台
+    # 系统单位,恒最右/不可拖/不可卖)。登记定性(用户裁定 2026-10-15):
+    # 星徽佩戴在佩佩身上非入栏——equips 栏 = 未穿戴库存,穿戴件入栏 = 伪造
+    # 世界真值;容器行 equips 的消费端(板面真值/巨星候选/行键)的穿戴输入
+    # 对本卡结构性恒空(环境授予穿戴不入容器行 = 增量派生刻意基座),live
+    # 面板观察承载;星徽随机池 desc 无载(放弃纪律)→ 申报键见
+    # ENV_GIFT_UNMODELED_ASSUMPTION_KEYS。星级 = 用户裁定佩佩无星级,链必填
+    # 实参落 1 为占位非先验(无星可观察,先验/校准语义不适用)。
+    '三星佩佩': GiftGrant(chars_immediate=('佩佩',)),
 }
 
 
@@ -1524,6 +1537,17 @@ ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_random_char_uniform',
     'env_gift_random_char_star_prior',
     'env_gift_random_char_type_tag',
+)
+
+#: 环境赠卡「desc 有载但刻意零建模」腿的申报键(家族常量,键随家族携带不随
+#: 单卡增减,形态沿 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 先例;消费面 =
+#: 披露清单,防未来把「无建模」误判为漏报):
+#: - env_gift_worn_badges_unmodeled: 环境卡授予的星徽**穿戴**不建模(用户
+#:   裁定 2026-10-15)——穿戴非入栏,容器行 equips 消费端(板面真值/巨星
+#:   候选/行键)的穿戴输入对环境卡结构性恒空,live 面板观察承载;首例 =
+#:   三星佩佩(id 115;姊妹卡粗星佩佩同款佩戴句,其卡落地时引用本键不重立)。
+ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'env_gift_worn_badges_unmodeled',
 )
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value

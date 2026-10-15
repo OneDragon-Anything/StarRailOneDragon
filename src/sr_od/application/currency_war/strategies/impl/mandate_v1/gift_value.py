@@ -2,10 +2,11 @@
 28_invest_env_screen.md §2 赠卡分行)。
 
 两个口径:
-- **具名赠卡**(契约 ×7 + 特邀专家 ×4,登记 = ``cw_investments.ENV_GIFTS``
-  留 kernel):档位判定复用 kernel ``cw_comps.gift_hit_tier``(角色在候选套
-  中的身份档 = 机制事实判定,按宪法五判据线留 kernel;本模块只做「档→分」
-  映射 = 策略立场,:data:`GIFT_TIER_SCORE`)。advisor(付费顾问期权,特邀
+- **具名赠卡**(契约 ×7 + 特邀专家 ×4 与道具型(火药味/特权阶级定时)、
+  随机角色(人才引进)、召唤单位(三星佩佩),登记 =
+  ``cw_investments.ENV_GIFTS`` 留 kernel):档位判定复用 kernel
+  ``cw_comps.gift_hit_tier``(角色在候选套中的身份档 = 机制事实判定,按宪法五
+  判据线留 kernel;本模块只做「档→分」映射 = 策略立场,:data:`GIFT_TIER_SCORE`)。advisor(付费顾问期权,特邀
   专家)按同档分 × :data:`ADVISOR_DISCOUNT`(「付费期权 < 白得」语义——
   顾问需再花店价且占购买预算,价值严格低于同档白得);赠卡失格删除:
   白得卡全员集外 → 赠卡分自然 0,**不再把整环境清零**(旧
