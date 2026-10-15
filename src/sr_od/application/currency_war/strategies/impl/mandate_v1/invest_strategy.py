@@ -251,17 +251,22 @@ def _locked_alignment_n(bindings: tuple[frozenset[str], frozenset[str]] | None,
 # ===== 阵容冲突护栏(护栏设计 §2.2/§2.3)=====
 
 
-def _conflict_basis(gs: GameState, locked_comp: str) -> frozenset[str]:
+def _conflict_basis(gs: GameState, locked_comp: str,
+                    demoted_endgame: bool) -> frozenset[str]:
     """冲突基准(护栏设计 §2.2):锁定帧 = 锁线 Comp.factions——锁定 =
     终局方向裁定完成,历史误持不入基(误持黑塔纪元后锁定圣杯,基准 =
     锁线 factions,银河学者卡照排);未锁定帧 = 已持有投资的指向并集
     (环境 + 策略,持有 append-only → 基准单调不减,出域判定只收紧)。
 
+    降格帧(demoted_endgame,现全库不可达,前瞻语义)锁线不入基 =
+    回持有基——与模块既有 demoted 语义(``locked_comp and not
+    demoted_endgame``)同构,降格 = 终局方向暂席,回退到持有信号比对。
+
     锁线名不可解析(OCR 漂移/非阵容名)→ 空集;基准空 = 护栏不辖,
     选卡行为与无护栏逐位一致。全部指向集查询经 kernel 归一口径
     (``env_faction_scope``/``strategy_faction_scope`` 内先
     ``normalize_invest_name``,持有名 OCR 形变不静默漏拦)。"""
-    if locked_comp:
+    if locked_comp and not demoted_endgame:
         lc = get_comp(locked_comp)
         return frozenset(lc.factions) if lc is not None else frozenset()
     basis: set[str] = set()
@@ -520,7 +525,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
         return InvestStrategyDecision(
             idx=0, reason='empty-frame: 无候选退化', total=0.0,
             components=(0.0, 0.0, 0.0, 0.0, 0.0))
-    basis = _conflict_basis(gs, locked_comp)
+    basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     cands = _score_frame(options, gs, locked_comp, demoted_endgame,
                          frozenset(evicted), strategy_priority, strategy_forbid,
                          basis)
@@ -555,7 +560,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
         return InvestStrategyDecision(
             idx=0, reason='empty-frame: 无候选退化', total=0.0,
             components=(0.0, 0.0, 0.0, 0.0, 0.0))
-    basis = _conflict_basis(gs, locked_comp)
+    basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     cands = _score_frame(options, gs, locked_comp, demoted_endgame,
                          frozenset(evicted), strategy_priority, strategy_forbid,
                          basis)
