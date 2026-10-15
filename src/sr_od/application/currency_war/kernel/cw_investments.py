@@ -1357,8 +1357,9 @@ def _validate_env_economy() -> None:
     改名/移除后静默失联);② **六条防一次性错装逐条对账**——
     点名六条(增发货币/成功经验/二手市场/长线利好/策略大师/劳务派遣合同)的
     效果全是分期/条件/触发形态,禁装成 gold_instant 单通道(一次性错装);
-    劳务派遣合同(出售/合成触发金)现版本无对应通道字段,登记即错装 → 直接
-    拒绝(专属字段建模后再收此闸);③ 挂载一致性:replace 后
+    劳务派遣合同(卡面效果 = 随机星徽授予 + 每首领节点发对应羁绊随机角色,
+    流程侧已登记建模;经济通道零动作)无对应经济通道字段,登记即错装 →
+    直接拒绝;③ 挂载一致性:replace 后
     INVESTMENT_ENVS[name].economy 与表内实例同一对象(防后续构建段重挂漂移)。
     """
     orphans = [n for n in ENV_ECONOMY if n not in INVESTMENT_ENVS]
@@ -1372,8 +1373,9 @@ def _validate_env_economy() -> None:
                 f"禁装 gold_instant={_eff.gold_instant}(一次性错装)")
     if '劳务派遣合同' in ENV_ECONOMY:
         raise ValueError(
-            "ENV_ECONOMY 防错装:劳务派遣合同(出售/合成触发金)"
-            "无对应通道字段,禁以现有字段近似装表(专属字段建模后再收)")
+            "ENV_ECONOMY 防错装:劳务派遣合同(卡面效果 = 随机星徽授予 + "
+            "每首领节点发对应羁绊随机角色,非经济效果,流程侧已登记建模)"
+            "无对应经济通道字段,禁以现有字段近似装表")
     for _n, _eff in ENV_ECONOMY.items():
         if INVESTMENT_ENVS[_n].economy is not _eff:
             raise ValueError(f"ENV_ECONOMY 挂载不一致:{_n!r} economy 未挂载或实例漂移")

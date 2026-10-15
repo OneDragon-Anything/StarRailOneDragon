@@ -226,6 +226,16 @@ import 即炸)防漂移。
     流键 rng 即世界真值,且默认环境局(无随机支)rng 消耗序列逐位不变。
     采样/先验假设申报 = `cw_investments.ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`
     三键(池内均匀 v0 / 星级 1 先验 / 类型标签过滤口径)。
+  - **随机装备支**(`equips_random_immediate`,落地序 = 即时道具支之后、定时支
+    之前):元素 = 装备类别名(EQUIPMENTS category 词),发放 = 类别池
+    (`equips_by_category`,注册表派生单一源)内均匀掷骰选名 →
+    `gain_equipment(rand=True)` 入栏(equips 库存,不占席、不进
+    BENCH_ITEM_NAMES)。效果串 `env_star_grant:<名>`;**绑定腿** = 发放名落
+    `env_grants_done` 条件键 `star_grant#<名>`(placed 守卫下写——equips
+    未观察时 `gain_equipment` 零写跳档 → 绑定同样不落,禁「绑定在而装备
+    未发」残缺态),消费 = `check_env_boss_grants` 腿2 绑定解析(首例 =
+    劳务派遣合同 id 118「获得随机星徽」;条件键形态登记 =
+    fields.md §3.5.5)。`rng` 回退/条件解析与随机角色支同款。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
     落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端

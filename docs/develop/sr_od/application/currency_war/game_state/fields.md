@@ -1086,12 +1086,19 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 条件键 = 具名取值清单:`'first_streak'` = 本局首次连胜达成(消费 =
 `check_env_streak_grants`);`'refresh_threshold'` = 刷新次数阈值触发器
 (二手市场;消费 = `check_env_refresh_grants`,唯一调用点 = 刷新上报函数
-`report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口)。
+`report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口);
+`'star_grant#<装备名>'` = 随机星徽授予腿绑定键(# 后载荷 = 发放装备名,
+键值载荷是条件键的扩展形态,随劳务派遣合同登记;写端 =
+`cw_gain_chain.on_env_gained` 随机装备支,消费 = 绑定存在性检查,不承担
+幂等);`'boss#<位面>-<轮>'` = 首领节点周期发放幂等键(每节点一键,消费 =
+`check_env_boss_grants`)。
 
-**触发与写入方**(逻辑写入方两函数并列,各对应一个条件键 = `kernel/cw_env_grants.py::
+**触发与写入方**(逻辑写入方三函数并列,各对应一个条件键 = `kernel/cw_env_grants.py::
 check_env_streak_grants`(first_streak;live/sim 结算接线同调同一函数)/
 `check_env_refresh_grants`(refresh_threshold;唯一调用点 = 刷新上报函数尾部,
-live/sim 同段 op 代码同口)):结算连胜真值落账
+live/sim 同段 op 代码同口)/ `check_env_boss_grants`(star_grant# 绑定的
+存在性检查 + boss# 幂等键;写端含两模块——boss 键写端 = 本函数,
+star_grant# 绑定写端 = `cw_gain_chain.on_env_gained`)):结算连胜真值落账
 后检查,条件矩阵七序短路——①环境为空 ②环境不在登记表 ③连胜 ≤0(带符号
 口径)④未达阈值 ⑤已发(本域命中;现值 None 按空防御)⑥装备库存从未观察
 (equips None = 不发放**且不标 done**,条件每结算重查自动重试,宁缺勿造)
@@ -1115,6 +1122,24 @@ live/sim 同段 op 代码同口)):结算连胜真值落账
 **一次性封账**同上,第 20 刷后重查不再发。接管/恢复局计数
 (`refresh_total/refresh_paid`)不进快照、从 0 起 → 晚发放形态显式接受
 (设计披露,金失配告警 = 检测机制)。
+
+**boss# 周期触发形状**(同域第三通道,劳务派遣合同;登记表 =
+`cw_investments.ENV_BOSS_GRANTS`,白名单制):每个首领节点发放一次(周期性 =
+done 键带节点坐标 `boss#<位面>-<轮>`,与一次性通道的 (env, 具名键) 形状
+不同、幂等机制同)。发放物 = 绑定星徽(`star_grant#<名>` 键解出)对应羁绊的
+随机 1★ 角色(`chars_by_faction` 池内均匀采样,rng 形参:live 回退自掷 =
+采样猜测口径、sim 传流键 = 世界真值)。条件矩阵八序短路:空 env/不在册/
+`node_pos` None(live hist 未建禁猜)/本节点已发/**绑定缺失**(done 无本环境
+`star_grant#` 前缀键 → 宁缺勿造零写,无快照接管局腿2 全程不发 = 显式
+接受)/bench 缺读(缓发不标 boss 键;boss 窗一次性无自动重试 = 该节点
+漏发)/达标 → 角色链 + done boss 键两笔相邻写(同 evidence
+`env_grant#<环境>#boss<位面>-<轮>` 同 sig)。**两点接线**:「进入首领节点」
+真值生产点分居两端——live = `CwScreenBossBriefing._observe_live` 观察上报
+后 best-effort 调用(logic_hook 族 group `boss-briefing:env-grant`;
+横幅早退帧不触发 = 与 boss 类型直定同覆盖面),sim =
+`cw_sim_backend._begin_node_window` boss 分支(窗口幂等守卫内,
+`logic_sig('sim:env')`,流键 `M21/env-boss/p<位面>/r<轮>`);两支天然互斥,
+done 短路兜第二层。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写入方 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =
