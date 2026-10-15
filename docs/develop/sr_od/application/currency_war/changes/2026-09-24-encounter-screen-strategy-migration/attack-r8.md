@@ -50,7 +50,7 @@
 
 - **宪法/章程原文核对**:00_framework §1 六条(宪法五判据线/宪法六迁移节奏与共用模块条款逐字)、01 §6【拍】三要件与禁域条款、01 §8 位面参数化不变量——设计引用与原文一致(除 F2 的转述面)。
 - **授权与裁定链**:04 号稿 §7 裁定表第 9 行逐字(授权对象 = 结算观测读数作遭遇决策输入 + GameState 持久化、环深 10、「判据正本」系依据列载体登记——设计 §2.2 对该行「不构成判据结构授权」的读法与原文相符);op-layer.md §1.4 刷新剩余语义(None = 未观察、节点屏闸 None = 拒刷)与设计 §2.2/§2.5 闸内嵌一致。
-- **已证命题**:P64 单篇辖域(静态 `dict[旗牌→stat]`、B/q/s/m 自由项、G_gold 金额侧、点亮前置链①②③)与设计引申申报的边界声明相符;math_proofs 索引 P15(boss 26.79 [24.25,29.23] / 普战 10.45)、P26(待证明,Δp_prep+L_node 双挂账)、P85(D_N={遭遇,boss}、A/B 分键候裁)行——设计 §1/§2.2/§2.12 引用逐项对得上。
+- **已证命题**:P64 单篇辖域(静态 `dict[敌方难度读数→stat]`、B/q/s/m 自由项、G_gold 金额侧、点亮前置链①②③)与设计引申申报的边界声明相符;math_proofs 索引 P15(boss 26.79 [24.25,29.23] / 普战 10.45)、P26(待证明,Δp_prep+L_node 双挂账)、P85(D_N={遭遇,boss}、A/B 分键候裁)行——设计 §1/§2.2/§2.12 引用逐项对得上。
 - **现役暗装核直调**:六标定槽全 None、门序(F_MIN→G_BASE→bar 双定谳→D_ENC_VARIANT→Δ_t)、`_kappa_state` 三态表逐位(含删失优先/fill 不激活分支)、cap 2/6 与过滤顺序(cap 在前,边缘态 t≥3 全排除含五/六)、tiebreak `(档, idx)` 序、`_lowest_idx` 并列取先读、三因词刷新阀、reason 串格式——设计 §2.2「与现役核同构,门序收窄」申报与代码逐位相符。
 - **三核架构与双零消费**:基类 flow.decide_encounter → cw_events 旧核(flow.py:594-609,含 refresh_used 预计算 :602)、bridge 覆写 → cw_encounter_selection(bridge.py:252-285,含自带离屏守卫)、EV 核 mandate_v1/encounter.py(`decide_ev` 零生产调用、测试仓零引用、「纯函数锁」不存在);bridge 仅覆写 decide_prep_screen/decide_encounter/decide_shop_screen——「删覆写后 bridge 只覆写营业面」申报成立。
 - **动作链解耦**:CwActionPickEncounterOp 静态入参 = 词表动作、`report_action_pick_encounter_param(param: Any)` 鸭子取 idx——生产契约与 EncounterPick 无耦合;测试替身仅 test_cw_unified_action_4.py(:28/:259/:278,行号精确)。

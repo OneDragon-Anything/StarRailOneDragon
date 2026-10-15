@@ -108,7 +108,7 @@ def table_loaded() -> bool:
 def difficulty_band(difficulty_value: int | None) -> str | None:
     """难度→难度带(D0/D1)。
 
-    难度维=局内旗牌读取真值优先(语料覆盖 90%)+公式 interim 兜底(残差中位 0,
+    难度维=局内敌方难度读数读取真值优先(语料覆盖 90%)+公式 interim 兜底(残差中位 0,
     P51_V3_REBUILD §2);真值缺失(None)时**返回 None 交由键查询落域外**,
     不在本函数内静默兜底——interim 公式系数系【推·语料拟合】量(随语料分布
     漂移,R29-6),其形态登记在 audit/derived.py,标定批注入前禁产假真值。

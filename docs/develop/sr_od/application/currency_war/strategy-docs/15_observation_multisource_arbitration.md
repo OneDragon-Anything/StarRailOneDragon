@@ -23,7 +23,7 @@
 | 9 | 后排布局档 | ①公式 6+(cap−level);②CV 双端探针实测 | **双通道对账:CV 优先,CV 不可判退公式** —— 7 格帧 CV 左探针结构性失明(§3),公式输入 level 可毒化 → 家族⑤「7 实画选 6 档」。〔as-built 2026-09-05:点修已落库 da4f49f2=不一致分支加占用一致性仲裁(paddle−前排占用=后排期望,修订详情见该 commit;ADR 档案已停用,git 历史可溯);批 B 三信号写入代码时按 handover_layout7.md 单一替换点并入〕 | `cw_back_layout.resolve_back_slots`() |
 | 10 | node_type | ①台账表(位面详情采集+投资环境后重读两写点,权威);②逐帧标签 OCR;③三票(ROI OCR/位置推断/高亮 Hu) | **表权威+三票纯记账**。⚠️ A4 勘误:三票中**真独立画面票只有 2 张**(票A ROI OCR/票C 高亮 Hu);票B=台账序列重索引(`seq[past_n]`),与权威同源,是「进度一致性对账」非独立读数——现行 `node_vote_verdict` 的 ≥2 反对判据实际由票A+票C 承载,票B 不构成独立性实证(§2.2 标称类③随之如实收缩) | `verify_node_type_votes`(cw_observation.py:614,620 票B=seq 索引) |
 | 11 | streak | ①session 结算值(带符号);②备战 OCR magnitude | **仅对账保留证据,无裁决**(不等即 obs_conflict,不采任何一方) | read_game_state streak 段 |
-| 12 | enemy_difficulty | ①逐帧旗牌两级管线 OCR(live);②session 简报恒值 | **优先级仲裁:live 优先**(读链翻转,旧「session 优先」把真值结构性压死 92.7%) | read_game_state enemy_difficulty 段 |
+| 12 | enemy_difficulty | ①逐帧敌方难度读数两级管线 OCR(live);②session 简报恒值 | **优先级仲裁:live 优先**(读链翻转,旧「session 优先」把真值结构性压死 92.7%) | read_game_state enemy_difficulty 段 |
 | 13 | shop 牌费用/星级 | ①画面费用徽章(模板快路+OCR 慢路);②roster 注册表 1★ 费 | **一致性校验仲裁:倍数∈{1,3,9} 才采徽章**,否则 roster 兜底+保留证据 | `resolve_cost_star` |
 | 14 | shop 牌身份 | SIFT 单源(未识别='?'显式,不猜) | **单源显式未知**(无第二源;fail 方向=拒买) | `read_shop_cards` |
 | 15 | phase_round | ①顶栏 OCR;②last-known-good 缓存 | **时序防抖类:值域守卫+单调守卫+连续 2 帧同值回退确认** | `read_phase_round` |

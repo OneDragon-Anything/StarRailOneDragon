@@ -139,7 +139,7 @@ GOLD_SETTLE_MAX_POLLS: int = 3
 #: 步长下 3 帧覆盖 ~1.5s,足够越过入账窗;再长会拖慢每个 read_game_state。
 GOLD_SETTLE_INTERVAL_S: float = 0.5
 
-#: 难度旗牌徽记带上沿(裁片内 y,1080p 像素):「文本-难度」旗牌上半是徽记图案、
+#: 「文本-难度」数字区徽记带上沿(裁片内 y,1080p 像素):数字区上半是徽记图案、
 #: 下半是数字。像素亲测(58 帧 fixture 裁片):徽记占 y 0..45、
 #: 数字带 y>=55,取 48 留双向安全距。``_ocr_difficulty_binarized`` 据此抹带。
 _DIFFICULTY_EMBLEM_BAND_Y: int = 48
@@ -728,7 +728,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
 def read_plane_detail_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     """位面详情底部明文「敌人难度 N」→ N | None(**只存参考**)。
 
-    生产难度主源 = 备战旗牌两级管线(``read_enemy_difficulty``)
+    生产难度主源 = 备战画面敌方难度读数两级管线(``read_enemy_difficulty``)
     不变;本读法服务位面详情采集时的参考值落账(离线交叉核对/缺口排查)。
     明文正读(非艺术字)→ 全屏 OCR 按「敌人难度」前缀正则提取,不依赖
     固定坐标(位面详情布局随内容变,正则锚文本比锚坐标稳)。
@@ -835,7 +835,7 @@ def read_xp_progress(ctx: SrContext, screen: MatLike,
 
 def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None,
                               scale: int = 4) -> list:
-    """难度旗牌专用预处理 OCR:裁剪 → 放大 → OTSU → 反转 → 徽记 y 分带剔除。
+    """敌方难度读数专用预处理 OCR:裁剪 → 放大 → OTSU → 反转 → 徽记 y 分带剔除。
 
     为什么整链不可省(58 帧 fixture 离线交叉核对,产物
     ``.debug/temp/currency_war/w526_difficulty_reader/``):
@@ -862,15 +862,15 @@ def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None
 
 
 def read_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
-    """当前敌人难度(左上角 ``文本-难度`` 旗牌;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
+    """当前敌人难度(左上角 ``文本-难度`` 敌方难度读数;boss 血量 ≈ base×1.052^难度,doc 13 §13.7)。
 
     难度数字是白色艺术字 + 深色纹理旗底,原生直读必失(58 帧交叉核对 0/58,全是 0/1 类
-    垃圾或空)→ 走旗牌专用两级管线(与 ``read_level_up_cost`` 两级形状一致,便于维护;
+    垃圾或空)→ 走敌方难度读数专用两级管线(与 ``read_level_up_cost`` 两级形状一致,便于维护;
     本场景二级二值化为主、一级放大为辅):
-    1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 有旗牌帧全读对);
+    1. ``_ocr_difficulty_binarized``(OTSU+反转+徽记剔除,41/41 有敌方难度读数帧全读对);
     2. 读空 → ``_ocr_upscaled``(4x 放大,保底防 OTSU 在异常背景下反转失效)。
     合理带守卫 ``_DIFFICULTY_MIN.._DIFFICULTY_MAX`` 外 → None:根除单帧噪声读数
-    (推导见常量注释)。无旗牌帧(补给节点等)区域空白 → 两级皆空 → None(正确语义)。
+    (推导见常量注释)。无敌方难度读数帧(补给节点等)区域空白 → 两级皆空 → None(正确语义)。
     """
     rect = _area_rect(ctx, '文本-难度')
     v = _first_int([r.data for r in _ocr_difficulty_binarized(ctx, screen, rect)])
@@ -2424,12 +2424,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 翻转后:真读命中 → 用真值+live=True;真读 None(stylized OCR 常空,
     # 已知)→ 回退 session 恒值,live=False;双源皆无 → None。
     # 判读纪律:live=False 帧的值是简报恒值,别当「难度 vs 轮次」曲线样本。
-    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)跳过
+    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无敌方难度读数)跳过
     # 两级管线,直接 session 值 + live=False(与「真读 None 回退」同语义)。
     # (session 恒值回退已停用(见终态契约 §B):开局简报基线由 briefing 写端
-    #  直入 gs(logic 源),旗牌真读(observation)覆盖,失读帧走 carry 沿用。)
+    #  直入 gs(logic 源),敌方难度读数真读(observation)覆盖,失读帧走 carry 沿用。)
     # 判读纪律:live=False 帧的值不落新证,别当「难度 vs 轮次」曲线样本。
-    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无旗牌)
+    # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无敌方难度读数)
     # 跳过逐帧读(与「真读 None 回退」同语义,沿用容器值)。
     enemy_difficulty: int | None
     enemy_difficulty_live = False

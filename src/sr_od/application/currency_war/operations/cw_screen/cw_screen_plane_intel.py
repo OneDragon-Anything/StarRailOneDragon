@@ -16,7 +16,7 @@
   切换变;空 = 无词缀,上报走幂等门);
 - **位面节点带**/难度参考值:节点序列随采存(node6 统一落账);难度
   参考值每个识别 node 同帧顺带读(node6 逐位面落账;生产难度主源 =
-  备战旗牌两级管线不变)。
+  备战画面敌方难度读数两级管线不变)。
 
 入口/出口契约:
 - 入口:已在位面详情屏(前提;开/关转场归编排 op CwEntryPlaneIntel,
@@ -213,7 +213,7 @@ class CwScreenPlaneIntel(CwOperation):
             if self._affixes:
                 _log.info('[cw-plane-intel] 词缀随采(位面详情横条):%s',
                           self._affixes)
-        # 敌人难度参考值(同帧顺带;只存参考,生产难度主源 = 备战旗牌
+        # 敌人难度参考值(同帧顺带;只存参考,生产难度主源 = 备战画面敌方难度读数
         # 两级管线不变;读缺/异常不阻塞识别主链)。
         with contextlib.suppress(Exception):
             from sr_od.application.currency_war.obs.cw_observation import (

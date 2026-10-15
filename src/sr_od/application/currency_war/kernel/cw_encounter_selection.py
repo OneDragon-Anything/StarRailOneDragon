@@ -22,7 +22,7 @@
 ``difficulty_node`` 装填双态分支(``cw_screen_battle_wait``
 ``_cw_selection_write`` 直依此槽——裁定 9 持久化面自身的依赖):None =
 未定案(普战行 observation 直装、遭遇行恒 None,保守前置形态);'i' =
-装遭遇自身备战帧旗牌;'ii' = 装前一普战写入值(carry 自证态;简报值无
+装遭遇自身备战帧敌方难度读数;'ii' = 装前一普战写入值(carry 自证态;简报值无
 容器入口,relay 白名单不含 enemy_difficulty,毒化四通道封闭)。定案批/
 测试经 :func:`apply_calibration` 注入(只填 None 槽,幂等)。
 """

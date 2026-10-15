@@ -2177,7 +2177,7 @@ class PlaneNodeLedger:
     seq_source: dict[int, str] = field(default_factory=dict)
 
     #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
-    #: 主源 = 备战旗牌两级管线,本字段供离线交叉核对/缺口排查。
+    #: 主源 = 备战画面敌方难度读数两级管线,本字段供离线交叉核对/缺口排查。
     difficulty_ref: dict[int, int] = field(default_factory=dict)
 
     #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与

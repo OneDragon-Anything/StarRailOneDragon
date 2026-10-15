@@ -27,7 +27,7 @@ class RunConfig:
     #: selected_difficulty 同名同义)。开局 HP 查表唯一实证档 = 'A8',
     #: 其余档报错索样本(U15 定稿口径,不外推)。
     selected_difficulty: str
-    #: 数值难度档(局内左上旗牌数值;开局 HP 查表实证档 = 108)。
+    #: 数值难度档(局内左上敌方难度读数数值;开局 HP 查表实证档 = 108)。
     #: None = 调用方未给定(开局 HP 查表即报错索样本)。
     enemy_difficulty: int | None
     #: 敌人词缀名单(简报 OCR 原名;开局 HP 修正查表键,「开局不利」

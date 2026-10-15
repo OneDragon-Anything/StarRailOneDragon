@@ -78,7 +78,7 @@ class RoundOutcome:
     damage_breakdown_visible: bool = False
     heal_longline: int | None = None
     # —— 遭遇选档观测扩字段(E-2):difficulty_node = 结算快照取该节点最近
-    # 备战帧现场真读旗牌值(live 位为门,无现场读 → None;遭遇行取值随读点
+    # 备战帧现场真读敌方难度读数值(live 位为门,无现场读 → None;遭遇行取值随读点
     # 定案两变体,未定案期装 None);encounter_tier = 遭遇战决策落点难度档
     # (经验档层其五/六正证据的行内通道;普通战斗行恒 None)。
     difficulty_node: float | None = None

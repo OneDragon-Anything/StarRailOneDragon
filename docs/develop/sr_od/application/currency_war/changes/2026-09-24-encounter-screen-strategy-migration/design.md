@@ -6,7 +6,7 @@
   - 宪法五/六：`strategy-docs/00_framework.md` §1 第 5/6 条（用户裁定 2026-09-23，env 批兑现先例）
   - 遭遇选档结算观测授权：`strategy-docs/04_survival_budget.md` 判据来源裁定表第 9 行（用户 2026-09-12 逐项确认，硬闸门例外扩大程序完成；授权辖域 = 敌方通道结算观测〔killed/进度填充率〕作遭遇决策输入 + 入 GameState 持久化）
   - 刷新剩余语义：用户裁定 2026-09-21（全域规范 = `../screens/op-layer.md` §1.4；剩余 ≤0 或 None = 已刷尽/未观察）
-  - P64「遭遇分支旗牌→敌难度 stat 静态映射标定域为空」：已证结构命题（`../proofs/p64-encounter-dstat-static-map-uncalibratable.md`）
+  - P64「遭遇分支敌方难度读数→敌难度 stat 静态映射标定域为空」：已证结构命题（`../proofs/p64-encounter-dstat-static-map-uncalibratable.md`）
 - 状态：定稿（对抗收敛，报告 = attack.md ~ attack-r9.md；三项用户裁定 2026-09-24 已回写 §2.2/§2.10）
 - 文档清单：无详设（单文档方案，§2 即完整设计，深度 = 详设级）
 - 承接：env 批「明确不解决」面登记遭遇等其余画面迁移为后续批（`changes/2026-09-23-invest-env-strategy-migration/design.md` §1）；补给批同（`changes/2026-09-24-supply-screen-strategy-migration/design.md` §1）。本批文档 = **31 号稿**。
@@ -20,7 +20,7 @@
      - **历史 EV 核** = `strategies/impl/mandate_v1/encounter.py`（EV(b) = V_r − Δλ_death·G_loss）已搁置让位、保留禁删；双 provisional 槽（`ENCOUNTER_DSTAT_MAP`/`ENCOUNTER_G_GOLD`）None 期恒 fail 向选低难零刷新——**src 与测试仓双零消费**（全仓 grep 直调核实）。
      - 后果：13 号稿 `decide_encounter` 行仍描述「双轨」（基线核 + EV 核），与生产实际（暗装核）不符 = 文档漂移实证；「遭遇判据单一源」语义永久含混。
   2. **暗装门粒度过粗，把已授权可判的部分一起锁死**。裁定 9 已授权敌方通道结算观测作遭遇决策输入；κ_S 能力态、经验档层、奖励 tiebreak（纯序数）、刷新阀全部**零标定可判**，但被排在其前的四个未定谳标定槽（全部服务「可及性比值腿」`g^(D_win−D_enc) ≥ f_min`）一起暗装。
-  3. **可及性比值腿的标定路径已被证明判死**。P64：旗牌（「遭遇其X」的 X）不携带敌难度 stat 的构成分量，任何静态 `dict[旗牌→stat]` 注入都产假真值（P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射）；E-2 核的 `DELTA_T` 净值表是同构「旗牌→难度量静态表」，判死由 P64 的同一自由项论证覆盖（引申申报，非 P64 原文结论）。点亮前置 = 敌方信息浮层「敌人难度 NNN+N」读数通道（`docs/game/screens/货币战争-敌人信息浮层.md`，OCR 全可读，未接入）或条件表实采（未采）。比值腿在可见期内无法激活。
+  3. **可及性比值腿的标定路径已被证明判死**。P64：敌方难度读数（「遭遇其X」的 X）不携带敌难度 stat 的构成分量，任何静态 `dict[敌方难度读数→stat]` 注入都产假真值（P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射）；E-2 核的 `DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」，判死由 P64 的同一自由项论证覆盖（引申申报，非 P64 原文结论）。点亮前置 = 敌方信息浮层「敌人难度 NNN+N」读数通道（`docs/game/screens/货币战争-敌人信息浮层.md`，OCR 全可读，未接入）或条件表实采（未采）。比值腿在可见期内无法激活。
   4. **kernel→obs 反向依赖**。`reward_tier`（E-1 奖励 tiebreak 映射，驻 `cw_encounter_selection`）import obs 层 `DIAMOND_EQUIP_NAMES`——策略立场内容驻 kernel 且反向依赖观察层。治本落点 = 检测集单一源迁 **kernel 手维护件**（⚠️ 不迁 `data/cw_equipment_data.py`——该文件由 `tools/cw/gen_equip_registry.py` 整文件覆写，手加常量会在生成器重跑时静默蒸发；注册表内三钻无标志字段可派生，名单最小表达 = 三件名清单，宿主 = `kernel/cw_obs_core.py`〔读数域共用真值，手维护非生成〕，obs 与策略层同源消费）。
   5. **文档面**。`25_event_overlays.md` 画面族清单辖 8 活屏（头注 9 项含 1 项已退役屏的删除注记；§2 动作清单表行另含退役屏「装备」残留）——宪法六违例存量；`04_survival_budget.md` 裁定 9 行「判据正本 = kernel/cw_encounter_selection.py」指针将随迁移失配。
 - 根因归层：**分层语义**（判据本体与策略 policy 未分离 + 三核并存无单一源，宪法五）+ **表示**（暗装门把「比值腿未标定」与「能力态可判」捆在一起 fail-closed，粒度过粗）。
@@ -53,7 +53,7 @@
   - `SettlementRing`/`EncounterLog`/`_RingRow`/`SETTLEMENT_RING_DEPTH`/`game_start_reset`——裁定 9 授权的结算观测持久化（读源基建非打分；裁定 9 明文「持久化形态生效即登记」）。**孤儿申报**：`game_start_reset` 全仓零调用（其 docstring「RunLoop handle_init 或首结算时调」为失实声明，随批收口 docstring）——保留面（生命周期钩子的设计意图在册），不随迁不删码；
   - `record_settlement_row`——结算行入环单一写端（守卫抑制与残留排除两臂汇合后的唯一入口）；
   - `claim_encounter_reward`——遭遇奖励兑现回调（结算确认链挂点，2026-09-21 遭遇扩围批定谳形态；结算记账语义，非选档策略）；
-  - `gs.enemy_difficulty` 容器与旗牌读数管线——游戏真值读口（比值腿复活时消费）。
+  - `gs.enemy_difficulty` 容器与敌方难度读数管线——游戏真值读口（比值腿复活时消费）。
 - 迁移后 `cw_encounter_selection` 文件 kernel 侧余量 = **结算观测基建 + 兑现回调**（上两条所列），判据与标定面全部离开 kernel。
 - **窗口读口**：`SettlementRing.last_normal_battles` 的生产消费唯一 = 判据本体（本批迁出）。窗口定义维持普战口径（§2.2），读口**原样保留**（迁移后消费方 = 策略层画面文件，kernel 基建零改动）。`last_row`（兑现回调消费）不动。
 
@@ -104,7 +104,7 @@ decide(options: list[EncounterOption], gs: GameState)
 
 ### 2.3 标定注入面拆分与比值腿退役
 
-- **退役三槽**：`F_MIN`/`G_BASE`/`DELTA_T`（物理删除）+ `g_ratio` + `_d_enc_snapshot` + `_Diagnostics`（诊断已随 reason 串透传，独立结构失去消费）。退役依据分层申报：P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射（旗牌→stat）；`DELTA_T` 净值表是同构「旗牌→难度量静态表」形态，判死由 P64 的同一自由项论证（B/q/s/m 运行时项）逐项覆盖——**引申申报，非 P64 原文结论**；`F_MIN`/`G_BASE` 退役理由 = 比值腿整体退役（其标定依赖 D_enc 读点定谳链，同属悬置面）。
+- **退役三槽**：`F_MIN`/`G_BASE`/`DELTA_T`（物理删除）+ `g_ratio` + `_d_enc_snapshot` + `_Diagnostics`（诊断已随 reason 串透传，独立结构失去消费）。退役依据分层申报：P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射（敌方难度读数→stat）；`DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」形态，判死由 P64 的同一自由项论证（B/q/s/m 运行时项）逐项覆盖——**引申申报，非 P64 原文结论**；`F_MIN`/`G_BASE` 退役理由 = 比值腿整体退役（其标定依赖 D_enc 读点定谳链，同属悬置面）。
 - **`D_ENC_VARIANT` 槽保留 kernel（不退役）**：该槽除选档判据门外另有**装填语义消费**——`operations/cw_screen/cw_screen_battle_wait.py` `_cw_selection_write` 装填遭遇行 `difficulty_node` 的双态分支直依此槽（裁定 9 保留面「结算观测持久化」自身的依赖；直调 :303-306/:319-323）。判据门随本体迁出（decide 不再读它），槽与装填分支原样留 kernel：None 拨盘下装填行为 = 普战行 observation 直装、遭遇行恒 None（保守前置形态，照旧）。`cw_battle_wait` 装填分支零改动。
 - **fill 双定谳槽随迁策略层**：`PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS` 两槽 + `_FILL_EDGE_THRESHOLD` 常量随 `_kappa_state` 迁 `encounter_pick.py`（None = fill 分支不激活，照旧 fail-closed；定谳后激活）。kernel 侧无标定面残留。
 - 注入面拆分（两模块物理隔离，沿现役「两套标定面互不写入」纪律）：①策略层 `encounter_pick.apply_calibration`/`reset_calibration` 迁入，合法键 = fill 双键（`PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS`）——未知键名抛错防线照旧，全仓零外部引用（直调核实），E-3 标定批未来注入位 = 此口；②kernel `cw_encounter_selection.apply_calibration`/`reset_calibration` **保留**，合法键仅 `D_ENC_VARIANT`（装填拨盘定谳批/测试的注入位 = 此口，§2.3 保留决定配套）。**立场两值（cap/偏好序）非注入**——立场常量区直接编辑（None → 过目值），过目记录 = commit 凭据（【拍】要件「值单一源在代码」）。

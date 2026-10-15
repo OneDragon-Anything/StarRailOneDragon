@@ -82,7 +82,7 @@ sim 局结算环无写端(sim 侧结算链不调 `record_settlement_row`)→ κ_
 
 ## 4. 数学登记待办
 
-1. **比值判据重新启用 = 浮层读数通道批**:可及性比值判据已被 P64 证伪并删除(旗牌→敌难度静态映射不可标定,证明 = [../proofs/p64-encounter-dstat-static-map-uncalibratable.md](../proofs/p64-encounter-dstat-static-map-uncalibratable.md));重新启用前置 = 敌方信息浮层「敌人难度」读数通道批(点亮前置链①;浮层画面知识 = [../../../../../game/screens/货币战争-敌人信息浮层.md](../../../../../game/screens/货币战争-敌人信息浮层.md),遭遇入口②形态已建档),比值判据结构与标定链 git 历史可溯。
+1. **比值判据重新启用 = 浮层读数通道批**:可及性比值判据已被 P64 证伪并删除(敌方难度读数→敌难度静态映射不可标定,证明 = [../proofs/p64-encounter-dstat-static-map-uncalibratable.md](../proofs/p64-encounter-dstat-static-map-uncalibratable.md));重新启用前置 = 敌方信息浮层「敌人难度」读数通道批(点亮前置链①;浮层画面知识 = [../../../../../game/screens/货币战争-敌人信息浮层.md](../../../../../game/screens/货币战争-敌人信息浮层.md),遭遇入口②形态已建档),比值判据结构与标定链 git 历史可溯。
 2. **E-3 标定**:f_min/G_BASE 定标与进度条双定案(fill 双槽),注入位 = 策略层 `encounter_pick.apply_calibration`(合法键 = fill 双键;kernel 侧注入口仅收 `D_ENC_VARIANT` 装填拨盘,两注入口物理隔离互不写入)。**申报义务**:fill 阈值 `_FILL_EDGE_THRESHOLD` 在双槽定案注入后成活闸门数字——注入批须按【拟】纪律登记(置信区间 + fail-closed 退路 + 标定义务 owner 与期限);当前 None 期不激活。
 3. **EV 形态登记 P26**:EV 判据形态(奖励增量 vs λ_death 敞口增量)登记 P26(硬节点备战 EV 门同构,`08_events.md` E3 行立项依据);P26 待证明(条件表与分位口径未采)。EV 核停用删除(裁定 4)不灭失该依据。
 4. **档位↑⇒奖励价值↑ 采样验证**:选档主序「难度档最高」的奖励侧依据现 = 游戏原文定性句 + 单帧实测(`docs/game/screens/currency_war_encounter.md`);升档的奖励价值增益须实机采样验证(原【拟】登记待办载体 = 本节)。

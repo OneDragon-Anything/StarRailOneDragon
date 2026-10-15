@@ -838,8 +838,11 @@ _validate_strategy_effects()
 
 #: 品质覆写族环境已登记名(注册表 id110/111/112/123/124/135):选中后改写
 #: 后续 offer 品质分布的环境集合。游戏事实名单(单一源 = 本常量位,随
-#: 注册表演进);效果建模批消费,当前命中面只作披露判据
-#: (披露键 = 'invest_quality_rewrite_envs_pending')。
+#: 注册表演进);消费面 = 测试仓一致性校验(test_sim_offer.py:本名单 ⊆
+#: ENV_POOL_REWRITE 键集,防双名单漂移)——sim 抽样改写判据实际消费
+#: ENV_POOL_REWRITE 结构字段(rewrite_picks 全改写型判据),本名单不作
+#: 运行时判据;披露键 'invest_quality_rewrite_envs_pending' 已随
+#: 2026-10-14 T-11 批整体退役,勿再引用。
 QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
     '彩虹时代', '黄金时代', '白银时代', '头彩', '尾彩', '银·金·彩',
 })
@@ -1759,7 +1762,8 @@ _validate_strategy_grants()
 # = 策略层 env_economy._pool_rewrite_value docstring)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
 # 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
-# 锁 = 测试仓 test_cw_env_pool_rewrite.py(Q1-Q6)。
+# 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
+# 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银)。
 @dataclass(frozen=True)
 class StrategyPoolRewrite:
     """投资环境的**策略池品质改写**结构(品质改写型估值;与 EnvEconomyEffect/GiftGrant

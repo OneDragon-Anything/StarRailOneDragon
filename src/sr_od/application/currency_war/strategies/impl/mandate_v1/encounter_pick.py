@@ -5,7 +5,7 @@
 + 刷新阀,判据语义单一源 = 迭代设计
 docs/develop/sr_od/application/currency_war/changes/
 2026-09-24-encounter-screen-strategy-migration/design.md §2.2-§2.5。
-可及性比值腿(g^(D_win−D_enc) ≥ f_min)已停用(P64:旗牌→敌难度静态映射
+可及性比值腿(g^(D_win−D_enc) ≥ f_min)已停用(P64:敌方难度读数→敌难度静态映射
 不可标定)——能力态直接判,t ≤ 4 档零标定可及;其五/六(Δ 无源档)走
 经验档层交集。
 

@@ -45,7 +45,7 @@
 
 - `gs.enemy_affixes` → mechanics_fit;
 - `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,经 `clean_boss_names_by_lcs` 两段转换归一;任一候选转换失败 = 观察失败,round_fail 不写不上报返回主循环重新观察,规范 = op-layer.md §1.1 观察标准化门);
-- `gs.enemy_difficulty`:恒稳开局基线(逐帧旗牌真读到达即覆盖)。
+- `gs.enemy_difficulty`:恒稳开局基线(逐帧敌方难度读数真读到达即覆盖)。
 
 词缀效果采集/运行时登记挂点保留在观察侧:每次进屏重读重采,点采对注册表 `data/affix_effects_data.py` 比对自身幂等(一致即跳过,无重复收集);登记 = `kernel/cw_affix_effects.py::register_affixes_from_names`(命中结构化注册才入账本;best-effort)。无落地登记件(三字段容器直写 = 观察写端,非动作发出登记)。
 

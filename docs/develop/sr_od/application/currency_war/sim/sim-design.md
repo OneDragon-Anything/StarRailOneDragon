@@ -60,7 +60,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 | 节点经验 | `cw_sim_backend.apply_node_xp` + `NODE_XP_BY_TYPE` 表（依据 docs/game/currency_war/research/xp-rules.md） |
 | 商店发牌 | kernel `cw_shop_deal.sample_shop_deal`（单一源）；后端 `deal_shop` 只做节点切换自动全刷的世界写 |
 | 概率档与轮岗 | `cw_sim_backend.effective_deal_probs` + kernel `cw_battle_calib.roll_rotation_per_stage` |
-| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`） |
+| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`）。品质改写型环境（时代×3/头彩/尾彩）命中轮次按 `ENV_POOL_REWRITE` 直取目标品质池抽样（`forced_quality` 参;接入判据 = `rewrite_picks==(1,2,3)` 全改写型,部分改写型不接入;目标池吃光回退全池。2026-10-14 T-11 接入） |
 | 战斗结算 | `sim/cw_sim_battle.py::settle_battle`（随机输出面，§8.2）+ `apply_hp_outcome`（0hp 保底/局终判定） |
 | 敌人侧 | `sim/cw_sim_enemy.py`（难度基线/boss 名单 resolve） |
 | 开局种子 | `sim/cw_sim_opening.py::apply_opening` |
