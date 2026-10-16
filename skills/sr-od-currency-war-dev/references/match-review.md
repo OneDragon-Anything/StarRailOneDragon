@@ -12,7 +12,7 @@
 
 ## 阶段 2 · 逐画面章复盘(按渲染报告章序;2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用,报告中载体 = 渲染器画面章)
 
-复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.1「总则:一次画面 op 调用 = 一轮『入口观察 + 逐动作决策循环』」;分支序表 = `flow/outer_loop.md` §2.2)。报告中该单元的载体 = **画面章**:凡定义的画面 op 有 journal 行即成章(画面注册表 = 渲染详设 `docs/develop/sr_od/application/currency_war/changes/2026-10-16-journal-review-renderer/details/render-spec.md` §3;零写入行的 op 自然不出现——数据不存在,非设计排除)。节点章 `## 节点 P-R 类型` 下逐画面开章,章内固定结构 = `#### 0 观察`(章首快照)+ 动作节×N(一条回执一节,失败重发合并一节)+ `#### 策略评价` 空节(仅决策面画面章有):
+复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.1「总则:一次画面 op 调用 = 一轮『入口观察 + 逐动作决策循环』」;分支序表 = `flow/outer_loop.md` §2.2)。报告中该单元的载体 = **画面章**:凡定义的画面 op 有 journal 行即成章(画面注册表 = 渲染器 `tools/cw/replay_to_md.py` 的 `ACTOR_REGISTRY`/`SCREEN_REGISTRY` 常量,注册同步义务锚 = `screens/op-layer.md` §3;零写入行的 op 自然不出现——数据不存在,非设计排除)。节点章 `## 节点 P-R 类型` 下逐画面开章,章内固定结构 = `#### 0 观察`(章首快照)+ 动作节×N(一条回执一节,失败重发合并一节)+ `#### 策略评价` 空节(仅决策面画面章有):
 
 ```
 ## 节点 1-1 奖励
@@ -43,7 +43,7 @@
 ①**buys**——购买动作数与花金分布(锚 = `BuyCard` 回执行 + `gold` 写入链,动作节状态变化表已带金差分);
 ②**2★/3★ 到手与到位轮次**(锚 = `bench`/`board` 写入链,星级演进按单位「名★级」格式逐节差分);
 ③**hp 均值与区间**(跨局对照口径,单局只记值;锚 = `hp` 写入行 + `settlement` 写入行 hp_after;hp 判读口径 = telemetry-reading);
-④**刷新带**——刷新次数与触发轮分布(锚 = `shop_refresh_cost`/`refresh_probs` 写入行与刷新回执,免费刷新余量看 `free_refresh_left`)。
+④**刷新带**——刷新次数与触发轮分布(锚 = `shop_refresh_cost` 写入行、刷新回执与 journal `shop` 写入行(内嵌 `refresh_probs` 键),免费刷新余量看 `free_refresh_left`)。
 只读数不裁决(裁决归编排者);每个数字带局 id 与行锚(报告章/节或 journal 字段),不带 = 没读。
 
 ## 阶段 3 · 位面总结(三问收尾)

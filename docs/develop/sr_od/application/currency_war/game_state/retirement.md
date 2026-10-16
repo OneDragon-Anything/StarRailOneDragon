@@ -109,7 +109,7 @@ read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面
 |---|---|---|---|---|
 | 1 | 判读 CLI(`telemetry/cli.py`+`query.py` 视图族) | 新视图族改读两文件(按行读+行间差分,零重放);旧视图读旧档案只读保留至停写批 | 待 | 消费面切换批 |
 | 2 | 对局档案装配(`telemetry/match_archive.py`) | 切片改两文件+待裁决的保留专用流;派生列改从流水行派生(comps/pivot 标待策略侧);旧档案只读兼容 | 待 | 消费面切换批 |
-| 3 | 回放/修复工具(`tools/cw/replay_to_md.py`、`repair_invest_attribution.py`;自原遥测设计件(已删,git 可溯)的档案行拆出单列——本文 11 面对原表 10 行=拆行细化,非矛盾) | 改读新档案面(随装配器 v12) | 待 | 消费面切换批 |
+| 3 | 回放/修复工具(`tools/cw/replay_to_md.py`、`repair_invest_attribution.py`;自原遥测设计件(已删,git 可溯)的档案行拆出单列——本文 11 面对原表 10 行=拆行细化,非矛盾) | 改读新档案面(随装配器 v12) | 已迁(2026-10-16:replay_to_md 就地重写为 journal 行模型版,经档案切片 `state/journal.jsonl` 单键读新账,commit 84ecddaf4+161cccdc8;repair_invest_attribution 经 match_archive 装配切片读数,已在当前面,无需再迁) | 消费面切换批 |
 | 4 | sim 账本三消费面(`sim/checks/ledger.py` 红则判据/`sim/engine_p1.py` 轮差分/`sim/ab_core_swap.py` 预注册披露) | 按逐 key 审计结论切新载体,三面同批;sim runner 经统一写入口落流水(引擎直写容器口径;原合成口已随帧通道停用);deployed→front/back 槽位映射前置 | 待 | 停写批前置 |
 | 5 | 复测批/AB 判读(`tools/cw/ab_judge.py`、`cw_batch_stats.py`) | sim 账本切新面后指标重接 | 待 | 消费面切换批 |
 | 6 | defect_ledger(若裁保留专用;幸存流+旧流消费方双身份) | refs 目标迁移(指 journal `(run_id,v)` 键)+寿命联动(随 run 段同批淘汰) | 待(随 §2 保留裁) | 消费面切换批 |

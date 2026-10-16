@@ -97,6 +97,8 @@
 
 画面 op 共 35 个:`operations/cw_screen/` 33 类 + 画面框 2 类(`operations/cw_op/cw_op_open_shop.py::CwOpOpenShop`、`operations/cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`;`CwOpCloseShop` 编排壳已停用——关店执行位并入动作 op `CwActionCloseShopOp` 真机械执行,见 §4 动作面。原 CwScreenEquipPick 随选择装备屏误判停用删除,2026-09-22)。分七型:
 
+复盘认知同步义务锚(journal-review-renderer 迭代裁定,2026-10-16):**新增/停用画面 op 须同步渲染器 `tools/cw/replay_to_md.py` 画面注册表**。判定口径 = actor 带 `CwScreen` 前缀且未入 `ACTOR_REGISTRY` → 复盘报告显影「未注册写入者」缺口尾注(响亮暴露,防静默);豁免 = 快照章形态 op(CwScreenPrep/CwScreenShop/CwScreenBattleWait,由 `current_screen` 值开章,不经 actor 判定)与已知动作类豁免清单 `_ACTION_ACTOR_EXEMPT`(历史动作命名,如 CwScreenBuyCards)。同步动作:新增画面 op → 补 `ACTOR_REGISTRY`(章名/决策面/0 观察键集)与 `SCREEN_REGISTRY`(快照屏 id);新增 CwScreen 前缀动作类 → 补 `_ACTION_ACTOR_EXEMPT`。
+
 | 型 | 判据 | 屏清单 | report |
 |---|---|---|---|
 | **全形态** | 观察 node + 决策动作 node + report;决策动作 node 承载完整决策循环(落地复查/分支刷新/确认链)——其中简报/BOSS 简报/位面过渡/等待 1-1/未达上限弹窗/简易武装箱六屏为**空决策变体**:决策动作 node = 落地复查 + 固定推进,零策略器问询(与各屏文档「空决策形态」声明同义;归本型仅因两 node + report 齐备;其中等待 1-1 = §1.1 已登记就绪等待变体,观察轮询口径与边界单一源见彼条) | CwScreenEncounter(刷新终结分支 + 选卡发出即终结;遭遇扩围迭代)、CwScreenSupplyNode、CwScreenInvestStrategy、CwScreenInvestEnv、CwScreenBriefing、CwScreenBossBriefing、CwScreenWaitOneOne、CwScreenDeployNotFull、CwScreenPlaneTransition(链观察)、CwScreenBoxPick、CwScreenArmoryBox | 11 屏全设;其中 WaitOneOne/DeployNotFull/ArmoryBox 在用代码中不写容器,接口为统一形态占位;BossBriefing 为真实写面(BOSS 类型直定;写语义单一源 = `kernel/cw_screen_report/boss_briefing.py`) |

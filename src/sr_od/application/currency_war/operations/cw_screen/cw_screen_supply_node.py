@@ -321,8 +321,8 @@ class CwScreenSupplyNode(CwOperation):
                 # 选定快照(角色/首件装备/附加装备/钻;refresh_left=容器剩
                 # 余次数现值快照,可 None——布尔键随计数闸消亡,left 供读端
                 # 按剩余分型,无「本局初始授予数」基线故携带而非推导)——
-                # 选定事实现场载荷,现役消费面 = 零(遥测接线候批;在读
-                # 渲染方 = tools/cw/replay_to_md.py `_supply_entry`)。
+                # 选定事实现场载荷,现役消费面 = 零(遥测接线候批;复盘
+                # 渲染方 = tools/cw/replay_to_md.py「画面-补给」画面章)。
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,

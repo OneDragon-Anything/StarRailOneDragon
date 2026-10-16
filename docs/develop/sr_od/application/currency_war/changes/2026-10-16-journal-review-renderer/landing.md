@@ -44,7 +44,7 @@
 
 ## 末阶段：正本更新
 
-**范围**：按「正本更新清单」逐条更新正本。
+**范围**：按「正本更新清单」逐条更新正本；含验收期增补三项（reviewer 裁定，2026-10-16）：①`skills/sr-od-currency-war-dev/SKILL.md` 分诊表 match-review 行载体描述更新（一行）；②match-review.md 阶段 2 对本迭代 changes/ 详设的路径引用改锚正本（渲染器注册表常量或 op-layer 义务锚——长寿命文档禁引过程区）；③回灌读数 refresh_probs 锚表述改「journal `shop` 写入行（内嵌 refresh_probs 键）」。
 **设计依据**：本文件「正本更新清单」节。
 **文件面**：清单所列正本文件。
 **依赖**：全部落地阶段。
@@ -61,3 +61,4 @@
 - `skills/sr-od-currency-war-dev/references/match-review.md` 产出形态节 ← 3.3
 - `skills/sr-od-currency-war-dev/references/sim-testing.md` 复盘骨架行 ← 3.3
 - `skills/sr-od-currency-war-dev/references/telemetry-reading.md` 旧流引用（若有）← 3.3
+- `skills/sr-od-currency-war-dev/SKILL.md` 分诊表 match-review 行载体描述 ← 验收期增补①

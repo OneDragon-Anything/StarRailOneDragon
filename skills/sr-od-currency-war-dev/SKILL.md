@@ -14,7 +14,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 改策略 / 迭代算法 | strategy-work 按流水线走:改前(判读上局→读文档→定位→设计)→开关落地→验证→单帧测试 | strategy-work |
 | 改流程层(画面 op / 外循环路由 / 决策循环 / 画面流转 / 守卫) | 改前必读 `docs/develop/sr_od/application/currency_war/flow/`:README(四层结构总图+策略↔流程契约)→对应篇(outer_loop=分发路由与轮次推进 / screens/op-layer=画面 op 规范与终结动作 / action_exec=动作执行 / projection_contract=状态面板读写契约 / guards=守卫与停机)。三块高频违例面先对照:**画面识别与路由归外循环、决策归策略器、终结动作=退出画面 op 返回主循环重新观察** | flow/README §3 各篇导读 |
 | 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
-| 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序逐op记录;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选清单) | match-review |
+| 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序,报告按画面章组织:0 观察+动作节+策略评价;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选清单,落点=报告文末复盘者附加) | match-review |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
@@ -33,7 +33,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **测试分层**(L1 快速集 `uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"` ≈2.5min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/ -m "not slow"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
-| **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,每op单独记录入口观察+决策循环+判定三槽;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选;实机监控局终派单执行,策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
+| **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,报告按画面章组织——每画面 op 一章,章内 0 观察+动作节×N+策略评价,报告由渲染器 tools/cw/replay_to_md.py 生成,复盘者填判定与文末复盘者附加;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选;实机监控局终派单执行,策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
 | ~~人怎么玩~~ 口述登记簿已删(2026-10-16 用户裁定:一切判据以设计文档为准;历史条目号 [N] 语义按 git 历史回溯) | 判据权威 = `docs/develop/sr_od/application/currency_war/strategy-docs/` 各编号篇 + math_proofs |
