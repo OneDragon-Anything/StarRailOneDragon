@@ -158,12 +158,15 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
 # 「待建模」已登记(原 invest-env 迭代:显式区别于「漏登记」):有经济语义、
 # v1 无参数化模型的环境。已登记即消费端恒 (0.0, False)(fail-closed);不入
 # ENV_ECONOMY(无通道字段可装,双登记由 _validate_estimates_governance 拒绝);
-# 补出参数化模型后迁 ENV_ECONOMY 并落参。
+# 补出参数化模型后迁 ENV_ECONOMY 并落参。表内含两类条目:待建模(候迁出)
+# 与已定案按 0(用户裁定,永驻本表,消费端语义相同)——以条目文案为准。
 ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 刷新概率结构翻倍:概率面已在 cw_shop_odds 已登记,金等价参数化缺失
     '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
-    # 商店 2 星概率提升:需先查证 2★ 商店价结构,未查证不入(查证前禁装通道)
-    '人才下沉': '商店 2 星概率提升;需先查证 2★ 商店价结构,未查证不入',
+    # 估值按 0 定案:2★ 商店价结构已定谳(merge_mechanics §2.6 ×3 实付),
+    # sim 直出腿已建(kernel ENV_SHOP_TWO_STAR_DEAL_PROB,占位概率禁入估值)
+    '人才下沉': '估值按 0 处理(2026-10-16 用户裁定:2★ 直出收益不计入现金分;'
+                'sim 占位概率 ENV_SHOP_TWO_STAR_DEAL_PROB 禁入估值)——系定案,非待建模',
 }
 
 # 假设/机制实采的待验证登记(原 invest-env 迭代假设登记行的验证项已登记;实采定案前按

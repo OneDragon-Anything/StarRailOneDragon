@@ -1316,8 +1316,10 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),通道分类全量。表外环境 economy 恒 None,禁从效果原文
 # 自动猜装(六条防错装对账 = _validate_env_economy);
-# 轮岗/人才下沉无通道可装 → 「待建模」显式已登记(策略层 env_economy.
-# ENV_ECONOMY_PENDING_MODELING,区别于漏登记)。
+# 轮岗/人才下沉无通道可装 → 策略层 env_economy.ENV_ECONOMY_PENDING_MODELING
+# 显式登记(区别于漏登记):轮岗 = 待建模候迁出;人才下沉 = 已定案按 0
+# (2026-10-16 用户裁定,永驻登记;商店 2★ 直出腿见下文
+# ENV_SHOP_TWO_STAR_DEAL_PROB)。
 # B/C 通道的估算参数(概率/期望/增益)在策略层 env_economy.ENV_ECONOMY_
 # ESTIMATES(gold_after_refreshes 通道已改拍值注册,参数随迁停用),
 # 本表只落游戏定义结构值。
@@ -2377,3 +2379,38 @@ def _validate_env_ore_panel_bonus() -> None:
 
 
 _validate_env_ore_panel_bonus()
+
+
+# ===== 商店 2★ 直出概率注册表(环境白名单;T-22 人才下沉)=====
+# 语义:表内环境的发牌(kernel/cw_shop_deal 翻星腿,sim deal_shop 与实机
+# 刷新随机态腿共用)中,每张非空商店牌独立按 p 升 2★;表外环境恒 1★。
+# 值 = 用户占位非游戏真值(首例人才下沉 0.2/卡,2026-10-16 用户裁定;
+# desc 无数值,待实机采证校准),禁从效果原文猜值——其余「商店出 2★」
+# 类效果入表须各自取得用户拍定。占位申报披露键 =
+# sim/cw_sim_backend.SHOP_TWO_STAR_DEAL_PLACEHOLDER。
+ENV_SHOP_TWO_STAR_DEAL_PROB: dict[str, float] = {
+    '人才下沉': 0.2,
+}
+
+
+def _validate_env_shop_two_star_deal_prob() -> None:
+    """ENV_SHOP_TWO_STAR_DEAL_PROB 构建校验(import 即炸;沿
+    _validate_env_ore_panel_bonus 先例):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:0 < p < 1 的 float(bool 排除;概率语义自带上下界,本表无
+    键集闭包要求——白名单制,表内即启用,与扑满矿表的名单闭包不同形)。"""
+    orphans = [n for n in ENV_SHOP_TWO_STAR_DEAL_PROB
+               if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_SHOP_TWO_STAR_DEAL_PROB 孤儿键(base 无此环境?版本改名?):"
+            f"{sorted(orphans)}")
+    for _n, _p in ENV_SHOP_TWO_STAR_DEAL_PROB.items():
+        if not isinstance(_p, float) or isinstance(_p, bool) \
+                or not 0.0 < _p < 1.0:
+            raise ValueError(
+                f"ENV_SHOP_TWO_STAR_DEAL_PROB 值形({_n!r}):"
+                f"须为 0<p<1 的 float,现值 {_p!r}")
+
+
+_validate_env_shop_two_star_deal_prob()

@@ -579,6 +579,16 @@ PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
 #: jingji-yanzhong-guore.md §6.1)。
 PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
 
+#: 商店 2★ 直出概率占位披露键(人才下沉 id 121:「商店中有概率出现2星
+#: 角色」desc 无数值,sim 发牌翻星概率 = 用户占位拍定 2026-10-16,非
+#: desc 真值,待实机采证校准)。值串 = 纯声明串不携数值:携值即与注册
+#: 表双源,量级单一源 = kernel :data:`ENV_SHOP_TWO_STAR_DEAL_PROB`(翻
+#: 星腿 = kernel/cw_shop_deal,sim/live 两执行面共用)。沿
+#: :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER` 先例住本模块、接线
+#: :data:`_BASE_DISCLOSURES`、测试直断发射(设计 designs/T-22-rencai-
+#: xiachen.md §8)。
+SHOP_TWO_STAR_DEAL_PLACEHOLDER: str = 'shop_two_star_deal_prob_user_placeholder'
+
 
 def encounter_options() -> tuple[EncounterOption, ...]:
     """遭遇档位集生成(M16;首版固定四档集,奖励包占位文本随披露)。
@@ -741,6 +751,8 @@ _BASE_DISCLOSURES: dict[str, object] = {
     PIGGY_NO_HP_LOSS: 'piggy_node_no_hp_loss_exempt',
     # 占位增量申报:值串纯声明不携数值,量级单一源 = ENV_ORE_PANEL_BONUS
     PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: 'user_placeholder_pending_field_sampling',
+    # 商店 2★ 直出概率占位申报:量级单一源 = ENV_SHOP_TWO_STAR_DEAL_PROB
+    SHOP_TWO_STAR_DEAL_PLACEHOLDER: 'user_placeholder_pending_field_sampling',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
 }
