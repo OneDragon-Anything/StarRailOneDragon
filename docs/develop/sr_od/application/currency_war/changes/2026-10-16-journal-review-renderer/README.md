@@ -9,5 +9,5 @@
 ## 进度
 - 迭代设计:定稿（首轮三核对抗 + 终审通过）
 - 设计对抗:收敛 · 报告=[attack.md](attack.md)
-- 落地:阶段 0/3 done（明细见 landing.md）
-- 正本更新:未开始
+- 落地:阶段 3/3 done（明细见 landing.md）
+- 正本更新:清零（commit 0007c3eaa）
