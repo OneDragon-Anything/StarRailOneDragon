@@ -1210,10 +1210,13 @@ def _shop_table(v: Any) -> tuple[list[str], list[list[str]]] | None:
 
 
 def _bench_table(v: Any) -> tuple[list[str], list[list[str]]] | None:
-    """备战席槽位表(§4.3:内容 = 名★级 / 空 / 未识别;三态同 ShopSlot)。"""
+    """备战席槽位表(§4.3:2 行×9 列横排——表头 = 槽号 1-9,数据行 = 内容;
+    内容 = 名★级 / 空 / 未识别,三态同 ShopSlot)。竖排 9 行浪费版面,
+    用户裁定横排;**备战席** 标题行已承载表语义,不设标签列。"""
     if not isinstance(v, dict) or not isinstance(v.get('slots'), list):
         return None
-    rows: list[list[str]] = []
+    slots: list[str] = []
+    contents: list[str] = []
     for i, slot in enumerate(v['slots']):
         kind = str(slot.get('kind') or '') if isinstance(slot, dict) else ''
         unit = slot.get('unit') if isinstance(slot, dict) else None
@@ -1223,8 +1226,9 @@ def _bench_table(v: Any) -> tuple[list[str], list[list[str]]] | None:
             content = '空'
         else:
             content = '未识别'
-        rows.append([str(i + 1), _esc(content)])
-    return (['槽', '内容'], rows)
+        slots.append(str(i + 1))
+        contents.append(_esc(content))
+    return (slots, [contents])
 
 
 def _options_table(v: Any, *, kind: str) -> tuple[list[str], list[list[str]]] | None:

@@ -95,7 +95,7 @@ gold→金 / hp→血 / level→等级 / xp→经验 / streak→连胜 / level_u
 - 通用兜底：list → 顿号串逐元素；dict → `k:v` 逗号串；tuple → 逗号串；None/缺 → 不渲染该行。
 - **已知键走具名摘要（T-5 起，差分单元格与观察行同规，禁截断 raw JSON）**：bench → `爻光1★、三月七1★(空×6)`；deployed → `前排 希儿1★;后排 藿藿1★`；front_row/back_row → 单位顿号串；board → `名×n` 顿号串；spheres → `2 座(灰×2)`（points 不渲染）；shop → `椒丘1金、翡翠1金(空×2)(识别失败×n)`；ore_rewards → `40,10=装备 轮滑鞋;50,10=角色 翡翠;70,10=金+3`；node_path(含 baseline) → `P1: —→奖励→战斗→…`（token 中文）；node → `P1-R3 战斗`；settlement → `胜 血 84 进度 +2 …`；match_final → `stopped hp 84 金 31`；xp → `已攒/所需`；标量列表键（equips/active_strategies/plane_bosses/enemy_affixes/各 *_opts）→ 顿号串；occupied_equips → `单位:装备,装备`；node_seq_by_plane → `P1: 奖励→…;P2: …`；round_fresh_buys → `phase[1,1]: 翡翠、三月七`；pending_loss → `P1-R4 (battle)`；supply/encounter → `0: 角色+装备(带钻);…`（options 摘要）；回执 action 载荷 → `牌名(阵营,费用金,槽N) · char_id · reason`（动作行）。
 - 通用兜底规则用于未注册键；新遥测键应先进 §4.3 摘要注册再进词表。
-- **0 观察的表格型键不走摘要**（entry_tables 路径，规格不变）：bench → 槽位表 `| 槽 | 内容 |`（内容 = `名★级`/「空」/「未识别」，三态同 ShopSlot `cw_game_state.py:740`）；supply/encounter options → `| 列 | 内容 |` 表（encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`）；shop → 五槽牌面表（§3）。摘要路径只服务差分单元格与观察行。
+- **0 观察的表格型键不走摘要**（entry_tables 路径，规格不变）：bench → 槽位横排表 `| 1 | … | 9 |`（表头 = 槽号，数据行 = 内容 `名★级`/「空」/「未识别」，三态同 ShopSlot `cw_game_state.py:740`；用户裁定 2 行×9 列横排）；supply/encounter options → `| 列 | 内容 |` 表（encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`）；shop → 五槽牌面表（§3）。摘要路径只服务差分单元格与观察行。
 
 ### §5 特殊情况
 
