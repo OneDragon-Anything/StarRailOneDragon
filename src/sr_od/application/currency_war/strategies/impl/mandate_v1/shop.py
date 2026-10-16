@@ -1308,7 +1308,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         funding_hold_fallback;两腿必要条件:序 1/序 2 = 骨架义务血统
         腿①,其余 = 对象级无损腿②);候选穷尽仍不足 → 该牌进机会清单
         (拦因 = 金不足;义务类金不足入清单合法,其解拦购买允许跌破利息档
-        ——user_playstyle [6],§4.2 解拦复核规则)。缺口判定用账面金
+        ——口述条目 6(登记簿已退役),§4.2 解拦复核规则)。缺口判定用账面金
         (读数协议④:多卖循环第二笔起禁逐笔开店重读)。"""
         need = card_cost(card)
         cands, _why = evaluate_sell_candidates(gs, 'session_funding')

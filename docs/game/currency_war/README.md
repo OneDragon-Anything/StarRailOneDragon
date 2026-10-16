@@ -23,7 +23,7 @@
 
 ## `research/` —— 玩法研究(我们提炼/核实的知识,活文档)
 
-索引与权威序见 [research/README](research/README.md):**user_playstyle(用户口述,策略校准最高权威)** / economy(经济机制核实)/ **combat(战斗机制:三乘区/星级/血量星/连胜)** / **transitions(过渡体系:P1 骨架/护航/买牌纪律)** / plaza_methodology(M1-M16 玩法方法论)/ **final_comps(终局阵容十类深读,单套 comp 打法知识单一源)** / invest_effects(投资效果全量分类)。与原 `sources/` 外部攻略存档相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
+索引与权威序见 [research/README](research/README.md):**口述登记簿(已退役 2026-10-16,判据权威归设计文档)** / economy(经济机制核实)/ **combat(战斗机制:三乘区/星级/血量星/连胜)** / **transitions(过渡体系:P1 骨架/护航/买牌纪律)** / plaza_methodology(M1-M16 玩法方法论)/ **final_comps(终局阵容十类深读,单套 comp 打法知识单一源)** / invest_effects(投资效果全量分类)。与原 `sources/` 外部攻略存档相对——research 是经我们核实、随版本原地更新的知识;写作纪律(证据分级/无实现进度/值单一源在注册表)见 [docs/game/README.md](../README.md)。
 
 ## `sources/` —— 已删除(2026-08-23,commit eb9c72a1)
 

@@ -42,7 +42,7 @@ def v_opt(level: int, cost: int, u: float, h: int) -> float:
 
 print('== P41 check: hoard/sell EV ==')
 
-# --- (1) 口述锚点(user_playstyle [22]-(3);u=H=1 的退化情形) ---
+# --- (1) 口述锚点(口述条目 22(登记簿已退役)-(3);u=H=1 的退化情形) ---
 anchors = [
     ('1cost@L5 rounds', 1 / p_shop(5, 1), 7, 15),
     ('5cost@L8 rounds', 1 / p_shop(8, 5), 55, 65),

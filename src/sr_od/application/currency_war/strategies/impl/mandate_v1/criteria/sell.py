@@ -114,7 +114,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
 
     凑息禁令(血线硬地板解锁包件②)已删除(line_and_upgrade §2.3
     血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
-    user_playstyle [39]「HP 不作决策依据」,濒死响应 = 修经济/阵容
+    口述条目 39(登记簿已退役)「HP 不作决策依据」,濒死响应 = 修经济/阵容
     本身,凑息卖回不受血线覆盖)。
 
     合成素材拒入守卫(G-S1):候选与场上(state.deployed ∪ bench,含

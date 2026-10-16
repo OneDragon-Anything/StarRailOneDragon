@@ -561,8 +561,7 @@ def level_spend_blocked(gs: GameState, session: StrategySession,
     时机判断非血线判断。hp 不可信帧 fail-closed 拒付(危机会在内)。
 
     血线地板解锁让位支(死亡线帧停付让位)已停用
-    (line_and_upgrade §2.3 血线地板解锁行;正典依据 user_playstyle
-    [39]「HP 不作决策依据」——濒死响应 = 修经济/阵容本身,[18] 报警
+    (line_and_upgrade §2.3 血线地板解锁行;正典依据 口述条目 39(登记簿已退役)「HP 不作决策依据」——濒死响应 = 修经济/阵容本身,[18] 报警
     语义)。
     """
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (

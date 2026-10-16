@@ -161,7 +161,7 @@ def select_deployments(
 
     ``required_names``(判据必需件首桶):目标阵容 的 required_deployed
     成员名集,进选人序首桶,先于核心桶/cap 竞争(推导出处 =
-    ``Comp.required_deployed`` 字段契约 + user_playstyle [31]② 必需件
+    ``Comp.required_deployed`` 字段契约 + 口述条目 31(登记簿已退役)② 必需件
     特化)。缺省空集 = 序逐位同旧。**分轨边界显式申报**:预检位
     (shop can_deploy_single 调用点、cw_launch_admission 注入)不穿本参
     ——预检语义 = 单候选可入性,序无关。

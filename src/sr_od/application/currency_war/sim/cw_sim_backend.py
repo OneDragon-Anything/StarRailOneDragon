@@ -1852,7 +1852,7 @@ class SimBackend:
                                 round_num=node.round_num)
         if kind == 'reward' and not is_piggy_node(self.gs):
             # 普通奖励关恒胜白拿:奖励关不需要战力(用户账本 408 行裁定,
-            # 单一源 = kernel cw_reward_node.py 裁定权威行;user_playstyle
+            # 单一源 = kernel cw_reward_node.py 裁定权威行;已退役口述登记簿
             # 「默认稳过」主条),不存在败局——不掉血不掷负。先采后改写:
             # M13 随机流消耗恒定,同 seed 其他节点随机序列不漂移。
             outcome = replace(outcome, won=True, hp_delta=0, progress=1.0,

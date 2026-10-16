@@ -163,7 +163,7 @@ class Comp:
     值 = 该家族的「专属羁绊」规范名;**按设计无②信号
     的家族(希儿量子:量子/贝是放大器;白厄反甲:独立羁绊绑死单卡)= None**。"""
     global_accumulators: dict[str, str] = field(default_factory=dict)
-    """全局累积型角色标注(user_playstyle [21] 定谒例外)。
+    """全局累积型角色标注(口述条目 21(登记簿已退役) 定谒例外)。
     键 = 角色规范名(⊆ core_chars ∪ shared_chars),值 = 累积类型:
     - 'hp_charge_stack':场上事件(受击)驱动的全局叠层(万敌:受伤充能+
       生命上限永久提高)——适用「有空位就上」部署例外(环境条件满足时);
@@ -398,7 +398,7 @@ def effective_mechanic_attributes(comp: Comp,
 
 # ===== 环境 → 阵营/阵容亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # 累积型角色强环境机制 tag 集(`w607_affix_consumption/` H1 终局阵容锁定环境判据的数据层):
-# 「全局累积型阵容需特定环境才强,无环境不选」(user_playstyle [21] 例外条款);
+# 「全局累积型阵容需特定环境才强,无环境不选」(口述条目 21(登记簿已退役) 例外条款);
 # 万敌强环境 = 敌方多动/反伤类(docs/game/currency_war/research/final_comps/
 # accumulator_family.md §3 表,证据高;§4.2 前提②「词缀 ∈ 该成员强环境集」
 # 判经 AFFIX_MECHANIC_MAP 归一后与本集求交)。「灼热轰炸」等未入

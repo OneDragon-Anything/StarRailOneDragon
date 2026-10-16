@@ -798,7 +798,7 @@ def _bench_liquid_gold(gs: GameState) -> int:
 
 def _levelup_floor_ok(gs: GameState, session: StrategySession,
                       arm_key: str, after_gold: int) -> bool:
-    """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定论(user_playstyle [3])
+    """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定论(口述条目 3(登记簿已退役))
     确认前 fail 态的单一装配口)。
 
     - 全域(所有分支):保底金门 = ``guarantee_floor_gate`` 单一源

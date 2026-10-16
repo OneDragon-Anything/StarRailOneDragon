@@ -162,7 +162,7 @@ def is_seele_system_member(char_id: str, bonds: set[str]) -> bool:
     希儿本人(单卡)+ 量子同频/贝洛伯格放大器件——与 cw_evolution.
     _engine_systems_formed/_contributes_engine_system/_is_member 的
     希儿系分支同口径(此前已有单卡判据先例,此处提为单一源函数)。
-    tier=1:希儿系作为四过渡体系之一的档(user_playstyle 四体系封闭
+    tier=1:希儿系作为四过渡体系之一的档(已退役口述登记簿 四体系封闭
     裁定,transitions.md;希儿系引擎=希儿在场 ∧ 放大器 ≥2,但**恢复
     种子**的适用范围口径取贡献件全计——清空任意最后一件贡献件都使该体系
     归零,owned 计数含希儿与全部放大器件)。
@@ -765,7 +765,7 @@ def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
       fp < 1.0 ∧ bench 存在「入板即成型」件——桥池 pair 的
       required_deployed 恒空,双轨期板面义务本体 = 过渡配方(cw_recipe
       模块不变量),完成件压席帧由本分支承接;✗→✓ 严格优(换入后物化
-      判据改善才准换;依据 = user_playstyle [20] 配方驱动板面 / [13]
+      判据改善才准换;依据 = 口述条目 20(登记簿已退役) 配方驱动板面 / [13]
       凑齐优先;出处 = 2026-09-18 sim 实证:配方对锁局板满帧全
       plan_empty)。
 
@@ -842,7 +842,7 @@ def _completion_swap_ins(ctx: SwapPlanContext) -> frozenset[str]:
 
     出处 = 2026-09-18 sim 实证:配方对锁局板满帧全 plan_empty,配方
     完成件压席无解(必需件分支只覆盖 required_deployed 成员,桥池 pair
-    required 恒空);玩法口径 = user_playstyle [20]/[13]。
+    required 恒空);玩法口径 = 口述条目 20(登记簿已退役)/[13]。
     """
     if ctx is None or not ctx.board_full:
         return frozenset()
@@ -1471,7 +1471,7 @@ def assemble_swap_plan_inputs(
     # 配方(cw_recipe 模块不变量),配方对锁帧不开转型域 = 配方完成件
     # 压席无合法 victim(2026-09-18 sim 实证:配方对锁局板满帧全
     # plan_empty,fenced_arm_closed/target_keep 主导;判定尺 =
-    # user_playstyle [20]/[13])。演进降级换血分支不受影响:pair 帧
+    # 口述条目 20(登记簿已退役)/[13])。演进降级换血分支不受影响:pair 帧
     # membership 空集(locked_buy_membership 未锁帧缺省)使其 member 门
     # 恒关,适用范围仍在终局线。店侧 S_spec 收窄
     # (mandate.swap_transition_narrow_frame)直读 ist.locked_comp,

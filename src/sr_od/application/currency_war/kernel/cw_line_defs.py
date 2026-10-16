@@ -6,7 +6,7 @@
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
 本模块 = 单一源;消费方一律 import,不再本地定义。
-口径源:docs/game/currency_war/research/user_playstyle.md [20]
+口径源:已退役口述登记簿条目 [20](git 历史可溯)
 (过渡配方:3仙舟+2DOT 基础 → +2列车2护盾 渐进)。
 """
 from __future__ import annotations
@@ -36,7 +36,7 @@ def recipe_tier(board: dict[str, int]) -> int:
 
 
 # ===== 板面体系集中度度量(新 sim 指标先建后用) =====
-# 语义单一源 = user_playstyle [20](过渡是配方不是散买):过渡配方=体系内
+# 语义单一源 = 口述条目 20(登记簿已退役)(过渡是配方不是散买):过渡配方=体系内
 # 加法(DOT2→仙舟3→列车2 混挂→列车4),每步都是配方件不是任意正分件。
 # 本组函数是 sim 过程指标的纯函数原语(输入 board dict,无状态,可单帧测试),
 # 消费方 = cw_sim 批量诊断脚本 / 评分层集中度判据(scoring 侧同源另行包装)。
@@ -173,7 +173,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
 # 动机(多局七连败的结构性判读):决策系统对「成型进度」无感知、对
 # 「成型 deadline」无响应——各局在不同 seed 下投影出不同表层
 # 卡点(发散信号)。本表 = 缺失的控制变量。
-# 口径:V4.0 过渡框架(transitions.md §1)+ 用户节奏(user_playstyle
+# 口径:V4.0 过渡框架(transitions.md §1)+ 用户节奏(已退役口述登记簿
 # [2][12][13]):r3 桥雏形 / r6 配方 5 档 / r8 成型锁方向。
 # ⚠️ 用户点题「不只是看羁绊,要看羁绊里的角色」):
 # combo_methodology 终版模型——「仙舟3」没有核心三人组是空壳

@@ -3,7 +3,7 @@
 **玩法理解单一源**:双轨(过渡→终局)/ 过渡框架 / 定型判定的玩法知识归
 ``docs/game/currency_war/research/`` 知识树(过渡体系 → transitions.md 与
 transition_combos.md;位面演化定量 → stage_transitions.md;打法纪律 →
-user_playstyle.md)——**改本模块前先读并对表**,理解变更先改文档
+已退役口述登记簿(2026-10-16 删))——**改本模块前先读并对表**,理解变更先改文档
 (防实现漂移)。
 
 **退役申报(统一保护集迭代 changes/2026-10-15-unified-protection-set
