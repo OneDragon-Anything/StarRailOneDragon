@@ -14,12 +14,14 @@
 ## 渲染结构
 
 局头(meta 逐行)→ 开局段 → 逐节点组(P-R,类型取组内首行 ``node.kind``)
-→ 组内画面章(快照 ``current_screen`` 切分 + 弹层 actor 注册表双轨;章内
+→ 组内画面章(画面域写入行切分 + 弹层 actor 注册表双轨;切章锚 =
+``field='current_screen'`` 写入行本体,快照携带 cs 只作归属;章内
 「0 观察 → 动作节×N → 策略评价」)→ 未归节(有则)→ 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
 cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
 ``docs/develop/sr_od/application/currency_war/changes/2026-10-16-journal-review-renderer/``
-(details/pipeline.md 渲染管线、details/render-spec.md 显示规范)。
+(details/pipeline.md 渲染管线、details/render-spec.md 显示规范);
+切章证据收窄与画面广播注册键 = 渲染器自身实现为准(以代码为准)。
 
 ## 用法(主仓根目录,PYTHONPATH=src)
 
@@ -182,6 +184,12 @@ class ScreenSpec:
 #: 快照章注册表(current_screen 值 → 规格)。战斗章结算不入 0 观察——
 #: settlement 写入行走 pipeline §5「章内变化」块(键集锚 =
 #: cw_screen_battle_wait.py:125,449-461,550-565)。
+#:
+#: 「货币战争-」前缀 11 键 = sim 引擎画面广播值(cw_sim_backend.py
+#: SCREEN_* 常量直通,词表 = 实机建档名);规格 = ACTOR_REGISTRY 对应
+#: actor 孪生同款。注册纪律:同 title 必须同规格(decision/键集)——
+#: 章相邻合并键 = title(见 _build_section),同 title 异规格会静默
+#: 错规格;现注册表全量查重已满足,扩表时守此纪律。
 SCREEN_REGISTRY: dict[str, ScreenSpec] = {
     '货币战争-备战': ScreenSpec(
         '画面-备战', True,
@@ -195,6 +203,34 @@ SCREEN_REGISTRY: dict[str, ScreenSpec] = {
     '货币战争-战斗等待': ScreenSpec(
         '画面-战斗', False, ('deployed', 'enemy_difficulty',
                              'enemy_affixes')),
+    # —— sim 广播值(overlay/流程画面;CwScreenBriefing/CwScreenBossBriefing
+    #    等孪生同款)——
+    '货币战争-简报': ScreenSpec(
+        '画面-BOSS简报', False,
+        ('plane_bosses', 'enemy_affixes', 'selected_difficulty')),
+    '货币战争-BOSS简报': ScreenSpec(
+        '画面-BOSS简报', False,
+        ('plane_bosses', 'enemy_affixes', 'selected_difficulty')),
+    '货币战争-投资环境': ScreenSpec(
+        '画面-投资环境', True,
+        ('invest_env_opts', 'env_refresh_left', 'gold')),
+    '货币战争-投资策略': ScreenSpec(
+        '画面-投资策略', True,
+        ('invest_strategy_opts', 'strategy_refresh_left')),
+    '货币战争-补给': ScreenSpec(
+        '画面-补给', True, ('supply.options', 'supply_refresh_left')),
+    '货币战争-遭遇节点': ScreenSpec(
+        '画面-遭遇', True, ('encounter.options', 'encounter_refresh_left')),
+    '货币战争-位面过渡': ScreenSpec(
+        '画面-位面转场', False, ('node_seq_by_plane', 'enemy_affixes')),
+    '货币战争-备战-武装箱选择': ScreenSpec(
+        '画面-箱子', True, ('box_card_names',)),
+    '货币战争-备战-专家邀请函': ScreenSpec(
+        '画面-专家邀请', True, ('expert_invite',)),
+    '货币战争-盛会之星': ScreenSpec(
+        '画面-巨星', True, ('megastar_opts',)),
+    '货币战争-银狼升星': ScreenSpec(
+        '画面-银狼策划', True, ('planner_opts',)),
 }
 
 #: 弹层章注册表(actor 全名 → 规格;回执 screen / sig.screen 不参与切分)。
@@ -838,8 +874,14 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
     - settlement 写入 = 战斗结算证据(sim 无 current_screen 时的开章依据;
       live 数据 current_screen 行在先,本证据不触发),开/续战斗快照章;
     - 弹层行归属只认 actor 映射:命中即在对应弹层画面章(同章续,异章开新);
-    - current_screen 在场:值 == base(最近快照章)→ 续开 base(弹层结束
-      回底层);否则开新快照章(注册表命中;未注册 id 按原样开章 + 缺口);
+    - 画面域行(cs)分两形态(切章证据收窄,sim-screen-announce 迭代 §2.2.1):
+      广播行(本行 ``field=='current_screen'``,漏斗/sim 广播写入行本体)=
+      唯一切章锚——值 == base(最近快照章)→ 续开 base(弹层结束回底层),
+      否则开新快照章(注册表命中;未注册 id 按原样开章 + 缺口);
+      非广播行携带的快照 cs 一律只作归属,永不切章——有当前章挂当前章;
+      无当前章(组首行)= 组边界基线,按快照 cs 开基线章(pipeline §4
+      「组内首行恒开启一个画面章」;sim 广播节拍下组首陈值 cs 即引擎
+      仍在屏的底层画面,占位清零的判据面);
     - 无画面证据:挂当前章;无当前章(组首行)→ 占位章 + 缺口。
     """
     actor = str(row_sig(row).get('actor') or '')
@@ -859,10 +901,19 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
         scr = _open_screen(s_spec, battle_id)
         _fill_entry(scr, s_spec, row)
         return scr, scr, scr, []
-    if 'current_screen' in vals:
-        cs = str(vals['current_screen'] or '')
-        if base is not None and cs == base.screen_id:
-            return base, base, base, []
+    is_cs_row = (row_kind(row) == ROW_WRITE
+                 and str(row.get('field') or '') == 'current_screen')
+    if is_cs_row or 'current_screen' in vals:
+        cs = str((row.get('after') if is_cs_row
+                  else vals['current_screen']) or '')
+        if is_cs_row:
+            # 广播行本体 = 唯一切章锚:值 == base → 续开 base(同值广播
+            # same_value 行同径续开,不重开章)
+            if base is not None and cs == base.screen_id:
+                return base, base, base, []
+        elif cur is not None:
+            return cur, base, cur, []  # 非广播行:cs 只作归属,永不切章
+        # cur 为 None(组首行)= 组边界基线:广播/归属形态同按 cs 开基线章
         s_spec = SCREEN_REGISTRY.get(cs)
         if s_spec is not None:
             scr = _open_screen(s_spec, cs)
@@ -1017,6 +1068,10 @@ def _opening_note(row: dict[str, Any]) -> str:
     f = str(row.get('field') or '—')
     if f == 'receipts' or row.get('same_value') is True:
         return ''
+    if row.get('after') in (None, ''):
+        # 空值/空串不入账(空值跳过防御:sim 广播对 prev_screen 首行
+        # 空串是当前采集时序的实测形态,防时序变化出「字段=—」噪声行)
+        return ''
     brief = _value_brief(f, row.get('after'))
     if _is_unregistered_screen_actor(actor):
         return f'缺口: 未注册写入者 {actor}: {field_cn(f)}={brief}'
@@ -1061,9 +1116,12 @@ def _build_section(kind: str, node: NodeInfo | None,
             continue
         cur, base, _, notes = _locate_screen(r, base, cur)
         opened = not any(s is cur for s in sec.screens)  # 身份比较(非 ==)
-        if opened and sec.screens and sec.screens[-1].screen_id == cur.screen_id:
-            # 相邻同 id = 同一画面 op 重入,合并续写(防拆成两个同名章;
-            # 非相邻不合并——备战→商店→备战是三次独立访问)
+        if opened and sec.screens and sec.screens[-1].title == cur.title:
+            # 相邻合并键 = title(sim-screen-announce §2.2.3):sim overlay
+            # 相 = cs 广播行 + actor 行两形态并存,screen_id 异源(画面值 vs
+            # actor 名)而 title 同 → 归一单章;非相邻不合并——备战→商店→
+            # 备战是三次独立访问。前提 = 注册纪律「同 title 必须同规格」
+            # (SCREEN_REGISTRY 注),合并沿用先开章规格。
             cur = sec.screens[-1]
             opened = False
         if opened:

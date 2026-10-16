@@ -848,6 +848,10 @@ class SimBackend:
     # —— 画面状态机(私有;状态 = 档名 + 子态) ——
     _screen: str = field(init=False, default='')
     _sub: str = field(init=False, default='')
+    #: 上次广播画面值(:meth:`_announce_screen` prev_screen 行来源;初值 =
+    #: 容器 prev_screen 冷建空串。值级豁免点(SETTLE/LOBBY)不经过本字段
+    #: ——prev 语义 = 上次广播值,非上次状态机赋值)。
+    _announced_screen: str = field(init=False, default='')
     #: 模态返回目标(呈现模态时的底层屏;None = 无挂起返回)。
     _return_screen: str | None = field(init=False, default=None)
     _return_sub: str = field(init=False, default='')
@@ -938,6 +942,7 @@ class SimBackend:
         self._hp_trail_append()
         # 初始序列:简报屏(词缀 + boss 载荷已写容器;env 屏在简报下一步
         # 之后呈现,权威源 = screens/briefing.md 进入链)。
+        self._announce_screen(SCREEN_BRIEFING)
         self._screen = SCREEN_BRIEFING
 
     # ---------------------------------------------------------- 初始序列
@@ -1048,6 +1053,7 @@ class SimBackend:
     def _enter_wait_one_one(self) -> None:
         """wait_one_one 变体(开局补给动画等待;sim 瞬时呈现,下次问询
         即完成进 P1r1)。"""
+        self._announce_screen(SCREEN_PREP)
         self._screen = SCREEN_PREP
         self._sub = PREP_SUB_WAIT_ONE_ONE
 
@@ -1398,12 +1404,42 @@ class SimBackend:
 
     # ---------------------------------------------------------- 状态机
 
+    def _announce_screen(self, value: str) -> None:
+        """画面广播(内部状态机 → 容器画面域,渲染复盘的画面章证据面)。
+
+        - 值级豁免:``SCREEN_SETTLE``/``SCREEN_LOBBY`` 不广播——结算事实
+          已由战斗章 settlement 写入行 + 局头终局行承载,大厅收口事实在
+          局头;广播只各造一个未注册空壳章。豁免按值不按赋值点(模态
+          返回位可为结算屏,点位豁免会泄漏「货币战争-结算」空壳章);
+        - 两行一对:``prev_screen`` = 上次广播值(初值 = 容器冷建空串)→
+          ``current_screen`` = value;渠道 = obs 族合成签名(mode=
+          'synthesized' 为 obs_sig 内建的渠道级如实标记——引擎声明非
+          真读数),evidence 前缀 ``screen:`` 为辅助标记;
+        - 手搓两行对、不复用 kernel ``observe_screen_context``:该口对
+          备战/开商店值触发顶栏观察/商店类型派生等实机分支(cw_game_
+          state.py),sim 常量值与其同值会误触——刻意取舍非漏接单一源;
+        - 同值广播不抑制:kernel 写端落 same_value=true 行,渲染路由
+          续开 base 不重开章,零副作用;
+        - 调用点 = ``self._screen`` 赋值行前一行(除 SETTLE/LOBBY 两处
+          豁免点的全部 10 处赋值点),广播先行使后续观察行快照即带新值。
+        """
+        if value in (SCREEN_SETTLE, SCREEN_LOBBY):
+            return
+        self.gs.observe(self.gs.prev_screen, self._announced_screen,
+                        evidence=sim_evidence(f'screen:{value}'),
+                        sig=obs_sig(group_id='sim:screen'))
+        self.gs.observe(self.gs.current_screen, value,
+                        evidence=sim_evidence(f'screen:{value}'),
+                        sig=obs_sig(group_id='sim:screen'))
+        self._announced_screen = value
+
     def _present_modal(self, screen_name: str) -> None:
         """模态呈现(压住底层画面;返回目标 = 当前屏,选完返回)。"""
         if self._screen == screen_name:
             return
         self._return_screen = self._screen
         self._return_sub = self._sub
+        self._announce_screen(screen_name)
         self._screen = screen_name
 
     def _dismiss_modal(self) -> None:
@@ -1424,6 +1460,7 @@ class SimBackend:
         ret_sub = self._return_sub
         self._return_screen = None
         self._return_sub = ''
+        self._announce_screen(ret)  # 返回位可为结算屏,值级豁免在 helper 内
         self._screen = ret
         self._sub = ret_sub
 
@@ -1544,6 +1581,7 @@ class SimBackend:
         self._window_resume = ''
         if pos[0] > 1 and pos[1] == 1:
             # 位面过渡(U20:全继承无重置;点空白后收尾节点窗口)
+            self._announce_screen(SCREEN_PLANE_TRANSITION)
             self._screen = SCREEN_PLANE_TRANSITION
             self._sub = ''
             return
@@ -1683,6 +1721,7 @@ class SimBackend:
             opts = sample_strategy_offer(rng, self.excluded_invest,
                                          forced_quality=forced or '')
             self._window_resume = 'node'
+            self._announce_screen(SCREEN_INVEST_STRATEGY)
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
             report_screen_invest_strategy_obs(self.gs,
@@ -1708,16 +1747,19 @@ class SimBackend:
                 str(self.gs.active_env.value or '')))
             report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
                 in_node=True, options=list(opts), refresh_left=1))
+            self._announce_screen(SCREEN_SUPPLY)
             self._screen = SCREEN_SUPPLY
             self._sub = ''
             return
         if kind == 'encounter':
             report_screen_encounter_obs(self.gs, CwScreenEncounterObs(
                 options=list(encounter_options()), refresh_left=None))
+            self._announce_screen(SCREEN_ENCOUNTER)
             self._screen = SCREEN_ENCOUNTER
             self._sub = ''
             return
         if kind == 'boss':
+            self._announce_screen(SCREEN_BOSS_BRIEFING)
             self._screen = SCREEN_BOSS_BRIEFING
             self._sub = ''
             return
@@ -1745,6 +1787,7 @@ class SimBackend:
             obs_sig=obs_sig(group_id='sim:ores'),
             hook_sig=logic_sig('sim:ores'),
             evidence=sim_evidence(f'ores:p{plane}r{r}'))
+        self._announce_screen(SCREEN_PREP)
         self._screen = SCREEN_PREP
         self._sub = PREP_SUB_ORE if points else ''
 
