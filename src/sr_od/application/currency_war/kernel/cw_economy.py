@@ -14,6 +14,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_ECONOMY,
     EconomyEffect,
     aggregate_economy,
 )
@@ -686,6 +687,29 @@ def refresh_cost_effective(refresh_count: int = 0,
         _v = gs.shop_refresh_cost.value
         return int(_v) if _v is not None else SHOP_REFRESH_COST
     return SHOP_REFRESH_COST
+
+
+def world_shop_refresh_cost(gs: GameState) -> int:
+    """当前环境改价规则下商店刷新的世界刷价(改价腿渲染单一源)。
+
+    环境在 ENV_ECONOMY 在册且注册了改价字段 ``refresh_cost_after``
+    (语义 = (刷新阈值, 新成本),如长线利好 (30, 1))且付费刷新累计
+    ``gs.effects.refresh_paid`` 已达阈值 → 返回新成本;否则返回基价
+    ``REFRESH_COST_BASE``(环境不在册/改价字段 None 同基价)。付费域
+    计数与 ENV_REFRESH_GRANTS 登记计数同口同语义;阈值与新成本全出
+    注册表、基价出常量,本函数零新增数值。
+
+    消费端 = sim 开店呈现(cw_sim_backend._open_shop 把本渲染值经观察
+    通道写 ``gs.shop_refresh_cost``,对偶实机「每次进店读屏重读刷价」
+    ——live 无识别缺口走 OCR,sim 无识别面走本渲染)。与决策面读价
+    :func:`refresh_cost_effective` 同模块并排,两个刷价读口不漂移。
+    """
+    env = gs.active_env.value
+    econ = ENV_ECONOMY.get(env) if env else None
+    cost_after = econ.refresh_cost_after if econ is not None else None
+    if cost_after is not None and gs.effects.refresh_paid >= cost_after[0]:
+        return int(cost_after[1])
+    return REFRESH_COST_BASE
 
 
 

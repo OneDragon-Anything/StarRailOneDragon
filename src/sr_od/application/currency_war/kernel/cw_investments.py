@@ -2162,6 +2162,15 @@ ENV_REFRESH_GRANTS: dict[str, tuple[str, int, int, str | None]] = {
     # 长线利好 id 120(PlazaPortal('120'))desc 显式「花费金币进行30次
     # 刷新」构成官方文本自带的两域对照。
     '二手市场': (CounterKey.REFRESH_TOTAL, 20, 30, '员工投影仪'),
+    # 花费金币刷新 30 次后 +20 金,之后本局刷价 2→1(id 120 原文直读,
+    # PlazaPortal('120'))。计数域 = 付费(REFRESH_PAID):desc 显式
+    # 「花费金币」限定词,与二手市场(无限定词→全量域)构成官方文本
+    # 两域对照。装备腿 None = 金-only(T-7 预留形状,登记表注释点名
+    # 本卡复用面);改价腿不在本表——live = 观察通道
+    # (cw_shop_refresh_obs 标价 reader 采真),sim = 开店呈现经
+    # cw_economy.world_shop_refresh_cost 现算渲染(两腿阈值同出卡面
+    # 同一句「30 次」,构建校验⑥跨锁同值)。
+    '长线利好': (CounterKey.REFRESH_PAID, 30, 20, None),
 }
 
 
@@ -2179,7 +2188,11 @@ def _validate_env_refresh_grants() -> None:
     ⑤ 双源同值:同环境在 ENV_ECONOMY 有 gold_after_refreshes 时须与
     (阈值,金) 逐位相等——世界面与估值面同出卡面(id 106),任一侧
     单独改数即失同步,构建期炸(先例 = _validate_env_ore_grants ③;
-    估值域字段演化时本条随迁)。
+    估值域字段演化时本条随迁);
+    ⑥ 跨锁同值:同环境在 ENV_ECONOMY 有 refresh_cost_after 时,其
+    阈值须与本表阈值逐位相等——改价腿(sim 渲染 helper 读该字段)
+    与发放腿(本表)同出卡面同一句「30 次刷新后」,两表独立可编辑,
+    单侧改数静默漂移 = sim 翻价早于发放(与校验⑤同理由)。
     """
     orphans = [n for n in ENV_REFRESH_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2207,6 +2220,13 @@ def _validate_env_refresh_grants() -> None:
                 f"ENV_REFRESH_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
                 f"gold_after_refreshes={_src} ≠ 本表 ({_threshold}, {_gold})"
                 f"(世界面与估值面同出卡面,失同步即构建期炸)")
+        _cost = tuple(getattr(_econ, 'refresh_cost_after', ()) or ())
+        if _cost and _cost[0] != _threshold:
+            raise ValueError(
+                f"ENV_REFRESH_GRANTS 跨锁失同步({_n!r}):ENV_ECONOMY."
+                f"refresh_cost_after 阈值 {_cost[0]} ≠ 本表阈值 {_threshold}"
+                f"(改价腿与发放腿同出卡面同一句「刷新阈值」,单侧改数 = "
+                f"sim 翻价早于发放,失同步即构建期炸)")
 
 
 _validate_env_refresh_grants()

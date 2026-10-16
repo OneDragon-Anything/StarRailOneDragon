@@ -18,16 +18,23 @@
   observe 覆盖差异落 ``logic_rand_outcome`` 台账、不进失配告警(通道语义
   自带)。level 缺读 = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
-- **环境条件发放腿**(二手市场):尾部触发检查
+- **环境条件发放腿**(ENV_REFRESH_GRANTS 在册环境:二手市场全量域 /
+  长线利好付费域):尾部触发检查
   (``check_env_refresh_grants``;登记表 =
   ``cw_investments.ENV_REFRESH_GRANTS``;发放 = 金/装备/done 三笔
   同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码
   同口,单点覆盖双端。
 
-金账 −实付仅 ``executed.refresh_paid`` 喂入时写(现役零生产喂入方:生产
-op 不喂,sim 与生产同一段 op 代码同不喂;显式喂入为保留的申报差异参数通道)。
-终结跳写申报:金仍不写;刷后牌面 = ``write_logic_rand`` 随机态
-(2026-09-21 用户裁定,以实际观察为准;真值 = 下一入口观察)。
+- **金账扣费腿**(2026-10-16 用户裁决,推翻 2026-09-21「金仍不写、
+  以实际观察为准」旧裁定):费用单一源 = ``gs.shop_refresh_cost``
+  容器直读(``value or REFRESH_COST_BASE``;live 商店开态观察漏斗
+  OCR / sim 开店呈现写同一字段),上报即按当次价扣金,与买牌/升级/
+  卖牌同款双端逻辑态;免费帧费用清零(free 判定单一源 =
+  ``gs.free_refresh_left``,推导见计数腿)。金现值缺读(None)跳写。
+  容器价与实扣不符(失读帧撞刷新)由下一入口金观察失配检出,处置 =
+  停机语义(cw_mismatch_policy 现行失配架构,本写端不豁免)。
+  终结跳写申报仅余刷后牌面 = ``write_logic_rand`` 随机态
+  (2026-09-21 用户裁定,以实际观察为准;真值 = 下一入口观察)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
@@ -39,6 +46,9 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_economy import (
+    REFRESH_COST_BASE,
+)
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_refresh_grants,
 )
@@ -75,10 +85,12 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
     - 随机态腿 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
       台账,非失配)。
-    - 金账:仅 ``executed.refresh_paid`` 在场时写(−实付;免费帧 0 不写)
-      ——生产 op 不喂(实付金含免费刷注入等差异,不可自算),sim 与生产
-      同一段 op 代码同不喂。``applied`` 恒 True:计数即职责完成,调用方仅在动作实际发出
-      后进本口(未落地不计数)。
+    - 金账扣费:费用单一源 = 容器直读 ``gs.shop_refresh_cost.value or
+      REFRESH_COST_BASE``(商店画面观察写入——live 开态漏斗 OCR / sim
+      开店呈现,同一字段同一写法),非免费帧按当次价扣金;与 op 花销账
+      同式同源(同一动作瞬间容器未变)→ 花销账累加值 ≡ 金账扣减值,
+      构造性一致。免费帧费用清零(集中在本函数执行)。``applied`` 恒 True:
+      计数即职责完成,调用方仅在动作实际发出后进本口(未落地不计数)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -114,15 +126,19 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.write_logic_rand(gs.shop, payload, produced_by=_PRODUCER,
                             evidence='refresh_random_sample', sig=_grp_sig)
 
-    paid = executed.refresh_paid if executed is not None else None
-    if paid is not None:
-        paid = max(0, int(paid))
-        if paid > 0:
-            g = gs.gold.value
-            if g is not None:
-                gs.write_logic(gs.gold, int(g) - paid,
-                               produced_by=_PRODUCER,
-                               evidence='proj_refresh_gold', sig=_grp_sig)
+    # 金账扣费腿:容器直读当次刷价(免费帧清零收归本函数集中执行;
+    # free 判定单一源 = free_refresh_left 字段,与免费腿同一推导)。
+    # 与 op 花销账同式同读、同一动作瞬间容器未被本动作改写 → 值恒等;
+    # gold 未观察(None)跳写。回退基价自 cw_economy import(对本模块
+    # 无环——cw_economy 不依赖本包)。
+    fee = 0 if free_determined else (gs.shop_refresh_cost.value
+                                     or REFRESH_COST_BASE)
+    if fee > 0:
+        g = gs.gold.value
+        if g is not None:
+            gs.write_logic(gs.gold, int(g) - fee,
+                           produced_by=_PRODUCER,
+                           evidence='proj_refresh_gold', sig=_grp_sig)
 
     # 环境条件发放腿:第 N 次刷新动作窗内尾部触发检查(计数腿已先入账,
     # 此处计数现值含本刷;世界发放域,见模块头与本函数 docstring)。

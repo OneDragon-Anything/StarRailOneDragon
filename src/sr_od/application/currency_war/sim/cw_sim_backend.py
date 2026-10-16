@@ -69,6 +69,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     LostNodeRef,
     RoundStartIncome,
     round_start_income,
+    world_shop_refresh_cost,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
@@ -1070,9 +1071,20 @@ class SimBackend:
         离屏态(关店已清 ``gs.shop``)以节点级牌面记录
         (:attr:`_shop_record`)补写——实机每次进店 live 漏斗重读屏写
         payload,sim 无识别面,以发牌期记录承载同一观察语义;在屏态
-        (节点窗起刚发牌)保持现值零写。"""
+        (节点窗起刚发牌)保持现值零写。
+
+        刷价呈现写回(改价腿 sim 载体):每次开店以 kernel 渲染的世界
+        真值(:func:`cw_economy.world_shop_refresh_cost`,付费计数达注册
+        改价阈值即新价)现算写 ``gs.shop_refresh_cost``——对偶实机每次
+        进店 live 漏斗重读刷价;不走 write_logic,观察域字段只收观察
+        写端,渲染值 = sim 的「屏面显示」,与 live OCR 读数同渠道同格。
+        节奏 = 开店(非持续写),不开店不写。"""
         if self._screen == SCREEN_PREP:
             self._present_modal(SCREEN_SHOP)
+            self.gs.observe(self.gs.shop_refresh_cost,
+                            world_shop_refresh_cost(self.gs),
+                            evidence=sim_evidence('shop:reopen'),
+                            sig=obs_sig(group_id='sim:shop:reopen'))
             if self.gs.shop.value is None and self._shop_record is not None:
                 self.gs.observe(self.gs.shop, self._shop_record,
                                 evidence=sim_evidence('shop:reopen'),

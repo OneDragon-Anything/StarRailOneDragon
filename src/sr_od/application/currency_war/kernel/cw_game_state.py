@@ -1647,11 +1647,12 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   逐 op 行;CwActionSellDeployedParam/CwActionDeployMoveParam 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
-#:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写)/
-#:   刷新费(paid=None 整动作跳写);
+#:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写);
 #: - **executed 回执字段集** = bought_count(CwActionBuyCardParam 实购张数,满栏多买
-#:   k 执行期确定)/ levelup_clicks(CwActionLevelUpShopParam 实际击数)/ refresh_paid
-#:   (CwActionRefreshShopParam 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不写逻辑态。
+#:   k 执行期确定)/ levelup_clicks(CwActionLevelUpShopParam 实际击数);
+#:   回执缺字段 = 该动作本轮不写逻辑态(刷新上报不消费 executed——
+#:   刷新费金账扣费费用单一源 = gs.shop_refresh_cost 容器直读,
+#:   cw_action_report/refresh_shop 金账扣费腿)。
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 CwActionSellDeployedParam / CwActionSwapDeployParam
@@ -1723,20 +1724,16 @@ class ShopActionExecuted:
     决定量**来源**,不覆盖应用面位置——合成连锁/满栏合成买的应用两路径
     同在转移函数内(单源本义)。executed 与自算值的关系核对归调用方
     守卫面(本函数不判)。
+
+    (``refresh_paid`` 字段已退役:刷新费用单一源 = 容器
+    ``gs.shop_refresh_cost`` 直读——刷新上报函数扣费腿,喂参第二来源
+    已废,见 cw_action_report/refresh_shop 金账扣费腿。)
     """
 
     #: CwActionBuyCardParam 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
     bought_count: int | None = None
     #: CwActionLevelUpShopParam 实际击数(单动作形态恒 1;腾席链多击以回执为准)
     levelup_clicks: int | None = None
-    #: CwActionRefreshShopParam 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
-    #: 现役喂入方 = sim/replay 驱动器(flow/bridge decide_shop_screen,按
-    #: 动作 cost 派生);生产侧刷新上报链(cw_action_report/refresh_shop,
-    #: 金腿未喂不写)**暂不喂本字段**——商店线 CwActionRefreshShopParam 是终结 op,生产逻辑态直写门对终结
-    #: 动作整体跳写(期望态按下段入口重观察作废,终结不写逻辑态为申报过渡
-    #: 语义),单接本字段不可达;接线(含终结直写语义改)与 receipts 接线
-    #: 与 receipts 接线一并评估。
-    refresh_paid: int | None = None
 
 
 # (旧席位同步聚合口的惰性转发已停用:词表侧同步
