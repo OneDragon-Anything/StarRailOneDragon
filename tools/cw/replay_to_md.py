@@ -314,6 +314,15 @@ _ACTION_ACTOR_EXEMPT: frozenset[str] = frozenset({'CwScreenBuyCards'})
 #: 已是切章锚,重复显影)。
 _OBS_NOTE_SKIP: frozenset[str] = frozenset({'prev_screen', 'current_screen'})
 
+#: 已注册画面章 0 观察键全集(快照章 + 弹层章注册表并集):观察尾注跳过。
+#: 这些字段必在后续对应画面章的 0 观察显影,观察道回读是重复显影;且回读
+#: 与动作无因果(如节点窗发牌的商店牌面回读挂进采集动作),按时间窗归属
+#: 只会制造误归因(sim 广播形态实测:34 条尾注中 30 条为此类)。
+_ALL_ENTRY_KEYS: frozenset[str] = frozenset(
+    key
+    for spec in list(SCREEN_REGISTRY.values()) + list(ACTOR_REGISTRY.values())
+    for key in spec.entry_fields)
+
 
 def _is_unregistered_screen_actor(actor: str) -> bool:
     """未注册画面 op 判定(pipeline §4「未注册 actor」的适用对象)。
@@ -1019,13 +1028,13 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     is_hook = family == 'logic_hook'
     if family == 'obs' and f != 'settlement':
         # 观察道不入变化表:章首行的 obs 写入由 0 观察快照承载,非章首进尾注
-        # (§5 修订:空值不渲染、路由键跳过、同章同值去重)
+        # (§5 修订:空值不渲染、路由键/0 观察键跳过、同章同值去重)
         if not opened:
             after = row.get('after')
             brief = _value_brief(f, after)
             key = (f, brief)
-            if (f in _OBS_NOTE_SKIP or after in (None, '')
-                    or key in scr._obs_seen):
+            if (f in _OBS_NOTE_SKIP or f in _ALL_ENTRY_KEYS
+                    or after in (None, '') or key in scr._obs_seen):
                 return
             scr._obs_seen.add(key)
             scr.annots.append(f'观察: {field_cn(f)}={brief}')
