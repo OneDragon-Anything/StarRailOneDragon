@@ -417,8 +417,12 @@ INVEST_OFFER_SCHEDULE: tuple[tuple[int, int], ...] = ((1, 3), (2, 2), (3, 2))
 #: 投资策略三选一」)。
 JOINT_DECISION_ENV_NAME: str = '联席决策'
 
-#: 联席决策额外策略选卡槽(机制文档口径挂 2-6;样本未命中候实机对账)。
-JOINT_DECISION_EXTRA_SLOT: tuple[int, int] = (2, 6)
+#: 联席决策额外策略选卡槽(单一源 = kernel ENV_POOL_REWRITE 登记,键 =
+#: JOINT_DECISION_ENV_NAME;本常量仅派生,勘误/改值只改 kernel 登记处,
+#: 此处自动跟随)。
+JOINT_DECISION_EXTRA_SLOT: tuple[int, int] = (
+    ENV_POOL_REWRITE[JOINT_DECISION_ENV_NAME].extra_strategy_offer_node)
+assert JOINT_DECISION_EXTRA_SLOT is not None, '联席决策登记缺挂点(数量通道事实残缺)'
 
 #: 单次 offer 候选张数(画面语义三选一;环境屏同构占位,U08)。
 OFFER_CANDIDATES: int = 3

@@ -64,6 +64,9 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     TriggerKind,
     UnitBuffRef,
 )
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
+)
 
 
 @dataclass(frozen=True)
@@ -2004,9 +2007,11 @@ class StrategyPoolRewrite:
     - extra_pick_refreshes: 策略取卡刷新次数增量(银·金·彩 +2,策略屏逐卡
       免费刷新计数,cw_node_obs.read_invest_refresh_counts('strategy') 通道;
       数量通道登记,§2.2.4,v1 无消费端)
-    - extra_pick_node_range: 额外取卡发生的节点范围,**坐标系 = 本局全局节点
-      序,1 基,含两端**(联席决策效果原文「2-6 节点」直读;数量通道登记,
-      §2.2.4,v1 无消费端);None = 无额外取卡
+    - extra_strategy_offer_node: 额外策略三选一发生的挂点节点,**坐标系 =
+      (位面, 轮次) 单点,两元各 1 基**(效果原文「X-Y 节点」= 位-轮读法,
+      用户裁定 2026-10-16;依据与边界 = ENV_POOL_REWRITE 登记处注释);
+      数量通道登记,执行消费端 = sim JOINT_DECISION_EXTRA_SLOT 派生;
+      None = 无额外策略三选一
     - difficulty_exempt: 敌人难度不随高品质策略提高(白银时代第二条效果;
       游戏【注·交叉核对】口径 = 白银 +0/黄金 +3/棱彩 +6 每拥有 1 个,
       docs/game/currency_war/research/economy.md 难度精确口径行——数值已登记
@@ -2020,7 +2025,7 @@ class StrategyPoolRewrite:
     rewrite_picks: tuple[int, ...] = ()
     offer_structure: str = ''
     extra_pick_refreshes: int = 0
-    extra_pick_node_range: tuple[int, int] | None = None
+    extra_strategy_offer_node: tuple[int, int] | None = None
     difficulty_exempt: bool = False
     pending_notes: str = ''
 
@@ -2053,7 +2058,12 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
                       '语义实采挂账(实测 offer 金重仓非三品质各一,详设 §2.2.2)'),
     # 联席决策 = 数量通道(2-6 节点一次额外投资策略三选一);与 A 类策略大师
     # 「额外取卡不计」同口径,价值由裸分承载(§2.2.4)
-    '联席决策': StrategyPoolRewrite(extra_pick_node_range=(2, 6)),
+    # 执行消费端 = sim JOINT_DECISION_EXTRA_SLOT 派生(单一源,勘误/改值
+    # 只改本登记处,sim 自动跟随);
+    # 挂点候实机对账:7 局在场样本全部止步 P2r4 或更早,无一达 P2r6;
+    # 实机流程语义(用户确认 2026-10-16):2-5 战斗结算确认后、备战开商店前,
+    # 先呈现该额外三选一。
+    '联席决策': StrategyPoolRewrite(extra_strategy_offer_node=(2, 6)),
 }
 
 
@@ -2069,7 +2079,10 @@ def _validate_env_pool_rewrite() -> None:
     被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);④ pending
     必填:单张改写型(有点名取卡序但非全改写,offer 覆盖面歧义)或 offer 结构
     改写型(槽位语义歧义)必须写保守支 notes(_validate_strategy_effects
-    「pending 条目必须写保守支 notes」先例同款)。
+    「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形:
+    extra_strategy_offer_node 非 None 时两元各 ≥1、位面 ∈ PLANE_NODE_TABLES
+    且轮次 ≤ 该位面序列长(坐标系 = (位面, 轮次) 单点两元各 1 基;不在表/
+    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False)。
     """
     orphans = [n for n in ENV_POOL_REWRITE if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2095,6 +2108,18 @@ def _validate_env_pool_rewrite() -> None:
             raise ValueError(
                 f"ENV_POOL_REWRITE pending 条目必须写保守支 notes:{_name!r}"
                 f"(offer 覆盖面/槽位语义歧义挂账)")
+        _node = _rw.extra_strategy_offer_node
+        if _node is not None:
+            _plane, _round = _node
+            if _plane not in PLANE_NODE_TABLES:
+                raise ValueError(
+                    f"ENV_POOL_REWRITE 挂点位面不在节点真值表:{_name!r} "
+                    f"extra_strategy_offer_node={_node}(登记笔误?)")
+            if not 1 <= _round <= len(PLANE_NODE_TABLES[_plane]):
+                raise ValueError(
+                    f"ENV_POOL_REWRITE 挂点轮次超位面节点数:{_name!r} "
+                    f"extra_strategy_offer_node={_node}(位面 {_plane} 序列长 "
+                    f"{len(PLANE_NODE_TABLES[_plane])},登记笔误?)")
 
 
 _validate_env_pool_rewrite()
