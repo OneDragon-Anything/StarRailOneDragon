@@ -39,13 +39,15 @@ uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed
 ```
 
 - 产出 = 独立批目录(`telemetry/sim/sim_match_<时刻>/`,不写生产 replay)内的
-  对局档案 `matches/match_<game_id>.json` + `state/journal.jsonl` + 决策帧;
+  对局档案 `matches/match_<game_id>.json` + `state/journal.jsonl` + 识别仲裁帧
+  `decision_frames/`;
   stdout 附局况摘要(hp 链/节点序/金轨迹/终态,hp 写行 v 号即行锚)。
 - 局配置固定 A8/难度 108/环境在场(与测试冒烟同口径;A8 = 开局 HP 唯一
   实证档),词缀由 seed 采样;同 seed 同局可复现。
-- 复盘按 match-review 协议吃档案;判读边界同「先知道边界」——本形态档案
+- 复盘按 match-review 协议吃档案(渲染器 `--journal <批目录>/state/journal.jsonl`,或已装配局 `--match <game_id>`);判读边界同「先知道边界」——本形态档案
   的 `rounds`/`loss_nodes` 等派生视图为空(单一 journal 源直装),判读走
-  journal 切片,`[cw-op]` 缺席下商店访问计数退化为 receipts 单载体。
+  journal 切片,商店访问计数 = 渲染器「画面-商店」章计数(边界=渲染器产物,
+  复盘者不重建,见 match-review 阶段 2)。
 - 批量/统计仍缺位:`cw_batch_stats` 吃旧流 `decisions.jsonl`,对本形态不
   适用;批跑工具候补与 A/B 挂起状态不变(见「先知道边界」末条)。
 
@@ -60,4 +62,10 @@ uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `decisions.jsonl` 行行自足直读(联接键 run_id+round_num)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随统一账迁移停用,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。复盘骨架生成器(零 src 导入,项目根直接跑):`uv run python tools/cw/review_skeleton.py --decisions <批目录>/decisions.jsonl [--run-id <局id>]`——生成逐节点骨架(入口观察/决策循环摘要/判定三槽);原版随附的可疑项检测器预填(sim/checks/suspects.py)已随 sim 重做移除,当前为纯骨架,可疑项由复盘者按三槽自查,检测器注册表重建后恢复预填。逐轮决策表直读批目录 `decisions.jsonl` 即可(重放/批跑通道已删,见「先知道边界」末条)。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局复盘渲染 = `tools/cw/replay_to_md.py` 吃批目录裸 journal(运行需 `PYTHONPATH=src`,项目根跑):
+
+```
+$env:PYTHONPATH='src'; uv run python tools/cw/replay_to_md.py --journal <批目录>/state/journal.jsonl --game-id <局名> --out <复盘.md>
+```
+
+已装配档案的局 `--match <game_id>` 同样可读(档案切片含 journal);缺省落盘 `.debug/currency_war/deep_review/<game_id>.md`,sim 局可用 `--out` 落批目录。报告结构 = match-review.md「产出形态与红线」节(局头/开局/节点×画面×动作,文末「复盘者附加」空节);可疑项检测器预填已随旧复盘骨架工具移除,可疑项由复盘者按判定尺自查(match-review「判定尺」)。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `state/journal.jsonl` 行行自足直读(判读读面单一源 = `src/sr_od/application/currency_war/telemetry/journal_query.py`)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随旧视图删除,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。
