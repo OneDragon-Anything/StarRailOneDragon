@@ -41,7 +41,7 @@ class DecisionV2Registry:
     )
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
-    #: 卖候选标签优先序(off_target 最先;free_bench=腾位让位 [32])
+    #: 卖候选标签优先序(off_target 最先;free_bench=腾位让位)
     sell_tag_priority: tuple[str, ...] = (
         'off_target', 'for_gold', 'free_bench',
     )
@@ -88,7 +88,7 @@ class DecisionV2Registry:
     bond_fallback_max_cost: int = 2
     #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
     bond_fallback_min_round: int = 3
-    #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
+    #: carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
     # ===== 层4 补偿趟(迁移审计回连机制)=====
@@ -546,7 +546,7 @@ class DecisionV2Registry:
     #: 链)。修「恒 lv6 通道缺陷」(迁移审计:每轮 1 击吞吐,lv6→lv7 需
     #: 7 轮,死亡窗内不跨;run15 型死局的 lv7 价格带永不可达)。
     #: 每轮至多一组(strategy_state_of(session).v2_steady_lv_used 轮键,防刷后 re-decide
-    #: 段链连发);boss 轮禁升([32])与 level_max 前置守卫保留。
+    #: 段链连发);level_max 前置守卫保留。
     #: **适用范围 P2+**(首版全位面泛化 n=300 引入 P1 never2 9→10 回归,
     #: `w194_p2line/` 辙回——P1 多击已由 deploy_cap 补偿分支覆盖)。
     levelup_multihit_enabled: bool = True
@@ -858,7 +858,7 @@ class DecisionV2Registry:
         'blood_budget_stop',   # 血预算停手·停升级门(设计件 12;
                                # ——授权通道前置拒付,与利息线门独立谓词 AND)
         'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计
-                               # 起 boss 禁令分支已删,[32] 节点无关)
+                               # 起 boss 禁令分支已删,节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)

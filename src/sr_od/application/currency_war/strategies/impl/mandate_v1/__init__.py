@@ -8,9 +8,10 @@
   「见核心即锁定终局阵容、围绕它买」(玩法文档原文);系统语义正本 =
   ``docs/develop/sr_od/application/currency_war/strategy-docs/
   12_line_and_intention.md``(代码对应 ``locked_comp`` 等符号)。
-- 腾位:腾出备战席位——bench 满先卖最弱杂件,或升人口扩容。用户玩法
-  纪律已登记 = ``docs/game/currency_war/research/user_playstyle.md``
-  条目 [32]「腾位优先级」。
+- 腾位:腾出备战席位——bench 满先卖最弱杂件(卖出判据 = 本包 ``sell_gate``
+  与 02 号篇 M4),或升人口扩容(统一升级判据单一源 =
+  ``11_shop_decisions.md`` §2;原 user_playstyle 条目 [32]「腾位优先级」
+  已废止,2026-10-16 用户裁定)。
 - 让位:优先级让步——两判据冲突帧,低优先一方放弃(「X 让位给 Y」)。
   玩法先例 = ``docs/game/currency_war/research/economy.md``(经济让位
   保血)、``user_playstyle.md``(购买让位于利息线)。
