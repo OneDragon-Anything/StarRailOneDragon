@@ -257,7 +257,8 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     """商店动作执行回执(R2 §3.2.5;receipts 域,渠道② logic_action)。
 
     决策动作 node 的逐动作执行落地写点:每动作 op 一条 logic_action 行,
-    发出即簿记非验证(M1③):applied = 动作 op 自身机械事实透传,零成败
+    发出即簿记非验证(R2 报告重构期的『发出即簿记非验证』裁定):
+    applied = 动作 op 自身机械事实透传,零成败
     判定。CloseShop **不写**(「终结不入 decisions 行」契约;执行事实
     回执由动作 op 自身承担)。journal 常开回执写入无条件,
     无局跳过在 kernel 口

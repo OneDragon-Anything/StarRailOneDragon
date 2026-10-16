@@ -411,7 +411,8 @@ class PrepActionExecutor:
         """动作执行回执 → GameState receipts 域
         (渠道② logic_action,唯一写点 = kernel note_action_receipt)。
 
-        - **发出即簿记,不是验证**(M1③):applied = 分派面「是否发出」
+        - **发出即簿记,不是验证**(R2 报告重构期的『发出即簿记非验证』
+          裁定):applied = 分派面「是否发出」
           事实透传(执行前输入契约拒绝 = 未发出,回执 reason 带机械摘要);
           本写点零成败判定——不读屏、不做落地推断(「拖3次源槽未变」类
           像素验回执已停用),落地判定归观察侧 reconcile;

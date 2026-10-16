@@ -1329,7 +1329,8 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
     """动作执行回执写入(receipts 域**唯一写点**,渠道② logic_action;
     §3.1.1-4/§3.2.5:各动作 op 执行回执处的普通 ``write_logic`` 写入)。
 
-    - **发出即簿记,不是验证**(M1③ 用户裁定):``applied`` = 动作 op
+    - **发出即簿记,不是验证**(R2 报告重构期的『发出即簿记非验证』
+      裁定):``applied`` = 动作 op
       自身「是否发出」的机械事实透传,本口零成败判定——禁读屏核验、禁
       落地推断(落地判定归观察侧 reconcile);失败动作也产行(applied=
       false + reason),exec_events「正在蒸发的失败数据」教训的并入位;

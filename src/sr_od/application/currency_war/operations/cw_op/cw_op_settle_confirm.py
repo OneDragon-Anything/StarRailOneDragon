@@ -2,8 +2,8 @@
 screens/op-layer.md §2.1 画面框 op 形态;game_state/node-derivation.md
 §3.3 跃迁判定)。
 
-非策略动作面(不经动作注册表、无 CwAction param;命名与构造从画面框
-op 惯例 ``CwOpOpenShop``)。职责 = 点击「货币战争-结算/按钮-继续挑战」
+非策略动作面(不经动作注册表、无 CwAction param;画面框 op 惯例形态,
+动作 op 规范 = flow/action_ops.md §1)。职责 = 点击「货币战争-结算/按钮-继续挑战」
 (含长按兜底的点击力学)→ ``report_node_advance(
 trigger='settle_confirm')`` → 返回。
 

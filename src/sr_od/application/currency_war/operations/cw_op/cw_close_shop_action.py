@@ -1,6 +1,6 @@
 """关店动作 op(CwActionCloseShopOp)。一 op 一文件。
 
-执行体 = 机械关店(找「按钮-收起」:miss = 店已关,幂等无动作可发;
+执行体 = 机械关店(找「按钮-收起」:miss = 定位缺失,动作未发出;
 命中 = 点击 + 固定等待)+ 自上报 ``report_action_close_shop_param``
 (leave_screen 结构离屏清场,两出口同调)。零转移验证,落地归下一帧
 观察侧对账(flow/action_ops.md §1)。
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
     """关商店动作回执(receipts 域,渠道②,唯一写点 = kernel 口)。
 
-    两出口全簿记:点击已发 = applied=true;幂等已关(无动作可发)=
+    两出口全簿记:点击已发 = applied=true;定位缺失(动作没发出)=
     applied=false + reason。发出即簿记非验证;journal 常开
     回执写入无条件,无局跳过在 kernel 口。
     """
@@ -74,8 +74,8 @@ class CwActionCloseShopOp(CwOperation):
     def run(self) -> OperationRoundResult:
         """机械关店两出口(均 round_success = 结束本次访问;零转移验证):
 
-        - 帧上找「按钮-收起」miss = 店已关(幂等,无动作可发)→ 回执
-          applied=false + 清场上报;
+        - 帧上找「按钮-收起」miss = 定位缺失(点击目标获取失败,动作
+          未发出)→ 回执 applied=false + 清场上报;
         - 命中 → 点击 + 固定等待 ``SHOP_CLOSE_ANIM_S`` → 回执
           applied=true + 清场上报。收起消失与否归下一帧观察;点击未生效
           = 外循环 0n 重分发自然重派,重派即重试。
@@ -88,9 +88,9 @@ class CwActionCloseShopOp(CwOperation):
         # flow/action_ops.md §1 已登记允许形态)。
         if not self.round_by_find_and_click_area(
                 self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
-            _note_receipt(self, False, '商店已关(幂等入口观察,无动作可发)')
+            _note_receipt(self, False, '定位缺失(按钮-收起)')
             world_decl = self._report_leave_screen()
-            return self.round_success('商店已关(收起不在,幂等入口观察)',
+            return self.round_success('定位缺失(按钮-收起)',
                                       data=world_decl)
         time.sleep(SHOP_CLOSE_ANIM_S)
         _note_receipt(self, True, '')
