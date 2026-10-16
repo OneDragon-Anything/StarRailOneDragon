@@ -837,7 +837,12 @@ class _ValueChain:
 
 
 def _precompute_prevs(rows: list[dict[str, Any]]) -> dict[int, Any]:
-    """全局 ts 序单遍:变化行 idx → 前值(链严格 ts 序,组渲染序解耦)。"""
+    """全局 ts 序单遍:变化行 idx → (前值, 前值来源为链)。
+
+    前值来源两档(§5 修订):链值 = 本行之前最近同 field 写入行(真实前写入);
+    快照回退 = 行内累计快照(必 ≥ 当前值,可能与 after 相等)。同值过滤只吃
+    链档相等——快照档相等 = 该 field 视野内首写,渲染为 '(累计) → 值'。
+    """
     chain = _ValueChain()
     prev_of: dict[int, Any] = {}
     for i, r in enumerate(rows):
@@ -849,7 +854,9 @@ def _precompute_prevs(rows: list[dict[str, Any]]) -> dict[int, Any]:
         is_plain_obs = (row_sig(r).get('family') == 'obs'
                         and f != 'settlement')
         if not is_plain_obs:  # 前值取「本行之前」的链,必须先查后喂
-            prev_of[i] = chain.prev(f, r)
+            prev = chain.prev(f, r)
+            from_chain = f in chain._last
+            prev_of[i] = (prev, from_chain)
         # obs 道不入变化表但仍是真值写入,进链(前值取「最近一条写入行」
         # 不分渠道,pipeline §5 字面)
         chain.feed(f, r)
@@ -1023,15 +1030,26 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
             scr._obs_seen.add(key)
             scr.annots.append(f'观察: {field_cn(f)}={brief}')
         return
-    delta = Delta(field=f, before=prev_of.get(idx), after=row.get('after'),
+    prev_pack = prev_of.get(idx)
+    if isinstance(prev_pack, tuple):
+        before, from_chain = prev_pack
+    else:  # 非 变化行(obs/回执)不经此处;防御形态 = 无前值
+        before, from_chain = prev_pack, prev_pack is not None
+    delta = Delta(field=f, before=before, after=row.get('after'),
                   note='(效果钩子)' if is_hook else '', is_hook=is_hook)
-    # 渲染同值过滤(§5 修订):格式化后前=后 = 零信息行,计数进尾注
+    # 渲染同值过滤(§5 修订):链档(真实前写入行)前=后 = 零信息,计数进尾注;
+    # 开章行豁免(章首写入行是本章证据本体);快照档相等 = 视野内首写,照常
+    # 渲染并注 (前值=累计快照)——首写吞掉会让 overlay 候选/结算不显影
+    # (sim 广播形态实测:invest_env_opts 首写曾被过滤)。
     cell_b = (_delta_value_cell(f, delta.before)
               if delta.before is not None else None)
     cell_a = _delta_value_cell(f, delta.after)
-    if cell_b is not None and cell_b == cell_a:
+    if (from_chain and not opened
+            and cell_b is not None and cell_b == cell_a):
         scr._same_skipped += 1
         return
+    if not from_chain and cell_b is not None and cell_b == cell_a:
+        delta.note = ((delta.note + ' ') if delta.note else '') + '(前值=累计快照)'
     if f == 'settlement':
         # 结算走章内变化块(render-spec §3 战斗章注册行:结算不入 0 观察,
         # 也不作动作效果挂动作节——它是结算读数)
