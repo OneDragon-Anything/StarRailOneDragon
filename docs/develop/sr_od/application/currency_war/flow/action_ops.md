@@ -37,7 +37,7 @@
 | 动作失败后的重试 | 决策循环 / 失败网:逻辑态保持事实,下一帧策略对未完成事项自然重派;重派预算由外循环节点轮次预算封顶(`node_max_retry_times`),无动作级重试 |
 | 动作点不响/拖不动本身 | 动作层修可靠性:点击链坐标、时序、确认序列——不为它加验证这种复杂度 |
 
-在档更完整表述(用户裁定 2026-09-10,宿主 = `operations/cw_screen/cw_screen_op_base.py` 类 docstring「验证不是生命周期段」节):「动作 op 只管机械执行,禁止做任何验证,也禁止在画面 op 做验证。如果观察正确,动作 op 没生效,那就是动作 op 有 bug,不应该为了 bug 增加验证这种复杂度。」同款裁定另见 `operations/cw_screen/_overlay_confirm.py` 模块头(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察))。
+在档更完整表述(用户裁定 2026-09-10,裁定原文现住 `screens/op-layer.md` §1.2「验证不是生命周期段」节;原宿主 `operations/cw_screen/cw_screen_op_base.py` 类 docstring 已随该基类停用删除):「动作 op 只管机械执行,禁止做任何验证,也禁止在画面 op做验证。如果观察正确,动作 op 没生效,那就是动作 op 有 bug,不应该为了 bug 增加验证这种复杂度。」同款裁定另见 `operations/cw_screen/_overlay_confirm.py` 模块头(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察))。
 
 op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `SrOperation`(原 `cw_action_base.py::ActionOp` ABC 已删除),构造签名 = `(ctx, param, env)`,域依赖经 env 结构化传入(`PrepExecEnv`/`ShopExecEnv`/`OverlayPickExecEnv`);op 内机械执行后**直调自己的上报函数**(`kernel/cw_action_report/report_action_<snake>_param`,容器逻辑态单点;发出即职责完成;返回值已登记例外与旁路字段语义见本文件 §2.3)。
 
@@ -74,7 +74,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 ## 3. 偏离清单
 
-核查面 = §4 全量清单(注册表行数/op 类数以代码现值为准,清点单一源 = `cw_action_registry.py::_REGISTRY`)逐文件核读 + `operations/cw_op/` 全目录 grep(`until_find_all`/`until_not_find_all` 零命中):**零条**「动作 op 内做画面转移 until 验证」或「op 内自带重试循环」形态;注释面与实现一致,无旧口径残留。
+核查面 = §4 全量清单(注册表行数/op 类数以代码现值为准,清点单一源 = `cw_action_registry.py::_REGISTRY`)逐文件核读 + `operations/cw_op/` 全目录 grep(`until_find_all`/`until_not_find_all` 零命中) + **§4.7 组合壳/直调体全量**(2026-10-16 open-shop-action-spec 批教训:open_shop 直调体曾带幂等观察/落地复查/round_retry,因住 §4.7 区躲过历轮清点,在 sim 机械 IO 关闭下放大为回执与业务事实相反——核查面自该批起覆盖组合壳,逐条对「验证/重试/判断」三禁):**零条**「动作 op 内做画面转移 until 验证」或「op 内自带重试循环」形态(open_shop 直调体已按规范重组为单段机械执行 + 发出即记账恒 True);注释面与实现一致,无旧口径残留。
 
 ## 4. 全量清单(基准 = `operations/cw_op/cw_action_registry.py`)
 
@@ -177,7 +177,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 - `CwScreenDeploy`(部署机画面 op)**已停用删除**——部署 = 备战决策环动作:`CwActionDeployMoveParam` 原子序列由 mandate 动作发出点逐帧现算,经 `CwActionDeployMoveOp` 机械拖拽 + 自上报 `report_action_deploy_move_param` 推进部署逻辑态(路径速查 = [../screens/deploy.md](../screens/deploy.md));落地事实归备战环入口观察对账。
 - `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`)**已停用删除**——关店执行位并入动作 op `CwActionCloseShopOp` 真机械执行(幂等已关出口 + 清场上报;编排壳的「拦截 + no-op + 代点」旧形随商店访问两 node 化消亡,见 [../screens/shop.md](../screens/shop.md) §4)。
-- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop` → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
+- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop`(`operations/cw_op/cw_op_open_shop.py`,规范动作形态:单段机械执行 + 发出即记账恒 True,定位缺失 = 唯一 applied=false 出口;sim 机械 IO 关闭下点击经端口 click_answer 受理 = 世界推进通道,呈现/离屏牌面补写/刷价由其触发) → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
 - `run_buy_waves`(`operations/cw_screen/cw_screen_shop.py` 前身文件)**已停用删除**——商店访问 = 画面 op 两 node 规范形态(`CwScreenShop`:观察 node 恰一次 + 决策动作 node round_wait 单动作循环,全动作统一路径零特例拦截;规范权威版本 = [../screens/shop.md](../screens/shop.md) §2/§4);段机器(波循环/段间判定/段尾对账)随伪终结刷新一并消亡。
 - `PrepActionExecutor`(`prep_actions.py`):备战域执行器——备战动作 op 体迁后的替身缝宿主(原方法薄委托);`PrepExecEnv` 定义处。
 

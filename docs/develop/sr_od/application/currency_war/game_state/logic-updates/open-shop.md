@@ -12,7 +12,7 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. **显式开店**:`_open_shop_phase` → open_shop(幂等,已开不点)→ `visit_open_shop`(商店画面 op `cw_screen_shop.py::CwScreenShop` 节点直驱:入口观察 → `decide_shop_action` 单动作 round_wait 循环 + 逻辑态直写,终结动作=发出后即结束本次访问,收店并入画面 op);
+1. **显式开店**:`_open_shop_phase` → open_shop(规范动作形态:单段机械执行 + 发出即记账恒 True,2026-10-16 open-shop-action-spec;幂等归流程层——店已开由外循环 0n 三锚/`visit_open_shop` 入口观察判定)→ `visit_open_shop`(商店画面 op `cw_screen_shop.py::CwScreenShop` 节点直驱:入口观察 → `decide_shop_action` 单动作 round_wait 循环 + 逻辑态直写,终结动作=发出后即结束本次访问,收店并入画面 op);
 2. **0n 转交**:店已开态由外循环三个 id_mark 识别标志确认,直接构造商店画面 op 访问(同口 `visit_open_shop`,零开店动作);
 3. **发出即职责完成**:open_shop 的验关型失败回执消费已拆除——店实际开没开由下一帧观察侧对账自然闭环(备战帧读互斥;访问失败路径不开收,店留着交上层/外环重新识别)。
 
