@@ -54,7 +54,7 @@
 | env_grants_done | 世界分支：结算分支 streak observe 后条件发放触发（`check_env_streak_grants`，接线点 = 连胜真值已落账；`logic_sig('sim:env')`）达标的发放两笔相邻 logic 写第二笔（发放刻追加，局内恒存随快照存续） | 发放幂等守卫（已发不重发）；恢复局快照含 done 不重发 |
 | encounter / supply / invest_env / invest_strategy / box 各 opts 槽 | 呈现分支：生成器回读呈现写点（后端节点事件件供给候选）经同名 report 落容器 | pick 族决策入口容器零参读 |
 | plane_bosses / enemy_affixes / enemy_difficulty / game_mode / selected_difficulty | 世界分支：reset 采样（boss 名单/词缀）与局级输入申报（`opening` 事件）；呈现分支：简报档生成器覆写（同值幂等） | 敌人侧上下文消费 |
-| 流程面域（chosen_* / event_overlay / substate / prev_screen / current_screen 等） | 动作分支/呈现分支同实机（pick 动作上报写 chosen；生成器产 `PrepObservation` 控制信号；screen 簿记走 `update_screen_after_operation` 同实机） | 决策面零参读 |
+| 流程面域（chosen_* / event_overlay / substate 等；prev_screen / current_screen = `_announce_screen` 容器广播（值级豁免结算/大厅屏；obs_sig mode=synthesized、evidence `screen:<值>`——兑现本行原「同实机」申报；`update_screen_after_operation` 为框架路由簿记非容器写入，两不相涉） | 动作分支/呈现分支同实机（pick 动作上报写 chosen；生成器产 `PrepObservation` 控制信号） | 决策面零参读；prev/current 供复盘渲染切章 |
 
 ## 三、读口族（值读单一源）
 

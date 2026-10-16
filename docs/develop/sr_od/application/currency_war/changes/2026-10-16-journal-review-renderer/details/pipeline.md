@@ -33,6 +33,8 @@
 ### §4 画面章切分（节点组内）
 
 - **快照画面章**：组内首行恒开启一个画面章（基线 = 组边界，解决跨组同值是否开章的歧义）；此后 `state.values.current_screen` 值相对**当前章 screen id** 变化 = 画面切换锚，开启新章（弹层章结束后回到底层画面的行：值与底层快照章 id 相同 → 续开该快照章；新值 → 开新快照章）。
+- **切章证据 = `field='current_screen'` 写入行本体**（sim-screen-announce 迭代收窄修订）：非广播行快照携带的 cs 是累计子集陈值（两次广播之间的行全带上一画面值），只作归属（挂当前章）永不切章——否则结算段陈值 cs 开幽灵备战章、overlay 广播偷 base 致备战碎片化（真引擎探针局实证）。实机锚 = 漏斗 current_screen 写入行，收窄不改实机章结构（4 档案实测零 diff；策略窗末动作归属位移 = `cw_game_state.py:3294` 已登记回写病理的如实显影）。组首行（cur=None）非广播 cs 行按行内快照值开基线章（组首恒开章条款保留，占位清零收口）。
+- **sim 广播形态**：current_screen 值来自引擎声明（evidence 前缀 `screen:`、mode=synthesized、值级豁免结算/大厅屏），切章规则与实机同形；settlement 写入行兼作本章开章证据（sim 无 current_screen 形态，pipeline §4 修订）。
 - **settlement 写入行 = 战斗章开章证据**（T-5 修订，sim 形态适配）：sim 无 `current_screen`/战斗 actor 行，结算写入是唯一的战斗结算强证据——`field='settlement'` 的写入行开/续「画面-战斗」快照章（live 数据 current_screen 行在先，本证据不触发；settlement 本体仍走章内变化块）。
 - **弹层行归属只认 actor 映射**：实测弹层动作的回执 `screen` 字段恒为底层画面（备战/商店，524 条全量零弹层值）、弹层 actor 的 `sig.screen` 恒空——回执 screen 与 sig.screen **不参与切分**，仅作章内动作锚定注记。行 `sig.actor` 命中画面注册表（render-spec §3，actor 全名 → 画面 id）→ 该行归入对应弹层画面章（在该行处开新章，章持续到下一画面证据出现）。
 - **未注册 screen id**（实测 sim 侧 `货币战争-BOSS简报/补给/遭遇节点`）：按原样 id 开章、0 观察键集空、非决策面，并记缺口。

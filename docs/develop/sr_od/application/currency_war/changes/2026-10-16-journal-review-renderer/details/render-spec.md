@@ -41,7 +41,20 @@
 | 货币战争-备战 | 画面-备战 | ✓ | 金 gold/血 hp/等级 level/经验 xp(`已攒/所需`)/升级价 level_up_cost/连胜 streak；前排·后排 deployed（§4.3 单位格式）；备战席 bench（槽位表，§4.3）；后台格数 back_layout；羁绊计数 board（`名×计数`顿号串）；装备库存 equips/穿戴 occupied_equips；晶矿 spheres（`N 座(颜色×n,…)`；points 为点击载荷不渲染）；溢出 overflow_warning/overflow_card；持卡 active_strategies/环境 active_env |
 | 货币战争-备战-开商店 | 画面-商店 | ✓ | 金 gold/免费刷新余量 free_refresh_left/刷新价 shop_refresh_cost/等级 level；牌面表（见下）；概率 refresh_probs（`档→概率`顿号串） |
 | 货币战争-战斗等待 | 画面-战斗 | ✗ | 战前：deployed/enemy_difficulty/enemy_affixes；**结算不入 0 观察**——settlement 写入行走 pipeline §5「章内变化」块（键集：hp_after/streak_after/killed→胜负/progress_delta/gold/level/xp；来源锚 = `cw_screen_battle_wait.py:125,449-461,550-565`）。settlement 写入行兼作本章开章证据（sim 无 current_screen 形态，pipeline §4 修订） |
-| （sim 侧未注册 id：货币战争-BOSS简报/补给/遭遇节点） | 原样 id | ✗ | 空（兜底形态，pipeline §4） |
+| （sim 侧真未注册 id） | 原样 id | ✗ | 空（兜底形态，pipeline §4；注册表扩容后原样本 货币战争-BOSS简报/补给/遭遇节点 已成注册键，兜底只承接未来未知画面） |
+| 货币战争-BOSS简报 | 画面-BOSS简报 | ✗ | plane_bosses、enemy_affixes、selected_difficulty（sim 广播值） |
+| 货币战争-简报 | 画面-BOSS简报 | ✗ | 同 BOSS简报（sim 广播值） |
+| 货币战争-补给 | 画面-补给 | ✓ | supply.options、supply_refresh_left、gold（sim 广播值） |
+| 货币战争-遭遇节点 | 画面-遭遇 | ✓ | encounter.options、encounter_refresh_left（sim 广播值） |
+| 货币战争-投资环境 | 画面-投资环境 | ✓ | invest_env_opts、env_refresh_left、gold（sim 广播值） |
+| 货币战争-投资策略 | 画面-投资策略 | ✓ | invest_strategy_opts、strategy_refresh_left（sim 广播值） |
+| 货币战争-位面过渡 | 画面-位面转场 | ✗ | node_seq_by_plane、enemy_affixes（sim 广播值） |
+| 货币战争-备战-武装箱选择 | 画面-箱子 | ✓ | box_card_names（sim 广播值） |
+| 货币战争-备战-专家邀请函 | 画面-专家邀请 | ✓ | expert_invite（sim 广播值） |
+| 货币战争-盛会之星 | 画面-巨星 | ✓ | megastar_opts（sim 广播值） |
+| 货币战争-银狼升星 | 画面-银狼策划 | ✓ | planner_opts（sim 广播值） |
+
+- 注册纪律：同 title 必须同规格（decision/键集）——相邻合并沿用先开章规格，异规格会同义静默错判；本表以代码为准（渲染器 `SCREEN_REGISTRY` 为最终事实）。
 
 - 弹层章（由 actor 映射开章；回执 screen/sig.screen 不参与切分，pipeline §4）：
 

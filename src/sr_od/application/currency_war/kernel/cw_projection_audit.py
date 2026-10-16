@@ -409,10 +409,14 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 派生域与画面上下文 ——
     'prev_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察汇聚唯一写点(observe_screen_context,R1 §3.1.4)'),
+        basis='实机 = 观察汇聚(observe_screen_context,R1 §3.1.4);'
+              'sim = _announce_screen 容器广播(evidence screen: 前缀,'
+              '值级豁免结算/大厅屏,迭代 2026-10-16-sim-screen-announce)'),
     'current_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='观察汇聚唯一写点(observe_screen_context)'),
+        basis='实机 = 观察汇聚(observe_screen_context);'
+              'sim = _announce_screen 容器广播(第二写点,'
+              '迭代 2026-10-16-sim-screen-announce)'),
     'top_bar_raw': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='顶栏原文观察层字段(用户终裁 2026-09-11 字段层次终极版:'
