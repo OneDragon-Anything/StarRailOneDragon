@@ -1988,7 +1988,7 @@ _validate_strategy_grants()
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
 # 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
 # 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
-# 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银;头彩 settled 定谳局)。
+# 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银;头彩/尾彩 settled 定谳局)。
 @dataclass(frozen=True)
 class StrategyPoolRewrite:
     """投资环境的**策略池品质改写**结构(品质改写型估值;与 EnvEconomyEffect/GiftGrant
@@ -2049,12 +2049,11 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
         pending_notes='效果原文「第一个投资策略」为棱彩;覆盖面已定谳 = offer 级'
                       '改写(第 1 次取卡机会 3 张候选全棱彩),用户裁决 2026-10-16'
                       '确认;sim 照登记接入第 1 次取卡(rewrite_settled)'),
-    # 尾彩 offer 覆盖面歧义(三卡全棱彩还是仅尾卡棱彩,效果原文
-    # 「第三个投资策略」直读按单张登记,实采定案前保守)→ pending_notes 必填
     '尾彩': StrategyPoolRewrite(
-        rewrite_quality='棱彩', rewrite_picks=(3,),
-        pending_notes='效果原文「第三个投资策略」为棱彩;三卡全棱彩还是仅尾卡'
-                      '棱彩歧义,按单张保守登记,实采挂账(详设 §2.2.1)'),
+        rewrite_quality='棱彩', rewrite_picks=(3,), rewrite_settled=True,
+        pending_notes='效果原文「第三个投资策略」为棱彩;覆盖面已定谳 = offer 级'
+                      '改写(第 3 次取卡机会 3 张候选全棱彩),用户裁决 2026-10-16'
+                      '确认;sim 照登记接入第 3 次取卡(rewrite_settled)'),
     # 银·金·彩 = offer 结构改写(三选项品质按槽位)+ 刷新 +2;槽位-品质映射
     # 语义与「三品质各一」直觉不同(实测 offer 金重仓,详设 §2.2.2 π_offer
     # 读数),实采待办 → pending_notes 必填

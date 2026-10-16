@@ -470,8 +470,8 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
     """策略 offer 候选生成(U07③:先掷品质 → 该品质池均匀取 1;
     offer 内去重 + 排除已出选项 = 全程不重复)。
 
-    ``forced_quality`` 非空 = 品质改写命中次(时代族/头彩(settled 定谳)
-    环境,判据 =
+    ``forced_quality`` 非空 = 品质改写命中次(时代族/头彩/尾彩(settled
+    定谳)环境,判据 =
     :func:`rewrite_quality_for_pick`):该张候选跳过品质掷点直取目标
     品质池(2026-10-14 用户裁定:固定品质后照常抽样,可观察面 = 候选
     全目标品质);目标品质池被排除集吃光 → 回退全池(排除后),回退
@@ -519,8 +519,10 @@ def rewrite_quality_for_pick(active_env: str | None,
     校验保证该形状无 pending 歧义);部分改写型经 ``rewrite_settled``
     定谳后同判据接入——头彩已经用户裁定 2026-10-16 定谳 = offer 级覆盖
     面(第 1 次取卡机会 3 张候选全目标品质),接替 T-11 §8 裁定 1 的实采
-    门槛;尾彩仍未定谳返回 None(归 T-25)。未定谳部分型必填 pending_notes
-    的建表闸保持。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
+    门槛;尾彩已经用户裁定 2026-10-16 定谳 = offer 级覆盖面(第 3 次取卡
+    机会 3 张候选全目标品质),部分改写型至此全部定谳。未定谳部分型必填
+    pending_notes 的建表闸保持(判据 settled 分支保留为未来新增部分型的
+    守卫)。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
     与 ``ENV_POOL_REWRITE.rewrite_picks`` 同坐标系。环境名直查不做归一
     (与现役注册表消费同款形状;环境名来自注册表注册,无 OCR 变异源)。
     """
