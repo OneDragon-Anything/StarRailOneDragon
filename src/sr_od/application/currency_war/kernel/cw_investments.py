@@ -854,7 +854,8 @@ _validate_strategy_effects()
 #: 后续 offer 品质分布的环境集合。游戏事实名单(单一源 = 本常量位,随
 #: 注册表演进);消费面 = 测试仓一致性校验(test_sim_offer.py:本名单 ⊆
 #: ENV_POOL_REWRITE 键集,防双名单漂移)——sim 抽样改写判据实际消费
-#: ENV_POOL_REWRITE 结构字段(rewrite_picks 全改写型判据),本名单不作
+#: ENV_POOL_REWRITE 结构字段(rewrite_picks 全改写型判据;部分型经
+#: settled 定谳后同判据接入),本名单不作
 #: 运行时判据;披露键 'invest_quality_rewrite_envs_pending' 已随
 #: 2026-10-14 T-11 批整体退役,勿再引用。
 QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
@@ -1987,7 +1988,7 @@ _validate_strategy_grants()
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
 # 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
 # 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
-# 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银)。
+# 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银;头彩 settled 定谳局)。
 @dataclass(frozen=True)
 class StrategyPoolRewrite:
     """投资环境的**策略池品质改写**结构(品质改写型估值;与 EnvEconomyEffect/GiftGrant
@@ -2019,7 +2020,10 @@ class StrategyPoolRewrite:
     - pending_notes: 效果原文歧义待办(单张改写型 offer 覆盖面歧义:三卡全改
       还是仅点名张;银·金·彩槽位-品质映射语义)——pending 条目必填
       (_validate_env_pool_rewrite 构建闸,_validate_strategy_effects 先例
-      同款)
+      同款);定谳 settled 条目亦以非空 notes 记录裁定时点与结论
+    - rewrite_settled: rewrite_picks 登记的覆盖范围已定谳,sim 照登记逐序
+      接入(部分改写型的定谳标记;全改写型 picks==(1,2,3) 结构形状即
+      定谳,设 True 属冗余但不校验)
     """
     rewrite_quality: str = ''
     rewrite_picks: tuple[int, ...] = ()
@@ -2028,6 +2032,7 @@ class StrategyPoolRewrite:
     extra_strategy_offer_node: tuple[int, int] | None = None
     difficulty_exempt: bool = False
     pending_notes: str = ''
+    rewrite_settled: bool = False
 
 
 ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
@@ -2039,12 +2044,13 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
     # difficulty_exempt 如实登记(§2.2.3 适用范围声明:数值不折金,不产生分值)
     '白银时代': StrategyPoolRewrite(rewrite_quality='银', rewrite_picks=(1, 2, 3),
                                     difficulty_exempt=True),
-    # 头彩/尾彩 offer 覆盖面歧义(三卡全棱彩还是仅首/尾卡棱彩,效果原文
-    # 「第一个/第三个投资策略」直读按单张登记,实采定案前保守)→ pending_notes 必填
     '头彩': StrategyPoolRewrite(
-        rewrite_quality='棱彩', rewrite_picks=(1,),
-        pending_notes='效果原文「第一个投资策略」为棱彩;三卡全棱彩还是仅首卡'
-                      '棱彩歧义,按单张保守登记,实采挂账(详设 §2.2.1)'),
+        rewrite_quality='棱彩', rewrite_picks=(1,), rewrite_settled=True,
+        pending_notes='效果原文「第一个投资策略」为棱彩;覆盖面已定谳 = offer 级'
+                      '改写(第 1 次取卡机会 3 张候选全棱彩),用户裁决 2026-10-16'
+                      '确认;sim 照登记接入第 1 次取卡(rewrite_settled)'),
+    # 尾彩 offer 覆盖面歧义(三卡全棱彩还是仅尾卡棱彩,效果原文
+    # 「第三个投资策略」直读按单张登记,实采定案前保守)→ pending_notes 必填
     '尾彩': StrategyPoolRewrite(
         rewrite_quality='棱彩', rewrite_picks=(3,),
         pending_notes='效果原文「第三个投资策略」为棱彩;三卡全棱彩还是仅尾卡'
@@ -2082,7 +2088,9 @@ def _validate_env_pool_rewrite() -> None:
     「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形:
     extra_strategy_offer_node 非 None 时两元各 ≥1、位面 ∈ PLANE_NODE_TABLES
     且轮次 ≤ 该位面序列长(坐标系 = (位面, 轮次) 单点两元各 1 基;不在表/
-    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False)。
+    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False);⑥ settled
+    定谳闸:rewrite_settled=True 且 rewrite_quality 为空 → 炸(settled
+    标记只对品质改写型有意义,防登记错位)。
     """
     orphans = [n for n in ENV_POOL_REWRITE if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2120,6 +2128,11 @@ def _validate_env_pool_rewrite() -> None:
                     f"ENV_POOL_REWRITE 挂点轮次超位面节点数:{_name!r} "
                     f"extra_strategy_offer_node={_node}(位面 {_plane} 序列长 "
                     f"{len(PLANE_NODE_TABLES[_plane])},登记笔误?)")
+        if _rw.rewrite_settled and not _rw.rewrite_quality:
+            raise ValueError(
+                f"ENV_POOL_REWRITE settled 定谳闸:{_name!r} rewrite_settled="
+                f"True 而 rewrite_quality 空(settled 只对品质改写型有意义,"
+                f"登记错位)")
 
 
 _validate_env_pool_rewrite()

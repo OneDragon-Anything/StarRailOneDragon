@@ -470,7 +470,8 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
     """策略 offer 候选生成(U07③:先掷品质 → 该品质池均匀取 1;
     offer 内去重 + 排除已出选项 = 全程不重复)。
 
-    ``forced_quality`` 非空 = 品质改写命中次(时代族环境,判据 =
+    ``forced_quality`` 非空 = 品质改写命中次(时代族/头彩(settled 定谳)
+    环境,判据 =
     :func:`rewrite_quality_for_pick`):该张候选跳过品质掷点直取目标
     品质池(2026-10-14 用户裁定:固定品质后照常抽样,可观察面 = 候选
     全目标品质);目标品质池被排除集吃光 → 回退全池(排除后),回退
@@ -510,20 +511,23 @@ def sample_env_offer(rng: random.Random, excluded: set[str],
 
 def rewrite_quality_for_pick(active_env: str | None,
                              pick_ordinal: int) -> str | None:
-    """品质改写判据:当前环境命中「全改写型」条目且本次取卡序在改写集
-    内 → 返回目标品质;否则 None(按默认分布抽样)。
+    """品质改写判据:当前环境命中「全改写型,或 settled 定谳的部分型」
+    条目且本次取卡序在改写集内 → 返回目标品质;否则 None(按默认分布
+    抽样)。
 
     全改写型判据 = ``rewrite_picks == (1, 2, 3)``(时代族结构特征,建表
-    校验保证该形状无 pending 歧义——部分改写型必填 pending_notes 的逆
-    否)。部分改写型(头彩/尾彩)offer 覆盖面歧义未定案,不接入返回
-    None(2026-10-14 用户裁定:实采定案后由各自建模批接入,复用本判据
-    放宽一行)。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
+    校验保证该形状无 pending 歧义);部分改写型经 ``rewrite_settled``
+    定谳后同判据接入——头彩已经用户裁定 2026-10-16 定谳 = offer 级覆盖
+    面(第 1 次取卡机会 3 张候选全目标品质),接替 T-11 §8 裁定 1 的实采
+    门槛;尾彩仍未定谳返回 None(归 T-25)。未定谳部分型必填 pending_notes
+    的建表闸保持。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
     与 ``ENV_POOL_REWRITE.rewrite_picks`` 同坐标系。环境名直查不做归一
     (与现役注册表消费同款形状;环境名来自注册表注册,无 OCR 变异源)。
     """
     rewrite = ENV_POOL_REWRITE.get(active_env or '')
     if rewrite is None or rewrite.rewrite_quality == '' \
-            or rewrite.rewrite_picks != (1, 2, 3):
+            or (rewrite.rewrite_picks != (1, 2, 3)
+                and not rewrite.rewrite_settled):
         return None
     return rewrite.rewrite_quality if pick_ordinal in rewrite.rewrite_picks \
         else None
