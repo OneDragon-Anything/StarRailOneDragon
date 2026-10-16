@@ -28,6 +28,12 @@ from sr_od.application.currency_war.kernel.cw_overlay_register import (
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
+#: 专家邀请函选卡·解锁名不可观察申报 kind(语义申报非缺陷;沿
+#: cw_gain_chain.ENV_REROLL_DECL 先例不入 DEFECT_ 词表——解锁状态缺登记
+#: 是观察数据缺口非运行缺陷,真值归观察覆盖,候选名观察建档批接线后
+#: 本 kind 退役)。
+EXPERT_UNLOCK_NAME_UNOBSERVED: str = 'pick_expert_name_unobserved'
+
 # —— 转移动作声明构造(动作后果声明化详设 world-decl.md §2 表 #5/#9/
 #    #10/#13-#17;画面档名字面值权威 = assets/game_data/screen_info 档名;
 #    trigger 封闭集单一源 = sim 后端 advance 分派表键集,值零新词沿用
@@ -190,10 +196,29 @@ def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig)
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。
     applied 出口构造后果声明(纯转移返回当前节点屏,详设 world-decl.md
-    §2 表 #17)。"""
+    §2 表 #17)。
+
+    专家解锁登记缺口申报:选中卡(idx≥0)对应的专家名不可观察
+    (``expert_invite`` payload 只有羁绊解析无候选名;羁绊 → 名非唯一
+    映射,如停云/青雀同仙舟)→ 只落 ``_emit_defect`` 语义申报一行
+    (kind = :data:`EXPERT_UNLOCK_NAME_UNOBSERVED`,留存证据不停机),
+    ``gs.unlocked_experts`` 解锁写端待候选名观察建档批接线;真值归观察
+    覆盖(实机商店采样猜测腿在该通道解锁后仍按无专家猜,采样偏差由
+    ``logic_rand_outcome`` 台账收束)。idx=-1(现金为王)= 无专家解锁,
+    零申报。"""
     #(精确消费):选卡动作消费同 kind 登记
     # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'expert_invite')
+    idx = getattr(param, 'idx', None)
+    if isinstance(idx, int) and idx >= 0:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            _emit_defect,
+        )
+        _emit_defect(field_name='unlocked_experts', expected=None,
+                     actual=(f'已选专家邀请函第 {idx} 卡(名字不可观察,'
+                             '解锁登记待候选名观察建档)'),
+                     evidence='pick_expert_invite:name_unobserved', sig=sig,
+                     kind=EXPERT_UNLOCK_NAME_UNOBSERVED)
     return _report_zero_write(gs, param, sig, 'zero_write(pick_expert_invite)',
                               decl=_decl_bottom(gs, ''))
 

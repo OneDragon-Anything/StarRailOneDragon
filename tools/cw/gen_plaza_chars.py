@@ -176,6 +176,11 @@ def check_vs_registry(roles: list) -> list[str]:
             diffs.append(
                 f"{rid} {cname}: traits plaza={sorted(p_traits)} vs 注册表={sorted(r_traits)}"
                 f"(多官方:{sorted(p_traits - r_traits)} / 缺官方:{sorted(r_traits - p_traits)})")
+        # 专家顾问标志(economy.md §1:V4.4 专家名单以 plaza is_expert 字段为
+        # 准;注册表 is_expert 驱动基础牌库排除/概率 v 值/解锁状态闭集闸)
+        p_expert = bool(e.get("is_expert"))
+        if ch.is_expert != p_expert:
+            diffs.append(f"{rid} {cname}: is_expert plaza={p_expert} vs 注册表={ch.is_expert}")
     return diffs
 
 

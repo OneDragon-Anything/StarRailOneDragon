@@ -205,6 +205,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='动作落地获得链写(gain_invest_strategy:按名字去重追加)'
               ' + 观察覆盖(持卡列表)'),
+    'unlocked_experts': ProjectionAuditRow(
+        status=AUDIT_WRITE_END,
+        basis='本局已解锁专家顾问(获得链 advisor 道权威写:on_env_gained/'
+              'on_strategy_gained/on_equipment_gained 解锁原语,只增去重;'
+              '池派生消费 = cw_pool) + 专家邀请函通道申报行缺口'
+              '(pick_expert_name_unobserved,候选名观察建档批接线);'
+              '商店出现未登记专家 = 观察覆盖采新'),
     'pending_item_grants': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='定时道具发放队列(唯一逻辑写端 = 获得链:on_env_gained 登记'

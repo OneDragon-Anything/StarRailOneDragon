@@ -20,7 +20,6 @@ from collections.abc import Callable
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
-    _emit_defect,
 )
 
 _PRODUCER = 'CwGainChain'
@@ -67,22 +66,19 @@ def roll_hacker_mod(rng: random.Random) -> str:
 # 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(gain-chain design
 # §1.4),未收录卡只走注册或零效果(查无效果安静不写)。
 
-#: 骇客专家:银狼 bench 腿的送出单位(卡文「获得专家顾问【银狼】」;
-#: 星级未标 = 1★ 同句式先验,确定面语义——先验错 = 响停修因非随机)。
-_HACKER_BENCH_GRANT: tuple[str, int] = ('银狼', 1)
-
 
 def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
                               rng: random.Random) -> list[str]:
-    """效果函数·骇客专家:银狼(策略卡参考实现,改走链原语,
+    """效果函数·骇客专家:银狼(策略卡,改走链原语,
     正本 = game_state/gain-chain.md §2/§3)。
 
     链序(逐步各落一行):
-    1. **bench 腿**(确定性):银狼 1★ 经 ``gain_character`` 入席(落位 →
-       回调 → 单级升星判断 → 产物递归,链式固定时序);
-    2. **商店池腿**(零容器写):银狼加入本局商店池——商店池无容器字段
-       (逐帧观察为真值),遥测行申报;
-    3. **随机改件腿**(采样链):采样改件身份 → ``gain_equipment(rand=True)``
+    1. **商店池腿**(权威状态):银狼解锁入池——官方卡文「获得专家顾问
+       【银狼】,并使其在本局游戏中加入商店」= 入池可刷,非直接送单位;
+       容器权威字段 = ``gs.unlocked_experts``,写入端 = 获得链 advisor 道
+       (:func:`cw_gain_chain.on_strategy_gained`,本效果体注册于其效果体
+       腿之后,解锁先于本函数执行),本函数零写该腿;
+    2. **随机改件腿**(采样链):采样改件身份 → ``gain_equipment(rand=True)``
        入栏(采样效果对子链翻转 rand,gain-chain §5)→ 后果送单位由
        ``on_equipment_gained`` 回调自动消费(内联查表删除)。
 
@@ -90,26 +86,13 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     A3 定死):效果体执行中实际被写过的域(含回调子链,值快照变化)不再
     翻来源;未写域(gold 不在域集,对抗审查⑪)值不变 ``write_logic_rand``
     翻来源留存证据。与现行 written 集语义等价(标记「暴露给随机事件但本次
-    未写」的域;差一面 = 现行对银狼腿已写 bench 域的多余翻来源行被省略
-    ——provenance 行级,容器值零差)。
+    未写」的域)。
     """
     # 惰性 import 链原语(运行时解析破环;模块 docstring import 方向声明)
     from sr_od.application.currency_war.kernel.cw_gain_chain import (
-        gain_character,
         gain_equipment,
     )
-    steps: list[str] = []
-    r = gain_character(gs, _HACKER_BENCH_GRANT[0], _HACKER_BENCH_GRANT[1],
-                       rand=False, sig=sig,
-                       evidence='pick_invest_hacker_bench',
-                       producer=_PRODUCER)
-    steps.append(f'bench_grant:{_HACKER_BENCH_GRANT[0]}'
-                 f'(placed={r.placed},merge={r.merge_levels})')
-    _emit_defect(field_name='shop_pool', expected=None,
-                 actual=f'{_HACKER_BENCH_GRANT[0]} 入商店池',
-                 evidence='pick_invest_hacker_shop_pool', sig=sig,
-                 kind='pick_invest_shop_pool_decl')
-    steps.append('shop_pool_decl(零容器写)')
+    steps: list[str] = ['shop_pool_unlock:银狼(advisor 道权威写,零本体重写)']
     # 随机改件腿(采样链;rand=True 采样子链)。前后值快照 = 标记域判定输入
     #(repr 签名:写端恒构造新值对象,值变签名必变)。
     mod = roll_hacker_mod(rng)

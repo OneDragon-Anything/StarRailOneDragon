@@ -61,7 +61,8 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
       /cw_screen_partner)。
 
     best-effort:session 缺失 / infra 异常不阻塞确认收尾(选角色分支=
-    专家入商店由商店逻辑接管,无 session 局状态变更,不推进)。
+    专家入池状态登记归获得链 advisor 道与选卡上报,本函数不管池状态,
+    不推进)。
     """
     if session is None or not item:
         return

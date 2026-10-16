@@ -391,16 +391,15 @@ def effective_deal_probs(level: int, rng: random.Random, *,
 
 def deal_shop(gs: GameState, rng: random.Random, *, level: int,
               probs: dict[int, float] | None = None,
-              extra_experts: dict[str, int] | None = None,
               tag: str = 'shop:deal') -> None:
     """整店发牌并写容器商店载荷(obs 渠道;节点切换自动全刷写点)。
 
     发牌算法本体 = kernel ``cw_shop_deal.sample_shop_deal``(两执行面
     同源单一实现;sim 侧采样即世界真值)。名集空 → 槽留空(定长 5 槽
-    三态模型的 empty 槽)。
+    三态模型的 empty 槽)。专家顾问入池 = 容器 ``gs.unlocked_experts``
+    派生(获得链解锁写入,drawable_names 消费),本层零透传。
     """
-    payload = sample_shop_deal(gs, rng, level=level, probs=probs,
-                               extra_experts=extra_experts)
+    payload = sample_shop_deal(gs, rng, level=level, probs=probs)
     gs.observe(gs.shop, payload, evidence=sim_evidence(tag),
                sig=obs_sig(group_id=f'sim:{tag}'))
 

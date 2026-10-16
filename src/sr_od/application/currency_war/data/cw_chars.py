@@ -29,6 +29,14 @@ class Character:
     flows: tuple[str, ...]      # 流派羁绊(击破/燃血/…;无则空)
     independent: str = ""       # 独立羁绊名(挚爱之人/救世主/大守护者…;无则 "")
     source: str = ""            # 米游社 content_id
+    # 专家顾问(V4.4 机制,economy.md §1):初始不参与普通商店招募(fixed_pool
+    # 排除;概率模型 v 值同口径排除),对局中经投资环境/投资策略/专家邀请函
+    # 三通道解锁后本局加入商店。名单权威 = plaza is_expert 字段(economy.md
+    # 「V4.4 专家名单以 plaza is_expert 字段为准」);交叉核对 = 重跑
+    # tools/cw/gen_plaza_chars.py(扩展 is_expert 逐条 diff)。解锁写端 =
+    # gain_chain(env/strategy advisor 道 + 装备通道),容器状态 =
+    # GameState.unlocked_experts,池消费 = cw_pool。
+    is_expert: bool = False
     # 「挂后台效果」单位级载体(cw4 前置先行字段):该单位坐备战席
     # 即生效的效果族标签(空串=无,纯燃料/战力件)。当前已登记:'星级供强'
     # (黑塔:备战席小黑塔星级合计供给大黑塔前后台强度,final_daheita_aoe §1
@@ -81,13 +89,14 @@ def is_trailblazer(name: str) -> bool:
 
 def _ch(name: str, cost: int, position: str, char_type: str,
         factions: str = "", flows: str = "", independent: str = "", source: str = "",
-        bench_effect: str = "") -> Character:
+        bench_effect: str = "", is_expert: bool = False) -> Character:
     """构造助手:阵营/流派用"、"分隔的字符串 → tuple。空串 → 空 tuple。"""
     return Character(
         name=name, cost=cost, position=position, char_type=char_type,
         factions=tuple(f for f in factions.split("、") if f) if factions else (),
         flows=tuple(f for f in flows.split("、") if f) if flows else (),
         independent=independent, source=source, bench_effect=bench_effect,
+        is_expert=is_expert,
     )
 
 
@@ -100,20 +109,20 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("艾丝妲", 1, "front", "辅助", "银河学者", "持续伤害", source="6536"),
     _ch("黑塔", 1, "flex", "输出", "银河学者", "群攻", source="6535",
          bench_effect="星级供强"),
-    _ch("青雀", 1, "front", "输出", "仙舟", "战技点", source="6534"),
+    _ch("青雀", 1, "front", "输出", "仙舟", "战技点", source="6534", is_expert=True),
     _ch("飞霄", 1, "front", "输出", "狼狩", "追击", source="6373"),
     _ch("椒丘", 1, "front", "治疗、辅助", "狼狩", "持续伤害、减益", source="6531"),  # trait 对齐 plaza:+狼狩(characters.md 阵营速查早已有,注册表漏)
-    _ch("加拉赫", 1, "flex", "治疗", "盛会之星", "治疗、击破", source="6522"),
+    _ch("加拉赫", 1, "flex", "治疗", "盛会之星", "治疗、击破", source="6522", is_expert=True),
     _ch("娜塔莎", 3, "flex", "治疗", "贝洛伯格", "治疗", source="6548"),  # 费用勘误 1→3(广场 config rarity+bwiki 双源)
-    _ch("桑博", 1, "flex", "输出", "贝洛伯格、星间旅人", "持续伤害", source="6554"),
+    _ch("桑博", 1, "flex", "输出", "贝洛伯格、星间旅人", "持续伤害", source="6554", is_expert=True),
     _ch("赛飞儿", 1, "front", "辅助", "夜之半神", "追击、减益", source="6553"),
     _ch("万敌", 1, "flex", "输出", "夜之半神", "燃血", source="6541"),
     _ch("翡翠", 1, "back", "输出、辅助", "公司", "群攻", source="6550"),
-    _ch("停云", 1, "back", "辅助", "仙舟", "能量", source=""),  # 补录:plaza id=1202,is_expert 专家顾问,技能佳音降祥瑞
+    _ch("停云", 1, "back", "辅助", "仙舟", "能量", source="", is_expert=True),  # 补录:plaza id=1202,is_expert 专家顾问,技能佳音降祥瑞
     _ch("藿藿", 1, "flex", "治疗、辅助", "仙舟", "治疗、能量", source="6398"),
     _ch("三月七", 1, "back", "护盾", "列车同行", "护盾", source="6537"),
-    _ch("刃", 1, "back", "输出", "星核猎手", "燃血", source="6532"),
-    _ch("貊泽", 1, "back", "输出、辅助", "狼狩", "追击", source="6530"),  # trait 对齐 plaza:-减益
+    _ch("刃", 1, "back", "输出", "星核猎手", "燃血", source="6532", is_expert=True),
+    _ch("貊泽", 1, "back", "输出、辅助", "狼狩", "追击", source="6530", is_expert=True),  # trait 对齐 plaza:-减益
     _ch("远坂凛", 1, "flex", "输出", "命运圣杯", "战技点", source="7879"),
     # —— 2 费 ——(卡芙卡图鉴 rate=2费,1费阵容常用)
     _ch("卡芙卡", 2, "flex", "输出、辅助", "星核猎手", "持续伤害", source="6538"),
@@ -131,10 +140,10 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("缇宝", 2, "flex", "辅助、输出", "昼之半神", "群攻、量子同频", source="6542"),
     _ch("花火", 2, "back", "辅助", "盛会之星", "战技点、量子同频", source="6401"),
     _ch("灵砂", 2, "front", "治疗、输出", "狼狩", "治疗、击破", source="6261"),
-    _ch("佩拉", 2, "back", "辅助、输出", "贝洛伯格", "减益", source="6133"),  # trait 对齐 plaza:+减益
+    _ch("佩拉", 2, "back", "辅助、输出", "贝洛伯格", "减益", source="6133", is_expert=True),  # trait 对齐 plaza:+减益
     # —— 3 费 ——
     _ch("姬子·启行", 3, "front", "输出", "列车同行", "", independent="领航员", source="7881"),
-    _ch("姬子", 3, "back", "输出", "列车同行", "击破", source="6272"),
+    _ch("姬子", 3, "back", "输出", "列车同行", "击破", source="6272", is_expert=True),
     _ch("忘归人", 3, "back", "辅助、输出", "仙舟", "击破", source="6549"),
     _ch("希儿", 3, "front", "输出", "贝洛伯格", "量子同频", source="6547"),
     _ch("Saber", 3, "flex", "输出", "命运圣杯", "能量", source="6546"),
@@ -157,7 +166,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("大黑塔", 4, "front", "输出", "银河学者", "群攻", source="6249"),
     _ch("遐蝶", 4, "front", "输出", "夜之半神", "燃血", source="6248"),
     _ch("开拓者·记忆", 4, "front", "辅助、输出", "列车同行", "能量", source="6247"),  # trait 对齐:+列车同行(plaza 共享模板+bwiki 记忆页;plaza 隐藏条目8007为共享壳)
-    _ch("银狼", 4, "flex", "辅助、输出", "星核猎手", "量子同频", source="6245"),
+    _ch("银狼", 4, "flex", "辅助、输出", "星核猎手", "量子同频", source="6245", is_expert=True),
     _ch("杰帕德", 4, "front", "护盾、输出", "贝洛伯格", "护盾", source="6244"),
     _ch("彦卿", 4, "back", "输出", "仙舟、狼狩", "减益", source="6132"),
     # —— 5 费 ——
@@ -191,6 +200,24 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
 
 # 规范名集合(从 CHARACTERS 派生;供 COMP_LIBRARY.core_chars / config.character_priority 校验)
 CHARACTER_ROSTER: frozenset[str] = frozenset(CHARACTERS.keys())
+
+# 专家顾问名单(从 CHARACTERS 派生,查询便捷口;权威标注在各条目 is_expert):
+# V4.4 = 青雀/停云/加拉赫/桑博/刃/貊泽/佩拉/姬子/银狼。消费 = cw_pool
+# (基础牌库排除)/cw_shop_odds(v 值排除)/cw_game_state(unlocked_experts
+# 成员校验)。
+EXPERT_CHARS: frozenset[str] = frozenset(
+    name for name, c in CHARACTERS.items() if c.is_expert)
+
+
+def assert_expert_names(names: frozenset[str] | set[str] | tuple[str, ...]) -> None:
+    """成员闭集校验:传入名集必须 ⊆ 专家名单(防御调用方拼写漂移造状态)。
+
+    越界名 raise ValueError(unlocked_experts 写端与池派生的构建/写入期闸)。
+    """
+    unknown = sorted(set(names) - EXPERT_CHARS)
+    if unknown:
+        raise ValueError(f'非专家顾问名混入解锁状态(注册表 is_expert 无此人,'
+                         f'版本改名/拼写漂移?):{unknown}')
 
 
 # ===== 查询 =====

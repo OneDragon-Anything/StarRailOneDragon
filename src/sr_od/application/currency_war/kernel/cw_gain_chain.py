@@ -38,6 +38,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.data.cw_chars import (
+    EXPERT_CHARS,
+    assert_expert_names,
+)
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
     _portal_acquired_key,
@@ -69,6 +73,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
     STRATEGY_EFFECTS,
+    STRATEGY_GRANTS,
     equips_by_category,
     normalize_invest_name,
     random_char_pool,
@@ -86,7 +91,6 @@ GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 #: 阵容/装备域不再有 None,拒落档零写无缺陷发出(词表停用申报正本 =
 #: gain-chain.md §6)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
-DEFECT_ADVISOR_DECL: str = 'gain_chain_advisor_decl'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
 
@@ -708,6 +712,33 @@ def _place_bench_item(gs: GameState, item: str, *, rand: bool,
     return True
 
 
+def _unlock_experts(gs: GameState, chars: tuple[str, ...], *, rand: bool,
+                    evidence: str, sig: ChannelSig) -> None:
+    """专家顾问解锁入池写原语(权威状态 = ``gs.unlocked_experts``,只增去重)。
+
+    - 官方机制(economy.md §1):专家顾问初始不参与普通商店招募,获得
+      对应投资环境/投资策略(advisor 道登记表 ENV_GIFTS/STRATEGY_GRANTS
+      advisor=True)或装备(分身墨镜族)后「使其在本局游戏中加入商店」
+      ——本原语 = 该事实的唯一容器落点;池派生
+      (:func:`cw_pool.unlocked_expert_copies`)按名并入
+      ``EXPERT_COPIES_ASSUMED`` 副本,商店发牌即可刷出;
+    - 成员闭集闸(:func:`assert_expert_names`)写入期即校验,越界名炸错
+      优于静默混池;
+    - 解锁 = 确定事实非采样 → rand 透传(gain-chain.md §5;写通道经
+      :func:`_select_write` 单一收束);重复解锁幂等(只增去重)。
+    """
+    if not chars:
+        return
+    assert_expert_names(chars)
+    current = tuple(gs.unlocked_experts.value or ())
+    merged = current + tuple(c for c in chars if c not in current)
+    if merged == current:
+        return
+    write = _select_write(gs, rand)
+    write(gs.unlocked_experts, merged, produced_by=GAIN_CHAIN_PRODUCER,
+          evidence=evidence, sig=sig)
+
+
 def on_env_gained(gs: GameState, session: object, env_name: str, *,
                   rand: bool, sig: ChannelSig,
                   rng: random.Random | None = None) -> tuple[str, ...]:
@@ -717,10 +748,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       (契约,直接送卡)→ chars_immediate 逐个 ``gain_character(char, 1★)``
       (1★ 先验同句式先例:骇客效果体同族,现役 =
       ``cw_gain_effects.py::PICK_INVEST_EFFECTS``;先验错 = 响停修因非
-      随机);advisor=True(特邀专家,顾问入商店)→ **不入席**——容器无
-      商店池字段,身份只进遥测申报一行(先例 = advisor 申报行同族,正本
-      = gain-chain.md §3 advisor 条);chars_immediate 在 advisor 行仅作
-      顾问身份输入,禁再入席;
+      随机);advisor=True(特邀专家/顾问入商店族)→ **不入席**,经
+      :func:`_unlock_experts` 写解锁状态(官方效果文「使其在本局游戏中
+      加入商店」= 入池可刷,非直接送单位;容器权威字段 =
+      ``gs.unlocked_experts``,池派生消费 = cw_pool);chars_immediate 在
+      advisor 行仅作解锁名单输入,禁再入席;
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转停用,规则落本链为单一源);
@@ -785,12 +817,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     if grant is None:
         return ()
     if grant.advisor:
-        for char in grant.chars_immediate:
-            _emit_defect(field_name='shop_pool', expected=None,
-                         actual=f'{char} 顾问入商店(advisor 申报,不入席)',
-                         evidence=f'on_env_gained:{_name}', sig=sig,
-                         kind=DEFECT_ADVISOR_DECL)
-        return (f'advisor_decl:{_name}',)
+        _unlock_experts(gs, grant.chars_immediate, rand=rand,
+                        evidence=f'on_env_gained:{_name}#expert_unlock',
+                        sig=sig)
+        return (f'advisor_unlock:{_name}:'
+                f'{"+".join(grant.chars_immediate)}',)
     effects: list[str] = []
     for char in grant.chars_immediate:
         # 送卡为确定发放(非采样)→ rand 原样透传(gain-chain.md §5)
@@ -937,30 +968,53 @@ def on_equipment_gained(gs: GameState, item: str, *, rand: bool,
                         sig: ChannelSig) -> tuple[str, ...]:
     """「获得装备」触发型效果枚举(gain-chain.md §3):消费
     ``EQUIP_ACQUIRE_CONSEQUENCES`` 数据表(装备获得→送出单位;该表是
-    游戏数据映射不是效果注册表,保留)→ 命中 → ``gain_character`` 送出
-    单位入席递归(表值星级随表;确定发放 → rand 原样透传 gain-chain.md §5)。
-    表外件 = 查无效果安静不写。"""
+    游戏数据映射不是效果注册表,保留)→ 命中且送出单位为专家顾问
+    (分身墨镜族卡文「解锁并获得」= 入池 + 送单位两腿,口述权威
+    2026-09-18 送单位腿)→ :func:`_unlock_experts` 先写解锁再送单位
+    入席;非专家送出单位(银狼LV.999)只走送单位腿。表外件 = 查无效果
+    安静不写。"""
     granted = EQUIP_ACQUIRE_CONSEQUENCES.get(item)
     if granted is None:
         return ()
     name, star = granted
+    effects: list[str] = []
+    if name in EXPERT_CHARS:
+        _unlock_experts(gs, (name,), rand=rand,
+                        evidence=f'on_equipment_gained:{item}#expert_unlock',
+                        sig=sig)
+        effects.append(f'equip_expert_unlock:{name}')
     gain_character(gs, name, star, rand=rand, sig=sig,
                    evidence=f'on_equipment_gained:{item}',
                    producer=GAIN_CHAIN_PRODUCER)
-    return (f'equip_consequence:{name}',)
+    return (*effects, f'equip_consequence:{name}',)
 
 
 def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        sig: ChannelSig,
                        rng: random.Random | None = None) -> tuple[str, ...]:
     """「获得投资策略」触发型效果枚举(gain-chain.md §3;枚举即收敛
-    无注册表):查 ``PICK_INVEST_EFFECTS``(效果内容住
-    ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
-    查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
-    ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
-    rand=True,§5)。"""
-    fn = PICK_INVEST_EFFECTS.get(normalize_invest_name(strategy_name))
+    无注册表):两腿依次消费——
+
+    1. **advisor 解锁腿**:查 ``STRATEGY_GRANTS``(顾问入商店族登记,
+       advisor=True 11 条)→ :func:`_unlock_experts` 写解锁状态(官方
+       效果文「使其在本局游戏中加入商店」= 入池可刷;与
+       :func:`on_env_gained` advisor 道同一原语);
+    2. **效果体腿**:查 ``PICK_INVEST_EFFECTS``(效果内容住
+       ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
+       查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
+       ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
+       rand=True,§5)。"""
+    canon = normalize_invest_name(strategy_name)
+    effects: list[str] = []
+    _grant = STRATEGY_GRANTS.get(canon)
+    if _grant is not None and _grant.advisor:
+        _unlock_experts(gs, _grant.chars_immediate, rand=rand,
+                        evidence=f'on_strategy_gained:{canon}#expert_unlock',
+                        sig=sig)
+        effects.append(f'advisor_unlock:{canon}:'
+                       f'{"+".join(_grant.chars_immediate)}')
+    fn = PICK_INVEST_EFFECTS.get(canon)
     if fn is None:
-        return ()
+        return tuple(effects)
     roll_rng = rng if rng is not None else random.Random()
-    return tuple(fn(gs, sig=sig, rng=roll_rng))
+    return (*effects, *fn(gs, sig=sig, rng=roll_rng))

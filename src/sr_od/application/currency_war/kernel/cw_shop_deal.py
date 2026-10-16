@@ -40,16 +40,15 @@ from sr_od.application.currency_war.kernel.cw_pool import drawable_names
 
 
 def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
-                     probs: dict[int, float] | None = None,
-                     extra_experts: dict[str, int] | None = None) -> ShopPayload:
+                     probs: dict[int, float] | None = None) -> ShopPayload:
     """整店 5 槽发牌采样(纯函数;返回 payload,零容器写——纯度边界见
     模块头)。
 
     逐槽独立:费用档按 ``probs``(缺省基线表 ``REFRESH_PROB[level]``)
     加权掷点 → M06 可进店名集(:func:`drawable_names`)内均匀抽名;名集
     空(该档池被清空/低等级无该档)→ 槽留空(定长 5 槽三态模型的 empty
-    槽,买后留空同款语义)。``extra_experts`` 透传剩余牌库派生(专家入池,
-    sim 兼容形态)。
+    槽,买后留空同款语义)。专家顾问入池由 ``drawable_names`` 从容器
+    ``gs.unlocked_experts`` 派生(获得链解锁写入),本层零透传。
     """
     dist = probs if probs is not None else REFRESH_PROB.get(level, {})
     costs = [c for c, p in dist.items() if p > 0]
@@ -59,7 +58,7 @@ def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
         if costs:
             cost = rng.choices(costs, weights=[dist[c] for c in costs],
                                k=1)[0]
-            names = drawable_names(gs, cost, extra_experts=extra_experts)
+            names = drawable_names(gs, cost)
             if names:
                 name = rng.choice(names)
                 ch = CHARACTERS[name]
