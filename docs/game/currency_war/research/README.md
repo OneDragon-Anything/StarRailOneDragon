@@ -5,11 +5,11 @@
 
 ## 证据优先级排序(权威序;两层;冲突时以高者为准)
 
-**机制事实层**(游戏怎么运转,只能观测确立):`实机实测/图鉴` > `[口述]`(证词;未实测标「待实测」并登记待验证待办)> `[米游社]` > `[社区]`(bwiki/NGA/攻略,单源或推算标 🟡,未找到标 🔴)
+**机制事实层**(游戏怎么运转,只能观测确立):`实机实测/图鉴` > `[米游社]` > `[社区]`(bwiki/NGA/攻略,单源或推算标 🟡,未找到标 🔴)
 
-**策略命题层**(什么打法更优,可证明/可实证):`数学证明([math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md))+ sim/实机分布实证` > `[口述]`(直觉,假设来源——立命题待证,先例=math_proofs 第 4 号命题证伪)> `[米游社]` > `[社区]`
+**策略命题层**(什么打法更优,可证明/可实证):`数学证明([math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md))+ sim/实机分布实证` > `设计文档(strategy-docs 判据正本)` > `[米游社]` > `[社区]`
 
-> 旧单层序(口述最高,2026-09-07 废)已由用户裁定废除;历史 `[口述·权威]` 标签=来源出处标记,解释权归本序。
+> 旧单层序(口述最高,2026-09-07 废)已由用户裁定废除;历史 `[口述·权威]` 标签=来源出处标记,解释权归本序。**2026-10-16 用户裁定:口述登记簿 user_playstyle.md 整份删除,一切判据以设计文档(strategy-docs)为准;历史条目号 [N] 语义按 git 历史回溯。**
 
 ## 术语表(本目录通用词的白话定义)
 
@@ -34,7 +34,7 @@
 
 ## 玩家理解序(新读者从哪读起;依赖驱动)
 
-> 顺序判据 = 玩法依赖:**机制是纪律的前提**(不懂利息档/牌池/乘区,就读不懂纪律为什么这样定),**纪律是过渡的前提**(过渡篇大量按条目号引用 user_playstyle),**过渡与形态证据是终局的前提**。
+> 顺序判据 = 玩法依赖:**机制是设计判据的前提**(不懂利息档/牌池/乘区,就读不懂判据为什么这样定),**过渡与形态证据是终局的前提**。
 
 1. **玩法机制**(游戏怎么运转;自足无前置):
    - [combat.md](combat.md) — 战斗侧:伤害三乘区 / 星级收益 / 扣血结构(为什么装备与星级重要)
@@ -46,9 +46,9 @@
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
     - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
-2. **玩家纪律**(人怎么打;机制之上的打法约束,直觉假设来源——策略命题以 math_proofs 证明与实证为准):
-   - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济利息律 / 升级 / 阵容 / 装备纪律(条目现存至 [42],稳定 ID 永不复用;**直觉假设登记簿**——策略命题以 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 证明与 sim/实机分布实证为准;条目引用须区分已证/待证)
-3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
+2. **玩家纪律**(人怎么打;机制之上的打法约束):
+   - ~~user_playstyle.md~~ **已删除(2026-10-16 用户裁定:口述登记簿退役,一切判据以设计文档为准)**——策略判据正本 = `docs/develop/sr_od/application/currency_war/strategy-docs/`(判据权威定义 = 各编号篇);历史条目号 [N] 语义按 git 历史回溯
+3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过):
    - [transitions.md](transitions.md) — 过渡叙事:开局分级(终局阵容锁定资格)/ 成型停买线 / 换血点 / 保底过渡阵容(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐路线定义(引擎池 / 核心池;代码落地依据)
    - [stage_transitions.md](stage_transitions.md) — 位面 1→2→3 阵容演化定量(加法不换件的数据边界)
@@ -64,7 +64,7 @@
 
 | 问题 | 文件 |
 |---|---|
-| 人怎么打(开局/经济/等级/阵容/装备的直觉假设全景及其证明状态) | [user_playstyle.md](user_playstyle.md) ★直觉假设登记簿(证明状态随 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md)) |
+| 人怎么打(开局/经济/等级/阵容/装备判据) | ~~user_playstyle.md~~ 已删(2026-10-16)——判据权威 = [strategy-docs 设计文档](../../../develop/sr_od/application/currency_war/strategy-docs/README.md);历史条目号按 git 历史回溯 |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 节点经验:基础经验(+2/+0/BOSS+12 待确认)/购买经验 4 金=+4XP/升级门槛表 | [xp-rules.md](xp-rules.md) |
 | 节点类型:三位面默认序列地面真值 / 普通奖励节点=战斗型(有结算屏,档案已定案) | [plane_schedule_observed.md](plane_schedule_observed.md) |

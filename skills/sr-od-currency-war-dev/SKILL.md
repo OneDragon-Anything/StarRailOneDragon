@@ -36,7 +36,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,每op单独记录入口观察+决策循环+判定三槽;判定尺=玩法文档+已登记裁定,算法自洽≠合格;产出含算法缺陷候选;实机监控局终派单执行,策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵;效率剖析与巡检阈值回填=「一局时间花在哪」的拆分方法与巡检阈值回填去向) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
-| 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证;改策略必读=了解已登记假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
+| ~~人怎么玩~~ 口述登记簿已删(2026-10-16 用户裁定:一切判据以设计文档为准;历史条目号 [N] 语义按 git 历史回溯) | 判据权威 = `docs/develop/sr_od/application/currency_war/strategy-docs/` 各编号篇 + math_proofs |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`(分篇入口;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案已按用户令停用) |
 | 单套阵容打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |

@@ -81,8 +81,8 @@ boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 
 [28] 线读数 = P1 出口金 ≥50 的局数,一行,不做门只做读数——[28] 双指标验收
 明确「出口金单独不作验收」(单指标优化会复刻「金 92 过线但板面弱」的假达标);
-出处 = docs/game/currency_war/research/user_playstyle.md 的 [28] 条
-(50 金息律簇,P1 验收框架:利息计算基数保住 × P1 形态达标)。
+出处 = 已退役口述登记簿条目 [28](2026-10-16 删除,git 历史可溯;
+50 金息律簇,P1 验收框架:利息计算基数保住 × P1 形态达标)。
 
 数据源与用法(项目根运行;另机/异目录语料用 --sim-root/--matches-root 显式指路):
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch latest
