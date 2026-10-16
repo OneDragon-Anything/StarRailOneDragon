@@ -14,7 +14,8 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
   由执行链上报函数写 ``gs.gold``(动作 op 自上报,期望态投影),账面
   经 :func:`sync_gold_ledger` 每决策帧入口再同步吸收(有效时账面 ==
   ``gs.gold`` 不变量;发出点不重复挂 delta 钩子防双记);付费刷新费由
-  上报链终结跳写(刷新 = 访问终结,真值 = 下一入口观察),由③锚定
+  上报链直读容器刷价扣金(2026-10-16 用户裁决,与买牌同款双端逻辑态
+  ——推翻旧「终结跳写、真值 = 下一入口观察」口径),账面同经再同步
   吸收;**单卡「X 动作时 +Y 金」型伴生入金**(返利/返利+〔每购买 3
   个 5 费角色 +3〕/节节高升〔任意升级 +1〕)上报链不覆盖,经伴生函数
   **双写**(账面 + ``gs.gold`` 期望态投影扩展);合并同类项(刷新出
@@ -263,9 +264,9 @@ def note_levelup_emission(gs: GameState, new_level: int) -> None:
 #: 计数达阈族阈值(卡面文本:二手市场「商店刷新 20 次后获得 30 金币」/
 #: 长线利好「花费金币进行 30 次刷新后,获得 20 金币」)。计数单一源 =
 #: ``gs.effects.refresh_total/refresh_paid``(EffectsInventory,刷新上报
-#: ``record_refresh`` 单口直加——本协议不自建第二计数器;二手市场的
-#: +30 金由上报尾部 ``check_env_refresh_grants`` 写 gs.gold,失效为
-#: 阈值帧兜底;长线利好 +20 无上报写点,失效是唯一 drift 防线)。
+#: ``record_refresh`` 单口直加——本协议不自建第二计数器;二手市场 +30 /
+#: 长线利好 +20 金均由上报尾部 ``check_env_refresh_grants`` 写 gs.gold
+#: (T-21 后长线利好同有上报写点),失效语义降为阈值帧兜底)。
 SECONDHAND_MARKET_TOTAL: int = 20
 LONG_TERM_PAID_REFRESH: int = 30
 

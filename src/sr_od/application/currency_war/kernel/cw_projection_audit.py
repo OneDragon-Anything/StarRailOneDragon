@@ -167,7 +167,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '(board_derived_adopt,安灯不响);观察侧 badge OCR 双源仲裁'),
     'shop_refresh_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='刷新费现场 OCR,零逻辑写端'),
+        basis='刷新费现场 OCR(live)+ sim 开店呈现写回(观察通道,'
+              'kernel 渲染 world_shop_refresh_cost 现算;零逻辑写端)'),
     # (刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
     #  字段 free_refresh_left(审计行见下方家族块);付费/全量两计数留
     #  效果账本 ActiveEffectInventory,审计面 = 账本自身测试面。)

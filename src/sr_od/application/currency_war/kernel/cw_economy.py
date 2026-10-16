@@ -103,7 +103,10 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 # 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
 # (数值 = min(gold//10,5) = 利息公式,非刷价;三流交叉核对定案)——
 # 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
-# 消费点沿用 ``or 2`` 兜底语义:字段恒为基价,兜底分支不再触发,零行为波及。
+# 消费点语义:容器 ``shop_refresh_cost`` 缺读帧 ``or`` 回退本常量(刷新上报
+# 扣费/op 花销账/渲染 helper world_shop_refresh_cost 三读口同式);非缺读帧
+# 读容器现值——长线利好改价后为 1(live 改价观察/sim 开店呈现写回,
+# fields.md §3.3.4),兜底分支在缺读帧照常触发。
 REFRESH_COST_BASE: int = 2
 
 # 保血阈值(策略校准参数,单一源在本代码;值随实机校准走 git,不走用户 yml)。
