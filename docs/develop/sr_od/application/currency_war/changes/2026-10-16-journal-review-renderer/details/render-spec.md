@@ -40,7 +40,7 @@
 |---|---|---|---|
 | 货币战争-备战 | 画面-备战 | ✓ | 金 gold/血 hp/等级 level/经验 xp(`已攒/所需`)/升级价 level_up_cost/连胜 streak；前排·后排 deployed（§4.3 单位格式）；备战席 bench（槽位表，§4.3）；后台格数 back_layout；羁绊计数 board（`名×计数`顿号串）；装备库存 equips/穿戴 occupied_equips；晶矿 spheres（`N 座(颜色×n,…)`；points 为点击载荷不渲染）；溢出 overflow_warning/overflow_card；持卡 active_strategies/环境 active_env |
 | 货币战争-备战-开商店 | 画面-商店 | ✓ | 金 gold/免费刷新余量 free_refresh_left/刷新价 shop_refresh_cost/等级 level；牌面表（见下）；概率 refresh_probs（`档→概率`顿号串） |
-| 货币战争-战斗等待 | 画面-战斗 | ✗ | 战前：deployed/enemy_difficulty/enemy_affixes；**结算不入 0 观察**——settlement 写入行走 pipeline §5「章内变化」块（键集：hp_after/streak_after/killed→胜负/progress_delta/gold/level/xp；来源锚 = `cw_screen_battle_wait.py:125,449-461,550-565`） |
+| 货币战争-战斗等待 | 画面-战斗 | ✗ | 战前：deployed/enemy_difficulty/enemy_affixes；**结算不入 0 观察**——settlement 写入行走 pipeline §5「章内变化」块（键集：hp_after/streak_after/killed→胜负/progress_delta/gold/level/xp；来源锚 = `cw_screen_battle_wait.py:125,449-461,550-565`）。settlement 写入行兼作本章开章证据（sim 无 current_screen 形态，pipeline §4 修订） |
 | （sim 侧未注册 id：货币战争-BOSS简报/补给/遭遇节点） | 原样 id | ✗ | 空（兜底形态，pipeline §4） |
 
 - 弹层章（由 actor 映射开章；回执 screen/sig.screen 不参与切分，pipeline §4）：
@@ -63,7 +63,7 @@
 ### §4 动作节显示规范
 
 - 标题：`#### <序号> <动作名> <摘要>`；动作名 = §4.1 映射；摘要组装优先级 = action 载荷（如 `藿藿(1金)`）> detail > 无摘要。
-- 动作行 `- 动作:`：`applied/reason/detail` 透传；`applied=false` 或 `reason` 非空 → 行首 **⚠**；extra 逐键列出。
+- 动作行 `- 动作:`：`applied/reason/detail` 透传；`applied=false` 或 `reason` 非空 → 行首 **⚠**；action 载荷 = 人读摘要（`牌名(阵营,费用金,槽N) · char_id · reason`，T-5）；其余 extra 逐键列出。
 - 状态变化表：`| 字段 | 前 → 后 | 说明 |`（挂动作节 = 锚后区间；无锚前缀写入行 = 章「章内变化」块，同表结构）；字段列 = §4.2 映射，未命中显原始 field 名；`logic_hook` 行说明列加「(效果钩子)」。
 - 无状态变化的动作只渲染动作行。
 
@@ -77,20 +77,19 @@
 
 gold→金 / hp→血 / level→等级 / xp→经验 / streak→连胜 / level_up_cost→升级价 / deploy_cap→部署上限 / bench→备战席 / deployed→上阵 / front_row→前排 / back_row→后排 / back_layout→后台格数 / board→羁绊计数 / equips→装备库存 / occupied_equips→穿戴 / shop→商店牌面 / spheres→晶矿 / active_env→投资环境 / active_strategies→持卡 / planner_opts→策划候选 / chosen_*→已选(各选项) / settlement→结算 / node→节点 / current_screen→画面 / overflow_warning→溢出警告 / overflow_card→溢出卡。
 
-#### §4.3 复杂载荷单元格格式（JSON 形状 → 显示，确定性规则）
+#### §4.3 复杂载荷单元格格式（JSON 形状 → 显示，确定性规则；差分单元格与观察行共用 `_value_brief`）
 
 - 通用兜底：list → 顿号串逐元素；dict → `k:v` 逗号串；tuple → 逗号串；None/缺 → 不渲染该行。
-- xp：`(已攒, 所需)` → `已攒/所需`。
-- deployed：前排/后排两行，单位 = `名★级`。
-- bench：槽位表 `| 槽 | 内容 |`，内容 = `名★级` / 「空」/「未识别」（槽三态同 ShopSlot 同构，`cw_game_state.py:740`）。
-- board：`羁绊名×计数` 顿号串。
-- spheres：`count 座(颜色×n,…)`；points 为点击载荷不渲染。
-- options（encounter/supply）：`| 列 | 内容 |` 表，encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`。
+- **已知键走具名摘要（T-5 起，差分单元格与观察行同规，禁截断 raw JSON）**：bench → `爻光1★、三月七1★(空×6)`；deployed → `前排 希儿1★;后排 藿藿1★`；front_row/back_row → 单位顿号串；board → `名×n` 顿号串；spheres → `2 座(灰×2)`（points 不渲染）；shop → `椒丘1金、翡翠1金(空×2)(识别失败×n)`；ore_rewards → `40,10=装备 轮滑鞋;50,10=角色 翡翠;70,10=金+3`；node_path(含 baseline) → `P1: —→奖励→战斗→…`（token 中文）；node → `P1-R3 战斗`；settlement → `胜 血 84 进度 +2 …`；match_final → `stopped hp 84 金 31`；xp → `已攒/所需`；标量列表键（equips/active_strategies/plane_bosses/enemy_affixes/各 *_opts）→ 顿号串；occupied_equips → `单位:装备,装备`；node_seq_by_plane → `P1: 奖励→…;P2: …`；round_fresh_buys → `phase[1,1]: 翡翠、三月七`；pending_loss → `P1-R4 (battle)`；supply/encounter → `0: 角色+装备(带钻);…`（options 摘要）；回执 action 载荷 → `牌名(阵营,费用金,槽N) · char_id · reason`（动作行）。
+- 通用兜底规则用于未注册键；新遥测键应先进 §4.3 摘要注册再进词表。
+- **0 观察的表格型键不走摘要**（entry_tables 路径，规格不变）：bench → 槽位表 `| 槽 | 内容 |`（内容 = `名★级`/「空」/「未识别」，三态同 ShopSlot `cw_game_state.py:740`）；supply/encounter options → `| 列 | 内容 |` 表（encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`）；shop → 五槽牌面表（§3）。摘要路径只服务差分单元格与观察行。
 
 ### §5 特殊情况
 
 1. **仲裁行**（row='obs_event'，识别回读与账面不一致的裁决记录）：挂所在画面章尾注 `- 仲裁 <field>: <old> → <new>（<verdict>）`。
-2. 观察道更新（sig.family='obs' 写入行，非章首快照）：章尾注 `- 观察: <字段中文>=<after>`。
+2. 观察道更新（sig.family='obs' 写入行，非章首快照）：章尾注 `- 观察: <字段中文>=<人读摘要>`；**空值/空串不渲染**；`prev_screen`/`current_screen` 路由键跳过；同章同 (field, 格式化值) 去重（T-5）。
+2a. **渲染同值行**（差分单元格前=后）：不进变化表，章尾注 `- 同值写入 ×N 略(前=后,零信息)`（T-5）。
+2b. **开局段无画面归属行**：渲染为开局组尾「### 开局初始化与基线观察」小节（开局初始化写入 / 开局基线观察 / 未注册缺口保留显影），不粘进画面章（T-5；规则 = pipeline §3 修订）。
 3. 续局（--run/多段）：局头「运行段」如实列出。
 4. 未归行：文末 `## 未归行` 清单（pipeline §6 annex_unattached）；空则省略。未归节组：标题 `## 未归节`，组内画面章同规。
 5. 空动作画面章：只渲染 0 观察 + 章内变化块（若有）+ 策略评价（若决策面）。

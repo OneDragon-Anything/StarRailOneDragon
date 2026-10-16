@@ -127,6 +127,10 @@ class Screen:
     _unreg_counts: dict[str, int] = field(default_factory=dict)
     #: 构建期临时:当前未闭合动作节(重试链合并判据),渲染前剥离
     _cur_action: Action | None = None
+    #: 构建期临时:渲染同值写入计数(前=后,零信息;渲染前转尾注并剥离)
+    _same_skipped: int = 0
+    #: 构建期临时:观察尾注去重集(field, 格式化值)——同章重复写同值不刷屏
+    _obs_seen: set = field(default_factory=set)
 
 
 @dataclass
@@ -145,6 +149,10 @@ class Section:
     kind: str                     # 'open' | 'node' | 'unattached'
     node: NodeInfo | None
     screens: list[Screen] = field(default_factory=list)
+    #: 开局段无画面归属行注记(开局初始化写入/基线观察/缺口;
+    #: pipeline §3 修订——粘进当前画面章会把种子推导与全局首遍观察
+    #: 误记为画面内容,故落组级桶,仅开局段启用)
+    opening_notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -265,6 +273,10 @@ _SNAPSHOT_SCREEN_ACTORS: frozenset[str] = frozenset({
 #: 类属 = 动作 op 类名——note_action_receipt 回执发出者,历史命名带前缀),
 #: 其 logic_action 写入是动作效果,不判未注册缺口。
 _ACTION_ACTOR_EXEMPT: frozenset[str] = frozenset({'CwScreenBuyCards'})
+
+#: 观察尾注跳过键(内部路由面,对复盘零信息:上一画面/当前画面——当前画面
+#: 已是切章锚,重复显影)。
+_OBS_NOTE_SKIP: frozenset[str] = frozenset({'prev_screen', 'current_screen'})
 
 
 def _is_unregistered_screen_actor(actor: str) -> bool:
@@ -408,16 +420,10 @@ def _xp_brief(v: Any) -> str | None:
 
 
 def _delta_value_cell(f: str, v: Any) -> str:
-    """变化表值单元格(结算载荷摘要 / xp a/b / 其余截断 fmt)。"""
+    """变化表值单元格(人读摘要经 _value_brief;None → '—')。"""
     if v is None:
         return '—'
-    if f == 'settlement':
-        return _esc(_settlement_brief(v))
-    if f == 'xp':
-        xp = _xp_brief(v)
-        if xp is not None:
-            return _esc(xp)
-    return _esc(_short(v))
+    return _esc(_value_brief(f, v))
 
 
 def _unit_brief(u: Any) -> str:
@@ -427,6 +433,245 @@ def _unit_brief(u: Any) -> str:
     name = str(u.get('char_id') or '?')
     star = u.get('star')
     return f'{name}{star}★' if star is not None else name
+
+
+# ---------------------------------------------------------------------------
+# 值人读摘要(render-spec §4.3:差分单元格与观察行共用;已知键出人读格式,
+# 未知键回落截断 json——截断 payload 不是人读格式,新键先进 _VALUE_BRIEFS)
+# ---------------------------------------------------------------------------
+
+
+def _units_join(units: Any) -> str:
+    """单位列表 → '名★级、…' / '(空)'。"""
+    if not isinstance(units, list):
+        return _short(units, 40)
+    return '、'.join(_unit_brief(u) for u in units) if units else '(空)'
+
+
+def _bench_brief(v: Any) -> str:
+    """bench 槽位视图 → '爻光1★、三月七1★(空×6)'(unit 槽摘要 + 空槽计数)。"""
+    if not isinstance(v, dict) or not isinstance(v.get('slots'), list):
+        return _short(v, 40)
+    units = [s.get('unit') for s in v['slots']
+             if isinstance(s, dict) and s.get('kind') == 'unit']
+    empties = sum(1 for s in v['slots']
+                  if isinstance(s, dict) and s.get('kind') != 'unit')
+    out = _units_join(units)
+    return out + (f'(空×{empties})' if empties else '')
+
+
+def _shop_brief(v: Any) -> str:
+    """shop 载荷 → '椒丘1金、翡翠1金(空×2)'(content 摘要 + 空/识别失败计数)。"""
+    if not isinstance(v, dict) or not isinstance(v.get('cards'), list):
+        return _short(v, 40)
+    names: list[str] = []
+    empties = unknown = 0
+    for s in v['cards']:
+        kind = str(s.get('kind') or '') if isinstance(s, dict) else ''
+        card = s.get('card') if isinstance(s, dict) else None
+        if kind == 'content' and isinstance(card, dict):
+            names.append(f"{card.get('name') or '?'}{card.get('cost')}金")
+        elif kind == 'unknown':
+            unknown += 1
+        else:
+            empties += 1
+    out = '、'.join(names) if names else '(无内容)'
+    if empties:
+        out += f'(空×{empties})'
+    if unknown:
+        out += f'(识别失败×{unknown})'
+    return out
+
+
+def _board_brief(v: Any) -> str:
+    """board → '仙舟×1、治疗×1' / '(空)'。"""
+    if isinstance(v, dict) and v:
+        return '、'.join(f'{k}×{n}' for k, n in v.items())
+    return '(空)'
+
+
+def _spheres_brief(v: Any) -> str:
+    """spheres → '2 座(灰×2)'(points 为点击载荷不渲染)。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    count = v.get('count')
+    colors = v.get('colors') if isinstance(v.get('colors'), list) else []
+    agg: dict[str, int] = {}
+    for c in colors:
+        agg[str(c)] = agg.get(str(c), 0) + 1
+    detail = ','.join(f'{c}×{n}' for c, n in agg.items())
+    n = count if count is not None else len(colors)
+    return f'{n} 座' + (f'({detail})' if detail else '')
+
+
+def _ore_rewards_brief(v: Any) -> str:
+    """ore_rewards {坐标: 奖励} → '40,10=装备 轮滑鞋;50,10=角色 翡翠;70,10=金+3'。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    if not v:
+        return '(空)'
+    bits: list[str] = []
+    for coord, r in v.items():
+        if not isinstance(r, dict):
+            bits.append(f'{coord}={_short(r, 16)}')
+            continue
+        kind = str(r.get('kind') or '')
+        if kind == 'gold':
+            bits.append(f'{coord}=金+{r.get("gold")}')
+        elif kind == 'equip':
+            bits.append(f'{coord}=装备 {r.get("equip") or "?"}')
+        elif kind == 'char':
+            bits.append(f'{coord}=角色 {r.get("char") or "?"}')
+        else:
+            bits.append(f'{coord}={_short(r, 24)}')
+    return ';'.join(bits)
+
+
+def _node_path_brief(v: Any) -> str:
+    """node_path → 'P1: —→奖励→战斗→…'(token 中文化,空档 —)。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    seq = v.get('seq') if isinstance(v.get('seq'), list) else []
+    tokens = []
+    for s in seq:
+        t = s.get('token') if isinstance(s, dict) else None
+        tokens.append(NODE_KIND_CN.get(str(t), str(t)) if t else '—')
+    plane = v.get('plane')
+    head = f'P{plane}: ' if plane is not None else ''
+    return head + ('→'.join(tokens) if tokens else '(空)')
+
+
+def _node_brief(v: Any) -> str:
+    """node → 'P1-R3 战斗'。"""
+    if isinstance(v, dict):
+        kind = str(v.get('kind') or '')
+        return (f"P{v.get('plane')}-R{v.get('round_num')} "
+                f"{NODE_KIND_CN.get(kind, kind or '?')}")
+    return _short(v, 40)
+
+
+def _deployed_brief(v: Any) -> str:
+    """deployed → '前排 希儿1★;后排 藿藿1★、三月七1★'。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    parts = []
+    for label, key in (('前排', 'front_slots'), ('后排', 'back_slots')):
+        slots = v.get(key)
+        if isinstance(slots, list):
+            parts.append(
+                f'{label} {_units_join([u for u in slots if u is not None])}')
+    return ';'.join(parts) if parts else _short(v, 40)
+
+
+def _match_final_brief(v: Any) -> str:
+    """match_final → 'stopped hp 84 金 31'(局终行摘要;全键见局头)。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    hp = v.get('hp') if v.get('hp') is not None else '—'
+    gold = v.get('gold') if v.get('gold') is not None else '—'
+    return f"{v.get('final_type') or '—'} hp {hp} 金 {gold}"
+
+
+def _scalar_list_brief(v: Any) -> str:
+    """标量列表 → 顿号串(render-spec §4.3 通用兜底的具名形态)。"""
+    if isinstance(v, list):
+        return '、'.join(str(x) for x in v) if v else '(空)'
+    return _short(v, 40)
+
+
+def _occupied_equips_brief(v: Any) -> str:
+    """occupied_equips {单位: [装备]} → '椒丘:轮滑鞋、钻头' / '(空)'。"""
+    if isinstance(v, dict) and v:
+        return '、'.join(f'{k}:{",".join(str(x) for x in eq)}'
+                         for k, eq in v.items() if isinstance(eq, list))
+    return '(空)'
+
+
+def _node_seq_by_plane_brief(v: Any) -> str:
+    """node_seq_by_plane {位面: token 列表} → 'P1: 奖励→…;P2: …'(token 中文)。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    parts = []
+    for plane, seq in v.items():
+        tokens = [NODE_KIND_CN.get(str(t), str(t)) if t else '—'
+                  for t in (seq if isinstance(seq, list) else [])]
+        parts.append(f'P{plane}: ' + ('→'.join(tokens) if tokens else '(空)'))
+    return ';'.join(parts) if parts else '(空)'
+
+
+def _round_fresh_buys_brief(v: Any) -> str:
+    """round_fresh_buys {phase: [位面,轮], names: [牌]} → 'phase[1,1]: 翡翠、三月七'。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    phase = v.get('phase')
+    names = v.get('names') if isinstance(v.get('names'), list) else []
+    head = f'phase{list(phase) if isinstance(phase, list) else phase}: '
+    return head + ('、'.join(str(x) for x in names) if names else '(无)')
+
+
+def _pending_loss_brief(v: Any) -> str:
+    """pending_loss {plane, round_num, node_type} → 'P1-R4 (battle)'。"""
+    if not isinstance(v, dict):
+        return _short(v, 40)
+    plane = v.get('plane')
+    rnd = v.get('round_num')
+    pr = f'P{plane}-R{rnd}' if plane is not None and rnd is not None else '—'
+    return f'{pr} ({v.get("node_type") or "?"})'
+
+
+def _supply_brief(v: Any) -> str:
+    """supply 载荷 → '0: +量产型装甲;1: 角色+装备(带钻)'(options 摘要)。"""
+    opts = v.get('options') if isinstance(v, dict) else None
+    if not isinstance(opts, list):
+        return _short(v, 40)
+    bits = []
+    for i, o in enumerate(opts):
+        if not isinstance(o, dict):
+            bits.append(f'{i}: {_short(o, 20)}')
+            continue
+        equips = '+'.join([str(o.get('equip') or '?')]
+                          + [str(x) for x in (o.get('extra_equips') or [])])
+        char = str(o.get('char') or '')
+        dia = '(带钻标)' if o.get('has_diamond') else ''
+        body = f'{char}+{equips}{dia}' if char else f'{equips}{dia}'
+        bits.append(f"{o.get('idx', i)}: {body}")
+    return ';'.join(bits) if bits else '(空)'
+
+
+#: field → 人读摘要函数(注册即生效;未注册键回落截断 json 并非人读格式)
+_VALUE_BRIEFS: dict[str, Any] = {
+    'bench': _bench_brief, 'deployed': _deployed_brief,
+    'front_row': _units_join, 'back_row': _units_join,
+    'board': _board_brief, 'spheres': _spheres_brief, 'shop': _shop_brief,
+    'ore_rewards': _ore_rewards_brief, 'node_path': _node_path_brief,
+    'node_path_baseline': _node_path_brief, 'node': _node_brief,
+    'match_final': _match_final_brief, 'settlement': _settlement_brief,
+    'xp': lambda v: (_xp_brief(v) or _short(v, 40)),
+    'equips': _scalar_list_brief, 'active_strategies': _scalar_list_brief,
+    'plane_bosses': _scalar_list_brief, 'enemy_affixes': _scalar_list_brief,
+    'invest_env_opts': _scalar_list_brief,
+    'invest_strategy_opts': _scalar_list_brief, 'planner_opts':
+        _scalar_list_brief, 'box_card_names': _scalar_list_brief,
+    'fortune_opts': _scalar_list_brief, 'megastar_opts': _scalar_list_brief,
+    'partner_opts': _scalar_list_brief, 'wish_trial_opts':
+        _scalar_list_brief, 'occupied_equips': _occupied_equips_brief,
+    'node_seq_by_plane': _node_seq_by_plane_brief,
+    'round_fresh_buys': _round_fresh_buys_brief,
+    'pending_loss': _pending_loss_brief, 'supply': _supply_brief,
+    'encounter': _supply_brief,
+    'strategy_refresh_used': _board_brief,  # 卡名→已用次数,同名×n 形态
+}
+
+
+def _value_brief(f: str, v: Any) -> str:
+    """field 值 → 人读单行摘要(差分单元格与观察行共用,§4.3;原样未转义——
+    转义归出口:差分单元格经 _delta_value_cell,尾注经渲染期统一 _esc)。"""
+    if v is None or v == '':
+        return '—'
+    fn = _VALUE_BRIEFS.get(f)
+    if fn is not None:
+        return str(fn(v))
+    return _short(v, 60)
 
 
 # ---------------------------------------------------------------------------
@@ -590,6 +835,8 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
                                                 list[str]]:
     """一行 → (目标章, 新 base, 新 cur, 开章缺口注记)。规则见 pipeline §4。
 
+    - settlement 写入 = 战斗结算证据(sim 无 current_screen 时的开章依据;
+      live 数据 current_screen 行在先,本证据不触发),开/续战斗快照章;
     - 弹层行归属只认 actor 映射:命中即在对应弹层画面章(同章续,异章开新);
     - current_screen 在场:值 == base(最近快照章)→ 续开 base(弹层结束
       回底层);否则开新快照章(注册表命中;未注册 id 按原样开章 + 缺口);
@@ -604,6 +851,14 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
         _fill_entry(scr, spec, row)
         return scr, base, scr, []
     vals = state_values(row)
+    battle_id = '货币战争-战斗等待'
+    if (row_kind(row) == ROW_WRITE
+            and str(row.get('field') or '') == 'settlement'
+            and not (cur is not None and cur.screen_id == battle_id)):
+        s_spec = SCREEN_REGISTRY[battle_id]
+        scr = _open_screen(s_spec, battle_id)
+        _fill_entry(scr, s_spec, row)
+        return scr, scr, scr, []
     if 'current_screen' in vals:
         cs = str(vals['current_screen'] or '')
         if base is not None and cs == base.screen_id:
@@ -706,11 +961,26 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     is_hook = family == 'logic_hook'
     if family == 'obs' and f != 'settlement':
         # 观察道不入变化表:章首行的 obs 写入由 0 观察快照承载,非章首进尾注
+        # (§5 修订:空值不渲染、路由键跳过、同章同值去重)
         if not opened:
-            scr.annots.append(f'观察: {field_cn(f)}={_short(row.get("after"), 60)}')
+            after = row.get('after')
+            brief = _value_brief(f, after)
+            key = (f, brief)
+            if (f in _OBS_NOTE_SKIP or after in (None, '')
+                    or key in scr._obs_seen):
+                return
+            scr._obs_seen.add(key)
+            scr.annots.append(f'观察: {field_cn(f)}={brief}')
         return
     delta = Delta(field=f, before=prev_of.get(idx), after=row.get('after'),
                   note='(效果钩子)' if is_hook else '', is_hook=is_hook)
+    # 渲染同值过滤(§5 修订):格式化后前=后 = 零信息行,计数进尾注
+    cell_b = (_delta_value_cell(f, delta.before)
+              if delta.before is not None else None)
+    cell_a = _delta_value_cell(f, delta.after)
+    if cell_b is not None and cell_b == cell_a:
+        scr._same_skipped += 1
+        return
     if f == 'settlement':
         # 结算走章内变化块(render-spec §3 战斗章注册行:结算不入 0 观察,
         # 也不作动作效果挂动作节——它是结算读数)
@@ -727,22 +997,78 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         scr.trailing_changes.append(delta)  # 章内变化块(无锚前缀写入行)
 
 
+def _opening_note(row: dict[str, Any]) -> str:
+    """开局段无画面归属行 → 组级注记(pipeline §3 修订;空串 = 零信息跳过)。
+
+    - 仲裁行 / 观察道写入 = 开局基线观察(全局首遍读数,非任何画面内容);
+    - 其余写入 = 开局初始化(种子推导/对账/恢复等,写入者非注册画面 actor
+      且行无 current_screen——粘进当前章会把对局元数据误记为画面效果);
+    - CwScreen 前缀未注册写入者保留缺口显影(响亮暴露,不因换桶静默)。
+    """
+    kind = row_kind(row)
+    actor = str(row_sig(row).get('actor') or '—')
+    if kind == ROW_OBS_EVENT:
+        observed = row.get('observed') if isinstance(row.get('observed'), dict) else {}
+        return (f"仲裁 {row.get('field') or '—'}: "
+                f"{_short(observed.get('old'), 40)} → "
+                f"{_short(observed.get('new'), 40)}({row.get('verdict') or '—'})")
+    if kind != ROW_WRITE:
+        return ''
+    f = str(row.get('field') or '—')
+    if f == 'receipts' or row.get('same_value') is True:
+        return ''
+    brief = _value_brief(f, row.get('after'))
+    if _is_unregistered_screen_actor(actor):
+        return f'缺口: 未注册写入者 {actor}: {field_cn(f)}={brief}'
+    family = str(row_sig(row).get('family') or '')
+    label = '开局基线观察' if family == 'obs' else '开局初始化'
+    return f'{label}: {field_cn(f)}={brief}({actor})'
+
+
+def _is_opening_unattributed(row: dict[str, Any]) -> bool:
+    """开局段行是否无画面归属(归组级桶;判定 = 写入者非注册画面 actor 且
+    行无 current_screen 证据;回执锚行恒走画面章动作节)。"""
+    kind = row_kind(row)
+    if kind == ROW_OBS_EVENT:
+        return True
+    if kind != ROW_WRITE:
+        return False
+    if str(row.get('field') or '') == 'receipts':
+        return False
+    actor = str(row_sig(row).get('actor') or '')
+    return (actor not in ACTOR_REGISTRY
+            and 'current_screen' not in state_values(row))
+
+
 def _build_section(kind: str, node: NodeInfo | None,
                    rows: list[tuple[int, dict[str, Any]]],
                    prev_of: dict[int, Any]) -> Section:
     """一个组的画面切分 + 章内容构建(组首行恒开章,基线 = 组边界)。
 
     rows 元素 = (全局行序 idx, 行)——idx 是 _precompute_prevs 前值链的键。
+    开局组(kind='open')的无画面归属行落组级注记桶(pipeline §3 修订),
+    不参与画面章切分。
     """
     sec = Section(kind=kind, node=node)
+    opening = kind == 'open'
     base: Screen | None = None
     cur: Screen | None = None
     for idx, r in rows:
+        if opening and _is_opening_unattributed(r):
+            note = _opening_note(r)
+            if note:
+                sec.opening_notes.append(note)
+            continue
         cur, base, _, notes = _locate_screen(r, base, cur)
         opened = not any(s is cur for s in sec.screens)  # 身份比较(非 ==)
+        if opened and sec.screens and sec.screens[-1].screen_id == cur.screen_id:
+            # 相邻同 id = 同一画面 op 重入,合并续写(防拆成两个同名章;
+            # 非相邻不合并——备战→商店→备战是三次独立访问)
+            cur = sec.screens[-1]
+            opened = False
         if opened:
             sec.screens.append(cur)
-            cur.annots.extend(notes)
+        cur.annots.extend(notes)
         _consume_row(r, cur, opened, prev_of, idx)
     for s in sec.screens:
         s._cur_action = None
@@ -774,11 +1100,11 @@ def _dig(values: dict[str, Any], path: str) -> Any:
 
 def _entry_pairs(values: dict[str, Any],
                  fields: tuple[str, ...]) -> list[tuple[str, Any]]:
-    """0 观察 = 章首行快照 ∩ 注册键集,只显有值行(§关键取舍)。"""
+    """0 观察 = 章首行快照 ∩ 注册键集,只显有值行(空串 = 语义空值,同跳)。"""
     out: list[tuple[str, Any]] = []
     for f in fields:
         v = _dig(values, f)
-        if v is None:
+        if v is None or v == '':
             continue
         out.append((f, v))
     return out
@@ -1072,6 +1398,28 @@ def _delta_table(deltas: list[Delta]) -> list[str]:
     return out
 
 
+def _action_payload_brief(act: dict[str, Any]) -> str:
+    """回执 action 载荷 → 人读摘要(BuyCard 形态 = 牌名(阵营,费用金,槽N) +
+    char_id + reason;其余键回落短 json——载荷开放演化,新键显式加摘要)。"""
+    bits: list[str] = []
+    card = act.get('card') if isinstance(act.get('card'), dict) else None
+    if isinstance(card, dict):
+        bits.append(f"{card.get('name') or '?'}({card.get('faction') or '—'},"
+                    f"{card.get('cost')}金,槽{card.get('slot') or '?'})")
+    if act.get('char_id'):
+        bits.append(f"char_id={act['char_id']}")
+    if act.get('reason'):
+        bits.append(f"reason={act['reason']}")
+    rest = {k: v for k, v in act.items()
+            if k not in ('card', 'char_id', 'reason', '__type__', 'route_tag')}
+    if card is not None:
+        rest.pop('cost', None)  # 费用已入卡片摘要,重复
+    rest = {k: v for k, v in rest.items() if v not in ('', None)}
+    if rest:
+        bits.append(' '.join(f'{k}={_short(v, 20)}' for k, v in rest.items()))
+    return ' · '.join(bits) or _short(act, 60)
+
+
 def _render_action(act: Action) -> list[str]:
     """动作节(render-spec §4:标题 / 动作行 / extra 逐键 / 变化表)。"""
     out = [f'#### {act.no} {action_cn(act.op)}'
@@ -1091,8 +1439,12 @@ def _render_action(act: Action) -> list[str]:
             bits.append(f'画面={screen}')
         out.append(f'- {warn}动作: ' + ' · '.join(bits))
         for k, v in rec.items():
-            if k not in ('op', 'applied', 'reason', 'detail', 'screen'):
-                out.append(f'  - {k}: {_esc(_short(v, 90))}')
+            if k in ('op', 'applied', 'reason', 'detail', 'screen'):
+                continue
+            if k == 'action' and isinstance(v, dict):
+                out.append(f'  - action: {_esc(_action_payload_brief(v))}')
+                continue
+            out.append(f'  - {k}: {_esc(_short(v, 90))}')
     if act.deltas:
         out.append('')
         out += _delta_table(act.deltas)
@@ -1120,6 +1472,8 @@ def _render_screen(prefix: str, scr: Screen) -> list[str]:
     if scr.annots:
         out.append('')
         out += [f'- {_esc(a)}' for a in scr.annots]
+    if scr._same_skipped:
+        out.append(f'- 同值写入 ×{scr._same_skipped} 略(前=后,零信息)')
     if scr.has_decision:
         out += ['', '#### 策略评价', '']
     out.append('')
@@ -1136,11 +1490,15 @@ def render_markdown(report: Report) -> str:
         parts += ['> 无渲染行(journal 空或被 --run 过滤)。', '']
     for sec in report.sections:
         if sec.kind == 'open':
-            if not sec.screens:
+            if not sec.screens and not sec.opening_notes:
                 continue
             parts += ['## 开局', '']
             for scr in sec.screens:
                 parts += _render_screen('开局', scr)
+            if sec.opening_notes:
+                parts += ['### 开局初始化与基线观察', '']
+                parts += [f'- {_esc(a)}' for a in sec.opening_notes]
+                parts.append('')
         elif sec.kind == 'node':
             node = sec.node
             head = f'## 节点 {node.plane}-{node.round} {node.kind_cn}'
