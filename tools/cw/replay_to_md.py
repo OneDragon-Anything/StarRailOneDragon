@@ -123,6 +123,8 @@ class Screen:
     trailing_changes: list[Delta] = field(default_factory=list)
     annots: list[str] = field(default_factory=list)
     has_decision: bool = False    # False = 不渲染策略评价节
+    #: 构建期临时:未注册画面 op actor → 行数(渲染前聚合转尾注并剥离)
+    _unreg_counts: dict[str, int] = field(default_factory=dict)
     #: 构建期临时:当前未闭合动作节(重试链合并判据),渲染前剥离
     _cur_action: Action | None = None
 
@@ -251,6 +253,33 @@ NODE_KIND_CN: dict[str, str] = {
     'reward': '奖励', 'battle': '战斗', 'encounter': '遭遇',
     'supply': '补给', 'boss': 'BOSS', 'prep': '备战',
 }
+
+#: 快照章形态的画面 op(设计明文「CwScreenPrep/CwScreenShop 即快照章两行,
+#: 不另注册」;CwScreenBattleWait 同归战斗快照章)——行经 current_screen 归
+#: 快照章,不判未注册缺口。
+_SNAPSHOT_SCREEN_ACTORS: frozenset[str] = frozenset({
+    'CwScreenPrep', 'CwScreenShop', 'CwScreenBattleWait',
+})
+
+#: 已知非画面 op 的 CwScreen 前缀类(商店买入执行逻辑;journal.md §2 actor
+#: 类属 = 动作 op 类名——note_action_receipt 回执发出者,历史命名带前缀),
+#: 其 logic_action 写入是动作效果,不判未注册缺口。
+_ACTION_ACTOR_EXEMPT: frozenset[str] = frozenset({'CwScreenBuyCards'})
+
+
+def _is_unregistered_screen_actor(actor: str) -> bool:
+    """未注册画面 op 判定(pipeline §4「未注册 actor」的适用对象)。
+
+    画面 op 类名约定 = CwScreen 前缀(operations/cw_screen/ 实测 33 类全部
+    此前缀);命中注册表 / 快照章形态 / 已知动作类豁免外的前缀类 = 未注册,
+    行显影缺口注记(缺口可见性 = 对断供静默病根的正面设计目标)。非画面
+    actor(观察汇聚 cw_observation/对账/恢复/引擎等)不判——设计条款的
+    上下文是画面 op 注册表,不是任意写入者。
+    """
+    return (actor.startswith('CwScreen')
+            and actor not in ACTOR_REGISTRY
+            and actor not in _SNAPSHOT_SCREEN_ACTORS
+            and actor not in _ACTION_ACTOR_EXEMPT)
 
 #: 动作词中文映射(render-spec §4.1:回执动词开放集,未命中原样显示禁猜)。
 ACTION_WORD_MAP: dict[str, str] = {
@@ -667,6 +696,12 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         return
     if row.get('same_value') is True:
         return  # no-op 写入零信息
+    actor = str(row_sig(row).get('actor') or '')
+    unreg = _is_unregistered_screen_actor(actor)
+    if unreg:
+        # 未注册画面 op(pipeline §4):不切分,记缺口待聚合尾注显影;
+        # receipts 锚行是动作节机制不在此列(上文已 return)
+        scr._unreg_counts[actor] = scr._unreg_counts.get(actor, 0) + 1
     family = str(row_sig(row).get('family') or '')
     is_hook = family == 'logic_hook'
     if family == 'obs' and f != 'settlement':
@@ -680,6 +715,10 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         # 结算走章内变化块(render-spec §3 战斗章注册行:结算不入 0 观察,
         # 也不作动作效果挂动作节——它是结算读数)
         scr.trailing_changes.append(delta)
+        return
+    if unreg:
+        # 未注册画面 op 的非 obs 行:一律走尾注显影(pipeline §4「挂当前
+        # 画面章尾注 + 记缺口」),禁静默混入动作状态变化表
         return
     cur = scr._cur_action
     if cur is not None:
@@ -707,6 +746,14 @@ def _build_section(kind: str, node: NodeInfo | None,
         _consume_row(r, cur, opened, prev_of, idx)
     for s in sec.screens:
         s._cur_action = None
+        # 未注册画面 op 聚合尾注(pipeline §4「挂尾注 + 记缺口」;同章同
+        # actor 一条带计数,按 actor 名排序保确定性)
+        for actor in sorted(s._unreg_counts):
+            s.annots.append(
+                f'缺口: 未注册写入者 {actor} '
+                f'×{s._unreg_counts[actor]}(画面 op 未入渲染器注册表,'
+                '行未切分;其非观察写入不入状态变化表)')
+        s._unreg_counts = {}
     return sec
 
 
