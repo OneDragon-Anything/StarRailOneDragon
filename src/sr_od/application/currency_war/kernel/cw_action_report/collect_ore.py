@@ -32,6 +32,7 @@ import random
 from dataclasses import replace as _dc_replace
 from typing import Any
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
 )
@@ -97,6 +98,9 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     行域下标派生表;整表写 = bench_view_of_working 直构(原
     ``_bench_view_keep_items`` 占位件保留补丁随换形口停用自然消失——
     工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
+    合并升星触发发放:角色奖励腿级联采集升星事实,整批全部写毕后收尾
+    发火(引擎 A 内嵌发火会被后续点整表写覆盖;触发腿 best-effort 不
+    阻塞上报主链)。
     """
     _validate_sig(sig, ('logic_action',))
     from sr_od.application.currency_war.kernel.cw_action_report import (
@@ -144,6 +148,12 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     opened = 0
     skipped = 0
     missing_level = 0
+    merge_facts: list[tuple[str, int]] = []
+
+    def _collect_merge(cid: str, new_star: int) -> None:
+        # 升星事实采集(合并升星触发发放;纯追加,发火在整批写毕后)
+        merge_facts.append((cid, new_star))
+
     for k, p in enumerate(ordered, 1):
         xy = (int(p[1]), int(p[2]))
         if sum(1 for b in work_bench
@@ -250,7 +260,8 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                     last_ds = ds
                     _written.add('deployed')
 
-            _merge_bench(work_bench, work_dep, on_step=on_step)
+            _merge_bench(work_bench, work_dep, on_step=on_step,
+                         on_merge=_collect_merge)
 
             # 步4 合成未触及的行域标记(真值可能因角色奖励而变)
             if 'deployed' not in written:
@@ -259,6 +270,21 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                     _w_rand(gs.deployed, cur,
                             f'{ev_prefix}proj_ore_mark_deployed#ore{k}')
                     written.add('deployed')
+
+    # —— 合并升星触发发放腿(整批级联写毕后收尾发火:引擎 A 内嵌发火会被
+    #    后续点的 bench 整表写覆盖,故采集在级联、发火在顶层全部写毕后;
+    #    sig 沿动作腿 _grp_sig 口径。best-effort:触发腿异常不阻塞上报
+    #    主链,沿 buy_card on_buy 回调腿同纪律。kernel 反向模块级零
+    #    import 契约:函数内惰性取。)——
+    if merge_facts:
+        try:
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                check_env_merge_grants,
+            )
+            check_env_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
+        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
+            log.warning(f'[cw-ore] 合并升星触发发放腿失败(不阻塞):'
+                        f'{merge_facts} {e}')
 
     if opened == 0:
         # 批内含缺项∧level 缺读跳点即非「全部席满跳过」——具体原因

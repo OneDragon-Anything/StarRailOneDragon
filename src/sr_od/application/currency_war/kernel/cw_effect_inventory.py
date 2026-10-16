@@ -1441,7 +1441,9 @@ def _slot_sig(slots: list) -> list:
 def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
                         rand: bool, evidence: str, producer: str,
                         sig: ChannelSig,
-                        orig_view: BenchView | None = None) -> int:
+                        orig_view: BenchView | None = None,
+                        merge_facts_out: list[tuple[str, int]] | None = None
+                        ) -> int:
     """合成级联写(设计 §2.0/§2.1③ 共用消费体;调用方持工作列表副本)
     ——全员 merge_simulate 正常推演(与普通单位同语义;费用档不同时
     存在定案,分组键 (char_id, star) 无跨档歧义)。
@@ -1453,6 +1455,9 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
     rand=False 走 write_logic(确定面),rand=True 走 write_logic_rand
     (采样链内);
     - ``orig_view`` = bench 原观察帧(容量随原观察;None = 默认容量);
+    - ``merge_facts_out`` = 升星事实采集出参(每完成一级合并追加
+      ``(角色名, 新星级)``,与合并升星触发发放采集共用;None = 现行为,
+      既有调用方零改动);
     - 返回落行数(测试/留存证据用)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1489,7 +1494,12 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
             last_ds = ds
             rows += 1
 
-    _merge_bench(work_bench, work_dep, on_step=on_step)
+    def on_merge(cid: str, new_star: int) -> None:
+        # 升星事实采集(合并升星触发发放;纯追加,与步写无顺序耦合)
+        if merge_facts_out is not None:
+            merge_facts_out.append((cid, new_star))
+
+    _merge_bench(work_bench, work_dep, on_step=on_step, on_merge=on_merge)
     return rows
 
 
@@ -1509,13 +1519,16 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
     """单位入席+合成级联共用核心(获得后果/投资效果函数单一实现体)。
 
     单位落备战席首空槽(bench_place,容器原生 BenchSlot 直落)→
-    :func:`merge_cascade_write` 级联(全员正常推演)→ 逐步各落一行。
+    :func:`merge_cascade_write` 级联(全员正常推演)→ 逐步各落一行 →
+    合并升星触发发放收尾(级联采集到的升星事实交给
+    ``cw_env_grants.check_env_merge_grants`` 检查发放,best-effort:触发
+    腿异常 log 不阻塞入席主链,沿 buy_card on_buy 回调腿同纪律)。
     P1 容器原生:工作副本 = BenchView 槽序 + 行域下标派生表(§2.1);
     占位件槽位 kind 随工作表原样保留(零换形降级)。
     ``rand`` = 写通道(False = write_logic 确定面 / True =
     write_logic_rand 采样链);``sig`` 缺省 = 装备桥 logic_hook 签名,
     动作报告上下文传入动作 sig 使链行同组。bench 未观察/席满 → 零写
-    拒落(落位真值由观察给出)。
+    拒落(落位真值由观察给出,拒落路径无级联无事实零发火)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_place,
@@ -1540,9 +1553,22 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
     _sig = sig if sig is not None else _equip_bridge_sig(gs)
     write(gs.bench, bench_view_of_working(work_bench, orig_view),
           produced_by=producer, evidence=evidence, sig=_sig)
+    merge_facts: list[tuple[str, int]] = []
     steps = merge_cascade_write(gs, work_bench, work_dep, rand=rand,
                                 evidence=evidence, producer=producer,
-                                sig=_sig, orig_view=orig_view)
+                                sig=_sig, orig_view=orig_view,
+                                merge_facts_out=merge_facts)
+    if merge_facts:
+        # 合并升星触发发放(级联写毕后发火,gs 一致;触发腿 best-effort
+        # 不阻塞入席主链)。kernel 反向模块级零 import 契约:函数内惰性取。
+        try:
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                check_env_merge_grants,
+            )
+            check_env_merge_grants(gs, tuple(merge_facts), sig=_sig)
+        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
+            log.warning('[cw-effect] 合并升星触发发放腿失败(不阻塞):'
+                        f'{merge_facts} {e}')
     return BenchGrantResult(placed=True, merge_steps=steps)
 
 

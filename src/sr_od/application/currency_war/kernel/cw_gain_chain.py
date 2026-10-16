@@ -377,13 +377,18 @@ def _write_merge_step(gs: GameState, pool: _WorkPool, *, rand: bool,
 
 
 class _ChainAcc:
-    """链内递归帧共享累计器(效果名/合成级数/写步编号;gain-chain.md §2 evidence
-    后缀 ``#mergeN`` 编号沿 merge on_step 先例)。"""
+    """链内递归帧共享累计器(效果名/合成级数/写步编号/升星事实;gain-chain.md
+    §2 evidence 后缀 ``#mergeN`` 编号沿 merge on_step 先例)。
+
+    ``facts`` = 每级合并的产物身份 ``(角色名, 新星级)``(合并升星触发
+    发放采集用,进程内瞬态不入容器;顶层 :func:`gain_character` 收尾
+    统一交触发检查——链递归中途 gs 写未收束,顶层发火保一致)。"""
 
     def __init__(self) -> None:
         self.effects: list[str] = []
         self.merges: int = 0
         self.step: int = 0
+        self.facts: list[tuple[str, int]] = []
 
 
 def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
@@ -452,6 +457,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
         if product is not None:
             acc.merges += 1
             acc.step += 1
+            acc.facts.append(product)   # 升星事实(合并升星触发发放采集)
             _write_merge_step(gs, pool, rand=rand, sig=sig,
                               producer=producer,
                               evidence=f'{evidence}#merge{acc.step}')
@@ -535,15 +541,31 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
     溢出落位写 overflow 两字段;溢出位被占 → 零写留存证据,bench 未观察 =
     直构域拒落零写)→
     on_character_gained 回调 → 单级 3 合 1 升星判断(池 = 备战 ∪ 上阵 ∪
-    溢出)→ 升星产物递归重进本原语。链内所有写共享入口 sig(gain-chain.md §2),
+    溢出)→ 升星产物递归重进本原语 → 合并升星触发发放收尾(链内采集的
+    升星事实交 ``cw_env_grants.check_env_merge_grants``,顶层收尾统一发火
+    ——递归中途 gs 写未收束,收尾时 gs 一致;触发腿 best-effort 异常
+    log 不阻塞链主腿)。链内所有写共享入口 sig(gain-chain.md §2),
     evidence 加 ``#place``/``#mergeN`` 后缀区分。
 
     溢出善后(腾位/卖牌)不归链——链只如实记账(gain-chain.md §2)。
     """
     acc = _ChainAcc()
-    return _gain_character_core(gs, name, star, rand=rand, sig=sig,
-                                evidence=evidence, producer=producer,
-                                enter=True, ovf_star=None, acc=acc)
+    outcome = _gain_character_core(gs, name, star, rand=rand, sig=sig,
+                                   evidence=evidence, producer=producer,
+                                   enter=True, ovf_star=None, acc=acc)
+    if acc.facts:
+        # 合并升星触发发放(事件携带事实无 done;发放物不在触发集 =
+        # 链天然终止无环)。kernel 反向模块级零 import 契约:函数内
+        # 惰性取(cw_env_grants 模块级依赖本模块,反向即环)。
+        try:
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                check_env_merge_grants,
+            )
+            check_env_merge_grants(gs, tuple(acc.facts), sig=sig)
+        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
+            log.warning(f'[cw-gain] 合并升星触发发放腿失败(不阻塞):'
+                        f'{acc.facts} {e}')
+    return outcome
 
 
 def gain_equipment(gs: GameState, item: str, *, rand: bool,

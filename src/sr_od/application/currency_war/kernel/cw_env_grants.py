@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/首领节点触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/首领节点/合并升星触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -40,7 +40,11 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 观察校准),追加位置(库存尾部)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
 采样,缺省回退自掷 = 采样是猜测口径,live 观察校准;sim 传流键 =
-世界真值)。
+世界真值);
+:func:`check_env_merge_grants` 含采样(注入槽:函数内
+``action_sampling_rng('env_merge_grant', None)`` 解析——四发火点跨
+上报函数/效果族/链原语三类调用方,集中函数内解析单点最少;注入槽 =
+sim 世界真值,回退自掷 = live 猜测口径)。
 
 边界披露(显式接受,详设 §3 同名节):①同窗洗白——发放后同窗口的
 确定性 equips 写会把字段来源翻成纯 logic,下一 heavy 帧观察对 logic
@@ -58,6 +62,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     CounterKey,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    GAIN_CHAIN_PRODUCER,
     gain_character,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -69,6 +74,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BOSS_GRANTS,
+    ENV_MERGE_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
 )
@@ -321,6 +327,73 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
     gs.write_logic(gs.env_grants_done, done + ((env, boss_key),),
                    produced_by=_PRODUCER, evidence=evidence, sig=sig)
     return name
+
+
+#: 合并升星触发发放的采样腿具名键(模块尾近函数,消费点唯一 =
+#: :func:`check_env_merge_grants`)。
+ENV_MERGE_GRANT_RNG_TOOL: str = 'env_merge_grant'
+
+
+def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
+                           *,
+                           sig: ChannelSig) -> tuple[str, ...]:
+    """合并升星触发发放检查(单一源;事件携带事实,非窗口条件,无 done
+    ——每次升星事件恰好经过发火点一次,与 streak/refresh/boss 的
+    「观察点重入」done 幂等场景不同型)。调用点 = 四发火点收尾(买牌
+    上报/补给单位腿 grant_bench_unit_cascade/晶矿角色腿/获得链顶层
+    gain_character,均在各自全部容器写毕后调用;deploy_move/pick_planner
+    级联不可达不设,拷贝臂 spawn_equip_bench_unit 无级联不设——
+    cw_investments.ENV_MERGE_GRANTS 区块注释)。
+
+    条件矩阵(顺序即短路序,逐序返回空 = 零发放):
+
+    1. 当前环境(active_env)None/空链 → 空;
+    2. 环境不在登记表(ENV_MERGE_GRANTS)→ 空;
+    3. facts 逐条 (char_id, new_star) 过滤触发角色集,空 → 空(rng 未
+       解析:无命中不消耗采样流键,保持 sim 动作序列逐位不变);
+    4. 每条命中 → 发放池内均匀采样 1 名 →
+       :func:`gain_character`(名, 1★ 先验, rand=True 采样支——本函数
+       恒采样,rand 固定 True 不设形参)→ 效果串一条
+       ``env_merge_grant:<名>``(与落位成败解耦,on_env_gained
+       item_gift 通道同阶口径);同窗多条 facts 逐条发(级联两级 =
+       两次发放,逐级触发判例)。
+
+    - ``sig`` = 链写共用渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig);
+    - 本函数含采样:rng = ``action_sampling_rng('env_merge_grant', None)``
+      函数内解析(注入槽优先,缺省回退自掷)。选注入槽而非显式 rng 形参
+      (check_env_boss_grants 风格)的理由 = 四发火点跨上报函数/效果族/
+      链原语三类调用方,集中函数内解析单点最少;sim 注入槽即世界真值,
+      live 回退自掷 = 采样是猜测口径(bench 首观察静默覆盖);
+    - bench 未观察/席满溢出位占 = :func:`gain_character` 链内既有
+      拒落/留证语义,本函数不另设闸;
+    - 递归安全:发放物(符玄/希儿)不在触发集,发放角色自身若再合并
+      升星,其 facts 过滤后零发放,链天然终止(无环,不设额外闸)。
+    """
+    env = gs.active_env.value
+    if not env:
+        return ()
+    grant = ENV_MERGE_GRANTS.get(env)
+    if grant is None:
+        return ()
+    triggers, pool = grant
+    hits = [cid for cid, _new_star in facts if cid in triggers]
+    if not hits:
+        return ()
+    # kernel 反向模块级零 import 契约:action_sampling_rng 住上报函数族
+    # 包,函数内惰性取(gain-chain.md §8 单向破环先例)。
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    roll_rng = action_sampling_rng(ENV_MERGE_GRANT_RNG_TOOL, None)
+    effects: list[str] = []
+    for _cid in hits:
+        name = roll_rng.choice(pool)
+        gain_character(gs, name, 1, rand=True, sig=sig,
+                       evidence=f'env_merge_grant:{env}',
+                       producer=GAIN_CHAIN_PRODUCER)
+        effects.append(f'env_merge_grant:{name}')
+    return tuple(effects)
 
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:

@@ -34,7 +34,9 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """买牌上报:gold −单价×k + bench 落位 + 合成连锁 + payload −k
     ((name, star) 计数)+ 升星腿整表覆盖(买前快照三件组基点,快照在
-    本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)。
+    本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
+    升星触发发放收尾(级联采集的升星事实交触发检查,升星腿写毕后
+    best-effort 发火,触发腿异常 log 不阻塞上报主链)。
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
     零写)。k 来源:executed 给定 = 回执 k(live);None =
@@ -101,6 +103,12 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
               else None)
     scratch_b = list(pre_bench)
     scratch_d = list(pre_dep)
+    merge_facts: list[tuple[str, int]] = []
+
+    def _collect_merge(cid: str, new_star: int) -> None:
+        # 升星事实采集(合并升星触发发放;纯追加,与步写无顺序耦合)
+        merge_facts.append((cid, new_star))
+
     # 行写判据用值签名快照(签名比较仅判「是否需要落一行」)。
     _dep_pre_sig = _dep_sig(pre_dep)
     placed = bench_place(
@@ -108,10 +116,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                                     star=star))) is not None
     if placed:
         k = k_exec if k_exec is not None else 1
-        _merge_bench(scratch_b, scratch_d)
+        _merge_bench(scratch_b, scratch_d, on_merge=_collect_merge)
     else:
         k_apply = _apply_full_bench_merge_buy(
-            scratch_b, scratch_d, _legacy_card(card), shop_view)
+            scratch_b, scratch_d, _legacy_card(card), shop_view,
+            on_merge=_collect_merge)
         if k_apply is None:
             return LogicOutcome(applied=False, reason='bench_full')
         k = k_exec if k_exec is not None else max(1, int(k_apply))
@@ -161,6 +170,22 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                            mode='compute',
                            group_id=(f'act:{sig.actor}@'
                                      f'{gs.write_seq + 1}')))
+
+    # —— 合并升星触发发放腿(升星腿写毕后收尾发火:引擎 A 内嵌发火会被
+    #    本函数 bench/deployed 整表写覆盖,故采集在级联、发火在顶层全部
+    #    写毕后——设计 §2.4 发火时序)。sig 沿动作腿 _grp_sig 口径(触发
+    #    腿行与动作腿同组同窗)。best-effort:触发腿异常不阻塞上报主链
+    #    (下 on_buy 回调腿同纪律)。kernel 反向模块级零 import 契约:
+    #    函数内惰性取。拒买(applied=False 早退)不可达本段。——
+    if merge_facts:
+        try:
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                check_env_merge_grants,
+            )
+            check_env_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
+        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
+            _log.warning(f'[cw-buy] 合并升星触发发放腿失败(不阻塞):'
+                         f'{merge_facts} {e}')
 
     # —— 购买回调腿(获取计算完时点):简单腿 + 合成连锁 + 升星腿全毕
     #    后触发,计数归上报单点(live/sim 同源,消除落地门计数分叉);

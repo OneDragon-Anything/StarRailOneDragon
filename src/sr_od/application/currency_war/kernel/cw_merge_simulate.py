@@ -333,7 +333,8 @@ def same_star_count_public(name: str, star: int,
 
 def _merge_bench(bench: list[BenchSlot | None],
                  deployed: list[Unit | None] | None = None,
-                 on_step: Callable[[], None] | None = None) -> None:
+                 on_step: Callable[[], None] | None = None, *,
+                 on_merge: Callable[[str, int], None] | None = None) -> None:
     """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
 
     游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
@@ -353,6 +354,12 @@ def _merge_bench(bench: list[BenchSlot | None],
     状态落容器(逐步写遥测);回调内看到的列表 = 该级合并完成后的状态。
     None = 现行为(逐级回调缺省,既有消费者零改动)。注意:一级合并可
     同时变更 bench 与行域(deployed 侧载体),调用侧按受影响域各落一行。
+
+    on_merge(可选事实回调,合并升星触发发放采集用):每完成一级合并、
+    该级升星落定后调 ``on_merge(角色名, 新星级)``——与 on_step 同点相邻
+    (事实先于步写,采集闭包纯追加无顺序耦合);None = 现行为(既有
+    消费者零改动)。消费面 = 合并升星触发发放(ENV_MERGE_GRANTS,
+    check_env_merge_grants;推演口 merge_simulate 不落真值不在触发面)。
     """
     # 不动点循环:两轮上限在级联合并(3×1★→2★→…)不够;while 直到
     # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止
@@ -393,6 +400,8 @@ def _merge_bench(bench: list[BenchSlot | None],
             else:
                 deployed[carrier_entry[1]] = new_carrier
             merged_any = True
+            if on_merge is not None:
+                on_merge(cid, cstar + 1)   # 升星事实(该级落定)
             if on_step is not None:
                 on_step()   # 该级合并已全部落定(升星/继承/置 None),回调看终态
             break   # 重扫(列表已变)
@@ -568,7 +577,9 @@ def merge_buy_completes(name: str, star: int,
 def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
                                 deployed: list[Unit | None] | None,
                                 card: ShopCard,
-                                shop: list[ShopCard] | None) -> int | None:
+                                shop: list[ShopCard] | None, *,
+                                on_merge: Callable[[str, int], None]
+                                | None = None) -> int | None:
     """满栏合成买分支应用(买牌上报工作副本的单一源;原 tracked 同步口
     随第二账停用删除)。
 
@@ -580,7 +591,8 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
     含场内张,载体落在 idx<9 或场上,截断不伤;own=0 域(全尾挂、
     载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
     。返回应用张数 k;前置不满足返回 None(调用方
-    据此 no-op)。
+    据此 no-op)。``on_merge`` = 升星事实采集透传(直通内部
+    ``_merge_bench``,缺省 None 行为不变)。
 
     建模依据(2026-09-09 05:52 运行局双响事故):满栏时游戏对完成合成
     的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上载体升星)
@@ -594,6 +606,6 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
     for _ in range(_k):
         bench.append(BenchSlot(kind='unit', unit=Unit(
             char_id=_name, star=_star)))
-    _merge_bench(bench, deployed)   # 全场域(3合1 是全场)
+    _merge_bench(bench, deployed, on_merge=on_merge)   # 全场域(3合1 是全场)
     del bench[BENCH_CAPACITY:]
     return _k

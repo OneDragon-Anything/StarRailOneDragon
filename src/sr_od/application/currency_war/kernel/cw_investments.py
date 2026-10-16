@@ -2300,6 +2300,56 @@ def _validate_env_boss_grants() -> None:
 _validate_env_boss_grants()
 
 
+# ===== 合并升星触发发放注册表(量子同频契约;白名单制)=====
+# **世界发放域**(条件达成的世界发放第四表,ENV_STREAK_GRANTS/ENV_REFRESH_
+# GRANTS/ENV_BOSS_GRANTS 同族):键 = 环境规范名,值 = (触发角色集, 发放池)
+# 二元组。语义 = 持有该环境期间,触发角色集内任一角色每完成一级 3 合 1
+# 升星,从发放池随机获得 1 个角色(1★ 先验,晶矿 CHAR_DROP_STAR 同句式;
+# 逐级触发判例 = 该迭代裁定记录:级联 1★→2★→3★ = 两次发放,触发者星级
+# 不限)。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
+# 同款纪律)。消费面 = kernel/cw_env_grants.check_env_merge_grants(触发
+# 检查单一源,事件携带事实无 done 标记;四发火点 = 买牌上报/补给单位腿/
+# 晶矿角色腿/获得链顶层)。
+# **表间豁免声明**(ENV_BOSS_GRANTS 同款显式声明):本表键与 ENV_GIFTS
+# 共存 = 合法形态(两表同键各表各域——ENV_GIFTS 的 chars_conditional 辖
+# 估值域档位机器,本表辖世界发放,各表各域),与 ENV_ECONOMY 无 ∩ 冲突。
+ENV_MERGE_GRANTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    # 花火和缇宝升星时,随机获得【符玄】或【希儿】(id 125 原文直读,
+    # cw_invest_data PlazaPortal('125'))
+    '量子同频契约': (('花火', '缇宝'), ('符玄', '希儿')),
+}
+
+
+def _validate_env_merge_grants() -> None:
+    """ENV_MERGE_GRANTS 构建校验(import 即炸;沿 _validate_env_boss_grants
+    先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 角色名漂移:触发角色集与发放池逐名必须在 CHARACTERS(角色注册表
+    改名不静默——触发集漂移 = 事件永不命中,发放池漂移 = 采出假身份
+    混进席面);
+    ③ 值形:两元组均非空(触发集空 = 条件永假,发放池空 = 采样必炸,
+    登记笔误前置可见)。
+    """
+    orphans = [n for n in ENV_MERGE_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_MERGE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_triggers, _pool) in ENV_MERGE_GRANTS.items():
+        for _label, _names in (('触发角色集', _triggers), ('发放池', _pool)):
+            if not _names:
+                raise ValueError(
+                    f"ENV_MERGE_GRANTS 值形({_n!r} {_label}):须为非空元组")
+            for _name in _names:
+                if _name not in CHARACTERS:
+                    raise ValueError(
+                        f"ENV_MERGE_GRANTS 角色名漂移({_n!r} {_label},"
+                        f"角色注册表无此名,版本改名?):{_name!r}")
+
+
+_validate_env_merge_grants()
+
+
 # ===== 节点改写注册表归属校验(import 即炸)=====
 # 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——
