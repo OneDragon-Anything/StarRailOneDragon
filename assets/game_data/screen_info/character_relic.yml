@@ -1,0 +1,248 @@
+screen_id: character_relic
+screen_name: 角色-遗器
+pc_alt: false
+area_list:
+- area_name: 标题-遗器着装
+  id_mark: true
+  pc_rect:
+  - 85
+  - 25
+  - 205
+  - 75
+  text: 遗器着装
+  lcs_percent: 0.7
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: TAB-详情
+  id_mark: false
+  pc_rect:
+  - 150
+  - 115
+  - 285
+  - 190
+  text: 详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-详情
+- area_name: TAB-光锥
+  id_mark: false
+  pc_rect:
+  - 150
+  - 210
+  - 285
+  - 285
+  text: 光锥
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-光锥
+- area_name: TAB-行迹
+  id_mark: false
+  pc_rect:
+  - 150
+  - 300
+  - 285
+  - 375
+  text: 行迹
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-行迹
+- area_name: TAB-星魂
+  id_mark: false
+  pc_rect:
+  - 150
+  - 487
+  - 285
+  - 560
+  text: 星魂
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-星魂
+- area_name: TAB-信息
+  id_mark: false
+  pc_rect:
+  - 150
+  - 580
+  - 285
+  - 655
+  text: 信息
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-信息
+- area_name: 头像条-首位
+  id_mark: false
+  pc_rect:
+  - 452
+  - 28
+  - 528
+  - 108
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1826
+  - 36
+  - 1892
+  - 92
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 菜单
+- area_name: 按钮-智能装配
+  id_mark: false
+  pc_rect:
+  - 1495
+  - 962
+  - 1672
+  - 1022
+  text: 智能装配
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-替换
+  id_mark: false
+  pc_rect:
+  - 1738
+  - 962
+  - 1905
+  - 1022
+  text: 替换
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-上
+  id_mark: false
+  pc_rect:
+  - 695
+  - 255
+  - 800
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-右上
+  id_mark: false
+  pc_rect:
+  - 1085
+  - 290
+  - 1190
+  - 390
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-中绳
+  id_mark: false
+  pc_rect:
+  - 855
+  - 385
+  - 960
+  - 485
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-左下
+  id_mark: false
+  pc_rect:
+  - 605
+  - 665
+  - 710
+  - 765
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-下中
+  id_mark: false
+  pc_rect:
+  - 905
+  - 695
+  - 1010
+  - 795
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 遗器位-右下
+  id_mark: false
+  pc_rect:
+  - 1020
+  - 735
+  - 1125
+  - 835
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-套装效果
+  id_mark: false
+  pc_rect:
+  - 1480
+  - 290
+  - 1908
+  - 710
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

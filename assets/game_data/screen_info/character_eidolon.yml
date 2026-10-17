@@ -1,0 +1,206 @@
+screen_id: character_eidolon
+screen_name: 角色-星魂
+pc_alt: false
+area_list:
+- area_name: 标题-星魂同调
+  id_mark: true
+  pc_rect:
+  - 85
+  - 25
+  - 200
+  - 75
+  text: 星魂同调
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: TAB-详情
+  id_mark: false
+  pc_rect:
+  - 150
+  - 115
+  - 285
+  - 190
+  text: 详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-详情
+- area_name: TAB-光锥
+  id_mark: false
+  pc_rect:
+  - 150
+  - 210
+  - 285
+  - 285
+  text: 光锥
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-光锥
+- area_name: TAB-行迹
+  id_mark: false
+  pc_rect:
+  - 150
+  - 300
+  - 285
+  - 375
+  text: 行迹
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-行迹
+- area_name: TAB-遗器
+  id_mark: false
+  pc_rect:
+  - 150
+  - 395
+  - 285
+  - 470
+  text: 遗器
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-遗器
+- area_name: TAB-信息
+  id_mark: false
+  pc_rect:
+  - 150
+  - 580
+  - 285
+  - 655
+  text: 信息
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 角色-信息
+- area_name: 头像条-首位
+  id_mark: false
+  pc_rect:
+  - 452
+  - 28
+  - 528
+  - 108
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1826
+  - 36
+  - 1892
+  - 92
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 菜单
+- area_name: 读区-星魂1名
+  id_mark: false
+  pc_rect:
+  - 670
+  - 220
+  - 840
+  - 275
+  text: 养精蓄锐
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-星魂2名
+  id_mark: false
+  pc_rect:
+  - 1085
+  - 200
+  - 1255
+  - 255
+  text: 快速行军
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-星魂3名
+  id_mark: false
+  pc_rect:
+  - 1525
+  - 405
+  - 1695
+  - 460
+  text: 鼓炮齐鸣
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-星魂4名
+  id_mark: false
+  pc_rect:
+  - 1325
+  - 880
+  - 1495
+  - 935
+  text: 攻其不备
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-星魂5名
+  id_mark: false
+  pc_rect:
+  - 840
+  - 845
+  - 1010
+  - 900
+  text: 所向克捷
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-星魂6名
+  id_mark: false
+  pc_rect:
+  - 385
+  - 765
+  - 555
+  - 820
+  text: 气贯长虹
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

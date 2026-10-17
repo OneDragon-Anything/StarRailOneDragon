@@ -10,7 +10,7 @@ area_list:
   - 215
   - 90
   text: 敌方信息
-  lcs_percent: 0.5
+  lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
