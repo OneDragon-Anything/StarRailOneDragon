@@ -1322,23 +1322,48 @@ def game_state_from_ctx(ctx: object) -> GameState | None:
         return None
 
 
-def note_action_receipt(gs: GameState, *, op: str, applied: bool,
+def note_action_receipt(gs: GameState, *, op: str,
                         reason: str = '', detail: str = '',
                         screen: str = '',
                         actor: str, extra: dict | None = None) -> None:
     """动作执行回执写入(receipts 域**唯一写点**,渠道② logic_action;
     §3.1.1-4/§3.2.5:各动作 op 执行回执处的普通 ``write_logic`` 写入)。
 
-    - **发出即簿记,不是验证**(R2 报告重构期的『发出即簿记非验证』
-      裁定):``applied`` = 动作 op
-      自身「是否发出」的机械事实透传,本口零成败判定——禁读屏核验、禁
-      落地推断(落地判定归观察侧 reconcile);失败动作也产行(applied=
-      false + reason),exec_events「正在蒸发的失败数据」教训的并入位;
-    - 回执记录 = ``{op, applied, reason, detail?, screen?, **extra}`` 普通
-      字典:op = 动作 op 名(类型名,exec_events 动作族承接);reason =
-      未发出/受阻原因码('' = 正常发出);detail = 机械执行摘要(做了什么
-      的人读面,恒透传);extra = 执行面结构化字段(plan_truncated/
-      refresh_skipped/blocked 等,§3.2.1 质量词表执行面);
+    - **纯动作事实契约**:回执 = 动作 op 自报的机械事实簿记,本口零成败
+      判定——禁读屏核验、禁落地推断(落地判定归观察侧 reconcile);
+      受阻事实由 reason 码单通道承载(存量 journal 实证「受阻 ⟺ reason
+      非空」,布尔双通道无增量信息);
+    - **与 LogicOutcome 域的边界申报**:同名 ``applied`` 的另一概念 =
+      上报函数族(``kernel/cw_action_report/``)出参 :class:`LogicOutcome`
+      的 ``applied`` 字段(游戏拒绝/受阻语义载体,``applied=False +
+      reason`` 零容器写)——**该域契约不在本口辖面**,与本回执零耦合;
+      上报受理事实(含受理附注 reason 非空的合法形态)不进回执域,
+      两域字段同名不同义,退役后回执域零 applied 键;
+    - 回执记录 = ``{op, reason, detail?, screen?, **extra}`` 普通字典:
+      op = 动作 op 名(类型名,exec_events 动作族承接);reason =
+      **动作事实码**('' = 动作已正常发出;非空 = 未发出/受阻码)。
+      码词表(**暂住本 docstring**,正本家 = game_state/fields.md 回执
+      契约节):
+      * ``定位缺失(按钮-商店)``——open_shop 直调体实机定位缺失
+        (sim 点击受理不产此码);
+      * ``定位缺失(按钮-收起)``——close_shop 定位缺失(零观察 op 报
+        机械事实,不报业务态);
+      * ``not_emitted:<机械受阻码>``——prep executor 统一口,点击前
+        失败(定位缺失/无对象/输入契约拒绝);
+      * ``no_effect:<机械受阻码>``——prep executor 统一口,点后未生效
+        (动作已发出但序列未完成;StartBattle 已登记例外类,
+        action_ops.md §2.3);
+      * ``slot_unresolved`` / ``slot_out_of_range``——shop visit 落地门
+        机械早退(round result status 前缀闭集映射取码)。
+      「已开幂等」类目无现役供给点(零供给,再现先登记词表再使用);
+      detail = 机械执行摘要(做了什么的人读面,恒透传);extra = 执行面
+      结构化字段(plan_truncated/refresh_skipped/blocked 等,§3.2.1
+      质量词表执行面);
+    - **invariant「每动作 op 恰一条回执行」**(四调用点全域一致:
+      prep 统一口 / open_shop 直调体 / close_shop 动作 op / shop visit
+      落地门):受阻动作也产行(reason 非空受阻码),exec_events「正在
+      蒸发的失败数据」教训的并入位;停机短路在调用点之前抛出 = 执行被
+      拒不产行(停机非动作);
     - 滚动窗 = :data:`RECEIPTS_WINDOW_CAP` 条先进先出,整窗帧替换写入
       (普通 Field 域,非专用行机制,E3);窗序 = 写入序,同态同形;
     - 渠道签名:family=logic_action + actor(§3.2.1 ②类属 =
@@ -1351,8 +1376,7 @@ def note_action_receipt(gs: GameState, *, op: str, applied: bool,
       不阻塞动作链(记录层故障不毒化执行)。
     """
     try:
-        receipt: dict = {'op': str(op), 'applied': bool(applied),
-                         'reason': str(reason or '')}
+        receipt: dict = {'op': str(op), 'reason': str(reason or '')}
         if detail:
             receipt['detail'] = str(detail)
         if screen:
@@ -2624,8 +2648,9 @@ class GameState:
     # [索引定义] receipts 值 = 动作执行回执的滚动窗:list 下标 i = 第 i 条
     # 存活回执(窗序 = 写入序,先进先出,容量 = :data:`RECEIPTS_WINDOW_CAP`);
     # 取值时机 = 写入期快照(帧替换,禁就地改窗内条目)。唯一写点 =
-    # :func:`note_action_receipt`(渠道② logic_action);失败动作也产行
-    # (applied=false + reason)——exec_events「失败可见性」并入载体。
+    # :func:`note_action_receipt`(渠道② logic_action);受阻动作也产行
+    # (reason 非空受阻码,词表见该函数 docstring)——exec_events「失败
+    # 可见性」并入载体。
     receipts: Field[list[dict]] = field(default_factory=Field)
 
     # —— 局终域(§3.6.1 runs 并入载体;gs_schema 域 'match_final')——

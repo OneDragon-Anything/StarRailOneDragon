@@ -101,12 +101,11 @@ class Action:
     no: int                       # 章内序号,1 基
     op: str
     title: str                    # render-spec §4 组装规则
-    applied: bool = True
     reason: str = ''
     detail: str = ''
     screen: str = ''              # 回执 screen(章内锚定注记,不参与切分)
     extra: list[tuple[str, Any]] = field(default_factory=list)
-    #: 重试链(pipeline §5:连续回执同 op 且前条 applied=false → 合并一节,
+    #: 重试链(pipeline §5:连续回执同 op 且前条 reason 非空 → 合并一节,
     #: 节内逐条列出;首元素 = receipt 本条)
     chain: list[dict[str, Any]] = field(default_factory=list)
     deltas: list[Delta] = field(default_factory=list)
@@ -1002,13 +1001,15 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         op = str(rec.get('op') or '?')
         if (cur is not None and cur.chain
                 and str(cur.chain[-1].get('op') or '') == op
-                and cur.chain[-1].get('applied') is False):
-            cur.chain.append(rec)  # 重试链:连续回执同 op 且前条未发出
+                and str(cur.chain[-1].get('reason') or '')):
+            cur.chain.append(rec)  # 重试链:连续回执同 op 且前条受阻(reason 非空)
             return
+        # extra 排除表保留 'applied' 键:旧 journal 历史回执含该键,保留
+        # 排除 = 旧数据不漏显布尔字样;新数据无此键,保留零成本。
         extra = [(k, v) for k, v in rec.items()
                  if k not in ('op', 'applied', 'reason', 'detail', 'screen')]
         act = Action(no=len(scr.actions) + 1, op=op,
-                     title=_action_title(rec), applied=bool(rec.get('applied')),
+                     title=_action_title(rec),
                      reason=str(rec.get('reason') or ''),
                      detail=str(rec.get('detail') or ''),
                      screen=str(rec.get('screen') or ''), extra=extra,
@@ -1514,10 +1515,11 @@ def _render_action(act: Action) -> list[str]:
     out = [f'#### {act.no} {action_cn(act.op)}'
            + (f' {act.title}' if act.title else '')]
     for rec in act.chain:
-        applied = bool(rec.get('applied'))
+        # 受阻判据 = reason 非空(受阻样式挂 reason;新回执无布尔键,旧
+        # journal 的 applied 键由下方排除表吞掉不显影)。
         reason = str(rec.get('reason') or '')
-        warn = '⚠ ' if (not applied or reason) else ''
-        bits = [f'applied={"是" if applied else "否"}']
+        warn = '⚠ ' if reason else ''
+        bits = []
         if reason:
             bits.append(f'reason={reason}')
         detail = str(rec.get('detail') or '')
@@ -1526,7 +1528,8 @@ def _render_action(act: Action) -> list[str]:
         screen = str(rec.get('screen') or '')
         if screen:
             bits.append(f'画面={screen}')
-        out.append(f'- {warn}动作: ' + ' · '.join(bits))
+        if bits:
+            out.append(f'- {warn}动作: ' + ' · '.join(bits))
         for k, v in rec.items():
             if k in ('op', 'applied', 'reason', 'detail', 'screen'):
                 continue

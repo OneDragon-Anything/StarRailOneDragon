@@ -31,12 +31,14 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
-def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
-    """关商店动作回执(receipts 域,渠道②,唯一写点 = kernel 口)。
+def _note_receipt(op: SrOperation, reason: str) -> None:
+    """关商店动作回执(receipts 域,渠道②,唯一写点 = kernel 口;
+    reason = 动作事实码,'' = 已正常发出,词表见 kernel docstring)。
 
-    两出口全簿记:点击已发 = applied=true;定位缺失(动作没发出)=
-    applied=false + reason。发出即簿记非验证;journal 常开
-    回执写入无条件,无局跳过在 kernel 口。
+    两出口全簿记(每动作 op 恰一条回执行):点击已发 = reason='';
+    定位缺失(动作没发出)= reason=定位缺失(按钮-收起)——零观察 op
+    辨不出「已关/未开/环境故障」,报机械事实不报业务态。发出即簿记
+    非验证;journal 常开回执写入无条件,无局跳过在 kernel 口。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -46,7 +48,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
         gs = game_state_from_ctx(getattr(op, 'ctx', None))
         if gs is None:
             return
-        note_action_receipt(gs, op='CwActionCloseShopOp', applied=applied,
+        note_action_receipt(gs, op='CwActionCloseShopOp',
                             reason=reason, screen=SHOP_SCREEN_NAME,
                             actor='CwActionCloseShopOp')
     except Exception as e:  # noqa: BLE001  回执失败不阻塞动作链
@@ -75,9 +77,11 @@ class CwActionCloseShopOp(CwOperation):
         """机械关店两出口(均 round_success = 结束本次访问;零转移验证):
 
         - 帧上找「按钮-收起」miss = 定位缺失(点击目标获取失败,动作
-          未发出)→ 回执 applied=false + 清场上报;
+          未发出)→ 回执 reason=定位缺失(按钮-收起)(报机械事实不报
+          业务态)+ 清场上报;两出口均 round_success——定位缺失含
+          「店已关」良性态,灌 round_fail 会误计数熔断;
         - 命中 → 点击 + 固定等待 ``SHOP_CLOSE_ANIM_S`` → 回执
-          applied=true + 清场上报。收起消失与否归下一帧观察;点击未生效
+          reason='' + 清场上报。收起消失与否归下一帧观察;点击未生效
           = 外循环 0n 重分发自然重派,重派即重试。
 
         清场上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
@@ -88,12 +92,12 @@ class CwActionCloseShopOp(CwOperation):
         # flow/action_ops.md §1 已登记允许形态)。
         if not self.round_by_find_and_click_area(
                 self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
-            _note_receipt(self, False, '定位缺失(按钮-收起)')
+            _note_receipt(self, '定位缺失(按钮-收起)')
             world_decl = self._report_leave_screen()
             return self.round_success('定位缺失(按钮-收起)',
                                       data=world_decl)
         time.sleep(SHOP_CLOSE_ANIM_S)
-        _note_receipt(self, True, '')
+        _note_receipt(self, '')
         world_decl = self._report_leave_screen()
         return self.round_success('关店点击已发(机械交回,零转移验证)',
                                   data=world_decl)
