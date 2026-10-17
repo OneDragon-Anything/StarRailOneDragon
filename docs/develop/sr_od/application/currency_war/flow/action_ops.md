@@ -67,7 +67,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 ### 2.3 上报通道(动作事实怎么出去)
 
-- **prep 域旁路字段** `env.detail` / `env.emitted`(`PrepExecEnv`):机械执行摘要 + 是否已发出;节点直调 `op.run()` 的 round 结果恒 success(单节点动作 op 零重试语义,框架循环机制归外层包络与访问结束面所有)。
+- **prep 域旁路字段** `env.detail`(`PrepExecEnv`;`env.emitted` 零消费死字段已随 receipt-applied-retire 退役——未发出事实的承载 = 回执 `reason` 码,见 §5 回执契约):机械执行摘要;节点直调 `op.run()` 的 round 结果恒 success(单节点动作 op 零重试语义,框架循环机制归外层包络与访问结束面所有)。
 - **返回值已登记例外**:已登记例外仅 `CwActionStartBattleOp`(round 结果 = 点击序列已执行,找不到按钮/area 缺失 = False——未发出事实非判效,消费面 = 执行器 `last_launch_ok` 旁路 → `cw_loop` 战斗分支);`CwActionBuyCardOp` 定位缺失(点位缺失/槽解析失败/槽号越界)= round_fail 未发出事实,round 结果成功态仍 = 发出事实(与 action_exec.md §2 失败通道句对齐);`CwActionWearEquipOp` 回恒 success,落地与否不是返回值语义,归观察侧对账(§2.1)。prep 域 `emitted=False` = 机械未发出事实(定位缺失/无空槽),非效果判定。
 - **pick 族旁路** `env.round_result`:轮次流转语义,不是动作成败回执;`operations/cw_screen/_overlay_confirm.py::emit_overlay_confirm` = 机械确认 + 固定等待 + 无条件 round_retry——不读屏判「是否生效」。**待修问题标注(§1「用户裁定（点完即写）」)**:「落地与否由下一轮重入的入口观察裁决(入口词不在 = 已离开本画面返回 success;仍在 = 重做确认)」的现役写法 = 待修问题,逐批改为「确认点完立即上报结果,本次访问直接结束」;禁新增。
 - **落地登记注册表**:已随历史批次停用消失(`cw_screen_op_base` / `EMIT_TRIGGERED_DECLARED` 现为零符号,2026-09-21 清理);节点屏刷新计数全域 = 剩余语义观察写端(`encounter_refresh_left`/`supply_refresh_left`/`env_refresh_left`/`strategy_refresh_left`,各屏观察 report 摄入;遭遇/补给 sim 写端与补 sim 写面差异见 fields.md §3.4.1/§3.4.2;原 on_outcome 发出型钩子与 live +1 写点均已停用)。
@@ -86,7 +86,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 |---|---|---|---|
 | BuyCard | CwActionBuyCardOp | `cw_buy_card_action.py` | 点买一张牌:槽号按期望态 payload 定长槽阵列解析(身份同一性优先,退化按 (name, star))→ screen_info「商店牌-N」中心点击(点位缺失/槽号越界 = 显式 round_fail,禁兜底坐标静默点击);恒发出即记账(total_buy / spend_executed / bought_names,满栏多买补差 k = `merge_buy_k`);落地与否归观察侧对账(§2.1)。参数 = `action.card`(ShopCard)。发出条件 = 商店决策面产 BuyCard(义务/策略买入)。 |
 | RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作,结束后返回主循环重进 = 入口观察重建牌面):点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;等待不是判效)→ 刷价记账(容器刷价现值读口,失读回基价常量)→ 自上报 `report_action_refresh_shop_param` 同一上报口三支(计数触发 `record_refresh` paid/total;免费次数扣减分支 = `gs.free_refresh_left` Field 值判定与扣减,None = 未观察保守按付费——次数是记账面非决策闸;随机采样分支 = kernel 采样器 `cw_shop_deal.sample_shop_deal` 经 `write_logic_rand` 写牌面随机态,observe 覆盖差异 = 预期内不进失配告警)。体内零读屏零验证(§1「用户裁定（零新增读屏）」合规);「刷新是否生效」归观察侧对账,执行侧零重试。发出条件 = 商店决策产 RefreshShop(现役发出点 = 利息线闸门,策略语义见 strategy-docs)。 |
-| CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:执行位 = 帧上找「按钮-收起」真点击(miss = 店已关,幂等出口)+ 固定等待 + 自上报 `report_action_close_shop_param` 清场;零转移验证(点击未生效 = 外循环重分发自然重派)。发出条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
+| CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:执行位 = 帧上找「按钮-收起」真点击(miss = 店已关,幂等出口;miss 回执 reason 码 = `定位缺失(按钮-收起)`,见 §5)+ 固定等待 + 自上报 `report_action_close_shop_param` 清场;零转移验证(点击未生效 = 外循环重分发自然重派)。发出条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
 ### 4.2 备战族(10 行,含 LevelUpShop 同字段双类型显式独立行 + 工具原子 7 行)
 
@@ -177,7 +177,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 - `CwScreenDeploy`(部署机画面 op)**已停用删除**——部署 = 备战决策环动作:`CwActionDeployMoveParam` 原子序列由 mandate 动作发出点逐帧现算,经 `CwActionDeployMoveOp` 机械拖拽 + 自上报 `report_action_deploy_move_param` 推进部署逻辑态(路径速查 = [../screens/deploy.md](../screens/deploy.md));落地事实归备战环入口观察对账。
 - `CwOpCloseShop`(`operations/cw_op/cw_op_close_shop.py`)**已停用删除**——关店执行位并入动作 op `CwActionCloseShopOp` 真机械执行(幂等已关出口 + 清场上报;编排壳的「拦截 + no-op + 代点」旧形随商店访问两 node 化消亡,见 [../screens/shop.md](../screens/shop.md) §4)。
-- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop`(`operations/cw_op/cw_op_open_shop.py`,规范动作形态:单段机械执行 + 发出即记账恒 True,定位缺失 = 唯一 applied=false 出口;sim 机械 IO 关闭下点击经端口 click_answer 受理 = 世界推进通道,呈现/离屏牌面补写/刷价由其触发) → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
+- `_open_shop_phase`(`operations/cw_screen/cw_screen_prep.py`):开店编排——OpenShop 动作的流程层执行半(机械开店 `open_shop`(`operations/cw_op/cw_op_open_shop.py`,规范动作形态:单段机械执行 + 发出即记账恒 True,定位缺失 = 唯一受阻码出口(reason=`定位缺失(按钮-商店)`,回执契约见 §5);sim 机械 IO 关闭下点击经端口 click_answer 受理 = 世界推进通道,呈现/离屏牌面补写/刷价由其触发) → `visit_open_shop` 商店画面 op 直驱;开店 = 唯一普通形态,无受限变体);回执 `(完成事实, detail)` 中完成事实 = 商店访问完整收工(非动作成败回执)。
 - `run_buy_waves`(`operations/cw_screen/cw_screen_shop.py` 前身文件)**已停用删除**——商店访问 = 画面 op 两 node 规范形态(`CwScreenShop`:观察 node 恰一次 + 决策动作 node round_wait 单动作循环,全动作统一路径零特例拦截;规范权威版本 = [../screens/shop.md](../screens/shop.md) §2/§4);段机器(波循环/段间判定/段尾对账)随伪终结刷新一并消亡。
 - `PrepActionExecutor`(`prep_actions.py`):备战域执行器——备战动作 op 体迁后的替身缝宿主(原方法薄委托);`PrepExecEnv` 定义处。
 
@@ -207,3 +207,12 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 | 18 | CloseShop | `cw_action_report/close_shop.py` | `cw_close_shop_action.py` | `''` | 货币战争-备战 |
 
 `node_advance` 两行(#1/#2)的 `next_screen` 非固定值:由上报函数按 kernel 后继原语 `sequence_next`(`kernel/cw_node_schedule.py`,带场字段现值参)+ 生效序位 `effective_node_pos` 推导——`sequence_next` 无后继(超出建模域)= 局终声明事件式 `''`(`reason='match_end'`);位面切换轮 = `货币战争-位面过渡`;其余按新节点类型映射(battle/reward→备战、supply→补给、encounter→遭遇节点、boss→BOSS 简报)。#12 补给 = 现役唯一单 op 多支上报:选卡上报声明(#12)先喂,节点推进上报声明(#2)后喂,round `data` 携带后者。纯转移类(#6/#13-#18)选卡/关店的容器写端全在其上报函数内(腾位/零写占位/离屏),后端只按 `next_screen` 幂等返回。OpenTome 不构造声明(零画面转移语义:腾位后底层屏恒备战,星徽四选一画面的出现事实 = 登记 kind `star_tome` 承载,呈现随下一动作 advance 收尾),非转移集成员。
+
+## 5. 回执契约(receipts)
+
+动作执行回执的**单一正本 = fields.md「动作 op 行为模型」段的回执契约节**(shape/词表/invariant/LogicOutcome 边界),本节只留动作域视角的指针与登记义务:
+
+- 回执唯一写点 = `note_action_receipt`(`kernel/cw_game_state.py`),shape = `{op, reason='', detail?, screen?, **extra}`;`reason=''` = 正常发出,非空 = 机械受阻事实码(**封闭词表**,新码先登记本节再使用)。
+- 词表五族与子码枚举单一源 = `prep_actions.py` 码化映射表(visit 环 = round result status 前缀闭集映射);现役族 = `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`not_emitted:*`/`no_effect:*`/`slot_unresolved`|`slot_out_of_range`。
+- 边界:上报函数族出参 `LogicOutcome.applied/reason`(拒绝语义,§4 各行与 logic-updates 正本)**不是回执字段**——受理附注不入回执,拒绝可见性 = 后续批(outcome 冒泡机制,独立设计)。
+- `applied` 布尔已退役(receipt-applied-retire 批):退役前历史 journal 回执含 applied 键,渲染器排除表承接,旧数据不迁移。

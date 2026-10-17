@@ -1851,9 +1851,18 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
   经 `game_state_of(session)` 直读属性,非 Field 无渠道面,禁 getattr session 猜宿主):
   - **动作 op 行为模型 = 机械执行 +
     发出即记账**(执行回执
-    唯一写入位置 = `note_action_receipt`,§9):执行层零「是否生效」验证、
+    唯一写入位置 = `note_action_receipt`,§9;**回执契约单一节 = 本条**):执行层零「是否生效」验证、
     零重试、无 miss 标志位;静默不生效的治理 = 投影照写 → 完整观察实读对账
     失配 → 失配告警停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。
+    **回执契约**(`applied` 布尔已退役——受阻事实由 `reason` 码单载体承载,
+    receipt-applied-retire 批):shape = `{op, reason='', detail?, screen?, **extra}`;
+    `reason=''` = 动作已正常发出,非空 = 机械受阻事实码。封闭词表五族 =
+    `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`not_emitted:<机械受阻码>`(点击前
+    失败)/`no_effect:<机械受阻码>`(点后未生效,StartBattle 已登记例外类)/
+    `slot_unresolved`|`slot_out_of_range`(visit 环机械早退);子码枚举单一源 =
+    `prep_actions.py` 码化映射表。invariant = 每动作 op 恰一条回执行(未发出行照记,
+    事故链证据不断)。边界:LogicOutcome 域(上报函数族出参 `applied/reason` 拒绝
+    语义,logic-updates 正本全域)与回执域同名不同物,见 note_action_receipt docstring。
   `- `plane_node_sequences`(GameState 位面节点序列记录表,`PlaneNodeLedger` 载体):
     整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`
     三访问函数(get_node_ledger/ledger_node_type/ledger_update_plane)与

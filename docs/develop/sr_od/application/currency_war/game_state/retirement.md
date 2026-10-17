@@ -117,7 +117,7 @@ read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面
 | 8 | 哨兵脚本组(`sr-od-currency-war-dev` skill scripts/:cw_sentinel/cw_runs_gap/cw_early_stop) | 尾读改 journal.jsonl(runs 断流探测→局终域行断流探测);过渡期盯旧流至停写批 | 待 | 消费面切换批 |
 | 9 | 运行时内部(cw_loop 心跳/summary 兜底/Δ池再生触发/终局防重读门) | 心跳改读版本 id;兜底回填与 Δ 池再生的触发改挂局终域行落盘事件;终局防重改挂 match_final 写前查重(运行时控制面豁免类) | 待 | 观察接线批/消费面切换批 |
 | 10 | 策略侧决策行(在用 DecisionTrace) | 瘦身演进落文+接线;行面钉字段 = state_ref 单字段(过渡钉面标记 pin_scope 已停用删除——行面钉字段终裁 = state_ref 单字段,历史档案判读知识见 [决策行文件schema设计.md](决策行文件schema设计.md) §8-2) | 待 | 接线 = 决策面切换批后另批(决策行文件落地批,验收绿后立卡,已定案) |
-| 11 | action_log 成败消费面(cw_evolution applied-gate/sim 引擎两处/cw_bench_equips 申报面) | 改观察侧驱动(reconcile 对比口径:发射行+后续快照);零成败 receipts 落地前旧数据源不得抽空 | 待 | 消费面切换批(与决策行同批) |
+| 11 | action_log 成败消费面(cw_evolution applied-gate/sim 引擎两处/cw_bench_equips 申报面) | 改观察侧驱动(reconcile 对比口径:发射行+后续快照);「零成败 receipts」前置事实已成立(receipt-applied-retire 批:回执 = 纯动作事实 + reason 受阻码,无成败字段),旧数据源抽取解禁随本批判读口径对齐 | 待 | 消费面切换批(与决策行同批) |
 
 「不适用」档预留:清单内消费面经评估确认与新面无交集时标不适用并附一句理由,禁静默
 跳过(方法同逐流处置:逐面结论,禁一句话并入)。
