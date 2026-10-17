@@ -267,16 +267,18 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '恒存随快照存续;键清单含纯具名 first_streak/refresh_threshold/'
               'interest_threshold/dot_confirm 与键值载荷 star_grant#<名>/'
               'boss#<位面>-<轮> 周期键/dot_anchor#<位面>-<轮> 纯登记锚键/'
-              'dot_battle#<k> sim 进度键),无观察'
+              'dot_battle#<k> sim 进度键/ore_open#<阈值> 晶矿开启阈值键),'
+              '无观察'
               '读端——发放登记事实非观察投影(同族行先例 = ore_declared_'
               'done);逻辑写端 = cw_env_grants 触发函数族 '
               'check_env_streak_grants/check_env_refresh_grants/'
               'check_env_interest_grants/check_env_boss_grants/'
-              'check_env_dot_grants(发放刻/证实刻追加,dot 三键见'
+              'check_env_dot_grants/check_env_ore_open_grants'
+              '(发放刻/证实刻追加,dot 三键见'
               ' fields.md §3.5.5)'
               '+ cw_gain_chain.on_env_gained(随机装备绑定腿 star_grant#,'
               'placed 守卫下追加;持续伤害契约锚键腿 dot_anchor#,节点窗'
-              '开才写);触发函数族第五函数 check_env_merge_grants 零 done 写'
+              '开才写);check_env_merge_grants 零 done 写'
               '(合并升星事件携带事实,无一次性封账面,显式零写非枚举遗漏)'),
     'node_seq_by_plane': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

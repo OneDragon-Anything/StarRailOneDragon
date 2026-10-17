@@ -845,6 +845,8 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = 桥 `apply_effect_burst_grant`/`grant_effect_node_refresh_balance`（None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
 付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写入方 = 刷新上报函数 `report_action_refresh_shop_param` 单口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化停用，考古走 git。
 
+晶矿开启累计住**效果账本** `ActiveEffectInventory`（`ore_open_total`）。写入方 = 采晶矿上报函数 `report_action_collect_ore_param` 尾部单口（批内开成点数一次入账；席满/缺项∧level 缺读跳点不入账 = 「点开才计数」；生产 = 采晶矿 op 自上报，sim 与生产同段 op 代码同口）。消费方 = 战技点契约触发器 `check_env_ore_open_grants`（条件键与接线申报 = §3.5.5 词表行）。计数语义 = 全量（不限矿色/来源/奖励类型）。计数不进快照（接管局从 0 起 → 晚发放/不发形态显式接受，接受面 = 刷新两计数同款）。
+
 #### 3.3.9 条件性免费发放与每节点自动刷新
 
 - **存款回报**:每节点条件性 2 次(条件=上节点零花费;官方原文——**可重复触发,非
@@ -1113,9 +1115,13 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 消费 = `check_env_dot_grants` 证实门);`'dot_anchor#<位面>-<轮>'` = 持续
 伤害契约获得刻锚键(**纯登记件非门控**,写端 = `cw_gain_chain.on_env_gained`
 锚键腿,开局三选一获取形态可缺);`'dot_battle#<k>'` = 持续伤害契约 sim
-进度键(k 从 1 起 append-only,证实计数单一源,进度腿 sim 专用)。
+进度键(k 从 1 起 append-only,证实计数单一源,进度腿 sim 专用);
+`'ore_open#<阈值>'` = 晶矿开启阈值触发器(战技点契约 id 128;重复型通道,
+每阈值一键、阈值嵌键,消费 = `check_env_ore_open_grants`,唯一调用点 =
+采晶矿上报函数 `report_action_collect_ore_param` 尾部,live/sim 同段 op
+代码同口)。
 
-**触发与写入方**(逻辑写入方五函数 + 获得链两腿并列,各对应其条件键 =
+**触发与写入方**(逻辑写入方触发函数族 + 获得链两腿并列,各对应其条件键 =
 `kernel/cw_env_grants.py::check_env_streak_grants`(first_streak;live/sim
 结算接线同调同一函数)/ `check_env_refresh_grants`(refresh_threshold;唯一
 调用点 = 刷新上报函数尾部,live/sim 同段 op 代码同口)/
@@ -1124,7 +1130,9 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 含两模块——boss 键写端 = 本函数,star_grant# 绑定写端 =
 `cw_gain_chain.on_env_gained`)/ `check_env_dot_grants`(dot_confirm 证实 +
 dot_battle#<k> 进度;锚键 dot_anchor# 写端 = `cw_gain_chain.on_env_gained`
-锚键腿,接线见下 dot 形状节)):结算连胜真值落账
+锚键腿,接线见下 dot 形状节)/ `check_env_ore_open_grants`(ore_open#<阈值>;
+唯一调用点 = 采晶矿上报函数尾部,计数先入账后检查,live/sim 同段 op 代码
+同口)):结算连胜真值落账
 后检查,条件矩阵七序短路——①环境为空 ②环境不在登记表 ③连胜 ≤0(带符号
 口径)④未达阈值 ⑤已发(本域命中;现值 None 按空防御)⑥装备库存从未观察
 (equips None = 不发放**且不标 done**,条件每结算重查自动重试,宁缺勿造)
