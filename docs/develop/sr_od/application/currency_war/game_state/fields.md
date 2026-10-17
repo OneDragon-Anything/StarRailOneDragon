@@ -323,8 +323,11 @@ empty = 空。unit/supply_box/tome/bookcard 占 1 槽、empty 不占
   即时支(`_place_bench_item` 落位:备战空槽 supply_box/席满溢出落位/溢出位被占
   零写留证;在册条目 = 火药味 ×2、红钻贵族 ×1)+ 定时到点支(`discharge_due_item_grants`,
   在册条目 = 特权阶级;实机不接、生产挂点 = sim 进节点收束,队列登记后保持原样、
-  备战真值归观察覆盖——不对称申报在册)。T-2 落地时未申报,随本行一并清偿
-  (2026-10-17,T-31 批文档义务;纯文档申报,零行为)。
+  备战真值归观察覆盖——不对称申报在册);策略侧箱腿(`on_strategy_gained` 效果体 →
+  `gain_bench_item`,evidence=`pick_invest_box_grant`,各进阶武装箱 ×1——战术义眼++/
+  保守派/快请专家·彩三卡,发放名单单一源 = cw_gain_effects `_STRATEGY_BOX_GRANTS`)。
+  T-2/2026-09-24 批落地时未申报,随本行一并清偿(2026-10-17,T-31 批文档义务
+  +独立验收 C1 处置;纯文档申报,零行为)。
 **边界**:**容量唯一改写源=节省工位**(官方原文「在接下来3个节点只有3个备战席位置。
 随后,获得3件简易装备」)——时限效果,激活期间 capacity=3、3 节点后自动回 9,经
 效果账本容量逻辑态桥 `project_effect_capacity` 逻辑写入(桥声明契约=payload 鸭子属性
