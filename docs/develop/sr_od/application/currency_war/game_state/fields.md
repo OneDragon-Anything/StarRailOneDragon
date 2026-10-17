@@ -1109,14 +1109,22 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 键值载荷是条件键的扩展形态,随劳务派遣合同登记;写端 =
 `cw_gain_chain.on_env_gained` 随机装备支,消费 = 绑定存在性检查,不承担
 幂等);`'boss#<位面>-<轮>'` = 首领节点周期发放幂等键(每节点一键,消费 =
-`check_env_boss_grants`)。
+`check_env_boss_grants`);`'dot_confirm'` = 持续伤害契约条件腿证实(T-28;
+消费 = `check_env_dot_grants` 证实门);`'dot_anchor#<位面>-<轮>'` = 持续
+伤害契约获得刻锚键(**纯登记件非门控**,写端 = `cw_gain_chain.on_env_gained`
+锚键腿,开局三选一获取形态可缺);`'dot_battle#<k>'` = 持续伤害契约 sim
+进度键(k 从 1 起 append-only,证实计数单一源,进度腿 sim 专用)。
 
-**触发与写入方**(逻辑写入方三函数并列,各对应一个条件键 = `kernel/cw_env_grants.py::
-check_env_streak_grants`(first_streak;live/sim 结算接线同调同一函数)/
-`check_env_refresh_grants`(refresh_threshold;唯一调用点 = 刷新上报函数尾部,
-live/sim 同段 op 代码同口)/ `check_env_boss_grants`(star_grant# 绑定的
-存在性检查 + boss# 幂等键;写端含两模块——boss 键写端 = 本函数,
-star_grant# 绑定写端 = `cw_gain_chain.on_env_gained`)):结算连胜真值落账
+**触发与写入方**(逻辑写入方五函数 + 获得链两腿并列,各对应其条件键 =
+`kernel/cw_env_grants.py::check_env_streak_grants`(first_streak;live/sim
+结算接线同调同一函数)/ `check_env_refresh_grants`(refresh_threshold;唯一
+调用点 = 刷新上报函数尾部,live/sim 同段 op 代码同口)/
+`check_env_interest_grants`(interest_threshold;接线见下 interest 形状节)/
+`check_env_boss_grants`(star_grant# 绑定的存在性检查 + boss# 幂等键;写端
+含两模块——boss 键写端 = 本函数,star_grant# 绑定写端 =
+`cw_gain_chain.on_env_gained`)/ `check_env_dot_grants`(dot_confirm 证实 +
+dot_battle#<k> 进度;锚键 dot_anchor# 写端 = `cw_gain_chain.on_env_gained`
+锚键腿,接线见下 dot 形状节)):结算连胜真值落账
 后检查,条件矩阵七序短路——①环境为空 ②环境不在登记表 ③连胜 ≤0(带符号
 口径)④未达阈值 ⑤已发(本域命中;现值 None 按空防御)⑥装备库存从未观察
 (equips None = 不发放**且不标 done**,条件每结算重查自动重试,宁缺勿造)
@@ -1186,6 +1194,36 @@ resolved cap)+ flat;唯一计数刻 = 1f 失败页败局行写点,显式败局�
 `supply-node:env-grant`)。**恢复两面性**:快照恢复不重发(done 随快照
 存续);done 为空的接管形态 = 计数同步归零 → 重新累计达标后再发(同局
 双托帕&账账 = 家族「最佳猜测」边界的 interest 形状)。
+
+**dot_confirm 条件腿形状**(同域第五通道,持续伤害契约 id 127,T-28;
+**无登记表**——本卡不入五张条件发放登记表,建模形状 = 猜测写+证实,非
+条件检查型,反向锁测试钉住防误登记):计数源(敌方 DoT 状态)双端皆盲
+无世界真值生产点 → 不可数但可假设、可证实(四型族面口径 =
+invest_effects.md「条件腿族面口径」节,本卡 = 型④首例)。done 域三键:
+锚键 `dot_anchor#<位面>-<轮>`(纯登记件非门控,写端 =
+`cw_gain_chain.on_env_gained` 获得刻,显式判 node——节点未进窗不写防
+`'dot_anchor#-'` 畸形键,开局三选一获取形态可缺,缺锚不影响猜测写/计数/
+证实任何一步)/ 进度键 `dot_battle#<k>` / 证实键 `dot_confirm`(∈ 本域 =
+已证实封账,猜测写永久短路,一次性通道既有语义)。条件单一源 =
+`check_env_dot_grants`(三接线点共用,观察证实腿以 `bench_observation`
+形参分派):**结算窗腿**(live = 结算覆盖窗,logic_hook 族 group
+`battle-wait:env-grant` / sim = 结算腿 streak 检查同点,
+`logic_sig('sim:env')`)——active_env 门 + 未证实门 + 幂等守卫(全视图
+bench ∪ 上阵 ∪ 溢出含黑天鹅则不叠写,与 gain_character 3 合 1 扫描域同域)
+→ 猜测写 `gain_character`(黑天鹅,1★ 先验,rand=True 猜测态通道,evidence
+`env_dot_speculate#<帧>`);`count_battle=True`(sim 专用,进度腿 live 不
+追加)逐战斗结算追加进度键(k = 既有键数 + 1,**按环境连续累计不随重获得
+重置**——蓝海卷随机再入同卡的极低概率形态下 k 跨获得期续计,合计 8 战斗
+证实),第 `ENV_DOT_CONFIRM_BATTLES`(= 8,用户拍板值 2026-10-17,非机制
+推导,样本积累后重估须用户拍板)笔同窗相邻追加证实(evidence
+`env_dot_confirm#sim`);非战斗轮(商店/事件)不经结算腿 = 不计数。
+**观察证实腿**(live 独有,挂点 = 备战屏 bench 整表观察同步点,logic_hook
+族 group `prep:env-dot`):观察含黑天鹅 && env active && 未证实 → 证实
+追加(evidence `env_dot_confirm#obs`),证实来源不区分(观察到即证,席面
+真值由观察整表同步自兜);观察无 → 零写(猜测态由观察覆盖契约抹除,下次
+结算重写 = 自愈循环);live 无定时保底(证实只认备战观察)。**溢出落位
+局型**(席满):猜测态落溢出位、bench 观察永不见它 → 证实延迟至该单位进
+备战席,期间幂等守卫代行封写,无行为面损伤。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写入方 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =

@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -36,7 +36,8 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 入参首笔即炸),入参不传 sig。
 
 **无 rng**(逐函数标注)::func:`check_env_streak_grants` /
-:func:`check_env_refresh_grants` / :func:`check_env_interest_grants`
+:func:`check_env_refresh_grants` / :func:`check_env_interest_grants` /
+:func:`check_env_dot_grants`
 零 rng——随机态指认知通道(落位未知、
 观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
@@ -64,10 +65,12 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     GAIN_CHAIN_PRODUCER,
+    _node_frame,
     gain_character,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     DEPLOYED_BACK_CAPACITY_MAX,
+    BenchView,
     ChannelSig,
     GameState,
     back_capacity_of,
@@ -107,6 +110,39 @@ STAR_GRANT_KEY_PREFIX: str = 'star_grant#'
 #: 'boss#<位面>-<轮>';周期性 = 不同节点不同键,一次性通道的
 #: (env, 键) 形状不变)。
 BOSS_NODE_KEY_PREFIX: str = 'boss#'
+
+#: 持续伤害契约条件腿的注册环境名(条件门与锚键分支共用注册名;字面量
+#: 先例 = _RICH_DIAMOND 同款引用)。本卡**不入五张条件发放登记表**——
+#: 建模形状不同(计数源无世界真值生产点 → 猜测写+证实,非条件检查型;
+#: 反向锁测试钉住防误登记)。
+DOT_CONTRACT_ENV: str = '持续伤害契约'
+
+#: 持续伤害契约条件腿发放物注册名(猜测写/幂等守卫/证实判据共用身份)。
+_DOT_CHAR: str = '黑天鹅'
+
+#: done 域条件键:持续伤害契约条件腿证实((env, 本键) ∈ env_grants_done
+#: = 已证实封账,猜测写永久短路;一次性通道既有语义——卖出后不重发,
+#: done 不回收;live 证实 = 备战观察含黑天鹅即证不区分来源〔v2-5 裁定〕,
+#: sim 证实 = 进度键计数达阈值)。
+DOT_CONFIRM_KEY: str = 'dot_confirm'
+
+#: done 域锚键前缀:'dot_anchor#<位面>-<轮>'(纯登记件**非门控**,写入端
+#: = cw_gain_chain.on_env_gained 获得刻;开局三选一获取时 sim 节点尚未
+#: 进窗不写 = 预期形态,缺锚不影响猜测写/计数/证实任何一步——键形态
+#: 先例 = boss#<位面>-<轮>,载荷键登记先例 = star_grant#)。
+DOT_ANCHOR_KEY_PREFIX: str = 'dot_anchor#'
+
+#: done 域进度键前缀:'dot_battle#<k>'(k 从 1 起;append-only 逐战斗结算
+#: 追加,对账可数,先例 = boss# 逐节点键;进度腿 sim 专用,live 不追加——
+#: live 计数真值由现实本身决定,猜测写自愈循环每场对一次)。
+DOT_BATTLE_KEY_PREFIX: str = 'dot_battle#'
+
+#: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
+#: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
+#: 弃用〕,**非机制推导**——180 计数在 sim 无世界真值生产点,8 是该阈值
+#: 的代理口径;边界 = 样本积累后重估常量/单位均须用户拍板,计数单一源
+#: = done 域 dot_battle# 键数)。
+ENV_DOT_CONFIRM_BATTLES: int = 8
 
 #: 回调三写证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀是
 #: 失配抑制登记面,语义 = sim 后端世界腿外部事件写,回调写不属该族)。
@@ -462,6 +498,128 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_merge_grant:{name}')
     return tuple(effects)
+
+
+def _dot_char_in_bench_view(view: BenchView | None) -> bool:
+    """备战席视图是否含黑天鹅(观察证实判据与幂等守卫的 bench 侧共用扫描;
+    kind='unit' 且身份命中才算——占席道具/空槽不计)。"""
+    if view is None:
+        return False
+    return any(s.kind == 'unit' and s.unit is not None
+               and s.unit.char_id == _DOT_CHAR for s in view.slots)
+
+
+def _dot_char_in_full_view(gs: GameState) -> bool:
+    """全视图(备战 ∪ 上阵 ∪ 溢出)是否已含黑天鹅(猜测写幂等守卫)。
+
+    扫描域与 :func:`gain_character` 3 合 1 扫描域同域(bench 槽表 +
+    上阵两排 + 溢出位身份串);bench/deployed 未观察(None)= 视为不含
+    ——此时猜测写照发,链内 bench 未观察拒落档零写兜底,宁缺勿造无
+    缺陷发出。"""
+    if _dot_char_in_bench_view(gs.bench.value):
+        return True
+    dep = gs.deployed.value
+    if dep is not None:
+        for u in list(dep.front_slots or []) + list(dep.back_slots or []):
+            if u is not None and u.char_id == _DOT_CHAR:
+                return True
+    return str(gs.overflow_card.value or '') == _DOT_CHAR
+
+
+def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
+                         count_battle: bool = False,
+                         bench_observation: BenchView | None = None,
+                         ) -> str | None:
+    """持续伤害契约条件腿触发检查(猜测写 + 证实单一源;三个接线点共用
+    本函数,条件判定不漂移):live 结算覆盖窗猜测写 / live 备战屏观察证实
+    / sim 结算腿猜测写+进度累计+证实(设计 = T-28 设计稿 §2.2/§2.3,
+    迭代 2026-09-23-invest-effects-calc)。建模动机:计数源(敌方 DoT
+    状态)双端皆盲无世界真值生产点 → 不可数但可假设、可证实——每次结算
+    「假设获得黑天鹅」随机态垫入,live 由备战观察收敛、sim 由固定战斗数
+    收敛。
+
+    **结算窗腿**(默认;``bench_observation`` 为 None 时):条件矩阵
+    (顺序即短路序):
+
+    1. active_env 非持续伤害契约 → None;
+    2. ``(env, dot_confirm) ∈ done`` → None(已证实,猜测写永久短路;
+       done None 视为空防御,沿 streak 通道 ``value or ()`` 先例);
+    3. 幂等守卫:全视图(bench ∪ deployed ∪ 溢出)已含黑天鹅 → 跳过
+       猜测写(不叠写;若在场的是观察同步来的真身,证实腿同窗已处理);
+    4. → 猜测写::func:`gain_character`(黑天鹅, 1★ 先验族,rand=True
+       猜测态通道——认知通道随机态非采样身份,首观察静默覆盖是
+       write_logic_rand 通道自有契约;evidence ``env_dot_speculate#<帧>``
+       可辨;拒落/溢出/席满语义全继承链内防线,bench 未观察拒落零写);
+    5. ``count_battle=True``(sim 接线专用,进度腿 live 不追加):进度键
+       ``dot_battle#<k>`` 追加 done(k = 已有 dot_battle# 键数 + 1,
+       append-only 对账可数);``k == ENV_DOT_CONFIRM_BATTLES`` 的那笔
+       同窗相邻追加证实 done ``(env, dot_confirm)``,evidence
+       ``env_dot_confirm#sim``。非战斗轮(商店/事件)不经结算腿 = 不
+       计数(结构性,接线点在结算腿内)。进度键**按环境连续累计,不随
+       同局内重获得重置**(蓝海卷随机再入同卡的极低概率形态:k 跨获得
+       期续计,合计 8 个战斗结算证实 = 「总拥有 8 战斗」口径,对账时
+       勿当漂移查)。
+
+    **观察证实腿**(live 独有;``bench_observation`` 非 None 时,挂点 =
+    备战屏 bench 整表观察同步点,观察写之后同帧):观察值含黑天鹅 &&
+    env active && 未证实 → done 追加 ``(env, dot_confirm)``,evidence
+    ``env_dot_confirm#obs``。证实来源不区分(v2-5 裁定:观察到即证,
+    席面真值由观察整表同步自兜);观察无黑天鹅 → 零写(猜测态由观察
+    覆盖契约无声抹除,下次结算重写 = 自愈循环)。live 无定时保底
+    (v2-2 裁定:证实只认备战观察,猜测写无时间/次数上限)。
+
+    锚键 ``dot_anchor#<位面>-<轮>`` 纯登记件**非门控**,写入端 =
+    cw_gain_chain.on_env_gained 获得刻(开局三选一获取时 node 未进窗
+    不写 = 预期形态,缺锚不影响本函数任何一步)。
+
+    - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线);
+    - 本函数零 rng:身份具名单名、进度计数比较确定,随机态指认知通道
+      (落位未知、观察校准),不消耗随机数;
+    - 返回 ``_DOT_CHAR`` 当本调用发生过写(猜测/进度/证实任一),None
+      = 零写(调用方仅日志面消费,无行为分支——本卡无宝钻式回调)。
+    """
+    env = gs.active_env.value
+    if env != DOT_CONTRACT_ENV:
+        return None
+    done = tuple(gs.env_grants_done.value or ())
+    if (env, DOT_CONFIRM_KEY) in done:
+        return None
+    if bench_observation is not None:
+        # 观察证实腿(条件面 = 观察含黑天鹅 && env active && 未证实,
+        # 前两门已在上方短路)
+        if not _dot_char_in_bench_view(bench_observation):
+            return None
+        gs.write_logic(gs.env_grants_done,
+                       done + ((env, DOT_CONFIRM_KEY),),
+                       produced_by=_PRODUCER,
+                       evidence='env_dot_confirm#obs', sig=sig)
+        return _DOT_CHAR
+    # 结算窗腿:猜测写(幂等守卫先行)
+    wrote = False
+    if not _dot_char_in_full_view(gs):
+        frame = _node_frame(gs)
+        gain_character(gs, _DOT_CHAR, 1, rand=True, sig=sig,
+                       evidence=(f'env_dot_speculate#{frame}'
+                                 if frame else 'env_dot_speculate'),
+                       producer=_PRODUCER)
+        wrote = True
+    if count_battle:
+        # 进度腿(sim 专用):k = 已有 dot_battle# 键数 + 1(append-only,
+        # 第 k 笔与证实同窗相邻写——登记事实两行各自带 evidence 可分事件)
+        k = sum(1 for e, key in done if e == env
+                and key.startswith(DOT_BATTLE_KEY_PREFIX)) + 1
+        progress_key = (env, f'{DOT_BATTLE_KEY_PREFIX}{k}')
+        gs.write_logic(gs.env_grants_done, done + (progress_key,),
+                       produced_by=_PRODUCER,
+                       evidence=f'env_dot_progress#{k}', sig=sig)
+        wrote = True
+        if k == ENV_DOT_CONFIRM_BATTLES:
+            gs.write_logic(gs.env_grants_done,
+                           done + (progress_key, (env, DOT_CONFIRM_KEY)),
+                           produced_by=_PRODUCER,
+                           evidence='env_dot_confirm#sim', sig=sig)
+    return _DOT_CHAR if wrote else None
 
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:

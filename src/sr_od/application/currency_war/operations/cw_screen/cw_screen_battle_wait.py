@@ -581,6 +581,7 @@ class CwScreenBattleWait(CwOperation):
                     # settlement 行注记带 battle_done:<节点类型> 语义
                     #(同时点同载荷,行行自足快照)。
                     from sr_od.application.currency_war.kernel.cw_env_grants import (
+                        check_env_dot_grants,
                         check_env_interest_grants,
                         check_env_streak_grants,
                     )
@@ -666,6 +667,19 @@ class CwScreenBattleWait(CwOperation):
                                            actor='CwScreenBattleWait',
                                            group_id='battle-wait:env-grant'))
                             _st.interest_counted_pos = (_plane, _round)
+                    # —— 持续伤害契约条件腿猜测写(T-28;挂点 = 结算覆盖窗,
+                    # streak 检查同窗同族):每次战斗结算「假设获得黑天鹅」
+                    # 随机态垫入备战(幂等守卫防叠写,宁缺勿造同族)。证实
+                    # 只认备战屏观察(v2-2 裁定:live 无定时保底),本窗
+                    # 不计数(进度腿 sim 专用,count_battle 缺省 False)。
+                    # 条件单一源 = kernel check_env_dot_grants;sig =
+                    # logic_hook 族同 streak/interest 形态(三触发同窗同组,
+                    # 台账归组一致);返回值忽略 = 无回调面。
+                    check_env_dot_grants(
+                        _ia_gs,
+                        ChannelSig(family='logic_hook',
+                                   actor='CwScreenBattleWait',
+                                   group_id='battle-wait:env-grant'))
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
                 # 效果账本结算挂点(settlement 锚行为账本既有挂点提供

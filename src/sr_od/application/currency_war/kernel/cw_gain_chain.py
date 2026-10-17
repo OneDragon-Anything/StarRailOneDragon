@@ -851,6 +851,27 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        evidence=f'on_env_gained:{_name}',
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_gift:{char}')
+    # 持续伤害契约锚键腿(纯登记件非门控,消费 = 对账面):获得刻
+    # best-effort 登记 'dot_anchor#<位面>-<轮>'(与即时腿同窗相邻,
+    # write_logic 直写,同 evidence 同 sig;设计 = T-28 设计稿 §2.1,
+    # 迭代 2026-09-23-invest-effects-calc)。须显式判 node——_node_frame
+    # 节点未观察返回空串,照抄会产出 'dot_anchor#-' 畸形键;开局三选一
+    # 获取时 sim 节点尚未进窗(node None)→ 不写 = 预期形态,缺锚不影响
+    # 猜测写/计数/证实(check_env_dot_grants 门控 = active_env)。
+    # kernel 反向模块级零 import 契约:函数内惰性取常量(先例 = 下方
+    # 随机装备绑定腿 STAR_GRANT_KEY_PREFIX 同款函数级避环)。
+    from sr_od.application.currency_war.kernel.cw_env_grants import (
+        DOT_ANCHOR_KEY_PREFIX,
+        DOT_CONTRACT_ENV,
+    )
+    if _name == DOT_CONTRACT_ENV and gs.node.value is not None:
+        done = tuple(gs.env_grants_done.value or ())
+        gs.write_logic(gs.env_grants_done,
+                       done + ((_name,
+                                f'{DOT_ANCHOR_KEY_PREFIX}'
+                                f'{_node_frame(gs)}'),),
+                       produced_by=GAIN_CHAIN_PRODUCER,
+                       evidence=f'on_env_gained:{_name}', sig=sig)
     if grant.chars_random_immediate:
         # 随机支:效果体含采样 → 子链 rand=True(gain-chain.md §5 递归
         # 调用点按效果自身性质传参)。星级 = spec.star(人才引进 1 = 先验

@@ -26,6 +26,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    check_env_dot_grants,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     ChannelSig,
@@ -134,6 +137,13 @@ ENTRY_OVERLAY_SETTLE_S: float = 1.0
 #: 'prep:ore-channel'(判读面按组过滤本通道全部写行)。
 _ORE_HOOK_SIG: ChannelSig = ChannelSig(
     family='logic_hook', actor='CwScreenPrep', group_id='prep:ore-channel')
+
+#: 持续伤害契约观察证实写 sig(live 侧;T-28 设计稿 §2.2):logic_hook
+#: 族 = 观察 op 内流程 hook 的逻辑写(先例 = _ORE_HOOK_SIG 同族——obs
+#: 族 sig 进写通道即炸渠道族校验),组标识 'prep:env-dot'(判读面按组
+#: 过滤本通道全部写行)。
+_DOT_HOOK_SIG: ChannelSig = ChannelSig(
+    family='logic_hook', actor='CwScreenPrep', group_id='prep:env-dot')
 
 
 def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
@@ -328,6 +338,16 @@ class CwScreenPrep(CwOperation):
                                  '不写(保 logic 逻辑态值,下帧干净帧覆盖)')
                     else:
                         _gs_obs.observe(_gs_obs.bench, _bench_obs, sig=_prep_sig)
+                        # —— 持续伤害契约观察证实(T-28;挂点 = bench 整表
+                        # 观察同步点,证实消费本帧观察值):观察含黑天鹅 &&
+                        # env active && 未证实 → done 封账(不区分来源,
+                        # v2-5 裁定;观察无 → 零写,猜测态由观察覆盖契约
+                        # 抹除、下次结算重写 = 自愈循环)。特效窗门内/空视图
+                        # 失读帧不写观察 → 本证实同帧不触发(宁缺语义自洽,
+                        # 下帧干净帧补证);条件单一源 = kernel
+                        # check_env_dot_grants,写径 logic 通道(_DOT_HOOK_SIG)。
+                        check_env_dot_grants(_gs_obs, sig=_DOT_HOOK_SIG,
+                                             bench_observation=_bench_obs)
                 else:
                     _gs_obs.carry(_gs_obs.bench,
                                   frame=(f'p{_st.plane}-r{_st.round_num}'

@@ -236,6 +236,14 @@ import 即炸)防漂移。
     未发」残缺态),消费 = `check_env_boss_grants` 腿2 绑定解析(首例 =
     劳务派遣合同 id 118「获得随机星徽」;条件键形态登记 =
     fields.md §3.5.5)。`rng` 回退/条件解析与随机角色支同款。
+  - **持续伤害契约锚键腿**(条件腿建模 T-28,获得刻纯登记):具名支发完
+    椒丘/卡芙卡后,`on_env_gained` 对本卡追加登记 `env_grants_done` 条件键
+    `dot_anchor#<位面>-<轮>`(与即时腿同窗相邻 write_logic 直写,同
+    evidence 同 sig;**纯登记件非门控**——显式判 node,节点未进窗〔开局
+    三选一获取形态〕不写,防 `'dot_anchor#-'` 畸形键;缺锚不影响猜测写/
+    计数/证实,消费门 = `check_env_dot_grants` 的 active_env 门)。键形态
+    登记单一源 = fields.md §3.5.5;条件腿「猜测写+证实」建模口径 =
+    invest_effects.md「条件腿族面口径」节。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
     落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端

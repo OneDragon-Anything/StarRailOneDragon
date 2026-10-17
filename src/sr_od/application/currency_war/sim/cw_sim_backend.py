@@ -73,6 +73,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
+    check_env_dot_grants,
     check_env_interest_grants,
     check_env_streak_grants,
     on_diamond_acquired,
@@ -2000,6 +2001,16 @@ class SimBackend:
                                           logic_sig('sim:env'))
         if granted is not None:
             on_diamond_acquired(self.gs, granted)
+        # —— 持续伤害契约条件腿(T-28 设计稿 §2.3;猜测写 + 进度累计 +
+        # 证实同点,接线点 = streak 检查同点):active_env 门真后每次结算
+        # 腿发火,「假设获得黑天鹅」猜测态写入(sim 世界写即真值,sim 无
+        # 观察覆盖 → 认知猜测态写即存续)+ 进度键 dot_battle#<k> 追加,
+        # 第 ENV_DOT_CONFIRM_BATTLES 笔同窗证实。计数代理口径(用户拍板
+        # 值,非机制推导)单一源 = kernel 常量;非战斗轮(商店/事件)不经
+        # 结算腿 = 不计数(结构性);_settled_key 重入幂等 = 单点每战斗
+        # 恰发火一次。条件单一源 = kernel check_env_dot_grants,sig 同
+        # streak 通道 logic_sig('sim:env'),返回值忽略(无回调面)。
+        check_env_dot_grants(self.gs, logic_sig('sim:env'), count_battle=True)
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,
