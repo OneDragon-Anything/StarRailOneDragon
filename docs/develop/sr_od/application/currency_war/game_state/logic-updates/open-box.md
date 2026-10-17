@@ -25,7 +25,7 @@
 
 ## 5. 拒绝语义
 
-无箱 / 指定槽无箱 = 未发出(`emitted=False`,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
+无箱 / 指定槽无箱 = 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
 
 ## 6. kernel 符号锚
 

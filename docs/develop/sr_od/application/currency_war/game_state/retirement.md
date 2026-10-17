@@ -38,6 +38,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭测试(test_cw4_key_closure) |
 | defect_ledger | **保留专用(待裁决)** | 案 A=并入 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 取值清单/失配告警联动(失配告警=缺陷触发的报警停机联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
 | op_journal | **停用(2026-09-15 用户裁定,写入方删除批写入代码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收尾 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账已在 state 流 receipts/gold 行登记 |
+| 终结出口「观察重派」语义 | 停用(2026-10-17 terminal-fail-status 批) | 参数违法类改 op 内守卫断言、area 类删检查直接使用(自然异常);终结出口失败透传(防线可数);「陈旧载荷/观察重派」「禁兜底坐标交回重读」吸收语义退役——失败如实上报,重派治理归外环防线 |
 | receipts.extra.gold_delta | 停用(2026-10-17 executor-gold-delta-retire 批,执行缝金差链整体删除) | 金归属证据 = 逻辑态写入历史(journal 写行 `sig.actor` + gold 写行 prov evidence)+ 账实对账告警(`[cw!][alarm][gold_delta]`,生产者 = 备战帧账实对比,本批复产);−2 倒挂事故(双记)的架构收尾(直推腿先行已拆,证据腿随本批) |
 | exec_events | 字段并入+流停用 | 发射事实→receipts 发射行(**零成败字段**);失败可见性=消费方对比语义(发射行后预期变化未出现=未落地,判定归观察侧 reconcile) |
 | invest_cards | 字段并入候选+流停用 | 候选卡面+效果原文→画面 payload 域 `strategy_offer`(离屏即 None);注册表 ground truth 回流用途不变;逐局原文语料断供已定案 = 接受断供(写入端已随首批写面删除批停用),定案与恢复路径 = |

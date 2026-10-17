@@ -1,7 +1,7 @@
 # terminal-fail-status 迭代设计（总纲）
 
 ## 0. 元信息
-- 迭代目标：**删除六个查表型动作 op 的防御性失败出口（共 8 个检查段：5 段删检查直接使用〔area 类+弹窗〕、3 段改 op 内守卫断言〔参数类〕）**——检查代码整段删除，取值直接使用；area 缺失/下标越界由 Python 自然异常（TypeError/IndexError）报错，栈回溯直指使用行。用户裁定 2026-10-16（「项目里之前都是取了 area 就直接使用的，写防御性代码冗余」——第三轮裁定，撤停机闸机制案与 raise 案）。
+- 迭代目标：**删除六个查表型动作 op 的防御性失败出口（共 8 个检查段：5 段删检查直接使用〔area 类+弹窗〕、3 段改 op 内守卫断言〔参数类〕）**——检查代码整段删除，取值直接使用；area 缺失/下标越界由 Python 自然异常报错（实测形态 = AttributeError 坐标解引用/TypeError/IndexError 系族，验收偏差①裁定为措辞级），栈回溯直指使用行。用户裁定 2026-10-16（「项目里之前都是取了 area 就直接使用的，写防御性代码冗余」——第三轮裁定，撤停机闸机制案与 raise 案）。
 - 状态：终版（四裁定 QA/QB/QC/QD 已落，待开工前最后扫）
 - 文档清单：无详设（单文档方案）
 - **四裁定终值**：QA = StartBattle 弹窗确认 area 缺失检查删除（自然炸，`未生效:*` 族零供给退役）；QB = 框架重试放大**什么都不做**（既有吞点与重试行为维持现状）；QC = 终结出口失败透传**本批修**；QD = DeployMove **零校验直接使用**（错槽后果由既有失配治理链承接）。
@@ -85,7 +85,7 @@ WearEquip owned 网格未定位（:74-76，与 ToolUse 同族现读落空）—�
 ## 4. 验收基准（预写）
 
 - sim 驱动整局收口（`terminal=death|p3_enter`，fail_streak<5）——正常局零触发（attack 实证：六口条件 sim 健康驱动不可达），行为不变；
-- 自然失败可达：fixture **直驱层**（op.run()/executor.execute()/act()）构造五口条件（DeployMove 仅正越界；**负值形态不炸（QD(d)，勿按 0 构造用例误报）**）→ TypeError/IndexError 上抛；harness 全流程 `op.execute()` 路径异常被框架吸收成 retry（既有行为，判据按直驱层口径）；
+- 自然失败可达：fixture **直驱层**（op.run()/executor.execute()/act()）构造五口条件（DeployMove 正越界 → IndexError；**to_slot≤0 → 守卫断言 AssertionError（QD 终稿，可构造用例）**；其余口 → AttributeError 系族）→ 异常上抛；harness 全流程 `op.execute()` 路径异常被框架吸收成 retry（既有行为，判据按直驱层口径）；
 - 终结出口透传可达：fixture 构造终结口 round_fail → visit 返回 round_fail（外环防线可数）；
 - 传播路径验证记录（全链 except 扫描报告，口径 = 无未申报吞点，§2.3 即申报清单）；
 - 非成员回归：现读落空族受阻码行为不变（StartBattle :119 → `未执行:定位缺失(按钮-出战|跳过)` 链不动）；

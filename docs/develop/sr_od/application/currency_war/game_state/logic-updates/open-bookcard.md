@@ -25,7 +25,7 @@
 
 ## 5. 拒绝语义
 
-- 画面无书册卡(`find_bookcards` 空)= 未发出(`emitted=False`,观察-执行竞态),返回主循环重新观察重派;
+- 画面无书册卡(`find_bookcards` 空)= 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;
 - `action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);
 - validate 参数非法(slot 越界)= Director 拒绝执行 + 结束本次访问并保留证据。
 
