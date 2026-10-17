@@ -226,6 +226,19 @@ import 即炸)防漂移。
     流键 rng 即世界真值,且默认环境局(无随机支)rng 消耗序列逐位不变。
     采样/先验假设申报 = `cw_investments.ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`
     三键(池内均匀 v0 / 星级 1 先验 / 类型标签过滤口径)。
+  - **即时装备支**(`equips_immediate`,落地序 = 随机支之后、即时道具支之前):
+    元素 = 具名装备名(EQUIPMENTS 在册;首例 = 红钻贵族 id 131「开局时拥有
+    【红钻】和一个【简易武装箱】」,装备腿在前 = 卡文序,遥测序与卡文对齐)。
+    发放 = `gain_equipment(rand=True)` 入栏(equips 库存,不占席、不进
+    BENCH_ITEM_NAMES)——确定具名发放,写通道走随机态(2026-10-17 用户裁定:
+    「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据
+    ——猜测写 + equips 观察覆盖纠偏,首观察静默覆盖落 `logic_rand_outcome`
+    台账,锚定与否都不进失配网;先例 = T-5 财富宝钻/T-29 奖励全腿随机态;
+    本支零采样不需 rng)。效果串 `equip_gift:<名>`,与 `env_gift:`/
+    `env_star_grant:`/`item_gift:` 前缀分域。登记与构建校验 =
+    `_validate_env_gifts` ⑧⑨(装备名漂移 ∈ EQUIPMENTS / 装备-道具通道
+    同名互斥);策略侧共享校验的空发放集枚举随新字段同步(`STRATEGY_GRANTS`
+    两表共享家族义务,首例登记在环境侧)。
   - **随机装备支**(`equips_random_immediate`,落地序 = 即时道具支之后、定时支
     之前):元素 = 装备类别名(EQUIPMENTS category 词),发放 = 类别池
     (`equips_by_category`,注册表派生单一源)内均匀掷骰选名 →
@@ -322,6 +335,11 @@ import 即炸)防漂移。
   `chars_random_immediate`,rng 经 `gain_invest_env` 形参注入,上报函数条件解析
   ——仅登记了随机支的环境才推 sim 动作采样序号,默认环境局 rng 消耗序列
   逐位不变)。
+- 零采样 rand=True 例外(2026-10-17 用户裁定):环境通道即时装备支
+  (`equips_immediate`)确定具名、零采样,仍以 rand=True 走随机态通道——
+  「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据,
+  猜测写 + 观察覆盖纠偏(先例 = T-5 财富宝钻随机态获得);语义 = 通道选择
+  声明而非采样,不需 rng。
 - 语义:任一写入位置的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
   只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(fields.md §2.6):
   未确认(锚定标志位 `prep_anchored` 未置)一律 `write_logic_rand`——开局预填初值/链落账是
