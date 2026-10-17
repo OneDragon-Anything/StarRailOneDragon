@@ -57,7 +57,8 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 - **边界载体登记(现役生产路径,不适用同帧性纪律句)**:战斗链批量发射(`launch_prepared_battle`,`operations/cw_loop.py`)——`_battle_chain_deploy_moves` 一次产整批 DeployMove 参数,逐个 execute 间容器被自上报改写。其陈旧化治理 = report 静态域拒绝 + 观察 reconcile(既有),「持有窗口 = 同一发射批内」为该路径的登记豁免;除战斗链外全仓无第二处参数跨决策帧持有。
 - **违纪承接双层**:纪律下陈旧参数不应存在;违纪现行承接 = ①商店环 proposal 守卫(`cw_shop_action_ops.py::guard_proposal_vs_expected`,loop 级同帧复检,既有)+ ②动作 op 取值自然异常(兜底)。自然异常覆盖边界:Python 语义会炸的形态(None/正越界);索引类负值形态不炸(to_slot ≤ 0 → `pts[-1]` 合法索引静默错槽)——**参数违法类校验收拢到对应动作 op 内、由 op 守卫断言**(`raise AssertionError`,消息语义保留;BuyCard 槽解析/槽号越界、DeployMove 落位越界含 to_slot ≥ 1 下界闭合负下标缺口);集中式 validate() 的逐动作参数分支按同原则后续批逐个退役进各 op(分账)。
-- **落点指针**:BuyCard 行 = §4.1;DeployMove 行 = §4.2;坐标裁定域 = 本节上文「用户裁定（坐标按下标取自容器）」。
+'- **校验落点契约(用户裁定 2026-10-17)**:动作参数合法性校验的唯一落点 = **对应动作 op 内守卫断言**(`raise AssertionError`,消息含定位信息)——op 是参数语义的唯一所有者,校验随语义走;执行器不设集中参数校验(原 `PrepActionExecutor.validate` 已随批退役,决策环调用点随之删除;集中式 if-elif 链迫使执行器知晓全部动作参数语义 = 按层打散参数知识,废弃理由随本条申报);:21 坐标裁定(守卫断言显式报错/禁负下标直取列表——负下标回环 = 静默错点)即本条的坐标域先例。
+'- **落点指针**:BuyCard 行 = §4.1;DeployMove 行 = §4.2;坐标裁定域 = 本节上文「用户裁定（坐标按下标取自容器）」。
 
 ## 2. 边界澄清(什么属于申报,什么属于验证)
 
