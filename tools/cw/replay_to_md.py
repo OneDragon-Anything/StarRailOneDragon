@@ -1004,10 +1004,12 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
                 and str(cur.chain[-1].get('reason') or '')):
             cur.chain.append(rec)  # 重试链:连续回执同 op 且前条受阻(reason 非空)
             return
-        # extra 排除表保留 'applied' 键:旧 journal 历史回执含该键,保留
-        # 排除 = 旧数据不漏显布尔字样;新数据无此键,保留零成本。
+        # extra 排除表保留 'applied'/'gold_delta' 键:旧 journal 历史回执
+        # 含两键(applied 布尔/执行点金差证据腿均已退役),保留排除 = 旧
+        # 数据不漏显;新数据无此键,保留零成本。
         extra = [(k, v) for k, v in rec.items()
-                 if k not in ('op', 'applied', 'reason', 'detail', 'screen')]
+                 if k not in ('op', 'applied', 'gold_delta', 'reason', 'detail',
+                              'screen')]
         act = Action(no=len(scr.actions) + 1, op=op,
                      title=_action_title(rec),
                      reason=str(rec.get('reason') or ''),
@@ -1531,7 +1533,8 @@ def _render_action(act: Action) -> list[str]:
         if bits:
             out.append(f'- {warn}动作: ' + ' · '.join(bits))
         for k, v in rec.items():
-            if k in ('op', 'applied', 'reason', 'detail', 'screen'):
+            if k in ('op', 'applied', 'gold_delta', 'reason', 'detail',
+                     'screen'):
                 continue
             if k == 'action' and isinstance(v, dict):
                 out.append(f'  - action: {_esc(_action_payload_brief(v))}')

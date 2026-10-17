@@ -22,21 +22,27 @@ row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 ar
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(刹车/执行点金差/回执登记/validate 与机械原语)与
+runner 包络(刹车/回执登记/validate 与机械原语)与
 原方法薄委托(替身缝)。
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
 )
-from sr_od.application.currency_war.kernel.cw_game_state import gs_of_ctx
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    SCREEN_NAME,
+    _area_rect,
+    area_center,
+)
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    ORE_CLICK_HARD_CAP,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CW_ACTION_TYPES,
     OBS_SCOPES,
@@ -59,17 +65,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionStartBattleParam,
     CwActionWearEquipParam,
     CwActionWrenchUseParam,
-)
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_game_state import Unit
-from sr_od.application.currency_war.kernel.cw_obs_core import (
-    SCREEN_NAME,
-    _area_rect,
-    area_center,
-)
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    ORE_CLICK_HARD_CAP,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -307,14 +302,6 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 执行点金差暴露(备战执行缝账务包络;写点 = execute 每次
-        # 入口复位)。取值时机 = dispatch 后由 _executed_gold_delta 现算
-        # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
-        # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
-        # (__new__ 桩形态,execute 入口显式复位不依赖构造)。
-        # (CwActionLevelUpParam 金腿 = action.cost 直写——
-        # apply_prep_action_logic 单一写点,本执行缝对 CwActionLevelUpParam 恒 0。)
-        self.last_gold_delta: int | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
@@ -420,31 +407,17 @@ class PrepActionExecutor:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车)', type(action).__name__)
             raise StopBrakeShortCircuit('已停止[W209j刹车]')
-        # 执行点金差暴露账每动作复位:上动作余量禁跨动作残留。
-        # 落地门前捕获备战席占用(主域 bench 现读):S1 路径 (ii) 翻正判读
-        # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
-        # 卖出/部署 handler 会同步销账)。
-        _pre_bench = self._bench_occupied_count()
-        # 卖出对象 dispatch 前快照(执行点金差供给;dispatch 内自上报
-        # 已同步销账,事后复查恒落空)。
-        _pre_sell_bc = self._pre_sell_target_bc(action)
         # 免战跳过子态标记每动作复位(上动作残留禁跨动作流入;op 上报经
         # _dispatch_action 写入,回执 extra 消费)。
         self._last_skip_substate = False
         detail, op_success = self._dispatch_action(action)
         self.last_detail = detail
-        gold_delta = self._executed_gold_delta(action, op_success, _pre_sell_bc)
-        self.last_gold_delta = gold_delta
-        # (卖出回金的容器唯一写点 = 卖出 op 自上报
-        #  (report_action_sell_*_param),防双记——执行缝与投影双腿各记
-        #  一次的实机倒挂实证归 git。本处 gold_delta 仅进回执 extra 保留证据。)
-        _gold_extra = ({'gold_delta': int(gold_delta)}
-                       if gold_delta not in (None, 0) else None)
+        _extra = None
         if isinstance(action, CwActionStartBattleParam) and self._last_skip_substate:
             # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
             # op 自上报,回执只保留证据)。
-            _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
-        self._note_action_receipt(action, op_success, detail, extra=_gold_extra)
+            _extra = {'skip_substate': True}
+        self._note_action_receipt(action, op_success, detail, extra=_extra)
         if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计):真执行链 = 注册表分派
             # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
@@ -452,9 +425,6 @@ class PrepActionExecutor:
             # action_ops.md §2.3);
             # 执行缝(假环境)不经真分派 = round 成功态原值透传。
             self.last_launch_ok = op_success
-        if op_success:
-            if isinstance(action, CwActionStartBattleParam):
-                self.last_launch_ok = op_success
         # (S1 清键执行侧落地门已随迭代 2026-10-12-prep-shop-workflow-
         # redesign 停用删除——备战期开店标志废止,清键门无对象。)
         # (动作逻辑效果推进已并入各 op 自上报
@@ -477,14 +447,13 @@ class PrepActionExecutor:
           为真 = ``''``(已正常发出);为假 = round_fail status 经
           :func:`_prep_receipt_block_code` 闭集映射取受阻码
           (``未执行:*`` 点击前失败 / ``未生效:*`` 点后未生效,
-          词表见映射表注释与 kernel docstring)。op_success 的在役消费三
-          管道 = ①锁定恢复局守卫(``last_launch_ok``)②金差门
-          (:meth:`_executed_gold_delta` 入口)③本口受阻码供给;
+          词表见映射表注释与 kernel docstring)。op_success 的在役消费两
+          管道 = ①锁定恢复局守卫(``last_launch_ok``)②本口受阻码供给;
         - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;受阻
           动作也产行 = reason 非空受阻码;停机短路在本口之前抛出 =
           执行被拒不产行——停机非动作);
         - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
-          含金动作的 ``gold_delta`` 执行点金差,见 _executed_gold_delta);
+          现役唯一项 = 免战跳过子态 ``skip_substate``);
         - journal 常开(影子闸折叠)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
         """
@@ -503,86 +472,6 @@ class PrepActionExecutor:
                 screen=SCREEN_NAME, actor=type(self).__name__, extra=extra)
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
-
-    def _pre_sell_target_bc(self, action: CwAction) -> Unit | None:
-        """卖出对象 dispatch 前主域快照(执行点金差供给;卖出外
-        动作 = None)。
-
-        [索引定义] CwActionSellBenchParam.bench_idx / CwActionSellDeployedParam.deployed_idx =
-        容器槽位表下标 0 基(主域席位视图派生同构下标表,恒定长 9/10)
-        ——按下标直接对位,零换算。取值时机 = execute()
-        内 dispatch **前** 主域现读(卖出 op 自上报在 dispatch 内同步
-        销账,dispatch 后复查恒落空);消费 = dispatch 后
-        _executed_gold_delta 一次读用,不跨动作存活。bench 侧 =
-        BenchSlot(kind='unit' → 内嵌 Unit;占位件无角色身份
-        → None)/ deployed 侧 = Unit。
-        主域不可读(无局/形状异常)= None(金差诚实缺失,观察覆盖
-        兜底)。
-        """
-        if not isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
-            return None
-        try:
-            match = self._ctx.cw_match
-            session = match.session if match is not None else None
-            if session is None:
-                return None
-            _gs = gs_of_ctx(getattr(self, "ctx", None), session)
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                bench_view_slots_of,
-                deployed_indexed_of_view,
-            )
-            if isinstance(action, CwActionSellBenchParam):
-                tracked = bench_view_slots_of(_gs)
-                if not (0 <= action.bench_idx < len(tracked)):
-                    return None
-                _s = tracked[action.bench_idx]
-                if _s is None or getattr(_s, 'kind', None) != 'unit':
-                    return None
-                return _s.unit
-            tracked = deployed_indexed_of_view(_gs.deployed.value)
-            idx = action.deployed_idx
-            return tracked[idx] if 0 <= idx < len(tracked) else None
-        except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
-            return None
-
-    def _executed_gold_delta(self, action: CwAction, op_success: bool,
-                             pre_sell_bc) -> int | None:
-        """执行点金差暴露(备战执行缝账务包络):gold 域备战动作在
-        机械半边发出时点的金变化量。
-
-        公式单一源与边界:
-        - ``CwActionSellBenchParam``/``CwActionSellDeployedParam`` = +sell_refund(星×招募费;对象 =
-          dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
-          上报函数(report_action_sell_*)同式;身份不可辨 = None 诚实
-          缺失,不做保守估值假账,观察覆盖兜底);
-        - ``CwActionLevelUpParam`` = 0(金腿 = ``action.cost`` 直写,唯一
-          写点 = 买经验自上报(report_action_level_up_param);执行缝金差
-          ``_last_levelup_spent`` 通道已停用,防双记);
-        - ``CwActionCollectOreParam`` = None(晶矿金通道随机,执行点不可推算——声明
-          盲区,观察覆盖兜底,禁拍值);
-        - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
-        ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键
-        (回执保留证据);**容器金账不经本值直推**——执行缝直推腿已停用,
-        卖出/花金容器唯一写点 = 卖出自上报(report_action_sell_*),
-        防双腿双记(实机 −2 倒挂实证)。None = 该动作本拍金账留观察覆盖。
-        """
-        if not op_success:
-            return None
-        if isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
-            if pre_sell_bc is None:
-                return None
-            if not str(getattr(pre_sell_bc, 'char_id', '') or ''):
-                return None   # 身份不可辨 → 回金不可算(诚实缺失)
-            from sr_od.application.currency_war.kernel.cw_economy import (
-                bench_char_cost,
-                sell_refund,
-            )
-            refund = sell_refund(int(getattr(pre_sell_bc, 'star', 1) or 1),
-                                 bench_char_cost(pre_sell_bc))
-            return int(refund)
-        if isinstance(action, CwActionCollectOreParam):
-            return None
-        return 0
 
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
         """动作分派(经注册表类级解析 + (ctx, param,
@@ -618,25 +507,6 @@ class PrepActionExecutor:
         """薄委托(体已迁 ``cw_collect_ore_action.CwActionCollectOreOp``,统一
         动作工厂体迁薄委托,替身缝保留;机械语义 docstring 随体)。"""
         return self._dispatch_action(action)
-
-    def _bench_occupied_count(self) -> int:
-        """备战席占用数(主域 bench 席位视图现读;席翻正判读输入)。
-
-        主域由卖出/部署 op 自上报同步销账(单账即同步),pre/post 两点夹一次 dispatch 即「本帧落地是否使席 free
-        由 0 翻正」的观测读数(方案 §3.3 (ii);缺页形态由消费侧
-        下帧现读自愈)。会话缺席/读失败 = -1(调用侧按「不可判」处理,
-        不产生翻正)。
-        """
-        try:
-            match = self._ctx.cw_match
-            if match is None or match.session is None:
-                return -1
-            view = gs_of_ctx(getattr(self, "ctx", None),
-                             match.session).bench.value
-            return (sum(1 for s in view.slots if s.kind != 'empty')
-                    if view is not None else 0)
-        except Exception:   # noqa: BLE001  观测 best-effort
-            return -1
 
     def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;替身缝保留)。终结动作:结束本次访问等待 = CwActionOpenBoxOp.

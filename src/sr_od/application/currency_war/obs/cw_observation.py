@@ -2264,6 +2264,50 @@ class GameStateReadReceipt:
     shop: list = field(default_factory=list)
 
 
+# ===== 账实金对账生产者(统一观察态/逻辑态对账的金域落地)=====
+
+#: 同帧去重键(最近一次已产证的对账 (frame, 实读, 账面)):同帧并发
+#: 重入(recognizer 并发触发同一帧,均在本帧 gold 写点前读到同一账面)
+#: 只产一条证据行,防同一失配刷屏;跨帧或读数/账面任一变化 = 新事件
+#: 照常对账。best-effort 无锁:并发竞态最坏多写一条证据行,证据行
+#: 幂等可接受。
+_last_gold_reconcile_key: tuple[str, int, int] | None = None
+
+
+def _reconcile_gold_against_container(gs, gold_read: int,
+                                      frame: str, screen) -> None:
+    """账实金对账生产者:备战帧金实读 vs 容器账面(gold 域统一对账)。
+
+    gap = |实读(稳定门采信值) − ``gs.gold`` 现值(账面)|;gap>0 落
+    ``obs_conflict('gold_delta', old=账面, new=实读)`` 证据行,分级由
+    既有告警门承担(阈值单一源 = ``kernel/cw_observe.GOLD_DELTA_ALARM_GAP``,
+    超阈 → ``[cw!][alarm][gold_delta]`` 告警行,≤阈 → 仅留存证据);
+    gap=0 = 账实一致,静默(零差异不是冲突,不产证)。
+
+    ⚠️ 时点约束(防静默中和):调用必须挂在本帧
+    ``gs.observe(gs.gold, …)`` 写**之前**的容器现值上——插在写后则
+    容器已被本帧读数覆盖,gap 恒 0,告警静默死亡且无报错。
+
+    账面 None(本局尚无金读数,如恢复局首战前)= 无对账基线,静默
+    跳过(诚实缺位,非零 gap 语义)。
+    """
+    global _last_gold_reconcile_key
+    ledger = gs.gold.value
+    if ledger is None:
+        return
+    gap = abs(int(gold_read) - int(ledger))
+    if gap == 0:
+        return
+    key = (str(frame), int(gold_read), int(ledger))
+    if key == _last_gold_reconcile_key:
+        return   # 同帧并发重入:已产证,不重复
+    _last_gold_reconcile_key = key
+    obs_conflict('gold_delta', int(ledger), int(gold_read), screen,
+                 verdict=('备战帧账实金对账(实读 vs 容器账面;'
+                          '超阈=告警行,≤阈=留存证据;账面来源见 source 位)'),
+                 source=f'gold_ledger_reconcile,ledger_source={gs.gold.source}')
+
+
 def read_game_state(ctx: SrContext, screen: MatLike,
                     phase: str | None = None,
                     screen_name: str | None = None) -> GameStateReadReceipt:
@@ -2666,6 +2710,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 # 无现值且未读:node 不写,保持 None(诚实缺位)
             if _w('gold'):
                 if gold_readable:
+                    # 账实金对账生产者(⚠️ 必须在本帧 observe 写之前的
+                    # 容器现值上对账——写后容器已被本帧读数覆盖,gap 恒 0,
+                    # 告警静默死亡;时点约束见 _reconcile_gold_against_container)。
+                    _reconcile_gold_against_container(gs, int(_gold_opt),
+                                                      frame, screen)
                     gs.observe(gs.gold, int(gold_val), sig=_sig_read)
                 else:
                     gs.carry(gs.gold, frame=frame,
