@@ -1348,12 +1348,12 @@ def note_action_receipt(gs: GameState, *, op: str,
         (sim 点击受理不产此码);
       * ``定位缺失(按钮-收起)``——close_shop 定位缺失(零观察 op 报
         机械事实,不报业务态);
-      * ``not_emitted:<机械受阻码>``——prep executor 统一口,点击前
+      * ``未执行:<机械受阻码>``——prep executor 统一口,点击前
         失败(定位缺失/无对象/输入契约拒绝);
-      * ``no_effect:<机械受阻码>``——prep executor 统一口,点后未生效
+      * ``未生效:<机械受阻码>``——prep executor 统一口,点后未生效
         (动作已发出但序列未完成;StartBattle 已登记例外类,
         action_ops.md §2.3);
-      * ``slot_unresolved`` / ``slot_out_of_range``——shop visit 落地门
+      * ``槽解析失败`` / ``槽号越界``——shop visit 落地门
         机械早退(round result status 前缀闭集映射取码)。
       「已开幂等」类目无现役供给点(零供给,再现先登记词表再使用);
       detail = 机械执行摘要(做了什么的人读面,恒透传);extra = 执行面

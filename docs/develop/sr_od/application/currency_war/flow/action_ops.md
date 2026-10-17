@@ -213,6 +213,6 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 动作执行回执的**单一正本 = fields.md「动作 op 行为模型」段的回执契约节**(shape/词表/invariant/LogicOutcome 边界),本节只留动作域视角的指针与登记义务:
 
 - 回执唯一写点 = `note_action_receipt`(`kernel/cw_game_state.py`),shape = `{op, reason='', detail?, screen?, **extra}`;`reason=''` = 正常发出,非空 = 机械受阻事实码(**封闭词表**,新码先登记本节再使用)。
-- 词表五族与子码枚举单一源 = `prep_actions.py` 码化映射表(visit 环 = round result status 前缀闭集映射);现役族 = `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`not_emitted:*`/`no_effect:*`/`slot_unresolved`|`slot_out_of_range`。
+- 词表五族与子码枚举单一源 = `prep_actions.py` 码化映射表(visit 环 = round result status 前缀闭集映射);现役族 = `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`未执行:*`/`未生效:*`/`槽解析失败`|`槽号越界`。
 - 边界:上报函数族出参 `LogicOutcome.applied/reason`(拒绝语义,§4 各行与 logic-updates 正本)**不是回执字段**——受理附注不入回执,拒绝可见性 = 后续批(outcome 冒泡机制,独立设计)。
 - `applied` 布尔已退役(receipt-applied-retire 批):退役前历史 journal 回执含 applied 键,渲染器排除表承接,旧数据不迁移。

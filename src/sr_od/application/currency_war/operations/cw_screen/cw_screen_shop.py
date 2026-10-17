@@ -298,16 +298,16 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
 #: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,正本家 =
 #: game_state/fields.md 回执契约节)。供给 = visit 环机械早退(round_fail
 #: 早退无 LogicOutcome)——落地门只持 OperationRoundResult 的 status 即可
-#: 取码。已登记码:``slot_unresolved`` = 商店牌槽解析失败(payload 无此
-#: 牌,身份与 (name, star) 双未命中);``slot_out_of_range`` = 槽号越界/
+#: 取码。已登记码:``槽解析失败`` = 商店牌槽解析失败(payload 无此
+#: 牌,身份与 (name, star) 双未命中);``槽号越界`` = 槽号越界/
 #: 点位缺失(槽号-点表不一致)。业务拒绝(bench_full 等 LogicOutcome
 #: 拒绝,round_success)不经本表 = reason=''(可见性 = outcome 冒泡,
 #: 后续批)。**新 round_fail status 必须同步登记本表**——漏登走
 #: :func:`_visit_block_code` 原文兜底(受阻事实不静默,复盘以原样
 #: status 显影促登记)。
 _SHOP_VISIT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
-    ('商店牌槽解析失败', 'slot_unresolved'),
-    ('商店牌槽号越界', 'slot_out_of_range'),
+    ('商店牌槽解析失败', '槽解析失败'),
+    ('商店牌槽号越界', '槽号越界'),
 )
 
 

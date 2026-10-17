@@ -101,8 +101,8 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 
 #: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,正本家 =
 #: game_state/fields.md 回执契约节)。表项 = (status 前缀, 受阻码):
-#: 受阻码自带族前缀——``not_emitted:`` = 点击前失败(定位缺失/无对象/
-#: 输入契约拒绝,动作没发出),``no_effect:`` = 点后未生效(动作已发出
+#: 受阻码自带族前缀——``未执行:`` = 点击前失败(定位缺失/无对象/
+#: 输入契约拒绝,动作没发出),``未生效:`` = 点后未生效(动作已发出
 #: 但点击序列未完成;StartBattle 弹窗收尾段 = 唯一现役形态,已登记例外
 #: 类 = action_ops.md §2.3)。映射键 = 各动作 op round_fail status 的
 #: 首段字面前缀(status 由 op 固定字面量产出);**新 round_fail status
@@ -111,34 +111,34 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 #: 泛化前缀(表序 = 匹配序,首中即返)。
 _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     # —— 出战(点击前):按钮定位失败 = 动作没发出 ——
-    ('未执行:找不到按钮', 'not_emitted:定位缺失(按钮-出战)'),
-    ('area 缺失:按钮-出战', 'not_emitted:定位缺失(按钮-出战)'),
-    ('area 缺失:按钮-跳过', 'not_emitted:定位缺失(按钮-跳过)'),
+    ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
+    ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
+    ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
     # —— 出战(点后未生效,已登记例外类):主点击已发,弹窗收尾点击
     #     未执行——点了 ≠ 没点,分族事实码不说谎 ——
     ('area 缺失:勾选-本局不再提示',
-     'no_effect:弹窗确认未执行(未达上限警告)'),
+     '未生效:弹窗确认未执行(未达上限警告)'),
     ('area 缺失:按钮-确认(货币战争-未达上限警告',
-     'no_effect:弹窗确认未执行(未达上限警告)'),
+     '未生效:弹窗确认未执行(未达上限警告)'),
     ('area 缺失:按钮-确认(货币战争-提示-前台无角色',
-     'no_effect:弹窗确认未执行(前台无角色)'),
+     '未生效:弹窗确认未执行(前台无角色)'),
     # —— 买经验:按钮 area 建档漂移(点击前)——
     ('「备战标识-购买经验」area 缺失',
-     'not_emitted:定位缺失(备战标识-购买经验)'),
+     '未执行:定位缺失(备战标识-购买经验)'),
     # —— 穿戴/工具原子:坐标与 owned 网格定位失败(拖拽前)——
-    ('装备槽位坐标缺失', 'not_emitted:定位缺失(装备槽)'),
-    ('owned 网格未定位到工具', 'not_emitted:定位缺失(工具)'),
-    ('owned 网格未定位到目标件', 'not_emitted:定位缺失(目标件)'),
-    ('owned 网格未定位到', 'not_emitted:定位缺失(owned 网格)'),
+    ('装备槽位坐标缺失', '未执行:定位缺失(装备槽)'),
+    ('owned 网格未定位到工具', '未执行:定位缺失(工具)'),
+    ('owned 网格未定位到目标件', '未执行:定位缺失(目标件)'),
+    ('owned 网格未定位到', '未执行:定位缺失(owned 网格)'),
     # —— 箱/典籍/书册:目标对象不在(点击前,「无对象」族)——
-    ('无简易武装箱', 'not_emitted:无简易武装箱'),
-    ('无秘密典籍', 'not_emitted:无秘密典籍'),
-    ('无书册卡', 'not_emitted:无书册卡'),
+    ('无简易武装箱', '未执行:无简易武装箱'),
+    ('无秘密典籍', '未执行:无秘密典籍'),
+    ('无书册卡', '未执行:无书册卡'),
     # —— 部署:落位载荷越界 = 输入契约拒绝(拖拽前)——
-    ('落位载荷越界', 'not_emitted:落位载荷越界'),
+    ('落位载荷越界', '未执行:落位载荷越界'),
     # —— 买牌(商店域 op,经注册表可达防御面):槽解析/槽越界(点击前)——
-    ('商店牌槽解析失败', 'not_emitted:商店牌槽解析失败'),
-    ('商店牌槽号越界', 'not_emitted:商店牌槽号越界'),
+    ('商店牌槽解析失败', '未执行:商店牌槽解析失败'),
+    ('商店牌槽号越界', '未执行:商店牌槽号越界'),
 )
 
 
@@ -146,14 +146,14 @@ def _prep_receipt_block_code(status: str) -> str:
     """round_fail status → 回执受阻码(闭集映射单一源
     = :data:`_PREP_RECEIPT_BLOCK_CODES`)。
 
-    未登记 status = 原文兜底(``not_emitted:<status>``):机械事实
+    未登记 status = 原文兜底(``未执行:<status>``):机械事实
     「没发出」由 round_fail 通道保证,受阻细节以原样 status 进子码槽
     不丢真;出现兜底形态 = 词表漏登,登记义务见词表注释。
     """
     for prefix, code in _PREP_RECEIPT_BLOCK_CODES:
         if status.startswith(prefix):
             return code
-    return f'not_emitted:{status}'
+    return f'未执行:{status}'
 
 
 class StopBrakeShortCircuit(RuntimeError):
@@ -476,7 +476,7 @@ class PrepActionExecutor:
         - reason = 动作事实码:op_success(round 结果成功态,局部派生事实)
           为真 = ``''``(已正常发出);为假 = round_fail status 经
           :func:`_prep_receipt_block_code` 闭集映射取受阻码
-          (``not_emitted:*`` 点击前失败 / ``no_effect:*`` 点后未生效,
+          (``未执行:*`` 点击前失败 / ``未生效:*`` 点后未生效,
           词表见映射表注释与 kernel docstring)。op_success 的在役消费三
           管道 = ①锁定恢复局守卫(``last_launch_ok``)②金差门
           (:meth:`_executed_gold_delta` 入口)③本口受阻码供给;

@@ -1884,9 +1884,9 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     **回执契约**(`applied` 布尔已退役——受阻事实由 `reason` 码单载体承载,
     receipt-applied-retire 批):shape = `{op, reason='', detail?, screen?, **extra}`;
     `reason=''` = 动作已正常发出,非空 = 机械受阻事实码。封闭词表五族 =
-    `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`not_emitted:<机械受阻码>`(点击前
-    失败)/`no_effect:<机械受阻码>`(点后未生效,StartBattle 已登记例外类)/
-    `slot_unresolved`|`slot_out_of_range`(visit 环机械早退);子码枚举单一源 =
+    `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`未执行:<机械受阻码>`(点击前
+    失败)/`未生效:<机械受阻码>`(点后未生效,StartBattle 已登记例外类)/
+    `槽解析失败`|`槽号越界`(visit 环机械早退);子码枚举单一源 =
     `prep_actions.py` 码化映射表。invariant = 每动作 op 恰一条回执行(未发出行照记,
     事故链证据不断)。边界:LogicOutcome 域(上报函数族出参 `applied/reason` 拒绝
     语义,logic-updates 正本全域)与回执域同名不同物,见 note_action_receipt docstring。
