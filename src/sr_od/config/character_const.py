@@ -263,6 +263,9 @@ MORTENAXBLADE = Character(id='mortenaxblade', cn='千冶•刃', path=CHARACTER_
 GILGAMESH = Character(id='gilgamesh', cn='吉尔伽美什', path=CHARACTER_PATH_DESTRUCTION, combat_type=LIGHTNING, level=5, technique_type=TECHNIQUE_AREA)
 HIMEKONOVA = Character(id='himekonova', cn='姬子•启行', path=CHARACTER_PATH_ERUDITION, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 ROBINSUMMERETTO = Character(id='robinsummeretto', cn='知更鸟•晴歌', path=CHARACTER_PATH_REMEMBRANCE, combat_type=WIND, level=5, technique_type=TECHNIQUE_BUFF)
+PEARL = Character(id='pearl', cn='真珠', path=CHARACTER_PATH_ELATION, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=999)
+RIN_TOHSAKA = Character(id='rin_tohsaka', cn='远坂凛', path=CHARACTER_PATH_ERUDITION, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=999)
+AVENTURINE_WAVEFLAIR = Character(id='aventurine_waveflair', cn='砂金•戏浪', path=CHARACTER_PATH_ELATION, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 
 
 CHARACTER_LIST: List[Character] = [
@@ -360,7 +363,10 @@ CHARACTER_LIST: List[Character] = [
     MORTENAXBLADE,
     GILGAMESH,
     HIMEKONOVA,
-    ROBINSUMMERETTO
+    ROBINSUMMERETTO,
+    PEARL,
+    RIN_TOHSAKA,
+    AVENTURINE_WAVEFLAIR
 ]
 
 
