@@ -155,14 +155,20 @@ def _entry_equips(x: object) -> list[str]:
 
 def _bump_carrier(carrier: object, new_star: int,
                   new_equips: list[str]) -> object:
-    """合成载体升星 + 装备继承的 frozen 新构造(merge_simulate 同式)。"""
+    """合成载体升星 + 装备继承的 frozen 新构造(merge_simulate 同式)。
+
+    产物**显式置 uid=None**(合成产物 = 新实体,实例粒度上场锁的用户
+    裁定口径:「买了之后导致合成升星的,那也可以上场」——漏置则被锁
+    uid 随 replace 随行进产物,下场回 bench 后遭守卫误拦)。"""
     if isinstance(carrier, BenchSlot):
         if carrier.unit is None:
             raise TypeError('merge 载体 BenchSlot 无 Unit(占位件不可合成)')
         return replace(carrier, unit=replace(carrier.unit, star=new_star,
-                                             equips=list(new_equips)))
+                                             equips=list(new_equips),
+                                             uid=None))
     if isinstance(carrier, Unit):
-        return replace(carrier, star=new_star, equips=list(new_equips))
+        return replace(carrier, star=new_star, equips=list(new_equips),
+                       uid=None)
     raise TypeError(f'merge 载体形状不支持: {type(carrier).__name__}')
 
 
@@ -394,7 +400,8 @@ class _ChainAcc:
 def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
                          sig: ChannelSig, evidence: str, producer: str,
                          enter: bool, ovf_star: int | None,
-                         acc: _ChainAcc) -> GainOutcome:
+                         acc: _ChainAcc, uid: int | None = None
+                         ) -> GainOutcome:
     """:func:`gain_character` 递归核(帧内固定时序 gain-chain.md §2:落位(仅
     enter 帧)→ 回调 → 单级升星判断 → 产物递归(enter=False,产物已在
     载体位,不再落位——升星产物重进获得角色的语义 = 回调 + 后续升星
@@ -413,7 +420,10 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
         pool = _build_pool(gs, ovf_star)
         assert pool is not None   # bench 已判非 None,构建恒有池
         write = _select_write(gs, rand)
-        slot = BenchSlot(kind='unit', unit=Unit(char_id=name, star=star))
+        # uid = 环境发放链注入的实例号(仅 check_env_battle_grants 传;
+        # 其余调用缺省 None——商店购入/观察重建单位天然无实例号)。
+        slot = BenchSlot(kind='unit',
+                         unit=Unit(char_id=name, star=star, uid=uid))
         if bench_place(pool.bench, slot) is not None:
             write(gs.bench, bench_view_of_working(pool.bench,
                                                   pool.orig_view),
@@ -536,7 +546,7 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
 
 def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
                    sig: ChannelSig, evidence: str,
-                   producer: str) -> GainOutcome:
+                   producer: str, uid: int | None = None) -> GainOutcome:
     """获得角色(gain-chain.md §2 固定时序):落位(备战空槽 → bench_place;席满 →
     溢出落位写 overflow 两字段;溢出位被占 → 零写留存证据,bench 未观察 =
     直构域拒落零写)→
@@ -547,12 +557,18 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
     log 不阻塞链主腿)。链内所有写共享入口 sig(gain-chain.md §2),
     evidence 加 ``#place``/``#mergeN`` 后缀区分。
 
+    ``uid`` = 落位单位的实例号(可选尾形参,缺省 None;仅环境发放链
+    check_env_battle_grants 发放刻传——实例粒度上场锁的赋号注入点,
+    实例语义 = cw_game_state.env_grant_deploy_locks 字段注释;其余全部
+    现役调用点零传 = 单位天然无实例号)。
+
     溢出善后(腾位/卖牌)不归链——链只如实记账(gain-chain.md §2)。
     """
     acc = _ChainAcc()
     outcome = _gain_character_core(gs, name, star, rand=rand, sig=sig,
                                    evidence=evidence, producer=producer,
-                                   enter=True, ovf_star=None, acc=acc)
+                                   enter=True, ovf_star=None, acc=acc,
+                                   uid=uid)
     if acc.facts:
         # 合并升星触发发放(事件携带事实无 done;发放物不在触发集 =
         # 链天然终止无环)。kernel 反向模块级零 import 契约:函数内

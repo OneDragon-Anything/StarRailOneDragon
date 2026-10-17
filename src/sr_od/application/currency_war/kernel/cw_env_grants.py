@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数/同战共现触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 上场锁守卫判定 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -37,7 +37,7 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 
 **无 rng**(逐函数标注)::func:`check_env_streak_grants` /
 :func:`check_env_refresh_grants` / :func:`check_env_interest_grants` /
-:func:`check_env_dot_grants`
+:func:`check_env_dot_grants` / :func:`check_env_battle_grants`
 零 rng——随机态指认知通道(落位未知、
 观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
@@ -77,16 +77,22 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     ChannelSig,
     GameState,
+    Unit,
     back_capacity_of,
+    effective_node_pos,
     level_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_BATTLE_GRANTS,
     ENV_BOSS_GRANTS,
     ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
     ENV_ORE_OPEN_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
+)
+from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    sequence_next,
 )
 
 #: 触发函数两写(发放/done)的写入者标识(journal/台账过滤键)。
@@ -146,6 +152,10 @@ DOT_BATTLE_KEY_PREFIX: str = 'dot_battle#'
 #: 重复型通道,每阈值一键,(env, 键) 天然唯一;键形先例 = star_grant#/
 #: boss# 前缀携载荷形态)。
 ORE_OPEN_THRESHOLD_KEY_PREFIX: str = 'ore_open#'
+
+#: done 域条件键:同战共现触发器(星核猎手契约,T-30;每环境至多一个,
+#: (env, 本键) 天然唯一;消费注册表 = ENV_BATTLE_GRANTS)。
+BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
 
 #: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
 #: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
@@ -618,6 +628,125 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
         done = done + ((env, key),)
         t += step
     return tuple(granted)
+
+
+def check_env_battle_grants(gs: GameState, sig: ChannelSig) -> str | None:
+    """同战共现条件发放触发检查(单一源;唯一调用点 = report_node_advance
+    settle_confirm 分支,黑天鹅直登相邻,cw_game_state.py 内联;分支在
+    advance_node_effective 真推进之后,重复上报结构性不重查)。
+
+    条件矩阵(顺序即短路序,镜像 streak/refresh,逐序返回 None = 未发放):
+
+    1. 当前环境(active_env)None/空链 → None;
+    2. 环境不在登记表(ENV_BATTLE_GRANTS)→ None;
+    3. ``(env, battle_co_presence) ∈ done 现值 → None``(已发,一次性
+       封账「获得【流萤】」直读;done None 视为空防御,沿 streak 通道
+       ``value or ()`` 先例);
+    4. ``gs.deployed.value`` None → None 且不标 done(直构域防御,生产
+       域开局种子恒非 None;宁缺勿造族——参与真值无承载不猜);
+    5. ``gs.bench.value`` None → None 且不标 done(发放落位承载缺,禁
+       半发放,refresh ⑤/interest ⑤ 同款;gain_character 本体另有拒落
+       防线);
+    6. 生效序位缺读(effective_node_pos None)→ None 且不标 done(解锁
+       序位无计算基准,宁缺勿造;settle_confirm 分支内结构性不可达——
+       推进已落账,直构/测试形态防御);
+    7. 共现判定:``_iter_field_units(gs.deployed.value)`` 取在场 char_id
+       集,逐组 ``set(group) & present`` 非空,全组满足才继续(组间
+       AND、组内 OR;参与 = 上阵,bench 不算;胜负不计,黑天鹅裁定
+       口径继承);
+    8. 达标 → **顶层四笔相邻写,同 sig、同 produced_by、同 evidence 前缀
+       ``env_grant#<env>#battle``**(同窗原子语义面;evidence 为前缀共享
+       非全等——gain_character 链内展开行按链纪律带后缀 ``#place``/
+       ``#mergeN``,streak 两笔全等先例的成立条件 = equips 尾追加直写无
+       链展开,本卡不具该前提):
+       - 发号:``uid = (env_grant_uid_seq 现值 or 0) + 1`` 写回(evidence
+         = 前缀 + ``#uid`` 后缀,判读归组);
+       - :func:`gain_character`(发放角色, 1★ 先验族, rand=False 具名
+         单名确定发放,**uid=uid 实例号随行**——锁实例身份的赋号刻);
+         落位成败与登记解耦(placed=False 溢出位被占零写留证,锁记录与
+         done 照写);
+       - 解锁序位计算 + 锁域写:发放刻生效序位沿节点日程表
+         (:func:`sequence_next`,修饰域现值传入缺省回退默认表)步进
+         deploy_lock_nodes 步,步进遇 None(局终方向)停留最后合法值
+         (锁已无消费面);记录 (reward_char, uid, 解锁序位) 追加;
+       - done 追加 ``(env, BATTLE_CO_PRESENCE_KEY)``;
+       返回发放角色名(日志面消费,无行为分支)。
+
+    - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线 =
+      report_node_advance 内构 sig 直传,单点覆盖双端);
+    - 本函数零 rng:随机态指认知通道(落位未知/观察校准),发放位置
+      (链内落位)确定、解锁序位步进确定,不消耗随机数。
+    """
+    env = gs.active_env.value
+    if not env:
+        return None
+    grant = ENV_BATTLE_GRANTS.get(env)
+    if grant is None:
+        return None
+    done = tuple(gs.env_grants_done.value or ())
+    if (env, BATTLE_CO_PRESENCE_KEY) in done:
+        return None
+    if gs.deployed.value is None:
+        # 参与真值无承载:宁缺勿造不标 done(生产不可达,开局种子底座;
+        # 结算刻 deployed 已读后自动重查)
+        return None
+    if gs.bench.value is None:
+        # 席面从未观察:发放角色写出不完整席 = 丢人,宁缺勿造不标 done
+        # (同上;gain_character 本体另有拒落防线)
+        return None
+    eff = effective_node_pos(gs)
+    if eff is None:
+        # 解锁序位无计算基准:宁缺勿造不标 done(settle_confirm 分支内
+        # 结构性不可达,直构/测试形态防御)
+        return None
+    from sr_od.application.currency_war.kernel.cw_faction_callbacks import (
+        _iter_field_units,
+    )
+    present = {str(u.char_id) for _row, u in _iter_field_units(gs.deployed.value)}
+    if not all(any(name in present for name in group)
+               for group in grant.presence_groups):
+        return None
+    evidence = f'env_grant#{env}#battle'
+    uid = int(gs.env_grant_uid_seq.value or 0) + 1
+    gs.write_logic(gs.env_grant_uid_seq, uid, produced_by=_PRODUCER,
+                   evidence=f'{evidence}#uid', sig=sig)
+    gain_character(gs, grant.reward_char, 1, rand=False, sig=sig,
+                   evidence=evidence, producer=_PRODUCER, uid=uid)
+    unlock = eff
+    for _ in range(grant.deploy_lock_nodes):
+        nxt = sequence_next(unlock, gs.node_seq_by_plane.value)
+        if nxt is None:
+            break   # 局终方向无后继:停留最后合法值(锁已无消费面)
+        unlock = nxt
+    locks = tuple(gs.env_grant_deploy_locks.value or ())
+    gs.write_logic(gs.env_grant_deploy_locks,
+                   locks + ((grant.reward_char, uid, unlock),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    gs.write_logic(gs.env_grants_done,
+                   done + ((env, BATTLE_CO_PRESENCE_KEY),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    return grant.reward_char
+
+
+def deploy_lock_block_reason(gs: GameState, unit: Unit) -> str | None:
+    """上场锁守卫判定(单一源;消费 = deploy_move/swap_deploy 两上报入口)。
+    实例匹配 = unit.uid 非空 ∧ 锁记录同 uid ∧ effective_node_pos(gs)
+    < 解锁序位(元组字典序)→ 返回拒绝原因串
+    'deploy_locked:<char>#uid<uid>#unlock<位>-<轮>';无命中 → None
+    (unit.uid None = 购入/观察重建/合成产物单位,天然放行;生效序位
+    缺读无比对基准 = fail-open 放行,锁域只登记不清理——到期 = 生效
+    序位 ≥ 解锁序位比对自愈,卖牌/合成消耗后锁记录孤悬永不匹配)。"""
+    if unit.uid is None:
+        return None
+    eff = effective_node_pos(gs)
+    if eff is None:
+        return None
+    for _char, uid, unlock in tuple(gs.env_grant_deploy_locks.value or ()):
+        if uid == unit.uid and eff < unlock:
+            return (f'deploy_locked:{_char}#uid{uid}'
+                    f'#unlock{unlock[0]}-{unlock[1]}')
+    return None
 
 
 def _dot_char_in_bench_view(view: BenchView | None) -> bool:

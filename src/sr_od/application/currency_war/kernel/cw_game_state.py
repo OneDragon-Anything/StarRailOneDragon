@@ -185,8 +185,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
     'node': 2,              # node/node_path/node_path_baseline(§3.2.1/§3.2.2;域版本 2 =
                             # node_path 值形 NodeChain 载体(逐格 TokenCell 元数据)
                             # + 基线链字段 node_path_baseline)
-    'units': 2,             # deployed(单字段 DeployedView 完整槽位表)/bench/back_layout
-                            # (§3.2.3-§3.2.7;域版本 2 = front_row/back_row 两紧凑行域
+    'units': 3,             # deployed(单字段 DeployedView 完整槽位表)/bench/back_layout
+                            # (§3.2.3-§3.2.7;域版本 3 = Unit 值形状扩尾字段
+                            # uid(实例号,typed 结构扩字段 = 值形状变更,域版本
+                            # bump 契约先例 = supply 域版本 3;旧档 Unit dict 无
+                            # uid 键,_unit_from_dict 宽容读缺省 None = 旧档
+                            # 兼容);版本 2 = front_row/back_row 两紧凑行域
                             # 合卷为 deployed 单字段(容器合并,
                             # 空槽 None 显式、位置 = 子表下标派生);版本 1 = 紧凑行域两字段)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
@@ -241,6 +245,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # env-conditional-grant §1)。独立键版本 1
                                 # 不并入他域 bump——他域本体未变,先例 =
                                 # ore_rewards 不并入 spheres
+    'env_grant_deploy_locks': 1,  # 环境发放角色上场锁(T-30 星核猎手契约;
+                                # 实例粒度,元素 (char_id, uid, 解锁序位
+                                # NodePos))。独立键版本 1,同 env_grants_done
+                                # 先例不并入他域 bump
+    'env_grant_uid_seq': 1,     # 环境发放实例号发号计数器(同迭代;int 保型
+                                # 直通免 rebuild 登记)。独立键版本 1,同上
     'node_seq_by_plane': 1,     # 逐位面节点序列场字段(「人身意外险」设计迭代:
                                 # 键 = 位面 1 基,值 = 节点类型序;逻辑态,
                                 # 写点唯一 = gain_invest_env 尾段,注册后
@@ -502,6 +512,11 @@ class Unit:
     char_id: str
     star: int                       # 星级 1..3(合成上限;观察期快照)
     equips: list[str] = field(default_factory=list)
+    # 实例号;仅环境发放链发放刻赋号(check_env_battle_grants 经
+    # env_grant_uid_seq 发号),其余恒 None——商店购入/观察重建/合成产物/
+    # 策略预测单位天然 None。锁匹配键(实例粒度上场锁),实例语义 =
+    # env_grant_deploy_locks 字段注释(单一源在彼处)。
+    uid: int | None = None
 
 
 #: 后排物理格数上限(布局值域 {6..9} 的上界;用户口述 2026-09-11
@@ -2057,6 +2072,10 @@ def seed_opening_state(gs: GameState) -> None:
     # 环境条件发放已发标记(空底座,同上种子族先例;开局未发任何条件
     # 发放,「本局首次」守卫的初始真值 = 空集)
     _seed(gs.env_grants_done, ())
+    # 环境发放上场锁 + 实例号发号计数器(T-30;空/零底座,同 env_grants_done
+    # 种子族先例——域值恒非 None,守卫 membership 判定零 None 防御)
+    _seed(gs.env_grant_deploy_locks, ())
+    _seed(gs.env_grant_uid_seq, 0)
     # (node_seq_by_plane 不种:B/C 类字段契约——None = 未注册态是设计
     # 语义,设计「Field 缺省 None」,Field 声明缺省即开局真值,
     # seed_opening_state「B/C 类字段一个不种」同规。)
@@ -2445,7 +2464,9 @@ class GameState:
     # §1):元素 = (env 投资环境规范名,条件键)。条件键取值清单 =
     # 'first_streak'(本局首次连胜达成)/'refresh_threshold'(刷新次数
     # 阈值触发器)/'interest_threshold'(利息累计阈值触发器,T-27 公司
-    # 契约)/'dot_confirm'(持续伤害契约条件腿证实,T-28)四纯具名键 +
+    # 契约)/'dot_confirm'(持续伤害契约条件腿证实,T-28)/
+    # 'battle_co_presence'(同战共现触发器,星核猎手契约,T-30;每环境
+    # 至多一个,(env, 本键) 天然唯一)五纯具名键 +
     # 'star_grant#<装备名>'/'boss#<位面>-<轮>'(劳务派遣合同:# 后载荷 =
     # 键值扩展形态,前者为随机星徽授予的绑定键〔腿2 解析唯一源〕、后者为
     # 首领节点周期幂等键)+ 'dot_anchor#<位面>-<轮>'(持续伤害契约锚键,
@@ -2457,21 +2478,57 @@ class GameState:
     # 取值时机 = 发放刻追加(check_env_streak_grants /
     # check_env_refresh_grants / check_env_interest_grants /
     # check_env_boss_grants / check_env_dot_grants /
-    # check_env_ore_open_grants 各自写腿 / on_env_gained
-    # 随机装备绑定腿〔placed 守卫下〕与持续伤害契约锚键腿〔节点窗开〕),
+    # check_env_ore_open_grants / check_env_battle_grants 各自写腿 /
+    # on_env_gained 随机装备绑定腿〔placed 守卫下〕与持续伤害契约锚键腿
+    # 〔节点窗开〕),
     # **局内恒存无过期清理**——「本局首次」整局有效,连胜无周期
     # 语义(与晶矿 done 的位面过渡过期清理不同;boss# 键的周期性 = 不同
     # 节点不同键,登记本身仍局内恒存)。幂等守卫:跨结算/跨观察重查不
     # 重发(结算低频天然幂等友好,电平 + done 直写,边沿/op 成员记忆已
     # 否定,取舍见详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants
     # 触发函数族(发放/证实刻追加;streak/refresh/interest/boss/dot/
-    # ore_open 各函数)
+    # ore_open/battle 各函数)
     # + cw_gain_chain.on_env_gained(随机装备绑定腿 + 持续伤害契约锚键腿),
     # 无观察写端(发放登记事实非观察投影;直写先例 = cw_exec_state 金腿
     # / cw_effect_inventory 退款腿)。恢复局随快照存续 = 中断恢复对局
     # 不重发。开局种子底座 = ()(A 类)。
     env_grants_done: Field[tuple[tuple[str, str], ...]] = field(
         default_factory=Field)
+
+    # [索引定义] env_grant_deploy_locks = 环境发放角色上场锁(逻辑态;
+    # **实例粒度**,用户裁定 2026-10-17):元素 = (char_id, uid, 解锁序位)。
+    # - char_id = 发放角色规范名(披露/排障可读;守卫匹配不消费,匹配键
+    #   = uid);
+    # - uid = Unit 实例号(int;仅环境发放链发放刻赋号,发号器 =
+    #   env_grant_uid_seq 计数器;商店购入/观察重建/策略预测单位恒 None
+    #   → 永不匹配锁记录);
+    # - 解锁序位 = NodePos = (位面,轮) 元组(cw_node_schedule.NodePos,1 基,
+    #   字典序 = 节点序列全序)。取值时机 = 发放刻计算:发放刻生效序位
+    #   (effective_node_pos,settle_confirm 分支内 = 战斗节点 X 的后继
+    #   第一节点 X+1)沿节点日程表步进 deploy_lock_nodes 步(K=2 → X+K+1
+    #   = X+3;锁 X+1..X+K 共 K 个备战期,第 K+1 节点起可上场)
+    #   (sequence_next,修饰域
+    #   gs.node_seq_by_plane 现值传入,缺省回退默认表;步进遇 None =
+    #   局终方向无后继,停留最后合法值——锁已无消费面)。守卫比对 =
+    #   effective_node_pos(gs) < 解锁序位(元组字典序)→ 拒(单一源 =
+    #   cw_env_grants.deploy_lock_block_reason,消费 =
+    #   deploy_move/swap_deploy 两上报入口)。
+    # **无 tick 无主动清理**——到期 = 生效序位 ≥ 解锁序位比对自愈,记录
+    # 滞留至局终(上限 ≈ 一次性发放数);卖牌/合成消耗被锁张不清理
+    # 锁记录(uid 孤悬永不匹配 = 同款自愈)。写入端 = cw_env_grants
+    # 单一逻辑写端(发放登记事实非观察投影,env_grants_done 同款)。消费端 =
+    # deploy_move/swap_deploy 上报入口锁守卫。恢复局随快照存续(rebuild 表
+    # tuple 化登记,env_grants_done 先例;NodePos 元组重建先例 =
+    # node_pos 行)。开局种子底座 = ()(A 类)。
+    env_grant_deploy_locks: Field[tuple[tuple[str, int, tuple[int, int]], ...]] = field(
+        default_factory=Field)
+
+    # [索引定义] env_grant_uid_seq = 环境发放实例号发号计数器(逻辑态;
+    # 已发号单调上界,发号 = 现值+1 后写回)。写入端 = check_env_battle_grants
+    # 发放刻单口。恢复局随快照存续(int 保型直通免 rebuild 登记——登记制
+    # 辖 _json_safe 无类型标形状 dict/list/tuple,int 无漂移;恢复后从存续
+    # 值续号,不与恢复的锁记录 uid 撞号)。开局种子底座 = 0。
+    env_grant_uid_seq: Field[int] = field(default_factory=Field)
 
     # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;
     # 节点改写环境建模(统一注册表 = cw_node_schedule.ENV_NODE_REWRITE_
@@ -3679,6 +3736,16 @@ def report_node_advance(gs: GameState, *, trigger: str,
                     gs, 'fortune', KIND_SCREEN_NAMES['fortune'],
                     source=(f's4_battle_count@{_sc.fortune_battles}'
                             '@settle_confirm'))
+        # 同战共现条件发放(T-30 星核猎手契约):黑天鹅直登相邻同口——
+        # 触发检查在 advance_node_effective 真推进之后执行(上方 deduped
+        # 即 return),重复上报结构性不重查;本分支内 effective_node_pos
+        # = 战斗节点的后继第一节点(解锁序位计算基准)。惰性 import:
+        # cw_env_grants 模块级 import cw_game_state,反向模块级即环
+        # (分支内惰性 import 先例同上)。返回值仅日志面,无行为分支。
+        from sr_od.application.currency_war.kernel.cw_env_grants import (
+            check_env_battle_grants,
+        )
+        check_env_battle_grants(gs, sig)
     return LogicOutcome(
         applied=True, reason=f'node_pos→{candidate[0]}-{candidate[1]}',
         world_decl=WorldDecl(next_screen=_node_advance_next_screen(gs),
@@ -3968,10 +4035,12 @@ def maybe_emit_chain_diff(gs: GameState, *, snapshot: bool,
 
 def _unit_from_dict(d: dict) -> Unit:
     """Unit 快照 dict 重建单一源(restore 各重建点共用;宽容读:
-    缺席字段走值缺省)。"""
+    缺席字段走值缺省)。uid 宽容读 = 旧档快照 Unit dict 无 uid 键缺省
+    None(域版本 bump 3 兼容面,实例号随快照存续归锁域恢复正确性)。"""
     return Unit(char_id=str(d.get('char_id') or ''),
                 star=int(d.get('star') or 1),
-                equips=list(d.get('equips') or []))
+                equips=list(d.get('equips') or []),
+                uid=int(d['uid']) if d.get('uid') is not None else None)
 
 
 def _restore_deployed_view(d: dict) -> DeployedView:
@@ -4128,6 +4197,12 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 存续 = 恢复局不重发(触发函数守卫天然闭合)。
         'env_grants_done': lambda d: tuple(
             (str(e[0]), str(e[1])) for e in d),
+        # 环境发放上场锁(T-30):tuple 化重建(_json_safe 落快照为
+        # list-of-lists;元素 = (char_id, uid, (位面,轮)),解锁序位嵌套
+        # 元组重建);随快照存续 = 接管局锁不丢。env_grant_uid_seq 为 int
+        # 保型直通,免登记(_json_safe 对 int 无漂移)。
+        'env_grant_deploy_locks': lambda d: tuple(
+            (str(e[0]), int(e[1]), (int(e[2][0]), int(e[2][1]))) for e in d),
         # 逐位面节点序列场字段():键 int 化 + 值 tuple 化重建
         # (_json_safe 落快照为 str 键 dict-of-list);随快照存续 = 修饰局
         # 恢复坐标系不断。None 值域不在快照(只存非 None,往返一致)。

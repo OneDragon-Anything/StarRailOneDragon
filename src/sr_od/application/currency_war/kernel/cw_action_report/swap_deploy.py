@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    deploy_lock_block_reason,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     DEPLOYED_FRONT_CAPACITY_DEFAULT,
     BenchSlot,
@@ -80,6 +83,14 @@ def report_action_swap_deploy_param(gs: GameState, param: Any, sig: ChannelSig) 
             for _i, d in enumerate(dep_slots)
             if d is not None and _i != d_idx):
         return LogicOutcome(applied=False, reason=f'duplicate_on_board:{_k}')
+    # 上场锁守卫(T-30 星核猎手契约;游戏规则直读「在2个节点后才能将其
+    # 上场」= 到期前不容许直部署):bench ↔ deployed 对调 = bench 单位经
+    # 对调上场的直部署通道,判定入参 = 被对调的 bench 侧单位 in_unit;
+    # 拒 = 陈旧提案拒绝同款 applied=False 零写(对调写之前)。判定单一源
+    # = deploy_lock_block_reason(与 deploy_move 入口同核)。
+    _lock_reason = deploy_lock_block_reason(gs, in_unit)
+    if _lock_reason is not None:
+        return LogicOutcome(applied=False, reason=_lock_reason)
     # 上场者继承下场者排(排归属 = 子表承载)+ 开拓者形态归一(与
     # deploy_move 上报同核)。
     _row = 'front' if d_idx < DEPLOYED_FRONT_CAPACITY_DEFAULT else 'back'

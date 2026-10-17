@@ -293,16 +293,21 @@ def merge_simulate(bench: list[BenchSlot | None],
 def _bump_carrier(carrier: object, new_star: int,
                   new_equips: list[str]) -> object:
     """合成载体升星 + 装备继承的 frozen 新构造(bench 侧 BenchSlot 包
-    Unit / 场上裸 Unit 双载体;容器原生形状之外禁入)。"""
+    Unit / 场上裸 Unit 双载体;容器原生形状之外禁入)。
+
+    产物**显式置 uid=None**(合成产物 = 新实体,cw_gain_chain._bump_carrier
+    同款纪律——漏置则环境上场锁的被锁 uid 随 replace 随行进产物)。"""
     from dataclasses import replace
     if isinstance(carrier, BenchSlot):
         u = carrier.unit
         if u is None:
             raise TypeError('merge 载体 BenchSlot 无 Unit(占位件不可合成)')
         return replace(carrier, unit=replace(u, star=new_star,
-                                             equips=list(new_equips)))
+                                             equips=list(new_equips),
+                                             uid=None))
     if isinstance(carrier, Unit):
-        return replace(carrier, star=new_star, equips=list(new_equips))
+        return replace(carrier, star=new_star, equips=list(new_equips),
+                       uid=None)
     raise TypeError(
         f'merge 载体形状不支持: {type(carrier).__name__}(容器原生 '
         f'BenchSlot/Unit 之外形状,禁复活非容器推演)')

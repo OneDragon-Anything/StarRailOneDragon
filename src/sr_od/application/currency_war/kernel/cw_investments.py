@@ -2480,6 +2480,119 @@ def _validate_env_ore_open_grants() -> None:
 _validate_env_ore_open_grants()
 
 
+# ===== 同战共现触发发放注册表(星核猎手契约;白名单制)=====
+# **世界发放域**(条件发放登记表,与 ENV_STREAK/REFRESH/BOSS/MERGE/
+# INTEREST/ORE_OPEN_GRANTS 同族;结构化注册表新例 = dataclass 值形,先例
+# 族值形均扁平元组,本表值含参与组嵌套结构故立载体):键 = 环境规范名。
+# 语义 = 持有该环境期间,一场战斗的出战阵容(deployed 现读,参与即计)
+# 使 presence_groups 逐组任一名在场(组间 AND、组内 OR)时发放
+# reward_char(1★ 先验族),并给该张带上 deploy_lock_nodes 个节点的
+# 上场锁(实例粒度,锁语义与解锁序位坐标系 = kernel/cw_env_grants.
+# check_env_battle_grants / deploy_lock_block_reason 与
+# cw_game_state.env_grant_deploy_locks 字段注释,单一源在彼处)。
+# 表外环境一律无条目,禁从效果原文自动猜装(六表同款纪律)。
+# **表间豁免声明**(ENV_INTEREST_GRANTS/ENV_ORE_OPEN_GRANTS 同款显式
+# 声明):本表键与 ENV_GIFTS 共存 = 合法形态(两表同键各表各域——
+# ENV_GIFTS 的 chars_conditional 辖估值域档位机器,本表辖世界发放),
+# 与 ENV_ECONOMY 无 ∩ 冲突;双源一致性代之以与 ENV_GIFTS 条件具名集
+# 的构建期对账(见 _validate_env_battle_grants 第⑤条)。
+# 消费面 = kernel/cw_env_grants.check_env_battle_grants(触发检查单一
+# 源;唯一调用点 = report_node_advance settle_confirm 分支,黑天鹅直登
+# 相邻,live/sim 同口)。
+@dataclass(frozen=True)
+class EnvBattleGrant:
+    """环境同战共现触发发放结构(世界发放域触发登记表新例;去序数族
+    声明沿 ENV_ORE_OPEN_GRANTS 表头纪律)。字段语义(值 = id 129 原文直读):
+    - presence_groups: 参与条件组,AND-of-ORs——外层逐组须同时满足,
+      组内任一名出现在出战阵容即该组满足;坐标系 = settle_confirm 结算
+      读 gs.deployed 现值(黑天鹅先例,参与即计)。
+    - reward_char: 共现达成后发放的角色名。
+    - deploy_lock_nodes: 发放后上场锁期(节点自然数);解锁序位 =
+      发放刻生效序位(sequence_next 可达域)沿节点日程表步进本值步
+      (K=2 → 步进 2 步;发放刻生效序位 = 战斗后继第一节点 X+1,步进
+      K 步 = X+K+1,守卫拒 effective < 解锁序位 = 锁住 X+1..X+K 共
+      K 个备战期,第 K+1 个节点起可上场)。"""
+    presence_groups: tuple[tuple[str, ...], ...]
+    reward_char: str
+    deploy_lock_nodes: int
+
+
+ENV_BATTLE_GRANTS: dict[str, EnvBattleGrant] = {
+    # 星核猎手契约(id 129 原文直读):「刃或千冶·刃、卡芙卡、银狼LV.999
+    # 或银狼一起参与一次战斗后,获得流萤,在2个节点后才能将其上场」
+    '星核猎手契约': EnvBattleGrant(
+        presence_groups=(('刃', '千冶·刃'), ('卡芙卡',), ('银狼LV.999', '银狼')),
+        reward_char='流萤',
+        deploy_lock_nodes=2),
+}
+
+
+def _validate_env_battle_grants() -> None:
+    """ENV_BATTLE_GRANTS 构建校验(import 即炸;沿 _validate_env_
+    interest_grants / _validate_env_ore_open_grants 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 参与组形:presence_groups 非空且逐组非空(空外层 = 条件永真使
+    done 守卫登记刻即触发,空组 = 该组永不满足使发放永不可达,登记笔误
+    前置可见),逐名须为非空 str 且在 CHARACTER_ROSTER(data/cw_chars
+    注册表;``CHARACTERS`` 是 cw_pool 商店池域另一符号勿混用,锁 data
+    注册表防版本改名静默失联,沿 _validate_env_gifts ②先例);
+    ③ 发放角色形:reward_char 非空 str 且在 CHARACTER_ROSTER(同②漂移
+    面,写出注册表外名字 = 假身份混进 bench);
+    ④ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool 显式拒——bool 是
+    int 子类,0/负 = 解锁序位不后移使锁无消费面,登记笔误前置可见);
+    ⑤ 双源对账:键在 ENV_GIFTS 有条目时,其 chars_conditional 具名集
+    (首元)须与本表发放角色一致——两表同出卡面(id 129),任一侧单独
+    改名即漂移,构建期炸(_validate_env_interest_grants ④ 双源同值
+    同构)。
+    """
+    orphans = [n for n in ENV_BATTLE_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_BATTLE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, _grant in ENV_BATTLE_GRANTS.items():
+        if not _grant.presence_groups \
+                or any(not g for g in _grant.presence_groups):
+            raise ValueError(
+                f"ENV_BATTLE_GRANTS 参与组形({_n!r}):presence_groups "
+                f"非空且逐组非空,现值 {_grant.presence_groups!r}")
+        for _group in _grant.presence_groups:
+            for _name in _group:
+                if not isinstance(_name, str) or not _name:
+                    raise ValueError(
+                        f"ENV_BATTLE_GRANTS 参与名形({_n!r}):须为非空 str,"
+                        f"现值 {_name!r}")
+                if _name not in CHARACTER_ROSTER:
+                    raise ValueError(
+                        f"ENV_BATTLE_GRANTS 参与名漂移({_n!r} 注册表无此人,"
+                        f"版本改名?):{_name!r}")
+        _char = _grant.reward_char
+        if not isinstance(_char, str) or not _char:
+            raise ValueError(
+                f"ENV_BATTLE_GRANTS 发放角色形({_n!r}):须为非空 str,"
+                f"现值 {_char!r}")
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"ENV_BATTLE_GRANTS 发放角色漂移({_n!r} 注册表无此人,"
+                f"版本改名?):{_char!r}")
+        _lock = _grant.deploy_lock_nodes
+        if not isinstance(_lock, int) or isinstance(_lock, bool) or _lock < 1:
+            raise ValueError(
+                f"ENV_BATTLE_GRANTS 锁期形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_lock!r}")
+        _gift = ENV_GIFTS.get(_n)
+        _cond = _gift.chars_conditional if _gift is not None else ()
+        if not _cond or _cond[0][0] != _char:
+            raise ValueError(
+                f"ENV_BATTLE_GRANTS 双源失同步({_n!r}):ENV_GIFTS."
+                f"chars_conditional 首元 "
+                f"{_cond[0][0] if _cond else None!r} ≠ 本表发放角色 {_char!r}"
+                f"(两表同出卡面,失同步即构建期炸)")
+
+
+_validate_env_battle_grants()
+
+
 # ===== 节点改写注册表归属校验(import 即炸)=====
 # 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——

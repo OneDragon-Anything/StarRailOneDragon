@@ -26,7 +26,7 @@ EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -1323,14 +1323,17 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
     from sr_od.application.currency_war.kernel.cw_game_state import (
         BenchSlot,
         BenchView,
-        Unit,
     )
     counterpart = privilege_counterpart(worn_name)
 
     def _replaced(unit: Unit) -> Unit:
         equips = list(unit.equips)
         equips[equips.index(worn_name)] = counterpart
-        return Unit(char_id=unit.char_id, star=unit.star, equips=equips)
+        # dataclasses.replace 复制(未指定字段保留原值):本桥 = 同实体
+        # 变换(docstring「全字段相等定位/槽位唯一」),实例号 uid 必须随行
+        # ——手动三字段新构造会清零 uid,被环境上场锁锁住的单位经特权
+        # 换装即丢身份,sim 端守卫提前放行(T-30 V2-1 修法)。
+        return replace(unit, equips=equips)
 
     ev = f'equip_worn_transform@{frame}' if frame else 'equip_worn_transform'
     from dataclasses import replace as _dc_replace

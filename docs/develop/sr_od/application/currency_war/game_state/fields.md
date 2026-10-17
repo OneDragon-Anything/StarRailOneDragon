@@ -1107,7 +1107,11 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 (二手市场/长线利好;消费 = `check_env_refresh_grants`,唯一调用点 = 刷新上报函数
 `report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口);
 `'interest_threshold'` = 利息累计阈值触发器(公司契约;消费 =
-`check_env_interest_grants`);`'star_grant#<装备名>'` = 随机星徽授予腿绑定键(# 后载荷 = 发放装备名,
+`check_env_interest_grants`);`'battle_co_presence'` = 同战共现触发器
+(星核猎手契约 id 129,T-30;每环境至多一个,(env, 本键) 天然唯一,消费 =
+`check_env_battle_grants`,唯一调用点 = `report_node_advance`
+settle_confirm 分支,黑天鹅直登相邻,触发形状节 = §3.5.6);
+`'star_grant#<装备名>'` = 随机星徽授予腿绑定键(# 后载荷 = 发放装备名,
 键值载荷是条件键的扩展形态,随劳务派遣合同登记;写端 =
 `cw_gain_chain.on_env_gained` 随机装备支,消费 = 绑定存在性检查,不承担
 幂等);`'boss#<位面>-<轮>'` = 首领节点周期发放幂等键(每节点一键,消费 =
@@ -1250,6 +1254,63 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 **schema** = `DEFAULT_GS_SCHEMA['env_grants_done'] = 1` **独立键**,不并入
 他域 bump——他域本体未变,先例 = ore_rewards 不并入 spheres(§3.7.1);
 **审计** = `cw_projection_audit.py` 登记 PROCESS_ONLY 行(无观察读取方)。
+
+#### 3.5.6 环境发放角色上场锁 env_grant_deploy_locks / 发号计数器 env_grant_uid_seq
+
+**语义**:`env_grant_deploy_locks` = `tuple[(char_id, uid, 解锁序位), ...]`
+逻辑态域——环境条件发放的**实例粒度上场锁**(用户裁定 2026-10-17:锁 =
+环境送的那一张实例,购入同名张/合成产物均可上场;登记表 =
+`cw_investments.ENV_BATTLE_GRANTS`,现役成员 = 星核猎手契约「……获得
+【流萤】,在2个节点后才能将其上场」id 129)。三元素:
+- `char_id` = 发放角色规范名(披露/排障可读;守卫匹配不消费,匹配键 = uid);
+- `uid` = `Unit.uid` 实例号(**仅环境发放链发放刻赋号**——发号器 =
+  `env_grant_uid_seq` 计数器,现值+1 后写回;商店购入/观察重建/合成
+  产物/策略预测单位恒 None → 永不匹配锁记录 = 天然放行);
+- `解锁序位` = NodePos `(位面, 轮)` 元组(1 基,字典序 = 节点序列全序,
+  与 `node_pos` 同坐标系)。取值时机 = 发放刻计算:发放刻生效序位
+  (settle_confirm 分支内 = 战斗节点 X 的后继第一节点 X+1)沿节点
+  日程表(`sequence_next`,`node_seq_by_plane` 修饰域现值传入,缺省
+  回退默认表)步进 `deploy_lock_nodes`(= 2)步 = X+K+1;步进遇 None
+  (局终方向)停留最后合法值——锁已无消费面。
+
+**守卫语义**:`effective_node_pos(gs) < 解锁序位`(元组字典序)→ 拒该
+实例的**直部署**(K=2 = 锁 X+1..X+K 共 K 个备战期,第 K+1 节点起可
+上场)。判定单一源 = `cw_env_grants.deploy_lock_block_reason`,消费 =
+`deploy_move`/`swap_deploy` 两上报入口(applied=False 零写陈旧提案同款);
+实例粒度 = 同窗购入同名张(uid=None)与合成产物(uid=None)不受锁。
+**合成落场与溢出回席通道不辖**(锁 = 直部署禁令非全用途冻结,合成消耗
+被锁张/产物落场自由,披露键 `env_battle_lock_bypass_landing`)。
+**无 tick 无主动清理**——到期 = 比对自愈,记录滞留至局终(上限 ≈ 一次性
+发放数);卖牌/合成消耗后锁记录孤悬永不匹配(同款自愈)。
+
+**触发与写入方**(单一逻辑写端):`check_env_battle_grants` 发放刻
+(settle_confirm 分支接线,黑天鹅直登相邻,live/sim 同口)同窗四笔——
+发号(`env_grant_uid_seq` +1,evidence 前缀 `env_grant#<环境>#battle` +
+`#uid`)+ 角色链(`gain_character` 1★ 确定发放 rand=False,**uid 随
+行**;落位成败与登记解耦)+ 锁域追加 + `env_grants_done` 追加
+`('星核猎手契约', 'battle_co_presence')`(同 evidence 前缀同 sig;链内
+展开行带 `#place`/`#mergeN` 后缀 = 前缀共享非全等)。零 rng。
+
+**登记四件**:开局种子 = `()`(锁域,§2.6 种子族)/ `0`(发号计数器);
+**快照恢复** = 锁域 rebuild 表 tuple 化登记(元素 (str, int, (int, int))
+嵌套重建),发号计数器 int 保型直通免登记;**schema** = 两独立键各版本 1
+(同 env_grants_done 先例);`units` 域版本 2→3(Unit 值形状扩尾字段
+uid,旧档宽容读缺省 None);**审计** = 两行 PROCESS_ONLY(无观察读取方)。
+
+#### 3.5.6a Unit.uid 实例号尾字段(§3.2.3/§3.2.5 单位域登记)
+
+**语义**:`Unit.uid: int | None = None`(可选尾字段,带默认值 = 既有
+构造点零破坏)——单位实例号,**仅环境发放链发放刻赋号**(`gain_character`
+uid 形参注入点,落位构造唯一),其余恒 None:商店购入/观察重建
+(`identify_slots` 构造单位)/溢出位身份重建/合成产物
+(`_bump_carrier` 两引擎显式置 None)/快照旧档宽容读。同实体变换族
+(`dataclasses.replace` 未指定字段保留)= uid 自动随行(形态归一/银狼
+升费窗/星级改写/穿戴卸装/装备吸收写;例外曾 = 特权赋予卡换装伪
+replace 手动新构造,已改真 replace 修复)。坐标语义与消费面 =
+§3.5.6(锁匹配键);sim 世界对 bench/deployed 零整表观察写 → uid 全程
+保真,sim 锁完整有效;live 备战 heavy 观察整表覆盖清 uid → 守卫
+fail-open(模型放行、实机游戏仍拒,披露键
+`env_battle_lock_live_identity_loss`)。
 
 ### 3.6 任何画面:事件浮层与派生域
 

@@ -24,6 +24,9 @@ from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     merge_cascade_write,
 )
+from sr_od.application.currency_war.kernel.cw_env_grants import (
+    deploy_lock_block_reason,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     trailblazer_row_unit,
 )
@@ -106,6 +109,14 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
         return LogicOutcome(applied=False,
                             reason=f'bench_idx_out_of_range:{from_idx}')
     _mu = bench_slots[from_idx].unit
+    # 上场锁守卫(T-30 星核猎手契约;游戏规则直读「在2个节点后才能将其
+    # 上场」= 到期前不容许直部署):既有载荷/槽位/源槽校验之后、变换窗
+    # 之前插入——判定入参 = _mu 本体(开拓者形态归一/银狼升费 replace
+    # 均保 uid,守卫插点先后无行为差);拒 = 陈旧提案拒绝同款 applied=False
+    # 零写。判定单一源 = deploy_lock_block_reason。
+    _lock_reason = deploy_lock_block_reason(gs, _mu)
+    if _lock_reason is not None:
+        return LogicOutcome(applied=False, reason=_lock_reason)
     # 开拓者形态归一先于星级改写(与 swap 同核;非开拓者原样返回)。
     moved = trailblazer_row_unit(_mu, to_row)
     # 上阵变换窗(design §2.1A/§2.5):拖拽载荷唯一指定源(恰此一枚,无歧义)
