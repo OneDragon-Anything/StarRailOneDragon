@@ -5,7 +5,8 @@
 - 落地:[landing.md](landing.md)
 
 ## 进度
-- 迭代设计:草案修订（无前提攻击 9 项发现全部处置：produced_by 归因机制名修正、告警门死代码改判并补生产者、删除面补文本面六触点与同源死代码、grep 判据范围与豁免面预填、正本文件面补四文件、三分账登记）
+- 迭代设计:定稿（无前提攻击 9 项收口 + 复核可定稿，R1-R6 已落）
 - 设计对抗:首轮收敛 · 报告=[attack.md](attack.md)
-- 落地:阶段 0/2 done（明细见 landing.md）
-- 正本更新:未开始
+- 落地:阶段 2/2 done（明细见 landing.md）
+- 正本更新:清零（journal.md obs_event 归属注记 + retirement.md 金差证据腿退役行 + action-logic-state/prep-executor-actions 跟随；fields.md 契约节核无双键残留）
+- 分账:①`cw_exec_state._advance_gold` 直写核查 ②`shop_session.apply_gold_delta` 伴生入金归属 ③`write_logic` docstring produced_by 申报修正（design §2.4,账本 todo）

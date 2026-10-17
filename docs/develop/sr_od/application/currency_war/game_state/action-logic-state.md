@@ -133,7 +133,7 @@ op = `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（动�
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7「卖价修饰」行，缺口闭合前不写修饰分支）。
 
-**回金唯一写入位置** = 上报函数（`report_action_sell_bench_param` 按 `sell_refund` 直写金账）；执行缝金差 = `PrepActionExecutor._executed_gold_delta` 仅进回执 extra 保留证据（防两条写入路径双记，实机 −2 倒挂实证后停用直推面）；身份不可辨 = None 诚实缺失，禁保守估值假账。
+**回金唯一写入位置** = 上报函数（`report_action_sell_bench_param` 按 `sell_refund` 直写金账）；执行缝金差已退役（executor-gold-delta-retire 批，原 `_executed_gold_delta` 证据腿随批删除）——金归属证据 = journal 写行归因（`sig.actor` + gold 写行 prov evidence）+ 账实对账告警（`[cw!][alarm][gold_delta]`，生产者 = 备战帧账实对比）；身份不可辨 = None 诚实缺失，禁保守估值假账。
 
 **依据**：`research/economy.md` §3；`kernel/cw_economy.py::sell_refund`/`bench_char_cost`；`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`（双域统一单点：置 empty + 回金 + 装备回收 + 溢出分支）；`research/equipment_mechanics.md` §1。
 
