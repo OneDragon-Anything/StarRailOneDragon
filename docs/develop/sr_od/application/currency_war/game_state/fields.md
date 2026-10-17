@@ -321,7 +321,7 @@ empty = 空。unit/supply_box/tome/bookcard 占 1 槽、empty 不占
   判据逐卡分面,§3.2.18/§5.3)。
 - 获得链写入方(kernel,`GAIN_CHAIN_PRODUCER`):环境赠卡道具腿——`on_env_gained`
   即时支(`_place_bench_item` 落位:备战空槽 supply_box/席满溢出落位/溢出位被占
-  零写留证;在册条目 = 火药味 ×2、红钻贵族 ×1)+ 定时到点支(`discharge_due_item_grants`,
+  零写留证;在册条目 = 火药味 ×2、红钻贵族 ×1、蓝钻贵族 ×1)+ 定时到点支(`discharge_due_item_grants`,
   在册条目 = 特权阶级;实机不接、生产挂点 = sim 进节点收束,队列登记后保持原样、
   备战真值归观察覆盖——不对称申报在册);策略侧箱腿(`on_strategy_gained` 效果体 →
   `gain_bench_item`,evidence=`pick_invest_box_grant`,各进阶武装箱 ×1——战术义眼++/

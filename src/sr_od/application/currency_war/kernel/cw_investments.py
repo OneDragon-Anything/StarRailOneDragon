@@ -1527,6 +1527,13 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 裁定注记)
     '红钻贵族': GiftGrant(equips_immediate=('红钻',),
                           items_immediate=('简易武装箱',)),
+    # 即时装备通道第二卡(id 132 效果原文「开局时拥有【蓝钻】和一个【简易武装箱】。」
+    # 直读,PlazaPortal('132');「开局时」= 环境注册时点,红钻贵族同口径)。
+    # 机制件形状 = GiftGrant.equips_immediate(首例红钻贵族同字段同校验),本条目
+    # 为纯数据行;蓝钻 ∈ EQUIPMENTS(合成材料,非占席道具);蓝钻合成面(流派星徽系)
+    # 不在本卡辖域。
+    '蓝钻贵族': GiftGrant(equips_immediate=('蓝钻',),
+                          items_immediate=('简易武装箱',)),
     # 定时通道首例(id 102 效果原文「第二位面开始时,获得1个特权武装箱。」
     # 直读):「位面开始」= 该位面第 1 节点(节点键 '2-1';先例 = 位面开局
     # 环境金 gold_per_plane_start 落 (plane, 1) 节点窗)。登记不落席:入容器
