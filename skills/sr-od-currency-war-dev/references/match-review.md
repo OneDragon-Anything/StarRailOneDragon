@@ -12,7 +12,7 @@
 
 ## 阶段 2 · 逐画面章复盘(按渲染报告章序;2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用,报告中载体 = 渲染器画面章)
 
-复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.1「总则:一次画面 op 调用 = 一轮『入口观察 + 逐动作决策循环』」;分支序表 = `flow/outer_loop.md` §2.2)。报告中该单元的载体 = **画面章**:凡定义的画面 op 有 journal 行即成章(画面注册表 = 渲染器 `tools/cw/replay_to_md.py` 的 `ACTOR_REGISTRY`/`SCREEN_REGISTRY` 常量,注册同步义务锚 = `screens/op-layer.md` §3;零写入行的 op 自然不出现——数据不存在,非设计排除)。节点章 `## 节点 P-R 类型` 下逐画面开章,章内固定结构 = `#### 0 观察`(章首快照)+ 动作节×N(一条回执一节,失败重发合并一节)+ `#### 策略评价` 空节(仅决策面画面章有):
+复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/screens/op-layer.md` §1.1「总则:一次画面 op 调用 = 一轮『入口观察 + 逐动作决策循环』」;分支序表 = `flow/outer_loop.md` §2.2)。报告中该单元的载体 = **画面章**:凡定义的画面 op 有 journal 行即成章(画面注册表 = 渲染器 `tools/cw/replay_to_md.py` 的 `ACTOR_REGISTRY`/`SCREEN_REGISTRY` 常量,注册同步义务锚 = `screens/op-layer.md` §3;零写入行的 op 自然不出现——数据不存在,非设计排除)。节点章 `## 节点 P-R 类型` 下逐画面开章,章内固定结构 = `#### 0 观察`(开章快照 ∩ 注册键集 + 本章观察道写入动态显影——画面 op 观察到什么本章显什么,首写定帧值)+ 动作节×N(一条回执一节,失败重发合并一节)+ `#### 策略评价` 空节(仅决策面画面章有):
 
 ```
 ## 节点 1-1 奖励

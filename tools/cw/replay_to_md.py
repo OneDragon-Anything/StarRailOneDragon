@@ -22,7 +22,9 @@
 章内状态差分因果归属 = ``logic_action`` 家族写入行挂其后最近回执的
 动作节(动作的效果写入先于其回执落盘;组尾无回执认领 → 章内变化块;
 非 logic_action 非 obs 写入挂组内最近动作节);章内
-「0 观察 → 动作节×N → 策略评价」)→ 未归节(有则)→ 未归行(防静默丢行)
+「0 观察 = 开章快照 ∩ 注册键集 + 本章观察道写入动态显影(画面 op 观察
+到什么本章显什么,首写定帧值;注册键回读与观察回读异值 → 章尾注记)
+→ 动作节×N → 策略评价」)→ 未归节(有则)→ 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
 cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
 ``docs/develop/sr_od/application/currency_war/changes/2026-10-16-journal-review-renderer/``
@@ -136,6 +138,10 @@ class Screen:
     _same_skipped: int = 0
     #: 构建期临时:观察尾注去重集(field, 格式化值)——同章重复写同值不刷屏
     _obs_seen: set = field(default_factory=set)
+    #: 构建期临时:本章观察道写入显影(field → 格式化值,首写定帧值)——
+    #: 0 观察动态段 = 画面 op 观察到什么本章显什么(注册键集之外无观察
+    #: 黑洞),渲染时并进 0 观察、渲染前剥离
+    _obs_entries: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -375,6 +381,7 @@ FIELD_CN_MAP: dict[str, str] = {
     'occupied_equips': '穿戴', 'shop': '商店牌面', 'spheres': '晶矿',
     'active_env': '投资环境', 'active_strategies': '持卡',
     'planner_opts': '策划候选', 'settlement': '结算', 'node': '节点',
+    'node_pos': '节点序位',
     'current_screen': '画面', 'overflow_warning': '溢出警告',
     'overflow_card': '溢出卡',
     # 表格型键的标题(点分路径键,§4.2 未覆盖的复合键)
@@ -1065,15 +1072,27 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     family = str(row_sig(row).get('family') or '')
     is_hook = family == 'logic_hook'
     if family == 'obs' and f != 'settlement':
-        # 观察道不入变化表:章首行的 obs 写入由 0 观察快照承载,非章首进尾注
-        # (§5 修订:空值不渲染、路由键/0 观察键跳过、同章同值去重)
-        if not opened:
-            after = row.get('after')
-            brief = _value_brief(f, after)
-            key = (f, brief)
-            if (f in _OBS_NOTE_SKIP or f in _ALL_ENTRY_KEYS
-                    or after in (None, '') or key in scr._obs_seen):
-                return
+        # 观察道不入变化表(读数不是动作效果)。显影规则 = 画面 op 观察到
+        # 什么,本章 0 观察就显什么:
+        # - 开章行 = 快照承载,不入账;路由键/空值不入;
+        # - 注册键 = 开章快照已显影,回读是重复显影,整条跳过;
+        # - 非注册键 = 本章 0 观察动态段(首写定帧值);回读异值 → 章尾注记
+        #   (对账纠偏/重观察回读的可见性保留)。
+        if opened:
+            return
+        if f in _OBS_NOTE_SKIP:
+            return
+        after = row.get('after')
+        if after in (None, ''):
+            return
+        brief = _value_brief(f, after)
+        if f in _ALL_ENTRY_KEYS:
+            return  # 注册键 = 开章快照已显影,观察回读是重复显影(§5 修订判据)
+        if f not in scr._obs_entries:
+            scr._obs_entries[f] = brief
+            return
+        key = (f, brief)
+        if brief != scr._obs_entries[f] and key not in scr._obs_seen:
             scr._obs_seen.add(key)
             scr.annots.append(f'观察: {field_cn(f)}={brief}')
         return
@@ -1597,6 +1616,8 @@ def _render_screen(prefix: str, scr: Screen) -> list[str]:
     out = [f'### {prefix} {scr.title}', '']
     out += ['#### 0 观察', '']
     obs = _entry_lines(scr.entry)
+    # 本章观察道写入动态段(首写帧值;注册键已由快照显影不在此列)
+    obs += [f'- {field_cn(f)} {_esc(b)}' for f, b in scr._obs_entries.items()]
     if obs:
         out += obs
     else:
