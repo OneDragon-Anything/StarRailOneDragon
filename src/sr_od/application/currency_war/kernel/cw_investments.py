@@ -44,6 +44,7 @@ from sr_od.application.currency_war.data.cw_chars import (
     CHARACTER_ROSTER,
     CHARACTERS,
     chars_by_cost,
+    chars_by_faction,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
@@ -2416,6 +2417,67 @@ def _validate_env_interest_grants() -> None:
 
 
 _validate_env_interest_grants()
+
+
+# ===== 晶矿开启计数触发发放注册表(战技点契约;白名单制)=====
+# **世界发放域**(条件发放登记表,与 ENV_STREAK/REFRESH/BOSS/MERGE/
+# INTEREST_GRANTS 同族):键 = 环境规范名;
+# 值 = (首阈值, 步长, 具名角色元组, 随机羁绊名) 四元组。
+# 语义 = 持有该环境期间,每打开 N 个晶矿(全量计数,计数载体 =
+# cw_effect_inventory.ore_open_total,写端 = 采晶矿上报单口)逐阈值
+# 各发放一次:具名角色逐个 1★ + 随机羁绊池均匀采样 1 名 1★。
+# 阈值序列 = 首阈值 + 步长×k(k=0,1,2,…,无限重复)。
+# 与 ENV_ORE_GRANTS 辨析:彼表 = 发放「晶矿」(增发货币,值 = 各位面
+# 矿金),本表 = 以「打开晶矿」为触发源发放角色,键形/值形/校验均不同。
+# **表间豁免声明**(ENV_MERGE_GRANTS 同款):本表键与 ENV_GIFTS 共存
+# = 合法形态(两表同键各表各域——ENV_GIFTS 的 chars_conditional 辖
+# 估值域档位机器,本表辖世界发放),与 ENV_ECONOMY 无 ∩ 冲突。
+ENV_ORE_OPEN_GRANTS: dict[str, tuple[int, int, tuple[str, ...], str]] = {
+    # 战技点契约(id 128 原文直读:「打开20个晶矿后,获得【火花】和1个
+    # 随机战技点羁绊角色;之后每打开10个晶矿,都可重复获得一次角色奖励」
+    # ——首阈值 20/步长 10 卡面直读,重复次数上限无 = 无限重复)
+    '战技点契约': (20, 10, ('火花',), '战技点'),
+}
+
+
+def _validate_env_ore_open_grants() -> None:
+    """ENV_ORE_OPEN_GRANTS 构建校验(import 即炸;沿 _validate_env_
+    interest_grants / _validate_env_refresh_grants 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:首阈值与步长须为 ≥1 的 int(bool 排除——isinstance(bool, int)
+    为真;步长 ≤0 = 阈值 loop 死循环,首阈值 ≤0 = 登记刻即触发,
+    登记笔误前置可见,沿 interest ②);
+    ③ 具名角色名漂移:具名角色元组逐名必须在 CHARACTER_ROSTER(data/
+    cw_chars 注册表;写出注册表外名字 = 假身份混进 bench,沿 interest ③。
+    ``CHARACTERS`` 是 cw_pool 商店池域另一符号,勿混用);
+    ④ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空
+    (羁绊名错字/版本改名 → 池空 = 采样腿永远发不出,运行期只剩整体
+    缓发防御分支,登记笔误前置可见,T-19 池非空校验先例)。
+    """
+    orphans = [n for n in ENV_ORE_OPEN_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_ORE_OPEN_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_first, _step, _chars, _faction) in ENV_ORE_OPEN_GRANTS.items():
+        for _label, _val in (('首阈值', _first), ('步长', _step)):
+            if not isinstance(_val, int) or isinstance(_val, bool) or _val < 1:
+                raise ValueError(
+                    f"ENV_ORE_OPEN_GRANTS 值形({_n!r} {_label}):"
+                    f"须为 ≥1 的 int,现值 {_val!r}")
+        for _name in _chars:
+            if _name not in CHARACTER_ROSTER:
+                raise ValueError(
+                    f"ENV_ORE_OPEN_GRANTS 角色名漂移({_n!r} 注册表无此人,"
+                    f"版本改名?):{_name!r}")
+        if not chars_by_faction(_faction):
+            raise ValueError(
+                f"ENV_ORE_OPEN_GRANTS 随机羁绊池空({_n!r}):"
+                f"chars_by_faction({_faction!r}) 现值非空校验失败"
+                f"(羁绊名漂移?),登记笔误前置可见")
+
+
+_validate_env_ore_open_grants()
 
 
 # ===== 节点改写注册表归属校验(import 即炸)=====

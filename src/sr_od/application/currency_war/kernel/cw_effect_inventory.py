@@ -245,6 +245,15 @@ class ActiveEffectInventory:
         # 不入快照(与 refresh_total 同现状,快照序列化只含 entries +
         # equip_progress)⟹ 接管局计数归零 = 晚发/不发。
         self.interest_earned: int = 0
+        # 晶矿开启累计(战技点契约条件腿「打开20个晶矿后」;随 refresh
+        # 双计数/interest_earned 同族直挂计数器,同宿效果账本):写端 =
+        # 采晶矿上报函数 report_action_collect_ore_param 单口(批内开成
+        # 点数一次入账,席满/缺级跳点不入账 = 「点开才计数」);消费方 =
+        # 战技点契约触发器 check_env_ore_open_grants。计数语义 = 全量
+        # (不限矿色/来源/奖励类型)。
+        # 不入快照(与 refresh_total 同现状,快照序列化只含 entries +
+        # equip_progress)⟹ 接管局计数归零 = 晚发/不发。
+        self.ore_open_total: int = 0
 
     # —— 登记端 ——
     @staticmethod
@@ -495,6 +504,19 @@ class ActiveEffectInventory:
         if amount < 0:
             raise ValueError(f'amount 须为非负数(累计账只增),得 {amount}')
         self.interest_earned += amount
+
+    def record_ore_open(self, n: int) -> None:
+        """晶矿开成入账统一单口(写端纪律同 record_refresh:计数只经
+        单口推进,禁调用方旁路直加;写端唯一 = 采晶矿上报函数尾部,
+        席满/缺级跳点不入账 = 「点开才计数」)。
+
+        - ``n <= 0`` 拒收 raise(单调计数器无递减语义,
+          bump_equip_progress 同款防线;开成点数恒正,非正 = 调用错);
+        - 不进快照(接管局计数从 0 起,接受面 = 刷新计数同款)。
+        """
+        if n <= 0:
+            raise ValueError(f'n 须为正数(单调计数器只增),得 {n}')
+        self.ore_open_total += n
 
     def equip_progress_of(self, equip_name: str, wearer: str) -> int:
         """装备效果进度读口(侧栏键 = (装备名,装备者 char_id))。无记录 = 0

@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -46,7 +46,11 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 :func:`check_env_merge_grants` 含采样(注入槽:函数内
 ``action_sampling_rng('env_merge_grant', None)`` 解析——四发火点跨
 上报函数/效果族/链原语三类调用方,集中函数内解析单点最少;注入槽 =
-sim 世界真值,回退自掷 = live 猜测口径)。
+sim 世界真值,回退自掷 = live 猜测口径);
+:func:`check_env_ore_open_grants` 含采样(注入槽:函数内
+``action_sampling_rng('env_ore_open_grant', None)`` 解析——接线点虽
+在 rng 在场的采晶矿上报函数内,采样腿独立具名键使两腿流键分离,
+重放归因更净;具名腿零 rng 消耗,掷名仅随机腿一笔)。
 
 边界披露(显式接受,详设 §3 同名节):①同窗洗白——发放后同窗口的
 确定性 equips 写会把字段来源翻成纯 logic,下一 heavy 帧观察对 logic
@@ -80,6 +84,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BOSS_GRANTS,
     ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
+    ENV_ORE_OPEN_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
 )
@@ -136,6 +141,11 @@ DOT_ANCHOR_KEY_PREFIX: str = 'dot_anchor#'
 #: 追加,对账可数,先例 = boss# 逐节点键;进度腿 sim 专用,live 不追加——
 #: live 计数真值由现实本身决定,猜测写自愈循环每场对一次)。
 DOT_BATTLE_KEY_PREFIX: str = 'dot_battle#'
+
+#: done 域条件键:晶矿开启阈值触发器(阈值嵌键,格式 'ore_open#<阈值>';
+#: 重复型通道,每阈值一键,(env, 键) 天然唯一;键形先例 = star_grant#/
+#: boss# 前缀携载荷形态)。
+ORE_OPEN_THRESHOLD_KEY_PREFIX: str = 'ore_open#'
 
 #: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
 #: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
@@ -498,6 +508,116 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
                        producer=GAIN_CHAIN_PRODUCER)
         effects.append(f'env_merge_grant:{name}')
     return tuple(effects)
+
+
+#: 晶矿开启触发发放的采样腿具名键(模块内近函数,消费点唯一 =
+#: :func:`check_env_ore_open_grants`;先例 = ENV_MERGE_GRANT_RNG_TOOL
+#: 同形态)。
+ORE_OPEN_GRANT_RNG_TOOL: str = 'env_ore_open_grant'
+
+
+def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
+                              ) -> tuple[str, ...]:
+    """晶矿开启计数触发发放检查(单一源;唯一调用点 = 采晶矿上报函数
+    ``report_action_collect_ore_param`` 尾部,批内计数入账后、同动作窗
+    内,live/sim 同一段 op 代码同口覆盖)。触发注册表 =
+    ``cw_investments.ENV_ORE_OPEN_GRANTS``,计数载体 =
+    ``gs.effects.ore_open_total``(record_ore_open 单口)。
+    返回本次发放角色名列表(仅日志面消费,调用方不分支)。
+
+    条件矩阵(顺序即短路序,逐序返回空 = 零发放):
+
+    1. 当前环境(active_env)None/空链 → 空;
+    2. 环境不在登记表(ENV_ORE_OPEN_GRANTS)→ 空;
+    3. ``gs.bench.value`` None(从未观察)→ 空且不标 done(宁缺勿造,
+       与 check_env_interest_grants 同款;晶矿开启可重现,下次开启自动
+       重查,done 只在发放同窗登记);
+    4. 阈值 loop:``t`` 从登记表首阈值起,若 ``ore_open#<t>`` ∈ done
+       现值则 ``t += 步长`` 推进跳过(已封账);``t > ore_open_total``
+       = 未达标,停止。loop 保留 = 一般形态:单次上报 opened ≤ 3
+       (ORE_CLICK_BATCH_MAX_K = 3,strategies/impl/mandate_v1/entry.py),
+       步长 10 > 3,生产单批跨阈值不可达;呈现批 ≠ 上报批,防未来扩面
+       静默漏发;
+    5. 承载守卫:计数是 int 属性恒有值直接可比;发放不涉金/装备承载,
+       角色承载 = bench(条 3 已守);
+    6. **先守卫后发放**(守卫先于该阈值的任何一腿,禁半发放):随机腿
+       池现查 = ``chars_by_faction(随机羁绊名)`` 非空——空 = 注册表
+       漂移(import 期校验后生产不可达,纯防御分支),整体缓发返回空
+       不标 done——「具名腿已发、done 未封」的半发放态会在下批重触发
+       同一阈值时重复发放具名腿,重复发放比漏发更劣;
+    7. 达标发放(每阈值一次,loop 逐阈值重复本条):具名角色逐个 +
+       随机腿池内均匀采样 1 名,各自 :func:`gain_character`(1★ 先验
+       族,晶矿 CHAR_DROP_STAR 同句式);done 追加
+       ``(env, ore_open#<t>)``(write_logic,簿记封账不在随机态面,
+       与 check_env_refresh_grants 的金/装备/done 相邻写同纪律)。
+       ``t += 步长`` 回到条 4。
+
+    - **两腿发放恒随机态写入(两腿 gain_character 一律 rand=True,
+      函数不设 rand 形参)**:触发前提 = 晶矿开启计数为未验证推演
+      (打开可能失败/计数可能错),发放按随机态定级走台账纠偏 + bench
+      首观察覆盖,用户裁定 2026-10-17;rand 形参仅通道定级,具名腿名字
+      确定、rng 不在本腿消耗,随机腿 ``rng.choice`` 掷名是唯一一笔
+      rng 消耗;
+    - **done 记账与落位解耦**(显式接受):done 在发放窗内恒登记,不
+      逐腿检查 placed——「全员落位才封账」在部分落位态(部分腿溢出位
+      被占零写)下重试会重复发放已落位腿,无法事后回退;落位失败本身有
+      DEFECT_OVERFLOW_TAKEN 留证链,live 侧 bench 观察覆盖兜底;溢出位
+      被占时该阈值第二腿漏发 = 接受面;
+    - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig);唯一调用方传入
+      上报函数内部的 ``_grp_sig``(logic_action 族),天然满足;
+    - 本函数含采样:rng = ``action_sampling_rng(ORE_OPEN_GRANT_RNG_TOOL,
+      None)`` 函数体内惰性解析(kernel 反向模块级零 import 契约),
+      首个未封账达标阈值确认后才取(无命中不消耗采样流键,保持 sim
+      动作序列逐位不变);注入槽 = sim 世界真值,回退自掷 = live 猜测
+      口径(采样猜测态下掷名 ≠ 实机真名 → bench 首观察静默覆盖)。
+    """
+    env = gs.active_env.value
+    if not env:
+        return ()
+    grant = ENV_ORE_OPEN_GRANTS.get(env)
+    if grant is None:
+        return ()
+    if gs.bench.value is None:
+        # 席面从未观察:发放角色写出不完整席 = 丢人,缓发不标 done
+        # (下个开矿窗自动重查;done 只在发放同窗登记)
+        return ()
+    first_threshold, step, named_chars, random_faction = grant
+    done = tuple(gs.env_grants_done.value or ())
+    total = gs.effects.ore_open_total
+    roll_rng: random.Random | None = None
+    granted: list[str] = []
+    t = first_threshold
+    while t <= total:
+        key = f'{ORE_OPEN_THRESHOLD_KEY_PREFIX}{t}'
+        if (env, key) in done:
+            t += step   # 已封账:推进找下一个未封账阈值(断档续发)
+            continue
+        pool = [c.name for c in chars_by_faction(random_faction)]
+        if not pool:
+            # 整体缓发(先守卫后发放,禁半发放;生产不可达,纯防御分支)
+            break
+        if roll_rng is None:
+            # kernel 反向模块级零 import 契约:action_sampling_rng 住
+            # 上报函数族包,函数内惰性取(gain-chain.md §8 单向破环先例)
+            from sr_od.application.currency_war.kernel.cw_action_report import (
+                action_sampling_rng,
+            )
+            roll_rng = action_sampling_rng(ORE_OPEN_GRANT_RNG_TOOL, None)
+        evidence = f'env_grant#{env}#ore_open{t}'
+        for name in named_chars:
+            gain_character(gs, name, 1, rand=True, sig=sig,
+                           evidence=evidence, producer=_PRODUCER)
+            granted.append(name)
+        random_name = roll_rng.choice(pool)
+        gain_character(gs, random_name, 1, rand=True, sig=sig,
+                       evidence=evidence, producer=_PRODUCER)
+        granted.append(random_name)
+        gs.write_logic(gs.env_grants_done, done + ((env, key),),
+                       produced_by=_PRODUCER, evidence=evidence, sig=sig)
+        done = done + ((env, key),)
+        t += step
+    return tuple(granted)
 
 
 def _dot_char_in_bench_view(view: BenchView | None) -> bool:
