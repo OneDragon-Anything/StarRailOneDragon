@@ -1921,12 +1921,18 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     失配 → 失配告警停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。
     **回执契约**(`applied` 布尔已退役——受阻事实由 `reason` 码单载体承载,
     receipt-applied-retire 批):shape = `{op, reason='', detail?, screen?, **extra}`;
-    `reason=''` = 动作已正常发出,非空 = 机械受阻事实码。封闭词表五族 =
-    `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/`未执行:<机械受阻码>`(点击前
-    失败)/`未生效:<机械受阻码>`(点后未生效,StartBattle 已登记例外类)/
-    `槽解析失败`|`槽号越界`(visit 环机械早退);子码枚举单一源 =
-    `prep_actions.py` 码化映射表。invariant = 每动作 op 恰一条回执行(未发出行照记,
-    事故链证据不断)。边界:LogicOutcome 域(上报函数族出参 `applied/reason` 拒绝
+    `reason=''` ⇔ 动作已正常发出,非空 = 现读落空受阻码。收缩后闭集
+    (用户裁定 2026-10-17 建档缺失检查段删除 + 参数违法类改 op 内守卫
+    断言后) = `定位缺失(按钮-商店)`/`定位缺失(按钮-收起)`/
+    `未执行:定位缺失(按钮-出战|按钮-跳过)`/
+    `未执行:无简易武装箱|无秘密典籍|无书册卡|owned 网格未定位族`;
+    子码枚举单一源 = `prep_actions.py` 码化映射表。
+    invariant = 回执行以分派为单位——回执域(备战 executor 分派 + 商店
+    visit 分派 + 开/关店自记)内每动作恰一行(未发出行照记,事故链证据
+    不断);**异常终止的分派不产行**(主点击已发的回执义务由失败运行
+    整体证据承接:栈回溯 + 失败记录);建档缺失类检查段已删,不在回执域
+    (取值直接使用 = 使用点自然异常,异常经失败运行证据链可见)。
+    边界:LogicOutcome 域(上报函数族出参 `applied/reason` 拒绝
     语义,logic-updates 正本全域)与回执域同名不同物,见 note_action_receipt docstring。
   `- `plane_node_sequences`(GameState 位面节点序列记录表,`PlaneNodeLedger` 载体):
     整行快照语义、逐位合并写、低频重写,Field 化无收益;访问口 = `cw_exec_state`

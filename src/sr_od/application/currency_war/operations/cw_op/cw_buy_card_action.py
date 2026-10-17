@@ -103,17 +103,17 @@ class CwActionBuyCardOp(CwOperation):
         # 点击不注册」根因;布局双源同族 = bench 布局错位的商店牌行版)。
         _slot_no = _slot_no_matched
         if _slot_no is None:
-            # 槽解析失败(①②双未命中)= payload 无此牌,提案数据 bug
-            # 响亮暴露:round_fail = 未发出事实(action_ops.md §2.1),
-            # 零动作级重试,决策循环按下一帧观察自然重派。
-            return self.round_fail(
+            # 槽解析失败(①②双未命中)= payload 无此牌 = 提案数据 bug:
+            # 参数违法由 op 自判(action_ops.md §1 决策侧参数现算契约 /
+            # 坐标裁定域),守卫断言响亮暴露,零兜底点击。
+            raise AssertionError(
                 '商店牌槽解析失败:slot_no=None'
                 '(身份未命中 ∧ (name,star) 未命中),禁兜底点击')
         if not (1 <= _slot_no <= len(env.click_pts)):
             # 槽号越界/点位缺失 = 槽号-点表不一致(建档漂移/数据漂移上游
-            # 暴露),显式 round_fail(信息带 area 名,与 level_btn/refresh_btn
-            # 同款纪律),禁兜底坐标静默点击(坐标单一真相源)。
-            return self.round_fail(
+            # 暴露),守卫断言显式报错(信息带 area 名),禁兜底坐标静默
+            # 点击(坐标单一真相源)。
+            raise AssertionError(
                 f'商店牌槽号越界/点位缺失:{A_SHOP_CARD_PREFIX}'
                 f'{_slot_no}({SHOP_SCREEN_NAME}),slot={_slot_no} '
                 f'click_pts={len(env.click_pts)}(槽号-点表不一致),'

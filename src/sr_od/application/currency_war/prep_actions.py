@@ -31,6 +31,7 @@ import time
 from dataclasses import dataclass
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
@@ -97,31 +98,22 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 #: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,正本家 =
 #: game_state/fields.md 回执契约节)。表项 = (status 前缀, 受阻码):
 #: 受阻码自带族前缀——``未执行:`` = 点击前失败(定位缺失/无对象/
-#: 输入契约拒绝,动作没发出),``未生效:`` = 点后未生效(动作已发出
-#: 但点击序列未完成;StartBattle 弹窗收尾段 = 唯一现役形态,已登记例外
-#: 类 = action_ops.md §2.3)。映射键 = 各动作 op round_fail status 的
+#: 输入契约拒绝,动作没发出)。映射键 = 各动作 op round_fail status 的
 #: 首段字面前缀(status 由 op 固定字面量产出);**新 round_fail status
 #: 必须同步登记本表**——漏登走 :func:`_prep_receipt_block_code` 原文
 #: 兜底(受阻事实不静默,复盘以原样 status 显影促登记)。特定前缀先于
 #: 泛化前缀(表序 = 匹配序,首中即返)。
+#: (terminal-fail-status 迭代收缩:参数违法类三口(BuyCard 槽解析/槽号
+#: 越界、DeployMove 落位越界)改 op 内守卫断言、建档缺失类检查段
+#: (LevelUp/StartBattle 主口与弹窗/WearEquip 槽位坐标)删除 = 自然
+#: 异常报错——上述形态零 round_fail 供给,对应映射行随批退役;
+#: ``未生效:*`` 族(StartBattle 弹窗收尾)随之零供给退役。)
 _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     # —— 出战(点击前):按钮定位失败 = 动作没发出 ——
     ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-出战', '未执行:定位缺失(按钮-出战)'),
     ('area 缺失:按钮-跳过', '未执行:定位缺失(按钮-跳过)'),
-    # —— 出战(点后未生效,已登记例外类):主点击已发,弹窗收尾点击
-    #     未执行——点了 ≠ 没点,分族事实码不说谎 ——
-    ('area 缺失:勾选-本局不再提示',
-     '未生效:弹窗确认未执行(未达上限警告)'),
-    ('area 缺失:按钮-确认(货币战争-未达上限警告',
-     '未生效:弹窗确认未执行(未达上限警告)'),
-    ('area 缺失:按钮-确认(货币战争-提示-前台无角色',
-     '未生效:弹窗确认未执行(前台无角色)'),
-    # —— 买经验:按钮 area 建档漂移(点击前)——
-    ('「备战标识-购买经验」area 缺失',
-     '未执行:定位缺失(备战标识-购买经验)'),
-    # —— 穿戴/工具原子:坐标与 owned 网格定位失败(拖拽前)——
-    ('装备槽位坐标缺失', '未执行:定位缺失(装备槽)'),
+    # —— 穿戴/工具原子:owned 网格定位失败(拖拽前,现读落空族)——
     ('owned 网格未定位到工具', '未执行:定位缺失(工具)'),
     ('owned 网格未定位到目标件', '未执行:定位缺失(目标件)'),
     ('owned 网格未定位到', '未执行:定位缺失(owned 网格)'),
@@ -129,11 +121,6 @@ _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     ('无简易武装箱', '未执行:无简易武装箱'),
     ('无秘密典籍', '未执行:无秘密典籍'),
     ('无书册卡', '未执行:无书册卡'),
-    # —— 部署:落位载荷越界 = 输入契约拒绝(拖拽前)——
-    ('落位载荷越界', '未执行:落位载荷越界'),
-    # —— 买牌(商店域 op,经注册表可达防御面):槽解析/槽越界(点击前)——
-    ('商店牌槽解析失败', '未执行:商店牌槽解析失败'),
-    ('商店牌槽号越界', '未执行:商店牌槽号越界'),
 )
 
 
@@ -298,6 +285,11 @@ class PrepActionExecutor:
         # 未执行形态。消费方 = cw_loop 动作发出核(launch_prepared_battle 返回
         # 值旁路)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
+        # 最近一次分派的动作 op round 结果(QC 终结口失败透传的取数口;
+        # 逐分派覆盖 = 恒本拍动作,防上拍残留误透传)。消费方 =
+        # cw_screen_prep._act_execute_default 终结口入参;非终结动作
+        # 零消费。getattr 容缺(__new__ 桩形态)。
+        self.last_round_result: OperationRoundResult | None = None
         # StartBattleOp 上报的免战跳过子态标记(op 写 env.skip_substate,
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
@@ -446,11 +438,12 @@ class PrepActionExecutor:
         - reason = 动作事实码:op_success(round 结果成功态,局部派生事实)
           为真 = ``''``(已正常发出);为假 = round_fail status 经
           :func:`_prep_receipt_block_code` 闭集映射取受阻码
-          (``未执行:*`` 点击前失败 / ``未生效:*`` 点后未生效,
-          词表见映射表注释与 kernel docstring)。op_success 的在役消费两
-          管道 = ①锁定恢复局守卫(``last_launch_ok``)②本口受阻码供给;
-        - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;受阻
-          动作也产行 = reason 非空受阻码;停机短路在本口之前抛出 =
+          (收缩后词表 = ``未执行:*`` 现读落空族,词表见映射表注释与
+          fields.md 回执契约节;异常终止的分派在本口之前抛出 = 不产行)。
+          op_success 的在役消费两管道 = ①锁定恢复局守卫
+          (``last_launch_ok``)②本口受阻码供给;
+        - 回执行以分派为单位:每分派恰一条 logic_action 行(受阻
+          动作也产行 = reason 非空受阻码;停机短路在分派之前抛出 =
           执行被拒不产行——停机非动作);
         - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;
           现役唯一项 = 免战跳过子态 ``skip_substate``);
@@ -494,6 +487,8 @@ class PrepActionExecutor:
         # 超时/停机查归本 runner 包络与结束本次访问的出口面所有,动作层零重试语义——
         # 节点异常原样上抛 = 执行异常通道不变)
         result = op.run()
+        # op round 结果留档(QC 终结口失败透传取数口;逐分派覆盖)
+        self.last_round_result = result
         if isinstance(action, CwActionStartBattleParam):
             # 免战跳过子态标记转发(op 写 env.skip_substate;递减本体 =
             # op 自上报,回执 extra 保留证据消费;getattr 容缺 = 桩 env 形态)

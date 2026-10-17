@@ -54,8 +54,10 @@ class CwActionDeployMoveOp(CwOperation):
         载荷,执行边零现读零决定)。拖拽语义 = 游戏规则:目标槽空 = 放置,
         有人 = 交换交互——执行层不判断占位、不拒、禁静默换槽,唯一失败
         形态 = 拖拽未生效(机械发出零判效,由下一入口 heavy 实读对账
-        暴露,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数 =
-        陈旧载荷未发出(round_fail,观察重派)。faction 字段不入执行。
+        暴露,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数
+        (含 <1 负下标) = 参数违法,op 内守卫断言 AssertionError 响亮
+        暴露(坐标裁定域禁负下标——负下标回环 = 静默错点,action_ops.md
+        §1 决策侧参数现算契约)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
         上报函数单点落账(tracked 第二账已停用,
@@ -69,9 +71,12 @@ class CwActionDeployMoveOp(CwOperation):
         slot_no = int(action.to_slot)
         pts = ex._front_pts if row == 'front' else ex._back_pts
         if not (1 <= slot_no <= len(pts)):
-            return self.round_fail(
+            # 参数违法由 op 自判(action_ops.md §1 决策侧参数现算契约 /
+            # 坐标裁定域禁负下标):下界 1 闭合 to_slot ≤ 0 的 Python 负
+            # 下标回环缺口(负下标回环 = 静默错点),越界响亮暴露零拖拽。
+            raise AssertionError(
                 f'落位载荷越界(to_row={row}, to_slot={slot_no}, '
-                f'画面槽位数={len(pts)};陈旧载荷,观察重派)')
+                f'画面槽位数={len(pts)})')
         src = ex._bench_pts[action.bench_idx]
         dst = pts[slot_no - 1]
         ex._drag(src, dst)

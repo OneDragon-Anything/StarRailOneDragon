@@ -64,10 +64,6 @@ class CwActionWearEquipOp(CwOperation):
         env = self.env
         ex = env.executor
         target = ex._equip_slot_drag_point(action.row, action.slot)
-        if target is None:
-            return self.round_fail(
-                f'装备槽位坐标缺失:{action.row}-{action.slot}'
-                '(建档漂移,禁兜底坐标)')
         if cw_sim_ports.mechanical_io_allowed():
             start = ex._owned_grid_locate(action.item_name)
             if start is None:

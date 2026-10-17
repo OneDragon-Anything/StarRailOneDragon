@@ -293,37 +293,6 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
 
 
-# ===== 落地门受阻码(visit 环 round_fail status 前缀闭集映射)=====
-
-#: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,正本家 =
-#: game_state/fields.md 回执契约节)。供给 = visit 环机械早退(round_fail
-#: 早退无 LogicOutcome)——落地门只持 OperationRoundResult 的 status 即可
-#: 取码。已登记码:``槽解析失败`` = 商店牌槽解析失败(payload 无此
-#: 牌,身份与 (name, star) 双未命中);``槽号越界`` = 槽号越界/
-#: 点位缺失(槽号-点表不一致)。业务拒绝(bench_full 等 LogicOutcome
-#: 拒绝,round_success)不经本表 = reason=''(可见性 = outcome 冒泡,
-#: 后续批)。**新 round_fail status 必须同步登记本表**——漏登走
-#: :func:`_visit_block_code` 原文兜底(受阻事实不静默,复盘以原样
-#: status 显影促登记)。
-_SHOP_VISIT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
-    ('商店牌槽解析失败', '槽解析失败'),
-    ('商店牌槽号越界', '槽号越界'),
-)
-
-
-def _visit_block_code(status: str) -> str:
-    """round_fail status → 落地门受阻码(前缀闭集映射单一源
-    = :data:`_SHOP_VISIT_BLOCK_CODES`)。
-
-    未登记 status = 原文兜底:机械事实「未发出」由 round_fail 通道保证,
-    受阻细节以原样 status 进 reason 不丢真;出现兜底形态 = 词表漏登。
-    """
-    for prefix, code in _SHOP_VISIT_BLOCK_CODES:
-        if status.startswith(prefix):
-            return code
-    return status
-
-
 # ===== 未观察商店访问:跳过留痕与连续跳过熔断( ④)=====
 
 #: 连续「未观察跳过」熔断上限(对局级,载体 = strategy_state.cw4_counters)。
@@ -671,15 +640,15 @@ class CwScreenShop(CwOperation):
         # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):
         # reason = 动作事实码——round_success(含业务拒绝 outcome 被丢弃)
         # = ''(业务拒绝可见性 = outcome 冒泡,后续批);round_fail 机械
-        # 早退 = status 经 :func:`_visit_block_code` 闭集映射取受阻码
-        # (词表见映射表注释与 kernel docstring),发出即簿记非验证——
-        # 本行零新增读屏零成败判定。CloseShop 跳过:「终结不入 decisions
+        # 早退 = status 原文进 reason(槽解析/槽号越界两防御口已随
+        # terminal-fail-status 迭代改 op 内守卫断言 = 异常终止的分派
+        # 不产行,本口零映射表),发出即簿记非验证——本行零新增读屏
+        # 零成败判定。CloseShop 跳过:「终结不入 decisions
         # 行」契约(执行事实回执由关店动作 op 自身承担)。
         if not isinstance(action, CwActionCloseShopParam):
             note_shop_action_receipt(
                 match, action,
-                reason='' if _ok
-                else _visit_block_code(str(_result.status or '')))
+                reason='' if _ok else str(_result.status or ''))
         apply_action_outcome(action, _ok, self._entry, match,
                              self.ledger, self._visit_actions)
         #  续段 token 写入(生产商店循环执行位):动作确认已执行

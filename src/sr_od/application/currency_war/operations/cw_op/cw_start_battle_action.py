@@ -20,7 +20,8 @@ SrOperation;机械执行后 **op 内直调自己的上报函数**
      terminal/terminal_wait 语义不变)。
 
 **round 结果契约**(原基类已登记例外并入):``execute()`` 的成功态 =
-**点击序列已执行**(找不到按钮 / area 缺失 = round_fail 未发出),消费面
+**点击序列已执行**(找不到按钮 = round_fail 未发出;按钮/弹窗确认
+area 缺失零检查 = 取值直接使用自然异常报错,QA 终裁),消费面
 = runner 包络 ``last_launch_ok`` 旁路(round 结果映射,已登记例外 =
 action_ops.md §2.3)。
 旧发出家族(6×0.5s 转移轮询 / 备战标识消失验证 / POST_LAUNCH_BLOCKERS
@@ -118,12 +119,6 @@ class CwActionStartBattleOp(CwOperation):
                             '(备战+开商店两屏查空)→ 交回外循环重判')
                 return self.round_fail('未执行:找不到按钮')
         btn = area_center(ex._ctx, btn_area)
-        if btn is None:
-            # area 缺失 = 建档漂移,显式失败禁兜底坐标(坐标单一真相源)。
-            log.warning('[cw!][battle] area 缺失:%s(%s),禁兜底坐标',
-                        btn_area, SCREEN_NAME)
-            return self.round_fail(
-                f'area 缺失:{btn_area}({SCREEN_NAME}),禁兜底坐标')
         skip_substate = btn_area == '按钮-跳过'
         env.skip_substate = skip_substate   # 回执 extra 保留证据消费(runner 包络)
         if cw_sim_ports.mechanical_io_allowed():
@@ -132,9 +127,6 @@ class CwActionStartBattleOp(CwOperation):
         # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(self.POST_CLICK_WAIT_S)
         detail = self._settle_post_click_popup(ex)
-        if detail.startswith('area 缺失'):
-            log.warning('[cw!][battle] %s', detail)
-            return self.round_fail(detail)
         # —— 自上报(机械发出后;跳过子态事实携带,免战递减 = 上报时)——
         # 上报后一行声明喂入(动作后果声明化喂入契约 = design.md §2.2
         # 契约 3;实机端口未装 = no-op,sim 装配后驱动后端 battle_resolve)。
@@ -156,8 +148,11 @@ class CwActionStartBattleOp(CwOperation):
 
     def _settle_post_click_popup(self, ex) -> str:
         """出战点击后的弹窗收尾(步 4,单帧截图判定):两类真弹窗点确认,
-        都没有 = 完成。返回机械摘要(detail;「area 缺失」前缀 = 弹窗
-        确认点击未执行,调用方按序列未完成上报)。
+        都没有 = 完成。返回机械摘要(detail)。
+
+        弹窗检查业务逻辑保留(有弹窗就确认);弹窗内确认 area 取值直接
+        使用,缺失零检查 = 确认点击使用点自然异常报错(QA 终裁:建档
+        缺失零防御,禁兜底坐标)。
 
         勾选幂等依据 = M16 死循环根因修复同款行为:只点确认
         不勾「本局不再提示」→ 人口不足时每次出战都弹此窗;对齐
@@ -168,16 +163,10 @@ class CwActionStartBattleOp(CwOperation):
                                      '标识-未达上限警告').is_success:
             check = area_center(ex._ctx, '勾选-本局不再提示',
                                 '货币战争-未达上限警告')
-            if check is None:
-                return ('area 缺失:勾选-本局不再提示'
-                        '(货币战争-未达上限警告),禁兜底坐标')
             ex._ctx.controller.mouse_move(check)
             ex._ctx.controller.click(check)
             time.sleep(0.3)
             confirm = area_center(ex._ctx, '按钮-确认', '货币战争-未达上限警告')
-            if confirm is None:
-                return ('area 缺失:按钮-确认'
-                        '(货币战争-未达上限警告),禁兜底坐标')
             ex._ctx.controller.mouse_move(confirm)
             ex._ctx.controller.click(confirm)
             return '出战已点击(未达上限警告:勾选+确认)'
@@ -185,9 +174,6 @@ class CwActionStartBattleOp(CwOperation):
                                      '标识-无角色提示').is_success:
             confirm = area_center(ex._ctx, '按钮-确认',
                                   '货币战争-提示-前台无角色')
-            if confirm is None:
-                return ('area 缺失:按钮-确认'
-                        '(货币战争-提示-前台无角色),禁兜底坐标')
             ex._ctx.controller.mouse_move(confirm)
             ex._ctx.controller.click(confirm)
             return '出战已点击(前台无角色提示:确认)'

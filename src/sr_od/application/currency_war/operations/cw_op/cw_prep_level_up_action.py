@@ -51,8 +51,9 @@ class CwActionLevelUpOp(CwOperation):
     双域执行(商店执行链端口接线):备战域经 ``PrepExecEnv.executor``
     (PrepActionExecutor)、商店域经 ``ShopExecEnv.executor``
     (ShopActionExecutor);按钮坐标在商店域优先取 env 已锚定的
-    ``level_btn``(商店画面 op 观察 node 的 area 锚定产物,缺失即
-    round_fail 的同源纪律),回落自读备战画面档 area。
+    ``level_btn``(商店画面 op 观察 node 的 area 锚定产物),回落自读
+    备战画面档 area;坐标取值直接使用,缺失零检查 = 使用点自然异常
+    报错(禁兜底坐标)。
     """
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -89,16 +90,12 @@ class CwActionLevelUpOp(CwOperation):
         btn = getattr(env, 'level_btn', None)
         if btn is None:
             # 商店域 env 已带观察 node 锚定的 level_btn;无锚定(备战域
-            # env / 商店域锚定缺席)→ 自读 area。按钮 area 缺失 = 建档
-            # 漂移,显式失败结束本次访问,返回主循环重新识别画面(禁兜底坐标静默点击;用户裁定
-            #,action_ops.md §4.2 LevelUp 行)。round_fail 经
-            # 执行缝 = emitted=False 未发出事实,下帧重派重读。
+            # env / 商店域锚定缺席)→ 自读 area(area 自读回落 = 业务
+            # 定位逻辑,保留)。取值直接使用:按钮坐标缺失零检查,使用点
+            # 自然异常报错(禁兜底坐标静默点击)。
             btn = area_center(
                 ex._ctx, '备战标识-购买经验',
                 screen_name=str(getattr(ex, 'screen_name', SCREEN_NAME)))
-        if btn is None:
-            return self.round_fail(
-                '「备战标识-购买经验」area 缺失,禁兜底坐标交回重读')
         clicks = max(1, int(getattr(action, 'clicks', 1) or 1))
         # 单击价容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
         _price = XP_CLICK_COST_FALLBACK

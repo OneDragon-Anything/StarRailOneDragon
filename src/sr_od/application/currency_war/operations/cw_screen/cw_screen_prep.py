@@ -800,7 +800,7 @@ class CwScreenPrep(CwOperation):
             # —— 执行(机械执行,无成败回执;发出即职责完成)
             #      执行体 = _act_execute_default(现役点击链 / 流程编排分流)。
             try:
-                self._act_execute_default(action)
+                _act_rr = self._act_execute_default(action)
             except StopBrakeShortCircuit as e:
                 # 刹车短路:停机标志已设,动作未发出 →
                 # 返回主循环,下轮 loop 顶见 STOP 退出(原回执 False 通道
@@ -830,7 +830,7 @@ class CwScreenPrep(CwOperation):
             #      禁消费点私表)。
             _op_cls = action_op_class_for(action)
             if _op_cls.terminal:
-                return self._terminal_exit(action, key, _op_cls)
+                return self._terminal_exit(action, key, _op_cls, _act_rr)
             # —— 动作逻辑态由动作 op 自上报独占直写,本环不再直写
             #      (op 已写,本处再写即双记)。假账风险由下一入口
             #      heavy reconcile 以实读纠逻辑态承担(以实际观察为准)。
@@ -856,15 +856,27 @@ class CwScreenPrep(CwOperation):
     # 上报时 consume_use),同节点去重在 cw_loop 备战分支挂点 =====
 
     def _terminal_exit(self, action: CwAction, key: str,
-                       op_cls: type[SrOperation]) -> OperationRoundResult:
+                       op_cls: type[SrOperation],
+                       round_result: OperationRoundResult | None
+                       ) -> OperationRoundResult:
         """终结动作返回主循环:终结判定与等待时长改读
         注册表 op 类 ``terminal``/
         ``terminal_wait`` 类属性(消费点经注册表读类属性,禁消费点私表)。
         返回 detail 文案逐动作保持原样(零行为)。
 
+        终结口失败透传(QC):``round_result`` = 本拍动作 op 的 round
+        结果(执行器分派留档;开店/出战链执行体无 op round 结果 = None)
+        ——失败如实转 round_fail(访问仍结束、收尾照常,外环 5 连败防线
+        可数 → 有界;此前失败伪装成成功 = 现读落空族终结口无界重进)。
+        终结语义(访问结束)与成败语义(本拍动作发没发出)正交分层。
+
         调用契约 = 仅 ``op_cls.terminal`` 为真时进入;非终结动作到达 =
         终结集与消费面失配,响亮暴露。
         """
+        if round_result is not None and not round_result.is_success:
+            return self.round_fail(
+                f'{key} 终结动作未发出(终结口失败透传):'
+                f'{round_result.status or ""}')
         if op_cls is CwActionStartBattleOp:
             # 出战提前终结(发出即终结——点击序列完成即返回主循环
             # 战斗分支;点击序列事实经执行器 last_launch_ok 旁路供 cw_loop
@@ -896,10 +908,17 @@ class CwScreenPrep(CwOperation):
             f'[cw][director] 非终结动作进入终结出口:{type(action).__name__}'
             '(终结集与消费面失配,响亮暴露)')
 
-    def _act_execute_default(self, action: CwAction) -> None:
+    def _act_execute_default(self, action: CwAction
+                             ) -> OperationRoundResult | None:
         """现役点击链缺省执行体(决策循环执行位)。CwActionOpenShopParam = 流程层
         商店编排(_open_shop_phase);其余 = 执行器机械执行。
-        机械摘要仅落各分支的执行日志(log.info 行)。"""
+        机械摘要仅落各分支的执行日志(log.info 行)。
+
+        返回 = 本拍动作 op 的 round 结果(QC 终结口失败透传入参;执行器
+        分派留档 ``executor.last_round_result`` 透传)。出战链 / 开店编排
+        两分支无本口 op round 结果(出战点击事实经 ``last_launch_ok``
+        旁路消费;开店返回 = 商店访问级完成事实,非动作 op round 结果)
+        = None,终结口透传不适用。"""
         if isinstance(action, CwActionStartBattleParam):
             # 出战意图执行 = 统一执行器(face=armed:屏态复验→浮层安全检查
             # →部署原子序→出战点击链——策略前置
@@ -910,17 +929,18 @@ class CwScreenPrep(CwOperation):
             _, _detail_lbu = launch_battle_unified(self, self.ctx,
                                                    face='armed')
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
-            return
+            return None
         if isinstance(action, CwActionOpenShopParam):
             # 开店 = 唯一普通形态(详设 §2.10:受限访问截流分支随动作发出帧
             # 仲裁段停用;受限会话进出店 = 本普通路径,访问内消费由策略
             # 侧自限)。
             _, detail = self._open_shop_phase()
             log.info(f'[cw][director] {action_key(action)} → {detail}')
-            return
+            return None
         self._executor.execute(action)
         _detail = getattr(self._executor, 'last_detail', '')
         log.info(f'[cw][director] {action_key(action)} → {_detail}')
+        return getattr(self._executor, 'last_round_result', None)
 
     def _delegate_plane_intel_if_needed(self, session: StrategySession
                                         ) -> OperationRoundResult | None:
