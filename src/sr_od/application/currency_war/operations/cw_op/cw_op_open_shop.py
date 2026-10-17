@@ -10,7 +10,7 @@
 import time
 
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.kernel.cw_obs_core import SCREEN_NAME
 from sr_od.application.currency_war.prep_actions import SHOP_OPEN_ANIM_S
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.operations.sr_operation import SrOperation
@@ -27,6 +27,10 @@ def _note_receipt(op: SrOperation, reason: str) -> None:
     (语义申报 = `kernel/cw_state_journal.py` 模块头)回执写入无条件,
     无局跳过在 kernel 口。回执 op 名/actor 硬编码
     `'CwOpOpenShop'`(journal 词表稳定;渲染器词表与类删除解耦)。
+    回执 screen = 动作**发出**画面(备战;全回执域统一语义——转移类
+    动作也记发出屏,目标画面由 current_screen 域承载;复盘渲染器的
+    动作节章归属锚 = 此字段,契约单一源 = game_state/fields.md 回执
+    契约节)。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -37,7 +41,7 @@ def _note_receipt(op: SrOperation, reason: str) -> None:
         if gs is None:
             return
         note_action_receipt(gs, op='CwOpOpenShop',
-                            reason=reason, screen=SHOP_SCREEN_NAME,
+                            reason=reason, screen=SCREEN_NAME,
                             actor='CwOpOpenShop')
     except Exception as e:  # noqa: BLE001  回执失败不阻塞动作链
         from one_dragon.utils.log_utils import log

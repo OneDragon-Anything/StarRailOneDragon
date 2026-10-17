@@ -15,7 +15,13 @@
 
 局头(meta 逐行)→ 开局段 → 逐节点组(P-R,类型取组内首行 ``node.kind``)
 → 组内画面章(画面域写入行切分 + 弹层 actor 注册表双轨;切章锚 =
-``field='current_screen'`` 写入行本体,快照携带 cs 只作归属;章内
+``field='current_screen'`` 写入行本体,快照携带 cs 只作归属;动作节
+章归属锚 = 回执 ``screen`` 字段 = **动作发出画面**——转移类动作(如开
+商店)的回执在切屏写入行之后落窗,按发出画面回搜本章组已开画面章归位,
+不按位置落到变更后画面(旧数据 screen=目标画面语义 → 位置归属回退);
+章内状态差分因果归属 = ``logic_action`` 家族写入行挂其后最近回执的
+动作节(动作的效果写入先于其回执落盘;组尾无回执认领 → 章内变化块;
+非 logic_action 非 obs 写入挂组内最近动作节);章内
 「0 观察 → 动作节×N → 策略评价」)→ 未归节(有则)→ 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
 cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
@@ -103,7 +109,7 @@ class Action:
     title: str                    # render-spec §4 组装规则
     reason: str = ''
     detail: str = ''
-    screen: str = ''              # 回执 screen(章内锚定注记,不参与切分)
+    screen: str = ''              # 回执 screen = 动作发出画面(动作节章归属锚)
     extra: list[tuple[str, Any]] = field(default_factory=list)
     #: 重试链(pipeline §5:连续回执同 op 且前条 reason 非空 → 合并一节,
     #: 节内逐条列出;首元素 = receipt 本条)
@@ -126,8 +132,6 @@ class Screen:
     has_decision: bool = False    # False = 不渲染策略评价节
     #: 构建期临时:未注册画面 op actor → 行数(渲染前聚合转尾注并剥离)
     _unreg_counts: dict[str, int] = field(default_factory=dict)
-    #: 构建期临时:当前未闭合动作节(重试链合并判据),渲染前剥离
-    _cur_action: Action | None = None
     #: 构建期临时:渲染同值写入计数(前=后,零信息;渲染前转尾注并剥离)
     _same_skipped: int = 0
     #: 构建期临时:观察尾注去重集(field, 格式化值)——同章重复写同值不刷屏
@@ -154,6 +158,13 @@ class Section:
     #: pipeline §3 修订——粘进当前画面章会把种子推导与全局首遍观察
     #: 误记为画面内容,故落组级桶,仅开局段启用)
     opening_notes: list[str] = field(default_factory=list)
+    #: 构建期临时:组内最近动作节(journal 序;重试链合并判据——回执按
+    #: 发出画面归章后,重试两脚可能异章落窗,链判据必须跨章)
+    _last_action: Action | None = None
+    #: 构建期临时:待认领动作效果写入(logic_action 家族;动作的效果写入
+    #: 先于其回执落盘,缓冲至该动作回执行到达时入其动作节),组尾无回执
+    #: 认领 → 尾扫入最后画面章章内变化块(防静默丢行)
+    _pending_deltas: list[Delta] = field(default_factory=list)
 
 
 @dataclass
@@ -971,8 +982,11 @@ def _action_title(receipt: dict[str, Any]) -> str:
 
 
 def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
-                 prev_of: dict[int, Any], idx: int) -> None:
-    """单行入章:动作锚 / 状态变化 / 尾注(pipeline §5;render-spec §5)。"""
+                 prev_of: dict[int, Any], idx: int, sec: Section) -> None:
+    """单行入章:动作锚 / 状态变化 / 尾注(pipeline §5;render-spec §5)。
+
+    ``sec`` = 所属章组(动作节章归属回搜与效果差分缓冲的承载面)。
+    """
     kind = row_kind(row)
     if kind == ROW_OBS_EVENT:
         observed = row.get('observed')
@@ -997,12 +1011,18 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         if rec is None:
             scr.annots.append(f'缺口: 回执行 after 空/畸形(ts={row.get("ts")})')
             return
-        cur = scr._cur_action
+        pending = sec._pending_deltas
         op = str(rec.get('op') or '?')
-        if (cur is not None and cur.chain
-                and str(cur.chain[-1].get('op') or '') == op
-                and str(cur.chain[-1].get('reason') or '')):
-            cur.chain.append(rec)  # 重试链:连续回执同 op 且前条受阻(reason 非空)
+        last = sec._last_action
+        if (last is not None and last.chain
+                and str(last.chain[-1].get('op') or '') == op
+                and str(last.chain[-1].get('reason') or '')):
+            # 重试链:连续回执同 op 且前条受阻(reason 非空)→ 合并一节
+            # (判据 = 组内最近动作,跨章——回执按发出画面归章后,重试两脚
+            # 可能异章落窗);链节吸收待认领效果写入
+            last.chain.append(rec)
+            last.deltas.extend(pending)
+            pending.clear()
             return
         # extra 排除表保留 'applied'/'gold_delta' 键:旧 journal 历史回执
         # 含两键(applied 布尔/执行点金差证据腿均已退役),保留排除 = 旧
@@ -1010,14 +1030,29 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         extra = [(k, v) for k, v in rec.items()
                  if k not in ('op', 'applied', 'gold_delta', 'reason', 'detail',
                               'screen')]
-        act = Action(no=len(scr.actions) + 1, op=op,
+        # 动作节章归属锚 = 回执 screen(动作发出画面,全回执域统一语义):
+        # 转移类动作(如开商店)的回执在切屏写入行之后落窗,位置归属会把它
+        # 记到变更后画面;按发出画面回搜本章组已开画面章归位。搜不到
+        # (旧数据 screen=目标画面语义/画面章未开)→ 位置归属(当前章)。
+        target = scr
+        rscreen = str(rec.get('screen') or '')
+        if rscreen and scr.screen_id != rscreen:
+            for s in reversed(sec.screens):
+                if s.screen_id == rscreen:
+                    target = s
+                    break
+        act = Action(no=len(target.actions) + 1, op=op,
                      title=_action_title(rec),
                      reason=str(rec.get('reason') or ''),
                      detail=str(rec.get('detail') or ''),
-                     screen=str(rec.get('screen') or ''), extra=extra,
+                     screen=rscreen, extra=extra,
                      chain=[rec])
-        scr.actions.append(act)
-        scr._cur_action = act
+        target.actions.append(act)
+        # 因果差分入账:本动作的效果写入(logic_action 家族)先于其回执
+        # 落盘,此刻缓冲区 = 自上一回执以来的效果 → 尽数入本节
+        act.deltas.extend(pending)
+        pending.clear()
+        sec._last_action = act
         return
     if row.get('same_value') is True:
         return  # no-op 写入零信息
@@ -1071,9 +1106,16 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         # 未注册画面 op 的非 obs 行:一律走尾注显影(pipeline §4「挂当前
         # 画面章尾注 + 记缺口」),禁静默混入动作状态变化表
         return
-    cur = scr._cur_action
-    if cur is not None:
-        cur.deltas.append(delta)
+    if family == 'logic_action':
+        # 动作效果因果归属:效果写入先于其回执落盘 → 缓冲,待该动作回执
+        # 行到达时入其动作节(修「效果显影滞后一节」);组尾无回执认领的
+        # 由 _build_section 尾扫入章内变化块
+        sec._pending_deltas.append(delta)
+        return
+    # 非 logic_action 非 obs 写入(效果钩子等派生事实):非动作因果 →
+    # 挂组内最近动作节(无则章内变化块)
+    if sec._last_action is not None:
+        sec._last_action.deltas.append(delta)
     else:
         scr.trailing_changes.append(delta)  # 章内变化块(无锚前缀写入行)
 
@@ -1157,9 +1199,13 @@ def _build_section(kind: str, node: NodeInfo | None,
         if opened:
             sec.screens.append(cur)
         cur.annots.extend(notes)
-        _consume_row(r, cur, opened, prev_of, idx)
+        _consume_row(r, cur, opened, prev_of, idx, sec)
+    # 组尾扫尾:无回执认领的挂起效果写入(组末动作的效果在组边界前落盘、
+    # 回执随节点翻转行归入下一组等形态)→ 最后画面章章内变化块(防静默
+    # 丢行);挂起区跨章时归最后章(罕见形态,可见性优先于章精确)
+    if sec._pending_deltas and sec.screens:
+        sec.screens[-1].trailing_changes.extend(sec._pending_deltas)
     for s in sec.screens:
-        s._cur_action = None
         # 未注册画面 op 聚合尾注(pipeline §4「挂尾注 + 记缺口」;同章同
         # actor 一条带计数,按 actor 名排序保确定性)
         for actor in sorted(s._unreg_counts):
