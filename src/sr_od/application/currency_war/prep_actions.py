@@ -431,9 +431,9 @@ class PrepActionExecutor:
         # 免战跳过子态标记每动作复位(上动作残留禁跨动作流入;op 上报经
         # _dispatch_action 写入,回执 extra 消费)。
         self._last_skip_substate = False
-        detail, emitted = self._dispatch_action(action)
+        detail, op_success = self._dispatch_action(action)
         self.last_detail = detail
-        gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
+        gold_delta = self._executed_gold_delta(action, op_success, _pre_sell_bc)
         self.last_gold_delta = gold_delta
         # (卖出回金的容器唯一写点 = 卖出 op 自上报
         #  (report_action_sell_*_param),防双记——执行缝与投影双腿各记
@@ -444,17 +444,17 @@ class PrepActionExecutor:
             # 跳过子态标记进回执 extra(上报动作事实的遥测面;递减本体 =
             # op 自上报,回执只保留证据)。
             _gold_extra = {**(_gold_extra or {}), 'skip_substate': True}
-        self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
+        self._note_action_receipt(action, op_success, detail, extra=_gold_extra)
         if isinstance(action, CwActionStartBattleParam):
             # 出战点击事实(出战域重设计):真执行链 = 注册表分派
             # CwActionStartBattleOp 点击序列,round 结果成功态即发出事实
             # (round_fail = 找不到按钮/area 缺失,已登记例外 =
             # action_ops.md §2.3);
             # 执行缝(假环境)不经真分派 = round 成功态原值透传。
-            self.last_launch_ok = emitted
-        if emitted:
+            self.last_launch_ok = op_success
+        if op_success:
             if isinstance(action, CwActionStartBattleParam):
-                self.last_launch_ok = emitted
+                self.last_launch_ok = op_success
         # (S1 清键执行侧落地门已随迭代 2026-10-12-prep-shop-workflow-
         # redesign 停用删除——备战期开店标志废止,清键门无对象。)
         # (动作逻辑效果推进已并入各 op 自上报
@@ -463,7 +463,7 @@ class PrepActionExecutor:
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
 
-    def _note_action_receipt(self, action: CwAction, emitted: bool,
+    def _note_action_receipt(self, action: CwAction, op_success: bool,
                              detail: str,
                              extra: dict | None = None) -> None:
         """动作执行回执 → GameState receipts 域
@@ -473,11 +473,11 @@ class PrepActionExecutor:
           验证』裁定):本写点零成败判定——不读屏、不做落地推断
           (「拖3次源槽未变」类像素验回执已停用),落地判定归观察侧
           reconcile;
-        - reason = 动作事实码:emitted(round 结果成功态,局部派生事实)
+        - reason = 动作事实码:op_success(round 结果成功态,局部派生事实)
           为真 = ``''``(已正常发出);为假 = round_fail status 经
           :func:`_prep_receipt_block_code` 闭集映射取受阻码
           (``not_emitted:*`` 点击前失败 / ``no_effect:*`` 点后未生效,
-          词表见映射表注释与 kernel docstring)。emitted 的在役消费三
+          词表见映射表注释与 kernel docstring)。op_success 的在役消费三
           管道 = ①锁定恢复局守卫(``last_launch_ok``)②金差门
           (:meth:`_executed_gold_delta` 入口)③本口受阻码供给;
         - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;受阻
@@ -498,7 +498,7 @@ class PrepActionExecutor:
                 return
             note_action_receipt(
                 gs, op=type(action).__name__,
-                reason='' if emitted else _prep_receipt_block_code(detail),
+                reason='' if op_success else _prep_receipt_block_code(detail),
                 detail=detail,
                 screen=SCREEN_NAME, actor=type(self).__name__, extra=extra)
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
@@ -545,7 +545,7 @@ class PrepActionExecutor:
         except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
             return None
 
-    def _executed_gold_delta(self, action: CwAction, emitted: bool,
+    def _executed_gold_delta(self, action: CwAction, op_success: bool,
                              pre_sell_bc) -> int | None:
         """执行点金差暴露(备战执行缝账务包络):gold 域备战动作在
         机械半边发出时点的金变化量。
@@ -566,7 +566,7 @@ class PrepActionExecutor:
         卖出/花金容器唯一写点 = 卖出自上报(report_action_sell_*),
         防双腿双记(实机 −2 倒挂实证)。None = 该动作本拍金账留观察覆盖。
         """
-        if not emitted:
+        if not op_success:
             return None
         if isinstance(action, (CwActionSellBenchParam, CwActionSellDeployedParam)):
             if pre_sell_bc is None:
@@ -589,7 +589,7 @@ class PrepActionExecutor:
         env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
         结果;op 形态正本 = flow/action_ops.md §1)。
 
-        返回 ``(机械执行摘要, 是否实际发出)``。emitted = round 结果成功态
+        返回 ``(机械执行摘要, 是否实际发出)``。op_success = round 结果成功态
         (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出
         通道,零重试即失败结束本次访问)。机械摘要 = round 结果 status。词表外
         类型 = 注册表 AssertionError 响亮暴露(生产不可达:F3 validate
@@ -778,8 +778,8 @@ class PrepActionExecutor:
 
     def _start_battle(self) -> tuple[bool, str]:
         """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;替身缝保留)。"""
-        detail, emitted = self._dispatch_action(CwActionStartBattleParam())
-        return emitted, detail
+        detail, op_success = self._dispatch_action(CwActionStartBattleParam())
+        return op_success, detail
 
 
 
