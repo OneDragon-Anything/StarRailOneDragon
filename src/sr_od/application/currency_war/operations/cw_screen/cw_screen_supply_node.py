@@ -106,6 +106,13 @@ class CwScreenSupplyNode(CwOperation):
         self._obs: CwScreenSupplyNodeObs | None = None
         self._sup_opts: list | None = None
         self._refresh_point: Point | None = None
+        # 来源 C 形态门(T-27 利息条件腿,中途审查复裁):观察轮节点条
+        # 锚定返回 'reanchor' = 备战帧已锚本节点(常规形态,基座 = 备战帧
+        # gs.gold 观察=领取前真值);'advance'/'first_anchor' = 本节点首次
+        # 锚定发生在补给屏(「自动弹」形态,无备战帧)→ 基座宁缺不计数。
+        # 误分类方向恒宁缺(常规但备战锚 OCR 失读 → advance → 漏计一刻,
+        # 宁缺勿造向),无多计向。
+        self._prep_anchored: bool = False
 
     def _in_node(self, screen) -> bool:
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
@@ -222,11 +229,19 @@ class CwScreenSupplyNode(CwOperation):
         # 可锚——的唯一锚定点;divert 形态 = 备战帧已锚,本读数走处置规则表
         # reanchor/stale_dropped 分支承接,处置规则表正本 = `game_state/node-derivation.md`(E10 行))。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
+        # 来源 C 形态门随本锚定判(T-27 利息条件腿,中途审查复裁):
+        # 处置 token = 'reanchor' → 备战帧已锚本节点 = 常规形态(基座 =
+        # 备战帧 gs.gold 观察,领取前真值);'advance'/'first_anchor' →
+        # 本节点首次锚定发生在补给屏 = 「自动弹」形态 → 基座宁缺不计数。
+        # 误分类方向恒宁缺(常规但备战锚失读 → advance → 漏计一刻,
+        # 宁缺勿造向),无多计向。基座本体不在观察轮读——计数刻(领取
+        # 完成后)现读 gs.gold 即备战帧观察值(补给访问期无金写端,零漂移)。
         _pos = self._read_node_bar(screen)
         if _pos is not None and _gs is not None:
-            observe_node_anchor(_gs, _pos,
-                                trigger_screen='货币战争-补给',
-                                actor='CwScreenSupplyNode')
+            _anchor_token = observe_node_anchor(_gs, _pos,
+                                                trigger_screen='货币战争-补给',
+                                                actor='CwScreenSupplyNode')
+            self._prep_anchored = (_anchor_token == 'reanchor')
         if _gs is not None:
             report_screen_supply_node_obs(_gs, obs)
         self._sup_opts = list(opts)
@@ -393,4 +408,58 @@ class CwScreenSupplyNode(CwOperation):
                                          norm_item=picked_norm_item,
                                          extra_norm_items=picked_extra_norm)
         action_op_for(_param, self.ctx, _env).execute()
+        # 来源 C 计数刻 = 领取补给动作完成后(收入已入账,推算+计数归组
+        # 清晰;T-27 设计 §2.5)。
+        self._count_interest_after_pick(match)
         return True
+
+    def _count_interest_after_pick(self, match) -> None:
+        """领取完成刻的息推算计数(T-27 来源 C;best-effort,失败不阻塞
+        节点收尾)。
+
+        - 基座金 = 备战帧 gs.gold 观察(常规形态:出战/进补给节点前最后
+          备战帧观察;「获取补给之后」定谳下即领取前真值,补给访问期无
+          金写端零漂移,计数刻现读即该值)。形态门 = ``_prep_anchored``
+          (观察轮节点条锚定 token 判,见 ``_observe_live``):「自动弹」
+          形态(本节点首次锚定发生在补给屏,无备战帧)宁缺不计数——中途
+          审查复裁(设计稿 v2.4 微批 §2.5 来源 C,原「货币计数定点读」
+          前提经帧证据证伪后改签);接管局形态(进入时补给已被领取)同归
+          宁缺(披露面);
+        - 刷新分支/对照闸拒绝路径不经本方法(领取未发生即终结本访问,
+          外循环重入重观察)→ 天然防补给 op 重入双计;
+        - cap/flat 推算单一源 = estimate_node_interest(kernel 公式纯读,
+          经 obs/cw_settlement_obs 惰性 import——避免补给模块级拉入结算
+          obs 读链外的重导入面,函数内惰性为本包既有破环纪律);
+        - sig = logic_hook 族,actor = 本 op 类名,组号
+          'supply-node:env-grant'(宿主 op 申报,台账归组可对账)。
+        """
+        if match is None:
+            return   # 局外兜底路径无容器,零计数
+        try:
+            from sr_od.application.currency_war.kernel.cw_env_grants import (
+                check_env_interest_grants,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig,
+            )
+            from sr_od.application.currency_war.obs.cw_settlement_obs import (
+                estimate_node_interest,
+            )
+            _gs = match.gs
+            _base_gold = (_gs.gold.value if self._prep_anchored else None)
+            _est = estimate_node_interest(_gs, _base_gold)
+            if _est is None:
+                log.info('[cw-supply] 息推算基座缺失(自动弹形态/金未观察)'
+                         '→ 宁缺不计数')
+                return
+            _gs.effects.record_interest_earned(int(_est))
+            granted = check_env_interest_grants(
+                _gs,
+                ChannelSig(family='logic_hook',
+                           actor='CwScreenSupplyNode',
+                           group_id='supply-node:env-grant'))
+            if granted is not None:
+                log.info(f'[cw-supply] 利息条件发放:{granted}'
+                         f'(累计息{_gs.effects.interest_earned})')
+        except Exception as e:   # noqa: BLE001  计数面不阻塞节点动作
+            log.warning(f'[cw-supply] 补给息计数失败(不阻塞): {e}')

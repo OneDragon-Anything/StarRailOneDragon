@@ -1094,16 +1094,18 @@ None = 无败态登记。消费 = 轮首收入败补支(U04 口径,kernel `round
 **语义**:`tuple[(env, 条件键), ...]` 逻辑态域——投资环境**条件达成发放**的
 已发标记(发放幂等守卫账:达成条件后跨结算重查不重发)。登记表(白名单制,
 键 = 投资环境规范名)= `cw_investments.py::ENV_STREAK_GRANTS`(值 =
-(连胜阈值, 发放装备名);在用 = 深井角斗场「本局首次 5 连胜 → 财富宝钻」)
-与 `cw_investments.py::ENV_REFRESH_GRANTS`(值 = (计数键, 阈值, 金, 装备名
+(连胜阈值, 发放装备名);在用 = 深井角斗场「本局首次 5 连胜 → 财富宝钻」)、
+`cw_investments.py::ENV_REFRESH_GRANTS`(值 = (计数键, 阈值, 金, 装备名
 可空);在用 = 二手市场「商店刷新 20 次 → +30 金 + 员工投影仪」(计数域
 全量)/ 长线利好「花费金币刷新 30 次 → +20 金」(计数域付费,金-only
-装备腿 None))。
+装备腿 None))与 `cw_investments.py::ENV_INTEREST_GRANTS`(值 = (累计利息
+阈值, 发放角色名);在用 = 公司契约「累计获得 40 利息 → 托帕&账账」)。
 条件键 = 具名取值清单:`'first_streak'` = 本局首次连胜达成(消费 =
 `check_env_streak_grants`);`'refresh_threshold'` = 刷新次数阈值触发器
 (二手市场/长线利好;消费 = `check_env_refresh_grants`,唯一调用点 = 刷新上报函数
 `report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口);
-`'star_grant#<装备名>'` = 随机星徽授予腿绑定键(# 后载荷 = 发放装备名,
+`'interest_threshold'` = 利息累计阈值触发器(公司契约;消费 =
+`check_env_interest_grants`);`'star_grant#<装备名>'` = 随机星徽授予腿绑定键(# 后载荷 = 发放装备名,
 键值载荷是条件键的扩展形态,随劳务派遣合同登记;写端 =
 `cw_gain_chain.on_env_gained` 随机装备支,消费 = 绑定存在性检查,不承担
 幂等);`'boss#<位面>-<轮>'` = 首领节点周期发放幂等键(每节点一键,消费 =
@@ -1159,6 +1161,31 @@ done 短路兜第二层。**触发时点假设**(desc 无载申报,实采挂点)
 「简报屏观察时点 = 进入首领节点」发放,desc 未写时点(实机可能为 boss
 战后)——若实机战后发则模型早发一窗,同一角色资产对照无失,sim 世界
 时序差一窗、无行为分支;证伪路径 = 实机局 boss 节点战后 bench 增量对照。
+
+**interest_threshold 触发形状**(同域第四通道,公司契约 id 126;登记表 =
+`cw_investments.ENV_INTEREST_GRANTS`,值 = (累计利息阈值, 发放角色名),
+白名单制):累计入账利息 ≥ 阈值时发放一次性(「累计获得40利息后,获得
+【托帕&账账】」卡面直读;阈值 40 卡面数值,发放单数缺省,星级 1★ 先验
+族)。计数域 = `gs.effects.interest_earned`(统一公式 interest 分量全
+分支累计,**含息 flat 修饰**;写端 = sim 收入应用两处 + live 三来源计数
+刻,经 `record_interest_earned` 单口;不入快照 → 接管局计数归零)。条件
+矩阵六序短路:空 env/不在册/已 done/计数不足 → 零写;bench 缺读(直构域
+防御,生产恒非 None)缓发不标 done;达标 → `gain_character`(rand=False
+确定发放,环境发放无采样)+ done 两笔相邻写(同 evidence
+`env_grant#<环境>#interest<阈值>` 同 sig)。**接线**:sim = 收入应用单一
+收口(`apply_round_start_income` 函数体内 + 扑满结算腿落账后各一组
+record→check,幂等住节点窗口守卫,record 先于 check,`logic_sig('sim:env')`);
+live = 三来源计数刻——来源 A 胜局结算屏「获得金币总览」面板息行直读
+(结算覆盖窗内金真值落账后;面板裁剪放大区域读,息行缺席 = 0、锚不在/
+值失读 = None 该刻不计数;logic_hook 族 group `battle-wait:env-grant`,
+同 streak live 形态)/ 来源 B 败局行写点推算(息 = interest(出战金,
+resolved cap)+ flat;唯一计数刻 = 1f 失败页败局行写点,显式败局门,
+「前往结算」补录路径零计数防双计,killed=None 抑制 = 宁缺)/ 来源 C
+领取补给完成刻推算(基座 = 备战帧 gs.gold 观察,常规形态备战帧已锚本
+节点为形态门;「自动弹」形态无备战帧宁缺不计数;logic_hook 族 group
+`supply-node:env-grant`)。**恢复两面性**:快照恢复不重发(done 随快照
+存续);done 为空的接管形态 = 计数同步归零 → 重新累计达标后再发(同局
+双托帕&账账 = 家族「最佳猜测」边界的 interest 形状)。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写入方 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =

@@ -2350,6 +2350,74 @@ def _validate_env_merge_grants() -> None:
 _validate_env_merge_grants()
 
 
+# ===== 环境利息累计触发发放注册表(公司契约;白名单制)=====
+# **世界发放域**(条件达成的世界发放第五表,ENV_STREAK/REFRESH/BOSS/MERGE
+# GRANTS 同族):键 = 环境规范名,值 = (累计利息阈值, 发放角色名)。
+# 计数语义 = 统一公式 interest 分量全分支累计(**含息 flat 修饰**;
+# economy.md §10.1 收入口径),阈值语义 =「累计获得 N 利息后」一次性
+# (done 封账)。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/
+# ENV_GIFTS 同款纪律)。消费面 = kernel/cw_env_grants.check_env_interest_
+# grants(触发检查单一源;调用点 = sim 收入应用两处 + live 三来源计数刻,
+# T-27 迭代设计 §2.4/§2.5)。
+# **表间豁免声明**(ENV_BOSS_GRANTS 同款显式声明):本表键与 ENV_GIFTS
+# 共存 = 合法形态(两表同键各表各域——ENV_GIFTS 的 chars_conditional 辖
+# 估值域档位机器,本表辖世界发放),与 ENV_ECONOMY 无 ∩ 冲突;双源一致性
+# 代之以与 ENV_GIFTS 条件具名集的构建期对账(见 _validate_env_interest_
+# grants 第④条)。
+ENV_INTEREST_GRANTS: dict[str, tuple[int, str]] = {
+    # 累计获得40利息后,获得【托帕&账账】(id 126 原文直读,
+    # cw_invest_data PlazaPortal('126');阈值 40 卡面直读,发放单数缺省)
+    '公司契约': (40, '托帕&账账'),
+}
+
+
+def _validate_env_interest_grants() -> None:
+    """ENV_INTEREST_GRANTS 构建校验(import 即炸;沿 _validate_env_streak_
+    grants 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:阈值须为 ≥1 的 int(bool 排除——isinstance(bool, int) 为真,
+    ≤0 = 条件永真使 done 守卫登记刻即触发,登记笔误前置可见,沿 streak ③);
+    角色名须为非空 str(空名 = 发放写出假身份);
+    ③ 角色名漂移:发放角色必须在 CHARACTER_ROSTER(data/cw_chars 注册表;
+    同文件 _validate_env_gifts ②先例——锁 data 注册表防版本改名静默失联,
+    写出注册表外名字 = 假身份混进 bench,沿 streak ②装备名漂移同构。
+    ``CHARACTERS`` 是 cw_pool 商店池域另一符号,勿混用);
+    ④ 双源对账:键在 ENV_GIFTS 有条目时,其 chars_conditional 具名集
+    (首元)须与本表发放角色一致——两表同出卡面(id 126),任一侧单独
+    改名即漂移,构建期炸(_validate_env_ore_grants ③ 双源同值同构)。
+    """
+    orphans = [n for n in ENV_INTEREST_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_INTEREST_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_threshold, _char) in ENV_INTEREST_GRANTS.items():
+        if not isinstance(_threshold, int) or isinstance(_threshold, bool) \
+                or _threshold < 1:
+            raise ValueError(
+                f"ENV_INTEREST_GRANTS 阈值形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_threshold!r}")
+        if not isinstance(_char, str) or not _char:
+            raise ValueError(
+                f"ENV_INTEREST_GRANTS 角色名形({_n!r}):须为非空 str,"
+                f"现值 {_char!r}")
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"ENV_INTEREST_GRANTS 角色名漂移({_n!r} 注册表无此人,"
+                f"版本改名?):{_char!r}")
+        _gift = ENV_GIFTS.get(_n)
+        _cond = _gift.chars_conditional if _gift is not None else ()
+        if not _cond or _cond[0][0] != _char:
+            raise ValueError(
+                f"ENV_INTEREST_GRANTS 双源失同步({_n!r}):ENV_GIFTS."
+                f"chars_conditional 首元 "
+                f"{_cond[0][0] if _cond else None!r} ≠ 本表发放角色 {_char!r}"
+                f"(两表同出卡面,失同步即构建期炸)")
+
+
+_validate_env_interest_grants()
+
+
 # ===== 节点改写注册表归属校验(import 即炸)=====
 # 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——

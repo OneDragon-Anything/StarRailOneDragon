@@ -58,11 +58,15 @@ from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
 )
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
+    estimate_node_interest,
     parse_progress_fill_ratio,
+    parse_settle_coin_overview,
+    parse_settle_interest,
     parse_settlement_progress,
     parse_settlement_round,
     read_round_outcome,
     read_settle_damage_breakdown,
+    read_settle_interest_panel,
     settle_page1_progress_sign,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
@@ -228,6 +232,12 @@ class SettlementState:
     battle_ts: float | None = None
     saw_settlement: bool = False
     settled_battle_ts: float | None = None
+    # 利息入账节点闩(T-27 来源 A/B 唯一计数刻守卫):最近一次利息
+    # 入账的 (位面, 轮)。取值时机 = 入账成功刻写入(_record_round_outcome
+    # 来源 A/B 块);同节点结算重处理(确认失败重入/同败局多帧指纹)与
+    # 跨路径重放(胜局覆盖块 + 前往结算补录行)据此零双加——每节点收入
+    # 恰一次入账,与 sim 窗口幂等守卫(_window_begun_pos)同构口径。
+    interest_counted_pos: tuple[int, int] | None = None
 
 
 class CwScreenBattleWait(CwOperation):
@@ -492,6 +502,43 @@ class CwScreenBattleWait(CwOperation):
             self._cw_selection_capture(_session, _obs, _plane, _round, _node)
             self._cw_selection_write(_session, _obs, _plane, _round, _node,
                                      residual=_residual)
+            if telemetry_only:
+                # —— 来源 B:败局轮息推算计数(唯一计数刻 = 1f 失败页
+                # 分支败局行写点,T-27 迭代设计 §2.5/V2-F2)——可达性 =
+                # _record_loss_page 成功路径且 killed is False 显式败局门
+                # 已过(上方守卫:killed 非 False 即返,killed=None 抑制
+                # 形态 = 该节点息不计数,宁缺勿造)。「前往结算」补录
+                # 路径非 telemetry 不进本块 = 零计数防双计(与 1f 行构成
+                # 同一败局的双补录行,指纹按帧面必不合并,息只随本刻计
+                # 一次;同节点重放由入账节点闩拦)。基座金 = 出战前最后
+                # 备战帧金观察(战斗期间金库不变,gs.gold 现值即该值;
+                # None = 从未观察 → 推算 None 宁缺不计数);cap/flat
+                # 推算单一源 = estimate_node_interest(kernel 公式纯读)。
+                # record 先于 check 同组相邻。独立 try:本刻失败不毒化
+                # 外层结算观测窗锚刷新(覆盖度守卫面)。
+                if _st.interest_counted_pos != (_plane, _round):
+                    try:
+                        from sr_od.application.currency_war.kernel.cw_env_grants import (
+                            check_env_interest_grants,
+                        )
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
+                            ChannelSig,
+                            gs_of_ctx,
+                        )
+                        _ib_gs = gs_of_ctx(self.ctx, _session)
+                        _est = estimate_node_interest(
+                            _ib_gs, _ib_gs.gold.value)
+                        if _est is not None:
+                            _ib_gs.effects.record_interest_earned(int(_est))
+                            check_env_interest_grants(
+                                _ib_gs,
+                                ChannelSig(family='logic_hook',
+                                           actor='CwScreenBattleWait',
+                                           group_id='battle-wait:env-grant'))
+                            _st.interest_counted_pos = (_plane, _round)
+                    except Exception as e:  # noqa: BLE001  计数面不阻塞对局
+                        log.warning('[cw-bwait] 败局息推算计数失败'
+                                    '(不阻塞): %s', e)
             if not telemetry_only:
                 # —— 观察半直写(hp 结算锚已停用,真值链由结算覆盖写端
                 # 承载)——
@@ -534,6 +581,7 @@ class CwScreenBattleWait(CwOperation):
                     # settlement 行注记带 battle_done:<节点类型> 语义
                     #(同时点同载荷,行行自足快照)。
                     from sr_od.application.currency_war.kernel.cw_env_grants import (
+                        check_env_interest_grants,
                         check_env_streak_grants,
                     )
                     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -581,6 +629,43 @@ class CwScreenBattleWait(CwOperation):
                             ChannelSig(family='logic_hook',
                                        actor='CwScreenBattleWait',
                                        group_id='battle-wait:env-grant'))
+                    # —— 利息累计账入账 + 条件发放(来源 A:胜局结算屏
+                    # 「获得金币总览」面板息行直读,T-27 迭代设计 §2.5;
+                    # 计数时点 = 结算覆盖窗内、金真值落账后)。面板只在
+                    # 胜局结算屏出现:「前往结算」补录路径(位面结束/轮败
+                    # 多页,非 telemetry 同进本块)执行帧为按钮页无面板,
+                    # 解析 None 零计数,与来源 A 不混计;同节点重处理
+                    #(确认失败重入等)由入账节点闩拦零双加。息行缺席
+                    #(面板在) = 息 0 照常入账;锚不在/值失读 = None 该
+                    # 刻不计数(宁缺勿造)。record 先于 check 同组相邻;
+                    # sig = logic_hook 族同 streak live 形态(两触发同窗
+                    # 同组,台账归组一致)。闭合校验 = 兜底留证不阻塞。
+                    _ia_gs = gs_of_ctx(self.ctx, _session)
+                    if _st.interest_counted_pos != (_plane, _round):
+                        _panel_items = read_settle_interest_panel(
+                            self.ctx, screen)
+                        _interest = (parse_settle_interest(_panel_items)
+                                     if _panel_items else None)
+                        if _interest is not None:
+                            _ia_gs.effects.record_interest_earned(
+                                int(_interest))
+                            _ov = parse_settle_coin_overview(_panel_items)
+                            if None not in (_ov['overview'], _ov['base'],
+                                            _ov['streak']) \
+                                    and _ov['overview'] != (_ov['base']
+                                                            + _ov['streak']
+                                                            + _interest):
+                                log.warning(
+                                    '[cw-bwait] 金币总览闭合失配(留证不阻塞):'
+                                    '总览=%s 基础=%s 连胜=%s 息=%s',
+                                    _ov['overview'], _ov['base'],
+                                    _ov['streak'], _interest)
+                            check_env_interest_grants(
+                                _ia_gs,
+                                ChannelSig(family='logic_hook',
+                                           actor='CwScreenBattleWait',
+                                           group_id='battle-wait:env-grant'))
+                            _st.interest_counted_pos = (_plane, _round)
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
                 # 效果账本结算挂点(settlement 锚行为账本既有挂点提供

@@ -236,6 +236,15 @@ class ActiveEffectInventory:
         # gs.free_refresh_left,本账本留在两计数):
         self.refresh_total: int = 0           # 全量累计(免费+付费)
         self.refresh_paid: int = 0            # 付费累计(长线利好阈值型)
+        # 利息累计账(T-27 公司契约条件腿「累计获得40利息后获得托帕&账账」):
+        # 累计入账利息金 = 统一公式 interest 分量全分支累计(**含息 flat
+        # 修饰**,economy.md §10.1 收入口径)。写端 = sim 收入应用两处
+        # (cw_sim_backend.apply_round_start_income/扑满结算腿)经
+        # record 单口 + live 三来源计数刻(来源 A 结算面板息行/来源 B
+        # 败局推算/来源 C 补给推算);消费方 = check_env_interest_grants。
+        # 不入快照(与 refresh_total 同现状,快照序列化只含 entries +
+        # equip_progress)⟹ 接管局计数归零 = 晚发/不发。
+        self.interest_earned: int = 0
 
     # —— 登记端 ——
     @staticmethod
@@ -472,6 +481,20 @@ class ActiveEffectInventory:
         self.bump_key(CounterKey.REFRESH)
         if not free:
             self.refresh_paid += 1
+
+    def record_interest_earned(self, amount: int) -> None:
+        """利息入账统一单口(写端纪律同 record_refresh:计数只经单口
+        推进,禁调用方旁路直加——双写面 = 漂移温床)。写端全集见
+        ``interest_earned`` 字段注释(sim 两处 + live 三来源)。
+
+        - ``amount < 0`` 拒收 raise(单调累计账无递减语义,
+          bump_equip_progress 同款防线;息分量恒非负,负值 = 调用错);
+        - 0 合法(息 0 轮照常入账,零增量——保持「每收入刻必过单口」
+          的写端纪律,便于对账覆盖度核查)。
+        """
+        if amount < 0:
+            raise ValueError(f'amount 须为非负数(累计账只增),得 {amount}')
+        self.interest_earned += amount
 
     def equip_progress_of(self, equip_name: str, wearer: str) -> int:
         """装备效果进度读口(侧栏键 = (装备名,装备者 char_id))。无记录 = 0

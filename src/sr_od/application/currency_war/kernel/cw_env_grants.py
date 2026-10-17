@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/首领节点/合并升星触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星触发检查 kernel 函数 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -36,8 +36,9 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 入参首笔即炸),入参不传 sig。
 
 **无 rng**(逐函数标注)::func:`check_env_streak_grants` /
-:func:`check_env_refresh_grants` 零 rng——随机态指认知通道(落位未知、
-观察校准),追加位置(库存尾部)确定,不消耗随机数;
+:func:`check_env_refresh_grants` / :func:`check_env_interest_grants`
+零 rng——随机态指认知通道(落位未知、
+观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
 采样,缺省回退自掷 = 采样是猜测口径,live 观察校准;sim 传流键 =
 世界真值);
@@ -74,6 +75,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BOSS_GRANTS,
+    ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
@@ -89,6 +91,10 @@ FIRST_STREAK_KEY: str = 'first_streak'
 #: done 域条件键:刷新次数阈值触发器(每环境至多一个刷新触发器,
 #: (env,本键) 天然唯一)。
 REFRESH_THRESHOLD_KEY: str = 'refresh_threshold'
+
+#: done 域条件键:利息累计阈值触发器(每环境至多一个,
+#: (env, 本键) 天然唯一;消费注册表 = ENV_INTEREST_GRANTS)。
+INTEREST_THRESHOLD_KEY: str = 'interest_threshold'
 
 #: done 域条件键:随机星徽授予腿(键值携带发放装备名,格式
 #: 'star_grant#<装备名>'——腿2 绑定解析的唯一源;# 后载荷是条件键的
@@ -244,6 +250,68 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
                    done + ((env, REFRESH_THRESHOLD_KEY),),
                    produced_by=_PRODUCER, evidence=evidence, sig=sig)
     return equip_name
+
+
+def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
+    """利息累计条件发放触发检查(单一源;调用点 = sim 收入应用两处
+    ``apply_round_start_income``/扑满结算腿 + live 三来源计数刻——来源 A
+    结算覆盖窗「获得金币总览」息行读数后 / 来源 B 1f 败局行写点推算后 /
+    来源 C 领取补给完成刻推算后,T-27 迭代设计 §2.4/§2.5)。各收入刻
+    先 ``gs.effects.record_interest_earned`` 落账再调本检查(record 先于
+    check,同组相邻)。
+
+    条件矩阵(顺序即短路序,镜像 check_env_refresh_grants):
+
+    1. 当前环境(active_env)None/空链 → None;
+    2. 环境不在登记表(ENV_INTEREST_GRANTS)→ None;
+    3. ``(env, interest_threshold) ∈ done 现值 → None``(已发,一次性
+       封账「累计获得40利息后获得」;done None 视为空防御,沿 streak
+       通道 ``value or ()`` 先例);
+    4. ``gs.effects.interest_earned < 阈值`` → None(计数单一源 =
+       ActiveEffectInventory.record_interest_earned,本函数不复制口径);
+    5. ``gs.bench.value`` None → None 且不标 done(宁缺勿造族;bench 为
+       开局种子底座字段,冷建即 9 空槽空视图,生产域 live/sim 恒非
+       None,本分支 = 直构测试域防御,且 gain_character 本体另有拒落
+       防线);
+    6. 达标 → **发放两笔相邻写,同 evidence、同 sig、同 produced_by**
+       (同窗原子语义面,streak/refresh 通道同纪律):
+       - :func:`gain_character`(发放角色, 1★ 先验族, rand=False——
+         具名单名无采样,环境发放 = 确定发放,gain-chain.md §5,
+         特权阶级到点发放同款);
+       - done 追加 ``(env, INTEREST_THRESHOLD_KEY)``(write_logic 登记
+         事实直写);
+       返回发放角色名(日志面消费,无行为分支)。
+
+    - ``sig`` = 两写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线:
+      sim = ``logic_sig('sim:env')``,live = logic_hook 族随宿主 op);
+    - 本函数零 rng:具名单名确定发放,随机态指认知通道(落位未知、
+      观察校准),不消耗随机数。
+    """
+    env = gs.active_env.value
+    if not env:
+        return None
+    grant = ENV_INTEREST_GRANTS.get(env)
+    if grant is None:
+        return None
+    threshold, char_name = grant
+    done = tuple(gs.env_grants_done.value or ())
+    if (env, INTEREST_THRESHOLD_KEY) in done:
+        return None
+    if gs.effects.interest_earned < threshold:
+        return None
+    if gs.bench.value is None:
+        # 席面从未观察:发放角色写出不完整席 = 丢人,宁缺勿造不标 done
+        # (生产不可达,开局种子底座;下个收入刻自动重查,done 只在
+        # 发放同窗登记)
+        return None
+    evidence = f'env_grant#{env}#interest{threshold}'
+    gain_character(gs, char_name, 1, rand=False, sig=sig, evidence=evidence,
+                   producer=_PRODUCER)
+    gs.write_logic(gs.env_grants_done,
+                   done + ((env, INTEREST_THRESHOLD_KEY),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=sig)
+    return char_name
 
 
 def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,

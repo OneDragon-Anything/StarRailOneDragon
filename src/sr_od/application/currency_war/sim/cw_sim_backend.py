@@ -73,6 +73,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
+    check_env_interest_grants,
     check_env_streak_grants,
     on_diamond_acquired,
 )
@@ -273,6 +274,17 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
     tag = f'income:p{plane}r{round_num}'
     gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
                sig=obs_sig(group_id=f'sim:{tag}'))
+    # 利息累计账入账 + 条件发放检查(T-27 公司契约条件腿;收入应用
+    # 单一收口,四分支 supply/reward/败补/常规全含 interest 分量,在此
+    # 一处收口即全分支随计)。record 先于 check 同组相邻;check 在金
+    # 落账后(发放与收入同窗,金真值先行)。幂等性住调用方窗口守卫
+    # (_begin_node_window),本函数无内建幂等——窗口路径外直调会双加,
+    # 调用面纪律见函数 docstring。sig = logic_sig('sim:env')(触发函数
+    # 两写均 logic 渠道,streak 接线同款单形态)。返回值忽略 = sim 无
+    # 世界数值回调(托帕&账账无宝钻式联动;本模块零日志面,判读走
+    # 容器/台账)。
+    gs.effects.record_interest_earned(row.interest)
+    check_env_interest_grants(gs, logic_sig('sim:env'))
     return IncomeApplied(row=row, gold_before=gold_before,
                          gold_after=gold_after)
 
@@ -1961,6 +1973,13 @@ class SimBackend:
             self.gs.observe(self.gs.gold, gold_now + row.total,
                             evidence=sim_evidence(tag),
                             sig=obs_sig(group_id=f'sim:{tag}'))
+            # 利息累计账入账 + 条件发放检查(T-27;递延 row 的息按窗口开
+            # 快照基数,T-6 现役口径)。record 先于 check 同组相邻;check
+            # 在金落账后(同窗金真值先行)。本腿与常规轮首(窗口守卫内)
+            # 互斥:扑满节点窗口只冻快照不落账,结算腿一次性消费,无幂等
+            # 面。sig = logic_sig('sim:env'),返回值忽略(无回调)。
+            self.gs.effects.record_interest_earned(row.interest)
+            check_env_interest_grants(self.gs, logic_sig('sim:env'))
             self._piggy_income_snap = None
         signed = streak_signed_after(int(self.gs.streak.value or 0),
                                      node_type=kind, won=won, piggy=piggy)

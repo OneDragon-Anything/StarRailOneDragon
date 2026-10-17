@@ -2437,20 +2437,23 @@ class GameState:
     # 2026-10-10-env-conditional-grants,details/env-conditional-grant.md
     # §1):元素 = (env 投资环境规范名,条件键)。条件键取值清单 =
     # 'first_streak'(本局首次连胜达成)/'refresh_threshold'(刷新次数
-    # 阈值触发器)两纯具名键 + 'star_grant#<装备名>'/'boss#<位面>-<轮>'
+    # 阈值触发器)/'interest_threshold'(利息累计阈值触发器,T-27 公司
+    # 契约)三纯具名键 + 'star_grant#<装备名>'/'boss#<位面>-<轮>'
     # (劳务派遣合同:# 后载荷 = 键值扩展形态,前者为随机星徽授予的绑定
     # 键〔腿2 解析唯一源〕、后者为首领节点周期幂等键,fields.md §3.5.5)。
     # 取值时机 = 发放刻追加(check_env_streak_grants /
-    # check_env_boss_grants 两写第二笔 / on_env_gained 随机装备绑定腿),
-    # **局内恒存无过期清理**——「本局首次」整局有效,连胜无周期语义(与
-    # 晶矿 done 的位面过渡过期清理不同;boss# 键的周期性 = 不同节点不同
-    # 键,登记本身仍局内恒存)。幂等守卫:跨结算/跨观察重查不重发(结算
-    # 低频天然幂等友好,电平 + done 直写,边沿/op 成员记忆已否定,取舍见
-    # 详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants 触发函数族
-    # (发放刻追加)+ cw_gain_chain.on_env_gained 随机装备绑定腿
-    # (placed 守卫下追加),无观察写端(发放登记事实非观察投影;直写
-    # 先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿)。恢复局随
-    # 快照存续 = 中断恢复对局不重发。开局种子底座 = ()(A 类)。
+    # check_env_refresh_grants / check_env_interest_grants /
+    # check_env_boss_grants 各自两写第二笔 / on_env_gained 随机装备绑定
+    # 腿),**局内恒存无过期清理**——「本局首次」整局有效,连胜无周期
+    # 语义(与晶矿 done 的位面过渡过期清理不同;boss# 键的周期性 = 不同
+    # 节点不同键,登记本身仍局内恒存)。幂等守卫:跨结算/跨观察重查不
+    # 重发(结算低频天然幂等友好,电平 + done 直写,边沿/op 成员记忆已
+    # 否定,取舍见详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants
+    # 触发函数族(发放刻追加;streak/refresh/interest/boss 四函数)+
+    # cw_gain_chain.on_env_gained 随机装备绑定腿(placed 守卫下追加),
+    # 无观察写端(发放登记事实非观察投影;直写先例 = cw_exec_state 金腿
+    # / cw_effect_inventory 退款腿)。恢复局随快照存续 = 中断恢复对局
+    # 不重发。开局种子底座 = ()(A 类)。
     env_grants_done: Field[tuple[tuple[str, str], ...]] = field(
         default_factory=Field)
 
@@ -3053,7 +3056,9 @@ class GameState:
         逻辑写端,账本与结算真值的差 = **预期边界收入**而非推算 bug,
         三分流(失配告警停机)不覆盖——经 observe 失配链则每场战斗必停局
         (2026-09-18 全夜停局病态);收入分量(基础奖励/利息/连胜)由
-        结算屏「获得金币总览」面板公示,当前读链未消费 = 已申报读缺口。
+        结算屏「获得金币总览」面板公示,利息分量已随 T-27 公司契约条件
+        腿接入读链(obs/cw_settlement_obs 息行面板读数,来源 A 计数刻),
+        基础/连胜分量仍为留证对账面不入账。
         收束语义:差值落 ``boundary_income_credited`` 台账行留存证据(金额
         可审计,豁免 ≠ 消失同纪律),覆盖照常 = 真值入账;等值观察零
         新信息不产行。

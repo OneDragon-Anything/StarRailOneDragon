@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 import time
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -19,6 +20,11 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_economy import (
+    aggregate_economy,
+    interest,
+    interest_cap_resolved,
+)
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     node_round_cap,
 )
@@ -31,6 +37,11 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _first_int,
 )
 from sr_od.context.sr_context import SrContext
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+    )
 
 
 def parse_settlement_node_type(ocr_texts: list[str]) -> str | None:
@@ -254,6 +265,146 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
     log.warning('[cw!] 结算金稳定门:首帧=%s 末帧=%s(帧间在动,采末帧=入账后真值)',
                 v, final)
     return final
+
+
+# ===== 「获得金币总览」面板息行读数(T-27 公司契约条件腿,来源 A)=====
+# 行序铁证(有息实拍帧亲读定标):获得金币总览/基础奖励/利息/连胜/分隔线/
+# 掉落晶矿——息行在连胜**之上**(economy.md §11「基础收入+连胜奖励+利息」
+# 是枚举语序非空间行序);息 = 0 时息行整行缺席,基础与连胜相邻(缺席 =
+# 零值形态非失读)。定标帧 = window_batch 批 h_004_012710(有息,总览 7 =
+# 基础 4 + 息 2 + 连胜 1)/ h_004_084253(无息)。
+
+#: 「获得金币总览」面板读数带 area(screen「货币战争-战斗结算」;坐标
+#: 单一真相源)。读数走本带裁剪 + 放大 OCR——全帧 det 对金币列小数值
+#: 系统性漏检(定标两帧全帧 token 流币值全缺/仅剩 1 枚,与
+#: read_settle_gold_once 同款 det 天花板),裁剪放大后锚/息值/三分量
+#: 全可读(暖读 ~0.1s)。
+A_SETTLE_COIN_PANEL: str = '区域-金币总览'
+
+#: 息行基准带 area(息行在场时的行位定标记录)。无息形态该带被上移的
+#: 连胜行占据——息行判别靠标签 token 内容(「利息」)非行位,本带作
+#: 行序对账基准,不作运行时候选过滤。
+A_SETTLE_INTEREST_ROW: str = '文本-利息行'
+
+#: 面板读数放大倍率(裁剪后放大再 OCR,read_settle_gold_once 3x 同族;
+#: 面板整体 2x 已可读全分量,倍率再高无益)。
+_SETTLE_COIN_PANEL_SCALE: int = 2
+
+
+def read_settle_interest_panel(ctx: SrContext, screen: MatLike | None) -> list:
+    """「获得金币总览」面板区域裁剪 + 放大 OCR(来源 A 读链;区域读,
+    禁全屏重扫)。返回裁剪坐标系 items(坐标相对面板原点,解析函数只
+    用面板内相对几何);失败/无帧/area 缺失 → [](空列表 = 面板不在,
+    消费端按不计数短路)。best-effort,异常不毒化结算覆盖链。"""
+    if screen is None:
+        return []
+    try:
+        rect = _area_rect(ctx, A_SETTLE_COIN_PANEL, '货币战争-战斗结算')
+        if rect is None:
+            return []
+        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
+        if crop.size == 0:
+            return []
+        up = cv2.resize(crop, (crop.shape[1] * _SETTLE_COIN_PANEL_SCALE,
+                               crop.shape[0] * _SETTLE_COIN_PANEL_SCALE),
+                        interpolation=cv2.INTER_CUBIC)
+        return ctx.ocr_service.get_ocr_result_list(image=up, rect=None,
+                                                   color_range=None,
+                                                   crop_first=False)
+    except Exception:   # noqa: BLE001  观测读数失败不阻塞调用方
+        return []
+
+
+def _panel_row_value(items: list, label: str,
+                     allow_glued: bool) -> tuple[bool, int | None]:
+    """面板 token 流指定标签行的数值双出(标签在场?, 数值或 None;
+    纯函数)。数值两形态(实拍定标):①标签 token 粘连数值(「利息5」
+    形;allow_glued 门——仅息行开放,连胜行带「×N」次数修饰,粘连式
+    会把修饰数误当金额);②标签 + 独立数值 token(定标两帧实态):同行
+    (y 中心差 ≤30px,2x 帧行距 ~100px)标签右侧最近纯 1-2 位数字 token
+    (fullmatch 门把「×0」类带乘号修饰天然排除在候选外)。数值域由
+    1-2 位正则约束(息/分量金当前值域远小于 100,越界形 = OCR 噪声)。"""
+    lab = next((it for it in items
+                if label in (getattr(it, 'data', '') or '')), None)
+    if lab is None:
+        return False, None
+    lab_txt = (getattr(lab, 'data', '') or '').strip()
+    if allow_glued:
+        m = re.search(re.escape(label) + r'[^0-9]{0,3}([0-9]{1,2})$',
+                      lab_txt)
+        if m:
+            return True, int(m.group(1))
+    lcy = lab.y + lab.h / 2
+    lrx = lab.x + lab.w
+    cands: list[tuple[float, int]] = []
+    for it in items:
+        t = (getattr(it, 'data', '') or '').strip()
+        if not re.fullmatch(r'[0-9]{1,2}', t):
+            continue
+        cy = it.y + it.h / 2
+        cx = it.x + it.w / 2
+        if abs(cy - lcy) <= 30 and cx > lrx:
+            cands.append((cx - lrx, int(t)))
+    if cands:
+        return True, min(cands)[1]
+    return True, None
+
+
+def parse_settle_interest(items: list) -> int | None:
+    """「获得金币总览」面板息行读数(纯函数,可单测;输入 =
+    :func:`read_settle_interest_panel` 产物)。三态语义(T-27 迭代设计
+    §2.5 来源 A 计数判据,消费端按 None 不计数/0 与 N 入账):
+
+    - ``None`` = 面板锚不在(异常形态,该刻不计数,宁缺勿造,不猜)
+      ∨ 息行在而数值失读(0 是合法读数,失读非零值,不冒认);
+    - ``0`` = 面板在而息行整行缺席(息 0 零值形态,1-1 帧实证);
+    - ``N > 0`` = 息行读数。
+    """
+    anchor = any('金币总览' in (getattr(it, 'data', '') or '')
+                 for it in items)
+    if not anchor:
+        return None
+    found, value = _panel_row_value(items, '利息', allow_glued=True)
+    if not found:
+        return 0
+    return value
+
+
+def parse_settle_coin_overview(items: list) -> dict[str, int | None]:
+    """面板分量读数(纯函数;闭合校验兜底用,消费纪律 = 三读数齐才
+    对账):{'overview' 总览行, 'base' 基础奖励行, 'streak' 连胜行},
+    各键 = 该行金额数值,行缺席/数值失读 = None(best-effort;全帧 det
+    天花板下分量值可读率有限,对账是留证面非计数门)。"""
+    out: dict[str, int | None] = {'overview': None, 'base': None,
+                                  'streak': None}
+    for key, label in (('overview', '获得金币总览'),
+                       ('base', '基础奖励'), ('streak', '连胜')):
+        _found, value = _panel_row_value(items, label, allow_glued=False)
+        out[key] = value
+    return out
+
+
+def estimate_node_interest(gs: GameState, base_gold: int | None) -> int | None:
+    """败局/补给轮息推算(T-27 来源 B/C 计数单一源;纯读 kernel 公式,
+    零容器写):息 = ``interest(基座金, resolved cap) + interest_flat``
+    (kernel round_start_income 息分量同式,economy.md §10.1 收入口径;
+    cap/flat 聚合链 = aggregate_economy ← gs.active_strategies,live/sim
+    同一单一源,cap None 经 interest_cap_resolved 归一,0 = 有效覆写不
+    折叠)。
+
+    - ``base_gold`` = 推算基座金(来源 B = 出战前最后备战帧金观察,战斗
+      期间金库不变故计数刻现读 gs.gold 即该值;来源 C = 同口径备战帧
+      gs.gold 观察——常规形态备战帧已锚本节点,「获取补给之后」定谳下
+      即领取前真值;「自动弹」形态无备战帧 → 宿主形态门宁缺不传);
+      ``None`` = 基座从未观察/形态门关 → 返回 None,该刻宁缺不计数
+      (接管局基座污染/读缺同此);
+    - 返回值 ≥ 0(公式天然非负;负金按 0 计,interest 同源)。
+    """
+    if base_gold is None:
+        return None
+    eff = aggregate_economy(list(gs.active_strategies.value or []))
+    cap = interest_cap_resolved(eff.interest_cap_override)
+    return interest(int(base_gold), cap) + int(eff.interest_flat_per_node)
 
 
 def parse_streak(ocr_texts: list[str]) -> int | None:
