@@ -811,6 +811,15 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       采样发放可独立过滤审计);``rng`` 缺省回退自掷(直构/测试形态;
       正式接线由上报函数条件解析传入,sim 装配 = 流键 rng 即世界真值)。
       首例 = 人才引进(id 109,开局 1 个随机 4 费,星级先验 1);
+    - **即时装备支**(``equips_immediate``,随机支之后、即时道具支之前):
+      具名装备逐名 ``gain_equipment`` 入栏(equips 库存,不占席)——确定
+      具名发放,写通道走随机态(rand=True 硬编码,2026-10-17 用户裁定:
+      「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一
+      证据——猜测写 + 观察覆盖纠偏,首观察静默覆盖不进失配网;先例 =
+      T-5 财富宝钻随机态获得/T-29 奖励全腿随机态);效果串
+      ``equip_gift:<名>``,与 ``env_gift:``/``env_star_grant:``/
+      ``item_gift:`` 前缀分域。首例 = 红钻贵族(卡文序「钻先箱后」,
+      装备支位于道具支之前,遥测序与卡文对齐);
     - **道具通道**(``items_immediate`` + ``items_scheduled``):道具 =
       占席待开箱,非角色非装备。即时支:落位写入(角色落位同构:备战空槽放
       ``BenchSlot(kind='supply_box')``,双端同一获得链,sim 世界写入即
@@ -909,6 +918,20 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                            evidence=f'on_env_gained:{_name}',
                            producer=GAIN_CHAIN_PRODUCER)
             effects.append(f'env_gift_random:{name}@{spec.star}star')
+    for eq in grant.equips_immediate:
+        # 装备 = 确定具名发放,写通道走随机态(rand=True 硬编码,2026-10-17
+        # 用户裁定):「选卡时点游戏实际发下红钻」对该环境未经实机判读核实,
+        # 卡面文本是唯一证据——猜测写 + equips 观察覆盖纠偏,首观察静默
+        # 覆盖落 logic_rand_outcome 台账,锚定与否都不进失配网
+        #(anchor_aware_write rand=True 恒随机态;先例 = T-5 财富宝钻随机态
+        # 获得/T-29 奖励全腿随机态)。rand=True 只声明猜测语义,本腿零采样
+        # 不需 rng。gain_equipment 原语内聚:equips 尾追(#equip 后缀
+        # evidence 自动带上)+ on_equipment_gained 回调(红钻表外零子链)。
+        # 落位成败与效果串解耦(箱腿同口径:栏未观察拒落零写时效果串仍登记)。
+        gain_equipment(gs, eq, rand=True, sig=sig,
+                       evidence=f'on_env_gained:{_name}',
+                       producer=GAIN_CHAIN_PRODUCER)
+        effects.append(f'equip_gift:{eq}')
     for item in grant.items_immediate:
         # 落位 = 角色落位同构(_build_pool/bench_place/write 序;席满 →
         # 溢出落位,溢出位被占 = 零写留存证据,helper 内);效果串恒登记
