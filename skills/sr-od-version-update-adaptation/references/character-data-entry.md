@@ -48,11 +48,12 @@ technique_type 分类判据(读秘技描述;分类决定战斗 op 先放秘技�
 - 位置与命名:`assets/template/character_avatar/<id>/raw.webp`,`<id>` = Character.id,新建目录。
 - 用途:大世界队伍栏、支援角色选择等场景的头像特征匹配兜底;OCR 读名是主通道,缺模板时兜底失效并报「角色头像文件缺失」。
 - 获取:本机可用 skill 目录里有角色头像获取类 skill 就优先按它做(高清原图优于截图裁片);没有则进游戏裁该角色头像(图鉴 / 角色详情 / 编队界面,1080p 基准)。拿到的图不是 webp 就先无损转成 webp 再入库。
+- 耗时注意:走本机流程的提取 / 导出可能到十几分钟量级——**放后台执行**(期间可先做验证等其他步骤),并等进程自然退出后再取产物;半途取消、或进程还在收尾时就动产物,可能拿到随后被清理的半成品文件。
 - 特征缓存按需自动生成(内存缓存),不需手工维护特征文件。
 
 ## 验证
 
-1. ruff 只对本文件:`uv run ruff check src/sr_od/config/character_const.py`
+1. ruff 只对本文件:`uv run ruff check src/sr_od/config/character_const.py`——判据:**不新增违规**(本文件存量 `typing.List` / `Optional` 风格债不算,与改动前的发现集对比)
 2. import 校验(PowerShell,`<新id>` 换成实际 id):
 
    ```powershell
