@@ -5,7 +5,9 @@
 禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
 reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 ``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
-- 参数非法 → validate 返回错误串(Director 拒绝执行 + 结束本次访问保留证据);
+- 参数非法 → 对应动作 op 内守卫断言 AssertionError(集中式 validate
+  已退役进各 op,flow/action_ops.md §1 决策侧参数现算契约;异常上抛
+  通道 = 执行异常同款);
 - 执行前输入契约拒绝(晶矿/箱/按钮等目标不在,执行前观察,M6 边界面)→
   本动作未发出,机械部分完成后返回主循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
@@ -22,7 +24,7 @@ row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 ar
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(刹车/回执登记/validate 与机械原语)与
+runner 包络(刹车/回执登记与机械原语)与
 原方法薄委托(替身缝)。
 """
 from __future__ import annotations
@@ -33,39 +35,23 @@ from dataclasses import dataclass
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    DEPLOYED_CAPACITY,
-)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     _area_rect,
     area_center,
 )
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    ORE_CLICK_HARD_CAP,
-)
 from sr_od.application.currency_war.kernel.cw_vocab import (
-    CW_ACTION_TYPES,
-    OBS_SCOPES,
     CwAction,
     CwActionCollectOreParam,
     CwActionDeployMoveParam,
-    CwActionFurnaceUseParam,
     CwActionLevelUpParam,
-    CwActionLuckyTokenUseParam,
-    CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
     CwActionOpenTomeParam,
-    CwActionPerfectProjectorUseParam,
-    CwActionPrecisionWrenchUseParam,
-    CwActionPrivilegeCardUseParam,
     CwActionSellBenchParam,
     CwActionSellDeployedParam,
-    CwActionStaffProjectorUseParam,
     CwActionStartBattleParam,
     CwActionWearEquipParam,
-    CwActionWrenchUseParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -294,93 +280,13 @@ class PrepActionExecutor:
         # dispatch 后由本 runner 读取一次,只进回执 extra 保留证据——递减本体
         # = op 自上报)。getattr 容缺(__new__ 桩形态)。
         self._last_skip_substate: bool = False
-        # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
+        # 槽位中心(screen_info 静态,构造时读一次;op 内参数守卫与拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
         self._back_pts: list[Point] = row_area_centers(ctx, '后排')
 
-    # ===== F3 参数校验(非法 → 错误串;合法 → None)=====
-
-    def validate(self, action: CwAction) -> str | None:
-        """校验动作合法域 + 参数(§5.0 F3)。返回错误描述;None=合法。
-
-        两层:① 统一词表白名单(review M-4 —— 未知类型走参数非法路径拒绝,
-        不进 execute 的验证失败/fail 循环;元组单一源 = cw_vocab
-        CW_ACTION_TYPES);② 静态可判参数(槽位越界/row 枚举)。席位域
-        动作坐标系 = 容器槽位表下标 0 基
-        (词表模块头声明);机械动作 row/slot = 画面物理槽位 1 基。
-        """
-        if not isinstance(action, CW_ACTION_TYPES):
-            return f'未知动作类型 {type(action).__name__}(不在动作全集,§4)'
-        if isinstance(action, CwActionSellBenchParam):
-            if not (0 <= action.bench_idx < len(self._bench_pts)):
-                return (f'CwActionSellBenchParam bench_idx={action.bench_idx} 越界'
-                        f'(0-{len(self._bench_pts) - 1})')
-        elif isinstance(action, CwActionSellDeployedParam):
-            n = DEPLOYED_CAPACITY
-            if not (0 <= action.deployed_idx < n):
-                return f'CwActionSellDeployedParam deployed_idx={action.deployed_idx} 越界(0-{n - 1})'
-        elif isinstance(action, CwActionDeployMoveParam):
-            if not (0 <= action.bench_idx < len(self._bench_pts)):
-                return (f'CwActionDeployMoveParam bench_idx={action.bench_idx} 越界'
-                        f'(0-{len(self._bench_pts) - 1})')
-            if action.to_row not in ('front', 'back'):
-                return f'CwActionDeployMoveParam to_row={action.to_row!r} 非法(front/back)'
-        elif isinstance(action, CwActionCollectOreParam):
-            if not action.points:
-                return 'CwActionCollectOreParam 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
-            if len(action.points) > ORE_CLICK_HARD_CAP:
-                return (f'CwActionCollectOreParam 载荷 {len(action.points)} '
-                        f'超硬上限 {ORE_CLICK_HARD_CAP}(挑选越权)')
-        elif isinstance(action, CwActionOpenBoxParam):
-            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'CwActionOpenBoxParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, CwActionOpenTomeParam):
-            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'CwActionOpenTomeParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, CwActionOpenBookcardParam):
-            if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
-                return f'CwActionOpenBookcardParam slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, CwActionWearEquipParam):
-            if action.row not in ('front', 'back'):
-                return f'CwActionWearEquipParam row={action.row!r} 非法(front/back)'
-            n = len(self._front_pts if action.row == 'front' else self._back_pts)
-            if not (1 <= action.slot <= n):
-                return f'CwActionWearEquipParam slot={action.slot} 越界(1-{n})'
-        elif isinstance(action, (CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam)):
-            if action.target_kind not in ('equip', 'char'):
-                return (f'{type(action).__name__} target_kind='
-                        f'{action.target_kind!r} 非法(equip/char)')
-            if action.target_kind == 'equip':
-                if not action.item_name:
-                    return (f'{type(action).__name__} equip 腿缺目标件名')
-            else:
-                if action.row not in ('front', 'back'):
-                    return (f'{type(action).__name__} row={action.row!r} '
-                            '非法(front/back)')
-                n = len(self._front_pts if action.row == 'front'
-                        else self._back_pts)
-                if not (1 <= action.slot <= n):
-                    return (f'{type(action).__name__} slot={action.slot} '
-                            f'越界(1-{n})')
-        elif isinstance(action, CwActionObsParam):
-            # scope 值域闭集校验(单一源 = cw_vocab.OBS_SCOPES;outer_loop
-            # 口径在决策循环 F3 之前拦截,到不了这里——这里只拦 in_place
-            # 路径的拼错值)。
-            if action.scope not in OBS_SCOPES:
-                return (f'CwActionObsParam scope={action.scope!r} 非法'
-                        f'(值域闭集 OBS_SCOPES)')
-        elif isinstance(action, (CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,
-                                CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam,
-                                CwActionLuckyTokenUseParam)):
-            if action.row not in ('front', 'back'):
-                return f'{type(action).__name__} row={action.row!r} 非法(front/back)'
-            n = len(self._front_pts if action.row == 'front' else self._back_pts)
-            if not (1 <= action.slot <= n):
-                return f'{type(action).__name__} slot={action.slot} 越界(1-{n})'
-        return None
-
-    # ===== 执行入口(机械执行,无返回;执行前拒绝见 validate)=====
+    # ===== 执行入口(机械执行,无返回;参数守卫已收拢各动作 op 内
+    #       守卫断言,flow/action_ops.md §1 决策侧参数现算契约)=====
 
     def execute(self, action: CwAction) -> None:
         """机械执行一个动作(无返回;发出即职责完成,落地判定归
@@ -474,8 +380,8 @@ class PrepActionExecutor:
         返回 ``(机械执行摘要, 是否实际发出)``。op_success = round 结果成功态
         (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出
         通道,零重试即失败结束本次访问)。机械摘要 = round 结果 status。词表外
-        类型 = 注册表 AssertionError 响亮暴露(生产不可达:F3 validate
-        先拒)。
+        类型 = 注册表 AssertionError 响亮暴露(参数守卫单一形态 =
+        守卫断言,op 内/注册表两静态域同款)。
         """
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_class_for,

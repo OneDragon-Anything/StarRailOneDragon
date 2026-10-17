@@ -12,6 +12,9 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
     report_action_sell_deployed_param,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    DEPLOYED_CAPACITY,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
@@ -51,6 +54,13 @@ class CwActionSellDeployedOp(CwOperation):
         action: CwActionSellDeployedParam = self.param
         env = self.env
         ex = env.executor
+        if not (0 <= action.deployed_idx < DEPLOYED_CAPACITY):
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):deployed_idx = deployed 定长槽位表下标 0 基,越界 =
+            # 决策逻辑 bug,守卫断言响亮暴露零拖拽。
+            raise AssertionError(
+                f'CwActionSellDeployedParam deployed_idx={action.deployed_idx} '
+                f'越界(0-{DEPLOYED_CAPACITY - 1})')
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_FRONT_CAPACITY,
         )

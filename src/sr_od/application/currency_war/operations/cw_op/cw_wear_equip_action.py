@@ -63,6 +63,16 @@ class CwActionWearEquipOp(CwOperation):
         action: CwActionWearEquipParam = self.param
         env = self.env
         ex = env.executor
+        if action.row not in ('front', 'back'):
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):row = 画面物理排枚举,slot = 排内画面槽 1 基;
+            # 非法/越界响亮暴露零拖拽(禁负下标回环静默错点)。
+            raise AssertionError(
+                f'CwActionWearEquipParam row={action.row!r} 非法(front/back)')
+        _row_n = len(ex._front_pts if action.row == 'front' else ex._back_pts)
+        if not (1 <= action.slot <= _row_n):
+            raise AssertionError(
+                f'CwActionWearEquipParam slot={action.slot} 越界(1-{_row_n})')
         target = ex._equip_slot_drag_point(action.row, action.slot)
         if cw_sim_ports.mechanical_io_allowed():
             start = ex._owned_grid_locate(action.item_name)

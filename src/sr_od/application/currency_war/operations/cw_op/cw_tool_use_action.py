@@ -103,6 +103,44 @@ class CwActionToolUseOp(CwOperation):
         env = self.env
         ex = env.executor
         tool_name = self._TOOL_NAME_BY_CLASS[type(action)]
+        # —— 参数守卫(执行器集中式 validate 退役进 op,flow/action_ops.md
+        # §1 决策侧参数现算契约;合法域静态可判分支,违法响亮暴露零拖拽)——
+        if isinstance(action, (CwActionFurnaceUseParam,
+                               CwActionPrivilegeCardUseParam)):
+            if action.target_kind not in ('equip', 'char'):
+                raise AssertionError(
+                    f'{type(action).__name__} target_kind='
+                    f'{action.target_kind!r} 非法(equip/char)')
+            if action.target_kind == 'equip':
+                if not action.item_name:
+                    raise AssertionError(
+                        f'{type(action).__name__} equip 腿缺目标件名')
+            else:
+                # char 模式行槽直取前排/后排点表:row 非法会静默落到
+                # 后排点表(负下标回环同族),守卫断言闭合。
+                if action.row not in ('front', 'back'):
+                    raise AssertionError(
+                        f'{type(action).__name__} row={action.row!r} '
+                        '非法(front/back)')
+                _n = len(ex._front_pts if action.row == 'front'
+                         else ex._back_pts)
+                if not (1 <= action.slot <= _n):
+                    raise AssertionError(
+                        f'{type(action).__name__} slot={action.slot} '
+                        f'越界(1-{_n})')
+        else:
+            # 工具原子其余五类(扳手/投影仪/令牌,char 模式行槽直取):
+            # 同款 row/slot 静态合法域守卫。
+            if action.row not in ('front', 'back'):
+                raise AssertionError(
+                    f'{type(action).__name__} row={action.row!r} '
+                    '非法(front/back)')
+            _n = len(ex._front_pts if action.row == 'front'
+                     else ex._back_pts)
+            if not (1 <= action.slot <= _n):
+                raise AssertionError(
+                    f'{type(action).__name__} slot={action.slot} '
+                    f'越界(1-{_n})')
         if cw_sim_ports.mechanical_io_allowed():
             start = ex._owned_grid_locate(tool_name)
             if start is None:

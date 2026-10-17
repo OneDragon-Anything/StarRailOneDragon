@@ -30,7 +30,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import CwActionObsParam
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    OBS_SCOPES,
+    CwActionObsParam,
+)
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.context.sr_context import SrContext
 
@@ -73,6 +76,14 @@ class CwActionObsOp(CwOperation):
         宿主 = 备战画面 op CwScreenPrep);缺席 = 决策域未接线重观察通道
         (策略器在无能力域发出 CwActionObs = 策略器 bug)响亮暴露。
         """
+        if self.param.scope not in OBS_SCOPES:
+            # scope 值域闭集校验(单一源 = cw_vocab.OBS_SCOPES;outer_loop
+            # 口径在决策循环入口分支拦截,到不了本 op——此处拦派发路径的
+            # 拼错值),守卫断言响亮暴露(flow/action_ops.md §1 决策侧参数
+            # 现算契约)。
+            raise AssertionError(
+                f'CwActionObsParam scope={self.param.scope!r} 非法'
+                f'(值域闭集 OBS_SCOPES)')
         host = self.env.op
         reobserve = getattr(host, 'reobserve_in_visit', None)
         if not callable(reobserve):

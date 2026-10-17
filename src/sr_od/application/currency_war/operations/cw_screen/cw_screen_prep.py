@@ -785,18 +785,17 @@ class CwScreenPrep(CwOperation):
                     and result.scope == 'outer_loop':
                 # 返回主循环重新观察(空动作发出帧显式信号;原 HoldFrame 并入
                 # 进 obs scope 口径,用户裁定 2026-09-20):拦截型——不进
-                # validate/执行器/动作注册表/续段 token/动作记录,round
+                # 执行器/动作注册表/续段 token/动作记录,round
                 # 返回形态与等待时长与原 HoldFrame 分支逐字一致。系统级
                 # stall_watch/NODE-DWELL 哨兵对其透明;系统并无「连续空
                 # 发出计数器」,stall 防线哨兵只对无进展保留证据。
                 return self.round_success('本帧无动作(Obs:outer_loop),交回外循环重观察', wait=1.0)
             action = result
-            # F3 校验:参数非法返回主循环保留证据;执行前输入契约检查,非动作后判效
-            err = self._executor.validate(action)
+            # 参数守卫 = 各动作 op 内守卫断言(集中式 validate 已退役,
+            # flow/action_ops.md §1 决策侧参数现算契约):违法经执行异常
+            # 通道(:817 except → round_fail)上抛,拒绝语义同由断言消息
+            # 显影,本环零前置校验分支。
             key = action_key(action)
-            if err is not None:
-                log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
-                return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
             # —— 执行(机械执行,无成败回执;发出即职责完成)
             #      执行体 = _act_execute_default(现役点击链 / 流程编排分流)。
             try:

@@ -68,6 +68,15 @@ class CwActionSellBenchOp(CwOperation):
         action: CwActionSellBenchParam = self.param
         env = self.env
         ex = env.executor
+        _bench_pts = getattr(ex, '_bench_pts', None)
+        if _bench_pts is not None and not (0 <= action.bench_idx < len(_bench_pts)):
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):bench_idx = 容器槽位表下标 0 基,越界 = 决策逻辑 bug,
+            # 守卫断言响亮暴露零拖拽。商店域执行端口无槽位表(getattr
+            # 容缺跳过)——其对象存在性由 visit 环 proposal 守卫语义级承接。
+            raise AssertionError(
+                f'CwActionSellBenchParam bench_idx={action.bench_idx} 越界'
+                f'(0-{len(_bench_pts) - 1})')
         from sr_od.application.currency_war.kernel.cw_obs_core import (
             SCREEN_NAME,
         )

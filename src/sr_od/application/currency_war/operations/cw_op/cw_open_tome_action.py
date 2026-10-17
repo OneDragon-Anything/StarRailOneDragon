@@ -58,6 +58,13 @@ class CwActionOpenTomeOp(CwOperation):
         action: CwActionOpenTomeParam = self.param
         env = self.env
         ex = env.executor
+        if action.slot is not None and not (1 <= action.slot <= len(ex._bench_pts)):
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):slot = 画面物理槽 1 基(可选参数,None = 首槽),
+            # 越界响亮暴露零点击。
+            raise AssertionError(
+                f'CwActionOpenTomeParam slot={action.slot} 越界'
+                f'(1-{len(ex._bench_pts)})')
         from sr_od.application.currency_war.obs.cw_identity_obs import read_tomes
         from sr_od.application.currency_war.prep_actions import (
             _OVERLAY_ANIM_WAIT_S,

@@ -19,6 +19,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
 )
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    ORE_CLICK_HARD_CAP,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import CwActionCollectOreParam
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
@@ -57,6 +60,17 @@ class CwActionCollectOreOp(CwOperation):
         action: CwActionCollectOreParam = self.param
         env = self.env
         ex = env.executor
+        if not action.points:
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):空载荷 = 挑选面无对象(挑选归决策侧 kernel 单一源),
+            # 守卫断言响亮暴露零点击。
+            raise AssertionError(
+                'CwActionCollectOreParam 载荷为空'
+                '(挑选归决策侧 kernel,空载荷 = 无对象)')
+        if len(action.points) > ORE_CLICK_HARD_CAP:
+            raise AssertionError(
+                f'CwActionCollectOreParam 载荷 {len(action.points)} '
+                f'超硬上限 {ORE_CLICK_HARD_CAP}(挑选越权)')
         for _x, _y in action.points:
             center = Point(_x, _y)
             if cw_sim_ports.mechanical_io_allowed():

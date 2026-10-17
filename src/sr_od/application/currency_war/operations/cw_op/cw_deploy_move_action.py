@@ -54,9 +54,10 @@ class CwActionDeployMoveOp(CwOperation):
         载荷,执行边零现读零决定)。拖拽语义 = 游戏规则:目标槽空 = 放置,
         有人 = 交换交互——执行层不判断占位、不拒、禁静默换槽,唯一失败
         形态 = 拖拽未生效(机械发出零判效,由下一入口 heavy 实读对账
-        暴露,重试 = 决策循环按新观察自然重派);载荷槽越出画面槽位数
-        (含 <1 负下标) = 参数违法,op 内守卫断言 AssertionError 响亮
-        暴露(坐标裁定域禁负下标——负下标回环 = 静默错点,action_ops.md
+        暴露,重试 = 决策循环按新观察自然重派);bench_idx(容器槽位表
+        下标 0 基)/to_row(排枚举)/to_slot(排内画面槽 1 基,含 <1 负
+        下标闭合)静态合法域 = op 内守卫断言 AssertionError 响亮暴露
+        (坐标裁定域禁负下标——负下标回环 = 静默错点,action_ops.md
         §1 决策侧参数现算契约)。faction 字段不入执行。
 
         发出即记账(用户裁定「动作 op = 机械执行」):容器逻辑态由
@@ -69,6 +70,15 @@ class CwActionDeployMoveOp(CwOperation):
         ex = env.executor
         row = action.to_row
         slot_no = int(action.to_slot)
+        if not (0 <= action.bench_idx < len(ex._bench_pts)):
+            # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
+            # 契约):bench_idx = 容器槽位表下标 0 基,越界响亮暴露零拖拽。
+            raise AssertionError(
+                f'CwActionDeployMoveParam bench_idx={action.bench_idx} 越界'
+                f'(0-{len(ex._bench_pts) - 1})')
+        if row not in ('front', 'back'):
+            raise AssertionError(
+                f'CwActionDeployMoveParam to_row={row!r} 非法(front/back)')
         pts = ex._front_pts if row == 'front' else ex._back_pts
         if not (1 <= slot_no <= len(pts)):
             # 参数违法由 op 自判(action_ops.md §1 决策侧参数现算契约 /

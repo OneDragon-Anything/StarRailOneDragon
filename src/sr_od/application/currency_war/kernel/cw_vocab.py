@@ -945,8 +945,8 @@ class CwActionObsParam:
       每 game-round 恰一次键守卫限频)。重观察发现事件 overlay 在场 =
       抛 CwObsOverlayBail 返回主循环重新分发(画面识别与路由归外循环,
       环内不消化;捕获点 = ``cw_screen_prep.act``)。
-    - ``scope='outer_loop'``:**返回主循环重新观察**——决策环在
-      validate/执行器之前拦截(不进执行器、不进动作注册表、不写续段
+    - ``scope='outer_loop'``:**返回主循环重新观察**——决策环在执行器
+      之前分支拦截(不进执行器、不进动作注册表、不写续段
       token/动作记录),round_success(wait=1.0) 返回主循环重新观察。
       本口径并入原 ``HoldFrame`` 空动作发出帧通道(用户裁定 2026-09-20
       HoldFrame 删除:两通道同为「观察请求」,口径差异收进参数;空发出
@@ -985,8 +985,9 @@ CwAction = (
         CwActionRefreshNodeOptionsParam | CwActionRefreshSupplyParam | CwActionRefreshInvestCardsParam |
         CwActionObsParam
 )
-# ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
-# (CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
+# ——漏登记时注册表解析拒「动作词表外类型」(AssertionError 响亮暴露),
+# 动作从未真正执行(CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为
+# 执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
