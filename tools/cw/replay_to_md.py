@@ -373,6 +373,8 @@ ACTION_WORD_MAP: dict[str, str] = {
 }
 
 #: 状态字段中文映射(render-spec §4.2;journal field → 显示名,未命中显原始名)。
+#: 显示形态统一「中文(英文)」(field_cn 出口统一加括号原字段名,方便理解
+#: 与对照代码双向);本表 = 中文词表单一源,新字段上报告前先补映射。
 FIELD_CN_MAP: dict[str, str] = {
     'gold': '金', 'hp': '血', 'level': '等级', 'xp': '经验', 'streak': '连胜',
     'level_up_cost': '升级价', 'deploy_cap': '部署上限', 'bench': '备战席',
@@ -384,6 +386,27 @@ FIELD_CN_MAP: dict[str, str] = {
     'node_pos': '节点序位',
     'current_screen': '画面', 'overflow_warning': '溢出警告',
     'overflow_card': '溢出卡',
+    # 经济 / 商店域
+    'shop_refresh_cost': '商店刷新价', 'free_refresh_left': '免费刷新',
+    'diamond_count': '钻石', 'round_fresh_buys': '本轮新买',
+    'ore_rewards': '晶矿奖励', 'prev_node_spent': '上节点已消费',
+    # 投资域
+    'invest_env_opts': '投资环境候选', 'env_refresh_left': '环境刷新余量',
+    'invest_strategy_opts': '投资策略候选',
+    'strategy_refresh_left': '策略刷新余量',
+    # 节点 / 对局面
+    'plane_bosses': '位面首领', 'enemy_affixes': '敌方词缀',
+    'selected_difficulty': '选择难度', 'enemy_difficulty': '敌方难度',
+    'game_mode': '对局模式', 'match_final': '终局',
+    'node_seq_by_plane': '节点序列', 'pending_loss': '败态登记',
+    'node_path': '节点路径', 'node_path_baseline': '节点路径基线',
+    # 弹层选项域
+    'supply': '补给', 'encounter': '遭遇',
+    'supply_refresh_left': '补给刷新余量',
+    'encounter_refresh_left': '遭遇刷新余量',
+    'megastar_opts': '巨星候选', 'partner_opts': '伙伴候选',
+    'fortune_opts': '命运候选', 'wish_trial_opts': '祈愿候选',
+    'expert_invite': '专家邀请', 'box_card_names': '箱子牌名',
     # 表格型键的标题(点分路径键,§4.2 未覆盖的复合键)
     'supply.options': '补给选项', 'encounter.options': '遭遇选项',
 }
@@ -421,10 +444,12 @@ def _short(v: Any, n: int = 48) -> str:
 
 
 def field_cn(f: str) -> str:
-    """field → 显示名(chosen_* 前缀族 → 已选(各选项),render-spec §4.2)。"""
+    """field → 显示名「中文(英文)」:中文名便于理解,括号原字段名便于
+    对照代码;chosen_* 前缀族 → 已选(各选项);未命中显原始字段名
+    (开放词表禁猜,新字段先补 FIELD_CN_MAP 映射再上报告)。"""
     known = FIELD_CN_MAP.get(f)
     if known:
-        return known
+        return f'{known}({f})'
     if f.startswith('chosen_'):
         suffix = f[len('chosen_'):]
         return '已选(' + suffix + ')'
@@ -1446,7 +1471,7 @@ def _entry_lines(entry: list[tuple[str, Any]]) -> list[str]:
         if f == 'shop':
             probs = v.get('refresh_probs') if isinstance(v, dict) else None
             if isinstance(probs, dict) and probs:
-                out.append('- 概率 ' + '、'.join(
+                out.append('- 概率(refresh_probs) ' + '、'.join(
                     f'{k}→{int(round(float(n) * 100))}%'
                     for k, n in probs.items()))
             continue  # 牌面走 entry_tables
@@ -1455,14 +1480,15 @@ def _entry_lines(entry: list[tuple[str, Any]]) -> list[str]:
         if f == 'xp':
             xp = _xp_brief(v)
             if xp is not None:
-                out.append(f'- 经验 {xp}')
+                out.append(f"- {field_cn('xp')} {xp}")
                 continue
         if f == 'deployed':
             out.extend(_deployed_lines(v))
             continue
         if f == 'board':
             if isinstance(v, dict) and v:
-                out.append('- 羁绊计数 ' + '、'.join(f'{k}×{n}' for k, n in v.items()))
+                out.append(f"- {field_cn('board')} "
+                           + '、'.join(f'{k}×{n}' for k, n in v.items()))
                 continue
         if f == 'spheres':
             line = _spheres_line(v)
@@ -1483,7 +1509,8 @@ def _deployed_lines(v: Any) -> list[str]:
     if not isinstance(v, dict):
         return []
     out = []
-    for label, key in (('前排', 'front_slots'), ('后排', 'back_slots')):
+    for label, key in (('前排(front_slots)', 'front_slots'),
+                       ('后排(back_slots)', 'back_slots')):
         slots = v.get(key)
         if not isinstance(slots, list):
             continue
@@ -1505,7 +1532,7 @@ def _spheres_line(v: Any) -> str:
         agg[str(c)] = agg.get(str(c), 0) + 1
     detail = ','.join(f'{c}×{n}' for c, n in agg.items())
     n = count if count is not None else len(colors)
-    return f'- 晶矿 {n} 座' + (f'({detail})' if detail else '')
+    return f"- {field_cn('spheres')} {n} 座" + (f'({detail})' if detail else '')
 
 
 def _kv_meta_lines(report: Report) -> list[str]:
