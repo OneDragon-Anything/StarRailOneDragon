@@ -9,8 +9,10 @@
 受限访问帧豁免)。
 
 **店内动作边界**(用户裁定 2026-10-12 + 能力面):店内可做 = 买牌/
-卖备战席/刷新/购买经验;店内不做 = 卖场上角色、点消耗品、拖角色上阵
-(部署统一店外)。卖备战席与买经验在店内发出(执行链 = 3.5 端口接线
+卖备战席/刷新;店内不做 = 卖场上角色、点消耗品、拖角色上阵
+(部署统一店外)、购买经验(用户裁定 2026-10-17:商店画面不买经验,
+升级在备战画面做——前置升级检查收窄为升级意图出口,命中且可发射即
+关店转场,design §2.1)。卖备战席在店内发出(执行链 = 3.5 端口接线
 批交付);2026-09-14 收缩裁定废止(判例 screens-actions-capability §5
 的「卖备战/买经验收缩至备战期」已直删,用户裁定 2026-10-13)。
 
@@ -28,7 +30,9 @@ rng 中立:本模块零 rng 消费(会话流派生契约)。
 shop_swap_sell(_hit/declined)/ session_funding_sell(_fallback_sell/
 leg_reject/exhausted)/ scene_plugin_buy_hit(_no_seat/budget_exhausted)/
 core_c1_make_room_sell/core_locked_c1_make_room_sell /
-shop_refresh_*(三段式判据拒因族)/ levelup_*(会话内升级执行位族);
+shop_refresh_*(三段式判据拒因族)/ levelup_*(会话升级意图门族:资格
+门拒因 + levelup_transition_close 转场关店;键语义与写点注释见各分支
+段);
 承继键族(m2/m2_stockpile/m2b/protection_hoard/dead_gold_press/press_buy_
 deployable/m6/fuel_filler_stall/ev/core/dominance/p90-p94/p91)随各分支
 并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
@@ -715,42 +719,39 @@ def _session_close(gs: GameState, st, counters: dict) -> CwActionCloseShopParam:
 def _session_upgrade_check(gs: GameState, session: StrategySession,
                            counters: dict,
                            registry=None) -> Action | None:
-    """会话内升级执行位(shop_session §2.2 前置升级检查;line_and_upgrade
-    §2.2 判据接口复用——criteria/levelup 五分支/预授权/保底金门)。
+    """会话内升级意图出口(shop_session §2.2 前置升级检查;迭代
+    2026-10-17-levelup-shop-transition design §2.1 三分支)。
 
-    次序翻转申报(shop_session §2.2):现行 M2(义务买入)先于升级 →
-    本设计升级前置——升级金优先于买牌金,等级决定概率档,先定概率档
-    再花钱找牌;触发源并集五分支中人口位/arm0/富余段-L3 缺省相照常触发
-    (会话内买入可中途武装人口位 → 会话中段升级 → 升级即收工)。
+    升级执行位置 = 备战画面(用户裁定 2026-10-17:商店画面不买经验,
+    升级在备战画面做);本函数不再执行店内升级(原键驱动帧变现→执行
+    序列与授权帧店内发射随会话内升级语义退役),收窄为「判定 + 关店
+    转场」。三分支:
 
-    两帧态(每轮买入评估边界执行;置换/筹资序列中间不插入——序列
-    闭合后下一轮评估):
+    - **判据命中 ∧ 本帧可发射** → 返回关店动作,**不置 handled 标记**
+      (本次关店 = 升级转场,非「商店事情办完」;转场后升级先落地,
+      重开会话时概率档已是新档——「升级金优先于买牌金,先定概率档」
+      的排序语义保留);
+    - **判据命中 ∧ 不可发射(待付窗)** → 返回 None,会话照常进入买牌
+      六序与刷新判据。「等节点收入」形态由此成立:会话经 §2.5 正常
+      收工置标记 → 出店 → 战斗 → 节点收入 → 备战侧凑金发射——不存在
+      「开店即关」环(转场只在可发射帧发生,收店只在 §2.5 正常条件
+      发生);
+    - 未命中 → None,照常。
 
-    - **键驱动帧**(预授权键在):缺口未闭合 → 变现序列每帧一卖
-      (会话内侧 = 仅备战席档〔levelup_liquidate_shop〕;主路径尽 →
-      P78-5 兜底豁免,两腿判定复用 entry._fallback_legs_ok)→ 候选
-      穷尽 → 零动作透传(键保留至节点末,幂等重评);缺口闭合 →
-      执行帧发购买经验整批(clicks 直达机械层,实付上界 = 授权值不再
-      重闸)+ 置升级即收工标志。
-    - **授权帧**(键不在):奖励帧抑制 → 等级帽 → 五分支判据 → P21
-      (域内让位)→ 血本位支付检查(血本位局无变现步,授权帧即执行
-      帧)→ 攒批资金与发出前花后金下界(复用 entry._levelup_floor_ok
-      同源)→ 裸金足 = 同帧执行帧;活期补 = 置键 + 首卖本帧发出。
-
-    执行链 = ``CwActionLevelUpShopParam``(商店域词表类,clicks 整批
-    通道 3.5 已接线);升级动作执行后直接收工关店(标志承载,标记照写、
-    清单照写——商业间谍/晋升名额的升级联动商店效果两段未建模,终止
-    买入规避 guard_proposal_vs_expected 误炸;「升级后同节点找牌」
-    收益放弃 = 已知限界,实机观察点)。
+    可发射资格门 = 现役发射门序全链七道成员集(design §2.1 完备清单,
+    **禁子集化**——漏任一道则转场后备战侧不能合法发射,开/关店环以
+    新形态复活):①奖励帧抑制不拦(reward_node_suppressed)②等级帽
+    未到(level_max)③五分支判据命中(criteria/levelup 判据本体,
+    商店侧与备战侧同参消费单一源)④P21 危机带域判定
+    (level_spend_blocked,富余段域内让位)⑤血本位局血闸(金本位局
+    跳过)⑥资金门(金 ≥ 整级成本 ∧ 花后守息线 ∧ 保底金门)⑦击数 > 0。
+    资格门保证转场后零空转帧:店侧转场帧的后继(备战同参重评)必然
+    命中且可发射,落店即执行。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         blood_xp_gate_for,
         clicks_to_next_level,
         xp_click_cost,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        max_units_of,
-        plane_of,
     )
     from sr_od.application.currency_war.kernel.cw_investments import (
         blood_xp_mode,
@@ -758,95 +759,24 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
-    from sr_od.application.currency_war.kernel.cw_reward_node import (
-        reward_node_suppressed,
-    )
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwActionLevelUpShopParam,
-    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        state_of,
     )
     st = state_of(gs)
 
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
-    def _emit_batch(cost: int, clicks: int, auth_basis: str) -> Action:
-        """整批动作发出点:清键 + 置收工标志 + 失效/伴生钩子(读数协议)。"""
-        st.levelup_preauth = None
-        st.shop_upgrade_close_pending = True
-        st.shop_session_processing = True
-        shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
-        _count('levelup_batch_emitted')
-        return CwActionLevelUpShopParam(cost=int(cost),
-                                        clicks=max(1, int(clicks)),
-                                        auth_basis=auth_basis)
+    def _transition_close() -> CwActionCloseShopParam:
+        """升级转场关店出口:不置 handled 标记、不写机会清单(转场帧
+        的后继 = 备战升级执行,商店未「事情办完」);读数意图标记随
+        任意关店出口清位(mandate_state.shop_read_intent 契约)。"""
+        _count('levelup_transition_close')
+        st.shop_read_intent = False
+        return CwActionCloseShopParam()
 
-    # ===== 键驱动帧 =====
-    pre = st.levelup_preauth
-    if pre is not None:
-        if pre.gold_cost <= 0 or shop_sess.session_gold(gs) >= pre.gold_cost:
-            clicks = clicks_to_next_level(gs)
-            cost = xp_click_cost(gs)
-            if cost > 0:
-                clicks = min(clicks, pre.gold_cost // cost)
-            return _emit_batch(cost, clicks, 'preauth')
-        cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_shop')
-        if cands:
-            vidx = mandate._bench_container_idx_by_compact(gs, cands[0].idx)
-            if vidx is not None:
-                mandate.record_round_sold(session, gs, cands[0].char_id)
-                st.shop_session_processing = True
-                _count('levelup_liquidate_sell')
-                return CwActionSellBenchParam(
-                    bench_idx=vidx, reason='levelup_liquidate',
-                    income=sell_refund(int(cands[0].star or 1),
-                                       bench_char_cost(cands[0].unit, gs)))
-        # 主路径尽 → P78-5 兜底(funding 通道对价;两腿判定同源
-        # entry._fallback_legs_ok——P78-5′ 义务账∨对象无损)。
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            bench_slot_unit,
-        )
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            locked_buy_cap_hold,
-        )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
-            sell_line_membership,
-        )
-        _line = tuple(sorted(sell_line_membership(gs)))
-        fallback = sell_gate.funding_hold_fallback(
-            gs, _line, bench_entries_of(gs),
-            gold=shop_sess.session_gold(gs), need=pre.gold_cost,
-            a_exclusions=sell_gate.sell_exclusions(
-                gs, _line, channel='funding',
-                current_round=round_num_of(gs),
-                cap_hold=locked_buy_cap_hold(gs)),
-            deployed=_deployed_units_of(gs),
-            cap_hold=locked_buy_cap_hold(gs))
-        if fallback:
-            u = bench_slot_unit(fallback[0])
-            if u is not None and entry._fallback_legs_ok(
-                    session, gs, pre, str(u.char_id or '')):
-                idx = mandate._bench_container_idx(gs, fallback[0])
-                if idx is not None:
-                    mandate.record_round_sold(session, gs,
-                                              str(u.char_id or ''))
-                    st.shop_session_processing = True
-                    _count('levelup_funding_fallback_sell')
-                    return CwActionSellBenchParam(
-                        bench_idx=idx, reason='levelup_liquidate',
-                        income=sell_refund(int(u.star or 1),
-                                           bench_char_cost(u, gs)))
-            if u is not None:
-                _count('levelup_fallback_leg_reject')
-        _count('levelup_liquidate_exhausted')
-        return None
-
-    # ===== 授权帧(键不在)=====
+    # ===== 资格门①②③(奖励帧抑制 → 等级帽 → 五分支判据;序 = 现役
+    # 发射门序,成员集见 docstring 七道清单)=====
     if reward_node_suppressed(gs):
         _count('levelup_reward_node_defer')
         return None
@@ -894,8 +824,8 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
         _count('levelup_blood_gate_defer')
         return None
     if blood_xp_mode(session) is not None:
-        # 血本位局:无变现步,授权帧即执行帧(静态阈值授权帧一次检查)。
-        return _emit_batch(cost, clicks, arm_key)
+        # 血本位局:血闸已过 = 支付可行(血本位无金变现步),可发射 → 转场。
+        return _transition_close()
     liquid = entry._bench_liquid_gold(gs)
     if not entry._levelup_floor_ok(gs, session, arm_key,
                                    gold_of(gs) + liquid - batch_cost):
@@ -909,29 +839,11 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
                 ('levelup', 'spend_unified'),
                 contracts.ContractCtx(gold=gold_of(gs)), counters) \
                 and levelup.spend_unified(clicks, gold_of(gs), cost):
-            return _emit_batch(cost, clicks, arm_key)
+            return _transition_close()
         return None
-    if gold_of(gs) + liquid >= batch_cost:
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-            LevelUpPreAuth,
-        )
-        st.levelup_preauth = LevelUpPreAuth(gold_cost=batch_cost,
-                                            blood_cost=0,
-                                            source_arm=arm_key)
-        _count('levelup_preauth_issued')
-        cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_shop')
-        if cands:
-            vidx = mandate._bench_container_idx_by_compact(gs, cands[0].idx)
-            if vidx is not None:
-                mandate.record_round_sold(session, gs, cands[0].char_id)
-                st.shop_session_processing = True
-                _count('levelup_liquidate_sell')
-                return CwActionSellBenchParam(
-                    bench_idx=vidx, reason='levelup_liquidate',
-                    income=sell_refund(int(cands[0].star or 1),
-                                       bench_char_cost(cands[0].unit, gs)))
-        _count('levelup_liquidate_exhausted')
-        return None
+    # 待付窗(命中 ∧ 金不足,含活期可补帧):不凑金不发射,会话照常
+    # 进入买牌六序与刷新判据;凑金 = 备战侧 levelup_liquidate_prep
+    # 场景(design §2.2 第 4 步,资格门同参重评)。
     _count('levelup_stockpile_wait')
     return None
 
@@ -953,15 +865,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
        解拦复核店内段(牌面外记录销项)/受限访问帧标记(契约 A 豁免);
     3. 会话标记门:本节点已处理 → 立即关店(幂等);受限访问帧不受
        标记覆盖;
-    4. 升级即收工标志(整批发出后的下一帧收工——升级联动商店效果未建
-       模,终止买入规避误炸;标记照写、清单照写);
-    5. 前置升级检查(:func:`_session_upgrade_check`;每轮买入评估前,
-       次序翻转申报见其 docstring);
-    6. 统一买入策略六序(契约 E;序 1 名单三态 + 席满置换账 + 金不足
+    4. 前置升级检查(:func:`_session_upgrade_check`;每轮买入评估前
+       ——升级意图出口三分支:命中 ∧ 可发射 → 关店转场不置标记,
+       命中 ∧ 待付窗 / 未命中 → None 会话继续,design §2.1);
+    5. 统一买入策略六序(契约 E;序 1 名单三态 + 席满置换账 + 金不足
        筹资,详见各段内注释);
-    7. 三段式刷新判据(§2.4 查表 + 金前提 + P92 拦刷门;免费刷新
+    6. 三段式刷新判据(§2.4 查表 + 金前提 + P92 拦刷门;免费刷新
        不受限);
-    8. 收工(置标记 + 写清单;读数会话零处理 ∧ 意图标记 → 不置标记)。
+    7. 收工(置标记 + 写清单;读数会话零处理 ∧ 意图标记 → 不置标记)。
     """
     if getattr(state_of(session), 'cw4_counters', None) is None:
         state_of(session).cw4_counters = {}
@@ -1000,17 +911,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ---- 3.5 店内合成结果帧检测(读数协议②合成族;不分源含买入致合成)----
     shop_sess.detect_merge_result_frame(gs)
 
-    # ---- 4 升级即收工标志 ----
-    if _st.shop_upgrade_close_pending:
-        _st.shop_upgrade_close_pending = False
-        return _session_close(gs, _st, counters)
-
-    # ---- 5 前置升级检查 ----
+    # ---- 4 前置升级检查(升级意图出口,design §2.1 三分支)----
     _up = _session_upgrade_check(gs, session, counters, registry)
     if _up is not None:
         return _up
 
-    # ---- 6 统一买入策略六序(契约 E)----
+    # ---- 5 统一买入策略六序(契约 E)----
     _reg = registry
     if _reg is None:
         from sr_od.application.currency_war.kernel.cw_registry import (

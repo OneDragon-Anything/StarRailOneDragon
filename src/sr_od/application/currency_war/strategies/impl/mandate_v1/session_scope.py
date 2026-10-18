@@ -77,9 +77,8 @@ if TYPE_CHECKING:
 #    清单落地,契约 C;「经验就是财富」类节点结算入金由本项天然吸收
 #    ——失效先行;登记来源 = shop_session §4.2 读数协议);
 # ⑥ 商店会话会话域旗标(shop_read_intent/shop_visit_restricted/
-#    shop_session_processing/shop_upgrade_close_pending/shop_plugin_
-#    budget)→ 复位(会话不跨节点;边界帧残留旗标防泄入下一节点会话,
-#    卫生性复位);
+#    shop_session_processing/shop_plugin_budget)→ 复位(会话不跨节点;
+#    边界帧残留旗标防泄入下一节点会话,卫生性复位);
 # ⑦ 方向状态本身(target_comp / line_candidates /
 #    opening_recipe_comp)不重置——锁定为一次性决策跨节点持续保留
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
@@ -95,7 +94,6 @@ _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_read_intent', False),
     ('shop_visit_restricted', False),
     ('shop_session_processing', False),
-    ('shop_upgrade_close_pending', False),
     ('shop_plugin_budget', 0),
 )
 

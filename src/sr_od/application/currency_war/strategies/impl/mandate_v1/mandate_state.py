@@ -442,14 +442,10 @@ class StrategyState:
     # 条款):visit 入口按 launch_restricted_session_active 现算快照——
     # 受限 visit 的关店不置标记、不受会话标记覆盖。
     shop_visit_restricted: bool = False
-    # 会话内处理动作旗标(升级即收工与收工写标记的判定输入):本会话
-    # 内任一处理动作(买/卖/刷/经验)发出即 True;读数会话零处理 +
-    # 意图标记 ⇒ 收工不置标记。
+    # 会话内处理动作旗标(收工写标记的判定输入):本会话内任一处理
+    # 动作(买/卖/刷)发出即 True;读数会话零处理 + 意图标记 ⇒ 收工
+    # 不置标记。
     shop_session_processing: bool = False
-    # 升级即收工标志(shop_session §2.2:升级动作执行后直接收工关店——
-    # 商业间谍/晋升名额的升级联动商店效果未建模,终止买入规避误炸):
-    # 整批动作发出帧置位,下一决策帧收工关店(标记照写、清单照写)后清位。
-    shop_upgrade_close_pending: bool = False
     # 持有 3★ 名集快照(合成族失效的帧差检测基线;criteria/shop_session
     # .detect_merge_result_frame 单一写端)。
     held_3star_snapshot: dict = field(default_factory=dict)
