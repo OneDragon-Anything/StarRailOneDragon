@@ -27,7 +27,21 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     ``xp_apply_clicks``,跨级连跳+溢出结转)+ gold −cost×clicks 直写。
     满级 = applied=False + reason='level_cap' 零写(MAX_PLAYER_LEVEL
     封顶单一源);executed None = 击数自算 1(理想执行,sim 路径)。
-    CwActionLevelUpShopParam 同字段双类型共用本函数。"""
+    CwActionLevelUpShopParam 同字段双类型共用本函数(商店域发射已随
+    2026-10-17 迭代 T-1 退役,现役触发面 = 备战域)。
+
+    **商业间谍升级回调**(2026-10-17-levelup-shop-transition design
+    §2.3;触发点 = 本上报函数升级生效时点):升级真跨级(``_new_lvl !=
+    _lv_v``)∧ 在册持有(单一源 = ``cw_investments.spy_on_level_up_
+    active``)> 0 → ①置随机态信号 ``shop_randomized_pending = True``
+    (§2.4 写端唯一 = 本回调第 4 步;实机同样生效——游戏侧真实刷新+
+    偷牌,重开位读真牌面)②随附 ``world_decl``(trigger =
+    ``spy_shop_refresh``,next_screen = 备战档)供动作 op 经
+    ``cw_sim_ports.declare_world`` 喂入 sim 后端执行世界腿①-③(抽 5 张
+    /偷最贵 3 张入席/剩余 2 张 = 商店新牌面;sim 采样即世界真值,实机
+    端口未装 = no-op,世界后果归游戏引擎)。无商业间谍 = 零商店副作用
+    (牌面不变;重开靠备战执行帧清标记通道,design §2.3 末条)。
+    """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -56,11 +70,30 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
            'proj_levelup_gold')
     _lv_v = gs.level.value
     xp_v = gs.xp.value
+    _spy_decl = None
     if xp_v is not None and _lv_v is not None:
         _new_lvl, _cur = xp_apply_clicks(int(_lv_v), int(xp_v[0]), clicks)
         _w(gs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
            'proj_levelup_xp')
         if _new_lvl != int(_lv_v):
             _w(gs.level, _new_lvl, 'proj_levelup_level')
-    return LogicOutcome(applied=True)
+            # —— 商业间谍升级回调(升级真跨级才触发;xp-only 帧零副作用)——
+            from sr_od.application.currency_war.kernel.cw_investments import (
+                spy_on_level_up_active,
+            )
+            if spy_on_level_up_active(gs) > 0:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    SCREEN_PREP_FRAME,
+                    mark_shop_randomized_pending,
+                )
+                from sr_od.application.currency_war.kernel.cw_world_decl import (
+                    WorldDecl,
+                )
+                # 步④:置随机态信号(非 Field 簿记槽直写;写端唯一 = 本
+                # 回调,槽注申报;幂等,连升多级同帧只置位)。
+                mark_shop_randomized_pending(gs)
+                # 世界腿①-③声明(op 层喂入 sim 后端;实机 no-op)。
+                _spy_decl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
+                                      trigger='spy_shop_refresh')
+    return LogicOutcome(applied=True, world_decl=_spy_decl)
 

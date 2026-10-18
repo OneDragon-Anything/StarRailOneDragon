@@ -1236,6 +1236,33 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
     return None
 
 
+def spy_on_level_up_active(session) -> int:
+    """商业间谍升级偷牌张数现读(0 = 未持有;2026-10-17-levelup-shop-
+    transition design §2.3 升级回调在册判定单一源)。
+
+    在册判定 = EffectSpec 300201(STRATEGY_EFFECTS['商业间谍'],
+    trigger=LEVEL_UP,payload.steal_on_level_up=3 官方「升级时刷新商店,
+    并偷取其中最贵的3个角色」);持有判定 = 现役 held 判据
+    (active_strategies 容器字段,先例 = :func:`blood_xp_mode`)。
+    返回 = 偷牌张数(0 = 未持有/注册表漂移保守侧;张数只经本单一源,
+    消费位 = 升级上报回调 + sim 世界腿,禁第二处内联)。
+    入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
+    spec = STRATEGY_EFFECTS.get('商业间谍')
+    if spec is None or spec.id != '300201':
+        return 0   # 注册表漂移保守侧(条目移除 = 效果退役,零行为)
+    steal_n = int(getattr(spec.payload, 'steal_on_level_up', 0) or 0)
+    if steal_n <= 0:
+        return 0
+    for name in (game_state_of(session).active_strategies.value
+                 or []) if session is not None else []:
+        s = get_strategy(name)
+        if s is not None and s.name == '商业间谍':
+            return steal_n
+    return 0
+
+
 def resolve_strategy_canonical(name: str) -> str | None:
     """候选名 → 投资策略注册表规范名(归一 + LCS 兜底)。
 

@@ -129,11 +129,15 @@ class CwActionLevelUpOp(CwOperation):
         # —— 自上报(机械发出后;op-layer.md §1.2):击数 = 本批实际连点数 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            report_action_level_up_param(
+            out = report_action_level_up_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'),
                 executed=ShopActionExecuted(levelup_clicks=clicks))
+            # 动作后果声明喂入(声明化单轨,op「上报后一行喂入」同形;
+            # 商业间谍升级回调世界腿 = spy_shop_refresh 触发,实机端口
+            # 未装 = no-op)。其余触发面无声明(world_decl None 本层直返)。
+            cw_sim_ports.declare_world(out.world_decl)
         detail = (f'买经验整批 {clicks} 击花金{_price * clicks}'
                   f'(单价{_price};级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')

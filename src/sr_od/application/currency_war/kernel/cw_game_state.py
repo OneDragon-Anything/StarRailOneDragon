@@ -2118,6 +2118,13 @@ def shop_randomized_pending_of(target: object) -> bool:
     return bool(game_state_of(target).shop_randomized_pending)
 
 
+def mark_shop_randomized_pending(gs: GameState) -> None:
+    """商店随机态重开信号置位(写端唯一 = 商业间谍升级回调第 4 步,
+    kernel/cw_action_report/level_up.py 升级生效时点;清位纪律 = 重开位
+    消费后 + 节点边界清扫两出口,槽注申报)。"""
+    gs.shop_randomized_pending = True
+
+
 def clear_shop_randomized_pending(gs: GameState) -> None:
     """商店随机态重开信号清位(重开位消费后;清位纪律 = 重开位消费后 +
     节点边界清扫两出口,槽注申报;写端唯一 = 商业间谍升级回调,T-3 接线)。"""
@@ -2626,8 +2633,9 @@ class GameState:
     # True = 商店有未处理的随机态新牌面(商业间谍升级回调刷新商店并偷取
     # 最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面——重开读真牌面而非
     # 重新发牌);False = 无(缺省)。写端唯一 = 商业间谍升级回调
-    # (design §2.3 回调第 4 步;T-3 接线,本槽先建——先例 = 契约 B 键
-    # 面归一「先建槽后接写端」);读端 = 备战第 1 步随机态重开位(entry,
+    # (kernel/cw_action_report/level_up.py 升级生效时点,经
+    # :func:`mark_shop_randomized_pending`,T-3 已接线);读端 = 备战
+    # 第 1 步随机态重开位(entry,
     # 策略只读,经 :func:`shop_randomized_pending_of`);清位 = 重开位
     # 消费后(:func:`clear_shop_randomized_pending`)+ 节点边界清扫
     # (session_scope.handle_node_boundary——节点推进 = 旧牌面语义死亡,

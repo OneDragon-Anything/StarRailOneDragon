@@ -822,11 +822,13 @@ class SimRunResult:
 #: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
-#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖。
+#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
+#: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界腿:上报声明触发,
+#: 非转移动作——next_screen 恒备战档,零画面转移)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
     'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
-    'pick_invest_strategy',
+    'pick_invest_strategy', 'spy_shop_refresh',
 })
 
 #: 对账豁免场景键集(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
@@ -1146,6 +1148,108 @@ class SimBackend:
         if payload is not None:
             self._shop_record = payload
 
+    def _apply_spy_shop_refresh(self) -> None:
+        """商业间谍升级回调世界腿(2026-10-17-levelup-shop-transition
+        design §2.3 步①-③;触发 = 升级上报 world_decl
+        ``spy_shop_refresh``,动作 op 经 cw_sim_ports.declare_world 喂入;
+        步④置信号 = kernel 上报回调,写端唯一,不经本层)。
+
+        - ①抽 5 张:费用档按升级后等级概率表(单一源 =
+          :func:`effective_deal_probs`,轮岗在场同款重掷);流键沿用发牌
+          口径(M22/spy-deal|M22/spy-rotation,模块号沿 M21 续);发牌
+          算法本体 = kernel ``sample_shop_deal`` 单一源,采样即世界真值;
+        - ②偷最贵 3 张 → 备战席真实入席(席满溢出 = 不入席 + 计数披露,
+          design §2.3 申报的 sim 先行形态;最贵序 = 费用降序 → 星级降序
+          → 槽位升序确定性破并列);入席 = 容器 bench 观察直写(sim 世界
+          真值通道,与 deal_shop 写 shop 同款;不级联合成——design 未
+          申报偷取合成语义,保守不猜);
+        - ③剩余 2 张 = 商店新牌面:容器 shop 观察直写(被偷槽位置空,
+          剩余槽位原位保留)+ 经 :meth:`_sync_shop_record` 入节点级记录
+          → 下次开店呈现之(不重新发牌——刷新已在本回调发生)。
+
+        计数披露(sim 私有簿记,键域:spy_deal_count / spy_steal_placed_
+        count / spy_steal_overflow_count)= 抽牌次数 / 入席张数累计 /
+        溢出张数累计;判读面计数键(cw4_counters.spy_steal_placed_frames /
+        spy_steal_overflow_frames)= 帧级增量,经容器挂接的策略器状态
+        鸭子读回写(未挂接帧静默跳过 = 无判读面,合法)。持有判定不在
+        本层(上报回调已闸;本层被声明即执行,声明构造点零副作用无持卡
+        不构造)。"""
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            BenchSlot,
+            BenchView,
+            ShopSlot,
+            Unit,
+        )
+        new_level = int(self.gs.level.value or 3)
+        plane, r = self._node_pos()
+        rotation_on = (str(self.gs.active_env.value or '')
+                       == ROTATION_ENV_NAME)
+        deal_rng = stream_rng(self.seed, f'M22/spy-deal/p{plane}/r{r}')
+        probs = effective_deal_probs(
+            new_level,
+            stream_rng(self.seed, f'M22/spy-rotation/p{plane}/r{r}'),
+            rotation_on=rotation_on)
+        drawn = sample_shop_deal(self.gs, deal_rng, level=new_level,
+                                 probs=probs)
+        self.disclosures['spy_deal_count'] = \
+            self.disclosures.get('spy_deal_count', 0) + 1
+
+        # ②偷最贵 3 张(确定性最贵序)→ 备战席真实入席。
+        content = [s for s in drawn.cards
+                   if s.kind == 'content' and s.card is not None]
+        ranked = sorted(content,
+                        key=lambda s: (-(int(s.card.cost or 0)),
+                                       -(int(s.card.star or 1)),
+                                       int(s.card.slot or 0)))
+        top3 = ranked[:3]
+        stolen_slots = {id(s) for s in top3}
+        view = self.gs.bench.value
+        placed = 0
+        overflow = 0
+        if view is not None:
+            slots = list(view.slots)
+            for s in top3:
+                spot = next((i for i, b in enumerate(slots)
+                             if b is None or b.kind == 'empty'), None)
+                if spot is None:
+                    overflow += 1   # 席满溢出:不入席 + 计数披露(实机
+                    continue        # 观察点,design §2.3 申报待证实形态)
+                slots[spot] = BenchSlot(
+                    kind='unit',
+                    unit=Unit(char_id=str(s.card.name or ''),
+                              star=max(1, int(s.card.star or 1))))
+                placed += 1
+            self.gs.observe(self.gs.bench,
+                            BenchView(slots=slots, capacity=view.capacity),
+                            evidence=sim_evidence('shop:spy_steal'),
+                            sig=obs_sig(group_id='sim:shop:spy'))
+        else:
+            overflow = len(top3)   # bench 未观察 = 无席可入,全溢出保守侧
+        self.disclosures['spy_steal_placed_count'] = \
+            self.disclosures.get('spy_steal_placed_count', 0) + placed
+        if overflow:
+            self.disclosures['spy_steal_overflow_count'] = \
+                self.disclosures.get('spy_steal_overflow_count', 0) + overflow
+        _st = getattr(self.gs, 'strategy_state', None)
+        ct = getattr(_st, 'cw4_counters', None) if _st is not None else None
+        if isinstance(ct, dict):
+            if placed:
+                ct['spy_steal_placed_frames'] = \
+                    ct.get('spy_steal_placed_frames', 0) + 1
+            if overflow:
+                ct['spy_steal_overflow_frames'] = \
+                    ct.get('spy_steal_overflow_frames', 0) + 1
+
+        # ③剩余 2 张 = 商店新牌面(被偷槽位置空,原位保留)→ 观察直写,
+        # _sync_shop_record 懒同步入节点级记录,下次开店呈现。
+        new_cards = [ShopSlot(kind='empty') if id(s) in stolen_slots else s
+                     for s in drawn.cards]
+        self.gs.observe(self.gs.shop,
+                        ShopPayload(cards=new_cards,
+                                    refresh_probs=drawn.refresh_probs),
+                        evidence=sim_evidence('shop:spy_refresh'),
+                        sig=obs_sig(group_id='sim:shop:spy'))
+
     # (事实事件订阅入口已停用删除:
     #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
     #  advance 步界 _observe_board_truth。)
@@ -1202,6 +1306,10 @@ class SimBackend:
             self._on_invest_picked(opening=True)
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
+        elif decl.trigger == 'spy_shop_refresh':
+            # 商业间谍升级回调世界腿(2026-10-17 迭代 design §2.3 步①-③;
+            # 步④置信号 = kernel 上报回调,不经本层)。
+            self._apply_spy_shop_refresh()
         elif decl.trigger == '':
             # 纯转移(详设 §3 '' 行):统一幂等返回
             #(底层稳态由 _reconcile_next_screen 对账)。专家邀请函档
