@@ -152,10 +152,21 @@ class SellSceneSpec:
     one_star_refund_only: bool   # 仅 1★ 全额退件过滤(活期件口径)
     consumption: str             # 消费方式标记(见类 docstring)
     legacy_channel: str | None   # P78 通道重映射(None = 不装配 A)
+    sort_override: str | None = None   # 排序覆盖(SORT_OVERRIDE_* 闭集;None = 缺省让位序)
 
+
+#: 排序覆盖值域(SellSceneSpec.sort_override;场景级排序键覆盖的登记
+#: 闭集,禁行内自创):
+#: - ``levelup_prep`` = 升级凑金排序键①②③(2026-10-17 迭代 design
+#:   §2.2,用户裁定 2026-10-17):①费用带外先卖(目标费用 = 当前停留
+#:   目标费用档,单一源 = ``criteria/levelup.stay_target_of``——刷新判据
+#:   带归属绑定同源;无停留目标帧①键不分组)②同组内低星先(高星压牌库
+#:   更深,后卖)③金当量升序兜底。实现见 :func:`evaluate_sell_candidates`
+#:   排序段。
+SORT_OVERRIDE_LEVELUP_PREP: str = 'levelup_prep'
 
 #: 场景注册表(闭集;契约 D 八场景——升级变现按分域拆两行,共九行:
-#: 备战侧(第 3 步)= 备战席 ∪ 场上无关角色,会话内侧 = 仅备战席)。
+#: 备战侧(升级凑金步)= 备战席 ∪ 场上无关角色,会话内侧 = 仅备战席)。
 #: 消费方式/资格面逐行对齐契约 D 表格,禁行内自创第三口径。
 SCENE_SPECS: dict[str, SellSceneSpec] = {
     'self_rescue': SellSceneSpec(
@@ -172,7 +183,8 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         'sell_until_gap_closed', 'funding'),
     'levelup_liquidate_prep': SellSceneSpec(
         'levelup_liquidate_prep', POOL_BENCH_FIELD_IRRELEVANT, FACE_REGULAR,
-        True, 'sell_until_gap_closed', 'funding'),
+        False, 'sell_until_gap_closed', 'funding',
+        SORT_OVERRIDE_LEVELUP_PREP),
     'levelup_liquidate_shop': SellSceneSpec(
         'levelup_liquidate_shop', POOL_BENCH_ONLY, FACE_REGULAR, True,
         'sell_until_gap_closed', 'funding'),
@@ -617,6 +629,32 @@ def evaluate_sell_candidates(
                 line_member=str(unit.char_id or '') in line))
     if not out:
         return (), REJECT_NO_CANDIDATES
+    if spec.sort_override == SORT_OVERRIDE_LEVELUP_PREP:
+        # 升级凑金排序键①②③(2026-10-17 迭代 design §2.2,用户裁定
+        # 2026-10-17;场景级覆盖,其余场景缺省让位序不动):
+        # ①费用带外先卖——目标费用 = 当前停留目标费用档(单一源 =
+        #   criteria/levelup.stay_target_of,刷新判据带归属绑定同源;
+        #   无停留目标帧〔未锁定 ∧ 无星级目标〕①键不分组);
+        # ②同组内低星先(高星为合成体、压牌库更深——后卖,能不卖就不卖);
+        # ③金当量升序兜底(统一价值函数,与其他卖出场景同一口径);
+        # 确定性并列破除((zone, idx) 字典序)。
+        # (本场景线内件已被常规面资格排除、场上支恒无关角色,缺省序的
+        # line_member/bond_drop 两层在该场景结构性恒 False,覆盖序不携带。)
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+            levelup as _levelup,
+        )
+        _target = _levelup.stay_target_of(gs)
+        _tcost = int(_target[2]) if _target is not None else None
+
+        def _band_out(c: SellCandidate) -> int:
+            if _tcost is None:
+                return 0
+            cost = int(bench_char_cost(c.unit, gs) or 0)
+            return 0 if cost != _tcost else 1
+
+        out.sort(key=lambda c: (_band_out(c), c.star, c.gold_value,
+                                c.zone, c.idx))
+        return tuple(out), ''
     out.sort(key=lambda c: (c.line_member, c.bond_drop, c.gold_value,
                             c.zone, c.idx))
     return tuple(out), ''
@@ -635,6 +673,7 @@ __all__ = [
     'REJECT_SWAP_CTX_MISSING',
     'SCENE_SPECS',
     'SELL_SCENARIOS',
+    'SORT_OVERRIDE_LEVELUP_PREP',
     'SellCandidate',
     'SellSceneSpec',
     'bond_tier_drops_if_sold',

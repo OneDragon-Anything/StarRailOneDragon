@@ -343,9 +343,12 @@ class StrategyState:
     # 记录(ShopOpportunity 元组序,记录序 = 追加序);正常收工写、
     # 节点边界重置清空;读写单一源 = session_scope 存储函数族。
     shop_opportunities: tuple[ShopOpportunity, ...] = ()
-    # 升级预授权键(line_and_upgrade §2.2):None = 无授权;写入端 =
-    # 升级判据授权帧;节点边界重置清零 + 锁定写入连带动作
-    # 清键(节点切换 = 金/血/收入日程全变,旧授权作废,防跨节点兑现)。
+    # 升级预授权键(line_and_upgrade §2.2;退役挂账):None = 无授权。
+    # 写端已随升级发射单帧原子化退役(2026-10-17-levelup-shop-transition
+    # design §2.5②:商店侧 T-1、备战侧 T-2——授权不再跨帧携带),本阶段
+    # 无在产写端;键与两处死读保留(shop 刷新判据整级预留保护 / entry
+    # 凑息抑制),节点边界重置清零 + 锁定写入连带动作清键照旧兜底,T-4
+    # 退役并迁移消费面①③。
     levelup_preauth: LevelUpPreAuth | None = None
     # [索引定义] node_boundary_last_pos = 节点边界处理函数的判重键:
     # 上次执行边界重置的生效节点序位 (位面,轮)(均 1 基);取值时机

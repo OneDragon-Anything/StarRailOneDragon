@@ -2111,6 +2111,19 @@ def prep_anchored_of(session: object) -> bool:
     return bool(game_state_of(session).prep_anchored)
 
 
+def shop_randomized_pending_of(target: object) -> bool:
+    """商店随机态重开信号读口(缺省 False;读端 = 备战第 1 步随机态
+    重开位,策略只读;槽语义与写端/清位纪律见 GameState 槽注)。
+    经 :func:`game_state_of` 解析(局外一次性容器每调新建恒 False)。"""
+    return bool(game_state_of(target).shop_randomized_pending)
+
+
+def clear_shop_randomized_pending(gs: GameState) -> None:
+    """商店随机态重开信号清位(重开位消费后;清位纪律 = 重开位消费后 +
+    节点边界清扫两出口,槽注申报;写端唯一 = 商业间谍升级回调,T-3 接线)。"""
+    gs.shop_randomized_pending = False
+
+
 def anchor_aware_write(gs: GameState, rand: bool) -> Callable[..., None]:
     """锚定感知写通道择道口(通道规则「未锚定 → 随机态」的公开单一选择
     口;获得链与效果账本桥等容器逻辑写端同源消费,禁散写
@@ -2607,6 +2620,24 @@ class GameState:
     # 成功条件,写失败同不置位);测试/直构域专用置标志口 = 直接赋值 True。
     # 读口 = prep_anchored_of(session),缺省 False。
     prep_anchored: bool = False
+
+    # —— 商店随机态重开信号(非 Field 簿记;工程结构组单列申报;
+    # 2026-10-17-levelup-shop-transition design §2.4)——
+    # True = 商店有未处理的随机态新牌面(商业间谍升级回调刷新商店并偷取
+    # 最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面——重开读真牌面而非
+    # 重新发牌);False = 无(缺省)。写端唯一 = 商业间谍升级回调
+    # (design §2.3 回调第 4 步;T-3 接线,本槽先建——先例 = 契约 B 键
+    # 面归一「先建槽后接写端」);读端 = 备战第 1 步随机态重开位(entry,
+    # 策略只读,经 :func:`shop_randomized_pending_of`);清位 = 重开位
+    # 消费后(:func:`clear_shop_randomized_pending`)+ 节点边界清扫
+    # (session_scope.handle_node_boundary——节点推进 = 旧牌面语义死亡,
+    # 与重置表 shop_handled 清值同机制依据)。宿主选型 = kernel 可写、
+    # 策略可读(策略层状态键依赖方向不可达,design §2.4);非 Field 理由
+    # = 纯过程信号(回调直写、决策读,无以实际观察为准仲裁、无 journal
+    # 面语义),同 frame_class/prep_anchored 先例;容器每局新建 = 天然
+    # 清零。禁用商店容器 unknown 形态承载随机态(unknown = 识别失败必携
+    # 缺陷记录且触发停机闸,语义与守卫均不兼容,design §2.4)。
+    shop_randomized_pending: bool = False
 
     # —— 局级节点序列台账(非 Field 簿记,非域字段,工程结构组单列申报)——
     # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为

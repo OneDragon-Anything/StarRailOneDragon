@@ -189,13 +189,13 @@ class MandateV1Strategy(CwFlowStrategy):
 
     _abstract: bool = False   # 覆写 flow 基类的辅助 ABC 位:本类 = 可注册的活策略核
     STRATEGY_ID: str = 'mandate_v1'
-    STRATEGY_NAME: str = '新数学框架核(mandate_v1;九段全扫工序)'
+    STRATEGY_NAME: str = '新数学框架核(mandate_v1;十段全扫工序)'
     AUTHOR: str = 'OneDragon'
     VERSION: str = '0.1'
-    DESCRIPTION: str = ('cw4 新核:备战九段全扫工序(溢出自救→消耗品→'
-                        '晶矿→升级→商店会话→部署→装备工具→凑息→出战)'
-                        ';单动作循环发射(帧稳定截断为决策核内发射'
-                        '组织,非流程侧契约)')
+    DESCRIPTION: str = ('cw4 新核:备战十段全扫工序(溢出自救→随机态'
+                        '重开→消耗品→晶矿→升级→商店会话→部署→装备工具'
+                        '→凑息→出战);单动作循环发射(帧稳定截断为决策核'
+                        '内发射组织,非流程侧契约)')
 
     def __init__(self, gs, config,
                  registry: DecisionV2Registry | None = None) -> None:

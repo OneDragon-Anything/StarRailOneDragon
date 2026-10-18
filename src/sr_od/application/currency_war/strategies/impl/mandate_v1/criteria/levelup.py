@@ -25,6 +25,17 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    gold_of,
+    level_of,
+    max_units_of,
+    plane_of,
+    round_num_of,
+)
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    reward_node_suppressed,
+)
+
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (
         GameState,
@@ -464,6 +475,149 @@ def upgrade_trigger(gs: GameState, session: StrategySession,
     if prob_account_ok(gs, session):
         return True, ARM_PROB_ACCOUNT
     return False, ''
+
+
+# ============================================================ 发射资格门全链判定(design §2.1 七道成员集单一源)
+
+
+#: 判定结论值域(:func:`upgrade_gate_verdict`;两屏同参消费——商店会话
+#: 升级意图出口与备战升级执行,design §2.2「资格门全链两屏同参」)。
+GATE_MISS: str = 'miss'              # 判据未命中(五分支不触发;非门拒)
+GATE_DEFER: str = 'defer'            # 资格门拦(拒因计数已写入 counters)
+GATE_GOLD_SHORT: str = 'gold_short'  # 资金门金量不足(花后下界已过)——凑金域
+GATE_EMIT: str = 'emit'              # 全链通过,可发射
+
+
+def upgrade_gate_verdict(gs: GameState,
+                         session: StrategySession,
+                         registry: DecisionV2Registry | None = None,
+                         counters: dict | None = None,
+                         ) -> tuple[str, str, int, int]:
+    """升级发射资格门全链判定(design §2.1 七道成员集单一源;商店会话
+    升级意图出口与备战升级执行两屏同参消费——**禁任一侧子集化或第二
+    实现**,漏报任一门则转场/发射后继不能合法兑现,开/关店环复活)。
+
+    门序 = 现役发射门序:①奖励帧抑制(reward_node_suppressed)
+    ②等级帽(level_max)③五分支判据命中(本模块判据本体)④P21 危机带
+    域判定(level_spend_blocked,富余段域内让位)⑤击数 > 0 ⑥血本位局
+    血闸 ⑦资金门(花后守息线/保底金门 → 裸金足 ∧ 整买纪律)。全部
+    通过 → ``emit``。
+
+    返回 ``(verdict, arm_key, clicks, click_cost)``:
+
+    - ``miss``:五分支未触发(无拒因计数——判据未命中非门拒);
+    - ``defer``:①-④⑥门拦或花后下界 defer,拒因计数键已写入
+      ``counters``(键域:levelup_reward_node_defer / levelup_reject_
+      level_cap / levelup_crisis_defer / levelup_zero_clicks_defer /
+      levelup_blood_gate_defer / levelup_reserve_line_defer /
+      levelup_guarantee_floor_defer;两屏判读面共享同一键域);
+    - ``gold_short``:花后下界已过 ∧ 裸金 < 整级批——凑金域:卖出只
+      转化活期为裸金、花后金不变,故此域卖出可收敛到发射;花后下界
+      未过的帧卖出无益(不变量),归 ``defer``;
+    - ``emit``:可发射(血本位局 = 血闸过即 emit;金本位局 = 裸金足 ∧
+      整买纪律过)。``arm_key`` = 触发分支键(miss/前置 defer 恒 '');
+      ``clicks/click_cost`` = 整级批参数(emit/gold_short 语境有效,
+      miss/defer 恒 0)。
+
+    ``counters`` = None 时静默(契约层同款)。域内让位相位标志
+    (``cw4_must_spend_phase``)随门④同点维护,宿主 = ``state_of(gs)``
+    (与商店侧 T-1 落地写点同宿主同语义)。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        blood_xp_gate_for,
+        clicks_to_next_level,
+        xp_click_cost,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        blood_xp_mode,
+    )
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        contracts,
+    )
+
+    def _count(key: str) -> None:
+        if counters is not None:
+            counters[key] = counters.get(key, 0) + 1
+
+    # ===== 资格门①②③(奖励帧抑制 → 等级帽 → 五分支判据)=====
+    if reward_node_suppressed(gs):
+        _count('levelup_reward_node_defer')
+        return GATE_DEFER, '', 0, 0
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if not contracts.ensure_contract(('levelup', 'lv9_stop'),
+                                     contracts.ContractCtx(), counters):
+        return GATE_DEFER, '', 0, 0
+    if lv9_stop(level_of(gs), reg.level_max):
+        _count('levelup_reject_level_cap')
+        return GATE_DEFER, '', 0, 0
+    if not contracts.ensure_contract(
+            ('levelup', 'upgrade_trigger'),
+            contracts.ContractCtx(deploy_cap=max_units_of(gs)), counters):
+        return GATE_DEFER, '', 0, 0
+    trig, arm_key = upgrade_trigger(gs, session, reg)
+    if not trig:
+        return GATE_MISS, '', 0, 0
+    _count(f'levelup_trigger_{arm_key}')
+    # ===== 资格门④:P21 危机带域判定(富余段域内让位;键式相位)=====
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        in_must_spend_zone,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        state_of,
+    )
+    st = state_of(gs)
+    phase = (plane_of(gs), round_num_of(gs))
+    if in_must_spend_zone(gold_of(gs), session):
+        st.cw4_must_spend_phase = phase
+    zone_hit = (in_must_spend_zone(gold_of(gs), session)
+                or st.cw4_must_spend_phase == phase)
+    if not zone_hit:
+        if not contracts.ensure_contract(
+                ('levelup', 'level_spend_blocked'),
+                contracts.ContractCtx(), counters):
+            return GATE_DEFER, '', 0, 0
+        if level_spend_blocked(gs, session, reg):
+            _count('levelup_crisis_defer')
+            return GATE_DEFER, '', 0, 0
+    # ===== 资格门⑤:击数 > 0(整级批参数推导前置)=====
+    clicks = clicks_to_next_level(gs)
+    if clicks <= 0:
+        _count('levelup_zero_clicks_defer')
+        return GATE_DEFER, '', 0, 0
+    click_cost = xp_click_cost(gs)
+    batch_cost = clicks * click_cost
+    # ===== 资格门⑥:血本位局血闸(金本位局直通)=====
+    if not blood_xp_gate_for(gs, session):
+        _count('levelup_blood_gate_defer')
+        return GATE_DEFER, '', 0, 0
+    if blood_xp_mode(session) is not None:
+        # 血本位局:血闸已过 = 支付可行(血本位无金变现步),可发射。
+        return GATE_EMIT, arm_key, clicks, click_cost
+    # ===== 资格门⑦:资金门(花后守息线/保底金门 → 裸金足)=====
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
+        _bench_liquid_gold,
+        _levelup_floor_ok,
+    )
+    liquid = _bench_liquid_gold(gs)
+    if not _levelup_floor_ok(gs, session, arm_key,
+                             gold_of(gs) + liquid - batch_cost):
+        _count('levelup_reserve_line_defer'
+               if arm_key in (ARM_PROB_ACCOUNT, ARM_STAY_GATE)
+               else 'levelup_guarantee_floor_defer')
+        return GATE_DEFER, '', 0, 0
+    if gold_of(gs) >= batch_cost:
+        if contracts.ensure_contract(
+                ('levelup', 'spend_unified'),
+                contracts.ContractCtx(gold=gold_of(gs)), counters) \
+                and spend_unified(clicks, gold_of(gs), click_cost):
+            return GATE_EMIT, arm_key, clicks, click_cost
+        # 防御分支(整买纪律与裸金足同式,结构性不可达):历史静默 None,
+        # 零计数保持。
+        return GATE_DEFER, '', 0, 0
+    return GATE_GOLD_SHORT, arm_key, clicks, click_cost
 
 
 # ============================================================ 保底金门(P72(3a) 内保留件)

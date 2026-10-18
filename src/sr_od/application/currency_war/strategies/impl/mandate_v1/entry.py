@@ -1,29 +1,32 @@
-"""cw4 备战决策入口(九段全扫工序)。
+"""cw4 备战决策入口(十段全扫工序)。
 
-工序结构(判据正本 = strategy-docs/22_prep_screen.md §1):每次回到备战
-画面从第 0 步向下扫描,执行第一个满足条件的步骤并返回其动作,下一帧
-重新扫描(单动作循环不变;回跳语义——腾位后回头点晶矿、买完牌回头
-部署——在全扫下自然表达):
+工序结构(判据正本 = strategy-docs/22_prep_screen.md §1;2026-10-17
+迭代 design §2.2 重排——新增第 1 步商店随机态重开,其后顺延):每次回
+到备战画面从第 0 步向下扫描,执行第一个满足条件的步骤并返回其动作,
+下一帧重新扫描(单动作循环不变;回跳语义——腾位后回头点晶矿、买完牌
+回头部署——在全扫下自然表达):
 
-    第 0 步 溢出告警自救 → 第 1 步 点开消耗品 → 第 2 步 晶矿
-    → 第 3 步 升级检查(11 号篇 §2:五分支判据 + 整级预授权
-       + 变现步 + 执行帧整批发出)
-    → 第 4 步 商店会话 → 第 5 步 部署调整 → 第 6 步 装备与工具
-    → 第 7 步 节末凑息 → 第 8 步 出战
+    第 0 步 溢出告警自救 → 第 1 步 商店随机态重开(信号在:清 handled
+        标记 + 开店进店 + 清信号)→ 第 2 步 点开消耗品 → 第 3 步 晶矿
+     → 第 4 步 升级检查(design §2.2:判据每帧重评,资格门全链同参
+        消费 criteria/levelup;命中 → 凑金/发射)
+     → 第 5 步 商店会话 → 第 6 步 部署调整 → 第 7 步 装备与工具
+     → 第 8 步 节末凑息 → 第 9 步 出战
 
 模块分工:买面/凑息/腾位的备战域动作发出点(dominance/M2/M4/M6
 凑息分支)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
 卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
-升级判据本体 = ``criteria/levelup``(11 号篇 §2),本模块只做
-工序接线与发出组装。部署/装备/工具判据单一源 = deploy_plan /
-cw_equip_wear_plan / cw_equip_env(第 5/6 步只承载调用时机)。
+升级判据本体与发射资格门全链 = ``criteria/levelup``(11 号篇 §2 +
+design §2.1 七道成员集单一源),本模块只做工序接线与发出组装。
+部署/装备/工具判据单一源 = deploy_plan / cw_equip_wear_plan /
+cw_equip_env(第 6/7 步只承载调用时机)。
 
 ``mandate.run_mandate`` 为测试面已登记函数(生产调用走本模块 emit)。
 ``truncate_frame_stable``(帧稳定截断动作发出器,词表正本 =
 flow/action_exec.md §1)与 ``_ore_bench_free`` 等公共骨架——
 bridge 与测试面在产消费。
 
-晶矿第 2 步 = 垫件纯判断(无试错计数)。占席颜色→内容映射为待实机
+晶矿第 3 步 = 垫件纯判断(无试错计数)。占席颜色→内容映射为待实机
 证项,若立项需双倍审面(判据面 + 建档面)。
 """
 from __future__ import annotations
@@ -42,6 +45,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_entries_of,
     bench_free_slots,
+    clear_shop_randomized_pending,
     deployed_rows_of,
     game_state_of,
     gold_of,
@@ -49,6 +53,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     max_units_of,
     node_kind_of,
     round_num_of,
+    shop_randomized_pending_of,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     ore_click_targets_of,
@@ -91,11 +96,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
     protection_membership,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        LevelUpPreAuth,
-    )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
 if TYPE_CHECKING:
@@ -361,11 +361,11 @@ def _bench_char_at(gs: GameState, container_idx: int) -> str:
 def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               session: StrategySession, state: GameState,
                               tag: str, *, window_scope: bool) -> None:
-    """部署动作发出点(第 0 步态 1 与第 5 步共用;选人/落位/对位单一源 =
+    """部署动作发出点(第 0 步态 1 与第 6 步共用;选人/落位/对位单一源 =
     ``deploy_plan.deploy_plan_moves``——判据本体不改动,prep_pipeline
     22 号篇 §1 第 5 步)。
 
-    ``window_scope`` = 是否施加上阵窗口适用范围:第 5 步 True(终局成员在
+    ``window_scope`` = 是否施加上阵窗口适用范围:第 6 步 True(终局成员在
     其上线窗口前不上阵);第 0 步态 1 False(告警帧豁免——上阵纯为腾槽
     保命,告警解除后下轮全扫窗口适用范围恢复正常,22 号篇 第 0 步
     态 1 豁免行)。板满前置门与现行 ``mandate._emit_deploy_moves`` 同门
@@ -389,7 +389,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
 
 def _make_windowed_select_up(session: StrategySession, gs: GameState):
-    """select_swap_plan 的 select_up 注入包装(第 5 步换血替补的上阵窗口
+    """select_swap_plan 的 select_up 注入包装(第 6 步换血替补的上阵窗口
     适用范围——契约 D 部署换血行:替补受窗口适用范围覆盖,窗口未到的终局替补
     不可上 = 窗口适用范围自然结果,换血通道由过渡替补在产)。
 
@@ -420,14 +420,15 @@ def _make_windowed_select_up(session: StrategySession, gs: GameState):
 def emit(session: StrategySession,
          config: object, *,
          registry: DecisionV2Registry | None = None) -> list[Emitted]:
-    """备战决策入口九段全扫(22 号篇 §1;返回 Emitted 列表交桥截断)。
+    """备战决策入口十段全扫(22 号篇 §1 工序 + 2026-10-17 迭代 §2.2
+    重排;返回 Emitted 列表交桥截断)。
 
     决策输入 = 容器 game state 直读(黑板帧停用契约照旧)。每帧从第 0
     步向下扫描,首中段返回其动作序列(单动作循环取首项执行);全部不中
-    ⇒ 第 8 步出战。步间调用:3.1 边界/标记/清单存储(session_scope)、
+    ⇒ 第 9 步出战。步间调用:3.1 边界/标记/清单存储(session_scope)、
     3.2 卖出评估器(evaluate_sell_candidates,契约 D 场景参数化)。
 
-    ``config`` = 调用方透传(现行九段无消费面;旧 ev_arm 实验因子随 EV
+    ``config`` = 调用方透传(现行十段无消费面;旧 ev_arm 实验因子随 EV
     pass 停用)。``registry`` = 上下文注册表(装备计划等级帽等消费注入)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
@@ -492,47 +493,61 @@ def emit(session: StrategySession,
         _rescue = _step0_overflow_self_rescue(session, gs, frame)
         return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
-    # —— 第 1 步:点开消耗品(书册卡 → 补给箱 → 星徽秘典;分支序 = 现行
+    # —— 第 1 步:商店随机态重开(2026-10-17 迭代 design §2.2 第 1 步/
+    # §2.4)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
+    # 的 3 张,用户裁定「很高的优先级」;置于溢出自救之后、资源动作之前):
+    # 清 handled 标记 → 开店进店(入口观察读真牌面,会话循环正常评估)
+    # → 清信号。本阶段信号写端未接线(恒 False)= 零行为,写端随 3.3
+    # 商业间谍升级回调接线。
+    if shop_randomized_pending_of(gs):
+        session_scope.clear_shop_handled(gs)
+        clear_shop_randomized_pending(gs)
+        return [Emitted(CwActionOpenShopParam(),
+                        True, 'step1_shop_randomized_reopen')]
+
+    # —— 第 2 步:点开消耗品(书册卡 → 补给箱 → 星徽秘典;分支序 = 现行
     # 实体面段在案顺序)——弹窗由外循环画面分发接住,处理后回备战重新
     # 全扫(弹窗不是工序步骤)。
     _open_act = _consumable_open_action(gs)
     if _open_act is not None:
         return [_open_act]
 
-    # —— 第 2 步:晶矿(22 号篇 §1 第 2 步)——
+    # —— 第 3 步:晶矿(22 号篇 §1 晶矿步)——
     _ore_out = _step2_ore(session, gs)
     if _ore_out:
         return _ore_out
 
-    # —— 第 3 步:升级检查(11 号篇 §2 概率主轴 + 整级预授权 +
-    # 变现步;判据五分支 = criteria/levelup.upgrade_trigger。预授权键驱动
-    # 两帧态:授权帧(判据通过 → 置键 → 变现序列每帧一卖)与执行帧
-    # (缺口闭合 → 购买经验整批发出,实付上界 = 授权值不再重闸)——
-    # 单动作循环下每帧全扫到本步,键与缺口面共同决定本帧动作)——
-    step3_actions: list[Emitted] = _step3_level_up(session, gs, registry)
-    if step3_actions:
-        return step3_actions
+    # —— 第 4 步:升级检查(design §2.2:判据每帧重评,无跨画面键;
+    # 资格门全链 = criteria/levelup.upgrade_gate_verdict 两屏同参单一源。
+    # 命中后凑金与发射:全链通过 → 单帧原子整批(实付上界 = 发射时授权
+    # 值,授权不跨帧携带)+ 清 handled 标记;金量不足 → 凑金每帧一卖
+    # (levelup_liquidate_prep 场景,排序键①费用带外②低星③金当量);
+    # 候选穷尽(含 P78-5 兜底腿尽)→ 零动作等节点收入)——
+    # (函数名 _step3_level_up 沿用旧序号,重命名随工序 sweep 批统一。)
+    levelup_actions: list[Emitted] = _step3_level_up(session, gs, registry)
+    if levelup_actions:
+        return levelup_actions
 
-    # —— 第 4 步:商店会话(22 号篇 §1 第 4 步;契约 A)——
+    # —— 第 5 步:商店会话(22 号篇 §1 商店会话步;契约 A)——
     # 入口先调解拦复核(判定函数本体 = criteria/shop_session);然后判标记
     # ≠ 当前节点号。满足 → 开店(备战侧决策性开店意图的唯一来源)。
     if _step4_shop_session_pending(session, gs):
         return [Emitted(CwActionOpenShopParam(), True, 'step4_shop_session')]
 
-    # —— 第 5 步:部署调整(部署面判据照旧;调用时机在商店会话
+    # —— 第 6 步:部署调整(部署面判据照旧;调用时机在商店会话
     # 之后——「先逛店再统一部署」)——
-    _deploy_out = _step5_deploy(session, gs, frame, step3_actions)
+    _deploy_out = _step5_deploy(session, gs, frame, levelup_actions)
     if _deploy_out:
         return _deploy_out
 
-    # —— 第 6 步:装备与工具(工具判据 =
+    # —— 第 7 步:装备与工具(工具判据 =
     # kernel/cw_equip_env.evaluate_tool_actions;调用位置固定为部署
     # 之后)——
     _equip_out = _step6_equip_tools(session, gs, registry)
     if _equip_out:
         return _equip_out
 
-    # —— 第 7 步:节末凑息(22 号篇 §1 第 7 步)——所有花费决策
+    # —— 第 8 步:节末凑息(22 号篇 §1 节末凑息步)——所有花费决策
     # 完成后的最终利息线检查(为买而卖在会话内,为息而卖在本步;息按节末
     # 金位结算,提前卖会被后续购买把金位吃回去)。
     _interest_out = _step7_node_end_interest(session, gs)
@@ -542,7 +557,7 @@ def emit(session: StrategySession,
     # 形态⑥观测(纯观测零行为,fail-closed 期只记不判):target 空窗
     # ∧ 濒死带 ∧ 域外 ∧ 持金 ∧ 本帧零金消费——金滞留入败局的形态暴露
     # (键名申报源 = supply_arbitration_design §5.1 terminal_targetless_
-    # idle;载体适用范围随工序重排收窄 = 到达第 7 步之后的帧,实体面/开店/
+    # idle;载体适用范围随工序重排收窄 = 到达第 8 步之后的帧,实体面/开店/
     # 部署/装备帧提前返回不入键;到达本段的帧无 LevelUp/OpenShop 类
     # 动作,旧动作面条件恒真,申报)。
     if (gold_of(gs) > 0
@@ -553,7 +568,7 @@ def emit(session: StrategySession,
         st.cw4_counters['terminal_targetless_idle'] = \
             st.cw4_counters.get('terminal_targetless_idle', 0) + 1
 
-    # —— 第 8 步:出战(以上全部步骤无动作;备战环唯一完成态)——
+    # —— 第 9 步:出战(以上全部步骤无动作;备战环唯一完成态)——
     # 出战前置动作发出点机制保留在 bridge(出战就绪帧短路本 emit,机制出处 =
     # strategy-docs/26 号篇;本迭代零改动);受限商店访问帧不受会话标记
     # 覆盖(契约 A 豁免条款,前置位承载)。
@@ -719,15 +734,15 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
     return []
 
 
-# ============================================================ 第 3 步:升级检查
+# ============================================================ 升级检查(工序第 4 步)
 
 
 def _fallback_legs_ok(session: StrategySession, gs: GameState,
-                      pre: LevelUpPreAuth, name: str) -> bool:
+                      source_arm: str, name: str) -> bool:
     """P78-5′ 兜底豁免的两腿必要条件(design 契约 D 升级变现行;
     设计写入代码比对确认):豁免构成 = **义务账 ∨ 对象无损**。
 
-    - 腿①(触发源义务血统维,验分支):``pre.source_arm`` 为骨架义务
+    - 腿①(触发源义务血统维,验分支):``source_arm`` 为骨架义务
       血统——人口位(02 号稿 §3 M3 义务正文)/ arm0(02 §5 回退)
       → 豁免成立,funding_hold_fallback 全量消费(对象不验);
     - 腿②(卖出对象级无损维,验对象非验触发分支):偏好账分支(停留门
@@ -740,11 +755,15 @@ def _fallback_legs_ok(session: StrategySession, gs: GameState,
       holds ∩ A 排除),偏好分支下结构性恒拒——验证照落为防御性腿
       (兜底池未来扩容非保护资产时腿②自动生效)。分支键缺省 ''
       (异常/无分支身份)按保守侧走腿②对象验。
+
+    (签名 2026-10-17 迭代 T-2 起收 ``source_arm: str`` = 本帧资格门
+    判定的触发臂键——授权跨帧携带废止(design §2.5②),臂身份不再经
+    预授权键跨帧传递。)
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
     )
-    if pre.source_arm in (levelup.ARM_POPULATION, levelup.ARM_ARM0):
+    if source_arm in (levelup.ARM_POPULATION, levelup.ARM_ARM0):
         return True    # 腿①:骨架义务血统(授权文号含义务正文)
     from sr_od.application.currency_war.kernel.cw_comps import (
         CORE_SINGLE_CARD_REGISTRY,
@@ -844,26 +863,33 @@ def _levelup_floor_ok(gs: GameState, session: StrategySession,
 
 def _step3_level_up(session: StrategySession, gs: GameState,
                     registry: DecisionV2Registry | None) -> list[Emitted]:
-    """第 3 步升级检查(11 号篇 §2:五分支判据 + 整级预授权
-    + 变现步 + 执行帧整批发出)。
+    """升级检查步(工序第 4 步;11 号篇 §2 五分支判据 + 2026-10-17
+    迭代 design §2.2 升级执行:判据每帧重评,无跨画面键)。
 
-    两帧态(单动作循环下每帧全扫到本步):
+    资格门全链判定单一源 = :func:`criteria.levelup.upgrade_gate_verdict`
+    (七道成员集,与商店会话升级意图出口两屏同参消费,本函数零内联门)。
+    命中后凑金与发射(design §2.2 第 4 步):
 
-    - **键驱动帧**(预授权键在):缺口(裸金 < 授权批成本)未闭合 →
-      变现序列每帧一卖(评估器升级变现场景,让位序;主路径尽 → P78-5
-      兜底豁免拼装,单一源 ``sell_gate.funding_hold_fallback``)——候选
-      穷尽 → 键保留至节点末、零动作(幂等重评,无试错计数);缺口闭合
-      → 执行帧发购买经验整批(实付上界 = 授权值,**不再重闸**——防
-      「买一半」复发)→ 清键。
-    - **授权帧**(键不在):奖励帧抑制 → 等级帽 → 五分支判据 → P21
-      (域内让位照 20 号稿)→ 血本位支付检查 → 攒批资金与发出前
-      花后金下界 → 置键发出(裸金足 = 同帧执行帧;不足 = 置键进入
-      变现序列,首卖本帧发出)。
+    - **全链通过** → 发购买经验整批,**单帧原子**(实付上界 = 发射时
+      授权值;授权不再跨帧携带——「买一半」形态由发射原子性消解,
+      design §2.5② 行为差申报)+ **清 handled 标记**(升级前若经会话
+      正常收工置位,升级后概率档已变,本节点找牌与刷新判据需重评——
+      非商业间谍路径的重开通道,design §2.2 第 1 条);
+    - **资格门未过因金不足**(花后下界已过 ∧ 裸金 < 整级批)→ 凑金:
+      ``levelup_liquidate_prep`` 场景每帧一卖、重扫续卖(候选/锁定阵容
+      外任意星级可卖,场景参数 ``one_star_refund_only`` False;排序键
+      ①费用带外先卖②低星先③金当量兜底,场景级覆盖见评估器)。主路径
+      尽 → P78-5 兜底豁免(单一源 ``sell_gate.funding_hold_fallback``,
+      腿判定触发臂 = 本帧判定臂;兜底腿保留照旧);
+    - **候选穷尽(含兜底腿尽)仍不足** → 本帧零动作等节点收入(不部分
+      执行);其余 defer(门拦/花后下界)/未命中 → 零动作。
 
-    血本位局(XP 以血支付):金攒批与变现步不适用(变现卖出对血支付
-    零贡献)——发出条件 = 血余额 ≥ 整级血成本(blood_xp_gate 单一
-    源,静态阈值授权帧一次检查);不足 = 零购买(攒钱模式 = 等节点
-    血收入)。整批发出 + 实付上界在血本位局同款生效。
+    血本位局(XP 以血支付):金凑金与变现步不适用(变现卖出对血支付
+    零贡献)——血闸过即发射(单帧原子同款);不足 = 零购买(攒钱模式
+    = 等节点血收入)。
+
+    (函数名 ``_step3_level_up`` 沿用旧工序序号,重命名随工序 sweep 批
+    统一;本步现位 = 工序第 4 步。)
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
@@ -878,250 +904,106 @@ def _step3_level_up(session: StrategySession, gs: GameState,
     counters = st.cw4_counters
 
     # 金位读数门(23 号篇金位读数形态:备战域金位唯一供给 = 账面;
-    # 失效帧无法评估攒批/触发面 → 读数开店锚定,标记不动;账面宿主 =
+    # 失效帧无法评估凑金/触发面 → 读数开店锚定,标记不动;账面宿主 =
     # 容器态(state_of(gs),与会话标记/清单同宿主)。
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)
 
-    # ===== 键驱动帧 =====
-    pre = st.levelup_preauth
-    if pre is not None:
-        gold = gold_of(gs)
-        if pre.gold_cost <= 0 or gold >= pre.gold_cost:
-            # 执行帧:发购买经验整批(实付上界 = 授权值,不重闸)→ 清键。
-            # 击数 = 剩余击数现读(门槛表差值折击数),超授权值按上界截
-            # (XP 中途变化的数据漂移防御,非判据闸)。
-            from sr_od.application.currency_war.kernel.cw_economy import (
-                clicks_to_next_level,
-                xp_click_cost,
-            )
-            clicks = clicks_to_next_level(gs)
-            cost = xp_click_cost(gs)
-            if cost > 0:
-                clicks = min(clicks, pre.gold_cost // cost)
-            st.levelup_preauth = None
-            counters['levelup_batch_emitted'] = \
-                counters.get('levelup_batch_emitted', 0) + 1
-            # 升级发出失效/伴生钩子(读数协议②:升 9 级成长基金独立
-            # 失效;节节高升任意升级 +1 伴生入金)。
-            shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
-            return [Emitted(CwActionLevelUpParam(
-                cost=int(cost), clicks=max(1, clicks),
-                auth_basis='preauth'), True, 'step3_levelup_batch')]
-        # 缺口未闭合 → 变现序列:每帧一卖(评估器升级变现场景,让位序)。
-        cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
-        if cands:
-            out = _emit_sell_candidate(
-                session, gs, cands[0], reason='levelup_liquidate',
-                tag='levelup_liquidate_sell',
-                counter='levelup_liquidate_sell')
-            if out:
-                return out
-        # 主路径尽 → P78-5 兜底豁免(funding 通道对价;触发前提 = 主路径
-        # 空 ∧ 仍缺金——P78-5 四条件单一源 = sell_gate.funding_hold_
-        # fallback,本循环只拼装消费,11 号篇 §2 变现步)。
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            locked_buy_cap_hold,
-        )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-            sell_gate,
-        )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
-            sell_line_membership,
-        )
-        line = tuple(sorted(sell_line_membership(gs)))
-        fallback = sell_gate.funding_hold_fallback(
-            session, line, bench_entries_of(gs), gold=gold,
-            need=pre.gold_cost,
-            a_exclusions=sell_gate.sell_exclusions(
-                session, line, channel='funding',
-                current_round=round_num_of(gs),
-                cap_hold=locked_buy_cap_hold(gs)),
-            deployed=_deployed_units_of(gs),
-            cap_hold=locked_buy_cap_hold(gs))
-        if fallback:
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                bench_slot_unit,
-            )
-            u = bench_slot_unit(fallback[0])
-            if u is not None and _fallback_legs_ok(session, gs, pre,
-                                                   str(u.char_id or '')):
-                idx = mandate._bench_container_idx(gs, fallback[0])
-                if idx is not None:
-                    mandate.record_round_sold(session, gs,
-                                              str(u.char_id or ''))
-                    counters['levelup_funding_fallback_sell'] = \
-                        counters.get('levelup_funding_fallback_sell', 0) + 1
-                    return [Emitted(CwActionSellBenchParam(
-                        bench_idx=idx, reason='levelup_liquidate'),
-                        True, 'levelup_liquidate_sell')]
-            if u is not None:
-                # 腿拒暴露(两腿必要条件不过——偏好账分支变卖有价资产):
-                # 键保留零动作,分键区分「无兜底候选」与「候选被腿拒」。
-                counters['levelup_fallback_leg_reject'] = \
-                    counters.get('levelup_fallback_leg_reject', 0) + 1
-        # 候选穷尽(含兜底):键保留至节点末,执行帧不发出——零动作结束本次访问
-        # 全扫(幂等重评;失效出口 = 节点边界重置清键)。
-        counters['levelup_liquidate_exhausted'] = \
-            counters.get('levelup_liquidate_exhausted', 0) + 1
+    # ===== 资格门全链判定(两屏同参单一源)=====
+    verdict, arm_key, clicks, click_cost = levelup.upgrade_gate_verdict(
+        gs, session, registry=registry, counters=counters)
+
+    if verdict == levelup.GATE_EMIT:
+        # 发射 = 单帧原子整批(实付上界 = 发射时授权值;授权不跨帧)
+        # + 清 handled 标记(design §2.2 第 1 条:升级后概率档已变,
+        # 本节点找牌与刷新判据需重评)。
+        counters['levelup_batch_emitted'] = \
+            counters.get('levelup_batch_emitted', 0) + 1
+        # 升级发出失效/伴生钩子(读数协议②:升 9 级成长基金独立
+        # 失效;节节高升任意升级 +1 伴生入金)。
+        shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
+        session_scope.clear_shop_handled(gs)
+        return [Emitted(CwActionLevelUpParam(
+            cost=int(click_cost), clicks=max(1, clicks),
+            auth_basis=arm_key), True, f'step3_levelup_batch:{arm_key}')]
+    if verdict != levelup.GATE_GOLD_SHORT:
+        # 未命中 / 资格门拦(拒因计数已由判定函数写入)/ 花后下界 defer
+        # (卖出只转化活期为裸金、花后金不变,此域凑金无益)= 零动作。
         return []
 
-    # ===== 授权帧(键不在)=====
-    # 奖励帧抑制(reward_node_suppressed 覆盖升级触发不覆盖刷新;抑制 =
-    # 结构性无授权,后续支付检查无须求值)。
-    from sr_od.application.currency_war.kernel.cw_reward_node import (
-        reward_node_suppressed,
+    # ===== 凑金(资格门未过因金不足;design §2.2 第 4 步第 2 条)=====
+    # 每帧一卖、重扫续卖(卖一张少一张,天然收敛):主路径 = 评估器
+    # 升级变现场景(排序键①费用带外②低星③金当量,场景级覆盖)。
+    cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
+    if cands:
+        out = _emit_sell_candidate(
+            session, gs, cands[0], reason='levelup_liquidate',
+            tag='levelup_liquidate_sell',
+            counter='levelup_liquidate_sell')
+        if out:
+            return out
+    # 主路径尽 → P78-5 兜底豁免(funding 通道对价;触发前提 = 主路径
+    # 空 ∧ 仍缺金——P78-5 四条件单一源 = sell_gate.funding_hold_
+    # fallback,本循环只拼装消费,11 号篇 §2 变现步;兜底腿保留照旧,
+    # 腿判定触发臂 = 本帧判定臂)。
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        locked_buy_cap_hold,
     )
-    if reward_node_suppressed(gs):
-        counters['levelup_reward_node_defer'] = \
-            counters.get('levelup_reward_node_defer', 0) + 1
-        return []
-    # 判据契约核验(criteria/contracts.py 契约表;消费位
-    # 经 ensure_contract,前提违例 = 弃权零动作 + 计数,契约纪律不断线)。
-    # 等级帽(注册表 level_max 单一源;备战域等级真值每帧观察新鲜,
-    # xp_ledger_stop 轮内盲区补位覆盖 shop 域逻辑态直写窗,此处不合取)。
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        sell_gate,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
-        contracts,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
+        sell_line_membership,
     )
-    reg = registry if registry is not None else DEFAULT_REGISTRY
-    if not contracts.ensure_contract(('levelup', 'lv9_stop'),
-                                     contracts.ContractCtx(), counters):
-        return []
-    if levelup.lv9_stop(level_of(gs), reg.level_max):
-        counters['levelup_reject_level_cap'] = \
-            counters.get('levelup_reject_level_cap', 0) + 1
-        return []
-    # 五分支判据(11 号篇 §2 触发源并集;契约前提 = 人口位板满
-    # 口径等级驱动 cap——消费位现读 max_units_of 传入核验)。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        max_units_of,
-    )
-    if not contracts.ensure_contract(
-            ('levelup', 'upgrade_trigger'),
-            contracts.ContractCtx(deploy_cap=max_units_of(gs)), counters):
-        return []
-    trig, arm_key = levelup.upgrade_trigger(gs, session, reg)
-    if not trig:
-        return []
-    counters[f'levelup_trigger_{arm_key}'] = \
-        counters.get(f'levelup_trigger_{arm_key}', 0) + 1
-    # 富余段域内判定与备战期标志(20 号稿 L3 域内让位载体:本备战期曾入
-    # 域即置标志,标志存续帧 P21 让位——「本备战期必花」语义,键式 =
-    # (plane, round),节点推进自动失效)。
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        in_must_spend_zone,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        plane_of,
-    )
-    phase = (plane_of(gs), round_num_of(gs))
-    if in_must_spend_zone(gold_of(gs), session):
-        st.cw4_must_spend_phase = phase
-    zone_hit = (in_must_spend_zone(gold_of(gs), session)
-                or st.cw4_must_spend_phase == phase)
-    if not zone_hit:
-        if not contracts.ensure_contract(('levelup', 'level_spend_blocked'),
-                                         contracts.ContractCtx(), counters):
-            return []
-        if levelup.level_spend_blocked(gs, session, reg):
-            # P21 危机带让位(域外帧;域内帧 = 富余花出义务优先)。
-            counters['levelup_crisis_defer'] = \
-                counters.get('levelup_crisis_defer', 0) + 1
-            return []
-    # 整级批成本(批大小 = 门槛表差值折击数,P48 整买引理形态)。
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        clicks_to_next_level,
-        xp_click_cost,
-    )
-    clicks = clicks_to_next_level(gs)
-    if clicks <= 0:
-        return []
-    cost = xp_click_cost(gs)
-    batch_cost = clicks * cost
-    # 血本位支付检查([40]②:血余额 ≥ 下一级血成本才发整级授权,否则
-    # 零购买;金本位局直通)。
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        blood_xp_gate_for,
-    )
-    if not blood_xp_gate_for(gs, session):
-        counters['levelup_blood_gate_defer'] = \
-            counters.get('levelup_blood_gate_defer', 0) + 1
-        return []
-    from sr_od.application.currency_war.kernel.cw_investments import (
-        blood_xp_mode,
-    )
-    if blood_xp_mode(session) is not None:
-        # 血本位局:无变现步,授权帧即执行帧(血余额为静态阈值,无逐帧
-        # 重闸复发面;闸已在上行过 = 发出条件成立)。
-        shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
-        return [Emitted(CwActionLevelUpParam(
-            cost=int(cost), clicks=clicks, auth_basis=arm_key),
-            True, f'step3_levelup_batch:{arm_key}')]
-    # 金本位:发出前花后金下界(保底金门全域 + 优化分支利息线差额保留;
-    # 预估花后金 = 裸金 + 活期退金 − 批成本,保守下界)。
-    liquid = _bench_liquid_gold(gs)
-    if not _levelup_floor_ok(gs, session, arm_key,
-                             gold_of(gs) + liquid - batch_cost):
-        key = ('levelup_reserve_line_defer'
-               if arm_key in (levelup.ARM_PROB_ACCOUNT, levelup.ARM_STAY_GATE)
-               else 'levelup_guarantee_floor_defer')
-        counters[key] = counters.get(key, 0) + 1
-        return []
-    # 攒批资金到位判定(裸金 + bench 非线内 1★ 活期退金 ≥ 批成本;
-    # P48 整买纪律消费经契约核验)。
-    if gold_of(gs) >= batch_cost:
-        if contracts.ensure_contract(
-                ('levelup', 'spend_unified'),
-                contracts.ContractCtx(gold=gold_of(gs)), counters) \
-                and levelup.spend_unified(clicks, gold_of(gs), cost):
-            # 裸金足:同帧执行帧(P48 整买纪律放行,一次买齐)。
-            shop_sess.note_levelup_emission(gs, level_of(gs) + 1)
-            return [Emitted(CwActionLevelUpParam(
-                cost=int(cost), clicks=clicks, auth_basis=arm_key),
-                True, f'step3_levelup_batch:{arm_key}')]
-        return []
-    if gold_of(gs) + liquid >= batch_cost:
-        # 裸金不足,活期补:置预授权键(含授权批成本上界)→ 变现序列
-        # (首卖本帧发出;中间态 = 键在 ∧ 缺口未闭合 ∧ 候选尚存 → 下帧
-        # 续卖,无商店域外金动作插入——零金穿插分域见 11 号篇 §2
-        # §2.2 相邻性语义)。
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-            LevelUpPreAuth,
+    batch_cost = clicks * click_cost
+    line = tuple(sorted(sell_line_membership(gs)))
+    fallback = sell_gate.funding_hold_fallback(
+        session, line, bench_entries_of(gs), gold=gold_of(gs),
+        need=batch_cost,
+        a_exclusions=sell_gate.sell_exclusions(
+            session, line, channel='funding',
+            current_round=round_num_of(gs),
+            cap_hold=locked_buy_cap_hold(gs)),
+        deployed=_deployed_units_of(gs),
+        cap_hold=locked_buy_cap_hold(gs))
+    if fallback:
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            bench_slot_unit,
         )
-        st.levelup_preauth = LevelUpPreAuth(gold_cost=batch_cost,
-                                            blood_cost=0,
-                                            source_arm=arm_key)
-        counters['levelup_preauth_issued'] = \
-            counters.get('levelup_preauth_issued', 0) + 1
-        cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
-        if cands:
-            out = _emit_sell_candidate(
-                session, gs, cands[0], reason='levelup_liquidate',
-                tag='levelup_liquidate_sell',
-                counter='levelup_liquidate_sell')
-            if out:
-                return out
-        counters['levelup_liquidate_exhausted'] = \
-            counters.get('levelup_liquidate_exhausted', 0) + 1
-        return []
-    # 攒批资金(含活期口径)不足整级 → 一击不买(攒钱模式,等节点收入;
-    # 压牌库买入受整买预留约束不会吃掉攒批资金,23 号篇序 4 压牌库)。
-    counters['levelup_stockpile_wait'] = \
-        counters.get('levelup_stockpile_wait', 0) + 1
+        u = bench_slot_unit(fallback[0])
+        if u is not None and _fallback_legs_ok(session, gs, arm_key,
+                                               str(u.char_id or '')):
+            idx = mandate._bench_container_idx(gs, fallback[0])
+            if idx is not None:
+                mandate.record_round_sold(session, gs,
+                                          str(u.char_id or ''))
+                counters['levelup_funding_fallback_sell'] = \
+                    counters.get('levelup_funding_fallback_sell', 0) + 1
+                return [Emitted(CwActionSellBenchParam(
+                    bench_idx=idx, reason='levelup_liquidate'),
+                    True, 'levelup_liquidate_sell')]
+        if u is not None:
+            # 腿拒暴露(两腿必要条件不过——偏好账分支变卖有价资产):
+            # 零动作,分键区分「无兜底候选」与「候选被腿拒」。
+            counters['levelup_fallback_leg_reject'] = \
+                counters.get('levelup_fallback_leg_reject', 0) + 1
+    # 候选穷尽(含兜底腿尽)仍不足 → 本帧零动作等节点收入(不部分执行)。
+    counters['levelup_liquidate_exhausted'] = \
+        counters.get('levelup_liquidate_exhausted', 0) + 1
     return []
 
 
 def _step3_liquidation_pending(session: StrategySession,
                                gs: GameState) -> bool:
-    """升级变现序列在途判定(第 7 步凑息的抑制条件;11 号篇 §2
-    帧交错规则①:变现序列优先于第 7 步凑息——同池 1★ 全额退候选
-    竞争,抑制条件 = 键在 ∧ 变现候选尚存;变现穷尽后竞争消失、第 7 步
-    凑息恢复——键保留至节点末不连带抑制凑息)。
+    """升级凑金序列在途判定(节末凑息步的抑制条件;11 号篇 §2
+    帧交错规则①:凑金序列优先于节末凑息——同池候选竞争,凑金优先;
+    凑金穷尽后竞争消失、凑息恢复)。
 
-    候选面与变现步同参(``levelup_liquidate_prep`` 场景评估一次),本
+    (退役挂账:键读随升级发射单帧原子化失去在产写端(2026-10-17
+    迭代 design §2.5① 消费面①,T-4 迁移为判据同帧重评),本函数现役
+    恒 False = 抑制面自然消失;保留死读至 T-4 清理,不加新引用。)
+
+    候选面与凑金步同参(``levelup_liquidate_prep`` 场景评估一次),本
     函数零独立口径。"""
     st = state_of(session)
     if st.levelup_preauth is None:
@@ -1130,7 +1012,7 @@ def _step3_liquidation_pending(session: StrategySession,
     return bool(cands)
 
 
-# ============================================================ 第 4 步:商店会话入口
+# ============================================================ 第 5 步:商店会话入口
 
 
 def _open_shop_for_gold_read(session: StrategySession,
@@ -1173,7 +1055,7 @@ def _step4_shop_unblock_recheck(session: StrategySession,
 
 def _step4_shop_session_pending(session: StrategySession,
                                 gs: GameState) -> bool:
-    """第 4 步商店会话触发判定(22 号篇 §1 第 4 步;契约 A)。
+    """商店会话步触发判定(工序第 5 步;22 号篇 §1 第 4 步;契约 A)。
 
     入口序:解拦复核(读数腿开店不清标记——锚定后标记门
     即关,下帧复核继续)→ 解拦腿清标记 → 标记 ≠ 当前节点号判定
@@ -1189,17 +1071,17 @@ def _step4_shop_session_pending(session: StrategySession,
     return not session_scope.shop_handled_for_current_node(gs)
 
 
-# ============================================================ 第 5 步:部署调整
+# ============================================================ 第 6 步:部署调整
 
 
 def _step5_deploy(session: StrategySession, gs: GameState,
                   frame: MandateFrame,
-                  step3_actions: list[Emitted]) -> list[Emitted]:
-    """第 5 步部署调整(22 号篇 §1 第 5 步;部署面判据照旧,
+                  levelup_actions: list[Emitted]) -> list[Emitted]:
+    """部署调整步(工序第 6 步;22 号篇 §1 第 5 步;部署面判据照旧,
     判据本体不改动,仅调用时机移到商店会话之后)。
 
     结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
-    M1 空槽补位结构性收敛**——九段全扫单动作循环下第 3 步命中即
+    M1 空槽补位结构性收敛**——十段全扫单动作循环下第 4 步命中即
     emit 返回,升级帧到不了本步;下帧全扫 deploy_vacancy 更新后 M1
     以零卖出成本接管,「卖出不可逆 > 等一帧」的原语义由该结构承载,
     不设独立 M1′ 分支):
@@ -1227,9 +1109,9 @@ def _step5_deploy(session: StrategySession, gs: GameState,
         _emit_deploy_moves_scoped(out, frame, session, gs,
                                   'm1_deploy', window_scope=True)
     # M1″ 板满换阵(m1p 换血;up 候选经窗口适用范围包装注入)。defer_actions
-    # 输入在九段全扫下单动作循环下结构性恒空(第 3 步命中即 emit 返回,
+    # 输入在十段全扫下单动作循环下结构性恒空(第 4 步命中即 emit 返回,
     # 升级帧到不了本步)——同帧升级推迟换血的语义由结构承载:升级帧
-    # 第 3 步先行返回 + 下帧 M1 空槽补位以零卖出成本接管(卖出不可逆
+    # 第 4 步先行返回 + 下帧 M1 空槽补位以零卖出成本接管(卖出不可逆
     # > 等一帧)。
     if not any(isinstance(e.action, (CwActionDeployMoveParam,
                                      CwActionSellDeployedParam))
@@ -1237,16 +1119,16 @@ def _step5_deploy(session: StrategySession, gs: GameState,
         out.extend(mandate.emit_swap_redeploy(
             frame, session, gs,
             select_up=_make_windowed_select_up(session, gs),
-            defer_actions=step3_actions))
+            defer_actions=levelup_actions))
     return out
 
 
-# ============================================================ 第 6 步:装备与工具
+# ============================================================ 第 7 步:装备与工具
 
 
 def _step6_equip_tools(session: StrategySession, gs: GameState,
                        registry: DecisionV2Registry | None) -> list[Emitted]:
-    """第 6 步装备与工具(22 号篇 §1 第 6 步)。
+    """装备与工具步(工序第 7 步;22 号篇 §1 第 6 步)。
 
     - 装备穿戴 = 现行完整实现整体保留(合成规划/分配/转移;计划产出位
       单一源 = kernel/cw_equip_wear_plan._build_equip_wear_plan);
@@ -1355,7 +1237,7 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
     return out
 
 
-# ============================================================ 第 7 步:节末凑息
+# ============================================================ 第 8 步:节末凑息
 
 
 #: 凑息保护档阻断观测键(统一保护集 design §2.3 凑息语义;分键写入端
@@ -1407,7 +1289,7 @@ def _protected_member_blocks_interest(gs: GameState, gap: int) -> bool:
 
 def _step7_node_end_interest(session: StrategySession,
                              gs: GameState) -> list[Emitted]:
-    """第 7 步节末凑息(22 号篇 §1 第 7 步;候选池 = 备战席 ∪
+    """节末凑息步(工序第 8 步;22 号篇 §1 第 7 步;候选池 = 备战席 ∪
     场上无关角色〔来金族,用户裁定 2026-10-13〕)。
 
     触发 = 存在「单件退金 ≥ 到下一利息档缺口」的资格候选(缺口单一源
@@ -1416,11 +1298,13 @@ def _step7_node_end_interest(session: StrategySession,
     化的前件)。动作 = 取退金 ≥ 缺口中退金最小的 1★ 全额退件(评估器
     'node_end_interest' 场景过滤),逐帧单张:跨档后下帧按新金位重评,
     缺口重算自然收敛。空板守卫(deployed = 0 帧哑火)= 评估器 as-built
-    并入语义。本步卖出的退金由第 4 步入口统一复核(23 号篇契约 A)。
+    并入语义。本步卖出的退金由第 5 步入口统一复核(23 号篇契约 A)。
 
-    升级变现序列在途抑制(11 号篇 §2 帧交错规则①):键在
-    ∧ 变现候选尚存时本步零发出(同池候选竞争,变现优先);变现穷尽
-    后竞争消失、本步恢复。
+    升级凑金序列在途抑制(11 号篇 §2 帧交错规则①):凑金在途
+    ∧ 变现候选尚存时本步零发出(同池候选竞争,凑金优先);凑金穷尽
+    后竞争消失、本步恢复。(抑制条件载体 = 预授权键读,该键写端已随
+    升级发射单帧原子化退役——本抑制现役恒不触发,载体迁移随 2026-10-17
+    迭代 §2.5①/T-4。)
 
     金位读数门(23 号篇金位读数形态):账面失效帧无法判「缺口与候选
     退金」→ 读数开店锚定(标记不动),下帧重评。
