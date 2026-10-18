@@ -114,7 +114,7 @@ log = logging.getLogger(__name__)
 
 
 #: ev_arm 值域(R1-1 实验因子;**商店域 shop.py 消费中**——备战 emit 的
-#: 本常量为商店域校验的兼容单一源(备战域 EV pass 不在九段工序内),
+#: 本常量为商店域校验的兼容单一源(备战域 EV pass 不在十段工序内),
 #: 随商店会话正本维护(23 号篇)。
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 
@@ -268,10 +268,10 @@ def truncate_frame_stable(actions: list[CwAction],
     return out
 
 
-# ============================================================ 上阵窗口适用范围(22 号篇 第 5 步)
+# ============================================================ 上阵窗口适用范围(22 号篇 第 6 步)
 
 #: 终局库成员并集(core ∪ shared 全线去重;纯终局件谓词的「终局库成员」
-#: 腿——未锁定期按全库知识判定的数据面,22 号篇 第 5 步)。
+#: 腿——未锁定期按全库知识判定的数据面,22 号篇 第 6 步)。
 _ENDGAME_LIBRARY_MEMBERS: frozenset[str] = frozenset(
     name
     for _comp in COMP_LIBRARY
@@ -279,7 +279,7 @@ _ENDGAME_LIBRARY_MEMBERS: frozenset[str] = frozenset(
 
 
 def _entry_window_open(gs: GameState, char_id: str) -> bool:
-    """角色上线窗口判定(22 号篇 第 5 步;数据 = COMP_LIBRARY
+    """角色上线窗口判定(22 号篇 第 6 步;数据 = COMP_LIBRARY
     ``entry_signals`` 建表,缺行 fail 恒假)。
 
     查线顺序:锁定 → 仅锁定线的信号行;未锁定 → 全库任一含该角色的线
@@ -324,7 +324,7 @@ def _entry_window_open(gs: GameState, char_id: str) -> bool:
 
 def _deploy_window_blocked(session: StrategySession,
                            gs: GameState, char_id: str) -> bool:
-    """纯终局件窗口适用范围判定(22 号篇 第 5 步)。
+    """纯终局件窗口适用范围判定(22 号篇 第 6 步)。
 
     纯终局件谓词 = 终局库成员 ∧ 非现行过渡配方成员(未锁定期按全库
     知识判定,锁定后按锁定线名单);窗口未到 → True(挡上阵)。过渡∩
@@ -363,7 +363,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               tag: str, *, window_scope: bool) -> None:
     """部署动作发出点(第 0 步态 1 与第 6 步共用;选人/落位/对位单一源 =
     ``deploy_plan.deploy_plan_moves``——判据本体不改动,prep_pipeline
-    22 号篇 §1 第 5 步)。
+    22 号篇 §1 第 6 步)。
 
     ``window_scope`` = 是否施加上阵窗口适用范围:第 6 步 True(终局成员在
     其上线窗口前不上阵);第 0 步态 1 False(告警帧豁免——上阵纯为腾槽
@@ -414,7 +414,7 @@ def _make_windowed_select_up(session: StrategySession, gs: GameState):
     return _select_up
 
 
-# ============================================================ emit(九段全扫)
+# ============================================================ emit(十段全扫)
 
 
 def emit(session: StrategySession,
@@ -587,7 +587,7 @@ def _consumable_open_action(gs: GameState) -> Emitted | None:
     触发 = bench 槽位 kind ∈ bookcard/supply_box/tome(现行容器
     BenchSlot.kind 判定);点开顺序 = 书册卡 → 补给箱 → 星徽秘典
     (现行实体面分支序,入口清场旧全局序在案)。星徽秘典占席 = 待实机
-    证实项(点开出路对其防御性纳入,22 号篇 第 1 步)。动作参数
+    证实项(点开出路对其防御性纳入,22 号篇 第 2 步)。动作参数
     = 物理槽号(下标 + 1,执行器按槽号现算点击坐标)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
@@ -690,7 +690,7 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
 
 
 def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
-    """第 2 步晶矿(22 号篇 §1 第 2 步;现行晶矿读口
+    """第 3 步晶矿(22 号篇 §1 第 3 步;现行晶矿读口
     ``ore_click_targets_of``)。
 
     - 席位未满:点全部晶矿(判据 = 全点;执行面按批式点击上界分批推进,
@@ -1025,7 +1025,7 @@ def _step3_liquidation_pending(session: StrategySession,
 
 def _open_shop_for_gold_read(session: StrategySession,
                              gs: GameState) -> list[Emitted]:
-    """金位读数开商店(22 号篇 §1 第 4 步前置/第 3/7 步读数门;
+    """金位读数开商店(22 号篇 §1 第 5 步前置/第 4/8 步读数门;
     23 号篇金位读数形态)。
 
     账面失效帧的金位供给形态:开店 → 入口观察锚定账面 → 会话决策
@@ -1063,7 +1063,7 @@ def _step4_shop_unblock_recheck(session: StrategySession,
 
 def _step4_shop_session_pending(session: StrategySession,
                                 gs: GameState) -> bool:
-    """商店会话步触发判定(工序第 5 步;22 号篇 §1 第 4 步;契约 A)。
+    """商店会话步触发判定(工序第 5 步;22 号篇 §1 第 5 步;契约 A)。
 
     入口序:解拦复核(读数腿开店不清标记——锚定后标记门
     即关,下帧复核继续)→ 解拦腿清标记 → 标记 ≠ 当前节点号判定
@@ -1085,7 +1085,7 @@ def _step4_shop_session_pending(session: StrategySession,
 def _step5_deploy(session: StrategySession, gs: GameState,
                   frame: MandateFrame,
                   levelup_actions: list[Emitted]) -> list[Emitted]:
-    """部署调整步(工序第 6 步;22 号篇 §1 第 5 步;部署面判据照旧,
+    """部署调整步(工序第 6 步;22 号篇 §1 第 6 步;部署面判据照旧,
     判据本体不改动,仅调用时机移到商店会话之后)。
 
     结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
@@ -1136,7 +1136,7 @@ def _step5_deploy(session: StrategySession, gs: GameState,
 
 def _step6_equip_tools(session: StrategySession, gs: GameState,
                        registry: DecisionV2Registry | None) -> list[Emitted]:
-    """装备与工具步(工序第 7 步;22 号篇 §1 第 6 步)。
+    """装备与工具步(工序第 7 步;22 号篇 §1 第 7 步)。
 
     - 装备穿戴 = 现行完整实现整体保留(合成规划/分配/转移;计划产出位
       单一源 = kernel/cw_equip_wear_plan._build_equip_wear_plan);
@@ -1299,7 +1299,7 @@ def _step7_node_end_interest(session: StrategySession,
                              gs: GameState,
                              registry: DecisionV2Registry | None
                              ) -> list[Emitted]:
-    """节末凑息步(工序第 8 步;22 号篇 §1 第 7 步;候选池 = 备战席 ∪
+    """节末凑息步(工序第 8 步;22 号篇 §1 第 8 步;候选池 = 备战席 ∪
     场上无关角色〔来金族,用户裁定 2026-10-13〕)。
 
     触发 = 存在「单件退金 ≥ 到下一利息档缺口」的资格候选(缺口单一源

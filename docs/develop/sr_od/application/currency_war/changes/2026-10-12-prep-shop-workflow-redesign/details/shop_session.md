@@ -147,8 +147,8 @@
 | 满席腾位关店链（关店→备战卖→重开） | 废止（被店内置换账替代） |
 | 卖备战/买经验收缩裁定（2026-09-14） | 废止（本篇 §3/§2.3 替代） |
 | 溢出强收窄单卖 | 随备战工序重排退役（溢出由自救替代，prep_pipeline §1 第 0 步） |
-| 姿态授权对账（`_reconcile_posture_authorization`） | 退役（其授权面随拦截层删除消亡；血闸类拒发的落点 = 备战第 3 步零动作继续扫描，prep_pipeline §1 第 3 步） |
-| 读数开商店（备战域第二形态，近亲符号 = WANTED_REOPEN / `cw4_shop_wanted_pending` 族） | **金位读数形态保留，腾席链形态退役**：as-built 备战帧金位不可观察（cw_screen_prep「gold 仅 shop 开态可信」门 + economy_cycle prep 帧恒 0 未采 + cw_screen_shop 备战帧 gold 门三处直证（符号锚）），金位读数形态 = 备战域金位唯一供给（第 3 步攒批/第 7 步凑息/备战域变现消费）；腾席链消费场景废止（3.7 判据 = 腾席链消费点零命中 grep，金位读数形态不在退役面——line_and_upgrade §1.6 统一口径） |
+| 姿态授权对账（`_reconcile_posture_authorization`） | 退役（其授权面随拦截层删除消亡；血闸类拒发的落点 = 备战第 4 步零动作继续扫描，prep_pipeline §1） |
+| 读数开商店（备战域第二形态，近亲符号 = WANTED_REOPEN / `cw4_shop_wanted_pending` 族） | **金位读数形态保留，腾席链形态退役**：as-built 备战帧金位不可观察（cw_screen_prep「gold 仅 shop 开态可信」门 + economy_cycle prep 帧恒 0 未采 + cw_screen_shop 备战帧 gold 门三处直证（符号锚）），金位读数形态 = 备战域金位唯一供给（第 4 步攒批/第 8 步节末凑息/备战域凑金消费）；腾席链消费场景废止（3.7 判据 = 腾席链消费点零命中 grep，金位读数形态不在退役面——line_and_upgrade §1.6 统一口径） |
 
 ## 关键取舍
 

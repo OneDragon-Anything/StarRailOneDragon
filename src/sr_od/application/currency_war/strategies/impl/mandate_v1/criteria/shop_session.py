@@ -1,14 +1,14 @@
 """criteria/shop_session——商店会话读数协议与解拦复核(shop_session §4.2)。
 
-本模块 = 商店会话的共用判据面(宪法第 6 条:备战第 4 步与商店入口两画面
+本模块 = 商店会话的共用判据面(宪法第 6 条:备战第 5 步与商店入口两画面
 消费同一函数,非画面文件互 import;存储 = session_scope/StrategyState)。
 
 ## 金位读数协议(账面维持 + 事件全集登记制 + 会话入口再锚定)
 
 as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信」门
 + economy_cycle prep 帧恒 0 未采 + cw_screen_shop 备战帧 gold 门三处直证),
-备战域金位唯一供给 = 本协议的账面(第 3 步攒批/第 7 步凑息/备战域变现/
-第 4 步解拦复核金位腿消费):
+备战域金位唯一供给 = 本协议的账面(第 4 步攒批/第 8 步节末凑息/备战域凑金/
+第 5 步解拦复核金位腿消费):
 
 - **① 记账层(已知 delta 多写点)**:买牌花费/卖出退金/购买经验单价
   由执行链上报函数写 ``gs.gold``(动作 op 自上报,期望态投影),账面
@@ -38,7 +38,7 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
   (:func:`session_gold`)判缺口,禁每笔触发开店重读(防震荡申报的自洽
   前提);账面与下一实读偏差 = 漏账侦测信号(实机观察点)。
 
-## 解拦复核(shop_session §4.2;唯一触发点 = 备战第 4 步入口)
+## 解拦复核(shop_session §4.2;唯一触发点 = 备战第 5 步入口)
 
 入口段(关门态)= :func:`shop_unblock_recheck`:判金位(账面)/席位空出
 (备战可观察),任一使清单记录拦因解除 → 解拦(调用方清标记开店);金位
@@ -254,7 +254,7 @@ def note_levelup_emission(gs: GameState, new_level: int) -> None:
     """升级动作发出的失效/入账挂点:升级 9 级(成长基金 +40,独立失效)+
     节节高升伴生(任意升级 +1,记账层)。
 
-    消费位 = 备战第 3 步执行帧与会话内升级执行位(整批动作发出帧);``new_level``
+    消费位 = 备战第 4 步升级执行帧与商店会话升级意图出口(整批动作发出/转场帧);``new_level``
     = 发出后到达等级(本批 = 当前级 + 1)。"""
     account_upgrade_companion_gold(gs)
     if int(new_level) >= 9:
@@ -331,7 +331,7 @@ class RecheckOutcome:
 
 
 def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
-    """解拦复核判定函数(入口段·关门态;备战第 4 步入口唯一触发)。
+    """解拦复核判定函数(入口段·关门态;备战第 5 步入口唯一触发)。
 
     - 席满类:席位空出 = 备战可观察(``bench_free_slots`` 现读 > 0);
     - 金不足类:金位 = 账面供给(备战帧直读不可观察);账面失效时申报

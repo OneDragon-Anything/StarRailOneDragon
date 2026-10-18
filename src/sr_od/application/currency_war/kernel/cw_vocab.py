@@ -257,10 +257,10 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'line_switch_collapse',     # 线账闭合孤儿清算(证明打标制)
     'm4_fuel_sell',             # M4 腾席/压牌库溢出清位(腾席分支构造事实)
-    'interest_prep',            # 凑利息卖出(金位缺口触发;九段工序第 7 步节末凑利息承继同键)
+    'interest_prep',            # 凑利息卖出(金位缺口触发;十段工序第 8 步节末凑利息承继同键)
     'funding_support',          # 支付筹资卖出(义务买金币位保障)
-    'self_rescue_sell',         # 溢出告警自救卖出(九段工序第 0 步态 3;自救扩展面)
-    'ore_make_room',            # 晶矿腾位垫件卖出(九段工序第 2 步;垫件谓词过滤后取价值最小)
+    'self_rescue_sell',         # 溢出告警自救卖出(十段工序第 0 步态 3;自救扩展面)
+    'ore_make_room',            # 晶矿腾位垫件卖出(十段工序第 3 步;垫件谓词过滤后取价值最小)
 })
 
 

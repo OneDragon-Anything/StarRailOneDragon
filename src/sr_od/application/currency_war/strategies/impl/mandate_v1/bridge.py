@@ -366,7 +366,7 @@ class MandateV1Strategy(CwFlowStrategy):
 def decide_prep_frame(session: StrategySession, config: object,
                       *, registry: DecisionV2Registry | None = None,
                       ) -> list[CwAction]:
-    """备战决策帧(九段全扫 + 帧稳定截断;纯函数;决策输入 =
+    """备战决策帧(十段全扫 + 帧稳定截断;纯函数;决策输入 =
     容器 game state 直读)。
 
     截断语境供给:conditional 类名-槽一致性复检消费的 bench 占用槽位集,

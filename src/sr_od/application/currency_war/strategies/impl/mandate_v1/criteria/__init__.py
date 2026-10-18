@@ -40,7 +40,7 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('levelup', 'upgrade_trigger'): (
         '判据/闭式', '不旁路',
         '五臂触发并集(line_and_upgrade §2.1:arm0/概率账/人口位/'
-        '溢余段-L3/停留门;发射位 = 备战第 3 步与会话内升级检查)'),
+        '溢余段-L3/停留门;消费位 = 备战第 4 步升级检查与商店会话升级意图出口两屏同参)'),
     ('levelup', 'prob_band_of_cost'): (
         '状态函数', '不旁路',
         '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,line_and_'

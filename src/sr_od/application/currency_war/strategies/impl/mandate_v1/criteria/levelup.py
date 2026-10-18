@@ -62,7 +62,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
     上限)毫无数值或语义关联,禁接错源。
 
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
-    **必填**:消费位(备战第 3 步/会话内升级检查两处)已全量接线,
+    **必填**:消费位(备战第 4 步升级检查/商店会话升级意图出口两屏同参)已全量接线,
     过渡缺省通道已拆除;禁新消费位依赖缺省。
     """
     return level >= level_max
@@ -704,7 +704,7 @@ def level_spend_blocked(gs: GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None) -> bool:
     """P21 血预算线(危机带内整批经验授权让位保命面;line_and_upgrade
     §2.3 保留件——P21 已证:hp ≤ 停升级线内升级收益到账 ≥1 战之后,
-    EV 严格为负)。动作发出点(备战第 3 步/会话内升级检查)消费;富余段
+    EV 严格为负)。动作发出点(备战第 4 步升级检查/商店会话升级意图出口)消费;富余段
     域内让位照 20 号稿(调用方判域)。
 
     ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);

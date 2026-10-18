@@ -323,7 +323,7 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       COMP_LIBRARY)按未锁定处置拒绝写入——判定内核只产注册表名,
       此分支为防御位;
     - 连带动作三件:
-      ① 清商店会话标记(``shop_handled``——下一轮备战第 4 步按锁定
+      ① 清商店会话标记(``shop_handled``——下一轮备战第 5 步按锁定
          线名单重开会话全量评估,shop_session §4.2「方向锁定不走清单
          解拦」);
       ② 候选快照**清空**并停算(锁定后只读锁定线,无候选维护;清空

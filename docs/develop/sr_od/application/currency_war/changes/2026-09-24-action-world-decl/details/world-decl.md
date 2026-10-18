@@ -25,11 +25,12 @@ class WorldDecl:
 - 载体：`LogicOutcome` 新增 `world_decl: WorldDecl | None = None`（dataclass 默认字段，全量构造点零改动兼容）。
 - 构造义务：上报函数 `applied=True` 出口必构造；`applied=False`（拒绝/未发出）= `None`——对齐现行「applied=False 零广播」（`cw_event_hooks.transition_event_on_applied` 装饰器语义，本迭代后该语义由构造纪律承载）。
 - **签名改形申报（D1）**：18 个上报落点中 17 个现役返回 `LogicOutcome`，唯 `report_node_advance` 返回 `bool`（推进落账位）。本迭代将其返回形态改为 `LogicOutcome`（`applied` = 推进落账位，`world_decl` = node_advance 声明），两个 bool 消费点（`cw_op_settle_confirm.py` 的 `_advanced` 日志、`cw_pick_supply_action.py` 的确认分支）随 3.2 改造为 LogicOutcome 消费。
-- 语义类（`trigger`）收敛集：**backend `advance` 分派表为单一源**（下 §3），现役 9 类。**准入判据一句话：上报函数/获得链已写的（腾席/离屏/动作直接后果）不进 trigger；只有 backend 专属的活才进**（sim 经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）。**值零新词，沿用现役动作名**（`node_advance`/`battle_resolve` 为归并过程名）；`''` = 纯画面转移（backend 只按 `next_screen` 推进，零专属过程）。禁自造动宾变形（`box_pick` 之类与画面名/动作名错位的词一律不进本集）：
+- 语义类（`trigger`）收敛集：**backend `advance` 分派表为单一源**（下 §3），现役 10 类（2026-10-17 迭代 T-3 增 `spy_shop_refresh`）。**准入判据一句话：上报函数/获得链已写的（腾席/离屏/动作直接后果）不进 trigger；只有 backend 专属的活才进**（sim 经济结算/队列出队/候选采样/排除集簿记——实机里「游戏自己算」的部分）。**值零新词，沿用现役动作名**（`node_advance`/`battle_resolve` 为归并过程名）；`''` = 纯画面转移（backend 只按 `next_screen` 推进，零专属过程）。禁自造动宾变形（`box_pick` 之类与画面名/动作名错位的词一律不进本集）：
 
 ```
 node_advance / battle_resolve / open_box / pick_box_card / pick_megastar /
-pick_planner / pick_supply / pick_invest_env / pick_invest_strategy
+pick_planner / pick_supply / pick_invest_env / pick_invest_strategy /
+spy_shop_refresh
 ```
 
 纯转移动作（`trigger=''`）：open_bookcard（腾席写端在其上报）、pick_partner/pick_fortune/pick_wish_trial/pick_star_tome/pick_expert_invite（零写占位，真值归观察）、close_shop（离屏写端在其上报）——backend 仅按 `next_screen` 推进画面。
@@ -58,6 +59,7 @@ pick_planner / pick_supply / pick_invest_env / pick_invest_strategy
 | 16 | pick_star_tome | `cw_action_report/zero_writes.py` | `''` | `'货币战争-备战'` | 已核定（attack.md §二：bookcard.md §5 → 底层屏；星徽秘典弹窗叠备战） |
 | 17 | pick_expert_invite | `cw_action_report/zero_writes.py` | `''` | `'货币战争-备战'` | 已核定（attack.md §二：expert_invite.md §3 明示「弹窗关回备战」） |
 | 18 | close_shop | `cw_action_report/close_shop.py` | `''` | `'货币战争-备战'` | 已核（shop.md §5 关店回备战；离屏写端 = 本上报） |
+| 19 | level_up（条件声明） | `kernel/cw_action_report/level_up.py::report_action_level_up_param`（2026-10-17 迭代 T-3 增） | `spy_shop_refresh` | `'货币战争-备战'` | 已核（升级真跨级 ∧ 持商业间谍〔EffectSpec 300201 判定单一源 `cw_investments.spy_on_level_up_active`〕才附声明,`applied=True` 无间谍/未跨级 = None——条件构造点,准入判据「backend 专属活」例外申报:世界腿 = sim 抽 5 偷 3 呈现牌面,实机端游戏自算故进 trigger;单一源 = backend `ADVANCE_TRIGGER_KINDS`,键集已扩) |
 
 **`node_advance` 的 next_screen 推导规则**（声明构造点 = `report_node_advance` 推进落账**后**；`node_ord` 已是新节点序——序数字段随推进写，与观察镜像 `gs.node` 无关，见 §1 单值依据/R1 复审定案）：
 
@@ -142,7 +144,7 @@ cw_sim_ports.declare_world(gs_outcome.world_decl)
 ## 关键取舍
 
 - **声明双维互补，而非单维「下一画面」**：曾考虑只返回画面集（实机判断 + sim 挑选），放弃——sim 的节点窗/战斗结算是**过程**不是画面，画面集承载不了触发时机；反之 `trigger` 在实机无消费面。两维各司其职，消费强度互补（design.md §2.1）。
-- **`trigger` 9 类 + 空，而非进一步收敛到 2 类过程**：曾考虑选卡族全部归纯转移由 backend 自容器推导细分，放弃——`pick_invest_env/strategy` 的排除集累计、`pick_box_card` 的装备入栏、`pick_supply` 的宝钻写是动作特异性后果（写端 = backend 私有簿记，上报零写），推导 = backend 第二份「动作→后果」账，恰是本迭代要消灭的形态。9 类的单一源 = `advance` 分派表，新增动作若落新类才扩表。**准入判据 = 写端归属**：上报/获得链已写的（腾席/离屏/直接后果）不进 trigger（open_bookcard/close_shop/五零档选卡因此降为 `''` 纯转移）；仅 backend 专属簿记与 sim 经济结算进。
+- **`trigger` 10 类 + 空（2026-10-17 迭代 T-3 增 `spy_shop_refresh`），而非进一步收敛到 2 类过程**：曾考虑选卡族全部归纯转移由 backend 自容器推导细分，放弃——`pick_invest_env/strategy` 的排除集累计、`pick_box_card` 的装备入栏、`pick_supply` 的宝钻写是动作特异性后果（写端 = backend 私有簿记，上报零写），推导 = backend 第二份「动作→后果」账，恰是本迭代要消灭的形态。类集的单一源 = `advance` 分派表（`ADVANCE_TRIGGER_KINDS`），新增动作若落新类才扩表。**准入判据 = 写端归属**：上报/获得链已写的（腾席/离屏/直接后果）不进 trigger（open_bookcard/close_shop/五零档选卡因此降为 `''` 纯转移）；仅 backend 专属簿记与 sim 经济结算进（`spy_shop_refresh` = 条件声明例外申报,见 §2 表 19 行）。
 - **`trigger` 值零新词（沿用现役动作名）**：曾考虑动宾归一命名（如 `box_open`/`box_pick`），放弃——与现役动作名（`open_box`/`pick_box_card`）错位、与画面名（box_pick = `CwScreenBoxPick` 武装箱选择画面）撞车，读者对不上号；归并类的 `node_advance`/`battle_resolve`/`dismiss` 是真同型归并所需的过程语义名，非新词。
 - **喂入点在动作 op 内而非画面 op 派发点**：动作 op 自上报契约（op-layer.md §1.2「机械执行后 op 内直调自己的上报函数」）的自然延伸——`LogicOutcome` 在手即喂，画面 op 只读不转递；派发点分散于各画面 op，转递会加一跳传话。
 - **`terminal` 保留而非吸收**：refresh 族证明「访问终结」与「画面转移」正交（持久锚 = `operations/cw_op/cw_refresh_shop_action.py` 现役 terminal 登记 + `screens/README.md` §6 终结总表），声明只承载转移；吸收 = 丢刷新族的交回语义。

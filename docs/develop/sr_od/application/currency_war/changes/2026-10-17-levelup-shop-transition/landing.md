@@ -3,7 +3,7 @@
 ## 完成前常规检查（各阶段完成判据引用本节，不复述）
 
 - `uv run ruff check` 对本阶段改动文件全部通过；
-- 直接受影响测试全量一次通过（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`）；L3 全量（`sr-od-test/ -m "not slow"`）仅 3.5 收尾阶段要求；
+- 直接受影响测试全量一次通过（`$env:PYTHONPATH='src'; uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow"`）；L3 全量（`sr-od-test/ -m "not slow"`）仅 3.5 收尾阶段要求——**收尾判据表述（审查更正版）**：L3 currency_war 域全绿 + 全仓仅存 2 失败 = 既有资产态 id_mark 撞车（`test_id_mark[货币战争-结算/ended|win]`,已提交资产态的识别撞车;独立 screen_info 修复批由编排者跟踪,与本迭代零交集）,以该批收口后全量复跑为最终清零凭据；
 - 测试仓（sr-od-test，独立 git 仓）同步改动随本阶段提交（逐文件点名）；
 - 提交：逐文件点名 `git add`（禁 `-A`/目录级），commit 后 `git show --stat` 复核入库面 = 申报面；
 - 改 `src/` 代码后实机局前需重启项目 MCP server（本迭代为 sim 离线批，重启义务挂账到下次实机局前）。

@@ -1272,9 +1272,9 @@ def run_mandate(frame: MandateFrame,
     # M1′ 升级后补部署段已随升级判据重轴停用——迭代
     # 2026-10-12-prep-shop-workflow-redesign:判据内核 =
     # criteria/levelup.upgrade_trigger 五分支(arm0/概率账/人口位/富余段-L3/
-    # 停留门),动作发出点收拢为 entry.py 备战第 3 步(会话内升级检查归
-    # shop_session 重排)。升级后补部署无独立对应分支:九段全扫单
-    # 动作循环下第 3 步命中即返回,升级帧结构性到不了部署步——行为
+    # 停留门),动作发出点收拢为 entry.py 备战第 4 步升级检查(商店会话
+    # 保留升级意图出口转场关店)。升级后补部署无独立对应分支:十段全扫单
+    # 动作循环下第 4 步命中即返回,升级帧结构性到不了部署步——行为
     # 经下帧 M1 空槽补位收敛(deploy_vacancy 更新后 M1 命中,零卖出
     # 成本接管)。)
 
@@ -1291,7 +1291,7 @@ def run_mandate(frame: MandateFrame,
     # 单一判定,义务集∪新鲜度排除发出侧同吃)。
     # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,
     # 下帧 M1 空槽补位以零卖出成本接管——卖出不可逆 > 等一帧。
-    # (九段全扫动作发出面下 defer 输入结构性恒空——第 3 步命中即返回,
+    # (十段全扫动作发出面下 defer 输入结构性恒空——第 4 步命中即返回,
     # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面已登记路径。)
     # 动作发出点门(state_of(session).cw4_m1p_seam_verified):装配两侧(发出⇔执行)
     # 输入对齐核对通过前置 False = 发出关闭、m1p_input_seam_pending 暴露
@@ -1312,7 +1312,7 @@ def run_mandate(frame: MandateFrame,
     state_of(session).cw4_m1p_arm_pending = None
     state_of(session).cw4_m1p_plan_pending = None
     if not any(isinstance(e.action, (CwActionDeployMoveParam, CwActionSellDeployedParam)) for e in out):
-        # 提取为 emit_swap_redeploy(run_mandate 与 entry 九段第 5 步共用
+        # 提取为 emit_swap_redeploy(run_mandate 与 entry 十段第 6 步共用
         # 动作发出点;判据/状态写点原样迁出,零行为变化;defer_actions 传
         # 骨架 out 承载 m1p_defer_levelup 的同帧升级推迟判定)。
         out.extend(emit_swap_redeploy(frame, session, state,
@@ -1416,7 +1416,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
                        state: GameState, *,
                        select_up=None,
                        defer_actions: list | None = None) -> list[Emitted]:
-    """M1″ 板满换阵补部署动作发出点(run_mandate 与 entry 九段第 5 步共用;
+    """M1″ 板满换阵补部署动作发出点(run_mandate 与 entry 十段第 6 步共用;
     逻辑原样自 run_mandate m1p 块迁出,零行为变化)。
 
     判据单一源 = kernel ``cw_deploy_logic.select_swap_plan``(组合语义:
