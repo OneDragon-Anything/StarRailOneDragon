@@ -556,6 +556,15 @@ def rewrite_quality_for_pick(active_env: str | None,
 #: 遭遇档位数(U22 占位:实机四档旁证 + 加成表四档已定案)。
 ENCOUNTER_TIER_COUNT: int = 4
 
+#: sim 节点 kind → 结算环行 node_type 词表(T-33 结算环帧补写用;词表
+#: 正本 = live 结算行归一 cw_screen_battle_wait._normalize_node_type,
+#: kernel→operations 反向 import 禁止故同形内联;战斗类四键在表,
+#: supply 不经结算腿恒不入环)。
+_SIM_KIND_TO_RING_LABEL: dict[str, str] = {
+    'battle': '普通战斗', 'encounter': '遭遇',
+    'boss': 'boss', 'reward': '奖励',
+}
+
 #: 遭遇奖励包金占位(U22)。
 ENCOUNTER_REWARD_GOLD_PLACEHOLDER: int = 20
 
@@ -2060,6 +2069,30 @@ class SimBackend:
             outcome = replace(outcome, hp_delta=0)
         _floor, dead = apply_hp_outcome(self.gs, outcome)
         self._hp_trail_append()
+        # —— 结算环帧补写(T-33 完胜判定数据面,设计 §2.4):与 live 同一
+        # ring 读口——killed = won(killed 单一语义 = 「挑战成功」胜利标志,
+        # cw_settlement_obs.py 注释正本),hp_after = apply 后 gs.hp 现值
+        #(apply_hp_outcome 已写,与 live 结算屏读数同语义位)。node_type =
+        # sim kind → 结算行词表映射(词表正本 = live 结算行归一
+        # cw_screen_battle_wait._normalize_node_type;kernel→operations
+        # 反向 import 禁止,sim 侧同形内联)。写端走环单一写端口
+        # record_settlement_row(遭遇行随入经验表,encounter_tier=None
+        # 不改 tier_cleared 判据;补给不经本腿 = 零行,环语义不变)。
+        from sr_od.application.currency_war.kernel.cw_encounter_selection import (
+            record_settlement_row,
+        )
+        from sr_od.application.currency_war.kernel.cw_performance import (
+            RoundOutcome,
+        )
+        record_settlement_row(
+            self.gs,
+            RoundOutcome(round_num=node.round_num, plane=node.plane,
+                         node_type=kind, comp_tag='',
+                         killed=outcome.won,
+                         hp_after=int(self.gs.hp.value or 0)),
+            plane=node.plane, round_num=node.round_num,
+            node_type=_SIM_KIND_TO_RING_LABEL.get(kind, kind),
+            difficulty_node=None, encounter_tier=None)
         if dead:
             self._game_over()
             return

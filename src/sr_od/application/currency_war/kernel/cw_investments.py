@@ -2674,6 +2674,96 @@ def _validate_env_battle_grants() -> None:
 _validate_env_battle_grants()
 
 
+# ===== 环境「随机赠卡 + 节点上场锁」登记表(白名单制)=====
+# 立形首例 = 英雄登场(id 133「获得1个2星5费角色,19个节点后才能将其上场。
+# 战斗完胜后,上场节点额外提前1点。」,PlazaPortal('133'));登记本体 =
+# 上场锁期 + 完胜加速两个机制维度,GiftGrant(估值域)无归属字段——T-10
+# 裁决确立的「无锁随机赠卡归 GiftGrant.chars_random_immediate」不受影响,
+# 本表只收「赠卡带锁」形。消费面:发放腿 = cw_gain_chain.on_env_gained
+# (复用 random_char_pool 均匀采样 + env_grant_uid_seq 发号 + 解锁序位
+# 沿日程表步进),完胜提前腿 = kernel/cw_env_grants.
+# check_env_deploy_lock_perfect(report_node_advance settle_confirm 分支);
+# 锁域 Field/守卫/审计行/快照 rebuild 复用 T-30 已落地件零新建。
+@dataclass(frozen=True)
+class EnvDeployLockGrant:
+    """环境「随机赠卡 + 节点上场锁」结构(世界发放域专属登记表条目;
+    值 = id 133 原文直读,cw_invest_data.py PlazaPortal('133')):
+    - spec: 赠卡规格(复用「随机N费赠卡」家族载体 RandomCharSpec,
+      立形首例 = 人才引进;英雄登场 = RandomCharSpec(cost=5, star=2),
+      type_tag 空 = 类型不限、池 = 5 费全档);
+    - deploy_lock_nodes: 上场锁期(「19个节点」直读);解锁序位 =
+      获得刻生效序位沿节点日程表步进本值(计数起点 = 获得节点计入
+      锁定段,系设计定读——卡文无计数起点词,证伪通道 = 实机环境选择后
+      锁倒计时读数,披露键随 T-33 设计稿披露 9);
+    - perfect_win_accel: 「战斗完胜后,上场节点额外提前1点」开关
+      (desc 有该腿 = True;真实值在册,防后继无完胜腿的同形卡误挂)。"""
+    spec: RandomCharSpec
+    deploy_lock_nodes: int
+    perfect_win_accel: bool
+
+
+ENV_DEPLOY_LOCK_GRANTS: dict[str, EnvDeployLockGrant] = {
+    # 英雄登场(id 133 原文直读)
+    '英雄登场': EnvDeployLockGrant(spec=RandomCharSpec(cost=5, star=2),
+                                   deploy_lock_nodes=19,
+                                   perfect_win_accel=True),
+}
+
+
+def _validate_env_deploy_lock_grants() -> None:
+    """ENV_DEPLOY_LOCK_GRANTS 构建校验(import 即炸;沿 streak/refresh/
+    battle 登记表校验先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② spec 值域三查(复用 _validate_env_gifts ⑥ 同款判据):cost 1-5 /
+    star 1-3(bool 显式拒)/ type_tag ∈ 注册表 char_type 标签闭集(错字
+    致池空静默);③ 规格过滤池非空(random_char_pool,注册表漂移防呆,
+    T-10 校验先例);④ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool
+    显式拒——ENV_BATTLE_GRANTS 锁期形④逐字同款);⑤ 双登记防呆:
+    ``set(ENV_DEPLOY_LOCK_GRANTS) ∩ set(ENV_GIFTS) = ∅``——同卡双表 =
+    赠卡双发 + 锁记录双写,import 期不可见(集合互斥同款先例 =
+    _validate_env_gifts 尾段 ∩ ENV_ECONOMY;refresh 的值对账豁免段是
+    值对账非集合互斥,不作先例)。
+    """
+    orphans = [n for n in ENV_DEPLOY_LOCK_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_DEPLOY_LOCK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, _grant in ENV_DEPLOY_LOCK_GRANTS.items():
+        _spec = _grant.spec
+        if isinstance(_spec.cost, bool) or not 1 <= _spec.cost <= 5:
+            raise ValueError(
+                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡费用档({_n!r}):"
+                f"{_spec.cost!r} 须为 1-5 整数(chars_by_cost 输入域)")
+        if isinstance(_spec.star, bool) or _spec.star not in (1, 2, 3):
+            raise ValueError(
+                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡星级({_n!r}):"
+                f"{_spec.star!r} 须为 1-3 整数(Unit.star 值域)")
+        if _spec.type_tag and _spec.type_tag not in _CHAR_TYPE_TAGS:
+            raise ValueError(
+                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡类型标签({_n!r}):"
+                f"{_spec.type_tag!r} 不在注册表 char_type 标签闭集"
+                f"(手写错字会致池空静默):{sorted(_CHAR_TYPE_TAGS)}")
+        if not random_char_pool(_spec):
+            raise ValueError(
+                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡池空({_n!r}):"
+                f"cost={_spec.cost} type_tag={_spec.type_tag!r} "
+                f"过滤后无角色(注册表漂移?)")
+        _lock = _grant.deploy_lock_nodes
+        if not isinstance(_lock, int) or isinstance(_lock, bool) or _lock < 1:
+            raise ValueError(
+                f"ENV_DEPLOY_LOCK_GRANTS 锁期形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_lock!r}")
+    _overlap = set(ENV_DEPLOY_LOCK_GRANTS) & set(ENV_GIFTS)
+    if _overlap:
+        raise ValueError(
+            f"ENV_DEPLOY_LOCK_GRANTS ∩ ENV_GIFTS 非空(同卡双表 = 赠卡双发"
+            f" + 锁记录双写):{sorted(_overlap)}")
+
+
+_validate_env_deploy_lock_grants()
+
+
 # ===== 节点改写注册表归属校验(import 即炸)=====
 # 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——

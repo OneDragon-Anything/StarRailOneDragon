@@ -1137,7 +1137,11 @@ settle_confirm 分支,黑天鹅直登相邻,触发形状节 = §3.5.6);
 `'ore_open#<阈值>'` = 晶矿开启阈值触发器(战技点契约 id 128;重复型通道,
 每阈值一键、阈值嵌键,消费 = `check_env_ore_open_grants`,唯一调用点 =
 采晶矿上报函数 `report_action_collect_ore_param` 尾部,live/sim 同段 op
-代码同口)。
+代码同口);`'deploy_lock_uid#<uid>'` = 赠卡锁**完胜作用域隔离键**(# 后
+载荷 = 赠卡实例号,键值载荷形态随 `star_grant#`;首例 = 英雄登场 id 133,
+T-33;写端 = `cw_gain_chain.on_env_gained` 赠卡锁腿,发放刻与锁记录同窗;
+消费 = `check_env_deploy_lock_perfect` 完胜改写的作用域门——只回退本键集
+内 uid 的锁记录,异环境锁记录不受同卡完胜加速;纯作用域登记,非幂等守卫)。
 
 **触发与写入方**(逻辑写入方触发函数族 + 获得链两腿并列,各对应其条件键 =
 `kernel/cw_env_grants.py::check_env_streak_grants`(first_streak;live/sim
@@ -1297,13 +1301,27 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 **无 tick 无主动清理**——到期 = 比对自愈,记录滞留至局终(上限 ≈ 一次性
 发放数);卖牌/合成消耗后锁记录孤悬永不匹配(同款自愈)。
 
-**触发与写入方**(单一逻辑写端):`check_env_battle_grants` 发放刻
+**触发与写入方**(逻辑写端三口,两模块):`check_env_battle_grants` 发放刻
 (settle_confirm 分支接线,黑天鹅直登相邻,live/sim 同口)同窗四笔——
 发号(`env_grant_uid_seq` +1,evidence 前缀 `env_grant#<环境>#battle` +
 `#uid`)+ 角色链(`gain_character` 1★ 确定发放 rand=False,**uid 随
 行**;落位成败与登记解耦)+ 锁域追加 + `env_grants_done` 追加
 `('星核猎手契约', 'battle_co_presence')`(同 evidence 前缀同 sig;链内
 展开行带 `#place`/`#mergeN` 后缀 = 前缀共享非全等)。零 rng。
+**赠卡锁腿**(`cw_gain_chain.on_env_gained`,登记表 =
+`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 白名单,首例 = 英雄登场 id 133,
+T-33)获得刻同窗四笔:发号(同计数器双口第二口,evidence
+`on_env_gained:<环境>#uid`)+ 随机赠卡链(`gain_character` rand=True,
+规格池均匀掷骰,uid 随行)+ 锁域追加 + `env_grants_done` 追加
+`deploy_lock_uid#<uid>`(perfect_win_accel 开时;域规格 = §3.5.5)。
+**完胜改写读口** = `check_env_deploy_lock_perfect`(同 settle_confirm 分支
+调用邻位):判据 = 结算环(`settlement_ring`)尾行 killed=True ∧ 尾行
+hp_after 与前一行持平(相邻两结算帧差分 = 本场损血;宁缺勿造——环不足
+两行/字段 None 不判定;偏差方向单一偏严,战斗外 hp 写事件漏判完胜 =
+少操作无错误操作),作用域 = done 内 `deploy_lock_uid#` 键集只回退本卡
+uid,改写 = 解锁序位沿序列表前驱(`sequence_prev`)回退一步(已解锁
+记录 unlock ≤ 生效序位不动;P1 首节点无前驱不回退)。效果串
+`env_deploy_lock_perfect:<名>@<位>-<轮>`。
 
 **登记四件**:开局种子 = `()`(锁域,§2.6 种子族)/ `0`(发号计数器);
 **快照恢复** = 锁域 rebuild 表 tuple 化登记(元素 (str, int, (int, int))
@@ -1315,7 +1333,9 @@ uid,旧档宽容读缺省 None);**审计** = 两行 PROCESS_ONLY(无观察读取
 
 **语义**:`Unit.uid: int | None = None`(可选尾字段,带默认值 = 既有
 构造点零破坏)——单位实例号,**仅环境发放链发放刻赋号**(`gain_character`
-uid 形参注入点,落位构造唯一),其余恒 None:商店购入/观察重建
+uid 形参注入点,落位构造唯一;现役注入点两处 = `check_env_battle_grants`
+发放刻与 `cw_gain_chain.on_env_gained` 赠卡锁腿发放刻,均经
+`env_grant_uid_seq` 计数器发号),其余恒 None:商店购入/观察重建
 (`identify_slots` 构造单位)/溢出位身份重建/合成产物
 (`_bump_carrier` 两引擎显式置 None)/快照旧档宽容读。同实体变换族
 (`dataclasses.replace` 未指定字段保留)= uid 自动随行(形态归一/银狼
@@ -2031,7 +2051,12 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     读取方 = `kernel/cw_plane_table`(经 game_state_of 桥)。
   - 其余非 Field 宿主(语义/写读点逐字段住代码注释,此处只记符号):
     `settlement_ring`(结算观测环:产结算屏节点的 RoundOutcome 消费子集,
-    深度 10 同场去重)/`encounter_log`(本局全量遭遇行,遭遇经验证据通道)/
+    深度 10 同场去重;行结构 `_RingRow` = (plane, round_num, node_type,
+    killed, progress_fill_ratio, difficulty_node, encounter_tier,
+    hp_after)——hp_after = 战后小队 HP 透传(T-33 增,写端 = live
+    `record_settlement_row` 入行 + sim 结算腿补写帧两写端;None = 读缺
+    不参与判定;消费 = 完胜判定相邻帧差分,既有读口零扰)/
+    `encounter_log`(本局全量遭遇行,遭遇经验证据通道)/
     `frame_class_prep`/`frame_class_shop`(帧触发代次双槽,值域
     full/view/none,读后即清)。
     (`prep_obs` 备战黑板帧宿主已随黑板帧停用删除:名单/装备/占用/晶矿全部容器域

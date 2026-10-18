@@ -268,7 +268,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'interest_threshold/dot_confirm/battle_co_presence 与键值载荷 '
               'star_grant#<名>/'
               'boss#<位面>-<轮> 周期键/dot_anchor#<位面>-<轮> 纯登记锚键/'
-              'dot_battle#<k> sim 进度键/ore_open#<阈值> 晶矿开启阈值键),'
+              'dot_battle#<k> sim 进度键/ore_open#<阈值> 晶矿开启阈值键/'
+              'deploy_lock_uid#<uid> 赠卡锁完胜作用域键),'
               '无观察'
               '读端——发放登记事实非观察投影(同族行先例 = ore_declared_'
               'done);逻辑写端 = cw_env_grants 触发函数族单一写端族 '
@@ -280,22 +281,25 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' fields.md §3.5.5)'
               '+ cw_gain_chain.on_env_gained(随机装备绑定腿 star_grant#,'
               'placed 守卫下追加;持续伤害契约锚键腿 dot_anchor#,节点窗'
-              '开才写);check_env_merge_grants 零 done 写'
+              '开才写;赠卡锁腿 deploy_lock_uid#,发放刻追加);'
+              'check_env_merge_grants 零 done 写'
               '(合并升星事件携带事实,无一次性封账面,显式零写非枚举遗漏)'),
     'env_grant_deploy_locks': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='环境发放角色上场锁(实例粒度,元素 (char_id, uid, 解锁序位'
               ' NodePos),发放刻由发号计数器配对赋号,无观察读端——锁状态'
               ' = 模型推导非画面读面〔实机「备战席哪张被锁」识别未建,识别'
-              '专项后补〕;唯一逻辑写端 = cw_env_grants.'
-              'check_env_battle_grants 发放刻追加,消费端 = deploy_move/'
+              '专项后补〕;逻辑写端 = cw_env_grants(check_env_battle_grants'
+              ' 触发发放 + check_env_deploy_lock_perfect 完胜改写)+ '
+              'cw_gain_chain(环境获得链赠卡腿)三口,消费端 = deploy_move/'
               'swap_deploy 上报入口锁守卫 deploy_lock_block_reason;比对'
               '自愈无主动清理,记录滞留至局终'),
     'env_grant_uid_seq': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='环境发放实例号发号计数器(发放刻单调发号上界,无观察读端'
-              '——纯进程内发号器;唯一逻辑写端 = cw_env_grants.'
-              'check_env_battle_grants 发放刻单口,配对消费 = 锁记录 uid'),
+              '——纯进程内发号器;逻辑写端 = cw_env_grants.'
+              'check_env_battle_grants 发放刻 + cw_gain_chain.on_env_gained'
+              ' 赠卡锁腿发放刻双口,配对消费 = 锁记录 uid'),
     'node_seq_by_plane': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='逐位面节点序列场字段(T-8;键 = 位面 1 基,值 = 节点类型序,'

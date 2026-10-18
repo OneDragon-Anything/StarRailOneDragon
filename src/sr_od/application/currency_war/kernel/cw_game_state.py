@@ -513,7 +513,8 @@ class Unit:
     star: int                       # 星级 1..3(合成上限;观察期快照)
     equips: list[str] = field(default_factory=list)
     # 实例号;仅环境发放链发放刻赋号(check_env_battle_grants 经
-    # env_grant_uid_seq 发号),其余恒 None——商店购入/观察重建/合成产物/
+    # env_grant_uid_seq 发号 + on_env_gained 赠卡锁腿发放刻同口),
+    # 其余恒 None——商店购入/观察重建/合成产物/
     # 策略预测单位天然 None。锁匹配键(实例粒度上场锁),实例语义 =
     # env_grant_deploy_locks 字段注释(单一源在彼处)。
     uid: int | None = None
@@ -2536,7 +2537,9 @@ class GameState:
     # **无 tick 无主动清理**——到期 = 生效序位 ≥ 解锁序位比对自愈,记录
     # 滞留至局终(上限 ≈ 一次性发放数);卖牌/合成消耗被锁张不清理
     # 锁记录(uid 孤悬永不匹配 = 同款自愈)。写入端 = cw_env_grants
-    # 单一逻辑写端(发放登记事实非观察投影,env_grants_done 同款)。消费端 =
+    # (check_env_battle_grants 触发发放 + check_env_deploy_lock_perfect
+    # 完胜改写)+ cw_gain_chain(环境获得链赠卡腿)三口(发放/改写登记
+    # 事实非观察投影,env_grants_done 同款)。消费端 =
     # deploy_move/swap_deploy 上报入口锁守卫。恢复局随快照存续(rebuild 表
     # tuple 化登记,env_grants_done 先例;NodePos 元组重建先例 =
     # node_pos 行)。开局种子底座 = ()(A 类)。
@@ -2545,7 +2548,8 @@ class GameState:
 
     # [索引定义] env_grant_uid_seq = 环境发放实例号发号计数器(逻辑态;
     # 已发号单调上界,发号 = 现值+1 后写回)。写入端 = check_env_battle_grants
-    # 发放刻单口。恢复局随快照存续(int 保型直通免 rebuild 登记——登记制
+    # 发放刻 + cw_gain_chain.on_env_gained 赠卡锁腿发放刻双口。
+    # 恢复局随快照存续(int 保型直通免 rebuild 登记——登记制
     # 辖 _json_safe 无类型标形状 dict/list/tuple,int 无漂移;恢复后从存续
     # 值续号,不与恢复的锁记录 uid 撞号)。开局种子底座 = 0。
     env_grant_uid_seq: Field[int] = field(default_factory=Field)
@@ -3785,6 +3789,14 @@ def report_node_advance(gs: GameState, *, trigger: str,
             check_env_battle_grants,
         )
         check_env_battle_grants(gs, sig)
+        # 完胜提前检查(T-33 英雄登场):同分支 check_env_battle_grants
+        # 调用邻位——完胜属战斗域只挂 settle_confirm 成员(统一节点推进
+        # 入口,触发封闭集 = NODE_ADVANCE_TRIGGERS);判据消费结算环帧
+        # (环写端在宿主结算读点位、先于本 op 派发)。返回值仅日志面。
+        from sr_od.application.currency_war.kernel.cw_env_grants import (
+            check_env_deploy_lock_perfect,
+        )
+        check_env_deploy_lock_perfect(gs, sig)
     return LogicOutcome(
         applied=True, reason=f'node_pos→{candidate[0]}-{candidate[1]}',
         world_decl=WorldDecl(next_screen=_node_advance_next_screen(gs),

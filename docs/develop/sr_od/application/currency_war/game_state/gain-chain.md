@@ -211,6 +211,26 @@ import 即炸)防漂移。
     `M02/env-reroll`/`M02/env-reroll-gift`,卷中环境获得时效果全族照常触发),
     双端各产一行如实记录「选择时点真值未知」;建模知识正本 =
     invest_effects.md 蓝海条。
+  - **随机赠卡锁腿**(`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 命中,申报行
+    之后、ENV_GIFTS 查表之前;世界发放域登记表白名单,与 ENV_GIFTS 集合
+    互斥构建期防呆):获得当刻随机赠卡带上场锁——规格池
+    (`random_char_pool`)内均匀掷骰选名 → `gain_character(rand=True)` 落席
+    (星级 = spec.star,`rng` 回退/条件解析与随机角色支同款三层已通)→
+    实例发号(`env_grant_uid_seq` 计数器,uid 随落位单位 = 锁匹配键)→
+    锁记录 `(名, uid, 解锁序位)` 追加 `env_grant_deploy_locks`(解锁序位 =
+    获得刻生效序位沿节点日程表步进 `deploy_lock_nodes` 步,计数起点 =
+    获得节点计入锁定段〔设计定读〕;未锚定窗防御基准 (1,1);步进遇 None
+    停留最后合法值)→ `perfect_win_accel` 开时追加完胜作用域键
+    `deploy_lock_uid#<uid>` 落 `env_grants_done`(键形态登记 =
+    fields.md §3.5.5;消费 = `check_env_deploy_lock_perfect` 完胜改写,
+    settle_confirm 分支挂点)。效果串两行 `env_gift_random:<名>@<星>star`
+    (与随机支同前缀同形,审计归组)+ `env_deploy_lock:<名>#uid<n>@<位>-<轮>`
+    (锁登记串)。落位成败与锁记录/done 解耦(placed=False 零写留证,锁
+    记录照写);锁随 uid 不随名(掷骰名是猜测,bench 首观察覆盖纠偏,
+    守卫拒/放对象不受扰);拦截复用 deploy_move/swap_deploy 既有守卫
+    零新建。首例 = 英雄登场(id 133「获得1个2星5费角色,19个节点后才能
+    将其上场。战斗完胜后,上场节点额外提前1点。」;建模知识正本 =
+    invest_effects.md 英雄登场条)。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost, star, type_tag)` 随机赠卡规格(家族载体,首例 = 人才引进「开局拥有
     1个随机4费角色」,id 109);发放 = 规格过滤池(`random_char_pool`,注册表

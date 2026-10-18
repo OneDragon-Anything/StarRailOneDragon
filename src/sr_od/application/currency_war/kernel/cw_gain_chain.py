@@ -420,8 +420,9 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
         pool = _build_pool(gs, ovf_star)
         assert pool is not None   # bench 已判非 None,构建恒有池
         write = _select_write(gs, rand)
-        # uid = 环境发放链注入的实例号(仅 check_env_battle_grants 传;
-        # 其余调用缺省 None——商店购入/观察重建单位天然无实例号)。
+        # uid = 环境发放链注入的实例号(现役两处传:check_env_battle_grants
+        # 发放刻 + on_env_gained 赠卡锁腿发放刻;其余调用缺省 None——
+        # 商店购入/观察重建单位天然无实例号)。
         slot = BenchSlot(kind='unit',
                          unit=Unit(char_id=name, star=star, uid=uid))
         if bench_place(pool.bench, slot) is not None:
@@ -557,9 +558,10 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
     log 不阻塞链主腿)。链内所有写共享入口 sig(gain-chain.md §2),
     evidence 加 ``#place``/``#mergeN`` 后缀区分。
 
-    ``uid`` = 落位单位的实例号(可选尾形参,缺省 None;仅环境发放链
-    check_env_battle_grants 发放刻传——实例粒度上场锁的赋号注入点,
-    实例语义 = cw_game_state.env_grant_deploy_locks 字段注释;其余全部
+    ``uid`` = 落位单位的实例号(可选尾形参,缺省 None;现役注入点两处 =
+    环境发放链 check_env_battle_grants 发放刻与 on_env_gained 赠卡锁腿
+    发放刻——实例粒度上场锁的赋号注入,实例语义 =
+    cw_game_state.env_grant_deploy_locks 字段注释;其余全部
     现役调用点零传 = 单位天然无实例号)。
 
     溢出善后(腾位/卖牌)不归链——链只如实记账(gain-chain.md §2)。
@@ -801,6 +803,25 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       世界掷骰 = sim 后端追加获得腿二次入链
       (``cw_sim_backend._on_invest_picked``,原语复用),双端各产一行
       如实记录「选择时点真值未知」;
+    - **随机赠卡锁腿**(``ENV_DEPLOY_LOCK_GRANTS`` 命中,申报行之后、
+      ENV_GIFTS 查表之前;世界发放域登记表白名单,首例 = 英雄登场):
+      获得当刻随机赠卡——规格池(random_char_pool)内均匀掷骰选名 →
+      ``gain_character`` 落席(星级 = spec.star;效果体含采样 → 子链
+      rand=True,``rng`` 缺省回退自掷,随机支同款三层已通)→ 实例发号
+      (``env_grant_uid_seq`` 计数器,T-30 同款,uid 随落位单位 =
+      锁匹配键)→ 锁记录 ``(名, uid, 解锁序位)`` 追加
+      ``env_grant_deploy_locks``(解锁序位 = 获得刻生效序位沿节点日程表
+      步进 deploy_lock_nodes 步,计数起点 = 获得节点计入锁定段;未锚定
+      窗防御基准 (1,1);步进遇 None 停留最后合法值)→
+      ``perfect_win_accel`` 开时追加完胜作用域键 ``deploy_lock_uid#<uid>``
+      落 ``env_grants_done``(作用域隔离:完胜改写只碰本卡 uid 集,
+      消费 = cw_env_grants.check_env_deploy_lock_perfect)。效果串两行
+      ``env_gift_random:<名>@<星>star``(与随机支同前缀同形,审计归组)+
+      ``env_deploy_lock:<名>#uid<n>@<位>-<轮>``(锁登记串)。落位成败与
+      锁记录/done 解耦(placed=False 零写留证,锁记录照写)。锁随 uid
+      不随名(掷骰名是猜测,bench 首观察覆盖纠偏,守卫拒/放对象不受扰);
+      拦截复用 deploy_move/swap_deploy 既有守卫零新建(设计 = T-33
+      设计稿 §2.3,迭代 2026-09-23-invest-effects-calc);
     - **随机支**(``chars_random_immediate``,具名支之后):规格过滤池
       (random_char_pool)内均匀掷骰选名 → ``gain_character`` 落席,星级
       = spec.star;效果体含采样 → 子链 rand=True(gain-chain.md §5)——
@@ -860,16 +881,98 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                      actual=f'{_name}(选择事实;真值不可观察)',
                      evidence=f'on_env_gained:{_name}', sig=sig,
                      kind=ENV_REROLL_DECL)
+    # effects 累积面自赠卡锁腿起(表外环境恒空 = () 逐位不变;前瞻边界:
+    # 若未来 advisor 分支改为复用 effects 累积,本上移位需重审——现 advisor
+    # 分道自构字面元组返回,与本累积面无交集)。
+    effects: list[str] = []
+    # 随机赠卡锁腿(世界发放域登记表白名单,ENV_GIFTS 查表之前——表外
+    # 环境零写径不受扰):采样发卡 + 实例发号 + 上场锁写 + 完胜作用域
+    # done 登记,同窗相邻写(设计 = T-33 设计稿 §2.3,迭代
+    # 2026-09-23-invest-effects-calc)。锁随 uid 不随名:守卫匹配键 =
+    # uid(cw_env_grants.deploy_lock_block_reason),掷骰名是猜测、bench
+    # 首观察静默覆盖纠偏,不影响锁的拒/放对象。kernel 反向模块级零
+    # import 契约:函数内惰性取(本函数既有 DOT_ANCHOR_KEY_PREFIX/
+    # STAR_GRANT_KEY_PREFIX 同款函数级避环)。
+    from sr_od.application.currency_war.kernel.cw_env_grants import (
+        DEPLOY_LOCK_UID_KEY_PREFIX,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        effective_node_pos,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_DEPLOY_LOCK_GRANTS,
+    )
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        sequence_next,
+    )
+    _lock = ENV_DEPLOY_LOCK_GRANTS.get(_name)
+    if _lock is not None:
+        roll_rng = rng if rng is not None else random.Random()
+        pool = random_char_pool(_lock.spec)
+        if not pool:
+            # 构建期已闸(_validate_env_deploy_lock_grants 池非空),运行期
+            # 空 = 注册表漂移;零写留 log 防御分支(chars_random 支同款,
+            # 不改容器不炸链)
+            log.warning(
+                f'[cw-gain] 随机赠卡池空(注册表漂移?):'
+                f'{_name} cost={_lock.spec.cost} '
+                f'type_tag={_lock.spec.type_tag!r}')
+        else:
+            name = roll_rng.choice(pool)   # 档内均匀 v0(T-10 披露同族)
+            # 发号复用 env_grant_uid_seq 计数器(T-30 同款,实例身份赋号刻
+            # = 发放刻;uid 随 gain_character 落位单位,锁匹配键)
+            uid = int(gs.env_grant_uid_seq.value or 0) + 1
+            gs.write_logic(gs.env_grant_uid_seq, uid,
+                           produced_by=GAIN_CHAIN_PRODUCER,
+                           evidence=f'on_env_gained:{_name}#uid', sig=sig)
+            gain_character(gs, name, _lock.spec.star, rand=True, sig=sig,
+                           evidence=f'on_env_gained:{_name}',
+                           producer=GAIN_CHAIN_PRODUCER, uid=uid)
+            # 解锁序位 = 获得刻生效序位沿节点日程表步进锁期(计数起点 =
+            # 获得节点计入锁定段,设计定读);生效序位未锚定 = 开局段
+            # 结构性形态,防御基准 (1,1);步进遇 None(局终方向)停留
+            # 最后合法值(check_env_battle_grants 同款)
+            base = effective_node_pos(gs) or (1, 1)
+            unlock = base
+            for _ in range(_lock.deploy_lock_nodes):
+                nxt = sequence_next(unlock, gs.node_seq_by_plane.value)
+                if nxt is None:
+                    break   # 局终方向无后继:停留最后合法值(T-30 同款)
+                unlock = nxt
+            # 锁记录 = 登记事实非观察投影,write_logic 直写(T-30 域规格);
+            # 落位成败与锁记录解耦(placed=False 溢出位被占零写留证,
+            # 锁记录照写 = check_env_battle_grants 同口径)
+            gs.write_logic(gs.env_grant_deploy_locks,
+                           tuple(gs.env_grant_deploy_locks.value or ())
+                           + ((name, uid, unlock),),
+                           produced_by=GAIN_CHAIN_PRODUCER,
+                           evidence=f'env_deploy_lock:{_name}', sig=sig)
+            if _lock.perfect_win_accel:
+                # 完胜作用域登记走 env_grants_done 现成 (env, key) 通道,
+                # 键 = deploy_lock_uid#<uid> 作用域隔离键——完胜改写只碰
+                # 本卡 uid 集(check_env_deploy_lock_perfect 消费),T-30
+                # 流萤等异环境锁记录不受本卡完胜加速(卡面「将其」= 本卡
+                # 赠卡;两环境共存形态结构性可达,active_env 为链)
+                done = tuple(gs.env_grants_done.value or ())
+                gs.write_logic(gs.env_grants_done,
+                               done + ((_name,
+                                        f'{DEPLOY_LOCK_UID_KEY_PREFIX}'
+                                        f'{uid}'),),
+                               produced_by=GAIN_CHAIN_PRODUCER,
+                               evidence=(f'env_deploy_lock:{_name}'
+                                         f'#accel_scope'), sig=sig)
+            effects.append(f'env_gift_random:{name}@{_lock.spec.star}star')
+            effects.append(f'env_deploy_lock:{name}'
+                           f'#uid{uid}@{unlock[0]}-{unlock[1]}')
     grant = ENV_GIFTS.get(_name)
     if grant is None:
-        return ()
+        return tuple(effects)
     if grant.advisor:
         _unlock_experts(gs, grant.chars_immediate, rand=rand,
                         evidence=f'on_env_gained:{_name}#expert_unlock',
                         sig=sig)
         return (f'advisor_unlock:{_name}:'
                 f'{"+".join(grant.chars_immediate)}',)
-    effects: list[str] = []
     for char in grant.chars_immediate:
         # 送卡为确定发放(非采样)→ rand 原样透传(gain-chain.md §5)
         gain_character(gs, char, 1, rand=rand, sig=sig,

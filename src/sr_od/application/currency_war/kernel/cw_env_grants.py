@@ -1,4 +1,4 @@
-"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数/同战共现触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 上场锁守卫判定 + 宝钻获得回调(live/sim 同一单一源)。
+"""环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数/同战共现触发检查 kernel 函数 + 持续伤害契约条件腿(猜测写+证实)+ 上场锁守卫判定 + 赠卡锁完胜提前检查 + 宝钻获得回调(live/sim 同一单一源)。
 
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
@@ -37,7 +37,8 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 
 **无 rng**(逐函数标注)::func:`check_env_streak_grants` /
 :func:`check_env_refresh_grants` / :func:`check_env_interest_grants` /
-:func:`check_env_dot_grants` / :func:`check_env_battle_grants`
+:func:`check_env_dot_grants` / :func:`check_env_battle_grants` /
+:func:`check_env_deploy_lock_perfect`
 零 rng——随机态指认知通道(落位未知、
 观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
@@ -85,6 +86,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BATTLE_GRANTS,
     ENV_BOSS_GRANTS,
+    ENV_DEPLOY_LOCK_GRANTS,
     ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
     ENV_ORE_OPEN_GRANTS,
@@ -93,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     sequence_next,
+    sequence_prev,
 )
 
 #: 触发函数两写(发放/done)的写入者标识(journal/台账过滤键)。
@@ -156,6 +159,15 @@ ORE_OPEN_THRESHOLD_KEY_PREFIX: str = 'ore_open#'
 #: done 域条件键:同战共现触发器(星核猎手契约,T-30;每环境至多一个,
 #: (env, 本键) 天然唯一;消费注册表 = ENV_BATTLE_GRANTS)。
 BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
+
+#: done 域作用域键前缀:'deploy_lock_uid#<uid>'(环境随机赠卡锁腿的
+#: **完胜作用域隔离键**,首例 = 英雄登场 id 133;# 后载荷 = 赠卡实例号,
+#: 键形先例 = star_grant# 前缀携载荷形态)。写入端 =
+#: cw_gain_chain.on_env_gained 赠卡锁腿(perfect_win_accel 开时,发放刻
+#: 与锁记录同窗);消费端 = check_env_deploy_lock_perfect 完胜改写——
+#: 只回退本键集内的 uid 锁记录,T-30 流萤等异环境锁记录不受同卡完胜
+#: 加速(卡面「将其」= 本卡赠卡)。键形态登记单一源 = fields.md §3.5.5。
+DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
 
 #: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
 #: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
@@ -727,6 +739,93 @@ def check_env_battle_grants(gs: GameState, sig: ChannelSig) -> str | None:
                    done + ((env, BATTLE_CO_PRESENCE_KEY),),
                    produced_by=_PRODUCER, evidence=evidence, sig=sig)
     return grant.reward_char
+
+
+def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
+                                  ) -> tuple[str, ...]:
+    """完胜提前检查(环境随机赠卡锁家族,登记表 =
+    ``cw_investments.ENV_DEPLOY_LOCK_GRANTS``;唯一调用点 =
+    report_node_advance settle_confirm 分支,check_env_battle_grants
+    调用邻位,惰性 import 同款;分支在 advance_node_effective 真推进
+    之后,重复上报结构性不重查,T-30 同款性质)。
+
+    判据(用户裁定 2026-10-18:结算胜利 ∧ 本节点未损失小队生命值;
+    设计 = T-33 设计稿 §2.4,迭代 2026-09-23-invest-effects-calc)=
+    结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
+    hp_after 持平**。字段语义:killed 单一语义 = 「挑战成功」胜利标志
+    (cw_settlement_obs.py 注释正本,killed=True 才是胜局);hp 基准 =
+    相邻两结算帧差分——hp 只在结算与卡面效果处变化,相邻两结算帧间
+    hp 差 = 本场损血(环写端在宿主结算读点位、先于结算确认 op 派发,
+    settle_confirm 时点尾行 = 本场帧、前一行 = 上一结算帧)。宁缺勿造:
+    环不足两行(首战)或任一侧 hp_after 为 None → 不判定。偏差面(方向
+    单一偏严):战斗外 hp 写事件(先亏后盈/不等价交换类选卡时点扣血)
+    误计为「本节点损血」→ 漏判完胜(模型偏严 = 少操作,无错误操作,与
+    T-30 披露 8 同族;实机对照校准批纠偏)。完胜节点类型范围按机械判据
+    自然覆盖(环收行面 = 普通战斗/遭遇/boss/巨星/精英/奖励,补给零行;
+    各节点类型是否被游戏算「完胜」由该判据与实机数据对表回答,不人工
+    枚举)。
+
+    作用域 = env_grants_done 中完胜加速环境(perfect_win_accel=True)
+    的 ``deploy_lock_uid#<uid>`` 键集,只回退这些 uid 的锁记录(作用域
+    隔离:T-30 流萤等异环境锁记录不受本卡完胜加速,卡面「将其」= 本卡
+    赠卡);改写 = unlock 沿序列表前驱回退一步(:func:`sequence_prev`,
+    修饰域 gs.node_seq_by_plane 现值传入缺省回退默认表;P1 首节点前驱
+    不存在 = 不回退留原值,纯防御),unlock ≤ 生效序位的记录(已解锁)
+    不动;生效序位缺读 = 宁缺勿造零改写(结构性不可达,直构/测试形态
+    防御,check_env_battle_grants 条件 6 同款)。多次完胜累积:每帧各
+    回退一步,锁记录全量单笔 write_logic 回写。
+
+    - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归调用点直传);
+    - 零 rng:胜局判定与序位回退全确定,不消耗随机数;
+    - 返回效果串元组(每回退一条
+      ``env_deploy_lock_perfect:<名>@<位>-<轮>``;空 = 零改写零效果串;
+      调用方仅日志面消费,无行为分支)。"""
+    if effective_node_pos(gs) is None:
+        return ()
+    rows = gs.settlement_ring.last_two_rows()
+    if len(rows) < 2:
+        return ()
+    tail, prev = rows[-1], rows[-2]
+    if tail.killed is not True:
+        return ()
+    if tail.hp_after is None or prev.hp_after is None:
+        return ()
+    if int(tail.hp_after) != int(prev.hp_after):
+        return ()
+    done = tuple(gs.env_grants_done.value or ())
+    scope_uids: set[int] = set()
+    for env_name, grant in ENV_DEPLOY_LOCK_GRANTS.items():
+        if not grant.perfect_win_accel:
+            continue
+        for e, key in done:
+            if e != env_name or not key.startswith(DEPLOY_LOCK_UID_KEY_PREFIX):
+                continue
+            try:
+                scope_uids.add(int(key[len(DEPLOY_LOCK_UID_KEY_PREFIX):]))
+            except ValueError:
+                continue   # 畸形键跳过(宁缺勿造,禁猜)
+    if not scope_uids:
+        return ()
+    eff = effective_node_pos(gs)
+    new_locks: list[tuple[str, int, tuple[int, int]]] = []
+    effects: list[str] = []
+    changed = False
+    for char, uid, unlock in tuple(gs.env_grant_deploy_locks.value or ()):
+        if uid in scope_uids and unlock > eff:
+            prev_pos = sequence_prev(unlock, gs.node_seq_by_plane.value)
+            if prev_pos is not None:
+                new_locks.append((char, uid, prev_pos))
+                effects.append(f'env_deploy_lock_perfect:'
+                               f'{char}@{prev_pos[0]}-{prev_pos[1]}')
+                changed = True
+                continue
+        new_locks.append((char, uid, unlock))
+    if changed:
+        gs.write_logic(gs.env_grant_deploy_locks, tuple(new_locks),
+                       produced_by=_PRODUCER,
+                       evidence='env_deploy_lock_perfect', sig=sig)
+    return tuple(effects)
 
 
 def deploy_lock_block_reason(gs: GameState, unit: Unit) -> str | None:

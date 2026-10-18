@@ -185,6 +185,44 @@ def sequence_next(pos: NodePos,
     return None
 
 
+def sequence_prev(pos: NodePos,
+                  seqs: dict[int, tuple[str, ...]] | None = None,
+                  ) -> NodePos | None:
+    """节点序位的前驱(:func:`sequence_next` 的镜像逆原语,位面切换在此
+    发生;现役消费面 = 环境发放锁的完胜提前改写,cw_env_grants)。
+
+    四态契约(与 :func:`sequence_next` 逐态镜像):
+
+    - 位面内 ``pos[1] > 1`` → 同位面上一轮 ``(p, r-1)``;
+    - 位面首 → 前一位面末 ``(p-1, len(seq of p-1))``;
+    - pos 自身位面不在序列表,或位面首的前一位面无序列表(现役 =
+      位面 1 首 = 全序列起点)→ ``None``,调用方按「无前驱不回退」处理;
+    - modeled 位面内 ``pos[1] > len(seq)``(损坏坐标)→ ``ValueError``
+      响亮,禁静默跨位面(与后继原语同判)。
+
+    ``seqs`` 给定(= GameState 场字段现值)→ 字段即权威;None → 默认表
+    (与 :func:`node_sequence_of` 同参约定)。修饰域注意:前一位面长度取
+    当前 ``seqs`` 现值——解锁序位按发放刻日程写入而前驱按改写刻日程
+    回退,同窗追加修饰环境产生的长度差 = 已申报的修饰日程后到偏差
+    (cw_investments 披露键 env_deploy_lock_modified_schedule_drift,
+    一次登记有界)。"""
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    plane, r = int(pos[0]), int(pos[1])
+    seq = tables.get(plane)
+    if seq is None:
+        return None
+    if r > len(seq):
+        raise ValueError(
+            f'节点序位 {plane}-{r} 超出位面 {plane} 序列长度 {len(seq)}'
+            '(modeled 位面内损坏坐标,禁静默跨位面)')
+    if r > 1:
+        return (plane, r - 1)
+    prev_seq = tables.get(plane - 1)
+    if prev_seq is None:
+        return None
+    return (plane - 1, len(prev_seq))
+
+
 def node_round_cap(plane: int,
                    seqs: dict[int, tuple[str, ...]] | None = None) -> int:
     """位面 round 读数上限(观察值域守卫单一源;设计 §2.5 用户裁定:

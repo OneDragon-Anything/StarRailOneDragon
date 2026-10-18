@@ -96,6 +96,13 @@ class _RingRow:
     progress_fill_ratio: float | None
     difficulty_node: float | None
     encounter_tier: int | None
+    #: 战后小队 HP(RoundOutcome.hp_after 透传;None = 读缺/删失——
+    #: 环写端现成持有该值,原丢弃改入行)。消费面 = 完胜判定「相邻两
+    #: 结算帧 hp 差分」基准(cw_env_grants.check_env_deploy_lock_perfect:
+    #: hp 只在结算与卡面效果处变化,相邻两结算帧间 hp 差 = 本场损血);
+    #: 既有消费面(last_normal_battles/EncounterLog)不读本字段 = 新增
+    #: 零扰。宁缺勿造:None 不参与判定。
+    hp_after: int | None = None
 
 
 class SettlementRing:
@@ -134,7 +141,9 @@ class SettlementRing:
                                      else row.difficulty_node),
                     encounter_tier=(kept.encounter_tier
                                     if kept.encounter_tier is not None
-                                    else row.encounter_tier))
+                                    else row.encounter_tier),
+                    hp_after=(kept.hp_after if kept.hp_after is not None
+                              else row.hp_after))
                 return 'merged'
         self._rows.append(row)
         return 'ring'
@@ -152,6 +161,13 @@ class SettlementRing:
         (claim_encounter_reward:尾行 node_type = 本局节点类型入环真值;
         环写端在宿主结算读点位,先于结算确认 op 派发)。"""
         return self._rows[-1] if self._rows else None
+
+    def last_two_rows(self) -> list[_RingRow]:
+        """最近至多两行(时序旧→新,[-1] = 尾行;不足返回实有行)。
+        消费面 = 完胜判定相邻帧 hp 差分基准(尾行 killed 判胜、前一行
+        hp_after 为本场血量基准;cw_env_grants.check_env_deploy_lock_
+        perfect 单一消费方)。"""
+        return list(self._rows)[-2:]
 
     def __len__(self) -> int:
         return len(self._rows)
@@ -223,7 +239,8 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
                    killed=outcome.killed,
                    progress_fill_ratio=outcome.progress_fill_ratio,
                    difficulty_node=difficulty_node,
-                   encounter_tier=encounter_tier)
+                   encounter_tier=encounter_tier,
+                   hp_after=outcome.hp_after)
     verdict = gs.settlement_ring.offer(row)
     gs.encounter_log.append(row)
     return verdict
