@@ -109,11 +109,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '命中照真失配停'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='CwActionLevelUpShopParam 升档直写(f810f2454 投影补 level 域)+ prep 腿'
+        basis='买经验上报升档直写(f810f2454 投影补 level 域)+ prep 腿'
               '推进(xp_apply_clicks 单一源)+ 观察覆盖'),
     'xp': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='CwActionLevelUpShopParam/prep 腿推进(xp_apply_clicks)+ 观察覆盖'),
+        basis='买经验上报/prep 腿推进(xp_apply_clicks)+ 观察覆盖'),
     'streak': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='纯观察读面(结算带符号 vs 备战 magnitude 双源留证),'

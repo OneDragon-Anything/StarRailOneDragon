@@ -67,7 +67,7 @@ if TYPE_CHECKING:
         Action,
         CwActionBuyCardParam,
         CwActionCloseShopParam,
-        CwActionLevelUpShopParam,
+        CwActionLevelUpParam,
         CwActionRefreshShopParam,
         CwActionSellBenchParam,
     )
@@ -165,13 +165,12 @@ def _fmt_action(a: 'Action') -> str:
         CwActionBuyCardParam,
         CwActionDeployMoveParam,
         CwActionLevelUpParam,
-        CwActionLevelUpShopParam,
         CwActionRefreshShopParam,
         CwActionSellBenchParam,
     )
     if isinstance(a, CwActionBuyCardParam):
         return f'Buy({a.card.faction}/{a.card.name}/{a.card.cost})'
-    if isinstance(a, (CwActionLevelUpParam, CwActionLevelUpShopParam)):
+    if isinstance(a, CwActionLevelUpParam):
         return f'LvUp({a.cost})'
     if isinstance(a, CwActionDeployMoveParam):
         return f'Deploy(bench{a.bench_idx}->{a.to_row})'
@@ -183,7 +182,7 @@ def _fmt_action(a: 'Action') -> str:
 
 
 def apply_action_outcome(
-        action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpShopParam | CwActionCloseShopParam',
+        action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionCloseShopParam',
         _ok: bool, _cur: 'GameStateReadReceipt',
         match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
         visit_actions: list) -> None:
@@ -215,7 +214,7 @@ def apply_action_outcome(
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
-                         action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpShopParam | CwActionCloseShopParam',
+                         action: 'CwActionBuyCardParam | CwActionRefreshShopParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionCloseShopParam',
                          ok: bool) -> None:
     """v3_release_spent 执行回执位记账(写点)。
 

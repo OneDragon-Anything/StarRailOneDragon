@@ -1,17 +1,19 @@
-"""criteria/levelup——升级面判据(概率主轴 + 整级预授权)。
+"""criteria/levelup——升级面判据(概率主轴 + 单帧原子发射)。
 
 判据体系 = 迭代 2026-10-12-prep-shop-workflow-redesign 实现
 (设计唯一源 = details/line_and_upgrade.md §2;触发五分支/支出形态/
-拦截层处置逐节对齐):
+拦截层处置逐节对齐)+ 2026-10-17-levelup-shop-transition 迭代收口
+(资格门全链判定单一源 :func:`upgrade_gate_verdict`,支出形态改单帧
+原子,跨画面键退役):
 
 - **触发五分支并集**(§2.1):arm0(need > level 机制分支)∨ 人口位(三元
   谓词)∨ 富余段-L3 ∨ 概率账(覆盖锁定后 ∧ plane2_started 双条件)∨
   停留门升级优先分支(同双条件——P1 硬规则锁定子局星级目标存在仍不覆盖,
   判据位排除 P1 冲级);
-- **支出形态**(§2.2):判据通过 → 整级预授权(置键含授权批成本/
-  授权血成本上界)→ 变现序列(每帧一卖至缺口闭合或候选穷尽)→
-  执行帧发购买经验整批(实付上界 = 授权值,不再逐帧重闸)→ 清键
-  ——「买一半」缺陷(逐帧单击 × 静态阈值逐帧重闸)的机制级修复;
+- **支出形态**(§2.2;2026-10-17 迭代改):判据通过 → 同帧发购买经验
+  整批(实付上界 = 发射时授权值;授权不跨帧携带)→ 金量不足帧凑金
+  (每帧一卖、重扫续卖至缺口闭合或候选穷尽)——「买一半」缺陷
+  (逐帧单击 × 静态阈值逐帧重闸)由发射原子性消解;
 - **拦截层**(§2.3 处置表):保留 = 保底金门(``guarantee_floor_gate``
   ——发出前全域最终硬检查)/ P21 血预算线(``level_spend_blocked``)/
   等级帽闸(``lv9_stop``/``xp_ledger_stop``);已停用 = 调度保利息门
@@ -73,8 +75,9 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     xp_apply_clicks``)。
 
     为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
-    域(升档等观察覆盖,kernel/cw_action_report 上报函数族
-    CwActionLevelUpShopParam 行);ALL IN 窗逐击决策环(decide_shop_screen 驱动器
+    域(升档等观察覆盖,kernel/cw_action_report 上报函数族买经验行
+    双类型时代遗留;双类型已退役,单类型单行);ALL IN 窗逐击决策环
+    (decide_shop_screen 驱动器
     逐动作直写推进)内 level 域滞留轮初值 ⇒ lv9_stop 恒 False,而
     clicks_to_next_level 按推进后元组的新级 need 续算 ⇒ 同窗内连买
     下级(sim n100 s77000 段 44/100 局 R9 击数超整买上限,批计 ≥864 金,

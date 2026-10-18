@@ -550,7 +550,7 @@ def emit(session: StrategySession,
     # —— 第 8 步:节末凑息(22 号篇 §1 节末凑息步)——所有花费决策
     # 完成后的最终利息线检查(为买而卖在会话内,为息而卖在本步;息按节末
     # 金位结算,提前卖会被后续购买把金位吃回去)。
-    _interest_out = _step7_node_end_interest(session, gs)
+    _interest_out = _step7_node_end_interest(session, gs, registry)
     if _interest_out:
         return _interest_out
 
@@ -994,22 +994,27 @@ def _step3_level_up(session: StrategySession, gs: GameState,
 
 
 def _step3_liquidation_pending(session: StrategySession,
-                               gs: GameState) -> bool:
-    """升级凑金序列在途判定(节末凑息步的抑制条件;11 号篇 §2
-    帧交错规则①:凑金序列优先于节末凑息——同池候选竞争,凑金优先;
-    凑金穷尽后竞争消失、凑息恢复)。
+                               gs: GameState,
+                               registry: DecisionV2Registry | None
+                               ) -> bool:
+    """升级判据命中判定(节末凑息步的抑制条件;2026-10-17 迭代 T-4
+    载体迁移,design §2.5①:预授权键读删除,条件改升级资格门同帧重评
+    ——判据命中(非 MISS 结论,含金量不足攒批待付帧与各资格门拒帧)
+    即凑金在途,凑息让位;未命中帧凑息照常。判定单一源 =
+    :func:`criteria.levelup.upgrade_gate_verdict`(counters 不传 = 静默
+    重评,拒因计数归升级执行步,本判定零计数副作用)。
 
-    (退役挂账:键读随升级发射单帧原子化失去在产写端(2026-10-17
-    迭代 design §2.5① 消费面①,T-4 迁移为判据同帧重评),本函数现役
-    恒 False = 抑制面自然消失;保留死读至 T-4 清理,不加新引用。)
-
-    候选面与凑金步同参(``levelup_liquidate_prep`` 场景评估一次),本
-    函数零独立口径。"""
-    st = state_of(session)
-    if st.levelup_preauth is None:
-        return False
-    cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
-    return bool(cands)
+    抑制面拓宽申报(design §2.5① 预注册):键载体时代的抑制面 = 授权态
+    (键在)∧ 缺口未闭;判据载体覆盖全部命中帧——等级帽/奖励帧拦截等
+    非金拒帧也进抑制面(命中即升级议题在册,凑金优先于凑息),抑制面
+    拓宽、方向保守。凑金候选尚存与否由凑金步内评估器自然收敛,本判定
+    零独立候选口径。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        levelup,
+    )
+    verdict, _arm, _clicks, _ccost = levelup.upgrade_gate_verdict(
+        gs, session, registry=registry)
+    return verdict != levelup.GATE_MISS
 
 
 # ============================================================ 第 5 步:商店会话入口
@@ -1288,7 +1293,9 @@ def _protected_member_blocks_interest(gs: GameState, gap: int) -> bool:
 
 
 def _step7_node_end_interest(session: StrategySession,
-                             gs: GameState) -> list[Emitted]:
+                             gs: GameState,
+                             registry: DecisionV2Registry | None
+                             ) -> list[Emitted]:
     """节末凑息步(工序第 8 步;22 号篇 §1 第 7 步;候选池 = 备战席 ∪
     场上无关角色〔来金族,用户裁定 2026-10-13〕)。
 
@@ -1300,11 +1307,10 @@ def _step7_node_end_interest(session: StrategySession,
     缺口重算自然收敛。空板守卫(deployed = 0 帧哑火)= 评估器 as-built
     并入语义。本步卖出的退金由第 5 步入口统一复核(23 号篇契约 A)。
 
-    升级凑金序列在途抑制(11 号篇 §2 帧交错规则①):凑金在途
-    ∧ 变现候选尚存时本步零发出(同池候选竞争,凑金优先);凑金穷尽
-    后竞争消失、本步恢复。(抑制条件载体 = 预授权键读,该键写端已随
-    升级发射单帧原子化退役——本抑制现役恒不触发,载体迁移随 2026-10-17
-    迭代 §2.5①/T-4。)
+    升级凑金在途抑制(11 号篇 §2 帧交错规则①):升级判据命中帧本步
+    零发出(同池候选竞争,凑金优先)。抑制载体 = 资格门判据同帧重评
+    (2026-10-17 迭代 T-4,design §2.5①;预授权键读已随键退役删除,
+    抑制面拓宽申报见 :func:`_step3_liquidation_pending`)。
 
     金位读数门(23 号篇金位读数形态):账面失效帧无法判「缺口与候选
     退金」→ 读数开店锚定(标记不动),下帧重评。
@@ -1315,7 +1321,7 @@ def _step7_node_end_interest(session: StrategySession,
     保护档」帧的成功率损失量化面(用户裁定:候选/锁定成员不凑息,
     结构性少 1-2 金/轮由此键观测)。
     """
-    if _step3_liquidation_pending(session, gs):
+    if _step3_liquidation_pending(session, gs, registry):
         return []
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)

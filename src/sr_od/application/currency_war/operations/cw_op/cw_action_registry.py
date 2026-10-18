@@ -24,14 +24,12 @@ op-layer.md §1.2)。
 面策略收缩至备战期后(flow/screens-actions-capability §5 判例),两类的
 生产发出只在备战域,备战 op 即唯一活执行路径;原商店域 op 类随文件
 删除(cw_sell_bench_action.py / cw_level_up_action.py,生产不可达),本
-注记 = 其注销登记。
+注记 = 其注销登记。商店域升级双类型已随 2026-10-17
+迭代 T-4 退役删除(商店域发射面 T-1 已退役,单类型回归)。
 
 **注册行顺序敏感**:``action_op_class_for`` 按行序 isinstance 首中即返
 ——is-a 链的父类行必须在子类可独立匹配处之前兜底(子类共享父 op 时
-父行即足;子类需独立 op 时其行必须插在父行之前)。现役先例 =
-``CwActionLevelUpShopParam`` 同 ``CwActionLevelUpParam`` 同备战 op(单击,
-无子类独立行)。分区注释按「族 → 基类兜底行 → 具体类行」摆放。
-"""
+父行即足;子类需独立 op 时其行必须插在父行之前)。"""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -44,7 +42,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
-    CwActionLevelUpShopParam,
     CwActionLuckyTokenUseParam,
     CwActionObsParam,
     CwActionOpenBookcardParam,
@@ -166,12 +163,10 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionRefreshShopParam: CwActionRefreshShopOp,
     CwActionCloseShopParam: CwActionCloseShopOp,
     # 备战族(CwActionSellBenchParam/CwActionLevelUpParam 两行 = 双域共用词表
-    # 指向备战 op,见模块头「同名动作双域行更替申报」节。CwActionLevelUpShopParam
-    # = 同字段双类型(词表摊平后 is-a 链消亡),显式独立行,与
-    # CwActionLevelUpParam 同备战 op)
+    # 指向备战 op,见模块头「同名动作双域行更替申报」节。LevelUpShop
+    # 双类型已退役,单类型单行)
     CwActionSellBenchParam: CwActionSellBenchOp,
     CwActionLevelUpParam: CwActionLevelUpOp,
-    CwActionLevelUpShopParam: CwActionLevelUpOp,
     CwActionDeployMoveParam: CwActionDeployMoveOp,
     CwActionSellDeployedParam: CwActionSellDeployedOp,
     CwActionWearEquipParam: CwActionWearEquipOp,
@@ -217,9 +212,8 @@ def action_op_class_for_type(action_type: type) -> type[SrOperation]:
 
     行序语义与 :func:`action_op_class_for` 的 isinstance 首中同构:实例
     解析 ``isinstance(a, K)`` ⟺ 类级 ``issubclass(type(a), K)``,故按行
-    序 issubclass 首中即同语义(is-a 兜底一致,CwActionLevelUpShopParam
-    先例)。词表外类型 AssertionError 响亮暴露(非法返回 = 策略器 bug,
-    禁静默跳过)。"""
+    序 issubclass 首中即同语义。词表外类型 AssertionError 响亮暴露
+    (非法返回 = 策略器 bug,禁静默跳过)。"""
     for cls, op_cls in _REGISTRY.items():
         if issubclass(action_type, cls):
             return op_cls

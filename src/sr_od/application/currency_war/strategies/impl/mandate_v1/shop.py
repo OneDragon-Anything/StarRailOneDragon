@@ -717,8 +717,7 @@ def _session_close(gs: GameState, st, counters: dict) -> CwActionCloseShopParam:
 
 
 def _session_upgrade_check(gs: GameState, session: StrategySession,
-                           counters: dict,
-                           registry=None) -> Action | None:
+                           counters: dict, verdict: tuple) -> Action | None:
     """会话内升级意图出口(shop_session §2.2 前置升级检查;迭代
     2026-10-17-levelup-shop-transition design §2.1 三分支)。
 
@@ -727,7 +726,9 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     转场」。资格门全链判定单一源 =
     :func:`criteria.levelup.upgrade_gate_verdict`(七道成员集,与备战
     升级执行两屏同参消费,本函数零内联门、禁子集化;逐道拒因计数键域
-    见该函数 docstring)。三分支:
+    见该函数 docstring)——判定由调用方同帧一次评估后经 ``verdict``
+    四元组传入(本函数与刷新整级预留两消费面共用,§2.5③ 载体 = 判据
+    现值)。三分支:
 
     - **判据命中 ∧ 本帧可发射** → 返回关店动作,**不置 handled 标记**
       (本次关店 = 升级转场,非「商店事情办完」;转场后升级先落地,
@@ -746,9 +747,8 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
     )
-    verdict, _arm, _clicks, _cost = levelup.upgrade_gate_verdict(
-        gs, session, registry=registry, counters=counters)
-    if verdict == levelup.GATE_EMIT:
+    _verdict, _arm, _clicks, _cost = verdict
+    if _verdict == levelup.GATE_EMIT:
         # 升级转场关店:不置 handled 标记、不写机会清单(转场帧的后继
         # = 备战升级执行,商店未「事情办完」);读数意图标记随任意关店
         # 出口清位(mandate_state.shop_read_intent 契约)。
@@ -756,7 +756,7 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
             counters.get('levelup_transition_close', 0) + 1
         state_of(gs).shop_read_intent = False
         return CwActionCloseShopParam()
-    if verdict == levelup.GATE_GOLD_SHORT:
+    if _verdict == levelup.GATE_GOLD_SHORT:
         # 待付窗(命中 ∧ 金不足):不凑金不发射,会话照常进入买牌六序
         # 与刷新判据;凑金 = 备战侧 levelup_liquidate_prep 场景
         # (design §2.2 第 4 步,资格门同参重评)。
@@ -828,8 +828,17 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ---- 3.5 店内合成结果帧检测(读数协议②合成族;不分源含买入致合成)----
     shop_sess.detect_merge_result_frame(gs)
 
-    # ---- 4 前置升级检查(升级意图出口,design §2.1 三分支)----
-    _up = _session_upgrade_check(gs, session, counters, registry)
+    # ---- 4 前置升级检查(升级意图出口,design §2.1 三分支;资格门全链
+    # 本帧一次判定,会话内两消费面共用——升级出口 + 刷新整级预留
+    # (§2.5③ 载体 = 判据现值,2026-10-17 迭代 T-4))----
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        levelup as _crit_levelup,
+    )
+    _up_verdict, _up_arm, _up_clicks, _up_cost = \
+        _crit_levelup.upgrade_gate_verdict(gs, session, registry=registry,
+                                           counters=counters)
+    _up = _session_upgrade_check(
+        gs, session, counters, (_up_verdict, _up_arm, _up_clicks, _up_cost))
     if _up is not None:
         return _up
 
@@ -1968,13 +1977,17 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _count(f'shop_refresh_{_wkey}')
     else:
         # 金前提:R2 预算门照旧(reserve = g* + ρ〔合格集最低费卡价〕)
-        # + 整级预留保护(预授权键在场 ∧ 缺口未闭合时 reserve 含整级
-        # 差额——刷新不烧升级资金,防「压牌库换卡↔升级凑不齐」活锁)。
+        # + 整级预留保护(design §2.5③,2026-10-17 迭代 T-4 载体迁移:
+        # 预授权键读改判据现值——本帧第 4 步资格门判定复用,判据命中且
+        # 资金门金量不足〔攒批等待帧〕时 reserve 含整级差额:刷新不烧
+        # 升级资金,防「压牌库换卡↔升级凑不齐」活锁。预留面拓宽申报:
+        # 键载体时代的「无键帧」(判据命中但未进入攒批的攒息窗)预留从
+        # 无到有,R2 实质收紧、方向保守(升级资金完整性优先)。)
         _reserve = g_star + _r2_card_reserve(k_members, bench, deployed, gs)
-        _pre_r = _st.levelup_preauth
-        if _pre_r is not None \
-                and _pre_r.gold_cost > shop_sess.session_gold(gs):
-            _reserve += _pre_r.gold_cost - shop_sess.session_gold(gs)
+        if _up_verdict == _crit_levelup.GATE_GOLD_SHORT:
+            _batch = _up_clicks * _up_cost
+            if _batch > gold:
+                _reserve += _batch - gold
         if contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
                 contracts.ContractCtx(gold=gold, reserve=_reserve),

@@ -897,8 +897,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 report_action_sell_deployed_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionSwapDeployParam):
                 report_action_swap_deploy_param(gs, a, _sig)
-            elif isinstance(a, (cw_state.CwActionLevelUpParam,
-                                cw_state.CwActionLevelUpShopParam)):
+            elif isinstance(a, cw_state.CwActionLevelUpParam):
                 report_action_level_up_param(
                     gs, a, _sig, executed=ShopActionExecuted(levelup_clicks=1))
 

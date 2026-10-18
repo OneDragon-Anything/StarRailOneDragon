@@ -90,7 +90,7 @@ def launch_spend_cost(action) -> int:
 
     - CwActionBuyCardParam:``card.cost``(缺省 3 中费保守估,与评估栈 check_affordable
       同口径);
-    - CwActionLevelUpParam 族(含 CwActionLevelUpShopParam):``cost`` 属性(策略器发出时写入的
+    - CwActionLevelUpParam:``cost`` 属性(策略器发出时写入的
       整批单击金;缺省 0 = 无成本动作不覆盖闸);
     - CwActionRefreshShopParam:``cost``(刷价现读随动作;缺省 0);
     - 其余(卖出/部署事务族):0——卖出回金不减仓,部署事务金效应

@@ -1121,8 +1121,8 @@ def schedule_upgrade(gs: GameState, session: StrategySession,
     reserve_cap / get_node_goal spend_mode / economy_cycle.channel_
     capacity 的 C_t 分量)随②分支停用,缺省相 R* 升级排程分量 = 零;
     人口位触发时预算线照旧供给;arm0(need>level)触发时的攒批资金
-    由升级预授权链承载(整级预授权 + 压牌库整买预留,shop_session
-    §2.2 序 4),非本函数覆盖。
+    由升级凑金与整买预留承载(备战凑金场景 + 刷新判据整级预留保护
+    〔判据现值载体〕,shop_session §2.2 序 4),非本函数覆盖。
 
     淘金客姿态(refresh_invest_active 局)升级通道整体停用
     (sim 注入分支实证;谓词单一址)。

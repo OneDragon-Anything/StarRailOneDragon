@@ -1689,14 +1689,14 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: executed 回执字段集/支持动作集随本锁登记;未登记写点 = 缺陷,禁扩静默):
 #: - **域集封闭**(gold / bench / shop payload / xp 四域;CwActionCloseShopParam 的
 #:   leave_screen 为同域通道形态);
-#: - **支持动作集** = CwActionBuyCardParam / CwActionSellBenchParam / CwActionLevelUpShopParam(is-a CwActionLevelUpParam) /
+#: - **支持动作集** = CwActionBuyCardParam / CwActionSellBenchParam / CwActionLevelUpParam /
 #:   CwActionRefreshShopParam / CwActionCloseShopParam(商店单动作循环在产动作面;fields.md §4.2
 #:   逐 op 行;CwActionSellDeployedParam/CwActionDeployMoveParam 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
 #:   xp+level(升级推进对,同进退——任一未读则推进对整体跳写);
 #: - **executed 回执字段集** = bought_count(CwActionBuyCardParam 实购张数,满栏多买
-#:   k 执行期确定)/ levelup_clicks(CwActionLevelUpShopParam 实际击数);
+#:   k 执行期确定)/ levelup_clicks(CwActionLevelUpParam 实际击数);
 #:   回执缺字段 = 该动作本轮不写逻辑态(刷新上报不消费 executed——
 #:   刷新费金账扣费费用单一源 = gs.shop_refresh_cost 容器直读,
 #:   cw_action_report/refresh_shop 金账扣费腿)。
@@ -1709,7 +1709,7 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
 #:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
 #:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
-#: - 域集扩(2026-09-18):level(CwActionLevelUpShopParam 升档直写;语义源 = prep 腿
+#: - 域集扩(2026-09-18):level(买经验上报升档直写;语义源 = prep 腿
 #:   买经验上报(report_action_level_up_param)同款,推进单一源 =
 #:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
 #:   下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板
@@ -1759,7 +1759,7 @@ class ShopActionExecuted:
     """商店动作执行落地门回执(上报函数族 executed 形参)。
 
     执行期决定量以落地门回执为准,禁按动作对象预估(设计件 §2.1-2):
-    CwActionBuyCardParam 满栏多买 k 张(CwActionLevelUpParam 满栏例外一击多张)与 CwActionLevelUpShopParam
+    CwActionBuyCardParam 满栏多买 k 张(CwActionLevelUpParam 满栏例外一击多张)与
     实际击数(循环点击至 level+1)均由执行侧回执;缺字段(None)= 该
     动作本轮不写逻辑态,等观察覆盖。
 
@@ -1779,7 +1779,7 @@ class ShopActionExecuted:
 
     #: CwActionBuyCardParam 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
     bought_count: int | None = None
-    #: CwActionLevelUpShopParam 实际击数(单动作形态恒 1;腾席链多击以回执为准)
+    #: CwActionLevelUpParam 实际击数(单动作形态恒 1;腾席链多击以回执为准)
     levelup_clicks: int | None = None
 
 

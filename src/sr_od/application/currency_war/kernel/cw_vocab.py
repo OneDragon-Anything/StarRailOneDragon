@@ -283,8 +283,8 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     clicks: int = 1
-    # 本动作携带的购买击数(整批发出形态;11 号篇 §2 整级预授权一次买齐:
-    # 授权击数 = 门槛表差值折击数,实付上界 = clicks×cost ≤ 授权值)。
+    # 本动作携带的购买击数(整批发出形态;2026-10-17 迭代 design §2.2
+    # 单帧原子:判据同帧重评后一次发整批,实付上界 = 发射时授权值)。
     # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令):
@@ -296,29 +296,6 @@ class CwActionLevelUpParam:
     # CwActionSellBenchParam.income「记录不是指令」形态。
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
-
-
-@dataclass
-class CwActionLevelUpShopParam:
-    """商店开画面专用升级意图( §4.1.3 /  §2.8.2:CwActionLevelUpParam 拆 CwActionLevelUpShopParam)。
-
-    唯一产出者 = ``decide_shop_screen``(商店屏接口);兼容期旧入口(已停用)
-    ``decide_prep`` 仍产出基类 ``CwActionLevelUpParam``——两入口行为由构造保证等价,
-    类型拆分只为执行器/遥测/交叉核对**消歧**(商店屏动作 vs 备战屏腾席链
-    升级)。**刻意设计成无新字段的子类**:执行器(shop 买牌循环)与
-    sim/simulate 全部按 ``isinstance(a, CwActionLevelUpParam)`` 消费,子类零改动兼容;
-    交叉核对口径 = CwActionLevelUpShopParam ≡ CwActionLevelUpParam(同字段逐项全等,类型归一后比较)。
-    """
-
-    # 显式重声明继承字段:kwarg 签名审计(ast 静态)不追 dataclass 继承链,
-    # 不重声明则 decide_shop_screen 的 CwActionLevelUpShopParam(cost=…, auth_basis=…)
-    # 构造被误判 kwargs 违例(2026-09-02 L3 暴露)。
-    cost: int = 0
-    clicks: int = 1
-    auth_basis: str = ''
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
 
 
 @dataclass
@@ -973,7 +950,7 @@ class CwActionObsParam:
 # 独立 dataclass。本名仅为既有 ``CwAction`` 注解面与 ``isinstance(x,
 # CwAction)`` 判定的零改动兼容保留;Python 3.10+ union isinstance 合法)。
 CwAction = (
-        CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionLevelUpShopParam |
+        CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
         CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
         CwActionSwapDeployParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
         CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
@@ -989,7 +966,7 @@ CwAction = (
 # 动作从未真正执行(CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为
 # 执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
-    CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionLevelUpShopParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
+    CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
     CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
     CwActionWearEquipParam,

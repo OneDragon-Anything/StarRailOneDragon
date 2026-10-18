@@ -54,27 +54,6 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class LevelUpPreAuth:
-    """升级预授权载荷(整级一次买齐;line_and_upgrade §2.2)。
-
-    授权帧(升级判据通过)写入,执行帧按授权值发整批经验、不再逐帧
-    重闸——「实付上界 = 授权值」即防「买一半」复发的跨帧携带机制。
-    写入端 = 升级判据授权帧(已实现);失效出口 = 节点边界
-    重置清键 / 锁定写入连带动作清键 / 执行帧发出完成清键。
-
-    ``source_arm`` = 授权帧的触发分支键(criteria/levelup 五分支键;
-    P78-5′ 两腿必要条件的判定输入:兜底豁免构成 = 义务账
-    〔人口位/arm0 骨架义务血统〕∨ 对象无损〔被放行对象持有账≈0〕,
-    design 契约 D 升级变现行;缺省 '' = 无分支身份,消费面按保守侧
-    〔非义务血统〕走对象级验证)。
-    """
-
-    gold_cost: int    # 授权批金成本上界(整级经验批的总金成本)
-    blood_cost: int   # 授权血成本上界(血本位局的整级血成本;金本位局 = 0)
-    source_arm: str = ''   # 触发分支键(五分支;P78-5′ 两腿判定输入)
-
-
-@dataclass(frozen=True)
 class ShopOpportunity:
     """未消费机会清单记录(shop_session §4.2:判据通过但被资源拦下的牌)。
 
@@ -343,13 +322,6 @@ class StrategyState:
     # 记录(ShopOpportunity 元组序,记录序 = 追加序);正常收工写、
     # 节点边界重置清空;读写单一源 = session_scope 存储函数族。
     shop_opportunities: tuple[ShopOpportunity, ...] = ()
-    # 升级预授权键(line_and_upgrade §2.2;退役挂账):None = 无授权。
-    # 写端已随升级发射单帧原子化退役(2026-10-17-levelup-shop-transition
-    # design §2.5②:商店侧 T-1、备战侧 T-2——授权不再跨帧携带),本阶段
-    # 无在产写端;键与两处死读保留(shop 刷新判据整级预留保护 / entry
-    # 凑息抑制),节点边界重置清零 + 锁定写入连带动作清键照旧兜底,T-4
-    # 退役并迁移消费面①③。
-    levelup_preauth: LevelUpPreAuth | None = None
     # [索引定义] node_boundary_last_pos = 节点边界处理函数的判重键:
     # 上次执行边界重置的生效节点序位 (位面,轮)(均 1 基);取值时机
     # = 边界函数执行时现读覆盖(写入端单一源 = session_scope.

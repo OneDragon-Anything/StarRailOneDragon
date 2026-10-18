@@ -165,8 +165,9 @@ class SellSceneSpec:
 #:   排序段。
 SORT_OVERRIDE_LEVELUP_PREP: str = 'levelup_prep'
 
-#: 场景注册表(闭集;契约 D 八场景——升级变现按分域拆两行,共九行:
-#: 备战侧(升级凑金步)= 备战席 ∪ 场上无关角色,会话内侧 = 仅备战席)。
+#: 场景注册表(闭集;契约 D 八场景——升级凑金会话内侧随店内侧变现场景
+#: 退役删除〔2026-10-17 迭代 T-4:商店域凑金随升级转场语义退役,
+#: design §2.5〕)。
 #: 消费方式/资格面逐行对齐契约 D 表格,禁行内自创第三口径。
 SCENE_SPECS: dict[str, SellSceneSpec] = {
     'self_rescue': SellSceneSpec(
@@ -185,9 +186,6 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         'levelup_liquidate_prep', POOL_BENCH_FIELD_IRRELEVANT, FACE_REGULAR,
         False, 'sell_until_gap_closed', 'funding',
         SORT_OVERRIDE_LEVELUP_PREP),
-    'levelup_liquidate_shop': SellSceneSpec(
-        'levelup_liquidate_shop', POOL_BENCH_ONLY, FACE_REGULAR, True,
-        'sell_until_gap_closed', 'funding'),
     'node_end_interest': SellSceneSpec(
         'node_end_interest', POOL_BENCH_FIELD_IRRELEVANT, FACE_REGULAR, True,
         'sell_until_gap_closed', 'interest'),

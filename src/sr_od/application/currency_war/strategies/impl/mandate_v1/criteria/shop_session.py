@@ -220,7 +220,7 @@ LEVELUP_COMPANION_GOLD: int = 1
 def account_upgrade_companion_gold(gs: GameState) -> int:
     """升级伴生入金(协议①单卡型:节节高升——任意升级 +1)。
 
-    其「获得 1 个 2 星角色」部分 = 观察侧承接(升级即收工后备战 heavy
+    其「获得 1 个 2 星角色」部分 = 观察侧承接(升级转场后备战 heavy
     观察自然吸收,账面不记单位面)。返回本笔伴生金额(0 = 无伴生)。"""
     if not _augment_held(gs, '节节高升'):
         return 0

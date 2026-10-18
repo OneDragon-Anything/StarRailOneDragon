@@ -27,8 +27,8 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     ``xp_apply_clicks``,跨级连跳+溢出结转)+ gold −cost×clicks 直写。
     满级 = applied=False + reason='level_cap' 零写(MAX_PLAYER_LEVEL
     封顶单一源);executed None = 击数自算 1(理想执行,sim 路径)。
-    CwActionLevelUpShopParam 同字段双类型共用本函数(商店域发射已随
-    2026-10-17 迭代 T-1 退役,现役触发面 = 备战域)。
+    现役触发面 = 备战域(商店域发射已随 2026-10-17 迭代 T-1 退役,
+    商店域双类型词表随 T-4 退役删除)。
 
     **商业间谍升级回调**(2026-10-17-levelup-shop-transition design
     §2.3;触发点 = 本上报函数升级生效时点):升级真跨级(``_new_lvl !=

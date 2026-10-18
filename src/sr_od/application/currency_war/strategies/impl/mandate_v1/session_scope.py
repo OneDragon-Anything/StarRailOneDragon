@@ -47,7 +47,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     line_select,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-    LevelUpPreAuth,
     ShopOpportunity,
     StrategyState,
     state_of,
@@ -69,26 +68,25 @@ if TYPE_CHECKING:
 # ① shop_handled → 清值(新节点牌面全换,旧标记语义死亡;机制依据 =
 #    economy §2.1「节点切换自动刷新全店」);
 # ② shop_opportunities → 清空(牌面变了,旧机会作废);
-# ③ levelup_preauth → 清零(节点切换 = 金/血/收入日程全变,旧授权
-#    作废,防旧授权跨节点兑现;登记来源 = line_and_upgrade §2.2);
-# ④ line_eval_signature → 置失效(强制下帧重算——节点变动伴随结算
+# ③ line_eval_signature → 置失效(强制下帧重算——节点变动伴随结算
 #    收入与自然经验,资产面可能变化);
-# ⑤ 金位读数账面 gold_ledger → 置失效(读数失效条件「节点切换」经本
+# ④ 金位读数账面 gold_ledger → 置失效(读数失效条件「节点切换」经本
 #    清单落地,契约 C;「经验就是财富」类节点结算入金由本项天然吸收
 #    ——失效先行;登记来源 = shop_session §4.2 读数协议);
-# ⑥ 商店会话会话域旗标(shop_read_intent/shop_visit_restricted/
+# ⑤ 商店会话会话域旗标(shop_read_intent/shop_visit_restricted/
 #    shop_session_processing/shop_plugin_budget)→ 复位(会话不跨节点;
 #    边界帧残留旗标防泄入下一节点会话,卫生性复位);
-# ⑦ 方向状态本身(target_comp / line_candidates /
+# ⑥ 方向状态本身(target_comp / line_candidates /
 #    opening_recipe_comp)不重置——锁定为一次性决策跨节点持续保留
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
 #    均非节点作用域键)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
 #    腿为单调事实,且锁定后无消费面)。
+# (升级预授权重置行已随 2026-10-17 迭代 T-4 键退役删除——
+#  判据同帧重评后无跨帧授权可清。)
 _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_handled', None),
     ('shop_opportunities', ()),
-    ('levelup_preauth', None),
     ('line_eval_signature', None),
     ('gold_ledger', None),
     ('shop_read_intent', False),
@@ -325,15 +323,16 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       COMP_LIBRARY)按未锁定处置拒绝写入——判定内核只产注册表名,
       此分支为防御位;
     - 连带动作三件:
-      ① 清升级预授权键(未锁定态授权按候选集算,锁定线变更后需按
-         新名单重新过账,防旧授权跨锁定兑现);
-      ② 清商店会话标记(``shop_handled``——下一轮备战第 4 步按锁定
+      ① 清商店会话标记(``shop_handled``——下一轮备战第 4 步按锁定
          线名单重开会话全量评估,shop_session §4.2「方向锁定不走清单
          解拦」);
-      ③ 候选快照**清空**并停算(锁定后只读锁定线,无候选维护;清空
+      ② 候选快照**清空**并停算(锁定后只读锁定线,无候选维护;清空
          消除消费歧义——锁定后读 ``line_candidates`` 恒 = 空集,语义
          自明,无需另查锁定旗标)——停算结构承载于
-         :func:`_recompute_line_state` 的锁定守卫。
+         :func:`_recompute_line_state` 的锁定守卫;
+      ③ kernel 派生缓存同步(见下行)。
+      (旧升级预授权连带清键已随 2026-10-17 迭代 T-4 键退役删除——
+      判据同帧重评,无跨帧授权可清。)
     - kernel 派生缓存(``ist.locked_comp``/``ist.phase``)同帧同步
       (:func:`_sync_derived_lock_cache`)——kernel 消费面锁定当帧生效。
     """
@@ -346,11 +345,10 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
                     comp_name)
         return
     st.target_comp = comp
-    st.levelup_preauth = None
     st.shop_handled = None
     st.line_candidates = ()
     _sync_derived_lock_cache(st)
-    log.info('[cw][line-lock] 方向锁定 → %s(连带:清预授权键/清商店标记/快照清空停算)',
+    log.info('[cw][line-lock] 方向锁定 → %s(连带:清商店标记/快照清空停算)',
              comp_name)
 
 
@@ -450,7 +448,6 @@ def clear_shop_opportunities(gs: GameState) -> None:
 
 
 __all__ = [
-    'LevelUpPreAuth',
     'LineMembersView',
     'ShopOpportunity',
     'clear_shop_handled',
