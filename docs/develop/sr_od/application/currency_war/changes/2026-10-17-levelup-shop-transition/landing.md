@@ -22,7 +22,7 @@
 ### 3.2 备战工序：随机态重开位 + 升级执行
 **范围**：备战九段序按 design §2.2 重排（新增第 1 步随机态重开：清 `shop_handled` + 开店 + 清信号）；升级检查移第 4 步、资格门全链两屏同参（criteria/levelup 单一源判定函数）；凑金 = `levelup_liquidate_prep` 场景（`one_star_refund_only` → False）+ 排序键①②③；发射 = 单帧原子整批 + 执行帧清 handled 标记；P78-5 兜底腿随场景同步。**不含**信号写入端（3.3）、场景行退役（3.4）。
 **设计依据**：design.md §2.2
-**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`、`bridge.py`（工序表）、`criteria/sell_candidates.py`、`criteria/levelup.py`（资格门判定函数出口，如需收口）
+**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`、`bridge.py`（工序表）、`criteria/sell_candidates.py`、`criteria/levelup.py`（资格门判定函数出口，如需收口）、`kernel/cw_game_state.py`（仅工程结构组簿记槽 `shop_randomized_pending` 声明，默认 False；写端 = 3.3 回调）
 **依赖**：3.1
 **优先级建议**：8
 **完成判据**：
@@ -63,6 +63,7 @@
 - sweep 清零（白名单外）；
 - 完成前常规检查（本文件首节）+ L3 全量。
 **验收凭据形式**：批跑报告数字对照 + sweep 输出。
+**批跑报告路径**：`.debug/progress/2026-10-17-levelup-shop-transition/reports/T-5-r1.md`（§2.6 五判据数字对照 + 满级凑息观测 + sweep 清单；确定性⑤ = test_sim_first_run 双跑对拍测试承载）。
 
 ### 末阶段：正本更新
 **范围**：按 design §2.7「矛盾文档处置清单」逐条更新（11号稿 §2/02号稿 M3/22号稿/23号稿/flow 两篇/game_state 三篇/screens 两篇/sim-wiring/重做详设三篇 + 工序重编号 ripple sweep）；历史记档与渲染器词表白名单不动。

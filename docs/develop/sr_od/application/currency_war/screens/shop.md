@@ -46,7 +46,6 @@
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
 | `CwActionBuyCardOp`(`CwActionBuyCardParam`) | 注册表工厂(`action_op_class_for` + `ShopExecEnv` 组装) | 自上报 `report_action_buy_card_param` 单点(简单落位/合成连锁/升星分支内聚;获取计算完后触发 `gs.effects.on_buy` 购买回调,bump CounterKey.BUY) | 否(非终结):发出后落地门/回执行,决策循环续跑;执行未落地 = 回执 reason 受阻码(`slot_unresolved`/`slot_out_of_range`),期望态两侧都不动 |
-| `CwActionLevelUpOp`(`CwActionLevelUpShopParam`;备战域注册行同 op) | 注册表工厂(同上) | 自上报 `report_action_level_up_param` | 否(非终结):发出后决策循环续跑(clicks 序列 = 动作内部步骤,逐帧重组) |
 | `CwActionSellBenchOp`(`CwActionSellBenchParam`;注册行已更替备战域 op) | 注册表工厂(同上) | 自上报 `report_action_sell_bench_param` | 否(非终结):拖拽机械单发,发出即记账 |
 | `CwActionRefreshShopOp`(`CwActionRefreshShopParam`,**访问终结** terminal=True) | 注册表工厂(同上) | 自上报 `report_action_refresh_shop_param` 单口(计数触发 + `free_refresh_left` Field 免费次数分支扣减 + `write_logic_rand` 随机态采样) | **是(访问终结)**:执行后本访问即结束返回主循环重进;零读屏零验证(免费判定 = Field 值,非决策闸) |
 | `CwActionCloseShopOp`(`CwActionCloseShopParam`;执行位 = 真机械点击) | 注册表工厂(同上,全动作统一路径) | 自上报 `report_action_close_shop_param`(店族 payload 清场 leave_screen;幂等已关/点击已发两出口同调) | **是(访问终结)**:恒可用终结;「终结不入 decisions 行」契约(执行事实回执由动作 op 自身承担) |

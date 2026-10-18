@@ -137,9 +137,9 @@ op = `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（动�
 
 **依据**：`research/economy.md` §3；`kernel/cw_economy.py::sell_refund`/`bench_char_cost`；`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`（双域统一单点：置 empty + 回金 + 装备回收 + 溢出分支）；`research/equipment_mechanics.md` §1。
 
-### 2.5 LevelUp / LevelUpShop（买经验·商店单击形态）
+### 2.5 LevelUp（买经验）
 
-op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作类型清单摊平后 LevelUp/LevelUpShop 同字段双类型共用本 op，单击「购买经验」；原商店域文件 `cw_level_up_action.py` 已停用删除）。机制依据 = `research/xp-rules.md` §2。
+op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击「购买经验」；原商店域文件 `cw_level_up_action.py` 已停用删除；原 LevelUpShop 同字段双类型已随 2026-10-17 迭代 T-4 词表退役删除，单类型单 op）。机制依据 = `research/xp-rules.md` §2。
 
 **确定面**：
 
@@ -149,9 +149,9 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（动作�
 - 金：gold −= 单击价 × 实击数（击数 = 执行回执 `ShopActionExecuted.levelup_clicks`；缺回执 = 本轮不写逻辑态，等观察覆盖）；
 - 经验域写入 = `(当前级已攒, XP_TO_NEXT_LEVEL[新级])`；level 升档直写（2026-09-18 扩域申报入 `SHOP_PROJECTION_DOMAINS`；跳写对 (level, xp) 同进退——任一未读则推进对整体跳写）。
 
-**随机面**：无。**修饰效果副作用**（商业间谍「升级时刷新商店并偷最贵 3 张」、晋升名额「随机一槽变高费」）= 未建模，后果归观察（§7「商业间谍副作用」/「晋升名额副作用」行）。
+**随机面**：无。**修饰效果副作用**：商业间谍「升级时刷新商店并偷最贵 3 张」**已建模**（2026-10-17 迭代 T-3:升级上报回调置随机态信号 + sim 世界腿抽 5 偷 3,EffectSpec 300201;容器 shop 容器域零直写,实机世界后果归游戏引擎）;晋升名额「随机一槽变高费」= 未建模,后果归观察（§7「晋升名额副作用」行）。
 
-**依据**：`research/xp-rules.md` §2；`kernel/cw_economy.py::xp_apply_clicks`/`xp_click_cost`/`XP_PER_BUY`/`XP_TO_NEXT_LEVEL`；`kernel/cw_action_report/level_up.py::report_action_level_up_param`（LevelUpShop = 同字段双类型，`report_action_level_up_shop_param` 一行委托同函数）；`fields.md` §4.2 LevelUp。
+**依据**：`research/xp-rules.md` §2；`kernel/cw_economy.py::xp_apply_clicks`/`xp_click_cost`/`XP_PER_BUY`/`XP_TO_NEXT_LEVEL`；`kernel/cw_action_report/level_up.py::report_action_level_up_param`；`fields.md` §4.2 LevelUp。
 
 ### 2.6 CompTransaction（整档替换事务·已停用）
 

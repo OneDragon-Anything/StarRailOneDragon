@@ -497,11 +497,14 @@ def emit(session: StrategySession,
     # §2.4)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
     # 的 3 张,用户裁定「很高的优先级」;置于溢出自救之后、资源动作之前):
     # 清 handled 标记 → 开店进店(入口观察读真牌面,会话循环正常评估)
-    # → 清信号。本阶段信号写端未接线(恒 False)= 零行为,写端随 3.3
-    # 商业间谍升级回调接线。
+    # → 清信号。信号写端 = 商业间谍升级回调(T-3 接线,cw_action_report/
+    # level_up.py 升级生效时点);重开触发计数键 = §2.6③ 随机态闭环
+    # 批跑取数口(商业间谍升级次数 ↔ 重开触发次数恒等式)。
     if shop_randomized_pending_of(gs):
         session_scope.clear_shop_handled(gs)
         clear_shop_randomized_pending(gs)
+        st.cw4_counters['shop_randomized_reopen'] = \
+            st.cw4_counters.get('shop_randomized_reopen', 0) + 1
         return [Emitted(CwActionOpenShopParam(),
                         True, 'step1_shop_randomized_reopen')]
 

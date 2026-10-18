@@ -12,7 +12,7 @@
 
 ## 逐动作专篇索引(注册表行 ↔ 专篇)
 
-**计数口径(以代码现值为准)**:行数/类数/尚无专篇的行数,一律以**读文档时点 `operations/cw_op/cw_action_registry.py` 代码现值**清点为准,本节不固化计数;注册表已演进 = 以当时代码现值重新清点。当前快照括注 = 35 行 / 27 op 类 / 已有专篇 27 行(20 个专篇文件,工具 7 行共 [tools.md](tools.md) 一篇、LevelUpShop 显式行并入 [level-up.md](level-up.md))/ 尚无专篇 8 行(7 个 pick 行 + Obs 行:语义的在用记载 = [flow/action_ops.md](../../flow/action_ops.md) §4.5/§4.4 行 + 上报函数 docstring;超出本表登记面的补篇不批)。基准 = `cw_action_registry.py` 与 [flow/action_ops.md](../../flow/action_ops.md) §4;写域登记面 = `SHOP_PROJECTION_DOMAINS`(商店族)与各上报函数 docstring(备战族;原 `PREP_PROJECTION_DOMAINS` 登记面已随聚合写入入口停用)。映射粒度 = 注册行 → 专篇**文件**(一行对应一个专篇文件,不落小节);工具原子 7 行是先例例外,七行同指一个 op 类(`CwActionToolUseOp`),共一篇 [tools.md](tools.md)、内分逐类小节。
+**计数口径(以代码现值为准)**:行数/类数/尚无专篇的行数,一律以**读文档时点 `operations/cw_op/cw_action_registry.py` 代码现值**清点为准,本节不固化计数;注册表已演进 = 以当时代码现值重新清点。当前快照括注 = 34 行 / 27 op 类 / 已有专篇 27 行(20 个专篇文件,工具 7 行共 [tools.md](tools.md) 一篇;LevelUpShop 显式独立行已随 2026-10-17 迭代 T-4 双类型退役删除,买经验单类型单行)/ 尚无专篇 8 行(7 个 pick 行 + Obs 行:语义的在用记载 = [flow/action_ops.md](../../flow/action_ops.md) §4.5/§4.4 行 + 上报函数 docstring;超出本表登记面的补篇不批)。基准 = `cw_action_registry.py` 与 [flow/action_ops.md](../../flow/action_ops.md) §4;写域登记面 = `SHOP_PROJECTION_DOMAINS`(商店族)与各上报函数 docstring(备战族;原 `PREP_PROJECTION_DOMAINS` 登记面已随聚合写入入口停用)。映射粒度 = 注册行 → 专篇**文件**(一行对应一个专篇文件,不落小节);工具原子 7 行是先例例外,七行同指一个 op 类(`CwActionToolUseOp`),共一篇 [tools.md](tools.md)、内分逐类小节。
 
 ### 商店族(3 行)
 
@@ -27,7 +27,7 @@
 | 注册行 | op 类 | 专篇 | 上报函数(动作语义单一源) |
 |---|---|---|---|
 | SellBench | `CwActionSellBenchOp` | [sell-bench.md](sell-bench.md) | `report_action_sell_bench_param`(商店/备战两个域的历史两份写入统一为一份代码) |
-| LevelUp(LevelUpShop 同字段双类型,显式独立行同 op) | `CwActionLevelUpOp` | [level-up.md](level-up.md) | `report_action_level_up_param`(LevelUpShop 经 `report_action_level_up_shop_param` 一行委托) |
+| LevelUp | `CwActionLevelUpOp` | [level-up.md](level-up.md) | `report_action_level_up_param`(LevelUpShop 双类型已随 2026-10-17 迭代 T-4 退役删除) |
 | DeployMove | `CwActionDeployMoveOp` | [deploy-move.md](deploy-move.md) | `report_action_deploy_move_param` + board 派生挂钩 |
 | SellDeployed | `CwActionSellDeployedOp` | [sell-deployed.md](sell-deployed.md) | `report_action_sell_deployed_param`(商店/备战两个域的历史两份写入统一为一份代码) |
 | WearEquip | `CwActionWearEquipOp` | [wear-equip.md](wear-equip.md) | `report_action_wear_equip_param`(库存 equips 写 owned−1 + 目标角色 equips +1,集中在同一函数) |

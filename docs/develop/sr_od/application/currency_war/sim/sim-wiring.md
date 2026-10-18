@@ -34,7 +34,7 @@
 | node | 世界分支：进节点 obs 写 `NodeKey`（`node:p<位面>r<轮>`）+ kernel `observe_node_anchor` 节点序 id_mark 确认 | 读口 `plane_of`/`round_num_of`/`node_kind_of`；策略 plane-aware 分支 |
 | gold | 世界分支：opening 初值 + `income:p<位面>r<轮>` 轮首收入（kernel `round_start_income` 三分支，含败补；扑满帧 = 收入递延至结算分支 `_resolve_battle`，败局无连胜成分、基数 = 窗口开快照）+ 位面开局环境金**分道**（`_apply_env_plane_start`：env ∈ `ENV_ORE_GRANTS` → 节点窗起点声明入队 + 过期清理，**金不直发**、由点击声明矿兑现入账；其余环境 → `_apply_env_plane_gold` 直发）；动作分支：扣减/回金同实机 | 读口 `gold_of`；策略消费面 |
 | level | 世界分支：opening 初值 + `xp:node` 节点经验结转（`apply_node_xp`）；动作分支不写 level（升档等覆盖同实机） | 读口 `level_of`；抽牌概率档 |
-| xp | 世界分支：opening 初值 + `xp:node` 入账；动作分支 LevelUpShop 写入同实机 | 策略追级消费（clicks_to_next_level） |
+| xp | 世界分支：opening 初值 + `xp:node` 入账；动作分支买经验上报写入同实机（LevelUpShop 双类型已随 2026-10-17 迭代 T-4 退役，单类型同链） | 策略追级消费（clicks_to_next_level） |
 | hp | 世界分支：opening 实证档查表（无实证档报错索样本，`cw_opening_hp` 单一源）+ `battle:hp` 败局扣血 + 0hp 保底（`battle:hp_floor`）/局终 | hp 写入闸语义同实机（sim 写真值，无识别失真维） |
 | streak | 世界分支：opening 0 + `streak:p<位面>r<轮>` 结算转移（带符号，`streak_signed_after`；扑满帧 = 胜 +1/败清零，2026-10-10 用户裁定） | 收入侧连胜金（派生读 `max(signed, 0)`，无第二账） |
 | pending_loss | 世界分支：`loss:pending` 战斗结算失败分支写；轮首败局补偿支消费后清账（`clear_pending_loss`） | 轮首收入败局补偿支输入 |

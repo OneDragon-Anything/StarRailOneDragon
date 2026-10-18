@@ -97,12 +97,12 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 | RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作,结束后返回主循环重进 = 入口观察重建牌面):点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;等待不是判效)→ 刷价记账(容器刷价现值读口,失读回基价常量)→ 自上报 `report_action_refresh_shop_param` 同一上报口三支(计数触发 `record_refresh` paid/total;免费次数扣减分支 = `gs.free_refresh_left` Field 值判定与扣减,None = 未观察保守按付费——次数是记账面非决策闸;随机采样分支 = kernel 采样器 `cw_shop_deal.sample_shop_deal` 经 `write_logic_rand` 写牌面随机态,observe 覆盖差异 = 预期内不进失配告警)。体内零读屏零验证(§1「用户裁定（零新增读屏）」合规);「刷新是否生效」归观察侧对账,执行侧零重试。发出条件 = 商店决策产 RefreshShop(现役发出点 = 利息线闸门,策略语义见 strategy-docs)。 |
 | CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:执行位 = 帧上找「按钮-收起」真点击(miss = 店已关,幂等出口;miss 回执 reason 码 = `定位缺失(按钮-收起)`,见 §5)+ 固定等待 + 自上报 `report_action_close_shop_param` 清场;零转移验证(点击未生效 = 外循环重分发自然重派)。发出条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
-### 4.2 备战族(10 行,含 LevelUpShop 同字段双类型显式独立行 + 工具原子 7 行)
+### 4.2 备战族(9 行,含工具原子 7 行;LevelUpShop 同字段双类型显式独立行已随 2026-10-17 迭代 T-4 词表退役删除,注册表回归单类型单行)
 
 | 动作类型 | op 类 | 文件 | 说明 |
 |---|---|---|---|
 | SellBench | CwActionSellBenchOp | `cw_prep_sell_bench_action.py` | 卖备战席角色:drag 备战栏槽中心(area 序 = `bench_idx` 容器槽表下标,零换算)→ 出售区(`prep_actions.drag_bench_to_sell` 单一源),机械执行后 op 自上报 `report_action_sell_bench_param`(容器逻辑态单点:置 empty + 回金 + 装备回收 + 溢出分支)+ 固定等待 1s(卖出金币动画)。发出条件 = 备战策略产 SellBench;`reason` 为归因记录字段非指令。 |
-| LevelUp(LevelUpShop 同字段双类型显式行同本 op) | CwActionLevelUpOp | `cw_prep_level_up_action.py` | 买经验单击:找钮「备战标识-购买经验」(env 锚定优先,回落自读 area = 业务定位逻辑;按钮坐标取值直接使用,缺失零检查 = 使用点自然异常报错,禁兜底坐标)单击一次 + 光标 park(防光标压等级显示区毒化 OCR);零授权零计数(击数推导/血闸全上移发出点,击数 > 0 = 每帧发出前置);金币写入 = op 自上报 `report_action_level_up_param` 按 `action.cost`×击数直写。升 N 击 = N 帧。发出条件 = 备战策略产 LevelUp(cost 现算装载);LevelUpShop(商店屏升级意图)同字段双类型,注册表显式独立行同解析本 op。 |
+| LevelUp | CwActionLevelUpOp | `cw_prep_level_up_action.py` | 买经验单击:找钮「备战标识-购买经验」(env 锚定优先,回落自读 area = 业务定位逻辑;按钮坐标取值直接使用,缺失零检查 = 使用点自然异常报错,禁兜底坐标)单击一次 + 光标 park(防光标压等级显示区毒化 OCR);零授权零计数(击数推导/血闸全上移发出点,击数 > 0 = 每帧发出前置);金币写入 = op 自上报 `report_action_level_up_param` 按 `action.cost`×击数直写。升 N 击 = N 帧。发出条件 = 备战策略产 LevelUp(cost 现算装载)。 |
 | DeployMove | CwActionDeployMoveOp | `cw_deploy_move_action.py` | bench→上阵单步拖拽(腾位链专用):源拖点 = `bench_idx` area 序直取,落位 = 载荷 `(to_row, to_slot)` 直指(排内 1 基画面槽号 → 对应排 area 序 `to_slot - 1` 取拖点;落位意图全部在载荷,执行边零现读零决定);拖拽语义 = 游戏规则:目标槽空 = 放置、有人 = 交换交互,执行层不判断占位、不拒、禁静默换槽;载荷槽越出画面槽位数(含 <1 负下标)= 参数违法,op 内守卫断言 AssertionError(「决策侧参数现算契约」段;坐标裁定域禁负下标——负下标回环 = 静默错点)。拖后零落地判定,落地归观察侧对账(§2.1)+ 固定等待 2s(羁绊徽章动画窗,保留面)。发出条件 = 备战策略按部署计划单一源(`mandate_v1/deploy_plan.py::deploy_plan_moves`)逐帧产 DeployMove(bench_idx / to_row / to_slot / faction)。 |
 | SellDeployed | CwActionSellDeployedOp | `cw_sell_deployed_action.py` | 卖上阵角色:drag 排槽中心 → 出售区(`deployed_idx` → 排/物理槽号内联换算;落点 `sell_point` 单一源),机械执行后 op 自上报 `report_action_sell_deployed_param`(容器逻辑态单点:摘槽 + 回金 + 装备回收)+ 固定等待 1s。发出条件 = 备战策略产 SellDeployed(deployed_idx = deployed 槽表下标)。 |
 | WearEquip | CwActionWearEquipOp | `cw_wear_equip_action.py` | 穿装备单步:owned 网格按名定位源件 → 拖至目标角色排槽(row/slot = 画面物理槽 1 基);拖后零落地判定,落地归观察侧对账(§2.1);目标槽位坐标取值直接使用,缺失零检查 = 拖拽使用点自然异常报错;源件未定位(owned 网格现读落空)= 未发出事实(round_fail 受阻码,下帧重派重算计划)。机械执行后 op 自上报 `report_action_wear_equip_param`(容器 equips 写 owned −1 + 目标角色 equips +1)。发出条件 = 备战策略穿戴计划(kernel `_build_equip_wear_plan`)逐帧取首项产 WearEquip(item_name / char_name / row / slot)。 |
@@ -179,7 +179,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 ### 4.6 动作类型已登记、不经注册表分发的类(3 类)
 
-- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新终结分支/补给刷新终结分支/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结、结束本次访问返回主循环重观察 + 闸 = 剩余次数观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;遭遇/补给两链已随剩余次数化修复,全链合规)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行与 pick 族并入出列;HoldFrame 曾已登记,2026-09-20 随 obs scope 口径并入删除。)
+- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新终结分支/补给刷新终结分支/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结、结束本次访问返回主循环重观察 + 闸 = 剩余次数观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;遭遇/补给两链已随剩余次数化修复,全链合规)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行〔该行已随 2026-10-17 迭代 T-4 双类型退役,单类型单行回归 §4.2〕与 pick 族并入出列;HoldFrame 曾已登记,2026-09-20 随 obs scope 口径并入删除。)
 - (Obs `scope='outer_loop'` 口径同为分支拦截型、不经本表派发,但其动作类型有注册行(§4.4 in_place 路径派发用),不属本节「无注册行」豁免面。)
 
 ### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)
