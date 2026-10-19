@@ -85,6 +85,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_grants,
+    discharge_due_item_opens,
     gain_equipment,
     gain_invest_env,
 )
@@ -1780,6 +1781,12 @@ class SimBackend:
         # 环境金同窗。
         discharge_due_item_grants(self.gs, plane=plane, round_num=r,
                                   rand=False, sig=logic_sig('sim:env'))
+        # 环境倒计时件到点开盒(T-34 命运礼物;设计 = T-34 设计稿 §2.4,
+        # 迭代 2026-09-23-invest-effects-calc):同一收口继承窗口幂等守卫
+        #(窗口重放不双发);开盒 = 确定事件非采样 → rand=False,
+        # sig 组名沿 sim:env 与定时道具发放同窗。
+        discharge_due_item_opens(self.gs, rand=False,
+                                 sig=logic_sig('sim:env'))
         # 首领节点条件发放(劳务派遣合同腿2;条件单一源 = kernel
         # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
         # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,

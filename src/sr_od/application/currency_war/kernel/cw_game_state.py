@@ -251,6 +251,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 先例不并入他域 bump
     'env_grant_uid_seq': 1,     # 环境发放实例号发号计数器(同迭代;int 保型
                                 # 直通免 rebuild 登记)。独立键版本 1,同上
+    'pending_item_opens': 1,    # 环境倒计时件开盒队列(T-34 命运礼物;
+                                # 元素 (件名, 解锁序位 NodePos))。独立键
+                                # 版本 1,同 env_grants_done 先例不并入
+                                # 他域 bump
     'node_seq_by_plane': 1,     # 逐位面节点序列场字段(「人身意外险」设计迭代:
                                 # 键 = 位面 1 基,值 = 节点类型序;逻辑态,
                                 # 写点唯一 = gain_invest_env 尾段,注册后
@@ -2077,6 +2081,9 @@ def seed_opening_state(gs: GameState) -> None:
     # 种子族先例——域值恒非 None,守卫 membership 判定零 None 防御)
     _seed(gs.env_grant_deploy_locks, ())
     _seed(gs.env_grant_uid_seq, 0)
+    # 环境倒计时件开盒队列(T-34 命运礼物;空底座,同 env_grants_done
+    # 种子族先例——域值恒非 None,到点弹除比较判定零 None 防御)
+    _seed(gs.pending_item_opens, ())
     # (node_seq_by_plane 不种:B/C 类字段契约——None = 未注册态是设计
     # 语义,设计「Field 缺省 None」,Field 声明缺省即开局真值,
     # seed_opening_state「B/C 类字段一个不种」同规。)
@@ -2368,6 +2375,22 @@ class GameState:
     # 知识,游戏 UI 无「待发放列表」可读;实机局不消费(队列登记后保持原样,
     # 备战真值归观察覆盖)。开局种子底座 = [](A 类)。
     pending_item_grants: Field[list[dict]] = field(default_factory=Field)
+    # [索引定义] pending_item_opens = 已获得、待倒计时归零开盒的战利品区
+    # 倒计时件队列(环境延迟开盒通道,T-34 命运礼物首例;设计 = T-34
+    # 设计稿 §2.2,迭代 2026-09-23-invest-effects-calc)。元素 = (item 件名,
+    # unlock NodePos 解锁位);unlock 坐标系 = NodePos(位面,轮次)字典序、
+    # 1 基(cw_node_schedule.NodePos 同式);取值时机 = 环境获得刻写(获得
+    # 刻生效序位沿日程表步进 open_delay_nodes 步,T-33 锁腿同式,步进按
+    # 当时日程定格);到期判定 = 当前生效序位 ≥ 解锁位(字典序,到了及
+    # 以后都算,错过不悬空),命中即弹除(discharge_due_item_opens 原语)。
+    # 写入端 = 唯一逻辑写端 = on_env_gained 登记入队 / discharge_due_item_
+    # opens 到点弹除 / 完胜回退腿(check_env_item_open_perfect)解锁位
+    # 回退;无观察写端(队列 = 卡文推算知识;战利品区板件显示不建域——
+    # 晶矿 spheres 同形态,板件观察归识别侧工作流);实机局不接开盒原语
+    #(不对称申报,pending_item_grants 同款;完胜回退腿双端跑)。开局
+    # 种子底座 = ()(A 类)。
+    pending_item_opens: Field[tuple[tuple[str, tuple[int, int]], ...]] = field(
+        default_factory=Field)
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
     # [字段定义] shop_locked = 整店锁(锁定后节点切换不自动全刷)。取值时机 =
@@ -3797,6 +3820,14 @@ def report_node_advance(gs: GameState, *, trigger: str,
             check_env_deploy_lock_perfect,
         )
         check_env_deploy_lock_perfect(gs, sig)
+        # 完胜回退检查(T-34 命运礼物):同分支 check_env_deploy_lock_
+        # perfect 调用邻位——判据同族(结算环帧),改写域 = pending_item_
+        # opens(倒计时件队列解锁位回退,纯模型知识修正,双端跑与开盒
+        # 原语 live 不接无矛盾)。惰性 import 同款;返回值仅日志面。
+        from sr_od.application.currency_war.kernel.cw_env_grants import (
+            check_env_item_open_perfect,
+        )
+        check_env_item_open_perfect(gs, sig)
     return LogicOutcome(
         applied=True, reason=f'node_pos→{candidate[0]}-{candidate[1]}',
         world_decl=WorldDecl(next_screen=_node_advance_next_screen(gs),
@@ -4254,6 +4285,11 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 保型直通,免登记(_json_safe 对 int 无漂移)。
         'env_grant_deploy_locks': lambda d: tuple(
             (str(e[0]), int(e[1]), (int(e[2][0]), int(e[2][1]))) for e in d),
+        # 环境倒计时件开盒队列(T-34 命运礼物):tuple 化重建(_json_safe
+        # 落快照为 list-of-lists;元素 = (件名, (位面,轮)),解锁序位嵌套
+        # 元组重建);随快照存续 = 接管局队列不丢。
+        'pending_item_opens': lambda d: tuple(
+            (str(e[0]), (int(e[1][0]), int(e[1][1]))) for e in d),
         # 逐位面节点序列场字段():键 int 化 + 值 tuple 化重建
         # (_json_safe 落快照为 str 键 dict-of-list);随快照存续 = 修饰局
         # 恢复坐标系不断。None 值域不在快照(只存非 None,往返一致)。

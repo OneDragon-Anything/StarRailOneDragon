@@ -894,12 +894,14 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     # import 契约:函数内惰性取(本函数既有 DOT_ANCHOR_KEY_PREFIX/
     # STAR_GRANT_KEY_PREFIX 同款函数级避环)。
     from sr_od.application.currency_war.kernel.cw_env_grants import (
+        DELAYED_OPEN_ACCEL_KEY,
         DEPLOY_LOCK_UID_KEY_PREFIX,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         effective_node_pos,
     )
     from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_DELAYED_ITEM_GRANTS,
         ENV_DEPLOY_LOCK_GRANTS,
     )
     from sr_od.application.currency_war.kernel.cw_node_schedule import (
@@ -964,6 +966,42 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
             effects.append(f'env_gift_random:{name}@{_lock.spec.star}star')
             effects.append(f'env_deploy_lock:{name}'
                            f'#uid{uid}@{unlock[0]}-{unlock[1]}')
+    # 延迟道具支线(世界发放域登记表白名单,同在 ENV_GIFTS 查表之前——
+    # 表外环境零写径不受扰):倒计时件 = 战利品区浮动件非占席(实机板件
+    # 实证,T-34 设计稿 §1)→ 纯队列登记零席位写(不调 _place_bench_item,
+    # 不碰 bench/overflow 任何字段);开盒内容不建模(卡面 desc 无载,硬
+    # 裁定 = T-34 设计稿披露 1)。解锁位 = 获得刻生效序位沿日程表步进
+    # open_delay_nodes 步(计数起点 = 获得节点计入,裁决点 3;生效序位
+    # 未锚定 = 开局段结构性形态,防御基准 (1,1);步进遇 None(局终方向)
+    # 停留最后合法值,T-33 锁腿同款)。设计 = T-34 设计稿 §2.3,迭代
+    # 2026-09-23-invest-effects-calc。
+    _delayed = ENV_DELAYED_ITEM_GRANTS.get(_name)
+    if _delayed is not None:
+        base = effective_node_pos(gs) or (1, 1)
+        unlock = base
+        for _ in range(_delayed.open_delay_nodes):
+            nxt = sequence_next(unlock, gs.node_seq_by_plane.value)
+            if nxt is None:
+                break   # 局终方向无后继:停留最后合法值(T-33 同款)
+            unlock = nxt
+        write = _select_write(gs, rand)   # 与链内其余写同收口
+        write(gs.pending_item_opens,
+              tuple(gs.pending_item_opens.value or ())
+              + ((_delayed.item, unlock),),
+              produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'on_env_gained:{_name}#open_queue', sig=sig)
+        if _delayed.perfect_win_accel:
+            done = tuple(gs.env_grants_done.value or ())
+            if (_name, DELAYED_OPEN_ACCEL_KEY) not in done:
+                # 幂等:重复获得不重写(队列两条独立条目照登记,加速
+                # 作用域 done 键只写一次)
+                gs.write_logic(gs.env_grants_done,
+                               done + ((_name, DELAYED_OPEN_ACCEL_KEY),),
+                               produced_by=GAIN_CHAIN_PRODUCER,
+                               evidence=f'on_env_gained:{_name}#accel_scope',
+                               sig=sig)
+        effects.append(f'item_open_scheduled:{_delayed.item}'
+                       f'@{unlock[0]}-{unlock[1]}')
     grant = ENV_GIFTS.get(_name)
     if grant is None:
         return tuple(effects)
@@ -1135,6 +1173,49 @@ def discharge_due_item_grants(gs: GameState, *, plane: int, round_num: int,
               evidence=f'discharge_due_item_grants:p{plane}-r{round_num}',
               sig=sig)
     return tuple(effects)
+
+
+def discharge_due_item_opens(gs: GameState, *, rand: bool,
+                             sig: ChannelSig) -> tuple[str, ...]:
+    """倒计时件到点开盒原语(环境延迟开盒通道;与 discharge_due_item_grants
+    同区并列):读 pending_item_opens 现值,生效序位 ≥ 解锁位的条目为命中
+    并弹除,其余保留;一次 write 回写保留队列,返回效果串(每命中项
+    ``item_opened:<名>``)。唯一调用点 = sim 进节点收口
+    (discharge_due_item_grants 调用邻位,cw_sim_backend 进节点收尾,
+    T-34 设计稿 §2.4 挂点);实机局不接(不对称申报,
+    cw_game_state.pending_item_opens 域注,T-34 设计稿裁决点 4)。
+
+    - 零消耗腿:件 = 战利品区浮动件非占席(实机板件实证,T-34 设计稿
+      §1),无席位槽可消耗——开盒 = 队列弹除 + 板件从战利品区消失
+      (游戏侧事实,模型零席位写;开出的奖励若落席由现役 bench/装备
+      观察自然捕捉)。
+    - 开盒零产出写入(硬裁定:开盒内容卡面 desc 无载,放弃建模 =
+      T-34 设计稿披露 1 delayed_item_open_content_unmodeled;sim 世界
+      比实机少一份随机奖励;真值建立后 = 本原语加发放腿,零迁移)。
+    - rand 语义:开盒 = 确定事件(非采样),调用方传 rand=False
+      (discharge_due_item_grants 同款);写通道经 :func:`_select_write`
+      单一收口;effective_node_pos 未锚定(None)→ 零写;命中集空 →
+      零写。
+
+    kernel 反向模块级零 import 契约外:effective_node_pos 住 cw_game_
+    state(本模块既有模块级依赖),函数内惰性取沿 on_env_gained 同名
+    先例,零新模块边。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        effective_node_pos,
+    )
+    eff = effective_node_pos(gs)
+    if eff is None:
+        return ()
+    queue = tuple(gs.pending_item_opens.value or ())
+    hit = [entry for entry in queue if entry[1] <= eff]
+    if not hit:
+        return ()
+    keep = tuple(entry for entry in queue if entry[1] > eff)
+    write = _select_write(gs, rand)
+    write(gs.pending_item_opens, keep, produced_by=GAIN_CHAIN_PRODUCER,
+          evidence=f'discharge_due_item_opens:p{eff[0]}-r{eff[1]}',
+          sig=sig)
+    return tuple(f'item_opened:{item}' for item, _unlock in hit)
 
 
 def on_character_gained(gs: GameState, name: str, star: int, *,

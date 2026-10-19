@@ -2744,6 +2744,89 @@ def _validate_env_deploy_lock_grants() -> None:
 _validate_env_deploy_lock_grants()
 
 
+# ===== 环境「战利品区倒计时件 + 节点倒计时开盒」登记表(白名单制)=====
+# 立形首例 = 命运礼物(id 134「立刻获得一个【惊喜盒】,倒计时12个节点后
+# 礼盒打开,战斗完胜后,倒计时额外减少1点。」,PlazaPortal('134'),
+# cw_invest_data.py)。惊喜盒 = 战利品区浮动件非占席(实机板件实证 =
+# 与晶矿球同区,T-34 设计稿 §1 两帧证据),故不入 GiftGrant(道具通道 =
+# _place_bench_item 占席落位,与板件位置直接矛盾)、不入 BENCH_ITEM_NAMES
+# 词表(非占席,词表派生式零扩)。消费面:到手腿 = cw_gain_chain.
+# on_env_gained 延迟道具支线(纯队列登记零席位写);开盒腿 =
+# cw_gain_chain.discharge_due_item_opens 原语(sim 进节点收口挂点,
+# 实机局不接);完胜加速腿 = kernel/cw_env_grants.
+# check_env_item_open_perfect(report_node_advance settle_confirm 分支)。
+@dataclass(frozen=True)
+class EnvDelayedItemGrant:
+    """环境「战利品区倒计时件」结构(世界发放域专属登记表;
+    字段语义 = id 134 原文直读 + 实机板件实证):
+    - item: 倒计时件名(「【惊喜盒】」直读;战利品区浮动件非占席——
+      实证 = reward_giftbox_phantom.webp 与晶矿球同区);
+    - open_delay_nodes: 开盒倒计时节点数(「12个节点」直读);
+      解锁位 = 获得刻生效序位沿日程步进本值(计数起点 = T-34 设计稿
+      裁决点 3:获得节点计入);
+    - perfect_win_accel: 「战斗完胜后,倒计时额外减少1点」加速腿旗
+      (腿本体 = T-34 设计稿裁决点 1)。"""
+    item: str
+    open_delay_nodes: int
+    perfect_win_accel: bool
+
+
+ENV_DELAYED_ITEM_GRANTS: dict[str, EnvDelayedItemGrant] = {
+    # 命运礼物(id 134 原文直读,cw_invest_data.py:402)
+    '命运礼物': EnvDelayedItemGrant(item='惊喜盒', open_delay_nodes=12,
+                                    perfect_win_accel=True),
+}
+
+
+def _validate_env_delayed_item_grants() -> None:
+    """ENV_DELAYED_ITEM_GRANTS 构建校验(import 即炸;沿 deploy_lock
+    登记表校验先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② item 形:非空 str 且 ∉ CHARACTER_ROSTER(道具/角色通道串行防呆,
+    _validate_env_gifts 定时道具名同款判据);③ 倒计时形:open_delay_nodes
+    须为 ≥1 的 int(bool 显式拒——ENV_DEPLOY_LOCK_GRANTS 锁期形逐字
+    同款);④ 双登记防呆:
+    ``set(ENV_DELAYED_ITEM_GRANTS) ∩ set(ENV_GIFTS) = ∅``——同卡双表 =
+    道具双发(占席落位 + 队列登记各一份),先例 =
+    ENV_DEPLOY_LOCK_GRANTS ∩ ENV_GIFTS;⑤ 加速旗形:perfect_win_accel
+    必 bool(登记笔误前置可见)。
+    """
+    orphans = [n for n in ENV_DELAYED_ITEM_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_DELAYED_ITEM_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, _grant in ENV_DELAYED_ITEM_GRANTS.items():
+        _item = _grant.item
+        if not isinstance(_item, str) or not _item:
+            raise ValueError(
+                f"ENV_DELAYED_ITEM_GRANTS 件名形({_n!r}):须为非空 str,"
+                f"现值 {_item!r}")
+        if _item in CHARACTER_ROSTER:
+            raise ValueError(
+                f"ENV_DELAYED_ITEM_GRANTS 件名漂移({_n!r}):"
+                f"倒计时件名混入角色注册表(道具/角色通道串行防呆):"
+                f"{_item!r}")
+        _delay = _grant.open_delay_nodes
+        if not isinstance(_delay, int) or isinstance(_delay, bool) \
+                or _delay < 1:
+            raise ValueError(
+                f"ENV_DELAYED_ITEM_GRANTS 倒计时形({_n!r}):须为 ≥1 的 int,"
+                f"现值 {_delay!r}")
+        if not isinstance(_grant.perfect_win_accel, bool):
+            raise ValueError(
+                f"ENV_DELAYED_ITEM_GRANTS 加速旗形({_n!r}):须为 bool,"
+                f"现值 {_grant.perfect_win_accel!r}")
+    _overlap = set(ENV_DELAYED_ITEM_GRANTS) & set(ENV_GIFTS)
+    if _overlap:
+        raise ValueError(
+            f"ENV_DELAYED_ITEM_GRANTS ∩ ENV_GIFTS 非空(同卡双表 = 道具"
+            f"双发):{sorted(_overlap)}")
+
+
+_validate_env_delayed_item_grants()
+
+
 # ===== 节点改写注册表归属校验(import 即炸)=====
 # 注册表数据住序列模块(kernel/cw_node_schedule.ENV_NODE_REWRITE_RULES,
 # 与序列真值同域、sim 同源直读);归属校验住 INVESTMENT_ENVS 的家——

@@ -294,6 +294,15 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'cw_gain_chain(环境获得链赠卡腿)三口,消费端 = deploy_move/'
               'swap_deploy 上报入口锁守卫 deploy_lock_block_reason;比对'
               '自愈无主动清理,记录滞留至局终'),
+    'pending_item_opens': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='环境倒计时件开盒队列(T-34 命运礼物,元素 (件名, 解锁序位'
+              ' NodePos),无观察读端——队列 = 卡文推算知识,战利品区板件'
+              '显示不建域〔晶矿 spheres 同形态,板件观察归识别侧工作流〕;'
+              '逻辑写端 = cw_gain_chain.on_env_gained 登记入队 + '
+              'discharge_due_item_opens 到点弹除(sim 进节点收口,实机'
+              '不接)+ check_env_item_open_perfect 完胜回退三口,消费端'
+              ' = 开盒原语单一;到点比对自愈无主动清理'),
     'env_grant_uid_seq': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='环境发放实例号发号计数器(发放刻单调发号上界,无观察读端'

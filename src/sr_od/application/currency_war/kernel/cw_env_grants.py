@@ -86,6 +86,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BATTLE_GRANTS,
     ENV_BOSS_GRANTS,
+    ENV_DELAYED_ITEM_GRANTS,
     ENV_DEPLOY_LOCK_GRANTS,
     ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
@@ -168,6 +169,13 @@ BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
 #: 只回退本键集内的 uid 锁记录,T-30 流萤等异环境锁记录不受同卡完胜
 #: 加速(卡面「将其」= 本卡赠卡)。键形态登记单一源 = fields.md §3.5.5。
 DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
+
+#: done 域条件键:环境倒计时件完胜加速(T-34 命运礼物;每环境至多一个,
+#: (env, 本键) 天然唯一 + 获得刻幂等不重写)。写入端 =
+#: cw_gain_chain.on_env_gained 延迟道具支线(perfect_win_accel 开时,
+#: 获得刻与开盒队列登记同窗);消费端 = check_env_item_open_perfect
+#: 完胜改写——只回退本键集环境的 pending_item_opens 条目解锁位。
+DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 
 #: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
 #: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
@@ -825,6 +833,83 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
         gs.write_logic(gs.env_grant_deploy_locks, tuple(new_locks),
                        produced_by=_PRODUCER,
                        evidence='env_deploy_lock_perfect', sig=sig)
+    return tuple(effects)
+
+
+def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
+                                ) -> tuple[str, ...]:
+    """完胜回退检查(环境倒计时件家族,登记表 =
+    ``cw_investments.ENV_DELAYED_ITEM_GRANTS``;唯一调用点 =
+    report_node_advance settle_confirm 分支,check_env_deploy_lock_perfect
+    调用邻位,惰性 import 同款;分支在 advance_node_effective 真推进
+    之后,重复上报结构性不重查,T-30 同款性质)。
+
+    判据(用户裁定 2026-10-18 口径:结算胜利 ∧ 本节点未损失小队生命值;
+    设计 = T-34 设计稿 §2.5,迭代 2026-09-23-invest-effects-calc)=
+    结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
+    hp_after 持平**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
+    在册;killed 语义/hp 差分基准的推导正本见彼处 docstring,宁缺勿造:
+    环不足两行或任一侧 hp_after None 不判定)。判据判定行内联同式非共享
+    谓词:check_env_deploy_lock_perfect 本体属零混改面(T-34 设计稿
+    §3 零改动清单),本函数与 T-33 完胜腿零代码耦合(域不同:
+    env_grant_deploy_locks vs pending_item_opens)。
+
+    作用域 = env_grants_done 中本表 perfect_win_accel=True 环境的
+    ``delayed_open_accel`` 键集(DELAYED_OPEN_ACCEL_KEY,获得刻由
+    cw_gain_chain.on_env_gained 延迟道具支线登记);改写 =
+    pending_item_opens 中件名命中作用域 ∧ unlock > 生效序位的条目各沿
+    序列表前驱回退一步(:func:`sequence_prev`,修饰域 gs.node_seq_by_plane
+    现值传入缺省回退默认表;P1 首节点前驱不存在 = 不回退留原值,纯防御),
+    全量单笔 write_logic 回写;unlock ≤ 生效序位(已到点)条目不动;
+    生效序位缺读 = 宁缺勿造零改写(结构性不可达,直构/测试形态防御)。
+    多次完胜累积:每帧各回退一步。
+
+    - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归调用点直传);
+    - 零 rng:胜局判定与序位回退全确定,不消耗随机数;
+    - 返回效果串元组(每回退一条
+      ``item_open_perfect:<件名>@<位>-<轮>``;空 = 零改写零效果串;
+      调用方仅日志面消费,无行为分支)。"""
+    if effective_node_pos(gs) is None:
+        return ()
+    rows = gs.settlement_ring.last_two_rows()
+    if len(rows) < 2:
+        return ()
+    tail, prev = rows[-1], rows[-2]
+    if tail.killed is not True:
+        return ()
+    if tail.hp_after is None or prev.hp_after is None:
+        return ()
+    if int(tail.hp_after) != int(prev.hp_after):
+        return ()
+    done = tuple(gs.env_grants_done.value or ())
+    scope_items: set[str] = set()
+    for env_name, grant in ENV_DELAYED_ITEM_GRANTS.items():
+        if not grant.perfect_win_accel:
+            continue
+        if (env_name, DELAYED_OPEN_ACCEL_KEY) not in done:
+            continue
+        scope_items.add(grant.item)
+    if not scope_items:
+        return ()
+    eff = effective_node_pos(gs)
+    new_queue: list[tuple[str, tuple[int, int]]] = []
+    effects: list[str] = []
+    changed = False
+    for item, unlock in tuple(gs.pending_item_opens.value or ()):
+        if item in scope_items and unlock > eff:
+            prev_pos = sequence_prev(unlock, gs.node_seq_by_plane.value)
+            if prev_pos is not None:
+                new_queue.append((item, prev_pos))
+                effects.append(f'item_open_perfect:'
+                               f'{item}@{prev_pos[0]}-{prev_pos[1]}')
+                changed = True
+                continue
+        new_queue.append((item, unlock))
+    if changed:
+        gs.write_logic(gs.pending_item_opens, tuple(new_queue),
+                       produced_by=_PRODUCER,
+                       evidence='env_item_open_perfect', sig=sig)
     return tuple(effects)
 
 
