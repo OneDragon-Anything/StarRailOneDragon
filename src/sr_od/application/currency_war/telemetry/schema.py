@@ -478,7 +478,8 @@ class DecisionTrace:
     # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;实机验证队列
     # 「死时带金/闲置金」判读的帧级数据源;接出点同 `w603_telemetry_wiring/` 汇点)——
     # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。
-    # 储备线 R*(=利息线+窗口排程升级费;strategy_state_of(session).v3_reserve_cap 透传)。
+    # 储备线 R*(=保利利息线 saturation_line;原「利息线+窗口排程升级费」
+    # 的排程升级分量已随排程升级接缝删除;strategy_state_of(session).v3_reserve_cap 透传)。
     sess_reserve_cap: int | None = None
     # 富余 (g−R*)+(义务压力原料;闲置金判据=本字段的帧均值)。
     sess_reserve_overflow: int | None = None

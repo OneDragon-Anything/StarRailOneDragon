@@ -105,10 +105,10 @@ def all_in_xp_domain_hit(gs: GameState, session: StrategySession | None,
 
     宪法姿态:消费既有停升级线 hp 读数,零新增 hp 消费点(总图 N5
     对账「既有授权适用范围收窄非新增 hp 点」);判据级适用范围收窄,非血线
-    地板解锁包件(hp 闸批另落,总图实施序第 5 步)。支A 谓词不进
-    kernel(消费侧升级判据(原 _realize_chain_ready 已停用;本谓词
-    现役消费位 = kernel schedule_upgrade 人口位分支),
-    P39 指示项锚对契约),本谓词只答血侧半支。
+    地板解锁包件(hp 闸批另落,总图实施序第 5 步)。支A 兑现链谓词不进
+    kernel(消费侧升级判据单一源 = criteria/levelup;其原消费位已随
+    人口位臂与排程层升级接缝删除消亡,本谓词现无产线消费位,保留 =
+    停升级线血侧读口),本谓词只答血侧半支。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,

@@ -20,8 +20,8 @@ details/horizon-cleanup.md §2-§6。
 
 承载面(按消费面划定的最小集):
 - 本位面轮数真值:nodes_of_plane(实况读、不夹);
-- 升级费用查询:clicks_to_level/level_cost(逐帧现读单价由消费方
-  economy_cycle.upgrade_plan_fee 承担,本表只供次数);
+- 升级费用查询:clicks_to_level/level_cost(逐帧现读单价 =
+  kernel cw_economy.xp_click_cost,本表只供次数);
 - 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
   .interest 唯一源,DEFAULT_INTEREST_CAP 由其派生);
 - 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,
@@ -55,7 +55,7 @@ def _probe_books(session):
 # ===== 经济先验 =====
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
 XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(实测 4-8 取下限;
-# 生产升级费走 economy_cycle.upgrade_plan_fee 的 OCR 现读,本值仅 level_cost 先验用)
+# 生产升级费现读 = kernel cw_economy.xp_click_cost,本值仅 level_cost 先验用)
 
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
@@ -153,8 +153,8 @@ def clicks_to_level(level: int) -> int:
 
 
 def level_cost(level: int) -> int:
-    """升一级总金先验(次数 × flat 单击价;现读单价版在
-    economy_cycle.upgrade_plan_fee,本函数仅供先验/测试口径)。"""
+    """升一级总金先验(次数 × flat 单击价;现读单价版 =
+    kernel cw_economy.xp_click_cost,本函数仅供先验/测试口径)。"""
     return clicks_to_level(level) * XP_CLICK_COST_FLAT
 
 

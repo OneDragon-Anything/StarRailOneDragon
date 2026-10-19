@@ -202,8 +202,7 @@ class MandateFrame:
     @property
     def deploy_vacancy(self) -> int:
         """板面空位(cap 缺读=0 保守侧:R4 单一真值源改造后 cap 可 None,
-        缺读不虚构空位——fail 方向与 predicates.arm1_existence 的
-        None 兜底保守端一致)。"""
+        缺读不虚构空位——空位按 0 收紧部署候选,不向部署面放行幻影位)。"""
         if self.deploy_cap is None:
             return 0
         return max(0, self.deploy_cap - len(self.deployed))
@@ -1268,15 +1267,13 @@ def run_mandate(frame: MandateFrame,
             and _deployable(frame, session, state)):
         _emit_deploy_moves(out, frame, session, state, 'm1_deploy')
 
-    # (升级整批 M3 段(三分支 arm1/arm0/pop + 富余段 + 血闸 + 预算闸)与
-    # M1′ 升级后补部署段已随升级判据重轴停用——迭代
-    # 2026-10-12-prep-shop-workflow-redesign:判据内核 =
-    # criteria/levelup.upgrade_trigger 五分支(arm0/概率账/人口位/富余段-L3/
-    # 停留门),动作发出点收拢为 entry.py 备战第 4 步升级检查(商店会话
-    # 保留升级意图出口转场关店)。升级后补部署无独立对应分支:十段全扫单
-    # 动作循环下第 4 步命中即返回,升级帧结构性到不了部署步——行为
-    # 经下帧 M1 空槽补位收敛(deploy_vacancy 更新后 M1 命中,零卖出
-    # 成本接管)。)
+    # (升级整批 M3 段与 M1′ 升级后补部署段不落本决策链——升级判据
+    # 内核 = criteria/levelup.upgrade_trigger 单判据三分派(最优概率带,
+    # 触发键 stay_gate/natural),动作发出点收拢为 entry.py 备战第 4 步
+    # 升级检查(商店会话保留升级意图出口转场关店)。升级后补部署无独立
+    # 对应分支:十段全扫单动作循环下第 4 步命中即返回,升级帧结构性
+    # 到不了部署步——行为经下帧 M1 空槽补位收敛(deploy_vacancy 更新后
+    # M1 命中,零卖出成本接管)。)
 
     # M1″(板满换阵补部署意图;发出序 = M6 前)。语义出处 =
     # (board-full swap redeploy;判据单一源 =
@@ -1572,8 +1569,8 @@ def m7_wearable_exists(owned: list[str]) -> bool:
 
 def _cap_of(session: StrategySession) -> int:
     """cap_resolved 现读(单一源 = kernel.cw_economy.cap_resolved_of_
-    session;cap 三源归一:商店线 R1/R2 的 g*、schedule_upgrade
-    ② 前置、U_L 检验 loss_exact cap 共用同一式;投资覆写语境归一)。"""
+    session;多消费位归一:商店线 R1/R2 的 g*、升级资金线门下界
+    saturation_line、富余线 G_must 共用同一 resolved 链;投资覆写语境归一)。"""
     from sr_od.application.currency_war.kernel.cw_economy import (
         cap_resolved_of_session,
     )

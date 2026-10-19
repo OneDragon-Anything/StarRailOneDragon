@@ -6,7 +6,10 @@
 - cw_horizon: interest(g)=min(g//10, cap) / NODES_PER_PLANE / TOTAL_NODES
 - cw_economy: BASE_REWARD_GOLD / STREAK_GOLD_TABLE / streak_gold
 - decision_v2 registry: h3_win_rate / rung_value(P3 边际) / interest_cap /
-  interest_recovery_rounds / hp_to_gold / interest_floor / form_floor / boss_floor
+  interest_recovery_rounds / hp_to_gold / interest_floor / form_floor
+  (正文②的 boss_floor 字样 = 证明时点旧保底口径〔=10〕的文档性引用——
+  该 registry 字段已随升级资金线门批删除,升级资金下界单一源 =
+  saturation_line,本脚本从未消费该字段)
 
 三问:
 ① 守50 vs 底线40/30/20 vs 不守 的期望出口金+方差+累计利息(9 轮精确 DP);
@@ -196,6 +199,10 @@ def q2_boundary() -> None:
     print('     R<3(r7-r8):C 与 V 同乘 R → Δp* = t/m 轮无关(≈0.63-0.71/t);')
     print('     r9(R=0):位面内 C=0,只剩出口携带溢价 ≤0.83/t(P10①)——')
     print('     allin/boss_floor 的极限形态,与现行阶梯同向。')
+    # 注:上行 boss_floor = 证明时点旧保底口径(=10)的文档性引用;该
+    # registry 字段已随升级资金线门批删除(资金下界单一源 =
+    # saturation_line),本脚本不消费该字段,输出文本保持与已归档证明
+    # 单篇(p13-hold50-expected-account.md)一致。
     v_hp_e = HP_LOSS_ENCOUNTER * REG.hp_to_gold
     v_hp_b = HP_LOSS_BOSS * REG.hp_to_gold
     print(f'   硬节点旁路(boss/遭遇,连胜在手):V_hp = 掉血×{REG.hp_to_gold}'

@@ -216,9 +216,8 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
-    # —— criteria/levelup(11 号稿 §2;arm2 保利息门/
-    #    saturation_floor/levelup_budget_gate 量闸与旧五臂判定谓词已
-    #    随各自消费面删除)——
+    # —— criteria/levelup(11 号稿 §2;判据组 = 触发三分派/概率带/
+    #    整买纪律/等级帽/P21 全域判定/资金线门)——
     ('levelup', 'upgrade_trigger'): Contract(
         None,
         '升级触发单判据三分派(stay_gate/natural):辖锁定后 ∧ '
@@ -234,7 +233,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
     ('levelup', 'lv9_stop'): Contract(
         None, '等级上限停(历史键名;单一源=注册表 level_max,消费位传'
-        '上下文注册表 .level_max,sim 经注入视图;义务侧消费)',
+        '上下文注册表 .level_max;义务侧消费)',
         '01_math_framework §3.3'),
     ('levelup', 'xp_ledger_stop'): Contract(
         None, 'XP 期望账本升级停(lv9_stop 轮内盲区补位;与 lv9_stop '
@@ -279,7 +278,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'D-D 修复池(原文考古走 git 历史;现行=本判据)'),
     ('refresh', 'r2_card_reserve'): Contract(
         None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
-        'R2 门与 P71-b 预算闸同源消费,提升批)',
+        'R2 门同源消费,提升批)',
         'P54-r2-interest-floor §②'),
     ('refresh', 'all_channel_buy_exists'): Contract(
         None, 'P92 全通道可实现买入集判定尺(R1 发射前存在性门;'

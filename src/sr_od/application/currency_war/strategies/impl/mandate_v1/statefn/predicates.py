@@ -2,9 +2,8 @@
 
 01_math_framework §2 的在产实现:目标线 K(阵容 的 core/shared/flex
 名单,cw_comps.COMP_LIBRARY 运行时可判定)与零重叠资格(M4 燃料件
-卖出前提);旧升级触发臂谓词(arm1_existence 板满三元/arm0_level_lag
-等级滞后)已随五臂触发删除消亡(升级触发 = 单判据三分派,载体 =
-criteria/levelup.upgrade_trigger)。
+卖出前提)。升级触发不落本模块——单判据三分派单一源 =
+criteria/levelup.upgrade_trigger。
 """
 from __future__ import annotations
 

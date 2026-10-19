@@ -240,8 +240,8 @@ def r2_card_reserve(k_members: tuple[str, ...],
     """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(公共单一源;修 R2 批
     实现,原 shop 模块私有实现提升至此——落点裁定 = 方案审 v2:ρ 依赖
     ``data/cw_chars.CHARACTERS`` 注册表与 ``refresh_prob`` 现读,属判据面,
-    禁进 kernel 经济层破坏其输入纯度;P54 floor 与 P71-b 升级预算闸
-    的 ρ/Σ预留分量同源消费,禁第二实现)。
+    禁进 kernel 经济层破坏其输入纯度;P54 floor 的 ρ/Σ预留分量同源消费,
+    禁第二实现)。
 
     ⚠ 同名异义锚:本 ρ(P54「合格集最低费卡价」)与
     ``statefn/s_line.py`` 的 ``rho(delta_v_band, delta_v_pop, rounds)``
@@ -249,10 +249,9 @@ def r2_card_reserve(k_members: tuple[str, ...],
 
     可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
     (shop.py R1 段)按 L* 重估传入——R1 已选等级的出牌面覆盖 R2 预留
-    卡价(用当前级过滤会在 L*≠当前级帧错档)。P71-b 预算闸消费取
-    缺省当前级:闸在升级授权前评估,预留口径与 P54 floor「满利息档 +
-    至少一张命中卡可买」同帧同等级(花后金下界 = levelup.
-    guarantee_floor_gate 同链)。
+    卡价(用当前级过滤会在 L*≠当前级帧错档;原 P71-b 升级预算闸取缺省
+    当前级的消费位已随升级触发统一批删除)。升级侧花后金下界 =
+    ``levelup_fund_gate`` 同链(saturation_line)。
 
     证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
     CHARACTERS 注册表 cost,非字面量)。可追过滤与 R1 装配侧

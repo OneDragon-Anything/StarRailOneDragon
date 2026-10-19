@@ -7,7 +7,8 @@ F7_CONTINGENCY_ARMED/P_LAMBDA_QUANTILE〔血线地板/λ 顾问删除〕、
 V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
 PER_ROUND/N_CRISIS/V_GAP〔换线机器与换线窗口侧〕、
 V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕、
-LEVELUP_MISSING_SET_AGG〔升级概率账臂删除〕
+LEVELUP_MISSING_SET_AGG〔升级概率账臂删除〕、
+W_POP〔人口位臂删除〕
 ——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)、
 随消费面登记后补(MERGE_PROGRESS_X2)。
 每项一个 ``Optional`` 槽位,
@@ -53,7 +54,6 @@ _SLOTS: dict[str, _Slot] = {
     #    PER_ROUND/P_REC/N_CRISIS;line_and_upgrade §1.6;零槽位
     #    由 statefn/lambda_death.py λ 表承载)——
     'U_X': _Slot('#1 u_x/H_x 使用概率/需要时距;分槽/带序逐格(R17-4)'),
-    'W_POP': _Slot('#3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
     'RHO_IMPUTE': _Slot('#4 ρ 摊派口径(A7);均匀摊保守首版'),
     'NBAR_ESTIMATOR': _Slot('#5 n̄ 估计器(实估,误差二阶 A3)'),
     'T_SEARCH_A': _Slot('#6 A/T_search 组成(活跃窗口付费份额确定性查表)'),

@@ -70,7 +70,7 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '门', '旁路=门关闭', 'R5-4(预算门不批)'),
     ('refresh', 'r2_card_reserve'): (
         '状态函数', '不旁路', 'P54 §② ρ 公共单一源(提升批;'
-        'R2 门与 P71-b 闸同源消费)'),
+        'R2 门同源消费)'),
     ('refresh', 'hard_node_reinforce_gate'): (
         '门', '旁路=门关闭', 'D-D(硬节点补强门,消费面 r1/candidates 均臂①旁路)'),
     ('refresh', 'crisis_refresh_invariant'): (
