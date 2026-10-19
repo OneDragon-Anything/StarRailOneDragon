@@ -70,17 +70,28 @@ uv run ruff check --fix src/你修改的文件.py
 
 ## 3.Operation 最佳实践
 
-- 找元素、点按钮，优先用 `round_by_find_and_click_area`：坐标存在 screen_info（建 area），按「画面名 + 区域名」找，找到才点。不要全屏 OCR 找字，不要在代码里写死坐标。
-- 写一个节点先想清楚三件事：**当前画面是什么、这个节点要做什么操作、做完之后画面是留在本屏还是切到别的屏**。
-- 画面要切换的操作（点关闭、点确认跳转），把「切换证据」直接写进 `round_by_find_and_click_area` 的 until 参数：
+- `Operation` 由多个节点组成，每个节点是一个由 `@operation_node` 装饰的函数。
+- 多个节点之间，由 `@node_from` 来编排整个 `Operation` 下的节点执行顺序。
+- 写一个节点先想清楚三件事：当前画面是什么、这个节点要做什么操作、做完之后画面是留在本屏还是切到别的屏。
+- 如果一个节点是做跨画面的导航，优先使用 `round_by_goto_screen`，使用规范是：
+  - 起点/终点/沿途画面全部已建档且可识别；
+  - 画面之间的跳转关系已由 `goto_list` 建立；
+  - `round_by_goto_screen` 独占一个节点实现；
+- 如果是找元素、点按钮，避免全屏进行图像匹配或者 OCR 找字，优先使用 `round_by_find_and_click_area`，使用规范是：
+  - 坐标存在 screen_info（建 area），按「画面名 + 区域名」找，不要在代码里写死坐标；
+  - 涉及画面切换变动等的操作（点关闭、点确认跳转），把「切换证据」直接写进 until 参数；
   - `until_find_all=[(目标画面, 区域名)]` —— 目标画面的标志出现才算成功（例：点「开始战斗」→ 等战斗画面标志出现）；
   - `until_not_find_all=[(画面, 区域名)]` —— 刚点的按钮/弹窗消失才算成功（例：点「关闭」→ 等弹窗区域消失）。
-  - ⚠️ 不传 until 时点击成功就立刻 `round_success`，等于没验证转移。「点了」≠「成了」：点击可能没生效，下一个节点会在错误画面上继续跑，流程卡死。
+  - 不传 until 时点击成功就立刻 `round_success`，等于没验证转移。「点了」≠「成了」：点击可能没生效，下一个节点会在错误画面上继续跑，流程卡死；
 - 禁用键盘 ESC 关闭/返回/退出/跳过，一律 screen_info 建档后点画面上的控件；其余按键（移动/交互）也尽量不用，确需用时注释声明原因。理由：前向兼容手机模拟器（无键盘）。
+- round 系列函数的 wait 参数一律**显式声明**，按实机动画过渡时间填写，不使用默认值：
+  - `round_success/round_wait/round_retry/round_fail` 用 `wait`；`round_by_goto_screen`/`round_by_find_and_click_area` 用 `pre_delay`（点击前）/`success_wait`（成功后）/`retry_wait`（重试间隔）。
+  - `wait_round_time` 语义 = 「等待总时长减去本轮已耗时」，不是「再睡多久」。
 - 完整方法论（round 结果语义、节点粒度、循环结构选型、调试纪律）见 skill `od-dev-write-operation`。
 
 ## 4.Application 最佳实践
 
+- app 类继承自 Operation（`SrApplication` → `Application` → `Operation`），app 内的节点同样遵循 §3 Operation 最佳实践（round_* 调用、wait 参数、until 验证、节点粒度等）。
 - 写 app 自底向上：先把用到的各个 op 写完、`run_operation` 单独跑通，再写 app 把它们串起来，最后 `run_standalone_app` 端到端跑。别先搭 app 壳再慢慢填 op——出问题时分不清是 op 错还是串联错。
 - app 节点图遵循 hub 模式：第一个节点先回到最通用的画面（主界面，即 hub），流程从主界面出发，最后一个节点回主界面。单独跑还是一条龙连跑，起止状态都确定，app 之间在主界面干净交接。检测游戏窗口/进游戏由框架自动插入，app 里不写。
 - 完整步骤（const / run_record / config / factory / app 五件套、GUI、run-record）见 skill `od-dev-write-application`。
