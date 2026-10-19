@@ -34,58 +34,40 @@ LABEL_DOWN: int = 10
 # 点击点:标签中心上方 50px(格子中部,避开关底标)
 CLICK_UP: int = 50
 
-# 玩家昵称黑名单前缀(全大写比较):OCR 会把详情页昵称误读为角色名
-_NAME_BLOCKLIST_PREFIX: tuple[str, ...] = ('MOMOJ',)
-# 名字长度上限(「银狼LV.999」类噪声超长;真名最长如「开拓者·欢愉」7 字)
-_NAME_MAX_LEN: int = 12
-# 读名别名:OCR 变体/易混字/映射表噪声 → 档案主名(实机噪声归并,2026-10-19)
+# 读名别名:OCR 变体/易混字 → 档案主名(实机噪声归并,2026-10-19)
 _NAME_ALIAS: dict[str, str] = {
     '傑帕德': '杰帕德',
     '千冶·刀': '千冶·刃',
     '欢愉': '开拓者·欢愉',
     '知更鸟·晴歌': '知更鸟',
     '砂金·戏浪': '砂金',
-    '银狼LV.999': '银狼',
 }
+# 权威角色名单(白名单制):由 AvatarMatcher.__init__ 从映射表构建填充。
+# 注意官方名含非常规形态(如「银狼LV.999」是欢愉命途银狼的官方名),禁用规则式猜测拒绝。
+_KNOWN_NAMES: set[str] = set()
 
 
 def normalize_cn_name(raw: str | None) -> str | None:
-    """角色名统一清洗:噪声名返回 None(调用方跳过该来源);合法名归一化。
+    """角色名统一清洗(白名单制):不在权威名单的名字一律拒绝。
 
-    三路共用:SIFT 映射名(cn_name——映射表本身有采集噪声「银狼LV.999」)、
-    OCR 读名、历史档案加载。实测噪声形态:
-    - 名字串等级:「银狼LV.999」
-    - OCR 读名噪声:emoji/纯符号(🌟)、玩家昵称变体(Momojile)、截断片段(·梅)
-    - 间隔号双形:映射表用 •,读名用 ·,统一为 ·
-    - 易混字/变体:傑帕德/千冶·刀/欢愉 等,按 _NAME_ALIAS 归并
+    三路共用:SIFT 映射名(cn_name)/OCR 读名/历史档案加载。
+    - 先做形态归一(星标剥离/间隔号统一/别名归并)
+    - 再查 _KNOWN_NAMES 权威名单(映射表 cn 全集 + 别名目标);
+      官方非常规名(如「银狼LV.999」= 欢愉命途银狼)在名单内,正确保留
+    - 名单外(OCR 噪声 🌟/Momojile、模板键泄漏的数字 ID、截断片段)一律拒绝
+    _KNOWN_NAMES 由 AvatarMatcher.__init__ 构建填充。
     """
     if raw is None:
         return None
+    if not _KNOWN_NAMES:
+        # 名单未构建(测试/异常路径):仅做间隔号归一,不拒绝
+        return raw.replace('★', '').replace('☆', '').strip().replace('•', '·') or None
     name = raw.replace('★', '').replace('☆', '').replace('🌟', '').strip()
     if not name:
         return None
-    if name.upper().startswith(_NAME_BLOCKLIST_PREFIX):
-        return None
-    if len(name) > _NAME_MAX_LEN:
-        return None
-    if name.startswith('·') or name.startswith('•'):
-        return None
-    if name[0].isdigit():
-        # 纯数字/数字开头 = 模板键泄漏的 avatarId,不是角色名
-        return None
-    if 'LV' in name.upper() and any(ch.isdigit() for ch in name):
-        return None
-    valid = sum(
-        1 for ch in name
-        if (ch.isascii() and ch.isalnum()) or '\u4e00' <= ch <= '\u9fff' or ch in '·•-'
-    )
-    # 全中文单字真名(如「刃」)放行;两个以上有效字符才要求混合可读
-    if valid < 1:
-        return None
-    if valid == 1 and not all('\u4e00' <= ch <= '\u9fff' for ch in name):
-        return None
     result = name.replace('•', '·')
-    return _NAME_ALIAS.get(result, result)
+    result = _NAME_ALIAS.get(result, result)
+    return result if result in _KNOWN_NAMES else None
 
 
 def imread_gray(path: Path) -> MatLike:
@@ -104,6 +86,25 @@ class AvatarMatcher:
             with open(map_path, encoding='utf-8') as f:
                 self._id_map = json.load(f)
 
+        # extra 映射先行读取:目标名(映射表缺失角色如真珠)并入权威名单
+        extra_map_path = asset_dir / 'extra_templates.json'
+        extra_dir = asset_dir / 'extra'
+        extra_map: dict[str, str] = {}
+        if extra_map_path.exists():
+            with open(extra_map_path, encoding='utf-8') as f:
+                extra_map = json.load(f)
+
+        # 构建权威名单:映射表 cn 清洗后全集 + 别名归并目标 + extra 目标
+        # (银狼LV.999 等官方非常规名依赖「名单内保留」;真珠等映射表缺失角色靠 extra 补)
+        for info in self._id_map.values():
+            cn = (info.get('cn') or '').replace('•', '·')
+            if cn:
+                _KNOWN_NAMES.add(cn)
+        for target in _NAME_ALIAS.values():
+            _KNOWN_NAMES.add(target)
+        for target in extra_map.values():
+            _KNOWN_NAMES.add(target)
+
         self._sift = cv2.SIFT_create()
         self._tpl_feats: dict[str, tuple[MatLike, any, any]] = {}
         mini_dir = asset_dir / MINI_DIR_NAME
@@ -118,16 +119,19 @@ class AvatarMatcher:
                 tpl_img = imread_gray(fn)
                 kp, desc = self._sift.detectAndCompute(tpl_img, None)
                 self._tpl_feats[cn] = (tpl_img, kp, desc)
-        # manual 目录:游戏内截图裁片模板,文件名 = 中文名(真珠等映射表缺失角色);
-        # 截图裁片与运行时渲染同源,作为解包 mini 图的补充
-        manual_dir = asset_dir / 'manual'
-        if manual_dir.is_dir():
-            for fn in manual_dir.iterdir():
+        # extra 目录:映射表缺失角色的解包 mini 图(文件名 = avatarpre 英文代号如 Pearl),
+        # extra_templates.json 给出 英文代号 → 中文名;图与 mini 主库同源解包资产
+        extra_dir = asset_dir / 'extra'
+        if extra_dir.is_dir():
+            for fn in extra_dir.iterdir():
                 if fn.suffix != '.png':
+                    continue
+                cn = normalize_cn_name(extra_map.get(fn.stem))
+                if cn is None:
                     continue
                 tpl_img = imread_gray(fn)
                 kp, desc = self._sift.detectAndCompute(tpl_img, None)
-                self._tpl_feats[fn.stem] = (tpl_img, kp, desc)
+                self._tpl_feats[cn] = (tpl_img, kp, desc)
 
     @property
     def template_count(self) -> int:
