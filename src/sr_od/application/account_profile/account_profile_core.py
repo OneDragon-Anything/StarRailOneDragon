@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 import cv2
+import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.utils.cv2_utils import feature_match_for_one
@@ -69,6 +70,9 @@ def normalize_cn_name(raw: str | None) -> str | None:
         return None
     if name.startswith('·') or name.startswith('•'):
         return None
+    if name[0].isdigit():
+        # 纯数字/数字开头 = 模板键泄漏的 avatarId,不是角色名
+        return None
     if 'LV' in name.upper() and any(ch.isdigit() for ch in name):
         return None
     valid = sum(
@@ -82,6 +86,12 @@ def normalize_cn_name(raw: str | None) -> str | None:
         return None
     result = name.replace('•', '·')
     return _NAME_ALIAS.get(result, result)
+
+
+def imread_gray(path: Path) -> MatLike:
+    """读灰度图;np.fromfile + imdecode 支持 non-ASCII 路径(cv2.imread 不支持)。"""
+    data = np.fromfile(str(path), dtype=np.uint8)
+    return cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
 
 
 class AvatarMatcher:
@@ -101,7 +111,21 @@ class AvatarMatcher:
             for fn in mini_dir.iterdir():
                 if fn.suffix != '.png':
                     continue
-                tpl_img = cv2.cvtColor(cv2.imread(str(fn)), cv2.COLOR_BGR2GRAY)
+                # 文件名是 avatarId 数字,先经映射表转中文名再清洗(数字 ID 不是名字)
+                cn = normalize_cn_name(self.cn_name(fn.stem))
+                if cn is None:
+                    continue
+                tpl_img = imread_gray(fn)
+                kp, desc = self._sift.detectAndCompute(tpl_img, None)
+                self._tpl_feats[cn] = (tpl_img, kp, desc)
+        # manual 目录:游戏内截图裁片模板,文件名 = 中文名(真珠等映射表缺失角色);
+        # 截图裁片与运行时渲染同源,作为解包 mini 图的补充
+        manual_dir = asset_dir / 'manual'
+        if manual_dir.is_dir():
+            for fn in manual_dir.iterdir():
+                if fn.suffix != '.png':
+                    continue
+                tpl_img = imread_gray(fn)
                 kp, desc = self._sift.detectAndCompute(tpl_img, None)
                 self._tpl_feats[fn.stem] = (tpl_img, kp, desc)
 
@@ -141,7 +165,7 @@ class AvatarMatcher:
             y1 = min(screen.shape[0], ly + h + LABEL_DOWN)
             avatar = gray[y0:y1, x0:x1]
             best_id, best_conf = self._match_avatar(avatar)
-            cn = self.cn_name(best_id) if best_id else None
+            cn = best_id if best_id else None
             miss = cn is None
             cells.append({
                 'lx': lx, 'ly': ly, 'w': w,
@@ -155,7 +179,7 @@ class AvatarMatcher:
         return cells
 
     def _match_avatar(self, avatar_crop: MatLike) -> tuple[str | None, float]:
-        """单格头像 SIFT 匹配,返回 (最佳 avatarId, 置信度);无有效特征返回 (None, 0)。"""
+        """单格头像 SIFT 匹配,返回 (最佳模板名=角色中文名, 置信度);无有效特征返回 (None, 0)。"""
         kp, desc = self._sift.detectAndCompute(avatar_crop, None)
         best_id: str | None = None
         best_conf: float = 0.0
