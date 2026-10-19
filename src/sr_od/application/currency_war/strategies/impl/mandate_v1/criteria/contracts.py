@@ -36,8 +36,6 @@ class ContractCtx:
       空/None=目标线未成型)。
     - gold:决策帧金(消费位口径——商店波为支出后逻辑态金)。
     - reserve:S 预留值(消费位现读,如 b_target 组装结果)。
-    - deploy_cap:等级驱动可上阵 cap(max_units_of 派生链口径;
-      None=消费位退固定槽表常数,即 arm1 域错位形态)。
     - ev_slot:EV 输入槽位现读的**原始对象**(防线硬化
       防线硬化:由消费位硬编码声明位 ``ev_input_wired=True`` 改造)——
       合法形态 = ``audit/provisional.get('V_GAP')`` 的返回物(None =
@@ -69,7 +67,6 @@ class ContractCtx:
     k_members: tuple[str, ...] | None = None
     gold: int | None = None
     reserve: int | None = None
-    deploy_cap: int | None = None
     ev_slot: object | None = field(default=None)
     k_target: object = field(default=None)
     k_fallback_available: bool = field(default=False)
@@ -118,19 +115,6 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
     拦截对象列,预留此处是预算语境输入而非硬约束③预留。
     """
     return ctx.gold is not None and ctx.reserve is not None
-
-
-def _arm1_cap_level_driven(ctx: ContractCtx) -> bool:
-    """先例③前提:arm1 板满口径=等级驱动 cap(禁固定常数)。
-
-    ZERO_REFRESH_DIAG §4.2 实证:cap 口径=当前可上阵数
-    (max_units_of:level+宝钻、封顶 = 4+back_max 动态真值
-    〔GameState.back_layout,值域 10-13〕);旧条件拿固定槽表
-    常数 10 当阈值 ⇒ deployed_count 构造性不可达 ⇒ 触发面恒空。
-    前提=消费位传入了现读 cap(ctx.deploy_cap 非 None;
-    ``deploy_cap=None`` 走固定常数兜底即违例)。
-    """
-    return ctx.deploy_cap is not None
 
 
 def _ev_input_from_slot(ctx: ContractCtx) -> bool:
@@ -232,24 +216,22 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
         '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
-    # —— criteria/levelup(line_and_upgrade §2;arm2 保利息门/
-    #    saturation_floor/levelup_budget_gate 量闸已删除(随拦截层),
-    #    处置依据 = line_and_upgrade §2.3 处置表)——
+    # —— criteria/levelup(11 号稿 §2;arm2 保利息门/
+    #    saturation_floor/levelup_budget_gate 量闸与旧五臂判定谓词已
+    #    随各自消费面删除)——
     ('levelup', 'upgrade_trigger'): Contract(
-        _arm1_cap_level_driven,
-        '五臂触发并集:前提=人口位板满口径等级驱动 cap(禁固定常数,'
-        '消费位现读 max_units_of);概率账/停留门辖锁定后 ∧ '
-        'plane2_started 双条件,判据体内自判',
-        'line_and_upgrade §2.1 触发源并集(迭代 2026-10-12)'),
+        None,
+        '升级触发单判据三分派(stay_gate/natural):辖锁定后 ∧ '
+        'plane2_started 双条件,判据体内自判;前提恒真(旧人口位板满'
+        '口径前提随人口位臂删除消亡)',
+        '11_shop_decisions §2 升级触发行(用户裁定 2026-10-18)'),
     ('levelup', 'prob_band_of_cost'): Contract(
         None, '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,平顶'
         '整段;输入全为游戏定义量)',
-        'line_and_upgrade §2.1 停留门(迭代 2026-10-12)'),
+        '11_shop_decisions §2 停留门(带模型)'),
     ('levelup', 'spend_unified'): Contract(
         None, 'P48 整买纪律(M3 义务侧消费)',
         'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文考古走 git 历史)'),
-    ('levelup', 'batch_form'): Contract(
-        None, '批量成型判据(M3 义务侧消费)', '01_math_framework §3.3'),
     ('levelup', 'lv9_stop'): Contract(
         None, '等级上限停(历史键名;单一源=注册表 level_max,消费位传'
         '上下文注册表 .level_max,sim 经注入视图;义务侧消费)',
@@ -260,17 +242,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '无门槛表项判据不辖,行为零变更)',
         'kernel/cw_economy.xp_apply_clicks 推进算子单一源'),
     ('levelup', 'level_spend_blocked'): Contract(
-        None, '危机带经验授权让位(候选③;判据自带 ALL IN 豁免与 '
+        None, '危机带经验授权让位(全域判定;判据自带 ALL IN 豁免与 '
         'hp 不可信 fail-closed,前提恒真)',
         'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
-    ('levelup', 'pop_slot'): Contract(
-        None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)',
-        'D-lv7 修复池(原文考古走 git 历史;现行=本判据与决策迹)'),
-    ('levelup', 'guarantee_floor_gate'): Contract(
-        None, 'P72(3a) 内保底金门(发射前全域最终硬检查,花后金 ≥ '
-        '1 息档;出辖两支 = 终局域末战 ALL IN/买断制,判据体内自判)'
-        '——前提恒真',
-        'line_and_upgrade §2.3 P72(3a) 内保底金门行(单一裁决消两读)'),
+    ('levelup', 'fund_line_gate'): Contract(
+        None, '升级资金线门(现金口径单门,花后金 ≥ saturation_line;'
+        '出辖两支 = 终局域末战 ALL IN/买断制,判据体内自判)——前提恒真',
+        '11_shop_decisions §2 资金线门行'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
@@ -343,17 +321,6 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'C1 直通核心卡支配性支资格门:前提=锁线态(锁定采购集实解析在'
         '场;未锁帧通道不评估)',
         '设计《直通核心卡信号层入口》§2 案A+§4 P25 行'),
-    ('predicates', 'arm1_existence'): Contract(
-        _arm1_cap_level_driven,
-        'M3 触发信号:前提=deploy_cap 等级驱动口径(禁固定槽表常数)',
-        'ZERO_REFRESH_DIAG §4.2+statefn/predicates.arm1_existence 注释'),
-    ('predicates', 'arm0_level_lag'): Contract(
-        None,
-        'arm0 升级授权触发谓词 v2(14号稿 §4.2 A4 现量版):need=期望态'
-        '现量(排除谓词 (名,星) 口径,Y3),level 消费只认 level_readable '
-        '可信位(C4,不可信帧消费端 fail 向分键 arm0_level_unreadable)'
-        '——前提零槽位依赖(全量期望态现读,零新自由参数)',
-        '14_p1_consume_arms §4.2/§7.1 mandate.py 行(2026-09-05 对抗收敛)'),
     # —— 第三病灶(K 空窗回退)消费位 ——
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,

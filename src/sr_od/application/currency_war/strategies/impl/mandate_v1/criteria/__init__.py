@@ -34,33 +34,28 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('sell', 'funding_support_sell'): (
         '支付支撑通道', '不旁路(两臂同开)',
         'R13-5/R14-4(mandate=false+funding_support=true,臂间对称)'),
-    # —— criteria/levelup(line_and_upgrade §2;arm1_existence 在 statefn/predicates;
-    #    arm2 保利息门/saturation_floor/levelup_budget_gate 量闸已删除(随拦截层),
-    #    处置依据 = line_and_upgrade §2.3 处置表)——
+    # —— criteria/levelup(11 号稿 §2;触发单判据三分派)——
     ('levelup', 'upgrade_trigger'): (
         '判据/闭式', '不旁路',
-        '五臂触发并集(line_and_upgrade §2.1:arm0/概率账/人口位/'
-        '溢余段-L3/停留门;消费位 = 备战第 4 步升级检查与商店会话升级意图出口两屏同参)'),
+        '升级触发单判据三分派(11 号稿 §2:带下界>等级升级 stay_gate/'
+        '带内或推过停留无键/无目标自然升级 natural;消费位 = 备战第 4 步'
+        '升级检查与商店会话升级意图出口两屏同参)'),
     ('levelup', 'prob_band_of_cost'): (
         '状态函数', '不旁路',
-        '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,line_and_'
-        'upgrade §2.1 停留门;peak_refresh_level 域上限校验非带定义本体)'),
+        '最优概率带查表(REFRESH_PROB 1..9 域内峰值区间,平顶整段;'
+        'peak_refresh_level 域上限校验非带定义本体)'),
     ('levelup', 'spend_unified'): (
         '判据/闭式', '不旁路', '02_mandate_layer §3(义务侧消费)'),
-    ('levelup', 'batch_form'): (
-        '判据/闭式', '不旁路', 'M3 义务侧消费'),
     ('levelup', 'lv9_stop'): (
         '判据/闭式', '不旁路', 'M3 义务侧消费'),
     ('levelup', 'xp_ledger_stop'): (
         '判据/闭式', '不旁路', 'T-228(XP 期望账本停,lv9_stop 轮内盲区'
         '补位;shop M3 批/L3 两发射位与 lv9_stop 合取消费)'),
     ('levelup', 'level_spend_blocked'): (
-        '谓词', '不旁路', '候选③(危机带经验授权让位;发射位消费)'),
-    ('levelup', 'pop_slot'): (
-        '判据/闭式', '不旁路', 'D-lv7(OPEN 检查点;决策迹理由显式)'),
-    ('levelup', 'guarantee_floor_gate'): (
-        '门', '不旁路', 'P72(3a) 内保底金门(line_and_upgrade §2.3'
-        ' 单一裁决:发射前全域最终硬检查,花后金 ≥ 1 息档)'),
+        '谓词', '不旁路', '候选③(危机带经验授权让位,全域判定;发射位消费)'),
+    ('levelup', 'fund_line_gate'): (
+        '门', '不旁路', '升级资金线门(11 号稿 §2:现金口径单门,'
+        '花后金 ≥ saturation_line;出辖 = 终局域 ALL IN/买断制)'),
     # —— criteria/refresh(01_math_framework §3.4)——
     ('refresh', 'r0_stop'): (
         '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),

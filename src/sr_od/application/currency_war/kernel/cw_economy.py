@@ -207,7 +207,6 @@ def effective_hp_threshold(gs: GameState) -> int:
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
-        round_num_of,
     )
     from sr_od.application.currency_war.kernel.cw_node_schedule import (
         PLANE_NODE_TABLES,
@@ -249,10 +248,9 @@ def streak_gold(streak: int) -> int:
 
 
 # ===== 息账/收入日程(自 strategies statefn/interest+income 下沉单一源,
-# ===== kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费
-# ===== loss_exact/net_income,下沉保持「kernel 禁 import strategies」桶
-# ===== 依赖矩阵;statefn 两模块改 import 重定向,消费方调用零改——
-# ===== 与 schedule_upgrade 下沉同款先例)=====
+# ===== kernel 判据消费 loss_exact/net_income,下沉保持「kernel 禁 import
+# ===== strategies」桶依赖矩阵;statefn 两模块改 import 重定向,消费方
+# ===== 调用零改)=====
 
 #: 默认利息帽档数 = 息封顶金位/10(cw_plane_table.GOLD_CAP_INTEREST=50 的
 #: 结构派生,【注】机制真值;禁在本模块另写裸 5)
@@ -296,9 +294,8 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     禁读 state 镜像(非公共权威)。
 
     消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
-    schedule_upgrade ② 前置利息线、U_L 阈值检验的 loss_exact cap 参数、
-    富余段/动作发出帧富余段、registry 预算面保利利息线分量(reserve_cap 保利息
-    线/换线可负担窗)——
+    升级资金线门下界(saturation_line)、富余段/动作发出帧富余段、
+    registry 预算面保利利息线分量(reserve_cap 保利息线/换线可负担窗)——
     共用本式,禁再内联 ``interest_cap×10`` 或 loss_exact 裸缺省 cap
     (利息律投资 cap=10 局,裸缺省 5 会低估 C_int)。
 
@@ -937,16 +934,17 @@ def get_node_goal(plane: int, round_num: int, *,
     """查 (plane, round) → NodeGoal(确定性预算核单一供给)。
 
     姿态从预算收权核涌现(原 DP 解供给已停用,BLUEPRINT §3
-    裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
-    >0 → adaptive/d_search;两者皆无 → interest/hold。供给在任意帧恒有
-    定义(预算收权迁移前预验尸 D0 契约:None 级联面消灭),仅传参不全(迁移漏点)时退
+    裁决;git 历史为 prior art):刷新预算 > 0 → adaptive/d_search;
+    否则 → interest/hold。供给在任意帧恒有定义(预算收权迁移前预验尸
+    D0 契约:None 级联面消灭),仅传参不全(迁移漏点)时退
     ``_expected_level`` 平滑先验 + adaptive(记 [cw-seam] debug 证据)。
+    「排程升级 → level/rush_level」姿态已随排程升级接缝删除(升级判据
+    归策略层单判据三分派;升级攒批资金保护由刷新侧整级预留承载)。
 
-    三档 spend_mode 与决策核同源:level/adaptive/interest 的判据单一址
-    = 本模块两接缝(schedule_upgrade/refresh_ev_budget,期 0b 自
-    decision_v2.economy_cycle 下沉,R4)——本函数是其标量投影;'release' 档
-    不经本函数(帧级态,单一源=decision_v2.posture_release 经 session
-    通道)。
+    三档 spend_mode 与决策核同源:adaptive/interest 的判据单一址 =
+    本模块接缝 refresh_ev_budget(期 0b 自 decision_v2.economy_cycle
+    下沉,R4)——本函数是其标量投影;'release' 档不经本函数(帧级态,
+    单一源=decision_v2.posture_release 经 session 通道)。
     """
     _partial = (gold, level, hp)
     if any(v is not None for v in _partial) and None in _partial:
@@ -961,7 +959,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # 一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
-        # ⚠️ 结构性边界(申报,不扩修):下行两接缝核以
+        # ⚠️ 结构性边界(申报,不扩修):下行接缝核以
         # session=None 调用 → 利息帽 resolved 链恒 DEFAULT(base cap),
         # 持利息帽卡局的本投影判据按 base 口径——接缝无 session 入参
         # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
@@ -972,9 +970,6 @@ def get_node_goal(plane: int, round_num: int, *,
         _st_gs = _proj(gold=gold, level=level, hp=hp, plane=plane,
                        round_num=round_num, strategies=strategies)
         _rolls = min(6, refresh_ev_budget(_st_gs, None))
-        if schedule_upgrade(_st_gs, None):
-            return NodeGoal(min(10, level + 1), 'level', 'rush_level',
-                            refresh_budget=_rolls)
         if _rolls > 0:
             return NodeGoal(level, 'adaptive', 'd_search',
                             refresh_budget=_rolls)
@@ -1041,11 +1036,12 @@ def _char_synergies(name: str) -> set[str]:
 
 # ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====
 # 原址:decision_v2.economy_cycle(kernel→decision 断环:本文件是 kernel 层,
-# cw_economy.get_node_goal 标量投影消费两接缝,原函数体内懒 import 决策包
-# 成环)。schedule_upgrade 纯移动;refresh_ev_budget 最小重构——应急谓词
-# is_emergency 一并下沉本文件(一行纯谓词,decision_v2.filters 改 import
-# 重定向,单一源不破),函数体零行为变化(等价测试=sr-od-test
-# test_cw_w695_economy_seam.py + 既有经济接缝桩点测试重钉)。
+# cw_economy.get_node_goal 标量投影消费接缝,原函数体内懒 import 决策包
+# 成环)。refresh_ev_budget 最小重构——应急谓词 is_emergency 一并下沉
+# 本文件(一行纯谓词,decision_v2.filters 改 import 重定向,单一源不破),
+# 函数体零行为变化(等价测试=sr-od-test test_cw_w695_economy_seam.py +
+# 既有经济接缝桩点测试重钉)。排程升级接缝(schedule_upgrade)已随
+# 升级触发统一删除(升级判据归策略层单判据,R* 升级排程分量恒 0)。
 
 #: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷同源(git prior art),
 #: 不另造第二把尺)。自 economy_cycle 随接缝族同迁(单一源在本文件)。
@@ -1080,71 +1076,15 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
 
-def _pop_slot_indicator(gs: GameState) -> bool:
-    """ΔV_pop 指示项(P39 修订式):板满(cap 满)∧ bench 有 2★ 等待件。
-
-    消费位 = schedule_upgrade 人口位分支(唯一排程触发)。原第三消费位
-    (U_L 检验翻转分量/P72 支A 兑现链)已停用,勿重接。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_units_of,
-        deployed_count_of,
-        max_units_of,
-    )
-    if deployed_count_of(gs) < max_units_of(gs):
-        return False
-    return any((getattr(u, 'star', 1) or 1) >= 2
-               for u in bench_units_of(gs))
-
-
-def schedule_upgrade(gs: GameState, session: StrategySession,
-                      registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(人口位单分支;蓝图 §3.4 R4 接缝)。
-
-    registry:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
-    必须传**同一个** registry 实例);缺省落 _registry_of(session) →
-    DEFAULT_REGISTRY。**预告态契约**(预算收权迁移前预验尸 D1 契约):
-    排程只回答「要不要开始攒」,不以当帧可负担为前置——付不付得起是
-    执行层的事,排程判据若收窄成「付得起才排」会造成 R* 归零 →
-    义务花光 → 更排不上的自我强化升级迟到循环。
-
-    触发 = **人口位**([33]):cap 满 ∧ bench 有成型件(2★)等上场——
-    升级后能立即部署,当轮兑现战力。**适用范围 = 战斗帧**(奖励帧无战斗,
-    本分支收益面不增益——奖励帧行为由规则①升级抑制先覆盖,消费位代码序
-    承载)。谓词单一源 = _pop_slot_indicator。
-
-    概率级②分支(峰值级 > 当前级 ∧ 息引擎已立 ∧ U_L 阈值检验)已停用
-    (11 号篇 §2 拦截层处置行):「概率改善才升」语义由
-    新概率主账承接(适用范围 = 未锁定期不消费、锁定后 ∧ plane2_started
-    双条件消费〔载体 = 锁定线缺件集〕,判据落位 = strategies/impl/
-    mandate_v1/criteria/levelup.py)。本函数消费面(R* 储蓄分量
-    reserve_cap / get_node_goal spend_mode / economy_cycle.channel_
-    capacity 的 C_t 分量)随②分支停用,缺省相 R* 升级排程分量 = 零;
-    人口位触发时预算线照旧供给;arm0(need>level)触发时的攒批资金
-    由升级凑金与整买预留承载(备战凑金场景 + 刷新判据整级预留保护
-    〔判据现值载体〕,shop_session §2.2 序 4),非本函数覆盖。
-
-    淘金客姿态(refresh_invest_active 局)升级通道整体停用
-    (sim 注入分支实证;谓词单一址)。
-    """
-    from sr_od.application.currency_war.kernel.cw_investments import (
-        refresh_invest_active,
-    )
-    if refresh_invest_active(type('_S', (), {'active_strategies': gs.active_strategies.value or []})()):
-        return False    # 淘金客姿态:升级通道停用(sim 注入分支实证;谓词单一址)
-    return _pop_slot_indicator(gs)
-
-
 def _vd_core_of(session: StrategySession) -> str:
     """V_D/V_level 共用的目标核心解析(scoring.vd_target_core 同源;
-    自 decision_v2.ev 下沉(schedule_upgrade 的目标核心解析链
-    依赖;本模块零 decision 依赖,decision_v2.ev 改 import 重定向)——
-    ev 不 import decision_v2 包内模块的判据复刻惯例随单一源归位终结)
+    自 decision_v2.ev 下沉——ev 不 import decision_v2 包内模块的判据
+    复刻惯例随单一源归位终结)。
 
     ⚠️ 边界申报:本函数懒 import 的 IntentionState/intention_core
     属**决策半部**——消费意向锁定状态机的 phase/locked_comp 判定与阵容核心
-    派生,是 schedule_upgrade(升级排程决策)的目标解析链,不是经济事实
-    (收入/息/卖退金/刷新价)。不迁:该消费点随 decision 核停用,勿在此重建。
+    派生,是刷新 EV 预算概率校准分量的目标解析链,不是经济事实
+    (收入/息/卖退金/刷新价)。
     """
     from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
@@ -1276,7 +1216,8 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝;
     概率校准分量=行内申报 历史)。
 
-    ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
+    ``registry``:显式注入优先(P6 契约:同一调用链全部接缝必须传
+    **同一个** registry 实例);缺省落
     _registry_of(session) → DEFAULT_REGISTRY。
     预算 = min(6, ⌊(g − R*)/刷价⌋, ⌈−ln(1−q)·E_find⌉)——只花富余
     (规则倡导审读 §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
@@ -1323,52 +1264,19 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
                _find_budget_cap(gs, session, reg, target_cost, core))
 
 
-def upgrade_plan_fee(gs: GameState) -> int:
-    """下一级升级总费 = 到下一级单击数 × 单击价(取价委托 ``xp_click_cost``
-    单一源:观察优先/兜底减折扣语义只存在一处,禁第二处独立折扣实现——
-    「同一语义两处实现」即互补单侧错漂移温床)。"""
-    from sr_od.application.currency_war.kernel.cw_plane_table import (
-        clicks_to_level,
-    )
-    return clicks_to_level(level_of(gs)) * xp_click_cost(gs)
-
-
-def _rounds_to_plane_end(gs: GameState, session: StrategySession) -> int:
-    """到本位面末节点(= boss 节点)的剩余轮数(含当前轮;缺读兜底 0
-    =不储蓄,保守侧:R* 退化为利息线,义务面变宽但方向安全)。
-    nodes_of_plane 自带缺表回退(节点序列默认表 P1 长 + 一次性告警),
-    此处不再兜层。"""
-    from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
-    total = nodes_of_plane(session)
-    return max(0, total - round_num_of(gs))
-
-
 def reserve_cap(gs: GameState, session: StrategySession | None) -> int:
-    r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
+    r"""R\*(t) = 保利利息线(11 号稿 §3 金前提行;R4 规则集标量)。
 
-    窗口 h = min(3,到本位面末节点轮数);只储蓄下一级费用——多级
-    排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;误差有界核算:
-    误估最坏=一个升级费量级 ≤50 金,双向有界)。
-    排程判据单一址 = ``schedule_upgrade``(确定性查表核,预算
-    收权;与 arbiter 授权/EV 授权 ② 分支共调同一函数,R4)。
-
-    保利利息线分量 = ``saturation_line(cap_resolved_of_session(session))``
-    (session resolved 链单一源,与排程判据 ② 前置同链;利息帽取
-    ``cap_resolved``(= 策略利息帽,禁 ``registry.interest_cap × 10`` 旧式
-    直乘——买断制(cap=0)囤金经本车道部分存活、利息上调(cap=10)时
-    保利利息线会被低估;归一方向 = 利息帽三源归一同款)。
-    写法保证「保利利息线 ≤ 封顶线」结构性成立——两者同源(cap_resolved),
+    升级排程储蓄分量已随排程升级接缝删除(升级触发 = 策略层单判据
+    三分派,R* 升级排程分量恒 0):攒批资金保护完全由刷新侧「整级预留
+    保护(判据现值载体)」承载。本函数保留为预算层 R* 单一表达位
+    (消费位 = refresh_ev_budget 溢余面 / economy_cycle.overflow/
+    disclose_budget 披露面),保利利息线分量单一源 =
+    ``saturation_line(cap_resolved_of_session(session))``
+    (session resolved 链;利息帽取 cap_resolved(= 策略利息帽,禁
+    ``registry.interest_cap × 10`` 旧式直乘——买断制(cap=0)囤金经
+    本车道部分存活、利息上调(cap=10)时保利利息线会被低估)。写法
+    保证「保利利息线 ≤ 封顶线」结构性成立——两者同源(cap_resolved),
     不可能出现保利利息线高于持有增益归零点(利息帽截断点)的态。
     """
-    h = min(_RESERVE_WINDOW_ROUNDS,
-            _rounds_to_plane_end(gs, session))
-    floor = saturation_line(cap_resolved_of_session(session))
-    if h <= 0 or not schedule_upgrade(gs, session):
-        return floor
-    return floor + upgrade_plan_fee(gs)
-
-
-#: 储备窗口上界(轮;设计 §1.3:h = min(到下一 boss 节点轮数, 3)——
-#: 更远的排程升级应即时执行而非长期储蓄,结构界非拍值)。
-#: 自 economy_cycle 同迁(reserve_cap 唯一消费,单一源随函数走)。
-_RESERVE_WINDOW_ROUNDS: int = 3
+    return saturation_line(cap_resolved_of_session(session))

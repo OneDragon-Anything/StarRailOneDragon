@@ -288,9 +288,9 @@ class CwActionLevelUpParam:
     # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令):
-    # 放行分支名(现值域 = criteria/levelup 五分支键:'pop_slot'=人口位[33] /
-    # 'arm0'=need>level 机制臂 / 'must_spend'=富余段-L3 / 'stay_gate'=
-    # 停留门升级优先分支 / 'prob_account'=概率账;''=未接线路径)。
+    # 放行分支名(现值域 = criteria/levelup 触发键闭集:'stay_gate'=
+    # 带下界>等级升级 / 'natural'=无未完成星级目标自然升级;''=未接线
+    # 路径——停留刷新帧无键不发射)。
     # 由动作发出点在**放行时**写入(记录非指令——执行层不读此字段,行为
     # 零改动;sim 账本 actions 侧序列化为 auth 键)。仿
     # CwActionSellBenchParam.income「记录不是指令」形态。

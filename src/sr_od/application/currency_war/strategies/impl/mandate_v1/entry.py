@@ -523,9 +523,10 @@ def emit(session: StrategySession,
     # —— 第 4 步:升级检查(design §2.2:判据每帧重评,无跨画面键;
     # 资格门全链 = criteria/levelup.upgrade_gate_verdict 两屏同参单一源。
     # 命中后凑金与发射:全链通过 → 单帧原子整批(实付上界 = 发射时授权
-    # 值,授权不跨帧携带)+ 清 handled 标记;金量不足 → 凑金每帧一卖
+    # 值,授权不跨帧携带)+ 清 handled 标记;凑金域 → 凑金每帧一卖
     # (levelup_liquidate_prep 场景,排序键①费用带外②低星③金当量);
-    # 候选穷尽(含 P78-5 兜底腿尽)→ 零动作等节点收入)——
+    # 凑金候选穷尽 → 整批推迟零动作等节点收入,拒因键
+    # levelup_fund_line_defer)——
     # (函数名 _step3_level_up 沿用旧序号,重命名随工序 sweep 批统一。)
     levelup_actions: list[Emitted] = _step3_level_up(session, gs, registry)
     if levelup_actions:
@@ -740,48 +741,6 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
 # ============================================================ 升级检查(工序第 4 步)
 
 
-def _fallback_legs_ok(session: StrategySession, gs: GameState,
-                      source_arm: str, name: str) -> bool:
-    """P78-5′ 兜底豁免的两腿必要条件(design 契约 D 升级变现行;
-    设计写入代码比对确认):豁免构成 = **义务账 ∨ 对象无损**。
-
-    - 腿①(触发源义务血统维,验分支):``source_arm`` 为骨架义务
-      血统——人口位(02 号稿 §3 M3 义务正文)/ arm0(02 §5 回退)
-      → 豁免成立,funding_hold_fallback 全量消费(对象不验);
-    - 腿②(卖出对象级无损维,验对象非验触发分支):偏好账分支(停留门
-      升级优先分支/概率账 = 优化路径;富余段-L3 = 20 号稿义务形态但
-      P78-5′ 账性判别上零息损不构成「不做会输」= 偏好账——同走本
-      腿)下被放行对象须持有账 ≈ 0:非保护集/非 registry 核心(
-      「保护集 ∪ registry 核心」对象级无损判定域,统一保护集 design
-      §2.3 表——静态保护含银狼等核心)∧ 非种子(P78-7 相邻轮回卖
-      封口集)。funding_hold_fallback 兜底池 ⊆ 该判定域(池条件 =
-      holds ∩ A 排除),偏好分支下结构性恒拒——验证照落为防御性腿
-      (兜底池未来扩容非保护资产时腿②自动生效)。分支键缺省 ''
-      (异常/无分支身份)按保守侧走腿②对象验。
-
-    (签名 2026-10-17 迭代 T-2 起收 ``source_arm: str`` = 本帧资格门
-    判定的触发臂键——授权跨帧携带废止(design §2.5②),臂身份不再经
-    预授权键跨帧传递。)
-    """
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
-        levelup,
-    )
-    if source_arm in (levelup.ARM_POPULATION, levelup.ARM_ARM0):
-        return True    # 腿①:骨架义务血统(授权文号含义务正文)
-    from sr_od.application.currency_war.kernel.cw_comps import (
-        CORE_SINGLE_CARD_REGISTRY,
-    )
-    _holds = protection_membership(gs, state_of(gs)) \
-        | set(CORE_SINGLE_CARD_REGISTRY)
-    if name in _holds:
-        return False   # 保护集/registry 核心:持有账 > 0,腿②不成立
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        sell_gate,
-    )
-    # 种子(P78-7):相邻轮回卖封口集
-    return name not in sell_gate.seed_exclusions(session, round_num_of(gs))
-
-
 def _bench_liquid_gold(gs: GameState) -> int:
     """攒批资金的活期分量(11 号篇 §2 攒批口径):备战席
     **非线内非保护 1★ 活期卡**退金合计(1★ 全额退口径)。
@@ -818,74 +777,56 @@ def _bench_liquid_gold(gs: GameState) -> int:
     return total
 
 
-def _levelup_floor_ok(gs: GameState, session: StrategySession,
-                      arm_key: str, after_gold: int) -> bool:
-    """发出前花后金下界检查(11 号篇 §2 保底金门 + 守 50 定论(口述条目 3(登记簿已退役))
-    确认前 fail 态的单一装配口)。
+def _levelup_fund_line_ok(gs: GameState, session: StrategySession,
+                          gold: int, clicks: int, click_cost: int) -> bool:
+    """升级资金线门装配口(11 号稿 §2 资金线门;单一装配位)。
 
-    - 全域(所有分支):保底金门 = ``guarantee_floor_gate`` 单一源
-      (花后金 ≥ 1 利息档 boss_floor;两支不在本门设计范围内 = 终局域末战 ALL IN/
-      买断制,门内自判)——``after_gold`` = 预估花后金(裸金 + 活期
-      退金 − 批成本,保守下界),clicks/cost 传 0/1 直比形态;
-    - 优化分支(概率账/停留门)追加:利息线差额保留(saturation_line,
-      保守侧——「花完仍守 50」利息线级预算前提的确认前 fail 态;
-      买断制 cap=0 时 saturation_line(0)=0 该门自动恒过,终局域经
-      ``terminal_all_in`` 单一源豁免)。
+    现金口径单门:花后金 = 现金 − 整批成本,下界单一源 =
+    ``saturation_line(cap_resolved)``(session resolved 链;活期退金
+    **不进放行算术**——发射分支不消费活期资产,旧「现金+活期−批」
+    预支算式与按臂分档的利息线差额保留分支随批删除)。豁免两支由
+    :func:`criteria.levelup.levelup_fund_gate` 体内自判(终局域末战
+    ALL IN / 买断制 cap=0 ⇒ 下界 0 恒过)。
 
-    人口位/arm0/富余段为义务/机制分支,不受攒息约束([12]/[33] 明文
-    例外),只覆盖保底金门。
+    契约核验(前提恒真行,纪律接线;失败 = 保守拒)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         cap_resolved_of_session,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        contracts,
         levelup,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
-        saturation_line,
-    )
-    cap = cap_resolved_of_session(session)
-    if arm_key in (levelup.ARM_PROB_ACCOUNT, levelup.ARM_STAY_GATE) \
-            and cap > 0 \
-            and after_gold < saturation_line(cap) \
-            and not levelup.terminal_all_in(gs, session):
-        return False       # 优化分支利息线差额保留(确认前保守侧)
-    # 契约核验(前提恒真行,纪律接线;失败 = 保守拒)。
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
-        contracts,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        state_of,
-    )
     if not contracts.ensure_contract(
-            ('levelup', 'guarantee_floor_gate'),
+            ('levelup', 'fund_line_gate'),
             contracts.ContractCtx(), state_of(session).cw4_counters):
         return False
-    return levelup.guarantee_floor_gate(gs, session, after_gold, 0, 1, cap)
+    return levelup.levelup_fund_gate(gs, session, gold, clicks, click_cost,
+                                     cap_resolved=cap_resolved_of_session(session))
 
 
 def _step3_level_up(session: StrategySession, gs: GameState,
                     registry: DecisionV2Registry | None) -> list[Emitted]:
-    """升级检查步(工序第 4 步;11 号篇 §2 五分支判据 + 2026-10-17
-    迭代 design §2.2 升级执行:判据每帧重评,无跨画面键)。
+    """升级检查步(工序第 4 步;11 号稿 §2 单判据三分派 + 升级执行:
+    判据每帧重评,无跨画面键)。
 
     资格门全链判定单一源 = :func:`criteria.levelup.upgrade_gate_verdict`
-    (七道成员集,与商店会话升级意图出口两屏同参消费,本函数零内联门)。
-    命中后凑金与发射(design §2.2 第 4 步):
+    (与商店会话升级意图出口两屏同参消费,本函数零内联门)。
+    命中后凑金与发射:
 
     - **全链通过** → 发购买经验整批,**单帧原子**(实付上界 = 发射时
-      授权值;授权不再跨帧携带——「买一半」形态由发射原子性消解,
-      design §2.5② 行为差申报)+ **清 handled 标记**(升级前若经会话
-      正常收工置位,升级后概率档已变,本节点找牌与刷新判据需重评——
-      非商业间谍路径的重开通道,design §2.2 第 1 条);
-    - **资格门未过因金不足**(花后下界已过 ∧ 裸金 < 整级批)→ 凑金:
+      授权值;授权不再跨帧携带——「买一半」形态由发射原子性消解)+
+      **清 handled 标记**(升级前若经会话正常收工置位,升级后概率档
+      已变,本节点找牌与刷新判据需重评——非商业间谍路径的重开通道);
+    - **凑金域**(花后破线 ∧ 凑金可达,``gold_short``)→ 凑金:
       ``levelup_liquidate_prep`` 场景每帧一卖、重扫续卖(候选/锁定阵容
       外任意星级可卖,场景参数 ``one_star_refund_only`` False;排序键
-      ①费用带外先卖②低星先③金当量兜底,场景级覆盖见评估器)。主路径
-      尽 → P78-5 兜底豁免(单一源 ``sell_gate.funding_hold_fallback``,
-      腿判定触发臂 = 本帧判定臂;兜底腿保留照旧);
-    - **候选穷尽(含兜底腿尽)仍不足** → 本帧零动作等节点收入(不部分
-      执行);其余 defer(门拦/花后下界)/未命中 → 零动作。
+      ①费用带外先卖②低星先③金当量兜底,场景级覆盖见评估器)。凑金
+      目标 = 保线缺口闭合:凑至「现金 − 批 ≥ saturation_line」发射;
+    - **凑金候选穷尽** → 整批推迟(帧零动作,拒因键
+      ``levelup_fund_line_defer``——资金面拒因统一键;新触发臂均为
+      非义务账,穷尽 = 真不可达,推迟为正确语义);
+    - 其余 defer(门拦/凑金不可达)/未命中 → 零动作。
 
     血本位局(XP 以血支付):金凑金与变现步不适用(变现卖出对血支付
     零贡献)——血闸过即发射(单帧原子同款);不足 = 零购买(攒钱模式
@@ -918,8 +859,8 @@ def _step3_level_up(session: StrategySession, gs: GameState,
 
     if verdict == levelup.GATE_EMIT:
         # 发射 = 单帧原子整批(实付上界 = 发射时授权值;授权不跨帧)
-        # + 清 handled 标记(design §2.2 第 1 条:升级后概率档已变,
-        # 本节点找牌与刷新判据需重评)。
+        # + 清 handled 标记(升级后概率档已变,本节点找牌与刷新判据
+        # 需重评)。
         counters['levelup_batch_emitted'] = \
             counters.get('levelup_batch_emitted', 0) + 1
         # 升级发出失效/伴生钩子(读数协议②:升 9 级成长基金独立
@@ -930,13 +871,13 @@ def _step3_level_up(session: StrategySession, gs: GameState,
             cost=int(click_cost), clicks=max(1, clicks),
             auth_basis=arm_key), True, f'step3_levelup_batch:{arm_key}')]
     if verdict != levelup.GATE_GOLD_SHORT:
-        # 未命中 / 资格门拦(拒因计数已由判定函数写入)/ 花后下界 defer
-        # (卖出只转化活期为裸金、花后金不变,此域凑金无益)= 零动作。
+        # 未命中 / 资格门拦(拒因计数已由判定函数写入)= 零动作。
         return []
 
-    # ===== 凑金(资格门未过因金不足;design §2.2 第 4 步第 2 条)=====
-    # 每帧一卖、重扫续卖(卖一张少一张,天然收敛):主路径 = 评估器
-    # 升级变现场景(排序键①费用带外②低星③金当量,场景级覆盖)。
+    # ===== 凑金(凑金域;每帧一卖、重扫续卖,天然收敛)=====
+    # 主路径 = 评估器升级变现场景(排序键①费用带外②低星③金当量,
+    # 场景级覆盖)。凑金穷尽 → 整批推迟(非义务账无兜底豁免——穷尽 =
+    # 真不可达,推迟零动作等节点收入)。
     cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
     if cands:
         out = _emit_sell_candidate(
@@ -945,54 +886,8 @@ def _step3_level_up(session: StrategySession, gs: GameState,
             counter='levelup_liquidate_sell')
         if out:
             return out
-    # 主路径尽 → P78-5 兜底豁免(funding 通道对价;触发前提 = 主路径
-    # 空 ∧ 仍缺金——P78-5 四条件单一源 = sell_gate.funding_hold_
-    # fallback,本循环只拼装消费,11 号篇 §2 变现步;兜底腿保留照旧,
-    # 腿判定触发臂 = 本帧判定臂)。
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        locked_buy_cap_hold,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        sell_gate,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
-        sell_line_membership,
-    )
-    batch_cost = clicks * click_cost
-    line = tuple(sorted(sell_line_membership(gs)))
-    fallback = sell_gate.funding_hold_fallback(
-        session, line, bench_entries_of(gs), gold=gold_of(gs),
-        need=batch_cost,
-        a_exclusions=sell_gate.sell_exclusions(
-            session, line, channel='funding',
-            current_round=round_num_of(gs),
-            cap_hold=locked_buy_cap_hold(gs)),
-        deployed=_deployed_units_of(gs),
-        cap_hold=locked_buy_cap_hold(gs))
-    if fallback:
-        from sr_od.application.currency_war.kernel.cw_exec_state import (
-            bench_slot_unit,
-        )
-        u = bench_slot_unit(fallback[0])
-        if u is not None and _fallback_legs_ok(session, gs, arm_key,
-                                               str(u.char_id or '')):
-            idx = mandate._bench_container_idx(gs, fallback[0])
-            if idx is not None:
-                mandate.record_round_sold(session, gs,
-                                          str(u.char_id or ''))
-                counters['levelup_funding_fallback_sell'] = \
-                    counters.get('levelup_funding_fallback_sell', 0) + 1
-                return [Emitted(CwActionSellBenchParam(
-                    bench_idx=idx, reason='levelup_liquidate'),
-                    True, 'levelup_liquidate_sell')]
-        if u is not None:
-            # 腿拒暴露(两腿必要条件不过——偏好账分支变卖有价资产):
-            # 零动作,分键区分「无兜底候选」与「候选被腿拒」。
-            counters['levelup_fallback_leg_reject'] = \
-                counters.get('levelup_fallback_leg_reject', 0) + 1
-    # 候选穷尽(含兜底腿尽)仍不足 → 本帧零动作等节点收入(不部分执行)。
-    counters['levelup_liquidate_exhausted'] = \
-        counters.get('levelup_liquidate_exhausted', 0) + 1
+    counters['levelup_fund_line_defer'] = \
+        counters.get('levelup_fund_line_defer', 0) + 1
     return []
 
 

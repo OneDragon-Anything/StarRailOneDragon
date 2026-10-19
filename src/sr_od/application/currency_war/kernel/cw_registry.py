@@ -864,7 +864,6 @@ class DecisionV2Registry:
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     war_floor: int = 30           # 战力模式地板(计划内补强非 panic)
     rebirth_floor: int = 20       # [18] 应急保留重生基数
-    boss_floor: int = 10          # r278 boss 跌破利息档地板
     #: 利息线覆盖通道(纪律视图专用,非标定旋钮):None=用派生利息线;
     #: ALL IN 窗 = 0(唯一清零路径,discipline 裁决视图注入)。
     #: A/B 常量注入面只留 interest_cap 一个旋钮(D3 验收判据)。

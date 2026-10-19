@@ -6,14 +6,10 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
 ``(g − R*)+`` 是负有转化义务的死钱,每轮必须经三条转化通道(升级/
 刷新/买牌)之一转成战力,义务 = max(既有分支义务, min(富余, C_t))。
 
-- **R\* = 利息线 + 窗口(≤3 轮)排程升级费**:利息线(50)以内持有弱占优
-  (0.1/轮 无风险收益 vs 战力链 ≤0.012,同一笔账反向使用);
-  排程升级是价格/时点已知的确定性转化,为其持金不是死钱。窗口 h =
-  min(3,到本位面末节点轮数)——h>3 的升级应即时执行而非长期储蓄。
-  排程判据 = ``schedule_upgrade`` 确定性费用查表核(R4 规则集);
-  升级费逐帧现读
-  (state.level_up_cost OCR 优先,缺省 XP_CLICK_COST_FLAT;
-  不用粗估表)。
+- **R\* = 保利利息线**(利息线以内持有弱占优;排程升级储蓄分量已随
+  排程升级接缝删除——升级攒批资金保护由刷新侧「整级预留保护(判据
+  现值载体)」承载,不经 R*;
+  刷新 EV 预算 = ``refresh_ev_budget`` 确定性预算式)。
 - **C_t 通道容量**(结构上限,由既有层逐帧算出):升级计划费 +
   可买非期权件账(bench 余量约束)+ 刷价×刷新预算(refresh_ev_budget
   预算式,值域 [0,6])。
@@ -30,9 +26,9 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
 - **利息计算基数守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
   富余段激活;I-1 锚)。
 
-分包期 0b(§3.3-①a/①b):两接缝(schedule_upgrade/refresh_ev_budget)
-与其依赖族(reserve_cap/upgrade_plan_fee/_registry_of/is_emergency/
-_vd_core_of/REFRESH_ROLL_CAP/储备窗口常数)下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
+分包期 0b(§3.3-①a/①b):接缝(refresh_ev_budget)
+与其依赖族(reserve_cap/_registry_of/is_emergency/
+_vd_core_of/REFRESH_ROLL_CAP)下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
 (原 kernel→decision 断环边:cw_economy.get_node_goal 标量投影体内懒
 import 决策包)。本模块只余容量/义务核算层;接缝符号在函数内懒 import
 自 cw_economy——monkeypatch 桩点重钉至 cw_economy 符号后,属性动态
@@ -174,12 +170,11 @@ def bench_fill_account(gs: GameState, registry: DecisionV2Registry) -> int:
 
 def channel_capacity(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
-    """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
+    """C_t = 非期权可买账 + 刷价×刷新预算。
 
-    升级计划费分量消费 ``schedule_upgrade``(人口位单分支——概率级②分支
-    已停用;line_and_upgrade §2.3 升级②分支行:概率改善排程语义由策略层
-    概率主账承接,锁定后 ∧ plane2_started 双条件消费,其攒批由升级
-    预授权链承载不经 C_t)。刷新分量取 ``refresh_ev_budget``
+    升级计划费分量已随排程升级接缝删除(升级触发 = 策略层单判据三分
+    派,R* 升级排程分量恒 0;升级攒批资金保护由刷新侧整级预留承载,
+    不经 C_t)。刷新分量取 ``refresh_ev_budget``
     预算式(查表核单一址;合法 0 帧契约见该函数
     docstring)。接缝符号懒 import 自 kernel 侧 cw_economy(局部别名
     绑定):monkeypatch 桩点重钉至 cw_economy 符号后经属性访问动态
@@ -187,8 +182,6 @@ def channel_capacity(gs: GameState, session: StrategySession,
     """
     from sr_od.application.currency_war.kernel import cw_economy as _ke
     total = 0
-    if _ke.schedule_upgrade(gs, session):
-        total += _ke.upgrade_plan_fee(gs)
     total += sum(_countable_buy_costs(gs, session, registry))
     total += bench_fill_account(gs, registry)
     rolls = _ke.refresh_ev_budget(gs, session)

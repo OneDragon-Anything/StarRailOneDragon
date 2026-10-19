@@ -258,10 +258,6 @@ class StrategyState:
     # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 动作发出点按同一判定集
     # 现算,已登记分工维持,分工裁决)。
     cw4_m1p_plan_pending: object = None
-    # 富余段相位标志(同值重入防抖)。
-    cw4_must_spend_phase: object = None
-    # pop 槽否向理由留决策迹(D-lv7)。
-    cw4_pop_slot_why: str = ''
     # 近轮已卖名滚动账(P71 凑息卖去重)。
     cw4_recent_sold_names: list = field(default_factory=list)
     # 素材滞留首见轮账(名 → 首见帧轮次)。

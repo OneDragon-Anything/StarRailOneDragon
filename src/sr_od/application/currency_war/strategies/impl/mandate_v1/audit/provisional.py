@@ -6,9 +6,10 @@
 F7_CONTINGENCY_ARMED/P_LAMBDA_QUANTILE〔血线地板/λ 顾问删除〕、
 V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
 PER_ROUND/N_CRISIS/V_GAP〔换线机器与换线窗口侧〕、
-V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕
+V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕、
+LEVELUP_MISSING_SET_AGG〔升级概率账臂删除〕
 ——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)、
-随消费面登记后补(MERGE_PROGRESS_X2/LEVELUP_MISSING_SET_AGG)。
+随消费面登记后补(MERGE_PROGRESS_X2)。
 每项一个 ``Optional`` 槽位,
 **缺省 None = 对应判据分支 fail-closed**;标定值只能经本模块 ``inject``
 显式注入(带 CI 对象)——「注入即开闸」事故(TUNING#1/#2)的结构性防线,
@@ -64,13 +65,6 @@ _SLOTS: dict[str, _Slot] = {
     # —— 类型级封印族(R10-2:V̄ 拟合族永不作闸门)——
     'V_BAR': _Slot('#13 V̄ 刷新价值门量;比较项不授权,禁作闸门', sealed=True),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),
-    # —— 升级判据登记(line_and_upgrade §2.1/§4 两处同口径声明)——
-    # 缺件集聚合口径:None = 单核代表(在产保守形态);求和/瓶颈口径为
-    # 切换候选【拟·owner = 编排者、期限 = 一个对局周期】——未决前一律
-    # 单核代表,禁混用。消费端 = criteria/levelup.prob_account_ok。
-    'LEVELUP_MISSING_SET_AGG': _Slot(
-        '升级概率账缺件集聚合口径(None=single_core 单核代表;sum/bottleneck'
-        ' 为切换候选,line_and_upgrade §2.1/§4 统一登记集成员)'),
     # —— 卖出价值函数(契约 D 统一口径;design 契约 D/line_and_upgrade §4,
     #    【拟·owner = 编排者、期限 = 一个对局周期】登记集成员)——
     'MERGE_PROGRESS_X2': _Slot('合成进度 ×2 结构近似系数(line_and_upgrade §4:'

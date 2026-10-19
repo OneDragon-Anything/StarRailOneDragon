@@ -738,7 +738,8 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
       六序与刷新判据。「等节点收入」形态由此成立:会话经 §2.5 正常
       收工置标记 → 出店 → 战斗 → 节点收入 → 备战侧凑金发射——不存在
       「开店即关」环(转场只在可发射帧发生,收店只在 §2.5 正常条件
-      发生);
+      发生)。待付窗两形态:凑金可达域(gold_short,备战侧凑金收敛)与
+      资金线不可达 defer(整批推迟等节点收入);
     - 未命中 → None,照常。
 
     资格门保证转场后零空转帧:店侧转场帧的后继(备战同参重评)必然
@@ -757,9 +758,9 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
         state_of(gs).shop_read_intent = False
         return CwActionCloseShopParam()
     if _verdict == levelup.GATE_GOLD_SHORT:
-        # 待付窗(命中 ∧ 金不足):不凑金不发射,会话照常进入买牌六序
+        # 待付窗(凑金可达域):不凑金不发射,会话照常进入买牌六序
         # 与刷新判据;凑金 = 备战侧 levelup_liquidate_prep 场景
-        # (design §2.2 第 4 步,资格门同参重评)。
+        # (资格门同参重评,凑至「现金 − 批 ≥ saturation_line」发射)。
         counters['levelup_stockpile_wait'] = \
             counters.get('levelup_stockpile_wait', 0) + 1
     return None
@@ -1977,17 +1978,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _count(f'shop_refresh_{_wkey}')
     else:
         # 金前提:R2 预算门照旧(reserve = g* + ρ〔合格集最低费卡价〕)
-        # + 整级预留保护(design §2.5③,2026-10-17 迭代 T-4 载体迁移:
-        # 预授权键读改判据现值——本帧第 4 步资格门判定复用,判据命中且
-        # 资金门金量不足〔攒批等待帧〕时 reserve 含整级差额:刷新不烧
-        # 升级资金,防「压牌库换卡↔升级凑不齐」活锁。预留面拓宽申报:
-        # 键载体时代的「无键帧」(判据命中但未进入攒批的攒息窗)预留从
-        # 无到有,R2 实质收紧、方向保守(升级资金完整性优先)。)
+        # + 整级预留保护(载体 = 升级资格门判据现值同帧复用——凑金可达
+        # 域帧(待付窗)时 reserve 含整级批全量:发射条件 = 现金 ≥ 线 +
+        # 整批,基础 g* 预留已辖线,批全量入预留使刷新不烧升级凑金,
+        # 防「压牌库换卡↔升级凑不齐」活锁。判定轴 = gold_short 现值,
+        # 与升级执行/升级意图出口同帧同参零子集化。)
         _reserve = g_star + _r2_card_reserve(k_members, bench, deployed, gs)
         if _up_verdict == _crit_levelup.GATE_GOLD_SHORT:
-            _batch = _up_clicks * _up_cost
-            if _batch > gold:
-                _reserve += _batch - gold
+            _reserve += _up_clicks * _up_cost
         if contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
                 contracts.ContractCtx(gold=gold, reserve=_reserve),

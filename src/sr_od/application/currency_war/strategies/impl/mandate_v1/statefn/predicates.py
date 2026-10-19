@@ -1,10 +1,10 @@
-"""板满/等待件谓词(arm1_existence 触发信号)+ 目标线 K/零重叠 +
-「挂后台效果」资格谓词(前置半步 0 载体)。
+"""板面/目标线谓词(目标线 K/零重叠)+「挂后台效果」资格谓词。
 
-01_math_framework §2 三行的唯一实现:P39 分支一三元(板满 ∧ 阵营相关等待件不限星级 ∧
-上场边际贡献>0——板面谓词保证 w>0,01_math_framework §3.3 #3:分支一只用 w>0 不需精确值)
-=R2-2 移入的 arm1_existence 触发信号(M3 消费,板面可观测量,非 EV 项);
-目标线 K(阵容 的 core/shared/flex 名单,cw_comps.COMP_LIBRARY 运行时可判定)。
+01_math_framework §2 的在产实现:目标线 K(阵容 的 core/shared/flex
+名单,cw_comps.COMP_LIBRARY 运行时可判定)与零重叠资格(M4 燃料件
+卖出前提);旧升级触发臂谓词(arm1_existence 板满三元/arm0_level_lag
+等级滞后)已随五臂触发删除消亡(升级触发 = 单判据三分派,载体 =
+criteria/levelup.upgrade_trigger)。
 """
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    DEPLOYED_CAPACITY,
     bench_slot_unit,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -80,53 +79,6 @@ def _herta_supply_present(state: GameState,
     return _HERTA_SUPPLY_TARGET in k_members
 
 
-def arm1_existence(deployed_count: int, bench_names: list[str],
-                   deployed_names: list[str],
-                   deploy_cap: int | None = None) -> bool:
-    """P39 分支一三元触发信号(R2-2 移入 statefn;M3 消费)。
-
-    ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
-    (deploy_cap 真值链 / MandateFrame.deploy_cap:level+宝钻、封顶
-    = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,定长槽表
-    的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
-    §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
-    板满阈值,而板面实际上板量受等级驱动 cap 约束(P1 期 3→5 量级),
-    ``deployed_count`` 构造性不可达 10 ⇒ 触发面恒空;按 cap 口径重算
-    同语料 10/13、5/12 波真(``.debug/temp/currency_war/core_swap/
-    arm1_diag.py`)。边界:``deploy_cap=None``(观察帧缺 cap 读数)时
-    兜底固定槽表常数 10——**该分支在生产消费位(run_mandate/商店线)
-    经 ensure_contract 前提 ``_arm1_cap_level_driven``(deploy_cap=None
-    ⇒ 违例弃权)已不可达**(契约层弃权优先于函数内兜底,IMPL_ADV_R200
-    OBS-3 收尾);保留仅作函数局部完备性(直调/测试面),非生产语义。
-    cap>10 时按 10 封顶(本函数局部表示域钳制 = 十槽槽表面,
-    扩板另案;max_units 本体封顶已随 back_max 动态真值,本处不随)。
-    ②③见下,不变。
-    ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
-    P39 裁定宽域:不限星级)共享阵营/流派羁绊的单位;③上场边际贡献>0:
-    由①②结构承载(w>0 板面谓词,01_math_framework §3.3 #3——分支一只需 w>0,无需 w
-    精确值,【拟】#3 的 w 标定面不触发)。
-    """
-    cap = (DEPLOYED_CAPACITY if deploy_cap is None
-           else min(deploy_cap, DEPLOYED_CAPACITY))
-    if deployed_count < cap or not bench_names:
-        return False
-    board_tags: set[str] = set()
-    for name in deployed_names:
-        ch = CHARACTERS.get(name)
-        if ch is not None:
-            board_tags.update(ch.factions)
-            board_tags.update(ch.flows)
-    if not board_tags:
-        return False
-    for name in bench_names:
-        ch = CHARACTERS.get(name)
-        if ch is None:
-            continue
-        if board_tags & (set(ch.factions) | set(ch.flows)):
-            return True
-    return False
-
-
 def line_members(comp: Comp | None) -> tuple[str, ...]:
     """目标线 K = 阵容 的 core/shared/flex 名单(COMP_LIBRARY 运行时可判定;
     线内/线外分类的锚,01_math_framework §2「目标线 K」行)。阵容 缺 → 空元组(零重叠全开,
@@ -169,68 +121,6 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
     缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
     """
     return bench_slot_unit(unit) is None
-
-
-def arm0_need(deployed: list[Unit], bench: list[BenchSlot],
-              k_members: tuple[str, ...]) -> int:
-    """arm0 v2 上阵人数需求 = 期望态现量,零派生规则(14号稿 §4.2 A4:
-    v1 need_slots 从 TRANSITION_SYSTEMS 派生已作废——派生规则本身即一组
-    新拍定选择)。
-
-    = |deployed| + |{ b ∈ bench | b ∈ k_members(predicates core∪shared
-    口径)∧ b.name ∉ deployed 名集 }|,bench 内同名去重(集合计)。
-    ``bench`` = 占席条目域(容器 BenchSlot,身份经解包读口;
-    benchchar-retirement P4 容器形)。
-
-    排除口径 = **纯 name**(与真实部署去重语义对齐——
-    check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
-    规则即「同名不可再上阵」;Y3 的 (名,星) 字面让位于部署真实语义,
-    不为凑字面制造虚 need:①同名异星 bench 件按 name 排除后不再虚计
-    (旧口径计 it = 为不可执行部署买等级);②bench 同名 ×2(分支① j=2
-    形态)去重计 1(双计消除,need 恒高估修正)。**同名异星可否同场的
-    机制事实未定案**(14号稿 §8⑫ 登记的待定项,核验结论 = 证据
-    不足:机制原文只覆盖同名同星,档案 deployed 面系台账跟踪值不作机制
-    证据)——纯 name 口径是**执行层语义对齐**(与部署去重一致,防为
-    不可执行部署买等级),不是机制定案;若后续实机证得异星可双上阵,
-    本谓词 need 将低估,回写口径时一并修。)
-    成员集分叉声明(编排者存-2 裁决 = 有意设计):本谓词只量 k_members
-    (可部署现量),分支①囤腿的 buy_members 超集成员不入 need——囤腿件
-    走合成→上板,部署/升级授权面与囤腿面两口径禁混。
-    """
-    dep_names = {getattr(d, 'char_id', '') or '' for d in (deployed or [])}
-    kset = set(k_members)
-    extra = set()
-    for b in bench or []:
-        u = bench_slot_unit(b)
-        cid = (u.char_id if u is not None else '') or ''
-        if cid in kset and cid not in dep_names:
-            extra.add(cid)
-    return len(deployed or []) + len(extra)
-
-
-def arm0_level_lag(level: int, readable: bool, deployed: list[Unit], bench: list[BenchSlot],
-                   k_members: tuple[str, ...],
-                   deploy_cap: int | None) -> tuple[bool, str]:
-    """arm0 触发谓词 v2(14号稿 §4.2):等级落后于上阵人数需求。
-
-    返回 (是否触发,拒因分键——不触发时显式理由,零静默):
-    - level 消费只认 authoritative 位(``level_readable``,C4 采纳:与
-      15 号稿 §4.3 共用单一源可信位定义)——不可信帧 fail 向不触发
-      (E3 型毒化帧 fail 向,分键 'level_unreadable');
-    - level ≥ deploy_cap(等级容量已到,升级无对象)⇒ 'level_at_cap';
-    - level < arm0_need ⟹ 触发(cap 容不下已持有的可上阵线内件)。
-    常态保证:need > level ⇒ 至少一件与场上异 (名,星) 的 bench 线内件
-    ⇒ 升级后通常存在合法部署候选(围栏 held 路径例外由探针
-    arm0_post_level_no_deploy 承载,不作恒 0 断言——14号稿 §4.2 例外声明)。
-    零新自由参数,全量期望态现读。
-    """
-    if not readable:
-        return False, 'level_unreadable'
-    if deploy_cap is not None and level >= deploy_cap:
-        return False, 'level_at_cap'
-    if level < arm0_need(deployed, bench, k_members):
-        return True, ''
-    return False, 'level_ge_need'
 
 
 def p1_blood_floor(state: GameState) -> bool:
@@ -482,7 +372,7 @@ def advances_four_system(name: str) -> bool:
 
 __all__ = [
     'BenchEffectContext', 'RUST_AFFIX_NAME', 'advances_four_system',
-    'arm1_existence', 'bench_effect_context', 'bench_effect_qualified',
+    'bench_effect_context', 'bench_effect_qualified',
     'front_window_frame', 'front_window_table_ready', 'line_members',
     't5_p1_false', 'zero_form_frame', 'zero_overlap',
 ]
