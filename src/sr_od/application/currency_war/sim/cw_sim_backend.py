@@ -1991,7 +1991,10 @@ class SimBackend:
                 continue
             quality = (self._offer_forced_slots[i]
                        if i < len(self._offer_forced_slots) else '')
-            banned = set(self.excluded_invest) | set(names)
+            # banned 滚动并入 new_names(T-427 验收 F-2):多槽声明同窗
+            # 重掷时后槽排除前槽新名,守 offer「全程不重复」契约;单槽
+            # 生产链行为不变(new_names[i] 此时仍为旧名 = 原排除语义)。
+            banned = set(self.excluded_invest) | set(new_names)
             rolled = sample_strategy_card(
                 stream_rng(self.seed,
                            f'M11/offer/p{plane}/r{r}'

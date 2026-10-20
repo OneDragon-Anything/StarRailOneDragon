@@ -60,7 +60,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 | 节点经验 | `cw_sim_backend.apply_node_xp` + `NODE_XP_BY_TYPE` 表（依据 docs/game/currency_war/research/xp-rules.md） |
 | 商店发牌 | kernel `cw_shop_deal.sample_shop_deal`（单一源）；后端 `deal_shop` 只做节点切换自动全刷的世界写 |
 | 概率档与轮岗 | `cw_sim_backend.effective_deal_probs` + kernel `cw_battle_calib.roll_rotation_per_stage` |
-| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`）。品质改写型环境（时代×3/头彩/尾彩/银·金·彩）命中取卡按 `ENV_POOL_REWRITE` 按槽直取目标品质池抽样（判据 = `rewrite_slot_qualities_for_pick` 槽位向量形,2026-10-19 用户裁定批自单品质形泛化:全改写型/settled 定谳部分型 = 三槽同向量,银·金·彩 = 卡面三槽品质按位〔用户裁定卡面即真值〕;目标池吃光回退全池）。逐卡刷新呈现与世界腿 = 固定日程槽基准每卡 1 次 + `extra_pick_refreshes` 环境增量,刷新动作经上报声明 `refresh_invest_strategy`/`refresh_invest_env` 触发重掷（槽位品质承诺跨刷新保持;联席额外槽不呈现刷新——desc 未写明,保守缺位） |
+| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`）。品质改写型环境（时代×3/头彩/尾彩/银·金·彩）命中取卡按 `ENV_POOL_REWRITE` 按槽直取目标品质池抽样（判据 = `rewrite_slot_qualities_for_pick` 槽位向量形,2026-10-19 用户裁定批自单品质形泛化:全改写型/settled 定谳部分型 = 三槽同向量,银·金·彩 = 卡面三槽品质按位〔用户裁定卡面即真值〕;目标池吃光回退全池）。逐卡刷新呈现与世界腿 = 固定日程槽基准每卡 1 次 + `extra_pick_refreshes` 环境增量,刷新动作经上报声明 `refresh_invest_strategy`/`refresh_invest_env` 触发重掷(槽位品质承诺跨刷新保持;联席额外槽不呈现刷新——desc 未写明,保守缺位;非改写环境的刷新重掷品质 = 默认分布掷点,desc 无刷新品质语义,建模选择申报,实机对账纠偏面) |
 | 战斗结算 | `sim/cw_sim_battle.py::settle_battle`（随机输出面，§8.2）+ `apply_hp_outcome`（0hp 保底/局终判定） |
 | 敌人侧 | `sim/cw_sim_enemy.py`（难度基线/boss 名单 resolve） |
 | 开局种子 | `sim/cw_sim_opening.py::apply_opening` |

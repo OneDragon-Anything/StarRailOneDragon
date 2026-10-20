@@ -249,15 +249,21 @@ def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: Cha
     候选由重入观察 report 落容器);applied 出口构造刷新世界声明(喂入与
     消费面 = ``cw_sim_ports.declare_world`` / sim 后端 advance 分派)。
 
-    trigger 推导(单一依据 = ``gs.active_env`` 现值):环境名空 = 开局
-    投资环境选择屏 → 整组刷新(環境整组重掷,slots 哨兵不逐槽消费);
-    非空 = 投资策略屏 → 逐卡刷新(slots 原样透传,坐标系 = 投资界面卡槽
-    物理排位 0 基)。推导确定性 = 环境选择恒先于任何策略 offer 且全局
-    仅一次(开局简报 → 环境屏 → P1r1 起才有策略 offer)。
-
+    trigger 推导(依据 = ``gs.active_env`` ∨ ``gs.env_refresh_left`` 现值,
+    三状态全 Sound——T-427 验收 F-1 修正:RunConfig.env_present 缺省
+    False 是合法无环境支路配置,该局 active_env 恒空而固定日程策略 offer
+    照常呈现计数,「环境选择恒先于策略 offer」的前提在该局不成立,单一
+    active_env 依据会把策略刷新误派 env 腿造成静默活锁):
+    - active_env 非空 = 投资策略屏 → 逐卡刷新(slots 原样透传,坐标系 =
+      投资界面卡槽物理排位 0 基);
+    - active_env 空 ∧ env_refresh_left 非 None = 投资环境选择屏(环境屏
+      呈现写点 = 该字段唯一写端,在屏决策时点必已落值)→ 整组刷新
+      (slots 哨兵,不逐槽消费);
+    - active_env 空 ∧ env_refresh_left None = 无环境局策略屏 → 逐卡刷新。
     屏名内联声明:kernel→operations 反向 import 禁止,screen_info 档名
     同形内联(sim ``_SIM_KIND_TO_RING_LABEL`` 先例;权威 = screen_info 档)。"""
-    if str(gs.active_env.value or ''):
+    if str(gs.active_env.value or '') \
+            or gs.env_refresh_left.value is None:
         _trigger, _screen = 'refresh_invest_strategy', '货币战争-投资策略'
     else:
         _trigger, _screen = 'refresh_invest_env', '货币战争-投资环境'
