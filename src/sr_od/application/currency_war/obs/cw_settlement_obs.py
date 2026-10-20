@@ -176,9 +176,9 @@ def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
     return out
 
 
-#: 结算屏右上角金币存量 area(screen「货币战争-战斗结算」;坐标单一真相源)。
+#: 结算屏右上角金币存量 area(screen「货币战争-结算」;坐标单一真相源)。
 #: 只框数字区(排除左邻金币图标),备战 read_gold 同款收紧先例。
-A_SETTLE_GOLD: str = '战斗结算-金币存量'
+A_SETTLE_GOLD: str = '结算-右上金币存量'
 
 #: 金存量稳定门补采参数(含义与量级出处 = cw_observation.read_gold_settled:
 #: 入账计数器单调向上,单帧可能拿到入账前旧值,两帧一致才采信/取末帧)。
@@ -189,7 +189,7 @@ SETTLE_GOLD_INTERVAL_S: float = 0.5
 
 def _read_settle_gold_once(ctx: SrContext, screen: MatLike) -> int | None:
     """右上角金币存量单帧读(裁 area + 3x 放大;area 缺失/裁空/越界 → None)。"""
-    rect = _area_rect(ctx, A_SETTLE_GOLD, '货币战争-战斗结算')
+    rect = _area_rect(ctx, A_SETTLE_GOLD, '货币战争-结算')
     if rect is None:
         return None
     crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
@@ -274,17 +274,17 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
 # 零值形态非失读)。定标帧 = window_batch 批 h_004_012710(有息,总览 7 =
 # 基础 4 + 息 2 + 连胜 1)/ h_004_084253(无息)。
 
-#: 「获得金币总览」面板读数带 area(screen「货币战争-战斗结算」;坐标
+#: 「获得金币总览」面板读数带 area(screen「货币战争-结算」;坐标
 #: 单一真相源)。读数走本带裁剪 + 放大 OCR——全帧 det 对金币列小数值
 #: 系统性漏检(定标两帧全帧 token 流币值全缺/仅剩 1 枚,与
 #: read_settle_gold_once 同款 det 天花板),裁剪放大后锚/息值/三分量
 #: 全可读(暖读 ~0.1s)。
-A_SETTLE_COIN_PANEL: str = '区域-金币总览'
+A_SETTLE_COIN_PANEL: str = '结算-金币总览面板带'
 
 #: 息行基准带 area(息行在场时的行位定标记录)。无息形态该带被上移的
 #: 连胜行占据——息行判别靠标签 token 内容(「利息」)非行位,本带作
 #: 行序对账基准,不作运行时候选过滤。
-A_SETTLE_INTEREST_ROW: str = '文本-利息行'
+A_SETTLE_INTEREST_ROW: str = '结算-利息行'
 
 #: 面板读数放大倍率(裁剪后放大再 OCR,read_settle_gold_once 3x 同族;
 #: 面板整体 2x 已可读全分量,倍率再高无益)。
@@ -299,7 +299,7 @@ def read_settle_interest_panel(ctx: SrContext, screen: MatLike | None) -> list:
     if screen is None:
         return []
     try:
-        rect = _area_rect(ctx, A_SETTLE_COIN_PANEL, '货币战争-战斗结算')
+        rect = _area_rect(ctx, A_SETTLE_COIN_PANEL, '货币战争-结算')
         if rect is None:
             return []
         crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
