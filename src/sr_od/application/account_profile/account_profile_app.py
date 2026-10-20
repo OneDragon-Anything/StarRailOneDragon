@@ -13,8 +13,6 @@ import json
 import time
 from pathlib import Path
 
-import cv2
-import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
@@ -24,6 +22,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.base.screen.screen_utils import (
     OcrClickResultEnum,
     find_and_click_area,
+    get_match_screen_name,
     is_target_screen,
 )
 from one_dragon.utils.log_utils import log
@@ -40,16 +39,12 @@ from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 OUTPUT_PATH: Path = Path('config') / 'idx' / 'account_profile_scan.json'
 
 # 列表滚动等待:拖拽后等列表动画站稳
-SCROLL_SETTLE_SEC: float = 2.5
-# 滚顶判据:相邻两帧平均差低于该值即到顶。阈值针对详情页动态背景光效校准:
+SCROLL_SETTLE_SEC: float = 1.5
 # 列表静止时背景粒子光效仍有 2-5 的帧间差异,滚动时差异远高于此,取 8 分开两态。
 TOP_STABLE_DIFF: float = 8.0
-# 终止判据:连续 N 屏无新增角色即认为已到列表底部(滚轮小步长屏数多,取 3 防提前停)
-NO_NEW_SCREENS_TO_STOP: int = 3
+# 终止判据:连续 N 轮 retry 无新增角色即认为已到列表底部(轮 ≈ 1 屏,取 10 防误停)
+NO_NEW_RETRIES: int = 10
 
-# 详情页角色名 OCR 区域(兜底读名与档案录入共用,1080p)
-NAME_X_RANGE: tuple[int, int] = (1450, 1800)
-NAME_Y_RANGE: tuple[int, int] = (100, 175)
 
 
 class AccountProfileApp(SrApplication):
@@ -58,11 +53,19 @@ class AccountProfileApp(SrApplication):
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, account_profile_const.APP_ID, op_name=account_profile_const.APP_NAME)
         self._matcher: AvatarMatcher | None = None
+        self._thumb_y: int = 250  # 滚动条滑块中心 y;滚顶后重置
+        self._no_new_count: int = 0  # 连续无新增屏数(retry 轮间保留)
+        self._prev_names: set[str] = set()  # 上一轮的已扫名字集合
+        self._known_by_pos: dict[tuple[int, int], str] = {}  # 格子位置→角色名缓存(跨轮保留)
         # 跨运行去重:启动时读已有产物作已扫基础,本运行只扫增量(减少重复点击)
         self.profiles: dict[str, dict] = self._load_existing_profiles()
 
     def _load_existing_profiles(self) -> dict[str, dict]:
-        """读取上次扫描产物;名字归一化后作已扫基础(点号变体在此合并,首见保留)。"""
+        """读取上次扫描产物作已扫基础(点号变体在此合并,首见保留)。
+
+        档案完整性过滤:遗器为空或星魂未读的条目视为未扫(早期版本读取失败时代的
+        残留档案,直接作已扫基础会被增量跳过永久化缺陷),本轮强制重扫补全。
+        """
         if not OUTPUT_PATH.exists():
             return {}
         try:
@@ -74,8 +77,11 @@ class AccountProfileApp(SrApplication):
                 if not raw_cn:
                     continue
                 cn = normalize_cn_name(raw_cn)
-                if cn is not None and cn not in profiles:
-                    profiles[cn] = c
+                if cn is None or cn in profiles:
+                    continue
+                if c.get('eidolon_count', -1) < 0 or not c.get('relics'):
+                    continue
+                profiles[cn] = c
             return profiles
         except (json.JSONDecodeError, OSError):
             return {}
@@ -97,98 +103,74 @@ class AccountProfileApp(SrApplication):
 
     @node_from(from_name='进入角色详情页')
     @operation_node(name='打开角色列表侧栏')
-    def open_roster_list(self) -> OperationRoundResult:
-        # 列表已开(侧栏标题「角色列表」可见)则不点按钮——再点会把列表关掉
-        screen = self.screenshot()
-        title_found = any(
-            (str(r.data or '')).find('角色列表') != -1 and int(r.x) < 600
-            for r in self.ctx.ocr.ocr(screen)
-        )
-        if title_found:
+    def open_sidebar(self) -> OperationRoundResult:
+        """侧栏是格子遍历的载体:格子固定网格 + 滚动可计算(头像条视图漂移不可用固定坐标)。"""
+        if self._set_sidebar(True):
             return self.round_success(wait=1)
-        result = self.round_by_find_and_click_area(
-            self.last_screenshot, '角色-详情', '按钮-角色列表',
-            pre_delay=0.3, success_wait=2, retry_wait=1.5,
-        )
-        if result.is_success:
-            # success_wait=2 已覆盖侧栏展开动画;沿边进「滚回列表顶部」。
-            # 这里不能 round_wait——round_wait 重跑本节点会再点一次按钮,把刚展开的侧栏点关。
-            return self.round_success(wait=1)
-        return self.round_retry('未找到角色列表按钮', wait=1.5)
+        return self.round_retry('侧栏打开失败', wait=1.5)
 
     @node_from(from_name='打开角色列表侧栏')
     @operation_node(name='滚回列表顶部')
     def scroll_to_top(self) -> OperationRoundResult:
         """向上拖动直到画面不再变化(相邻两帧平均差低于阈值即到顶)。"""
-        prev: MatLike = self.screenshot()
-        for _ in range(12):
-            self.ctx.controller.drag_to(Point(280, 800), start=Point(280, 300), duration=0.4)
-            time.sleep(1.2)
-            shot = self.screenshot()
-            diff = float(np.mean(cv2.absdiff(
-                np.asarray(prev, dtype=np.int16), np.asarray(shot, dtype=np.int16),
-            )))
-            if diff < TOP_STABLE_DIFF:
-                return self.round_success(wait=1)
-            prev = shot
-        return self.round_fail('滚顶未收敛(12 轮仍有画面变化)', wait=1)
+        # 滚顶:滑块拖到轨道顶,一次到位(实测可靠;列表到顶后滑块停在顶部,无手势风险)
+        self.ctx.controller.mouse_move(Point(575, 820))
+        time.sleep(0.2)
+        self.ctx.controller.drag_to(
+            start=Point(575, 820), end=Point(575, 130), duration=1.5, hold_time=0.0)
+        self._thumb_y = 250
+        time.sleep(2)
+        return self.round_success(wait=1)
+
 
     @node_from(from_name='滚回列表顶部')
     @operation_node(name='逐角色扫描养成数据')
     def scan_loop(self) -> OperationRoundResult:
+        """侧栏格子遍历:每轮处理当前屏,retry 驱动推进。
+
+        每轮:detect 当前屏 → 处理未扫格(点格/关侧栏/读名/读档案/开侧栏) → 滑块下拖一屏
+        → round_retry 进入下一轮。连续 NO_NEW_RETRIES 轮无新增判定到列表底部。
+        跨轮状态(self._no_new_count)在 retry 间保留。
+        """
         if self._matcher is None:
             self._matcher = AvatarMatcher()
         if self._matcher.template_count == 0:
             return self.round_fail('模板库为空:config/idx/avatar_scan/ 缺失', wait=1)
 
-        no_new_screens = 0
-        prev_names: set[str] = set()
-        # 格身份表:abs_key(滚动无关的格锚定坐标) → 角色名。滚动后同一格 abs_key 不变,
-        # 重叠区已知格直接跳过,不做任何点击。
-        known_by_pos: dict[tuple[int, int], str] = {}
-        for screen_idx in range(1, 40):
-            shot = self.screenshot()
-            cells = self._matcher.detect_cells(shot, self.ctx.ocr.ocr)
-
-            for cell in cells:
-                abs_key = cell['abs_key']
-                # SIFT 已认出且已扫过:跳过,不点击
-                if not cell['miss'] and cell['cn'] in self.profiles:
-                    continue
-                # SIFT 未认出但位置已知:直接用记忆身份
-                known_cn = known_by_pos.get(abs_key)
-                if cell['miss'] and known_cn is not None:
-                    if known_cn not in self.profiles:
-                        self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
-                        time.sleep(1.2)
-                        self._scan_current_character(known_cn)
-                    continue
-                # 未扫过:点击进角色读档案
-                name = cell['cn'] if not cell['miss'] else None
+        cells = self._matcher.detect_cells(self.screenshot(), self.ctx.ocr.ocr)
+        for cell in cells:
+            abs_key = cell['abs_key']
+            if not cell['miss'] and cell['cn'] in self.profiles:
+                continue
+            known_cn = self._known_by_pos.get(abs_key)
+            if cell['miss'] and known_cn is not None:
+                if known_cn not in self.profiles:
+                    self._scan_one_character(cell, known_cn)
+                continue
+            name = cell['cn'] if not cell['miss'] else None
+            if name is None:
+                name = self._click_and_read_name(cell)
                 if name is None:
-                    name = self._click_and_read_name(cell['cx'], cell['cy'])
-                    if name is None:
-                        continue
-                known_by_pos[abs_key] = name
-                if name in self.profiles:
                     continue
-                self._scan_current_character(name)
+            self._known_by_pos[abs_key] = name
+            if name in self.profiles:
+                continue
+            self._scan_one_character(cell, name)
 
-            names_now = set(self.profiles.keys())
-            new_count = len(names_now - prev_names)
-            log.info(f'[账号档案] 第 {screen_idx} 屏:识别 {len(cells)} 格,新增 {new_count},累计 {len(self.profiles)} 个角色')
-            if new_count == 0:
-                no_new_screens += 1
-                if no_new_screens >= NO_NEW_SCREENS_TO_STOP:
-                    break
-            else:
-                no_new_screens = 0
-            prev_names = names_now
-
-            self._scroll_down()
-
-        self._save_output()
-        return self.round_success(f'共扫描 {len(self.profiles)} 个角色', wait=1)
+        names_now = set(self.profiles.keys())
+        new_count = len(names_now - self._prev_names)
+        self._prev_names = names_now
+        self._scroll_down()
+        if new_count == 0:
+            self._no_new_count += 1
+            if self._no_new_count >= NO_NEW_RETRIES:
+                self._save_output()
+                return self.round_fail(
+                    f'连续 {NO_NEW_RETRIES} 屏无新增,判定已到列表底部,共 {len(self.profiles)} 角色', wait=1)
+            return self.round_retry(
+                f'第 {self._no_new_count}/{NO_NEW_RETRIES} 轮无新增,继续滚动', wait=1)
+        self._no_new_count = 0
+        return self.round_retry(f'已扫 {len(self.profiles)} 角色,继续', wait=1)
 
     @node_from(from_name='逐角色扫描养成数据')
     @operation_node(name='关闭角色页回到大世界')
@@ -206,12 +188,77 @@ class AccountProfileApp(SrApplication):
             return self.round_fail('关闭角色页后无法回到大世界', wait=1)
         return self.round_success(wait=1)
 
-    def _scan_one_character(self, cx: int, cy: int, known_cn: str) -> None:
-        """点击列表格进入该角色并读取全档案;SIFT 已给出名字时兜底读名仅作校验。"""
-        self.ctx.controller.click(Point(cx, cy), press_time=0.1)
+    def _sidebar_visible(self, shot: MatLike) -> bool:
+        """侧栏是否展开:列表标题「角色列表」在左侧列表区可见。"""
+        return any(
+            (str(r.data or '')).find('角色列表') != -1 and int(r.x) < 600
+            for r in self.ctx.ocr.ocr(shot)
+        )
+
+    def _set_sidebar(self, open_it: bool) -> bool:
+        """开/关角色列表侧栏,操作后 OCR 验证标题出现/消失。
+
+        开:详情页左下角「角色列表」开关(侧栏关闭时才可见;开着时该位置被侧栏覆盖)。
+        关:点详情区空白(实机验证;子页顶部的关闭敏感区不可用)。
+        """
+        for _ in range(2):
+            visible = self._sidebar_visible(self.screenshot())
+            if visible == open_it:
+                return True
+            if open_it:
+                self.ctx.controller.click(Point(68, 1002), press_time=0.1)
+            else:
+                blank = self._area_point('角色-详情', '点击区-详情空白')
+                self.ctx.controller.click(blank, press_time=0.1)
+            time.sleep(1.8)
+        return self._sidebar_visible(self.screenshot()) == open_it
+
+    def _scroll_down(self) -> None:
+        """侧栏向下滚一屏:按住滑块下拖 80px(≈列表 2 行)。
+
+        滑块位置跟踪(_thumb_y):滚顶后重置顶部;拖拽按在滑块上才是列表滚动,
+        按格子/行间隙/轨道空白均无效(全部实测淘汰)。滑块到底后拖拽画面不动,
+        由 scan_loop 的格子集合对比判定到底。
+        """
+        target_y = min(self._thumb_y + 80, 820)  # 80px≈2 行,步进更细漏格概率更低
+        if target_y - self._thumb_y < 20:
+            time.sleep(SCROLL_SETTLE_SEC)
+            return
+        self.ctx.controller.mouse_move(Point(575, self._thumb_y))
+        time.sleep(0.2)
+        self.ctx.controller.drag_to(
+            start=Point(575, self._thumb_y), end=Point(575, target_y), duration=1.0, hold_time=0.0)
+        self._thumb_y = target_y
+        time.sleep(SCROLL_SETTLE_SEC)
+
+    def _scan_one_character(self, cell: dict, name_hint: str) -> None:
+        """单角色完整流程:点格切角色 → 关侧栏 → 读名确认 → 读全档案 → 开侧栏。
+
+        关侧栏是读档案的前提(TAB 与左上角色名都被侧栏覆盖);读名与档案共用关侧栏后的画面。
+        """
+        self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
         time.sleep(1.2)
-        name = self._read_detail_name() or known_cn
-        self._scan_current_character(name)
+        if not self._set_sidebar(False):
+            log.warning(f'[账号档案] {name_hint}: 侧栏关闭失败,跳过该角色')
+            return
+        name = self._read_detail_name() or name_hint
+        try:
+            self._scan_current_character(name)
+        except RuntimeError as e:
+            # 遗器返回误触关闭等画面漂移:恢复到详情页+侧栏,继续下一角色
+            log.warning(f'[账号档案] {name}: {e},恢复画面')
+            self.round_by_goto_screen(screen_name='角色-详情', success_wait=1.5, retry_wait=1.5)
+        self._set_sidebar(True)
+
+    def _click_and_read_name(self, cell: dict) -> str | None:
+        """miss 格身份兜底:点格切角色,关侧栏后读左上角角色名,再开侧栏。"""
+        self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
+        time.sleep(1.2)
+        if not self._set_sidebar(False):
+            return None
+        name = self._read_detail_name()
+        self._set_sidebar(True)
+        return name
 
     def _scan_current_character(self, name: str) -> None:
         """当前已停在目标角色详情页,依次读各 TAB 的养成数据。"""
@@ -289,7 +336,8 @@ class AccountProfileApp(SrApplication):
             profile['relics'] = []
             log.warning(f'[账号档案] {name}: 遗器 TAB 切换失败,跳过')
 
-        # 回详情 TAB,给下一角色的读取一个确定起点
+        # 回详情 TAB:离开遗器等子页(遗器页顶部 (1343,72) 点击会关闭整个角色页,实机复现),
+        # 给下一角色的格子点击一个确定起点
         self._switch_tab('角色-详情')
 
         self.profiles[name] = profile
@@ -297,27 +345,49 @@ class AccountProfileApp(SrApplication):
                  f"光锥 {profile['light_cone'].get('name')},遗器 {len(profile['relics'])} 件")
 
     def _read_all_relics(self) -> list[dict]:
-        """在遗器着装页逐件点击进替换页读词条,读完回着装页。
+        """在替换页内用顶部部位 TAB 逐部位读词条(2026-10-19 改版,免 6 次进出往返)。
 
-        遗器位是纯 pc_rect 定位格(无文字/模板),直接按 screen_info rect 中心点击,
-        不走 find_area(其识别面对无文字区域不可判)。
+        入口:着装页点「遗器位-头部」进替换页(默认选中头部);
+        之后点「部位TAB-xxx」依次切换手部/躯干/腿部/位面球/连结绳,右侧读区不变。
+        读完点「按钮-返回」回着装页,交还控制权给调用方的 TAB 流转。
         """
         relics: list[dict] = []
-        slot_areas = ['遗器位-上', '遗器位-右上', '遗器位-中绳', '遗器位-左下', '遗器位-下中', '遗器位-右下']
-        for slot_area in slot_areas:
-            rect = self._area_rect('角色-遗器', slot_area)
-            if rect is None:
-                log.warning(f'[账号档案] 遗器位 area 缺失: {slot_area}')
-                continue
-            center_x = (rect[0] + rect[2]) // 2
-            center_y = (rect[1] + rect[3]) // 2
-            self.ctx.controller.click(Point(center_x, center_y), press_time=0.1)
+        # 确认已到遗器页:切 TAB 点击成功不代表动画完成,未完成时后续部位 TAB 全线 NOT_FOUND(实测)
+        for _ in range(2):
+            cur = get_match_screen_name(self.ctx, self.screenshot())
+            if cur == '角色-遗器':
+                break
             time.sleep(1.5)
-            relic = self._read_relic_detail(slot_area)
-            relics.append(relic)
-            # 返回着装页(替换页右上返回按钮)
-            find_and_click_area(self.ctx, self.screenshot(), '遗器-替换', '按钮-返回')
-            time.sleep(1.2)
+        else:
+            raise RuntimeError('遗器 TAB 切换后未进入遗器页')
+        parts = ['头部', '手部', '躯干', '腿部', '位面球', '连结绳']
+        for idx, part in enumerate(parts):
+            if idx == 0:
+                # 进替换页:着装页点头部遗器位
+                rect = self._area_rect('角色-遗器', '遗器位-头部')
+                if rect is None:
+                    log.warning('[账号档案] 遗器位-头部 area 缺失')
+                    break
+                self.ctx.controller.click(
+                    Point((rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2), press_time=0.1)
+                time.sleep(2)
+            else:
+                click_result = find_and_click_area(
+                    self.ctx, self.screenshot(), '遗器-替换', f'部位TAB-{part}')
+                if click_result != OcrClickResultEnum.OCR_CLICK_SUCCESS:
+                    log.warning(f'[账号档案] 部位 TAB 切换失败: {part} reason={click_result}')
+                    relics.append({'slot_hint': part, 'name': None})
+                    continue
+                time.sleep(1.5)
+            relics.append(self._read_relic_detail(f'遗器位-{part}'))
+        # 返回着装页:「按钮-返回」(1861,67) 与详情页关闭 X 几乎重合——若页面状态已错位,
+        # 这一击会关闭整个角色页(实机复现),必须点击后验证画面,漂移则报错交由调用方恢复
+        find_and_click_area(self.ctx, self.screenshot(), '遗器-替换', '按钮-返回')
+        time.sleep(1.2)
+        cur = get_match_screen_name(self.ctx, self.screenshot())
+        if cur is not None and cur != '角色-遗器':
+            log.warning(f'[账号档案] 遗器返回后画面漂移到 {cur} (疑似误触关闭)')
+            raise RuntimeError(f'遗器替换页返回后画面漂移: {cur}')
         return relics
 
     def _read_relic_detail(self, slot_area: str) -> dict:
@@ -346,30 +416,34 @@ class AccountProfileApp(SrApplication):
         失败时调用方必须跳过该 TAB 的读取(宁缺毋滥,读错位数据比缺数据更糟)。
         """
         area_name = f'TAB-{target_screen.split("-")[1]}'
-        click_result = find_and_click_area(self.ctx, self.screenshot(), target_screen, area_name)
+        # TAB 栏常驻详情页所有子页,统一用「角色-详情」屏的建档;
+        # 各子屏 yml 缺自身 TAB(不存在"切到自己"的导航),按目标屏查会 AREA_NO_CONFIG
+        click_result = find_and_click_area(self.ctx, self.screenshot(), '角色-详情', area_name)
         if click_result != OcrClickResultEnum.OCR_CLICK_SUCCESS:
-            log.warning(f'[账号档案] TAB 点击失败: {target_screen}')
+            log.warning(f'[账号档案] TAB 点击失败: {target_screen} reason={click_result}')
             return False
         time.sleep(1.2)
-        return is_target_screen(self.ctx, self.screenshot(), screen_name=target_screen)
-
-    def _click_and_read_name(self, cx: int, cy: int) -> str | None:
-        """点击列表格,读右侧详情的角色名(过滤星标/玩家名/非名字文本)。"""
-        self.ctx.controller.click(Point(cx, cy), press_time=0.1)
-        time.sleep(1.3)
-        return self._read_detail_name()
+        checked = is_target_screen(self.ctx, self.screenshot(), screen_name=target_screen)
+        if not checked:
+            log.warning(f'[账号档案] TAB 点击后画面未到达: {target_screen}')
+        return checked
 
     def _read_detail_name(self) -> str | None:
-        log.info('[档案诊断] _read_detail_name 被调用')
-        """读详情页角色名;经 normalize_cn_name 清洗,噪声名视为未识别。"""
+        """读左上角「命途 / 角色名」取角色名;经 normalize_cn_name 清洗,噪声名视为未识别。
+
+        左上角在详情页与全部子页恒定显示该格式;右上名字区在子页会变成光锥/遗器名,不可用。
+        """
         shot = self.screenshot()
+        x1, y1, x2, y2 = self._area_rect('角色-详情', '读名区-左上')
         for r in self.ctx.ocr.ocr(shot):
             x, y = int(r.x), int(r.y)
-            if NAME_X_RANGE[0] <= x <= NAME_X_RANGE[1] and NAME_Y_RANGE[0] <= y <= NAME_Y_RANGE[1]:
-                raw = str(r.data or '')
-                if '等级' in raw or '属性' in raw:
-                    continue
-                return normalize_cn_name(raw)
+            if not (x1 <= x <= x2 and y1 <= y <= y2):
+                continue
+            raw = str(r.data or '')
+            if '/' not in raw and '／' not in raw:
+                continue
+            seg = raw.replace('／', '/').split('/')[-1].strip()
+            return normalize_cn_name(seg)
         return None
 
     def _read_area_text(self, screen_name: str, area_name: str, screen: MatLike) -> str:
@@ -379,6 +453,13 @@ class AccountProfileApp(SrApplication):
             return ''
         texts = ocr_rect_texts(self.ctx.ocr.ocr, screen, rect)
         return ' '.join(texts).strip()
+
+    def _area_point(self, screen_name: str, area_name: str) -> Point:
+        """取 area pc_rect 中心点(头像条槽位等固定点击位;坐标单一真相源在 screen_info)。"""
+        rect = self._area_rect(screen_name, area_name)
+        if rect is None:
+            raise ValueError(f'area 不存在: {screen_name}.{area_name}')
+        return Point((rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2)
 
     def _area_rect(self, screen_name: str, area_name: str) -> tuple[int, int, int, int] | None:
         """从 screen_info 取读区矩形;坐标单一真相源。area.rect 是 Rect 对象(无 __len__),取四角属性。"""
@@ -390,15 +471,6 @@ class AccountProfileApp(SrApplication):
         if rect is None:
             return None
         return int(rect.x1), int(rect.y1), int(rect.x2), int(rect.y2)
-
-    def _scroll_down(self) -> None:
-        """列表向下滚一屏。
-
-        实测(角色列表侧栏):拖 300px = 内容滚 2 行,屏间重叠 ~4 行不漏格;
-        滚轮在本列表推进量不稳定,已弃用。
-        """
-        self.ctx.controller.drag_to(Point(280, 500), start=Point(280, 800), duration=0.4)
-        time.sleep(SCROLL_SETTLE_SEC)
 
     def _save_output(self) -> None:
         """扫描结果落盘 config/idx/account_profile_scan.json。"""
