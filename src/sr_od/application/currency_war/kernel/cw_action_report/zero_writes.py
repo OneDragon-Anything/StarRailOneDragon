@@ -224,10 +224,11 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 
-# —— 刷新建议三动作(遭遇/补给/投资):参数类已登记(CW_ACTION_TYPES)、
-#    生产动作发出面留在画面 op 刷新链,不经动作 op 自上报——本组函数零生产
-#    调用方,在场 = 命名规约完备测试对象(test_action_report
-#    遍历词表逐类断言「每动作恰一个上报函数」),禁当死代码删除。——
+# —— 刷新建议三动作(遭遇/补给/投资):参数类已登记(CW_ACTION_TYPES)。
+#    投资刷新已接线生产面(2026-10-19 用户裁定「sim 与实机一致提供刷新
+#    次数」批):生产动作发出面 = 画面 op 刷新链自上报本函数取声明喂入
+#    (``cw_sim_ports.declare_world``);遭遇/补给两函数仍零生产调用方
+#    (在场 = 命名规约完备测试对象,禁当死代码删除)。——
 
 
 
@@ -244,8 +245,26 @@ def report_action_refresh_supply_param(gs: GameState, param: Any, sig: ChannelSi
 
 
 def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """投资逐卡刷新建议上报:容器零写。"""
-    return _report_zero_write(gs, param, sig, 'zero_write(refresh_invest_cards)')
+    """投资逐卡刷新建议上报:容器零写(刷新真值归观察覆盖——刷后计数与
+    候选由重入观察 report 落容器);applied 出口构造刷新世界声明(喂入与
+    消费面 = ``cw_sim_ports.declare_world`` / sim 后端 advance 分派)。
+
+    trigger 推导(单一依据 = ``gs.active_env`` 现值):环境名空 = 开局
+    投资环境选择屏 → 整组刷新(環境整组重掷,slots 哨兵不逐槽消费);
+    非空 = 投资策略屏 → 逐卡刷新(slots 原样透传,坐标系 = 投资界面卡槽
+    物理排位 0 基)。推导确定性 = 环境选择恒先于任何策略 offer 且全局
+    仅一次(开局简报 → 环境屏 → P1r1 起才有策略 offer)。
+
+    屏名内联声明:kernel→operations 反向 import 禁止,screen_info 档名
+    同形内联(sim ``_SIM_KIND_TO_RING_LABEL`` 先例;权威 = screen_info 档)。"""
+    if str(gs.active_env.value or ''):
+        _trigger, _screen = 'refresh_invest_strategy', '货币战争-投资策略'
+    else:
+        _trigger, _screen = 'refresh_invest_env', '货币战争-投资环境'
+    decl = WorldDecl(next_screen=_screen, trigger=_trigger,
+                     slots=tuple(getattr(param, 'slots', ()) or ()))
+    return _report_zero_write(gs, param, sig,
+                              'zero_write(refresh_invest_cards)', decl=decl)
 
 
 

@@ -214,23 +214,33 @@ def gen_supply(backend: SimBackend) -> CwScreenSupplyNodeObs:
 
 
 def gen_invest_env(backend: SimBackend) -> CwScreenInvestEnvObs:
-    """投资环境档生成器(候选名自容器 opts 槽;x = 下标派生合成值)。"""
+    """投资环境档生成器(候选名自容器 opts 槽;x = 下标派生合成值;整组
+    刷新剩余自容器现读——环境屏呈现写点落 1,重掷世界腿落 0;未呈现态
+    None = report 跳写,2026-10-19 用户裁定批接入呈现)。"""
     names = list(backend.gs.invest_env_opts.value or [])
+    left = backend.gs.env_refresh_left.value
     return CwScreenInvestEnvObs(
         hit=True,
         options=[(n, (i + 1) * 10) for i, n in enumerate(names)],
-        refresh=None,   # 环境刷新剩余 = sim 未建模呈现面,诚实缺位(report 跳写)
+        refresh=(int(left), 10, 20) if left is not None else None,
     )
 
 
 def gen_invest_strategy(backend: SimBackend) -> CwScreenInvestStrategyObs:
-    """投资策略档生成器(候选名自容器 opts 槽;逐卡刷新剩余 = sim 未
-    建模呈现面,refresh_slots 空 → report 逐槽跳写,容器留旧值)。"""
+    """投资策略档生成器(候选名自容器 opts 槽;逐卡刷新剩余自容器按槽名
+    现读——可刷新窗由后端授权簿记判定,联席额外槽等不可刷新窗 = 空
+    refresh_slots(report 逐槽跳写);键缺 = None 元素 = op 闸无授权失败
+    安全。2026-10-19 用户裁定批接入呈现)。"""
     names = list(backend.gs.invest_strategy_opts.value or [])
+    left_map = dict(backend.gs.strategy_refresh_left.value or {})
+    refresh_slots = ([(int(left_map[n]), (i + 1) * 10, 20)
+                      if left_map.get(n) is not None else None
+                      for i, n in enumerate(names)]
+                     if backend._offer_refreshable else [])
     return CwScreenInvestStrategyObs(
         entry_ok=True,
         options=[(n, (i + 1) * 10, 10) for i, n in enumerate(names)],
-        refresh_slots=[],
+        refresh_slots=refresh_slots,
     )
 
 

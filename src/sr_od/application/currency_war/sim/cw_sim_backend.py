@@ -441,6 +441,18 @@ assert JOINT_DECISION_EXTRA_SLOT is not None, '联席决策登记缺挂点(数�
 #: 单次 offer 候选张数(画面语义三选一;环境屏同构占位,U08)。
 OFFER_CANDIDATES: int = 3
 
+#: 策略屏逐卡免费刷新基准次数(每卡;live OCR 常态「刷新次数1」×3 实证,
+#: 读链 = cw_node_obs.read_invest_refresh_counts('strategy'),屏上数字即
+#: 真值;环境增量 = kernel ``ENV_POOL_REWRITE.extra_pick_refreshes`` 登记,
+#: 消费 = 基准 + 增量,2026-10-19 用户裁定「sim 与实机一致提供刷新次数」
+#: 批接入)。建模选择申报:非银·金·彩局的刷新重掷品质 = 默认分布掷点
+#: (desc 无刷新品质语义;实机对账如有出入,以对账评点纠偏)。
+STRATEGY_REFRESH_BASE_PER_CARD: int = 1
+
+#: 投资环境屏整组刷新基准次数(环境刷新 = 单全局钮整组重掷一次;基准
+#: 1 次,docs/game/currency_war/data/advantage_layouts.md「环境刷新」行)。
+ENV_REFRESH_BASE: int = 1
+
 #: 品质掷点分布(显式常量参数,候实机数据回填;首版三档均匀 = 中性
 #: 占位非实证,随局披露键见 :data:`QUALITY_DISTRIBUTION_DISCLOSURE`)。
 QUALITY_DISTRIBUTION: tuple[tuple[str, float], ...] = (
@@ -479,17 +491,20 @@ def _roll_quality(rng: random.Random) -> str:
 
 
 def sample_strategy_offer(rng: random.Random, excluded: set[str],
-                          forced_quality: str = '',
+                          forced_slots: tuple[str, ...] = (),
                           ) -> tuple[str, ...]:
     """策略 offer 候选生成(U07③:先掷品质 → 该品质池均匀取 1;
     offer 内去重 + 排除已出选项 = 全程不重复)。
 
-    ``forced_quality`` 非空 = 品质改写命中次(时代族/头彩/尾彩(settled
-    定谳)环境,判据 =
-    :func:`rewrite_quality_for_pick`):该张候选跳过品质掷点直取目标
-    品质池(2026-10-14 用户裁定:固定品质后照常抽样,可观察面 = 候选
-    全目标品质);目标品质池被排除集吃光 → 回退全池(排除后),回退
-    语义 = 现役防御契约沿用(用户裁定:正常局不可达,不扩防御分支)。
+    ``forced_slots`` = 三槽品质覆盖向量(坐标系 = 投资界面卡槽物理排位
+    0..2,与 ``ENV_POOL_REWRITE.slot_qualities`` 同坐标系;长度不足处按
+    默认掷点):非空元素 = 该槽跳过品质掷点直取目标品质池;'' 元素 =
+    默认掷点。改写命中次(时代族/头彩/尾彩(settled 定谳)环境 = 三槽
+    同向量;银·金·彩 = 卡面三槽品质按位,判据 =
+    :func:`rewrite_slot_qualities_for_pick`)。2026-10-14 用户裁定:固定
+    品质后照常抽样,可观察面 = 候选全目标品质;目标品质池被排除集吃光 →
+    回退全池(排除后),回退语义 = 现役防御契约沿用(用户裁定:正常局
+    不可达,不扩防御分支)。
 
     ``excluded`` = 本局已出过的全部选项名(后端持有的累计集,调用方
     须把返回值并入)。某品质池被排除集吃光 → 该候选回退全池(排除后)
@@ -497,8 +512,9 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
     """
     banned = set(excluded)
     picks: list[str] = []
-    for _ in range(OFFER_CANDIDATES):
-        quality = forced_quality or _roll_quality(rng)
+    for i in range(OFFER_CANDIDATES):
+        quality = (forced_slots[i] if i < len(forced_slots)
+                   and forced_slots[i] else _roll_quality(rng))
         pool = [n for n, s in INVESTMENT_STRATEGIES.items()
                 if s.rarity == quality and n not in banned]
         if not pool:
@@ -509,6 +525,23 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
         picks.append(name)
         banned.add(name)
     return tuple(picks)
+
+
+def sample_strategy_card(rng: random.Random, excluded: set[str],
+                         forced_quality: str = '') -> str:
+    """单卡采样(刷新重掷腿;与 :func:`sample_strategy_offer` 同分布
+    同排除契约的单槽形):``forced_quality`` 非空 = 直取目标品质池
+    (银·金·彩槽位品质承诺跨刷新保持),'' = 默认分布掷点。品质池被
+    排除集吃光 → 回退全池(排除后);全池亦空 → 返回 ''(调用方
+    视为刷新未产出,防御性,正常局不可达)。"""
+    quality = forced_quality or _roll_quality(rng)
+    pool = [n for n, s in INVESTMENT_STRATEGIES.items()
+            if s.rarity == quality and n not in excluded]
+    if not pool:
+        pool = [n for n in INVESTMENT_STRATEGIES if n not in excluded]
+    if not pool:
+        return ''
+    return pool[rng.randrange(len(pool))]
 
 
 def sample_env_offer(rng: random.Random, excluded: set[str],
@@ -523,30 +556,46 @@ def sample_env_offer(rng: random.Random, excluded: set[str],
     return tuple(rng.sample(pool, k))
 
 
-def rewrite_quality_for_pick(active_env: str | None,
-                             pick_ordinal: int) -> str | None:
-    """品质改写判据:当前环境命中「全改写型,或 settled 定谳的部分型」
-    条目且本次取卡序在改写集内 → 返回目标品质;否则 None(按默认分布
-    抽样)。
+def rewrite_slot_qualities_for_pick(active_env: str | None,
+                                    pick_ordinal: int,
+                                    ) -> tuple[str, ...] | None:
+    """品质改写判据(槽位向量形):当前环境命中改写条目且本次取卡在改写
+    域 → 返回 offer 三槽的品质覆盖向量(逐槽直取该品质池);否则 None
+    (按默认分布逐槽掷点)。
 
-    全改写型判据 = ``rewrite_picks == (1, 2, 3)``(时代族结构特征,建表
-    校验保证该形状无 pending 歧义);部分改写型经 ``rewrite_settled``
-    定谳后同判据接入——头彩已经用户裁定 2026-10-16 定谳 = offer 级覆盖
-    面(第 1 次取卡机会 3 张候选全目标品质),接替 T-11 §8 裁定 1 的实采
-    门槛;尾彩已经用户裁定 2026-10-16 定谳 = offer 级覆盖面(第 3 次取卡
-    机会 3 张候选全目标品质),部分改写型至此全部定谳。未定谳部分型必填
-    pending_notes 的建表闸保持(判据 settled 分支保留为未来新增部分型的
-    守卫)。pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
+    三型归一(2026-10-19 用户裁定批:判据从单品质形泛化为槽位向量形,
+    原型语义等价——单品质 = 三槽同向量的特例,历史裁定零漂移):
+    - 全改写型(时代 ×3,``rewrite_picks == (1, 2, 3)`` 结构特征,建表
+      校验保证该形状无 pending 歧义):命中次返回 (q, q, q);
+    - 部分改写型经 ``rewrite_settled`` 定谳后同判据接入——头彩已经用户
+      裁定 2026-10-16 定谳 = offer 级覆盖面(第 1 次取卡机会 3 张候选全
+      目标品质),尾彩同裁定 = 第 3 次;未定谳部分型必填 pending_notes
+      的建表闸保持(判据 settled 分支保留为未来新增部分型的守卫);
+    - 槽位向量型(银·金·彩,``slot_qualities`` = 卡面三槽品质按位,
+      用户裁定 2026-10-19 卡面直读即真值):固定日程取卡恒返回登记向量
+      (无序数条件——品质承诺对每个固定取卡节点成立,且跨逐卡刷新保持)。
+    pick_ordinal 坐标系 = 本局策略三选一呈现全局序 1 基,
     与 ``ENV_POOL_REWRITE.rewrite_picks`` 同坐标系。环境名直查不做归一
     (与现役注册表消费同款形状;环境名来自注册表注册,无 OCR 变异源)。
     """
     rewrite = ENV_POOL_REWRITE.get(active_env or '')
-    if rewrite is None or rewrite.rewrite_quality == '' \
+    if rewrite is None:
+        return None
+    if rewrite.slot_qualities:
+        return tuple(rewrite.slot_qualities)
+    if rewrite.rewrite_quality == '' \
             or (rewrite.rewrite_picks != (1, 2, 3)
                 and not rewrite.rewrite_settled):
         return None
-    return rewrite.rewrite_quality if pick_ordinal in rewrite.rewrite_picks \
-        else None
+    return (rewrite.rewrite_quality,) * 3 \
+        if pick_ordinal in rewrite.rewrite_picks else None
+
+
+def _offer_extra_refreshes(active_env: str) -> int:
+    """策略屏逐卡刷新次数的环境增量(单一源 = kernel
+    ``ENV_POOL_REWRITE.extra_pick_refreshes`` 登记;表外环境 = 0)。"""
+    rewrite = ENV_POOL_REWRITE.get(active_env or '')
+    return rewrite.extra_pick_refreshes if rewrite is not None else 0
 
 
 # ============================================================ 节点事件件
@@ -834,11 +883,14 @@ class SimRunResult:
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
 #: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
 #: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界腿:上报声明触发,
-#: 非转移动作——next_screen 恒备战档,零画面转移)。
+#: 非转移动作——next_screen 恒备战档,零画面转移);2026-10-19 用户
+#: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
+#: 两屏刷新世界腿,上报声明触发,同屏重呈现零转移)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
     'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
     'pick_invest_strategy', 'spy_shop_refresh',
+    'refresh_invest_env', 'refresh_invest_strategy',
 })
 
 #: 对账豁免场景键集(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
@@ -897,6 +949,17 @@ class SimBackend:
     #: 开局环境 offer 走 opening 形态不经该函数不计数;overlay 让路复走
     #: 在实际呈现前不进分支,无双计。sim 私有簿记,非 GameState 观察域。
     _invest_pick_ordinal: int = field(init=False, default=0)
+    #: 投资策略 offer 刷新授权簿记(当前窗口;2026-10-19 用户裁定「sim 与
+    #: 实机一致提供刷新次数」批):_offer_refreshable = 当前呈现的 offer
+    #: 是否可刷新(固定日程槽 True / 联席额外槽 False——联席 desc 未写明
+    #: 刷新语义,保守不呈现,随实机首遇或裁定收口);_offer_forced_slots =
+    #: 本窗口品质改写槽位向量(空元组 = 无改写;刷新重掷沿用同向量 =
+    #: 槽位品质承诺跨刷新保持,卡面语义直读);_offer_refresh_seq = 本
+    #: 窗口刷新流水号(rng 流键分量,呈现时点归零)。观察真值(计数/候选)
+    #: 一律走容器(report 观察写端),本组只承载「呈现授权」簿记。
+    _offer_refreshable: bool = field(init=False, default=False)
+    _offer_forced_slots: tuple[str, ...] = field(init=False, default=())
+    _offer_refresh_seq: int = field(init=False, default=0)
     #: 商店牌面节点级记录(牌面 = 节点级持久事实,发牌时定;2026-10-17
     #: 用户裁定):值 = 商店在屏期间 ``gs.shop`` 的最后非空观测(跟随
     #: 发牌/刷新/买卡一切写点,驱动入口懒同步
@@ -1070,10 +1133,14 @@ class SimBackend:
                 rng = stream_rng(self.seed, 'M02/env-offer')
                 opts = sample_env_offer(rng, self.excluded_env)
                 self._present_modal(SCREEN_INVEST_ENV)
+                # 环境整组刷新呈现(2026-10-19 用户裁定批):基准 1 次
+                #(单全局钮整组重掷;advantage_layouts「环境刷新」行),
+                # 计数经 report 观察写端落 env_refresh_left,重掷世界腿
+                # = _refresh_invest_env。
                 report_screen_invest_env_obs(self.gs, CwScreenInvestEnvObs(
                     hit=True,
                     options=[(n, (i + 1) * 10) for i, n in enumerate(opts)],
-                    refresh=None))
+                    refresh=(ENV_REFRESH_BASE, 10, 20)))
             return
         self._enter_wait_one_one()
 
@@ -1320,6 +1387,13 @@ class SimBackend:
             # 商业间谍升级回调世界腿(2026-10-17 迭代 design §2.3 步①-③;
             # 步④置信号 = kernel 上报回调,不经本层)。
             self._apply_spy_shop_refresh()
+        elif decl.trigger == 'refresh_invest_strategy':
+            # 投资策略屏逐卡刷新世界腿(2026-10-19 用户裁定批;上报声明
+            # 触发,同屏重呈现零转移)。
+            self._refresh_invest_strategy(decl.slots)
+        elif decl.trigger == 'refresh_invest_env':
+            # 投资环境屏整组刷新世界腿(同上批;环境刷新 = 整组重掷一次)。
+            self._refresh_invest_env()
         elif decl.trigger == '':
             # 纯转移(详设 §3 '' 行):统一幂等返回
             #(底层稳态由 _reconcile_next_screen 对账)。专家邀请函档
@@ -1854,15 +1928,30 @@ class SimBackend:
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             self._invest_pick_ordinal += 1
-            forced = rewrite_quality_for_pick(str(active_env or ''),
-                                              self._invest_pick_ordinal)
+            fixed_schedule = (plane, r) in INVEST_OFFER_SCHEDULE
+            forced = rewrite_slot_qualities_for_pick(str(active_env or ''),
+                                                     self._invest_pick_ordinal)
             rng = stream_rng(self.seed, f'M11/offer/p{plane}/r{r}')
             opts = sample_strategy_offer(rng, self.excluded_invest,
-                                         forced_quality=forced or '')
+                                         forced_slots=forced or ())
             self._window_resume = 'node'
             self._announce_screen(SCREEN_INVEST_STRATEGY)
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
+            # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
+            # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
+            # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
+            # 保守不呈现(空 refresh_slots = op 闸无授权)。重掷沿用本窗口
+            # 改写向量(槽位品质承诺跨刷新保持,卡面语义直读)。
+            self._offer_refreshable = fixed_schedule
+            self._offer_forced_slots = tuple(forced or ())
+            self._offer_refresh_seq = 0
+            per_card = (STRATEGY_REFRESH_BASE_PER_CARD
+                        + _offer_extra_refreshes(str(active_env or ''))
+                        if fixed_schedule else 0)
+            refresh_slots = ([(per_card, (i + 1) * 10, 20)
+                              for i in range(len(opts))]
+                             if fixed_schedule else [])
             report_screen_invest_strategy_obs(self.gs,
                                               CwScreenInvestStrategyObs(
                                                   entry_ok=True,
@@ -1870,9 +1959,78 @@ class SimBackend:
                                                       (n, (i + 1) * 10, 10)
                                                       for i, n in
                                                       enumerate(opts)],
-                                                  refresh_slots=[]))
+                                                  refresh_slots=refresh_slots))
             return
         self._present_node_screen()
+
+    def _refresh_invest_strategy(self, slots: tuple[int, ...]) -> None:
+        """投资策略屏逐卡刷新世界腿(2026-10-19 用户裁定「sim 与实机一致
+        提供刷新次数」批;上报声明触发,同屏重呈现零转移)。
+
+        逐槽:容器剩余口径闸(≤0 = 尽,防御性——op 侧 obs/容器双闸在前,
+        本腿是声明直喂的最后防线)→ 按本窗口改写向量取槽品质重掷单卡
+        (:func:`sample_strategy_card`;槽位品质承诺跨刷新保持)→ 刷新
+        流水号推进(rng 流键,同窗口多次刷新互不同流)→ 整屏重呈现
+        (report 观察写端:候选槽覆盖 + 逐卡计数合并写;刷新后该槽剩余
+        预算随新卡呈现,与实机「计数印在卡上」同形)。刷新前候选随落选
+        出屏,排除集累计语义不变 = 选卡落地时累计。空候选/不可刷新窗/
+        全槽无授权/重掷无产出 = 静默无操作(防御性,正常局不可达)。"""
+        names = list(self.gs.invest_strategy_opts.value or [])
+        if not names or not self._offer_refreshable:
+            return
+        plane, r = self._node_pos()
+        left_map = dict(self.gs.strategy_refresh_left.value or {})
+        new_names = list(names)
+        new_counts: dict[int, int] = {}
+        for i in slots:
+            if not 0 <= i < len(names):
+                continue
+            old = names[i]
+            left = int(left_map.get(old, 0) or 0)
+            if left <= 0:
+                continue
+            quality = (self._offer_forced_slots[i]
+                       if i < len(self._offer_forced_slots) else '')
+            banned = set(self.excluded_invest) | set(names)
+            rolled = sample_strategy_card(
+                stream_rng(self.seed,
+                           f'M11/offer/p{plane}/r{r}'
+                           f'/refresh{self._offer_refresh_seq + 1}'),
+                banned, forced_quality=quality)
+            if not rolled:
+                continue
+            self._offer_refresh_seq += 1
+            new_names[i] = rolled
+            new_counts[i] = left - 1
+        if not new_counts:
+            return
+        counts = [new_counts.get(i, int(left_map.get(n, 0) or 0))
+                  for i, n in enumerate(new_names)]
+        report_screen_invest_strategy_obs(self.gs, CwScreenInvestStrategyObs(
+            entry_ok=True,
+            options=[(n, (i + 1) * 10, 10) for i, n in enumerate(new_names)],
+            refresh_slots=[(c, (i + 1) * 10, 20)
+                           for i, c in enumerate(counts)]))
+
+    def _refresh_invest_env(self) -> None:
+        """投资环境屏整组刷新世界腿(环境刷新 = 单全局钮整组重掷一次;
+        上报声明触发,同屏重呈现零转移)。
+
+        容器剩余闸(≤0/None = 尽,防御性——op 侧 obs+容器双闸在前)→
+        候选整组重掷(排除累计集 ∪ 当前候选,保证组内全换)→ 整屏重呈现
+        (report 观察写端:候选覆盖 + ``env_refresh_left`` 写 0)。空候选
+        = 静默无操作(防御性,正常局不可达)。"""
+        left = self.gs.env_refresh_left.value
+        names = list(self.gs.invest_env_opts.value or [])
+        if left is None or int(left) <= 0 or not names:
+            return
+        banned = set(self.excluded_env) | set(names)
+        rng = stream_rng(self.seed, 'M02/env-offer/refresh1')
+        opts = sample_env_offer(rng, banned)
+        report_screen_invest_env_obs(self.gs, CwScreenInvestEnvObs(
+            hit=True,
+            options=[(n, (i + 1) * 10) for i, n in enumerate(opts)],
+            refresh=(0, 10, 20)))
 
     def _present_node_screen(self) -> None:
         """按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿

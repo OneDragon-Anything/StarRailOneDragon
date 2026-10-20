@@ -36,7 +36,7 @@ gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点
 候补登记的待办),行为支撑 = 实机已登记行为测试。
 """
 import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
@@ -46,7 +46,14 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
+    report_action_refresh_invest_cards_param,
+)
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    game_state_from_ctx,
+)
 from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     is_blood_economy,
@@ -72,6 +79,9 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
 )
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
 def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
@@ -237,6 +247,22 @@ class CwScreenInvestStrategy(CwOperation):
         obs = self._obs
         return self._decide_and_act(obs)
 
+    def _report_refresh_action(
+            self, act: CwActionRefreshInvestCardsParam) -> 'WorldDecl | None':
+        """刷新动作自上报(2026-10-19 用户裁定批):构造投资刷新世界声明
+        并喂入 sim——实机端口未装 = no-op(实机真值归重入观察覆盖,零行为
+        变化),装配后驱动刷新世界腿(槽位重掷 + 计数扣减)。容器零写;
+        局外(gs 缺席)静默跳过。返回声明(journal 记账面)。"""
+        gs = game_state_from_ctx(self.ctx)
+        if gs is None:
+            return None
+        outcome = report_action_refresh_invest_cards_param(
+            gs, act,
+            ChannelSig(family='logic_action',
+                       actor=type(self).__name__, mode='compute'))
+        cw_sim_ports.declare_world(outcome.world_decl)
+        return outcome.world_decl
+
     def _decide_and_act(self, obs: CwScreenInvestStrategyObs) -> OperationRoundResult:
         """决策+动作内聚体(决策面):零参决策(候选自容器槽)→ 逐卡刷新
         终结动作(obs 余量闸 + 容器剩余口径双闸)→ 选卡确认链派发(动作
@@ -304,9 +330,15 @@ class CwScreenInvestStrategy(CwOperation):
                 # 零比对(刷后不重读不比对不重决策),选卡/确认均不在本
                 # 访问;round_success 返回主循环重进 = 入口重建。
                 time.sleep(CwScreenInvestStrategy.REFRESH_ANIM_WAIT_S)
+                # 刷新动作自上报(2026-10-19 用户裁定「sim 与实机一致提供
+                # 刷新次数」批):容器零写(真值归重入观察覆盖),取世界
+                # 声明喂入 sim——实机端口未装 = no-op,装配后驱动刷新世界
+                # 腿(槽位重掷 + 计数扣减);声明随 round data 携带
+                #(journal 记账面)。
+                _decl = self._report_refresh_action(act)
                 log.info(f'[cw-strat] 槽{_i}刷新终结交回:重进后重观察重决策')
                 return self.round_success('投资策略刷新终结交回(重进重观察重决策)',
-                                          wait=1)
+                                          wait=1, data=_decl)
             # 三闸全败(建议帧但无可执行刷新)→ 同访问重调落选卡:策略侧
             # 同帧去重(建议帧首调发建议、紧随重调落选卡),零选卡漂移。
             act = match.strategy.decide_invest_strategy()

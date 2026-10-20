@@ -2047,8 +2047,10 @@ _validate_strategy_grants()
 # 「层 E 有值时以现金分参与、无值时零兜底」,取两层各自标尺下结果的较优
 # 呈现(标尺语义正本 = strategy-docs/28_invest_env_screen.md;层 E 语义
 # = 策略层 env_economy._pool_rewrite_value docstring)。
-# 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
-# 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
+# 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域
+# 价值不折金不进层 E,字段只登记事实(详设 §2.2.4);执行消费端 = sim
+# (联席挂点派生 JOINT_DECISION_EXTRA_SLOT;银金彩刷新 = 策略屏刷新呈现
+# 与刷新世界腿,2026-10-19 用户裁定批接入)。
 # 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
 # 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银;头彩/尾彩 settled 定谳局)。
 @dataclass(frozen=True)
@@ -2066,10 +2068,21 @@ class StrategyPoolRewrite:
       时代 = (1,2,3) 全改写);取值时机 = 注册表登记期常量(效果原文直读,
       非执行期现读)
     - offer_structure: offer 结构改写语义标记('silver_gold_prism_slots' =
-      银·金·彩三槽按位面对应银/金/彩);注释性字段,层 E 公式不消费
+      银·金·彩三槽按位面对应品质);与 slot_qualities 同有同无(结构标记
+      无数据 = 登记半残,建表闸拒);层 E 公式不消费,真值消费端 = sim
+      改写判据(rewrite_slot_qualities_for_pick 槽位向量)
+    - slot_qualities: offer 三槽品质按位承诺(**坐标系 = 投资界面卡槽
+      物理排位,左→右 0..2**,与 CwActionRefreshInvestCardsParam.slots 同
+      坐标系;取值时机 = 注册表登记期常量,非执行期现读);值 = 品质词集
+      成员、长度恒 3(卡面「左、中、右」三槽);登记依据 = 用户裁定
+      2026-10-19 卡面直读即真值(银·金·彩 id135),旧「实测 offer 金重仓」
+      观察记录同裁定作废;槽位品质承诺跨逐卡刷新保持(卡面语义直读,
+      刷新只换卡不换槽品质)
     - extra_pick_refreshes: 策略取卡刷新次数增量(银·金·彩 +2,策略屏逐卡
       免费刷新计数,cw_node_obs.read_invest_refresh_counts('strategy') 通道;
-      数量通道登记,§2.2.4,v1 无消费端)
+      数量通道登记,§2.2.4;消费端 = sim 策略屏刷新呈现与刷新世界腿
+      (基准每卡 1 次 + 本增量;2026-10-19 用户裁定 sim 与实机一致提供
+      刷新次数批接入);live 不经本字段——bot 读屏幕现值)
     - extra_strategy_offer_node: 额外策略三选一发生的挂点节点,**坐标系 =
       (位面, 轮次) 单点,两元各 1 基**(效果原文「X-Y 节点」= 位-轮读法,
       用户裁定 2026-10-16;依据与边界 = ENV_POOL_REWRITE 登记处注释);
@@ -2080,7 +2093,7 @@ class StrategyPoolRewrite:
       docs/game/currency_war/research/economy.md 难度精确口径行——数值已登记
       不折金,难度→收益需战力/胜率建模属宪法禁域 00_framework §1.1,§2.2.3)
     - pending_notes: 效果原文歧义待办(单张改写型 offer 覆盖面歧义:三卡全改
-      还是仅点名张;银·金·彩槽位-品质映射语义)——pending 条目必填
+      还是仅点名张)——pending 条目必填
       (_validate_env_pool_rewrite 构建闸,_validate_strategy_effects 先例
       同款);定谳 settled 条目亦以非空 notes 记录裁定时点与结论
     - rewrite_settled: rewrite_picks 登记的覆盖范围已定谳,sim 照登记逐序
@@ -2090,6 +2103,7 @@ class StrategyPoolRewrite:
     rewrite_quality: str = ''
     rewrite_picks: tuple[int, ...] = ()
     offer_structure: str = ''
+    slot_qualities: tuple[str, ...] = ()
     extra_pick_refreshes: int = 0
     extra_strategy_offer_node: tuple[int, int] | None = None
     difficulty_exempt: bool = False
@@ -2117,12 +2131,14 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
                       '改写(第 3 次取卡机会 3 张候选全棱彩),用户裁决 2026-10-16'
                       '确认;sim 照登记接入第 3 次取卡(rewrite_settled)'),
     # 银·金·彩 = offer 结构改写(三选项品质按槽位)+ 刷新 +2;槽位-品质映射
-    # 语义与「三品质各一」直觉不同(实测 offer 金重仓,详设 §2.2.2 π_offer
-    # 读数),实采待办 → pending_notes 必填
+    # 已定谳 = 卡面直读即真值(用户裁定 2026-10-19;旧「实测 offer 金重仓」
+    # 观察记录同裁定作废,不再作为建模依据)
     '银·金·彩': StrategyPoolRewrite(
-        offer_structure='silver_gold_prism_slots', extra_pick_refreshes=2,
-        pending_notes='固定取卡节点三选项品质 = 银/金/彩按槽位;槽位-品质映射'
-                      '语义实采挂账(实测 offer 金重仓非三品质各一,详设 §2.2.2)'),
+        offer_structure='silver_gold_prism_slots',
+        slot_qualities=('银', '金', '棱彩'), extra_pick_refreshes=2,
+        pending_notes='槽位-品质映射定谳记录:三槽品质 = 银/金/彩按卡面槽位'
+                      '(用户裁定 2026-10-19 卡面即真值;旧实测记录作废);'
+                      '数量通道 = 策略屏逐卡刷新 +2'),
     # 联席决策 = 数量通道(2-6 节点一次额外投资策略三选一);与 A 类策略大师
     # 「额外取卡不计」同口径,价值由裸分承载(§2.2.4)
     # 执行消费端 = sim JOINT_DECISION_EXTRA_SLOT 派生(单一源,勘误/改值
@@ -2143,7 +2159,9 @@ def _validate_env_pool_rewrite() -> None:
     _validate_env_gifts 已收的 ∩ENV_ECONOMY 半边合起来 = 三表两两互斥
     (单一环境只落一个估值结构,防双通道叠加;G8 半边声明的「∩ ENV_POOL_REWRITE
     由 3.6 建表时收全」即本闸,不动已交付函数体);③ 结构完备:改写目标品质与
-    被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);④ pending
+    被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);结构
+    标记 offer_structure 与槽位数据 slot_qualities 同有同无,槽位向量长度
+    恒 3、值在策略品质词集、与品质改写型互斥(双型不同条共存);④ pending
     必填:单张改写型(有点名取卡序但非全改写,offer 覆盖面歧义)或 offer 结构
     改写型(槽位语义歧义)必须写保守支 notes(_validate_strategy_effects
     「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形:
@@ -2172,6 +2190,29 @@ def _validate_env_pool_rewrite() -> None:
                 f"ENV_POOL_REWRITE 结构半残:{_name!r} rewrite_quality="
                 f"{_rw.rewrite_quality!r} 与 rewrite_picks={_rw.rewrite_picks!r}"
                 f"须同有同无(层 E 公式不可算)")
+        if bool(_rw.offer_structure) != bool(_rw.slot_qualities):
+            raise ValueError(
+                f"ENV_POOL_REWRITE 结构半残:{_name!r} offer_structure="
+                f"{_rw.offer_structure!r} 与 slot_qualities="
+                f"{_rw.slot_qualities!r}须同有同无(结构标记无槽位数据 = "
+                f"判据不可算)")
+        if _rw.slot_qualities:
+            if _rw.rewrite_quality:
+                raise ValueError(
+                    f"ENV_POOL_REWRITE 双型互斥:{_name!r} 槽位向量型与品质"
+                    f"改写型不同条共存(rewrite_quality={_rw.rewrite_quality!r})")
+            if len(_rw.slot_qualities) != 3:
+                raise ValueError(
+                    f"ENV_POOL_REWRITE 槽位向量长度:{_name!r} "
+                    f"slot_qualities={_rw.slot_qualities!r} 须恒 3"
+                    f"(卡面「左、中、右」三槽)")
+            _quality_vocab = {s.rarity for s in INVESTMENT_STRATEGIES.values()}
+            _bad = [q for q in _rw.slot_qualities if q not in _quality_vocab]
+            if _bad:
+                raise ValueError(
+                    f"ENV_POOL_REWRITE 槽位品质漂移:{_name!r} "
+                    f"{_bad} 不在策略品质词集(注册表漂移?):"
+                    f"{sorted(_quality_vocab)}")
         _partial_rewrite = bool(_rw.rewrite_quality) and _rw.rewrite_picks != (1, 2, 3)
         if (_partial_rewrite or _rw.offer_structure) and not _rw.pending_notes:
             raise ValueError(
