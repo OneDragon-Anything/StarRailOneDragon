@@ -207,6 +207,34 @@ def report_spheres_observed(gs: GameState, sight: OreSight, *,
                                 evidence='ore_gen_cleanup', sig=hook_sig)
 
 
+def report_giftbox_sight_observed(gs: GameState, readings: tuple[int, ...], *,
+                                  sig: ChannelSig,
+                                  evidence: str = '') -> None:
+    """giftbox_sight 观察写端单一挂接入口(live = 备战观察 heavy 段;sim
+    零接线——sim 无板件;设计 = .debug/progress/2026-10-19-giftbox-piece-obs/
+    designs/giftbox-piece-obs.md §2.2)。
+
+    上报语义(用户裁定 2026-10-19):
+
+    - ``readings`` 空 → no-op **零写**(未检出/OCR 全败/检测异常 = 本帧
+      无样本:域原值与 ``pending_item_opens`` 逻辑态均保持,无「空读」
+      形态——与 spheres「空读照写 count=0」的存在性通道语义分化);
+    - 非空 → 一次 ``gs.observe`` 整条替换写(多件全报;部分件读不出 =
+      可读子集替换写,不可读件上一帧读数随写丢失——整条替换语义,设计
+      披露 4/5)。
+
+    运行时零比较零纠偏:本函数不读 ``pending_item_opens``、不做模型↔观察
+    的任何比较/修正——逻辑态恒由战斗结算/节点推进等模型事件链更新,观察
+    域任何值不得触发队列写端;不一致对账 = 离线校准批(join 快照 prov
+    时间线与队列事件线)。``evidence`` 传非空(空串经 observe 转 None 后
+    prov 无行,校准时间线失效;先例 = spheres live 调用即传空串,勿效仿)。
+    """
+    if not readings:
+        return
+    gs.observe(gs.giftbox_sight, tuple(int(n) for n in readings),
+               evidence=(evidence if evidence else None), sig=sig)
+
+
 def check_ore_declared_level(gs: GameState, *, hook_sig: ChannelSig) -> None:
     """声明入队/过期电平检查(详设 §5;live 判定点 = 每个 heavy 帧
     ``observe_full`` 回执后、spheres 写之前;sim = 节点窗起点,接线归

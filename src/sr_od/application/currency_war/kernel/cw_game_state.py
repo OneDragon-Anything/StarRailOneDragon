@@ -255,6 +255,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 元素 (件名, 解锁序位 NodePos))。独立键
                                 # 版本 1,同 env_grants_done 先例不并入
                                 # 他域 bump
+    'giftbox_sight': 1,         # 战利品区惊喜盒板件 ⏳N 读数观察域(迭代
+                                # 2026-10-19-giftbox-piece-obs;元素 = 最近
+                                # 一次上报帧的可读读数集 tuple[int, ...])。
+                                # 独立键版本 1,同 env_grants_done 先例
+                                # 不并入他域 bump
     'node_seq_by_plane': 1,     # 逐位面节点序列场字段(「人身意外险」设计迭代:
                                 # 键 = 位面 1 基,值 = 节点类型序;逻辑态,
                                 # 写点唯一 = gain_invest_env 尾段,注册后
@@ -2084,6 +2089,10 @@ def seed_opening_state(gs: GameState) -> None:
     # 环境倒计时件开盒队列(T-34 命运礼物;空底座,同 env_grants_done
     # 种子族先例——域值恒非 None,到点弹除比较判定零 None 防御)
     _seed(gs.pending_item_opens, ())
+    # 惊喜盒板件 ⏳N 读数观察域(空底座,同 pending_item_opens 种子族
+    # 先例——域值恒非 None,整条替换写零 None 防御;A 类随机态通道落地,
+    # 首次观察覆盖差异落 logic_rand_outcome 台账行,预期内噪声)
+    _seed(gs.giftbox_sight, ())
     # (node_seq_by_plane 不种:B/C 类字段契约——None = 未注册态是设计
     # 语义,设计「Field 缺省 None」,Field 声明缺省即开局真值,
     # seed_opening_state「B/C 类字段一个不种」同规。)
@@ -2385,12 +2394,27 @@ class GameState:
     # 以后都算,错过不悬空),命中即弹除(discharge_due_item_opens 原语)。
     # 写入端 = 唯一逻辑写端 = on_env_gained 登记入队 / discharge_due_item_
     # opens 到点弹除 / 完胜回退腿(check_env_item_open_perfect)解锁位
-    # 回退;无观察写端(队列 = 卡文推算知识;战利品区板件显示不建域——
-    # 晶矿 spheres 同形态,板件观察归识别侧工作流);实机局不接开盒原语
+    # 回退;无观察写端(队列 = 卡文推算知识;战利品区板件显示另建观察域
+    # giftbox_sight——旁路读数留证,本队列三写端与语义不受其影响,写入
+    # 端申报见 cw_projection_audit.py 同名行);实机局不接开盒原语
     #(不对称申报,pending_item_grants 同款;完胜回退腿双端跑)。开局
     # 种子底座 = ()(A 类)。
     pending_item_opens: Field[tuple[tuple[str, tuple[int, int]], ...]] = field(
         default_factory=Field)
+    # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
+    # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。
+    # 元素 = 最近一次上报帧的可读读数集(每件为 ⏳ 后数字,int);元素序 =
+    # 命中坐标 (x,y) 排序(检测内部惯例,非游戏语义序)。取值时机 = 备战
+    # 观察 heavy 段现读(与 spheres 写同段,同帧序位一致);写入端 = 唯一
+    # 观察写端 = 备战观察挂接入口(沿 report_spheres_observed 单一写径
+    # 先例,evidence 进快照 prov)。上报语义(用户裁定 2026-10-19):
+    # OCR 读到数字 → 整条上报(一次 write 替换现值,多件全报);读不到
+    # (未检出/OCR 失败/检测异常)→ 不上报(零写——本域原值与逻辑态均
+    # 保持,无「空读」形态)。逻辑态更新链 = 战斗结算(完胜回退)/节点
+    # 推进等模型事件,与观察完全解耦;本域永不纠偏 pending_item_opens,
+    # 与队列不一致 = 留证不纠偏(离线校准对账,校准批定谳)。开局种子
+    # 底座 = ()(A 类)。
+    giftbox_sight: Field[tuple[int, ...]] = field(default_factory=Field)
     board: Field[dict[str, int]] = field(default_factory=Field)      # 上阵羁绊计数(§3.2.6;下档阈值=派生不存储;开局种子底座不直写,随行域空行种子派生,禁双写)
     shop_refresh_cost: Field[int] = field(default_factory=Field)     # 刷新费,动态(§3.3.4/现场 OCR;免费帧不写,None≠0;开局种子底座=刷新基价)
     # [字段定义] shop_locked = 整店锁(锁定后节点切换不自动全刷)。取值时机 =
@@ -4290,6 +4314,10 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 元组重建);随快照存续 = 接管局队列不丢。
         'pending_item_opens': lambda d: tuple(
             (str(e[0]), (int(e[1][0]), int(e[1][1]))) for e in d),
+        # 惊喜盒板件 ⏳N 读数观察域(迭代 2026-10-19-giftbox-piece-obs):
+        # tuple 化重建(_json_safe 落快照为 list,int 保型);随快照存续
+        # = 恢复局最近上报帧读数不丢(滞留语义不变)。
+        'giftbox_sight': lambda d: tuple(int(n) for n in d),
         # 逐位面节点序列场字段():键 int 化 + 值 tuple 化重建
         # (_json_safe 落快照为 str 键 dict-of-list);随快照存续 = 修饰局
         # 恢复坐标系不断。None 值域不在快照(只存非 None,往返一致)。

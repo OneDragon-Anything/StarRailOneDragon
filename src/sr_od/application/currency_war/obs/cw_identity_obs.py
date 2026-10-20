@@ -34,6 +34,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils import str_utils
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
@@ -43,7 +44,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     Unit,
 )
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
@@ -1614,6 +1615,126 @@ def read_ore_sights(ctx: SrContext, screen: MatLike,
                               and abs(s[1].y - q.y) <= _ORE_PHANTOM_MATCH_TOL
                               for q in phantom)]
     return spheres
+
+
+# ===== 惊喜盒板件观察(战利品区 ⏳N 读数;迭代设计 = .debug/progress/
+# 2026-10-19-giftbox-piece-obs/designs/giftbox-piece-obs.md §2.1)=====
+# 战利品区浮动板件(红盒金边+深蓝缎带+中央金徽+盒身白花,左下「⏳N」金色
+# 沙漏徽章),与晶矿球同区(screen_info「区域-奖励」)。检测两段式:段1 盒体
+# 模板区域匹配(浮动件不定位,禁固定位坐标)→ 段2 命中位 + 徽章相对偏移
+# OCR 数字。模板 = 实机裁片 webp(惊喜盒无官方平面图标,实机为 3D 渲染风
+# UI,识别模板必须取实机;考察报告 .debug/temp/cw_consumable_icons_report.md
+# :123),源帧 sr-od-test/screens/货币战争-备战/reward_giftbox_phantom.webp
+# (⏳12 唯一取证帧),裁盒体上部 129x86 @源帧 (1358,140)——**避开徽章数字
+# 区**(⏳12→⏳9 位数变化,含数字模板跨读数结构性必败)与盒外围虚线框
+# (浮动选中框恒定性未取证,入模即噪声)。裁片顶贴「区域-奖励」rect 顶:
+# 盒体上浮超过源帧相位时模板顶行被搜索区裁掉、分值骤降(实测上浮 2px
+# 0.59 / 3px 0.50)→ 该相位漏检 = 丢校准样本(不上报形态,设计披露 1 接受);
+# 下沉/原位恒 1.0。TM 自检:源帧 1.0;球帧×3/空面板/部署帧/商店帧/补给帧
+# 等 9 帧负例 ≤0.246(≥2 倍分离)。
+_GIFTBOX_TM_THR: float = 0.5
+# 徽章 OCR rect 相对**模板命中左上角**的偏移 (dx1, dy1, dx2, dy2),含
+# ±6px 浮动余量:标定 = 源帧徽章 rect (1382,228,1440,253) − 模板源裁片
+# 原点 (1358,140)。⚠️ 与模板文件像素锁定——重裁模板(边界变化)必须
+# 同步重标本偏移(设计披露 2:徽章随盒浮动,偏移恒定性待补采验证)。
+_GIFTBOX_BADGE_OFFSET: tuple[int, int, int, int] = (18, 82, 88, 119)
+# 读数 sanity 界(越界 = OCR 误读 → 该件作废;惯例先例 = cw_obs_core
+# GOLD_MIN/GOLD_MAX 防误读级联):倒计时件卡面初始 ≤12(命运礼物 12 =
+# cw_invest_data 命运礼物效果文本「倒计时12个节点」;火花礼盒 10)。
+_GIFTBOX_READ_MIN: int = 1
+_GIFTBOX_READ_MAX: int = 12
+_giftbox_tmpl_gray: MatLike | None = None
+_giftbox_tmpl_loaded: bool = False
+
+
+def _get_giftbox_gray() -> MatLike | None:
+    """加载惊喜盒板件模板灰度图(模块级缓存;缺文件 → None,本帧不检出)。
+
+    ``assets/template/currency_war/loot/惊喜盒板件.webp``(实机裁片 129x86)。
+    ⚠️ 换模板文件需重启 server(module 级缓存;与星徽秘典/邀请函同型坑)。
+    """
+    global _giftbox_tmpl_gray, _giftbox_tmpl_loaded
+    if not _giftbox_tmpl_loaded:
+        _giftbox_tmpl_loaded = True
+        p = (get_project_root() / 'assets' / 'template' / 'currency_war'
+             / 'loot' / '惊喜盒板件.webp')
+        img = (cv2.imdecode(np.fromfile(str(p), np.uint8), cv2.IMREAD_COLOR)
+               if p.is_file() else None)
+        _giftbox_tmpl_gray = (cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                              if img is not None else None)
+    return _giftbox_tmpl_gray
+
+
+def _giftbox_badge_reading(text: str) -> int | None:
+    """徽章 OCR 文本 → ⏳N 读数(已知结构规则修复);读不出/越界 → None。
+
+    已知结构 = 沙漏徽记 + 1-2 位数字:徽记在首且可被 OCR 误读成形近字符
+    (字母/汉字/数字皆可),真数字恒在尾部 → 修复 = 取尾 2 字符(位数
+    上界 2,见 :data:`_GIFTBOX_READ_MAX`)做 l/I/i/| → 1 形近修复后取
+    数字;越界(徽记误读成数字并位的典型形态)= 误读,作废不上报。
+    """
+    s = str_utils.remove_whitespace(text)
+    if len(s) > 2:
+        s = s[-2:]
+    s = s.translate(str.maketrans({'l': '1', 'I': '1', 'i': '1', '|': '1'}))
+    digits = str_utils.get_positive_digits(s)
+    if digits is None or not (_GIFTBOX_READ_MIN <= digits
+                              <= _GIFTBOX_READ_MAX):
+        return None
+    return digits
+
+
+def find_giftbox_sight(ctx: SrContext, screen: MatLike) -> tuple[int, ...]:
+    """战利品区惊喜盒板件 ⏳N 读数观察 → ``(N, ...)``(按命中 (x,y) 序)。
+
+    两段式(设计 §2.1):段1 盒体模板在「区域-奖励」rect 内区域搜索
+    (区域 rect 经 ctx screen_info 现役通道取,禁硬编码坐标;多命中
+    NMS 分离,互距 > 模板宽 0.6,先例 = ``read_star`` 星形 NMS 同式);
+    段2 命中位 + :data:`_GIFTBOX_BADGE_OFFSET` rect OCR 徽章数字(全图
+    OCR 缓存复用,同帧多徽章零额外全图成本)。读不出/非数字/越界 →
+    该件作废(不留半条);全未检出 → 空元组(空 = 零样本,非「无盒」
+    存在性断言——本域滞留语义,空读由写入口零写承接)。纯读零副作用,
+    可离线 fixtures 直测(同 ``find_armory_boxes`` 分层约定)。
+    """
+    tmpl = _get_giftbox_gray()
+    panel_rect = _area_rect(ctx, '区域-奖励')
+    if tmpl is None or panel_rect is None:
+        return ()
+    x1, y1 = panel_rect.x1, panel_rect.y1
+    panel = screen[y1:panel_rect.y2, x1:panel_rect.x2]
+    if panel.size == 0:
+        return ()
+    gray = cv2.cvtColor(panel, cv2.COLOR_RGB2GRAY)  # 框架 screen RGB(同 find_ore_sights)
+    th, tw = tmpl.shape[:2]
+    if panel.shape[0] < th or panel.shape[1] < tw:
+        return ()
+    res = cv2.matchTemplate(gray, tmpl, cv2.TM_CCOEFF_NORMED)
+    if float(res.max()) < _GIFTBOX_TM_THR:
+        return ()
+    # NMS:≥阈值 peak 按分降序收集,互距 > 模板宽 0.6(双盒物理间距
+    # 远超模板宽;同区晶矿 Hough minDist=35 同理念)
+    min_dist = tw * 0.6
+    ys, xs = np.where(res >= _GIFTBOX_TM_THR)
+    ranked = sorted(zip(ys, xs, strict=True),
+                    key=lambda p: res[p[0], p[1]], reverse=True)
+    peaks: list[tuple[int, int]] = []   # panel 相对 (x, y),防互距比较跨坐标系
+    for py, px in ranked:
+        if all((int(px) - qx) ** 2 + (int(py) - qy) ** 2 > min_dist ** 2
+               for qx, qy in peaks):
+            peaks.append((int(px), int(py)))
+    # 元素序 = 命中 (x,y) 坐标排序(先例 find_ore_sights 惯例,非游戏语义序)
+    anchors = sorted((Point(x1 + qx, y1 + qy) for qx, qy in peaks),
+                     key=lambda p: (p.x, p.y))
+    dx1, dy1, dx2, dy2 = _GIFTBOX_BADGE_OFFSET
+    out: list[int] = []
+    for a in anchors:
+        badge_rect = Rect(a.x + dx1, a.y + dy1, a.x + dx2, a.y + dy2)
+        for t in _ocr(ctx, screen, badge_rect):
+            n = _giftbox_badge_reading(t.data or '')
+            if n is not None:
+                out.append(n)
+                break
+    return tuple(out)
 
 
 # ===== 穿戴装备识别(below-avatar mini icon;D-45/D-46)=====

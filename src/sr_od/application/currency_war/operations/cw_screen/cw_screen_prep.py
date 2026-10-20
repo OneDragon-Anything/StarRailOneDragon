@@ -42,6 +42,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_ore_channel import (
     check_ore_declared_level,
+    report_giftbox_sight_observed,
     report_spheres_observed,
 )
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
@@ -71,6 +72,7 @@ from sr_od.application.currency_war.obs.cw_faction_obs import (
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
+    find_giftbox_sight,
     read_ore_sights,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -439,6 +441,32 @@ class CwScreenPrep(CwOperation):
                             c for c, _p, _r in _sph_list)),
                         points=_sph_pts),
                     obs_sig=_prep_sig, hook_sig=_ORE_HOOK_SIG, evidence='')
+                # 惊喜盒板件 ⏳N 读数观察写端(设计 giftbox-piece-obs §2.3,
+                # 与 spheres 写同段 = 同帧序位一致):检测→上报经写入口
+                # 单一写径,读到数字才整条替换写,读不到 → no-op 零写
+                # (域原值与 pending_item_opens 逻辑态均保持;运行时零比较
+                # 零纠偏,纯旁路留证)。检测异常 = 本帧无样本不上报(上报
+                # 矩阵「不停机」行;观察链不因旁路读数中断,记 debug 防
+                # 静默漏检无从排查)。evidence 非空(空串经 observe 转
+                # None 后 prov 无行,校准时间线失效;spheres 先例 live 传
+                # 空串系既有债,勿效仿)。序位注记取本帧 node 现值(锚定
+                # 已在回执后完成);未锚定用 0 仅作 evidence 面注记(判读
+                # 可辨「未知」档,同 spheres 入口 plane 缺省惯例)。
+                try:
+                    _gb_readings = find_giftbox_sight(self.ctx, screen)
+                except Exception:   # noqa: BLE001  检测异常=零样本零写
+                    log.debug('[cw][obs] giftbox 检测异常 → 本帧不上报(零写)')
+                    _gb_readings = ()
+                _gb_node = _gs_obs.node.value
+                _gb_plane = (int(_gb_node.plane)
+                             if _gb_node is not None
+                             and _gb_node.plane is not None else 0)
+                _gb_round = (int(_gb_node.round_num)
+                             if _gb_node is not None
+                             and _gb_node.round_num is not None else 0)
+                report_giftbox_sight_observed(
+                    _gs_obs, _gb_readings, sig=_prep_sig,
+                    evidence=f'giftbox#p{_gb_plane}-r{_gb_round}')
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
                 # 入位对象身份旁路(CwActionSellBenchParam 溢出腿;缺读 '' = 未识别,
