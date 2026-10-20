@@ -454,8 +454,9 @@ class CwScreenPrep(CwOperation):
                 # 可辨「未知」档,同 spheres 入口 plane 缺省惯例)。
                 try:
                     _gb_readings = find_giftbox_sight(self.ctx, screen)
-                except Exception:   # noqa: BLE001  检测异常=零样本零写
-                    log.debug('[cw][obs] giftbox 检测异常 → 本帧不上报(零写)')
+                except Exception as _gb_err:   # noqa: BLE001  检测异常=零样本零写
+                    log.debug('[cw][obs] giftbox 检测异常 → 本帧不上报'
+                              f'(零写;{_gb_err!r})')
                     _gb_readings = ()
                 _gb_node = _gs_obs.node.value
                 _gb_plane = (int(_gb_node.plane)
