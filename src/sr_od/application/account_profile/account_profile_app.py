@@ -27,6 +27,10 @@ from one_dragon.base.screen.screen_utils import (
 )
 from one_dragon.utils.log_utils import log
 from sr_od.application.account_profile import account_profile_const
+from sr_od.application.account_profile.account_profile_config import (
+    AccountProfileConfig,
+    ScanModeEnum,
+)
 from sr_od.application.account_profile.account_profile_core import (
     AvatarMatcher,
     normalize_cn_name,
@@ -42,8 +46,8 @@ OUTPUT_PATH: Path = Path('config') / 'idx' / 'account_profile_scan.json'
 SCROLL_SETTLE_SEC: float = 1.5
 # 列表静止时背景粒子光效仍有 2-5 的帧间差异,滚动时差异远高于此,取 8 分开两态。
 TOP_STABLE_DIFF: float = 8.0
-# 终止判据:连续 N 轮 retry 无新增角色即认为已到列表底部(轮 ≈ 1 屏,取 10 防误停)
-NO_NEW_RETRIES: int = 10
+# 到底判定:连续 N 屏格子集合不变即认为已到列表底部(与存档有无无关,滚动失效由 _scroll_down 内部重试兜底)
+SAME_SCREEN_TO_STOP: int = 3
 
 
 
@@ -53,9 +57,10 @@ class AccountProfileApp(SrApplication):
     def __init__(self, ctx: SrContext):
         SrApplication.__init__(self, ctx, account_profile_const.APP_ID, op_name=account_profile_const.APP_NAME)
         self._matcher: AvatarMatcher | None = None
+        self._config = AccountProfileConfig(ctx.current_instance_idx)
         self._thumb_y: int = 250  # 滚动条滑块中心 y;滚顶后重置
-        self._no_new_count: int = 0  # 连续无新增屏数(retry 轮间保留)
-        self._prev_names: set[str] = set()  # 上一轮的已扫名字集合
+        self._prev_cell_keys: set[tuple[int, int]] = set()  # 上一屏格子集合(到底判定)
+        self._same_screen_count: int = 0  # 连续格子集合不变的屏数(到底判定)
         self._known_by_pos: dict[tuple[int, int], str] = {}  # 格子位置→角色名缓存(跨轮保留)
         # 跨运行去重:启动时读已有产物作已扫基础,本运行只扫增量(减少重复点击)
         self.profiles: dict[str, dict] = self._load_existing_profiles()
@@ -126,51 +131,44 @@ class AccountProfileApp(SrApplication):
     @node_from(from_name='滚回列表顶部')
     @operation_node(name='逐角色扫描养成数据')
     def scan_loop(self) -> OperationRoundResult:
-        """侧栏格子遍历:每轮处理当前屏,retry 驱动推进。
+        """侧栏格子遍历:每轮处理当前屏格子,retry 驱动推进,滚动条滑块下拖一屏。
 
-        每轮:detect 当前屏 → 处理未扫格(点格/关侧栏/读名/读档案/开侧栏) → 滑块下拖一屏
-        → round_retry 进入下一轮。连续 NO_NEW_RETRIES 轮无新增判定到列表底部。
-        跨轮状态(self._no_new_count)在 retry 间保留。
+        处理范围由配置 scan_mode 决定:full=全部识别格重读(覆盖旧档案);
+        incremental=只读档案里没有的角色(已扫格无点击跳过)。
+        到底判定:连续 SAME_SCREEN_TO_STOP 屏格子集合不变(列表已到尽头),
+        与存档有无无关,正常完成收尾。
         """
         if self._matcher is None:
             self._matcher = AvatarMatcher()
         if self._matcher.template_count == 0:
             return self.round_fail('模板库为空:config/idx/avatar_scan/ 缺失', wait=1)
+        mode_full = self._config.scan_mode == ScanModeEnum.FULL.value
 
         cells = self._matcher.detect_cells(self.screenshot(), self.ctx.ocr.ocr)
         for cell in cells:
-            abs_key = cell['abs_key']
-            if not cell['miss'] and cell['cn'] in self.profiles:
-                continue
-            known_cn = self._known_by_pos.get(abs_key)
-            if cell['miss'] and known_cn is not None:
-                if known_cn not in self.profiles:
-                    self._scan_one_character(cell, known_cn)
-                continue
-            name = cell['cn'] if not cell['miss'] else None
-            if name is None:
-                name = self._click_and_read_name(cell)
-                if name is None:
+            if not mode_full:
+                # 增量:SIFT 命中且已扫的格子直接跳过(零点击)
+                if not cell['miss'] and cell['cn'] in self.profiles:
                     continue
-            self._known_by_pos[abs_key] = name
-            if name in self.profiles:
-                continue
-            self._scan_one_character(cell, name)
+                known_cn = self._known_by_pos.get(cell['abs_key'])
+                if cell['miss'] and known_cn is not None and known_cn in self.profiles:
+                    continue
 
-        names_now = set(self.profiles.keys())
-        new_count = len(names_now - self._prev_names)
-        self._prev_names = names_now
-        self._scroll_down()
-        if new_count == 0:
-            self._no_new_count += 1
-            if self._no_new_count >= NO_NEW_RETRIES:
-                self._save_output()
-                return self.round_fail(
-                    f'连续 {NO_NEW_RETRIES} 屏无新增,判定已到列表底部,共 {len(self.profiles)} 角色', wait=1)
-            return self.round_retry(
-                f'第 {self._no_new_count}/{NO_NEW_RETRIES} 轮无新增,继续滚动', wait=1)
-        self._no_new_count = 0
-        return self.round_retry(f'已扫 {len(self.profiles)} 角色,继续', wait=1)
+
+        # 到底判定:格子集合连续多屏不变 = 列表尽头(与存档无关)
+        cell_keys = {c['abs_key'] for c in cells}
+        if cell_keys == self._prev_cell_keys:
+            self._same_screen_count += 1
+        else:
+            self._same_screen_count = 0
+        self._prev_cell_keys = cell_keys
+        if self._same_screen_count >= SAME_SCREEN_TO_STOP:
+            self._save_output()
+            return self.round_success(
+                f'列表遍历完成,共 {len(self.profiles)} 个角色', wait=1)
+
+        return self.round_retry(
+            f'累计 {len(self.profiles)} 角色,继续滚动', wait=1)
 
     @node_from(from_name='逐角色扫描养成数据')
     @operation_node(name='关闭角色页回到大世界')
@@ -231,10 +229,11 @@ class AccountProfileApp(SrApplication):
         self._thumb_y = target_y
         time.sleep(SCROLL_SETTLE_SEC)
 
-    def _scan_one_character(self, cell: dict, name_hint: str) -> None:
+    def _scan_one_character(self, cell: dict, name_hint: str, mode_full: bool = False) -> None:
         """单角色完整流程:点格切角色 → 关侧栏 → 读名确认 → 读全档案 → 开侧栏。
 
         关侧栏是读档案的前提(TAB 与左上角色名都被侧栏覆盖);读名与档案共用关侧栏后的画面。
+        增量模式下读名确认已扫的角色直接跳回(不读档案)。
         """
         self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
         time.sleep(1.2)
@@ -242,6 +241,9 @@ class AccountProfileApp(SrApplication):
             log.warning(f'[账号档案] {name_hint}: 侧栏关闭失败,跳过该角色')
             return
         name = self._read_detail_name() or name_hint
+        if not mode_full and name in self.profiles:
+            self._set_sidebar(True)
+            return
         try:
             self._scan_current_character(name)
         except RuntimeError as e:
