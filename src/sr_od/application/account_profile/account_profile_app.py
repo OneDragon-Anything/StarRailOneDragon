@@ -20,7 +20,6 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.base.screen.screen_utils import (
-    OcrClickResultEnum,
     find_and_click_area,
     get_match_screen_name,
     is_target_screen,
@@ -33,6 +32,7 @@ from sr_od.application.account_profile.account_profile_config import (
 )
 from sr_od.application.account_profile.account_profile_core import (
     AvatarMatcher,
+    count_eidolon_locks,
     normalize_cn_name,
     ocr_rect_texts,
 )
@@ -55,7 +55,8 @@ class AccountProfileApp(SrApplication):
     """账号档案扫描:逐角色读取养成情况,产出 account_profile_scan.json。"""
 
     def __init__(self, ctx: SrContext):
-        SrApplication.__init__(self, ctx, account_profile_const.APP_ID, op_name=account_profile_const.APP_NAME)
+        SrApplication.__init__(self, ctx, account_profile_const.APP_ID, op_name=account_profile_const.APP_NAME,
+                           node_max_retry_times=40)  # scan_loop 逐屏 retry 推进(约 30 屏),默认 1 次必中途夭折
         self._matcher: AvatarMatcher | None = None
         self._config = AccountProfileConfig(ctx.current_instance_idx)
         self._thumb_y: int = 250  # 滚动条滑块中心 y;滚顶后重置
@@ -153,7 +154,7 @@ class AccountProfileApp(SrApplication):
                 known_cn = self._known_by_pos.get(cell['abs_key'])
                 if cell['miss'] and known_cn is not None and known_cn in self.profiles:
                     continue
-
+            self._scan_one_character(cell, cell['cn'] or '未知', mode_full)
 
         # 到底判定:格子集合连续多屏不变 = 列表尽头(与存档无关)
         cell_keys = {c['abs_key'] for c in cells}
@@ -247,9 +248,15 @@ class AccountProfileApp(SrApplication):
         try:
             self._scan_current_character(name)
         except RuntimeError as e:
-            # 遗器返回误触关闭等画面漂移:恢复到详情页+侧栏,继续下一角色
+            # 画面漂移(遗器返回误触关闭等):恢复到详情页+侧栏,继续下一角色
+            # 替换页可能不在 goto 路由图上,先点按钮-返回回着装页再 goto;仍失败回大世界重进
             log.warning(f'[账号档案] {name}: {e},恢复画面')
-            self.round_by_goto_screen(screen_name='角色-详情', success_wait=1.5, retry_wait=1.5)
+            find_and_click_area(self.ctx, self.screenshot(), '遗器-替换', '按钮-返回')
+            time.sleep(1.2)
+            r = self.round_by_goto_screen(screen_name='角色-详情', success_wait=1.5, retry_wait=1.5)
+            if not r.is_success:
+                BackToNormalWorldPlus(self.ctx).execute()
+                self.round_by_goto_screen(screen_name='角色-详情', success_wait=1.5, retry_wait=1.5)
         self._set_sidebar(True)
 
     def _click_and_read_name(self, cell: dict) -> str | None:
@@ -264,62 +271,60 @@ class AccountProfileApp(SrApplication):
 
     def _scan_current_character(self, name: str) -> None:
         """当前已停在目标角色详情页,依次读各 TAB 的养成数据。"""
+        # 读档案前验证:停在替换页等子页时 TAB 全部不可点,读出的全是错位文本(实测垃圾档案)
+        cur = get_match_screen_name(self.ctx, self.screenshot())
+        if cur is not None and cur != '角色-详情':
+            raise RuntimeError(f'读档案前画面在 {cur}, 不是角色-详情')
         profile: dict = {'cn': name}
 
         self._switch_tab('角色-详情')
         screen = self.screenshot()
-        profile['level'] = self._read_area_text('角色-详情', '读区-等级', screen)
+        t = self._read_areas_text('角色-详情', screen, [
+            '读区-等级', '读区-生命值', '读区-攻击力', '读区-防御力',
+            '读区-速度', '读区-暴击率', '读区-暴击伤害'])
+        profile['level'] = t['读区-等级']
         profile['attrs'] = {
-            'hp': self._read_area_text('角色-详情', '读区-生命值', screen),
-            'atk': self._read_area_text('角色-详情', '读区-攻击力', screen),
-            'def': self._read_area_text('角色-详情', '读区-防御力', screen),
-            'spd': self._read_area_text('角色-详情', '读区-速度', screen),
-            'crit_rate': self._read_area_text('角色-详情', '读区-暴击率', screen),
-            'crit_dmg': self._read_area_text('角色-详情', '读区-暴击伤害', screen),
+            'hp': t['读区-生命值'],
+            'atk': t['读区-攻击力'],
+            'def': t['读区-防御力'],
+            'spd': t['读区-速度'],
+            'crit_rate': t['读区-暴击率'],
+            'crit_dmg': t['读区-暴击伤害'],
         }
 
         # 光锥(TAB 切换失败则宁缺毋滥,不读错位数据)
         if self._switch_tab('角色-光锥'):
             screen = self.screenshot()
+            t = self._read_areas_text('角色-光锥', screen, ['读区-光锥名', '读区-等级', '读区-叠影'])
             profile['light_cone'] = {
-                'name': self._read_area_text('角色-光锥', '读区-光锥名', screen),
-                'level': self._read_area_text('角色-光锥', '读区-等级', screen),
-                'rank': self._read_area_text('角色-光锥', '读区-叠影', screen),
+                'name': t['读区-光锥名'],
+                'level': t['读区-等级'],
+                'rank': t['读区-叠影'],
             }
         else:
             profile['light_cone'] = {}
             log.warning(f'[账号档案] {name}: 光锥 TAB 切换失败,跳过')
 
-        # 行迹
-        if self._switch_tab('角色-行迹'):
-            screen = self.screenshot()
-            profile['traces'] = [
-                t for t in (
-                    self._read_area_text('角色-行迹', '读区-节点-顶', screen),
-                    self._read_area_text('角色-行迹', '读区-节点-左', screen),
-                    self._read_area_text('角色-行迹', '读区-节点-右', screen),
-                    self._read_area_text('角色-行迹', '读区-节点-中下', screen),
-                    self._read_area_text('角色-行迹', '读区-节点-底', screen),
-                ) if t
-            ]
-        else:
-            profile['traces'] = []
-            log.warning(f'[账号档案] {name}: 行迹 TAB 切换失败,跳过')
-
-        # 星魂
+        # 星魂:名字恒显示(两态都在),eidolon_count 由挂锁章计数得出
         if self._switch_tab('角色-星魂'):
             screen = self.screenshot()
+            t = self._read_areas_text('角色-星魂', screen, [
+                '读区-星魂1名', '读区-星魂2名', '读区-星魂3名',
+                '读区-星魂4名', '读区-星魂5名', '读区-星魂6名'])
             eidolon_names = [
-                n for n in (
-                    self._read_area_text('角色-星魂', '读区-星魂1名', screen),
-                    self._read_area_text('角色-星魂', '读区-星魂2名', screen),
-                    self._read_area_text('角色-星魂', '读区-星魂3名', screen),
-                    self._read_area_text('角色-星魂', '读区-星魂4名', screen),
-                    self._read_area_text('角色-星魂', '读区-星魂5名', screen),
-                    self._read_area_text('角色-星魂', '读区-星魂6名', screen),
-                ) if n
+                txt for txt in (t['读区-星魂1名'], t['读区-星魂2名'], t['读区-星魂3名'],
+                                t['读区-星魂4名'], t['读区-星魂5名'], t['读区-星魂6名']) if txt
             ]
-            profile['eidolon_count'] = len(eidolon_names)
+            lock_rects = [
+                r for r in (self._area_rect('角色-星魂', f'锁位-星魂{i}图标') for i in range(1, 7))
+                if r is not None
+            ]
+            if len(lock_rects) == 6:
+                profile['eidolon_count'] = 6 - count_eidolon_locks(self.ctx.tm, screen, lock_rects)
+            else:
+                # 建档缺锁位 area = 无法数锁,记 -1(宁缺毋滥,不猜)
+                profile['eidolon_count'] = -1
+                log.warning(f'[账号档案] {name}: 星魂锁位 area 不全({len(lock_rects)}/6),星魂数记 -1')
             profile['eidolon_names'] = eidolon_names
         else:
             profile['eidolon_count'] = -1
@@ -329,9 +334,8 @@ class AccountProfileApp(SrApplication):
         # 遗器着装 + 逐件词条
         if self._switch_tab('角色-遗器'):
             screen = self.screenshot()
-            profile['relic_sets'] = ' '.join(ocr_rect_texts(
-                self.ctx.ocr.ocr, screen, self._area_rect('角色-遗器', '读区-套装效果'),
-            ))
+            profile['relic_sets'] = ' '.join(self._read_areas_text(
+                '角色-遗器', screen, ['读区-套装效果'])['读区-套装效果'])
             profile['relics'] = self._read_all_relics()
         else:
             profile['relic_sets'] = ''
@@ -346,15 +350,27 @@ class AccountProfileApp(SrApplication):
         log.info(f"[账号档案] {name}:等级 {profile.get('level')},星魂 {profile.get('eidolon_count')},"
                  f"光锥 {profile['light_cone'].get('name')},遗器 {len(profile['relics'])} 件")
 
-    def _read_all_relics(self) -> list[dict]:
-        """在替换页内用顶部部位 TAB 逐部位读词条(2026-10-19 改版,免 6 次进出往返)。
+    # 部位 TAB 名 → 替换页词条区的部位显示名(TAB「腿部」的详情显示「脚部」,实测)
+    _PARTS: list[tuple[str, str, str]] = [
+        # (部位TAB area 后缀, 词条区显示名, 着装页遗器位 area 名)
+        ('头部', '头部', '遗器位-头部'),
+        ('手部', '手部', '遗器位-手部'),
+        ('躯干', '躯干', '遗器位-躯干'),
+        ('腿部', '脚部', '遗器位-脚部'),
+        ('位面球', '位面球', '遗器位-位面球'),
+        ('连结绳', '连结绳', '遗器位-连结绳'),
+    ]
 
-        入口:着装页点「遗器位-头部」进替换页(默认选中头部);
-        之后点「部位TAB-xxx」依次切换手部/躯干/腿部/位面球/连结绳,右侧读区不变。
-        读完点「按钮-返回」回着装页,交还控制权给调用方的 TAB 流转。
+    def _read_all_relics(self) -> list[dict]:
+        """在替换页内用顶部部位 TAB 逐部位读词条。
+
+        入口:着装页逐个点遗器位直到进入替换页(全失败 = 6 部位均未佩戴)。
+        部位 TAB 切换后验证词条区部位名,失败重试(切 TAB 动画未完成时点击会落空,实测)。
+        读不到遗器名 = 该部位未佩戴,记录 equipped=False。
+        读完点「按钮-返回」回着装页;返回后画面漂移(误触关闭 X)则报错交由调用方恢复。
         """
         relics: list[dict] = []
-        # 确认已到遗器页:切 TAB 点击成功不代表动画完成,未完成时后续部位 TAB 全线 NOT_FOUND(实测)
+        # 确认已到遗器页:切 TAB 点击成功不代表动画完成,未完成时后续点击全线落空(实测)
         for _ in range(2):
             cur = get_match_screen_name(self.ctx, self.screenshot())
             if cur == '角色-遗器':
@@ -362,26 +378,45 @@ class AccountProfileApp(SrApplication):
             time.sleep(1.5)
         else:
             raise RuntimeError('遗器 TAB 切换后未进入遗器页')
-        parts = ['头部', '手部', '躯干', '腿部', '位面球', '连结绳']
-        for idx, part in enumerate(parts):
-            if idx == 0:
-                # 进替换页:着装页点头部遗器位
-                rect = self._area_rect('角色-遗器', '遗器位-头部')
-                if rect is None:
-                    log.warning('[账号档案] 遗器位-头部 area 缺失')
-                    break
-                self.ctx.controller.click(
-                    Point((rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2), press_time=0.1)
-                time.sleep(2)
-            else:
-                click_result = find_and_click_area(
-                    self.ctx, self.screenshot(), '遗器-替换', f'部位TAB-{part}')
-                if click_result != OcrClickResultEnum.OCR_CLICK_SUCCESS:
-                    log.warning(f'[账号档案] 部位 TAB 切换失败: {part} reason={click_result}')
-                    relics.append({'slot_hint': part, 'name': None})
-                    continue
-                time.sleep(1.5)
-            relics.append(self._read_relic_detail(f'遗器位-{part}'))
+
+        # 找一个能进入替换页的遗器位(全部失败 = 全部位未佩戴)
+        entered_part: str | None = None
+        for _, display, equip_area in self._PARTS:
+            rect = self._area_rect('角色-遗器', equip_area)
+            if rect is None:
+                continue
+            self.ctx.controller.click(
+                Point((rect[0] + rect[2]) // 2, (rect[1] + rect[3]) // 2), press_time=0.1)
+            time.sleep(2)
+            if get_match_screen_name(self.ctx, self.screenshot()) == '遗器-替换':
+                entered_part = display
+                break
+        if entered_part is None:
+            log.warning('[账号档案] 所有遗器位点击均未进入替换页,按全部位未佩戴记录')
+            return [
+                {'slot_hint': display, 'equipped': False, 'name': None}
+                for _, display, _ in self._PARTS
+            ]
+
+        for tab_name, display, _ in self._PARTS:
+            if display != entered_part:
+                switched = False
+                for _ in range(3):
+                    # 部位 TAB 位置固定,直按建档坐标点击(OCR 匹配点击偶发 NOT_FOUND 不稳定)
+                    self.ctx.controller.click(
+                        self._area_point('遗器-替换', f'部位TAB-{tab_name}'), press_time=0.1)
+                    time.sleep(1.5)
+                    part_text = self._read_area_text(
+                        '遗器-替换', '读区-部位等级', self.screenshot())
+                    if display in (part_text or ''):
+                        switched = True
+                        break
+                if not switched:
+                    # 3 次重试全失败 = 页面已不在替换页(状态异常),继续只会产空数据,
+                    # 报错交由调用方恢复画面、本角色遗器留待下轮补扫
+                    raise RuntimeError(f'部位 TAB 切换失败: {tab_name}')
+            relics.append(self._read_relic_detail(f'遗器位-{tab_name}', display))
+
         # 返回着装页:「按钮-返回」(1861,67) 与详情页关闭 X 几乎重合——若页面状态已错位,
         # 这一击会关闭整个角色页(实机复现),必须点击后验证画面,漂移则报错交由调用方恢复
         find_and_click_area(self.ctx, self.screenshot(), '遗器-替换', '按钮-返回')
@@ -392,24 +427,24 @@ class AccountProfileApp(SrApplication):
             raise RuntimeError(f'遗器替换页返回后画面漂移: {cur}')
         return relics
 
-    def _read_relic_detail(self, slot_area: str) -> dict:
-        """当前在遗器替换页,读右侧词条面板。"""
+    def _read_relic_detail(self, slot_area: str, display: str = '') -> dict:
+        """当前在遗器替换页,读右侧词条面板;读不到遗器名 = 该部位未佩戴。"""
         screen = self.screenshot()
-        main_raw = self._read_area_text('遗器-替换', '读区-主词条', screen)
-        subs_raw = [
-            s for s in ocr_rect_texts(
-                self.ctx.ocr.ocr, screen, self._area_rect('遗器-替换', '读区-副词条'),
-            ) if s
-        ]
+        t = self._read_areas_text('遗器-替换', screen, [
+            '读区-遗器名', '读区-部位等级', '读区-主词条', '读区-副词条', '读区-套装效果'])
+        name = ' '.join(t['读区-遗器名']).strip() if t['读区-遗器名'] else ''
+        if not name:
+            return {'slot_hint': slot_area, 'equipped': False, 'name': None}
+        main_raw = ' '.join(t['读区-主词条']).strip()
+        subs_raw = t['读区-副词条']
         return {
             'slot_hint': slot_area,
-            'name': self._read_area_text('遗器-替换', '读区-遗器名', screen),
+            'equipped': True,
+            'name': name,
             'level': self._read_area_text('遗器-替换', '读区-部位等级', screen),
             'main': main_raw,
             'subs': subs_raw,
-            'set': ' '.join(ocr_rect_texts(
-                self.ctx.ocr.ocr, screen, self._area_rect('遗器-替换', '读区-套装效果'),
-            )),
+            'set': ' '.join(t['读区-套装效果']),
         }
 
     def _switch_tab(self, target_screen: str) -> bool:
@@ -420,10 +455,13 @@ class AccountProfileApp(SrApplication):
         area_name = f'TAB-{target_screen.split("-")[1]}'
         # TAB 栏常驻详情页所有子页,统一用「角色-详情」屏的建档;
         # 各子屏 yml 缺自身 TAB(不存在"切到自己"的导航),按目标屏查会 AREA_NO_CONFIG
-        click_result = find_and_click_area(self.ctx, self.screenshot(), '角色-详情', area_name)
-        if click_result != OcrClickResultEnum.OCR_CLICK_SUCCESS:
-            log.warning(f'[账号档案] TAB 点击失败: {target_screen} reason={click_result}')
+        # 点击前稳定:上一页动画未走完或光标乱动都会让 TAB 点击落空(实测)
+        area = self._area_rect('角色-详情', area_name)
+        if area is None:
+            log.warning(f'[账号档案] TAB area 缺失: {area_name}')
             return False
+        time.sleep(0.5)
+        self._click_point(Point((area[0] + area[2]) // 2, (area[1] + area[3]) // 2))
         time.sleep(1.2)
         checked = is_target_screen(self.ctx, self.screenshot(), screen_name=target_screen)
         if not checked:
@@ -448,6 +486,28 @@ class AccountProfileApp(SrApplication):
             return normalize_cn_name(seg)
         return None
 
+    def _read_areas_text(self, screen_name: str, screen: MatLike, area_names: list[str]) -> dict[str, list[str]]:
+        """同屏多读区共用一次整页 OCR,按文本框中心归属读区,返回 {读区名: [文本片段]}。
+
+        逐读区裁剪 OCR 每调用 ~0.5s,同屏重复调用是纯浪费;整页一次后按 rect 归属。
+        读区重叠时文本归第一个命中的读区。"""
+        regions: dict[str, tuple[int, int, int, int]] = {}
+        for name in area_names:
+            rect = self._area_rect(screen_name, name)
+            if rect is not None:
+                regions[name] = rect
+        out: dict[str, list[str]] = {name: [] for name in regions}
+        for r in self.ctx.ocr.ocr(screen):
+            rcx = int(r.x) + int(r.w) // 2
+            rcy = int(r.y) + int(r.h) // 2
+            for name, (x0, y0, x1, y1) in regions.items():
+                if x0 <= rcx <= x1 and y0 <= rcy <= y1:
+                    text = str(r.data or '').strip()
+                    if text:
+                        out[name].append(text)
+                    break
+        return out
+
     def _read_area_text(self, screen_name: str, area_name: str, screen: MatLike) -> str:
         """按 screen_info 读区裁剪 OCR,拼接文本;读区不存在或无文本返回空串。"""
         rect = self._area_rect(screen_name, area_name)
@@ -455,6 +515,12 @@ class AccountProfileApp(SrApplication):
             return ''
         texts = ocr_rect_texts(self.ctx.ocr.ocr, screen, rect)
         return ' '.join(texts).strip()
+
+    def _click_point(self, pt: Point, settle: float = 0.15) -> None:
+        """稳定点击:先把光标移到目标停 settle 再按(截图逻辑会挪光标,紧接点击会被游戏丢掉)。"""
+        self.ctx.controller.mouse_move(pt)
+        time.sleep(settle)
+        self.ctx.controller.click(pt, press_time=0.1)
 
     def _area_point(self, screen_name: str, area_name: str) -> Point:
         """取 area pc_rect 中心点(头像条槽位等固定点击位;坐标单一真相源在 screen_info)。"""
