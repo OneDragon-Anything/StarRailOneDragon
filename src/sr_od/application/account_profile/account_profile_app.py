@@ -73,8 +73,12 @@ class AccountProfileApp(SrApplication):
         self._bottom_rounds: int = 0  # 滑块到底后的连续空转轮数(到底判定)
         self._done_names: set[str] = set()  # 本次运行已归档角色名(full 模式跨轮回去重,重叠行快速跳过)
         self._known_by_pos: dict[tuple[int, int], str] = {}  # 格子位置→角色名缓存(跨轮保留)
-        # 跨运行去重:启动时读已有产物作已扫基础,本运行只扫增量(减少重复点击)
-        self.profiles: dict[str, dict] = self._load_existing_profiles()
+        # 产物基础:incremental=读旧档作增量底表;full=本轮画面实扫到的角色为唯一真相,
+        # 不掺旧档(旧档可能是错位时代的脏数据,混入会永久化缺陷)——落在磁盘上的旧档
+        # 会被首轮 _save_output 整体覆盖
+        self.profiles: dict[str, dict] = (
+            {} if self._config.scan_mode == ScanModeEnum.FULL.value else self._load_existing_profiles()
+        )
 
     def _load_existing_profiles(self) -> dict[str, dict]:
         """读取上次扫描产物作已扫基础(点号变体在此合并,首见保留)。
@@ -236,8 +240,12 @@ class AccountProfileApp(SrApplication):
         return self._sidebar_visible(self.screenshot()) == open_it
 
     def _frame_gray(self) -> MatLike:
-        """当前画面灰度帧(拖拽前后帧差验证用)。"""
-        return cv2.cvtColor(self.screenshot(), cv2.COLOR_RGB2GRAY)
+        """当前画面灰度帧,只取列表区域(x<600)。
+
+        右侧详情区是持续动画的角色立绘,整帧帧差恒大于阈值,到底判定会永假;
+        列表区域静止时只有粒子光效噪声(2-5),拖动时格子在动,可分。"""
+        frame = cv2.cvtColor(self.screenshot(), cv2.COLOR_RGB2GRAY)
+        return frame[:, :600]
 
     def _locate_thumb(self) -> int | None:
         """实测滚动条滑块中心 y(轨道亮色段);找不到返回 None。
