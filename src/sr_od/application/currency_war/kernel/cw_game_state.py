@@ -1525,7 +1525,8 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
     写端 = gs.xp 推进对 + gs.level 跨级直写(write_logic,produced_by
     ='EffectLedgerBridge:成功经验',与 grant_effect_node_refresh_balance
     同 produced_by 词根),满级门 = 算子自带(level >= MAX_PLAYER_LEVEL
-    零推进,语义与 xp_apply_clicks 封顶支等价)。
+    零推进,语义与 xp_apply_clicks 封顶支等价;**算子返回零变化 → 跳写**,
+    写端零行、level/xp 值不变——发放事件照跑留证,世界值域零扰动)。
 
     - level/xp 任一未观察(None)→ 零动作(与买经验上报同款 None 门:
       无基座不虚构推进对);
@@ -1544,6 +1545,8 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
     if lv_v is None or xp_v is None:
         return
     new_lvl, cur = xp_apply_amount(int(lv_v), int(xp_v[0]), int(amount))
+    if new_lvl == int(lv_v) and cur == int(xp_v[0]):
+        return   # 算子零变化(满级封顶支)→ 跳写:level/xp 值不变,零写行
     pd = 'EffectLedgerBridge:成功经验'
     gs.write_logic(gs.xp, (cur, XP_TO_NEXT_LEVEL.get(new_lvl, cur)),
                    produced_by=pd, evidence=evidence, sig=sig)
