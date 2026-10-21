@@ -50,6 +50,8 @@ TOP_STABLE_DIFF: float = 8.0
 SAME_SCREEN_TO_STOP: int = 3
 # 点格身份确认重试次数:点击落空/读名失败都重试;超限后按最后一次实测名归档(见 _scan_one_character)
 CELL_CONFIRM_ATTEMPTS: int = 3
+# 到底判定:滑块已到轨道底之后再空转 N 轮(每轮全屏重扫)确认无新格,才收尾落盘
+BOTTOM_CONFIRM_ROUNDS: int = 2
 
 
 
@@ -62,8 +64,9 @@ class AccountProfileApp(SrApplication):
         self._matcher: AvatarMatcher | None = None
         self._config = AccountProfileConfig(ctx.current_instance_idx)
         self._thumb_y: int = 250  # 滚动条滑块中心 y;滚顶后重置
-        self._prev_cell_keys: set[tuple[int, int]] = set()  # 上一屏格子集合(到底判定)
-        self._same_screen_count: int = 0  # 连续格子集合不变的屏数(到底判定)
+        self._scrolled_to_top: bool = False  # 滚顶节点重入闸:retry 轮经 node_from 重入时跳过重复拖拽
+        self._bottom_rounds: int = 0  # 滑块到底后的连续空转轮数(到底判定)
+        self._done_names: set[str] = set()  # 本次运行已归档角色名(full 模式跨轮回去重,重叠行快速跳过)
         self._known_by_pos: dict[tuple[int, int], str] = {}  # 格子位置→角色名缓存(跨轮保留)
         # 跨运行去重:启动时读已有产物作已扫基础,本运行只扫增量(减少重复点击)
         self.profiles: dict[str, dict] = self._load_existing_profiles()
@@ -121,12 +124,17 @@ class AccountProfileApp(SrApplication):
     @operation_node(name='滚回列表顶部')
     def scroll_to_top(self) -> OperationRoundResult:
         """向上拖动直到画面不再变化(相邻两帧平均差低于阈值即到顶)。"""
+        # 重入闸:round_retry 会经 node_from 重入本节点;滚顶只在首次进列表时做一次,
+        # 之后每轮的向下滚动全权归 scan_loop 的 _scroll_down,否则每轮被拖回顶部永不推进
+        if self._scrolled_to_top:
+            return self.round_success(wait=1)
         # 滚顶:滑块拖到轨道顶,一次到位(实测可靠;列表到顶后滑块停在顶部,无手势风险)
         self.ctx.controller.mouse_move(Point(575, 820))
         time.sleep(0.2)
         self.ctx.controller.drag_to(
             start=Point(575, 820), end=Point(575, 130), duration=1.5, hold_time=0.0)
         self._thumb_y = 250
+        self._scrolled_to_top = True
         time.sleep(2)
         return self.round_success(wait=1)
 
@@ -134,12 +142,13 @@ class AccountProfileApp(SrApplication):
     @node_from(from_name='滚回列表顶部')
     @operation_node(name='逐角色扫描养成数据')
     def scan_loop(self) -> OperationRoundResult:
-        """侧栏格子遍历:每轮处理当前屏格子,retry 驱动推进,滚动条滑块下拖一屏。
+        """侧栏格子遍历:每轮处理当前屏格子后滑块下拖一屏,retry 驱动推进。
 
-        处理范围由配置 scan_mode 决定:full=全部识别格重读(覆盖旧档案);
+        处理范围由配置 scan_mode 决定:full=全部识别格重读(覆盖旧档案,已归档名跳过);
         incremental=只读档案里没有的角色(已扫格无点击跳过)。
-        到底判定:连续 SAME_SCREEN_TO_STOP 屏格子集合不变(列表已到尽头),
-        与存档有无无关,正常完成收尾。
+        到底判定:滑块已到轨道底(_scroll_down 返回 False)后再空转 BOTTOM_CONFIRM_ROUNDS 轮
+        确认无新格,才收尾落盘。旧版用格子集合不变判定,OCR 抖动会让集合逐轮漂移、
+        计数反复清零永不收尾(2026-10-22 首跑实证循环打转 1 小时);滑块状态是确定性的。
         """
         if self._matcher is None:
             self._matcher = AvatarMatcher()
@@ -158,20 +167,18 @@ class AccountProfileApp(SrApplication):
                     continue
             self._scan_one_character(cell, cell['cn'] or '未知', mode_full)
 
-        # 到底判定:格子集合连续多屏不变 = 列表尽头(与存档无关)
-        cell_keys = {c['abs_key'] for c in cells}
-        if cell_keys == self._prev_cell_keys:
-            self._same_screen_count += 1
-        else:
-            self._same_screen_count = 0
-        self._prev_cell_keys = cell_keys
-        if self._same_screen_count >= SAME_SCREEN_TO_STOP:
+        moved = self._scroll_down()
+        if moved:
+            self._bottom_rounds = 0
+            return self.round_retry(
+                f'累计 {len(self.profiles)} 角色,继续滚动', wait=1)
+        self._bottom_rounds += 1
+        if self._bottom_rounds >= BOTTOM_CONFIRM_ROUNDS:
             self._save_output()
             return self.round_success(
                 f'列表遍历完成,共 {len(self.profiles)} 个角色', wait=1)
-
         return self.round_retry(
-            f'累计 {len(self.profiles)} 角色,继续滚动', wait=1)
+            f'滑块已到底,复核第 {self._bottom_rounds}/{BOTTOM_CONFIRM_ROUNDS} 轮', wait=1)
 
     @node_from(from_name='逐角色扫描养成数据')
     @operation_node(name='关闭角色页回到大世界')
@@ -214,23 +221,24 @@ class AccountProfileApp(SrApplication):
             time.sleep(1.8)
         return self._sidebar_visible(self.screenshot()) == open_it
 
-    def _scroll_down(self) -> None:
-        """侧栏向下滚一屏:按住滑块下拖 80px(≈列表 2 行)。
+    def _scroll_down(self) -> bool:
+        """侧栏向下滚一屏:按住滑块下拖 80px(≈列表 2 行)。返回是否真的拖动了。
 
         滑块位置跟踪(_thumb_y):滚顶后重置顶部;拖拽按在滑块上才是列表滚动,
-        按格子/行间隙/轨道空白均无效(全部实测淘汰)。滑块到底后拖拽画面不动,
-        由 scan_loop 的格子集合对比判定到底。
+        按格子/行间隙/轨道空白均无效(全部实测淘汰)。返回 False = 滑块已在轨道底,
+        列表不再前进,由 scan_loop 据此累计到底轮数。
         """
         target_y = min(self._thumb_y + 80, 820)  # 80px≈2 行,步进更细漏格概率更低
         if target_y - self._thumb_y < 20:
             time.sleep(SCROLL_SETTLE_SEC)
-            return
+            return False
         self.ctx.controller.mouse_move(Point(575, self._thumb_y))
         time.sleep(0.2)
         self.ctx.controller.drag_to(
             start=Point(575, self._thumb_y), end=Point(575, target_y), duration=1.0, hold_time=0.0)
         self._thumb_y = target_y
         time.sleep(SCROLL_SETTLE_SEC)
+        return True
 
     def _scan_one_character(self, cell: dict, name_hint: str, mode_full: bool = False) -> None:
         """单角色完整流程:点格切角色 → 关侧栏 → 读名验证 → 读全档案 → 开侧栏。
@@ -277,11 +285,13 @@ class AccountProfileApp(SrApplication):
             return
         if expected is not None and name not in expected_set:
             log.warning(f'[账号档案] 格子 SIFT 预期 {name_hint} 实测 {name},按实测名归档')
-        if not mode_full and name in self.profiles:
+        if name in self._done_names or (not mode_full and name in self.profiles):
+            # full:本轮运行已归档过(相邻屏重叠行)快速跳过;incremental:旧档案已有即跳过
             self._set_sidebar(True)
             return
         try:
             self._scan_current_character(name)
+            self._done_names.add(name)
         except RuntimeError as e:
             # 画面漂移(遗器返回误触关闭等):恢复到详情页+侧栏,继续下一角色
             # 替换页可能不在 goto 路由图上,先点按钮-返回回着装页再 goto;仍失败回大世界重进
