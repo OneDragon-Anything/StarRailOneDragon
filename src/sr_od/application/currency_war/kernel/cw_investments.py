@@ -1555,6 +1555,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # type_tag 空,池 = 4 费全档;时点「开局」= 环境注册时点,与火药味
     # 「开局时获得」同口径(items_immediate 选卡即发)
     '人才引进': GiftGrant(chars_random_immediate=(RandomCharSpec(cost=4, star=1),)),
+    # 类型过滤随机支首例(id 136 效果原文「获得1个随机2星1费的输出角色」
+    # 直读,PlazaPortal('136'));星级 2 = 卡面明写非先验;「输出」=
+    # char_type 按 '、' 切分含标签即入池(多标签计入,用户裁定 2026-10-21,
+    # 池为注册表现值派生非固定名单);采样/先验披露随家族常量
+    # ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 携带;属性加成腿(「进入新节点
+    # 永久随机属性加成」)全腿不建模,披露键 env_char_buff_unmodeled
+    '战力提升': GiftGrant(chars_random_immediate=(
+        RandomCharSpec(cost=1, star=2, type_tag='输出'),)),
     # 随机装备支首例(id 118 效果原文「获得随机星徽」直读,
     # PlazaPortal('118');数量词缺省 = 1 件先验,披露键
     # ENV_STAR_GRANT_ASSUMPTION_KEYS 承载)。绑定腿:发放名以 done 条件键
@@ -1635,9 +1643,17 @@ ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #:   裁定 2026-10-15)——概率/时点/件数/池四维 desc 全无载(放弃纪律),
 #:   无登记字段可容;live 掉落真值归 equips 观察,sim 世界缺掉落物 = 申报
 #:   缺口(特权阶级不对称申报同型);首例 = 粗星佩佩(id 116)。
+#: - env_char_buff_unmodeled: 环境赠卡角色的「进入新节点永久随机属性加成」
+#:   腿不建模(用户裁定 2026-10-21)——属性集/数值/叠加规则 desc 全无载
+#:   (放弃纪律不实机查),sim 战斗纯随机面不消费战力、GameState 无属性域
+#:   (消费面零),无已建档识别面(观察面零);「每节点层数计数器」=
+#:   预建机制无驱动(命运礼物开盒内容同案判例),不建;真值实采后按
+#:   ENV_BOSS_GRANTS 周期触发器骨架起建零迁移(设计 = T-36 设计稿 §2.5
+#:   预留指针);首例 = 战力提升(id 136)。
 ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_worn_badges_unmodeled',
     'env_gift_badge_drop_unmodeled',
+    'env_char_buff_unmodeled',
 )
 
 #: 随机星徽授予家族(劳务派遣合同,腿1 星徽 + 腿2 首领节点角色)的
