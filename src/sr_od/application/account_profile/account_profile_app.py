@@ -13,6 +13,7 @@ import json
 import time
 from pathlib import Path
 
+import cv2
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
@@ -46,12 +47,16 @@ OUTPUT_PATH: Path = Path('config') / 'idx' / 'account_profile_scan.json'
 SCROLL_SETTLE_SEC: float = 1.5
 # 列表静止时背景粒子光效仍有 2-5 的帧间差异,滚动时差异远高于此,取 8 分开两态。
 TOP_STABLE_DIFF: float = 8.0
-# 到底判定:连续 N 屏格子集合不变即认为已到列表底部(与存档有无无关,滚动失效由 _scroll_down 内部重试兜底)
-SAME_SCREEN_TO_STOP: int = 3
+# 滚动条滑块轨道 x 中心与判定带(亮色滑块段),用于实测滑块真实位置
+SCROLL_TRACK_X: int = 575
+THUMB_DETECT_HALF_W: int = 10
+THUMB_BRIGHT_MIN: int = 120
 # 点格身份确认重试次数:点击落空/读名失败都重试;超限后按最后一次实测名归档(见 _scan_one_character)
 CELL_CONFIRM_ATTEMPTS: int = 3
 # 到底判定:滑块已到轨道底之后再空转 N 轮(每轮全屏重扫)确认无新格,才收尾落盘
 BOTTOM_CONFIRM_ROUNDS: int = 2
+# 每轮滚动步长(≈4 行,一屏 5 行留 1 行重叠防漏格);配合已归档名去重,重叠行快速跳过
+SCROLL_STEP_PX: int = 160
 
 
 
@@ -123,19 +128,25 @@ class AccountProfileApp(SrApplication):
     @node_from(from_name='打开角色列表侧栏')
     @operation_node(name='滚回列表顶部')
     def scroll_to_top(self) -> OperationRoundResult:
-        """向上拖动直到画面不再变化(相邻两帧平均差低于阈值即到顶)。"""
+        """滚回列表顶部:实测滑块位置拖到轨道顶,帧差收敛(画面不动)即认定到顶。"""
         # 重入闸:round_retry 会经 node_from 重入本节点;滚顶只在首次进列表时做一次,
         # 之后每轮的向下滚动全权归 scan_loop 的 _scroll_down,否则每轮被拖回顶部永不推进
         if self._scrolled_to_top:
             return self.round_success(wait=1)
-        # 滚顶:滑块拖到轨道顶,一次到位(实测可靠;列表到顶后滑块停在顶部,无手势风险)
-        self.ctx.controller.mouse_move(Point(575, 820))
-        time.sleep(0.2)
-        self.ctx.controller.drag_to(
-            start=Point(575, 820), end=Point(575, 130), duration=1.5, hold_time=0.0)
-        self._thumb_y = 250
+        # 拖拽可能被吞:实测-拖拽-帧差验证循环,画面不动(≤粒子噪声)即已到顶
+        for _ in range(3):
+            real = self._locate_thumb() or 820
+            pre = self._frame_gray()
+            self.ctx.controller.mouse_move(Point(SCROLL_TRACK_X, real))
+            time.sleep(0.2)
+            self.ctx.controller.drag_to(
+                start=Point(SCROLL_TRACK_X, real), end=Point(SCROLL_TRACK_X, 130),
+                duration=1.5, hold_time=0.0)
+            self._thumb_y = 250
+            time.sleep(2)
+            if float(cv2.absdiff(pre, self._frame_gray()).mean()) <= TOP_STABLE_DIFF:
+                break
         self._scrolled_to_top = True
-        time.sleep(2)
         return self.round_success(wait=1)
 
 
@@ -166,6 +177,9 @@ class AccountProfileApp(SrApplication):
                 if cell['miss'] and known_cn is not None and known_cn in self.profiles:
                     continue
             self._scan_one_character(cell, cell['cn'] or '未知', mode_full)
+
+        # 每轮落盘:运行被停(超时保险/手动)也不丢已扫数据
+        self._save_output()
 
         moved = self._scroll_down()
         if moved:
@@ -221,24 +235,54 @@ class AccountProfileApp(SrApplication):
             time.sleep(1.8)
         return self._sidebar_visible(self.screenshot()) == open_it
 
-    def _scroll_down(self) -> bool:
-        """侧栏向下滚一屏:按住滑块下拖 80px(≈列表 2 行)。返回是否真的拖动了。
+    def _frame_gray(self) -> MatLike:
+        """当前画面灰度帧(拖拽前后帧差验证用)。"""
+        return cv2.cvtColor(self.screenshot(), cv2.COLOR_RGB2GRAY)
 
-        滑块位置跟踪(_thumb_y):滚顶后重置顶部;拖拽按在滑块上才是列表滚动,
-        按格子/行间隙/轨道空白均无效(全部实测淘汰)。返回 False = 滑块已在轨道底,
-        列表不再前进,由 scan_loop 据此累计到底轮数。
+    def _locate_thumb(self) -> int | None:
+        """实测滚动条滑块中心 y(轨道亮色段);找不到返回 None。
+
+        滑块是轨道上的亮色段,跟踪值 _thumb_y 与真实位置可能脱节(拖拽被游戏吞掉时),
+        此时以实测为准重拖。
         """
-        target_y = min(self._thumb_y + 80, 820)  # 80px≈2 行,步进更细漏格概率更低
-        if target_y - self._thumb_y < 20:
-            time.sleep(SCROLL_SETTLE_SEC)
-            return False
-        self.ctx.controller.mouse_move(Point(575, self._thumb_y))
+        img = self._frame_gray()
+        band = img[110:950, SCROLL_TRACK_X - THUMB_DETECT_HALF_W:SCROLL_TRACK_X + THUMB_DETECT_HALF_W]
+        rows = band.mean(axis=1)
+        ys = [i + 110 for i, v in enumerate(rows) if v > THUMB_BRIGHT_MIN]
+        if len(ys) < 20:
+            return None
+        return (ys[0] + ys[-1]) // 2
+
+    def _drag_thumb(self, from_y: int) -> None:
+        """按住滑块从 from_y 下拖 SCROLL_STEP_PX(拖拽必须按在滑块上,实测按别处全被吞)。"""
+        target_y = min(from_y + SCROLL_STEP_PX, 820)
+        self.ctx.controller.mouse_move(Point(SCROLL_TRACK_X, from_y))
         time.sleep(0.2)
         self.ctx.controller.drag_to(
-            start=Point(575, self._thumb_y), end=Point(575, target_y), duration=1.0, hold_time=0.0)
-        self._thumb_y = target_y
+            start=Point(SCROLL_TRACK_X, from_y), end=Point(SCROLL_TRACK_X, target_y),
+            duration=1.0, hold_time=0.0)
+
+    def _scroll_down(self) -> bool:
+        """侧栏向下滚一步(SCROLL_STEP_PX)。返回列表是否真的前进了(帧差验证)。
+
+        拖拽被游戏吞掉时帧差≈0(粒子光效噪声 2-5,滚动远高于此,阈值 TOP_STABLE_DIFF
+        为该画面实测定标值),此时实测滑块真实位置重拖一次;仍不动 = 滑块已在轨道底。
+        """
+        pre = self._frame_gray()
+        self._drag_thumb(self._thumb_y)
         time.sleep(SCROLL_SETTLE_SEC)
-        return True
+        post = self._frame_gray()
+        if float(cv2.absdiff(pre, post).mean()) > TOP_STABLE_DIFF:
+            return True
+        real = self._locate_thumb()
+        if real is None:
+            return False
+        self._thumb_y = real
+        pre = post
+        self._drag_thumb(real)
+        time.sleep(SCROLL_SETTLE_SEC)
+        post2 = self._frame_gray()
+        return float(cv2.absdiff(pre, post2).mean()) > TOP_STABLE_DIFF
 
     def _scan_one_character(self, cell: dict, name_hint: str, mode_full: bool = False) -> None:
         """单角色完整流程:点格切角色 → 关侧栏 → 读名验证 → 读全档案 → 开侧栏。
