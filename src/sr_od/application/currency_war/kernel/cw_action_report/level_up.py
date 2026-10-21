@@ -16,6 +16,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     LogicOutcome,
     ShopActionExecuted,
+    _record_lv8_window_start,
     _validate_sig,
     level_of,
 )
@@ -41,6 +42,11 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     /偷最贵 3 张入席/剩余 2 张 = 商店新牌面;sim 采样即世界真值,实机
     端口未装 = no-op,世界后果归游戏引擎)。无商业间谍 = 零商店副作用
     (牌面不变;重开靠备战执行帧清标记通道,design §2.3 末条)。
+
+    **升级窗口达成位记录**(尾段,商业间谍回调块后):上报收敛即调
+    ``_record_lv8_window_start``(环境「成功经验」通道主挂点——买经验推 8
+    时记达成节点位,窗口发放归 kernel 发放桥 grant_effect_node_xp;未持
+    条目/未达标/生效位未锚定 = 零动作)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -95,5 +101,8 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
                 # 世界腿①-③声明(op 层喂入 sim 后端;实机 no-op)。
                 _spy_decl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                                       trigger='spy_shop_refresh')
+    # 升级窗口达成位记录(成功经验通道主挂点;内部自判条目在场 ∧ 未记录 ∧
+    # level_of >= 阈值,零旁路条件——全量零动作安全,见 _record_lv8_window_start)。
+    _record_lv8_window_start(gs)
     return LogicOutcome(applied=True, world_decl=_spy_decl)
 

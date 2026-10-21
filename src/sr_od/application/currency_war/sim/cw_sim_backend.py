@@ -70,6 +70,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     RoundStartIncome,
     round_start_income,
     world_shop_refresh_cost,
+    xp_apply_amount,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
@@ -90,6 +91,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     gain_invest_env,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    ENV_XP_WINDOW_DISCLOSURES,
     GAME_STATE_SCHEMA_VERSION,
     GameState,
     NodeKey,
@@ -336,29 +338,6 @@ NODE_XP_BY_TYPE: dict[str, int] = {
 
 #: U17 余项披露键(BOSS +12 构成/P3 低难度经验/改道类,候实机数据)。
 NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
-
-
-def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
-    """任意经验量推进 ``(level, xp_cur)``(升级结转与 ``xp_apply_clicks``
-    单一源同式:攒满门槛即升级、溢出结转;cap = ``MAX_PLAYER_LEVEL``,
-    满级零推进——lv10 分母未定,按 U18 口径不再累计)。
-
-    通用量版理由:节点基础经验含非单击倍数(+2/+12),无法折成
-    「购买经验击数」走既有算子。
-    """
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        MAX_PLAYER_LEVEL,
-    )
-    if amount <= 0 or level >= MAX_PLAYER_LEVEL:
-        return level, xp_cur
-    cur = xp_cur + amount
-    while level < MAX_PLAYER_LEVEL:
-        need = XP_TO_NEXT_LEVEL.get(level, 4)
-        if cur < need:
-            break
-        cur -= need
-        level += 1
-    return level, cur
 
 
 def apply_node_xp(gs: GameState, *, node_type: str) -> int:
@@ -837,6 +816,9 @@ _BASE_DISCLOSURES: dict[str, object] = {
     SHOP_TWO_STAR_DEAL_PLACEHOLDER: 'user_placeholder_pending_field_sampling',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
+    # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
+    # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
+    **ENV_XP_WINDOW_DISCLOSURES,
 }
 
 #: 单局驱动步上限(防流程死循环;正常局 < 2000 动作)。

@@ -151,6 +151,7 @@ class CounterKey:
     BUY = 'buy'           # 购买计数(返利系每 3 张 5 费)
     REFRESH_TOTAL = 'refresh_total'   # 刷新全量累计(免费+付费;二手市场阈值评估)
     REFRESH_PAID = 'refresh_paid'     # 付费刷新累计(长线利好「花费金币进行30次刷新」)
+    XP_GRANTED = 'xp_granted'   # 升级窗口已发放节点数(成功经验;写端唯一 = 发放桥 grant_effect_node_xp,窗口耗尽判定读本键)
 
 
 # ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====
@@ -193,6 +194,16 @@ class ActiveEffect:
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
                                  # 挂点(tick_node)现读递减
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);挂点现读递减
+    anchor_pos: tuple[int, int] | None = None
+    # 条件窗口达成位伴生锚(成功经验「升到8级后,进入接下来3个节点」首例;
+    # 首例 = T-38 设计稿 §2.5,载体辨析正本):坐标系 = (位面,轮) 节点序位
+    # 元组(cw_node_schedule.NodePos 同形,与 acquired_key 同键);写入端唯一
+    # = 伴生锚方法 :meth:`ActiveEffectInventory.set_xp_window_anchor`(发放桥
+    # grant_effect_node_xp / 主挂点 _record_lv8_window_start 经它写,零旁路直改
+    # ——effect-domain.md「写端全部经 inventory 方法」纪律);一次性语义:
+    # 已设置拒绝重写(达成位单调不可改);None = 未达成/未记录。窗口剩余 =
+    # payload 窗口节点数 − counters[CounterKey.XP_GRANTED],计算侧导出,
+    # 禁另播「剩余」存储键(单调计数器模型,effect-domain.md §3)。
     counters: dict[str, int] = field(default_factory=dict)   # CounterKey 键 → 计数
 
 
@@ -447,8 +458,30 @@ class ActiveEffectInventory:
     def event_count(self, kind: str) -> int:
         return self._events.get(kind, 0)
 
+    def set_xp_window_anchor(self, spec_id: str,
+                             pos: tuple[int, int]) -> bool:
+        """条件窗口达成位伴生锚写入(一次性:已设置拒绝重写;载体申报 =
+        ``ActiveEffect.anchor_pos`` 字段注)。
+
+        条目在场且 anchor_pos 为 None → 写入返回 True;条目不在场或已设置
+        → 零动作返回 False(达成位单调不可改,重复检测/重复上报天然幂等)。
+        写端 = 发放桥 grant_effect_node_xp 兜底检测 + 主挂点
+        _record_lv8_window_start(购买经验上报尾段),两端同经本方法,
+        零旁路直改。
+        """
+        e = self.first(spec_id)
+        if e is None or e.anchor_pos is not None:
+            return False
+        e.anchor_pos = pos
+        return True
+
     def bump(self, spec_id: str, key: str, n: int = 1) -> None:
-        """计数器自增(按 (spec_id, key) 定点;测试/定向修正用)。"""
+        """计数器自增(按 (spec_id, key) 定点;测试/定向修正用)。
+
+        生产挂点按键定位:REFRESH/BUY = 动作上报链(on_buy/record_refresh),
+        XP_GRANTED = 升级窗口发放桥 grant_effect_node_xp(每发放一节点 +1,
+        窗口耗尽判定与剩余导出的计数源,cw_game_state 发放桥区)。
+        """
         e = self.first(spec_id)
         if e is not None:
             e.counters[key] = e.counters.get(key, 0) + n
@@ -587,16 +620,19 @@ def env_portal_effects() -> dict[str, EffectSpec]:
             payload=ENV_ECONOMY['蓝海'],
             notes='选卡当场 +6 金(一次性;随机环境期望不计)'),
         # 升 8 级后 3 节点 +12XP/节点(id 138):条件窗口型 → CONDITIONAL
-        # (成长基金到级同族先例)。**不设 N_NODES 余期播种**:登记时点
+        # (成长基金到级同族先例)。**不走 N_NODES 余期通道**:登记时点
         #(开局选环境)≠条件达成时点(lv8),余期从登记起递减会提前耗尽——
-        # 期限语义(条件达成后 3 节点)归后续消费批排程,本登记端可见性优先,
-        # duration=PERMANENT 保占位不丢。
+        # 窗口状态 = 条目 anchor_pos 达成锚 + XP_GRANTED 单调计数(载体与
+        # 发放单一源 = kernel/cw_game_state 发放桥 grant_effect_node_xp),
+        # duration=PERMANENT 保占位(环境 = 选定后整局在场)。
         '成功经验': EffectSpec(
             id='138', name='成功经验', trigger=TriggerKind.CONDITIONAL,
             duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
             payload=ENV_ECONOMY['成功经验'],
-            notes='条件窗口:升8级后3节点每节点+12XP;期限不播种(登记时点≠条件达成时点,'
-                  '递减会提前耗尽,归消费批排程)'),
+            notes='条件窗口:升8级后3节点每节点+12XP;期限排程已落地(载体 = 本条目'
+                  'anchor_pos 达成锚 + XP_GRANTED 单调计数,剩余计算侧导出;发放 = '
+                  'kernel 发放桥 grant_effect_node_xp 节点边界每拍检查,达成当拍不计、'
+                  '后继 3 节点各计;主挂点 = 购买经验上报尾段记达成位)'),
         # 每取一张策略 +2×已持有数(id 147):触发面 = 每次取投资策略,TriggerKind
         # 无 ON_PICK 值 → 占 CONDITIONAL + notes 声明(禁私加枚举值——触发词表
         # 扩值须同步挂点面评审,登记端零消费不构成扩值依据)。

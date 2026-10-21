@@ -80,6 +80,29 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
     return level, cur
 
 
+def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
+    """任意经验量推进 ``(level, xp_cur)``(升级结转与 ``xp_apply_clicks``
+    单一源同式:攒满门槛即升级、溢出结转;cap = ``MAX_PLAYER_LEVEL``,
+    满级零推进——lv10 分母未定,按 U18 口径不再累计)。
+
+    通用量版理由:节点基础经验含非单击倍数(+2/+12),无法折成
+    「购买经验击数」走既有算子。
+    消费方清单:节点基础经验入账 ``apply_node_xp``(sim/cw_sim_backend)
+    + 白送经验发放原语 ``grant_xp``(kernel/cw_game_state,环境 XP
+    窗口通道;两消费方经本单一实现共享升级结转式,禁第二份)。
+    """
+    if amount <= 0 or level >= MAX_PLAYER_LEVEL:
+        return level, xp_cur
+    cur = xp_cur + amount
+    while level < MAX_PLAYER_LEVEL:
+        need = XP_TO_NEXT_LEVEL.get(level, 4)
+        if cur < need:
+            break
+        cur -= need
+        level += 1
+    return level, cur
+
+
 def xp_clicks_to_level(level: int, xp_cur: int,
                        xp_per_buy: int = XP_PER_BUY) -> int:
     """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。

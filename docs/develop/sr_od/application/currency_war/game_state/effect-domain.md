@@ -214,7 +214,14 @@
   `apply_effect_burst_grant`(选卡时点一次性批量授予)/
   `grant_effect_node_refresh_balance`(每节点余额累加,闸门 = 推进有效位;两桥出口 = `grant_free_refreshes`,余额住账本——2026-09-18 迁入裁决;**条件判定
   族已同桥 wire**——按金现值逐条目评估:金 > 阈值每额外步长金 +1 次、至多封顶,金未读
-  None 保守零授予)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(以实际观察为准))/`apply_board_rewrite`
+  None 保守零授予)/`grant_effect_node_xp`(升级窗口发放,闸门 = 推进有效位:
+  对 payload 带 `xp_after_level` 的在册条目,达成锚未记录 → 达成检测记位
+  (`ActiveEffect.anchor_pos`,伴生锚方法一次性写入;当拍不发放)、有锚且当前生效位
+  > 达成位(元组字典序)且剩余 > 0 → `grant_xp` 每节点 +XP×1 并
+  `bump(CounterKey.XP_GRANTED)` 单调 +1,剩余 = 窗口节点数 − 已发放计算侧导出;
+  耗尽条目留置不删。达成位记录主挂点 = 购买经验上报尾段
+  `_record_lv8_window_start`(精确对齐),桥内检测 = 兜底(晚一拍保守);
+  首例 = 成功经验 id 138,披露键族 `ENV_XP_WINDOW_DISCLOSURES`)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(以实际观察为准))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
 - **条件族采样金窗**:`grant_effect_node_refresh_balance` 的条件判定族(本金充裕
   系)按效果推进段执行时点的 `gs.gold` 现值评估——推进挂节点边界终结动作上报

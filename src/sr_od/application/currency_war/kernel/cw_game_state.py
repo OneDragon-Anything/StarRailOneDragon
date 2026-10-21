@@ -120,6 +120,7 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
+    CounterKey,
 )
 from sr_od.application.currency_war.kernel.cw_encounter_selection import (
     EncounterLog,
@@ -1513,6 +1514,134 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
                    if srcs else 'EffectLedgerBridge',
                    evidence=f'effect_node@{frame}' if frame else 'effect_node',
                    sig=_bridge_sig(gs))
+
+
+def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
+             evidence: str) -> None:
+    """白送经验发放原语(环境 XP 窗口通道首例;与购买经验上报同构的
+    推进对直写,amount 非正零动作):
+    推进算子 = xp_apply_amount(cw_economy 单一源,函数内 import——cw_economy
+    模块头反向 import 本模块读口,模块级 import 成环,惰性纪律同文末诸桥);
+    写端 = gs.xp 推进对 + gs.level 跨级直写(write_logic,produced_by
+    ='EffectLedgerBridge:成功经验',与 grant_effect_node_refresh_balance
+    同 produced_by 词根),满级门 = 算子自带(level >= MAX_PLAYER_LEVEL
+    零推进,语义与 xp_apply_clicks 封顶支等价)。
+
+    - level/xp 任一未观察(None)→ 零动作(与买经验上报同款 None 门:
+      无基座不虚构推进对);
+    - 不做 gold/streak 联动(「经验就是财富」改道未建模,披露键
+      env_xp_window_xp_to_gold_pending;改道落地批的单点改道位 = 本函数);
+    - 消费方 = 发放桥 grant_effect_node_xp(唯一挂点,原语不自带挂点)。
+    """
+    if amount <= 0:
+        return
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_TO_NEXT_LEVEL,
+        xp_apply_amount,
+    )
+    lv_v = gs.level.value
+    xp_v = gs.xp.value
+    if lv_v is None or xp_v is None:
+        return
+    new_lvl, cur = xp_apply_amount(int(lv_v), int(xp_v[0]), int(amount))
+    pd = 'EffectLedgerBridge:成功经验'
+    gs.write_logic(gs.xp, (cur, XP_TO_NEXT_LEVEL.get(new_lvl, cur)),
+                   produced_by=pd, evidence=evidence, sig=sig)
+    if new_lvl != int(lv_v):
+        gs.write_logic(gs.level, new_lvl, produced_by=pd,
+                       evidence=evidence, sig=sig)
+
+
+def _record_lv8_window_start(gs: GameState) -> None:
+    """升级窗口达成位记录(主挂点 = 购买经验上报尾段,兜底 = 发放桥
+    grant_effect_node_xp 每拍复检;本函数 = 两端共用的检测体)。表驱动
+    遍历 payload 带 xp_after_level 的在册条目,零卡名硬编码——与 refresh
+    桥 payload 鸭子属性读同形,现值唯一命中 = 成功经验,后继同字段卡
+    自动覆盖):
+    条目达成锚未记录(anchor_pos None)∧ level_of(gs) >= 阈值 ∧ 生效位
+    已锚定 → 经 inventory 伴生锚方法记达成位 = 当前生效位;**当拍不
+    发放**(「接下来 N 个节点」= 达成当拍的后继 N 节点,advance_node
+    登记当节点不推进守卫同口径)。剩余不播种(单调计数器模型,剩余 =
+    窗口节点数 − XP_GRANTED 计算侧导出)。主挂点必要性 = 时序对齐:
+    购买经验发生在节点 X 备战段,此处记 X → 窗口 = X+1/X+2/X+3 逐拍对齐
+    (只靠节点边界兜底会系统性晚一拍);等级从 ≥8 再买经验的迟到达
+    (漏记纠偏)同式补记,保守不早发。
+    生效位未锚定(None,开局未锚定窗)→ 不记录(留兜底与后续上报重试,
+    零写);等级未达 → 零动作;条目不在场(未选成功经验)→ 零动作。
+    """
+    effective = effective_node_pos(gs)
+    if effective is None:
+        return
+    level = level_of(gs)
+    for e in gs.effects.entries:
+        xp3 = getattr(e.spec.payload, 'xp_after_level', None)
+        if not xp3 or e.anchor_pos is not None:
+            continue
+        if level >= int(xp3[0]):
+            gs.effects.set_xp_window_anchor(e.spec.id, effective)
+
+
+def grant_effect_node_xp(gs: GameState, *, frame: str = '') -> None:
+    """桥·升级窗口发放形态(环境 XP 窗口通道;每节点边界一次,调用方
+    已由 advanced 位闸保证每节点恰一次——与 refresh 桥同闸):
+    对全部 payload 带 xp_after_level 的在册条目:
+    - 达成锚未记录 → 先走达成检测(_record_lv8_window_start:等级达标
+      即记达成位 = 当前生效位);**当拍不发放**(「接下来 N 个节点」=
+      达成当拍的后继 N 节点,advance_node 登记当拍不推进守卫同口径 +
+      effect-domain.md §8.6 躺平正本同读法);
+    - 有达成位 ∧ 当前生效位 > 达成位(元组字典序,位序单调下与剩余
+      联合即完备)∧ 剩余 > 0 → grant_xp(每节点经验额)×1,已发放计数
+      经 inventory bump 单调 +1(键 CounterKey.XP_GRANTED;剩余 = 窗口
+      节点数(payload.xp_after_level[1])− 已发放,计算侧导出——
+      effect-domain.md §3「state 不存『剩余』」);窗口耗尽条目**留置
+      不删**(环境 = 选定后整局在场,账本条目 = 环境在场登记,窗口耗尽
+      ≠ 环境离场,禁删——与 N_NODES 到期移除语义分域)。
+    生效位未锚定(None)→ 本拍零动作(tick 入口已有同款闸,本桥内再查
+    一道防御)。
+    """
+    effective = effective_node_pos(gs)
+    if effective is None:
+        return
+    _record_lv8_window_start(gs)   # 兜底达成检测:记位当拍不发放(锚 = 当前生效位)
+    for e in list(gs.effects.entries):
+        xp3 = getattr(e.spec.payload, 'xp_after_level', None)
+        if not xp3 or e.anchor_pos is None:
+            continue
+        if effective <= e.anchor_pos:
+            continue
+        if e.counters.get(CounterKey.XP_GRANTED, 0) >= int(xp3[1]):
+            continue
+        grant_xp(gs, int(xp3[2]), sig=_bridge_sig(gs),
+                 evidence=f'effect_xp@{frame}' if frame else 'effect_xp')
+        gs.effects.bump(e.spec.id, CounterKey.XP_GRANTED)
+
+
+#: 环境 XP 窗口通道披露键族(T-38 成功经验落地批,键名照设计稿 §6;单一源
+#: = 本表,sim 披露集 _BASE_DISCLOSURES 合并消费,值 = 申报短语):
+#: - late_detect: 兜底路径晚一拍(sim 基础经验推 8 / 结算页纠偏发现 8,
+#:   检出恒晚不早;主路径买经验精确对齐;窗口跨局终时末笔不发生);
+#: - level_truth: 世界面按 level_of 真值判定,不继承估值「升 8 必然发生」
+#:   假设(两域语义分立);
+#: - takeover_lost: 效果账本不落快照,接管局条目与窗口状态双缺 → 零驱动
+#:   (全体 portal 条目既有分辨率);
+#: - live_cover: live 发放 = 记账性质,同节点结算页观察覆盖赢,零动作面;
+#: - xp_to_gold_pending: 「经验就是财富」改道未建模,改道位 = grant_xp
+#:   单点(时点 = 其世界面建模批);
+#: - level_cap: 满级窗口照耗、XP 零推进(发放事件与实机世界结果一致);
+#: - k_reading: 「接下来3个节点」计数读法 = 达成当拍不计、后继 3 节点各计
+#:   (该口径待实采定谳,证伪改守卫即单点);
+#: - channel_mix: 发放 write_logic 通道与 sim 基础经验 observe 通道同域
+#:   并存(level/xp 域现役双通道先例),tick 段先于基础经验入账。
+ENV_XP_WINDOW_DISCLOSURES: dict[str, str] = {
+    'env_xp_window_late_detect': 'fallback_paths_late_one_node',
+    'env_xp_window_level_truth': 'world_gate_by_level_of_not_estimate',
+    'env_xp_window_takeover_lost': 'ledger_not_in_snapshot_zero_drive',
+    'env_xp_window_live_cover': 'bookkeeping_grant_cover_wins',
+    'env_xp_window_xp_to_gold_pending': 'reroute_at_grant_xp_single_point',
+    'env_xp_window_level_cap': 'window_burns_zero_advance',
+    'env_xp_window_k_reading': 'success_beat_excluded_next3_counted',
+    'env_xp_window_channel_mix': 'write_logic_grant_plus_observe_node_xp',
+}
 
 
 def project_effect_capacity(gs: GameState) -> None:
@@ -3584,8 +3713,9 @@ def tick_effect_boundary(gs: GameState) -> None:
 
     - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
       余期/虚累余额);
-    - 账本推进(内置去重兜底同序幂等)→ 到期留存证据 → 刷新发放(advanced 位闸)
-      → 容量重锚;
+    - 账本推进(内置去重兜底同序幂等)→ 到期留存证据 → 刷新/升级窗口
+      发放(advanced 位闸,grant_effect_node_refresh_balance +
+      grant_effect_node_xp)→ 容量重锚;
     - 经济参数 = 容器直读 active_strategies(空/None → 聚合缺省);
     - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
 
@@ -3612,6 +3742,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
                     _eff.spec.name)
     if advanced:
         grant_effect_node_refresh_balance(gs, frame=frame)
+        grant_effect_node_xp(gs, frame=frame)
     project_effect_capacity(gs)
 
 
