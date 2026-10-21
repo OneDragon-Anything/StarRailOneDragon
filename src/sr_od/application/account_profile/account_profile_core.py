@@ -109,14 +109,25 @@ class AvatarMatcher:
         self._tpl_names = [i.template_id for i in self._tpl_loader.get_all_template_info_from_disk(
             need_raw=True, need_config=False)
             if i.template_id and i.sub_dir == 'character_avatar']
+        # en_normalized 索引:头像模板目录名 = 映射表 en_normalized(如 herta/silverwolf),
+        # 与数字 ID 键的 _id_map 是两套键,cn_name 两路都查
+        self._en_map: dict[str, dict] = {}
+        for info in self._id_map.values():
+            en = (info.get('en_normalized') or '').strip().lower()
+            if en:
+                self._en_map[en] = info
+
     @property
     def template_count(self) -> int:
         """已载入的模板数,0 = 资产缺失(调用方应报错而非空转)。"""
         return len(self._tpl_names)
 
     def cn_name(self, avatar_id: str) -> str | None:
-        """avatarId → 清洗后中文名;映射外/清洗不过(映射表采集噪声)返回 None,调用方走读名兜底。"""
-        info = self._id_map.get(avatar_id)
+        """avatarId/模板目录名 → 清洗后中文名;映射外/清洗不过(映射表采集噪声)返回 None,调用方走读名兜底。
+
+        两路键:数字游戏 ID 查 _id_map;模板目录名(英文代号,与 SIFT 命中的 cn 字段同源)查 _en_map。
+        """
+        info = self._id_map.get(avatar_id) or self._en_map.get(avatar_id.strip().lower())
         return normalize_cn_name(info.get('cn') if info else None)
 
     def detect_cells(self, screen: MatLike, ocr_func) -> list[dict]:
