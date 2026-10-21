@@ -31,6 +31,7 @@ GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/conten
 - **前瞻未上线过滤**:行迹模块名带「前瞻」(如「角色行迹前瞻【请以正式版本为准】」)= 未实装;只查**模块名**,正文提及「前瞻」不算(攻略区常提及,整页文本搜索会误杀已上线角色)
 - `baseType` 大小写混杂(Preservation/TheHunt/remembrance…),消费前统一 lower;TheHunt→hunt
 - 实装日期/阵营在 `character_info` 组件的 textMap 里(键名「实装日期」「阵营」)
+- 拉取脚本:`scripts/fetch_sr_wiki_characters.py`(列表+逐条详情,缓存到 `.debug/temp/animestudio/`)
 
 ## 国际版 HoYoWiki(官方英文名唯一来源)
 
@@ -44,7 +45,9 @@ header: Content-Type: application/json;charset=UTF-8
 body:   {"filters":[],"menu_id":"104","page_num":1,"page_size":30,"use_es":true}
 ```
 
-menu_id=104 = 角色(GET `.../get_menu_filters?menu_id=104` 可拿筛选枚举)。每条:`entry_page_id`、`name`(当前语言名)、`filter_values`(path/rarity/combat_type/factions,带 `enum_string` 已是小写规范如 `memory`/`wind`/`5`)、`display_field`(1 级/80 级基础数值)。
+menu_id=104 = 角色(GET `.../get_menu_filters?menu_id=104` 可拿筛选枚举)。每条:`entry_page_id`、`name`(当前语言名)、`filter_values`(path/rarity/combat_type/factions,带 `enum_string` 已是小写规范如 `memory`/`wind`/`5`)、`display_field`(1 级/80 级基础数值)。响应结构 `data.list` 直接是条目数组(无国内版的频道树层)。
+
+**已知坑**:纯 API 头(Content-Type + x-rpc-*)会被 WAF 403——必须带浏览器级头 `Origin: https://wiki.hoyolab.com` + `Referer` + 真实浏览器 `User-Agent`。拉取脚本:`scripts/fetch_hoyowiki_en_names.py`(zh-cn + en-us 双语列表按 entry_page_id 互连,产归一化中文名→英文名映射)。
 
 **详情**:
 
@@ -61,5 +64,5 @@ header: x-rpc-wiki_app: hsr   +   x-rpc-language: <lang>
 
 - **id 不互通**:米游社 `content_id` ≠ HoYoWiki `entry_page_id`,连表键 = **归一化中文名**(•/·/・统一、去空格)
 - **同名多形态禁止裸中文名匹配**(三月七 vs 仙舟三月七会撞)——先用已知对锚定再匹配
-- 英文名归一化(小写去符号)= 社区 tag 惯例("Robin • Summeretto" → `robinsummeretto`),可直接当英文 id 建议;但**不是**游戏资产内部代号(那个只在解包容器路径里)
+- 英文名归一化(小写、仅保留字母数字)= 社区 tag 惯例("Robin • Summeretto" → `robinsummeretto`,"Trailblazer: Elation" → `trailblazerelation`),可直接当英文 id 建议;但**不是**游戏资产内部代号(那个只在解包容器路径里)
 - 开拓者各形态在两站都同名(开拓者·毁灭),男女只能靠性别信息源区分,勿按中文名合并
