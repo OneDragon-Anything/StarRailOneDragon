@@ -242,10 +242,21 @@ class AccountProfileApp(SrApplication):
         上个角色的数据会记到本格预期名下(白露/飞霄星魂名重复、砂金 6 命的根因)。现读名失败
         或与格子 SIFT 预期不符都重试点格;超限后按最后一次实测名归档——重试后仍不符大概率是
         SIFT 映射错,画面名字才是 ground truth;实测名 None(读不出)才跳过该格。
+
+        SIFT 预期与实测的比对:cell['cn'] 是模板目录名(中英混合,如 jingliu/万敌),
+        须经 cn_name() 映射成中文名再比,否则英文代号格逐格假性不符。
+        循环退出进扫描时侧栏必须已关闭(最后一次迭代不重开),否则 TAB 全被侧栏遮挡
+        (2026-10-22 首跑实证:重试耗尽路径开着侧栏扫描,光锥/星魂/遗器全线读不到)。
         """
         expected: str | None = cell.get('cn')
+        expected_set: set[str] = set()
+        if expected:
+            expected_set.add(expected)
+            mapped = self._matcher.cn_name(expected) if self._matcher is not None else None
+            if mapped:
+                expected_set.add(mapped)
         name: str | None = None
-        for _ in range(CELL_CONFIRM_ATTEMPTS):
+        for attempt in range(CELL_CONFIRM_ATTEMPTS):
             self._click_point(Point(cell['cx'], cell['cy']))
             time.sleep(1.2)
             if not self._set_sidebar(False):
@@ -255,14 +266,16 @@ class AccountProfileApp(SrApplication):
             measured = self._read_detail_name()
             if measured is not None:
                 name = measured
-                if expected is None or measured == expected:
-                    break
-            self._set_sidebar(True)
+            if measured is not None and (expected is None or measured in expected_set):
+                break
+            if attempt < CELL_CONFIRM_ATTEMPTS - 1:
+                # 还要重试才重开侧栏;最后一次保持关闭,直接进扫描
+                self._set_sidebar(True)
         if name is None:
             log.warning(f'[账号档案] {name_hint}: 点格 {CELL_CONFIRM_ATTEMPTS} 次未读出角色名,跳过该格')
             self._set_sidebar(True)
             return
-        if name != name_hint:
+        if expected is not None and name not in expected_set:
             log.warning(f'[账号档案] 格子 SIFT 预期 {name_hint} 实测 {name},按实测名归档')
         if not mode_full and name in self.profiles:
             self._set_sidebar(True)
