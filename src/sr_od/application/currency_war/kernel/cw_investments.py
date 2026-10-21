@@ -1563,6 +1563,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 永久随机属性加成」)全腿不建模,披露键 env_char_buff_unmodeled
     '战力提升': GiftGrant(chars_random_immediate=(
         RandomCharSpec(cost=1, star=2, type_tag='输出'),)),
+    # 类型过滤随机支姊妹卡·无类型词变体(id 137 效果原文「获得1个随机2星
+    # 2费角色」直读,PlazaPortal('137'));星级 2 = 卡面明写非先验;无类型词 →
+    # type_tag 空,池 = 2 费全档(注册表现值派生,爻光费用勘误 2→1 自动
+    # 不入池);采样/先验披露随家族常量 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS
+    # 携带;属性加成腿(「进入新节点永久随机属性加成」)全腿不建模,披露键
+    # env_char_buff_unmodeled 引用 T-36 批已立常量(卡区分靠效果账本上下文)
+    '战力飙升': GiftGrant(chars_random_immediate=(
+        RandomCharSpec(cost=2, star=2),)),
     # 随机装备支首例(id 118 效果原文「获得随机星徽」直读,
     # PlazaPortal('118');数量词缺省 = 1 件先验,披露键
     # ENV_STAR_GRANT_ASSUMPTION_KEYS 承载)。绑定腿:发放名以 done 条件键
