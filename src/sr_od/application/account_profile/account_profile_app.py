@@ -48,6 +48,8 @@ SCROLL_SETTLE_SEC: float = 1.5
 TOP_STABLE_DIFF: float = 8.0
 # 到底判定:连续 N 屏格子集合不变即认为已到列表底部(与存档有无无关,滚动失效由 _scroll_down 内部重试兜底)
 SAME_SCREEN_TO_STOP: int = 3
+# 点格身份确认重试次数:点击落空/读名失败都重试;超限后按最后一次实测名归档(见 _scan_one_character)
+CELL_CONFIRM_ATTEMPTS: int = 3
 
 
 
@@ -231,17 +233,37 @@ class AccountProfileApp(SrApplication):
         time.sleep(SCROLL_SETTLE_SEC)
 
     def _scan_one_character(self, cell: dict, name_hint: str, mode_full: bool = False) -> None:
-        """单角色完整流程:点格切角色 → 关侧栏 → 读名确认 → 读全档案 → 开侧栏。
+        """单角色完整流程:点格切角色 → 关侧栏 → 读名验证 → 读全档案 → 开侧栏。
 
         关侧栏是读档案的前提(TAB 与左上角色名都被侧栏覆盖);读名与档案共用关侧栏后的画面。
         增量模式下读名确认已扫的角色直接跳回(不读档案)。
+
+        归因只认画面实测名(错位修复):旧版读名失败兜底 name_hint,点击落空停在上个角色时,
+        上个角色的数据会记到本格预期名下(白露/飞霄星魂名重复、砂金 6 命的根因)。现读名失败
+        或与格子 SIFT 预期不符都重试点格;超限后按最后一次实测名归档——重试后仍不符大概率是
+        SIFT 映射错,画面名字才是 ground truth;实测名 None(读不出)才跳过该格。
         """
-        self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
-        time.sleep(1.2)
-        if not self._set_sidebar(False):
-            log.warning(f'[账号档案] {name_hint}: 侧栏关闭失败,跳过该角色')
+        expected: str | None = cell.get('cn')
+        name: str | None = None
+        for _ in range(CELL_CONFIRM_ATTEMPTS):
+            self._click_point(Point(cell['cx'], cell['cy']))
+            time.sleep(1.2)
+            if not self._set_sidebar(False):
+                # 关侧栏失败=侧栏状态未知,先拉回开启态再重试
+                self._set_sidebar(True)
+                continue
+            measured = self._read_detail_name()
+            if measured is not None:
+                name = measured
+                if expected is None or measured == expected:
+                    break
+            self._set_sidebar(True)
+        if name is None:
+            log.warning(f'[账号档案] {name_hint}: 点格 {CELL_CONFIRM_ATTEMPTS} 次未读出角色名,跳过该格')
+            self._set_sidebar(True)
             return
-        name = self._read_detail_name() or name_hint
+        if name != name_hint:
+            log.warning(f'[账号档案] 格子 SIFT 预期 {name_hint} 实测 {name},按实测名归档')
         if not mode_full and name in self.profiles:
             self._set_sidebar(True)
             return
@@ -258,16 +280,6 @@ class AccountProfileApp(SrApplication):
                 BackToNormalWorldPlus(self.ctx).execute()
                 self.round_by_goto_screen(screen_name='角色-详情', success_wait=1.5, retry_wait=1.5)
         self._set_sidebar(True)
-
-    def _click_and_read_name(self, cell: dict) -> str | None:
-        """miss 格身份兜底:点格切角色,关侧栏后读左上角角色名,再开侧栏。"""
-        self.ctx.controller.click(Point(cell['cx'], cell['cy']), press_time=0.1)
-        time.sleep(1.2)
-        if not self._set_sidebar(False):
-            return None
-        name = self._read_detail_name()
-        self._set_sidebar(True)
-        return name
 
     def _scan_current_character(self, name: str) -> None:
         """当前已停在目标角色详情页,依次读各 TAB 的养成数据。"""
@@ -471,19 +483,19 @@ class AccountProfileApp(SrApplication):
     def _read_detail_name(self) -> str | None:
         """读左上角「命途 / 角色名」取角色名;经 normalize_cn_name 清洗,噪声名视为未识别。
 
-        左上角在详情页与全部子页恒定显示该格式;右上名字区在子页会变成光锥/遗器名,不可用。
+        左上角在详情页与全部子页恒定显示该格式(子页正文右上会变成光锥/遗器名,不可用);
+        裁剪读名区后 OCR(比整页 OCR 快,且规避读区外同格式文本干扰)。
         """
-        shot = self.screenshot()
-        x1, y1, x2, y2 = self._area_rect('角色-详情', '读名区-左上')
-        for r in self.ctx.ocr.ocr(shot):
-            x, y = int(r.x), int(r.y)
-            if not (x1 <= x <= x2 and y1 <= y <= y2):
-                continue
-            raw = str(r.data or '')
+        rect = self._area_rect('角色-详情', '读名区-左上')
+        if rect is None:
+            return None
+        for raw in ocr_rect_texts(self.ctx.ocr.ocr, self.screenshot(), rect):
             if '/' not in raw and '／' not in raw:
                 continue
             seg = raw.replace('／', '/').split('/')[-1].strip()
-            return normalize_cn_name(seg)
+            parsed = normalize_cn_name(seg)
+            if parsed is not None:
+                return parsed
         return None
 
     def _read_areas_text(self, screen_name: str, screen: MatLike, area_names: list[str]) -> dict[str, list[str]]:
