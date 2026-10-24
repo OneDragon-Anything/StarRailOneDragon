@@ -20,20 +20,20 @@
 **完成判据**:
 - 许可集普查清单 + 逐目录 source 裁定记录产出;
 - 三数重钉(战斗类结局/有标签/胜事件)写入产物头部;
-- 双侧同源对齐测试通过;`target_comp` 覆盖率统计产出;
+- 双侧同源对齐测试通过;`target_comp` 覆盖率与值域构成统计产出(注册套名/组合标签两族);
 - 幅度样本表产出;丢弃分桶表 + MNAR 缺失率披露产出;
 - 完成前常规检查(本节首)。
 **验收凭据形式**:测试名 + 产物头部指纹与分桶表 + 普查清单。
 
 ## 3.2 训练与校准脚本
 
-**范围**:离线训练 logistic(符号约束:过渡分档/总星深/核心星深 ≥ 0,难度 ≤ 0;终局取大与 node_type/round 自由)+ LOCO + 校准曲线 + df=tr(Ĥ) 预算核算 + **保留序装配**(design §2.2)+ **预算重钉门**(重钉 < 7 → 挂起交用户三选一,见 design §2.1)。产出 = 权重常量表草案 + 校准报告。
+**范围**:离线训练 logistic(符号约束:过渡分档/总星深/核心星深 ≥ 0,难度 ≤ 0;终局取大与 node_type/round 自由)+ LOCO + 校准曲线 + df=tr(Ĥ) 预算核算 + **按裁剪序装配**(design §2.2)+ **预算重钉门**(重钉 < 6 → 挂起交用户三选一,见 design §2.1)。产出 = 权重常量表草案 + 校准报告。
 **设计依据**:design.md §2.2/§2.3;sim-power-model §4.3/§5.3。
 **文件面**:`sim/power_model/`(训练脚本);`sr-od-test` 对应测试。
 **依赖**:3.1
 **优先级建议**:8
 **完成判据**:
-- 校准报告产出:三数重钉实数 + LOCO 分节点类结果 + 校准曲线 + 最终参数清单(含保留序装配过程与砍单申报,如有);
+- 校准报告产出:三数重钉实数 + LOCO 分节点类结果 + 校准曲线 + 最终参数清单(含裁剪序装配过程与砍单申报,如有);
 - 权重常量表可复现(重跑训练脚本 → 同一权重);
 - 若触发预算重钉门:挂起报告产出且账本置 wait,不自行降级;
 - 完成前常规检查(本节首)。
@@ -66,24 +66,25 @@
 - 完成前常规检查(本节首)。
 **验收凭据形式**:系数表(数字对照)+ 测试名。
 
-## 3.5 sim 难度生成器
+## 3.5 难度特征供给核查(无新生成面)
 
-**范围**:按 位面×轮次 语料经验直方图采样 enemy_difficulty;**与现役难度记账共存申报**——`cw_sim_backend` 现存写点(`_update_difficulty_flag`/`_record_difficulty`)语义不变,生成器作为其数据源前置,不另立第二写点;外生性单向性测试。
-**设计依据**:design.md §2.5;sim-power-model §6.7。
-**文件面**:`src/sr_od/application/currency_war/sim/cw_sim_backend.py`;`src/sr_od/application/currency_war/sim/power_model/`(直方数据);`sr-od-test/test/sr_od/application/currency_war/sim/`。
-**依赖**:3.1
+**范围**:核查 sim 对局难度特征供给链——查询面读到的 enemy_difficulty = RunConfig 写入现值(match 级常量;现役写点 `_update_difficulty_flag`/`_record_difficulty` 语义不变,零新增写点);缺失指示仅真缺失行置位;监控「结构性缺失」缺省判定申报(新生成对局缺省路径难度恒在)。逐战斗难度采样(位面×轮次耦合)为正本 §6.7 deferred 面,不在本阶段。
+**设计依据**:design.md §2.5/§2.8-6;sim-power-model §6.5/§6.7。
+**文件面**:`src/sr_od/application/currency_war/sim/power_model/`(核查脚本);`sr-od-test/test/sr_od/application/currency_war/sim/`。
+**依赖**:3.3
 **优先级建议**:6
 **完成判据**:
-- 生成分布 vs 语料直方对照(分位带内);
-- 单向性测试通过(生成器不触碰板面/策略状态);现役写点行为不回归(既有难度记账测试全绿);
+- 核查记录:新生成 sim 对局中查询面难度读数 = RunConfig 值(非空率 100%);
+- 缺失指示单测(仅真缺失置位);
+- 零新增写点核对(现役难度记账测试全绿);
 - 完成前常规检查(本节首)。
-**验收凭据形式**:分布对照数字 + 测试名。
+**验收凭据形式**:核查记录 + 测试名。
 
 ## 3.6 影子接线 + 输入分布监控落位
 
 **范围**:sim 账本双写 `model_win_p` 与现行常量披露位;跑批产出分歧分布(按节点/达成度分段)+ 外推段对照表;输入分布监控两类报警(结构性缺失 vs 真漂移)落位。**不改掷定**。
 **设计依据**:design.md §2.3 影子期门/§2.5/§2.8-2;sim-power-model §6.3/§6.5。
-**文件面**:`src/sr_od/application/currency_war/sim/cw_sim_battle.py`(披露位)或账本层;`src/sr_od/application/currency_war/sim/power_model/`;`sr-od-test/test/sr_od/application/currency_war/sim/`。
+**文件面**:`src/sr_od/application/currency_war/sim/cw_sim_battle.py`(账本披露位);`src/sr_od/application/currency_war/sim/power_model/`;`sr-od-test/test/sr_od/application/currency_war/sim/`。
 **依赖**:3.3、3.5
 **优先级建议**:6
 **完成判据**:
@@ -123,7 +124,7 @@
 
 ## 3.9 版本迁移申报 + win_model M1 supersede 停用 + 共生对照操作定义
 
-**范围**:①`telemetry/cw_win_model.py` 影子件 supersede 停用(防双 P(win) 模型源;M1 现状影子不接线,停用低风险)+ 其特征/检查依赖面随停用清理;②幅度层/胜负层版本常量(CALIB 语义版本)迁移申报;③本迭代新增监控面(3.6 两类报警)的常驻归属登记;④共生对照机制操作定义文档化(正本 §8-9:模型外策略臂对照局配额/触发与判据),落 `sim-power-model.md` 同目录或迭代产物,防「策略朝模型认为好的方向演化」。**不引用已删除实体**(对抗审 R1 核实:`sim/checks/` 目录与 `check_p2_*`/`check_boss_win_calibration`/`ANCHOR_REGISTRY` 战斗登记均不现役——正本 §8 第 7 项所列检查重锚面随实体消亡,本阶段以「现存检查面普查」替代:全仓扫描与本迭代输出字段相关的现役检查,逐个判重锚/失活,普查记录即凭据)。
+**范围**:①`telemetry/cw_win_model.py` 影子件 supersede 停用(防双 P(win) 模型源;M1 现状影子不接线,停用低风险)+ 其特征/检查依赖面随停用清理;②幅度层/胜负层版本常量(CALIB 语义版本)迁移申报;③本迭代新增监控面(3.6 两类报警)的常驻归属登记;④共生对照机制操作定义文档化(正本 §8-9:模型外策略臂对照局配额/触发与判据),落 `sim-power-model.md` 同目录或迭代产物,防「策略朝模型认为好的方向演化」。**边界申报**:正本 §8 第 7 项所列 `sim/checks/` 目录与 `check_p2_*`/`check_boss_win_calibration` 检查不现役(该重锚面随实体消亡);`kernel/cw_anchor.py` 的 ANCHOR_REGISTRY 本体现役且含 battle_start/settlement 战斗类锚——本阶段「现存检查面普查」必含该注册表:全仓扫描与本迭代输出字段相关的现役检查与锚,逐个判重锚/失活/无关,普查记录即凭据。
 **设计依据**:design.md §2.5/§2.7;sim-power-model §6.2-5/§6.5/§8 第 8/9 项。
 **文件面**:`src/sr_od/application/currency_war/telemetry/cw_win_model.py` 及其依赖面;`src/sr_od/application/currency_war/kernel/cw_anchor.py`(如普查命中);`sim/power_model/`(监控归属);对应测试。
 **依赖**:3.7
@@ -147,7 +148,7 @@
 
 ## 正本更新清单
 
-- `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md`:§4.3 首期实装分配表(双轨达成度 12-14 参数保留序版)+ 现状注记(as-built 化:已实施面/首期范围/deferred 面) ← 3.2/3.3/3.7 全部落地后
+- `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md`:§4.3 首期实装分配表(双轨达成度 14 设计位裁剪序版)+ 现状注记(as-built 化:已实施面/首期范围/deferred 面) ← 3.2/3.3/3.7 全部落地后
 - `docs/develop/sr_od/application/currency_war/sim/sim-design.md`:§8.2 战斗结算行(随机输出面 → 模型胜负面 + 条件化幅度层描述) ← 3.7
 - skill `sr-od-currency-war-dev` references/sim-testing.md:「sim 战斗结算=随机输出面」边界条目改写为模型口径(幅度/校准未验收面仍禁外推) ← 3.7
-- `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md` §2 四路径表/§6.1 接线点表:按当期结算形态重钉(对抗审 R1 指出其引用 cw_coarse_battle/engine_p1 已删) ← 3.9
+- `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md` §2 四路径表/§6.1 接线点表:按当期结算形态重钉(原表引用的 cw_coarse_battle/engine_p1 已不存在) ← 3.9
