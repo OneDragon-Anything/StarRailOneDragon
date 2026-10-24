@@ -60,6 +60,8 @@ models/
 .agents/*
 # .dsh/ DSH 项目级目录（skill junction + mcp.servers.yml 本机接线，不入库）
 .dsh/*
+# .zcode/ ZCode 项目级目录（config.json 的 MCP 本机接线，不入库）
+.zcode/*
 # 个人本地入口（不入库；团队共享走根 AGENTS.md）
 AGENTS.local.md
 CLAUDE.local.md
