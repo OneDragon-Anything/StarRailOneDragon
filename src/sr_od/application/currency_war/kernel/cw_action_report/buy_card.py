@@ -57,6 +57,9 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_place,
     )
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        expert_conditional_trigger,
+    )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         _apply_full_bench_merge_buy,
         _dep_sig,
@@ -195,6 +198,18 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
+
+    # —— 条件形态专家触发腿(「首次获得 X 时,顾问入商店」族,首例 =
+    #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
+    #    §2.3):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
+    #    获得渠道(3 费档基础池恒可刷),挂点与 on_buy 回调腿同位
+    #    (简单腿 + 合成连锁 + 升星腿全毕后,拒买 applied=False 早退
+    #    不可达本段);rand=False = 购买全链确定面。状态写沿主链零吞错
+    #    (判据内含条件写,与上方 on_buy 记录面 best-effort 分层——记录
+    #    可弃,状态写不可静默失败)。kernel 反向模块级零 import 契约:
+    #    函数内惰性取(上方惰性块同款)。
+    expert_conditional_trigger(gs, name, rand=False, sig=_grp_sig,
+                               evidence='buy_card:expert_trigger')
     # (事实事件广播已停用:sim
     #  呈现/登记经容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True, bought_count=k)

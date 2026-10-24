@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
+    bench_slot_unit,
 )
 from sr_od.application.currency_war.kernel.cw_gain_effects import (
     PICK_INVEST_EFFECTS,
@@ -88,12 +89,14 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
 GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 
 #: 缺陷留存证据 kind 词表(_emit_defect 台账行分键;留存证据不停机,gain-chain.md §6)。
-#: 未观察两 kind(bench/equips)现役生产不可达:开局种子底座下生产链路
-#: 阵容/装备域不再有 None,拒落档零写无缺陷发出(词表停用申报正本 =
+#: 未观察 kind 族(bench/equips 两原生 kind + DEFECT_COND_BENCH_UNOBSERVED
+#: 条件形态在场判定)现役生产不可达:开局种子底座下生产链路
+#: 阵容/装备域不再有 None,拒落/不判档零写无缺陷发出(词表停用申报正本 =
 #: gain-chain.md §6)。
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
+DEFECT_COND_BENCH_UNOBSERVED: str = 'gain_chain_cond_bench_unobserved'
 
 #: 无效载荷拒绝 kind(策略/环境名归一后为空/'?'——零写 + 留存证据;无效输入
 #: 拒绝,非防重复保护;正本 = gain-chain.md §2.4-0/§2.1-0)。
@@ -784,6 +787,33 @@ def _unlock_experts(gs: GameState, chars: tuple[str, ...], *, rand: bool,
           evidence=evidence, sig=sig)
 
 
+def _cond_expert_presence_names(gs: GameState) -> set[str] | None:
+    """条件形态在场判定读口(挂点④专用;唯一消费点 = :func:`on_env_gained`
+    advisor 分道条件形态支):环境获得时刻在场单位名集合 = 备战席 ∪ 上阵
+    ∪ 溢出位(三次容器读全廉价,与合成池 ``_build_pool`` 同三域口径;
+    槽件解包走 ``bench_slot_unit`` 读口单一源,禁内联 kind 判断)。溢出位
+    身份串可能是占席道具名(非角色),入集无害——判据按规范名直等,
+    道具名不可能命中触发名。bench 未观察(None)→ None 供调用方
+    fail-closed:开局种子恒种 bench,种子底座下生产双端不可达,本分支
+    实为直构/测试形态防御(缺陷 kind = DEFECT_COND_BENCH_UNOBSERVED,
+    同族先例 = cw_env_grants.check_env_boss_grants 席面未观察分支)。"""
+    view = gs.bench.value
+    if view is None:
+        return None
+    names: set[str] = set()
+    for slot in view.slots:
+        u = bench_slot_unit(slot)
+        if u is not None:
+            names.add(str(u.char_id))
+    for dep in deployed_indexed_of_view(gs.deployed.value):
+        if dep is not None:
+            names.add(str(dep.char_id))
+    card = str(gs.overflow_card.value or '')
+    if card:
+        names.add(card)
+    return names
+
+
 def on_env_gained(gs: GameState, session: object, env_name: str, *,
                   rand: bool, sig: ChannelSig,
                   rng: random.Random | None = None) -> tuple[str, ...]:
@@ -1013,11 +1043,43 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     if grant is None:
         return tuple(effects)
     if grant.advisor:
-        _unlock_experts(gs, grant.chars_immediate, rand=rand,
-                        evidence=f'on_env_gained:{_name}#expert_unlock',
-                        sig=sig)
-        return (f'advisor_unlock:{_name}:'
-                f'{"+".join(grant.chars_immediate)}',)
+        unlock_tail = '+'.join(grant.chars_immediate)
+        if grant.chars_conditional:
+            # 条件形态支(首例 = 特邀专家:银狼,「获得角色触发型」族挂点④;
+            # 设计 = 迭代 2026-09-23-invest-effects-calc T-42 §2.4):
+            # 「首次获得」涵盖环境获得之前已发生的获得——环境获得时刻对
+            # 在场单位(bench ∪ deployed ∪ 溢出位)判一次,开局种子起手与
+            # 先购得后经蓝海改写等中途获得本环境局在此收口;环境获得后的
+            # 首次获得由三渠道判据承接(expert_conditional_trigger,两挂点
+            # 合起来覆盖「首次」全语义)。本挂点不走该判据函数——此处
+            # 「获得」= 在场判定本身,非单名获得事件。
+            presence = _cond_expert_presence_names(gs)
+            if presence is None:
+                # bench 未观察 → fail-closed 不判零写 + 缺陷留存证据
+                # (种子底座下生产双端不可达——开局种子恒种 bench,直构/
+                # 测试形态防御;同族先例 = cw_env_grants.check_env_boss_
+                # grants 席面未观察分支)
+                _emit_defect(field_name='bench',
+                             expected='环境获得时刻席面可读(条件形态在场判定)',
+                             actual='bench 未观察(None)',
+                             evidence=f'on_env_gained:{_name}', sig=sig,
+                             kind=DEFECT_COND_BENCH_UNOBSERVED)
+            elif '银狼LV.999' in presence:
+                # 触发映射硬编码单一源注:触发角色名 银狼LV.999 只在
+                # ENV_GIFTS['特邀专家:银狼'].chars_conditional 条件描述
+                # 散文(注释性二元组不进判据),此处与
+                # expert_conditional_trigger 条件①同源同映射
+                _unlock_experts(gs, ('银狼',), rand=rand,
+                                evidence=f'on_env_gained:{_name}#expert_unlock',
+                                sig=sig)
+                unlock_tail = '银狼'
+            # 未命中/未观察 → 维持现值空尾效果串(事实申报,遥测面零改动;
+            # 空尾即「条件形态未触发」的自然读法)
+        else:
+            _unlock_experts(gs, grant.chars_immediate, rand=rand,
+                            evidence=f'on_env_gained:{_name}#expert_unlock',
+                            sig=sig)
+        return (f'advisor_unlock:{_name}:{unlock_tail}',)
     for char in grant.chars_immediate:
         # 送卡为确定发放(非采样)→ rand 原样透传(gain-chain.md §5)
         gain_character(gs, char, 1, rand=rand, sig=sig,
@@ -1225,15 +1287,79 @@ def discharge_due_item_opens(gs: GameState, *, rand: bool,
     return tuple(f'item_opened:{item}' for item, _unlock in hit)
 
 
+def expert_conditional_trigger(gs: GameState, char_name: str, *, rand: bool,
+                               sig: ChannelSig, evidence: str) -> bool:
+    """特邀专家族条件形态触发判据(「首次获得 X 时,顾问入商店」;首例 =
+    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
+    §2.1/§2.3)。三条件全与:
+
+    ①``char_name`` == 触发角色名——现役唯一 = ``银狼LV.999``,触发映射
+      硬编码分支、不建注册表:触发角色名只存在于
+      ``ENV_GIFTS['特邀专家:银狼'].chars_conditional`` 的条件描述散文
+      「首次获得【银狼LV.999】时,顾问入商店」,该字段 = (顾问名, 条件
+      散文)注释性二元组不进判据(cw_investments.py 字段定义),本行即
+      映射单一源(枚举即收敛、不设注册机构先例 = 本模块枚举回调区
+      头注);按规范名直等,费用档无关——银狼LV.999 升费 3/4/5 档全
+      通吃(lv999_cost_tier 是费用字段非名字,不进判据);
+    ②``gs.active_env`` 归一后 == 本卡名(normalize_invest_name 同款,
+      gain_invest_env 归一行先例;登记表单环境互斥天然挡他环境的同形
+      发放渠道——如欢愉契约开局送银狼LV.999 不触发本卡);
+    ③``'银狼' ∉ gs.unlocked_experts``——「已触发」与「已解锁」同一
+      事实,防重发记账与消费同源、不立第二账本;``_unlock_experts``
+      幂等短路免费兜住升星产物递归重进与假想双发;顾问已被他通道解锁
+      (邀请函等)时本条件短路零写(效果文无新事实,语义正确)。
+
+    命中 → :func:`_unlock_experts`(唯一容器落点 + 闭集闸 + 只增去重 +
+    rand 透传全由原语承载,判据层不开第二写点、不自写去重)→ 返回
+    True 供调用方发效果串(现役 = ``expert_unlock:银狼``)。判据 =
+    纯读 + 条件写,零吞错(状态写沿主链纪律,gain-chain.md §6;与
+    on_buy 记录面 best-effort 分层——记录可弃,状态写不可静默失败)。
+
+    **触发面完备性口径**(防按「on_character_gained 单点收敛」旧口径
+    理解覆盖面;「获得银狼LV.999」获得事实三派,现役触发可达性如实):
+    - 商店购买(现役主流,购买回调腿 report_action_buy_card_param 追加
+      判据,3 费档基础池恒可刷);
+    - 平行桥 grant_bench_unit_cascade(装备获得后果确定性通道 数据拷贝
+      仪Max 送 1★银狼LV.999;随机通道经获得链 on_equipment_gained,
+      现役 HACKER_MOD_POOL_V0 无该件,张力反例成真时即真渠道);
+    - 获得链 gain_character(on_character_gained 收敛点转发;链上生产
+      调用点全量普查现役可达获得 = boss 节点羁绊腿,被条件②×
+      ENV_BOSS_GRANTS 单环境互斥挡在触发外——本接线 = 收敛点承诺兑现
+      + 登记表未来扩入带目标名池发放腿的防御)。
+    豁免(非渠道)= 升费/上阵变费腿(已有单位改费用档,无获得事件)/
+    复制系(复制前提 = 目标已在手,「首次」必然更早发生)/ grant_bucket
+    (现役纯查询候选口无落席写点)/ 专家邀请函(解锁的是顾问非
+    银狼LV.999)。开局种子起手与先获后选环境局(首次获得先于环境获得)
+    由挂点④收口(on_env_gained advisor 分道条件形态支,环境获得时刻
+    在场判定)。
+    """
+    if char_name != '银狼LV.999':
+        return False
+    if normalize_invest_name(str(gs.active_env.value or '')) \
+            != '特邀专家:银狼':
+        return False
+    if '银狼' in (gs.unlocked_experts.value or ()):
+        return False
+    _unlock_experts(gs, ('银狼',), rand=rand,
+                    evidence=f'{evidence}#expert_unlock', sig=sig)
+    return True
+
+
 def on_character_gained(gs: GameState, name: str, star: int, *,
                         rand: bool, sig: ChannelSig) -> tuple[str, ...]:
     """「获得角色」触发型效果枚举(gain-chain.md §3)。
 
-    初始枚举 = **空集**(暂无已核实的「获得角色时」触发型效果;查无
-    效果安静不写,用户裁定)。**本函数 = 该类效果未来的唯一收敛点**——新
-    效果核实后在此加分支;递归子链的 rand 按效果自身性质传(gain-chain.md §5)。
+    在用枚举 = 转发特邀专家族条件形态判据
+    (:func:`expert_conditional_trigger`;首个消费者 = 特邀专家:银狼,
+    命中发效果串 ``expert_unlock:银狼``)。**本函数 = 该类效果未来的唯一
+    收敛点**——新效果核实后在此加分支;递归子链的 rand 按效果自身性质传
+    (gain-chain.md §5)。
     """
-    _ = gs, name, star, rand, sig   # 接口位保留(收敛点入参齐全)
+    _ = star   # 接口位保留(判据按规范名直等,星级/费用档无关;升星产物
+    # 递归重进由判据条件③幂等短路,无需星级)
+    if expert_conditional_trigger(gs, name, rand=rand, sig=sig,
+                                  evidence='on_character_gained'):
+        return ('expert_unlock:银狼',)
     return ()
 
 

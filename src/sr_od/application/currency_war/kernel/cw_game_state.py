@@ -2517,7 +2517,7 @@ class GameState:
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3;开局种子底座=''=未选择)
     enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
-    unlocked_experts: Field[tuple[str, ...]] = field(default_factory=Field)  # 本局已解锁入池专家顾问规范名(economy.md §1:专家初始不参与普通商店招募,经投资环境/投资策略/专家邀请函等通道解锁后本局加入商店;池派生消费 = cw_pool 按名并入 EXPERT_COPIES_ASSUMED 副本)。开局种子底座=()未解锁;只增不减(现役解锁通道无回收语义)。写入端 = 获得链 advisor 道(cw_gain_chain.on_env_gained/on_strategy_gained)+ 装备通道(on_equipment_gained 分身墨镜族);成员闭集闸 = cw_chars.assert_expert_names
+    unlocked_experts: Field[tuple[str, ...]] = field(default_factory=Field)  # 本局已解锁入池专家顾问规范名(economy.md §1:专家初始不参与普通商店招募,经投资环境/投资策略/专家邀请函等通道解锁后本局加入商店;池派生消费 = cw_pool 按名并入 EXPERT_COPIES_ASSUMED 副本)。开局种子底座=()未解锁;只增不减(现役解锁通道无回收语义)。写入端 = 获得链 advisor 道(cw_gain_chain.on_env_gained/on_strategy_gained)+ 装备通道(on_equipment_gained 分身墨镜族)+ 条件形态触发判据(cw_gain_chain.expert_conditional_trigger 三渠道);成员闭集闸 = cw_chars.assert_expert_names。条件形态条目(现役首例 = 特邀专家:银狼)的写入时点 = 触发事件(首次获得银狼LV.999,含环境获得时点在场判定挂点),非环境获得时点的即时名单
     # [索引定义] pending_item_grants = 已登记、未到点发放的定时道具队列(环境
     # 定时发放通道,迭代 2026-09-24-scheduled-env-gifts)。entry 形 =
     # {'env': 登记来源环境名, 'plane': 位面(1 基), 'round_num': 位面内轮

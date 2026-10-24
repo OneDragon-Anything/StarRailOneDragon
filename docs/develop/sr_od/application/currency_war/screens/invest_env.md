@@ -52,7 +52,8 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 │    `kernel/cw_gain_chain.py::gain_invest_env`,动作 op 点完确认立即上报;
 │    session 形参显式传入[局外/测试 = None 登记分支跳过]。环境即时效果写入分支 =
 │    `on_env_gained` 枚举(`ENV_GIFTS` `chars_immediate` 送卡入席 / advisor
-│    申报分道);欢愉契约的附带条件授予不在该枚举——触发事件 = 头号玩家选项
+│    解锁分道 = `_unlock_experts` 写 `unlocked_experts` 顾问入商店,条件形态
+│    首例特邀专家:银狼含环境获得时点在场判定);欢愉契约的附带条件授予不在该枚举——触发事件 = 头号玩家选项
 │    弹窗被处理(银狼策划选择上报),授予 = 附带条件分支(代码 leg_type='rider')
 │    `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`
 │    (`active_env` 欢愉契约已登记 → `gain_character` 1★ rand=True,写端 =
@@ -113,7 +114,8 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 - 台账变异窗(45s)防确认后节点行刷新窗口内的三票校验误报。
 - 获得链守卫(动作落地时点,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)):
   portal 登记分支 best-effort 失败保留证据不阻塞(已迁链内);特邀专家(advisor)卡面
-  chars_immediate 不入席,身份只进遥测申报行(缺陷分键 `gain_chain_advisor_decl`);
+  不入席——经解锁写原语 `_unlock_experts` 写 `unlocked_experts`(顾问入商店;
+  条件形态首例特邀专家:银狼含环境获得时点在场判定,未命中零写效果串空尾);
   bench 未观察/溢出位被占 = 不写保留证据不停机。
 - 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)(不做效果验证)与预算语义同 [op-layer.md](op-layer.md) §1.2;无本屏专属停机钩子([../flow/guards.md](../flow/guards.md))。
 

@@ -1653,6 +1653,21 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
         except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
             log.warning('[cw-effect] 合并升星触发发放腿失败(不阻塞):'
                         f'{merge_facts} {e}')
+    # —— 条件形态专家触发腿(「首次获得 X 时,顾问入商店」族,首例 =
+    #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
+    #    §2.3):入席 + merge_cascade_write 级联 + 触发发放腿全毕后判据
+    #    一次(「全毕后触发」与购买链同款时序;装备获得后果确定性通道
+    #    数据拷贝仪Max 送银狼LV.999 由此承接)。rand 透传(采样链内获得
+    #    与本写同窗);状态写沿主链零吞错——与上方触发发放腿 best-effort
+    #    分层(发放可弃,状态写不可静默失败)。拒落路径(bench 未观察/
+    #    席满)上方早退不可达本段。kernel 反向模块级零 import 契约:
+    #    函数内惰性取(cw_gain_chain 模块级 import 本模块,反向取须惰性;
+    #    spawn_equip_bench_unit 真类惰性取同款纪律)。
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        expert_conditional_trigger,
+    )
+    expert_conditional_trigger(gs, name, rand=rand, sig=_sig,
+                               evidence=evidence)
     return BenchGrantResult(placed=True, merge_steps=steps)
 
 

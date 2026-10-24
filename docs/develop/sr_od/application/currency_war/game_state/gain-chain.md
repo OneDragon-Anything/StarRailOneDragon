@@ -228,9 +228,23 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
   advisor 分道,两道互斥**:
   - `advisor=False`(契约类,直接送卡):`chars_immediate` 逐个 `gain_character
     (char, 1★)`(星级未标 = 1★ 先验;确定发放 → rand 原样透传);
-  - `advisor=True`(特邀专家,顾问入商店):**不入席**——容器无商店池字段,身份
-    只进遥测申报一行(`kind = DEFECT_ADVISOR_DECL`);`chars_immediate` 在 advisor
-    行仅作顾问身份输入。
+  - `advisor=True`(特邀专家,顾问入商店):**不入席**——经解锁写原语
+    `cw_gain_chain.py::_unlock_experts` 写权威状态 `gs.unlocked_experts`
+    (只增去重幂等 + 成员闭集闸 + rand 透传;「使其在本局游戏中加入商店」
+    = 入池可刷,非直接送单位;池派生消费 = `cw_pool.unlocked_expert_copies`
+    按名并入 `EXPERT_COPIES_ASSUMED` 副本)。效果串
+    `advisor_unlock:<环境名>:<顾问名>`。**条件形态支**(`chars_conditional`
+    非空即条件形态,现役唯一 = 特邀专家:银狼「首次获得【银狼LV.999】时,
+    顾问入商店」):环境获得时刻对在场单位(备战 ∪ 上阵 ∪ 溢出位)判
+    一次「首次获得」——「首次」涵盖环境获得之前已发生的获得,开局种子
+    起手与先购得后经蓝海改写等中途获得本环境局在此收口;命中 → 解锁银狼
+    入商店,效果串尾 = `银狼`;未命中 → 零写,效果串维持空尾
+    (`chars_immediate` 空 join,即「条件形态未触发」的自然读法);bench
+    未观察 → fail-closed 不判零写 + 缺陷保留证据(`kind =
+    DEFECT_COND_BENCH_UNOBSERVED`;开局种子恒种 bench,种子底座下生产
+    不可达,实为直构/测试形态防御)。环境获得后的首次获得由
+    `on_character_gained` 转发条件判据承接(见下),两挂点合起来覆盖
+    「首次」全语义。
   - **追加随机环境申报行**(`cw_investments.ENV_REROLL_NAMES` 命中,与
     ENV_GIFTS 通道无关、先于其分派):追加随机环境型环境(首例 = 蓝海,
     id 113)选卡后游戏随即再随机获得一个环境,该掷骰 live 端不可观察
@@ -350,8 +364,26 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     头号玩家选项触发 + 欢愉契约已登记 → `gain_character`(火花/开拓者·欢愉随机
     其一,1★,rand=True),调用点级 best-effort 例外见 §6;条件分支原文与建模依据 =
     `cw_investments.py::ENV_GIFTS['欢愉契约'].chars_conditional`)。
-- **on_character_gained(gs, name, star, *, rand, sig)**:在用枚举 = **空集**(暂无
-  已核实的「获得角色时」触发型效果)。**本函数 = 该类效果未来的唯一收敛点**。
+- **on_character_gained(gs, name, star, *, rand, sig)**:在用枚举 = 转发特邀专家族
+  条件形态判据(`cw_gain_chain.py::expert_conditional_trigger`,首个消费者 =
+  特邀专家:银狼「首次获得【银狼LV.999】时,顾问入商店」)。判据三条件
+  全与:①名直等 `银狼LV.999`(触发映射硬编码分支,单一源指向
+  `ENV_GIFTS['特邀专家:银狼'].chars_conditional` 条件散文——该字段 =
+  (顾问名, 条件散文)注释性二元组不进判据;按规范名直等,升费 3/4/5 档
+  全通吃);②`active_env` 归一 = 本卡(单环境互斥天然挡他环境同形发放,
+  如欢愉契约送卡);③银狼 ∉ `unlocked_experts`(「已触发」与「已解锁」
+  同一事实,防重发与消费同源、不立第二账本,幂等短路免费兜住升星产物
+  递归重进)。命中 → `_unlock_experts` 写解锁 + 效果串
+  `expert_unlock:银狼`。同判据**三渠道接线**(环境获得后的事件挂点式
+  触发器):购买链(买牌上报回调腿,现役主流)/ 平行桥
+  (`grant_bench_unit_cascade` 桥尾)/ 获得链(本收敛点转发)——三渠道
+  同判据同写入,行为等价,宿主出参不扩字段(触发写入自身即留证,
+  write 行 evidence 标 `expert_trigger`/`#expert_unlock` 族)。获得链
+  现役无可达首次**触发**场景(既有可达获得 = boss 节点羁绊腿,被条件②
+  × 单环境互斥挡在触发外),本接线 = 收敛点承诺兑现 + 登记表未来扩入
+  带目标名池发放腿的防御。开局种子起手与先获后选环境局(首次获得先于
+  环境获得)由上 advisor 分道挂点④在场判定收口,两挂点合起来覆盖
+  「首次」全语义。**本函数 = 「获得角色触发型」效果未来的唯一收敛点**。
 - **on_equipment_gained(gs, item, *, rand, sig)**:查 `cw_effect_inventory.py::
   EQUIP_ACQUIRE_CONSEQUENCES`(装备获得 → 送出单位;该表是游戏数据映射不是效果
   注册表)→ 命中 → `gain_character`(表值星级;确定发放 → rand 原样透传)。
@@ -430,13 +462,18 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
 2. **未锚定期写走随机态,未观察拒落档保留**:容器经开局预填初值播种(fields.md
    §2.6),生产链路阵容/装备域不再有 None——原「未观察 = bug 面」缺陷 kind
    (`gain_chain_bench_unobserved`/`gain_chain_equips_unobserved`)已停用;直构容器
-   (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。链写通道随锚定标志位择道(走通道选择入口)
+   (sim/测试)的 None 拒落零写与 detail 档保留,零缺陷发射。条件形态在场
+   判定挂点(§3 advisor 分道)的 bench 未观察 fail-closed 同属本未观察族:
+   不判零写 + 缺陷保留证据(`kind = gain_chain_cond_bench_unobserved`),
+   种子底座下生产双端不可达(开局种子恒种 bench),实为直构/测试形态防御。
+   链写通道随锚定标志位择道(走通道选择入口)
    (§5,fields.md §2.6)。
 3. **查无效果安静不写**(§3):真值归观察覆盖。
 4. **席满且溢出位被占 = 零写保留证据**(§4;游戏行为未实证,禁猜)。
 
-best-effort 边界收在**非容器写的观测/登记分支**内(§2.1/§2.4 登记分支、§3 advisor 申报
-行):失败 log + 缺陷保留证据、不阻塞。**唯一容器写调用点级例外 = 附加条件授予分支(挂在选项上报上的授予路径)**
+best-effort 边界收在**非容器写的观测/登记分支**内(§2.1/§2.4 登记分支;§3
+advisor 道现为 `_unlock_experts` 容器写,零吞错不在本边界):失败 log + 缺陷
+保留证据、不阻塞。**唯一容器写调用点级例外 = 附加条件授予分支(挂在选项上报上的授予路径)**
 (`pick_planner.py::_grant_joy_conditional`,try/except + 缺陷记录行
 `joy_conditional_grant_failed` 后照常分支型分派——授予与选项应用是两条独立因果,
 授予失败不得拖垮选项应用;链内部零吞错不变)。无效载荷拒绝(§2.1-0/§2.4-0)
