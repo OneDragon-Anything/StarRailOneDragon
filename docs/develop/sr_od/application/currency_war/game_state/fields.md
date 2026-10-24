@@ -1403,6 +1403,35 @@ uid 形参注入点,落位构造唯一;现役注入点两处 = `check_env_battle
 fail-open(模型放行、实机游戏仍拒,披露键
 `env_battle_lock_live_identity_loss`)。
 
+#### 3.5.6b 本局已解锁入池专家 unlocked_experts
+
+**语义**:`tuple[str, ...]` 逻辑态域——本局已解锁入池的专家顾问规范名
+(官方机制 [economy.md](../../../game/currency_war/research/economy.md) §1:
+专家顾问初始不参与普通商店招募,经投资环境/投资策略/战利品【专家邀请函】
+等通道解锁后本局加入商店)。成员闭集 = `CHARACTERS` 注册表 `is_expert`
+置位 9 人,写入期闸 = `assert_expert_names`(越界名炸错优于静默混池)。
+只增不减、追加去重(现役解锁通道无回收语义;装备出售等边界无证据,
+不建回收)。该域无画面观察读端——值一经写入即本局真值,商店出现
+未登记专家 = 观察覆盖缺口,按审计行声明采新。
+
+**消费**:池派生单一源 = `cw_pool.unlocked_expert_copies`(按名并入
+`EXPERT_COPIES_ASSUMED` 副本),`remaining_pool`/`drawable_names` 系列
+并入后 sim 发牌与实机刷新采样两执行面同源;`fixed_pool` 基础腿恒排除
+`is_expert` 角色(入池 = 解锁授予,非注册表默认)。
+
+**写入端**:获得链 advisor 道统一原语 `_unlock_experts`(cw_gain_chain,
+单一落点)三口——`on_env_gained`(`ENV_GIFTS` advisor=True,特邀专家族
+4 条)/`on_strategy_gained`(`STRATEGY_GRANTS` advisor=True,顾问入商店族
+11 条)/`on_equipment_gained`(分身墨镜族,解锁 + 送单位双腿)。两缺口
+在册:①专家邀请函通道选卡候选名不可观察(`pick_expert_name_unobserved`
+申报行,候选名观察建档批接线);②特邀专家:银狼条件形态(「首次获得
+【银狼LV.999】时」)触发模型未建,现值空转(登记时点 ≠ 到手时点)。
+
+**登记四件**:开局种子 = `()`(§2.6 种子族);快照恢复 = tuple 化重建
+登记(`_json_safe` 落快照为 list-of-str,直透 = 静默 list/tuple 类型
+漂移);schema = 独立域键版本 1(同 env_grants_done 先例,不并入他域
+bump);审计 = WRITE_END 行(写入端声明 + 两缺口指针)。
+
 ### 3.6 任何画面:事件浮层与派生域
 
 #### 3.6.1 事件浮层 event_overlay

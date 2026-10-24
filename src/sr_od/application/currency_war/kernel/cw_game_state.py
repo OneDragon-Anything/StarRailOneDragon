@@ -256,6 +256,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 元素 (件名, 解锁序位 NodePos))。独立键
                                 # 版本 1,同 env_grants_done 先例不并入
                                 # 他域 bump
+    'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
+                                # advisor 道解锁原语 _unlock_experts 追加
+                                # 去重;池派生消费 = cw_pool。独立键版本 1,
+                                # 同 env_grants_done 先例不并入他域 bump
+                                # ——他域本体未变)
     'giftbox_sight': 1,         # 战利品区惊喜盒板件 ⏳N 读数观察域(迭代
                                 # 2026-10-19-giftbox-piece-obs;元素 = 最近
                                 # 一次上报帧的可读读数集 tuple[int, ...])。
@@ -4460,6 +4465,10 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 节点序位两件套(键表示切换批:_json_safe 落快照为 [p, r] list,
         # tuple 化重建;NodePos = (位面,轮) 元组键)。
         'node_pos': lambda d: (int(d[0]), int(d[1])),
+        # 本局已解锁入池专家(获得链 advisor 道):tuple 化重建(_json_safe
+        # 落快照为 list-of-str,直透 = 静默 list/tuple 类型漂移);随快照
+        # 存续 = 恢复局解锁状态不丢(重复解锁幂等,不重写)。
+        'unlocked_experts': lambda d: tuple(str(n) for n in d),
     }
     for name, raw in values.items():
         target = getattr(gs, name, None)
