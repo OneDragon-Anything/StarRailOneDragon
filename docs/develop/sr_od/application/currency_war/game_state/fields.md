@@ -306,22 +306,43 @@ tome = 星徽秘典(占席待实机证实——画面档案只有弹窗、无席
 bookcard = 书册卡(2026-09-19 起独立细分,开卡动作策略臂按 kind 分派)/
 empty = 空。unit/supply_box/tome/bookcard 占 1 槽、empty 不占
 (占席判定派生单一源 = `slot_occupies`)。**占位真值只有这一份**。
-**写入方**(完整清单):
+**道具名字轴 `item`**(2026-10-24 批,schema 字段级新增非新域):道具类
+kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
+一致性权威 = 名字→类别映射桥 `BENCH_ITEM_KINDS`(kernel/cw_investments,
+键集 = 授予通道占席道具全量闭集、import 期双向闭合校验:简易/特权/进阶
+武装箱 → supply_box、专家邀请函 → bookcard):授予通道道具类槽构造一律
+`BenchSlot(kind=BENCH_ITEM_KINDS[item], item=item)`(直查非 .get,映射外
+道具名 KeyError 响亮);观察通道 = 模板钉名(银灰箱命中即简易武装箱/
+星徽秘典/专家邀请函,与映射表 import 期互检);**tome 豁免**——星徽秘典
+为观察专属来源,不入映射/词表,名字一致性由识别双渲染注册表承载。
+旧档回放/journal 历史槽值缺 `item` 键 → None 容忍(零迁移);不做
+`__post_init__` 校验(一致性防线 = 映射闭合校验 + 观察端互检)。
+**写入方**(完整清单;道具槽 `item` 的三写端 = 发放/观察/吸收,随本轴
+一并申报):
 - 观察写入方:本屏观察覆盖(含星级观察消费:备战屏 read_star 链经观察数据进入点写
-  gs.bench,零新增 OCR,§3.2.18)。
+  gs.bench,零新增 OCR,§3.2.18);道具槽带名构造 = 识别期 (kind, 品名)
+  细分映射 → `_bench_view_of`(observation,2026-10-24 批起道具槽带名,
+  unit/empty 恒 None)。
 - 逻辑写入方(op,§4.2):OpenBox 开箱(箱槽→空/新内容);BuyCard 买牌(落位)与
   **合成升星逻辑态直写**(BuyCard 执行落地门 `detect_merge_upgrade` 检测同名最高星
   抬升 → `write_logic(gs.bench, 逻辑态推算 BenchView)`,两态制,下一备战帧实读覆盖);
-  RunDeploy 部署(备战席 −该牌);SellBench 卖备战席角色(−该牌);PickSupply 补给单位分支(`grant_bench_unit_cascade` 入席 1★ + 合成级联,与商店购买同语义;`kernel/cw_action_report/pick_supply.py`)。
+  RunDeploy 部署(备战席 −该牌);SellBench 卖备战席角色(−该牌;**溢出腿
+  吸收写端**:溢出件入位 = 词表守卫 + 查映射落带名槽件
+  `BenchSlot(kind=BENCH_ITEM_KINDS[名], item=名)`,身份守恒——发放带名落席
+  → 溢出字符串(名字本身)→ 入位槽带名);PickSupply 补给单位分支(`grant_bench_unit_cascade` 入席 1★ + 合成级联,与商店购买同语义;`kernel/cw_action_report/pick_supply.py`)。
 - 效果写入方:板面重写桥 `apply_board_rewrite` 全场出售面(人力重组/卖全场族,清空
   备战席+退款,§5.3;生产接入点=选卡登记点);效果改写源已登记:乱成一锅粥/+(最左 6 槽
   逐节点重掷)、公司人才流动(最右 3 槽逐节点改写)、狸职手续(每 2 节点随机 1 狸
   离场留装备)、愚者恶作剧(离场产金——进席走买牌域)、打捞人才库/+(进补给阶段发
   未选角色进席)、发牌进席族(节节高升/天降救兵/价值投资/援军族/全都要等,按归属
   判据逐卡分面,§3.2.18/§5.3)。
-- 获得链写入方(kernel,`GAIN_CHAIN_PRODUCER`):环境赠卡道具腿——`on_env_gained`
-  即时支(`_place_bench_item` 落位:备战空槽 supply_box/席满溢出落位/溢出位被占
-  零写留证;在册条目 = 火药味 ×2、红钻贵族 ×1、蓝钻贵族 ×1)+ 定时到点支(`discharge_due_item_grants`,
+- 获得链写入方(kernel,`GAIN_CHAIN_PRODUCER`;**发放写端** = 道具槽 item
+  身份权威源):环境赠卡道具腿——`on_env_gained`
+  即时支(`_place_bench_item` 落位:备战空槽带名槽件
+  `BenchSlot(kind=BENCH_ITEM_KINDS[item], item=item)`/席满溢出落位/溢出位被占
+  零写留证;在册条目 = 火药味 ×2、红钻贵族 ×1、蓝钻贵族 ×1、**专家研讨会
+  ×2(专家邀请函 + 简易武装箱,卡文序;bookcard 槽件发放首例,开卡/选卡
+  链现役承接)**)+ 定时到点支(`discharge_due_item_grants`,
   在册条目 = 特权阶级;实机不接、生产挂点 = sim 进节点收束,队列登记后保持原样、
   备战真值归观察覆盖——不对称申报在册);策略侧箱腿(`on_strategy_gained` 效果体 →
   `gain_bench_item`,evidence=`pick_invest_box_grant`,各进阶武装箱 ×1——战术义眼++/

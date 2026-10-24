@@ -146,7 +146,10 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
 `gain_bench_item(gs, item, *, rand, sig, evidence, producer=GAIN_CHAIN_PRODUCER)`
 (占席道具公开发放口,命名沿 gain_character/gain_equipment 系):实现 = 模块
 私有落位原语 `_place_bench_item` 加 `producer` 形参后的公开薄包装,落位语义
-全部复用——备战空槽落 `BenchSlot(kind='supply_box')` → 席满溢出落位(§4,
+全部复用——备战空槽落**带名槽件**
+`BenchSlot(kind=BENCH_ITEM_KINDS[item], item=item)`(名字→类别映射桥
+`cw_investments.BENCH_ITEM_KINDS` 单一源,直查非 .get;映射外道具名
+KeyError 响亮;2026-10-24 批起)→ 席满溢出落位(§4,
 道具与角色同款)→ 溢出位被占零写 + 保留证据(§6);bench 未观察 = 拒落零写
 (§2.2 同款档)。返回落位成败布尔(备战槽或溢出位均算落位)。
 `rand=False` = 确定发放(策略箱授予/环境发放同约定,§5)。
@@ -324,8 +327,13 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     invest_effects.md「条件腿族面口径」节。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
-    落位写入(角色落位同构:备战空槽放 `BenchSlot(kind='supply_box')`,双端
-    同一获得链——sim 世界写入即容器写);席满 = 溢出落位(实机真值:道具与角色
+    落位写入(角色落位同构:备战空槽放**带名槽件**
+    `BenchSlot(kind=BENCH_ITEM_KINDS[名], item=名)`——名字→类别映射桥单一源
+    (§2.8),双端
+    同一获得链——sim 世界写入即容器写;类别由映射编译:武装箱系 →
+    supply_box(开箱链)、专家邀请函 → bookcard(开卡链,
+    **bookcard 槽件发放首例** = 专家研讨会 id 139,卡文序邀请函先箱后,
+    开卡/选卡链现役承接零新通道));席满 = 溢出落位(实机真值:道具与角色
     同款——落溢出席并阻断进入战斗,`overflow_warning=True` + `overflow_card=
     道具名` 两字段直写,见 §4);溢出位被占 = 零写 + 每道具一遥测申报保留证据
     (`kind = DEFECT_OVERFLOW_TAKEN`,与角色分支同款);效果串 `item_gift:<名>`
@@ -374,12 +382,16 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
   溢出分支(`kernel/cw_action_report/sell_bench.py`)。与容器字段注释、
   `kernel/cw_projection_audit.py` 对账 basis 行一致,字段语义权威版本 = fields.md
   §3.2.21。
-- **身份两分判 kind**:溢出位身份串的消费方(合成池构建 `_build_pool` /
-  卖牌溢出分支入位)按 `cw_investments.BENCH_ITEM_NAMES` 判 `BenchSlot`
-  kind——命中 = `supply_box` 惰性槽件(禁造 Unit 假身份进合成素材组),
-  未命中 = 角色。取值清单来源 = 两张 GiftGrant 授予表的 `items_immediate` ∪
-  `items_scheduled`(定时道具同为占席道具,身份 kind 判定同面);
-  效果体内联发放的道具登记时须显式并入该表。
+- **身份两分判 kind(带名)**:溢出位身份串的消费方(合成池构建 `_build_pool` /
+  卖牌溢出分支入位)按 `cw_investments.BENCH_ITEM_NAMES` 判是否占席道具——
+  命中 = 查映射编译 kind 落**带名惰性槽件**
+  `BenchSlot(kind=BENCH_ITEM_KINDS[身份串], item=身份串)`(禁造 Unit 假身份进
+  合成素材组;kind = `BENCH_ITEM_KINDS` 映射值,武装箱系 = supply_box、
+  专家邀请函 = bookcard;2026-10-24 批起带名,入位槽身份与发放写端同源
+  不漂),未命中 = 角色。取值清单(词表键集)= 两张 GiftGrant 授予表的
+  `items_immediate` ∪ `items_scheduled`,由映射桥 `_validate_bench_item_kinds`
+  import 期双向闭合校验承接(漏登/孤儿键 import 炸,原派生式自动覆盖语义
+  等价);观察专属来源(星徽秘典,tome)不经授予通道不入词表(豁免)。
 - **星级链记**:星级不入容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
   的溢出卡星级缺读按 1 兜底(现行口径,fields.md §3.2.21)。
