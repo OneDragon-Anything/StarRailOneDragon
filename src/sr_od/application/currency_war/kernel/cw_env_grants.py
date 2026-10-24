@@ -25,7 +25,12 @@ live 简报屏观察 / sim 节点窗收口,两段代码不同口)——仍归单
 - 回调三写(diamond_count/deploy_cap/back_layout):sim 世界数值面,
   全部 :meth:`GameState.observe`(先例 = ``_on_supply_picked`` 的
   diamond_count observe 写);**live 不调回调**——三域 live 写端 =
-  观察识别器,逻辑侧禁写(投影审计已登记)。
+  观察识别器,逻辑侧禁写(投影审计已登记);
+- 羁绊档位触发器(特邀专家:加拉赫,ENV_BOND_TIER_GRANTS):击破档位
+  条件装备发放同走「装备发放 + done 追加」前两通道(两笔同 evidence
+  同 sig 相邻),sig = 模块内构 _GRANT_SIG;判定函数住
+  kernel/cw_faction_callbacks.check_env_bond_tier_grants(deployed 写尾
+  门外必查),发放原语 = :func:`grant_env_bond_tier`。
 
 **sig 单形态**(禁 obs_sig 进触发函数)::func:`check_env_streak_grants`
 的 ``sig`` 入参必须是 logic_action / logic_hook 族(obs 族进
@@ -177,6 +182,12 @@ DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
 #: 完胜改写——只回退本键集环境的 pending_item_opens 条目解锁位。
 DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 
+#: done 域条件键前缀:羁绊档位触发器(T-41 特邀专家:加拉赫;格式
+#: 'bond_tier_<档位>',每档一键,一次性封账降档再回不重发——祈愿
+#: 「首达档一次」用户裁定同口径;档位单一源 = FACTIONS[bond].tiers,
+#: 键形先例 = ore_open#<阈值> 阈值嵌键族)。
+BOND_TIER_KEY_PREFIX: str = 'bond_tier_'
+
 #: sim 条件腿证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
 #: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
 #: 弃用〕,**非机制推导**——180 计数在 sim 无世界真值生产点,8 是该阈值
@@ -200,6 +211,20 @@ _RICH_DIAMOND: str = '财富宝钻'
 _DIAMOND_SIG: ChannelSig = ChannelSig(family='obs', actor='EnvDiamondGrant',
                                       mode='synthesized',
                                       group_id='sim:env-diamond')
+
+#: 羁绊档位发放两写的渠道签名(kernel 内构 logic_hook 族;值回调上下文
+#: 无上报 sig 可透传,内构先例 = _DIAMOND_SIG 含固定 group_id 跨窗复用;
+#: family 合法性 = write_logic/write_logic_rand 渠道校验均收
+#: logic_action/logic_hook 族,模块头「sig 单形态」节)。四字段全钉
+#: (_DIAMOND_SIG 同款;mode = compute 是 logic 两族唯一合法子模
+#: 〔cw_game_state.ChannelSig mode 词表〕,'synthesized' 属 obs 族专用,
+#: 跨族不可套);判定函数住 kernel/cw_faction_callbacks
+#: (check_env_bond_tier_grants),发放原语 = 本模块
+#: grant_env_bond_tier。
+_GRANT_SIG: ChannelSig = ChannelSig(family='logic_hook',
+                                    actor='EnvBondTierGrant',
+                                    mode='compute',
+                                    group_id='env-bond-grant')
 
 
 def check_env_streak_grants(gs: GameState, streak_after: int,
@@ -1086,3 +1111,42 @@ def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
     back_after = min(DEPLOYED_BACK_CAPACITY_MAX, back_capacity_of(gs) + 1)
     gs.observe(gs.back_layout, back_after,
                evidence=_DIAMOND_EVIDENCE, sig=_DIAMOND_SIG)
+
+
+def grant_env_bond_tier(gs: GameState, env: str, bond: str,
+                        tier: int, equip_name: str) -> None:
+    """单档羁绊档位装备发放原语(equips 尾追 + done 登记,两笔同
+    evidence/sig/produced_by 相邻;消费方 = cw_faction_callbacks.
+    check_env_bond_tier_grants,deployed 写尾电平判据逐档调用,门与
+    幂等判定住彼处,本原语只管发放两笔)。
+
+    - equips 现值 None(从未观察)→ **宁缺勿造零写零 done**(写出
+      不完整库存 = 丢件;判据挂板面写尾电平必查,下一次任意 deployed
+      逻辑写自动重试,done 只在发放同窗登记——check_env_streak_grants
+      ⑥同纪律);
+    - done 条件键 = ``f'{BOND_TIER_KEY_PREFIX}{tier}'``(每档一键,
+      一次性封账降档再回不重发);
+    - evidence = ``env_grant#{env}#bond{bond}@tier{tier}``(对账一档一
+      证据,多档同窗逐档各自成对写);
+    - sig = 模块级常量 _GRANT_SIG(值回调上下文无上报 sig 可透传,内构
+      先例 = _DIAMOND_SIG;logic_hook 族合法性见模块头「sig 单形态」节);
+    - producer 沿 _PRODUCER(家族单一标识);
+    - 零 rng:追加位置(库存尾部)确定;
+    - 递归安全:发放两笔写(equips/env_grants_done)均非 deployed 行域,
+      不触发 deployed 分支回调,无再入;
+    - 返回 None、无返回值消费面(以太钻头非财富宝钻,无世界数值回调,
+      零联动——投影仪先例 = 发放返回值仅日志面消费)。
+    """
+    base = gs.equips.value
+    if base is None:
+        # 库存从未观察:发放写出不完整库存 = 丢件,宁缺勿造不标 done
+        # (下次任意板面写重试;done 只在发放同窗登记)
+        return
+    evidence = f'env_grant#{env}#bond{bond}@tier{tier}'
+    gs.write_logic_rand(gs.equips, list(base) + [equip_name],
+                        produced_by=_PRODUCER, evidence=evidence,
+                        sig=_GRANT_SIG)
+    done = tuple(gs.env_grants_done.value or ())
+    gs.write_logic(gs.env_grants_done,
+                   done + ((env, f'{BOND_TIER_KEY_PREFIX}{tier}'),),
+                   produced_by=_PRODUCER, evidence=evidence, sig=_GRANT_SIG)

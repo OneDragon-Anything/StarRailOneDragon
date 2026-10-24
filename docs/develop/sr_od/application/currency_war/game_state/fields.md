@@ -1220,7 +1220,11 @@ settle_confirm 分支,黑天鹅直登相邻,触发形状节 = §3.5.6);
 载荷 = 赠卡实例号,键值载荷形态随 `star_grant#`;首例 = 英雄登场 id 133,
 T-33;写端 = `cw_gain_chain.on_env_gained` 赠卡锁腿,发放刻与锁记录同窗;
 消费 = `check_env_deploy_lock_perfect` 完胜改写的作用域门——只回退本键集
-内 uid 的锁记录,异环境锁记录不受同卡完胜加速;纯作用域登记,非幂等守卫)。
+内 uid 的锁记录,异环境锁记录不受同卡完胜加速;纯作用域登记,非幂等守卫);
+`'bond_tier_<档位>'` = 击破档位触发器(特邀专家:加拉赫 id 142,T-41;
+每档一键〔现值 2/4/6/9〕,一次性封账降档再回不重发;档位单一源 =
+`FACTIONS['击破'].tiers`,构建期卡面档位对拍闸防双源漂移,消费 =
+`check_env_bond_tier_grants`,触发形状节见下)。
 
 **触发与写入方**(逻辑写入方触发函数族 + 获得链两腿并列,各对应其条件键 =
 `kernel/cw_env_grants.py::check_env_streak_grants`(first_streak;live/sim
@@ -1333,6 +1337,28 @@ bench ∪ 上阵 ∪ 溢出含黑天鹅则不叠写,与 gain_character 3 合 1 �
 结算重写 = 自愈循环);live 无定时保底(证实只认备战观察)。**溢出落位
 局型**(席满):猜测态落溢出位、bench 观察永不见它 → 证实延迟至该单位进
 备战席,期间幂等守卫代行封写,无行为面损伤。
+
+**bond_tier_<档位> 触发形状**(同域第六通道,特邀专家:加拉赫 id 142,
+T-41;登记表 = `cw_investments.ENV_BOND_TIER_GRANTS`,值 = (羁绊名,
+发放装备名) 白名单制,档位不入表——单一源 = `FACTIONS[bond].tiers`):
+击破羁绊资格计数(资格集口径 = 出身 ∨ 持星徽,`_qualification_sets`
+派生值;L2 装备贡献——击破星徽穿戴者计入——是既有口径)≥ 档位时发放
+1 件【以太钻头】(「激活2/4/6/9击破羁绊时,获得1件【以太钻头】」卡面
+直读)。触发语义 = **电平 + 每档一次性**(用户裁定 2026-10-24「每个
+档位只发一次奖励」):计数达标 ∧ 该档未发放 → 发;降档再回不重发
+(祈愿「首达档一次」同口径)。判据 = `kernel/cw_faction_callbacks.
+check_env_bond_tier_grants`,挂点 = `on_deployed_logic_write` 尾部
+**门外**(任意 deployed 逻辑写必查——不改任何 watched 资格集的板面写
+〔卖非在册阵营场上件等〕也重查悬置补发;watched 集注册表驱动扩容含
+击破);发放原语 = `kernel/cw_env_grants.grant_env_bond_tier`:**两笔
+相邻写** 同 evidence `env_grant#<环境>#bond<羁绊>@tier<档位>` 同 sig
+(模块内构 `_GRANT_SIG`,logic_hook 族 group `env-bond-grant`——值回调
+上下文无上报 sig 可透传):equips 尾部追加(`write_logic_rand`,装备
+落位不可观察)+ 本域追加(`write_logic`)。equips 缺读(从未观察)→
+缓发**不标 done**(宁缺勿造;判据电平 + 门外必查 = 下一次任意板面写
+自动重试)。恢复局:done 随快照存续不重发;done 为空的接管形态,首个
+板面动作即补发达标档 = 最佳猜测。以太钻头无世界数值回调(非财富宝钻),
+零联动。
 
 **接线两处**(前提 = 真值已落账):live = 结算覆盖写入方 `apply_settlement_cover`
 之后(同 best-effort 段,覆盖写异常连检查一并跳过;`streak_after` None =

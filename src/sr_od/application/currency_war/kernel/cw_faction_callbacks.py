@@ -12,9 +12,13 @@
 - ``on_equips_changed(gs, changed_pairs, source)``:同名存活单位
   (旧,新) 对中 equips 有差者(事件通知层);
 - ``on_qualification_changed(gs, old_sets, new_sets, source)``:盯的
-  三阵营资格名集旧/新(派生存值)→ 判 S1a 跨档 / S1b 巨星重选 / S2 伙伴;
+  资格名集(弹窗两阵营 + 伙伴 + ENV_BOND_TIER_GRANTS 羁绊,注册表
+  驱动)旧/新(派生存值)→ 判 S1a 跨档 / S1b 巨星重选 / S2 伙伴;
 - ``on_star_changed(gs, old_star, new_star, source)``:场上银狼星级
-  (派生存值,无/1/2/3)→ 判 S3 planner。
+  (派生存值,无/1/2/3)→ 判 S3 planner;
+- ``check_env_bond_tier_grants(gs, new_sets, source)``:羁绊档位条件
+  发放判据(ENV_BOND_TIER_GRANTS 注册表驱动;挂 deployed 写尾**门外**
+  必查,电平 + 每档一次性 done 封账,发放原语住 cw_env_grants)。
 
 资格集与羁绊计数字段(board)分立:资格集 = 名集合(判据面;出身 ∨
 持徽,贡献单一源 cw_bond_equips.unit_bond_tags,开拓者按排形态);
@@ -72,17 +76,27 @@ def _iter_field_units(view) -> list[tuple[str, Unit]]:
 
 
 def _qualification_sets(view) -> dict[str, set[str]]:
-    """视图 → 盯的三阵营资格名集(派生存值)。
+    """视图 → 盯的资格名集(派生存值;注册表驱动扩容)。
 
     资格 = 出身 ∨ 持该阵营星徽(装备贡献单一源 = cw_bond_equips.
     unit_bond_tags:出身/卡带/星徽全量口径;名不在注册表/未知 → 零标签,
     该名对所有阵营无资格)。开拓者按所在排形态(
     「资格集语义」节)。
+
+    watched = 弹窗两阵营 + 伙伴 + ENV_BOND_TIER_GRANTS 羁绊(羁绊档位
+    发放判据要按资格计数判档,资格集一并盯;扩容零干扰 = 既有 S1a/
+    S1b/S2 判据只读各自阵营,不读本扩容集)。
     """
     from sr_od.application.currency_war.kernel.cw_bond_equips import (
         unit_bond_tags,
     )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_BOND_TIER_GRANTS,
+    )
     watched = [*_FACTION_POPUP_KINDS, _PARTNER_FACTION]
+    for _bond, _equip in ENV_BOND_TIER_GRANTS.values():
+        if _bond not in watched:
+            watched.append(_bond)
     sets: dict[str, set[str]] = {f: set() for f in watched}
     for row, u in _iter_field_units(view):
         tags = unit_bond_tags(u, row=row)
@@ -207,6 +221,54 @@ def on_star_changed(gs, old_star, new_star, source: str) -> None:
         source=f's3_star{new_star}@tier{tier}@{source}')
 
 
+def check_env_bond_tier_grants(gs, new_sets, source: str) -> None:
+    """羁绊档位条件发放判据(ENV_BOND_TIER_GRANTS 注册表驱动;调用点 =
+    ``on_deployed_logic_write`` 尾部**门外**——on_qualification_changed
+    的 sets-changed 门辖不到「不改任何 watched 资格集的板面写」(卖非
+    在册阵营场上件/穿非羁绊装备/换位等),电平重试性要求任意板面写后
+    必查,done 封账保幂等;new_sets 复用入口无条件现算值,零额外派生
+    成本)。
+
+    判定 = **电平 + 每档一次性**(用户裁定 2026-10-24「每个档位只发
+    一次奖励」):new_sets 资格计数 ≥ 档位 ∧ (env, bond_tier_{档位})
+    ∉ env_grants_done → 发 1 件;降档再回不重发(祈愿「首达档一次」
+    同口径,本模块祈愿簿记先例)。equips 未观察跳过不标 done,下一次
+    任意板面写自动重试(宁缺勿造守卫住发放原语 grant_env_bond_tier)。
+
+    - env 门(active_env 读法沿 cw_env_grants.check_env_streak_grants
+      先例)→ 表门 → 逐档电平判定;
+    - ``source`` = 宿主写 produced_by(契约对称形参,本判据零消费面
+      ——发放证据串已含 env/bond/tier 三维,归因走写台账 evidence,
+      预留按来源排除的扩展位);
+    - 资格集口径披露:资格集 = 按名去重(出身 ∨ 持星徽);击破现无
+      卡带类装备,资格集与 board 多集计数对击破恒相等;未来出现「击破
+      计数+1」类装备时本判据口径需复审(资格集会少计)。
+    """
+    env = gs.active_env.value
+    if not env:
+        return
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.kernel.cw_env_grants import (
+        BOND_TIER_KEY_PREFIX,
+        grant_env_bond_tier,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_BOND_TIER_GRANTS,
+    )
+    grant = ENV_BOND_TIER_GRANTS.get(env)
+    if grant is None:
+        return
+    bond, equip_name = grant
+    count = len(new_sets.get(bond, ()))
+    done = tuple(gs.env_grants_done.value or ())
+    for tier in FACTIONS[bond].tiers:
+        if count < tier:
+            continue
+        if (env, f'{BOND_TIER_KEY_PREFIX}{tier}') in done:
+            continue   # 每档一次性:档已发放封账(降档再回不重发)
+        grant_env_bond_tier(gs, env, bond, tier, equip_name)
+
+
 def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     """deployed 逻辑写尾的派生维护单一入口(挂点 = cw_game_state
     ``_write_logic_frame`` deployed 分支;观察写不经此)。
@@ -214,6 +276,8 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     数据流(「资格集语义」):按名分解 diff →
     事件回调(通知层)→ 资格集一次提交 → 资格集回调一次(三判据);
     银狼星级同为派生存值 → 星级回调。值等(两视图占用全等)零回调。
+    羁绊档位条件发放判据挂尾部**门外**(任意板面写必查——sets-changed
+    门辖不到的板面写也要重查悬置补发,done 封账保幂等)。
 
     事件面契约:``on_equips_changed`` 只收 equips 有差的存活对(裁决 =
     按契约过滤;纯星变/开拓者形态变对不进该口——星级面归
@@ -235,3 +299,8 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     new_star = _planner_star(new_view)
     if old_star != new_star:
         on_star_changed(gs, old_star, new_star, source)
+    # —— 羁绊档位条件发放(ENV_BOND_TIER_GRANTS):sets-changed 门外的
+    #    必查腿——不改任何 watched 资格集的板面写(卖非在册阵营场上件/
+    #    穿非羁绊装备等)也要重查悬置补发;new_sets 复用入口现算值零额外
+    #    成本,done 封账保幂等(判定语义单一源 = check_env_bond_tier_grants)。
+    check_env_bond_tier_grants(gs, new_sets, source)

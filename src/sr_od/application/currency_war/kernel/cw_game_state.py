@@ -2686,12 +2686,14 @@ class GameState:
     # 纯登记件非门控,节点窗开才写,开局三选一获取形态可缺)/
     # 'dot_battle#<k>'(持续伤害契约 sim 进度键,k 从 1 起 append-only,
     # 证实计数单一源)/ 'ore_open#<阈值>'(战技点契约晶矿开启阈值触发器,
-    # T-29:重复型通道每阈值一键,阈值嵌键)——键形态登记单一源 =
-    # fields.md §3.5.5。
+    # T-29:重复型通道每阈值一键,阈值嵌键)/ 'bond_tier_<档位>'(击破
+    # 档位触发器,特邀专家:加拉赫 id 142;每档一键,一次性封账降档再回
+    # 不重发)——键形态登记单一源 = fields.md §3.5.5。
     # 取值时机 = 发放刻追加(check_env_streak_grants /
     # check_env_refresh_grants / check_env_interest_grants /
     # check_env_boss_grants / check_env_dot_grants /
-    # check_env_ore_open_grants / check_env_battle_grants 各自写腿 /
+    # check_env_ore_open_grants / check_env_battle_grants /
+    # check_env_bond_tier_grants(grant_env_bond_tier 写腿)各自写腿 /
     # on_env_gained 随机装备绑定腿〔placed 守卫下〕与持续伤害契约锚键腿
     # 〔节点窗开〕),
     # **局内恒存无过期清理**——「本局首次」整局有效,连胜无周期
@@ -2699,8 +2701,8 @@ class GameState:
     # 节点不同键,登记本身仍局内恒存)。幂等守卫:跨结算/跨观察重查不
     # 重发(结算低频天然幂等友好,电平 + done 直写,边沿/op 成员记忆已
     # 否定,取舍见详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants
-    # 触发函数族(发放/证实刻追加;streak/refresh/interest/boss/dot/
-    # ore_open/battle 各函数)
+    # 写端族(发放/证实刻追加;streak/refresh/interest/boss/dot/
+    # ore_open/battle/bond_tier〔grant_env_bond_tier〕各函数)
     # + cw_gain_chain.on_env_gained(随机装备绑定腿 + 持续伤害契约锚键腿),
     # 无观察写端(发放登记事实非观察投影;直写先例 = cw_exec_state 金腿
     # / cw_effect_inventory 退款腿)。恢复局随快照存续 = 中断恢复对局

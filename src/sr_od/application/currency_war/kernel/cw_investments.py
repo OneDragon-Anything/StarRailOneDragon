@@ -49,6 +49,9 @@ from sr_od.application.currency_war.data.cw_chars import (
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
 )
+from sr_od.application.currency_war.data.cw_factions import (
+    FACTIONS,
+)
 from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
@@ -1510,8 +1513,9 @@ ENV_GIFTS: dict[str, GiftGrant] = {
         chars_immediate=('远坂凛', '吉尔伽美什'),
         chars_conditional=(('Archer', '完成两次圣杯试炼后'),),
     ),
-    # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果(停云
-    # 终结技增益/加拉赫按击破档给钻头/桑博节点礼盒)异质不入估值,仅占位登记
+    # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果
+    # (停云终结技增益/加拉赫击破档腿世界发放已接(ENV_BOND_TIER_GRANTS),
+    # 装备资产不入估值维持/桑博节点礼盒)异质不入估值,停云/桑博仅占位登记
     # (详设 §2.1.1 注;桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
     '特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
     '特邀专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
@@ -3101,3 +3105,66 @@ def _validate_env_shop_two_star_deal_prob() -> None:
 
 
 _validate_env_shop_two_star_deal_prob()
+
+
+# ===== 环境羁绊档位条件发放注册表(特邀专家:加拉赫;白名单制)=====
+# **世界发放域**(条件达成的世界发放新表,ENV_STREAK/REFRESH/BOSS/MERGE/
+# INTEREST/ORE_OPEN/BATTLE/DEPLOY_LOCK/DELAYED_ITEM 同族):键 = 环境规范
+# 名,值 = (羁绊名, 发放装备名)。**档位不入表**:单一源 =
+# FACTIONS[bond].tiers(权威裁定「羁绊阈值仍以 cw_factions 为准」,
+# docs/game/currency_war/research/invest_effects.md「羁绊激活口径」节;
+# 跨档判据同源先例 = kernel/cw_faction_callbacks 弹窗阵营档位判定)。
+# 表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款
+# 纪律)。消费面 = kernel/cw_faction_callbacks.check_env_bond_tier_grants
+# (deployed 写尾门外必查)+ kernel/cw_env_grants.grant_env_bond_tier
+# (发放原语:equips 尾追 + done 登记两笔同窗)。
+# **表间豁免声明**(ENV_REFRESH_GRANTS 先例同款):本表为世界发放域表,
+# 与估值域表分域不互斥——本条目键与 ENV_GIFTS['特邀专家:加拉赫'] 同键
+# 并存合法(先例 = ENV_ORE_GRANTS ∩ ENV_ECONOMY 的增发货币两表并存),
+# 不参与「单一环境只落一个估值结构」三表互斥校验。
+ENV_BOND_TIER_GRANTS: dict[str, tuple[str, str]] = {
+    # 激活2/4/6/9击破羁绊时,获得1件【以太钻头】(id 142 原文直读,
+    # cw_invest_data PlazaPortal('142'))
+    '特邀专家:加拉赫': ('击破', '以太钻头'),
+}
+
+
+def _validate_env_bond_tier_grants() -> None:
+    """ENV_BOND_TIER_GRANTS 构建校验(import 即炸;沿 _validate_env_streak_
+    grants 先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 羁绊名漂移:bond 必须在 FACTIONS(档位单一源失联 = 判据失效);
+    ③ 装备名漂移:发放装备必须在 EQUIPMENTS(发放写出库存里不存在的
+    名字 = 假身份混进 equips,ENV_STREAK_GRANTS ②同款);
+    ④ 卡面档位对拍闸:FACTIONS[bond].tiers 串(现值 '2/4/6/9')必须是
+    该环境 effect 原文的子串——击破 tiers V4.4 实证跨版本会变
+    (2/4/6/8/10→2/4/6/9),plaza 重生成改 desc 或有人改 FACTIONS 后两侧
+    失同步 = 构建期炸出强制人工复审,防档位漂移静默错发。对拍 = 子串
+    包含形态,极端同形假通过可接受(闸目的 = 漂移可见性,非精确文本
+    解析)。
+    """
+    orphans = [n for n in ENV_BOND_TIER_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_BOND_TIER_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, (_bond, _equip) in ENV_BOND_TIER_GRANTS.items():
+        if _bond not in FACTIONS:
+            raise ValueError(
+                f"ENV_BOND_TIER_GRANTS 羁绊名漂移({_n!r} FACTIONS 无此"
+                f"羁绊,版本改名?):{_bond!r}")
+        if _equip not in EQUIPMENTS:
+            raise ValueError(
+                f"ENV_BOND_TIER_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
+                f"版本改名?):{_equip!r}")
+        _tiers_str = '/'.join(str(t) for t in FACTIONS[_bond].tiers)
+        if _tiers_str not in INVESTMENT_ENVS[_n].effect:
+            raise ValueError(
+                f"ENV_BOND_TIER_GRANTS 卡面档位对拍失同步({_n!r}):"
+                f"FACTIONS[{_bond!r}].tiers={FACTIONS[_bond].tiers} 串 "
+                f"{_tiers_str!r} 不在效果原文 {INVESTMENT_ENVS[_n].effect!r} "
+                f"中(档位单一源 = FACTIONS,卡面/注册表任一侧改档 = "
+                f"构建期强制人工复审)")
+
+
+_validate_env_bond_tier_grants()
