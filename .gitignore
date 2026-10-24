@@ -58,7 +58,7 @@ models/
 .claude/*
 # .agents/ 通用 AI agents 目录（skill 挂载兼容位，本地 link 不入库）
 .agents/*
-# .dsh/ DSH 项目级目录（skill junction + mcp.servers.yml 本机接线，不入库）
+# .dsh/ DSH 项目级目录（mcp.servers.yml 本机接线，不入库；skill junction 已迁 .agents/skills/）
 .dsh/*
 # .zcode/ ZCode 项目级目录（config.json 的 MCP 本机接线，不入库）
 .zcode/*
