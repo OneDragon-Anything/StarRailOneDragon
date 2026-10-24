@@ -22,9 +22,11 @@
 章内状态差分因果归属 = ``logic_action`` 家族写入行挂其后最近回执的
 动作节(动作的效果写入先于其回执落盘;组尾无回执认领 → 章内变化块;
 非 logic_action 非 obs 写入挂组内最近动作节);章内
-「0 观察 = 开章快照 ∩ 注册键集 + 本章观察道写入动态显影(画面 op 观察
-到什么本章显什么,首写定帧值;注册键回读与观察回读异值 → 章尾注记)
-→ 动作节×N → 策略评价」)→ 未归节(有则)→ 未归行(防静默丢行)
+「0 观察 = 开章快照 ∩ 注册键集(表格型键出独立表:备战章上阵表
+紧贴备战席表前,余同备战席/商品牌面/选项面)+ 本章观察道写入动态
+显影(画面 op 观察到什么本章显什么,首写定帧值;注册键回读与观察
+回读异值 → 章尾注记)→ 动作节×N → 策略评价」)→ 未归节(有则)
+→ 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
 cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
 ``docs/develop/sr_od/application/currency_war/changes/2026-10-16-journal-review-renderer/``
@@ -991,7 +993,7 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
 def _fill_entry(scr: Screen, spec: ScreenSpec, row: dict[str, Any]) -> None:
     """开章行快照 → 0 观察(∩ 注册键集,只显有值行)。"""
     scr.entry = _entry_pairs(state_values(row), spec.entry_fields)
-    scr.entry_tables = _entry_tables(scr.entry)
+    scr.entry_tables = _entry_tables(scr.entry, spec)
 
 
 def _action_title(receipt: dict[str, Any]) -> str:
@@ -1338,6 +1340,31 @@ def _bench_table(v: Any) -> tuple[list[str], list[list[str]]] | None:
     return (slots, [contents])
 
 
+def _deployed_table(v: Any) -> tuple[list[str], list[list[str]]] | None:
+    """上阵槽位表(2 行×N 列:行标签 前排/后排;列数 = max(前排, 后排)
+    槽数,短行不足列补 —(无此槽);槽位 = 名★级(复用 _unit_brief,不另造
+    格式化)/ null → 空)。前排 4 槽、后排随 back_layout 扩容,两行槽数
+    不同是常态;前后排全空(开局帧)也照常出全「空」表,保持结构稳定。
+    槽列表全缺失(载荷畸形)→ None,回落散列行渲染。"""
+    if not isinstance(v, dict):
+        return None
+    front = v.get('front_slots')
+    back = v.get('back_slots')
+    front = front if isinstance(front, list) else None
+    back = back if isinstance(back, list) else None
+    if front is None and back is None:
+        return None
+    width = max(len(front or []), len(back or []))
+
+    def _row(label: str, slots: list[Any] | None) -> list[str]:
+        cells = [_esc(_unit_brief(u)) if u is not None else '空'
+                 for u in (slots or [])]
+        return [label] + cells + ['—'] * (width - len(cells))
+
+    header = ['排'] + [str(i + 1) for i in range(width)]
+    return (header, [_row('前排', front), _row('后排', back)])
+
+
 def _options_table(v: Any, *, kind: str) -> tuple[list[str], list[list[str]]] | None:
     """选项面表(§4.3:encounter 行 = 难度N=奖励;supply 行 = 角色+装备组)。"""
     opts = v.get('options') if isinstance(v, dict) else None
@@ -1365,9 +1392,14 @@ def _options_table(v: Any, *, kind: str) -> tuple[list[str], list[list[str]]] | 
     return (['列', '内容'], rows)
 
 
-def _entry_tables(entry: list[tuple[str, Any]]
+def _entry_tables(entry: list[tuple[str, Any]], spec: ScreenSpec
                   ) -> list[tuple[str, list[str], list[list[str]]]]:
-    """0 观察中的表格型键 → entry_tables(商品牌面/备战席/选项面)。"""
+    """0 观察中的表格型键 → entry_tables(商品牌面/上阵/备战席/选项面)。
+
+    表序随 entry 序:备战章 deployed 在 bench 前 → 上阵表天然紧贴备战席
+    表前。上阵表只在与备战席表同章的画面(备战)生效——表格化的定位语义
+    = 紧贴备战席表前对照;战斗章快照虽含 deployed(战斗阵容速览),维持
+    散列行现状(非备战章不表格化)。"""
     out: list[tuple[str, list[str], list[list[str]]]] = []
     for f, v in entry:
         tbl: tuple[list[str], list[list[str]]] | None = None
@@ -1375,6 +1407,8 @@ def _entry_tables(entry: list[tuple[str, Any]]
             tbl = _shop_table(v)
         elif f == 'bench':
             tbl = _bench_table(v)
+        elif f == 'deployed' and 'bench' in spec.entry_fields:
+            tbl = _deployed_table(v)
         elif f == 'supply.options':
             tbl = _options_table(v, kind='supply')
         elif f == 'encounter.options':
@@ -1469,8 +1503,11 @@ def _match_final_of(rows: list[dict[str, Any]]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _entry_lines(entry: list[tuple[str, Any]]) -> list[str]:
-    """0 观察键值行(表格型键由 entry_tables 承载,此处跳过)。"""
+def _entry_lines(entry: list[tuple[str, Any]],
+                 tabular: frozenset[str] | set[str] = frozenset()
+                 ) -> list[str]:
+    """0 观察键值行(表格型键由 entry_tables 承载,此处跳过;tabular =
+    已表格化字段名集——deployed 仅备战章表格化,未表格化章维持散列行)。"""
     out: list[str] = []
     for f, v in entry:
         if f == 'shop':
@@ -1488,7 +1525,8 @@ def _entry_lines(entry: list[tuple[str, Any]]) -> list[str]:
                 out.append(f"- {field_cn('xp')} {xp}")
                 continue
         if f == 'deployed':
-            out.extend(_deployed_lines(v))
+            if f not in tabular:
+                out.extend(_deployed_lines(v))
             continue
         if f == 'board':
             if isinstance(v, dict) and v:
@@ -1647,7 +1685,7 @@ def _render_screen(prefix: str, scr: Screen) -> list[str]:
     """画面章:`#### 0 观察` → 动作节×N → `#### 章内变化` → 尾注 → 策略评价。"""
     out = [f'### {prefix} {scr.title}', '']
     out += ['#### 0 观察', '']
-    obs = _entry_lines(scr.entry)
+    obs = _entry_lines(scr.entry, {f for f, _, _ in scr.entry_tables})
     # 本章观察道写入动态段(首写帧值;注册键已由快照显影不在此列)
     obs += [f'- {field_cn(f)} {_esc(b)}' for f, b in scr._obs_entries.items()]
     if obs:
