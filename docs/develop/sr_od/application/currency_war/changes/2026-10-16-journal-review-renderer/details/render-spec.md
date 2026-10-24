@@ -38,7 +38,7 @@
 
 | current_screen 值 | 章名 | 决策面 | 0 观察键集（键 → 显示） |
 |---|---|---|---|
-| 货币战争-备战 | 画面-备战 | ✓ | 金 gold/血 hp/等级 level/经验 xp(`已攒/所需`)/升级价 level_up_cost/连胜 streak；前排·后排 deployed（§4.3 单位格式）；备战席 bench（槽位表，§4.3）；后台格数 back_layout；羁绊计数 board（`名×计数`顿号串）；装备库存 equips/穿戴 occupied_equips；晶矿 spheres（`N 座(颜色×n,…)`；points 为点击载荷不渲染）；溢出 overflow_warning/overflow_card；持卡 active_strategies/环境 active_env |
+| 货币战争-备战 | 画面-备战 | ✓ | 金 gold/血 hp/等级 level/经验 xp(`已攒/所需`)/升级价 level_up_cost/连胜 streak；前排·后排 deployed（上阵表，前置备战席表，§4.3）；备战席 bench（槽位表，§4.3）；后台格数 back_layout；羁绊计数 board（`名×计数`顿号串）；装备库存 equips/穿戴 occupied_equips；晶矿 spheres（`N 座(颜色×n,…)`；points 为点击载荷不渲染）；溢出 overflow_warning/overflow_card；持卡 active_strategies/环境 active_env |
 | 货币战争-备战-开商店 | 画面-商店 | ✓ | 金 gold/免费刷新余量 free_refresh_left/刷新价 shop_refresh_cost/等级 level；牌面表（见下）；概率 refresh_probs（`档→概率`顿号串） |
 | 货币战争-战斗等待 | 画面-战斗 | ✗ | 战前：deployed/enemy_difficulty/enemy_affixes；**结算不入 0 观察**——settlement 写入行走 pipeline §5「章内变化」块（键集：hp_after/streak_after/killed→胜负/progress_delta/gold/level/xp；来源锚 = `cw_screen_battle_wait.py:125,449-461,550-565`）。settlement 写入行兼作本章开章证据（sim 无 current_screen 形态，pipeline §4 修订） |
 | （sim 侧真未注册 id） | 原样 id | ✗ | 空（兜底形态，pipeline §4；注册表扩容后原样本 货币战争-BOSS简报/补给/遭遇节点 已成注册键，兜底只承接未来未知画面） |
@@ -95,7 +95,7 @@ gold→金 / hp→血 / level→等级 / xp→经验 / streak→连胜 / level_u
 - 通用兜底：list → 顿号串逐元素；dict → `k:v` 逗号串；tuple → 逗号串；None/缺 → 不渲染该行。
 - **已知键走具名摘要（T-5 起，差分单元格与观察行同规，禁截断 raw JSON）**：bench → `爻光1★、三月七1★(空×6)`；deployed → `前排 希儿1★;后排 藿藿1★`；front_row/back_row → 单位顿号串；board → `名×n` 顿号串；spheres → `2 座(灰×2)`（points 不渲染）；shop → `椒丘1金、翡翠1金(空×2)(识别失败×n)`；ore_rewards → `40,10=装备 轮滑鞋;50,10=角色 翡翠;70,10=金+3`；node_path(含 baseline) → `P1: —→奖励→战斗→…`（token 中文）；node → `P1-R3 战斗`；settlement → `胜 血 84 进度 +2 …`；match_final → `stopped hp 84 金 31`；xp → `已攒/所需`；标量列表键（equips/active_strategies/plane_bosses/enemy_affixes/各 *_opts）→ 顿号串；occupied_equips → `单位:装备,装备`；node_seq_by_plane → `P1: 奖励→…;P2: …`；round_fresh_buys → `phase[1,1]: 翡翠、三月七`；pending_loss → `P1-R4 (battle)`；supply/encounter → `0: 角色+装备(带钻);…`（options 摘要）；回执 action 载荷 → `牌名(阵营,费用金,槽N) · char_id · reason`（动作行）。
 - 通用兜底规则用于未注册键；新遥测键应先进 §4.3 摘要注册再进词表。
-- **0 观察的表格型键不走摘要**（entry_tables 路径，规格不变）：bench → 槽位横排表 `| 1 | … | 9 |`（表头 = 槽号，数据行 = 内容 `名★级`/「空」/「未识别」，三态同 ShopSlot `cw_game_state.py:740`；用户裁定 2 行×9 列横排）；supply/encounter options → `| 列 | 内容 |` 表（encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`）；shop → 五槽牌面表（§3）。摘要路径只服务差分单元格与观察行。
+- **0 观察的表格型键不走摘要**（entry_tables 路径，规格不变）：bench → 槽位横排表 `| 1 | … | 9 |`（表头 = 槽号，数据行 = 内容 `名★级`/「空」/「未识别」，三态同 ShopSlot `cw_game_state.py:740`；用户裁定 2 行×9 列横排）；deployed（备战章）→ 上阵表 `| 排 | 1 | … |`：行标签 前排/后排，列数 = max(前/后排槽数)，短行不足列补 —，空槽「空」，单元格式同 bench；表位 = 备战席表前（备战章判据 = 章 entry_fields 含 bench；非备战章快照维持 deployed 摘要行）；supply/encounter options → `| 列 | 内容 |` 表（encounter 行 = `难度N=奖励文本`，supply 行 = `角色+装备组(带钻标)`）；shop → 五槽牌面表（§3）。摘要路径只服务差分单元格与观察行。
 
 ### §5 特殊情况
 
