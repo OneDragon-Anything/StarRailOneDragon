@@ -245,6 +245,17 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     不可达,实为直构/测试形态防御)。环境获得后的首次获得由
     `on_character_gained` 转发条件判据承接(见下),两挂点合起来覆盖
     「首次」全语义。
+  - **开局替换清席支**(`replaces_opening_supply`,advisor 分道之后、具名支
+    之前;首例 = 人才储备 id 144「开局补给替换为3个随机3费角色」):移除
+    bench 上全部角色槽(`kind='unit'`;占席道具类槽不在替换面——开局窗
+    结构性不存在,防御性保留;部署行/溢出席开局窗恒空不触)后按后续支
+    发放。写通道 = `_select_write` 单一收束(清席 = 确定发放语义,rand 原样
+    透传,具名支同款):live 选卡窗未锚定 → 落随机态,由首备战帧 bench 整表
+    观察覆盖收口;sim 恒未锚定 → 落账即世界真值(纠回 M01 预写的开局 4 张,
+    选卡前无消费者,瞬态不可见)。零角色槽(live 空底座)零写,只留效果串
+    `env_opening_replace:<removed>`(替换事实恒申报,与发放成败解耦)。
+    替换/合成语义假设申报 = `cw_investments.ENV_OPENING_REPLACE_ASSUMPTION_KEYS`
+    两键;构建防呆 = `_validate_env_gifts` ⑩(True 须伴随角色支)。
   - **追加随机环境申报行**(`cw_investments.ENV_REROLL_NAMES` 命中,与
     ENV_GIFTS 通道无关、先于其分派):追加随机环境型环境(首例 = 蓝海,
     id 113)选卡后游戏随即再随机获得一个环境,该掷骰 live 端不可观察

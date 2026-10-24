@@ -828,6 +828,14 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       加入商店」= 入池可刷,非直接送单位;容器权威字段 =
       ``gs.unlocked_experts``,池派生消费 = cw_pool);chars_immediate 在
       advisor 行仅作解锁名单输入,禁再入席;
+    - **开局替换清席支**(``replaces_opening_supply``,advisor 分道之后、
+      具名支之前;首例 = 人才储备 id 144「开局补给替换为3个随机3费角色」):
+      移除 bench 上全部角色槽(kind='unit';占席道具类槽不在替换面——开局窗
+      结构性不存在,防御性保留)后按后续支发放。写通道 = :func:`_select_write`
+      单一收束(清席 = 确定发放语义,rand 原样透传);live 选卡窗未锚定落
+      随机态,由首备战帧 bench 整表观察覆盖收口;sim 恒未锚定,落账即世界
+      真值(纠回 M01 预写的开局 4 张,选卡前无消费者)。零角色槽(live 空
+      底座)零写,只留效果串 ``env_opening_replace:<removed>``;
     - **环境即时金腿**(世界规则,注册表结构化通道):环境经济
       ``economy.gold_instant`` 非零 → gold 直加(两执行面同源;旧 sim
       引擎私有腿随驱动反转停用,规则落本链为单一源);
@@ -1080,6 +1088,26 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                             evidence=f'on_env_gained:{_name}#expert_unlock',
                             sig=sig)
         return (f'advisor_unlock:{_name}:{unlock_tail}',)
+    if grant.replaces_opening_supply:
+        # 开局替换清席支(先清后发,首例 = 人才储备 id 144;设计 = T-43 设计稿
+        # §2.3,迭代 2026-09-23-invest-effects-calc):「开局补给替换」=
+        # 开局发放的初始角色被本环境赠卡取代——移除 bench 上全部角色槽
+        # (kind='unit';占席道具类槽不在替换面,开局窗该形态结构性不存在,
+        # 防御性保留),部署行/溢出席开局窗恒空不触。写通道 = _select_write
+        # 单一收束(清席 = 确定发放语义,rand 原样透传,具名支同款):live
+        # 选卡窗未锚定 → 落随机态,由首备战帧 bench 整表观察覆盖收口;sim 恒
+        # 未锚定 → 落账即世界真值(纠回 M01 预写的开局 4 张,选卡前无消费者)。
+        # 零角色槽(live 空底座形态)零写,只留效果串申报替换事实。
+        view = gs.bench.value
+        slots = list(view.slots) if view is not None else []
+        kept = [s for s in slots if s is None or s.kind != 'unit']
+        removed = len(slots) - len(kept)
+        if removed:
+            write = _select_write(gs, rand)
+            write(gs.bench, bench_view_of_working(kept, view),
+                  produced_by=GAIN_CHAIN_PRODUCER,
+                  evidence=f'on_env_gained:{_name}#opening_replace', sig=sig)
+        effects.append(f'env_opening_replace:{removed}')
     for char in grant.chars_immediate:
         # 送卡为确定发放(非采样)→ rand 原样透传(gain-chain.md §5)
         gain_character(gs, char, 1, rand=rand, sig=sig,

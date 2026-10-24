@@ -420,6 +420,14 @@ class GiftGrant:
       覆盖纠偏,首观察静默覆盖落 logic_rand_outcome 台账不进失配网;
       先例 = T-5 财富宝钻随机态获得/T-29 奖励全腿随机态)。
       首例 = 红钻贵族。
+    - replaces_opening_supply: True = 该环境的获得替换开局补给(on_env_gained
+      先清席后发放,首例 = 人才储备 id 144「开局补给替换为3个随机3费角色」
+      直读)。清席面 = bench 上 kind='unit' 槽(开局补给物 = 初始角色;
+      占席道具类槽不在替换面——开局窗该形态结构性不存在,防御性保留);
+      部署行/溢出席开局窗恒空,不触。登记防呆:True 须伴随至少一个角色支
+      (chars_immediate/chars_random_immediate 非空),否则 = 「清空开局
+      不发」怪卡,校验拒(_validate_env_gifts;仅环境域消费,策略表登记
+      本字段 = 惰性无消费,箱腿先例同待遇)。
     """
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
@@ -430,6 +438,7 @@ class GiftGrant:
     chars_random_immediate: tuple[RandomCharSpec, ...] = ()
     equips_random_immediate: tuple[str, ...] = ()
     equips_immediate: tuple[str, ...] = ()
+    replaces_opening_supply: bool = False
 
 
 #: ``items_scheduled`` 节点键格式('位-轮';位面 1 基 1-3,位面内轮 1 基
@@ -1618,6 +1627,26 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 开卡后语义归现役开卡/选卡链。bookcard 槽件发放首例(items 通道此前
     # 全为武装箱系)。
     '专家研讨会': GiftGrant(items_immediate=('专家邀请函', '简易武装箱')),
+    # 开局替换型赠卡首例(id 144 效果原文「开局补给替换为3个随机3费角色」
+    # 直读,PlazaPortal('144'))。时序 = 实机环境确认先于开局补给发放,替换
+    # 挂环境获得链先清后发(on_env_gained 清席支,世界结果与「开局发放时点
+    # 替换」无差)。三元素重复 = 数量 3(与 items 通道「数量 = 元素重复次数」
+    # 同约定);星级未标 → star=1 先验(家族口径 T-10/T-36);三连抽独立可重
+    # (用户裁定 2026-10-25 四项默认案:三同名 1★ 经获得链 3 合 1 合成 2★
+    # = 链自然结果)。升星属性腿(11%/33% 速度、22%/66% 伤害)不建模(用户
+    # 裁定随 T-36/T-37 家族同案同裁;「有值无容器」——数值卡面明写而 Unit
+    # 无属性域/sim 战斗不消费/无观察读点),披露键 env_char_buff_unmodeled
+    # 随家族常量携带;替换/合成语义假设申报 = ENV_OPENING_REPLACE_ASSUMPTION_
+    # KEYS。3 费池 = chars_by_cost(3) 注册表派生(现值 14 名,含银狼LV.999;
+    # 与特邀专家:银狼无交互面——两环境单局互斥)
+    '人才储备': GiftGrant(
+        chars_random_immediate=(
+            RandomCharSpec(cost=3, star=1),
+            RandomCharSpec(cost=3, star=1),
+            RandomCharSpec(cost=3, star=1),
+        ),
+        replaces_opening_supply=True,
+    ),
 }
 
 
@@ -1679,6 +1708,23 @@ ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_char_buff_unmodeled',
 )
 
+#: 开局替换型赠卡(首例 = 人才储备 id 144)的语义假设申报键(卡级两键,
+#: 形态沿家族常量先例;消费面 = 披露清单,防 desc 空白处的模型口径被误当
+#: 已证真值):
+#: - env_opening_replace_semantics: 「替换」的模型口径 = 开局 4 张初始角色
+#:   被 3 张随机 3 费 1★ 取代(非叠加)。开局补给的晶矿腿(开场矿)在场有载
+#:   (screen_flow_timing.md「给开局角色 + 晶矿」)而全系统未建模(apply_
+#:   opening 写入集零矿写端),本卡不引入新缺口也不动它;替换后是否保留
+#:   其他开局呈现候实机首遇对账(证伪路径 = 首备战帧 bench 张数对照:
+#:   模型 3;实机 7 = 叠加语义,4 = 替换未生效)。
+#: - env_opening_replace_merge_semantics: 三同名 1★ 经获得链 3 合 1 合成
+#:   2★ = 链自然结果的模型口径;游戏真值(开局补给发重名是否合并)未证;
+#:   口径错 = live 首备战帧 bench 观察整表覆盖兜底,sim 侧申报缺口。
+ENV_OPENING_REPLACE_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'env_opening_replace_semantics',
+    'env_opening_replace_merge_semantics',
+)
+
 #: 随机星徽授予家族(劳务派遣合同,腿1 星徽 + 腿2 首领节点角色)的
 #: 采样/先验假设申报键(六键;键随家族携带不随单卡增减,消费面 = 实测
 #: 校准与披露清单):
@@ -1732,7 +1778,10 @@ def _validate_env_gifts() -> None:
     沿 ② 同思路;EQUIPMENTS 注册表在,可闭集校验;武装箱系不在装备注册表,
     误入本通道天然被拒);⑨ 装备/道具通道同名(同一 GiftGrant 内
     equips_immediate ∩ (items_immediate ∪ items_scheduled) = ∅,身份串行
-    防呆,沿 ⑤ 同思路,防同卡误登记同名件)。
+    防呆,沿 ⑤ 同思路,防同卡误登记同名件);⑩ 开局替换防呆(首例 = 人才
+    储备):replaces_opening_supply=True 而角色支(chars_immediate ∪
+    chars_random_immediate)全空 = 「清空开局不发」怪卡,登记残缺拒收
+    (替换必须产出替代者,开局补给物 = 角色,道具/装备支不算)。
     """
     orphans = [n for n in ENV_GIFTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -1796,6 +1845,12 @@ def _validate_env_gifts() -> None:
             raise ValueError(
                 f"ENV_GIFTS 装备/道具通道同名({_name!r}):"
                 f"{sorted(_equip_item_clash)}(身份串行防呆)")
+        if _grant.replaces_opening_supply and not _grant.chars_immediate \
+                and not _grant.chars_random_immediate:
+            raise ValueError(
+                f"ENV_GIFTS 开局替换无产出({_name!r}):"
+                f"replaces_opening_supply=True 而角色支全空"
+                f"(清空开局不发 = 登记残缺)")
         if not _grant.chars_immediate and not _grant.chars_conditional \
                 and not _grant.items_immediate and not _grant.items_scheduled \
                 and not _grant.chars_random_immediate \
