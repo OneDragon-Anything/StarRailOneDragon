@@ -790,6 +790,13 @@ FURNACE_CHAR_MODE_PENDING: str = 'furnace_char_mode_pending_m10'
 #: 注册表键集,张数/分布占位候实机补档)。
 DISCLOSURE_AFFIX_SAMPLE: str = 'reset_affixes_sample_placeholder'
 
+#: 羁绊档位触发语义披露键(T-41 特邀专家:加拉赫,裁决点 3 电平语义为
+#: 建模选择非实采——卡面「激活…时」的边沿细节未定谳,「电平 + 每档
+#: 一次性 done 封账」为用户裁定建模口径;语义单一源 = kernel/
+#: cw_faction_callbacks.check_env_bond_tier_grants docstring。纯声明,
+#: 不进任何判定分支)。
+DISCLOSURE_BOND_TIER_SEMANTICS: str = 'env_bond_tier_semantics_level'
+
 #: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
@@ -815,6 +822,9 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 商店 2★ 直出概率占位申报:量级单一源 = ENV_SHOP_TWO_STAR_DEAL_PROB
     SHOP_TWO_STAR_DEAL_PLACEHOLDER: 'user_placeholder_pending_field_sampling',
     DISCLOSURE_AFFIX_SAMPLE: 'pool3_uniform_placeholder',
+    # 羁绊档位触发语义申报(T-41,裁决点 3 电平语义为建模选择非实采;
+    # 值串纯声明,语义单一源 = 判据函数 docstring)
+    DISCLOSURE_BOND_TIER_SEMANTICS: 'level_reach_once_per_tier_done_sealed',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
     # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
     # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
