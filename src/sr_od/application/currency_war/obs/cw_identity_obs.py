@@ -44,6 +44,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     Unit,
 )
+from sr_od.application.currency_war.kernel.cw_investments import (
+    BENCH_ITEM_KINDS,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
@@ -790,16 +793,49 @@ def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates)
     return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
 
 
-def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
-    """备战栏占槽物品 kind 细分映射(识别期定 kind 单一源;P6 直产)→
-    ``{物理槽号: 'supply_box' | 'tome' | 'bookcard'}``。
+# 模板钉名对照(观察写政策:模板钉得住名字的写名,用户裁定 2026-10-24)。
+# 三识别器命中即钉名:银灰箱单模板 = 简易武装箱(三箱异渲染,银灰命中即
+# 简易)、星徽秘典双渲染注册表、专家邀请函。品名随 kind 一并产出,消费 =
+# _bench_view_of 带名构造(BenchSlot.item 身份轴)。tome = 观察专属来源,
+# cw_investments.BENCH_ITEM_KINDS 不含(豁免),名字一致性由上方双渲染
+# 注册表承载;supply_box/bookcard 两组为映射表成员,import 期互检见下。
+_PINNED_SUPPLY_BOX: tuple[str, str] = ('supply_box', '简易武装箱')
+_PINNED_STAR_TOME: tuple[str, str] = ('tome', '星徽秘典')
+_PINNED_BOOKCARD: tuple[str, str] = ('bookcard', '专家邀请函')
+
+
+def _validate_pinned_names_match_bridge() -> None:
+    """观察端钉名对照 ↔ 映射桥 import 期互检(T-39 设计 §2.7 一致性防线;
+    沿 kernel _validate_* 先例):银灰箱/邀请函两组 (kind, 品名) 对照须与
+    ``cw_investments.BENCH_ITEM_KINDS`` 逐位一致——两表独立维护,漂移启动
+    即炸(tome 豁免不在检域)。本模块 → kernel 依赖方向在册,无环。"""
+    for _pinned in (_PINNED_SUPPLY_BOX, _PINNED_BOOKCARD):
+        if BENCH_ITEM_KINDS.get(_pinned[1]) != _pinned[0]:
+            raise ValueError(
+                f'观察端钉名对照与 BENCH_ITEM_KINDS 漂移:{_pinned!r} '
+                f'(映射表值 = {BENCH_ITEM_KINDS.get(_pinned[1])!r})')
+
+
+_validate_pinned_names_match_bridge()
+
+
+def _bench_item_kind_by_slot(
+        ctx: SrContext, screen: MatLike) -> dict[int, tuple[str, str]]:
+    """备战栏占槽物品「(kind, 品名)」细分映射(识别期定 kind+item 单一源;
+    P6 直产)→ ``{物理槽号: ('supply_box', '简易武装箱')
+    | ('tome', '星徽秘典') | ('bookcard', '专家邀请函')}``。
 
     为什么读链必须自含:占位物品同样占备战席 1 槽(补给晶矿掉箱实机语义),
     漏记 = 席满帧被当成有空位,策略照幻影空位发买牌、游戏侧全部拒买且金
     不动(实机局:采晶矿奖励「开启」箱补满末槽后 3 张连发全拒)。识别面 =
     精确识别族(find_armory_boxes 简易武装箱 ∪ find_tomes 星徽秘典
     ∪ find_bookcards 书册卡,与旧 ``bench_item_slots`` 精确档同族同档);
-    泛扫描档不入账,留召唤物停机钩子兜未建档变体。
+    泛扫描档不入账,留召唤物停机钩子兜未建档变体(金/彩箱变体现役不被
+    识别,落钩子停机留证,响亮非静默)。
+
+    品名钉名 = 模板钉得住名字的写名(对照单一源 = 上方 _PINNED_* 常量,
+    supply_box/bookcard 两组 import 期与 BENCH_ITEM_KINDS 互检);发放内核
+    写端(live/sim 同链)写全名 = 身份权威源,本识别钉名 = 观察域覆盖面。
 
     [索引定义] 键 = 备战栏物理槽 1..9(1 基,与 BenchView.slots 下标+1 同系);
     取值时机 = 调用帧现读快照(与 SIFT 命中同帧,跨帧失效)。
@@ -807,19 +843,25 @@ def _bench_item_kind_by_slot(ctx: SrContext, screen: MatLike) -> dict[int, str]:
     3.5):boxes → tomes 覆盖 → bookcards 覆盖(同槽多命中后写者胜)。
     """
     slots9 = _ctx_slots(ctx, '备战栏', 9)
-    kind: dict[int, str] = {int(s): 'supply_box' for s, _p in find_armory_boxes(screen, slots9)}
-    kind.update({int(s): 'tome' for s, _p in find_tomes(screen, slots9)})
-    kind.update({int(s): 'bookcard' for s, _p in find_bookcards(screen, slots9)})
-    return kind
+    item: dict[int, tuple[str, str]] = {
+        int(s): _PINNED_SUPPLY_BOX
+        for s, _p in find_armory_boxes(screen, slots9)}
+    item.update({int(s): _PINNED_STAR_TOME
+                 for s, _p in find_tomes(screen, slots9)})
+    item.update({int(s): _PINNED_BOOKCARD
+                 for s, _p in find_bookcards(screen, slots9)})
+    return item
 
 
 def _bench_view_of(hits: list[tuple[int, Unit]],
-                   kind_by_slot: dict[int, str]) -> BenchView | None:
-    """SIFT 命中 + 占槽物品 kind → 备战席容器视图(观察写端值构造单一源)。
+                   kind_by_slot: dict[int, tuple[str, str]]) -> BenchView | None:
+    """SIFT 命中 + 占槽物品 (kind, 品名) → 备战席容器视图(观察写端值构造
+    单一源,道具槽带名构造 = BenchSlot.item 身份轴)。
 
     - hits = ``(物理槽号, Unit)`` 命中对(Unit 无槽位信息位,位置随读链
-      槽位对承载);SIFT 命中先落槽(unit),占槽物品只填**空槽**(身份胜出
-      ——与旧 ``_merge_item_occupied_slots``「已识别角色位跳过」同序);
+      槽位对承载);SIFT 命中先落槽(unit,item 恒 None),占槽物品只填
+      **空槽**(身份胜出——与旧 ``_merge_item_occupied_slots``「已识别
+      角色位跳过」同序),槽件 = ``BenchSlot(kind, item=品名)``;
     - 槽位越界命中丢弃并 log 保留证据(物理槽 1..capacity 外 = 读链漂移信号,
       静默丢弃 = 身份静默丢失);
     - 零占用 → None(失读非全空,见 :func:`read_bench_view`)。
@@ -832,9 +874,9 @@ def _bench_view_of(hits: list[tuple[int, Unit]],
             log.warning('[cw!][identity] 备战席读链槽位越界丢弃:'
                         'slot=%s char=%s(SIFT/星级读链漂移信号)',
                         s, u.char_id)
-    for s, k in kind_by_slot.items():
+    for s, (k, item_name) in kind_by_slot.items():
         if 1 <= s <= BENCH_CAPACITY_DEFAULT and slots[s - 1].kind == 'empty':
-            slots[s - 1] = BenchSlot(kind=k)
+            slots[s - 1] = BenchSlot(kind=k, item=item_name)
     if all(sl.kind == 'empty' for sl in slots):
         return None
     return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
@@ -1133,6 +1175,10 @@ def read_bench_view_tiered(session, ctx: SrContext, screen: MatLike,
 # 实机帧 .debug/currency_war/evidence/20260912_t15_t13_t18/t18_box_face_armory_choice_4equips.png)。
 # 旧名「补给箱」系早期无视觉建档误定,用户已定案废弃:银灰箱只有一种,晶矿掉落与
 # 投资策略(军火贸易/火药味等)所给同渲染同链,槽位识别层不分来源;占席 kind='supply_box' 为历史代号保留。
+# 命中即钉名简易武装箱(观察写政策,用户裁定 2026-10-24):三箱异渲染
+# (官方资产银灰/金/彩镀钛确认),银灰单模板命中 → item='简易武装箱';
+# 金(进阶)/彩(特权,候选映射)箱变体现役不被识别 → 落召唤物停机钩子
+# 停机留证(响亮非静默;模板任务挂起,待实拍帧裁片扩档)。
 # 箱子是固定 UI icon → 灰度 TM 足够(SIFT 无必要);分离度(实测):箱槽 1.0 vs 角色槽 ≤0.242。
 # 模板 = 实机真值帧箱体本体裁片(90x80,**不含「开启」钮字**——按钮为所有槽位通用 UI,入模即噪声;
 # 旧模板含钮字被同批评掉)。TM 自检:源帧 1.0 / 相邻时刻帧 0.997 / 空槽 0.258 / 旧「补给箱」模板区域 0.955(同渲染已实测确认)。

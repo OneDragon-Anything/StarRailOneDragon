@@ -678,6 +678,14 @@ class BenchSlot:
     unit: Unit | None = None        # kind='unit' 时有效
     # tome=星徽秘典:席位内容物之一,占席待实机证实(§3.2.5——画面档案只有
     # 弹窗、无席位区域锚);按「席位内容物」建模即占席,证伪时改归不占席域。
+    # 道具类 kind 必带:钉名道具名(授予名/识别钉名)。一致性权威 =
+    # cw_investments.BENCH_ITEM_KINDS(授予通道道具类槽构造一律 item=<名>
+    # 且 kind == BENCH_ITEM_KINDS[item];tome 豁免——星徽秘典为观察专属
+    # 来源,不入映射/词表,名字一致性由识别双渲染注册表承载);unit/empty
+    # 恒 None;旧档回放/journal 历史槽值缺键 → None 容忍(零迁移),不做
+    # ``__post_init__`` 校验(一致性防线 = 映射闭合校验 + 观察端互检,
+    # dataclass 构造期零机器)。
+    item: str | None = None
 
 
 @dataclass(frozen=True)
@@ -4381,7 +4389,10 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
             u = sd.get('unit')
             slots.append(BenchSlot(
                 kind=str(sd.get('kind') or 'empty'),
-                unit=_unit_from_dict(u) if isinstance(u, dict) else None))
+                unit=_unit_from_dict(u) if isinstance(u, dict) else None,
+                # 身份轴回放恢复(full_state_snapshot 走 asdict 全字段落盘,
+                # 新档含 item;旧档槽值无 item 键 → .get 容忍 None,零迁移)
+                item=sd.get('item')))
         return BenchView(slots=slots,
                          capacity=int(d.get('capacity')
                                       or BENCH_CAPACITY_DEFAULT))

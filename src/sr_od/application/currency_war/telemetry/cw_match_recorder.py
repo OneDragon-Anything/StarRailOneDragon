@@ -128,7 +128,9 @@ def extract_frame(ctx, img, templates) -> dict:
             [{'name': s.unit.char_id, 'star': s.unit.star, 'slot': i + 1}
              for i, s in enumerate(view.slots)
              if s.kind == 'unit' and s.unit is not None]
-            + [{'name': '', 'star': 1, 'slot': i + 1}
+            # 道具槽 name 取槽件钉名(item 身份轴;识别三模板命中即钉名,
+            # 恒 '' 名字盲降级消除;旧容器 item=None 缺省保底空串)
+            + [{'name': s.item or '', 'star': 1, 'slot': i + 1}
                for i, s in enumerate(view.slots)
                if s.kind in ('supply_box', 'tome', 'bookcard')])
     except Exception as e:   # noqa: BLE001

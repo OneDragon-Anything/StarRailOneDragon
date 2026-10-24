@@ -27,8 +27,10 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
                                    sig: ChannelSig) -> LogicOutcome:
     """卖备战席上报:bench 该槽置 empty + gold +退款 + 装备回收
     (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出件入位,
-    容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入
-    supply_box 槽件,判据 = ``cw_investments.BENCH_ITEM_NAMES``;
+    容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入带名
+    槽件——``BenchSlot(kind=BENCH_ITEM_KINDS[名], item=名)`` 查映射编译
+    类别,判据 = ``cw_investments.BENCH_ITEM_NAMES`` 词表守卫 +
+    ``BENCH_ITEM_KINDS`` 映射单一源;
     3.2 单账化后容器 bench 即唯一账,原 tracked 对称吸收腿停用)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
@@ -69,16 +71,22 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
     bench_slots[idx] = BenchSlot(kind='empty')
     # 溢出腿:席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
     # 溢出件入位(游戏侧行为,prep.md 告警节实机建档;占席道具与角色同款
-    # 溢出语义,2026-09-24 用户确认——道具身份落 supply_box 槽件,禁造假
-    # 角色;入位角色星级缺读 1 兜底,下帧 heavy 实读覆盖修正,两态制以实际观察为准)。
+    # 溢出语义,2026-09-24 用户确认——道具身份落带名槽件查映射编译类别,
+    # 禁造假角色;入位角色星级缺读 1 兜底,下帧 heavy 实读覆盖修正,
+    # 两态制以实际观察为准)。
     _ov_warn = gs.overflow_warning.value
     _ov_id = gs.overflow_card.value
     if _ov_warn and _ov_id:
         from sr_od.application.currency_war.kernel.cw_investments import (
+            BENCH_ITEM_KINDS,
             BENCH_ITEM_NAMES,
         )
         if _ov_id in BENCH_ITEM_NAMES:
-            _absorb: BenchSlot = BenchSlot(kind='supply_box')
+            # 词表守卫保留(溢出位身份串含观察域来源,词表外 = 角色腿照旧);
+            # 词表内直查映射 + 带名构造(身份守恒闭环:发放带名落席 →
+            # 溢出字符串(名字本身)→ 入位槽带名,kind/item 不漂)
+            _absorb: BenchSlot = BenchSlot(kind=BENCH_ITEM_KINDS[_ov_id],
+                                           item=_ov_id)
         else:
             _absorb = BenchSlot(
                 kind='unit', unit=Unit(char_id=_ov_id, star=1, equips=[]))

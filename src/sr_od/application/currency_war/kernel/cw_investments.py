@@ -1603,6 +1603,17 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     #   仍按上文口径归观察。
     # 星级 = 用户裁定佩佩无星级(2026-10-15):链必填实参落 1 为占位非先验。
     '粗星佩佩': GiftGrant(chars_immediate=('佩佩',)),
+    # 专家研讨会(id 139,效果原文「获得1个【专家邀请函】和1个【简易武装箱】。」
+    # 直读,PlazaPortal('139');卡文无「开局时」字样,环境效果唯一可实现
+    # 时点 = 环境注册(选卡当场),用户裁定 2026-10-24)。卡文序 = 邀请函
+    # 先箱后。专家邀请函 = kind='bookcard'(开卡链)、简易武装箱 =
+    # kind='supply_box'(开箱链);落席类别判定单一源 = BENCH_ITEM_KINDS
+    # (与本条目同批登记,缺一即被 _validate_bench_item_kinds 闭集校验
+    # import 炸,无书写顺序语义)。不设 advisor=True:advisor 语义 = 顾问
+    # 直接入商店(特邀专家),本卡为道具中间态,开启时点与选择权在玩家,
+    # 开卡后语义归现役开卡/选卡链。bookcard 槽件发放首例(items 通道此前
+    # 全为武装箱系)。
+    '专家研讨会': GiftGrant(items_immediate=('专家邀请函', '简易武装箱')),
 }
 
 
@@ -1947,21 +1958,31 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
 }
 
-# ===== 占席道具词表(溢出位身份的 kind 判定单一源)=====
+# ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
 # 实机真值(2026-09-24 用户确认):占席道具与角色同款溢出语义——席满落溢出
 # 席并阻断进入战斗。溢出位身份串(overflow_card)因此有两分:角色 char_id /
-# 占席道具名,消费方按本表判 BenchSlot kind:
-# - cw_gain_chain._build_pool:道具身份禁造 Unit 假身份进合成素材组;
-# - cw_action_report.sell_bench 溢出腿:卖牌腾槽入位按同判据落 supply_box。
-# 词表来源 = 两张 GiftGrant 授予表(ENV_GIFTS/STRATEGY_GRANTS)的
-# items_immediate ∪ items_scheduled 道具名——定时道具同为占席道具,身份
-# kind 判定同面(缺派生会把「特权武装箱」当角色,假角色进合成素材组,
-# _build_pool / sell_bench 溢出腿),新增授予登记自动覆盖;效果体内联发放的
-# 道具(不经 GiftGrant 表)登记时须显式并入本表,防身份误判成角色。
-BENCH_ITEM_NAMES: frozenset[str] = frozenset(
-    item for _grant in (*ENV_GIFTS.values(), *STRATEGY_GRANTS.values())
-    for item in (*_grant.items_immediate,
-                 *(item for _node_key, item in _grant.items_scheduled)))
+# 占席道具名。
+# BENCH_ITEM_KINDS = 占席道具槽件「名字→类别」全量显式映射(用户裁定
+# 2026-10-24:全量显式制,漏登 import 炸成可见,静默落错身份的治理劣于
+# 响亮缺登记)。「全量」口径 = 授予通道占席道具(键集闭合 = 两张授予表
+# items_* 通道道具名并集,_validate_bench_item_kinds 双向闭合校验承接原
+# 派生式「新增授予自动覆盖」);观察专属来源(星徽秘典,tome)不经授予
+# 通道,不入本表不入词表(豁免,名字一致性由识别双渲染注册表承载)。
+# 词表 BENCH_ITEM_NAMES 只答「是不是占席道具」;本表答「是哪种」并兼任
+# BenchSlot 身份轴(item)与类别轴(kind)的一致性权威:授予通道道具类槽
+# 构造一律 item=<名> 且 kind=BENCH_ITEM_KINDS[<名>]。kind 合法值 =
+# 'supply_box' | 'bookcard'。消费方:
+# - cw_gain_chain._place_bench_item 落席本体/_build_pool 溢出占位:道具
+#   身份禁造 Unit 假身份进合成素材组,槽件带名;
+# - cw_action_report.sell_bench 溢出腿:卖牌腾槽入位按映射落带名槽件。
+BENCH_ITEM_KINDS: dict[str, str] = {
+    '简易武装箱': 'supply_box',
+    '特权武装箱': 'supply_box',
+    '进阶武装箱': 'supply_box',
+    '专家邀请函': 'bookcard',
+}
+
+BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
 
 # 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
 # - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」
@@ -2053,6 +2074,43 @@ def _validate_strategy_grants() -> None:
 
 
 _validate_strategy_grants()
+
+
+def _validate_bench_item_kinds() -> None:
+    """占席道具映射桥双向闭合校验(import 即炸;沿 _validate_env_gifts 先例):
+
+    ① 键集双向闭合:BENCH_ITEM_KINDS 键集 == 两张授予表(ENV_GIFTS/
+    STRATEGY_GRANTS)items_* 通道道具名并集——少登 = 授予通道道具落席
+    直查 KeyError 前置炸(漏登 import 炸成可见);多登 = 孤儿键炸(静默
+    落错身份风险)。调用落 :func:`_validate_strategy_grants` 调用点同区
+    (ENV_GIFTS/STRATEGY_GRANTS/BENCH_ITEM_KINDS 全部定义之后,import 序
+    成立);② 值域封闭:逐值 ∈ {'supply_box', 'bookcard'}(防拼写漂移
+    静默落空;观察专属 tome 豁免不在检域)。
+    """
+    granted: set[str] = set()
+    for _grant in (*ENV_GIFTS.values(), *STRATEGY_GRANTS.values()):
+        granted.update(_grant.items_immediate)
+        granted.update(item for _node_key, item in _grant.items_scheduled)
+    keys = set(BENCH_ITEM_KINDS)
+    _missing = granted - keys
+    if _missing:
+        raise ValueError(
+            f"BENCH_ITEM_KINDS 键集缺登(授予通道占席道具落席直查会 "
+            f"KeyError,漏登 import 炸):{sorted(_missing)}")
+    _orphans = keys - granted
+    if _orphans:
+        raise ValueError(
+            f"BENCH_ITEM_KINDS 孤儿键(非授予通道道具,静默落错身份风险,"
+            f"多登 import 炸):{sorted(_orphans)}")
+    _bad_values = {n: k for n, k in BENCH_ITEM_KINDS.items()
+                   if k not in ('supply_box', 'bookcard')}
+    if _bad_values:
+        raise ValueError(
+            f"BENCH_ITEM_KINDS 值域越界(合法 = 'supply_box' | 'bookcard',"
+            f"观察专属 tome 不在检域):{_bad_values}")
+
+
+_validate_bench_item_kinds()
 
 
 # ===== 环境品质改写注册表(白名单制)=====
