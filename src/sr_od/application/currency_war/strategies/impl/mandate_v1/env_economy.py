@@ -243,15 +243,21 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     经济通道处理。
 
     **品质改写分派**(沿原 kernel 模块 3.6,details/env-value-models.md
-    §2.2.5):name ∈ ENV_POOL_REWRITE → :func:`_pool_rewrite_value`(层 E
-    ΔV 公式,读 STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参
-    fail-closed,v1 恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);
-    其余 name → 下方 A/B/拍值/C 通道公式。单一入口契约不变(策略卡现金分
-    **不走**本函数——策略屏现金流卡走策略层
-    ``strategy_economy.strategy_economy_value`` 新入口,通道公式分立,
-    契约形态与折算约定复用;28 号稿 §5 与 29 号稿 §2.1);
-    ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥(一个 name 至多落一个估值
-    结构,cw_investments._validate_env_pool_rewrite 收全)。
+    §2.2.5):name ∈ ENV_POOL_REWRITE 且条目带估值语义字段
+    (``rewrite_quality`` 或 ``offer_structure`` 非空)→
+    :func:`_pool_rewrite_value`(层 E ΔV 公式,读
+    STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参 fail-closed,v1
+    恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);纯数量
+    事实条目(仅挂点/刷新/难度豁免字段,如联席决策数量通道、T-46 策略
+    大师 direct 挂点)不属层 E,落穿下方 A/B/拍值/C 通道公式——分派判据
+    与 ``cw_investments._validate_env_pool_rewrite`` 互斥闸语义化豁免同源
+    (估值语义字段非空才算估值结构,用户裁定 2026-10-26),防策略大师
+    同键共存形态被层 E 分派遮蔽通道 4 消费。其余 name → A/B/拍值/C
+    通道公式。单一入口契约不变(策略卡现金分**不走**本函数——策略屏现金
+    流卡走策略层 ``strategy_economy.strategy_economy_value`` 新入口,通道
+    公式分立,契约形态与折算约定复用;28 号稿 §5 与 29 号稿 §2.1);
+    ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥已语义化豁免(同键共存
+    合法性见 cw_investments._validate_env_pool_rewrite)。
 
     通道(值除注明外全部为注册表游戏定义【注】):
     - gold_instant:选卡当场一次性金(零参数,精确);
@@ -260,9 +266,10 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
       晶矿自动开启假设见 ENV_ECONOMY_PENDING_VERIFICATION 已登记条);
     - xp_after_level:节点数 × 每节点 XP × XP_GOLD_RATE(「升 8 必然发生」
       假设已登记,v1 全额,不随剩余位面折扣——假设本身已承担心);
-    - gold_per_strategy_coef:``Σ_k coef×(k−1)×P(第 k 张策略可取)``,k = 剩余
-      取卡序(已持有数起、基线取卡基数止),P(k) = 取卡所在位面的可达权
-      (_STRATEGY_PICK_PLANES 结构表);
+    - gold_per_strategy_coef:``Σ_k coef×k×P(第 k 张策略可取)``,k = 剩余
+      取卡序 1 基(含本张口径,用户裁定 2026-10-26:第 k 张到手 = 含本张
+      已持有 k,发 coef×k,首张 coef×1;已持有数起、基线取卡基数止),
+      P(k) = 取卡所在位面的可达权(_STRATEGY_PICK_PLANES 结构表);
     - gold_after_refreshes(拍值):按 :data:`_GOLD_AFTER_REFRESHES_FIXED`
       无条件计(28 号稿 §2 现金分行;P97 §7 消费契约——不读 gs.effects 刷新计数、
       不消费 refresh_p/refresh_after 估算参数,刷价节省项已并入拍值);
@@ -278,7 +285,8 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     CI 含 0 的参数**不会**触发翻转——方向仍被确定分量钉住,这正是参数级门
     的语义(不确定度只覆盖参数依赖部分)。
     """
-    if name in ENV_POOL_REWRITE:
+    _rw = ENV_POOL_REWRITE.get(name)
+    if _rw is not None and (_rw.rewrite_quality or _rw.offer_structure):
         return _pool_rewrite_value(name, gs)
     env = get_env(name)
     if env is None or env.economy is None:
@@ -313,7 +321,8 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
         _nodes, _per_xp = eff.xp_after_level[1], eff.xp_after_level[2]
         _xg = _nodes * _per_xp * XP_GOLD_RATE
         _acc((_xg, _xg, _xg))
-    # 通道 4:策略大师(Σ_k coef×(k−1)×P(k);k = 剩余取卡序,1 基)
+    # 通道 4:策略大师(Σ_k coef×k×P(k);k = 剩余取卡序 1 基,含本张口径
+    # = 第 k 张到手发 coef×k、首张 coef×1,用户裁定 2026-10-26)
     if eff.gold_per_strategy_coef:
         _held = len(gs.active_strategies.value or [])
         for _k in range(_held + 1, len(_STRATEGY_PICK_PLANES) + 1):
@@ -321,7 +330,7 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
             if _w is None:
                 params_missing = True
                 continue
-            _gain = eff.gold_per_strategy_coef * (_k - 1)
+            _gain = eff.gold_per_strategy_coef * _k
             _acc((_gain * _w[0], _gain * _w[1], _gain * _w[2]))
     # 通道 5:刷新阈值返金(拍值注册,无条件计;28 号稿 §2/P97 §7 消费契约
     # 见 env_economy_value docstring)

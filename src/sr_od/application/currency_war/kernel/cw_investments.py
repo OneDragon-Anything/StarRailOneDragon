@@ -318,7 +318,8 @@ class EnvEconomyEffect:
     - xp_after_level: (等级,节点数,每节点XP)(成功经验 (8,3,12);「升 8
       必然发生」假设显式登记(发展优先战略下 lv8 标配),
       证伪改条件概率)
-    - gold_per_strategy_coef: 每取一张策略 +coef×取卡前已持有数(策略大师 2;
+    - gold_per_strategy_coef: 每取一张策略 +coef×含本张已持有数(策略大师 2;
+      口径 = 含本张,用户裁定 2026-10-26:第 k 张到手发 coef×k,首张 coef×1;
       3-5 节点额外策略不计——策略域价值非经济通道,design §2.2.1)
     - gold_after_refreshes: (刷新阈值,返金)(长线利好 (30,20)/二手市场 (20,30);
       B 类,估值公式与参数归数据批)
@@ -1372,7 +1373,9 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     # 升 8 级后 3 节点各 +12XP(id 138)= 36XP;×1:1 折金等价
     # (策略层 env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设已登记)
     '成功经验': EnvEconomyEffect(xp_after_level=(8, 3, 12)),
-    # 每取一张策略 +2×已持有数(id 147);3-5 节点额外策略不计(策略域价值)
+    # 每取一张策略 +2×含本张已持有数(id 147;口径 = 含本张,用户裁定
+    # 2026-10-26,世界面同源登记 = ENV_PICK_GRANTS);3-5 节点额外策略不计
+    # (策略域价值)
     '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
     # 花费金币刷新 30 次后 +20 金、之后刷价 2→1(id 120 原文直读;基价 2 =
     # cw_state.REFRESH_COST_BASE 游戏定义)。付费阈值(总数阈值 = 二手市场行),
@@ -2233,6 +2236,12 @@ class StrategyPoolRewrite:
       用户裁定 2026-10-16;依据与边界 = ENV_POOL_REWRITE 登记处注释);
       数量通道登记,执行消费端 = sim JOINT_DECISION_EXTRA_SLOT 派生;
       None = 无额外策略三选一
+    - extra_strategy_grant_node: 额外策略**直接发放**发生的挂点节点,
+      **坐标系与 extra_strategy_offer_node 同 = (位面, 轮次) 单点两元各
+      1 基**(T-46 策略大师数量腿;直发非 offer 三选一,不复用 offer 字段
+      ——offer = 三选一槽语义;同条目两字段互斥,结构闸校验);数量通道
+      登记,执行消费端 = sim 直发发放事件(kernel 单一源,sim 派生查询);
+      None = 无直接发放
     - difficulty_exempt: 敌人难度不随高品质策略提高(白银时代第二条效果;
       游戏【注·交叉核对】口径 = 白银 +0/黄金 +3/棱彩 +6 每拥有 1 个,
       docs/game/currency_war/research/economy.md 难度精确口径行——数值已登记
@@ -2251,6 +2260,7 @@ class StrategyPoolRewrite:
     slot_qualities: tuple[str, ...] = ()
     extra_pick_refreshes: int = 0
     extra_strategy_offer_node: tuple[int, int] | None = None
+    extra_strategy_grant_node: tuple[int, int] | None = None
     difficulty_exempt: bool = False
     pending_notes: str = ''
     rewrite_settled: bool = False
@@ -2258,7 +2268,7 @@ class StrategyPoolRewrite:
 
 ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):彩虹 110/黄金 111/白银 112/
-    # 头彩 123/尾彩 124/银·金·彩 135/联席决策 122
+    # 头彩 123/尾彩 124/银·金·彩 135/联席决策 122/策略大师 147
     '彩虹时代': StrategyPoolRewrite(rewrite_quality='棱彩', rewrite_picks=(1, 2, 3)),
     '黄金时代': StrategyPoolRewrite(rewrite_quality='金', rewrite_picks=(1, 2, 3)),
     # 白银时代第二效果「敌人难度不会由于选择高品质投资策略而提高」=
@@ -2292,6 +2302,17 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
     # 实机流程语义(用户确认 2026-10-16):2-5 战斗结算确认后、备战开商店前,
     # 先呈现该额外三选一。
     '联席决策': StrategyPoolRewrite(extra_strategy_offer_node=(2, 6)),
+    # 策略大师 = 数量通道(3-5 节点额外获得一个投资策略,id 147);纯事实
+    # 登记不折金不进估值(表头注释现役口径),与 ENV_ECONOMY 同键共存 =
+    # 互斥闸语义化豁免(_validate_env_pool_rewrite:仅估值语义字段非空
+    # 条目禁交);
+    # 执行消费端 = sim 直发发放事件(单一源,勘误/改值只改本登记处,
+    # sim 派生查询自动跟随);
+    # 挂点候实机对账:实机直发出现节点 ≠ 3-5 → 改本登记值一处(sim 自动
+    # 跟随);
+    # 形态 = 直接发一张随机投资策略(用户裁定 2026-10-26;远见先例形态,
+    # 无选卡界面,登记注释 = 「3-5节点」位-轮单点,T-23 裁决 1 判例联动)。
+    '策略大师': StrategyPoolRewrite(extra_strategy_grant_node=(3, 5)),
 }
 
 
@@ -2299,22 +2320,31 @@ def _validate_env_pool_rewrite() -> None:
     """ENV_POOL_REWRITE 构建校验(import 即炸):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY/ENV_GIFTS 先例,防版本
-    更新改名/移除后静默失联);② 三注册表互斥收全:``set(ENV_POOL_REWRITE) ∩
-    set(ENV_GIFTS) = ∅`` 且 ``∩ set(ENV_ECONOMY) = ∅``——集合交对称,本闸与
-    _validate_env_gifts 已收的 ∩ENV_ECONOMY 半边合起来 = 三表两两互斥
-    (单一环境只落一个估值结构,防双通道叠加;G8 半边声明的「∩ ENV_POOL_REWRITE
-    由 3.6 建表时收全」即本闸,不动已交付函数体);③ 结构完备:改写目标品质与
-    被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);结构
-    标记 offer_structure 与槽位数据 slot_qualities 同有同无,槽位向量长度
-    恒 3、值在策略品质词集、与品质改写型互斥(双型不同条共存);④ pending
+    更新改名/移除后静默失联);② 三注册表互斥收全(语义化,T-46 策略大师
+    数量通道登记引入豁免):``set(ENV_POOL_REWRITE) ∩ set(ENV_GIFTS) = ∅``
+    全量禁交;``∩ set(ENV_ECONOMY)`` 收窄为**估值语义字段非空的条目**禁交
+    (``rewrite_quality`` 或 ``offer_structure`` 非空——闸防的是估值双通道
+    叠加:前者是层 E 估值公式实际消费字段,后者是池结构语义字段、层 E 转正
+    后即第二估值通道,一并禁交取保守侧;纯数量事实条目〔仅挂点/刷新/
+    难度豁免字段〕放行,未来新数量通道卡免逐个加白);③ 结构完备:改写目标
+    品质与被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);
+    结构标记 offer_structure 与槽位数据 slot_qualities 同有同无,槽位向量
+    长度恒 3、值在策略品质词集、与品质改写型互斥(双型不同条共存);④ pending
     必填:单张改写型(有点名取卡序但非全改写,offer 覆盖面歧义)或 offer 结构
     改写型(槽位语义歧义)必须写保守支 notes(_validate_strategy_effects
-    「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形:
-    extra_strategy_offer_node 非 None 时两元各 ≥1、位面 ∈ PLANE_NODE_TABLES
+    「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形(T-46 扩展,
+    offer/grant 两字段同闸):extra_strategy_offer_node /
+    extra_strategy_grant_node 非 None 时两元各 ≥1、位面 ∈ PLANE_NODE_TABLES
     且轮次 ≤ 该位面序列长(坐标系 = (位面, 轮次) 单点两元各 1 基;不在表/
-    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False);⑥ settled
-    定谳闸:rewrite_settled=True 且 rewrite_quality 为空 → 炸(settled
-    标记只对品质改写型有意义,防登记错位)。
+    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False);同条目两
+    挂点字段皆非 None → 炸(一环境一形态:offer 三选一与直接发互斥);
+    ⑥ settled 定谳闸:rewrite_settled=True 且 rewrite_quality 为空 → 炸
+    (settled 标记只对品质改写型有意义,防登记错位);⑦ 空条目闸:条目
+    七结构字段全默认(rewrite_quality/rewrite_picks/offer_structure/
+    extra_pick_refreshes/extra_strategy_offer_node/extra_strategy_grant_node/
+    difficulty_exempt 皆取默认值)→ 炸(无任何语义的登记笔误形状;数量
+    通道挂点被误清 None 即落此闸——检查置于⑥后:仅 rewrite_settled 单独
+    非默认的条目归⑥现役闸网,不抢本闸报错形态)。
     """
     orphans = [n for n in ENV_POOL_REWRITE if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2324,11 +2354,14 @@ def _validate_env_pool_rewrite() -> None:
         raise ValueError(
             f"ENV_POOL_REWRITE ∩ ENV_GIFTS 非空(单一环境只落一个估值结构):"
             f"{sorted(_overlap_gifts)}")
-    _overlap_econ = set(ENV_POOL_REWRITE) & set(ENV_ECONOMY)
+    _overlap_econ = [n for n in set(ENV_POOL_REWRITE) & set(ENV_ECONOMY)
+                     if ENV_POOL_REWRITE[n].rewrite_quality
+                     or ENV_POOL_REWRITE[n].offer_structure]
     if _overlap_econ:
         raise ValueError(
-            f"ENV_POOL_REWRITE ∩ ENV_ECONOMY 非空(单一环境只落一个估值结构):"
-            f"{sorted(_overlap_econ)}")
+            f"ENV_POOL_REWRITE ∩ ENV_ECONOMY 非空(估值语义条目只落一个估值"
+            f"结构,rewrite_quality/offer_structure 非空者不得与 ENV_ECONOMY "
+            f"同键):{sorted(_overlap_econ)}")
     for _name, _rw in ENV_POOL_REWRITE.items():
         if bool(_rw.rewrite_quality) != bool(_rw.rewrite_picks):
             raise ValueError(
@@ -2363,23 +2396,45 @@ def _validate_env_pool_rewrite() -> None:
             raise ValueError(
                 f"ENV_POOL_REWRITE pending 条目必须写保守支 notes:{_name!r}"
                 f"(offer 覆盖面/槽位语义歧义挂账)")
-        _node = _rw.extra_strategy_offer_node
-        if _node is not None:
-            _plane, _round = _node
-            if _plane not in PLANE_NODE_TABLES:
-                raise ValueError(
-                    f"ENV_POOL_REWRITE 挂点位面不在节点真值表:{_name!r} "
-                    f"extra_strategy_offer_node={_node}(登记笔误?)")
-            if not 1 <= _round <= len(PLANE_NODE_TABLES[_plane]):
-                raise ValueError(
-                    f"ENV_POOL_REWRITE 挂点轮次超位面节点数:{_name!r} "
-                    f"extra_strategy_offer_node={_node}(位面 {_plane} 序列长 "
-                    f"{len(PLANE_NODE_TABLES[_plane])},登记笔误?)")
+        # 挂点结构闸(T-46 扩展:offer/grant 两字段同闸同报错形态)+
+        # 双挂点互斥(一环境一形态)
+        if (_rw.extra_strategy_offer_node is not None
+                and _rw.extra_strategy_grant_node is not None):
+            raise ValueError(
+                f"ENV_POOL_REWRITE 双挂点互斥:{_name!r} "
+                f"extra_strategy_offer_node={_rw.extra_strategy_offer_node}"
+                f" 与 extra_strategy_grant_node="
+                f"{_rw.extra_strategy_grant_node} 不得同条目共存"
+                f"(一环境一形态:三选一与直接发互斥)")
+        for _node_field in ('extra_strategy_offer_node',
+                            'extra_strategy_grant_node'):
+            _node = getattr(_rw, _node_field)
+            if _node is not None:
+                _plane, _round = _node
+                if _plane not in PLANE_NODE_TABLES:
+                    raise ValueError(
+                        f"ENV_POOL_REWRITE 挂点位面不在节点真值表:{_name!r} "
+                        f"{_node_field}={_node}(登记笔误?)")
+                if not 1 <= _round <= len(PLANE_NODE_TABLES[_plane]):
+                    raise ValueError(
+                        f"ENV_POOL_REWRITE 挂点轮次超位面节点数:{_name!r} "
+                        f"{_node_field}={_node}(位面 {_plane} 序列长 "
+                        f"{len(PLANE_NODE_TABLES[_plane])},登记笔误?)")
         if _rw.rewrite_settled and not _rw.rewrite_quality:
             raise ValueError(
                 f"ENV_POOL_REWRITE settled 定谳闸:{_name!r} rewrite_settled="
                 f"True 而 rewrite_quality 空(settled 只对品质改写型有意义,"
                 f"登记错位)")
+        # 空条目闸(T-46;置 settled 闸后:仅 rewrite_settled 单独非默认的
+        # 条目归 settled 闸网,七结构字段全默认才算「无任何语义的登记笔误」)
+        if (_rw.rewrite_quality == '' and _rw.rewrite_picks == ()
+                and _rw.offer_structure == '' and _rw.extra_pick_refreshes == 0
+                and _rw.extra_strategy_offer_node is None
+                and _rw.extra_strategy_grant_node is None
+                and not _rw.difficulty_exempt):
+            raise ValueError(
+                f"ENV_POOL_REWRITE 空条目:{_name!r} 七结构字段全默认"
+                f"(无任何语义的登记笔误;数量通道挂点被误清即落此闸)")
 
 
 _validate_env_pool_rewrite()
@@ -3227,3 +3282,47 @@ def _validate_env_bond_tier_grants() -> None:
 
 
 _validate_env_bond_tier_grants()
+
+
+# ===== 环境取卡触发发放注册表(T-46 策略大师;白名单制)=====
+# 世界发放域取卡触发器首例(事件式同型先例 = merge:事件携带事实无 done)。
+# 每取卡事件一笔,无 done 封账。
+# 表间豁免声明(见 _validate_env_pick_grants ③):本表键与 ENV_ECONOMY 共存,
+# 不参与「单一环境只落一个估值结构」互斥;正确性代之以双源同值校验(③)。
+ENV_PICK_GRANTS: dict[str, int] = {
+    # 每取一张策略 +coef×含本张已持有数(id 147 原文直读「2*已拥有投资策略数」;
+    # 口径 = 含本张(用户裁定 2026-10-26):第 k 张到手发 coef×k,首张 coef×1)
+    '策略大师': 2,
+}
+
+
+def _validate_env_pick_grants() -> None:
+    """ENV_PICK_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
+    / _validate_env_refresh_grants 双源同值先例):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② 值形:正 int(bool 排除——isinstance(True, int) 为真,False/True 形
+    混入 = 登记笔误,前置可见;0/负 = 条件永真或倒扣,禁);
+    ③ 双源同值:同键在 ENV_ECONOMY 有非空 gold_per_strategy_coef → 相等
+    (估值面与世界面同出卡面 id 147,任一侧单独改系数即失同步,构建期炸;
+    ENV_ORE_GRANTS/ENV_REFRESH_GRANTS 家族同款)。
+    """
+    orphans = [n for n in ENV_PICK_GRANTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(
+            f"ENV_PICK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _n, _coef in ENV_PICK_GRANTS.items():
+        if not isinstance(_coef, int) or isinstance(_coef, bool) or _coef < 1:
+            raise ValueError(
+                f"ENV_PICK_GRANTS 值形({_n!r}):须为 ≥1 的 int(禁 bool),"
+                f"现值 {_coef!r}")
+        _econ = ENV_ECONOMY.get(_n)
+        _src = int(getattr(_econ, 'gold_per_strategy_coef', 0) or 0)
+        if _src and _src != _coef:
+            raise ValueError(
+                f"ENV_PICK_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
+                f"gold_per_strategy_coef={_src} ≠ 本表 {_coef}"
+                f"(估值面与世界面同出卡面,失同步即构建期炸)")
+
+
+_validate_env_pick_grants()

@@ -674,6 +674,10 @@ def gain_invest_strategy(gs: GameState, session: object,
        + 板面重写桥 ``apply_board_rewrite``
        (acquired_key = 节点序位快照);失败 log + 缺陷留存证据(``DEFECT_STRATEGY_
        REGISTER``)、不阻塞;
+    2.5 **环境取卡触发发放**(T-46 策略大师金币腿;②后③前,所有取卡
+       来源的共同必经点,live 上报与 sim 选卡/直发双端覆盖):单一源 =
+       ``cw_env_grants.check_env_pick_grants``,注册后现读长度即含本张
+       已持有数,异常零吞上抛(容器写腿纪律);
     3. **触发策略效果**:`on_strategy_gained`(查 ``PICK_INVEST_EFFECTS``
        分派;未收录卡安静不写)。
 
@@ -720,6 +724,17 @@ def gain_invest_strategy(gs: GameState, session: object,
                          actual=f'登记腿异常:{e}',
                          evidence=f'gain_invest_strategy:{canon}', sig=sig,
                          kind=DEFECT_STRATEGY_REGISTER)
+    # 环境取卡触发发放(T-46 策略大师金币腿):位置 = ②后③前——②为
+    # best-effort 腿不拦本腿;本腿在③(on_strategy_gained 直调零防护)
+    # 之前,③异常发生在金入账之后不回吞。held_after = 注册后现读长度
+    #(含本张口径,用户裁定 2026-10-26:同名跳写形态下「这张」本就在
+    # 列表,现长度即含本张,零特判)。kernel 反向模块级零 import 契约:
+    # 函数内惰性取(cw_env_grants 模块级依赖本模块,反向即环);容器写腿
+    # 零吞错,异常上抛可见。
+    from sr_od.application.currency_war.kernel.cw_env_grants import (
+        check_env_pick_grants,
+    )
+    check_env_pick_grants(gs, len(gs.active_strategies.value or []), sig)
     # ③ 触发策略效果
     effects = on_strategy_gained(gs, canon, rand=rand, sig=sig, rng=rng)
     return GainOutcome(placed=True, landing='skipped', merge_levels=0,

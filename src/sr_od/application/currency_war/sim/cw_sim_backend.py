@@ -89,6 +89,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_opens,
     gain_equipment,
     gain_invest_env,
+    gain_invest_strategy,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ENV_XP_WINDOW_DISCLOSURES,
@@ -1864,6 +1865,34 @@ class SimBackend:
                                   rng=stream_rng(self.seed,
                                                  f'M21/env-boss/p{plane}/r{r}'),
                                   sig=logic_sig('sim:env'))
+        # 环境直发策略取卡挂点(T-46 策略大师数量腿;设计 = T-46 定稿
+        # §2.2(e)):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
+        # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
+        # 与 _present_offer_or_node_screen(幂等守卫区段外,resume 复走
+        # 双发面)。direct 挂点查询 = kernel ENV_POOL_REWRITE 单一源
+        #(表外环境 get None = 无直发的合法语义,登记残缺防线在 kernel
+        # 空条目闸);当前节点 == extra_strategy_grant_node → 直接经获得链
+        # 发一张随机投资策略,不开 offer 无选卡屏(用户裁定 2026-10-26),
+        # 发放后照常进该节点正常流程;到手名并入 excluded_invest(维持
+        # 「本局已出过全部选项名」累计去重契约,漏并入 = 已拥有策略可再入
+        # 未来 offer 池,同名跳写 + 同卡二次发放面被直发腿重开)。直发到手
+        # 即触发金币腿(同链自动,含本张口径下首张直发即 2 金)。调用形态沿
+        # 现役直调先例 _on_invest_picked:session=None(登记腿跳过、容器写
+        # 照常)/rand=False(确定发放)/sig 与环境金/定时道具发放同组
+        # sim:env;流键 M23 沿 M21/M22 编号续,采样即世界真值;样本 '' =
+        # 全池被排除集吃光(防御性,正常局不可达)→ 静默跳发不空手入链。
+        _rewrite = ENV_POOL_REWRITE.get(str(self.gs.active_env.value or ''))
+        _grant_node = (_rewrite.extra_strategy_grant_node
+                       if _rewrite is not None else None)
+        if _grant_node == (plane, r):
+            _pick_rng = stream_rng(self.seed,
+                                   f'M23/env-pick/p{plane}/r{r}')
+            _name = sample_strategy_card(_pick_rng, self.excluded_invest)
+            if _name:
+                self.excluded_invest.add(_name)
+                gain_invest_strategy(self.gs, None, _name, rand=False,
+                                     sig=logic_sig('sim:env'),
+                                     rng=_pick_rng)
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

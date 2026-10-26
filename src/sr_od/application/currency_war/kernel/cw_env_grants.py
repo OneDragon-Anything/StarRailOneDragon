@@ -84,6 +84,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
     Unit,
+    _emit_defect,
     back_capacity_of,
     effective_node_pos,
     level_of,
@@ -96,6 +97,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_INTEREST_GRANTS,
     ENV_MERGE_GRANTS,
     ENV_ORE_OPEN_GRANTS,
+    ENV_PICK_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
 )
@@ -1150,3 +1152,60 @@ def grant_env_bond_tier(gs: GameState, env: str, bond: str,
     gs.write_logic(gs.env_grants_done,
                    done + ((env, f'{BOND_TIER_KEY_PREFIX}{tier}'),),
                    produced_by=_PRODUCER, evidence=evidence, sig=_GRANT_SIG)
+
+
+#: 取卡触发发放跳发缺陷 kind(gold 现值 None 时零写留证;取卡事件不可重放,
+#: 静默放弃 = 永久假账——用户裁定 2026-10-26,登记于 T-46 策略大师设计稿
+#: §2.1(b) 条件 3)。
+DEFECT_ENV_PICK_GRANT_SKIPPED: str = 'env_pick_grant_skipped'
+
+
+def check_env_pick_grants(gs: GameState, held_after: int,
+                          sig: ChannelSig) -> int:
+    """取卡触发发放检查(单一源;唯一调用点 = gain_invest_strategy 内、
+    效果账本登记腿②后、策略卡效果分派③前——所有取卡来源的共同必经点,
+    live 上报与 sim 选卡落地/直发同链覆盖)。触发注册表 =
+    ``cw_investments.ENV_PICK_GRANTS``。返回发放金额(0 = 未发放)。
+    口径 = 含本张(用户裁定 2026-10-26):held_after = 本次注册后的已持有
+    策略数,第 k 张到手发 coef×k,首张 coef×1。
+
+    条件矩阵(顺序即短路序):
+
+    1. ``active_env`` None/空链 → 0;
+    2. 环境不在登记表(ENV_PICK_GRANTS)→ 0;
+    3. ``gs.gold.value`` None → **零写 + 缺陷台账留证**
+       (:data:`DEFECT_ENV_PICK_GRANT_SKIPPED`)→ 0——取卡事件不可重放,
+       「等下次重试」不成立(事件式触发器与条件持续式先例〔宁缺勿造 +
+       done 封账下次重查〕的本质差异),静默放弃 = 永久假账;
+    4. 达标 → ``gs.write_logic(gs.gold, 现值 + coef×held_after)``
+       (evidence = ``env_grant#{env}#pick{held_after}``)→ 返回金额。
+
+    - **事件式无 done 键**(同型直接先例 = ENV_MERGE_GRANTS「合成升星」
+      事件携带事实:每个取卡事件恰好经过获得链一次,无观察点重入面,
+      无重查重发需求);
+    - 零 rng(金增量确定);``sig`` 必须由调用方传 logic 族(obs 族进
+      write_logic 即炸渠道族校验);
+    - 形参名即口径(``held_after``);实参由调用方传注册后现读长度
+      (同名跳写形态〔去重跳写,列表不变〕下「这张」本就在列表,现长度
+      即含本张,零特判),函数内不读 ``active_strategies`` 现值;
+    - 含本张口径下金额恒 ≥ coef×1(held_after ≥ 1——注册腿已成立才到达
+      本检查),无「零持有零写」分支。
+    """
+    env = gs.active_env.value
+    if not env:
+        return 0
+    coef = ENV_PICK_GRANTS.get(env)
+    if coef is None:
+        return 0
+    gold = gs.gold.value
+    if gold is None:
+        _emit_defect(field_name='gold',
+                     expected='金账已观察(可写取卡触发增量)',
+                     actual='gold None(取卡事件不可重放,零写留证不重试)',
+                     evidence=f'env_grant#{env}#pick{held_after}', sig=sig,
+                     kind=DEFECT_ENV_PICK_GRANT_SKIPPED)
+        return 0
+    amount = coef * int(held_after)
+    gs.write_logic(gs.gold, int(gold) + amount, produced_by=_PRODUCER,
+                   evidence=f'env_grant#{env}#pick{held_after}', sig=sig)
+    return amount

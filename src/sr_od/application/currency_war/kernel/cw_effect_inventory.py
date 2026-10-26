@@ -641,7 +641,8 @@ def env_portal_effects() -> dict[str, EffectSpec]:
             duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
             payload=ENV_ECONOMY['策略大师'],
             notes='触发面 = 每次取投资策略(词表无 ON_PICK 值,占 CONDITIONAL 声明);'
-                  '金面 = +2×取卡前已持有数'),
+                  '金面 = +2×含本张已持有数(用户裁定 2026-10-26;第 k 张到手'
+                  '发 2k,首张 2)'),
     }
     _validate_env_portal_effects(specs)
     _ENV_PORTAL_EFFECTS = specs
