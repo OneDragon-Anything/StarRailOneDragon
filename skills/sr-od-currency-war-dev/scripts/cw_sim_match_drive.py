@@ -18,8 +18,9 @@ journal / 决策帧 / debug 图 / 窗口运行锁全部重定向到批目录,生
 
 产出(批目录内):``matches/match_<game_id>.json``(对局档案,复盘主数据)、
 ``state/journal.jsonl``(kernel 状态流水,行级溯源)、``decision_frames/``
-(识别仲裁帧)、终态摘要与复盘入口提示打在 stdout。跑完拿档案按
-match-review 协议复盘即可。
+(识别仲裁帧)、``strategy/<strategy_id>_<run_id>.jsonl``(策略决策记录,
+capture-store §4,sink 落点随批根)、终态摘要与复盘入口提示打在 stdout。
+跑完拿档案按 match-review 协议复盘即可。
 
 边界:
 - 局配置固定 A8 / 敌方难度 108 / 标准博弈 / 环境在场(与测试冒烟同口径;
@@ -137,12 +138,22 @@ def main() -> int:
         install_state_telemetry,
         reset_state_telemetry,
     )
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        set_decision_sink,
+    )
     from sr_od.application.currency_war.telemetry import state as tel_state
+    from sr_od.application.currency_war.telemetry.strategy_telemetry import (
+        close_strategy_telemetry_handles,
+        strategy_telemetry_sink,
+    )
 
     # ---- telemetry 重定向(先于 CW 装配;句柄级直接装,teardown 逐槽复位) ----
     tel_state.set_recorder_replay_dir(out_dir)
     install_state_telemetry(out_dir / 'state' / 'journal.jsonl',
                             run_id_provider=tel_state.current_run_id)
+    # 策略遥测 sink(capture-store §4 装配点 sim 侧):落点 = recorder 根
+    # strategy/,根已重定向到批目录故落点自动随根(生产同款 sink 实现)。
+    set_decision_sink(strategy_telemetry_sink)
 
     mp = pytest.MonkeyPatch()
     run_id = ''
@@ -306,6 +317,8 @@ def main() -> int:
         return _finalize(out_dir, run_id)
     finally:
         mp.undo()
+        set_decision_sink(None)               # sink 槽复位(与装配段对称)
+        close_strategy_telemetry_handles()    # 批根句柄收口(复位口,防残留)
         reset_state_telemetry()
         tel_state.set_recorder_replay_dir(None)
         tel_state.reset_run_state()
