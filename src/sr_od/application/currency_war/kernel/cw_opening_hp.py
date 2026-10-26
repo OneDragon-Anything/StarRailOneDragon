@@ -114,6 +114,12 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
       集零耦合,零 HP 写;
     - 现算返回 None(非实证难度档):先验表只填实证档禁外推,跳写。
 
+    sim hp_trail 伪影披露(实现批裁定 = 接受伪影 + 披露):本回调重算
+    改写 sim HP 后,``cw_sim_backend._hp_trail_append`` 的步界采样轨迹
+    呈开局双值(先验值 → 重算值的跳变行,如 62 → 82)——不做回溯补行
+    (kernel 回调反向感知 sim 步界 = 层级倒挂),A/B 遥测读开局 HP 时
+    按「词缀失效局开局双值」判读。
+
     Args:
         gs: 局容器(写目标 = ``gs.hp``,先验输入 = 职级/数值难度现值)。
         old_names: 写前词缀名单(种子态 None)。
