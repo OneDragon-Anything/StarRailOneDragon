@@ -339,7 +339,7 @@ class CwStrategy(ABC, Generic[_TState]):
         """武装箱/节点弹窗装备卡 4 选 1(候选读 ``gs.box_card_names`` 槽;
         返回动作子类型)。"""
 
-    # —— 契约扩员 12→15(三 overlay 选卡判据并入 kernel + handler
+    # —— 契约扩员区(三 overlay 选卡判据并入 kernel + handler
     #    改写槽→零参 decide;事件面登记 =
     #    strategy-docs/13_pick_family.md §2 E16-E18)——
 
