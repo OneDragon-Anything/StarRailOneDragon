@@ -1,9 +1,10 @@
 """货币战争 决策装配边界·生产武装点(app 层)。
 
 生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
-decision 层 obs 读口注入、kernel 侧合成特效帧态门注入,以及 GameState
+decision 层 obs 读口注入、kernel 侧合成特效帧态门注入、GameState
 缺陷台账 sink 的落盘实现(实现住本模块,
-kernel 零像素触达;缺省关 = 不落盘)。
+kernel 零像素触达;缺省关 = 不落盘),以及策略遥测 sink 接通
+(DecisionRecord 落 recorder 根 strategy/ 目录;缺省未装配 = 零写)。
 
 为何在 app:本模块 import prep_actions/obs 执行面词汇,且被
 cw_screen_prep(备战环)消费——两侧都在 app 层,装配边界归 app 是分包矩阵
@@ -39,10 +40,19 @@ def install_obs_ports() -> None:
         reset_phase_round_cache,
     )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        set_decision_sink,
         set_obs_reset_hook,
     )
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
+
+    # 策略遥测生产武装点(obs 读口同位接通,capture-store §4):决策信封
+    # 经 wrapper 装配槽落 recorder 根 strategy/ 目录(run_id 补齐与局外
+    # 零写判断都在 sink);缺省未装配 = 零写,本点缺接即纯单测零副作用。
+    from sr_od.application.currency_war.telemetry.strategy_telemetry import (
+        strategy_telemetry_sink,
+    )
+    set_decision_sink(strategy_telemetry_sink)
 
     # 缺陷台账生产武装点:GameState 观察覆盖
     # logic 值失配行(kernel/cw_game_state._emit_defect,槽缺省关)
