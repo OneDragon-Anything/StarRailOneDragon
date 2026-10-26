@@ -15,8 +15,24 @@ settlement 源 hp_confidence=1.0)**。
 正常覆盖,禁覆盖真读。「时间刺客」不另设值(初值仍 82):它通过局内周期
 扣血污染 1-1 读数(实测 r1=44/46,r2 回 84/86),不改初值;该污染的判读
 由 hp 下行拒信/复现确认通道既有防线兜住,本表不碰判读。
+
+词缀域写尾 HP 先验跟随回调(:func:`on_enemy_affixes_logic_write`)住本
+模块 = 档表与现算函数的域归属(挂点 = ``cw_game_state._write_logic_frame``
+enemy_affixes 分支,logic/logic_rand 两通道同经;观察写不经该宿主 =
+零回调,deployed 写尾回调级联同契约)。T-45 敌后破坏删除腿的 HP 跟随
+载体;姊妹卡退化(T-291)mid-run 复用时须显式处置「当期 hp 已有真值
+被先验覆写」残面(设计稿 §2.5 登记,本卡开局窗 hp=seed 无真值可踩)。
 """
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+    )
 
 #: 基础初值(A8/数值难度 108,无修正词缀;109 局零方差)。
 OPENING_HP_BASE: int = 82
@@ -59,3 +75,61 @@ def opening_hp_prior(briefing_affixes: list[str] | None,
         if name in affixes:
             hp += delta
     return hp
+
+
+#: 词缀域写尾回调重算先验的渠道签名(obs 族 prior 子模;先例 =
+#: cw_observation reconcile 先验写行同形,actor 换本域宿主)。
+_HP_RESYNC_SIG: ChannelSig = ChannelSig(family='obs', actor='CwOpeningHp',
+                                        mode='prior',
+                                        quality={'hp': 'prior'})
+
+#: 重算先验行 evidence 前缀(write_prior 强制 ``prior:`` 前缀;语义段
+#: = 消失词缀触发,同一常量供测试断言,防散写字面量)。
+AFFIX_HP_RESYNC_EVIDENCE: str = 'prior:affix_disable_hp'
+
+
+def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
+                                 new_names: list[str] | None,
+                                 source: str) -> None:
+    """词缀域逻辑写尾的 HP 先验跟随回调(T-45 敌后破坏删除腿;设计 =
+    迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.3 裁决点 a,2026-10-18
+    用户方案「词缀更新回调」+ 对抗轮 2 N1/N2 修法甲落定形态)。
+
+    挂点 = ``cw_game_state._write_logic_frame`` enemy_affixes 分支尾
+    (logic/logic_rand 两逻辑通道同经;**observe 覆盖不经该宿主 = 零回调**
+    ——回归 deployed 写尾「观察写零回调」契约,对抗轮 2 N1 改判:live
+    先验每读失败帧从当前名单懒算落储 + 首备战帧 hp 真读先于委派挂点,
+    observe 触发反而把开局先验覆写到新鲜真值上)。数据流 = deployed
+    写尾级联同构:按名单 diff 出消失词缀 → 命中 :data:`_AFFIX_HP_DELTA`
+    → 以删除后词缀表经 :func:`opening_hp_prior` 现算 → 经
+    ``GameState.write_prior`` 重算 HP 先验(写通道统一 prior 单一来源,
+    对抗轮 2 N2 修法甲:不采 logic/logic_rand 来源继承——HP 域来源三叉
+    会造成真值覆盖行为分裂;真读覆盖 prior = 静默采新零告警,先验永不过
+    可信位 ``hp_decision_trusted_of`` fail-closed 底线不变)。
+
+    跳写边界(全列,任一命中即零写):
+    - ``old_names`` None(种子写/字段首写):diff 语义 = 全量消失候选,
+      回调防种子误触发直接跳过;
+    - 消失词缀不命中 :data:`_AFFIX_HP_DELTA`(空 diff 同此):HP 与该词缀
+      集零耦合,零 HP 写;
+    - 现算返回 None(非实证难度档):先验表只填实证档禁外推,跳写。
+
+    Args:
+        gs: 局容器(写目标 = ``gs.hp``,先验输入 = 职级/数值难度现值)。
+        old_names: 写前词缀名单(种子态 None)。
+        new_names: 写后词缀名单(删除腿 = 剩余列表)。
+        source: 宿主写 produced_by(契约对称形参,归因走写台账 evidence,
+            与 ``on_deployed_logic_write`` 同款零消费面)。
+    """
+    if old_names is None:
+        return   # 种子写防误触发(设计 §2.3 N5:None 档全量消失候选不判)
+    vanished = set(old_names or []) - set(new_names or [])
+    if not vanished & set(_AFFIX_HP_DELTA):
+        return   # 消失词缀不命中 HP 档(含空 diff)→ 零 HP 写
+    prior = opening_hp_prior(list(new_names or []),
+                             gs.selected_difficulty.value,
+                             gs.enemy_difficulty.value)
+    if prior is None:
+        return   # 非实证档先验返 None → 跳写(禁外推,查表口径)
+    gs.write_prior(gs.hp, prior, evidence=AFFIX_HP_RESYNC_EVIDENCE,
+                   sig=_HP_RESYNC_SIG)

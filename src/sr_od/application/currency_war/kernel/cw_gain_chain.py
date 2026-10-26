@@ -109,6 +109,21 @@ PICK_INVEST_INVALID_PAYLOAD: str = 'pick_invest_invalid_payload'
 #: gain-chain.md §3 追加随机环境段/§6。
 ENV_REROLL_DECL: str = 'gain_chain_env_reroll_decl'
 
+#: 敌后破坏(id 146)词缀失效删除腿的采样腿具名键(函数内经
+#: :func:`action_sampling_rng` 解析,双端同槽先例 = env_merge_grant;
+#: 正本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1 裁决点 b)。
+ENV_AFFIX_DISABLE_RNG_TOOL: str = 'env_affix_disable'
+
+#: 敌后破坏删除腿的空容器申报行 kind(选卡时词缀容器空[简报失读等]→
+#: 跳过删除:实机已失效而模型未删,偏差全程持续无自愈——该态容器非
+#: 随机态,补观察谓词不命中;独立小块沿 ENV_REROLL_DECL 同形,语义申报
+#: 非缺陷告警;正本 = T-45 设计稿 §6 披露键 3)。
+ENV_AFFIX_DISABLE_EMPTY_DECL: str = 'env_affix_disable_empty_container'
+
+#: 敌后破坏(id 146)环境规范名(枚举即收敛硬编码分支的判定键,单卡
+#: 零复用面不入登记表;normalize_invest_name 归一恒等——纯中文名)。
+ENV_AFFIX_DISABLE_ENV: str = '敌后破坏'
+
 
 @dataclass(frozen=True)
 class GainOutcome:
@@ -902,6 +917,19 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``env_star_grant:<名>``,绑定腿 = 发放名落 done 条件键
       ``star_grant#<名>``(placed 守卫下写,腿2 触发依赖,
       check_env_boss_grants 消费);首例 = 劳务派遣合同(腿1);
+    - **词缀失效删除腿**(``ENV_AFFIX_DISABLE_ENV`` 命中,延迟道具支线
+      之后、ENV_GIFTS 查表之前;硬编码分支沿 DOT_CONTRACT_ENV 枚举即
+      收敛先例):选敌后破坏 → 词缀名单(gs.enemy_affixes)非空时均匀
+      随机删 1 个、剩余列表整条替换写回(经 :func:`_select_write` 择道,
+      rand=True 双保险声明采样链——live 选卡在开局未锚定窗自动落随机态,
+      位面详情补观察闭环转正);容器空 → 跳过删除,零写 + 申报行
+      (``kind = ENV_AFFIX_DISABLE_EMPTY_DECL``,实机已失效而模型未删,
+      偏差全程持续)。采样腿具名流键 ``action_sampling_rng(
+      'env_affix_disable', None)`` 腿内自解析(env_merge_grant 双端同槽
+      先例);删除写触发词缀域写尾 HP 先验回调(cw_opening_hp.
+      on_enemy_affixes_logic_write,_write_logic_frame 挂点)。效果串
+      ``env_affix_disable:<词缀名>``。首例 = 敌后破坏(id 146;
+      设计 = T-45 设计稿 §2.1,迭代 2026-09-23-invest-effects-calc);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件腿不在本枚举:其正式模型 = 银狼策划选择上报动作落地时点的
       条件腿 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -1047,6 +1075,44 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                                sig=sig)
         effects.append(f'item_open_scheduled:{_delayed.item}'
                        f'@{unlock[0]}-{unlock[1]}')
+    # 词缀失效删除腿(敌后破坏 id 146「开局时，使一个已生成的敌人词缀
+    # 失效。」,世界发放域硬编码分支沿 DOT_CONTRACT_ENV 枚举即收敛先例,
+    # 不入登记表——单卡零复用面;设计 = T-45 设计稿 §2.1,迭代
+    # 2026-09-23-invest-effects-calc):失效建模 = 删除式——从词缀名单
+    # (gs.enemy_affixes)均匀随机删 1 个、剩余列表整条替换写回,经
+    # _select_write 择道且 rand=True 双保险声明采样链(live 选卡发生在
+    # 开局未锚定窗 → 自动落随机态 = 裁定的「词缀要变成随机态」;掷骰
+    # = live 模型猜测/sim 世界真值,偏差由位面详情补观察闭环转正,
+    # cw_screen_prep 委派谓词消费 logic_rand_fields)。删除写触发词缀域
+    # 写尾 HP 先验回调(cw_opening_hp.on_enemy_affixes_logic_write,
+    # _write_logic_frame 挂点);效果串与 ``env_gift_random:`` 家族同形
+    # 分前缀,审计归组。
+    if _name == ENV_AFFIX_DISABLE_ENV:
+        _aff = list(gs.enemy_affixes.value or [])
+        if not _aff:
+            # 空容器边界(设计 §2.1/披露键 3):选卡时容器空(简报失读等)
+            # → 跳过删除,零写 + 申报行留证(实机已失效而模型未删)。
+            _emit_defect(field_name='enemy_affixes',
+                         expected='词缀名单非空(可执行失效删除)',
+                         actual='空容器(实机已失效而模型未删,偏差申报)',
+                         evidence=f'on_env_gained:{_name}', sig=sig,
+                         kind=ENV_AFFIX_DISABLE_EMPTY_DECL)
+        else:
+            # 采样腿具名流键:腿内自解析(注入槽优先,缺省回退自掷;
+            # 无命中分支不取槽不扰他局流键,check_env_merge_grants 同款)。
+            # kernel 反向模块级零 import 契约:action_sampling_rng 住上报
+            # 函数族包,函数内惰性取(gain-chain.md §8 单向破环先例)。
+            from sr_od.application.currency_war.kernel.cw_action_report import (
+                action_sampling_rng,
+            )
+            roll_rng = action_sampling_rng(ENV_AFFIX_DISABLE_RNG_TOOL, None)
+            removed = roll_rng.choice(_aff)   # 简报现值池均匀 v0(披露键 1/4)
+            kept = list(_aff)
+            kept.remove(removed)   # 名单无重复元素,恰删采样命中的 1 个
+            write = _select_write(gs, True)
+            write(gs.enemy_affixes, kept, produced_by=GAIN_CHAIN_PRODUCER,
+                  evidence=f'on_env_gained:{_name}#affix_disable', sig=sig)
+            effects.append(f'env_affix_disable:{removed}')
     grant = ENV_GIFTS.get(_name)
     if grant is None:
         return tuple(effects)

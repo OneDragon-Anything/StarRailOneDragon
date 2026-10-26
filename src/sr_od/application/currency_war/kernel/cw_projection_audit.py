@@ -133,7 +133,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'hp': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='结算覆盖 apply_settlement_cover(唯一真值入口)+ 宝物加血'
-              '投影(EffectLedgerBridge);写闸 §3.2.13'),
+              '投影(EffectLedgerBridge)+ 词缀域写尾回调先验重算'
+              '(write_prior,T-45 敌后破坏删除腿经 cw_opening_hp.'
+              'on_enemy_affixes_logic_write,与开局先验同通道);写闸 §3.2.13'),
     'level_up_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='识别真值(None=未读到禁兜底),零逻辑写端'),
@@ -159,7 +161,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='动作落地相获得链写(gain_invest_env)+ 观察覆盖'),
     'enemy_affixes': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='开局写定(简报/位面详情实采写门)+ 观察覆盖'),
+        basis='开局写定(简报/位面详情实采写门;位面详情写门随机态分支'
+              '走 observe 覆盖转正,T-45)+ 获得链删除腿(敌后破坏失效'
+              '删除,经 _select_write 择道随机态)+ 观察覆盖'),
     'board': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='派生量:deployed 写端挂钩 _resync_board_delta'

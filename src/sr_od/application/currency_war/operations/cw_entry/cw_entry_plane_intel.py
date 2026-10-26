@@ -8,8 +8,9 @@ bot 未走过简报链 / 人工要补)下,一键完成「进位面详情 → 委
 节点图(四 node,@node_from 显式边):
 - ``门``(start):对局中(session 在)→ 画面合法(备战/位面详情,其它屏
   = 调用时机错误快速 fail 并存证截图,不空转 retry 烧预算)→ 真值跳过
-  (容器已有位面真值 → 零点击直通成功,防手动调起白开白关详情屏;放在
-  屏幕门之后,错屏先报错屏,别让跳过门吞掉真实状态信号);
+  (位面真值已有 **∧** 词缀非随机态 → 零点击直通成功,防手动调起白开
+  白关详情屏;词缀随机态时放行补观察转正——T-45 扩面;放在屏幕门之后,
+  错屏先报错屏,别让跳过门吞掉真实状态信号);
 - ``打开位面详情``:已在详情屏直通(委派失败详情屏留场的自愈分支——
   失败后不加专用清理,下一轮再进时跳过打开直接委派);备战屏点当前
   节点图标开详情(点任意节点图标都开,不依赖 current 锚;证据 =
@@ -94,9 +95,15 @@ class CwEntryPlaneIntel(CwOperation):
                 f'不在货币战争对局画面(需{_PREP_SCREEN}或{_PD_SCREEN}),无法补采')
 
         # 真值已在(简报链早前采过/上一轮本 op 成功)→ 零点击直接结论。
-        if gs_of_ctx(self.ctx, sess).plane_bosses.value:
+        # 跳过门扩面(T-45 设计稿 §2.2 接线 2,迭代 2026-09-23-invest-
+        # effects-calc):位面真值已有 **∧** 词缀非随机态才跳过——词缀
+        # 随机态(敌后破坏删除腿猜测名单/开局种子)时放行补观察,防旧门
+        # 把「正常局 boss 真值已在 + 词缀随机态待转正」拦在委派之外。
+        _gs = gs_of_ctx(self.ctx, sess)
+        if _gs.plane_bosses.value \
+                and 'enemy_affixes' not in _gs.logic_rand_fields():
             _log.info('[cw-takeover] %s:%s', self.STATUS_SKIP,
-                      gs_of_ctx(self.ctx, sess).plane_bosses.value)
+                      _gs.plane_bosses.value)
             return self.round_success(self.STATUS_SKIP)
         return self.round_success(_GATE_PASS_STATUS)
 

@@ -975,26 +975,49 @@ class CwScreenPrep(CwOperation):
         """接管补采委派(挂点 = op 观察 node;编排单一源 =
         CwEntryPlaneIntel:门/开关详情屏/委派实采/真值落容器写门全在编排侧)。
 
-        触发谓词 = gs.plane_bosses 空(本局尚无位面序真值;不引入显式
-        失效标记——重复委派由编排的真值跳过门兜住,委派失败交外循环
-        失败链,无自带计数/放弃分支)。「节点条可读」守卫 = 半开帧
-        (过场/overlay)不委派、等下轮免费重判、不烧失败链。
+        触发谓词(两支取或;设计 = T-45 设计稿 §2.2 接线 1,迭代
+        2026-09-23-invest-effects-calc):①``gs.plane_bosses`` 空(本局
+        尚无位面序真值,接管局 boss 面;不引入显式失效标记——重复委派由
+        编排的真值跳过门兜住,委派失败交外循环失败链,无自带计数/放弃
+        分支);②``enemy_affixes ∈ gs.logic_rand_fields()``(词缀随机态:
+        敌后破坏删除腿猜测名单/开局种子未验证底座——策略器消费前必须
+        先去位面详情补观察转正,write_logic_rand 消费门纪律)。
+        「节点条可读」守卫 = 半开帧(过场/overlay):第一支命中维持现役
+        return None(等下轮免费重判、不烧失败链,boss 面行为零变更;
+        **双支同真按第一支现役处理**);仅第二支命中(词缀随机态 ∧ boss
+        真值已在)时半开帧**封死**——决策延后一拍不放行(静默放行会让
+        决策消费随机态值,违反「先转正后消费」不变量;返回 round_wait
+        类非重试等待态:不烧 node 重试预算防自旋,等待后本 node 重判)。
         委派结果透传:成功 = round_success 返回主循环重新识别;失败 =
         round_fail 走外循环既有失败链(重试/熔断),不自旋。
         """
         _gs = gs_of_ctx(getattr(self, 'ctx', None), session)
-        if _gs.plane_bosses.value:
+        _boss_missing = not _gs.plane_bosses.value
+        _affix_rand = 'enemy_affixes' in _gs.logic_rand_fields()
+        if not _boss_missing and not _affix_rand:
             return None
         _tk_slots = None
         with contextlib.suppress(Exception):
             _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
         if _tk_slots is None:
-            return None   # 节点条不可读(半开帧)→ 等下轮免费重判
+            if _boss_missing:
+                return None   # 第一支(接管局 boss 面)半开帧:现役等下轮免费重判
+            # 仅词缀随机态支命中 ∧ 半开帧 → 封死(设计接线 1 默认案):
+            # 决策延后一拍,等待后本 node 免费重判(转正前零决策消费)
+            log.info('[cw][director] 敌人词缀随机态 ∧ 半开帧(节点条不可读)'
+                     '→ 封死决策延后一拍')
+            return self.round_wait(
+                status='词缀随机态待补观察转正,节点条不可读(半开帧),'
+                       '决策延后一拍', wait=1.0)
+        if _boss_missing:
+            log.info('[cw][director] 新局 boss/词缀无实采真值 → 委派 '
+                     'CwEntryPlaneIntel(接管编排)')
+        else:
+            log.info('[cw][director] 敌人词缀随机态 → 委派 CwEntryPlaneIntel'
+                     '(位面详情补观察转正)')
         from sr_od.application.currency_war.operations.cw_entry.cw_entry_plane_intel import (
             CwEntryPlaneIntel,
         )
-        log.info('[cw][director] 新局 boss/词缀无实采真值 → 委派 CwEntryPlaneIntel'
-                 '(接管编排)')
         return self.round_by_op_result(
             CwEntryPlaneIntel(self.ctx).execute(),
             status='接管补采委派,交回外循环重识别')

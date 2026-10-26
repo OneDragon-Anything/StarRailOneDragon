@@ -168,17 +168,24 @@ A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/
 #### 3.1.3 位面 boss 与敌人词缀(主条目)
 
 **语义**:位面级字段(三位面 boss 名、当前词缀名单)。
-**写入方**:两写入位置。①初值写入方=开局简报屏 `CwScreenBriefing`(建档区域:区域-词缀行/
+**写入方**:三写入位置。①初值写入方=开局简报屏 `CwScreenBriefing`(建档区域:区域-词缀行/
 区域-首领行;摄入口 = `report_screen_briefing_obs`,三字段**统一写语义『读到非空恒覆写 /
 读空跳过写』**——三读数一局内恒定,覆写无信息损失,重读自愈首次误读;读缺 = 跳过写
 项目口径,瞬时 OCR 失手不擦同局已读真值;跨局残留由每局容器全新创建/丢弃挡死,不靠本写入位置
 清场;敌人难度 = 恒稳开局基线初值,后续敌方难度读数真读覆盖归主条目(§3.2.14)。标准化收敛后
 本写语义的输入 = 标准注册名(观察侧转换,失败 = 观察失败零写,待办登记见屏契约));
 ②接管补采实采写入方=位面详情屏(数据进入点 =
-`report_screen_plane_intel_obs`,跳写门两件:`plane_bosses` 已有真值不覆写——
-简报源先落时实采不冲真值;`enemy_affixes` 幂等门,仅容器空时写、空读数不落写;
-sig = logic_action/CwScreenPlaneIntel/货币战争-位面详情/compute,采集真值落账族
-同简报写入位置族;详 = [../screens/plane_intel.md](../screens/plane_intel.md))。
+`report_screen_plane_intel_obs`,词缀写门三分支(T-45 扩面,分支序即短路序):读数 None
+= 本轮无此面/失读不进写门;容器随机态(logic_rand)→ observe 通道覆盖转正(非空与空列表
+读数均可——被覆盖对象是猜测非真值,删尽态空表转正闭环收敛;差异落 `logic_rand_outcome`
+台账、等值零台账;签名 = obs/CwScreenPlaneIntel/货币战争-位面详情/read);容器非随机态
+→ 空容器 + 非空读数现役 logic 直写(logic_action/CwScreenPlaneIntel/货币战争-位面详情/
+compute,采集真值落账族)、非空容器不写(幂等保持,防真值互踩);`plane_bosses` 写门不变:
+已有真值不覆写——简报源先落时实采不冲真值,无真值 3 槽保位全量写;
+详 = [../screens/plane_intel.md](../screens/plane_intel.md));
+③获得链删除腿写入方=选敌后破坏(id 146「开局时，使一个已生成的敌人词缀失效。」,T-45
+删除式建模):均匀随机删 1 个、剩余列表整条替换写回,经 `_select_write` 择道随机态
+(`kernel/cw_gain_chain.on_env_gained`;gain-chain.md §3 词缀失效删除腿条)。
 现读通道= 位面详情屏(词缀横条/boss 大图标)与敌人
 信息浮层(从备战屏「按钮-敌人难度」打开)。
 **运行时登记**:词缀读链产出点接 `cw_affix_effects.register_affixes_from_names`
@@ -209,6 +216,13 @@ sig = logic_action/CwScreenPlaneIntel/货币战争-位面详情/compute,采集�
 **三写入方时序(开局预填初值批)**:①创建时预填 82(= `OPENING_HP_BASE` 实证基线,
 rand 通道,§2.6)→ ②先验(首个聚合入口帧按档 82/62;非实证档先验返 None、先验分支跳过,
 容器保持种子随机态)→ ③真读。先验/真读覆写种子均静默(rand 旁路 §2.3)。
+**词缀域写尾回调先验重算(第④写入方,T-45 敌后破坏删除腿)**:`enemy_affixes` 逻辑写
+(logic/logic_rand 两通道同经;observe 覆盖零回调——回归 deployed 写尾「观察写零回调」
+契约)落帧后 diff 新旧名单,消失词缀命中 `_AFFIX_HP_DELTA` → 以删除后词缀表经
+`opening_hp_prior` 现算,经 `write_prior` 重算先验(与②同通道单一来源;真读覆盖静默采新,
+先验永不过可信位 fail-closed;种子写 old=None/非命中词缀/非实证档三边界跳写)。单一源 =
+`kernel/cw_opening_hp.on_enemy_affixes_logic_write`;姊妹卡退化 mid-run 复用须先处置
+「当期 hp 已有真值被先验覆写」残面(T-291 批,设计稿 §2.5 登记)。
 
 ### 3.2 干净的备战画面(商店关闭态)
 

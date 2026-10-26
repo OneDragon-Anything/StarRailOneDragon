@@ -304,6 +304,27 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     命运礼物(id 134「立刻获得一个【惊喜盒】,倒计时12个节点后礼盒打开,
     战斗完胜后,倒计时额外减少1点。」;建模知识正本 = invest_effects.md
     命运礼物条)。
+  - **词缀失效删除腿**(`cw_gain_chain.ENV_AFFIX_DISABLE_ENV` 命中,延迟
+    道具支线之后、ENV_GIFTS 查表之前;硬编码分支沿 DOT_CONTRACT_ENV
+    枚举即收敛先例,单卡零复用面不入登记表):选敌后破坏(id 146
+    「开局时，使一个已生成的敌人词缀失效。」)→ 词缀名单
+    (`gs.enemy_affixes`)非空时均匀随机删 1 个、剩余列表整条替换写回,
+    经 `_select_write` 择道且 rand=True 双保险声明采样链——live 选卡在
+    开局未锚定窗自动落随机态(裁定「词缀要变成随机态」),掷骰 = live
+    模型猜测/sim 世界真值,猜测偏差由位面详情补观察闭环转正
+    (screens/plane_intel.md 备战委派 + 写门随机态分支;消费门纪律 =
+    `logic_rand_fields`)。采样腿具名流键 `action_sampling_rng(
+    'env_affix_disable', None)` 腿内自解析(env_merge_grant 双端同槽
+    先例,命中判据前置、无命中不取槽);删除写触发词缀域写尾 HP 先验
+    回调(`cw_opening_hp.on_enemy_affixes_logic_write`,挂点 =
+    `_write_logic_frame` enemy_affixes 分支,logic/logic_rand 两通道
+    同经、observe 覆盖零回调,经 `write_prior` 重算先验——fields.md
+    §3.1.6);容器空 → 跳过删除,零写 + 申报行(`kind =
+    ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
+    设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。T-14 蓝海追加
+    链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除腿
+    触发,设计披露键 6);姊妹卡退化失效腿复用本机制(T-291 批套用)。
+    设计正本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost, star, type_tag)` 随机赠卡规格(家族载体,首例 = 人才引进「开局拥有
     1个随机4费角色」,id 109);发放 = 规格过滤池(`random_char_pool`,注册表
