@@ -30,7 +30,7 @@
 
 ### §2 局头（meta 逐行 `- 键: 值`；键名闭集 = pipeline §6 Report.meta）
 
-显示形态：runs 显 run_id 顿号列表；终局行合成一句（`final_type 位面 P-R hp 金 时长`）；stats 零坏行显「无」，非零显 `坏行 N/非对象 N/字节修复 N`。
+显示形态：runs 显 run_id 顿号列表；终局行合成一句（`final_type 位面 P-R hp 金 时长`）；stats 零坏行显「无」，非零显 `坏行 N/非对象 N/字节修复 N`；策略遥测行（策略遥测迭代 §6 增补，`- 策略遥测: <strategy_id> (N 条)`，多策略顿号并列，未归属 > 0 行尾追加 `(未归属 M 条)`，无策略文件整行省略）位于数据完整性行之后、连续性注记之前。
 
 ### §3 画面注册表（actor 全名 → 画面 id / 决策面 / 0 观察键集）
 
@@ -53,6 +53,7 @@
 | 货币战争-备战-专家邀请函 | 画面-专家邀请 | ✓ | expert_invite（sim 广播值） |
 | 货币战争-盛会之星 | 画面-巨星 | ✓ | megastar_opts（sim 广播值） |
 | 货币战争-银狼升星 | 画面-银狼策划 | ✓ | planner_opts（sim 广播值） |
+| 货币战争-星徽秘典弹窗 | 画面-书卡 | ✓ | star_tome_opts（sim 广播值；策略遥测迭代增补，广播名来源 = `cw_game_state.py` 图层注册 star_tome_opts → 货币战争-星徽秘典弹窗） |
 
 - 注册纪律：同 title 必须同规格（decision/键集）——相邻合并沿用先开章规格，异规格会同义静默错判；本表以代码为准（渲染器 `SCREEN_REGISTRY` 为最终事实）。
 
@@ -66,7 +67,7 @@
 | CwScreenEncounter | 画面-遭遇 | ✓ | encounter.options、encounter_refresh_left |
 | CwScreenBriefing / CwScreenBossBriefing | 画面-BOSS简报 | ✗ | plane_bosses、enemy_affixes、selected_difficulty |
 | CwScreenPlaneTransition / CwScreenPlaneDetail / CwScreenPlaneIntel | 画面-位面转场 | ✗ | node_seq_by_plane、enemy_affixes（plane_modifiers 为登记在案恒缺键，不列） |
-| CwScreenMegastar / CwScreenPartner / CwScreenExpertInvite / CwScreenFortune / CwScreenWishTrial / CwScreenBookcard / CwScreenBoxPick / CwScreenArmoryBox / CwScreenAhaEquipPick | 画面-巨星/伙伴/专家邀请/命运卜者/祈愿试炼/书卡/箱子/军械库/顿悟装备 | ✓ | megastar_opts/partner_opts/expert_invite/fortune_opts/wish_trial_opts/box_card_names/box_card_names/equips/equips |
+| CwScreenMegastar / CwScreenPartner / CwScreenExpertInvite / CwScreenFortune / CwScreenWishTrial / CwScreenBookcard / CwScreenBoxPick / CwScreenArmoryBox / CwScreenAhaEquipPick | 画面-巨星/伙伴/专家邀请/命运卜者/祈愿试炼/书卡/箱子/军械库/顿悟装备 | ✓ | megastar_opts/partner_opts/expert_invite/fortune_opts/wish_trial_opts/star_tome_opts/box_card_names/equips/equips（书卡键 = star_tome_opts，实写端 `cw_screen_report/bookcard.py`；box_card_names 属武装箱，错置已修复——策略遥测迭代） |
 | CwScreenYinLang | 画面-银狼策划 | ✓ | planner_opts（两卡候选） |
 | CwOpSettleConfirm / CwLoop（对局收口） | 画面-对局收口 | ✗ | ——（终局事实在局头，design §1.5） |
 
@@ -109,6 +110,16 @@ gold→金 / hp→血 / level→等级 / xp→经验 / streak→连胜 / level_u
 6. **策略评价**：固定 `#### 策略评价` 空节，决策面画面章必有；渲染器不预填任何评价内容。
 7. 动作标题摘要的 action 载荷缺位时：由状态变化表交叉定位标的物（BuyCard 回执实测含完整 action 载荷——牌名/费用/槽位，缺位形态可接受；结论，对抗审已裁决）。
 8. **复盘者附加**：文末固定 `## 复盘者附加` 空节（渲染器只给标题，不预填任何子结构）；协议四产出（候选修复项/回灌判据读数/位面三问/完整性审计）等复盘者义务产物填入该节（用户裁定 2026-10-16 落点 = A）。
+
+### §6 策略遥测装配（策略遥测迭代 2026-10-24 增补；详设 = `2026-10-24-strategy-telemetry/details/render-assembly.md`）
+
+- **发现与加载**：`--strategy-telemetry <文件|目录>` 显式优先（不存在 = 用法错退出 2）；缺省探测 journal 同根 `strategy/` 目录（--journal = `<根>/strategy/`，--match = live 根 = matches 目录父级）；目录不存在或为空 = 功能关闭，报告与现状零差异（局头亦不加行）。加载逐行 JSON、非法行跳过；`envelope.run_id` ∈ 本局运行段过滤；重复 dtag 首现优先。
+- **章级挂载表 ENTRY_SCREEN_MAP**（14 行闭集直译）：decide_prep_screen→画面-备战 / decide_shop_action→画面-商店 / decide_invest_env→画面-投资环境 / decide_invest_strategy→画面-投资策略 / decide_supply→画面-补给 / decide_encounter→画面-遭遇 / decide_megastar→画面-巨星 / decide_partner→画面-伙伴 / decide_planner→画面-银狼策划 / decide_fortune→画面-命运卜者 / decide_wish_trial→画面-祈愿试炼 / decide_box_card→画面-箱子 / decide_expert_invite→画面-专家邀请 / decide_star_tome→画面-书卡。行 1-2（prep/shop）= 动作级 join 适用集；行 3-14（选择族）= 章级挂载适用集；两级互斥。
+- **动作级（行 1-2）**：回执 `dtag` → `envelope.dtag`；依据块嵌入动作节（标题行下、动作行与状态变化表前），重试链一节多回执按回执顺序逐条列出、无 dtag 回执跳过；指纹校验 = 回执 op 经归一映射（`CwOpOpenShop→CwActionOpenShopParam`、`CwActionCloseShopOp→CwActionCloseShopParam`）后与 `envelope.emitted.op` 字面相等，失配 → 回执按无依据处理 + 章尾注记 `- 策略 dtag 失配: <dtag>(<op>)`。
+- **章级（行 3-14）**：`(entry, node)` 匹配（节点组 plane/round_num × 章键），同键多章 FIFO（records 按 dseq 序对章首现序分配）；命中章内 `#### 0 观察` 后渲染独立小节 `#### 策略依据`（每条 record 一组：`- <dtag>(entry=<entry>, op=<op>)` + `payload` 通用键值行——dict 一层键值、嵌套紧凑 JSON，渲染器不解释语义；payload 空 = 单行 `(本帧无策略载荷)`）。
+- **未落地**：行 1-2 记录无回执匹配（空动作/受阻后未重发/被截断）→ 锚章章尾注记 `- 策略决策未落地: <dtag>(<op>)`，不落章级小节；无锚章 → 计未归属。
+- **未归属**：node = null 帧（无归属锚）与无锚记录不逐条展开，计数并入局头行 `(未归属 M 条)`。
+- **回执 dtag 键显示**：回执行 extra 逐键既有规则照显 `dtag`（T-3 起回执自带），不另设排除项。
 
 ## 关键取舍
 

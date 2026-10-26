@@ -25,7 +25,11 @@
 「0 观察 = 开章快照 ∩ 注册键集(表格型键出独立表:备战章上阵表
 紧贴备战席表前,余同备战席/商品牌面/选项面)+ 本章观察道写入动态
 显影(画面 op 观察到什么本章显什么,首写定帧值;注册键回读与观察
-回读异值 → 章尾注记)→ 动作节×N → 策略评价」)→ 未归节(有则)
+回读异值 → 章尾注记)→ 动作节×N → 策略评价」;策略遥测装配(有文件时):动作节标题下
+「策略依据」块(行 1-2 回执 dtag join)/章内「#### 策略依据」小节
+(选择族章级挂载)/章尾未落地与失配注记/局头策略遥测行,设计 =
+``docs/develop/sr_od/application/currency_war/changes/2026-10-24-strategy-telemetry/``
+details/render-assembly.md)→ 未归节(有则)
 → 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
 cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
@@ -39,6 +43,10 @@ cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
         [--run run_20260923_172823] [--out 复盘.md | --stdout]
     uv run python tools/cw/replay_to_md.py --journal <根>/state/journal.jsonl \
         --game-id <名>      # sim 批 / live 未装配局(裸 journal 文件)
+
+    [--strategy-telemetry <路径>]:策略遥测 jsonl 文件或目录;缺省探测
+    journal 同根 strategy/ 目录(--journal = <根>/strategy/,--match =
+    live 根),目录不存在或为空 = 功能关闭(报告与现状零差异)。
 
 - ``--match``:档案 game_id,只读档案切片 ``slices['state/journal.jsonl']``
   (切片缺 → 退出码 2,不回退 live journal——live 为多局混合流,无档案
@@ -118,6 +126,9 @@ class Action:
     #: 重试链(pipeline §5:连续回执同 op 且前条 reason 非空 → 合并一节,
     #: 节内逐条列出;首元素 = receipt 本条)
     chain: list[dict[str, Any]] = field(default_factory=list)
+    #: 动作级策略依据(回执 dtag join 命中的决策记录,按回执顺序;渲染 =
+    #: 标题行下、状态变化表前。空 = 无遥测/未匹配,零差异)
+    basis: list[DecisionRecord] = field(default_factory=list)
     deltas: list[Delta] = field(default_factory=list)
 
 
@@ -130,6 +141,9 @@ class Screen:
     entry: list[tuple[str, Any]] = field(default_factory=list)
     entry_tables: list[tuple[str, list[str], list[list[str]]]] = field(
         default_factory=list)
+    #: 章级策略依据(选择族入口章级挂载命中的决策记录,dseq 序;渲染 =
+    #: 0 观察后独立小节「#### 策略依据」。空 = 无遥测/未挂载,零差异)
+    strategy_records: list[DecisionRecord] = field(default_factory=list)
     actions: list[Action] = field(default_factory=list)
     trailing_changes: list[Delta] = field(default_factory=list)
     annots: list[str] = field(default_factory=list)
@@ -183,6 +197,43 @@ class Report:
     stats: JournalReadStats = field(default_factory=JournalReadStats)
     sections: list[Section] = field(default_factory=list)
     annex_unattached: list[str] = field(default_factory=list)
+    #: 策略遥测索引(None = 功能关闭:无文件/零记录,局头不加行)
+    strategy: StrategyTelemetry | None = None
+
+
+@dataclass
+class DecisionRecord:
+    """一条策略决策记录(strategy jsonl 行内存形态;capture-store §2 信封
+    键闭集,run_id 过滤后入 join 索引)。"""
+
+    load_seq: int                 # 全局加载序(0 基;FIFO 分配与去重稳定锚)
+    dtag: str                     # <strategy_id>:<dseq>,动作级 join 键
+    strategy_id: str
+    entry: str                    # 决策入口名(14 闭集,ENTRY_SCREEN_MAP 键)
+    #: 决策帧节点 {plane, round_num, kind}(gs.node 现读);None = null 帧,
+    #: 不入章级挂载,计数进局头「未归属」(render-assembly §3)
+    node: dict[str, Any] | None
+    emitted_op: str               # 发出动作类型名(指纹一致性校验对照面)
+    emitted_reason: str
+    emitted_route_tag: str
+    payload: dict[str, Any]       # 策略载荷(渲染器不解释语义)
+
+
+@dataclass
+class StrategyTelemetry:
+    """策略遥测索引(发现+加载+run 过滤后的 join 面)。
+
+    ``by_dtag`` = 动作级索引(回执 dtag → record,重复 dtag 首现优先);
+    ``by_chapter`` = 章级索引,键 = (entry, plane, round_num),值按 dseq 序
+    (同键多章 FIFO 分配源;render-assembly §3);``unattached`` 由 join 收尾
+    回填 = 未归属记录(node=null/无锚章,局头「未归属 M 条」计数面)。
+    """
+
+    records: list[DecisionRecord] = field(default_factory=list)
+    by_dtag: dict[str, DecisionRecord] = field(default_factory=dict)
+    by_chapter: dict[tuple[str, Any, Any], list[DecisionRecord]] = field(
+        default_factory=dict)
+    unattached: list[DecisionRecord] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +254,7 @@ class ScreenSpec:
 #: settlement 写入行走 pipeline §5「章内变化」块(键集锚 =
 #: cw_screen_battle_wait.py:125,449-461,550-565)。
 #:
-#: 「货币战争-」前缀 11 键 = sim 引擎画面广播值(cw_sim_backend.py
+#: 「货币战争-」前缀 12 键 = sim 引擎画面广播值(cw_sim_backend.py
 #: SCREEN_* 常量直通,词表 = 实机建档名);规格 = ACTOR_REGISTRY 对应
 #: actor 孪生同款。注册纪律:同 title 必须同规格(decision/键集)——
 #: 章相邻合并键 = title(见 _build_section),同 title 异规格会静默
@@ -249,6 +300,11 @@ SCREEN_REGISTRY: dict[str, ScreenSpec] = {
         '画面-巨星', True, ('megastar_opts',)),
     '货币战争-银狼升星': ScreenSpec(
         '画面-银狼策划', True, ('planner_opts',)),
+    # 广播名来源 = kernel/cw_game_state.py 图层注册(star_tome_opts →
+    # 货币战争-星徽秘典弹窗);「书卡」画面即星徽秘典选择,实写键 =
+    # star_tome_opts(cw_screen_report/bookcard.py 同门双写)。
+    '货币战争-星徽秘典弹窗': ScreenSpec(
+        '画面-书卡', True, ('star_tome_opts',)),
 }
 
 #: 弹层章注册表(actor 全名 → 规格;回执 screen / sig.screen 不参与切分)。
@@ -288,7 +344,11 @@ ACTOR_REGISTRY: dict[str, ScreenSpec] = {
     'CwScreenFortune': ScreenSpec('画面-命运卜者', True, ('fortune_opts',)),
     'CwScreenWishTrial': ScreenSpec('画面-祈愿试炼', True,
                                     ('wish_trial_opts',)),
-    'CwScreenBookcard': ScreenSpec('画面-书卡', True, ('box_card_names',)),
+    # 书卡键集 = star_tome_opts(实写端 cw_screen_report/bookcard.py;
+    # box_card_names 是武装箱键,错置为存量错行已修复——同 title 同规格
+    # 纪律下与 SCREEN_REGISTRY 画面-书卡行一致)。CwScreenBoxPick(画面-
+    # 箱子)与武装箱广播行仍持 box_card_names,两屏本就不共键。
+    'CwScreenBookcard': ScreenSpec('画面-书卡', True, ('star_tome_opts',)),
     'CwScreenBoxPick': ScreenSpec('画面-箱子', True, ('box_card_names',)),
     'CwScreenArmoryBox': ScreenSpec('画面-军械库', True, ('equips',)),
     'CwScreenAhaEquipPick': ScreenSpec('画面-顿悟装备', True, ('equips',)),
@@ -340,6 +400,41 @@ _ALL_ENTRY_KEYS: frozenset[str] = frozenset(
     key
     for spec in list(SCREEN_REGISTRY.values()) + list(ACTOR_REGISTRY.values())
     for key in spec.entry_fields)
+
+
+#: 决策入口 → 渲染章键(策略遥测迭代 render-assembly §2,14 行闭集直译;
+#: 章键 = 注册表现名,注册表缺失/更名时以注册表为准修正本表)。行 1-2
+#: (prep/shop,对应 4 个回执产出口)走动作级 dtag join,行 3-14(选择
+#: 族,不产回执)走章级挂载——两级互斥,适用集钉死 = render-assembly §3。
+ENTRY_SCREEN_MAP: dict[str, str] = {
+    'decide_prep_screen': '画面-备战',
+    'decide_shop_action': '画面-商店',
+    'decide_invest_env': '画面-投资环境',
+    'decide_invest_strategy': '画面-投资策略',
+    'decide_supply': '画面-补给',
+    'decide_encounter': '画面-遭遇',
+    'decide_megastar': '画面-巨星',
+    'decide_partner': '画面-伙伴',
+    'decide_planner': '画面-银狼策划',
+    'decide_fortune': '画面-命运卜者',
+    'decide_wish_trial': '画面-祈愿试炼',
+    'decide_box_card': '画面-箱子',
+    'decide_expert_invite': '画面-专家邀请',
+    'decide_star_tome': '画面-书卡',
+}
+
+#: 动作级 join 适用集(行 1-2;选择族 dtag 出现在回执上 = 陈旧搭错异常
+#: 形态,按失配处理——capture-store §2 适用域申报的渲染侧对偶)。
+_ACTION_JOIN_ENTRIES: frozenset[str] = frozenset(
+    {'decide_prep_screen', 'decide_shop_action'})
+
+#: 回执 op 命名域归一(render-assembly §3):prep 统一口与商店落地门写
+#: 动作类型名(``type(action).__name__``),open_shop/close_shop 写执行体
+#: op 名——指纹校验前先归一;其余回执 op 即动作类型名字面相等。
+_OP_NAME_NORMALIZE: dict[str, str] = {
+    'CwOpOpenShop': 'CwActionOpenShopParam',
+    'CwActionCloseShopOp': 'CwActionCloseShopParam',
+}
 
 
 def _is_unregistered_screen_actor(actor: str) -> bool:
@@ -409,6 +504,7 @@ FIELD_CN_MAP: dict[str, str] = {
     'megastar_opts': '巨星候选', 'partner_opts': '伙伴候选',
     'fortune_opts': '命运候选', 'wish_trial_opts': '祈愿候选',
     'expert_invite': '专家邀请', 'box_card_names': '箱子牌名',
+    'star_tome_opts': '星徽秘典候选',
     # 表格型键的标题(点分路径键,§4.2 未覆盖的复合键)
     'supply.options': '补给选项', 'encounter.options': '遭遇选项',
 }
@@ -835,6 +931,167 @@ def filter_by_run(rows: list[dict[str, Any]], run_filter: str
         elif lo <= str(r.get('ts') or '') <= hi:
             out.append(r)
     return out
+
+
+# ---------------------------------------------------------------------------
+# 策略遥测发现与加载(render-assembly §1)
+# ---------------------------------------------------------------------------
+
+
+def strategy_telemetry_path(explicit: str | None,
+                            journal_root: Path | None) -> Path | None:
+    """遥测路径解析:显式入参优先(文件/目录皆可;不存在 = 用法错);
+    缺省探测 journal 同根 ``strategy/`` 目录(--journal = ``<根>/strategy/``;
+    --match 无 journal 根 → live 根 = matches 目录父级)。目录不存在或无
+    *.jsonl → None = 功能关闭(报告与现状零差异,局头亦不加行)。"""
+    if explicit:
+        p = Path(explicit)
+        if not p.exists():
+            raise _UsageError(f'--strategy-telemetry 路径不存在: {p}')
+        return p
+    if journal_root is None:
+        return None
+    d = journal_root / 'strategy'
+    if not d.is_dir() or not any(d.glob('*.jsonl')):
+        return None
+    return d
+
+
+def load_strategy_telemetry(path: Path,
+                            run_ids: set[str]) -> StrategyTelemetry:
+    """加载遥测 jsonl(文件入参 = 单文件;目录 = 全部 *.jsonl)并建索引。
+
+    逐行 json.loads、非法行跳过不致命;``envelope.run_id`` ∉ 本局运行段
+    (journal 行 run_id 集)的记录过滤丢弃(live 根多 run 段场景);按
+    dtag 建动作级索引、按 (entry, node) 建章级索引(值保加载序 = dseq 序,
+    章级 FIFO 分配序)。"""
+    tele = StrategyTelemetry()
+    files = [path] if path.is_file() else sorted(path.glob('*.jsonl'))
+    seq = 0
+    for fp in files:
+        try:
+            lines = fp.read_text(encoding='utf-8').splitlines()
+        except OSError:
+            continue   # 单文件不可读不致命(遥测是 best-effort 旁路数据)
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            env = obj.get('envelope')
+            if not isinstance(env, dict):
+                continue
+            if str(env.get('run_id') or '') not in run_ids:
+                continue
+            dtag = str(env.get('dtag') or '')
+            if not dtag:
+                continue
+            if dtag in tele.by_dtag:
+                continue   # 重复 dtag 首现优先(dseq 唯一,重复 = 落盘重放形态)
+            emitted = env.get('emitted')
+            em0 = (emitted[0] if isinstance(emitted, list) and emitted
+                   and isinstance(emitted[0], dict) else {})
+            payload = obj.get('payload')
+            node = env.get('node')
+            rec = DecisionRecord(
+                load_seq=seq, dtag=dtag,
+                strategy_id=str(env.get('strategy_id') or ''),
+                entry=str(env.get('entry') or ''),
+                node=node if isinstance(node, dict) else None,
+                emitted_op=str(em0.get('op') or ''),
+                emitted_reason=str(em0.get('reason') or ''),
+                emitted_route_tag=str(em0.get('route_tag') or ''),
+                payload=payload if isinstance(payload, dict) else {})
+            seq += 1
+            tele.records.append(rec)
+            tele.by_dtag[dtag] = rec
+            if rec.node is not None:
+                key = (rec.entry, rec.node.get('plane'),
+                       rec.node.get('round_num'))
+                tele.by_chapter.setdefault(key, []).append(rec)
+    return tele
+
+
+# ---------------------------------------------------------------------------
+# 策略遥测两级 join(render-assembly §3)
+# ---------------------------------------------------------------------------
+
+
+def _target_chapters(report: Report, entry: str, plane: Any,
+                     rnd: Any) -> list[Screen]:
+    """(entry, node) → 候选章(章首现序):节点组 (plane, round_num) 匹配 ×
+    章键(ENTRY_SCREEN_MAP)匹配。同 title 章相邻合并不影响多实例——
+    备战→商店→备战是三次独立访问,FIFO 按章首现序分配。"""
+    title = ENTRY_SCREEN_MAP.get(entry)
+    if not title:
+        return []
+    out: list[Screen] = []
+    for sec in report.sections:
+        if (sec.node is None or sec.node.plane != plane
+                or sec.node.round != rnd):
+            continue
+        out.extend(s for s in sec.screens if s.title == title)
+    return out
+
+
+def _join_strategy_telemetry(report: Report, tele: StrategyTelemetry) -> None:
+    """两级 join(原地改 report 与 tele.unattached;render-assembly §3):
+
+    1. 动作级(行 1-2):回执 dtag → record;op 经归一映射后与信封指纹
+       比对,匹配 → 依据块挂动作节;失配/选择族 dtag 异常形态 → 回执按
+       无依据处理 + 所在章尾「策略 dtag 失配」注记;
+    2. 章级(行 3-14):同键多章 FIFO(records dseq 序对章首现序分配);
+    3. 行 1-2 无回执匹配 → 锚章章尾「策略决策未落地」注记(无锚 → 未归属);
+    4. 余量(node=null/无锚)→ 局头「未归属 M 条」计数面,不逐条展开。"""
+    consumed: set[int] = set()
+    for sec in report.sections:
+        for scr in sec.screens:
+            for act in scr.actions:
+                for rcpt in act.chain:
+                    dtag = str(rcpt.get('dtag') or '')
+                    if not dtag:
+                        continue   # 无 dtag 回执跳过
+                    rec = tele.by_dtag.get(dtag)
+                    if rec is None or rec.load_seq in consumed:
+                        continue   # 陈旧 dtag 无 record = 无依据
+                    consumed.add(rec.load_seq)
+                    op = str(rcpt.get('op') or '')
+                    if (rec.entry not in _ACTION_JOIN_ENTRIES
+                            or _OP_NAME_NORMALIZE.get(op, op)
+                            != rec.emitted_op):
+                        scr.annots.append(f'策略 dtag 失配: {dtag}({op})')
+                        continue
+                    act.basis.append(rec)
+    for (entry, plane, rnd), recs in tele.by_chapter.items():
+        if entry in _ACTION_JOIN_ENTRIES:
+            continue   # 两级互斥:行 1-2 不落章级小节(§3 适用集钉死)
+        pending = [r for r in recs if r.load_seq not in consumed]
+        if not pending:
+            continue
+        # strict=False 语义 = 章数与记录数可不等:记录多出章数(截断形态)
+        # 的余量留未消费 → 未归属计数面;章多出记录 = 多余章无依据。
+        for rec, scr in zip(pending, _target_chapters(report, entry,
+                                                      plane, rnd),
+                            strict=False):
+            consumed.add(rec.load_seq)
+            scr.strategy_records.append(rec)
+    for rec in tele.records:
+        if rec.load_seq in consumed or rec.entry not in _ACTION_JOIN_ENTRIES:
+            continue
+        node = rec.node or {}
+        chapters = _target_chapters(report, rec.entry, node.get('plane'),
+                                    node.get('round_num'))
+        if not chapters:
+            continue   # 无锚章 → 未归属计数面
+        consumed.add(rec.load_seq)
+        chapters[0].annots.append(
+            f'策略决策未落地: {rec.dtag}({rec.emitted_op})')
+    tele.unattached = [r for r in tele.records if r.load_seq not in consumed]
 
 
 # ---------------------------------------------------------------------------
@@ -1424,8 +1681,12 @@ def _entry_tables(entry: list[tuple[str, Any]], spec: ScreenSpec
 
 
 def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
-                 game_id: str, archive: dict[str, Any] | None = None) -> Report:
-    """排序行 → 渲染中间表示(纯函数,零文件 IO)。"""
+                 game_id: str, archive: dict[str, Any] | None = None,
+                 strategy: StrategyTelemetry | None = None) -> Report:
+    """排序行 → 渲染中间表示(纯函数,零文件 IO)。
+
+    ``strategy`` = 已加载遥测索引(None/records 空 = 功能关闭);章组建完
+    后跑两级 join(join 依赖最终章结构)。"""
     report = Report(stats=stats)
     ordered = sorted(rows, key=lambda r: str(r.get('ts') or ''))
     runs: list[str] = []
@@ -1450,6 +1711,9 @@ def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
         report.meta.append(('continuity_note', archive['continuity_note']))
 
     if not ordered:
+        if strategy is not None:
+            report.strategy = strategy
+            _join_strategy_telemetry(report, strategy)   # 无章可锚 → 全量未归属
         return report
     prev_of = _precompute_prevs(ordered)
     first_node_idx = len(ordered)
@@ -1484,6 +1748,9 @@ def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
     if unattached:
         report.sections.append(
             _build_section('unattached', None, unattached, prev_of))
+    if strategy is not None:
+        report.strategy = strategy
+        _join_strategy_telemetry(report, strategy)
     return report
 
 
@@ -1610,6 +1877,16 @@ def _kv_meta_lines(report: Report) -> list[str]:
         out.append(f'- 数据完整性: 坏行 {st.bad_json_lines}'
                    f'/非对象 {st.non_dict_lines}'
                    f'/字节修复 {st.byte_repair_lines}')
+    tele = report.strategy
+    if tele is not None and tele.records:
+        # 策略遥测行(render-assembly §4):无文件整行省略;未归属 > 0 时
+        # 行尾追加计数(node=null/无锚记录,完整性申报面,不逐条展开)。
+        ids = '、'.join(dict.fromkeys(
+            r.strategy_id or '?' for r in tele.records))
+        line = f'- 策略遥测: {ids} ({len(tele.records)} 条)'
+        if tele.unattached:
+            line += f'(未归属 {len(tele.unattached)} 条)'
+        out.append(line)
     if m.get('continuity_note'):
         out.append(f"- 连续性注记: {m['continuity_note']}")
     return out
@@ -1647,10 +1924,33 @@ def _action_payload_brief(act: dict[str, Any]) -> str:
     return ' · '.join(bits) or _short(act, 60)
 
 
+def _basis_block(rec: DecisionRecord, head: str) -> list[str]:
+    """一条决策记录 → 依据块行(通用键值渲染:dict 一层键值行、嵌套紧凑
+    JSON;渲染器不解释语义——schema 归各策略文档。payload 空 = 单行占位)。
+    ``head`` = 组首行前缀(动作级 '- 策略依据: ' / 章级 '- ')。"""
+    attrs = [f'entry={rec.entry}', f'op={rec.emitted_op}']
+    if rec.emitted_reason:
+        attrs.append(f'reason={rec.emitted_reason}')
+    if rec.emitted_route_tag:
+        attrs.append(f'route_tag={rec.emitted_route_tag}')
+    out = [f'{head}{_esc(rec.dtag)}({_esc(", ".join(attrs))})']
+    if not rec.payload:
+        out.append('  - payload: (本帧无策略载荷)')
+        return out
+    out.append('  - payload:')
+    for k, v in rec.payload.items():
+        out.append(f'    - {_esc(str(k))}: {_esc(_short(_fmt(v), 120))}')
+    return out
+
+
 def _render_action(act: Action) -> list[str]:
-    """动作节(render-spec §4:标题 / 动作行 / extra 逐键 / 变化表)。"""
+    """动作节(render-spec §4:标题 / 策略依据块 / 动作行 / extra 逐键 /
+    变化表;依据块位置 = 标题行下、状态变化表前,按回执顺序逐条——
+    render-assembly §3「依据随动作节(动作前)」)。"""
     out = [f'#### {act.no} {action_cn(act.op)}'
            + (f' {act.title}' if act.title else '')]
+    for rec in act.basis:
+        out += _basis_block(rec, '- 策略依据: ')
     for rec in act.chain:
         # 受阻判据 = reason 非空(受阻样式挂 reason;新回执无布尔键,旧
         # journal 的 applied 键由下方排除表吞掉不显影)。
@@ -1697,6 +1997,12 @@ def _render_screen(prefix: str, scr: Screen) -> list[str]:
                 '| ' + ' | '.join(header) + ' |',
                 '|' + '---|' * len(header)]
         out += ['| ' + ' | '.join(r) + ' |' for r in rows]
+    if scr.strategy_records:
+        # 章级策略依据:0 观察后独立小节(render-assembly §3;选择族章 =
+        # 「依据为观察后的独立小节」,不破坏「0 观察 → 动作×N → 策略评价」)
+        out += ['', '#### 策略依据', '']
+        for rec in scr.strategy_records:
+            out += _basis_block(rec, '- ')
     for act in scr.actions:
         out += ['', *_render_action(act)]
     if scr.trailing_changes:
@@ -1756,7 +2062,8 @@ def render_markdown(report: Report) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI 入口;退出码 0=成功 / 2=用法错误(档案缺/切片缺/--run 未知)。"""
+    """CLI 入口;退出码 0=成功 / 2=用法错误(档案缺/切片缺/--run 未知/
+    --strategy-telemetry 路径不存在)。"""
     ap = argparse.ArgumentParser(
         description='货币战争 journal → markdown 复盘渲染器(journal 行模型版)')
     ap.add_argument('--match', default=None,
@@ -1767,6 +2074,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument('--game-id', default=None,
                     help='--journal 时的对局命名(缺省取路径祖父目录名)')
     ap.add_argument('--run', default=None, help='只渲染某段 run_id(精确匹配)')
+    ap.add_argument('--strategy-telemetry', default=None,
+                    help='策略遥测 jsonl 文件或目录(缺省探测 journal 同根 '
+                         'strategy/;目录不存在或为空 = 功能关闭)')
     ap.add_argument('--out', default=None,
                     help=f'输出 markdown 文件(缺省 = {DEEP_REVIEW_DIR}/'
                          '<game_id>.md)')
@@ -1777,23 +2087,33 @@ def main(argv: list[str] | None = None) -> int:
         if bool(args.match) == bool(args.journal):
             raise _UsageError('--match 与 --journal 必须二选一')
         archive: dict[str, Any] | None = None
+        journal_root: Path | None = None
         if args.match:
             rows, archive = load_archive_rows(args.match)
             stats = JournalReadStats()
             game_id = args.match
+            journal_root = DEFAULT_MATCHES_DIR.parent   # live 根(matches 父级)
         else:
             jpath = Path(args.journal or '')
             rows, stats = load_journal_rows(jpath)
             game_id = args.game_id or (
                 jpath.parent.parent.name if jpath.is_file()
                 else jpath.name) or 'journal'
+            journal_root = jpath.parent.parent if jpath.is_file() else jpath
         if args.run:
             rows = filter_by_run(rows, args.run)
+        # 策略遥测:发现 → 加载(run 过滤用本局运行段 = 过滤后行 run_id 集)
+        tele: StrategyTelemetry | None = None
+        tpath = strategy_telemetry_path(args.strategy_telemetry, journal_root)
+        if tpath is not None:
+            run_ids = {str(r.get('run_id') or '') for r in rows} - {''}
+            tele = load_strategy_telemetry(tpath, run_ids)
     except _UsageError as e:
         print(f'({e})', file=sys.stderr)
         return EXIT_USAGE
 
-    report = build_report(rows, stats, game_id=game_id, archive=archive)
+    report = build_report(rows, stats, game_id=game_id, archive=archive,
+                          strategy=tele)
     md = render_markdown(report)
     if args.stdout:
         sys.stdout.write(md)
