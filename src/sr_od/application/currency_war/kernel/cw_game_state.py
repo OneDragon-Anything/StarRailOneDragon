@@ -118,6 +118,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 from one_dragon.utils.log_utils import log
+
+# 决策帧关联锚读口(kernel→kernel 单向依赖,对方零 import 不成环):回执
+# 写行时 take 读后清并入 dtag,键语义正本 = game_state/fields.md 回执契约节。
+from sr_od.application.currency_war.kernel.cw_decision_ctx import (
+    take_decision_tag,
+)
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
     CounterKey,
@@ -1378,7 +1384,7 @@ def note_action_receipt(gs: GameState, *, op: str,
       reason`` 零容器写)——**该域契约不在本口辖面**,与本回执零耦合;
       上报受理事实(含受理附注 reason 非空的合法形态)不进回执域,
       两域字段同名不同义,退役后回执域零 applied 键;
-    - 回执记录 = ``{op, reason, detail?, screen?, **extra}`` 普通字典:
+    - 回执记录 = ``{op, reason, detail?, screen?, **extra, dtag?}`` 普通字典:
       op = 动作 op 名(类型名,exec_events 动作族承接);reason =
       **动作事实码**('' = 动作已正常发出;非空 = 未发出/受阻码)。
       码词表(**暂住本 docstring**,正本家 = game_state/fields.md 回执
@@ -1405,6 +1411,12 @@ def note_action_receipt(gs: GameState, *, op: str,
       detail = 机械执行摘要(做了什么的人读面,恒透传);extra = 执行面
       结构化字段(plan_truncated/refresh_skipped/blocked 等,§3.2.1
       质量词表执行面);
+      dtag? = 决策帧关联锚(键可省:本回执前置无策略决策帧时缺席,如
+      局外工具链直调——shape 对存量消费者零新增键):写行时读 kernel
+      决策上下文槽 take 读后清并入,值与同帧策略遥测信封 dtag 同值,
+      一帧 dtag 至多进一条回执(重试链逐帧盖新各带各值,受阻行同带;
+      适用域 = 全仓仅 4 处产回执执行链,选择族上报路径不产回执不经此
+      读口)。键语义正本 = game_state/fields.md 回执契约节;
     - **invariant「每动作 op 恰一条回执行」**(四调用点全域一致:
       prep 统一口 / open_shop 直调体 / close_shop 动作 op / shop visit
       落地门):受阻动作也产行(reason 非空受阻码),exec_events「正在
@@ -1429,6 +1441,9 @@ def note_action_receipt(gs: GameState, *, op: str,
             receipt['screen'] = str(screen)
         if extra:
             receipt.update(dict(extra))
+        dtag = take_decision_tag()   # 读后清:一帧 dtag 至多进一条回执
+        if dtag:
+            receipt['dtag'] = dtag
         old = gs.receipts.value or []
         window = (list(old) + [receipt])[-RECEIPTS_WINDOW_CAP:]
         seq = gs.write_seq + 1

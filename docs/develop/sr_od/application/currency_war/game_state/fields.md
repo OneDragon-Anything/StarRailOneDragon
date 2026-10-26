@@ -2158,8 +2158,19 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     零重试、无 miss 标志位;静默不生效的治理 = 投影照写 → 完整观察实读对账
     失配 → 失配告警停局 → 按真 bug 根因调查(2026-09-18 用户裁定)。
     **回执契约**(`applied` 布尔已退役——受阻事实由 `reason` 码单载体承载,
-    receipt-applied-retire 批):shape = `{op, reason='', detail?, screen?, **extra}`;
-    `reason=''` ⇔ 动作已正常发出,非空 = 现读落空受阻码。`screen` =
+    receipt-applied-retire 批):shape = `{op, reason='', detail?, screen?,
+    **extra, dtag?}`;
+    `reason=''` ⇔ 动作已正常发出,非空 = 现读落空受阻码。`dtag?` =
+    决策帧关联锚(键可省:本回执前置无策略决策帧时缺席,如局外工具链
+    直调——shape 对存量消费者零新增键):值 = 策略遥测信封 dtag
+    (`<strategy_id>:<dseq>`,与同帧策略记录同值),写入点 =
+    `note_action_receipt` 函数体内 kernel 决策上下文槽读口
+    (`kernel/cw_decision_ctx.py`,单写单读 take 读后清——一帧 dtag
+    至多进一条回执,重试链逐帧盖新各带各值,受阻行同带)。适用域 =
+    全仓仅 4 处产回执的执行链(prep 统一口/close_shop/open_shop/shop
+    落地门)自动经此口获得 dtag;12 个选择族入口的动作走上报函数族
+    自报、从不产回执,不消费 dtag(其决策关联走渲染侧章级挂载)。
+    `screen` =
     动作**发出**画面(全回执域统一语义:转移类动作也记发出屏——目标
     画面由 `current_screen` 域承载,回执不记目标;复盘渲染器动作节章
     归属锚 = 此字段)。收缩后闭集
