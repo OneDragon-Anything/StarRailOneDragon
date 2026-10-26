@@ -41,6 +41,7 @@ from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    decision_payload,
     entry,
     protection,
     session_scope,
@@ -361,6 +362,17 @@ class MandateV1Strategy(CwFlowStrategy):
             'decide_shop_screen 驱动器 512 帧未收敛(策略器 bug:'
             f'末态 gold={gold_of(gs)} '
             f'bench={bench_is_full(gs)})')
+
+    def decision_payload(self) -> dict:
+        """决策载荷钩子覆写(策略遥测 mandate_v1 v1 三键组)。
+
+        语义与键表正本 = strategy-docs/strategy-telemetry.md;实现 =
+        :func:`decision_payload.build_decision_payload` 纯读投影
+        (出口后 gs/state 现读,零写、不改决策行为)。registry 透传
+        实例注册表(K 空窗回退腿 G 门与备战帧同参)。异常不自吞——
+        基类 wrapper 的降级 {} 兜底是唯一降级通道(捕获缝约定)。
+        """
+        return decision_payload.build_decision_payload(self.gs, self.registry)
 
 
 def decide_prep_frame(session: StrategySession, config: object,
