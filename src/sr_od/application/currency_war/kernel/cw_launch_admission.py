@@ -66,7 +66,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     振荡(两层目标视图分歧:deploy 看终局阵容,买/演进层看意向体系对/骨架纪律)。
     振荡熔断:**引擎/配方体系件(``DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
     围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
-    同源反向。真要换血走演进层显式 CwActionSellDeployedParam 原子序(有保护集分级,
+    同源反向。真要换人走演进层显式 CwActionSellDeployedParam 原子序(有保护集分级,
     ;原 CompTransaction 事务载体已停用),不归 deploy 的机会性腾位通道管。
 
     换阵卖出义务分支(板满换阵死锁修复;第七局 r9 实证):
@@ -212,7 +212,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     质量目标不可达帧,降格为配方完备发出(「不可达不关闸」防死锁教义);
     推迟帧
     (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
-    部署原子序推进换血/填板,P61 族支撑单调收敛),金尽稳态由
+    部署原子序推进换人/填板,P61 族支撑单调收敛),金尽稳态由
     收益耗尽分支兜底(判据与 出战就绪零耦合)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -342,7 +342,7 @@ def launch_admission_report(gs: GameState, comp: Comp, *,
 
     victim 资格单一源 = offtarget_sell_allowed fenced 分支全条件(off-line
     ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者)。**不附 1★ 全退门**——
-    换血卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误暴露。
+    换人卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误暴露。
     提案侧预估基于期望态现读;执行时刻机械单发零现读,落地归观察对账
     (预估与执行间无现读重建面)。
     三元不全/victim 缺失**只暴露不拦截**(出战优先;准入是观测面,

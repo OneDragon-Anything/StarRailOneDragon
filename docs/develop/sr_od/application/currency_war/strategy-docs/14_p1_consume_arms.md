@@ -290,7 +290,7 @@ paired 同 seed 代码版本对照,两侧同池指纹;预注册判据先 commit 
 
 ### 9.1 病灶面
 
-锁定事件后板满（cap=level）、备战席有 target_cores、场上存在 off-target ⇒ 现行三动作发出点（m5 限开局、m1/m1′ 均 `deploy_vacancy > 0` 门）全关,RunDeploy 整期零发出（match9 g_20260904_071522 p2r1 希儿形态）。执行侧 deploy-swap 通道随部署机停用消失（换血卖出现役 = mandate 直发 `CwActionSellDeployedParam`,判定单一源 = `swap_sell_exclusion_reason`)——原「放行条件关着 swap 是死通道」的争议随组合壳停用消失。
+锁定事件后板满（cap=level）、备战席有 target_cores、场上存在 off-target ⇒ 现行三动作发出点（m5 限开局、m1/m1′ 均 `deploy_vacancy > 0` 门）全关,RunDeploy 整期零发出（match9 g_20260904_071522 p2r1 希儿形态）。执行侧 deploy-swap 通道随部署机停用消失（换人卖出现役 = mandate 直发 `CwActionSellDeployedParam`,判定单一源 = `swap_sell_exclusion_reason`)——原「放行条件关着 swap 是死通道」的争议随组合壳停用消失。
 
 ### 9.2 动作发出点规格
 
@@ -421,7 +421,7 @@ victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 �
 
 **写入代码回记（as-built,2026-09-06）**:转型期支路已按修订形态写入代码——M1″ swap 谓词触发域扩展（转型分支）:触发域 = locked ∧ fp<1.00 ∧ 板满（占用数）;victim 资格 = 单一判定函数 `swap_sell_exclusion_reason` 逐件定价（守恒门 `SWAP_GUARD_SYSTEMS` 五体系档位不减 + 合成素材守卫 `merge_material_guard` + 1★ 限卖 `star_guard`）,动作发出面与执行侧卖出分支同吃该函数（内聚单点,资格语义两侧同值）;胜出序 = 现行 victim 序首个可成交者,`plan.arm` 标注资格族,发出细分键 `swap_arm_transition_trigger`/`swap_arm_formed_trigger`;回滚 = `SWAP_TRANSITION_ARM_ENABLED` 单点常量（与 seam 门切割）。与本节原「最低贡献排序」草案的差异:victim 选择**零新排序键**（现行序首个可成交者,禁给 fenced 件提权）,贡献排序形态未写入代码（登记待办语义不变）;「备战席存在目标阵容 core 件」前提由卖出后假想态上序 target 视图底线（post_sell_offline）承接。语义唯一权威源 = 代码符号。
 
-**写入代码回记二（as-built,2026-09-09）**:同一资格函数的**第三例外 = 演进降级换血分支**——准入三元（锁定 ∧ fp<1.00 ∧ 板满 ∧ 备战席已登记采购集件待上;谓词单一源 = `evolution_swap_arm_trigger`,装配级计算 + 执行侧 SIFT 域重算覆写）出战就绪帧下 `star_guard` 对可读星级 >1 的 victim 让位（分级降级换血语义接入换血机器参数化面;其余守卫全保留,星级不可读恒拒,非出战就绪帧逐位同旧）;动作发出点/执行通道零新增（M1″ 机器同点单发出）,卖出代价轴重推持久家 = 本篇 §9.3 换血机器登记 §决策5。
+**写入代码回记二（as-built,2026-09-09）**:同一资格函数的**第三例外 = 演进降级换人分支**——准入三元（锁定 ∧ fp<1.00 ∧ 板满 ∧ 备战席已登记采购集件待上;谓词单一源 = `evolution_swap_arm_trigger`,装配级计算 + 执行侧 SIFT 域重算覆写）出战就绪帧下 `star_guard` 对可读星级 >1 的 victim 让位（分级降级换人语义接入换人机制参数化面;其余守卫全保留,星级不可读恒拒,非出战就绪帧逐位同旧）;动作发出点/执行通道零新增（M1″ 机器同点单发出）,卖出代价轴重推持久家 = 本篇 §9.3 换人机制登记 §决策5。
 
 **写入代码回记三（as-built,2026-09-11）**:M1″ **卖出后补部署消费计划单一源**——计划面（select_swap_plan）与执行面（轮末/部署 op 补上段）此前双 target 视图,单空槽补部署被执行面改判,义务买入件滞留（C-A2 缺口 2/263）。修法 = 装配单一源契约延伸至部署补上段:卖出成功帧优先直投计划 up 名单（前提 = 名字级三点式核对）,前提破退装配单一源对卖出后现读重新推导（`transition_domain` 钉计划时点转型域事实,防卖出后 board_full 翻假丢收窄适用范围）;发出载荷透传仅作核对不改动卖出仲裁权（卖谁仍由执行侧现读）,适用范围钉 m1_swap_redeploy 轮;m1p 记录追加 `up_names`（上序名单名字级）,义务件处置四态直读。行内观测键 `m1p_obs_skipped`（R3-a 发出帧盲窗在遥测中可见）= `'launch_short_circuit'` 标记发出帧（生产无 M1″ 决策帧,m1p 恒 None 的成因可辨）,None = 非发出帧;C-A2 审计组内细分键 `no_plan_carrier_launch_short_circuit` 同源消费。
 
@@ -599,7 +599,7 @@ victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 �
 | 项 | as-built 内容 | 落点 |
 |---|---|---|
 | 出战就绪质量合取 | 出战就绪 = 配方完备（`readiness_form_ok`,fp≥1.0 零改）∧〔板面满额 ∨ 部署计划不可得 fail-open〕;板面满额 = 阵容自家核准集（core∪shared,实现审 F1 修复:白厄类空羁绊单卡/不死途类视图外 shared 件经此计入满额）∪ 阵容.all_factions 视图的满额计数 ≥ `deployed_occupied`（零自由参数结构式 ⟺ 板面零阵容外件,阵容外 = 非核准 ∧ 视图外）;计划不可得 = kernel `has_deployable` 判空（发出端与执行端单一源;fw_carry/locked_factions 判据核缺读 → 严格子集输入,只偏 fail-open 方向,结构性排除「关闸后无动作 → 守卫停摆」）;质量评估异常 fail-open（`quality=None` + 可见性旗 `quality_eval_error=True`,与「配方不完备」常态帧单义区分,残量禁静默,三审07轮 C1） | kernel/cw_launch_admission.py（`readiness_launch_decision`/`launch_board_quality_report`） |
-| 推迟帧观测位 | 配方完备帧返回 quality 报告 `{load_bearing_full, deploy_plan_available, line_weight, occupied, b_t_disclosure, defer_by_quality}` + `quality_eval_error` 可见性旗;细分键 `launch_quality_defer_frames`（推迟帧）/`launch_quality_eval_error`（评估异常帧）,键名常量单一源 = kernel `LAUNCH_QUALITY_*_KEY`（三审07轮 C2 禁字面量散写,grep 守卫在案）;写点 = engine_p1 发出判定位 + cw_loop 达标分支判定位,best-effort 双面 sink（实现审 F6）;推迟上界 = 换血翻真（P61 族满额单调）∨ 计划耗尽 ∨ 金尽收益耗尽分支（判据与出战就绪零耦合） | 同上 + engine_p1.py/cw_loop.py 写点 + 既有测试族 |
+| 推迟帧观测位 | 配方完备帧返回 quality 报告 `{load_bearing_full, deploy_plan_available, line_weight, occupied, b_t_disclosure, defer_by_quality}` + `quality_eval_error` 可见性旗;细分键 `launch_quality_defer_frames`（推迟帧）/`launch_quality_eval_error`（评估异常帧）,键名常量单一源 = kernel `LAUNCH_QUALITY_*_KEY`（三审07轮 C2 禁字面量散写,grep 守卫在案）;写点 = engine_p1 发出判定位 + cw_loop 达标分支判定位,best-effort 双面 sink（实现审 F6）;推迟上界 = 换人臂翻真（P61 族满额单调）∨ 计划耗尽 ∨ 金尽收益耗尽分支（判据与出战就绪零耦合） | 同上 + engine_p1.py/cw_loop.py 写点 + 既有测试族 |
 | 原候选作废声明 | 「按 2★ 数/装备覆盖重校成型判据」作废（策略审查打回:板面强度评分进决策门违 00 §1 + P62 form_score 饱和零信息已证）;P63（B_t-depth r=0.403）只作方向锚禁作判据资格;判据资格 = 机制定义量结构式（两层权威序全门行使记录） | decisions/0570-launch-quality-load-bearing-conjunction.md |
 | 零改动对照面申报 | **本批**零改（工作树中 shop/entry/engine_p1 等另有并行批改动中,不属本批申报）:停买链（`proof.stop_buy` 成员齐备谓词 + shop/entry 消费位）、镜像写端（v3_form_ok/v3_b_t）、发出帧仲裁（位次链,仲裁段本体零触）;出战就绪（`armed`）=真 ⟹ 配方完备单向蕴含保持发出帧镜像补写语义正确 | mandate_v1/proof.py、shop.py、entry.py、flow.py、sim/engine_p1.py |
 | 测试面 | 新增测试 `test_cw_launch_quality_conjunction.py`/视图随目标阵容回归/自家核准集回归〔反甲白厄空羁绊核心 + 视图外 shared,实现审 F1〕/异常可见性旗与细分键名单一源 grep 守卫〔三审07轮 C1/C2〕/B5 推迟上界,13 条测试）;旧「上收逐位等价测试」按测试的存在性纪律改写为合取语义测试（`test_cw_sim_launch_sink.py` TestKernelArmedConjunctionLock;红证口径:旁路形态 = 出战就绪回退配方单键、质量报告保留,跨两文件计 = 新文件推迟支 2 条测试 + sink 合取语义测试 1 条测试共 3 红） | sr-od-test |

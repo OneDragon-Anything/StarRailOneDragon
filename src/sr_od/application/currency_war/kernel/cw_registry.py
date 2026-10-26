@@ -453,7 +453,7 @@ class DecisionV2Registry:
     #: 零目标件买入;末轮买入无恢复轮次)。目标件+填充(bond_fallback,
     #: [31]④ 梯队)不覆盖。
     off_lock_final_fence_enabled: bool = True
-    # ===== `w155_evolve_lock/`/evolve 换血事务锁定目标件保护(`w147_evolve/` 执行半边)=====
+    # ===== `w155_evolve_lock/`/evolve 换人事务锁定目标件保护(`w147_evolve/` 执行半边)=====
     #: 总开关:False=回 `w150_buy_lock/` 后行为(A/B 基线分支)。锁定帧
     #: (cw_intention.locked_faction_scope 非 None)时,演进提案
     #: (cw_evolution.propose_upgrades)中「目标体系 ∉ 锁定体系集」者在
@@ -470,7 +470,7 @@ class DecisionV2Registry:
     #: execute_replacement 生成事务时,若事务净效果使过渡引擎数
     #: (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2,被拆引擎体系的
     #: deployed 贡献件获得新线同级**留场资格**(不划进 old_line 下场)
-    #: ——语义「换血可以,拆引擎不行」(只保「不卖」
+    #: ——语义「换人可以,拆引擎不行」(只保「不卖」
     #: 不保「在场」,末轮无回场窗 → 永久丢失;迁移审计§2:S1 局全部
     #: 37/37 通道=evolve_tx 整批下场)。护的是在场引擎贡献,不是库存。
     evolve_engine_guard_enabled: bool = True
@@ -506,7 +506,7 @@ class DecisionV2Registry:
     #: 锁定线件+引擎件全覆,列车缺口 r6-r9 轮轮被选但 tx 永远建不出)
     #: 且缺口体系已连续被选 ≥4 轮(标定:门 2/3 有 benign→mal 坏翻转,
     #: 门 4 全硬门过——benign→mal=0/mal 24→20/never2 10→7)时,
-    #: 按分级序降级换血:G0 非引擎锁定线件(locked_buy_scope∩非TT,
+    #: 按分级序降级换人:G0 非引擎锁定线件(locked_buy_scope∩非TT,
     #: 最可动)→ G1 未成型引擎件(下之不拆成型引擎)→ G2 已成型
     #: 引擎件/pair 成员/希儿系贡献件恒不可动。依据 [13] 过渡成型≈
     #: 过 P1(成型缺口=发令枪级)让位于 [23] 锁定线语义;False=回

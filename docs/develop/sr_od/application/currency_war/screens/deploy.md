@@ -24,7 +24,7 @@
 | 落地对账 | 备战环下一帧入口观察(以实际观察为准;星级抖动门/两态仲裁驻 `kernel/cw_reconcile.py`) |
 | 后排布局选档 | `obs/cw_back_layout.py::select_back_layout`(cap 差公式;未知态写类冻结) |
 | deployed 计数双源仲裁 | `obs/cw_observation.py::arbitrate_deployed_count`(取低值 fail-closed) |
-| 换血卖出分支(部署期换血时的卖上阵) | 动作发出面 mandate + `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(判定单一源);卖出动作 = `CwActionSellDeployedParam`(`cw_sell_deployed_action.py`) |
+| 换人卖出分支(部署期换人时的卖上阵) | 动作发出面 mandate + `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(判定单一源);卖出动作 = `CwActionSellDeployedParam`(`cw_sell_deployed_action.py`) |
 
 ## 2. 历史交互模型索引(供考古)
 

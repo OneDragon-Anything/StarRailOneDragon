@@ -124,7 +124,7 @@ owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)�
 - **零比对出生测试**(裁决3):WearEquip 与工具原子类体内零比对(diff/
   验穿面不存在);CV-diff 验穿删除;
 - **原子通路对照测试**:旧组合发射 ↔ 新原子序列逐域映射(部署 = DeployMove
-  序;换血 = SellDeployed/SellBench 序;穿戴/工具 = 逐件序);旧 RunTools/
+  序;换人 = SellDeployed/SellBench 序;穿戴/工具 = 逐件序);旧 RunTools/
   RunEquip 执行序约束由发射序等价表达(对照记录);
 - `EXHAUSTION_WINDOW_ACTIONS` 重推记录在案;
 - 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本节点文件零告警。

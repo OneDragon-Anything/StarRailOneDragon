@@ -89,7 +89,7 @@
 - **坐标换算恒等式写对了**:「族B = 族A + 1(bench 域);deployed front idx=slot−1、back idx=4+slot−1」与 cw_vocab.py:326-327 双族对照表逐字一致。
 - **退役成员清单全**:EnsureShopOpen/EnsureShopClosed/RunBuyPhase 三者与词表对照无遗漏;BailToOuter(词表已退役)也以 ControlFlowOp 在册覆盖。
 - **prep_actions.py 自身的行号锚全部核实无误**(:633/:660/:715/:720-744/:745-746/:995/:1030/:1272/:1278/:1394)。
-- **部署面调用点担忧(专项质疑面②的前半)解除**:换血/场内换排(CwScreenDeploy)全链不构造词表类,全仓 grep 零命中,deploy 是原始拖拽——SellDeployed 统一为 deployed_idx 不产生部署面迁移面;真正的消费面在执行器/期望态/投影三处(已并入 F4 文件面清单)。
+- **部署面调用点担忧(专项质疑面②的前半)解除**:换人/场内换排(CwScreenDeploy)全链不构造词表类,全仓 grep 零命中,deploy 是原始拖拽——SellDeployed 统一为 deployed_idx 不产生部署面迁移面;真正的消费面在执行器/期望态/投影三处(已并入 F4 文件面清单)。
 
 ---
 

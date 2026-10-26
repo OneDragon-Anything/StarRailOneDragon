@@ -77,7 +77,7 @@
 | 穿装备/消耗工具 | `WearEquip`/工具原子类(经 `CwActionToolUseOp`) | 第 7 步:M7 + [18_equip_wear_semantics.md](18_equip_wear_semantics.md) + `cw_equip_env` 求值 |
 | 出战 | `StartBattle` | 第 9 步(以上全部步骤无动作);前置动作发出点机制 = [26_battle_settlement.md](26_battle_settlement.md) |
 
-备战期不做的:独立备战卖出上阵件的义务出口不存在——场上件卖出仅经部署面换血通道([24_deploy_segment.md](24_deploy_segment.md))与升级凑金/节末凑息的场上无关角色候选(§1 第 4/8 步)。
+备战期不做的:独立备战卖出上阵件的义务出口不存在——场上件卖出仅经部署面换人通道([24_deploy_segment.md](24_deploy_segment.md))与升级凑金/节末凑息的场上无关角色候选(§1 第 4/8 步)。
 
 ## 5. 能力 vs 策略
 

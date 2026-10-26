@@ -1848,7 +1848,7 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
       (``form_tiers`` ∪ ``sub_tiers``,与 ``_line_hoard`` 档位键同式);
       **①锁局(P1)∪ 过渡对体系键(与 ``locked_buy_scope``
       同式扩位)**——对体系提案不再按 off-lock 降级/解除,protect 基准
-      (cw_evolution 围栏/保留序)同步扩覆盖(R2:换血可以拆引擎不行);
+      (cw_evolution 围栏/保留序)同步扩覆盖(R2:换人可以拆引擎不行);
     - 两者皆空(空窗/weak/降格终局)→ None(无锁定帧,不约束——[31]①
       空窗期四体系全集是方向,不存在「off-lock 提案」)。
     """

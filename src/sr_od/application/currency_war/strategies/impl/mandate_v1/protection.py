@@ -12,7 +12,7 @@
   ``StrategyState.transition_locked_systems`` 幂等只增);
 - **终局域**(plane2_started = 真):候选 = 候选 top3 线成员;锁定 =
   锁定线名单。过渡域在翻真帧整体关闭,非终局线成员自然滑向可卖
-  (与 stage_transitions Q2 换血保留率数据对齐)。
+  (与 stage_transitions Q2 换人保留率数据对齐)。
 
 体系键与成员集单一源(design §2.1 定死):三羁绊键 import 面唯一指向
 ``knowledge/cw_engine_facts.TRANSITION_TRAITS``;成员枚举消费

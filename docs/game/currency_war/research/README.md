@@ -49,7 +49,7 @@
 2. **玩家纪律**(人怎么打;机制之上的打法约束):
    - ~~user_playstyle.md~~ **已删除(2026-10-16 用户裁定:口述登记簿退役,一切判据以设计文档为准)**——策略判据正本 = `docs/develop/sr_od/application/currency_war/strategy-docs/`(判据权威定义 = 各编号篇);历史条目号 [N] 语义按 git 历史回溯
 3. **过渡体系与战力证据**(位面 1 怎么活到成型、什么形态能过):
-   - [transitions.md](transitions.md) — 过渡叙事:开局分级(终局阵容锁定资格)/ 成型停买线 / 换血点 / 保底过渡阵容(已抛弃史料)
+   - [transitions.md](transitions.md) — 过渡叙事:开局分级(终局阵容锁定资格)/ 成型停买线 / 换人点 / 保底过渡阵容(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐路线定义(引擎池 / 核心池;代码落地依据)
    - [stage_transitions.md](stage_transitions.md) — 位面 1→2→3 阵容演化定量(加法不换件的数据边界)
    - [h3_tier_core_crosstab.md](h3_tier_core_crosstab.md) — 档位 × 核心在场 × 败率交叉(实机语料统计)
@@ -70,7 +70,7 @@
 | 节点类型:三位面默认序列地面真值 / 普通奖励节点=战斗型(有结算屏,档案已定案) | [plane_schedule_observed.md](plane_schedule_observed.md) |
 | 升星合成:买牌落点/场上吸收/备战最左/连锁合成(买一张=可能升两级) | [merge_mechanics.md](merge_mechanics.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
-| 过渡体系:位面 1 骨架/成型停买线/换血点/位面 2 保底过渡阵容(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
+| 过渡体系:位面 1 骨架/成型停买线/换人点/位面 2 保底过渡阵容(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
 | **过渡阵容逐路线定义**(引擎池/核心池/开局直奔终局阵容的结构;代码落地依据) | [transition_combos.md](transition_combos.md) ★ |
 | **终局阵容分类**(final comps 分类索引+逐类累积;核心角色/羁绊双维;**单套阵容打法知识单一源**) | [final_comps/README.md](final_comps/README.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |

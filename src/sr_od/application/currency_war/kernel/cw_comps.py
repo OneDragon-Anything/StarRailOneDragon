@@ -478,7 +478,7 @@ def augment_env_affinity(name: str) -> dict[str, float]:
 
 # 全局过渡池(按跨阶段存活率拆两级;plaza 784 篇 P(进终局|Early在场) 实证):
 #   EARLY_CORE_POOL(存活 ≥0.8):「有体系牌来就拿下」—— 买了就是开局(期权重叠,不存在过渡浪费);
-#   TEMPO_POOL(存活 <0.45):纯保血打工(骨架件)—— 1星买卖近无损,毕业即卖(1-8 分界换血)。
+#   TEMPO_POOL(存活 <0.45):纯保血打工(骨架件)—— 1星买卖近无损,毕业即卖(1-8 分界换人)。
 # 消费方:过渡工程(买入分级加权 + 卖出保留判定)—— 接线前是数据先验,勿删。
 EARLY_CORE_POOL: list[str] = [
     "千冶·刃",   # 存活 0.96,Early 174 篇 —— 断层级早期核心
@@ -2721,7 +2721,7 @@ def equip_allocation(comp: Comp | None,
             if not pool:
                 break
     # 通用兜底:剩余 pool 按场上顺序(deployed 原序,前排先)分完
-    # 身份过滤:非 target 角色穿满通用件 = 换血时一件件拆(即时小收益换后期摩擦)。
+    # 身份过滤:非 target 角色穿满通用件 = 换人时一件件拆(即时小收益换后期摩擦)。
     # 规则:阵容有 core 在场时,兜底优先发 core(哪怕 deployed 序靠后);
     # 非 core 每人只兜底 1 件(防裸奔),core 吃满。
     # 阵容=None:**按轮转**(每人 1 件轮一圈再回头,而非按 deployed 序灌满一人

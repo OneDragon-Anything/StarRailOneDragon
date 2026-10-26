@@ -66,13 +66,13 @@
 
 - **现状症状**:部署机退役(`CwScreenDeploy`,op-layer.md §3 退役行 + screens/README.md §4)与组合壳退役的收尾清查不彻底,散布六个面:
   1. **F-7** `screens/deploy.md` §1 环节表把「部署选人」归 `kernel/cw_deploy_logic.py::select_deployments_reasoned`——该符号实定义于 `strategies/impl/mandate_v1/deploy_plan.py`(L335;kernel 侧 `recipe_floor_holds`/`select_swap_plan`/`residual_fill_plan` 三谓词确在 `cw_deploy_logic.py`),与 `flow/action_exec.md` §5 的分层表述(选人/排路由/槽位 = 策略层;kernel = 围栏常量+共用判定谓词)冲突。
-  2. **F-8** `logic-updates/sell-deployed.md` §1/§6 执行载体指向已删除文件 `cw_screen_deploy.py::_sell_offtarget_deployed`(现役 = `CwActionSellDeployedOp` 注册行 + mandate m1p 换血发射臂);`prep-executor-actions.md` §3「备战域部署换位经部署机拖拽承载」同款。
+  2. **F-8** `logic-updates/sell-deployed.md` §1/§6 执行载体指向已删除文件 `cw_screen_deploy.py::_sell_offtarget_deployed`(现役 = `CwActionSellDeployedOp` 注册行 + mandate m1p 换人发射臂);`prep-executor-actions.md` §3「备战域部署换位经部署机拖拽承载」同款。
   3. **F-9** 多处代码注释以现在时引用已退役符号(消费面/写入端/时序叙事),逐点清单见 §2.5.3(含 docs 正本面,§2.5.6)。
   4. **P-1** `operations/cw_op/cw_op_sell_off_target.py::CwOpSellOffTarget` 全仓零引用死文件(文件头有【退役·禁接旧码】申报,但申报的承接者 `deploy_bench._sell_offtarget_deployed` 本身也已退役——承接链断裂,op-layer §3 36 op 总表外)。
   5. **P-2** `operations/cw_op/cw_op_equip_all.py::CwOpEquipAll` 类体零构造调用;唯一跨文件消费 = `prep_actions.py::_owned_grid_locate` 只 import 模块级 helper `get_equip_templates_cached`;`kernel/cw_equip_env.py` L155 写入端注释仍指 `CwOpEquipAll.STATUS_PLAN_STALE`;src/docs/tools 多处历史叙述性引用待逐点处置(§2.5.3/§2.5.5/§2.5.6)。
 - **根因归层**:根在**流程层(退役批收尾义务清单缺「退役符号引用面全量对账」这道门)**——本稿五主题(B/C/D/E/F)同此根构;语义层症状 = 死代码 + 现在时死句误导排障。本批修法 = 一次性清偿本域残留 + 可满足的机械验证门(§2.8);**该收尾义务的长效载体(正本条款)本稿不落,登记机制防线候批**(§2.9,与 T-3 稿同款登记面合并,交用户裁决)。
 - **解决到哪**:F-7 归属修正、F-8 执行载体改现役、F-9 注释逐点改写、P-1 文件删除、P-2 文件退役 + helper 归一 + 哨兵面退役裁定(§2.5)。
-- **明确不解决**:清存量 off-target 能力面的策略级重建(现役 m1p 换血卖出臂与 SwapDeploy 能力面已覆盖主要形态,重接评估归策略迭代);零穿戴哨兵重挂(§2.5.5 显式裁定退役,重挂归观测迭代);mandate 判据面正确性(T-1b §4 无法核对面);测试断言内容全量开验(T-1b §4)。
+- **明确不解决**:清存量 off-target 能力面的策略级重建(现役 m1p 换人卖出臂与 SwapDeploy 能力面已覆盖主要形态,重接评估归策略迭代);零穿戴哨兵重挂(§2.5.5 显式裁定退役,重挂归观测迭代);mandate 判据面正确性(T-1b §4 无法核对面);测试断言内容全量开验(T-1b §4)。
 
 ### 1.6 主题F:「统一验证」判效时代残留措辞(面a F-1 + 面b F-12,同根;中+低)
 
@@ -155,7 +155,7 @@
 
 #### 2.5.2 logic-updates 两篇执行载体改现役(F-8)
 
-- `logic-updates/sell-deployed.md`:§1 「执行载体 = ……与部署面换血 `cw_screen_deploy.py::_sell_offtarget_deployed`」改「执行载体 = `operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(注册表行);换血卖出(m1p 臂)= mandate 发射位逐件产 `CwActionSellDeployedParam` 原子,同一执行载体,卖谁判据单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`」;§6 符号锚删 `cw_screen_deploy.py::_sell_offtarget_deployed` 项,补 `cw_sell_deployed_action.py::CwActionSellDeployedOp`。§8 「商店 op 表(`cw_action_registry.py`)未收录本动作」句与注册表现值字面矛盾(`CwActionSellDeployedParam` 备战族行在册)——改写为自足现役申报:「生产策略面归备战期(注册表单行在册,备战域 op);商店期默认发射面 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)」。
+- `logic-updates/sell-deployed.md`:§1 「执行载体 = ……与部署面换人 `cw_screen_deploy.py::_sell_offtarget_deployed`」改「执行载体 = `operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(注册表行);换人卖出(m1p 臂)= mandate 发射位逐件产 `CwActionSellDeployedParam` 原子,同一执行载体,卖谁判据单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`」;§6 符号锚删 `cw_screen_deploy.py::_sell_offtarget_deployed` 项,补 `cw_sell_deployed_action.py::CwActionSellDeployedOp`。§8 「商店 op 表(`cw_action_registry.py`)未收录本动作」句与注册表现值字面矛盾(`CwActionSellDeployedParam` 备战族行在册)——改写为自足现役申报:「生产策略面归备战期(注册表单行在册,备战域 op);商店期默认发射面 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)」。
 - `logic-updates/prep-executor-actions.md`:§3 括注「(备战域部署换位经部署机拖拽承载)」改「(备战域部署换位 = DeployMove 原子序,部署机画面 op 已退役)」;§4 计数与 pick 专篇句见 §2.4-6①。
 
 #### 2.5.3 退役符号注释清理(F-9)
@@ -164,12 +164,12 @@
 
 | 位置 | 现句要点 | 处置 |
 |---|---|---|
-| `kernel/cw_deploy_logic.py` L389/L647/L923/L1150/L1261/L1327 | 消费面写「执行侧卖出臂(CwScreenDeploy `_sell_offtarget_deployed`)」 | 改「发射面谓词消费(mandate m1p 换血臂 `select_swap_plan` 调用面);机械执行侧 `CwActionSellDeployedOp` 不消费本函数」(依据:全仓 grep,执行侧现役零调用) |
+| `kernel/cw_deploy_logic.py` L389/L647/L923/L1150/L1261/L1327 | 消费面写「执行侧卖出臂(CwScreenDeploy `_sell_offtarget_deployed`)」 | 改「发射面谓词消费(mandate m1p 换人臂 `select_swap_plan` 调用面);机械执行侧 `CwActionSellDeployedOp` 不消费本函数」(依据:全仓 grep,执行侧现役零调用) |
 | `kernel/cw_deploy_logic.py` L1141-1143 | 「执行侧卖出后补部署重 derive 的同名穿参(**cw_screen_deploy R1-b 回落臂**)」——文件形态退役引用 + 审计号 | 改现役:「执行侧卖出后补部署重 derive 已随部署机退役,现役归 m1p 发射臂逐件产原子 + 环内重 derive」;R1-b 审计号归 git(准则②) |
 | `kernel/cw_launch_admission.py` L344 | 「执行时刻以 CwScreenDeploy 现读重建为准」 | 改「执行时刻机械单发零现读,落地归观察对账(预估与执行间无现读重建面)」(依据:`action_ops.md` §2.1 现行为模型) |
 | `obs/cw_observation.py` L1287/L1300 | 「CwScreenDeploy 用它定位空位/应用本 Y」 | 改现役消费面 = 备战观察装配环(`cw_screen_prep.py` cap 段 L411/L441)与后排布局选档(`obs/cw_back_layout.py`) |
 | `obs/cw_observation.py` L2237 | 「deploy 走 CwScreenDeploy」 | 改「部署 = DeployMove 原子序(备战决策环动作)」 |
-| `telemetry/match_archive.py` L150/L810 | 「执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)的逐件身份只在 log 行」 | 按准则②改纯语义:「实机对局实证(部署机时代):执行期换血卖出逐件身份只在 log 行与匿名计数键,无遥测行」+ 退役申报;departures 列「帧间差分吃未记录卖出」的派生口径保留(现役同类通道 = m1p 臂 SellDeployed 原子,决策时点逐件在案) |
+| `telemetry/match_archive.py` L150/L810 | 「执行期 deploy 换人卖出(CwScreenDeploy._sell_offtarget_deployed)的逐件身份只在 log 行」 | 按准则②改纯语义:「实机对局实证(部署机时代):执行期换人卖出逐件身份只在 log 行与匿名计数键,无遥测行」+ 退役申报;departures 列「帧间差分吃未记录卖出」的派生口径保留(现役同类通道 = m1p 臂 SellDeployed 原子,决策时点逐件在案) |
 | `telemetry/match_archive.py` L573/L1073、`telemetry/schema.py` L196 | 「先于 CwScreenDeploy/CwOpEquipAll 执行」 | 改「先于备战期动作执行(部署/装备原子序)」(纯时序关系,无需具体符号) |
 | `strategies/impl/mandate_v1/mandate.py` L1853/L1868 | 「卖谁由执行侧 CwScreenDeploy 卖出臂现读仲裁」「消费点 = CwScreenDeploy.deploy 卖出臂(读后即清)」 | 改现役 m1p 发射臂口径:发射位逐件产 `CwActionSellDeployedParam`+`CwActionDeployMoveParam` 原子,卖出件 = 发射位按同一判定集现算,机械执行侧零仲裁;`cw4_m1p_arm_pending` 分键消费申报对齐 `projection_contract.md` L110 在册口径 |
 | `strategies/impl/mandate_v1/mandate_state.py` L245-247 | 「消费面 = CwScreenDeploy 部署段(R1-a 直投核对…)」 | 改对齐 `projection_contract.md` L110 在册申报(消费半随部署机退役,现役零读端显影),禁再写成现役消费面 |
@@ -183,7 +183,7 @@ docs 正本面点位(projection_contract/session/architecture/game 侧)见 §2.5
 
 #### 2.5.4 P-1:CwOpSellOffTarget 死文件 → 删除
 
-删除 `operations/cw_op/cw_op_sell_off_target.py` 整文件。理由(依据逐条):①文件头自有【退役·禁接旧码】申报 = 定性「退役不彻底」而非「待重接资产」,重接前置(补建档 + 策略判据迁策略侧 + 禁带入 ESC/硬编码违例)意味着重接路径 = 重写,文件本体无可保留的实现价值;②申报的承接者 `deploy_bench._sell_offtarget_deployed` 已随部署机退役,承接链断裂,保留价值只剩考古 = git 历史职能;③op-layer.md §3 的 36 op 总表无此 op,全仓零引用,删除零行为影响;④在册保留候选(登记能力面理由)被否:清存量 off-target 的现役覆盖 = m1p 换血卖出臂(板满形态)+ SwapDeploy 能力面(对调形态),且「谁该卖」判据在册单一源 = `swap_sell_exclusion_reason`,死文件不含任何在役判据。
+删除 `operations/cw_op/cw_op_sell_off_target.py` 整文件。理由(依据逐条):①文件头自有【退役·禁接旧码】申报 = 定性「退役不彻底」而非「待重接资产」,重接前置(补建档 + 策略判据迁策略侧 + 禁带入 ESC/硬编码违例)意味着重接路径 = 重写,文件本体无可保留的实现价值;②申报的承接者 `deploy_bench._sell_offtarget_deployed` 已随部署机退役,承接链断裂,保留价值只剩考古 = git 历史职能;③op-layer.md §3 的 36 op 总表无此 op,全仓零引用,删除零行为影响;④在册保留候选(登记能力面理由)被否:清存量 off-target 的现役覆盖 = m1p 换人卖出臂(板满形态)+ SwapDeploy 能力面(对调形态),且「谁该卖」判据在册单一源 = `swap_sell_exclusion_reason`,死文件不含任何在役判据。
 
 #### 2.5.5 P-2:CwOpEquipAll 半死文件 → 整文件退役 + helper 归一
 

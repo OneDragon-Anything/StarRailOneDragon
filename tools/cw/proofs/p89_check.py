@@ -1,4 +1,4 @@
-"""P89 换血持续预算的离散锚·复算脚本。
+"""P89 换人持续预算的离散锚·复算脚本。
 
 命题(docs/develop/sr_od/application/currency_war/proofs/p89.md;math_proofs.md P89 行):
 带源 = 真人尺保留率带 [0.59, 0.74](stage_transitions Q2)⟹
@@ -157,7 +157,7 @@ _CHECKS = (
 def main() -> int:
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')
-    print('P89 复算:换血持续预算的离散锚(A/B 预注册线的推导载体)')
+    print('P89 复算:换人持续预算的离散锚(A/B 预注册线的推导载体)')
     print('=' * 72)
     for name, fn in _CHECKS:
         try:

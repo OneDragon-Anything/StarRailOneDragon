@@ -290,7 +290,7 @@
   |---|---|---|
   | `SellBench` | 族A 类原样:`bench_idx`(:367)/`income`(:371)/`expect`(:372)/`reason`(:373)/`convert_reason`(:383),字段与顺序逐字保留;`convert_reason` = ADR-0611 转化类豁免分键,值域单一源 `SELL_BENCH_CONVERT_REASONS`(:425) | `cw_prep_actions.SellBench(slot, reason)`(:74-88)删除;构造点 9 处改产(`mandate.py:888/:1148/:1251`、`entry.py:541/:808/:819/:1125/:1179/:1191`),参数 `bench_idx` = 容器槽位表下标(换算口径见「换算归属」) |
   | `LevelUp` | 族A 类原样:`cost`(:435,必填)+ `auth_basis`(:436,授权记录非指令;sim 账本 `auth` 键转录 `engine_p1.py:2299-2315`,检查器 levelup_interest_engine_gate 消费) | `cw_prep_actions.LevelUp`(:133,无字段)删除;发射点 `mandate.py:1481` 改产族A 类,cost/auth_basis 填充口径见「LevelUp 粒度定案」 |
-  | `SellDeployed` | 族A 类原样:`deployed_idx`(:574,槽位表下标 0-9)/`income`(:578)/`reason`(:579)/`expect`(:580);物理 row/slot 由执行边换算 | `cw_prep_actions.SellDeployed(row, slot)`(:118-121)删除;**全仓零构造点**(grep 核真,无迁移面);换血卖出由 R2 原子通路首产 |
+  | `SellDeployed` | 族A 类原样:`deployed_idx`(:574,槽位表下标 0-9)/`income`(:578)/`reason`(:579)/`expect`(:580);物理 row/slot 由执行边换算 | `cw_prep_actions.SellDeployed(row, slot)`(:118-121)删除;**全仓零构造点**(grep 核真,无迁移面);换人卖出由 R2 原子通路首产 |
   | `DeployMove` | 族A 类原样:`bench_idx`(:473)/`to_row`(:477,语义排字段保留,不按下标推导)/`faction`(:478,上阵后 board 阵营计数所需,发射位从容器槽位表角色对象现取;`simulate` 的 DeployMove 分支(:938-939)消费此字段) | `cw_prep_actions.DeployMove(from_slot, to_row, to_slot)`(:125-129)删除;**全仓零构造点死类**(腾席部署实际走 RunDeploy 组合壳——本行如实披露),R2 原子通路就位后由发射面首产 |
 
   同名类删除后,「cw_prep_actions 的 SellBench 与 cw_state(=cw_vocab

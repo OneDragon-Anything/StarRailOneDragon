@@ -146,7 +146,7 @@ log = log_utils.log
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
 #: v10(场上件离场逐件落账批):+顶层 ``departures``(离场
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口已实测确认(g_20260907_075840
-#: p1r1,Saber):实机对局实证(部署机时代)——执行期换血卖出逐件身份只在
+#: p1r1,Saber):实机对局实证(部署机时代)——执行期换人卖出逐件身份只在
 #: log 行与匿名计数键(sell_offtarget_*),无遥测行(该执行载体已随部署机
 #: 停用删除;现役同类通道 = m1p 分支逐件发 CwActionSellDeployedParam,决策
 #: 时点逐件在案)——场上件
@@ -154,7 +154,7 @@ log = log_utils.log
 #: 本就逐件在案(actions+期望态快照),不在本列重复;本列吃的是帧间差分:
 #: 相邻决策帧 state.deployed 身份多重集相减,通道分键 sell_recorded(帧动作
 #: CwActionSellDeployedParam 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
-#: unexplained(= 换血卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
+#: unexplained(= 换人卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v11(零结算段自标识批):+段条目 ``settlement_gap``(装配端纯读
 #: 派生;见 ``_settlement_gap``),并修 assign_games 决策独有段时序插位(见其
@@ -743,7 +743,7 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 DEPARTURE_CHANNELS: tuple[str, ...] = (
     'sell_recorded',      # 该帧动作 CwActionSellDeployedParam 按 deployed_idx 换算解析命中此件(决策时点卖出)
     'merge_promoted',     # 同名更高星在后帧在场(买牌合成链,1★ 副本离场)
-    'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换血卖出信号通道
+    'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换人卖出信号通道
 )
 
 
@@ -810,7 +810,7 @@ def _derive_departures(dec: list[dict[str, Any]],
                        segments: list[str]) -> list[dict[str, Any]]:
     """顶层 ``departures`` 派生列(v10;纯读,零运行时写入)。
 
-    - 缺口与已实测确认:实机对局实证(部署机时代)——执行期换血卖出逐件身份只在
+    - 缺口与已实测确认:实机对局实证(部署机时代)——执行期换人卖出逐件身份只在
       log 行与匿名计数键,无遥测行(该执行载体已停用;现役
       同类通道 = m1p 分支逐件发 CwActionSellDeployedParam,决策时点逐件在案)
       ——复盘实证 g_20260907_075840
@@ -824,7 +824,7 @@ def _derive_departures(dec: list[dict[str, Any]],
       sell_recorded = 该帧 CwActionSellDeployedParam 按 deployed_idx 换算解析命中
       (解析口径见 _sell_deployed_target_names);merge_promoted =
       同名更高星在后帧在场(买牌 3 合 1 的 1★ 副本离场);unexplained =
-      其余,首义 = 换血卖出(离场常伴 1:1 到场,行内 same_window_arrivals
+      其余,首义 = 换人卖出(离场常伴 1:1 到场,行内 same_window_arrivals
       可并读)。感知纠噪(SIFT 翻转)也可能落入 unexplained——本列不与
       obs_conflicts 交叉裁决(跨局流不入切片),判读并读。
     - 行形状:{run_id, plane, round, ts, char, star, count, channel,
@@ -1418,7 +1418,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'hp_events': _hp_pay_events(derived_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
         # 离场事件派生列(v10 加法;装配端纯读,旧档案重装配补齐):
-        # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 已实测确认)的判读面。
+        # 执行期 deploy 换人卖出逐件落账缺口(075840 Saber 已实测确认)的判读面。
         'departures': _derive_departures(derived_rows.get('decisions.jsonl') or [],
                                          segments),
         'opening': _build_opening(derived_rows, runs_by_seg),

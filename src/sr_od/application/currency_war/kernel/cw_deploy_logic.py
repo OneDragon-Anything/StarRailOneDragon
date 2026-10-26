@@ -384,7 +384,7 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
                        deployed_cids: set, cap: int | None,
                        deployed_count: int) -> list[tuple[int, str, int]]:
     """P24 残余补部署计划(纯函数,可离线直测;判据单一源 = 本函数,
-    消费面 = 动作发出面谓词(mandate m1p 换血分支 ``select_swap_plan`` 调用面),
+    消费面 = 动作发出面谓词(mandate m1p 换人分支 ``select_swap_plan`` 调用面),
     机械执行侧 ``CwActionSellDeployedOp`` 不消费本函数;原部署机侧同名
     转发适配器已停用)。
 
@@ -480,11 +480,11 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     return deployed_n >= cap
 
 
-# ===== 转型分支(M1″ swap 谓词触发域扩展;bench→板 换血通道)=====
+# ===== 转型分支(M1″ swap 谓词触发域扩展;bench→板 换人通道)=====
 # 语义出处:(docs/develop/sr_od/application/currency_war/decisions/
 # 0534-swap-transition-arm.md)。病灶:基座/成型分支都不覆盖「终局阵容锁定后
 # fp<1.00 转型期」(成型分支门 fp≥1.00),板满帧 fenced victim 全被
-#  熔断拒 ⇒ victim 空 ⇒ 换血死锁(实机「终局阵容锁定 core 坐板凳、
+#  熔断拒 ⇒ victim 空 ⇒ 换人死锁(实机「终局阵容锁定 core 坐板凳、
 # deployed 恒旧线过渡件」形态,§背景)。本分支 = 追加资格族:
 # locked ∧ fp<1.00 ∧ 板满帧,fenced victim 经守恒门逐件放行。
 
@@ -644,7 +644,7 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 
 # ===== 板满换阵补部署计划(M1″ 动作发出面谓词;与 select_deployments 同族)=====
 # 语义出处:(board-full swap redeploy)。
-# 结构:消费面 = 动作发出面(mandate M1″ 换血分支)单一——assemble_swap_plan_inputs
+# 结构:消费面 = 动作发出面(mandate M1″ 换人分支)单一——assemble_swap_plan_inputs
 # 同一装配契约,输入源 = 决策帧黑板;机械执行侧 CwActionSellDeployedOp
 # 不消费本函数(机械单发零现读,原执行侧卖出分支输入轨已停用);
 # 发出输入的逐字段装配契约由装配单一源钉死,禁另起第三路。
@@ -755,7 +755,7 @@ def required_swap_arm_pending(ctx: SwapPlanContext | None) -> bool:
     """板满换入分支触发谓词(纯函数;判定单一源)。
 
     两分支任一成立即武装(板满 = 占用数口径,与 M1″ 板满门同链;板不满
-    帧不覆盖——空位由 M1 部署通道直上,无需卖出换血):
+    帧不覆盖——空位由 M1 部署通道直上,无需卖出换人):
     - **必需件滞留**:required_names 非空(目标阵容带 required_deployed;
       现役两实例 = 希儿系 pair 的 ``pair_target_comp`` 与 COMP_LIBRARY
       静态套「希儿量子」(P2+ 锁定路径),单一源 = ``SEELE_CARRY_CHAR``)
@@ -922,7 +922,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                ) -> str:
     """卖出 victim 的单一判定(逐件;+ 转型分支同位扩展)。
 
-    消费面 = 动作发出面谓词(mandate m1p 换血分支 ``select_swap_plan`` 调用面);
+    消费面 = 动作发出面谓词(mandate m1p 换人分支 ``select_swap_plan`` 调用面);
     机械执行侧 ``CwActionSellDeployedOp`` 不消费本函数(执行侧现役零调用,
     原部署机卖出分支消费面已停用)——卖出通道统一排除适用范围 +
     **逐件可卖性**
@@ -935,7 +935,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
       fresh_buy;
     - 资格族(per-piece,扩展):target_keep /
       fenced_arm_closed / engines_guard / merge_material_guard /
-      star_guard / fp_unreadable。star_guard 在演进降级换血分支武装帧
+      star_guard / fp_unreadable。star_guard 在演进降级换人分支武装帧
       对可读星级 >1 让位(arm = ``SwapPlanContext.evolution_swap_armed``,
       谓词单一源 = evolution_swap_arm_trigger;/,判定
       见该分支注)。fenced 件可卖性 =
@@ -1043,10 +1043,10 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
     if any(_ach_a[k] < _ach_b[k] for k in _ach_b):
         return 'engines_guard'
     # ---- 1★ 限卖(star_guard)----
-    # 演进降级换血分支让位(arm 谓词单一源 = evolution_swap_arm_trigger,
+    # 演进降级换人分支让位(arm 谓词单一源 = evolution_swap_arm_trigger,
     # 装配级计算见 SwapPlanContext.evolution_swap_armed 注):武装帧放行
-    # 可读星级 >1 的 victim——分级降级换血语义(弱序星级→费用,
-    # G0 非引擎锁定线件/G1 未成型引擎件可动)接入换血机器的参数化面
+    # 可读星级 >1 的 victim——分级降级换人语义(弱序星级→费用,
+    # G0 非引擎锁定线件/G1 未成型引擎件可动)接入换人机制的参数化面
     # 其余守卫(target/engines/merge/fresh/membership)全保留,
     # 卖出代价轴重推,推导 历史。星级不可读恒拒(fail 向
     # 不换,武装不豁免——不可判星级 = 不可判弱序,分级序的
@@ -1101,9 +1101,9 @@ class SwapPlanContext:
     #: 成型度单一源快照(form_progress;None = 缺读 ⇒ 转型分支 fp_unreadable
     #: 弃权,两分支同 fail-closed)。发出⇔执行同函数装配 ⇒ 同帧同值。
     fp: float | None = None
-    #: 换血域方向锁 = 终局阵容锁定 ∨ P1 配方对锁(装配单一源 =
+    #: 换人域方向锁 = 终局阵容锁定 ∨ P1 配方对锁(装配单一源 =
     #: ``assemble_swap_plan_inputs``;配方对锁语义见 strategy-docs/
-    #: 24_deploy_segment.md 换血节)。终局阵容锁定判定本身单源仍归
+    #: 24_deploy_segment.md 换人节)。终局阵容锁定判定本身单源仍归
     #: strategy-docs/17_stall_form_spend_authority.md §1.1(两词显式分名,
     #: 禁按本字段反推终局阵容锁定口径)。
     locked: bool = False
@@ -1121,11 +1121,11 @@ class SwapPlanContext:
     #: 档关键件判读源(审查判读源与本计划的阵容同源,禁放行判定
     #: 另读 state_of 二份——双轨帧两源可分歧,判据源分裂 = 同型分叉)。
     target_comp: object | None = None
-    #: 演进降级换血分支武装位(缺省 False = 逐位同旧;装配函数单点计算,
+    #: 演进降级换人分支武装位(缺省 False = 逐位同旧;装配函数单点计算,
     #: 执行侧 bench 域分轨面经 :func:`evolution_swap_arm_trigger` 现读
     #: 重算覆写)。True 时 :func:`swap_sell_exclusion_reason` 的
     #: star_guard 对可读星级 >1 的 victim 让位——演进层 分级
-    #: 降级换血语义(弱序星级→费用)接入换血机器的参数化面,适用范围 =
+    #: 降级换人语义(弱序星级→费用)接入换人机制的参数化面,适用范围 =
     #: 锁定转型域 ∧ 板满 ∧ bench 已登记线件待上(
     #: 语义宿主 = kernel.cw_evolution 的分级保护机器(该模块已停用),本分支不新增
     #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。
@@ -1139,8 +1139,8 @@ class SwapPlanContext:
     transition_domain: bool = False
     #: 判据必需件名集(装配单一源 = 目标阵容 ``required_deployed``;与
     #: mandate_v1 deploy_plan ``_deploy_plan_inputs`` 同源同值)。消费面 = select_swap_plan
-    #: 卖后上序(必需件首桶,使「卖了换血后」的首个空位优先落必需件——
-    #: 不穿则换血腾出的位仍会被普通成员按旧序占走)、
+    #: 卖后上序(必需件首桶,使「卖了换人后」的首个空位优先落必需件——
+    #: 不穿则换人腾出的位仍会被普通成员按旧序占走)、
     #: ``swap_sell_exclusion_reason`` 的板满换入分支;执行侧卖出后补部署
     #: 重 derive 已停用,现役归 m1p 发出分支逐件产原子 + 环内重 derive。
     required_names: frozenset[str] = frozenset()
@@ -1321,7 +1321,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
                                locked: bool,
                                fp: float | None,
                                board_full: bool) -> bool:
-    """演进降级换血分支触发谓词(纯函数,语义)。
+    """演进降级换人分支触发谓词(纯函数,语义)。
 
     最小等效通道的准入面:「锁定转型域 ∧ 板满 ∧ bench 有已登记线件待上」
     (修向「板满∧bench有locked线core→发出卖线外件上core事务」
@@ -1467,11 +1467,11 @@ def assemble_swap_plan_inputs(
     # spend_authority §1.1;字段终值见下方推广,不再等于本腿)。
     # 方向锁推广(双轨对锁期):P1 配方对锁(ist.p1_pair 非空,
     # 意向锁定产物;冻结标志 p1_pair_frozen 钉向)与终局阵容锁定同为
-    # 「方向锁在效」。换血域前提按适用范围对齐:双轨期板面义务本体 = 过渡
+    # 「方向锁在效」。换人域前提按适用范围对齐:双轨期板面义务本体 = 过渡
     # 配方(cw_recipe 模块不变量),配方对锁帧不开转型域 = 配方完成件
     # 压席无合法 victim(2026-09-18 sim 实证:配方对锁局板满帧全
     # plan_empty,fenced_arm_closed/target_keep 主导;判定尺 =
-    # 口述条目 20(登记簿已退役)/[13])。演进降级换血分支不受影响:pair 帧
+    # 口述条目 20(登记簿已退役)/[13])。演进降级换人分支不受影响:pair 帧
     # membership 空集(locked_buy_membership 未锁帧缺省)使其 member 门
     # 恒关,适用范围仍在终局线。店侧 S_spec 收窄
     # (mandate.swap_transition_narrow_frame)直读 ist.locked_comp,
@@ -1546,7 +1546,7 @@ def assemble_swap_plan_inputs(
             target_factions,
             frozenset(getattr(tgt_comp, 'factions', None) or ()),
             _dep_names)
-    # 演进降级换血分支(装配级缺省计算;执行侧 bench 域分轨面在
+    # 演进降级换人分支(装配级缺省计算;执行侧 bench 域分轨面在
     # cw_op_deploy 卖出分支 SIFT 现读后经同一触发函数重算覆写,声明见
     # evolution_swap_arm_trigger)。
     _bench_occ = [b for b in (bench or []) if b is not None]

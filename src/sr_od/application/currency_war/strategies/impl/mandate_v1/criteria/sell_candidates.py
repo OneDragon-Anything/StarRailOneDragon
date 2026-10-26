@@ -1,7 +1,7 @@
 """统一卖出候选评估器(契约 D 单一入口)。
 
 一个评估函数服务全部八类卖出场景(溢出自救/晶矿腾位/店内置换/会话内筹资/
-升级变现/节末凑息/部署换血/C1 恒买腾位),输入 =(场景,容器状态),输出 =
+升级变现/节末凑息/部署换人/C1 恒买腾位),输入 =(场景,容器状态),输出 =
 按让位序排序的卖出候选或空。场景参数全集(候选池/资格面/消费方式)的
 唯一法定义处 = 迭代总纲 design.md 契约 D;价值评估函数统一口径 =
 line_and_upgrade §4(金当量三项 + 羁绊排序规则项)——本模块是它们的
@@ -102,7 +102,7 @@ if TYPE_CHECKING:
 #:   店内另有 2026-10-12 用户裁定「店内禁卖场上」);
 #: - ``bench_union_field_irrelevant`` = 备战席 ∪ 场上无关角色(来金族:
 #:   节末凑息/备战升级变现;2026-10-13 用户裁定「来金目的卖谁都行」);
-#: - ``field_union_bench`` = 场上 ∪ 备战席(部署换血——场上锁定线成员/
+#: - ``field_union_bench`` = 场上 ∪ 备战席(部署换人——场上锁定线成员/
 #:   有效羁绊件的唯一卖出场景,羁绊维在该场景生效)。
 POOL_BENCH_ONLY: str = 'bench_only'
 POOL_BENCH_FIELD_IRRELEVANT: str = 'bench_union_field_irrelevant'
@@ -115,8 +115,8 @@ POOL_FIELD_AND_BENCH: str = 'field_union_bench'
 #: - ``regular`` = 常规面(现行 sell_gate 排除集并入:装配 A(身份段 ∪
 #:   窗口段 ∪ L1 同轮硬面 ∪ 种子豁免)+ 合成素材拒入守卫(含死库存对
 #:   释放子谓词旁路)+ 挂后台效果资格);
-#: - ``deploy_swap_current`` = 换血现行判据(swap_sell_exclusion_reason
-#:   本体不动,契约 D 部署换血行;不经装配 A——该判据自带 membership/
+#: - ``deploy_swap_current`` = 换人现行判据(swap_sell_exclusion_reason
+#:   本体不动,契约 D 部署换人行;不经装配 A——该判据自带 membership/
 #:   fresh_buy/守恒门/素材守卫资格族)。
 FACE_SELF_RESCUE: str = 'self_rescue_full'
 FACE_REGULAR: str = 'regular'
@@ -130,7 +130,7 @@ class SellSceneSpec:
     ``consumption`` = 消费方式标记(调用方按场景取的动作语义;评估器只出
     排序候选,不执行消费):``sell_first`` 取首候选直接卖 / ``pad_filter_min``
     垫件谓词过滤后取价值最小 / ``swap_account`` 置换账裁决 / ``sell_until_
-    gap_closed`` 卖到缺口闭合即止 / ``swap_pair`` 换血对(卖场上件 + 上阵
+    gap_closed`` 卖到缺口闭合即止 / ``swap_pair`` 换人对(卖场上件 + 上阵
     替补)/ ``sell_first_buy_core`` 腾位卖 Y 后买核心。
     **P78-5 四条件兜底豁免不在本评估器**(契约 D 筹资/升级变现行资格面的
     兜底腿):其触发前提 = 消费位状态(主路径空 ∧ 缺口未闭合 = gold <
@@ -140,9 +140,9 @@ class SellSceneSpec:
     由消费位判,函数本体只承载兜底池定义)。
     ``legacy_channel`` = P78 通道重映射(现行五通道资格面按契约 D 重映射:
     凑息→节末凑息 / 筹资→会话内筹资 / m4_fuel→晶矿 / line_switch→停用
-    不接(部署换血走现行 swap 判据,不走其装配)/ projection→保留不动
+    不接(部署换人走现行 swap 判据,不走其装配)/ projection→保留不动
     (投影视图读位照旧,不进评估器场景);None = 不装配 A(自救豁免 /
-    换血自带判据)。非 projection 通道的装配 A 输出逐位相同,通道选择
+    换人自带判据)。非 projection 通道的装配 A 输出逐位相同,通道选择
     仅承继族谱系语义。
     """
 
@@ -201,7 +201,7 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
 #: SELL_CHANNELS 同款单一入口防线)。
 SELL_SCENARIOS: frozenset[str] = frozenset(SCENE_SPECS)
 
-#: deploy_swap 场景缺换血判定语境时的拒因键(fail-closed:现行判据本体
+#: deploy_swap 场景缺换人判定语境时的拒因键(fail-closed:现行判据本体
 #: ctx=None 时返回 ''(全放行)是 fail-open 形态,评估器侧拒收——资格
 #: 判据禁缺语境放行,与 sell_gate hold 登记缺读拒登记同纪律)。
 REJECT_SWAP_CTX_MISSING: str = 'deploy_swap_ctx_missing'
@@ -532,7 +532,7 @@ def evaluate_sell_candidates(
     全场景共用空板守卫(现行为等价并入,prep_pipeline §1 第 0 步
     as-built 申报:deployed = 0 帧全部卖出场景哑火,本设计不收窄)。
 
-    ``swap_ctx`` = deploy_swap 场景的换血判定语境(``SwapPlanContext``,
+    ``swap_ctx`` = deploy_swap 场景的换人判定语境(``SwapPlanContext``,
     装配单一源 = ``cw_deploy_logic.assemble_swap_plan_inputs``,调用方
     〔3.3 部署面〕从决策帧装配传入);缺省 None ⇒ deploy_swap 场景
     fail-closed 拒评估(REJECT_SWAP_CTX_MISSING),非 deploy_swap 场景
@@ -570,7 +570,7 @@ def evaluate_sell_candidates(
             round_num_of(gs), cap_hold=locked_buy_cap_hold(gs))
 
     def _face_ok(unit: Unit, *, is_bench: bool) -> bool:
-        """场景资格面分派(自救全量直通/常规面三段/换血现行判据)。"""
+        """场景资格面分派(自救全量直通/常规面三段/换人现行判据)。"""
         if spec.face == FACE_SELF_RESCUE:
             return True   # 真全量:仅占位件物理门在前置循环拦截
         if spec.face == FACE_DEPLOY_SWAP:
@@ -610,7 +610,7 @@ def evaluate_sell_candidates(
             gold_value=sell_gold_equivalent(gs, unit),
             bond_drop=False,
             line_member=name in line))
-    # —— 场上支(按池族:来金族 = 仅无关角色;部署换血 = 全部上场件)——
+    # —— 场上支(按池族:来金族 = 仅无关角色;部署换人 = 全部上场件)——
     if spec.pool in (POOL_BENCH_FIELD_IRRELEVANT, POOL_FIELD_AND_BENCH):
         for unit, row, idx in deployed_indexed:
             if spec.pool == POOL_BENCH_FIELD_IRRELEVANT \

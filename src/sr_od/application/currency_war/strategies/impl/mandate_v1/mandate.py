@@ -751,7 +751,7 @@ def swap_transition_narrow_frame(state: GameState,
     (D⊆locked,p88_check 断言 1)且免 fp/板满推导成本。
 
     适用范围分界(双轨对锁期推广后):kernel 装配点(``assemble_swap_plan_
-    inputs``)的 locked 已推广为「终局阵容锁定 ∨ P1 配方对锁」,部署换血域
+    inputs``)的 locked 已推广为「终局阵容锁定 ∨ P1 配方对锁」,部署换人域
     随之在配方对锁帧开启;本函数刻意不随——买侧 S_spec 收窄适用范围保持
     终局线,配方对锁帧恒 False = P1 买侧旧行为(不收窄 = 保守可逆)。
     两域各自自洽,禁任一侧静默跟随另一侧。
@@ -1300,7 +1300,7 @@ def run_mandate(frame: MandateFrame,
     # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 暴露;成型/基座分支
     # 不覆盖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
-    # 本帧动作发出点有 m1p 换血时在发出处置为 plan.arm;原消费点 = 部署机
+    # 本帧动作发出点有 m1p 换人时在发出处置为 plan.arm;原消费点 = 部署机
     # 卖出分支(读后即清)已随部署机停用——现役零读端,归因分键悬空
     # (已登记申报 = projection_contract.md §4.3)。非 m1p 帧恒 None。
     # 无条件复位防「m1p 帧后接 M1 帧(下方
@@ -1425,11 +1425,11 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
     ``select_up`` = 选人判定注入(缺省 None = ``deploy_plan.
     select_deployments_reasoned`` 单一源;kernel 依赖倒置契约——选人
     语义归策略层)。entry 第 5 步传窗口适用范围包装(替补受上阵窗口适用范围覆盖,
-    契约 D 部署换血行)——注入层过滤 up 集,窗口未到件移入 held(不进
+    契约 D 部署换人行)——注入层过滤 up 集,窗口未到件移入 held(不进
     select_deployments 拒因闭集,窗口适用范围 = 帧级 defer 非资格拒)。
 
     ``defer_actions`` = 同帧既有发出序列(升级推迟判定的输入:m1p 与
-    CwActionLevelUpParam 同帧时推迟换血——升级开新 vacancy,下帧 M1′
+    CwActionLevelUpParam 同帧时推迟换人——升级开新 vacancy,下帧 M1′
     零成本接管,卖出不可逆 > 等一帧;run_mandate 传骨架 out,entry 传
     第 3 步动作)。
 

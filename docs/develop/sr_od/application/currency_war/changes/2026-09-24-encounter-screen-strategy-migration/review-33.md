@@ -82,7 +82,7 @@
 | 判据 | 判定 | 证据 |
 |---|---|---|
 | 3. as-built 纪律 | ✓ | 数值只写常量名（EDGE_CAP/REWARD_ORDER_APPROVED/_FILL_EDGE_THRESHOLD 均不抄值；t≤4/t≥5 为档位结构分界非立场值）；无进度标记/变更史叙事/会话快照（裁定日期 = 30 号稿「裁定登记(用户 2026-09-24)」先例同形）；术语节首现定义齐全（结算观测环/删失/κ_S/可及集/fill/fail-closed/【拍】） |
-| 4. 收口完整性 | ✓ | strategy-docs 全目录 grep「双轨/全克刷新/默认选左/判据正本 = kernel/cw_encounter_selection/cw_events.py::decide_encounter」——过期遭遇描述零残留（「双轨」命中均系装备穿戴/部署换血/P47 递推等无关域术语，或 13 号稿退役注记本身；kernel/cw_encounter_selection 仅剩 31 号稿裁定 1 保留面陈述）；扩展扫 screens/flow/docs/game 亦净；README 31 行与导航句在册 |
+| 4. 收口完整性 | ✓ | strategy-docs 全目录 grep「双轨/全克刷新/默认选左/判据正本 = kernel/cw_encounter_selection/cw_events.py::decide_encounter」——过期遭遇描述零残留（「双轨」命中均系装备穿戴/部署换人/P47 递推等无关域术语，或 13 号稿退役注记本身；kernel/cw_encounter_selection 仅剩 31 号稿裁定 1 保留面陈述）；扩展扫 screens/flow/docs/game 亦净；README 31 行与导航句在册 |
 | 5. 引用存在性 | ✓ | 31 号稿全部相对链接解析有效（`../proofs/p64-…` → currency_war/proofs/ 存在；`../../../../../game/…` 从 strategy-docs/ 5 级上跳正确，浮层/economy.md 均存在）；符号全核实（DIAMOND_EQUIP_NAMES 单一源 = kernel/cw_obs_core.py:50、EQUIPMENT_ROSTER = cw_equipment_data.py:233、GameState 三读口 L2132/2135/2161、`last_normal_battles` 普战过滤 = node_type=='普通战斗'、`tier_cleared` L179）；节号全核实（04 §7 表第 9 行/screens README §5.2 §5.5（§5.5 现文含遭遇条目）/op-layer §1.4/00 §1 第 5/6 条/01 §6/economy §10.2/combat §3（该节含「遭遇奖励 = 伤害进度达标制」条目，引用成立）） |
 | 7. 文档间一致性 | ✓ | 31 vs 30/28 同构（头注三段式〔画面/决策本体/术语〕+ 裁定登记 + 决策结构 + 挂账/盲区；分节聚合粒度差异属合理演化）；08 E3 = 13 §1 行 = 13 §4 目录行三处口径一致；04 裁定 9 行与 31 裁定 1 互证一致；25 号稿改写后无内部矛盾（银狼升星表行缺失 = 批外既存，F4） |
 | 8. 零代码改动 | ✓ | diff 8 文件全为 .md，无 .py |

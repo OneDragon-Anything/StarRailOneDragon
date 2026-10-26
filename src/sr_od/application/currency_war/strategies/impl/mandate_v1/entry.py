@@ -389,9 +389,9 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
 
 def _make_windowed_select_up(session: StrategySession, gs: GameState):
-    """select_swap_plan 的 select_up 注入包装(第 6 步换血替补的上阵窗口
-    适用范围——契约 D 部署换血行:替补受窗口适用范围覆盖,窗口未到的终局替补
-    不可上 = 窗口适用范围自然结果,换血通道由过渡替补在产)。
+    """select_swap_plan 的 select_up 注入包装(第 6 步换人替补的上阵窗口
+    适用范围——契约 D 部署换人行:替补受窗口适用范围覆盖,窗口未到的终局替补
+    不可上 = 窗口适用范围自然结果,换人通道由过渡替补在产)。
 
     过滤形态:窗口未到件从 up 集移入 held(不给拒因键——窗口适用范围是帧级
     defer 非资格拒,不进 select_deployments 拒因闭集);被滤后 up 空的
@@ -991,7 +991,7 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     - M5 开局配方(开局帧 round_num ≤ 1 ∧ 板空 ∧ bench 有件);
     - M1 空槽凑人数补位(deploy_vacancy > 0;任意合法单位上阵优于空槽,
       P24 残余补部署——升级开新 vacancy 的补部署也经本分支);
-    - M1″ 板满换阵补部署(m1p 换血;替补受上阵窗口适用范围覆盖)。
+    - M1″ 板满换阵补部署(m1p 换人;替补受上阵窗口适用范围覆盖)。
 
     上阵窗口适用范围(用户裁定 2026-10-12):终局成员在其上线窗口前不上阵
     ——纯终局件谓词 + 窗口判定见 :func:`_deploy_window_blocked`;过渡∩
@@ -1011,9 +1011,9 @@ def _step5_deploy(session: StrategySession, gs: GameState,
             and mandate._deployable(frame, session, gs)):
         _emit_deploy_moves_scoped(out, frame, session, gs,
                                   'm1_deploy', window_scope=True)
-    # M1″ 板满换阵(m1p 换血;up 候选经窗口适用范围包装注入)。defer_actions
+    # M1″ 板满换阵(m1p 换人;up 候选经窗口适用范围包装注入)。defer_actions
     # 输入在十段全扫下单动作循环下结构性恒空(第 4 步命中即 emit 返回,
-    # 升级帧到不了本步)——同帧升级推迟换血的语义由结构承载:升级帧
+    # 升级帧到不了本步)——同帧升级推迟换人的语义由结构承载:升级帧
     # 第 4 步先行返回 + 下帧 M1 空槽补位以零卖出成本接管(卖出不可逆
     # > 等一帧)。
     if not any(isinstance(e.action, (CwActionDeployMoveParam,

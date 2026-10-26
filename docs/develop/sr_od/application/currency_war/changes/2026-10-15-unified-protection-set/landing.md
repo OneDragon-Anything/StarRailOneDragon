@@ -38,7 +38,7 @@
 
 ## 3.3 卖面批:保护集进资格装配 + 身份面/义务基座拆分
 
-**范围**:`sell_line_membership` 保持现行口径(base/P78-5 减法②/P96 (b) 腿基准,不扩域);保护集经独立消费口并入卖出资格装配 A 身份段(装配单一源 = `sell_gate.identity_exclusions`,`mandate.sell_hold_exclusions` 为薄再出口随迁;替换静态持有两集中的 ④放行集,registry 核心保留);`sell_hold_exclusion_names` 余下四消费面逐点迁移(funding 兜底池判定集 → 保护集 ∪ registry 核心/垫件谓词 → 非保护集/P78-5′ 腿② → 保护集 ∪ registry 核心/会话内筹资腿② → 保护集 ∪ registry 核心,design §2.3 表),函数退役;Z1 排除集同步;升级变现候选池过滤保护集,`_bench_liquid_gold` 攒批资金推导同步剔除保护件(design §2.5-5);新增 `interest_round_protected_block` 观测键(写点 = entry.py 节末凑息段,判定式三合取见 design §2.3,反事实支枚举域 = 凑息候选池同域)。边界:排序键结构不动;八场景参数表结构不动;自救/换血豁免不动;P78 条款本体不动(兜底池构成随身份源迁移)。
+**范围**:`sell_line_membership` 保持现行口径(base/P78-5 减法②/P96 (b) 腿基准,不扩域);保护集经独立消费口并入卖出资格装配 A 身份段(装配单一源 = `sell_gate.identity_exclusions`,`mandate.sell_hold_exclusions` 为薄再出口随迁;替换静态持有两集中的 ④放行集,registry 核心保留);`sell_hold_exclusion_names` 余下四消费面逐点迁移(funding 兜底池判定集 → 保护集 ∪ registry 核心/垫件谓词 → 非保护集/P78-5′ 腿② → 保护集 ∪ registry 核心/会话内筹资腿② → 保护集 ∪ registry 核心,design §2.3 表),函数退役;Z1 排除集同步;升级变现候选池过滤保护集,`_bench_liquid_gold` 攒批资金推导同步剔除保护件(design §2.5-5);新增 `interest_round_protected_block` 观测键(写点 = entry.py 节末凑息段,判定式三合取见 design §2.3,反事实支枚举域 = 凑息候选池同域)。边界:排序键结构不动;八场景参数表结构不动;自救/换人豁免不动;P78 条款本体不动(兜底池构成随身份源迁移)。
 **设计依据**:design.md §2.3、§2.4
 **文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/sell_candidates.py`、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/sell_gate.py`(兜底池判定集)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate.py`(排除集装配)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`(凑息观测键写点 + P78-5′ 腿②)、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`(筹资腿②)、`src/sr_od/application/currency_war/kernel/cw_card_identity.py`(退役面收口)、测试仓
 **依赖**:3.1、3.2(身份消费面 grep 清零的收口判据)
@@ -46,7 +46,7 @@
 **完成判据**:
 - 单帧:席满 + 手上椒丘 + 店内杂件 → 置换卖杂件,椒丘不在卖出候选;凑息缺口场景全保护档 → 零卖出 + 观测键计数(design §2.6);
 - **兜底对账断言**:全场保护档帧(椒丘构造),P78-5 兜底豁免对保护件可放行(两分支必要条件满足时)——兜底池 = 保护集 ∪ registry 核心的直接验证;
-- P78 既有豁免通道测试全绿(自救/换血/兜底);
+- P78 既有豁免通道测试全绿(自救/换人/兜底);
 - `sell_hold_exclusion_names`/`line_identity_tier`/`transition_release_names` **src 代码符号消费面** grep 清零(3.2 与本阶段合计;kernel 注释/正本/proofs 引用归正本更新清单);
 - 完成前常规检查(本文首节)。
 **验收凭据形式**:单帧测试名 + 兜底对账断言 + grep 全清零申报 + 既有 P78 测试全绿
