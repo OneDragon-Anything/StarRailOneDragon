@@ -1847,11 +1847,14 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
     组生长语义(钉死):逐对追加成组——累积组门 1 失败 → 失败前缀保留
     继续生长(门 1④ 存在多对合取才达成的形态,只试单对会使情形 C 不可达)
     → 直到门 1 通过或候选耗尽;守恒/收益判定点 = 累积组现算(部分组态
-    只是搜索中间产物不发射,组定稿后才进执行形态)。每入一个换入件从
-    victim 序配一个;**首个可行组即停**;遍历序 = 换入序为主循环、
-    victim 序为内层循环(逐对不可行 → 先换 victim/内层耗尽 → 再换 up/
-    外层推进 → 全耗尽 = 零动作);「首个可行组」= 换入主序 × victim
-    辅序的字典序第一个可行组。
+    只是搜索中间产物不发射,组定稿后才进执行形态)。遍历序(design §2.7
+    钉死「先换 victim(内层耗尽)→ 再换 up」):当前 up 的 victim 辅序
+    **逐个试组**(门 1 未中的试组不并入前缀——本 up 未定稿,禁同 up
+    重复入组),内层耗尽才把本 up 的字典序指定对(victim 辅序首个过
+    全部前置闸者)并入前缀、推进下一 up;**首个可行组即停**;「首个
+    可行组」= 换入主序 × victim 辅序的字典序第一个可行组(内层回退使
+    「首 victim 挡道的 no-op 对」不再遮蔽后续可行组——下帧续发形态的
+    必要条件,缺口补丁见 3.2 交付报告)。
 
     逐对可入性(四道,全部现算):
     1. victim 资格 = 池层逐件单一判定 ``swap_sell_exclusion_reason``
@@ -1917,6 +1920,11 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
             )
             up_star = getattr(bench_slot_unit(ctx.bench[ui]), 'star',
                               None) or 1
+            # 本 up 的字典序指定对 = victim 辅序首个过全部前置闸(裁判/
+            # 底线/守恒)的对;内层耗尽仍无门 1 通过时并入前缀(生长载体,
+            # design §2.7「每入一个换入件从 victim 序配一个」)。
+            designated: tuple[int, str] | None = None
+            designated_acc: tuple[list[str], list[str], set[str]] | None = None
             for v_name, _scan in pool:
                 if v_name in used_v:
                     continue
@@ -1958,14 +1966,21 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
                         ups=acc_ups + [up_name]):
                     conservation_blocked = True
                     continue   # 守恒拦 → 内层换 victim
+                if designated is None:
+                    # 字典序指定对登记(首个过前置闸的 victim;victim 辅序
+                    # 即循环序,首中即指定——确定性零随机)。
+                    designated = (ui, v_name)
+                    designated_acc = (acc_victims + [v_name],
+                                      acc_ups + [up_name],
+                                      kept | {up_name})
                 # 试组:累积组 + 本对,门 1 现算(design §2.7 组生长语义)
                 _v = acc_victims + [v_name]
                 _u = acc_ups + [up_name]
                 ok, leg = swap_bond_gate_benefit(
                     ctx, victims=_v, ups=_u,
                     pairs=[(v_name, up_name)], up_stars={up_name: up_star})
-                group.append((ui, v_name))
                 if ok:
+                    group.append((ui, v_name))
                     return SwapPlan(
                         sell_names=[v for _ui, v in group],
                         up_bench=[u for u, _v in group],
@@ -1973,13 +1988,16 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
                         bond_gate_leg=leg,
                         victim_tier=tier_of.get(group[0][1], ''),
                     )   # 首个可行组即停(组定稿)
-                # 门 1 未过 → 失败前缀保留继续生长(情形 C 通道)
-                used_v.add(v_name)
-                acc_victims = _v
-                acc_ups = _u
-                acc_names = kept | {up_name}
-                break   # 该 up 已配一个 victim → 外层推进(每入一个换入件配一个;
-                        # 内层耗尽无可配同样落此处随 for 自然外层推进)
+                # 门 1 未过 → 内层换 victim 重试(design §2.7 组构造遍历序
+                # 「先换 victim(内层耗尽)→ 再换 up」;回退试组不并入前缀
+                # ——本 up 未定稿,禁同 up 重复入组;指定对已在上方登记,
+                # 内层耗尽时经其保前缀生长,禁深回溯移除已并入对)
+            # 内层耗尽:指定对并入前缀(失败前缀保留继续生长,情形 C 通道)
+            # → 外层推进下一 up;无指定对 = 本 up 无可配 victim,前缀不动。
+            if designated is not None:
+                group.append(designated)
+                acc_victims, acc_ups, acc_names = designated_acc
+                used_v.add(designated[1])
     if group and not reject:
         # 生长耗尽仍未过门 1(部分组态只是搜索中间产物,不发射)→ 零动作
         reject = 'conservation' if conservation_blocked else 'nogain'
