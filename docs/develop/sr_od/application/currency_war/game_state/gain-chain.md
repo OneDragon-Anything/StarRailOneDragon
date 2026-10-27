@@ -269,8 +269,10 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     invest_effects.md 蓝海条。
   - **随机赠卡锁腿**(`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 命中,申报行
     之后、ENV_GIFTS 查表之前;世界发放域登记表白名单,与 ENV_GIFTS 集合
-    互斥构建期防呆):获得当刻随机赠卡带上场锁——规格池
-    (`random_char_pool`)内均匀掷骰选名 → `gain_character(rand=True)` 落席
+    互斥构建期防呆):获得当刻随机赠卡带上场锁——牌库时点池
+    (`cw_pool.grant_char_pool` = 规格域 ∩ 当时牌库,未解锁专家剔除,
+    用户裁定 2026-10-28「授予候选 = 当时牌库里存在的角色」)内均匀掷骰
+    选名 → `gain_character(rand=True)` 落席
     (星级 = spec.star,`rng` 回退/条件解析与随机角色支同款三层已通)→
     实例发号(`env_grant_uid_seq` 计数器,uid 随落位单位 = 锁匹配键)→
     锁记录 `(名, uid, 解锁序位)` 追加 `env_grant_deploy_locks`(解锁序位 =
@@ -330,10 +332,13 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     「随机【阵营】」两族共载体,采样轴二选一构建期互斥校验,费用轴首例 =
     人才引进「开局拥有1个随机4费角色」id 109,阵营轴首例 = 追击概念股
     「获得【追击】角色」id 1001——【X】为流派名非角色名,不入具名检查域);
-    发放 = 规格过滤池(`random_char_pool`,注册表派生单一源:采样轴内 ×
-    char_type 含标签——费用轴 = chars_by_cost 全档,阵营轴 = chars_by_faction
-    默认含流派匹配,池非空构建期校验,误登角色名/笔误阵营名 → 域空 import
-    即炸)内均匀掷骰选名 → `gain_character`
+    发放 = 牌库时点池(`cw_pool.grant_char_pool`:基底 = 规格过滤池
+    `random_char_pool` 注册表派生单一源——采样轴内 × char_type 含标签,
+    费用轴 = chars_by_cost 全档,阵营轴 = chars_by_faction 默认含流派
+    匹配,池非空构建期校验,误登角色名/笔误阵营名 → 域空 import 即炸;
+    双形态合并随基底;叠加层 = 未解锁专家剔除〔用户裁定 2026-10-28
+    「授予候选 = 当时牌库里存在的角色」:环境注册时点解锁恒空 → 候选
+    不含专家;中局通道随容器解锁态〕)内均匀掷骰选名 → `gain_character`
     落席,星级 = spec.star(人才引进 1 = 先验非结构值)。**效果体含采样 →
     子链 rand=True**(§5)——未锚定期(开局窗)本就走 write_logic_rand,
     rand=True 声明采样语义并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,

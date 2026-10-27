@@ -34,6 +34,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_view_of_working,
 )
 from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
+from sr_od.application.currency_war.kernel.cw_pool import fixed_pool
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
 from sr_od.application.currency_war.sim.cw_sim_run_config import RunConfig
 
@@ -85,9 +86,14 @@ def sample_opening_shape(rng: random.Random) -> tuple[int, ...]:
 
 
 def _uniform_char_of_cost(rng: random.Random, cost: int) -> Character:
-    """费用档内均匀抽一名(M01 首版占位口径:M06 固定牌库该费档名集;
-    开局 held 为空 → 剩余池 = 固定牌库,等价全池均匀)。"""
-    roster = chars_by_cost(cost)
+    """费用档内均匀抽一名(M01 口径:M06 固定牌库该费档名集 =
+    ``fixed_pool`` 成员;开局 held 为空 → 剩余池 = 固定牌库,等价全池
+    均匀)。固定牌库不含专家顾问——开局手牌从牌库发出,专家未解锁不在
+    牌库(用户裁定 2026-10-28「授予/发放候选 = 当时牌库里存在的角色」);
+    开拓者·记忆非专家仍在本口径池内(双形态合并属随机赠卡族机制,对
+    M01 未建模,现形不可达:开局形状只抽 1/2/3 费,两形态均 4 费)。"""
+    deck = fixed_pool()
+    roster = [c for c in chars_by_cost(cost) if c.name in deck]
     if not roster or POOL_COPIES_PER_CARD.get(cost, 0) <= 0:
         raise ValueError(f'费用档 {cost} 固定牌库为空(注册表/副本数配置漂移)')
     return roster[rng.randrange(len(roster))]

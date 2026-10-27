@@ -1705,6 +1705,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # category '简易' 现值 8 件。
     '星间旅人概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='星间旅人', star=1),),
                             equips_random_immediate=('简易',)),
+    # id 1008 效果原文直读:「仙舟」= desc【仙舟】直读(阵营羁绊名,与 ENV_FACTION
+    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
+    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
+    # economy.md 四卡线索名单含仙舟→折叠小刀,先验随 fixed_hypothesis 键在册);
+    # 简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤(用户裁定
+    # 2026-10-28:未解锁专家不入候选,域 9 名过滤后 7 名,青雀/停云为专家)。
+    '仙舟概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='仙舟', star=1),),
+                            equips_random_immediate=('简易',)),
 }
 
 
@@ -1721,10 +1729,12 @@ def random_char_pool(spec: RandomCharSpec) -> list[str]:
     (阵营轴 = chars_by_faction 默认含流派匹配,费用轴 = chars_by_cost;
     char_type 按 '、' 切分含标签,两轴通用过滤词)。尾部开拓者双形态按
     角色位合并收口(键侧条目剔除,采样即发放名 = 值侧形态,单一源 =
-    模块级 ``_DUAL_FORM_MERGE``)——采样域即发放域,随机赠卡家族与
-    boss 腿2/晶矿随机羁绊支(经本函数取池)三通道同源生效。构建期非空
-    校验见 ``_validate_env_gifts``;运行期空池 = 注册表漂移,发放腿
-    (cw_gain_chain ``on_env_gained`` 随机支)再查一道防御。"""
+    模块级 ``_DUAL_FORM_MERGE``)。**静态基底池**:构建期非空校验
+    (``_validate_env_gifts``/``_validate_env_deploy_lock_grants``)与
+    运行期授予采样(经 cw_pool ``grant_char_pool`` 叠加牌库时点过滤——
+    未解锁专家剔除,用户裁定 2026-10-28)共同的本函数消费点;直接以本
+    函数取池采样 = 静态口径,授予通道已统一改经 grant_char_pool。运行期
+    空池 = 注册表漂移(或全专家域未解锁),发放腿再查一道防御。"""
     base = chars_by_faction(spec.faction) if spec.faction else chars_by_cost(spec.cost)
     pool = [c.name for c in base
             if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
@@ -1845,7 +1855,7 @@ ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
 
 #: 概念股族阵营刷新概率腿的「零建模」失真申报键(家族常量;键模板 =
 #: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
-#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007;消费面 = 披露清单,invest_effects.md §5 在案裁定为
+#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008;消费面 = 披露清单,invest_effects.md §5 在案裁定为
 #: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
 #: (cw_shop_deal 采样按 REFRESH_PROB 费用基线,阵营轴无参数),刷出该
 #: 阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;解禁条件 =
@@ -1859,6 +1869,7 @@ ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS: tuple[str, ...] = (
     'env_1005_faction_refresh_odds_unmodeled',
     'env_1006_faction_refresh_odds_unmodeled',
     'env_1007_faction_refresh_odds_unmodeled',
+    'env_1008_faction_refresh_odds_unmodeled',
 )
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
@@ -3022,8 +3033,8 @@ _validate_env_battle_grants()
 # 上场锁期 + 完胜加速两个机制维度,GiftGrant(估值域)无归属字段——T-10
 # 裁决确立的「无锁随机赠卡归 GiftGrant.chars_random_immediate」不受影响,
 # 本表只收「赠卡带锁」形。消费面:发放腿 = cw_gain_chain.on_env_gained
-# (复用 random_char_pool 均匀采样 + env_grant_uid_seq 发号 + 解锁序位
-# 沿日程表步进),完胜提前腿 = kernel/cw_env_grants.
+# (经 cw_pool.grant_char_pool 牌库时点池均匀采样 + env_grant_uid_seq
+# 发号 + 解锁序位沿日程表步进),完胜提前腿 = kernel/cw_env_grants.
 # check_env_deploy_lock_perfect(report_node_advance settle_confirm 分支);
 # 锁域 Field/守卫/审计行/快照 rebuild 复用 T-30 已落地件零新建。
 @dataclass(frozen=True)

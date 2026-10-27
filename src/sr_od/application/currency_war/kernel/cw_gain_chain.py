@@ -79,11 +79,11 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_GRANTS,
     equips_by_category,
     normalize_invest_name,
-    random_char_pool,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     resolve_plane_node_seqs,
 )
+from sr_od.application.currency_war.kernel.cw_pool import grant_char_pool
 
 #: 链内写端缺省署名(gain-chain.md §2:写点迁移属申报过的行为变化,新写端新名,
 #: 不沿用旧名伪装连续;动作落地接入显式传同值)。
@@ -879,7 +879,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       如实记录「选择时点真值未知」;
     - **随机赠卡锁腿**(``ENV_DEPLOY_LOCK_GRANTS`` 命中,申报行之后、
       ENV_GIFTS 查表之前;世界发放域登记表白名单,首例 = 英雄登场):
-      获得当刻随机赠卡——规格池(random_char_pool)内均匀掷骰选名 →
+      获得当刻随机赠卡——牌库时点池(cw_pool ``grant_char_pool`` = 规格
+      域 ∩ 当时牌库,未解锁专家剔除)内均匀掷骰选名 →
       ``gain_character`` 落席(星级 = spec.star;效果体含采样 → 子链
       rand=True,``rng`` 缺省回退自掷,随机支同款三层已通)→ 实例发号
       (``env_grant_uid_seq`` 计数器,T-30 同款,uid 随落位单位 =
@@ -896,8 +897,9 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       不随名(掷骰名是猜测,bench 首观察覆盖纠偏,守卫拒/放对象不受扰);
       拦截复用 deploy_move/swap_deploy 既有守卫零新建(设计 = T-33
       设计稿 §2.3,迭代 2026-09-23-invest-effects-calc);
-    - **随机支**(``chars_random_immediate``,具名支之后):规格过滤池
-      (random_char_pool)内均匀掷骰选名 → ``gain_character`` 落席,星级
+    - **随机支**(``chars_random_immediate``,具名支之后):牌库时点池
+      (cw_pool ``grant_char_pool`` = 规格域 ∩ 当时牌库,未解锁专家剔除,
+      用户裁定 2026-10-28)内均匀掷骰选名 → ``gain_character`` 落席,星级
       = spec.star;效果体含采样 → 子链 rand=True(gain-chain.md §5)——
       未锚定期(开局窗)本就走 write_logic_rand,rand=True 声明采样语义
       并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
@@ -999,11 +1001,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     _lock = ENV_DEPLOY_LOCK_GRANTS.get(_name)
     if _lock is not None:
         roll_rng = rng if rng is not None else random.Random()
-        pool = random_char_pool(_lock.spec)
+        pool = grant_char_pool(gs, _lock.spec)
         if not pool:
             # 构建期已闸(_validate_env_deploy_lock_grants 池非空),运行期
-            # 空 = 注册表漂移;零写留 log 防御分支(chars_random 支同款,
-            # 不改容器不炸链)
+            # 空 = 注册表漂移或全专家域未解锁;零写留 log 防御分支
+            # (chars_random 支同款,不改容器不炸链)
             log.warning(
                 f'[cw-gain] 随机赠卡池空(注册表漂移?):'
                 f'{_name} cost={_lock.spec.cost} '
@@ -1225,10 +1227,11 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         # 流键 rng 即世界真值,on_strategy_gained 的 roll_rng 同款回退)。
         roll_rng = rng if rng is not None else random.Random()
         for spec in grant.chars_random_immediate:
-            pool = random_char_pool(spec)
+            pool = grant_char_pool(gs, spec)
             if not pool:
                 # 构建期已闸(_validate_env_gifts 池非空),运行期空 =
-                # 注册表漂移;零写留 log 防御分支(不改容器,不炸链)
+                # 注册表漂移或全专家域未解锁;零写留 log 防御分支
+                # (不改容器,不炸链)
                 log.warning(
                     f'[cw-gain] 随机赠卡池空(注册表漂移?):'
                     f'{_name} cost={spec.cost} type_tag={spec.type_tag!r}')
