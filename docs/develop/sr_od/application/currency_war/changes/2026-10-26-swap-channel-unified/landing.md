@@ -24,18 +24,20 @@
 
 **范围**：`kernel/cw_deploy_logic.py`——转型域判别子新增三合取（锁定线槽腿①排除 p1_pair 腿② ∧ 板满继承 ∧ fp<1.00 继承，design §2.0）；触发门 1 扩四腿（①新档 ②支撑数增 ③升星横换 ④成品腿 fp✗→✓，design §2.2）、完成品分支**收窄至双轨域保留**、转型域由双门接管（design §2.3/§2.11 申报①）；守恒判定转型域切至终局档位非降、双轨域 `engines_guard` 原样（design §2.3）；**现行转型分支机器退役**（`SWAP_TRANSITION_ARM_ENABLED`/`_swap_transition_domain`/五消费位键集收窄/快照——design §2.3.1，**pair 帧 fenced off-target 路径保持现行**，design §2.11 申报④）；`target_keep` 转型域口径收窄 + 让位白名单（design §2.2.1，`cw_launch_admission.py` 谓词 + 让位消费面；名单成员两让位通道：同名升星 3(a) / 分支 hold 3(b) 含量席让位保留）；**最小充分组贪心算法宿主**（kernel `select_swap_plan` 多对计划形态为本迭代新建，design §2.7——两级 victim 序、换入侧裁判权对接、无新增 admission 闸）；**up 侧 target 视图口径切名单**（design §2.7，三消费位）；**arm 分键新键族**（`bond_gate_*` 四键 + victim 序来源键，`cw4_m1p_arm_pending` 载体保留，design §2.3.1）；档位语义源切分（form_tiers=成型判据/键集/④判据，cw_factions=档位梯，design §2.1）。不含放行接线（3.2）、来金资格（3.3）、P61 清理（3.4）、复测（3.5）。
 **设计依据**：design.md §2.0–§2.4、§2.2.1、§2.7、§2.11
-**文件面**：`src/sr_od/application/currency_war/kernel/cw_deploy_logic.py`、`src/sr_od/application/currency_war/kernel/cw_launch_admission.py`、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/deploy_plan.py`（up 侧三消费位）；`sr-od-test` 对应测试
+**文件面**：`src/sr_od/application/currency_war/kernel/cw_deploy_logic.py`、`src/sr_od/application/currency_war/kernel/cw_launch_admission.py`、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate.py`（bond_gate_* 分键写点）、`src/sr_od/application/currency_war/strategies/impl/mandate_v1/deploy_plan.py`（up 侧消费位之一；另两处消费位在 cw_deploy_logic.py）；`sr-od-test` 对应测试
 **依赖**：无
 **优先级建议**：8
 **完成判据**：
 - 单帧测试覆盖枚举表 A/A′/B/C/D/G/E/F 全情形（design §2.2，锚数值按 §2.1 档位梯直调）；
+- **门 1③ 谓词钉死测试**：同名必要（异名星级升换拒绝）+ 名单让位全序末位语义；
 - **OR 承接阵容专项**：希儿量子静态套完成品换入经门 1④ 放行（design §2.11 申报①覆盖性论证的行为测试）；
 - **名单成员让位通道专项**：同名升星让位（3(a)）放行 + 量席让位现行语义保留（3(b)）回归；
-- 双轨域零行为差回归（完成品分支/必需件分支/守恒照旧）+ pair 帧 fenced off-target 路径保持现行（申报④）；
+- 双轨域零行为差回归（完成品分支/必需件分支/守恒照旧）+ pair 帧 fenced off-target 路径保持现行（申报④，fenced 关门分支判定迁移到转型域判别子）；
+- **`evolution_swap_arm_trigger` 域腿对账**（design §2.3.1，禁静默分叉）；
 - 转型域判别子三合取单帧测试（腿①排除配方锁帧、板满与 fp<1.00 继承语义）；
 - target_keep 口径收窄的单帧测试（标签过渡件可入 victim 池、名单成员仅两通道让位）；
 - 转型分支退役面测试（转型域双门接管、双轨域分支照旧）+ arm 分键新键族写入断言；
-- 组算法测试（两级 victim 序锚帧复验：Saber 换青雀；超员降级；无可行组零动作稳态）；
+- 组算法测试（两级 victim 序锚帧复验：Saber 换爻光；超员降级；无可行组零动作稳态）；
 - 断言写语义，docstring 引 design 节锚；
 - 既有换人测试全量一次通过（L1）；语义被取代的旧断言按测试纪律改写（引本设计，禁机械跟绿）；
 - 常规检查（本文件首节）。
@@ -48,7 +50,7 @@
 **文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/mandate.py`、`entry.py`（及测试）；`docs/develop/sr_od/application/currency_war/flow/action_exec.md` 契约对账记录（如需修订入正本清单）
 **依赖**：3.1
 **优先级建议**：7
-**完成判据**：接线核对清单逐项过（每项带 design 节锚 + 代码符号锚）；组算法单帧测试（含超员降级、无可行组零动作稳态）；受影响测试过；常规检查。
+**完成判据**：接线核对清单逐项过（每项带 design 节锚 + 代码符号锚）；同帧逐对原子序与失败语义落地核对（中途失败停发/下帧重算）；受影响测试过；常规检查。
 **验收凭据形式**：核对清单 + 测试记录
 
 ## 3.3 演进/来金资格增补 + 收敛不变式测试
@@ -73,7 +75,7 @@
 
 ## 3.5 同 seed 复测与行为验证
 
-**范围**：`cw_sim_match_drive.py --seed 20261216` 复跑；跑前先写 2-1..2-4 预测动作表（判读锚点事前写），跑后逐帧对照：锚 ①2-1 换人发生（**Saber 换青雀**，1 换 1，两级序+槽位序唯一推导，圣杯 3 二阶与能量 3 一阶激活）②后续帧对照组算法推演；prereg 实体清单逐条对照；复测报告落批目录。
+**范围**：`cw_sim_match_drive.py --seed 20261216` 复跑；跑前先写 2-1..2-4 预测动作表（判读锚点事前写），跑后逐帧对照：锚 ①2-1 换人发生（**Saber 换爻光**，1 换 1，两级序+贡献度量唯一推导，圣杯 3 二阶与能量 3 一阶激活）②后续帧对照组算法推演；prereg 实体清单逐条对照；复测报告落批目录。
 **设计依据**：design.md §2.10
 **文件面**：`.debug/currency_war/telemetry/sim/`（产出，不提交）；报告文件
 **依赖**：3.1、3.2、3.3
@@ -102,6 +104,7 @@
 - proofs/math_proofs.md：P61 行删除、P87 行（:108）P61 先例引用改写、P78 行（:100）随装配 A 构成变化改写 ← 3.4
 - proofs/p63-bt-depth-prediction-lower-bound.md、proofs/p87-seele-form-port-or-nesting.md、proofs/p88.md、proofs/p89.md：P61/B_t 交叉引用改写 ← 3.4
 - proofs/出口生存余量设计批-命题与因果链.md：P61 引用改写 ← 3.4
+- strategy-docs/11_shop_decisions.md：§4.0 卖出候选评估器资格面随装配 A 构成变化改写 ← 3.3
 - strategy-docs/17_stall_form_spend_authority.md：换人域措辞核对 ← 末阶段
 - screens/README.md、screens/deploy.md：换人判定单一源表述核对 ← 末阶段
 - flow/projection_contract.md：换人臂节语义核对 ← 末阶段
