@@ -1898,13 +1898,19 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   equips 实读)/ 件数 1 = 单数叙述默认假设非直读(env_concept_stock_equip_count1)/
   按卡固定假说在案待校准(env_concept_stock_equip_fixed_hypothesis,
   economy.md「概念股送装备件」四卡线索;恒同件 → 升级按卡表,离散 → 均匀
-  口径维持)。
+  口径维持)。族展开登记模板 =
+  `'X概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='X',
+  star=1),), equips_random_immediate=('简易',))`,X = 卡名剥「概念股」后缀 =
+  desc【X】直读(与 ENV_FACTION 派生双源同值);直读项 = 效果原文/【X】/
+  简易类别,假设项 = 星级 1 先验/件数 1 单数默认/装备身份均匀采样(随两组
+  家族披露键申报)。
 - 概念股族阵营刷新概率腿零建模失真 `ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS`
   (键模板 `env_<id>_faction_refresh_odds_unmodeled`,本批收
-  `env_1001_faction_refresh_odds_unmodeled`):sim 商店发牌不模拟阵营权重,
-  刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;裁定正本 =
-  invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面载体,遥测对账
-  只量化失真不产落参。
+  `env_1001_faction_refresh_odds_unmodeled`、
+  `env_1002_faction_refresh_odds_unmodeled`(燃血概念股)):sim 商店发牌
+  不模拟阵营权重,刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气
+  收益;裁定正本 = invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面
+  载体,遥测对账只量化失真不产落参。
 
 ### 5.3 效果族归属(写入归属四选一)
 
