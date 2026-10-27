@@ -1907,10 +1907,20 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 - 概念股族阵营刷新概率腿零建模失真 `ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS`
   (键模板 `env_<id>_faction_refresh_odds_unmodeled`,本批收
   `env_1001_faction_refresh_odds_unmodeled`、
-  `env_1002_faction_refresh_odds_unmodeled`(燃血概念股)):sim 商店发牌
+  `env_1002_faction_refresh_odds_unmodeled`(燃血概念股)、
+  `env_1003_faction_refresh_odds_unmodeled`(能量概念股)):sim 商店发牌
   不模拟阵营权重,刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气
   收益;裁定正本 = invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面
   载体,遥测对账只量化失真不产落参。
+- 概念股族采样域含同单位双形态条目
+  `ENV_FACTION_DOMAIN_TRAILBLAZER_DUAL_FORM_KEYS`(键模板
+  `env_<id>_faction_domain_trailblazer_dual_form`,本批收
+  `env_1003_faction_domain_trailblazer_dual_form`(能量概念股)):能量域
+  9 名含开拓者·欢愉/开拓者·记忆两独立注册条目,均匀采样各占一份;实机
+  发放形态无 desc/仓库依据,随机态观察收口不响停(校准源 = logic_rand_outcome
+  按 `env_gift_random:` 前缀归组的实读名分布;恒发单形态 → 采样域剔除另一
+  形态,双形态实发 → 现口径维持)。全域普查在案:列车同行域(factions 轴)
+  含同双形态档案,列车同行概念股(id 1004)展开批随卡追加 env_1004。
 
 ### 5.3 效果族归属(写入归属四选一)
 
