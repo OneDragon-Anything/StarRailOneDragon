@@ -1887,6 +1887,25 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   的周期性外部改写源,与乱成一锅粥同型;装备期望态核对防线=equipment_mechanics.md
   compare_equip_expect)。
 
+**披露键组登记(desc/证据空白处的模型口径申报;常量单一源 = `cw_investments`,
+此处为登记面载体,防「未建模/先验假设」被误判为漏报)**:
+
+- 概念股族装备轴 `ENV_CONCEPT_STOCK_ASSUMPTION_KEYS` 三键(首例 = 追击概念股
+  id 1001「开局时获得【追击】角色和初始简易装备」,随机阵营赠卡 + 随机简易
+  装备 2026-10-27 已建模,登记 = `ENV_GIFTS` 随机规格阵营轴 + 随机装备类别
+  通道;族 15 张同式逐卡展开):简易池均匀 v0(env_concept_stock_equip_uniform,
+  实机真分布未知,校准源 = `logic_rand_outcome` 的 `env_equip_random:` 行 vs
+  equips 实读)/ 件数 1 = 单数叙述默认假设非直读(env_concept_stock_equip_count1)/
+  按卡固定假说在案待校准(env_concept_stock_equip_fixed_hypothesis,
+  economy.md「概念股送装备件」四卡线索;恒同件 → 升级按卡表,离散 → 均匀
+  口径维持)。
+- 概念股族阵营刷新概率腿零建模失真 `ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS`
+  (键模板 `env_<id>_faction_refresh_odds_unmodeled`,本批收
+  `env_1001_faction_refresh_odds_unmodeled`):sim 商店发牌不模拟阵营权重,
+  刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;裁定正本 =
+  invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面载体,遥测对账
+  只量化失真不产落参。
+
 ### 5.3 效果族归属(写入归属四选一)
 
 > 每族写入归属四选一:由 op 直接写 / 逻辑写入 / 申报不记预期值(后果等识别覆盖)/

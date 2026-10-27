@@ -326,9 +326,14 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     触发,设计披露键 6);姊妹卡退化失效腿复用本机制(T-291 批套用)。
     设计正本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
-    (cost, star, type_tag)` 随机赠卡规格(家族载体,首例 = 人才引进「开局拥有
-    1个随机4费角色」,id 109);发放 = 规格过滤池(`random_char_pool`,注册表
-    派生单一源:费用档内 × char_type 含标签)内均匀掷骰选名 → `gain_character`
+    (cost|faction, star, type_tag)` 随机赠卡规格(家族载体,「随机N费」与
+    「随机【阵营】」两族共载体,采样轴二选一构建期互斥校验,费用轴首例 =
+    人才引进「开局拥有1个随机4费角色」id 109,阵营轴首例 = 追击概念股
+    「获得【追击】角色」id 1001——【X】为流派名非角色名,不入具名检查域);
+    发放 = 规格过滤池(`random_char_pool`,注册表派生单一源:采样轴内 ×
+    char_type 含标签——费用轴 = chars_by_cost 全档,阵营轴 = chars_by_faction
+    默认含流派匹配,池非空构建期校验,误登角色名/笔误阵营名 → 域空 import
+    即炸)内均匀掷骰选名 → `gain_character`
     落席,星级 = spec.star(人才引进 1 = 先验非结构值)。**效果体含采样 →
     子链 rand=True**(§5)——未锚定期(开局窗)本就走 write_logic_rand,
     rand=True 声明采样语义并保锚定后不进失配网(实机猜错 = 首观察静默覆盖,
@@ -357,12 +362,17 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     之前):元素 = 装备类别名(EQUIPMENTS category 词),发放 = 类别池
     (`equips_by_category`,注册表派生单一源)内均匀掷骰选名 →
     `gain_equipment(rand=True)` 入栏(equips 库存,不占席、不进
-    BENCH_ITEM_NAMES)。效果串 `env_star_grant:<名>`;**绑定腿** = 发放名落
+    BENCH_ITEM_NAMES)。**绑定门**(`ENV_BOSS_GRANTS` 成员资格):成员
+    (绑定语义 = 首领节点腿2 按绑定星徽发角色,首例 = 劳务派遣合同
+    id 118「获得随机星徽」)效果串 `env_star_grant:<名>` + 发放名落
     `env_grants_done` 条件键 `star_grant#<名>`(placed 守卫下写——equips
     未观察时 `gain_equipment` 零写跳档 → 绑定同样不落,禁「绑定在而装备
-    未发」残缺态),消费 = `check_env_boss_grants` 腿2 绑定解析(首例 =
-    劳务派遣合同 id 118「获得随机星徽」;条件键形态登记 =
-    fields.md §3.5.5)。`rng` 回退/条件解析与随机角色支同款。
+    未发」残缺态),消费 = `check_env_boss_grants` 腿2 绑定解析(条件键
+    形态登记 = fields.md §3.5.5);非成员(概念股族及后继,首例 = 追击
+    概念股 id 1001「初始简易装备」类别池复用本通道)零 done 键、效果串
+    前缀 `env_equip_random:<名>`(与具名支 `equip_gift:`/随机角色支
+    `env_gift_random:` 分域,审计归组键)。`rng` 回退/条件解析与随机角色
+    支同款。
   - **持续伤害契约锚键腿**(条件腿建模 T-28,获得刻纯登记):具名支发完
     椒丘/卡芙卡后,`on_env_gained` 对本卡追加登记 `env_grants_done` 条件键
     `dot_anchor#<位面>-<轮>`(与即时腿同窗相邻 write_logic 直写,同
