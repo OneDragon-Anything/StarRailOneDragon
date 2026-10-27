@@ -16,7 +16,7 @@
 | P89 预注册行为线（R1-R4 SellDeployed ≥0.75 次/轮 + 末轮保留率带内占比） | `proofs/math_proofs.md` P89 行约束段 | **直接受影响**（换人判据即本批改动对象） | 修后 sim 批对照读数并归因（判据改 = 行为面预期变化，对照≠达标裁决；A/B 无裁决权） |
 | 02 §8 命题 A 判前锁预期（零动作轮<5%、SellBench≥200 笔、成型率≥80% 等） | `strategy-docs/02_mandate_layer.md` §8（命题 A 载体节） | 换人面直接受影响 | 修后 sim 批对照读数并归因 |
 | 升级触发统一批 sim 基线（升级发射帧=0、资金门 defer=0 等） | `strategy-docs/11_shop_decisions.md` 新基线记录行 | **凑金可达性输入面受 3.3 排除影响，基线可能漂移** | 复测批对照读数，漂移如实申报并归因（对齐 FM-1 行申报姿态，禁虚假保全声明） |
-| FM-1 死亡形态对照（死时金≥50、四联完整死型=0） | 2026-10-18 批工件 + `proofs/p76.md`:282 三锚（11 号稿无此读数行） | 经济面间接（来金资格排除可能减少卖出收入） | 复测批对照读数，偏离归因 |
+| FM-1 死亡形态对照（死时金≥50、四联完整死型=0） | `strategy-docs/11_shop_decisions.md` :185（四联定义+三锚基线+预注册义务）、:186（死时金≥50=15/15、四联完整死型=0/15） | 经济面间接（来金资格排除可能减少卖出收入） | 复测批对照读数，偏离归因 |
 | T-115 经济纪律（三不状态=最差持有） | 用户裁定（2026-09-07，裁定实质亲验在案） | 不受影响声明 | 不核对行为，仅声明 |
 - 盘点义务：实现批开盘按 strategy-work §6 盘点入口（当期迭代 criteria 行 + ADR 判据节 + batch_stats 读数行）穷尽补全本清单，禁只保上表。
 
@@ -66,7 +66,7 @@
 
 ## 3.4 P61 退役与全仓引用清理
 
-**范围**：删 `proofs/p61-bt-swap-arm-dominance.md`、`proofs/math_proofs.md` P61 行；全仓 grep（`P61`/`p61`/`B_t`/`b_t`）穷尽清点、逐位点核语义改写；18 号篇同号异命题禁改核对；B_t 存续消费点单一源关系处置（design §2.9）；转型分支机器退役引用面随本阶段（design §2.3.1，含 `swap_transition_narrow_frame`/fenced 判定/`mandate.py:1495` arm 路由申报）；删除不留残迹。
+**范围**：删 `proofs/p61-bt-swap-arm-dominance.md`、`proofs/math_proofs.md` P61 行；全仓 grep（`P61`/`p61`/`B_t`/`b_t`/`SWAP_TRANSITION_ARM_ENABLED`/`_swap_transition_domain`）穷尽清点、逐位点核语义改写；18 号篇同号异命题禁改核对；B_t 存续消费点单一源关系处置（design §2.9）；**math_proofs 新增转型域换血收敛不变式登记行**（结构计数注记，接替 P61 有限触发角色，design §2.8/§2.9）；**P79 行（:101）转型域适用范围随 §2.5 改写**；转型分支机器退役引用面随本阶段（design §2.3.1，含 `swap_transition_narrow_frame`/fenced 判定/`mandate.py:1495` arm 路由申报）；删除不留残迹。
 **设计依据**：design.md §2.9
 **文件面**：`docs/develop/sr_od/application/currency_war/proofs/**`、`docs/develop/sr_od/application/currency_war/strategy-docs/` 引用行（`14_p1_consume_arms.md` 等）、出口生存余量篇、`tools/cw/proofs/p88_check.py`（直调退役符号的复算脚本）、`tools/cw/ab_judge.py`、`docs/develop/sr_od/application/currency_war/flow/session.md`、`docs/develop/sr_od/application/currency_war/game_state/决策行文件schema设计.md`、`sr-od-test` `test_front_window_predicates.py`、src 注释引用行（`kernel/cw_launch_admission.py`、`kernel/cw_deploy_logic.py`、`strategies/impl/mandate_v1/mandate.py`、`flow.py`、telemetry schema 等 grep 命中面）
 **依赖**：3.1
@@ -103,9 +103,11 @@
 - strategy-docs/10_prep_decisions.md：§1 部署判据的守恒/换人引用核对 ← 3.1
 - strategy-docs/22_prep_screen.md：§1 部署步窗口表述核对（第 6 步） ← 3.2
 - strategy-docs/14_p1_consume_arms.md：:602 P61 引用行改写；:385 B_t 面随 §2.9 迁移核对 ← 3.4
-- proofs/math_proofs.md：P61 行删除、P87 行（:108）P61 先例引用改写、P78 行（:100）随装配 A 构成变化改写、P88 行（:109）随退役符号改写 ← 3.4
+- proofs/math_proofs.md：P61 行删除、P79 行（:101）转型域适用范围改写、P87 行（:108）P61 先例引用改写、P78 行（:100）随装配 A 构成变化改写、P88 行（:109）随退役符号改写、新增转型域换血收敛不变式登记行 ← 3.4
 - proofs/p63-bt-depth-prediction-lower-bound.md、proofs/p87-seele-form-port-or-nesting.md、proofs/p88.md、proofs/p89.md：P61/B_t 交叉引用改写 ← 3.4
 - proofs/出口生存余量设计批-命题与因果链.md：P61 引用改写 ← 3.4
+- flow/session.md：B_t/P61 面核对改写 ← 3.4
+- game_state/决策行文件schema设计.md：B_t 面核对改写 ← 3.4
 - strategy-docs/11_shop_decisions.md：§4.0 卖出候选评估器资格面随装配 A 构成变化改写 ← 3.3；§4.0 部署换人行三处（判据本体不动表述/窗口辖域辖表述/备战第 5 步步号）随 3.1 更新 ← 3.1
 - strategy-docs/17_stall_form_spend_authority.md：换人域措辞核对 ← 末阶段
 - screens/README.md、screens/deploy.md：换人判定单一源表述核对 ← 末阶段
