@@ -1674,18 +1674,37 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 简易池 = category '简易' 现值 8 件。
     '能量概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='能量', star=1),),
                             equips_random_immediate=('简易',)),
+    # id 1004 效果原文直读:「列车同行」= desc【列车同行】直读(阵容羁绊名,
+    # 与 ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
+    # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
+    # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md「列车送幸运星」线索
+    # 已随 fixed_hypothesis 键在册);简易池 = category '简易' 现值 8 件。
+    '列车同行概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='列车同行', star=1),),
+                            equips_random_immediate=('简易',)),
 }
+
+
+# 开拓者双形态(欢愉/记忆两条独立注册条目)在随机角色发放采样中按单一
+# 角色位合并:牌库中开拓者占一位,备战席/商店恒欢愉形态,场上才分前台
+# (记忆)/后台(欢愉)——「获得」类发放落备战席恒发欢愉(用户实机知识
+# 2026-10-28,docs/game/currency_war/research/economy.md §8)。
+# 键 = 剔除条目名,值 = 保留条目名(发放名)。
+_DUAL_FORM_MERGE: dict[str, str] = {'开拓者·记忆': '开拓者·欢愉'}
 
 
 def random_char_pool(spec: RandomCharSpec) -> list[str]:
     """规格过滤池(注册表派生,零硬编码第二源):采样轴内 + 类型标签含入
     (阵营轴 = chars_by_faction 默认含流派匹配,费用轴 = chars_by_cost;
-    char_type 按 '、' 切分含标签,两轴通用过滤词)。构建期非空校验见
-    ``_validate_env_gifts``;运行期空池 = 注册表漂移,发放腿(cw_gain_chain
-    ``on_env_gained`` 随机支)再查一道防御。"""
+    char_type 按 '、' 切分含标签,两轴通用过滤词)。尾部开拓者双形态按
+    角色位合并收口(键侧条目剔除,采样即发放名 = 值侧形态,单一源 =
+    模块级 ``_DUAL_FORM_MERGE``)——采样域即发放域,随机赠卡家族与
+    boss 腿2/晶矿随机羁绊支(经本函数取池)三通道同源生效。构建期非空
+    校验见 ``_validate_env_gifts``;运行期空池 = 注册表漂移,发放腿
+    (cw_gain_chain ``on_env_gained`` 随机支)再查一道防御。"""
     base = chars_by_faction(spec.faction) if spec.faction else chars_by_cost(spec.cost)
-    return [c.name for c in base
+    pool = [c.name for c in base
             if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
+    return [n for n in pool if n not in _DUAL_FORM_MERGE]
 
 
 def equips_by_category(category: str) -> tuple[str, ...]:
@@ -1802,7 +1821,7 @@ ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
 
 #: 概念股族阵营刷新概率腿的「零建模」失真申报键(家族常量;键模板 =
 #: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
-#: 本批收 env_1001、env_1002、env_1003;消费面 = 披露清单,invest_effects.md §5 在案裁定为
+#: 本批收 env_1001、env_1002、env_1003、env_1004;消费面 = 披露清单,invest_effects.md §5 在案裁定为
 #: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
 #: (cw_shop_deal 采样按 REFRESH_PROB 费用基线,阵营轴无参数),刷出该
 #: 阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;解禁条件 =
@@ -1812,19 +1831,7 @@ ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS: tuple[str, ...] = (
     'env_1001_faction_refresh_odds_unmodeled',
     'env_1002_faction_refresh_odds_unmodeled',
     'env_1003_faction_refresh_odds_unmodeled',
-)
-
-#: 概念股族采样域含同单位双形态条目的申报键(家族常量;键模板 =
-#: ``env_<id>_faction_domain_trailblazer_dual_form``,族卡随各自批次追加
-#: id,本批收 env_1003;消费面 = 披露清单):能量域 9 名含开拓者·欢愉/
-#: 开拓者·记忆两独立注册条目,均匀采样各占一份;实机发放形态无 desc/
-#: 仓库依据,随机态观察收口不响停——校准源 = logic_rand_outcome 按
-#: ``env_gift_random:`` 前缀归组的实读名分布(恒发单形态 → 采样域剔除
-#: 另一形态;双形态实发 → 现口径维持)。全域普查在案:列车同行域
-#: (factions 轴)含同双形态档案,列车同行概念股(id 1004)展开批随卡
-#: 追加 env_1004。
-ENV_FACTION_DOMAIN_TRAILBLAZER_DUAL_FORM_KEYS: tuple[str, ...] = (
-    'env_1003_faction_domain_trailblazer_dual_form',
+    'env_1004_faction_refresh_odds_unmodeled',
 )
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value

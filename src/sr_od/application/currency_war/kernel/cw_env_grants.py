@@ -69,7 +69,6 @@ from __future__ import annotations
 import random
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_chars import chars_by_faction
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     CounterKey,
 )
@@ -100,6 +99,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_PICK_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
+    RandomCharSpec,
+    random_char_pool,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     sequence_next,
@@ -443,8 +444,9 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
     7. ``gs.bench.value`` None → None 不标 done(生产不可达,直构/测试
        形态防御;本 boss 窗一次性无自动重试 = 该节点漏发);
     8. 达标 → 发放:绑定星徽名 = 前缀键解出 → 羁绊名 = 星徽名去「星徽」
-       后缀 → 池 = ``chars_by_faction(羁绊名)``(默认参数含 flows,与
-       FactionInfo.members 同源)→ ``rng.choice`` 采样 →
+       后缀 → 池 = ``random_char_pool(羁绊名 spec)``(与随机赠卡家族
+       同一采样源,开拓者双形态按角色位合并随池单一源收口)→
+       ``rng.choice`` 采样 →
        ``gain_character(gs, 名, 1, rand=True, sig, evidence, producer)``
        (星级 1 = 先验,晶矿 CHAR_DROP_STAR 同句式)→ done 追加 boss 键
        (write_logic,同 evidence 同 sig)——两段写同 evidence 同 sig 同
@@ -483,7 +485,10 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
     star_name = bind_keys[0][len(STAR_GRANT_KEY_PREFIX):]
     faction = (star_name[:-len('星徽')] if star_name.endswith('星徽')
                else '')
-    pool = [c.name for c in chars_by_faction(faction)]
+    # 池派生经 random_char_pool 单一源(与随机赠卡家族同采样域,开拓者
+    # 双形态按角色位合并随池收口;faction 空 = 星徽名无后缀畸形,spec
+    # 双空 → chars_by_cost(None) 恒空池,照旧走下方守卫零写)
+    pool = random_char_pool(RandomCharSpec(faction=faction, star=1))
     if not pool:
         # 构建期已闸(_validate_env_gifts '星徽' 池闸 + 派生链非空),
         # 运行期再空 = 注册表漂移;零写留 log 防御分支(不标 done)
@@ -598,7 +603,8 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
     5. 承载守卫:计数是 int 属性恒有值直接可比;发放不涉金/装备承载,
        角色承载 = bench(条 3 已守);
     6. **先守卫后发放**(守卫先于该阈值的任何一腿,禁半发放):随机腿
-       池现查 = ``chars_by_faction(随机羁绊名)`` 非空——空 = 注册表
+       池现查 = ``random_char_pool(随机羁绊名 spec)`` 非空(与随机赠卡
+       家族同一采样源,开拓者双形态合并随池单一源收口)——空 = 注册表
        漂移(import 期校验后生产不可达,纯防御分支),整体缓发返回空
        不标 done——「具名腿已发、done 未封」的半发放态会在下批重触发
        同一阈值时重复发放具名腿,重复发放比漏发更劣;
@@ -650,7 +656,7 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
         if (env, key) in done:
             t += step   # 已封账:推进找下一个未封账阈值(断档续发)
             continue
-        pool = [c.name for c in chars_by_faction(random_faction)]
+        pool = random_char_pool(RandomCharSpec(faction=random_faction, star=1))
         if not pool:
             # 整体缓发(先守卫后发放,禁半发放;生产不可达,纯防御分支)
             break
