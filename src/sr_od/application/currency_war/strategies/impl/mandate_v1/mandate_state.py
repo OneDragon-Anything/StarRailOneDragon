@@ -252,11 +252,13 @@ class StrategyState:
     cw4_m1p_arm_pending: object = None
     # M1″ 计划载荷 pending(mandate 写):
     # {'sell': [victim 名], 'up': [上序名单],
-    # 'trans_domain': 计划时点转型域事实, 'occ': 计划时点板占用数}。
+    # 'arm': 胜出臂标注(transition=双轨域 / bond_gate=转型域组计划),
+    # 'occ': 计划时点板占用数}。
     # 消费半停用(随部署机)(原部署段核对读端已删),现役零读端暴露
     # (已登记申报 = projection_contract.md §4.3);载荷仅作核对与快路径
     # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 动作发出点按同一判定集
-    # 现算,已登记分工维持,分工裁决)。
+    # 现算,已登记分工维持,分工裁决)。旧 'trans_domain' 键随域谓词
+    # 退役删除(design §2.3.1),域事实改由 'arm' 可判定。
     cw4_m1p_plan_pending: object = None
     # 近轮已卖名滚动账(P71 凑息卖去重)。
     cw4_recent_sold_names: list = field(default_factory=list)

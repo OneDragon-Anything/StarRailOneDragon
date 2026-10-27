@@ -33,8 +33,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_comps import form_progress
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    SWAP_TRANSITION_ARM_ENABLED,
-    _swap_transition_domain_of,
+    swap_bond_gate_domain_of,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     REFRESH_COST_BASE,
@@ -647,7 +646,8 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     「净成本≈0」前提在 D 域席位维失效,支配性放行适用范围不含 D 帧。
     域语义声明:收窄实现 = 店侧两 S_spec 动作发出点(dominance_buy/
     hub_option_buy)的适用范围前置(``swap_transition_narrow_frame``,
-    域谓词单一源 = kernel ``_swap_transition_domain_of``);豁免 ⇔
+    域谓词单一源 = kernel ``swap_bond_gate_domain_of`` 转型域判别子全合取,
+    design §2.3.1 谓词源迁移);豁免 ⇔
     reason ∈ LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_ARMS(闭集单一源 =
     sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+席物理维资格门,
     后者已按命题 4 收紧为 bench_free > 1)不覆盖 D 域判定——两域修正
@@ -730,31 +730,34 @@ PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
 
 
 def swap_transition_narrow_frame(state: GameState,
-                                 session: StrategySession) -> bool:
+                                  session: StrategySession) -> bool:
     """终局阵容锁定转型域 D 帧判定(店侧 S_spec 收窄适用范围;P88)。
 
-    = kernel ``cw_deploy_logic._swap_transition_domain_of`` **同一谓词**
-    (出战就绪 ∧ locked ∧ fp<1.00 ∧ 板满)——适用范围判定单一源,本函数只做
-    店侧输入装配,禁第二份合取(第二源 = 与部署域 M1″ 转型域分裂)。
-    装配对齐 ``assemble_swap_plan_inputs`` 发出侧同字段链:locked 单源
-    = ``ist.locked_comp`` 非空——⚠️ 该对齐声明仅终局阵容锁定帧成立:kernel
-    装配点 locked 已推广「∨ P1 配方对锁」(见下方适用范围分界),配方对锁帧
-    两域刻意分歧,禁按本句推得两域同值。fp 单一源 = ``cw_comps.form_progress``,
-    终局阵容锁定帧 committed_from=True ⇒ 装配点 tgt 退 ``target_comp`` 同读法
-    (flow._refresh_direction_views 终局阵容锁定帧恒置 target_comp = locked
-    阵容 解析,两读法终局阵容锁定帧同值);板满 = 占用数 ≥ ``max_units_of``
-    (占用数口径 = 容器占用判定单点,禁裸 len)。
+    = kernel ``cw_deploy_logic.swap_bond_gate_domain_of`` **同一谓词**
+    (腿①终局阵容锁定 ∧ fp<1.00 ∧ 板满;design §2.3.1 谓词源迁移钉死:
+    改挂转型域判别子**全合取**——入参同现行三腿,禁只挂腿①丢 fp/板满
+    腿;旧谓词的回滚常量腿已随转型分支机器退役,缺省开语义下逐帧等价,
+    真值表等价断言 = 测试仓 narrow_frame 迁移测试)——适用范围判定单一源,
+    本函数只做店侧输入装配,禁第二份合取(第二源 = 与部署域换人域分裂)。
+    装配对齐 ``assemble_swap_plan_inputs`` 发出侧同字段链:腿① 单源
+    = ``ist.locked_comp`` 非空(终局阵容锁定,pair 腿②不进本域——
+    配方对锁帧恒 False = P1 买侧旧行为,P88 登记域不倒转);fp 单一源
+    = ``cw_comps.form_progress``,终局阵容锁定帧 committed_from=True ⇒
+    装配点 tgt 退 ``target_comp`` 同读法(flow._refresh_direction_views
+    终局阵容锁定帧恒置 target_comp = locked 阵容 解析,两读法终局阵容
+    锁定帧同值);板满 = 占用数 ≥ ``max_units_of``(占用数口径 = 容器占用
+    判定单点,禁裸 len)。
 
     用途 = P88 收窄:仅两 S_spec 动作发出点(press_narrowed_* 分键)消费
-    本旗作适用范围前置;豁免分支零消费。fail 方向 = 域外/缺读帧恒 False
-    (不收窄 = 旧行为,保守可逆);未锁帧短路返回——语义同谓词
-    (D⊆locked,p88_check 断言 1)且免 fp/板满推导成本。
+    本旗作适用范围前置(消费位 shop.py/mandate.py 保留,design §2.3.1);
+    豁免分支零消费。fail 方向 = 域外/缺读帧恒 False(不收窄 = 旧行为,
+    保守可逆);未锁帧短路返回——语义同谓词(D⊆locked,p88_check 断言 1)
+    且免 fp/板满推导成本。
 
-    适用范围分界(双轨对锁期推广后):kernel 装配点(``assemble_swap_plan_
-    inputs``)的 locked 已推广为「终局阵容锁定 ∨ P1 配方对锁」,部署换人域
-    随之在配方对锁帧开启;本函数刻意不随——买侧 S_spec 收窄适用范围保持
-    终局线,配方对锁帧恒 False = P1 买侧旧行为(不收窄 = 保守可逆)。
-    两域各自自洽,禁任一侧静默跟随另一侧。
+    适用范围分界(design §2.3.1):kernel 部署换人域判别子显式排除
+    pair 帧,本函数同样只挂腿①——终局锁定帧两域(买侧收窄/部署换人)
+    同挂转型域判别子,配方对锁帧两域均不进转型域(pair 帧走双轨现行
+    机器),禁任一侧静默跟随另一侧。
     """
     _ms = state_of(session)
     ist = getattr(_ms, 'v3_intention', None)
@@ -773,8 +776,7 @@ def swap_transition_narrow_frame(state: GameState,
         except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
             fp = None
     board_full = deployed_count_of(state) >= max_units_of(state)
-    return _swap_transition_domain_of(
-        SWAP_TRANSITION_ARM_ENABLED, locked, fp, board_full)
+    return swap_bond_gate_domain_of(locked, fp, board_full)
 
 
 def core_single_card_buy_eligible(locked_buy: bool) -> bool:
@@ -1462,10 +1464,17 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
         session, state=state,
         deployed=list(frame.deployed),
         bench=list(frame.bench), cap=frame.deploy_cap)
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        build_swap_group_order,
+    )
     _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons,
-                            select_up=select_up or _default_select_up)
+                            select_up=select_up or _default_select_up,
+                            # 组贪心序参数 ports 注入(design §2.7;序语义
+                            # 住策略层构建器,kernel 只机械执行)
+                            group_order=build_swap_group_order(_m1p_ctx))
     # 逐件拒因分键(键集;分键闭集:收窄后仍被保的弹性件拒因
-    # target_keep 与义务集拒因 buy_membership 纳入闭集)。
+    # target_keep 与义务集拒因 buy_membership 纳入闭集;转型域门 2
+    # 白名单/素材等拒因沿用既有键,design §2.3.1)。
     for _r in (set(_m1p_reasons.values())
                & {'engines_guard', 'star_guard', 'merge_material_guard',
                   'post_sell_offline', 'fp_unreadable',
@@ -1494,13 +1503,16 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
             _count('m1p_input_seam_pending')
         elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
                 session, state, _m1p_ctx):
-            # 部署执行放行判定未过(P79-3):与逐件资格拒因
-            # 分列禁混桶——资格拒 = 「能不能换」(victim 级),本键 =
-            # 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
+            # 部署执行放行判定未过(P79-3;双轨域 arm='transition' 照旧,
+            # design §2.3.1——转型域 P79-3 废弃面 + 复算统一门接线 =
+            # 3.2,bond_gate 臂不经本门):与逐件资格拒因分列禁混桶——
+            # 资格拒 = 「能不能换」(victim 级),本键 = 「该不该这帧换」
+            # (帧级 defer,替补席线内成员轴/代价轴)。
             _count('redeploy_cost_gate_defer')
         else:
-            # 逐 victim 产 CwActionSellDeployedParam(先卖);容器下标解析
-            # 失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
+            # 逐 victim 产 CwActionSellDeployedParam(先卖;组计划逐对
+            # 连发的同帧原子序接线 = 3.2,design §2.7 执行形态);容器下标
+            # 解析失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
             _victims: list[Emitted] = []
             for _vn in _m1p.sell_names:
                 _vd = next((d for d in frame.deployed
@@ -1517,29 +1529,47 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
             if _victims:
                 out.extend(_victims)
                 _count('m1p_fired')
-                # 双分支分键(plan.arm = 胜出者资格族标注;禁新排序键)
+                # 分支分键(plan.arm = 胜出者资格族标注;禁新排序键):
+                # 双轨域 'transition'/'formed' 照旧;转型域 'bond_gate'
+                # 换新键族(design §2.3.1 arm 分键归宿:accept 闭集 =
+                # bond_gate_{leg}(leg ∈ tier/support/star/completion,
+                # 首达腿检查序 = ④→①→②→③)+ victim 层来源键
+                # bond_gate_victim_tier_{tier}(值域 = 一级/二级/名单末位)
+                # ——3.5 预测表依赖此闭集)。
                 if _m1p.arm == 'transition':
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
-                # 被换下场成员逐件归因分键(只随发出暴露)
+                elif _m1p.arm == 'bond_gate':
+                    if _m1p.bond_gate_leg:
+                        _count(f"bond_gate_{_m1p.bond_gate_leg}")
+                    if _m1p.victim_tier:
+                        _count(f"bond_gate_victim_tier_{_m1p.victim_tier}")
+                # 被换下场成员逐件归因分键(只随发出暴露;双轨域照旧)
                 if _m1p.arm == 'transition' and _m1p.sell_names:
                     _count(f"redeploy_transition_victim_"
                            f"{_m1p.sell_names[0]}")
-                # 计划载荷透传:sell/up 名单 + 计划时点转型域
-                # 事实(ctx 装配快照) + 计划时点板占用数(载荷保留为计划
-                # 快照保留证据面;卖出仲裁权归本动作发出点)。
+                # 计划载荷透传:sell/up 名单 + 胜出臂标注(域事实随臂
+                # 可判定:transition = 双轨域 / bond_gate = 转型域;旧
+                # transition_domain 快照载体随域谓词退役,design §2.3.1)
+                # + 计划时点板占用数(载荷保留为计划快照保留证据面;卖出
+                # 仲裁权归本动作发出点)。
                 _st.cw4_m1p_arm_pending = _m1p.arm
                 _st.cw4_m1p_plan_pending = {
                     'sell': list(_m1p.sell_names),
                     'up': swap_plan_up_names(_m1p, _m1p_ctx),
-                    'trans_domain': bool(getattr(_m1p_ctx,
-                                                 'transition_domain',
-                                                 False)),
+                    'arm': _m1p.arm,
                     'occ': len(frame.deployed),
                 }
     else:
         _count('m1p_plan_empty')
+        # 转型域拒绝侧分键闭集(design §2.3.1 钉死;3.5 预测表依赖):
+        # bond_gate_reject_nogain(四腿全不中)/ bond_gate_conservation_
+        # reject(守恒拦)/ bond_gate_novictim(无可行组零动作);非转型
+        # 域计划空帧(域外现行机器)不产新键,照旧仅 m1p_plan_empty。
+        _bg_rej = getattr(_m1p, 'bond_gate_reject', '')
+        if _bg_rej:
+            _count(f"bond_gate_reject_{_bg_rej}")
     # 帧级复位(动作发出点与调用侧同帧语义):本函数无 m1p 发出时 pending
     # 复位 None——无条件复位防跨帧残留误归因。
     if not any(isinstance(e.action, CwActionSellDeployedParam) for e in out):

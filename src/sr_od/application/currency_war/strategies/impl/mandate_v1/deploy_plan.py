@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     DEPLOY_FENCE,
+    SwapGroupOrder,
+    SwapPlanContext,
     _bonds_of,
     cap_roomy_of,
     deploy_target_sets,
@@ -121,6 +123,86 @@ def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
         'required_names': frozenset(
             getattr(_comp, 'required_deployed', ()) or ()),
     }
+
+
+def build_swap_group_order(ctx: SwapPlanContext) -> SwapGroupOrder:
+    """组贪心序参数构建(策略层 ports 注入面;序语义 = design §2.7 钉死面)。
+
+    kernel 只含机械执行(遍历序 = 换入主循环 × victim 内层循环),序
+    语义住本构建器——换策略换序 = 换本函数产物,宿主不动。
+
+    - **候选换入序(主循环)**:名单成员先(星级降序,并列 tie-break =
+      名单注册序——``predicates.line_members`` 拼接序:core+shared)→
+      外部支撑件(星级降序,并列 tie-break = 标签命中数降序 → 注册表序
+      = ``cw_chars.CHARACTERS`` 迭代序);候选池 = bench 中支撑件并集
+      视图成员(design §2.1/§2.7 配对骨架:换入件全为支撑件);身份
+      不可判件不入池;
+    - **victim 序(内层)**:两级 + 名单末位桶——一级(纯过渡件,终局
+      键集零标签命中)→ 二级(终局标签支撑件,非名单)→ 名单末位桶
+      (通道 3;桶内 3(a) 同名升星对优先 → 现行序);各级层内序 =
+      现行机器 victim 序(P79-4 让渡序:档边际贡献升序,度量域 =
+      ``comp.all_factions`` **全量并集** ∪ SWAP_GUARD_SYSTEMS——键集
+      收窄退役后度量口径按 design §2.7 显式钉死喂全量并集,锚帧青雀
+      贡献 2 依赖战技点经 flex_factions 入域;星级键 = 现行 1★ 优先
+      桶式非全序;末键 = 板槽位扫描序)。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        _bench_cid,
+        _bonds_named,
+        swap_yield_contribution,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+        predicates,
+    )
+    comp = ctx.target_comp
+    line = list(predicates.line_members(comp))   # 名单注册序单一源(core+shared 拼接序)
+    line_pos = {name: i for i, name in enumerate(line)}
+    registry_pos = {name: i for i, name in enumerate(CHARACTERS)}
+    members = set(ctx.k_members)
+    keys = set(ctx.bond_gate_keys)
+    dep_names = {d.char_id for d in ctx.deployed if d is not None and d.char_id}
+
+    def up_key(i: int) -> tuple:
+        name = _bench_cid(ctx.bench[i])
+        star = getattr(getattr(ctx.bench[i], 'unit', None), 'star',
+                       None) or 1
+        in_line = name in members
+        # 换入主序键:名单成员桶(0) → 外部支撑件桶(1);桶内星级降序;
+        # 名单并列 = 名单注册序 / 外部并列 = 标签命中数降序 → 注册表序
+        hits = len(_bonds_named(name) & keys)
+        reg = registry_pos.get(name, len(CHARACTERS))
+        return (0 if in_line else 1, -star,
+                line_pos.get(name, len(line)) if in_line
+                else (-hits, reg))
+
+    def victim_key(name: str) -> tuple:
+        # 两级分层键:一级(0) → 二级(1) → 名单末位桶(2)
+        if name in members:
+            tier = 2
+        elif _bonds_named(name) & keys:
+            tier = 1
+        else:
+            tier = 0
+        if tier == 2:
+            # 名单末位桶内序 = 3(a) 同名升星对优先 → 现行序(design §2.7);
+            # 3(a) 可用性判定单一源 = kernel 同名升星谓词(门 1③ 前半)
+            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                _bond_gate_same_star_up_available,
+            )
+            chan3a = 0 if _bond_gate_same_star_up_available(ctx, name) else 1
+        else:
+            chan3a = 0
+        contrib = swap_yield_contribution(ctx.target_factions, dep_names,
+                                          name)   # 度量域 = all_factions 全量并集(design §2.7)
+        unit = next((d for d in ctx.deployed
+                     if d is not None and d.char_id == name), None)
+        star_bucket = 0 if ((getattr(unit, 'star', None) or 1) <= 1) else 1
+        scan = next(i for i, d in enumerate(ctx.deployed)
+                    if d is not None and d.char_id == name)
+        return (tier, chan3a, contrib, star_bucket, scan)
+
+    return SwapGroupOrder(up_sort_key=up_key, victim_sort_key=victim_key)
 
 
 def select_deployments(
