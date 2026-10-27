@@ -439,6 +439,19 @@ def emit(session: StrategySession,
     if getattr(st, 'cw4_counters', None) is None:
         st.cw4_counters = {}
 
+    # M1″ seam 门写点·生产面(emit prologue;session 属性,值源 =
+    # mandate.M1P_SEAM_VERIFIED 常量,出处与回滚路径见该常量注释;
+    # 测试面写点 = run_mandate prologue,两面同值同源)。补点依据 =
+    # 换人发射缝(emit_swap_redeploy)的对齐核对开闸常量早已置 True,
+    # 写点此前残留测试面 prologue——生产 entry 面恒缺省 False,非空
+    # 换人计划恒被 m1p_input_seam_pending 拦(C1 局 g_20261026_203023
+    # 遥测实锤 m1p_input_seam_pending=1 ∧ m1p_fired=0;design §2.7
+    # 执行形态要求组计划可发射)。
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        M1P_SEAM_VERIFIED,
+    )
+    st.cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
+
     # 决策判据载体一次置顶(同帧同视图纪律,禁函数内二次取容器)。
     gs = game_state_of(session)
     _round_num = round_num_of(gs)

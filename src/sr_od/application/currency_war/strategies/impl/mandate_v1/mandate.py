@@ -110,6 +110,7 @@ _EQUIP_ATOM_TYPES: tuple[type, ...] = (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        SwapPlan,
         SwapPlanContext,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -124,12 +125,17 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# M1″ seam 门开关常量(唯一写点的值源)。True = 开闸
+# M1″ seam 门开关常量(写点值源,单一真值)。True = 开闸
 # 置位态(现役缺省):两侧输入逐字段对齐证据(发出=决策帧黑板 vs 执行=
 # last_state+SIFT 分轨,14 字段:9 对齐 / 4 分轨有据)+ fresh 生产写点
-# 接线(shop.py 买入动作发出点 _emit_buy)两项开闸前置义务已兑付。回滚路径
-# = 本常量写回 False——门关回即恢复现役 fail-closed(m1p_input_seam_
-# pending 重新暴露),fresh 载体 phase 键式跨轮自动失效,无持久状态。
+# 接线(shop.py 买入动作发出点 _emit_buy)两项开闸前置义务已兑付。
+# 写点 = 两生产调用面 prologue(run_mandate 测试面 :966 邻域 /
+# entry.emit 生产面 prologue)把本常量写回 session 属性——3.2 批补生产面
+# 写点(此前写点残留测试面 prologue,生产 entry 面恒缺省 False:
+# C1 局 g_20261026_203023 遥测实锤 m1p_input_seam_pending=1 ∧
+# m1p_fired=0,换人在生产面被 seam 门恒拦)。回滚路径 = 本常量写回
+# False——门关回即恢复现役 fail-closed(m1p_input_seam_pending 重新
+# 暴露),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
 
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(必花分支重试风暴防线;
@@ -897,6 +903,47 @@ def _redeploy_emission_allowed(session: StrategySession,
                for b in _waiting)
 
 
+def _bond_gate_recalc_allowed(ctx: SwapPlanContext | None,
+                              plan: SwapPlan) -> bool:
+    """转型域发射帧复算统一门(design §2.5;P79-3 三轴在本域废弃的替代
+    放行面;kernel 侧判据本体禁第二实现)。
+
+    判据钉死 = **门 1 现读通过**(kernel ``swap_bond_gate_benefit`` 同一
+    函数),非「与生成时点结论一致」:对发射帧现读板态(ctx 同帧装配,
+    即现读板面)按计划组重算门 1——门 2 已在计划期逐件过
+    (``swap_sell_exclusion_reason`` 单一判定),本门不重复资格面。全组
+    pairs(sell×up 1:1)+ up 星级现取(bench 条目解包单一读点)喂判据;
+    ③ 腿的全组 pairs 为计划期末对(累积生长逐对试门 1 只喂末对)的超集,
+    OR 腿单调不减 → 对已验收计划复算恒通过,仅分叉面(计划快照与现读
+    板态不一致)绑定 fail-closed。组形状破坏(sell/up 数不齐、下标越界
+    防御)= 不通过 → 计划撤(调用侧 ``bond_gate_recalc_withdraw`` 分键,
+    零动作;design §2.5「不可行即计划撤」)。
+    """
+    if ctx is None or not plan.nonempty:
+        return False
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        swap_bond_gate_benefit,
+        swap_plan_up_names,
+    )
+    _ups = swap_plan_up_names(plan, ctx)
+    if len(_ups) != len(plan.sell_names):
+        return False   # 组形状破坏(1:1 配对骨架失守)= 分叉 fail-closed
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    _up_stars: dict[str, int] = {}
+    for _i in plan.up_bench:
+        if isinstance(_i, int) and 0 <= _i < len(ctx.bench):
+            _u = bench_slot_unit(ctx.bench[_i])
+            _up_stars[getattr(_u, 'char_id', '') or ''] = \
+                int(getattr(_u, 'star', 1) or 1)
+    _ok, _leg = swap_bond_gate_benefit(
+        ctx, victims=list(plan.sell_names), ups=_ups,
+        pairs=list(zip(plan.sell_names, _ups, strict=True)),
+        up_stars=_up_stars)
+    return bool(_ok)
+
+
 # ===== executor 本体 =====
 
 def run_mandate(frame: MandateFrame,
@@ -961,8 +1008,9 @@ def run_mandate(frame: MandateFrame,
     _frame_token = _st.cw4_frame_action_record
     _st.cw4_frame_action_record = None
 
-    # M1″ seam 门唯一写点(session 属性;值源 = M1P_SEAM_VERIFIED 常量,
-    # 出处与回滚路径见该常量注释)。
+    # M1″ seam 门写点·测试面(run_mandate prologue;session 属性,值源 =
+    # M1P_SEAM_VERIFIED 常量,出处与回滚路径见该常量注释;生产面写点 =
+    # entry.emit prologue,两面同值同源)。
     state_of(session).cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
 
     def _count(key: str) -> None:
@@ -1282,25 +1330,28 @@ def run_mandate(frame: MandateFrame,
     # kernel.cw_deploy_logic.select_swap_plan,组合语义:cap 满占用数
     # 口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后假想状态
     # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
-    # 零新启发式)。发出载体 = RunDeploy(条件续类,entry.
-    # classify_frame_stability,不触发截断、不受 M7 发出序回排覆盖);
-    # 卖谁 = 动作发出点按同一判定集现算逐件产 CwActionSellDeployedParam +
-    # CwActionDeployMoveParam 原子(发出=判定+存在性;机械执行侧
-    # CwActionSellDeployedOp 零仲裁零现读,swap_sell_exclusion_reason
-    # 单一判定,义务集∪新鲜度排除发出侧同吃)。
+    # 零新启发式)。执行形态(design 2026-10-26-swap-channel-unified
+    # §2.7 同帧逐对原子序):bond_gate 臂每动作发出面只发首对
+    # SellDeployed,换出空槽由下个决策环迭代的 M1 残余补部署
+    # (deploy_plan_moves,同一 select_deployments 裁判域)先行落位换入
+    # ——sell 仅在板满帧发射,对间序 sell→deploy→sell 结构性成立
+    # (单动作循环 = bridge 取首项 + 决策环逻辑态续算);域外单对
+    # (base/formed/transition)现行逐件形态照旧。
     # 同帧 CwActionLevelUpParam 抑制(m1p_defer_levelup):升级开新 vacancy,
     # 下帧 M1 空槽补位以零卖出成本接管——卖出不可逆 > 等一帧。
     # (十段全扫动作发出面下 defer 输入结构性恒空——第 4 步命中即返回,
     # 升级帧到不了部署步;本 defer 分支 = run_mandate 测试面已登记路径。)
     # 动作发出点门(state_of(session).cw4_m1p_seam_verified):装配两侧(发出⇔执行)
     # 输入对齐核对通过前置 False = 发出关闭、m1p_input_seam_pending 暴露
-    # (接线核对通过前不许发出,对齐证据 = 开闸前置义务;
-    # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与发出契约
-    # 留 bench 合法稳态同向)。
-    # 部署执行放行判定(P79-3 实现):终局阵容锁定转型域
-    # (arm='transition')动作发出前过「替补席线内成员存在 ∧ 存在上场能
-    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 暴露;成型/基座分支
-    # 不覆盖(§2.3 不动)。
+    # (接线核对通过前不许发出,对齐证据 = 开闸前置义务;值源 =
+    # M1P_SEAM_VERIFIED 常量,写点 = 两生产调用面 prologue
+    # 〔run_mandate 测试面/entry.emit 生产面〕,缺省关 = fail-closed,
+    # 与发出契约留 bench 合法稳态同向)。
+    # 放行判定分域(design §2.3.1/§2.5):双轨域 arm='transition' 照旧过
+    # P79-3 三轴(_redeploy_emission_allowed,redeploy_cost_gate_defer
+    # 暴露;§2.3 不动);转型域 arm='bond_gate' 过发射帧复算统一门
+    # (_bond_gate_recalc_allowed,§2.5 复算语义钉死)。成型/基座分支
+    # 不覆盖。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧动作发出点有 m1p 换人时在发出处置为 plan.arm;原消费点 = 部署机
     # 卖出分支(读后即清)已随部署机停用——现役零读端,归因分键悬空
@@ -1420,9 +1471,16 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
 
     判据单一源 = kernel ``cw_deploy_logic.select_swap_plan``(组合语义:
     cap 满占用数口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后
-    假想状态复用 select_deployments 判 up 非空);发出 = 逐 victim 产
-    ``CwActionSellDeployedParam``(先卖),卖后上序由后续帧 M1/M1′ 对
-    fresh 容器重评自然续发 ``CwActionDeployMoveParam``。
+    假想状态复用 select_deployments 判 up 非空);执行形态分臂(design
+    2026-10-26-swap-channel-unified §2.7 同帧逐对原子序):bond_gate 臂
+    = 每个动作发出面只发**首对** SellDeployed,换出空槽由下个决策环迭代
+    的 M1 残余补部署(deploy_plan_moves,同一 select_deployments 裁判域)
+    先行落位换入——sell 仅在板满帧发射,对间序 sell→deploy→sell 结构性
+    成立,组剩余由下帧重算幂等续发(计划无跨帧状态);域外单对臂
+    (base/formed/transition)= 现行逐件形态照旧。放行判定分域:
+    bond_gate 臂过发射帧复算统一门(`_bond_gate_recalc_allowed`,§2.5:
+    门 1 现读通过即放行,分叉撤计划);transition 臂照旧过 P79-3 三轴
+    (`_redeploy_emission_allowed`,§2.3.1 双轨域不废弃)。
 
     ``select_up`` = 选人判定注入(缺省 None = ``deploy_plan.
     select_deployments_reasoned`` 单一源;kernel 依赖倒置契约——选人
@@ -1504,28 +1562,51 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
         elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
                 session, state, _m1p_ctx):
             # 部署执行放行判定未过(P79-3;双轨域 arm='transition' 照旧,
-            # design §2.3.1——转型域 P79-3 废弃面 + 复算统一门接线 =
-            # 3.2,bond_gate 臂不经本门):与逐件资格拒因分列禁混桶——
-            # 资格拒 = 「能不能换」(victim 级),本键 = 「该不该这帧换」
-            # (帧级 defer,替补席线内成员轴/代价轴)。
+            # design §2.3.1——转型域 P79-3 三轴废弃,复算统一门见下一分支):
+            # 与逐件资格拒因分列禁混桶——资格拒 = 「能不能换」(victim 级),
+            # 本键 = 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
             _count('redeploy_cost_gate_defer')
+        elif _m1p.arm == 'bond_gate' and not _bond_gate_recalc_allowed(
+                _m1p_ctx, _m1p):
+            # 转型域放行 = 发射帧复算统一门(design §2.5):对现读板态按
+            # 计划组重算门 1(门 2 已逐件过),通过即放行;不通过 = 计划撤
+            # (现读板面与计划快照分叉,不可行即零动作)。分键独立于计划
+            # 拒绝侧闭集(bond_gate_reject_*),本键 = 发射面撤计划。
+            _count('bond_gate_recalc_withdraw')
         else:
-            # 逐 victim 产 CwActionSellDeployedParam(先卖;组计划逐对
-            # 连发的同帧原子序接线 = 3.2,design §2.7 执行形态);容器下标
-            # 解析失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
+            # 逐对发射(design §2.7 同帧逐对原子序):bond_gate 臂每个动作
+            # 发出面只发**首对**的 SellDeployed;换出腾出的空槽由下个决策环
+            # 迭代的 M1 残余补部署先行落位换入(裁判同源 = select_
+            # deployments 域,design §2.7「换入部署仍逐对过现行全套上序
+            # 裁判」)——sell 仅在板满帧发射,对间序 sell→deploy→sell
+            # 结构性成立(单动作循环 = bridge 取首项 + 决策环逻辑态续算,
+            # 计划无跨帧状态,重算幂等)。首对解析失败(计划名/容器下标与
+            # 黑板失配)= 帧内停发后续对(中途失败语义,§2.7):
+            # bond_gate_pair_stall 分键,零动作,下帧重算续发;已完成对
+            # 保留在板。Deploy 拖拽物理失败 = §2.8 已申报瞬态(动作层零
+            # 判效,帧内无失败信号面),由下一入口观察对账 + 重算闭合。
+            # 域外单对现行逐件形态照旧(双轨零行为差,§2.3.1)。
             _victims: list[Emitted] = []
             for _vn in _m1p.sell_names:
                 _vd = next((d for d in frame.deployed
                             if d is not None
                             and (d.char_id or '') == _vn), None)
                 if _vd is None:
-                    continue   # 计划名与黑板失配(陈旧提案),逐件跳过
+                    if _m1p.arm == 'bond_gate':
+                        _count('bond_gate_pair_stall')
+                        break   # 中途失败语义:帧内停发(首对失败 = 本帧零发射)
+                    continue   # 计划名与黑板失配(陈旧提案),域外逐件跳过照旧
                 _didx = _deployed_container_idx(state, _vd)
                 if _didx is None:
+                    if _m1p.arm == 'bond_gate':
+                        _count('bond_gate_pair_stall')
+                        break
                     continue
                 _victims.append(Emitted(
                     CwActionSellDeployedParam(deployed_idx=_didx),
                     True, 'm1_swap_redeploy'))
+                if _m1p.arm == 'bond_gate':
+                    break   # 同帧逐对原子序:发射面每次只发首对,余对下帧续发
             if _victims:
                 out.extend(_victims)
                 _count('m1p_fired')
