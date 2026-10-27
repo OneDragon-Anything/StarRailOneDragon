@@ -560,7 +560,11 @@ def evaluate_sell_candidates(
         # 装配 A(现行 sell_gate 排除集并入;k_members = 线内身份集——
         # 未锁定期候选成员判定替代 k_members 线内判定职责,line §1.2)+
         # 死库存对释放集(素材守卫旁路,单一源 = dead_pair_exit_release,
-        # 判据本体禁自算)。
+        # 判据本体禁自算)。身份段构成含终局键集标签命中件
+        # (design 2026-10-26-swap-channel-unified §2.8 堵回降口二,
+        # 单一源 = sell_gate.identity_exclusions/terminal_key_label_hit_
+        # names——本装配逐通道共用,身份段追加即全 FACE_REGULAR 通道
+        # 自动覆盖;禁在场景/池族层另设标签排除第二份)。
         excl = sell_exclusions(
             gs, tuple(sorted(line)), channel=spec.legacy_channel,
             current_round=round_num_of(gs),

@@ -19,9 +19,13 @@ A 三段(方案 v3 §2.2;与 「资格判定 = 物理硬闸 ∧ 身份分层 ∧
    mandate_v1/protection.protection_membership 全仓单一源;统一保护集
    design §2.3:保护集成员常规通道绝对禁卖)∪ registry 核心(
    CORE_SINGLE_CARD_REGISTRY 保留——银狼LV.999 等单卡核心非四体系
-   成员,不在保护集域)。覆盖义务类 + 持有类买因(τ=∞ 至账闭合事件,
-   P78-2a;持有件禁入一切通道燃料资格 = P41 燃料类「边际贡献≈0」资格
-   本义,P78-4,非 P60 新适用范围)。
+   成员,不在保护集域)∪ 乙分支获取名集(P86)∪ 终局键集标签命中件(
+   design 2026-10-26-swap-channel-unified §2.8 堵回降口二:锁定终局
+   阵容键集标签命中的件不看激活档位一律禁入常规通道换金面,集合
+   单一源 = ``terminal_key_label_hit_names``;义务基座费用序截断可把
+   非名单标签件裁出保护面,本腿为增补兜底)。覆盖义务类 + 持有类买因
+   (τ=∞ 至账闭合事件,P78-2a;持有件禁入一切通道燃料资格 = P41
+   燃料类「边际贡献≈0」资格本义,P78-4,非 P60 新适用范围)。
 2. 窗口段(本批落地):press 与 stall_protect 两类买入共簿登记
    {名 → (买因,登记轮)},活跃判据 = 登记轮 == 当前轮(与 T3 同界,
    P78-2b)。**排除面 = press 类**:垫保类的通道处置属通道对价段
@@ -68,9 +72,11 @@ from sr_od.application.currency_war.kernel.cw_card_identity import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
+    get_comp,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     fresh_buys_sell_face,
+    terminal_key_label_hit_names,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
@@ -888,12 +894,28 @@ def identity_exclusions(session: StrategySession,
                         *, cap_hold: int | None = None) -> set[str]:
     """装配 A 身份段(方案 v3 §2.2 第 1 段;P78 INV)。
 
-    = 义务基座 ∪ 保护集 ∪ registry 核心。保护集 = 全仓身份单一源
+    = 义务基座 ∪ 保护集 ∪ registry 核心 ∪ 乙分支获取名集 ∪ 终局键集
+    标签命中件。保护集 = 全仓身份单一源
     ``protection_membership``(统一保护集 design §2.3 裁决:保护集成员
     常规通道绝对禁卖,经本段装配;Z1 凑息排除集等静态身份消费随本单一
     装配点同步)。registry 核心保留缘由 = 银狼LV.999 等单卡核心非四体系
     成员,不在保护集域(design §2.3)。本集取窄形态 = 基座 ∪ 现算身份
     两源,覆盖「已买待持有」与「在售未买」两态。
+
+    **终局键集标签命中腿(design 2026-10-26-swap-channel-unified §2.8
+    堵回降口二)**:终局阵容锁定帧(``ist.locked_comp`` 键集 =
+    ``Comp.form_tiers`` 键)把羁绊标签命中键集的件并入排除——不看是否
+    已承载激活档位(现行 ``is_field_irrelevant_unit`` 仅资格级覆盖
+    「有已达成档」件),bench 侧含内;集合单一源 =
+    ``terminal_key_label_hit_names``。落点机制决定覆盖面:装配 A 经
+    ``sell_exclusions`` 为全部 FACE_REGULAR 通道共用
+    (criteria/sell_candidates.py SCENE_SPECS 晶矿腾位/店内置换/
+    C1 恒买席满腾位/会话内筹资/节末凑息/升级凑金),身份段追加即逐
+    通道自动覆盖;FACE_SELF_RESCUE 不经本段(评估器 face 分派),
+    自救豁免保留(design §2.8 自救豁免申报)。名单成员 ⊆ 义务基座
+    已在集内,本腿对其为冗余兜底(无害);义务基座费用序截断可把非名单
+    标签件裁出保护面,本腿堵住该泄露。未锁定帧(p1 配方对锁/空窗)
+    键集空 = 谓词零面(无终局键集即无保护对象)。
 
     附带换线闭合读点(义务类登记账对账,见
     ``_close_switched_obligations``;读端幂等,行为零面)。
@@ -912,6 +934,13 @@ def identity_exclusions(session: StrategySession,
                                       state_of(session)))
     excl |= set(CORE_SINGLE_CARD_REGISTRY)
     excl |= hub_acquired_names_of(session)
+    # 终局键集标签命中件(§2.8 堵回降口二;comp 解析与义务基座同源
+    # ist.locked_comp,键集 = form_tiers 键):
+    ist = getattr(state_of(session), 'v3_intention', None)
+    _comp = get_comp(getattr(ist, 'locked_comp', '') or '') \
+        if ist is not None else None
+    excl |= terminal_key_label_hit_names(
+        frozenset(getattr(_comp, 'form_tiers', None) or ()))
     return excl
 
 

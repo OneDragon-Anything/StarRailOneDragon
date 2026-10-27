@@ -929,6 +929,15 @@ def _swap_star_and_merge_guards(name: str, ctx: SwapPlanContext, *,
     不豁免——不可判星级 = 不可判弱序,分级序的排序输入缺失)。
     合成素材守卫按同名同星全场域计数(含自身,``cw_state.same_star_count``
     单一源)= 2 未完态拒。
+
+    **演进降级排除(design 2026-10-26-swap-channel-unified §2.8 堵回
+    降口一)**:武装释放面不豁免终局键集标签命中件——降级换人无门 1
+    组级收益约束,标签件(未来板面成员)经此通道离场会破坏「板上标签
+    命中件唯一离场通道 = 配对骨架换人且组级支撑数净非降」的不变式前提
+    (§2.8 段一);辖域 = 武装释放面本身(star>1 腿),1★ 标签件的资格
+    归各域自有机器(转型域 = 门 2 白名单通道 2,不属演进分支资格面)。
+    拒因沿用既有键 ``star_guard``(资格族闭集不扩,mandate 逐件分键
+    闭集零改)。
     """
     _deployed = deployed if deployed is not None else ctx.deployed
     _bench = bench if bench is not None else ctx.bench
@@ -940,6 +949,11 @@ def _swap_star_and_merge_guards(name: str, ctx: SwapPlanContext, *,
                             and not getattr(ctx, 'evolution_swap_armed',
                                             False)):
         return 'star_guard'   # 星级不可读/非 1★ = fail 向不换(出战就绪让位见上注)
+    if star_n > 1 and (_bonds_named(name)
+                       & getattr(ctx, 'bond_gate_keys', frozenset())):
+        # 走到此处 = 武装释放面(star>1 ∧ evolution armed):标签命中件
+        # 不获释放(design §2.8 堵回降口一,拒因沿用 star_guard 键)。
+        return 'star_guard'
     from sr_od.application.currency_war.kernel.cw_vocab import same_star_count
     if same_star_count(name, star_n, _bench, _deployed) == 2:
         return 'merge_material_guard'
@@ -1033,6 +1047,9 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
       (None)弃权保留在前(fail-closed);
     - 资格族(per-piece):target_keep / fenced_arm_closed /
       engines_guard / merge_material_guard / star_guard / fp_unreadable。
+      star_guard 辖域含演进降级排除(§2.8 堵回降口一):武装释放面对
+      终局键集标签命中件不豁免(拒因沿用本键,见
+      ``_swap_star_and_merge_guards`` 节注)。
       **转型域**(判别子 = ``swap_bond_gate_domain`` 三合取)内走门 2
       白名单(``_bond_gate_victim_reject``):fenced 与否统一由门 1(组态
       收益,组级)与门 2 其余资格面裁定(锁定帧行为延续,design
@@ -1230,7 +1247,10 @@ class SwapPlanContext:
     #: 降级换人语义(弱序星级→费用)接入换人机制的参数化面,适用范围 =
     #: 锁定转型域 ∧ 板满 ∧ bench 已登记线件待上(
     #: 语义宿主 = kernel.cw_evolution 的分级保护机器(该模块已停用),本分支不新增
-    #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。
+    #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。释放面
+    #: **不豁免终局键集标签命中件**(演进降级排除,design
+    #: 2026-10-26-swap-channel-unified §2.8 堵回降口一,拒因沿用
+    #: star_guard;见 ``_swap_star_and_merge_guards``)。
     evolution_swap_armed: bool = False
     #: 判据必需件名集(装配单一源 = 目标阵容 ``required_deployed``;与
     #: mandate_v1 deploy_plan ``_deploy_plan_inputs`` 同源同值)。消费面 = select_swap_plan
@@ -1313,6 +1333,31 @@ def support_view_char_is(ctx: SwapPlanContext, char_id: str) -> bool:
     ch = CHARACTERS.get(cid) if cid else None
     return ch is not None and bool(
         (set(ch.factions) | set(ch.flows)) & ctx.bond_gate_keys)
+
+
+def terminal_key_label_hit_names(
+        bond_gate_keys: frozenset[str] | set[str]) -> frozenset[str]:
+    """终局键集标签命中件名集(全注册表;design §2.1 标签命中判据的
+    集合形态单一源)。
+
+    谓词 = 单位羁绊标签(factions ∪ flows,读法单一源 = ``_bonds_named``,
+    与 ``support_view_char_is`` 同式)命中键集即计入——**不看是否已承载
+    激活档位**(design 2026-10-26-swap-channel-unified §2.8 排除谓词
+    语义钉死:现行 ``is_field_irrelevant_unit`` 仅资格级覆盖「有已达成
+    档」件,本集合盖住无档标签件的泄露面——义务基座按费用序截断〔B′〕
+    可把非名单标签件裁出保护面,来金通道即由此泄露);名单成员命中亦
+    计入 = 冗余兜底(义务集已保,无害)。键集空(未锁定帧无终局键集)
+    恒空集,谓词零面。教义锚:「哪怕下远坂凛都不能拆能量」(cw_comps.py
+    双王圣杯 branch_key 注记)——标签命中一律保护,bench 标签件为未来
+    板面成员同受保护。
+
+    消费面 = sell_gate 装配 A 身份段(来金族资格增补排除,design §2.8
+    堵回降口二);禁消费位自建第二份集合口径。
+    """
+    keys = set(bond_gate_keys)
+    if not keys:
+        return frozenset()
+    return frozenset(n for n in CHARACTERS if _bonds_named(n) & keys)
 
 
 def bench_target_count(ctx: SwapPlanContext | None, *,
