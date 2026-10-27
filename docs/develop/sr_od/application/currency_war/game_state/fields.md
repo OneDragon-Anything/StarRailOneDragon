@@ -1910,10 +1910,21 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   `env_1002_faction_refresh_odds_unmodeled`(燃血概念股)、
   `env_1003_faction_refresh_odds_unmodeled`(能量概念股)、
   `env_1004_faction_refresh_odds_unmodeled`(列车同行概念股)、
-  `env_1005_faction_refresh_odds_unmodeled`(银河学者概念股)):sim 商店发牌
+  `env_1005_faction_refresh_odds_unmodeled`(银河学者概念股)、
+  `env_1006_faction_refresh_odds_unmodeled`(贝洛伯格概念股)):sim 商店发牌
   不模拟阵营权重,刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气
   收益;裁定正本 = invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面
   载体,遥测对账只量化失真不产落参。
+- 角色机制键 `bronya_side_pick_tie_blood`(布洛妮娅选边平局默认燃血的
+  假设申报;落点衔接:**角色机制键常量单一源 = `cw_chars`(随规则单一源
+  `cw_chars.side_pick_bond` 落位),与概念股族/环境登记键单一源
+  `cw_investments` 分工,不迁常量**):图鉴只写「人数更多」
+  (characters/布洛妮娅.md,平局情形无依据)——布洛妮娅注册表双羁绊
+  全登记(贝洛伯格阵营 + 燃血流派双边都属,economy.md §8 用户裁定
+  2026-10-28)后,板面羁绊计数按图鉴逻辑选边单边计入(规则单一源 =
+  `side_pick_bond`,per-unit 标签单一源 = `unit_bond_tags` peers 透传),
+  平局默认燃血 = 可见条目形态默认假设;校准源 = 实机对局布洛妮娅在场
+  且两边等数时的羁绊等级面板读数,随机态观察收口,不响停。
 
 ### 5.3 效果族归属(写入归属四选一)
 

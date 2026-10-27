@@ -81,7 +81,9 @@ def _qualification_sets(view) -> dict[str, set[str]]:
     资格 = 出身 ∨ 持该阵营星徽(装备贡献单一源 = cw_bond_equips.
     unit_bond_tags:出身/卡带/星徽全量口径;名不在注册表/未知 → 零标签,
     该名对所有阵营无资格)。开拓者按所在排形态(
-    「资格集语义」节)。
+    「资格集语义」节)。选边型双羁绊角色(布洛妮娅,
+    cw_chars.SIDE_PICK_DUAL_BONDS)标签经 peers 透传选边单边化 →
+    其资格集自动单边(计入边一侧有资格、另一侧无)。
 
     watched = 弹窗两阵营 + 伙伴 + ENV_BOND_TIER_GRANTS 羁绊(羁绊档位
     发放判据要按资格计数判档,资格集一并盯;扩容零干扰 = 既有 S1a/
@@ -98,8 +100,12 @@ def _qualification_sets(view) -> dict[str, set[str]]:
         if _bond not in watched:
             watched.append(_bond)
     sets: dict[str, set[str]] = {f: set() for f in watched}
-    for row, u in _iter_field_units(view):
-        tags = unit_bond_tags(u, row=row)
+    # 选边型双羁绊角色(布洛妮娅)经 peers 透传按图鉴逻辑单边计入——
+    # 标签单边化后其资格集自动单边(同聚合单一源口径)。
+    units = list(_iter_field_units(view))
+    for row, u in units:
+        tags = unit_bond_tags(u, row=row,
+                              peers=[u2 for _r2, u2 in units if u2 is not u])
         for f in watched:
             if f in tags:
                 sets[f].add(str(u.char_id))

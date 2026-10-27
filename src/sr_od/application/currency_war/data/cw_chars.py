@@ -172,7 +172,16 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     # —— 5 费 ——
     _ch("流萤", 5, "front", "输出", "星核猎手", "击破", source="6452"),
     _ch("昔涟", 5, "front", "辅助、输出", "昼之半神、夜之半神", "", independent="挚爱之人", source="6190"),
-    _ch("布洛妮娅", 5, "front", "辅助、输出", "", "燃血", independent="大守护者", source="6189"),  # trait 对齐 plaza 可见条目11012=燃血+大守护者(去贝洛伯格);隐藏条目11011=贝洛伯格+大守护者(变体)
+    _ch("布洛妮娅", 5, "front", "辅助、输出", "贝洛伯格", "燃血",
+        independent="大守护者", source="6189"),  # 双羁绊登记(用户裁定 2026-10-28,
+        # economy.md §8):阵营轴【贝洛伯格】+ 流派轴【燃血】双边都属——
+        # 采样域/成员反查双边命中;板面羁绊计数按图鉴逻辑选边单边计入
+        # (图鉴:「基于小队中【贝洛伯格】和【燃血】角色的数量,加入人数
+        # 更多的羁绊」;选边机制单一源 = cw_bond_equips.unit_bond_tags,
+        # 规则 = cw_chars.side_pick_bond)。口径史:2026-08-15 trait 对齐
+        # 曾按 plaza 可见条目 11012(燃血+大守护者)清空 factions、仅留
+        # flows='燃血';隐藏条目 11011 = 贝洛伯格+大守护者(变体)——
+        # 2026-10-28 起按双羁绊全登记口径收敛,变体形态分歧不建第二条目。
     _ch("Archer", 5, "front", "输出", "命运圣杯", "战技点", independent="魔术师", source="6188"),
     _ch("云璃", 5, "back", "输出", "狼狩", "能量", source="6187"),
     _ch("黑天鹅", 5, "back", "输出、辅助", "盛会之星", "持续伤害", independent="命运卜者", source="6186"),
@@ -253,3 +262,47 @@ def chars_by_faction(faction: str, include_flows: bool = True) -> list[Character
     if include_flows:
         out += [c for c in CHARACTERS.values() if faction in c.flows and c not in out]
     return out
+
+
+# ===== 选边型双羁绊(板面羁绊计数选边机制;机制/承载分工见
+# cw_bond_equips.unit_bond_tags docstring 与 fields.md §5.2 披露键组)=====
+
+#: 选边型双羁绊角色(首例布洛妮娅,用户裁定 2026-10-28):注册表
+#: factions/flows 双边都登记(采样域/成员反查双边命中),板面羁绊
+#: 计数按图鉴逻辑选边单边计入。值 = (羁绊甲, 羁绊乙);比较基数 =
+#: 其余在场角色的注册表出身(factions+flows,不含装备贡献);平局 =
+#: 乙(布洛妮娅 = 燃血,可见条目形态默认;假设,披露键
+#: BRONYA_SIDE_PICK_TIE_BLOOD 登记)。
+SIDE_PICK_DUAL_BONDS: dict[str, tuple[str, str]] = {'布洛妮娅': ('贝洛伯格', '燃血')}
+
+#: 选边平局默认乙羁绊的假设申报键(图鉴只写「人数更多」,平局无依据;
+#: 校准源 = 实机对局布洛妮娅在场且两边等数时的羁绊等级面板读数,
+#: 随机态观察收口,不响停)。
+BRONYA_SIDE_PICK_TIE_BLOOD: str = 'bronya_side_pick_tie_blood'
+
+
+def side_pick_bond(char_id: str, peer_cids: list[str] | None) -> str | None:
+    """选边型双羁绊角色的板面计入羁绊名(非该类角色 = None)。
+
+    peer_cids = 同场其余角色 cid(不含自己);基数只数注册表出身
+    (factions+flows)。开拓者不在选边两边(列车同行/能量出身,基数
+    零贡献),其形态读法与本规则无关,不另立读法。平局 → 乙羁绊
+    (SIDE_PICK_DUAL_BONDS 值第二位,假设申报 BRONYA_SIDE_PICK_TIE_BLOOD)。
+    未注册 peer 不计两边(同注册表口径)。"""
+    pair = SIDE_PICK_DUAL_BONDS.get(char_id)
+    if pair is None:
+        return None
+    bond_a, bond_b = pair
+    count_a = count_b = 0
+    for cid in (peer_cids or ()):
+        ch = CHARACTERS.get(str(cid)) if cid else None
+        if ch is None:
+            continue
+        born = set(ch.factions) | set(ch.flows)
+        if bond_a in born:
+            count_a += 1
+        if bond_b in born:
+            count_b += 1
+    if count_a > count_b:
+        return bond_a
+    return bond_b

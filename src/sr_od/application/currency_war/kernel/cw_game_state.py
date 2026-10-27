@@ -1062,11 +1062,18 @@ def _rows_unit_key(u: Any) -> tuple[str, int, tuple[str, ...]]:
             tuple(sorted(str(e) for e in (getattr(u, 'equips', None) or []))))
 
 
-def _row_unit_tags(u: Any, row: str) -> tuple[str, ...]:
+def _row_unit_tags(u: Any, row: str,
+                   peers: list[Any] | None = None) -> tuple[str, ...]:
     """行内单位的羁绊标签(board 派生重算单一源;标签函数单一源 =
     ``cw_bond_equips.unit_bond_tags``)。Unit 无 position_pref 位(排归属
     由所在行承载),本口按行名补 shim:前排=front/后排=back(开拓者形态
     随排归一的坐标系输入)。
+
+    ``peers`` = 同场其余单位列表(不含自己,duck-type 同 ``u``):选边型
+    双羁绊角色(布洛妮娅,cw_chars.SIDE_PICK_DUAL_BONDS)经透传按
+    ``cw_chars.side_pick_bond`` 选边单边计入;None(缺省)= 现行全集行为
+    (单单位语义调用点如盛会之星判定不传,选边型角色双边照出——布洛
+    妮娅与盛会之星机制无交集)。
 
     **未知身份零贡献(刻意,禁 faction 兜底)**:身份不在注册表(注册表
     外单位如狸狸/姵姵,或 OCR 误读名)时标签为空,容器派生路径**不回退
@@ -1083,7 +1090,8 @@ def _row_unit_tags(u: Any, row: str) -> tuple[str, ...]:
     return unit_bond_tags(SimpleNamespace(
         char_id=str(getattr(u, 'char_id', '') or ''),
         position_pref=('front' if row == 'front_row' else 'back'),
-        equips=list(getattr(u, 'equips', None) or [])))
+        equips=list(getattr(u, 'equips', None) or [])),
+        peers=peers)
 
 
 def _route_logic_mismatch(*, field_name: str, expected: Any, actual: Any,
@@ -3332,13 +3340,28 @@ class GameState:
         派生漂移由下一备战帧观察覆盖收敛,注释与接线一致:失配经
         :meth:`_absorb_board_derived` 采新留存证据(``board_derived_adopt``,
         失配告警不响)——派生量以观察为真值源,观察侧坏读数暴露于台账与
-        obs_conflict 留存证据链、由下一帧观察自愈。"""
+        obs_conflict 留存证据链、由下一帧观察自愈。
+
+        **选边退化分支(行为申报)**:选边型双羁绊角色(布洛妮娅,
+        ``cw_chars.SIDE_PICK_DUAL_BONDS``)的计入边依赖全场构成——增删
+        任一角色可翻转其选边,她自身键不变时逐子表多重集差永不重算其
+        标签,增量差量结构性不可维护;选边型角色 ∈ 新旧行域并集 ∧ 本次
+        写有增删 → 整体退化为按新行域全量聚合(每单位标签口带 peers =
+        全板其余单位)直接得新 board,不走增量差量。全量重算抹掉的观察
+        基座装备羁绊贡献同现行增量口径的存在理由,真值源 = 观察,漂移
+        仍由下一帧观察覆盖收敛(行为申报非失真);无选边型角色或零增删
+        → 现行增量路径不动。"""
+        from sr_od.application.currency_war.data.cw_chars import (
+            SIDE_PICK_DUAL_BONDS,
+        )
         board = self.board.value
         if board is None:
             return
         new_view = getattr(self, field_name).value
         old_view = old_value
-        new_board = dict(board)
+        sub_tables: list[tuple[str, list, list, Counter, Counter]] = []
+        side_in_play = False
+        has_change = False
         for sub, row_name in (('front_slots', 'front_row'),
                               ('back_slots', 'back_row')):
             old_units = [u for u in (getattr(old_view, sub, None) or [])
@@ -3347,6 +3370,33 @@ class GameState:
                          if u is not None]
             old_counter = Counter(map(_rows_unit_key, old_units))
             new_counter = Counter(map(_rows_unit_key, new_units))
+            sub_tables.append((row_name, old_units, new_units,
+                               old_counter, new_counter))
+            if new_counter - old_counter or old_counter - new_counter:
+                has_change = True
+            if not side_in_play:
+                cids = {str(getattr(u, 'char_id', '') or '')
+                        for u in old_units + new_units}
+                side_in_play = bool(cids & set(SIDE_PICK_DUAL_BONDS))
+        if side_in_play and has_change:
+            # 全量退化:选边翻转增量不可维护,按新行域全量聚合重算。
+            all_new = [u for _rn, _old, new_units, _oc, _nc in sub_tables
+                       for u in new_units]
+            new_board: dict[str, int] = {}
+            for row_name, _old, new_units, _oc, _nc in sub_tables:
+                for u in new_units:
+                    for t in _row_unit_tags(
+                            u, row_name,
+                            peers=[v for v in all_new if v is not u]):
+                        new_board[t] = new_board.get(t, 0) + 1
+            if new_board == dict(board):
+                return
+            write = self.write_logic_rand if rand else self.write_logic
+            write(self.board, new_board, produced_by=produced_by,
+                  evidence='proj_board_resync', sig=sig)
+            return
+        new_board = dict(board)
+        for row_name, old_units, new_units, old_counter, new_counter in sub_tables:
             added = new_counter - old_counter
             removed = old_counter - new_counter
             if not added and not removed:

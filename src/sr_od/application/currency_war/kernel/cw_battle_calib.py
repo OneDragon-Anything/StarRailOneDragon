@@ -254,17 +254,32 @@ def _board_factions_of(deployed) -> dict[str, int]:
 
     「过渡阵容凑到没有」的判据输入:recipe_tier(配方档位)/
     三人组在场上——sim 账本 board 不可恒空,否则成型质量不可观测。
+    选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)按
+    ``cw_chars.side_pick_bond`` 选边单边计入(基数 = 其余在场角色注册表
+    出身,不含装备贡献)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
+    from sr_od.application.currency_war.data.cw_chars import (
+        CHARACTERS as _CH,
+    )
+    from sr_od.application.currency_war.data.cw_chars import (
+        SIDE_PICK_DUAL_BONDS as _SP,
+    )
+    from sr_od.application.currency_war.data.cw_chars import (
+        side_pick_bond as _side_pick,
+    )
     out: dict[str, int] = {}
-    for d in (deployed or []):
-        if d is None:   # 槽位表空槽
-            continue
-        cid = getattr(d, 'char_id', '') or ''
-        ch = _CH.get(cid)
+    units = [d for d in (deployed or []) if d is not None]
+    cids = [str(getattr(d, 'char_id', '') or '') for d in units]
+    for cid in cids:
+        ch = _CH.get(cid) if cid else None
         if ch is None:
             continue
-        for f in (ch.factions or ()) + (ch.flows or ()):
+        if cid in _SP:
+            tags: tuple[str, ...] = (_side_pick(
+                cid, [c for c in cids if c != cid]),)
+        else:
+            tags = (ch.factions or ()) + (ch.flows or ())
+        for f in tags:
             out[f] = out.get(f, 0) + 1
     return out
 

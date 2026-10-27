@@ -1668,7 +1668,10 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
         {羁绊: 在场人数};**表空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
         (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突保留证据会暴露
         混合频率)。**无阵营已知角色不 bail**:白厄「救世主」复制效果不计人数
-        (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
+        (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(双羁绊登记:贝洛
+        伯格阵营+燃血流派)按图鉴逻辑选边单边计入——比较其余在场角色的
+        注册表出身计数(图鉴「加入人数更多的羁绊」,规则单一源 =
+        cw_chars.side_pick_bond,peers 经 unit_bond_tags 透传);
         独立羁绊行计入(与左面板显示同口径)。
 
     入参形状 = 主域派生下标工作表(list[Unit | None],cw_game_state.
@@ -1684,9 +1687,13 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
         return None
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
+    # 选边型双羁绊角色的计入边依赖全场构成(选边不分排,基数 = 全板其余
+    # 角色)→ 先收齐有效单位全集,聚合时传 peers = 其余单位。
+    units = [bc for _i, bc in _occ]
     for i, bc in _occ:
         row = 'front' if i < DEPLOYED_FRONT_CAPACITY else 'back'
-        tags = unit_bond_tags(bc, row=row)
+        tags = unit_bond_tags(bc, row=row,
+                              peers=[u for u in units if u is not bc])
         if tags:
             for t in tags:
                 counts[t] = counts.get(t, 0) + 1

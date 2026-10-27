@@ -19,7 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTERS,
+    SIDE_PICK_DUAL_BONDS,
+    side_pick_bond,
+)
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
@@ -321,13 +325,23 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     select_swap_plan 卖后假想档(两侧计数同循环同口径,单一源;未注册名
     不计——无名可判即无阵营信号,件本身的去重/fail-open 由
     deploy_plan.select_deployments 的 cid 分支管)。
+    选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)按
+    ``cw_chars.side_pick_bond`` 选边单边计入(贡献 = [side] 替代双边
+    出身;基数 = 其余在场 cid 的注册表出身,同图鉴「角色的数量」口径,
+    不含装备贡献)。
     """
     out: dict[str, int] = {}
-    for cid in deployed_cids:
+    cids = list(deployed_cids)
+    for cid in cids:
         ch = CHARACTERS.get(cid) if cid else None
         if ch is None:
             continue
-        for f in tuple(ch.factions or ()) + tuple(ch.flows or ()):
+        if cid in SIDE_PICK_DUAL_BONDS:
+            tags: tuple[str, ...] = (side_pick_bond(
+                cid, [c for c in cids if c != cid]),)
+        else:
+            tags = tuple(ch.factions or ()) + tuple(ch.flows or ())
+        for f in tags:
             out[f] = out.get(f, 0) + 1
     return out
 

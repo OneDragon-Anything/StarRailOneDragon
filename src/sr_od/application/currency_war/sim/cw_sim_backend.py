@@ -2367,15 +2367,25 @@ class SimBackend:
         覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
         职能)。失配经容器吸收面(``_absorb_board_derived``,sim 证据
         前缀命中抑制面)以实际观察为准采新。触发点 = advance 步界(等值零写
-        幂等,sim 板面观察的唯一步界)。"""
+        幂等,sim 板面观察的唯一步界)。
+
+        选边型双羁绊角色(布洛妮娅,cw_chars.SIDE_PICK_DUAL_BONDS)经
+        peers 透传按图鉴逻辑选边单边计入(选边不分排,peers = 全板其余
+        有效单位)。"""
         truth: dict[str, int] = {}
         _view = self.gs.deployed.value
+        all_units = [unit for _rn, sub in
+                     (('front_row', _view.front_slots if _view is not None else ()),
+                      ('back_row', _view.back_slots if _view is not None else ()))
+                     for unit in (sub or []) if unit is not None]
         for row_name, sub in (('front_row', _view.front_slots if _view is not None else ()),
                               ('back_row', _view.back_slots if _view is not None else ())):
             for unit in (sub or []):
                 if unit is None:
                     continue
-                for tag in _row_unit_tags(unit, row_name):
+                for tag in _row_unit_tags(unit, row_name,
+                                          peers=[u for u in all_units
+                                                 if u is not unit]):
                     truth[tag] = truth.get(tag, 0) + 1
         gs = self.gs
         plane, r = self._node_pos()
