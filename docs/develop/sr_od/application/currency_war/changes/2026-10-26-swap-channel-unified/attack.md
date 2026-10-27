@@ -1,115 +1,94 @@
-# 转型域换人通道统一设计 无前提对抗审查报告
+# 转型域换人通道统一设计 无前提对抗审查报告(本轮全文,替换既往内容)
 
-> 审查对象：本目录 `design.md` / `landing.md` / `README.md`（状态：对抗审中）。
-> 审查纪律：干净上下文、无前提、三核并重（无前提 / 规范遵循 / 治本核验）；数值/口径/引文/码点一律直调复核，as-built 断言读代码体（docstring 仅线索），行为可达性拿复盘报告真实牌面逐帧推演。
-> 判据源（直调自取）：`docs/develop/harness/iteration-design.md`、`skills/sr-od-currency-war-dev/references/strategy-work.md`、strategy-docs/00/01 宪法、`proofs/math_proofs.md`（P61/P78/P79/P87/P88/P89 行）与 proofs 单篇、注册表（`data/cw_factions.py`/`data/cw_chars.py`/`kernel/cw_comps.py`/`kernel/cw_merge_simulate.py`）、现行换人机器（`kernel/cw_deploy_logic.py` 全 1784 行、`kernel/cw_launch_admission.py`、`kernel/cw_intention.py`、`kernel/cw_merge_simulate.py`）、策略层（`strategies/impl/mandate_v1/mandate.py`/`entry.py`/`deploy_plan.py`/`criteria/sell_candidates.py`/`sell_gate.py`）、复盘报告 `.debug/currency_war/deep_review/g_20261026_203023.md`、flow/screens 正本、02/11/14/17/18/22/24 号篇。
+> 审查对象:本目录 `design.md`(总纲)/`landing.md`(落地)/`README.md`(索引),现行文本(对抗审中)。
+> 审查纪律:干净上下文、无前提、三核并重;数值/口径/引文/码点一律直调复核禁转述,as-built 断言读代码体(docstring 仅线索),行为可达性拿复盘报告真实牌面逐帧推演(含 victim 池在门 2 全谓词+两级序下的可达性与选择结果、OR 承接阵容与档位梯阵容两形态、bench/板侧标签件在装配 A 机制下的卖出可达性)。
+> 判据源(全部直调自取):宪法 `strategy-docs/00_framework.md`(第 1 条行亲读)/`01_math_framework.md`;`proofs/math_proofs.md`(P61/P63/P78/P79/P87/P88/P89/P90-94 行)+单篇 p61/p87/p88/出口生存余量篇;注册表(`data/cw_factions.py` 全表、`data/cw_chars.py` :106-181、`kernel/cw_comps.py` 双王圣杯条目+form_progress+SEELE_OR_LEGS、`kernel/cw_merge_simulate.py` same_star_count 定位、`kernel/cw_line_defs.py` 围栏集、`kernel/cw_system_cards.py`);现行换人机器(`kernel/cw_deploy_logic.py` :478-1784 逐段代码体、`kernel/cw_launch_admission.py` 全文、`kernel/cw_intention.py` committed_authority 段)、策略层(`mandate.py` P79-3 段+发出段、`entry.py` 窗口段+第 6 步、`deploy_plan.py` is_tgt、`session_scope.py` line_members_view/direction_comp_of、`statefn/predicates.py` line_members、`criteria/sell_candidates.py` 资格段、`sell_gate.py` 装配 A 段、`mandate_state.py`);正本篇(02/10/11/14/17/18/22/24);流程层(projection_contract §4.3、action_exec/screens 存在性);复盘档案 `.debug/currency_war/deep_review/g_20261026_203023.md`(2-1 帧开店前后双帧逐段);迭代账本(T-115 裁定 dag note 2026-09-07);规范(`docs/develop/harness/iteration-design.md` 全文、`skills/sr-od-currency-war-dev/references/strategy-work.md` 全文)。
 
-## 总判定：**需修订**（2 阻断 + 6 应修 + 4 低；阻断不排除不得定稿）
+## 总判定:**需修订**(阻断 3 + 应修 3 + 存疑 2 + 低 4)
 
 ---
 
 ## 一、发现清单
 
-### A1【阻断】victim 序首键度量域未钉死——锚①「Saber 换青雀·槽位序唯一推导」在 P79-4 注册度量下被证伪
+### A1【阻断】情形 B(外部凑档件换入)三方矛盾 + §2.6 窗口层 as-built 断言失实
 
-- 位置：`design.md:90`（§2.7 锚帧复验）、`design.md:111`（§2.10 锚①）；`kernel/cw_deploy_logic.py:1695-1708`（现行排序处）、`:1701-1702`（首键 = `swap_yield_contribution(ctx.target_factions, …)`）；`proofs/math_proofs.md:101`（P79-4 注册度量域 =「`target_comp.all_factions` ∪ SWAP_GUARD_SYSTEMS 并集各档 achieved 档数下降量」）。
-- 推演（复盘报告 `g_20261026_203023.md:2605/2618` 真实牌面：板上 吉/青雀/远坂凛/停云/爻光，羁绊计数 圣杯×2、能量×2、战技点×2、仙舟×3、欢愉×1）：
-  - 现行 victim 序首键 = 档边际贡献（P79-4 让渡序，码点 `:1701`）。按 P79-4 注册度量域（all_factions ∪ guard）：移除**青雀**（仙舟+战技点，`cw_chars.py:112`）掉两档——仙舟 3→2（`cw_factions.py:53` tiers (3,5,7,10)，achieved 1→0）+ 战技点 2→1（`cw_factions.py:94` tiers (2,4,6,8)，achieved 1→0）= 贡献 2；移除**爻光**（仙舟+欢愉，`cw_chars.py:133`）只掉仙舟一档 = 贡献 1。升序排序下**爻光先于青雀**，贪心配对将发出 **Saber 换爻光**，锚①「Saber 换青雀（…槽位序推导唯一）」不成立。
-  - 锚①只有在首键度量域 = 终局键集 {命运圣杯, 能量}（此时青雀/爻光贡献同为 0，槽位序才唯一推出青雀：deployed 扫描序青雀 scan=1 先于爻光 scan=4）或「终局键集 ∪ guard」（两者同为 1，同上）时成立。
-- 根因：§2.3.1 退役键集收窄五消费位，但 victim 序度量消费的 `ctx.target_factions` **不在五消费位清单**（`locked_redeploy_target_keys` docstring 列的五位 = offtarget-② / swap_sell_exclusion_reason 宽口径归因 / is_tgt / _bench_is_target / post_sell_offline，`cw_deploy_logic.py:540-543`）；退役后该度量喂什么口径，设计全文未钉。按「现行机器 victim 序」的字面继承（= P79-4 注册式）锚①必挂；§2.10 锚②预测表同染此歧义。实现者的四种合理读法中两种保锚、三种挂锚（终局键集 / 键集∪guard 保锚；all_factions∪guard / 收窄键集残留 / all_factions 全量挂锚），无文本裁决。
-- 修正方向：§2.7 显式钉死 victim 序首键的度量域（建议 = 终局键集档位梯，零过渡体系项），并按 §2.9 对 B_t 的同款纪律声明与 P79-4 注册度量域的关系（迁移改写或语义边界申报，禁双源漂移）；若维持 P79-4 口径则锚①改为 Saber 换爻光并重推唯一性。
+- 码点事实(读代码体,`entry.py:325-345`):`_deploy_window_blocked` 两腿豁免——腿一(`:336-338`)豁免 `direction_comp_of` 的 `line_members`(core∪shared,`statefn/predicates.py:81-92`);腿二(`:340-342`)锁定帧豁免锁定线名单外的一切件。锁定帧下 k = 锁定线(`session_scope.py:387-389`),两腿合起来把**全部件**豁免——**锁定转型域内窗口谓词结构性恒 False,窗口层对本迭代辖域零约束力**。§2.6(design.md:85)「无 entry_signals 登记的替补 = 窗口判定恒关(不可经换人上板)」「外部凑档件(如第 5 格能量件)的可上板性 = 阵容知识登记义务」「未登记期情形 B 不可达」三句在转型域内全部失实:`entry_signals` 缺行→恒关只在**未锁定帧**的终局库成员子域成立(`entry.py:343-345` + `_entry_window_open :281-322`);转型域判别子腿①要求已锁定,情形 B 所在帧类根本不经窗口判定——星期日(`cw_chars.py:155`,能量标签外部件)走腿二 `:340-342` 直接豁免,登记与否无关。
+- 三方矛盾:①§2.2 枚举表 B 行(design.md:57)「放行(①②)」+ landing 3.1「枚举表 A/A′/B/C/D/G/E/F 全情形」单帧测试(landing.md:31)要求 B 可达并放行;②§2.7(design.md:91)把 up 侧三消费位(`select_deployments is_tgt`/`_bench_is_target`/`post_sell_offline`)target 视图切**名单口径**——`post_sell_offline` 底线 = up∩名单≠∅(现行同构 `cw_deploy_logic.py:1750-1757`),B 组(外部件进、纯过渡件出)up∩名单=∅ → 底线拒,B 仍不可达;③§2.6 用错误的窗口机制宣告 B 不可达并给「登记后生效」的解锁路径——该路径既不改变腿二豁免、也不改变名单口径底线,不成立。§2.7 自己又写「外部支撑件归 rest 组照旧、经双门换血通道上板」(意图=B 可上板),与同节底线口径直接相抵。
+- 修正方向(设计层三选一,全量同步):①外部件换入是意图 → up 侧底线对门 1 通过组放行或改「组内含名单件或外部支撑件」,§2.6 重写为代码体真相(锁定帧窗口惰性,如实申报),landing 3.1 保留 B 正向测试;②外部件换入非意图 → 枚举表删 B 行或改「拒绝(名单口径底线拒)」并申报,landing 改负向稳态测试,§2.6 把真实封堵机制(底线)写明;③维持「登记后可达」 → 必须同时改底线口径并修正 §2.6 机制叙述,否则解锁路径不存在。
 
-### A2【阻断】行为差申报④「pair 帧 fenced off-target 件路径保持现行」与其自引码点 `:1025-1032` 相互矛盾——按设计自身的退役指令无法兑现该申报
+### A2【阻断】fenced 关门分支迁移规格不唯一:三种帧类两读法行为不同,申报④不可验证
 
-- 位置：`design.md:119`（§2.11 申报④，自引 `cw_deploy_logic.py:1025-1032` 为「pair 帧基准」）；`cw_deploy_logic.py:1025-1031`、`:979`、`:586-601`；`landing.md:25/34`（3.1 范围与完成判据引用申报④）。
-- 事实（读代码体）：`:1025-1031` 是**关门分支**——locked 帧不满足旧域谓词（`_trans=False`）时 fenced 件返 `fenced_arm_closed`。pair 帧当前 fenced off-target 件**可卖**的真正通路是 `_trans=True`（旧域 `locked` 含配方对锁腿②，`cw_deploy_logic.py:582-583` + `SwapPlanContext.locked` 字段注 `:1104-1109`）时**绕过 `:1025` 落入 `:1032` 资格族承接**。设计退役 `_swap_transition_domain`、新判别子显式排除 p1_pair（§2.0）后，pair 帧新域=False → `:1025` 分支命中 → 常量退役后恒 `fenced_arm_closed` → pair 帧 fenced off-target victim 池静默清空，**申报④声称保持的「fenced 件资格族可卖的现行形态」恰好被该分支关死**。
-- 后果：双轨域配方完成件分支（§1「明确不解决、原样保留」）的 victim 池收窄（fenced off-target 件不可再为完成品腾位），与申报④直接冲突；3.1 完成判据「pair 帧 fenced off-target 路径保持现行（申报④）」无设计内可实现判据——实现者按退役指令机械迁移 = 违反申报④，按「保持现行」补特例 = 违反 §2.0 单一源纪律（各层自备第二套域谓词），两头都无文本授权。
-- 修正方向：显式钉死 pair 帧 fenced victim 判定谓词的归宿（例如：让位白名单同样适用 pair 帧并申报该行为差；或声明 fenced-victim 通路保留旧混轨 `locked` 域腿作为**具名第二谓词**并写明两谓词的各自适用范围），同步 `landing.md:25/34` 判据。
+- 码点事实(`cw_deploy_logic.py:1023-1032`):关门分支——`elif not _trans:` 进入后 `not ENABLED or not _locked → closed;fp 缺读 → fp_unreadable;否则 closed(fp≥1.00∨板不满)`。混轨 `locked` 含配方对锁腿②(装配 `:1479-1480` pair 帧置 True),故 pair 帧板满∧fp<1.0 时 `_trans=True` **跳过**关门分支落资格族(`:1032`)。
+- §2.3.1(design.md:73)两句并陈:「关门分支判定迁移:其现行域谓词(混轨 locked)**切换为转型域判别子**」+「**双轨域不关门落资格族**(pair 帧现行『fenced 件可卖』形态保持)」。逐帧类对账:
 
-### A3【应修】`evolution_swap_arm_trigger` 的域腿对账义务未入设计——代码自声明「域定义变更时本谓词须随对账，禁静默分叉」
+| 帧类(fenced 件 victim) | 现行 | 读法一:谓词字面切新判别子 | 读法二:按「双轨域不关门」声明 |
+|---|---|---|---|
+| 转型域(终局锁∧板满∧fp<1.0) | 落资格族(:1032,engines_guard 等) | 进关门分支 → fenced 件全封(违 §2.2 case A「禁字面移植」自警) | 双门/守恒新义裁定(✓ 与 §2.2 一致) |
+| pair 帧板满∧fp<1.0 | 落资格族 | 新判别子 False → closed → **申报④声称保持的通路被关死** | 落资格族 ✓ |
+| pair 帧板满∧fp≥1.0 | `fenced_arm_closed`(:1031) | closed | 落资格族——**未申报的放宽边**(成型 pair 帧非档承载围栏件由不可卖变可卖) |
+| 未锁帧(非 pair 非锁定) | closed(:1027 `not _locked`) | 未定 | 未定 |
 
-- 位置：`design.md:73`（§2.3.1 退役面清单不含该消费位）；`cw_deploy_logic.py:1319-1363`（`:1358` 内联 `locked ∧ fp<1.00 ∧ board_full` 三腿；`:1352-1353` 对账自声明）。
-- 事实：演进降级换人分支触发谓词内联自己的域腿（未消费 `_swap_transition_domain_of`），并在 docstring 明文要求「域定义变更时本谓词须随对账」。本迭代正是域定义变更（判别子换腿①单轨），但 §2.3.1 的消费位迁移清单与 landing 3.1 范围均未提它：实现者保留其消费混轨 `locked` 字段 = 行为原样（合规但设计未申报该归置）；改接新判别子 = pair 帧演进武装消失（未申报的行为差）。两条路无文本裁决。
-- 修正方向：§2.3.1 增一句显式归置（建议：`evolution_swap_arm_trigger` 域腿维持消费 `ctx.locked` 混轨 = 双轨域原样申报，并注明与新判别子无共享单一源是**已申报的两谓词分界**）。
+  两读法在 pair/未锁两类帧上行为相反,设计文本不能唯一确定迁移后分支形态;`SWAP_TRANSITION_ARM_ENABLED` 退役后 `:1027` 的 `not ENABLED` 检查替代形态未钉;`fenced_arm_closed` 拒因键存废未定(它同时是 mandate 逐件拒因分键闭集成员 `mandate.py:1469-1473` 与 projection §4.3 判读面)。
+- 修正方向:按帧类显式钉迁移后真值表(建议:关门分支整体退役、`fenced_arm_closed` 键的存废与其在分键闭集/projection 判读面的归置一并申报),逐帧申报行为差(含 pair 成型帧放宽边与未锁帧归属)。
 
-### A4【应修】门 2 保留面含 `fenced_arm_closed`，与转型域「纯过渡件含 fence 件可卖」的 C1 解锁点矛盾
+### A3【阻断】退役迁移面漏功能性消费位:店侧 P88 收窄与双轨域放行门路由
 
-- 位置：`design.md:40`（§2.2 门 2：「资格族（…/ `fenced_arm_closed` / …等拒因面保留」）；`design.md:45/55`（一级 victim = 纯过渡件 / 情形 A 放行）；`cw_launch_admission.py:44`（DEPLOY_FENCE = RECIPE ∪ ENGINE）；`cw_chars.py:112/133`（青雀/爻光均含仙舟 = fence 成员）。
-- 矛盾：锚帧一级 victim（青雀/爻光）都是 fence 件——现行机器里 fence 件在转型域可卖恰恰是**绕过** fenced 分支落资格族（`:1032` 承接注释），`fenced_arm_closed` 在旧转型域内本就不可达（仅板不满/fp 缺读边沿帧触发）。设计的双门转型域里纯过渡件 victim 走白名单一级放行，`fenced_arm_closed` 若按「保留面」字面移植回转型域，A 情形（Saber 换青雀）被该拒因直接封死，C1 解锁点失效。保留面清单与枚举表 A 两处文本不可同时成立，取舍未写。
-- 修正方向：§2.2 门 2 明确 `fenced_arm_closed` 在转型域**无角色**（仅双轨域/域外帧保留），或把该拒因从转型域保留面移除并注明 fence 维由白名单取代。
+- 码点事实:`SWAP_TRANSITION_ARM_ENABLED`/`_swap_transition_domain_of` 的消费位不止 §2.3.1(design.md:73)点名的五消费位+快照+关门分支——`mandate.py:36-37` import 两符号;`swap_transition_narrow_frame`(`mandate.py:732-777`,P88 店侧 dominance/hub 收窄域谓词,自申报「同一谓词」)在 `:776-777` 直调,消费位 = `shop.py:979` + `mandate.py:1134` 分键;P88 的 D 域含 pair 帧(旧混轨 locked),迁移到新判别子(腿①排除 pair)会使 pair 帧 dominance/hub 收窄解除 = **未申报行为差**,保留旧谓词则与常量退役冲突。§2.3.1 只点了「P88 命题引用(文档)随改写」(§2.9),landing 3.1 文件面(landing.md:27)无 `shop.py`,范围与完成判据均无此项。
+- 另:`mandate.py:1495` 发出闸条件 `_m1p.arm == 'transition'`——arm 标注族随转型分支退役换 `bond_gate_*`(§2.3.1),双轨域放行门(§2.5「不动」)靠该路由触发;双轨域 pair 帧计划的 arm 标注值与闸触发条件在新键族下长什么样,设计未申报——「双轨域放行门不动」缺承载文本。
+- 修正方向:退役面清单补 `swap_transition_narrow_frame` 归置裁决(域随新判别子并申报 pair 帧收窄解除;或保留独立三腿谓词并申报符号分界)入 landing 3.1 文件面+判据;双轨域放行门的路由条件与计划标注形态补入 §2.5/§2.3.1。
 
-### A5【应修】landing 3.1 文件面缺 `mandate.py`——「arm 分键新键族写入断言」的写点在该文件
+### A4【应修】§2.8 收敛不变式的通道封死枚举漏换人卖出通道;landing 3.3 两条边界锚与设计正文矛盾
 
-- 位置：`landing.md:27`（3.1 文件面 = cw_deploy_logic.py / cw_launch_admission.py / deploy_plan.py）；`design.md:73`（§2.3.1「arm 标注分键归宿…换新键族（bond_gate_* 四键 + victim 序来源键）；`cw4_m1p_arm_pending` 归因透传载体保留」）；`strategies/impl/mandate_v1/mandate.py:1522`（`_count('swap_arm_transition_trigger')` 分键写点）、`:1532`（`cw4_m1p_arm_pending` 写点）、`mandate_state.py:252`（载体字段）。
-- 事实：arm 分键的遥测写点全在 `emit_swap_redeploy`（mandate.py）。3.1 范围含新键族落地与写入断言，文件面却不含 mandate.py（它归 3.2）——worker 依 3.1 文件面开工完不成 3.1 判据，越面改又违反文件面纪律。阶段粒度规范（iteration-design §3.1：判据依赖另一阶段未完成部分 = 划分不当）同判。
-- 修正方向：mandate.py（emit_swap_redeploy 分键段）入 3.1 文件面；或把分键新键族整体移入 3.2 范围并在 3.1 范围声明边界。
+- 事实一:段一(design.md:100)「板侧标签命中件的离场通道逐通道封死:来金/演进按 §2.8 排除;自救/晶矿/店换为 bench 侧通道(BENCH_ONLY)不动板面;保护集禁卖」——漏列换人通道:枚举表 A′(design.md:56)明确放行「Saber 换停云」,停云=终局键集标签命中件(`cw_chars.py:121`,仙舟+**能量**),经换人 `CwActionSellDeployedParam` 离场 = 板上标签命中件经卖出动作离场。
+- 事实二:landing 3.3 完成判据(design 依据 §2.8)固化两条边界锚(landing.md:58)——「**板上标签命中件不可经卖出通道离场**」被 A′ 放行行为证伪(换人卖出即 SellDeployed);「**bench 侧标签件仍可来金卖出**」与 §2.8 堵回降口二「来金族资格增补排除终局键集标签命中件(**bench 侧含内**——装配 A 身份段 bench/场上两侧一致生效,`sell_gate.py:886-915`+`sell_candidates.py:559-567`)」直接矛盾——bench 标签件恰恰被来金排除,仅自救通道仍可卖(§2.10 自救豁免申报)。
+- 结论本体不倒:板上支撑数非降可由门 1 结构保证(①新档/④成型 ⇒ 换入组必含键集命中件 +1 ≥ victim −1;②严格增;③同名在板净 0),但段一的论证形态与两条测试锚须改。
+- 修正方向:段一枚举补换人通道,不变式改写为「非换人卖出通道逐通道封死 ∧ 换人通道由门 1 组换收益保证支撑数非降」;landing 3.3 两条锚同步改写(第二条改「bench 标签件仅自救通道可卖」或按裁定后的口径)。
 
-### A6【应修】§2.8 全局不变式与溢出告警自救豁免冲突：「标签命中件不可经卖出通道离场（板侧与 bench 侧一致）」不成立
+### A5【应修】landing 3.4「0534 退役引用面随本阶段(design §2.3.1)」依据失指,指称需侦探工作才能解码
 
-- 位置：`design.md:97-99`（§2.8 堵回降口二 + 全局单调论证）；`strategies/impl/mandate_v1/sell_gate.py:886-915`（装配 A 身份段构成）；`strategies/impl/mandate_v1/entry.py:611-617`（第 0 步自救态序「资格仲裁族全通道豁免、线内件按价值序末位让位」）；`proofs/math_proofs.md:100`（P78 行自救扩展面豁免 = P78-1/P78-4/P78-7 全通道豁免）。
-- 事实：新排除落装配 A 身份段后覆盖全部 FACE_REGULAR 通道 ✓，但自救通道**整族豁免装配 A**——溢出告警帧 bench 侧标签件仍可卖，「bench 侧一致生效」与「标签命中件不可经卖出通道离场」两条全称表述均被自救通道证伪。若反过来把新排除纳入自救豁免族，则保命通道对标签件的容量收窄 = 一处未申报的行为差（自救是止损通道，收窄须显式裁定）。单调论证本身可救（自救不卖板侧件 → 「板上支撑数非降」仍真，收敛论证只需「板侧非降 + 换人触发严格增」两段式），但设计未做这层切分，前提表述与豁免机制直接相抵。
-- 修正方向：§2.8 二选一并写明——①新排除入自救豁免族（申报自救容量收窄为接受的行为差），或②不入豁免族（把不变式改述为「板侧支撑数非降 + 换人触发结构量严格增」，撤回 bench 侧全称表述并注明自救豁免边界）；P78 行改写内容（§2.9 已列）随本裁定同步。
+- 事实:「0534」在 design.md 全文零出现(§2.3.1 = design.md:73 通篇无此词);可解码来源仅一处代码注释——`cw_deploy_logic.py:484-485` 引「docs/develop/sr_od/application/currency_war/decisions/0534-swap-transition-arm.md」(转型分支语义出处件)与 `:1288` 同前缀,而该 decisions 路径在盘上**不存在**(全 docs 树 glob 零命中)= 悬空引用。实现者读 landing 判据与 design 依据无法知道 0534 指什么;「依据就地标注」(iteration-design §5.1)与「全量同步复查:引用锚存在性」(§5.4)双双不满足。
+- 修正方向:landing 3.4 把「0534 退役引用面」写成可执行的实名描述(如「cw_deploy_logic.py 转型分支段头注释(:483-489)与 :1288 对退役决策件的引用行清理」),design 依据改指真实存在的锚;若该决策件应存在则先补案或改引 git 历史。
 
-### A7【应修】正本更新清单缺 `strategy-docs/11_shop_decisions.md`（§4.0 卖出候选评估器）
+### A6【应修】landing 3.1 组算法测试判据含「超员降级」,设计全文无此语义
 
-- 位置：`landing.md:94-108`（正本更新清单无 11 号稿行）；`design.md:98`（§2.8 自认「引文单一源：无关角色定义 = 11 号稿 §4.0 场景表」）；`strategy-docs/11_shop_decisions.md:116-129`（§4.0「卖出候选评估器（全部卖出场景的单一入口）」场景表，资格列 = 常规面描述）。
-- 事实：3.3 改装配 A 身份段构成 → 全部 FACE_REGULAR 场景（升级凑金/节末凑息/来金 session_funding 等）的资格语义随之变化，§4.0 场景表是这些场景资格面的正本描述。迭代收尾义务（AGENTS「双层文档流」：代码实现后更新正本）对该文件缺行，清单清零 ≠ 正本与实现一致。
-- 修正方向：正本更新清单增 `strategy-docs/11_shop_decisions.md：§4.0 场景表资格列（装配 A 身份段新构件） ← 3.3`。
+- 事实:landing.md:40「组算法测试(两级 victim 序锚帧复验:Saber 换爻光;**超员降级**;无可行组零动作稳态)」——design §2.7(design.md:90-94)无「超员降级」任何定义;转型域判别子腿②=板满(占用 ≥ cap,`cw_deploy_logic.py:1599-1602` 占用数口径),「超员」状态与「降级」行为在设计内无出处。测试判据引用不存在的语义 = 立任务即不可验收(iteration-design §3.1 判据可验证性)。
+- 修正方向:design §2.7 补该语义(若指 SIFT 未识别占位件的占用数形态,引 `:1599-1602` 写明),或从判据删除。
 
-### A8【应修】门 1③「同名升星横换」的必要条件未钉死；victim 全序中名单让位对（3(a)/3(b)）的位置未定
+### A7【存疑】§2.0「转型域内五层全部消费同一判定函数」与 §2.4/§2.6 显式保留各自折法字面冲突
 
-- 位置：`design.md:38`（门 1③ 正文只写「换入件星级 > 被换件星级」）；`design.md:59`（D 情形按同名口径举例）；`design.md:90`（§2.7 两级序只排一级/二级）；`design.md:47`（§2.2.1 通道 3 名单成员让位）。
-- 两处语义选择无答案（iteration-design 硬规则 2「实现者无需再设计」直接违例）：
-  1. **③ 是否要求同名**：不要求 → 任意星级升横换（如 2★ 纯过渡件换 1★ 纯过渡件，零终局结构收益）都过门 1，触发面显著超出「转型收益」语义；要求 → 正文与括号判据需写明同名条件。枚举表 D 的行名暗示同名，正文未钉。
-  2. **名单让位对在 victim 全序中的位置**：两级序只定义一级/二级；3(a)/3(b) 的名单 victim 排何处（二级之后？与候选配对时专项尝试？）未钉。「首个可行组即停」的结果依赖该全序——D 情形（板上有更早槽位的纯过渡件且该配对过门 1 却被同名去重拦下）的最终选择随序变化。
-- 修正方向：门 1③ 写明「同名」是否必要条件（建议：必要，与 3(a) 让位通道对齐）；§2.7 补一行 victim 全序（建议：一级 → 二级 → 名单让位对，同层内现行三键）。
+- §2.0(design.md:24)宣称五层(触发/守恒/素材/放行/窗口,§1:12 同清单)统一单一判定;§2.4(design.md:75-77)素材层零改动(merge_material_guard 自备关切)、§2.6(design.md:83-85)窗口层零改动(entry_signals 自备判定)。实际统一面 = 触发/守恒/资格/放行四层。§1 归层把「多层协作无统一约定」定为公共根,则保留两层独立折法需要在 §2.0 显式声明辖域(素材层关切 = 合成经济价值、窗口层经 A1 核实在转型域惰性——为何不构成同族封堵),否则读者按 §2.0 字面会试图把窗口/素材并入门 1。修正方向:§2.0 改「四层统一 + 素材/窗口两层显式保留(各附理由)」。
 
-### A9【低】§2.6 窗口辖域的 as-built 表述与代码体不符（无依据标注）
+### A8【存疑】组贪心宿主 kernel 与宪法第 5 条所有权判据线的张力未正面回答
 
-- 位置：`design.md:85`（「外部凑档件无 `entry_signals` 登记 = 不受窗口辖（辖域定义 = 知识卡 entry_signals…）」）；`strategies/impl/mandate_v1/entry.py:281-345`。
-- 事实（读代码体）：窗口拦截真源 = `_deploy_window_blocked`（`:325-345`）——辖域是「纯终局件谓词」（终局库成员），**缺行 = fail 恒假**（`:283`「缺行 fail 恒假」），即解锁帧的终局库成员缺 entry_signals 行 = 受辖恒关，恰与设计表述相反；锁定帧外部件不受辖的真实机制是 `:340-342` 锁定线外豁免（非「无登记」）、方向线成员豁免是 `:336-338` 过渡/方向配方成员腿。新判别子域恒为锁定帧 → 结论侥幸成立，但表述的机制错误且无依据标注（as-built 断言读代码体，此处未读）。
-- 修正方向：§2.6 改述为「锁定帧：名单成员经 `:336-338` 豁免、非名单件经 `:340-342` 锁定线外豁免，两腿均不受辖；解锁帧终局库成员缺行 = 恒关照旧」，并补码点依据。
+- 宪法第 5 条(`00_framework.md:15-19`)判据线:「换一套策略实现,会不会要不同的值/序?会 → 策略层」。组贪心的候选序(名单成员先→外部支撑件)、victim 两级序、「首个可行组即停」属决策 policy 形态。关键取舍(design.md:133)以「依赖方向禁反向;单对现行形态升格」选 kernel——kernel 已有 `select_swap_plan`+`select_up` 注入缝先例可缓解,取舍已申报,但未回答判据线问句本身(对比先例:P79-4 让渡序以命题+kernel 注册式落位)。修正方向:取舍段补一句判据线正面回答(换人机器结构序 = P79-4 同族机制定义量,非策略立场;策略定制面 = select_up 注入),或把贪心排序参数化留注入缝。
 
-### A10【低】关键取舍「OR 承接阵容成型 ①②③全不中」全称断言过宽
+### 低
 
-- 位置：`design.md:130`（取舍「门 1 纳入成品腿 vs 独立保留完成品分支」）；`design.md:60`（G 情形）；`cw_comps.py:603`（SEELE_OR_LEGS）、`:825-831`（希儿 comp：required=希儿、or_legs 全承接）。
-- 事实：希儿本人入板 = 名单成员，victim 非支撑件时门 1②（支撑数严格增）**同样命中**；放大器入板跨贝 2/量 2 档时①也命中。「①②③全不中」只在「换出件同为支撑件」的形态下成立。④的必要性结论不受影响（该形态确实存在），但取舍依据的全称表述失真，正本化时会把错误论证带进动机段。
-- 修正方向：改述为「存在 ①②③ 全不中的完成形态（换出件同为支撑件时的希儿入板），故仍需 ④ 承接」。
+- **A9|低|贪心候选序同层并列(星级并列)未钉**:design.md:90「名单成员先(星级降序)→ 外部支撑件(星级降序)」未定义星级并列的层内序。锚帧不受影响(2-1 开店后 bench 名单成员仅 Saber 一名;远坂凛非双王圣杯 core=`cw_comps.py:1022`,属外部支撑件层级,复盘 `:2902-2906` bench 亲读);但 3.5 的 2-2..2-4 逐帧预测表需要确定性序,并列序未钉则推导不唯一。补一个 tie-break(注册表序/bench 扫描序)一句话即可。
+- **A10|低|§2.8 落点表述「消费于来金族 FACE_REGULAR」不精确**:`sell_exclusions` 为全部 FACE_REGULAR 场景共用装配(interest/funding/ore_make_room/shop_swap/c1_make_room/levelup_liquidate_prep,`sell_candidates.py:177-196/:559-567`),落点钉死后排除自动覆盖全部常规通道候选池(bench 侧腾位/店换/筹资一并收窄),非仅来金族;§2.11 申报②未逐通道点名。改一句话并申报②补覆盖面清单。
+- **A11|低|k_members(终局名单成员)未钉单一源定义**:design.md:28 起多处使用但无定义出处。现行对齐源 = `statefn/predicates.line_members`(core∪shared,`predicates.py:81-92`;01_math_framework §2 目标线 K);`required_deployed` 名归属(希儿系静态套 required=('希儿',))未声明。§2.1 补一行定义+单一源指针。
+- **A12|低|victim 序第二键「星级」按现行实现是 1★ 优先桶非全序**:现行键 = `(_contrib, 0 if star≤1 else 1, 槽序)`(`cw_deploy_logic.py:1703-1707`);§2.7(design.md:90)「(档边际贡献, 星级, 槽位)」按全序读会引入实现不存在的序。括注「星级 = 1★ 优先桶(现行 :1705 口径)」。
 
-### A11【低】landing 3.1「deploy_plan.py（up 侧三消费位）」定位失真
+## 二、核三·治本核验结论
 
-- 位置：`landing.md:27`；`strategies/impl/mandate_v1/deploy_plan.py:186`（is_tgt 在此 ✓）；`cw_deploy_logic.py:1712`（`_bench_is_target`）、`:1750-1757`（`post_sell_offline` 底线）——三处中两处在 cw_deploy_logic.py 的 `select_swap_plan` 体内。
-- 事实：文件面覆盖未漏（cw_deploy_logic.py 也在清单），但括号注把三消费位全归 deploy_plan.py = 码点标注错误。
-- 修正方向：括号注改为「deploy_plan.py:186（is_tgt）；cw_deploy_logic.py select_swap_plan 体内（_bench_is_target / post_sell_offline）」。
+- **§1 归层成立(实证)**:在真实 2-1 帧重放现行机器——板上五件逐件 `target_keep`(吉/远坂凛 = 名单成员;青雀/停云/爻光 = 仙舟标签 ∈ 收窄后 target 视图{命运圣杯,仙舟,战技点},`cw_deploy_logic.py:1004-1022`),必需件分支因双王圣杯无 `required_deployed` 恒关、完成分支因无单件可补满恒关(复盘 C1 主证帧 `:2920` 同结论),计划恒空。「只修触发层不达效」与「多层独立封堵」的归层诊断与帧证据吻合;根在语义层(单件一步成型对多成员多档位不可达)+约定层(层间无统一判定)成立。
+- **§2 修根**:以「组换后板态×锁定终局阵容」替换语义单位、门 1/守恒/放行统一折法——修语义根非症状;双轨域原样 = 爆炸半径显式圈定,取舍有据。残留:A7 的「五层统一」申报口径与实际统一面不符;A1/A2/A3 表明统一在情形 B、fence 维、域谓词消费面三处接缝**未收敛完**——恰是需回设计层补钉的面。
+- **跨件半问**:§1 自报「同族病第二件,升架构级」(第一件 = 2026-09-18 板满换入分支,docstring `:768-770` 出处行亲读吻合)——本迭代即升级件,非第 3 件症状补丁。
 
-### A12【低】3.1 与 3.2 完成判据重复计同一组算法测试面
+## 三、核二·规范遵循结论(逐条带出处)
 
-- 位置：`landing.md:38`（3.1「组算法测试（两级 victim 序锚帧复验…超员降级；无可行组零动作稳态）」）与 `landing.md:51`（3.2「组算法单帧测试（含超员降级、无可行组零动作稳态）」）。
-- 事实：同一测试面在两个阶段的验收凭据中双计，两阶段各自声明对同一判据负责，验收时归属不明（且 3.2 依赖 3.1，判据复述不产生增量验证）。
-- 修正方向：组算法测试面归属 3.1（判据宿主），3.2 判据改为引用 3.1 已验面 + 只增发射/放行接线专项。
+- `iteration-design.md`:四节齐 ✓(README/design/landing;无详设 → §0 申报「单文档方案」合规 §2.1);阶段小节七件齐 ✓(3.1-3.5+末阶段逐项核对,含常规检查首节自包含);README 构成 ✓;写作硬规则①依据标注——主体合规,违点 = A5(依据失指)/A6(判据无出处)/A11(定义缺指针);硬规则②无需再设计——违点 = A1(B 形态三处矛盾)/A2(迁移真值表不唯一)/A3(消费位归置未裁决);硬规则③无过程叙事 ✓(三件正文无轮次/修订措辞);硬规则④全量同步复查——违点 = A4/A5/A6(design↔landing 失同步三处)。
+- `strategy-work.md`:§1 零调参 ✓(门 1/守恒/白名单全为注册表档位梯与结构计数,`cw_factions.py:67/:93` 档位直调,无新自由参数;【拍】类 = 用户裁定登记,§2.10 合规宪法第 1 条);§2 改前四步 ✓(判读上局 = 复盘立案 C1;玩法文档面引用齐 = research README `:82` 单一源在案;定位两问 = §1 归层;设计先行 = 本稿);§3 开关纪律 ✓(`SWAP_TRANSITION_ARM_ENABLED` 退役 = 存量清理,其注释自申报「删码时同删本常量」;无新增开关,`bond_gate_*` = 遥测键非开关);§6 prereg 完整性硬门 ✓ 形态合规——五线载体逐条亲核:P89 约束段 = `math_proofs.md:110` ✓、02 §8 命题 A = `02_mandate_layer.md:97-99` ✓、11 新基线 = `11_shop_decisions.md:186` ✓、FM-1 = `:185` ✓、T-115 三不状态裁定 = `.debug/progress/2026-09-06-currency-war-redesign/dag.jsonl` 2026-09-07T13:10:18 note ✓(「裁定实质亲验在案」属实);盘点义务声明 ✓。载体核对不豁免 A1-A3 的设计缺陷。
 
----
+## 四、依据就地标注直调复核(核验通过面;值对标签逐条核对)
 
-## 二、实际攻击过的面清单
+- 注册表标签:`cw_chars.py:106-181`——吉尔伽美什:130/Saber:149 = 命运圣杯+能量;开拓者·记忆:168/藿藿:122 含能量;瓦尔特:181/符玄:164 不含;停云:121 = 仙舟+能量;远坂凛:126 = 命运圣杯+战技点;**青雀 = 仙舟+战技点恰在 :112** ✓;爻光:133 = 仙舟+欢愉非圣杯非能量 ✓。档位梯:`cw_factions.py` 命运圣杯 (2,3,4,5) = :67、能量 (3,5,7,10) = :93、战技点 (2,4,6,8) = :94 ✓。双王圣杯(`cw_comps.py:1022-1066`):form_tiers={命运圣杯:3,能量:5} ✓、core_chars 六名 = k_members(**远坂凛不在 core**,§2.2.1「停云/远坂凛类非名单」与注册表一致 ✓)、教义「哪怕下远坂凛都不能拆能量」= :1034 ✓;SEELE_OR_LEGS = :603/SEELE_CARRY_CHAR = :604 ✓;`form_progress` OR 承接+required 腿契约(`:1792-1858`)与门 1④「同一折法」声明 ✓;victim 序度量域收窄键集与全量并集的逐件等价性(docstring `:608-614`,剔除键 = 未达成键,离场单调 ⇒ 差分恒 0)自洽 ✓。
+- 锚帧算术(度量域直推):2-1 开店后帧(复盘 `:2877-2920` 亲读:板上 吉/青雀/远坂凛/停云/爻光 5/5;bench 含 Saber 1★+远坂凛第二张 1★)——爻光贡献 = 仙舟 3→2 掉 1 档 = 1;青雀 = 仙舟 −1 + 战技点 2→1 −1 = 2;爻光 < 青雀 → 一级序首 victim = 爻光;换后圣杯 3(二阶新档)∧能量 3(一阶新档)∧支撑数 3→4 严格增。锚①「Saber 换爻光,两级序+贡献度量唯一推导」复核成立(bench 名单候选唯一使组选择唯一)✓;「远坂凛持续受保护(bench 有第二张,same_star_count=2)」经 bench 亲读 + `cw_merge_simulate.py:438`(经 `cw_vocab.py:92` re-export,守卫计数 = 2 拒 `cw_deploy_logic.py:1062-1065`)成立 ✓。
+- 码点引用:`:775` 板满门 ✓;`:1666-1668` 板满早退 ✓;`:545-547`/`:991` fp<1.00 键集回全量 ✓;`:582-583` 混轨谓词 ✓;`:999-1003` 量席让位注释 ✓;`:1701` 贡献度量 ✓;`:1750-1755` 单对计划形态 ✓;`:1352-1353` 演进谓词对账义务自声明 ✓;`:496` ENABLED ✓;`cw_intention.py:1606-1630` committed_authority 腿①②、配方锁帧返 True ✓;`cw_launch_admission.py:55-89` target_keep 谓词/`:92-109` 保护集 = core∪shared∪替班/`:215` P61 引用 ✓/`:348` 准入三元只暴露不拦截(§2.7「不新增 admission 闸」依据)✓;`mandate.py:838-895` P79-3 三轴(轴① bench∩membership、轴② Δfp>0 = `_deploy_advances_form`)与 §2.5 描述一致 ✓/`:861` B_t 段 ✓/`:1520-1532` arm 分键与 `cw4_m1p_arm_pending` 写点 ✓/`mandate_state.py:252` ✓;`entry.py:336-342` 豁免两腿存在 ✓(辖域真相见 A1);`sell_candidates.py:385-396` is_field_irrelevant_unit 仅覆盖有档件(有档件 = 贡献件 → 不入无关池,「真实泄露 = 无已达成档的标签件」申报准确)✓;DEPLOY_FENCE = RECIPE{仙舟/持续伤害/列车同行/护盾}∪ENGINE(`cw_line_defs.py:22-28`)→爻光/停云/青雀均围栏件,§2.2「禁字面移植否则 case A fence 件被封」前提 ✓;SWAP_GUARD_SYSTEMS = 三羁绊+希儿系+护盾(`:124-125`+`cw_system_cards.py:102-139`)→§2.3「爻光/青雀守恒体系承载仙舟档」✓。
+- 文档引用面:`math_proofs.md` P61 = :83/P78 = :100/P87 = :108(先例引用)/P89 = :110 约束段 ✓;`14_p1_consume_arms.md:602`(P61 族推迟上界)/`:385`(B_t 面)✓;`18_equip_wear_semantics.md:117/:140/:182` P61 = 装备域占位编号(同号异命题陷阱属实)✓;`p87:8` P61 先例引用 ✓;p88/p89/出口生存余量篇在盘且涉 P61/B_t ✓;`cw_launch_admission.py:215`/`mandate.py:861`/`flow.py:138-180`/`telemetry/schema.py:421-422` B_t 面实存 ✓;`proofs/p61-bt-swap-arm-dominance.md` 存在 ✓;`02_mandate_layer.md:12`「部署 0/934」/§7 sell 行 = :90/§8 命题 A = :99 ✓;`11_shop_decisions.md` §4.0 场景表(「场上无关角色」定义)= :128 节内 ✓;`22_prep_screen.md:36-37` 第 6 步+entry_signals 缺行语义 ✓;`24_deploy_segment.md:11`(引「22 §1 第 5 步」漂移属实,实际第 6 步)✓;`10_prep_decisions.md` §1/`17_stall_form_spend_authority` §1.1/`flow/action_exec.md`/`screens/README.md`/`screens/deploy.md:27`/`projection_contract.md:105`(§4.3)全部实存 ✓;`skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py` 存在 ✓;复盘档案在案且 §1 seed=20261216 = §2.10 复测 seed 自洽 ✓;`docs/game/currency_war/research/README.md:82` 策略相关文档节 ✓。
+- 枚举表其余情形逐帧核:A(Saber 换爻光,①②放行,门 2 逐件过)✓;A′(①放行,停云二级 deprioritize)✓;C(名单成员进,支撑数+2)✓;D(同名升星,3(a) 通道,机制可达)✓;G(希儿系 required 腿+OR 承接,④承接,`_completion_swap_ins` 同折法)✓;E(瓦尔特换符玄四分支全不中)✓;F(卖档位承载件,①档位面+守恒拒)✓;§2.11 申报①覆盖性论证(触发轴同一折法/victim 轴 3(b) 承接+通道 2 更宽)推演通过 ✓;申报③⑤⑥与 §2.7/§2.3 正文一致 ✓。
 
-**核一（无前提）**
-1. §1 问题陈述与 §2 边界完整性：C1 立案原文（复盘 `:3634`）、同病第一件补丁出处（`required_swap_arm_pending` docstring `:769-770` = 2026-09-18 sim 实证）、02 号稿 §1「部署 0/934」（`:12`）——三处引用直调属实；「明确不解决」清单与 §2 各节改动面对账（买入面 C2 / sim 结算 / 经济升级本体均被正确排除；§2.7 组算法与执行形态落在「§2.0–§2.8」范围指针内）。
-2. 依据就地标注逐条直调：`committed_authority` 腿①②（`cw_intention.py:1606-1630`，配方锁帧返 True 属实）；板满门 `:775`/`:1666-1668`；fp<1.00 语义 `:545-547`/`:991`；`swap_sell_exclusion_reason` 义务集/新鲜度/资格族闭集（`:933-938`，拒因面与 §2.2 列举一致）；`SWAP_GUARD_SYSTEMS` = 四体系+护盾（`:124-125`+`:502-505`，GUARD_SYSTEM_TIERS 三羁绊+希儿系）；victim 序三键（`:1695-1708`）；`select_swap_plan` 单对形态（`:1750-1755`）；`_swap_victim_yields_for_swap_in` 量席让位（`:871-894` + `:997-1004` 注）；P79-3 三轴（`mandate.py:838-895`：轴① bench∩membership、轴② `_deploy_advances_form`=Δfp>0，与 §2.5 描述一致）；`offtarget_sell_allowed`（`cw_launch_admission.py:55-89`）；`is_field_irrelevant_unit` = 仅覆盖有档件（`sell_candidates.py:385-390`）、装配 A 消费面 `:559-564`、`sell_gate.identity_exclusions :886`；来金族 FACE_REGULAR/POOL_BENCH_ONLY（`:177-196`）；演进分支 star_guard 让位（`:1045-1061`）；`cw_merge_simulate` 合成 3 合 1 全场域/场上同名同星 ≤1（场载体不被消耗 → 板数不减）。注册表标签逐条核对 `cw_chars.py:106-181`（吉尔伽美什/Saber=圣杯+能量；开拓者·记忆/藿藿含能量；瓦尔特/符玄不含；停云=仙舟+能量；远坂凛=圣杯+战技点；**青雀=仙舟+战技点恰在 ：112**；爻光=仙舟+欢愉非圣杯非能量）与 `cw_factions.py` 档位表（圣杯 2/3/4/5 `:67`、能量 3/5/7/10 `:93`、战技点 2/4/6/8 `:94`、护盾 2/4 `:96`、仙舟 3/5/7/10 `:53`）；双王圣杯（`cw_comps.py:1022-1066`：core_chars=k_members、form_tiers={圣杯3,能量5}、flex=[列车/战技点/治疗/盛会]、shared=core 子集、教义「哪怕下远坂凛都不能拆能量」`:1034`）；SEELE_OR_LEGS `:603`、form_progress 承接契约 `:1792-1856`。
-3. 试读（实现者视角逐阶段）：3.1–3.5 + 末阶段逐节过「凭这份能否开工」——产出 A1/A2/A4/A5/A8（详见发现清单）。
-4. landing↔design 一致性：设计依据节号全部存在；文件面路径全部真实存在（含 `skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed` `:118-119`）；prereg 实体清单五线载体逐条核对（math_proofs P89 行 `:110` 约束段、02 §8 命题 A `:97-99`、11 升级基线 `:186`、FM-1 `:185`、T-115 裁定在案）；P61 清理引用面逐一核对（math_proofs P61 行 `:83`、P87 行 `:108`、P78 行 `:100`、p63 `:7/:52`、p87 单篇 `:8`、p88 `:98`、p89 `:60`、出口生存余量 `:17/:62`、14 号篇 `:602`（P61）/:385（B_t）、18 号篇 `:117/:140/:182`（装备域占位编号=同号异命题属实）、`cw_launch_admission.py:215`、`mandate.py:861` 邻域 B_t、`flow.py:136-147`、telemetry `schema.py:419-421`）；24 号稿「22 §1 第 5 步」漂移属实（`24_deploy_segment.md:11` vs `22_prep_screen.md:34/36`）；projection_contract §4.3（`:105`）与 `cw4_m1p_arm_pending` 载体（`mandate_state.py:252`）在案。
-5. 设计内多处置文本两两对账：判别子三合取 ↔ §2.3.1 退役面 ↔ landing 3.1 范围（产出 A2/A3/A5）；门 2 保留面 ↔ 枚举表 A/§2.3 守恒切分（产出 A4）；§2.2.1 白名单 ↔ §2.7 两级序（产出 A8）；§2.8 不变式 ↔ P78 自救豁免（产出 A6）；§2.11 申报①–⑥ 与关键取舍逐条核（申报①触发轴/victim 轴覆盖性推演通过；申报④产出 A2）。
-6. 行为可达性逐帧推演（真实牌面）：2-1 开店前帧（entry 十段序：第 5 步开店先于第 6 步部署调整，`entry.py:9-14/:1022`——bench 阿格莱雅（能量标签=外部支撑件）换青雀在该帧不可达，锚时序成立）；2-1 开店后帧（锚①主帧：换入序 Saber 先、门 2 逐件核——青雀非 fresh/1★/非素材对/非义务集，远坂凛受 `same_star_count=2` 保护与 §2.4 核验一致、停云二级、吉为名单不可让——门 1①② 数值复核圣杯 3=二阶/能量 3=一阶）；现行机器 C1 死因逐步复演（四 victim 全被 engines_guard/target_keep 封死，§1 根因叙事机械成立）；OR 承接阵容形态与档位梯形态分别推演（G/E/F/D 情形逐一核；E 瓦尔特换符玄全不中属实、F 守恒拒属实、D 经 name_dup 拦截后让位可达性成立但依赖 A8 未钉全序）；bench 侧/板侧标签件在装配 A 机制下的卖出可达性（产出 A6）。
+## 五、结论
 
-**核二（规范遵循）**
-- iteration-design.md：四节齐（§0/§1/§2 ✓，单文档方案合规）；landing 七件齐逐阶段核 ✓（常规检查首节自包含 + prereg 硬门 ✓）；README 构成 ✓；写作硬规则：依据标注（A1 锚帧复验、A9 窗口辖域两处未标注/错标）、无需再设计（A1/A2/A8 三处「看情况」级缺口）、无过程叙事（三件正文未发现违例）；修订后全量同步复查视角的引用锚/路径/清单核对见核一第 4 条（A7/A11 为该步产出）。
-- strategy-work.md：§1 零调参（门 1/守恒/白名单判据全为注册表与结构计数，无新自由参数 ✓；§2.10 行为锚点验收 = 宪法第 1 条合规 ✓）；§2 改前四步（判读上局=复盘立案 ✓、读全玩法文档=research README `:82` 单一源在案、定位两问=§1 归层 ✓、设计先行 ✓）；§3 开关纪律（无新增开关；`SWAP_TRANSITION_ARM_ENABLED` 退役 = 存量清理 ✓）；§6 对抗循环与 prereg 完整性硬门（landing 首节+实体清单 ✓，盘点义务声明 ✓）；§5 单帧测试纪律（landing「断言写语义」「禁机械跟绿」✓）。
-
-**核三（治本核验）**
-- §1 归层成立性：以现行代码逐帧复演 C1（触发谓词真 → victim 全封死），确认封堵点分布在守恒层（engines_guard 仙舟档）与资格层（阵营视图 target_keep）两处且判据对象/折法不一——「语义层+约定层」归层结论**成立**。
-- §2 修根判定：双门+白名单把多层独立判据收敛到单一判定原则，属约定层根修；跨件半问有显式回答（第二件 → 架构级统一，双轨域保留有爆炸半径取舍申报）——治本方向成立；但 A1/A2/A4 表明统一在 victim 序度量域、pair 帧域谓词、fence 维三个接缝处**未收敛完**，恰是本报告要求补钉的面。
-- 同族逐件修检查：非——本迭代自身即跨件半问的升级产物；双轨域不动已显式申报理由。
-
-## 三、结论
-
-- **阻断 2 项（A1/A2）、应修 6 项（A3–A8）、低 4 项（A9–A12）、存疑 0 项。**
-- A1 直接击穿验收锚①（设计自己的行为判据在其自引的 victim 序语义下不唯一且被证伪）；A2 使「双轨域零行为差」申报在自引码点下不可满足。两阻断不修复不得定稿；应修项均为低成本补钉（各一句话/一行清单级），修复后按 iteration-design §5.4 全量同步复查一遍 design↔landing↔README。
+- **阻断 3 项(A1/A2/A3)、应修 3 项(A4/A5/A6)、存疑 2 项(A7/A8)、低 4 项(A9-A12)。**
+- A1 击穿情形 B 的可实现性与 §2.6 的机制申报(设计自己的枚举表、落地测试、底线口径三处互斥);A2 使申报④在其自引码点的两种合法迁移下均不可满足或引入未申报行为差;A3 是退役面的功能性消费位遗漏(含 shop.py 行为差)。三者均须回设计层裁决并按 iteration-design §5.4 全量同步 design↔landing↔README 后重审;应修 3 项为低成本补钉;存疑/低随批处置。其余攻击面(见第四节)零发现。
