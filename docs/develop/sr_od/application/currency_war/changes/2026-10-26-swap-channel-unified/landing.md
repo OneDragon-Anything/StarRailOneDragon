@@ -28,7 +28,7 @@
 **依赖**：无
 **优先级建议**：8
 **完成判据**：
-- 单帧测试覆盖枚举表 A/A′/B/C/D/G/E/F 全情形（design §2.2，锚数值按 §2.1 档位梯直调）；E 情形断言拒绝层 = victim 池层（白名单两通道不通），另设二级持平换血帧测试门 1 拒绝分支（design §2.2/§2.2.1）；
+- 单帧测试覆盖枚举表 A/A′/B/C/D/G/E/F 全情形（design §2.2，锚数值按 §2.1 档位梯直调）；**C 情形单帧构造 = 两对各自不达腿、累积组过门 1④**（design §2.7 组生长语义）；E 情形断言拒绝层 = victim 池层（白名单两通道不通），另设二级持平换人帧测试门 1 拒绝分支（design §2.2/§2.2.1）；
 - **完成品域参数化测试**：双轨域 fp✗→✓ 照旧 + 转型域门 1④ 同源折法对照（design §2.3 收窄点钉死）；
 - **门 1③ 谓词钉死测试**：同名必要（异名星级升换拒绝）+ 名单让位全序末位语义；
 - **OR 承接阵容专项**：希儿量子静态套完成品换入经门 1④ 放行（design §2.11 申报①覆盖性论证的行为测试）；
@@ -57,17 +57,17 @@
 
 ## 3.3 演进/来金资格增补 + 收敛不变式测试
 
-**范围**：演进降级换人 victim 资格增补排除「**终局键集标签命中件**」（design §2.8）；**来金族出售候选池资格增补排除「终局键集标签命中件」**（不限已承载档位件——design §2.8，现行羁绊贡献仅为排序项、`is_field_irrelevant_unit` 仅覆盖有档件，真实泄露 = 无档标签件；全部 FACE_REGULAR 通道逐一点名测试）；**排除落点 = 卖出资格装配 A 身份段（`sell_gate.identity_exclusions`）**；支撑数全局单调不变式的测试固化（换血组级净非降边界锚 + 自救豁免保留锚）。
+**范围**：演进降级换人 victim 资格增补排除「**终局键集标签命中件**」（design §2.8）；**来金族出售候选池资格增补排除「终局键集标签命中件」**（不限已承载档位件——design §2.8，现行羁绊贡献仅为排序项、`is_field_irrelevant_unit` 仅覆盖有档件，真实泄露 = 无档标签件；全部 FACE_REGULAR 通道逐一点名测试）；**排除落点 = 卖出资格装配 A 身份段（`sell_gate.identity_exclusions`）**；支撑数全局单调不变式的测试固化（换人组级净非降边界锚 + 自救豁免保留锚）。
 **设计依据**：design.md §2.8
 **文件面**：`src/sr_od/application/currency_war/kernel/cw_deploy_logic.py`（演进分支）；`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/sell_candidates.py`、`sell_gate.py`（来金资格面 + 装配 A 身份段）；`sr-od-test` 对应测试
 **依赖**：3.1
 **优先级建议**：5
-**完成判据**：标签命中排除谓词的单帧测试（有档/无档标签件都拒、**bench 侧标签件来金同样拒**、自救豁免保留、纯过渡件放行）+ 不变式回归测试过（「板上标签命中件唯一离场通道 = 换血且组级支撑数净非降」边界锚）；常规检查。
+**完成判据**：标签命中排除谓词的单帧测试（有档/无档标签件都拒、**bench 侧标签件来金同样拒**、自救豁免保留、纯过渡件放行）+ 不变式回归测试过（「板上标签命中件唯一离场通道 = 换人且组级支撑数净非降」边界锚）；常规检查。
 **验收凭据形式**：测试名清单 + 通过记录
 
 ## 3.4 P61 退役与全仓引用清理
 
-**范围**：删 `proofs/p61-bt-swap-arm-dominance.md`、`proofs/math_proofs.md` P61 行；全仓 grep（`P61`/`p61`/`B_t`/`b_t`/`SWAP_TRANSITION_ARM_ENABLED`/`_swap_transition_domain`）穷尽清点、逐位点核语义改写；18 号篇同号异命题禁改核对；B_t 存续消费点单一源关系处置（design §2.9）；**math_proofs 新增转型域换血收敛不变式登记行**（结构计数注记，接替 P61 有限触发角色，design §2.8/§2.9）；**P79 行（:101）转型域适用范围随 §2.5 改写**；转型分支机器退役引用面随本阶段（design §2.3.1，含 `swap_transition_narrow_frame`/fenced 判定/`mandate.py:1495` arm 路由申报）；删除不留残迹。
+**范围**：删 `proofs/p61-bt-swap-arm-dominance.md`、`proofs/math_proofs.md` P61 行；全仓 grep（`P61`/`p61`/`B_t`/`b_t`/`SWAP_TRANSITION_ARM_ENABLED`/`_swap_transition_domain`）穷尽清点、逐位点核语义改写；18 号篇同号异命题禁改核对；B_t 存续消费点单一源关系处置（design §2.9）；**math_proofs 新增转型域换人收敛不变式登记行**（结构计数注记，接替 P61 有限触发角色，design §2.8/§2.9）；**P79 行（:101）转型域适用范围随 §2.5 改写**；转型分支机器退役引用面随本阶段（design §2.3.1，含 `swap_transition_narrow_frame`/fenced 判定/`mandate.py:1495` arm 路由申报）；删除不留残迹。
 **设计依据**：design.md §2.9
 **文件面**：`docs/develop/sr_od/application/currency_war/proofs/**`、`docs/develop/sr_od/application/currency_war/strategy-docs/` 引用行（`14_p1_consume_arms.md` 等）、出口生存余量篇、`tools/cw/proofs/p88_check.py`（直调退役符号的复算脚本）、`tools/cw/ab_judge.py`、`docs/develop/sr_od/application/currency_war/flow/session.md`、`docs/develop/sr_od/application/currency_war/game_state/决策行文件schema设计.md`、`sr-od-test` `test_front_window_predicates.py`、src 注释引用行（`kernel/cw_launch_admission.py`、`kernel/cw_deploy_logic.py`、`strategies/impl/mandate_v1/mandate.py`、`flow.py`、telemetry schema 等 grep 命中面）
 **依赖**：3.1、3.2
@@ -104,7 +104,7 @@
 - strategy-docs/10_prep_decisions.md：§1 部署判据的守恒/换人引用核对 ← 3.1
 - strategy-docs/22_prep_screen.md：§1 部署步窗口表述核对（第 6 步） ← 3.2
 - strategy-docs/14_p1_consume_arms.md：:602 P61 引用行改写；:385 B_t 面随 §2.9 迁移核对 ← 3.4
-- proofs/math_proofs.md：P61 行删除、P79 行（:101）转型域适用范围改写、P87 行（:108）P61 先例引用改写、P78 行（:100）随装配 A 构成变化改写、P88 行（:109）随退役符号改写、新增转型域换血收敛不变式登记行 ← 3.4
+- proofs/math_proofs.md：P61 行删除、P79 行（:101）转型域适用范围改写、P87 行（:108）P61 先例引用改写、P78 行（:100）随装配 A 构成变化改写、P88 行（:109）随退役符号改写、新增转型域换人收敛不变式登记行 ← 3.4
 - proofs/p63-bt-depth-prediction-lower-bound.md、proofs/p87-seele-form-port-or-nesting.md、proofs/p88.md、proofs/p89.md：P61/B_t 交叉引用改写 ← 3.4
 - proofs/出口生存余量设计批-命题与因果链.md：P61 引用改写 ← 3.4
 - flow/session.md：B_t/P61 面核对改写 ← 3.4
