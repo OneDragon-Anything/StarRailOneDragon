@@ -23,7 +23,7 @@
 
 **事件线 pick 族(`cw_op/cw_pick_xxx_action.py`,11 op 一 op 一文件)**(全族同契约):每屏选择动作 = 一个 `CwActionPickXxxOp`,op 内 = 选中点击 → 确认点击(或点卡即选)→ 自上报。**上报形态 = 全族即时单相上报**(先发出后落地的两相形态与证据锁存已全域清除,用户裁定 = [action_ops.md](action_ops.md) §1「用户裁定（点完即写）」):投资两屏(策略支整支走获得链 `gain_invest_strategy`,环境支走 `gain_invest_env`;清单拆类 = `CwActionPickInvestStrategyParam`/`CwActionPickInvestEnvParam` 两行同指一 op,按 param 类型机械分派上报函数)、补给(`report_action_pick_supply_param` 一口写 + `report_node_advance`)、遭遇(`report_action_pick_encounter_param` 发出即写 `chosen_encounter`)、策划(`report_action_pick_planner_param` 一口写分支型分派效果,附带条件分支(rider)先行)——各屏点完确认(或点卡即选)立即按成功写完整结果,零证据锁存、零落地复查补写面;确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派。机械参数(适用范围申报单一源 = [action_ops.md](action_ops.md) §4.5 段首;确认钮不属机械参数,由动作 op 执行体瞄准处理——「零新增读屏」裁定的已登记例外):选卡定位 = `env.target`(例外:PickEncounter = op 体内 `area_center`、PickPartner = `env.op._pick_point`);域载荷逐行见段首。op 类体内零决策(决策 = 选中哪个与分支型载荷,瞄准定位查找非决策)。确认后需要写容器、由画面 op 内置动作负责的部分 = 其余屏的 `chosen_*`/`register_confirm_arrival` Confirm* 到账(**投资两屏无内置写入**——选择事实与效果全走获得链)。刷新三动作(RefreshNodeOptions/RefreshSupply/RefreshInvestCards)不经注册表(分屏形态各异,刷新链由画面 op 内置动作承载,注册完备测试豁免)。
 
-配套**放行条件**(发出方与执行方同源谓词,防空计划发出):部署选人单一源 = 策略层 `strategies/impl/mandate_v1/deploy_plan.py::select_deployments`(发出×执行单一源;落位计划单一源 = 同模块 `deploy_plan_moves`)。放行条件与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——锁定线语境豁免:出战就绪帧且本帧无有效仙舟供给时放行条件让位;发出侧拒因/开火分键 = `deploy_emit_*`,执行侧计划拒因/命中分桶 = `deploy_exec_*`。
+配套**放行条件**(发出方与执行方同源谓词,防空计划发出):部署选人单一源 = 策略层 `strategies/impl/mandate_v1/deploy_plan.py::select_deployments`(发出×执行单一源;落位计划单一源 = 同模块 `deploy_plan_moves`)。放行条件与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——锁定线语境豁免:出战就绪帧且本帧无有效仙舟供给时放行条件让位;发出侧拒因/开火分键 = `deploy_emit_*`,执行侧计划拒因/命中分桶 = `deploy_exec_*`。换人通道放行分域(域切分单一源 = [../strategy-docs/24_deploy_segment.md](../strategy-docs/24_deploy_segment.md) §1.1):bond_gate 臂(转型域)= 发射帧复算统一门(单一源 = `mandate._bond_gate_recalc_allowed`——发射帧对现读板态按计划组重算门 1,通过即放行,不通过 = 计划撤零动作,分键 `bond_gate_recalc_withdraw`;kernel 判据本体禁第二实现);transition 臂(双轨域 pair 帧)= P79-3 三轴(`_redeploy_emission_allowed`)照旧,转型域辖域不经本门。
 
 ## 2.1 终结动作上报节点推进(契约)
 
@@ -59,11 +59,12 @@
 - **现役路径**:部署 = 备战决策环动作——mandate 动作发出点逐帧现算 `CwActionDeployMoveParam` 原子序列 → `cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp` 机械拖拽(`DragCwChar.drag_char` 中心拖 + hold0;落位 = 载荷 `(to_row, to_slot)` 直指,执行边零现读)→ 自上报 `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param`(bench 摘槽 + 载荷落位写 front/back 行 + board 维护)→ 决策循环以逻辑态续算;落地事实归备战环入口观察对账。
 - **选人/落位计划单一源** = 策略层 `strategies/impl/mandate_v1/deploy_plan.py`(选人 `select_deployments_reasoned`、排路由 `deploy_row_pref`、槽位 `deploy_slot_plans`、发出/出战链共用 `deploy_plan_moves`);kernel `cw_deploy_logic.py` 保留围栏常量与共用判定谓词(`recipe_floor_holds`/`select_swap_plan`/`residual_fill_plan`)。
 - **部署机画面 op 时代的执行细则**(遮蔽哨/换排纠正/off-target 卖出腾位/dual-source 仲裁/收尾 SIFT 纠账)已随 `cw_screen_deploy.py` 停用删除——其中判定语义单一源并入 `cw_deploy_logic.py`(函数级对应见其模块头),路径速查 = [../screens/deploy.md](../screens/deploy.md)。
+- **换人通道(SellDeployed + M1 残余补部署的逐对形态)**:bond_gate 臂(转型域组计划,计划单一源 = `select_swap_plan`)每个动作发出面只发**首对** `CwActionSellDeployedParam`(`cw_sell_deployed_action.py`),换出空槽由下个决策环迭代的 M1 残余补部署(`deploy_plan_moves`,同一 `select_deployments` 裁判域)落位换入——对间序 sell→deploy 由「sell 仅板满帧发射」结构性保证(卖后板必不满,空槽落位后才可能再发 sell);**「决策恰取一个动作」契约不变**(同帧逐对 = 同一 visit 内决策环多迭代原地续跑,零重观察、逻辑态续算,非单次调用序列)。首对解析失败(计划名与黑板失配)= 帧内停发后续对,分键 `bond_gate_pair_stall`,零动作,下帧重算幂等续发(计划无跨帧状态);Deploy 拖拽物理失败 = 动作层零判效(本节重试语义行),由下一入口观察对账 + 重算闭合;域外单对臂(base/formed/transition)现行逐件形态照旧。
+- **换人通道发射面分键**(载体 = `cw4_counters`,键登记单一源 = `mandate.emit_swap_redeploy` 写点注释;契约判读面 = [projection_contract.md](projection_contract.md) §4.3):accept = `bond_gate_{tier|support|star|completion}`(门 1 首达腿,检查序④→①→②→③)+ `bond_gate_victim_tier_{一级|二级|名单末位}` + `m1p_fired`;发射面撤计划 = `bond_gate_recalc_withdraw`;中途失败 = `bond_gate_pair_stall`;拒绝侧闭集 = `bond_gate_reject_nogain`/`bond_gate_conservation_reject`/`bond_gate_novictim`;双轨域照旧 = `swap_arm_transition_trigger`/`swap_arm_formed_trigger`/`redeploy_transition_victim_*`;逐件拒因与 plan 级弃权键照旧(`fenced_arm_closed` 拒因键保留,未锁帧/成型帧/成型度缺读帧仍产)。
 
 ## 6. 重试语义汇总
 
 | 层 | 重试/恢复 | 上限与去向 |
 |---|---|---|
 | 动作实例 | 机械单发,动作级零重试零判效;落地事实归下一入口观察对账 | 无动作级去向;外循环防线接管未转移 |
-| 失败记忆 | deploy_fail_counts(同角色拖拽被游戏拒 ≥1 → 跳过) | 备战后对账刷新自然重置 |
 | 外循环 | node_max_retry_times=400(备战节点) | round_fail 交兜底链;无进展归 guards.md §1 的连续失败重派网 |

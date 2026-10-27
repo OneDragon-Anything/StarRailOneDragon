@@ -104,7 +104,13 @@
 
 ### 4.3 发出⇔执行透传通道（换人臂）
 
-- **归因透传**：`StrategyState.cw4_m1p_arm_pending`——写端 = mandate 动作发出点（帧级无条件复位 None,换人分支出战就绪时置分支名）；原消费点 = 部署机卖出臂(读后即清),**已随部署机画面 op 停用删除——现役零读端,归因分键悬空**,接线归 SellDeployed 动作路径侧重组批。该槽只承载归因分键（键族 `sell_offtarget_arm_*`），不承载行为参数。
+- **归因透传**：`StrategyState.cw4_m1p_arm_pending`——写端 = mandate 换人动作发出点 `emit_swap_redeploy`（帧级无条件复位 None，换人计划发出时置胜出臂名，值域 = `base`/`formed`/`transition`〔双轨域〕/`bond_gate`〔转型域〕；臂名兼任域事实载体，读侧据此分域判读）。现役零读端（部署机卖出臂随其停用消失），槽只承载臂标注不承载行为参数；归因分键 = 发出面直写 `cw4_counters`（键族见下条「发射面分键登记」）。伴随计划载荷槽 `cw4_m1p_plan_pending`（`sell`/`up`/`arm`/`occ` 计划快照，同帧级复位）= 保留证据面，卖出仲裁权归动作发出点。
+- **发射面分键登记（换人臂，载体 = `cw4_counters`；键登记单一源 = `emit_swap_redeploy` 写点注释）**：
+  - accept 侧 = `bond_gate_{tier|support|star|completion}`（门 1 首达腿，检查序 ④→①→②→③）+ `bond_gate_victim_tier_{一级|二级|名单末位}`（victim 层来源）+ `m1p_fired`（发射事实）；
+  - 发射面撤计划 = `bond_gate_recalc_withdraw`（发射帧复算统一门不通过，双轨域照旧 = `redeploy_cost_gate_defer`）；中途失败停发 = `bond_gate_pair_stall`；
+  - 拒绝侧闭集 = `bond_gate_reject_nogain`（四腿全不中）/`bond_gate_conservation_reject`（守恒拦）/`bond_gate_novictim`（无可行组零动作）；
+  - 逐件拒因分键（`engines_guard`/`star_guard`/`merge_material_guard`/`target_keep`/`buy_membership`/`fp_unreadable`/`post_sell_*` 等）与 plan 级弃权键（`m1p_cap_unreadable`/`m1p_membership_unreadable`/`m1p_input_missing`/`m1p_no_direction`/`m1p_no_bench_target`）照旧——`fenced_arm_closed` 拒因键保留，未锁帧/成型帧/成型度缺读帧仍产；
+  - 双轨域照旧 = `swap_arm_transition_trigger`/`swap_arm_formed_trigger`/`redeploy_transition_victim_*`。
 - **判定单一源**：换人计划装配单一源 = `kernel/cw_deploy_logic.py::assemble_swap_plan_inputs` + `select_swap_plan`（发出侧同函数同参,禁第二份口径）。执行面现读(SIFT 覆写)随部署机停用;逐件可卖判定单一源 = `swap_sell_exclusion_reason`(现役消费面 = mandate 发出侧)。
 - **装备穿戴的执行期时序**：现役机械半形态 = owned 网格定位读（`prep_actions._owned_grid_locate`，模板库按名定位）→ 固定等待 `PREP_DRAG_SETTLE_WAIT_S`（等备战面板/上件 reflow 动画收尾，非判效）→ 单次拖拽（`DragCwChar.drag_char`，机械单发零判效）→ op 自上报 `report_action_wear_equip_param`（容器 equips 写 owned −1 + 目标角色 equips +1）；落地归观察对账（下一入口 heavy 装备域三路直写覆盖）。原 CV-diff 判穿/稳帧轮询/落空补救链/`last_owned_equips` 授予快照机制均已随装备组合壳停用（考古归 git）。
 
@@ -117,7 +123,7 @@
 | 臂 | 载体 | 读的逻辑态面字段 | 读法 |
 |---|---|---|---|
 | 部署臂 | 备战环动作路径:mandate 动作发出点 → `CwActionDeployMoveOp`(`cw_deploy_move_action.py`) | 逻辑态面(容器):bench 槽位表/期望态;物理真值 = 下一帧备战入口 heavy 观察(占用 CV/身份 SIFT/`deploy_cap` 防抖,由漏斗写端承接) | 逐动作机械拖拽 + 自上报 `report_action_deploy_move_param`(零像素判效);计划单一源 = 策略层 `mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`);kernel `cw_deploy_logic.py::residual_fill_plan` = 残余补位 |
-| 换人臂（M1″ 换人命题） | 发出面 `mandate.py` 换人段;执行面 = `CwActionSellDeployedOp`(`cw_sell_deployed_action.py`)+ 后续 DeployMove 补部署(原部署机卖出臂执行面已随其停用) | 发出面 = 决策帧槽位表(MandateFrame/GameState 域);逐件拒因 = `swap_sell_exclusion_reason`(现役消费面 = 发出侧) | §4.3;1:1 替换上限 = `bench_target_count`;卖出后残余补部署走 `residual_fill_plan` |
+| 换人臂（M1″ 换人命题） | 发出面 `mandate.py::emit_swap_redeploy` 换人段;执行面 = `CwActionSellDeployedOp`(`cw_sell_deployed_action.py`)+ 后续 DeployMove 补部署(原部署机卖出臂执行面已随其停用) | 发出面 = 决策帧槽位表(MandateFrame/GameState 域);逐件拒因 = `swap_sell_exclusion_reason`(现役消费面 = 发出侧,按域分派) | §4.3;计划单一源 = `assemble_swap_plan_inputs`+`select_swap_plan`(域外单对形态:1:1 替换上限 = `bench_target_count`;转型域 = 多对组计划形态——发射面只发首对 Sell,换入落位经下个决策环 M1 残余补部署,分键见 §4.3);卖出后残余补部署走 `residual_fill_plan` |
 | 卖出臂（SellBench，双域统一） | `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（动作类型清单摊平后商店/备战共用单一注册行；原商店域文件 `cw_sell_bench_action.py` 已停用删除） | `CwActionSellBenchParam.bench_idx`（槽位表下标 0-8）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账；op 自上报 `report_action_sell_bench_param`（容器逻辑态单点：expect 非空失配 = `stale_proposal` 拒零写 + 置 empty + 回金 + 装备回收）;零判效，落地事实归下一入口观察对账 |
 | 装备臂 | 发出点 = mandate M7 装备段(判据单一源 = `kernel/cw_equip_wear_plan._build_equip_wear_plan`,容器读口)→ 机械执行 = `CwActionWearEquipOp`(`cw_wear_equip_action.py` + `prep_actions.py` 机械原语) | owned 装备域(`gs.equips` 容器快照,观察装配点直写) | §3.7 装备 owned 搬运链;穿戴候选过滤工具类(kernel 判据适用面);穿戴写入 = `report_action_wear_equip_param`(owned −1 + 目标角色 equips +1),落地归观察对账 |
 

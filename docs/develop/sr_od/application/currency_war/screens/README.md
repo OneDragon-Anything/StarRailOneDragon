@@ -62,7 +62,7 @@
 | CloseShop(关商店) | `CwActionCloseShopParam` | `cw_close_shop_action.py::CwActionCloseShopOp`(执行位 = 真机械点击「收起」+ 幂等已关出口 + 清场上报) | **访问终结**(§6) |
 | SellBench(卖备战) | `CwActionSellBenchParam` | `cw_prep_sell_bench_action.py::CwActionSellBenchOp`(动作类型清单摊平后商店/备战共用单一注册行;原商店域文件 `cw_sell_bench_action.py` 已停用删除) | 非终结 |
 | LevelUp(买经验) | `CwActionLevelUpParam`(单类型;原 LevelUpShop 同字段双类型已随 2026-10-17 迭代 T-4 退役删除) | 注册行 = `cw_prep_level_up_action.py::CwActionLevelUpOp`(备战域);原商店域 `cw_level_up_action.py` 已停用删除 | 非终结 |
-| SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp`(换人判定单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`) | 非终结 |
+| SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp`(换人判定单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`,转型域经 `swap_bond_gate_domain` 判别子分派双门资格面) | 非终结 |
 | SwapDeploy(上阵↔备战对调) | `CwActionSwapDeployParam` | 未接线(动作类型清单+上报函数/sim 消费在用;动作类型清单完备性保留) | 非终结 |
 | DeployMove(部署) | `CwActionDeployMoveParam` | `cw_deploy_move_action.py::CwActionDeployMoveOp`(bench→上阵单步拖拽,动作发出点逐帧现算) | 非终结 |
 | 领取类(开箱) | `CwActionOpenBoxParam` | `cw_open_box_action.py::CwActionOpenBoxOp` | **访问终结**(§6) |
@@ -105,7 +105,7 @@
 | 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(部署 = 动作发出点逐帧现算原子序,备战决策环动作;路径速查 = [deploy.md](deploy.md)) | 备战期(22/24 号篇) | 非终结 |
 | 换排(上阵单位前排↔后排拖拽) | 同上 | `DeployMove`(to_row 重拖,策略发;错排事实归备战环入口观察对账) | 备战期 | 同上 |
 | 卖备战(拖备战栏→区域-出售区) | 卖出退金(`research/economy.md` §3;单一源 `kernel/cw_economy.py::sell_refund`) | `CwActionSellBenchOp`(注册行)+ `prep_actions.py::drag_bench_to_sell` | 备战期:腾位(M4)/凑利息/筹资/换线塌缩(22 号篇) | 非终结 |
-| 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp`(换人判定单一源 = `swap_sell_exclusion_reason`) | 备战期/部署期换人(24 号篇) | 非终结 |
+| 卖上阵(拖上阵位→出售区) | 同上 | `CwActionSellDeployedOp`(换人判定单一源 = `swap_sell_exclusion_reason`,转型域 = `swap_bond_gate_domain` 判别子分派的双门资格面) | 备战期/部署期换人(24 号篇) | 非终结 |
 | 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `CwActionLevelUpOp` 备战连点 | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`) | `OpenShop`;编排 = `cw_screen_prep.py` 商店访问段(文档 = [shop.md](shop.md)) | 备战期(进商店访问的唯一入口动作) | **备战环终结**:执行 = 商店访问编排(open_shop → 商店画面 op 两 node 访问 → 收店),完成后返回主循环重识别 |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | `CwActionStartBattleOp`;发出意图 = mandate_v1 决策链最先检查的发出点(判据 = `kernel/cw_launch_admission.py::readiness_launch_decision`);执行 = 统一执行器 `operations/cw_loop.py::launch_battle_unified` | 备战期出口(唯一完成态) | **备战访问终结**:返回主循环战斗分支 |
