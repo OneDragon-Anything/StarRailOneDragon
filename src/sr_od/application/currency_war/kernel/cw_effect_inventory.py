@@ -694,8 +694,9 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
 
     - 效果原文存档(payload.effect_text = INVESTMENT_ENVS[name].effect 官方
       全文,可见性优先——判读面可读,bot 零响应);
-    - G 组(ENV_GIFTS 命中)占位 notes 附 GiftGrant 摘要(即时/条件发放角色
-      + advisor 语义,「判读面可读」口径);
+    - G 组(ENV_GIFTS 命中)占位 notes 附 GiftGrant 摘要(发放形状字段
+      全量渲染,10 字段中 9 渲染 + sell_value_note 显式排除,清单闭合;
+      渲染登记形状静态值,不渲染运行期采样身份,「判读面可读」口径);
     - trigger/duration 无行为消费(占位零响应),统一 PLANE_START/PERMANENT
       (环境 = 选定后整局规则面语义),notes 声明占位形;
     - id = plaza 数字 id(从 source 剥前缀;非 plaza 形 source 原样保留)。
@@ -707,14 +708,34 @@ def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
     _env = INVESTMENT_ENVS[env_name]
     grant = ENV_GIFTS.get(env_name)
     if grant is not None:
+        # 发放形状字段全量渲染(段名 = 通道语义;清单闭合声明:sell_value_
+        # note = 注释性估值注记(【注】下界)非发放形状,渲染进占位 notes
+        # 是噪声,现值全仓零登记,排除无行为差)
         _parts = ['GiftGrant']
         if grant.chars_immediate:
             _parts.append(f"即时[{'、'.join(grant.chars_immediate)}]")
         if grant.chars_conditional:
             _parts.append('条件[' + ';'.join(
                 f'{c}:{note}' for c, note in grant.chars_conditional) + ']')
+        if grant.items_immediate:
+            _parts.append(f"道具[{'、'.join(grant.items_immediate)}]")
+        if grant.items_scheduled:
+            _parts.append('定时道具[' + ';'.join(
+                f'{item}@{node_key}'
+                for node_key, item in grant.items_scheduled) + ']')
+        if grant.chars_random_immediate:
+            _parts.append('随机[' + ';'.join(
+                (f'{s.cost}费' if s.cost is not None else f'阵营{s.faction}')
+                + f'@{s.star}星'
+                for s in grant.chars_random_immediate) + ']')
+        if grant.equips_random_immediate:
+            _parts.append(f"随机装备[{'、'.join(grant.equips_random_immediate)}]")
+        if grant.equips_immediate:
+            _parts.append(f"即时装备[{'、'.join(grant.equips_immediate)}]")
         if grant.advisor:
             _parts.append('advisor=顾问入商店')
+        if grant.replaces_opening_supply:
+            _parts.append('开局替换')
         _notes = ('未入模占位(效果原文存档,bot 零响应);'
                   + ' '.join(_parts))
     else:

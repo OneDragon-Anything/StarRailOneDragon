@@ -340,23 +340,27 @@ class EnvEconomyEffect:
 
 @dataclass(frozen=True)
 class RandomCharSpec:
-    """随机赠卡规格(费用档 + 到手星级 + 类型过滤;「随机N费赠卡」家族
-    载体,立形首例 = 人才引进「开局拥有1个随机4费角色」,后继 = 战力
-    提升/战力飙升等同族卡复用,禁第二形状):
+    """随机赠卡规格(采样轴二选一:费用档或阵营;到手星级 + 类型过滤;
+    「随机N费赠卡」与「随机【阵营】赠卡」两族共载体,立形首例 = 人才引进
+    「随机4费」,阵营轴首例 = 追击概念股「获得【追击】角色」,禁第三形状):
 
-    - cost: 费用档 1-5(chars_by_cost 输入域;值域构建期校验,见
-      ``_validate_env_gifts``);
-    - star: 到手星级 1-3(``Unit.star`` 值域)。desc 明写 = 结构值;
-      desc 未标 = 填 1 的先验值(先验语义不因显式化而消失,披露键
+    - cost: 费用轴采样(1-5,chars_by_cost 输入域;与 faction 互斥,恰好
+      一轴非空,构建期校验);None = 非费用轴。
+    - faction: 阵营轴采样(chars_by_faction 默认含流派匹配;池非空构建期
+      校验,误登角色名 → 域空 → import 炸,天然防呆)。效果原文「获得
+      【X】角色」X 为流派名非角色名,不入 chars_immediate 的具名检查域。
+    - star: 到手星级 1-3(Unit.star 值域)。desc 明写 = 结构值;desc 未标
+      = 填 1 的先验值(先验语义不因显式化而消失,披露键
       ``ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`` 随卡保留——先验错走
       随机态观察覆盖,不响停);
     - type_tag: 非空 = 角色 ``char_type`` 按 '、' 切分后须含该标签才
-      入池(取值 = 注册表 char_type 标签闭集,构建期从 CHARACTERS
-      派生校验,防手写错字致池空静默);空 = 不过滤(池 = 费用档全档)。
+      入池(取值 = 注册表 char_type 标签闭集,构建期校验);空 = 不过滤。
+      两轴通用过滤词。
     """
-    cost: int
-    star: int
+    cost: int | None = None
+    star: int = 1
     type_tag: str = ''
+    faction: str = ''
 
 
 @dataclass(frozen=True)
@@ -1650,15 +1654,24 @@ ENV_GIFTS: dict[str, GiftGrant] = {
         ),
         replaces_opening_supply=True,
     ),
+    # ===== 概念股族(id 1001-1016,模式卡 T-48;族展开契约见设计 §2.6)=====
+    # id 1001 效果原文直读:「追击」= desc【追击】直读(流派名,与 ENV_FACTION
+    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
+    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
+    # 简易池 = category '简易' 现值 8 件。
+    '追击概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='追击', star=1),),
+                            equips_random_immediate=('简易',)),
 }
 
 
 def random_char_pool(spec: RandomCharSpec) -> list[str]:
-    """规格过滤池(注册表派生,零硬编码第二源):费用档内 + 类型标签含入
-    (chars_by_cost × char_type 按 '、' 切分)。构建期非空校验见
+    """规格过滤池(注册表派生,零硬编码第二源):采样轴内 + 类型标签含入
+    (阵营轴 = chars_by_faction 默认含流派匹配,费用轴 = chars_by_cost;
+    char_type 按 '、' 切分含标签,两轴通用过滤词)。构建期非空校验见
     ``_validate_env_gifts``;运行期空池 = 注册表漂移,发放腿(cw_gain_chain
     ``on_env_gained`` 随机支)再查一道防御。"""
-    return [c.name for c in chars_by_cost(spec.cost)
+    base = chars_by_faction(spec.faction) if spec.faction else chars_by_cost(spec.cost)
+    return [c.name for c in base
             if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
 
 
@@ -1756,10 +1769,69 @@ ENV_STAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_boss_grant_count1',
 )
 
+#: 概念股族(随机阵营赠卡 + 随机简易装备,首例 = 追击概念股 id 1001)的
+#: 装备轴采样/假设申报键(家族常量,三键,形态沿 ENV_STAR_GRANT_ASSUMPTION_
+#: KEYS 先例;消费面 = 实测校准与披露清单):
+#: - env_concept_stock_equip_uniform: 简易池均匀 v0(实机真分布未知;
+#:   校准源 = logic_rand_outcome ``env_equip_random:`` 行 vs equips 实读
+#:   逐局积累);
+#: - env_concept_stock_equip_count1: 件数 1 = 单数叙述默认假设非直读
+#:   (实机多件 → 观察覆盖 + 登记行加元素);
+#: - env_concept_stock_equip_fixed_hypothesis: 按卡固定假说在案待校准
+#:   (economy.md「概念股送装备件」四卡线索:昼神/追击→轮滑鞋、仙舟→
+#:   折叠小刀、列车送幸运星;校准 = 同卡实读件分布,恒同件 → 升级按卡
+#:   表,离散 → 均匀口径维持)。
+ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'env_concept_stock_equip_uniform',
+    'env_concept_stock_equip_count1',
+    'env_concept_stock_equip_fixed_hypothesis',
+)
+
+#: 概念股族阵营刷新概率腿的「零建模」失真申报键(家族常量;键模板 =
+#: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
+#: 本批收 env_1001;消费面 = 披露清单,invest_effects.md §5 在案裁定为
+#: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
+#: (cw_shop_deal 采样按 REFRESH_PROB 费用基线,阵营轴无参数),刷出该
+#: 阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;解禁条件 =
+#: 版本更新 desc 带结构化数值,或用户对概念股族裁定重开建模(效力仅
+#: 族内,不构成 §5 全面重裁);遥测对账只量化失真,不产落参。
+ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS: tuple[str, ...] = (
+    'env_1001_faction_refresh_odds_unmodeled',
+)
+
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
 # (GIFT_TIER_SCORE/ADVISOR_DISCOUNT,消费位 = invest_env/invest_strategy),
 # 本文件不留分值常数——宪法五,衍生打分归策略层;floor 定序形态随
 # 消费核停用 历史。)
+
+
+def _validate_random_char_spec(table: str, name: str, spec: RandomCharSpec) -> None:
+    """RandomCharSpec 构建校验(ENV_GIFTS 与 ENV_DEPLOY_LOCK_GRANTS 共享):
+    轴互斥/费用域/星级域/类型标签闭集/过滤池非空。table/name = 报错定位
+    (文案沿各表现款句式,费用域仅 cost 非 None 时查——cost/faction 恰好
+    一轴非空,阵营轴条目无费用域可言)。"""
+    if (spec.cost is None) == (spec.faction == ''):
+        raise ValueError(
+            f"{table} 随机赠卡采样轴({name!r}):cost 与 faction "
+            f"须恰好一轴非空(双空 = 全角色池,双填 = 轴语义不明)")
+    if spec.cost is not None and (isinstance(spec.cost, bool) or not 1 <= spec.cost <= 5):
+        raise ValueError(
+            f"{table} 随机赠卡费用档({name!r}):{spec.cost!r} "
+            f"须为 1-5 整数(chars_by_cost 输入域)")
+    if isinstance(spec.star, bool) or spec.star not in (1, 2, 3):
+        raise ValueError(
+            f"{table} 随机赠卡星级({name!r}):{spec.star!r} "
+            f"须为 1-3 整数(Unit.star 值域)")
+    if spec.type_tag and spec.type_tag not in _CHAR_TYPE_TAGS:
+        raise ValueError(
+            f"{table} 随机赠卡类型标签({name!r}):"
+            f"{spec.type_tag!r} 不在注册表 char_type 标签闭集"
+            f"(手写错字会致池空静默):{sorted(_CHAR_TYPE_TAGS)}")
+    if not random_char_pool(spec):
+        raise ValueError(
+            f"{table} 随机赠卡池空({name!r}):"
+            f"cost={spec.cost} faction={spec.faction!r} "
+            f"type_tag={spec.type_tag!r} 过滤后无角色(注册表漂移?)")
 
 
 def _validate_env_gifts() -> None:
@@ -1774,10 +1846,14 @@ def _validate_env_gifts() -> None:
     3.6 品质改写建表时收全);⑤ 定时通道两防呆(迭代 2026-09-24-scheduled-env-gifts):
     节点键格式'位-轮'(坏键 = on_env_gained 入队解析必炸的脏数据,import 拒收)、
     定时道具名禁∈ CHARACTER_ROSTER(道具/角色通道串行防呆,道具名混入角色注册表
-    会在发放侧造假身份);⑥ 随机赠卡规格(RandomCharSpec)值域三查:cost 1-5/star
-    1-3(bool 显式拒——bool 是 int 子类,True 会被纯 int 判当 1 混过)、type_tag ∈
-    注册表 char_type 标签闭集(错字致池空静默)、规格过滤池非空(注册表漂移防呆,
-    先例 = _uniform_char_of_cost 的 ValueError);⑦ 随机装备支两查(类别名闭集:
+    会在发放侧造假身份);⑥ 随机赠卡规格(RandomCharSpec)值域四查(共享助手
+    ``_validate_random_char_spec``,与 ENV_DEPLOY_LOCK_GRANTS 同源单一):采样轴
+    互斥(cost/faction 恰好一轴非空——双空 = 全角色池几乎必为登记笔误,双填 =
+    轴语义不明)、cost 1-5(仅 cost 非 None 时,bool 显式拒——bool 是 int 子类,
+    True 会被纯 int 判当 1 混过)、star 1-3、type_tag ∈ 注册表 char_type 标签
+    闭集(错字致池空静默)、规格过滤池非空(阵营轴 = chars_by_faction 域非空
+    防呆,误登角色名 → 域空 import 炸;注册表漂移防呆,先例 =
+    _uniform_char_of_cost 的 ValueError);⑦ 随机装备支两查(类别名闭集:
     元素 ∈ EQUIPMENTS category 词集,越界 = 采样池必空构建期拒;类别过滤池非空,
     注册表漂移防呆)+ '星徽' 类别池独立非空闸(首例登记类别,防类别改名致
     首例登记池静默变空);⑧⑨ 即时装备支两查(首例 = 红钻贵族):⑧ 装备名漂移
@@ -1811,24 +1887,7 @@ def _validate_env_gifts() -> None:
                     f"ENV_GIFTS 定时道具名进角色注册表({_name!r}):"
                     f"{_item!r}(道具/角色通道串行防呆)")
         for _spec in _grant.chars_random_immediate:
-            if isinstance(_spec.cost, bool) or not 1 <= _spec.cost <= 5:
-                raise ValueError(
-                    f"ENV_GIFTS 随机赠卡费用档({_name!r}):{_spec.cost!r} "
-                    f"须为 1-5 整数(chars_by_cost 输入域)")
-            if isinstance(_spec.star, bool) or _spec.star not in (1, 2, 3):
-                raise ValueError(
-                    f"ENV_GIFTS 随机赠卡星级({_name!r}):{_spec.star!r} "
-                    f"须为 1-3 整数(Unit.star 值域)")
-            if _spec.type_tag and _spec.type_tag not in _CHAR_TYPE_TAGS:
-                raise ValueError(
-                    f"ENV_GIFTS 随机赠卡类型标签({_name!r}):"
-                    f"{_spec.type_tag!r} 不在注册表 char_type 标签闭集"
-                    f"(手写错字会致池空静默):{sorted(_CHAR_TYPE_TAGS)}")
-            if not random_char_pool(_spec):
-                raise ValueError(
-                    f"ENV_GIFTS 随机赠卡池空({_name!r}):"
-                    f"cost={_spec.cost} type_tag={_spec.type_tag!r} "
-                    f"过滤后无角色(注册表漂移?)")
+            _validate_random_char_spec('ENV_GIFTS', _name, _spec)
         for _cat in _grant.equips_random_immediate:
             if _cat not in _equip_cats:
                 raise ValueError(
@@ -2936,11 +2995,13 @@ def _validate_env_deploy_lock_grants() -> None:
     battle 登记表校验先例):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② spec 值域三查(复用 _validate_env_gifts ⑥ 同款判据):cost 1-5 /
-    star 1-3(bool 显式拒)/ type_tag ∈ 注册表 char_type 标签闭集(错字
-    致池空静默);③ 规格过滤池非空(random_char_pool,注册表漂移防呆,
-    T-10 校验先例);④ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool
-    显式拒——ENV_BATTLE_GRANTS 锁期形④逐字同款);⑤ 双登记防呆:
+    ② spec 值域查(共享助手 ``_validate_random_char_spec`` 单一源,
+    _validate_env_gifts ⑥ 同款判据):采样轴互斥(cost/faction 恰好一轴
+    非空)/cost 1-5(仅 cost 非 None 时,bool 显式拒)/star 1-3 /
+    type_tag ∈ 注册表 char_type 标签闭集(错字致池空静默)/规格过滤池
+    非空(random_char_pool,注册表漂移防呆,T-10 校验先例);
+    ③ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool
+    显式拒——ENV_BATTLE_GRANTS 锁期形④逐字同款);④ 双登记防呆:
     ``set(ENV_DEPLOY_LOCK_GRANTS) ∩ set(ENV_GIFTS) = ∅``——同卡双表 =
     赠卡双发 + 锁记录双写,import 期不可见(集合互斥同款先例 =
     _validate_env_gifts 尾段 ∩ ENV_ECONOMY;refresh 的值对账豁免段是
@@ -2951,25 +3012,7 @@ def _validate_env_deploy_lock_grants() -> None:
         raise ValueError(
             f"ENV_DEPLOY_LOCK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, _grant in ENV_DEPLOY_LOCK_GRANTS.items():
-        _spec = _grant.spec
-        if isinstance(_spec.cost, bool) or not 1 <= _spec.cost <= 5:
-            raise ValueError(
-                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡费用档({_n!r}):"
-                f"{_spec.cost!r} 须为 1-5 整数(chars_by_cost 输入域)")
-        if isinstance(_spec.star, bool) or _spec.star not in (1, 2, 3):
-            raise ValueError(
-                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡星级({_n!r}):"
-                f"{_spec.star!r} 须为 1-3 整数(Unit.star 值域)")
-        if _spec.type_tag and _spec.type_tag not in _CHAR_TYPE_TAGS:
-            raise ValueError(
-                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡类型标签({_n!r}):"
-                f"{_spec.type_tag!r} 不在注册表 char_type 标签闭集"
-                f"(手写错字会致池空静默):{sorted(_CHAR_TYPE_TAGS)}")
-        if not random_char_pool(_spec):
-            raise ValueError(
-                f"ENV_DEPLOY_LOCK_GRANTS 随机赠卡池空({_n!r}):"
-                f"cost={_spec.cost} type_tag={_spec.type_tag!r} "
-                f"过滤后无角色(注册表漂移?)")
+        _validate_random_char_spec('ENV_DEPLOY_LOCK_GRANTS', _n, _grant.spec)
         _lock = _grant.deploy_lock_nodes
         if not isinstance(_lock, int) or isinstance(_lock, bool) or _lock < 1:
             raise ValueError(
