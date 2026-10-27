@@ -1906,10 +1906,11 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   家族披露键申报)。
 - 概念股族阵营刷新概率腿零建模失真 `ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS`
   (键模板 `env_<id>_faction_refresh_odds_unmodeled`,本批收
-  `env_1001_faction_refresh_odds_unmodeled`、
+  `env_1001_faction_refresh_odds_unmodeled`(追击概念股)、
   `env_1002_faction_refresh_odds_unmodeled`(燃血概念股)、
   `env_1003_faction_refresh_odds_unmodeled`(能量概念股)、
-  `env_1004_faction_refresh_odds_unmodeled`(列车同行概念股)):sim 商店发牌
+  `env_1004_faction_refresh_odds_unmodeled`(列车同行概念股)、
+  `env_1005_faction_refresh_odds_unmodeled`(银河学者概念股)):sim 商店发牌
   不模拟阵营权重,刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气
   收益;裁定正本 = invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面
   载体,遥测对账只量化失真不产落参。
