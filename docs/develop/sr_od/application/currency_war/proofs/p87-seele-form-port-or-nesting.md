@@ -5,7 +5,7 @@
 > t171_xierie_criteria 目录下「命题_批序1_形态端口OR.md」(未入库临时档案、git 外),方案审放行附 5 低项
 > F1-F5 全折入批序 1 命题)+ (批序 1 实现决策,commit
 > 98078c0a);正式化动机 = 策略审查 20260909 项 1(批序 1 命题只存于临时
-> 目录,math_proofs 无索引行,P24/P61「内容已齐后补正式化」先例同法;
+> 目录,math_proofs 无索引行,P24「内容已齐后补正式化」先例同法;
 > 不补则配方对/意向重评批 §12.13 联审只能引临时路径)。
 > 代码锚:`pair_target_comp`(kernel/cw_intention.py,伪 comp 物化单一
 > 写端;希儿系对 form_tiers 只含他体系档 + `SEELE_OR_LEGS` or_legs +

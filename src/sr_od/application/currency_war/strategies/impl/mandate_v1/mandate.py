@@ -865,8 +865,10 @@ def _redeploy_emission_allowed(session: StrategySession,
        bench 槽期权价值(买入线内件→完成度推进)+「core 上板」完成度
        收益,支配 2★ 线外件持有价值(不卖也上不了场;机会成本锚 =
        bench_full_buy_abandon 4717 次/100 局)。金不减
-       腿在 2★ 失效后,收敛改由 B_t 严格增腿独立承载(胜出者必过
-       post_sell_offline 底线 ⇒ B_t 净 +1,无死循环保持);下场态
+       腿在 2★ 失效后,收敛改由目标线支撑计数严格增腿独立承载(胜出者必过
+       post_sell_offline 底线 ⇒ 板面目标线支撑计数净 +1,无死循环保持;
+       口径 = up 侧 target 视图,非 B_t 披露口径——两口径边界见
+       ``board_target_line_weight`` docstring);下场态
        (方向甲,R3)实现时在此轴展开。
     """
     if ctx is None:

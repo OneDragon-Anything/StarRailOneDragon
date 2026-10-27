@@ -212,7 +212,8 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     质量目标不可达帧,降格为配方完备发出(「不可达不关闸」防死锁教义);
     推迟帧
     (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
-    部署原子序推进换人/填板,P61 族支撑单调收敛),金尽稳态由
+    部署原子序推进换人/填板;换人触发有限性载体 = 转型域换人
+    收敛不变式,math_proofs P98),金尽稳态由
     收益耗尽分支兜底(判据与 出战就绪零耦合)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS

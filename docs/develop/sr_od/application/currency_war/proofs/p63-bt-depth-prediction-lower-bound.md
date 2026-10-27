@@ -4,8 +4,10 @@
 > 素材出处:同 P62(判定批 2026-09-06,sim61/62/63 三批全量 n=108
 > boss 前帧;决策记录 = form_score_predicate 判定批);B_t 定义 = deployed 中羁绊
 > (经 `cw_chars.CHARACTERS` 注册表)∩ 四体系阵容内阵营集的件数,
-> 与 P61 支配论证的基座同一语义,复算单一源 =
-> `cw_deploy_logic.board_target_line_weight`。
+> 复算单一源 = `cw_deploy_logic.board_target_line_weight`(纯披露口径;
+> 与换人判据的支撑件计数为不同辖域口径——后者 = 名单成员 ∪ 终局键集
+> 标签命中件,kernel `terminal_key_label_hit_names` 单一源,两口径
+> 并存禁互相替代)。
 
 ## 命题(形式化)
 
@@ -49,7 +51,6 @@ deployed_power)中唯一 p<0.001 显著者——披露口径替换的数学依�
 
 ## 关联
 
-- P62(form_score 零信息,本命题大于关系的另一端)/ P61(B_t 行为面
-  支配命题,与本件观测面互不替代);
+- P62(form_score 零信息,本命题大于关系的另一端);
 - (决策记录)、(升格闸门)、
   `cw_deploy_logic.board_target_line_weight`(B_t 计算单一源)。

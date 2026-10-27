@@ -1,7 +1,8 @@
 """P88 锁线转型域投机买入收窄·库容不变量与解封方向·复算脚本。
 
 命题(docs/develop/sr_od/application/currency_war/proofs/p88.md;math_proofs.md P88 行):
-- 辖域单一源: D = _swap_transition_domain_of = armed ∧ locked ∧ fp<1.00 ∧ 板满;
+- 辖域单一源: D = swap_bond_gate_domain_of = 腿①终局阵容锁定 ∧ fp<1.00
+  ∧ 板满(换人通道统一后谓词源;原恒真回滚腿退役,登记域逐帧语义不变);
 - 调和引理(路径级弱支配): 收窄的占位成本 = 滞留期各帧边际 V_slot 之和 ≥ 0,
   被阻义务兑现帧上 ≥ 该义务净 EV(严格);bench 恒 free≥2 时和 = 0(等价分支);
 - 主不等式(冻结口径): S_spec 停发 ⟹ 被压抑类备战席占用逐帧 O_t(收窄) ≤ O_t(基线);
@@ -11,11 +12,11 @@
 - 三重折扣: 57-63% = 冻结口径上界,禁当预期值(算术面在断言 7 对账)。
 
 本脚本直调生产单一源复算(kernel 禁第二实现):
-- _swap_transition_domain_of / SWAP_TRANSITION_ARM_ENABLED: kernel/cw_deploy_logic.py:833/:756
+- swap_bond_gate_domain_of: kernel/cw_deploy_logic.py:538
 - LAUNCH_CAUSE_BY_ARM / WINDOW_LAUNCH_CAUSES: strategies/impl/mandate_v1/sell_gate.py:114/:107
 - v_slot(P41③): strategies/impl/mandate_v1/statefn/vopt.py:71
 - saturation_line / loss_exact: kernel/cw_economy.py(P70 同源)
-- BENCH_CAPACITY: kernel/cw_state.py:32
+- BENCH_CAPACITY: kernel/cw_exec_state.py:170
 
 数据锚(冻结直录;三批报告住 .debug/temp/currency_war/ 下,gitignore 易失,
 数字冻结于断言 7 与单篇数据锚节): findprob_20260910_005622(n100 s8000-8099)
@@ -30,14 +31,13 @@ import random
 import sys
 
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    SWAP_TRANSITION_ARM_ENABLED,
-    _swap_transition_domain_of,
+    swap_bond_gate_domain_of,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     loss_exact,
     saturation_line,
 )
-from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     LAUNCH_CAUSE_BY_ARM,
     WINDOW_LAUNCH_CAUSES,
@@ -56,22 +56,20 @@ _IBAR_BAND = range(4, 10)
 
 
 def check_domain_predicate() -> None:
-    """断言 1: 辖域谓词单一源真值表 + 域活开关 + hub 带结构不相交。"""
-    assert SWAP_TRANSITION_ARM_ENABLED is True, '域活开关被关死(收窄辖域变死开关)'
+    """断言 1: 辖域谓词单一源真值表 + D⊆locked(hub 带结构不相交)。"""
     n = 0
-    for armed in (True, False):
-        for locked in (True, False):
-            for fp in (None, 0.0, 0.5, 0.99, 1.0, 1.5):
-                for board_full in (True, False):
-                    got = _swap_transition_domain_of(armed, locked, fp, board_full)
-                    want = (armed and locked and fp is not None
-                            and fp < 1.00 and board_full)
-                    assert got == want, f'谓词偏离合取定义: {armed}/{locked}/{fp}/{board_full} -> {got}'
-                    if not locked:
-                        assert got is False, 'D 域含未锁帧(hub 辖 unlocked,结构性不相交被破)'
-                    n += 1
-    print(f'[断言1] 辖域单一源: _swap_transition_domain_of 真值表 {n} 格 = '
-          f'armed∧locked∧fp<1.00∧板满 逐格一致; armed=True 域活; D⊆locked(hub 带不相交) PASS')
+    for locked in (True, False):
+        for fp in (None, 0.0, 0.5, 0.99, 1.0, 1.5):
+            for board_full in (True, False):
+                got = swap_bond_gate_domain_of(locked, fp, board_full)
+                want = (locked and fp is not None
+                        and fp < 1.00 and board_full)
+                assert got == want, f'谓词偏离合取定义: {locked}/{fp}/{board_full} -> {got}'
+                if not locked:
+                    assert got is False, 'D 域含未锁帧(hub 辖 unlocked,结构性不相交被破)'
+                n += 1
+    print(f'[断言1] 辖域单一源: swap_bond_gate_domain_of 真值表 {n} 格 = '
+          f'腿①锁定∧fp<1.00∧板满 逐格一致; D⊆locked(hub 带不相交) PASS')
 
 
 def check_closed_set() -> None:
