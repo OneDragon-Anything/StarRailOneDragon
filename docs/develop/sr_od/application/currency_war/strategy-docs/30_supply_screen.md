@@ -1,6 +1,6 @@
 # 30 补给画面策略(supply screen)
 
-> 画面 = 货币战争-补给(补给节点的动态 N 选 1 选卡屏:每张卡 = 角色 + 自带装备,通常 4 选 1,可刷新重掷;**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5)。本篇 = 该画面的**策略面**(宪法六「一画面一策略文件、一画面一策略文档」)。
+> 画面 = 货币战争-补给(补给节点的动态 N 选 1 选卡屏:每张卡 = 角色 + 一件装备(捆绑报价;领取后角色入备战席、装备入库存,不预穿),通常 4 选 1,可刷新重掷;**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5)。本篇 = 该画面的**策略面**(宪法六「一画面一策略文件、一画面一策略文档」)。
 > 决策本体 = `strategies/impl/mandate_v1/supply.py::decide`(纯值出口);动作包装与意向解析 = `strategies/impl/flow.py::decide_supply`(零参口);画面 op = `operations/cw_screen/cw_screen_supply_node.py`(观察 + 决策动作两 node,能力细节 = [../screens/supply.md](../screens/supply.md))。pick 族接口规格 = [13_pick_family.md](13_pick_family.md) §1 `decide_supply` 行,本篇不复制;数值单一源在代码(本篇只写常量名)。
 > 术语(首现定义):**单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**终局阵容已锁定**(`locked_comp`)= 最终阵容已确定、此后围绕它买牌的状态(flow 解析意向状态后传入);**降格帧**(`demoted_endgame`)= 原定终局阵容已放弃的帧,一律按未锁定口径;**凑星** = 同名同星角色集齐 3 张合成更高星级;**fail-closed** = 读数缺失时取不放行/不动作的保守分支;**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
 
