@@ -248,8 +248,8 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
     结构事实判据(存在性,非幅度):命中任意持续通道字段即真,字段值不
     参与任何定序。与血本位排除族零交集(两族字段不相交,对账声明见
     ``_ENGINE_CHANNEL_EXCLUDED_FIELDS`` 分组注)。新增 EconomyEffect 字段
-    未显式落三分类 → :func:`_validate_engine_channel_closure` import 即炸
-    (静默判「一次性」的治理缺口前置可见)。"""
+    须同步落入三分类常量(治理注 = 2026-10-28 校验治理移除闭集完备校验:
+    漏分类的后果 = 本谓词族不消费该字段,估值零贡献,评审面把关)。"""
     if economy is None:
         return False
     for name, default in _ENGINE_CHANNEL_SINGLE_FIELDS:
@@ -1314,7 +1314,8 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
 # ===== 环境经济通道注册表(白名单制)=====
 # A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
 # 过热),通道分类全量。表外环境 economy 恒 None,禁从效果原文
-# 自动猜装(六条防错装对账 = _validate_env_economy);
+# 自动猜装(错装防线归评审与经济域测试;六条防错装对账校验已随
+# 2026-10-28 治理移除);
 # 轮岗/人才下沉无通道可装 → 策略层 env_economy.ENV_ECONOMY_PENDING_MODELING
 # 显式登记(区别于漏登记):轮岗 = 待建模候迁出;人才下沉 = 已定案按 0
 # (2026-10-16 用户裁定,永驻登记;商店 2★ 直出分支见下文
@@ -1373,9 +1374,10 @@ _validate_env_economy()
 
 # ===== 环境声明矿注册表(details/ore-reward-channel.md §2)=====
 # **世界发放域**(矿进入世界时的声明内容),与 ENV_ECONOMY(估值域)分域不互斥
-# ——增发货币两表同时已登记是常态;本表与估值面的对账 = 双源同值校验
-# (见 _validate_env_ore_grants 第③条)。消费面 = kernel/cw_ore_channel.py
-# 声明入队电平检查(键查)与挂接入口生成(值出队)。
+# ——增发货币两表同时已登记是常态;两侧金额同出卡面(id 103),一致性归
+# 评审与 ore 域测试把关(双源同值校验已随 2026-10-28 治理移除)。
+# 消费面 = kernel/cw_ore_channel.py 声明入队电平检查(键查)与挂接入口
+# 生成(值出队)。
 ENV_ORE_GRANTS: dict[str, tuple[int, ...]] = {
     # 每位面开局 6/8/12 金晶矿(id 103 原文直读,cw_invest_data PlazaPortal('103'))
     '增发货币': (6, 8, 12),
@@ -1549,8 +1551,8 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 时点 = 环境注册(选卡当场),用户裁定 2026-10-24)。卡文序 = 邀请函
     # 先箱后。专家邀请函 = kind='bookcard'(开卡链)、简易武装箱 =
     # kind='supply_box'(开箱链);落席类别判定单一源 = BENCH_ITEM_KINDS
-    # (与本条目同批登记,缺一即被 _validate_bench_item_kinds 闭集校验
-    # import 炸,无书写顺序语义)。不设 advisor=True:advisor 语义 = 顾问
+    # (与本条目同批登记,缺一 = 落席直查 KeyError 响亮可见,无书写顺序
+    # 语义)。不设 advisor=True:advisor 语义 = 顾问
     # 直接入商店(特邀专家),本卡为道具中间态,开启时点与选择权在玩家,
     # 开卡后语义归现役开卡/选卡链。bookcard 槽件发放首例(items 通道此前
     # 全为武装箱系)。
@@ -2092,10 +2094,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
 # 席并阻断进入战斗。溢出位身份串(overflow_card)因此有两分:角色 char_id /
 # 占席道具名。
 # BENCH_ITEM_KINDS = 占席道具槽件「名字→类别」全量显式映射(用户裁定
-# 2026-10-24:全量显式制,漏登 import 炸成可见,静默落错身份的治理劣于
-# 响亮缺登记)。「全量」口径 = 授予通道占席道具(键集闭合 = 两张授予表
-# items_* 通道道具名并集,_validate_bench_item_kinds 双向闭合校验承接原
-# 派生式「新增授予自动覆盖」);观察专属来源(星徽秘典,tome)不经授予
+# 2026-10-24:全量显式制,静默落错身份的治理劣于响亮缺登记)。「全量」
+# 口径 = 授予通道占席道具(键集闭合 = 两张授予表 items_* 通道道具名并集;
+# 2026-10-28 治理后闭合校验移除,键集一致性归数据性质测试与评审,漏登
+# 后果 = 落席直查 KeyError 响亮);观察专属来源(星徽秘典,tome)不经授予
 # 通道,不入本表不入词表(豁免,名字一致性由识别双渲染注册表承载)。
 # 词表 BENCH_ITEM_NAMES 只答「是不是占席道具」;本表答「是哪种」并兼任
 # BenchSlot 身份轴(item)与类别轴(kind)的一致性权威:授予通道道具类槽
@@ -2320,8 +2322,8 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
     '联席决策': StrategyPoolRewrite(extra_strategy_offer_node=(2, 6)),
     # 策略大师 = 数量通道(3-5 节点额外获得一个投资策略,id 147);纯事实
     # 登记不折金不进估值(表头注释现役口径),与 ENV_ECONOMY 同键共存 =
-    # 互斥闸语义化豁免(_validate_env_pool_rewrite:仅估值语义字段非空
-    # 条目禁交);
+    # 互斥闸语义化豁免的现值形态(互斥校验已随 2026-10-28 治理移除,
+    # 单一估值落点归评审把关);
     # 执行消费端 = sim 直发发放事件(单一源,勘误/改值只改本登记处,
     # sim 派生查询自动跟随);
     # 挂点候实机对账:实机直发出现节点 ≠ 3-5 → 改本登记值一处(sim 自动
@@ -2419,10 +2421,10 @@ _validate_env_streak_grants()
 # 消费面 = kernel/cw_env_grants.check_env_refresh_grants(触发检查
 # 单一源,唯一调用点 = 刷新上报函数尾部)。
 # **表间豁免声明**(ENV_ORE_GRANTS 同款):本表键与 ENV_ECONOMY 共存
-# (二手市场两表同时已登记),不参与 ENV_POOL_REWRITE 校验收的「单一
-# 环境只落一个估值结构」三表互斥——本表条目非效果牌面,登记即常驻
-# 触发器;正确性代之以与估值面的双源同值校验(见
-# _validate_env_refresh_grants 第⑤条)。与 ENV_STREAK_GRANTS 两个世界
+# (二手市场两表同时已登记),不参与「单一环境只落一个估值结构」三表
+# 互斥——本表条目非效果牌面,登记即常驻触发器;两侧数值同出卡面
+# (id 106),一致性归评审与刷新域测试把关(双源/跨锁校验已随
+# 2026-10-28 治理移除)。与 ENV_STREAK_GRANTS 两个世界
 # 发放表可同键并存(某卡兼有两种触发):done 键 = (env,条件键) 带
 # 条件键维度,语义无冲突。
 ENV_REFRESH_GRANTS: dict[str, tuple[str, int, int, str | None]] = {
@@ -3018,8 +3020,9 @@ _validate_env_bond_tier_grants()
 # ===== 环境取卡触发发放注册表(T-46 策略大师;白名单制)=====
 # 世界发放域取卡触发器首例(事件式同型先例 = merge:事件携带事实无 done)。
 # 每取卡事件一笔,无 done 封账。
-# 表间豁免声明(见 _validate_env_pick_grants ③):本表键与 ENV_ECONOMY 共存,
-# 不参与「单一环境只落一个估值结构」互斥;正确性代之以双源同值校验(③)。
+# 表间豁免声明:本表键与 ENV_ECONOMY 共存,不参与「单一环境只落一个估值
+# 结构」互斥;两侧系数同出卡面(id 147),一致性归评审与取卡域测试把关
+# (双源同值校验已随 2026-10-28 治理移除)。
 ENV_PICK_GRANTS: dict[str, int] = {
     # 每取一张策略 +coef×含本张已持有数(id 147 原文直读「2*已拥有投资策略数」;
     # 口径 = 含本张(用户裁定 2026-10-26):第 k 张到手发 coef×k,首张 coef×1)

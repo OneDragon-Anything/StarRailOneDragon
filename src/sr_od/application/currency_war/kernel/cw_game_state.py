@@ -689,7 +689,8 @@ class BenchSlot:
     # 且 kind == BENCH_ITEM_KINDS[item];tome 豁免——星徽秘典为观察专属
     # 来源,不入映射/词表,名字一致性由识别双渲染注册表承载);unit/empty
     # 恒 None;旧档回放/journal 历史槽值缺键 → None 容忍(零迁移),不做
-    # ``__post_init__`` 校验(一致性防线 = 映射闭合校验 + 观察端互检,
+    # ``__post_init__`` 校验(一致性防线 = 观察端互检;映射闭合 import
+    # 校验已随 2026-10-28 校验治理移除,数据性质锁在测试仓,
     # dataclass 构造期零机器)。
     item: str | None = None
 

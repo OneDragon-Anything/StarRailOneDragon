@@ -1870,8 +1870,9 @@ class SimBackend:
         # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
         # 与 _present_offer_or_node_screen(幂等守卫区段外,resume 复走
         # 双发面)。direct 挂点查询 = kernel ENV_POOL_REWRITE 单一源
-        #(表外环境 get None = 无直发的合法语义,登记残缺防线在 kernel
-        # 空条目闸);当前节点 == extra_strategy_grant_node → 直接经获得链
+        #(表外环境 get None = 无直发的合法语义,登记残缺归评审把关,
+        # 空条目闸已随 2026-10-28 校验治理移除);当前节点 ==
+        # extra_strategy_grant_node → 直接经获得链
         # 发一张随机投资策略,不开 offer 无选卡屏(用户裁定 2026-10-26),
         # 发放后照常进该节点正常流程;到手名并入 excluded_invest(维持
         # 「本局已出过全部选项名」累计去重契约,漏并入 = 已拥有策略可再入
@@ -2142,7 +2143,7 @@ class SimBackend:
           保险;顺手清位面过渡过期条目,evidence
           ``ore_declared_expired#p{old}`` 留痕)——**金不再直发**,世界
           面的金在点击声明矿兑现时入账(策略面估值消费
-          ``ENV_ECONOMY`` 数值不变,双源同值校验构建期闭合);sig =
+          ``ENV_ECONOMY`` 数值不变,两侧一致性归测试与评审把关);sig =
           ``logic_sig('sim:env')``(与 ``discharge_due_item_grants``
           同组同窗,kernel 确定效果直写 write_logic 先例);
         - env ∉ 且 ``gold_per_plane_start`` 非空 → 保留直发(非矿形态

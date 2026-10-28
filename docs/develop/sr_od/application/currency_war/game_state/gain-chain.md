@@ -212,16 +212,14 @@ fields.md §3.5.5)。发放不经获得链原语与本节枚举回调:装备发�
 追加 `write_logic_rand` + done 追加两笔相邻直写(宝钻落位不可观察的随机态
 写,无落位/升星/回调链诉求);宝钻的世界数值联动(diamond_count/deploy_cap/
 back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
-三写;live 不调,联动归观察域)。**分域边界**:
-`ENV_GIFTS ∩ ENV_ECONOMY = ∅`(单一环境只落一个估值结构,§3 道具通道同节
-校验);`ENV_ORE_GRANTS` 与两表**不互斥**——增发货币同有估值面
+三写;live 不调,联动归观察域)。**分域边界**:单一环境只落一个估值结构
+(表间互斥校验已随 2026-10-28 治理移除,单一落点归评审把关);
+`ENV_ORE_GRANTS` 与两表**不互斥**——增发货币同有估值面
 (`ENV_ECONOMY.gold_per_plane_start`,策略层估值消费)与 sim 世界侧(声明矿金额,
-点击兑现入账),两表同出卡面原文,靠构建期双源同值校验
-(`_validate_env_ore_grants` 第③条:同键长度相等且逐位同值,任一侧单独改金额
-import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:获得刻
+点击兑现入账),两表同出卡面原文,金额一致性归评审与 ore 域测试把关
+(双源同值校验已随治理移除)。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:获得刻
 纯队列登记零席位写 → sim 进节点收口到点开盒(§2.9)→ settle_confirm 完胜
-回退三口全链零采样;域规格 = fields.md §3.2.25;与 ENV_GIFTS 集合互斥构建期
-防呆同款)。
+回退三口全链零采样;域规格 = fields.md §3.2.25)。
 
 - **on_env_gained(gs, session, env_name, *, rand, sig, rng=None)**:查 `cw_investments.py::
   ENV_GIFTS`(投资环境 → 具名发放数据表,即时/随机/定时三通道)。命中后**先按
