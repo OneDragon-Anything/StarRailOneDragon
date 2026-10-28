@@ -38,10 +38,8 @@
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 备注 |
 |---|---|---|---|---|
-| `last_hp` / `last_hp_t` | 结算屏采集 | gated_hp 新鲜度门→prep hp | 节点 | 结算真值链 |
-| `last_hp_real` / `last_hp_real_node` | 备战屏真值帧 reconcile | hp_trusted 帧龄门 | 帧/节点 |  对账锚 |
-| `hp_suspect` | 识别层拒信守卫 | 守卫自身复现确认 | 节点内 | 识别质量通道,非策略输入 |
-| `last_node_type` / `node_type_current` / `upcoming_types` | 节点行读取(read_node_sequence) | on_round_end 遥测、策略器(旧日志标签 director)判节点 | 帧/节点 | 仿 last_hp 模式 |
+| ~~`last_hp` / `last_hp_t` / `last_hp_real` / `last_hp_real_node` / `hp_suspect`~~ | —— | —— | —— | **已停用删除**(终态契约 §A 防御缓存删除,`cw_strategy_session.py` 注释正本):结算 hp 锚/对账锚/hp 下行拒信通道整组删除——「上一真值」语义由结算覆盖写端 + carried 语义承载(`../game_state/fields.md` §2.1),hp 读数消费 = 容器单读(`decision_hp`,观测与支付币读数面) |
+| `last_node_type` / `node_type_current` / `upcoming_types` | 节点行读取(read_node_sequence) | on_round_end 遥测、策略器(旧日志标签 director)判节点 | 帧/节点 | 节点锚同族模式 |
 | `nodeseq_probe_anchor` | 节点行读取(框架侧) | 节点行读取防重 | 节点 | 左移推断轮次用 |
 | `last_streak` | 结算屏「连胜×N」 | economy C 杠杆 | 节点 | 方向语义在符号 |
 | `last_level_obs` | read_level + 单调守卫 | 等级读数消误 | 局 | 识别层守卫状态 |
@@ -49,7 +47,7 @@
 | `last_owned_equips` | 备战入口观察装配点全量重写(主写端,P4 接线)+ 穿戴 pass 执行位步内覆写 | state.equips 遥测、载体中继兜底 | 帧 | ;决策输入(门①/工具评估/计划产出位)已切容器 `equips` 域(黑板帧停用前搬迁),勿回接本镜像 |
 | `chosen_megastar` / `chosen_partner` | 选择 handler | 遥测回写 state | 局 | 复盘维度 |
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
-| `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 | boss 名单中的 None 占位元素保留原槽位、不做过滤（槽位序号即语义） |
+| `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit | 局 | boss 名单中的 None 占位元素保留原槽位、不做过滤（槽位序号即语义） |
 | ~~`prep_obs_frame`~~ | —— | —— | —— | **已停用删除**(黑板帧停用):备战黑板帧宿主与 `gs.prep_obs` 槽一并删除,策略器唯读容器契约归位——备战决策读 = 容器单例 `game_state_of(session)` 全量直读;`PrepObservation` 瘦身为备战环 op 局部控制信号载体(shop_open/substate/event_overlay),不进 session |
 | ~~`pending_round_outcomes`~~ | —— | —— | —— | **已停用删除**:消费侧 drain 停用后观察半累积槽整删——结算真值归宿 = gs 结算覆盖写端(`apply_settlement_cover`)+ `performance.history` |
 
@@ -73,7 +71,7 @@
 | `last_candidate_scores` / `last_candidate_scores_round` | 选线轮评分推导 | 遥测、shop 侧陈旧判定 | 轮 | MandateState.推导缓存 |
 | `v3_intention` | cw_intention 状态机(策略判据层) | kernel/mandate/sim 广域只读 | 局 | MandateState(核心意向状态机) |
 | `v3_evolution` / `v3_core_names` / `v3_mode` / `v3_alarm` / `v3_pending_rollback` / `v3_prev_hp` / `v3_last_intention_event` / `v3_intention_key` | 意向/演进/纪律推导 | mandate_v1 决策、on_match_start 清零 | 局/轮 | MandateState |
-| `v3_blood_budget_rejects` / `v3_blood_budget_refresh_rejects` | 血预算拒付披露(策略) | 遥测 | 局 | MandateState |
+| ~~`v3_blood_budget_rejects` / `v3_blood_budget_refresh_rejects`~~ | 血预算拒付披露(策略) | 遥测 | 局 | MandateState **〔已随 hp 判据族删除删除——MandateState 侧计数器与遥测透传字段同批删除〕** |
 | `v3_handoff` / `v3_handoff_plane` | 位面 2 承接快照(策略计算) | decide_prep | 位面 | MandateState |
 | `v3_posture_unfulfilled` | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState |
 | `cw4_counters`(动态属性,非 dataclass 字段) | 策略行为观测分键(mandate_v1/encounter/shop/entry 多点写) | decisions 行、cw4_counters.jsonl 局终快照、sim 轮差分账本、A/B 披露 | 局 | MandateState;**遥测消费线必须随迁保持可读**(§5.4) |
@@ -116,7 +114,7 @@
 | 成型停手 | `v3_formed_stop` | **行为面消费** = cw_screen_prep.py:2173 决策豁免联动 + cw_screen_buy_cards.py:639 入 decisions 行(非纯遥测) |
 | 补偿/稳态簿记 | `v2_remedy_used` / `v2_steady_lv_used` / `v3_steady_lv_abandoned` / `v3_remedy_abandoned` |  跨局清零计数 |
 | 轮笔数披露 | `v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy` | 遥测判读面(journal/局档案) |
-| 富余金强制释放与跨位面承接 | `v3_release` / `v3_release_round` / `v3_release_spent` / `v3_handoff_gap` / `v3_handoff_hp_proj` | 富余金强制释放指令及其跨位面承接记录——「把利息线以上的富余金币强制花掉」姿态的状态与执行进度(语义见 proofs/p17、p18);`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250) |
+| 富余金强制释放与跨位面承接 | `v3_release` / `v3_release_round` / `v3_release_spent` / `v3_handoff_gap` / `v3_handoff_hp_proj` | 富余金强制释放指令及其跨位面承接记录——「把利息线以上的富余金币强制花掉」姿态的状态与执行进度(语义见 proofs/p17、p18);`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250);`v3_handoff_hp_proj` **〔已随 hp 判据族删除删除——孤儿字段(无写端无读端)同批删除〕** |
 | 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy.py:662 消费)/ `v3_dir_refresh_used`(刷新消耗计数,cw_registry.py:836)/ `v3_alloc_frame`(DP 姿态轮帧缓存;原引擎消费点已随停用消解)/ `v3_reserve_cap`(储备线披露;原引擎消费点已随停用消解) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值) |
 
 **遥测承诺精确化(消解「session 只剩 30 项」与「遥测 schema 零改」的表面矛盾)**:§6.1 迁移清单**扩大到全部 104 项**(含本节 24 个动态属性);遥测承诺收窄为——**decisions/schema/jsonl 的序列化 schema 与格式零改,但全部数据源读点改为经访问函数抽自 MandateState**。session 字段数与遥测 schema 本就无蕴含关系(动态属性从来不进 asdict,遥测可见性从来全靠显式读点),初版「schema 零改」表述未点明该依赖链,此处显式化(对抗审查 C1 采纳)。
@@ -144,8 +142,7 @@
 | 丢失的状态类 | 冷启动语义 | 风险评级 |
 |---|---|---|
 | 意向状态机(`v3_intention`) | 从未锁定态重驱动,凭现读 board/bench/持有重锁——可能锁到与重启前不同的线 | **中**:换线成本存在但决策仍自洽(意向状态机的输入是观察数据,不是历史意向);恢复局已有遥测标记可判读 |
-| 掉血三个分支记忆(`v3_alarm`/BloodAlarmTracker) | 归零 = 恢复轮内掉血三个分支**全部哑火**——低血量时不停手/不升级/不进危机分支 | **中**(对抗审查 B3 改判,初版误标「低」):它是**触发器不是限制器**,归零的失效方向是「少保血」而非「保守」;恢复局恰是观察数据刚重建、最需要血线保护的时刻。缓解见 6.2-4 判读义务 |
-| 纯限制器计数(拒付计数/defer 门/handoff 采样戳/稳态放弃计数) | 归零 = 「未发生过」语义 | 低:保守限制器,归零只放宽限制一轮,下个入口重估 |
+| 纯限制器计数(defer 门/handoff 采样戳/稳态放弃计数) | 归零 = 「未发生过」语义 | 低:保守限制器,归零只放宽限制一轮,下个入口重估 |
 | 同轮已卖集(原 §2.4 执行侧轮账本 `v2_round_sold`) | 实施盘点改判:该守卫实为恒空集僵尸(轮键零写端 → 登记恒 no-op),从未在环,已随执行层状态类目停用删除;现行同轮买卖互斥由 mandate_v1 自有载体 `cw4_round_sold_names` 承载,恢复局冷启动同样丢失——「同轮已卖禁买回」守卫失效窗口与先卖后买回的缩幅循环风险语义不变,宿主换为策略器状态 | **中**(宿主换为 mandate_v1 载体,失效方向与自愈特性不变) |
 | 回退集/已买集(`memory` 类) | 空 = 豁免暂时失效 | 低:与现状重启丢 session 同语义 |
 | `cw4_counters` 遥测分键 | 局终快照只含恢复后增量 | 低:遥测断点,恢复局标记在场可判读;非行为面 |
@@ -246,7 +243,7 @@ sim 决策逻辑与判据本体零改动——as-built 后 sim 亦无专有状�
 1. 快速集测试全量通过(`uv run pytest sr-od-test/ -m "not slow"`)+ 直接受影响面慢桶一次全量。
 2. 决策帧截图保留证据对照:同 seed sim 跑切换前后各 N 局,decisions 行/`cw4_counters`/**shop_snapshots**/`v3_intention` 序列化输出逐帧对照并**截图保留证据**(逐字节一致;不一致 = 读点漏改或语义漂移,逐处归因;保留证据物归对局档案,供对抗审查与用户二次确认调阅)。
 3. grep 完成判据(对抗审查 C2 采纳,范围扩到全集):对**清册全集 104 项逐一**做 session 形态访问归零 grep——含 §2.3/§2.6 迁出字段(`session.v3_*`/`session.v2_*`/`session.commit_*`/`session.cw4_counters`/`session.memory` 及 `getattr(session|sess, '<键>')` 动态属性形态)、§2.4 执行层字段(`deploy_fail_counts` 等)、§2.5 停用字段名(直接属性访问形态,防 cw_screen_buy_cards.py:658-660 类 AttributeError)——任何一项在 session 形态上有残留访问即不收尾。
-4. 实机局 ≥1 局跑通 + 恢复局形态一次手工验证(重启 server 接管残局,核对 §3.2 冷启动语义与恢复局遥测标记),**并加两项行为面判读**(对抗审查 B3 采纳):①恢复轮血预算披露(掉血三个分支哑火面——拒付计数/停手动作判读,确认「少保血」风险窗口实际影响);②恢复轮同轮买卖序列判读(同轮已卖互斥宿主 = mandate_v1 `cw4_round_sold_names`,恢复局冷启动同样丢失,判读义务不因原执行侧守卫 `v2_round_sold` 的停用而撤销——该守卫经实施盘点判恒空集僵尸,从未在环;守卫缺位窗口内无卖后买回缩幅循环)。
+4. 实机局 ≥1 局跑通 + 恢复局形态一次手工验证(重启 server 接管残局,核对 §3.2 冷启动语义与恢复局遥测标记),**并加两项行为面判读**(对抗审查 B3 采纳):①~~恢复轮血预算披露~~(该判读对象已随 hp 判据族删除删除——判读义务随对象消解);②恢复轮同轮买卖序列判读(同轮已卖互斥宿主 = mandate_v1 `cw4_round_sold_names`,恢复局冷启动同样丢失,判读义务不因原执行侧守卫 `v2_round_sold` 的停用而撤销——该守卫经实施盘点判恒空集僵尸,从未在环;守卫缺位窗口内无卖后买回缩幅循环)。
 
 ### 6.3 `memory` 的消解(不设过渡)
 
@@ -260,7 +257,7 @@ sim 决策逻辑与判据本体零改动——as-built 后 sim 亦无专有状�
 
 ### 7.2 最大行为风险点(按序)
 
-1. **恢复局语义变化**(§3.2):现状恢复局丢 session 与切换后丢 MandateState 行为面等价(都是保守冷启动),但意向重锁路径从「session 空 v3_intention 惰性建」变为「工厂显式新建」——语义应逐字节一致,风险在读点漏改导致恢复局行为分叉。**恢复轮两个已评级「中」的行为面**(掉血三个分支哑火/同轮已卖守卫缺位)有专项判读义务(6.2-4),非仅「跑通」(同轮已卖互斥宿主现为 mandate_v1 `cw4_round_sold_names`;原执行侧 `v2_round_sold` 守卫经实施盘点判恒空集僵尸,从未在环,已随执行层状态类目停用删除)。
+1. **恢复局语义变化**(§3.2):现状恢复局丢 session 与切换后丢 MandateState 行为面等价(都是保守冷启动),但意向重锁路径从「session 空 v3_intention 惰性建」变为「工厂显式新建」——语义应逐字节一致,风险在读点漏改导致恢复局行为分叉。**恢复轮已评级「中」的行为面**(同轮已卖守卫缺位)有专项判读义务(6.2-4),非仅「跑通」(同轮已卖互斥宿主现为 mandate_v1 `cw4_round_sold_names`;原执行侧 `v2_round_sold` 守卫经实施盘点判恒空集僵尸,从未在环,已随执行层状态类目停用删除;原「掉血三个分支哑火」行为面随 BloodAlarmTracker 删除消解)。
 2. **遥测断流**:`cw4_counters`/`v3_intention`/`v3_reserve_cap`/`v3_release_spent` 等序列化读点散布 sim/telemetry/operations 三域(§5.4),漏一处 = 该域数据静默缺失(不会报错)。缓解 = grep 完成判据(6.2-3)+ 决策帧与 shop_snapshots 逐字节对照(6.2-2)。
 3. **执行层迁出改变了防重入/失败计数的宿主生命周期**:落点若选错(如挂 op 实例而 op 每访问重建),计数提前清零,防线失效——§2.4 每字段标注了原生命周期,实施批逐字段核对落点生命周期 ≥ 原生命周期(`megastar_candidate_clicked` 已按 B1 定案局容器,不留裁量空间)。
 4. **停用字段的静默/报错双形态**(对抗审查 A2 升级):直接属性访问的残余读点(cw_screen_buy_cards.py:658-660 类)删除即首商店帧 AttributeError;`cw_replay.py:152` 对 `dual_track_phase` 的 setattr 删字段后**不报错但静默丢恢复语义**——两类都在 §2.5 前置动作 + 6.2-3 全字段 grep 判据适用范围内,无「已核」标签兜底。

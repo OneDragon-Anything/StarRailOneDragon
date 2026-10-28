@@ -7,9 +7,9 @@
 ## 1. 策略思路/算法概述
 
 - **候选买入评估**:对店面每张牌先判类再过金约束门——件级买入判定序(六序)与 M2 义务通道语义 = `11_shop_decisions.md` §1(序 1/序 2 = 骨架义务 M2,不走利息规则门;序 3-5 = EV 买面,判据 = `criteria/buy.py::ev_buy_candidates`/`ev_buy_veto`);合成完成买入 M2b 与核心卡支配支(C1)= `11_shop_decisions.md` §1/§2 在案通道;拒因分类单一源 = `shop.py::shop_unbought_reasons`。
-- **刷新放行条件**:先一次性算清这轮刷新到出完牌的总花费(卡费 + 利息损失等路径总账),不超可用金才允许刷(路径总账判据 = `criteria/refresh.py::r1_commitment_account`,账项装配 = `shop.py::_r1_ledger_terms`;P40 `../proofs/p40-refresh-ev.md` + 验证档 `../proofs/validations/P40_VALIDATION.md`,利息损失递推 = P47 `../proofs/p47-interest-account.md`);期内续刷受 R2 利息线熔断(`criteria/refresh.py::r2_budget`/`r2_card_reserve`,P54);刷前过存在性门 P92(`criteria/refresh.py::all_channel_buy_exists`,`../proofs/math_proofs.md` P92 行);危机帧不变式 P36-a(`criteria/refresh.py::crisis_refresh_invariant`)先于存在性门。刷新 = **结束本次访问**(刷后返回主循环(重新识别画面),重进 = 入口观察重建期望态;次数无硬墙,无限刷新环 = 策略实现 bug 框架不兜底)。
+- **刷新放行条件（刷新链三组件，2026-10-28 定型）**：判据 = 三段式查表 + 目标可买合取（`criteria/refresh.py::refresh_warranted`——P1 恒不刷 / P2 未锁窗口候选缺件 / 锁定后星级目标驱动；**目标可买 = 有空位 ∨ 合成腿 ∨ 席位腿三腿并集**，判定单一源 = `criteria/refresh.py::target_buyable`，三腿全无拒因 `target_unbuyable`）→ 金线闸（`r2_budget`，预留 = saturation_line + 停留目标实费档 `r2_card_reserve`；未锁窗口 ρ=0，`../proofs/p54-r2-interest-floor.md` floor 口径，利息损失递推 = P47 `../proofs/p47-interest-account.md`）→ 发射（免费分支 = 次数在册 ∧ 目标可买，金线不适用；付费 reason `star_target`；判据权威定义 = `11_shop_decisions.md` §3）。刷新 = **结束本次访问**(刷后返回主循环(重新识别画面),重进 = 入口观察重建期望态;次数无硬墙,无限刷新环 = 策略实现 bug 框架不兜底)。刷新提案被拒（目标不可买/金线不足/免费腿拒）→ 本帧关店置负结果记忆标记,无状态变化重入帧跳过刷新提案（观测键 `shop_refresh_blocked_memory_skip`）。
 - **收工判定**:「无动作可做」= 主动提案 `CloseShop`(恒可用的结束动作,全函数契约);牌面含未识别槽(失读窗)→ 花钱动作全禁、仅关店收工(能力矩阵篇 §3.5/§4)。
-- **升级意图出口**(2026-10-17 迭代 T-1,design §2.1):每轮买入评估前执行升级资格门判定(升级触发 = 最优概率带单判据三分派,判定单一源 = `criteria/levelup.upgrade_gate_verdict`,同帧一次评估,刷新整级预留共用);**命中 ∧ 可发射 → 转场关店**(不置会话标记——升级执行位 = 备战画面,转场后升级先落地,重开时概率档已新档);命中 ∧ 待付窗/未命中 → 会话照常(买牌六序 + 刷新判据;凑金 = 备战侧场景)。
+- **升级意图出口**(2026-10-17 迭代 T-1,design §2.1):每轮买入评估前执行升级资格门判定(升级触发 = 最优概率带单判据三分派,判定单一源 = `criteria/levelup.upgrade_gate_verdict` 资格门六道门序,同帧一次评估);**命中 ∧ 可发射 → 转场关店**(不置会话标记——升级执行位 = 备战画面,转场后升级先落地,重开时概率档已新档);命中 ∧ 待付窗/未命中 → 会话照常(买牌六序 + 刷新判据;凑金 = 备战侧场景;升级推迟期刷新维持拒绝——资金序声明,11 §3 判据组件行)。
 - **满席腾位(收缩后目标形态)**:商店期**不卖备战**——席满而需腾位时 = 提案 `CloseShop` 离店 → 返回主循环(重新识别画面)交备战 → 备战期 M4 腾位卖出([22_prep_screen.md](22_prep_screen.md))→ 重开商店(`OpenShop`)继续买。牌面持久依据:节点内关店/重开不刷新商店,跨节点才自动刷新全店(`docs/game/currency_war/research/economy.md` §2.1)——腾位往返不损失已刷牌面。
 
 ## 2. 会执行的动作清单(收缩后目标形态)
@@ -17,7 +17,7 @@
 | 动作 | 动作类型/op 载体 | 触发判据(指针) |
 |---|---|---|
 | 买牌 | `BuyCard` → `operations/cw_op/cw_buy_card_action.py::CwActionBuyCardOp` | 六序判类 + M2 义务 + M2b/C1 支配支 + EV 买面(§1 候选买入评估行) |
-| 刷新 | `RefreshShop` → `cw_refresh_shop_action.py::CwActionRefreshShopOp`(**结束本次访问**) | 刷新门路径总账 + R2 熔断 + P92 存在性门 + P36-a(§1 刷新门行) |
+| 刷新 | `RefreshShop` → `cw_refresh_shop_action.py::CwActionRefreshShopOp`(**结束本次访问**) | 刷新链三组件:三段式判据 + 目标可买三腿并集 + 金线闸(§1 刷新放行条件行) |
 | 关商店 | `CloseShop` → `cw_close_shop_action.py::CwActionCloseShopOp`(**结束本次访问**) | 收工判定(§1);席满腾位链第一步;升级转场关店(§1 升级意图出口行) |
 
 ## 3. 能力 vs 策略(在案判例)

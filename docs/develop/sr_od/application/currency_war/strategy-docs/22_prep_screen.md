@@ -2,7 +2,7 @@
 
 > 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/结束访问语义)= [../screens/README.md](../screens/README.md) §5.3。本篇 = 该画面的**策略面**:决策工序(十段全扫)+ 会执行的动作清单 + 形式判据指针。
 > **单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧实际观察为准;**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
-> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:升级判据 = [11_shop_decisions.md](11_shop_decisions.md) §2;卖出候选评估器 = [11_shop_decisions.md](11_shop_decisions.md) §4;骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);部署/上阵窗口判据 = [10_prep_decisions.md](10_prep_decisions.md);血预算 = [04_survival_budget.md](04_survival_budget.md);装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);终局线选择 = [12_line_and_intention.md](12_line_and_intention.md);商店会话语义 = [23_shop_screen.md](23_shop_screen.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
+> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:升级判据 = [11_shop_decisions.md](11_shop_decisions.md) §2;卖出候选评估器 = [11_shop_decisions.md](11_shop_decisions.md) §4;骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);部署/上阵窗口判据 = [10_prep_decisions.md](10_prep_decisions.md);hp 使用边界 = [00_framework.md](00_framework.md) §3;装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);终局线选择 = [12_line_and_intention.md](12_line_and_intention.md);商店会话语义 = [23_shop_screen.md](23_shop_screen.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
 
 ## 1. 决策工序:十段全扫(第 0-9 步)
 
@@ -29,7 +29,7 @@
 - 席位满:**按候选身份直接判断值不值得腾位,无试错计数**——候选经垫件谓词过滤后取价值最小者卖 1 腾位,下轮全扫回来点晶矿;过滤集空 → 本节点放弃晶矿(确定的高价值持有不换随机产出)。垫件谓词 = 1★ ∧ 非线内 ∧ 非合成素材 ∧ 非通用插件注册表成员 ∧ 非核心/转线件/种子 ∧ 非候选 top3 成员(`criteria/sell_candidates.py::is_ore_pad_unit`;P96 释放集复用登记待办不激活,标定前晶矿垫件不含释放集)。判断天然自收敛:候选按价值升序让位,散件卖完后自动停在「无垫件可卖」。
 - 依据:确定损失换随机收益只在损失 ≈ 0 时成立(卖出纪律 = 不可逆动作按持有价值守门,弃购/囤积的真实代价 = 再遇窗口)。
 
-**第 4 步:升级检查。** 判据与发射形态单一源 = [11_shop_decisions.md](11_shop_decisions.md) §2(最优概率带单判据三分派 + 单帧原子整批发射,判据同帧重评,无跨画面授权键)。本步只定义调用时机:每轮全扫评估一次;**判据不过 = 本步零动作,扫描继续到下一步**(血预算线/资金线门类拒发同落零动作语义);花后破线帧走凑金(每帧一卖重扫续卖,守线缺口闭合下帧发射;候选穷尽零动作等节点收入,拒因键 `levelup_fund_line_defer`)。
+**第 4 步:升级检查。** 判据与发射形态单一源 = [11_shop_decisions.md](11_shop_decisions.md) §2(最优概率带单判据三分派 + 资格门六道门序 + 单帧原子整批发射,判据同帧重评,无跨画面授权键)。本步只定义调用时机:每轮全扫评估一次;**判据不过 = 本步零动作,扫描继续到下一步**(经验批支付门/资金线门类拒发同落零动作语义);花后破线帧走凑金(每帧一卖重扫续卖,守线缺口闭合下帧发射;候选穷尽零动作等节点收入,拒因键 `levelup_fund_line_defer`)。
 
 **第 5 步:商店会话。** 入口先调**解拦复核**(未消费机会清单的解拦判定:金位变化/席位空出任一使拦因解除 → 清「本节点已处理」标记);然后判标记 ≠ 当前节点号。满足 → 输出 `CwActionOpenShopParam` 开店;不满足 → 跳过本步。本步是备战侧**决策性**开店意图的唯一来源(金位读数开商店为辅助形态——读金非处理决策,语义单一源 = [23_shop_screen.md](23_shop_screen.md))。部署产生的腾位效果由本步入口的清单复核自然消费,无独立重开钩子。
 

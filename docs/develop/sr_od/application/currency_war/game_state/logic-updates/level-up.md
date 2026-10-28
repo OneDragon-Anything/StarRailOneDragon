@@ -24,7 +24,7 @@
 1. 每击:+`XP_PER_BUY` 经验、−单击价;攒满当前级门槛(`XP_TO_NEXT_LEVEL`)即升级、溢出结转(推进算子单一源 = `kernel/cw_economy.py::xp_apply_clicks`;封顶 `MAX_PLAYER_LEVEL`);
 2. **单击价单一源** = `kernel/cw_economy.py::xp_click_cost` 两支语义:**显示价支**(容器(GameState,游戏状态对象,下同)`level_up_cost` 观察价直通——游戏侧已算好全部折扣,下限 0)/ **兜底支**(基价 `XP_CLICK_COST_FALLBACK` 减已登记折扣:`xp_buy_cost_discount` + 等级门折扣 `xp_click_discount_from_level`,`level_of(bs) ≥ xp_click_discount_from_level_at` 生效;折扣只降价不减经验)。动作发出方把现算值装进 `action.cost`,转移函数按 `action.cost` 扣减(× 击数);
 3. 金:gold `−=` 单击价 × 实击数。击数 = 执行回执 `ShopActionExecuted.levelup_clicks`(生产落地门喂 1;缺回执 = `applied=False, reason='levelup_clicks_not_fed'` 本轮不写,等观察覆盖)。**金币写入 = 上报函数按 `action.cost`×击数直写**(本口唯一写入位置;执行侧金差 `_executed_gold_delta` 对 LevelUp 恒 0,防双记);
-4. 授权/放行门槛全在决策核的动作发出点(备战域):每帧发出前置 = `clicks_to_next_level` 现算击数 > 0;金地板(`spend_unified`)/预算闸(`levelup_budget_gate`)/血闸(`blood_xp_gate`)/血本位模式(`blood_xp_gate_for`)= 动作发出点的门槛链;满级 = 击数 0,无授权不发出。执行器 `PrepActionExecutor._level_up` 零授权零计数(找钮 → 单击 → 光标 parking 防等级显示区毒化 → 升级事件挂点 `effects.on_level_up()`);
+4. 授权/放行门槛全在决策核的动作发出点(备战域):每帧发出前置 = `clicks_to_next_level` 现算击数 > 0;花后守线(`spend_unified`,升级资金线门内联式)/经验批支付门(`xp_batch_payment_gate`,币种通式——血本位局成本币种切血,金费函数出域)/资金线门 = 资格门六道门序(判定单一源 = `upgrade_gate_verdict`);满级 = 击数 0,无授权不发出。执行器 `PrepActionExecutor._level_up` 零授权零计数(找钮 → 单击 → 光标 parking 防等级显示区毒化 → 升级事件挂点 `effects.on_level_up()`);
 5. 经验/等级真值 = 下一帧观察经验对账族承接(XpLedger 通道单击推进 + OCR 真值 reconcile)。
 
 ## 4. 随机面
@@ -35,11 +35,11 @@
 
 - **满级点击无效**:商店域 `level_of(bs) ≥ MAX_PLAYER_LEVEL` → `applied=False, reason='level_cap'`,零写(零金零经验);备战域 = 发出方击数 0 不发(无授权不发出),`xp_apply_clicks` 内部同门封顶;
 - 击数回执缺失:`applied=False, reason='levelup_clicks_not_fed'` 跳写;
-- 血本位模式(奋斗协议):成本币种切血,金费函数出域,血闸独立车道(`blood_xp_gate`,fail-closed——读不到数据/条件不满足时默认走保守分支不动作)。
+- 血本位模式(奋斗协议):成本币种切血,金费函数出域——经验批支付门独立车道(`xp_batch_payment_gate`,fail-closed——读不到数据/条件不满足时默认走保守分支不动作)。
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/level_up.py::report_action_level_up_param`;`kernel/cw_economy.py::xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `XP_PER_BUY` / `XP_TO_NEXT_LEVEL` / `XP_CLICK_COST_FALLBACK` / `MAX_PLAYER_LEVEL` / `blood_xp_gate` / `blood_xp_gate_for`;`prep_actions.py::PrepActionExecutor._level_up`;发出方 cost 装载 = `strategies/impl/mandate_v1/entry.py`(备战发射点现算装载)。
+`kernel/cw_action_report/level_up.py::report_action_level_up_param`;`kernel/cw_economy.py::xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `XP_PER_BUY` / `XP_TO_NEXT_LEVEL` / `XP_CLICK_COST_FALLBACK` / `MAX_PLAYER_LEVEL` / `xp_batch_payment_gate` / `xp_batch_payment_gate_for`;`prep_actions.py::PrepActionExecutor._level_up`;发出方 cost 装载 = `strategies/impl/mandate_v1/entry.py`(备战发射点现算装载)。
 
 ## 7. 语义验证(M1 测试)
 

@@ -9,7 +9,7 @@
 
 ## 命题
 
-R1 刷新门(`criteria/refresh.r1_commitment_account`)的比较项 V_gap,其 V̄_net 合成链中的视界因子从常数 `rounds_left_est=5` 换为决策帧现算 `r = horizon.r_remaining(session, plane, node)`:
+R1 刷新门(`criteria/refresh.r1_commitment_account`——**该函数已随刷新链三组件定型删除,形式二判据面停用,本命题归历史**)的比较项 V_gap,其 V̄_net 合成链中的视界因子从常数 `rounds_left_est=5` 换为决策帧现算 `r = horizon.r_remaining(session, plane, node)`:
 
 ```
 V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
@@ -141,7 +141,7 @@ V̄_net(r, plane) = Δp[plane] × 单战价值 × r
 
 **停用面**:
 
-- R1 刷新门比较项 V̄_net 整链停用:判据本体(criteria/refresh.r1_commitment_account)改为**形式二可负担性**——`c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*`(E = expected_refreshes_for_card 按缺件集与等级选择输出 L*;g* = 10×cap_resolved);L* = 留级账 T_stay vs 升一级账 T_up(含 U_L 及其利息损失)取小(贪心序反例承载,11_shop_decisions.md §2 修正②)。输入全为游戏定义量(REFRESH_PROB 池参数 / XP 表 / 利息规则),零胜率。
+- R1 刷新门比较项 V̄_net 整链停用:判据本体(criteria/refresh.r1_commitment_account——**已随刷新链三组件定型删除**)改为**形式二可负担性**——`c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*`(E = expected_refreshes_for_card 按缺件集与等级选择输出 L*;g* = 10×cap_resolved);L* = 留级账 T_stay vs 升一级账 T_up(含 U_L 及其利息损失)取小(贪心序反例承载,11_shop_decisions.md §2 修正②)。输入全为游戏定义量(REFRESH_PROB 池参数 / XP 表 / 利息规则),零胜率。**形式二判据面亦已停用**（刷新链三组件定型批:消费面改由三段式查表判据 + 目标可买合取 + 金线闸承载）——本篇停用面按历史读。
 - P57 搜索窗 V̄ 读法门随链消解:窗口重锚塌缩带(注:「塌缩带」=命中率衰减到峰值 ω 倍以上的费档区间)`refresh_prob(L,c) ≥ ω×峰值级命中率`(ω = registry.omega_collapse_ratio,同源);calib e2_24.7 交叉核对锚作废。
 - 实现:`statefn/vbar.py` 留已证伪标记;`win_rate_dp_by_plane` / `vbar_hp_value_transitional` 注册表字段停用(本修订单);V_GAP/V_MS provisional 槽位保留登记、消费端清零。
 

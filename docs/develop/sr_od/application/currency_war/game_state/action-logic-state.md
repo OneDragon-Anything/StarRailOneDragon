@@ -204,7 +204,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 **确定面**：
 
 - 每击：+`XP_PER_BUY` 经验、−单击价（单击价单一源 = `kernel/cw_economy.py::xp_click_cost` 两支语义：显示价支容器 `level_up_cost` 直通 / 兜底支基价 `XP_CLICK_COST_FALLBACK` 减已登记折扣）；
-- **授权/放行条件全在决策核动作发出点**（执行器授权面全删）：每帧发出前置 = kernel `clicks_to_next_level` 现算击数 > 0；金地板逐击查金（`spend_unified`）/预算闸（`levelup_budget_gate`）/血闸（`blood_xp_gate`）= 动作发出点既有门链；满级 = 击数 0，无授权不发出；
+- **授权/放行条件全在决策核动作发出点**（执行器授权面全删）：每帧发出前置 = kernel `clicks_to_next_level` 现算击数 > 0；花后守线（`spend_unified`，升级资金线门内联式）/经验批支付门（`xp_batch_payment_gate`，币种通式）= 动作发出点资格门链（判定单一源 = `criteria/levelup.upgrade_gate_verdict` 六道门序）；满级 = 击数 0，无授权不发出；
 - **容器逻辑态**（上报函数 `report_action_level_up_param`）：xp/level 跨门槛推进（推进算子单一源 = `xp_apply_clicks`，单击步长；level/xp 缺读 = 域级跳写）；**deploy_cap 不写**（容量真值由观察写入方防抖读承接，`max_units` 的 cap<level 兜底规则保守承接升级增量）；
 - **金分支** = 上报函数按 `action.cost`×击数直写（`report_action_level_up_param`；击数 = 执行回执 `ShopActionExecuted.levelup_clicks`，缺回执 = levelup_clicks_not_fed 拒零写；执行缝金差对 LevelUp 恒 0/已停用）；
 - 经验/等级真值 = 下一帧观察经验对账族承接（XpLedger 通道单击推进 + OCR 真值 reconcile）。
