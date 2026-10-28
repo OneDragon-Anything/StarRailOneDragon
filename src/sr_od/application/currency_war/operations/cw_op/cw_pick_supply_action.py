@@ -3,7 +3,8 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点卡选中 → 确认;确认点击后立即一口自上报完整结果
-(``report_action_pick_supply_param``)+ 节点推进上报;刷新圆钮机械
+(``report_action_pick_supply_param``)+ 节点推进上报;动作回执簿记
+(``_note_receipt``,两出口全簿记)照开/关商店动作 op 同形;刷新圆钮机械
 点击留在画面 op。
 """
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
     report_action_pick_supply_param,
 )
@@ -30,9 +32,40 @@ from sr_od.application.currency_war.operations.cw_op.cw_overlay_pick_env import 
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
+
+
+def _note_receipt(op: SrOperation, reason: str, detail: str = '') -> None:
+    """补给动作回执(receipts 域,渠道②,唯一写点 = kernel 口
+    ``note_action_receipt``;reason = 动作事实码,'' = 已正常发出,
+    词表见 kernel docstring)。
+
+    两出口全簿记(每动作 op 恰一条回执行):确认点击已发 = reason='';
+    实机确认定位缺失(动作没发出)= reason=定位缺失(按钮-确认)——
+    失败可见性(exec_events 并入),journal 唯一直接痕迹。发出即簿记
+    非验证(不读屏核验);journal 常开回执写入无条件,无局跳过在
+    kernel 口。回执 op 名/actor 硬编码 ``'CwActionPickSupplyOp'``
+    (journal 词表稳定,渲染器词表与类删除解耦);回执 screen = 动作
+    发出画面(补给屏,全回执域统一语义,契约单一源 =
+    game_state/fields.md 回执契约节)。detail = 机械摘要(idx +
+    内容摘要)。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            game_state_from_ctx,
+            note_action_receipt,
+        )
+        gs = game_state_from_ctx(getattr(op, 'ctx', None))
+        if gs is None:
+            return
+        note_action_receipt(gs, op='CwActionPickSupplyOp',
+                            reason=reason, screen='货币战争-补给',
+                            actor='CwActionPickSupplyOp', detail=detail)
+    except Exception as e:  # noqa: BLE001  回执失败不阻塞动作链
+        log.warning('[cw][receipt] 补给回执写入失败(不阻塞): %s', e)
 
 
 class CwActionPickSupplyOp(CwOperation):
@@ -75,6 +108,22 @@ class CwActionPickSupplyOp(CwOperation):
         # 随转移证据机制整体停用)。
         confirm_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
+        # 动作回执簿记(两出口全簿记,每执行恰一条回执行;形态先例 =
+        # cw_op_open_shop.py::_note_receipt):实机确认定位缺失 =
+        # 未发出事实码;sim 点击经端口受理恒按已发出簿记(reason='',
+        # 不读 confirm 结果判读——屏门 retry 是转移后可见性语义)。
+        # detail = idx + 内容摘要(char/norm_item,可空场景照实省略)。
+        if cw_sim_ports.mechanical_io_allowed():
+            receipt_reason = ('' if confirm_result.is_success
+                              else '定位缺失(按钮-确认)')
+        else:
+            receipt_reason = ''
+        detail = f'idx={action.idx}'
+        if action.char_name:
+            detail += f' char={action.char_name}'
+        if action.norm_item:
+            detail += f' item={action.norm_item}'
+        _note_receipt(self, receipt_reason, detail)
         # 立即自上报完整结果(单相:owned += norm_item 规范名
         # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留存证据)。
         # 一次执行两支上报、每支出口各自紧跟一行喂入(A2 多支并喂契约 =
