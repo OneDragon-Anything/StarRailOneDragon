@@ -64,7 +64,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
     同源单一值;窗口判据 = 塌缩带比值锚)。
 
     ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为
-    refresh_ev_budget 归零腿的复用值(未独立标定),登记待证形态、不扩
+    refresh_ev_budget 归零分支的复用值(未独立标定),登记待证形态、不扩
     适用范围(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
     ω 仅作窗口比值阈值);fail-closed 语义 = ω 越大窗口越窄。
     """

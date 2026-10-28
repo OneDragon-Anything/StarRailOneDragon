@@ -26,14 +26,14 @@
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
 
-动作腿清单:①**计数腿** = 批内开成点数经 ``gs.effects.record_ore_open``
+动作分支清单:①**计数分支** = 批内开成点数经 ``gs.effects.record_ore_open``
 单口入账(「点开才计数」:席满/缺项∧level 缺读跳点不入账;计数载体 =
 ``cw_effect_inventory.ore_open_total``,消费方 = 战技点契约触发器);
-②**环境条件发放腿**(``cw_investments.ENV_ORE_OPEN_GRANTS`` 在册环境:
+②**环境条件发放分支**(``cw_investments.ENV_ORE_OPEN_GRANTS`` 在册环境:
 战技点契约) = 计数入账后尾部触发检查(``check_env_ore_open_grants``,
-与 refresh_shop 环境条件发放腿同构)——世界发放域,不属计数/采样
+与 refresh_shop 环境条件发放分支同构)——世界发放域,不属计数/采样
 语义;sim 与生产同段 op 代码同口,单点覆盖双端。窗序确定:晶矿自身
-奖励写(含合并升星触发腿)→ 晶矿开启计数入账 → 战技点契约触发腿。
+奖励写(含合并升星触发分支)→ 晶矿开启计数入账 → 战技点契约触发分支。
 """
 from __future__ import annotations
 
@@ -110,13 +110,13 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     行域下标派生表;整表写 = bench_view_of_working 直构(原
     ``_bench_view_keep_items`` 占位件保留补丁随换形口停用自然消失——
     工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
-    合并升星触发发放:角色奖励腿级联采集升星事实,整批全部写毕后收尾
-    发火(引擎 A 内嵌发火会被后续点整表写覆盖;触发腿 best-effort 不
+    合并升星触发发放:角色奖励分支级联采集升星事实,整批全部写毕后收尾
+    发火(引擎 A 内嵌发火会被后续点整表写覆盖;触发分支 best-effort 不
     阻塞上报主链)。
     晶矿开启计数与战技点契约触发发放:整批奖励写毕后 ``opened`` 经
     ``record_ore_open`` 单口入账,再尾部触发检查(check_env_ore_open_
-    grants;计数先入账后检查,窗序 = 矿奖励 → 计数 → 触发腿;
-    opened == 0 早退路径零计数零触发——腿清单详见模块头)。
+    grants;计数先入账后检查,窗序 = 矿奖励 → 计数 → 触发分支;
+    opened == 0 早退路径零计数零触发——分支清单详见模块头)。
     """
     _validate_sig(sig, ('logic_action',))
     from sr_od.application.currency_war.kernel.cw_action_report import (
@@ -287,10 +287,10 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                             f'{ev_prefix}proj_ore_mark_deployed#ore{k}')
                     written.add('deployed')
 
-    # —— 合并升星触发发放腿(整批级联写毕后收尾发火:引擎 A 内嵌发火会被
+    # —— 合并升星触发发放分支(整批级联写毕后收尾发火:引擎 A 内嵌发火会被
     #    后续点的 bench 整表写覆盖,故采集在级联、发火在顶层全部写毕后;
-    #    sig 沿动作腿 _grp_sig 口径。best-effort:触发腿异常不阻塞上报
-    #    主链,沿 buy_card on_buy 回调腿同纪律。kernel 反向模块级零
+    #    sig 沿动作分支 _grp_sig 口径。best-effort:触发分支异常不阻塞上报
+    #    主链,沿 buy_card on_buy 回调分支同纪律。kernel 反向模块级零
     #    import 契约:函数内惰性取。)——
     if merge_facts:
         try:
@@ -298,13 +298,13 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                 check_env_merge_grants,
             )
             check_env_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
-        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
-            log.warning(f'[cw-ore] 合并升星触发发放腿失败(不阻塞):'
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning(f'[cw-ore] 合并升星触发发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
 
-    # —— 晶矿开启计数腿 + 环境条件发放腿(整批奖励写毕后收尾:窗序
-    #    确定 = 矿奖励写(含合并升星触发腿)→ 计数入账 → 战技点契约
-    #    触发腿;计数先入账后检查,检查时计数现值含本批。「点开才
+    # —— 晶矿开启计数分支 + 环境条件发放分支(整批奖励写毕后收尾:窗序
+    #    确定 = 矿奖励写(含合并升星触发分支)→ 计数入账 → 战技点契约
+    #    触发分支;计数先入账后检查,检查时计数现值含本批。「点开才
     #    计数」:opened 只计开成点,席满/缺项∧level 缺读跳点不入账;
     #    opened == 0 早退路径零计数零触发)——
     if opened:

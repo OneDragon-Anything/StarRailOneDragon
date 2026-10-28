@@ -19,7 +19,7 @@ settlement 源 hp_confidence=1.0)**。
 词缀域写尾 HP 先验跟随回调(:func:`on_enemy_affixes_logic_write`)住本
 模块 = 档表与现算函数的域归属(挂点 = ``cw_game_state._write_logic_frame``
 enemy_affixes 分支,logic/logic_rand 两通道同经;观察写不经该宿主 =
-零回调,deployed 写尾回调级联同契约)。T-45 敌后破坏删除腿的 HP 跟随
+零回调,deployed 写尾回调级联同契约)。T-45 敌后破坏删除分支的 HP 跟随
 载体;姊妹卡退化(T-291)mid-run 复用时须显式处置「当期 hp 已有真值
 被先验覆写」残面(设计稿 §2.5 登记,本卡开局窗 hp=seed 无真值可踩)。
 """
@@ -91,7 +91,7 @@ AFFIX_HP_RESYNC_EVIDENCE: str = 'prior:affix_disable_hp'
 def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
                                  new_names: list[str] | None,
                                  source: str) -> None:
-    """词缀域逻辑写尾的 HP 先验跟随回调(T-45 敌后破坏删除腿;设计 =
+    """词缀域逻辑写尾的 HP 先验跟随回调(T-45 敌后破坏删除分支;设计 =
     迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.3 裁决点 a,2026-10-18
     用户方案「词缀更新回调」+ 对抗轮 2 N1/N2 修法甲落定形态)。
 
@@ -123,7 +123,7 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
     Args:
         gs: 局容器(写目标 = ``gs.hp``,先验输入 = 职级/数值难度现值)。
         old_names: 写前词缀名单(种子态 None)。
-        new_names: 写后词缀名单(删除腿 = 剩余列表)。
+        new_names: 写后词缀名单(删除分支 = 剩余列表)。
         source: 宿主写 produced_by(契约对称形参,归因走写台账 evidence,
             与 ``on_deployed_logic_write`` 同款零消费面)。
     """

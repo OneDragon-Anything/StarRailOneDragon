@@ -41,7 +41,7 @@ card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 全族删门)→ 点选 → round_wait 循环(不烧节点
 重试预算,无防御上限)。chosen_expert 与
 ConfirmExpertCash 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
-ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 腿 = 不适用(sim 无
+ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 分支 = 不适用(sim 无
 对应画面段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为测试
 (test_game_state chosen_record_face chosen_expert 测试 +
 test_screen_two_node_family 形态测试;接线测试补档 = 开放设计注,

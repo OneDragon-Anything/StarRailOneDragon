@@ -9,8 +9,8 @@ GameState(正名前暂名 BoardState,后果节+ 待裁决7)= 当前仍为真的�
 
 **局面表示单一载体**(benchchar-retirement P5 起):本容器 = 实机真值
 记录模型(只记录实机会产生的已知事实),sim 后端/实机操作链/策略决策
-同吃容器。旧推演内核帧与帧→容器合成口已停用(benchchar-retirement P5)——生产写入 = **写入口直写**(sim 世界腿
-obs 写点与动作腿 logic_action 上报函数族,统一经渠道签名写入口落字,
+同吃容器。旧推演内核帧与帧→容器合成口已停用(benchchar-retirement P5)——生产写入 = **写入口直写**(sim 世界分支
+obs 写点与动作分支 logic_action 上报函数族,统一经渠道签名写入口落字,
 渠道族封闭集见下文遥测段);
 测试种子 = 测试仓 builder 直写容器域(与观察链同写入口)。逐字段映射
 对账正本(game_state/fields.md §9)随帧通道停用失去载体(P8 承接)。字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board
@@ -74,7 +74,7 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 依据 = 该迭代 design §2.2/§2.7-7;值载体 = ``(位面, 轮)`` 元组键
 (:data:`cw_node_schedule.NodePos`),全局编号表示已废弃,迭代
 2026-10-12-abolish-node-ordinal)。
-**节点推进触发模型(动作上报化,四推断腿已停用)**:序位前进唯一
+**节点推进触发模型(动作上报化,四推断分支已停用)**:序位前进唯一
 落账入口 = 推进生效原语 :func:`advance_node_effective`(动作上报
 :func:`report_node_advance` / 观察锚定补推 :func:`observe_node_anchor`
 两路径,效果推进尾段同临界区);跨位面由后继原语
@@ -244,7 +244,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # 对旧档谎报域内容变更
     'ore_declared_pending': 1,  # 声明待兑现队列(同迭代;元素 (env, plane, gold),
                                 # 电平入队/消费/过期三口,详设 ore-reward-channel §5)
-    'ore_declared_done': 1,     # 声明已消费标记(同迭代;幂等守卫第二腿,
+    'ore_declared_done': 1,     # 声明已消费标记(同迭代;幂等守卫第二分支,
                                 # 元素 (env, plane),位面过渡随 pending 同清理)
     'env_grants_done': 1,       # 环境条件发放已发标记(迭代
                                 # 2026-10-10-env-conditional-grants;元素
@@ -295,11 +295,11 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # 节点域换键(迭代 2026-10-12-abolish-node-ordinal
                             # design §2.2:序键字段整体停用换 (位面,轮) 元组键
                             # node_pos/node_hist_pos 承载);历史:4 = node_ord
-                            # 两态生命周期 + 四推断腿整体停用(切换批
+                            # 两态生命周期 + 四推断分支整体停用(切换批
                             # 2026-09-20-node-advance-action-report:推进 =
                             # 终结动作上报/观察锚定,弹窗/位面过渡/BOSS简报/
-                            # 备战四腿与守卫族常量删除);
-                            # 3 = 字段层次终极版,1=R1 双腿双字段,2=单字段双层)
+                            # 备战四条分支与守卫族常量删除);
+                            # 3 = 字段层次终极版,1=R1 两条分支双字段,2=单字段双层)
     'receipts': 1,          # 动作回执域(R2 §3.1.1-4/§3.2.5:普通 Field 域滚动窗,唯一写点 = note_action_receipt)
     'match_final': 1,       # 局终域(§3.6.1 runs 并入载体:一段一行,
                             # 恢复局跨段 = 多行,game 级聚合取段序末行;唯一
@@ -339,7 +339,7 @@ _PAYLOAD_DOMAINS: dict[str, tuple[str, bool]] = {
 
 
 # ---- 画面上下文域常量(R1 §3.1.4/§3.4;观察汇聚漏斗的画面标识映射面)----
-# (弹窗腿守卫族/弹窗族清单/位面过渡腿触发面/专属画面类型直定映射四组
+# (弹窗分支守卫族/弹窗族清单/位面过渡分支触发面/专属画面类型直定映射四组
 #  常量已停用——见 2026-09-20-node-advance-action-report design §2.5 停用清单。)
 
 #: 干净备战帧画面标识(画面建档 screen_name;漏斗 prep_clean/全量路径的
@@ -534,7 +534,7 @@ class Unit:
     star: int                       # 星级 1..3(合成上限;观察期快照)
     equips: list[str] = field(default_factory=list)
     # 实例号;仅环境发放链发放刻赋号(check_env_battle_grants 经
-    # env_grant_uid_seq 发号 + on_env_gained 赠卡锁腿发放刻同口),
+    # env_grant_uid_seq 发号 + on_env_gained 赠卡锁分支发放刻同口),
     # 其余恒 None——商店购入/观察重建/合成产物/
     # 策略预测单位天然 None。锁匹配键(实例粒度上场锁),实例语义 =
     # env_grant_deploy_locks 字段注释(单一源在彼处)。
@@ -1042,10 +1042,10 @@ def consume_defect_sink() -> list[dict]:
 #: 观察覆盖 logic 失配告警的抑制登记面(裁定 A/裁定 4 申报表
 #: 的代码化):evidence 命中前缀的失配缺陷**不落 buffer 不告警**。
 #: 语义:sim 链自身的对账差异归 sim 质量面,不进生产缺陷台账——
-#: 'sim:engine' = sim 后端世界腿外部事件写(obs 族)覆盖动作逻辑态直写
+#: 'sim:engine' = sim 后端世界分支外部事件写(obs 族)覆盖动作逻辑态直写
 #: 是 sim 建模的结构形态,事件注入(收入/结算/回声)对逻辑态的推进不是
 #: 「推算 bug」,留存证据无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末
-#: 延迟结转(后端世界腿)= 申报差异(裁定 4 明点)。'sim:synthesized' = 合成口/
+#: 延迟结转(后端世界分支)= 申报差异(裁定 4 明点)。'sim:synthesized' = 合成口/
 #: 喂入口真值合成的同性质差异(生产台账曾混入约 18.6 万行,迭代
 #: 2026-09-16-unified-obs-reconcile 并列入表分流)。生产实机链零 sim
 #: 前缀写点,抑制面对实机失配零触达。
@@ -1521,7 +1521,7 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     Field 化:免费次数升格容器字段,观察锚定/动作扣减/发放登记三写端同格;
     None 基 = 0 起算,开局无免费次数 = 机制真值)。静态活载体 = 双手狸
     (2/节点);条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段
-    (PLANE_START)不属本形态——该未建模腿的单一登记点 =
+    (PLANE_START)不属本形态——该未建模分支的单一登记点 =
     ``cw_investments.STRATEGY_ECONOMY_PENDING_MODELING``,本桥不另记。
     """
     per_node = 0
@@ -1877,17 +1877,17 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #:   k 执行期确定)/ levelup_clicks(CwActionLevelUpParam 实际击数);
 #:   回执缺字段 = 该动作本轮不写逻辑态(刷新上报不消费 executed——
 #:   刷新费金账扣费费用单一源 = gs.shop_refresh_cost 容器直读,
-#:   cw_action_report/refresh_shop 金账扣费腿)。
+#:   cw_action_report/refresh_shop 金账扣费分支)。
 #: **扩面申报表**(扩面须逐批显式登记于本表,
 #: 原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 CwActionSellDeployedParam / CwActionSwapDeployParam
-#:   (语义源 = simulate 对应分支逐腿平移,由 test_gain_chain 直接校验
+#:   (语义源 = simulate 对应分支逐分支平移,由 test_gain_chain 直接校验
 #:   卖/换上报 v2 族契约节钉住);
 #:   CwActionDeployMoveParam 不入(围栏部署 = 结算期代理,obs 通道申报对齐);
-#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 腿与合成连锁全场域写回)、
+#: - 域集扩:deployed(原 front_row/back_row 两紧凑行域合并为单字段完整槽位表;v2 分支与合成连锁全场域写回)、
 #:   board(**派生量**:行写端挂钩 ``_resync_board_delta``
-#:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收腿);
-#: - 域集扩(2026-09-18):level(买经验上报升档直写;语义源 = prep 腿
+#:   自动重算,禁独立手写;单一源见该方法注)、equips(卖出回收分支);
+#: - 域集扩(2026-09-18):level(买经验上报升档直写;语义源 = prep 分支
 #:   买经验上报(report_action_level_up_param)同款,推进单一源 =
 #:   ``cw_economy.xp_apply_clicks`` 跨级连跳含内)。依据 = 等级滞留使
 #:   下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板
@@ -1907,7 +1907,7 @@ class LogicOutcome:
     """动作状态应用的显式结果出参(转移函数单源化;详设 §3
     「转移结果通道」)。
 
-    拒绝判定由腿内既有判定填充(stale_proposal / 满栏非合成拒买 /
+    拒绝判定由该分支既有判定填充(stale_proposal / 满栏非合成拒买 /
     同名拒上),
     拒绝 = applied=False + reason + **零容器写**;拒绝结论唯一出口 =
     本出参(transition 事件广播通道已停用),
@@ -1951,8 +1951,8 @@ class ShopActionExecuted:
     守卫面(本函数不判)。
 
     (``refresh_paid`` 字段已退役:刷新费用单一源 = 容器
-    ``gs.shop_refresh_cost`` 直读——刷新上报函数扣费腿,喂参第二来源
-    已废,见 cw_action_report/refresh_shop 金账扣费腿。)
+    ``gs.shop_refresh_cost`` 直读——刷新上报函数扣费分支,喂参第二来源
+    已废,见 cw_action_report/refresh_shop 金账扣费分支。)
     """
 
     #: CwActionBuyCardParam 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
@@ -2351,7 +2351,7 @@ def tracked_unobserved(session: object) -> bool:
 # (席位主账簿记组已停用删除:主域
 #  bench/deployed 席位视图成为唯一账(3.1 合卷提供完整槽位表,槽位
 #  直址 = 子表下标),第二账存在理由消失;原消费面去向 = 动作随动同步
-#  腿全删 / 对账基线改主域派生 / 商店守卫 expected 侧读主域。)
+#  分支全删 / 对账基线改主域派生 / 商店守卫 expected 侧读主域。)
 
 
 class NodeBooks:
@@ -2502,13 +2502,13 @@ class GameState:
     streak: Field[int] = field(default_factory=Field)            # 带符号:正=连胜/负=连败(§3.2.12;开局种子底座=0)
     # [索引定义] pending_loss = 败态待清项(上一败掉的战斗类节点引用,单项待清)。
     # 坐标系 = LostNodeRef(plane 1 基位面, round_num 位面内 1 基轮, node_type
-    # 节点词表);取值时机 = 战斗结算失败腿写入、轮首收入败补支(U04 口径)
+    # 节点词表);取值时机 = 战斗结算失败分支写入、轮首收入败补支(U04 口径)
     # 消费后清回 None——非 supply/reward 节点消费,败态跨轮保留至下一战斗轮
     # (kernel round_start_income 分支序)。None = 无待办。写端(sim 世界) =
-    # sim/cw_sim_backend 结算失败腿;实机可观察(结算屏败局)影响玩法(败补金),
+    # sim/cw_sim_backend 结算失败分支;实机可观察(结算屏败局)影响玩法(败补金),
     # 按容器字段判据入容器。
     pending_loss: Field[LostNodeRef | None] = field(default_factory=Field)
-    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读;词缀域写尾回调先验重算 = 第④写端,T-45 敌后破坏删除腿经 cw_opening_hp.on_enemy_affixes_logic_write 走 write_prior,与②先验同通道)
+    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读;词缀域写尾回调先验重算 = 第④写端,T-45 敌后破坏删除分支经 cw_opening_hp.on_enemy_affixes_logic_write 走 write_prior,与②先验同通道)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
     # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(
@@ -2538,7 +2538,7 @@ class GameState:
     encounter_log: EncounterLog = field(default_factory=EncounterLog)
     plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,保位 3 槽;None=简报源未读得(实采源恒全识别,识别失败响亮暴露不留 None)
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3;开局种子底座=''=未选择)
-    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写/获得链删除腿〔敌后破坏失效删除,经 _select_write 择道随机态;写端申报 = cw_projection_audit 同名行〕)
+    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写/获得链删除分支〔敌后破坏失效删除,经 _select_write 择道随机态;写端申报 = cw_projection_audit 同名行〕)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
     unlocked_experts: Field[tuple[str, ...]] = field(default_factory=Field)  # 本局已解锁入池专家顾问规范名(economy.md §1:专家初始不参与普通商店招募,经投资环境/投资策略/专家邀请函等通道解锁后本局加入商店;池派生消费 = cw_pool 按名并入 EXPERT_COPIES_ASSUMED 副本)。开局种子底座=()未解锁;只增不减(现役解锁通道无回收语义)。写入端 = 获得链 advisor 道(cw_gain_chain.on_env_gained/on_strategy_gained)+ 装备通道(on_equipment_gained 分身墨镜族)+ 条件形态触发判据(cw_gain_chain.expert_conditional_trigger 三渠道);成员闭集闸 = cw_chars.assert_expert_names。条件形态条目(现役首例 = 特邀专家:银狼)的写入时点 = 触发事件(首次获得银狼LV.999,含环境获得时点在场判定挂点),非环境获得时点的即时名单
     # [索引定义] pending_item_grants = 已登记、未到点发放的定时道具队列(环境
@@ -2557,15 +2557,15 @@ class GameState:
     # 设计稿 §2.2,迭代 2026-09-23-invest-effects-calc)。元素 = (item 件名,
     # unlock NodePos 解锁位);unlock 坐标系 = NodePos(位面,轮次)字典序、
     # 1 基(cw_node_schedule.NodePos 同式);取值时机 = 环境获得刻写(获得
-    # 刻生效序位沿日程表步进 open_delay_nodes 步,T-33 锁腿同式,步进按
+    # 刻生效序位沿日程表步进 open_delay_nodes 步,T-33 锁分支同式,步进按
     # 当时日程定格);到期判定 = 当前生效序位 ≥ 解锁位(字典序,到了及
     # 以后都算,错过不悬空),命中即弹除(discharge_due_item_opens 原语)。
     # 写入端 = 唯一逻辑写端 = on_env_gained 登记入队 / discharge_due_item_
-    # opens 到点弹除 / 完胜回退腿(check_env_item_open_perfect)解锁位
+    # opens 到点弹除 / 完胜回退分支(check_env_item_open_perfect)解锁位
     # 回退;无观察写端(队列 = 卡文推算知识;战利品区板件显示另建观察域
     # giftbox_sight——旁路读数留证,本队列三写端与语义不受其影响,写入
     # 端申报见 cw_projection_audit.py 同名行);实机局不接开盒原语
-    #(不对称申报,pending_item_grants 同款;完胜回退腿双端跑)。开局
+    #(不对称申报,pending_item_grants 同款;完胜回退分支双端跑)。开局
     # 种子底座 = ()(A 类)。
     pending_item_opens: Field[tuple[tuple[str, tuple[int, int]], ...]] = field(
         default_factory=Field)
@@ -2591,7 +2591,7 @@ class GameState:
     shop_locked: Field[bool] = field(default_factory=Field)
     # [字段定义] diamond_count = 宝钻计数(UI 可见局内货币;补给带钻选项等
     # 通道获取)。取值时机 = 获取事件后累计;None = 未观察。sim 写端 =
-    # sim/cw_sim_backend 补给带钻腿;实机写端待实机补档。
+    # sim/cw_sim_backend 补给带钻分支;实机写端待实机补档。
     diamond_count: Field[int] = field(default_factory=Field)
 
     # (商店刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
@@ -2688,7 +2688,7 @@ class GameState:
     ore_declared_pending: Field[tuple[tuple[str, int, int], ...]] = field(
         default_factory=Field)
     # [索引定义] ore_declared_done = 声明已消费标记(逻辑态):元素 =
-    # (env, plane)(坐标系同 pending);幂等守卫第二腿——跨备战环重查不
+    # (env, plane)(坐标系同 pending);幂等守卫第二分支——跨备战环重查不
     # 重发(op 每环重建无可失忆,守卫状态住 GameState)。取值时机 = 生成
     # 消费刻与 pending 移除同一逻辑步追加;位面过渡随 pending 同清理。
     # 恢复局随快照存续 = 离线回放不重发声明。开局种子底座 = ()(A 类)。
@@ -2700,11 +2700,11 @@ class GameState:
     # §1):元素 = (env 投资环境规范名,条件键)。条件键取值清单 =
     # 'first_streak'(本局首次连胜达成)/'refresh_threshold'(刷新次数
     # 阈值触发器)/'interest_threshold'(利息累计阈值触发器,T-27 公司
-    # 契约)/'dot_confirm'(持续伤害契约条件腿证实,T-28)/
+    # 契约)/'dot_confirm'(持续伤害契约条件分支证实,T-28)/
     # 'battle_co_presence'(同战共现触发器,星核猎手契约,T-30;每环境
     # 至多一个,(env, 本键) 天然唯一)五纯具名键 +
     # 'star_grant#<装备名>'/'boss#<位面>-<轮>'(劳务派遣合同:# 后载荷 =
-    # 键值扩展形态,前者为随机星徽授予的绑定键〔腿2 解析唯一源〕、后者为
+    # 键值扩展形态,前者为随机星徽授予的绑定键〔分支2 解析唯一源〕、后者为
     # 首领节点周期幂等键)+ 'dot_anchor#<位面>-<轮>'(持续伤害契约锚键,
     # 纯登记件非门控,节点窗开才写,开局三选一获取形态可缺)/
     # 'dot_battle#<k>'(持续伤害契约 sim 进度键,k 从 1 起 append-only,
@@ -2716,8 +2716,8 @@ class GameState:
     # check_env_refresh_grants / check_env_interest_grants /
     # check_env_boss_grants / check_env_dot_grants /
     # check_env_ore_open_grants / check_env_battle_grants /
-    # check_env_bond_tier_grants(grant_env_bond_tier 写腿)各自写腿 /
-    # on_env_gained 随机装备绑定腿〔placed 守卫下〕与持续伤害契约锚键腿
+    # check_env_bond_tier_grants(grant_env_bond_tier 写分支)各自写分支 /
+    # on_env_gained 随机装备绑定分支〔placed 守卫下〕与持续伤害契约锚键分支
     # 〔节点窗开〕),
     # **局内恒存无过期清理**——「本局首次」整局有效,连胜无周期
     # 语义(与晶矿 done 的位面过渡过期清理不同;boss# 键的周期性 = 不同
@@ -2726,9 +2726,9 @@ class GameState:
     # 否定,取舍见详设「关键取舍」)。写入端 = 逻辑两模块:cw_env_grants
     # 写端族(发放/证实刻追加;streak/refresh/interest/boss/dot/
     # ore_open/battle/bond_tier〔grant_env_bond_tier〕各函数)
-    # + cw_gain_chain.on_env_gained(随机装备绑定腿 + 持续伤害契约锚键腿),
-    # 无观察写端(发放登记事实非观察投影;直写先例 = cw_exec_state 金腿
-    # / cw_effect_inventory 退款腿)。恢复局随快照存续 = 中断恢复对局
+    # + cw_gain_chain.on_env_gained(随机装备绑定分支 + 持续伤害契约锚键分支),
+    # 无观察写端(发放登记事实非观察投影;直写先例 = cw_exec_state 金收入分支
+    # / cw_effect_inventory 退款分支)。恢复局随快照存续 = 中断恢复对局
     # 不重发。开局种子底座 = ()(A 类)。
     env_grants_done: Field[tuple[tuple[str, str], ...]] = field(
         default_factory=Field)
@@ -2755,7 +2755,7 @@ class GameState:
     # 滞留至局终(上限 ≈ 一次性发放数);卖牌/合成消耗被锁张不清理
     # 锁记录(uid 孤悬永不匹配 = 同款自愈)。写入端 = cw_env_grants
     # (check_env_battle_grants 触发发放 + check_env_deploy_lock_perfect
-    # 完胜改写)+ cw_gain_chain(环境获得链赠卡腿)三口(发放/改写登记
+    # 完胜改写)+ cw_gain_chain(环境获得链赠卡分支)三口(发放/改写登记
     # 事实非观察投影,env_grants_done 同款)。消费端 =
     # deploy_move/swap_deploy 上报入口锁守卫。恢复局随快照存续(rebuild 表
     # tuple 化登记,env_grants_done 先例;NodePos 元组重建先例 =
@@ -2765,7 +2765,7 @@ class GameState:
 
     # [索引定义] env_grant_uid_seq = 环境发放实例号发号计数器(逻辑态;
     # 已发号单调上界,发号 = 现值+1 后写回)。写入端 = check_env_battle_grants
-    # 发放刻 + cw_gain_chain.on_env_gained 赠卡锁腿发放刻双口。
+    # 发放刻 + cw_gain_chain.on_env_gained 赠卡锁分支发放刻双口。
     # 恢复局随快照存续(int 保型直通免 rebuild 登记——登记制
     # 辖 _json_safe 无类型标形状 dict/list/tuple,int 无漂移;恢复后从存续
     # 值续号,不与恢复的锁记录 uid 撞号)。开局种子底座 = 0。
@@ -2802,7 +2802,7 @@ class GameState:
     # 观察每入口帧实读覆盖(两态制,以实际观察为准);写入端 = **双写端**(观察
     # heavy 写端 CwScreenPrep 渠道① + 获得链逻辑写端 cw_gain_chain 席满
     # 溢出落位直写 True;第二逻辑写端先例 = CwActionSellBenchParam 溢出
-    # 腿)。CwActionSellBenchParam 溢出腿(卖出自上报)落地
+    # 分支)。CwActionSellBenchParam 溢出分支(卖出自上报)落地
     # 后 logic 直写 False(推算消亡,下帧实读覆盖);落地同帧容器 bench
     # 回占入位件 + 执行侧 tracked 主账对称吸收(session 在场;
     # 缺吸收 = 守卫播种期双账分叉实机停机)。
@@ -2811,10 +2811,10 @@ class GameState:
     # 1080p rect 1352,710-1465,805)上的溢出件身份,两分 = 角色 char_id /
     # 占席道具名(判据 = cw_investments.BENCH_ITEM_NAMES)。'' = 溢出位无卡
     # 或身份未识别(与 overflow_warning 配对解读:True ∧ '' = 有件未识别);
-    # 值语义 = CwActionSellBenchParam 溢出腿的入位对象身份(角色星级缺读按 1 兜底,下帧
+    # 值语义 = CwActionSellBenchParam 溢出分支的入位对象身份(角色星级缺读按 1 兜底,下帧
     # heavy 实读覆盖修正)。写入端 = **双写端**(观察 heavy 写端同上 +
     # 获得链逻辑写端 cw_gain_chain 席满溢出落位直写身份;第二逻辑写端
-    # 先例 = 溢出腿);溢出腿落地后
+    # 先例 = 溢出分支);溢出分支落地后
     # logic 直写 ''(入位消费)。
     overflow_card: Field[str] = field(default_factory=Field)     # 开局种子底座='' 无溢出(真值观察覆盖)
 
@@ -2943,8 +2943,8 @@ class GameState:
     chosen_equip: Field[str | None] = field(default_factory=Field)      # 装备三选一(暂无画面建档)
 
     # —— 特殊规则演化状态(纯逻辑态:无观察写端;写端 = 动作报告)——
-    # 银狼LV.999 当前费用档,值域 {3,4,5};写端 = pick_planner 升费腿 /
-    # deploy_move 上阵变费腿(仅此两个动作报告);读口唯一 =
+    # 银狼LV.999 当前费用档,值域 {3,4,5};写端 = pick_planner 升费分支 /
+    # deploy_move 上阵变费分支(仅此两个动作报告);读口唯一 =
     # cw_economy.effective_cost;未观察(None)= 未触发任何变换,语义档 =
     # 起始 3 费。同名即同档——全场同档,无 per-unit 维度。
     lv999_cost_tier: Field[int] = field(default_factory=Field)
@@ -3013,8 +3013,8 @@ class GameState:
     # [索引定义] node_hist_pos = 本 run 已见最大生效节点序位(生效序位 =
     # :func:`effective_node_pos` 读口现值,(位面,轮) 元组键,与效果账本
     # advance_node 同键);派生规则推进去重键 (run_id,生效序位) 的 run 内
-    # 载体(设计 v3.1-N2)——同序位恰一次推进,先到腿越 hist 即推进,后到
-    # 腿同序零推进。取值时机 = 派生写入期单调推进(元组字典序);None =
+    # 载体(设计 v3.1-N2)——同序位恰一次推进,先到分支越 hist 即推进,后到
+    # 分支同序零推进。取值时机 = 派生写入期单调推进(元组字典序);None =
     # 本 run 尚无派生推进。写端 = 派生规则。
     node_hist_pos: tuple[int, int] | None = None
     # [索引定义] node_path_diff_pending = 链 diff 两帧确认门的待确认候选
@@ -3432,7 +3432,7 @@ class GameState:
         三分流(失配告警停机)不覆盖——经 observe 失配链则每场战斗必停局
         (2026-09-18 全夜停局病态);收入分量(基础奖励/利息/连胜)由
         结算屏「获得金币总览」面板公示,利息分量已随 T-27 公司契约条件
-        腿接入读链(obs/cw_settlement_obs 息行面板读数,来源 A 计数刻),
+        分支接入读链(obs/cw_settlement_obs 息行面板读数,来源 A 计数刻),
         基础/连胜分量仍为留证对账面不入账。
         收束语义:差值落 ``boundary_income_credited`` 台账行留存证据(金额
         可审计,豁免 ≠ 消失同纪律),覆盖照常 = 真值入账;等值观察零
@@ -3460,7 +3460,7 @@ class GameState:
         字段从未读过(处置②机制性 None)→ 保持 None 不写(不换帧不产行
         不占版本,§3.2.2 规则 4)。现值来源为 logic_rand(逻辑随机态:开局
         种子底座/采样值)→ 同样不沿用——随机态值不是「上次好值」,失读时
-        宁保持未验证态,禁被失读腿换帧洗成可信 carried(§8.8 假值防线)。
+        宁保持未验证态,禁被失读分支换帧洗成可信 carried(§8.8 假值防线)。
         sig 必填()。"""
         if target.value is None or target.source == 'logic_rand':
             return
@@ -3576,7 +3576,7 @@ class GameState:
         - deployed 逻辑写尾挂值域回调级联(契约 C-回调:
           按名分解 diff → 事件/资格集/星级回调;观察写不经本方法 =
           零回调。logic/logic_rand 两通道同经,获得链递归每步语义完整);
-        - enemy_affixes 逻辑写尾挂 HP 先验跟随回调(T-45 敌后破坏删除腿,
+        - enemy_affixes 逻辑写尾挂 HP 先验跟随回调(T-45 敌后破坏删除分支,
           单一源 = cw_opening_hp.on_enemy_affixes_logic_write;同款契约:
           观察写零回调,logic/logic_rand 两通道同经——「观察覆盖词缀后
           HP 重算」是被对抗改判否决的形态,勿接回)。"""
@@ -3678,7 +3678,7 @@ class GameState:
 
         **适用范围(迭代 2026-09-20-node-advance-action-report 切换批,design
         §2.4 攻击 B1 修正)**:本口已退出**推进域**(``node_pos``/
-        ``node_hist_pos`` 写入与效果推进尾段随四推断腿停用)——节点推进唯一
+        ``node_hist_pos`` 写入与效果推进尾段随四推断分支停用)——节点推进唯一
         落账入口 = :func:`advance_node_effective`(动作上报/观察锚定);
         ``gs.node`` 观察镜像写端保留在漏斗(决策层坐标供给端,与 gold/hp
         同类的观察域写入,零派生零推进)。
@@ -3711,7 +3711,7 @@ class GameState:
         # —— 类型派生(商店查现行链;链观察落地批)——
         # 商店对任意节点类型都开(非专属)→ 类型查现行链——链在位 = 直定写,
         # 链缺/位越界/未辨 = 零写(禁猜,链正本 §6 零内建回落)。目标节点 =
-        # 生效序与观察镜像的最新者(店开帧可在推进腿未计数的新节点上,镜像
+        # 生效序与观察镜像的最新者(店开帧可在推进分支未计数的新节点上,镜像
         # 已由读链写新序键——目标只取 hist 会把类型回写上一节点,
         # run_20260918_074040 第 11 例病理)。
         if screen_name == SCREEN_SHOP_PANEL:
@@ -3792,11 +3792,11 @@ def _shop_panel_type_target(gs: GameState) -> NodePos | None:
     """商店查链类型派生的目标节点序位 = 生效序位与观察镜像的最新者
     (双源全空 = 目标不可知,禁猜零写;max = 元组字典序)。
 
-    为什么不单取 hist:店开帧读链可把镜像写到推进腿尚未计数的新序位
-    (备战帧未过,弹窗腿/备战腿都未触发),目标只取 hist 会把类型直定
+    为什么不单取 hist:店开帧读链可把镜像写到推进分支尚未计数的新序位
+    (备战帧未过,弹窗分支/备战分支都未触发),目标只取 hist 会把类型直定
     回写上一节点——后续备战帧真读新节点与被回写的 logic 值类型失配,
     统一观察对账失配告警照停(run_20260918_074040 未投影族第 11 例病理)。
-    取 max = 「当前节点」语义;弹窗腿先推进的形态下 max 仍取推进值,
+    取 max = 「当前节点」语义;弹窗分支先推进的形态下 max 仍取推进值,
     行为与旧 hist 单源一致。"""
     poss = [v for v in (effective_node_pos(gs), _obs_node_pos(gs))
             if v is not None]
@@ -4031,7 +4031,7 @@ def report_node_advance(gs: GameState, *, trigger: str,
         return LogicOutcome(applied=False, reason='advance_deduped')
     # 占卜屋直登(用户
     # 裁定:黑天鹅在前后台 → 每场战斗结算计数 +1 → 达 2 倍数弹启示卡
-    # 三选一)。战斗三型都经 settle_confirm 一腿;出战阵容 = deployed
+    # 三选一)。战斗三型都经 settle_confirm 一条分支;出战阵容 = deployed
     # 现读(战斗期间板面无逻辑写路径,结算读即出战阵容);胜负不计,
     # 参与即计。上报点直登,不走值回调(结算非 deployed 写)。
     if trigger == 'settle_confirm':
@@ -4378,7 +4378,7 @@ def _unit_from_dict(d: dict) -> Unit:
 
 def _restore_deployed_view(d: dict) -> DeployedView:
     """快照 deployed 域重建(值形状 = DeployedView 序列化 dict;
-    元素 Unit dict 缺席/畸形 → None 空槽,宽容读契约;旧档迁移腿
+    元素 Unit dict 缺席/畸形 → None 空槽,宽容读契约;旧档迁移分支
     传入的是已构建的 DeployedView 实例 → 直通透传)。"""
     if isinstance(d, DeployedView):
         return d

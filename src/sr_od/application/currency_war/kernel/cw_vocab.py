@@ -21,10 +21,10 @@
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
 推进单一源 = 容器逻辑态直写(kernel/cw_action_report 上报函数族
-+ 合成升星腿);动作语义验证 = 投影测试(M1,test_shop_projection_logic):
++ 合成升星分支);动作语义验证 = 投影测试(M1,test_shop_projection_logic):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
-  (上报函数族,合成升星腿内聚 buy_card 上报)。
+  (上报函数族,合成升星分支内聚 buy_card 上报)。
 
 字段多由测试构造/重放档案填充;未填(None/默认)时决策安全降级。
 
@@ -549,15 +549,15 @@ class CwActionFurnaceUseParam:
 
 @dataclass
 class CwActionPrivilegeCardUseParam:
-    """特权赋予卡(R8;双腿)。
+    """特权赋予卡(R8;两条分支)。
 
-    - target_kind='equip'(库存腿,现役执行分支):确定变换 = target 件
+    - target_kind='equip'(库存分支,现役执行分支):确定变换 = target 件
       名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
       privilege_counterpart``;上报 = equips 合并单笔写 = 移除工具 ∧
       变换同笔,写端 = ``cw_action_report.tool_use``);
-    - target_kind='char'(拖角色腿):**fail-closed 不支持**(用户裁定
-      2026-09-21 按不能拖角色处理待实机测试)——上报侧收到 char 腿 =
-      零写留存证据(tool_privilege_worn_unsupported);判据面现役只产库存腿,
+    - target_kind='char'(拖角色入账分支):**fail-closed 不支持**(用户裁定
+      2026-09-21 按不能拖角色处理待实机测试)——上报侧收到 char 分支 =
+      零写留存证据(tool_privilege_worn_unsupported);判据面现役只产库存分支,
       穿域桥 ``transform_worn_equip_to_privilege`` 留在原位。
     """
     target_kind: str    # 'equip' | 'char'(值域封闭,同 CwActionFurnaceUseParam)
@@ -596,7 +596,7 @@ class CwActionStaffProjectorUseParam:
     (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
     ``cw_affix_effects`` 投影仪费用门行),门由动作发出点判据面覆盖。上报 =
     复制走获得链 ``gain_character``(落位 → 回调 → 3 合 1 升星判断;
-    复制触发三合一 = 口述·权威 2026-09-21)+ equips 移除工具合并腿,
+    复制触发三合一 = 口述·权威 2026-09-21)+ equips 移除工具合并分支,
     写端 = ``cw_action_report.tool_use``(费用门注册表现读前置查 =
     防御纵深)。"""
     row: str            # 见上方通用坐标系声明
@@ -698,7 +698,7 @@ class CwActionPickSupplyParam:
     之后;'' 元素 = 该件归一未解析,上报侧逐件 fail-closed;默认 () = 单
     装备布局,既有构造点零变化)。
     三字段不入动作实例键(归因载荷不改变动作身份,``route_tag`` 先例);
-    动作 op 确认点击后立即上报,按实际开出内容应用(单位腿 + 装备腿
+    动作 op 确认点击后立即上报,按实际开出内容应用(单位入账分支 + 装备入账分支
     0..n 件 + 后果链,即时单相,design §2.0B)。
     """
     idx: int
@@ -1015,7 +1015,7 @@ def action_key(action: CwAction) -> str:
         return f'{type(action).__name__}({params})'
     return type(action).__name__
 # (席位同步聚合口已停用:
-#  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步腿
+#  动作写主域(容器逻辑通道)即同步,第二账无可同步;执行点同步分支
 #  同批删除,合成仿真自主域工作副本构造(cw_action_report 族)。)
 # ===== 布局未知态的策略侧支撑(15 号稿审查修订)=====
 # 布局未知态计数复位的槽式转发供 strategies 面消费(strategies 合法桶 =

@@ -196,10 +196,10 @@ def apply_action_outcome(
     不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2)。
     容器逻辑态直写已随动作 op 重组并入各 op 自上报(op 内直调
     自己的上报函数,op-layer.md §1.2)——原非终结直写块(apply_shop_action_
-    logic + 合成升星腿)删除 = 双记防线;终结跳写判断随 op 自覆盖不再需要。
+    logic + 合成升星分支)删除 = 双记防线;终结跳写判断随 op 自覆盖不再需要。
     本门保留面:卖出 route-tag 泄漏暴露。(效果账本 BUY 计数已迁买牌
     上报函数获取计算完时点的 ``gs.effects.on_buy`` 回调单点——live/sim
-    同源,消除落地门计数分叉;刷新侧计数与免费腿扣减 = 刷新 op 自上报
+    同源,消除落地门计数分叉;刷新侧计数与免费分支扣减 = 刷新 op 自上报
     经上报函数单口,见 cw_action_report/refresh_shop。)
 
     ``_cur`` = 入口观察回执(defects 留存证据行 plane/round 基准;载体 =
@@ -665,7 +665,7 @@ class CwScreenShop(CwOperation):
         if not _op_cls.terminal:
             # 宿主动作后结束本次访问(overlay 生命周期契约「实机
             # 消费」表):pending 非空 = 触发动作已落地、弹窗将现(典型 =
-            # 买腿三合一 planner 叠商店弹)→ 确定性提前返回主循环,取代
+            # 买分支三合一 planner 叠商店弹)→ 确定性提前返回主循环,取代
             # 等重观察发现;非终结帧的 round_wait 让位本出口。
             _pending_n = len(game_state_of(match.session).screen_changes.pending)
             if _pending_n:

@@ -2,7 +2,7 @@
 
 CW operations 树全部操作类的唯一父类(实机路径行为零变化):继承框架
 ``SrOperation``,仅在 sim 后端装配(``sim/cw_sim_ports.install_sim_backend``)
-时改写三条腿——观察/点击/按键停触真实 IO,改由后端应答:
+时改写三条分支——观察/点击/按键停触真实 IO,改由后端应答:
 
 - ``screenshot()`` —— sim 返回哨兵帧(空白 1080p 帧,模块级缓存),不触
   controller;框架每轮自动截图(``Operation._execute_one_round`` →
@@ -11,7 +11,7 @@ CW operations 树全部操作类的唯一父类(实机路径行为零变化):继
   fail(帧取全屏空白形状,area 裁剪不崩、识别恒空,失败形态干净可归因)。
 - ``round_by_find_and_click_area()`` —— sim 委托端口 ``click_answer``
   (后端按点击处理画面状态机转移,机械镜 = 档案点位直成功 + until =
-  ``visible`` 问询,见 ``cw_sim_ports.mirror_click_answer``);until 轮询腿
+  ``visible`` 问询,见 ``cw_sim_ports.mirror_click_answer``);until 轮询分支
   (点击已发出再问转移证据)在本层直接以 ``visible`` 问询收尾,不重进后端
   (重复进 = 重复触发转移);实机 → ``super()`` 原样。
 - ``round_by_find_area()`` —— sim 以端口 ``visible`` 应答;实机 →
@@ -101,9 +101,9 @@ class CwOperation(SrOperation):
     ) -> OperationRoundResult:
         """sim → 端口 click_answer(状态机转移 + 机械镜应答);实机 → super()。
 
-        until 轮询腿在本层收尾:点击已发出(``node_clicked``)且带 until 时,
+        until 轮询分支在本层收尾:点击已发出(``node_clicked``)且带 until 时,
         直接以端口 ``visible`` 问询出结果,**不再进后端 click_answer**——
-        后端按点击处理状态机转移,轮询重入会重复触发转移(「sim 点击腿
+        后端按点击处理状态机转移,轮询重入会重复触发转移(「sim 点击分支
         已成功不重发」,flow-seam 详设 §2)。
         """
         if cw_sim_ports.sim_backend_installed():

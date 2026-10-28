@@ -6,7 +6,7 @@ docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 判断线住本屏文件):位面序 boss 全量写 + 已有真值不覆写(简报源先落
 时实采不冲真值);敌人词缀写门三分支(T-45 敌后破坏补观察闭环扩面,
 设计 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.2 接线 3)——
-容器空(非随机态)现役 logic 直写不变 / 容器随机态(logic_rand,删除腿
+容器空(非随机态)现役 logic 直写不变 / 容器随机态(logic_rand,删除分支
 猜测名单或开局种子)observe 通道覆盖转正(非空与空列表读数均可,差异
 落 ``logic_rand_outcome`` 台账,「亲眼看覆盖随机效果」语义)/ 容器
 logic·observation 非空不写(现役幂等保持,防真值互踩)。写门渠道签名
@@ -83,7 +83,7 @@ def report_screen_plane_intel_obs(gs: GameState, obs: CwScreenPlaneIntelObs, *,
     if obs.enemy_affixes is None:
         return   # 本轮无此面/失读:非语义读数不进写门,维持现态
     if gs.enemy_affixes.source == 'logic_rand':
-        # 随机态容器(删除腿猜测名单/开局种子)→ observe 覆盖转正
+        # 随机态容器(删除分支猜测名单/开局种子)→ observe 覆盖转正
         #(亲眼看覆盖随机效果:差异落 logic_rand_outcome 台账、等值
         # 零台账,覆盖后来源转正、补观察谓词解除)
         gs.observe(gs.enemy_affixes, list(obs.enemy_affixes),

@@ -324,7 +324,7 @@ def _frame_search_windows(session: StrategySession, gs: GameState,
     (``vbar.window_vbar`` 帧级现算 + P57 双读法参数化)随 V̄ 比较项
     一并停用,窗口改为塌缩带锚——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
     命中率(``statefn/odds.tier/card_search_window``,ω 锚与
-    refresh_ev_budget 归零腿同源),全游戏定义量(REFRESH_PROB
+    refresh_ev_budget 归零分支同源),全游戏定义量(REFRESH_PROB
     表 + 峰值查表 + 注册表 ω 字段)。空集语义 = 真无窗口帧(该级全部
     费档归零),非门控。P57 读法分歧随单一判据消解(文档面声明)。
     """
@@ -434,7 +434,7 @@ def shop_unbought_reasons(gs: GameState,
                 #   (免 bench_free 门),'merge_bench_full' 键停用;金不足
                 #   仍记 merge_unaffordable,金席俱足未发 = merge_ready
                 #   (判读关注面);
-                # - 分支①囤腿段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 停用
+                # - 分支①囤分支段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 停用
                 #   ——同帧实际动作 = m2_stockpile 义务买入,拒因按其门序
                 #   细分(stockpile_bench_full/stockpile_unaffordable/
                 #   stockpile_ready),§7.3 owned 命中占比观测面随之真实;
@@ -1139,8 +1139,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         卖 1★ 全额退件凑缺口(session_funding 场景,评估器价值让位
         序),凑够即买(下一帧买入分支自然接手)、不多卖;主路径尽 →
         P78-5 四条件兜底豁免(funding 通道对价,单一源 = sell_gate.
-        funding_hold_fallback;两腿必要条件:序 1/序 2 = 骨架义务血统
-        腿①,其余 = 对象级无损腿②);候选穷尽仍不足 → 该牌进机会清单
+        funding_hold_fallback;两条分支必要条件:序 1/序 2 = 骨架义务血统
+        分支①,其余 = 对象级无损分支②);候选穷尽仍不足 → 该牌进机会清单
         (拦因 = 金不足;义务类金不足入清单合法,其解拦购买允许跌破利息档
         ——口述条目 6(登记簿已退役),§4.2 解拦复核规则)。缺口判定用账面金
         (读数协议④:多卖循环第二笔起禁逐笔开店重读)。"""
@@ -1168,12 +1168,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             u = bench_slot_unit(fallback[0])
             _legs_ok = False
             if order_class in ('order_1', 'order_2'):
-                _legs_ok = True   # 腿①:骨架义务血统(触发源 = 序 1/2)
+                _legs_ok = True   # 分支①:骨架义务血统(触发源 = 序 1/2)
             elif u is not None:
-                # 腿②对象级无损判定域 = 「保护集 ∪ registry 核心」
+                # 分支②对象级无损判定域 = 「保护集 ∪ registry 核心」
                 # (统一保护集 design §2.3 表:常规筹资不卖保护件与核心,
                 # 最后手段走 P78-5 通道;兜底池 ⊆ 该域 ⇒ 偏好分支结构性
-                # 恒拒,验证照落为防御性腿)。
+                # 恒拒,验证照落为防御性分支)。
                 _nm = str(u.char_id or '')
                 _legs_ok = (
                     _nm not in protection_membership(gs, state_of(gs))
@@ -1271,7 +1271,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         return _emit_buy(card, 'm2_line_member' if m in k_members
                          else 'm2_locked_member')
 
-    # m2_stockpile(分支① 囤腿,j=1 第二份;现行判据本体不动——含 P77
+    # m2_stockpile(分支① 囤分支,j=1 第二份;现行判据本体不动——含 P77
     # 现货比较子;席满 → 置换账,金不足 → 筹资。遍历域 = 义务面,design
     # §2.2:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
     for m in obligation_members:
@@ -1438,9 +1438,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     _hit = (name in CORE_SINGLE_CARD_REGISTRY
                             or name in _protection)
                 else:
-                    # prio2(press):档位表腿已退役摘除(design §2.4)——
+                    # prio2(press):档位表分支已退役摘除(design §2.4)——
                     # 到本档的名恒为非核心非保护(其余 → prio2),
-                    # 结构腿(1★/零重叠/全额退)保持。
+                    # 结构分支(1★/零重叠/全额退)保持。
                     _hit = ((card.star or 1) == 1
                             and predicates.zero_overlap(name, k_members)
                             and refund_full_star_ok(1, cost))
@@ -1995,10 +1995,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     gold, _reserve, refresh_cost_effective(gs=gs)):
                 # P92 拦刷门(输入面改造:通道集新读法 = 统一买入策略
                 # 买入类目通道〔序 1-5 + C1/dominance 邻位 + 置换(席
-                # 满帧买入路径 = seat_recoverable 腿)〕;P92 命题本体
+                # 满帧买入路径 = seat_recoverable 分支)〕;P92 命题本体
                 # 挂起,本门 = 结构判据不依赖命题,待证钩子
-                # all_channel_exists。复核补腿:序 2 预算腿/
-                # 序 4 富余与奖励帧死金腿/C1 邻位腿已入集——装配面:
+                # all_channel_exists。复核补分支:序 2 预算分支/
+                # 序 4 富余与奖励帧死金分支/C1 邻位分支已入集——装配面:
                 # 预算 = 会话累计额度现读;序 4 = 富余帧 ∨ 奖励帧低金;
                 # C1 地板 = 注册表核心最低费现算)。
                 _p92_ready = contracts.ensure_contract(

@@ -4,7 +4,7 @@
 
 机械语义:点卡选中 → 确认(建档「按钮-骇入确认」查找点击,确认钮查找
 全族统一 = ``round_by_find_and_click_area``);确认点击后立即自上报完整
-效果腿(``report_action_pick_planner_param``,leg_type/norm_item 经 env 透传)。
+效果分支(``report_action_pick_planner_param``,leg_type/norm_item 经 env 透传)。
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ class CwActionPickPlannerOp(CwOperation):
     单一源)→ 确认(建档「按钮-骇入确认」查找点击,全族统一;详情面板
     防御已拆,面板若真弹出归下一帧外循环自愈——用户裁定
 )。**即时上报**(action_ops.md §1):确认点击后立即
-    一口写完整效果腿(equip 入栏+后果链 / upgrade 变换+档行 / unknown
+    一口写完整效果分支(equip 入栏+后果链 / upgrade 变换+档行 / unknown
     留存证据 / unrouted 兜底零写),无发出/落地两相、无证据标志——确认未生效
     = 代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
@@ -67,7 +67,7 @@ class CwActionPickPlannerOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(target)
             op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
-        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(1.2)   # 等选中动画
         # 点卡 = 机械单发(用户裁定:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
@@ -82,7 +82,7 @@ class CwActionPickPlannerOp(CwOperation):
             op.screenshot(), CwScreenYinLang.CARD_AREA_SCREEN, '按钮-骇入确认',
             success_wait=1.0)
         # 立即自上报完整结果(确认点击后一口写
-        # 腿型分派效果——点完即按成功上报,零判效零证据标志;
+        # 分支类型分派效果——点完即按成功上报,零判效零证据标志;
         # leg_type/norm_item 经 env kwargs 形态保持)。上报后一行声明
         # 喂入(动作后果声明化喂入契约 = design.md §2.2 契约 3;实机
         # 端口未装 = no-op,sim 装配后驱动后端 pick_planner 出队+结束本次访问);

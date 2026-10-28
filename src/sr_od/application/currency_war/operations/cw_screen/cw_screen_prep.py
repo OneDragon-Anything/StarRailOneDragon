@@ -243,7 +243,7 @@ class CwScreenPrep(CwOperation):
                 obs.event_overlay = _spec.bail_tag
                 break
         # (席空数 = 容器 bench_free_slots 派生,前排槽数 =
-        #  row_area_centers 现算;front/back_occupied = 交叉核对腿识别轻字段,
+        #  row_area_centers 现算;front/back_occupied = 交叉核对分支识别轻字段,
         #  消费在观察链内部存续。)
         front_pts = row_area_centers(self.ctx, '前排')
         back_pts = row_area_centers(self.ctx, '后排')
@@ -295,7 +295,7 @@ class CwScreenPrep(CwOperation):
                 # design §2.4 写端 1,攻击 F1 已定案):heavy 观察回执携带本帧
                 # plane/round → observe_node_anchor(处置规则 = kernel
                 # helper 单一源:first_anchor/advance 补推/reanchor/
-                # stale_dropped)。锚定输入与旧备战腿同源(read_phase_round
+                # stale_dropped)。锚定输入与旧备战分支同源(read_phase_round
                 # 直读/缓存/守卫语义不变);漏斗已退出推进域,本写端 = 干净
                 # 备战帧的唯一生产锚定点(外循环仲裁路径的 prep_clean 漏斗读
                 # 不挂锚定,攻击 R4 适用范围界定)。读数缺位/局外 = 跳过(禁猜,
@@ -400,7 +400,7 @@ class CwScreenPrep(CwOperation):
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
                 if _of.get('owned_equips') is not None:
                     # gs.equips 观察写端即单一源,商店线权重/
-                    # flow 打分/库存 ±1 腿全部读容器。
+                    # flow 打分/库存 ±1 分支全部读容器。
                     _gs_obs.observe(_gs_obs.equips,
                                     list(_of.get('owned_equips')),
                                     sig=_prep_sig)
@@ -470,8 +470,8 @@ class CwScreenPrep(CwOperation):
                     evidence=f'giftbox#p{_gb_plane}-r{_gb_round}')
                 # 溢出告警观察写端(2026-09-15 实机建档 prep.md 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
                 # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
-                # 入位对象身份旁路(CwActionSellBenchParam 溢出腿;缺读 '' = 未识别,
-                # 腿降级槽留空等下帧)。两读独立;横幅在场 = 唯一门语义,
+                # 入位对象身份旁路(CwActionSellBenchParam 溢出分支;缺读 '' = 未识别,
+                # 分支降级槽留空等下帧)。两读独立;横幅在场 = 唯一门语义,
                 # 身份只作 tracked 闭合不作门。
                 _ov_hit = self.round_by_find_area(
                     screen, '货币战争-备战', '告警-备战席已满',
@@ -980,7 +980,7 @@ class CwScreenPrep(CwOperation):
         尚无位面序真值,接管局 boss 面;不引入显式失效标记——重复委派由
         编排的真值跳过门兜住,委派失败交外循环失败链,无自带计数/放弃
         分支);②``enemy_affixes ∈ gs.logic_rand_fields()``(词缀随机态:
-        敌后破坏删除腿猜测名单/开局种子未验证底座——策略器消费前必须
+        敌后破坏删除分支猜测名单/开局种子未验证底座——策略器消费前必须
         先去位面详情补观察转正,write_logic_rand 消费门纪律)。
         「节点条可读」守卫 = 半开帧(过场/overlay):第一支命中维持现役
         return None(等下轮免费重判、不烧失败链,boss 面行为零变更;

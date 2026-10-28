@@ -52,7 +52,7 @@ _PARTNER_ANCHOR_CHAR: str = '姬子·启行'
 #: S2 伙伴的阵营名。
 _PARTNER_FACTION: str = '列车同行'
 
-#: S3 planner 的星级跟踪角色(银狼 LV.999;与 deploy_move 升费腿/
+#: S3 planner 的星级跟踪角色(银狼 LV.999;与 deploy_move 升费分支/
 #: lv999_cost_tier 同名同源;场上同名唯一 =  裁决 1 已登记守卫)。
 _PLANNER_CHAR: str = '银狼LV.999'
 
@@ -306,7 +306,7 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     if old_star != new_star:
         on_star_changed(gs, old_star, new_star, source)
     # —— 羁绊档位条件发放(ENV_BOND_TIER_GRANTS):sets-changed 门外的
-    #    必查腿——不改任何 watched 资格集的板面写(卖非在册阵营场上件/
+    #    必查分支——不改任何 watched 资格集的板面写(卖非在册阵营场上件/
     #    穿非羁绊装备等)也要重查悬置补发;new_sets 复用入口现算值零额外
     #    成本,done 封账保幂等(判定语义单一源 = check_env_bond_tier_grants)。
     check_env_bond_tier_grants(gs, new_sets, source)

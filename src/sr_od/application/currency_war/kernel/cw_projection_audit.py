@@ -61,7 +61,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 节点族(观察覆盖,派生规则写端)——
     'node': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='派生规则四腿(备战解析/弹窗/位面过渡/BOSS简报)write_logic + 两帧确认门'
+        basis='派生规则四条分支(备战解析/弹窗/位面过渡/BOSS简报)write_logic + 两帧确认门'
               '(链正本 §2-4);商店查链目标 = 生效序与镜像最新者'
               '(_shop_panel_type_target,20260918-reconcile 第 11 例)+ '
               '类型直定倒退免疫(镜像序领先丢弃留证);观察每帧覆盖'),
@@ -109,18 +109,18 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '命中照真失配停'),
     'level': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='买经验上报升档直写(f810f2454 投影补 level 域)+ prep 腿'
+        basis='买经验上报升档直写(f810f2454 投影补 level 域)+ prep 分支'
               '推进(xp_apply_clicks 单一源)+ 观察覆盖'),
     'xp': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='买经验上报/prep 腿推进(xp_apply_clicks)+ 观察覆盖'),
+        basis='买经验上报/prep 分支推进(xp_apply_clicks)+ 观察覆盖'),
     'streak': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='纯观察读面(结算带符号 vs 备战 magnitude 双源留证),'
               '零逻辑写端'),
     'pending_loss': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='败态挂账(战斗结算失败腿写,轮首收入败补支消费即清;'
+        basis='败态挂账(战斗结算失败分支写,轮首收入败补支消费即清;'
               'sim 写端 = sim/cw_sim_backend;实机写端候结算屏败局观察)'),
     'shop_locked': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -134,7 +134,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='结算覆盖 apply_settlement_cover(唯一真值入口)+ 宝物加血'
               '投影(EffectLedgerBridge)+ 词缀域写尾回调先验重算'
-              '(write_prior,T-45 敌后破坏删除腿经 cw_opening_hp.'
+              '(write_prior,T-45 敌后破坏删除分支经 cw_opening_hp.'
               'on_enemy_affixes_logic_write,与开局先验同通道);写闸 §3.2.13'),
     'level_up_cost': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
@@ -162,7 +162,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'enemy_affixes': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='开局写定(简报/位面详情实采写门;位面详情写门随机态分支'
-              '走 observe 覆盖转正,T-45)+ 获得链删除腿(敌后破坏失效'
+              '走 observe 覆盖转正,T-45)+ 获得链删除分支(敌后破坏失效'
               '删除,经 _select_write 择道随机态)+ 观察覆盖'),
     'board': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
@@ -263,7 +263,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '消费移除/位面过渡过期)'),
     'ore_declared_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='声明已消费标记(幂等守卫第二腿,随快照存续),无观察读端;'
+        basis='声明已消费标记(幂等守卫第二分支,随快照存续),无观察读端;'
               '唯一逻辑写端 = cw_ore_channel(消费追加/位面过渡过期清理)'),
     'env_grants_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -287,9 +287,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '/grant_env_bond_tier(羁绊档位发放刻追加,判定住 '
               'cw_faction_callbacks.check_env_bond_tier_grants,deployed '
               '写尾门外必查)'
-              '+ cw_gain_chain.on_env_gained(随机装备绑定腿 star_grant#,'
-              'placed 守卫下追加;持续伤害契约锚键腿 dot_anchor#,节点窗'
-              '开才写;赠卡锁腿 deploy_lock_uid#,发放刻追加);'
+              '+ cw_gain_chain.on_env_gained(随机装备绑定分支 star_grant#,'
+              'placed 守卫下追加;持续伤害契约锚键分支 dot_anchor#,节点窗'
+              '开才写;赠卡锁分支 deploy_lock_uid#,发放刻追加);'
               'check_env_merge_grants 零 done 写'
               '(合并升星事件携带事实,无一次性封账面,显式零写非枚举遗漏)'),
     'env_grant_deploy_locks': ProjectionAuditRow(
@@ -299,7 +299,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' = 模型推导非画面读面〔实机「备战席哪张被锁」识别未建,识别'
               '专项后补〕;逻辑写端 = cw_env_grants(check_env_battle_grants'
               ' 触发发放 + check_env_deploy_lock_perfect 完胜改写)+ '
-              'cw_gain_chain(环境获得链赠卡腿)三口,消费端 = deploy_move/'
+              'cw_gain_chain(环境获得链赠卡分支)三口,消费端 = deploy_move/'
               'swap_deploy 上报入口锁守卫 deploy_lock_block_reason;比对'
               '自愈无主动清理,记录滞留至局终'),
     'pending_item_opens': ProjectionAuditRow(
@@ -325,7 +325,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='环境发放实例号发号计数器(发放刻单调发号上界,无观察读端'
               '——纯进程内发号器;逻辑写端 = cw_env_grants.'
               'check_env_battle_grants 发放刻 + cw_gain_chain.on_env_gained'
-              ' 赠卡锁腿发放刻双口,配对消费 = 锁记录 uid'),
+              ' 赠卡锁分支发放刻双口,配对消费 = 锁记录 uid'),
     'node_seq_by_plane': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='逐位面节点序列场字段(T-8;键 = 位面 1 基,值 = 节点类型序,'
@@ -344,13 +344,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'overflow_warning': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位,角色/占席'
-              '道具同款)+ CwActionSellBenchParam 溢出腿 logic 直写 False'
+              '道具同款)+ CwActionSellBenchParam 溢出分支 logic 直写 False'
               '(推算消亡,观察赢)'),
     'overflow_card': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='观察 + 获得链逻辑双写端(cw_gain_chain 溢出落位直写身份,'
               '角色 char_id/占席道具名两分,BENCH_ITEM_NAMES 判 kind)'
-              ' + 溢出腿入位消费直写(§3.2.20)'),
+              ' + 溢出分支入位消费直写(§3.2.20)'),
     # —— 画面附加域(payload 随画面重建)——
     'shop': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
@@ -451,7 +451,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='装备三选一结果(handler 写,暂无画面建档)'),
     'lv999_cost_tier': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='银狼LV.999 当前费用档(动作报告写:升费腿/上阵变费腿;'
+        basis='银狼LV.999 当前费用档(动作报告写:升费分支/上阵变费分支;'
               '读口 = cw_economy.effective_cost)'),
     # —— 结算 ——
     'settlement': ProjectionAuditRow(

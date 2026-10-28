@@ -271,7 +271,7 @@ def truncate_frame_stable(actions: list[CwAction],
 # ============================================================ 上阵窗口适用范围(22 号篇 第 6 步)
 
 #: 终局库成员并集(core ∪ shared 全线去重;纯终局件谓词的「终局库成员」
-#: 腿——未锁定期按全库知识判定的数据面,22 号篇 第 6 步)。
+#: 分支——未锁定期按全库知识判定的数据面,22 号篇 第 6 步)。
 _ENDGAME_LIBRARY_MEMBERS: frozenset[str] = frozenset(
     name
     for _comp in COMP_LIBRARY
@@ -763,7 +763,7 @@ def _bench_liquid_gold(gs: GameState) -> int:
     两处口径分立维护非同源,11 号篇 §2 攒批资金口径行)。
     线内判定 = 卖出侧线内身份集(``sell_line_membership``:锁定线成员
     ∨ 未锁定期候选 top3 成员——「卖自己人凑升级金不在语义内」)。
-    保护集腿(统一保护集 design §2.5-5 攒批资金联动申报):变现候选池
+    保护集分支(统一保护集 design §2.5-5 攒批资金联动申报):变现候选池
     过滤保护集后保护件在偏好臂下不可变现,攒批基数同步剔除——否则
     「预授权误发 → 键滞留 → 刷新预留被压制至节点末」风险链 reopening。
     """
@@ -973,8 +973,8 @@ def _step4_shop_session_pending(session: StrategySession,
                                 gs: GameState) -> bool:
     """商店会话步触发判定(工序第 5 步;22 号篇 §1 第 5 步;契约 A)。
 
-    入口序:解拦复核(读数腿开店不清标记——锚定后标记门
-    即关,下帧复核继续)→ 解拦腿清标记 → 标记 ≠ 当前节点号判定
+    入口序:解拦复核(读数分支开店不清标记——锚定后标记门
+    即关,下帧复核继续)→ 解拦分支清标记 → 标记 ≠ 当前节点号判定
     (23 号篇;节点边界重置清值 = 双保险)。满足 → True
     (调用方输出 CwActionOpenShopParam)。
     """
@@ -1169,7 +1169,7 @@ def _protected_member_blocks_interest(gs: GameState, gap: int) -> bool:
     枚举域钉死(design §2.3):池族 = 节末凑息同域(备战席全量 +
     场上无关角色谓词单一源),星级 = 1★(与凑息资格面
     one_star_refund_only 同域,不外推);判定面 = 池族 ∧ 保护身份 ∧
-    「退金 ≥ 缺口」三腿,不重放常规面其余资格门(设计定死粒度:与
+    「退金 ≥ 缺口」三条分支,不重放常规面其余资格门(设计定死粒度:与
     第二合取同用同一「退金 ≥ 缺口」筛选)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (

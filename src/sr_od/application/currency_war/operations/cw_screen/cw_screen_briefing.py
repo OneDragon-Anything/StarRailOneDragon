@@ -19,7 +19,7 @@ kernel):每次进简报屏都重读重采,点采对注册表比对自身幂等(�
 标识不在 = 已离开简报 → success 返回主循环(wait=BRIEFING_SETTLE_S);标识在 =
 点击未落地 → 重点)→ 点「下一步」+ 置位 → round_wait 循环推进(不烧
 节点重试预算;不收敛 = 策略实现 bug 响亮暴露,无防御上限)。本屏 sim
-腿 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机已登记行为测试 +
+分支 = 不适用(sim 无对应画面段),等价判据主要支撑 = 实机已登记行为测试 +
 写入流交叉核对(测试面 = sr-od-test test_obs_arch_phase_screens.py)。
 """
 import contextlib

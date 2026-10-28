@@ -120,7 +120,7 @@ def _slots_iter(bench, deployed):
 
 
 def _entry_equips(x) -> list[str]:
-    """条目装备读(C6 继承腿;bench 侧 BenchSlot → 内嵌 Unit,deployed
+    """条目装备读(C6 继承分支;bench 侧 BenchSlot → 内嵌 Unit,deployed
     侧 Unit 直读)。"""
     u = x.unit if isinstance(x, BenchSlot) else x
     return list(getattr(u, 'equips', None) or [])

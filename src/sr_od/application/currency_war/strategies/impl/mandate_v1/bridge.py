@@ -369,7 +369,7 @@ class MandateV1Strategy(CwFlowStrategy):
         语义与键表正本 = strategy-docs/strategy-telemetry.md;实现 =
         :func:`decision_payload.build_decision_payload` 纯读投影
         (出口后 gs/state 现读,零写、不改决策行为)。registry 透传
-        实例注册表(K 空窗回退腿 G 门与备战帧同参)。异常不自吞——
+        实例注册表(K 空窗回退分支 G 门与备战帧同参)。异常不自吞——
         基类 wrapper 的降级 {} 兜底是唯一降级通道(捕获缝约定)。
         """
         return decision_payload.build_decision_payload(self.gs, self.registry)

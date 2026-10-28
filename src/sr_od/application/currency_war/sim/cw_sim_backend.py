@@ -40,12 +40,12 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 (gs.screen_changes.pending)→ 呈现(问询时点懒呈现 + advance 纯转移
 尾 + 节点窗起点,压住底层画面,选完返回)。一期目录:巨星/planner
 (容器值回调判据)、开箱/专家/星徽(open_* 上报直登)、占卜屋/伙伴/
-祈愿/阿哈(判据/选卡上报)。无 sim 观察腿族(partner/fortune/
+祈愿/阿哈(判据/选卡上报)。无 sim 观察分支族(partner/fortune/
 wish_trial/star_tome/aha)呈现即卡 observe → 消费 + 逐 kind 披露,
-候观察腿接线再呈现。
+候观察分支接线再呈现。
 
 **确定性**:后端自有采样全部由 seed 派生(:func:`stream_rng` 流键,
-键形沿用旧引擎模块号坐标系);动作腿采样(炉/骇客改件/晶矿/刷新)
+键形沿用旧引擎模块号坐标系);动作分支采样(炉/骇客改件/晶矿/刷新)
 经上报函数族 rng 形参,注入点在流程装配缝(运行器批)。
 
 **装配**::func:`install_backend` = 端口槽装配;:func:`uninstall_backend`
@@ -279,7 +279,7 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
     tag = f'income:p{plane}r{round_num}'
     gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
                sig=obs_sig(group_id=f'sim:{tag}'))
-    # 利息累计账入账 + 条件发放检查(T-27 公司契约条件腿;收入应用
+    # 利息累计账入账 + 条件发放检查(T-27 公司契约条件分支;收入应用
     # 单一收口,四分支 supply/reward/败补/常规全含 interest 分量,在此
     # 一处收口即全分支随计)。record 先于 check 同组相邻;check 在金
     # 落账后(发放与收入同窗,金真值先行)。幂等性住调用方窗口守卫
@@ -509,7 +509,7 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
 
 def sample_strategy_card(rng: random.Random, excluded: set[str],
                          forced_quality: str = '') -> str:
-    """单卡采样(刷新重掷腿;与 :func:`sample_strategy_offer` 同分布
+    """单卡采样(刷新重掷分支;与 :func:`sample_strategy_offer` 同分布
     同排除契约的单槽形):``forced_quality`` 非空 = 直取目标品质池
     (银·金·彩槽位品质承诺跨刷新保持),'' = 默认分布掷点。品质池被
     排除集吃光 → 回退全池(排除后);全池亦空 → 返回 ''(调用方
@@ -579,7 +579,7 @@ def _offer_extra_refreshes(active_env: str) -> int:
 
 
 # ============================================================ 节点事件件
-# (选项生成保留;apply_*_pick 动作腿停用——
+# (选项生成保留;apply_*_pick 动作分支停用——
 #  pick 动作走 op → 上报函数族获得链,与实机同构。)
 
 
@@ -589,7 +589,7 @@ ENCOUNTER_TIER_COUNT: int = 4
 #: sim 节点 kind → 结算环行 node_type 词表(T-33 结算环帧补写用;词表
 #: 正本 = live 结算行归一 cw_screen_battle_wait._normalize_node_type,
 #: kernel→operations 反向 import 禁止故同形内联;战斗类四键在表,
-#: supply 不经结算腿恒不入环)。
+#: supply 不经结算分支恒不入环)。
 _SIM_KIND_TO_RING_LABEL: dict[str, str] = {
     'battle': '普通战斗', 'encounter': '遭遇',
     'boss': 'boss', 'reward': '奖励',
@@ -628,7 +628,7 @@ SUPPLY_OPTION_COUNT: int = 3
 SUPPLY_DIAMOND_SLOT_PENDING: str = 'supply_diamond_slot_pending_u24'
 
 #: 扑满不掉血豁免披露键(M17:扑满关不掉血,gameplay「节点类型×战力
-#: 要求」节;M14 豁免位由后端结算腿承载)。
+#: 要求」节;M14 豁免位由后端结算分支承载)。
 PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
 
 #: 扑满面板矿占位增量披露键(「掉落(超)多战利品」desc 无数值,sim
@@ -645,7 +645,7 @@ PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
 #: 角色」desc 无数值,sim 发牌翻星概率 = 用户占位拍定 2026-10-16,非
 #: desc 真值,待实机采证校准)。值串 = 纯声明串不携数值:携值即与注册
 #: 表双源,量级单一源 = kernel :data:`ENV_SHOP_TWO_STAR_DEAL_PROB`(翻
-#: 星腿 = kernel/cw_shop_deal,sim/live 两执行面共用)。沿
+#: 星分支 = kernel/cw_shop_deal,sim/live 两执行面共用)。沿
 #: :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER` 先例住本模块、接线
 #: :data:`_BASE_DISCLOSURES`、测试直断发射(设计 designs/T-22-rencai-
 #: xiachen.md §8)。
@@ -754,7 +754,7 @@ def supply_options(rng: random.Random,
 
 # ============================================================ 披露键群
 # (恒已登记声明面,随局结果 unmodeled 输出;装备三键键义
-#  ——动作腿停用后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
+#  ——动作分支停用后不变:发放空表/特权投影仪/炉拖角色模式仍未建模。)
 
 #: 环境结构化经济通道披露键(M02:两位面金通道已结构化,其余候效果批)。
 DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
@@ -762,7 +762,7 @@ DISCLOSURE_ENV_CHANNELS: str = 'env_economy_channels_pending_m02'
 #: 开箱自发触发披露键(U23:首版无自发开箱,箱 = 备战席箱件开箱动作)。
 DISCLOSURE_BOX_TRIGGER: str = 'box_spawn_trigger_pending_u23'
 
-#: planner 选卡效果披露键(升费腿效果由 pick_planner 上报承载;其余
+#: planner 选卡效果披露键(升费分支效果由 pick_planner 上报承载;其余
 #: 选项效果面候效果批)。
 DISCLOSURE_PLANNER_EFFECT: str = 'planner_pick_effect_pending_u26'
 
@@ -776,7 +776,7 @@ DISCLOSURE_P3_UNOBSERVED: str = 'p3_unobserved'
 
 #: 胜利终局披露键(推进超出序列表末位面 = 位面 3 末 boss 结算存活后
 #: 走完全部节点;用户裁定 2026-10-15「过了位面3就是胜利」。hp 归零
-#: 败局走结算死亡腿不经此键 = 胜负判别单一源在披露集)。
+#: 败局走结算死亡分支不经此键 = 胜负判别单一源在披露集)。
 DISCLOSURE_RUN_COMPLETE: str = 'run_complete'
 
 #: lv10 满级零累计披露键(裁定③:cap 分母未定,满级经验不再累计)。
@@ -875,10 +875,10 @@ class SimRunResult:
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
 #: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
-#: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界腿:上报声明触发,
+#: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界分支:上报声明触发,
 #: 非转移动作——next_screen 恒备战档,零画面转移);2026-10-19 用户
 #: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
-#: 两屏刷新世界腿,上报声明触发,同屏重呈现零转移)。
+#: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
     'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
@@ -909,7 +909,7 @@ class SimBackend:
     构造即 reset(开局序列:词缀/boss 名单采样并写容器 → 简报屏 →
     (env_present)投资环境屏 → wait_one_one → P1r1 对应屏);运行面 =
     端口六口 + kernel 事实事件 sink 订阅,世界推进全部由流程驱动
-    (动作腿 = op → 上报函数族,本后端零私有动作语义)。
+    (动作分支 = op → 上报函数族,本后端零私有动作语义)。
     """
 
     #: 局级输入(确定性锚;词缀入 seed 后此字段语义 = override 见下)。
@@ -984,7 +984,7 @@ class SimBackend:
     _window_begun_pos: NodePos | None = field(init=False, default=None)
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
     #: 「战败时无连胜成分」需胜负,窗口开时未知 → 基数冻结(金/进轮
-    #: 连胜/收入修饰 = 轮初口径),结算腿胜负后落账并清回 None。
+    #: 连胜/收入修饰 = 轮初口径),结算分支胜负后落账并清回 None。
     _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None]]
                          | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
@@ -1128,7 +1128,7 @@ class SimBackend:
                 self._present_modal(SCREEN_INVEST_ENV)
                 # 环境整组刷新呈现(2026-10-19 用户裁定批):基准 1 次
                 #(单全局钮整组重掷;advantage_layouts「环境刷新」行),
-                # 计数经 report 观察写端落 env_refresh_left,重掷世界腿
+                # 计数经 report 观察写端落 env_refresh_left,重掷世界分支
                 # = _refresh_invest_env。
                 report_screen_invest_env_obs(self.gs, CwScreenInvestEnvObs(
                     hit=True,
@@ -1186,7 +1186,7 @@ class SimBackend:
         payload,sim 无识别面,以发牌期记录承载同一观察语义;在屏态
         (节点窗起刚发牌)保持现值零写。
 
-        刷价呈现写回(改价腿 sim 载体):每次开店以 kernel 渲染的世界
+        刷价呈现写回(改价分支 sim 载体):每次开店以 kernel 渲染的世界
         真值(:func:`cw_economy.world_shop_refresh_cost`,付费计数达注册
         改价阈值即新价)现算写 ``gs.shop_refresh_cost``——对偶实机每次
         进店 live 漏斗重读刷价;不走 write_logic,观察域字段只收观察
@@ -1208,7 +1208,7 @@ class SimBackend:
         ``None`` 即跟随记录。
 
         跟随面 = ``gs.shop`` 的一切写点——节点窗起发牌(deal_shop)、
-        动作腿刷新/买卡(kernel 上报,均新建 payload 整体替换)。payload
+        动作分支刷新/买卡(kernel 上报,均新建 payload 整体替换)。payload
         写入与下次开店之间必经驱动入口(策略帧循环先观察后决策,动作
         声明经 advance、开店经 click_answer),故入口同步即完整覆盖;
         离屏态(关店清 ``None``)不动记录——关店清的是呈现不是记录,
@@ -1219,7 +1219,7 @@ class SimBackend:
             self._shop_record = payload
 
     def _apply_spy_shop_refresh(self) -> None:
-        """商业间谍升级回调世界腿(2026-10-17-levelup-shop-transition
+        """商业间谍升级回调世界分支(2026-10-17-levelup-shop-transition
         design §2.3 步①-③;触发 = 升级上报 world_decl
         ``spy_shop_refresh``,动作 op 经 cw_sim_ports.declare_world 喂入;
         步④置信号 = kernel 上报回调,写端唯一,不经本层)。
@@ -1353,7 +1353,7 @@ class SimBackend:
                 '禁静默)')
         if decl.trigger == 'node_advance':
             if decl.next_screen == '':
-                # 局终声明消费腿(键表示切换批 design §2.6):kernel 终局
+                # 局终声明消费分支(键表示切换批 design §2.6):kernel 终局
                 # 事件式(sequence_next = None → applied=True match_end,
                 # 声明 next_screen='')的世界消费;kernel 声明权威、sim
                 # 对账的分工不变。
@@ -1377,15 +1377,15 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == 'spy_shop_refresh':
-            # 商业间谍升级回调世界腿(2026-10-17 迭代 design §2.3 步①-③;
+            # 商业间谍升级回调世界分支(2026-10-17 迭代 design §2.3 步①-③;
             # 步④置信号 = kernel 上报回调,不经本层)。
             self._apply_spy_shop_refresh()
         elif decl.trigger == 'refresh_invest_strategy':
-            # 投资策略屏逐卡刷新世界腿(2026-10-19 用户裁定批;上报声明
+            # 投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定批;上报声明
             # 触发,同屏重呈现零转移)。
             self._refresh_invest_strategy(decl.slots)
         elif decl.trigger == 'refresh_invest_env':
-            # 投资环境屏整组刷新世界腿(同上批;环境刷新 = 整组重掷一次)。
+            # 投资环境屏整组刷新世界分支(同上批;环境刷新 = 整组重掷一次)。
             self._refresh_invest_env()
         elif decl.trigger == '':
             # 纯转移(详设 §3 '' 行):统一幂等返回
@@ -1487,10 +1487,10 @@ class SimBackend:
         self._enter_node_window(eff)
 
     def _on_node_advance_terminal(self) -> None:
-        """胜利终局声明消费腿(trigger=node_advance ∧ next_screen=''):
+        """胜利终局声明消费分支(trigger=node_advance ∧ next_screen=''):
         kernel 终局事件式声明(推进超出序列表末位面,现役 = 位面 3 末
         boss 结算存活)的世界消费——XP 入账(被离开节点类型,与现行
-        局终前入账同序)+ 胜局披露 + 终局。hp 归零败局走结算死亡腿
+        局终前入账同序)+ 胜局披露 + 终局。hp 归零败局走结算死亡分支
         (:meth:`_resolve_battle` → :meth:`_game_over`,不经本分支)——
         披露集含 :data:`DISCLOSURE_RUN_COMPLETE` 与否 = 胜负判别单一源。
         此后 :meth:`_reconcile_next_screen` 走 done=True ∧ decl='' 合格
@@ -1506,7 +1506,7 @@ class SimBackend:
         钻信息 = 容器 chosen_supply 现值 2 元组 (角色,装备名列表) 按
         :data:`DIAMOND_EQUIP_NAMES` 名单派生(列表任一件名命中即钻;
         写端 = 补给画面 op 确认即写)。派生失败边 = 钻名 OCR 误读 →
-        列表名不匹配 → 宝钻腿漏发;装备观察(整表)与钻数观察下一帧
+        列表名不匹配 → 宝钻发放分支漏发;装备观察(整表)与钻数观察下一帧
         暴露失配,fail-visible 非静默)。"""
         chosen = self.gs.chosen_supply.value
         if chosen is not None and any(
@@ -1526,16 +1526,16 @@ class SimBackend:
         (self.excluded_env if opening else self.excluded_invest).update(opts)
         # 追加随机环境型(在册名 = cw_investments.ENV_REROLL_NAMES,现役
         # 唯一 = 蓝海 id113):选卡首链(上报函数)已完成「获得本环境」全部
-        # 写腿(active_env + 即时金 + 申报行);本腿紧接世界掷骰出卷中名,
+        # 写分支(active_env + 即时金 + 申报行);本分支紧接世界掷骰出卷中名,
         # 原语二次入链「获得卷中环境」(gain_invest_env 一次调用完成
-        # active_env 改写 + 节点序列场改写 + 登记腿 + on_env_gained 全族
+        # active_env 改写 + 节点序列场改写 + 登记分支 + on_env_gained 全族
         # 效果,零新发放实现;两次获得语义,追加非替换)。无重复发金:池
         # 排除在册名后无任何 gold_instant 条目。session=None:本层字段面
-        # 无会话可取,登记腿跳过、容器写照常(gain_invest_env None 语义)。
+        # 无会话可取,登记分支跳过、容器写照常(gain_invest_env None 语义)。
         # rng 必须显式传参:gain_invest_env/on_env_gained 的 rng
         # 形参缺省回退自掷(random.Random()),池含随机支环境(人才引进),
-        # 不传则同 seed 不重放——双流键解耦,不走动作腿注入槽(该槽服务
-        # 上报函数族按调用序取键,本腿直调 kernel 显式流键零耦合)。门条件
+        # 不传则同 seed 不重放——双流键解耦,不走动作分支注入槽(该槽服务
+        # 上报函数族按调用序取键,本分支直调 kernel 显式流键零耦合)。门条件
         # 读 active_env 现值:二次入链后名已非名单成员,天然不重入。
         # 位置不变式:必须在 _after_modal_pick(进 1-1 节点窗)之前完成
         # 改写——窗口起点起全部环境门控读 active_env 现值,先改写再进窗。
@@ -1591,8 +1591,8 @@ class SimBackend:
         self._dismiss_modal()
 
     def _on_overlay_picked(self, kind: str) -> None:
-        """overlay 选定落地(模态返回 + 呈现检查):效果腿归各自上报/
-        效果批,本层零效果。原私有队列出队腿
+        """overlay 选定落地(模态返回 + 呈现检查):效果分支归各自上报/
+        效果批,本层零效果。原私有队列出队分支
         停用——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
         上报内 ``consume_screen_change``(两世界同一行代码,register-
         consume.md「sim 消费」),本层不重复出队。
@@ -1694,8 +1694,8 @@ class SimBackend:
           先弹,不压补给/遭遇屏);底层非备战 = 条目存活等待;
         - aha/partner/fortune(备战底层时)/wish_trial/star_tome:无
           sim 呈现面族(aha 无独立画面档,实机 = 备战锚特殊规则点
-          首件;其余画面 op 无 sim 观察腿,呈现即卡 observe 重试;
-          partner 候选可自资格集算,候观察腿接线再呈现)→ 消费 +
+          首件;其余画面 op 无 sim 观察分支,呈现即卡 observe 重试;
+          partner 候选可自资格集算,候观察分支接线再呈现)→ 消费 +
           **逐 kind 披露**(披露键含 kind,多 kind 同帧各自留痕)。
 
         模态叠模态守卫(原语义):当前已在模态屏 = 推迟(返回后再查)。
@@ -1712,8 +1712,8 @@ class SimBackend:
                         'star_tome'):
                 # 无 sim 呈现面族:aha 无独立画面档(实机 = 备战锚特殊
                 # 规则点首件);partner/fortune/wish_trial/star_tome 选项
-                # 注册表缺位且画面 op 无 sim 观察腿(呈现即卡 observe
-                # 重试;partner 候选可自资格集算,候 sim 观察腿接线再呈现)
+                # 注册表缺位且画面 op 无 sim 观察分支(呈现即卡 observe
+                # 重试;partner 候选可自资格集算,候 sim 观察分支接线再呈现)
                 # → 消费 + 披露(fortune 呈现门语义保留:底层非备战时
                 # 上方 continue 使条目存活)。
                 consume_screen_change(self.gs, kind)
@@ -1817,7 +1817,7 @@ class SimBackend:
         pending = self.gs.pending_loss.value
         if is_piggy_node(self.gs):
             # 扑满节点收入递延:统一公式败局形需胜负,窗口开时未知 →
-            # 只冻结基数(金/进轮连胜/修饰 = 轮初口径),结算腿落账
+            # 只冻结基数(金/进轮连胜/修饰 = 轮初口径),结算分支落账
             # (_resolve_battle);支付时点 = 结算屏,与实机一致。
             self._piggy_income_snap = (
                 int(self.gs.gold.value or 0),
@@ -1826,7 +1826,7 @@ class SimBackend:
         else:
             # 非扑满清递延快照(纯防御,幂等清理,现网不可达路径零行为
             # 变化):扑满局奖励节点必走上分支;残留快照若带入非扑满
-            # 节点窗,结算腿会给战斗节点叠发一份 reward 收入——未来
+            # 节点窗,结算分支会给战斗节点叠发一份 reward 收入——未来
             # 新增「未结算即推进」类流程时的开口,T-6 验收遗留项清账
             # (reviews/T-6-r1.md ⑤①)。
             self._piggy_income_snap = None
@@ -1854,7 +1854,7 @@ class SimBackend:
         # sig 组名沿 sim:env 与定时道具发放同窗。
         discharge_due_item_opens(self.gs, rand=False,
                                  sig=logic_sig('sim:env'))
-        # 首领节点条件发放(劳务派遣合同腿2;条件单一源 = kernel
+        # 首领节点条件发放(劳务派遣合同分支2;条件单一源 = kernel
         # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
         # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,
         # 采样即世界真值;sig 与环境金/定时道具发放同组同窗。kind =
@@ -1865,7 +1865,7 @@ class SimBackend:
                                   rng=stream_rng(self.seed,
                                                  f'M21/env-boss/p{plane}/r{r}'),
                                   sig=logic_sig('sim:env'))
-        # 环境直发策略取卡挂点(T-46 策略大师数量腿;设计 = T-46 定稿
+        # 环境直发策略取卡挂点(T-46 策略大师数量分支;设计 = T-46 定稿
         # §2.2(e)):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
         # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
         # 与 _present_offer_or_node_screen(幂等守卫区段外,resume 复走
@@ -1875,9 +1875,9 @@ class SimBackend:
         # 发一张随机投资策略,不开 offer 无选卡屏(用户裁定 2026-10-26),
         # 发放后照常进该节点正常流程;到手名并入 excluded_invest(维持
         # 「本局已出过全部选项名」累计去重契约,漏并入 = 已拥有策略可再入
-        # 未来 offer 池,同名跳写 + 同卡二次发放面被直发腿重开)。直发到手
-        # 即触发金币腿(同链自动,含本张口径下首张直发即 2 金)。调用形态沿
-        # 现役直调先例 _on_invest_picked:session=None(登记腿跳过、容器写
+        # 未来 offer 池,同名跳写 + 同卡二次发放面被直发分支重开)。直发到手
+        # 即触发金币分支(同链自动,含本张口径下首张直发即 2 金)。调用形态沿
+        # 现役直调先例 _on_invest_picked:session=None(登记分支跳过、容器写
         # 照常)/rand=False(确定发放)/sig 与环境金/定时道具发放同组
         # sim:env;流键 M23 沿 M21/M22 编号续,采样即世界真值;样本 '' =
         # 全池被排除集吃光(防御性,正常局不可达)→ 静默跳发不空手入链。
@@ -1985,11 +1985,11 @@ class SimBackend:
         self._present_node_screen()
 
     def _refresh_invest_strategy(self, slots: tuple[int, ...]) -> None:
-        """投资策略屏逐卡刷新世界腿(2026-10-19 用户裁定「sim 与实机一致
+        """投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定「sim 与实机一致
         提供刷新次数」批;上报声明触发,同屏重呈现零转移)。
 
         逐槽:容器剩余口径闸(≤0 = 尽,防御性——op 侧 obs/容器双闸在前,
-        本腿是声明直喂的最后防线)→ 按本窗口改写向量取槽品质重掷单卡
+        本分支是声明直喂的最后防线)→ 按本窗口改写向量取槽品质重掷单卡
         (:func:`sample_strategy_card`;槽位品质承诺跨刷新保持)→ 刷新
         流水号推进(rng 流键,同窗口多次刷新互不同流)→ 整屏重呈现
         (report 观察写端:候选槽覆盖 + 逐卡计数合并写;刷新后该槽剩余
@@ -2037,7 +2037,7 @@ class SimBackend:
                            for i, c in enumerate(counts)]))
 
     def _refresh_invest_env(self) -> None:
-        """投资环境屏整组刷新世界腿(环境刷新 = 单全局钮整组重掷一次;
+        """投资环境屏整组刷新世界分支(环境刷新 = 单全局钮整组重掷一次;
         上报声明触发,同屏重呈现零转移)。
 
         容器剩余闸(≤0/None = 尽,防御性——op 侧 obs+容器双闸在前)→
@@ -2155,7 +2155,7 @@ class SimBackend:
         self._apply_env_plane_gold(plane)
 
     def _apply_env_plane_gold(self, plane: int) -> None:
-        """环境结构化经济通道·直发腿(M02:已结构化子集直接生效——位面
+        """环境结构化经济通道·直发分支(M02:已结构化子集直接生效——位面
         开局金通道;**非声明矿环境的预留通道**,声明矿环境已在上游
         :meth:`_apply_env_plane_start` 分道绕行)。"""
         env_name = normalize_invest_name(str(self.gs.active_env.value or ''))
@@ -2171,7 +2171,7 @@ class SimBackend:
                             evidence=sim_evidence(f'env:plane_gold:p{plane}'),
                             sig=obs_sig(group_id='sim:env'))
 
-    # ---------------------------------------------------------- 结算腿
+    # ---------------------------------------------------------- 结算分支
 
     def _record_difficulty(self, node: NodeKey, kind: str) -> None:
         """难度账快照落账(2026-10-14 用户裁定:sim 对选择后的难度做
@@ -2266,7 +2266,7 @@ class SimBackend:
         # cw_screen_battle_wait._normalize_node_type;kernel→operations
         # 反向 import 禁止,sim 侧同形内联)。写端走环单一写端口
         # record_settlement_row(遭遇行随入经验表,encounter_tier=None
-        # 不改 tier_cleared 判据;补给不经本腿 = 零行,环语义不变)。
+        # 不改 tier_cleared 判据;补给不经本分支 = 零行,环语义不变)。
         from sr_od.application.currency_war.kernel.cw_encounter_selection import (
             record_settlement_row,
         )
@@ -2306,8 +2306,8 @@ class SimBackend:
                             sig=obs_sig(group_id=f'sim:{tag}'))
             # 利息累计账入账 + 条件发放检查(T-27;递延 row 的息按窗口开
             # 快照基数,T-6 现役口径)。record 先于 check 同组相邻;check
-            # 在金落账后(同窗金真值先行)。本腿与常规轮首(窗口守卫内)
-            # 互斥:扑满节点窗口只冻快照不落账,结算腿一次性消费,无幂等
+            # 在金落账后(同窗金真值先行)。本分支与常规轮首(窗口守卫内)
+            # 互斥:扑满节点窗口只冻快照不落账,结算分支一次性消费,无幂等
             # 面。sig = logic_sig('sim:env'),返回值忽略(无回调)。
             self.gs.effects.record_interest_earned(row.interest)
             check_env_interest_grants(self.gs, logic_sig('sim:env'))
@@ -2331,13 +2331,13 @@ class SimBackend:
                                           logic_sig('sim:env'))
         if granted is not None:
             on_diamond_acquired(self.gs, granted)
-        # —— 持续伤害契约条件腿(T-28 设计稿 §2.3;猜测写 + 进度累计 +
+        # —— 持续伤害契约条件分支(T-28 设计稿 §2.3;猜测写 + 进度累计 +
         # 证实同点,接线点 = streak 检查同点):active_env 门真后每次结算
-        # 腿发火,「假设获得黑天鹅」猜测态写入(sim 世界写即真值,sim 无
+        # 分支发火,「假设获得黑天鹅」猜测态写入(sim 世界写即真值,sim 无
         # 观察覆盖 → 认知猜测态写即存续)+ 进度键 dot_battle#<k> 追加,
         # 第 ENV_DOT_CONFIRM_BATTLES 笔同窗证实。计数代理口径(用户拍板
         # 值,非机制推导)单一源 = kernel 常量;非战斗轮(商店/事件)不经
-        # 结算腿 = 不计数(结构性);_settled_key 重入幂等 = 单点每战斗
+        # 结算分支 = 不计数(结构性);_settled_key 重入幂等 = 单点每战斗
         # 恰发火一次。条件单一源 = kernel check_env_dot_grants,sig 同
         # streak 通道 logic_sig('sim:env'),返回值忽略(无回调面)。
         check_env_dot_grants(self.gs, logic_sig('sim:env'), count_battle=True)
@@ -2363,7 +2363,7 @@ class SimBackend:
         sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
         派生挂钩跳过——步界全量重算真值观察 board(等值零写):承担
         派生基座首读;sim 备战观察只写 node_path 无板面 obs 通道行写,
-        全域写路径现均经 write_logic(装备穿戴腿含)使派生挂钩常态
+        全域写路径现均经 write_logic(装备穿戴分支含)使派生挂钩常态
         覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
         职能)。失配经容器吸收面(``_absorb_board_derived``,sim 证据
         前缀命中抑制面)以实际观察为准采新。触发点 = advance 步界(等值零写
@@ -2399,7 +2399,7 @@ class SimBackend:
 
     def _game_over(self) -> None:
         """局终(胜利:超位面 3 末节点存活,经 :meth:`_on_node_advance_terminal`
-        披露 run_complete / 死亡:hp 归零且保底已用,经结算死亡腿;
+        披露 run_complete / 死亡:hp 归零且保底已用,经结算死亡分支;
         重入安全)。终态呈现 = 大厅屏:流程经 CwScreenBattleWait 终局锚
         (③B terminal_lobby)→ 主循环 3c 收尾,与实机「终局结算 → 返回
         货币战争 → 大厅」的消费链同形(sim 结算瞬时,直达终点)。"""
@@ -2433,14 +2433,14 @@ class SimBackend:
 
 
 def install_backend(backend: SimBackend) -> None:
-    """装配 sim 后端(端口槽 + kernel 事实事件 sink 订阅 + 动作腿 rng
+    """装配 sim 后端(端口槽 + kernel 事实事件 sink 订阅 + 动作分支 rng
     提供槽单点)。
 
     调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
     端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。
 
-    动作腿 rng 注入(3.4 联调接线;偏差申报的归属点):流程侧动作
-    op → 上报函数族的采样腿(rng=None 回退)经
+    动作分支 rng 注入(3.4 联调接线;偏差申报的归属点):流程侧动作
+    op → 上报函数族的采样分支(rng=None 回退)经
     ``cw_action_report.set_action_rng_provider`` 拿流键 rng——键形
     ``action/<tool>/<序号>``,序号 = 本装配内调用序(动作序列确定性
     ⟹ 采样链确定性);实机缺省 None = 未播种口径零变化。
@@ -2458,7 +2458,7 @@ def install_backend(backend: SimBackend) -> None:
 
 
 def uninstall_backend() -> None:
-    """卸载 sim 后端(端口槽 + 动作腿 rng 提供槽复位;
+    """卸载 sim 后端(端口槽 + 动作分支 rng 提供槽复位;
     幂等)。"""
     from sr_od.application.currency_war.kernel.cw_action_report import (
         set_action_rng_provider,

@@ -1,8 +1,8 @@
 """P88 锁线转型域投机买入收窄·库容不变量与解封方向·复算脚本。
 
 命题(docs/develop/sr_od/application/currency_war/proofs/p88.md;math_proofs.md P88 行):
-- 辖域单一源: D = swap_bond_gate_domain_of = 腿①终局阵容锁定 ∧ fp<1.00
-  ∧ 板满(换人通道统一后谓词源;原恒真回滚腿退役,登记域逐帧语义不变);
+- 辖域单一源: D = swap_bond_gate_domain_of = 分支①终局阵容锁定 ∧ fp<1.00
+  ∧ 板满(换人通道统一后谓词源;原恒真回滚分支退役,登记域逐帧语义不变);
 - 调和引理(路径级弱支配): 收窄的占位成本 = 滞留期各帧边际 V_slot 之和 ≥ 0,
   被阻义务兑现帧上 ≥ 该义务净 EV(严格);bench 恒 free≥2 时和 = 0(等价分支);
 - 主不等式(冻结口径): S_spec 停发 ⟹ 被压抑类备战席占用逐帧 O_t(收窄) ≤ O_t(基线);
@@ -69,7 +69,7 @@ def check_domain_predicate() -> None:
                     assert got is False, 'D 域含未锁帧(hub 辖 unlocked,结构性不相交被破)'
                 n += 1
     print(f'[断言1] 辖域单一源: swap_bond_gate_domain_of 真值表 {n} 格 = '
-          f'腿①锁定∧fp<1.00∧板满 逐格一致; D⊆locked(hub 带不相交) PASS')
+          f'分支①锁定∧fp<1.00∧板满 逐格一致; D⊆locked(hub 带不相交) PASS')
 
 
 def check_closed_set() -> None:

@@ -255,13 +255,13 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
     释放集,G-S1 判据处的条件旁路(命中 ⇒ 跳过拒入、不计数;单一源 =
     sell_gate.dead_pair_exit_release,消费位禁自算)。支付变现消费释放
-    成员的对价豁免条款(P78-5/5′ 两腿)照常覆盖,无新增豁免需求。
+    成员的对价豁免条款(P78-5/5′ 两条分支)照常覆盖,无新增豁免需求。
     """
     if gold >= need_gold:
         return [], 'not_needed'
     # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
-    # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。
+    # 只钉卖出分支;恢复正路 = 部署与买面,不在卖出通道)。
     # deployed 读 = 容器行域单一源。
     _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed,

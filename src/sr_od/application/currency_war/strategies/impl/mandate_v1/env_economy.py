@@ -11,7 +11,7 @@ screen.md §2 现金分行;迁移批的删除面对照
 迁入改造(迁移迭代 3.1):
 - 删 ``ECON_VALUE_NORM`` 域带归一:现金分直接按金等价计,不再进 111-119
   带;治理校验随之删除「域带上界越界」项(无域带则该项无语义);
-- ``gold_after_refreshes`` 系(长线利好/二手市场)不走运行时条件腿——
+- ``gold_after_refreshes`` 系(长线利好/二手市场)不走运行时条件分支——
   不读 ``gs.effects`` 刷新计数、不消费 refresh_p/refresh_after 估算参数,
   改为拍值注册(:data:`_GOLD_AFTER_REFRESHES_FIXED`;拍值锚定 =
   docs/develop/sr_od/application/currency_war/proofs/p97-refresh-budget.md
@@ -164,7 +164,7 @@ ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 刷新概率结构翻倍:概率面已在 cw_shop_odds 已登记,金等价参数化缺失
     '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
     # 估值按 0 定案:2★ 商店价结构已定谳(merge_mechanics §2.6 ×3 实付),
-    # sim 直出腿已建(kernel ENV_SHOP_TWO_STAR_DEAL_PROB,占位概率禁入估值)
+    # sim 直出分支已建(kernel ENV_SHOP_TWO_STAR_DEAL_PROB,占位概率禁入估值)
     '人才下沉': '估值按 0 处理(2026-10-16 用户裁定:2★ 直出收益不计入现金分;'
                 'sim 占位概率 ENV_SHOP_TWO_STAR_DEAL_PROB 禁入估值)——系定案,非待建模',
 }

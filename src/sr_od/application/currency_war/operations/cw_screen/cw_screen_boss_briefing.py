@@ -16,17 +16,17 @@ boss 节点前弹「强敌来袭」简报横幅:识别阵营徽记模板锚「�
 兜底;不在 = 已推进 → 早退 success 返回主循环重新判定,obs 不装载)+ 门内
 obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
 目标 = 现 hist——迭代-node-advance-action-report 切换批自旧
-BOSS 简报腿迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
+BOSS 简报分支迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
 match/gs 缺席跳过)→ obs 挂实例属性进
 决策 node。决策动作 node = 点空白一次推进 → success 结束本次访问(本屏一次点击
 即终结,横幅退场裁决 = 外循环重派后的下一次入口门,不做 op 内轮询)。
 **判别单一源红线**:迁移只改宿主类,禁改 ``BOSS_BRIEFING_TOKENS``/
 ``is_boss_briefing_texts`` 判别面——三处消费同源(op 内锚兜底/
 ``CwScreenBattleWait._hit_completion_anchor`` 完成白名单/loop 阶段一位
-面过渡身份分支排他)不变。本屏 sim 腿 = 读屏点改道生成器
+面过渡身份分支排他)不变。本屏 sim 分支 = 读屏点改道生成器
 (``gen_boss_briefing`` 经同名 report 落容器,boss 类型直定同口;非 live
 读链,``_observe_live`` 仅 live 执行);首领节点条件发放
-(劳务派遣合同腿2)的触发接线在两端各自「进入事实」生产点——live =
+(劳务派遣合同分支2)的触发接线在两端各自「进入事实」生产点——live =
 本 op ``_observe_live`` 观察后 best-effort 调 ``check_env_boss_grants``,
 sim = ``cw_sim_backend`` 节点窗收口 boss 分支,两支天然互斥零双发,本屏
 观察链只承载 live 半边。等价判据主要支撑 = 实机已登记行为测试(测试面 =
@@ -136,7 +136,7 @@ class CwScreenBossBriefing(CwOperation):
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
             report_screen_boss_briefing_obs(_gs, obs)
-            # 首领节点条件发放触发(劳务派遣合同腿2,live 半边;条件单一源
+            # 首领节点条件发放触发(劳务派遣合同分支2,live 半边;条件单一源
             # = kernel check_env_boss_grants)。「进入首领节点」真值生产点
             # = 本屏观察(hist = settle_confirm 推进后的 boss 坐标,与上方
             # boss 类型直定目标同源;sim 半边在 cw_sim_backend 进窗收口,

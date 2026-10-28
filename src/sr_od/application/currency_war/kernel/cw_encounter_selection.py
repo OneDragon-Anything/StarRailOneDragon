@@ -157,7 +157,7 @@ class SettlementRing:
         return [r for r in self._rows if r.node_type == '普通战斗'][-n:]
 
     def last_row(self) -> _RingRow | None:
-        """尾行(最近结算行;空环 None)。兑现回调双证第二腿读口
+        """尾行(最近结算行;空环 None)。兑现回调双证第二分支读口
         (claim_encounter_reward:尾行 node_type = 本局节点类型入环真值;
         环写端在宿主结算读点位,先于结算确认 op 派发)。"""
         return self._rows[-1] if self._rows else None
@@ -268,7 +268,7 @@ def claim_encounter_reward(gs: GameState) -> str:
       方向安全,归观察可靠性治理);
     - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
       combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
-      判据:结算链 killed 为 progress 符号派生值——HP 对比兜底腿已删除,
+      判据:结算链 killed 为 progress 符号派生值——HP 对比兜底分支已删除,
        胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;
     - ``chosen_encounter`` 在场 = 消费票。
 
@@ -277,7 +277,7 @@ def claim_encounter_reward(gs: GameState) -> str:
     = 同族 sig ``write_logic(None)``,actor 与兑现写一致,attack3 R3
     配对申报)**——一并收敛三条误兑现面:node 镜像残留(后续非遭遇局
     chosen 恒空)、驻留重入轮(重触发时 chosen 已空,天然幂等零标志)、
-    结算覆盖 best-effort 失败的陈旧窗(上一场兑现已清 chosen,ring 腿
+    结算覆盖 best-effort 失败的陈旧窗(上一场兑现已清 chosen,ring 分支
     又收掉大半;残余 = 本场覆盖失败 ∧ 上一场同为遭遇 ∧ 本场 chosen
     已写的低频组合,后果 = 语义账面脏行非资金操作,如实申报不设额外
     防线)。

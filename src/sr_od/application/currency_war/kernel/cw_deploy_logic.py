@@ -502,10 +502,10 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
 
 # ===== 转型域双门(bond gate;bench→板 换人通道核判据层)=====
 # 换人合法性 = 组换后板态 × 锁定终局阵容(2026-10-26-swap-channel-unified
-# design §2.0)。转型域判别子三合取 + 门 1 收益门四腿在此实现;旧转型分支
+# design §2.0)。转型域判别子三合取 + 门 1 收益门四条分支在此实现;旧转型分支
 # 机器(回滚常量/混轨域谓词/装配级键集收窄/域快照)已由双门取代退役
 # (design §2.3.1)——转型域 = 本节判别子钉死的「终局阵容锁定帧」;
-# P1 配方对锁帧(腿②)按 pair 帧路由钉死(design §2.3.1)逐位走现行混轨
+# P1 配方对锁帧(分支②)按 pair 帧路由钉死(design §2.3.1)逐位走现行混轨
 # 机器,不进本域。
 # 病灶史:旧转型分支(locked ∧ fp<1.00 ∧ 板满帧 fenced victim 经守恒门
 # 逐件放行)只修触发层,多层
@@ -545,16 +545,16 @@ def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
                              board_full: bool) -> bool:
     """转型域判别子(原始字段形态;单一源;design §2.0 三合取)。
 
-    = 腿①(终局阵容锁定,**显式排除 p1_pair 腿②**)∧ fp < 1.00 ∧ 板满,
+    = 分支①(终局阵容锁定,**显式排除 p1_pair 分支②**)∧ fp < 1.00 ∧ 板满,
     三合取全继承现行语义:
-    - 腿① 判定权威 = 锁定线槽非空(cw_intention 判定权威腿① =
+    - 分支① 判定权威 = 锁定线槽非空(cw_intention 判定权威分支① =
       ``ist.locked_comp`` 非空);配方对锁帧不进本域——pair 帧按
       design §2.3.1 pair 路由钉死逐位走现行混轨机器,committed_authority
-      全值(含配方对锁腿②)不可作本判别子;
-    - 板满腿继承 = 现行换人只在板满帧发(板满门单点 =
+      全值(含配方对锁分支②)不可作本判别子;
+    - 板满分支继承 = 现行换人只在板满帧发(板满门单点 =
       ``required_swap_arm_pending`` 同链)——不继承则与 M1 直上通道
       抢活白卖;
-    - fp<1.00 腿继承 = 成型帧不进换人域(fp≥1.00 键集回全量的现行分界)
+    - fp<1.00 分支继承 = 成型帧不进换人域(fp≥1.00 键集回全量的现行分界)
       ——丢弃则成型帧行为差未申报;fp 缺读 = 域外(fail-closed,与
       fenced 关门分支 fp_unreadable 同向)。
 
@@ -570,7 +570,7 @@ def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
 def swap_bond_gate_domain(ctx: SwapPlanContext | None) -> bool:
     """转型域判别子(ctx 形态;字段读法单一源,见原始形态 docstring)。
 
-    腿① 读 ``ctx.locked_core``(终局阵容锁定,非 pair);域外
+    分支① 读 ``ctx.locked_core``(终局阵容锁定,非 pair);域外
     (未锁帧/配方对锁帧/成型帧/板不满帧)恒 False。
     """
     if ctx is None:
@@ -583,10 +583,10 @@ def swap_bond_gate_domain(ctx: SwapPlanContext | None) -> bool:
 
 def fenced_swap_gate_open(locked: bool, fp: float | None,
                           board_full: bool) -> bool:
-    """fenced 关门分支域腿(混轨;design §2.3.1 逐帧真值表)。
+    """fenced 关门分支定域分支(混轨;design §2.3.1 逐帧真值表)。
 
-    关门判定 = 混轨 locked(腿①∨p1_pair 腿②)∧ fp<1.00 ∧ 板满,
-    **无回滚常量腿**(转型分支机器退役,表达式内联脱钩退役符号,
+    关门判定 = 混轨 locked(分支①∨p1_pair 分支②)∧ fp<1.00 ∧ 板满,
+    **无回滚常量分支**(转型分支机器退役,表达式内联脱钩退役符号,
     语义与现行逐帧等价)。四行真值表:
     - 未锁帧 → 关(fenced 件为未来换人货币受保护,``fenced_arm_closed``);
     - 锁定 ∧ fp<1.00 ∧ 板满 → 开门落资格族/让位检验(pair 双轨帧与
@@ -594,8 +594,8 @@ def fenced_swap_gate_open(locked: bool, fp: float | None,
     - 锁定 ∧ fp≥1.00(成型帧)→ 关(现行);
     - 锁定 ∧ fp 缺读 → 关(消费位单列 ``fp_unreadable``,fail-closed 同向)。
 
-    消费面 = ``swap_sell_exclusion_reason``(资格分流早退腿与 fenced
-    件关门腿)/ ``select_swap_plan``(F1 合取②跳过域 = 旧混轨转型域帧集,
+    消费面 = ``swap_sell_exclusion_reason``(资格分流早退分支与 fenced
+    件关门分支)/ ``select_swap_plan``(F1 合取②跳过域 = 旧混轨转型域帧集,
     逐帧等价)。
     """
     return bool(locked) and fp is not None and fp < 1.00 and board_full
@@ -797,8 +797,8 @@ class _HypotheticalPanel:
             DeployedView,
         )
         self.board = SimpleNamespace(value=dict(board_counts))
-        # required 腿席位经视图读:假想板上必需件按「已换入」计(分支前提 =
-        # 卖后上序底线保证必需件落位;在此不计则判据恒缺腿,分支永不开)。
+        # required 分支席位经视图读:假想板上必需件按「已换入」计(分支前提 =
+        # 卖后上序底线保证必需件落位;在此不计则判据恒缺分支,分支永不开)。
         self.deployed = SimpleNamespace(
             value=DeployedView(
                 front_slots=[SimpleNamespace(char_id=n)
@@ -831,20 +831,20 @@ def _completion_swap_ins(ctx: SwapPlanContext) -> frozenset[str]:
     """完成品换入候选集(判据 ✗→✓ 严格优;单帧现算,无状态)。
 
     适用范围门(本函数单点,判据域参数化;design §2.3 收窄点钉死):
-    方向锁在效(``ctx.locked`` 混轨 = 终局阵容锁定腿① ∨ 配方对锁腿②,
+    方向锁在效(``ctx.locked`` 混轨 = 终局阵容锁定分支① ∨ 配方对锁分支②,
     装配单一源)——未对锁帧恒空集,三消费位(触发谓词完成分支/
     victim 让位检验/卖后上序底线)同吃零签名,禁消费位另设第二份门。
-    内部按域分派:双轨域(腿② pair 帧)= 现行配方完成件 fp✗→✓ 折法;
-    转型域(腿①)= 门 1④ 同源折法——两域折法同一函数 =
+    内部按域分派:双轨域(分支② pair 帧)= 现行配方完成件 fp✗→✓ 折法;
+    转型域(分支①)= 门 1④ 同源折法——两域折法同一函数 =
     ``cw_comps.form_progress``(成型判据唯一折法,含 OR 组承接/required
-    腿),「分派」= 同一单点门两域各自适用范围,**禁复制第二实现**。
+    分支),「分派」= 同一单点门两域各自适用范围,**禁复制第二实现**。
     门 1④ 消费(组贪心)经同一函数对本候选集语义成立:候选 M 入板即
     成型 ⟺ 该换入对的门 1④ 成立。
 
     = bench 中「入板即成型」的件名:M 在 bench ∧ 板上无同名 ∧ 假想面板
     (板 ∪ {M})下 ``form_progress(ctx.target_comp) >= 1.0``。前提帧 =
     ctx.fp < 1.0(已成型帧无完成缺口,覆盖成型/基座分支)∧ 板满(空位帧由
-    M1 通道直上)。成型腿键 ⊆ 阵容视图键 ⇒ 目标视图成员资格由判据本体
+    M1 通道直上)。成型分支键 ⊆ 阵容视图键 ⇒ 目标视图成员资格由判据本体
     蕴含,不另设第二份视图过滤(双源禁)。空集 = 通道关(fail 向不换)。
 
     出处 = 2026-09-18 sim 实证:配方对锁局板满帧全 plan_empty,配方
@@ -940,7 +940,7 @@ def _swap_star_and_merge_guards(name: str, ctx: SwapPlanContext, *,
     降口一)**:武装释放面不豁免终局键集标签命中件——降级换人无门 1
     组级收益约束,标签件(未来板面成员)经此通道离场会破坏「板上标签
     命中件唯一离场通道 = 配对骨架换人且组级支撑数净非降」的不变式前提
-    (§2.8 段一);辖域 = 武装释放面本身(star>1 腿),1★ 标签件的资格
+    (§2.8 段一);辖域 = 武装释放面本身(star>1 分支),1★ 标签件的资格
     归各域自有机器(转型域 = 门 2 白名单通道 2,不属演进分支资格面)。
     拒因沿用既有键 ``star_guard``(资格族闭集不扩,mandate 逐件分键
     闭集零改)。
@@ -1046,9 +1046,9 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
 
     返回 '' = 可卖。拒因闭集:
     - 排除族:membership_unreadable / buy_membership / fresh_buy。
-      **义务集面域切分**(design §2.2):``locked_buy_membership`` 拒卖腿
+      **义务集面域切分**(design §2.2):``locked_buy_membership`` 拒卖分支
       在转型域换人让位路径**整体豁免**(让位白名单三通道全免;豁免依据 =
-      §2.8 段一四腿各自蕴含的净非降承接义务集保护意图);来金/演进/
+      §2.8 段一四条分支各自蕴含的净非降承接义务集保护意图);来金/演进/
       普通卖出通道不豁免(本函数只辖换人路径);membership **缺读**
       (None)弃权保留在前(fail-closed);
     - 资格族(per-piece):target_keep / fenced_arm_closed /
@@ -1062,7 +1062,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
       §2.3.1);守恒面由组级档位非降承接,逐件不设第二折法。
       **域外**(未锁帧/配方对锁 pair 帧/成型帧)现行机器逐位照旧:
       基座/成型分支经 ``offtarget_sell_allowed`` 参数化接入(本体零修改);
-      fenced 关门分支域腿钉死混轨语义(design §2.3.1 真值表,表达式
+      fenced 关门分支定域分支钉死混轨语义(design §2.3.1 真值表,表达式
       内联脱钩退役符号)——pair 帧 locked ∧ fp<1.00 ∧ 板满开门落资格族
       (engines_guard/star_guard/素材守卫照常消费,禁判别子统一换装
       造成双轨域静默跳过),未锁/成型帧关门拒因照旧。
@@ -1146,7 +1146,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
         elif not bonds & DEPLOY_FENCE:
             return 'target_keep'
         elif not fenced_swap_gate_open(_locked, _fp, ctx.board_full):
-            # fenced 关门分支(域腿钉死混轨;design §2.3.1 真值表):
+            # fenced 关门分支(定域分支钉死混轨;design §2.3.1 真值表):
             # 未锁帧 → 关;锁定 ∧ 成型帧(fp≥1.00)→ 关;锁定 ∧ 板不满 → 关;
             # 锁定 ∧ fp 缺读 → fp_unreadable(fail-closed 同向)。
             if not _locked:
@@ -1195,7 +1195,7 @@ class SwapPlanContext:
       locked_buy_membership`` 容量可行截断集 B',cap_hold 现读;与 M4
       燃料集 ``exclude_names`` 同参同源——两侧同吃 B');
       None = 缺读(谓词弃权,fail-closed);未锁定帧 = 空集(无锁定帧
-      不存在 hoard 义务,非缺读);转型域换人让位路径对该拒卖腿
+      不存在 hoard 义务,非缺读);转型域换人让位路径对该拒卖分支
       **整体豁免**(design §2.2,豁免依据 = §2.8 段一净非降);
     - ``fresh_buys``:轮内新鲜度排除名集(见 ``fresh_buys_of``);
     - ``fenced_on``:换阵卖出义务分支态(fenced off-line 件可卖与否)。
@@ -1223,8 +1223,8 @@ class SwapPlanContext:
     #: strategy-docs/17_stall_form_spend_authority.md §1.1(两词显式分名,
     #: 禁按本字段反推终局阵容锁定口径)。
     locked: bool = False
-    #: 方向锁腿①(终局阵容锁定,显式不含 P1 配方对锁腿②)——转型域
-    #: 判别子第一腿的装配源(design §2.0;判定权威 = 锁定线槽非空)。
+    #: 方向锁分支①(终局阵容锁定,显式不含 P1 配方对锁分支②)——转型域
+    #: 判别子第一分支的装配源(design §2.0;判定权威 = 锁定线槽非空)。
     #: 与 ``locked``(混轨)并存各有辖域:混轨供 fenced 关门分支/
     #: evolution 触发等既有域,本字段供转型域判别子,禁互借。
     locked_core: bool = False
@@ -1456,7 +1456,7 @@ class SwapPlan:
     (sell_names[k], up_bench[k]),1:1 配对骨架,序参数经
     ``SwapGroupOrder`` ports 注入)。域外胜出序 = victim 序首个可成交者,
     arm 只随胜出者标注;转型域组 = 最小充分组贪心的首个可行组。
-    组计划附加字段:``bond_gate_leg``(accept 分键首达腿,值域 =
+    组计划附加字段:``bond_gate_leg``(accept 分键首达分支,值域 =
     tier/support/star/completion)/``victim_tier``(首对 victim 层来源,
     值域 = 一级/二级/名单末位)/``bond_gate_reject``(拒绝侧分键来源,
     值域 = nogain/conservation/novictim,非空 = 转型域计划空)。
@@ -1466,7 +1466,7 @@ class SwapPlan:
     reasons: dict[str, str] = field(default_factory=dict)
     abstain: str = ''
     arm: str = ''
-    #: 门 1 首达腿(accept 分键源;'tier'/'support'/'star'/'completion')
+    #: 门 1 首达分支(accept 分键源;'tier'/'support'/'star'/'completion')
     bond_gate_leg: str = ''
     #: 首对 victim 层来源('一级'/'二级'/'名单末位')
     victim_tier: str = ''
@@ -1511,7 +1511,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
     自动同值,禁分轨态
     (同款纪律)。
 
-    各腿单一源与 fail-closed:
+    各分支单一源与 fail-closed:
     - ``locked``/``fp``/``board_full`` = 装配 ctx 同源字段(fp 缺读 =
       分支关,与转型分支 fp_unreadable 两分支同弃权口径一致;
       fp≥1.00 = 线已成型无完成缺口,分支适用范围外);
@@ -1525,10 +1525,10 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
       select_swap_plan 的卖后 select_deployments 底线,结构性排除
       「白卖」形态)。
 
-    与转型域谓词的对账声明(design §2.3.1 域腿钉死):本谓词**维持现行
-    混轨语义不迁移**——准入三元含 pair 帧(腿②)为现行已验证形态,
-    迁移 = 未申报行为差;该谓词非退役符号,与 fenced 关门分支域腿
-    (``fenced_swap_gate_open``,同款混轨三腿)同形并存,申报为
+    与转型域谓词的对账声明(design §2.3.1 定域分支钉死):本谓词**维持现行
+    混轨语义不迁移**——准入三元含 pair 帧(分支②)为现行已验证形态,
+    迁移 = 未申报行为差;该谓词非退役符号,与 fenced 关门分支定域分支
+    (``fenced_swap_gate_open``,同款混轨三条分支)同形并存,申报为
     「并存已申报形态」,零行为差;域定义变更时本谓词须随其对账,
     禁静默分叉。
 
@@ -1567,7 +1567,7 @@ def assemble_swap_plan_inputs(
     转型域双门字段)全在本函数,两侧禁自写第二份。两侧输入的逐字段对齐
     由 seam 核对批兑现(对齐证据 = 开闸小批前置义务,待办 IMPL_REPORT),
     核对通过前发出位保持关闭。
-    转型域双门字段装配(design §2.0/§2.1):``locked_core``(腿①)/
+    转型域双门字段装配(design §2.0/§2.1):``locked_core``(分支①)/
     ``bond_gate_keys``(终局键集 = form_tiers 键)/``k_members``
     (终局名单 = core ∪ shared)随 target_comp 同点装配(design §2.7
     「随 target_comp 注入」)——键集收窄已随转型分支机器退役,
@@ -1632,9 +1632,9 @@ def assemble_swap_plan_inputs(
     )
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     locked_core = bool(getattr(ist, 'locked_comp', None)) if ist is not None \
-        else False   # 方向锁腿① = 终局阵容锁定(判定单源归 17_stall_form_
-    # spend_authority §1.1;转型域判别子第一腿,design §2.0)。
-    locked = locked_core   # 字段终值见下方推广(混轨 = 腿① ∨ P1 配方对锁腿②)。
+        else False   # 方向锁分支① = 终局阵容锁定(判定单源归 17_stall_form_
+    # spend_authority §1.1;转型域判别子第一分支,design §2.0)。
+    locked = locked_core   # 字段终值见下方推广(混轨 = 分支① ∨ P1 配方对锁分支②)。
     # 方向锁推广(双轨对锁期):P1 配方对锁(ist.p1_pair 非空,
     # 意向锁定产物;冻结标志 p1_pair_frozen 钉向)与终局阵容锁定同为
     # 「方向锁在效」(仅混轨 ``locked``;``locked_core`` 不随本推广——
@@ -1645,7 +1645,7 @@ def assemble_swap_plan_inputs(
     # 不受影响:pair 帧 membership 空集(locked_buy_membership 未锁帧缺省)
     # 使其 member 门恒关,适用范围仍在终局线。店侧 S_spec 收窄
     # (mandate.swap_transition_narrow_frame)谓词源已迁移挂转型域判别子
-    # 全合取(入参同现行:腿① ∧ 板满 ∧ fp<1.00,design §2.3.1),消费位
+    # 全合取(入参同现行:分支① ∧ 板满 ∧ fp<1.00,design §2.3.1),消费位
     # 保留(shop.py/mandate.py),P88 登记域不倒转。
     if ist is not None and getattr(ist, 'p1_pair', ()):
         locked = True
@@ -1687,7 +1687,7 @@ def assemble_swap_plan_inputs(
         _lf = locked_faction_scope(ist) or frozenset()
     except Exception:   # noqa: BLE001  围栏兜底 best-effort(同执行侧)
         _lf = frozenset()
-    # 锁定线语境豁免武装位(配方底线门):只与终局阵容锁定第一腿
+    # 锁定线语境豁免武装位(配方底线门):只与终局阵容锁定第一分支
     # 同读(ist.locked_comp 非空),不随 ``locked`` 方向锁推广(P1 配方
     # 对锁帧不豁免),两词口径分名见 17_stall_form_spend_authority §1.1
     # (helper 自身 fail-safe:清空路径/套名解析失败自动 False,无需调用
@@ -1747,7 +1747,7 @@ def assemble_swap_plan_inputs(
 
 
 # ============================================================
-# 转型域门 1(收益门四腿)+ 守恒(终局档位非降)+ 组贪心序参数
+# 转型域门 1(收益门四条分支)+ 守恒(终局档位非降)+ 组贪心序参数
 # (design §2.2/§2.3/§2.7;kernel 只含机械执行,序参数由策略层
 # ports 注入,门 1 判据本体驻 kernel = 跨策略不变的转型域结构约束,
 # 任何羁绊组策略通用,design §2.7 宪法第 5 条判据线作答)
@@ -1822,15 +1822,15 @@ def swap_bond_gate_benefit(ctx: SwapPlanContext, *,
                            pairs: list[tuple[str, str]] = (),
                            up_stars: dict[str, int] | None = None,
                            ) -> tuple[bool, str]:
-    """门 1 收益门(四腿任一;对组换后板态判定;design §2.2)。
+    """门 1 收益门(四条分支任一;对组换后板态判定;design §2.2)。
 
-    检查序钉死 = **④→①→②→③**:成品腿优先(design §2.2 枚举表 C/G 行
-    把组生长型与 OR 承接型归因到 ④;四腿任一通过即放行,分键归因 =
-    首达腿)。返回 (是否通过, 首达腿键∈{'completion','tier','support',
+    检查序钉死 = **④→①→②→③**:成品分支优先(design §2.2 枚举表 C/G 行
+    把组生长型与 OR 承接型归因到 ④;四条分支任一通过即放行,分键归因 =
+    首达分支)。返回 (是否通过, 首达分支键∈{'completion','tier','support',
     'star'});不通过 = (False, '')。
 
-    - **④ 成品腿**:组换后成型判据达成(fp ✗→✓)——折法单一源 =
-      ``cw_comps.form_progress`` 现行契约(含 OR 组承接/required 腿;
+    - **④ 成品分支**:组换后成型判据达成(fp ✗→✓)——折法单一源 =
+      ``cw_comps.form_progress`` 现行契约(含 OR 组承接/required 分支;
       与 ``_completion_swap_ins`` 单点门同函数,禁复制第二实现);
       前提 = ctx.fp < 1.0(域判别子已保证,防御再查);
     - **① 激活终局羁绊新档位**:档位梯逐档计数(design §2.1)后档数
@@ -1925,7 +1925,7 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
 
     拒绝侧分键来源(design §2.3.1 闭集):victim 池/换入池空 =
     'novictim'(无可行组零动作);搜索中有守恒拦且未成组 =
-    'conservation';其余未成组 = 'nogain'(四腿全不中)。三态选择
+    'conservation';其余未成组 = 'nogain'(四条分支全不中)。三态选择
     钉死优先序 novictim > conservation > nogain(确定性)。
     """
     _members = set(ctx.k_members)
@@ -2138,7 +2138,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     # 拒因(fenced_arm_closed 等)挤成 plan 级单键,丢暴露)。
     # 合取②跳过域 = fenced 开门帧集(混轨 locked ∧ fp<1.00 ∧ 板满;
     # 与旧混轨转型域帧集逐帧等价——判别子排除 pair 后,转型域与 pair
-    # 双轨帧同落本集,域腿单一源 = fenced_swap_gate_open,design §2.3.1)。
+    # 双轨帧同落本集,定域分支单一源 = fenced_swap_gate_open,design §2.3.1)。
     _fenced_open = fenced_swap_gate_open(
         bool(getattr(ctx, 'locked', False)), getattr(ctx, 'fp', None),
         bool(getattr(ctx, 'board_full', False)))

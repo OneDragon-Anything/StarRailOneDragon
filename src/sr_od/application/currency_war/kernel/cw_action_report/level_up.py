@@ -38,7 +38,7 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     (§2.4 写端唯一 = 本回调第 4 步;实机同样生效——游戏侧真实刷新+
     偷牌,重开位读真牌面)②随附 ``world_decl``(trigger =
     ``spy_shop_refresh``,next_screen = 备战档)供动作 op 经
-    ``cw_sim_ports.declare_world`` 喂入 sim 后端执行世界腿①-③(抽 5 张
+    ``cw_sim_ports.declare_world`` 喂入 sim 后端执行世界分支①-③(抽 5 张
     /偷最贵 3 张入席/剩余 2 张 = 商店新牌面;sim 采样即世界真值,实机
     端口未装 = no-op,世界后果归游戏引擎)。无商业间谍 = 零商店副作用
     (牌面不变;重开靠备战执行帧清标记通道,design §2.3 末条)。
@@ -98,7 +98,7 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
                 # 步④:置随机态信号(非 Field 簿记槽直写;写端唯一 = 本
                 # 回调,槽注申报;幂等,连升多级同帧只置位)。
                 mark_shop_randomized_pending(gs)
-                # 世界腿①-③声明(op 层喂入 sim 后端;实机 no-op)。
+                # 世界分支①-③声明(op 层喂入 sim 后端;实机 no-op)。
                 _spy_decl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                                       trigger='spy_shop_refresh')
     # 升级窗口达成位记录(成功经验通道主挂点;内部自判条目在场 ∧ 未记录 ∧

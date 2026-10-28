@@ -26,12 +26,12 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_sell_bench_param(gs: GameState, param: Any,
                                    sig: ChannelSig) -> LogicOutcome:
     """卖备战席上报:bench 该槽置 empty + gold +退款 + 装备回收
-    (C6 守恒)+ 溢出腿(overflow_warning 在场时腾出槽当帧记溢出件入位,
+    (C6 守恒)+ 溢出分支(overflow_warning 在场时腾出槽当帧记溢出件入位,
     容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入带名
     槽件——``BenchSlot(kind=BENCH_ITEM_KINDS[名], item=名)`` 查映射编译
     类别,判据 = ``cw_investments.BENCH_ITEM_NAMES`` 词表守卫 +
     ``BENCH_ITEM_KINDS`` 映射单一源;
-    3.2 单账化后容器 bench 即唯一账,原 tracked 对称吸收腿停用)。
+    3.2 单账化后容器 bench 即唯一账,原 tracked 对称吸收分支停用)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''
@@ -69,7 +69,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
             reason=(f'stale_proposal:{param.expect}'
                     f'!={sold.char_id}'))
     bench_slots[idx] = BenchSlot(kind='empty')
-    # 溢出腿:席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
+    # 溢出分支:席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
     # 溢出件入位(游戏侧行为,prep.md 告警节实机建档;占席道具与角色同款
     # 溢出语义,2026-09-24 用户确认——道具身份落带名槽件查映射编译类别,
     # 禁造假角色;入位角色星级缺读 1 兜底,下帧 heavy 实读覆盖修正,
@@ -82,7 +82,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
             BENCH_ITEM_NAMES,
         )
         if _ov_id in BENCH_ITEM_NAMES:
-            # 词表守卫保留(溢出位身份串含观察域来源,词表外 = 角色腿照旧);
+            # 词表守卫保留(溢出位身份串含观察域来源,词表外 = 角色入账分支照旧);
             # 词表内直查映射 + 带名构造(身份守恒闭环:发放带名落席 →
             # 溢出字符串(名字本身)→ 入位槽带名,kind/item 不漂)
             _absorb: BenchSlot = BenchSlot(kind=BENCH_ITEM_KINDS[_ov_id],
@@ -94,7 +94,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
         _w(gs.overflow_card, '', 'proj_overflow_absorbed')
         _w(gs.overflow_warning, False, 'proj_overflow_cleared')
         # (tracked 第二账已停用:入位件随本函数
-        #  bench 整表写单点落主账,原「执行侧对称吸收腿」无可同步。)
+        #  bench 整表写单点落主账,原「执行侧对称吸收分支」无可同步。)
     _w(gs.bench, BenchView(slots=bench_slots,
                            capacity=(_bview.capacity
                                      if _bview is not None
@@ -105,7 +105,7 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
     g = gs.gold.value
     if g is not None:
         _w(gs.gold, int(g) + int(refund), 'proj_sell_refund')
-    # 装备回收进 owned 池(C6 装备守恒;原商店腿有/备战域缺口,统一补齐)。
+    # 装备回收进 owned 池(C6 装备守恒;原商店分支有/备战域缺口,统一补齐)。
     if sold.equips:
         _w(gs.equips, list(gs.equips.value or []) + list(sold.equips),
            'proj_sell_equips_recover')

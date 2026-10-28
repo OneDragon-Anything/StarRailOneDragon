@@ -174,7 +174,7 @@ class Comp:
     部署例外规则**尚未实现**——消费点应为 decision_v2/candidates._deploy_candidates
     / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
-    # ===== 形态端口:OR 腿 + carry 在场条件 =====
+    # ===== 形态端口:OR 分支 + carry 在场条件 =====
     # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
     # 希儿系对分支(P1 配方锁伪阵容)+ COMP_LIBRARY 静态套「希儿量子」
     # (P2+ 锁定路径经 get_comp 消费静态条目;档位单一源 =
@@ -182,20 +182,20 @@ class Comp:
     # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
     # (判据单一源契约)。
     or_legs: list[tuple[str, int]] = field(default_factory=list)
-    """OR 腿(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
+    """OR 分支(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
     「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
-    行;combo_methodology.md:133)。空 = 无 OR 腿(纯 AND)。进度折法:OR 组
-    折叠为一条虚拟腿,腿值 = 组内各腿进度 max(取最好腿非均值,「任一即成」
-    的进度语义;换最好腿只单调抬升无重置)。**OR 组承接同键档位**:键出现在
+    行;combo_methodology.md:133)。空 = 无 OR 分支(纯 AND)。进度折法:OR 组
+    折叠为一条虚拟分支,分支值 = 组内各分支进度 max(取最好分支非均值,「任一即成」
+    的进度语义;换最好分支只单调抬升无重置)。**OR 组承接同键档位**:键出现在
     本字段的 ``form_tiers`` 档位不入 AND 账(该键成型语义归 OR 组;档位值
     保留作线键/完全体账单结构载体——囤货采购集羁绊展开、晋升候选键面交集、
-    换线距离账等结构消费读 form_tiers 键面,清空即残)。禁把 OR 腿当 AND
+    换线距离账等结构消费读 form_tiers 键面,清空即残)。禁把 OR 分支当 AND
     写进 ``form_tiers`` 计账(键侧 AND 语义会把 OR 塌回 AND 全档——前置命题
     病灶本体)。"""
     required_deployed: tuple[str, ...] = ()
     """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
     成型判据第一合取支「希儿在场」(transition_combos.md:27)。空 = 无
-    carry 条件。进度折法:逐名折一条 0/1 虚拟腿(在板=1 否则 0);state
+    carry 条件。进度折法:逐名折一条 0/1 虚拟分支(在板=1 否则 0);state
     缺 deployed 视图的轻量假想面板按 0 计(保守向,缺读≠满成)。"""
 
     # ===== 知识卡字段(选线/升级/窗口适用范围的共用知识地基;设计口径 =
@@ -1796,18 +1796,18 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     入参 = 容器视图(决策面切统一容器;假想面板轻量桩只需提供
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
-    OR 腿与 carry 条件折法(OR 组承接键;
+    OR 分支与 carry 条件折法(OR 组承接键;
     本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
     全档 ∧ or_legs 组任一满 ∧ required_deployed 全在板」的单一源契约):
-    - ``or_legs`` 非空 → 折为**一条**虚拟腿,腿值 = 组内各腿进度的 max
+    - ``or_legs`` 非空 → 折为**一条**虚拟分支,分支值 = 组内各分支进度的 max
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
-      最好腿非均值);
-    - **承接规则**:``form_tiers`` 中与 OR 腿**同键**的档位
+      最好分支非均值);
+    - **承接规则**:``form_tiers`` 中与 OR 分支**同键**的档位
       不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——静态套
       希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_LEGS`` 承接,成型
       判据即文档 OR 口径;pair 伪阵容两键集恒不相交,本规则对其逐位
       零差)。档位值保留的用途见 ``Comp.or_legs`` 注;
-    - ``required_deployed`` 逐名折一条 0/1 虚拟腿(在板=1;入参无
+    - ``required_deployed`` 逐名折一条 0/1 虚拟分支(在板=1;入参无
       deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
     两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
     旧序列化载体两态按「无 OR/carry 条件」解释,与空字段同值,不炸)。

@@ -31,9 +31,9 @@ pick 族「容器槽零参读」+ 同族 9 决策面 op 既成约定):候选与�
 机械执行两态(分流判别式 = ``cw_sim_ports.mechanical_io_allowed()``):实机
 点击点 = 执行载体 ``_card_points[pick.idx][1]``(读链产物,经
 ``OverlayPickExecEnv.target`` 传入动作 op);sim = ``env.target`` 传 None
-(动作 op 机械腿端口检查自动跳过,世界反应由上报声明链驱动:上报真内容 →
-内容腿入账 → ``WorldDecl(pick_supply)`` → 后端读 ``chosen_supply`` 现值
-派生宝钻腿)。``_card_points``/``_refresh_point`` = 实机专用执行载体:
+(动作 op 机械执行分支端口检查自动跳过,世界反应由上报声明链驱动:上报真内容 →
+内容载荷分支入账 → ``WorldDecl(pick_supply)`` → 后端读 ``chosen_supply`` 现值
+派生宝钻发放分支)。``_card_points``/``_refresh_point`` = 实机专用执行载体:
 只被机械执行消费,**禁承载决策输入、禁作决策门槛**。
 
 **刷新 = 终结动作**:decide_supply 建议刷新 ∧ 对照闸放行 → 点钮一次后本访问
@@ -72,9 +72,9 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 选卡派发,全部出口终结本访问(点击发出后即结束本次访问正本 =
 `screens/op-layer.md` §1.1、`flow/action_ops.md` §4.5:动作 op 确认
 点击后立即上报完整结果,零落地复查、零旧机制补写面——确认未生效 =
-代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏 sim 腿 =
-观察腿(生成器产物经同名 report 落容器)+ 决策腿(obs 载体两态同构)+
-刷新腿(area 点击端口),等价判据支撑 = 实机已登记行为测试 + sim 两态
+代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏 sim 分支 =
+观察分支(生成器产物经同名 report 落容器)+ 决策链(obs 载体两态同构)+
+刷新分支(area 点击端口),等价判据支撑 = 实机已登记行为测试 + sim 两态
 op 测试。
 """
 import re
@@ -150,7 +150,7 @@ class CwScreenSupplyNode(CwOperation):
         # ``_refresh_point`` 同为执行载体(刷新钮文本锚点),处置同。
         self._card_points: list[tuple[SupplyOption, Point]] | None = None
         self._refresh_point: Point | None = None
-        # 来源 C 形态门(T-27 利息条件腿,中途审查复裁):观察轮节点条
+        # 来源 C 形态门(T-27 利息条件分支,中途审查复裁):观察轮节点条
         # 锚定返回 'reanchor' = 备战帧已锚本节点(常规形态,基座 = 备战帧
         # gs.gold 观察=领取前真值);'advance'/'first_anchor' = 本节点首次
         # 锚定发生在补给屏(「自动弹」形态,无备战帧)→ 基座宁缺不计数。
@@ -273,7 +273,7 @@ class CwScreenSupplyNode(CwOperation):
         # 可锚——的唯一锚定点;divert 形态 = 备战帧已锚,本读数走处置规则表
         # reanchor/stale_dropped 分支承接,处置规则表正本 = `game_state/node-derivation.md`(E10 行))。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
-        # 来源 C 形态门随本锚定判(T-27 利息条件腿,中途审查复裁):
+        # 来源 C 形态门随本锚定判(T-27 利息条件分支,中途审查复裁):
         # 处置 token = 'reanchor' → 备战帧已锚本节点 = 常规形态(基座 =
         # 备战帧 gs.gold 观察,领取前真值);'advance'/'first_anchor' →
         # 本节点首次锚定发生在补给屏 = 「自动弹」形态 → 基座宁缺不计数。
@@ -311,7 +311,7 @@ class CwScreenSupplyNode(CwOperation):
         """刷新对照闸全式(两态分量不同,决策链接线迭代 design §2.2):
         容器 ``supply_refresh_left`` 读数 ≥1 ∧ 锚点分量——实机 =
         ``_refresh_point`` 在位(锚缺并入拒绝面,防「残值 ∧ 锚缺」帧机械
-        点击 None,遭遇屏同款先例);sim = 无锚点条件(恒过,sim 腿不依赖
+        点击 None,遭遇屏同款先例);sim = 无锚点条件(恒过,sim 分支不依赖
         锚点)。两态分流判别式 = ``cw_sim_ports.mechanical_io_allowed()``。
         纯读,零写。"""
         if left is None or int(left) < 1:
@@ -369,7 +369,7 @@ class CwScreenSupplyNode(CwOperation):
                                 _left)
                     return self.round_fail('刷新锚点读缺,交回重读')
                 # sim:无机械锚读缺面,拒绝仅剩 left 读缺形态,零点击终结
-                # 交回(重进重读即恢复;先例 = 遭遇 sim 刷新腿零点击终结)。
+                # 交回(重进重读即恢复;先例 = 遭遇 sim 刷新分支零点击终结)。
                 log.info('[cw-supply] 建议刷新但对照闸拒绝(sim,left=%r)'
                          ' → 零点击终结交回', _left)
                 return self.round_success('建议刷新但对照闸拒绝,零点击终结交回',
@@ -397,7 +397,7 @@ class CwScreenSupplyNode(CwOperation):
                 return self.round_success(
                     '补给刷新已点,本访问终结交回(外循环重进重建入口)',
                     wait=1.5)
-            # sim:刷新腿 = 点击源端口——「文本-剩余次数」area 点击经基类
+            # sim:刷新分支 = 点击源端口——「文本-剩余次数」area 点击经基类
             # sim 改道(→ 后端 ``_handle_click_source`` → ``_supply_refresh``:
             # 剩余闸内嵌再验 + left−1 + 选项重掷经同名 report 落容器)。
             # 点击后本访问终结交回,新选项由重进后的入口观察承载(生成器
@@ -468,7 +468,7 @@ class CwScreenSupplyNode(CwOperation):
                  [(o.char, o.equip, o.has_diamond) for o in options],
                  pick.idx, pick.reason, _left)
         # 机械执行两态:实机点击点 = 执行载体 ``_card_points[pick.idx][1]``
-        # (读链产物);sim = None(动作 op 机械腿端口检查自动跳过,世界
+        # (读链产物);sim = None(动作 op 机械执行分支端口检查自动跳过,世界
         # 反应由上报声明链驱动)。
         _click_target = (self._card_points[pick.idx][1]
                          if cw_sim_ports.mechanical_io_allowed() else None)
@@ -476,7 +476,7 @@ class CwScreenSupplyNode(CwOperation):
         # CwActionRefreshSupplyParam 建议的执行半,
         # pick execute 语义 = 点卡选中 → 确认)。派发实例携真实选中下标与
         # 开出内容载荷(上报 param 即真实选择+内容;动作 op 确认点击后
-        # 立即一口写 owned/单位腿/后果腿)。点击发出后即结束本次访问。
+        # 立即一口写 owned/单位入账分支/后果分支)。点击发出后即结束本次访问。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,
         )

@@ -171,7 +171,7 @@ class PlannerOption:
 
     text:卡描述全文(如「提升费用至4费,变为1星银狼LV.999」/「使后续节点【弱化】…」/
     装备名+效果)。「提升费用」字样判升费卡由本模块打分表达,handler 不写死。
-    升费腿结果 = 变为下一个费用档的 1 星银狼LV.999(卡面「变为1星银狼LV.999」
+    升费分支结果 = 变为下一个费用档的 1 星银狼LV.999(卡面「变为1星银狼LV.999」
     即指此:单位身份保持银狼LV.999、费用档升一级、星级为 1 星
     [口述·权威 2026-09-18];机制单一源 = docs/game/currency_war/research/
     equipment_mechanics.md §7)。
@@ -242,14 +242,14 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     return PlannerPick(idx=best_idx, reason=best_reason or '全部未识别,兜底左卡')
 
 
-# ===== 银狼策划腿型判定单源(记账分类器)=====
-# 职责边界:本分类器只答「这张卡落在哪条记账腿」(动作上报记账用),与
+# ===== 银狼策划分支类型判定单源(记账分类器)=====
+# 职责边界:本分类器只答「这张卡落在哪条记账分支」(动作上报记账用),与
 # :func:`decide_planner` 的选卡打分关键词是两套语义——决策打分词表(升费
 # 优先级等)表达「选哪个」,本分类词表表达「选中后怎么记账」,二者
 # 职责不同禁互相复用(混用 = 装备授予被决策词表误判 → 记账缺位失配停;
 # 具体碰撞例 = 破解芯片卡文含「弱化」而实为装备卡,装备域优先判定消解)。
 
-#: 腿型词表(封闭集):upgrade=升费腿 / equip=装备腿 / unknown=未识别
+#: 分支类型词表(封闭集):upgrade=升费分支 / equip=装备入账分支 / unknown=未识别
 #: (零记账留存证据;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
 #: 已按原文二分法停用,静默零记账变响亮申报)。
 PLANNER_LEG_UPGRADE: str = 'upgrade'
@@ -344,7 +344,7 @@ def normalize_registry_equip_name(text: str) -> str:
 
 
 def classify_planner_leg(text: str) -> tuple[str, str]:
-    """银狼策划选项腿型判定单源(记账分类器;全序)。
+    """银狼策划选项分支类型判定单源(记账分类器;全序)。
 
     判定序(装备域优先):
     1. **锚匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
@@ -359,8 +359,8 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
        装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留存证据);
     4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
 
-    返回 ``(leg_type, norm_item)``:norm_item 仅 equip 腿携带归一件名,
-    其余腿恒 ''。
+    返回 ``(leg_type, norm_item)``:norm_item 仅 equip 分支携带归一件名,
+    其余分支恒 ''。
     """
     t = text or ''
     if not t:

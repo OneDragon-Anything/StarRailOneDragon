@@ -4,14 +4,14 @@
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
 写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 
-**穿着即合成腿**(世界规则,语义正本 =
+**穿着即合成分支**(世界规则,语义正本 =
 ``docs/game/currency_war/research/equipment_mechanics.md``「穿着即合成」:
 穿戴后该角色 worn 集内可合成的两件立即合成为进阶件,循环至无可合成,
 两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合):穿戴落位与
 合成在同一写序内完成——owned 摘件 → worn 集合成 → 目标域整表重建写
 (bench/deployed 两域,合成产物落 worn 集尾;
 前后排 = deployed 单字段视图)。规则住本上报
-= kernel 单一源(sim 与实机动作腿同构消费,禁第二份实现);合成改变
+= kernel 单一源(sim 与实机动作分支同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
 
 拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
@@ -191,6 +191,6 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
     # (tracked 第二账已停用:容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
-    #  穿戴随动腿」无可同步;session 形参兼容保留。)
+    #  穿戴随动分支」无可同步;session 形参兼容保留。)
     # (事实事件广播已停用。)
     return LogicOutcome(applied=True)

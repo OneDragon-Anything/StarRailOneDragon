@@ -200,7 +200,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
         sim_backend_installed,
     )
     if sim_backend_installed():
-        # sim 模式:机械腿(焦点守卫+真实拖拽)静默成功,自上报照走
+        # sim 模式:机械执行分支(焦点守卫+真实拖拽)静默成功,自上报照走
         # (直连 controller 旁路 port 检查;落位事实由后端世界承接)
         return
     pts = row_area_centers(ctx, '备战栏', screen_name=screen_name)
@@ -226,7 +226,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
 # (装备穿戴计划构造单一源 = kernel/cw_equip_wear_plan(原子通路);
 #  动作发出点(mandate M7)直接消费同一构造函数,无第二源。)
 # (tracked 写点槽号健康暴露 _expose_unhealthy_tracked_slots 已随
-#  tracked 第二账停用而删除:其两个调用点均为 tracked 摘除腿,腿删则
+#  tracked 第二账停用而删除:其两个调用点均为 tracked 摘除分支,分支删则
 #  helper 无消费面;容器形槽号 = 下标权威结构性健康。)
 
 
@@ -512,7 +512,7 @@ class PrepActionExecutor:
             sim_backend_installed,
         )
         if sim_backend_installed():
-            # sim 模式:机械腿静默成功,自上报照走(直连 controller 旁路
+            # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
             # port 检查;部署/卖上阵落位事实由后端世界承接)
             return
         from sr_od.application.currency_war.operations.dev.drag_cw_char import (
@@ -529,7 +529,7 @@ class PrepActionExecutor:
             pass
         DragCwChar.drag_char(self._op, src, dst)
 
-    # (tracked 随动同步三腿(备战摘除/场上摘除/上阵落位)已随
+    # (tracked 随动同步三条分支(备战摘除/场上摘除/上阵落位)已随
     #tracked 第二账停用删除:动作写主域(逻辑
     #  通道)即同步,第二账无可同步;落地事实归观察边界 reconcile 对账。)
 

@@ -269,14 +269,14 @@ for side in ('cw3', 'legacy_v2', 'pooled'):
             pt, lo, hi = boot_ci(lam_stat, runs)
             print(f'    {side} {bucket}×{nk}: n={len(sel_nk)} '
                   f'λ3={pt:.3f} [{lo:.3f},{hi:.3f}]')
-    # ---- v3 必修1:换掉「距终>6 轮 λ3=0.000」论据腿(构造性恒真) ----
+    # ---- v3 必修1:换掉「距终>6 轮 λ3=0.000」论据分支(构造性恒真) ----
     # dist_end 以已实现轨迹末轮为锚:距终>6 的轮按定义不可能在 3 轮内死亡,该条件期望恒 0
     # 与数据无关。改用非循环证据:①前瞻轮序危险率(死亡发生在第几轮,决策时轮序可观测);
     # ②桶构成(桶×侧 dist_end 分布,复验 V5 口径)。
     death_rounds = [rs[-1]['round'] + (rs[-1]['plane'] - 1) * 100 for rs in runs if rs and rs[0]['died']]
     run_lens = [rs[-1]['round'] + (rs[-1]['plane'] - 1) * 100 for rs in runs if rs]
     if death_rounds and run_lens:
-        print(f'  前瞻轮序危险率(v3 论据腿,轮序=决策时可观测): '
+        print(f'  前瞻轮序危险率(v3 论据分支,轮序=决策时可观测): '
               f'死亡轮序中位={median(death_rounds):.0f} vs 局长中位={median(run_lens):.0f} '
               f'(死亡集中发生于局末段;早期轮序死亡发生率见桶构成)')
     for bucket in ('p<=7', 'p8-12', 'p13+'):

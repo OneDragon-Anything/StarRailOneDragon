@@ -109,7 +109,7 @@ DEPSILON_ADVISOR_VIOLATION: str = 'depsilon_advisor_violation'
   [canonical (a) arm2 延迟/(b) 守息提前;(c) F7 排除] ∧ 瞬时检测域;
   F7 豁免发射帧不计入本键,走 `f7_exempt_emission`。signal-only 帧单
   独分键 `depsilon_signal_only`(观察级),与本键禁合并判读。
-- 本键退出验收门三面合取红判据腿;三面合取结构=「速率面+有效性面+
+- 本键退出验收门三面合取的红判据分支;三面合取结构=「速率面+有效性面+
   漂移哨兵(健康性)」。
 """
 

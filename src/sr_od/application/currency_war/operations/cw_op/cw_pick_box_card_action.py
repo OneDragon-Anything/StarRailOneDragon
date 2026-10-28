@@ -74,7 +74,7 @@ class CwActionPickBoxCardOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(pt)
             op.ctx.controller.click(pt)
-        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(来源写死 = 现役 overlay 动画等待常量)。
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入

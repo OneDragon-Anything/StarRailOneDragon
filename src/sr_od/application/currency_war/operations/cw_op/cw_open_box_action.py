@@ -97,7 +97,7 @@ class CwActionOpenBoxOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(open_point)   # 防吞点击(截图前移光标)
             ex._ctx.controller.click(open_point)
-        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
         # 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'

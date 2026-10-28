@@ -97,7 +97,7 @@ class CwEntryPlaneIntel(CwOperation):
         # 真值已在(简报链早前采过/上一轮本 op 成功)→ 零点击直接结论。
         # 跳过门扩面(T-45 设计稿 §2.2 接线 2,迭代 2026-09-23-invest-
         # effects-calc):位面真值已有 **∧** 词缀非随机态才跳过——词缀
-        # 随机态(敌后破坏删除腿猜测名单/开局种子)时放行补观察,防旧门
+        # 随机态(敌后破坏删除分支猜测名单/开局种子)时放行补观察,防旧门
         # 把「正常局 boss 真值已在 + 词缀随机态待转正」拦在委派之外。
         _gs = gs_of_ctx(self.ctx, sess)
         if _gs.plane_bosses.value \

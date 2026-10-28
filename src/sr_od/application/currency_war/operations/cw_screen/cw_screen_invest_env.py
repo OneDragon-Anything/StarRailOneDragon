@@ -28,8 +28,8 @@ node = 零参决策(候选自容器槽;空候选/无有效输出 = round_fail �
 屏上剩余次数观察真值(屏上数字即真值,正本 = game_state/fields.md
 §3.4.3),写端 = 观察 report 摄入。无 match 局外不设早退支(画面 op
 不支持局外单独调用——op-layer.md §1.1;用户裁决 全族删门)。
-本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
-改道生成器产物;整组刷新世界腿 = 刷新自上报声明喂入,2026-10-19 用户
+本屏 sim 分支 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
+改道生成器产物;整组刷新世界分支 = 刷新自上报声明喂入,2026-10-19 用户
 裁定批),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
 候补登记的待办),行为支撑 = 实机已登记行为测试。
 """
@@ -287,7 +287,7 @@ class CwScreenInvestEnv(CwOperation):
             self, act: CwActionRefreshInvestCardsParam) -> 'WorldDecl | None':
         """刷新动作自上报(2026-10-19 用户裁定批):构造投资刷新世界声明
         并喂入 sim——实机端口未装 = no-op(实机真值归重入观察覆盖,零行为
-        变化),装配后驱动整组重掷世界腿。容器零写;局外(gs 缺席)静默
+        变化),装配后驱动整组重掷世界分支。容器零写;局外(gs 缺席)静默
         跳过。返回声明(journal 记账面)。"""
         gs = game_state_from_ctx(self.ctx)
         if gs is None:
@@ -350,7 +350,7 @@ class CwScreenInvestEnv(CwOperation):
                 # 刷新动作自上报(2026-10-19 用户裁定「sim 与实机一致提供
                 # 刷新次数」批):容器零写(真值归重入观察覆盖),取世界
                 # 声明喂入 sim——实机端口未装 = no-op,装配后驱动整组重掷
-                # 世界腿;声明随留存证据外另行返回(round data 记账面)。
+                # 世界分支;声明随留存证据外另行返回(round data 记账面)。
                 _decl = self._report_refresh_action(act)
                 # 刷后帧机械重读(零比对零判效——读数原样携带进留存证据证据,
                 # 「计数未扣 ∧ 名集未变」的零效果判定经对账评点落缺陷台账;

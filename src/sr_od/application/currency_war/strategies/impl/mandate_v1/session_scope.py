@@ -81,7 +81,7 @@ if TYPE_CHECKING:
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
 #    均非节点作用域键)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
-#    腿为单调事实,且锁定后无消费面)。
+#    分支为单调事实,且锁定后无消费面)。
 # (升级预授权重置行已随 2026-10-17 迭代 T-4 键退役删除——
 #  判据同帧重评后无跨帧授权可清。)
 _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
@@ -230,7 +230,7 @@ def _sync_derived_lock_cache(st: StrategyState) -> None:
 
 
 def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
-    """时点兜底触发腿之二:P2 起首次投资策略三选一完成侦测(§1.4)。
+    """时点兜底触发分支之二:P2 起首次投资策略三选一完成侦测(§1.4)。
 
     基线 = **P1 滑动基线**(每次 P1 帧刷新持续覆写,进 P2 冻结)——
     P1 期间获得的策略(白银投资类加场卡)入基线不计增长;进 P2 后的

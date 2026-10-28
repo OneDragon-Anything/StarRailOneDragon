@@ -36,7 +36,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
 
     view = gs.bench.value
     if view is None:
-        # bench_unobserved 早退不登记:登记与开件动作同生——本腿生产
+        # bench_unobserved 早退不登记:登记与开件动作同生——本分支生产
         # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
         # 仅测试直构/极端离线形态可达;该形态开件本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved')

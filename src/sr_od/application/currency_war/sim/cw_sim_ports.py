@@ -137,7 +137,7 @@ def visible(screen_name: str, area_name: str) -> bool:
 
 def sim_or_live_observation(screen_name: str,
                             live_read: Callable[[], Any]) -> Any:
-    """读屏点改道 helper(观察腿唯一 op 触点的接线原语)。
+    """读屏点改道 helper(观察分支唯一 op 触点的接线原语)。
 
     装了后端 → ``observe(screen_name)``(生成器直出);否则执行
     ``live_read()`` 原读链。逐屏显式读屏点一行机械改:
@@ -166,9 +166,9 @@ def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
 
 
 def mechanical_io_allowed() -> bool:
-    """机械 IO 腿(直连 controller 点击/拖拽)当前是否可达。
+    """机械 IO 分支(直连 controller 点击/拖拽)当前是否可达。
 
-    实机(未装配)True;sim 装配后 False——机械腿静默跳过,动作的
+    实机(未装配)True;sim 装配后 False——机械执行分支静默跳过,动作的
     世界反应由紧随的自上报(上报函数族)承接(flow-seam 详设 §2
     直连旁路 port 检查口,与各旁路文件逐点守卫同用;漏改路径仍由
     运行器 controller 桩兜底触碰即炸)。
@@ -212,7 +212,7 @@ def mirror_click_answer(
     镜像;后端 click_answer 的共享实现——先处理状态机转移,再委托本
     helper 出实机同形 round 结果)。
 
-    - 点击腿 = screen_loader 档案点位直成功(area 未建档 = round_fail
+    - 点击分支 = screen_loader 档案点位直成功(area 未建档 = round_fail
       响亮,与实机 AREA_NO_CONFIG 同形;``node_clicked`` 置位语义保留,
       ``update_screen_after_operation`` 画面簿记照走——两者均零 controller
       触达);
@@ -224,7 +224,7 @@ def mirror_click_answer(
       的推进全部冒领,流程层节点处理零执行,5000 步风暴假通过);
     - until 问询 = :func:`visible`(``until_not_find_all`` = 取反,目标区域
       不可见才算过);问询为假 = 继续轮询返回 ``round_wait``,**不重发点击**
-      (sim 点击腿已成功,重发会重复触发状态机转移);
+      (sim 点击分支已成功,重发会重复触发状态机转移);
     - 有 until 按实机同形 ``round_wait``(「点了≠成了」,下一轮 until 问
       状态机取转移后真值),无 until = ``round_success``。
     """

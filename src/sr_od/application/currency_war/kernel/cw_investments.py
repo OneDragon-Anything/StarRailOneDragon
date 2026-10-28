@@ -423,7 +423,7 @@ class GiftGrant:
       (rand=True,2026-10-17 用户裁定:「选卡时点游戏实际发下」对首例
       环境未经实机判读核实,卡面文本是唯一证据——猜测写 + equips 观察
       覆盖纠偏,首观察静默覆盖落 logic_rand_outcome 台账不进失配网;
-      先例 = T-5 财富宝钻随机态获得/T-29 奖励全腿随机态)。
+      先例 = T-5 财富宝钻随机态获得/T-29 全奖励分支随机态)。
       首例 = 红钻贵族。
     - replaces_opening_supply: True = 该环境的获得替换开局补给(on_env_gained
       先清席后发放,首例 = 人才储备 id 144「开局补给替换为3个随机3费角色」
@@ -432,7 +432,7 @@ class GiftGrant:
       部署行/溢出席开局窗恒空,不触。登记防呆:True 须伴随至少一个角色支
       (chars_immediate/chars_random_immediate 非空),否则 = 「清空开局
       不发」怪卡,校验拒(_validate_env_gifts;仅环境域消费,策略表登记
-      本字段 = 惰性无消费,箱腿先例同待遇)。
+      本字段 = 惰性无消费,开箱分支先例同待遇)。
     """
     chars_immediate: tuple[str, ...] = ()
     chars_conditional: tuple[tuple[str, str], ...] = ()
@@ -474,8 +474,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '采购专员·彩': EconomyEffect(refresh_surprise_every=5),
     # 本金充裕系:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,
     # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
-    # id 301001/301002)。两卡条件腿卡文逐字同文 → 三元组同值;棱彩加强值
-    # 只在 instant_gold(26 vs 45)。条件腿发放经节点桥(§3.3.6)。
+    # id 301001/301002)。两卡条件分支卡文逐字同文 → 三元组同值;棱彩加强值
+    # 只在 instant_gold(26 vs 45)。条件分支发放经节点桥(§3.3.6)。
     '本金充裕': EconomyEffect(instant_gold=26, free_refresh_cond_gold_above=50,
                               free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
     '开源节流': EconomyEffect(instant_gold=10, interest_cap_override=9),
@@ -489,9 +489,9 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
     '定期福利': EconomyEffect(instant_gold=4, gold_per_node=2),
     # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
-    # (cw_invest_data.py:112,id 200301)。两腿分载:「现在」立即腿 =
+    # (cw_invest_data.py:112,id 200301)。两条分支分载:「现在」立即分支 =
     # free_refresh_burst=1(选卡登记期发放,载体惯例同固定理财/乱成一锅粥);
-    # 持续腿 = free_refresh_per_node=1。当节点发放核查结论(逐效果 a/b)单一源 =
+    # 持续分支 = free_refresh_per_node=1。当节点发放核查结论(逐效果 a/b)单一源 =
     # docs/game/currency_war/research/per_node_pick_node_grant.md。
     '加油站': EconomyEffect(instant_gold=8, free_refresh_burst=1,
                             free_refresh_per_node=1),
@@ -719,7 +719,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # counter 不建(无剩余/门槛累计量,授予量由当拍金现值决定,§3 计数器
     # 模型无动态需求为空);duties 全空(无计数器/无预知/无姿态消费面)。
     # payload 引 STRATEGY_ECONOMY 同一实例(单一源);棱彩加强值口径 =
-    # instant_gold 26/45,条件腿两卡逐字同文同值。
+    # instant_gold 26/45,条件分支两卡逐字同文同值。
     '本金充裕': EffectSpec(
         id='301001', name='本金充裕', trigger=TriggerKind.NODE_ENTER,
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
@@ -729,11 +729,11 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         id='301002', name='本金充裕+', trigger=TriggerKind.NODE_ENTER,
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['本金充裕+'], duties=DutyFlags(),
-        notes='条件腿与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
+        notes='条件分支与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
     # 加油站:官方「现在及每次进入新节点时获得1次免费刷新,立刻获得8金币」
-    # (cw_invest_data.py:112,id 200301)。入册使两腿经现行挂点生效:获得链
-    # 登记腿(kernel/cw_gain_chain.py::gain_invest_strategy)
-    # burst 桥发「现在」腿 +1;节点边界桥(per-node 形态)发持续腿。拿卡
+    # (cw_invest_data.py:112,id 200301)。入册使两条分支经现行挂点生效:获得链
+    # 登记分支(kernel/cw_gain_chain.py::gain_invest_strategy)
+    # burst 桥发「现在」分支 +1;节点边界桥(per-node 形态)发持续分支。拿卡
     # 当节点不重复发:登记晚于本节点边界推进,advance_node 同节点去重位
     # 关闸。行为核查结论单一源 =
     # docs/game/currency_war/research/per_node_pick_node_grant.md。
@@ -741,7 +741,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         id='200301', name='加油站', trigger=TriggerKind.NODE_ENTER,
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['加油站'], duties=DutyFlags(),
-        notes='「现在」+1 刷=burst 腿登记期发放;每节点 +1=节点边界桥;'
+        notes='「现在」+1 刷=burst 分支登记期发放;每节点 +1=节点边界桥;'
               'instant_gold=8 选卡当场'),
 }
 
@@ -902,7 +902,7 @@ QUALITY_REWRITE_ENV_NAMES: frozenset[str] = frozenset({
 #: fail-closed——active_env 无观察覆盖通道,自掷 = 永久捏造门控输入)。
 ENV_REROLL_NAMES: frozenset[str] = frozenset({'蓝海'})
 
-#: 追加获得腿采样假设披露键(键面 = desc 未写明处的申报,消费 = sim 随局
+#: 追加获得分支采样假设披露键(键面 = desc 未写明处的申报,消费 = sim 随局
 #: 披露面 disclosures):随机池构成/分布/呈现均 desc 未写明,按 API 裁定
 #: (invest_effects.md §5「desc 没写明的数值一律放弃建模」)不建模真值,
 #: sim 按全集去本名均匀 v0 采样、以本键申报未证面。常量落位沿
@@ -1242,7 +1242,7 @@ def spy_on_level_up_active(session) -> int:
     并偷取其中最贵的3个角色」);持有判定 = 现役 held 判据
     (active_strategies 容器字段,先例 = :func:`blood_xp_mode`)。
     返回 = 偷牌张数(0 = 未持有/注册表漂移保守侧;张数只经本单一源,
-    消费位 = 升级上报回调 + sim 世界腿,禁第二处内联)。
+    消费位 = 升级上报回调 + sim 世界分支,禁第二处内联)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
@@ -1292,16 +1292,16 @@ def resolve_strategy_canonical(name: str) -> str | None:
 # (锁定 Comp.factions 消费侧现读)。
 
 def env_faction_scope(env_name: str) -> frozenset[str]:
-    """投资环境的阵容指向集(faction 腿 + 亲和腿;§2.1)。
+    """投资环境的阵容指向集(faction 分支 + 亲和分支;§2.1)。
 
-    - faction 腿:``INVESTMENT_ENVS[env].faction`` 非空入集(概念股/邀请/
+    - faction 分支:``INVESTMENT_ENVS[env].faction`` 非空入集(概念股/邀请/
       契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);
-    - 亲和腿:``ENV_COMP_AFFINITY`` 该环境值键 = 线名,取各线 Comp.factions
+    - 亲和分支:``ENV_COMP_AFFINITY`` 该环境值键 = 线名,取各线 Comp.factions
       **全集**入集——副阵营随线带入(命运圣杯邀请亲和含双王圣杯 → 指向集
       = {命运圣杯, 能量}:能量组件卡可服务双王线的能量副羁绊,判兼容是
-      语义本意;特邀专家:桑博 faction 空但亲和专家桑博DOT,单 faction 腿
+      语义本意;特邀专家:桑博 faction 空但亲和专家桑博DOT,单 faction 分支
       会误判通用)。线名缺 Comp(注册表漂移)→ 跳过不炸,指向集收窄
-      宁放行(与角色腿未注册跳过同 fail 方向)。
+      宁放行(与角色入账分支未注册跳过同 fail 方向)。
 
     环境名不在注册表 → 空集;入参先 ``normalize_invest_name``——持有名
     OCR 形变不归一 = 查表 miss → 护栏基准弱化漏拦(与 strategy_lock_hit/
@@ -1325,12 +1325,12 @@ def env_faction_scope(env_name: str) -> frozenset[str]:
 
 
 def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
-    """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营腿 + 角色腿两源;§2.1)。
+    """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营分支 + 角色入账分支两源;§2.1)。
 
-    - 阵营腿:绑定阵营直接入集;
-    - 角色腿 ch 两源:① ``CHARACTERS[ch].factions`` **全集**入集(多阵营
+    - 阵营分支:绑定阵营直接入集;
+    - 角色入账分支 ch 两源:① ``CHARACTERS[ch].factions`` **全集**入集(多阵营
       角色全展开,用户裁定「从角色去关联对应的阵容」,如丹恒·饮月 =
-      仙舟/列车同行);② 成员腿:ch ∈ Comp.core_chars ∪ shared_chars 的
+      仙舟/列车同行);② 成员分支:ch ∈ Comp.core_chars ∪ shared_chars 的
       线,该线 factions 全集入集——角色是某线登记成员 = 卡服务该线
       (装备党绑飞霄、飞霄是追击飞霄线 core 首席,该卡必须对锁定追击
       飞霄帧判兼容)。
@@ -1361,7 +1361,7 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
 # 自动猜装(六条防错装对账 = _validate_env_economy);
 # 轮岗/人才下沉无通道可装 → 策略层 env_economy.ENV_ECONOMY_PENDING_MODELING
 # 显式登记(区别于漏登记):轮岗 = 待建模候迁出;人才下沉 = 已定案按 0
-# (2026-10-16 用户裁定,永驻登记;商店 2★ 直出腿见下文
+# (2026-10-16 用户裁定,永驻登记;商店 2★ 直出分支见下文
 # ENV_SHOP_TWO_STAR_DEAL_PROB)。
 # B/C 通道的估算参数(概率/期望/增益)在策略层 env_economy.ENV_ECONOMY_
 # ESTIMATES(gold_after_refreshes 通道已改拍值注册,参数随迁停用),
@@ -1489,7 +1489,7 @@ _validate_env_ore_grants()
 # 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯)。
 # 锁面(测试仓):kernel/test_gain_chain.py(ENV_GIFTS 分道/道具/定时通道 +
 # 落地相全量接入)、strategies/impl/mandate_v1/test_invest_strategy.py(档→分
-# 映射/具名分档/键完备)、sim/test_sim_backend.py(sim 世界腿到点发放)。
+# 映射/具名分档/键完备)、sim/test_sim_backend.py(sim 世界分支到点发放)。
 ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
     # 战技点 128/星核猎手 129/欢愉 1201/命运圣杯 1202/特邀专家 141/142/143/148
@@ -1530,7 +1530,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
         chars_conditional=(('Archer', '完成两次圣杯试炼后'),),
     ),
     # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果
-    # (停云终结技增益/加拉赫击破档腿世界发放已接(ENV_BOND_TIER_GRANTS),
+    # (停云终结技增益/加拉赫击破档分支世界发放已接(ENV_BOND_TIER_GRANTS),
     # 装备资产不入估值维持/桑博节点礼盒)异质不入估值,停云/桑博仅占位登记
     # (详设 §2.1.1 注;桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
     '特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
@@ -1547,10 +1547,10 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 即时装备通道首例(id 131 效果原文「开局时拥有【红钻】和一个【简易武装箱】。」
     # 直读,PlazaPortal('131');「开局时」= 环境注册时点,火药味/人才引进
     # 「开局时获得」同口径)。数量 = 元素重复次数,与 items 通道同约定;
-    # 装备腿在前 = 卡文序(on_env_gained 装备支位于 items_immediate 支之前,
+    # 装备入账分支在前 = 卡文序(on_env_gained 装备支位于 items_immediate 支之前,
     # 遥测序与卡文对齐)。红钻 ∈ EQUIPMENTS(合成材料,非占席道具);箱 =
     # 道具通道现役(武装箱系不在装备注册表,装备名漂移校验天然互斥)。
-    # 装备腿发放写通道 = 随机态(见 GiftGrant.equips_immediate docstring
+    # 装备入账分支发放写通道 = 随机态(见 GiftGrant.equips_immediate docstring
     # 裁定注记)
     '红钻贵族': GiftGrant(equips_immediate=('红钻',),
                           items_immediate=('简易武装箱',)),
@@ -1579,22 +1579,22 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 直读,PlazaPortal('136'));星级 2 = 卡面明写非先验;「输出」=
     # char_type 按 '、' 切分含标签即入池(多标签计入,用户裁定 2026-10-21,
     # 池为注册表现值派生非固定名单);采样/先验披露随家族常量
-    # ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 携带;属性加成腿(「进入新节点
-    # 永久随机属性加成」)全腿不建模,披露键 env_char_buff_unmodeled
+    # ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 携带;属性加成分支(「进入新节点
+    # 永久随机属性加成」)该分支整体不建模,披露键 env_char_buff_unmodeled
     '战力提升': GiftGrant(chars_random_immediate=(
         RandomCharSpec(cost=1, star=2, type_tag='输出'),)),
     # 类型过滤随机支姊妹卡·无类型词变体(id 137 效果原文「获得1个随机2星
     # 2费角色」直读,PlazaPortal('137'));星级 2 = 卡面明写非先验;无类型词 →
     # type_tag 空,池 = 2 费全档(注册表现值派生,爻光费用勘误 2→1 自动
     # 不入池);采样/先验披露随家族常量 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS
-    # 携带;属性加成腿(「进入新节点永久随机属性加成」)全腿不建模,披露键
+    # 携带;属性加成分支(「进入新节点永久随机属性加成」)该分支整体不建模,披露键
     # env_char_buff_unmodeled 引用 T-36 批已立常量(卡区分靠效果账本上下文)
     '战力飙升': GiftGrant(chars_random_immediate=(
         RandomCharSpec(cost=2, star=2),)),
     # 随机装备支首例(id 118 效果原文「获得随机星徽」直读,
     # PlazaPortal('118');数量词缺省 = 1 件先验,披露键
-    # ENV_STAR_GRANT_ASSUMPTION_KEYS 承载)。绑定腿:发放名以 done 条件键
-    # 'star_grant#<名>' 落 env_grants_done(腿2「每次进入首领节点获得对应
+    # ENV_STAR_GRANT_ASSUMPTION_KEYS 承载)。绑定分支:发放名以 done 条件键
+    # 'star_grant#<名>' 落 env_grants_done(分支2「每次进入首领节点获得对应
     # 羁绊的随机角色」的绑定解析唯一源,触发函数 =
     # kernel/cw_env_grants.check_env_boss_grants,白名单 = ENV_BOSS_GRANTS)
     '劳务派遣合同': GiftGrant(equips_random_immediate=('星徽',)),
@@ -1610,16 +1610,16 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '三星佩佩': GiftGrant(chars_immediate=('佩佩',)),
     # 召唤单位支姊妹卡(id 116 效果原文「获得一个穿戴三个随机星徽的佩佩，粗心的
     # 佩佩有时候会把星徽落在你的物品栏。」直读,PlazaPortal('116');佩佩 ∈
-    # CHARACTER_ROSTER(cw_chars 召唤族,0 费后台))。两腿零登记定性(披露键
+    # CHARACTER_ROSTER(cw_chars 召唤族,0 费后台))。两条分支零登记定性(披露键
     # 申报,防误判漏报):
-    # - 佩戴星徽腿:同三星佩佩口径(穿戴非入栏,容器行 equips 消费端的穿戴
+    # - 佩戴星徽分支:同三星佩佩口径(穿戴非入栏,容器行 equips 消费端的穿戴
     #   输入对本卡结构性恒空 = 增量派生刻意基座,live 面板观察承载,随机池
     #   desc 无载按放弃纪律)。
-    # - 掉落腿(「有时候…落在你的物品栏」):概率/时点/件数/池四维 desc 全
+    # - 掉落分支(「有时候…落在你的物品栏」):概率/时点/件数/池四维 desc 全
     #   无载(放弃纪律)+ 无登记字段可容(扩字段 = 提前抽象且无合法填充值);
     #   live 掉落真值归 equips 观察,sim 世界缺掉落物 = 申报缺口(特权阶级
     #   不对称申报同型);随机星徽整族建模现状:劳务派遣合同已按「获得」
-    #   直读登记随机装备支(见上),买彩票系仍零建模,本卡佩戴/掉落两腿
+    #   直读登记随机装备支(见上),买彩票系仍零建模,本卡佩戴/掉落两条分支
     #   仍按上文口径归观察。
     # 星级 = 用户裁定佩佩无星级(2026-10-15):链必填实参落 1 为占位非先验。
     '粗星佩佩': GiftGrant(chars_immediate=('佩佩',)),
@@ -1640,7 +1640,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 替换」无差)。三元素重复 = 数量 3(与 items 通道「数量 = 元素重复次数」
     # 同约定);星级未标 → star=1 先验(家族口径 T-10/T-36);三连抽独立可重
     # (用户裁定 2026-10-25 四项默认案:三同名 1★ 经获得链 3 合 1 合成 2★
-    # = 链自然结果)。升星属性腿(11%/33% 速度、22%/66% 伤害)不建模(用户
+    # = 链自然结果)。升星属性分支(11%/33% 速度、22%/66% 伤害)不建模(用户
     # 裁定随 T-36/T-37 家族同案同裁;「有值无容器」——数值卡面明写而 Unit
     # 无属性域/sim 战斗不消费/无观察读点),披露键 env_char_buff_unmodeled
     # 随家族常量携带;替换/合成语义假设申报 = ENV_OPENING_REPLACE_ASSUMPTION_
@@ -1759,7 +1759,7 @@ def random_char_pool(spec: RandomCharSpec) -> list[str]:
     运行期授予采样(经 cw_pool ``grant_char_pool`` 叠加牌库时点过滤——
     未解锁专家剔除,用户裁定 2026-10-28)共同的本函数消费点;直接以本
     函数取池采样 = 静态口径,授予通道已统一改经 grant_char_pool。运行期
-    空池 = 注册表漂移(或全专家域未解锁),发放腿再查一道防御。"""
+    空池 = 注册表漂移(或全专家域未解锁),发放分支再查一道防御。"""
     base = chars_by_faction(spec.faction) if spec.faction else chars_by_cost(spec.cost)
     pool = [c.name for c in base
             if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
@@ -1791,7 +1791,7 @@ ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_random_char_type_tag',
 )
 
-#: 环境「desc 有载但刻意零建模」腿的申报键(家族常量,键随家族携带不随
+#: 环境「desc 有载但刻意零建模」分支的申报键(家族常量,键随家族携带不随
 #: 单卡增减,形态沿 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 先例;消费面 =
 #: 披露清单,防未来把「无建模」误判为漏报):
 #: - env_gift_worn_badges_unmodeled: 环境卡授予的星徽**穿戴**不建模(用户
@@ -1802,7 +1802,7 @@ ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #:   裁定 2026-10-15)——概率/时点/件数/池四维 desc 全无载(放弃纪律),
 #:   无登记字段可容;live 掉落真值归 equips 观察,sim 世界缺掉落物 = 申报
 #:   缺口(特权阶级不对称申报同型);首例 = 粗星佩佩(id 116)。
-#: - env_char_buff_unmodeled: 环境「每节点属性 buff」腿不建模(家族同案,
+#: - env_char_buff_unmodeled: 环境「每节点属性 buff」分支不建模(家族同案,
 #:   用户裁定 2026-10-21/2026-10-25)——成员①战力提升/战力飙升(id 136/137):
 #:   赠卡角色的「进入新节点永久随机属性加成」,属性集/数值/叠加规则 desc
 #:   全无载(放弃纪律不实机查);成员②进化算法(id 145):全场上角色每节点叠
@@ -1823,7 +1823,7 @@ ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
 #: 形态沿家族常量先例;消费面 = 披露清单,防 desc 空白处的模型口径被误当
 #: 已证真值):
 #: - env_opening_replace_semantics: 「替换」的模型口径 = 开局 4 张初始角色
-#:   被 3 张随机 3 费 1★ 取代(非叠加)。开局补给的晶矿腿(开场矿)在场有载
+#:   被 3 张随机 3 费 1★ 取代(非叠加)。开局补给的晶矿分支(开场矿)在场有载
 #:   (screen_flow_timing.md「给开局角色 + 晶矿」)而全系统未建模(apply_
 #:   opening 写入集零矿写端),本卡不引入新缺口也不动它;替换后是否保留
 #:   其他开局呈现候实机首遇对账(证伪路径 = 首备战帧 bench 张数对照:
@@ -1836,21 +1836,21 @@ ENV_OPENING_REPLACE_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_opening_replace_merge_semantics',
 )
 
-#: 随机星徽授予家族(劳务派遣合同,腿1 星徽 + 腿2 首领节点角色)的
+#: 随机星徽授予家族(劳务派遣合同,分支1 星徽 + 分支2 首领节点角色)的
 #: 采样/先验假设申报键(六键;键随家族携带不随单卡增减,消费面 = 实测
 #: 校准与披露清单):
 #: - env_star_grant_uniform: 星徽等概率 v0(分布未实测,晶矿/全员晋升
 #:   均匀 v0 先例,校准源 = equips 观察 vs 掷骰名 logic_rand_outcome 行
 #:   逐局积累);
-#: - env_star_grant_count1: 腿1 数量 1 件先验(desc 无数量词,自然语言
+#: - env_star_grant_count1: 分支1 数量 1 件先验(desc 无数量词,自然语言
 #:   单数省写;先验错 = sim 世界多/少装备,bench 无感、资产对照偏差);
-#: - env_star_grant_bind_single: 「对应羁绊」= 腿1 采样单枚固定绑定
+#: - env_star_grant_bind_single: 「对应羁绊」= 分支1 采样单枚固定绑定
 #:   (desc 句式回指解读;若实机为已持全部星徽各触发,模型少发);
 #: - env_boss_grant_char_uniform: 羁绊成员池等概率 + flows 含入
 #:   (chars_by_faction 默认参数,与 FactionInfo.members 同源);
-#: - env_boss_grant_char_star1: 腿2 星级 1★ 先验(晶矿 CHAR_DROP_STAR
+#: - env_boss_grant_char_star1: 分支2 星级 1★ 先验(晶矿 CHAR_DROP_STAR
 #:   同句式,先验错走 bench 观察星级覆盖);
-#: - env_boss_grant_count1: 腿2 每 boss 节点 1 个先验(desc 无数量词)。
+#: - env_boss_grant_count1: 分支2 每 boss 节点 1 个先验(desc 无数量词)。
 ENV_STAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_star_grant_uniform',
     'env_star_grant_count1',
@@ -1878,7 +1878,7 @@ ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_concept_stock_equip_fixed_hypothesis',
 )
 
-#: 概念股族阵营刷新概率腿的「零建模」失真申报键(家族常量;键模板 =
+#: 概念股族阵营刷新概率分支的「零建模」失真申报键(家族常量;键模板 =
 #: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
 #: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008、env_1009、env_1010、env_1011;消费面 = 披露清单,invest_effects.md §5 在案裁定为
 #: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
@@ -2043,7 +2043,7 @@ _validate_env_gifts()
 # 底册 = 双母体对账(86 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
 # 形态机械预筛(68 条白得 + 11 条顾问);②全表效果文本反扫(「获得…roster 名」)
 # 补网 4 条(龙虎兄弟狸/佩佩驾到/艾丝妲的猛犬!/招财狗——无角色绑定的直读
-# 发放,佩佩 ∈ CHARACTER_ROSTER);③箱腿 3 条(战术义眼++/保守派/快请专家·彩,
+# 发放,佩佩 ∈ CHARACTER_ROSTER);③开箱分支 3 条(战术义眼++/保守派/快请专家·彩,
 # 「获得…【进阶武装箱】」占席道具直读,迭代 2026-09-24-advanced-armory-box)。
 # 发放角色归属 = 效果原文机制事实,宪法五
 # 第②类判据留 kernel(与 ENV_GIFTS 留 kernel 同判据);「档→分」映射与
@@ -2130,7 +2130,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '超充站': GiftGrant(chars_immediate=('阿格莱雅', '藿藿')),
     '量子力学': GiftGrant(chars_immediate=('希儿',)),
     '钢铁美学': GiftGrant(chars_immediate=('希儿',)),
-    # 兼即时腿与条件腿(条件腿 = 「获得3星【黑塔】时获得【大黑塔】」再得);
+    # 兼即时分支与条件分支(条件分支 = 「获得3星【黑塔】时获得【大黑塔】」再得);
     # 216 张【黑塔】入商店系可购买供给非发放,不入册
     '黑塔纪元': GiftGrant(
         chars_immediate=('大黑塔',),
@@ -2145,7 +2145,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
         chars_conditional=(('星期日', '3个节点后获得'),),
     ),
     # 盗用身份:「进入第二位面的首领节点时」条件发放【火花】;「1个【开拓者】」
-    # 腿开拓者 ∉ CHARACTER_ROSTER 排除
+    # 分支的开拓者 ∉ CHARACTER_ROSTER 排除
     '盗用身份': GiftGrant(
         chars_conditional=(('火花', '进入第二位面的首领节点时'),),
     ),
@@ -2153,7 +2153,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '砂里淘金': GiftGrant(
         chars_conditional=(('砂金', '合成2星2费角色时'),),
     ),
-    # 迷之旅人:两腿均条件(激活4巡海游侠时 2星黄泉/下一奖励节点 波提欧)
+    # 迷之旅人:两条分支均条件(激活4巡海游侠时 2星黄泉/下一奖励节点 波提欧)
     '迷之旅人': GiftGrant(
         chars_conditional=(
             ('黄泉', '激活4巡海游侠时获得2星黄泉'),
@@ -2161,7 +2161,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
         ),
     ),
     # 轮回不止:「获得【白厄】」即时;「进入第二/三位面时再获得一次」系
-    # 同角色重复发放腿,角色集不变不入条件集
+    # 同角色重复发放分支,角色集不变不入条件集
     '轮回不止': GiftGrant(chars_immediate=('白厄',)),
     # 飞光双件:「获得【彦卿】和【景元】」/「获得【镜流】和特殊的1费【景元】」
     '飞光·传剑': GiftGrant(chars_immediate=('彦卿', '景元')),
@@ -2171,14 +2171,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
     '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
-    # —— 箱腿型 3 条(占席道具发放;效果原文对账 id = cw_invest_data.
+    # —— 开箱分支 3 条(占席道具发放;效果原文对账 id = cw_invest_data.
     # PLAZA_AUGMENTS:战术义眼++ 350403/保守派 351501/快请专家·彩 360201;
     # 「获得1个/一件【进阶武装箱】」直读,数量 = 元素重复次数)——
-    # 三卡的战斗被动腿(战术义眼++能量恢复/保守派伤害减免/快请专家·彩能量
+    # 三卡的战斗被动分支(战术义眼++能量恢复/保守派伤害减免/快请专家·彩能量
     # 恢复)非「获得时点」效果,不属 GiftGrant 登记适用范围(归策略效果建模批);
-    # 快请专家·彩只登记箱腿:好运令牌非占席道具(入 items 会错进
-    # BENCH_ITEM_NAMES 被当占席道具,归消耗品域)、「获得2个【】」空括号腿
-    # 数据源缺口禁猜——两腿查无登记即安静不写,真值归实机/数据源勘误。
+    # 快请专家·彩只登记开箱分支:好运令牌非占席道具(入 items 会错进
+    # BENCH_ITEM_NAMES 被当占席道具,归消耗品域)、「获得2个【】」空括号分支
+    # 数据源缺口禁猜——两条分支查无登记即安静不写,真值归实机/数据源勘误。
     '战术义眼++': GiftGrant(items_immediate=('进阶武装箱',)),
     '保守派': GiftGrant(items_immediate=('进阶武装箱',)),
     '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
@@ -2200,7 +2200,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
 # 'supply_box' | 'bookcard'。消费方:
 # - cw_gain_chain._place_bench_item 落席本体/_build_pool 溢出占位:道具
 #   身份禁造 Unit 假身份进合成素材组,槽件带名;
-# - cw_action_report.sell_bench 溢出腿:卖牌腾槽入位按映射落带名槽件。
+# - cw_action_report.sell_bench 溢出分支:卖牌腾槽入位按映射落带名槽件。
 BENCH_ITEM_KINDS: dict[str, str] = {
     '简易武装箱': 'supply_box',
     '特权武装箱': 'supply_box',
@@ -2256,7 +2256,7 @@ def _validate_strategy_grants() -> None:
     失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
     ③ 空发放集拒绝(即时角色/条件角色/即时道具/定时道具/随机角色/随机装备/
     即时装备全空 = 登记笔误,档位机器恒判 off;items 两通道沿 _validate_env_gifts
-    同款并入——箱腿条目 chars 两通道空而 items_immediate 非空,合法;
+    同款并入——开箱分支条目 chars 两通道空而 items_immediate 非空,合法;
     chars_random_immediate 同款并入——GiftGrant 两表共享,策略侧随机
     登记后继[二/三/四费援军族]首登记不因旧判定误炸;equips_random_immediate
     同款并入——两表共享同一理由,策略侧随机装备登记后继首登记不误炸;
@@ -2358,7 +2358,7 @@ _validate_bench_item_kinds()
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域
 # 价值不折金不进层 E,字段只登记事实(详设 §2.2.4);执行消费端 = sim
 # (联席挂点派生 JOINT_DECISION_EXTRA_SLOT;银金彩刷新 = 策略屏刷新呈现
-# 与刷新世界腿,2026-10-19 用户裁定批接入)。
+# 与刷新世界分支,2026-10-19 用户裁定批接入)。
 # 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
 # 与 test_sim_backend.py(时代局全流程:彩虹/黄金/白银;头彩/尾彩 settled 定谳局)。
 @dataclass(frozen=True)
@@ -2388,7 +2388,7 @@ class StrategyPoolRewrite:
       刷新只换卡不换槽品质)
     - extra_pick_refreshes: 策略取卡刷新次数增量(银·金·彩 +2,策略屏逐卡
       免费刷新计数,cw_node_obs.read_invest_refresh_counts('strategy') 通道;
-      数量通道登记,§2.2.4;消费端 = sim 策略屏刷新呈现与刷新世界腿
+      数量通道登记,§2.2.4;消费端 = sim 策略屏刷新呈现与刷新世界分支
       (基准每卡 1 次 + 本增量;2026-10-19 用户裁定 sim 与实机一致提供
       刷新次数批接入);live 不经本字段——bot 读屏幕现值)
     - extra_strategy_offer_node: 额外策略三选一发生的挂点节点,**坐标系 =
@@ -2398,7 +2398,7 @@ class StrategyPoolRewrite:
       None = 无额外策略三选一
     - extra_strategy_grant_node: 额外策略**直接发放**发生的挂点节点,
       **坐标系与 extra_strategy_offer_node 同 = (位面, 轮次) 单点两元各
-      1 基**(T-46 策略大师数量腿;直发非 offer 三选一,不复用 offer 字段
+      1 基**(T-46 策略大师数量分支;直发非 offer 三选一,不复用 offer 字段
       ——offer = 三选一槽语义;同条目两字段互斥,结构闸校验);数量通道
       登记,执行消费端 = sim 直发发放事件(kernel 单一源,sim 派生查询);
       None = 无直接发放
@@ -2667,10 +2667,10 @@ ENV_REFRESH_GRANTS: dict[str, tuple[str, int, int, str | None]] = {
     # 花费金币刷新 30 次后 +20 金,之后本局刷价 2→1(id 120 原文直读,
     # PlazaPortal('120'))。计数域 = 付费(REFRESH_PAID):desc 显式
     # 「花费金币」限定词,与二手市场(无限定词→全量域)构成官方文本
-    # 两域对照。装备腿 None = 金-only(T-7 预留形状,登记表注释点名
-    # 本卡复用面);改价腿不在本表——live = 观察通道
+    # 两域对照。装备入账分支 None = 金-only(T-7 预留形状,登记表注释点名
+    # 本卡复用面);改价分支不在本表——live = 观察通道
     # (cw_shop_refresh_obs 标价 reader 采真),sim = 开店呈现经
-    # cw_economy.world_shop_refresh_cost 现算渲染(两腿阈值同出卡面
+    # cw_economy.world_shop_refresh_cost 现算渲染(两条分支阈值同出卡面
     # 同一句「30 次」,构建校验⑥跨锁同值)。
     '长线利好': (CounterKey.REFRESH_PAID, 30, 20, None),
 }
@@ -2685,15 +2685,15 @@ def _validate_env_refresh_grants() -> None:
     (计数读取按键分支,闭集外无读口);
     ③ 值形:阈值与金均须 ≥1 的 int(bool 排除——isinstance(bool, int)
     为真,0/False/1/True 形混入 = 登记笔误,前置可见);
-    ④ 装备名漂移:装备腿非 None 时必须在 EQUIPMENTS(发放写出库存里
+    ④ 装备名漂移:装备入账分支非 None 时必须在 EQUIPMENTS(发放写出库存里
     不存在的名字 = 假身份混进 equips);
     ⑤ 双源同值:同环境在 ENV_ECONOMY 有 gold_after_refreshes 时须与
     (阈值,金) 逐位相等——世界面与估值面同出卡面(id 106),任一侧
     单独改数即失同步,构建期炸(先例 = _validate_env_ore_grants ③;
     估值域字段演化时本条随迁);
     ⑥ 跨锁同值:同环境在 ENV_ECONOMY 有 refresh_cost_after 时,其
-    阈值须与本表阈值逐位相等——改价腿(sim 渲染 helper 读该字段)
-    与发放腿(本表)同出卡面同一句「30 次刷新后」,两表独立可编辑,
+    阈值须与本表阈值逐位相等——改价分支(sim 渲染 helper 读该字段)
+    与发放分支(本表)同出卡面同一句「30 次刷新后」,两表独立可编辑,
     单侧改数静默漂移 = sim 翻价早于发放(与校验⑤同理由)。
     """
     orphans = [n for n in ENV_REFRESH_GRANTS if n not in INVESTMENT_ENVS]
@@ -2727,23 +2727,23 @@ def _validate_env_refresh_grants() -> None:
             raise ValueError(
                 f"ENV_REFRESH_GRANTS 跨锁失同步({_n!r}):ENV_ECONOMY."
                 f"refresh_cost_after 阈值 {_cost[0]} ≠ 本表阈值 {_threshold}"
-                f"(改价腿与发放腿同出卡面同一句「刷新阈值」,单侧改数 = "
+                f"(改价分支与发放分支同出卡面同一句「刷新阈值」,单侧改数 = "
                 f"sim 翻价早于发放,失同步即构建期炸)")
 
 
 _validate_env_refresh_grants()
 
 
-# ===== 首领节点周期发放白名单(劳务派遣合同腿2;白名单制)=====
+# ===== 首领节点周期发放白名单(劳务派遣合同分支2;白名单制)=====
 # **世界发放域**(条件达成的世界发放第三表,ENV_STREAK_GRANTS/ENV_REFRESH_
 # GRANTS 同族):键 = 环境规范名,值 = 集合语义(现役无登记值,形态沿
 # ENV_NODE_SUPPLY_BEFORE_BOSS 先例,cw_node_schedule)。表外环境一律无
 # 条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款纪律)。
-# 发放规则 = 腿1 绑定(done 条件键 'star_grant#<名>',登记于本卡在
-# ENV_GIFTS 的即时腿)+ 固定每首领节点 1 个 1★ 角色;触发函数 =
+# 发放规则 = 分支1 绑定(done 条件键 'star_grant#<名>',登记于本卡在
+# ENV_GIFTS 的即时分支)+ 固定每首领节点 1 个 1★ 角色;触发函数 =
 # kernel/cw_env_grants.check_env_boss_grants(周期性,done 键带节点坐标)。
-# **与估值三表的同键并存 = 本卡新立形态**(本卡腿1 归 ENV_GIFTS、腿2 归
-# 本表,各表各腿、键语义无冲突):「世界发放表↔ENV_ECONOMY 可并存」的
+# **与估值三表的同键并存 = 本卡新立形态**(本卡分支1 归 ENV_GIFTS、分支2 归
+# 本表,各表各分支、键语义无冲突):「世界发放表↔ENV_ECONOMY 可并存」的
 # 现役豁免声明原辖 ENV_ORE/ENV_STREAK/ENV_REFRESH 与估值面的关系,不直接
 # 覆盖估值三表∩世界发放表,故此处显式声明而非引先例。
 ENV_BOSS_GRANTS: frozenset[str] = frozenset({'劳务派遣合同'})
@@ -2752,7 +2752,7 @@ ENV_BOSS_GRANTS: frozenset[str] = frozenset({'劳务派遣合同'})
 def _validate_env_boss_grants() -> None:
     """ENV_BOSS_GRANTS 构建校验(import 即炸;沿 _validate_env_streak_grants
     先例):键 ⊆ INVESTMENT_ENVS(孤儿键,防版本更新改名/移除后静默失联)。
-    与 ENV_GIFTS 同键 = 合法形态(两表同键各表各腿,见上区块注释显式
+    与 ENV_GIFTS 同键 = 合法形态(两表同键各表各分支,见上区块注释显式
     声明),无反例校验。"""
     orphans = [n for n in ENV_BOSS_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2771,8 +2771,8 @@ _validate_env_boss_grants()
 # 逐级触发判例 = 该迭代裁定记录:级联 1★→2★→3★ = 两次发放,触发者星级
 # 不限)。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
 # 同款纪律)。消费面 = kernel/cw_env_grants.check_env_merge_grants(触发
-# 检查单一源,事件携带事实无 done 标记;四发火点 = 买牌上报/补给单位腿/
-# 晶矿角色腿/获得链顶层)。
+# 检查单一源,事件携带事实无 done 标记;四发火点 = 买牌上报/补给单位入账分支/
+# 晶矿角色入账分支/获得链顶层)。
 # **表间豁免声明**(ENV_BOSS_GRANTS 同款显式声明):本表键与 ENV_GIFTS
 # 共存 = 合法形态(两表同键各表各域——ENV_GIFTS 的 chars_conditional 辖
 # 估值域档位机器,本表辖世界发放,各表各域),与 ENV_ECONOMY 无 ∩ 冲突。
@@ -2914,7 +2914,7 @@ def _validate_env_ore_open_grants() -> None:
     cw_chars 注册表;写出注册表外名字 = 假身份混进 bench,沿 interest ③。
     ``CHARACTERS`` 是 cw_pool 商店池域另一符号,勿混用);
     ④ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空
-    (羁绊名错字/版本改名 → 池空 = 采样腿永远发不出,运行期只剩整体
+    (羁绊名错字/版本改名 → 池空 = 采样分支永远发不出,运行期只剩整体
     缓发防御分支,登记笔误前置可见,T-19 池非空校验先例)。
     """
     orphans = [n for n in ENV_ORE_OPEN_GRANTS if n not in INVESTMENT_ENVS]
@@ -3060,9 +3060,9 @@ _validate_env_battle_grants()
 # 战斗完胜后,上场节点额外提前1点。」,PlazaPortal('133'));登记本体 =
 # 上场锁期 + 完胜加速两个机制维度,GiftGrant(估值域)无归属字段——T-10
 # 裁决确立的「无锁随机赠卡归 GiftGrant.chars_random_immediate」不受影响,
-# 本表只收「赠卡带锁」形。消费面:发放腿 = cw_gain_chain.on_env_gained
+# 本表只收「赠卡带锁」形。消费面:发放分支 = cw_gain_chain.on_env_gained
 # (经 cw_pool.grant_char_pool 牌库时点池均匀采样 + env_grant_uid_seq
-# 发号 + 解锁序位沿日程表步进),完胜提前腿 = kernel/cw_env_grants.
+# 发号 + 解锁序位沿日程表步进),完胜提前分支 = kernel/cw_env_grants.
 # check_env_deploy_lock_perfect(report_node_advance settle_confirm 分支);
 # 锁域 Field/守卫/审计行/快照 rebuild 复用 T-30 已落地件零新建。
 @dataclass(frozen=True)
@@ -3077,7 +3077,7 @@ class EnvDeployLockGrant:
       锁定段,系设计定读——卡文无计数起点词,证伪通道 = 实机环境选择后
       锁倒计时读数,披露键随 T-33 设计稿披露 9);
     - perfect_win_accel: 「战斗完胜后,上场节点额外提前1点」开关
-      (desc 有该腿 = True;真实值在册,防后继无完胜腿的同形卡误挂)。"""
+      (desc 有该分支 = True;真实值在册,防后继无完胜分支的同形卡误挂)。"""
     spec: RandomCharSpec
     deploy_lock_nodes: int
     perfect_win_accel: bool
@@ -3135,10 +3135,10 @@ _validate_env_deploy_lock_grants()
 # cw_invest_data.py)。惊喜盒 = 战利品区浮动件非占席(实机板件实证 =
 # 与晶矿球同区,T-34 设计稿 §1 两帧证据),故不入 GiftGrant(道具通道 =
 # _place_bench_item 占席落位,与板件位置直接矛盾)、不入 BENCH_ITEM_NAMES
-# 词表(非占席,词表派生式零扩)。消费面:到手腿 = cw_gain_chain.
-# on_env_gained 延迟道具支线(纯队列登记零席位写);开盒腿 =
+# 词表(非占席,词表派生式零扩)。消费面:到手分支 = cw_gain_chain.
+# on_env_gained 延迟道具支线(纯队列登记零席位写);开盒分支 =
 # cw_gain_chain.discharge_due_item_opens 原语(sim 进节点收口挂点,
-# 实机局不接);完胜加速腿 = kernel/cw_env_grants.
+# 实机局不接);完胜加速分支 = kernel/cw_env_grants.
 # check_env_item_open_perfect(report_node_advance settle_confirm 分支)。
 @dataclass(frozen=True)
 class EnvDelayedItemGrant:
@@ -3149,8 +3149,8 @@ class EnvDelayedItemGrant:
     - open_delay_nodes: 开盒倒计时节点数(「12个节点」直读);
       解锁位 = 获得刻生效序位沿日程步进本值(计数起点 = T-34 设计稿
       裁决点 3:获得节点计入);
-    - perfect_win_accel: 「战斗完胜后,倒计时额外减少1点」加速腿旗
-      (腿本体 = T-34 设计稿裁决点 1)。"""
+    - perfect_win_accel: 「战斗完胜后,倒计时额外减少1点」加速分支旗
+      (分支本体 = T-34 设计稿裁决点 1)。"""
     item: str
     open_delay_nodes: int
     perfect_win_accel: bool
@@ -3331,8 +3331,8 @@ _validate_env_ore_panel_bonus()
 
 
 # ===== 商店 2★ 直出概率注册表(环境白名单;T-22 人才下沉)=====
-# 语义:表内环境的发牌(kernel/cw_shop_deal 翻星腿,sim deal_shop 与实机
-# 刷新随机态腿共用)中,每张非空商店牌独立按 p 升 2★;表外环境恒 1★。
+# 语义:表内环境的发牌(kernel/cw_shop_deal 翻星分支,sim deal_shop 与实机
+# 刷新随机态分支共用)中,每张非空商店牌独立按 p 升 2★;表外环境恒 1★。
 # 值 = 用户占位非游戏真值(首例人才下沉 0.2/卡,2026-10-16 用户裁定;
 # desc 无数值,待实机采证校准),禁从效果原文猜值——其余「商店出 2★」
 # 类效果入表须各自取得用户拍定。占位申报披露键 =

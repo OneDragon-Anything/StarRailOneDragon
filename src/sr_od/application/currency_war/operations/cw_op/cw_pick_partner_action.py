@@ -65,7 +65,7 @@ class CwActionPickPartnerOp(CwOperation):
             if cw_sim_ports.mechanical_io_allowed():
                 op.ctx.controller.mouse_move(op._pick_point)
                 op.ctx.controller.click(op._pick_point)
-            # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+            # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
             time.sleep(0.7)
             log.info('[cw-partner] 点选候选 %s(未选中提示在场=%s)',
                      op._pick_point, unselected)

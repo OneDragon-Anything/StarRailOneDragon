@@ -10,7 +10,7 @@ flow/action_ops.md §1 增补 2):动作 op = 机械执行
 op 侧调用形态不变)。
 
 记账载体 = ``gs.equips``(工具件住装备库存,观察/策略同口径):**工具
-消耗移除与效果腿同域合并单笔写,禁拆两笔**(拆两笔 = 中间态 + 二次失配
+消耗移除与效果分支同域合并单笔写,禁拆两笔**(拆两笔 = 中间态 + 二次失配
 面);``gs.consumables`` 为独立死字段不入本面。
 
 - **获得走链**:投影仪复制进席 = 标准「获得角色」,经
@@ -63,7 +63,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 #: 链内写端署名(gain-chain 同纪律:新写端新名,不沿用旧名伪装连续;
-#: 投影仪 ``gain_character`` 调用与各直写腿 produced_by 同值)。
+#: 投影仪 ``gain_character`` 调用与各直写分支 produced_by 同值)。
 TOOL_USE_REPORT_PRODUCER: str = 'CwActionToolUseReport'
 
 #: 缺陷留存证据 kind 词表(_emit_defect 台账行分键;留存证据不停机)。
@@ -119,7 +119,7 @@ def furnace_mutate_sample(rng: random.Random, item_name: str) -> str | None:
     return pool[rng.randrange(len(pool))]
 
 
-# ============================================================ 共用腿
+# ============================================================ 共用分支
 
 def _remove_one(items: list[str], name: str) -> bool:
     """多重集移除该名一个实例(已登记才减;不在 = 零移除返 False,
@@ -146,7 +146,7 @@ def _resolve_row_unit(gs: GameState, row: str, slot: int) -> Unit | None:
 
 def _write_row_equips_cleared(gs: GameState, row: str, unit: Unit, *,
                               evidence: str, sig: ChannelSig) -> bool:
-    """行域穿戴清空写(扳手族/炉 char 腿共用):目标单位 ``equips`` 清空,
+    """行域穿戴清空写(扳手族/炉 char 分支共用):目标单位 ``equips`` 清空,
     其余成员原样(单字段视图整值替换;一次写)。
     行域值必已观察(单位自行域现读解析而来)。"""
     view = gs.deployed.value
@@ -221,7 +221,7 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
 
 def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
                        rng: random.Random) -> LogicOutcome:
-    """炉·拖装备腿:单笔合并采样替换写(rand 面)。"""
+    """炉·拖装备入账分支:单笔合并采样替换写(rand 面)。"""
     inv = _equips_inv(gs)
     if inv is None:
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
@@ -264,7 +264,7 @@ def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
 
 def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
                       rng: random.Random) -> LogicOutcome:
-    """炉·拖角色腿:①equips 采样链 rand 合并写(白名单件采样替换,越
+    """炉·拖角色入账分支:①equips 采样链 rand 合并写(白名单件采样替换,越
     白名单穿戴件保留原样 + 聚合留存证据——其是否随动作消失未采证,v0 保留);
     ②行域穿戴清空 logic 写(全拆,清空本身无随机)。"""
     unit = _resolve_row_unit(gs, param.row, param.slot)
@@ -356,15 +356,15 @@ def _emit_consequence_candidates(gs: GameState, sig: ChannelSig,
 
 def report_action_privilege_card_use_param(gs: GameState, param: Any,
                                            sig: ChannelSig) -> LogicOutcome:
-    """特权赋予卡上报(双腿):
-    - ``target_kind='equip'``(库存腿):**单笔 write_logic 合并写**
+    """特权赋予卡上报(两条分支):
+    - ``target_kind='equip'``(库存分支):**单笔 write_logic 合并写**
       equips = 移除工具 ∧ 目标件名 → ``privilege_counterpart`` 替换
       (映射桥;同名多件全替换与库存桥 ``transform_equip_to_privilege``
       同口径,禁第二套);桥零写分支透传(库存未观察/无此件)→ 留存证据
       kind=``tool_bridge_zero_write``;
-    - 其余(拖角色腿):**fail-closed 零写** + 留存证据
+    - 其余(拖角色入账分支):**fail-closed 零写** + 留存证据
       (kind=``tool_privilege_worn_unsupported``;用户裁定 2026-09-21 按
-      不能拖角色处理待实机测试,判据面现役只产库存腿,收到 char 腿 =
+      不能拖角色处理待实机测试,判据面现役只产库存分支,收到 char 分支 =
       bug 面留存证据)。
     变异面(数量不变的原地变换)不走获得链、不触发获得回调。
     """
@@ -372,7 +372,7 @@ def report_action_privilege_card_use_param(gs: GameState, param: Any,
     if param.target_kind != 'equip':
         _defect_zero_write(sig, DEFECT_PRIVILEGE_WORN_UNSUPPORTED,
                            field_name='deployed',
-                           expected='库存腿(target_kind=equip,判据面现役只产库存腿)',
+                           expected='库存分支(target_kind=equip,判据面现役只产库存分支)',
                            actual=f'target_kind={param.target_kind!r}',
                            evidence='tool_privilege',
                            detail='worn_unsupported')
@@ -429,7 +429,7 @@ def _wrench_report(gs: GameState, param: Any, sig: ChannelSig, *,
     ev = f'tool_{tool_name}@{param.row}{param.slot}'
     inv = _equips_inv(gs)
     if inv is None:
-        # ①腿 bug 面(库存未观察):零写留存证据;②腿(行域)独立事实照写。
+        # 分支① bug 面(库存未观察):零写留存证据;分支②(行域)独立事实照写。
         _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
                            field_name='equips', expected='equips 已观察',
                            actual='equips 未观察(None)',

@@ -76,7 +76,7 @@ class CwActionPickSupplyOp(CwOperation):
     点卡选中 → 确认,不含刷新分支。
     **即时上报**(契约单一源 = `flow/action_ops.md` §1  与
     §4.5 PickSupply 行):确认点击后立即一口写全部效果逻辑态(owned 规范名
-    + 单位腿 + 装备后果腿),无到账登记、无落地证据标志——确认未生效 =
+    + 单位入账分支 + 装备后果分支),无到账登记、无落地证据标志——确认未生效 =
     代码 bug,overlay 残留由外循环按当前画面重识别重派。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -100,7 +100,7 @@ class CwActionPickSupplyOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(target)
             op.ctx.controller.click(target)
-        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)。点击即上报推进
         # (去证据门,用户裁定:动作 op 不做任何确认——点了
@@ -125,14 +125,14 @@ class CwActionPickSupplyOp(CwOperation):
             detail += f' item={action.norm_item}'
         _note_receipt(self, receipt_reason, detail)
         # 立即自上报完整结果(单相:owned += norm_item 规范名
-        # + 单位腿 + 装备后果腿;norm_item 未解析 = 翻来源留存证据)。
+        # + 单位入账分支 + 装备后果分支;norm_item 未解析 = 翻来源留存证据)。
         # 一次执行两支上报、每支出口各自紧跟一行喂入(A2 多支并喂契约 =
         # 详设 world-decl.md §4);round data 携带最后一份(node_advance,
         # 终结转移),先前声明仅经端口喂入不随 data 重复。
         world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            # 支 1:pick_supply 宝钻腿上报(拒/未发出出口声明 None →
+            # 支 1:pick_supply 宝钻发放分支上报(拒/未发出出口声明 None →
             # 喂入端口层 no-op;声明契约 = 详设 world-decl.md §2 表 #12)。
             pick_outcome = report_action_pick_supply_param(
                 gs, action,

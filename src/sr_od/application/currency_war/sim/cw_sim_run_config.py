@@ -31,7 +31,7 @@ class RunConfig:
     #: None = 调用方未给定(开局 HP 查表即报错索样本)。
     enemy_difficulty: int | None
     #: 敌人词缀名单(简报 OCR 原名;开局 HP 修正查表键,「开局不利」
-    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,词缀采样腿禁再实现)。
+    #: 恒 −20 由 kernel/cw_opening_hp 单一承载,词缀采样分支禁再实现)。
     #: **override 语义**(词缀入 seed 后):缺省 () = 常规局由 sim 后端
     #: reset 按 ``reset/affixes`` 流键采样(池 = affix_effects_data 注册表
     #: 键集);非空 = 定向测试定词缀(跳过采样直用)。开局 HP 修正仍按

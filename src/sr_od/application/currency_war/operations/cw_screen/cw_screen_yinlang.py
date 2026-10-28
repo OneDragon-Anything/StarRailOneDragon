@@ -5,7 +5,7 @@
 """货币战争 银狼「我来当策划」策划事件 overlay 处理 op。
 
 银狼首次升 2 星(及 5 费升 2 星)触发的二选一 overlay:
-- 首次:选项含「升费」(卡面「提升费用至 4 费」;升费腿 = 变为下一个
+- 首次:选项含「升费」(卡面「提升费用至 4 费」;升费分支 = 变为下一个
   费用档的 1 星银狼LV.999 [口述·权威];机制单一源 =
   docs/game/currency_war/research/equipment_mechanics.md §7)
   vs 其他(破解芯片/专属装备)
@@ -24,11 +24,11 @@
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_leg``
-腿型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
+分支类型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
 (``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
-点击后立即上报完整效果腿,零落地复查、零落地补写面——确认未生效 =
+点击后立即上报完整效果分支,零落地复查、零落地补写面——确认未生效 =
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
-本屏 sim 腿 = 不适用(sim 无对应画面段,事件
+本屏 sim 分支 = 不适用(sim 无对应画面段,事件
 浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试
 (test_screen_two_node_family 两 node 形态测试;接线/基建测试补档 =
 开放设计注,见 screens/planner.md §9)。
@@ -56,7 +56,7 @@ from sr_od.context.sr_context import SrContext
 class CwScreenYinLang(CwOperation):
     """银狼 2 星奖励画面(用户 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
-    两选项=扑满病毒(敌人变扑满)vs 升费卡(升费腿 = 变为下一个费用档的
+    两选项=扑满病毒(敌人变扑满)vs 升费卡(升费分支 = 变为下一个费用档的
     1 星银狼LV.999,单位身份保持银狼LV.999、费用档升一级、星级为 1 星
     [口述·权威]);选卡委托 kernel 纯函数 decide_planner 打分
     (升费卡基础分最高,
@@ -170,9 +170,9 @@ class CwScreenYinLang(CwOperation):
     @node_from(from_name='观察')
     @operation_node(name='决策动作', node_max_retry_times=5)
     def act(self) -> OperationRoundResult:
-        """零参决策 → 腿型判定 → 组装 env → 派发即 ``round_success`` 终结。
+        """零参决策 → 分支类型判定 → 组装 env → 派发即 ``round_success`` 终结。
 
-        动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果腿
+        动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果分支
         (单相即时上报,正本 = ``flow/action_ops.md`` §1  与
         §4.5 PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
@@ -191,9 +191,9 @@ class CwScreenYinLang(CwOperation):
             return self.round_fail(
                 f'卡位 area 缺失:{CwScreenYinLang.CARD_AREAS[pick.idx]}'
                 f'({CwScreenYinLang.CARD_AREA_SCREEN}),禁兜底坐标交回重读')
-        # 腿型载荷:判定单源 = kernel
+        # 分支类型载荷:判定单源 = kernel
         # classify_planner_leg(装备域优先);随 env 透传给动作 op 上报
-        # (确认点击后立即写完整效果腿,单相即时上报)。
+        # (确认点击后立即写完整效果分支,单相即时上报)。
         _opt_text = (options[pick.idx].text
                      if 0 <= pick.idx < len(options) else '')
         leg_type, norm_item = classify_planner_leg(_opt_text)
@@ -203,9 +203,9 @@ class CwScreenYinLang(CwOperation):
         # 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发
         # ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);
-        # 决策半(策略选卡/腿型判定)见上方,派发实例 = 策略 pick 本体,
+        # 决策半(策略选卡/分支类型判定)见上方,派发实例 = 策略 pick 本体,
         # 机械参数 target 经 env 传递。派发即 round_success 终结返回主循环
-        # (效果腿已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
+        # (效果分支已在动作 op 内即时上报;确认未生效 = 代码 bug,外循环
         # 按当前画面重识别重派)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
             action_op_for,

@@ -24,7 +24,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 _PRODUCER = 'CwGainChain'
 
-# ===== 骇客改件采样(随机腿;collect_ore 范式:采样器常量面 + 披露键 +
+# ===== 骇客改件采样(随机分支;collect_ore 范式:采样器常量面 + 披露键 +
 # ===== rng 注入,实机缺省未播种 = 采样是猜测,sim 传流键 = 采样即世界真值)
 
 #: 骇客改件 v0 池(卡文「获得1个随机4费骇客改件」的建模口径,用户拍定
@@ -60,8 +60,8 @@ def roll_hacker_mod(rng: random.Random) -> str:
     return rng.choice(HACKER_MOD_POOL_V0)
 
 
-# ===== 效果函数(策略卡获得时分派 = 容器写腿;键 = 注册表规范名)=====
-# 注册纪律:效果函数只覆盖「获得该卡后的容器写腿」(bench/装备/采样链),
+# ===== 效果函数(策略卡获得时分派 = 容器写分支;键 = 注册表规范名)=====
+# 注册纪律:效果函数只覆盖「获得该卡后的容器写分支」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
 # 消费)职责不同不合并(对抗审查⑨)。全量收录 = 推广批(gain-chain design
 # §1.4),未收录卡只走注册或零效果(查无效果安静不写)。
@@ -73,12 +73,12 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     正本 = game_state/gain-chain.md §2/§3)。
 
     链序(逐步各落一行):
-    1. **商店池腿**(权威状态):银狼解锁入池——官方卡文「获得专家顾问
+    1. **商店池分支**(权威状态):银狼解锁入池——官方卡文「获得专家顾问
        【银狼】,并使其在本局游戏中加入商店」= 入池可刷,非直接送单位;
        容器权威字段 = ``gs.unlocked_experts``,写入端 = 获得链 advisor 道
        (:func:`cw_gain_chain.on_strategy_gained`,本效果体注册于其效果体
-       腿之后,解锁先于本函数执行),本函数零写该腿;
-    2. **随机改件腿**(采样链):采样改件身份 → ``gain_equipment(rand=True)``
+       分支之后,解锁先于本函数执行),本函数零写该分支;
+    2. **随机改件分支**(采样链):采样改件身份 → ``gain_equipment(rand=True)``
        入栏(采样效果对子链翻转 rand,gain-chain §5)→ 后果送单位由
        ``on_equipment_gained`` 回调自动消费(内联查表删除)。
 
@@ -93,7 +93,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
         gain_equipment,
     )
     steps: list[str] = ['shop_pool_unlock:银狼(advisor 道权威写,零本体重写)']
-    # 随机改件腿(采样链;rand=True 采样子链)。前后值快照 = 标记域判定输入
+    # 随机改件分支(采样链;rand=True 采样子链)。前后值快照 = 标记域判定输入
     #(repr 签名:写端恒构造新值对象,值变签名必变)。
     mod = roll_hacker_mod(rng)
     pre = {dom: repr(getattr(gs, dom).value) for dom in _HACKER_MARK_DOMAINS}
@@ -123,10 +123,10 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     return steps
 
 
-# ===== 箱腿效果(策略卡获得时点占席道具发放;进阶武装箱首例,迭代
+# ===== 开箱分支效果(策略卡获得时点占席道具发放;进阶武装箱首例,迭代
 # ===== 2026-09-24-advanced-armory-box design §2.3)=====
 
-#: 三箱腿卡发放名单单一源(卡规范名 → 发放道具名;登记面镜像 =
+#: 三张开箱分支卡发放名单单一源(卡规范名 → 发放道具名;登记面镜像 =
 #: cw_investments.STRATEGY_GRANTS 三卡 items_immediate,一致性测试逐对
 #: 相等——attack.md A4 阻断修订:禁效果体闭包常量与登记表两处独立字面量,
 #: 名字漂移在备战断言不可见[BenchSlot kind 与道具名解耦],唯本测试 +
@@ -139,13 +139,13 @@ _STRATEGY_BOX_GRANTS: dict[str, str] = {
 
 
 def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
-    """箱腿效果体工厂(闭包销 = 发放道具名,单源取自
+    """开箱分支效果体工厂(闭包销 = 发放道具名,单源取自
     :data:`_STRATEGY_BOX_GRANTS`)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
-    cw_gain_chain.on_strategy_gained);``rng`` 不消费——箱腿确定发放
-    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点容器写腿:
-    三卡的战斗被动腿(能量恢复/伤害减免)非获得时点效果,不在本体
+    cw_gain_chain.on_strategy_gained);``rng`` 不消费——开箱分支确定发放
+    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点容器写分支:
+    三卡的战斗被动分支(能量恢复/伤害减免)非获得时点效果,不在本体
     (design §1 明确不解决,归策略效果建模批)。
     """
 
@@ -156,7 +156,7 @@ def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
         from sr_od.application.currency_war.kernel.cw_gain_chain import (
             gain_bench_item,
         )
-        _ = rng   # 箱腿确定发放,无采样面(rng 形参沿注册表分派契约保留)
+        _ = rng   # 开箱分支确定发放,无采样面(rng 形参沿注册表分派契约保留)
         placed = gain_bench_item(gs, item, rand=False, sig=sig,
                                  evidence='pick_invest_box_grant',
                                  producer=_PRODUCER)
@@ -171,6 +171,6 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name, item in _STRATEGY_BOX_GRANTS.items()},
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
-箱腿三条由工厂自 _STRATEGY_BOX_GRANTS 生成)。未收录名 = 零效果分派(查无
+开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成)。未收录名 = 零效果分派(查无
 效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)职责分离
 声明见各表模块头。"""

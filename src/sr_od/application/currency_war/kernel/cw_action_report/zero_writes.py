@@ -203,7 +203,7 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
     映射,如停云/青雀同仙舟)→ 只落 ``_emit_defect`` 语义申报一行
     (kind = :data:`EXPERT_UNLOCK_NAME_UNOBSERVED`,留存证据不停机),
     ``gs.unlocked_experts`` 解锁写端待候选名观察建档批接线;真值归观察
-    覆盖(实机商店采样猜测腿在该通道解锁后仍按无专家猜,采样偏差由
+    覆盖(实机商店采样猜测分支在该通道解锁后仍按无专家猜,采样偏差由
     ``logic_rand_outcome`` 台账收束)。idx=-1(现金为王)= 无专家解锁,
     零申报。"""
     #(精确消费):选卡动作消费同 kind 登记
@@ -253,7 +253,7 @@ def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: Cha
     三状态全 Sound——T-427 验收 F-1 修正:RunConfig.env_present 缺省
     False 是合法无环境支路配置,该局 active_env 恒空而固定日程策略 offer
     照常呈现计数,「环境选择恒先于策略 offer」的前提在该局不成立,单一
-    active_env 依据会把策略刷新误派 env 腿造成静默活锁):
+    active_env 依据会把策略刷新误派 env 分支造成静默活锁):
     - active_env 非空 = 投资策略屏 → 逐卡刷新(slots 原样透传,坐标系 =
       投资界面卡槽物理排位 0 基);
     - active_env 空 ∧ env_refresh_left 非 None = 投资环境选择屏(环境屏

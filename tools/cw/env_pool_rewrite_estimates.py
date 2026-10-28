@@ -525,7 +525,7 @@ def econ_value_full(eff: EconomyEffect, h: int, ctx: dict,
         # 在最大观测节点值,保守)
         p = 1.0 if restricted else ctx['p_level_at'](start + h)
         v += eff.gold_at_level * p
-    # 受限名单外、确定性时点金(全通道补入;超发货币负债腿按注册表既有口径
+    # 受限名单外、确定性时点金(全通道补入;超发货币负债分支按注册表既有口径
     # 由消费端记,数值侧只记回流 +70)
     if not restricted and eff.gold_at_node and eff.gold_at_node_offset <= h:
         v += eff.gold_at_node

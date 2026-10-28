@@ -33,14 +33,14 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """买牌上报:gold −单价×k + bench 落位 + 合成连锁 + payload −k
-    ((name, star) 计数)+ 升星腿整表覆盖(买前快照三件组基点,快照在
+    ((name, star) 计数)+ 升星分支整表覆盖(买前快照三件组基点,快照在
     本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
-    升星触发发放收尾(级联采集的升星事实交触发检查,升星腿写毕后
-    best-effort 发火,触发腿异常 log 不阻塞上报主链)。
+    升星触发发放收尾(级联采集的升星事实交触发检查,升星分支写毕后
+    best-effort 发火,触发分支异常 log 不阻塞上报主链)。
 
     满栏且合成不可达 = 游戏拒买(applied=False + reason='bench_full',
     零写)。k 来源:executed 给定 = 回执 k(live);None =
-    理想执行自算(简单腿 1,满栏从应用机器出)。语义由
+    理想执行自算(简单分支 1,满栏从应用机器出)。语义由
     test_gain_chain(卖/换上报 v2 族契约节)/ 测试 M1 钉住。
 
     P1 容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
@@ -69,7 +69,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         ShopCard as _LegacyShopCard,
     )
 
-    # 买前快照两件组(升星腿比较基点;必须在简单腿写之前取——基点
+    # 买前快照两件组(升星分支比较基点;必须在简单分支写之前取——基点
     # 误取买后容器会重复落位,shop 视图缺失会漏满栏合成)。bench 未观察
     # = 缺省形态 [None]×9(全空可落位,非满栏拒)。
     _pre_view = gs.bench.value
@@ -99,7 +99,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     star = int(getattr(card, 'star', 1) or 1)
     payload = gs.shop.value
     shop_view = shop_cards_to_legacy(shop_payload_content_cards(payload))
-    # k 来源:executed 给定 = 回执 k(live);None = 理想执行自算(简单腿 1,
+    # k 来源:executed 给定 = 回执 k(live);None = 理想执行自算(简单分支 1,
     # 满栏从应用机器出)。
     k_exec = (max(1, int(executed.bought_count))
               if executed is not None and executed.bought_count is not None
@@ -152,12 +152,12 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         _w(gs.deployed, deployed_view_of_indexed(scratch_d, gs.deployed.value),
            'proj_deployed')
 
-    # —— 升星腿(买前快照基点;整表 write_logic 后写覆盖,与简单腿
+    # —— 升星分支(买前快照基点;整表 write_logic 后写覆盖,与简单分支
     #    两写合计的期望态由投影测试钉住,测试 M1)——
     # 升星检测的比较基点 = 本函数主工作副本
     # (scratch_b/scratch_d 已完成 bench_place/满栏合成买/级联合成的
     # 全套应用,与买前快照 pre_bench/pre_dep 恰构成 before/after 对;
-    # 原二次仿真取 after 的腿随席位第二账停用删除——同一动作同一
+    # 原二次仿真取 after 的分支随席位第二账停用删除——同一动作同一
     # 引擎,二次仿真是第二账时代形状)。
     from types import SimpleNamespace as _NS
 
@@ -174,11 +174,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                            group_id=(f'act:{sig.actor}@'
                                      f'{gs.write_seq + 1}')))
 
-    # —— 合并升星触发发放腿(升星腿写毕后收尾发火:引擎 A 内嵌发火会被
+    # —— 合并升星触发发放分支(升星分支写毕后收尾发火:引擎 A 内嵌发火会被
     #    本函数 bench/deployed 整表写覆盖,故采集在级联、发火在顶层全部
-    #    写毕后——设计 §2.4 发火时序)。sig 沿动作腿 _grp_sig 口径(触发
-    #    腿行与动作腿同组同窗)。best-effort:触发腿异常不阻塞上报主链
-    #    (下 on_buy 回调腿同纪律)。kernel 反向模块级零 import 契约:
+    #    写毕后——设计 §2.4 发火时序)。sig 沿动作分支 _grp_sig 口径(触发
+    #    分支行与动作分支同组同窗)。best-effort:触发分支异常不阻塞上报主链
+    #    (下 on_buy 回调分支同纪律)。kernel 反向模块级零 import 契约:
     #    函数内惰性取。拒买(applied=False 早退)不可达本段。——
     if merge_facts:
         try:
@@ -186,11 +186,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                 check_env_merge_grants,
             )
             check_env_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
-        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
-            _log.warning(f'[cw-buy] 合并升星触发发放腿失败(不阻塞):'
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            _log.warning(f'[cw-buy] 合并升星触发发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
 
-    # —— 购买回调腿(获取计算完时点):简单腿 + 合成连锁 + 升星腿全毕
+    # —— 购买回调分支(获取计算完时点):简单分支 + 合成连锁 + 升星分支全毕
     #    后触发,计数归上报单点(live/sim 同源,消除落地门计数分叉);
     #    满栏一击多买按实际张数 k 计 k 次。best-effort:记录面失败不阻塞
     #    上报链(与旧落地门 bump 同纪律)。拒买(applied=False 早退)不触。
@@ -199,11 +199,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
 
-    # —— 条件形态专家触发腿(「首次获得 X 时,顾问入商店」族,首例 =
+    # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
     #    §2.3):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
-    #    获得渠道(3 费档基础池恒可刷),挂点与 on_buy 回调腿同位
-    #    (简单腿 + 合成连锁 + 升星腿全毕后,拒买 applied=False 早退
+    #    获得渠道(3 费档基础池恒可刷),挂点与 on_buy 回调分支同位
+    #    (简单分支 + 合成连锁 + 升星分支全毕后,拒买 applied=False 早退
     #    不可达本段);rand=False = 购买全链确定面。状态写沿主链零吞错
     #    (判据内含条件写,与上方 on_buy 记录面 best-effort 分层——记录
     #    可弃,状态写不可静默失败)。kernel 反向模块级零 import 契约:

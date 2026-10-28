@@ -181,14 +181,14 @@ def _touched_line_comps(canonical: str,
                         evicted: frozenset[str]) -> frozenset[str]:
     """卡的触线集阵容 空间像(构造侧求值;29 号稿 §2.2)。
 
-    - 阵营绑定腿:绑定阵营 f 的阵营线成员阵容 = {c ∈ COMP_LIBRARY :
+    - 阵营绑定分支:绑定阵营 f 的阵营线成员阵容 = {c ∈ COMP_LIBRARY :
       f ∈ c.factions}——**线排除像 = 该线全体成员阵容 ∈ evicted ⇔ 线
       排除**(整体死亡判据);线活则全体成员入集,含已被 evicted 的成员
       (线级整体排除语义,方向分虚高向,有意选择并申报——29 号稿
       §2.2 线级口径行为差异申报);
-    - 角色绑定腿(窄口径):core_chars 含绑定角色的阵容,逐阵容 自身
+    - 角色绑定分支(窄口径):core_chars 含绑定角色的阵容,逐阵容 自身
       ∈ evicted 才排除;
-    - 两腿并集即触线集。STRATEGY_BINDINGS 未建模卡 → 空集(方向分 0)。
+    - 两条分支并集即触线集。STRATEGY_BINDINGS 未建模卡 → 空集(方向分 0)。
     """
     bindings = STRATEGY_BINDINGS.get(canonical)
     if bindings is None:

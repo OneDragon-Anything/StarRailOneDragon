@@ -126,12 +126,12 @@ log = log_utils.log
 #: 重装配旧档案该字段消失(裸 ``cw4_counters.jsonl`` 归档数据在盘可考古)。
 #: 先例 = endgame.match_final 键的不 bump 申报(本文件其注)。
 #: v8(C8 遥测缺陷批):loss_nodes 逐结算行化——一条目对一个掉血结算行
-#: (战斗腿口径)。同轮「补给回血+战斗掉血」不再被轮级净额
-#: 抵减/整条漏记(实证 g_20260906_182456 p2r4:净额 −19 vs 战斗腿 −33);
+#: (战斗分支口径)。同轮「补给回血+战斗掉血」不再被轮级净额
+#: 抵减/整条漏记(实证 g_20260906_182456 p2r4:净额 −19 vs 战斗分支 −33);
 #: 单结算可信轮条目形状不变(同键同序),新增加法键 outcome_source/ts
 #: (回落条目取值契约见 _build_rounds docstring)。rounds 逐轮表零变化
 #: (仍单槽净额)。旧档案经 load_archive 版本检查自动重装配(loss_nodes
-#: 净额→战斗腿原地修复);旧不变量「loss_nodes 条目集 ≡
+#: 净额→战斗分支原地修复);旧不变量「loss_nodes 条目集 ≡
 #: {rounds.hp_delta<0 的轮}」自 v8 解除,分歧形态见 _build_rounds。
 #: v9(遥测数据病统一件):hp 真值链的「事件模型」落地,
 #: 四机制一次到位——①事件步进链:结算步进链扩为 hp 变化步进链,可信结算
@@ -140,7 +140,7 @@ log = log_utils.log
 #: 变「段内变化」(读端可见口径变化),重锚差落 resume_reconciliation 扩展
 #: 字段(unexplained_delta/consumed_by_chain)不进 loss_nodes;③合成行
 #: (synthetic_supply)一律退出步进链(先验「陈旧直到证伪」,v8 的 0 值
-#: 防御升格;rounds 槽/query_hp 显示行为不变);④终局腿:result='loss' 且
+#: 防御升格;rounds 槽/query_hp 显示行为不变);④终局分支:result='loss' 且
 #: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
 #: final' 条目。顶层新增加法列 hp_events(事件行暴露)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
@@ -642,7 +642,7 @@ def _settlement_hp_usable(row: dict[str, Any]) -> bool:
 
     - 可信门 = query._outcome_hp_trusted 单一源:OCR miss 兜底行
       (hp_confidence<0.9,hp_after 落 0)不入链不推游标——伪值入链会伪造
-      「掉血 −prev」条目并把游标打穿到 0、毒化后续全部战斗腿(纪律同
+      「掉血 −prev」条目并把游标打穿到 0、毒化后续全部战斗分支(纪律同
       query_hp「伪值不推进链」)。
     - 合成行一律退出步进链(v9,升格自 v8 的仅 0 值防御):补给合成行 hp
       是 last_state 快照,**快照不是事件**——先验按「陈旧,直到证伪」。
@@ -879,7 +879,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     姿态(dp_posture,decision_v2 决策帧口径)/ b_t(form_score 替代披露
     口径;form_score 已停用,历史数据只读透传)/ 证据链接 /
     战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
-    败场节点(loss_nodes,v8 起)= hp 链上掉血的**结算行**(战斗腿口径;
+    败场节点(loss_nodes,v8 起)= hp 链上掉血的**结算行**(战斗分支口径;
 );v9步进链升格为 **hp 变化事件步进链**:
 
     - 两链分工:rounds 链 = 轮级血面变化(单槽取末结算行,净额,无可信
@@ -906,10 +906,10 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       排序键回空串会错位到全局最前 → 守卫为不进步进链(该行步进资格让位
       回落,hp_events 列仍暴露);③时钟回拨/NTP 步进:走行序失真,诚实
       退化(错位条目)与恢复帧不可锚退化并列申报。
-    - 终局腿(v9,C-主,加法零新运行时写入):链走完后 result='loss' 且
+    - 终局分支(v9,C-主,加法零新运行时写入):链走完后 result='loss' 且
       步进游标≠0 → 追加 {hp:0, delta:−游标, hp_source:'endgame_final',
       outcome_source:'runs.final_hp'}(runs 行结构保证死亡真值);游标已
-      到 0(含回落路径到达)守卫不重复,win/abandoned 局零终局腿,游标
+      到 0(含回落路径到达)守卫不重复,win/abandoned 局零终局分支,游标
       None(全程无可锚行)→ 无 delta 可算诚实跳过。
     - 单步回落(v8 语义保留):该轮无(入链的)可信结算行 → 用轮槽 hp_e
       成一步(hp_source 沿用轮槽口径,游标推进同 rounds 链 prev_hp,凡非
@@ -921,7 +921,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     - 旧不变量「loss_nodes 条目集 ≡ {rounds.hp_delta<0 的轮}」自 v8 解除,
       两链在「同轮可信行在前+不可信行在后」形态分叉:游标停可信行、轮槽
       取不可信末行,后续轮条目按游标计算(与 query_hp「伪值不推进链」同
-      纪律,方向正确非回归);净额≥0 的轮因战斗腿<0 仍必有条目。判读侧
+      纪律,方向正确非回归);净额≥0 的轮因战斗分支<0 仍必有条目。判读侧
       勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(§边界申报)。
     返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
     {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差暴露)。
@@ -1130,7 +1130,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             # 诚实代价。纯补给轮(唯一 outcome=合成行,补给节点天然无结算
             # 屏)被 settle 路挡下的快照鬼值不再经本路复活回步进链;
             # hp=0/conf=1.0 兜底合成行伪造死亡条目的缝隙同封——loss 局
-            # 死亡真值由终局腿(runs.final_hp 结构保证)兜底,不因本守卫丢失。
+            # 死亡真值由终局分支(runs.final_hp 结构保证)兜底,不因本守卫丢失。
             from_outcome = hp_e['source'] == 'settlement'
             _fb_row = outcome if from_outcome else frame
             _fb_ts = (_row_ts(outcome) if from_outcome
@@ -1238,9 +1238,9 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
                     'outcome_source': it['outcome_source'],
                     'ts': it['entry_ts']})
             step_prev = fb_hp
-    # —— v9 终局腿(C-主,加法零新运行时写入):result='loss' 且步进游标
+    # —— v9 终局分支(C-主,加法零新运行时写入):result='loss' 且步进游标
     # 未到 0 → runs.final_hp=0 结构保证真值兜底出死亡条目;游标已到 0(含
-    # 回落路径到达)守卫不重复,win/abandoned 局零终局腿,游标 None(全程
+    # 回落路径到达)守卫不重复,win/abandoned 局零终局分支,游标 None(全程
     # 无可锚行)无 delta 可算诚实跳过。
     if (endgame_result == 'loss' and step_prev is not None
             and step_prev != 0 and keys):
@@ -1408,7 +1408,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'continuity_note': continuity_note,
         # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9):
         # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
-        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」暴露非战斗腿。
+        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」暴露非战斗分支。
         'resume_reconciliation': _merge_boundary_records(
             _resume_reconciliation(segments, derived_rows), boundaries),
         'rounds': rounds,

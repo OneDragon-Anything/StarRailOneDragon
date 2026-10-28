@@ -215,7 +215,7 @@ def gen_supply(backend: SimBackend) -> CwScreenSupplyNodeObs:
 
 def gen_invest_env(backend: SimBackend) -> CwScreenInvestEnvObs:
     """投资环境档生成器(候选名自容器 opts 槽;x = 下标派生合成值;整组
-    刷新剩余自容器现读——环境屏呈现写点落 1,重掷世界腿落 0;未呈现态
+    刷新剩余自容器现读——环境屏呈现写点落 1,重掷世界分支落 0;未呈现态
     None = report 跳写,2026-10-19 用户裁定批接入呈现)。"""
     names = list(backend.gs.invest_env_opts.value or [])
     left = backend.gs.env_refresh_left.value

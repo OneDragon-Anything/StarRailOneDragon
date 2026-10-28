@@ -133,7 +133,7 @@ class SellSceneSpec:
     gap_closed`` 卖到缺口闭合即止 / ``swap_pair`` 换人对(卖场上件 + 上阵
     替补)/ ``sell_first_buy_core`` 腾位卖 Y 后买核心。
     **P78-5 四条件兜底豁免不在本评估器**(契约 D 筹资/升级变现行资格面的
-    兜底腿):其触发前提 = 消费位状态(主路径空 ∧ 缺口未闭合 = gold <
+    兜底分支):其触发前提 = 消费位状态(主路径空 ∧ 缺口未闭合 = gold <
     need),超出「(场景,容器状态)」入参面——单一源 = ``sell_gate.
     funding_hold_fallback``,由筹资(shop_session)与升级凑金(entry
     备战第 4 步)消费循环在主路径尽时拼装,与现行消费位同构(触发前提
@@ -299,7 +299,7 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
     k_members 的线内判定职责」)。
 
     消费面:评估器线内排除与自救末位分层、场上无关角色谓词、垫件谓词
-    的「非线内/非候选集成员」腿、装配 A 的 k_members 入参——同一集,
+    的「非线内/非候选集成员」分支、装配 A 的 k_members 入参——同一集,
     禁各消费点自建第二份名单口径(design 契约 B)。候选名注册表解析
     失败(漂移)跳过并告警——该线贡献空集,保守方向申报:少排除 =
     多可卖 = 自救/让位面不受阻,线内保护面收窄由 3.7 候选判据的注册表
@@ -414,7 +414,7 @@ def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
     - 非通用插件注册表成员(``PLUGIN_LIBRARY``——插件有座位价值不在
       垫件集);
     - 非保护集成员(``protection_membership``——统一保护集 design §2.3
-      垫件腿迁移:垫件 = 非自己人,registry 核心/四体系件有再遇期权不在
+      垫件分支迁移:垫件 = 非自己人,registry 核心/四体系件有再遇期权不在
       垫件集);
     - 非种子身份件(``is_engine_piece`` 引擎件身份层——裁量申报:设计
       文「非种子」按身份层取引擎件全集而非种子登记簿子集,引擎件 =

@@ -2,7 +2,7 @@
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口裁决:门判定 + 稳定帧引用。report 写点 = **BOSS 类型直定**
-(迭代 2026-09-20-node-advance-action-report 切换批自旧 BOSS 简报腿迁移,
+(迭代 2026-09-20-node-advance-action-report 切换批自旧 BOSS 简报分支迁移,
 design §2.5 表):简报屏上报经 kernel ``_write_derived_node_type`` 直定
 boss 类型,目标 = 现 hist——简报屏仍是 boss 类型权威。
 """

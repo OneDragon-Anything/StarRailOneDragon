@@ -22,7 +22,7 @@ THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 def trailblazer_form_of(char_id: str, row: str) -> str:
     """开拓者按排形态名(kernel 单一源引用口;非开拓者原样返回)。
 
-    ``row`` 坐标系 = 'front'|'back'(kernel 同名参数同域);部署腿的
+    ``row`` 坐标系 = 'front'|'back'(kernel 同名参数同域);部署分支的
     形态归一已在 kernel 转移函数内,本口仅供 sim 侧查询/测试对账。
     """
     if not is_trailblazer(char_id):

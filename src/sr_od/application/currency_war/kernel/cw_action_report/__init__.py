@@ -8,8 +8,8 @@
 - 有容器写语义的动作 = 一动作一文件(文件名 = snake);
 - 工具原子七类 = ``tool_use``(机械半同构一族一文件,容器写形态);
 - 零写动作族 = ``zero_writes``(策略统一,不逐类开文件);
-- 刷新上报 = refresh_shop(计数腿:付费/全量两计数经效果账本
-  ``record_refresh`` 单口,免费腿 = 容器字段 free_refresh_left 判定扣减,
+- 刷新上报 = refresh_shop(计数分支:付费/全量两计数经效果账本
+  ``record_refresh`` 单口,免费分支 = 容器字段 free_refresh_left 判定扣减,
   payload 随机态 = kernel 采样器 write_logic_rand)。
 
 依赖方向:本包 → cw_game_state(容器/渠道签名/值类型/读口),
@@ -28,11 +28,11 @@
 # 全部住本函数族,现无任何聚合分派点(正本口径 =
 # game_state/logic-updates/README.md 总则 1)。
 #
-# 双域腿统一申报(摊平批):原商店腿(apply_shop_action_logic 分支)与备战腿
+# 双域分支统一申报(摊平批):原商店分支(apply_shop_action_logic 分支)与备战分支
 # (apply_prep_action_logic 分支)为同一动作语义的历史两份,本函数族合一:
 # - 容器写统一**原生 BenchSlot 形态**(legacy roundtrip 丢 box/tome kind 细分,
-#   原 prep 腿注释在案);cleared 槽 = kind 'empty';
-# - 溢出入位腿 = 容器状态条件(overflow_warning 在场),域无关携带;
+#   原 prep 分支注释在案);cleared 槽 = kind 'empty';
+# - 溢出入位分支 = 容器状态条件(overflow_warning 在场),域无关携带;
 # - 装备回收(C6 装备守恒)统一携带——原备战域缺口(原由执行侧
 #   apply_op_effect SellDeployed 分支单边承担),op 自上报后单点化;
 # - expect 代际校验统一携带(live 提案 expect 恒 '' = 零行为);
@@ -48,7 +48,7 @@ _ZERO_WRITE_MODULE = 'zero_writes'
 _TOOL_USE_MODULE = 'tool_use'
 
 
-# ============================================================ 动作腿采样 rng 提供槽
+# ============================================================ 动作分支采样 rng 提供槽
 # (sim 统一迭代 3.4 运行器装配缝;偏差申报的注入点归属。
 #  实机缺省 None = 采样未播种口径零变化——上报函数 ``rng=None`` 回退
 #  自掷随机(采样是猜测);sim 装配后由运行器经本槽注入流键 rng
@@ -60,9 +60,9 @@ _ACTION_RNG_PROVIDER: Callable[[str], random.Random] | None = None
 
 def set_action_rng_provider(
         fn: Callable[[str], random.Random] | None) -> None:
-    """注入动作腿采样 rng 提供者(注入槽模式,None = 关,缺省态)。
+    """注入动作分支采样 rng 提供者(注入槽模式,None = 关,缺省态)。
 
-    ``fn(tool) -> random.Random``:``tool`` = 采样腿具名键(如
+    ``fn(tool) -> random.Random``:``tool`` = 采样分支具名键(如
     'collect_ore'/'refresh_shop'),每次采样调用取一个新 rng,调用方
     (sim 装配方)负责键序确定性。
     """
@@ -71,7 +71,7 @@ def set_action_rng_provider(
 
 
 def provided_action_rng(tool: str) -> random.Random | None:
-    """取动作腿采样注入 rng(未装配 = None,调用方回退自掷)。"""
+    """取动作分支采样注入 rng(未装配 = None,调用方回退自掷)。"""
     return None if _ACTION_RNG_PROVIDER is None \
         else _ACTION_RNG_PROVIDER(tool)
 

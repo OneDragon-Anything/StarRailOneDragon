@@ -8,7 +8,7 @@
 刷后牌面 = ``write_logic_rand`` 随机态
 (用户裁定,以实际观察为准;真值 = 下一入口观察)。**刷新计数由本
 op 自上报统一触发**(``report_action_refresh_shop_param``:付费/全量
-计数经 ``gs.effects.record_refresh`` 单口;免费腿 = 容器字段
+计数经 ``gs.effects.record_refresh`` 单口;免费分支 = 容器字段
 ``gs.free_refresh_left`` Field 值判定与扣减,未观察保守按付费——次数
 是记账面非决策闸,判定职能收尾观察边界,本 op 零读屏)。sim 与生产
 同一段 op 代码同口自上报同一上报函数(驱动器不执行刷新——终结动作
@@ -82,7 +82,7 @@ class CwActionRefreshShopOp(CwOperation):
             state.shop_refresh_cost.value or REFRESH_COST_BASE)
         ledger.spend_executed += _refresh_fee
         ledger.total_refresh += 1
-        # 自上报 = 刷新计数统一触发 + Field 免费腿扣减 + payload 随机态
+        # 自上报 = 刷新计数统一触发 + Field 免费分支扣减 + payload 随机态
         # 采样(见模块头与上报函数 docstring)。free 传 None = 上报函数
         # Field 值判定;金账不喂(生产观察覆盖)。
         from sr_od.application.currency_war.kernel.cw_action_report.refresh_shop import (

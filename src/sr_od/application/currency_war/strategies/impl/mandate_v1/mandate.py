@@ -460,7 +460,7 @@ def fuel_sell_candidates(bench: list[BenchSlot],
     (凑息/支付变现通道同门消费,禁第三处内联复制)。
 
     空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
-    板空帧腾席卖出腿同弱劣拒帧 → 本函数返空,消费位走各自既有「无
+    板空帧腾席卖出分支同弱劣拒帧 → 本函数返空,消费位走各自既有「无
     候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
 
     ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
@@ -556,7 +556,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 烧动作。载体与 kernel GameState.round_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
-# 写端 = 各卖出动作发出点(prep 凑息/M4/wanted 腿2 + entry 晶矿路径 M4;
+# 写端 = 各卖出动作发出点(prep 凑息/M4/wanted 分支2 + entry 晶矿路径 M4;
 # 商店域 _note_sell 收尾随商店期卖射停用删除——本载体现覆盖
 # 「备战同轮卖 → 商店买回」的换手排除面);读端 = shop 档 2(M6)候选集。
 # entry 域
@@ -740,13 +740,13 @@ def swap_transition_narrow_frame(state: GameState,
     """终局阵容锁定转型域 D 帧判定(店侧 S_spec 收窄适用范围;P88)。
 
     = kernel ``cw_deploy_logic.swap_bond_gate_domain_of`` **同一谓词**
-    (腿①终局阵容锁定 ∧ fp<1.00 ∧ 板满;design §2.3.1 谓词源迁移钉死:
-    改挂转型域判别子**全合取**——入参同现行三腿,禁只挂腿①丢 fp/板满
-    腿;旧谓词的回滚常量腿已随转型分支机器退役,缺省开语义下逐帧等价,
+    (分支①终局阵容锁定 ∧ fp<1.00 ∧ 板满;design §2.3.1 谓词源迁移钉死:
+    改挂转型域判别子**全合取**——入参同现行三条分支,禁只挂分支①丢 fp/板满
+    分支;旧谓词的回滚常量分支已随转型分支机器退役,缺省开语义下逐帧等价,
     真值表等价断言 = 测试仓 narrow_frame 迁移测试)——适用范围判定单一源,
     本函数只做店侧输入装配,禁第二份合取(第二源 = 与部署域换人域分裂)。
-    装配对齐 ``assemble_swap_plan_inputs`` 发出侧同字段链:腿① 单源
-    = ``ist.locked_comp`` 非空(终局阵容锁定,pair 腿②不进本域——
+    装配对齐 ``assemble_swap_plan_inputs`` 发出侧同字段链:分支① 单源
+    = ``ist.locked_comp`` 非空(终局阵容锁定,pair 分支②不进本域——
     配方对锁帧恒 False = P1 买侧旧行为,P88 登记域不倒转);fp 单一源
     = ``cw_comps.form_progress``,终局阵容锁定帧 committed_from=True ⇒
     装配点 tgt 退 ``target_comp`` 同读法(flow._refresh_direction_views
@@ -761,7 +761,7 @@ def swap_transition_narrow_frame(state: GameState,
     且免 fp/板满推导成本。
 
     适用范围分界(design §2.3.1):kernel 部署换人域判别子显式排除
-    pair 帧,本函数同样只挂腿①——终局锁定帧两域(买侧收窄/部署换人)
+    pair 帧,本函数同样只挂分支①——终局锁定帧两域(买侧收窄/部署换人)
     同挂转型域判别子,配方对锁帧两域均不进转型域(pair 帧走双轨现行
     机器),禁任一侧静默跟随另一侧。
     """
@@ -865,7 +865,7 @@ def _redeploy_emission_allowed(session: StrategySession,
        bench 槽期权价值(买入线内件→完成度推进)+「core 上板」完成度
        收益,支配 2★ 线外件持有价值(不卖也上不了场;机会成本锚 =
        bench_full_buy_abandon 4717 次/100 局)。金不减
-       腿在 2★ 失效后,收敛改由目标线支撑计数严格增腿独立承载(胜出者必过
+       分支在 2★ 失效后,收敛改由目标线支撑计数严格增分支独立承载(胜出者必过
        post_sell_offline 底线 ⇒ 板面目标线支撑计数净 +1,无死循环保持;
        口径 = up 侧 target 视图,非 B_t 披露口径——两口径边界见
        ``board_target_line_weight`` docstring);下场态
@@ -915,8 +915,8 @@ def _bond_gate_recalc_allowed(ctx: SwapPlanContext | None,
     即现读板面)按计划组重算门 1——门 2 已在计划期逐件过
     (``swap_sell_exclusion_reason`` 单一判定),本门不重复资格面。全组
     pairs(sell×up 1:1)+ up 星级现取(bench 条目解包单一读点)喂判据;
-    ③ 腿的全组 pairs 为计划期末对(累积生长逐对试门 1 只喂末对)的超集,
-    OR 腿单调不减 → 对已验收计划复算恒通过,仅分叉面(计划快照与现读
+    ③ 分支的全组 pairs 为计划期末对(累积生长逐对试门 1 只喂末对)的超集,
+    OR 分支单调不减 → 对已验收计划复算恒通过,仅分叉面(计划快照与现读
     板态不一致)绑定 fail-closed。组形状破坏(sell/up 数不齐、下标越界
     防御)= 不通过 → 计划撤(调用侧 ``bond_gate_recalc_withdraw`` 分键,
     零动作;design §2.5「不可行即计划撤」)。
@@ -1040,7 +1040,7 @@ def run_mandate(frame: MandateFrame,
     # 停机钩子三连实证,prep.md 告警节)→ 本帧决策输出强收窄为单动作
     # CwActionSellBenchParam(腾位后溢出卡自动入自由槽,下入口帧告警消失恢复常规决策):
     # CwActionStartBattleParam 禁发、买面/凑息/部署全冻结。候选与排除同源(wanted_close
-    # 腿 2 先例:统一装配 A channel='m4_fuel' + fuel_sell_candidates 全守卫
+    # 分支 2 先例:统一装配 A channel='m4_fuel' + fuel_sell_candidates 全守卫
     # ——占位件恒拒/合成素材拒入/T3 降序;零新增通道,reason 沿用
     # m4_fuel_sell,构造事实分键 overflow_clear_sell/overflow_no_fuel)。
     # 候选空集 = fail-closed 空批(禁乱卖被守卫件),返回主循环,环级无
@@ -1616,7 +1616,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
                 # 双轨域 'transition'/'formed' 照旧;转型域 'bond_gate'
                 # 换新键族(design §2.3.1 arm 分键归宿:accept 闭集 =
                 # bond_gate_{leg}(leg ∈ tier/support/star/completion,
-                # 首达腿检查序 = ④→①→②→③)+ victim 层来源键
+                # 首达分支检查序 = ④→①→②→③)+ victim 层来源键
                 # bond_gate_victim_tier_{tier}(值域 = 一级/二级/名单末位)
                 # ——3.5 预测表依赖此闭集)。
                 if _m1p.arm == 'transition':
@@ -1647,7 +1647,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
     else:
         _count('m1p_plan_empty')
         # 转型域拒绝侧分键闭集(design §2.3.1 钉死;3.5 预测表依赖):
-        # bond_gate_reject_nogain(四腿全不中)/ bond_gate_conservation_
+        # bond_gate_reject_nogain(四条分支全不中)/ bond_gate_conservation_
         # reject(守恒拦)/ bond_gate_novictim(无可行组零动作);非转型
         # 域计划空帧(域外现行机器)不产新键,照旧仅 m1p_plan_empty。
         _bg_rej = getattr(_m1p, 'bond_gate_reject', '')

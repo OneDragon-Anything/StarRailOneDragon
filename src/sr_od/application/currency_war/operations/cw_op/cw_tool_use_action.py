@@ -114,7 +114,7 @@ class CwActionToolUseOp(CwOperation):
             if action.target_kind == 'equip':
                 if not action.item_name:
                     raise AssertionError(
-                        f'{type(action).__name__} equip 腿缺目标件名')
+                        f'{type(action).__name__} equip 分支缺目标件名')
             else:
                 # char 模式行槽直取前排/后排点表:row 非法会静默落到
                 # 后排点表(负下标回环同族),守卫断言闭合。

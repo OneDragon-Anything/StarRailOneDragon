@@ -1,36 +1,36 @@
 """货币战争动作上报:刷新商店(report_action_refresh_shop_param)。
 
-刷新动作上报三腿(2026-09-21 商店刷新迭代 design §2-6/§2-9):
+刷新动作上报三条分支(2026-09-21 商店刷新迭代 design §2-6/§2-9):
 
-- **计数腿**:付费/全量两计数经 ``gs.effects.record_refresh`` 单口触发
+- **计数分支**:付费/全量两计数经 ``gs.effects.record_refresh`` 单口触发
   (2026-09-18 裁定;免费余额在容器字段,账本只留 paid/total
   累计)。生产 = 刷新 op 自上报,sim 与生产同一段 op 代码同口自上报,落地门
   零重复触发。
-- **免费腿扣减**:免费刷新剩余次数住容器字段 ``gs.free_refresh_left``
+- **免费分支扣减**:免费刷新剩余次数住容器字段 ``gs.free_refresh_left``
   (Field 化:观察锚定/动作扣减/发放登记三写端同格),免费帧经
   ``write_logic`` 扣减。free 判定 = Field 值 > 0;None(未观察)= 保守
   按 paid(不扣 Field——次数是记账面非决策闸,商店刷新允许性归策略面)。
-- **随机态腿**:计数后经 kernel 发牌采样器(:mod:`cw_shop_deal`,与 sim
+- **随机态分支**:计数后经 kernel 发牌采样器(:mod:`cw_shop_deal`,与 sim
   ``deal_shop`` 同源,纯采样不写容器)采 5 槽 payload,经
   ``write_logic_rand`` 随机态专用通道写商店载荷——实机上采样是猜测,
   sim 里采样即世界真值(同一上报函数两副面孔);采样表 =
   ``state_deal_probs``(轮岗感知;观测概率条真值直用,缺读逐档退基线);
   observe 覆盖差异落 ``logic_rand_outcome`` 台账、不进失配告警(通道语义
-  自带)。level 缺读 = 该腿跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
+  自带)。level 缺读 = 该分支跳写(概率表按级索引,宁缺勿造)。干旱/供给族消费 observation
   only 是消费侧口径,本函数不管。
-- **环境条件发放腿**(ENV_REFRESH_GRANTS 在册环境:二手市场全量域 /
+- **环境条件发放分支**(ENV_REFRESH_GRANTS 在册环境:二手市场全量域 /
   长线利好付费域):尾部触发检查
   (``check_env_refresh_grants``;登记表 =
   ``cw_investments.ENV_REFRESH_GRANTS``;发放 = 金/装备/done 三笔
   同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码
   同口,单点覆盖双端。
 
-- **金账扣费腿**(2026-10-16 用户裁决,推翻 2026-09-21「金仍不写、
+- **金账扣费分支**(2026-10-16 用户裁决,推翻 2026-09-21「金仍不写、
   以实际观察为准」旧裁定):费用单一源 = ``gs.shop_refresh_cost``
   容器直读(``value or REFRESH_COST_BASE``;live 商店开态观察漏斗
   OCR / sim 开店呈现写同一字段),上报即按当次价扣金,与买牌/升级/
   卖牌同款双端逻辑态;免费帧费用清零(free 判定单一源 =
-  ``gs.free_refresh_left``,推导见计数腿)。金现值缺读(None)跳写。
+  ``gs.free_refresh_left``,推导见计数分支)。金现值缺读(None)跳写。
   容器价与实扣不符(失读帧撞刷新)由下一入口金观察失配检出,处置 =
   停机语义(cw_mismatch_policy 现行失配架构,本写端不豁免)。
   终结跳写申报仅余刷后牌面 = ``write_logic_rand`` 随机态
@@ -71,7 +71,7 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                                      executed: ShopActionExecuted | None = None,
                                      free: bool | None = None,
                                      rng: random.Random | None = None) -> LogicOutcome:
-    """刷新商店上报 = 计数触发 + Field 免费腿扣减 + 商店牌随机态采样。
+    """刷新商店上报 = 计数触发 + Field 免费分支扣减 + 商店牌随机态采样。
 
     - 计数(``gs.effects.record_refresh`` 单口):refresh_total 恒 +1;
       free=True 不进 paid(付费累计,长线利好阈值型,免费帧混入即毒化);
@@ -80,9 +80,9 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
     - free 判定输入 = 显式 ``free`` 优先(喂入口保留,现役调用方恒 None),None
       回退 Field 值判定(``gs.free_refresh_left.value > 0``;入口观察锚定
       的剩余次数;None = 未观察 → 保守按 paid,不扣 Field)。
-    - 免费腿扣减 = ``write_logic(gs.free_refresh_left, max(0, left−1))``
+    - 免费分支扣减 = ``write_logic(gs.free_refresh_left, max(0, left−1))``
       (produced_by/evidence 留存证据;下限 0,禁负值漂移)。
-    - 随机态腿 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
+    - 随机态分支 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
       台账,非失配)。
     - 金账扣费:费用单一源 = 容器直读 ``gs.shop_refresh_cost.value or
@@ -106,14 +106,14 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
         free_determined = _left is not None and int(_left) > 0
     inv.record_refresh(free=free_determined)
     if free_determined:
-        # 免费腿 Field 扣减(剩余语义,下限 0;None 基按 0 起算——
+        # 免费分支 Field 扣减(剩余语义,下限 0;None 基按 0 起算——
         # 显式 free=True 而 Field 未观察的形态只出现在注入测试)
         gs.write_logic(gs.free_refresh_left,
                        max(0, (0 if _left is None else int(_left)) - 1),
                        produced_by=_PRODUCER, evidence='proj_refresh_free_left',
                        sig=_grp_sig)
 
-    # 随机态腿:计数后采样商店牌 5 槽 payload(与 sim 发牌同源),经
+    # 随机态分支:计数后采样商店牌 5 槽 payload(与 sim 发牌同源),经
     # write_logic_rand 写随机态。level 缺读跳写(概率表按级索引)。
     _level = gs.level.value
     if _level is not None:
@@ -126,8 +126,8 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.write_logic_rand(gs.shop, payload, produced_by=_PRODUCER,
                             evidence='refresh_random_sample', sig=_grp_sig)
 
-    # 金账扣费腿:容器直读当次刷价(免费帧清零收归本函数集中执行;
-    # free 判定单一源 = free_refresh_left 字段,与免费腿同一推导)。
+    # 金账扣费分支:容器直读当次刷价(免费帧清零收归本函数集中执行;
+    # free 判定单一源 = free_refresh_left 字段,与免费分支同一推导)。
     # 与 op 花销账同式同读、同一动作瞬间容器未被本动作改写 → 值恒等;
     # gold 未观察(None)跳写。回退基价自 cw_economy import(对本模块
     # 无环——cw_economy 不依赖本包)。
@@ -140,7 +140,7 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                            produced_by=_PRODUCER,
                            evidence='proj_refresh_gold', sig=_grp_sig)
 
-    # 环境条件发放腿:第 N 次刷新动作窗内尾部触发检查(计数腿已先入账,
+    # 环境条件发放分支:第 N 次刷新动作窗内尾部触发检查(计数分支已先入账,
     # 此处计数现值含本刷;世界发放域,见模块头与本函数 docstring)。
     check_env_refresh_grants(gs, _grp_sig)
     return LogicOutcome(applied=True)

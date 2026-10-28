@@ -191,7 +191,7 @@ def effective_cost(gs: GameState, char_id: str) -> int:
     """角色**当前费用档**唯一读口(观察除数/账实结算/随机授予采样空间)。
 
     - 银狼LV.999 → 容器档 ``gs.lv999_cost_tier.value``(纯逻辑态,写端 =
-      pick_planner 升费腿 / deploy_move 上阵变费腿);未观察(None = 未触发
+      pick_planner 升费分支 / deploy_move 上阵变费分支);未观察(None = 未触发
       任何变换)归约 3(开局档语义默认);
     - 其余角色 → 注册表 ``CHARACTERS[char_id].cost``(静态);**未注册名 → 0**
       (无费用语义,禁用于金额计算——与 :func:`bench_char_cost` 未知 → 3
@@ -538,7 +538,7 @@ class RoundStartIncome:
     total: int           # 三分量之和
 
     def as_dict(self) -> dict[str, int | str]:
-        """账本行形态(sim 后端收入腿 dict 行与实机遥测行共用的投影)。"""
+        """账本行形态(sim 后端收入分支 dict 行与实机遥测行共用的投影)。"""
         return {'branch': self.branch, 'base': self.base,
                 'interest': self.interest, 'streak': self.streak,
                 'total': self.total}
@@ -660,7 +660,7 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 # (kernel/cw_game_state.py::apply_settlement_cover 的 streak_after,
 # 写点 = battle_wait 结算观测),经济/观察消费读容器。
 # 无「连胜 ≥2 跌破利息档」阈值常量(未核经验值,与已证跌破利息档-保利息判据
-# 冲突;连胜经济语义由利息线判据默认承载,激活腿 Δp 通道
+# 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道
 # 封锁——登记 = math_proofs P43)。
 
 # 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
@@ -713,7 +713,7 @@ def refresh_cost_effective(refresh_count: int = 0,
 
 
 def world_shop_refresh_cost(gs: GameState) -> int:
-    """当前环境改价规则下商店刷新的世界刷价(改价腿渲染单一源)。
+    """当前环境改价规则下商店刷新的世界刷价(改价分支渲染单一源)。
 
     环境在 ENV_ECONOMY 在册且注册了改价字段 ``refresh_cost_after``
     (语义 = (刷新阈值, 新成本),如长线利好 (30, 1))且付费刷新累计
@@ -1010,7 +1010,7 @@ def get_node_goal(plane: int, round_num: int, *,
 def effective_refresh_prob(gs: GameState, level: int, cost: int) -> float:
     """轮岗感知的有效刷新概率单一源。
 
-    消费点 = mandate_v1 出口③ A 支对账(shop.py)+ 刷新上报随机态腿的
+    消费点 = mandate_v1 出口③ A 支对账(shop.py)+ 刷新上报随机态分支的
     采样表构建(``cw_shop_deal.state_deal_probs``;同一优先级链零复制),
     禁第二套对账语义——
     「bar=0 ∧ 表值>0」形态两消费点
@@ -1184,7 +1184,7 @@ def _owned_core_copies(gs: GameState, core: str) -> int:
 def _omega_collapse_zeroed(gs: GameState, session: StrategySession,
                            registry: DecisionV2Registry,
                            target_cost: int) -> bool:
-    """归零带判据(概率校准刷新预算的归零腿)。
+    """归零带判据(概率校准刷新预算的归零分支)。
 
     refresh_prob(state.level, target_cost) / refresh_prob(峰值级,
     target_cost) < registry.omega_collapse_ratio → 当前级对该目标费档
@@ -1213,7 +1213,7 @@ def _omega_collapse_zeroed(gs: GameState, session: StrategySession,
 def _find_budget_cap(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry, target_cost: int,
                      core: str) -> int:
-    """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽腿)。
+    """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽分支)。
 
     E_find = expected_refreshes_for_card(level, target_cost,
     target_star=2, owned=j)——首次集齐目标牌所需刷数的有限池精确期望;
@@ -1244,7 +1244,7 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     _registry_of(session) → DEFAULT_REGISTRY。
     预算 = min(6, ⌊(g − R*)/刷价⌋, ⌈−ln(1−q)·E_find⌉)——只花富余
     (规则倡导审读 §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
-    = REFRESH_ROLL_CAP)∧ 有望帧帽按目标可寻性收紧。概率校准两腿
+    = REFRESH_ROLL_CAP)∧ 有望帧帽按目标可寻性收紧。概率校准两条分支
     (采纳自其预研提案 B-v2):归零带归零(纯金量式与目标可寻性无关的病灶修法;
     归零的账=归零带留金弱占优纯烧)+ 有望帧分位帽;**求值次序=先归零
     后帽**(ρ 归零与 min 帽取交即 0,数值良定);概率单一址=cw_shop_odds

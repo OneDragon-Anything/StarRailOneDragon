@@ -308,7 +308,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
       直调(最便宜 1★ 形态;审查H2 修:原内联 gold−1 ≥ g* 系第二
       实现,该谓词设立理由恰是防穿线判据漂移)——任一店产 1★ 线外件
       即触发,池非空故只查帧级资格;
-    - 义务 M2(缺员+分支①囤腿):∃成员「该级可刷出(refresh_prob>0)
+    - 义务 M2(缺员+分支①囤分支):∃成员「该级可刷出(refresh_prob>0)
       ∧ 金 ≥ 注册表 cost ∧ 席可落」;席可落 = bench_free>0 ∨
       ``seat_recoverable``(腾位可达判定,调用方传店帧腾位分支同参
       ``mandate.fuel_sell_candidates`` 资格面非空——存在可变现 1★
@@ -334,7 +334,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
       帧级资格(与 dominance 通道同款口径)。
 
     输入全为帧级现读/注册表量,零新自由参数;调用方装配候选 cost 列表
-    (缺员/囤腿/配对),判定尺只做通道合取判定。
+    (缺员/囤分支/配对),判定尺只做通道合取判定。
     """
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
@@ -350,7 +350,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
     if mandate.dominance_buy_eligible(gold, bench_free, cap_resolved) \
             and check_settlement_line(gold, 1, g_star)[0]:
         return True
-    # ② 义务 M2:缺员(0→1)与分支①囤腿(1→2)同通道两形态
+    # ② 义务 M2:缺员(0→1)与分支①囤分支(1→2)同通道两形态
     if seat_ok:
         for cost in missing_costs:
             if refresh_prob(level, cost) > 0.0 and gold >= cost:
@@ -366,7 +366,7 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
         if refresh_prob(level, base) > 0.0 and gold >= base:
             return True
     # ⑤ 序 2 场况插件(通道集重建;插件件落 bench——席位维
-    # = seat_ok;席满帧的置换路径由 seat_recoverable 腿承载)
+    # = seat_ok;席满帧的置换路径由 seat_recoverable 分支承载)
     if plugin_budget_open and seat_ok:
         return True
     # ⑥ 序 4 压牌库分支(②(b) 死金/档 1/M6/垫件的帧级可达;席位维 =

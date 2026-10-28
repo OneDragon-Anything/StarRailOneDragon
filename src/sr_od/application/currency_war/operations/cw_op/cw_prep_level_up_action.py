@@ -75,7 +75,7 @@ class CwActionLevelUpOp(CwOperation):
         执行 = 单次 op 内连点 ``clicks`` 击(决策循环零介入,防「逐帧
         单击 × 静态阈值逐帧重闸」的部分级复发);击数缺省 1 = 历史单击
         调用面兼容。经验/等级/金真值 = 上报函数单点直写(击数 =
-        ``executed.levelup_clicks`` 喂实际连点数;金腿 = ``action.cost``
+        ``executed.levelup_clicks`` 喂实际连点数;金分支 = ``action.cost``
         ×clicks 直写,cost = 动作发出面 xp_click_cost 现算装载)+ 下一帧
         观察对账族双通道。单击价本处现算仅作 detail 暴露。
         """
@@ -108,7 +108,7 @@ class CwActionLevelUpOp(CwOperation):
             ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
             for _ in range(clicks):
                 ex._ctx.controller.click(btn)
-        # else sim:机械腿静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
         # 商店访问账(shop 域 visit 汇总口径;备战 env 无 ledger 字段 =
         # 备战域无访问账概念,跳过——发出即记账,与买/刷 op 同位)。
         _led = getattr(env, 'ledger', None)
@@ -135,7 +135,7 @@ class CwActionLevelUpOp(CwOperation):
                            actor=type(self).__name__, mode='compute'),
                 executed=ShopActionExecuted(levelup_clicks=clicks))
             # 动作后果声明喂入(声明化单轨,op「上报后一行喂入」同形;
-            # 商业间谍升级回调世界腿 = spy_shop_refresh 触发,实机端口
+            # 商业间谍升级回调世界分支 = spy_shop_refresh 触发,实机端口
             # 未装 = no-op)。其余触发面无声明(world_decl None 本层直返)。
             cw_sim_ports.declare_world(out.world_decl)
         detail = (f'买经验整批 {clicks} 击花金{_price * clicks}'

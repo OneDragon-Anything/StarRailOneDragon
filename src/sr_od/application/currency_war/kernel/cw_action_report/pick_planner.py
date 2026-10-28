@@ -5,8 +5,8 @@
 点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
 确认点击后一口写完整效果逻辑态,无发出/落地两相、无证据标志。写序:
 
-- **条件腿 rider**(:func:`_grant_joy_conditional`)先于腿型分派执行——
-  弹窗出现即触发,与选择哪条腿无关(授予失败不阻塞腿型分派);
+- **条件分支 rider**(:func:`_grant_joy_conditional`)先于分支类型分派执行——
+  弹窗出现即触发,与选择哪条分支无关(授予失败不阻塞分支类型分派);
 - **equip**:件名命中 → 装备入栏(write_logic)+ 获得后果链
   (apply_equip_acquire_consequence);未解析 → 禁猜,equips 值不变翻
   来源 + 留存证据行;
@@ -14,11 +14,11 @@
 - **unknown**:零记账 + 留存证据行(含弱化词且装备锚未命中的卡文落此——
   弱化兜底档已按原文二分法停用,静默零记账变响亮申报)。
 
-其余未路由腿型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
+其余未路由分支类型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
 
-确认未生效重派 → 效果腿重复应用的风险按增补 2 禁止清单第 4 条接受,
-不设防(升费腿二次上报走「零枚 → 留存证据零写」,档行不会 +1 两次)。
-效果腿的写语义单点 = 本函数(确认后无第二写边)。
+确认未生效重派 → 效果分支重复应用的风险按增补 2 禁止清单第 4 条接受,
+不设防(升费分支二次上报走「零枚 → 留存证据零写」,档行不会 +1 两次)。
+效果分支的写语义单点 = 本函数(确认后无第二写边)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #11):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_planner``;``next_screen`` = 当前
@@ -85,17 +85,17 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
                                      rng: random.Random | None = None) -> LogicOutcome:
     """银狼策划选择上报(即时单相:确认点击后一口写完整效果逻辑态)。
 
-    写序 = 模块头:条件腿 rider(:func:`_grant_joy_conditional`)先于
-    腿型分派;随后腿型分派逐步应用,逐字段各落一行遥测(单次动作报告
+    写序 = 模块头:条件分支 rider(:func:`_grant_joy_conditional`)先于
+    分支类型分派;随后分支类型分派逐步应用,逐字段各落一行遥测(单次动作报告
     多次写遥测 = 预期行为):equip 入栏+后果链 / upgrade 变换窗三态+档行
-    / unknown 零记账+留存证据 / 未路由腿型终态兜底零写。applied 出口构造
+    / unknown 零记账+留存证据 / 未路由分支类型终态兜底零写。applied 出口构造
     后果声明(:func:`_decl`;拒出口 None)。
 
-    - ``leg_type``/``norm_item`` = 决策半腿型载荷(classify_planner_leg
+    - ``leg_type``/``norm_item`` = 决策半分支类型载荷(classify_planner_leg
       产物,经 OverlayPickExecEnv 随派发透传);
-    - ``rng`` = 条件腿采样注入点(缺省 None = 实机未播种猜测语义,与
+    - ``rng`` = 条件分支采样注入点(缺省 None = 实机未播种猜测语义,与
       骇客改件采样同约定;sim 传流键 = 世界真值);
-    - 出参 applied=True = 动作受理(拒分支走腿内域守卫,不整批拒)。
+    - 出参 applied=True = 动作受理(拒分支走该分支的域守卫,不整批拒)。
     """
     _validate_sig(sig, ('logic_action',))
     #(精确消费):选卡动作消费同 kind 登记
@@ -104,8 +104,8 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
         consume_screen_change,
     )
     consume_screen_change(gs, 'planner')
-    # 条件腿 rider(上报内、腿型分派之前):弹窗出现即触发,与选择
-    # 哪条腿无关;授予失败不阻塞腿型分派(调用点级 best-effort)。
+    # 条件分支 rider(上报内、分支类型分派之前):弹窗出现即触发,与选择
+    # 哪条分支无关;授予失败不阻塞分支类型分派(调用点级 best-effort)。
     _grant_joy_conditional(gs, sig, rng)
     if leg_type == PLANNER_LEG_EQUIP:
         return _with_decl(gs, _apply_equip_leg(gs, norm_item, sig))
@@ -123,7 +123,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
 
 def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
                            rng: random.Random | None) -> None:
-    """欢愉契约条件腿授予 rider(条件腿正式模型):planner 上报 = 头号玩家
+    """欢愉契约条件分支授予 rider(条件分支正式模型):planner 上报 = 头号玩家
     选项弹窗被处理的触发事件。``active_env`` 归一等于「欢愉契约」已登记 →
     候选集取 ``ENV_GIFTS['欢愉契约'].chars_conditional`` 名集(结构化
     已登记数据单一源)均匀采样一枚,``gain_character(1★, rand=True)`` 走
@@ -137,8 +137,8 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
     数据),无失配网覆盖;均匀二选一分布未实测,候校准。
 
     **调用点级 best-effort**:链原语零吞错纪律在本调用点的显式例外
-    (登记腿 best-effort 同族先例)——授予与选项应用是两条独立因果,
-    授予失败不拖垮腿型分派:异常 log + 缺陷留存证据后照常继续;链内部照旧
+    (登记分支 best-effort 同族先例)——授予与选项应用是两条独立因果,
+    授予失败不拖垮分支类型分派:异常 log + 缺陷留存证据后照常继续;链内部照旧
     零吞错。
     """
     if normalize_invest_name(gs.active_env.value or '') != '欢愉契约':
@@ -155,7 +155,7 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
                        evidence=f'joy_conditional:{unit}',
                        producer=_PLANNER_PRODUCER, sig=sig)
     except Exception as e:  # noqa: BLE001  调用点级 best-effort(显式例外)
-        log.warning(f'[cw-pick-planner] 条件腿授予失败(不阻塞):{unit} {e}')
+        log.warning(f'[cw-pick-planner] 条件分支授予失败(不阻塞):{unit} {e}')
         _emit_defect(field_name='bench', expected='条件腿授予成功',
                      actual=f'授予异常:{e}',
                      evidence=f'joy_conditional:{unit}',
@@ -164,7 +164,7 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
 
 def _apply_equip_leg(gs: GameState, norm_item: str,
                      sig: ChannelSig) -> LogicOutcome:
-    """装备腿(确定性通道):入栏 + 获得后果链。"""
+    """装备入账分支(确定性通道):入栏 + 获得后果链。"""
     if not norm_item:
         # 未解析:禁猜名,equips 值不变翻来源(collect_ore 步2 同款)+
         # 留存证据行——观察覆盖差异 = 预期内收束自愈。
@@ -191,12 +191,12 @@ def _apply_equip_leg(gs: GameState, norm_item: str,
 
 def _apply_upgrade_transform(gs: GameState,
                              sig: ChannelSig) -> LogicOutcome:
-    """升费腿 = 变换窗三态 + 档行:前置硬校验对上报
+    """升费分支 = 变换窗三态 + 档行:前置硬校验对上报
     时容器观察态(bench ∪ deployed 多重集)的 (银狼LV.999, 2★)
     计数(单相时序等价论证:确认点击到本调用之间容器零
     写入,观察态与原落地补写机制(已废除)时点等值):
 
-    - **现档 ≥ 5**(误走本腿:5 费升 2 星两选项皆装备,upgrade 不应出现;
+    - **现档 ≥ 5**(误走本分支:5 费升 2 星两选项皆装备,upgrade 不应出现;
       出现 = 识别或机制异常)→ 不写变换不写档,留存证据行
       (kind=``planner_upgrade_tier_ceiling``);
     - **恰一枚** → 工作副本变换(−2★ +1★,槽位无关,落点不建模观察为
@@ -209,8 +209,8 @@ def _apply_upgrade_transform(gs: GameState,
     - **零枚/未观察** → 不写 + 留存证据行(真异常,照真失配响停,fail-closed
       禁猜),档不动。
 
-    费用档不建模于单位(档 = 容器 match 级字段 lv999_cost_tier,本腿即其
-    写端);「新费档银狼刷进商店」连带腿 = 档行兼任(池桶归属随档迁移),
+    费用档不建模于单位(档 = 容器 match 级字段 lv999_cost_tier,本分支即其
+    写端);「新费档银狼刷进商店」连带分支 = 档行兼任(池桶归属随档迁移),
     不另造申报行。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -228,11 +228,11 @@ def _apply_upgrade_transform(gs: GameState,
                      sig=sig, kind='planner_upgrade_source_missing')
         return LogicOutcome(applied=False,
                             reason='upgrade_source_unobserved')
-    # 现档封顶闸:5 费档 upgrade 腿不期出现,出现即留存证据零写。
+    # 现档封顶闸:5 费档 upgrade 分支不期出现,出现即留存证据零写。
     tier = effective_cost(gs, _LV999_ID)
     if tier >= 5:
         _emit_defect(field_name='lv999_cost_tier',
-                     expected='现档 < 5(升费腿仅 3/4 档触发)',
+                     expected='现档 < 5(升费分支仅 3/4 档触发)',
                      actual=f'现档={tier}', evidence='planner_landing',
                      sig=sig, kind='planner_upgrade_tier_ceiling')
         return LogicOutcome(applied=False, reason='upgrade_tier_ceiling')

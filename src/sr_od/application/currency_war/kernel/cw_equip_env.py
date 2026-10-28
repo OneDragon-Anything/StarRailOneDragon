@@ -554,9 +554,9 @@ def evaluate_tool_actions(owned: list[str], comp) -> list[ToolAction]:
       选错整件报废,门 C)。
     - 特权赋予卡:key_equips 显式含特权件 ∧ 对应进阶成品在手(栏内拖法,
       精确控制配对)→ 放行;无特权目标 → 拒(in_demand 同族「留」语义,
-      分键用 in_demand)。本判据面只产**库存腿**(target_kind='equip'):
-      拖角色腿从未发出(用户裁定 2026-09-21 按不能拖角色处理待实机,
-      上报侧收到 char 腿 = fail-closed 留存证据)。
+      分键用 in_demand)。本判据面只产**库存分支**(target_kind='equip'):
+      拖角色入账分支从未发出(用户裁定 2026-09-21 按不能拖角色处理待实机,
+      上报侧收到 char 分支 = fail-closed 留存证据)。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIP_TOOL_CATEGORY,

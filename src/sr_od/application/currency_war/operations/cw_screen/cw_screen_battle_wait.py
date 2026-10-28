@@ -35,7 +35,7 @@ observation/apply_settlement_cover/SettlementState)语义保真。
 kernel/cw_screen_report/battle_wait
 保持占位(零 op 层观察容器写点)。结构参数:SettlementState 跨局状态机
 注入(``__init__(ctx, st, config)``,RunLoop 持有);
-``node_max_retry_times=400`` 归节点。本屏 sim 腿 = 不适用
+``node_max_retry_times=400`` 归节点。本屏 sim 分支 = 不适用
 (sim 事实来源为 coarse 结算产出非画面段),等价判据主要支撑 = 实机
 已登记行为测试经 execute()/wait() 单路径全绿。
 """
@@ -667,11 +667,11 @@ class CwScreenBattleWait(CwOperation):
                                            actor='CwScreenBattleWait',
                                            group_id='battle-wait:env-grant'))
                             _st.interest_counted_pos = (_plane, _round)
-                    # —— 持续伤害契约条件腿猜测写(T-28;挂点 = 结算覆盖窗,
+                    # —— 持续伤害契约条件分支猜测写(T-28;挂点 = 结算覆盖窗,
                     # streak 检查同窗同族):每次战斗结算「假设获得黑天鹅」
                     # 随机态垫入备战(幂等守卫防叠写,宁缺勿造同族)。证实
                     # 只认备战屏观察(v2-2 裁定:live 无定时保底),本窗
-                    # 不计数(进度腿 sim 专用,count_battle 缺省 False)。
+                    # 不计数(进度分支 sim 专用,count_battle 缺省 False)。
                     # 条件单一源 = kernel check_env_dot_grants;sig =
                     # logic_hook 族同 streak/interest 形态(三触发同窗同组,
                     # 台账归组一致);返回值忽略 = 无回调面。

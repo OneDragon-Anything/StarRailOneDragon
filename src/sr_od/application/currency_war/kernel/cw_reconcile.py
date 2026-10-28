@@ -412,7 +412,7 @@ def reconcile_tracking(session, bench: BenchView | None,
     if bench is not None:
         # 装备续接(bench 侧):主域现账 equips 池按 char_id 续接到新读
         # 视图(frozen replace 承载),续接副本随返回值交 director 同帧
-        # 观察写主域(3.2:tracked 表写回腿删除,主域即唯一账)。
+        # 观察写主域(3.2:tracked 表写回分支删除,主域即唯一账)。
         bench = _continue_equips_bench(_gs.bench.value, bench)
         try:
             # 锚定写点 = 观察态退出点:屏幕真值对账成功(守卫全过 + bench
@@ -434,7 +434,7 @@ def reconcile_tracking(session, bench: BenchView | None,
             log.warning(f'[cw!][{source}] 观察态置位失败(不阻断): {_e}')
     if deployed is not None:
         # 装备续接(deployed 侧):续接副本随返回值交 director 同帧观察写
-        # 主域(3.2:tracked 表写回腿删除)。
+        # 主域(3.2:tracked 表写回分支删除)。
         deployed = _continue_equips_deployed(_gs.deployed.value, deployed)
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠主域):bench {old_b}→{new_b} |'

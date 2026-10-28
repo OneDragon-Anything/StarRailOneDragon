@@ -21,7 +21,7 @@ AssertionError;策略异常自然传播——守卫均在派发前、零点击 �
 机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自容器
 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35)→ round_wait 循环
 (不烧节点重试预算,无防御上限)。chosen_wish = 落地复查点单次逻辑写入
-留在原位(动作事实边界,不进 report);本屏 sim 腿 = 不适用(sim 无对应画面
+留在原位(动作事实边界,不进 report);本屏 sim 分支 = 不适用(sim 无对应画面
 段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为测试
 (test_game_state chosen_record_face chosen_wish 测试)。
 """

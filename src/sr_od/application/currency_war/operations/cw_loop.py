@@ -1083,12 +1083,12 @@ class CwLoop(CwOperation):
         语义三定义(design §2.3):命中映射内屏 = 只清属屏 ≠ 它的槽;
         映射外建档屏 / 非身份分支 / 未识别 = 清全部十槽(该语境无任何 decide
         消费,清点只影响审计面);`shop` route_clearable=False 挂点跳过
-        (清点源 = CwActionCloseShopParam 腿 + prep 相位 miss 分支两处显式口独占)。
+        (清点源 = CwActionCloseShopParam 分支 + prep 相位 miss 分支两处显式口独占)。
         已 None 跳过(不占 write_seq 不落 journal)。早退轮(stop_at_prep)
         发生在识别前,本挂点不执行、顺延下次路由周期——陈旧窗口内无 decide
         消费(早退屏非映射属屏)。
 
-        sig: family/mode 同既有 CwActionCloseShopParam 腿清点行常量源(family='obs',
+        sig: family/mode 同既有 CwActionCloseShopParam 分支清点行常量源(family='obs',
         mode='read'),actor 单列 'cw_loop_route_clear' 供 journal 行过滤。
         容器未建立(loop 兜底直跑早期)
         静默跳过(best-effort;无容器 = 无可陈旧面)。
@@ -1128,7 +1128,7 @@ class CwLoop(CwOperation):
                 frame_tag='overlay_partner', wait=2)
 
         if name == '货币战争-银狼升星':
-            # 失败 round_retry(消费 retry 池,原选择装备重试腿同语义)
+            # 失败 round_retry(消费 retry 池,原选择装备重试分支同语义)
             return self._dispatch_screen_op(
                 CwScreenYinLang(self.ctx), journal_name='策划事件',
                 frame_tag='overlay_planner', wait=2,

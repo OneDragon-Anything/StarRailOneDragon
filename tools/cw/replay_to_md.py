@@ -1323,7 +1323,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
             pending.clear()
             return
         # extra 排除表保留 'applied'/'gold_delta' 键:旧 journal 历史回执
-        # 含两键(applied 布尔/执行点金差证据腿均已退役),保留排除 = 旧
+        # 含两键(applied 布尔/执行点金差证据分支均已退役),保留排除 = 旧
         # 数据不漏显;新数据无此键,保留零成本。
         extra = [(k, v) for k, v in rec.items()
                  if k not in ('op', 'applied', 'gold_delta', 'reason', 'detail',

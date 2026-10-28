@@ -17,7 +17,7 @@ report 内;读+写整体 best-effort 抑制留在观察侧,不阻塞推进)→ o
 ``cw_loop.py::CwLoop.OP_FAIL_REDISPATCH_LIMIT`` 只认 fail,完成路径必须
 success);提示在 = 点击未落地 → 重点)→ 点空白推进 →
 round_wait 循环(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,无防御
-上限)。门在观察 node 先行,裁决住决策动作 node 顶部。本屏 sim 腿 =
+上限)。门在观察 node 先行,裁决住决策动作 node 顶部。本屏 sim 分支 =
 不适用(sim 无对应画面段),等价判据主支撑 = 实机已登记行为测试 +
 sr-od-test 链观察测试(test_node_chain.py 过渡屏节)。
 """

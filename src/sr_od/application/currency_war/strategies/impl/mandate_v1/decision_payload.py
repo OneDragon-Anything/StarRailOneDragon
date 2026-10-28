@@ -7,12 +7,12 @@ strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 
 - ``direction``:方向状态现值(锁定旗/现行方向阵容名/候选快照);
 - ``k_members`` + ``k_fallback``:现行 K 名单与它的供给来源标注
-  (回退腿命中帧防把回退成员误读为锁定线成员);
+  (回退分支命中帧防把回退成员误读为锁定线成员);
 - ``window``:终局库成员的上线窗口判据结论现值(候选 A「上阵窗口
   自锁」的复核面——该判据此前无任何落点)。
 
 纯读纪律:本模块零写(不碰 cw4_counters/容器域/意向缓存);K 空窗
-回退腿重推导 = 与备战帧(:func:`entry.emit` 顶段)同函数同参再算一遍
+回退分支重推导 = 与备战帧(:func:`entry.emit` 顶段)同函数同参再算一遍
 ——:func:`cw_intention.k_empty_window_fallback` 及其派生链只读
 (无 rng/无计数写面),同帧同输入重算结论一致,不构成第二算法源
 (回退单一源仍在 cw_intention,此处禁复制任何兜底逻辑)。
@@ -79,14 +79,14 @@ def _k_members_key(gs: GameState,
                    registry: DecisionV2Registry | None) -> tuple[list[str], dict]:
     """k_members + k_fallback 键:现行 K 名单与其供给来源标注。
 
-    算法与备战帧同源(:func:`entry.emit` 顶段,K 空窗回退腿同参):
+    算法与备战帧同源(:func:`entry.emit` 顶段,K 空窗回退分支同参):
     ``predicates.line_members(direction_comp_of(gs))`` 为空(方向键
     None)且意向载体在场时,走
-    :func:`cw_intention.k_empty_window_fallback` 回退腿取成员集;
-    ``k_fallback`` 记回退腿是否产出成员(hit)与分带名(band):
-    band 非空 ⟺ 回退腿已运行(带值 = cw_intention 分带 token,
-    'p1_gap'/'p1_lock_band'/'p2plus'),band 空串 ⟺ 腿未运行(方向
-    在场或意向缺帧);hit=False 且 band 非空 = 腿运行但派生空集
+    :func:`cw_intention.k_empty_window_fallback` 回退分支取成员集;
+    ``k_fallback`` 记回退分支是否产出成员(hit)与分带名(band):
+    band 非空 ⟺ 回退分支已运行(带值 = cw_intention 分带 token,
+    'p1_gap'/'p1_lock_band'/'p2plus'),band 空串 ⟺ 分支未运行(方向
+    在场或意向缺帧);hit=False 且 band 非空 = 分支运行但派生空集
     (合法空形态)。payload 重推导不写备战帧的
     ``prep_k_fallback_<band>`` 计数(纯读纪律,计数唯一写端在
     entry.emit)。
@@ -151,7 +151,7 @@ def build_decision_payload(gs: GameState,
                            registry: DecisionV2Registry | None) -> dict:
     """mandate_v1 v1 决策载荷(三键组;调用契约见模块 docstring)。
 
-    ``registry`` = 策略器实例注册表(K 空窗回退腿 G 门同参透传,
+    ``registry`` = 策略器实例注册表(K 空窗回退分支 G 门同参透传,
     与备战帧消费同源)。全键 gs/state 现读,零写。
     """
     k_members, k_fallback = _k_members_key(gs, registry)

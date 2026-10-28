@@ -365,7 +365,7 @@ SEELE_SYSTEM: str = '希儿系'
 _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
-# ===== 希儿系形态端口(OR 腿 + carry)=====
+# ===== 希儿系形态端口(OR 分支 + carry)=====
 # 适用范围切分(与支持度端口 ``_seele_system_support`` 机械可检验,
 # 禁互相渗透成双源):形态端口读**板面羁绊计数**(gs.board,经
 # form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
@@ -417,12 +417,12 @@ def _seele_system_support(owned: set[str]) -> float:
     【注】每一项均为文档/注册表定义量,零拟合常数(F5 裁决=去重成员计数):
     - c_量 / c_贝 = ``owned``(bench∪deployed 成员名去重集)中带
       量子同频 / 贝洛伯格标签的成员数——**去重成员计数**(同名多副本
-      计 1)= 羁绊激活语义,与 form 腿(羁绊按去重成员激活)同语义,
+      计 1)= 羁绊激活语义,与 form 分支(羁绊按去重成员激活)同语义,
       对合成零扰动(2★ = 3 副本合并产物,去重前后成员数不变);
-    - ÷2 = 文档 OR 腿档位(量≥2 ∨ 贝≥2,docs/game/currency_war/
+    - ÷2 = 文档 OR 分支档位(量≥2 ∨ 贝≥2,docs/game/currency_war/
       research/transition_combos.md:27);max = 文档 OR 结构(凑到任一
-      腿即满,取最好腿非均值);
-    - 登记的待办指针(C1,前批遗留):量腿档位存在文档内部张力——本式 ÷2 取
+      分支即满,取最好分支非均值);
+    - 登记的待办指针(C1,前批遗留):量分支档位存在文档内部张力——本式 ÷2 取
       量≥2 主口径(定义表行),combo_methodology.md:133/170 写量 3;
       张力挂玩家确认(挂确认指针),确认改档落
       ``SEELE_OR_LEGS``(形态端口单一源)并同步回改本式分母,
@@ -445,8 +445,8 @@ def _seele_system_support(owned: set[str]) -> float:
     后续同族落点用**星级当量**原语(每副本按 star 计,Σ3^(star−1) 族,
     治「合成被记为倒退」的通用排序面)。两者适用范围不同——支持度回答
     「羁绊激活了几成」,星级当量回答「投入叠了多少」;任一侧禁私自换用
-    另一原语。同函数内三羁绊系腿沿用逐副本羁绊计数(与 cw_battle_calib
-    ._engines_count 同式)而希儿系两腿用去重计数,是设计决定非疏漏。
+    另一原语。同函数内三羁绊系分支沿用逐副本羁绊计数(与 cw_battle_calib
+    ._engines_count 同式)而希儿系两条分支用去重计数,是设计决定非疏漏。
     """
     if '希儿' not in owned:
         return 0.0
@@ -468,7 +468,7 @@ def _p1_system_support(gs: GameState) -> dict[str, float]:
     与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
     三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
-    单一源;逐副本计数,与希儿系腿的去重口径分立,坐标系声明见
+    单一源;逐副本计数,与希儿系分支的去重口径分立,坐标系声明见
     ``_seele_system_support``);希儿系 = 分级公式
     (``_seele_system_support`` 单一源,去重成员计数:希儿单卡 0.5
     开线候选、希儿+任 1 去重放大器满支持,推导链见其 docstring)。
@@ -549,8 +549,8 @@ def _p1_system_ordering(gs: GameState,
       (tier = TRANSITION_TRAITS tiers[0];**逐副本**计数):3×1★→1×2★
       分子不变 = 合成中性;无帽,超满档可 >1.0(满档=1.0 跨体系可比,
       消「绝对当量偏向高档体系」偏置的归一化比值)。
-    - 第④格换算式(排序维×希儿系腿):sup_units(希儿系) = 0(希儿无
-      非燃料在手副本)否则 min(1.0, max(u_量/2, u_贝/2)),u_X = 该腿
+    - 第④格换算式(排序维×希儿系分支):sup_units(希儿系) = 0(希儿无
+      非燃料在手副本)否则 min(1.0, max(u_量/2, u_贝/2)),u_X = 该分支
       **去重成员**星级当量之和(同名取最高星;min 封顶 = 继承现行分级
       公式值域,推导链五项)。排除谓词对 u 同样生效
       (命题 2 封闭性 (i)「排序维逐系计数对燃料类增量封闭」是全称——
@@ -610,8 +610,8 @@ def _progressive_second_seat(gs: GameState,
     选择判据 = argmin ``e_rounds(pair_target_comp(inc∪{c}), gs)``
     (kernel 单一估计器,与 ``_p1_pair_gate``/``_p1_pair_overwindow`` 同源;
     零新常数零新参数族)。该估计器天然承载三判据:in-store(货架可见件
-    计入 line_distance 的 shelf 腿)、概率峰(当前等级费档出现概率
-    p_bar_faction)、手上资产(tier_progress held 腿)——[3] 概率级判据
+    计入 line_distance 的 shelf 分支)、概率峰(当前等级费档出现概率
+    p_bar_faction)、手上资产(tier_progress held 分支)——[3] 概率级判据
     与「变体按来牌选」的实现形态。平手按 ``_P1_PAIR_PREF`` 声明序
     (纯确定性);E=inf(静态不可达)排末位,由可行性门统一拒绝。
     物化失败(None)的候选跳过;全失败返回 None(保持单体系对)。
@@ -977,12 +977,12 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
       单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
       组合)→ form_tiers 只放**他体系档**(逐体系取桥池任一条的档);
-      放大器两腿挂 ``or_legs``(``SEELE_OR_LEGS``:量≥2 ∨ 贝≥2 任一即
+      放大器两条分支挂 ``or_legs``(``SEELE_OR_LEGS``:量≥2 ∨ 贝≥2 任一即
       成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
       取代 ②的「桥池档+量子配方档」AND 全档口径
       (借 cw_recipe 完全体档把「凑到任一=成型」塌成「量3∧贝2 全档」,
       且缺 carry 合取支;取代先例 = 对未证 post-state 条款的取代)。
-      跨体系 AND 保留:他体系档仍是 AND 腿,OR 只覆盖放大器组(防半对
+      跨体系 AND 保留:他体系档仍是 AND 分支,OR 只覆盖放大器组(防半对
       冒充)。⚠️ 既有双源分歧申报:列车同行档桥池=2(train_dot)、
       cw_recipe _RECIPES=4(框架单独成型档,语义不同层)——本函数取
       桥池;cw_recipe 量子配方档自此无 pair 物化消费(注册表保留,

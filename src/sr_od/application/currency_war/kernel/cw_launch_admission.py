@@ -92,7 +92,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
 def protect_names_of(comp: Comp) -> frozenset[str]:
     """换阵卖出义务分支的保护域(新线禁卖集)= core∪shared∪替班者全集。
 
-    替班者腿依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
+    替班者分支依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
     转副C沉淀』」(cw_comps)——卖替班者本就违替班语义。仅 core∪shared
     时存在保护域缺口:替班者凭 substitute_plan 直入买面义务集
     (``locked_buy_membership`` → ``_line_hoard``),不经任何羁绊检查,
@@ -113,9 +113,9 @@ def readiness_form_ok(gs: GameState | None, comp: Comp | None) -> bool:
     """配方完备判据(form_progress≥1.0;单一源)。
 
     = 阵容/state 输入齐备 ∧ ``cw_comps.form_progress(阵容, state) >= 1.0``
-    ——配方腿语义与 v3_form_ok 镜像写端同式同源(禁各写端内联第二实现);
+    ——配方分支语义与 v3_form_ok 镜像写端同式同源(禁各写端内联第二实现);
     消费面 = 镜像族写端(strategies.impl.flow.write_shop_mirrors)与
-    :func:`readiness_launch_decision` 出战就绪的配方腿(起 出战就绪
+    :func:`readiness_launch_decision` 出战就绪的配方分支(起 出战就绪
     在本判据之上叠加质量合取,本函数自身语义零改)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -143,7 +143,7 @@ def readiness_form_ok_from_snapshot(state_snapshot: dict | None, *,
       两者皆空 = 判据不可判。
     - 判据核 = ``form_progress``(board/front_row 只读 ``.value``
       属性,轻量鸭型桩契约见其 docstring);deployed 名单供
-      required_deployed 腿,快照缺该键 = 按不在板计(保守向,同
+      required_deployed 分支,快照缺该键 = 按不在板计(保守向,同
       form_progress 缺读语义)。
     - 返回 None = 判据不可判(快照缺 ``board_factions``/无阵容
       线索),消费面自行回退镜像读数,不虚构 False。
@@ -274,14 +274,14 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
 
     返回 dict:``armed``(发出判据成立 = 配方完备 ``readiness_form_ok``
     ∧〔板面支撑满额 ∨ 部署计划不可得 fail-open〕,质量维定义与防死锁
-    语义见 :func:`launch_board_quality_report`/——配方腿阈值
-    唯一面 = form_progress 语义,质量腿零自由参数)、``auth_basis``
+    语义见 :func:`launch_board_quality_report`/——配方分支阈值
+    唯一面 = form_progress 语义,质量分支零自由参数)、``auth_basis``
     (触发分支名,与生产 LaunchBattle/CwActionLevelUpParam.auth_basis 观测同键名族)、
     ``admission``(出战就绪时的 G1 准入三元 = ``launch_admission_report``;
     best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
     出战就绪)、``quality``(配方完备帧的质量维报告;
     None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
-    出战就绪维持配方腿结果,防死锁优先)、
+    出战就绪维持配方分支结果,防死锁优先)、
     ``quality_eval_error``(评估异常暴露旗:True = quality=None 系
     异常 fail-open 而非配方不完备,消费面经
     ``LAUNCH_QUALITY_EVAL_ERROR_KEY`` 分键落盘,残量禁静默)。

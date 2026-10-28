@@ -259,7 +259,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
                '载体=settle_copy_machine_participation(现值观察面=前台+后台在册'
                '单位));任意获得30%概率臂随机→观察收口',
     '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥,'
-                 '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 腿 = '
+                 '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 分支 = '
                  '获得后果(1星[口述·权威 2026-09-18],后果 = 装备数据行后果应用 '
                  'apply_equip_acquire_consequence 统一辖,不经本表登记行双登记)',
     '数据拷贝仪Pro': '单位面:计数臂同数据拷贝仪(参与3战→逻辑写,写端=入席桥)',
@@ -284,9 +284,9 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
             '回调,产物后果候实机采证留证行 furnace_mutate_consequence_candidate)',
     '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变'
               '特权(确定性变换→逻辑写;映射=·特权后缀 36/36 全覆盖;写端=桥 '
-              'transform_equip_to_privilege 库存腿,本批接线 = 工具上报合并单笔'
+              'transform_equip_to_privilege 库存分支,本批接线 = 工具上报合并单笔'
               '消费(移除工具 ∧ 变换同笔,映射桥 privilege_counterpart;桥零写'
-              '分支透传留证);拖角色腿按不能拖角色处理 fail-closed 留证[用户裁定 '
+              '分支透传留证);拖角色入账分支按不能拖角色处理 fail-closed 留证[用户裁定 '
               '2026-09-21 候实机测试],穿域特权化桥 transform_worn_equip_to_'
               'privilege 留守)',
     '拆装扳手': '装备归属面:角色装备全量回区(确定性→逻辑写;使用面写端=动作上报 '

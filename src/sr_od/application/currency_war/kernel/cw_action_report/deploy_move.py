@@ -5,7 +5,7 @@
 写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
 语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
-**上阵变换窗**(升费腿语义):落位腿对 =
+**上阵变换窗**(升费分支语义):落位分支对 =
 (银狼LV.999, 3★) 且现档 < 5 时,落场写**下一费用档的 1★**(角色固有升星升费:
 备战栏不升费、拖上场才触发;单位身份保持银狼LV.999)+ **档行**
 (``lv999_cost_tier`` 现档+1,牌库改变的容器表达);现档 = 5(费用封顶)恒等
@@ -65,7 +65,7 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     目标槽空 = 放置;有人 = 交换——被占位单位回源 bench 槽(与
     ``report_action_swap_deploy_param`` 换位契约同语义:单位对象整体回填,
     装备随对象);禁占位拒绝、禁静默换槽。
-    落位腿对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
+    落位分支对 (银狼LV.999,3★) = 上阵变换窗:落场写下一费用档 1★
     (非 3★ 原样)+ 级联常规覆盖;其余单位恒等搬运零行为差。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -158,7 +158,7 @@ def report_action_deploy_move_param(gs: GameState, param: Any, sig: ChannelSig) 
     _w(gs.deployed, _new_view, 'proj_deploy_move')
     if _transform:
         # 档行(银狼升星记账批 §2.5):现档+1,牌库改变的容器表达——落行
-        # 时序 = 行域写后、级联前(与 planner 升费腿同约定,design §2.2)。
+        # 时序 = 行域写后、级联前(与 planner 升费分支同约定,design §2.2)。
         _w(gs.lv999_cost_tier, _tier_before + 1, 'deploy_upgrade_tier')
         # 升费连锁(场上同名同星不变量)经常规级联覆盖(正常推演,
         # 费用档不同时存在定案)。

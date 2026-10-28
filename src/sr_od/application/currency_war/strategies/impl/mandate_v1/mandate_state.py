@@ -358,12 +358,12 @@ class StrategyState:
     # 基线不计增长;review-37 R2:P2 首帧快照会把先于首决策帧完成的
     # 开局三选一吞进基线)。写入端单一源 =
     # session_scope._update_p2_pick_done。非节点作用域键(时点兜底
-    # 触发腿的单调事实基线,节点边界不清)。
+    # 触发分支的单调事实基线,节点边界不清)。
     p2_pick_baseline: frozenset[str] | None = None
     # [索引定义] p2_strategy_pick_done = P2 起首次投资策略获得(「第 10
     # 结点起首次投资策略三选一完成帧」的判读层侦测:active_strategies
     # 相对 baseline 增长)单调旗标;置位后恒真(节点边界不清);消费端
-    # = 时点兜底触发腿之二(line_select.evaluate_lock 经 session_scope
+    # = 时点兜底触发分支之二(line_select.evaluate_lock 经 session_scope
     # 传入)。
     p2_strategy_pick_done: bool = False
 
@@ -393,7 +393,7 @@ class StrategyState:
     # 真金最优估计;None = 失效待再锚定(节点边界重置/事件级失效触发置
     # None;会话入口实读再锚定覆写)。取值时机 = 会话入口锚定帧 + 记账
     # 钩子增量维护。备战域金位唯一供给(第 4 步攒批/第 8 步节末凑息/第 5 步
-    # 解拦复核金位腿消费)。
+    # 解拦复核金位分支消费)。
     gold_ledger: int | None = None
     # 金位账面的 visit 锚定判重键:上次锚定时的商店访问段序号(对比
     # cw4_segment_serial——生产 op 观察 node 与 sim 驱动器两路均在访问

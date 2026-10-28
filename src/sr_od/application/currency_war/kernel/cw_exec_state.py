@@ -106,7 +106,7 @@ def apply_confirm_effect(session, payload: dict, *,
     语义(逐行自原 dict 分支平移,零行为):
     - ``ConfirmBox``/``ConfirmTome`` 且 item 在场:
       owned +1(终态契约 §B:单一源 = gs.equips,现读-改写-回写;补给
-      入栏/后果腿不读本口——写语义单点 =
+      入栏/后果分支不读本口——写语义单点 =
       ``cw_action_report.pick_supply.report_action_pick_supply_param``);
     - ``ConfirmExpertCash``:现金为王弃卡取现金固定回金 +4 金账直推;
     - ``CwActionBuyCardParam``(dict 形,模拟/离线入口):合成引擎算
@@ -196,7 +196,7 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
 
     容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
     置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已停用(Unit.slot
-    不再承载):权威槽位 = 表下标,落位归一腿为恒等
+    不再承载):权威槽位 = 表下标,落位归一分支为恒等
     (保留函数形状供调用方零改动;非 unit kind 原样落槽)。
     """
     for i, b in enumerate(bench):

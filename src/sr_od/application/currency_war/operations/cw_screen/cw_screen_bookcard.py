@@ -23,7 +23,7 @@ op-layer.md §1.1 观察标准化门)+
 (坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
 :35)→ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与
 ConfirmTome 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
-ConfirmTome 逻辑推进 = owned 本体直推);本屏 sim 腿 = 不适用(sim 无对应
+ConfirmTome 逻辑推进 = owned 本体直推);本屏 sim 分支 = 不适用(sim 无对应
 画面段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为测试
 (test_game_state chosen_record_face chosen_tome 测试 +
 test_screen_two_node_family 形态测试;典籍通道真 op 测试补档 =

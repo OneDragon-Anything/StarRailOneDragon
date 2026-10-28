@@ -7,7 +7,7 @@
 (结构化包,构造时传入);机械参数适用范围(申报单一源 = flow/action_ops.md
 §4.5 段首)= 选卡定位 + 域载荷经 env 传入;确认钮不属机械参数,由本 op
 执行体瞄准查找(action_ops.md §1  已登记例外)。op 类体内零决策零读
-决策输入(决策 = 选中哪个与腿型载荷,瞄准定位查找非决策)。
+决策输入(决策 = 选中哪个与分支类型载荷,瞄准定位查找非决策)。
 
 **自上报统一**:pick 族每类 run 体在机械链(选中点击 → 确认点击)发出
 后直调自己的上报函数 ``report_action_pick_<snake>_param``
@@ -49,9 +49,9 @@ class OverlayPickExecEnv:
     round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
     消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
     需要逐结果路由时的旁路面。
-    ``leg_type``/``norm_item`` = 银狼策划腿型载荷(决策半经
+    ``leg_type``/``norm_item`` = 银狼策划分支类型载荷(决策半经
     ``classify_planner_leg`` 现算,随派发透传给上报函数
-    ——确认点击后立即上报完整效果腿;leg_type ∈ upgrade|equip|unknown,
+    ——确认点击后立即上报完整效果分支;leg_type ∈ upgrade|equip|unknown,
     norm_item = 归一件名或空)。
     """
 
@@ -70,6 +70,6 @@ class OverlayPickExecEnv:
     #             点击坐标取源见类 docstring need_select 句)
     picked: dict | None = None
     unselected: bool = False
-    leg_type: str = ''        # 策划腿型载荷(decision 半 classify_planner_leg 产物)
-    norm_item: str = ''       # 策划装备腿归一件名('' = 未解析/非装备腿)
+    leg_type: str = ''        # 策划分支类型载荷(decision 半 classify_planner_leg 产物)
+    norm_item: str = ''       # 策划装备入账分支归一件名('' = 未解析/非装备入账分支)
     round_result: OperationRoundResult | None = None

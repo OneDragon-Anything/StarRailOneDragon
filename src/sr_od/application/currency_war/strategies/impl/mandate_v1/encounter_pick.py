@@ -5,7 +5,7 @@
 + 刷新阀,判据语义单一源 = 迭代设计
 docs/develop/sr_od/application/currency_war/changes/
 2026-09-24-encounter-screen-strategy-migration/design.md §2.2-§2.5。
-可及性比值腿(g^(D_win−D_enc) ≥ f_min)已停用(P64:敌方难度读数→敌难度静态映射
+可及性比值分支(g^(D_win−D_enc) ≥ f_min)已停用(P64:敌方难度读数→敌难度静态映射
 不可标定)——能力态直接判,t ≤ 4 档零标定可及;其五/六(Δ 无源档)走
 经验档层交集。
 
@@ -254,7 +254,7 @@ def decide(options: list[EncounterOption], gs: GameState,
         if t > cap:
             continue
         if t <= 4:
-            # t ≤ 4:能力态直接判(比值腿停用,零标定可及)
+            # t ≤ 4:能力态直接判(比值分支停用,零标定可及)
             reachable.append(opt)
         elif log.tier_cleared(t):
             # 其五/六(Δ 无源档):经验正证据 = 本局该档存在 killed=True

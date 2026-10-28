@@ -12,7 +12,7 @@
 round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御
 上限)。``chosen_megastar`` = 选择点单次逻辑写入留在决策面(动作事实边界,
 不进 report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
-None-safe 通道,执行层不冷建)。本屏 sim 腿 = 不适用(sim 无对应画面段,
+None-safe 通道,执行层不冷建)。本屏 sim 分支 = 不适用(sim 无对应画面段,
 事件浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试。
 
 出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/

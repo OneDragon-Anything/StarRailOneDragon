@@ -29,9 +29,9 @@ math_proofs P81)→ 返回刷新建议非空 ∧ 逐槽余量闸(obs 携带
 
 形态(投资两屏迁移批):观察一次读全 + 即时上报 + 结束本次访问;选择事实
 (active_strategies)经动作落地链写(动作 op 立即自上报 → gain_invest_
-strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记腿/on_strategy_
+strategy 整链:无效载荷拒绝/持卡面按名字去重/效果账本登记分支/on_strategy_
 gained 效果分派,正本 = game_state/gain-chain.md),画面 op 零选择写点。
-本屏 sim 腿 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
+本屏 sim 分支 = 可见(sim 后端呈现本屏,读屏点经 ``sim_or_live_observation``
 改道生成器产物),判据/策略层改动属 sim 可 A/B 面(A/B 批跑通道现缺,
 候补登记的待办),行为支撑 = 实机已登记行为测试。
 """
@@ -251,7 +251,7 @@ class CwScreenInvestStrategy(CwOperation):
             self, act: CwActionRefreshInvestCardsParam) -> 'WorldDecl | None':
         """刷新动作自上报(2026-10-19 用户裁定批):构造投资刷新世界声明
         并喂入 sim——实机端口未装 = no-op(实机真值归重入观察覆盖,零行为
-        变化),装配后驱动刷新世界腿(槽位重掷 + 计数扣减)。容器零写;
+        变化),装配后驱动刷新世界分支(槽位重掷 + 计数扣减)。容器零写;
         局外(gs 缺席)静默跳过。返回声明(journal 记账面)。"""
         gs = game_state_from_ctx(self.ctx)
         if gs is None:
@@ -333,7 +333,7 @@ class CwScreenInvestStrategy(CwOperation):
                 # 刷新动作自上报(2026-10-19 用户裁定「sim 与实机一致提供
                 # 刷新次数」批):容器零写(真值归重入观察覆盖),取世界
                 # 声明喂入 sim——实机端口未装 = no-op,装配后驱动刷新世界
-                # 腿(槽位重掷 + 计数扣减);声明随 round data 携带
+                # 分支(槽位重掷 + 计数扣减);声明随 round data 携带
                 #(journal 记账面)。
                 _decl = self._report_refresh_action(act)
                 log.info(f'[cw-strat] 槽{_i}刷新终结交回:重进后重观察重决策')

@@ -2396,7 +2396,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _hp_opt = (read_hp_opt(ctx, screen)
                if (_spec is None or 'hp' in _spec) else None)
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    # 终态契约 §A:reconcile_hp 守卫腿与 session.last_hp_real 帧龄门停用——
+    # 终态契约 §A:reconcile_hp 守卫分支与 session.last_hp_real 帧龄门停用——
     # 真值帧采新;读不到 = 开局先验或 None,沿用交 carried 语义;
     # hp_trusted = 真读位(可信位判定单一源 = hp_decision_trusted_of)。
     hp_val, hp_readable = reconcile_hp(
@@ -2871,7 +2871,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # 备战 heavy 环入口)按干净备战帧记。写入无条件(journal 常开,
             # 影子闸折叠;行落盘另以 sink/run_id 在场为准)。
             # 适用范围:漏斗已退出推进域(node_ord/hist 写入与效果推进尾段
-            # 随四推断腿停用)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
+            # 随四推断分支停用)——本调用只写上下文对/顶栏原文;gs.node 观察镜像
             # 写端保留在本漏斗(上方 node 段,决策层坐标供给端)。
             _ctx_name = _phase_screen_context(phase, plane, round_num)
             if _ctx_name is not None:
@@ -2912,7 +2912,7 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     - 未注册阶段名(read_game_state fail-open 态)→ None = 不写(画面身份
       未知禁猜,与「禁拿兜底默认值当观察」同义)。
 
-    适用范围:四推断腿停用后本口只供上下文对画像;plane/round None 时不写
+    适用范围:四推断分支停用后本口只供上下文对画像;plane/round None 时不写
     (沿用旧门——画面身份伴随读数缺位,身份不猜)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (

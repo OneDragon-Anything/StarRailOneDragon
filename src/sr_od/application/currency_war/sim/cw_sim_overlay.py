@@ -7,7 +7,7 @@
   cw_overlay_register 三口 + 九 kind 封闭词表);
 - **呈现**:sim 后端问询时点懒呈现 + advance 纯转移尾 + 节点窗起点
   (sim/cw_sim_backend._present_pending_overlay);
-- **无 sim 呈现面族**(画面 op 无 sim 观察腿)消费 + 披露,
+- **无 sim 呈现面族**(画面 op 无 sim 观察分支)消费 + 披露,
   披露键 = 本模块 ``OVERLAY_PARAM_PENDING`` 逐 kind 后缀。
 
 (旧统一队列与占位框架已整体停用;呈现/判据/词表单一源见上。)

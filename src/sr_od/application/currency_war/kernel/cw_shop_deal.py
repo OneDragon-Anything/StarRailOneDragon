@@ -1,8 +1,8 @@
 """货币战争 商店发牌采样器(kernel 侧纯采样,零容器写)。
 
 本模块 = 发牌算法单一源,sim ``deal_shop``(sim/cw_sim_backend)与实机
-刷新上报随机态腿(kernel/cw_action_report/refresh_shop)共用同一发牌
-代码(2026-09-21 商店刷新 design §2-9/详设 §2.9「上报回调腿·刷新随机
+刷新上报随机态分支(kernel/cw_action_report/refresh_shop)共用同一发牌
+代码(2026-09-21 商店刷新 design §2-9/详设 §2.9「上报回调分支·刷新随机
 态」):实机上采样是猜测(上报函数经 ``write_logic_rand`` 写随机态,观察
 覆盖差异 = 预期内),sim 里采样即世界真值(sim ``deal_shop`` 经
 ``gs.observe`` 真值直写)。「两执行面同源」= 期望态两执行面同源原则
@@ -10,7 +10,7 @@
 
 纯度边界:**只采样返回 payload,零容器写**——写通道各执行面自理(实机 =
 刷新上报函数 ``report_action_refresh_shop_param`` 的 ``write_logic_rand``
-腿 / sim = ``deal_shop`` 内 ``gs.observe``);``gs`` 仅作只读输入(剩余
+分支 / sim = ``deal_shop`` 内 ``gs.observe``);``gs`` 仅作只读输入(剩余
 牌库派生 + active_env 直出概率查表),禁在本模块写容器——把容器写搬进
 本函数会用随机态替换 sim 真值路径,干旱/供给族消费门口径在 sim 全局跳拍
 (attack R6f 定案)。
@@ -59,12 +59,12 @@ def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
     槽,买后留空同款语义)。专家顾问入池由 ``drawable_names`` 从容器
     ``gs.unlocked_experts`` 派生(获得链解锁写入),本层零透传。
 
-    2★ 直出腿:``ENV_SHOP_TWO_STAR_DEAL_PROB`` 命中当前 ``active_env``
+    2★ 直出分支:``ENV_SHOP_TWO_STAR_DEAL_PROB`` 命中当前 ``active_env``
     时,每个非空槽在抽名后独立掷 ``rng.random() < p``,命中则该卡升 2★
     (cost = 基准费×3,徽章读数口径 = merge_mechanics §2.6;买价 ×3 实付/
     卖回 ×3/池账 +3 副本经既有通用链自动正确;翻星在名集过滤后,不改名集
     语义)。掷点仅在 p>0 时进行(短路)——表外环境的随机数消耗序列与无
-    本腿实现逐位一致。
+    本分支实现逐位一致。
     """
     dist = probs if probs is not None else REFRESH_PROB.get(level, {})
     costs = [c for c, p in dist.items() if p > 0]

@@ -19,8 +19,8 @@ payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.
 **文末附加段**:账本→字段桥与结算收束诸段——板面重写(:func:`apply_board_rewrite`)、
 装备改写写端(写端桥/贡献算术,装备申报面 = cw_affix_effects
 EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
-(贡献算术的组合写收尾 + 精密扳手获得回执窗)、穿域特权化腿(特权赋予卡
-拖角色腿,归工具执行批)、拷贝仪参与计数载体(装备效果进度侧栏)——把
+(贡献算术的组合写收尾 + 精密扳手获得回执窗)、穿域特权化分支(特权赋予卡
+拖角色入账分支,归工具执行批)、拷贝仪参与计数载体(装备效果进度侧栏)——把
 效果声明翻译成 GameState 字段写入归属,宿主放本侧的原因与惰性 import
 纪律见各段头注。
 """
@@ -247,16 +247,16 @@ class ActiveEffectInventory:
         # gs.free_refresh_left,本账本留在两计数):
         self.refresh_total: int = 0           # 全量累计(免费+付费)
         self.refresh_paid: int = 0            # 付费累计(长线利好阈值型)
-        # 利息累计账(T-27 公司契约条件腿「累计获得40利息后获得托帕&账账」):
+        # 利息累计账(T-27 公司契约条件分支「累计获得40利息后获得托帕&账账」):
         # 累计入账利息金 = 统一公式 interest 分量全分支累计(**含息 flat
         # 修饰**,economy.md §10.1 收入口径)。写端 = sim 收入应用两处
-        # (cw_sim_backend.apply_round_start_income/扑满结算腿)经
+        # (cw_sim_backend.apply_round_start_income/扑满结算分支)经
         # record 单口 + live 三来源计数刻(来源 A 结算面板息行/来源 B
         # 败局推算/来源 C 补给推算);消费方 = check_env_interest_grants。
         # 不入快照(与 refresh_total 同现状,快照序列化只含 entries +
         # equip_progress)⟹ 接管局计数归零 = 晚发/不发。
         self.interest_earned: int = 0
-        # 晶矿开启累计(战技点契约条件腿「打开20个晶矿后」;随 refresh
+        # 晶矿开启累计(战技点契约条件分支「打开20个晶矿后」;随 refresh
         # 双计数/interest_earned 同族直挂计数器,同宿效果账本):写端 =
         # 采晶矿上报函数 report_action_collect_ore_param 单口(批内开成
         # 点数一次入账,席满/缺级跳点不入账 = 「点开才计数」);消费方 =
@@ -437,7 +437,7 @@ class ActiveEffectInventory:
     def on_buy(self, card, star: int, k: int = 1) -> None:
         """购买回调(形态镜像 on_level_up;挂点 = 买牌上报函数
         report_action_buy_card_param 获取计算完时点——落位 + 合成连锁 +
-        升星腿全毕后触发,回调可见购买后的席面/升星事实;live 与 sim 同经
+        升星分支全毕后触发,回调可见购买后的席面/升星事实;live 与 sim 同经
         上报函数单口,两面同源)。
 
         - 计数 = bump ``CounterKey.BUY``(返利族「每购 3 张 5 费」门槛面),
@@ -509,7 +509,7 @@ class ActiveEffectInventory:
         report_action_refresh_shop_param,生产 = 刷新 op 自上报,sim 与
         生产同一段 op 代码同口自上报,落地门零重复触发)。
 
-        行为口径(2026-09-21 Field 化收窄:免费余额腿迁容器字段
+        行为口径(2026-09-21 Field 化收窄:免费余额分支迁容器字段
         ``gs.free_refresh_left``,扣减由上报函数 write_logic 承载;本方法
         只留两计数累计,``free`` 形参保留 = 调用方判定语义不变):
         - refresh_total 恒 +1(付费+免费全量);
@@ -811,7 +811,7 @@ def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
 # cw_game_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
 # 「效果写端(选卡时点、非 op)」),生产接线(投资两屏迁移起)= 获得链
-# kernel/cw_gain_chain.py::gain_invest_strategy 登记腿(register_strategy/
+# kernel/cw_gain_chain.py::gain_invest_strategy 登记分支(register_strategy/
 # apply_effect_burst_grant 同点);原 CwScreenInvestStrategy 画面 op 写点
 # 已停用。)
 
@@ -868,8 +868,8 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     直写桥适用范围,两桥互不越界)。
 
     **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 世界事实由后端
-    世界腿真值直写(evidence `sim:` 族,`cw_sim_base.SIM_EVIDENCE_PREFIX`),
-    现役 sim 对这两卡零板面建模(选卡仅记名+经济腿),本桥在 sim 侧
+    世界分支真值直写(evidence `sim:` 族,`cw_sim_base.SIM_EVIDENCE_PREFIX`),
+    现役 sim 对这两卡零板面建模(选卡仅记名+经济分支),本桥在 sim 侧
     零触达,属 sim 模型既有边界(未建模申报面 = sim-design §8.2)。
     sim 若建模这两卡的板面
     后果,改动面 = sim 真值域(卖全场+退款+发牌),经同写入口自动
@@ -937,7 +937,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     # 锚定后走 write_logic,失配网生效(择道单一源 = anchor_aware_write)。
     # deployed 清空 = 规范形空视图:front_slots 定长 4 / back_slots 按
     # 现视图容量(缺省 6)——空列表违反定长不变量,且会让前排直址写
-    #(deploy_move 前排腿)IndexError(评审 需修-1)。
+    #(deploy_move 前排分支)IndexError(评审 需修-1)。
     write = anchor_aware_write(gs, rand=False)
     if front is not None:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1142,13 +1142,13 @@ def apply_equip_acquire_hp(gs: GameState, *, frame: str = '') -> int:
 def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
                            cost: int, *, cost_gate: int = 0,
                            frame: str = '') -> bool:
-    """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
+    """桥·装备族单位入席分支(共享):把复制/发放单位落进备战席第一个空槽,
     write_logic 直写(确定性→逻辑写,归属判据确定性分支)。服务面 =
     数据拷贝仪族计数分支(成熟回执,无门)——员工/完美投影仪消费已停用
     (tool-gain-report 迭代:投影仪复制改走获得链
     ``cw_gain_chain.gain_character`` 统一时序,登记面映射 =
     cw_affix_effects.EQUIP_WRITE_SIDES report: 形;本桥留在只覆盖计数分支)。
-    (分身墨镜系获得发放腿已改覆盖
+    (分身墨镜系获得发放分支已改覆盖
     apply_equip_acquire_consequence——获得后果全渠道统一,本桥不再服务
     该两行;数据拷贝仪Max 行保持本桥覆盖计数分支,其获得后果由后果函数按
     数据行统一覆盖,不经登记表双登记。)
@@ -1216,12 +1216,12 @@ def privilege_counterpart(name: str) -> str:
 
 def transform_equip_to_privilege(gs: GameState, source_name: str, *,
                                  frame: str = '') -> str | None:
-    """桥·进阶装备特权化(特权赋予卡,拖装备回执 = 库存腿):装备库存中
+    """桥·进阶装备特权化(特权赋予卡,拖装备回执 = 库存分支):装备库存中
     名为 ``source_name`` 的件替换为对应·特权名,write_logic 直写(确定性
     变换→逻辑写)。库存未观察/无此件 → None 零写入。
 
-    拖角色腿(已穿进阶随机一件变特权)= 穿域改写,归工具执行批——现役
-    执行侧对工具零操作(equipment_mechanics.md §经济账框架),双腿接线前
+    拖角色入账分支(已穿进阶随机一件变特权)= 穿域改写,归工具执行批——现役
+    执行侧对工具零操作(equipment_mechanics.md §经济账框架),两条分支接线前
     观察覆盖兜底。"""
     inv = gs.equips.value
     if inv is None or source_name not in inv:
@@ -1346,21 +1346,21 @@ def settle_wrench_duplicate_gold(gs: GameState, *, frame: str = '') -> int:
     return amount
 
 
-# ============================================================ 工具执行批·穿域特权化腿
-# (特权赋予卡拖角色腿的实现位:官方文「拖动到一个角色上使用,从角色已
+# ============================================================ 工具执行批·穿域特权化分支
+# (特权赋予卡拖角色入账分支的实现位:官方文「拖动到一个角色上使用,从角色已
 # 穿戴的进阶装备中选择一件变为特权装备」——选定后变换确定性(36 进阶 ↔
 # 36 特权后缀映射,:func:`privilege_counterpart`)→ 逻辑写;「选择」面 =
-# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。**本腿现役留在
+# bot 决策/回执事实,归调用侧,本载体只管选定后的写端。**本分支现役留在
 # 不接**(tool-gain-report 迭代:用户裁定 2026-09-21 特权卡按不能拖角色
-# 处理待实机测试,判据面只产库存腿、上报侧 char 腿 fail-closed 留存证据;
-# 实机证可拖即升格接线,本桥为既定写端)。库存腿的 live 写端 =
+# 处理待实机测试,判据面只产库存分支、上报侧 char 分支 fail-closed 留存证据;
+# 实机证可拖即升格接线,本桥为既定写端)。库存分支的 live 写端 =
 # 工具上报合并单笔消费(cw_action_report/tool_use,映射桥同源)。)
 
 
 def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
                                       worn_name: str, *,
                                       frame: str = '') -> str | None:
-    """桥·穿域特权化(特权赋予卡拖角色腿):已穿进阶装备单件原位变换为
+    """桥·穿域特权化(特权赋予卡拖角色入账分支):已穿进阶装备单件原位变换为
     对应·特权名,write_logic 直写所在容器(前台/后台列表或备战席视图)。
 
     - ``target`` = 拖动目标单位(调用侧从**当前**观察态取得;按 frozen
@@ -1436,7 +1436,7 @@ def transform_worn_equip_to_privilege(gs: GameState, target: Unit,
 # 当前观察态现读(战斗结算时点的前台+后台已登记单位 = 参战者;备战席未
 # 上场不参战),不建独立参战事实字段。生产挂点 = 战斗结算覆盖带(接线
 # 归覆盖批;接线前零调用零行为差)。随机分支(「任意方式获得装备者时 30%
-# 概率获得复制」)与伤害增幅腿 = 零建模/观察收口,不在本载体——申报面 =
+# 概率获得复制」)与伤害增幅分支 = 零建模/观察收口,不在本载体——申报面 =
 # cw_affix_effects EQUIP_REWRITE_DECLARATIONS 对应行。)
 
 #: 拷贝仪族成熟阈值(官方文「每参与 N 场战斗」;数值单一源在本表,
@@ -1502,14 +1502,14 @@ def settle_copy_machine_participation(gs: GameState, *,
 
 
 # ============================================================ 装备获得后果应用(全渠道统一)
-# (送角色腿建模为装备数据行的获得后果——
+# (送角色入账分支建模为装备数据行的获得后果——
 # 获得分身墨镜/分身墨镜Max/数据拷贝仪Max 时,赠送的银狼族单位直接进备战
 # 席,效果与商店购买完全一致(可触发合成/升星)。后果应用函数 = 全渠道
 # 装备入栏的统一后置钩子:确定性通道(获得时件名已知)随 write_logic 入栏
 # 同链应用;随机通道(骇客改件采样链)在链内应用、随链 write_logic_rand。
 # 登记面 = cw_affix_effects.EQUIP_WRITE_SIDES(分身墨镜系两行
 # bridge:apply_equip_acquire_consequence;数据拷贝仪Max 行保持
-# spawn_equip_bench_unit 覆盖计数分支腿,其获得后果由本函数按数据行统一覆盖,
+# spawn_equip_bench_unit 覆盖计数的分支,其获得后果由本函数按数据行统一覆盖,
 # 不经登记表双登记)。星级按卡文定案[口述·权威 2026-09-18]:
 # 分身墨镜→1星银狼 / 分身墨镜Max→2星银狼 / 数据拷贝仪Max→1星银狼LV.999。)
 
@@ -1628,7 +1628,7 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
     :func:`merge_cascade_write` 级联(全员正常推演)→ 逐步各落一行 →
     合并升星触发发放收尾(级联采集到的升星事实交给
     ``cw_env_grants.check_env_merge_grants`` 检查发放,best-effort:触发
-    腿异常 log 不阻塞入席主链,沿 buy_card on_buy 回调腿同纪律)。
+    分支异常 log 不阻塞入席主链,沿 buy_card on_buy 回调分支同纪律)。
     P1 容器原生:工作副本 = BenchView 槽序 + 行域下标派生表(§2.1);
     占位件槽位 kind 随工作表原样保留(零换形降级)。
     ``rand`` = 写通道(False = write_logic 确定面 / True =
@@ -1665,22 +1665,22 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
                                 sig=_sig, orig_view=orig_view,
                                 merge_facts_out=merge_facts)
     if merge_facts:
-        # 合并升星触发发放(级联写毕后发火,gs 一致;触发腿 best-effort
+        # 合并升星触发发放(级联写毕后发火,gs 一致;触发分支 best-effort
         # 不阻塞入席主链)。kernel 反向模块级零 import 契约:函数内惰性取。
         try:
             from sr_od.application.currency_war.kernel.cw_env_grants import (
                 check_env_merge_grants,
             )
             check_env_merge_grants(gs, tuple(merge_facts), sig=_sig)
-        except Exception as e:  # noqa: BLE001  触发腿失败不阻塞(留 log)
-            log.warning('[cw-effect] 合并升星触发发放腿失败(不阻塞):'
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning('[cw-effect] 合并升星触发发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
-    # —— 条件形态专家触发腿(「首次获得 X 时,顾问入商店」族,首例 =
+    # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
-    #    §2.3):入席 + merge_cascade_write 级联 + 触发发放腿全毕后判据
+    #    §2.3):入席 + merge_cascade_write 级联 + 触发发放分支全毕后判据
     #    一次(「全毕后触发」与购买链同款时序;装备获得后果确定性通道
     #    数据拷贝仪Max 送银狼LV.999 由此承接)。rand 透传(采样链内获得
-    #    与本写同窗);状态写沿主链零吞错——与上方触发发放腿 best-effort
+    #    与本写同窗);状态写沿主链零吞错——与上方触发发放分支 best-effort
     #    分层(发放可弃,状态写不可静默失败)。拒落路径(bench 未观察/
     #    席满)上方早退不可达本段。kernel 反向模块级零 import 契约:
     #    函数内惰性取(cw_gain_chain 模块级 import 本模块,反向取须惰性;
@@ -1701,7 +1701,7 @@ class EquipAcquireReport:
     granted: str     # 送出单位名('' = 表外件无后果声明)
     star: int        # 送出单位星级(表外件 0)
     merge_steps: int  # 级联合并级数(拒落路径恒 0)
-    performed: bool  # 是否发生容器写(授予腿或级联行;False = 表外件/
+    performed: bool  # 是否发生容器写(授予分支或级联行;False = 表外件/
                      # 席满/席未观察零写)
     detail: str = ''
 
@@ -1721,7 +1721,7 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
     - ``sig`` = 写入签名(缺省 = 装备桥 logic_hook 签名;动作报告上下文
       传入动作 sig 使链行同组);
     - 装备入栏(equips 追加)不在本函数覆盖——入栏写端归各渠道宿主,本
-      函数只覆盖「获得即送」的后果腿。
+      函数只覆盖「获得即送」的后果分支。
     """
     granted = EQUIP_ACQUIRE_CONSEQUENCES.get(item)
     if granted is None:

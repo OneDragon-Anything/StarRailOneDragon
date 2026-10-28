@@ -44,8 +44,8 @@ from sr_od.application.currency_war.kernel.cw_ore_reward import (
 _ATTACH_PRODUCER: str = 'ore_reward_attach'
 #: 声明域两字段(入队/消费/过期)的写入者标识。
 _DECLARE_PRODUCER: str = 'ore_declared_channel'
-#: 挂接生成采样腿的 rng 具名键(解析口 = cw_action_report.action_sampling_rng;
-#: live 缺省回退现掷,sim 装配方供流键 rng——先例 = collect_ore 腿)。
+#: 挂接生成采样分支的 rng 具名键(解析口 = cw_action_report.action_sampling_rng;
+#: live 缺省回退现掷,sim 装配方供流键 rng——先例 = collect_ore 分支)。
 _ORE_GEN_RNG_KEY: str = 'ore_reward_gen'
 
 
@@ -185,7 +185,7 @@ def report_spheres_observed(gs: GameState, sight: OreSight, *,
                 evidence=f'ore_gen#p{plane}+{len(gen_coords)}', sig=hook_sig)
             if consumed:
                 # 声明消费写 = pending 移除 + done 追加(同一 write_logic
-                # 承载,消费与标记原子;done = 幂等守卫第二腿)
+                # 承载,消费与标记原子;done = 幂等守卫第二分支)
                 gs.write_logic(
                     gs.ore_declared_pending,
                     tuple(e for e in pending if e not in consumed),

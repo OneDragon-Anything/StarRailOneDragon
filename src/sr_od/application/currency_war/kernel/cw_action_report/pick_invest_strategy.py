@@ -4,7 +4,7 @@
 点完立即上报把结果写进 game state):动作 op 机械链(点选中 → 点确认)
 发出后调用本函数,一次调用 = 完整结果写入——整支走获得链
 ``gain_invest_strategy``(无效载荷拒绝 → active_strategies 按名字去重
-追加 → 效果账本登记腿 → ``on_strategy_gained`` 效果分派,正本 =
+追加 → 效果账本登记分支 → ``on_strategy_gained`` 效果分派,正本 =
 game_state/gain-chain.md)。本包 → 容器单向依赖。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #8):applied 出口
@@ -51,8 +51,8 @@ def report_action_pick_invest_strategy_param(
 
     - ``param.norm_name`` = 选中卡归一规范名(handler 持有 OCR 原始名);
       归一后空/'?' = 无效载荷,链内零写 + 缺陷留存证据;
-    - ``session`` = 策略会话(效果账本登记腿消费;kernel 禁自取上下文,
-      由动作 op 显式传入;``None`` = 登记腿跳过[局外/测试形态],容器写
+    - ``session`` = 策略会话(效果账本登记分支消费;kernel 禁自取上下文,
+      由动作 op 显式传入;``None`` = 登记分支跳过[局外/测试形态],容器写
       照常);
     - ``rng`` = 采样注入(sim 可播种;缺省链内生成);
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``(获得链
