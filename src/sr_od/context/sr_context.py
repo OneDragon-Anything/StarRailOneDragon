@@ -209,7 +209,7 @@ class SrContext(OneDragonContext):
         # 挂此,局终置 None 防跨局污染。None = 不在对局中。reload_instance_config 也重置(同 pos_info 模式)。
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  字符串注解免运行时 import cw_strategy
         # 本局职级(A1..A8;CwEntryStart 难度确认屏 read_selected_difficulty 读 → loop __init__
-        # copy 到 session.selected_difficulty → 策略层填 state → effective_hp_threshold D-32;3.5.1)
+        # copy 到 session.selected_difficulty → 策略层填 state;3.5.1)
         self.cw_selected_difficulty: str | None = None
 
         # 秘技相关

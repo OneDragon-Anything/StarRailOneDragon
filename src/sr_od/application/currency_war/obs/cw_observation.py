@@ -953,7 +953,7 @@ def parse_selected_difficulty(texts: list[str]) -> str:
     """难度确认屏 OCR 文字 → 本局职级(``A\\d+(-\\d+)?``,如 A8 / A5 / A8-1..A8-50)。
 
     正则 + 全匹配过滤非职级文字(财富造物主 / 当前职级难度效果 等)。纯函数可单测。
-    无匹配 → ""(``effective_hp_threshold`` 回退默认阈值,行为不变;cw_state:253)。
+    无匹配 → ""(观察面如实缺省,容器域不写)。
     """
     for t in texts:
         m = re.fullmatch(r'A(\d+)(?:-(\d+))?', t.strip())
@@ -965,10 +965,11 @@ def parse_selected_difficulty(texts: list[str]) -> str:
 def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
     """难度确认屏 → 本局职级(``标识-当前难度职级`` area OCR → parse)。
 
-    AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
-    保血阈值调高(D-32;单一源 = kernel/cw_economy.py 的 DIFFICULTY_HP_TABLE 代码常量)。读不到 → ""(回退默认)。
-    接线已通(3.5.1,d841d1a1):CwEntryStart 难度确认段调本函数 → ctx.cw_selected_difficulty
-    → cw_loop copy session → 策略层填 state → effective_hp_threshold D-32 激活。
+    AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。职级读数 =
+    观察事实(容器 gs.selected_difficulty 写入源,遥测/对账消费);
+    读不到 → ""。接线已通(3.5.1,d841d1a1):CwEntryStart 难度确认段
+    调本函数 → ctx.cw_selected_difficulty → cw_loop copy session →
+    策略层填 state。
     """
     rect = _area_rect(ctx, '标识-当前难度职级', _DIFFICULTY_CONFIRM_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]

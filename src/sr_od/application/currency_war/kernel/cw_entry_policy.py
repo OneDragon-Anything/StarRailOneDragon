@@ -11,8 +11,7 @@
 行为保持契约:同输入同动作,判据语义零改。
 ``current_difficulty`` 职级读数(如 "A5"/"A8",读不到为 None/"")是观察事实、
 不参与本缺省策略分支——恒选最高不依赖当前职级;入参保留 = 观察束完整透出,
-供遥测对账与后续策略化(如显式目标职级配置)时免改签名。职级下游消费链 =
-effective_hp_threshold(D-32;单一源 kernel/cw_economy DIFFICULTY_HP_TABLE)。
+供遥测对账与后续策略化(如显式目标职级配置)时免改签名。
 依赖方向:本模块零 import(纯函数零 IO);kernel 禁依赖上层,入口链单向消费。
 """
 from __future__ import annotations

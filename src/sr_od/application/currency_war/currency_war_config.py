@@ -34,8 +34,7 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 # 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
 # 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),消费 = 策略层
 # pick_common.counters_dot(两屏选卡自拆台排除)。
-# 保血阈值/难度阶梯单一源 = 代码常量 kernel/cw_economy.py 的
-# HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE。配置面单一源:
+# 配置面单一源:
 # docs/develop/sr_od/application/currency_war/config.md。
 
 

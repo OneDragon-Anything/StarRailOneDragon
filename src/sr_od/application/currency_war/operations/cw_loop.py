@@ -767,7 +767,7 @@ class CwLoop(CwOperation):
         """入口链职级难度 ctx 中转 → 容器(终态契约 §B:直写 gs.selected_difficulty)。
         """
         # 本局职级(CwEntryStart 难度确认屏读存 ctx.cw_selected_difficulty)
-        # → gs.selected_difficulty → 策略层 effective_hp_threshold D-32(3.5.1 接线)
+        # → gs.selected_difficulty 容器写入(3.5.1 接线;观察事实,遥测/对账消费)。
         if self.ctx.cw_selected_difficulty:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,

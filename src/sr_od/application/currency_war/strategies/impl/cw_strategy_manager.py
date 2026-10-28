@@ -59,7 +59,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
       本函数 = CwEntryStart 前移点与 CwLoop handle_init 兜底两生产调用方
       的公共注入漏斗);
     - 职级(ctx.cw_selected_difficulty,难度确认屏先读)就地拷入 session
-      ——策略层 effective_hp_threshold D-32 在简报后即可能消费;
+      (观察事实,容器 gs.selected_difficulty 写入源,遥测/对账消费);
     - run loop handle_init 的建立分支保留作兜底(绕过入口链直跑 loop 的
       场景,如 run_operation 单跑),同一 helper 无逻辑分叉。
 
