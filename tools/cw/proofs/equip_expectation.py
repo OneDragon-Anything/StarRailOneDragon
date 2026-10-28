@@ -4,10 +4,12 @@
 勘误(aa264947 后重写):商店**不卖装备**(用户口述「商店没有装备」)——旧版「商店直买/
 买组件」通道作废;基础件来源=投资策略牌/事件/奖励节点**发放流**,期望成本=轮期望。
 
-数据源(单一源真值,全部 import,不抄数值):
+数据源(单一源真值,生产常量 import 直调,不抄数值):
 - cw_synthesis:CROSS_RECIPES / SELF_RECIPES / GUANGNENG_* / SYNTHESIS_BASES(K8 闭合图谱)
 - cw_equipment_data:EQUIPMENTS(category 判可达性;工具效果原文=好运令牌定向四选一)
 - cw_comps:COMP_LIBRARY(20 套终局 comp 的 key_equips = 目标集合来源)
+- 全局轮参照 TOTAL_NODES=27:例外项——9 制几何常量已随 kernel/cw_plane_table 退役
+  (非搬迁),按证明时点冻结快照(P14 单篇数据源行有档),不随生产常量漂移。
 
 四通道(Q1-Q5):
 ① 合成(Q1):基础件来自发放流(策略牌/事件/奖励节点;cw_invest_data 实证大量发放牌:
@@ -54,9 +56,13 @@ from sr_od.application.currency_war.data.cw_synthesis import (  # noqa: E402
     self_base,
 )
 from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY  # noqa: E402
-from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
-    TOTAL_NODES,
-)
+
+# ===== 几何参照(证明时点快照,非现行符号) =====
+# 9 制几何常量已随 kernel/cw_plane_table 整体退役(TOTAL_NODES=NODES_PER_PLANE*3,
+# 非搬迁;现行数量真值=逐局 node_seq_by_plane 自适应),无同语义现行符号——
+# 本脚本为 P14 证明的配套复算件,证明全文可行性判定以 TOTAL_NODES=27 为参照系
+# (单篇数据源行有档),按证明时点冻结快照,不随生产常量漂移。
+TOTAL_NODES: int = 27
 
 # ===== 参数(显式不确定项;默认=主表口径,敏感性另跑) =====
 ADV_POOL_SIZE: int = 36                    # 进阶池件数(K8 闭合全量)

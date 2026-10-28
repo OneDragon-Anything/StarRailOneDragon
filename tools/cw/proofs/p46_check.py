@@ -10,8 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'src'))
 
-from sr_od.application.currency_war.kernel import cw_plane_table  # noqa: E402
-from sr_od.application.currency_war.decision.decision_v2 import ev as cw_ev  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import interest as cw_interest  # noqa: E402
 
 REC = 3  # interest_recovery_rounds(P13 口径,常量漂移须人查)
 
@@ -98,14 +97,15 @@ print('  -> Z1 defect registered: L linkage (no cap) must fix ev function first 
 assert min(3, R_global_correct) == 3 == C5  # cap 吸收:两口径在过渡式下同值(偏差被掩盖的原因)
 assert cost_int(41, 2, 9) == 1 * min(3, 9)  # R4⑤: 末节点 r=9 -> R_全局=9(含当前节点), C=t*3 不为零
 
-# B4 与注册表接口对拍(单一源: cw_plane_table.interest = min(g//10, 5))
+# B4 与息闭式单一源对拍(单一源: cw_economy.interest = min(g//10, 5),单参调用同形;
+# 旧 cw_plane_table.interest 双源已删,其唯一源随迁 cw_economy)
 for g in (0, 9, 10, 46, 50, 54, 100):
-    assert cw_plane_table.interest(g) == interest(g), f'interest mismatch at g={g}'
+    assert cw_interest(g) == interest(g), f'interest mismatch at g={g}'
 # ev.interest_cost 的档差用未封顶 g//10 差分:g>=60 段花金仍 >=50 时,
 # 它计 t>=1 而物理息损(封顶口径)t=0 —— p46 的 P1 必须用封顶口径(见证明边界节)
 assert min(65 // 10, 5) - min(40 // 10, 5) == 1  # 65 花 25 -> 40: 封顶 t=1(未封顶算 2)
 print('capped-tier assert: 65->40 capped t=1 (uncapped would give 2)')
-print('interface check vs cw_plane_table.interest: OK '
+print('interface check vs cw_economy.interest: OK '
       '(ev.interest_cost uses uncapped tier diff, g>=60 caveat declared in proof)')
 
 # --- L 联动批:规范 C = L(g,d,R_全局,Ī=7)(p47 双轨迹递推)数值表 L 列现算 ---
