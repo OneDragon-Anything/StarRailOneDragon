@@ -1914,7 +1914,8 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   `env_1006_faction_refresh_odds_unmodeled`(贝洛伯格概念股)、
   `env_1007_faction_refresh_odds_unmodeled`(星间旅人概念股)、
   `env_1008_faction_refresh_odds_unmodeled`(仙舟概念股)、
-  `env_1009_faction_refresh_odds_unmodeled`(狼狩概念股)):sim 商店发牌
+  `env_1009_faction_refresh_odds_unmodeled`(狼狩概念股)、
+  `env_1010_faction_refresh_odds_unmodeled`(昼之半神概念股)):sim 商店发牌
   不模拟阵营权重,刷出该阵营角色频率系统性低于实机 → 低估该环境的找牌运气
   收益;裁定正本 = invest_effects.md §5(概念股 ×15 放弃行维持),键为登记面
   载体,遥测对账只量化失真不产落参。
