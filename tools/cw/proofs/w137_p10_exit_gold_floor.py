@@ -4,8 +4,8 @@
 
 数据源(单一源真值,零随机):
 - cw_economy: STREAK_GOLD_TABLE / BASE_REWARD_GOLD(利息结构 min(5, gold//10))
-- cw_state: XP_TO_NEXT_LEVEL / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4 / sell_refund
-- cw_horizon: NODES_PER_PLANE=9 / TOTAL_NODES=27
+- cw_economy: XP_TO_NEXT_LEVEL / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4 / sell_refund
+- 9 制几何常量 NODES_PER_PLANE=9 / TOTAL_NODES=27(已整体退役,脚本内冻结快照)
 - decision_v2 registry: h3_win_rate / hp_to_gold=0.5 / interest_recovery_rounds=3.0
 - sim 账本: .debug/temp/currency_war/w135_crosscheck/metrics_w135.json
   (seeds 0-99,池指纹 bab146c68c5df11a;不存在时⑤节跳过);
@@ -31,22 +31,19 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     STREAK_GOLD_TABLE,
+    XP_CLICK_COST_FALLBACK,
+    XP_TO_NEXT_LEVEL,
+    sell_refund,
     streak_gold,
 )
 
 # 历史口径快照(证明时点的生产值;现口径=基础奖励按节点分段 1-1=3/1-2=4/1-9=5,
 # 见 docs/game/currency_war/research/economy.md §10.1——本脚本账本冻结于当时口径,不随生产常量漂移)
 _BASE_REWARD_SNAPSHOT = 5
-from sr_od.application.currency_war.cw_horizon import (  # noqa: E402
-    NODES_PER_PLANE,
-    TOTAL_NODES,
-)
-
-from sr_od.application.currency_war.kernel.cw_state import (  # noqa: E402
-    XP_CLICK_COST_FALLBACK,
-    XP_TO_NEXT_LEVEL,
-    sell_refund,
-)
+# 9 制几何常量已整体退役(kernel/cw_plane_table 模块头注记;现行数量真值=逐局
+# node_seq_by_plane 自适应),无同语义现行符号——按本文件冻结账本律存证明时点快照。
+NODES_PER_PLANE = 9
+TOTAL_NODES = 27
 
 W135 = (ROOT / '.debug' / 'temp' / 'currency_war' / 'w135_crosscheck'
         / 'metrics_w135.json')

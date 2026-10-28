@@ -4,7 +4,7 @@
 > **v1(2026-08 早期批)数值结论已作废、禁止引用**:「拒绝域从全 j 移到 j=0、j≥1 翻正」的幅度结论、benefit 44.3 中带、V(j) 逐格数值、「lossp=16 中值」点估计、「修法②单独解开大部分 P2 帧」——作废根因见 §0。
 > 本篇命题由旧通道(血→金换算收益)整体改道为 λ_death 纯金流通道(P15v2 §0 / P51 v3 消费形态),伤害与胜率参数只进概率侧,收益侧量纲全程为金、零换算链。
 > 数据源:`cw_shop_odds.expected_refreshes_for_card`(超几何精确批账,spend 表纯金流保留)、P51 v3 分层 λ_death 表(概率侧参照,适用范围=sim)、P15v2 冻结语料(P2 掉血带方向)、`kernel/cw_registry`(vd_p2_loss=20.05 CI[15.0,25.1];rung_value/h3_win_rate 骨架自注「P2 未标定」)。
-> 计算复核:spend 表=注册表直调亲算(2026-09-01 逐位复现);`tools/cw/proofs/w153_p11_p12_p2_refresh.py` 因 `cw_horizon→kernel/cw_plane_table` 模块迁移 import 断裂暂不可重跑(重新推导队列登记的待办,本批不碰代码)。
+> 计算复核:spend 表=注册表直调亲算(2026-09-01 逐位复现);`tools/cw/proofs/w153_p11_p12_p2_refresh.py`(v1 账计算件)已删,git 历史可溯。
 > 提出:早期批(v1);重新推导:P12 重新推导批(2026-09-01)。
 
 ## 0. v1 作废声明与重新推导依据
@@ -95,4 +95,4 @@ j 口径澄清继承 v1(瑕疵核验成立):E(j) 是「从 j 起出齐」的剩�
 
 - 上游:P12_VALIDATION(重新推导指令源)、P15v2(掉血带分级+纯金流公理)、P51 v3(λ_death 消费形态)、P48(统一囤钱判据/三段管辖)、(P2=7 槽)、P15-A(槽序表确定函数);
 - 下游:p25/p27 引用 P12 处须读作「P12v2 方向注记(数值作废)」;scoring 位面 2 分支整改挂重新推导队列;
-- 待办:结算屏三项 OCR 进遥测(§4,硬前置)、上述计算脚本(`tools/cw/proofs/w153_p11_p12_p2_refresh.py`)import 修复(cw_horizon→kernel/cw_plane_table,重新推导队列)、λ_death(P,R) 生成式升级(P51 采集 #3)。
+- 待办:结算屏三项 OCR 进遥测(§4,硬前置)、λ_death(P,R) 生成式升级(P51 采集 #3)。

@@ -5,7 +5,7 @@
 
 模型(机制单一源):
 - 基础奖励 r∈[3,8](游戏基础收入带,P7 命题前提);
-- 每轮息 = min(g//10, 5)(cw_plane_table.interest 闭式,GOLD_CAP_INTEREST=50);
+- 每轮息 = min(g//10, 5)(cw_economy.interest 闭式,GOLD_CAP_INTEREST=50);
 - 恢复轮数 = 从 g0(<50)靠 r+息 累积回 50 的轮数(不计连胜金/事件金,
   P7 命题本身只辖基础奖励敏感性)。
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
 
-from sr_od.application.currency_war.kernel.cw_plane_table import interest  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import interest  # noqa: E402
 
 
 def rounds_to_50(g0: int, base: int) -> int:

@@ -2,7 +2,7 @@
 
 > 状态:**已证(期望账 DP + 边界推导;现行阶梯=推导输出,维持)**
 > 数据源(单一源代码,数值不抄):`cw_horizon`(`interest`=min(g//10,cap)/`NODES_PER_PLANE`/`TOTAL_NODES`)、`cw_economy`(`BASE_REWARD_GOLD`/`STREAK_GOLD_TABLE`/`streak_gold`)、decision_v2 registry(`h3_win_rate`/`rung_value`(P3 边际)/`interest_cap`/`interest_recovery_rounds`/`hp_to_gold`/`interest_floor`/`form_floor`/`boss_floor`);Δ池硬节点掉血桶均值(交叉核对检查输出,账本 `w135_crosscheck`:encounter −17.7/boss −24.9,同 P10 ③ 源)
-> 计算脚本:`tools/cw/proofs/w178_p13_hold50_expected_account.py`(9 轮**精确 DP**,零蒙特卡洛;断言锁 A1-A8)
+> 计算脚本:`tools/cw/proofs/w178_p13_hold50_expected_account.py`(已删,git 历史可溯;9 轮**精确 DP**,零蒙特卡洛;断言锁 A1-A8)
 > 提出:登记的待办③前半(2026-08-26 解锁并派发);证明:对应证明批次(计算脚本可重跑,git 历史可溯)
 > 前置:P10(出口金底线状态函数)、P3(成型边际)、P5(C_interest 口径)、P11(富余段 C 下界 0);[17]/[11]/[6]/[19]①/[28];设计文档 §3(利息档口径)
 
