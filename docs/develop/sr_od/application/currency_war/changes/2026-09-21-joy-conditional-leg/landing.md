@@ -1,18 +1,18 @@
-# 欢愉契约条件腿建模 落地
+# 欢愉契约条件分支建模 落地
 
-## 3.1 条件腿 rider + 临时闩退役
+## 3.1 条件分支 rider + 临时闩退役
 
 **范围**:`kernel/cw_action_report/pick_planner.py`——`report_action_pick_planner_param`
-新增 `rng` 关键字参数(缺省 None);落地相内、腿型分派前加条件腿 rider
+新增 `rng` 关键字参数(缺省 None);落地相内、分支类型分派前加条件分支 rider
 (`active_env` 归一 == 欢愉契约 → `gain_character(random.choice([火花, 开拓者·欢愉]),
 1, rand=True)`,evidence = `joy_conditional:<单位名>`);发射相零触发。
 `kernel/cw_gain_chain.py`——删除 `JOY_PROVISIONAL_KIND` 常量、`on_env_gained`
 欢愉契约翻来源分支与 provisional_mark effects 项,docstring 同步。
 **weaken 兜底档退役(裁定③)**:`kernel/cw_events.py`——`classify_planner_leg`
 关键词降级分支与 `PLANNER_LEG_WEAKEN` 常量删除(含弱化词未知名卡文 → unknown)、
-`decide_planner` 弱化档打分删除(两档制 = 升费档 > 装备档)、腿型词表注释同步;
+`decide_planner` 弱化档打分删除(两档制 = 升费档 > 装备档)、分支类型词表注释同步;
 `kernel/cw_action_report/pick_planner.py` weaken 派发分支删除(终态兜底 reason 改
-`unrouted_leg_zero_write`);`operations/cw_op/cw_overlay_pick_action.py` 腿型注释
+`unrouted_leg_zero_write`);`operations/cw_op/cw_overlay_pick_action.py` 分支类型注释
 同步。**不含**:头号玩家两选项本体模型改动、sim 接线、comp 评估消费。
 **设计依据**:design.md §2.1-§2.7(含 §2.5 行为变化申报、§2.7 相邻批在飞核查)
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_action_report/pick_planner.py`、
@@ -26,9 +26,9 @@
 **优先级建议**:5
 **完成判据**:
 - 行为对照 design §2.2-§2.5:通道语义(未闩=rand/置闩后 rand 授予**仍 = logic_rand**,
-  rand 形参优先于闩)、在册判定、rng 注入确定性、三腿计数、发射相零触发、时序测试、
+  rand 形参优先于闩)、在册判定、rng 注入确定性、三条分支计数、发射相零触发、时序测试、
   覆盖校准面 = 覆盖时落 `logic_rand_outcome` 行;
-- 撤闩:`on_env_gained` 欢愉契约仅 immediate 腿,provisional 行零发射(design §2.6);
+- 撤闩:`on_env_gained` 欢愉契约仅 immediate 分支,provisional 行零发射(design §2.6);
 - weaken 退役测试(design §2.6):无名弱化卡文 → unknown、破解芯片仍 equip、打分
   零弱化档、终态兜底 reason 更名;
 - 通用工程门:照 `sr-od-test/README.md`「提交」节(ruff + 受影响测试 + 相关全量)。
@@ -46,13 +46,13 @@
 
 ## 正本更新清单
 
-- `game_state/gain-chain.md`:§3 欢愉契约条件腿条目(临时闩标记面 → planner 触发
-  回调模型,临时闩退役)+ §6(条件腿授予调用点级 best-effort 例外申报) ← 3.1 ✅
+- `game_state/gain-chain.md`:§3 欢愉契约条件分支条目(临时闩标记面 → planner 触发
+  回调模型,临时闩退役)+ §6(条件分支授予调用点级 best-effort 例外申报) ← 3.1 ✅
 - `screens/planner.md`:落地相记账段 weaken 字样 → **移交 pick-planner-equip-immediate-report 批**
   (其 3.2 单相化正本面已辖该文件 :55 区域,避免双写竞态;协调记录 = 本行改记) ← 移交
 - `game_state/logic-updates/pick-planner.md`:§分派表与记账段 weaken 条目 → **同上移交**
   (其 attack4 F1 已点名 :17 行且其 3.2 清单含 :11/:13/:17 三行) ← 移交
 - `game_state/strategy-env-impacts.md`:落地时核实 → **不辖此面**(全文无欢愉契约/
-  条件腿内容),销项 ← 核实
-- `docs/game/currency_war/research/`(条件腿触发频率实测结论:证据分级随实机局)
+  条件分支内容),销项 ← 核实
+- `docs/game/currency_war/research/`(条件分支触发频率实测结论:证据分级随实机局)
   ← 候选项(实机验证局后)

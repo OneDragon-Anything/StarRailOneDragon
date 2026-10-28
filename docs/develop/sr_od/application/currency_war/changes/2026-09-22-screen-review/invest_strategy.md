@@ -108,7 +108,7 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 **(1)PickInvest 索引行目标语义**(事件线 pick 族表增两行;行文本机械转录自正本,非本稿新设计):
 
 ```
-| PickInvestStrategy | `CwActionPickInvestOp` | [pick-invest.md](pick-invest.md) | `report_action_pick_invest_strategy_param`(即时单相:整支走获得链 `gain_invest_strategy`——无效载荷拒绝(`pick_invest_invalid_payload` 留证)→ active_strategies 按名字去重追加 → 效果账本登记腿 best-effort(失败 `gain_chain_strategy_register_failed` 不阻塞)→ `on_strategy_gained` 效果分派;reason=`gain_chain_applied`;语义单一源 = gain-chain.md §2.4) |
+| PickInvestStrategy | `CwActionPickInvestOp` | [pick-invest.md](pick-invest.md) | `report_action_pick_invest_strategy_param`(即时单相:整支走获得链 `gain_invest_strategy`——无效载荷拒绝(`pick_invest_invalid_payload` 留证)→ active_strategies 按名字去重追加 → 效果账本登记分支 best-effort(失败 `gain_chain_strategy_register_failed` 不阻塞)→ `on_strategy_gained` 效果分派;reason=`gain_chain_applied`;语义单一源 = gain-chain.md §2.4) |
 | PickInvestEnv | `CwActionPickInvestOp` | [pick-invest.md](pick-invest.md) | `report_action_pick_invest_env_param`(即时单相:整支走获得链 `gain_invest_env`——active_env 注册 + portal 登记 + `on_env_gained` 效果枚举;reason=`gain_chain_applied`;语义单一源 = gain-chain.md §2.1) |
 ```
 
@@ -120,14 +120,14 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 
 - **卷首**:定位(逐动作分篇;PickInvestStrategy/PickInvestEnv 两行同指一 op,族文件先例 = tools.md)+ 语义单一源声明(策略支 = gain-chain.md §2.4、环境支 = §2.1;字段级正本 = fields.md §3.4.4/§3.4.3;本篇为接线面摘要,冲突以正本为准)。
 - **§1 动作是什么**:两 param 类字段(`idx`/`reason`/`norm_name` = 归一规范名);op 载体 `CwActionPickInvestOp`(机械链同构:点选中 → 0.7s → 确认,屏间差异全部经 `OverlayPickExecEnv` 显式传入);注册两行;发射位 = 投资策略/投资环境两画面 op 决策半经注册表工厂 `action_op_for` 派发(依据 = action_ops.md §4.5 两行)。
-- **§2 逻辑态域集**:`active_strategies`(名单+品质,fields.md §3.4.4)/ `active_env`(§3.4.3)/ effect_inventory 登记腿(fields.md §5.1)/ chars、equips 赠卡腿(gain-chain.md §2.2/§2.3);写入口 = 两上报函数,即时单相(确认点击后一次调用写全部效果,action_ops.md §1 增补 2)。
-- **§3 确定面转移规则**(策略支逐腿,一句 + 正本指针,零参数复述):无效载荷拒绝(归一后空/'?' 零写 + `pick_invest_invalid_payload` 留证)→ `active_strategies` 按名字去重追加(跳写后登记/效果腿照常,零幂等闸)→ 效果账本登记腿 best-effort(`register_strategy` + burst 桥 + 板面重写桥;`session=None` 跳过;失败 `gain_chain_strategy_register_failed` 不阻塞)→ `on_strategy_gained` 效果分派(赠卡入席腿:骇客狼 `gain_character` 链式时序 + 改件 `gain_equipment(rand=True)` 采样子链 + `on_equipment_gained` 回调);环境支按 gain-chain.md §2.1 转录。依据 = gain-chain.md §2.4 + fields.md §3.4.4。
+- **§2 逻辑态域集**:`active_strategies`(名单+品质,fields.md §3.4.4)/ `active_env`(§3.4.3)/ effect_inventory 登记分支(fields.md §5.1)/ chars、equips 赠卡分支(gain-chain.md §2.2/§2.3);写入口 = 两上报函数,即时单相(确认点击后一次调用写全部效果,action_ops.md §1 增补 2)。
+- **§3 确定面转移规则**(策略支逐分支,一句 + 正本指针,零参数复述):无效载荷拒绝(归一后空/'?' 零写 + `pick_invest_invalid_payload` 留证)→ `active_strategies` 按名字去重追加(跳写后登记/效果分支照常,零幂等闸)→ 效果账本登记分支 best-effort(`register_strategy` + burst 桥 + 板面重写桥;`session=None` 跳过;失败 `gain_chain_strategy_register_failed` 不阻塞)→ `on_strategy_gained` 效果分派(赠卡入席分支:骇客狼 `gain_character` 链式时序 + 改件 `gain_equipment(rand=True)` 采样子链 + `on_equipment_gained` 回调);环境支按 gain-chain.md §2.1 转录。依据 = gain-chain.md §2.4 + fields.md §3.4.4。
 - **§4 随机面**:链入口 `rand=False` 确定性;效果体含采样(骇客改件)对其子链翻转 `rand=True`(gain-chain.md §5)。
-- **§5 拒绝语义**:无效载荷 = 链内零写 + 留证(输入拒绝,非防重复保护);重复上报 = 零幂等闸、跳写去重仅为数据卫生,bug 面按 bug 治理(gain-chain.md §2.4 腿 1)。
+- **§5 拒绝语义**:无效载荷 = 链内零写 + 留证(输入拒绝,非防重复保护);重复上报 = 零幂等闸、跳写去重仅为数据卫生,bug 面按 bug 治理(gain-chain.md §2.4 分支 1)。
 - **§6 kernel 符号锚**:`kernel/cw_vocab.py` 两 param 类;`operations/cw_op/cw_action_registry.py` 两行;`operations/cw_op/cw_overlay_pick_action.py::CwActionPickInvestOp`/`OverlayPickExecEnv`;`kernel/cw_action_report/pick_invest_strategy.py`/`pick_invest_env.py`;`kernel/cw_gain_chain.py::gain_invest_strategy`/`gain_invest_env`。
-- **§7 语义验证**:`test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链)+ `test_cw_gain_chain.py`(链腿)+ `test_cw_unified_action_4.py`(注册表分派)。依据拆注:test_cw_yinlang_phase32.py / test_cw_unified_action_4.py = `screens/invest_strategy.md` §9 在册申报;test_cw_gain_chain.py 实存依据 = T-6-r1 报告 §3.7(§9 测试清单未列——附带诉求登记:`screens/invest_strategy.md` §9 测试清单补该文件一行「获得链测试」,随本稿 invest_strategy.md 文档批一并落,见 §2.6 总表)。
+- **§7 语义验证**:`test_cw_yinlang_phase32.py`(即时上报/无效载荷/去重/骇客链)+ `test_cw_gain_chain.py`(链分支)+ `test_cw_unified_action_4.py`(注册表分派)。依据拆注:test_cw_yinlang_phase32.py / test_cw_unified_action_4.py = `screens/invest_strategy.md` §9 在册申报;test_cw_gain_chain.py 实存依据 = T-6-r1 报告 §3.7(§9 测试清单未列——附带诉求登记:`screens/invest_strategy.md` §9 测试清单补该文件一行「获得链测试」,随本稿 invest_strategy.md 文档批一并落,见 §2.6 总表)。
 
-**关键取舍(专篇 vs 修订规则豁免「投资两屏索引行直指 gain-chain.md」)**:取专篇。①「一行一文件」是 README 自立的完备性保障(每个注册动作在执行纪律域有语义落点),为单一家族修订规则 = 正本规则开口,后续同类链式落账动作出现时归属歧义;豁免案还需动 README 总则段映射粒度措辞,超出索引行修正的最小面。②族文件先例在册(tools.md),两行一篇不破规则。③T-4 已将 pick-encounter.md 改写为全形专篇,同族同形状降低后续审查与维护成本;索引行落点留在 logic-updates 目录内,目录自足。④双抄本漂移风险以「接线面 only + 单一源声明」对冲——专篇零复述链参数细节,四腿各一句 + 指针,二抄本面收缩到低频变更的接线事实(发射位/域集/符号锚);代价 = 多维护一个薄文件,可接受。
+**关键取舍(专篇 vs 修订规则豁免「投资两屏索引行直指 gain-chain.md」)**:取专篇。①「一行一文件」是 README 自立的完备性保障(每个注册动作在执行纪律域有语义落点),为单一家族修订规则 = 正本规则开口,后续同类链式落账动作出现时归属歧义;豁免案还需动 README 总则段映射粒度措辞,超出索引行修正的最小面。②族文件先例在册(tools.md),两行一篇不破规则。③T-4 已将 pick-encounter.md 改写为全形专篇,同族同形状降低后续审查与维护成本;索引行落点留在 logic-updates 目录内,目录自足。④双抄本漂移风险以「接线面 only + 单一源声明」对冲——专篇零复述链参数细节,四条分支各一句 + 指针,二抄本面收缩到低频变更的接线事实(发射位/域集/符号锚);代价 = 多维护一个薄文件,可接受。
 
 ### 2.4 F-4 修法(screens/invest_strategy.md 三节同步 + 坐标全形;零代码变更)
 
@@ -175,7 +175,7 @@ if isinstance(act, CwActionRefreshInvestCardsParam):
 
 **豁免面全集**:ADR 引用(ADR-0132/0529/0600);「20-22 局实证」类纯语义描述;裸批名出处标签(pick-op-unify 批/投资两屏迁移批,判据 = supply_node.md §2.7 收敛判据:非过程件指针、非叙事句);screen_info 坐标/兜底常量/日志 tag 的定义注释(AGENTS §8 字段坐标系与取值时机语义)。
 
-**实施规则**:准则做三文件全文件扫描,上表为已核对点位、非穷举;与全仓注释卫生批(建议中)合并执行亦可,同段一次成文。**同族联动面登记(不扩改)**:`pick_invest_env.py` 模块头 :8-9 同款拆分史(归 T-7);`flow/action_ops.md` §4.5 三行「…,T-3」任务号(正本文档面,归正本维护);`cw_overlay_pick_action.py` 内 supply/planner/equip 类注释的 design § 引用(:231/:272 归 T-5 F-7 补给链辖域;:420 planner、:124 env 数据类「银狼闭环 design」腿型注归 T-10;:612 equip 归 T-9)——均不在本稿三文件禁形清单内,随各屏审查/清理批处置。
+**实施规则**:准则做三文件全文件扫描,上表为已核对点位、非穷举;与全仓注释卫生批(建议中)合并执行亦可,同段一次成文。**同族联动面登记(不扩改)**:`pick_invest_env.py` 模块头 :8-9 同款拆分史(归 T-7);`flow/action_ops.md` §4.5 三行「…,T-3」任务号(正本文档面,归正本维护);`cw_overlay_pick_action.py` 内 supply/planner/equip 类注释的 design § 引用(:231/:272 归 T-5 F-7 补给链辖域;:420 planner、:124 env 数据类「银狼闭环 design」分支类型注归 T-10;:612 equip 归 T-9)——均不在本稿三文件禁形清单内,随各屏审查/清理批处置。
 
 **验证门**:三文件按准则 1 禁形模式(task#/W 审计轮次/r 审计轮次/T-N 任务号/局N 单局指称/迭代件 design § 引用)grep 零命中(豁免面除外;`cw_overlay_pick_action.py` 模块头内他屏类 design § 引用按联动面归属剔除);`uv run ruff check` 通过;`git diff` 确认零逻辑改动。
 

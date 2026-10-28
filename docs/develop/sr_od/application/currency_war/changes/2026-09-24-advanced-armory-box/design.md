@@ -2,7 +2,7 @@
 
 ## 0. 元信息
 
-- 迭代目标:进阶武装箱端到端可达——3 张棱彩策略卡(战术义眼++/保守派/快请专家·彩,`data/cw_invest_data.py`:335/:346/:362)的箱腿登记与发放执行,复用上一迭代建成的开箱链路(弹窗锚族名化/读数闸/选卡)与占席道具落位语义。
+- 迭代目标:进阶武装箱端到端可达——3 张棱彩策略卡(战术义眼++/保守派/快请专家·彩,`data/cw_invest_data.py`:335/:346/:362)的箱分支登记与发放执行,复用上一迭代建成的开箱链路(弹窗锚族名化/读数闸/选卡)与占席道具落位语义。
 - 承接出处:用户指令(2026-09-24)「同理的,也对进阶武装箱做这个」——姊妹迭代 `2026-09-24-scheduled-env-gifts`(已闭环)建成的通道与流程面在本迭代消费。
 - 状态:定稿
 - 文档清单:无详设(单文档方案,§2 即完整设计)
@@ -11,14 +11,14 @@
 
 **现状症状**:
 
-1. **授予卡零入口**:3 张棱彩策略卡的「获得1个【进阶武装箱】」腿无处登记也无从执行——
+1. **授予卡零入口**:3 张棱彩策略卡的「获得1个【进阶武装箱】」分支无处登记也无从执行——
    `PICK_INVEST_EFFECTS`(策略卡获得效果注册表,现役单行骇客专家:银狼,
    cw_gain_effects.py:143)查无效果安静不写;策略打分表 `STRATEGY_GRANTS`
    (cw_investments.py:1369,83 条 = 68 白得 + 11 顾问 + 4 反扫补网,计数测试
-   test_cw_invest_strategy.py)现役只登记角色发放,无箱腿。
+   test_cw_invest_strategy.py)现役只登记角色发放,无箱分支。
 2. **占席道具发放无公共原语**:kernel 落位原语 `_place_bench_item` 为模块私有
    (cw_gain_chain.py),策略效果体(cw_gain_effects.py,与链模块双向破环约束)
-   无法消费——骇客卡的 bench 腿走 `gain_character`(角色),占席道具无对应公开口。
+   无法消费——骇客卡的 bench 分支走 `gain_character`(角色),占席道具无对应公开口。
 3. **词表供给断点**:`BENCH_ITEM_NAMES`(溢出位身份 kind 判定单一源,
    cw_investments.py:1501-1504)从两张 GiftGrant 授予表派生——授予数据不入表,
    进阶武装箱落溢出位会被误判成角色。
@@ -28,21 +28,21 @@
 
 **解决到哪**:
 
-- 3 张卡的箱腿:`STRATEGY_GRANTS` 登记(items_immediate)+ `PICK_INVEST_EFFECTS`
-  箱腿效果体 ×3 + kernel 公共占席道具发放原语;
+- 3 张卡的箱分支:`STRATEGY_GRANTS` 登记(items_immediate)+ `PICK_INVEST_EFFECTS`
+  箱分支效果体 ×3 + kernel 公共占席道具发放原语;
 - `BENCH_ITEM_NAMES` 经既有派生式自动覆盖进阶武装箱(零额外改动,设计断言测试）；
 - sim E2E:选卡 → 备战席落箱(选卡时点立即发放,非定时——三卡原文均为获得时点直读)。
 
 **明确不解决**(防外溢):
 
-- 三卡的**战斗被动腿**(战术义眼++能量恢复/保守派伤害减免)——非「获得时点」效果,
-  归策略效果建模批(获得效果注册表只辖获得时点容器写腿,cw_gain_effects.py:64-68
-  注册纪律);快请专家·彩的能量恢复腿同此;
-- 快请专家·彩的**2 个【】空括号腿**(数据源缺口,plaza 数据生成件原文即空,禁猜)
-  与**好运令牌腿**(非占席道具,归消耗品/登记面,GiftGrant 语义 = 占席道具发放);
+- 三卡的**战斗被动分支**(战术义眼++能量恢复/保守派伤害减免)——非「获得时点」效果,
+  归策略效果建模批(获得效果注册表只辖获得时点容器写分支,cw_gain_effects.py:64-68
+  注册纪律);快请专家·彩的能量恢复分支同此;
+- 快请专家·彩的**2 个【】空括号分支**(数据源缺口,plaza 数据生成件原文即空,禁猜)
+  与**好运令牌分支**(非占席道具,归消耗品/登记面,GiftGrant 语义 = 占席道具发放);
 - **简易武装箱授予策略族**——凡 PlazaAugment effect 含『简易武装箱』授予的
   策略卡全集(定义源 grep 枚举,现势 17 张,禁逐名冻结防漂移)另批;其中
-  龙虎兄弟狸/贸易专家:停云已因角色腿在 STRATEGY_GRANTS 在册而箱腿未登记,
+  龙虎兄弟狸/贸易专家:停云已因角色分支在 STRATEGY_GRANTS 在册而箱分支未登记,
   为全集内已部分登记的边界卡;环境侧 PlazaPortal 含简易武装箱授予者另有
   4 张(火药味已登记,红钻贵族/蓝钻贵族/专家研讨会未建模),随环境批;
 - 进阶武装箱**备战槽图标模板**与开箱动作 op 对非简易箱的支持——实机裁片缺,
@@ -57,18 +57,18 @@
 
 - `'战术义眼++'` / `'保守派'` / `'快请专家·彩'`:
   `GiftGrant(items_immediate=('进阶武装箱',))`——效果原文「获得1个/一件【进阶武装箱】」
-  直读,数量 = 元素重复次数(与 ENV_GIFTS 同约定);快请专家·彩只登记箱腿
-  (§1 明确不解决的两腿不入表,表目注释申报)。
+  直读,数量 = 元素重复次数(与 ENV_GIFTS 同约定);快请专家·彩只登记箱分支
+  (§1 明确不解决的两条分支不入表,表目注释申报)。
 
 `_validate_strategy_grants`(import 即炸,cw_investments.py:1546)扩展:
 ③空发放集判定从「即时角色/条件角色全空」并入 `items_immediate`(四通道全空才拒,
 沿 `_validate_env_gifts` 同款先例);其余校验(孤儿键/角色名漂移/反扫闭集)不变
-——反扫闭集辖「获得…角色名」直读,箱腿不受其强制,登记属机制事实留 kernel 自愿面。
+——反扫闭集辖「获得…角色名」直读,箱分支不受其强制,登记属机制事实留 kernel 自愿面。
 
 **BENCH_ITEM_NAMES 自动覆盖**(设计断言,测试):派生式
 `(*ENV_GIFTS.values(), *STRATEGY_GRANTS.values())` 的 items_immediate
 (cw_investments.py:1502)——登记即入词表,溢出位身份 kind 判定自动正确,
-消费点(`_build_pool`/sell_bench 溢出腿)零改动即受益。
+消费点(`_build_pool`/sell_bench 溢出分支)零改动即受益。
 
 ### 2.2 kernel 公共原语:gain_bench_item
 
@@ -82,10 +82,10 @@ gain_bench_item(gs, item, *, rand: bool, sig: ChannelSig,
 实现 = 现有 `_place_bench_item` 加 `producer` 形参(缺省
 `GAIN_CHAIN_PRODUCER`,现调用点 on_env_gained 行为不变)+ 公开薄包装。
 落位语义全部复用(备战空槽 → 席满溢出落位 → 溢出位被占零写留证,
-2026-09-24 道具落位语义);rand 语义:三卡箱腿 = 确定发放,效果体传
+2026-09-24 道具落位语义);rand 语义:三卡箱分支 = 确定发放,效果体传
 `rand=False`(gain-chain.md §5)。
 
-### 2.3 执行:PICK_INVEST_EFFECTS 三条箱腿效果体
+### 2.3 执行:PICK_INVEST_EFFECTS 三条箱分支效果体
 
 `cw_gain_effects.py` 注册表增三条,效果体 = 共享工厂生成的闭包:
 
@@ -95,12 +95,12 @@ gain_bench_item(gs, item, *, rand: bool, sig: ChannelSig,
   `STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等 + 席满行为测试
   (bench 满时 pick → `overflow_card == '进阶武装箱'`,名字经溢出落位
   真值暴露——BenchSlot 本身与名解耦,备战断言发现不了名字漂移);
-- 签名沿现役 `(gs, *, sig, rng) -> list[str]`(rng 不消费——箱腿确定发放,
+- 签名沿现役 `(gs, *, sig, rng) -> list[str]`(rng 不消费——箱分支确定发放,
   注册表分派统一传参);
 - 效果体惰性 import `gain_bench_item`(运行时解析破环,沿骇客卡 :97-100
   模块 docstring import 方向声明);
 - 返回步串 `box_grant:<名>(placed=…)`(沿骇客卡 steps 形态);
-- 三卡战斗被动腿不在效果体(§1 明确不解决;未建模申报归 impacts 正本,
+- 三卡战斗被动分支不在效果体(§1 明确不解决;未建模申报归 impacts 正本,
   见 landing 正本清单)。
 
 ### 2.4 sim E2E 可达性
@@ -126,13 +126,13 @@ gain_bench_item(gs, item, *, rand: bool, sig: ChannelSig,
 
 ## 3. 关键取舍
 
-1. **PICK_INVEST_EFFECTS 效果体 vs STRATEGY_GRANTS 通用发放腿**(在
+1. **PICK_INVEST_EFFECTS 效果体 vs STRATEGY_GRANTS 通用发放分支**(在
    gain_invest_strategy 里消费 STRATEGY_GRANTS.items_* 自动发放):选效果体。
-   注册表的注册纪律明文「效果函数只辖获得该卡后的容器写腿」(cw_gain_effects.py:
+   注册表的注册纪律明文「效果函数只辖获得该卡后的容器写分支」(cw_gain_effects.py:
    64-68)——获得时点发放本就是它的辖域;STRATEGY_GRANTS 保持「登记/打分
    数据表」语义不升级为可执行,两表职责分离不破(对抗审⑨ 的既有裁定)。
-2. **快请专家·彩只登记箱腿**:GiftGrant 语义 = 占席道具/角色发放;好运令牌
-   非占席道具(走消耗品域),空括号腿数据源缺口禁猜——两腿以表目注释申报,
+2. **快请专家·彩只登记箱分支**:GiftGrant 语义 = 占席道具/角色发放;好运令牌
+   非占席道具(走消耗品域),空括号分支数据源缺口禁猜——两条分支以表目注释申报,
    执行面查无即安静不写,真值归实机/数据源勘误。
 3. **打分零改动**(机制事实 + 裁定指针):`grant_gift_value` 只读角色发放
    (gift_value.py:52-63),items-only 条目经消费口恒 off → 0 分

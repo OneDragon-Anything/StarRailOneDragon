@@ -51,7 +51,7 @@
 - sim 是唯一的状态推进者与随机量产生者;策略器是纯决策函数,**不消费 sim 的随机流、不感知 seed**(策略自带随机时用独立流键 `strategy/*`,§2.0.4)。
 - sim 输出的「观测帧」= 容器 `GameState`(`kernel/cw_game_state.py`)快照 + **相位(phase)**。相位枚举 = 实机画面对应的交互状态机:`opening_env`(投资环境选卡,环境在场参数为真时)/`prep`(备战:商店/买/升/部署/卖)/`invest_offer`(局中策略选卡)/`encounter_offer`(遭遇选档)/`supply_pick`(补给 3 选 1)/`box_pick`(补给箱)/`reward_ball`(晶矿)/`event_overlay`(巨星/伙伴/专家邀请/Fate/骇入等)/`settlement`(结算)/`plane_transition`(位面过渡)/`game_over`。相位与实机画面建档(`docs/game/screens/currency_war_*.md`)一一对应,策略器据此路由决策(与实机 flow 层同构)。
 - sim 对动作的应用分两类,单一源纪律不变(`sim/sim-design.md` §2.1 契约平移到新架构):
-  - **玩家动作**(买/卖/刷/升级/部署/穿戴/选卡/采晶矿/工具)→ 经单一转移函数 `kernel/cw_game_state.apply_shop_action_logic` 及其动作族腿应用,拒绝语义在腿内(`LogicOutcome`);
+  - **玩家动作**(买/卖/刷/升级/部署/穿戴/选卡/采晶矿/工具)→ 经单一转移函数 `kernel/cw_game_state.apply_shop_action_logic` 及其动作族分支应用,拒绝语义在分支内(`LogicOutcome`);
   - **环境事件**(发牌/收入/结算/offer 生成/位面推进)→ sim 机制面按本稿 §2.2 各模块规格执行,以 obs 渠道写容器。
 - **保真度分层声明**(逐模块标注,判读外推纪律沿用 `sim/sim-design.md` §1.3 三档):真代码层(注册表/概率表/策略本体)可直接信;机制层(本稿按游戏规则建模的转移)信机制文档;校准层(战斗结算等不可复刻面,§2.2 M13)结论带免责;sim-only 差异面禁外推(重做目标是把此档压到最小,残留面逐条申报)。
 
@@ -170,15 +170,15 @@
 #### M07 买牌与升星合成
 
 - **实机逻辑**:买牌落备战;触发 3合1 时产物落点:场上有同名→落场上那张位置(装备/站位继承),全在备战→落最左;连锁合成(一次购买可多级);满栏例外:能触发合成的牌买得进,且自动多买 `min(店内张数, 3−已有数 mod 3)` 张、无价格优惠;费用倍数 = 原费用 × 3^(星级−1),买价按当前星级实付;场上同名同星 ≤1 恒成立(同名守卫)。(依据:`research/merge_mechanics.md` 全篇)
-- **sim 模拟**:全部经 `kernel/cw_merge_simulate.py` + `apply_shop_action_logic` BuyCard 腿(合成链/落点/满栏合成买已在单一转移函数内,现行契约平移);持有计数变化反馈 M06 派生池。
-- **复用面**:`kernel/cw_merge_simulate.py`(merge_buy_completes/merge_buy_k/will_merge_on_buy)、`kernel/cw_exec_state.py`(槽位)、`kernel/cw_economy.sell_refund`(卖出腿)。
+- **sim 模拟**:全部经 `kernel/cw_merge_simulate.py` + `apply_shop_action_logic` BuyCard 分支(合成链/落点/满栏合成买已在单一转移函数内,现行契约平移);持有计数变化反馈 M06 派生池。
+- **复用面**:`kernel/cw_merge_simulate.py`(merge_buy_completes/merge_buy_k/will_merge_on_buy)、`kernel/cw_exec_state.py`(槽位)、`kernel/cw_economy.sell_refund`(卖出分支)。
 - **随机量与流键**:无(合成是确定性规则)。
 - **未知**:U26 附注(满栏商店语境合成的落点时序,merge_mechanics §2.5 自标低置信)。
 
 #### M08 升级与经验
 
 - **实机逻辑**:购买经验 4 金/击 = +4XP;单击价观察带 4-8 金(生产读屏 `state.level_up_cost`,缺读兜底 4);升级门槛表 `{3:4,4:6,5:20,6:40,7:52,8:72,9:84}`(2606 读数零例外,依据 `research/xp-rules.md`);节点基础经验:战斗/奖励/遭遇 +2、补给 +0、BOSS +12(挂确认 U17);买牌不产经验;折扣类效果只降价不减 XP。(依据:`research/xp-rules.md` §1/§2)
-- **sim 模拟**:XP 权威账本在引擎(现行 ADR-0286 口径平移:买牌/买经验累加、升级结转);升级 = LevelUpShop 腿(满级=lv10 拒,**放开现行 sim 的 lv9 冻结**——实机 lv9 正常付费档、lv10 才禁用,`sim/sim-design.md` §2.3 #3 申报差异反转);节点结算时按节点类型加基础经验(+策略效果如人才空洞)。
+- **sim 模拟**:XP 权威账本在引擎(现行 ADR-0286 口径平移:买牌/买经验累加、升级结转);升级 = LevelUpShop 分支(满级=lv10 拒,**放开现行 sim 的 lv9 冻结**——实机 lv9 正常付费档、lv10 才禁用,`sim/sim-design.md` §2.3 #3 申报差异反转);节点结算时按节点类型加基础经验(+策略效果如人才空洞)。
 - **复用面**:`kernel/cw_economy.py`(XP_TO_NEXT_LEVEL/xp_apply_clicks/xp_click_cost)。
 - **随机量与流键**:无。
 - **未知**:U16(逐级单击价表)、U17(BOSS+12 构成/改道/难度维)、U18(lv10 门槛、1/2 级门槛真值)。
@@ -186,7 +186,7 @@
 #### M09 备战席/板面/部署与卖出
 
 - **实机逻辑**:备战栏恒 9 槽(物品与角色同占槽;补给箱不可卖实测定谳);板面 = 前台 4 格 + 后台 6 格恒定,等级只定上阵人数 cap(level=cap);后台格数 = `6 + (cap − level)`(宝钻/召唤物扩排,封顶 9);宝钻:cap+1 可叠加、无论是否穿戴;奖励溢出角色悬挂席上不丢;deploy=drag、deployed 可卖;任何「上场」路径必须过同名守卫。(依据:`research/board_structure.md` 全篇、gameplay「备战棋盘槽位/backup 溢出/deploy-sell 交互」节)
-- **sim 模拟**:状态 = 容器槽位表(bench 9 槽 pad 语义/front_row/back_row/deployed);转移 = DeployMove/SellBench/SellDeployed 动作腿 + 同名守卫单一守卫函数;后排格数按公式派生(`cw_back_layout` 公式通道语义在 sim 直接算,无 CV 通道);宝钻 = 局内计数器(获取通道 = M18 带钻选项,发放分布挂 U24)。
+- **sim 模拟**:状态 = 容器槽位表(bench 9 槽 pad 语义/front_row/back_row/deployed);转移 = DeployMove/SellBench/SellDeployed 动作分支 + 同名守卫单一守卫函数;后排格数按公式派生(`cw_back_layout` 公式通道语义在 sim 直接算,无 CV 通道);宝钻 = 局内计数器(获取通道 = M18 带钻选项,发放分布挂 U24)。
 - **复用面**:`kernel/cw_exec_state.py`、`kernel/cw_deploy_logic.py`(deploy 选人纯逻辑)、`kernel/cw_vocab.py` 动作类。
 - **随机量与流键**:无。
 - **未知**:无新增(召唤物加格算术 U15 附注挂战力上下文,不影响槽位表——格数公式已定谳封顶 9)。
@@ -194,7 +194,7 @@
 #### M10 装备系统
 
 - **实机逻辑**:8 基础件两两必有配方(28 交叉+8 自配=36 进阶,`cw_synthesis` K8 闭合);穿着触发自动合成 + 装备栏内主动合成两路径,均不耗金;角色上限 3 件,产物占最左简易槽;卖出角色装备全量回装备区;角色间不可直拖转移(卖人回装/扳手两段);前后台限定装穿错排主效果全废;唯一件语义待实测(三种解读);工具 7 件(冶金炉/扳手/精密扳手/投影仪×2/好运令牌/特权赋予卡)逐件效果在注册表;星徽=add-if-absent 成员授予、骇客卡带=成员佩戴计数+1(普通角色可穿性已证伪候裁);商店角色可自带装备(规律性待实测);装备获得按固定顺序入栏无空洞。(依据:`research/equipment_mechanics.md` 全篇)
-- **sim 模拟**:状态 = 容器 equips(owned)/BenchChar.equips(worn);转移 = WearEquip/工具原子动作腿(穿着即合成在腿内建模——现行「执行链不拦截」的缺口在 sim 侧补齐:合成是游戏规则,必须模拟);发放(来自 M16/M17/M11/M02)按 U24 裁定分布采样;工具使用 = 消耗型动作腿(冶金炉同类型随机重掷走 `M10/炉` 流)。
+- **sim 模拟**:状态 = 容器 equips(owned)/BenchChar.equips(worn);转移 = WearEquip/工具原子动作分支(穿着即合成在分支内建模——现行「执行链不拦截」的缺口在 sim 侧补齐:合成是游戏规则,必须模拟);发放(来自 M16/M17/M11/M02)按 U24 裁定分布采样;工具使用 = 消耗型动作分支(冶金炉同类型随机重掷走 `M10/炉` 流)。
 - **复用面**:`data/cw_equipment_data.py`、`data/cw_synthesis.py`(synthesize_target/self_advance/recycle_qualified)、`kernel/cw_bond_equips.py`(星徽/卡带口径)、`kernel/cw_bench_equips.py`。
 - **随机量与流键**:`M10/炉/{uses}`(冶金炉重掷)、`M10/发放/{plane}/{round}`(发放采样,分布参数候实机数据,U24 定稿口径)。
 - **未知**:U24(发放分布/自带装备/唯一件/令牌池/箱内容池)、U09 附注(卡带可穿性定谳联动 `cw_bond_equips`)。
@@ -287,7 +287,7 @@
 #### M21 特殊角色规则
 
 - **实机逻辑**:银狼LV.999:初始 3 费,升星拖上场变 4 费→5 费(备战栏不升费);首次升 2 星触发「我来当策划」二选一 overlay(升费 vs 其他);升费前商店只出基础费用档;开拓者双形态:前台=记忆/后台=欢愉,位置决定生效;三星五费 ≈ 无敌(2000 强度+300% 速度征服);试用角色 = 账号未拥有,面板中等。(依据:gameplay「角色升星」节、`research/economy.md` §8、`research/equipment_mechanics.md` §7)
-- **sim 模拟**:银狼 = 角色特殊规则钩子(费用档随星级×上场态;「我来当策划」→ `event_overlay` 相位,归 M22 事件弹窗族建模,U14 已裁决);商店费用档可见性 = 池过滤器(升费前高费副本不进店);开拓者 = 位置路由形态(部署腿内按 position 解析 char_id 形态);三星五费特效 = M13 特征(战力侧,第一期随机输出面下挂披露)。
+- **sim 模拟**:银狼 = 角色特殊规则钩子(费用档随星级×上场态;「我来当策划」→ `event_overlay` 相位,归 M22 事件弹窗族建模,U14 已裁决);商店费用档可见性 = 池过滤器(升费前高费副本不进店);开拓者 = 位置路由形态(部署分支内按 position 解析 char_id 形态);三星五费特效 = M13 特征(战力侧,第一期随机输出面下挂披露)。
 - **复用面**:`data/cw_chars.py`(银狼三档位条目/开拓者双形态注)。
 - **随机量与流键**:`M21/planner`(选项生成,归 M22)。
 - **未知**:U26(定稿口径:升费按既有口径建模标注,读数候实机数据)。
@@ -507,7 +507,7 @@
 | 战斗结算 | 四路径(粗表/Δ池/P2 参数/兜底阶梯)并存、默认粗表 | 单一结算口 = 第一期随机输出面(U01 已裁决,M13);战力代理/Δ池移 §2.6 |
 | LEVEL_CAP | 冻结 lv9、lv9 拒付(sim-only 差异) | 真值 cap=10、lv10 拒付(§2.2 M08) |
 | 开局 | bench 注入 + hp=80 miss 值 | RunConfig 真值输入 + `cw_opening_hp` 表 + 手牌形状采样(M01/U28 已裁决) |
-| 满栏/守卫 | 部分在引擎内散写 | 全部收口单一转移函数动作腿(M07/M09) |
+| 满栏/守卫 | 部分在引擎内散写 | 全部收口单一转移函数动作分支(M07/M09) |
 | 装备 | 执行链参数默认全关(`synthesis_chain`/`equip_wear_effect` 校准假设开关) | 穿着即合成为默认游戏规则(M10);战力折减归 M13 特征,不再是引擎开关 |
 | 记录 | sim 自建账本(write_batch_ledger/telemetry/sim) | 容器统一 state 流水(§2.0.3) |
 | 相位 | 隐式(循环内 if) | 显式相位状态机(§2.0.1,对齐画面族) |
@@ -515,7 +515,7 @@
 #### 2.4.3 留(平移复用)
 
 - 抽牌核心:`REFRESH_PROB` 定档 + 池内均匀抽名(`sim/pool.py draw_shop` 骨架,M05/M06);
-- 容器 `GameState` + 单一转移函数 `apply_shop_action_logic` 全动作族腿 + `LogicOutcome` 拒绝语义(`sim/sim-design.md` §2 契约整体平移);
+- 容器 `GameState` + 单一转移函数 `apply_shop_action_logic` 全动作族分支 + `LogicOutcome` 拒绝语义(`sim/sim-design.md` §2 契约整体平移);
 - kernel 全部单一源(§2.0.3 清单);
 - 结构测试与行为测试的**契约**(引擎动作必经单一转移函数、金样对拍)——测试文件随测试批重挂,契约不变;
 - `cw_opening_hp` 表、`cw_plane_table` 日程、`cw_reward_node` 扑满面、`cw_merge_simulate` 合成链、`cw_bond_equips` 羁绊口径;

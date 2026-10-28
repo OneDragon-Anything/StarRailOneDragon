@@ -17,10 +17,10 @@
 - L1 通过。
 **验收凭据形式**：测试名 + L1。
 
-## 3.2 pick_planner 两相迁移 + 升费腿档行
+## 3.2 pick_planner 两相迁移 + 升费分支档行
 
-**范围**：①新建 `kernel/cw_action_report/pick_planner.py`：`report_action_pick_planner_param` 两相（发射相意图遥测零写 / 落地相 `EVIDENCE_OVERLAY_CLOSED` 分派：equip 腿入栏+后果链原样迁入、upgrade 腿变换窗三态 + 恰一枚且现档<5 → 变换落行后级联前写档行 `planner_upgrade_tier`、现档=5 → 不写留证 `planner_upgrade_tier_ceiling`、多枚/零枚档不动、unknown/weaken 原样）；②`cw_screen_yinlang.py` 落地记账块删除 + 重入裁决出口改调 report（落地相）+ 发射 param 挂实例 `self._pick_param`；③`cw_overlay_pick_action.py` PickPlannerOp 发射上报改调新 report；④`zero_writes.py` planner 委托退役；⑤测试迁移面全项（design §2.2 申报：8+ 直调迁移、zero_writes 导入面、两相对照、档行断言、resolve_cost_star 用例已在 3.1）。
-**边界**：sim planner 效果腿维持占位披露；decision 半/classify_planner_leg/证据闩机制本体零改动（只迁宿主）；`merge_simulate` 引擎零改动。
+**范围**：①新建 `kernel/cw_action_report/pick_planner.py`：`report_action_pick_planner_param` 两相（发射相意图遥测零写 / 落地相 `EVIDENCE_OVERLAY_CLOSED` 分派：equip 分支入栏+后果链原样迁入、upgrade 分支变换窗三态 + 恰一枚且现档<5 → 变换落行后级联前写档行 `planner_upgrade_tier`、现档=5 → 不写留证 `planner_upgrade_tier_ceiling`、多枚/零枚档不动、unknown/weaken 原样）；②`cw_screen_yinlang.py` 落地记账块删除 + 重入裁决出口改调 report（落地相）+ 发射 param 挂实例 `self._pick_param`；③`cw_overlay_pick_action.py` PickPlannerOp 发射上报改调新 report；④`zero_writes.py` planner 委托退役；⑤测试迁移面全项（design §2.2 申报：8+ 直调迁移、zero_writes 导入面、两相对照、档行断言、resolve_cost_star 用例已在 3.1）。
+**边界**：sim planner 效果分支维持占位披露；decision 半/classify_planner_leg/证据闩机制本体零改动（只迁宿主）；`merge_simulate` 引擎零改动。
 **设计依据**：design.md §2.2（全分支与时序定点）。
 **文件面**：`kernel/cw_action_report/pick_planner.py`（新建）、`operations/cw_screen/cw_screen_yinlang.py`、`operations/cw_op/cw_overlay_pick_action.py`、`kernel/cw_action_report/zero_writes.py`；`sr-od-test/` 对应测试。
 **依赖**：3.1（访问器 + 字段）。
@@ -33,7 +33,7 @@
 - L1 通过。
 **验收凭据形式**：测试名 + L1。
 
-## 3.3 上阵变费腿档行 + 观察面 OCR 建档 area
+## 3.3 上阵变费分支档行 + 观察面 OCR 建档 area
 
 **范围**：①`deploy_move.py` 变换窗补档行：落位 = (银狼LV.999, 3★) 且现档<5（`effective_cost` 读口）→ 落场写后补 `write_logic(lv999_cost_tier, 现档+1)`（evidence=`deploy_upgrade_tier`）；现档=5 → 恒等搬运；②`cw_screen_yinlang.py` observe node 文本归属过滤改两卡 area rect 中心点判定（先例 `_anchor_hit_full_ocr` 同式），rect 经 `screen_loader.get_area('货币战争-银狼升星', '骇入选项-左卡/右卡')`，area 缺失回退硬编码带；`CARD_TEXT_Y_LO/HI` 退役。
 **边界**：识别面捕获集变化的实机对拍归实机窗（§2.4 申报已覆盖）；deploy 其余路径零行为差。

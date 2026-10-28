@@ -23,11 +23,11 @@
 
 None 域边界:值 None(未观察)的域跳写(留空不写、等观察覆盖)不标记;抽中类型域值 None → 跳采样写等观察(诚实缺失)。
 
-## 2.1 动作腿总览(非随机态域两腿,整批写毕后收尾)
+## 2.1 动作分支总览(非随机态域两条分支,整批写毕后收尾)
 
-- **计数腿**:批内开成点数 `opened` 经 `gs.effects.record_ore_open` 单口入账(计数载体 = `kernel/cw_effect_inventory.py` 的 `ore_open_total`,不进快照 = 接管局从 0 起,接受面 = 刷新两计数同款)。「点开才计数」:席满/缺项∧level 缺读跳点不入账,`opened == 0` 早退路径零计数零触发。消费方 = 战技点契约触发器。
-- **环境条件发放腿**(登记表 `cw_investments.ENV_ORE_OPEN_GRANTS` 在册环境:战技点契约 id 128):计数入账后尾部触发 `kernel/cw_env_grants.check_env_ore_open_grants`——阈值序列(首阈值 20 + 步长 10,无限重复)逐阈值发放:火花 + 随机战技点羁绊角色各 1 个 1★(两腿 `gain_character` 随机态写入——触发前提 = 晶矿开启计数为未验证推演,发放按随机态定级走台账纠偏 + bench 首观察覆盖,用户裁定 2026-10-17;随机腿采样经注入槽具名键 `env_ore_open_grant`,sim = 世界真值 / live 回退自掷),done 键 `ore_open#<阈值>` 逐阈值封账(`write_logic` 簿记;fields.md §3.5.5 词表行)。
-- **窗序确定**:晶矿自身奖励写(含合并升星触发腿)→ 计数入账 → 战技点契约触发腿(计数先入账后检查,检查时计数现值含本批);触发发放与晶矿奖励同动作窗同组。
+- **计数分支**:批内开成点数 `opened` 经 `gs.effects.record_ore_open` 单口入账(计数载体 = `kernel/cw_effect_inventory.py` 的 `ore_open_total`,不进快照 = 接管局从 0 起,接受面 = 刷新两计数同款)。「点开才计数」:席满/缺项∧level 缺读跳点不入账,`opened == 0` 早退路径零计数零触发。消费方 = 战技点契约触发器。
+- **环境条件发放分支**(登记表 `cw_investments.ENV_ORE_OPEN_GRANTS` 在册环境:战技点契约 id 128):计数入账后尾部触发 `kernel/cw_env_grants.check_env_ore_open_grants`——阈值序列(首阈值 20 + 步长 10,无限重复)逐阈值发放:火花 + 随机战技点羁绊角色各 1 个 1★(两条分支 `gain_character` 随机态写入——触发前提 = 晶矿开启计数为未验证推演,发放按随机态定级走台账纠偏 + bench 首观察覆盖,用户裁定 2026-10-17;随机分支采样经注入槽具名键 `env_ore_open_grant`,sim = 世界真值 / live 回退自掷),done 键 `ore_open#<阈值>` 逐阈值封账(`write_logic` 簿记;fields.md §3.5.5 词表行)。
+- **窗序确定**:晶矿自身奖励写(含合并升星触发分支)→ 计数入账 → 战技点契约触发分支(计数先入账后检查,检查时计数现值含本批);触发发放与晶矿奖励同动作窗同组。
 
 ## 3. 转移规则(逐点顺序推演)
 

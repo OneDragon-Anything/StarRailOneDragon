@@ -4,14 +4,14 @@
 
 ## ① 总判
 
-**需修订(不可定稿)**:发现 6 条,阻塞 2 条。方案主体(单相化契约、逐屏差异、时序等价论证、腿型实码口径、joy 收口序)经逐条对码核验成立,历轮 attack/attack2 的 7 项发现在现稿中均已真清偿;但 §2.2 消费点迁移总表在本轮新事实(joy rider 批已提交,带出 `test_cw_gain_chain.py` 的 `EVIDENCE_OVERLAY_CLOSED` 消费面)下不完备,且 `logic-updates/pick-planner.md` 正本更新条目口径过窄(§3/§5/文件头的两相表述不在清单与兜底 grep 覆盖内)。修毕 F1/F2 即可收敛。
+**需修订(不可定稿)**:发现 6 条,阻塞 2 条。方案主体(单相化契约、逐屏差异、时序等价论证、分支类型实码口径、joy 收口序)经逐条对码核验成立,历轮 attack/attack2 的 7 项发现在现稿中均已真清偿;但 §2.2 消费点迁移总表在本轮新事实(joy rider 批已提交,带出 `test_cw_gain_chain.py` 的 `EVIDENCE_OVERLAY_CLOSED` 消费面)下不完备,且 `logic-updates/pick-planner.md` 正本更新条目口径过窄(§3/§5/文件头的两相表述不在清单与兜底 grep 覆盖内)。修毕 F1/F2 即可收敛。
 
 ## ② 逐条发现
 
 ### F1 [阻塞] design §2.2 消费点迁移总表遗漏 `test_cw_gain_chain.py` 的 `EVIDENCE_OVERLAY_CLOSED` 消费面(import + 10 调用,已提交)
 
 - **位置**:design.md §2.2 表「`EVIDENCE_OVERLAY_CLOSED`(pick_planner.py 自持)」行;landing.md 3.2 文件面/验收凭据。
-- **问题**:全仓 grep(本轮实测)显示 `sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py:40-43` `from ...pick_planner import (EVIDENCE_OVERLAY_CLOSED, report_action_pick_planner_param)`,并以 `evidence=EVIDENCE_OVERLAY_CLOSED` 调用 **10 处**(:615/:633/:646/:654/:661/:684/:713/:732/:757/:782,joy rider 授予测试族)。该消费面随 commit 14dd40977「欢愉契约条件腿 rider 建模」**已入库**(attack2 复核时点在 joy 批提交之前,其「src+test 无遗漏」结论因此过期)。后果三连:①3.2 删 `evidence` 参数后这 10 处调用直接 TypeError → 「L1 全绿含其测试」不可达;②design 验收锚 3「`EVIDENCE_OVERLAY_CLOSED` 全域 grep 零命中(范围含 sr-od-test)」永红;③§2.2 表把 planner 侧消费点枚举为「`cw_screen_yinlang.py` import+调用;`test_cw_yinlang_phase32.py`(10+ 处)」,worker 按表执行改完两文件后 grep 仍剩一整文件,停手令。landing 3.2 文件面「受影响测试(含 test_cw_yinlang_phase32.py)」未点名该文件。
+- **问题**:全仓 grep(本轮实测)显示 `sr-od-test/test/sr_od/application/currency_war/test_cw_gain_chain.py:40-43` `from ...pick_planner import (EVIDENCE_OVERLAY_CLOSED, report_action_pick_planner_param)`,并以 `evidence=EVIDENCE_OVERLAY_CLOSED` 调用 **10 处**(:615/:633/:646/:654/:661/:684/:713/:732/:757/:782,joy rider 授予测试族)。该消费面随 commit 14dd40977「欢愉契约条件分支 rider 建模」**已入库**(attack2 复核时点在 joy 批提交之前,其「src+test 无遗漏」结论因此过期)。后果三连:①3.2 删 `evidence` 参数后这 10 处调用直接 TypeError → 「L1 全绿含其测试」不可达;②design 验收锚 3「`EVIDENCE_OVERLAY_CLOSED` 全域 grep 零命中(范围含 sr-od-test)」永红;③§2.2 表把 planner 侧消费点枚举为「`cw_screen_yinlang.py` import+调用;`test_cw_yinlang_phase32.py`(10+ 处)」,worker 按表执行改完两文件后 grep 仍剩一整文件,停手令。landing 3.2 文件面「受影响测试(含 test_cw_yinlang_phase32.py)」未点名该文件。
 - **权威源证据**:test_cw_gain_chain.py :40-43/:615-782(本轮实读);`git log --oneline -- .../pick_planner.py` 首行 = 14dd40977;action_ops.md §1 禁止清单 + design §3 锚 3。
 - **建议修法**:§2.2 该行现消费点补「`test_cw_gain_chain.py`(joy rider 测试族,import+10 调用,commit 14dd40977 已入库)」;landing 3.2 文件面与验收凭据点名该文件(改写 = 删 `evidence=` kwarg,断言本体即 rider 行为测试,测试面归属按 F4 澄清)。
 
@@ -29,17 +29,17 @@
 - **权威源证据**:test_cw_screen_two_node_family.py :296-348(本轮实读);cw_screen_equip_pick.py :74/:79/:125-129/:169/:180。
 - **建议修法**:§2.2 该行现消费点补「`test_cw_screen_two_node_family.py` equip act 测试(:346/:348)」;landing 3.1 文件面点名并声明改写为「派发即 round_success + 零重入裁决标志」断言。
 
-### F4 [建议] joy rider「未提交改动在盘」申报事实已过期(rider 已随 commit 14dd40977 提交);joy 批测试面的改写归属与「rider 腿行为测试归 joy 批」边界未澄清
+### F4 [建议] joy rider「未提交改动在盘」申报事实已过期(rider 已随 commit 14dd40977 提交);joy 批测试面的改写归属与「rider 分支行为测试归 joy 批」边界未澄清
 
 - **位置**:design.md §2.1 planner 条「joy rider 在盘申报(attack2 F4 事实化):…已以未提交改动在盘」、§2.3 收口序①「joy 批先提交其 rider」;landing.md 3.2 依赖。
-- **问题**:git 实况:`pick_planner.py` 工作树干净,`_grant_joy_conditional`(+rng)与 `test_cw_gain_chain.py` evidence 调用均已入库(14dd40977)。收口序①实际已满足——设计前提陈述失真(方向无害:依赖已达成,比「待提交」更安全)。但衍生一点:3.2 必须机械改写 joy 批的 `test_cw_gain_chain.py`(删 `evidence=` kwarg,见 F1),与「rider 腿行为测试归 joy 批验收面、本批验收锚不含 rider 专项测试」的边界声明存在字面张力——宜显式声明「3.2 对该文件仅做调用签名机械改写,断言语义(rider 行为)不改不校验」。
+- **问题**:git 实况:`pick_planner.py` 工作树干净,`_grant_joy_conditional`(+rng)与 `test_cw_gain_chain.py` evidence 调用均已入库(14dd40977)。收口序①实际已满足——设计前提陈述失真(方向无害:依赖已达成,比「待提交」更安全)。但衍生一点:3.2 必须机械改写 joy 批的 `test_cw_gain_chain.py`(删 `evidence=` kwarg,见 F1),与「rider 分支行为测试归 joy 批验收面、本批验收锚不含 rider 专项测试」的边界声明存在字面张力——宜显式声明「3.2 对该文件仅做调用签名机械改写,断言语义(rider 行为)不改不校验」。
 - **权威源证据**:`git log` 14dd40977;`git status --short` 无 src 改动;pick_planner.py :94/:107-142(在盘即已提交形态)。
 - **建议修法**:§2.1/§2.3/landing 3.2 依赖措辞改为「rider 已随 commit 14dd40977 提交(原『未提交在盘』申报截至本稿时点已过期);3.2 对 `test_cw_gain_chain.py` 仅删 `evidence` kwarg 机械改写,rider 行为测试归 joy 批验收面」。
 
 ### F5 [建议] cw_vocab 两个 param docstring 内「落地相/两相语义」措辞不在申报注释连带面,兜底 grep 亦不覆盖
 
 - **位置**:landing.md 3.1「`CwActionPickEquipParam.norm_item` 字段注释改写(归一换源)+ `CwActionPickSupplyParam.norm_item` T-1 遗留过期注释顺手清」。
-- **问题**:实读 cw_vocab.py:`CwActionPickSupplyParam` docstring :735-736「上报**落地相**按实际开出内容应用(…pick_supply **两相语义**)」、`CwActionPickEquipParam` docstring :910-911「上报**落地相**装备腿 = 入栏 + 获得后果链…(pick_equip **两相语义**)」——supply 句是 T-1 后本已失真、equip 句本批后失真,均无 `EVIDENCE_OVERLAY_CLOSED` 字面量(兜底 grep 一段抓不到),措辞范围又不属兜底二段的两文件。「norm_item 注释改写」括注「(归一换源)」收窄了口径,worker 只换函数名即视为完成 → 两相措辞存活。
+- **问题**:实读 cw_vocab.py:`CwActionPickSupplyParam` docstring :735-736「上报**落地相**按实际开出内容应用(…pick_supply **两相语义**)」、`CwActionPickEquipParam` docstring :910-911「上报**落地相**装备入账分支 = 入栏 + 获得后果链…(pick_equip **两相语义**)」——supply 句是 T-1 后本已失真、equip 句本批后失真,均无 `EVIDENCE_OVERLAY_CLOSED` 字面量(兜底 grep 一段抓不到),措辞范围又不属兜底二段的两文件。「norm_item 注释改写」括注「(归一换源)」收窄了口径,worker 只换函数名即视为完成 → 两相措辞存活。
 - **权威源证据**:cw_vocab.py :733-736、:907-911(本轮实读)。
 - **建议修法**:landing 3.1 该句扩为「两处 docstring 整段改写(norm_item 归一换源 + 落地相/两相语义措辞清为单相)」。
 
@@ -55,12 +55,12 @@
 | 复查面 | 结果 |
 |---|---|
 | design §1 ↔ §2 ↔ landing 三阶段边界 | ✓ 无遗漏无越界:§1.3 解决①②③与 §2.0/§2.1/§2.2 逐项对应;不解决面(upgrade 前置校验、classify_planner_leg、零写族 chosen 留守[op-layer §2.2 :78 支持]、equip 判据)与 landing「不含」声明一致;正本更新面全部回指 landing 清单。§1.3 之外未见未申报面(cw_vocab 两注释、模块头自述段均在 §2.2 表)——F5 属口径过窄非漏报文件 |
-| 历轮(attack/attack2)发现清偿核对 | F1 action_exec :24 入清单 ✓(锚实存);F2 planner.md 五处锚全实存(:12/:24/:48-49/:55/:76)✓;F3 op-layer :33/:43/:96/§3 锚实存 ✓;F4 joy 收口序在稿 ✓(但事实陈述过期 → 本轮 F4);F5 腿型口径与实码一致 ✓(classify_planner_leg 现役不产出 weaken,cw_events.py :1005-1008「弱化兜底档已退役…落步 4 unknown」逐字支持);F6 模块头三线例外自述段实存(cw_overlay_pick_action.py :19-24)且 3.2 归属正确 ✓;F7 cw_vocab :733 锚精确 ✓ |
-| 关键主张依据对码 | §1.1 现状锚全部实存且如述(pick_planner.py :86-104 四分支、yinlang :204-222 证据闩、equip_pick :125-138、PickPlannerOp :408 置位、PickEquipOp 发射相 :609-615);§2.0 时序等价论证成立(旧落地相在同 op visit 内 round_wait 轮到达,期间无外循环观察介入 bench/front/back);§2.1 归一升级依据成立(equip_pick docstring :156-157「未锁态语义(仅泛用腿)」在册、`normalize_registry_equip_name` T-1 已建[cw_events.py :951]、注册表实数 158[实测 `len(EQUIPMENT_ROSTER)`=158]);§2.3 upgrade 重复应用论据与 `_apply_upgrade_transform` 实码一致(二次上报 count=0 → `planner_upgrade_source_missing`,档行不二次 +1)✓;增补 2 禁止清单第 4 条 =「判重/防重复保护」✓;增补 3 合规自查成立(`emit_overlay_confirm` 体内零 OCR[实读 :91-118],归一组装留画面 op)✓ |
+| 历轮(attack/attack2)发现清偿核对 | F1 action_exec :24 入清单 ✓(锚实存);F2 planner.md 五处锚全实存(:12/:24/:48-49/:55/:76)✓;F3 op-layer :33/:43/:96/§3 锚实存 ✓;F4 joy 收口序在稿 ✓(但事实陈述过期 → 本轮 F4);F5 分支类型口径与实码一致 ✓(classify_planner_leg 现役不产出 weaken,cw_events.py :1005-1008「弱化兜底档已退役…落步 4 unknown」逐字支持);F6 模块头三线例外自述段实存(cw_overlay_pick_action.py :19-24)且 3.2 归属正确 ✓;F7 cw_vocab :733 锚精确 ✓ |
+| 关键主张依据对码 | §1.1 现状锚全部实存且如述(pick_planner.py :86-104 四分支、yinlang :204-222 证据闩、equip_pick :125-138、PickPlannerOp :408 置位、PickEquipOp 发射相 :609-615);§2.0 时序等价论证成立(旧落地相在同 op visit 内 round_wait 轮到达,期间无外循环观察介入 bench/front/back);§2.1 归一升级依据成立(equip_pick docstring :156-157「未锁态语义(仅泛用分支)」在册、`normalize_registry_equip_name` T-1 已建[cw_events.py :951]、注册表实数 158[实测 `len(EQUIPMENT_ROSTER)`=158]);§2.3 upgrade 重复应用论据与 `_apply_upgrade_transform` 实码一致(二次上报 count=0 → `planner_upgrade_source_missing`,档行不二次 +1)✓;增补 2 禁止清单第 4 条 =「判重/防重复保护」✓;增补 3 合规自查成立(`emit_overlay_confirm` 体内零 OCR[实读 :91-118],归一组装留画面 op)✓ |
 | 正本清单条目节名/行号真实性 | action_ops §4.5 ✓;action_exec :24 ✓(且 supply 误列欠账由「supply 确认行复核」覆盖);op-layer :43(§1.2 欠账句)/:33(§1.1 枚举句)/:96(§3 注)/§3 节点循环行 :88 ✓;planner.md :12/:55/:76 ✓;equip_pick.md ✓;pick-planner.md **✗ :14 锚错位 + 清除面不全(F2)**;screens/README §5.5 ✓(**§6 :138 漏 → F6**) |
 | 消费点迁移总表 vs 全仓 grep | `EVIDENCE_OVERLAY_CLOSED`:src 4 文件 ✓;t60 EQUIP_EVIDENCE(:40/:127/:218)✓;yinlang_phase32 import+10 调用 ✓;**test_cw_gain_chain.py import+10 调用 ✗ 遗漏(F1)**。`_pick_pending`/`_pending_pick`:equip_pick 本文件 ✓ + bookcard/expert_invite 同名异类型属彼屏(表已限定)✓ + **two_node_family :348 ✗ 遗漏(F3)**。`_confirm_pending`/`_pending_leg`/`_pick_param`:yinlang 本文件 + planner op :408 ✓;partner(:355)/fortune/deploy_not_full/wish_trial/bookcard 同名属彼屏 ✓ 无过度。`normalize_equip_name`:equip_pick 组装点(:47/:168)✓、本体与银狼域消费面不动 ✓、supply_node 已用 registry 入口 ✓。模块头三线例外段 ✓。cw_vocab 两处 ✓(措辞口径 → F5) |
 | 规范遵循(action_ops §1 三条裁定 / op-layer §1.4) | 增补 2 ✓(点完即写、禁验证重试防重、重复应用风险按裁定接受);增补 3 ✓(零新增读屏,定位查找合法);op-layer §1.1 出口①形态对齐(派发即终结)✓;§2.2 chosen 留守边界不破 ✓;固定等待族口径(1.2s/pick 确认 0.6-1.2s)✓ |
-| 腿型实码口径 | equip(命中入栏+后果链 / '' 翻来源留证,含多命中 equip+'')/ upgrade(三态+档行,序 = 容器观察→档封顶→计数→变换→档行→级联)/ unknown(弱化词落此)/ unrouted 兜底 —— 与 pick_planner.py :95-104、:145-169、:172-274 逐分支一致 ✓ |
+| 分支类型实码口径 | equip(命中入栏+后果链 / '' 翻来源留证,含多命中 equip+'')/ upgrade(三态+档行,序 = 容器观察→档封顶→计数→变换→档行→级联)/ unknown(弱化词落此)/ unrouted 兜底 —— 与 pick_planner.py :95-104、:145-169、:172-274 逐分支一致 ✓ |
 
 ## ④ 试读结论(逐阶段)
 

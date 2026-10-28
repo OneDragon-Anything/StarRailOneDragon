@@ -4,7 +4,7 @@
 
 ## ① 总判
 
-**需修订(不可定稿)**:发现 4 条,阻塞 1 条。方案主体(单相化契约、逐屏差异、时序等价论证、腿型实码四分支口径、joy 收口序事实化、消费点迁移总表)经逐条对码核验成立;attack/attack2/attack3 的 10 项发现在现稿中逐项核对**均已真清偿**(F1 清偿核证 = test_cw_gain_chain import+10 调用已入 §2.2 表与 landing 3.2;F2 清偿核证 = logic-updates 条目扩至 :3/:23/:33/:37/:41;F3 = two_node_family :346/:348 入 landing 3.1 文件面;F4 = joy 收口序事实化,commit 14dd40977 实在,`+63 行`与 numstat 63/9 精确一致;F5 = cw_vocab docstring 措辞面入 landing 3.1;F6 = README §6:138 入清单;F7 = supply 注释 :733 实在)。唯一残留缺口 = `logic-updates/pick-planner.md` 正本更新条目清除面仍漏 §2 三行(attack3 F2 同形态第 3 犯),修毕即可收敛。
+**需修订(不可定稿)**:发现 4 条,阻塞 1 条。方案主体(单相化契约、逐屏差异、时序等价论证、分支类型实码四分支口径、joy 收口序事实化、消费点迁移总表)经逐条对码核验成立;attack/attack2/attack3 的 10 项发现在现稿中逐项核对**均已真清偿**(F1 清偿核证 = test_cw_gain_chain import+10 调用已入 §2.2 表与 landing 3.2;F2 清偿核证 = logic-updates 条目扩至 :3/:23/:33/:37/:41;F3 = two_node_family :346/:348 入 landing 3.1 文件面;F4 = joy 收口序事实化,commit 14dd40977 实在,`+63 行`与 numstat 63/9 精确一致;F5 = cw_vocab docstring 措辞面入 landing 3.1;F6 = README §6:138 入清单;F7 = supply 注释 :733 实在)。唯一残留缺口 = `logic-updates/pick-planner.md` 正本更新条目清除面仍漏 §2 三行(attack3 F2 同形态第 3 犯),修毕即可收敛。
 
 ## ② 逐条发现
 
@@ -28,12 +28,12 @@
 - **建议修法**:design §2.2 表 cw_vocab 两行合并为「三处注释连带」并与 landing 措辞对齐;equip 行测试修法措辞改「点卡后」。
 - **严重级**:建议。
 
-### F3 [建议] 单相化后效果腿上报的 ChannelSig actor 静默换源未申报
+### F3 [建议] 单相化后效果分支上报的 ChannelSig actor 静默换源未申报
 
 - **位置**:design.md §2.1 两个新调用形 / §3 验收锚。
-- **问题**:现落地相效果腿上报 actor = `'CwScreenYinLang'`(cw_screen_yinlang.py :218)/`'CwScreenEquipPick'`(cw_screen_equip_pick.py :136);单相化后仅剩动作 op 内调用,actor = `'CwActionPickPlannerOp'`/`'CwActionPickEquipOp'`(照现发射相形)。效果腿遥测/缺陷行的 actor 字段全量换值,设计零申报。供给/投资迁移批同款变化已被先例接受,方向无碍;属「应写一句的遥测面变化」,非行为缺陷。
+- **问题**:现落地相效果分支上报 actor = `'CwScreenYinLang'`(cw_screen_yinlang.py :218)/`'CwScreenEquipPick'`(cw_screen_equip_pick.py :136);单相化后仅剩动作 op 内调用,actor = `'CwActionPickPlannerOp'`/`'CwActionPickEquipOp'`(照现发射相形)。效果分支遥测/缺陷行的 actor 字段全量换值,设计零申报。供给/投资迁移批同款变化已被先例接受,方向无碍;属「应写一句的遥测面变化」,非行为缺陷。
 - **权威源证据**:两画面 op 现调用点 sig 构造 vs cw_overlay_pick_action.py :424/:613 发射相 sig 构造。
-- **建议修法**:§2.1 各屏一句「效果腿上报 sig actor 随调用点迁移动作 op 名(先例 = 供给/投资迁移批)」。
+- **建议修法**:§2.1 各屏一句「效果分支上报 sig actor 随调用点迁移动作 op 名(先例 = 供给/投资迁移批)」。
 - **严重级**:建议。
 
 ### F4 [建议·存量] screens/README.md :36 统一形态句「决策动作 node = 重入裁决 + 决策 + 动作」缺「仅限未迁移屏」限定
@@ -53,7 +53,7 @@
 | `normalize_equip_name`(equip 组装点) | equip_pick :47 import + :168 组装点 ✓;`normalize_registry_equip_name` 在册(cw_events :951,158 键分层归一,docstring「补给侧」措辞与本批复用无冲突——语义纯函数可复用,设计申报「T-1 已建入口」✓);本体与银狼域消费面不动 ✓;planner 侧 classify_planner_leg 副产品 norm_item 不升级(设计 §2.1 明示)与实码 :1010-1011 口径一致 ✓ |
 | cw_vocab 三处注释 | :733(supply norm_item 引 `normalize_equip_name` = T-1 后过期)+ :735-736 / :910-911(两 param 落地相/两相措辞)实在 ✓(分布 → F2 同步缺口) |
 | cw_overlay_pick_action 模块头 | :15-24「三线例外」自述段实在,含 pick_invest/pick_equip/pick_supply 分步自述(invest/supply 已迁现役失真、本批后 pick_equip/pick_planner 亦失真)✓;3.1 不动/3.2 改写分工明确 ✓;CwActionPickEquipOp.run 发射相注释 :606-608 随 3.1 体改 ✓ |
-| 腿型实码口径 | `_apply_equip_leg`(命中入栏+后果链 / '' 翻来源留证)、`_apply_upgrade_transform`(三态:恰一枚变换+档行 :254-273 / 多枚翻来源留证 / 零枚·未观察 `planner_upgrade_source_missing` / 现档≥5 封顶闸)、unknown 留证、unrouted 兜底零写——design §2.1/landing 3.2 四分支表述与实码逐分支一致 ✓;§2.3「二次上报走零枚分支、档行不 +1 两次」论据与 :232-237 实码一致 ✓ |
+| 分支类型实码口径 | `_apply_equip_leg`(命中入栏+后果链 / '' 翻来源留证)、`_apply_upgrade_transform`(三态:恰一枚变换+档行 :254-273 / 多枚翻来源留证 / 零枚·未观察 `planner_upgrade_source_missing` / 现档≥5 封顶闸)、unknown 留证、unrouted 兜底零写——design §2.1/landing 3.2 四分支表述与实码逐分支一致 ✓;§2.3「二次上报走零枚分支、档行不 +1 两次」论据与 :232-237 实码一致 ✓ |
 | joy 收口序事实 | commit 14dd40977 实在;pick_planner.py numstat = **+63/−9**(design「+63 行」精确);`_grant_joy_conditional` 挂落地相门(:94)、rng 形参在;现落地相调用不传 rng(yinlang :214-220),单相化后 op.run 调用同不传 rng → rider 行为逐位等值 ✓;test_cw_gain_chain import+10 调用实在 ✓ |
 | 权威源条目节/行真实性 | action_ops §1 增补 2(:11)/增补 3(:13)/§2.3 欠账标注句(:59)/§4.5(:117-135,PickPlanner/PickEquip 两行 + 欠账标注段 :119)✓;action_exec §2 :24 原文与 attack2 F1 引用一致、「supply 确认行」= :33 ✓;op-layer :21-22/:33/:36-38/:43/:87-89/:96 ✓(§3 节点循环行 = :88,含 CwScreenEquipPick/CwScreenYinLang,landing「§3 节点循环行分型判据更新」有实锚);screens/README §5.5(:107-109)/§6(:138)✓;planner.md :12/:24/:29-40/:48-49/:55/:76 与 landing 五处清除面吻合 ✓;equip_pick.md :24/:52 ✓;op-layer §1.4/:43、§2.1/:51-55、§2.2/:78 chosen 留守规则与 design §1.3「零写族不解决」申报一致 ✓ |
 | design §1↔§2↔landing 三阶段边界 | 3.1(equip)/3.2(planner)/末阶段(正本)互斥完备;§1.3 之外未发现漏 declared 面;文件面路径全部真实存在 ✓ |

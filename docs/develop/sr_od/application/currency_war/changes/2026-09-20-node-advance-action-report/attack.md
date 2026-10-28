@@ -12,7 +12,7 @@
 ### F1（阻断）锚定写端 1 的「家」自相矛盾：§2.4-1 说在漏斗尾段，§2.7-5 说漏斗退出节点域写入
 
 - **位置**：design §2.4 写端 1 / §2.7 行为变化申报 5。
-- **攻击**：§2.4-1 明文「干净备战帧：漏斗 `read_game_state` 尾段（现 `observe_screen_context` 备战腿位置改造）→ `observe_node_anchor`」——锚定写端 1 生产挂点在漏斗内。§2.7-5 却申报「recorder 录帧副作用消失（**漏斗退出节点域写入**）」。两句只能有一句成立：
+- **攻击**：§2.4-1 明文「干净备战帧：漏斗 `read_game_state` 尾段（现 `observe_screen_context` 备战分支位置改造）→ `observe_node_anchor`」——锚定写端 1 生产挂点在漏斗内。§2.7-5 却申报「recorder 录帧副作用消失（**漏斗退出节点域写入**）」。两句只能有一句成立：
   - 若锚定留在漏斗（§2.4 侧）：`telemetry/cw_match_recorder.py::extract_frame` 仍调 `read_game_state(ctx, img)`（cw_match_recorder.py:80，phase 缺省 None）→ `_phase_screen_context(None,…) → SCREEN_PREP_FRAME`（cw_observation.py:2781-2782）→ 锚定照跑。recorder 录帧仍会写节点域：R==v 同值行、**R>v 时补推并推 hist 水位**——§1 症状 3（录帧改变逻辑态）只是减弱（写入变为观察源），并未「消失」，申报不实。
   - 若漏斗退出节点域写入（§2.7 侧）：生产链路上备战帧锚定**没有任何挂点**（漏斗是备战帧观察的唯一生产通道），观察态门在生产中永远无法回臂，第二次以后的终结动作全部被门挡——方案不可运行。
 - **依据**：cw_observation.py:2728-2739（漏斗尾段调 `observe_screen_context`）+ :2781-2782（phase None → 备战帧映射）；cw_match_recorder.py:80；design §2.4/§2.7-5 原文。
@@ -30,15 +30,15 @@
 ### F3（应修）共存期画像失真：3.3 上线补给屏锚定后，「动作上报被门挡 = 留证噪声」对该窗口不成立
 
 - **位置**：design §2.5 切换纪律段 / landing 3.3、3.5。
-- **攻击**：§2.5 称「3.1-3.4 共存期新旧两套并存（旧腿继续驱动，动作上报被门挡 = 留证噪声）」。但 landing 3.3 在切换批（3.5）**之前**就把 `observe_node_anchor` 接进 `CwScreenSupplyNode` 生产观察链。补给锚定一旦把 `node_ord` 写成 observation 态，`supply_confirm` 上报即**通过观察态门**——新模型在 3.3→3.5 窗口内对补给侧部分提前生效（旧腿同时还在跑）。安全性靠 hist 去重（candidate==hist 同序照写）与 `advance_node` 序去重兜底，大概率无双重推进，但：①设计对该混合态零分析零申报；②「门挡留证噪声」作为共存期判读口径在该窗口是错的（留证噪声会被误读为异常）；③3.3 的完成判据（两形态各推进恰一次）在旧腿在场的 harness 里如何隔离验证未说明。切换批 3.5 本身（一次提交原子退役 + 锚定切换）结构上没问题。
+- **攻击**：§2.5 称「3.1-3.4 共存期新旧两套并存（旧分支继续驱动，动作上报被门挡 = 留证噪声）」。但 landing 3.3 在切换批（3.5）**之前**就把 `observe_node_anchor` 接进 `CwScreenSupplyNode` 生产观察链。补给锚定一旦把 `node_ord` 写成 observation 态，`supply_confirm` 上报即**通过观察态门**——新模型在 3.3→3.5 窗口内对补给侧部分提前生效（旧分支同时还在跑）。安全性靠 hist 去重（candidate==hist 同序照写）与 `advance_node` 序去重兜底，大概率无双重推进，但：①设计对该混合态零分析零申报；②「门挡留证噪声」作为共存期判读口径在该窗口是错的（留证噪声会被误读为异常）；③3.3 的完成判据（两形态各推进恰一次）在旧分支在场的 harness 里如何隔离验证未说明。切换批 3.5 本身（一次提交原子退役 + 锚定切换）结构上没问题。
 - **依据**：landing 3.3 范围②（「CwScreenSupplyNode 观察链接节点条读数 → observe_node_anchor」）、3.5 依赖仅 3.2/3.3；design §2.5 切换纪律段；代码层面门输入 = `node_ord.source`（design §2.2），观察锚定是其唯一生产翻转源。
-- **要求**：要么把补给锚定接线挪进 3.5（真·一步切换），要么在 §2.5 申报 3.3-3.5 混合窗的行为画像与判读口径，并在 3.3 判据里加「旧腿在场下恰一次推进」的对照测试。
+- **要求**：要么把补给锚定接线挪进 3.5（真·一步切换），要么在 §2.5 申报 3.3-3.5 混合窗的行为画像与判读口径，并在 3.3 判据里加「旧分支在场下恰一次推进」的对照测试。
 
 ### F4（应修）BOSS 类型直定「保留半」失去触发通道：`_note_branch_screen('货币战争-BOSS简报')` 退役后 0p 不再进 `observe_screen_context`
 
 - **位置**：design §2.5 退役清单第 3/4 行。
-- **攻击**：§2.5 说「BOSS 简报腿 + 幂等锚（序号半部）退役；类型直定半保留（`_write_derived_node_type` boss 分支，简报屏仍是 boss 类型权威）」。实况：boss 类型写点不是独立分支，它住在 `_derive_node_boss_brief` 内部（cw_game_state.py:3503-3505，序号半自己调用 `_write_derived_node_type('boss', target=candidate)`）；而 `observe_screen_context` 收到 `SCREEN_BOSS_BRIEFING` 的唯一生产来源是 `cw_loop.py:1547` 的 `_note_branch_screen('货币战争-BOSS简报')`——同表第 4 行要删的 5 调用点之一。两行一起执行后：0p 画面不再进 `observe_screen_context`，类型直定半**既没有调用点也没有触发通道**，「保留」落空；boss 节点类型将只能依赖链读链（新局首段链缺位 = None 诚实缺位）。E12/S6 的 boss 类型权威主张随之下坠。设计未指明保留半的新挂点与目标序取值（effective？hist？）。
-- **依据**：cw_game_state.py:3163-3166（0p 分支触发序号腿）+ :3499-3505（类型写在序号腿内）；cw_loop.py:1547；design §2.5 表。
+- **攻击**：§2.5 说「BOSS 简报分支 + 幂等锚（序号半部）退役；类型直定半保留（`_write_derived_node_type` boss 分支，简报屏仍是 boss 类型权威）」。实况：boss 类型写点不是独立分支，它住在 `_derive_node_boss_brief` 内部（cw_game_state.py:3503-3505，序号半自己调用 `_write_derived_node_type('boss', target=candidate)`）；而 `observe_screen_context` 收到 `SCREEN_BOSS_BRIEFING` 的唯一生产来源是 `cw_loop.py:1547` 的 `_note_branch_screen('货币战争-BOSS简报')`——同表第 4 行要删的 5 调用点之一。两行一起执行后：0p 画面不再进 `observe_screen_context`，类型直定半**既没有调用点也没有触发通道**，「保留」落空；boss 节点类型将只能依赖链读链（新局首段链缺位 = None 诚实缺位）。E12/S6 的 boss 类型权威主张随之下坠。设计未指明保留半的新挂点与目标序取值（effective？hist？）。
+- **依据**：cw_game_state.py:3163-3166（0p 分支触发序号分支）+ :3499-3505（类型写在序号分支内）；cw_loop.py:1547；design §2.5 表。
 - **要求**：给出保留半的新触发接线（谁在 0p 采到时、以什么目标序调用类型直定），或显式裁定 boss 类型改由链读链/上报时随 trigger 携带，并同步 E12/S6 论证。
 
 ### F5（应修）补给触发点把「转移证据 until」塞进动作 op，与 op-layer §1.2「动作 op 禁做任何验证」相抵触且未申报裁决
@@ -73,8 +73,8 @@
 
 ## ④ 全量同步复查结果（design ↔ landing ↔ README ↔ 权威源/文件面）
 
-- **design → node-derivation.md 引用锚**：§3.1 全景图 / §3.2 坐标系与 §3.2-7 字段层次 / §3.3 定义基准与规则三 / §3.6 S1-S10 / §5-③.4 漂移信息项 / §④-C V3 补给屏节点条——全部存在且 design 的转述属实（含「四腿全 write_logic 禁 observe 直写」「守卫族漂移与级联双推进两次事故」「R3 勘误：快弹窗形态备战帧可零采样」）✓。
-- **design → 代码符号描述**：生产写点两处远端（cw_observation.py:2736 + cw_loop 五调用点）、弹窗腿四成员中前三类生产无写点（漏斗仅映射 商店面板/备战/战斗三态，cw_observation.py:2781-2789；五分支写点全为守卫族/开局链成员）、三屏类型直定生产不落账（`SCREEN_NODE_TYPE_DIRECT` 触发前提 = observe_screen_context 收到该屏名，生产无此输入）、白名单内容（:260-267 含备战/补给/遭遇/投资策略/BOSS简报锚 + 位面过渡 OCR）、M39 长按（:219/:230-233）——全部与代码吻合 ✓。
+- **design → node-derivation.md 引用锚**：§3.1 全景图 / §3.2 坐标系与 §3.2-7 字段层次 / §3.3 定义基准与规则三 / §3.6 S1-S10 / §5-③.4 漂移信息项 / §④-C V3 补给屏节点条——全部存在且 design 的转述属实（含「四条分支全 write_logic 禁 observe 直写」「守卫族漂移与级联双推进两次事故」「R3 勘误：快弹窗形态备战帧可零采样」）✓。
+- **design → 代码符号描述**：生产写点两处远端（cw_observation.py:2736 + cw_loop 五调用点）、弹窗分支四成员中前三类生产无写点（漏斗仅映射 商店面板/备战/战斗三态，cw_observation.py:2781-2789；五分支写点全为守卫族/开局链成员）、三屏类型直定生产不落账（`SCREEN_NODE_TYPE_DIRECT` 触发前提 = observe_screen_context 收到该屏名，生产无此输入）、白名单内容（:260-267 含备战/补给/遭遇/投资策略/BOSS简报锚 + 位面过渡 OCR）、M39 长按（:219/:230-233）——全部与代码吻合 ✓。
 - **landing → design 引用锚**：3.1→§2.2/§2.3、3.2→§2.3 触发点1、3.3→§2.3 触发点2/§2.4 写端2、3.4→§2.6、3.5→§2.5、3.6→§2.1-§2.4、3.7→清单——全部存在 ✓。
 - **文件面真实路径**：`kernel/cw_game_state.py`、`operations/cw_op/cw_op_settle_confirm.py`（新建）、`operations/cw_screen/cw_screen_battle_wait.py`、`operations/cw_op/cw_overlay_pick_action.py`、`operations/cw_screen/cw_screen_supply_node.py`、`kernel/cw_screen_report/supply_node.py`、`obs/cw_observation.py`、`operations/cw_loop.py`——全部在库/可新建 ✓。
 - **正本更新清单目标**：node-derivation.md / fields.md / effect-domain.md / flow/README.md / flow/outer_loop.md / flow/action_exec.md / screens/op-layer.md 均在库 ✓；`docs/game/currency_war/research/` 由 3.4 新建（现仅 README.md，属创建非失锚）✓。清单遗漏项：op-layer §1.2 契约修订（F5）、op-layer §6「节点推进权威 = 统一 state 派生规则」句随触发模型换代的改写（清单只列 §2）——随 F5/正本批补。
@@ -82,5 +82,5 @@
 
 ## ⑤ 核三附记（治本与逐边）
 
-- §1 归层成立：症状 1-4 共同根 = 「因果（终结动作）被建模成观察推断量」，与 node-derivation R3/R3.1/R4 修订链（守卫族漂移、级联双推、渲染序≠采样序三次实证事故）互证；§2 以换触发模型 + 整体退役四腿/守卫族/幂等锚回应，是根修不是症状贴膏，且按 §1.1 外溢纪律把坐标系漂移/效果域 M3/类型派生本体排除并逐条指认归属 ✓。
+- §1 归层成立：症状 1-4 共同根 = 「因果（终结动作）被建模成观察推断量」，与 node-derivation R3/R3.1/R4 修订链（守卫族漂移、级联双推、渲染序≠采样序三次实证事故）互证；§2 以换触发模型 + 整体退役四条分支/守卫族/幂等锚回应，是根修不是症状贴膏，且按 §1.1 外溢纪律把坐标系漂移/效果域 M3/类型派生本体排除并逐条指认归属 ✓。
 - E1-E18 逐边新模型走查：E1/E2/E3 零推进 ✓；E4 观察建 1 ✓；E5/E6/E16/E17/E18 段内零 ✓；E7/E8 结算确认上报（白名单含遭遇/投资策略/补给/BOSS简报锚，快弹窗形态证据即弹窗本身，「先推进后选卡」结构性成立）✓；E9 R==v 翻锚定 ✓；E10 两形态（divert 备战锚定 / 自动弹补给屏锚定）✓；E11 until 备战锚 + 补推自愈 ✓（效果侧见 F2）；E12 奖励关确认→(p,9)，公式承载 ✓（类型侧见 F4）；E13 boss 确认→(plane+1,1)=effective+1，位面过渡 OCR 在白名单内作证据 ✓；E14 恢复局首锚定/补推 ✓；E15 战败不建 op ✓。未发现新模型下推不动或双推的边。S1-S10 同源结论一致。

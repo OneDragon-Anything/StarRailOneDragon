@@ -22,7 +22,7 @@
    `flow/action_ops.md` §1「op 内机械执行后**直调自己的上报函数**
    （`kernel/cw_action_report/report_action_<snake>_param`，容器逻辑态单点）」。
    同构范式 = `kernel/cw_action_report/pick_invest.py` 两相 report 已在库。
-2. **升费腿无牌库改变表达**：`_apply_upgrade_transform` 只有 2★→1★ 变换 + 合成级联；
+2. **升费分支无牌库改变表达**：`_apply_upgrade_transform` 只有 2★→1★ 变换 + 合成级联；
    「新费档银狼刷进商店」仅代码注释申报（cw_screen_yinlang.py §2.1③ 注），无容器表达、无遥测行。
    用户口径：升费效果 = 2星变1星 + **费用上升** + **牌库改变**（2026-09-20 审查裁定）。
 3. **观察面 OCR 未走建档 area**：`CwScreenYinLang.observe` 全图 OCR + 硬编码文本带
@@ -34,7 +34,7 @@
    4费1★：4÷3 不整除 → 记 **3费1★**（`cost_source='roster_fallback'` 留证但值错）；该卡被买时
    记支出按错价 → 金账与实扣失配响停。机制依据 = 升费卡结果「变为下一个费用档的 1 星」
    （口述·权威 2026-09-18，`docs/game/currency_war/research/equipment_mechanics.md` §7）。
-5. **上阵变费腿无档落行**：`kernel/cw_action_report/deploy_move.py` 变换窗（3★ 拖上场变
+5. **上阵变费分支无档落行**：`kernel/cw_action_report/deploy_move.py` 变换窗（3★ 拖上场变
    下一费档 1★，银狼闭环 design §2.1A 已落）只变换星级；「费用档 +1」容器无表达。
 
 ### 1.2 基线事实（设计前代码态核实，HEAD 可复核）
@@ -46,7 +46,7 @@
   分相（发射相 = op 机械链发出后，意图遥测；落地相 = handler 重入裁决出口「入口锚不在 =
   overlay 已关」，应用一次）；pick 族落地时机口径 =
   `flow/action_ops.md` §2.3（「落地与否由下一轮重入的入口观察裁决」）。
-- **腿型判定单源在库**：`kernel/cw_events.py::classify_planner_leg`（装备域优先，银狼专属
+- **分支类型判定单源在库**：`kernel/cw_events.py::classify_planner_leg`（装备域优先，银狼专属
   10 件名单锚 longest-match；银狼闭环 design §2.1① 对抗审① 产物）。
 - **池派生在 sim**：`sim/cw_sim_pool.py`——不变量派生（固定牌库
   `POOL_COPIES_PER_CARD`：1/2 费 27、3/4/5 费 9（`data/cw_shop_odds.py:33`）− 持有
@@ -84,7 +84,7 @@
 ### 1.4 解决到哪 / 明确不解决
 
 **解决**：症状 1–5 全部——pick_planner 两相迁移、费用档字段 + kernel 单一访问器 +
-两个写端（升费腿/上阵变费腿）、观察除数修复、观察 OCR 走建档 area。
+两个写端（升费分支/上阵变费分支）、观察除数修复、观察 OCR 走建档 area。
 
 **明确不解决**（防范围外溢）：
 
@@ -109,7 +109,7 @@
   （§2.3 pick 族旁路 + pick_invest 范例），本批把 planner 收编进同一形态。
 - **两态制**：确定面 `write_logic`；随机面 `write_logic_rand` 采样链；未建模不可猜 = 留证行。
 - **用户定谳三条**（2026-09-20）：overlay 观察 = **只上报选项**；动作 = **只有选哪个哪项**；
-  效果腿 = 升费（2★→1★ + 档升 + 牌库变）/ 装备（入栏 + 触发获得装备后的计算函数）。
+  效果分支 = 升费（2★→1★ + 档升 + 牌库变）/ 装备（入栏 + 触发获得装备后的计算函数）。
 - **费用档归属判据**：动态状态进 game state，静态属性查表派生（§8.2 判据）——费用档
   不可由 (char_id, star, 位置) 派生（§1.2 反例），必须存状态；**粒度 = match 级单字段**
   （同名即同档口径 §1.2 → per-unit 冗余 + 对 99% 角色引入恒等派生快照 = 真双源）；
@@ -118,8 +118,8 @@
 ### 2.1 费用档字段与 kernel 单一访问器
 
 - **字段**：`GameState` 新增顶层 `lv999_cost_tier: Field[int]`（默认未观察 None；
-  值域 {3,4,5}）。**纯逻辑态**：无观察写端，写端仅两个动作报告（§2.2 升费腿 /
-  §2.5 上阵变费腿）；字段注释声明坐标系语义（当前费用档，非星级、非注册表起始费）
+  值域 {3,4,5}）。**纯逻辑态**：无观察写端，写端仅两个动作报告（§2.2 升费分支 /
+  §2.5 上阵变费分支）；字段注释声明坐标系语义（当前费用档，非星级、非注册表起始费）
   与写端清单。归 `match_facts` 域（域版本 bump，`DEFAULT_GS_SCHEMA` 对应行注明），
   `cw_projection_audit.py` 登记投影审计行。
 - **kernel 单一访问器**：`cw_economy.py::effective_cost(gs, char_id) -> int`，与既有
@@ -141,7 +141,7 @@
   `report_action_pick_planner_param(gs, param, sig, *, leg_type='', norm_item='', evidence='')`
   - **发射相**（evidence 缺省）：意图遥测日志行，容器零写（确认未落地重走不重复）；
   - **落地相**（evidence = `EVIDENCE_OVERLAY_CLOSED`，常量自 `pick_invest.py` import，
-    同族同值单一定义）：腿型分派应用一次——
+    同族同值单一定义）：分支类型分派应用一次——
     - **equip**：归一件名命中 → 装备入栏（`write_logic`）+ 获得后果链
       `apply_equip_acquire_consequence`；未解析 → 禁猜，值不变翻来源 + 留证行
       （现役形态原样迁入）；
@@ -152,17 +152,17 @@
       （evidence=`planner_upgrade_tier`；档行与级联写域不相交，定点时序防实现分叉）——
       **牌库改变 = 档行兼任**（档即池桶归属的容器事实；不另造申报行——hacker 的
       `shop_pool_decl` 是「无容器字段」替代，本批有字段即不需要）。
-      **现档 = 5 误走 upgrade 腿**（机制上 5 费升 2 星两选项皆装备，upgrade 腿不应
+      **现档 = 5 误走 upgrade 分支**（机制上 5 费升 2 星两选项皆装备，upgrade 分支不应
       出现；出现 = 识别或机制异常）→ 不写变换不写档，留证行
       （kind=`planner_upgrade_tier_ceiling`）；多枚/零枚分支档不动（留证行已证异常，
       禁在异常分支推档）；
     - **unknown**：零记账 + 留证行；**weaken**：零记账（现役原样）。
-  - 腿函数（`_apply_equip_leg`/`_apply_upgrade_transform`）与常量自
+  - 分支函数（`_apply_equip_leg`/`_apply_upgrade_transform`）与常量自
     `cw_screen_yinlang.py` 原样迁入，producer 常量随迁。
   - **落地相载荷来源**：发射 param 挂画面 op 实例（`self._pick_param`，与
     `_pending_leg` 同生命周期），重入裁决出口落地相复用。
   - **op 重建边角（申报）**：确认已发后画面 op 实例重建（node 预算耗尽等）=
-    载荷与证据同丢，效果腿零应用——实读失配照安灯，归 fail-closed 治理链
+    载荷与证据同丢，效果分支零应用——实读失配照安灯，归 fail-closed 治理链
     （action_ops §2.1）；正常 round_wait 路径实例存活，链路闭合。
 - **`cw_screen_yinlang.py` 瘦身**：删落地记账块（:263–419）；重入裁决出口改调
   `report_action_pick_planner_param(..., evidence=EVIDENCE_OVERLAY_CLOSED)`。
@@ -209,7 +209,7 @@
   y∈[180,455]（含费用角标/星级饰件文本）——卡内文本全属该卡语义，
   `classify_planner_leg` 关键词匹配面不变；卡间间隙文本双不落，零影响。
 
-### 2.5 上阵变费腿补档行
+### 2.5 上阵变费分支补档行
 
 - `kernel/cw_action_report/deploy_move.py` 变换窗：落位单位 = (银狼LV.999, 3★) 且
   现档 < 5（现档 = `effective_cost(gs, '银狼LV.999')`，§2.7 唯一读口）→ 落场写
@@ -224,7 +224,7 @@
 |---|---|---|---|
 | 商店观察除数 | 当前档 | ✅ | §2.3 |
 | 买支出（card.cost） | 当前档（随观察自动正确） | ✅ | §2.3 连带 |
-| 升费腿/上阵变费腿写档 | 当前档（写端） | ✅ | §2.2/§2.5 |
+| 升费分支/上阵变费分支写档 | 当前档（写端） | ✅ | §2.2/§2.5 |
 | 卖退款 `sell_refund`×`bench_char_cost` | 未定谳 | ❌ | 实机采证账（§1.4） |
 | 估值概率族（refresh_prob/DISTINCT/POOL_COPIES 调用方传参） | 当前档 | ❌ | 估值族账（纯函数零改动） |
 | sim `drawable_names`/`fixed_pool` | 当前档 | ❌ | 池升格批/M21 |

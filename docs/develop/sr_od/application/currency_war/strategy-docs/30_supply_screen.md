@@ -62,7 +62,7 @@ decide(options, gs, locked_comp: Comp | None, demoted_endgame: bool)
 
 - 纯值 dataclass:`SupplyDecision(idx, reason)` / `SupplyRefreshSuggestion(reason)`,不含动作类型值(与 `invest_env`/`deploy_plan` 同构,便于直测与 sim 复用预留)。
 - flow 零参口 `decide_supply`:候选自 `gs.supply` payload;意向同源自意向状态(`locked_comp` 套名经 `get_comp` 解析、`demoted_endgame` 直接透传);`RefreshSuggestion` → `CwActionRefreshSupplyParam`,`Decision` → `CwActionPickSupplyParam`。动作类型、op handler、观察写槽、结束访问链零判据逻辑(对照闸语义见 §3)。
-- **消费侧接线两态可达**(画面 op = `cw_screen_supply_node.py::CwScreenSupplyNode.act`):决策输入与门槛 = obs 载体 `self._obs.options` 非空(两态同构——实机 = 读链同帧产物,sim = 观察改道生成器产物吃容器现值组装),`decide_supply` 实机/sim 两态均可达;空候选 = 零点击终结交回(禁盲选派发)。选卡内容载荷(char/norm_item/extra_norm_items)自 obs 载体 `options[pick.idx]` 构造。机械执行两态(分流判别式 = `cw_sim_ports.mechanical_io_allowed()`):实机 = 执行载体 `_card_points[pick.idx]` 卡身点击点经动作 op 点击;sim = 机械腿跳过(target = None)、世界反应由上报声明链驱动(选卡上报 → 内容腿入账 → 节点推进/宝钻腿派生,刷新执行 = 「文本-剩余次数」area 端口点击触发后端重掷)。
+- **消费侧接线两态可达**(画面 op = `cw_screen_supply_node.py::CwScreenSupplyNode.act`):决策输入与门槛 = obs 载体 `self._obs.options` 非空(两态同构——实机 = 读链同帧产物,sim = 观察改道生成器产物吃容器现值组装),`decide_supply` 实机/sim 两态均可达;空候选 = 零点击终结交回(禁盲选派发)。选卡内容载荷(char/norm_item/extra_norm_items)自 obs 载体 `options[pick.idx]` 构造。机械执行两态(分流判别式 = `cw_sim_ports.mechanical_io_allowed()`):实机 = 执行载体 `_card_points[pick.idx]` 卡身点击点经动作 op 点击;sim = 机械执行分支跳过(target = None)、世界反应由上报声明链驱动(选卡上报 → 内容载荷分支入账 → 节点推进/宝钻发放分支派生,刷新执行 = 「文本-剩余次数」area 端口点击触发后端重掷)。
 
 ## 5. 席满与溢出席
 
@@ -77,9 +77,9 @@ decide(options, gs, locked_comp: Comp | None, demoted_endgame: bool)
 2. **带钻支配论证**:「带钻压过角色/装备级一切候选」现为裁定序(§2 第 1 级),完整支配性论证(人口位价值 × 后续装备再遇期望)留 E4 数学批。
 3. **重刷期权数学化**:刷新期望账(钻石分布实采前置;`08_events.md` E4 已登记口径 = P40 变体②)留数据批。
 
-**sim 盲区申报(结构性口径——前置①已完成)**:前置① = 决策链接线,**已完成**——画面 op 决策输入与门槛统一 obs 载体(两态同构),sim 局 `decide_supply` 可调用,owned 内容腿入账(占位池 `char` 恒空 → 单位腿恒零写,装备腿照常入账)、`chosen_supply` 确认即写、`CwActionPickSupplyOp` 动作回执在册;「决策链未接线 → sim 局动作恒走盲点兜底、判据从未被咨询」的结构性盲区已消除。历史口径存档(以现状为准):接线前 sim 局 `decide_supply` 从未被调用,动作恒走兜底点卡,彼时 sim 不能用来验证本画面策略(验收 = 单帧测试 + 实机判读)——该形态随决策链接线消亡。
+**sim 盲区申报(结构性口径——前置①已完成)**:前置① = 决策链接线,**已完成**——画面 op 决策输入与门槛统一 obs 载体(两态同构),sim 局 `decide_supply` 可调用,owned 内容载荷分支入账(占位池 `char` 恒空 → 单位入账分支恒零写,装备入账分支照常入账)、`chosen_supply` 确认即写、`CwActionPickSupplyOp` 动作回执在册;「决策链未接线 → sim 局动作恒走盲点兜底、判据从未被咨询」的结构性盲区已消除。历史口径存档(以现状为准):接线前 sim 局 `decide_supply` 从未被调用,动作恒走兜底点卡,彼时 sim 不能用来验证本画面策略(验收 = 单帧测试 + 实机判读)——该形态随决策链接线消亡。
 
 **残项 = 前置②(占位分布换真实池,数据面工作)**:sim 补给选项池现为占位,与实机分布不等——接线后判据在占位分布上运行,sim 可调用但**分布失真**:
 
-1. **占位钻名口径失配(宝钻腿激活路径裁定归前置②批)**:sim 占位池的槽级钻标挂**基础件名**(`SupplyOption.has_diamond` = 选项级布尔,「钻具体在哪件属呈现面」),而世界侧宝钻腿按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 装备名列表派生——占位件名不命中名单 → 带钻帧宝钻腿接线后仍不发放(接线本体已交付,名单派生 × 占位钻标失配);激活 = 前置②批裁定占位钻名口径(占位钻标挂名 vs 派生读选项级布尔)。
+1. **占位钻名口径失配(宝钻发放分支激活路径裁定归前置②批)**:sim 占位池的槽级钻标挂**基础件名**(`SupplyOption.has_diamond` = 选项级布尔,「钻具体在哪件属呈现面」),而世界侧宝钻分支按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 装备名列表派生——占位件名不命中名单 → 带钻帧宝钻分支接线后仍不发放(接线本体已交付,名单派生 × 占位钻标失配);激活 = 前置②批裁定占位钻名口径(占位钻标挂名 vs 派生读选项级布尔)。
 2. **分布失真声明义务**:前置②完成前,补给判据的 sim 结论一律带占位分布失真声明;跨批统计对照以决策链接线落点 commit 为分界(分界前后 sim 批的补给相关读数不可比——决策行为变更)。前置②完成后补 A/B 申报,判据差异即全量 sim 可见。

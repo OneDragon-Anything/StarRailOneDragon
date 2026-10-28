@@ -6,7 +6,7 @@
 ## P1【打回级】deployed-merge 对现存 `TrackedBooks.deployed`(0-9 下标簿记)零认知:命名冲突 + 触面遗漏 + 「换算层退役」主张被 tracked 侧消费直接证伪
 
 - **攻击对象**:details/deployed-merge.md「方案·目标模型」「触面清单」;design.md §2 C-合并。
-- **主张原文**:"0-9 合并下标换算层退役:`deployed_idx_of(to_row, to_slot)` 类投影换算不再需要"(deployed-merge.md:27);"`deployed: Field[list[Unit]]` 单字段"(design.md §2);触面清单(deployed-merge.md:31-37)容器行仅列 字段定义/种子/快照/_write_logic_frame/_absorb_*/mutate_bench_deployed_local/detect_merge_upgrade,写方行仅列 deploy_move、sell_deployed、buy_card、gain 链、wear_equip、工具装备腿、观察链。
+- **主张原文**:"0-9 合并下标换算层退役:`deployed_idx_of(to_row, to_slot)` 类投影换算不再需要"(deployed-merge.md:27);"`deployed: Field[list[Unit]]` 单字段"(design.md §2);触面清单(deployed-merge.md:31-37)容器行仅列 字段定义/种子/快照/_write_logic_frame/_absorb_*/mutate_bench_deployed_local/detect_merge_upgrade,写方行仅列 deploy_move、sell_deployed、buy_card、gain 链、wear_equip、工具装备分支、观察链。
 - **攻击角度**:①kernel 里**已有一个 `deployed`**——`TrackedBooks.deployed: list[Unit|None]` 定长 10,"表下标 = deployed_idx 动作坐标,恒稳;排归属由下标派生(0-3 前排 / 4-9 后排)"(cw_game_state.py:1921-1941,字段注释 :2266"tracked_books.deployed = tracked 上阵")。新增 `GameState.deployed` 后 kernel 内并存两个同名、**索引语义相反**的 deployed(一个 Unit.row/slot、一个 0-9 下标),设计全文一字未提该结构与命名冲突。②「deployed_idx_of 不再需要」为假:TrackedBooks.deployed 的全部写端持续消费该换算——动作随动同步(prep_actions.py:779/:789/:818"tracked 写入下标 = deployed_idx_of(to_row, to_slot)"、tool_use.py:136-143、wear_equip.py:127/:169-172、deploy_move.py:58/:92)、观察锚定写回(cw_reconcile.py:196/:216,行视图→0-9 下标)、词表执行侧(cw_vocab.py:1082/:1125/:1132)、读端(mandate.py:369 用 deployed_row_slot 换算)。换算函数本体住 cw_exec_state.py:243/:255,该文件不在触面清单。③触面清单遗漏整批 tracked 侧文件:cw_exec_state.py、prep_actions.py、cw_reconcile.py、cw_vocab.py、mandate.py、cw_sell_deployed_action.py(:57 用 deployed_row_slot)。④触面清单自己点名的 `mutate_bench_deployed_local`(:1574)其 `deployed` 形参就是 0-9 下标工作表——清单行与"0-9 世界退役"叙事自相缠绕而不自觉。
 - **证据**:cw_game_state.py:1921-1941/:2266/:2273/:1574;cw_exec_state.py:243/:255;prep_actions.py:779/:789/:818;cw_reconcile.py:196/:216;cw_vocab.py:1082/:1132;mandate.py:369;tool_use.py:143;wear_equip.py:172;deploy_move.py:92;cw_sell_deployed_action.py:57。
 - **后果**:实现者按触面清单施工必然漏改 tracked 同步链(或误删换算层炸掉 tracked 写端);两 deployed 并存的术语歧义无裁决。
@@ -90,7 +90,7 @@
 ## C7【需澄清】「18 动作表」引用无文件锚,本体住另一迭代 changes/ 目录(引用寿命无保障)
 
 - **攻击对象**:details/trigger-inventory.md §1.5;details/register-consume.md S6。
-- **主张原文**:"settle_confirm 一腿全覆盖(pick_encounter next_screen = 结算档,**18 动作表 #4**)"(trigger-inventory.md:56);"18 动作表两条 + advance 两 case"(register-consume.md:52)、"18 动作表两条与 sim advance 两 case 随落地批改"(:59)。
+- **主张原文**:"settle_confirm 一条分支全覆盖(pick_encounter next_screen = 结算档,**18 动作表 #4**)"(trigger-inventory.md:56);"18 动作表两条 + advance 两 case"(register-consume.md:52)、"18 动作表两条与 sim advance 两 case 随落地批改"(:59)。
 - **攻击角度**:「18 动作表」实指 changes/2026-09-24-action-world-decl/details/world-decl.md §2 表(其 #4 行 = pick_encounter,trigger=battle_resolve,next_screen='货币战争-结算',内容核实无误),但引用既无文件路径也无迭代名;该表住**另一迭代的 changes/**——changes/ 会不定期无理由删减(项目 AGENTS.md「文档规范」铁律),跨迭代裸引随清理即死链,且正本化前它不是稳定权威源。
 - **证据**:changes/2026-09-24-action-world-decl/details/world-decl.md §2(:37-:46,#4 行 :46);trigger-inventory.md:56;register-consume.md:52/:59。
 

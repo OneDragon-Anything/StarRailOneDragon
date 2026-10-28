@@ -2,8 +2,8 @@
 
 ## 问题与约束
 
-- 边界:动 `operations/cw_screen/cw_screen_buy_cards.py`、`operations/cw_op/cw_refresh_shop_action.py`、`operations/cw_op/cw_shop_action_ops.py`、`operations/cw_screen/cw_screen_prep.py`(`visit_open_shop`/`_open_shop_phase`/`_act_execute_default`)、`operations/cw_loop.py`(仲裁段退役)、`kernel/cw_game_state.py`(free_refresh_left Field/两发放桥)、`kernel/cw_action_report/refresh_shop.py`(free 腿 + 随机态腿)、`kernel/cw_effect_inventory.py`(字段退役)、`kernel/cw_launch_arbitrage.py`(消费面调整)、`kernel/cw_vocab.py`(restricted_spend 退役)、`kernel/cw_prep_expect.py`(crop 退役)、`strategies/impl/mandate_v1`(受限会话自限)、`obs/cw_observation.py`(`new_bench_slots` 退役;节点行写点宿主 = `cw_screen_prep._write_prep_node_chain` 消费侧,漏斗侧识别零新增)、`kernel/cw_shop_deal.py`(新,采样器)。不碰:策略判据数学、`probe_node_type` 识别与写点实现(宿主迁移)、`guard_proposal_vs_expected` 守卫、`decision_frame_hooks.save_decision_frame` 接口、节点推进上报族。路径根 = `src/sr_od/application/currency_war/`。
-- 总纲划给本篇的接口契约:免费刷新次数 Field(§2.3)、构造签名与调用点交接面 + 发射帧受限消费迁策略侧(§2.2/§2.10)、CloseShop 执行位归属(§2.1)、上报回调腿(§2.9)、节点行归位(§2.8)。路径根 = `src/sr_od/application/currency_war/`。
+- 边界:动 `operations/cw_screen/cw_screen_buy_cards.py`、`operations/cw_op/cw_refresh_shop_action.py`、`operations/cw_op/cw_shop_action_ops.py`、`operations/cw_screen/cw_screen_prep.py`(`visit_open_shop`/`_open_shop_phase`/`_act_execute_default`)、`operations/cw_loop.py`(仲裁段退役)、`kernel/cw_game_state.py`(free_refresh_left Field/两发放桥)、`kernel/cw_action_report/refresh_shop.py`(free 分支 + 随机态分支)、`kernel/cw_effect_inventory.py`(字段退役)、`kernel/cw_launch_arbitrage.py`(消费面调整)、`kernel/cw_vocab.py`(restricted_spend 退役)、`kernel/cw_prep_expect.py`(crop 退役)、`strategies/impl/mandate_v1`(受限会话自限)、`obs/cw_observation.py`(`new_bench_slots` 退役;节点行写点宿主 = `cw_screen_prep._write_prep_node_chain` 消费侧,漏斗侧识别零新增)、`kernel/cw_shop_deal.py`(新,采样器)。不碰:策略判据数学、`probe_node_type` 识别与写点实现(宿主迁移)、`guard_proposal_vs_expected` 守卫、`decision_frame_hooks.save_decision_frame` 接口、节点推进上报族。路径根 = `src/sr_od/application/currency_war/`。
+- 总纲划给本篇的接口契约:免费刷新次数 Field(§2.3)、构造签名与调用点交接面 + 发射帧受限消费迁策略侧(§2.2/§2.10)、CloseShop 执行位归属(§2.1)、上报回调分支(§2.9)、节点行归位(§2.8)。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 方案
 
@@ -56,7 +56,7 @@
 - **动作上报扣减(逻辑态,用户裁定)**:`report_action_refresh_shop_param` 内 `gs.write_logic(gs.free_refresh_left, max(0, left−1), produced_by='CwActionRefreshShopParam', evidence='proj_refresh_free_left')`;free 判定 = `gs.free_refresh_left.value > 0`。**None = 未观察 → 保守按 paid 计数**(口径申报:次数是记账面非决策闸,商店刷新允许性归策略面;落 op-layer 正本行)。paid_refresh_count/total_refresh_count 留效果账本累计(非画面可观察剩余,不迁)。
 - **发放登记(两桥改道 Field)**:`grant_effect_node_refresh_balance`(节点推进发放:加油站/搜打撤 =1、双手狸 =2、本金充裕条件族;挂点 = cw_loop 节点 tick)与 `apply_effect_burst_grant`(选卡 burst:免费午餐/及时雨/固定理财即时段)由 `grant_free_refreshes(n)` 改 `gs.write_logic(gs.free_refresh_left, left+n, produced_by=<效果源>, evidence='effect_node@plane/round' / 'effect_burst@frame')`。**None 基 = 0 起算**(开局底座 0 = 机制真值「开局无免费次数」,与现役效果账本初始一致):发放即首次落值,不存在 None+n。
 
-**效果账本字段退役**:`ActiveEffectInventory.free_refresh_balance`(cw_effect_inventory.py:233)删除;`record_refresh` 的 free 扣减腿移除(:441-452,只留 paid/total 累计);`grant_free_refreshes`(:456-462)退役。**读端改造**:sim 刷新价格 `cw_sim_shop.py:64-66` 改读 Field(sim 发放/扣减经同两桥与上报函数,容器即模拟 gs);刷新计数组**注释面同步**(`cw_projection_audit.py:161` 与 `cw_game_state.py:2041`,均为注释块非代码行);`cw_refresh_shop_action.py:125` T-13 票随 §2.4 删除。
+**效果账本字段退役**:`ActiveEffectInventory.free_refresh_balance`(cw_effect_inventory.py:233)删除;`record_refresh` 的 free 扣减分支移除(:441-452,只留 paid/total 累计);`grant_free_refreshes`(:456-462)退役。**读端改造**:sim 刷新价格 `cw_sim_shop.py:64-66` 改读 Field(sim 发放/扣减经同两桥与上报函数,容器即模拟 gs);刷新计数组**注释面同步**(`cw_projection_audit.py:161` 与 `cw_game_state.py:2041`,均为注释块非代码行);`cw_refresh_shop_action.py:125` T-13 票随 §2.4 删除。
 
 - **对账 = 下一入口观察**:刷新为访问终结,一次访问至多一次刷新 → 点击时 Field = 本访问入口刚锚定值,free 判定可靠;下一入口 observe 重新锚定,漂移自愈(观察赢,机制白送)。T-13 动作侧 UI 真值读与两张留证票退役,判定职能由 Field 既有失配安灯承接。
 - **盲区口径**:双态锚定下「归零侧不可达」不成立(付费域可读即 0 的观察);残留 = 整帧判不出轮跳写(瞬态,下轮成功读补锚),如实申报。
@@ -67,7 +67,7 @@
 
 删除(`cw_refresh_shop_action.py`):①刷前现读两口径分支(`ledger.refresh_first_action` 消费面);②`cw_shop_refresh_obs.read_shop_refresh_button` 真值读与 `ledger.refresh_free_truth/free_remaining_truth` 落账;③两张真值↔账本留证票(`free_truth_logic_divergence`/`free_balance_ui_mismatch`);④刷后牌名落账读(`read_shop_cards`);⑤对账件 ledger 三件(`refresh_pre_gold/pre_names/pending_reconcile`)落账。
 
-保留:点击、`REFRESH_CLICK_SETTLE_WAIT_S=1.0` 固定等待(等待不是判效,action_ops.md §2.2)、刷价记账(`shop_refresh_cost.value` 读口 + `REFRESH_COST_BASE` 回退)、自上报(free=None → **Field 值判定**,值 = 入口观察锚定的 `free_refresh_left`(§2.3);None 未观察 → 保守按 paid;T-13 UI 真值通道退役,判定职能收口观察边界)。效果账本只留 paid/total 累计(free 余额腿迁 Field,§2.3)。
+保留:点击、`REFRESH_CLICK_SETTLE_WAIT_S=1.0` 固定等待(等待不是判效,action_ops.md §2.2)、刷价记账(`shop_refresh_cost.value` 读口 + `REFRESH_COST_BASE` 回退)、自上报(free=None → **Field 值判定**,值 = 入口观察锚定的 `free_refresh_left`(§2.3);None 未观察 → 保守按 paid;T-13 UI 真值通道退役,判定职能收口观察边界)。效果账本只留 paid/total 累计(free 余额分支迁 Field,§2.3)。
 
 ### 2.5 删除面清单(文件::符号 → 处置;消费点核查结论就地标注)
 
@@ -78,10 +78,10 @@
 | `cw_screen_buy_cards.py` 节点行探针函数族:`probe_node_type`/`store_plane_table`/`_capture_unrecognized_node_icons`/`_NODE_ICON_SHOT_TS` | 迁出商店域 → 备战 heavy 观察链节点行消费位(§2.8,用户裁定:节点行是备战画面观察内容) | 消费面 = 槽序表/台账/结算回路(不变);识别器 = obs/cw_node_reader(不动) |
 | `cw_buy_card_action.py` 兜底坐标 `_Pt(0, 288)`(槽号越界/点位缺失时静默点击) | 删除(用户裁定:废弃兜底,采用 screen_info)——点位缺失/槽号越界 = 显式 round_fail(信息带 area 名,与 level_btn/refresh_btn 同款纪律) | 违反坐标单一真相源与「禁兜底坐标静默点击」同文件声明;commit 面随 3.4 |
 | `cw_loop.py` 发射帧仲裁段特殊路径 + `run_buy_waves` 的 `spend_gate` 形参 + `cw_screen_prep._act_execute_default` restricted_spend 截流分支 + `CwActionOpenShopParam.restricted_spend` 字段 | 退役(受限消费迁策略侧自限,§2.10) | 消费面 = 发射帧受限会话(改策略 StrategyState 派生标记 + decide 自限);kernel `launch_arbitration_gate` 谓词留守单一源,消费方改策略决策入口 |
-| `kernel/cw_effect_inventory.py`:`free_refresh_balance` 字段(:233)+ `grant_free_refreshes`(:456)+ `record_refresh` free 扣减腿(:441-452) | 退役/改造(次数升格 Field `gs.free_refresh_left`,三写端同格,§2.3) | 写端 = 两发放桥 + 刷新上报(全改道 Field);读端 = `cw_sim_shop.py:64-66` / `refresh_shop.py:55`(改读 Field);`cw_projection_audit.py:161` 计数组行同步 |
+| `kernel/cw_effect_inventory.py`:`free_refresh_balance` 字段(:233)+ `grant_free_refreshes`(:456)+ `record_refresh` free 扣减分支(:441-452) | 退役/改造(次数升格 Field `gs.free_refresh_left`,三写端同格,§2.3) | 写端 = 两发放桥 + 刷新上报(全改道 Field);读端 = `cw_sim_shop.py:64-66` / `refresh_shop.py:55`(改读 Field);`cw_projection_audit.py:161` 计数组行同步 |
 | `kernel/cw_screen_report/close_shop.py`(`CwOpCloseShopObs` 孤儿 obs 类) | 随壳退役删除;完备测试面(sr-od-test `test_cw_screen_report_ports.py` 的 close_shop 文件行与 `CwOpCloseShopObs` 在册行)同步更新 | 完备测试对该侧断言 report 不在场,行删除即测试面更新(grep 实证:test_cw_screen_report_ports.py :53/:58/:69) |
 | 决策循环 CloseShop 拦截特例(`run_buy_waves` intercept 分支) | 删除(全动作统一路径,CloseShop 经注册表真执行) | 随 run_buy_waves 解体消亡;「终结不入 decisions 行」契约保留(循环内跳过该回执调用) |
-| 同文件 `refresh_wave_is_refresh_only`/`_reconcile_refresh_pending`/`_shop_entry_names`/`_record_free_refresh_proc` | 删除(免费腿判定由次数锚定 + 失配对账取代,§2.3) | 段机器内部消费,随壳亡;proc flag 为人工判读临时通道(自述确认后删) |
+| 同文件 `refresh_wave_is_refresh_only`/`_reconcile_refresh_pending`/`_shop_entry_names`/`_record_free_refresh_proc` | 删除(免费分支判定由次数锚定 + 失配对账取代,§2.3) | 段机器内部消费,随壳亡;proc flag 为人工判读临时通道(自述确认后删) |
 | 同文件段尾观测块:`bench_buy_slots_settle_retry`/`bench_buy_occupancy_ok`/`bench_buy_count_ok`/`bench_buy_identity_missing`/`_buy_baseline`/pixel-diff 调用块/`match.bench_slot_map` 写点 | 删除(用户裁定 ⑤:画面 op 结尾不自做对账;逻辑态上报 + 下一入口观察对账承接) | `match.bench_slot_map` 全仓仅此写点、零读端(grep 实证);`new_bench_slots`(obs/cw_observation.py)唯一消费 = 本块 → 函数随删 |
 | `cw_buy_card_action.py` 买前裁片块(`_card_crop`) | 删除(动作 op 零读屏;证据职能归下一入口观察对账) | 消费 = `BuyPurchase.crop` 遥测(test_cw_action_emit_book 断言 crop 非空)→ 字段删除 + 该测试改 |
 | `kernel/cw_prep_expect.py::BuyPurchase.crop` | 字段删除(`count`/`k` 保留 = 上报 executed 单一源) | 全仓消费仅遥测面(grep 实证) |
@@ -111,10 +111,10 @@
 - **消费面不变**:槽序表(`plane_node_table`/`plane_lengths_seen`)、节点台账(结算观测回路/备战查表)、遥测分键。
 - **商店域零探针**:`cw_screen_buy_cards.py` 内探针函数族整体迁出,商店访问交回零额外动作。
 
-### 2.9 上报回调腿(买牌获取回调 + 刷新随机态;用户裁定)
+### 2.9 上报回调分支(买牌获取回调 + 刷新随机态;用户裁定)
 
-- **买牌:回调在「获取角色计算完」后触发**。`report_action_buy_card_param` 在简单腿(落位)+ 合成连锁 + 升星腿全部计算完成后,触发购买回调 `gs.effects.on_buy(card, star, k)`(新挂点,形态镜像既有 `on_level_up`):bump `CounterKey.BUY`(返利族「每购 3 张 5 费」门槛面)+ 购买族效果分派预留位。时点语义 = 回调可见购买后的席面/升星事实;满栏合成一击多买按实际张数 k 计 k 次。flow 层 `apply_action_outcome` 的 BUY bump(现役唯一触发点,best-effort)**删除**——计数归上报单点,live/sim 同源(sim 经同一函数自动获得计数,消除计数分叉)。
-- **刷新:先算商店牌随机态,再触发相关计数**。`report_action_refresh_shop_param` 在 `record_refresh` 计数后:①经发牌机器采样**商店牌随机态**(算法本体自 `sim/cw_sim_shop.py::deal_shop`(:69)迁入 kernel 新模块 `kernel/cw_shop_deal.py`,数据源 = `data/cw_shop_odds.py` 概率注册表;sim `deal_shop` 改调同一函数)→ `gs.write_logic_rand(gs.shop, 采样 payload, evidence='refresh_random_sample')`(**随机态专用通道**;`write_logic` 通道在 EXEMPT_REGISTRY 空登记下,observe 覆盖差异必进失配安灯停机——采样与实读几乎恒不等,照稿实现 = 每刷必停)。write_logic_rand 语义与本腿逐句同义(「实机上采样是猜测,sim 里采样即世界真值——同一上报函数两副面孔」):observe 覆盖差异 = 预期内,只落 `logic_rand_outcome` 台账行,不进失配安灯三分流。②相关计数触发:`CounterKey.REFRESH/REFRESH_TOTAL/REFRESH_PAID` 维持 `record_refresh` 既有触发;商店内容条件计数(干旱/供给 streak 族)消费口径见下。
+- **买牌:回调在「获取角色计算完」后触发**。`report_action_buy_card_param` 在简单分支(落位)+ 合成连锁 + 升星分支全部计算完成后,触发购买回调 `gs.effects.on_buy(card, star, k)`(新挂点,形态镜像既有 `on_level_up`):bump `CounterKey.BUY`(返利族「每购 3 张 5 费」门槛面)+ 购买族效果分派预留位。时点语义 = 回调可见购买后的席面/升星事实;满栏合成一击多买按实际张数 k 计 k 次。flow 层 `apply_action_outcome` 的 BUY bump(现役唯一触发点,best-effort)**删除**——计数归上报单点,live/sim 同源(sim 经同一函数自动获得计数,消除计数分叉)。
+- **刷新:先算商店牌随机态,再触发相关计数**。`report_action_refresh_shop_param` 在 `record_refresh` 计数后:①经发牌机器采样**商店牌随机态**(算法本体自 `sim/cw_sim_shop.py::deal_shop`(:69)迁入 kernel 新模块 `kernel/cw_shop_deal.py`,数据源 = `data/cw_shop_odds.py` 概率注册表;sim `deal_shop` 改调同一函数)→ `gs.write_logic_rand(gs.shop, 采样 payload, evidence='refresh_random_sample')`(**随机态专用通道**;`write_logic` 通道在 EXEMPT_REGISTRY 空登记下,observe 覆盖差异必进失配安灯停机——采样与实读几乎恒不等,照稿实现 = 每刷必停)。write_logic_rand 语义与本分支逐句同义(「实机上采样是猜测,sim 里采样即世界真值——同一上报函数两副面孔」):observe 覆盖差异 = 预期内,只落 `logic_rand_outcome` 台账行,不进失配安灯三分流。②相关计数触发:`CounterKey.REFRESH/REFRESH_TOTAL/REFRESH_PAID` 维持 `record_refresh` 既有触发;商店内容条件计数(干旱/供给 streak 族)消费口径见下。
 - **与 logic_rand 消费门的关系**:logic_rand 契约 = 策略器消费前必须重观察。干旱/供给 streak 族(`cw_intention._update_pair_drought`)消费口径 = **仅 observation 源**(logic_rand 源该拍跳过,宁缺勿造)。恢复拍锚:刷新为访问终结,交回后 shop 域随离屏清 None(干旱族遇空 shop 冻结不误计);**下一次商店访问入口观察**以真值覆盖(`logic_rand_outcome` 留证),干旱族即恢复消费——与消费门同向,无豁免申报。
 - **supersession 申报**:现役「终结跳写(2026-09-18 用户裁决):金与刷后牌面不写」的 **payload 半边随本裁定收窄**——payload 改 write_logic_rand 随机态(观察赢),金仍不写;刷新 op 模块头与 report docstring 的旧申报随 3.3 清理面更新。
 - **两执行面同源**:随机态采样住上报函数后,sim 与实机走同一发牌代码(sim 的牌 = 采样即真值,实机的牌 = 采样被下一观察覆盖)——期望态两执行面同源原则(projection_contract §3.6)在商店 payload 上的落地。

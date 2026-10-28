@@ -4,7 +4,7 @@
 - 迭代目标：**执行缝金差链整体退役 + 账实金对账生产者补齐**——executor 不再计算/携带任何金差证据；统一对账告警从死代码复活为现役防线。用户裁定 2026-10-16（「为什么要在动作 op 之后自己做对账，我们应该有统一的观察态和逻辑态的对账」）。
 - 状态：草案
 - 文档清单：无详设（单文档方案）
-- **边界申报**：①LogicOutcome 契约（上报函数族拒绝语义）不动；②容器 gold 写点现状 = **上报函数族 + 已登记例外（分账清单见 §2.4，含 `_advance_gold` 与 `shop_session.apply_gold_delta(also_container=True)` 两条非上报函数直写）**——本迭代删的是执行缝第三份拷贝（回执 extra 证据腿），写点收敛核查分账另立；③`cw_exec_state._advance_gold` 直写路径核查 = 分账（§2.4）。
+- **边界申报**：①LogicOutcome 契约（上报函数族拒绝语义）不动；②容器 gold 写点现状 = **上报函数族 + 已登记例外（分账清单见 §2.4，含 `_advance_gold` 与 `shop_session.apply_gold_delta(also_container=True)` 两条非上报函数直写）**——本迭代删的是执行缝第三份拷贝（回执 extra 证据分支），写点收敛核查分账另立；③`cw_exec_state._advance_gold` 直写路径核查 = 分账（§2.4）。
 
 ## 1. 问题与动机
 - **归层**：流程层（执行缝私设账面期望供给，与统一对账架构平行）+ 约定层（回执 extra 携带非动作事实的记账数据）+ **对账基建缺口**（统一告警门无生产方，见 §2.3）。
@@ -16,7 +16,7 @@
   1. **第三份平行计算**：派发前快照 → 派发后算差，公式与上报函数同源（星×招募费），信息零增量；
   2. **零消费方**：回执 extra `gold_delta` 键在渲染器/cw_batch_stats/ab_judge/query/repair/match-review 全域零读点；
   3. **同期实证：执行缝吸收形态缺断路器**——live 1500× BuyCard 执行未落地 3 分钟失控循环（分账 = receipt-applied-retire 迭代账本 T-4；根因挂 visit 环断路器缺失，非金差链本体，属同形态动机佐证）。
-- **历史**：`prep_actions.py` 双记防线注释自证「执行缝与投影双腿各记一次的实机倒挂实证」——−2 倒挂事故的根 = 执行缝直推容器金账（已拆），证据腿为本批退役对象。
+- **历史**：`prep_actions.py` 双记防线注释自证「执行缝与投影双分支各记一次的实机倒挂实证」——−2 倒挂事故的根 = 执行缝直推容器金账（已拆），证据分支为本批退役对象。
 - **架构缺口补齐申报**：本迭代不是纯减法——**补齐账实金对账生产者**（§2.3），使「统一观察态/逻辑态对账」从声明变为现役（用户架构裁定的正面落地）。
 
 ## 2. 方案（单文档完整设计）
@@ -63,13 +63,13 @@ gap > GOLD_DELTA_ALARM_GAP(10) → obs_conflict('gold_delta', old=账面, new=�
 
 | 分账项 | 内容 |
 |---|---|
-| ① | `cw_exec_state._advance_gold` 直写容器金账（apply_confirm_effect +4 / BuyCard dict 路径扣金）与「唯一写点」申报的一致性核查——若为漏网直写腿，按 −2 倒挂同族升级清理 |
+| ① | `cw_exec_state._advance_gold` 直写容器金账（apply_confirm_effect +4 / BuyCard dict 路径扣金）与「唯一写点」申报的一致性核查——若为漏网直写分支，按 −2 倒挂同族升级清理 |
 | ② | `shop_session.apply_gold_delta(also_container=True)` 伴生入金写点（rebate/companion gold）归属裁定 |
 | ③ | `write_logic` docstring「produced_by=留存证据用」对 gold 类字段失实（produced_by 不落 journal）——框架级申报修正 |
 
 ## 3. 关键取舍
 
-- **删证据腿 + 补对账生产者，而非维持私设账面**：用户架构裁定 = 统一观察态/逻辑态对账；执行缝私设期望供给是与统一对账平行的第三通道，且实证零消费。
+- **删证据分支 + 补对账生产者，而非维持私设账面**：用户架构裁定 = 统一观察态/逻辑态对账；执行缝私设期望供给是与统一对账平行的第三通道，且实证零消费。
 - **`op_success` 保留**：恢复局守卫（控制流）+ 回执码供给（遥测事实）两个消费方均为硬依赖。
 - **归因机制名修正**：journal 归因键 = `sig.actor` + `prov` evidence（非 produced_by）——design 初版机制名错误，attack 实证修正。
 - **渲染器排除表追加而非删旧**：`'applied'` 与 `'gold_delta'` 两键并存排除，同保证旧 journal 兼容。

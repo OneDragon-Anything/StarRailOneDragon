@@ -31,7 +31,7 @@
 
 - **位置**：design §2.5 退役清单第 3 行（「类型直定改挂 CwScreenBossBriefing 观察 node……目标 = 现 hist = 已被奖励关结算确认推进的 boss 节点」）；E12/S6。
 - **攻击**：新模型把「推进到 (p,9)」（结算确认上报，whitelist 等待有时限）与「boss 类型写入」（CwScreenBossBriefing 观察 node）拆成两个载体、两个时点。目标序取「现 hist」隐含「上报必先于简报 op」——该序在证据命中路径成立（report 在 whitelist 命中点、外循环下轮才分派简报 op），但在**证据 miss 路径**断裂：结算确认 op 的 whitelist 等待超时（miss = 不上报）而流转真实发生 → 外循环照常按 0p 分派 CwScreenBossBriefing → hist 仍停 (p,8) → 类型直定把 boss 写到 (p,8) 奖励节点。类型写无逆操作（无回滚面），后续锚定补推只修序不修类型——奖励节点类型永久污染，比旧模型（`_derive_node_boss_brief` 序号+类型同批双写，`cw_game_state.py:3364` 起）净劣化。设计对「settle_confirm 证据 miss」已申报自愈（锚定补推），但未对「类型直定依赖 hist 已被推进」这一新耦合做 miss-path 分析。
-- **依据**：`kernel/cw_game_state.py:3364-3397`（旧腿序号+kind 同批双写）；`observe_screen_context` `:3058-3061`（0p 触发现役通道）；design §2.3（证据 miss = 不上报）/ §2.5 第 3 行原文。
+- **依据**：`kernel/cw_game_state.py:3364-3397`（旧分支序号+kind 同批双写）；`observe_screen_context` `:3058-3061`（0p 触发现役通道）；design §2.3（证据 miss = 不上报）/ §2.5 第 3 行原文。
 - **要求**：简报类型写端加守卫（目标序 ≠ 预期 boss 序——如 effective+1 未被 hist 占位——时留证零写，交链读链/留证缺位），或把类型目标改为与推进同源校验；E12/S6 论证补 miss-path 一句。
 
 ### R4（低）§2.4-1「生产备战帧唯一消费 op = CwScreenPrep」与代码事实不符（无锚定缺口，表述失准）
@@ -51,16 +51,16 @@
 | 节 | 核查内容 | 结论 |
 |---|---|---|
 | §2.1 边界定义 | E1-E18 逐边对两动作点+锚定覆盖（见 ④ E 边复走） | ✓（R3 一处拆批缝） |
-| §2.2 处置表/推进原语/锚定 helper | ① 表三分支与 `read_phase_round` 输入面：回执 plane/round 恒 int（`cw_observation.py:992-1057` last-known-good 单调守卫+值域守卫+跨局 reset，miss 回退旧值/兜底 (1,1)），「与现行备战腿同源、风险面不变」属实 ✓；② 原语来源参数化内部自洽（action=logic / 补推=observation 的「误挡一拍」论证成立；`advance_node` 序相等去重 → 跳档漏发论证沿第一轮 F2 属实）；③ `prep_frame` 遗迹主张实码证实：`_tick_effect_boundary_impl`（`cw_game_state.py:3269-3280`）函数体不读该参数；`settle_node_boundary_gold` 全仓零调用点（仅 def+注释）✓；④ helper 直写口先例 = `settle_truth`（`:2772-2798`）绕三分流 + obs sig，成立；R<v 留证走 `note_obs_event('arbitrate')` 在词表（`OBS_EVENT_EVENTS:334`）✓；journal 载体规范（渠道族/行型）相容 ✓；⑤ **v=None 无分支 = R1** | ✗ R1，余 ✓ |
+| §2.2 处置表/推进原语/锚定 helper | ① 表三分支与 `read_phase_round` 输入面：回执 plane/round 恒 int（`cw_observation.py:992-1057` last-known-good 单调守卫+值域守卫+跨局 reset，miss 回退旧值/兜底 (1,1)），「与现行备战分支同源、风险面不变」属实 ✓；② 原语来源参数化内部自洽（action=logic / 补推=observation 的「误挡一拍」论证成立；`advance_node` 序相等去重 → 跳档漏发论证沿第一轮 F2 属实）；③ `prep_frame` 遗迹主张实码证实：`_tick_effect_boundary_impl`（`cw_game_state.py:3269-3280`）函数体不读该参数；`settle_node_boundary_gold` 全仓零调用点（仅 def+注释）✓；④ helper 直写口先例 = `settle_truth`（`:2772-2798`）绕三分流 + obs sig，成立；R<v 留证走 `note_obs_event('arbitrate')` 在词表（`OBS_EVENT_EVENTS:334`）✓；journal 载体规范（渠道族/行型）相容 ✓；⑤ **v=None 无分支 = R1** | ✗ R1，余 ✓ |
 | §2.3 触发点 1/2 | ① op 结构描述与实码吻合：②段结算点击 = `_dispatch_frame` `:731-766`（含 M39 长按 `:758-764`、settle_stay 状态机字段）、③段白名单 = `wait()` 出口 A `_hit_completion_anchor:269-289`（五锚+boss OCR 兜底+位面过渡 OCR），「提出 helper 共用」可行 ✓；抽 `CwOpSettleConfirm` 与驻留状态机形态（op-layer §3 `CwScreenBattleWait` 行）相容——子 op 从 ②段 调起、不拆两 node，不触豁免裁定 ✓；白名单出口判定保留的幂等性成立（whitelist 命中即 exit，不重复进 ②段）✓；② 补给侧：`CwActionPickSupplyOp.run`（`cw_overlay_pick_action.py:200-233`）确认链 = `round_by_find_and_click_area(..., success_wait=1.5)`，until 插入点存在（项目 AGENTS §3 在册能力）、现有 `report_action_pick_supply_param` 调用点 `:228` 旁增调可行；「证据 miss 不上报不重试」与其单发+宿主重入结构相容（重入再走 = 确认置灰零副作用，miss 常态由锚定补推收口）✓；③ F5 修正案（时点门非执行验证）与 op-layer §1.2 原文核过，例外条款已列正本清单 ✓；④ **门/锁定臂前提 = R1；REGISTERED_ACTORS = R2** | ✗ R1/R2，余 ✓ |
 | §2.4 写端 1/2 | ① `observe_full` 回执真携带 plane/round_num（`cw_observe_full.py:108-133` → `GameStateReadReceipt` `cw_observation.py:2187-2188`）；CwScreenPrep 观察 node 可拿回执：`_observe` heavy 段 `_st = _of.get('read_receipt')`（`cw_screen_prep.py:262`，session 非 None 块内、reobserve_in_visit 同链）——锚定接线可行 ✓；漏斗退出节点域后 recorder 零副作用主张成立（recorder 直调 `read_game_state`，`cw_match_recorder.py:80`，节点域写入随漏斗收口消失）✓；② 补给屏节点条：观察 node 在（`cw_screen_supply_node.py:142-155`），V3 实证节点条屏显且不在 A_PHASE 区（node-derivation §④-C V3），sr-od-test fixture `货币战争-补给/default.webp` 在库可作离线对拍 ✓；③ **「唯一消费 op」= R4** | R4，余 ✓ |
-| §2.5 退役清单/切换纪律 | 五调用点 `cw_loop.py:1547/1559/1594/1605/1623` 实测吻合；上下文对开局链消费面 = 仅 `_derive_node_inferred`（退役）+ projection 审计行（非逻辑），§2.7-9「零逻辑消费」成立 ✓；共存画像（3.2 后 settle 门挡：旧备战腿 write_logic 使 source=logic ✓；3.3 后 supply 部分放行 ✓）与 landing 阶段序一致 ✓；**BOSS 迁移行 = R3** | R3，余 ✓ |
+| §2.5 退役清单/切换纪律 | 五调用点 `cw_loop.py:1547/1559/1594/1605/1623` 实测吻合；上下文对开局链消费面 = 仅 `_derive_node_inferred`（退役）+ projection 审计行（非逻辑），§2.7-9「零逻辑消费」成立 ✓；共存画像（3.2 后 settle 门挡：旧备战分支 write_logic 使 source=logic ✓；3.3 后 supply 部分放行 ✓）与 landing 阶段序一致 ✓；**BOSS 迁移行 = R3** | R3，余 ✓ |
 | §2.6/§2.7 | §2.6 分家与 `apply_effect_burst_grant`（`:1204`）/`grant_effect_node_refresh_balance`（`:1223`）挂点描述相符 ✓；§2.7 九条逐条对码：1/2/6/7/9 成立（9 见上）、5 成立、8 沿原语成立、3/4 语义可核但缺验证锚（R5） | R5，余 ✓ |
 | landing 3.1-3.7 | 3.1 判据含 F2① 回归测试 ✓（但范围⑤ = R2）；3.2 剧本可判 ✓；3.3 两形态剧本+fixture 判据可独立验收 ✓；3.4 边界清晰 ✓；3.5 grep 归零判据可判定（符号集封闭：`_note_branch_screen`/`SCREEN_CONTEXT_POPUP_FAMILY`/`SCREEN_CONTEXT_GUARD_PREV`/`SCREEN_NODE_TYPE_DIRECT`/三 `_derive_node_*` 均为实名符号）✓；3.6 = R5；3.7 清单齐 ✓ | R2/R5，余 ✓ |
 
 ### E 边复走（新模型；重点 = 补推时序组合 / 恢复局 / 快弹窗+补给自动弹+位面过渡复合）
 
-E1/E2/E3 零推进 ✓（入口链零上报零锚定，E2 开局 0q 无腿亦无上报 ✓）；E4 首锚定建 1 ✓（但处置表缺 v=None 行 = R1 的组成部分）；E5/E6/E16/E17/E18 零 ✓；E7 两形态（whitelist 备战锚含商店面板下透出形态，currency_war_prep.md:32「锚在 overlay 下仍可透出」）✓；E8 快弹窗四类证据=弹窗锚或透出备战锚 ✓；E9 R==v 翻锚定 ✓；E10 divert/自动弹两形态（自动弹：结算确认证据=补给锚→report→补给屏节点条 R==v 翻→确认→report，链闭合）✓；E11 until 备战锚+补推自愈 ✓（连续补给节点形态：until 备战锚 miss→不报→补给屏节点条 R>v 补推+tick，自愈成立）；E12 公式承载 ✓、**类型侧 = R3**；E13 boss 确认→(p+1,1)=effective+1，位面过渡 OCR 证据在白名单 ✓；级联 B（0q→商店）：report 在 0q 证据点，后继商店/prep 帧无第二推进源 ✓；级联 A（0p→商店）：report 在 0p 证据点 ✓（类型 = R3）；E14 恢复局：备战帧先行→锚定建值 ✓；弹窗先行→无锚定无上报→消化后备战帧补推 ✓；**锁定臂 = R1**；E15 战败无 op ✓。复合序列（奖励关结算→0p→商店自动开→boss 备战→出战→boss 结算→0q→下位面）：每步恰一推进源，无双推边；唯一断裂 = R3 的 miss-path。幻影残余路径（logic 领先一档→R<v 挡→门挡→R==v/R>v 收口）自洽，账本无逆操作申报在案 ✓。**未发现第一轮遗漏的双推/漏推边**。
+E1/E2/E3 零推进 ✓（入口链零上报零锚定，E2 开局 0q 无分支亦无上报 ✓）；E4 首锚定建 1 ✓（但处置表缺 v=None 行 = R1 的组成部分）；E5/E6/E16/E17/E18 零 ✓；E7 两形态（whitelist 备战锚含商店面板下透出形态，currency_war_prep.md:32「锚在 overlay 下仍可透出」）✓；E8 快弹窗四类证据=弹窗锚或透出备战锚 ✓；E9 R==v 翻锚定 ✓；E10 divert/自动弹两形态（自动弹：结算确认证据=补给锚→report→补给屏节点条 R==v 翻→确认→report，链闭合）✓；E11 until 备战锚+补推自愈 ✓（连续补给节点形态：until 备战锚 miss→不报→补给屏节点条 R>v 补推+tick，自愈成立）；E12 公式承载 ✓、**类型侧 = R3**；E13 boss 确认→(p+1,1)=effective+1，位面过渡 OCR 证据在白名单 ✓；级联 B（0q→商店）：report 在 0q 证据点，后继商店/prep 帧无第二推进源 ✓；级联 A（0p→商店）：report 在 0p 证据点 ✓（类型 = R3）；E14 恢复局：备战帧先行→锚定建值 ✓；弹窗先行→无锚定无上报→消化后备战帧补推 ✓；**锁定臂 = R1**；E15 战败无 op ✓。复合序列（奖励关结算→0p→商店自动开→boss 备战→出战→boss 结算→0q→下位面）：每步恰一推进源，无双推边；唯一断裂 = R3 的 miss-path。幻影残余路径（logic 领先一档→R<v 挡→门挡→R==v/R>v 收口）自洽，账本无逆操作申报在案 ✓。**未发现第一轮遗漏的双推/漏推边**。
 
 ## ④ 与第一轮发现的关系（已修项复验结果）
 
@@ -72,6 +72,6 @@ E1/E2/E3 零推进 ✓（入口链零上报零锚定，E2 开局 0q 无腿亦无
 | F4 BOSS 类型触发通道 | §2.5 迁 CwScreenBossBriefing | ✓ 通道修复，但修订本身引入 R3 新缝 |
 | F5 补给验证契约 | §2.3 辖域修正案 + 正本清单 §1.2 例外条款 | ✓ 成立 |
 | F6 行号锚 | 全文符号锚 | ✓ 抽查吻合 |
-| F7 上下文对消失 | §2.7-9 申报 | ✓ 成立（消费面 grep 复核：仅派生腿+审计行） |
+| F7 上下文对消失 | §2.7-9 申报 | ✓ 成立（消费面 grep 复核：仅派生分支+审计行） |
 
 第一轮 attack.md 的核三结论（根因归层成立、E 边拓扑无破）在本轮复走下维持；本轮全部新发现集中在**门初值语义（R1）、已退役机制引用（R2）、拆批类型耦合（R3）**三处，均为修订新增内容自身的问题面。

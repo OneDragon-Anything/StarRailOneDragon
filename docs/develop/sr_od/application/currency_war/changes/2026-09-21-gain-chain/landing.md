@@ -41,7 +41,7 @@
 - `game_state/` 新篇 gain-chain.md(链式规范正本:原语/时序/随机态/失败安全/已知缺口标记)← 3.1/3.2
 - `game_state/fields.md` §3.4.3(active_env 写端迁链;ADR-0598 写时点语义退役)← 3.2
 - `game_state/fields.md` §3.2.20(溢出字段双写端声明:观察 + 获得链逻辑写端)← 3.2
-- `game_state/fields.md` §5.1(效果账本写入挂点清单补获得链登记腿)← 3.2
+- `game_state/fields.md` §5.1(效果账本写入挂点清单补获得链登记分支)← 3.2
 - `game_state/effect-domain.md`(portal 效果登记挂点记述:画面 op → 获得链;**原无正本记述,本批首立**)← 3.2
 - `game_state/action-logic-state.md` 事件单选族节(选择落地经获得链的表述改写)← 3.2
 - `screens/op-layer.md` §2.2(动作事实边界条款:投资环境域收窄,裁定①)← 3.2

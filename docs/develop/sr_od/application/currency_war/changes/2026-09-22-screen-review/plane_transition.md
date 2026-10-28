@@ -27,7 +27,7 @@
 
 ### 1.3 F-3 变更史/退役叙事进注释(低)
 
-- **现状症状**(审查发现 F-3,三处):①`cw_screen_plane_transition.py` 模块头「原单 node 形态『pending 先行、miss fail 后置』位序随两 node 拆分自然消解(门在观察 node 先行,裁决住决策 node 顶部)」(从单 node 改两 node 的变更叙事,与 F-1 同源文本);②同文件 `_build_transition_chain` docstring「(旧 kernel 过渡腿『三源全缺禁猜』同款语义,腿已随动作上报化切换批退役)」(退役史 + 无日期无索引的批次名);③`kernel/cw_screen_report/plane_transition.py::CwScreenPlaneTransitionObs` docstring「(行读数与 TokenCell 构造归观察侧,**迁移批接线**;None = 行空/读缺,report 不写,诚实缺位)」(「迁移批接线」无日期无索引,现读歧义——计划态措辞,实际已接线并有 `test_cw_transition_node_chain.py` 测试)。
+- **现状症状**(审查发现 F-3,三处):①`cw_screen_plane_transition.py` 模块头「原单 node 形态『pending 先行、miss fail 后置』位序随两 node 拆分自然消解(门在观察 node 先行,裁决住决策 node 顶部)」(从单 node 改两 node 的变更叙事,与 F-1 同源文本);②同文件 `_build_transition_chain` docstring「(旧 kernel 过渡分支『三源全缺禁猜』同款语义,分支已随动作上报化切换批退役)」(退役史 + 无日期无索引的批次名);③`kernel/cw_screen_report/plane_transition.py::CwScreenPlaneTransitionObs` docstring「(行读数与 TokenCell 构造归观察侧,**迁移批接线**;None = 行空/读缺,report 不写,诚实缺位)」(「迁移批接线」无日期无索引,现读歧义——计划态措辞,实际已接线并有 `test_cw_transition_node_chain.py` 测试)。
 - **根因归层**:**约定层**——AGENTS.md §8「变更史不进注释」为后立规范,存量注释未回溯清理;与 T-3 稿 F-6 同根,全仓存量卫生已由其 §2.6 登记的全仓注释卫生批立案,本稿只清审查对象两文件(跨件半问:同根,共用同一登记,不另立第二套机制)。
 - **解决到哪**:三处各收敛为当前语义 + 持久指针(§2.3);句中确有的当前语义成分——「门在观察 node 先行,裁决住决策 node 顶部」「行读数与 TokenCell 构造归观察侧」——保留语义而非逐字:前句「决策 node」称谓随 §2.3 #1 对齐为「决策动作 node」(对齐依据见 §2.3 #1 目标列自注),后句逐字保留。
 - **明确不解决**:同文件经审查逐行核对通过的其余措辞——「验证废除」标注 ×4(现役政策标记:验证已废除、禁重加验证+重试结构,审查报告 §3 未列命中)、「防御逐位平移」「随写点同迁」(可读作 op-layer.md §2.1「防御口径与原写点一致」契约的现役陈述,且与屏文档 §6 同款措辞同文)——本稿一律不动,禁借清理之名改写;若用户裁决按严格禁形二连带清扫,归全仓注释卫生批统一口径(含屏文档 §6 用语对齐),不混入本批。全仓其余存量注释卫生(同上,卫生批)。
@@ -69,8 +69,8 @@
 
 | # | 位置 | 现状(病句) | 目标语义 |
 |---|---|---|---|
-| 1 | `cw_screen_plane_transition.py` 模块头(「……无防御上限)。」与「本屏 sim 腿 =」之间) | 「原单 node 形态「pending 先行、miss fail 后置」位序随两 node 拆分自然消解(门在观察 node 先行,裁决住决策 node 顶部)。」 | 「门在观察 node 先行,裁决住决策动作 node 顶部。」(清变更史主句;括注当前语义独立成句,「决策动作 node」称谓与 §2/模块头既有用语对齐) |
-| 2 | `cw_screen_plane_transition.py::_build_transition_chain` docstring「行归属位面」句 | 「开局判别 = 容器节点镜像与 hist 双缺(旧 kernel 过渡腿「三源全缺禁猜」同款语义,腿已随动作上报化切换批退役)= P1 入口;……」 | 删括注「(旧 kernel 过渡腿「三源全缺禁猜」同款语义,腿已随动作上报化切换批退役)」,余句逐字保留——「双缺禁猜」现役语义已由后句「镜像缺失返回 None(行归属不可知,禁猜;report 内同门兜底)」完整承载 |
+| 1 | `cw_screen_plane_transition.py` 模块头(「……无防御上限)。」与「本屏 sim 分支 =」之间) | 「原单 node 形态「pending 先行、miss fail 后置」位序随两 node 拆分自然消解(门在观察 node 先行,裁决住决策 node 顶部)。」 | 「门在观察 node 先行,裁决住决策动作 node 顶部。」(清变更史主句;括注当前语义独立成句,「决策动作 node」称谓与 §2/模块头既有用语对齐) |
+| 2 | `cw_screen_plane_transition.py::_build_transition_chain` docstring「行归属位面」句 | 「开局判别 = 容器节点镜像与 hist 双缺(旧 kernel 过渡分支「三源全缺禁猜」同款语义,分支已随动作上报化切换批退役)= P1 入口;……」 | 删括注「(旧 kernel 过渡分支「三源全缺禁猜」同款语义,分支已随动作上报化切换批退役)」,余句逐字保留——「双缺禁猜」现役语义已由后句「镜像缺失返回 None(行归属不可知,禁猜;report 内同门兜底)」完整承载 |
 | 3 | `kernel/cw_screen_report/plane_transition.py::CwScreenPlaneTransitionObs` docstring ``chain`` 句 | 「(行读数与 TokenCell 构造归观察侧,迁移批接线;None = 行空/读缺,report 不写,诚实缺位)」 | 删「,迁移批接线」→「(行读数与 TokenCell 构造归观察侧;None = 行空/读缺,report 不写,诚实缺位)」——接线现状由同文件模块头「report 摄入点 = …::observe(观察 node)」申报与测试承载 |
 
 依据(共用):AGENTS.md §8(「变更史不进注释……注释只留当前值成立的理由 + 指针」;出处须持久索引或纯语义描述)+ T-3 稿 §2.6 准则 2/3(变更史清出、当前语义保留;「动作上报化切换批」「迁移批」均无日期无索引,不构成持久索引)。接线事实的持久指针 = kernel 屏文件模块头摄入点申报 + `sr-od-test/test/sr_od/application/currency_war/test_cw_transition_node_chain.py`。

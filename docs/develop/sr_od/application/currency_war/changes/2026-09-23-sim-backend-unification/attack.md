@@ -21,10 +21,10 @@
 - **证据出处**：本审计按设计中给出的同一 grep 模式于 `src/sr_od/application/currency_war/operations/` 全树执行，命中 67。
 - **建议修法**：landing §3.1④ 与 flow-seam §2 不要落快照数字（换父期间必然漂移）——完成判据改为「换父后 grep `^class Cw\w+\(SrOperation\)` 于 operations/ 树**零命中**」，正文只写清点方法不写死数；若要保留现状数，须改为 67 并修正分项。
 
-### A3 [必修] 装备腿「上报缺口」举例已过期（缺口已被补）
+### A3 [必修] 装备入账分支「上报缺口」举例已过期（缺口已被补）
 
 - **位置**：`details/sim-backend.md` §4 `cw_sim_equips.py` 行（「逐函数核对 kernel 上报覆盖面，缺口（炉/精密扳手等）补进 kernel 上报函数，sim 私有实现退役」）。
-- **问题**：炉与精密扳手的 kernel 上报函数**已经存在**：`kernel/cw_action_report/tool_use.py` 含 `report_action_furnace_use_param`（:181，双模式：拖装备/拖角色）、`report_action_precision_wrench_use_param`（:450）、`report_action_wrench_use_param`（:443），且其头注声明「冶金炉采样池 v0 = `cw_sim_equips.furnace_reroll` 同源」。按现状逐函数对表，`cw_sim_equips` 各公开腿（wear/wrench/precision/furnace 双模式/重掷池）kernel 侧均有对应上报实现，**当前可见缺口为零**。设计把已补齐的面标为缺口，实现者会试图补已存在的函数。
+- **问题**：炉与精密扳手的 kernel 上报函数**已经存在**：`kernel/cw_action_report/tool_use.py` 含 `report_action_furnace_use_param`（:181，双模式：拖装备/拖角色）、`report_action_precision_wrench_use_param`（:450）、`report_action_wrench_use_param`（:443），且其头注声明「冶金炉采样池 v0 = `cw_sim_equips.furnace_reroll` 同源」。按现状逐函数对表，`cw_sim_equips` 各公开分支（wear/wrench/precision/furnace 双模式/重掷池）kernel 侧均有对应上报实现，**当前可见缺口为零**。设计把已补齐的面标为缺口，实现者会试图补已存在的函数。
 - **证据出处**：`kernel/cw_action_report/tool_use.py:181,443,450` 及其头注 :19-26；`sim/cw_sim_equips.py:155,263,276,282,293`。
 - **建议修法**：sim-backend §4 该行改为「逐函数核对 kernel 上报覆盖面（现状审计时点零缺口：炉/扳手族/精密扳手均已覆盖），核对通过后 sim 私有实现退役」；若核对发现新缺口再列专名。
 
@@ -59,12 +59,12 @@
 - **证据出处**：本审计 grep（from-import 语句逐文件列于证据）；`sim-backend.md` §4 退役清单。
 - **建议修法**：flow-seam §5 补全文件清单，或改为确定性方法句「grep 退役/平移符号全集于 sr-od-test 的命中文件全部平移，零命中为完成判据」（landing §3.2 的 grep 零命中判据同步声明覆盖 sr-od-test 树）。
 
-### A8 [必修] 观察腿的接缝机制未定：op 读屏点如何改道 `port.observe` 无落位
+### A8 [必修] 观察分支的接缝机制未定：op 读屏点如何改道 `port.observe` 无落位
 
 - **位置**：`design.md` §2 接口契约（「`observe(screen_name)`…消费方 = 画面 op 读屏点」仅一句）；`details/flow-seam.md` §2 覆写面（只有 `screenshot` / `round_by_find_and_click_area` / `round_by_find_area` / 其余 round_by 助手 / 直连 controller 旁路五类，**不含 obs 层读屏入口**）；`landing.md` §3.1 范围⑤与文件面。
 - **问题**：硬约束「op 体零改动」下，画面 op 与观察 op 的读屏调用（obs 层函数族：`obs/cw_observation.py`、`obs/cw_identity_obs.py`、`kernel/cw_obs_core.py` 等）在 sim 模式如何拿到生成器产物？设计未指定改道点。若不改道：哨兵帧上真识别恒未找到 → retry 耗尽 fail（设计自认的「漏改」失败模式）；若在 op 体内加 port 分支则违反自身硬约束。唯一可行落位（obs 层各读屏入口加端口检查，installed 时改道 `port.observe` → 产物仍由 op 原代码走同名 `report_screen_*`）是 app 树改动，但**没有任何工作项与文件面承载它**：landing §3.1 文件面只有 `sim/cw_sim_ports.py`、`operations/`、kernel 钩子槽文件、`sr-od-test/test/harness/`；同节范围⑤承诺的「直连 controller 旁路逐点 port 检查」涉及的首例 `prep_actions.py` 在 app 根目录（不在 `operations/` 树内），文件面同样盖不住。
 - **证据出处**：`flow-seam.md` §2 双保险条（「漏改的帧消费者…retry 耗尽 fail」= 自证存在必须成批改道的帧消费点）；`landing.md` §3.1 文件面原文。
-- **建议修法**：flow-seam §2 补「观察腿接缝」小节：改道点 = obs 层读屏入口的端口检查（写明入口函数清单的盘点方式）；landing §3.1 范围⑤纳入该清点与改道，文件面补 `obs/` 树与 app 根涉改文件（`prep_actions.py` 等）。
+- **建议修法**：flow-seam §2 补「观察分支接缝」小节：改道点 = obs 层读屏入口的端口检查（写明入口函数清单的盘点方式）；landing §3.1 范围⑤纳入该清点与改道，文件面补 `obs/` 树与 app 根涉改文件（`prep_actions.py` 等）。
 
 ### A9 [必修] overlay 触发层的事件源缺契约（总纲接口契约缺口）
 
@@ -83,9 +83,9 @@
 ### A11 [建议] sim until 问询的否定分支未定义
 
 - **位置**：`details/flow-seam.md` §2（「有 until 按实机同形返回 `round_wait`…下一轮 until 问状态机取转移后真值」）；`details/sim-backend.md` §2 until 语义条。
-- **问题**：只写了肯定路径（上报同步转移 → 下一轮必为真值）。若 `visible()` 返回假（世界态未按预期转移），实机形状是**再点一次**（`operation.py:977-1028`：until 未满足且 `node_clicked` 置位 → 落回点击腿）。sim 侧跟不跟这个形状？再点会不会对状态机重复触发同一转移事件（幂等吗）？未答。
+- **问题**：只写了肯定路径（上报同步转移 → 下一轮必为真值）。若 `visible()` 返回假（世界态未按预期转移），实机形状是**再点一次**（`operation.py:977-1028`：until 未满足且 `node_clicked` 置位 → 落回点击分支）。sim 侧跟不跟这个形状？再点会不会对状态机重复触发同一转移事件（幂等吗）？未答。
 - **证据出处**：`src/one_dragon/base/operation/operation.py:977-1028` 分支结构（本审计核对，设计「与实机同形」的主张在肯定路径上成立）。
-- **建议修法**：flow-seam §2 补一句否定分支语义（建议：与实机同形回落点击腿 + 转移事件广播声明幂等/去重，由状态机保证重复事件无害）。
+- **建议修法**：flow-seam §2 补一句否定分支语义（建议：与实机同形回落点击分支 + 转移事件广播声明幂等/去重，由状态机保证重复事件无害）。
 
 ### A12 [建议] `位面开局环境金` 的处置缺声明
 
@@ -137,7 +137,7 @@
 **无发现，归层与修法成立。** 具体核验：
 
 1. **§1 归层结论成立**：三组症状经实证均为「sim 自驱平行演化」这一架构根的表现——引擎自持相位机与世界账本（`_Eng` 双账三处，字段逐一核实存在）、自实现效果消费（`apply_strategy_pick`/`apply_env_pick` 确为「只写名字不走获得链」，对照 `kernel/cw_action_report/pick_invest_strategy.py:52` 直调 `gain_invest_strategy` 的流程侧真链）、自当驱动者（策略注入式 `simulate_run`）。根在架构层（驱动方向 + 状态承载 + 效果消费三处分叉），不在表示或约定层，归层正确。
-2. **§2 修的是根**：驱动反转（真流程驱动）+ 容器一份 + 写通道三条各一 + 选卡腿接 kernel 获得链，四条不变式全部锁在总纲，且每条都直接对准上述分叉之一，不是症状贴补。字段判据（实机可观察 → Field / 采样簿记 → 后端私有）给了可执行的归属规则，禁第三形态防回潮。
+2. **§2 修的是根**：驱动反转（真流程驱动）+ 容器一份 + 写通道三条各一 + 选卡分支接 kernel 获得链，四条不变式全部锁在总纲，且每条都直接对准上述分叉之一，不是症状贴补。字段判据（实机可观察 → Field / 采样簿记 → 后端私有）给了可执行的归属规则，禁第三形态防回潮。
 3. **同族二次出现的处置正确**：T-120 批（`cw_game_ports.py`）是对同一接缝的第一次尝试，协议已随流程形态漂移作废（考古件实证：`cw_state.GameState`/`PrepObservation`/ADR-0462 相位键均为旧容器时代产物，与 flow-seam §1 的退役声明逐项相符）。本迭代 = 对该复发的**架构级设计件**（统一而非再打一件补丁），且显式消费了教训（「协议形状取最小稳定面」取舍条）——符合跨件半问的要求，不是第三件症状补丁。
 
 ---
@@ -148,7 +148,7 @@
 
 - **锚点修正类（A1/A3/A4/A5，机械改）**：改完即消，无设计后果。
 - **数字与清单类（A2/A7，机械改）**：改为零命中判据 + 补全文件清单即可。
-- **设计补定类（A6/A8/A9/A10，需动笔定语义）**：这四项是真实的定稿门槛——A6（备战子态的注册键形状）、A8（观察腿改道点）、A9（overlay 事件源契约）都是「实现者现在开工就必须自行拍板」的语义选择，正是写作硬规则 2 的卡点对象；A10 是阶段划分修正。
+- **设计补定类（A6/A8/A9/A10，需动笔定语义）**：这四项是真实的定稿门槛——A6（备战子态的注册键形状）、A8（观察分支改道点）、A9（overlay 事件源契约）都是「实现者现在开工就必须自行拍板」的语义选择，正是写作硬规则 2 的卡点对象；A10 是阶段划分修正。
 - **B1（两处状态残留）**：删两句即消。
 
 以上全部改完（预计一轮小修，无需重开设计），经一次全量同步复查（按 §5.4 逐锚点重扫，重点 A6/A8/A9 的新增契约与 landing 文件面/范围联动）后即具备定稿条件；B2/B3/B4 可随定稿批顺手处理，不阻塞。零实质发现不是本报告结论——但核三零发现与「根因-方案」主干的成立是明确的正面结论。
@@ -170,7 +170,7 @@
 - **A7 ✓** flow-seam §5 补 8 文件清单 + grep 清点法，与本审计 grep 结果一致。
 - **A8 ✓** 总纲补 `sim_or_live_observation` 契约；flow-seam §2 新增「读屏点改道」节并精确化「op 体零改动」口径；接线归 3.3④、helper 入 3.1①、3.1 文件面补 `prep_actions.py`。机制经实证成立：重观察动作 op（`CwActionObsOp`）的读屏也经宿主 `CwScreenPrep.reobserve_in_visit` 落在 `operations/cw_screen/`，文件面盖得住。
 - **A11 部分**：修的是 `until_not_find_all` = visible 取反（本身正确）；但原发现所问「until 问询为假时的回落行为（实机形状 = 回落再点；sim 侧是否同形、重复转移事件是否幂等）」**仍未作答**。建议级，不阻塞定稿；实现期撞到时按停手令提请修订。
-- **A12 ✓** sim-backend §4 engine 行补位面金腿归宿；新锚 `INVESTMENT_ENVS` 核实在 `kernel/cw_investments.py:671`。
+- **A12 ✓** sim-backend §4 engine 行补位面金分支归宿；新锚 `INVESTMENT_ENVS` 核实在 `kernel/cw_investments.py:671`。
 - **B1 ✓**（landing 卷首状态注已删、design 里程碑改纯指针）**B4 ✓**（改「金币不出现无规则依据的负值」）**B3 ✓**（末阶段辖外申报走 `.debug/temp/skill_feedback.md`，符合本仓 skill 反馈通道纪律）。
 - **B2 不采纳**（建议级；landing 本未引 §12，不补不改）——规范侧 §12 悬空引用的申报仍挂本报告，待规范维护方处理。
 

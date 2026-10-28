@@ -13,7 +13,7 @@
 
 1. **选择事实的写点错位**:`operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv._decide_and_act` 在点卡前写 `gs.active_env`(ADR-0598 时代语义)。画面 op 的职责 = 观察选项 + 决策 + 机械派发;选择事实应产生在动作落地处理时(裁定①)。确认未落地重走时,点卡前写留下「已选环境」中间假账。
 2. **没有统一的获得过程语义**:落地相效果 = 按卡名散表 `kernel/cw_action_report/pick_invest.py::PICK_INVEST_EFFECTS`(现役 2 张)+ 独立后置钩子 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(装备获得→送角色,「全渠道统一后置钩子」,其 docstring 自述入栏不在辖);效果函数体内手写递归,无统一时序。
-3. **升星时机错、产物断链**:`cw_effect_inventory.py::grant_bench_unit_cascade` 落位后**立即**级联合成(`merge_cascade_write`,锚 :1489-1492),升星产物不再触发任何回调;备战席满 = 拒落零写(`detail='bench_full'`,锚 :1483-1484),不建模溢出席——而容器已有溢出字段(`kernel/cw_game_state.py` `overflow_warning`/`overflow_card`,§3.2.20 实机建档)、卖牌溢出腿(`kernel/cw_action_report/sell_bench.py`:溢出腿,腾出槽当帧记溢出卡入位)与 sim 渠道(`sim/cw_sim_nodes.py`「席满不丢,溢出悬挂由容器」)在册。
+3. **升星时机错、产物断链**:`cw_effect_inventory.py::grant_bench_unit_cascade` 落位后**立即**级联合成(`merge_cascade_write`,锚 :1489-1492),升星产物不再触发任何回调;备战席满 = 拒落零写(`detail='bench_full'`,锚 :1483-1484),不建模溢出席——而容器已有溢出字段(`kernel/cw_game_state.py` `overflow_warning`/`overflow_card`,§3.2.20 实机建档)、卖牌溢出分支(`kernel/cw_action_report/sell_bench.py`:溢出分支,腾出槽当帧记溢出卡入位)与 sim 渠道(`sim/cw_sim_nodes.py`「席满不丢,溢出悬挂由容器」)在册。
 4. **随机态无链级规则**:`rand` 形参逐调用点各自决定(锚 `grant_bench_unit_cascade`/`apply_equip_acquire_consequence` 的 rand 形参),采样进入链后下游写通道无约束。
 
 根因归层:**语义层**——「获得」这件事(注册 → 回调 → 升星 → 递归)没有统一的过程语义;散点是它的症状(约定层表现)。
@@ -31,14 +31,14 @@
 **`gain_invest_env(gs, session, env_name, *, rand, sig, producer='CwGainChain') -> GainOutcome`**
 
 1. 注册:`gs.write_logic(gs.active_env, env_name, produced_by=producer, sig=sig)`(写点自画面 op 迁入;ADR-0598 退役,行为变化申报 §2.6-1)。写行署名 = **新写端新名**(`producer` 形参缺省即 `CwGainChain`,落地相接入显式传同值)——写点迁移属申报过的行为变化,不沿用旧名伪装连续;`sig` = 链入口必传入参(落地相 = 重入裁决出口现役 sig);
-2. 效果账本登记:`cw_effect_inventory.register_portal_from_env(session, env_name)`(调用点自画面 op 迁入;**本腿自包 best-effort**——登记/遥测面失败 log + 缺陷台账、不阻塞;容器写腿零吞错,异常粒度全表见 §2.7);
+2. 效果账本登记:`cw_effect_inventory.register_portal_from_env(session, env_name)`(调用点自画面 op 迁入;**本分支自包 best-effort**——登记/遥测面失败 log + 缺陷台账、不阻塞;容器写分支零吞错,异常粒度全表见 §2.7);
 3. 触发环境效果:`on_env_gained(...)`(§2.3)。
 
 **`gain_character(gs, name, star, *, rand, sig, evidence, producer) -> GainOutcome`** — 固定时序:
 
 1. **落位**:工作副本 = `gs.bench` 槽表 + 上阵行域派生表(容器原生形状,基座同现行 `grant_bench_unit_cascade` 的 `bench_place` + `deployed_rows_to_indexed`,锚 cw_effect_inventory.py:1475-1488)。
    - 备战有空槽 → `bench_place` 入槽;
-   - **备战满 → 溢出落位**(裁定⑥配套):写 `overflow_warning=True` + `overflow_card=name`(两字段各一行,同 evidence 同 sig 同组)。**写端声明**:两字段由「观察写端单一源」扩为**双写端**(观察 heavy 写端 + 获得链逻辑写端)——第二逻辑写端先例 = 卖牌溢出腿已直写 overflow_card(`kernel/cw_action_report/sell_bench.py` 溢出腿:腾出槽当帧记溢出卡入位);正本面同步 = landing 正本清单(fields.md §3.2.20、容器字段注释、projection_audit basis)。星级不入容器字段(字段只有身份串,锚 cw_game_state.py:2002-2008),链内工作池自记本次授予的星级——链写入即知真值,不依赖观察兜底口径;
+   - **备战满 → 溢出落位**(裁定⑥配套):写 `overflow_warning=True` + `overflow_card=name`(两字段各一行,同 evidence 同 sig 同组)。**写端声明**:两字段由「观察写端单一源」扩为**双写端**(观察 heavy 写端 + 获得链逻辑写端)——第二逻辑写端先例 = 卖牌溢出分支已直写 overflow_card(`kernel/cw_action_report/sell_bench.py` 溢出分支:腾出槽当帧记溢出卡入位);正本面同步 = landing 正本清单(fields.md §3.2.20、容器字段注释、projection_audit basis)。星级不入容器字段(字段只有身份串,锚 cw_game_state.py:2002-2008),链内工作池自记本次授予的星级——链写入即知真值,不依赖观察兜底口径;
    - 溢出位已被占(链内连环授予第二次溢出):游戏行为未实证 → 零写 + 缺陷台账留证(`record_defect`,不停机),禁猜;
    - `gs.bench` 未观察(None)= bug 面(裁定⑤):零写 + 缺陷台账留证,不停机;**【待梳理标记】**根治归观察补全批,标记落正本 gain-chain 篇「已知缺口」节 + 代码注释。
 2. **触发「获得角色」回调**:`on_character_gained(...)`(§2.3)——回调内可递归调任意链原语,递归子链的 rand 按效果自身性质传(§2.4)。
@@ -68,7 +68,7 @@
   1. `ENV_GIFTS[env_name]` 命中(数据表 = `kernel/cw_investments.py`:1547-1634;值全部 = cw_invest_data 效果原文直读,import 即校验:孤儿键/角色名漂移/空发放集,锚 :1610-1634)。**先按 advisor 分道,两道互斥**——advisor 条目(特邀专家:停云/加拉赫/桑博)同样携带 `chars_immediate`,该字段在 advisor 行仅作顾问身份输入,禁再入席:
      - `advisor=False`(契约类:翡翠/砂金/欢愉契约 等,直接送卡语义,锚 cw_investments.py:229「False=直接送卡(契约,白得资产)」):`chars_immediate` 逐个 → `gain_character(char, 1★, rand=rand)`(星级未标 = 1★ 同句式先例,先验错 = 响停修因非随机,锚 pick_invest.py:98-100 现行同款注释);
      - `advisor=True`(特邀专家,顾问入商店语义,锚 cw_investments.py:227-229):**不入席**——容器无商店池字段,`chars_immediate` 身份只进遥测申报一行(先例 = pick_invest.py:133-137 hacker shop_pool decl);
-  2. 条件腿标记面:欢愉契约 provisional 翻来源闩现役通道原样保留(临时测量仪表,撤场条件已在册,锚 pick_invest.py:106-109)。
+  2. 条件分支标记面:欢愉契约 provisional 翻来源闩现役通道原样保留(临时测量仪表,撤场条件已在册,锚 pick_invest.py:106-109)。
 - **`on_character_gained(gs, name, star, *, rand, sig)`**:初始枚举 = 空集(暂无已核实的「获得角色时」触发型效果;查无效果安静不写)。**本函数 = 该类效果未来的唯一收敛点**。
 - **`on_equipment_gained(gs, item, *, rand, sig)`**:消费 `EQUIP_ACQUIRE_CONSEQUENCES` 数据表(装备获得→送出单位,锚 cw_effect_inventory.py:1525-1533)→ 命中 → `gain_character(送出单位, rand=rand)`。该表是游戏数据映射不是效果注册表,保留;分派动作住本回调。
 
@@ -82,7 +82,7 @@
 
 ### 2.5 接入面改造(本批唯一接线面 = 投资环境落地相)
 
-- `kernel/cw_action_report/pick_invest.py::report_action_pick_invest_param` 落地相 `source='portal'` 支:改调 `gain_invest_env(gs, session, canon)`(替代现役「跳过第一步 + PICK_INVEST_EFFECTS 分派」)。`report_action_pick_invest_param` 增加 `session: object | None = None` 关键字参数(portal 支消费;kernel 禁自取上下文,由调用方显式传入——调用点 = 画面 op 重入裁决出口,持 `ctx.cw_match.session`;**None = 账本登记腿跳过**[局外/测试形态],容器写照常);`strategy` 支与发射相不消费。
+- `kernel/cw_action_report/pick_invest.py::report_action_pick_invest_param` 落地相 `source='portal'` 支:改调 `gain_invest_env(gs, session, canon)`(替代现役「跳过第一步 + PICK_INVEST_EFFECTS 分派」)。`report_action_pick_invest_param` 增加 `session: object | None = None` 关键字参数(portal 支消费;kernel 禁自取上下文,由调用方显式传入——调用点 = 画面 op 重入裁决出口,持 `ctx.cw_match.session`;**None = 账本登记分支跳过**[局外/测试形态],容器写照常);`strategy` 支与发射相不消费。
 - `PICK_INVEST_EFFECTS` 收窄:删「欢愉契约」行(portal 卡经策略屏不可达,行 = 死键);provisional 通道随枚举迁 `on_env_gained`;「骇客专家:银狼」行保留(策略屏专用)。
 - `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv._decide_and_act` 尾段:**删除** active_env write_logic 块与 register_portal_from_env 块(选择事实归落地链);其余(零参决策/刷新臂/变异窗/确认 pending/派发)不动。
 - 策略屏(`source='strategy'`)落地相**本批不动**(active_strategies append + PICK_INVEST_EFFECTS 现行);「获得投资策略」原语随策略屏迁移批另立。
@@ -91,11 +91,11 @@
 ### 2.6 行为变化申报(对抗审重点攻击面)
 
 1. **active_env 写时点**:点卡前 → 落地相(裁定①,ADR-0598 退役)。改善:确认未落地重走不再留中间假账;失败的访问不再产生「已选环境」。风险面:落地相不触发(= 选择未发生)则不写——该形态本就应无账。
-2. **ENV_GIFTS 全量即时发放接入**:ENV_GIFTS 收录环境(契约类 chars_immediate 8+ 条,如 翡翠/砂金/欢愉契约;特邀专家走 advisor 申报分道)此前仅欢愉契约有容器写腿,现全部经链生效——**行为扩张**;数据依据 = 实证注册表 + 构建校验(cw_investments.py:1610-1634);表外环境安静不写。
+2. **ENV_GIFTS 全量即时发放接入**:ENV_GIFTS 收录环境(契约类 chars_immediate 8+ 条,如 翡翠/砂金/欢愉契约;特邀专家走 advisor 申报分道)此前仅欢愉契约有容器写分支,现全部经链生效——**行为扩张**;数据依据 = 实证注册表 + 构建校验(cw_investments.py:1610-1634);表外环境安静不写。
 3. **席满行为**:拒落零写 → 溢出落笔(overflow_warning/card)——对齐游戏侧行为(game 侧 screens/currency_war_prep.md 告警/溢出节实机建档;sim 渠道 cw_sim_nodes.py 同口径)。
 4. **升星产物触发回调**(新增;先前产物无回调)。
 5. **bench 未观察**:静默拒落 → 零写 + 缺陷台账留证(裁定⑤,bug 面)。
-6. **溢出字段双写端**:overflow_warning/overflow_card 由「观察写端单一源」扩为观察 + 获得链逻辑双写端(第二逻辑写端先例 = 卖牌溢出腿);fields.md §3.2.20、容器字段注释、`kernel/cw_projection_audit.py` 对账 basis 行随正本批同步(landing 正本清单已列)。
+6. **溢出字段双写端**:overflow_warning/overflow_card 由「观察写端单一源」扩为观察 + 获得链逻辑双写端(第二逻辑写端先例 = 卖牌溢出分支);fields.md §3.2.20、容器字段注释、`kernel/cw_projection_audit.py` 对账 basis 行随正本批同步(landing 正本清单已列)。
 7. **动作事实边界合同修订**:`screens/op-layer.md` §2.2「chosen_* 留守画面 op、不进 report」条款在**投资环境域收窄**——active_env 选择事实经动作落地链记(裁定①);其余 chosen_*(巨星/伙伴等)维持原条款。op-layer.md 已入 landing 正本清单。
 
 ### 2.7 边界与失败安全汇总
@@ -103,7 +103,7 @@
 - 未观察(bench/equips)= bug 面:零写 + `record_defect` 留证,不停机;【待梳理标记:根治归观察补全批】
 - 席满且溢出位被占:零写 + 留证(游戏行为未实证,禁猜);
 - 回调查无效果:安静不写;
-- 异常粒度:①链原语**零吞错**——容器写腿/回调效果腿异常上抛(真异常该响);②best-effort 边界收在**非容器写的观测/登记腿内**(账本登记腿、advisor/条件腿遥测申报行:失败 log + 缺陷台账、不阻塞——语义自画面 op 现行登记面 try/except 迁入;原「pick_invest.py:186 best-effort」锚作废,该处无异常处理);③落地相调用方零额外吞错(report 函数不包整链)。
+- 异常粒度:①链原语**零吞错**——容器写分支/回调效果分支异常上抛(真异常该响);②best-effort 边界收在**非容器写的观测/登记分支内**(账本登记分支、advisor/条件分支遥测申报行:失败 log + 缺陷台账、不阻塞——语义自画面 op 现行登记面 try/except 迁入;原「pick_invest.py:186 best-effort」锚作废,该处无异常处理);③落地相调用方零额外吞错(report 函数不包整链)。
 
 ### 2.8 测试面
 

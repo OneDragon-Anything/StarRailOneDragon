@@ -13,9 +13,9 @@
   - 后果评估:早退轮绕行的影响 = 该轮(备战态、无 decide 消费)不清槽,审计面残留、下一局新容器自然清零——行为面近乎无害,但本批是行为零变化批,其等价性论证与 3.1 回归测试建立在该断言上,断言失实须修。
 - **修正方向**:三选一并同步 design/landing——①钉 (a) 位并如实申报「stop_at_prep 早退轮绕行(该轮无 decide 消费、绕行无害,已离开属屏的槽由下轮补清语义兜底)」,修订「无绕行面」表述,3.1 判据补 stop_at_prep 早退轮的清点行为断言;②钉 (b) 位并申报挂点自跑识别的成本与识别函数选型;③把 stop_at_prep 早退判断挪到挂点之后(申报 loop 结构改动面)。推荐 ①,代价最小且诚实。
 
-### [F2] major —— §2.2-c「刷新重决策腿 = 同访问内二次『读得=覆盖』」与 supply(及 invest)现状刷新链机制不符,存在引入行为变化的实现歧义
+### [F2] major —— §2.2-c「刷新重决策分支 = 同访问内二次『读得=覆盖』」与 supply(及 invest)现状刷新链机制不符,存在引入行为变化的实现歧义
 
-- **位置**:design.md §2.2-c(契约 c「刷新重决策腿」);landing.md 3.4(「encounter/supply 刷新重决策腿 = 重读产物覆盖写槽后再 decide(既有『无条件重读』链原样,§2.2-c)」)
+- **位置**:design.md §2.2-c(契约 c「刷新重决策分支」);landing.md 3.4(「encounter/supply 刷新重决策分支 = 重读产物覆盖写槽后再 decide(既有『无条件重读』链原样,§2.2-c)」)
 - **发现**:三屏刷新链机制不同构(直调核实):
   - encounter = **同 handle 内**重读重决策(`cw_screen_encounter.py` L331-337/L461-467:`_emit_refresh_click` → `_try_refresh` 重读 → 同轮带 `refresh_used=True` 再 decide);
   - supply = 刷新分支点击后**直接 return**(`cw_screen_supply_node.py` L302-310),重决策靠 round_retry 重入下一轮(observe 门复检 → `_do_action` 重跑 → 重新 `read_supply_options` → 以容器累计计数派生 `refresh_used=True` 再 decide);且 supply 的选项读取本就发生在决策段内而非观察段(`SupplyObservation` 只携带 screen 帧,L131);
@@ -77,7 +77,7 @@
 
 ## 零发现面(实际攻击过且未发现问题的面)
 
-- **现状症状断言对码**(design §1.1 全部符号锚):契约 11 入口三形状、pick 族 9 参形、`decide_invest` kind 分叉、supply/encounter 旗标语义(supply=容器累计派生/闸命中静默落选卡支 `cw_screen_supply_node.py` L230-233、encounter=首调缺省 False/重决策 True/重入清标志重走 `cw_screen_encounter.py` L254-264/L304/L336/L439/L466)、`gs.shop` 活写端在产/encounter/supply 活写端缺位(live `leave_screen` 仅两处 shop:`cw_observation.py` L2618 prep 锚 miss 分支、`cw_game_state.py` L2033 CloseShop 逻辑腿;encounter/supply 清点仅在 sim 合成口 L3965-3971/L4263-4265)、invest 一方法两画面、flow.py decide_invest docstring「空 stub」过期(调用点已直传容器单例)——全部属实。
+- **现状症状断言对码**(design §1.1 全部符号锚):契约 11 入口三形状、pick 族 9 参形、`decide_invest` kind 分叉、supply/encounter 旗标语义(supply=容器累计派生/闸命中静默落选卡支 `cw_screen_supply_node.py` L230-233、encounter=首调缺省 False/重决策 True/重入清标志重走 `cw_screen_encounter.py` L254-264/L304/L336/L439/L466)、`gs.shop` 活写端在产/encounter/supply 活写端缺位(live `leave_screen` 仅两处 shop:`cw_observation.py` L2618 prep 锚 miss 分支、`cw_game_state.py` L2033 CloseShop 逻辑分支;encounter/supply 清点仅在 sim 合成口 L3965-3971/L4263-4265)、invest 一方法两画面、flow.py decide_invest docstring「空 stub」过期(调用点已直传容器单例)——全部属实。
 - **契约签名表**(§2.1)与 `cw_strategy.py` ABC 逐行对账:11 现签名/返回类型/`decide_box_card(names,...)` 形参名、抽象 12+工厂 1=13 计数——逐字节一致;统一后 12 入口/抽象 13/总 14 的计数推导成立。
 - **容器字段与治理**(§2.2):`EncounterPayload.options: list[tuple[int, str]]`/`SupplyPayload.options: list[tuple[str, str, bool]]` 现形状、`_PAYLOAD_DOMAINS` 三域现值、`DEFAULT_GS_SCHEMA` 分组键语义(node_screen_refresh 仅 schema 分组名)、8 新域键先例(每画面一域)、域版本 bump 先例(match_facts 域 2 = execstate #12-#14)、carry 的 None 跳过先例、`PrepObservation` set/Point/BenchChar 非 JSON 形状与 spheres 发射面涟漪论证、session `prep_obs_frame` 刻意字符串注解先例——全部属实。
 - **容器 API 语义**:`observe` 拒 None、`write_logic` 渠道族 ('logic_action','logic_hook')、`relay` 空值闸、`REGISTERED_ACTORS` 缺 CwScreenPlanner/CwScreenBoxPick(补登记断言准确)、`_validate_sig` 显式炸错防线——与设计引用一致。
@@ -96,4 +96,4 @@
 
 ## 结论
 
-无 blocker。3 条 major(F1 挂点插入点断言与 loop 行序冲突、F2 刷新重决策腿机制失真、F3 写 False 失败语义缺口)均可在局部修订内消解,不动摇方案本体;消解后建议进入零发现复攻轮。
+无 blocker。3 条 major(F1 挂点插入点断言与 loop 行序冲突、F2 刷新重决策分支机制失真、F3 写 False 失败语义缺口)均可在局部修订内消解,不动摇方案本体;消解后建议进入零发现复攻轮。

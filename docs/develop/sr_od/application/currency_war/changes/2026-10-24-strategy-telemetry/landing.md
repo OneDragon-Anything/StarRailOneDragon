@@ -31,13 +31,13 @@
 **验收凭据形式**：测试名 + 一条含 dtag 的 journal 回执行样例
 
 ## 3.3 mandate_v1 v1 payload
-**范围**：`MandateV1Strategy.decision_payload` 覆写（direction / k_members+k_fallback / window，capture-store §3 三键，k_members 算法含 K 空窗回退腿并记 `k_fallback` 标注）；新篇 `strategy-docs/strategy-telemetry.md`（信封键闭集 + mandate_v1 payload 键表语义）；`strategy-docs/README.md` 分篇登记。
+**范围**：`MandateV1Strategy.decision_payload` 覆写（direction / k_members+k_fallback / window，capture-store §3 三键，k_members 算法含 K 空窗回退分支并记 `k_fallback` 标注）；新篇 `strategy-docs/strategy-telemetry.md`（信封键闭集 + mandate_v1 payload 键表语义）；`strategy-docs/README.md` 分篇登记。
 **设计依据**：details/capture-store.md §3
 **文件面**：`strategies/impl/mandate_v1/bridge.py`（或 mandate_v1 包内新小模块）、`docs/develop/sr_od/application/currency_war/strategy-docs/strategy-telemetry.md`（新）、`docs/develop/sr_od/application/currency_war/strategy-docs/README.md`、sr-od-test 对应测试
 **依赖**：3.1
 **优先级建议**：7
 **完成判据**：
-- sim 局任一决策帧的 payload 三键与 gs/state 现读直算一致（抽查手核一帧）；k_members 含回退腿且 `k_fallback.hit` 与 `cw_intention.k_empty_window_fallback` 直调一致；window 结论与 `_entry_window_open` 直调一致；锁定帧 `candidates=[]` 语义正确；键表含「章级同键多实例 FIFO 错位为已知降级」申报句；
+- sim 局任一决策帧的 payload 三键与 gs/state 现读直算一致（抽查手核一帧）；k_members 含回退分支且 `k_fallback.hit` 与 `cw_intention.k_empty_window_fallback` 直调一致；window 结论与 `_entry_window_open` 直调一致；锁定帧 `candidates=[]` 语义正确；键表含「章级同键多实例 FIFO 错位为已知降级」申报句；
 - 完成前常规检查（本文首节）
 **验收凭据形式**：测试名 + sim 局样例记录行 + 手核对照摘录
 

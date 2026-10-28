@@ -6,7 +6,7 @@
 
 | # | 发现 | 处置 |
 |---|---|---|
-| A1 | **【致命】§2.1 sim 分支拆断开店喂入通道**（两攻击方独立结论）：sim as-built 里 `round_by_find_and_click_area` 不是机械腿，是开店唯一世界推进通道（sim-design §3.2 转移源 2：click_answer → `SimBackend._open_shop` 呈现+离屏牌面补写+刷价写回，「不开店不写」`cw_sim_backend.py:1035/1095-1119`）。删点击 = 商店永不呈现 → 二次进店 `shop=None` → mandate 在屏前置抛离屏——核一按 §2.1 原样打补丁真引擎复现（同 seed 死局，异常栈存档） | 已重写：**sim 保留点击**（发出 = click_answer 受理，applied=true 名副其实，note_action_receipt 契约零改动）；实机才读 `is_success` 走定位缺失出口（唯一 false） |
+| A1 | **【致命】§2.1 sim 分支拆断开店喂入通道**（两攻击方独立结论）：sim as-built 里 `round_by_find_and_click_area` 不是机械分支，是开店唯一世界推进通道（sim-design §3.2 转移源 2：click_answer → `SimBackend._open_shop` 呈现+离屏牌面补写+刷价写回，「不开店不写」`cw_sim_backend.py:1035/1095-1119`）。删点击 = 商店永不呈现 → 二次进店 `shop=None` → mandate 在屏前置抛离屏——核一按 §2.1 原样打补丁真引擎复现（同 seed 死局，异常栈存档） | 已重写：**sim 保留点击**（发出 = click_answer 受理，applied=true 名副其实，note_action_receipt 契约零改动）；实机才读 `is_success` 走定位缺失出口（唯一 false） |
 | A2 | **§1 症状机理错误**：「sim 图像锚必 miss」不成立——sim 无图像锚（round_by_find_* 已被端口覆写 `cw_operation_base.py:87-165`）；真实机理 = click_answer 受理转移后 mirror 按点击前档名问询屏门 → round_retry → `is_success=False` 被现行代码误读为「未发出」（`cw_sim_backend.py:1006-1016` + `cw_sim_ports.py:219-241`） | 已重写：§1 按真实机理 + §2.1 发出判定改 sim 生效语义（点击后画面切走 = 已发出；屏门 retry 且画面未切才是定位缺失） |
 | A3 | **§2.4 谜团定性错误**：非独立缺陷——三嫌疑面裁定：①回执内容消费面排除（全仓无 applied 消费点）；③动画帧节拍排除（sim 等待参数透传丢弃）；②发牌-清场定性修正——真根因 = A1 点击源断裂（关店清 payload 后再进店无点击 → 无离屏补写 → 在屏前置炸） | 已改判：谜团 = §2.1 自身缺陷，本迭代内修透（A1 修法即解），无拆账支；回退门改单支（修不透整体回退） |
 

@@ -27,7 +27,7 @@
 
 系统级变化(读一遍知全貌):
 
-1. **GameState 新增三域**:`ore_rewards`(随机态;键 = 矿坐标身份 `'x,y'`,值 = `OreReward` 附着奖励)、`ore_declared_pending`(逻辑态;声明待兑现队列,元素 (env, plane, gold))与 `ore_declared_done`(逻辑态;已消费标记 (env, plane),幂等第二腿)。
+1. **GameState 新增三域**:`ore_rewards`(随机态;键 = 矿坐标身份 `'x,y'`,值 = `OreReward` 附着奖励)、`ore_declared_pending`(逻辑态;声明待兑现队列,元素 (env, plane, gold))与 `ore_declared_done`(逻辑态;已消费标记 (env, plane),幂等第二条分支)。
 2. **kernel 新增声明注册表与生成函数**:`ENV_ORE_GRANTS`(环境 → 各位面声明金额;增发货币 `(6,8,12)`,构建校验与 `ENV_ECONOMY.gold_per_plane_start` 逐位同值);共享生成函数 `generate_ore_rewards`:新矿批 → 待兑现声明**先占一席**(占哪个矿 rng 掷——归属不可观察)、其余逐矿采样 → 全部经 `write_logic_rand` 写入。
 3. **spheres 写端统一过挂接入口** `report_spheres_observed`(kernel/cw_ore_channel.py,live 与 sim 共用):写后按**容差配对**判定身份——配对命中 = 同身份继承附着(键重挂,不重掷)、无附着现役身份 = 生成附着、未配对消失 = 清洗;声明消费/过期随入口。声明入队 = **电平触发单一规则**(live = 每个 heavy 帧 `observe_full` 回执后、spheres 写前检查:`env ∈ ENV_ORE_GRANTS` ∧ (env,plane) ∉ pending ∧ ∉ done → 入队——节点域 plane 写点在 `observe_full` 漗斗内,无「锚定前旧值」可用;无边沿检测、无 op 成员记忆,跨环由 pending+done 双守卫闭合(守卫状态住 GameState),恢复局两形态(离线回放 done 随快照存续 / live 接管局 active_env 恒空零多发)各自闭合;**入队必须先于同帧 spheres 写**,承载性次序);live 接线规约见 ore-reward-channel §5。
 4. **点击上报改兑现**:`report_action_collect_ore_param` 按坐标身份取附着值直接应用(内联掷骰退役为缺项兜底,证据标注 `ore_reward_attach_missing`);开成即移除该身份附着。

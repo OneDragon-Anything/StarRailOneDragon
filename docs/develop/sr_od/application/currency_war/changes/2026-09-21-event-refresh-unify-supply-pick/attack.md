@@ -15,10 +15,10 @@
 - **权威源证据**：见上 grep 实况；design.md §1.3「明确不解决：PickPlanner/PickEquip 两相欠账」自证这些面必须保留。
 - **建议修法**：判据限定符号来源——「`kernel/cw_action_report/pick_supply.py` 内的 `EVIDENCE_OVERLAY_CLOSED` 与其在 supply 链的导入点（`cw_screen_supply_node.py`、`test_cw_pick_channels_t60.py` 的 `SUPPLY_EVIDENCE`）零残留；pick_equip/pick_planner 各自同名常量不在辖内」。`ConfirmSupply` 可保留全仓口径（删两处分支 + pick op 登记调用 + 受影响测试后确实可归零），但应显式声明豁免面 = 历史遥测只读注释。
 
-### F2 [阻塞] | design.md §2.0B / §3 验收锚 1 | report 单相化「一口写」的 ①② 两腿数据载体未定义——param 不携带 OCR 原始装备名与 has_diamond
+### F2 [阻塞] | design.md §2.0B / §3 验收锚 1 | report 单相化「一口写」的 ①② 两条分支数据载体未定义——param 不携带 OCR 原始装备名与 has_diamond
 
 - **对象位置**：design.md §2.0B「一口写序 = ①`chosen_supply` 三元组 ②`owned += 装备原始名` …」；§3 验收锚 1「`chosen_supply` 三元组 + owned 含装备原始名」。
-- **问题**：report 函数唯一声明的输入 = `CwActionPickSupplyParam`，其字段只有 `idx / reason / char_name / norm_item / route_tag`（`kernel/cw_vocab.py:727-749`），且 docstring 明言「OCR 原始名不静默改写**由 handler 持有**」。腿①需要的三元组含 `has_diamond` 与原始装备名，腿②需要 OCR 原始装备名——三者在 param、obs 声明的传递面里都不存在。design 全文未声明 param 扩字段（如 `raw_item`/`has_diamond`）或改经 env 传递；「OCR 原始名…由 handler 持有」的现行架构约定如何随之改也未写。实现者必须自行发明载体与字段语义 = 违 §5「实现者无需再设计」。
+- **问题**：report 函数唯一声明的输入 = `CwActionPickSupplyParam`，其字段只有 `idx / reason / char_name / norm_item / route_tag`（`kernel/cw_vocab.py:727-749`），且 docstring 明言「OCR 原始名不静默改写**由 handler 持有**」。分支①需要的三元组含 `has_diamond` 与原始装备名，分支②需要 OCR 原始装备名——三者在 param、obs 声明的传递面里都不存在。design 全文未声明 param 扩字段（如 `raw_item`/`has_diamond`）或改经 env 传递；「OCR 原始名…由 handler 持有」的现行架构约定如何随之改也未写。实现者必须自行发明载体与字段语义 = 违 §5「实现者无需再设计」。
 - **权威源证据**：`cw_vocab.py:727-749`（字段清单 + 原始名归 handler 声明）；`cw_screen_supply_node.py:333-341`（原始名/has_diamond 现居 handler 局部 `_opt`）；`cw_overlay_pick_action.py:229-235`（现行到账登记的原始名来自 `env.picked['equip']`，非 param）。
 - **建议修法**：§2.0B 显式声明载体——最小修法 = `CwActionPickSupplyParam` 增 `raw_item: str = ''`（OCR 原始装备名）与 `has_diamond: bool = False`（均 `action_key_exclude` 先例），handler 组装 param 时随 `char_name/norm_item` 同点现算；同步声明 param docstring「原始名归 handler 持有」句随之改写。
 

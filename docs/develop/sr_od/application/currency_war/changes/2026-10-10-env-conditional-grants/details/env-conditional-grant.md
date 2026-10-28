@@ -52,12 +52,12 @@ def check_env_streak_grants(gs, streak_after: int, sig) -> str | None
 5. `(env, 'first_streak') ∈ done 现值`(None → 视为空,防御)→ None(已发);
 6. **发放**:`base = gs.equips.value`;None → None(**宁缺勿造,不标 done——条件每结算重查,下个结算自动重试**,与晶矿生成集「下帧再试」同性质);
    `_w_rand(gs.equips, list(base) + [grant[1]], evidence=f'env_grant#{env}#streak{grant[0]}')`(write_logic_rand,produced_by=`'env_conditional_grant'`);
-   `_w_logic(gs.env_grants_done, 现值(None → 视为空) + ((env, 'first_streak'),), evidence 同串)`(write_logic;直写先例 = cw_exec_state 金腿 / cw_effect_inventory 退款腿,不属 anchor_aware 族——登记事实非观察投影);
+   `_w_logic(gs.env_grants_done, 现值(None → 视为空) + ((env, 'first_streak'),), evidence 同串)`(write_logic;直写先例 = cw_exec_state 金分支 / cw_effect_inventory 退款分支,不属 anchor_aware 族——登记事实非观察投影);
 7. 返回 `grant[1]`(被发装备名;调用方据此决定是否调宝钻回调——sim 专用,live 忽略)。
 
 **无 rng**:随机态指认知通道(落位未知、观察校准),追加位置(尾部)确定,不消耗随机数。
 
-**同窗洗白形态披露(后果 = 安灯停机,显式接受)**:结算随机态发放后,同窗口的确定性 equips 写会把字段来源从 logic_rand 翻成纯 logic——典型 = 补给装备腿(`pick_supply` 读现值追加回写,**任意补给选定都走此腿,不限带钻**)。此后下一 heavy 帧观察对 logic 源**真失配**:缺陷行 + `[cw!]` 告警 + 安灯停机 flag(生产 = 截图留证 + 停机),值由观察采新。深井 5 连胜结算的下一节点凡为补给即触发洗白,频率不低;**告警仅在猜值与实读不符时发生**(OCR 假阳等),猜值正确则观察值与逻辑值一致、无失配。显式接受:发生时按安灯现场处理,续跑即愈(done 已标记不重发,幻影值已被观察覆盖)。
+**同窗洗白形态披露(后果 = 安灯停机,显式接受)**:结算随机态发放后,同窗口的确定性 equips 写会把字段来源从 logic_rand 翻成纯 logic——典型 = 补给装备分支(`pick_supply` 读现值追加回写,**任意补给选定都走此分支,不限带钻**)。此后下一 heavy 帧观察对 logic 源**真失配**:缺陷行 + `[cw!]` 告警 + 安灯停机 flag(生产 = 截图留证 + 停机),值由观察采新。深井 5 连胜结算的下一节点凡为补给即触发洗白,频率不低;**告警仅在猜值与实读不符时发生**(OCR 假阳等),猜值正确则观察值与逻辑值一致、无失配。显式接受:发生时按安灯现场处理,续跑即愈(done 已标记不重发,幻影值已被观察覆盖)。
 
 **恢复局边界披露**:接管局 done 为空、active_env 非空 → 首个 streak ≥ 阈值的结算触发发放 = 最佳猜测;live equips 整表覆盖纠偏零持续污染,sim 无接管局。接受并披露。
 

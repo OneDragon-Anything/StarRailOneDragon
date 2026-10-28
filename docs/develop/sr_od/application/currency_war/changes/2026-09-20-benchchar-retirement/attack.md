@@ -28,9 +28,9 @@
 
 **为什么这是 blocker 而非 major：**
 
-1. **mutate_bench_deployed 是活代码，不是残留。** 它的活消费方有两条：(a) 实机买入执行链 `operations/cw_op/cw_buy_card_action.py:173`——`mutate_bench_deployed(_books.bench, _books.deployed, action, shop=_payload_cards)`，操作对象是 `GameState.tracked_books`（2026-09-09 双响事故的修复写入点，见该处注释）；(b) `kernel/cw_action_report/buy_card.py:162` 升星腿经 `mutate_bench_deployed_local`（cw_game_state.py:1859-1865 惰性转发）调它。T-1+T-2 的文本清单（「9 个上报函数工作副本直用 BenchView」）覆盖了 (b) 所在文件却没提 (a)——实机 operations 层文件不在 T-1..T-6 任何阶段的文字描述里。
+1. **mutate_bench_deployed 是活代码，不是残留。** 它的活消费方有两条：(a) 实机买入执行链 `operations/cw_op/cw_buy_card_action.py:173`——`mutate_bench_deployed(_books.bench, _books.deployed, action, shop=_payload_cards)`，操作对象是 `GameState.tracked_books`（2026-09-09 双响事故的修复写入点，见该处注释）；(b) `kernel/cw_action_report/buy_card.py:162` 升星分支经 `mutate_bench_deployed_local`（cw_game_state.py:1859-1865 惰性转发）调它。T-1+T-2 的文本清单（「9 个上报函数工作副本直用 BenchView」）覆盖了 (b) 所在文件却没提 (a)——实机 operations 层文件不在 T-1..T-6 任何阶段的文字描述里。
 
-2. **tracked_books 是容器内 BenchChar 大本营，形状迁移无阶段归属。** `GameState.tracked_books.bench/deployed` 声明为 `list[BenchChar | None]`（cw_game_state.py:2352-2361，非 Field 簿记，合法写端 = reconcile_tracking + 动作随动同步）。BenchChar 退役 ⇒ tracked_books 必须换形状，这是**容器 schema 变更**，design.md 全文没有出现「tracked_books」这个词。它的读写端横跨：`cw_reconcile.py:313,345`（reconcile_tracking 整表写回）、`prep_actions.py:493,593,735-800`（卖出后备势同步/溢出腿/部署装备回写）、`cw_screen_prep.py:783`（_reconcile_tracking 形参 `list[BenchChar]`）、`cw_screen_buy_cards.py:788-790`、`cw_op/cw_op_equip_all.py:102`、`cw_op/cw_deploy_move_action.py:75`、`cw_action_report/sell_bench.py:84-90`（溢出吸收构造 BenchChar 写 tracked）、`cw_action_report/wear_equip.py:49`（上报函数读 tracked）。T-1+T-2 文本声称覆盖「kernel 算法 + 上报函数」，实际闭合集按无兼容层裁定至少要拉进 obs / operations 共 10+ 文件。
+2. **tracked_books 是容器内 BenchChar 大本营，形状迁移无阶段归属。** `GameState.tracked_books.bench/deployed` 声明为 `list[BenchChar | None]`（cw_game_state.py:2352-2361，非 Field 簿记，合法写端 = reconcile_tracking + 动作随动同步）。BenchChar 退役 ⇒ tracked_books 必须换形状，这是**容器 schema 变更**，design.md 全文没有出现「tracked_books」这个词。它的读写端横跨：`cw_reconcile.py:313,345`（reconcile_tracking 整表写回）、`prep_actions.py:493,593,735-800`（卖出后备势同步/溢出分支/部署装备回写）、`cw_screen_prep.py:783`（_reconcile_tracking 形参 `list[BenchChar]`）、`cw_screen_buy_cards.py:788-790`、`cw_op/cw_op_equip_all.py:102`、`cw_op/cw_deploy_move_action.py:75`、`cw_action_report/sell_bench.py:84-90`（溢出吸收构造 BenchChar 写 tracked）、`cw_action_report/wear_equip.py:49`（上报函数读 tracked）。T-1+T-2 文本声称覆盖「kernel 算法 + 上报函数」，实际闭合集按无兼容层裁定至少要拉进 obs / operations 共 10+ 文件。
 
 3. **无兼容层裁定下没有第三条路。** bench_place 签名翻转后，旧形状 tracked 表无法调用它；让 mutate_bench_deployed 用 `bench_view_of_slots` 临时换形续命 = (i) 与「不设双路径」的用户裁决冲突（隐性兼容层）；(ii) tracked 路径的占位件三分类照旧被压成布尔再降级——**本迭代要修的信息销毁根因在 tracked 路径原样存活**，与 §1 动机直接矛盾。同理，sim 两处直调方（cw_sim_nodes.py:284 / cw_sim_opening.py:126）若留到 T-4 修，T-1+T-2 落地瞬间即断，「逐阶段测试全绿」在 T-2→T-4 之间不成立。
 
@@ -43,11 +43,11 @@
 
 ## Major
 
-### M1. 不变量 1「装备继承载体」腿无测试
+### M1. 不变量 1「装备继承载体」分支无测试
 
 merge 时素材装备并入升星载体的逻辑（merge_simulate.py:163-183：`inherited` 累加 → `carrier.equips` 拼接 → 链式到不动点）是 T-1+T-2 重写对象，但全测试仓**没有任何断言 merge 后装备继承的测试**：grep `inherited|继承|merge.*equips` 零命中装备继承断言。`test_cw_merge_step_callback.py` 只校验 on_step 回调每合成级触发一次；`test_cw_transfer_golden.py` 校验的是卖/换位族的退款、装备回收、排继承（文件头声明），不是 merge 继承；`test_cw_overflow_gate.test_overflow_absorb_syncs_tracked` 校验溢出吸收。装备继承环节现有防线 = merge_simulate 内部的自检 raise（:194-197 场上同名同星 ≤1），不含 equips。**要求：T-1+T-2 开工前补一条容器形状下的继承测试（2 个带装备素材 + 1 载体 → 升星后 carrier.equips = 原有 ∪ 两素材件），或写入阶段验收判据。**
 
-### M2. 不变量 2「部署恒 held」腿无测试
+### M2. 不变量 2「部署恒 held」分支无测试
 
 `test_cw_sell_item_slot_predicate.py:25-27` 明文申报：`is_item_slot` 属性读的唯一合法居所是卖出谓词（有行为测试），**部署侧 cw_deploy_logic 同名读「防线归 review 与代码规范」——无测试**。占位恒 held 的实现 = `cw_deploy_logic.py:538-549`（is_item_slot 候选剔除出全部桶、恒 held、拒因 'item_slot'）与 :291（死供给判定②）。T-3 把这两处改 `kind ∈ ('tome','bookcard','supply_box')` 时没有回归网。**要求：T-3 前补 select_deployments_reasoned 对占位件恒 held + 拒因入闭集的测试。**
 
@@ -66,7 +66,7 @@ merge 时素材装备并入升星载体的逻辑（merge_simulate.py:163-183：`
 ### M5. 「零行为变化」申报不成立：sim 中间形往返现有两处保真缺陷，直构化必然改变其行为
 
 - `place_bench_unit_placeholder`（cw_sim_nodes.py:278-288）：view → BenchChar 表 → bench_place → bench_view_of_slots 的往返把**占位件槽压成 empty**（:279-283 只搬 kind=='unit' 槽，非 unit 槽留 None → 写回变 empty），且**不搬既有 Unit.equips**（:282-283 构造无 equips 字段）——sim 奖励角色落席帧会把已穿戴装备从容器席位视图抹掉。T-4 直构 BenchView 后这两点必然变成「保留」，是行为变化（修复方向正确）。
-- `_find_and_mutate_unit` bench 腿（cw_sim_equips.py:117-131）：已重建好容器槽表（new_slots），却再经 `_slots_to_chars`（:153-163，占位件同样压 None）→ `bench_view_of_slots` 绕一圈写回——同样的占位件保真缺陷，直构化即修复。
+- `_find_and_mutate_unit` bench 分支（cw_sim_equips.py:117-131）：已重建好容器槽表（new_slots），却再经 `_slots_to_chars`（:153-163，占位件同样压 None）→ `bench_view_of_slots` 绕一圈写回——同样的占位件保真缺陷，直构化即修复。
 **要求：§5/§3 的「零行为变化」改为「零策略行为变化 + sim 记录保真两处偏差显式修复」，偏差列入阶段验收（先补占位件在席 + 装备在席的 sim 测试再改，防「修复」变「回归」）。**
 
 ---
@@ -91,8 +91,8 @@ BenchChar：src 244 行 + 测试仓 183 行；CwSimFrame：src 91 行 + 测试�
 
 | 不变量 | 测试 | 判定 |
 |---|---|---|
-| 1. 合并语义（≥3 升星/素材清空/装备继承/连锁不动点） | 连锁回调：`test_cw_merge_step_callback.test_on_step_fires_once_per_merge_level`；升星直写判定：`test_cw_game_state_consume.test_detect_merge_upgrade_signature`、`test_merge_projection_direct_write_and_observe_wins`；买牌合成投影：`test_cw_shop_projection_logic.test_merge_buy_single_report_two_forms`、`test_full_bench_merge_buy_k`；满栏吸收：`test_cw_overflow_gate.test_sellbench_overflow_logic_state_absorbs_card`、`test_overflow_absorb_syncs_tracked`；晶矿支载体链：`test_cw_collect_ore_rand.test_char_branch_bench_carrier_chain` | **装备继承载体腿无测试（M1）**，其余有 |
-| 2. 占位件三防线 | 卖恒拒：`test_cw_sell_item_predicate` 全文件（凑息/筹资两通道行为测试）；恒占 1 席：`test_cw_unified_action_2c.test_bench_slot_bookcard_kind_roundtrip_as_item_placeholder`（9−2=7 占席派生）、`test_cw_seat_recoverable_narrow.test_placeholder_full_bench_refresh_blocked`；kind 保留（本迭代修复对象）：`test_cw_collect_ore_rand.test_char_reward_preserves_item_slot_kinds`、`test_cw_unified_action_2c.test_entry_box_tome_arms_read_benchview_kind` | **部署恒 held 腿无测试（M2）**，其余有 |
+| 1. 合并语义（≥3 升星/素材清空/装备继承/连锁不动点） | 连锁回调：`test_cw_merge_step_callback.test_on_step_fires_once_per_merge_level`；升星直写判定：`test_cw_game_state_consume.test_detect_merge_upgrade_signature`、`test_merge_projection_direct_write_and_observe_wins`；买牌合成投影：`test_cw_shop_projection_logic.test_merge_buy_single_report_two_forms`、`test_full_bench_merge_buy_k`；满栏吸收：`test_cw_overflow_gate.test_sellbench_overflow_logic_state_absorbs_card`、`test_overflow_absorb_syncs_tracked`；晶矿支载体链：`test_cw_collect_ore_rand.test_char_branch_bench_carrier_chain` | **装备继承载体分支无测试（M1）**，其余有 |
+| 2. 占位件三防线 | 卖恒拒：`test_cw_sell_item_predicate` 全文件（凑息/筹资两通道行为测试）；恒占 1 席：`test_cw_unified_action_2c.test_bench_slot_bookcard_kind_roundtrip_as_item_placeholder`（9−2=7 占席派生）、`test_cw_seat_recoverable_narrow.test_placeholder_full_bench_refresh_blocked`；kind 保留（本迭代修复对象）：`test_cw_collect_ore_rand.test_char_reward_preserves_item_slot_kinds`、`test_cw_unified_action_2c.test_entry_box_tome_arms_read_benchview_kind` | **部署恒 held 分支无测试（M2）**，其余有 |
 | 3. 随机态采样链 | `test_cw_collect_ore_rand` 全套（test_gold_branch_write_sequence 写序/test_char_branch_merge_dual_domain 双域组/test_sampler_support_set_and_reproducibility 重现性/test_multi_point_full_bench_skip/test_none_domains_skip_and_level_unread/test_bench_unobserved_rejects_whole_batch/test_sim_dispatch_intercepts_and_counts_uses 流键）；基座：`test_cw_game_state.test_write_logic_rand_and_observe_random_outcome`、`test_any_logic_rand_truth_table` | 有，充分 |
 | 4. 席满即止/逐点推演/None 域跳写 | 席满即止：`test_cw_shop_projection_logic.test_buy_rejected_when_full_and_no_merge`、`test_cw_collect_ore_rand.test_multi_point_full_bench_skip`、`test_cw_ore_bench_free`、`test_cw_seat_recoverable_narrow.test_placeholder_full_bench_refresh_blocked`；None 域跳写：`test_cw_shop_projection_logic.test_none_gold_domain_skip`、bench 写门（test_cw_game_state.py:545 区）、`test_cw_collect_ore_rand.test_bench_unobserved_rejects_whole_batch` | 「逐点推演」无独立命名测试，靠 merge 链 on_step + 投影直接测试族间接覆盖，判部分 |
 
@@ -119,7 +119,7 @@ BenchChar：src 244 行 + 测试仓 183 行；CwSimFrame：src 91 行 + 测试�
 ### B1 收编核对 ✅
 
 - §2 新增「tracked_books 迁移（对抗审 B1 核心）」：改存 BenchView 同构槽位快照、读写端 10+ 文件全数入 T-1 闭合集，文件清单与首轮审查取证一致（cw_reconcile/prep_actions/cw_screen_prep/cw_screen_buy_cards/cw_op_equip_all/cw_deploy_move_action/sell_bench/wear_equip 逐一复核无误）。
-- §2 新增 mutate_bench_deployed 链条目：实机消费方 cw_buy_card_action（tracked 同步）+ buy_card 升星腿入单、禁换形续命。
+- §2 新增 mutate_bench_deployed 链条目：实机消费方 cw_buy_card_action（tracked 同步）+ buy_card 升星分支入单、禁换形续命。
 - §5 T-1+T-2 重写为「闭合集 = 全部直调方，禁换形续命」：mutate_bench_deployed 改吃 BenchView + 行 Unit、sim 两处 bench_place 直调（cw_sim_nodes.py:284 / cw_sim_opening.py:126）提前入单并自证理由（「留到 T-4 会打破逐阶段全绿」）。
 - §1 头部明文裁定「禁换形函数续命（任何消费面不许靠换形过渡，直接改形状）」；状态行改「设计修订轮」。
 - 一致性附带核对：cw_sim_equips 的往返不经 bench_place（用 bench_view_of_slots），留在 T-4 申报正确；cw_sim_pool.held_copies 走 bench_slots_of 读口，属 T-6 读口消费尾，与阶段结构自洽。

@@ -57,7 +57,7 @@ unified-obs-reconcile 的「冲突文件面（全列）」错列：所列 `cw_sc
 
 **m1**｜minor｜landing.md §3.2 范围
 行号锚违反仓内定位纪律且已被在飞改动证伪：`:179`（bridge 读点）、`:163`、`:1863-1866` 用行号定位；flow/README.md 卷首明定「代码定位一律用符号锚（行号随代码增长漂移）」，design §1.1 也自我申报「符号锚，行号不书」。且 turnstate 在飞工作树已改 bridge.py（`decide_from_turn`→`decide_prep_frame`、删装配缝段），`:179` 在工作树已漂移——行号锚当轮即腐。
-修正方向：landing 全部改符号锚（`bridge.py::decide_prep_screen` 缺失抛错读点 / `cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段 / `cw_screen_prep.py::_act_execute` OpenShop 腿）。
+修正方向：landing 全部改符号锚（`bridge.py::decide_prep_screen` 缺失抛错读点 / `cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段 / `cw_screen_prep.py::_act_execute` OpenShop 分支）。
 
 **m2**｜minor｜design.md §2.5（sim/回放行）
 引用锚标签错位：「（prep 面 sim 不可达，flow/README §2.3 归因域限定）」——「归因域限定」是 flow/README **§2.4** 的小节标题；§2.3 是「sim 消费面注记」（内容同族但标题不同）。值对标签错类。

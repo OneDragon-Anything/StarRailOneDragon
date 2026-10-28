@@ -20,7 +20,7 @@
 - **问题**：设计把 `normalize_equip_name` 的判据（`_similar_equip_hits`：LCS(text,name)/len(name) ≥ 0.75，唯一命中才返回，多命中 = ''）原样扩到注册表键集。该阈值是在 10 个银狼锚名上标定的（`cw_events._EQUIP_NORM_LCS_FLOOR` 注释自证：0.75 = 件名 4 字容错 1 字）。对 158 名键集实算（本审查直调注册表名集复算，判据逐字复刻 `_similar_equip_hits`）：**完美 OCR（text = 精确规范名）下 79/158 名返回多命中 → '' 未解析**。典型：
   - 基础件互撞：「垃圾袋」同时命中 垃圾袋(1.0)/金垃圾袋(1.0)；「生命之花」同时命中 生命之花(1.0)/生命之环(0.75)；「追击星徽」「击破星徽」互撞（LCS=3/4=0.75）；「昼/夜之半神星徽」互撞（0.75）；
   - 全族撞：「碎星斩舰刀·特权」等 **36 个特权名全部**命中自己的进阶基名（基名含于特权名，LCS/len(基名)=1.0）；白昼/极·白昼 6 名 3 重命中；Max/Pro 后缀族（分身墨镜Max/数据拷贝仪Max·Pro/病毒防火墙Max/扑满病毒Max·Pro/星核猎手卡带Max/欢愉卡带Max/管理员手套ProMax）；命运族 极/诅咒 三重命中；穿刺/穿越死棘之枪互撞（1.0）。
-- **后果**：这些名字的补给卡即使 OCR 完美读对，norm_item 也恒 ''——①`owned += norm_item` 不写（账面缺件）；②`apply_equip_acquire_consequence` 不发射（送角色腿缺失，bench 少人）；③全靠「观察覆盖自愈」兜底。fail-closed 方向没错，但设计宣称的核心机制（「账面恒标准名」「param 现有字段即 report 全部输入」）在约半数名字空间上**结构性地不工作**，且设计正文对键集歧义零分析（§2.0B 只分析了长文本误挂单向，没分析键集内部互撞）。
+- **后果**：这些名字的补给卡即使 OCR 完美读对，norm_item 也恒 ''——①`owned += norm_item` 不写（账面缺件）；②`apply_equip_acquire_consequence` 不发射（送角色分支缺失，bench 少人）；③全靠「观察覆盖自愈」兜底。fail-closed 方向没错，但设计宣称的核心机制（「账面恒标准名」「param 现有字段即 report 全部输入」）在约半数名字空间上**结构性地不工作**，且设计正文对键集歧义零分析（§2.0B 只分析了长文本误挂单向，没分析键集内部互撞）。
 - **权威源证据**：`kernel/cw_events.py:916-941`（阈值注释=银狼锚标定语境；唯一命中判据）；`data/cw_equipment_data.py:51-231`（158 名键集）；本审查复算表（79 名多命中清单已留档，可 `uv run python` 复现，判据 = 逐字复刻 `_similar_equip_hits`）。
 - **建议修法**（任一，写入 §2.0B 并同步 landing 3.1）：
   1. 注册表级入口加**精确命中快道**（text == 键名 → 直接返回），相似归一只作 OCR 形变救援层；
@@ -40,7 +40,7 @@
 - **权威源证据**：上述四消费点 + `cw_screen_prep.py:345`（失读 None 不写保现值）+ `obs/cw_observation.py:2732` 注释（「商店线权重与 flow 打分读 gs.equips」在册申报=已知消费面）。
 - **建议修法**：§2.3 补一段覆盖序论证（补给 pick → 备战 heavy observe 先于任何商店/穿戴/mandate 决策消费；失读跳写 = 消费读旧值，危害 = 低配错排序，方向与现役 OCR 原始名不入键同一量级），并如实申报失读窗残余。
 
-### A4 [建议] | design.md §2.0B「一口写序」 | 写序只列 ①owned ②单位腿 ③装备后果腿，未提现状「内容全未知」分支（char/item 双空 = 兜底点卡路径）的去留
+### A4 [建议] | design.md §2.0B「一口写序」 | 写序只列 ①owned ②单位入账分支 ③装备后果分支，未提现状「内容全未知」分支（char/item 双空 = 兜底点卡路径）的去留
 
 - **问题**：现 `report_action_pick_supply_param` 落地相有一个前置分支：char_name 与 norm_item 双空 → bench/equips 双翻来源 + `pick_supply_content_unresolved` 缺陷行（`pick_supply.py:76-88`）。设计的一口写序与 landing 3.1 的「未解析翻来源留证语义保持」都没有点名该分支——实现者可以合理疑问「兜底点卡路径（CARD_BODY，opts 读缺时 param 双空）在新单相里是否保留双翻+缺陷行」。这是设计漏 declared 面，不是行为分歧（保留显然合理）。
 - **建议修法**：§2.0B 一口写序补第 0 步「char/item 双空（兜底点卡路径）→ 现行内容全未知分支逐位保持」。
@@ -65,7 +65,7 @@
 | §2.2 消费点迁移总表 vs 全仓 grep | 三退役符号 src 侧：supply_used（supply_node 读闸+写点/flow/sim/game_state/audit/schema 注释 6 行齐）✓；encounter_used（encounter 读闸/种子字段/audit）✓；refreshed_in_visit（flow+bridge 旗标源/encounter 读写点/game_state/audit/encounter report docstring 两处——report docstring 随 3.3 改写归「文件面」覆盖）✓；`picked['refreshed']` 值链（组装点+schema 注释）✓；ConfirmSupply（pick op 登记/_overlay_confirm/cw_exec_state）✓；EVIDENCE_OVERLAY_CLOSED 仅 pick_supply 定义+supply_node 导入+t60 SUPPLY_EVIDENCE 面，pick_equip/pick_planner 同名常量豁免申报 ✓；`normalize_equip_name` 消费面（supply_node :341 组装点 + equip_pick 彼辖不动）✓。**无遗漏、无过度**。sr-od-test 侧命中（obs_arch_event_screens/step3/opening_seed/route_clear/t60/yinlang_phase32）归「受影响测试」+ grep 零残留判据强制重写，机械可执行 ✓ |
 | 正本更新清单条目 ↔ 致变正本节 | supply.md §2/§3/§4/§5/§6/§8/§9、encounter.md、README §5.5/§6、op-layer §1.1/§1.2/§2.1/§2.2/§3、action_ops §4.5/§4.6/§2.2、action_exec §2.1、fields §3.4.1/§3.4.2——节名全部实存且与致变面对得上（含上轮 F6/F7 清偿项：action_exec §2.1 已挂、README §6 已挂）✓；兜底 grep 行 ✓ |
 | 归档帧 | `sr-od-test/screens/货币战争-补给/{default,双排装备}.webp` 文件存在 ✓；帧内容「剩余 0/1」本会话无视觉能力未直读复核——与 supply_node 代码注释引用同一组帧（钮心/文本框几何锚同源），一致性间接支持；如实申报为未直读项 |
-| 规范遵循（action_ops §1 三条 + op-layer §1.1/§1.2/§1.4 新两条） | 「点完立即上报完整结果」与 chosen_supply 留守的并立自洽：写点 = 选择点（派发前，supply_node :342-359），先于动作 op 执行——「点完即报」辖效果腿、选择事实边界（op-layer §2.2）辖事实腿，两腿不同物 ✓；「刷新 = 终结」方案（访问内零重读/零二次写/零重决策）与 §1.1 读屏点纪律消解 ✓；「闸 = 剩余语义观察真值」双闸同源 + None 拒绝与 §1.4 :53 文本一致 ✓；活锁方向论证（放行→终结 / 拒绝→重调一次→选卡终结，`decide_*` 的 refresh_used=True 分支实码背书）✓ |
+| 规范遵循（action_ops §1 三条 + op-layer §1.1/§1.2/§1.4 新两条） | 「点完立即上报完整结果」与 chosen_supply 留守的并立自洽：写点 = 选择点（派发前，supply_node :342-359），先于动作 op 执行——「点完即报」辖效果分支、选择事实边界（op-layer §2.2）辖事实分支，两条分支不同物 ✓；「刷新 = 终结」方案（访问内零重读/零二次写/零重决策）与 §1.1 读屏点纪律消解 ✓；「闸 = 剩余语义观察真值」双闸同源 + None 拒绝与 §1.4 :53 文本一致 ✓；活锁方向论证（放行→终结 / 拒绝→重调一次→选卡终结，`decide_*` 的 refresh_used=True 分支实码背书）✓ |
 
 ## ④ 试读结论（逐阶段）
 

@@ -64,7 +64,7 @@
 |---|---|---|
 | §2.2–§2.5 判据语义转写 vs `encounter_pick.py` 现态 | ✓ | 三态表含 fill 双定谳槽门（`BAR_SEMANTICS=='node' ∧ PROGRESS_BAR_DIRECTION=='forward' ∧ fill<_FILL_EDGE_THRESHOLD`）与删失优先序；cap 过滤在前、足量态上界不设限表述与 `cap = EDGE_CAP if 边缘 else 6` 等效；经验档层 `tier_cleared` 交集；tiebreak `min((reward_tier, opt.idx))`；闸内嵌 `left is not None and left >= 1`；归因串四形态逐字一致（`pick:t{k}|kappa=<态>`/`refresh-valve:<因>`×3/`dark-fallback:<因>`/`stance-unconfirmed`） |
 | §1 裁定登记四项 vs design §2.2/§2.10 | ✓ | 裁定 1 = 04 §7 表第 9 行授权 + 辖域限定 + kernel 保留面四符号（直调 `cw_encounter_selection.py` 现符号面一致）；裁定 2 = 2026-09-21 op-layer §1.4（该节现文含「刷新闸 = 剩余语义观察真值(全域)」）；裁定 3 = 两闸绑定批准 + 章程修订申报 + 重拍回退机制（`stance-unconfirmed` 分支在码）；裁定 4 = EV 核退役（`encounter.py` 已删、provisional 双槽已删、仅余改指策略层的指针句 L23） |
-| §4 数学挂账七项 vs design §2.9/§2.11 | ✓ | 比值腿复活（P64 单篇存在 = `currency_war/proofs/`）/E-3 标定（注入位 fill 双键 vs `_CALIBRATABLE` 现态、kernel 侧仅收 `D_ENC_VARIANT` 现态、fill 阈值【拟】登记义务）/EV 形态挂 P26/档位↑采样验证/P2 两源对账/窗口变体触发器/补给孪生面防线交接（升 op-layer §1.4 全域条款批）——七项与 design §2.9 列举逐项对应 |
+| §4 数学挂账七项 vs design §2.9/§2.11 | ✓ | 比值分支复活（P64 单篇存在 = `currency_war/proofs/`）/E-3 标定（注入位 fill 双键 vs `_CALIBRATABLE` 现态、kernel 侧仅收 `D_ENC_VARIANT` 现态、fill 阈值【拟】登记义务）/EV 形态挂 P26/档位↑采样验证/P2 两源对账/窗口变体触发器/补给孪生面防线交接（升 op-layer §1.4 全域条款批）——七项与 design §2.9 列举逐项对应 |
 | §3 sim 盲区 vs design §2.12 | ✓ | sim/ 目录 grep `record_settlement_row` 零命中——「结算环无写端 → 恒窗口不足 → 闸拒刷 → 最低档」结构性盲区断言成立；不可作 A/B 判据、验收 = 单帧测试（`test_cw_encounter_pick.py` 存在）+ 实机锚点 |
 
 ### 申报偏差 5 条

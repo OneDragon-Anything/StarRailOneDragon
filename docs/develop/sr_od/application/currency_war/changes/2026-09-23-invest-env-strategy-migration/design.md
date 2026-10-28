@@ -120,7 +120,7 @@
 - `ENV_FACTION_MATCH_FLOOR`、`GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE` 及锚定注释。
 - `cw_investments.py:1003-1006` 旧归属声明（「保留 kernel」——被宪法五取代）。
 - `_decide_invest` 中 env 侧 CommitSignals 喂入死代码（`augment_affinity` 对 env 名恒 miss，直调核实）。
-- `kernel/cw_env_economy.py` 文件删除（迁策略层，§2.3）；`gold_after_refreshes` 通道的运行时条件腿（效果账本计数读取 + `_REFRESH_P_KEY`/`_REFRESH_AFTER_KEY` 参数消费）整体退役 → 拍值注册替代（§2.3；tools 重采脚本对应段删除）。
+- `kernel/cw_env_economy.py` 文件删除（迁策略层，§2.3）；`gold_after_refreshes` 通道的运行时条件分支（效果账本计数读取 + `_REFRESH_P_KEY`/`_REFRESH_AFTER_KEY` 参数消费）整体退役 → 拍值注册替代（§2.3；tools 重采脚本对应段删除）。
 - 注释指针收口：`cw_comps.gift_hit_tier`/`ENV_GIFTS` 处「消费位 = cw_events env 分支」的契约注改为指向策略层 `gift_value`（归 3.3 文档同步）。
 - 测试清理：引用被删符号的旧断言（`test_cw_overlay_judgement_migration` 等涉及面）。
 

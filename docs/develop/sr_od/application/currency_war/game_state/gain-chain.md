@@ -169,12 +169,12 @@ KeyError 响亮;2026-10-24 批起)→ 席满溢出落位(§4,
 (元组字典序,到了及以后都算)的条目为命中并弹除,其余保留;命中非空才一次
 write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
 
-- **零消耗腿**:件 = 棋盘右上战利品区浮动件非占席(实机板件实证 = 与晶矿球
+- **零消耗分支**:件 = 棋盘右上战利品区浮动件非占席(实机板件实证 = 与晶矿球
   同区),无席位槽可消耗——开盒 = 队列弹除,零 `_place_bench_item` 调用、零
   bench/overflow/equips 写;开出的奖励若落席由现役观察自然捕捉。
 - **开盒零产出写入**:开盒内容卡面 desc 无载,放弃建模(invest_effects.md
   硬裁定:desc 未写明的不主动实机查)——开盒 = 板件从战利品区消失(游戏侧
-  事实),模型侧零发放;真值建立后 = 本原语加发放腿,零迁移。
+  事实),模型侧零发放;真值建立后 = 本原语加发放分支,零迁移。
 - **接入点**:与 §2.7 同窗相邻——sim 进节点收尾、`discharge_due_item_grants`
   调用之后一行,同一收口继承窗口幂等守卫(窗口重放不双发;队列命中即出队,
   重放查无命中天然幂等同款);sig 组名沿 `sim:env`。
@@ -182,7 +182,7 @@ write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
   通道走通道选择入口单口;生效序位缺读(effective_node_pos None)→ 零写,
   命中集空 → 零写。
 - **实机局不接本原语**(不对称申报,fields.md §3.2.25):实机开盒由游戏自己
-  执行,队列条目到点后滞留不弹(纯知识域,现役无消费者);完胜回退腿双端跑
+  执行,队列条目到点后滞留不弹(纯知识域,现役无消费者);完胜回退分支双端跑
   不受此限——回退是模型知识修正非游戏动作(`check_env_item_open_perfect`,
   settle_confirm 分支挂点)。
 
@@ -262,12 +262,12 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     (`active_env` 无观察覆盖通道,选择事实与真值不可分辨)→ 申报留证一行
     (`kind = ENV_REROLL_DECL`,独立小块形态沿 `PICK_INVEST_INVALID_PAYLOAD`
     先例,语义申报非缺陷告警),行为 fail-closed——选卡容器写序列与普通
-    环境逐位一致。世界掷骰 = sim 后端追加获得腿二次入链(`cw_sim_backend.
+    环境逐位一致。世界掷骰 = sim 后端追加获得分支二次入链(`cw_sim_backend.
     _on_invest_picked`:原语 `gain_invest_env` 复用、显式双流键 rng
     `M02/env-reroll`/`M02/env-reroll-gift`,卷中环境获得时效果全族照常触发),
     双端各产一行如实记录「选择时点真值未知」;建模知识正本 =
     invest_effects.md 蓝海条。
-  - **随机赠卡锁腿**(`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 命中,申报行
+  - **随机赠卡锁分支**(`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 命中,申报行
     之后、ENV_GIFTS 查表之前;世界发放域登记表白名单,与 ENV_GIFTS 集合
     互斥构建期防呆):获得当刻随机赠卡带上场锁——牌库时点池
     (`cw_pool.grant_char_pool` = 规格域 ∩ 当时牌库,未解锁专家剔除,
@@ -290,7 +290,7 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     将其上场。战斗完胜后,上场节点额外提前1点。」;建模知识正本 =
     invest_effects.md 英雄登场条)。
   - **延迟道具支线**(`cw_investments.ENV_DELAYED_ITEM_GRANTS` 命中,随机
-    赠卡锁腿之后、ENV_GIFTS 查表之前;世界发放域登记表白名单,与 ENV_GIFTS
+    赠卡锁分支之后、ENV_GIFTS 查表之前;世界发放域登记表白名单,与 ENV_GIFTS
     集合互斥构建期防呆):获得当刻**纯队列登记零席位写**——件 = 棋盘右上
     战利品区浮动件非占席(实机板件实证 = 与晶矿球同区;禁 `_place_bench_item`
     调用、禁 bench/overflow 任何字段、BENCH_ITEM_NAMES 词表零扩),队列 =
@@ -306,7 +306,7 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     命运礼物(id 134「立刻获得一个【惊喜盒】,倒计时12个节点后礼盒打开,
     战斗完胜后,倒计时额外减少1点。」;建模知识正本 = invest_effects.md
     命运礼物条)。
-  - **词缀失效删除腿**(`cw_gain_chain.ENV_AFFIX_DISABLE_ENV` 命中,延迟
+  - **词缀失效删除分支**(`cw_gain_chain.ENV_AFFIX_DISABLE_ENV` 命中,延迟
     道具支线之后、ENV_GIFTS 查表之前;硬编码分支沿 DOT_CONTRACT_ENV
     枚举即收敛先例,单卡零复用面不入登记表):选敌后破坏(id 146
     「开局时，使一个已生成的敌人词缀失效。」)→ 词缀名单
@@ -315,8 +315,8 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     开局未锚定窗自动落随机态(裁定「词缀要变成随机态」),掷骰 = live
     模型猜测/sim 世界真值,猜测偏差由位面详情补观察闭环转正
     (screens/plane_intel.md 备战委派 + 写门随机态分支;消费门纪律 =
-    `logic_rand_fields`)。采样腿具名流键 `action_sampling_rng(
-    'env_affix_disable', None)` 腿内自解析(env_merge_grant 双端同槽
+    `logic_rand_fields`)。采样分支具名流键 `action_sampling_rng(
+    'env_affix_disable', None)` 分支内自解析(env_merge_grant 双端同槽
     先例,命中判据前置、无命中不取槽);删除写触发词缀域写尾 HP 先验
     回调(`cw_opening_hp.on_enemy_affixes_logic_write`,挂点 =
     `_write_logic_frame` enemy_affixes 分支,logic/logic_rand 两通道
@@ -324,8 +324,8 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     §3.1.6);容器空 → 跳过删除,零写 + 申报行(`kind =
     ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
     设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。T-14 蓝海追加
-    链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除腿
-    触发,设计披露键 6);姊妹卡退化失效腿复用本机制(T-291 批套用)。
+    链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
+    触发,设计披露键 6);姊妹卡退化失效分支复用本机制(T-291 批套用)。
     设计正本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost|faction, star, type_tag)` 随机赠卡规格(家族载体,「随机N费」与
@@ -352,12 +352,12 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     三键(池内均匀 v0 / 星级 1 先验 / 类型标签过滤口径)。
   - **即时装备支**(`equips_immediate`,落地序 = 随机支之后、即时道具支之前):
     元素 = 具名装备名(EQUIPMENTS 在册;首例 = 红钻贵族 id 131「开局时拥有
-    【红钻】和一个【简易武装箱】」,装备腿在前 = 卡文序,遥测序与卡文对齐)。
+    【红钻】和一个【简易武装箱】」,装备入账分支在前 = 卡文序,遥测序与卡文对齐)。
     发放 = `gain_equipment(rand=True)` 入栏(equips 库存,不占席、不进
     BENCH_ITEM_NAMES)——确定具名发放,写通道走随机态(2026-10-17 用户裁定:
     「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据
     ——猜测写 + equips 观察覆盖纠偏,首观察静默覆盖落 `logic_rand_outcome`
-    台账,锚定与否都不进失配网;先例 = T-5 财富宝钻/T-29 奖励全腿随机态;
+    台账,锚定与否都不进失配网;先例 = T-5 财富宝钻/T-29 奖励全分支随机态;
     本支零采样不需 rng)。效果串 `equip_gift:<名>`,与 `env_gift:`/
     `env_star_grant:`/`item_gift:` 前缀分域。登记与构建校验 =
     `_validate_env_gifts` ⑧⑨(装备名漂移 ∈ EQUIPMENTS / 装备-道具通道
@@ -368,24 +368,24 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     (`equips_by_category`,注册表派生单一源)内均匀掷骰选名 →
     `gain_equipment(rand=True)` 入栏(equips 库存,不占席、不进
     BENCH_ITEM_NAMES)。**绑定门**(`ENV_BOSS_GRANTS` 成员资格):成员
-    (绑定语义 = 首领节点腿2 按绑定星徽发角色,首例 = 劳务派遣合同
+    (绑定语义 = 首领节点分支2 按绑定星徽发角色,首例 = 劳务派遣合同
     id 118「获得随机星徽」)效果串 `env_star_grant:<名>` + 发放名落
     `env_grants_done` 条件键 `star_grant#<名>`(placed 守卫下写——equips
     未观察时 `gain_equipment` 零写跳档 → 绑定同样不落,禁「绑定在而装备
-    未发」残缺态),消费 = `check_env_boss_grants` 腿2 绑定解析(条件键
+    未发」残缺态),消费 = `check_env_boss_grants` 分支2 绑定解析(条件键
     形态登记 = fields.md §3.5.5);非成员(概念股族及后继,首例 = 追击
     概念股 id 1001「初始简易装备」类别池复用本通道)零 done 键、效果串
     前缀 `env_equip_random:<名>`(与具名支 `equip_gift:`/随机角色支
     `env_gift_random:` 分域,审计归组键)。`rng` 回退/条件解析与随机角色
     支同款。
-  - **持续伤害契约锚键腿**(条件腿建模 T-28,获得刻纯登记):具名支发完
+  - **持续伤害契约锚键分支**(条件分支建模 T-28,获得刻纯登记):具名支发完
     椒丘/卡芙卡后,`on_env_gained` 对本卡追加登记 `env_grants_done` 条件键
-    `dot_anchor#<位面>-<轮>`(与即时腿同窗相邻 write_logic 直写,同
+    `dot_anchor#<位面>-<轮>`(与即时分支同窗相邻 write_logic 直写,同
     evidence 同 sig;**纯登记件非门控**——显式判 node,节点未进窗〔开局
     三选一获取形态〕不写,防 `'dot_anchor#-'` 畸形键;缺锚不影响猜测写/
     计数/证实,消费门 = `check_env_dot_grants` 的 active_env 门)。键形态
-    登记单一源 = fields.md §3.5.5;条件腿「猜测写+证实」建模口径 =
-    invest_effects.md「条件腿族面口径」节。
+    登记单一源 = fields.md §3.5.5;条件分支「猜测写+证实」建模口径 =
+    invest_effects.md「条件分支族面口径」节。
   - **道具通道**(`items_immediate` + `items_scheduled`,与 advisor 道无关、
     可叠加):道具 = 占席待开箱,非角色非装备。**即时支**(`items_immediate`):
     落位写入(角色落位同构:备战空槽放**带名槽件**
@@ -422,13 +422,13 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
   同一事实,防重发与消费同源、不立第二账本,幂等短路免费兜住升星产物
   递归重进)。命中 → `_unlock_experts` 写解锁 + 效果串
   `expert_unlock:银狼`。同判据**三渠道接线**(环境获得后的事件挂点式
-  触发器):购买链(买牌上报回调腿,现役主流)/ 平行桥
+  触发器):购买链(买牌上报回调分支,现役主流)/ 平行桥
   (`grant_bench_unit_cascade` 桥尾)/ 获得链(本收敛点转发)——三渠道
   同判据同写入,行为等价,宿主出参不扩字段(触发写入自身即留证,
   write 行 evidence 标 `expert_trigger`/`#expert_unlock` 族)。获得链
-  现役无可达首次**触发**场景(既有可达获得 = boss 节点羁绊腿,被条件②
+  现役无可达首次**触发**场景(既有可达获得 = boss 节点羁绊分支,被条件②
   × 单环境互斥挡在触发外),本接线 = 收敛点承诺兑现 + 登记表未来扩入
-  带目标名池发放腿的防御。开局种子起手与先获后选环境局(首次获得先于
+  带目标名池发放分支的防御。开局种子起手与先获后选环境局(首次获得先于
   环境获得)由上 advisor 分道挂点④在场判定收口,两挂点合起来覆盖
   「首次」全语义。**本函数 = 「获得角色触发型」效果未来的唯一收敛点**。
 - **on_equipment_gained(gs, item, *, rand, sig)**:查 `cw_effect_inventory.py::

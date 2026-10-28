@@ -10,13 +10,13 @@
 
 ## 3.1 kernel 指向集推导函数
 
-**范围**:新增 `env_faction_scope` / `strategy_faction_scope` 两个纯函数(策略指向 = STRATEGY_BINDINGS 阵营腿 + 角色腿经 CHARACTERS factions 全集派生;环境指向 = faction 腿 + ENV_COMP_AFFINITY 亲和腿;锁定线指向 = Comp.factions 现读,design §2.1);不含选卡判据接线。
+**范围**:新增 `env_faction_scope` / `strategy_faction_scope` 两个纯函数(策略指向 = STRATEGY_BINDINGS 阵营分支 + 角色分支经 CHARACTERS factions 全集派生;环境指向 = faction 分支 + ENV_COMP_AFFINITY 亲和分支;锁定线指向 = Comp.factions 现读,design §2.1);不含选卡判据接线。
 **设计依据**:design.md §2.1
 **文件面**:`src/sr_od/application/currency_war/kernel/cw_investments.py`;`sr-od-test/test/sr_od/application/currency_war/kernel/test_cw_investments.py`(指向集函数落 cw_investments.py,测试镜像并入其既有测试文件)
 **依赖**:无
 **优先级建议**:5
 **完成判据**:
-- 行为对照 design.md §2.1 三腿语义(faction/亲和/成员)+ §4 kernel 单元清单(黑塔纪元→{银河学者, 群攻};琼玉专家:青雀→{仙舟};命运圣杯契约(env,亲和腿)→{命运圣杯, 能量};命运圣杯邀请(env)→{命运圣杯, 能量};无绑定→空;未注册角色跳过;多阵营角色展开;成员腿装备党→含{追击};特邀专家:桑博亲和腿;特邀专家:加拉赫 faction 例外;持有名归一查询)
+- 行为对照 design.md §2.1 三条分支语义(faction/亲和/成员)+ §4 kernel 单元清单(黑塔纪元→{银河学者, 群攻};琼玉专家:青雀→{仙舟};命运圣杯契约(env,亲和分支)→{命运圣杯, 能量};命运圣杯邀请(env)→{命运圣杯, 能量};无绑定→空;未注册角色跳过;多阵营角色展开;成员分支装备党→含{追击};特邀专家:桑博亲和分支;特邀专家:加拉赫 faction 例外;持有名归一查询)
 - 完成前常规检查(本文首节)
 **验收凭据形式**:指向集单元测试名清单
 

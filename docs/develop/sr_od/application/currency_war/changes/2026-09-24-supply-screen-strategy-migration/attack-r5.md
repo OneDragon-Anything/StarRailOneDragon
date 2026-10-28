@@ -62,7 +62,7 @@
 - `kernel/cw_merge_simulate.py`:93-107(_entry_identity 非容器形状 fail-closed None——二元组直传漏域实证)/:337(同名同星 ≥3 合一)/:424-433(same_star_count)
 - `kernel/cw_intention.py`:1123-1156(pair_target_comp 伪 comp,key_equips 走缺省恒空——申报 ⑤ 成立)/:2075-2077(降格清 locked_comp)
 - `kernel/cw_effect_inventory.py`:1502-1505(bench_full 拒落零写)/:1516(BenchGrantResult)
-- `kernel/cw_action_report/pick_supply.py`:48-50(入席恒 1★ 先验)/:79-84(单位腿走 grant_bench_unit_cascade)
+- `kernel/cw_action_report/pick_supply.py`:48-50(入席恒 1★ 先验)/:79-84(单位入账分支走 grant_bench_unit_cascade)
 - `kernel/cw_vocab.py`:728/:916(「替代 SupplyPick」表述)
 - `operations/cw_op/cw_pick_supply_action.py`:37(SupplyPick.refresh 决策句)
 - `operations/cw_screen/cw_screen_supply_node.py`:8-14/:39-40(sim 接线未接陈旧注)/:242-245(旧评分叙述)/:264-292(重调路径与双闸——闸内嵌后唯一剩余触发面 = 锚点缺,重调纯函数同输入同输出,op 语义不变判定成立)

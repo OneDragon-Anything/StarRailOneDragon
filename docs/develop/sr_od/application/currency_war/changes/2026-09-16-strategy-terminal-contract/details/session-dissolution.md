@@ -12,7 +12,7 @@
 
 | # | 槽位 | 类型 | 唯一写者 | 消费入口 | 动作 |
 |---|---|---|---|---|---|
-| 1 | `gs.prep_obs` | `PrepObservation \| None`（非 Field 容器字段） | CwScreenPrep 观察链（写点白名单原样平移） | decide_prep_screen；`cw_equip_wear_plan`；`_act_execute_default` OpenShop 腿死读点（换源不删参） | 自 session 迁入 |
+| 1 | `gs.prep_obs` | `PrepObservation \| None`（非 Field 容器字段） | CwScreenPrep 观察链（写点白名单原样平移） | decide_prep_screen；`cw_equip_wear_plan`；`_act_execute_default` OpenShop 分支死读点（换源不删参） | 自 session 迁入 |
 | 2 | `gs.shop` | `ShopPayload \| None` | 既有观察段 | decide_shop_action | 不动 |
 | 3 | `gs.encounter` | `EncounterPayload`（options 升级 `list[EncounterOption]`） | CwScreenEncounter | decide_encounter | 域版本 bump |
 | 4 | `gs.supply` | `SupplyPayload`（options 升级 `list[SupplyOption]`） | CwScreenSupplyNode | decide_supply | 域版本 bump |
@@ -31,8 +31,8 @@
 
 - **路由屏取值规则**：识别命中且在映射内 = 该屏名，只清属屏 ≠ 它的槽；映射外建档屏 / 非身份臂语境（阶段二备战双锚、阶段三特殊规则臂）/ 未识别 = 清全部十槽（这些语境无任何 decide 消费，清点只影响审计面）。
 - 属屏映射单一源 = `_PAYLOAD_DOMAINS` 扩展为 `槽 → (属屏, route_clearable)` 二元组。十行清点全集（分发键 = `_dispatch_identity_screen` 建档屏名，锚 `cw_loop.py` 分发臂）：`gs.encounter`→货币战争-遭遇节点；`gs.supply`→货币战争-补给；`gs.invest_strategy_opts`→货币战争-投资策略；`gs.invest_env_opts`→货币战争-投资环境；`gs.megastar_opts`→货币战争-盛会之星；`gs.partner_opts`→货币战争-列车同行；`gs.planner_opts`→货币战争-骇入策划；`gs.star_tome_opts`→货币战争-星徽秘典弹窗；`gs.wish_trial_opts`→货币战争-祈愿试炼；`gs.box_card_names`→货币战争-备战-武装箱选择（**分流注**：`货币战争-武装箱弹窗` 派发 CwScreenArmoryBox，无 decide 调用不产槽）。
-- 豁免：`prep_obs` 不入映射；`shop` 入映射 `route_clearable=False`（清点口全集三处 = CloseShop 逻辑腿 + prep 相位观察商店锚 miss 分支 + 机械关店口 `CwOpCloseShop._clear_shop_payload → leave_screen`，点击已发/幂等已关两出口同清（commit 554e3dea6 落地）；shop 清点单一源语义 = 关店出口统一经 CwOpCloseShop 清场，路由挂点不辖 shop）。
-- **「已 None 跳过」实现落点 = 路由挂点侧**（挂点读槽值判 None 跳过，不占 write_seq 不落 journal），`leave_screen` 本体不动；清点写入口经 `leave_screen(槽, sig=…)`，sig family/mode 引用既有 CloseShop 腿清点行同一常量源、`actor='cw_loop_route_clear'`。
+- 豁免：`prep_obs` 不入映射；`shop` 入映射 `route_clearable=False`（清点口全集三处 = CloseShop 逻辑分支 + prep 相位观察商店锚 miss 分支 + 机械关店口 `CwOpCloseShop._clear_shop_payload → leave_screen`，点击已发/幂等已关两出口同清（commit 554e3dea6 落地）；shop 清点单一源语义 = 关店出口统一经 CwOpCloseShop 清场，路由挂点不辖 shop）。
+- **「已 None 跳过」实现落点 = 路由挂点侧**（挂点读槽值判 None 跳过，不占 write_seq 不落 journal），`leave_screen` 本体不动；清点写入口经 `leave_screen(槽, sig=…)`，sig family/mode 引用既有 CloseShop 分支清点行同一常量源、`actor='cw_loop_route_clear'`。
 - 两路径语义：`stop_at_prep` 早退发生在挂点之前（早退轮不清点，清点顺延至 loop 下一次路由周期）；未知兜底在分发后循环尾（不绕行，未识别轮清全部十槽）。
 
 ### 2.3 瞬态槽三分语义 + 刷新通道
@@ -92,7 +92,7 @@ session 实名 → gs 正本（**两套名不同，普查词表用 session 实�
 | `selected_difficulty` | `gs.selected_difficulty` | 机械换源 |
 | `last_streak` | `gs.streak`（§3.2.12） | **主消费 = `cw_observation` 观察喂入 + obs_conflict 仲裁**（:2310-2325 一带）；economy 侧为次级读 |
 | `chosen_megastar` / `chosen_partner` | `gs.chosen_*`（handler 已 write_logic） | 机械换源 |
-| `last_owned_equips` | **特例——值不等价**：exec_state 选卡到账 +1/穿戴 −1 写腿在 gs.equips 刻意无对应（在册豁免）。处置 = **删**；武装箱打分输入改读 `gs.equips` 现值（保守缺省）——**消费点 = `flow.py::decide_box_card`**（非 cw_equip_wear_plan，其输入 = prep_obs）——行为变化登记（总纲 §1.3）；完整库存账 = 库存域建模批 |
+| `last_owned_equips` | **特例——值不等价**：exec_state 选卡到账 +1/穿戴 −1 写分支在 gs.equips 刻意无对应（在册豁免）。处置 = **删**；武装箱打分输入改读 `gs.equips` 现值（保守缺省）——**消费点 = `flow.py::decide_box_card`**（非 cw_equip_wear_plan，其输入 = prep_obs）——行为变化登记（总纲 §1.3）；完整库存账 = 库存域建模批 |
 | **载体中继机制**（relay 六调用，输入 100% 为本表待删 session 字段） | relay 随字段退役改直连 gs 正本（fields.md §2.1 正本行随批改写） | — |
 
 迁移契约：读者逐个换源；写端仅写 session 份则改写 gs 份后 session 份删除（普查对账表兜底）。
@@ -102,7 +102,7 @@ session 实名 → gs 正本（**两套名不同，普查词表用 session 实�
 | session 字段 | 去向 |
 |---|---|
 | `rng` | 策略实例 `self.rng`（构造即种子化，`None → 0` 语义保持） |
-| `performance` | `CurrencyWarMatch.performance`（battle_wait 结算点写点换宿主；**kernel 唯一读者 = `cw_reconcile._battle_facts_between` 同步换源**；`reconcile_hp` 对账腿随 hp 锚删除简化——gs.hp 单源后双源对账无对象，对账腿删 = 行为变化登记 §1.3） |
+| `performance` | `CurrencyWarMatch.performance`（battle_wait 结算点写点换宿主；**kernel 唯一读者 = `cw_reconcile._battle_facts_between` 同步换源**；`reconcile_hp` 对账分支随 hp 锚删除简化——gs.hp 单源后双源对账无对象，对账分支删 = 行为变化登记 §1.3） |
 | `strategy_state` | 策略实例 `self.state`（§3 读者迁移） |
 | `pending_round_outcomes` | **删**（只写不读零消费死面，`cw_screen_battle_wait` 写入端随批停止） |
 | `prep_obs_frame` | `gs.prep_obs`（非 Field；写读者全集换宿主） |

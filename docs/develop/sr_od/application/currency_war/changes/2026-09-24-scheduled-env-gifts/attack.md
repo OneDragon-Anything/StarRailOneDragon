@@ -24,7 +24,7 @@
   - design.md:16-17——「同构时点卡还有增发货币(一/二/三位面开始晶矿)、红钻/蓝钻闪耀(3 节点后)等,均堵在同一缺口」,此句无依据标注。
   - `kernel/cw_investments.py:1161`——增发货币**已在册**:`ENV_ECONOMY['增发货币'] = EnvEconomyEffect(gold_per_plane_start=(6, 8, 12))`,时点维度由该结构化通道承载;`sim/cw_sim_backend.py:1312/:1403-1417`——`_apply_env_plane_gold` 恰在 (plane,1) 节点窗消费。即「位面开始」类时点对**金**通道已有登记与消费先例(设计 §2.1 自己也引它作权威先例),「无处登记(登记即错时点)」对增发货币不成立。
   - `data/cw_invest_data.py:192-193`——红钻/蓝钻闪耀是策略卡(PlazaAugment),形态为「进入 3 个节点后」= 相对延迟,正是 design.md:38-40「明确不解决」的「另一形态」;且新通道 `items_scheduled` 挂在环境 GiftGrant 上,策略源即便要登记也不在本通道。
-- **修订建议**:§1.1 收敛例证——删「增发货币」或改注「其位面开始金腿已经 ENV_ECONOMY/gold_per_plane_start 在册,本缺口仅指 GiftGrant 道具/角色通道」;红钻/蓝钻闪耀如保留,标注「同属缺口但形态=相对延迟,归后续批次」。
+- **修订建议**:§1.1 收敛例证——删「增发货币」或改注「其位面开始金分支已经 ENV_ECONOMY/gold_per_plane_start 在册,本缺口仅指 GiftGrant 道具/角色通道」;红钻/蓝钻闪耀如保留,标注「同属缺口但形态=相对延迟,归后续批次」。
 
 ### 发现 3 [核一] [建议] design §2 未申报 PROJECTION_AUDIT 强制伴随改动与人读镜像义务;正本更新清单漏镜像
 

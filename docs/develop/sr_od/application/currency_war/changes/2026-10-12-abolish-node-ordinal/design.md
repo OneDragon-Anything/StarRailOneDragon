@@ -122,7 +122,7 @@ def sequence_next(pos: NodePos,
 - **退役**:`_ordinal_to_node`(:1303)与 `_node_ordinal`(:1347)——T-8 落地态已是**薄委托**(内部直调 kernel `node_pos_of`/`node_ordinal_of` 带 seqs),本迭代删壳即消解(裁决点 5 终局)。
 - `_enter_node_window(pos: NodePos)`(:1319):`kind = node_sequence_of(pos[0], gs.node_seq_by_plane.value)[pos[1]-1]`;镜像写 `NodeKey(plane=pos[0], round_num=pos[1], kind=kind)`;锚定 `observe_node_anchor(self.gs, pos, ...)`;位面过渡臂 `pos[0] > 1 ∧ pos[1] == 1` 不变。
 - `_on_node_advance`(:1092):去重守卫换键(:1095);`eff > sum(len(...))` 局终分支**退役**(键表示下不存在越界序位,见 §2.2 终局事件式);正常路径 = XP 入账(prev.kind)→ `_entered_pos = eff` → `_enter_node_window(eff)`。
-- **`advance()` 增局终腿**(:990 分派臂):`decl.trigger == 'node_advance' ∧ decl.next_screen == ''` → `_on_node_advance_terminal()`——XP 入账(prev.kind,与现行局终前入账同序)+ `DISCLOSURE_P3_UNOBSERVED` 披露(键值 `enter_p3_game_over_u19` 保留)+ `_game_over()`;此后 `_reconcile_next_screen` 走 `done=True ∧ decl=''` 合格臂,漂移面零新增。kernel 声明权威、sim 对账的既有分工不变:非终局推进仍走 `_on_node_advance` 状态重导出。
+- **`advance()` 增局终分支**(:990 分派臂):`decl.trigger == 'node_advance' ∧ decl.next_screen == ''` → `_on_node_advance_terminal()`——XP 入账(prev.kind,与现行局终前入账同序)+ `DISCLOSURE_P3_UNOBSERVED` 披露(键值 `enter_p3_game_over_u19` 保留)+ `_game_over()`;此后 `_reconcile_next_screen` 走 `done=True ∧ decl=''` 合格臂,漂移面零新增。kernel 声明权威、sim 对账的既有分工不变:非终局推进仍走 `_on_node_advance` 状态重导出。
 - `_node_window_target_base`/`_present_offer_or_node_screen`/`_present_node_screen`/offer 门(:1436-1440/:1450-1452/:1477):全部已按 `(plane, r)` 直查,仅随 `node_sequence_of` 的 T-8 `seqs` 参在位,零结构改动。
 
 ### 2.7 同式岛收口与视界族清扫(operations + obs + kernel 规划面)
@@ -155,7 +155,7 @@ def sequence_next(pos: NodePos,
 | kernel/cw_gain_chain.py | `_portal_acquired_key` import/调用/注释 | §2.4 |
 | kernel/cw_screen_report/boss_briefing.py | hist 直定目标 | §2.3 |
 | kernel/cw_screen_report/plane_transition.py | opening 判定改名 | §2.5 |
-| sim/cw_sim_backend.py | 簿记键/双反解删除/进窗/局终腿 | §2.6 |
+| sim/cw_sim_backend.py | 簿记键/双反解删除/进窗/局终分支 | §2.6 |
 | operations/cw_screen/cw_screen_prep.py | 锚定传元组 | §2.5 |
 | operations/cw_screen/cw_screen_supply_node.py | 节点条返回元组 | §2.5 |
 | operations/cw_screen/cw_screen_plane_transition.py | opening 判定改名 | §2.5 |

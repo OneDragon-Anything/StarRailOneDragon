@@ -26,7 +26,7 @@
 
 逐文件证据（全部直调核实，锚为审查时点行号）：
 
-1. **screens/encounter.md**（← 3.4）：L12「决策入口 = 契约 `decide_encounter(options, gs, session, config, refresh_used)`」——签名/形参双重过期（新契约 `(gs, session, config)`、`refresh_used` 退役）；L28 调用形状伪码 `pick = decide_encounter(options, game_state_of(session), session, config)`；L31/L37 刷新腿「带 refresh_used=True 重决策」流程句（入口旗标改读容器位）。
+1. **screens/encounter.md**（← 3.4）：L12「决策入口 = 契约 `decide_encounter(options, gs, session, config, refresh_used)`」——签名/形参双重过期（新契约 `(gs, session, config)`、`refresh_used` 退役）；L28 调用形状伪码 `pick = decide_encounter(options, game_state_of(session), session, config)`；L31/L37 刷新分支「带 refresh_used=True 重决策」流程句（入口旗标改读容器位）。
 2. **screens/supply.md**（← 3.4）：L12「契约 `decide_supply(options, gs, session, config, refresh_used)`」；L29/L31 调用形状伪码（`refresh_used` 实参消亡）。
 3. **screens/invest_strategy.md**（← 3.4）：L3/L14「`decide_invest('strategy', ...)`」；L35 调用形状伪码——`decide_invest` 拆分后符号消亡。
 4. **screens/invest_env.md**（← 3.4）：L3/L12/L24 同上（`decide_invest('env', ...)`）。

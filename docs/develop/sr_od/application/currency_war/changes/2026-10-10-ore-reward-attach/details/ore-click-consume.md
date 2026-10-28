@@ -27,7 +27,7 @@
 ### 3. 投影审计(cw_projection_audit.py)
 
 - 现晶矿随机金条目(`'晶矿随机金已改走逻辑随机态(collect_ore 采样直写…'`):写端申报改为「生成写 = ore_reward_attach(挂接入口,含 rekey 重挂),兑现写 = collect_ore 上报」;
-- 晶矿视觉域 basis(「晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端」):spheres 域维持零**逻辑**写端(点击摘除是随机态写,非 write_logic——按现注释口径核对后如实改);新增 `ore_rewards` 域行:logic_rand 写端 = 挂接入口,读端 = collect_ore 兑现,策略禁读契约指针;**新增 `ore_declared_pending` / `ore_declared_done` 域行**:logic 写端 = 入队/消费/过期电平口(同族行先例 = `pending_item_grants`),值语义 = 卡文推算登记非观察投影,done = 消费标记(幂等第二腿)。
+- 晶矿视觉域 basis(「晶矿视觉域(§3.2.8,点击目标非席位居民),零逻辑写端」):spheres 域维持零**逻辑**写端(点击摘除是随机态写,非 write_logic——按现注释口径核对后如实改);新增 `ore_rewards` 域行:logic_rand 写端 = 挂接入口,读端 = collect_ore 兑现,策略禁读契约指针;**新增 `ore_declared_pending` / `ore_declared_done` 域行**:logic 写端 = 入队/消费/过期电平口(同族行先例 = `pending_item_grants`),值语义 = 卡文推算登记非观察投影,done = 消费标记(幂等第二条分支)。
 
 ### 4. 测试迁移(sr-od-test)
 

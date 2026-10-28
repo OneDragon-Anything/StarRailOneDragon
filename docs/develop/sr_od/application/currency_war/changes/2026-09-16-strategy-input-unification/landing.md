@@ -13,7 +13,7 @@
 **优先级建议**：0
 **完成判据**：
 - 10 个被清槽的属屏映射与 §2.3 表逐行一致；prep_obs/shop 豁免在位（shop 保留映射结构内 + 挂点跳过）；shop 两处既有清点未动；已 None 跳过语义单测（不占版本不产行）；**未识别轮剧本断言**（识别 miss → 挂点清全部十槽）与**早退轮剧本断言**（`stop_at_prep` 早退轮不清点、下轮路由补清）；
-- `_PAYLOAD_DOMAINS` 扩展后 `leave_screen` 守卫面放宽核对申报（8 新槽成合法离屏域）；actor 预登记核对（`REGISTERED_ACTORS` 含 `CwScreenYinLang`/`CwScreenBoxPick`，零行为期无写端触发）；路由清点行 sig 形态断言（family/mode 与既有 CloseShop 腿清点行同源、actor=`cw_loop_route_clear` 可过滤）；
+- `_PAYLOAD_DOMAINS` 扩展后 `leave_screen` 守卫面放宽核对申报（8 新槽成合法离屏域）；actor 预登记核对（`REGISTERED_ACTORS` 含 `CwScreenYinLang`/`CwScreenBoxPick`，零行为期无写端触发）；路由清点行 sig 形态断言（family/mode 与既有 CloseShop 分支清点行同源、actor=`cw_loop_route_clear` 可过滤）；
 - 新槽/新字段读写与缺省 None 单测；#3/#4 升级形状 + 8 新域键 + 域版本 bump 的 schema 断言随批（typed option asdict 往返过）；
 - 全量绿（纯增量零行为）。
 - 通用工程门（本文首节定义）
@@ -21,7 +21,7 @@
 
 ### 3.2 备战线切换（原子）
 
-**范围**：design.md §2.2 #1 + §2.5 备战线全量——`StrategySession.prep_obs_frame` 槽删除 + `gs.prep_obs` **非 Field 容器字段新增**（契约 e 存储形态，落 `kernel/cw_game_state.py`）；4 写点直赋换宿主（`cw_screen_prep.py`）；读者全集换源：`bridge.py::decide_prep_screen` 缺失抛错读点、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段、`cw_screen_prep.py::_act_execute_default` OpenShop 腿死参喂死读点（换源不删死参）；`decide_prep_screen` 签名切 `(gs, session, config)`——**实现 = `bridge.py` 覆写体（唯一实现，flow.py 无此方法），契约声明 = `cw_strategy.py` ABC**；`cw_screen_prep.py` 两调用点传 gs；本阶段 docstring 实义 = `prep_obs` 历史锚改指（`mandate_v1/shop.py`/`bridge.py` 模块头等，design 契约 e 口径）——**契约计数句改写归 3.4**（成员计数 12→13 的变化点 = invest 拆分，3.2 阶段计数不变）。测试随批翻新（备战帧相关）。
+**范围**：design.md §2.2 #1 + §2.5 备战线全量——`StrategySession.prep_obs_frame` 槽删除 + `gs.prep_obs` **非 Field 容器字段新增**（契约 e 存储形态，落 `kernel/cw_game_state.py`）；4 写点直赋换宿主（`cw_screen_prep.py`）；读者全集换源：`bridge.py::decide_prep_screen` 缺失抛错读点、`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` 事实源前置段、`cw_screen_prep.py::_act_execute_default` OpenShop 分支死参喂死读点（换源不删死参）；`decide_prep_screen` 签名切 `(gs, session, config)`——**实现 = `bridge.py` 覆写体（唯一实现，flow.py 无此方法），契约声明 = `cw_strategy.py` ABC**；`cw_screen_prep.py` 两调用点传 gs；本阶段 docstring 实义 = `prep_obs` 历史锚改指（`mandate_v1/shop.py`/`bridge.py` 模块头等，design 契约 e 口径）——**契约计数句改写归 3.4**（成员计数 12→13 的变化点 = invest 拆分，3.2 阶段计数不变）。测试随批翻新（备战帧相关）。
 **设计依据**：design.md §2.1（签名纪律 1/2/3）、§2.2 #1 与契约 e、§2.5。
 **文件面**：`kernel/cw_game_state.py`（gs.prep_obs 非 Field 字段）、`kernel/cw_strategy_session.py`、`kernel/cw_equip_wear_plan.py`、`strategies/impl/cw_strategy.py`、`strategies/impl/mandate_v1/bridge.py`（decide_prep_screen 读点）、`strategies/impl/mandate_v1/shop.py`（模块头锚）、`operations/cw_screen/cw_screen_prep.py`、`obs/cw_observation.py`（prep_obs 注释锚改指）、`sr-od-test` 备战线相关测试。
 **依赖**：3.1；unified-obs-reconcile 3.4 落码收（design §2.8）
@@ -80,7 +80,7 @@
 **范围**：两步——①按「正本更新清单」预登记命中面逐条更新正本；②**全正本树普查对账**（机制性收口，防枚举漏单）：
 - **词表**：`decide_` **前缀普查**（覆盖旧符号 `decide_invest` 归零 + 新契约全族 12 符号 + 驱动器 `decide_shop_screen`）+ `refresh_used`/`encounter_refreshed_in_visit` + `prep_obs_frame` + **`PickBoxCard`（更早批次已删符号的历史残留普查，18 号篇/25 号篇同类）** + 计数词按**正本实际措辞形态**收录（`决策入口 11`、`契约成员 13`、`pick 族 9`、`九接口`、`抽象 12`）；
 - **范围（否定式界定）**：仓库全部正本与代码（含应用根 README 正本区所列各篇、`docs/game/currency_war/` 游戏知识正本与 `docs/game/screens/` 画面知识篇，排除 `sources/`（原文冻结档）、`changes/`（历史过程件）与 `proofs/`（命题正本：历史证明文本不随实现批次修订，故排除——非「零命中」依据））；代码侧 = **两仓**（`src/` 树 + `sr-od-test/` 独立仓，execstate 同位判据先例）；
-- **新增面入册核对单**（普查旧词清零之外的另一腿——「新增内容该进册而未进」grep 旧词查不出）：8 新域键入 fields.md §3.7.1 与 game_state/README §3.3 域清单、新字段/新槽规格行、路由清点与属屏映射、兼容裁定句——逐条对预登记行核销。
+- **新增面入册核对单**（普查旧词清零之外的另一分支——「新增内容该进册而未进」grep 旧词查不出）：8 新域键入 fields.md §3.7.1 与 game_state/README §3.3 域清单、新字段/新槽规格行、路由清点与属屏映射、兼容裁定句——逐条对预登记行核销。
 逐条归类（已更新 / 待更新 / 不辖）产出对账表，待更新清零 + 核对单全核销才算完。实机 smoke 决策迹锚对照结论回填进度树后收口迭代。
 **设计依据**：本文件「正本更新清单」节。
 **文件面**：清单预登记正本 + 普查对账表新命中的正本文档。

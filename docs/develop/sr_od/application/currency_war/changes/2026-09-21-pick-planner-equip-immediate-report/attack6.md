@@ -23,7 +23,7 @@
 - **位置**：design §2.2 末行声明叙述面含「`OverlayPickExecEnv.leg_type/norm_item` 注释……各自屏阶段随批机械改写」；landing 3.1 文件面 = `cw_overlay_pick_action.py`（**仅 CwActionPickEquipOp 体**）；landing 3.2 文件面 = 同文件（**CwActionPickPlannerOp 体 + 模块头例外自述段**）。
 - **问题**：env dataclass 的 docstring 是**共享单一处**，既不属任一 op 类体也不属模块头；两个阶段的文件面限定词（「仅……体」）都排除了它。单相化后 :125-:126「随发射透传给上报函数**登记意图遥测**」成过期表述（上报函数此后一口写完整效果）。兜底措辞 grep（「两相/落地相/发射相」）**不命中**「登记意图遥测」——该面四条路（3.1 范围/3.2 范围/design 行的「各自屏」归属/兜底 grep）全部罩不住。试读问题：服从「仅……体」约束的 worker 谁都不能改它。
 - **权威源证据**：`cw_overlay_pick_action.py` :124-:127 实文；landing.md :10/:22 文件面限定词；design.md :64 叙述面行。
-- **建议修法**：landing 3.2 文件面括注扩为「CwActionPickPlannerOp 体 + 模块头例外自述段 + `OverlayPickExecEnv` 类 docstring 腿型载荷段」（归 3.2，与 planner 载荷语义同源）。
+- **建议修法**：landing 3.2 文件面括注扩为「CwActionPickPlannerOp 体 + 模块头例外自述段 + `OverlayPickExecEnv` 类 docstring 分支类型载荷段」（归 3.2，与 planner 载荷语义同源）。
 - **严重级**：建议（注释层、默认不改亦无行为危害，但归属歧义违反「凭现稿能否开工」卡点）。
 
 ### S3 [建议] 正本更新清单漏 `op-layer.md` :36 出口①枚举句——迁移后枚举不全且 grep 罩不住
@@ -59,7 +59,7 @@
 | sig actor 换名申报 | ✓ 现役落地相 actor='CwScreenEquipPick'/'CwScreenYinLang'（两画面 op :135-:136/:217-:218），单相化后动作 op 类名（type(self).__name__ 先例在码）；§2.0 一句申报在册 |
 | 测试面（attack5 新增） | ✓ unified_action_4 :322 名/:333 桩/:339 断言、two_node_family :346（round_wait 断言，随派发即终结须同改）/:348、gain_chain import :41 + 恰 10 处 evidence 调用、t60 EQUIP_EVIDENCE 面（:40 import + :127/:218）——行号逐个相符；t60 :156 emission-intent-only 测试属 3.1「受影响测试」面（「含」非穷举，可开工） |
 | grep 三段式口径一致性 | ✓ design §3 验收锚 3 与 landing 兜底同口径（src + sr-od-test + docs 正本；豁免 changes/） |
-| 正本清单条目节/行真实性 | ✓ logic-updates/pick-planner.md :3（两相上报+changes 引用）/​:11/:13/:14（evidence=EVIDENCE_OVERLAY_CLOSED+重入裁决表述）/​:17（weaken 行——与现役代码不一致主张成立）/​:23/:33/:37（「单一定义在 pick_invest」过期句）/​:41 逐行实在且完备（:15-:16 腿语义子行随 §2 节头重构覆盖）；planner.md §2(:12)/§4(:24,:29-:39)/§5(:48-:49)/§6(:55)/开放设计注(:76) 五处实在；equip_pick.md :24/:26/:52 在；action_exec :24「策划/补给/装备」句 + supply 复核在；screens/README §5.5(:109)/§6(:138) 在；op-layer :43/:33/:96/§3(:88) 在——例外 = S3（:36 漏） |
+| 正本清单条目节/行真实性 | ✓ logic-updates/pick-planner.md :3（两相上报+changes 引用）/​:11/:13/:14（evidence=EVIDENCE_OVERLAY_CLOSED+重入裁决表述）/​:17（weaken 行——与现役代码不一致主张成立）/​:23/:33/:37（「单一定义在 pick_invest」过期句）/​:41 逐行实在且完备（:15-:16 分支语义子行随 §2 节头重构覆盖）；planner.md §2(:12)/§4(:24,:29-:39)/§5(:48-:49)/§6(:55)/开放设计注(:76) 五处实在；equip_pick.md :24/:26/:52 在；action_exec :24「策划/补给/装备」句 + supply 复核在；screens/README §5.5(:109)/§6(:138) 在；op-layer :43/:33/:96/§3(:88) 在——例外 = S3（:36 漏） |
 | 例外 = S1（design↔landing 措辞）/S2（env docstring 归属）/S4（action_ops §1 :22） | 见上 |
 | 消费点迁移总表完备性（全仓 grep 复核） | ✓ `EVIDENCE_OVERLAY_CLOSED` src 恰 4 文件（两定义两消费）+ 测试 3 文件（t60/phase32/gain_chain）——与总表一致无遗漏无过度；`_confirm_pending`/`_pending_leg`/`_pick_param` yinlang 本文件 + planner op :408（partner :355/fortune/deploy_not_full/wish_trial/bookcard/expert_invite/obs_arch 测试同名属彼屏，表已限定「（yinlang）」+「CwActionPickPlannerOp 体内置位」）；`_pick_pending`/`_pending_pick` equip_pick 本文件 + two_node_family :348（bookcard/expert_invite 同名异类型属彼屏） |
 | 规范遵循（action_ops §1 三裁定 + op-layer §1.4） | ✓ 增补 2（点完即写/禁验证禁判重——§2.0/§2.3 显式承接且 upgrade 重复应用修正论据与 `_apply_upgrade_transform` 二次上报 count=0→`planner_upgrade_source_missing` 实码一致）；增补 3（动作 op 零新增读屏——confirm 定位走 area_center/emit_overlay_confirm 机械确认，归一组装留画面 op）；原裁定禁验证 ✓；op-layer §1.4 形态契合 ✓ |
@@ -74,4 +74,4 @@
 
 ## ⑤ 零发现面声明
 
-以下经本轮全新攻击后**零实质发现**：方案层单相化契约本体与统一模板贴合；两屏拆两阶段与串行依赖；equip 归一升级主张（泛用件/银狼 10 件锚恒 ''/fail-closed 同构）；planner 归一不升级的定性（腿型分类器副产品）；upgrade 三态+档行逐位保持；joy rider 双仓事实与收口序；增补 2 第 4 条不设防取舍；planner 载荷 env kwargs 不迁 param；零写族屏不迁移边界（op-layer §2.2 合法形态）；验收锚 1/2 行为级可判性与判据可满足性；`_confirm_pending` 等符号的同名异屏无过度退役；边界完整性（§1.3 之外无漏 declared 面）。
+以下经本轮全新攻击后**零实质发现**：方案层单相化契约本体与统一模板贴合；两屏拆两阶段与串行依赖；equip 归一升级主张（泛用件/银狼 10 件锚恒 ''/fail-closed 同构）；planner 归一不升级的定性（分支类型分类器副产品）；upgrade 三态+档行逐位保持；joy rider 双仓事实与收口序；增补 2 第 4 条不设防取舍；planner 载荷 env kwargs 不迁 param；零写族屏不迁移边界（op-layer §2.2 合法形态）；验收锚 1/2 行为级可判性与判据可满足性；`_confirm_pending` 等符号的同名异屏无过度退役；边界完整性（§1.3 之外无漏 declared 面）。

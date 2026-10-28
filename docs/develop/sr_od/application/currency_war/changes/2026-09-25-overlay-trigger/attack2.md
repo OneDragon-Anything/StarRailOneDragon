@@ -51,7 +51,7 @@
 ### C2 「bot 链:deploy_move(三形态)」——换排形态在现役 deploy_move 上不可达
 
 - **攻击对象**:details/trigger-inventory.md §1.1/§1.2「到达路径」「bot 链」。
-- **主张原文**:「deploy 三形态 = 空槽上场/替换(一增一减…)/换排(成员集合不变)」+「**bot 链:deploy_move(三形态)**/sell_deployed/wear_equip+工具腿」。
+- **主张原文**:「deploy 三形态 = 空槽上场/替换(一增一减…)/换排(成员集合不变)」+「**bot 链:deploy_move(三形态)**/sell_deployed/wear_equip+工具分支」。
 - **攻击角度**:现役 DeployMove 载荷源恒为备战槽(`param.bench_idx`,docstring「bench 源槽摘槽」),只覆盖 空槽放置/目标有人=交换 两形态;换排(场上→场上、成员集合不变)没有任何现役动作路径——`SwapDeploy` 是 bench↔deployed 换位,也不是换排。§1.2 对「显式拖下场」申报了「游戏支持、bot 现役无动作」,却未对换排作同样申报,反而把它归进 deploy_move 的bot链——对代码现状的叙述失真。触发判据本身(换排不弹)不受影响,但到达路径一节的「bot 链」不可按图施工。
 - **证据**:deploy_move.py:57-70(docstring「bench 源槽摘槽 + 载荷 (to_row, to_slot) 直落…目标槽空 = 放置;有人 = 交换」)/:84(`from_idx = int(param.bench_idx)`);swap_deploy.py:1/:29-30(「bench ↔ deployed 换位:原槽对调」);cw_action_report/ 目录无场上→场上动作。
 
@@ -122,7 +122,7 @@
 
 ### L2 cw_buy_card_action.py:177 不是 mutate 调用点
 
-- **攻击对象**:details/deployed-merge.md「TrackedBooks 退役」表动作随动同步腿行。
+- **攻击对象**:details/deployed-merge.md「TrackedBooks 退役」表动作随动同步分支行。
 - **主张原文**:「buy 链 `mutate_bench_deployed`(**cw_buy_card_action.py:161/177**)」。
 - **攻击角度**::161 是 mutate 调用(✓);:177 是 `_books.deployed` 作为 `merge_buy_k` 的实参(**读** tracked 表),不是 mutate 调用——该文件中 mutate 调用仅 :161 一处。把读点并列写成调用点,触面性质标错(前者随 3.2 的判据面处置,后者属主域派生化)。
 - **证据**:cw_buy_card_action.py:160-162(mutate 调用)/:174-178(`merge_buy_k(..., _books.deployed, ...)` 读)。
@@ -152,18 +152,18 @@
 3. **sim 三建模错误全部属实**:OVERLAY_KINDS 含 'fate' 且模块注释明示 fate=2F-5F 圣杯任务链(cw_sim_overlay.py:23/:41);planner 判据扫备战席(`_silver_wolf_max_star`「备战席+前台+后台」,cw_sim_backend.py:1502-1506);`planner_fired` 全局一次性(:1492)。
 4. **sim 退役符号全部存在**:OverlayQueue/megastar_fired_tier/planner_fired/planner_seen_star/on_fact_event/_evaluate_megastar/_evaluate_planner/_board_truth/_refresh_board/_on_overlay_picked(cw_sim_backend.py:741-748/:939/:1141/:1472/:1487/:1519/:1532;cw_sim_overlay.py:74)。
 5. **CW_DISPATCH_SCREENS 恰 28 项**(cw_loop.py:546-557,逐条点数);fortune 分发行 :548、身份问询区 :1476-1479 均精确。
-6. **lv999_cost_tier 字段行 cw_game_state.py:2380 精确**;写端 = deploy_move 升费腿(:134)+ pick_planner(:278)属实。
+6. **lv999_cost_tier 字段行 cw_game_state.py:2380 精确**;写端 = deploy_move 升费分支(:134)+ pick_planner(:278)属实。
 7. **buy_card.py:161 detect_merge_upgrade + pre_bench/pre_dep 快照**(:77/:79/:161)属实。
 8. **merge_step_once 载体规则**「take 含场上 → 场上位置;全备战 → 最左」在 cw_gain_chain.py:164 逐字相符。
 9. **数据注册表核对相符**:cw_factions.py:67 命运圣杯 tiers=(2,3,4,5);盛会之星档位 (2,3,4,5,6);黑天鹅 independent=命运卜者、姬子·启行/三月七 = 列车同行(cw_chars.py:114/:136/:169)。
 10. **装备注册表核对相符**:星徽 22 枚区间 :110-131(段头自计 22);:119 命运圣杯星徽效果原文逐字;卡带两分 :226-229(欢愉条件双计/星核猎手无条件 +1);cw_bond_equips.py:37-39 两分 regex 在册;「红钻+幸运星合成盛会之星星徽」与配方表 :116 相符。
 11. **星徽装备链路表逐行相符**:wear_equip `_locate_unit` 全域定位 bench→front→back(wear_equip.py:71-102);穿着即合成 worn 两两配方(:49-50);`_write_row_equips_cleared`(tool_use.py:149,冶金炉拖角色 :328/扳手族 :439 消费);冶金炉拖角色 = 全拆+白名单采样替换(:261-262);卖出回收 sold.equips 全量回库存 sell_deployed.py:71-72 / sell_bench.py:114-115 行号精确。
-12. **tracked 侧符号全部存在**:TrackedBooks(cw_game_state.py:1922)、tracked_books(:2275;bench 定长 9/deployed 定长 10/0-3 前 4-9 后,:2265-2268)、_track_* 三腿(prep_actions.py:745/:763/:784)、mutate_bench_deployed(cw_buy_card_action.py:161;cw_vocab.py:1054)、换算函数(cw_exec_state.py:243/:255/:266)、tracked_account_observed(:2097)/tracked_unobserved(:1907)。
+12. **tracked 侧符号全部存在**:TrackedBooks(cw_game_state.py:1922)、tracked_books(:2275;bench 定长 9/deployed 定长 10/0-3 前 4-9 后,:2265-2268)、_track_* 三条分支(prep_actions.py:745/:763/:784)、mutate_bench_deployed(cw_buy_card_action.py:161;cw_vocab.py:1054)、换算函数(cw_exec_state.py:243/:255/:266)、tracked_account_observed(:2097)/tracked_unobserved(:1907)。
 13. **tracked 读口行号精确**:cw_observation.py:2434、cw_screen_prep.py:547-548。
 14. **容器侧符号全部存在且性质相符**:front_row/back_row 紧凑列表(:2079-2080)、seed_opening_state(:1818)、_write_logic_frame(:2932)、_resync_board_delta(:2741)、_absorb_slot_reorder(:2667,键不含槽位含装备 :2675)、mutate_bench_deployed_local(:1574)、detect_merge_upgrade(:1385)、deployed_rows_of/front_count_of/back_count_of/deployed_count_of/max_units_of(:3724-3799)、_row_unit_tags→cw_bond_equips.unit_bond_tags(:852-873);deploy_move 对 front/back 两行双写(:129-130)与「跨行双写中间态」叙述相符。
 15. **同族先例引文逐字相符**:ShopSlot docscript「紧凑下标≠物理槽位的历史病灶类(同族)在本模型下结构性消失」(cw_game_state.py:573-574);ShopPayload.cards 定长 5 三态(:568/:586);「买牌点击落空槽框」真事故记载(:560-562);BenchView/capity 先例(deploy_move.py:123-126 消费)。
 16. **「定长 10 装不下后 7-10 槽」有据**:后排可扩至 7-10 槽(docs/game/gameplay/currency_war.md:72/:88)> tracked 后排 6 槽(DEPLOYED_BACK_CAPACITY=6,cw_exec_state.py:173)。
-17. **S4 链路相符**:settle_confirm 腿在册(NODE_ADVANCE_TRIGGERS,cw_game_state.py:3198);pick_encounter 声明 trigger='battle_resolve'/next_screen=货币战争-结算(pick_encounter.py:75-76;SCREEN_SETTLE=cw_game_state.py:294);正本锚 flow/action_ops.md §4.8 声明列存在。
+17. **S4 链路相符**:settle_confirm 分支在册(NODE_ADVANCE_TRIGGERS,cw_game_state.py:3198);pick_encounter 声明 trigger='battle_resolve'/next_screen=货币战争-结算(pick_encounter.py:75-76;SCREEN_SETTLE=cw_game_state.py:294);正本锚 flow/action_ops.md §4.8 声明列存在。
 18. **S6 现役声明核对相符**:open_box trigger='open_box'/next_screen=备战-武装箱选择(zero_writes.py:33-34);open_bookcard 纯转移 next_screen=备战-专家邀请函(open_bookcard.py:30-31,trigger='');ADVANCE_TRIGGER_KINDS 含 'open_box' 且 advance 有专属分支(cw_sim_backend.py:690/:980)——「trigger 保留」主张有据;「受影响声明两条」与 open_tome 无 WorldDecl 相洽(open_tome.py 无 decl)。
 19. **OpenTome 双击 bug 在册属实**:cw_open_tome_action.py:4/:31/:46(「点两次」);四处正本勘误记载属实(screens/README.md:100「点槽一次开启…CwScreenBookcard」、action-logic-state.md:228「单次点击即弹」、action_ops.md §4.2、logic-updates/open-tome.md §9 锚均在)。
 20. **阿哈大悦效果注记与注册表原文相符**(cw_invest_data.py:166);aha 锚 = 备战.标识-简易装备 与 CwScreenAhaEquipPick 入口(:46-47)相符。

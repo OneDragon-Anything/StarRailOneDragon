@@ -12,7 +12,7 @@
 
 | 发现 | 收编位置 | 判定 |
 |---|---|---|
-| B1 tracked_books/mutate 链/sim 直调跨阶段断裂 | design §2.3（定稿形状+读写端闭合集入 P1）、§2.4（mutate_bench_deployed 重写保留+实机消费点名）、landing P1 范围（sim 两处 bench_place 直调同批改：cw_sim_nodes/cw_sim_opening） | 闭合。对码复核：mutate_bench_deployed 实机消费确为 cw_buy_card_action.py:173 + buy_card.py 升星腿（经 mutate_bench_deployed_local，cw_game_state.py:1845-1851），§2.4 点名无误 |
+| B1 tracked_books/mutate 链/sim 直调跨阶段断裂 | design §2.3（定稿形状+读写端闭合集入 P1）、§2.4（mutate_bench_deployed 重写保留+实机消费点名）、landing P1 范围（sim 两处 bench_place 直调同批改：cw_sim_nodes/cw_sim_opening） | 闭合。对码复核：mutate_bench_deployed 实机消费确为 cw_buy_card_action.py:173 + buy_card.py 升星分支（经 mutate_bench_deployed_local，cw_game_state.py:1845-1851），§2.4 点名无误 |
 | M1 装备继承载体测试 | design §3 前置测试第 1 条 + landing P0① | 闭合 |
 | M2 部署恒 held 测试 | design §3 前置测试第 2 条 + landing P0② | 闭合（测试位 P0 早于 kind 口改造 P2/P3） |
 | M3 开拓者归一归属 | design §3 第 5 条（申报既有不对称缺陷）+ 前置测试第 3 条 + landing P3 归一口统一；§6 风险行 | 闭合（_apply_row_to_char 入 §2.4 删除族，对码 cw_exec_state.py:401 属实） |
@@ -61,11 +61,11 @@ attack.md 复审残留 R1-R5：R1 ✅（修复落点 P1 申报）、R2 ✅（§2
 **证据**：
 - sim 应用部署动作的宿主 = `sim/cw_sim_actions.py:112-113`（apply_player_action 直调 `report_action_deploy_move_param`），非 landing.md:34 所写的 `sim/cw_sim_engine.py`（该文件是引擎类 CwSimEngine，cw_sim_engine.py:305）。
 - 容器写侧的「落位决定」现宿主 = `kernel/cw_action_report/deploy_move.py:95-99`：`deployed_place`（首空槽 + 排满 fallback 另一排，**完全忽略槽位意图**）——这正是 §2.2「框架零落位决定」要消灭的写路径落位，也是执行器「发出即记账」的落容器通道（cw_deploy_move_action.py:59-61 docstring 自证）。该文件在 landing 仅出现于 **P3** 文件面（且只为「归一口」），P2 文件面没有它。
-- deployed_place 的全部消费点：deploy_move.py:97、cw_vocab.py:1270（mutate 部署腿，P1 重写 ✓）、prep_actions.py:800（P1 闭合集 ✓）——只剩 deploy_move.py 无阶段归属做 (to_row,to_slot) 语义改写。
+- deployed_place 的全部消费点：deploy_move.py:97、cw_vocab.py:1270（mutate 部署分支，P1 重写 ✓）、prep_actions.py:800（P1 闭合集 ✓）——只剩 deploy_move.py 无阶段归属做 (to_row,to_slot) 语义改写。
 
 **实现者视角杀伤**：照 P2 文件面执行（执行器 + sim engine 段）而不动 deploy_move.py 上报函数，则执行器拖 (to_row,to_slot)、容器/sim 记账仍按首空+fallback 落位——两侧分叉，tracked/board 与实际画面错位，恰是「隐藏行为变化」且 L1 不显影（两套首空规则在多数局面同结果）。P2 判据「sim 对目标槽有人按交换语义应用（测试）」倒逼实现者找到真宿主，但文件面指错方向 = 实现者要么越阶段改文件、要么按错文件面交出不完整实现。
 
-**修复方向**：P2 文件面补 `kernel/cw_action_report/deploy_move.py`（落位腿改 (to_row,to_slot) 直落 + 目标槽有人=交换）与 `sim/cw_sim_actions.py`（或改写为「sim 应用 = 上报函数，见 deploy_move.py」），替换误指的 cw_sim_engine.py。
+**修复方向**：P2 文件面补 `kernel/cw_action_report/deploy_move.py`（落位分支改 (to_row,to_slot) 直落 + 目标槽有人=交换）与 `sim/cw_sim_actions.py`（或改写为「sim 应用 = 上报函数，见 deploy_move.py」），替换误指的 cw_sim_engine.py。
 
 ### [major] N3. P1 tracked 翻形与 P2 删首空位现读之间，执行器 `empty_deploy_slots(tracked)` 的过渡形态未设计——getattr 柔取下静默错排，不红不炸
 

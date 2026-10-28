@@ -51,7 +51,7 @@
 | spheres | 呈现分支：节点窗起点备战档呈现（`_present_node_screen`，evidence `ores:p<位面>r<轮>`）——奖励节点面板矿（`reward_ore_points`）+ 位面开局声明矿**同批合并**一次写（坐标 = 面板序续接，`_plane_start_declared_points`；色'金'占位见 §五）；子态 `PREP_SUB_ORE`（普通备战 pending 有当前位面条目时声明矿点单独呈现，子态同）；spheres 写一律过挂接入口 `report_spheres_observed`（非矿备战空读照写 count=0 亦过入口，清理残留矿身份） | 采晶矿动作输入 |
 | ore_rewards | 世界分支：挂接入口生成写（`sim:ores` logic_sig；声明金先占席 + 其余逐矿采样，`cw_ore_reward.generate_ore_rewards`——sim 采样即世界真值）；动作分支：点击兑现摘除（`ore_reward_detach`）同实机 | 策略禁读（随机态域）；点击兑现读（collect_ore 上报） |
 | ore_declared_pending / ore_declared_done | 世界分支：节点窗起点声明入队电平检查（`check_ore_declared_level`，`sim:env`，与 `discharge_due_item_grants` 同组同窗）+ 挂接入口生成消费（pending 移除 + done 追加）+ 位面过渡过期清理（evidence `ore_declared_expired#p<old>`） | 入队/消费幂等守卫（pending+done 双查，跨环单发）；出队供生成 |
-| env_grants_done | 世界分支：环境条件发放触发函数族发放刻追加——常规轮首收入应用（`apply_round_start_income` 函数体内，`check_env_interest_grants`，record 先于 check，幂等住节点窗口守卫）+ 扑满结算腿落账后（同上，息按窗口开快照基数）+ 结算分支 streak observe 后（`check_env_streak_grants`，接线点 = 连胜真值已落账）+ 节点窗 boss 分支（`check_env_boss_grants`，窗口幂等守卫内，流键 `M21/env-boss`）；sim 触发统一 `logic_sig('sim:env')`（`check_env_refresh_grants` 经刷新上报函数尾部接线，非 sim 世界分支；`check_env_merge_grants` 事件携带事实零 done 写） | 发放幂等守卫（已发不重发）；恢复局快照含 done 不重发 |
+| env_grants_done | 世界分支：环境条件发放触发函数族发放刻追加——常规轮首收入应用（`apply_round_start_income` 函数体内，`check_env_interest_grants`，record 先于 check，幂等住节点窗口守卫）+ 扑满结算分支落账后（同上，息按窗口开快照基数）+ 结算分支 streak observe 后（`check_env_streak_grants`，接线点 = 连胜真值已落账）+ 节点窗 boss 分支（`check_env_boss_grants`，窗口幂等守卫内，流键 `M21/env-boss`）；sim 触发统一 `logic_sig('sim:env')`（`check_env_refresh_grants` 经刷新上报函数尾部接线，非 sim 世界分支；`check_env_merge_grants` 事件携带事实零 done 写） | 发放幂等守卫（已发不重发）；恢复局快照含 done 不重发 |
 | encounter / supply / invest_env / invest_strategy / box 各 opts 槽 | 呈现分支：生成器回读呈现写点（后端节点事件件供给候选）经同名 report 落容器 | pick 族决策入口容器零参读 |
 | plane_bosses / enemy_affixes / enemy_difficulty / game_mode / selected_difficulty | 世界分支：reset 采样（boss 名单/词缀）与局级输入申报（`opening` 事件）；呈现分支：简报档生成器覆写（同值幂等） | 敌人侧上下文消费 |
 | 流程面域（chosen_* / event_overlay / substate 等；prev_screen / current_screen = `_announce_screen` 容器广播（值级豁免结算/大厅屏；obs_sig mode=synthesized、evidence `screen:<值>`——兑现本行原「同实机」申报；`update_screen_after_operation` 为框架路由簿记非容器写入，两不相涉） | 动作分支/呈现分支同实机（pick 动作上报写 chosen；生成器产 `PrepObservation` 控制信号） | 决策面零参读；prev/current 供复盘渲染切章 |
@@ -85,7 +85,7 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
 | 域/面 | sim 现状 | 判读影响 |
 |---|---|---|
 | level_up_cost | 不写（实机 OCR 真值域）；花费载体 = 动作 cost（策略侧 xp_click_cost 真值优先），sim 容器无真值 → 恒落兜底常量 | 花费敏感结论失真申报在案 |
-| 节点屏刷新剩余呈现 | 投资两屏已接入呈现与世界腿(2026-10-19 用户裁定「sim 与实机一致提供刷新次数」批):环境屏整组 1 次(呈现写点落 `env_refresh_left`,刷新声明 `refresh_invest_env` 整组重掷);策略屏逐卡基准 1 + `extra_pick_refreshes` 环境增量(落 `strategy_refresh_left`,刷新声明 `refresh_invest_strategy` 按槽重掷,槽位品质承诺跨刷新保持;联席额外槽保守不呈现)。其余节点屏仍诚实缺位(遭遇刷新剩余等生成器产缺位值,report 按「缺不写」防御语义跳写;补给刷新剩余由呈现写点给初值、刷新动作分支同实机递减) | 刷新类决策域以代码当期实现为准逐键判读 |
+| 节点屏刷新剩余呈现 | 投资两屏已接入呈现与世界分支(2026-10-19 用户裁定「sim 与实机一致提供刷新次数」批):环境屏整组 1 次(呈现写点落 `env_refresh_left`,刷新声明 `refresh_invest_env` 整组重掷);策略屏逐卡基准 1 + `extra_pick_refreshes` 环境增量(落 `strategy_refresh_left`,刷新声明 `refresh_invest_strategy` 按槽重掷,槽位品质承诺跨刷新保持;联席额外槽保守不呈现)。其余节点屏仍诚实缺位(遭遇刷新剩余等生成器产缺位值,report 按「缺不写」防御语义跳写;补给刷新剩余由呈现写点给初值、刷新动作分支同实机递减) | 刷新类决策域以代码当期实现为准逐键判读 |
 | 位面开局声明矿呈现面 | 色档（现按'金'占位）与「晶矿自动开启与否」均未实采，sim 按「呈现可点」建模（点击兑现入账）；面板矿内容分布同属未校准面（披露单一源 = kernel `cw_ore_reward.ORE_ASSUMPTION_KEYS`，本表不双源） | 披露键 = `ORE_PLANE_START_PENDING`，实机首遇校；若实机为自动开启（矿永不出现），声明条目留至位面过渡被过期清理即终态，机制面零污染 |
 | 战斗随机输出面 / 扣血分量 / P3 / overlay 余族 / 词缀张数分布等 | 未建模申报清单单一源 = [sim-design.md](sim-design.md) §8.2（本表不复写） | 逐键披露挡外推 |
 

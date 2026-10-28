@@ -60,7 +60,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 | 节点经验 | `cw_sim_backend.apply_node_xp` + `NODE_XP_BY_TYPE` 表（依据 docs/game/currency_war/research/xp-rules.md） |
 | 商店发牌 | kernel `cw_shop_deal.sample_shop_deal`（单一源）；后端 `deal_shop` 只做节点切换自动全刷的世界写 |
 | 概率档与轮岗 | `cw_sim_backend.effective_deal_probs` + kernel `cw_battle_calib.roll_rotation_per_stage` |
-| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`）。品质改写型环境（时代×3/头彩/尾彩/银·金·彩）命中取卡按 `ENV_POOL_REWRITE` 按槽直取目标品质池抽样（判据 = `rewrite_slot_qualities_for_pick` 槽位向量形,2026-10-19 用户裁定批自单品质形泛化:全改写型/settled 定谳部分型 = 三槽同向量,银·金·彩 = 卡面三槽品质按位〔用户裁定卡面即真值〕;目标池吃光回退全池）。逐卡刷新呈现与世界腿 = 固定日程槽基准每卡 1 次 + `extra_pick_refreshes` 环境增量,刷新动作经上报声明 `refresh_invest_strategy`/`refresh_invest_env` 触发重掷(槽位品质承诺跨刷新保持;联席额外槽不呈现刷新——desc 未写明,保守缺位;非改写环境的刷新重掷品质 = 默认分布掷点,desc 无刷新品质语义,建模选择申报,实机对账纠偏面) |
+| offer 采样 | `cw_sim_backend.sample_strategy_offer` / `sample_env_offer`（投资策略/环境三选一的定期投放,代码称 offer:每局固定轮次各一次;「联席决策」是投资环境之一,会在 2-6 节点追加一次投放;键形 = `offer_slots`）。品质改写型环境（时代×3/头彩/尾彩/银·金·彩）命中取卡按 `ENV_POOL_REWRITE` 按槽直取目标品质池抽样（判据 = `rewrite_slot_qualities_for_pick` 槽位向量形,2026-10-19 用户裁定批自单品质形泛化:全改写型/settled 定谳部分型 = 三槽同向量,银·金·彩 = 卡面三槽品质按位〔用户裁定卡面即真值〕;目标池吃光回退全池）。逐卡刷新呈现与世界分支 = 固定日程槽基准每卡 1 次 + `extra_pick_refreshes` 环境增量,刷新动作经上报声明 `refresh_invest_strategy`/`refresh_invest_env` 触发重掷(槽位品质承诺跨刷新保持;联席额外槽不呈现刷新——desc 未写明,保守缺位;非改写环境的刷新重掷品质 = 默认分布掷点,desc 无刷新品质语义,建模选择申报,实机对账纠偏面) |
 | 战斗结算 | `sim/cw_sim_battle.py::settle_battle`（随机输出面，§8.2）+ `apply_hp_outcome`（0hp 保底/局终判定） |
 | 敌人侧 | `sim/cw_sim_enemy.py`（难度基线/boss 名单 resolve） |
 | 开局种子 | `sim/cw_sim_opening.py::apply_opening` |
@@ -109,7 +109,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 窗口前段（收入/环境金/发牌）对同一节点只执行一次（幂等守卫键 = 节点序位 `(位面, 轮)` 元组，`SimBackend._window_begun_pos`）——位面过渡点空白等点击源可能重放收尾。窗口入口 `_enter_node_window(pos: NodePos)` 按序位键取类型（`node_sequence_of(pos[0], 场字段现值)[pos[1]-1]`）与 id_mark 确认；节点经验在节点推进时入账（被离开节点的类型）；连胜转移在战斗结算后。位面过渡 = 全继承无重置（容器直接续跑下一位面序列，`kernel/cw_node_schedule.py::node_sequence_of` 地面真值表覆盖位面 1+2+3，位面 3 = 2026-10-15 用户裁定入码；位面 3 末节点之后再推进 = 胜利终局——后继原语无后继，披露键 `DISCLOSURE_RUN_COMPLETE`）。
 
-**局终声明消费分支**：kernel 终局出口为事件式（`report_node_advance` 遇 `sequence_next` 无后继 → 零写入零效果 tick，返回 `applied=True, reason='match_end'` + `WorldDecl(next_screen='')`）；`advance()` 对 `trigger='node_advance' ∧ next_screen=''` 走局终分支 = XP 入账（被离开节点的类型）+ `DISCLOSURE_RUN_COMPLETE` 胜局披露（键值 `survived_p3_boss`；hp 归零败局走结算死亡腿不经此分支 = 胜负判别单一源在披露集）+ game over 收尾，对账随后走 `done ∧ decl=''` 合格分支。kernel 声明权威、sim 对账分工不变；同 run 多条 `match_end` = 同一终局事件重复发出，`advance()` done 早退吸收。历史口径注：位面 3 入码前本分支披露 `DISCLOSURE_P3_UNOBSERVED`（键值 `enter_p3_game_over_u19`，p3_unobserved），该键已随位面 3 真值入码退役不再发射，常量保留作历史遥测语料判读身份。
+**局终声明消费分支**：kernel 终局出口为事件式（`report_node_advance` 遇 `sequence_next` 无后继 → 零写入零效果 tick，返回 `applied=True, reason='match_end'` + `WorldDecl(next_screen='')`）；`advance()` 对 `trigger='node_advance' ∧ next_screen=''` 走局终分支 = XP 入账（被离开节点的类型）+ `DISCLOSURE_RUN_COMPLETE` 胜局披露（键值 `survived_p3_boss`；hp 归零败局走结算死亡分支不经此分支 = 胜负判别单一源在披露集）+ game over 收尾，对账随后走 `done ∧ decl=''` 合格分支。kernel 声明权威、sim 对账分工不变；同 run 多条 `match_end` = 同一终局事件重复发出，`advance()` done 早退吸收。历史口径注：位面 3 入码前本分支披露 `DISCLOSURE_P3_UNOBSERVED`（键值 `enter_p3_game_over_u19`，p3_unobserved），该键已随位面 3 真值入码退役不再发射，常量保留作历史遥测语料判读身份。
 
 **节点序列权威与场字段分发**：序列真值的单一源 = `cw_node_schedule`（默认地面真值表 + 环境修饰层）。改节点序列的投资环境（统一注册表 `ENV_NODE_REWRITE_RULES`：插入型「人身意外险」boss 前插补给 / 替换型「战争边疆」位面 3 战斗→遭遇）经 `resolve_plane_node_seqs` 在环境注册时一次性解出，由获得链尾段写进 GameState 场字段 `node_seq_by_plane`（逻辑态；字段契约与回退语义见 [fields.md](../game_state/fields.md) §3.2.1）。运行时 sim 与 kernel 同源读该字段：局终判定/进窗/窗口收尾/offer 门/节点屏呈现各消费点传场字段现值（None = 未注册回退默认表）；节点身份一律 `(位面, 轮)` 序位键直用，kind 查询经 `node_sequence_of` 直查（缺键 = 损坏半态/越界位面，异常契约统一 `PlaneSeqMissingError`）。**停用注**：sim 侧编号反解薄委托 `_ordinal_to_node`/`_node_ordinal` 已随全局节点编号表示停用删除（删壳即消解，无独立第二实现）。任一侧漏读字段 = 修饰局位面 1 轮 9 推进时 `next_screen` 声明与呈现屏确定性漂移（`DECL_SCREEN_DRIFT` 保留证据）。
 
@@ -163,7 +163,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 - `pending_loss`：败态待补偿登记（`kernel/cw_economy.py::LostNodeRef`）。写端 = 战斗结算失败分支；消费 = 轮首收入败局补偿支（口径见 kernel `cw_economy`），非 supply/reward 节点消费、败态跨轮保留至下一战斗轮。
 - `shop_locked`：整店锁。v1 恒 `False`（动作类型清单无锁通道，首版恒解锁 + 披露，字段先行占位；实机写端待锁图标观察补档）。
-- `diamond_count`：宝钻计数（UI 可见局内货币）。sim 写端 = 补给带钻选项落地写入（`_on_supply_picked` 按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 现值派生）；**现役失配申报**：sim 占位池的钻标挂基础件名、不命中名单 → 宝钻腿接线在位但不发放，激活归占位分布真实化批裁定；实机写端待补档。
+- `diamond_count`：宝钻计数（UI 可见局内货币）。sim 写端 = 补给带钻选项落地写入（`_on_supply_picked` 按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 现值派生）；**现役失配申报**：sim 占位池的钻标挂基础件名、不命中名单 → 宝钻发放分支接线在位但不发放，激活归占位分布真实化批裁定；实机写端待补档。
 
 ## 6. 双端消费契约
 
@@ -237,7 +237,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 | 面 | 现役口径 | 判读限制 |
 |---|---|---|
-| 战斗结算 | 随机输出面：胜负 = 均匀伯努利（`cw_sim_battle.SIM_WIN_PROB`），败局扣血 = 区间均匀采样（`SIM_HP_LOSS_MIN`/`SIM_HP_LOSS_MAX`，以实测单次败局总扣血样本域为基准）；**普通奖励关恒胜白拿**（奖励关不需要战力 = kernel `cw_reward_node.py` 裁定权威行,后端结算腿改写 won/hp_delta,输出面 `SIM_REWARD_FREE_WIN_FACE`,M13 随机流先采后改写保持消耗恒定）；扑满关不掉血豁免（掷点保留 = 奖励有无 + 连胜账胜+1/败清零） | 战力相关判读禁出；奖励关恒胜面=结构规则非随机档（扣血采样值只对真战斗类节点有效）；机制化重建需求件 = sim-power-model.md |
+| 战斗结算 | 随机输出面：胜负 = 均匀伯努利（`cw_sim_battle.SIM_WIN_PROB`），败局扣血 = 区间均匀采样（`SIM_HP_LOSS_MIN`/`SIM_HP_LOSS_MAX`，以实测单次败局总扣血样本域为基准）；**普通奖励关恒胜白拿**（奖励关不需要战力 = kernel `cw_reward_node.py` 裁定权威行,后端结算分支改写 won/hp_delta,输出面 `SIM_REWARD_FREE_WIN_FACE`,M13 随机流先采后改写保持消耗恒定）；扑满关不掉血豁免（掷点保留 = 奖励有无 + 连胜账胜+1/败清零） | 战力相关判读禁出；奖励关恒胜面=结构规则非随机档（扣血采样值只对真战斗类节点有效）；机制化重建需求件 = sim-power-model.md |
 | 扣血分量 | 基础伤害/进度伤害置 None 占位，随局披露不可分 | 分项判读禁出，候实机结算帧采集 |
 | 位面 3 | 默认序列已入真值表（2026-10-15 用户裁定，单局节点条全列 + 前缀结算实证；3-4 格结算标注冲突按裁决取节点条读法），推进超位面 3 = 胜利终局（披露键 `DISCLOSURE_RUN_COMPLETE`） | 序列证据等级低于位面 1/2，后续实机位面 3 局逐格复核（plane_schedule_observed.md「位面 3 观测现状」） |
 | offer 触发 | 罕见离群触发点（观测 ~1-2%，触发源未归因）不建模（披露键 `OFFER_OUTLIER_DISCLOSURE`） | 作披露面 |

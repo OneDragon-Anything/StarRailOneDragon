@@ -77,7 +77,7 @@
 | A3 | 同文件模块头「判别单一源消费面测试」条 | 在役时态申报「`is_boss_briefing_texts` 消费点集合迁移前后不变(cw_loop / cw_screen_battle_wait / cw_screen_boss_briefing;防转录顺手复制判别逻辑)」——测试体已随三审整删退役,删除在册于同文件尾(源码扫描形态,README 禁止清单;防线归 review 与代码规范) | 改退役申报现在时:「判别单一源消费面测试已随三审整删退役(见文件尾在册注;源码扫描测试禁令不重建),防线归 review 与代码规范」——与文件尾在册注同文,零新语义 |
 | B | `operations/cw_screen/cw_screen_boss_briefing.py::observe` docstring 标题行 | 「横幅门 + obs{on_screen} → 占位 report 接线。」(docstring 正文段已自述「boss 类型直定,目标 = 现 hist」,仅标题行残留) | 「横幅门 + obs{on_screen} → report 接线(boss 类型直定)。」——同款句式在 `cw_screen_wait_one_one.py`/`cw_screen_deploy_not_full.py`/`cw_screen_armory_box.py` 三屏为真占位表述,**禁顺手改** |
 
-依据:代码 = `kernel/cw_screen_report/boss_briefing.py` 全文(模块头/函数 docstring/写点)+ op 模块头「boss 类型直定写端,目标 = 现 hist」;规范 = screens/README.md §2(画面篇 as-built 永远与代码现状一致)+ AGENTS.md §9;「boss 节点序由结算确认上报推进」= kernel 屏文件 docstring「序号推进半部已随旧腿退役」+ 完备测试注记;附记 A3 依据 = 同测试文件尾在册注(「三审整删…源码扫描形态(README 禁止清单);防线归 review 与代码规范」)。
+依据:代码 = `kernel/cw_screen_report/boss_briefing.py` 全文(模块头/函数 docstring/写点)+ op 模块头「boss 类型直定写端,目标 = 现 hist」;规范 = screens/README.md §2(画面篇 as-built 永远与代码现状一致)+ AGENTS.md §9;「boss 节点序由结算确认上报推进」= kernel 屏文件 docstring「序号推进半部已随旧分支退役」+ 完备测试注记;附记 A3 依据 = 同测试文件尾在册注(「三审整删…源码扫描形态(README 禁止清单);防线归 review 与代码规范」)。
 
 **验证门(三树)**:
 

@@ -25,9 +25,9 @@
 
 ### 1.3 F-3(中)fields.md 三处未随即时单相批同步
 
-- 现状症状:`game_state/fields.md` ①§3.2.15 装备库存写端清单(L450-464)末句「补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)」与现役 `pick_supply.py` 装备腿(owned += 规范名即时写)直接矛盾;②§4「事件选择(10 屏)」段(L1070-1083)把补给列进「默认不记预期值」名单——该段只改写了遭遇行(「遭遇臂 = 动作侧发射即写」),补给效果腿未改,且段内「有显式到账登记的照登记」所引载体对补给已退役;③§3.2.5 备战席自称「写端(完整清单)」的逻辑写端列表无补给单位腿(`grant_bench_unit_cascade`)(报告 F-3)。
+- 现状症状:`game_state/fields.md` ①§3.2.15 装备库存写端清单(L450-464)末句「补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)」与现役 `pick_supply.py` 装备入账分支(owned += 规范名即时写)直接矛盾;②§4「事件选择(10 屏)」段(L1070-1083)把补给列进「默认不记预期值」名单——该段只改写了遭遇行(「遭遇臂 = 动作侧发射即写」),补给效果分支未改,且段内「有显式到账登记的照登记」所引载体对补给已退役;③§3.2.5 备战席自称「写端(完整清单)」的逻辑写端列表无补给单位分支(`grant_bench_unit_cascade`)(报告 F-3)。
 - 根因归层:语义层——字段级正本三处未随批同步(landing 清单对 fields.md 只覆盖 §3.4.1/§3.4.2 与 §4 遭遇行)。
-- 解决到哪:三处各补/改条目到现役口径(目标文本见 §2.3),含节标题计数联动,与 §3.4.1/§3.4.2 已改行同构自洽。明确不解决:§3.2.16 消耗品的同款豁免句(补给选择不产消耗品,不在发现面);§4.2 各 op 写入面不新增 PickSupply 专条目(事件线选择 op 的写入面统一住 §4「事件选择」段,与遭遇同构,依据 = fields.md §4 现行结构);§3.4.2 补给屏节不动(刷新剩余/刷新链行已现役);§4 段内邻句「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」(L1077-1078)已随两相清偿批失真(装备/策划现役即时单相上报效果腿,装备屏 chosen = 选择存证已退役)——归装备/策划两屏审查辖域(现无在册稿,挂 T-37 或全仓文档清理批),本稿只清补给臂。
+- 解决到哪:三处各补/改条目到现役口径(目标文本见 §2.3),含节标题计数联动,与 §3.4.1/§3.4.2 已改行同构自洽。明确不解决:§3.2.16 消耗品的同款豁免句(补给选择不产消耗品,不在发现面);§4.2 各 op 写入面不新增 PickSupply 专条目(事件线选择 op 的写入面统一住 §4「事件选择」段,与遭遇同构,依据 = fields.md §4 现行结构);§3.4.2 补给屏节不动(刷新剩余/刷新链行已现役);§4 段内邻句「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」(L1077-1078)已随两相清偿批失真(装备/策划现役即时单相上报效果分支,装备屏 chosen = 选择存证已退役)——归装备/策划两屏审查辖域(现无在册稿,挂 T-37 或全仓文档清理批),本稿只清补给臂。
 
 ### 1.4 F-4(低)动作 op 模块头「自上报统一」段残留史述与过程件指针
 
@@ -90,8 +90,8 @@ pick-supply.md 整文件替换为以下目标全文:
 
 **即时单相一口写**(用户裁定 2026-09-21 = [flow/action_ops.md](../../flow/action_ops.md) §1 增补 2;上报函数 = `kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,确认点击后一次调用写全部效果逻辑态,无发射/落地两相、无到账登记、无证据闩):
 
-- **装备腿(确定面)**:`norm_item` 在场 → owned += 归一规范名(`gs.equips` write_logic,账面恒标准名)+ 获得后果链 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(命中后果表送角色腿 → bench + 级联);`norm_item` = '' → 禁猜,equips 值不变翻来源 + `pick_supply_name_unresolved` 留证(fail-closed:错名不入账,观察覆盖自愈);
-- **单位腿(确定面)**:`char_name` 在场 → `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(入席 1★ + 合成级联,与商店购买同语义);
+- **装备入账分支(确定面)**:`norm_item` 在场 → owned += 归一规范名(`gs.equips` write_logic,账面恒标准名)+ 获得后果链 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(命中后果表送角色分支 → bench + 级联);`norm_item` = '' → 禁猜,equips 值不变翻来源 + `pick_supply_name_unresolved` 留证(fail-closed:错名不入账,观察覆盖自愈);
+- **单位入账分支(确定面)**:`char_name` 在场 → `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(入席 1★ + 合成级联,与商店购买同语义);
 - **内容全未知**(兜底点卡路径,char_name 与 norm_item 双空):bench/equips 值不变翻来源(`write_logic_rand`)+ `pick_supply_content_unresolved` 留证;
 - **选择落地 `chosen_supply`**:画面 op `CwScreenSupplyNode` 选卡分支**确认即写 write_logic**(值 = (角色, 装备, 有钻石);渠道签名 family='logic_action'、actor='CwScreenSupplyNode',journal 记录为逻辑源非观察源;兜底点卡/刷新轮不写 = 真选守卫)——动作事实边界例外③([../screens/op-layer.md](../../screens/op-layer.md) §2.2),**非观察写端**;
 - 刷新臂不在本动作:刷新圆钮机械点击留守画面 op 留守臂(刷新链 = `CwActionRefreshSupplyParam` 决策建议的执行半,终结形态交回);节点推进 = 确认点击落地即旁调 `kernel/cw_game_state.py::report_node_advance(trigger='supply_confirm')`(kernel 观察态门 = 唯一推进落账门)。
@@ -100,7 +100,7 @@ pick-supply.md 整文件替换为以下目标全文:
 
 1. 点卡选中:定位点 = `env.target`(决策半从 screen_info/OCR 现算;op 类体内不自算)→ mouse_move + click → 固定等待 0.6s;
 2. 确认:`round_by_find_and_click_area`(screenshot, '货币战争-补给', '按钮-确认', success_wait=1.5);
-3. **即时自上报**:确认点击后无条件调 `report_action_pick_supply_param`(不判 confirm_result):装备腿 + 单位腿一口写;派发即终结,确认未生效由外循环按当前画面重识别重派(零判效零重试);
+3. **即时自上报**:确认点击后无条件调 `report_action_pick_supply_param`(不判 confirm_result):装备入账分支 + 单位入账分支一口写;派发即终结,确认未生效由外循环按当前画面重识别重派(零判效零重试);
 4. **推进上报**:`confirm_result.is_success` 门内旁调 `report_node_advance(trigger='supply_confirm')`(is_success 门 = 发出事实门,非判效;重复上报被 kernel 观察态门结构性挡)。
 
 ## 4. 随机面
@@ -125,13 +125,13 @@ pick-supply.md 整文件替换为以下目标全文:
 
 ## 9. 依据
 
-`kernel/cw_action_report/pick_supply.py` 模块头(写序/腿型/留证分型);`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新臂留守/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)与 §1 增补 2;[../fields.md](../fields.md) §3.2.15/§3.2.5(效果腿)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给臂;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。
+`kernel/cw_action_report/pick_supply.py` 模块头(写序/分支类型/留证分型);`operations/cw_op/cw_overlay_pick_action.py::CwActionPickSupplyOp` docstring 与 run 体(刷新臂留守/即时上报/推进旁调);[flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)与 §1 增补 2;[../fields.md](../fields.md) §3.2.15/§3.2.5(效果分支)/§3.4 头部(chosen 确认即写)/§4「事件选择」补给臂;[../../screens/supply.md](../../screens/supply.md) §4/§6(画面 op 侧契约)。
 ```
 
 logic-updates/README.md「事件线 pick 族」表 PickSupply 行(现 L58)目标语义:
 
 ```
-| PickSupply | `CwActionPickSupplyOp` | [pick-supply.md](pick-supply.md) | `report_action_pick_supply_param`(即时单相一口写:owned 规范名 + 单位腿 `grant_bench_unit_cascade` + 装备后果腿 `apply_equip_acquire_consequence`;内容未知/名未解析 = 翻来源留证;选择落地 = `chosen_supply` 画面 op 确认即写) |
+| PickSupply | `CwActionPickSupplyOp` | [pick-supply.md](pick-supply.md) | `report_action_pick_supply_param`(即时单相一口写:owned 规范名 + 单位入账分支 `grant_bench_unit_cascade` + 装备后果分支 `apply_equip_acquire_consequence`;内容未知/名未解析 = 翻来源留证;选择落地 = `chosen_supply` 画面 op 确认即写) |
 ```
 
 依据:现役写序单一源 = `kernel/cw_action_report/pick_supply.py` 模块头与函数体;契约 = action_ops.md §4.5 PickSupply 行、screens/README.md §5.5、supply.md §6;chosen 渠道 = `cw_screen_supply_node.py` 选卡分支 write_logic(family='logic_action')。退役面佐证 = T-5-r1 §3.13(ConfirmSupply src 零命中)。
@@ -141,11 +141,11 @@ logic-updates/README.md「事件线 pick 族」表 PickSupply 行(现 L58)目标
 ### 2.3 F-3 修法:fields.md 三处
 
 **(1) §3.2.15 装备库存(写端清单段,L450-464)**:
-- 「逻辑写端(op,§4.2)」列表末尾(SellBench 项后)追加一项:`;PickSupply 补给即时获得腿(owned += 归一规范名 + 获得后果链 `apply_equip_acquire_consequence`,即时单相;`kernel/cw_action_report/pick_supply.py`)`
-- 末句改写。现:「补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。」→ 目标:「补给获得的装备 = 即时预期值写(上行 PickSupply 腿,`flow/action_ops.md` §4.5 即时单相,账面恒归一规范名);遭遇等事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。」
+- 「逻辑写端(op,§4.2)」列表末尾(SellBench 项后)追加一项:`;PickSupply 补给即时获得分支(owned += 归一规范名 + 获得后果链 `apply_equip_acquire_consequence`,即时单相;`kernel/cw_action_report/pick_supply.py`)`
+- 末句改写。现:「补给/事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。」→ 目标:「补给获得的装备 = 即时预期值写(上行 PickSupply 分支,`flow/action_ops.md` §4.5 即时单相,账面恒归一规范名);遭遇等事件获得的装备不记预期值,经观察覆盖收口(§4.1 豁免)。」
 
 **(2) §3.2.5 备战席(写端清单段,L274-277)**:
-- 「逻辑写端(op,§4.2)」列表末尾(SellBench 项后)追加一项:`;PickSupply 补给单位腿(`grant_bench_unit_cascade` 入席 1★ + 合成级联,与商店购买同语义;`kernel/cw_action_report/pick_supply.py`)`
+- 「逻辑写端(op,§4.2)」列表末尾(SellBench 项后)追加一项:`;PickSupply 补给单位分支(`grant_bench_unit_cascade` 入席 1★ + 合成级联,与商店购买同语义;`kernel/cw_action_report/pick_supply.py`)`
 
 **(3) §4「事件选择」段(L1070-1083)**:
 - 节标题计数联动:现标题「#### 事件选择(10 屏)」→ 目标「#### 事件选择(9 屏)」(首句名单摘除「补给/」后剩 9 屏,标题与名单计数必须同批改,防出现标题 10 屏/名单 9 屏的自相矛盾——与 F-1 ③ 同型病);
@@ -156,13 +156,13 @@ logic-updates/README.md「事件线 pick 族」表 PickSupply 行(现 L58)目标
 **补给臂 = 即时单相效果写**(对齐遭遇臂的动作侧写形态;写端 =
 `kernel/cw_action_report/pick_supply.py`,确认点击后一口写,
 `flow/action_ops.md` §4.5 PickSupply 行):equips owned += 归一规范名 +
-bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)+ 获得后果链
+bench 单位入账分支(`grant_bench_unit_cascade` 入席 1★+合成级联)+ 获得后果链
 (`apply_equip_acquire_consequence`);内容全未知/名未解析 = 受影响域值
 不变翻来源 + 缺陷留证(禁猜);选择落地 = `chosen_supply` 画面 op 确认即写
 (§3.4 头部口径;原「到账登记 ConfirmSupply」载体已退役,考古走 git)。
 ```
 
-自洽校验:修后 §3.2.15/§3.2.5/§4 与 §3.4.1/§3.4.2 同构对齐(遭遇臂/补给臂句式一致;刷新闸两行已现役);§3.4 头部通用机制段「补给经画面 op 选卡分支确认即写」为现役口径不动(依据 = fields.md L718-727);「chosen_* 写端已接七屏」句含补给仍为真,不动。**段内邻句归属声明**:同自然段「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」(L1077-1078)已随两相清偿批失真(装备/策划现役即时单相上报效果腿,依据 = action_ops.md §4.5 PickEquip/PickPlanner 行现值;装备屏 chosen = 选择存证已退役,依据 = `CwActionPickEquipOp` docstring)——归装备/策划两屏审查辖域(现无在册稿,挂 T-37 或全仓文档清理批),本稿只清补给臂、不认领该句。依据:现役写序 = `pick_supply.py` 模块头;契约 = action_ops.md §4.5、supply.md §6;退役佐证 = T-5-r1 §3.13。
+自洽校验:修后 §3.2.15/§3.2.5/§4 与 §3.4.1/§3.4.2 同构对齐(遭遇臂/补给臂句式一致;刷新闸两行已现役);§3.4 头部通用机制段「补给经画面 op 选卡分支确认即写」为现役口径不动(依据 = fields.md L718-727);「chosen_* 写端已接七屏」句含补给仍为真,不动。**段内邻句归属声明**:同自然段「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」(L1077-1078)已随两相清偿批失真(装备/策划现役即时单相上报效果分支,依据 = action_ops.md §4.5 PickEquip/PickPlanner 行现值;装备屏 chosen = 选择存证已退役,依据 = `CwActionPickEquipOp` docstring)——归装备/策划两屏审查辖域(现无在册稿,挂 T-37 或全仓文档清理批),本稿只清补给臂、不认领该句。依据:现役写序 = `pick_supply.py` 模块头;契约 = action_ops.md §4.5、supply.md §6;退役佐证 = T-5-r1 §3.13。
 
 ### 2.4 F-4 修法:让渡声明(模块头「自上报统一」段归口 = T-4 修订版 encounter.md §2.3)
 
@@ -216,12 +216,12 @@ bench 单位腿(`grant_bench_unit_cascade` 入席 1★+合成级联)+ 获得后�
 | # | 定位(现值行号) | 现文(摘要) | 收敛方式 |
 |---|---|---|---|
 | 10 | 模块头 L3 | 「……构造 = (ctx, param, env),design.md §1.1/§1.2)。」(裸 design.md,无迭代名) | 删「,design.md §1.1/§1.2」(换壳描述语义自足;在「自上报统一」段 L15-24 之外,属 F-7 清单实施,不受模块头段归口裁决影响) |
-| 11 | OverlayPickExecEnv docstring L124-125 | 「``leg_type``/``norm_item`` = 银狼策划腿型载荷(银狼闭环 design §2.1①;决策半经 ``classify_planner_leg`` 现算,随派发透传……)」(族公共面,补给 op 消费此 env,无从让渡) | 删「银狼闭环 design §2.1①;」节号指针,余句不动(其现值已由迁移批改写为「确认点击后立即上报完整效果腿」口径) |
+| 11 | OverlayPickExecEnv docstring L124-125 | 「``leg_type``/``norm_item`` = 银狼策划分支类型载荷(银狼闭环 design §2.1①;决策半经 ``classify_planner_leg`` 现算,随派发透传……)」(族公共面,补给 op 消费此 env,无从让渡) | 删「银狼闭环 design §2.1①;」节号指针,余句不动(其现值已由迁移批改写为「确认点击后立即上报完整效果分支」口径) |
 | 12 | CwActionPickSupplyOp docstring L199-200 | 「**即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-event-refresh-unify-supply-pick):」 | 改「**即时上报**(契约单一源 = `flow/action_ops.md` §1 增补 2 与 §4.5 PickSupply 行):」 |
-| 13 | CwActionPickSupplyOp run 注释 L231-232 | 「# 立即自上报完整结果(design §2.0B 单相:owned += norm_item 规范名 + 单位腿 + 装备后果腿;……)」 | 删「design §2.0B 」字样:「# 立即自上报完整结果(单相:owned += norm_item 规范名 + 单位腿 + 装备后果腿;……)」 |
+| 13 | CwActionPickSupplyOp run 注释 L231-232 | 「# 立即自上报完整结果(design §2.0B 单相:owned += norm_item 规范名 + 单位入账分支 + 装备后果分支;……)」 | 删「design §2.0B 」字样:「# 立即自上报完整结果(单相:owned += norm_item 规范名 + 单位入账分支 + 装备后果分支;……)」 |
 | 14 | CwActionPickMegastarOp docstring L272 | 「(单次逻辑写入豁免面,派发前写——时序申报见迭代 design.md §2)。」 | 删「——时序申报见迭代 design.md §2」(「单次逻辑写入豁免面,派发前写」自足;巨星写时点正本 = op-layer.md §2.2 动作事实边界) |
 | 15 | CwActionPickPlannerOp docstring L374-375 | 「**即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-pick-planner-equip-immediate-report):」 | 删「,迭代 2026-09-21-pick-planner-equip-immediate-report」(「action_ops.md §1 增补 2」保留) |
-| 16 | CwActionPickPlannerOp run 注释 L420 | 「# 立即自上报完整结果(design §2.0/§2.1 单相:确认点击后一口写腿型分派效果……)」 | 删「design §2.0/§2.1 单相:」字样,余句不动 |
+| 16 | CwActionPickPlannerOp run 注释 L420 | 「# 立即自上报完整结果(design §2.0/§2.1 单相:确认点击后一口写分支类型分派效果……)」 | 删「design §2.0/§2.1 单相:」字样,余句不动 |
 | 17 | CwActionPickEquipOp docstring L586-587 | 「**即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-pick-planner-equip-immediate-report):点卡后……」 | 删「,迭代 2026-09-21-pick-planner-equip-immediate-report」(「action_ops.md §1 增补 2」保留) |
 | 18 | CwActionPickEquipOp run 注释 L612 | 「# 立即自上报完整结果(design §2.0/§2.1 单相:点卡后一口写装备入栏 + 获得后果链……)」 | 删「design §2.0/§2.1 单相:」字样,余句不动 |
 

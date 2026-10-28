@@ -4,7 +4,7 @@
 
 ## 3.1 接缝基建批（端口 + 钩子槽 + CwOperation + 换父 + 运行器桩）
 
-**范围**：①新建 `sim/cw_sim_ports.py`（端口五口含 `sim_or_live_observation` 改道 helper + 模块槽缺省关 + 单装配纪律）；②kernel 事件钩子槽（缺省 `None`，转移/事实两类事件广播）；③新建 `operations/cw_operation_base.py::CwOperation`（`screenshot` 哨兵帧 / `round_by_find_and_click_area` / `round_by_find_area` sim 应答 + until 可见性问询）；④operations 树全部直继承 `SrOperation` 类换父（2026-09-23 grep 实测 67；完成判据 = 换父后同 grep 零命中）；⑤`round_by_*` / `screen_utils` 调用点全量清点表 + 直连 controller 旁路逐点 port 检查（含 `prep_actions.py::PrepActionExecutor` 拖拽腿）；⑥转移事件封闭集盘点附录（`details/flow-seam.md` §1 盘点方法；消费 = 本批②广播点接线 + 3.2 backend 订阅）；⑦`sr-od-test/test/harness/` sim 运行器（真 screen_loader + controller 桩触碰即炸 + install/uninstall + fast_sleep）。
+**范围**：①新建 `sim/cw_sim_ports.py`（端口五口含 `sim_or_live_observation` 改道 helper + 模块槽缺省关 + 单装配纪律）；②kernel 事件钩子槽（缺省 `None`，转移/事实两类事件广播）；③新建 `operations/cw_operation_base.py::CwOperation`（`screenshot` 哨兵帧 / `round_by_find_and_click_area` / `round_by_find_area` sim 应答 + until 可见性问询）；④operations 树全部直继承 `SrOperation` 类换父（2026-09-23 grep 实测 67；完成判据 = 换父后同 grep 零命中）；⑤`round_by_*` / `screen_utils` 调用点全量清点表 + 直连 controller 旁路逐点 port 检查（含 `prep_actions.py::PrepActionExecutor` 拖拽分支）；⑥转移事件封闭集盘点附录（`details/flow-seam.md` §1 盘点方法；消费 = 本批②广播点接线 + 3.2 backend 订阅）；⑦`sr-od-test/test/harness/` sim 运行器（真 screen_loader + controller 桩触碰即炸 + install/uninstall + fast_sleep）。
 **边界**：不含 SimBackend 本体与生成器（3.2/3.3）；逐屏读屏点改道接线归 3.3；不含旧引擎退役；正本文档归末阶段。
 **设计依据**：`details/flow-seam.md` §1–§2、§4；`design.md` §2 接口契约与事件钩子契约。
 **文件面**：`sim/cw_sim_ports.py`（新）、`operations/`（新基类 + 换父）、kernel 钩子槽所涉上报函数文件、`prep_actions.py`（app 根，直连旁路检查）、`sr-od-test/test/harness/`。
@@ -20,7 +20,7 @@
 
 ## 3.2 SimBackend 核心批（状态机 + 规则件平移 + 选卡获得链 + 词缀 seed + overlay 触发 + 旧引擎退役）
 
-**范围**：①`SimBackend` dataclass（字段收敛表执行：双账消灭三处；新增容器 Field `pending_loss`/`shop_locked`/`diamond_count`；私有簿记落位）；②画面状态机（初始序列 / 转移源两类 / 节点推进序列平移）；③规则件平移（`details/sim-backend.md` §4 归宿表逐模块执行：收入/经验/发牌/offer 采样/coarse 战斗/结算/装备腿走 tool_use 上报）；④选卡腿接获得链（pick 动作走 `report_action_pick_invest_*` → `gain_invest_*`；`apply_env_pick`/`apply_strategy_pick`/`inject_choices` 退役）；⑤词缀入 seed（流键 `reset/affixes`；`RunConfig.enemy_affixes` 降级 override）；⑥overlay 触发层（机制 + 一期目录：开箱/巨星/planner 评估器，巨星消费事实事件）；⑦旧引擎退役执行（`cw_sim_engine.py`/`cw_sim_phase.py` 删除及归宿表全部退役项，全树零引用）；⑧`QUALITY_REWRITE_ENV_NAMES` 迁 kernel 常量位（`PIGGY_ENV_NAMES` 本在 kernel `cw_reward_node.py`，无作业）。
+**范围**：①`SimBackend` dataclass（字段收敛表执行：双账消灭三处；新增容器 Field `pending_loss`/`shop_locked`/`diamond_count`；私有簿记落位）；②画面状态机（初始序列 / 转移源两类 / 节点推进序列平移）；③规则件平移（`details/sim-backend.md` §4 归宿表逐模块执行：收入/经验/发牌/offer 采样/coarse 战斗/结算/装备入账分支走 tool_use 上报）；④选卡分支接获得链（pick 动作走 `report_action_pick_invest_*` → `gain_invest_*`；`apply_env_pick`/`apply_strategy_pick`/`inject_choices` 退役）；⑤词缀入 seed（流键 `reset/affixes`；`RunConfig.enemy_affixes` 降级 override）；⑥overlay 触发层（机制 + 一期目录：开箱/巨星/planner 评估器，巨星消费事实事件）；⑦旧引擎退役执行（`cw_sim_engine.py`/`cw_sim_phase.py` 删除及归宿表全部退役项，全树零引用）；⑧`QUALITY_REWRITE_ENV_NAMES` 迁 kernel 常量位（`PIGGY_ENV_NAMES` 本在 kernel `cw_reward_node.py`，无作业）。
 **边界**：生成器与流程联调归 3.3/3.4（本批 backend 以直接驱动测试）；触发目录补全（partner/expert/fate/aha/hack）出局。
 **设计依据**：`details/sim-backend.md` 全篇。
 **文件面**：`sim/`（backend 新件 + 旧件退役）、kernel（新 Field / 钩子槽消费 / 名单常量 / 上报缺口补语义）、`kernel/cw_game_state.py`（新 Field）、`sr-od-test/` 对应测试。
@@ -76,5 +76,5 @@
 
 - `docs/develop/sr_od/application/currency_war/sim/`：正本按 SimBackend 新架构重写相关篇（引擎篇退役 / 后端架构篇新增） ← 3.2、3.3
 - `docs/develop/sr_od/application/currency_war/flow/README.md`：§2.3「sim 消费面注记」与 §2.4「归因域限定」现值化（全决策面 sim 可达） ← 3.4
-- `docs/develop/sr_od/application/currency_war/flow/projection_contract.md`：§3.6「两副面孔」与动作腿表述现值化（sim 动作腿 = op → 上报函数族同构，`cw_sim_actions.apply_player_action` 委托串退役） ← 3.2
+- `docs/develop/sr_od/application/currency_war/flow/projection_contract.md`：§3.6「两副面孔」与动作分支表述现值化（sim 动作分支 = op → 上报函数族同构，`cw_sim_actions.apply_player_action` 委托串退役） ← 3.2
 - `docs/develop/sr_od/application/currency_war/game_state/fields.md`：新增容器 Field（pending_loss / shop_locked / diamond_count）登记 ← 3.2

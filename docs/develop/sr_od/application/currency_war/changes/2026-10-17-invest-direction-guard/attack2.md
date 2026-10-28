@@ -13,28 +13,28 @@
   - `cw_intention.py:1646-1647` 与 12 号稿:66:committed 权威序② = `ist.p1_pair` 非空——P1 配方锁帧是**方向层语义下的已定型帧**;
   - `session_scope.py:386-391` 与 12 号稿:64:`direction_comp_of` 未锁回落 `opening_recipe_comp`——现行方向读口在配方帧**返回方向(非 None)**;12 号稿:72-74 明言「P1 目标不空窗(空窗期同样有方向)」;
   - 配方帧硬规则常态零命中:配方对只 2 席,而线的角色型硬规则是全员 AND(例:千冶减益 `core_chars` 5 员,`cw_comps.py:729`)——②级在配方早期帧典型为空;
-  - design 全文无 配方/p1_pair/opening_recipe_comp 字样;A1 的修复只补了「P2 兜底锁定」腿,committed_authority 的②(p1_pair)腿未处理、未申报。
+  - design 全文无 配方/p1_pair/opening_recipe_comp 字样;A1 的修复只补了「P2 兜底锁定」分支,committed_authority 的②(p1_pair)分支未处理、未申报。
 - 后果:每个「p1_pair 已立 ∧ target_comp 空 ∧ 硬规则零命中」帧(配方期常态),方向层说有方向,护栏判「方向未定 → 不辖」——异线投资策略/环境照选,本迭代目标症状在 P1 配方带整段复发;且方向语义实存第四套序(锁槽→硬规则→未定,区别于 committed 的 锁槽→p1_pair、读口的 锁槽→配方),§2.2「不新造第三套方向语义」与自身实现相悖。
 - 修复方向:三级判定前补一级「`direction_comp_of`/p1_pair 配方方向」或显式申报「配方带不辖」的战术边界并给根治指针。
 
-### B2 指向集阵营腿取 core-only,与 kernel 同一问题的两个既有消费口径(`comp.all_factions`)相悖且未申报;实测 4 张环境指向集为空集、静默降级「通用卡」
+### B2 指向集阵营分支取 core-only,与 kernel 同一问题的两个既有消费口径(`comp.all_factions`)相悖且未申报;实测 4 张环境指向集为空集、静默降级「通用卡」
 - 攻击核:核一 + 核三
-- 攻击点:design §2.1 faction 腿表达式 `{c.name for c in COMP_LIBRARY if faction in c.factions}`;§2.1 依据句「盘点:概念股/邀请/契约全量登记」;§2.1/§2.5「宽口径全像,回答卡为谁服务」;§2.6 边界申报(无此条)。
+- 攻击点:design §2.1 faction 分支表达式 `{c.name for c in COMP_LIBRARY if faction in c.factions}`;§2.1 依据句「盘点:概念股/邀请/契约全量登记」;§2.1/§2.5「宽口径全像,回答卡为谁服务」;§2.6 边界申报(无此条)。
 - 依据:
   - `cw_comps.py:261`:`all_factions = set(self.factions) | set(self.flex_factions)`;`cw_comps.py:2017-2018`:`held_strategy_fit` 判「策略绑定服务该阵容」用 `fs & comp.all_factions`;`cw_comps.py:2050-2052`:`env_fit` R2-9 分支 `any(f in comp.all_factions for f in boosted)`,注释原文「弹性羁绊也吃 env 亲和」——「阵营绑定 → 哪些线」在 kernel 已有 **core∪flex** 的在役答案;
-  - 运行时实测:按 §2.1 表达式派生,**公司契约(公司)/狼狩概念股(狼狩)/狼狩邀请(狼狩)/盛会之星邀请(盛会之星)** 指向集 = ∅(COMP_LIBRARY 无任何线以这四方为 core faction,仅 flex 命中);四张均不在 ENV_COMP_AFFINITY、不在任何线 `lock_rules` 策略型——亲和腿、②级信号腿都救不回;
+  - 运行时实测:按 §2.1 表达式派生,**公司契约(公司)/狼狩概念股(狼狩)/狼狩邀请(狼狩)/盛会之星邀请(盛会之星)** 指向集 = ∅(COMP_LIBRARY 无任何线以这四方为 core faction,仅 flex 命中);四张均不在 ENV_COMP_AFFINITY、不在任何线 `lock_rules` 策略型——亲和分支、②级信号分支都救不回;
   - `catalog-snapshot.md:32` 等行自证这四张 faction 已登记;实测 flex-only 命中面普遍存在(例:万敌单C flex 含 命运圣杯/战技点,`cw_comps.py:1439`),strategy 例试算:方向=万敌单C 时 战技点星徽 被出域排除,而 `held_strategy_fit(万敌单C, [战技点星徽])` 判命中(假排除)。
 - 后果:①§2.1「概念股/邀请/契约全量登记」暗示的覆盖不成立——4 张实卡永判通用、护栏永不辖(登记 ≠ 可派生);②同一张卡「服务谁」在 kernel 机器(all_factions)与本护栏(core-only)答案相反,双语义并存无申报,违背 §2.1 自己「宽口径回答为谁服务」的定位;§2.5 取舍表也没有 core vs all_factions 这一行取舍记录。
-- 修复方向:阵营腿改 `all_factions` 口径或显式申报 core-only 分野及 4 张降级清单,进 §2.6/取舍表。
+- 修复方向:阵营分支改 `all_factions` 口径或显式申报 core-only 分野及 4 张降级清单,进 §2.6/取舍表。
 
 ### B3 §3「两线同阵营,护栏判定等价」被自家派生否证:实测 5 张绑定卡指向含双王圣杯、不含命运圣杯红A,同阵营方向线间判定翻转
 - 攻击核:核一
 - 攻击点:design §3「方向线 = 圣杯阵营两线之一(命运圣杯红A/双王圣杯,由线分数全序——两线同阵营,护栏判定等价)」。
 - 依据:
-  - `cw_comps.py:1022`:双王圣杯 `factions=["命运圣杯", "能量"]`、`core_chars` 含 藿藿;`cw_comps.py:678`:命运圣杯红A `factions=["命运圣杯"]`——两线 core faction 集不同,且角色腿②按「∈ 该线 core/shared」逐线命中;
-  - 运行时实测指向集:**仙舟星徽/仙舟星徽套组**(藿藿角色腿)、**能量星徽/能量星徽套组**(能量阵营腿)、**超充站** 共 5 张,指向集含 双王圣杯、不含 命运圣杯红A。
+  - `cw_comps.py:1022`:双王圣杯 `factions=["命运圣杯", "能量"]`、`core_chars` 含 藿藿;`cw_comps.py:678`:命运圣杯红A `factions=["命运圣杯"]`——两线 core faction 集不同,且角色分支②按「∈ 该线 core/shared」逐线命中;
+  - 运行时实测指向集:**仙舟星徽/仙舟星徽套组**(藿藿角色分支)、**能量星徽/能量星徽套组**(能量阵营分支)、**超充站** 共 5 张,指向集含 双王圣杯、不含 命运圣杯红A。
 - 后果:方向线按线分数全序在两圣杯线间随持有面摆动(§2.6 自己申报的逐帧跟随),同一张卡在「同阵营」的两线间出域判定来回翻转——§3 的等价前提不成立,seed 重演的「重演结论稳定」叙事建立在假不变量上;§2.6 翻转申报只覆盖异阵营形态,同阵营异线翻转漏报。
-- 修复方向:改 §3 表述(等价仅对纯 faction 腿派生的指向集成立,角色腿/多 faction 线不成立)并列入 §2.6 申报。
+- 修复方向:改 §3 表述(等价仅对纯 faction 分支派生的指向集成立,角色分支/多 faction 线不成立)并列入 §2.6 申报。
 
 ### B4 档案语义锚 `@v231` 错位:v231 实为 enemy_difficulty 写行,远坂凛 dead_gold 买入首现于 v209;§1 同时违反 §0 自订「行号不作锚」口径
 - 攻击核:核一 + 核二(硬规则 1/4)
@@ -102,7 +102,7 @@
 - A3 factions 字段/多阵营未定/char_first_faction 分野:**已落实**——§2.1 改 factions 全集展开(cw_chars.py:28 字段名属实)、③未识别跳过、§2.5 分野行、§4 多阵营测试;实测 丹恒·饮月两卡指向均含仙舟线,期望可过。
 - A4 档案行锚失真:**未修净**——口径升级为语义锚(v237/v45 属实),但新锚 @v231 首例即错位(实为 v209),且 §1 残留 [L194]/[L243] 行号锚违反 §0 自订口径 → 见 B4。
 - A5 刷新交互未定义:**已落实**——§2.3 两屏分写:策略侧保留全量候选 + `_pick_domain` 开头滤除(invest_strategy.py:509/513/536 现式核实)、环境侧 forbidden 通道 + 回退时序(invest_env.py:365-377/311-316 核实),管线位置可开工。
-- A6 环境亲和腿漏:**已落实**——§2.1 亲和腿 + §1 桑博反例;实测 env_scope(特邀专家:桑博) = {专家桑博DOT}。
+- A6 环境亲和分支漏:**已落实**——§2.1 亲和分支 + §1 桑博反例;实测 env_scope(特邀专家:桑博) = {专家桑博DOT}。
 - A7 reason 契约失实/文法未定义:**已落实**——§2.3 文法定义 + 契约如实申报;测试行 test_invest_strategy.py:396/438/1134/1157 逐条核实存在且断言形态相符。
 - A8 三处「落地时确认」:**已落实**——3.1 写死并入 test_cw_investments.py(文件存在);3.3 写死 28 号稿(invest_env.py:3 docstring 指针核实);清单写死 12 号稿 §1.3(节存在)。
 - A9 取舍依据不可核对:**已落实**——§2.5 改自含论证(29 号稿 §2.4【拍】形态核实);S2 悬空引用已删,改指 cw_economy.py::cap_resolved_of_session docstring 边界节(:301-304 存在且载 append-only 申报)。
@@ -112,6 +112,6 @@
 
 ## 核查面与已证无误项(供收敛比对)
 
-- 符号/行号核对**通过**:cw_investments.py:73(faction「对应阵营」)/:766-768(_ENV_FACTION_EXCEPTIONS)/:835(INVESTMENT_ENVS)/:1134(STRATEGY_BINDINGS 结构 = (阵营,角色) 双 frozenset)/:1513(STRATEGY_GRANTS 存在);cw_investments.py:41-45 已模块级 import CHARACTERS(角色腿①现查可行性成立),全文无 cw_comps import(:48 环论证成立);cw_comps.py:48/:421/:433/:446/:465/:678/:696/:729/:1022/:1679-1694(strategy_lock_hit 契约);cw_chars.py:28/:128(丹恒·饮月 仙舟、列车同行)/:203-212(char_first_faction);cw_intention.py:1623-1647;invest_strategy.py:374-408(_pick_domain 管线序与 §2.3 管线序声明逐步同构)/:509/:513/:536-538(F2)/:423(_pick_decision);invest_env.py:304-316/:365-377;session_scope.py:210-228/:313-351/:354-367/:370-391;cw_economy.py:283/:301-304;cw_reward_node.py:30-38(PIGGY_ENV_NAMES 先例);29 号稿 §2.2/§3/§4(E-豁免与「被禁槽恒入」在 :67-68,先例引用属实)、28 号稿 §2-§4、12 号稿 §1.3/§2/§3;test_cw_investments.py 存在;catalog-snapshot 83 环境+335 策略(### 实数 335)条目数属实。
+- 符号/行号核对**通过**:cw_investments.py:73(faction「对应阵营」)/:766-768(_ENV_FACTION_EXCEPTIONS)/:835(INVESTMENT_ENVS)/:1134(STRATEGY_BINDINGS 结构 = (阵营,角色) 双 frozenset)/:1513(STRATEGY_GRANTS 存在);cw_investments.py:41-45 已模块级 import CHARACTERS(角色分支①现查可行性成立),全文无 cw_comps import(:48 环论证成立);cw_comps.py:48/:421/:433/:446/:465/:678/:696/:729/:1022/:1679-1694(strategy_lock_hit 契约);cw_chars.py:28/:128(丹恒·饮月 仙舟、列车同行)/:203-212(char_first_faction);cw_intention.py:1623-1647;invest_strategy.py:374-408(_pick_domain 管线序与 §2.3 管线序声明逐步同构)/:509/:513/:536-538(F2)/:423(_pick_decision);invest_env.py:304-316/:365-377;session_scope.py:210-228/:313-351/:354-367/:370-391;cw_economy.py:283/:301-304;cw_reward_node.py:30-38(PIGGY_ENV_NAMES 先例);29 号稿 §2.2/§3/§4(E-豁免与「被禁槽恒入」在 :67-68,先例引用属实)、28 号稿 §2-§4、12 号稿 §1.3/§2/§3;test_cw_investments.py 存在;catalog-snapshot 83 环境+335 策略(### 实数 335)条目数属实。
 - 档案锚核对:v237/v45 真;dead_gold 首现 v209(v231 假,B4);[L194]/[L243] 内容真、形态违口径;「r2 远坂凛候选态通道 → r4 首个线成员通道(Saber)」与 node 写行映射(r2@v139-r3@v229、r4@v277-r5@v301,首 line_member receipt @v289)相符;黑塔/大黑塔全档零 BuyCard 属实。
 - 运行时实测与设计一致:§4 kernel 单元除圣杯契约按**环境**口径 = {双王圣杯, 命运圣杯红A} 可过外(该卡为环境,勿入策略指向单元),黑塔纪元/琼玉专家:青雀/打捞人才库/特邀专家:桑博/特邀专家:加拉赫(→巡海击破)全部可过;87/7/248/83/335 数字吻合;test_invest_strategy.py 全文 0 处 active_env 写入(§2.4 回归面判断成立);乱成一锅粥存在且无绑定(§2.6 属实)。

@@ -55,10 +55,10 @@ CompTransaction 行删除(行键先稳,删除归批2,R3)。
    各工具原子类(裁决1)/SellDeployed/SellBench);`EXHAUSTION_WINDOW_ACTIONS` 白名单
     重推记录;LevelUp 逐帧单击形态(执行器单击化 + 逻辑态建模 + 决策
     判据每帧一击;2a 中间态定案:族B `LevelUp` 本批尚无 cost/auth_basis
-    字段,金腿维持执行缝金差(`_executed_gold_delta`,执行包络留守)、
+    字段,金分支维持执行缝金差(`_executed_gold_delta`,执行包络留守)、
     逻辑态 LevelUp 分支只落 xp/level 推进不写 gold;cost(`xp_click_cost`
     现算,失读回退 `XP_CLICK_COST_FALLBACK`)与 auth_basis 分键装载
-    随 2b 类合并翻转生效,翻转时金腿切 `action.cost` 直写,该切换落
+    随 2b 类合并翻转生效,翻转时金分支切 `action.cost` 直写,该切换落
     §3.2b 消费面收口);ClickSpheres 改形
    (载荷 = 有序晶矿坐标列表,大晶矿优先挑选迁 kernel 纯函数,执行器机械化);
    备战逻辑态建模扩域(逻辑态 = 动作执行后不经观察、按游戏规则推算预期
@@ -110,7 +110,7 @@ owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)�
 - 扫描报告在案(定义/构造/消费点全量,含 telemetry 与判读工具面;
   底册供 2b 逐点闭环);
 - **LevelUp 形态测试**(2a 半):每帧至多一击;逻辑态 xp/level 推进与
-  下一入口 heavy 对账闭合(中间态金腿 = 执行缝金差,不写 gold,
+  下一入口 heavy 对账闭合(中间态金分支 = 执行缝金差,不写 gold,
   2b 类合并翻转切 `action.cost` 直写);posture_unfulfilled 对账按
   新口径绿;
 - **ClickSpheres 专项测试**:载荷 = 有序晶矿坐标列表;执行器零读屏选晶矿;
@@ -144,7 +144,7 @@ owned_equips 摘件/ClickSpheres 精确摘晶矿写口,按 design.md §2.6 R9)�
 2. **消费面收口**:`cw_prep_expect.py`(DragExpect 坐标系翻转);
    `cw_exec_state.py`(apply_op_effect 字段消费与换算收口);
    `cw_game_state.py`(CompTransaction 提案分支删;LevelUp 逻辑态
-   金腿翻转 = `action.cost` 直写,替换 2a 中间态执行缝金差,中间态
+   金分支翻转 = `action.cost` 直写,替换 2a 中间态执行缝金差,中间态
    定义见 §3.2a);换算收口判据
    (物理换算仅存观察写入边与执行坐标边各一处,函数化);遥测跨批判读
    兼容窗(SellBench 载荷 slot→bench_idx 改名 + 值域换算式,读侧双键
@@ -179,7 +179,7 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
   决策面散点换算零残留;
 - **LevelUp 装载测试**(2b 半):发射面 cost = xp_click_cost 现算、失读
   回退 XP_CLICK_COST_FALLBACK;auth_basis 分键装载(类合并同步翻转);
-  逻辑态金腿切 `action.cost` 直写(2a 中间态执行缝金差退役);
+  逻辑态金分支切 `action.cost` 直写(2a 中间态执行缝金差退役);
   posture_unfulfilled 对账新口径总复验;
 - **逻辑态覆盖测试复验**(R9):合并后统一词表逐行有逻辑态计算;
 - 商店域发射序列对照不变(CompTransaction 行消失除外);

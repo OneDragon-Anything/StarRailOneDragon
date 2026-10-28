@@ -3,11 +3,11 @@
 > 阶段小节 = 账本唯一源;§12 通用工程门 = sr-od-test/README.md「提交」节 +
 > 项目 AGENTS.md §7/§10(类型注解/ruff/受影响测试全绿/逐文件 add)。
 
-## 3.1 kernel:登记 + 公共原语 + 箱腿效果体
+## 3.1 kernel:登记 + 公共原语 + 箱分支效果体
 
 **范围**:design §2.1(STRATEGY_GRANTS 三条 items_immediate + `_validate_strategy_grants`
 空发放集判定并入 items)+ §2.2(`gain_bench_item` 公开原语,`_place_bench_item`
-producer 形参化,现调用点行为不变)+ §2.3(PICK_INVEST_EFFECTS 三条箱腿效果体,
+producer 形参化,现调用点行为不变)+ §2.3(PICK_INVEST_EFFECTS 三条箱分支效果体,
 `_STRATEGY_BOX_GRANTS` 名单单一源表,惰性 import 破环)+ 计数面同步
 (test_cw_invest_strategy.py 计数测试 83→86、cw_investments.py 底册收录判据注释
 与计数 docstring 两形态化——「获得…角色名直读」扩「获得…角色名/占席道具直读」)。
@@ -22,7 +22,7 @@ test_cw_invest_strategy.py、test_cw_yinlang_phase32.py(T-1 交付时发现的
 **优先级建议**:5
 **完成判据**:
 - 登记:三卡 `GiftGrant(items_immediate=('进阶武装箱',))` 在册;四通道全空
-  条目被拒、箱腿条目通过(注入式校验测试,沿孤儿键先例)
+  条目被拒、箱分支条目通过(注入式校验测试,沿孤儿键先例)
 - 计数同步:STRATEGY_GRANTS 计数测试 86、底册注释与分类 docstring 两形态口径
   (83→86 差 = 本批 3 条)
 - 词表:`进阶武装箱` ∈ BENCH_ITEM_NAMES(派生自动覆盖,design §2.1 断言)
@@ -72,21 +72,21 @@ kernel 改动(全部在 3.1)。
 ## 正本更新清单
 
 - docs/develop/sr_od/application/currency_war/game_state/gain-chain.md:
-  §3 on_strategy_gained 现役枚举更新(骇客单行 → 骇客 + 三箱腿卡;效果体
+  §3 on_strategy_gained 现役枚举更新(骇客单行 → 骇客 + 三箱分支卡;效果体
   消费 gain_bench_item)、§2 原语清单补 gain_bench_item(占席道具公开口)
   ← 阶段 3.1
-- docs/game/currency_war/research/invest_effects.md:三卡箱腿形态
+- docs/game/currency_war/research/invest_effects.md:三卡箱分支形态
   (获得时点占席道具发放,进阶武装箱首例)← 阶段 3.1
 - docs/develop/sr_od/application/currency_war/game_state/strategy-env-impacts.md:
   §3 新增三卡四槽条目(形状沿 §2 四槽表,先例 = 大裁员条):官方原文槽 =
-  cw_invest_data.py 行位;机制槽内标注未建模腿申报(义眼++/保守派战斗被动腿
-  = 策略效果建模批;快请专家·彩好运令牌腿 = 消耗品域、2×【】空括腿 = 数据源
-  缺口不猜);state 影响槽 = 箱腿已建模(PICK_INVEST_EFFECTS 效果体 +
+  cw_invest_data.py 行位;机制槽内标注未建模分支申报(义眼++/保守派战斗被动分支
+  = 策略效果建模批;快请专家·彩好运令牌分支 = 消耗品域、2×【】空括分支 = 数据源
+  缺口不猜);state 影响槽 = 箱分支已建模(PICK_INVEST_EFFECTS 效果体 +
   gain_bench_item 链原语,逻辑写);策略层消费槽 = 「候策略侧」(正本惯例);
   三卡均新立行(该文件 §4 目录口径
   STRATEGY_EFFECTS ∪ STRATEGY_ECONOMY 均不含三卡,无并列可补)← 阶段 3.1
 - .debug/progress/2026-09-23-invest-effects-calc/checklist.md:三卡行
-  (战术义眼++/保守派/快请专家·彩)处理方式列注记「箱腿已建模(2026-09-24
-  advanced-armory-box),战斗腿未建模」← 末阶段
+  (战术义眼++/保守派/快请专家·彩)处理方式列注记「箱分支已建模(2026-09-24
+  advanced-armory-box),战斗分支未建模」← 末阶段
 - .debug/progress/2026-09-24-advanced-armory-box/README.md:进度收口
   (落地 x/y done、正本更新清零)← 末阶段

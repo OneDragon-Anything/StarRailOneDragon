@@ -26,7 +26,7 @@
 
 ## 3.2 正本更新 + 分账登记
 
-**范围**：①`game_state/fields.md` 回执契约节核对（extra 语义不含金差）；②`game_state/journal.md` 回执键历史集核对（gold_delta 键退役）；③`game_state/retirement.md` 登记金差证据腿退役（−2 倒挂事故架构收尾）；④`screens/shop.md`/`logic-updates/sell-bench.md`/`logic-updates/level-up.md`/`game_state/action-logic-state.md`/`logic-updates/prep-executor-actions.md`/`logic-updates/op-effects.md` 金差表述清退（attack 点名六文件）；⑤账本登记分账三项（design §2.4：_advance_gold 核查 / shop_session.apply_gold_delta 归属 / write_logic docstring produced_by 申报修正）；⑥README 进度收尾。闭合法 = 退役符号正本树全域 grep 逐命中归属（obs 告警门豁免列出）+ 语义闭清（金差/执行点金差表述逐处核对）。
+**范围**：①`game_state/fields.md` 回执契约节核对（extra 语义不含金差）；②`game_state/journal.md` 回执键历史集核对（gold_delta 键退役）；③`game_state/retirement.md` 登记金差证据分支退役（−2 倒挂事故架构收尾）；④`screens/shop.md`/`logic-updates/sell-bench.md`/`logic-updates/level-up.md`/`game_state/action-logic-state.md`/`logic-updates/prep-executor-actions.md`/`logic-updates/op-effects.md` 金差表述清退（attack 点名六文件）；⑤账本登记分账三项（design §2.4：_advance_gold 核查 / shop_session.apply_gold_delta 归属 / write_logic docstring produced_by 申报修正）；⑥README 进度收尾。闭合法 = 退役符号正本树全域 grep 逐命中归属（obs 告警门豁免列出）+ 语义闭清（金差/执行点金差表述逐处核对）。
 **设计依据**：design.md §0/§2.3/§2.4。
 **文件面**：`docs/develop/sr_od/application/currency_war/game_state/fields.md`；`docs/develop/sr_od/application/currency_war/game_state/journal.md`；`docs/develop/sr_od/application/currency_war/game_state/retirement.md`；`docs/develop/sr_od/application/currency_war/game_state/action-logic-state.md`；`docs/develop/sr_od/application/currency_war/game_state/logic-updates/{close-shop.md 已清,prep-executor-actions.md,op-effects.md,level-up.md,sell-bench.md}`；`docs/develop/sr_od/application/currency_war/screens/shop.md`；本迭代 README。
 **依赖**：3.1。
@@ -38,6 +38,6 @@
 
 - `game_state/fields.md` 回执契约节核对 ← 3.2
 - `game_state/journal.md` 回执键历史集核对 ← 3.2
-- `game_state/retirement.md` 金差证据腿退役登记 ← 3.2
+- `game_state/retirement.md` 金差证据分支退役登记 ← 3.2
 - `game_state/action-logic-state.md` / `logic-updates/{prep-executor-actions,op-effects,level-up,sell-bench}.md` 金差表述清退 ← 3.2
 - `screens/shop.md` 核对 ← 3.2

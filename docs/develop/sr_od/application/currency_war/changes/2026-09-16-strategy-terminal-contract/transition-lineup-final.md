@@ -23,7 +23,7 @@
   (form_tiers 分辨序:先按键集精确匹配 BRIDGE_POOL;希儿系对走兜底,见下)。
 - 希儿系组合的物化判据 = 希儿在板 AND(量子同频≥2 OR 贝洛伯格≥2)
   ——体系达成计数 = `knowledge/cw_engine_facts.py` `engines_count`;
-  pair 物化 = `pair_target_comp` 兜底:他体系档为 AND 腿 + 放大器两腿挂
+  pair 物化 = `pair_target_comp` 兜底:他体系档为 AND 分支 + 放大器两条分支挂
   OR(`SEELE_OR_LEGS`:量子≥2 ∨ 贝≥2 任一即成)+ 希儿挂 required_deployed
   (ADR-0613 口径,见 `cw_intention.py` 该函数注释)。
 
@@ -67,7 +67,7 @@
   注册表成员(`cw_line_facts._bond_members`)。
 - 主线件取用:希儿系 pair 的必需件(希儿)在部署选人排序中进首桶、
   优先上板(早轮取用,不等普通件竞争);板满时若换入使判据
-  ✗→✓ 且离场件有保腿,执行必需件换入。实现 =
+  ✗→✓ 且离场件有保分支,执行必需件换入。实现 =
   `kernel/cw_deploy_logic.py`(`required_names` 首桶序;
   `SwapPlanContext.required_names`;换入臂
   `required_swap_arm_pending` / `_required_swap_victim_completion_holds`)
@@ -136,7 +136,7 @@
 2. **列车同行档的双源分歧已申报**:桥池对内档 = 2(`train_dot`)vs
    框架单独成型档 = 4(`cw_recipe._RECIPES`);现行口径 = pair 物化取桥池
    (`pair_target_comp` 注释申报)。后续若并轨需改判据单一源,不在本文档。
-3. **BORDERLINE 待裁项不在本定版内**:E9 切换、泛用腿并轨、预囤加分
+3. **BORDERLINE 待裁项不在本定版内**:E9 切换、泛用分支并轨、预囤加分
    ——均为编排者待裁项,本定版不预设结论,亦不因本定版而关闭。
 4. **已立案的策略改进线不属定版内容**:付费刷新找件通道缺失、
    丢对后无重锁(sim 两批报告);它们影响凑齐率的实现途径,

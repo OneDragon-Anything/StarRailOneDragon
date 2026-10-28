@@ -24,10 +24,10 @@
     `strategies/impl/cw_strategy.py:190`，3.1 文件面只列 `kernel/cw_game_state.py`、`kernel/cw_vocab.py`、
     `operations/cw_loop.py`、`strategies/impl/cw_strategy_manager.py`——**不列 cw_strategy.py**（attack1 首轮已报，
     当前正文未改）。改数据类与改构造点必须同批，分置两阶段 = 半态。
-  - ② **3.2**：范围①「`last_owned_equips` 删」的**写腿**不在文件面——直调写点全集：
+  - ② **3.2**：范围①「`last_owned_equips` 删」的**写分支**不在文件面——直调写点全集：
     `kernel/cw_exec_state.py:83-86`（选卡到账 +1）、`kernel/cw_exec_state.py:140-146`（穿戴 −1）、
     `operations/cw_op/cw_op_equip_all.py:93-96/:480`（穿戴覆写）、`operations/cw_screen/cw_screen_prep.py:737`
-    （主写端，在面）；**读腿** `obs/cw_observation.py:2647-2649`（载体中继兜底读点，cw_observation 只在 3.3/3.5 文件面）。
+    （主写端，在面）；**读分支** `obs/cw_observation.py:2647-2649`（载体中继兜底读点，cw_observation 只在 3.3/3.5 文件面）。
     范围②「hp 新鲜度门删」的策略侧**薄委托本体** `strategies/impl/cw_strategy.py:255`（`gated_hp`，其 docstring 自报
     消费点含 mandate_v1 adapter decision_state ×1 + encounter λ 键读点 ×1）不在 3.2 文件面（mandate_v1 子树只在 3.5）。
     另：节点三字段消费者 `operations/cw_screen/cw_screen_buy_cards.py:1027-1028` 也不在 3.2 文件面（见 M8）。

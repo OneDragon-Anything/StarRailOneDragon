@@ -34,7 +34,7 @@
 **依赖**:3.1
 **优先级建议**:0
 **完成判据**:
-- 行为对照 design.md §2.2(两态字段/原语处置表/终局测试）、§2.3(直定与查链)、§2.4(账本三语义 + cw_gain_chain 消费)、§2.5(锚定写端)、§2.6(sim 簿记/进窗/局终腿)、§2.8(快照往返/旧档忽略);
+- 行为对照 design.md §2.2(两态字段/原语处置表/终局测试）、§2.3(直定与查链)、§2.4(账本三语义 + cw_gain_chain 消费)、§2.5(锚定写端)、§2.6(sim 簿记/进窗/局终分支)、§2.8(快照往返/旧档忽略);
 - 默认环境 sim 全链回归与现役基线逐值同(design §2.11 测试 9);修饰局回归 = T-8 既有测试面全绿;
 - 本批文件内 `node_ord`/`node_hist_ord`/`node_ordinal`/`_node_key_for_ord`/`node_pos_of`/`effective_node_ord`/`acquired_t`/`_portal_acquired_t`/`_entered_ord`/`_window_begun_ord` 符号零残留(grep 自证,入提交说明;`node_ordinal` 裸词覆盖 `node_ordinal_of` 与 `tick_node` 旧形参名);
 - 完成前常规检查(本文首节,含 kernel/sim 全量)。
@@ -110,7 +110,7 @@
 - game_state/strategy-env-impacts.md:读口实例句(`effective_node_ord()` → `effective_node_pos()`,「首两个实例」列表内) ← 3.2
 - game_state/journal.md:§4 自足快照行(state 行 values `node_pos`/顶层 `node_hist_pos`/effects 行 `acquired_key` 值形键名) ← 3.2
 - game_state/README.md:§2 节点序例句(`node_ord` 逻辑层措辞)、§3.2 节点生效序摘要行(:89)、§3.3 域清单行(`node_ord`/`node_hist_ord`) ← 3.2
-- sim/sim-design.md:§3.x 节点窗(`_window_begun_pos` 幂等键、`_enter_node_window` 键签名、局终声明消费腿、`_ordinal_to_node`/`_node_ordinal` 退役注)+ §6 `node_advance` 推导规则句(`effective_node_ord`/「超真值表总长」→ 终局声明事件式;与 action_ops.md §4.8 同文双锚,两处同改) ← 3.2
+- sim/sim-design.md:§3.x 节点窗(`_window_begun_pos` 幂等键、`_enter_node_window` 键签名、局终声明消费分支、`_ordinal_to_node`/`_node_ordinal` 退役注)+ §6 `node_advance` 推导规则句(`effective_node_ord`/「超真值表总长」→ 终局声明事件式;与 action_ops.md §4.8 同文双锚,两处同改) ← 3.2
 - flow/action_ops.md:§1 `applied` 义务句补终局出口语义(`match_end` 事件式);§4.8 `node_advance` 行推导规则句(「超真值表总长」→「`sequence_next` 无后继 = 局终声明事件式」;`effective_node_ord` → `effective_node_pos`) ← 3.2
 - screens/battle_wait.md:§8 败局闩行(:78,`t ≥ SETTLE_DEFEAT_LATCH_MIN_T` → 序位 ≥ `SETTLE_DEFEAT_LATCH_MIN_POS`) ← 3.3
 - strategy-docs/01_math_framework.md:§5 R_全局 行(:139,长度真值源 schedule_of → 场字段自算) ← 3.5

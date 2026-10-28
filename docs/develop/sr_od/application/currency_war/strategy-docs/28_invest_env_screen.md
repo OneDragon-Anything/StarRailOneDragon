@@ -25,7 +25,7 @@
 
 > **共用判据单一源** = [13_pick_family.md](13_pick_family.md) §4(代码 = `strategies/impl/mandate_v1/pick_common.py`)——转向轴常数与自拆台阈值为投资环境/投资策略两画面共用,语义细则归彼处,本节只记本屏落点;禁止在本篇复制第二份语义(宪法六:双源即违例)。
 
-- **阵容冲突护栏**(指向集单一源 = `kernel/cw_investments.env_faction_scope`,策略侧 `strategy_faction_scope` 同文件):候选环境阵容指向集与基准空交 → 并入排除通道(与禁选/自拆台同一条 excluded 合取,`_score_frame` 内组装)。基准 = 锁定线 `Comp.factions`(锁定帧,历史误持不入基;降格帧锁线不入基回持有基)∨ 已持有投资(环境+策略)指向并集(未锁定帧,同名归一查询);基准空(无指向持有 ∧ 未锁定)→ 不辖,选卡与无护栏逐位一致。全部候选出域且次数闸尽 → 全排除退化帧(下行)。环境指向 = faction 腿(概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破)+ 亲和腿(ENV_COMP_AFFINITY 各线 factions 并集,副阵营随线带入)。依据:策略槽不服务异线阵容(与策略侧同判据,29 号稿 §5 裁定 2026-10-17)。
+- **阵容冲突护栏**(指向集单一源 = `kernel/cw_investments.env_faction_scope`,策略侧 `strategy_faction_scope` 同文件):候选环境阵容指向集与基准空交 → 并入排除通道(与禁选/自拆台同一条 excluded 合取,`_score_frame` 内组装)。基准 = 锁定线 `Comp.factions`(锁定帧,历史误持不入基;降格帧锁线不入基回持有基)∨ 已持有投资(环境+策略)指向并集(未锁定帧,同名归一查询);基准空(无指向持有 ∧ 未锁定)→ 不辖,选卡与无护栏逐位一致。全部候选出域且次数闸尽 → 全排除退化帧(下行)。环境指向 = faction 分支(概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破)+ 亲和分支(ENV_COMP_AFFINITY 各线 factions 并集,副阵营随线带入)。依据:策略槽不服务异线阵容(与策略侧同判据,29 号稿 §5 裁定 2026-10-17)。
 - **禁选**:config `env_forbid` 子串命中 → 排除出候选。
 - **自拆台**:板面 持续伤害+减益 计数 ≥ `BOARD_DOT_COUNT_THRESHOLD` 时,克制 DoT/减益的候选排除(机制归一调 kernel `AFFIX_MECHANIC_MAP`/`MECHANIC_COUNTERS`——「是否克制」是事实判定留 kernel;「排除它」是策略,在画面文件)。
 - **priority**:`env_priority` 子串命中 → 加 `STEERING_PRIORITY_BONUS`(固定偏好分,软偏好——压不过 S 档阵容的方向分,「用户点名是偏好不是支配」)。

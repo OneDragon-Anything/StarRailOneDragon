@@ -1,7 +1,7 @@
 # 节点推进动作上报化 落地
 
 ## 3.1 kernel 推进生效原语与锚定 helper（共存新增）
-**范围**：`kernel/cw_game_state.py` 新增 ①推进生效原语 `advance_node_effective`（candidate 去重守卫 + 写 node_ord（来源由调用方定：动作=logic/锚定补推=observation）+ hist 占位 + `tick_effect_boundary` 尾段同临界区；序号前进唯一入口）；②`report_node_advance`（观察态门 = value 在场 ∧ source=observation 双条件 → candidate=effective+1 → 原语；trigger 封闭集）；③`observe_node_anchor` 锚定 helper（四分支处置含 v=None 首锚定行，design §2.2 表；R>v 分支经原语落账、不经通用 observe()）；④`tick_effect_boundary` 的遗迹参数 `prep_frame` 删除 + `observe_screen_context` 尾段过期闸注释清理；⑤新写端 actor 标识与 sig family 申报（攻击 R2 定谳：现役 `_validate_sig` 只校 family、无 actor 注册闸，无注册面改动）。旧四腿与现管线**本阶段不动**（共存期语义见 design §2.5 切换纪律：3.2 后 settle_confirm 门挡留证噪声、3.3 后 supply_confirm 部分放行）。边界：不改漏斗、不删任何现役路径。
+**范围**：`kernel/cw_game_state.py` 新增 ①推进生效原语 `advance_node_effective`（candidate 去重守卫 + 写 node_ord（来源由调用方定：动作=logic/锚定补推=observation）+ hist 占位 + `tick_effect_boundary` 尾段同临界区；序号前进唯一入口）；②`report_node_advance`（观察态门 = value 在场 ∧ source=observation 双条件 → candidate=effective+1 → 原语；trigger 封闭集）；③`observe_node_anchor` 锚定 helper（四分支处置含 v=None 首锚定行，design §2.2 表；R>v 分支经原语落账、不经通用 observe()）；④`tick_effect_boundary` 的遗迹参数 `prep_frame` 删除 + `observe_screen_context` 尾段过期闸注释清理；⑤新写端 actor 标识与 sig family 申报（攻击 R2 定谳：现役 `_validate_sig` 只校 family、无 actor 注册闸，无注册面改动）。旧四条分支与现管线**本阶段不动**（共存期语义见 design §2.5 切换纪律：3.2 后 settle_confirm 门挡留证噪声、3.3 后 supply_confirm 部分放行）。边界：不改漏斗、不删任何现役路径。
 **设计依据**：design.md §2.2（处置规则表 + 推进生效原语段 + 写法边界段）/ §2.3 共用函数段
 **文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`
 **依赖**：无
@@ -23,7 +23,7 @@
 **验收凭据形式**：测试名清单 + fixture 剧本对照
 
 ## 3.3 补给侧接线与补给屏锚定
-**范围**：①`CwActionPickSupplyOp` 确认点击补 until 转移证据（下一节点备战锚；上报时点门语义 = design §2.3 触发点 2 契约修正案），`report_action_pick_supply_param` 调用点旁增调 `report_node_advance(trigger='supply_confirm')`，证据 miss 不上报不重试；②补给屏顶部节点条识别 area 建档（od-dev-screen-onboarding 流程：analyze_screen 定坐标）+ `CwScreenSupplyNode` 观察链接节点条读数 → `observe_node_anchor`。共存注记（攻击 F3）：本阶段落地后 supply_confirm 在补给节点可过门（部分放行），与旧腿靠去重键共存无害。
+**范围**：①`CwActionPickSupplyOp` 确认点击补 until 转移证据（下一节点备战锚；上报时点门语义 = design §2.3 触发点 2 契约修正案），`report_action_pick_supply_param` 调用点旁增调 `report_node_advance(trigger='supply_confirm')`，证据 miss 不上报不重试；②补给屏顶部节点条识别 area 建档（od-dev-screen-onboarding 流程：analyze_screen 定坐标）+ `CwScreenSupplyNode` 观察链接节点条读数 → `observe_node_anchor`。共存注记（攻击 F3）：本阶段落地后 supply_confirm 在补给节点可过门（部分放行），与旧分支靠去重键共存无害。
 **设计依据**：design.md §2.3 触发点 2 / §2.4 写端 2 / §2.5 切换纪律
 **文件面**：`operations/cw_op/cw_overlay_pick_action.py`、`operations/cw_screen/cw_screen_supply_node.py`、`kernel/cw_screen_report/supply_node.py`、`assets/game_data/screen_info/`（补给屏 area，经 MCP 工具改）
 **依赖**：3.1
@@ -45,7 +45,7 @@
 **验收凭据形式**：research 篇路径 + 测试名/「零代码」申报
 
 ## 3.5 切换批（原子退役）
-**范围**：一次提交完成 design §2.5 退役清单全部条目 + 新模型激活——备战锚定写端接线 `CwScreenPrep` 观察 node（heavy 回执 plane/round → `observe_node_anchor`，design §2.4 写端 1，攻击 F1 定谳）；BOSS 类型直定迁移 `CwScreenBossBriefing` 观察 node（经 `_write_derived_node_type`，design §2.5 表，攻击 F4）；删弹窗腿/位面过渡腿/BOSS 简报腿序号半部/守卫族与弹窗族常量/`_note_branch_screen` 及五调用点/休眠类型直定三成员；漏斗 `observe_screen_context` 瘦身收口（上下文对/`top_bar_raw` 观察层/`gs.node` 观察镜像写端保留，**推进域（node_ord/hist）全退**——辖域界定 = design §2.4 攻击 B1 修正）；残留 import/死代码清理。切换后新模型独跑，无旧路径残留。
+**范围**：一次提交完成 design §2.5 退役清单全部条目 + 新模型激活——备战锚定写端接线 `CwScreenPrep` 观察 node（heavy 回执 plane/round → `observe_node_anchor`，design §2.4 写端 1，攻击 F1 定谳）；BOSS 类型直定迁移 `CwScreenBossBriefing` 观察 node（经 `_write_derived_node_type`，design §2.5 表，攻击 F4）；删弹窗分支/位面过渡分支/BOSS 简报分支序号半部/守卫族与弹窗族常量/`_note_branch_screen` 及五调用点/休眠类型直定三成员；漏斗 `observe_screen_context` 瘦身收口（上下文对/`top_bar_raw` 观察层/`gs.node` 观察镜像写端保留，**推进域（node_ord/hist）全退**——辖域界定 = design §2.4 攻击 B1 修正）；残留 import/死代码清理。切换后新模型独跑，无旧路径残留。
 **设计依据**：design.md §2.4 / §2.5 / §2.7-5/-6/-9
 **文件面**：`kernel/cw_game_state.py`、`kernel/cw_screen_report/boss_briefing.py`、`obs/cw_observation.py`、`operations/cw_loop.py`、`operations/cw_screen/cw_screen_prep.py`、`operations/cw_screen/cw_screen_boss_briefing.py`
 **依赖**：3.2、3.3
@@ -77,7 +77,7 @@
 **验收凭据形式**：文档对照 review
 
 ## 正本更新清单
-- `docs/develop/sr_od/application/currency_war/game_state/node-derivation.md`：全文触发模型改版（定义重立 §2.1 / 观察态门与两态生命周期 §2.2 / 三腿退役与倒退处置 / S1-S10 走查按新模型重写 / 「禁 observe 直写序键」改判记录）← 3.5/3.6
+- `docs/develop/sr_od/application/currency_war/game_state/node-derivation.md`：全文触发模型改版（定义重立 §2.1 / 观察态门与两态生命周期 §2.2 / 三条分支退役与倒退处置 / S1-S10 走查按新模型重写 / 「禁 observe 直写序键」改判记录）← 3.5/3.6
 - `docs/develop/sr_od/application/currency_war/game_state/fields.md`：node_ord 字段语义（两态 + 锚定写端两处）；`gs.node` 观察镜像写端归属申报（留守漏斗，攻击 B1）← 3.1/3.5
 - `docs/develop/sr_od/application/currency_war/game_state/effect-domain.md`：每节点发放挂点（节点边界 = 终结动作上报；补推路径同源发放）与登记期建模结论 ← 3.4/3.5
 - `docs/develop/sr_od/application/currency_war/flow/README.md`：§1 四层总图喂入描述（漏斗/分支写点 → 动作上报+画面 op 锚定）← 3.5

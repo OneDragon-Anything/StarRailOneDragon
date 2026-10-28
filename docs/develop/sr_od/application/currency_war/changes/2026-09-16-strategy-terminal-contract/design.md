@@ -34,7 +34,7 @@
 - kernel 判据语义与纯函数签名（`decide_event` 族收 typed options 的形态不变，判据零触碰；签名补 gs 形参非判据变更）；
 - 统一观察架构批的 decide() 输入视图口径与本批「实例持容器只读引用」的衔接（当前不冲突；该批落地时裁决视图化形态）；
 - owned 正本迁 GameState 的库存域建模批（在册申报；本批 `last_owned_equips` 处置见 §2.4-B，武装箱打分降级为 gs.equips 现值 = 行为变化登记）；
-- **识别失准路径的行为变化 = 用户裁定接受项**（§2.4-A 防御缓存删除：hp 新鲜度门、等级单调守卫、star 防抖、battle_wait killed 判定兜底改 gs.hp、`upcoming_types` journal 行降级、reconcile_hp 对账腿删除随锚退役；实机跑出识别失准 → 走识别优化批修识别本身，不回滚锚）；
+- **识别失准路径的行为变化 = 用户裁定接受项**（§2.4-A 防御缓存删除：hp 新鲜度门、等级单调守卫、star 防抖、battle_wait killed 判定兜底改 gs.hp、`upcoming_types` journal 行降级、reconcile_hp 对账分支删除随锚退役；实机跑出识别失准 → 走识别优化批修识别本身，不回滚锚）；
 - prep 屏编排域 sim 不可达现状（flow/README §2.3/§2.4 归因域限定不变）。
 
 ## 2. 方案
@@ -65,7 +65,7 @@ action = strategy.decide_shop_action()     # 零参；读自己 → 发一个动
 ### 2.3 路由清点与离屏机制
 
 - 挂点 = 外循环「识别产出后、`_dispatch_identity_screen` 调用前」单点，按属屏映射清 payload 槽。**路由屏取值规则**：命中且在映射内 = 该屏名，只清属屏 ≠ 它的槽；映射外建档屏 / 非身份臂语境 / 未识别 = 清全部十槽。映射单一源 = 扩展 `_PAYLOAD_DOMAINS` 为 `槽 → (属屏, route_clearable)` 二元组；`shop` 保留映射内 `route_clearable=False`（既有两处显式清点为唯一清点源）；`prep_obs` 不入映射（豁免）。
-- 已 None 跳过（不占 write_seq 不落 journal）；清点写入口经 `leave_screen(槽, sig=…)`，sig family/mode 引用既有 CloseShop 腿清点行同一常量源、`actor='cw_loop_route_clear'`。
+- 已 None 跳过（不占 write_seq 不落 journal）；清点写入口经 `leave_screen(槽, sig=…)`，sig family/mode 引用既有 CloseShop 分支清点行同一常量源、`actor='cw_loop_route_clear'`。
 - 两路径语义：`stop_at_prep` 早退发生在挂点之前（早退轮不清点，早退屏非属屏无 decide 消费，清点顺延至 loop 下一次路由周期）；未知兜底在分发后循环尾（不绕行，未识别轮清全部十槽）。
 
 ### 2.4 StrategySession 解散地图
@@ -141,5 +141,5 @@ action = strategy.decide_shop_action()     # 零参；读自己 → 发一个动
 
 - **扩员动因** = 策略侧内容回流普查对抗裁决 F-overlay-01/02/03（三条均 CONFIRMED，裁决过程档 = `.debug/temp/audit-sweep/adjudication-1.md` §2，寿命随迭代）：命运卜者强化三选一 / 专家邀请函选卡 / 选择装备三选一三屏的选卡判据原住画面 handler（选择打分 / 第二实现 / 意向消费错位三类全中），修正落点 = 判据迁 kernel 新纯函数 + handler 改「写槽 → 零参 decide」，契约面需为三屏补零参入口。走 flow/README §2.2「新事件面优先归并进既有 pick 接口或走契约改版」两路预授权中的**契约改版路**（三屏各有独立 payload 槽与判据域，归并进既有九口会错位）。
 - **扩员内容**：新增三个零参入口 `decide_fortune()`（候选 = `gs.fortune_opts` OCR 卡文）/ `decide_expert_invite()`（候选 = `gs.expert_invite` 弹窗载体 = 卡羁绊解析 + 板面计数；idx = -1 表现金为王，PickOption idx 值域扩展申报）/ `decide_equip_pick()`（候选 = `gs.equip_pick_opts` OCR 卡名带）；抽象 12 → 15。词表新增 per-screen 子类型 `PickFortune` / `PickExpertInvite` / `PickEquip`，入 `CW_ACTION_TYPES` + `PICK_ACTION_TYPES`；三屏确认链/直点均 handler 自管消费，与 StarTome/WishTrial/BoxCard 同豁免类（注册完备测试豁免集随迁）。
-- **判据落点**：fortune 关键词权重表 → `cw_events.decide_fortune`；expert 三级语义（在场计数 → 同线 → 现金为王）→ `cw_events.choose_expert_index` 整函数平移；equip key_fit+100 / 泛用关键词+1.0 → `cw_equip_value.decide_equip_overlay_pick`（收 `locked_comp` 参数，意向读迁策略入口自 `self.state` 注入——§2.5 参数注入桶）。equip 与 `pick_equipment` 序数分档语义不可合一（子串命中制 vs 精确名制、泛用关键词腿 vs 名键先验），新立函数不并轨，合一属轻微行为变化另裁。
+- **判据落点**：fortune 关键词权重表 → `cw_events.decide_fortune`；expert 三级语义（在场计数 → 同线 → 现金为王）→ `cw_events.choose_expert_index` 整函数平移；equip key_fit+100 / 泛用关键词+1.0 → `cw_equip_value.decide_equip_overlay_pick`（收 `locked_comp` 参数，意向读迁策略入口自 `self.state` 注入——§2.5 参数注入桶）。equip 与 `pick_equipment` 序数分档语义不可合一（子串命中制 vs 精确名制、泛用关键词分支 vs 名键先验），新立函数不并轨，合一属轻微行为变化另裁。
 - **口径** = ABC 返回注解沿用子类型联合先例（§2.2 输出统一）；验收结论 B 条已定调**行为保持优先**：三件判据原样迁移（当前行为逐位复刻），禁顺带改策略语义。已知分叉单列挂账：expert_invite 实码（在场浓度版）与 E9 在案规格（目标线优先版，13_pick_family.md §2）分叉 = 独立行为变更挂账（迁移保持实码行为，规格切换另批裁定）。payload 三新槽入 `_PAYLOAD_DOMAINS` 路由清点 + `DEFAULT_GS_SCHEMA`。

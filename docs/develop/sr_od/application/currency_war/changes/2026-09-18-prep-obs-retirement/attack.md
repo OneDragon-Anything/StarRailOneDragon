@@ -36,7 +36,7 @@
 **发现**：原文「kernel 立读口或发射位内联现算，**随实施取读口形态**」——把结构决策留给实施者，直接违反 iteration-design.md §5 硬规则 2（实现者无需再设计；「看情况/待定/酌情」= 未定稿）。两种形态的单一源属性完全不同（读口入 kernel 读口族 vs 发射位内联第二份推导），不是等价写法。
 **依据**：iteration-design.md §5 规则 2 与 §7 核一「试读」条；obs-retirement.md §阶段 3.3-3 原文。
 
-### 6. [major] 投影腿退役后 `apply_prep_action_logic` 的调用位迁移未设计
+### 6. [major] 投影分支退役后 `apply_prep_action_logic` 的调用位迁移未设计
 **位置**：details/obs-retirement.md §阶段 3.5-3/3.5-2；landing 3.5 范围。
 **发现**：3.5-3 删除 `_project_prep_obs` 的全部分支（名单/晶矿/装备/瞬态摘除），但 kernel 写口 `apply_prep_action_logic` 的现役调用点全部在**被删分支内部**（SellBench :996、DeployMove :1021、SellDeployed :1066、LevelUp :1081），黑板推进写点在 :1594-1595 与 :1758（`game_state_of(session).prep_obs = self._project_prep_obs(...)`）。删除后：① SellBench/DeployMove/SellDeployed/LevelUp 的容器逻辑态写由谁在哪调用——设计未答；② :1594/:1758 两个写点的替换形态（直调 kernel 写口？删除？）未申报；③ `_project_prep_obs` 函数本体存废未声明（词表外类型的 AssertionError 防线随函数存废）。实现者必须自行设计调用拓扑。
 **依据**：cw_screen_prep.py:996/1021/1066/1081（kernel 写口调用位）、1093-1097（词表外 AssertionError）、1594-1595/1758（黑板推进写点）。

@@ -17,7 +17,7 @@
   2. **sim 现役建模三错**:planner 判据扫备战席(应只场上,用户裁定);`planner_fired` 全局一次性(应每费用档首 2★ 一次,用户裁定);`OVERLAY_KINDS` 的 `'fate'` 张冠李戴(= 圣杯任务链,占卜屋无 kind)。
   3. **羁绊值当场合算**:sim `_board_truth`/`_refresh_board` 每次全量重扫,容器 `board` 派生值无变更回调结构——触发判据无干净挂点。
   4. **实机零预测**:外循环 28 候选全扫识别,弹窗纯反应式,登记提速面不存在。
-  5. **前后台紧凑列表 + 第二账补偿**:front_row/back_row 为紧凑扫描序(「紧凑下标≠物理槽位」家族最后一个未治成员,同族先例 = 备战栏/商店牌行已槽位化),空槽无处表达 → 执行器被迫另设 TrackedBooks 定长保洞表(生成期索引=执行期索引立法)+ 全套动作随动同步腿;跨行单语义变更(换排)双写有中间态。
+  5. **前后台紧凑列表 + 第二账补偿**:front_row/back_row 为紧凑扫描序(「紧凑下标≠物理槽位」家族最后一个未治成员,同族先例 = 备战栏/商店牌行已槽位化),空槽无处表达 → 执行器被迫另设 TrackedBooks 定长保洞表(生成期索引=执行期索引立法)+ 全套动作随动同步分支;跨行单语义变更(换排)双写有中间态。
 - 根因归层:
   - **语义层**:overlay 触发 = 世界对状态域变化的反应;现役被表达为「动作上报点记得广播」(事件)与「事后全量重扫」(sim)——缺「值变更 → 回调 → 登记信号」的反应结构。
   - **表示层**:主域不可槽位直址(紧凑列表)派生双病——第二账(TrackedBooks)与换排中间态。
@@ -27,13 +27,13 @@
   - planner/命运卜者等效果数值建模——披露口径,归效果批;
   - 弹窗呈现顺序保真——约定序 + 披露,不做强断言(用户裁定);
   - 节点窗族画面(supply/encounter/invest/briefing 等)——已由 node_advance 声明覆盖,零改动;
-  - 阿哈「送箱」效果腿建模(获得链事件,归效果批;OpenTome 双击改单击例外——在本迭代 3.5 实机核后执行)。
+  - 阿哈「送箱」效果分支建模(获得链事件,归效果批;OpenTome 双击改单击例外——在本迭代 3.5 实机核后执行)。
 
 ## 2. 方案
 
 ### 系统级变化(四件)
 
-1. **容器合并**(details/deployed-merge.md):`deployed: Field[DeployedView]` 单字段完整槽位表(front_slots 定长 4 + back_slots 动态,空槽 None 显式;同族 = BenchView/ShopPayload.cards),前后台两字段退役,Unit.slot 属性退役(位置 = 子表下标派生),0-9 换算层随 tracked 消费端退役后删除,**TrackedBooks 整体退役**(用户裁定 2026-09-25:消灭第二账——主域可槽位直址后,执行器直址/守卫 expected 侧**改读主域**;随动同步腿与锚定写回腿**删除**——观察通道本就写主域,镜像腿无可服务对象;升星确认候选宿主不动[局旁表]、比较基线改主域派生视图)——表示层治本,第二账与换排中间态两物种灭绝。
+1. **容器合并**(details/deployed-merge.md):`deployed: Field[DeployedView]` 单字段完整槽位表(front_slots 定长 4 + back_slots 动态,空槽 None 显式;同族 = BenchView/ShopPayload.cards),前后台两字段退役,Unit.slot 属性退役(位置 = 子表下标派生),0-9 换算层随 tracked 消费端退役后删除,**TrackedBooks 整体退役**(用户裁定 2026-09-25:消灭第二账——主域可槽位直址后,执行器直址/守卫 expected 侧**改读主域**;随动同步分支与锚定写回分支**删除**——观察通道本就写主域,镜像分支无可服务对象;升星确认候选宿主不动[局旁表]、比较基线改主域派生视图)——表示层治本,第二账与换排中间态两物种灭绝。
 2. **值域回调级联**(details/faction-trigger.md):mutator(写值;获得链递归各步亦然)与**值变更回调**(每值域一个专门回调,固定参数,携带变更前后值,内部按情况触发下游值域与各自判据)——触发覆盖从「写方记得」变为「写路径必经值维护、值维护必经回调」的结构性覆盖;判据公共基础 = **资格集语义**(出身 ∨ 持徽,单一源 cw_bond_equips)。
 3. **登记接口与存处**(details/register-consume.md):`register_screen_change`/`consume_screen_change`/`clear_screen_changes` 三口;存处 = 容器 kernel 簿记 sidecar(pending FIFO 去重 + 触发簿记),单局生命周期,实机/sim 字面同一份;kind 词表对齐现役画面/动作名。
 4. **消费面**(details/register-consume.md):实机宿主 op(备战/商店)动作后查 pending 交回 + 外循环两段式判定提速(pending 逐屏先试 → miss 回退全扫描;反应式兜底不变)+ pick 上报 consume(两世界同口)+ sim 呈现状态机改读 pending(逐 kind 呈现门:fortune 仅备战底层)+ S6 点击类统一入登记(声明 next_screen 语义回归底层屏);退役:事实事件三件套(6 处 emit)、sim `OverlayQueue`/私有评估器/`_board_truth`/`_refresh_board`;sim 修正清单七项 = planner 扫描范围(备→场)/planner 簿记(一次性→每费用档)/megastar 簿记(水位→逐次上穿)/fate → wish_trial/expert → expert_invite/hack → planner 正名/fortune 补 kind。

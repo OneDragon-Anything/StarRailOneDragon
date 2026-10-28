@@ -7,8 +7,8 @@
 代码现状缺陷(2026-10-16 排查):
 
 1. `cw_pool.fixed_pool()` 以「注册表全角色」为基础牌库 → 9 名专家(青雀/停云/加拉赫/桑博/刃/貊泽/佩拉/姬子/银狼)按普通副本数(1/2 费 27、3/4 费 9)默认在池,商店可自然刷出——与机制矛盾;
-2. `extra_experts` 参数(「专家入池追加副本」首版建模,自标注待核)**零调用方**:sim `deal_shop` 与实机刷新采样腿均未传,死参数;
-3. 容器无「已解锁专家」状态:`cw_gain_chain` advisor 道与骇客银狼效果体均以「商店池无容器字段」为由退化为遥测申报行(`DEFECT_ADVISOR_DECL`);骇客银狼另加「直接入席」近似腿,与卡文「获得专家顾问【银狼】,并使其在本局游戏中加入商店」不符(卡文语义 = 入商店,非直接送单位);
+2. `extra_experts` 参数(「专家入池追加副本」首版建模,自标注待核)**零调用方**:sim `deal_shop` 与实机刷新采样分支均未传,死参数;
+3. 容器无「已解锁专家」状态:`cw_gain_chain` advisor 道与骇客银狼效果体均以「商店池无容器字段」为由退化为遥测申报行(`DEFECT_ADVISOR_DECL`);骇客银狼另加「直接入席」近似分支,与卡文「获得专家顾问【银狼】,并使其在本局游戏中加入商店」不符(卡文语义 = 入商店,非直接送单位);
 4. `cw_shop_odds.DISTINCT_CARDS_PER_COST`(v 值,刷牌概率分母)含专家 → 全部 p/v 类概率计算分母偏大。
 
 ## 2. 修正设计
@@ -26,7 +26,7 @@
 - `fixed_pool()` = 注册表**非专家**角色 × `POOL_COPIES_PER_CARD`;`extra_experts` 参数退役(死参数 + 追加语义不成立——基础池已排除专家,入池 = 解锁授予,非追加);
 - `remaining_pool`/`drawable_names` 从 `gs.unlocked_experts` 并入专家副本(每名 `EXPERT_COPIES_ASSUMED = 9`,保留待实机核披露);守恒检查沿用(摸个鱼吧 II/III 直接给单位、held 超出未解锁名 → 按名遍历 fixed 天然不检查,不误炸);
 - `grant_bucket_names`(效果随机授予出口)维持**不含专家**(「专家 ∈ 授予采样空间」无定案,维持既有 v0 口径;该出口现役零调用方,无行为影响);
-- 商店发牌消费端(sim `deal_shop`、实机刷新采样腿)**零改动**——池派生内部消费 gs,两执行面自动正确。
+- 商店发牌消费端(sim `deal_shop`、实机刷新采样分支)**零改动**——池派生内部消费 gs,两执行面自动正确。
 
 ### 2.4 解锁写端(kernel 获得链,两执行面同源)
 
@@ -34,9 +34,9 @@
 |---|---|---|
 | 投资环境/特邀专家 portal(`ENV_GIFTS` advisor=True 4 条) | `on_env_gained` advisor 道:写 `unlocked_experts` | `DEFECT_ADVISOR_DECL` 申报行随权威写道退役 |
 | 投资策略(`STRATEGY_GRANTS` advisor=True 11 条) | `on_strategy_gained` 新增 advisor 道(与 env 对称查表) | 非 advisor 策略赠卡仍属既有效果推广批缺口,不扩本批 |
-| 装备获得(`EQUIP_ACQUIRE_CONSEQUENCES`:分身墨镜/Max → 银狼) | `on_equipment_gained`:送单位腿保留(口述权威 2026-09-18)+ 追加解锁写 | 卡文「解锁并获得」= 入池 + 送单位两腿;数据拷贝仪Max → 银狼LV.999 非专家,不写 |
+| 装备获得(`EQUIP_ACQUIRE_CONSEQUENCES`:分身墨镜/Max → 银狼) | `on_equipment_gained`:送单位分支保留(口述权威 2026-09-18)+ 追加解锁写 | 卡文「解锁并获得」= 入池 + 送单位两条分支;数据拷贝仪Max → 银狼LV.999 非专家,不写 |
 | 专家邀请函选卡(`report_action_pick_expert_invite_param`) | 首版申报行披露 | 候选名不可观察(实机 payload 无候选名/sim '' 纯转移),解锁登记待候选名观察建档批;真值归观察覆盖 |
-| 骇客专家:银狼(策略效果体) | 效果体删入席腿与池申报行,解锁由策略 advisor 道统一写;改件腿保留 | 官方卡文 = 入商店,非送直接单位 |
+| 骇客专家:银狼(策略效果体) | 效果体删入席分支与池申报行,解锁由策略 advisor 道统一写;改件分支保留 | 官方卡文 = 入商店,非送直接单位 |
 
 ### 2.5 v 值修正(cw_shop_odds)
 
@@ -51,5 +51,5 @@
 
 ## 4. 测试
 
-- 新增:专家默认不在 `drawable_names`、解锁后进池且按费档归档、`on_env_gained`/`on_strategy_gained` advisor 解锁写、分身墨镜解锁+送单位双腿、v 值排除专家;
+- 新增:专家默认不在 `drawable_names`、解锁后进池且按费档归档、`on_env_gained`/`on_strategy_gained` advisor 解锁写、分身墨镜解锁+送单位双分支、v 值排除专家;
 - 更新:fixed_pool/守恒/advisor 申报行/骇客效果体相关既有断言(按测试纪律:代码修正,期望随代码更新并注明依据 = 官方机制双源)。

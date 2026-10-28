@@ -17,7 +17,7 @@
 | **角色变动回调** `on_units_changed(gs, added_units, removed_units, source)` | 按名 diff 的增/减单位 | 事件通知(喂资格集);overlay 判据不住此 |
 | **装备变更回调** `on_equips_changed(gs, changed_pairs, source)` | 同名存活单位的 (旧单位, 新单位) 对中 equips 有差者 | 事件通知(喂资格集);其他装备消费面留位(未来) |
 | **资格集变更回调** `on_qualification_changed(gs, old_sets, new_sets, source)` | 盯的三阵营资格名集旧/新(派生存值) | 判据:S2 伙伴、S1b 重选、S1a 档位跨越(**全部资格集判据**,见下) |
-| 星级回调 `on_star_changed(gs, old_star, new_star, source)` | **场上银狼星级**(派生存值;场上同名唯一 → 至多一只,值域 = 无/1/2/3;同名唯一 = 现役入口守卫在册:W43 裁决 1,char_id 级,cw_deploy_logic.py:1769-1781 `board_unique_key` + deploy/swap 入口同守卫(cw_vocab.py:1117/:1162);「同名同星≤1」仅为 merge 工作表内部不变量(cw_gain_chain.py:169),非板上身份不变量) | S3 planner 判据:**新值 ≥ 2 ∧ 该费用档未弹过**(旧值无关——覆盖无→2/1→2/无→3[用户裁定:暂时按会弹处理,待实机复核]/2→3 不弹[档已弹];无→3 形态 = 备战囤 3★ 直接上场,该档 2★ 从未上场)→ register;费用档读现役容器字段 `gs.lv999_cost_tier`(cw_game_state.py:2380,写端 = deploy_move 升费腿/pick_planner 选升费腿);簿记 = 已触发费用档集合(3/4/5 各一次,用户裁定:银狼专用) |
+| 星级回调 `on_star_changed(gs, old_star, new_star, source)` | **场上银狼星级**(派生存值;场上同名唯一 → 至多一只,值域 = 无/1/2/3;同名唯一 = 现役入口守卫在册:W43 裁决 1,char_id 级,cw_deploy_logic.py:1769-1781 `board_unique_key` + deploy/swap 入口同守卫(cw_vocab.py:1117/:1162);「同名同星≤1」仅为 merge 工作表内部不变量(cw_gain_chain.py:169),非板上身份不变量) | S3 planner 判据:**新值 ≥ 2 ∧ 该费用档未弹过**(旧值无关——覆盖无→2/1→2/无→3[用户裁定:暂时按会弹处理,待实机复核]/2→3 不弹[档已弹];无→3 形态 = 备战囤 3★ 直接上场,该档 2★ 从未上场)→ register;费用档读现役容器字段 `gs.lv999_cost_tier`(cw_game_state.py:2380,写端 = deploy_move 升费分支/pick_planner 选升费分支);簿记 = 已触发费用档集合(3/4/5 各一次,用户裁定:银狼专用) |
 | (非回调)**羁绊计数字段** | 现役 `board` 多集口径维持(策略消费口不变) | 与资格集分立:卡带系多计(星核猎手无条件+1/欢愉双计,cw_bond_equips 单一源)使计数 ≠ 名集合大小;盯的三阵营无卡带,判据集合语义不受影响;增量口径保留(环境授徽面板真值不被全量重算抹掉,2026-09-18 实锤)——环境授徽跨档 = 派生资格集假阴面,反应式兜底接 + 对账行暴露 |
 
 ### 资格集语义(判据公共基础)

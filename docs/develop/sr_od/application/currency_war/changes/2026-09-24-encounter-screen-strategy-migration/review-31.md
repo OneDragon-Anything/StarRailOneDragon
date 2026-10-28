@@ -31,7 +31,7 @@
 | 1f | 刷新阀两臂 | ✓ | `_empty_reachable_frame`：`left is not None and left >= 1` → Suggestion；None/0 → dark-fallback 最低档（测试 :121-156 三臂 + left=None fail-closed 对拍独立核） |
 | 1g | 选档主序 + tiebreak + 输入序 | ✓ | `max(difficulty)` → `min((reward_tier, idx))`，与原核 :441-444 逐位同构；测试 :183-208（钻>装备>金币>末档 + 输入序先） |
 | 1h | fail 向与归因串格式 | ✓ | `e3-simple\|` 前缀、`pick:t{k}\|kappa=<态>`、`refresh-valve:<因>`/`dark-fallback:<因>` 封闭三因 + `stance-unconfirmed`；`dark-install` 段不再产出（§2.3 申报一致）；对拍中 pick reason 验证为旧串声明段前缀 |
-| 1i | 差异面 = 暗装门收窄与申报一致 | ✓ | 比值腿五门（F_MIN/G_BASE/DELTA_T/bar 双槽/D_enc 读点）与 d_win 提取退役；`refresh_used` 参 → `encounter_refresh_left` 闸内嵌（§2.2）；输出拆两 dataclass（§2.6）；空候选 `no-options`（§2.2）；立场门前置（§2.3）——五项差异全部 design 在册 |
+| 1i | 差异面 = 暗装门收窄与申报一致 | ✓ | 比值分支五门（F_MIN/G_BASE/DELTA_T/bar 双槽/D_enc 读点）与 d_win 提取退役；`refresh_used` 参 → `encounter_refresh_left` 闸内嵌（§2.2）；输出拆两 dataclass（§2.6）；空候选 `no-options`（§2.2）；立场门前置（§2.3）——五项差异全部 design 在册 |
 | 2 | 立场常量区【拍】登记 | ✓ | encounter_pick :41-58：2026-09-24 过目记录 + 重拍语义（None → 回退态）+ 暂定值备注；`EDGE_CAP: int \| None = 2`；偏好序四档常量 :137-140；置 None 回退态测试 :263-276（两常量各测，恒最低档零刷新断言） |
 | 3 | DIAMOND_EQUIP_NAMES 单一源 | ✓ | 全仓 grep：定义唯一点 = `kernel/cw_obs_core.py:50`，值零变化（frozenset 三名）；消费方 `cw_node_obs`/`cw_encounter_selection`/`encounter_pick` 均 import kernel；测试仓零引用 |
 | 3b | 消费方行为等价 | ✓ | `cw_encounter_selection.py` diff 仅 reward_tier import 源行；`cw_node_obs.py` diff 仅定义迁出改 import + 注释收口；`any(d in t ...)` 消费语义与 frozenset 同值 = 零行为差 |
@@ -45,4 +45,4 @@
 | — | 未接线声明 | ✓ | `encounter_pick`/`EncounterPickDecision`/`EncounterRefreshSuggestion` 全仓 grep 零生产消费方；`mandate_v1/__init__.py` 未导出；生产行为零变化达成 |
 
 ### 对拍方法注记（供复核）
-临时脚本将现役核标定槽注入为「比值腿恒过」形态（`F_MIN=1.0, G_BASE=1.0 → g^x≡1.0≥F_MIN`、bar 双槽定谳、`D_ENC_VARIANT='i'` 直读、`enemy_difficulty` observation 写入），使旧核 t≤4 分支与新核「能力态直判」结构等价后逐 fixture 对拍。声明差异面单独核验不入等价矩阵：空候选（新核 `no-options`）、`left=None` fail-closed（旧核参数无 None 形）、fill 双槽未定谳相（旧核 bar 键注入即激活，新核 None 不激活——该面在双核同注入相验证逐位同构）。`refresh_used` 与 `left` 映射：`left=1 ⟺ refresh_used=False`，`left=0 ⟺ refresh_used=True`。
+临时脚本将现役核标定槽注入为「比值分支恒过」形态（`F_MIN=1.0, G_BASE=1.0 → g^x≡1.0≥F_MIN`、bar 双槽定谳、`D_ENC_VARIANT='i'` 直读、`enemy_difficulty` observation 写入），使旧核 t≤4 分支与新核「能力态直判」结构等价后逐 fixture 对拍。声明差异面单独核验不入等价矩阵：空候选（新核 `no-options`）、`left=None` fail-closed（旧核参数无 None 形）、fill 双槽未定谳相（旧核 bar 键注入即激活，新核 None 不激活——该面在双核同注入相验证逐位同构）。`refresh_used` 与 `left` 映射：`left=1 ⟺ refresh_used=False`，`left=0 ⟺ refresh_used=True`。

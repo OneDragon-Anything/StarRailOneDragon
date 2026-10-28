@@ -14,7 +14,7 @@
 
 - sim 引擎（`sim/cw_sim_engine.py::CwSimEngine`/`simulate_run`）自驱动：自持相位机与世界账本，策略注入式喂帧。唯一策略消费面 = 商店决策驱动器（`decide_shop_screen`；依据 = `docs/develop/sr_od/application/currency_war/flow/README.md` §2.3「sim 消费面注记」：prep 屏编排域在 sim 无实体真值源、不可达）。
 - 投资效果消费面狭窄且与流程侧分叉：
-  - 选卡腿只写名字不走获得链（`sim/cw_sim_offer.py::apply_strategy_pick`/`apply_env_pick` vs 流程侧 `kernel/cw_action_report/pick_invest_strategy.py` → `kernel/cw_gain_chain.py::gain_invest_strategy`）——契约送卡/骇客改件/burst 即时金/板面重写 sim 全丢；
+  - 选卡分支只写名字不走获得链（`sim/cw_sim_offer.py::apply_strategy_pick`/`apply_env_pick` vs 流程侧 `kernel/cw_action_report/pick_invest_strategy.py` → `kernel/cw_gain_chain.py::gain_invest_strategy`）——契约送卡/骇客改件/burst 即时金/板面重写 sim 全丢；
   - 环境经济消费手读注册表（`cw_sim_engine.py::_apply_env_plane_gold`）；
   - 名单常量住 sim 私有（`cw_sim_offer.py::QUALITY_REWRITE_ENV_NAMES`）= 第二真相源。
 - 引擎私有 `_Eng`（`cw_sim_engine.py`）与容器存在三处真双账：`plane`/`round_num` vs `gs.node`；相位载荷（`options`/`supply_opts`/`encounter_opts`/`box_cands`/`ores`）vs 容器各 `*_opts` 槽（写端 = 画面 op 观察上报）；`streak_unsigned` vs 容器带符号连胜（无符号可派生 = `max(带符号, 0)`）。
@@ -31,10 +31,10 @@
 
 **系统级变化**（读一遍知全貌）：
 
-1. **SimBackend**（世界后端，新）：组合持有 `GameState` + 后端私有运行时（用户裁定 2026-09-23：定名 SimBackend、组合不继承）。内含画面状态机（当前画面 + 载荷）、节点日程与进节点序列、overlay 事实触发层、随机流键体系。世界规则件自旧引擎平移（收入/经验/发牌/offer 采样/coarse 战斗/结算），选卡腿改接 kernel 获得链，敌人词缀入 seed。
+1. **SimBackend**（世界后端，新）：组合持有 `GameState` + 后端私有运行时（用户裁定 2026-09-23：定名 SimBackend、组合不继承）。内含画面状态机（当前画面 + 载荷）、节点日程与进节点序列、overlay 事实触发层、随机流键体系。世界规则件自旧引擎平移（收入/经验/发牌/offer 采样/coarse 战斗/结算），选卡分支改接 kernel 获得链，敌人词缀入 seed。
 2. **流程接缝**（新）：端口模块（缺省 `None` = 纯实机，零行为变化）+ `CwOperation` 基类覆写面（哨兵帧 + `round_by_*` sim 应答 + until 可见性问询）+ 按 screen_info 档名注册的每屏观察生成器（产物走 `cw_screen_report` 同名上报函数落容器）+ 运行器与 controller 桩（fail-loud）。
 3. **旧引擎退役**（删，用户裁定 2026-09-23）：`CwSimEngine`/`simulate_run`/`StepResult`/`CwSimPhase` 驱动壳删除；规则件平移后逐模块归宿见详设；`sim/cw_replay.py`（journal 重放）不依赖引擎、不受影响；测试仓 `test_cw_sim_engine.py` 等规则断言平移。
-4. **不变式**（全案锁死）：容器一份（`GameState`）；写通道三条各一（观察 = `report_screen_*`、动作 = `report_action_*`、节点 = `report_node_advance`）；决策输入 = 容器直读（不变）；双路径仅「获取观察」与「机械点击」两腿——观察腿改道 = 每屏显式读屏点一行机械改（helper 接线），决策/动作/节点推进的 op 体零改动。
+4. **不变式**（全案锁死）：容器一份（`GameState`）；写通道三条各一（观察 = `report_screen_*`、动作 = `report_action_*`、节点 = `report_node_advance`）；决策输入 = 容器直读（不变）；双路径仅「获取观察」与「机械点击」两条分支——观察分支改道 = 每屏显式读屏点一行机械改（helper 接线），决策/动作/节点推进的 op 体零改动。
 5. **容器字段判据**（全案锁死）：实机对局中存在且可观察/影响玩法的世界事实 → `GameState` Field（双端受益）；实机不可观察的生成器采样簿记 → SimBackend 私有。禁第三形态（GameState 子类）。
 
 **详设划分与跨详设接口契约**（唯一必须在总纲定死的深度内容）：

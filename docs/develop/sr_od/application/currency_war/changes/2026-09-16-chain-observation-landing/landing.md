@@ -24,13 +24,13 @@
 **完成判据**：
 - 单测：clean 备战帧 → node_path 整帧覆盖（dim/label/hu/none/sift 五通道各一例 + current 左移推断值一例、anchor 缺失 OCR 兜底一例）；轮位错位帧拒写；窗内照写（新语义）且窗被本读关闭；链读失败字段保持未写不阻塞
 - journal 写入行断言（obs 渠道、行含 NodeChain 快照）；基线回填（空则写/非空不覆）单测
-- **生产时序四②命中（harness 剧本）**：按真实帧序演「round N-1 入口链写 → round N 开店（弹窗腿）→ 查询 chain[N] 命中 Hu token」——防「单测手工构造可绿、生产恒 None」（对抗 F1-3）
+- **生产时序四②命中（harness 剧本）**：按真实帧序演「round N-1 入口链写 → round N 开店（弹窗分支）→ 查询 chain[N] 命中 Hu token」——防「单测手工构造可绿、生产恒 None」（对抗 F1-3）
 - 两路径触达断言：旧 run() 与五段 lifecycle 的入口观察均触发链写（F6）
 - 通用工程门（本文首节定义）
 **验收凭据形式**：测试名清单 + 现役 fixture 帧离线判读样例
 
 ## 3.3 过渡屏观察段（基线链 + 离场快照）
-**范围**：`CwScreenPlaneTransition._click_blank`（两路径共享点击执行体，cw_screen_plane_transition.py:107-121）点击前读节点行（`read_node_sequence` 同源）写两笔：容器节点镜像三源全缺（kernel 过渡腿先例语义，cw_game_state.py:3383-3391）判开局 → `node_path_baseline`（evidence='transition_row'，行位面=1）；每次过渡屏 → `node_path` 离场快照（evidence='transition_snapshot'，行位面 = 非开局取节点镜像 plane、镜像缺失跳写诚实缺位）。接管局残余风险按 design §2.1-3 申报（镜像全缺 ⟺ 游戏最开端，污染形态 = 极端崩溃恢复，接受）。**不含**位面详情采集通道改动（冻结）。
+**范围**：`CwScreenPlaneTransition._click_blank`（两路径共享点击执行体，cw_screen_plane_transition.py:107-121）点击前读节点行（`read_node_sequence` 同源）写两笔：容器节点镜像三源全缺（kernel 过渡分支先例语义，cw_game_state.py:3383-3391）判开局 → `node_path_baseline`（evidence='transition_row'，行位面=1）；每次过渡屏 → `node_path` 离场快照（evidence='transition_snapshot'，行位面 = 非开局取节点镜像 plane、镜像缺失跳写诚实缺位）。接管局残余风险按 design §2.1-3 申报（镜像全缺 ⟺ 游戏最开端，污染形态 = 极端崩溃恢复，接受）。**不含**位面详情采集通道改动（冻结）。
 **设计依据**：design.md §2.1-3；链正本 §3
 **文件面**：`operations/cw_screen/cw_screen_plane_transition.py`、`sr-od-test` 对应测试
 **依赖**：3.1
@@ -61,7 +61,7 @@
 **依赖**：3.2、3.3、3.4
 **优先级建议**：8
 **完成判据**：
-- 单测：商店弹窗腿进店（链在位）→ node.kind=查链直定值 → 店决策 `node_kind_of` 读到正确类型；链缺位 → 维持零写；非商店画面零查链（F9）
+- 单测：商店弹窗分支进店（链在位）→ node.kind=查链直定值 → 店决策 `node_kind_of` 读到正确类型；链缺位 → 维持零写；非商店画面零查链（F9）
 - 删除面 grep：`node_ledger_backfill`/`_refresh_node_ledger` 零残留
 - 台账在役消费点在册断言（三处 + 写点①③，防误删，对抗 F2）
 - 既有 ADR-0587 回归测试仍绿（店决策不再读滞后节点）

@@ -146,7 +146,7 @@ screens/ 目录仅 `supply.md` 一篇；「双篇」实际指 docs/game 侧 `货
 - journal 装配唯一锚 = `game_state_of` 建立路径的现状表述（journal.md §7 逐字吻合）。
 - `pending_round_outcomes` 零读者判定（全仓直调：唯一写端 `cw_screen_battle_wait.py:496`，其余为注释）。
 - `bind_exec_state`/`exec_state_of` 已消亡（src 零命中）。
-- `_PAYLOAD_DOMAINS` 现状（`cw_game_state.py:285` 前，frozenset{shop,encounter,supply}）与「既有两处显式清点」（`cw_game_state.py:2033` CloseShop 腿 + `cw_observation.py:2618` prep 相位 miss；:3965/:4263 为 sim 合成口自足）。
+- `_PAYLOAD_DOMAINS` 现状（`cw_game_state.py:285` 前，frozenset{shop,encounter,supply}）与「既有两处显式清点」（`cw_game_state.py:2033` CloseShop 分支 + `cw_observation.py:2618` prep 相位 miss；:3965/:4263 为 sim 合成口自足）。
 - REGISTERED_ACTORS 缺席面（`cw_game_state.py:285-336`：确无 CwScreenPlanner/CwScreenBoxPick，3.1 预登记正确）。
 - 十二槽表写者/读者全集抽查（prep_obs 三读者全：bridge:174/equip_wear_plan:163/cw_screen_prep:1865；chosen_* 双写端 megastar:194+202、partner:290+298）。
 - 刷新链三分形态对码（encounter 同访问重决策 / supply `round_retry` 重入 / invest pending+round_retry 重入）与 §2.4 一致。

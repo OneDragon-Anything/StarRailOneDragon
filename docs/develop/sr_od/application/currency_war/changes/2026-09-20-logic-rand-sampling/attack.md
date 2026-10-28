@@ -27,7 +27,7 @@ blocker × 4，major × 3，minor × 4。根因归层（语义层）成立、修
 ### B3 | design.md §2.5 | sim 接线未定义到可实施：「现有 rng 传递惯例」在 apply_player_action 不存在，CollectOre 委托分支也不存在
 - **问题**：§2.5 称「`apply_player_action` 的 CollectOre 委托分支传 `stream_rng(...)`（形参随引擎现有 rng 传递惯例对接）」。实证：
   - `sim/cw_sim_actions.py::apply_player_action`（L95-137）**无 rng 形参**，分派表**无 CollectOre 分支**——`CwActionCollectOreParam` 现落入 `unsupported_action_type`；
-  - 仓内唯一 rng 传递先例 = 引擎 `_apply_furnace`（`cw_sim_engine.py` L411-426）在 apply_player_action **之外**旁路直调带 rng 的腿函数，并非「apply_player_action 的惯例」。
+  - 仓内唯一 rng 传递先例 = 引擎 `_apply_furnace`（`cw_sim_engine.py` L411-426）在 apply_player_action **之外**旁路直调带 rng 的分支函数，并非「apply_player_action 的惯例」。
   实现者必须自行设计：rng 形参加在 apply_player_action（新 kwarg？）还是引擎像 furnace 一样旁路直调上报函数？谁负责 uses 计数？均未定义。
 - **依据**：规范 §5 规则2；任务书定稿试读攻面（sim 接线形参对接）。
 - **建议修法**：§2.5 落到签名级：明确新增分派行 + rng 到达路径（推荐 furnace 先例——引擎侧旁路直调 `report_action_collect_ore_param(..., rng=stream_rng(...))`，apply_player_action 主表不动，或明确 kwarg 方案），并写明调用点。

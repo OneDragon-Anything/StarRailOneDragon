@@ -27,7 +27,7 @@
 - **现状症状**:fields.md §3.4.5 伙伴子句现文「伙伴=候选阵营与立绘(**暂无候选建档区域**——接线前先补档)」与现状不符——建档「候选-卡区」已在档(`assets/game_data/screen_info/currency_war_partner.yml`,点击带锚定用),SIFT 真身识别已接线;剩余识别几何(候选标签行 y/x 过滤带 = `CwScreenPartner.LABEL_CY_LO/HI`、`LABEL_CX_LO/HI` ClassVar;立绘裁剪框 = `_identify_portraits` 类内几何)仍为**代码内矩形**——未进 screen_info,也未按遭遇屏先例(fields.md §3.4.1「遭遇屏建档无剩余次数区域——现役走代码内矩形先例」)申报。partner.md §3 把 y/x 带写成本稿原数值(「y 带 340-400 ∧ x 带 450-1550」),既违「数值 / 权重 / 阈值只写常量名(单一源在代码)」(AGENTS §9 as-built 条款),也未挂缺口指针。
 - **根因归层**:**约定层(字段正本缺口登记滞后)**——AGENTS §5 坐标单一真相源要求识别几何最终归 yml,现状与正字登记之间的候批欠账未立。
 - **解决到哪**:fields.md §3.4.5 伙伴子句改「先例申报」口径;partner.md §3 带值改常量名 + 挂先例与缺口指针(§2.4)。零行为变更。
-- **明确不解决**:实际补档(候选标签行 / 立绘裁剪框 area 化)归运行期建档流程(实机归档帧 + 观察读链对账,MCP upsert 改资产),本稿只正字正本登记;sim 腿(sim 无伙伴画面段,模块头申报)不动。
+- **明确不解决**:实际补档(候选标签行 / 立绘裁剪框 area 化)归运行期建档流程(实机归档帧 + 观察读链对账,MCP upsert 改资产),本稿只正字正本登记;sim 分支(sim 无伙伴画面段,模块头申报)不动。
 
 ### F-4 kernel/cw_events.py 伙伴段注释陈旧 + idx 缺坐标系数定义(低)
 
@@ -195,7 +195,7 @@ self._pick_point = point
 - **代码内文档(零行为)**:`kernel/cw_events.py`(F-4 三站点);`cw_overlay_pick_action.py::CwActionPickPartnerOp` 类体内注(F-5 站点③;`cw_screen_partner.py` 注释面随 F-1 同文件施工,含 F-5 站点②④)。
 - **正本文档(零行为)**:`game_state/fields.md`(§3.4 导语 F-2 + §3.4.5 F-3);`screens/op-layer.md`(§1.1 括注 F-2 + §1.3 守卫出口登记 F-1,落地批正本更新阶段无条件执行 = §2.2 ④);`screens/partner.md`(§2/§3/§4/§5/§6/§8/§9:F-1 as-built + F-3 §3 + F-6 §4 + F-2 §6;**+ §3 观察面登记 :34 转换成功性边界(char_id 识别失败回落流派名/空 = 转换失败欠账形态,收敛方向 = 观察失败 round_fail 零写零上报;含多候选命中同一注册名同判)+ §6 chosen 行 char_id 值语义随注——本稿 §3 增补④,op-layer.md §1.1 :34「边界由屏契约登记」义务,落地批无条件执行)**。
 - **跨稿共享面(本稿不独立施工)**:fields.md §3.4 导语为**三方同句认领**(T-8 = megastar.md §2.4 枚举半边 / T-9 = equip_pick.md §2.3 例外括注 / T-11 = 本稿骨架句,详 = §2.3 ①)——合并落行 = 含 T-9 例外括注并入后的合并句,文本归 T-37 对账;`OverlayPickExecEnv.idx` 字段注释「(钳位后生效值)」挂 T-37 族级批(§2.2 ③);`cw_overlay_pick_action.py` 模块头段归 encounter.md §2.3(T-37 在册),本稿只动 PickPartnerOp 类体内注。
-- **其余文件零触碰**:策略侧(`flow.py::decide_partner` 告示不扩)、祈愿 / 星徽写时点、sim 腿、`zero_writes.py` 本体、建档资产(yml)。
+- **其余文件零触碰**:策略侧(`flow.py::decide_partner` 告示不扩)、祈愿 / 星徽写时点、sim 分支、`zero_writes.py` 本体、建档资产(yml)。
 
 ## 3. 新规范增补(2026-09-22 两条款)
 

@@ -19,8 +19,8 @@
 ### 2a. 双记账(−2 一起;run_20260915_070645 07:07:40-52)
 
 - 现场:备战帧连卖两件(回金公式各 +1),执行缝(`cw_exec_state._advance_gold`,evidence `op_effect_gold_delta`)与容器投影(`apply_prep_action_logic`,evidence `proj_sell_refund`)**各记一次** → 逻辑金 3→7(虚增 2),实读 5(= 3+1+1 真实回金)。账实差恰 −2。
-- 结构:卖出金腿历史共存三条(执行缝直推两处:prep_actions.execute 与 apply_op_effect 分支;投影一处),LevelUp 已于批 2b 翻转归一(「执行缝金差随翻转退役,本口唯一写点」),**卖腿漏改**。
-- **出口①建模补全(已落地)**:卖出回金容器唯一写点 = `apply_prep_action_logic` 投影分支;退役执行缝两腿(prep_actions.execute 直推块、apply_op_effect SellBench 分支整体与 SellDeployed 金腿;owned 装备回收腿保留 = 执行账无投影对应物)。
+- 结构:卖出金分支历史共存三条(执行缝直推两处:prep_actions.execute 与 apply_op_effect 分支;投影一处),LevelUp 已于批 2b 翻转归一(「执行缝金差随翻转退役,本口唯一写点」),**卖分支漏改**。
+- **出口①建模补全(已落地)**:卖出回金容器唯一写点 = `apply_prep_action_logic` 投影分支;退役执行缝两条分支(prep_actions.execute 直推块、apply_op_effect SellBench 分支整体与 SellDeployed 金分支;owned 装备回收分支保留 = 执行账无投影对应物)。
 - 复现载体选型:**单元级重放(测试)**——`test_prep_sell_gold_booked_exactly_once_across_seam_and_projection`(test_cw_unified_action_2a.py)重放「执行缝→投影」单元序列,断言恰一次 +refund;3.3 验证期实机零新增该模式行额外兜底。
 
 ### 2b. 奖励节点随机收入盲区(+7/+4 两起;run_20260915_065919 / run_20260916_095808)

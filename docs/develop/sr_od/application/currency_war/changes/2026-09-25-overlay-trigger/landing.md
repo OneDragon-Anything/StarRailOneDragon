@@ -14,7 +14,7 @@
 **验收凭据形式**:测试全量绿 + sim 局结果对拍 + 写序断言
 
 ## 3.2 TrackedBooks 退役
-**范围**:tracked 主账(bench/deployed 两面)与全部随动同步腿删除;商店播种守卫 expected 侧改读主域派生;升星确认候选宿主不动、比较基线改主域派生视图;tracked_account_observed 锚定语义重定义;换算五函数删除(`deployed_slot_no`/`deployed_row_slot`/`deployed_idx_of`/`deployed_rows_to_indexed`/`deployed_indexed_to_rows`,kernel/cw_exec_state.py)。
+**范围**:tracked 主账(bench/deployed 两面)与全部随动同步分支删除;商店播种守卫 expected 侧改读主域派生;升星确认候选宿主不动、比较基线改主域派生视图;tracked_account_observed 锚定语义重定义;换算五函数删除(`deployed_slot_no`/`deployed_row_slot`/`deployed_idx_of`/`deployed_rows_to_indexed`/`deployed_indexed_to_rows`,kernel/cw_exec_state.py)。
 **设计依据**:details/deployed-merge.md「TrackedBooks 退役」表 + 「触面清单」tracked 侧行
 **文件面**:kernel/cw_game_state.py(类删)、kernel/cw_exec_state.py(五函数删)、prep_actions.py、cw_reconcile.py、cw_vocab.py、strategies/impl/mandate_v1/(mandate 读口)、operations/cw_op/(deploy_move/sell_deployed/buy_card 同步分支)、obs/cw_observation.py、operations/cw_screen/cw_screen_prep.py、相应测试
 **依赖**:3.1
@@ -27,7 +27,7 @@
 **验收凭据形式**:测试(守卫/对账)+ grep 归零清单
 
 ## 3.3 值域回调级联 + 登记
-**范围**:派生维护按名分解 → 四回调挂点(on_units_changed/on_equips_changed = 事件通知;on_qualification_changed = 判据;on_star_changed = S3);资格集派生存值(盯三阵营)+ 羁绊计数字段分立口径;簿记(祈愿/planner 已触发档集合、占卜屋计数);register/consume/clear 接口与容器存处;S4 占卜屋 settle 腿直登;S5 阿哈选卡直登;S6 三个 open_* 上报直登。
+**范围**:派生维护按名分解 → 四回调挂点(on_units_changed/on_equips_changed = 事件通知;on_qualification_changed = 判据;on_star_changed = S3);资格集派生存值(盯三阵营)+ 羁绊计数字段分立口径;簿记(祈愿/planner 已触发档集合、占卜屋计数);register/consume/clear 接口与容器存处;S4 占卜屋 settle 分支直登;S5 阿哈选卡直登;S6 三个 open_* 上报直登。
 **设计依据**:details/faction-trigger.md(级联表/资格集语义/判据归位/星徽链路)+ details/register-consume.md(接口/存处/其余触发类)
 **文件面**:kernel/(新回调模块 + cw_game_state.py 派生维护)、kernel/cw_action_report/(判据落点各上报)、新登记模块
 **依赖**:3.1(单字段写形)

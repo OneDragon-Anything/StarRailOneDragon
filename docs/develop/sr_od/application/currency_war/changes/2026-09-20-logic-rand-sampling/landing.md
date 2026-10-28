@@ -9,7 +9,7 @@
 **完成判据**：
 - `on_step` 缺省零行为：既有全量（含买牌投影直接测试 `test_cw_shop_projection_logic`）绿
 - 步回调触发次数 = 合并级数（连锁两级 = 2 次调用，行为测试）；回调后调用侧按「受该级影响域各落一行」写（bench+行域双域变更 = 两行同号，行为测试）
-- 行域 `write_logic_rand` 后 board 派生行 `source == 'logic_rand'`；行域 `write_logic` 后 board 仍 logic（回归腿）
+- 行域 `write_logic_rand` 后 board 派生行 `source == 'logic_rand'`；行域 `write_logic` 后 board 仍 logic（回归分支）
 - `any_logic_rand` 真值表（空集/含 rand/全非 rand）
 - `_write_logic_frame` docstring「board 恒走 write_logic 不随行域随机态扩散」句与 `_resync_board_delta` docstring 写入口指针同步修订（与行为一致，禁注释打架）
 - §12 通用工程门（ruff 改动文件 + L1 快速集绿）

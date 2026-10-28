@@ -9,19 +9,19 @@
 
 严重度:致命=无法开工 / 重要=语义缺口 / 次要=表述与规范。
 
-### F1(重要)advisor 条目的 immediate 腿语义矛盾
+### F1(重要)advisor 条目的 immediate 分支语义矛盾
 
 - 位置:design.md §2.3(on_env_gained 枚举)。
 - 主张摘录:「`chars_immediate` 逐个 → `gain_character(char, 1★, rand=rand)`」「`advisor=True` → **不入席**:专家顾问入商店语义」。
-- 攻击:两条是并列枚举腿,未声明互斥。而 ENV_GIFTS 中 3 条 advisor 条目(特邀专家:停云/加拉赫/桑博)**同时携带 chars_immediate**(顾问身份本身,供构建校验用)——字面实现会对同一顾问先入席再申报入店,双重落账;正确语义应为 advisor=True ⇒ 不消费 chars_immediate 入席、仅遥测申报。§2.6-2 的「现经链入席/advisor 申报」同样含混。
+- 攻击:两条是并列枚举分支,未声明互斥。而 ENV_GIFTS 中 3 条 advisor 条目(特邀专家:停云/加拉赫/桑博)**同时携带 chars_immediate**(顾问身份本身,供构建校验用)——字面实现会对同一顾问先入席再申报入店,双重落账;正确语义应为 advisor=True ⇒ 不消费 chars_immediate 入席、仅遥测申报。§2.6-2 的「现经链入席/advisor 申报」同样含混。
 - 证据:`kernel/cw_investments.py:1588-1593`(`'特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True)` 等三条);顾问语义锚 `:227-229`(advisor=True = 付费购买期权,不入席)。
 - 备注:特邀专家:银狼(无 immediate)不受影响;契约类(无 advisor)不受影响。
 
 ### F2(重要)溢出字段写端单一源声明被链写打破,未申报任何更新面
 
 - 位置:design.md §2.1(gain_character 溢出落位「写 overflow_warning=True + overflow_card=name」)、§2.6-3;landing.md 正本更新清单。
-- 攻击:overflow_warning/overflow_card 现行声明「写入端单一源 = CwScreenPrep 观察写端(渠道①)」+ sell 溢出腿 logic 直写(消费向),投影审计 basis 亦按此成文。gain_chain 新增第三写端(生产向直写 True/name),但 landing 正本清单七条中**无一条**覆盖 fields.md §3.2.20 溢出字段写端、cw_game_state.py 字段定义注释、cw_projection_audit.py basis 串——收尾后字段「写入端单一源」注释与审计依据即失真,且违反项目 AGENTS §8(期望校验类/索引字段的写入端注释必须声明)。
-- 证据:`kernel/cw_game_state.py:1992-2008`(两字段写端单一源注释);`docs/develop/sr_od/application/currency_war/game_state/fields.md:508-524`(§3.2.20 写端声明);`kernel/cw_projection_audit.py:216-220`(basis = 「观察写端单一源 + 溢出腿入位消费直写」)。
+- 攻击:overflow_warning/overflow_card 现行声明「写入端单一源 = CwScreenPrep 观察写端(渠道①)」+ sell 溢出分支 logic 直写(消费向),投影审计 basis 亦按此成文。gain_chain 新增第三写端(生产向直写 True/name),但 landing 正本清单七条中**无一条**覆盖 fields.md §3.2.20 溢出字段写端、cw_game_state.py 字段定义注释、cw_projection_audit.py basis 串——收尾后字段「写入端单一源」注释与审计依据即失真,且违反项目 AGENTS §8(期望校验类/索引字段的写入端注释必须声明)。
+- 证据:`kernel/cw_game_state.py:1992-2008`(两字段写端单一源注释);`docs/develop/sr_od/application/currency_war/game_state/fields.md:508-524`(§3.2.20 写端声明);`kernel/cw_projection_audit.py:216-220`(basis = 「观察写端单一源 + 溢出分支入位消费直写」)。
 
 ### F3(重要)正本更新清单锚漂移:op-effects.md §8 所指内容不存在
 
@@ -32,7 +32,7 @@
 ### F4(重要)§2.7「best-effort 现役同款」依据锚失效,异常粒度未定
 
 - 位置:design.md §2.7「链内异常:登记面 best-effort 不阻塞确认链(pick_invest 现役同款,锚 pick_invest.py:186)」。
-- 攻击:pick_invest.py 全文无 try/except、无 best-effort 形态;:186 是 `_apply_effect_joy_contract` 体内一行 `steps: list[str] = []`,锚内容完全不支持主张。「现役同款」实际存在于**调用方**画面 op 的 try/except(cw_screen_invest_env.py:380-389,已由 §2.1-2 正确引用)——§2.7 此句锚错源;且「链内异常不阻塞」的粒度(try 包整链 / 只包登记腿 / 逐原语)未定,实现者必须自行拍板。
+- 攻击:pick_invest.py 全文无 try/except、无 best-effort 形态;:186 是 `_apply_effect_joy_contract` 体内一行 `steps: list[str] = []`,锚内容完全不支持主张。「现役同款」实际存在于**调用方**画面 op 的 try/except(cw_screen_invest_env.py:380-389,已由 §2.1-2 正确引用)——§2.7 此句锚错源;且「链内异常不阻塞」的粒度(try 包整链 / 只包登记分支 / 逐原语)未定,实现者必须自行拍板。
 - 证据:`kernel/cw_action_report/pick_invest.py:186`(锚内容);对照 `operations/cw_screen/cw_screen_invest_env.py:380-389`。
 
 ### F5(重要)active_env 写点迁移与 op-layer.md 动作事实边界硬规则的合同张力未申报
@@ -78,7 +78,7 @@
 | cw_investments.py::ENV_GIFTS(:1547-1634)/GiftGrant(:233-)/构建校验(:1609-1634)/advisor(:227-229) | ✓(F1/F6 为内容层问题,锚本身在) |
 | pick_invest.py::report_action_pick_invest_param(:225)/PICK_INVEST_EFFECTS(:208)/EVIDENCE_OVERLAY_CLOSED(:51)/:98-100/:106-109/:133-137 | ✓;**:186 锚内容不支持主张(F4)** |
 | cw_screen_invest_env.py::_decide_and_act active_env 写(:361-372)与 portal 登记(:380-389)、重入裁决出口(:233-249) | ✓ |
-| cw_action_report/sell_bench.py 溢出腿(:29/:68) | ✓ |
+| cw_action_report/sell_bench.py 溢出分支(:29/:68) | ✓ |
 | sim/cw_sim_nodes.py「席满不丢,溢出悬挂由容器」(:264) | ✓ |
 | strategies/impl/mandate_v1/mandate.py 溢出告警门(:1329) | ✓ |
 | docs/game/screens/currency_war_prep.md 告警/溢出节(:52-53) | ✓ |
@@ -96,15 +96,15 @@ r1 发现处置对照:
 | 发现 | 判定 | 核对依据(修订后) |
 |---|---|---|
 | F1(重要)advisor 互斥 | **解决** | design §2.3 改「先按 advisor 分道,两道互斥」;advisor 行 chars_immediate 仅作申报身份、禁再入席;新锚 cw_investments.py:229「False=直接送卡(契约,白得资产)」实存且支持 advisor=False 分道语义 |
-| F2(重要)溢出写端单一源失真 | **基本解决,残留 R1** | design §2.1 写端声明(双写端,先例 = 卖牌溢出腿直写——已核 sell_bench.py:71-78 确为 overflow_card/overflow_warning 的 logic 直写,锚成立)+ §2.6-6 + landing 清单 fields.md §3.2.20 行已加;projection_audit 溢出两行(:214-220)与 active_env basis(:152)已核存在。残留见 R1 |
+| F2(重要)溢出写端单一源失真 | **基本解决,残留 R1** | design §2.1 写端声明(双写端,先例 = 卖牌溢出分支直写——已核 sell_bench.py:71-78 确为 overflow_card/overflow_warning 的 logic 直写,锚成立)+ §2.6-6 + landing 清单 fields.md §3.2.20 行已加;projection_audit 溢出两行(:214-220)与 active_env basis(:152)已核存在。残留见 R1 |
 | F3(重要)op-effects.md §8 锚漂移 | **解决** | 该行已删,改为 effect-domain.md(文件实存;「原无正本记述本批首立」与 effect-domain.md 现状相符)+ fields.md §5.1(「在场效果激活账本」实存,:1019) |
-| F4(重要)best-effort 锚失效 | **解决** | §2.7 重写为三条粒度(原语零吞错 / best-effort 收在非容器写登记·申报腿 / 调用方零额外吞错),旧锚显式作废;「语义自画面 op 现行登记面 try/except 迁入」与 cw_screen_invest_env.py:380-389 相符 |
+| F4(重要)best-effort 锚失效 | **解决** | §2.7 重写为三条粒度(原语零吞错 / best-effort 收在非容器写登记·申报分支 / 调用方零额外吞错),旧锚显式作废;「语义自画面 op 现行登记面 try/except 迁入」与 cw_screen_invest_env.py:380-389 相符 |
 | F5(重要)op-layer 合同张力 | **解决** | §2.6-7 申报合同收窄(投资环境域,裁定①);landing 清单加 op-layer.md §2.2——已核 §2.2「辖域边界」实存(op-layer.md:71,动作事实边界硬规则在其辖内) |
 | F6(次要)概念股术语 | **解决** | §2.6-2 改「契约类…特邀专家走 advisor 申报分道」 |
 | F7(次要)GainOutcome/produced_by | **解决,残留 R2** | GainOutcome 五字段钉死(placed/landing/merge_levels/effects/detail,三原语共用);producer 入 §2.1 签名。残留见 R2 |
-| F8(次要)session 缺省 | **解决** | §2.5 `session: object | None = None`,None = 登记腿跳过、容器写照常 |
+| F8(次要)session 缺省 | **解决** | §2.5 `session: object | None = None`,None = 登记分支跳过、容器写照常 |
 
-新锚全量复查(修订引入):sell_bench.py 溢出腿直写 ✓(:71-78);effect-domain.md 存在 ✓;fields.md §3.2.20(:508)/§5.1(:1019)✓;cw_projection_audit.py :152(active_env basis)/:214-220(溢出两行)✓;design §2.1 与 §2.5 的 gain_invest_env 签名/调用形态一致 ✓((gs, session, env_name) 位置形参两处一致)。
+新锚全量复查(修订引入):sell_bench.py 溢出分支直写 ✓(:71-78);effect-domain.md 存在 ✓;fields.md §3.2.20(:508)/§5.1(:1019)✓;cw_projection_audit.py :152(active_env basis)/:214-220(溢出两行)✓;design §2.1 与 §2.5 的 gain_invest_env 签名/调用形态一致 ✓((gs, session, env_name) 位置形参两处一致)。
 
 r2 新发现:
 

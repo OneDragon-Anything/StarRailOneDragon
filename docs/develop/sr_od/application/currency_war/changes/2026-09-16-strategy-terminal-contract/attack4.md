@@ -38,11 +38,11 @@
 - **发现**：§A 表声称 last_hp/last_hp_t 的消费面 = cw_hp_policy 门一族。直调代码：`cw_screen_battle_wait.py:456-466` killed 判定兜底 `_prev_hp = getattr(_session, 'last_hp', None)` + `_st.last_outcome_t` 邻接门（gap==1）→ `killed = hp_after >= prev_hp`——这是胜负判定的活逻辑，非识别防线。字段删除后该分支：随字段删 = killed 判定少一路兜底（**正常识别路径行为变化**，不在 §1.3 申报清单——申报清单只含识别失准四项与装备账降级）；换源 = 现成候选 `_st.last_outcome_hp`（:497-498，同置信门同值）设计未写。普查词表会抓到该读点，但「承载桶 = 随本阶段删/不辖申报」二分对它无答案。
 - **修正方向**：§A 表补该消费点行，处置钉死为「换源 `(last_outcome_hp, last_outcome_t)`（SettlementState，非 session 宿主，生命周期同段）」并在 3.2 完成判据加 killed 兜底对照单测。
 
-### M2 「行为变化登记 §1.3」指针悬空：reconcile_hp 对账腿删除、银狼豁免消亡等在 §1.3/§2.8 申报清单中无对应项
+### M2 「行为变化登记 §1.3」指针悬空：reconcile_hp 对账分支删除、银狼豁免消亡等在 §1.3/§2.8 申报清单中无对应项
 
 - **文件:节**：details §C performance 行 vs design §1.3/§2.8
-- **发现**：details §C 写「reconcile_hp 对账腿删 = **行为变化登记 §1.3**」。直调 §1.3 与 §2.8：申报清单实有三项 = ①正常识别路径零变化；②识别失准路径（hp 门/等级守卫/star 防抖/节点探针左移）；③装备账完整度降级——**无 reconcile_hp 对账腿删除项**。银狼升费豁免消亡、upcoming_types journal 降级用「见 details §A」扩散指针，主清单同样无行。行为变化申报的单一收口面（§2.8）失去完备性，终验「与改前同难度局对照」的分歧归因清单不完整。
-- **修正方向**：§2.8 行为变化申报增列：④hp 双源对账腿删除（reconcile_hp 简化）；⑤star 回退确认链形态变化（防抖确认 → 回退即采新，含银狼豁免消亡与 ADR-0420 帧态门删除）；⑥upcoming_types journal 列 '?' 常态化；⑦B3 所涉布局未知态跨局残留窗（若裁退役）。
+- **发现**：details §C 写「reconcile_hp 对账分支删 = **行为变化登记 §1.3**」。直调 §1.3 与 §2.8：申报清单实有三项 = ①正常识别路径零变化；②识别失准路径（hp 门/等级守卫/star 防抖/节点探针左移）；③装备账完整度降级——**无 reconcile_hp 对账分支删除项**。银狼升费豁免消亡、upcoming_types journal 降级用「见 details §A」扩散指针，主清单同样无行。行为变化申报的单一收口面（§2.8）失去完备性，终验「与改前同难度局对照」的分歧归因清单不完整。
+- **修正方向**：§2.8 行为变化申报增列：④hp 双源对账分支删除（reconcile_hp 简化）；⑤star 回退确认链形态变化（防抖确认 → 回退即采新，含银狼豁免消亡与 ADR-0420 帧态门删除）；⑥upcoming_types journal 列 '?' 常态化；⑦B3 所涉布局未知态跨局残留窗（若裁退役）。
 
 ### M3 `RefreshNodeOptions`/`RefreshSupply` 执行路径无定义：不在完备测试豁免集、亦无注册行与 op 定义——实现者面临无答案选择
 

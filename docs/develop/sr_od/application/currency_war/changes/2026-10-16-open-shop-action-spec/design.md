@@ -48,7 +48,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
 ```
 
 - **删除面**：幂等入口观察（「按钮-收起」锚判断）、act 落地复查、`round_retry` 环——幂等判定归流程层（`visit_open_shop` 入口观察 + 外循环 0n 三锚已承载，`cw_screen_prep.py:1073-1081` 明文「已开连点都不发」不依赖 open_shop 幂等性）。
-- **点击腿保留的架构理由**：sim 下这条调用是开店的唯一世界推进通道（呈现 + 离屏牌面补写 + 刷价写回全部由它触发）；同时它就是 sim 的「机械对偶」——发出 = click_answer 受理，`applied=true` 与 note_action_receipt 契约（「是否发出的机械事实透传」）**零冲突，字段语义零改动**。
+- **点击分支保留的架构理由**：sim 下这条调用是开店的唯一世界推进通道（呈现 + 离屏牌面补写 + 刷价写回全部由它触发）；同时它就是 sim 的「机械对偶」——发出 = click_answer 受理，`applied=true` 与 note_action_receipt 契约（「是否发出的机械事实透传」）**零冲突，字段语义零改动**。
 - **上报面申报**：①唯一上报口 = `note_action_receipt`（回执域机制）；②`report_action_open_shop_param` 不调（zero_writes.py:103 零写族登记成员，开店无状态写效果）；③开店非 §4.8 十八转移集成员（转移由 §3.2 点击源承载）→ 无 WorldDecl 喂入行。
 - 回执 op 名/actor 维持 `'CwOpOpenShop'`（`_note_receipt` 硬编码，journal 词表稳定）。
 

@@ -68,7 +68,7 @@
 - **`BENCH_ITEM_NAMES` 派生面同步扩展**(正确性关键):词表当前从两张 GiftGrant
   授予表的 `items_immediate` 派生;定时道具同为占席道具,派生式并入
   `items_scheduled` 的道具名——否则溢出位身份 kind 判定会把「特权武装箱」
-  当角色(假角色进合成素材组,cw_gain_chain `_build_pool` / sell_bench 溢出腿)。
+  当角色(假角色进合成素材组,cw_gain_chain `_build_pool` / sell_bench 溢出分支)。
 
 ### 2.2 容器队列:pending_item_grants
 

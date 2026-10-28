@@ -60,7 +60,7 @@
 
 | # | 方向 | 判定 | 一行理由 |
 |---|---|---|---|
-| 1a | 容器直读·镜像同步时滞 | 非问题(等价) | 生产容器写端 = handler 同步双写(`cw_screen_invest_strategy.py:545-559`)+ 漏斗 relay 先于同帧效果段(`cw_observation.py:2657` < :2695),推进帧集内无「session 已有/容器未写」可达窗;恢复局靠 relay 首帧补写 ∧ 弹窗腿禁用,开局空容器被 settlement None 守卫天然挡住 |
+| 1a | 容器直读·镜像同步时滞 | 非问题(等价) | 生产容器写端 = handler 同步双写(`cw_screen_invest_strategy.py:545-559`)+ 漏斗 relay 先于同帧效果段(`cw_observation.py:2657` < :2695),推进帧集内无「session 已有/容器未写」可达窗;恢复局靠 relay 首帧补写 ∧ 弹窗分支禁用,开局空容器被 settlement None 守卫天然挡住 |
 | 1b | 容器直读·两源分叉 | 非问题 | session 唯一变更写端 = handler append(无移除路径)且与容器写同体同步;relay 仅补从未写过字段(:3011);sim 合成口/标量投影是独立世界不共容器——无永久分叉形态 |
 | 1c | 容器直读·空缺省语义 | 非问题(缺省核对✓)+ 1 缺口 | `aggregate_economy([])` → `EconomyEffect()` 缺省恰 = mult 1.0/flat 0/cap None,与 settle 的 `interest_cap_resolved(None)`→默认帽链接一致;但 None(零策略期常态)未声明 → R4-4 |
 | 2 | 漏斗序依赖 | 是问题(次要) | 现状序 = 金写(:2539-2544)先于段(:2695)实证成立、与现码同窗无回归;但该序是息基/条件采样的隐性正确性依赖,设计只写「不调整」未声明依赖方向与重排约束 → R4-5 |

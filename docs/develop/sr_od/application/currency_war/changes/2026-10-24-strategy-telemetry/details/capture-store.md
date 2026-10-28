@@ -33,7 +33,7 @@
 - 基类 `decision_payload(self) -> dict`（缺省 `{}`），子类覆写；wrapper 在原方法返回后调用，异常 → `{}` 降级。
 - **mandate_v1 v1 覆写**（全部 gs + state 现读，不依赖 entry 内部局部量）：
   - `direction: {locked, comp, candidates}` —— `session_scope.direction_comp_of(gs)`（12 号稿 §2 方向读口）与 `state.line_candidates`（`mandate_state.py:341`；锁定后恒空集，`session_scope.py:330`）；
-  - `k_members: [str]`、`k_fallback: {hit: bool, band: str}` —— **按 `entry.py:459-472` 同源算法**：`predicates.line_members(direction_comp_of(gs))`，为空且 `v3_intention` 在场时走 `cw_intention.k_empty_window_fallback` 回退腿；payload 记回退腿是否命中与带名（band），防回退帧的依据块被误读为锁定线成员（候选 A 复核判读面）；
+  - `k_members: [str]`、`k_fallback: {hit: bool, band: str}` —— **按 `entry.py:459-472` 同源算法**：`predicates.line_members(direction_comp_of(gs))`，为空且 `v3_intention` 在场时走 `cw_intention.k_empty_window_fallback` 回退分支；payload 记回退分支是否命中与带名（band），防回退帧的依据块被误读为锁定线成员（候选 A 复核判读面）；
   - `window: {char: {open, sig}}` —— 对 k_members 与板面上出现的终局库成员逐个：`entry._entry_window_open(gs, char)`（`entry.py:281`）给结论 + `Comp.entry_signals.get(char)` 给信号描述 `[kind, threshold]`；终局库成员集 = `_ENDGAME_LIBRARY_MEMBERS`（`entry.py:275`）。
   - 依据：候选 A（上阵窗口自锁）的复核需要「决策帧上窗口判据的输入与结论现值」，`_entry_window_open` 是唯一判定核（22 号篇 第 6 步判据载体），现状无任何落点。
 - 更细域内量（商店会话内部等）：策略后续经私有 state 槽自存、钩子里读（`cw4_frame_action_record` 先例，`bridge.py:338`），本迭代不预建。

@@ -36,7 +36,7 @@
 
 ### R9-F7 [严重度:低] `D_ENC_VARIANT` 保留 kernel 后注入面悬空,未来读点定谳批的注入位未指认
 - 位置:design.md §2.3(:107)、§2.7(:142 模块 docstring 重写面)
-- 发现:该槽现役唯一注入口径 = kernel `apply_calibration`(直调 :72-73 `_CALIBRATABLE` 含它;docstring :12「E-3 标定批经 apply_calibration 注入」)。本批 apply_calibration/reset_calibration 随迁策略层且键集不含 `D_ENC_VARIANT`(§2.3「合法键缩为两保留键」),kernel 侧无替代注入口。比值腿复活/E-3 定谳批将来要把该槽拨到 'i'/'ii'(装填分支消费,cw_screen_battle_wait:319-321),设计未答届时从哪个口注入——直改模块常量违反「注入单点、防散注」的既有纪律(provisional.py 注入形态同款理由)。
+- 发现:该槽现役唯一注入口径 = kernel `apply_calibration`(直调 :72-73 `_CALIBRATABLE` 含它;docstring :12「E-3 标定批经 apply_calibration 注入」)。本批 apply_calibration/reset_calibration 随迁策略层且键集不含 `D_ENC_VARIANT`(§2.3「合法键缩为两保留键」),kernel 侧无替代注入口。比值分支复活/E-3 定谳批将来要把该槽拨到 'i'/'ii'(装填分支消费,cw_screen_battle_wait:319-321),设计未答届时从哪个口注入——直改模块常量违反「注入单点、防散注」的既有纪律(provisional.py 注入形态同款理由)。
 - 修正方向:§2.7 模块 docstring 重写面补一句「`D_ENC_VARIANT` 定谳批注入位 = kernel 侧保留微型注入口(或显式申报届时直接常量赋值的豁免理由)」,或登记进 31 号稿 E-3 挂账条目。
 
 ### R9-F8 [严重度:低] landing 3.2 零残留判据存在盲区:cw_events 侧被删私有符号与 `EVENT_PICK_TYPES`/`EventPick` 摘位形态不在任何 grep 集内

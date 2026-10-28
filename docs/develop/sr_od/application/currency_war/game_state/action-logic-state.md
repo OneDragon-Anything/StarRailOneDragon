@@ -133,7 +133,7 @@ op = `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`（动�
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7「卖价修饰」行，缺口闭合前不写修饰分支）。
 
-**回金唯一写入位置** = 上报函数（`report_action_sell_bench_param` 按 `sell_refund` 直写金账）；执行缝金差已退役（executor-gold-delta-retire 批，原 `_executed_gold_delta` 证据腿随批删除）——金归属证据 = journal 写行归因（`sig.actor` + gold 写行 prov evidence）+ 账实对账告警（`[cw!][alarm][gold_delta]`，生产者 = 备战帧账实对比）；身份不可辨 = None 诚实缺失，禁保守估值假账。
+**回金唯一写入位置** = 上报函数（`report_action_sell_bench_param` 按 `sell_refund` 直写金账）；执行缝金差已退役（executor-gold-delta-retire 批，原 `_executed_gold_delta` 证据分支随批删除）——金归属证据 = journal 写行归因（`sig.actor` + gold 写行 prov evidence）+ 账实对账告警（`[cw!][alarm][gold_delta]`，生产者 = 备战帧账实对比）；身份不可辨 = None 诚实缺失，禁保守估值假账。
 
 **依据**：`research/economy.md` §3；`kernel/cw_economy.py::sell_refund`/`bench_char_cost`；`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`（双域统一单点：置 empty + 回金 + 装备回收 + 溢出分支）；`research/equipment_mechanics.md` §1。
 
@@ -149,7 +149,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 - 金：gold −= 单击价 × 实击数（击数 = 执行回执 `ShopActionExecuted.levelup_clicks`；缺回执 = 本轮不写逻辑态，等观察覆盖）；
 - 经验域写入 = `(当前级已攒, XP_TO_NEXT_LEVEL[新级])`；level 升档直写（2026-09-18 扩域申报入 `SHOP_PROJECTION_DOMAINS`；跳写对 (level, xp) 同进退——任一未读则推进对整体跳写）。
 
-**随机面**：无。**修饰效果副作用**：商业间谍「升级时刷新商店并偷最贵 3 张」**已建模**（2026-10-17 迭代 T-3:升级上报回调置随机态信号 + sim 世界腿抽 5 偷 3,EffectSpec 300201;容器 shop 容器域零直写,实机世界后果归游戏引擎）;晋升名额「随机一槽变高费」= 未建模,后果归观察（§7「晋升名额副作用」行）。
+**随机面**：无。**修饰效果副作用**：商业间谍「升级时刷新商店并偷最贵 3 张」**已建模**（2026-10-17 迭代 T-3:升级上报回调置随机态信号 + sim 世界分支抽 5 偷 3,EffectSpec 300201;容器 shop 容器域零直写,实机世界后果归游戏引擎）;晋升名额「随机一槽变高费」= 未建模,后果归观察（§7「晋升名额副作用」行）。
 
 **依据**：`research/xp-rules.md` §2；`kernel/cw_economy.py::xp_apply_clicks`/`xp_click_cost`/`XP_PER_BUY`/`XP_TO_NEXT_LEVEL`；`kernel/cw_action_report/level_up.py::report_action_level_up_param`；`fields.md` §4.2 LevelUp。
 

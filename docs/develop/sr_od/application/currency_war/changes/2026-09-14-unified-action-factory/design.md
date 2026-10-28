@@ -337,8 +337,8 @@
        - **`FurnaceUse`**(冶金炉;双模式):拖装备 = 原地变异同类型随机
          (target = 装备库 owned 件);拖角色 = 全拆 + 变随机(target =
          角色槽位);产出不可预知 → 观察收口(现役负写端留证纪律保留)。
-       - **`PrivilegeCardUse`**(特权赋予卡;双腿):库存腿 target = 被变换
-         的进阶成品件(装备库 owned);拖角色腿 target = 角色槽位(从
+       - **`PrivilegeCardUse`**(特权赋予卡;双分支):库存分支 target = 被变换
+         的进阶成品件(装备库 owned);拖角色分支 target = 角色槽位(从
          已穿进阶装备选一件原位特权化,落码位 `cw_affix_effects:1157`
          在册)。
        - **`WrenchUse`**(拆装扳手):target = 角色槽位(取下该角色全部
@@ -506,7 +506,7 @@
        heavy reconcile 对账纠偏(既有纪律,`fields.md` §2.3 观察赢);
         LevelUp 行同步转录 `flow/action-logic-state.md` 枚举正本;
         批间中间态(批2a 时族B `LevelUp` 尚无 cost/auth_basis 字段,
-        批2b 类合并翻转才有):金腿暂由执行缝金差承担
+        批2b 类合并翻转才有):金分支暂由执行缝金差承担
         (`_executed_gold_delta`,执行包络留守面)、逻辑态分支只落
         xp/level 推进不写 gold;批2b 翻转切 `action.cost` 直写
         (gold −cost 同步生效)——拆分见 landing §3.2a/§3.2b;

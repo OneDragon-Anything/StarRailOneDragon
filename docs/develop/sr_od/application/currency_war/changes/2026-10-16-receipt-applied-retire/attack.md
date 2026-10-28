@@ -28,7 +28,7 @@
 
 | # | 发现 | 处置 |
 |---|---|---|
-| S1 | 【致命·上一迭代继承确认】sim 点击 = 世界推进通道（sim-design §3.2 + cw_sim_backend.py:1035/1095-1119）——本迭代 §2.2 open/close 行均保留点击腿，与已落地的 open-shop-action-spec 重组一致 | 一致性核验通过 |
+| S1 | 【致命·上一迭代继承确认】sim 点击 = 世界推进通道（sim-design §3.2 + cw_sim_backend.py:1035/1095-1119）——本迭代 §2.2 open/close 行均保留点击分支，与已落地的 open-shop-action-spec 重组一致 | 一致性核验通过 |
 | S2 | §1 机理叙述与权威源不符处随 A2 重写 | 已修 |
 | S3 | 正本更新清单/op-layer 联动（本迭代不删类壳,仅回执域——op-layer 面 = 上迭代已收口,本迭代无 op-layer 义务;reason 码词表归 action_ops.md） | 已核：本迭代 op-layer 零义务 |
 | S4 | 上报面申报（回执域唯一上报口 = note_action_receipt;report_action_open_shop_param 零写族不调;非转移动作无喂入行） | 已修：§2.1 申报三行 |

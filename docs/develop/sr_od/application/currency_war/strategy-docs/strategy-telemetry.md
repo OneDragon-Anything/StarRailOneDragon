@@ -29,8 +29,8 @@ payload 三键组全部为**决策帧出口后的 gs/state 现读**(禁依赖决
 | 键 | 类型 | 语义 | 读口 |
 |---|---|---|---|
 | `direction` | `{locked: bool, comp: str\|null, candidates: [str]}` | 方向状态现值。`locked` = 锁定线槽非空;`comp` = 现行方向阵容名(锁定线优先,未锁 P1 回落过渡配方,两键都空 = null);`candidates` = 候选线名快照(分数降序,**锁定后恒空集**——锁定写入连带清空并停算) | `session_scope.line_members_view` / `session_scope.direction_comp_of` / `state.line_candidates` |
-| `k_members` | `[str]` | 现行 K(目标线)名单:锁定帧 = 锁定线成员(core ∪ shared 注册表序);P1 未锁帧 = 过渡配方开局面成员;回退腿命中帧 = 回退派生成员(排序序,此时读 `k_fallback` 定来源) | `statefn.predicates.line_members(direction_comp_of(gs))`,空方向时回退腿(左) |
-| `k_fallback` | `{hit: bool, band: str}` | K 空窗回退腿标注:方向键 None 且意向载体在场时,备战/商店两域共用的回退单一源派生成员集。`hit` = 该腿产出了成员;`band` = 分带 token(`'p1_gap'` / `'p1_lock_band'` / `'p2plus'`)。**判读规则:band 非空 ⟺ 回退腿已运行;`hit=True` 的 `k_members` 来自回退派生,不是锁定线成员**;`hit=False ∧ band` 非空 = 腿运行但合法空集。band 空串 = 腿未运行(方向在场或意向缺帧) | `cw_intention.k_empty_window_fallback`(同参重推导,不写其备战帧计数键) |
+| `k_members` | `[str]` | 现行 K(目标线)名单:锁定帧 = 锁定线成员(core ∪ shared 注册表序);P1 未锁帧 = 过渡配方开局面成员;回退分支命中帧 = 回退派生成员(排序序,此时读 `k_fallback` 定来源) | `statefn.predicates.line_members(direction_comp_of(gs))`,空方向时回退分支(左) |
+| `k_fallback` | `{hit: bool, band: str}` | K 空窗回退分支标注:方向键 None 且意向载体在场时,备战/商店两域共用的回退单一源派生成员集。`hit` = 该分支产出了成员;`band` = 分带 token(`'p1_gap'` / `'p1_lock_band'` / `'p2plus'`)。**判读规则:band 非空 ⟺ 回退分支已运行;`hit=True` 的 `k_members` 来自回退派生,不是锁定线成员**;`hit=False ∧ band` 非空 = 分支运行但合法空集。band 空串 = 分支未运行(方向在场或意向缺帧) | `cw_intention.k_empty_window_fallback`(同参重推导,不写其备战帧计数键) |
 | `window` | `{char: {open: bool, sig: [kind, threshold]\|null}}` | 上线窗口判据现值(候选 A「上阵窗口自锁」的复核面:终局成员在窗口未到时不上阵,此前该判据无任何落点)。角色集 = `k_members` ∪ **持有域**(备战席 ∪ 场上)出现的终局库成员——被窗口挡在备战席的终局件是判域主体,只看上场板面会漏。`open` = 窗口判定核直调结论(缺信号行 fail 恒假);`sig` = 该角色在窗口查表序(锁定 = 仅锁定线;未锁定 = 全库)内首个信号行 `[kind, threshold]`,无信号行 = null。`kind` 闭集:`synergy`(板面主羁绊计数 ≥ 阈值)/ `level`(玩家等级 ≥ 阈值)/ `plane_end`(第二位面已启动)/ `always_on`(恒真)。键序 = 角色名排序 | `entry._entry_window_open`(唯一判定核,同包私有限内访问)/ `Comp.entry_signals` / 成员集常量 `entry._ENDGAME_LIBRARY_MEMBERS` |
 
 判读注意(payload 通用):payload 由渲染器通用键值渲染,渲染器不解释语义——语义一律以本篇键表为准;某键在某帧的值 = 该帧出口后现读,与信封 `node` 同帧。

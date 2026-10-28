@@ -3,7 +3,7 @@
 > 阶段 3.1/3.2 的拆分原则：kernel 段先以**未接线**形态落地（直调单测），接线与 loop 块删除**同一提交原子切换**——两驱动共存窗口不落盘（攻击 F7）。
 
 ## 3.1 kernel 效果推进段（未接线）
-**范围**：`cw_game_state.py` 新增 `boundary_settled_ord` 工程字段与效果推进段函数（经济参数 = 容器直读 `self.active_strategies`，无注册口；独立可调、未接入 `observe_screen_context`）。边界：不动四腿本体、不动 `cw_effect_inventory` 现有函数签名、不动 `observe_screen_context`、不删 cw_loop 块。
+**范围**：`cw_game_state.py` 新增 `boundary_settled_ord` 工程字段与效果推进段函数（经济参数 = 容器直读 `self.active_strategies`，无注册口；独立可调、未接入 `observe_screen_context`）。边界：不动四条分支本体、不动 `cw_effect_inventory` 现有函数签名、不动 `observe_screen_context`、不删 cw_loop 块。
 **设计依据**：design.md §2 方案 1（a-f 全项，含 None 守卫随迁、双水位、参数源派生层反解、best-effort 边界）。
 **文件面**：`src/sr_od/application/currency_war/kernel/cw_game_state.py`；`sr-od-test/test/sr_od/application/currency_war/test_cw_game_state.py`（或新增同域测试文件）。
 **依赖**：无。
@@ -27,7 +27,7 @@
 **完成判据**：
 - 全量 CW 测试绿。
 - F1 错窗防护回归：0q 位面过渡场景单测——推进至 (p+1,1) 后金结算参数为反解键（非镜像旧键 (p,9,'boss')），且 boss 收入不重结、新节点收入恰结一次。
-- F7 双驱动回归：弹窗腿先推进形态单测——后续备战帧结算恰一次、账本余期/刷新无双扣。
+- F7 双驱动回归：弹窗分支先推进形态单测——后续备战帧结算恰一次、账本余期/刷新无双扣。
 - grep `advance_node|grant_effect_node_refresh_balance|settle_node_boundary_gold|project_effect_capacity` 在 `operations/` 下零残留（kernel/strategies/sim 消费除外）。
 - §12 通用工程门（引用，不复述）。
 **验收凭据形式**：测试名 + grep 输出。

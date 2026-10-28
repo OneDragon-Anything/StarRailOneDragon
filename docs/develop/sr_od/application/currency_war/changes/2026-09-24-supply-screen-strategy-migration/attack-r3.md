@@ -24,13 +24,13 @@
 
 ### [R3-M2] 中 · design.md:9 / design.md:73（§2.5）——溢出席「机制事实登记」缺在库依据锚，且与在册记账语义的矛盾面未申报（直伤 §2.3 凑星判据数据质量）
 
-- **发现**：「备战席满时选角色卡 → 角色入溢出席（不会失败）：用户口径 2026-09-24，按机制事实登记」——用户口径已标注，但「机制事实」半句无任何在库锚（游戏 knowledge 树 `docs/game/currency_war/research/` 无溢出席条目；在库证据实存于 `cw_game_state.py:2210-2229`（overflow_warning/overflow_card 实机建档、「区域-溢出角色」area，**溢出位 = 固定单槽**），设计未引）。更要紧的是记账层与该语义正面矛盾：补给角色腿 = `cw_action_report/pick_supply.py:80` → `cw_effect_inventory.py:1502-1505` **席满 = 拒落零写（detail='bench_full'）**，gain-chain 迭代 design.md:16 在册「不建模溢出席」——即席满帧选角色卡后游戏真值溢入、容器 bench 不记，该单位对 `gs` 不可见。§2.3 凑星判据（`same_star_count` 读 gs）在席满帧**系统性漏计**溢入单位；溢出位已占（overflow_card 非空）时的行为设计亦未申报（仅「实机若发现另有占用语义，回本节修订设计」兜底）。
+- **发现**：「备战席满时选角色卡 → 角色入溢出席（不会失败）：用户口径 2026-09-24，按机制事实登记」——用户口径已标注，但「机制事实」半句无任何在库锚（游戏 knowledge 树 `docs/game/currency_war/research/` 无溢出席条目；在库证据实存于 `cw_game_state.py:2210-2229`（overflow_warning/overflow_card 实机建档、「区域-溢出角色」area，**溢出位 = 固定单槽**），设计未引）。更要紧的是记账层与该语义正面矛盾：补给角色分支 = `cw_action_report/pick_supply.py:80` → `cw_effect_inventory.py:1502-1505` **席满 = 拒落零写（detail='bench_full'）**，gain-chain 迭代 design.md:16 在册「不建模溢出席」——即席满帧选角色卡后游戏真值溢入、容器 bench 不记，该单位对 `gs` 不可见。§2.3 凑星判据（`same_star_count` 读 gs）在席满帧**系统性漏计**溢入单位；溢出位已占（overflow_card 非空）时的行为设计亦未申报（仅「实机若发现另有占用语义，回本节修订设计」兜底）。
 - **影响**：决策函数本身「无需特殊处理」的结论成立（选卡不失败），但本批新引入的凑星 tiebreak 依赖的 gs 读数在席满帧失真，设计未申报该已知失真通道（对照 `cw_equip_value.py:25-27` 箱机器对已知失真通道显式申报的先例）。
 - **修正方向**：§2.5 补三条：①机制事实锚 = `cw_game_state.py:2210-2229`（实机建档）+ 溢出位单槽事实；②记账层失真申报 = 席满溢入单位现役拒落零写（`cw_effect_inventory.py:1502-1505`），凑星判据在该帧类漏计，归观察/记账批、不在本批；③overflow 已占帧行为挂实机核实触发器（现句保留）。
 
 ### [R3-M3] 中 · design.md:79（§2.6 注释指针收口「已知点全列」）+ design.md:89（§2.6 sim 申报）——`cw_screen_supply_node.py:39-40` 的「sim 接线未接」陈旧注与设计 sim 申报直接对撞，未入收口清单
 
-- **发现**：该文件模块 docstring `:39-40` 写「本屏 sim 腿 = 引擎补给决策段已在但 **sim 接线未接**」；代码体 `:187-190` 已在生产 sim 改道（`cw_sim_ports.sim_or_live_observation`），sim 后端正常呈现补给屏（`cw_sim_backend.py:172` SCREEN_SUPPLY='货币战争-补给'、`:1250-1257` 补给节点呈现、`:881/:1253` 同名 report 写容器）。设计的 §2.6 sim 申报「补给屏正常分发、flow.decide_supply 在 sim 局中真实被调」**正确**，但 §2.6 的注释收口清单对该文件只列 `:8-14`/`:242-245`，漏掉这条与设计 sim 申报正面矛盾的陈旧注——「已知点全列」不成立，且 3.3 后将出现「正本 30 号稿申报 sim 可见、代码头注称未接线」的双源打架。
+- **发现**：该文件模块 docstring `:39-40` 写「本屏 sim 分支 = 引擎补给决策段已在但 **sim 接线未接**」；代码体 `:187-190` 已在生产 sim 改道（`cw_sim_ports.sim_or_live_observation`），sim 后端正常呈现补给屏（`cw_sim_backend.py:172` SCREEN_SUPPLY='货币战争-补给'、`:1250-1257` 补给节点呈现、`:881/:1253` 同名 report 写容器）。设计的 §2.6 sim 申报「补给屏正常分发、flow.decide_supply 在 sim 局中真实被调」**正确**，但 §2.6 的注释收口清单对该文件只列 `:8-14`/`:242-245`，漏掉这条与设计 sim 申报正面矛盾的陈旧注——「已知点全列」不成立，且 3.3 后将出现「正本 30 号稿申报 sim 可见、代码头注称未接线」的双源打架。
 - **修正方向**：§2.6 收口清单补 `cw_screen_supply_node.py:39-40`（「sim 接线未接」句随 sim-backend-unification 后实态过期，改写为现态或随批删除）；3.2 范围句相应覆盖。
 
 ### [R3-L4] 低 · design.md:67（§2.4）——「op 层零改动」与同批 §2.6/landing 3.2 对该文件的注释收口义务措辞矛盾

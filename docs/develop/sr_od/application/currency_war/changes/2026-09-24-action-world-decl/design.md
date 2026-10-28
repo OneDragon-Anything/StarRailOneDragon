@@ -15,7 +15,7 @@
   1. overlay 触发层——事实事件 `board_changed`/`star_up`（`cw_event_hooks.FACT_EVENT_KINDS`）与 backend 巨星/planner 评估器原样保留，overlay 批再声明化（届时评估器 kernel 化后并入声明）；
   2. 点击源（简报下一步/位面过渡/开店/补给刷新）——不经上报函数，仍走 `click_answer` 端口（backend 感知面 = `sim/cw_sim_backend.py::_handle_click_source` 逐 case 现役登记）；
   3. `terminal` 访问终结属性——**保留**。交回与转移是正交两义：refresh 族「访问终结但画面档不变」（现役 terminal 登记 = `operations/cw_op/cw_refresh_shop_action.py`；终结总表 = `screens/README.md` §6），声明只承载转移，交回判断仍需终结属性；
-  4. 动画等待值（`terminal_wait`）与机械腿 port 检查——不动。
+  4. 动画等待值（`terminal_wait`）与机械分支 port 检查——不动。
 
 ## 2. 方案
 

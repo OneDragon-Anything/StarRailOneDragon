@@ -4,7 +4,7 @@
 
 - 迭代目标:投资策略屏落地相整支消费获得链(补齐 gain-chain 迭代 §2.5 预留的「策略屏迁移批」),并按用户裁定重构动作上报契约——动作 op 机械执行 = 默认成功 = 立即上报落地效果,废除证据闩两相;投资两屏观察面一次读全(选项 + 刷新次数);容器刷新计数改剩余语义;词表拆类;获得链模块拆文件。
 - 承接出处:`changes/2026-09-21-gain-chain/design.md` §2.5「策略屏(source='strategy')落地相本批不动;『获得投资策略』原语随策略屏迁移批另立」;`game_state/gain-chain.md` §7/§8 双时序并存与接入面申报。
-- 用户裁定(2026-09-21,本迭代设计输入,逐条):①动作 op 就是机械执行,只要执行就是默认成功,要立刻上报更新 game,**禁止做事后的判断**(证据等待/重入裁决补写),且此条作为通用规范写入动作 op 契约文档;②投资选卡有确认,选了之后应交给外循环(确认 = 访问终结);③两屏观察都错了,应该是选项和刷新次数都识别后一起上报;④不要 1s 稳定帧;⑤game state 就记录画面可观察的**剩余次数**(策略屏逐卡「刷新次数N」、环境屏全局「剩余次数：N」,归档帧已核);⑥「为什么有两个 source」——拆类,每屏一词表类,废 source 字符串分流;⑦`PICK_INVEST_EFFECTS` + 骇客采样池迁出上报包(链模块消费);⑧范围 = 本次只改投资两屏 + 通用规范条,其他单选屏外溢后续批;⑨**选择动作执行就一定按成功处理,没有选到就是代码 bug,不在 bug 上做无畏的补丁操作**(游戏事实:投资策略/投资环境都不会第二次给相同的牌;OCR 读不到候选 = 失败算 bug 需要修复;确认未生效**不留证暴露**);⑩**增加持有的投资策略时,按名字去重就行了**(持卡列表的写入语义 = 数据卫生;效果腿/登记腿不设任何闸)。
+- 用户裁定(2026-09-21,本迭代设计输入,逐条):①动作 op 就是机械执行,只要执行就是默认成功,要立刻上报更新 game,**禁止做事后的判断**(证据等待/重入裁决补写),且此条作为通用规范写入动作 op 契约文档;②投资选卡有确认,选了之后应交给外循环(确认 = 访问终结);③两屏观察都错了,应该是选项和刷新次数都识别后一起上报;④不要 1s 稳定帧;⑤game state 就记录画面可观察的**剩余次数**(策略屏逐卡「刷新次数N」、环境屏全局「剩余次数：N」,归档帧已核);⑥「为什么有两个 source」——拆类,每屏一词表类,废 source 字符串分流;⑦`PICK_INVEST_EFFECTS` + 骇客采样池迁出上报包(链模块消费);⑧范围 = 本次只改投资两屏 + 通用规范条,其他单选屏外溢后续批;⑨**选择动作执行就一定按成功处理,没有选到就是代码 bug,不在 bug 上做无畏的补丁操作**(游戏事实:投资策略/投资环境都不会第二次给相同的牌;OCR 读不到候选 = 失败算 bug 需要修复;确认未生效**不留证暴露**);⑩**增加持有的投资策略时,按名字去重就行了**(持卡列表的写入语义 = 数据卫生;效果分支/登记分支不设任何闸)。
 - 状态:草案
 - 文档清单:details/gain-chain-file-split.md —— 获得链模块拆文件方案(§2.7 的展开)
 
@@ -14,7 +14,7 @@
 
 1. **落地上报 = 事后判断**:投资两屏确认落地相的容器写挂在画面 op 重入裁决出口(`cw_screen_invest_strategy.py::_append_confirmed_strategy`/`cw_screen_invest_env.py::act` 顶部),依赖「下一轮入口锚不在 = overlay 已关」的落地证据(`EVIDENCE_OVERLAY_CLOSED` 证据闩,银狼闭环 design §2.3)。动作本体(`cw_overlay_pick_action.py::CwActionPickInvestOp`)机械链发出后只记意图遥测零容器写。与裁定①冲突:机械执行完成即应上报,禁等事后证据。
 2. **确认后不交回外循环**:两屏派发动作 op 后 `round_wait` 循环等待重入裁决,与裁定②及既有规范`screens/README.md` §6「单选族确认离开 = 画面终结」、`screens/op-layer.md` §1.4 恒可用终结集「单选族 = 确认」相悖——实现落后于规范。
-3. **策略支不消费获得链**:落地效果走旧 `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(落位立即级联,升星产物无回调;席满拒落零写,锚 = grant_bench_unit_cascade 拒落分支),不触发 `on_character_gained`/`on_equipment_gained`;骇客改件腿在效果函数体内**内联查** `EQUIP_ACQUIRE_CONSEQUENCES` 表,不走回调通道。gain-chain.md §7 自申报双时序并存待迁移。
+3. **策略支不消费获得链**:落地效果走旧 `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(落位立即级联,升星产物无回调;席满拒落零写,锚 = grant_bench_unit_cascade 拒落分支),不触发 `on_character_gained`/`on_equipment_gained`;骇客改件分支在效果函数体内**内联查** `EQUIP_ACQUIRE_CONSEQUENCES` 表,不走回调通道。gain-chain.md §7 自申报双时序并存待迁移。
 4. **三桥留守画面 op**:`effects.register_strategy` + burst 桥 + 板面重写桥写在 `CwScreenInvestStrategy._append_confirmed_strategy`(决策动作 node 容器写/账本写),与投资环境侧「画面 op 对该域零容器写、整支走动作落地链」(op-layer §2.2 收窄条款)不对称。
 5. **观察面分裂**:策略屏观察 node 只读卡名(逐卡刷新次数留到决策环现读 `read_invest_refresh_counts`——决策环内跑识别,踩「显式读屏只在观察 node」边线);环境屏刷新计数只落 log 观察通道不入 obs 载荷;两屏均有 1s 稳定帧等待(裁定③④)。
 6. **结构绕路**:两屏共用一词表类 `CwActionPickInvestParam` + `source` 字符串运行时分流(裁定⑥);效果表 `PICK_INVEST_EFFECTS` + 骇客采样池住上报包 `kernel/cw_action_report/pick_invest.py`,获得链要消费即反向 import 上报包(包依赖方向禁止)——效果面无家。
@@ -46,13 +46,13 @@
 
 - **新原语 `gain_invest_strategy(gs, session, strategy_name, *, rand, sig, rng=None, producer='CwGainChain') -> GainOutcome`**,三段式对齐 `gain_invest_env`:
   0. **无效载荷拒绝(前置)**:归一后名为空或 `'?'` = 无效载荷 → 零写 + 缺陷留证(新 kind `pick_invest_invalid_payload`)——这是无效输入拒绝(零写 + 留证纪律),不是防重复保护;
-  1. **注册**:`gs.active_strategies` **按名字去重追加**逻辑写(归一名已在列表 → 跳写不重复追加;裁定⑩持卡列表写入语义;跳写后登记腿/效果腿照常执行,零幂等闸);
-  2. **登记腿**(best-effort,`session=None` 跳过[局外/测试形态]):`STRATEGY_EFFECTS` 归一名命中 → `effects.register_strategy(spec, acquired_t)` + burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`(自画面 op 三桥迁入,acquired_t = 节点序快照同 `_portal_acquired_t` 口径);失败 log + 缺陷留证(新 kind `gain_chain_strategy_register_failed`,对齐 `DEFECT_PORTAL_REGISTER` 先例);
+  1. **注册**:`gs.active_strategies` **按名字去重追加**逻辑写(归一名已在列表 → 跳写不重复追加;裁定⑩持卡列表写入语义;跳写后登记分支/效果分支照常执行,零幂等闸);
+  2. **登记分支**(best-effort,`session=None` 跳过[局外/测试形态]):`STRATEGY_EFFECTS` 归一名命中 → `effects.register_strategy(spec, acquired_t)` + burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`(自画面 op 三桥迁入,acquired_t = 节点序快照同 `_portal_acquired_t` 口径);失败 log + 缺陷留证(新 kind `gain_chain_strategy_register_failed`,对齐 `DEFECT_PORTAL_REGISTER` 先例);
   3. **触发策略效果**:`on_strategy_gained`。
 - **新回调 `on_strategy_gained(gs, strategy_name, *, rand, sig, rng=None)`**:查 `PICK_INVEST_EFFECTS` 分派效果函数(枚举即收敛,无注册表——gain-chain §3 裁定②);未收录卡安静不写。
-- **效果体改走链原语**(骇客专家:银狼):bench 腿 `grant_bench_unit_cascade` → `gain_character`(回调 + 单级升星判断进链);随机改件腿手写 `write_logic_rand` + 内联后果表 → `gain_equipment(rand=True)`(采样效果对子链翻转 rand,gain-chain §5 纪律),后果送单位由 `on_equipment_gained` 回调自动消费(内联查表删除);商店池遥测申报行(零容器写)保留。**值不变翻来源域集的实现口径(对抗审 A3 定死)**:后果腿转入回调后效果体拿不到子链落位信息,改用**调用前后值快照比对**——效果体在调 `gain_equipment` 前后对 bench/front_row/back_row 快照比对,实际被写域(含回调子链)计入 written 集,其余域照旧值不变翻来源(不含 gold)——与现行 written 集语义逐位等价,零行为变化。
+- **效果体改走链原语**(骇客专家:银狼):bench 分支 `grant_bench_unit_cascade` → `gain_character`(回调 + 单级升星判断进链);随机改件分支手写 `write_logic_rand` + 内联后果表 → `gain_equipment(rand=True)`(采样效果对子链翻转 rand,gain-chain §5 纪律),后果送单位由 `on_equipment_gained` 回调自动消费(内联查表删除);商店池遥测申报行(零容器写)保留。**值不变翻来源域集的实现口径(对抗审 A3 定死)**:后果分支转入回调后效果体拿不到子链落位信息,改用**调用前后值快照比对**——效果体在调 `gain_equipment` 前后对 bench/front_row/back_row 快照比对,实际被写域(含回调子链)计入 written 集,其余域照旧值不变翻来源(不含 gold)——与现行 written 集语义逐位等价,零行为变化。
 - **`gain_invest_env` 保持现行直写**(无条件写 + 无条件 `on_env_gained`,零幂等闸——同裁定⑨)。
-- rand 纪律:投资策略确认 = 确定性入口(rand=False 同环境);链入口确定性不约束效果体采样腿(骇客改件 rand=True)。
+- rand 纪律:投资策略确认 = 确定性入口(rand=False 同环境);链入口确定性不约束效果体采样分支(骇客改件 rand=True)。
 
 ### 2.5 上报函数与动作 op(立即上报)
 
@@ -61,7 +61,7 @@
 
 ### 2.6 画面 op 两屏(终结交回)
 
-- 删除:`_confirm_pending` 标志、决策动作 node 顶部重入裁决确认腿、`_append_confirmed_strategy`(三桥迁 §2.4-登记腿)、环境屏落地相上报块、`_log_env_refresh_counts`。
+- 删除:`_confirm_pending` 标志、决策动作 node 顶部重入裁决确认分支、`_append_confirmed_strategy`(三桥迁 §2.4-登记分支)、环境屏落地相上报块、`_log_env_refresh_counts`。
 - **空候选/无效决策不派发(对抗审 A2,删 bug 容忍路径)**:现行 `fallback(no-ocr)` 路径(OCR 全空时盲点屏中卡,chosen='?')废除——OCR 读不到候选 = 代码 bug 面,按裁定⑨响亮暴露:空候选或决策无有效输出 → 不派发选卡,`round_fail` 显式失败交外循环重观察重派(对齐 op-layer §1.4「显式失败出口,禁静默重试」口径);上报函数侧由 §2.4-0 无效载荷拒绝兜第二道(零写 + 留证)。
 - 选卡链:派发动作 op 后 **`round_success` 终结交回外循环**(裁定②;单选族「确认离开 = 画面终结」实现收敛)。确认未生效(overlay 残留)= 下一帧外循环按当前画面重识别重派,**流程继续推进的机制**;该形态本身 = 代码 bug(裁定⑨),数据面不设回滚/判重(见 §2.8-1),修法 = 修点击链可靠性(action_ops §1「动作点不响 → 动作层修可靠性」归属)。环境屏台账变异窗(env_grace_until)保留在派发前。
 - 刷新臂(逐卡/整组)不动:闸输入源改 obs 携带(决策环零识别),终结交回语义照旧;环境屏刷新零效果留证对账(在册例外②)不动。
@@ -73,9 +73,9 @@
 ### 2.8 行为变化申报(对抗审重点攻击面)
 
 1. **上报时点前移**:确认点击发出即写结果(原等下一轮看画面才补写)。**确认未生效 = 代码 bug**(裁定⑨),本批**不设**该形态的自动化暴露面(零判重零留证双写)——如实申报战术选择:双写若真实发生,表现 = `active_strategies` 出现重复项(`active_env` 为同值覆写无痕),依赖遥测判读与哨兵下游异常暴露;根因修法 = 点击链可靠性(action_ops §1 归属表),不建防护结构。流程推进机制(外循环重派)与数据面处置(不回滚不判重)是两件事,前者照常、后者按本条。
-2. **持卡面按名字去重(裁定⑩)**:注册腿按名字去重追加(旧「判重入表」跳写语义平移进链,持卡列表恒无重复名);效果腿/登记腿零闸——重复上报本身 = 代码 bug 面(裁定⑨),不设防护。测试影响:dup 断言改「持卡面单份 + 效果腿行为」测试。
-3. **席满行为**(骇客银狼腿):拒落零写 → 溢出落位(链原语 §4 标准行为;gain-chain 迭代 §2.6-3 已申报同款)。
-4. **升星/回调通道**:银狼腿落位立即级联 → 回调先、升星后、产物递归;改件后果从效果体内联查表 → `on_equipment_gained` 回调。现役消费面无 on_character_gained 在册效果,行为等价(gain-chain §7 同申报);改件后果送单位行为不变(同表消费)。
+2. **持卡面按名字去重(裁定⑩)**:注册分支按名字去重追加(旧「判重入表」跳写语义平移进链,持卡列表恒无重复名);效果分支/登记分支零闸——重复上报本身 = 代码 bug 面(裁定⑨),不设防护。测试影响:dup 断言改「持卡面单份 + 效果分支行为」测试。
+3. **席满行为**(骇客银狼分支):拒落零写 → 溢出落位(链原语 §4 标准行为;gain-chain 迭代 §2.6-3 已申报同款)。
+4. **升星/回调通道**:银狼分支落位立即级联 → 回调先、升星后、产物递归;改件后果从效果体内联查表 → `on_equipment_gained` 回调。现役消费面无 on_character_gained 在册效果,行为等价(gain-chain §7 同申报);改件后果送单位行为不变(同表消费)。
 5. **观察时点**:1s 稳定帧删除,首帧可能读到展开中画面——读缺面代替等待:names 空 → 按 §2.6 round_fail 显式失败交外循环重派(原为 fallback 盲点,见 §2.6 第三条,同属 bug 容忍路径废除);复探窗/门语义不动。
 6. **刷新计数容器语义**:已用推算 → 剩余真值(观察写端);闸 2 消费口径翻转(>0 已用 → ≤0 尽)。字段名变更 = 记录层一次性断点(局终销毁,无跨局持久)。
 7. **动作实例键空间变化**:拆类后键 = 新类名(action_key 含类名);屏蔽计数/动作记录为局内生命周期,无跨局持久,一次性断点申报。

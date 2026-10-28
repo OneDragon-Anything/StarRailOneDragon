@@ -42,25 +42,25 @@
 - **问题**：`kernel/cw_vocab.py` 两处 docstring（:733 供给行已改语境的对照行、:908 `CwActionPickEquipParam.norm_item` 定义注释）把归一器写作 `normalize_equip_name`；换源后 equip param 的归一来源变 `normalize_registry_equip_name`，:908 成为过期注释。T-1 先例（event-refresh landing 3.1）对同类连带显式申报了「本文件全部注释引用清理」；本设计声称照抄 T-1 模板却未申报此连带，属未申报的先例偏离（量级小：注释层）。
 - **建议修法**：landing 3.1 范围/文件面补一句「`cw_vocab.py` :908 norm_item 注释随换源改写（:733 复核是否同批）」。
 
-### F6 [建议] 取舍 4 对 upgrade 变换腿重复应用后果的论证失实：「档行 +1 两次 / 多升一次档」被本设计保留的前置硬校验结构性阻断
+### F6 [建议] 取舍 4 对 upgrade 变换分支重复应用后果的论证失实：「档行 +1 两次 / 多升一次档」被本设计保留的前置硬校验结构性阻断
 
 - **对象位置**：design.md :65（取舍 4 末句）。
 - **问题**：`_apply_upgrade_transform`（pick_planner.py :118-219）恰一枚才变换+档+1；首次（错误前置的）应用已把容器中 (银狼LV.999, 2★) 变换为 1★ 并写回——确认未生效重派导致的第二次上报时 `count == 0`，走「零枚 → `planner_upgrade_source_missing` 留证零写」分支，**档不会 +1 两次**。真实后果 = 缺陷留证行 + 容器逻辑态与游戏真值失配（待观察覆盖自愈/对账暴露）——仍是「响亮暴露」域、取舍方向（接受不设防）不变，但论据错写。若日后有人按「反正会 +1 两次也接受」的记录做决策，会高估风险面。
-- **建议修法**：取舍 4 末句改为「upgrade 变换腿重复上报被前置硬校验拦截为零枚留证（档不重复 +1），真实后果 = 缺陷行 + 逻辑态失配待观察对账，同域接受」。
+- **建议修法**：取舍 4 末句改为「upgrade 变换分支重复上报被前置硬校验拦截为零枚留证（档不重复 +1），真实后果 = 缺陷行 + 逻辑态失配待观察对账，同域接受」。
 
 ### F7 [记录·并行批] joy-conditional-leg 在飞批的 rider 挂 planner 落地相门（`evidence == EVIDENCE_OVERLAY_CLOSED`），与本批删 evidence 参数存在时序性碰撞
 
-- **现状**：`changes/2026-09-21-joy-conditional-leg/`（design/attack/attack-r3 在册）设计 rider 直接受益于落地相门；**本次核代码实况：`pick_planner.py` 现盘无任何 joy rider 代码**（全文 220 行已读，零 joy 符号）——彼批未落码。若彼批先落，本批 worker 将在设计未申报的现存代码上执行「落地效果腿逐位保持」。按任务边界非攻击对象，仅如实记录：建议 design §1.3 或 §2.0 补一句「与 joy-conditional-leg 在飞批的落点冲突由批间协调（rider 迁单相时点或重排）」。
+- **现状**：`changes/2026-09-21-joy-conditional-leg/`（design/attack/attack-r3 在册）设计 rider 直接受益于落地相门；**本次核代码实况：`pick_planner.py` 现盘无任何 joy rider 代码**（全文 220 行已读，零 joy 符号）——彼批未落码。若彼批先落，本批 worker 将在设计未申报的现存代码上执行「落地效果分支逐位保持」。按任务边界非攻击对象，仅如实记录：建议 design §1.3 或 §2.0 补一句「与 joy-conditional-leg 在飞批的落点冲突由批间协调（rider 迁单相时点或重排）」。
 
 ## ③ 全量同步复查结果表
 
 | 复查面 | 结果 |
 |---|---|
 | design §1 改动面 ↔ §2 方案 ↔ landing 三阶段 | 覆盖无遗漏无越界（3.1=equip 全件、3.2=planner 全件、末阶段=正本）；例外 = F5（cw_vocab 注释连带漏报）、F1/F2（正本清单自身缺漏）。landing 3.1 凭据含 `test_cw_yinlang_phase32.py` 全绿 = 跨阶段回归项，与「不含 planner 屏」边界不冲突（3.1 不动 planner 链路，测试应仍绿）✓ |
-| 引用锚存在性（符号/路径/节） | `CwActionPickPlannerOp.run`/`CwActionPickEquipOp.run`/`pick_planner.py`/`pick_equip.py`/`cw_screen_yinlang.py`/`cw_screen_equip_pick.py`/`classify_planner_leg`/`normalize_equip_name`/`normalize_registry_equip_name`/`_PLANNER_EQUIP_ANCHORS`/`emit_overlay_confirm`/`decide_equip_overlay_pick`/`decide_equip_pick`/`CwActionPickEquipParam.norm_item`/`apply_equip_acquire_consequence`/`merge_cascade_write`/`effective_cost`/`test_cw_yinlang_phase32.py`/`test_cw_pick_channels_t60.py` 全部实存且语义与引用相符 ✓；docstring 引证「未锁态语义（仅泛用腿）」在 cw_screen_equip_pick.py :156-157 在册 ✓；正本引用面例外 = F1/F2/F3 |
+| 引用锚存在性（符号/路径/节） | `CwActionPickPlannerOp.run`/`CwActionPickEquipOp.run`/`pick_planner.py`/`pick_equip.py`/`cw_screen_yinlang.py`/`cw_screen_equip_pick.py`/`classify_planner_leg`/`normalize_equip_name`/`normalize_registry_equip_name`/`_PLANNER_EQUIP_ANCHORS`/`emit_overlay_confirm`/`decide_equip_overlay_pick`/`decide_equip_pick`/`CwActionPickEquipParam.norm_item`/`apply_equip_acquire_consequence`/`merge_cascade_write`/`effective_cost`/`test_cw_yinlang_phase32.py`/`test_cw_pick_channels_t60.py` 全部实存且语义与引用相符 ✓；docstring 引证「未锁态语义（仅泛用分支）」在 cw_screen_equip_pick.py :156-157 在册 ✓；正本引用面例外 = F1/F2/F3 |
 | 消费点迁移总表 vs 全仓 grep | `EVIDENCE_OVERLAY_CLOSED` src 侧恰 4 文件（两定义+两 import 消费）✓、t60 EQUIP_EVIDENCE 面（import :40 + 调用 :127/:218）✓、yinlang_phase32 11 处（import + 10 调用，design 写「10+ 处」✓）；`_pick_pending`/`_pending_pick` 仅 equip_pick 本文件 ✓；`_confirm_pending`/`_pending_leg`/`_pick_param` 仅 yinlang 本文件 + planner op 置位（:408）✓（partner op :355 的同名置位属伙伴屏 `CwScreenPartner`，表已用「（yinlang）」限定，无过度退役）；`normalize_equip_name` equip 组装点换源 ✓、本体与银狼域消费面不动 ✓。**无遗漏、无过度**（src+test 口径；docs 侧缺口归 F1/F2） |
 | T-1 模板一致性 | 单相一口写/删 evidence 参数/常量仅本文件退役/归一换源 fail-closed/外循环重派治理均与 T-1（event-refresh design §2.0B + landing 3.1）及已落码的 pick_supply.py 现盘一致；「T-1 立样 + 外溢候选登记」承接关系在 T-1 design §1.3 明文（「PickPlanner/PickEquip…另批复制」）✓；偏离一处 = F5（注释连带未照抄） |
-| 增补 2/3 与 op-layer §1.2 合规 | 禁止清单第 4 条（:25 判重/防重复保护）原文支持「未生效重派→重复应用按 bug 接受、不设防」✓；「单相化后未生效重派=效果腿重复应用」与裁定兼容（裁定明言真报两次 = bug 域）✓；增补 3 零新增读屏成立——`emit_overlay_confirm` = 机械确认+固定等待+无条件 round_retry、不读屏（action_ops §2.3 :59 在册；entry_keyword 仅日志），equip 点卡定位由 env 传入 ✓ |
+| 增补 2/3 与 op-layer §1.2 合规 | 禁止清单第 4 条（:25 判重/防重复保护）原文支持「未生效重派→重复应用按 bug 接受、不设防」✓；「单相化后未生效重派=效果分支重复应用」与裁定兼容（裁定明言真报两次 = bug 域）✓；增补 3 零新增读屏成立——`emit_overlay_confirm` = 机械确认+固定等待+无条件 round_retry、不读屏（action_ops §2.3 :59 在册；entry_keyword 仅日志），equip 点卡定位由 env 传入 ✓ |
 | upgrade 重复应用定性（攻击清单专项） | 见 F6：非「资源损坏」亦非「+1 两次」，被前置硬校验拦为零枚留证；属「响亮暴露修根因」域成立 |
 
 ## ④ 试读结论（逐阶段）
@@ -71,4 +71,4 @@
 
 ## ⑤ 零发现面声明
 
-以下面逐项攻击后**零实质发现**（证据见 ③ 表与 ④）：方案层单相化契约本体；upgrade 腿三态+档行逐位保持可行性；`classify_planner_leg` 不动边界（腿型判定副产品非入栏归一器的定性与代码相符）；equip 换源主张（泛用件在键集）；零写族屏（巨星/伙伴等）不迁移边界与 op-layer §2.2 现行合法形态一致；src+test 消费点完备性；测试锚与「10+ 处」计数；T-1 承接关系；增补 2/3 逐条合规。
+以下面逐项攻击后**零实质发现**（证据见 ③ 表与 ④）：方案层单相化契约本体；upgrade 分支三态+档行逐位保持可行性；`classify_planner_leg` 不动边界（分支类型判定副产品非入栏归一器的定性与代码相符）；equip 换源主张（泛用件在键集）；零写族屏（巨星/伙伴等）不迁移边界与 op-layer §2.2 现行合法形态一致；src+test 消费点完备性；测试锚与「10+ 处」计数；T-1 承接关系；增补 2/3 逐条合规。

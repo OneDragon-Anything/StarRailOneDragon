@@ -8,7 +8,7 @@
 design.md §2.2 表;记账载体 = `gs.equips` 合并单笔写;冶金炉 rng 关键字带缺省 +
 采样池 = `cw_sim_equips.furnace_reroll` 同源 + 披露键 `furnace_mutate_pool_v0_same_category`
 + 变异后果采证行;投影仪走 `gain_character`(producer=`CwActionToolUseReport`,
-费用门前置查);特权卡 char 腿/令牌 fail-closed 留证);②`zero_writes.py` 七函数
+费用门前置查);特权卡 char 分支/令牌 fail-closed 留证);②`zero_writes.py` 七函数
 退役;③`cw_tool_use_action.py` import 切换 + 文案同步;④`cw_affix_effects.py`
 EQUIP_WRITE_SIDES 词表扩展第五形 `report:<函数名>`(校验器同步)+ 逐行终值
 (design §2.3 表);⑤cw_vocab 七类 docstring、cw_equip_env/cw_effect_inventory/

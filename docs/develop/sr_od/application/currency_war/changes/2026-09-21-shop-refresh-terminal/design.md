@@ -37,11 +37,11 @@
 6. **刷新次数:GameState Field——观察锚定 + 动作扣减 + 发放登记同格**(用户裁定):新建 `gs.free_refresh_left`(剩余语义 Field,§1.4 `*_refresh_left` 家族,商店域**接入**非例外);漏斗复用现役刷新钮读作观察锚定(双态:免费态锚次数/付费域锚 0/判不出跳写,失配走 Field 既有安灯,零手写台账);点击刷新后上报扣减记逻辑态(未观察保守按付费,次数是记账面非决策闸);节点推进与效果 burst 两发放桥改道 Field。效果账本 `free_refresh_balance`/`grant_free_refreshes` 退役。金/牌面快照对账(probe)与免费刷新 proc 留证 flag(ADR-0456 临时通道)退役。
 7. **店开防抖删除**:入口观察单次读,读缺交决策前置门响亮失败(`decide_shop_action` 观察帧缺失即抛错,shop.md §2 契约既有)。
 8. **帧代次语义**。帧代次 = 观察帧的新鲜度标签:full = 这帧带来整帧新事实,策略本次决策**允许**做一次贵的方向重算(候选阵容重估机器);none = 无新事实,只做便宜单步决策。贵重算本身由既有键守卫限频——每个游戏轮最多真重算一次(flow/README §2.2),full 不等于必然重算。本迭代后每访问入口观察 = full(刷新交回后的重进 = 全新访问);实际行为差异 = 刷新后多一次「允许重算」的机会,由键守卫压住;「续段 none」随段机器消亡。
-9. **上报回调腿(用户裁定)**:买牌上报在「获取角色计算完」(落位 + 合成 + 升星腿全毕)后触发购买回调(`on_buy` 新挂点:bump CounterKey.BUY + 购买族分派;flow 层落地门 bump 删除);刷新上报在计数后计算**商店牌随机态**(采样器 = 算法自 `cw_sim_shop.deal_shop` 迁入 kernel `cw_shop_deal.py`,与 sim 发牌同源)经 **`write_logic_rand` 专用通道**写 payload 随机态(observe 覆盖差异 = 预期内,落 logic_rand_outcome 台账,不进失配安灯;2026-09-18「终结跳写 payload 不写」裁决的 payload 半边随之显式收窄)并触发内容条件计数(干旱/供给族仅消费 observation 源,logic_rand 跳拍宁缺勿造)——两执行面同源 = 详设 §2.9。
+9. **上报回调分支(用户裁定)**:买牌上报在「获取角色计算完」(落位 + 合成 + 升星分支全毕)后触发购买回调(`on_buy` 新挂点:bump CounterKey.BUY + 购买族分派;flow 层落地门 bump 删除);刷新上报在计数后计算**商店牌随机态**(采样器 = 算法自 `cw_sim_shop.deal_shop` 迁入 kernel `cw_shop_deal.py`,与 sim 发牌同源)经 **`write_logic_rand` 专用通道**写 payload 随机态(observe 覆盖差异 = 预期内,落 logic_rand_outcome 台账,不进失配安灯;2026-09-18「终结跳写 payload 不写」裁决的 payload 半边随之显式收窄)并触发内容条件计数(干旱/供给族仅消费 observation 源,logic_rand 跳拍宁缺勿造)——两执行面同源 = 详设 §2.9。
 10. **发射帧受限消费迁策略侧**(用户裁定:策略的事情不进流程框架;规范正本 = flow/README.md §1 决策控制分层铁律):cw_loop 发射帧仲裁段与 spend_gate 通路**退役**,商店访问回归唯一普通路径;受限会话 = 策略侧自限——mandate_v1 读 StrategyState 派生标记(armed ∧ 金超息线),`decide_shop_action` 提案后经谓词检,**拒 = CloseShop 收访问(消费终止语义逐位平移,非改试次优)**,金回线 → CloseShop → StartBattle 正常发射;政策谓词单一源留守 kernel `cw_launch_arbitrage.py::launch_arbitration_gate`,消费方改策略决策入口;段旗 `cw4_launch_spend_visited` 留守(每武装段至多一次受限访问)。= 详设 §2.10。
 
 详设划分:单详设 [details/shop-visit-loop.md](details/shop-visit-loop.md)(主题内聚,无需再分)。跨详设接口契约(总纲钉死):
 - 免费刷新次数 Field(`free_refresh_left`)的三写端(观察锚定/动作扣减/两发放桥登记)、未观察口径(None = 保守按付费,次数是记账面非决策闸)与效果账本字段退役 = 详设 §2.3;
-- 上报回调腿(买牌 `on_buy` 时点与 CounterKey.BUY 迁移;刷新随机态采样器与 payload 逻辑态写)= 详设 §2.9;
+- 上报回调分支(买牌 `on_buy` 时点与 CounterKey.BUY 迁移;刷新随机态采样器与 payload 逻辑态写)= 详设 §2.9;
 - `CwScreenShop`(正名后)构造签名(无 spend_gate)与两调用点交接面、发射帧受限消费迁策略侧 = 详设 §2.2/§2.10;
 - CloseShop 执行位(真点击 + 幂等出口 + 上报清场)归属与边界 = 详设 §2.1;节点行观察归位备战观察域 = 详设 §2.8。

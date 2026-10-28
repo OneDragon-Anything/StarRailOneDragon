@@ -13,7 +13,7 @@
 
 ### 1. 节点窗起点序(_begin_node_window)
 
-- `_apply_env_plane_gold` 调用点改为分道:env ∈ `ENV_ORE_GRANTS` → **声明入队**(经 kernel 同一电平规则函数,守卫 = pending/done 双查——`_window_begun_ord` 窗口幂等降为冗余保险,沿留不删;写 = write_logic,**sig = `logic_sig('sim:env')`**(与 `discharge_due_item_grants` 同组同窗,沿 sim 现行 logic_action 族构造形态);依据 = kernel 确定效果直写 write_logic 先例(cw_exec_state 金腿 / cw_effect_inventory 退款腿));env ∉ ENV_ORE_GRANTS 且 `gold_per_plane_start` 非空 → 保留直发(通道留置,现无此形态环境);
+- `_apply_env_plane_gold` 调用点改为分道:env ∈ `ENV_ORE_GRANTS` → **声明入队**(经 kernel 同一电平规则函数,守卫 = pending/done 双查——`_window_begun_ord` 窗口幂等降为冗余保险,沿留不删;写 = write_logic,**sig = `logic_sig('sim:env')`**(与 `discharge_due_item_grants` 同组同窗,沿 sim 现行 logic_action 族构造形态);依据 = kernel 确定效果直写 write_logic 先例(cw_exec_state 金分支 / cw_effect_inventory 退款分支));env ∉ ENV_ORE_GRANTS 且 `gold_per_plane_start` 非空 → 保留直发(通道留置,现无此形态环境);
 - **位面过渡过期清理接线**:同一电平清理函数(pending/done 中 plane ≠ 当前 plane 的条目移除,evidence 留痕 `ore_declared_expired#p{old}`)——窗口起点调用,与入队同一改动点交付,归本阶段;
 - 入队后位面开局矿呈现走 §2;金不再直发——**世界面**的金在点击兑现时入账(策略面估值消费 ENV_ECONOMY 数值不变,双源同值校验在构建期闭合)。
 
@@ -30,7 +30,7 @@
 
 ### 4. rng 与确定性
 
-- 键 `'ore_reward_gen'` 随 `action_sampling_rng('ore_reward_gen', None)` **首调自动生效**——装配方是泛型 `lambda tool`(cw_sim_backend 装配段),本阶段**零改动**;sim 呈现序确定 → 掷序确定(键序确定性责任在调用序,先例 = 现动作腿键);
+- 键 `'ore_reward_gen'` 随 `action_sampling_rng('ore_reward_gen', None)` **首调自动生效**——装配方是泛型 `lambda tool`(cw_sim_backend 装配段),本阶段**零改动**;sim 呈现序确定 → 掷序确定(键序确定性责任在调用序,先例 = 现动作分支键);
 - `test_cw_sim_seam.py` provider 装卸断言面扩 `'ore_reward_gen'` 键(现断言形态实存,沿其装卸用例扩)。
 
 ### 5. 占位退役与披露

@@ -8,7 +8,7 @@
 
 | 条 | 结果 | 修订锚核验 |
 |---|---|---|
-| N1 随机态通道 | ✅ 已解决 | §2.9 刷新腿①改 `gs.write_logic_rand`(证据锚差 = 预期内,落 `logic_rand_outcome` 台账,不进三分流)——与 `cw_game_state.py:2739-2774` 通道语义逐句对齐;消费门口径已定(干旱/供给族仅 observation 源,该拍跳过,无豁免申报);supersession 申报在场(§2.9「终结跳写(2026-09-18)payload 半边随本裁定收窄…金仍不写」),清理面落 3.3(模块头锚 = `cw_refresh_shop_action.py:4-8` 属实);projection_contract §3.6 正本行已入清单(landing :92)。次生注意项 → R5(恢复拍锚错位,轻) |
+| N1 随机态通道 | ✅ 已解决 | §2.9 刷新分支①改 `gs.write_logic_rand`(证据锚差 = 预期内,落 `logic_rand_outcome` 台账,不进三分流)——与 `cw_game_state.py:2739-2774` 通道语义逐句对齐;消费门口径已定(干旱/供给族仅 observation 源,该拍跳过,无豁免申报);supersession 申报在场(§2.9「终结跳写(2026-09-18)payload 半边随本裁定收窄…金仍不写」),清理面落 3.3(模块头锚 = `cw_refresh_shop_action.py:4-8` 属实);projection_contract §3.6 正本行已入清单(landing :92)。次生注意项 → R5(恢复拍锚错位,轻) |
 | N2 仲裁 RefreshShop 路径 | ✅ 已解决(方案 = 整段退役,策略侧自限) | §2.10 仲裁段/spend_gate 通路/OpenShop.restricted_spend/`_act_execute_default` 截流分支四件退役 + mandate_v1 自限 + 谓词留守 kernel + 遥测分键迁 strategy_state;design §2-10、landing 3.4 判据(grep 零残留 + 自限单测)齐。**但策略侧设计深度不足两点 + §2.2 残留矛盾句** → R1/R2/R3 |
 | N3 节点行宿主 | ✅ 已解决 | 四处(design §2-4、详设 §2.8、landing 3.4、正本清单 prep.md 行)统一改「备战 heavy 观察链节点行消费位 `_write_prep_node_chain` 同帧同点」;代码锚属实:`cw_observe_full.py:148` read_node_sequence 现役已读并回传、`cw_screen_prep.py:1072` _write_prep_node_chain 在场;「覆盖 ≥ 现役」论证在新宿主下成立。残:details 边界 obs 行一句模糊措辞 → R6c |
 | N4 采样器锚 | ✅ 已解决 | §2.9 锚改 `cw_sim_shop.deal_shop`(:69 核实)+ 落点文件点名 `kernel/cw_shop_deal.py`(新);landing 3.2 范围/文件面均含。微留:采样器「纯采样不写容器」未显式声明 → R6f |
@@ -75,9 +75,9 @@
 | 阶段 | 能否开工 | 缺答案的语义选择 |
 |---|---|---|
 | 3.1 防抖删除 | ✅ 能 | 无 |
-| 3.2 次数 Field 化 + 随机态腿 | ✅ 能 | R6f(采样器纯度一句,补即净;不阻塞——「算法本体迁入」的自然读法即纯采样) |
+| 3.2 次数 Field 化 + 随机态分支 | ✅ 能 | R6f(采样器纯度一句,补即净;不阻塞——「算法本体迁入」的自然读法即纯采样) |
 | 3.3 刷新 op 零读屏 | ✅ 能 | 无 |
-| 3.4 两 node 规范化 + 归位 + 迁策略侧 + 回调腿 | ⛔ 不能 | R1(§2.2 矛盾残句:截流删/留)、R2(自限拒拍语义)、R3(段旗去留) |
+| 3.4 两 node 规范化 + 归位 + 迁策略侧 + 回调分支 | ⛔ 不能 | R1(§2.2 矛盾残句:截流删/留)、R2(自限拒拍语义)、R3(段旗去留) |
 | 3.5 类名正名 | ✅ 能 | 无 |
 | 3.6 全量验收 | ✅ 能 | 无 |
 | 末阶段 正本更新 | ⚠ 清单先补 | R4(文件名)、R6e(action_exec BuyCard 行) |

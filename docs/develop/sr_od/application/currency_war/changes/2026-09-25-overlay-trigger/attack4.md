@@ -13,20 +13,20 @@
 - **攻击角度**:同一符号 megastar_fired_tier 的处置,register-consume 归「迁容器簿记」、landing 归「退役」、总纲/详设判据面说「巨星无簿记」——按 C-簿记的容器簿记枚举(祈愿档位/planner 费用档两处 + 占卜屋计数),megastar_fired_tier 没有合法迁移目标;照 register-consume 字面施工会在容器里造出一个巨星簿记位,正面违反「无簿记」裁定。簿记口径属收敛轮逐一比对清单,任何两处不同即打回级。行为面连锁:sim 现役巨星评估器是**水位语义**(`tier_idx > megastar_fired_tier` 才入队,降档再升回原档不弹),新设计 S1a 是**逐次上穿**(降档再升也弹)——降-升再穿档场景两口径结果不同;这是设计显式引入的第六项行为差异,但 landing 3.4 对拍判据只豁免五项(全为 planner/词表项,无巨星)。判据与设计行为矛盾:对拍脚本一旦含巨星降-升再穿档,照判据必红;不含则判据掩盖真实差异。「sim 修正清单五项」(design/register-consume/landing 三处逐字一致)同样未收纳巨星项。
 - **证据**:src/sr_od/application/currency_war/sim/cw_sim_backend.py:1472-1485(`_evaluate_megastar`:`if tier_idx > self.megastar_fired_tier:` 严格大于才 push,水位语义);register-consume.md:64/:48;design.md:51;faction-trigger.md:43;landing.md:50/:55。
 
-## D2【打回级】TrackedBooks 消费面去向:总纲摘要与详设退役表对「锚定写回」给出相反动作(「改读主域」vs「写回腿删除」)
+## D2【打回级】TrackedBooks 消费面去向:总纲摘要与详设退役表对「锚定写回」给出相反动作(「改读主域」vs「写回分支删除」)
 
 - **攻击对象**:design.md §2「系统级变化·1」+ details/deployed-merge.md「TrackedBooks 退役」表。
 - **主张原文**:
   - design.md:36:「TrackedBooks 整体退役(用户裁定 2026-09-25:消灭第二账——主域可槽位直址后,**执行器直址/守卫 expected 侧/锚定写回全部改读主域**,升星确认候选宿主不动(局旁表)、比较基线改主域派生视图)」;
-  - deployed-merge.md 退役表行 3:「reconcile 锚定写回(cw_reconcile.py tracked 整表写回腿)| **写回腿删除**(观察通道本就写主域)」;行 1:执行器随动同步腿「**腿全部删除**——动作写主域(逻辑通道)即同步,第二账无可同步」。
-- **攻击角度**:TrackedBooks 消费面去向属收敛轮逐一比对清单,任何两处口径不同即打回级。「锚定写回」的真实处置是**删除**(写回腿的写入对象 tracked 消失,腿无存在形式;「改读主域」对一个写腿不是连贯操作),总纲写成「改读主域」= 与详设相反的动作;「执行器直址……改读主域」对随动同步腿同理(详设 = 腿全部删除)。landing 3.2 与 grep 归零判据兜底使误实现概率有限,但收敛判据按字面不成立:同一消费面在总纲与详设各出现一次、动作相反。
+  - deployed-merge.md 退役表行 3:「reconcile 锚定写回(cw_reconcile.py tracked 整表写回分支)| **写回分支删除**(观察通道本就写主域)」;行 1:执行器随动同步分支「**分支全部删除**——动作写主域(逻辑通道)即同步,第二账无可同步」。
+- **攻击角度**:TrackedBooks 消费面去向属收敛轮逐一比对清单,任何两处口径不同即打回级。「锚定写回」的真实处置是**删除**(写回分支的写入对象 tracked 消失,分支无存在形式;「改读主域」对一个写分支不是连贯操作),总纲写成「改读主域」= 与详设相反的动作;「执行器直址……改读主域」对随动同步分支同理(详设 = 分支全部删除)。landing 3.2 与 grep 归零判据兜底使误实现概率有限,但收敛判据按字面不成立:同一消费面在总纲与详设各出现一次、动作相反。
 - **证据**:design.md:36;deployed-merge.md:37/:39;landing.md:17-25;iteration-design.md §5-4(修订后全量同步复查)。
 
 ## D3【需澄清】触面清单与代码实况不符:漏四个真实触点、含一个幻影触点
 
 - **攻击对象**:details/deployed-merge.md「触面清单」表(写方行 + tracked 侧行)+ landing.md 3.2「文件面」。
-- **主张原文**:deployed-merge.md 写方行:「deploy_move、sell_deployed、buy_card(pre_dep 快照)、gain 链(merge 工作表+落写)、wear_equip、工具装备腿、观察链(分排读屏 → 合一写视图)」;tracked 侧行:「cw_exec_state……、prep_actions(_track_* 三腿删)、cw_reconcile……、cw_vocab……、strategies/impl/mandate_v1/(mandate 读口改主域派生)、cw_deploy_move_action/cw_sell_deployed_action(同步分支删)、cw_observation(cw_observation.py:2434 读口改)、cw_screen_prep(:548 读口改)、cw_buy_card_action(:161 mutate 调用与 :177 tracked 读点改)」;退役表行 1 括号内含「**wear/tool tracked 腿**」;landing.md 3.2 文件面:「operations/cw_op/(deploy_move/sell_deployed/buy_card 同步分支)」。
-- **攻击角度**:①**写方行漏 swap_deploy**:kernel/cw_action_report/swap_deploy.py:93-99 构造 `replace(..., slot=deployed_slot_no(d_idx))`、经 `deployed_indexed_to_rows` 转两行后 `_w(gs.front_row, ...)`/`_w(gs.back_row, ...)` 双写——是 front_row/back_row 的真实写方(消费两换算函数 + Unit.slot 构造,三件全在 3.1/3.2 退役面内),策略侧 live 引用(strategies/impl/flow.py:929/:985、mandate_v1/bridge.py:276/:329 构造该参数);faction-trigger.md 自己也写明「SwapDeploy……词表/sim 在册」,触面表却不列。②**tracked 侧漏三处**:`kernel/cw_action_report/sell_bench.py:89-102`(报告层 tracked bench 对称吸收腿——`_books.bench` 整表写,正是「动作随动同步腿」物种);`operations/cw_op/cw_prep_sell_bench_action.py:66`(`ex._track_remove_bench` 执行腿);`operations/cw_screen/cw_screen_shop.py:532`(`tracked_books.bench` 读,商店播种遥测源)——TrackedBooks 类删后此三处为运行时断点。③**幻影触点**:「wear/tool tracked 腿」的 tool 腿在代码中不存在(tool_use.py 全文零 tracked/books 引用;wear 腿实在 wear_equip.py:167-182)。landing 3.2 的 grep 归零判据(`tracked_books`/`_track_`/`mutate_bench_deployed` 引用归零)与 3.1 测试全量绿可机械兜住以上遗漏,故不升级;但触面表被 landing 明示为清单源(「清单见详设触面表」),其完备性主张与代码实况不符。
+- **主张原文**:deployed-merge.md 写方行:「deploy_move、sell_deployed、buy_card(pre_dep 快照)、gain 链(merge 工作表+落写)、wear_equip、工具装备分支、观察链(分排读屏 → 合一写视图)」;tracked 侧行:「cw_exec_state……、prep_actions(_track_* 三条分支删)、cw_reconcile……、cw_vocab……、strategies/impl/mandate_v1/(mandate 读口改主域派生)、cw_deploy_move_action/cw_sell_deployed_action(同步分支删)、cw_observation(cw_observation.py:2434 读口改)、cw_screen_prep(:548 读口改)、cw_buy_card_action(:161 mutate 调用与 :177 tracked 读点改)」;退役表行 1 括号内含「**wear/tool tracked 分支**」;landing.md 3.2 文件面:「operations/cw_op/(deploy_move/sell_deployed/buy_card 同步分支)」。
+- **攻击角度**:①**写方行漏 swap_deploy**:kernel/cw_action_report/swap_deploy.py:93-99 构造 `replace(..., slot=deployed_slot_no(d_idx))`、经 `deployed_indexed_to_rows` 转两行后 `_w(gs.front_row, ...)`/`_w(gs.back_row, ...)` 双写——是 front_row/back_row 的真实写方(消费两换算函数 + Unit.slot 构造,三件全在 3.1/3.2 退役面内),策略侧 live 引用(strategies/impl/flow.py:929/:985、mandate_v1/bridge.py:276/:329 构造该参数);faction-trigger.md 自己也写明「SwapDeploy……词表/sim 在册」,触面表却不列。②**tracked 侧漏三处**:`kernel/cw_action_report/sell_bench.py:89-102`(报告层 tracked bench 对称吸收分支——`_books.bench` 整表写,正是「动作随动同步分支」物种);`operations/cw_op/cw_prep_sell_bench_action.py:66`(`ex._track_remove_bench` 执行分支);`operations/cw_screen/cw_screen_shop.py:532`(`tracked_books.bench` 读,商店播种遥测源)——TrackedBooks 类删后此三处为运行时断点。③**幻影触点**:「wear/tool tracked 分支」的 tool 分支在代码中不存在(tool_use.py 全文零 tracked/books 引用;wear 分支实在 wear_equip.py:167-182)。landing 3.2 的 grep 归零判据(`tracked_books`/`_track_`/`mutate_bench_deployed` 引用归零)与 3.1 测试全量绿可机械兜住以上遗漏,故不升级;但触面表被 landing 明示为清单源(「清单见详设触面表」),其完备性主张与代码实况不符。
 - **证据**:swap_deploy.py:93-99;sell_bench.py:89-102;cw_prep_sell_bench_action.py:66;cw_screen_shop.py:532;tool_use.py(全文件 grep `books|tracked|_track` 零命中);wear_equip.py:167-182;deployed-merge.md:58-59;landing.md:6/:19。
 
 ## D4【低】「定长 10 装不下后 7-10 槽」数值与权威源不符(应为后 7-9 槽)
@@ -50,7 +50,7 @@
 | 严重度 | 计数 | 编号 |
 |---|---|---|
 | 打回级 | 2 | D1 巨星簿记口径三处互斥 + sim 对拍豁免清单漏巨星行为变更;D2 TrackedBooks「锚定写回」去向总纲(改读)与详设(删除)相反 |
-| 需澄清 | 1 | D3 触面清单漏 swap_deploy 写方与三处 tracked 触点、含幻影「tool tracked 腿」 |
+| 需澄清 | 1 | D3 触面清单漏 swap_deploy 写方与三处 tracked 触点、含幻影「tool tracked 分支」 |
 | 低 | 2 | D4 「后 7-10 槽」应为 7-9;D5 design §0 状态字段轮次叙事 |
 
 ## 已核实为准确的抽样清单(边界界定,命中即准确,非穷举)
@@ -66,7 +66,7 @@
 
 **簿记口径(准确部分)**
 6. 祈愿首达一次/planner 每费用档首 2★ 一次/占卜屋 2 倍数/伙伴无上限,在 design C-簿记、faction-trigger 判据归位、register-consume 存处、landing 3.3 四处一致;「已触发档位集合两处同型(祈愿/planner)」三处一致。
-7. `gs.lv999_cost_tier` 锚准:cw_game_state.py:2380 字段在,:2376-2377 注释明文写端 = pick_planner 升费腿/deploy_move 上阵变费腿,与 faction-trigger 声明一致;deploy_move.py:134 实证升费写点。
+7. `gs.lv999_cost_tier` 锚准:cw_game_state.py:2380 字段在,:2376-2377 注释明文写端 = pick_planner 升费分支/deploy_move 上阵变费分支,与 faction-trigger 声明一致;deploy_move.py:134 实证升费写点。
 
 **换算归属**
 8. 五函数实在 kernel/cw_exec_state.py:237-295(deployed_slot_no/deployed_row_slot/deployed_idx_of/deployed_rows_to_indexed/deployed_indexed_to_rows);阶段归属三处一致:design「随 tracked 消费端退役后删除」、landing 3.1 显式排除(窗口期仍用)+ 3.2 删除。
@@ -74,7 +74,7 @@
 
 **TrackedBooks 去向(准确部分)**
 10. 升星确认候选宿主 = cw_reconcile 局旁表实证(_STAR_GATES WeakKeyDictionary,cw_reconcile.py:73-103),与「候选宿主不动(本就在 cw_reconcile 局旁表)」一致。
-11. `tracked_account_observed`/`tracked_unobserved` 实在 cw_game_state.py:2094-2097(消费面注释与 deployed-merge 行 5 的「锚定语义重定义、两态制不变」对得上);prep_actions 三腿 `_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed` 实在 :745/:763/:784;TrackedBooks 类(bench 定长 9/deployed 定长 10)实在 cw_game_state.py:1922-1941。
+11. `tracked_account_observed`/`tracked_unobserved` 实在 cw_game_state.py:2094-2097(消费面注释与 deployed-merge 行 5 的「锚定语义重定义、两态制不变」对得上);prep_actions 三条分支 `_track_remove_bench`/`_track_remove_deployed`/`_track_move_deployed` 实在 :745/:763/:784;TrackedBooks 类(bench 定长 9/deployed 定长 10)实在 cw_game_state.py:1922-1941。
 
 **landing 判据与机制依据**
 12. 六 emit 点行号逐一对拍全准:deploy_move.py:143、buy_card.py:184/:186、wear_equip.py:187、sell_bench.py:121、sell_deployed.py:78;获得链零 emit 属实(cw_gain_chain.py 无 emit_fact_event);FactEvent/FACT_EVENT_KINDS/set_fact_event_sink 实在 cw_event_hooks.py:27-55。

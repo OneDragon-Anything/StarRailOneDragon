@@ -43,4 +43,4 @@
 
 ## 9. 依据
 
-`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_action_report/close_shop.py::report_action_close_shop_param` docstring 与 `kernel/cw_action_report/refresh_shop.py` 金账扣费腿注(刷新费扣费随刷新上报,关店零金写);[screens/README](../../screens/README.md) §3.5/§4(访问终结语义)。
+`research/economy.md` §2.1(节点内关店重开不刷新);`research/screen_flow_timing.md` #15;`kernel/cw_action_report/close_shop.py::report_action_close_shop_param` docstring 与 `kernel/cw_action_report/refresh_shop.py` 金账扣费分支注(刷新费扣费随刷新上报,关店零金写);[screens/README](../../screens/README.md) §3.5/§4(访问终结语义)。

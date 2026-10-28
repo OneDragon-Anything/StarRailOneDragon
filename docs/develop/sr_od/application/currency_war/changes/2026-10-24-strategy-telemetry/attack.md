@@ -42,8 +42,8 @@
 
 **N6（中）payload.k_members 的「同源读法」断章：K 空窗回退帧记录值 ≠ 决策实际输入**
 - 设计锚：capture-store.md:33「`k_members: [str]` —— `predicates.line_members(direction_comp_of(gs))`（`entry.py:460` 同源读法）」。
-- 证据：`entry.py:459-460` 只是起点，同块 :463-472 的 K 空窗回退把 k_members 换成 `cw_intention.k_empty_window_fallback(...)` 结果并计数 `prep_k_fallback_*`；payload 现读公式没有回退腿，回退帧（`direction_comp_of` 两键都空，`session_scope.py:377`「两键都空…= None——无方向帧由 K 空窗回退承接」）将记录 `k_members=[]` 而决策实际用的是回退名单。候选 A（上阵窗口自锁）复核恰依赖「决策帧上判据输入现值」（capture-store.md:35），这类帧的依据块会误导判读。
-- 修复建议：payload 公式补回退腿（同源调 `k_empty_window_fallback`），或申报已知边界「回退帧 k_members 记 []、判读以 counters `prep_k_fallback_*` 键为准」——二选一写进 capture-store §3 与 strategy-telemetry.md 键表。
+- 证据：`entry.py:459-460` 只是起点，同块 :463-472 的 K 空窗回退把 k_members 换成 `cw_intention.k_empty_window_fallback(...)` 结果并计数 `prep_k_fallback_*`；payload 现读公式没有回退分支，回退帧（`direction_comp_of` 两键都空，`session_scope.py:377`「两键都空…= None——无方向帧由 K 空窗回退承接」）将记录 `k_members=[]` 而决策实际用的是回退名单。候选 A（上阵窗口自锁）复核恰依赖「决策帧上判据输入现值」（capture-store.md:35），这类帧的依据块会误导判读。
+- 修复建议：payload 公式补回退分支（同源调 `k_empty_window_fallback`），或申报已知边界「回退帧 k_members 记 []、判读以 counters `prep_k_fallback_*` 键为准」——二选一写进 capture-store §3 与 strategy-telemetry.md 键表。
 
 **N7（中）正本更新清单把「正本更新」花在 changes/ 过程件上**
 - 设计锚：landing.md:81「`changes/2026-10-16-journal-review-renderer/details/render-spec.md`（章内结构补策略依据块与发现参数） ← 3.4」。
@@ -76,7 +76,7 @@
 
 **核一（边界完整性/试读/对锚）**：详设合集对 §1「解决到哪」六项覆盖完整（1-4、6 归 capture-store，5 归 render-assembly），「明确不解决」四项申报清晰，无外溢误并；landing 五阶段 + 末阶段与设计依据互指成立，阶段间依赖（3.4 不硬依 3.3）划得准。但对齐权威源逐项核后发现三处**契约与代码形态不符**的硬伤：N1（回执覆盖不变量为假，join 机制对 12/14 入口失效）、N2（包裹面/嵌套语义未钉死，生产路径产脏记录、landing 3.1 判据不可满足）、N3（run_id 供给与依赖约束自相矛盾，捕获缝无法按文开工）。其余锚点核对**全部属实**：四调用点存在且经 note_action_receipt（cw_game_state.py:1364/:1408-1412/:1438 best-effort）、cw_vocab.py:146/:158-159、entry.py:275/:281/:427/:460、session_scope.py:314/:330/:371、mandate_state.py:341、telemetry/state.py:60/:72、decision_assembly.py:18 install_obs_ports 在场、cw_state_journal.py:403-405 provider 先例、recorder.replay_dir（recorder.py:71）、replay_to_md 章结构与「数据完整性」行（:1608-1610）、cw_sim_match_drive.py:142-144 重定向段、test_replay_render.py 存在；§1 症状对账数据属实（journal.jsonl:572 v=618 `m1p_plan_empty:12` 仅此一处、review_g 勘误节 :2004-2006 与 target_comp/locked_comp 全文零命中均复核成立）。任务提示点专项核：提示 4（telemetry 模块定名）已达标——capture-store §4 定名 strategy_telemetry.py、landing 3.1 引用一致；提示 5（零差异 vs 局头行）自洽——无策略文件时整行省略，逐字节一致承诺可成立；提示 3（两键都空 payload 形态）render 示例已画出 `comp=None`、line_candidates 缺省 `()` 可靠非崩，唯 k_members 回退分叉成 N6。
 
-**核二（规范遵循）**：结构齐——总纲 §0-§2、两详设三段齐、landing 首节常规检查 + 各阶段七件齐、README 合模板、无过程叙事（仅「攻击审复核项」一处轻度过程措辞，并入 N4）。依据就地标注密度显著高于平均、可核性强，但**四处标注与权威源不符**：N1 的「单动作循环不变量」（断言了不存在的回执全覆盖）、N2 的「15 个零参」（计数未对码，代码 docstring 自相矛盾 14/15 未分辨）、N5 的正本清单目标节（文件真实但节不存在）、N6 的「同源读法」（断章了同块回退腿）——类型上都属「标了依据但依据被截取/未核」，正是 §5.1 要防的事故形态。landing.md:18 判据「单次 decide 产出一行」按真实类层次不可满足，属 §5.4 全量同步复查漏项。
+**核二（规范遵循）**：结构齐——总纲 §0-§2、两详设三段齐、landing 首节常规检查 + 各阶段七件齐、README 合模板、无过程叙事（仅「攻击审复核项」一处轻度过程措辞，并入 N4）。依据就地标注密度显著高于平均、可核性强，但**四处标注与权威源不符**：N1 的「单动作循环不变量」（断言了不存在的回执全覆盖）、N2 的「15 个零参」（计数未对码，代码 docstring 自相矛盾 14/15 未分辨）、N5 的正本清单目标节（文件真实但节不存在）、N6 的「同源读法」（断章了同块回退分支）——类型上都属「标了依据但依据被截取/未核」，正是 §5.1 要防的事故形态。landing.md:18 判据「单次 decide 产出一行」按真实类层次不可满足，属 §5.4 全量同步复查漏项。
 
 **核三（治本核验）**：§1 归层**成立**——三症状（方向态零遥测 / 计数只有终局聚合 / 主路径缺位自证）的根都在「策略私有状态与决策依据无输出契约」这一约定层，与终态契约（策略状态实例私有、`cw_strategy.py:80-81` 实例不跨局）自洽，非实现层 bug；症状数据与勘误节实证吻合。§2 采集侧（基类结构缝「不靠实现自觉」+ 独立存储 + 信封契约）是治本姿势；**join 侧当前是建立在被误读的回执覆盖不变量上的半治本**（N1）——按现文落地，「精确 join」实际退化为 prep+shop 局部可用 + pick 族全量噪声注记，与「不解决」清单里被明确划走的项目不同，这是设计**以为已解决实则未解决**的面，必须修订申报而非带病定稿。同族二次件面合规：cw4_counters 迁移、per-strategy 渲染注册均已显式划出本迭代。
 

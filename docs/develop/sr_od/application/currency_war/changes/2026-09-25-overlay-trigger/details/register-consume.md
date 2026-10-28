@@ -67,6 +67,6 @@ sim 词表处置:现役 `'fate'`(= 圣杯任务链)→ 正名 `'wish_trial'`;现
 ### 其余触发类(S3-S6 全部收口)
 
 - **S3 planner(星级)**:住星级回调(`on_star_changed`,场上银狼星级派生存值)——判据/边界见 faction-trigger.md 值域回调级联表。
-- **S4 占卜屋(战斗计数)**:`report_node_advance` 的 settle_confirm 腿——读 deployed 现值判黑天鹅在场 → 簿记计数 +1 → 达 2 倍数 → 登记。**上报点直登,不走值回调**(战斗结算非 deployed 写);计数住容器簿记。
-- **S5 阿哈(选卡后果)**:`pick_invest_strategy` 上报——本次选中 =「阿哈大悦」→ 登记。直登。效果注记(注册表原文):选卡弹四件选一 → 阿哈全部羁绊简易装备**变为**所选件 + 送 1 个简易武装箱(后续 OpenBox 链)+ 已合成进阶装备拆散 + 所选件回装备栏——效果建模归披露口径,「送箱」腿为获得链事件,sim 效果腿将来建模时承接,不进本批。
+- **S4 占卜屋(战斗计数)**:`report_node_advance` 的 settle_confirm 分支——读 deployed 现值判黑天鹅在场 → 簿记计数 +1 → 达 2 倍数 → 登记。**上报点直登,不走值回调**(战斗结算非 deployed 写);计数住容器簿记。
+- **S5 阿哈(选卡后果)**:`pick_invest_strategy` 上报——本次选中 =「阿哈大悦」→ 登记。直登。效果注记(注册表原文):选卡弹四件选一 → 阿哈全部羁绊简易装备**变为**所选件 + 送 1 个简易武装箱(后续 OpenBox 链)+ 已合成进阶装备拆散 + 所选件回装备栏——效果建模归披露口径,「送箱」分支为获得链事件,sim 效果分支将来建模时承接,不进本批。
 - **S6 点击类(用户裁定 2026-09-25:选项 a 统一入登记)**:三个 open_* 上报(open_box/open_bookcard/open_tome)各加一行 register_screen_change;**受影响声明 = open_box/open_bookcard 两条**(next_screen 语义回归「底层屏 = 备战」;open_box 的 trigger='open_box' 保留——后端开箱采样过程仍挂触发分派);**open_tome 不补声明**(3.4 前后均无 WorldDecl;备战屏内点击、底层屏恒备战、无画面转移,呈现检查随下一动作 advance 收口——register 侧统一即「三个 open_*」的完整口径);sim advance 两 case 随落地批改(动作声明正本 = flow/action_ops.md 动作总册声明列)。**消费面单源**:外循环排序/宿主交回只读 pending,无声明+登记双源合流问题。

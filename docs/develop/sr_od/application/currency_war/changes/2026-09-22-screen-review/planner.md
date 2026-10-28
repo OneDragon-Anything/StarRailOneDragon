@@ -18,9 +18,9 @@
 
 ### 1.2 F-2(中)fields.md 策划域两行未随 2026-09-21 两批同步
 
-- 现状症状:`game_state/fields.md` 两处与代码真值相反/失真——①§3.2.18「随机/待证面」名单仍把**欢愉契约**归「不建逻辑写,观察收口」组,而现役条件腿 = `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(`gain_character(1★, rand=True)` 走获得链采样直写落位/回调/合成,校准面 = `logic_rand_outcome` 行);正式模型正本 `game_state/gain-chain.md` §3 与 §6、采样口径正本 fields.md §2.5 均已申报,字段级行未随;②§4「事件选择」段对骇入策划面已失真——段首总括「默认不记预期值……后果走观察覆盖+缺陷台账」与现役相反(现役 = 即时单相记预期值:equip 腿入栏+后果链、升费腿变换+档行),段内「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」同句滞后(策划/装备现役有写端;「chosen_hack 写端未接线」部分仍真,与 planner.md 开放设计注一致)。该段经 T-5 实施、装备退役批(d37d78fab)与坐标伴随域批(02057f6c8)多轮落地(现值 = 标题 8 屏 :1110/余屏句两件套 + 装备退役注 :1117-1118/补给臂 :1122;fields.md 行号随并行批持续位移,以内容锚为准),本发现残余面 = 总括句与余屏句的策划子句。
+- 现状症状:`game_state/fields.md` 两处与代码真值相反/失真——①§3.2.18「随机/待证面」名单仍把**欢愉契约**归「不建逻辑写,观察收口」组,而现役条件分支 = `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(`gain_character(1★, rand=True)` 走获得链采样直写落位/回调/合成,校准面 = `logic_rand_outcome` 行);正式模型正本 `game_state/gain-chain.md` §3 与 §6、采样口径正本 fields.md §2.5 均已申报,字段级行未随;②§4「事件选择」段对骇入策划面已失真——段首总括「默认不记预期值……后果走观察覆盖+缺陷台账」与现役相反(现役 = 即时单相记预期值:equip 分支入栏+后果链、升费分支变换+档行),段内「余屏(命运卜者/装备三选一/骇入策划)写端未接线=先补档」同句滞后(策划/装备现役有写端;「chosen_hack 写端未接线」部分仍真,与 planner.md 开放设计注一致)。该段经 T-5 实施、装备退役批(d37d78fab)与坐标伴随域批(02057f6c8)多轮落地(现值 = 标题 8 屏 :1110/余屏句两件套 + 装备退役注 :1117-1118/补给臂 :1122;fields.md 行号随并行批持续位移,以内容锚为准),本发现残余面 = 总括句与余屏句的策划子句。
 - 根因归层:语义层 + 约定层——字段级正本行停留在上一代「观察收口/不记预期值」模型;`2026-09-21-joy-conditional-leg` 与 `2026-09-21-pick-planner-equip-immediate-report` 两批的正本更新清单均未辖 fields.md(申报面随批同步缺口)。
-- 解决到哪:§3.2.18 欢愉契约行本稿自持改写(全仓无他稿涉足,核验:T-5 稿 §2.3 = §3.2.15/§3.2.5/§4 补给臂,T-9 稿 §2.3 = §4 余屏句/§3.4.5/§3.2.15〔该稿已随装备屏撤销删除〕,均不含 §3.2.18);§4 事件选择段升格本稿自持(见 §2.2;T-9 稿已撤销,原认领悬空,用户裁决 2026-09-22 收回本稿)。明确不解决:①§3.2.5 备战席「写端(完整清单)」不单点补条件腿行(审查未列;其效果写端已有「发牌进席族……按归属判据逐卡分面,§3.2.18/§5.3」收全指针,修后新分面即被其覆盖,无缺员);②量子同频契约等其余「随机/待证面」名单行(现值无写端,不动);③§3.4.5(选择装备域,随装备屏退役归退役批);④命运卜者写端接线本体(归 T-12 稿)。
+- 解决到哪:§3.2.18 欢愉契约行本稿自持改写(全仓无他稿涉足,核验:T-5 稿 §2.3 = §3.2.15/§3.2.5/§4 补给臂,T-9 稿 §2.3 = §4 余屏句/§3.4.5/§3.2.15〔该稿已随装备屏撤销删除〕,均不含 §3.2.18);§4 事件选择段升格本稿自持(见 §2.2;T-9 稿已撤销,原认领悬空,用户裁决 2026-09-22 收回本稿)。明确不解决:①§3.2.5 备战席「写端(完整清单)」不单点补条件分支行(审查未列;其效果写端已有「发牌进席族……按归属判据逐卡分面,§3.2.18/§5.3」收全指针,修后新分面即被其覆盖,无缺员);②量子同频契约等其余「随机/待证面」名单行(现值无写端,不动);③§3.4.5(选择装备域,随装备屏退役归退役批);④命运卜者写端接线本体(归 T-12 稿)。
 
 ### 1.3 F-3(低)注释引用含 W/rN 类编号与死指针
 
@@ -83,7 +83,7 @@ as-built 逐行对照(依据 = 各 run 体与全部发射位 env 组装现值,�
   `match`+`picked`(补给)/`confirm`+`entry_keyword`(投资两屏;卜者另组装
   `entry_keyword` 而 run 体消费体内同词字面量,组装值现役未消费);
   PickEncounter 组装 = 零域字段。
-「op 类体内零决策」= 零选择/零腿型判定(全在决策半),瞄准定位查找非决策。
+「op 类体内零决策」= 零选择/零分支类型判定(全在决策半),瞄准定位查找非决策。
 逐行落点 = 各行动作列/对照表。
 ```
 
@@ -104,7 +104,7 @@ as-built 逐行对照(依据 = 各 run 体与全部发射位 env 组装现值,�
 不属机械参数,由动作 op 执行体瞄准处理,增补 3 在册例外):选卡定位 =
 `env.target`(例外:PickEncounter = op 体内 `area_center`、PickPartner =
 `env.op._pick_point`);域载荷逐行见段首。op 类体内零决策(决策 = 选中哪个
-与腿型载荷,瞄准定位查找非决策)。
+与分支类型载荷,瞄准定位查找非决策)。
 ```
 
 **(4) `operations/cw_op/cw_overlay_pick_action.py` 模块头「域 env」段的机械参数句**替换(替换范围 = 「域 env = ……」起至「……op 类体内零决策零读决策输入。」句尾(现文句尾;「瞄准定位查找非决策」为替换后文本非现文,不作定界依据);同段后续「轮次结果(确认链末步 ``round_*`` 产物)经 ``round_result`` 旁路字段回传……」句与「族先例 = cw_tool_use_action。」句**不在替换面,保留不动**——防整段替换误删旁路回传契约句):
@@ -113,7 +113,7 @@ as-built 逐行对照(依据 = 各 run 体与全部发射位 env 组装现值,�
 域 env = :class:`OverlayPickExecEnv`(结构化包,构造时传入);机械参数辖域
 (申报单一源 = flow/action_ops.md §4.5 段首)= 选卡定位 + 域载荷经 env 传入;
 确认钮不属机械参数,由本 op 执行体瞄准查找(action_ops.md §1 增补 3 在册
-例外)。op 类体内零决策零读决策输入(决策 = 选中哪个与腿型载荷,瞄准定位
+例外)。op 类体内零决策零读决策输入(决策 = 选中哪个与分支类型载荷,瞄准定位
 查找非决策)。
 ```
 
@@ -156,19 +156,19 @@ as-built 逐行对照(依据 = 各 run 体与全部发射位 env 组装现值,�
 **(2) 同段「随机/待证面」bullet 之后、「随机面到席与星级后果全部等观察覆盖收口」句之前插入新 bullet**:
 
 ```
-- **采样口径在册的随机发牌 = 随机态直写(§2.5)**:欢愉契约——条件腿正式
-  模型 = 银狼策划选择上报的条件腿 rider(`kernel/cw_action_report/
+- **采样口径在册的随机发牌 = 随机态直写(§2.5)**:欢愉契约——条件分支正式
+  模型 = 银狼策划选择上报的条件分支 rider(`kernel/cw_action_report/
   pick_planner.py::_grant_joy_conditional`;触发 = 头号玩家选项弹窗被处理 +
   欢愉契约在册,候选集 = `cw_investments.ENV_GIFTS['欢愉契约'].
   chars_conditional` 均匀采样一枚,`gain_character(1★, rand=True)` 走获得链
   固定时序落位/回调/合成,校准面 = `logic_rand_outcome` 行,均匀分布未实测
-  候校准;授予失败不阻塞腿型分派 = 调用点级 best-effort 例外)。链式规范
+  候校准;授予失败不阻塞分支类型分派 = 调用点级 best-effort 例外)。链式规范
   正本 = [gain-chain.md](gain-chain.md) §3。
 ```
 
 **(3) 同段收束句改写**——现「随机面到席与星级后果全部等观察覆盖收口。」→「未接采样口径的随机面到席与星级后果全部等观察覆盖收口(采样口径在册者 = 上行随机态直写,§2.5)。」
 
-依据:代码 = `_grant_joy_conditional` 函数体(`normalize_invest_name` 门 + 候选集采样 + `gain_character(rand=True, evidence='joy_conditional:<单位名>')`);正式模型正本 = gain-chain.md §3(条件腿不在 `on_env_gained` 枚举、正式模型申报)与 §6(调用点级 best-effort 唯一容器写例外);采样口径正本 = fields.md §2.5(「采样口径在册的动作走随机态直写……未接采样口径的随机效果仍按域级跳写留观察」——收束句改写即此分工句的发牌族落位);分面结构依据 = §3.2.18 既有「按归属判据逐卡分面」框架,新增分面 = §2.5 采样口径在该框架的正交补位。
+依据:代码 = `_grant_joy_conditional` 函数体(`normalize_invest_name` 门 + 候选集采样 + `gain_character(rand=True, evidence='joy_conditional:<单位名>')`);正式模型正本 = gain-chain.md §3(条件分支不在 `on_env_gained` 枚举、正式模型申报)与 §6(调用点级 best-effort 唯一容器写例外);采样口径正本 = fields.md §2.5(「采样口径在册的动作走随机态直写……未接采样口径的随机效果仍按域级跳写留观察」——收束句改写即此分工句的发牌族落位);分面结构依据 = §3.2.18 既有「按归属判据逐卡分面」框架,新增分面 = §2.5 采样口径在该框架的正交补位。
 
 **(4) §4「事件选择」段——骇入策划写端臂升格本稿自持(T-9 稿已随装备屏撤销删除,原「归 T-9 落笔」认领悬空;用户裁决 2026-09-22 收回本稿辖域)**:
 
@@ -180,16 +180,16 @@ chosen_* 写端已接七屏(盛会之星/伙伴/星徽秘典/遭遇/补给/专�
 祈愿试炼);余屏(命运卜者)写端未接线=先补档。**骇入策划写端 = 即时单相
 一口写**(动作侧,与遭遇臂/补给臂申报粒度对齐;写端 =
 `kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`:
-条件腿 rider 先行(欢愉契约在册 = `gain_character(1★, rand=True)` 采样直写,
-§3.2.18 / gain-chain.md §3)→ equip 腿 = 入栏 + 获得后果链(§3.2.15)/
-升费腿 = 变换 + `lv999_cost_tier` 档行(§3.2.23)/ unknown = 留证零记账 /
+条件分支 rider 先行(欢愉契约在册 = `gain_character(1★, rand=True)` 采样直写,
+§3.2.18 / gain-chain.md §3)→ equip 分支 = 入栏 + 获得后果链(§3.2.15)/
+升费分支 = 变换 + `lv999_cost_tier` 档行(§3.2.23)/ unknown = 留证零记账 /
 unrouted = 终态兜底零写;件名归一现役在决策半与动作上报层 =
 op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携 idx,
 逐批收敛禁新增)。
 ```
 
 - 实施时一次成文(本稿自持,无跨稿对账面)。
-- 依据:代码写序 = `pick_planner.py::report_action_pick_planner_param`(条件腿 rider 先行 → 三腿分派,模块头申报);unknown/unrouted 分态依据 = `pick_planner.py`(unknown = `_emit_defect(kind='planner_leg_unknown')` 留证 + 零记账;unrouted = `return LogicOutcome(reason='unrouted_leg_zero_write')` 终态兜底零写、无留证行;模块头自申报两态分明),句式照正本 screens/planner.md §4/§6,「选择效果 = 动作侧即时单相写」口径与遭遇臂/补给臂粒度对齐;「默认不记预期值」总括的策划面例外由本臂句式承载。
+- 依据:代码写序 = `pick_planner.py::report_action_pick_planner_param`(条件分支 rider 先行 → 三条分支分派,模块头申报);unknown/unrouted 分态依据 = `pick_planner.py`(unknown = `_emit_defect(kind='planner_leg_unknown')` 留证 + 零记账;unrouted = `return LogicOutcome(reason='unrouted_leg_zero_write')` 终态兜底零写、无留证行;模块头自申报两态分明),句式照正本 screens/planner.md §4/§6,「选择效果 = 动作侧即时单相写」口径与遭遇臂/补给臂粒度对齐;「默认不记预期值」总括的策划面例外由本臂句式承载。
 
 ### 2.3 F-3 修法:W/rN 类编号清理(策划域两文件)
 
@@ -233,9 +233,9 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 | # | 定位 | 现文(摘要) | 收敛方式 |
 |---|---|---|---|
 | 1 | 模块头 | 「形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两段直继承 SrOperation。……」 | 删具名迭代标签:「形态:观察 node + 决策动作 node 两段直继承 SrOperation。……」(语义句自足;T-5 清单 #1 同型同句先例) |
-| 2 | 模块头(点名) | 「(迭代 2026-09-21-pick-planner-equip-immediate-report design §2.0/§2.1,action_ops.md §1 增补 2:动作 op 确认点击后立即上报完整效果腿,……)」 | 改正本指针:「(`flow/action_ops.md` §1 增补 2 与 §4.5 PickPlanner 行:动作 op 确认点击后立即上报完整效果腿,零重入裁决、零落地相补写面——确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派)」 |
+| 2 | 模块头(点名) | 「(迭代 2026-09-21-pick-planner-equip-immediate-report design §2.0/§2.1,action_ops.md §1 增补 2:动作 op 确认点击后立即上报完整效果分支,……)」 | 改正本指针:「(`flow/action_ops.md` §1 增补 2 与 §4.5 PickPlanner 行:动作 op 确认点击后立即上报完整效果分支,零重入裁决、零落地相补写面——确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派)」 |
 | 3 | act docstring(点名) | 「(单相即时上报,迭代 2026-09-21-pick-planner-equip-immediate-report design §2.0/§2.1)——本 op 派发即终结交回外循环重观察,……」 | 改「(单相即时上报,正本 = `flow/action_ops.md` §1 增补 2 与 §4.5 PickPlanner 行)——本 op 派发即终结交回外循环重观察,……」 |
-| 4 | act 腿型载荷注 | 「# 腿型载荷(银狼闭环 design §2.1①):判定单源 = kernel classify_planner_leg(装备域优先);……」 | 删「银狼闭环 design §2.1①;」:「# 腿型载荷:判定单源 = kernel classify_planner_leg(装备域优先);随 env 透传给动作 op 上报……」(载荷透传契约正本 = action_ops.md §4.5 PickPlanner 行「leg_type/norm_item 经 env 随派发透传」) |
+| 4 | act 分支类型载荷注 | 「# 分支类型载荷(银狼闭环 design §2.1①):判定单源 = kernel classify_planner_leg(装备域优先);……」 | 删「银狼闭环 design §2.1①;」:「# 分支类型载荷:判定单源 = kernel classify_planner_leg(装备域优先);随 env 透传给动作 op 上报……」(载荷透传契约正本 = action_ops.md §4.5 PickPlanner 行「leg_type/norm_item 经 env 随派发透传」) |
 | 5 | observe 捕获集注(中文形态) | 「……classify 关键词匹配面不变——设计 §2.4)。」 | 删「——设计 §2.4」:「……classify 关键词匹配面不变)。」(与 #14 正本孪生句同批同文清出,防正本/代码半新半旧) |
 | 6 | act 防御分支注(中文形态) | 「# kernel 返回值包装动作子类型(终态契约 §2.2:kernel 纯函数零触碰,包装归入口/防御路径)。」 | 删「终态契约 §2.2:」:「# kernel 返回值包装动作子类型(kernel 纯函数零触碰,包装归入口/防御路径)。」(包装语义句自足;「终态契约」= 已归档迭代 `changes/2026-09-16-strategy-terminal-contract/` 的中文名,过程件指针同判清除) |
 
@@ -244,11 +244,11 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 | # | 定位 | 现文(摘要) | 收敛方式 |
 |---|---|---|---|
 | 7 | 模块头(点名) | 「**即时单相上报**(迭代 2026-09-21-pick-planner-equip-immediate-report design §2.0/§2.1;用户裁定 2026-09-21 = action_ops.md §1 增补 2:……)」 | 改「**即时单相上报**(行为正本 = `flow/action_ops.md` §4.5 PickPlanner 行;用户裁定 2026-09-21 = action_ops.md §1 增补 2:……)」(T-5 清单 #19 同型先例) |
-| 8 | `_apply_equip_leg` docstring | 「装备腿(确定性通道,design §2.1②):入栏 + 获得后果链。」 | 删「,design §2.1②」(写序申报 = 同文件模块头,自足) |
-| 9 | `_apply_upgrade_transform` docstring | 「升费腿 = 变换窗三态 + 档行(design §2.2/§2.1③):前置硬校验……」 | 删「(design §2.2/§2.1③)」(三态语义本 docstring 逐条自足;字段正本 = fields.md §3.2.23) |
+| 8 | `_apply_equip_leg` docstring | 「装备入账分支(确定性通道,design §2.1②):入栏 + 获得后果链。」 | 删「,design §2.1②」(写序申报 = 同文件模块头,自足) |
+| 9 | `_apply_upgrade_transform` docstring | 「升费分支 = 变换窗三态 + 档行(design §2.2/§2.1③):前置硬校验……」 | 删「(design §2.2/§2.1③)」(三态语义本 docstring 逐条自足;字段正本 = fields.md §3.2.23) |
 | 10 | 同 docstring 时序论证句 | 「(单相时序等价论证 = design §2.0:确认点击到本调用之间容器零写入,观察态与原落地相时点等值)」 | 删「= design §2.0」(论证本体自足) |
-| 11 | 同 docstring 连带腿句(中文形态) | 「「新费档银狼刷进商店」连带腿 = 档行兼任(池桶归属随档迁移),不另造申报行(设计 §2.2)。」 | 删「(设计 §2.2)」:「……不另造申报行。」(档行兼任语义本 docstring 自足;字段正本 = fields.md §3.2.23) |
-| 12 | 同函数封顶闸注(中文形态) | 「# 现档封顶闸(设计 §2.2):5 费档 upgrade 腿不期出现,出现即留证零写。」 | 删「设计 §2.2:」:「# 现档封顶闸:5 费档 upgrade 腿不期出现,出现即留证零写。」(闸语义同 docstring 已自足申报) |
+| 11 | 同 docstring 连带分支句(中文形态) | 「「新费档银狼刷进商店」连带分支 = 档行兼任(池桶归属随档迁移),不另造申报行(设计 §2.2)。」 | 删「(设计 §2.2)」:「……不另造申报行。」(档行兼任语义本 docstring 自足;字段正本 = fields.md §3.2.23) |
+| 12 | 同函数封顶闸注(中文形态) | 「# 现档封顶闸(设计 §2.2):5 费档 upgrade 分支不期出现,出现即留证零写。」 | 删「设计 §2.2:」:「# 现档封顶闸:5 费档 upgrade 分支不期出现,出现即留证零写。」(闸语义同 docstring 已自足申报) |
 | 13 | 变换窗工作副本注(裸节号) | 「# P1 容器原生工作副本:bench = BenchView 槽序、deployed = 行域下标派生表(§2.1);」 | 删「(§2.1)」:「# P1 容器原生工作副本:bench = BenchView 槽序、deployed = 行域下标派生表;」(派生表语义自足;裸节号无文档名归属,不可重建。注:「P1」前缀属 F-3 禁形同族,该文件不在 F-3 门辖,本条只清节号指针、不为编号扩面) |
 
 **screens/planner.md(2 处,均点名「银狼升星记账批 §2.4」)**:
@@ -260,7 +260,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 
 **让渡面(2026-09-22 现值核验:结案)**:`cw_overlay_pick_action.py` 曾有四处命中并行主张——模块头 L3 裸「design.md §1.1/§1.2」(T-5 清单 #10;T-6 §2.5 同点位)、env docstring「银狼闭环 design §2.1①」(T-5 清单 #11;T-6 联动登记「归 T-10」)、`CwActionPickPlannerOp` docstring 具名迭代(T-5 清单 #15;T-6 §2.5 同)、run 注「design §2.0/§2.1」(T-5 清单 #16;T-6 §2.5 同);2026-09-22 现值 grep `design|银狼闭环` 该文件**零命中**——四处已随先行实施批清出,T-5/T-6 并行主张与 T-37 归口裁决均失去对象,**结案**;该文件 F-4 无残余施工面,§2.4 验证门对 `cw_overlay_pick_action.py` 不再适用。**核验零命中面**:`logic-updates/pick-planner.md` grep 拉丁与中文形态现值零命中——审查 F-4 所列该处不复存在,记录在案、不立规格。
 
-依据(指针合法性):派发即终结/即时上报正本 = action_ops.md §1 增补 2 与 §4.5 PickPlanner 行(结构性章节,AGENTS §9 正本自足;T-5 §2.7 指针合法性段同款论证);腿型载荷契约 = §4.5 PickPlanner 行;档行字段正本 = fields.md §3.2.23;中文形态同判依据 = AGENTS §9 禁引对象是「changes/ 内容」本身,与指针书写语言无关。
+依据(指针合法性):派发即终结/即时上报正本 = action_ops.md §1 增补 2 与 §4.5 PickPlanner 行(结构性章节,AGENTS §9 正本自足;T-5 §2.7 指针合法性段同款论证);分支类型载荷契约 = §4.5 PickPlanner 行;档行字段正本 = fields.md §3.2.23;中文形态同判依据 = AGENTS §9 禁引对象是「changes/ 内容」本身,与指针书写语言无关。
 
 **验证门**:`cw_screen_yinlang.py` / `pick_planner.py` / `screens/planner.md` 三文件 grep `design §|design\.md|设计 §|迭代 20\d\d-|记账批 §` 零命中;并 grep `§\d` 命中逐条人工归属复核(带文档名的正本指针如「fields.md §3.2.23」「gain-chain.md §3」豁免;无文档名归属的裸节号 = 漏项,补入清单或随正本更新批修正;判不准停手回本稿提请,禁自行豁免)。清单与门同源:清单执行完毕门即绿(`cw_overlay_pick_action.py` 四处已随先行实施批清出、让渡面结案,门对该文件无施工面)。
 
@@ -273,8 +273,8 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 
 **(3) 连带 `logic-updates/pick-planner.md` §4 首句**(同文件已在触碰面;审查未列,同型扩展先例 = §2.3 类体扩展;不登记 = F-2 落地后正本链同口径而该句留反口径残留):
 
-- 现文:「策划候选内容 = 随机面归观察;**选择后果不记预期值**。升费腿为确定面(档 +1 与变换窗输入均容器现算)。」(首句与同篇 §2 即时单相申报及第二句直接相反)
-- 目标:「策划候选内容 = 随机面归观察;选择存证(chosen_hack)无写端 = 申报不变,选择效果 = §2 即时单相一口写。升费腿为确定面(档 +1 与变换窗输入均容器现算)。」(区分句式照 screens/planner.md 开放设计注第一条「chosen_hack 字段位仍无写端(单相上报写的是腿效果域,非选择存证)」)
+- 现文:「策划候选内容 = 随机面归观察;**选择后果不记预期值**。升费分支为确定面(档 +1 与变换窗输入均容器现算)。」(首句与同篇 §2 即时单相申报及第二句直接相反)
+- 目标:「策划候选内容 = 随机面归观察;选择存证(chosen_hack)无写端 = 申报不变,选择效果 = §2 即时单相一口写。升费分支为确定面(档 +1 与变换窗输入均容器现算)。」(区分句式照 screens/planner.md 开放设计注第一条「chosen_hack 字段位仍无写端(单相上报写的是分支效果域,非选择存证)」)
 
 依据:`_handle_overlay` 全 src grep 零命中(死符号,审查 F-5 差距说明);`cw_screen_yinlang.py` 现文件无任何桩方法;现役缝 = act 尾 `action_op_for(pick, self.ctx, _env).execute()`(工厂调用点);monkeypatch 承接先例 = `sr-od-test/test/sr_od/application/currency_war/test_cw_screen_two_node_family.py`(现值两处 :263/:335 `monkeypatch.setattr(_reg, 'action_op_for', …)`;行号随测试文件演进漂移,符号锚为准);「体迁自……」= 变更史叙述(AGENTS §8 / T-3 §2.6 准则 2 同判),随死指针一并清出;§4 连带依据 = 同篇 §2 写序申报 + §2.2(4) 确立的 fields.md §4 策划面口径。F-3 与 F-4 在 `cw_screen_yinlang.py` 同文件多处相邻,实施**一次成文**(T-3 §2.6 准则 5 同款),各节验证门分别过。
 
@@ -328,7 +328,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 
 ### 3.3 增补 C(:34 欠账注:机械参数辖域段 + fields §4 策划子句)
 
-**结论**:观察面 = 左右两卡 OCR 全文裸文本直报(`CwScreenYinLang.observe` :121-166,`planner_opts`),卡文含装备件名,装备注册表在册(`kernel/cw_events.py`:`_PLANNER_EQUIP_ANCHORS` :911 / `_similar_equip_hits` :919 / `_REGISTRY_EQUIP_NAMES` :947);现役转换点 = 决策半(`act` :204-209,`classify_planner_leg` → `leg_type`+`norm_item`,形变救援在决策半)+ 动作上报层(`kernel/cw_action_report/pick_planner.py` 模块头「equip:件名命中 → 装备入栏」;`_apply_equip_leg` :130)= :34 欠账形态(同已撤销的装备屏稿同型)。§2.1(2) 机械参数辖域段把「`leg_type`+`norm_item`(策划)经 env 透传」写成申报单一源、§2.2(4) 把装备腿写端整句写进 fields.md §4,原均无 :34 欠账注——正本会把欠账形态写成无欠账终态契约,补注(零行为,纯申报文本;§3.3 增补 C 同款先例)。
+**结论**:观察面 = 左右两卡 OCR 全文裸文本直报(`CwScreenYinLang.observe` :121-166,`planner_opts`),卡文含装备件名,装备注册表在册(`kernel/cw_events.py`:`_PLANNER_EQUIP_ANCHORS` :911 / `_similar_equip_hits` :919 / `_REGISTRY_EQUIP_NAMES` :947);现役转换点 = 决策半(`act` :204-209,`classify_planner_leg` → `leg_type`+`norm_item`,形变救援在决策半)+ 动作上报层(`kernel/cw_action_report/pick_planner.py` 模块头「equip:件名命中 → 装备入栏」;`_apply_equip_leg` :130)= :34 欠账形态(同已撤销的装备屏稿同型)。§2.1(2) 机械参数辖域段把「`leg_type`+`norm_item`(策划)经 env 透传」写成申报单一源、§2.2(4) 把装备分支写端整句写进 fields.md §4,原均无 :34 欠账注——正本会把欠账形态写成无欠账终态契约,补注(零行为,纯申报文本;§3.3 增补 C 同款先例)。
 
 - **落点 1(§2.1(2) 机械参数辖域段代码块)**——在「域载荷逐行」bullet 末行(`  PickEncounter 组装 = 零域字段。`)之后、「op 类体内零决策」行之前插入一行:
 
@@ -351,7 +351,7 @@ op-layer.md §1.1 :34 欠账,收敛终态 = 观察侧转换、动作上报只携
 ### 3.5 T-37 登记行(欠账面,原文)
 
 > - [T-37 登记][欠账] planner(T-10)::37 局外支欠账(条款注册名「画面 op 不支持局外单独调用」;注册时锚 :36,9c8e9016b 插入 :35 后移位)——`CwScreenYinLang.act` 无 match else 支(`cw_screen_yinlang.py:185-202`,kernel 直调 `decide_planner` → 派发)= 决策 + 点击,违 :37;处置 = 归「:36 局外支收敛 + :34 登记族级批」改零决策零点击 round_success 终结交回;本稿零行为批只改申报(act 决策注 + observe docstring 尾句,§3.1),不动行为。
-> - [T-37 登记][欠账] planner(T-10)::34 观察标准化门欠账——观察面裸文本直报 `planner_opts`(`CwScreenYinLang.observe` :121-166),件名归一现役在决策半(`classify_planner_leg` :204-209 → `leg_type`+`norm_item`)与动作上报层(`kernel/cw_action_report/pick_planner.py` equip 腿,`_apply_equip_leg` :130);收敛终态 = 观察侧转换、动作上报只携 idx;欠账注落点 = flow/action_ops.md §4.5 段首机械参数辖域段域载荷行后 + fields.md §4 骇入策划写端臂整句(§2.2(4) 自持,:34 注已内联)。逐批收敛,禁新增未标准化直报。
+> - [T-37 登记][欠账] planner(T-10)::34 观察标准化门欠账——观察面裸文本直报 `planner_opts`(`CwScreenYinLang.observe` :121-166),件名归一现役在决策半(`classify_planner_leg` :204-209 → `leg_type`+`norm_item`)与动作上报层(`kernel/cw_action_report/pick_planner.py` equip 分支,`_apply_equip_leg` :130);收敛终态 = 观察侧转换、动作上报只携 idx;欠账注落点 = flow/action_ops.md §4.5 段首机械参数辖域段域载荷行后 + fields.md §4 骇入策划写端臂整句(§2.2(4) 自持,:34 注已内联)。逐批收敛,禁新增未标准化直报。
 
 ## 4. 二轮新规范增补(2026-09-22 用户裁定两条款:选择坐标观察上报 + 每个动作 op 单独一个文件)
 

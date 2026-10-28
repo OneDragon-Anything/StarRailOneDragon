@@ -37,8 +37,8 @@
 
 ### 1.4 F-4 §9 测试面申报超出实际覆盖(低)
 
-- **现状症状**(审查报告 F-4):`deploy_not_full.md` §9 申报「未达上限弹窗两 node 形态测试:观察门/重入裁决组合」,但 `test_cw_obs_arch_closing_screens.py` 对本屏仅有 `test_reentry_arbitration_flag_gate_combination` 的 act 侧两腿(:143-162:门命中+pending → 裁决不触发、勾选+确认重发 round_wait;miss+pending → success 零动作)——标识门以桩参与、仅直驱 `act`;观察 node 本体三面契约(门 miss = round_fail 早退、obs 装载、占位 report 接线恰一次)零直驱断言。同文件位面过渡(:194)/武装箱(:277)/等待1-1(:365)均有观察侧测试,同族文档凡列「观察门」者均有对应观察测试。命中 screens/README.md §2 第 9 节(测试文件指针)+ 同节「as-built 无状态」纪律(指针须与实际测试面一致）。
-- **根因归层**:约定层——flat-report 迁移批对本屏只落了 act 侧腿,观察侧测试缺位,而 §9 申报按家族全量口径写;指针粗到「文件级 + 括注」粒度,申报与覆盖失同步无法被静态发现。修法两腿并做:补观察测试使申报成真(治本于覆盖缺口,同族对齐)+ 指针锐化到符号级(治申报-覆盖失同步的可发现性)。
+- **现状症状**(审查报告 F-4):`deploy_not_full.md` §9 申报「未达上限弹窗两 node 形态测试:观察门/重入裁决组合」,但 `test_cw_obs_arch_closing_screens.py` 对本屏仅有 `test_reentry_arbitration_flag_gate_combination` 的 act 侧两条分支(:143-162:门命中+pending → 裁决不触发、勾选+确认重发 round_wait;miss+pending → success 零动作)——标识门以桩参与、仅直驱 `act`;观察 node 本体三面契约(门 miss = round_fail 早退、obs 装载、占位 report 接线恰一次)零直驱断言。同文件位面过渡(:194)/武装箱(:277)/等待1-1(:365)均有观察侧测试,同族文档凡列「观察门」者均有对应观察测试。命中 screens/README.md §2 第 9 节(测试文件指针)+ 同节「as-built 无状态」纪律(指针须与实际测试面一致）。
+- **根因归层**:约定层——flat-report 迁移批对本屏只落了 act 侧分支,观察侧测试缺位,而 §9 申报按家族全量口径写;指针粗到「文件级 + 括注」粒度,申报与覆盖失同步无法被静态发现。修法两条分支并做:补观察测试使申报成真(治本于覆盖缺口,同族对齐)+ 指针锐化到符号级(治申报-覆盖失同步的可发现性)。
 - **解决到哪**:新增观察侧测试一条(§2.4 给出全文);§9 指针改符号级双测试申报。
 - **明确不解决**:`test_cw_screen_report_ports.py` 完备测试已覆盖的 report 侧形态(登记分侧/统一签名/占位零容器写,审查 §3.1 判一致)——不重复测试;同文件其余三屏的测试面(均已覆盖);审查 §4 无法核对面(实机时序/兜底落点);op-layer §3 占位句 BossBriefing 过期项(审查范围外附注,归 T-37 分诊)。
 - **在册一致项边界**:审查 §3 已确认一致的面(占位形态/形态归类/观察上报接线形态/分发在位/第二消费者申报/决策控制铁律/坐标纪律/0d 在册/§7 静态面)本稿不立修法,仅作为各修法不得触碰的现状边界——落地时禁借清理之名改动这些在码语义(含 :54-56 重入裁决旗标注释的语义本体、:68-69 门判据红线注释、:48-50 兜底常量申报结构)。
@@ -96,7 +96,7 @@
 node = 重入裁决顶部(确认已发 → 锚不在 = 弹窗已关 → success 交回;锚在
 = 确认未落地 → 重做勾选确认)→ 勾「勾选-本局不再提示」safe_click+0.3s
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
-预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 腿 = 不适用
+预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 分支 = 不适用
 (sim 无对应画面段),等价判据主承重 = 实机在册行为测试
 (test_cw_obs_arch_closing_screens.py)。
 """
@@ -176,7 +176,7 @@ def test_deploy_not_full_observe_gate_and_placeholder_report(
         f'gs 缺席跳过 report,obs 仍装载:{op_s._obs!r}')
 ```
 
-装配与桩面说明:`_make_deploy_not_full` 零改动复用(门桩/`last_screenshot`/act 侧机械链桩已够;report 桩与 `cw_match` 桩按腿内置,与武装箱测试 `test_armory_box_two_node_observe_report_and_round_wait` 同款做法);本测试全桩化无真实等待,免登记 slow_marks。
+装配与桩面说明:`_make_deploy_not_full` 零改动复用(门桩/`last_screenshot`/act 侧机械链桩已够;report 桩与 `cw_match` 桩按分支内置,与武装箱测试 `test_armory_box_two_node_observe_report_and_round_wait` 同款做法);本测试全桩化无真实等待,免登记 slow_marks。
 
 **§9 指针锐化**(`deploy_not_full.md` :46,「测试」句替换):
 
@@ -186,7 +186,7 @@ def test_deploy_not_full_observe_gate_and_placeholder_report(
 
 改为:
 
-> 测试:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 重入裁决×门组合行为测试 act 侧两腿;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+> 测试:`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_closing_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 重入裁决×门组合行为测试 act 侧两条分支;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
 
 依据:被测契约正本 = op-layer.md §1.1(观察 node = 门 + 读屏 + report 落容器「match/gs 缺席的局外兜底路径跳过」+ obs 挂实例属性;门 miss = round_fail 交回外循环)与 `kernel/cw_screen_report/deploy_not_full.py` 屏文件 docstring(统一形态占位);家族同构先例 = 同文件 :194(位面过渡)/:277(武装箱)/:365(等待1-1)观察侧测试;指针纪律 = screens/README.md §2(符号锚 = `文件::符号名`,as-built;第 9 节测试指针须与实际测试面一致)。测试文件模块头零改动(「观察上报接线测试(两 node 形态屏)」节为全家族通用申报,新测试即其辖内);`test_cw_screen_report_ports.py` 完备测试面(report 侧形态)不重复。
 
@@ -195,8 +195,8 @@ def test_deploy_not_full_observe_gate_and_placeholder_report(
 **关键取舍**:
 
 - 备选 A:只缩 §9 申报(去掉「观察门」字样)——放弃:观察门无测试是本屏相对同族四屏的覆盖缺口,缩申报把缺口正当化;补的测试校验的是「这段代码应该怎么表现」的设计约定(AGENTS.md §10.1),与既有 act 侧锁无重叠断言。
-- 备选 B:观察腿并入现有组合测试函数——放弃:组合测试辖「重入裁决×门」act 侧语义,观察接线是另一契约面;家族先例(武装箱 = 组合测试 + 独立观察测试两函数)即此划分,合并破坏家族同构。
-- 备选 C:③腿(gs 缺席跳过)不测——放弃:「match/gs 缺席跳过」是该接线的显式契约分支(op-layer §1.1 + kernel 屏文件 docstring 双处在册),一腿三行成本校验一个独立契约;与 ②腿(在场恰一次)不重复。
+- 备选 B:观察分支并入现有组合测试函数——放弃:组合测试辖「重入裁决×门」act 侧语义,观察接线是另一契约面;家族先例(武装箱 = 组合测试 + 独立观察测试两函数)即此划分,合并破坏家族同构。
+- 备选 C:③分支(gs 缺席跳过)不测——放弃:「match/gs 缺席跳过」是该接线的显式契约分支(op-layer §1.1 + kernel 屏文件 docstring 双处在册),一条分支三行成本校验一个独立契约;与 ②分支(在场恰一次)不重复。
 
 ### 2.5 落地文件面总表
 

@@ -26,8 +26,8 @@
 
 三类对象的阵容指向集(阵营名集合),落 `cw_investments.py`(与 STRATEGY_BINDINGS/环境表同址;COMP_LIBRARY 经函数内延迟 import——`cw_comps.py:48` 模块级引 cw_investments,反向模块级即成环,`cw_comps.py:465` 先例):
 
-- **环境** `env_faction_scope(env_name)`:①faction 腿:`INVESTMENT_ENVS[env_name].faction`(`cw_investments.py:73`「对应阵营」;盘点:概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破 `_ENV_FACTION_EXCEPTIONS`,`cw_investments.py:766-768`;时代/经济/规则类为空);②亲和腿:`ENV_COMP_AFFINITY[env_name]` 值键 = 线名,取各线 `factions` 并集(特邀专家:桑博 faction 空但亲和专家桑博DOT 1.0,`cw_comps.py:433`,单 faction 腿会误判通用)。**副阵营随线带入**:命运圣杯邀请亲和含双王圣杯(其 factions 含能量,`cw_comps.py:1022`)→ 该环境指向集 = {命运圣杯, 能量}——能量组件卡可服务双王线的能量副羁绊,判兼容是语义本意。
-- **策略** `strategy_faction_scope(strategy_name)`:STRATEGY_BINDINGS(`cw_investments.py:1134`)三腿并集——阵营腿 f 直接入集;角色腿 ch 两源:①`CHARACTERS[ch].factions`(tuple 可多阵营,`cw_chars.py:28`)**全集入集**(用户裁定「从角色去关联对应的阵容」;多阵营角色例:丹恒·饮月 = 仙舟/列车同行);②**成员腿**:ch ∈ c.core_chars ∪ c.shared_chars 的线,该线 `factions` 全集入集(依据:角色是某线登记成员 = 卡服务该线——装备党绑飞霄,飞霄是追击飞霄线 core 首席(`cw_comps.py:1371`),该卡必须对锁定追击飞霄帧判兼容);ch 不在 CHARACTERS → 跳过不炸。**查询归一口径**:策略/环境名入表前一律经 `normalize_invest_name`(全仓同问消费点先例:`strategy_lock_hit` `cw_comps.py:1693`、env_fit `:2042`、augment_affinity `:458-468`;持有名 OCR 形变不归一 = 查表 miss → basis 弱化漏拦)。
+- **环境** `env_faction_scope(env_name)`:①faction 分支:`INVESTMENT_ENVS[env_name].faction`(`cw_investments.py:73`「对应阵营」;盘点:概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破 `_ENV_FACTION_EXCEPTIONS`,`cw_investments.py:766-768`;时代/经济/规则类为空);②亲和分支:`ENV_COMP_AFFINITY[env_name]` 值键 = 线名,取各线 `factions` 并集(特邀专家:桑博 faction 空但亲和专家桑博DOT 1.0,`cw_comps.py:433`,单 faction 分支会误判通用)。**副阵营随线带入**:命运圣杯邀请亲和含双王圣杯(其 factions 含能量,`cw_comps.py:1022`)→ 该环境指向集 = {命运圣杯, 能量}——能量组件卡可服务双王线的能量副羁绊,判兼容是语义本意。
+- **策略** `strategy_faction_scope(strategy_name)`:STRATEGY_BINDINGS(`cw_investments.py:1134`)三条分支并集——阵营分支 f 直接入集;角色分支 ch 两源:①`CHARACTERS[ch].factions`(tuple 可多阵营,`cw_chars.py:28`)**全集入集**(用户裁定「从角色去关联对应的阵容」;多阵营角色例:丹恒·饮月 = 仙舟/列车同行);②**成员分支**:ch ∈ c.core_chars ∪ c.shared_chars 的线,该线 `factions` 全集入集(依据:角色是某线登记成员 = 卡服务该线——装备党绑飞霄,飞霄是追击飞霄线 core 首席(`cw_comps.py:1371`),该卡必须对锁定追击飞霄帧判兼容);ch 不在 CHARACTERS → 跳过不炸。**查询归一口径**:策略/环境名入表前一律经 `normalize_invest_name`(全仓同问消费点先例:`strategy_lock_hit` `cw_comps.py:1693`、env_fit `:2042`、augment_affinity `:458-468`;持有名 OCR 形变不归一 = 查表 miss → basis 弱化漏拦)。
 - **终局阵容(锁定线)**:锁定 Comp 的 `factions` 字段(`cw_comps.py:104`)。
 - 指向集空 = **通用卡**(无阵容指向:纯经济/纯战力/随机角色族/时代规则类环境),无冲突可判。
 
@@ -77,25 +77,25 @@ if basis 为空: 护栏不辖(无冲突基准)
 | 基准 = 已持有投资指向 vs 方向线判定(硬规则首线/锁槽三级) | 持有指向并集 + 锁槽切换 | 方向线三级判定 | 方向线模型有三类结构性失明/时序问题(P1 配方帧、P2 兜底锁、锁写入滞后),每类都要补丁;持有指向模型下三者不存在(基准只看现值),且与用户语义逐字对齐(「未锁定看和其他环境、策略有没有冲突;锁定后看和终局阵容有没有冲突」) |
 | 排除 vs 负分 | 域收缩排除 | 大负分 | 29 号稿「全部零拍值」纪律,负分须拍自由参数;排除语义 = 裁定「不可选」非「不优」 |
 | 阵营集交 vs 线集交 | 阵营层判定 | 指向线集 ∩ {方向线} | 线集口径在散件阵营卡(公司/狼狩/盛会之星,无对应终局线)上恒空 → 永判通用失明;阵营层判定下散件阵营卡对持有指向异阵营即出域,且未锁定期的双王圣杯(含能量)方向摆动不产生判定翻转(锁定换基另见 §2.3 基准演化申报) |
-| 宽口径指向 vs 复用方向分触线集 | 独立宽推导 | `_touched_line_comps` 窄口径(角色腿只认线 core) | 窄口径下琼玉专家:青雀触线为空,护栏失效;两套分野:方向分问「对锁定线值几分」,护栏问「与持有阵容冲不冲突」 |
-| 派生 vs 手补登记 | 角色腿经 CHARACTERS factions 现查 | 逐卡手补绑定阵营腿 | 零登记、版本重采自动跟(PIGGY_ENV_NAMES 先例,`cw_reward_node.py:30-38`) |
+| 宽口径指向 vs 复用方向分触线集 | 独立宽推导 | `_touched_line_comps` 窄口径(角色分支只认线 core) | 窄口径下琼玉专家:青雀触线为空,护栏失效;两套分野:方向分问「对锁定线值几分」,护栏问「与持有阵容冲不冲突」 |
+| 派生 vs 手补登记 | 角色分支经 CHARACTERS factions 现查 | 逐卡手补绑定阵营分支 | 零登记、版本重采自动跟(PIGGY_ENV_NAMES 先例,`cw_reward_node.py:30-38`) |
 | 锁定端联动 | 选卡端掐断,锁定端不动 | 锁定裁决改 | 选卡端排除后异线定义卡不入手,抢锁定结构消失 |
 
 ### 2.6 边界申报
 
 - **指向集单调性**(§2.3):持有 append-only → basis 单调不减,出域只收紧不放松;唯一非单调点 = 锁定切换(换基双向语义:收紧/放松均可达,§2.3 基准演化申报),属锁定裁决语义非护栏抖动。
-- 绑定角色改名/未进 CHARACTERS → 该角色腿跳过(指向集收窄 → 可能漏拦)——OCR 缺名 fail 方向一致(缺读宁放行);版本重采检查单已含投资表比对,角色表随盘。
+- 绑定角色改名/未进 CHARACTERS → 该角色分支跳过(指向集收窄 → 可能漏拦)——OCR 缺名 fail 方向一致(缺读宁放行);版本重采检查单已含投资表比对,角色表随盘。
 - 「乱成一锅粥」(备战席随机变形,引擎卡)无绑定 → 通用不受辖;变形结果与方向一致性不归本护栏。
 - 误持冲突卡后的帧:basis 并入该卡指向(append-only)→ 后续候选对它兼容即合法——已发生的错误不放大也不追溯(与「明确不解决」一致);锁定后基准切锁线,历史误持出基。
 
 ## 3. 行为对照(r3 重演 + 回归面)
 
-- seed-20261016 P1r3:未锁定,basis = env_faction_scope('命运圣杯邀请') = {命运圣杯, 能量}(faction 腿命运圣杯 + 亲和腿双王圣杯线带入能量,§2.1)。琼玉专家:青雀(青雀 factions = {仙舟},`cw_chars` 注册表;journal 卡面佐证)∩ basis = ∅ → 出域;黑塔纪元({银河学者})→ 出域;打捞人才库(空)→ 正常——三选一在非冲突候选中 argmax。
+- seed-20261016 P1r3:未锁定,basis = env_faction_scope('命运圣杯邀请') = {命运圣杯, 能量}(faction 分支命运圣杯 + 亲和分支双王圣杯线带入能量,§2.1)。琼玉专家:青雀(青雀 factions = {仙舟},`cw_chars` 注册表;journal 卡面佐证)∩ basis = ∅ → 出域;黑塔纪元({银河学者})→ 出域;打捞人才库(空)→ 正常——三选一在非冲突候选中 argmax。
 - 回归:basis 空帧全量零变化(现有测试 `_fresh_gs` 无持有写入);通用卡全帧零变化;持有帧兼容卡零变化(仅竞争域收窄,winner 不变帧结果逐位一致);刷新行为变化见 §2.4;**锁定切换帧不适用逐位一致**(换基语义,§2.3 基准演化申报)。
 
 ## 4. 测试与验证计划
 
-- kernel 指向集单元(并入 `sr-od-test/test/sr_od/application/currency_war/kernel/test_cw_investments.py`):黑塔纪元→{银河学者, 群攻}(角色腿 + 成员腿带入大黑塔银河学者线 factions 全集);琼玉专家:青雀→{仙舟};命运圣杯契约(env,亲和腿)→{命运圣杯, 能量};命运圣杯邀请(env)→{命运圣杯, 能量};无绑定(打捞人才库)→空;绑定角色不在 CHARACTERS→跳过;多阵营角色展开(丹恒·饮月绑定卡含仙舟/列车同行);**成员腿**(装备党绑飞霄→含追击飞霄线 factions {追击});特邀专家:桑博(亲和腿)→专家桑博DOT 所属阵营;特邀专家:加拉赫→{击破}。
+- kernel 指向集单元(并入 `sr-od-test/test/sr_od/application/currency_war/kernel/test_cw_investments.py`):黑塔纪元→{银河学者, 群攻}(角色分支 + 成员分支带入大黑塔银河学者线 factions 全集);琼玉专家:青雀→{仙舟};命运圣杯契约(env,亲和分支)→{命运圣杯, 能量};命运圣杯邀请(env)→{命运圣杯, 能量};无绑定(打捞人才库)→空;绑定角色不在 CHARACTERS→跳过;多阵营角色展开(丹恒·饮月绑定卡含仙舟/列车同行);**成员分支**(装备党绑飞霄→含追击飞霄线 factions {追击});特邀专家:桑博(亲和分支)→专家桑博DOT 所属阵营;特邀专家:加拉赫→{击破}。
 - invest_strategy 行为测试:持有指向帧+冲突定义型(黑塔纪元 vs 圣杯基)排除;+冲突组件型(琼玉专家 vs 圣杯基)排除;+通用卡正常;+兼容卡(命运圣杯星徽 vs 圣杯基;注:命运圣杯契约是环境名,非策略屏候选)正常;无指向持有帧定义型秒选不回归;全出域回退;刷新交互(出域槽恒入动作集/不入帧级顶级);reason 文法测试;锁定换基帧(锁后历史误持不入基、收紧/放松双向语义);降格帧(锁线不入基回持有基)。
 - invest_env 行为测试:持有指向帧+冲突环境排除(forbidden 通道先建议刷新);无指向持有帧零变化;通用环境正常;全出域+闸尽回退。
 - 验收:同 seed 20261016 复测,r3 选卡 ≠ 黑塔纪元;全量 CW L1 通过。

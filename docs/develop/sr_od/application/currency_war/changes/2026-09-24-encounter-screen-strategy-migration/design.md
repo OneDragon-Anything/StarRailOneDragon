@@ -19,15 +19,15 @@
      - **旧知识判据核** = `kernel/cw_events.py::decide_encounter`（词缀契合 + 成型度 + 难度账本压档 + P3 永避高难），挂基类 `CwFlowStrategy.decide_encounter`（`strategies/impl/flow.py` `decide_encounter`）。生产壳 `MandateV1Strategy` 覆写了该入口，旧核只剩基类兜底面。其词缀轴消费 `EncounterOption.affixes`——**死输入**（遭遇选项 UI 不显词缀、战后才显，`obs/cw_node_obs.py` `read_encounter_options` 恒填空列表）；其 P3 分支按 `plane_of(gs) == 3` 枚举机制辖域 = 宪法第二条违例存量（「位面只能作查表键」）。
      - **历史 EV 核** = `strategies/impl/mandate_v1/encounter.py`（EV(b) = V_r − Δλ_death·G_loss）已搁置让位、保留禁删；双 provisional 槽（`ENCOUNTER_DSTAT_MAP`/`ENCOUNTER_G_GOLD`）None 期恒 fail 向选低难零刷新——**src 与测试仓双零消费**（全仓 grep 直调核实）。
      - 后果：13 号稿 `decide_encounter` 行仍描述「双轨」（基线核 + EV 核），与生产实际（暗装核）不符 = 文档漂移实证；「遭遇判据单一源」语义永久含混。
-  2. **暗装门粒度过粗，把已授权可判的部分一起锁死**。裁定 9 已授权敌方通道结算观测作遭遇决策输入；κ_S 能力态、经验档层、奖励 tiebreak（纯序数）、刷新阀全部**零标定可判**，但被排在其前的四个未定谳标定槽（全部服务「可及性比值腿」`g^(D_win−D_enc) ≥ f_min`）一起暗装。
-  3. **可及性比值腿的标定路径已被证明判死**。P64：敌方难度读数（「遭遇其X」的 X）不携带敌难度 stat 的构成分量，任何静态 `dict[敌方难度读数→stat]` 注入都产假真值（P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射）；E-2 核的 `DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」，判死由 P64 的同一自由项论证覆盖（引申申报，非 P64 原文结论）。点亮前置 = 敌方信息浮层「敌人难度 NNN+N」读数通道（`docs/game/screens/货币战争-敌人信息浮层.md`，OCR 全可读，未接入）或条件表实采（未采）。比值腿在可见期内无法激活。
+  2. **暗装门粒度过粗，把已授权可判的部分一起锁死**。裁定 9 已授权敌方通道结算观测作遭遇决策输入；κ_S 能力态、经验档层、奖励 tiebreak（纯序数）、刷新阀全部**零标定可判**，但被排在其前的四个未定谳标定槽（全部服务「可及性比值分支」`g^(D_win−D_enc) ≥ f_min`）一起暗装。
+  3. **可及性比值分支的标定路径已被证明判死**。P64：敌方难度读数（「遭遇其X」的 X）不携带敌难度 stat 的构成分量，任何静态 `dict[敌方难度读数→stat]` 注入都产假真值（P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射）；E-2 核的 `DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」，判死由 P64 的同一自由项论证覆盖（引申申报，非 P64 原文结论）。点亮前置 = 敌方信息浮层「敌人难度 NNN+N」读数通道（`docs/game/screens/货币战争-敌人信息浮层.md`，OCR 全可读，未接入）或条件表实采（未采）。比值分支在可见期内无法激活。
   4. **kernel→obs 反向依赖**。`reward_tier`（E-1 奖励 tiebreak 映射，驻 `cw_encounter_selection`）import obs 层 `DIAMOND_EQUIP_NAMES`——策略立场内容驻 kernel 且反向依赖观察层。治本落点 = 检测集单一源迁 **kernel 手维护件**（⚠️ 不迁 `data/cw_equipment_data.py`——该文件由 `tools/cw/gen_equip_registry.py` 整文件覆写，手加常量会在生成器重跑时静默蒸发；注册表内三钻无标志字段可派生，名单最小表达 = 三件名清单，宿主 = `kernel/cw_obs_core.py`〔读数域共用真值，手维护非生成〕，obs 与策略层同源消费）。
   5. **文档面**。`25_event_overlays.md` 画面族清单辖 8 活屏（头注 9 项含 1 项已退役屏的删除注记；§2 动作清单表行另含退役屏「装备」残留）——宪法六违例存量；`04_survival_budget.md` 裁定 9 行「判据正本 = kernel/cw_encounter_selection.py」指针将随迁移失配。
-- 根因归层：**分层语义**（判据本体与策略 policy 未分离 + 三核并存无单一源，宪法五）+ **表示**（暗装门把「比值腿未标定」与「能力态可判」捆在一起 fail-closed，粒度过粗）。
+- 根因归层：**分层语义**（判据本体与策略 policy 未分离 + 三核并存无单一源，宪法五）+ **表示**（暗装门把「比值分支未标定」与「能力态可判」捆在一起 fail-closed，粒度过粗）。
 - 解决到哪：遭遇画面一个迁移批——新画面策略文件 + kernel 剪除选档判据（保留结算观测基建与兑现回调）+ 三核收敛为一 + 暗装门收窄为「零标定可判子集」激活 + 文档拆分（31 号稿）。
 - 明确不解决：
   - 敌方信息浮层读数通道（遭遇屏选卡 → 点「查看详情」→ 读难度分 → 关浮层）——流程层画面交互链，自成后续批（P64 点亮前置链①）；本批只保留容器读口。
-  - 可及性比值腿（`g^(D_win−D_enc) ≥ f_min`）复活与 E-3 标定（f_min/G_BASE 定标、进度条双定谳）——待浮层读数通道批后另立。
+  - 可及性比值分支（`g^(D_win−D_enc) ≥ f_min`）复活与 E-3 标定（f_min/G_BASE 定标、进度条双定谳）——待浮层读数通道批后另立。
   - EV 形态判据（P26 同构参数化）——P26 待证明（Δp_prep 条件表 + L_node 分位口径未采）。
   - 遭遇奖励内容的金等价建模——「金币×2」金额非机制常量（P64 金额侧同判）；本批 tiebreak 只用序数档。
   - sim 结算环写端（sim 局 κ_S 窗口无数据）——sim 基建批交接（§2.12）。
@@ -53,7 +53,7 @@
   - `SettlementRing`/`EncounterLog`/`_RingRow`/`SETTLEMENT_RING_DEPTH`/`game_start_reset`——裁定 9 授权的结算观测持久化（读源基建非打分；裁定 9 明文「持久化形态生效即登记」）。**孤儿申报**：`game_start_reset` 全仓零调用（其 docstring「RunLoop handle_init 或首结算时调」为失实声明，随批收口 docstring）——保留面（生命周期钩子的设计意图在册），不随迁不删码；
   - `record_settlement_row`——结算行入环单一写端（守卫抑制与残留排除两臂汇合后的唯一入口）；
   - `claim_encounter_reward`——遭遇奖励兑现回调（结算确认链挂点，2026-09-21 遭遇扩围批定谳形态；结算记账语义，非选档策略）；
-  - `gs.enemy_difficulty` 容器与敌方难度读数管线——游戏真值读口（比值腿复活时消费）。
+  - `gs.enemy_difficulty` 容器与敌方难度读数管线——游戏真值读口（比值分支复活时消费）。
 - 迁移后 `cw_encounter_selection` 文件 kernel 侧余量 = **结算观测基建 + 兑现回调**（上两条所列），判据与标定面全部离开 kernel。
 - **窗口读口**：`SettlementRing.last_normal_battles` 的生产消费唯一 = 判据本体（本批迁出）。窗口定义维持普战口径（§2.2），读口**原样保留**（迁移后消费方 = 策略层画面文件，kernel 基建零改动）。`last_row`（兑现回调消费）不动。
 
@@ -62,7 +62,7 @@
 设计原则：**本批零新数值、零新拍值**。激活的全部结构沿用已落码的判据正本形态（三态表/经验层/tiebreak/阀门，git 历史可溯）——合法性载体分层如实申报：
 - **数据输入通道与持久化** = 裁定 9 授权（04 号稿 §7 表第 9 行，用户 2026-09-12 逐项确认）——该行授权对象是「结算观测读数作遭遇决策输入 + 入 GameState 持久化」，「判据正本 = 本模块」是载体登记，**不构成判据结构的授权**；
 - **判据数字的形态申报（统一口径，全篇唯一）**：边缘态难度上限 cap = 2 与奖励偏好序（钻>装备>金币>末档）是**数值/序数闸门量**。**章程 supersession 申报**：01 §6 分界条款原文「凡『数值大小参与方向/闸门判断』的量归【推】/【拟】纪律」——本批论证该归属对偏好型闸门值失义（【拟】三要素〔CI/标定义务/期限〕预设「对世界的观测信念」，而 cap 与偏好序是对偏好方向的登记：无观测对象、无 CI 语义），提案以 **supersession 修订该分界条款**（新增闸门位立场值形态：登记即立场、零拟合零观测），随 31 号稿呈用户裁定。**两闸绑定（已裁定 2026-09-24 用户：全部批准生效）**：两项值的过目与章程 §6 修订裁定为**同一裁决门**——用户已一并批准（章程修订〔新增闸门位立场值形态〕+ cap = 2 + 奖励偏好序 钻>装备>金币>末档 均生效）；**用户备注：两项为暂定值，实机遥测数据累积后重拍**（【拍】「逐条重拍由实机判读驱动」条款承载，重拍触发器 = 遭遇帧判读积累）。裁定未过分支的工程形态仍保留（立场常量区 None → `dark-fallback:stance-unconfirmed` fail 向），作为将来重拍回退的现成机制。【拍】要件落点：①登记表 = `encounter_pick.py` 立场常量区（cap 与偏好序常量集中一处，值单一源在代码）+ 31 号稿裁定登记节（文档面）；②初值过目记录 = 定稿呈报对话（2026-09-24）。设计方申报：保留随时否决权。κ_S 三态/经验档层/刷新阀为结构门（killed 布尔与次数语义，无自由数字），不受本条辖。
-- 唯一判据变化 = 暗装门收窄（比值腿退役，能力态直接判），窗口定义维持现役口径不变更（本节末申报）。落码形态参照**现役暗装核**（`cw_encounter_selection.py`，三态表/经验层/tiebreak/刷新阀的实址）在册的语义——该核自身的历史详设已随过程区清理退役，git 历史可溯。
+- 唯一判据变化 = 暗装门收窄（比值分支退役，能力态直接判），窗口定义维持现役口径不变更（本节末申报）。落码形态参照**现役暗装核**（`cw_encounter_selection.py`，三态表/经验层/tiebreak/刷新阀的实址）在册的语义——该核自身的历史详设已随过程区清理退役，git 历史可溯。
 
 决策函数（`encounter_pick.py`，纯值出口照 `supply.decide`/`invest_env.decide` 同构）：
 
@@ -102,9 +102,9 @@ decide(options: list[EncounterOption], gs: GameState)
 - fail 向帧（可及集空且不可刷）= `e3-simple|dark-fallback:<因>`，因同上三枚举（沿用因词，「不可刷」前置不另立词）；
 - 立场未过目帧 = `e3-simple|dark-fallback:stance-unconfirmed`（恒最低档零刷新，§2.3 口径）。
 
-### 2.3 标定注入面拆分与比值腿退役
+### 2.3 标定注入面拆分与比值分支退役
 
-- **退役三槽**：`F_MIN`/`G_BASE`/`DELTA_T`（物理删除）+ `g_ratio` + `_d_enc_snapshot` + `_Diagnostics`（诊断已随 reason 串透传，独立结构失去消费）。退役依据分层申报：P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射（敌方难度读数→stat）；`DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」形态，判死由 P64 的同一自由项论证（B/q/s/m 运行时项）逐项覆盖——**引申申报，非 P64 原文结论**；`F_MIN`/`G_BASE` 退役理由 = 比值腿整体退役（其标定依赖 D_enc 读点定谳链，同属悬置面）。
+- **退役三槽**：`F_MIN`/`G_BASE`/`DELTA_T`（物理删除）+ `g_ratio` + `_d_enc_snapshot` + `_Diagnostics`（诊断已随 reason 串透传，独立结构失去消费）。退役依据分层申报：P64 原辖域 = EV 核 `ENCOUNTER_DSTAT_MAP` 静态映射（敌方难度读数→stat）；`DELTA_T` 净值表是同构「敌方难度读数→难度量静态表」形态，判死由 P64 的同一自由项论证（B/q/s/m 运行时项）逐项覆盖——**引申申报，非 P64 原文结论**；`F_MIN`/`G_BASE` 退役理由 = 比值分支整体退役（其标定依赖 D_enc 读点定谳链，同属悬置面）。
 - **`D_ENC_VARIANT` 槽保留 kernel（不退役）**：该槽除选档判据门外另有**装填语义消费**——`operations/cw_screen/cw_screen_battle_wait.py` `_cw_selection_write` 装填遭遇行 `difficulty_node` 的双态分支直依此槽（裁定 9 保留面「结算观测持久化」自身的依赖；直调 :303-306/:319-323）。判据门随本体迁出（decide 不再读它），槽与装填分支原样留 kernel：None 拨盘下装填行为 = 普战行 observation 直装、遭遇行恒 None（保守前置形态，照旧）。`cw_battle_wait` 装填分支零改动。
 - **fill 双定谳槽随迁策略层**：`PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS` 两槽 + `_FILL_EDGE_THRESHOLD` 常量随 `_kappa_state` 迁 `encounter_pick.py`（None = fill 分支不激活，照旧 fail-closed；定谳后激活）。kernel 侧无标定面残留。
 - 注入面拆分（两模块物理隔离，沿现役「两套标定面互不写入」纪律）：①策略层 `encounter_pick.apply_calibration`/`reset_calibration` 迁入，合法键 = fill 双键（`PROGRESS_BAR_DIRECTION`/`BAR_SEMANTICS`）——未知键名抛错防线照旧，全仓零外部引用（直调核实），E-3 标定批未来注入位 = 此口；②kernel `cw_encounter_selection.apply_calibration`/`reset_calibration` **保留**，合法键仅 `D_ENC_VARIANT`（装填拨盘定谳批/测试的注入位 = 此口，§2.3 保留决定配套）。**立场两值（cap/偏好序）非注入**——立场常量区直接编辑（None → 过目值），过目记录 = commit 凭据（【拍】要件「值单一源在代码」）。
@@ -156,10 +156,10 @@ decide(options: list[EncounterOption], gs: GameState)
 
 ### 2.9 文档面（宪法六）
 
-- 新建 `strategy-docs/31_encounter_screen.md`：画面 = 货币战争-遭遇节点；决策本体指针 = `strategies/impl/mandate_v1/encounter_pick.py`；判据语义 = 本设计 §2.2–§2.5；**as-built 转写纪律**：数值/序数只写常量名与语义（cap、偏好序档等单一源在 `encounter_pick.py` 立场常量区），正本不抄值；裁定登记（结算观测授权 = 04 号稿裁定 9 指针〔辖域 = 数据通道与持久化〕、刷新剩余语义 2026-09-21、**cap 与偏好序的【拍】立场登记〔含章程 §6 修订提案与过目记录〕**、EV 核处置 = §2.10 裁定结论）；数学挂账（比值腿复活 = 浮层读数通道批、E-3 标定〔注入位 = 策略层；`_FILL_EDGE_THRESHOLD` 注入后按【拟】纪律登记的申报义务〕、EV 形态挂 P26、档位↑⇒奖励价值↑ 采样验证、P2 序列两源对账、窗口战斗类变体触发器 = §2.2、补给孪生面防线 = §2.11 挂账交接）；sim 盲区申报（§2.12）；能力面指针 `../screens/README.md`。正本 as-built，判据细节不复制 13/08 号稿（反向指针）。
+- 新建 `strategy-docs/31_encounter_screen.md`：画面 = 货币战争-遭遇节点；决策本体指针 = `strategies/impl/mandate_v1/encounter_pick.py`；判据语义 = 本设计 §2.2–§2.5；**as-built 转写纪律**：数值/序数只写常量名与语义（cap、偏好序档等单一源在 `encounter_pick.py` 立场常量区），正本不抄值；裁定登记（结算观测授权 = 04 号稿裁定 9 指针〔辖域 = 数据通道与持久化〕、刷新剩余语义 2026-09-21、**cap 与偏好序的【拍】立场登记〔含章程 §6 修订提案与过目记录〕**、EV 核处置 = §2.10 裁定结论）；数学挂账（比值分支复活 = 浮层读数通道批、E-3 标定〔注入位 = 策略层；`_FILL_EDGE_THRESHOLD` 注入后按【拟】纪律登记的申报义务〕、EV 形态挂 P26、档位↑⇒奖励价值↑ 采样验证、P2 序列两源对账、窗口战斗类变体触发器 = §2.2、补给孪生面防线 = §2.11 挂账交接）；sim 盲区申报（§2.12）；能力面指针 `../screens/README.md`。正本 as-built，判据细节不复制 13/08 号稿（反向指针）。
 - `25_event_overlays.md`：画面族清单移除遭遇（头注、§1 prose、§2 动作清单表行），头注加「遭遇已拆 31 号稿」（照 28/29/30 号稿拆分先例）；§2 表行退役屏「装备」残留一并清理。
 - `13_pick_family.md`：`decide_encounter` 行（「双轨」过期描述）整体改写为单一源指 31 号稿；§2 事件面目录 E3 行同改。
-- `08_events.md`：E3 行「现有语义」格整体替换为「能力态直通形（κ_S 三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀；决策本体 = `strategies/impl/mandate_v1/encounter_pick.py`，语义单一源 = 31 号稿）」；「判据状态」列维持「待 derive」（比值腿/EV 形态仍待 P26 与读数通道）；立项锚不变（P26）。
+- `08_events.md`：E3 行「现有语义」格整体替换为「能力态直通形（κ_S 三态 + 经验档层 + 奖励序数 tiebreak + 刷新阀；决策本体 = `strategies/impl/mandate_v1/encounter_pick.py`，语义单一源 = 31 号稿）」；「判据状态」列维持「待 derive」（比值分支/EV 形态仍待 P26 与读数通道）；立项锚不变（P26）。
 - `04_survival_budget.md`：裁定 9 行「判据正本 = `kernel/cw_encounter_selection.py`」→「判据正本 = 策略层 `encounter_pick.py`（迁移批；结算观测持久化基建留 kernel）」；同行补判据结构合法性载体分层（授权辖域 = 数据通道与持久化；结构确认载体 = 对抗审查，§2.2）。
 - `strategy-docs/README.md` §2 分篇表：增 31 行；阅读导航句「18-30」→「18-31」。
 - 画面文档策略指针面随批去陈旧：`docs/develop/sr_od/application/currency_war/screens/encounter.md`（决策委托句、刷新闸行为叙述句——防线后过期）、`docs/game/screens/currency_war_encounter.md`（算法描述句；文件名 ≠ 画面名，落批全路径核对后改写）。
@@ -177,12 +177,12 @@ decide(options: list[EncounterOption], gs: GameState)
 - **补给批（30 号稿）已落地**（正本/README §2/25 号稿头注/删除面均已入库——直调核实 `cw_survey19_hooks` 中 `supply_reroll_decision` 已不在），与彼批无在飞共享面。本批落批时仍按符号锚重核彼批触碰过的文件现态（`cw_survey19_hooks` 剩余面 = `encounter_tier_score` + `wear_discipline_alert`；`cw_events` 模块 docstring 现态已含补给收口句）。
 - **sim 基建批（sim-backend-unification / action-world-decl，在飞）**：结算环 sim 写端交接（本批 sim 可见性的唯一前置，§2.12）；本批不改 sim 文件。
 - **补给孪生面（定性修正，撤销「带病」申报）**：补给屏重调分支（`cw_screen_supply_node` 「建议刷 ∧ 对照闸拒绝 → 零点击终结交回」）与遭遇屏同源同构——观察先于决策、次数文本同源双信号（§2.5 机理定谳），该分支**同样结构性不可达**，非在产风险。两屏各自的死分支行为（遭遇 = round_fail 兜底 / 补给 = 零点击交回）无需强行统一；若将来补给域批顺手对齐为 round_fail 亦无害，非义务。撤销「在产带病」挂账。
-- **浮层读数通道批（未立项）**：本批交付后其点亮路径 = `gs.enemy_difficulty` 读口（现成）+ 比值腿结构（git 可溯）+ 浮层画面 op 链（`货币战争-敌人信息浮层.md` 入口②形态已建档）。挂账指针进 31 号稿数学挂账节。
+- **浮层读数通道批（未立项）**：本批交付后其点亮路径 = `gs.enemy_difficulty` 读口（现成）+ 比值分支结构（git 可溯）+ 浮层画面 op 链（`货币战争-敌人信息浮层.md` 入口②形态已建档）。挂账指针进 31 号稿数学挂账节。
 
 ### 2.12 sim 可观测性申报与验收锚点
 
-- **sim 结构性盲区**：sim 局结算环无写端（sim 结算腿不调 `record_settlement_row`）→ κ_S 窗口恒空 → sim 遭遇决策恒「窗口不足 → 闸 None 拒刷 → 最低档」，与改前 sim 行为（暗装：最低档 + 零刷新）**逐位一致**。本批差异 sim 不可见，不可作 A/B 判据（照补给批盲区申报口径）。
-- 可见前置 = sim 结算腿接环（单点：coarse 战斗结算输出处调 `record_settlement_row`），交接 sim 基建批。接环后 sim 可见形态 = 四档占位（`ENCOUNTER_TIER_COUNT=4`，奖励占位文本）下 κ_S 驱动选档；占位奖励文本（「金+20(占位…)」不含「金币」字面，直调 `reward_tier` 语义）全落**末档**，tiebreak 维度 sim 恒并列（全候选同档）——行为差异只在主序与刷新阀。
+- **sim 结构性盲区**：sim 局结算环无写端（sim 结算分支不调 `record_settlement_row`）→ κ_S 窗口恒空 → sim 遭遇决策恒「窗口不足 → 闸 None 拒刷 → 最低档」，与改前 sim 行为（暗装：最低档 + 零刷新）**逐位一致**。本批差异 sim 不可见，不可作 A/B 判据（照补给批盲区申报口径）。
+- 可见前置 = sim 结算分支接环（单点：coarse 战斗结算输出处调 `record_settlement_row`），交接 sim 基建批。接环后 sim 可见形态 = 四档占位（`ENCOUNTER_TIER_COUNT=4`，奖励占位文本）下 κ_S 驱动选档；占位奖励文本（「金+20(占位…)」不含「金币」字面，直调 `reward_tier` 语义）全落**末档**，tiebreak 维度 sim 恒并列（全候选同档）——行为差异只在主序与刷新阀。
 - **验收 = 单帧测试 + 实机判读锚点（事前写定）**：
   1. 足量帧选最高可及档（reason `pick:t{k}|kappa=足量`）；
   2. 边缘帧 ≤ 其二（cap 生效）；

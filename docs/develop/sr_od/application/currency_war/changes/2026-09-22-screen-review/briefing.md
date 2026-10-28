@@ -247,7 +247,7 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
 
 (c)**测试对账**(重审增补点 C1「双测试同步」按真值核读具体化;全测试仓 grep `clean_boss_names_by_lcs` 唯一命中 = 下述桩面,无「原名透传」的既有断言,**零翻转面**):
 
-- `test_cw_obs_arch_phase_screens.py::test_briefing_session_write_semantics_three_fields`(`:846-906`):装配桩 `_make_briefing` 把清洗函数桩为 identity(`:793` `lambda gs: gs`),返 list 形态与新签名兼容——**既有三字段写语义断言(词缀重读重写 / boss 恒覆写与读空跳过 / 难度读到必写)全部维持,零翻转**;同步动作 = 随批新增失败路径测试腿(桩改返 None → observe `round_fail`、容器零写、`_obs` 不装载),目标形态:
+- `test_cw_obs_arch_phase_screens.py::test_briefing_session_write_semantics_three_fields`(`:846-906`):装配桩 `_make_briefing` 把清洗函数桩为 identity(`:793` `lambda gs: gs`),返 list 形态与新签名兼容——**既有三字段写语义断言(词缀重读重写 / boss 恒覆写与读空跳过 / 难度读到必写)全部维持,零翻转**;同步动作 = 随批新增失败路径测试分支(桩改返 None → observe `round_fail`、容器零写、`_obs` 不装载),目标形态:
 
 ```python
 def test_briefing_boss_standardize_fail_round_fail_zero_write(test_context, monkeypatch) -> None:
@@ -296,7 +296,7 @@ def test_briefing_boss_standardize_fail_round_fail_zero_write(test_context, monk
 
 **T-37 登记行原文**(逐字,交 T-37 汇总对账;载体同 §2.5 登记面/§2.7 表尾登记行惯例):
 
-> - [T-37 登记][欠账] briefing(T-20)::34 boss 域名字转换欠账(行为级;失败语义 + ①段一并清偿)——`clean_boss_names_by_lcs`(`obs/cw_briefing_obs.py:154-173`)只有第②段 LCS 归一(参考表 = `cw_enemy_data.BOSS_MECHANICS` 20 规范公司名)且失败分支 = 原名透传留日志带病上报(`:167-170`),缺①段形变归一,违条款①两段结构与「任一候选转换失败 = 观察失败 round_fail 零写零上报」;清偿设计 = 失败分支改型返 None 时**顺接同文件①段单一源** `cw_enemy_data.normalize_boss_name`(`data/cw_enemy_data.py:22` `BOSS_NICKNAMES` 俗称→规范名映射 + `:108` 本体)精确命中为第①段(①段命中不进失败分支)、既有 LCS 降为第②段,目标函数同步补齐两段结构 + observe(`cw_screen_briefing.py:119-120`)分流 round_fail + 双测试同步(briefing.md §3.1(a)-(c) 文本给足,既有测试零翻转 + 新增失败测试腿;验收锚 1 增两段结构正向核对),归标准化收敛批(boss 域另半截转换随失败语义同批清偿,收敛成本全组最低);fields.md §3.1.3 ① F-1 修法文本留口随批(§3.3 站点 #1)。
+> - [T-37 登记][欠账] briefing(T-20)::34 boss 域名字转换欠账(行为级;失败语义 + ①段一并清偿)——`clean_boss_names_by_lcs`(`obs/cw_briefing_obs.py:154-173`)只有第②段 LCS 归一(参考表 = `cw_enemy_data.BOSS_MECHANICS` 20 规范公司名)且失败分支 = 原名透传留日志带病上报(`:167-170`),缺①段形变归一,违条款①两段结构与「任一候选转换失败 = 观察失败 round_fail 零写零上报」;清偿设计 = 失败分支改型返 None 时**顺接同文件①段单一源** `cw_enemy_data.normalize_boss_name`(`data/cw_enemy_data.py:22` `BOSS_NICKNAMES` 俗称→规范名映射 + `:108` 本体)精确命中为第①段(①段命中不进失败分支)、既有 LCS 降为第②段,目标函数同步补齐两段结构 + observe(`cw_screen_briefing.py:119-120`)分流 round_fail + 双测试同步(briefing.md §3.1(a)-(c) 文本给足,既有测试零翻转 + 新增失败测试分支;验收锚 1 增两段结构正向核对),归标准化收敛批(boss 域另半截转换随失败语义同批清偿,收敛成本全组最低);fields.md §3.1.3 ① F-1 修法文本留口随批(§3.3 站点 #1)。
 > - [T-37 登记][欠账] briefing(T-20)::34 词缀域标准化欠账(登记级)——OCR 原名直写 `gs.enemy_affixes` 零转换(`cw_screen_briefing.py:133` → `report_screen_briefing_obs`;注册数据在册 = 开放集合 `data/affix_effects_data.py::AFFIX_EFFECTS` + 结构化 `kernel/cw_affix_effects.py::AFFIX_EFFECT_SPECS`);收敛 = 两段转换 + 失败语义(已有词缀)+ 真新词缀采集附加边界(开放集合,机械套「不在册 = 失败」杀死采集面;边界落 `screens/briefing.md` 屏契约;新词缀判据先裁后行);与 plane_intel(T-25) 词缀域欠账同域同方向同批;难度域 int 不适用;禁新增未标准化直报。
 
 **验收锚(登记级)**:
@@ -313,7 +313,7 @@ def test_briefing_boss_standardize_fail_round_fail_zero_write(test_context, monk
 |---|---|---|---|---|
 | 1 | 本稿 §2.1 表「目标语义」格 | 「摄入口 = `report_screen_briefing_obs`,三字段**统一写语义『读到非空恒覆写 / 读空跳过写』**——三读数一局内恒定,覆写无信息损失,重读自愈首次误读;读缺 = 跳过写项目口径,瞬时 OCR 失手不擦同局已读真值;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场;敌人难度 = 恒稳开局基线初值,后续敌方难度读数真读覆盖归主条目(§3.2.14)」 | 句尾追加一短句,修后全文:「摄入口 = `report_screen_briefing_obs`,三字段**统一写语义『读到非空恒覆写 / 读空跳过写』**——三读数一局内恒定,覆写无信息损失,重读自愈首次误读;读缺 = 跳过写项目口径,瞬时 OCR 失手不擦同局已读真值;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场;敌人难度 = 恒稳开局基线初值,后续敌方难度读数真读覆盖归主条目(§3.2.14)。标准化收敛后本写语义的输入 = 标准注册名(观察侧转换,失败 = 观察失败零写,欠账登记见屏契约)」 | 增补 1 连带(重审增补点 C2:F-1 固化文本未为标准化收敛留口) |
 | 2 | 本稿 §2.6 F-6 目标文本(screens/briefing.md §9 申报面全集) | (F-6 修法后 §9 按前缀分布申报全集) | 随批义务:收敛批落 §3.1(a)(b) 后新增观察侧失败日志 1 行(无前缀 warning,归「观察三读数日志」族),`screens/briefing.md` §9 申报面随收敛批补一行,防申报再次不全 | 增补 1 行为级随行 |
-| 3 | 本稿 §2.7 落地文件面总表 | (F-1..F-6 文件面) | 随批义务:收敛批开工时文件面扩三行——`operations/cw_screen/cw_screen_briefing.py`(boss 失败分流,§3.1(b))、`obs/cw_briefing_obs.py`(失败语义改型,§3.1(a))、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(新增失败测试腿,§3.1(c));本稿零行为落地批文件面不变 | 增补 1 归属声明 |
+| 3 | 本稿 §2.7 落地文件面总表 | (F-1..F-6 文件面) | 随批义务:收敛批开工时文件面扩三行——`operations/cw_screen/cw_screen_briefing.py`(boss 失败分流,§3.1(b))、`obs/cw_briefing_obs.py`(失败语义改型,§3.1(a))、`sr-od-test/test/sr_od/application/currency_war/test_cw_obs_arch_phase_screens.py`(新增失败测试分支,§3.1(c));本稿零行为落地批文件面不变 | 增补 1 归属声明 |
 | 4 | 正本 `screens/briefing.md` §6 boss 条(随收敛批) | 「- `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,LCS 清洗归一);」 | 「- `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,经 `clean_boss_names_by_lcs` 两段转换归一;任一候选转换失败 = 观察失败,round_fail 零写零上报交回重观察,规范 = op-layer.md §1.1 观察标准化门);」 | 增补 1 屏契约随批 |
 | 5 | 正本 `screens/briefing.md` §3 词缀条 + §6 尾段(随收敛批) | §3「- 词缀:`read_affixes_with_pos`(「区域-词缀行」OCR → 名 + center);」 | §3 词缀条尾追加:「词缀读数经词缀注册两段转换后上报(已有词缀转换失败 = 观察失败,round_fail 零写零上报交回重读);真新词缀(两段皆不中)不判观察失败,走采集登记面(`_collect_affix_effects` 截图收集 → 人工入册 → 下次起可归一)——开放注册表附加边界,规范 = op-layer.md §1.1 观察标准化门『各屏转换成功性的附加边界由屏契约登记』;账本登记过滤(`register_affixes_from_names` 命中注册才入账本)≠ 容器标准化。」(§6 尾段「登记 = …命中结构化注册才入账本」句后同步补「账本登记过滤 ≠ 容器标准化,容器面收敛同上」半句) | 增补 2 屏契约(条款①附加边界登记落点;收敛批施工,本批只登记诉求) |
 

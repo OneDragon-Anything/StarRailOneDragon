@@ -15,7 +15,7 @@
 ### 1.1 现状症状（符号锚，行号不书）
 
 - **契约签名三形状并存**（`strategies/impl/cw_strategy.py` ABC）：备战/商店两主入口吃旁路——`decide_prep_screen(session, config)` 读 `session.prep_obs_frame`、`decide_shop_action(session, config)` 内部取 `game_state_of(session)`，均无 gs 形参；pick 族 9 入口收 `(options, gs, session, config)` 4–5 参直传；其中 `decide_invest` 另带 `kind` 字符串分叉，`decide_supply`/`decide_encounter` 另带 `refresh_used` 布尔。两处旗标的现行语义（直调代码核实）：supply 调用方传**容器派生旗标**（`gs.supply_refresh_used` 派生，`cw_screen_supply_node.py` 调用点），闸命中静默落选卡支；encounter 调用方首调不传（缺省 False）、仅**本访问刷新后的重决策**传 True（`cw_screen_encounter.py` 调用点），闸命中时打日志分支并不重决策——两屏闸命中行为形态不同（log 分支 vs 静默），本批均原样保留。
-- **选项数据双源**：画面 op handler 本地 OCR 构造 typed option 列表（`EncounterOption` 等，`kernel/cw_events.py`）传参；容器画面 payload 域按规格本应承载同源数据——`gs.shop` 活写端在产；`gs.encounter`/`gs.supply`（`EncounterPayload`/`SupplyPayload`，`kernel/cw_game_state.py`）**活写端缺位**（live 仅 `leave_screen` 置 None 两处：CloseShop 逻辑腿属 shop；encounter/supply 的清点只在 sim 合成口）。
+- **选项数据双源**：画面 op handler 本地 OCR 构造 typed option 列表（`EncounterOption` 等，`kernel/cw_events.py`）传参；容器画面 payload 域按规格本应承载同源数据——`gs.shop` 活写端在产；`gs.encounter`/`gs.supply`（`EncounterPayload`/`SupplyPayload`，`kernel/cw_game_state.py`）**活写端缺位**（live 仅 `leave_screen` 置 None 两处：CloseShop 逻辑分支属 shop；encounter/supply 的清点只在 sim 合成口）。
 - **投资一方法两画面**：`cw_screen_invest_strategy`/`cw_screen_invest_env` 两画面调同一 `decide_invest(kind, ...)`——其余画面皆一画面一方法，唯独此处靠字符串参数分叉。
 - 顺带勘误：`flow.py` `decide_invest` docstring「state.board 由调用方传空 stub」已过期（现调用点已直传容器单例，`cw_screen_invest_strategy.py`/`cw_screen_invest_env.py` 调用点在册），随本批修正。
 
@@ -74,7 +74,7 @@
 
 | # | 槽位 | 类型 | 唯一写者 | 读者 | 现状→动作 |
 |---|---|---|---|---|---|
-| 1 | `gs.prep_obs` | `PrepObservation \| None`（**非 Field 容器字段**，见配套契约 e） | CwScreenPrep 观察链（observe_full 装配 / 破墙派生帧 / 逻辑态直写步；写点白名单 4 处全在 `cw_screen_prep.py`，直赋换宿主） | decide_prep_screen；`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴计划唯一事实源）；`cw_screen_prep.py::_act_execute_default` OpenShop 腿死参喂死读点（`obs` 形参现行零消费，处置写死 = 换源，死参保留不删——删参属 `_open_shop_phase` 签名面，超本批最小面） | 自 `session.prep_obs_frame` **迁入**（session 槽退役）；**语义豁免申报**：本槽不入「离屏置 None」payload 家族（见 §2.3）——现状 session 槽即从不清空、新鲜度 = 写或沿用、读者纪律 = 备战访问内消费，豁免 = 零行为；heavy/light 分层与帧内字段语义全部不动 |
+| 1 | `gs.prep_obs` | `PrepObservation \| None`（**非 Field 容器字段**，见配套契约 e） | CwScreenPrep 观察链（observe_full 装配 / 破墙派生帧 / 逻辑态直写步；写点白名单 4 处全在 `cw_screen_prep.py`，直赋换宿主） | decide_prep_screen；`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`（穿戴计划唯一事实源）；`cw_screen_prep.py::_act_execute_default` OpenShop 分支死参喂死读点（`obs` 形参现行零消费，处置写死 = 换源，死参保留不删——删参属 `_open_shop_phase` 签名面，超本批最小面） | 自 `session.prep_obs_frame` **迁入**（session 槽退役）；**语义豁免申报**：本槽不入「离屏置 None」payload 家族（见 §2.3）——现状 session 槽即从不清空、新鲜度 = 写或沿用、读者纪律 = 备战访问内消费，豁免 = 零行为；heavy/light 分层与帧内字段语义全部不动 |
 | 2 | `gs.shop` | `ShopPayload \| None` | 既有观察段 | decide_shop_action | 不动（仅签名切换） |
 | 3 | `gs.encounter` | `EncounterPayload`（**现名沿用，不改名**；形状升级：`options: list[tuple[int, str]]` → `list[EncounterOption]`） | CwScreenEncounter（活写端本批接通） | decide_encounter | 域已有；域版本 bump |
 | 4 | `gs.supply` | `SupplyPayload`（**现名沿用**；形状升级：`options: list[tuple[str, str, bool]]` → `list[SupplyOption]`） | CwScreenSupplyNode（活写端本批接通） | decide_supply | 同上 |
@@ -91,7 +91,7 @@
 
 - **a. gs_schema 申报**（fields.md §3.7.1 治理）：**8 个新域键**（#5–#12，各自独立域键——先例 = shop/encounter/supply 每画面一域）+ **2 个变域 bump**（#3/#4 形状升级）+ **`node_screen_refresh` 域版本 +1**（新顶层字段 `encounter_refreshed_in_visit` 入该域 = 域内容变更，execstate #12-#14「域扩展即 bump」先例）。`prep_obs` 为非 Field 容器字段（契约 e），不占域键、不入快照流水。typed option dataclass 经 asdict 序列化（`ShopPayload.cards` 先例），值形状 JSON 序列化安全。
 - **b. 离屏机制**：见 §2.3（路由点陈旧清点；prep_obs 豁免）。
-- **c. 瞬态槽三分语义**（#3–#12；fields.md §2.2「在屏失读沿用旧值」为持久事实设计，对逐访问瞬态槽细化为）：**离屏 = None**；**在屏失读帧 = 不写不读**（handler 走自身失败安全分支——现状零选项/OCR miss 即不调 decide 同型，禁把上一访问的旧选项喂本帧决策）；**在屏读得 = 覆盖**。判别信号定死 = **「写槽以该分支将调用 decide 为前提」**（写槽动作只存在于 handler 已决定调用 decide 的分支内；OCR miss 与真空选项在识别面同形返回 `[]`，现状 handler 零选项即走盲点默认**不调 decide 亦不写槽**——故本批不引入 `[]` 写入场景，空列表写槽若未来行为批引入须同步申报）。**刷新重决策腿分屏形态申报**（三屏刷新链形态不同，禁统一改形）：**encounter = 同访问内二次「读得=覆盖」**——刷新后的重决策前，必须以重读产物（重截图重 OCR，既有「无条件重读」链原样）覆盖写槽，方可再调 decide，禁沿用刷新前旧槽内容；**supply/invest = 发射后交回重入型**——刷新发射即 return（supply 经 round_retry 重入下一轮重读重决策，invest 同型），无同访问二次覆盖，重入访问走常规「OCR → 写槽 → decide」起点链天然单源。结构防线 = **「每次决策恰以当次观察产物为单源」纪律**（decide 只在写槽之后调用；encounter 同访问重读链与 supply/invest 重入链均为既有行为本体，不算双源；单帧测试/流程测试逐 handler 校验此单源性）。`prep_obs` 不适用本条（豁免域，沿用旧行为）。
+- **c. 瞬态槽三分语义**（#3–#12；fields.md §2.2「在屏失读沿用旧值」为持久事实设计，对逐访问瞬态槽细化为）：**离屏 = None**；**在屏失读帧 = 不写不读**（handler 走自身失败安全分支——现状零选项/OCR miss 即不调 decide 同型，禁把上一访问的旧选项喂本帧决策）；**在屏读得 = 覆盖**。判别信号定死 = **「写槽以该分支将调用 decide 为前提」**（写槽动作只存在于 handler 已决定调用 decide 的分支内；OCR miss 与真空选项在识别面同形返回 `[]`，现状 handler 零选项即走盲点默认**不调 decide 亦不写槽**——故本批不引入 `[]` 写入场景，空列表写槽若未来行为批引入须同步申报）。**刷新重决策分支分屏形态申报**（三屏刷新链形态不同，禁统一改形）：**encounter = 同访问内二次「读得=覆盖」**——刷新后的重决策前，必须以重读产物（重截图重 OCR，既有「无条件重读」链原样）覆盖写槽，方可再调 decide，禁沿用刷新前旧槽内容；**supply/invest = 发射后交回重入型**——刷新发射即 return（supply 经 round_retry 重入下一轮重读重决策，invest 同型），无同访问二次覆盖，重入访问走常规「OCR → 写槽 → decide」起点链天然单源。结构防线 = **「每次决策恰以当次观察产物为单源」纪律**（decide 只在写槽之后调用；encounter 同访问重读链与 supply/invest 重入链均为既有行为本体，不算双源；单帧测试/流程测试逐 handler 校验此单源性）。`prep_obs` 不适用本条（豁免域，沿用旧行为）。
 - **d. 选项数据单源**：handler 的 OCR 产物是唯一来源——写槽后调 decide。kernel 纯函数（`decide_event`/`decide_encounter` 等）签名与判据零改动，仍收 typed options 列表；策略入口从槽取列表传入（数据来源组装职责归策略入口，kernel 保持纯函数纪律）。
 - **e. prep_obs 迁移附注**：`StrategySession.prep_obs_frame` 字段删除；**存储形态 = 非 Field 容器字段**（直赋读写，与 `tracked_books`/`exec_books` 同型访问口；先例 = execstate #20 `plane_node_sequences` 非 Field 处置）。理由：`PrepObservation` 含 `set`/`Point`/`BenchChar` 非 JSON 安全形状，Field 化须值形状改造（set→list、Point→元组）——该形状进 `spheres` 发射面（ClickSpheres 排序消费 `Point`），改造 = 全链涟漪违零行为；非 Field 化则不入快照流水，可观测面与现状 session 槽完全一致（零变化）。4 写点 = 直赋换宿主，无 observe/carry/write_logic 渠道语义；「破墙派生帧」等来源分级已由 `PrepObservation` 字段注释内部承载（heavy/light 语义），不新增 evidence 面。`prep_frame_class`/`shop_frame_class` 两触发信号槽**本批不动**（非决策输入，归后批帧机制合并）。**注释历史锚处置口径（唯一）**：符号改名点随所在文件的切换阶段落码同步改指（prep_obs 锚随 3.2；`decide_invest`/`decide_box_card` 注释锚随 3.4，所在文件已入该阶段文件面）；纯叙述性历史锚随正本更新批复核清零。已知锚面（**非穷尽示例**——穷尽性由各切换线的全仓 grep 锚普查对账表保证）= `cw_strategy.py`/`cw_screen_prep.py`/`obs/cw_observation.py`/`mandate_v1/shop.py`/`bridge.py` 模块头（prep_obs，随 3.2）；`kernel/cw_events.py`/`cw_screen_equip_pick.py`/`cw_investments.py`/`cw_comps.py`/`cw_equip_value.py`（decide_invest/decide_box_card 注释，随 3.4）。
 - **f. 新槽注释**：全部带归属申报与坐标系注释（归属判据双锚 = 「谁产生/谁消费」宿主 `flow/session.md` §2 + fields.md §8.8 字段准入四问；带索引语义者加 `[索引定义]`）。
@@ -99,7 +99,7 @@
 
 ### 2.3 离屏机制（payload 域的 live 置 None 写端）
 
-**放弃「leave_screen 改域集遍历」方案**——商店对备战是覆盖态不是兄弟屏（fields.md §3.3），既有两处 live 清点（CloseShop 逻辑腿、prep 相位观察商店锚 miss 分支）都发生在备战仍在屏语境，全域遍历会清掉 `prep_obs` 令关店后首次 `decide_prep_screen` 抛错。改为：
+**放弃「leave_screen 改域集遍历」方案**——商店对备战是覆盖态不是兄弟屏（fields.md §3.3），既有两处 live 清点（CloseShop 逻辑分支、prep 相位观察商店锚 miss 分支）都发生在备战仍在屏语境，全域遍历会清掉 `prep_obs` 令关店后首次 `decide_prep_screen` 抛错。改为：
 
 - **路由点陈旧清点**：外循环每轮「画面识别结果产出后、阶段一身份分发（`cw_loop.py::_dispatch_identity_screen` 调用）之前」设单一挂点，按**属屏映射**清除 payload 槽。语义三定义：
   - **路由屏取值**：识别命中且在映射内 = 该屏名，只清属屏 ≠ 它的槽；映射外建档屏 / 非身份臂语境（阶段二备战双锚、阶段三特殊规则臂）/ 未识别 = 清全部十槽（这些语境无任何 decide 消费，清点只影响审计面）。
@@ -118,8 +118,8 @@
   | `gs.star_tome_opts` | 货币战争-星徽秘典弹窗（反直觉行） |
   | `gs.wish_trial_opts` | 货币战争-祈愿试炼 |
   | `gs.box_card_names` | 货币战争-备战-武装箱选择（注：`货币战争-武装箱弹窗` 派发 CwScreenArmoryBox，无 decide 调用不产槽） |
-- **豁免与保留**：属屏映射值结构 = `(属屏, route_clearable)` 二元组——`prep_obs` 不入映射（§2.2 #1 豁免申报）；`shop` **保留在映射结构内**（既有两处 `leave_screen(gs.shop, …)` 的域守卫校验依赖映射含 shop——移出即 ValueError）且 `route_clearable = False`（编码 = 二元组第二位 False，挂点清点循环显式跳过——无自由文本「标记」，防填错形状触发挂点通用规则清 gs.shop，与 CloseShop 腿构成双写端/开店中段 decide 抛错）；shop **既有两处显式清点保留** = CloseShop 逻辑腿 + prep 相位观察商店锚 miss 分支，为 shop 域唯一清点源。「已 None 跳过」实现落点 = **路由挂点侧**（挂点读槽值判 None 跳过），`leave_screen` 本体不动（其无条件写语义是既有清点两处所依赖的现状）。**清点写入口形态** = 经 `leave_screen(槽, sig=…)`（与既有两处清点同口径）；**sig 钉死** = family/mode 引用既有 CloseShop 腿清点行的同一常量源（禁新造第二 family），`actor = 'cw_loop_route_clear'`（区分写端），group_id 沿用 write_seq 形态——journal 行与既有清点行同族、可按 actor 过滤。
-- **等价性论证**：挂点只清「路由判定已离开属屏」的槽——此刻该屏访问已终（事件 overlay 消失路由回备战时，pick/encounter/supply 槽的访问已结束）；handler 内部重决策环（如 encounter 刷新后重决策）不经路由点，槽保活——**重决策前以重读产物覆盖写槽（§2.2-c 刷新重决策腿），非沿用旧槽**。被清的槽本就属「非当前画面 = None」结构事实语义（fields.md §2.2 例外），无读者在清点与下次覆盖之间消费它。
+- **豁免与保留**：属屏映射值结构 = `(属屏, route_clearable)` 二元组——`prep_obs` 不入映射（§2.2 #1 豁免申报）；`shop` **保留在映射结构内**（既有两处 `leave_screen(gs.shop, …)` 的域守卫校验依赖映射含 shop——移出即 ValueError）且 `route_clearable = False`（编码 = 二元组第二位 False，挂点清点循环显式跳过——无自由文本「标记」，防填错形状触发挂点通用规则清 gs.shop，与 CloseShop 分支构成双写端/开店中段 decide 抛错）；shop **既有两处显式清点保留** = CloseShop 逻辑分支 + prep 相位观察商店锚 miss 分支，为 shop 域唯一清点源。「已 None 跳过」实现落点 = **路由挂点侧**（挂点读槽值判 None 跳过），`leave_screen` 本体不动（其无条件写语义是既有清点两处所依赖的现状）。**清点写入口形态** = 经 `leave_screen(槽, sig=…)`（与既有两处清点同口径）；**sig 钉死** = family/mode 引用既有 CloseShop 分支清点行的同一常量源（禁新造第二 family），`actor = 'cw_loop_route_clear'`（区分写端），group_id 沿用 write_seq 形态——journal 行与既有清点行同族、可按 actor 过滤。
+- **等价性论证**：挂点只清「路由判定已离开属屏」的槽——此刻该屏访问已终（事件 overlay 消失路由回备战时，pick/encounter/supply 槽的访问已结束）；handler 内部重决策环（如 encounter 刷新后重决策）不经路由点，槽保活——**重决策前以重读产物覆盖写槽（§2.2-c 刷新重决策分支），非沿用旧槽**。被清的槽本就属「非当前画面 = None」结构事实语义（fields.md §2.2 例外），无读者在清点与下次覆盖之间消费它。
 - **效果**：#3–#12 十槽在 live 首次获得离屏写端（修「活写端缺位」）；「None = 观察层失约」守卫真实可达；dump gs 审计面无陈旧非 None 槽。sim 合成口 `leave_screen` 调用不动（sim 口自足）。
 
 ### 2.4 invest 拆分
@@ -132,7 +132,7 @@
 
 | 调用面 | 改动 |
 |---|---|
-| pick 族画面 op handler（10 文件：invest_strategy/invest_env/supply_node/encounter/megastar/partner/planner/bookcard/wish_trial/box_pick） | OCR 产物写本屏槽（observation 覆盖）→ 以 `(gs, session, config)` 调 decide；本地 typed option 构造改为写槽的数据装配（同一次 OCR，无第二次识别）；**每 handler 的写槽-决策改形须同时覆盖旧 handle 与五段 lifecycle 两路径**（encounter 单文件 4 个 decide 调用点 = 两路径各首调/重决策一对；调用点全集以 grep 计数为准）；encounter/supply 的 payload 活写端随此接通；encounter 另维护 `encounter_refreshed_in_visit`（写点定死见 §2.1-4）；encounter/supply 刷新重决策腿 = 重读产物覆盖写槽后再 decide（既有「无条件重读」链原样，§2.2-c） |
+| pick 族画面 op handler（10 文件：invest_strategy/invest_env/supply_node/encounter/megastar/partner/planner/bookcard/wish_trial/box_pick） | OCR 产物写本屏槽（observation 覆盖）→ 以 `(gs, session, config)` 调 decide；本地 typed option 构造改为写槽的数据装配（同一次 OCR，无第二次识别）；**每 handler 的写槽-决策改形须同时覆盖旧 handle 与五段 lifecycle 两路径**（encounter 单文件 4 个 decide 调用点 = 两路径各首调/重决策一对；调用点全集以 grep 计数为准）；encounter/supply 的 payload 活写端随此接通；encounter 另维护 `encounter_refreshed_in_visit`（写点定死见 §2.1-4）；encounter/supply 刷新重决策分支 = 重读产物覆盖写槽后再 decide（既有「无条件重读」链原样，§2.2-c） |
 | `cw_screen_prep.py`（decide_prep_screen 两调用点） | 传 `gs = game_state_of(session)`；观察链写点 `session.prep_obs_frame =` 改 `gs.prep_obs =` |
 | `kernel/cw_equip_wear_plan.py` | `getattr(session, 'prep_obs_frame', None)` 改 `game_state_of(session).prep_obs`（同点改名 + 宿主解析换源） |
 | `cw_screen_buy_cards.py`（run_buy_waves 单动作循环 + 防御路径裸 match 构造） | 签名随改；防御路径语义不变 |

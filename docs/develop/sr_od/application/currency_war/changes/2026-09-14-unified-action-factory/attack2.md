@@ -23,10 +23,10 @@
   XP_CLICK_COST_FALLBACK」,而 2b 判据「LevelUp 装载测试(2b 半)」把同一件事列为
   2b 测试面——同一装载两批都申报;②2a 判据要「逻辑态 xp/level 推进」+ design 定案④
   逻辑态分支 = gold −cost,但 2a 阶段族B `LevelUp()` 无 cost 字段(2b 合并才有),
-  中间态金腿取值源(执行缝 `_executed_gold_delta` 延续 or 写口现算)无文字,
+  中间态金分支取值源(执行缝 `_executed_gold_delta` 延续 or 写口现算)无文字,
   实现者必须自行设计。
-- **修法**:2a 范围写死中间态(建议:2a 金腿维持执行缝金差、逻辑态只落 xp/level
-  推进;2b 类合并翻转时金腿切 `action.cost` 直写,并把该切换补进 2b「消费面收口」);
+- **修法**:2a 范围写死中间态(建议:2a 金分支维持执行缝金差、逻辑态只落 xp/level
+  推进;2b 类合并翻转时金分支切 `action.cost` 直写,并把该切换补进 2b「消费面收口」);
   删 2a 括号内 cost 字样或注明「仅 2b 生效」。
 
 ### A3【design §2.6 R9 + landing 正本更新清单】枚举正本的转录义务悬空,LevelUp 行与定案相反

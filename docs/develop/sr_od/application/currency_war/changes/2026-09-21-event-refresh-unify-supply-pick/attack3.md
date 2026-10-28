@@ -37,10 +37,10 @@
 
 - **问题**：四点：
   - **(a) 机制论证错误**：设计称「`report_node_advance` 会推进 node 指针，`node_kind_of` 须读推进前值判『当前是遭遇』」。读码：`report_node_advance` → `advance_node_effective` 只写 `gs.node_ord`（序号，`cw_game_state.py:3063-3073`）；`node_kind_of` 读的是 `gs.node`（NodeKey 镜像，:3474-3477），镜像由备战帧 `observe_screen_context`/类型直定写，**不随推进上报变化**。即回调放在推进前还是后对 `node_kind_of` 读值无差别——设计的时序论证建立在不存在的作用机制上（结论碰巧无害，但说明设计未核该符号语义，且正文本应论证的镜像滞后语义反被漏掉）。
-  - **(b) 镜像陈旧 + chosen 残留 → 非遭遇局误兑现**：`gs.node` 镜像滞后至下一备战帧观察；`_record_round_outcome` 自己就要走「boss 锚 > `node_kind_of` > 节点表 > 缺省」四腿兜底（`cw_screen_battle_wait.py:444-449`），证明单一 `node_kind_of` 读值在结算时点并不可靠。若某普通战斗节点备战观察缺失（镜像残留 `'遭遇'`）且 `chosen_encounter` 残留上一遭遇值、该局 `progress_delta>0` → 回调在非遭遇结算上误写兑现记录。设计防线只覆盖「双 None = 删失」与「无 chosen → 不兑现」，chosen 的**残留**（非 None 的旧值）无任何防线（无兑现后清空、无节点序对账）。
+  - **(b) 镜像陈旧 + chosen 残留 → 非遭遇局误兑现**：`gs.node` 镜像滞后至下一备战帧观察；`_record_round_outcome` 自己就要走「boss 锚 > `node_kind_of` > 节点表 > 缺省」四条分支兜底（`cw_screen_battle_wait.py:444-449`），证明单一 `node_kind_of` 读值在结算时点并不可靠。若某普通战斗节点备战观察缺失（镜像残留 `'遭遇'`）且 `chosen_encounter` 残留上一遭遇值、该局 `progress_delta>0` → 回调在非遭遇结算上误写兑现记录。设计防线只覆盖「双 None = 删失」与「无 chosen → 不兑现」，chosen 的**残留**（非 None 的旧值）无任何防线（无兑现后清空、无节点序对账）。
   - **(c) 结算覆盖 best-effort 失败 → 消费陈旧值**：宿主 `_record_round_outcome` 的 `apply_settlement_cover` 调用整体包在「观测回路失败不阻塞对局」try/except 内（`cw_screen_battle_wait.py:533-587`），失败时 `gs.settlement` 残留**上一节点/上一场**真值；回调在 `CwOpSettleConfirm` 内消费 `settlement.progress_delta` 时无从区分「本局值」与「陈旧值」——陈旧 `progress_delta>0` + 镜像仍 `'遭遇'`（同一场驻留重试轮）→ 误兑现。设计未申报该窗。
   - **(d) 驻留循环多次触发**：`CwOpSettleConfirm` 是 `node_max_retry_times=400` 的驻留 op，死点击自愈链下同一结算屏回调每轮触发；幂等性（同值重写？首触发闩？）未申报。
-- **权威源证据**：`kernel/cw_game_state.py:3063-3114`（advance 只写 node_ord）、:3474-3477（node_kind_of 读镜像）、:3616-3619（镜像写端 = 观察侧）；`operations/cw_screen/cw_screen_battle_wait.py:444-449`（四腿兜底 = 单读不可靠的自证）、:533-587（best-effort try/except）、:743-779（②段读点先于确认 op 派发——**本局结算数据就绪时序本身成立**，此点设计核过、无异议）；`operations/cw_op/cw_op_settle_confirm.py:79-99`（驻留多轮点击即多轮回调）。
+- **权威源证据**：`kernel/cw_game_state.py:3063-3114`（advance 只写 node_ord）、:3474-3477（node_kind_of 读镜像）、:3616-3619（镜像写端 = 观察侧）；`operations/cw_screen/cw_screen_battle_wait.py:444-449`（四条分支兜底 = 单读不可靠的自证）、:533-587（best-effort try/except）、:743-779（②段读点先于确认 op 派发——**本局结算数据就绪时序本身成立**，此点设计核过、无异议）；`operations/cw_op/cw_op_settle_confirm.py:79-99`（驻留多轮点击即多轮回调）。
 - **建议修法**：①重写时序论证为真实机制（镜像滞后语义：回调读值 = 最近备战帧观察的节点类型；并说明「推进前调」仍保留的理由 = 语义清晰/防御下一备战帧早到，而非虚假的指针推进论）；②补**节点序对账防线**：回调记录兑现时的 `effective_node_ord(gs)` 入值或入行，消费端可核「兑现行节点序 == chosen 所在遭遇节点序」；最低成本修法 = **兑现后清 `chosen_encounter`（单次消费语义）**，一并消解 (b) 残留面；③申报 (c) 陈旧窗残余或以「settlement 行 note `battle_done:遭遇` 同帧校验」收口（note 已带节点类型，`cw_screen_battle_wait.py:585`）；④申报 (d) 幂等语义（推荐 = 同值幂等重写，零闩）。
 
 ### X5 [阻塞] | landing.md 正本更新清单（fields.md 条目） | 正本更新清单漏改 fields.md §3.4 头部 chosen 硬规则条款与 §4「事件选择」节——chosen_encounter 迁动作侧后两处正本即刻失真
@@ -55,11 +55,11 @@
 - **权威源证据**：`kernel/cw_action_report/zero_writes.py:1-12`（族策略）、:71-73（现函数）、:77-84（升格先例 = 迁具名模块）；landing.md 3.3 文件面。
 - **建议修法**：§2.4 第三块/landing 3.3 点名归宿（建议 = 迁 `cw_action_report/encounter.py`，照 pick_supply 先例），文件面补该文件。
 
-### X7 [建议] | design.md §2.4 第四块（判据） | 「progress_delta>0 主判 ∨ killed 辅判」的判据独立增量未申报：killed 在结算链多为 progress 符号的派生值，hp 对比兜底腿在遭遇局语义未证
+### X7 [建议] | design.md §2.4 第四块（判据） | 「progress_delta>0 主判 ∨ killed 辅判」的判据独立增量未申报：killed 在结算链多为 progress 符号的派生值，hp 对比兜底分支在遭遇局语义未证
 
 - **问题**：读码：`_record_round_outcome` 内 `killed is None ∧ progress_delta is not None → killed = progress_delta > 0`（`cw_screen_battle_wait.py:468-471`）——主判成立的场合辅判几乎恒同值，辅判的真实独立增量只剩「killed 由文本/hp 对比读到显式值」的场合；而 hp 对比兜底（:484-493，`killed = hp_after >= prev_hp`）在遭遇局（伤害进度达标制、不清场、我方可能零掉血）的胜负能否由 hp 单调判定**无任何在册证据**（combat.md §3 只定谳进度达标制）。辅判可能引入主判不会误的误（hp 兜底误 True 而 progress_delta ≤ 0 时判据为 ∨ 仍兑现）。机制依据本身核过成立（combat.md:38-48「打够最低进度=拿奖励，不需要清空敌人」→ progress_delta>0 作达标信号方向正确，败局负值/删失 None 的口径与 §3 一致）。
 - **权威源证据**：`cw_screen_battle_wait.py:468-471`（派生）、:484-493（hp 兜底）；`docs/game/currency_war/research/combat.md:38-48`。
-- **建议修法**：§2.4 申报判据重叠度与 hp 兜底腿的遭遇局未证状态；或收窄为单判 `progress_delta > 0`（killed 仅作删失期备胎并要求与 progress 同号才采纳）。
+- **建议修法**：§2.4 申报判据重叠度与 hp 兜底分支的遭遇局未证状态；或收窄为单判 `progress_delta > 0`（killed 仅作删失期备胎并要求与 progress 同号才采纳）。
 
 ### X8 [建议] | design.md §2.4 第三块 | chosen 发射即写后的暂态假值窗口未申报：确认未生效（点击链失败）时容器已持未落地的 chosen，且奖励回调在该窗内无防线消费
 
@@ -93,15 +93,15 @@
 
 **需修订（阻塞 2 + 建议 4）**。
 
-四块机制骨架经复攻全部成立（含前轮处置：空候选分支新行为、模块归宿、单判 progress_delta、清 chosen 幂等、时序论证重写——逐项对码核过，见 ④）。两处阻塞：①**奖励兑现判据第二腿按规格不可实现**——「容器结算行 note == 'battle_done:遭遇'」的 note 不住在容器域（Field 只有 value/source/evidence，Settlement 结构无 note；note 仅随 `_swap` 落 journal 行），「回调 = 纯容器读」与该判据腿互斥，实现者必须自行换载体；②**「9 条全采纳」申报不实**——X9 的文档判据未落任何完成判据（design §2.2 表还声称「文档判据 = landing 3.3」，landing 该节并无此判据），X5 的 fields.md 两处正本失真点未进清单，而 design 元信息与账本 T-7 note 均宣称全采纳。
+四块机制骨架经复攻全部成立（含前轮处置：空候选分支新行为、模块归宿、单判 progress_delta、清 chosen 幂等、时序论证重写——逐项对码核过，见 ④）。两处阻塞：①**奖励兑现判据第二条分支按规格不可实现**——「容器结算行 note == 'battle_done:遭遇'」的 note 不住在容器域（Field 只有 value/source/evidence，Settlement 结构无 note；note 仅随 `_swap` 落 journal 行），「回调 = 纯容器读」与该判据分支互斥，实现者必须自行换载体；②**「9 条全采纳」申报不实**——X9 的文档判据未落任何完成判据（design §2.2 表还声称「文档判据 = landing 3.3」，landing 该节并无此判据），X5 的 fields.md 两处正本失真点未进清单，而 design 元信息与账本 T-7 note 均宣称全采纳。
 
 ## ② 逐条发现（复攻）
 
-### R1 [阻塞] | design §2.4 第四块判据 / landing 3.3 第四块 | 双证第二腿「容器结算行 note」不在容器域：note 仅落 journal 行，「纯容器读」约束下该判据不可按规格实现
+### R1 [阻塞] | design §2.4 第四块判据 / landing 3.3 第四块 | 双证第二条分支「容器结算行 note」不在容器域：note 仅落 journal 行，「纯容器读」约束下该判据不可按规格实现
 
 - **问题**：判据要求 `node_kind_of(gs)=='遭遇'` ∧ 容器结算行 `note=='battle_done:遭遇'`，且回调声明「纯容器读零读屏」。读码：`Field` 仅 `{value, source, evidence}`（`cw_game_state.py:386-412`）；`Settlement` 数据类无 note/node_type 字段（:607-621，只有 hp_after/streak_after/killed/progress_delta/gold/level/xp）；`apply_settlement_cover` 的 note 形参只透传给 `gs.observe(..., note=note)` → `_swap` → **journal 行**（:2320-2347，写 journal 后不存 Field）。即容器里不存在可读的「结算行 note」——按规格落码要么读 journal（违反纯容器读自约束），要么实现者自行改载体（违反 §0「实现者无需再设计」）。
 - **权威源证据**：`cw_game_state.py:386-412 / :607-621 / :1394-1398 / :2320-2347`；design §2.4 判据段与「回调 = 纯容器读零读屏」句（同块互斥）；landing 3.3 第四块同款表述。
-- **建议修法**（三选一，设计点名）：①判据腿换 **`gs.settlement_ring` 尾行 `node_type=='遭遇'`**（`_RingRow` 有 node_type/killed；环写端 `record_settlement_row` 在 `_record_round_outcome` 环写位 `cw_screen_battle_wait.py:512-514`，先于确认 op 派发 :773-774，且该写点在结算覆盖的 best-effort try 块之外——顺带把 §2.4 申报的「结算覆盖失败陈旧窗」残余收掉大半，残余申报可缩窄）；②`Settlement` 数据类增 `node_type` 字段（改动面大，域版本联动，不推荐）；③note 回读 journal（违反自约束，不推荐）。推荐①，同步改写 design §2.4 判据/landing 3.3/验收锚 3 措辞。
+- **建议修法**（三选一，设计点名）：①判据分支换 **`gs.settlement_ring` 尾行 `node_type=='遭遇'`**（`_RingRow` 有 node_type/killed；环写端 `record_settlement_row` 在 `_record_round_outcome` 环写位 `cw_screen_battle_wait.py:512-514`，先于确认 op 派发 :773-774，且该写点在结算覆盖的 best-effort try 块之外——顺带把 §2.4 申报的「结算覆盖失败陈旧窗」残余收掉大半，残余申报可缩窄）；②`Settlement` 数据类增 `node_type` 字段（改动面大，域版本联动，不推荐）；③note 回读 journal（违反自约束，不推荐）。推荐①，同步改写 design §2.4 判据/landing 3.3/验收锚 3 措辞。
 - **严重级**：阻塞。
 
 ### R2 [阻塞] | design §0 元信息 / §2.2 表 #23 行 / landing 3.3 完成判据与正本更新清单 | 「9 条全采纳」申报不实：X9 判据未落任何验收面、X5 的 fields.md 两处失真点未进清单
@@ -118,9 +118,9 @@
 - **建议修法**：§2.4 第三块补一句：清除写 = `write_logic(None)` 同族 sig（actor 与回调写端一致），审计行申报投影语义（None = 已消费/未写）。
 - **严重级**：建议。
 
-### R4 [建议] | design §2.4 第四块 | 双证判据的假阴性面未申报：note/ring 的 node_type 来自 battle_wait 四腿兜底，镜像缺失的遭遇局会 fail-closed 漏兑现
+### R4 [建议] | design §2.4 第四块 | 双证判据的假阴性面未申报：note/ring 的 node_type 来自 battle_wait 四条分支兜底，镜像缺失的遭遇局会 fail-closed 漏兑现
 
-- **问题**：结算行 node_type 的产源 = `boss 锚 > node_kind_of > 节点表 > 缺省'普通战斗'` 四腿（`cw_screen_battle_wait.py:444-449`）；遭遇局若备战观察缺失（镜像 None）且节点表 miss → note/ring 行落 `'普通战斗'` → 不兑现。方向 fail-closed（漏记非误记）、低频，但「双证」两腿同源（node_kind_of 与 note 主腿同产源），双证的独立增量主要只剩 boss 锚误盖与节点表纠偏两窄窗——设计的双证收益申报偏满。
+- **问题**：结算行 node_type 的产源 = `boss 锚 > node_kind_of > 节点表 > 缺省'普通战斗'` 四条分支（`cw_screen_battle_wait.py:444-449`）；遭遇局若备战观察缺失（镜像 None）且节点表 miss → note/ring 行落 `'普通战斗'` → 不兑现。方向 fail-closed（漏记非误记）、低频，但「双证」两条分支同源（node_kind_of 与 note 主分支同产源），双证的独立增量主要只剩 boss 锚误盖与节点表纠偏两窄窗——设计的双证收益申报偏满。
 - **权威源证据**：`cw_screen_battle_wait.py:444-449`；design §2.4 判据段。
 - **建议修法**：§2.4 补一句假阴性申报（镜像缺失遭遇局漏兑现，方向安全，归观察可靠性治理）；若采 R1①（ring 尾行），申报同理。
 - **严重级**：建议。
@@ -141,11 +141,11 @@
 
 ## ③ 试读结论（复攻）
 
-凭 T-7 卡（criteria 指向 landing 3.3 完成判据 + 三符号 grep + 通用工程门）+ design §2.4 + landing 3.3：第一/二/三块（稳定期删除+空候选分支、派发即终结、chosen 迁动作侧即时写）**可开工**——挂点、值组装（`gs.encounter` payload 槽，唯一覆盖写端 = 入口观察 report，与确认点击同步相邻无覆写窗）、越界 fail-closed（`_record_chosen` 守卫口径平移）、模块归宿（照 pick_supply 迁具名模块先例，`zero_writes.py:77-84` 注记在册）、上游调用位（`CwActionPickEncounterOp.run` :181-186 自上报位已在）齐备。第四块（奖励兑现回调）**不可直接开工**：R1 判据第二腿载体必须先由设计定夺；R3 清除写通道顺带补。T-7 criteria 本身无 R1/R2 缺陷（criteria 指回 landing 判据，修 landing 即自动跟上）。
+凭 T-7 卡（criteria 指向 landing 3.3 完成判据 + 三符号 grep + 通用工程门）+ design §2.4 + landing 3.3：第一/二/三块（稳定期删除+空候选分支、派发即终结、chosen 迁动作侧即时写）**可开工**——挂点、值组装（`gs.encounter` payload 槽，唯一覆盖写端 = 入口观察 report，与确认点击同步相邻无覆写窗）、越界 fail-closed（`_record_chosen` 守卫口径平移）、模块归宿（照 pick_supply 迁具名模块先例，`zero_writes.py:77-84` 注记在册）、上游调用位（`CwActionPickEncounterOp.run` :181-186 自上报位已在）齐备。第四块（奖励兑现回调）**不可直接开工**：R1 判据第二条分支载体必须先由设计定夺；R3 清除写通道顺带补。T-7 criteria 本身无 R1/R2 缺陷（criteria 指回 landing 判据，修 landing 即自动跟上）。
 
 ## ④ 零发现面声明（复攻核过、无新发现）
 
-- **机制依据**：combat.md §3「遭遇奖励 = 伤害进度达标制、结算屏三项采集点」引用属实（:38-48）；`progress_delta>0` 单判方向与 §3 一致（败局负值/None 删失口径对齐）；killed 不入判据的处置（X7）与 `cw_screen_battle_wait.py:468-493` 派生/hp 兜底腿实况相符。
+- **机制依据**：combat.md §3「遭遇奖励 = 伤害进度达标制、结算屏三项采集点」引用属实（:38-48）；`progress_delta>0` 单判方向与 §3 一致（败局负值/None 删失口径对齐）；killed 不入判据的处置（X7）与 `cw_screen_battle_wait.py:468-493` 派生/hp 兜底分支实况相符。
 - **#23 口径**：`screen_flow_timing.md` #23 原文存在且含「入口 2s 稳定 + 刷新 2s」双口径；用户裁定 supersession 程序成立（先例 = combat.md §3 遭遇高危条）——缺的只是验收挂钩（R2）。
 - **回调挂点与时序**：`CwOpSettleConfirm.confirm` 点击成功分支 → `_report_node_advance` 前插回调可行（长按兜底路径同段覆盖）；宿主 ②段 `_record_round_outcome`（:756，含环写 :512-514 与结算覆盖 :570-585）先于确认 op 派发（:773-774），结算数据就绪成立；`report_node_advance`→`advance_node_effective` 只写 `node_ord`/`node_hist_ord`（:3042-3073），不触 `gs.node` 镜像——design 时序论证（X4(a) 处置后形态）与代码一致；驻留多轮幂等经「兑现后清 chosen」收口成立（第二轮 chosen=None 天然 no-op）。
 - **空候选分支**：与现码「刷新闸数据不一致零点击终结」分支同构（`cw_screen_encounter.py:213-220` 先例在码）；现行盲选路径（:193-196, :245-260）确认存在，X2 处置如实。

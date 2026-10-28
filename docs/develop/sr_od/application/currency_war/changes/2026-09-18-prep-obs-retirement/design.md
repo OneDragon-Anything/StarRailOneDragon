@@ -17,7 +17,7 @@
 1. **实机事故**（2026-09-18 定谳，依据 `.debug/temp/incidents/20260918-reconcile/rootcause-reopen.md` 案一）：备战阶段板满（3/3）时决策仍产出第 4 个拖拽，游戏侧静默拒收（零像素变化、无弹窗），账实失配触发对账安灯停局。同机制跨局三次拒收全部发生在板=cap 时刻（match_g_20260918_023823/054257/055133 三局 journal 实证；023823 局 v117 容器 front_row 已含新上场角色而 14.387 决策帧黑板视图缺它，v122 投影把被拒收角色记成超员、v147 战后实读纠漂揭穿）。
 2. **架构契约偏离**（对照用户口述规范逐条）：
    - 违反「策略器唯读 game state」：策略器读挂在 gs 上的黑板帧视觉字段——部署名单（`obs.bench_chars`/`obs.deployed_chars`，entry.py:607-608 组装）、装备（`obs.owned_equips`/`obs.occupied_equips`，cw_equip_wear_plan.py:164-182 与 entry.py:793）、晶矿（`obs.spheres`，entry.py:507-509）、宝箱/典籍（`obs.boxes`/`obs.tomes`，entry.py:458-461）。
-   - 违反「写端唯二」：动作后存在第三写端——`_project_prep_obs` 的黑板名单/晶矿推进腿（cw_screen_prep.py:974-1092），既非画面op 观察上报、也非动作op 的 kernel 逻辑态写口。其中名单推进含静默失效分支：新上场者须在黑板名单按槽号精确命中才推进，命中失败静默不推进（cw_screen_prep.py:1030-1052 `moved is None` 分支）；容器腿（kernel 写口 `apply_prep_action_logic`，:1021）无此依赖。事故帧即两腿分叉：容器对（v117）、黑板错（14.387 帧 M7 视图 2 人）。
+   - 违反「写端唯二」：动作后存在第三写端——`_project_prep_obs` 的黑板名单/晶矿推进分支（cw_screen_prep.py:974-1092），既非画面op 观察上报、也非动作op 的 kernel 逻辑态写口。其中名单推进含静默失效分支：新上场者须在黑板名单按槽号精确命中才推进，命中失败静默不推进（cw_screen_prep.py:1030-1052 `moved is None` 分支）；容器分支（kernel 写口 `apply_prep_action_logic`，:1021）无此依赖。事故帧即两条分支分叉：容器对（v117）、黑板错（14.387 帧 M7 视图 2 人）。
 
 ### 根因归层
 

@@ -6,7 +6,7 @@
 
 非外循环分支直管画面 op;两条调用路共用同一份编排(编排单一源 = `CwEntryPlaneIntel`):
 
-- **备战委派** = `cw_screen_prep.py::CwScreenPrep._delegate_plane_intel_if_needed`(挂点 = 观察 node;触发谓词两支取或〔T-45 扩面〕= 容器无位面真值 `not gs.plane_bosses.value` ∨ 词缀随机态 `enemy_affixes ∈ gs.logic_rand_fields()`〔敌后破坏删除腿猜测名单/开局种子未验证底座——策略器消费前必须先补观察转正〕;「节点条可读」守卫——半开帧:第一支〔boss 面〕维持现役 return None、等下轮免费重判、不烧失败链,双支同真按第一支现役处理,仅词缀随机态支命中时**封死**为 round_wait 等待态不放行决策〔决策延后一拍零随机态消费,T-45 接线 1 默认案;非重试等待态不烧 node 重试预算〕;委派结果透传,失败走外循环既有失败链);
+- **备战委派** = `cw_screen_prep.py::CwScreenPrep._delegate_plane_intel_if_needed`(挂点 = 观察 node;触发谓词两支取或〔T-45 扩面〕= 容器无位面真值 `not gs.plane_bosses.value` ∨ 词缀随机态 `enemy_affixes ∈ gs.logic_rand_fields()`〔敌后破坏删除分支猜测名单/开局种子未验证底座——策略器消费前必须先补观察转正〕;「节点条可读」守卫——半开帧:第一支〔boss 面〕维持现役 return None、等下轮免费重判、不烧失败链,双支同真按第一支现役处理,仅词缀随机态支命中时**封死**为 round_wait 等待态不放行决策〔决策延后一拍零随机态消费,T-45 接线 1 默认案;非重试等待态不烧 node 重试预算〕;委派结果透传,失败走外循环既有失败链);
 - **手动调起** = MCP `run_operation` 独立入口(`CwEntryPlaneIntel`;位面真值已有 ∧ 词缀非随机态时门节点零点击直通,不白开白关详情屏)。
 
 ## 2. 画面形态声明
@@ -71,7 +71,7 @@
 
 ## 6. 状态上报面
 
-- **容器写门(唯一一份)** = `kernel/cw_screen_report/plane_intel.py::report_screen_plane_intel_obs`(挂采集 op「上报」node,gs 通道):`plane_bosses` 3 槽保位全量写 + **已有真值不覆写**(简报源先落 = 真值已在,实采内容再新也只是重复或残留,不覆写);`enemy_affixes` 写门三分支〔T-45 扩面,分支序即短路序〕:①读数 None = 本轮无此面/失读,非语义读数不进写门(维持现态);②容器随机态(logic_rand,删除腿猜测名单/开局种子)→ **observe 通道覆盖转正**,读数非空或空列表均可——被覆盖对象是猜测不是真值,「空表覆写抹掉已有真值」的幂等门理由在本分支不适用,删尽态(单词缀局删后 = [])读数 [] 是 obs 契约有效语义读数,经 observe 写空表转正、补观察谓词解除闭环收敛(差异落 `logic_rand_outcome` 台账、等值零台账);③容器非随机态:空容器 + 非空读数 → 现役 logic 直写(幂等门原语义),非空容器 → 不写(防真值互踩)。写门签名按分支定死:logic 直写分支 = `ChannelSig(family='logic_action', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='compute')`,随机态覆盖分支 = obs 族新签名 `ChannelSig(family='obs', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='read')`(两签名并存各分支各语义),evidence = `plane_intel_row` / `plane_intel_affixes`(screen = 实际采集画面)。
+- **容器写门(唯一一份)** = `kernel/cw_screen_report/plane_intel.py::report_screen_plane_intel_obs`(挂采集 op「上报」node,gs 通道):`plane_bosses` 3 槽保位全量写 + **已有真值不覆写**(简报源先落 = 真值已在,实采内容再新也只是重复或残留,不覆写);`enemy_affixes` 写门三分支〔T-45 扩面,分支序即短路序〕:①读数 None = 本轮无此面/失读,非语义读数不进写门(维持现态);②容器随机态(logic_rand,删除分支猜测名单/开局种子)→ **observe 通道覆盖转正**,读数非空或空列表均可——被覆盖对象是猜测不是真值,「空表覆写抹掉已有真值」的幂等门理由在本分支不适用,删尽态(单词缀局删后 = [])读数 [] 是 obs 契约有效语义读数,经 observe 写空表转正、补观察谓词解除闭环收敛(差异落 `logic_rand_outcome` 台账、等值零台账);③容器非随机态:空容器 + 非空读数 → 现役 logic 直写(幂等门原语义),非空容器 → 不写(防真值互踩)。写门签名按分支定死:logic 直写分支 = `ChannelSig(family='logic_action', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='compute')`,随机态覆盖分支 = obs 族新签名 `ChannelSig(family='obs', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='read')`(两签名并存各分支各语义),evidence = `plane_intel_row` / `plane_intel_affixes`(screen = 实际采集画面)。
 - **附属机制**(与写门同居「上报」node 簇,session 通道;异常口径 best-effort,不阻塞上报主链):
   - 节点类型台账:`kernel/cw_exec_state.py::ledger_update_plane` plane_detail 源(详情条整面覆盖,None 位保旧)+ boss 位按「首领 = 位面最后节点」位置先验回填(`fill_boss_by_position`,回填依据 = 本 op 标签验证语义)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,容器非 Field 簿记)。
   - 敌人难度参考值:`get_node_ledger().difficulty_ref` 逐位面落账。

@@ -11,7 +11,7 @@
 **完成判据**：
 - 行为对照 design §2.2（三级序与两账输入）、§2.3（凑星判据数据源 = `same_star_count`）、§2.4（三级全空 + 闸内嵌 fail-closed）
 - 通用工程门（本文首节定义）
-**验收凭据形式**：单帧测试 `sr-od-test/test/sr_od/application/currency_war/test_cw_supply_decision.py`——测试语义不校验牌面：①带钻必选（多钻按角色/装备细分）；②锁线帧终局成员卡压高价值装备卡；③未锁线/降格帧/get_comp 解析失败帧角色级空转、装备级无 key 参照；④已持够数成品不再高分、组件/近兑现升档（持有账按 design §2.2 第 3 级两账口径构造）；⑤三级全空才刷 + left 缺/尽不刷不阻塞落选卡（闸内嵌语义）；⑥席满无特殊分支（溢出席语义 = 正常选卡）；⑦凑星 tiebreak：同名 1★ 恰 2 张时该角色候选先于不凑星的终局成员候选，**含 2 张同名 1★ 分跨备战席/上阵行域的构造**（钉死 deployed 展平，防只数备战席的漏域实现）；⑧P1 配方锁帧：无钻帧建议刷（三级全空恒真）+ left 缺/尽构造下直接按「钻或通用值定序」落选卡（design §2.6 申报 ⑤ 刷新腿与闸语义）；⑨空候选帧返 idx=0 no-options（design §2.2 空帧定义）。
+**验收凭据形式**：单帧测试 `sr-od-test/test/sr_od/application/currency_war/test_cw_supply_decision.py`——测试语义不校验牌面：①带钻必选（多钻按角色/装备细分）；②锁线帧终局成员卡压高价值装备卡；③未锁线/降格帧/get_comp 解析失败帧角色级空转、装备级无 key 参照；④已持够数成品不再高分、组件/近兑现升档（持有账按 design §2.2 第 3 级两账口径构造）；⑤三级全空才刷 + left 缺/尽不刷不阻塞落选卡（闸内嵌语义）；⑥席满无特殊分支（溢出席语义 = 正常选卡）；⑦凑星 tiebreak：同名 1★ 恰 2 张时该角色候选先于不凑星的终局成员候选，**含 2 张同名 1★ 分跨备战席/上阵行域的构造**（钉死 deployed 展平，防只数备战席的漏域实现）；⑧P1 配方锁帧：无钻帧建议刷（三级全空恒真）+ left 缺/尽构造下直接按「钻或通用值定序」落选卡（design §2.6 申报 ⑤ 刷新分支与闸语义）；⑨空候选帧返 idx=0 no-options（design §2.2 空帧定义）。
 
 ## 3.2 kernel 剪除与死代码删除
 **范围**：删 `cw_events.decide_supply` 函数体 + `SupplyPick` + `EVENT_PICK_TYPES` 元组该位与 `EventPick` 联合别名该位（`SupplyOption`/`_equip_value` 按 design §2.6 保留）；删 `cw_survey19_hooks.supply_reroll_decision`；design §2.6 注释指针收口清单逐点处理；step3 幸存闸测试 docstring 过期注记（`test_cw_obs_arch_event_screens_step3.py:130-136`）。与 3.1 同一 commit 原子切换（新旧不并存）：**commit 面 = 3.1 ∪ 3.2 文件并集**（3.1 交付随本阶段一并入库，工程门提交/复核两项在此兑现）。测试面按 design §2.6 如实申报：在册无 kernel 侧 supply 决策专项测试；strategy 级 stub 两处（test_cw_obs_arch_event_screens_step3 / test_cw_supply_pick_immediate_report）不随删；`test_cw_unified_action_4.py` 类型 import 与实例构造点两处随删。

@@ -9,7 +9,7 @@
 
 **[BLK-1] `leave_screen` 域集遍历与 prep/shop 覆盖嵌套结构冲突,等价性断言不成立,改后 prep 环会断**
 - 位置:design.md §2.2 配套契约「离屏置 None 收口单点化」(design.md:87)。
-- 内容:设计主张「既有逐槽调用点改域集遍历后行为等价(多置 None 的槽本就属离屏语义)」。直调复核:**不等价**。既有 live 逐槽调用点只有两处,全部发生在**备战屏仍在屏**的语境:`kernel/cw_game_state.py:2029-2034`(CloseShop 逻辑腿,`gs.leave_screen(gs.shop, …)`——关店后流程仍在备战屏,紧接的 finalize/节点探针/备战单动作循环会再次调 `decide_prep_screen`)与 `obs/cw_observation.py:2617-2619`(prep 相位观察中商店锚 miss 分支)。域集遍历 = 这两处会一并清掉 `gs.prep_obs`;而槽位表 #1 明确 prep_obs 属画面附加域全集(在域集内),且 §2.1-2 规定 payload None = 观察层失约抛错(`bridge.py:179-184` 现行同型)。商店对备战是**覆盖态**不是兄弟屏(fields.md §3.3 开篇),「当前画面 payload」模型在此不自洽——关店不是「离开备战画面」。改后首次关店即触发 decide_prep_screen 抛错,行为零变化被直接证伪。
+- 内容:设计主张「既有逐槽调用点改域集遍历后行为等价(多置 None 的槽本就属离屏语义)」。直调复核:**不等价**。既有 live 逐槽调用点只有两处,全部发生在**备战屏仍在屏**的语境:`kernel/cw_game_state.py:2029-2034`(CloseShop 逻辑分支,`gs.leave_screen(gs.shop, …)`——关店后流程仍在备战屏,紧接的 finalize/节点探针/备战单动作循环会再次调 `decide_prep_screen`)与 `obs/cw_observation.py:2617-2619`(prep 相位观察中商店锚 miss 分支)。域集遍历 = 这两处会一并清掉 `gs.prep_obs`;而槽位表 #1 明确 prep_obs 属画面附加域全集(在域集内),且 §2.1-2 规定 payload None = 观察层失约抛错(`bridge.py:179-184` 现行同型)。商店对备战是**覆盖态**不是兄弟屏(fields.md §3.3 开篇),「当前画面 payload」模型在此不自洽——关店不是「离开备战画面」。改后首次关店即触发 decide_prep_screen 抛错,行为零变化被直接证伪。
 - 修正方向:放弃单一全域集合。把画面附加域分两组(覆盖层 payload = shop;屏 payload = prep_obs 与各 pick 屏域),`leave_screen` 只清覆盖层 + 与当前屏绑定的域;或保留逐槽语义、由调用点显式声明辖域。等价性论证须逐调用点重写。
 
 **[BLK-2] `refresh_used` 改容器读在 encounter 入口产生可读决策输出分歧,行为零变化申报被证伪**

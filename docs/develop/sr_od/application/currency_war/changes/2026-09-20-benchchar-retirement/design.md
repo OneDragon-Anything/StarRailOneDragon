@@ -66,7 +66,7 @@
 
 **容器原生重写保留（签名换形状，语义不变）**：
 
-`bench_place`（买卡入席游戏规则：首空槽放置）、`bench_occupied_slot_nos`（容器形输入）、`bench_slots_healthy`（形状无关，原样保留）、`deployed_slot_no`/`deployed_idx_of`/`deployed_row_slot`（坐标换算单一源）、`board_by_row`（容器行输入重写）、`board_unique_key`（容器形重写）、`mutate_bench_deployed`（容器形状重写；实机消费 = operations/cw_op/cw_buy_card_action.py tracked 同步 + buy_card.py 升星腿，随 P1 同批改，禁换形续命）、`mutate_bench_deployed_local`（容器形状重写，随 `mutate_bench_deployed` 同批）。
+`bench_place`（买卡入席游戏规则：首空槽放置）、`bench_occupied_slot_nos`（容器形输入）、`bench_slots_healthy`（形状无关，原样保留）、`deployed_slot_no`/`deployed_idx_of`/`deployed_row_slot`（坐标换算单一源）、`board_by_row`（容器行输入重写）、`board_unique_key`（容器形重写）、`mutate_bench_deployed`（容器形状重写；实机消费 = operations/cw_op/cw_buy_card_action.py tracked 同步 + buy_card.py 升星分支，随 P1 同批改，禁换形续命）、`mutate_bench_deployed_local`（容器形状重写，随 `mutate_bench_deployed` 同批）。
 
 **字段映射约定（全部消费面统一遵循）**：BenchChar.slot → 容器表下标/行内槽号（§2.1 换算单一源）；BenchChar.faction/position_pref → 注册表派生（§2.1 三类口径）；`is_item_slot=True` → `kind ∈ ('tome','bookcard','supply_box')`；「占用」判定 `is not None` → `kind == 'unit'`（BenchView 下 empty 槽 ≠ 占用）。
 

@@ -59,7 +59,7 @@ spy_shop_refresh
 | 16 | pick_star_tome | `cw_action_report/zero_writes.py` | `''` | `'货币战争-备战'` | 已核定（attack.md §二：bookcard.md §5 → 底层屏；星徽秘典弹窗叠备战） |
 | 17 | pick_expert_invite | `cw_action_report/zero_writes.py` | `''` | `'货币战争-备战'` | 已核定（attack.md §二：expert_invite.md §3 明示「弹窗关回备战」） |
 | 18 | close_shop | `cw_action_report/close_shop.py` | `''` | `'货币战争-备战'` | 已核（shop.md §5 关店回备战；离屏写端 = 本上报） |
-| 19 | level_up（条件声明） | `kernel/cw_action_report/level_up.py::report_action_level_up_param`（2026-10-17 迭代 T-3 增） | `spy_shop_refresh` | `'货币战争-备战'` | 已核（升级真跨级 ∧ 持商业间谍〔EffectSpec 300201 判定单一源 `cw_investments.spy_on_level_up_active`〕才附声明,`applied=True` 无间谍/未跨级 = None——条件构造点,准入判据「backend 专属活」例外申报:世界腿 = sim 抽 5 偷 3 呈现牌面,实机端游戏自算故进 trigger;单一源 = backend `ADVANCE_TRIGGER_KINDS`,键集已扩) |
+| 19 | level_up（条件声明） | `kernel/cw_action_report/level_up.py::report_action_level_up_param`（2026-10-17 迭代 T-3 增） | `spy_shop_refresh` | `'货币战争-备战'` | 已核（升级真跨级 ∧ 持商业间谍〔EffectSpec 300201 判定单一源 `cw_investments.spy_on_level_up_active`〕才附声明,`applied=True` 无间谍/未跨级 = None——条件构造点,准入判据「backend 专属活」例外申报:世界分支 = sim 抽 5 偷 3 呈现牌面,实机端游戏自算故进 trigger;单一源 = backend `ADVANCE_TRIGGER_KINDS`,键集已扩) |
 
 **`node_advance` 的 next_screen 推导规则**（声明构造点 = `report_node_advance` 推进落账**后**；`node_ord` 已是新节点序——序数字段随推进写，与观察镜像 `gs.node` 无关，见 §1 单值依据/R1 复审定案）：
 
@@ -95,7 +95,7 @@ kind:
 | `pick_megastar` | `pick_megastar → _on_overlay_picked('megastar')` | **overlay 队列出队** + 交回 |
 | `pick_planner` | `pick_planner → _on_overlay_picked('planner')` | 同上 |
 | `pick_supply` | `pick_supply → _on_supply_picked` | **宝钻写**（读容器 chosen_supply 写 diamond_count） |
-| `pick_invest_env` / `pick_invest_strategy` | `pick_invest_env/strategy → _on_invest_picked` | **排除集累计**（offer 采样去重，backend 私有簿记）+ 模态交回；**opening 判别推导 = `gs.node.value is None`**（现行 `_after_modal_pick` 第二腿即此判；env 恒开局、strategy 恒非开局，推导可靠，声明无需携带） |
+| `pick_invest_env` / `pick_invest_strategy` | `pick_invest_env/strategy → _on_invest_picked` | **排除集累计**（offer 采样去重，backend 私有簿记）+ 模态交回；**opening 判别推导 = `gs.node.value is None`**（现行 `_after_modal_pick` 第二条分支即此判；env 恒开局、strategy 恒非开局，推导可靠，声明无需携带） |
 | `''`（纯转移） | `open_bookcard → _present_modal(SCREEN_EXPERT)`；`pick_partner/fortune/wish_trial/star_tome/expert_invite/close_shop → _dismiss_modal` | 零专属过程——按 `next_screen` 推进画面（呈现 overlay / 幂等交回；`_dismiss_modal` 节点窗让路恢复位语义保留） |
 
 **奖励发放时序披露**（实机口径 vs sim 现役 coarse 口径；差异归 sim 校准批，不影响声明结构）：实机 = 战斗结算时发节点基础奖励与连胜奖励（结算页呈现）；sim 现役 = 结算时转移连胜**计数**，胜利金币奖励随**下一节点窗轮首收入**发放（`apply_round_start_income` 的 `win_reward_mult` 胜利奖励乘数，M04 流键坐标系平移自旧引擎）。
@@ -113,7 +113,7 @@ cw_sim_ports.declare_world(gs_outcome.world_decl)
 
 落点 = 18 转移动作对应的动作 op（`operations/cw_op/` 下：`cw_start_battle_action` / `cw_pick_encounter_action` / `cw_op_settle_confirm` / `cw_open_box_action` / `cw_open_bookcard_action` / `cw_close_shop_action` / `cw_pick_box_card_action` / `cw_pick_supply_action` / `cw_pick_invest_action`（投资两屏同指一 op，registry 两 param 行；env/strategy 声明随各 param 的上报出口各构造各喂）/ `cw_pick_megastar_action` / `cw_pick_planner_action` / `cw_pick_partner_action` / `cw_pick_fortune_action` / `cw_pick_wish_trial_action` / `cw_pick_star_tome_action` / `cw_pick_expert_invite_action`）。喂入点核对（A2）：**settle_confirm → `cw_op_settle_confirm`；supply_confirm → `cw_pick_supply_action`**（现役补给选卡 op 内选卡后即发确认上报，cw_pick_supply_action.py:84——结算 op 不发 supply_confirm）。
 
-**多支上报并喂契约（A2）**：一次补给动作 op 执行产生两支上报、两份声明（pick_supply 宝钻腿声明 + node_advance 推进声明），契约 = **每支上报出口各自紧跟一行喂入**（喂入行跟着上报走，不做合并）；round 结果 `data` 携带**最后一份**（node_advance，终结转移），先前声明仅经端口喂入、不再随 data 重复。
+**多支上报并喂契约（A2）**：一次补给动作 op 执行产生两支上报、两份声明（pick_supply 宝钻发放分支声明 + node_advance 推进声明），契约 = **每支上报出口各自紧跟一行喂入**（喂入行跟着上报走，不做合并）；round 结果 `data` 携带**最后一份**（node_advance，终结转移），先前声明仅经端口喂入、不再随 data 重复。
 
 非转移动作本迭代**不加喂入行**（其 `world_decl` 恒 `None`，无信息可喂）；overlay 批扩面时按同契约加。
 

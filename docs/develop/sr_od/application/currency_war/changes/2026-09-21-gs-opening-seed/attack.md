@@ -21,7 +21,7 @@
 - `cw_entry_start.py:435` 流程注实为 :436-437(「简报→投资环境→投资策略→备战」),±5 漂移内 ✓;`cw_screen_prep.py::_observe` heavy → `observe_full(tier='heavy')` → `reconcile_tracking` 链 ✓。
 - takeover-intel-pipeline design §2.1 触发谓词 `not gs.plane_bosses.value`(design :49;写门同谓词 plane_intel.py:60)✓ —— plane_bosses 不种的接管触发理由成立。
 - fields.md 引用条目:§2.2「非当前画面=None」(:67)、§3.2.9 gold「None=不可读」(:365)、§3.2.13 hp 写入闸(:396-401)、§3.2.16 consumables 死字段清偿指针、§3.6.1 event_overlay 双义禁令、§3.4.3 env_refresh_used「当前零写端在册」均在库 ✓;gain-chain.md §6【待梳理标记】(:138)✓;B/C 类字段注释语义档(lv999 :2088-2092「None=未触发任何变换」、top_bar_raw :2108-2112「原文缺读=不写(禁猜)」、consumables 死字段 :1972-1975)✓。
-- `test_cw_gain_chain.py`(HEAD)`test_unobserved_zero_write_with_defect` 在库、`_make_gs(None=保持未观察)` 边界腿、`DEFECT_*` 导入(:27-28)——landing 3.2 点名的改写对象存在 ✓;`test_cw_game_state*.py` 三个文件在库,landing 3.1 验收凭据路径有效 ✓。
+- `test_cw_gain_chain.py`(HEAD)`test_unobserved_zero_write_with_defect` 在库、`_make_gs(None=保持未观察)` 边界分支、`DEFECT_*` 导入(:27-28)——landing 3.2 点名的改写对象存在 ✓;`test_cw_game_state*.py` 三个文件在库,landing 3.1 验收凭据路径有效 ✓。
 - BenchView 9 空槽(capacity 9)构造先例在库(cw_game_state.py:3500-3504 `BenchView(slots=[BenchSlot(kind='empty')]*BENCH_CAPACITY_DEFAULT, ...)`,`BENCH_CAPACITY_DEFAULT=9` :138)✓。
 
 ---
@@ -42,7 +42,7 @@
 
 ### 发现 3 [阻断] | design §2.6-3/§2.6-6 | 「种子走 rand,假值防线不破」不成立:失读处置①(carry)的 None 守卫会把 logic_rand 种子洗成可信 `carried`,hp 可实证可达
 
-- **问题**:`carry()` 的守卫是 `if target.value is None: return`(cw_game_state.py:2544),不查来源——种子(logic_rand,未验证)非 None,任何失读帧的 carry 腿都会把种子值原样换帧成 `source='carried'`,而 carried 是**可信位**(hp_decision_trusted 认 carried,cw_hp_policy.py:64;ADR-0448/0495 的 fail-closed 血线谓词只拦 prior/logic)。可达路径:read_game_state 的 hp 失读支——`_hp_opt=None`(shop-open 帧 spec 无 'hp')→ reconcile_hp 非 A8/108 档返 `(None, False)` → `gs.carry(gs.hp)`(cw_observation.py:2633-2636)。接管局在首个 prep_clean 真读前停在 shop-open 相位时,种子 80 被洗成**可信 carried 80**,血成本闸(blood_xp_gate)按可信 80 放行——今日同帧 hp=None carry no-op 保守跳过。行为差异方向 = 把「诚实未知」翻转成「可信假值」,正击穿设计自己援引的 §8.8 假值防线。gold(:2602-2607)/level(:2608-2613)/deploy_cap(:2647-2657)的失读 carry 腿同型。设计全文未分析 carry 交互;§2.6-3 只说「容器保持种子/链写值」、§2.6-6 只说「种子走 rand 非 observe」——都没覆盖洗白路径。
+- **问题**:`carry()` 的守卫是 `if target.value is None: return`(cw_game_state.py:2544),不查来源——种子(logic_rand,未验证)非 None,任何失读帧的 carry 分支都会把种子值原样换帧成 `source='carried'`,而 carried 是**可信位**(hp_decision_trusted 认 carried,cw_hp_policy.py:64;ADR-0448/0495 的 fail-closed 血线谓词只拦 prior/logic)。可达路径:read_game_state 的 hp 失读支——`_hp_opt=None`(shop-open 帧 spec 无 'hp')→ reconcile_hp 非 A8/108 档返 `(None, False)` → `gs.carry(gs.hp)`(cw_observation.py:2633-2636)。接管局在首个 prep_clean 真读前停在 shop-open 相位时,种子 80 被洗成**可信 carried 80**,血成本闸(blood_xp_gate)按可信 80 放行——今日同帧 hp=None carry no-op 保守跳过。行为差异方向 = 把「诚实未知」翻转成「可信假值」,正击穿设计自己援引的 §8.8 假值防线。gold(:2602-2607)/level(:2608-2613)/deploy_cap(:2647-2657)的失读 carry 分支同型。设计全文未分析 carry 交互;§2.6-3 只说「容器保持种子/链写值」、§2.6-6 只说「种子走 rand 非 observe」——都没覆盖洗白路径。
 - **证据**:`cw_game_state.py:2539-2550`(carry 守卫只查 value is None)、`cw_observation.py:2284-2292`(spec 无 'hp' → `_hp_opt=None`)、`:2616-2636`(reconcile_hp → 非 A8/108 → carry)、`cw_hp_policy.py:48-64`(carried 可信)、`cw_economy.py:802`(blood_xp_gate 消费可信位)。
 - **处置方向**:三选一并写入设计——(a) carry 守卫收窄为「来源非 logic_rand 才沿用」(kernel 单点改动,与 §2.1「三者全部住 kernel」同域);(b) A 类中「不可信即保守」的域(hp,及 gold/level/deploy_cap 中有可信位消费的)不种或降级;(c) 显式接受洗白并申报(与 fail-closed 在册纪律正面冲突,不建议)。
 
@@ -106,7 +106,7 @@
 
 - **active_strategies 种子的消费等价**:全部消费点 `or []`/`or ()`/falsy 形态(cw_economy.py:303/:638-639、cw_comps.py:1611、cw_investments.py:979、cw_intention.py:422/1218、statefn/interest、predicates)——`[]` 与 None 行为逐点等价;`cw_observation.py:2499` 值也 `or []`。种子不引入消费差。
 - **relay 阻塞疑虑排除**:四处 `gs.relay`(cw_observation.py:2720-2724)的入值全部取自容器自身(active_strategies_val/active_env_val/plane_bosses_val/enemy_affixes_val = `gs.*.value or 空`,:2489-2500)——自环写法今日即在「空值拒写(:2684-2687)/已有值跳过(:2682)」双门下恒 no-op,种子不改其行为(active_env 消费点也全部 `or ''`/truthy 形,与种子 '' 等价)。
-- **`transform_equip_to_privilege` None 面**:种子后 `inv is None` 分支死了,`source_name not in []` 同返 None(cw_effect_inventory.py:1084-1086)——行为等价,§2.8「无涉」申报成立;骇客腿(pick_invest.py:139-147)由「equips 未观察跳写」变「落账」,方向与 §2.6-1 申报一致。
+- **`transform_equip_to_privilege` None 面**:种子后 `inv is None` 分支死了,`source_name not in []` 同返 None(cw_effect_inventory.py:1084-1086)——行为等价,§2.8「无涉」申报成立;骇客分支(pick_invest.py:139-147)由「equips 未观察跳写」变「落账」,方向与 §2.6-1 申报一致。
 - **B 类不种的安全件面**:假局守卫/effect 账本闸/node 首锚定门全部只依赖 node 族 None(node 不种)✓;plane_bosses 种 `[None]*3` 真值化拆接管实采的谓词论证成立(plane_intel.py:60)。
 - **失配路由机制**:种子+链写(logic_rand)被首观察覆盖只落 `logic_rand_outcome` 行、不进三分流(observe :2355-2363)——「锚定前零安灯」机制成立(判据措辞问题归发现 7)。
 - **`_absorb_selected_difficulty` 与 C 类一致性**:absorb 仅 `ctx.cw_selected_difficulty` 在场才写(cw_loop.py:913),接管局该值不出现——§2.5「不受影响」与 §2.5 把它列为锚定前写端两说自洽。
@@ -130,7 +130,7 @@
 |---|---|---|
 | 1 mode='seed' 非法 | 采纳 (a):mode='compute',journal 过滤键改 `actor='GsOpeningSeed'` | design §2.3/§2.6-4、landing 3.1 |
 | 2 hp 与在册先验冲突 | 部分采纳:**hp 留 A 类,值改 82**(用户裁定 2026-09-21,取 `OPENING_HP_BASE` 实证基线;实证域 A8/108、其余档候采集如实申报);三写端时序固定(种子→先验→真读);可信位零增益如实申报。不采纳移出——用户明示 hp=82 | design §2.2 hp 行/§2.6-6、landing 正本清单(§3.1.6) |
-| 3 carry 洗白 | 采纳 (a):carry 守卫收窄「来源 logic_rand 不沿用」入方案第四件;hp 主风险面随裁定值与收窄双重收敛;存量影响面申报(现役 rand 写域与 carry 腿不相交,零回归) | design §2.1/§2.5 末条/§2.6-3、landing 3.1 |
+| 3 carry 洗白 | 采纳 (a):carry 守卫收窄「来源 logic_rand 不沿用」入方案第四件;hp 主风险面随裁定值与收窄双重收敛;存量影响面申报(现役 rand 写域与 carry 分支不相交,零回归) | design §2.1/§2.5 末条/§2.6-3、landing 3.1 |
 | 4 四字段缺分诊 + tracked 误列 | 采纳:四字段入 B(逐条依据);tracked_account_observed 移 B 类并补「种即拆安全网」依据 | design §2.2 |
 | 5 写选择 4→5 + census 失实 | 采纳:§2.8 补 invest-landing-chain 冲突面申报;landing 3.2 改「全部写选择点(落地时 grep 计数)」;census 改穷举清单表(briefing/plane_intel 不收口理由逐条) | design §2.5/§2.8、landing 3.2 |
 | 6 sim 开局模型三值冲突 | 用户裁决(2026-09-21):gold=3(对齐 M01)、hp=82(对齐实证表)、**bench 空 = 建立时点真值**(用户游戏知识:开局无手牌,1-1 经「开局补给」赠送,细目候实机观察;sim 手牌写点 = 引擎起点 1-1,不同时点无冲突);§2.6-1 少报申报按此时点重写 | design §0 裁定③④/§2.2 bench·gold·hp 行/§2.6-1 |
@@ -156,7 +156,7 @@
 | 发现 | 处置核验 |
 |---|---|
 | 1 mode='seed' 非法 | ✓ 落对。`mode='compute'` 合法(`LOGIC_MODES=('compute',)`);journal 行实测携带 `'sig': sig.to_json()`(cw_game_state.py:2230),`actor='GsOpeningSeed'` 过滤键可落——design §2.3/§2.6-4/landing 3.1 三处口径一致 |
-| 2 hp 与先验冲突 | ✓ 落对。值 82 = `OPENING_HP_BASE`(cw_opening_hp.py:22)逐字对齐;实证域/其余档候采集/可信位零增益均如实申报(design §2.2 hp 行/§2.6-6)。三写端时序沿实码推演**可实现**:`write_prior` 为无条件换帧(:2553-2563,仅 evidence 前缀 + sig 校验,无值/来源守卫)→ 先验腿覆写种子静默无行(source 翻 prior);真读覆 prior 亦静默(observe 三分流只辖 logic/logic_rand)——全链零安灯 ✓ |
+| 2 hp 与先验冲突 | ✓ 落对。值 82 = `OPENING_HP_BASE`(cw_opening_hp.py:22)逐字对齐;实证域/其余档候采集/可信位零增益均如实申报(design §2.2 hp 行/§2.6-6)。三写端时序沿实码推演**可实现**:`write_prior` 为无条件换帧(:2553-2563,仅 evidence 前缀 + sig 校验,无值/来源守卫)→ 先验分支覆写种子静默无行(source 翻 prior);真读覆 prior 亦静默(observe 三分流只辖 logic/logic_rand)——全链零安灯 ✓ |
 | 3 carry 洗白 | ✓ 机制落对(§2.5 末条收窄语义正确:rand 来源非「上次好值」);**✗ 影响面申报错,见 r2 发现 2** |
 | 4 四字段 + tracked | ✓ 落对。四字段入 B(:108)依据成立;`tracked_account_observed` 移 B(:110)并给「种即拆安全网」依据;不适用清单已剔除(:122-125) |
 | 5 写选择 4→5 + census | ✓ 落对。§2.8 补 invest-landing-chain 冲突面;census 穷举表四组(briefing 三写点/plane_intel 两写门/_absorb)与实码逐一相符且不收口理由成立。小尾巴见 r2 发现 3 |
@@ -177,11 +177,11 @@
 - **证据**:`git show HEAD:.../cw_game_state.py`(:1939-1940 `_left` 两行 + 改名退役注释;:1937-1938 `_used` 两名仍在)、`git log`(a8254f4b9 < 0358aa60a)、design §2.2(:94/:120)/§2.8(:235-238)。
 - **处置方向**:A/C 两行按 HEAD 字段名重写——`strategy_refresh_left` 重裁归类(有观察写端 + 剩余语义,种子 `{}` 是否「开局真值」取决于消费口径「剩余 ≤0 = 尽」对空 dict 的读法,需就地给依据)或移 C;`env_refresh_left` 同步;§2.8 冲突面补 `cw_game_state.py`(并注明 0358aa60a 已落,本批 3.1 在其上续作)。
 
-#### r2 发现 2 [应修] | design §2.5 末条(carry 收窄) | 存量影响面申报不成立:carry 腿实为 8 条非 4 条,board 交点使「零存量回归」为假
+#### r2 发现 2 [应修] | design §2.5 末条(carry 收窄) | 存量影响面申报不成立:carry 分支实为 8 条非 4 条,board 交点使「零存量回归」为假
 
-- **发现**:收窄申报称「gold/level/hp/enemy_difficulty 四条 carry 腿的目标域现无 logic_rand 写端……零存量回归」。实码 carry 腿共 **8 条**(cw_observation.py:2606 gold/:2612 level/:2634 hp/:2642 enemy_difficulty/:2657 deploy_cap/:2659 streak/**:2665 board**/:2706 shop_refresh_cost);其中 **board 的目标域现役就有 logic_rand 写端**——行域 rand 写(`write_logic_rand if rand`,cw_game_state.py:2506 派生挂钩)及 gain 链/骇客标记(在飞批扩员后 bench/front_row/back_row/equips 均有 rand 直写点)触发 `_resync_board_delta` 以 rand 落 board。今日:rand 派生 board + board 失读帧(:2661-2665 `_board_honest` 假支)→ carry 洗成 carried;收窄后 → 保持 logic_rand。行为变化真实存在(源标签 + 后续 observe 的 outcome 行差异),「零存量回归」对 board 不成立。其余七腿目标域经矩阵核(现役 rand 写域 = bench/行域/equips/spheres/board 派生 + pick_supply/pick_planner/tool_use 翻来源,无一属其余七腿)确无交点 ✓——方向正确,申报矩阵需重列。
-- **证据**:carry 腿全量 8 处(上行号);board rand 派生(cw_game_state.py:2506-2508);rand 直写域清单(pick_planner.py:98/:189、pick_supply.py:80/:105、tool_use.py:233/:284、cw_gain_effects.py:137、collect_ore.py:108、cw_gain_chain.py:631)。
-- **处置方向**:§2.5 影响面句改为穷举矩阵表述——「carry 腿 8 条;rand 写域 ∩ carry 目标域 = {board}(行域派生),该域收窄后失读帧不再洗白 = 存量语义修正(申报,与 §2.6-3 合并);其余七腿零交点」。随附小尾巴:hp None 档(非实证档)经收窄后容器保持种子 rand 态(「诚实 None」在容器面不再可达),§2.2 hp 行括注「或诚实 None」宜补此容器面口径,免实现者误以为要写 None。
+- **发现**:收窄申报称「gold/level/hp/enemy_difficulty 四条 carry 分支的目标域现无 logic_rand 写端……零存量回归」。实码 carry 分支共 **8 条**(cw_observation.py:2606 gold/:2612 level/:2634 hp/:2642 enemy_difficulty/:2657 deploy_cap/:2659 streak/**:2665 board**/:2706 shop_refresh_cost);其中 **board 的目标域现役就有 logic_rand 写端**——行域 rand 写(`write_logic_rand if rand`,cw_game_state.py:2506 派生挂钩)及 gain 链/骇客标记(在飞批扩员后 bench/front_row/back_row/equips 均有 rand 直写点)触发 `_resync_board_delta` 以 rand 落 board。今日:rand 派生 board + board 失读帧(:2661-2665 `_board_honest` 假支)→ carry 洗成 carried;收窄后 → 保持 logic_rand。行为变化真实存在(源标签 + 后续 observe 的 outcome 行差异),「零存量回归」对 board 不成立。其余七条分支目标域经矩阵核(现役 rand 写域 = bench/行域/equips/spheres/board 派生 + pick_supply/pick_planner/tool_use 翻来源,无一属其余七条分支)确无交点 ✓——方向正确,申报矩阵需重列。
+- **证据**:carry 分支全量 8 处(上行号);board rand 派生(cw_game_state.py:2506-2508);rand 直写域清单(pick_planner.py:98/:189、pick_supply.py:80/:105、tool_use.py:233/:284、cw_gain_effects.py:137、collect_ore.py:108、cw_gain_chain.py:631)。
+- **处置方向**:§2.5 影响面句改为穷举矩阵表述——「carry 分支 8 条;rand 写域 ∩ carry 目标域 = {board}(行域派生),该域收窄后失读帧不再洗白 = 存量语义修正(申报,与 §2.6-3 合并);其余七条分支零交点」。随附小尾巴:hp None 档(非实证档)经收窄后容器保持种子 rand 态(「诚实 None」在容器面不再可达),§2.2 hp 行括注「或诚实 None」宜补此容器面口径,免实现者误以为要写 None。
 
 #### r2 发现 3 [建议] | design §2.5 census 表 | 「穷举清单」表头字面与在飞批新增的 always-rand 直写点不符
 
@@ -219,6 +219,6 @@
 | 发现 | 处置 | 落点 |
 |---|---|---|
 | r2-1 退役字段名 + 归类重裁 + 冲突面漏 cw_game_state.py | 采纳:`strategy_refresh_left` 入 A({} = 开局无持卡真值,观察写端读缺键跳写 = 键粒度增量协同);`env_refresh_left` 移 B(剩余语义化已接观察写端,开局基线无在册出处,种猜测值 = 决策面虚构,现场 OCR 自足);`encounter_refresh_used`/`supply_refresh_used` 两名仍在库,0 种子保留;§2.8 冲突面补 `cw_game_state.py` 并注明主落地 0358aa60a 已入库、本批 3.1 在其上续作 | design §2.2 A/C 表/§2.8、landing 3.1 依赖 |
-| r2-2 carry 影响面申报错 | 采纳:改 8 腿穷举矩阵(rand 写域 ∩ carry 目标域 = {board} 行域派生 → board 收窄 = 存量语义修正与 §2.6-3 合并;其余七腿零交点);hp 行括注补容器面口径(非实证档先验返 None → 先验腿跳过,容器保持种子随机态至真读) | design §2.5 末条/§2.2 hp 行 |
+| r2-2 carry 影响面申报错 | 采纳:改 8 分支穷举矩阵(rand 写域 ∩ carry 目标域 = {board} 行域派生 → board 收窄 = 存量语义修正与 §2.6-3 合并;其余七条分支零交点);hp 行括注补容器面口径(非实证档先验返 None → 先验分支跳过,容器保持种子随机态至真读) | design §2.5 末条/§2.2 hp 行 |
 | r2-3 census 表头字面漏 always-rand | 采纳:表头改「需按通道规则裁决的写端」+ 补 always-rand 直写点行(天然合规,列名备查) | design §2.5 |
 | r2-4 开局补给弱源 | 采纳:bench 行依据补三重在册强源(screen_flow_timing.md:70 / sim-redesign design.md:474 / wait_one_one.md);spheres 行补晶矿时点句 | design §2.2 |

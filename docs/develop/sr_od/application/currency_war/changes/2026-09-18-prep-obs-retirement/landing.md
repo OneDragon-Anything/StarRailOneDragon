@@ -27,7 +27,7 @@
 
 ## 3.3 占用改现算
 
-**范围**：晶矿谓词席自由槽切换复用既有读口 `bench_free_slots`（零新立口，entry.py:141-146）。**不含**：双源对拍与前后排占用集（两条腿均为识别面互证，无容器消费——实施期修正，见详设 §阶段 3.3-2）；黑板字段删除（批 5）；投影推进面（批 5 随投影退役）。
+**范围**：晶矿谓词席自由槽切换复用既有读口 `bench_free_slots`（零新立口，entry.py:141-146）。**不含**：双源对拍与前后排占用集（两条分支均为识别面互证，无容器消费——实施期修正，见详设 §阶段 3.3-2）；黑板字段删除（批 5）；投影推进面（批 5 随投影退役）。
 **设计依据**：`details/obs-retirement.md` §阶段 3.3。
 **文件面**：`.../mandate_v1/entry.py`、`sr-od-test/`。
 **依赖**：3.1
@@ -39,9 +39,9 @@
 
 ## 3.4 晶矿立域
 
-**范围**：容器新域 `spheres`（`{color,x,y,r}` 列表）、观察写端上报（防抖留观察链）、晶矿臂读端切换**三处全量**（entry.py:507-509 探针、:492-495 席自由分支发射位、:170-186 `_ore_progress_sig` 签名两分量）、`ClickSpheres` kernel 逻辑态分支（载荷坐标精确摘除）与黑板晶矿腿删除、死码块晶矿/名单读点同批换源（entry.py:524/534-539）。
+**范围**：容器新域 `spheres`（`{color,x,y,r}` 列表）、观察写端上报（防抖留观察链）、晶矿臂读端切换**三处全量**（entry.py:507-509 探针、:492-495 席自由分支发射位、:170-186 `_ore_progress_sig` 签名两分量）、`ClickSpheres` kernel 逻辑态分支（载荷坐标精确摘除）与黑板晶矿分支删除、死码块晶矿/名单读点同批换源（entry.py:524/534-539）。
 **设计依据**：`details/obs-retirement.md` §阶段 3.4；总纲 §2 契约 3/4。
-**文件面**：`kernel/cw_game_state.py`（新域+读口+`apply_prep_action_logic` ClickSpheres 分支）、`operations/cw_screen/cw_screen_prep.py`（写端+黑板晶矿腿删）、`.../mandate_v1/entry.py`、`sr-od-test/`。
+**文件面**：`kernel/cw_game_state.py`（新域+读口+`apply_prep_action_logic` ClickSpheres 分支）、`operations/cw_screen/cw_screen_prep.py`（写端+黑板晶矿分支删）、`.../mandate_v1/entry.py`、`sr-od-test/`。
 **依赖**：3.1（同文件 entry.py 在飞面）
 **优先级建议**：5
 **完成判据**：
@@ -51,7 +51,7 @@
 
 ## 3.5 gs.prep_obs 退役
 
-**范围**：容器 bench kind 区分写端补齐（`bench_view_from_obs` 参数化 `item_kind_by_slot`，观察链用同帧 boxes/tomes 槽号集细分）与 OpenBox/OpenTome 臂分派切换（读 bench kind 首槽，entry.py:458-461）、按字段去向表删除黑板字段与 `gs.prep_obs` 槽、动作后写端拓扑迁移（`_project_prep_obs` 整体删除，`apply_prep_action_logic` 统一调用于 `_act_execute` 执行点 + 写口词表补齐：OpenTome/OpenBookcard 腾席、WearEquip/工具原子装备腿、词表外 AssertionError 防线随迁）、宿主降级（控制信号留 op 局部）、缓存与 light 分支退役、bridge.py:179 obs 传递面收敛、`state_gold_trusted` 残留指引注释同步（cw_observation.py:2177-2184）、符号清零 grep。
+**范围**：容器 bench kind 区分写端补齐（`bench_view_from_obs` 参数化 `item_kind_by_slot`，观察链用同帧 boxes/tomes 槽号集细分）与 OpenBox/OpenTome 臂分派切换（读 bench kind 首槽，entry.py:458-461）、按字段去向表删除黑板字段与 `gs.prep_obs` 槽、动作后写端拓扑迁移（`_project_prep_obs` 整体删除，`apply_prep_action_logic` 统一调用于 `_act_execute` 执行点 + 写口词表补齐：OpenTome/OpenBookcard 腾席、WearEquip/工具原子装备分支、词表外 AssertionError 防线随迁）、宿主降级（控制信号留 op 局部）、缓存与 light 分支退役、bridge.py:179 obs 传递面收敛、`state_gold_trusted` 残留指引注释同步（cw_observation.py:2177-2184）、符号清零 grep。
 **设计依据**：`details/obs-retirement.md` §阶段 3.5（字段去向表为准）。
 **文件面**：`kernel/cw_game_state.py`（`bench_view_from_obs` 参数化+legacy tome 配对分支+写口词表补齐+prep_obs 槽删除）、`kernel/cw_prep_actions.py`、`operations/cw_screen/cw_screen_prep.py`、`strategies/impl/mandate_v1/bridge.py`（:179 决策入口 obs 传递面收敛）、`obs/cw_observation.py`（:2177-2184 指引注释）、`kernel/cw_equip_wear_plan.py` 残留、`sr-od-test/`。
 **依赖**：3.1、3.2、3.3、3.4
@@ -76,7 +76,7 @@
 
 - `flow/projection_contract.md`：黑板帧读写契约退役、写端唯二收敛申报、晶矿域契约 ← 3.4/3.5
 - `game_state/fields.md`：新增 occupied_equips/spheres 域、prep_obs 槽与黑板字段删除 ← 3.2/3.4/3.5
-- `game_state/action-logic-state.md`：ClickSpheres 容器化、名单投影腿退役、OpenTome/OpenBookcard 容器腾席 ← 3.4/3.5
+- `game_state/action-logic-state.md`：ClickSpheres 容器化、名单投影分支退役、OpenTome/OpenBookcard 容器腾席 ← 3.4/3.5
 - `game_state/logic-updates/collect-ore.md`：「容器零写」翻转 ← 3.4
 - `game_state/logic-updates/`（deploy/sell/wear 相关篇）：黑板输入源叙述清零 ← 3.1/3.2/3.5
 - `flow/session.md`：prep_obs 相关契约行（宿主降级/退役）← 3.5

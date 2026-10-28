@@ -13,8 +13,8 @@
 - 修正方向::55 改指 `CwScreenSupplyNode.CARD_BODY`(`cw_screen_supply_node.py:83`)或去符号化写「兜底点 (900,550)」。
 
 ### F2 [低] `strategy-docs/30_supply_screen.md:79` — 正本引跨迭代里程碑锚「sim-redesign 迭代 M18」,指向 changes/ 工件内容
-- 内容:§6「①决策腿接线(在册交接:sim-redesign 迭代 M18)」——M18 的定义住 `changes/2026-09-15-sim-redesign/design.md`(changes/ 工件,寿命 = 迭代、不定期删减);正本引之违「代码与正本文档禁引 changes/ 内容(长期引用),正本必须自足」。同类先例已在 `changes/2026-09-22-screen-review/supply_node.md:54` 登记为全仓清理候选,本稿属新增一例。句子语义本体(决策腿接线 = sim 可见前置)自足,锚死后不失义,故降为低。
-- 修正方向:去里程碑号,改纯语义(「在册交接:sim-redesign 迭代的决策腿接线」)。
+- 内容:§6「①决策链接线(在册交接:sim-redesign 迭代 M18)」——M18 的定义住 `changes/2026-09-15-sim-redesign/design.md`(changes/ 工件,寿命 = 迭代、不定期删减);正本引之违「代码与正本文档禁引 changes/ 内容(长期引用),正本必须自足」。同类先例已在 `changes/2026-09-22-screen-review/supply_node.md:54` 登记为全仓清理候选,本稿属新增一例。句子语义本体(决策链接线 = sim 可见前置)自足,锚死后不失义,故降为低。
+- 修正方向:去里程碑号,改纯语义(「在册交接:sim-redesign 迭代的决策分支接线」)。
 
 ### F3 [低] `strategy-docs/16_evaluation_tables_reassessment.md:74` — 已删代码称「现址」,用词自相矛盾
 - 内容:「该内联形态现址 = cw_events.py:616-647,已随 2026-09-24 补给屏策略层迁移删除」——代码已物理删除则无「现址」;同格「`EQUIP_GENERIC_VALUE` 表本体现址 = `cw_equip_value.py:42-80`」(活符号)用法正确,对比之下错位更显。

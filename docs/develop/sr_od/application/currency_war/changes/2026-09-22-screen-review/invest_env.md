@@ -10,16 +10,16 @@
 
 ## 1. 问题与动机
 
-### 1.1 F-1(中)invest_env.md §4/§6 欢愉契约条件腿归属与正本及代码不符
+### 1.1 F-1(中)invest_env.md §4/§6 欢愉契约条件分支归属与正本及代码不符
 
-- 现状症状:`screens/invest_env.md` §4 决策体图选卡分支括注(L51-52)「欢愉契约 provisional 条件腿随获得链回调 on_env_gained 枚举迁移,行为逐位等价」与 §6 环境赠卡条(L87)「欢愉契约 provisional 条件腿亦迁该回调」——代码真值 = `kernel/cw_gain_chain.py::on_env_gained` 仅消费 `ENV_GIFTS` 的 `chars_immediate` + advisor 分道,docstring 自述「欢愉契约条件腿不在本枚举」;条件腿 rider 实驻 `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(触发事件 = 头号玩家选项弹窗被处理,即银狼策划选择上报;`active_env` 欢愉契约在册 → `gain_character` 1★ rand=True)。两处声称该腿随 `on_env_gained` 迁移,与正本 `game_state/gain-chain.md` §3 条款和代码行为直接矛盾,误导读者对触发时点(选环境时 vs 头号玩家弹窗处理时)的理解。
-- 根因归层:**语义层为主**(条件腿效果腿的归属申报写错)、**约定层为辅**(条件腿正式建模批的收尾正本更新清单漏了画面篇两处残留句——gain-chain.md §3 已改写正确,画面篇未随批同步)。
+- 现状症状:`screens/invest_env.md` §4 决策体图选卡分支括注(L51-52)「欢愉契约 provisional 条件分支随获得链回调 on_env_gained 枚举迁移,行为逐位等价」与 §6 环境赠卡条(L87)「欢愉契约 provisional 条件分支亦迁该回调」——代码真值 = `kernel/cw_gain_chain.py::on_env_gained` 仅消费 `ENV_GIFTS` 的 `chars_immediate` + advisor 分道,docstring 自述「欢愉契约条件分支不在本枚举」;条件分支 rider 实驻 `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(触发事件 = 头号玩家选项弹窗被处理,即银狼策划选择上报;`active_env` 欢愉契约在册 → `gain_character` 1★ rand=True)。两处声称该分支随 `on_env_gained` 迁移,与正本 `game_state/gain-chain.md` §3 条款和代码行为直接矛盾,误导读者对触发时点(选环境时 vs 头号玩家弹窗处理时)的理解。
+- 根因归层:**语义层为主**(条件分支效果分支的归属申报写错)、**约定层为辅**(条件分支正式建模批的收尾正本更新清单漏了画面篇两处残留句——gain-chain.md §3 已改写正确,画面篇未随批同步)。
 - 解决到哪:invest_env.md 两处改写为现役归属(§2.1),指针 = gain-chain.md §3。
-- 明确不解决:gain-chain.md §3 / `game_state/logic-updates/pick-planner.md` / `screens/planner.md` 等其余正本(本稿已对 `docs/` 树 grep「条件腿|欢愉契约」全量核对,归属错写仅本篇两处);代码零改动;其余环境的条件腿族建模(在册「族批候裁」面,非本稿辖域)。
+- 明确不解决:gain-chain.md §3 / `game_state/logic-updates/pick-planner.md` / `screens/planner.md` 等其余正本(本稿已对 `docs/` 树 grep「条件分支|欢愉契约」全量核对,归属错写仅本篇两处);代码零改动;其余环境的条件分支族建模(在册「族批候裁」面,非本稿辖域)。
 
 ### 1.2 F-2(中)invest_env.md §9 测试宣称的覆盖面与实际不符
 
-- 现状症状(核读证实):§9 把「report 含 refresh 摄入 / 空候选零盲发」记为在册测试面,实际两侧均无 env 覆盖——①`env_refresh_left` 观察写端双腿零断言:行为测试侧 `test_cw_obs_arch_phase_screens.py::_make_env` 把 `read_invest_refresh_counts` 桩为恒 `[]`(obs.refresh=None → report 跳写);report ports 侧 `test_cw_screen_report_ports.py::_case_invest_env` 的 obs 未设 `refresh` 字段、空桩用例只断 `invest_env_opts`;全测试树 grep `env_refresh_left` 仅开局种子字段清单命中(对照 supply 屏同腿在 ports 有值写入测试:`_case_supply_node` 断言 `supply_refresh_left`)。②env 屏无空候选零盲发测试:同形测试在册仅策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`。行为代码本身合规(报告 §1 表③/⑥),缺的是 §9 宣称与实际覆盖相符。
+- 现状症状(核读证实):§9 把「report 含 refresh 摄入 / 空候选零盲发」记为在册测试面,实际两侧均无 env 覆盖——①`env_refresh_left` 观察写端双分支零断言:行为测试侧 `test_cw_obs_arch_phase_screens.py::_make_env` 把 `read_invest_refresh_counts` 桩为恒 `[]`(obs.refresh=None → report 跳写);report ports 侧 `test_cw_screen_report_ports.py::_case_invest_env` 的 obs 未设 `refresh` 字段、空桩用例只断 `invest_env_opts`;全测试树 grep `env_refresh_left` 仅开局种子字段清单命中(对照 supply 屏同分支在 ports 有值写入测试:`_case_supply_node` 断言 `supply_refresh_left`)。②env 屏无空候选零盲发测试:同形测试在册仅策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`。行为代码本身合规(报告 §1 表③/⑥),缺的是 §9 宣称与实际覆盖相符。
 - 根因归层:**约定层**(文档宣称先行于/超出测试落地,虚增回归信任面)。
 - 解决到哪:§9 宣称修正为 as-built(方案②:正本不虚报)+ 测试面缺口如实登记,补测方向一并给出(补测 = 落码,属「待用户认同后落地」面,§2.2)。
 - 明确不解决:行为代码(审查已判合规);supply/encounter 屏的既有测试(在册先例,不动);其他屏的测试面缺口(各屏审查辖域)。
@@ -33,10 +33,10 @@
 
 ### 1.4 F-4(低;用户裁决 2026-09-22 扩项修订修法)名字标准化散落动作侧、观察层零标准化——noop 假成功 + 未注册名带病上报
 
-- 现状症状(核读证实):①**观察层对「读数是否注册表内名字」零校验**——OCR 原文名经 `_read_options` 直进容器 `invest_env_opts`;未注册名在决策打分走中性 fallback(`cw_screen_invest_env.py` 未注册 warning + 中性分)可照选照点,链上 `on_env_gained` 查无效果安静不写,容器留脏值。②名字标准化散落动作侧两处——派发处 `norm_name=normalize_invest_name(chosen)` 一次、report 层 `kernel/cw_action_report/pick_invest_env.py::_canon_invest_name`(含全角冒号归一)再一次。③report 层 noop 分支:`if not canon: return LogicOutcome(applied=True, reason='landing_noop')`——归一后空 = 静默零写但 applied=True,动作 op 照常终结,容器与游戏真实选择偏离且无留证;正本未登记(gain-chain.md §2.1 env 腿无任何拒绝腿;action_ops.md §4.5 PickInvestEnv 行声明出参 reason=`gain_chain_applied`,与 `landing_noop` 私词不符)。④对照策略支,链入口拒绝腿缺失(`kernel/cw_gain_chain.py::gain_invest_strategy` 步 0 = 零写 + 缺陷留证 + `detail='invalid_payload'`,gain-chain.md §2.4-0 在册;env 支无同款)。
+- 现状症状(核读证实):①**观察层对「读数是否注册表内名字」零校验**——OCR 原文名经 `_read_options` 直进容器 `invest_env_opts`;未注册名在决策打分走中性 fallback(`cw_screen_invest_env.py` 未注册 warning + 中性分)可照选照点,链上 `on_env_gained` 查无效果安静不写,容器留脏值。②名字标准化散落动作侧两处——派发处 `norm_name=normalize_invest_name(chosen)` 一次、report 层 `kernel/cw_action_report/pick_invest_env.py::_canon_invest_name`(含全角冒号归一)再一次。③report 层 noop 分支:`if not canon: return LogicOutcome(applied=True, reason='landing_noop')`——归一后空 = 静默零写但 applied=True,动作 op 照常终结,容器与游戏真实选择偏离且无留证;正本未登记(gain-chain.md §2.1 env 分支无任何拒绝分支;action_ops.md §4.5 PickInvestEnv 行声明出参 reason=`gain_chain_applied`,与 `landing_noop` 私词不符)。④对照策略支,链入口拒绝分支缺失(`kernel/cw_gain_chain.py::gain_invest_strategy` 步 0 = 零写 + 缺陷留证 + `detail='invalid_payload'`,gain-chain.md §2.4-0 在册;env 支无同款)。
 - 用户裁决(2026-09-22,经三轮口径对齐定谳):观察内容必须**在观察时**转换成标准注册数据(逐候选:形变归一精确匹配 → LCS 相似匹配兜底);转换不到 = **观察失败**(round_fail 交外循环重观察),不能上报;后续选择动作 op 只上报选择了第几个(idx)。此判法已升格为全域规范先行入正本(op-layer.md §1.1「观察标准化门」,2026-09-22)。
-- 根因归层:**语义层 + 契约层**——名字标准化的职责位放错(住动作侧,应住观察侧,规范裁决后已成文);观察→容器的值域契约缺「标准注册名」门;链契约缺无效载荷拒绝腿(策略支已有)为同根末梢。
-- 解决到哪:三层修法(§2.4):①观察层标准化门(核心);②动作链收窄纯 idx(`norm_name` 载荷退役、noop 分支删除);③链内无效载荷拒绝腿(防御纵深,镜像策略支)。外加局外分支删除(§1.7① 裁决并入本稿落地批)。
+- 根因归层:**语义层 + 契约层**——名字标准化的职责位放错(住动作侧,应住观察侧,规范裁决后已成文);观察→容器的值域契约缺「标准注册名」门;链契约缺无效载荷拒绝分支(策略支已有)为同根末梢。
+- 解决到哪:三层修法(§2.4):①观察层标准化门(核心);②动作链收窄纯 idx(`norm_name` 载荷退役、noop 分支删除);③链内无效载荷拒绝分支(防御纵深,镜像策略支)。外加局外分支删除(§1.7① 裁决并入本稿落地批)。
 - 明确不解决:kernel 打分的未注册 fallback(标准化后生产不可达,本体不动);链上「未注册名安静不写」末端形态(防线最末端,维持,与策略支 `on_strategy_gained` 同款);`normalize_invest_name` 形变族本体(整体迁观察侧复用)。
 
 ### 1.5 F-5(低)审查对象代码文件注释纪律存量违例(AGENTS.md §8)
@@ -64,31 +64,31 @@
 
 ## 2. 方案
 
-### 2.1 F-1 修法:条件腿归属两处改写为现役契约
+### 2.1 F-1 修法:条件分支归属两处改写为现役契约
 
 逐点位给目标语义(行文由实现者按画面篇既有风格组织,语义唯一):
 
 | # | 位置 | 现状(病句核心) | 目标语义 |
 |---|---|---|---|
-| 1 | `screens/invest_env.md` §4 决策体图选卡分支括注 | 「session 形参显式传入[局外/测试 = None 登记腿跳过];欢愉契约 provisional 条件腿随获得链回调 on_env_gained 枚举迁移,行为逐位等价)」 | 「session 形参显式传入[局外/测试 = None 登记腿跳过]。环境即时效果腿 = `on_env_gained` 枚举(`ENV_GIFTS` `chars_immediate` 送卡入席 / advisor 申报分道);欢愉契约条件腿**不在该枚举**——触发事件 = 头号玩家选项弹窗被处理(银狼策划选择上报),授予 = 条件腿 rider `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(`active_env` 欢愉契约在册 → `gain_character` 1★ rand=True,写端 = rider 链内落位/合成写),正本 = `game_state/gain-chain.md` §3(落点链接复用本篇 §6 既有指针形 `../game_state/gain-chain.md`)」 |
-| 2 | 同文件 §6 环境赠卡条 | 「`gain_invest_env` → `on_env_gained` 枚举 → `gain_character`(入席/溢出/升星链;欢愉契约 provisional 条件腿亦迁该回调)」 | 前半不动,句尾括注改:「(入席/溢出/升星链)。欢愉契约条件腿不在本枚举(触发条件/写端/正本 = gain-chain.md §3;见 §4 选卡分支申报)」 |
+| 1 | `screens/invest_env.md` §4 决策体图选卡分支括注 | 「session 形参显式传入[局外/测试 = None 登记分支跳过];欢愉契约 provisional 条件分支随获得链回调 on_env_gained 枚举迁移,行为逐位等价)」 | 「session 形参显式传入[局外/测试 = None 登记分支跳过]。环境即时效果分支 = `on_env_gained` 枚举(`ENV_GIFTS` `chars_immediate` 送卡入席 / advisor 申报分道);欢愉契约条件分支**不在该枚举**——触发事件 = 头号玩家选项弹窗被处理(银狼策划选择上报),授予 = 条件分支 rider `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(`active_env` 欢愉契约在册 → `gain_character` 1★ rand=True,写端 = rider 链内落位/合成写),正本 = `game_state/gain-chain.md` §3(落点链接复用本篇 §6 既有指针形 `../game_state/gain-chain.md`)」 |
+| 2 | 同文件 §6 环境赠卡条 | 「`gain_invest_env` → `on_env_gained` 枚举 → `gain_character`(入席/溢出/升星链;欢愉契约 provisional 条件分支亦迁该回调)」 | 前半不动,句尾括注改:「(入席/溢出/升星链)。欢愉契约条件分支不在本枚举(触发条件/写端/正本 = gain-chain.md §3;见 §4 选卡分支申报)」 |
 
-依据(全点位共用):代码真值 = `kernel/cw_gain_chain.py::on_env_gained`(仅消费 `chars_immediate` + advisor 分道;docstring「欢愉契约条件腿不在本枚举」)+ `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(读 `ENV_GIFTS['欢愉契约'].chars_conditional` 名集采样授予,消费 `active_env` 在册判定);规范条款 = `game_state/gain-chain.md` §3 on_env_gained 条「欢愉契约条件腿**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件腿 rider」。指针落 gain-chain.md §3(条件腿契约唯一正本位);`strategy-docs/13_pick_family.md` 为决策判据面、与效果腿归属无涉,不增指针(防第二源)。「provisional」措辞随改写退役(该腿已按正式模型定谳,gain-chain.md §3 用词 =「正式模型」)。目标文本内文档指针一律纯文字;落点 = screens/invest_env.md,链接 href 按落点文件既有链接折算,禁照抄本稿路径基(同款表注见 §2.3)。
+依据(全点位共用):代码真值 = `kernel/cw_gain_chain.py::on_env_gained`(仅消费 `chars_immediate` + advisor 分道;docstring「欢愉契约条件分支不在本枚举」)+ `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`(读 `ENV_GIFTS['欢愉契约'].chars_conditional` 名集采样授予,消费 `active_env` 在册判定);规范条款 = `game_state/gain-chain.md` §3 on_env_gained 条「欢愉契约条件分支**不在本枚举**:正式模型 = 银狼策划选择上报落地相的条件分支 rider」。指针落 gain-chain.md §3(条件分支契约唯一正本位);`strategy-docs/13_pick_family.md` 为决策判据面、与效果分支归属无涉,不增指针(防第二源)。「provisional」措辞随改写退役(该分支已按正式模型定谳,gain-chain.md §3 用词 =「正式模型」)。目标文本内文档指针一律纯文字;落点 = screens/invest_env.md,链接 href 按落点文件既有链接折算,禁照抄本稿路径基(同款表注见 §2.3)。
 
-**取舍**:备选 = 仅删两句错句、不补正确归属——放弃:§6 是「状态上报面」,获得链效果腿的归属申报是本节职责;删句留白则读者仍须自行考古触发时点,只修了「错」没修「误导」(报告差距说明的病灶在触发时点理解);补一句 + 指针,零复述链参数细节(候选集/采样/rand 纪律单一源仍在 gain-chain.md §3 与 `cw_investments.py` 数据表)。
+**取舍**:备选 = 仅删两句错句、不补正确归属——放弃:§6 是「状态上报面」,获得链效果分支的归属申报是本节职责;删句留白则读者仍须自行考古触发时点,只修了「错」没修「误导」(报告差距说明的病灶在触发时点理解);补一句 + 指针,零复述链参数细节(候选集/采样/rand 纪律单一源仍在 gain-chain.md §3 与 `cw_investments.py` 数据表)。
 
 ### 2.2 F-2 修法:§9 宣称修正为 as-built + 测试面缺口登记
 
 **文档面**(`screens/invest_env.md` §9 测试行,一条替换为两条;零代码改动):
 
 > - 测试(逐项与测试实存对齐):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_cw_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;派发即终结 + 派发时点写入对拍(active_env 已写) = 同文件 `test_invest_env_active_env_written_at_dispatch`;机械链与类型分派 + 刷新零效果对账留证(`invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py`(投资 op 测试 + `test_invest_env_refresh_no_effect_reconcile_records_defect`);portal 链与防污染 = `test_cw_yinlang_phase32.py`;命名/sig/写入域完备测试 = `test_cw_screen_report_ports.py`。
-> - 测试面缺口(登记,自带消亡判据:**消亡条件 = 对应测试在册**,补测落地时由该批摘除本条):①`env_refresh_left` 观察写端双腿(值写入 / 读缺跳写)零断言——观察行为测试的计数读桩恒空、report ports 用例 obs 未设 refresh 字段;②本屏空候选零盲发测试缺位(同形测试在册先例 = 策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`)。
+> - 测试面缺口(登记,自带消亡判据:**消亡条件 = 对应测试在册**,补测落地时由该批摘除本条):①`env_refresh_left` 观察写端双分支(值写入 / 读缺跳写)零断言——观察行为测试的计数读桩恒空、report ports 用例 obs 未设 refresh 字段;②本屏空候选零盲发测试缺位(同形测试在册先例 = 策略屏 `test_invest_strategy_empty_opts_fail_not_blindfire`)。
 
-依据:逐项对齐实测 = `test_cw_obs_arch_phase_screens.py::_make_env`(计数桩恒 `[]`,L225-226)/ `test_cw_screen_report_ports.py`(`_case_invest_env` L223-225 obs 无 refresh、空桩 L325-326 只断 opts、supply 同腿测试 `_case_supply_node` L214-220)/ 全测试树 grep `env_refresh_left` 仅 `test_cw_game_state_opening_seed.py` 字段清单;规范 = screens/README.md §2 模板第 9 节(测试文件指针)与「as-built 无状态」纪律、`game_state/fields.md` §3.4.3(该写端应可被测试验证)。
+依据:逐项对齐实测 = `test_cw_obs_arch_phase_screens.py::_make_env`(计数桩恒 `[]`,L225-226)/ `test_cw_screen_report_ports.py`(`_case_invest_env` L223-225 obs 无 refresh、空桩 L325-326 只断 opts、supply 同分支测试 `_case_supply_node` L214-220)/ 全测试树 grep `env_refresh_left` 仅 `test_cw_game_state_opening_seed.py` 字段清单;规范 = screens/README.md §2 模板第 9 节(测试文件指针)与「as-built 无状态」纪律、`game_state/fields.md` §3.4.3(该写端应可被测试验证)。
 
 **补测方向(登记于本稿;实现者无需再设计;用户已认同落地[2026-09-22],随本稿落地批实施,落点 = 测试仓)**:
 
-1. `test_cw_screen_report_ports.py::_case_invest_env`:obs 补 `refresh=(2, x, y)` → 期望表补 `{'env_refresh_left': (2, 'logic')}`(supply 同腿先例 = 同文件 `_case_supply_node`);空桩表 `_EMPTY_OBS_CASES['invest_env']` 的 obs 补 `refresh=(3, x, y)` → 期望补 `env_refresh_left=None`(摄入序先例 = 同表 encounter 行:options 空 = 整函数早退不写含 left)。
+1. `test_cw_screen_report_ports.py::_case_invest_env`:obs 补 `refresh=(2, x, y)` → 期望表补 `{'env_refresh_left': (2, 'logic')}`(supply 同分支先例 = 同文件 `_case_supply_node`);空桩表 `_EMPTY_OBS_CASES['invest_env']` 的 obs 补 `refresh=(3, x, y)` → 期望补 `env_refresh_left=None`(摄入序先例 = 同表 encounter 行:options 空 = 整函数早退不写含 left)。
 2. `test_cw_obs_arch_phase_screens.py::_make_env`:`read_invest_refresh_counts` 桩恒 `[]` 参数化(缺省行为不变);观察测试或新增一测试走真计数值,断言 report 落 `env_refresh_left`(值 = 桩读数首条)。
 3. env 空候选零盲发测试(建议名 `test_invest_env_empty_opts_fail_not_blindfire`):obs 装载 `options=[]` → act = round_fail 读缺文案、零派发零点击(策略屏同形测试同构,`_make_env` 桩面直接承载)。
 4. **缺口登记条的寿命义务**:§9「测试面缺口」条自身 = 会失效的现状快照,故其条文自带消亡判据(消亡条件 = 对应测试在册);补测批落地时**同步摘除该条**(摘除义务列入补测批 landing 清单)——防补测落地后 §9 新增 F-6 同类无主存量。依据 = AGENTS.md §9(会失效的现状快照禁入正文)+ screens/README.md §8(篇末缺口申报面在册:「测试断档等见各篇文末」)。
@@ -100,7 +100,7 @@
 **处置 = 沿 T-5 在册判例改判:F-3 零修法、零落地面。**
 
 - **判例如实申报**(依据 = T-5 审查报告 :118 原文,已逐字核对):「『单选族例外』标签沿 README §2 模板三选一并按 §3 括注(visit 内无后续决策消费)口径使用,**族内(invest_env.md)同款,分类权威 op-layer §3 记全形态——不构成偏差**」——判例辖两面:①括注前提按 visit 口径使用合法;②「标签沿用 vs 权威总表记全形态」的口径差 = 非偏差,且明文点名本屏同款覆盖。
-- **词义定谳(判读框架,保留)**:①逐屏分类唯一权威 = `screens/op-layer.md` §3(screens/README.md §3 自文背书),「单选族例外」标签 = 模板族层标记不承载分类;②README §2 模板第二节「三选一」= 行文模板菜单非分类总表,括注保留合法——族内先例 = supply.md §2(同判例);③「零逻辑态账」词义 = **visit 消费读法**:在册定义单一源 = README §3 自文「单选族例外:有选择面但零逻辑态账(**选卡/确认即终结,visit 内无后续决策消费逻辑态**)」,该句为此短语唯一正本定义,判例支撑理由即此读法;据此投资/遭遇/补给三域(收窄条款例外三腿①②③,选择事实/后果腿写端均在动作执行侧)括注按在册定义均非失真断言。三句 = T-37 裁族面统一时的判读输入,非本稿修法依据。
+- **词义定谳(判读框架,保留)**:①逐屏分类唯一权威 = `screens/op-layer.md` §3(screens/README.md §3 自文背书),「单选族例外」标签 = 模板族层标记不承载分类;②README §2 模板第二节「三选一」= 行文模板菜单非分类总表,括注保留合法——族内先例 = supply.md §2(同判例);③「零逻辑态账」词义 = **visit 消费读法**:在册定义单一源 = README §3 自文「单选族例外:有选择面但零逻辑态账(**选卡/确认即终结,visit 内无后续决策消费逻辑态**)」,该句为此短语唯一正本定义,判例支撑理由即此读法;据此投资/遭遇/补给三域(收窄条款例外三分支①②③,选择事实/后果分支写端均在动作执行侧)括注按在册定义均非失真断言。三句 = T-37 裁族面统一时的判读输入,非本稿修法依据。
 - **§2 目标形撤销**:`screens/invest_env.md` §2 **零改动**——「全形态」前置分类层方案作废(取舍);§2 现状行为描述与代码一致,分类权威在 op-layer §3 随文可查。
 
 **显式裁决语句(与 T-5 判例的关系)**:本稿**沿判例、不推翻**——判例已裁「标签口径差」面并明文点名本屏,F-3 残留病面全部落入其辖域,改判非偏差;判法三句与判例同读法(visit 消费),系判例支撑理由的显式化,非新裁定、非第二裁决源。
@@ -118,7 +118,7 @@
 
 `operations/cw_screen/cw_screen_invest_env.py` 观察链(`_read_options` 候选读出后、组装 obs 前)新增转换步骤,**逐候选**两段:
 
-1. 形变归一:`normalize_invest_name` **单一源**(其 `'：'`→`':'` 全角冒号形变**并入函数本体**——原「形变族 `_INVEST_SEP_VARIANTS` 不含全角冒号、冒号归一由 `_canon_invest_name` 另行承担」的拆分形态随本修法收敛,观察侧/链侧归一自然同源;连带收益 = 策略支步 0 拒绝腿同获冒号族覆盖,原「冒号形变穿透策略支拒绝腿」缝隙一并治愈;现役调用方入参全为已归一名或应归一名,零行为影响);
+1. 形变归一:`normalize_invest_name` **单一源**(其 `'：'`→`':'` 全角冒号形变**并入函数本体**——原「形变族 `_INVEST_SEP_VARIANTS` 不含全角冒号、冒号归一由 `_canon_invest_name` 另行承担」的拆分形态随本修法收敛,观察侧/链侧归一自然同源;连带收益 = 策略支步 0 拒绝分支同获冒号族覆盖,原「冒号形变穿透策略支拒绝分支」缝隙一并治愈;现役调用方入参全为已归一名或应归一名,零行为影响);
 2. 注册表匹配:归一结果精确命中注册表 → 标准名;不中 → LCS 相似匹配(`one_dragon.utils.str_utils::find_best_match_by_lcs(word, 注册表名集, 阈值)`,阈值常量住代码)→ 命中 = 标准名;
 3. 两段皆不中 = 转换失败。
 
@@ -128,9 +128,9 @@
 
 - 派发处 `norm_name=normalize_invest_name(chosen)` 组装删除;
 - `kernel/cw_vocab.py` 字段退役**整体移出本批**(实施裁定 2026-09-22:该文件被并行批 staged 改动占用,同文件双批提交无法拆分;消费退役后字段 = 死字段零危害)——环境/策略两 param 类的 `norm_name` 字段**随 T-6 扩项批两类一起退役**(§1.7④);本批 = 消费退役:派发处不组装、上报不消费;
-- `kernel/cw_action_report/pick_invest_env.py`:`_canon_invest_name` 与 noop 分支删除;上报按 `param.idx` 从容器取标准名直传链;**容器缺读/idx 越界 = 响亮失败**(异常上抛,容器写腿零吞错同款——生产不可达:选卡链发生时观察必然已完成);reason 恒 `gain_chain_applied`(与 action_ops.md §4.5 行声明一致,`landing_noop` 私词消失);docstring 改「名字标准化契约 = 观察层(op-layer.md §1.1),本函数零名字转换」。
+- `kernel/cw_action_report/pick_invest_env.py`:`_canon_invest_name` 与 noop 分支删除;上报按 `param.idx` 从容器取标准名直传链;**容器缺读/idx 越界 = 响亮失败**(异常上抛,容器写分支零吞错同款——生产不可达:选卡链发生时观察必然已完成);reason 恒 `gain_chain_applied`(与 action_ops.md §4.5 行声明一致,`landing_noop` 私词消失);docstring 改「名字标准化契约 = 观察层(op-layer.md §1.1),本函数零名字转换」。
 
-**③ 链内无效载荷拒绝腿(防御纵深)**:
+**③ 链内无效载荷拒绝分支(防御纵深)**:
 
 `kernel/cw_gain_chain.py::gain_invest_env` 增步 0(镜像 `gain_invest_strategy` 步 0 形态,判式同 gain-chain.md §2.4-0):
 
@@ -146,7 +146,7 @@ if not canon or canon == '?':
                        effects=(), detail='invalid_payload')
 ```
 
-后续 ①注册写 `canon`(替代现 `env_name` 原样写)②登记腿 ③`on_env_gained` 不变;docstring 增步 0 申报(无效载荷拒绝 = 零写 + 留证,输入校验非防重复保护)。生产路径观察层已保证输入恒标准名,此腿只对 sim/直调域兜底,与策略支对称;缺陷 kind 同词表(缺陷台账判读面单键)。
+后续 ①注册写 `canon`(替代现 `env_name` 原样写)②登记分支 ③`on_env_gained` 不变;docstring 增步 0 申报(无效载荷拒绝 = 零写 + 留证,输入校验非防重复保护)。生产路径观察层已保证输入恒标准名,此分支只对 sim/直调域兜底,与策略支对称;缺陷 kind 同词表(缺陷台账判读面单键)。
 3. **正本登记面**:`game_state/gain-chain.md` §2.1 插步 0(措辞镜像 §2.4-0:「**无效载荷拒绝(前置)**:归一后名为空/`'?'` = 零写 + 缺陷留证(`kind = pick_invest_invalid_payload`)——无效输入拒绝,非防重复保护」,后续三步语义不变);**同节尾段随步 0 收敛**(「直接写语义(零幂等闸):无条件注册 + 无条件触发效果——…」与步 0 字面冲突,改写为:「直接写语义(零幂等闸):**有效载荷**无条件注册 + 无条件触发效果(无效载荷拒绝见步 0,输入校验非防重复保护)——投资环境不会第二次给相同牌(游戏事实),重复上报只可能是代码 bug,按 bug 治理(action_ops.md §1 增补 2)」);§6 尾句「无效载荷拒绝(§2.4-0)」→「(§2.1-0/§2.4-0)」。`flow/action_ops.md` §4.5 PickInvestEnv 行:补「无效载荷拒绝 = 链内零写留证 `pick_invest_invalid_payload`」与「观察层标准化门 = 标准名直传,上报 = idx,名字自容器标准名单一源(规范 = op-layer.md §1.1)」。`screens/invest_env.md`:§3 观察段补标准化门语义、§4 决策输入改标准名口径、§5 终结表补「观察转换失败 = round_fail 交回重观察」行、§6 active_env 条补括注「(链内无效载荷拒绝 = 零写留证,正本 = gain-chain.md §2.1 步 0)」。
 
 **测试面**(用户已认同[2026-09-22],随本稿落地批实施):
@@ -159,7 +159,7 @@ if not canon or canon == '?':
 
 依据:用户裁决 2026-09-22(F-4 观察标准化门三轮口径对齐 + 局外单跑不支持);正本规范 = op-layer.md §1.1「观察标准化门」「画面 op 不支持局外单独调用」两条(2026-09-22 先行入);代码锚 = `pick_invest_env.py`(noop 分支/`_canon_invest_name`)/`cw_screen_invest_env.py`(未注册 warning fallback、`norm_name` 派发组装、局外 else 分支)/`cw_gain_chain.py`(`gain_invest_strategy` 步 0 先例、`gain_invest_env` 现役链体)/`cw_vocab.py`(`norm_name` 字段)/`cw_investments.py::normalize_invest_name`(形变族);工具 = `one_dragon/utils/str_utils.py::find_best_match_by_lcs`;规范 = gain-chain.md §2.1/§2.4-0/§6、action_ops.md §4.5。
 
-**取舍**:修法位置三选——观察层(裁决采纳)vs 决策出口守卫 vs 动作/链侧(原稿方向 A 单独成案)——取观察层:①用户裁定的职责位:「观察的时候就要转成标准注册内容」,转换失败本质是识别质量问题,识别质量归观察域;②防线最前,点击之前零偏离(决策出口/动作/链侧的任何防线都在点击之后,容器与游戏偏离已不可逆);③下游全链(决策打分/动作/上报/链)统一在标准名世界工作,职责单一。链内拒绝腿(原方向 A)降格保留为防御纵深:sim/直调域绕过画面 op 直调链时响亮暴露,与策略支对称,防第三支链式动作逐支重裁(跨件半问)。kernel 打分 fallback 不动:标准化后生产不可达,本体属策略域判据。
+**取舍**:修法位置三选——观察层(裁决采纳)vs 决策出口守卫 vs 动作/链侧(原稿方向 A 单独成案)——取观察层:①用户裁定的职责位:「观察的时候就要转成标准注册内容」,转换失败本质是识别质量问题,识别质量归观察域;②防线最前,点击之前零偏离(决策出口/动作/链侧的任何防线都在点击之后,容器与游戏偏离已不可逆);③下游全链(决策打分/动作/上报/链)统一在标准名世界工作,职责单一。链内拒绝分支(原方向 A)降格保留为防御纵深:sim/直调域绕过画面 op 直调链时响亮暴露,与策略支对称,防第三支链式动作逐支重裁(跨件半问)。kernel 打分 fallback 不动:标准化后生产不可达,本体属策略域判据。
 
 ### 2.5 F-5 修法:审查对象注释卫生(准则沿用 T-3,登记命中面与豁免面)
 
@@ -179,7 +179,7 @@ if not canon or canon == '?':
 | 同上 | L242「safe_click 带 bug#1 mouse_move 缓解」裸缺陷件编号 | 定性 = 缺陷件引用(会话局部不可解析):准则1「bug#1」清出,保留机制语义「safe_click 自带 mouse_move 缓解」 |
 | `kernel/cw_gain_chain.py` | 模块 docstring L29-32「详设 = changes/2026-09-21-invest-landing-chain/details/gain-chain-file-split.md」(changes/ 过程件引用 + 内嵌日期) | 准则1 过程件引用清出(T-3 准则 1 字面辖 .debug 类 gitignore 过程件;changes/ 引用清出判据 = 根 AGENTS.md §9 铁律「代码与正本文档禁引 changes/」)+ 内嵌日期随准则3 清出;收敛为「效果内容住 `cw_gain_effects.py`,本模块模块级查表 + 效果体惰性 import 单向破环;拆分契约正本 = gain-chain.md §8(模块拆分段)」;与 §2.4 修法同文件一次成文。同源登记面:gain-chain.md §8 自身的 changes/ 引用 = 正本禁引面残留,归正本维护(§2.7) |
 | 同上 | 缺陷 kind 词表注 L77-78「未观察两 kind(bench/equips)已随开局种子底座与锚定闩批退役——…」(「已随 XX 批退役」句式) | 准则2 批次叙事清出(本稿判据从从严选 T-3 准则 2,不启用 prep.md §2.5.3「退役申报史注句式」豁免——两姊妹稿豁免集差异归 T-37 汇总统一,此处置不依赖该豁免,非两可);保留现役语义 + 正本指针:「未观察两 kind(bench/equips)现役生产不可达:开局种子底座下生产链路阵容/装备域不再有 None,拒落档零写无缺陷发射(词表退役申报正本 = gain-chain.md §6)」 |
-| 同上 | on_env_gained docstring L604-605「锚 pick_invest.py 骇客 bench 腿同款口径」、L607「先例 = pick_invest hacker shop_pool decl」(引用目标 = 已拆分退役文件,不可解析) | 定性 = 死索引(引用目标实存性违例,根 AGENTS.md §8「引用必须是持久索引」;与 L78「3.8」/L242「bug#1」定性行同族):死引用清出换现役符号锚/纯语义——前处改「1★ 先验同句式先例(骇客效果体同族,现役 = `cw_gain_effects.py::PICK_INVEST_EFFECTS`)」;后处改「先例 = advisor 申报行同族(正本 = gain-chain.md §3 advisor 条)」 |
+| 同上 | on_env_gained docstring L604-605「锚 pick_invest.py 骇客 bench 分支同款口径」、L607「先例 = pick_invest hacker shop_pool decl」(引用目标 = 已拆分退役文件,不可解析) | 定性 = 死索引(引用目标实存性违例,根 AGENTS.md §8「引用必须是持久索引」;与 L78「3.8」/L242「bug#1」定性行同族):死引用清出换现役符号锚/纯语义——前处改「1★ 先验同句式先例(骇客效果体同族,现役 = `cw_gain_effects.py::PICK_INVEST_EFFECTS`)」;后处改「先例 = advisor 申报行同族(正本 = gain-chain.md §3 advisor 条)」 |
 | `kernel/cw_screen_report/invest_env.py` | report 函数 docstring L50「用户裁定 2026-09-21」 | 准则3 日期清出;保留「屏上数字即真值」语义(指 fields.md §3.4.3 / op-layer.md §1.4 剩余语义写端);与同文件 L54-55 平移史清理一次成文 |
 | `cw_overlay_pick_action.py` | L227「T#103」、L282「task#103 化债,W265」、L342「2026-08-06 r6 stall」、L3/L6 迭代件引用、L15-23/L293-295 批史与废除史 | 执行权 = T-6 §2.5(其全文件扫描 + T-3 §2.6 准则覆盖上述各形);本稿仅登记核对点,禁重复触碰(§1.7③) |
 | `kernel/cw_action_report/pick_invest_env.py` | 模块头 L7-9「自 pick_invest.py 拆分(投资两屏迁移批;…废除分步形参)」拆分史段(T-6 §2.5 明文移交本稿) | 准则2:拆分史段删;保留「即时上报形态」段(申报正确)+「本包 → 容器单向依赖」句(目标尾形与 T-6 §2.5 `pick_invest_strategy.py` 行同构);与 §2.4 修法同文件一次成文 |
@@ -215,7 +215,7 @@ if not canon or canon == '?':
 | `screens/op-layer.md` | §1.1 规范条两枚(观察标准化门 + 画面 op 不支持局外单独调用,**用户裁决 2026-09-22 已先行入正本**) | 正本规范(已入,落地批核对引用即可) |
 | `screens/invest_env.md` | F-1(§4/§6)+ F-2(§9)+ F-6(全篇状态清理)+ F-4(§3 观察段/§4 决策输入/§5 终结表/§6 括注)+ §1.7①(§4 伪代码局外行 / §5 终结表局外交回行) | 画面篇 as-built |
 | `game_state/gain-chain.md` | F-4(§2.1 步 0 + 同节「无条件注册」尾段收敛 + §6 尾句) | 正本语义更新 |
-| `flow/action_ops.md` | F-4(§4.5 PickInvestEnv 行补拒绝腿 + 标准化门/纯 idx 语义) | 正本登记 |
+| `flow/action_ops.md` | F-4(§4.5 PickInvestEnv 行补拒绝分支 + 标准化门/纯 idx 语义) | 正本登记 |
 | `game_state/fields.md` | F-4(invest_env_opts 值域收敛标准注册名;具体节落地对账) | 正本语义更新 |
 | `kernel/cw_gain_chain.py` | F-4(步 0 guard + 注册写 canon + docstring)+ F-5(同段 docstring 卫生,一次成文) | 行为小变更 + 注释 |
 | `kernel/cw_action_report/pick_invest_env.py` | F-4(`_canon_invest_name`/noop 分支删除 + 纯 idx 取名直传链 + docstring)+ F-5(模块头拆分史,一次成文) | 行为小变更 + 注释 |

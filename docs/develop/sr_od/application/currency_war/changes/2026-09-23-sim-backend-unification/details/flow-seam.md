@@ -19,11 +19,11 @@
 - **换父清单**：`operations/` 树直继承 `SrOperation` 的全部类（2026-09-23 grep 实测 67）。**完成判据 = 换父后 grep `^class Cw\w+\(SrOperation\)` 零命中**，不以计数为判据。入口链（`cw_entry/` 4 个）一并换：sim 不跑入口链，换父零成本，避免「哪些换了」成为问题。
 - **覆写面**：
   - `screenshot()`：sim → 返回哨兵帧（小空白 `ndarray`），不触 controller。框架每轮自动截图（`one_dragon/base/operation/operation.py::Operation._execute_one_round` → `self.screenshot()` → `last_screenshot`）无感运转。
-  - `round_by_find_and_click_area()`：sim → 点击 = `screen_loader` 档案点位直成功（`node_clicked` 置位语义保留）；`until_find_all` = 端口 `visible` 问询，`until_not_find_all` = `visible` 取反（目标区域不可见才算过）；有 until 按实机同形返回 `round_wait`（「点了≠成了」，下一轮 until 问状态机取转移后真值；问询为假 = 继续轮询，sim 点击腿已成功不重发），无 until = `round_success`。实机 → `super()` 原样。
+  - `round_by_find_and_click_area()`：sim → 点击 = `screen_loader` 档案点位直成功（`node_clicked` 置位语义保留）；`until_find_all` = 端口 `visible` 问询，`until_not_find_all` = `visible` 取反（目标区域不可见才算过）；有 until 按实机同形返回 `round_wait`（「点了≠成了」，下一轮 until 问状态机取转移后真值；问询为假 = 继续轮询，sim 点击分支已成功不重发），无 until = `round_success`。实机 → `super()` 原样。
   - `round_by_find_area()`：sim → `visible` 应答。实机 → `super()`。
   - 其余在用助手（`round_by_click_area` / `round_by_ocr_and_click` / `scroll_area` / 拖拽封装等）：以 CW 树内 `round_by_*` / `screen_utils` 调用点 grep 全量清点，逐个归「sim 应答 / `super()` 透传」，清点表入本文件附录（实现期维护）。
-- **读屏点改道**（观察腿唯一 op 触点）：每屏显式读屏点一行机械改——`obs = cw_sim_ports.sim_or_live_observation('货币战争-备战', lambda: 原读链())`；helper 住端口模块（装了后端 → `observe`，否则原读链）。接线随 3.3 各屏生成器落地逐屏进行（文件面 = `operations/cw_screen/` 观察 node）。「op 体零改动」精确口径 = 决策/动作/节点推进零改动，观察读屏点一行改除外。
-- **直连 controller 旁路**（如 `prep_actions.py::PrepActionExecutor` 拖拽腿）：逐点加端口检查（installed → 机械腿静默成功，自上报照走）；运行器 controller 桩兜底。
+- **读屏点改道**（观察分支唯一 op 触点）：每屏显式读屏点一行机械改——`obs = cw_sim_ports.sim_or_live_observation('货币战争-备战', lambda: 原读链())`；helper 住端口模块（装了后端 → `observe`，否则原读链）。接线随 3.3 各屏生成器落地逐屏进行（文件面 = `operations/cw_screen/` 观察 node）。「op 体零改动」精确口径 = 决策/动作/节点推进零改动，观察读屏点一行改除外。
+- **直连 controller 旁路**（如 `prep_actions.py::PrepActionExecutor` 拖拽分支）：逐点加端口检查（installed → 机械执行分支静默成功，自上报照走）；运行器 controller 桩兜底。
 - **controller 桩**（运行器装配）：`ctx.controller` 全接口触碰即 `AssertionError`（报「sim 模式触碰真实 IO」+调用栈）。双保险：①漏改的帧消费者在哨兵帧上真识别 → 恒未找到 → retry 耗尽 fail；②漏改的直连路径撞桩即炸。
 
 ### 3. 观察生成器
@@ -43,7 +43,7 @@
 ### 5. 测试迁移
 
 - `test_cw_sim_engine.py`：规则断言（收入/经验/发牌/结算/装备/offer）平移为 SimBackend 测试；驱动器测试（`_drive` / `simulate_run` 壳 / reset-step 协议）随引擎退役删除。
-- `test_cw_collect_ore_rand.py`：晶矿采样断言平移（采样逻辑在 kernel 上报函数内，随动作腿迁移验证）。
+- `test_cw_collect_ore_rand.py`：晶矿采样断言平移（采样逻辑在 kernel 上报函数内，随动作分支迁移验证）。
 - **其余涉退役/平移符号的测试文件一律平移或退役**，清点法 = grep 退役符号集（2026-09-23 清点含：`test_cw_sim_offer.py` / `test_cw_sim_actions.py` / `test_cw_sim_equips.py` / `test_cw_sim_nodes.py` / `test_cw_sim_opening.py` / `test_cw_sim_pool.py` / `test_cw_deploy_to_slot_semantics.py` / `test_cw_tool_use_report.py`）。
 - 新增：M3 首局验收测试（判据见总纲 §2 里程碑）。
 
@@ -61,7 +61,7 @@
 | 助手 | 调用点数 | 归宿 |
 |---|---|---|
 | `round_by_find_area` | 96（self 84 / `op.` 8 / `_op.` 4） | **CwOperation 覆写**：sim = 端口 `visible` 应答 |
-| `round_by_find_and_click_area` | 46（self 36 / `op.` 10） | **CwOperation 覆写**：sim = 端口 `click_answer` + until 轮询腿本层收口 |
+| `round_by_find_and_click_area` | 46（self 36 / `op.` 10） | **CwOperation 覆写**：sim = 端口 `click_answer` + until 轮询分支本层收口 |
 | `round_by_ocr` | 31（self 29 / `op.` 2） | `super()` 透传：哨兵帧真识别恒未找到 → retry 耗尽 fail；sim 金路径到达的屏随 3.3 读屏点改道逐点接 `visible` |
 | `round_by_ocr_and_click` | 7 | `super()` 透传（同上） |
 | `round_by_op_result` | 8 | `super()` 透传（纯结果转换零 IO，sim 可直接用） |
@@ -83,8 +83,8 @@
 
 | 组 | 文件 | 归宿 |
 |---|---|---|
-| 拖拽腿（焦点守卫 + `DragCwChar`） | `prep_actions.py::drag_bench_to_sell` / `PrepActionExecutor._drag` | **本批 port 检查**：installed → 机械腿静默成功，自上报照走 |
-| 动作 op 机械点击/拖拽 | `operations/cw_op/`（buy_card / collect_ore / open_box / open_bookcard / open_tome / level_up / start_battle / pick 族 / refresh_shop / tool_use / wear_equip）+ `_overlay_confirm.py` | 运行器 controller 桩兜底（触碰即炸）；sim 到达面随 3.2/3.4 联调逐点加 port 检查。wear/tool 的 owned/SIFT 读腿在触桩前先因哨兵帧识别失败自然 fail（未发出通道） |
+| 拖拽分支（焦点守卫 + `DragCwChar`） | `prep_actions.py::drag_bench_to_sell` / `PrepActionExecutor._drag` | **本批 port 检查**：installed → 机械执行分支静默成功，自上报照走 |
+| 动作 op 机械点击/拖拽 | `operations/cw_op/`（buy_card / collect_ore / open_box / open_bookcard / open_tome / level_up / start_battle / pick 族 / refresh_shop / tool_use / wear_equip）+ `_overlay_confirm.py` | 运行器 controller 桩兜底（触碰即炸）；sim 到达面随 3.2/3.4 联调逐点加 port 检查。wear/tool 的 owned/SIFT 读分支在触桩前先因哨兵帧识别失败自然 fail（未发出通道） |
 | 画面 op 直连点击 | `operations/cw_screen/`（aha_equip / briefing / settle_confirm / armory_box / encounter / boss_briefing / battle_wait / consumable / item_detail / plane_intel / plane_transition / refresh_odds / supply_node） | 同上 |
 | 入口链 | `operations/cw_entry/` | 桩兜底（sim 不跑入口链） |
 | 拖拽原语本体 / dev / tools op | `operations/dev/drag_cw_char.py` / `operations/tools/harvest_invest_codex.py` | 桩兜底（生产拖拽统一经 prep_actions 已检查入口） |
@@ -123,4 +123,4 @@
 - `buy_card` / `sell_bench` / `sell_deployed` / `deploy_move` / `wear_equip` / `level_up` / `level_up_shop` / `collect_ore` / `open_tome` / 工具原子七类 / `swap_deploy` / `obs`：非终结同屏动作；
 - `pick_event`：零写族但生产不可达（策略器不发射）。
 
-**事实事件现役成员**（`FACT_EVENT_KINDS`）：`board_changed`（deploy_move / buy_card / sell_bench / sell_deployed / wear_equip 落地写后）、`star_up`（buy_card 合成升星腿检出时；`detect_merge_upgrade` 布尔语义，单位身份由订阅方读容器）。`swap_deploy` 换位不改板面组成，设计列举外未接线。
+**事实事件现役成员**（`FACT_EVENT_KINDS`）：`board_changed`（deploy_move / buy_card / sell_bench / sell_deployed / wear_equip 落地写后）、`star_up`（buy_card 合成升星分支检出时；`detect_merge_upgrade` 布尔语义，单位身份由订阅方读容器）。`swap_deploy` 换位不改板面组成，设计列举外未接线。

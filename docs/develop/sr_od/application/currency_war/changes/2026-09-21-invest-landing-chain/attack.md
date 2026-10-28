@@ -22,10 +22,10 @@
 - **依据**：cw_screen_invest_env.py::act 顶部守卫（:236-254）；cw_screen_invest_strategy.py:377-380（fallback(no-ocr)）、:444（'?' 守卫）、:382-386（ADR-0598 幻影卡注释）；kernel/cw_observe.py:243-262（死暂存槽，注释自述生产端已退役）；obs/cw_observation.py:2501-2528（自检消费恒空）；flow/action_exec.md §3「overlay 残留的治理 = 外循环 0 系 overlay 分支」；pick_invest.py:236-246（现行 dup 分支与 canon 守卫形态，删除后无承接）。
 - **处置建议**：①在 §2.4/§2.5 明确归一空名/'?' 的处理：建议「上报函数内留证跳写（新缺陷 kind）」，写明这不是判重防护而是无效载荷拒绝，与裁定⑨不冲突；若坚持盲发写入，须在 §2.8 显式申报「'?' 入持卡面」的行为变化。②在 §2.8-1 补「响亮」的落点：或声明链内留证 kind（对齐 `DEFECT_PORTAL_REGISTER` 先例），或挂账到观察对账批，或显式申报「当前无自动化暴露面，依赖哨兵下游异常」的战术权衡；并把 §2.6「自愈」改为「流程推进自愈（数据面不回滚）」之类的准确表述，消除与 §2.8-1 的矛盾。
 
-### A3 骇客效果体「值不变翻来源域集原样保留」在链原语形态下不可直接实现：后果腿落位可见性丢失，标记域语义需要重新设计
+### A3 骇客效果体「值不变翻来源域集原样保留」在链原语形态下不可直接实现：后果分支落位可见性丢失，标记域语义需要重新设计
 
-- **攻击对象锚**：design.md §2.4「效果体改走链原语」段（「随机改件腿手写 `write_logic_rand` + 内联后果表 → `gain_equipment(rand=True)`……后果送单位由 `on_equipment_gained` 回调自动消费（内联查表删除）；……值不变翻来源域集（不含 gold）原样保留」）。
-- **发现**：现行 `_apply_effect_hacker_wolf`（pick_invest.py:136-170）维护 `written` 集合：改件入栏写 equips；**内联**后果腿（`grant_bench_unit_cascade`）返回后按 `c.placed` 把 bench/front_row/back_row 记入 `written`；最后标记循环对「未写域」做值不变 `write_logic_rand` 翻来源（对「暴露给随机但没写」的域留证）。改成 `gain_equipment(rand=True)` 后，后果送单位发生在 `on_equipment_gained` 回调内部（cw_gain_chain.py:559-573），**效果体拿不到后果腿是否落位的信息**（`gain_equipment` 出参 `GainOutcome` 只描述装备腿本身，`detail=''`、子链写只在遥测行）。「原样保留」在字面上不可实现：效果体要么全标记（后果已写的域多出噪声翻来源行），要么不标记（丢失「后果未落位时暴露域留证」的现状语义），要么新增前后值比对逻辑（额外设计）。三种选法行为不同，设计未选。
+- **攻击对象锚**：design.md §2.4「效果体改走链原语」段（「随机改件分支手写 `write_logic_rand` + 内联后果表 → `gain_equipment(rand=True)`……后果送单位由 `on_equipment_gained` 回调自动消费（内联查表删除）；……值不变翻来源域集（不含 gold）原样保留」）。
+- **发现**：现行 `_apply_effect_hacker_wolf`（pick_invest.py:136-170）维护 `written` 集合：改件入栏写 equips；**内联**后果分支（`grant_bench_unit_cascade`）返回后按 `c.placed` 把 bench/front_row/back_row 记入 `written`；最后标记循环对「未写域」做值不变 `write_logic_rand` 翻来源（对「暴露给随机但没写」的域留证）。改成 `gain_equipment(rand=True)` 后，后果送单位发生在 `on_equipment_gained` 回调内部（cw_gain_chain.py:559-573），**效果体拿不到后果分支是否落位的信息**（`gain_equipment` 出参 `GainOutcome` 只描述装备分支本身，`detail=''`、子链写只在遥测行）。「原样保留」在字面上不可实现：效果体要么全标记（后果已写的域多出噪声翻来源行），要么不标记（丢失「后果未落位时暴露域留证」的现状语义），要么新增前后值比对逻辑（额外设计）。三种选法行为不同，设计未选。
 - **依据**：pick_invest.py:136-170（written 集 + 标记循环）；cw_gain_chain.py:464-485（gain_equipment 出参形状）、:559-573（on_equipment_gained 内联消费后果表，无落位信息回传）；design.md §2.4「原样保留」表述。
 - **处置建议**：在设计里把标记域实现口径定死，三选一：①效果体对 bench/front_row/back_row 做调用前后值比对（语义与现状逐位等价，推荐）；②接受行为变化（全标记或不标记）并申报进 §2.8；③扩 `GainOutcome` 传子链落位信息（改动面大，需说明理由）。
 

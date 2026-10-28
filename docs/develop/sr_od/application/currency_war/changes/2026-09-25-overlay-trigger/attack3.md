@@ -24,7 +24,7 @@
 
 - **攻击对象**:design.md §2 系统级变化 1;details/deployed-merge.md「TrackedBooks 退役」表 +「关键取舍」;landing 3.2 完成判据。
 - **主张原文**:design.md:36"……**TrackedBooks 整体退役**(用户裁定 2026-09-25:消灭第二账——主域可槽位直址后,执行器直址/守卫 expected 侧/锚定写回全部改读主域,**升星确认候选迁对账层独立簿记组**)——表示层治本……"。对照:deployed-merge 退役表"**候选宿主不动**(本就在 cw_reconcile 局旁表);真变更 = 比较基线从 tracked 表改为主域派生视图";关键取舍"升星候选宿主不动、比较基线改主域派生(取)vs **迁独立簿记组(弃)**:候选本就住在 cw_reconcile 局旁表,迁移是无事生非";landing 3.2 判据"候选宿主不动——本就在 cw_reconcile 局旁表"。
-- **攻击角度**:第二轮 C6 已判定「迁对账层独立簿记组/新宿主」叙述了一个不存在的搬迁(候选态现役宿主 = cw_reconcile 按局身份旁表),处置落在了 deployed-merge 与 landing——总纲未反查同步。按总纲施工 = 在现存旁表之外另起第二源,正是 C6 指出的事故形态;§5-4 全量同步复查再次失守。次要同段口径差:总纲"锚定写回……改读主域" vs 详设"写回腿**删除**(观察通道本就写主域)"——删除与改读是两个不同动作。
+- **攻击角度**:第二轮 C6 已判定「迁对账层独立簿记组/新宿主」叙述了一个不存在的搬迁(候选态现役宿主 = cw_reconcile 按局身份旁表),处置落在了 deployed-merge 与 landing——总纲未反查同步。按总纲施工 = 在现存旁表之外另起第二源,正是 C6 指出的事故形态;§5-4 全量同步复查再次失守。次要同段口径差:总纲"锚定写回……改读主域" vs 详设"写回分支**删除**(观察通道本就写主域)"——删除与改读是两个不同动作。
 - **证据**:design.md:36;deployed-merge.md:40/:68;landing.md:24;attack2.md C6(处置记录);cw_reconcile.py:73(现役宿主在册)。
 
 ## A4【打回级】sim 对拍白名单漏 planner 两项行为修正;「三条建模错误」三文档三口径——判据照字面执行必红
@@ -38,7 +38,7 @@
 
 - **攻击对象**:landing.md 3.1 范围/文件面 vs 3.2 完成判据;details/deployed-merge.md「触面清单」tracked 侧行。
 - **主张原文**:3.1 范围"……**0-9 换算层删除**;快照 schema 升版 + 迁移函数;观察链合一写。**不含 TrackedBooks 退役(= 3.2)**";3.1 文件面"……kernel/cw_exec_state.py(换算删除)、测试仓相应断言(清单见详设触面表,**不含 tracked 退役面**)";3.2 判据"**换算层五函数归零**(deployed_slot_no/deployed_row_slot/deployed_idx_of/deployed_rows_to_indexed/deployed_indexed_to_rows,均在 kernel/cw_exec_state.py)";触面清单 tracked 侧行"cw_exec_state(**换算五函数**+容量常量删)"。
-- **攻击角度**:①五函数在触面表归 tracked 侧(= 3.2 的设计依据行),3.1 文件面一边声明"不含 tracked 退役面"、一边列"cw_exec_state(换算删除)",范围行又含"换算层删除"——同一工作项 3.1/3.2 双认领且 3.1 内部自相矛盾。②时序不可行:3.1 明确保留 TrackedBooks(退役在 3.2,依赖 = 3.1),而 tracked 随动腿在 3.1 期间仍消费五函数(_track_* 三腿 prep_actions.py:745/:763/:784、wear/tool tracked 腿、reconcile 锚定写回、mutate_bench_deployed——第一轮 P1 证据链;TrackedBooks 类注自证"换算单一源 = cw_exec_state.deployed_row_slot/deployed_idx_of",cw_game_state.py:1931)——3.1 删函数即破坏存活至 3.2 的写腿;不删则 3.1 范围项无法完成。按 3.1 字面施工只有两个出口:越界做 3.2 的活,或留函数不删,都违反阶段边界(账本照此立任务即错)。
+- **攻击角度**:①五函数在触面表归 tracked 侧(= 3.2 的设计依据行),3.1 文件面一边声明"不含 tracked 退役面"、一边列"cw_exec_state(换算删除)",范围行又含"换算层删除"——同一工作项 3.1/3.2 双认领且 3.1 内部自相矛盾。②时序不可行:3.1 明确保留 TrackedBooks(退役在 3.2,依赖 = 3.1),而 tracked 随动分支在 3.1 期间仍消费五函数(_track_* 三条分支 prep_actions.py:745/:763/:784、wear/tool tracked 分支、reconcile 锚定写回、mutate_bench_deployed——第一轮 P1 证据链;TrackedBooks 类注自证"换算单一源 = cw_exec_state.deployed_row_slot/deployed_idx_of",cw_game_state.py:1931)——3.1 删函数即破坏存活至 3.2 的写分支;不删则 3.1 范围项无法完成。按 3.1 字面施工只有两个出口:越界做 3.2 的活,或留函数不删,都违反阶段边界(账本照此立任务即错)。
 - **证据**:landing.md:4/:6/:18/:25;deployed-merge.md:59;cw_exec_state.py:237/:243/:255/:266/:295;cw_game_state.py:1929-1932;attack.md P1 证据列。
 
 ## B1【需澄清】「资格集(set)/计数 = |集合|/board 增量口径」三种语义并存;「现役 board 字段 = 其计数视图」身份主张被设计自引的两个事实证伪
@@ -106,7 +106,7 @@
 6. **merge_step_once 载体规则**:cw_gain_chain.py:164「take 含场上 → 场上那个的位置;全备战 → 最左」逐字相符。
 7. **容器符号全集**:front_row/back_row 紧凑列表(cw_game_state.py:2079-2080)、TrackedBooks(:1922,bench 定长 9/deployed 定长 10、0-3 前/4-9 后,:1926-1932)、tracked_books(:2275)、tracked_account_observed(:2097)/tracked_unobserved(:1907)、seed_opening_state(:1818)、_write_logic_frame(:2932,行域分支 :2946-2951)、_resync_board_delta(:2741)、_absorb_slot_reorder(:2667)、mutate_bench_deployed_local(:1574)、detect_merge_upgrade(:1385)、lv999_cost_tier(:2380)及 deploy_move 写端(:134)。
 8. **换算五函数与容量**:deployed_slot_no/:237、deployed_row_slot/:243、deployed_idx_of/:255、deployed_rows_to_indexed/:266、deployed_indexed_to_rows/:295(均在 cw_exec_state.py);DEPLOYED_FRONT/BACK_CAPACITY = 4/6(:172-174)。
-9. **tracked 侧触面**:prep_actions._track_* 三腿(:745/:763/:784)、mutate_bench_deployed(cw_vocab.py:1054;cw_buy_card_action.py:161 调用/:177 读点——「调用与读点」标性准确)、cw_reconcile.reconcile_tracking(:332)、cw_observation.py:2434 与 cw_screen_prep.py:547-548 tracked 读口、mandate.py:1169 tracked 读注。
+9. **tracked 侧触面**:prep_actions._track_* 三条分支(:745/:763/:784)、mutate_bench_deployed(cw_vocab.py:1054;cw_buy_card_action.py:161 调用/:177 读点——「调用与读点」标性准确)、cw_reconcile.reconcile_tracking(:332)、cw_observation.py:2434 与 cw_screen_prep.py:547-548 tracked 读口、mandate.py:1169 tracked 读注。
 10. **两段式机制依据成立**:screen_utils.py:368-373——传入列表仅作成员过滤、遍历序 = ctx.screen_loader.screen_info_list 的 loader 序(「重排列表不能改变扫描优先级」准确);CW_DISPATCH_SCREENS 恰 28 项(cw_loop.py:546-557 逐条点数);身份问询区 :1476-1479。
 11. **kind 表八个画面名全部真实且在分发清单内**:货币战争-列车同行/盛会之星/银狼升星/祈愿试炼/命运卜者强化/星徽秘典弹窗/备战-武装箱选择/备战-专家邀请函(cw_loop.py:547-556 逐名命中)。
 12. **SwapDeploy「词表在册、生产执行器未接线」准确**:CwActionSwapDeployParam(cw_vocab.py:456)+ 上报 swap_deploy.py 在;operations/cw_op/ 无 swap op 文件。

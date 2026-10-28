@@ -58,7 +58,7 @@
 ### B1（应修）「漏斗彻底退出节点域写入」边界未划出 `gs.node` 观察镜像写端——字面执行 3.5 会拆掉 plane/round/hp 读口基底，保留则该句字面为假
 
 - **位置**：design §2.4-1（「漏斗彻底退出节点域写入（上下文对/`top_bar_raw` 观察层保留）」）/ §2.7-5（「recorder 录帧副作用消失（漏斗彻底退出节点域写入）」）；landing 3.5（「漏斗 `observe_screen_context` 瘦身收口（上下文对/`top_bar_raw` 观察层保留，**节点域全退**）」）。
-- **攻击**：观察漏斗内现存**两类**节点域写入：①退役范围内的 node_ord 推进腿 + 效果尾段（`observe_screen_context` 内 `_derive_node_*` 调用与 `:3090-3093` tick 调用）——design 明确退出；②**未被 design 任何文字提及的 `gs.node`（NodeKey 观察镜像）写端**：`obs/cw_observation.py:2575/2582`（读链 phase_round 全阶段必写，kind 继承合成）+ `observe_screen_context` 内留驻的商店查链类型写（`:3080-3089` 经 `_write_derived_node_type` 写 `gs.node.kind`，类型机制本迭代明示不动）。`gs.node` 字段名即「node」，字面读「节点域全退」会把 ② 一并拆掉——而 `gs.node` 是 plane/round/hp 读口的基底（`cw_game_state.py:3863-3880` `plane_of/round_of/hp` 均从 `gs.node.value` 派生）与现役消费点（`_defeat_latch_by_secondary:659`、`_shop_panel_type_target:3153-3157`），拆掉 = 决策层坐标全断。反之若实现者正确保留 ②，则「漏斗彻底退出节点域写入」「recorder 从此零节点域副作用」两句**字面为假**（recorder 经漏斗仍写 `gs.node` 镜像，仅推进域副作用消失）——§2.7-5 的验收主张按字面不可判定。design 全文（含 §2.5 退役清单）对 `gs.node` 镜像零提及，正本清单（landing）也无对应行。
+- **攻击**：观察漏斗内现存**两类**节点域写入：①退役范围内的 node_ord 推进分支 + 效果尾段（`observe_screen_context` 内 `_derive_node_*` 调用与 `:3090-3093` tick 调用）——design 明确退出；②**未被 design 任何文字提及的 `gs.node`（NodeKey 观察镜像）写端**：`obs/cw_observation.py:2575/2582`（读链 phase_round 全阶段必写，kind 继承合成）+ `observe_screen_context` 内留驻的商店查链类型写（`:3080-3089` 经 `_write_derived_node_type` 写 `gs.node.kind`，类型机制本迭代明示不动）。`gs.node` 字段名即「node」，字面读「节点域全退」会把 ② 一并拆掉——而 `gs.node` 是 plane/round/hp 读口的基底（`cw_game_state.py:3863-3880` `plane_of/round_of/hp` 均从 `gs.node.value` 派生）与现役消费点（`_defeat_latch_by_secondary:659`、`_shop_panel_type_target:3153-3157`），拆掉 = 决策层坐标全断。反之若实现者正确保留 ②，则「漏斗彻底退出节点域写入」「recorder 从此零节点域副作用」两句**字面为假**（recorder 经漏斗仍写 `gs.node` 镜像，仅推进域副作用消失）——§2.7-5 的验收主张按字面不可判定。design 全文（含 §2.5 退役清单）对 `gs.node` 镜像零提及，正本清单（landing）也无对应行。
 - **依据**：`obs/cw_observation.py:2567-2587`（漏斗内 gs.node 写端）、`kernel/cw_game_state.py:3080-3089`（留驻类型写）、`:3863-3880`（读口基底）、`assets/.../` 无关；design §2.4-1 / §2.7-5 / landing 3.5 原文。
 - **要求**：design §2.4-1/§2.7-5 与 landing 3.5 把「节点域」显式限定为「node_ord/node_hist_ord 推进域」，并增一行申报：`gs.node`（NodeKey 观察镜像，plane/round/kind）与商店查链类型写**留在漏斗**（观察层，非推进域；recorder 对其的写入属观察镜像非逻辑态副作用）；正本更新清单补 `node-derivation.md`/`fields.md` 对应句。纯文字边界修正，不动模型。
 
@@ -74,7 +74,7 @@
 
 ### B-② 共存窗口第三状态
 
-3.2 后（settle 门挡 + 旧腿全权）与 3.3 后（supply 部分放行 + 旧腿）两窗口逐一组合（补给自动弹/divert、快弹窗、恢复局、证据 miss）走查：新旧写端对 node_ord 的写均收敛到同序（hist 序相等去重 + 补推同经原语），未发现被漏画的第三状态；窗口内 R<v 留证噪声已在 design 申报。**零命中**。
+3.2 后（settle 门挡 + 旧分支全权）与 3.3 后（supply 部分放行 + 旧分支）两窗口逐一组合（补给自动弹/divert、快弹窗、恢复局、证据 miss）走查：新旧写端对 node_ord 的写均收敛到同序（hist 序相等去重 + 补推同经原语），未发现被漏画的第三状态；窗口内 R<v 留证噪声已在 design 申报。**零命中**。
 
 ### B-③ §2.7 九条 vs 现行代码逐条核
 

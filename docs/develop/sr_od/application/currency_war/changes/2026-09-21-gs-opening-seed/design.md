@@ -45,7 +45,7 @@
 
 解决:A 类字段开局播种(阵容/经济域锚定前不再是 None)→ 这些域的「未观察」判据
 整体消亡;锚定闩 + 通道规则让获得链在窗口内正常落账且首观察静默覆盖;carry 守卫
-收窄封住「随机态值被失读腿洗成可信 carried」的假值通道。
+收窄封住「随机态值被失读分支洗成可信 carried」的假值通道。
 
 明确不解决(防外溢):
 
@@ -82,7 +82,7 @@
 | `gold` | 3 | 用户裁定,对齐 sim M01 `OPENING_GOLD`(`sim/cw_sim_opening.py:52`) |
 | `level` | 3 | 用户裁定;`XP_TO_NEXT_LEVEL` 表键一致(`cw_economy.py:51`);读口旧缺省 1,种子 3 更贴真值(§2.6-8) |
 | `xp` | (0, 4) | 用户裁定(L3 升级所需=4);表值一致(`XP_TO_NEXT_LEVEL[3]`) |
-| `hp` | 82 | 用户裁定;值取在册实证基线 `OPENING_HP_BASE`(109 局零方差,`cw_opening_hp.py:22`,实证域 A8/难度108,其余职级档候采集)。**三写端时序固定**:种子(建立点)→ 先验(首漏斗帧 `write_prior`,按档 82/62;非实证档先验返 None → 先验腿跳过,容器保持种子随机态至真读——收窄后 carry 不降级,§2.5)→ 真读。申报:决策可信位门(`hp_decision_trusted`)只认 observation/carried——种子对可信位消费**零增益**,价值 = 值域统一底座(journal/显示面);开局不利局种子 82 vs 实发 62 的偏差持续到纠正点(§2.6-6) |
+| `hp` | 82 | 用户裁定;值取在册实证基线 `OPENING_HP_BASE`(109 局零方差,`cw_opening_hp.py:22`,实证域 A8/难度108,其余职级档候采集)。**三写端时序固定**:种子(建立点)→ 先验(首漏斗帧 `write_prior`,按档 82/62;非实证档先验返 None → 先验分支跳过,容器保持种子随机态至真读——收窄后 carry 不降级,§2.5)→ 真读。申报:决策可信位门(`hp_decision_trusted`)只认 observation/carried——种子对可信位消费**零增益**,价值 = 值域统一底座(journal/显示面);开局不利局种子 82 vs 实发 62 的偏差持续到纠正点(§2.6-6) |
 | `streak` | 0 | 开局真值 |
 | `back_layout` | 6 | 机制基线(字段注释:平常 6) |
 | `deploy_cap` | 3 | 用户裁定(= level,财富宝钻 0;字段注释「= level + 财富宝钻数」) |
@@ -176,7 +176,7 @@
   | 简报三写点(`cw_screen_report/briefing.py`) | enemy_affixes/plane_bosses/enemy_difficulty | 不收口:enemy_affixes 种子 [] 被直写覆写 = 预期(三读数一局恒定,覆写无信息损失);后两域不种 |
   | 位面详情写门(`cw_screen_report/plane_intel.py`) | plane_bosses/enemy_affixes | 不收口:幂等门/真值不覆写门与种子空值协同 = 今日行为;不种域不涉 |
   | always-rand 直写点(pick_supply/pick_planner/tool_use/collect_ore/pick_equip/cw_gain_effects 等,落地时 grep 为准) | 各自目标域 | 天然合规:直 rand 通道不经选择点,规则不辖,列名备查 |
-  | 效果账本桥写端群(`cw_effect_inventory` ≈12 处) | bench/行域/equips 等 A 类域 | **前提经 3.2 复核推翻**:投资策略屏「人力重组」(SELL_ALL)经 `gain_invest_strategy` 登记腿 → `apply_board_rewrite` 清空写,写门 = 域已读,种子后三门全开 → **锚定前可达**。裁定 = 本行预埋的「按同规则收口」:`apply_board_rewrite` 容器清空写经锚定闩择道(未锚定 → rand);择道 helper 住 `cw_game_state`(cw_gain_chain `_select_write` 同源委托,防 kernel 内循环 import);UPGRADE_ALL 零写不涉;其余桥写端(补给/策划/上阵/获得回执/工具回执)锚定后可达,天然合规 |
+  | 效果账本桥写端群(`cw_effect_inventory` ≈12 处) | bench/行域/equips 等 A 类域 | **前提经 3.2 复核推翻**:投资策略屏「人力重组」(SELL_ALL)经 `gain_invest_strategy` 登记分支 → `apply_board_rewrite` 清空写,写门 = 域已读,种子后三门全开 → **锚定前可达**。裁定 = 本行预埋的「按同规则收口」:`apply_board_rewrite` 容器清空写经锚定闩择道(未锚定 → rand);择道 helper 住 `cw_game_state`(cw_gain_chain `_select_write` 同源委托,防 kernel 内循环 import);UPGRADE_ALL 零写不涉;其余桥写端(补给/策划/上阵/获得回执/工具回执)锚定后可达,天然合规 |
   | `cw_effect_inventory` 内部选择点 2 处(merge_cascade_write/grant_bench_unit_cascade) | 阵容域 | 调用面锚定后(补给/策划/上阵/回执),按形参语义天然合规(3.2 复核登记,不收口) |
   | `PrepActionExecutor` 2 处 | 执行随动域 | 锚定后窗口,天然合规(登记备查) |
   | 动作上报族 A 类目标若干(kernel/cw_action_report/) | 各动作域 | 锚定后动作,天然合规(登记备查) |
@@ -191,11 +191,11 @@
   (可信位),击穿 §8.8 假值防线(实证可达路径:接管局 shop-open 帧 hp 失读支)。收窄 =
   **现值来源为 logic_rand 时 carry 不沿用(返回不动)**——随机态种子/采样值不是
   「上次好值」,失读时宁保持未验证态不洗白。**影响面矩阵(3.1 验收按实码修订)**:carry
-  腿共 **11 条**(漏斗 gold/level/hp/enemy_difficulty/deploy_cap/streak/board/
-  shop_refresh_cost 八条 + `cw_screen_prep` 失读腿 bench/front_row/back_row 三条);
+  分支共 **11 条**(漏斗 gold/level/hp/enemy_difficulty/deploy_cap/streak/board/
+  shop_refresh_cost 八条 + `cw_screen_prep` 失读分支 bench/front_row/back_row 三条);
   rand 写域 ∩ carry 目标域 = **{board, bench, front_row, back_row}**(board = 行域
   rand 派生;阵容三域 = 种子/链写后现值即 logic_rand)——四域失读帧收窄后不再洗白 =
-  **存量语义修正**(与 §2.6-3 合并申报);其余七腿与现役 rand 写域零交点,行为不变。
+  **存量语义修正**(与 §2.6-3 合并申报);其余七条分支与现役 rand 写域零交点,行为不变。
 
 ### 2.6 行为变化申报
 
@@ -209,7 +209,7 @@
    detail 档在生产死化(保留给 sim/测试直构路径)。
 3. **观察失败路径降级 + carry 收窄**:阵容域 heavy 重读持续失败时,容器保持种子/链写
    值(今日 = None → 各守卫保守跳过),kernel 计算族按底座继续、错误由后续对账暴露;
-   carry 收窄后随机态值不再被失读腿洗成可信 carried(§2.5,含存量语义修正申报)。
+   carry 收窄后随机态值不再被失读分支洗成可信 carried(§2.5,含存量语义修正申报)。
    减压面 = tracked 账独立于容器种子,商店门/执行闸安全网不受影响。
 4. **journal 增量**:每局开局 23 行种子行(键
    `actor='GsOpeningSeed'` 可过滤;board 冷建时点无观察基座零派生行,首观察帧起按
@@ -242,7 +242,7 @@
   `logic_rand_outcome` 台账行(断言其存在与 kind);
 - 闩时序:`reconcile_tracking` bench 写回成功 → `prep_anchored=True`;读口解析;
   测试专口直赋生效;
-- carry 收窄:logic_rand 值 + 失读 carry 腿 → 值与来源不变(不洗白);非 rand 来源
+- carry 收窄:logic_rand 值 + 失读 carry 分支 → 值与来源不变(不洗白);非 rand 来源
   carry 行为不变(存量回归臂);
 - 链窗口行为:未锚定期链写 source=logic_rand、GainOutcome 正常、观察覆盖零三分流行;
   置闩后 `rand=False` 链写走 logic、模拟失配可产缺陷行(失配网未盲);rand 透传双臂

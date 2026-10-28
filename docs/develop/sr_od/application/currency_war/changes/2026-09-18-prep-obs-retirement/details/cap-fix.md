@@ -23,7 +23,7 @@ deployed = [c for c in deployed_slots_of(gs) if c is not None]
 
 ### 2. wanted 臂实参同批换源（entry.py:574）
 
-`wanted_closure_emit(session, gs, list(obs.bench_chars), list(obs.deployed_chars), ...)` 实参换成容器名单（同 §1 变换）。理由：该臂的部署腾槽腿与事故同族（用名单判 cap/席位，mandate.py:1017-1031），且不换会出现同一决策入口「帧名单=容器、臂名单=黑板」的双源并存。腾席空位判定 `deploy_cap - len(deployed)`（mandate.py:1017）随之自动归位。
+`wanted_closure_emit(session, gs, list(obs.bench_chars), list(obs.deployed_chars), ...)` 实参换成容器名单（同 §1 变换）。理由：该臂的部署腾槽分支与事故同族（用名单判 cap/席位，mandate.py:1017-1031），且不换会出现同一决策入口「帧名单=容器、臂名单=黑板」的双源并存。腾席空位判定 `deploy_cap - len(deployed)`（mandate.py:1017）随之自动归位。
 
 ### 3. cap 键单一源（mandate.py `_deploy_plan_inputs`）
 
@@ -40,7 +40,7 @@ deployed = [c for c in deployed_slots_of(gs) if c is not None]
 ### 5. 不动的相邻面（边界申报）
 
 - 晶矿路径腾席判据（entry.py:522-566）：结构性死码（触发集 `SPHERE_OCCUPYING_COLORS` 现役空集，entry.py:138；注释明文「保留原位，当前不可达」），本阶段不动。其块内直读 `obs.spheres`（:524）与 `obs.bench_chars`/`obs.deployed_chars`（:534-539）的换源**归属阶段 3.4**（晶矿域立域时同批切换，见 obs-retirement.md §阶段 3.4-5）——批 5 删字段前该块必须已完成换源，否则不可达保护失效后即 AttributeError。
-- `PrepObservation` 的名单字段本体与黑板投影腿：批 5 面，本阶段禁删（总纲契约 1）。
+- `PrepObservation` 的名单字段本体与黑板投影分支：批 5 面，本阶段禁删（总纲契约 1）。
 
 ### 6. 失读方向等价性论证（总纲契约 2 的本篇落实）
 

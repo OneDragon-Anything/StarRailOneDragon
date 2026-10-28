@@ -94,7 +94,7 @@ class CwActionSellBenchOp(SrOperation):
 - `cw_exec_state.py::apply_op_effect` 瘦身为 dict 确认族专用(`ConfirmSupply/ConfirmBox/ConfirmTome/ConfirmExpertCash/BuyCard` dict 分支保留,消费方 = `_overlay_confirm.py`);改名 `apply_confirm_effect` 并同步两处 import(含 docstring 锚全仓 grep 更新)。
 - 删 `ShopActionExecuted`?不删——上报函数签名仍用(`executed` 执行回执参数)。
 - sim `cw_sim_actions.apply_player_action`:改「一行委托分支串」——DeployMove → `report_action_deploy_move_param`;商店族逐类型 → 对应上报函数(sim 自喂 `executed`:refresh_paid=`refresh_cost_for(gs)`、levelup_clicks=1);`record_refresh_execution` 挂 `outcome.applied` 原位保留。
-- 驱动器 `strategies/impl/flow.py::decide_shop_screen` 与 `mandate_v1/bridge.py` 商店段:快照三件组 + 双腿抄写段删除,改逐动作调 `report_action_buy_card_param`(快照已内聚)等;`mandate.py:158` 等 `cw4_frame_action_record` 类型名消费面已在阶段①跟名,复查即可。
+- 驱动器 `strategies/impl/flow.py::decide_shop_screen` 与 `mandate_v1/bridge.py` 商店段:快照三件组 + 双分支抄写段删除,改逐动作调 `report_action_buy_card_param`(快照已内聚)等;`mandate.py:158` 等 `cw4_frame_action_record` 类型名消费面已在阶段①跟名,复查即可。
 
 ## 3. 预期测试破点与裁决指引(先判后改,禁盲调期望)
 

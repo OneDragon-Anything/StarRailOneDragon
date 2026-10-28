@@ -59,7 +59,7 @@
 ### minor（建议）
 
 **m1**｜minor｜design.md §2.2-a/§2.3 × cw_game_state.py:171/:3151-3162（`leave_screen` 守卫面）
-`_PAYLOAD_DOMAINS`（现 = `frozenset({'shop','encounter','supply'})`，:171）被申报「扩展为 槽 → 属屏 结构」，但其唯一消费点 `GameState.leave_screen` 的合法域守卫（:3158 `if name not in _PAYLOAD_DOMAINS: raise ValueError(非画面附加域)`）如何跟随未申报：若结构重建后不含 `shop`，既有两处 shop 清点（CloseShop 逻辑腿 cw_game_state.py:2033、prep 相位观察商店锚 miss 分支 cw_observation.py:2617-2619——§2.3 申报「保留未动」）每次调用即 ValueError，商店链全断。另「已 None 跳过」的落点未定死：跳过判定放**挂点**（既有两处清点行为不变，零行为成立）或放 **leave_screen 本体**（既有两处调用点在无 None 语境下行为碰巧等价——观察点已有 `value is not None` 前置守卫、CloseShop 腿由 decide 在屏前置保证非 None——但 §2.6 可观测性申报的口径被实现选型摆布）。
+`_PAYLOAD_DOMAINS`（现 = `frozenset({'shop','encounter','supply'})`，:171）被申报「扩展为 槽 → 属屏 结构」，但其唯一消费点 `GameState.leave_screen` 的合法域守卫（:3158 `if name not in _PAYLOAD_DOMAINS: raise ValueError(非画面附加域)`）如何跟随未申报：若结构重建后不含 `shop`，既有两处 shop 清点（CloseShop 逻辑分支 cw_game_state.py:2033、prep 相位观察商店锚 miss 分支 cw_observation.py:2617-2619——§2.3 申报「保留未动」）每次调用即 ValueError，商店链全断。另「已 None 跳过」的落点未定死：跳过判定放**挂点**（既有两处清点行为不变，零行为成立）或放 **leave_screen 本体**（既有两处调用点在无 None 语境下行为碰巧等价——观察点已有 `value is not None` 前置守卫、CloseShop 分支由 decide 在屏前置保证非 None——但 §2.6 可观测性申报的口径被实现选型摆布）。
 修正方向：§2.3 补两句——「`shop` 保留在映射结构内（leave_screen 守卫面不变，路由清点显式跳过 shop）」「已 None 跳过判定在路由挂点内做，leave_screen 本体不改」。
 
 **m2**｜minor｜design.md §2.8 依赖表（3.2/3.3 行依据列）× landing.md §3.3 文件面 × unified-obs-reconcile/landing.md §3.3/§3.4

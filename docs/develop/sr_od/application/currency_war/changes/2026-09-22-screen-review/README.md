@@ -50,7 +50,7 @@
 | T-21 | CwScreenBossBriefing BOSS简报 | 有问题(高0中2低2)·报告=账本reports/T-21-r1.md | **对抗收敛待裁决**(boss_briefing.md;r1 3条低→r2收敛) → **已实施**(落地批同上(五屏合并批),验收同报告通过) |
 | T-22 | CwScreenPlaneTransition 位面过渡 | 有问题(高0中1低2)·报告=账本reports/T-22-r1.md | **对抗收敛待裁决**(plane_transition.md;r1 3条低→r2收敛) → **已实施**(落地批同上(五屏合并批),验收同报告通过) |
 | T-23 | CwScreenWaitOneOne 等待1-1 | 有问题(高0中0低1)·报告=账本reports/T-23-r1.md | **对抗收敛待裁决**(wait_one_one.md;r1收敛) → **已实施**(落地批同上(五屏合并批),验收同报告通过) |
-| T-24 | CwScreenDeployNotFull 未达上限弹窗 | 有问题(高0中0低4)·报告=账本reports/T-24-r1.md | **对抗收敛待裁决**(deploy_not_full.md;r1收敛附4条文字级备注) → **已实施**(落地批同上(五屏合并批,含F-4观察侧三腿测试）,验收同报告通过) |
+| T-24 | CwScreenDeployNotFull 未达上限弹窗 | 有问题(高0中0低4)·报告=账本reports/T-24-r1.md | **对抗收敛待裁决**(deploy_not_full.md;r1收敛附4条文字级备注) → **已实施**(落地批同上(五屏合并批,含F-4观察侧三条分支测试）,验收同报告通过) |
 | T-25 | CwScreenPlaneIntel 位面情报 | 有问题(高0中0低5)·报告=账本reports/T-25-r1.md | **已实施**(plane_intel.md 三重收敛:主体 r3 定点+§3 登记级+R17 判据申报(开放集合采集豁免,稿面已有表述照抄);落地批 commit 7fa38e3a(F-1..F-5 零行为:变更史删/指针删/§7.6 双定位/日期清/裸名全形),验收 reports/T-25-acceptance.md **通过偏差0**(开放3簿记级:账本收口已由编排侧补/锚漂移1行归汇总校正/op-layer条款锚:36→:37他批所致)) |
 | T-26 | CwScreenNextButton 下一步按钮 | 有问题(高0中0低2)·报告=账本reports/T-26-r1.md | **对抗收敛待裁决**(next_button.md;r1 7条→r2收敛附2低) → **已实施**(落地批 commit bb2974a44(九屏文档批:注释/正本文档/死码删除,零行为),验收 reports/T-26-35-acceptance.md 通过零返工) |
 | T-27 | CwScreenPlaneDetail 位面详情 | 有问题(高0中0低3)·报告=账本reports/T-27-r1.md | **对抗收敛待裁决**(plane_detail.md;r1 2条中→r2收敛) → **已实施**(落地批 commit bb2974a44(九屏文档批:注释/正本文档/死码删除,零行为),验收 reports/T-26-35-acceptance.md 通过零返工) |

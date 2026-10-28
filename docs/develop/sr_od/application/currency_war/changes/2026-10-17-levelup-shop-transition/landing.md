@@ -20,7 +20,7 @@
 **验收凭据形式**：`test_shop_session_loop.py` 适配 + 新增「转场关店不置标记」「待付窗返回 None」单帧用例。
 
 ### 3.2 备战工序：随机态重开位 + 升级执行
-**范围**：备战九段序按 design §2.2 重排（新增第 1 步随机态重开：清 `shop_handled` + 开店 + 清信号）；升级检查移第 4 步、资格门全链两屏同参（criteria/levelup 单一源判定函数）；凑金 = `levelup_liquidate_prep` 场景（`one_star_refund_only` → False）+ 排序键①②③；发射 = 单帧原子整批 + 执行帧清 handled 标记；P78-5 兜底腿随场景同步。**不含**信号写入端（3.3）、场景行退役（3.4）。
+**范围**：备战九段序按 design §2.2 重排（新增第 1 步随机态重开：清 `shop_handled` + 开店 + 清信号）；升级检查移第 4 步、资格门全链两屏同参（criteria/levelup 单一源判定函数）；凑金 = `levelup_liquidate_prep` 场景（`one_star_refund_only` → False）+ 排序键①②③；发射 = 单帧原子整批 + 执行帧清 handled 标记；P78-5 兜底分支随场景同步。**不含**信号写入端（3.3）、场景行退役（3.4）。
 **设计依据**：design.md §2.2
 **文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/entry.py`、`bridge.py`（工序表）、`criteria/sell_candidates.py`、`criteria/levelup.py`（资格门判定函数出口，如需收口）、`kernel/cw_game_state.py`（仅工程结构组簿记槽 `shop_randomized_pending` 声明，默认 False；写端 = 3.3 回调）
 **依赖**：3.1

@@ -17,7 +17,7 @@
 - 规范条款:`screens/op-layer.md` §2.2(「屏文件 = 该画面观察进容器的全部逻辑的家」——声明文件须与写端现状一致);AGENTS.md §8(注释只留当前语义)。
 - 根因归层:表示层(头注声明滞后于关店清场收口后的实现,病理链与收口背景 = `test_cw_shop_close_clear.py` 模块头,实证局 run_20260918_063249;行为本身合规且有测试）。
 - 解决到哪:分支 A 文件随在飞 3.4 退役,声明面随文件消亡,零新增修法;分支 B 头注按 §2.1 文本改写为真值。
-- 明确不解决:`cw_loop.py::_route_clear_stale_payloads` docstring「清点源 = 两处显式口」的成员清单精度(在飞后 close 自上报恢复 Param 腿为生产清场口,该句自然复真;搁浅态由 F-4 分支 B 的 §7 入册间接澄清,不单独立修法);实机收敛性(报告 §4 无法核对面,静态审查不判)。
+- 明确不解决:`cw_loop.py::_route_clear_stale_payloads` docstring「清点源 = 两处显式口」的成员清单精度(在飞后 close 自上报恢复 Param 分支为生产清场口,该句自然复真;搁浅态由 F-4 分支 B 的 §7 入册间接澄清,不单独立修法);实机收敛性(报告 §4 无法核对面,静态审查不判)。
 
 ### 1.2 F-2(低)终结跳写声明住址缺席 + 上报函数族行压缩表述失真
 
@@ -37,7 +37,7 @@
 
 ### 1.4 F-4(中)关店逐动作专篇缺生产清场写端记载
 
-- 现状症状:`game_state/logic-updates/close-shop.md` §2 shop 行申报「上报函数写(结构离屏),**生产跳写**」——生产链现状在关店机械口两出口做 kernel 侧清场(`_clear_shop_payload` → `leave_screen`,evidence=left_screen,专项测试四测试),正是为修「生产跳写后牌面真值等入口观察重建」来不及的跨轮残留停局病理(病理链 = `test_cw_shop_close_clear.py` 模块头,实证局 run_20260918_063249)。专篇全篇无 `_clear_shop_payload`;§7「动作转移语义单一源 = 上报函数」也未入册壳内并存的第二处同语义实现(结构离屏写,非逻辑态写,不违上报函数族独占)。在飞 3.4 落地后失真方向反转:生产清场 = 动作 op 自上报 Param 腿,「生产跳写」与「编排壳承担点击」申报整体作废;且该专篇不在在飞正本更新清单(grep 实证:`changes/2026-09-21-shop-refresh-terminal/` 全目录零 logic-updates 引用)——3.4 落地将制造无人认领的申报失真。
+- 现状症状:`game_state/logic-updates/close-shop.md` §2 shop 行申报「上报函数写(结构离屏),**生产跳写**」——生产链现状在关店机械口两出口做 kernel 侧清场(`_clear_shop_payload` → `leave_screen`,evidence=left_screen,专项测试四测试),正是为修「生产跳写后牌面真值等入口观察重建」来不及的跨轮残留停局病理(病理链 = `test_cw_shop_close_clear.py` 模块头,实证局 run_20260918_063249)。专篇全篇无 `_clear_shop_payload`;§7「动作转移语义单一源 = 上报函数」也未入册壳内并存的第二处同语义实现(结构离屏写,非逻辑态写,不违上报函数族独占)。在飞 3.4 落地后失真方向反转:生产清场 = 动作 op 自上报 Param 分支,「生产跳写」与「编排壳承担点击」申报整体作废;且该专篇不在在飞正本更新清单(grep 实证:`changes/2026-09-21-shop-refresh-terminal/` 全目录零 logic-updates 引用)——3.4 落地将制造无人认领的申报失真。
 - 规范条款:close-shop.md §2/§7(逐动作逻辑态正本 as-built);对照 `flow/action_exec.md` §4(「终结跳写(结构离屏写 = 编排壳观察写端)」)与 `kernel/cw_projection_audit.py` 'shop' 行(审计表面已记壳内清场口)。
 - 根因归层:语义层(文档 as-built 滞后于行为收口;行为与审计面/动作正本一致,唯专篇单点滞后)。
 - 解决到哪:分支 A 专篇按在飞落地后形态更新(§2.4 逐节要点),并把专篇补登进在飞正本更新清单;分支 B 按现状形态补记生产清场写端(§2.4 替换文本)。
@@ -135,7 +135,7 @@
 **分支 A(在飞 3.4 已落地)**——专篇 `game_state/logic-updates/close-shop.md` 按新形态更新,逐节要点(语义正本 = `details/shop-visit-loop.md` §2.1,实现者照改;**替换文本须正本洁净化**:禁嵌 changes/ 引用、迭代进度指称与设计稿自指——落正本即 AGENTS §9 违例,依据一律住本稿,不随文本落正本):
 
 - §1 op 载体行:删「关店点击由编排壳 `CwOpCloseShop`(`close_shop`)承担」→ 改「`CwActionCloseShopOp` 执行体收编机械关店(找「按钮-收起」:miss = 幂等已关,无动作可发;命中 = 点击 + 固定等待 `SHOP_CLOSE_ANIM_S`);编排壳已退役」;同行既有括注「(`terminal=True`,动作 op 内 no-op)」同步清偿 → 「(`terminal=True`,执行体 = 机械关店 + 自上报)」——3.4 后执行体真机械执行,no-op 申报作废;不动它则照抄产出同句自相矛盾,且退役符号判据拦不住「no-op」token(故入本要点强制面)。
-- §2 shop 行:写/跳写列改「上报函数写(结构离屏),**生产 = 动作 op 自上报**」;说明列改「上报函数腿 = `report_action_close_shop_param`(`leave_screen`;`gs.shop.value` 非 None 才写;`CwActionCloseShopOp` 执行体两出口同调,sim 委托分支同源)。**生产落地门对终结动作整体跳写**(期望态推进无)——牌面/gold 真值由下一段入口观察重建;离屏清场 = 结构语义(非当前画面 = None,fields.md §2.2 画面附加域显式例外)非逻辑态转移」。
+- §2 shop 行:写/跳写列改「上报函数写(结构离屏),**生产 = 动作 op 自上报**」;说明列改「上报函数分支 = `report_action_close_shop_param`(`leave_screen`;`gs.shop.value` 非 None 才写;`CwActionCloseShopOp` 执行体两出口同调,sim 委托分支同源)。**生产落地门对终结动作整体跳写**(期望态推进无)——牌面/gold 真值由下一段入口观察重建;离屏清场 = 结构语义(非当前画面 = None,fields.md §2.2 画面附加域显式例外)非逻辑态转移」。
 - §3 转移规则第 3 条(机械序):宿主改「`CwActionCloseShopOp` 执行体」;幂等门语义与固定等待保留;「机械交回」改「execute 后读注册表 `terminal` 判定 round_success 交回外循环;零转移验证,点击未生效由外循环重分发自然重派」——替换文本语义自足,不嵌 changes/ 引用(该依据住本稿:`details/shop-visit-loop.md` §2.1 决策动作 node 第 6 步)。
 - §6 kernel 符号锚:删 `operations/cw_op/cw_op_close_shop.py::close_shop / CwOpCloseShop`,增 `operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`;行尾既有错锚顺手修正——「终结语义总表 = screens/README §4」→「§6」(总表实居 `screens/README.md` §6「回外循环(终结)语义总表」;与本稿 F-5 持久锚、op-layer §1.4 引用对齐,消稿内口径分叉)。
 - §7:改「动作转移语义单一源 = 上报函数;生产写端 = `CwActionCloseShopOp` 执行体自上报(与 sim 同源单一函数),跨轮残留由『清场随终结动作执行发生』承载(专项测试 test_cw_shop_close_clear,断言随执行位)」——纯现役句,迭代/进度指称与设计稿自指只住本稿不落正本(AGENTS §9 as-built 无状态;测试迁移义务住在飞 3.4 验收清单,grep `CwOpCloseShop` 在 src + sr-od-test 零命中强制,不进 §7 文本)。
@@ -144,10 +144,10 @@
 
 - §2 shop 行整行替换:
 
-> | shop | 上报函数写(结构离屏);生产 = 编排壳机械口清场(同语义 `leave_screen` 写) | 上报函数腿 = `report_action_close_shop_param`(`leave_screen`;`gs.shop.value` 非 None 才写,obs 族签名转造)——生产链零调用,唯一消费 = sim 委托分支。**生产清场写端 = `operations/cw_op/cw_op_close_shop.py::_clear_shop_payload`**(点击已发/幂等已关两出口同清,sig = obs 族 actor='CwOpCloseShop' mode='read',evidence=left_screen;专项测试 test_cw_shop_close_clear 四测试)——修「生产跳写后牌面真值等入口观察重建不及」的跨轮残留停局病理。**生产落地门对终结动作整体跳写**(期望态推进无)——牌面/gold 真值由下一段入口观察重建;离屏清场 = 结构语义非逻辑态转移 |
+> | shop | 上报函数写(结构离屏);生产 = 编排壳机械口清场(同语义 `leave_screen` 写) | 上报函数分支 = `report_action_close_shop_param`(`leave_screen`;`gs.shop.value` 非 None 才写,obs 族签名转造)——生产链零调用,唯一消费 = sim 委托分支。**生产清场写端 = `operations/cw_op/cw_op_close_shop.py::_clear_shop_payload`**(点击已发/幂等已关两出口同清,sig = obs 族 actor='CwOpCloseShop' mode='read',evidence=left_screen;专项测试 test_cw_shop_close_clear 四测试)——修「生产跳写后牌面真值等入口观察重建不及」的跨轮残留停局病理。**生产落地门对终结动作整体跳写**(期望态推进无)——牌面/gold 真值由下一段入口观察重建;离屏清场 = 结构语义非逻辑态转移 |
 
 - §3 转移规则第 1 条句尾补一句:「生产载体 = 编排壳 `_clear_shop_payload`(同语义 `leave_screen`,见 §2)。」;该被编辑行既有死锚 `bs.shop.value` 顺手现役化为 `gs.shop.value`(「编辑点位既有失真顺手修正」同款标准,先例 = 本节分支 A §6 行尾锚修正;代码真值 = `kernel/cw_action_report/close_shop.py:25` 函数体全用 `gs`,全 src 无 `bs` 容器符号——替换文本与编辑点位禁带死符号)
-- §7 末尾增一句:「壳内并存的第二处同语义实现 = `_clear_shop_payload`(结构离屏写,非逻辑态写,不违上报函数族独占;与上报函数腿同源同语义,入册防审计漏计写端)。」
+- §7 末尾增一句:「壳内并存的第二处同语义实现 = `_clear_shop_payload`(结构离屏写,非逻辑态写,不违上报函数族独占;与上报函数分支同源同语义,入册防审计漏计写端)。」
 
 - 依据:收口事实 = `cw_op_close_shop.py::_clear_shop_payload` 函数体 + `test_cw_shop_close_clear.py` 模块头病理链;审计面先例 = `kernel/cw_projection_audit.py` 'shop' 行已记「关店机械口离屏清场(CwOpCloseShop._clear_shop_payload → leave_screen;report_action_close_shop_param 同口 = sim 路径)」——专篇向审计面现值对齐。
 - **跨批义务(分支 A 前置)**:分支 A 依赖 §2.0 补登(机械全域归属,现册①-⑧)——八面均不在在飞清单认领面,不补登则 3.4 落地后「生产跳写/编排壳/no-op」类申报失真且无认领批。
