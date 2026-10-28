@@ -42,16 +42,9 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
-    CwActionCollectOreParam,
-    CwActionDeployMoveParam,
     CwActionLevelUpParam,
     CwActionOpenBookcardParam,
-    CwActionOpenBoxParam,
-    CwActionOpenTomeParam,
-    CwActionSellBenchParam,
-    CwActionSellDeployedParam,
     CwActionStartBattleParam,
-    CwActionWearEquipParam,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -404,38 +397,16 @@ class PrepActionExecutor:
 
     # ===== 奖励域 =====
 
-    def _collect_ore(self, action: CwActionCollectOreParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_collect_ore_action.CwActionCollectOreOp``,统一
-        动作工厂体迁薄委托,替身缝保留;机械语义 docstring 随体)。"""
-        return self._dispatch_action(action)
-
-    def _open_box(self, action: CwActionOpenBoxParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_box_action.CwActionOpenBoxOp``;替身缝保留)。终结动作:结束本次访问等待 = CwActionOpenBoxOp.
-        terminal_wait(与 _OVERLAY_ANIM_WAIT_S 等价,等价测试已登记)。"""
-        return self._dispatch_action(action)
-
-    def _open_tome(self, action: CwActionOpenTomeParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_tome_action.CwActionOpenTomeOp``;替身缝保留)。"""
-        return self._dispatch_action(action)
-
     def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;替身缝保留——测试直调面沿此缝)。"""
         return self._dispatch_action(action)
 
     # ===== 席位域 =====
 
-    def _sell_bench(self, action: CwActionSellBenchParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_prep_sell_bench_action.CwActionSellBenchOp``;
-        薄委托,替身缝保留)。"""
-        return self._dispatch_action(action)
-
-    def _sell_deployed(self, action: CwActionSellDeployedParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_sell_deployed_action.CwActionSellDeployedOp``;替身缝保留)。"""
-        return self._dispatch_action(action)
-
-    def _deploy_move(self, action: CwActionDeployMoveParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_deploy_move_action.CwActionDeployMoveOp``;替身缝保留)。"""
-        return self._dispatch_action(action)
+    # (薄委托 _collect_ore/_open_box/_open_tome/_sell_bench/_sell_deployed/
+    #  _deploy_move/_wear_equip/_use_tool 已删:分派单一形态 = 注册表
+    #  action_op_for(_dispatch_action),薄委托体全仓零调用含测试——
+    #  替身缝宣称的测试直调面仅 _open_bookcard 在场。)
 
     # ===== 装备/工具原子域(穿戴 / 工具按消耗品各立类;机械原语
     #       _equip_slot_drag_point/_owned_grid_locate
@@ -490,15 +461,6 @@ class PrepActionExecutor:
                            equip_rect=(rect.x1, rect.y1, rect.x2, rect.y2))
         entry = next(((n, p) for n, p, _ in hits if n == item_name), None)
         return Point(entry[1][0], entry[1][1]) if entry is not None else None
-
-    def _wear_equip(self, action: CwActionWearEquipParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_wear_equip_action.CwActionWearEquipOp``;替身缝保留)。"""
-        return self._dispatch_action(action)
-
-    def _use_tool(self, action: CwAction) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_tool_use_action.ToolUseOp``,工具原子七类
-        共用;替身缝保留)。"""
-        return self._dispatch_action(action)
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,

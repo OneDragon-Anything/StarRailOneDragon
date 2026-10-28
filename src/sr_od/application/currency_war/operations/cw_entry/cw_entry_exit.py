@@ -77,8 +77,6 @@ class CwEntryExit(CwOperation):
         '货币战争-结算': ST_SETTLEMENT,
     }
     LOBBY_SCREEN: ClassVar[str] = '货币战争-大厅'
-    #: A 类名单(直接退出)引用单一源常量,禁在本文件复写
-    DIRECT_EXIT_SCREENS: ClassVar[frozenset[str]] = PREP_DIRECT_EXIT_SCREENS
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
     ENEMY_INFO_SCREEN: ClassVar[str] = '货币战争-敌人信息浮层'
 

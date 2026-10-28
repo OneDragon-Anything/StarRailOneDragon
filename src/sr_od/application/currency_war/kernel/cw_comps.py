@@ -32,23 +32,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_units_of,
     deployed_rows_of,
-    gold_of,
-    level_of,
-    plane_of,
-    round_num_of,
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     GiftGrant,
-)
-from sr_od.application.currency_war.kernel.cw_node_schedule import (
-    PLANE_NODE_TABLES,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
@@ -286,7 +278,7 @@ def derive_key_equips(comp: Comp) -> list[str]:
 class ScoreContext:
     """select_comp / comp_score 的每回合上下文(避免长参数列表)。"""
     bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=简报源未读得位,保位列表——实采源恒全识别)
-    mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
+    mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(AFFIX_MECHANIC_MAP 归一)
     env: str = ""                                                # 已选投资环境名(env_fit)
     held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(held_strategy_fit;机会型 pivot)
     plane: int = 1
@@ -360,7 +352,7 @@ def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
                            ) -> tuple[dict[str, str], dict[str, list[str]], dict[str, list[str]]]:
     """生效机制三元组(词缀映射/克制/受利)= 基表直通。
 
-    (保留本函数签名,消费点 mechanics_fit / current_enemy_mechanics /
+    (保留本函数签名,消费点 mechanics_fit /
     cw_events / cw_intention 调用零改。``registry`` 参数保留占位,
     不再参与取值。)
     """
@@ -392,17 +384,6 @@ def effective_mechanic_attributes(comp: Comp,
 # normalize_boss_name 接通俗称归一注册表后俗称键可命中,但规范名直写消除双名空间)。
 
 # ===== 环境 → 阵营/阵容亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
-# 累积型角色强环境机制 tag 集(`w607_affix_consumption/` H1 终局阵容锁定环境判据的数据层):
-# 「全局累积型阵容需特定环境才强,无环境不选」(口述条目 21(登记簿已退役) 例外条款);
-# 万敌强环境 = 敌方多动/反伤类(docs/game/currency_war/research/final_comps/
-# accumulator_family.md §3 表,证据高;§4.2 前提②「词缀 ∈ 该成员强环境集」
-# 判经 AFFIX_MECHANIC_MAP 归一后与本集求交)。「灼热轰炸」等未入
-# AFFIX_MECHANIC_MAP 的词缀按不命中处理(宁缺勿错,不猜映射)。
-# 键 = Comp.global_accumulators 的累积类型(非角色名——判据按类型覆盖)。
-STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
-    'hp_charge_stack': frozenset({'反伤', '多段惩罚'}),
-}
-
 # 库藏生锈词缀名(`w607_affix_consumption/` H2 消费钩子的词条识别名):备战席每 1 件未穿装备 →
 # 敌方造成伤害 +3%、受到伤害 -4%,最多计 10 件
 # (docs/game/currency_war/data/competitors.md:45,2026-08-28 游戏内实采)。
@@ -527,29 +508,6 @@ def char_routes() -> dict[str, set[str]]:
         for c in set(comp.core_chars) | set(comp.shared_chars):
             routes.setdefault(c, set()).add(comp.name)
     return routes
-
-
-def skeleton_factions() -> set[str]:
-    """过渡骨架羁绊集(方法论派生,替硬编码 TRANSITION_FACTIONS 的数据源)。
-
-    plaza 实战开局组合(「3仙舟2DOT」「2dot2学者」「2贝洛伯格」)不是背出来的,是判据筛出来的:
-    羁绊最低激活档 ≤3 人 **且** ≤2 费成员 ≥2 个(便宜+快激活+有人可买)。从 FACTIONS/CHARACTERS
-    注册表派生(单一真相源,版本更新自动传导);过渡判据(kernel.cw_transition)消费。
-    """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
-
-    cheap: dict[str, int] = {}
-    for _name, ch in CHARACTERS.items():
-        if ch.cost <= 2:
-            for f in ch.factions:
-                cheap[f] = cheap.get(f, 0) + 1
-    # 狼狩封存(四体系封闭裁定;同 cw_bridge_pool.py 前注):不再作为
-    # 过渡骨架判据候选——判据筛选合格也不入集。
-    _SEALED_SKELETON_FACTIONS: frozenset[str] = frozenset({'狼狩'})
-    return {name for name, info in FACTIONS.items()
-            if (info.tiers and min(info.tiers) <= 3 and cheap.get(name, 0) >= 2)
-            and name not in _SEALED_SKELETON_FACTIONS}
 
 
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
@@ -1679,22 +1637,6 @@ def get_comp(name: str) -> Comp | None:
     return None
 
 
-def hp_charge_stack_chars() -> frozenset[str]:
-    """``hp_charge_stack`` 型全局累积角色名全集(标注派生,单一源)。
-
-    消费点 = decision_v2.phase 兜底门豁免:该型角色(万敌:受伤
-    充能+生命上限永久提高)的累积由**场上事件**驱动,上场即真实累积战力,
-    与过渡体系同格;``cost_escalation`` 型(银狼)累积由购买驱动,不在此集
-    (Comp.global_accumulators 字段 docstring 明示其不适用部署类例外)。
-    """
-    return frozenset(
-        char
-        for c in COMP_LIBRARY
-        for char, acc in (c.global_accumulators or {}).items()
-        if acc == 'hp_charge_stack'
-    )
-
-
 # (本文件不含 candidate_faction_universe/candidate_char_universe:
 # 环境屏候选线集 = 策略层 invest_env 方向分构造侧求值;「送卡所赠角色是否被
 # 候选套使用」的成员判定单一源 = ``gift_hit_tier`` 档位机器,消费位 =
@@ -2035,24 +1977,6 @@ def strength_base(comp: Comp) -> float:
     return {"S": 1.0, "A": 0.7, "B": 0.4}.get(comp.strength, 0.5)
 
 
-def current_enemy_mechanics(gs: GameState,
-                            registry: DecisionV2Registry | None = None) -> set[str]:
-    """当前敌人机制 tag 集合(从容器 enemy_affixes 域经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
-    表源 = merged_mechanic_tables 基表直通)。"""
-    affix_map, _, _ = merged_mechanic_tables(registry)
-    return {affix_map.get(a, a) for a in (gs.enemy_affixes.value or [])}
-
-
-def make_score_context(gs: GameState, bosses: list[str] | None = None) -> ScoreContext:
-    """从容器视图快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
-    return ScoreContext(
-        bosses=bosses or list(gs.plane_bosses.value or []),
-        mechanics=current_enemy_mechanics(gs),
-        env=(gs.active_env.value or ''),
-        held_strategies=list(gs.active_strategies.value or []),   # 机会型 pivot(选完策略后方向重估)
-        plane=plane_of(gs), round_num=round_num_of(gs), gold=gold_of(gs),
-    )
-
 
 # ===== comp_score(候选阵容综合分)=====
 # 权重 = 各维度**importance 先验**(V4.4 research meta 校准;归一化 sum=1.0)。开发者阶段 6 手调(内部)。
@@ -2105,228 +2029,6 @@ def comp_score(comp: Comp, gs: GameState, ctx: ScoreContext) -> float:
         (W_STR, strength_base(comp)),
     ])
 
-
-# 用户转向轴(README A / develop config.md §3):优先/禁止/build_around。getattr 防御读取(mock/旧 yml 缺字段安全)。
-
-def _passes_steering(comp: Comp, config) -> bool:
-    """用户 steer 硬过滤:build_around 必含、forbid 必不含。不满足 → 排除出候选。
-
-    - character_build_around:any() 语义(围绕我的任一强角色);
-    - faction_build_around:all() 语义(成就局要求指定阵容全在场,如 8减益 → ['减益'],
-      多羁绊成就列多个 = 全部必含)。
-    """
-    build_around = getattr(config, 'character_build_around', []) or []
-    if build_around and not any(c in comp.core_chars for c in build_around):
-        return False
-    faction_build = getattr(config, 'faction_build_around', []) or []
-    if faction_build and not set(faction_build).issubset(comp.all_factions):
-        return False
-    char_forbid = getattr(config, 'character_forbid', []) or []
-    if any(c in comp.core_chars for c in char_forbid):
-        return False
-    faction_forbid = getattr(config, 'faction_forbid', []) or []
-    return not any(f in comp.all_factions for f in faction_forbid)
-
-
-def _priority_boost(comp: Comp, config) -> float:
-    """用户 steer 软加权:命中 priority 角色/阵营 → 加分(tiebreak 偏向用户偏好)。"""
-    boost = 0.0
-    char_pri = getattr(config, 'character_priority', []) or []
-    for c in comp.core_chars:
-        if c in char_pri:
-            boost += 0.05 * (len(char_pri) - char_pri.index(c)) / max(len(char_pri), 1)
-    faction_pri = getattr(config, 'faction_priority', []) or []
-    for f in comp.all_factions:
-        if f in faction_pri:
-            boost += 0.05 * (len(faction_pri) - faction_pri.index(f)) / max(len(faction_pri), 1)
-    return boost
-
-
-def _schedule_elapsed_remaining(gs: GameState) -> tuple[int, int]:
-    """全局已进行/剩余节点数(场字段求和;裁决点 9:框架不供视界量,
-    判据点就地自算——本文件三调用点合一的模块内私有 helper,非公共视界口,
-    禁外借)。
-
-    elapsed = Σ_{p<plane} len + round(含当前节点,与旧 ``(plane-1)*9+round``
-    全局轮号同口径);remaining = Σ_{p>=plane} len − round + 1(含当前
-    节点,封顶 modeled planes,序列表键集 P1+P2+P3 全真值在表);位面
-    ∉ 序列表键集(≥4)= 表外防御 → remaining 0(与策略门面 horizon
-    契约同款);None(未注册态)回退默认表。两值同帧同源一次算出,
-    禁调用方单侧改式。
-    """
-    seqs = gs.node_seq_by_plane.value
-    tables = seqs if seqs is not None else PLANE_NODE_TABLES
-    p = plane_of(gs)
-    elapsed = sum(len(t) for k, t in tables.items() if k < p) \
-        + round_num_of(gs)
-    remaining = (sum(len(t) for k, t in tables.items() if k >= p)
-                 - round_num_of(gs) + 1) if p in tables else 0
-    return elapsed, remaining
-
-
-def _difficulty_phase_factor(comp: Comp, gs: GameState) -> float:
-    """阶段感知因子(用户:成型难度 + 早期战力都是关键维度):早期/穷 → 偏 easy 成型 + early_power 高。
-
-    早期偏 easy **且** early_power 高,避免选易成型但早期弱的阵容
-    (反例:DOT队 easy 但 DoT 慢热,plane1 弱)。先验待实玩校准(多局验证)。
-    """
-    elapsed, _ = _schedule_elapsed_remaining(gs)
-    early = elapsed <= 3 or gold_of(gs) < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
-    if not early:
-        return 1.0
-    form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
-    power_fac = {"高": 1.15, "中": 1.0, "低": 0.85}.get(comp.early_power, 1.0)
-    return form_fac * power_fac
-
-
-def _formation_cost_factor(comp: Comp) -> float:
-    """成型成本因子 —— 低 form_tiers sum(易成型)→ ×>1;高 sum(难成型)→ ×<1。
-
-    分析 COMP_LIBRARY 发现:命运圣杯红A sum=3(3 人激活)vs 龙丹战技点 sum=8(4+4 人激活)。后者成型
-    需 ~16 rounds(plane1+plane2 18 rounds 几乎全用),前者 ~6 rounds(plane1 内成型)。plane1 成型
-    = 进 plane2 时阵容强 → 能活。旧码 form_progress 不含 total cost(2 阵营部分成型 progress 可能
-    > 1 阵营满成型,但后者只需再几人 vs 前者再多人)。
-    """
-    if not comp.form_tiers:
-        return 1.0
-    total = sum(comp.form_tiers.values())
-    # sum=3 → ×1.15;sum=4 → ×1.1;sum=6 → ×0.95;sum=8 → ×0.85(low cost boost, high cost penalty)
-    return max(0.85, 1.3 - total * 0.055)
-
-
-def _board_alignment(comp: Comp, gs: GameState) -> float:
-    """board-alignment boost(CW deployed-lock → 选 board 支持的阵容)。
-
-    阵容阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.3(deployed-lock 下不可成型,
-    重 penalty:轻罚压不过 acq 0.15-1.0 主导 → spread;×0.3 让 board 支持主导选阵容);
-    count≥1 → ×1.0(中性)。**robust to board OCR 噪声**:count≥1 判 has_any 可靠;count≥2 bonus 非 penalty。
-    """
-    if not comp.factions:
-        return 1.0
-    board = gs.board.value or {}
-    factions = comp.all_factions   # 弹性羁绊铺板不算 off-target(核心+弹性任一在板即支持)
-    if any(board.get(f, 0) >= 2 for f in factions):
-        return 1.2   # deep-stack → boost
-    if not board:
-        return 1.0   # 空板 = 无部署证据 → 不罚(罚的前提是 deployed-lock 有错配证据;
-        # 无证据惩罚会只打到 factions 非空的阵容 —— 反甲白厄(factions 空,
-        # 故意设计)躲过 → 早期选择被数据伪影抬轿,机会型 pivot 也被它压死)
-    if not any(board.get(f, 0) >= 1 for f in factions):
-        return 0.3   # 全不在 board(板有单位)→ 重 penalty(轻罚压不过 acq 主导)
-    return 1.0
-
-
-def _held_base_copies(gs: GameState) -> dict[str, int]:
-    """玩家持有的每角色**基础副本数**(牌池消耗 j;acq 牌池感知用)。
-
-    bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
-    持有越多 → 牌池剩余该角色越少 → 越难再刷(牌库有限,用户根因)。
-    单位域 = 容器现读(bench unit 槽 + 行域 Unit;bench 全空/未观察 → {})。
-    """
-    counts: dict[str, int] = {}
-    front, back = deployed_rows_of(gs)
-    for u in (*front, *back, *bench_units_of(gs)):
-        if u is None:
-            continue
-        cid = getattr(u, 'char_id', None)
-        if not cid:
-            continue
-        star = max(getattr(u, 'star', 1), 1)
-        counts[cid] = counts.get(cid, 0) + 3 ** (star - 1)
-    return counts
-
-
-def select_comp(gs: GameState, ctx: ScoreContext, config,
-                top_n: int = 1) -> list[Comp]:
-    """按 comp_score 选 target(分数降序,返回 top_n)。
-
-    评分 = comp_score(多维)+ 用户 4 轴 steer(硬过滤 build_around/forbid + 软加权 priority)
-    + 阶段成型难度因子(早期偏 easy)。optionality 时传 top_n=2-3 备选几套(P1-1:核心来了再 commit)。
-    """
-    return [c for _s, c in select_comp_scored(gs, ctx, config, top_n=top_n)]
-
-
-def select_comp_scored(gs: GameState, ctx: ScoreContext, config,
-                       top_n: int = 1) -> list[tuple[float, Comp]]:
-    """``select_comp`` 的带分版(遥测要**实际排序分**——含 steer/acq/
-    board_alignment 等乘子的最终分,非裸 comp_score;close_call 分差分析量纲对齐)。
-
-    返回 ``[(final_score, Comp)]`` 降序;top_n 截断。排序逻辑与 select_comp 完全
-    同源(单一实现,select_comp 是本函数的投影)。
-    """
-    held = _held_base_copies(gs)   # :acq 扣玩家持有副本(牌池有限)
-    # 持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
-    # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本阵容核心生效,他阵容不吃这份加成)。
-    _granted: dict[str, int] = {}
-    from sr_od.application.currency_war.kernel.cw_investments import (
-        get_strategy,
-        strategy_bindings,
-    )
-    for _n in ctx.held_strategies:
-        _s = get_strategy(_n)
-        if _s is None:
-            continue
-        _gfs, _gcs = strategy_bindings(_s)
-        for _c in _gcs:
-            _granted[_c] = _granted.get(_c, 0) + 1
-    scored: list[tuple[float, Comp]] = []
-    for comp in COMP_LIBRARY:
-        if not _passes_steering(comp, config):
-            continue
-        _h = dict(held)
-        for _c, _k in _granted.items():
-            if _c in comp.core_chars:
-                _h[_c] = _h.get(_c, 0) + _k
-        s = comp_score(comp, gs, ctx) + _priority_boost(comp, config)
-        s *= _difficulty_phase_factor(comp, gs)
-        # 成型加速乘子:持有策略双命中(fit=1.0,套组三件套到手)→ ×1.25(期望成型提前一档);
-        # 中性 0.5 → ×1.0(不加不减)。加性 W_HELD 会被 acq/难度乘子稀释,乘子保证机会信号不被淹没。
-        _hf = held_strategy_fit(comp, ctx.held_strategies)
-        s *= 1.0 + 0.4 * ((_hf if _hf is not None else 0.5) - 0.5) * 2
-        # acquirability(牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
-        # acq 收窄口径:0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
-        # 防选「core 易刷但 board 不支持」的阵容 → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
-        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, level_of(gs), _h))
-        # 定义型 augment 近乎硬绑:黑塔纪元类(affinity≥0.9)拿到即改写本局
-        # —— ×1.5 压过板面对他阵容的既有投入(实测:lv5 板{列车:2} 时 held ×1.4 不足以翻转
-        # progress 0.45×0.5 的领先;M1 资源入口)。与 held 乘子叠乘(fit=1.0 时总 ~×2.1)。
-        if any(augment_affinity(a).get(comp.name, 0.0) >= 0.9
-               for a in ctx.held_strategies):
-            s *= 1.5
-        s *= _board_alignment(comp, gs)
-        s *= _formation_cost_factor(comp)
-        # B3(线组合首口,「错线 commit」的治法):boss 克线从 0.1 权重
-        # 评分项升格为**开局先验冲击乘子**——matchup<0.5(克)开局即压,不会被过渡牌堆高骗过
-        # form_progress 阈值。乘子语义:克(0.0-0.4)→ ×0.6-0.85;中性(0.5)→ ×1.0;利(0.6+)→
-        # ×1.05-1.1(温和,防 W_BOSS 双计 —— 评分项仍在,本乘子是开局/无板面投入时的主导信号,
-        # 有板面投入时被 _board_alignment 稀释)。影子安全:boss_fit None → ×1.0(=现状)。
-        try:
-            _bf = boss_fit(comp, list(gs.plane_bosses.value or []))
-            if _bf is not None:
-                s *= (0.7 + 0.6 * _bf)
-        except Exception:   # noqa: BLE001  影子失败安全
-            pass
-        scored.append((s, comp))
-    scored.sort(key=lambda t: t[0], reverse=True)
-    return scored[:top_n]
-
-
-def comp_score_breakdown(comp: Comp, gs: GameState, ctx: ScoreContext) -> dict[str, float | None]:
-    """comp_score 的特征分解(telemetry 采集用:给人肉眼复盘 + 未来 ML side door)。
-
-    schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(动态权重)。
-    详 cw_telemetry。
-    """
-    return {
-        "progress": progress(comp, gs),
-        "mechanics_fit": mechanics_fit(comp, ctx.mechanics),
-        "env_fit": env_fit(comp, ctx.env),
-        "held_strategy_fit": held_strategy_fit(comp, ctx.held_strategies),
-        "boss_fit": boss_fit(comp, ctx.bosses),
-        "equip_fit": equip_fit(comp, gs),
-        "strength": strength_base(comp),
-        "form_progress": form_progress(comp, gs),
-    }
 
 
 # ===== M7 装备角色级分配(方法论 M7:装备是角色特定的,51% 文本覆盖)=====
@@ -2803,19 +2505,6 @@ def equip_allocation(comp: Comp | None,
 COMMIT_FRAC: float = 0.4           # form_progress >=0.4 算已 commit(2 阵营阵容约 1 阵营过半)
 
 
-# 盛会之星巨星 buff 表(米游社原文;2→6 档;select_megastar 按绑定选):
-#   星期日:前台首位前台强度+后台首位后台强度(24%→132%)——前台单核乘法直乘
-#   黑天鹅:每个5费角色伤害增幅(5%→28%)——5费成群的高费队最大乘区(5个=+140%)
-#   知更鸟:幸运一击率(10%→55%)——暴击引擎(群攻/欢愉/追击)
-#   花火:进战5战技点+普攻/战技伤害增幅(12%→66%)——战技点引擎
-#   大丽花|加拉赫:击破伤害增幅+治疗强度(12%→66%)——击破专属(效果相同,谁在阵选谁)
-#   星徽:每星徽前后台强度(8%→44%)——依赖星徽套组,罕见(不进偏好表)
-MEGASTAR_BUFF: dict[str, str] = {
-    '知更鸟': '幸运一击率+55%', '花火': '战技点5+普战技伤害+66%',
-    '星期日': '前后台首位强度+132%', '黑天鹅': '每5费+28%伤害',
-    '大丽花': '击破伤害+66%+治疗', '加拉赫': '击破伤害+66%+治疗',
-    '星徽': '每星徽强度+44%',
-}
 # 阵容级巨星偏好(序 = 优先;按「阵容引擎 × 巨星乘区」绑定(详 strategy/02_comp §7),
 # 替代旧 3 条属性键粗映射。未列的阵容走 core/在场优先)
 COMP_MEGASTAR_PREFERENCE: dict[str, tuple[str, ...]] = {
@@ -2879,3 +2568,4 @@ def select_megastar(gs: GameState, target: Comp | None,
 
 # (select_megastar_enhance「强化角色」意向已停用——机制语义
 #  本就是待证假设,证据链见原函数注释的 git 历史,勿复活。)
+

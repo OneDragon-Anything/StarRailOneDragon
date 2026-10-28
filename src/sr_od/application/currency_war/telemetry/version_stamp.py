@@ -102,9 +102,3 @@ def registry_fingerprint() -> str:
     payload = json.dumps(_normalize(asdict(DEFAULT_REGISTRY)),
                          sort_keys=True, ensure_ascii=False, default=repr)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]
-
-
-def current_version_stamp() -> dict[str, str]:
-    """写入时点版本戳(runs.jsonl summary 行 / 档案 strategy_version 的源)。"""
-    return {'code_commit': code_commit(),
-            'registry_fingerprint': registry_fingerprint()}

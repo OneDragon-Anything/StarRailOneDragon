@@ -391,9 +391,3 @@ def derive_decision() -> tuple[OverlaySpec, ...]:
     """director bail 扫描派生集:激活的 decision 条目(声明序;B 面消费)。"""
     return tuple(spec for spec in OVERLAY_REGISTRY
                  if spec.active and spec.semantic == SEMANTIC_DECISION)
-
-
-def dispatch_order() -> tuple[OverlaySpec, ...]:
-    """C 面表驱动派发序:激活条目按 dispatch_priority 升序。"""
-    return tuple(sorted((s for s in OVERLAY_REGISTRY if s.active),
-                        key=lambda s: s.dispatch_priority))

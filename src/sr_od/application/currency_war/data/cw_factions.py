@@ -105,31 +105,3 @@ FACTIONS: dict[str, FactionInfo] = {
     "头号玩家": FactionInfo("头号玩家", "independent", (1,), "银狼LV.999 专属:升费/骇客改件(「骇客改件」= 卡文口径改件族,非注册表「骇客」类别池——改件可落特殊类如分身墨镜Max,run_074040 实读实证;禁按类别池推改件池)"),
     "领航员": FactionInfo("领航员", "independent", (1,), "姬子·启行专属(V4.4):选列车同行角色获其流派+复制首件装备"),
 }
-
-# 从 character_const 映射:角色命途 → 大致定位(前排生存 / 后排输出)
-# 货币战争「站位」(前台/后台/前后台)是独立系统,与命途不完全绑定,但命途决定角色赋能触发位。
-SURVIVAL_PATHS = {"preservation", "abundance"}  # 存护、丰饶 → 前排坦克
-DPS_PATHS = {"destruction", "hunt", "erudition"}  # 毁灭、巡猎、智识 → 后排输出
-SUPPORT_PATHS = {"harmony", "nihility"}  # 同谐、虚无 → 后排辅助
-
-
-def get_role_position(character_id: str) -> str:
-    """根据角色 id 返回定位("front"=前排坦克 / "back"=后排输出/辅助)。
-
-    用 character_const 的命途映射:存护/丰饶=front,其余=back。
-    ⚠️ 货币战争实际站位以实机 OCR(角色页/商店牌的「前台/后台」标签)为准,命途只是近似。
-    """
-    from sr_od.config import character_const
-    char = character_const.get_character_by_id(character_id)
-    if char is None:
-        return "back"
-    return "front" if char.path.id in SURVIVAL_PATHS else "back"
-
-
-# 货币战争推荐策略(米游社/攻略总结):
-# 1. 前期(1-4 轮):凑低费成型羁绊(贝洛伯格 2 / 巡海游侠 / 仙舟起步),买低费快速成型。
-# 2. 中期(5-7 轮):升等级(6-7 级),找高费补强,存金吃利息(gold ≥ 50)。
-# 3. 后期(8-9 轮):升 8-9 级,凑齐高阶羁绊(盛会之星 5/6、击破 8/10、仙舟 7/10),锁血。
-# 经济:每 10 金 → +1 利息(上限 5 金/50 金);连胜额外金币;凑整吃息。
-INTEREST_THRESHOLD = 50  # 存金吃利息阈值(满息 50 金)
-INTEREST_RATE = 0.1  # 每轮利息 = 持有金 × 10%(满 50 金 = 5 金/轮)

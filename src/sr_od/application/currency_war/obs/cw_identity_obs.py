@@ -1543,55 +1543,6 @@ def _session_phantom_points(ctx: SrContext) -> list[Point]:
         return []
 
 
-def note_phantom_ore(ctx: SrContext, pt: Point) -> None:
-    """点击后零消失的晶矿登记为幻晶矿(会话黑名单 + 分键保留证据;best-effort)。
-
-    黑名单 = session 动态挂 ``ore_phantom_points``(局级生命周期,
-    与漏斗/期望账本同款挂载模式);读侧 ``read_ore_sights`` 按位置容差
-    过滤 → 后续环不再把该目标派给 CwActionCollectOreParam(禁无限循环的唯一出口,
-    黑名单守卫不再是唯一出路)。重复登记同一位置幂等。"""
-    try:
-        m = ctx.cw_match
-        s = m.session if m is not None else None
-        if s is None:
-            return
-        lst = getattr(s, 'ore_phantom_points', None)
-        if lst is None:
-            lst = []
-            s.ore_phantom_points = lst
-        if any(abs(pt.x - q.x) <= _ORE_PHANTOM_MATCH_TOL
-               and abs(pt.y - q.y) <= _ORE_PHANTOM_MATCH_TOL for q in lst):
-            return
-        lst.append(pt)
-        # telemetry 上行走出口钩子位(kernel;分包桶依赖矩阵 obs 禁直依
-        # telemetry,与 obs_conflict 同款出口形态)
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            game_state_of,
-        )
-        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-            SEVERITY_L2_RECORD,
-            record_defect,
-        )
-        # 分键坐标 = 容器节点读口(last_state 链停用换源;未观察 = 0 缺省,
-        # best-effort 保留证据面不炸)。
-        _nd = game_state_of(s).node.value
-        record_defect(
-            'ore', 'ore_phantom',
-            expected='点击后晶矿消失(真晶矿)',
-            observed=f'点击后同位置仍检出幻晶矿({pt.x},{pt.y})',
-            plane=int(_nd.plane if _nd is not None else 0),
-            round_num=int(_nd.round_num if _nd is not None else 0),
-            gap_large=False, severity=SEVERITY_L2_RECORD,
-            verdict=('留证-奖励域幻晶矿(点击零消失):已入会话黑名单,后续读侧'
-                     '过滤放弃该目标;同族=面板内非晶矿物幻检(W261 装备 icon/'
-                     '礼盒蝴蝶结),复现新形态先跑纹理门标定再扩证据'),
-            refs=[{'stream': 'arbitration', 'key': f'point={pt.x},{pt.y}'}],
-            reader_source='collect_ore_verify',
-            note='奖励域幻晶矿分键(幻检无交叉验证家族第 3 道:点击后验证)')
-    except Exception:   # noqa: BLE001  幻晶矿登记 best-effort,不阻塞采晶矿
-        pass
-
-
 def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point, int]]:
     """纯 CV 核心:奖励面板内 HoughCircles 检晶矿 → ``[(颜色, center, radius)]``(采晶矿用)。
 
@@ -1601,8 +1552,8 @@ def find_ore_sights(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point,
     **幻检交叉验证**(三道门,标定与依据见常量块注释):纹理(圆内 Canny
     边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非晶矿实体(礼盒蝴蝶结
     /装备 icon 等哑光高纹理物)被 Hough 检出的圆在此淘汰;真晶矿 16 fixture
-    样本全过。点击后零消失检测(``note_phantom_ore`` 黑名单)为第三道
-    独立防线,不在本纯函数(需要点击交互上下文)。"""
+    样本全过。读侧消费点按 ``_session_phantom_points`` 会话黑名单过滤
+    (黑名单当前零写端,恒空不过滤)。"""
     x1, y1, x2, y2 = panel_rect.x1, panel_rect.y1, panel_rect.x2, panel_rect.y2
     panel = screen[y1:y2, x1:x2]
     if panel.size == 0:

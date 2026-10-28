@@ -43,8 +43,6 @@ TELEMETRY_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
 LIVE_DIR: Path = TELEMETRY_ROOT / 'live'
 MATCHES_ROOT: Path = TELEMETRY_ROOT / 'matches'
 SIM_ROOT: Path = TELEMETRY_ROOT / 'sim'
-DEEP_REVIEW_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
-                          / 'deep_review')
 
 #: 实时流根(遥测 recorder/query/match_archive 的 replay_dir 语义 = 本目录;
 #: 保留旧符号名作别名,「replay_dir」参数名在 query/cli 全链沿用,整体
@@ -131,11 +129,6 @@ def set_obs_phase(phase: str | None) -> None:
     """置/清当前观测阶段键(见 _OBS_PHASE 注)。"""
     global _OBS_PHASE
     _OBS_PHASE = phase
-
-
-def current_obs_phase() -> str | None:
-    """读当前观测阶段键(None=未置位/全量路径)。"""
-    return _OBS_PHASE
 
 
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研

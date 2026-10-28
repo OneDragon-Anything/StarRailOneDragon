@@ -23,25 +23,6 @@ from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
 from sr_od.application.currency_war.telemetry import defects
 
 
-def record_sell_breaker_preserved(*, char_id: str, reason: str,
-                                   channel: str) -> None:
-    """卖出熔断撤销证据(谁/为何/保留了什么;L2 保留证据)。
-
-    run 归属由 current_run_id 汇点自取(无需会话入参);
-    :param char_id: 被熔断保留的单位(谁);
-    :param reason: 保留拒因摘要(为何:fence:体系名 / core / protect);
-    :param channel: 触发通道(deploy_offtarget 等,保留了什么语境)。
-    """
-    defects.record_defect(
-        'sell', 'sell_breaker_preserved',
-        expected=f'{channel} 卖出候选放行',
-        observed=f'{char_id} 被 W209 熔断保留(拒因={reason})',
-        refs=[{'stream': channel,
-               'key': f'sell_breaker|{char_id}|{reason}'}],
-        note='撤销操作证据留存(W209/振荡熔断撤销面)',
-        gap_large=False, severity=defects.SEVERITY_L2_RECORD)
-
-
 def record_drought_buy_no_reset(*, member: str, system: str,
                                 drought: int) -> None:
     """干旱计数器买入不重置证据(L2 保留证据;解锁流程审计面)。

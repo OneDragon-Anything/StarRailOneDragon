@@ -94,8 +94,6 @@ class StrategyState:
     (flow 层 P1 配方)写端已切 ``opening_recipe_comp``,两键互不覆写
     (P1 锁定局并集消费见 shop 序 1,line_and_upgrade §1.3)。kernel
     消费面经 ist.locked_comp 派生缓存续读(session_scope 同步)。"""
-    # 待执行的部署意图(按 position_pref 决策落位)。
-    pending_deploys: list = field(default_factory=list)
     # 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target。
     # (现役无写端、消费面按 '' 缺省只读——历史保留键,读端见
     # cw_recipe/cw_deploy_logic。)
@@ -106,25 +104,15 @@ class StrategyState:
     # 边界外保留项;投资选卡帧惰性建并喂入,纯遥测决策面零消费)。
     commit_signals: object = None
 
-    # ===== 相位面(v2 决策层相位元组;A2 改判迁出——活读端 =
-    # 商店执行回执 decisions 行(写点 = cw_screen_shop),活写端 = sim 初始相位注入)=====
-    v2_state: tuple | None = None
-    locked_line: str | None = None                     # 锁定线 id(None=未锁)
+    # ===== 相位面(桥线 id;A2 改判迁出——活读端 =
+    # 商店执行回执 decisions 行,写点 = cw_screen_shop)=====
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
 
     # ===== 意向(v3 决策框架载体;局/轮)=====
     v3_intention: object = None      # cw_intention.IntentionState(终局阵容锁定/撤销状态机)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集
-    v3_mode: str = 'economy'         # 本轮模式('economy'|'war';纪律族每轮写)
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
-
-    # ===== P2 承接快照(位面)=====
-    v3_handoff: object = None
-    v3_handoff_plane: int | None = None
-
-    # ===== 对账门声明(帧级全量重算;帧)=====
-    v3_posture_unfulfilled: dict | None = None
 
     # ===== 策略行为观测分键(单一容器;策略 state=决策行 strategy-state
     # 载体,retirement.md §3 键归属已定案:全部键=策略行为键零效果域键,
@@ -140,41 +128,19 @@ class StrategyState:
     v3_phase: str = ''
     v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 动作发出帧)
     v3_b_t: int = 0                  # 板面目标线支撑计数(每轮重算)
-    v3_dp_posture: object = None     # DP 姿态轮缓存
     v3_mirror_key: tuple | None = None   # 镜像族轮键戳(单源=write_shop_mirrors)
-    v3_formed_stop: bool = False     # 成型停手(行为面消费)
 
-    # ===== 补偿/稳态簿记(局)=====
-    v2_remedy_used: bool = False
-    v2_steady_lv_used: bool = False
-    v3_steady_lv_abandoned: int = 0
-    v3_remedy_abandoned: int = 0
-
-    # ===== 轮笔数披露(decisions/遥测判读面;轮)=====
-    v2_round_refreshes: int = 0
-    v2_round_p1_early: int = 0
-    v2_round_p2_core: int = 0
-    v2_round_press_exempt: int = 0
-    v2_round_press_copy: int = 0
-
-    # ===== 泄息指令与承接门(轮界清零)=====
-    v3_release: object = None
-    v3_release_round: int | None = None
-    # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
+    # ===== 义务实花披露(遥测键 sess_release_spent 透传源)=====
+    # 写端=商店执行
     # 回执位(cw_screen_shop.accrue_release_spent,首版只计刷新实花,
     # 「宁窄勿虚」口径申报,轮界清零承载=v3_disclosure_key
     # 键戳(economy_cycle.disclose_budget 写端);读端=recorder sess_*
     # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
     v3_release_spent: int = 0
-    v3_handoff_gap: int = 0
 
     # ===== 消费侧惰性建(缺省值 = 原惰性初值)=====
     # A/B 注册表注入通道(cw_economy._registry_of 消费;None=缺省表)。
     v3_registry: object = None
-    # 定向刷新消耗计数(cw_registry 名单;局级累计)。
-    v3_dir_refresh_used: int = 0
-    # DP 姿态轮帧缓存(每段 decide_prep 覆写;None=本轮无决策段)。
-    v3_alloc_frame: dict | None = None
     # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=economy_cycle.
     # disclose_budget 每备战决策帧幂等覆写;读端=recorder sess_* 透传
     # + cw_decision_trace 披露族。披露面字段,禁决策判据消费
@@ -196,13 +162,8 @@ class StrategyState:
     #(容器读口 plane_of/round_num_of);写入端=economy_cycle.
     # disclose_budget 单一写点(商店执行回执位只比较不写)。键戳 ≠
     # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
-    # 盖新戳。不复用 v3_release_round(泄息指令旧轮语义)。
+    # 盖新戳。
     v3_disclosure_key: tuple[int, int] | None = None
-    # ↺ 扑满节点识别标记:写者
-    # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =
-    # kernel.cw_reward_node.is_piggy_reward_frame);读面 = engine 轮快照
-    # /telemetry schema piggy_reward。
-    v3_piggy_reward: bool = False
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即逻辑态后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
     # M1″ seam 门唯一写点(mandate.py;值源 = M1P_SEAM_VERIFIED)。
@@ -255,8 +216,6 @@ class StrategyState:
     # 现算,已登记分工维持,分工裁决)。旧 'trans_domain' 键随域谓词
     # 退役删除(design §2.3.1),域事实改由 'arm' 可判定。
     cw4_m1p_plan_pending: object = None
-    # 近轮已卖名滚动账(P71 凑息卖去重)。
-    cw4_recent_sold_names: list = field(default_factory=list)
     # 素材滞留首见轮账(名 → 首见帧轮次)。
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
@@ -456,29 +415,3 @@ def state_of(session: StrategySession) -> StrategyState:
     return st
 
 
-def ensure_strategy_state(strat: object, session: StrategySession,
-                          initial_v2_state: tuple | None = None
-                          ) -> StrategyState:
-    """sim 侧统一构建口(设计 §3.4-1):经被测策略工厂补建状态对象。
-
-    - ``strat`` 按鸭子类型取 ``create_state``(注解 object:注入桩可无该
-      钩子,工厂不可得 → 冷建兜底);
-    - ``session.strategy_state`` 已是 StrategyState → 直返(注入/进场态
-      复用 session 通道);
-    - 缺失 → 调 ``strat.create_state`` 工厂(与 live 同源生命周期);工厂
-      不可得(注入桩)→ 冷建 StrategyState 兜底。**config 实参传 None**
-      (sim 面无 config 可注入)——``create_state`` 工厂契约 = 可忽略
-      config/容忍 None(见 flow.CwFlowStrategy.create_state docstring),
-      工厂实现禁读 config 取值;
-    - ``initial_v2_state`` 非 None → 初始相位经状态对象初始化入口写入
-      (原 sim 直写 session.v2_state 的替代;禁裸 setattr session)。
-    """
-    st = getattr(session, 'strategy_state', None)
-    if not isinstance(st, StrategyState):
-        factory = getattr(strat, 'create_state', None)
-        built = factory(None) if callable(factory) else None   # None 契约见 docstring
-        st = built if isinstance(built, StrategyState) else StrategyState()
-        session.strategy_state = st
-    if initial_v2_state is not None:
-        st.v2_state = initial_v2_state
-    return st

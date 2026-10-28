@@ -77,11 +77,6 @@ def _bench_slot_is_item(b) -> bool:
     """占席条目 → 占位件判定(槽位 kind ∈ tome/bookcard/supply_box)。"""
     return getattr(b, 'kind', 'unit') in ('tome', 'bookcard', 'supply_box')
 
-
-def _slot_no_of(b, idx: int | None = None) -> int:
-    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 仅作信息位,紧缩序 = 物理槽序;``idx`` 显式传位)。"""
-    return int(idx if idx is not None else 0)
-
 #: 部署计划容器槽位表不健康暴露分键(计划级 fail-closed 时 +1)。键名保留
 #: 现役 ``deploy_chain_slot_table_unhealthy``(跨局遥测对照可比性优先;
 #: 发出点已统一为本函数 = 原出战链局部键的同语义继承,mandate 动作发出点与

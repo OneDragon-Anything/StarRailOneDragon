@@ -23,7 +23,6 @@ from dataclasses import dataclass
 
 PRIOR_CAP: int = 8          # plaza 伪计数封顶(幸存者偏差 → 弱先验,自家 5-8 局翻案)
 GAMMA: float = 0.97         # 指数遗忘(旧版本样本退潮)
-SALVAGE_EPS: float = 0.05   # 必死局判据(P(win) 阈值,保守)
 
 
 @dataclass
@@ -57,7 +56,6 @@ class ThompsonAllocator:
         self.arms = arms or {}
         self.explore_budget = explore_budget
         self.rng = random.Random(seed)
-        self.salvage_log: list[dict] = []
 
     @classmethod
     def from_plaza(cls, family_share: dict[str, float],
@@ -112,21 +110,6 @@ class ThompsonAllocator:
         if won:
             return 1.0
         return min(0.49, (plane_reached / 3.0) * 0.45 + (rounds / 27.0) * 0.05)
-
-    def dead_run_salvage(self, p_win: float, reachable: set[str] | None = None) -> str | None:
-        """必死局回收:P(win)<ε → 选可达分支中后验方差最大者(信息价值最大)。
-
-        审计留存证据(离线复核「没误杀有救的局」≥95% 判据的数据)。
-        """
-        if p_win >= SALVAGE_EPS:
-            return None
-        cands = {k: a for k, a in self.arms.items() if not reachable or k in reachable}
-        if not cands:
-            return None
-        best_k = max(cands, key=lambda k: cands[k].variance)
-        self.salvage_log.append({'p_win': p_win, 'chosen': best_k,
-                                 'variance': cands[best_k].variance})
-        return best_k
 
     def stats(self) -> dict[str, dict]:
         return {k: {'mean': round(a.mean, 3), 'var': round(a.variance, 4),

@@ -183,28 +183,3 @@ PLUGIN_LIBRARY.update({
     p.plugin_id: replace(p, majority_lines=W16_MAJORITY_LINES[p.plugin_id])
     for p in _UNIT_PLUGINS if p.plugin_id in W16_MAJORITY_LINES
 })
-
-# ===== 禁用矩阵(硬冲突行,教义手编;判定法=阵容机制原文 × 插件机制原文)=====
-# 行准入口径:官方机制事实留,单帖攻略行删(heuristic_ab B3;REPORT =
-# .debug/temp/currency_war/redesign/heuristic_ab/REPORT.md)。
-# 键 (plugin_id, family|阵容名);值 = 机制原因。硬冲突=见了不买;机制不打架但位置/资源
-# 打架的**弱不适配不进本表**(进不进由打分定,如 治疗2×万敌(轻)/量子2×姬子反震(轻))。
-PLUGIN_DISABLE_MATRIX: dict[tuple[str, str], str] = {
-    # 盾系 × 万敌燃血(官方原文:燃血队员无法获盾,受盾只转 2%+1000 回血=负资产;连带盾类装备全禁)
-    ("护盾2", "万敌燃血"): "官方:燃血队员无法获盾,受盾转微回血=负资产",
-    ("砂金", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
-    ("丹恒·腾荒", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
-    ("杰帕德", "万敌燃血"): "盾系单卡×燃血无法获盾(同上,官方原文)",
-    # 三月七是盾系单卡:注册表 三月七 flows=("护盾") 且效果含「行动护盾」(cw_chars:106)——
-    # 按判定法(阵容机制原文×插件机制原文)入盾系×万敌矩阵,防万敌线买进负资产件。
-    ("三月七", "万敌燃血"): "盾系单卡×燃血无法获盾(行动护盾,官方原文;R2 §2 漏行补齐)",
-}
-
-
-def plugin_disabled(plugin_id: str, line: str) -> str | None:
-    """查禁用矩阵:返回机制原因(禁用)或 None(可用)。
-
-    ``line`` = 家族键(V2_FAMILIES)或阵容名(矩阵两级键都收,兼容家族/套消费)。
-    买门拒绝时 reason 应带 matrix 键(C4 验收 3)。
-    """
-    return PLUGIN_DISABLE_MATRIX.get((plugin_id, line))

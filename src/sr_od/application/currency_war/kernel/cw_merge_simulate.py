@@ -313,21 +313,6 @@ def _bump_carrier(carrier: object, new_star: int,
         f'BenchSlot/Unit 之外形状,禁复活非容器推演)')
 
 
-def field_family_of(path: str) -> str:
-    """路径 → 字段族(覆盖点可信门过滤用;EXPECTED_STATE §2 字段族口径)。"""
-    head = (path or '').split('.', 1)[0]
-    if head in ('tracked_bench_chars', 'tracked_deployed', 'bench', 'deployed'):
-        return 'tracked'
-    return head or 'unknown'
-
-
-def same_star_count_public(name: str, star: int,
-                           bench: list[BenchSlot | None],
-                           deployed: list[Unit | None] | None) -> int:
-    """同星计数透出(测试/对账便利;单一源仍是 cw_state.same_star_count)。"""
-    return same_star_count(name, star, bench, deployed)
-
-
 # ============================================================
 # 合成域词汇:
 # 升星合成规则族与本引擎双源收敛(单一语义源同文件定居;原 :35 的

@@ -31,10 +31,6 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 # 见 _loss_dist 边界声明;重尾一击型 boss 掉血 v1 用实测桶替换)
 CV_PRIOR: float = 0.5   # 组内变异系数先验(K0 实测 0.4-0.62 的收缩中值)
 
-# 三区边界先验(K2 涌现交叉核对锚:必死边缘 hp=20 分位 / HP<40 分档 / 满利息 50)
-ZONE_CRITICAL_HP: int = 40     # 二区下界(分档先验;交叉核对锚)
-ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(必死边缘 20 分位;交叉核对锚)
-
 
 def _p2_lcond_mix() -> float:
     """P2+ 非 boss 战斗槽条件败面档(单节点;两态决策层同款混合单一源:
@@ -116,18 +112,6 @@ def _survive_cdf(board_tier: int, nodes_left: int, plane: int, hp_cap: int,
     return cdf
 
 
-def first_passage_win(board_tier: int, hp: int, nodes_left: int, plane: int = 1) -> float:
-    """生存首达概率:剩余 nodes_left 个战斗节点,累计掉血 < hp 的概率(分布卷积 + CDF)。
-
-    数学:掉血 i.i.d. 离散分布 → 总和分布 = n-卷积;P(win) = P(Σ loss < hp)。
-    """
-    if hp <= 0:
-        return 0.0
-    if nodes_left <= 0:
-        return 1.0
-    return _survive_cdf(board_tier, nodes_left, plane, hp)[hp]
-
-
 def hp_floor(board_tier: int, nodes_left: int, target_pwin: float, plane: int = 1,
              hp_cap: int = 100) -> int:
     """hp 地板反解(「手写门变模型定理」的核心出口):最小 hp 使 P(win) ≥ target_pwin。
@@ -141,63 +125,3 @@ def hp_floor(board_tier: int, nodes_left: int, target_pwin: float, plane: int = 
         if cdf[hp] >= target_pwin:
             return hp
     return hp_cap
-
-
-def plane_hp_ratio(board_tier: int, nodes_left: int, target_pwin: float = 0.6,
-                   plane: int = 2) -> float:
-    """位面阈值乘子(P_win 地板比):hp_floor(plane) / hp_floor(P1)。
-
-    乘子从生存曲线解出,随板强/日程变化 —— 弱板长程的方差尾
-    使所需缓冲超线性增长(ratio 高),强板短程近似线性(ratio 低)。内部用扩展 hp_cap=400
-    计算(弱板长程两原在真实血上限内可能均无解 → 真实 cap 下 ratio 假性=1;乘子是无量纲
-    比,不受实际血量约束;输出侧仍夹 [1.0, 2.0] 防先验失真外溢)。
-    """
-    p1 = hp_floor(board_tier, nodes_left, target_pwin, plane=1, hp_cap=400)
-    pk = hp_floor(board_tier, nodes_left, target_pwin, plane=plane, hp_cap=400)
-    if p1 <= 0:
-        return 1.0
-    return min(2.0, max(1.0, pk / p1))
-
-
-def p_win_lambda(board_tier: int, hp: int, nodes_left: int, plane: int = 1) -> float:
-    """λ_hp = P(win | hp+1) − P(win | hp):HP 的边际生存价值(峰形曲线的采样点)。"""
-    return (first_passage_win(board_tier, hp + 1, nodes_left, plane)
-            - first_passage_win(board_tier, hp, nodes_left, plane))
-
-
-def risk_posture(board_tier: int, hp: int, nodes_left: int, plane: int = 1) -> str:
-    """三区律:盈余 / 临界 / 必死边缘。
-
-    边界由 λ_hp 与 P(win) 联合解出(**非手写 hp 阈值**;弱板长程下「必死边缘」的 hp 绝对
-    值可高达 60+ —— 漂移把屏障推远,这正是固定手写血线门要被模型替代的证据):
-    必死边缘 = P(win) < 35% 且 λ_hp 已回落(±1 血不改大局,该赌右尾);临界 = λ_hp 活跃
-    (每点血实质改变活率);盈余 = 其余。
-    """
-    if hp <= 0:
-        return '必死边缘'
-    pw = first_passage_win(board_tier, hp, nodes_left, plane)
-    lam = p_win_lambda(board_tier, hp, nodes_left, plane)
-    if pw < 0.35 and lam < 0.01:
-        return '必死边缘'
-    if lam >= 0.01 and pw < 0.95:
-        return '临界'
-    return '盈余'
-
-
-def posture_guidance(posture: str) -> str:
-    """三区 → 策略姿态指导(消费端文案;对应散落手写门的统一)。"""
-    return {
-        '盈余': '方差无视:卖血换经济/囤息(满息基调)',
-        '临界': '方差回避:弃息 D 保血/避高难遭遇(danger_d 语义)',
-        '必死边缘': '方差追求:弃息全 D 追星/转高上限 comp/赌高方差事件(「低血不卡息,留20」)',
-    }.get(posture, '')
-
-
-# ===== 集成接缝(供给方适配器)=====
-
-def board_tier_of(level: int, rb: float = 0.0) -> int:
-    """等级(+刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键域;板强基线映射
-    b_eff 随 DP 停用映射 —— 首达层的供给方适配:计价消费端拿标量等级轴
-    即可算 P(win),不必自算板强)。"""
-    b = min(3.0, max(0.0, (level - 2) / 2.5) + rb)
-    return min(3, max(0, int(b)))

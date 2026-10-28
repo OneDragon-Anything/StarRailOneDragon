@@ -43,14 +43,6 @@ def install_strategy_state_factory(factory: Callable[[], object]) -> None:
     _STATE_FACTORY = factory
 
 
-def strategy_state_lazy(session: StrategySession) -> object | None:
-    """kernel 写路径取状态:无状态对象时经注入工厂惰性冷建并写回。
-
-    工厂未注册(第三方策略面)→ None(调用方保守跳过);与迁移前
-    「动态属性惰性建」语义同构(原 cw_intention.py 惰性建先例)。"""
-    return ensure_strategy_state_attached(session)
-
-
 def ensure_strategy_state_attached(session) -> object:
     """读+惰性附着:无状态对象且工厂已注册 → 冷建并写回 session。
 

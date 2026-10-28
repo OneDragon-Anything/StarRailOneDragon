@@ -1720,15 +1720,6 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
     return counts
 
 
-def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
-    """OCR 左面板 → {阵营名: 下个 tier 阈值}(= ``_board_pairs`` 的 Y;doc 13 ``FactionState.next_tier``)。
-
-    只含 Y 解析到的阵营(0/未显阈值的不进 dict)。聚焦裁切 OCR 才稳(见 ``_board_pairs``)。
-    """
-    _bp_pairs, _ = _board_pairs(ctx, screen)
-    return {f: nt for f, (_c, nt) in _bp_pairs.items() if nt > 0}
-
-
 # ===== 商店牌费用徽章数字识别(2星直出缺口闭环;merge_mechanics §2.6/§2.7)=====
 # 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色数字(1-3 位) =
 # 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×

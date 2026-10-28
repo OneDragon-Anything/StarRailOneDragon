@@ -54,8 +54,6 @@ def _probe_books(session):
 
 # ===== 经济先验 =====
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
-XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(实测 4-8 取下限;
-# 生产升级费现读 = kernel cw_economy.xp_click_cost,本值仅 level_cost 先验用)
 
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
@@ -124,38 +122,6 @@ def p_win_p2(b: float) -> float:
     lo = tbl.get(i, 0.0)
     hi = tbl.get(min(2, i + 1), lo)
     return lo + (hi - lo) * frac
-
-
-#: XP 门槛表:权威表 = cw_economy.XP_TO_NEXT_LEVEL(单一源;
-#: 1/2 级游戏内近乎白送,权威表未收录 → 本地先验补 1/2 级)。惰性取表:
-#: 本模块保持 kernel 纯表叶位(零 kernel 模块级依赖),免词汇迁移环。
-_XP_NEED: dict[int, int] | None = None
-_XP_PER_BUY: int = 4
-
-
-def _xp_need() -> dict[int, int]:
-    global _XP_NEED
-    if _XP_NEED is None:
-        from sr_od.application.currency_war.kernel.cw_economy import (
-            XP_PER_BUY,
-            XP_TO_NEXT_LEVEL,
-        )
-        _XP_NEED = {1: 4, 2: 4, **XP_TO_NEXT_LEVEL}
-        global _XP_PER_BUY
-        _XP_PER_BUY = XP_PER_BUY
-    return _XP_NEED
-
-
-def clicks_to_level(level: int) -> int:
-    """当前级 → 下一级所需购买经验次数(ceil;(need)/XP_PER_BUY;xp 结转忽略,原子近似)。"""
-    need = _xp_need().get(level, 84)
-    return max(1, -(-need // _XP_PER_BUY))
-
-
-def level_cost(level: int) -> int:
-    """升一级总金先验(次数 × flat 单击价;现读单价版 =
-    kernel cw_economy.xp_click_cost,本函数仅供先验/测试口径)。"""
-    return clicks_to_level(level) * XP_CLICK_COST_FLAT
 
 
 # (``plane_table.interest`` 已删:与

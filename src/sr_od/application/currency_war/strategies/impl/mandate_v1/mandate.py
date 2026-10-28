@@ -87,7 +87,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import 
     consume_on_sell,
     dead_pair_exit_release,
     empty_board_sell_blocked,
-    prune_on_deploy,
     register_launch,
     sell_exclusions,
 )
@@ -316,12 +315,6 @@ def _slot_star(b) -> int:
     return int(getattr(u, 'star', 1) or 1) if u is not None else 1
 
 
-def _slot_no_of(b, idx: int | None = None) -> int:
-    """占席条目 → 紧缩位键(条目在紧缩占席序中的 0 基下标;Unit.slot 信息位停用,动作发出面位键 = 紧缩序下标(紧缩序 = 物理槽
-    序),容器对位经 ``_bench_container_idx_by_compact`` 枚举还原。"""
-    return int(idx if idx is not None else 0)
-
-
 def _bench_container_idx(state: GameState, victim: BenchSlot) -> int | None:
     """动作发出面容器下标解析·bench 域(条目对位:生产链 = 同帧同对象身份
     相等;测试/合成链可能等值重建 → 数据类值相等兜底,两道都过才认,
@@ -359,11 +352,6 @@ def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
             return i
         k += 1
     return None
-
-
-#: 兼容别名:旧调用面命名(by_slot = 旧槽号信息位键时代),语义已随
-#:切换为紧缩位键。
-_bench_container_idx_by_slot = _bench_container_idx_by_compact
 
 
 def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
@@ -542,12 +530,6 @@ def stall_buys_consume(session, name: str) -> None:
     """卖出即销兼容 shim(生命周期出口①;本体 = sell_gate.consume_on_sell,
     close_on_sell 分键随统一簿生效)。容旧 set 载体(兼容未升级会话)。"""
     consume_on_sell(session, name)
-
-
-def stall_buys_prune_deployed(session, deployed_names) -> int:
-    """部署即销兼容 shim(生命周期出口②;本体 = sell_gate.prune_on_deploy,
-    close_on_deploy 分键随统一簿生效)。返回销账数(测试断言用)。"""
-    return prune_on_deploy(session, deployed_names)
 
 
 # ===== 轮内卖出登记(泄金阶梯档 2 候选集新鲜度排除)=====

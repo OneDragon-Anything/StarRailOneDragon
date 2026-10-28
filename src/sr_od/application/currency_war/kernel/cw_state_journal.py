@@ -127,11 +127,6 @@ class StateJournal:
         """当前内存缓冲的行(测试/诊断读口;已 flush 的行不在此列)。"""
         return list(self._buffer)
 
-    @property
-    def buffered(self) -> int:
-        """缓冲行数。"""
-        return len(self._buffer)
-
     def append(self, row: dict[str, Any]) -> None:
         """追加一行(完整自足行 dict;局外行拒写)。"""
         if not str(row.get('run_id', '') or ''):

@@ -739,13 +739,6 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 # ===== 离场事件派生列(v10;装配端纯读) =====
 
-#: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
-DEPARTURE_CHANNELS: tuple[str, ...] = (
-    'sell_recorded',      # 该帧动作 CwActionSellDeployedParam 按 deployed_idx 换算解析命中此件(决策时点卖出)
-    'merge_promoted',     # 同名更高星在后帧在场(买牌合成链,1★ 副本离场)
-    'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换人卖出信号通道
-)
-
 
 def _deployed_multiset(frame: dict[str, Any]) -> Counter | None:
     """帧 → 场上身份多重集 {(char_id, star): n};deployed 缺席/非列表 → None。
@@ -820,7 +813,7 @@ def _derive_departures(dec: list[dict[str, Any]],
     - 派生口径:段内相邻决策帧(第 1 基,ts 升序)的 state.deployed 身份
       多重集差;任一侧身份不可知(缺/非列表)整对跳过。战斗不改场上
       (部署/买卖只发生在备战期),帧间差分即备战动作净效果。
-    - 通道分键(closed set = DEPARTURE_CHANNELS):
+    - 通道分键(闭集三值,字面量直写 = 本函数单一源):
       sell_recorded = 该帧 CwActionSellDeployedParam 按 deployed_idx 换算解析命中
       (解析口径见 _sell_deployed_target_names);merge_promoted =
       同名更高星在后帧在场(买牌 3 合 1 的 1★ 副本离场);unexplained =

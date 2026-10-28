@@ -1,36 +1,14 @@
-"""货币战争 观测反馈层(PerformanceTracker + comp_viability + 死局检测;纯逻辑,可测,不碰游戏)。
+"""货币战争 观测反馈层(RoundOutcome + PerformanceTracker;纯逻辑,可测,不碰游戏)。
 
 **哲学(用户 2026-08-03 定调)**:观测驱动 ≠ 预测驱动。不建精确战斗模拟器(星铁战斗太复杂、
 版本会迭代、维护不起)。人看的是"这回合掉了多少血 / boss 血条动没动"这个**结果**。故用
-OCR ground-truth 反馈当"阵容强不强"的信号,不用预测模型。
-
-review 历史:r5(修 9 个观测单点漏洞)+ r6(修 r5 扶正观测后引入的 4 个交互级漏洞)。
-本模块用**测试钉住** r6 的 4 个交互行为(open-fold 污染 / boss None / pivot 归因 / 冷启动 None)。
+OCR ground-truth 反馈,不用预测模型。
 
 设计依据:``strategy-docs/15_observation_multisource_arbitration.md``(观察多源仲裁篇)。
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from sr_od.application.currency_war.kernel.cw_comps import (
-    ScoreContext,
-    clamp,
-    equip_fit,
-    form_progress,
-    mechanics_fit,
-    weighted_mean,
-)
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    bench_units_of,
-    deployed_rows_of,
-)
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_comps import Comp
-
 
 # ===== RoundOutcome(双侧观测;r6 F1/F3/F4)=====
 
@@ -40,9 +18,9 @@ class RoundOutcome:
 
     - 自身侧(生存信号):hp_after + hp_confidence。
     - 敌方侧(击杀信号,r6 F3):enemy_hp_after / damage_dealt / killed —— 观测确证"打得动 boss 吗"。
-      None = 游戏不暴露(阶段 4 实机确认);此时击杀能力靠 comp_viability 先验兜底。
+      None = 游戏不暴露(阶段 4 实机确认)。
     - comp_tag(r6 F4):打这关时的 target 阵容名,obs 按阵容归因(pivot 后旧阵容降权而非全删)。
-    - intentional_fold(r6 F1):本回合"故意输攒钱"态(plan fold 写入),排除污染 trend。
+    - intentional_fold(r6 F1):本回合"故意输攒钱"态(plan fold 写入)。
     """
     round_num: int
     plane: int
@@ -52,7 +30,7 @@ class RoundOutcome:
     # —— 自身侧 ——
     hp_after: int | None = 0    # 结算后 HP(hp_delta = 本回合 − 上回合,差分);
     # None 仅收束终局行携带(cw_loop._write_terminal_outcome_row,不发 hp 真值)
-    hp_confidence: float = 1.0  # OCR 置信度(0-1);<0.7 不进 trend(防 OCR 抖动)
+    hp_confidence: float = 1.0  # OCR 置信度(0-1)
     # —— 敌方侧(击杀信号)——
     enemy_hp_after: int | None = None
     damage_dealt: int | None = None
@@ -89,22 +67,8 @@ class RoundOutcome:
     match_result: str = ""
 
 
-# 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。
-# 补 '奖励'/'补给'/'巨星'(结算屏真值可产出,
-# 此前落 .get 默认 1.0 轻微拉高该阵容预期掉血)。奖励/补给非战斗
-# 节点=期望 0;巨星按强敌档先验 2.0(待实测 refine)。
-EXPECTED_DROP: dict[str, float] = {
-    "普通战斗": 1.0, "精英": 1.5, "遭遇": 1.2, "boss": 3.0,
-    "奖励": 0.0, "补给": 0.0, "巨星": 2.0,
-}
-HP_CONFIDENCE_THRESHOLD: float = 0.7   # 低于此置信度的 outcome 不进 trend
-
-# perf_for_comp 归一化:掉这么多(归一化)HP/回合 → perf=0(占位,待实玩校准)
-HP_LOSS_FULL: float = 30.0
-
-
 class PerformanceTracker:
-    """跨回合观测追踪器(掉血 trend 观测层;comp_viability 观测项)。
+    """跨回合观测追踪器(回合结果存档面)。
 
     ⚖️ 敌方侧无生产写端:_update_required_damage(no-op 体)/
     set_required_damage+required_damage(无读者)/boss_kill_signal(无调用)/_last_hp_after
@@ -118,124 +82,10 @@ class PerformanceTracker:
         self.history: list[RoundOutcome] = []
 
     def record(self, outcome: RoundOutcome) -> None:
-        """存档(低置信 outcome 也存 history,但 recent_hp_loss_trend 跳过)。"""
+        """存档一条回合观测。"""
         self.history.append(outcome)
 
-    def _qualifying(self, comp_tag: str | None) -> list[tuple[RoundOutcome, float]]:
-        """筛选可进 trend 的 outcome + 权重(r6 F1 排除 fold / F4 comp_tag 降权)。
 
-        返回 [(outcome, weight)]:intentional_fold 全排;低置信全排;comp_tag 不匹配 ×0.3 降权(不全删)。
-        """
-        out: list[tuple[RoundOutcome, float]] = []
-        for o in self.history:
-            if o.intentional_fold:
-                continue                       # r6 F1:排除"故意输"污染
-            if o.hp_confidence < HP_CONFIDENCE_THRESHOLD:
-                continue                       # 低置信不进 trend(防 OCR 抖动)
-            w = 1.0
-            if comp_tag is not None and o.comp_tag != comp_tag:
-                w = 0.3                         # r6 F4:旧阵容降权 0.3(不全删,保留信号)
-            out.append((o, w))
-        return out
-
-    def recent_hp_loss_trend(self, comp_tag: str | None = None, window: int = 4) -> float | None:
-        """归一化掉血 trend(r6 F2):hp_delta / expected_drop(node_type),全部样本进**同一条** trend。
-
-        - 归一化而非完全划分(r6 F2):消除"打 boss 掉得多=我弱"偏差,又不丢样本/不震荡。
-        - hp_delta = prev.hp_after − cur.hp_after(正=掉血);trend = 加权均值(delta / expected_drop[cur.node_type])。
-        - 过滤:F1 排 fold / F4 comp_tag 降权 / 低置信跳过。
-        - 冷启动(r6 F6):<2 qualifying outcome(无首个差分)→ None。
-        """
-        recent = self._qualifying(comp_tag)[-window:]
-        if len(recent) < 2:
-            return None                         # r6 F6:需 ≥2 outcome 才有首个差分
-        sum_d_w = 0.0
-        total_w = 0.0
-        # recent[1:] 比 recent 短 1(成对差分),strict=False 容许不等长
-        for (cur, w_cur), (prev, _w_prev) in zip(recent[1:], recent, strict=False):
-            loss = prev.hp_after - cur.hp_after   # 正 = 掉了血
-            ed = EXPECTED_DROP.get(cur.node_type, 1.0)
-            sum_d_w += (loss / ed) * w_cur
-            total_w += w_cur
-        if total_w <= 0:
-            return None
-        return sum_d_w / total_w
-
-    def is_losing_streak(self, comp_tag: str | None = None, window: int = 3) -> bool:
-        """近回合是否失血失势(双通道;实机校准)。样本不足 → False。
-
-        PvE 无每局 win/lose,只有 HP;"losing streak" = 持续高掉血。排除 fold。
-
-        通道 1(**游戏自报连败**,ground truth):结算屏「连败×N」前缀带符号(fixture 核实
-        2026-08-11,parse_streak)—— 连败 ≥2 = 游戏自己判定正在输,比任何 trend 阈值都硬,
-        直接解锁(实机死因:71→26 五连败期间旧通道全程哑火)。
-        通道 2(trend,阈值校准 0.6→0.5):实测 A8 慢性失血 13-24 血/轮(归一化),
-        旧阈 0.6×30=18 挡掉其中大半;0.5×30=15 覆盖实测带(仍高于正常波动 <10)。
-        """
-        recent = [o for o in self.history[-(window + 2):] if not o.intentional_fold]
-        # streak None = 失读行(parse_streak None 化)——跳过不判,与「真 0/真连败」分写
-        if any(o.streak is not None and o.streak <= -2 for o in recent):
-            return True
-        trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
-        if trend is None:
-            return False
-        return trend > HP_LOSS_FULL * 0.5   # 阈值 18→15(0.6 系数挡住实测慢性失血带)
-
-    def perf_for_comp(self, comp_tag: str, window: int = 6) -> float | None:
-        """某阵容的归一化表现(供 comp_viability 观测项;0..1,掉血少→高)。
-
-        trend=None(冷启动/样本不足)→ None。trend 映射:0 掉血→1.0,HP_LOSS_FULL 掉血→0。
-        pivot 后旧阵容经 comp_tag 降权 ×0.3(r6 F4)。
-        """
-        trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
-        if trend is None:
-            return None
-        return clamp(1.0 - trend / HP_LOSS_FULL, 0.0, 1.0)
-
-
-def star_achievement(comp: Comp, gs: GameState) -> float:
-    """核心角色星级达成(0..1;review round-4 HIGH-1:限时 AV 星级=输出,高星核心角色更强)。
-
-    核心角色(``char_id in comp.core_chars``)在 bench/deployed 的 star —— 取 **bot 跟踪** star
-    (``simulate`` 维护:buy=卡星 + 3合1 升星),非 ``read_star`` 旁路(read_star 是 offline/漂移校验,
-    不进 bot 跟踪)。归一化:平均 star,1 星=0 / 2 星=0.5 / 3 星=1.0。无核心角色持有(早期未成型)→ 0。
-    """
-    if not comp.core_chars:
-        return 0.0
-    front, back = deployed_rows_of(gs)
-    stars = [u.star for u in (*front, *back, *bench_units_of(gs))
-             if u is not None and u.char_id in comp.core_chars]
-    if not stars:
-        return 0.0
-    avg = sum(stars) / len(stars)
-    return clamp((avg - 1.0) / 2.0, 0.0, 1.0)
-
-
-# ===== comp_viability(评 current 已 commit 阵容;先验 + 观测 blend)=====
-
-def comp_viability(comp: Comp, gs: GameState, ctx: ScoreContext,
-                   tracker: PerformanceTracker) -> float:
-    """评 **current 已 commit** 阵容的可行性(pivot/eval 用;先验 + 观测 blend,0..1)。
-
-    与 cw_comps.comp_score 区别(拆双签名,r5):comp_score 评 **candidate 未 commit**(无观测);
-    本函数评 **current 已打过几关**(有观测)。用已 commit 阵容的观测评未 commit candidate 是逻辑错位。
-
-    - obs = tracker.perf_for_comp(comp.name);None(冷启动)→ obs_weight=0,纯先验。
-    - rounds_seen 增 → obs_weight 升(0.1→0.5;观测越多越信观测)。
-    - 先验 = 0.40 form + 0.25 equip + 0.20 mechanics + 0.15 star(动态归一 sum=1;不含 strength,已 commit 不看 research;
-      star=核心角色星级达成,review round-4 HIGH-1 限时 AV 星级=输出;权重先验占位待 stage6 实跑校准)。
-      动态归一:equip/mechanics 无数据返 None → 剔除 + 权重重分配给 form/star(治死重常量地板)。
-    """
-    obs = tracker.perf_for_comp(comp.name)
-    prior = weighted_mean([
-        (0.40, form_progress(comp, gs)),
-        (0.25, equip_fit(comp, gs)),
-        (0.20, mechanics_fit(comp, ctx.mechanics)),
-        (0.15, star_achievement(comp, gs)),   # review round-4 HIGH-1:限时 AV 星级=输出
-    ])
-    if obs is None:
-        return clamp(prior, 0.0, 1.0)   # 冷启动:纯先验(obs_weight=0)
-    rounds_seen = sum(1 for o in tracker.history if o.comp_tag == comp.name)
-    obs_weight = clamp(0.1 + 0.4 * (rounds_seen / 18), 0.1, 0.5)
-    prior_weight = 1.0 - obs_weight
-    return clamp(prior_weight * prior + obs_weight * obs, 0.0, 1.0)
+#: OCR 置信度门槛(结算覆盖写端 cw_screen_battle_wait 消费:低于此值的
+#: hp_after 不落容器真值,防 OCR 抖动污染 hp 结算覆盖)。
+HP_CONFIDENCE_THRESHOLD: float = 0.7

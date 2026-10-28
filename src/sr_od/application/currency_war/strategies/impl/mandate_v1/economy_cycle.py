@@ -208,36 +208,6 @@ def obligation(gs: GameState, session: StrategySession,
     return min(r, channel_capacity(gs, session, registry))
 
 
-def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
-    """富余消费的利息档边界截断(纯金额;`w645_proposal_v2/` 提案 E-v2)。
-
-    利息 = gold//10 cap 5,按节点结算,当轮息损 = interest(轮初金) −
-    interest(轮末金),首末金量的纯函数、路径无关 → 花后不跨 10 的倍数
-    档则息损 0(P13/[11] 同档零息损)。本函数按「利息档结构直接输出
-    ``gold % 10``」截断非必要富余支出金额,零标定参数(数学先行硬门的
-    合格形态)。
-
-    - essential=True → 不截断,原样返回 want。两枝由消费点显式分类:
-      ①正账件(跨档/合成件,买账已过 scoring 单一裁决面)——一张牌
-      不可拆,截断即弃购,弃购代价归 P1 再遇窗口口径,不在本函数覆盖内;
-      ②M-A 定向刷新车道(arbiter 定向授权分支,directed_refresh_budget,
-      P1 末窗/boss 窗)——末窗没有下轮重摇,截断后残差不足一刷 = 定向
-      搜索永久丢失,截断代价是无穷大而非「推迟一轮」,弱占优前提对该
-      车道为假。函数自身不判车道(车道判定单一址留在 arbiter 分支结构)。
-    - essential=False(常态刷新逐笔、release 预算内的负分搜索等非必要
-      富余支出)→ 截断为 min(want, gold % 10):花后不跨利息档,息损 0;
-      不花的余量结转下轮(义务逐帧重算,R* 与 C_t 下帧重出,结转零成本、
-      不产生第二义务)。
-
-    调用契约:返回值 < want = 本笔不放行(消费不可拆,不花部分金额,
-    也不替调用方改写金额)——截断只裁「可不可花满」,放行裁决仍在既有
-    预算门;量级按严口径 1 金/档报
-    1-2 金/局,主判如实降级「方向披露」(提案 E-v2 §2 量级双口径)。
-    """
-    if essential:
-        return want
-    return min(want, gold % 10)
-
 
 def disclose_budget(state: Any, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:

@@ -886,16 +886,14 @@ ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     'refresh_invest_env', 'refresh_invest_strategy',
 })
 
-#: 对账豁免场景键集(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
-#: 断言延后至稳态;场景判定 = :meth:`SimBackend._reconcile_exempt_reason`):
+#: 对账豁免场景键(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
+#: 断言延后至稳态;场景判定 = :meth:`SimBackend._reconcile_exempt_reason`
+#: 逐字面量返回,禁第二登记面):
 #: ① overlay 队列命中(``overlay_pending``:``_window_resume='offer'`` +
 #:    ``_present_pending_overlay`` 呈现巨星/planner 等);
 #: ② offer 日程命中(``offer_presented``:呈现投资策略屏);
 #: ③ 节点窗让路恢复位未消费(``window_resume_pending``:让路期间选卡族
 #:    经 ``_dismiss_modal`` 恢复到 offer 屏/节点屏)。
-RECONCILE_EXEMPT_KINDS: frozenset[str] = frozenset({
-    'overlay_pending', 'offer_presented', 'window_resume_pending',
-})
 
 #: 对账漂移保留证据的 disclosures 键(声明与状态机画面漂移早期警报;值 =
 #: 漂移明细串列表,缺陷保留证据不停机)。

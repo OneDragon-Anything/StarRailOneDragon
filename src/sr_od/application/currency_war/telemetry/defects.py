@@ -101,10 +101,6 @@ DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED: str = 'deployed_count_2src_sustained'
 #: 归因不单向指向 CV 占用源)。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC_DEGRADED: str = 'deployed_count_2src_degraded'
 
-#: tracked 槽号健康门拦截分键:占用槽号重复/越界(对账 churn 家族的
-#: 无守卫数据)→ 拒绝重播种,维持旧布局防坏槽号进不可逆卖出链。
-DEFECT_KIND_BENCH_SLOT_UNHEALTHY: str = 'bench_slot_unhealthy'
-
 
 #: 分歧逐次计数器驻留上限(模块级全局生命周期:常驻进程跨局累积无界;
 #: 超限后清空只保当前局——历史局计数无跨局消费面,清零无损)。

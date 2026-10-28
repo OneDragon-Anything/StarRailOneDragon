@@ -125,13 +125,6 @@ def _plane_of(state: GameState) -> int:
     return plane_of(state)
 
 
-def _round_of(state: GameState) -> int:
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        round_num_of,
-    )
-    return round_num_of(state)
-
-
 # ---------------------------------------------------------------------------
 # 守卫断言(决策 9:防 bug 路栏,非法 = 响亮暴露)
 # ---------------------------------------------------------------------------

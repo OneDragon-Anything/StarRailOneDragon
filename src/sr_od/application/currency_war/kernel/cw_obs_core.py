@@ -29,11 +29,7 @@ SHOP_SCREEN_NAME: str = '货币战争-备战-开商店'
 A_GOLD: str = '文本-金币数'
 A_PHASE: str = '区域-阶段'
 A_BOARD: str = '区域-羁绊面板'
-A_SHOP_REGION: str = '商店牌区'             # 5 张牌的阵营+名文本带(整体 OCR,按 y 分阵营/名;商店态,读 SHOP_SCREEN_NAME)
 A_SHOP_CARD_PREFIX: str = '商店牌-'        # 商店牌-1..5(点击中心;商店态,读 SHOP_SCREEN_NAME)
-# 商店牌区内行分类阈值(卡牌布局固定):y < 此 = 阵营标签;>= 此 = 角色名
-SHOP_FACTION_NAME_SPLIT_Y: int = 278
-COL_TOLERANCE: int = 100                   # 文本 x 分配到牌位的容差
 
 # sanity bounds(越界 → 丢弃用默认,防误读级联:gold 读成 500 → 狂买)
 GOLD_MIN, GOLD_MAX = 0, 400

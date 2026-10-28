@@ -79,18 +79,6 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
         log.info(f'[cw-overlay] 逻辑推进跳过: {e}')
 
 
-def find_text_center(op: SrOperation, text: str) -> Point | None:
-    """OCR 全屏找 ``text`` 的 center(没找到 None)。给动态定位确认按钮用(确认文字位置随 overlay 变,
-    无固定坐标 / 未进 screen_info 时)。"""
-    ocr_map = op.ctx.ocr_service.get_ocr_result_map(
-        image=op.last_screenshot, rect=None, color_range=None, crop_first=False,
-    )
-    mrl = ocr_map.get(text)
-    if mrl and mrl.max:
-        return mrl.max.center
-    return None
-
-
 def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> None:
     """防吞点击:click 前 ``mouse_move``(零移动),防 ``before_screenshot`` 移光标 → click 落空。
 

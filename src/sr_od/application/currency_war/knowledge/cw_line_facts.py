@@ -24,11 +24,6 @@ RECIPE_FACTIONS: frozenset[str] = frozenset(
 RECIPE_BASE: int = 5
 
 
-def recipe_tier(board: dict[str, int]) -> int:
-    """板面的配方档数(board 里 ∈ RECIPE_FACTIONS 的档位和)。"""
-    return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
-
-
 # —— 核心三人组 ——
 #: r358:核心三人组(combo_methodology 终版:功能链不可拆;
 #: 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)

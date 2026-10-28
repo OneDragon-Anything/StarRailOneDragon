@@ -144,12 +144,12 @@
 | 经济 | `cw_economy`(经济/等级/节奏骨架)、`cw_env_economy`(投资环境估值)、`cw_reward_node`(奖励节点纪律判据)、`cw_difficulty_account`(难度账本) | 金/经验/利息/刷新成本与价值评估的纯函数模型 |
 | 阵容与卡 | `cw_comps`(阵容库+评分)、`cw_card_identity`(卡身份分层)、`cw_system_cards`(体系卡)、`cw_line_defs`/`cw_line_switch`/`cw_bridge_pool`/`cw_recipe`/`cw_transition`(线/配方/过渡) | 阵容识别、评分与线管理的判断层数据与纯函数 |
 | 意向与事件 | `cw_intention`(终局意向)、`cw_events`(剩余事件画面决策核〔planner/巨星/圣杯/伙伴等〕+ 观察载荷契约 `EncounterOption`)、`cw_encounter_selection`(结算观测基建与兑现回调)、`cw_registry`(决策注册表) | 事件类节点的决策判据;画面选卡判据权威定义 = 策略层 `mandate_v1/`(投资环境/投资策略/补给/遭遇 `encounter_pick.py` 等——选卡判据按设计宪章(00_framework.md)第五条从 kernel 迁往策略层 mandate_v1) |
-| 装备 | `cw_bench_equips`/`cw_bond_equips`(装备跟踪/羁绊口径)、`cw_equip_env`(装备环境信号)、`cw_equip_value`(装备价值)、`cw_equip_wear_plan`(穿戴计划)、`cw_affix_effects`(词缀效果注册) | 装备域的跟踪、估值与计划 |
+| 装备 | `cw_bond_equips`(装备跟踪/羁绊口径)、`cw_equip_env`(装备环境信号)、`cw_equip_value`(装备价值)、`cw_equip_wear_plan`(穿戴计划)、`cw_affix_effects`(词缀效果注册) | 装备域的跟踪、估值与计划 |
 | 战斗 | `cw_battle_calib`(战斗校准)、`cw_deploy_logic`(deploy 围栏/底线门/换人与补位判定;选人与落位计划单一源 = 策略层 `mandate_v1/deploy_plan.py`,sim 与 op 共用)、`cw_launch_admission`/`cw_launch_arbitrage`(动作发出准入/仲裁)、`cw_hp_policy`(hp 门)、`cw_first_passage`(首达生存概率) | 战斗结果的模拟与动作发出决策 |
 | 观测支撑 | `cw_obs_core`(OCR 公共设施)、`cw_observe`(统一日志/截图)、`cw_anchor`(流程转点遥测标记点)、`cw_overlay_registry`(画面 overlay 生命周期注册:备战观察链 overlay 探测注册表,消费方 = cw_screen_prep/cw_obs_core/cw_screen_plane_detail;与登记簿 `cw_overlay_register` 分立两模块——前者 = 画面域注册表,后者 = 触发登记三口) | 观测基础设施 |
 | overlay 触发 | `cw_overlay_register`(登记三口/九类登记目录(封闭集,新增类型必须登记)/屏档名映射/ScreenChanges 簿记 sidecar)、`cw_faction_callbacks`(阵营值域回调级联,挂 deployed 逻辑写尾——判据单一源,sim/实机同源)、`cw_world_decl`(动作后果声明 WorldDecl) | overlay 触发登记层:判据→登记→呈现的数据与契约 |
 | 合成与推演 | `cw_merge_simulate`(合成引擎)、`cw_vocab`(统一动作类型清单)、`cw_prep_expect`(备战购买意图载体)、`cw_prep_actions`(备战域 kernel 件) | 期望态推演与备战域公共件 |
-| 其他 | `cw_performance`(观测反馈/死局检测)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发出)、`cw_discipline_rules`(血预算停手/危机带判据族)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_survey19_hooks`(二轮扫描落地件)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
+| 其他 | `cw_performance`(观测反馈)、`cw_run_allocator`(跨局分配)、`cw_decision_trace`(决策行发出)、`cw_discipline_rules`(血预算停手/危机带判据族)、`cw_plane_table`(节点日程标定)、`cw_investments`(投资领域模型)、`cw_effect_inventory`(在场效果清单)、`cw_plugins`(插件注册)、`cw_code_hash_gate`(起局码哈希结构闸)、`cw_telemetry_exit`(遥测上行出口钩子位)、`cw_opening_hp`(开局血量先验) | 各行括注即一句话职责;细节见 kernel/ 各模块 docstring(全量以 kernel/ 目录为准) |
 
 
 ## 七、遥测与档案层(telemetry/)

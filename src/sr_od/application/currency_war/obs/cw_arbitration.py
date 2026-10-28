@@ -68,18 +68,6 @@ def register(rule: ArbitrationRule) -> None:
     _RULES[rule.key] = rule
 
 
-def get_rule(key: str) -> ArbitrationRule | None:
-    """取规则(消费方需要多产物裁决——如 board 的 merged+decisions——经本
-    入口取 combine 直调;``arbitrate`` 只覆盖 (value, verdict, divergent)
-    三元组形态)。"""
-    return _RULES.get(key)
-
-
-def registered_keys() -> list[str]:
-    """已注册量键(分键互不混流测试的清点面)。"""
-    return sorted(_RULES)
-
-
 # ===== 裁决内核(由各私写实现原样迁入;迁移前后逐字节等价,交叉核对钉死)=====
 
 def combine_deployed_count(paddle_x: int | None,

@@ -206,29 +206,6 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     return None
 
 
-def bench_occupied_slot_nos(bench: list[BenchSlot | None]) -> list[int]:
-    """占用槽号集(槽号健康门输入;None 槽跳过)。
-
-    [索引定义] 值 = 物理槽号(1 基) = 表下标 + 1;Unit.slot 信息位已停用
-    (),槽号由下标派生——结构上恒唯一且 ∈ 1..容量,
-    健康门对下标派生输入恒过(防线保留给仍传信息位口径的过渡期调用方)。
-    """
-    return [i + 1 for i, slot in enumerate(bench or [])
-            if slot is not None and slot.kind == 'unit'
-            and slot.unit is not None]
-
-
-def bench_slots_healthy(slot_nos: list[int]) -> bool:
-    """槽号健康不变量单一源:占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY。
-
-    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据,
-    违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
-    tracked 写点暴露(prep_actions)。"""
-    return (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
-                for s in slot_nos)
-            and len(set(slot_nos)) == len(slot_nos))
-
-
 # (换算五函数 deployed_slot_no/deployed_row_slot/deployed_idx_of/
 #  deployed_rows_to_indexed/deployed_indexed_to_rows 已停用:主域 = DeployedView 完整槽位表(下标直址),
 #  工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_

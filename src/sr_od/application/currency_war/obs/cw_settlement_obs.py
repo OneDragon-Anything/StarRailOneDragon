@@ -543,19 +543,6 @@ def settle_page1_progress_sign(ocr_texts: list[str]) -> str | None:
     return 'pos' if _pg > 0 else 'neg'
 
 
-def is_boss_win_settle_page1(ocr_texts: list[str]) -> bool:
-    """结算页 1 的 boss 胜局形态判定(纯函数)。
-
-    boss 胜局页 1 与战败结算页 1 同构(「挑战结束」标题 + 挑战进度条 +
-    「点击空白加速」,均无「继续挑战」按钮)——失败链分支 1f 的模板门在
-    boss 胜局页 1 误命中(夜间语料批 3 局实证),把页 1 从分支 2(三项
-    遥测暂存通道)整条抢走。判别语义 = **挑战进度带符号增量 > 0**:节点
-    胜利进度 +N(实跑 token 形态 ['挑战进度','+2']),战败为负增量或读不
-    到;OCR 漏读 '+' 时退化为 None → 判 False(回旧行为,不劣化)。
-    """
-    return settle_page1_progress_sign(ocr_texts) == 'pos'
-
-
 def parse_settle_damage_breakdown(items: list) -> dict:
     """掉血说明 tooltip 三行 → 结算伤害分量(纯函数,可单测)。
 
@@ -678,16 +665,6 @@ def parse_progress_fill_ratio(screen: MatLike | None) -> float | None:
         return round((last + 1) / filled.shape[0], 4)
     except Exception:   # noqa: BLE001  像素读数 best-effort
         return None
-
-
-def parse_settle_hp_anchor(ocr_texts: list[str]) -> bool:
-    """结算页 HP 锚(「小队生命值」行 ∨「继续挑战」按钮在场;纯函数)。
-
-    用途:三项读数的页态门——锚在 = 结算常驻页(读数有效);锚不在 =
-    动画期/过渡帧(读数帧态不成立,读 None 不算 miss)。锚判据出处 =
-    docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §1.5(HP 锚可靠,页 2 整版布局常驻)。
-    """
-    return any(('小队生命值' in t or '命值' in t or '继续挑战' in t) for t in ocr_texts)
 
 
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,

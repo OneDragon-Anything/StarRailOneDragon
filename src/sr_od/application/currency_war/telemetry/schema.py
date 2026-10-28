@@ -7,12 +7,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_economy import sell_refund
-from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     CwActionBuyCardParam,
-    bench_char_cost,
 )
 
 # 符号解耦(淘汰计划 第 1 项):本模块消费的注册数据/序列化符号权威
@@ -153,42 +150,6 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
-def salvageable_1star_value(state: GameState) -> int:
-    """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
-    件的卖出回金和。
-
-    - 口径出处:P10④「出口『财富』= 袋子金 + 可回收 1★ 值」——
-      ``docs/develop/sr_od/application/currency_war/proofs/p10-exit-gold-floor.md``
-      §④ 与「对实现的检验点」3(判读防「袋穷板富」误读:出口金低但
-      本值高 → 钱在卡上,非经济病;两字段必须并读)。
-    - 计算式:Σ ``cw_economy.sell_refund(1, cost)``。1★ 卖出全额退、无
-      手续费(sell_refund 单一源),故值 = Σ cost;费用单一源 =
-      ``cw_economy.bench_char_cost``(char_id 未识别 → 3 中费保守估)。
-    - 件集边界:只算 1★(2★+ 是沉没通道——合成已花成本,卖出还有
-      手续费,不构成「活期金」);deployed 与 bench 并集,空槽 None
-      跳过。
-    - 件集读口 = 容器单位域(行域 ``deployed_rows_of`` + bench 单位域
-      ``bench_units_of``,benchchar-retirement P4 容器形)——本函数不持
-      任何帧表示,容器单例直读。
-    - 纯函数契约:只读 state、零行为消费(P10④ 判读供给;挂载点
-      ``TelemetryRecorder.record_decision`` handoff 富化处已随 handoff
-      快照换代停用,本函数保留为已登记判读口径的读值单一源)。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_units_of,
-        deployed_rows_of,
-    )
-    front, back = deployed_rows_of(state)
-    total = 0
-    for u in (*front, *back, *bench_units_of(state)):
-        if u is None:
-            continue
-        if int(getattr(u, 'star', 1) or 1) != 1:
-            continue
-        total += sell_refund(1, bench_char_cost(u, state))
-    return total
-
-
 
 def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     """轮「战后终态」板面计数(档案逐轮 ``terminal`` 列的单一源;纯函数)。
@@ -233,26 +194,6 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(owned, (list, dict)):
         out['equips_owned'] = len(owned)
     return out
-
-
-def serialize_state(state: GameState) -> dict[str, Any]:
-    """容器 GameState → JSON-safe dict(遥测行 state 快照域面)。
-
-    - 序列化单一源 = :meth:`GameState.full_state_snapshot`(kernel 正本:
-      values=非 None 域值 / prov=非默认来源注记 / effects=效果账本整窗 /
-      write_seq 等工程结构;行行自足形状,与 state/journal.jsonl 行内
-      state 同源同形)——本函数只做遥测面的形状委托,禁本地第二套
-      Field 反射(第二实现 = 双源漂移入口)。
-    - 域值语义原样保留:None=不可读(容器「禁兜底假值」红线),来源
-      两态 observation/logic 经 prov 注记可辨,判读不猜。
-    - 旧档案兼容窗(读侧,申报): 状态收敛批前的 decisions 行
-      state 子字典 = 旧帧序列化形状(deployed/bench 槽位表等旧键面),
-      历史数据只读,读端按 dict 宽容读(func:`terminal_state_summary`
-      与 tools/cw 判读工具同款 .get + isinstance 门);本函数产物只进
-      新行,键面 = full_state_snapshot 形状,读端按 ``values`` 子字典取域。
-    """
-    return state.full_state_snapshot()
-
 
 
 def serialize_action(action: Action) -> dict[str, Any]:
@@ -329,26 +270,6 @@ def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
     执行回执的 action 载荷同经此序列化,归一键随行同源)。"""
     item['reason'] = action_reason_of(item)
     return item
-
-
-
-def p1_pair_label(ist: Any) -> str:
-    """P1 配方对 → 遥测标签串('A+B' 体系键串;空窗/无意向 = '')。
-
-    - 来源 = ``cw_intention.IntentionState``:配方锁局取 ``p1_pair``
-      (锁定产物),①资格锁局取 ``transition_pair``(受保护副方向,
-      与 scoring._vd_p1_pair 同式优先序);两字段同口径派生、同帧至多
-      一侧非空,故按 p1_pair 优先取其一。
-    - 体系键域/二元组语义见 cw_intention.IntentionState.p1_pair 注释;
-      tuple/None/非 dataclass 输入一律安全退化空串(纯观测不阻塞环)。
-      dict 形态(serialize_intention 产物,recorder 经 extra/快照取用)
-      同口径支持(rho_obs.pair 消费)。
-    """
-    _get = (lambda k: (ist or {}).get(k)) if isinstance(ist, dict) \
-        else (lambda k: getattr(ist, k, ()))
-    pair = tuple(_get('p1_pair') or ()) or tuple(_get('transition_pair') or ())
-    return '+'.join(str(k) for k in pair)
-
 
 
 def append_jsonl(path: Path | str, payload: dict[str, Any]) -> None:
@@ -820,22 +741,4 @@ class DefectRecord:
     confidence: float | None = None
 
 
-
-def bucket_card_texts(anchors: list[tuple[int, int]], items: list[tuple[str, int, int]],
-                      y_min: int, y_max: int) -> dict[int, list[str]]:
-    """投资卡 OCR 文本按卡分桶(纯函数可测)。
-
-    anchors: [(card_idx,锚点x)](卡名行 center-x);items: [(文本, cx, cy)] 全图 OCR 条目。
-    每条 item 归 **x 最近**的锚点卡;y 不在 [y_min, y_max] 描述带 → 不归。
-    桶内按 y 升序(自然阅读序)。返回 {card_idx: [文本...]}。
-    """
-    if not anchors:
-        return {}
-    out: dict[int, list[tuple[int, str]]] = {i: [] for i, _x in anchors}
-    for text, cx, cy in items:
-        if not text or not (y_min <= cy <= y_max):
-            continue
-        idx = min(anchors, key=lambda a: abs(a[1] - cx))[0]
-        out[idx].append((cy, text))
-    return {i: [t for _y, t in sorted(v)] for i, v in out.items()}
 

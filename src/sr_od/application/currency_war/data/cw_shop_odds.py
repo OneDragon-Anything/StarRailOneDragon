@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS, chars_by_cost
+from sr_od.application.currency_war.data.cw_chars import chars_by_cost
 
 SHOP_SLOTS: int = 5  # 每次刷新 5 格(不考虑昔涟诗篇)
 
@@ -80,19 +80,6 @@ def parse_prob_bar(texts: list[str]) -> dict[int, float] | None:
     if len(nums) != 5 or abs(sum(nums) - 1.0) > 0.05:
         return None
     return {cost: nums[cost - 1] for cost in range(1, 6)}
-
-
-def boosted_cost_tier(observed: dict[int, float], level: int) -> int | None:
-    """对比观测概率与基线,判「轮岗翻倍档」(教学用途/日志;决策直接用 observed)。
-
-    判据:该档观测/基线 ≈ 2 且其余档按比例压缩(翻倍档吃掉一半质量)。
-    """
-    base = REFRESH_PROB.get(level, {})
-    for cost, p_obs in observed.items():
-        p_base = base.get(cost, 0.0)
-        if p_base > 0 and 1.6 <= p_obs / p_base <= 2.4:
-            return cost
-    return None
 
 
 # 轮岗事件概率:生产 20% 决策行(361/1806,replay 语料统计)带轮岗翻倍
@@ -218,42 +205,3 @@ def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
     if q <= 0:
         return float('inf')
     return 1.0 / q
-
-
-def acquirability_factor(core_chars: list[str], level: int,
-                         held: dict[str, int] | None = None) -> float:
-    """阵容核心角色的**牌池感知**可得性 [0,1](select_comp 用;牌池模型,补 理论法)。
-
-    P(单次刷新 5 格中至少出 1 张该角色)= 1 - P(0 张),用 ``_refresh_dist`` 精确超几何算:
-    - P(出该费用)= refresh_prob(level, cost);M~B(5, p) 出该费用格数;
-    - 给定 m 格该费用,出该角色 = 超几何(剩余该角色副本 a−j / 同费剩余总副本 v·a−j);
-    - **j = 玩家已持有该角色的基础副本数**(1星1/2星3/3星9/4星27,3合1 折算)→ 持有越多,剩余越少,越难再刷
-      (牌库有限:买掉即减,用户根因;副本数 27/9)。忽略 NPC 消耗(未知,保守:只扣自己持有的)。
-    阵容取核心角色里**最低**(阵容受最稀卡限制)。
-
-    :param held: {char_name: 已持基础副本数 j},默认 None=全 0(早期未持,纯满池理论)。
-    :return: [0,1];p=0(该等级不出该费)→ 0;无识别角色 → 1.0(中性不降权)。
-
-    select_comp 用法:s *= (0.5 + 0.5 * acq)(:acq 作次级 tiebreak,非主导;牌池感知后范围收窄
-    至 ~0.005-0.3 → 乘子 0.50-0.65,仍提供「低费核心早期更易刷」的 tiebreak 区分)。
-    理论依据:刷新概率独立 → 观察(shop 本回合/历史)无预测力,用理论 REFRESH_PROB + 牌池模型。
-    """
-    held = held or {}
-    probs: list[float] = []
-    for name in core_chars:
-        c = CHARACTERS.get(name)
-        if not c:
-            continue
-        p_cost = refresh_prob(level, c.cost)
-        if p_cost <= 0:
-            probs.append(0.0)          # 该等级不出该费用 → 0(刷不出)
-            continue
-        a = POOL_COPIES_PER_CARD.get(c.cost, 9)
-        v = DISTINCT_CARDS_PER_COST.get(c.cost, 13)
-        j = held.get(name, 0)
-        # P(0 张该角色)经超几何(j 张已离池 → rem_target=a-j);1-P(0)=P(≥1)
-        dist0 = _refresh_dist(p_cost, v, a, c=0, k_need=1, j=j)[0]
-        probs.append(1.0 - dist0)
-    if not probs:
-        return 1.0
-    return min(probs)

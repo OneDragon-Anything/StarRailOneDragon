@@ -87,7 +87,6 @@ transition_snapshot + 备战帧 prep_row,字段 node_path/node_path_baseline)。
 """
 from __future__ import annotations
 
-import contextlib
 import dataclasses
 import hashlib
 import json
@@ -1277,28 +1276,6 @@ def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
     return out
 
 
-# ============================================================ cost_source 三值归并(§3.3.1/§8.6-9)
-
-#: cost_source 消费词表二值(§3.3.1):badge=徽章直读 / registry=注册表查表。
-COST_SOURCE_BADGE: str = 'badge'
-COST_SOURCE_REGISTRY: str = 'registry'
-
-
-def cost_source_group(cost_source: str) -> str:
-    """cost_source 三值 → 消费二值归并(§8.6-9,迁移批次二)。
-
-    存储侧保三值不折叠(roster_fallback 的「徽章失读」证据分级禁丢,
-    P2-4 审查);消费侧归并 = 对**费用数值**的可信度只分两域——badge
-    徽章直读与 registry 注册表查表(含 roster_fallback 失读退查)给出的
-    都是角色招募费真值,按费用消费的分支(估价/卖价/合成费用档)无需
-    区分后两者。归并不丢证据:原值仍在 :attr:`ShopCard.cost_source`,
-    失配归因/缺陷台账按原值分档。未知值保守归 registry(与 reader 缺省
-    语义同向;词表外值 = 上游漂移信号,归因时看原值)。
-    """
-    return COST_SOURCE_BADGE if cost_source == COST_SOURCE_BADGE \
-        else COST_SOURCE_REGISTRY
-
-
 # ============================================================ 双 ShopCard 映射单一源(类型去重)
 # 方案语义正本 = docs/develop/sr_od/application/currency_war/game_state/fields.md §3.3.1
 # (双 ShopCard 映射):唯一容器类型 =
@@ -1722,45 +1699,6 @@ def project_effect_capacity(gs: GameState) -> None:
 # 与紧缩表适配族随角色形中间载体停用删除(design §2.4)。
 
 
-# ============================================================ 局终归档快照(§6.2/§8.8)
-
-def archive_snapshot(gs: GameState) -> dict:
-    """局终 GameState 归档快照(§6.2 局终归档喂遥测,先于连刷重建;
-    §8.8 遥测行形状正本的两键:gs_prov/gs_extra)。
-
-    - gs_prov = 非默认来源注记(稀疏化,不逐字段灌满):source 非
-      observation、或 observation 带 evidence 的字段才入——默认 observation
-      无注记的字段 = 「本帧真读」语义,键面留白;
-    - gs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
-      全部非 None 字段值(JSON 安全形态,供离线判读)。
-
-    返回 dict 直接入档(由局终装配器并档);序列化失败逐字段跳过
-    (归档 best-effort,不阻塞局终流转)。
-    """
-    prov: dict[str, dict] = {}
-    extra_values: dict[str, object] = {}
-    for f in dataclasses.fields(gs):
-        val = getattr(gs, f.name, None)
-        if not isinstance(val, Field):
-            continue
-        if val.value is not None:
-            with contextlib.suppress(Exception):
-                extra_values[f.name] = _json_safe(val.value)
-        if val.source != 'observation' or val.evidence is not None:
-            prov[f.name] = {'source': val.source, 'evidence': val.evidence}
-    return {
-        'schema_version': gs.schema_version,
-        'gs_prov': prov,
-        'gs_extra': {
-            'values': extra_values,
-            'gs_schema': dict(gs.gs_schema),
-            'write_seq': gs.write_seq,
-            'frame_obs': gs.frame_obs,
-            'effects_count': len(getattr(gs.effects, 'effects', []) or []),
-        },
-    }
-
-
 def _json_safe(value: Any) -> Any:
     """归档值的 JSON 安全化(dataclass → dict;容器递归;其余原样)。"""
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
@@ -1898,9 +1836,6 @@ def apply_settlement_cover(gs: GameState, *, hp_after: int | None,
 #: - 扩面依据:动作逻辑态直写单一源 = 上报函数族(裁定 A:
 #:   logic_action 族,与 live 同函数同渠道),域覆盖须对齐其字段转移
 #:   全集。
-SHOP_PROJECTION_DOMAINS: tuple[str, ...] = (
-    'gold', 'bench', 'shop', 'xp', 'level',
-    'deployed', 'board', 'equips')
 
 
 @dataclass(frozen=True)
@@ -4675,19 +4610,6 @@ def deployed_count_of(gs: GameState) -> int:
     单位计数(deployed_rows_of 缺行 = 空行缺省)。"""
     front, back = deployed_rows_of(gs)
     return len(front) + len(back)
-
-
-def front_count_of(gs: GameState) -> int:
-    """前排人数读口(容器原生):前排行成员计数(排归属 = 容器行域,
-    §2.1 排归属由行承载;占位判定 = 行成员身份,非按槽段计)。"""
-    front, _ = deployed_rows_of(gs)
-    return len(front)
-
-
-def back_count_of(gs: GameState) -> int:
-    """后排人数读口(容器原生;口径同 :func:`front_count_of`)。"""
-    _, back = deployed_rows_of(gs)
-    return len(back)
 
 
 def max_units_of(gs: GameState) -> int:

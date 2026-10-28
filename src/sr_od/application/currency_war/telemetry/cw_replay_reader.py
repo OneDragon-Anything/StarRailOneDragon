@@ -84,35 +84,3 @@ def load_outcomes(path: Path | str = DEFAULT_REPLAY_DIR / 'outcomes.jsonl',
                   run_id: str | None = None) -> list[OutcomeRecord]:
     """outcomes.jsonl → ``OutcomeRecord`` 列表(规范读端)。"""
     return _load_jsonl(path, OutcomeRecord, run_id)
-
-
-def posture_tag(frame: DecisionTrace | dict[str, Any]) -> str | None:
-    """dp_posture 的标准读法:仅决策帧返回 tag,其余 None。
-
-    参数接受 ``DecisionTrace``(loader 产物)或裸 dict 行(渐进迁移期
-    容忍)。归一规则见模块 docstring(证据:decisions.jsonl 实测分布)。
-
-    边界:
-    - 载体帧(strategy_id=='')恒 None——其 dp_posture 是 str(dict)
-      长串,不是 tag;
-    - str 形态以 ``'{'`` 开头 = str(dict) 泄漏形态,不当代 tag;
-    - dict 形态取 ``spend_mode`` 键(实测唯一历史键形状),键缺/值空
-      返回 None(不猜);
-    - 空 tag/None 恒 None。
-    """
-    if isinstance(frame, dict):
-        strategy_id = frame.get('strategy_id', '')
-        dp = frame.get('dp_posture')
-    else:
-        strategy_id = frame.strategy_id
-        dp = frame.dp_posture
-    if not strategy_id:
-        return None
-    if isinstance(dp, dict):
-        mode = dp.get('spend_mode')
-        return str(mode) if mode else None
-    if isinstance(dp, str):
-        if not dp or dp.startswith('{'):
-            return None
-        return dp
-    return None

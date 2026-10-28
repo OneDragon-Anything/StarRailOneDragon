@@ -450,26 +450,6 @@ def _log_cw_op(op_name: str, pos: tuple[int, int], dur_s: float,
     log.info(msg)
 
 
-def _shop_open_anchors_hit(op, screen) -> bool:
-    """开商店态三 id_mark 锚判定(备战子态族分支 0n 判据单一源)。
-
-    锚集 = 「备战标识-购买经验」+「按钮-收起」+「标识-备战阶段」
-    (画面档 currency_war_battle_prep_shop_open.yml,idmark 审计批定稿)。
-    三锚全命中才认商店态;互斥依据 = 离线配对验证(idmark 审计表 §三):
-    干净备战帧「按钮-收起」不存在 → 开商店档零候选,不与备战(1)双门
-    竞争(但序位仍须在备战前,见分支注释)。
-    """
-    return (op.round_by_find_area(screen, '货币战争-备战-开商店',
-                                  '备战标识-购买经验',
-                                  crop_first=False).is_success
-            and op.round_by_find_area(screen, '货币战争-备战-开商店',
-                                      '按钮-收起',
-                                      crop_first=False).is_success
-            and op.round_by_find_area(screen, '货币战争-备战-开商店',
-                                      '标识-备战阶段',
-                                      crop_first=False).is_success)
-
-
 def op_fail_redispatch_tick(prev_key: str | None, prev_n: int,
                             key: str, ok: bool) -> tuple[str | None, int]:
     """外环 op 连续 fail 计数纯函数(计数语义 = 同值累加/异值归一,

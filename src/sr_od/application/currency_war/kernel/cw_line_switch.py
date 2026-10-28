@@ -39,7 +39,6 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     StrategySession,
-    strategy_state_of,
 )
 
 
@@ -221,34 +220,3 @@ def node_loss_kind(node_type: str) -> str:
 #  node_loss_kind 与 p2_cond_loss_table 保留——阈值层
 #  cw_first_passage._loss_dist 仍消费;两态 p_win 表 p_win_p2_by_rung
 #  保留——cw_plane_table.p_win_p2 阈值层映射仍消费。)
-
-
-def best_alt_line(gs: GameState, session: StrategySession, config,
-                  score_ctx, registry: DecisionV2Registry | None = None
-                  ) -> tuple[object, float]:
-    """候选集中 E_rounds 最小且有限的备选线((comp, e);无候选 → (None, inf))。
-
-    候选集=select_comp_scored top-N(与选线同一来源,防另造排序);排除
-    drought_excluded 死线(drought 名单语义保留)与供给为 0 的线(选线
-    供给门同口径)。registry 注入(e_rounds 的金/刷价参数)。
-    """
-    from sr_od.application.currency_war.kernel.cw_comps import (
-        select_comp_scored,
-        shop_supply,
-    )
-    reg = registry or DEFAULT_REGISTRY
-    # 判据面防御 getattr(strategy_state_of None 契约,B4 划分线):
-    # 异型状态对象字段缺席退 ''(与下行 drought_excluded 防御形态同族)
-    _tc = getattr(strategy_state_of(session), 'target_comp', None)
-    cur_name = _tc.name if _tc is not None else ''
-    excluded = set(getattr(strategy_state_of(session), 'drought_excluded', None) or ())
-    best: tuple[object, float] = (None, math.inf)
-    for _s, c in select_comp_scored(gs, score_ctx, config, top_n=8):
-        if c.name == cur_name or c.name in excluded:
-            continue
-        if shop_supply(c, gs) <= 0:
-            continue
-        e = e_rounds(c, gs, reg, session=session)
-        if e < best[1]:
-            best = (c, e)
-    return best

@@ -184,9 +184,6 @@ def launch_cause_of(reason: str) -> str | None:
 #: 语义已从 T3 专用簿升级为四因类登记簿,见 StrategyState 字段注释。
 LAUNCH_REGISTRY_ATTR: str = 'cw4_fuel_filler_stall_buys'
 
-#: 兼容别名(T3 时代常量;mandate.py 再出口与既有测试引用零断链)。
-STALL_BUYS_ATTR: str = LAUNCH_REGISTRY_ATTR
-
 
 def _counters_of(session: StrategySession) -> dict | None:
     """分键容器读口(缺容器 = 不计数,不静默造桶——计数面自带载体)。"""
@@ -683,12 +680,9 @@ DEAD_PAIR_EXIT_MIN_AGE: int = SEED_WINDOW_ROUNDS + 1
 #:   分子键 _k(义务基座成员)/_no_entry((c) 账覆盖缺口:缺登记/位面
 #:   失配/轮号缺读——N2 拆分,窗内保留与账缺口暴露分键)/_young((c)
 #:   真窗内 age<N)/_identity(已释放遭身份段剔除——③④/枢纽对体量
-#:   观察位,喂方向④后续门)/_chain(3★ 链 1★ 分支保留);
-#: - ``dead_pair_exit_sold_<channel>``:释放成员经各通道实际卖出笔数
-#:   (按通道分键,写点 = 各通道 CwActionSellBenchParam 动作发出点)。
+#:   观察位,喂方向④后续门)/_chain(3★ 链 1★ 分支保留)。
 DEAD_PAIR_EXIT_RELEASED_KEY: str = 'dead_pair_exit_released'
 DEAD_PAIR_EXIT_KEPT_PREFIX: str = 'dead_pair_exit_guard_kept'
-DEAD_PAIR_EXIT_SOLD_PREFIX: str = 'dead_pair_exit_sold'
 
 
 def _acq_ledger_of(session: StrategySession) -> dict:

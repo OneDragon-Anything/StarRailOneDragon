@@ -123,65 +123,6 @@ def readiness_form_ok(gs: GameState | None, comp: Comp | None) -> bool:
             and form_progress(comp, gs) >= 1.0)
 
 
-def readiness_form_ok_from_snapshot(state_snapshot: dict | None, *,
-                                    locked_comp: str = '',
-                                    p1_pair: tuple[str, ...] = (),
-                                    ) -> bool | None:
-    """决策行 state 快照现读配方完备判据(遥测消费面;判据单一源 =
-    :func:`readiness_form_ok` 同式,禁第二实现)。
-
-    动机(2026-09-15 sim 300 局凑齐率低估实证,
-    ``sim_20260915_081247000_n300``):决策行 ``form_ok`` 字段是策略器
-    镜像写端(write_shop_mirrors)在商店决策帧时点的读数,与同行
-    state(引擎轮末快照)不同时点——轮内升级解锁席位后补位达标的局,
-    镜像读数恒 False 而轮末板面已物化。本函数从行内轮末快照现读同一
-    判据,消除时点差;纯遥测读口,零行为面。
-
-    - 阵容解析序与决策行锁定语义一致:``locked_comp`` 非空 = 资格锁
-      (``cw_comps.get_comp`` 按名,未知名 = None);否则 ``p1_pair``
-      非空 = P1 配方锁伪阵容(``cw_intention.pair_target_comp``);
-      两者皆空 = 判据不可判。
-    - 判据核 = ``form_progress``(board/front_row 只读 ``.value``
-      属性,轻量鸭型桩契约见其 docstring);deployed 名单供
-      required_deployed 分支,快照缺该键 = 按不在板计(保守向,同
-      form_progress 缺读语义)。
-    - 返回 None = 判据不可判(快照缺 ``board_factions``/无阵容
-      线索),消费面自行回退镜像读数,不虚构 False。
-    """
-    from types import SimpleNamespace
-
-    from sr_od.application.currency_war.kernel.cw_comps import (
-        form_progress,
-        get_comp,
-    )
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        pair_target_comp,
-    )
-    if not isinstance(state_snapshot, dict):
-        return None
-    board = state_snapshot.get('board_factions')
-    if not isinstance(board, dict):
-        return None
-    comp = None
-    if locked_comp:
-        comp = get_comp(locked_comp)
-    elif p1_pair:
-        comp = pair_target_comp(tuple(p1_pair))
-    if comp is None:
-        return None
-    deployed = [SimpleNamespace(char_id=str(u.get('char_id') or ''))
-                for u in (state_snapshot.get('deployed') or [])
-                if isinstance(u, dict)]
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        DeployedView,
-    )
-    view = SimpleNamespace(
-        board=SimpleNamespace(value=board),
-        deployed=SimpleNamespace(value=DeployedView(
-            front_slots=list(deployed), back_slots=[])))
-    return form_progress(comp, view) >= 1.0
-
-
 def launch_board_quality_report(gs: GameState, comp: Comp, *,
                                 deploy_plan_available_fn: Callable[
                                     [...], bool]) -> dict:

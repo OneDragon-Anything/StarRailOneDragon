@@ -840,31 +840,6 @@ class DecisionV2Registry:
         return self.interest_cap * 10
 
 
-# ===== hp 对账层下行守卫标定常量(消费方 cw_reconcile.reconcile_hp)=====
-# 值单一源在注册表(项目惯例:数值不散落);cw_reconcile 属观察对账层,
-# 只读本模块常量,不进决策评分面。
-#: 单战损血谱 p100 上界,按节点型分档——loss 帧下行采信的幅度上界。
-#: 标定来源 = 损血表 p100(887 行遥测语料,只采 hp_confidence≥1 且按
-#: (run,位面,round) 去重后的分位:普通战斗 23 / 遭遇 42 / boss 39);
-#: 取 p100 不取 p99 的论证见标定报告(p99-p100 差 ≤7%,p100 顶级行
-#: 逐条交叉核验非误读,压阈值只引入真掉血误杀)。精英/巨星等未标定
-#: 节点型不入表 → 有 loss 背书的下行采新+幅度保留证据攒标定,不拍值
-#(2026-09-02 判据修订:拒信把标定缺口惩罚在读数上,是 hp 冲突噪声环分支)。
-HP_LOSS_CAP_P100_BY_NODE: dict[str, int] = {
-    '普通战斗': 23, '遭遇': 42, 'boss': 39,
-}
-#: 零损节点型(无战斗损血机制事实):这些节点的结算不产生合法损血,
-#: 真值帧下行必为误读 → 一律拒信。
-HP_ZERO_LOSS_NODE_TYPES: frozenset[str] = frozenset({'奖励', '补给'})
-#: 下行拒信复现确认帧数:拒信后连续 N 个真值帧读数仍与拒信值一致
-#: → 确认真掉血,采新出窗。2 = 最小独立复现数(1 帧可能是同一遮挡
-#: 形态的系统性误读;实机遮挡是 shop 开态特有,结算/备战帧不复现)。
-HP_SUSPECT_CONFIRM_FRAMES: int = 2
-#: 毒化窗长上界(节点数):每节点至少一个真值帧(shop 开态才是 None),
-#: 窗长 ≤ 1 节点 + 确认期;超窗 suspect 过期,下次下行重新走首拒帧。
-HP_SUSPECT_WINDOW_NODES: int = 2
-
-
 #: 默认注册表(首轮标定后;A/B 时构造改动副本注入
 #: DecisionV2Strategy)
 DEFAULT_REGISTRY = DecisionV2Registry()

@@ -79,34 +79,6 @@ if TYPE_CHECKING:
     )
 
 
-def _r1_retry_read_hp(read_fn) -> int | None:
-    """r1 备战 HP 重试读(用户修正前提:r1 血量固定但**不恒为 100**,随当局
-    难度/词缀变化——真值源=备战画面显示值,默认 100 兜底在 r1 是错误值)。
-
-    备战画面血量可见,miss=时序/识别抖动 → 最多再试 2 次;仍 miss=返回
-    None(诚实未知,严禁落 100 兜底)。返回值即真读,可信度等同真读。
-    """
-    for _ in range(2):
-        time.sleep(0.6)
-        v = read_fn()
-        if v is not None:
-            return v
-    return None
-
-
-def sell_guard_ok(expected: str | None, live: str | None) -> bool:
-    """卖前交叉核对守卫(设计章2.5 轻守卫)。
-
-    生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
-    ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
-    (3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal,与 cw_state 拒绝
-    语义同词)。两表同源于循环顶(``state.bench`` 按 tracked 下标直拷播种,
-    /S1),mid-loop 漂移必被抓。残余风险(不防「tracked 名字
-    本身错」)= buy-OCR 误读,属既有跟踪保真度问题,不在本批根治。
-    """
-    return bool(expected) and live is not None and live == expected
-
-
 def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
                      ) -> tuple[GameStateReadReceipt | None, Any,
                                 OperationRoundResult | None]:

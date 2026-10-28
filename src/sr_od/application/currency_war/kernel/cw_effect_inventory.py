@@ -57,12 +57,9 @@ class TriggerKind(StrEnum):
     INSTANT = 'instant'            # 选卡当场结算(即时金/全场重写类)
     PLANE_START = 'plane_start'    # 每个位面开始时(固定理财)
     NODE_ENTER = 'node_enter'      # 进入节点时(特战资金/Gemi狸免费刷)
-    BATTLE_END = 'battle_end'      # 战斗结算时(气氛组系)
     LEVEL_UP = 'level_up'          # 升级时(节节高升;商业间谍战场段)
     ON_REFRESH = 'on_refresh'      # 每次刷新时(淘金客/概率事件/采购专员计数)
     ON_MERGE = 'on_merge'          # 合成时(武力刷新=合成装备时,官方限定;角色升星是否同触发面待裁决——GameState 设计 §5 星星相印)
-    ON_SELL = 'on_sell'            # 出售时(降本增效语义面)
-    SUPPLY_PHASE = 'supply_phase'  # 补给阶段
     CONDITIONAL = 'conditional'    # 条件窗口(躺平冻结/经验就是财富改道/成长基金到级)
 
 
@@ -330,12 +327,6 @@ class ActiveEffectInventory:
         """按来源词表(SOURCE_*)过滤——词缀源读端(消费接线归后续)。"""
         return [e for e in self.entries if e.source == source]
 
-    def by_category(self, category: EffectKind) -> list[ActiveEffect]:
-        return [e for e in self.entries if e.spec.category == category]
-
-    def by_trigger(self, trigger: TriggerKind) -> list[ActiveEffect]:
-        return [e for e in self.entries if e.spec.trigger == trigger]
-
     def first(self, spec_id: str) -> ActiveEffect | None:
         for e in self.entries:
             if e.spec.id == spec_id:
@@ -346,25 +337,6 @@ class ActiveEffectInventory:
         """按 (spec_id, key) 读计数——多策略同 key 天然隔离,不串账。"""
         e = self.first(spec_id)
         return e.counters.get(key, 0) if e is not None else 0
-
-    _ACTION_TRIGGER: dict[str, TriggerKind] = {
-        'level_up': TriggerKind.LEVEL_UP,
-        'refresh': TriggerKind.ON_REFRESH,
-        'node_enter': TriggerKind.NODE_ENTER,
-        'battle_end': TriggerKind.BATTLE_END,
-    }
-
-    def predict_for(self, action: str) -> list[ActiveEffect]:
-        """执行动作 → 需前置知(predict)的在效果集。
-
-        action 映射见 _ACTION_TRIGGER;未知 action 保守返回**全部** predict 条目
-        (漏预知的代价是读牌/对账误判,多给不错给)。
-        """
-        trigger = self._ACTION_TRIGGER.get(action)
-        if trigger is None:
-            return [e for e in self.entries if e.spec.duties.predict]
-        return [e for e in self.entries
-                if e.spec.duties.predict and e.spec.trigger == trigger]
 
     # —— 追踪端(挂点调用;纯逻辑,sim 与生产同一实现)——
     def advance_node(self, node_key: tuple[int, int] | None = None
@@ -550,11 +522,6 @@ class ActiveEffectInventory:
         if n <= 0:
             raise ValueError(f'n 须为正数(单调计数器只增),得 {n}')
         self.ore_open_total += n
-
-    def equip_progress_of(self, equip_name: str, wearer: str) -> int:
-        """装备效果进度读口(侧栏键 = (装备名,装备者 char_id))。无记录 = 0
-        (计数器从 0 起,§3 规则 1)。"""
-        return self.equip_progress.get((equip_name, wearer), 0)
 
     def bump_equip_progress(self, equip_name: str, wearer: str,
                             n: int = 1) -> int:
@@ -1023,9 +990,6 @@ WEALTH_GOLD_PER_NODE: int = 4
 #: 财富宝钻金面周期(官方文「装备者每3个备战阶段提供1金币」——每 3 阶段 1 金,
 #: 整除触发;phases_elapsed 按累计口径供给,零头阶段经整除天然结转不丢)。
 DIAMOND_PHASE_STEP: int = 3
-#: 员工投影仪拖动目标费用门(官方文「拖动到一个3费及以下的角色上使用」;
-#: 完美投影仪无此限,同文「拖动到一个任意角色上使用」)。
-STAFF_PROJECTOR_COST_GATE: int = 3
 #: 进阶→特权装备映射后缀(注册表 36 进阶 ↔ 36 特权全量双射,覆盖率由测试
 #: 对 cw_equipment_data 钉死;特权赋予卡确定性变换的映射单一源)。
 EQUIP_PRIVILEGE_SUFFIX: str = '·特权'

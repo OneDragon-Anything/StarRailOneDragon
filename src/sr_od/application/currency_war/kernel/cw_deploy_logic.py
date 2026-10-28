@@ -462,22 +462,6 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
 # 卖出分支共吃同一 fenced 分支判据——判据驻 operations 桶时 kernel 谓词够不着
 # (包依赖矩阵禁 kernel→operations),自写 fp/板满组合 = 第三源(先例:
 # cw_launch_admission.py DEPLOY_FENCE 注释,r271 批同型双源清退)。
-# cw_op_deploy 保留同名 re-export,既有消费路径(生产 deploy 卖出分支/
-# 测试)零迁移。
-
-def swap_arm_deployed_count(board: dict | None,
-                            tracked_deployed: list) -> int:
-    """换阵卖出义务分支「板满」条件的部署数喂入(单一口径)。
-
-    = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,行域本身即
-    紧凑占用序)。**禁用
-    ``sum(board.values())``**:board 语义 = 阵营名 → 该阵营在场人数
-    (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
-    喂「板满」门 = 建模对象错,板未满即开分支、熔断自线成型起事实失效。
-    """
-    return sum(1 for d in (tracked_deployed if isinstance(tracked_deployed, list)
-                           else []) if d is not None)
-
 
 def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务分支触发判据(纯函数,测试面):线成型(fp≥1.00,
@@ -485,8 +469,9 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
     ``max_units_of``(level+宝钻、封顶 = 4+back_max 动态真值
     〔GameState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
-    CAPACITY 禁作阈值,理由见下),
-    喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
+    CAPACITY 禁作阈值,理由见下);deployed_n 喂入 = 容器占用数
+    (占用判定 = 元素非 None 计 1,P4 容器形行域即紧凑占用序)。
+    两条件并存 =
     熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
     无空槽可进——此时 off-line fenced 件让位。
 
@@ -1272,19 +1257,13 @@ class SwapPlanContext:
 # 为什么存在:动作发出面(select_swap_plan)与执行面(原部署机卖出分支两门,
 # 已停用)对「这场换阵能否兑现」判定不同源时,动作发出面会发出执行面
 # 必然空转的 RunDeploy(2026-09-08 实机软卡死 run_20260908_210431:无方向态
-# 发出 53 次幻影部署,执行 0 次真实换阵,交替活锁 15 分钟)——本谓词是
-# 「发出⇔执行同谓词」的单一实现,两面各消费其合取支,禁任一面自写
-# 第二份口径。支出出口总图防双改清单的共享单点对账持久家(推导 历史)
-# 本谓词消费 form 成型度(fp 经装配 ctx 单字段)与
+# 发出 53 次幻影部署,执行 0 次真实换阵,交替活锁 15 分钟)——合取支
+# (target_view_present / bench_target_count)是「发出⇔执行同谓词」的
+# 共享实现,发出面各消费其合取支,禁任一面自写第二份口径。
+# 本谓词族消费 form 成型度(fp 经装配 ctx 单字段)与
 # victim 资格(swap_sell_exclusion_reason)两个已登记共享单点,零新增
 # 派生链——只消费装配 ctx(SwapPlanContext)字段,禁第二份 fp/目标视图
 # 派生。
-
-#: swap_realizable 拒因闭集(plan 级弃权键;层位 = plan 级弃权键,
-#: 非逐件拒因闭集——后者见 swap_sell_exclusion_reason docstring)。
-SWAP_REALIZABLE_WHY: tuple[str, ...] = (
-    'no_direction', 'no_bench_target', 'no_sellable_offtarget',
-)
 
 
 def target_view_present(ctx: SwapPlanContext | None) -> bool:
@@ -1379,67 +1358,6 @@ def bench_target_count(ctx: SwapPlanContext | None, *,
     _bench = bench if bench is not None else ctx.bench
     return sum(1 for b in _bench
                if target_view_char_is(ctx, _bench_cid(b)))
-
-
-def board_sellable_offtarget_exists(ctx: SwapPlanContext | None, *,
-                                    deployed: list | None = None,
-                                    ) -> bool:
-    """合取③:板上存在其资格分支下可卖的 off-target 件。
-
-    逐件判定 = swap_sell_exclusion_reason 单一源(返 '' = 该件在当前
-    分支态下可卖且必为 off-target——target 视图件被该函数 target_keep
-    拒,语义内含)。未识别/未注册件不入候选(select_swap_plan victim
-    扫描同款:不可判羁绊即不可判资格)。与动作发出面 victim 扫描同构同源,
-    差异仅在输入域(动作发出面 ctx 帧域 / 执行面 SIFT 现读域,分轨既定)。
-    """
-    if ctx is None:
-        return False
-    _dep = deployed if deployed is not None else ctx.deployed
-    for d in _dep:
-        name = getattr(d, 'char_id', '') or ''
-        if not name or CHARACTERS.get(name) is None:
-            continue   # 未识别/未注册件不可判羁绊,不入候选(扫描同款)
-        if swap_sell_exclusion_reason(name, ctx, deployed=_dep) == '':
-            return True
-    return False
-
-
-def swap_realizable(ctx: SwapPlanContext | None, *,
-                    bench: list | None = None,
-                    deployed: list | None = None,
-                    ) -> tuple[bool, str]:
-    """换阵可兑现谓词(三合取;发出⇔执行同吃,F1 单一源)。
-
-    realizable ⟺ ①目标视图非空 ∧ ②bench 存在目标视图件 ∧ ③板上存在
-    其资格分支下可卖的 off-target 件(钉死的
-    三合取;原「fenced 分支开 ∨ bench 存在目标视图件」形态
-    会使执行面卖出分支在
-    「fenced 开 ∧ bench 无目标件」帧仍跳过,发出⇔执行在有向成型态再次
-    分叉,故改写)。
-
-    消费面与合取支的对应:
-    - 动作发出面(select_swap_plan)门①显式弃权(abstain no_direction);门②
-      域外(非锁定转型域)显式弃权(abstain no_bench_target)——转型域
-      跳过门②:转型分支自带更强的卖后上序底线(post_sell_offline),计划
-      非空 ⟹ up2 含 target 视图件 ⟹ bench 必有目标视图件,门②被底线
-      蕴含,预判只会把逐件暴露挤成单键;门③由 victim 扫描自然承载
-      (逐件同判 swap_sell_exclusion_reason,扫描空即计划空,语义等价
-      且逐件拒因保留暴露);
-    - 执行面(原部署机卖出分支两门)已停用,现役零执行侧消费——
-      机械执行 = `CwActionSellDeployedOp` 逐件原子,资格判定全部前移动作发出面;
-    - sim 镜像经 select_swap_plan 自动继承。
-
-    :returns: (ok, why)。why ∈ SWAP_REALIZABLE_WHY(拒因闭集)或 ''
-        (ok=True)。ctx None 按无方向弃权(fail-closed,与装配不可得
-        「不静默发出」同向)。
-    """
-    if not target_view_present(ctx):
-        return False, 'no_direction'
-    if bench_target_count(ctx, bench=bench) == 0:
-        return False, 'no_bench_target'
-    if not board_sellable_offtarget_exists(ctx, deployed=deployed):
-        return False, 'no_sellable_offtarget'
-    return True, ''
 
 
 @dataclass

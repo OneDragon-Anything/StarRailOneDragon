@@ -132,6 +132,3 @@ class DragCwChar(CwOperation):
         # 光标 parking(审计 P0):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
         # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
         op.park_cursor(after_wait=0.3)
-
-
-_EXPORT = DragCwChar

@@ -131,8 +131,3 @@ __all__ = [
     'LambdaCell', 'LambdaTableCorruptError', 'cell', 'difficulty_band',
     'table_loaded',
 ]
-
-
-def _private_table_view() -> dict[str, LambdaCell]:
-    """审计钩子(derived.py 登记用;禁判据侧直接消费私有表 dict)。"""
-    return dict(_LAMBDA_TABLE)

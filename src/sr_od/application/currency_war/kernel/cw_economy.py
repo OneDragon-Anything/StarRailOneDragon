@@ -200,9 +200,6 @@ def effective_cost(gs: GameState, char_id: str) -> int:
     return c.cost if c and c.cost else 0
 
 
-INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分(权重算账见下方注释块)
-
-
 STREAK_GOLD_TABLE: tuple[int, ...] = (1, 1, 2, 2, 2, 3, 4)
 """连胜金实测真值表(索引=连胜数,越界取末值;49/49 样本,economy.md §10.1)。
 
@@ -587,32 +584,12 @@ REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
 #: P3r1=5 是无直读样本下的近似、待办维持——见 :func:`reward_base_gold`)。
 _REWARD_BASE_DEFAULT: int = BASE_INCOME
 
-#: sim 收入口径版本(独立披露;收入口径在 cw_economy/cw_sim 收入段,
-#: 另一子系统,无对照版本)。
-#: 跨批次对比先核 manifest.economy_calib_version(局终指纹核对锚)。
-ECONOMY_CALIB_VERSION: int = 2
-#: v2:事件金表按实机逐轮金轨迹反馈整定(状态分布校准总闸);
-#: v1 旧表(晶矿残差近似)
-#: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
-
-# 息权重算账(gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱阵容。息 delta(50vs0)=20
-# > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论(若只取 2.0,息 delta=10
-# = 牌 synergy 10 → bot 无差别 → 买不攒)。
-# streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):
-# ⚖️ **单边**(2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
-# 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边)。
-STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实玩校准)
-
-STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
-
 # streak 带符号(连胜 + / 连败 −);真值归宿 = gs.streak 结算覆盖写端
 # (kernel/cw_game_state.py::apply_settlement_cover 的 streak_after,
 # 写点 = battle_wait 结算观测),经济/观察消费读容器。
 # 无「连胜 ≥2 跌破利息档」阈值常量(未核经验值,与已证跌破利息档-保利息判据
 # 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道
 # 封锁——登记 = math_proofs P43)。
-
-LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
 
 # —— 购买经验决策 helper(机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_economy 单一源)——
 # ⚠️ 本接缝族签名已切 GameState。字段读统一经容器读口单一源
@@ -853,7 +830,6 @@ def _expected_level(round_num: int, plane: int) -> int:
 
 # ===== node_plan:节点×等级×动作节奏骨架(阵容无关;14 §2) =====
 # plan() 读 NodeGoal.target_level 作等级 gate 地板。spend_mode 驱经济档位(allin 跳卖息 等)。
-# danger_d 占位(卡 node_type 下节点识别,3.5.5;非 difficulty/hp_trend —— 二者已就绪)。占位从未被读
 @dataclass
 
 class NodeGoal:
@@ -870,7 +846,6 @@ class NodeGoal:
     #: 义务优先,未激活时许可取交)。None=无 DP 信息(先验 fallback;不参与
     #: 合并,许可侧原值)。
     refresh_budget: int | None = None
-    danger_d: bool = False      # 占位从未被读(见上)
 
 
 # ⚖️(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
@@ -972,24 +947,6 @@ def effective_refresh_prob(gs: GameState, level: int, cost: int) -> float:
     if bar is None or bar <= 0:
         return refresh_prob(level, cost)
     return bar
-
-
-
-def _char_synergies(name: str) -> set[str]:
-    """角色全部羁绊(阵营 + 流派 + 独立),查 ``CHARACTERS`` 注册表(游戏数据单一真相源)。
-
-    流派(持续伤害/击破/燃血/…)与阵营同为羁绊,``comp.factions`` 可含两者 → target 匹配须用全羁绊,
-    非单 ``card.faction``(= ``Character.factions[0]``,丢流派)。流派主派阵容(DOT/击破/燃血)的流派
-    角色(如艾丝妲=银河学者+持续伤害)据此识别为 target,不被误判 off-target → commit 后仍可买凑过渡。
-    未识别 / 不在注册表 → 空集(card.faction 兜底由 ``_card_hits_target`` 加)。
-    """
-    ch = CHARACTERS.get(name)
-    if ch is None:
-        return set()
-    syn = set(ch.factions) | set(ch.flows)
-    if ch.independent:
-        syn.add(ch.independent)
-    return syn
 
 
 # ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====

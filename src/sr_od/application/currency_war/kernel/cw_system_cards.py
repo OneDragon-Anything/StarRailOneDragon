@@ -264,11 +264,6 @@ def card_engine_complete(card: SystemCard, owned: set[str]) -> bool:
     return all(n in owned for n in card.engine_required)
 
 
-def engine_missing(card: SystemCard, owned: set[str]) -> list[str]:
-    """引擎缺口清单(审计用;``card_engine_complete`` 的明细对偶)。"""
-    return [n for n in card.engine_required if n not in owned]
-
-
 # ===== 件数/组合选择(组合规则 1-3;权重草案级)=====
 
 def _card_factions(card: SystemCard) -> tuple[str, ...]:
@@ -278,29 +273,6 @@ def _card_factions(card: SystemCard) -> tuple[str, ...]:
     (本函数保留为兼容视图,行为=原样返回字段)。
     """
     return card.judge_factions
-
-
-def engine_char_names() -> frozenset[str]:
-    """四体系卡的引擎件名全集(铁三角三人组+希儿;点3 见即买名单)。
-
-    单一源在注册表旁;decision_v2/discipline 侧 import 本函数,
-    对外签名/消费点零变化。
-    """
-    out: set[str] = set()
-    for card in SYSTEM_CARDS.values():
-        out.update(card.engine_required)
-    return frozenset(out)
-
-
-def system_judge_factions() -> frozenset[str]:
-    """体系卡判据阵营并集(仙舟/持续伤害/列车同行/量子同频/贝洛伯格)。
-
-    五家阵营的单一源(找件判据等消费;第五张体系卡加入时自动传导)。
-    """
-    out: set[str] = set()
-    for card in SYSTEM_CARDS.values():
-        out.update(card.judge_factions)
-    return frozenset(out)
 
 
 def card_pieces(card: SystemCard, gs: GameState) -> int:

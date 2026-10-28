@@ -263,17 +263,6 @@ def _visible_chars(gs: GameState) -> set[str]:
             names.add(u.char_id)
     return names
 
-def _bond_counts(gs: GameState) -> dict[str, int]:
-    """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加,
-    §2.1 faction 注册表派生 = char_first_faction 单一源,未知名不计)。"""
-    counts: dict[str, int] = dict(gs.board.value or {})
-    from sr_od.application.currency_war.data.cw_chars import char_first_faction
-    for u in bench_units_of(gs):
-        fac = char_first_faction(getattr(u, 'char_id', '') or '')
-        if fac and fac != '?':
-            counts[fac] = counts.get(fac, 0) + 1
-    return counts
-
 
 def plane_remaining_nodes(gs: GameState, session=None) -> int:
     """位面内剩余节点数(含当前轮;冻结超限的对照量)。
@@ -816,12 +805,6 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
 #: (经济冻结病灶①的根是单向驱逐,本停用连同 un-evict 语义一并失去
 #: 载体;pair_evicted 字段保留为空集兼容序列化。)
 
-#: 供给确认阈值(轮)。原 = 驱逐阈值取半派生,驱逐停用后唯一残消费 =
-#: 撤销出口③的证据合取项(线内在店断供 ≥ 此值 ∧ G ≤ ε 才允许降级)。
-#: 【拟】经验阈值待证(登记的待办);保守向 = 合取更严 → 撤销更难,
-#: 降级仍可逆(不写 evicted),与出口③「防误杀」设计同向。
-PAIR_SUPPLY_CONFIRM_ROUNDS: int = 2
-
 
 def _update_pair_drought(gs: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
@@ -1136,24 +1119,11 @@ def line_completion_feasibility(gs: GameState,
     return g
 
 
-# ===== 终局阵容锁定断点观测分键(纯观测件;设计语义 = 终局阵容锁定断点按断点位置分键的
-# 定向观测,分键清单 = 下行前缀全集逐键注。原终局阵容锁定断点 P2 定向通道设计稿
-# 未入库已灭失(原件名 lock_path_p2_channel_design/DESIGN.md);语义存档 =
-# math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
-# 四分键禁合并为单一「终局阵容锁定失败」键(设计稿 §6 断点定位粒度确认);全部
-# 只承归因不作目标值——42 跳对照警示:有锁对照批 hp 中位反而 0.0,锁定率
-# 与结局无单调关系,禁入验收通过线禁作优化目标。零行为守卫:观测位只
-# 计数,不改任何判定/发出结果(守卫测试 = sr-od-test test_cw_lock_path_obs_keys)。
-
-#: 观测分键前缀全集(strategy_state_of(session).cw4_counters;与既有键族零交集,设计稿 §4 条款③)。
-LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
-    'weakplane_exempt_eval',          # G5:信号曾生成但被弱面剔(+豁免判据分支)
-    'p2_supply_gate_cull',            # G6:信号存活但被 G≤ε 缓锁剔除
-    'p2_handoff_',                    # G7:移交帧/候选空帧计数
-    'promote_candidate_',             # G8:晋升候选集纯派生非空率
-    'intention_frame_',               # 锁定率分母:意向驱动帧数(按位面)
-    'intention_locked_frame_',        # 锁定率分子:phase=='locked' 帧(按位面)
-)
+# ===== 终局阵容锁定断点观测分键(纯观测件;原分键前缀登记
+# LOCK_PATH_OBS_KEY_PREFIXES 随观测写端未接线删除——声明的前缀键
+# (weakplane_exempt_eval/p2_handoff_/promote_candidate_/intention_frame_ 等)
+# 全仓零写点,宣称的守卫测试 test_cw_lock_path_obs_keys 已不存在;
+# 语义存档 = math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
 
 
 def update_p1_recipe(gs: GameState, ist: IntentionState,
@@ -1344,37 +1314,6 @@ def structural_candidate_lines(gs: GameState,
         c.name for c in COMP_LIBRARY
         if c.name not in ist.evicted
         and plane_of(gs) not in (c.weak_planes or ()))
-
-
-def hub_covered_lines(gs: GameState, ist: IntentionState,
-                      char_name: str) -> frozenset[str]:
-    """枢纽 h 的覆盖集 C_h(f)(char_routes 复用网络口径,core∪shared 计入)
-    与结构候选线集的交集;乙分支资格核与同帧仲裁第一层的共享输入。"""
-    routes = char_routes().get(char_name, set())
-    return frozenset(routes & set(structural_candidate_lines(gs, ist)))
-
-
-def _build_char_declaration_index() -> dict[str, int]:
-    """角色卡注册表声明序索引表(模块级一次构建;COMP_LIBRARY 静态)。"""
-    idx: dict[str, int] = {}
-    for comp in COMP_LIBRARY:
-        for name in list(comp.core_chars) + list(comp.shared_chars):
-            if name and name not in idx:
-                idx[name] = len(idx)
-    return idx
-
-
-_CHAR_DECL_INDEX: dict[str, int] = _build_char_declaration_index()
-
-
-def char_declaration_index(name: str) -> int:
-    """角色卡注册表声明序索引(P86 同帧仲裁第三层的确定性序单一源,
-    证明批 §4.4:剩余并列按注册表声明序,纯确定性零语义承载)。
-
-    坐标系 = COMP_LIBRARY 逐套 core∪shared 首现序(与 hub_option_names
-    枚举序同源同一构建式,禁消费方第二套排序);取值时机 = 导入期快照
-    (注册表静态)。未登记名(散件/识别噪声)返回 len(全集) 垫底。"""
-    return _CHAR_DECL_INDEX.get(name, len(_CHAR_DECL_INDEX))
 
 
 def hub_option_names(gs: GameState, ist: IntentionState) -> tuple[str, ...]:
@@ -1858,33 +1797,4 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
             keys |= set(comp.form_tiers) | set(comp.sub_tiers)
     return frozenset(keys) if keys else None
 
-
-def alloc_reason_consistency(session, target_faction: str = '',
-                             target_comp_name: str = '') -> str:
-    """执行侧目标 vs 意向层权威的一致性断言(纯函数,零行为;设计单一源 =
-    执行分配器设计件 §2 正式范围):执行侧消费只读意向层权威
-    状态,禁读自身缓存线名)。
-
-    断言式:执行目标 ∈ 意向权威语义集 = 锁定体系集
-    (``locked_faction_scope``)。与 cw_evolution._off_lock_opt 同判据的
-    **断言面**(彼为约束面,本函数只观察不拦截)。
-
-    - 意向载体缺失或无锁定帧(空窗/weak/降格终局,scope=None)→ ''
-      ——弱意向期的跨线骨架/弱占位本身在语义集内,不覆盖;
-    - 阵容来源目标的主档键或目标 faction 与锁定体系集有交集 → '';
-    - 否则返回脱节报警标签 ``'off_lock:<目标>'``(消费方 =
-      execute_replacement 构造事务时的观察日志 + sim 检查网/测试)。
-    """
-    ist = getattr(strategy_state_of(session), 'v3_intention', None)
-    scope = locked_faction_scope(ist if isinstance(ist, IntentionState)
-                                 else None)
-    if scope is None:
-        return ''
-    if target_comp_name:
-        comp = get_comp(target_comp_name)
-        if comp is not None and (set(comp.form_tiers) & set(scope)):
-            return ''
-    if target_faction and target_faction in set(scope):
-        return ''
-    return f'off_lock:{target_comp_name or target_faction}'
 

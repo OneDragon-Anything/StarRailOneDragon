@@ -69,10 +69,3 @@ class CommitSignals:
         mx = max(comp_scores.values()) or 1.0
         for comp, s in comp_scores.items():
             self.scores[comp] = self.scores.get(comp, 0.0) + w * (s / mx)
-
-    def leader(self) -> tuple[str, float] | None:
-        """当前信号领先的线(名,分);空返 None。仅遥测。"""
-        if not self.scores:
-            return None
-        comp, sc = max(self.scores.items(), key=lambda kv: kv[1])
-        return comp, sc

@@ -152,11 +152,6 @@ def reset_layout_unknown_state() -> None:
     _unknown_streak = 0
 
 
-def back_layout_unknown_streak() -> int:
-    """当前连续未知帧计数(写面冻结门消费;≥ ``UNKNOWN_FREEZE_FRAMES`` = 冻结)。"""
-    return _unknown_streak
-
-
 # 复位入口注册到 kernel 槽(审查C4:策略 create_session 新局起点经
 # kernel.cw_vocab.reset_layout_unknown_state 槽式转发复位;import 期注册
 # 保证「先 create_session 后首读」顺序下槽已就位;obs→kernel 合法向)。
@@ -382,15 +377,6 @@ def back_slots_from_cap_diff(diff: int) -> int:
     """
     d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
     return _BACK_SLOTS_BASE + d
-
-
-#: **公式-历史实证张力(0,待召唤物局数据解)**:唯一历史 8 格
-#: 实证(狸猫局 lv7 cap8/9 两帧同为 8 格)与公式 6+(8−7)=7 冲突。候选解释:
-#: ①召唤物加格不加 cap(公式需补召唤物项)/②当年 cap 读数有误/③召唤物局
-#: 两帧实为 cap9。批内不硬解:双通道对账天然覆盖(CV 为真值,公式不符 →
-#: ``back_layout_channel_conflict`` 保留证据);run 27+ 锚点「钻石/召唤物局记录
-#: cap/level/CV 格数三点对」攒数据后定公式是否需修正项。
-FORMULA_SUMMON_TENSION_NOTED: bool = True
 
 
 def note_channel_conflict(screen, formula_n: int, cv_n: int,

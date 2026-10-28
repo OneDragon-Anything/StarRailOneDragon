@@ -117,25 +117,6 @@ def key_recipe_pairs(key_equips) -> dict[str, tuple[tuple[str, str], ...]]:
     return result
 
 
-def key_fit_names(key_equips) -> frozenset[str]:
-    """契合全集 = key 成品 ∪ 全部材料对成员(由 key_recipe_pairs 派生,
-    单一推导;V4 独立构造交叉核对锁防派生链自身 bug)。"""
-    names: set[str] = set()
-    for k, pairs in key_recipe_pairs(key_equips).items():
-        names.add(k)
-        for pair in pairs:
-            names.update(pair)
-    return frozenset(n for n in names if n)
-
-
-def _pair_count(a: str, b: str, spare_counts: Counter) -> int:
-    """材料对 (a, b) 的可用对数(备用账口径):交叉对 = min(cntA, cntB);
-    自对 = cnt // 2(design §2.3 对数公式)。"""
-    if a == b:
-        return spare_counts.get(a, 0) // 2
-    return min(spare_counts.get(a, 0), spare_counts.get(b, 0))
-
-
 def _near_redeem(name: str, pairs_by_key: dict[str, tuple[tuple[str, str], ...]],
                  unmet_keys: list[str], spare_counts: Counter) -> bool:
     """近兑现判定(design §2.3,意图锚定「选卡解锁首对」):∃ 未满足 K 的
