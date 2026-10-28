@@ -1065,33 +1065,19 @@ def _core_miss_q(core: str, level: int) -> float:
 
 
 def p2_supply_horizon(gs: GameState,
-                      session: StrategySession | None = None,
-                      registry: DecisionV2Registry | None = None) -> int:
-    """P2 有效供给视界 H = min(位面剩余节点, ⌈hp / vd_p2_loss⌉)。
+                      session: StrategySession | None = None) -> int:
+    """P2 有效供给视界 H = 位面剩余节点数(registry cw_plane_table 单一源,
+    ``plane_remaining_nodes`` 本位面真值,P2=7)。
 
-    三维中「剩余轮 × 血预算」的合取面(供给概率维在
-    ``line_completion_feasibility`` 内取幂)。零新自由参数,两个输入
-    全部是既有单一源:
-    - 位面剩余节点 = ``plane_remaining_nodes``(本位面真值,P2=7);
-    - 血预算轮数 = ⌈hp / registry.vd_p2_loss⌉——vd_p2_loss=20.05 是
-      P12/P21 已采的 P2 单战期望掉血(registry 单一源),血预算语义与
-      ``decision_v2.discipline.p2_crisis_band``(2×vd_p2_loss)同源:
-      还能承受几次 P2 败战,就还剩几轮「等得到供给」的有效窗口。
-
-    适用范围 = P2(vd_p2_loss 是 P2 量,P1/P3 调用面禁用——消费位自守)。
-    hp≤0(濒死帧)→ 0(视界为零,任何线都不可达)。
+    H 只含日程维:视界回答「还剩几轮等得到缺件供给」,可行性 G 门
+    (``line_completion_feasibility``)在 H 上取幂。hp 不入本视界
+    (hp 是对局结果不是策略决策输入,2026-10-28 用户裁定;迭代
+    changes/2026-10-28-hp-purge-refresh-reform R-3 删血项、机制保留
+    ——行为变化 = 可行性与回退带不再随血低收紧,含 P2 未锁定窗口
+    囤货方向;``k_empty_window_fallback`` 机器与消费链不受影响)。
+    适用范围 = P2(P1/P3 调用面禁用——消费位自守)。
     """
-    reg = registry or DEFAULT_REGISTRY
-    plane_left = plane_remaining_nodes(gs, session)
-    # hp 决策消费点统一经政策层读口(登记的待办兑现:原「上游门后值传递」
-    # 过渡支随 波 4 改经 decision_hp,hp施门下沉kernel政策层设计
-    # §2.4/§2.3;容器 hp = 门前真值,门在此消费点显式施)。
-    from sr_od.application.currency_war.kernel.cw_hp_policy import (
-        decision_hp,
-    )
-    hp = int(decision_hp(gs, session) or 0)
-    blood_rounds = math.ceil(hp / float(reg.vd_p2_loss)) if hp > 0 else 0
-    return min(plane_left, blood_rounds)
+    return plane_remaining_nodes(gs, session)
 
 
 
@@ -1099,16 +1085,16 @@ def p2_supply_horizon(gs: GameState,
 def line_completion_feasibility(gs: GameState,
                                 comp: Comp | None,
                                 session: StrategySession | None = None,
-                                registry: DecisionV2Registry | None = None,
                                 visible: set[str] | None = None) -> float:
     """P2 终局阵容锁定可行性 G = P(线核心缺件在有效视界 H 内全部现身)。
 
-    三维合成(供给概率 × 剩余轮 × 血预算,零新自由参数):
+    两维合成(供给概率 × 剩余日程,零新自由参数):
     - 供给概率:每缺件单轮出现率 q = ``_core_miss_q``(cw_shop_odds
       refresh_prob × DISTINCT_CARDS_PER_COST 注册表派生,与
       ``encounter_window_rounds``/``core_miss_n_required`` 同一静态
       近似,忽略 depletion——设计先例同边界);
-    - 视界 H = ``p2_supply_horizon``(剩余节点 ∧ 血预算轮数);
+    - 视界 H = ``p2_supply_horizon``(位面剩余节点数;R-3 删血项后
+      H = 日程维单分量,可行性/回退带不再随血低收紧);
     - 单件视界内现身率 F_m = 1−(1−q_m)^H,线完成率 G = ∏ F_m
       (缺件独立近似,构造性高估面如实声明:共同刷窗正相关使真实
       G 偏低,判据方向=只用于「不可行」侧的保守开闸,高估方向安全)。
@@ -1132,7 +1118,7 @@ def line_completion_feasibility(gs: GameState,
     """
     if comp is None:
         return 0.0
-    h_eff = p2_supply_horizon(gs, session, registry)
+    h_eff = p2_supply_horizon(gs, session)
     if h_eff <= 0:
         return 0.0
     vis = _visible_chars(gs) if visible is None else visible
@@ -1163,7 +1149,6 @@ def line_completion_feasibility(gs: GameState,
 LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
     'weakplane_exempt_eval',          # G5:信号曾生成但被弱面剔(+豁免判据分支)
     'p2_supply_gate_cull',            # G6:信号存活但被 G≤ε 缓锁剔除
-    'neardeath_direction_obs_',       # G6/G7:濒死带定向观测(H=血预算轮数≤1 帧)
     'p2_handoff_',                    # G7:移交帧/候选空帧计数
     'promote_candidate_',             # G8:晋升候选集纯派生非空率
     'intention_frame_',               # 锁定率分母:意向驱动帧数(按位面)
@@ -1448,7 +1433,7 @@ def arm_a_live_direction(gs: GameState, ist: IntentionState,
              and plane_of(gs) not in (c.weak_planes or ())
              and _core_reachable(c, gs, vis)
              and (plane_of(gs) != 2
-                  or line_completion_feasibility(gs, c, session, reg, vis)
+                  or line_completion_feasibility(gs, c, session, vis)
                   > reg.revoke_miss_tolerance_eps)]
     if not cands:
         return ''
@@ -1481,7 +1466,7 @@ def arm_a_corner_names(gs: GameState, ist: IntentionState,
             continue
         core = intention_core(c)
         if core and core in vis \
-                and line_completion_feasibility(gs, c, session, reg, vis) \
+                and line_completion_feasibility(gs, c, session, vis) \
                 <= reg.revoke_miss_tolerance_eps:
             out.append(c.name)
     return tuple(out)
