@@ -26,8 +26,8 @@
 紧贴备战席表前,余同备战席/商品牌面/选项面)+ 本章观察道写入动态
 显影(画面 op 观察到什么本章显什么,首写定帧值;注册键回读与观察
 回读异值 → 章尾注记)→ 动作节×N → 策略评价」;策略遥测装配(有文件时):动作节标题下
-「策略依据」块(行 1-2 回执 dtag join)/章内「#### 策略依据」小节
-(选择族章级挂载)/章尾未落地与失配注记/局头策略遥测行,设计 =
+「策略依据」块(动作级回执 dtag join)/章内「#### 策略依据」小节
+(章级挂载)/章尾未落地与失配注记/局头策略遥测行,设计 =
 ``docs/develop/sr_od/application/currency_war/changes/2026-10-24-strategy-telemetry/``
 details/render-assembly.md)→ 未归节(有则)
 → 未归行(防静默丢行)
@@ -403,9 +403,10 @@ _ALL_ENTRY_KEYS: frozenset[str] = frozenset(
 
 
 #: 决策入口 → 渲染章键(策略遥测迭代 render-assembly §2,14 行闭集直译;
-#: 章键 = 注册表现名,注册表缺失/更名时以注册表为准修正本表)。行 1-2
-#: (prep/shop,对应 4 个回执产出口)走动作级 dtag join,行 3-14(选择
-#: 族,不产回执)走章级挂载——两级互斥,适用集钉死 = render-assembly §3。
+#: 章键 = 注册表现名,注册表缺失/更名时以注册表为准修正本表)。适用集
+#: 分两路:prep/shop/supply 走动作级 dtag join(各自确认链产回执,见
+#: _ACTION_JOIN_ENTRIES),其余 11 个选择族入口不产回执、走章级挂载
+#: ——两级互斥。
 ENTRY_SCREEN_MAP: dict[str, str] = {
     'decide_prep_screen': '画面-备战',
     'decide_shop_action': '画面-商店',
@@ -423,17 +424,20 @@ ENTRY_SCREEN_MAP: dict[str, str] = {
     'decide_star_tome': '画面-书卡',
 }
 
-#: 动作级 join 适用集(行 1-2;选择族 dtag 出现在回执上 = 陈旧搭错异常
-#: 形态,按失配处理——capture-store §2 适用域申报的渲染侧对偶)。
+#: 动作级 join 适用集(prep/shop/supply,各自确认链产回执;其余 11 个
+#: 选择族入口不产回执,其 dtag 出现在回执上 = 陈旧搭错异常形态,按失配
+#: 处理——capture-store §2 适用域申报的渲染侧对偶)。
 _ACTION_JOIN_ENTRIES: frozenset[str] = frozenset(
-    {'decide_prep_screen', 'decide_shop_action'})
+    {'decide_prep_screen', 'decide_shop_action', 'decide_supply'})
 
 #: 回执 op 命名域归一(render-assembly §3):prep 统一口与商店落地门写
-#: 动作类型名(``type(action).__name__``),open_shop/close_shop 写执行体
-#: op 名——指纹校验前先归一;其余回执 op 即动作类型名字面相等。
+#: 动作类型名(``type(action).__name__``),open_shop/close_shop/补给确认
+#: 链写执行体 op 名——指纹校验前先归一;其余回执 op 即动作类型名字面
+#: 相等。
 _OP_NAME_NORMALIZE: dict[str, str] = {
     'CwOpOpenShop': 'CwActionOpenShopParam',
     'CwActionCloseShopOp': 'CwActionCloseShopParam',
+    'CwActionPickSupplyOp': 'CwActionPickSupplyParam',
 }
 
 
@@ -1042,11 +1046,14 @@ def _target_chapters(report: Report, entry: str, plane: Any,
 def _join_strategy_telemetry(report: Report, tele: StrategyTelemetry) -> None:
     """两级 join(原地改 report 与 tele.unattached;render-assembly §3):
 
-    1. 动作级(行 1-2):回执 dtag → record;op 经归一映射后与信封指纹
-       比对,匹配 → 依据块挂动作节;失配/选择族 dtag 异常形态 → 回执按
-       无依据处理 + 所在章尾「策略 dtag 失配」注记;
-    2. 章级(行 3-14):同键多章 FIFO(records dseq 序对章首现序分配);
-    3. 行 1-2 无回执匹配 → 锚章章尾「策略决策未落地」注记(无锚 → 未归属);
+    1. 动作级(_ACTION_JOIN_ENTRIES = prep/shop/supply):回执 dtag →
+       record;op 经归一映射后与信封指纹比对,匹配 → 依据块挂动作节;
+       失配/选择族 dtag 异常形态 → 回执按无依据处理 + 所在章尾「策略
+       dtag 失配」注记;
+    2. 章级(其余 11 选择族入口):同键多章 FIFO(records dseq 序对章首
+       现序分配);
+    3. 适用集入口无回执匹配 → 锚章章尾「策略决策未落地」注记(无锚 →
+       未归属);
     4. 余量(node=null/无锚)→ 局头「未归属 M 条」计数面,不逐条展开。"""
     consumed: set[int] = set()
     for sec in report.sections:
@@ -1069,7 +1076,7 @@ def _join_strategy_telemetry(report: Report, tele: StrategyTelemetry) -> None:
                     act.basis.append(rec)
     for (entry, plane, rnd), recs in tele.by_chapter.items():
         if entry in _ACTION_JOIN_ENTRIES:
-            continue   # 两级互斥:行 1-2 不落章级小节(§3 适用集钉死)
+            continue   # 两级互斥:适用集入口不落章级小节(render-assembly §3)
         pending = [r for r in recs if r.load_seq not in consumed]
         if not pending:
             continue
