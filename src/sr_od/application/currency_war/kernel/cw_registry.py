@@ -158,50 +158,11 @@ class DecisionV2Registry:
         'carry_gate', 'off_target', 'for_gold', 'free_bench',
         'levelup', 'deploy', 'refresh',
     })
-    #: 应急 HP 档(触发层2 应急过滤)。持久依据=双失缓冲带:应急线须
-    #: 高于「两次条件败局伤害」吸收上界 2×L_c(rung2)≈21.2(math_proofs
-    #: P15:L_c=11.32−0.37·rung,registry.vd_p1_loss_* 单一源),且低于
-    #: 「一次败局后仍不破重生基数」上界 rebirth_floor+L_c≈30.6
-    #: (rebirth_floor=20,口述 [18] 应急保留重生基数);带 (21.2,30.6)
-    #: 内取 5 网格点 25,与报警降档线 40(discipline.BLOOD_MARGIN_LOW_HP)
-    #: 保持处置梯度:40=报警加速、25=应急覆盖态清仓。
-    emergency_hp: int = 25
-
-    # ===== 血预算停手·停升级线(设计件 12 §3.1/§2.3-P1-b)=====
-    #: 总开关:True=停升级门恒接线(P21 数学已定案:hp ≤ d·L_c 域内升级
-    #: EV=−C−I 严格为负,与 β 标定无关——不是「待验证」的悬置开关);
-    #: False=A/B 对照分支/回退锚(sim 配对经 registry 注入实现,与
-    #: vd_p2_enabled 同型:布尔两态=「血预算约束在场/退场」)。
-    blood_budget_stop_enabled: bool = True
-    #: P21 判据「存活到账 h > d·L_c」的到账延迟 d(战斗场次)。d=1=
-    #: 升级→人口生效→下一场战斗的最短诚实延迟(P21 证 d=0 亦负,
-    #: 取 1 更保守;设计件 12 §3.1 推导链步 3)。
-    blood_budget_stop_d: int = 1
-    #: P1 停追级线的 L_c 取样成型档:L_c(rung)=vd_p1_loss_intercept+
-    #: vd_p1_loss_slope_rung×rung,rung=2 为代表帧(≈10.58)→
-    #: 线=ceil(d×L_c)=11(设计件 12 §6 参数表 P1_LEVELUP_STOP_L_C
-    #: 的取样坐标;拟合单一源=vd_p1_loss_*,不另立数值)。
-    p1_levelup_stop_rung: int = 2
-
-    # ===== 血预算停手·第二波(设计件 12 §2.3-P1-a/P1-c、§3.2)=====
-    #: P1 末窗期望预算线(设计件 12 §6 P1_EXIT_BLOOD_TARGET,推导 §2.2:
-    #: 要求期望伤害 ≤ 进场血反解 w*=1−h/88,h=60 → w*=0.32 可达)。
-    #: 语义=**期望预算线**——充分方向、非存活保证(`w524_audit_60line/` 对抗审计实测
-    #: h≥60 存活率仅 0.60、分带平滑无崖,「分界」表述已废);触发动作=
-    #: 末窗授权支出结构降格,不是保血承诺。
-    p1_exit_blood_target: int = 60
-    #: P1-a 末窗支出降格总开关(True=承接门定向投资授权在血预算不足局
-    #: 降格为减损保血;依据=`w516_p2_conversion/` 排除证据 HG5/IF30——β 弱通道下战力
+    #: P1-a 末窗支出降格总开关(True=承接门定向投资授权在预算不足局
+    #: 降格为减损保板;依据=`w516_p2_conversion/` 排除证据 HG5/IF30——β 弱通道下战力
     #: 投资换不回 15-25 血/败,方向性结论不依赖 β 量级,非「待验证」
-    #: 悬置开关;False=A/B 对照分支/回退锚,与 blood_budget_stop_enabled
-    #: 同型的两态注入面)。
+    #: 悬置开关;False=A/B 对照分支/回退锚,两态注入面)。
     p1_exit_downgrade_enabled: bool = True
-    #: 搜索型刷新停付总开关(P1-c 终局阵容锁定前移+停刷新结构语义,设计件 12
-    #: §2.3-P1-c/§3.2;依据=[31]④ 刷新金合法用途硬约束归位——为找件
-    #: 而付刷新费的搜索型支出在血预算不足域期望符号为负;False=A/B
-    #: 对照分支。**数值停刷新线不在此**:收益项=Δp×β 不可算,挂 β 开分支
-    #: 判据(设计件 12 §4.1),标定前只落结构不落数值)。
-    blood_budget_refresh_stop_enabled: bool = True
 
     # ===== 概率校准的刷新预算(提案面=.debug/temp/currency_war/
     # ===== w645_proposal_v2/SPECS.md 提案 B-v2)=====
@@ -229,7 +190,7 @@ class DecisionV2Registry:
     #: 总开关:True=数学已定案恒接线口径(金零值引理+EV 对比式:守钱世界
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
     #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照分支/回退锚,
-    #: 与 blood_budget_stop_enabled 同型两态注入面)。
+    #: 两态注入面)。
     terminal_release_enabled: bool = True
     #: 守钱世界存活概率上界释放阈 ε(S0=Π 单发穿透场条件胜率 ≤ ε →
     #: 终止分支触发)。默认 0.03 = 设计  v2 §2.2 EV 对比式反解的
@@ -265,10 +226,6 @@ class DecisionV2Registry:
     #: transition_combos 定稿「四体系两两组合=过渡成型,单体系点火≠成型」
     #: (三选二 140/328 帖;2026-08-23 用户定调)
     phase_fallback_min_engines: int = 2
-    #: FORM 相位地板=保险丝(迁移审计Q1 已裁决:决策器=EV 授权,FORM_FLOOR
-    #: 只防收益端估乐观时花光本金;初值 20=沿用应急保底语义,**Q1 四档
-    #: sim 对照(不设/10/20/30)待校准**)
-    form_floor: int = 20
     #: boss 跌破利息档窗 node_type 缺读兜底轮(迁移审计统一口径:
     #: boss 窗主判据=节点图 node_type∈boss_round_node_types,轮数口径
     #: 全仓只留 discipline.boss_window_active 一处且仅作缺读兜底——
@@ -600,67 +557,15 @@ class DecisionV2Registry:
     press_exempt_round_cap: int = 2
 
 
-    # ===== `w227_handoff_gate/`/P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
-    #: EV 承接缺口项单位值(缺口 1 档 = 买侧 V 加此值;量级=forming_bias
-    #: 同阶的保守下限——只放宽末窗跌破利息档买的 EV 授权,不触地板族/升级账/
-    #: 刷新口径(D 平面 R 上界纪律不动))
-    handoff_ev_gap_bonus: float = 5.0
-
-    # ===== 迁移审计承接门 hp 维 boss 投影(设计件 09 §3.1)=====
-    #: 投影无条件启用(量级问题非行为开关)。语义:
-    #: handoff_gate_gap 末窗投影的 hp 维由「当前 hp(boss 前)」换
-    #: 「boss 后投影 hp」:
-    #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
-    #: E[boss 伤害|净星深档](r9 无 +2;迁移审计起档键=净星深)。
-    #: 标定口径错位已修:喂给
-    #: HANDOFF_HP_CUTS(boss 后真值标定)的 hp 取 boss 前值
-    #: = hp 维系统性高估一档;设计件 09 §2)。
-    #: E[boss 伤害|净星深档] 常数表(**正数=期望掉血量**;离线标定非
-    #: 运行时预测)。标定源=Δ池 plane=1 boss 桶(**净星深键** = 上场件
-    #: Σ(star−1) 桶 min(sd//3,5)*3,迁移审计替旧 Σboard 键——
-    #: 修 3合1 升星使 Σboard −2/次落浅桶而浅桶期望伤害更大、sim 判
-    #: 「升星→boss 伤害↑」与 [27] 机制相反的方向冲突)地板删失行剔除
-    #: (hp_after∈{0,1}=下界非真值,口径)后的桶均值:
-    #: 2026-09-03 重标定 n=28 未删失/删失 21,**桶 0:n=28/27.57——
-    #: P1 boss 语料净星深全落桶 0**(旧 Σboard 桶 9/12/15 的条件性
-    #: 系键口径伪影:升星减件使强板落浅桶、浅桶均值被强板样本抬升
-    #: ——方向冲突的语料侧成因)。
-    #: 标定口径与档键迁移裁决=行内申报。**已知边界**:删失剔除使留存样本
-    #: 偏向「存活 boss 的局」(弱板真值伤害被低估);净星深≥3 的
-    #: 深桶零样本——star_depth 条件性在当前语料下不可辨,常数表
-    #: 实为无条件期望,语料攒厚后复验。
-    #: boss Δ 全分布双峰(迁移审计,2026-08-27):低伤簇 n=8 均值 13.25(SD 1.04)/
-    #: 高伤簇 n=20 均值 34.10(SD 1.77),中间带 [16,26) 零观测——单值均值
-    #: 27.57 落谷底不近似任何真实伤害。**投影口径取 Q3≈34**(保守:均值使
-    #: hp 临界局 tier 高估一档=重蹈 迁移审计缺口;低估方向仅更保守可 AB 校正);
-    #: 协变量(Σboard/净星深/日期/阵容/streak)无一解释簇归属,嫌疑首因=
-    #: boss 敌型(生产 outcomes 自 迁移审计起带 boss_names 实采,攒齐后按敌型
-    #: 混合重标定;sim 批 outcomes 键位同构,恒 None=未建模)。
-    #: 分布数字以本注释为单一源(2026-08-27 boss 伤害
-    #: 分布重标定,离线标定产物随对局遥测语料归档);投影口径取 Q3 的
-    #: 前移耦合登记的待办=行内申报。
-    handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {
-        0: 34.0,
-    })
-    #: 缺桶 fallback:同上 Q3 口径(单桶语料下与桶 0 同值)
-    handoff_boss_e_damage_default: float = 34.0
-    #: r8 奖励节点胜 +2(设计件 09 §1.1:五局全部 r8→r9 恒 +2;hp 不可
-    #: 回复下唯一正项)。触发语境 = P1 末窗;
-    #: r6/r7 投影少算后续节点期望伤害(偏乐观)的解耦登记的待办
-    #: (改行为代码须重跑 AB)
-    handoff_boss_reward_bonus: int = 2
-
     # ===== `w242_star_directed/`/末窗星级定向授权(`w232_filler_star/` 待办项;设计件 08
     # §4.2 Phase 1b 星级投资方向)=====
     #: 末窗星级定向授权无条件启用:依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
     #: 正解且 sim 无挤出(量级不足属参数调优非行为开关)。行为语义:
-    #: P1 末窗承接缺口 gap>=1
-    #: (handoff.handoff_gate_gap 单一源)对**同名副本买入**给定向授权
+    #: P1 末窗承接缺口 gap>=1 对**同名副本买入**给定向授权
     #: ——candidates 层放行副本候选生成(r410 守卫+方向门,`w232_filler_star/` A/B
     #: 豁免的 gap 条件化分支)+ arbiter 非正分门放行副本(`w231_star_diag/` 主因:
-    #: 副本评分零维被结构性拒,到不了 EV 账)。**授权值单一源 =
-    #: interest_rule 的 handoff_ev_gap_bonus×gap(零新增数值通道/
-    #: 防双计)**;地板族/copies_cap/r408 同轮守卫/bench 容量照常覆盖。
+    #: 副本评分零维被结构性拒,到不了 EV 账);地板族/copies_cap/r408
+    #: 同轮守卫/bench 容量照常覆盖。
 
     # ===== `w252_ma_directed_refresh/`/M-A 定向 D 牌授权窗(`w249_core2_reach/` 诊断修法)=====
     #: M-A 定向刷新无条件启用:依据 = M-A 是 `w249_core2_reach/`「策略从不支付搜索成本」
@@ -693,31 +598,9 @@ class DecisionV2Registry:
 
     # ===== 未成型期姿态:泄息通道(release)与换线判据参数 =====
     #: 设计决策单一源=行内申报**符号不稳参数一律默认值+标定接口,不拍死**:
-    #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
-    #: 血量边际价值 k(hp) 报警带值(DESIGN §①:非标定设计参数;动机=语料 66 场
-    #: P1 boss 战战后 hp≤3 占 43.9% → 末窗边际 hp 是生死价,线性折价 0.5 金/hp
-    #: 系统性低估)。k=3 分支的符号结论对 k_hp_calibration_grid 不稳,只作敏感度分支。
-    k_alert: float = 3.0
-    #: k(hp) 线性区值(hp≥40 且末窗投影未命中)
-    k_linear: float = 1.0
-    #: k(hp) sim 标定网格(标定接口,非运行时值;DESIGN §①标定计划)
-    k_hp_calibration_grid: tuple[float, ...] = (1.0, 2.0, 3.0, 5.0)
-    #: FLIP 持续兑现分支的低血上沿(非末窗 hp<此值命中;与 discipline
-    #: BLOOD_MARGIN_LOW_HP=40 同值口径,registry 注入化)
-    blood_margin_low_hp: int = 40
+    #: Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
-    #: boss 税 p75 位面锚(消费点按位面取值;键 = 容器位面读口,1/2)。
-    #: plane 1 = 现值原样(P1 语料标定),零漂移锚;
-    #: plane 2 槽位已就位但默认仍取现值——P2 位面真值方向有语料标定
-    #: (git 历史:P2 boss n=90 均损 −21.63 vs P1 −19.54),
-    #: 但 P2 槽位换数据的扰动未评估。激活登记的待办:待形态 A/B 开分支判据收尾
-    #: 后,与 sim 收入口径修正同批评估;重标定覆写只改本字段(单一源)。
-    #: :FLIP 末窗投影分支(posture_release)与 C1 投影安全带
-    #: (filters)两消费点均已按位面取数;评估结论=暂不激活(plane 2
-    #: 维持 34),复核触发条件见该 ADR。
-    boss_tax_p75_by_plane: dict[int, float] = field(
-        default_factory=lambda: {1: 34.0, 2: 34.0})
     #: 边际战力代理 Δhp·普通战(轮内去均值,hp/场;语料 166 局 5→6 人实测;
     #: 弱信号非单调,只作敏感度分支——DESIGN §①诚实判读)
     delta_hp_normal: float = 1.96
@@ -855,8 +738,6 @@ class DecisionV2Registry:
         'bench_capacity',      # bench 9 槽(含本轮已采纳买)
         'copies_cap',          # 同名星级加权 ≤3 份
         'same_round_mutex',    # 同轮已买禁卖/已卖禁买(r408 族)
-        'blood_budget_stop',   # 血预算停手·停升级门(设计件 12;
-                               # ——授权通道前置拒付,与利息线门独立谓词 AND)
         'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计
                                # 起 boss 禁令分支已删,节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
@@ -931,11 +812,9 @@ class DecisionV2Registry:
             ('bench', 'boss'): ('bench_capacity',),
             ('bench', 'emergency'): ('bench_capacity',),
             ('bench', 'mode'): ('bench_capacity',),
-            # 血预算停手门只覆盖升级(全回合态生效——emergency 态内同样
-            # 拒,设计件 12 §5.3「不是第五种覆盖态」)
-            ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),
-            ('slot', 'emergency'): ('blood_budget_stop', 'bench_capacity'),
-            ('slot', 'mode'): ('blood_budget_stop', 'deploy_cap'),
+            ('slot', 'boss'): ('boss_levelup_ban',),
+            ('slot', 'emergency'): ('bench_capacity',),
+            ('slot', 'mode'): ('deploy_cap',),
             ('round_mutex', 'boss'): ('same_round_mutex',),
             ('round_mutex', 'emergency'): ('same_round_mutex',),
             ('round_mutex', 'mode'): ('same_round_mutex',),
