@@ -37,7 +37,7 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, replace
 
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTER_ROSTER,
@@ -65,7 +65,6 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EffectKind,
     EffectSpec,
     TriggerKind,
-    UnitBuffRef,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     PLANE_NODE_TABLES,
@@ -262,37 +261,9 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
     return False
 
 
-def _validate_engine_channel_closure() -> None:
-    """引擎字段闭集完备校验(P81 §7.2 依据二:
-    闭集新字段默认不入闭集 = 静默判「一次性」,治理上劣于孤儿校验——
-    构建期炸成可见)。三分类 = 引擎单字段/引擎配对/显式排除:
-    ① 并集恰覆盖 EconomyEffect 全字段(新字段未分类即炸);
-    ② 三桶两两互斥(单一定义 = 唯一归属);
-    ③ 单字段默认值与 dataclass 缺省一致(防 (字段,默认) 对写错 →
-       谓词恒触发/永不触发的静默失真)。"""
-    _defaults = EconomyEffect()
-    _all = {f.name for f in fields(EconomyEffect)}
-    _single = {n for n, _d in _ENGINE_CHANNEL_SINGLE_FIELDS}
-    _pair = {n for amt, cnt in _ENGINE_CHANNEL_PAIR_FIELDS for n in (amt, cnt)}
-    _excluded = set(_ENGINE_CHANNEL_EXCLUDED_FIELDS)
-    _missing = _all - _single - _pair - _excluded
-    if _missing:
-        raise ValueError(
-            f"引擎字段闭集缺位(EconomyEffect 新字段未入三分类,"
-            f"默认静默判一次性):{sorted(_missing)}")
-    _overlap = (_single & _pair) | (_single & _excluded) | (_pair & _excluded)
-    if _overlap:
-        raise ValueError(f"引擎字段闭集双归属(三分类互斥破):{sorted(_overlap)}")
-    _bad_default = [(n, d, getattr(_defaults, n))
-                    for n, d in _ENGINE_CHANNEL_SINGLE_FIELDS
-                    if getattr(_defaults, n) != d]
-    if _bad_default:
-        raise ValueError(
-            f"引擎单字段默认值与 EconomyEffect 缺省不一致(闭集登记失真):"
-            f"{_bad_default}")
-
-
-_validate_engine_channel_closure()
+# 引擎字段三分类常量的完备校验已随 2026-10-28 校验治理移除(闭集缺位/
+# 互斥/默认值一致三类均只能由开发动作自身触发,防笔误类;新字段漏分类的
+# 后果 = 谓词族不消费该字段 = 估值零贡献,评审面把关)。
 
 
 @dataclass(frozen=True)
@@ -741,10 +712,12 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
 
 
 def _validate_strategy_effects() -> None:
-    """STRATEGY_EFFECTS 构建校验(import 即炸,防版本更新静默失联):
+    """STRATEGY_EFFECTS 构建校验(import 即炸,只留漂移哨;治理口径 =
+    用户裁定 2026-10-28,见 _validate_env_gifts docstring):
 
-    ① 孤儿键:name 必须在 base 注册表;② id 双匹配:spec.id 必须等于 plaza id
-    (改名且 id 仍在的漂移也炸);③ payload↔category 一致性。
+    ① 孤儿键:name 必须在 base 注册表(版本更新改名/移除后静默失联);
+    ② id 双匹配:spec.id 必须等于 plaza id(改名且 id 仍在的漂移也炸)。
+    payload↔category 一致性与 pending-notes 必填属防登记笔误类,已移除。
     """
     for spec in STRATEGY_EFFECTS.values():
         base = INVESTMENT_STRATEGIES.get(spec.name)
@@ -753,18 +726,6 @@ def _validate_strategy_effects() -> None:
         if base.source != f"plaza:{spec.id}":
             raise ValueError(
                 f"STRATEGY_EFFECTS id 漂移:{spec.name!r} spec.id={spec.id} base={base.source}")
-        if spec.category in (EffectKind.ECONOMY, EffectKind.STATE):
-            ok = isinstance(spec.payload, EconomyEffect)
-        elif spec.category == EffectKind.BATTLEFIELD:
-            ok = isinstance(spec.payload, BattlefieldEffect)
-        else:
-            ok = isinstance(spec.payload, UnitBuffRef)
-        if not ok:
-            raise ValueError(
-                f"STRATEGY_EFFECTS payload↔category 不一致:{spec.name!r} "
-                f"category={spec.category} payload={type(spec.payload).__name__}")
-        if spec.pending and not spec.notes:
-            raise ValueError(f"STRATEGY_EFFECTS pending 条目必须写保守支 notes:{spec.name!r}")
 
 
 # ===== curated overlay:环境分类 + 阵营绑定(手维护)=====
@@ -1393,34 +1354,16 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
 
 
 def _validate_env_economy() -> None:
-    """ENV_ECONOMY 构建校验(import 即炸):
+    """ENV_ECONOMY 构建校验(import 即炸;治理口径 = 用户裁定 2026-10-28,
+    见 _validate_env_gifts docstring):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新
-    改名/移除后静默失联);② **六条防一次性错装逐条对账**——
-    点名六条(增发货币/成功经验/二手市场/长线利好/策略大师/劳务派遣合同)的
-    效果全是分期/条件/触发形态,禁装成 gold_instant 单通道(一次性错装);
-    劳务派遣合同(卡面效果 = 随机星徽授予 + 每首领节点发对应羁绊随机角色,
-    流程侧已登记建模;经济通道零动作)无对应经济通道字段,登记即错装 →
-    直接拒绝;③ 挂载一致性:replace 后
-    INVESTMENT_ENVS[name].economy 与表内实例同一对象(防后续构建段重挂漂移)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    六条防一次性错装对账/劳务派遣拒绝/挂载实例一致性属防登记笔误与构建
+    段自身防呆类,已移除(错装后果 = 估值通道错位,评审与经济域测试把关)。
     """
     orphans = [n for n in ENV_ECONOMY if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(f"ENV_ECONOMY 孤儿键(base 无此环境?):{sorted(orphans)}")
-    _anti_instant = ('增发货币', '成功经验', '二手市场', '长线利好', '策略大师')
-    for _n, _eff in ENV_ECONOMY.items():
-        if _n in _anti_instant and _eff.gold_instant != 0:
-            raise ValueError(
-                f"ENV_ECONOMY 防错装:{_n!r} 效果为分期/条件形态,"
-                f"禁装 gold_instant={_eff.gold_instant}(一次性错装)")
-    if '劳务派遣合同' in ENV_ECONOMY:
-        raise ValueError(
-            "ENV_ECONOMY 防错装:劳务派遣合同(卡面效果 = 随机星徽授予 + "
-            "每首领节点发对应羁绊随机角色,非经济效果,流程侧已登记建模)"
-            "无对应经济通道字段,禁以现有字段近似装表")
-    for _n, _eff in ENV_ECONOMY.items():
-        if INVESTMENT_ENVS[_n].economy is not _eff:
-            raise ValueError(f"ENV_ECONOMY 挂载不一致:{_n!r} economy 未挂载或实例漂移")
 
 
 for _n, _eff in ENV_ECONOMY.items():
@@ -1440,32 +1383,16 @@ ENV_ORE_GRANTS: dict[str, tuple[int, ...]] = {
 
 
 def _validate_env_ore_grants() -> None:
-    """ENV_ORE_GRANTS 构建校验(import 即炸;沿 _validate_env_economy 先例,
-    details/ore-reward-channel.md §2):
+    """ENV_ORE_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:长度 3(位面 1-3)、逐项正整数的元组;
-    ③ 双源同值:同键在 ENV_ECONOMY 有非空 gold_per_plane_start → 长度相等
-    且逐位同值——估值面与世界面同出卡面(id 103),任一侧单独改金额即失同步,
-    构建期炸(世界真值错档 = sim 里声明矿发错钱)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    值形与双源同值(ENV_ECONOMY.gold_per_plane_start 对拍)属防登记笔误/
+    单侧改数类,已移除——两侧金额对账归评审与 ore 域测试把关。
     """
     orphans = [n for n in ENV_ORE_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(f"ENV_ORE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
-    for _n, _golds in ENV_ORE_GRANTS.items():
-        if not isinstance(_golds, tuple) or len(_golds) != 3 \
-                or not all(isinstance(_g, int) and not isinstance(_g, bool)
-                           and _g > 0 for _g in _golds):
-            raise ValueError(
-                f"ENV_ORE_GRANTS 值形({_n!r}):须为长度 3、逐项正整数的元组"
-                f"(位面 1-3 声明金额),现值 {_golds!r}")
-        _econ = ENV_ECONOMY.get(_n)
-        _src = tuple(getattr(_econ, 'gold_per_plane_start', ()) or ())
-        if _src and (len(_src) != len(_golds) or _src != tuple(_golds)):
-            raise ValueError(
-                f"ENV_ORE_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
-                f"gold_per_plane_start={_src} ≠ 本表 {tuple(_golds)}"
-                f"(估值面与世界面同出卡面,失同步即构建期炸)")
 
 
 _validate_env_ore_grants()
@@ -2263,41 +2190,9 @@ def _validate_strategy_grants() -> None:
 _validate_strategy_grants()
 
 
-def _validate_bench_item_kinds() -> None:
-    """占席道具映射桥双向闭合校验(import 即炸;沿 _validate_env_gifts 先例):
-
-    ① 键集双向闭合:BENCH_ITEM_KINDS 键集 == 两张授予表(ENV_GIFTS/
-    STRATEGY_GRANTS)items_* 通道道具名并集——少登 = 授予通道道具落席
-    直查 KeyError 前置炸(漏登 import 炸成可见);多登 = 孤儿键炸(静默
-    落错身份风险)。调用落 :func:`_validate_strategy_grants` 调用点同区
-    (ENV_GIFTS/STRATEGY_GRANTS/BENCH_ITEM_KINDS 全部定义之后,import 序
-    成立);② 值域封闭:逐值 ∈ {'supply_box', 'bookcard'}(防拼写漂移
-    静默落空;观察专属 tome 豁免不在检域)。
-    """
-    granted: set[str] = set()
-    for _grant in (*ENV_GIFTS.values(), *STRATEGY_GRANTS.values()):
-        granted.update(_grant.items_immediate)
-        granted.update(item for _node_key, item in _grant.items_scheduled)
-    keys = set(BENCH_ITEM_KINDS)
-    _missing = granted - keys
-    if _missing:
-        raise ValueError(
-            f"BENCH_ITEM_KINDS 键集缺登(授予通道占席道具落席直查会 "
-            f"KeyError,漏登 import 炸):{sorted(_missing)}")
-    _orphans = keys - granted
-    if _orphans:
-        raise ValueError(
-            f"BENCH_ITEM_KINDS 孤儿键(非授予通道道具,静默落错身份风险,"
-            f"多登 import 炸):{sorted(_orphans)}")
-    _bad_values = {n: k for n, k in BENCH_ITEM_KINDS.items()
-                   if k not in ('supply_box', 'bookcard')}
-    if _bad_values:
-        raise ValueError(
-            f"BENCH_ITEM_KINDS 值域越界(合法 = 'supply_box' | 'bookcard',"
-            f"观察专属 tome 不在检域):{_bad_values}")
-
-
-_validate_bench_item_kinds()
+# 占席道具映射桥的双向闭合/值域校验已随 2026-10-28 校验治理移除(键集
+# 闭包与拼写闭集均只能由登记动作自身触发,防笔误类)——漏登的运行期后果
+# = 授予通道落席直查 KeyError,响亮可见,登记面归评审把关。
 
 
 # ===== 环境品质改写注册表(白名单制)=====
@@ -2438,73 +2333,23 @@ ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
 
 
 def _validate_env_pool_rewrite() -> None:
-    """ENV_POOL_REWRITE 构建校验(import 即炸):
+    """ENV_POOL_REWRITE 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY/ENV_GIFTS 先例,防版本
-    更新改名/移除后静默失联);② 三注册表互斥收全(语义化,T-46 策略大师
-    数量通道登记引入豁免):``set(ENV_POOL_REWRITE) ∩ set(ENV_GIFTS) = ∅``
-    全量禁交;``∩ set(ENV_ECONOMY)`` 收窄为**估值语义字段非空的条目**禁交
-    (``rewrite_quality`` 或 ``offer_structure`` 非空——闸防的是估值双通道
-    叠加:前者是层 E 估值公式实际消费字段,后者是池结构语义字段、层 E 转正
-    后即第二估值通道,一并禁交取保守侧;纯数量事实条目〔仅挂点/刷新/
-    难度豁免字段〕放行,未来新数量通道卡免逐个加白);③ 结构完备:改写目标
-    品质与被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);
-    结构标记 offer_structure 与槽位数据 slot_qualities 同有同无,槽位向量
-    长度恒 3、值在策略品质词集、与品质改写型互斥(双型不同条共存);④ pending
-    必填:单张改写型(有点名取卡序但非全改写,offer 覆盖面歧义)或 offer 结构
-    改写型(槽位语义歧义)必须写保守支 notes(_validate_strategy_effects
-    「pending 条目必须写保守支 notes」先例同款);⑤ 挂点形(T-46 扩展,
-    offer/grant 两字段同闸):extra_strategy_offer_node /
-    extra_strategy_grant_node 非 None 时两元各 ≥1、位面 ∈ PLANE_NODE_TABLES
-    且轮次 ≤ 该位面序列长(坐标系 = (位面, 轮次) 单点两元各 1 基;不在表/
-    超长 = 登记笔误,import 期炸,防 sim 挂点比对静默恒 False);同条目两
-    挂点字段皆非 None → 炸(一环境一形态:offer 三选一与直接发互斥);
-    ⑥ settled 定谳闸:rewrite_settled=True 且 rewrite_quality 为空 → 炸
-    (settled 标记只对品质改写型有意义,防登记错位);⑦ 空条目闸:条目
-    七结构字段全默认(rewrite_quality/rewrite_picks/offer_structure/
-    extra_pick_refreshes/extra_strategy_offer_node/extra_strategy_grant_node/
-    difficulty_exempt 皆取默认值)→ 炸(无任何语义的登记笔误形状;数量
-    通道挂点被误清 None 即落此闸——检查置于⑥后:仅 rewrite_settled 单独
-    非默认的条目归⑥现役闸网,不抢本闸报错形态)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 槽位品质词集:slot_qualities 逐值 ∈ 策略品质词集(rarity 注册表
+    派生——错字与版本增删品质都表现为词集外);
+    ③ 挂点形:extra_strategy_offer_node / extra_strategy_grant_node 非
+    None 时位面 ∈ PLANE_NODE_TABLES 且轮次 ≤ 该位面序列长(节点真值表
+    跨版本变化可独立触发)。
+    三表互斥/结构完备/pending notes/双挂点互斥/settled 定谳闸/空条目闸
+    属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_POOL_REWRITE if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(f"ENV_POOL_REWRITE 孤儿键(base 无此环境?):{sorted(orphans)}")
-    _overlap_gifts = set(ENV_POOL_REWRITE) & set(ENV_GIFTS)
-    if _overlap_gifts:
-        raise ValueError(
-            f"ENV_POOL_REWRITE ∩ ENV_GIFTS 非空(单一环境只落一个估值结构):"
-            f"{sorted(_overlap_gifts)}")
-    _overlap_econ = [n for n in set(ENV_POOL_REWRITE) & set(ENV_ECONOMY)
-                     if ENV_POOL_REWRITE[n].rewrite_quality
-                     or ENV_POOL_REWRITE[n].offer_structure]
-    if _overlap_econ:
-        raise ValueError(
-            f"ENV_POOL_REWRITE ∩ ENV_ECONOMY 非空(估值语义条目只落一个估值"
-            f"结构,rewrite_quality/offer_structure 非空者不得与 ENV_ECONOMY "
-            f"同键):{sorted(_overlap_econ)}")
     for _name, _rw in ENV_POOL_REWRITE.items():
-        if bool(_rw.rewrite_quality) != bool(_rw.rewrite_picks):
-            raise ValueError(
-                f"ENV_POOL_REWRITE 结构半残:{_name!r} rewrite_quality="
-                f"{_rw.rewrite_quality!r} 与 rewrite_picks={_rw.rewrite_picks!r}"
-                f"须同有同无(层 E 公式不可算)")
-        if bool(_rw.offer_structure) != bool(_rw.slot_qualities):
-            raise ValueError(
-                f"ENV_POOL_REWRITE 结构半残:{_name!r} offer_structure="
-                f"{_rw.offer_structure!r} 与 slot_qualities="
-                f"{_rw.slot_qualities!r}须同有同无(结构标记无槽位数据 = "
-                f"判据不可算)")
         if _rw.slot_qualities:
-            if _rw.rewrite_quality:
-                raise ValueError(
-                    f"ENV_POOL_REWRITE 双型互斥:{_name!r} 槽位向量型与品质"
-                    f"改写型不同条共存(rewrite_quality={_rw.rewrite_quality!r})")
-            if len(_rw.slot_qualities) != 3:
-                raise ValueError(
-                    f"ENV_POOL_REWRITE 槽位向量长度:{_name!r} "
-                    f"slot_qualities={_rw.slot_qualities!r} 须恒 3"
-                    f"(卡面「左、中、右」三槽)")
             _quality_vocab = {s.rarity for s in INVESTMENT_STRATEGIES.values()}
             _bad = [q for q in _rw.slot_qualities if q not in _quality_vocab]
             if _bad:
@@ -2512,21 +2357,6 @@ def _validate_env_pool_rewrite() -> None:
                     f"ENV_POOL_REWRITE 槽位品质漂移:{_name!r} "
                     f"{_bad} 不在策略品质词集(注册表漂移?):"
                     f"{sorted(_quality_vocab)}")
-        _partial_rewrite = bool(_rw.rewrite_quality) and _rw.rewrite_picks != (1, 2, 3)
-        if (_partial_rewrite or _rw.offer_structure) and not _rw.pending_notes:
-            raise ValueError(
-                f"ENV_POOL_REWRITE pending 条目必须写保守支 notes:{_name!r}"
-                f"(offer 覆盖面/槽位语义歧义挂账)")
-        # 挂点结构闸(T-46 扩展:offer/grant 两字段同闸同报错形态)+
-        # 双挂点互斥(一环境一形态)
-        if (_rw.extra_strategy_offer_node is not None
-                and _rw.extra_strategy_grant_node is not None):
-            raise ValueError(
-                f"ENV_POOL_REWRITE 双挂点互斥:{_name!r} "
-                f"extra_strategy_offer_node={_rw.extra_strategy_offer_node}"
-                f" 与 extra_strategy_grant_node="
-                f"{_rw.extra_strategy_grant_node} 不得同条目共存"
-                f"(一环境一形态:三选一与直接发互斥)")
         for _node_field in ('extra_strategy_offer_node',
                             'extra_strategy_grant_node'):
             _node = getattr(_rw, _node_field)
@@ -2535,27 +2365,12 @@ def _validate_env_pool_rewrite() -> None:
                 if _plane not in PLANE_NODE_TABLES:
                     raise ValueError(
                         f"ENV_POOL_REWRITE 挂点位面不在节点真值表:{_name!r} "
-                        f"{_node_field}={_node}(登记笔误?)")
+                        f"{_node_field}={_node}(版本漂移/登记笔误?)")
                 if not 1 <= _round <= len(PLANE_NODE_TABLES[_plane]):
                     raise ValueError(
                         f"ENV_POOL_REWRITE 挂点轮次超位面节点数:{_name!r} "
                         f"{_node_field}={_node}(位面 {_plane} 序列长 "
-                        f"{len(PLANE_NODE_TABLES[_plane])},登记笔误?)")
-        if _rw.rewrite_settled and not _rw.rewrite_quality:
-            raise ValueError(
-                f"ENV_POOL_REWRITE settled 定谳闸:{_name!r} rewrite_settled="
-                f"True 而 rewrite_quality 空(settled 只对品质改写型有意义,"
-                f"登记错位)")
-        # 空条目闸(T-46;置 settled 闸后:仅 rewrite_settled 单独非默认的
-        # 条目归 settled 闸网,七结构字段全默认才算「无任何语义的登记笔误」)
-        if (_rw.rewrite_quality == '' and _rw.rewrite_picks == ()
-                and _rw.offer_structure == '' and _rw.extra_pick_refreshes == 0
-                and _rw.extra_strategy_offer_node is None
-                and _rw.extra_strategy_grant_node is None
-                and not _rw.difficulty_exempt):
-            raise ValueError(
-                f"ENV_POOL_REWRITE 空条目:{_name!r} 七结构字段全默认"
-                f"(无任何语义的登记笔误;数量通道挂点被误清即落此闸)")
+                        f"{len(PLANE_NODE_TABLES[_plane])},版本漂移/登记笔误?)")
 
 
 _validate_env_pool_rewrite()
@@ -2575,14 +2390,12 @@ ENV_STREAK_GRANTS: dict[str, tuple[int, str]] = {
 
 
 def _validate_env_streak_grants() -> None:
-    """ENV_STREAK_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
-    先例,details/env-conditional-grant.md §2):
+    """ENV_STREAK_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 装备名漂移:发放装备必须在 EQUIPMENTS(版本改名不静默——发放写出
-    库存里不存在的名字 = 假身份混进 equips);
-    ③ 阈值形:连胜阈值 ≥ 1 的 int(≤0 = 条件永真,使「本局首次」一次性
-    守卫在任何结算即刻触发,登记笔误前置可见)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 装备名漂移:发放装备必须在 EQUIPMENTS(版本改名不静默)。
+    阈值形属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_STREAK_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2593,11 +2406,6 @@ def _validate_env_streak_grants() -> None:
             raise ValueError(
                 f"ENV_STREAK_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
                 f"版本改名?):{_equip!r}")
-        if not isinstance(_threshold, int) or isinstance(_threshold, bool) \
-                or _threshold < 1:
-            raise ValueError(
-                f"ENV_STREAK_GRANTS 阈值形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_threshold!r}")
 
 
 _validate_env_streak_grants()
@@ -2638,58 +2446,23 @@ ENV_REFRESH_GRANTS: dict[str, tuple[str, int, int, str | None]] = {
 
 
 def _validate_env_refresh_grants() -> None:
-    """ENV_REFRESH_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
-    / _validate_env_streak_grants 先例):
+    """ENV_REFRESH_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 计数键闭集:须为 CounterKey.REFRESH_TOTAL / REFRESH_PAID 之一
-    (计数读取按键分支,闭集外无读口);
-    ③ 值形:阈值与金均须 ≥1 的 int(bool 排除——isinstance(bool, int)
-    为真,0/False/1/True 形混入 = 登记笔误,前置可见);
-    ④ 装备名漂移:装备入账分支非 None 时必须在 EQUIPMENTS(发放写出库存里
-    不存在的名字 = 假身份混进 equips);
-    ⑤ 双源同值:同环境在 ENV_ECONOMY 有 gold_after_refreshes 时须与
-    (阈值,金) 逐位相等——世界面与估值面同出卡面(id 106),任一侧
-    单独改数即失同步,构建期炸(先例 = _validate_env_ore_grants ③;
-    估值域字段演化时本条随迁);
-    ⑥ 跨锁同值:同环境在 ENV_ECONOMY 有 refresh_cost_after 时,其
-    阈值须与本表阈值逐位相等——改价分支(sim 渲染 helper 读该字段)
-    与发放分支(本表)同出卡面同一句「30 次刷新后」,两表独立可编辑,
-    单侧改数静默漂移 = sim 翻价早于发放(与校验⑤同理由)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 装备名漂移:装备入账分支非 None 时必须在 EQUIPMENTS(版本改名
+    不静默)。计数键闭集/值形/双源同值/跨锁同值属防登记笔误/单侧改数类,
+    已移除(阈值对估值面/改价面的对账归评审与刷新域测试把关)。
     """
     orphans = [n for n in ENV_REFRESH_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_REFRESH_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_key, _threshold, _gold, _equip) in ENV_REFRESH_GRANTS.items():
-        if _key not in (CounterKey.REFRESH_TOTAL, CounterKey.REFRESH_PAID):
-            raise ValueError(
-                f"ENV_REFRESH_GRANTS 计数键闭集外({_n!r}):"
-                f"须为 CounterKey.REFRESH_TOTAL/REFRESH_PAID 之一,"
-                f"现值 {_key!r}")
-        for _label, _val in (('阈值', _threshold), ('金', _gold)):
-            if not isinstance(_val, int) or isinstance(_val, bool) or _val < 1:
-                raise ValueError(
-                    f"ENV_REFRESH_GRANTS 值形({_n!r} {_label}):"
-                    f"须为 ≥1 的 int,现值 {_val!r}")
         if _equip is not None and _equip not in EQUIPMENTS:
             raise ValueError(
                 f"ENV_REFRESH_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
                 f"版本改名?):{_equip!r}")
-        _econ = ENV_ECONOMY.get(_n)
-        _src = tuple(getattr(_econ, 'gold_after_refreshes', ()) or ())
-        if _src and _src != (_threshold, _gold):
-            raise ValueError(
-                f"ENV_REFRESH_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
-                f"gold_after_refreshes={_src} ≠ 本表 ({_threshold}, {_gold})"
-                f"(世界面与估值面同出卡面,失同步即构建期炸)")
-        _cost = tuple(getattr(_econ, 'refresh_cost_after', ()) or ())
-        if _cost and _cost[0] != _threshold:
-            raise ValueError(
-                f"ENV_REFRESH_GRANTS 跨锁失同步({_n!r}):ENV_ECONOMY."
-                f"refresh_cost_after 阈值 {_cost[0]} ≠ 本表阈值 {_threshold}"
-                f"(改价分支与发放分支同出卡面同一句「刷新阈值」,单侧改数 = "
-                f"sim 翻价早于发放,失同步即构建期炸)")
 
 
 _validate_env_refresh_grants()
@@ -2745,15 +2518,12 @@ ENV_MERGE_GRANTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
 
 
 def _validate_env_merge_grants() -> None:
-    """ENV_MERGE_GRANTS 构建校验(import 即炸;沿 _validate_env_boss_grants
-    先例):
+    """ENV_MERGE_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 角色名漂移:触发角色集与发放池逐名必须在 CHARACTERS(角色注册表
-    改名不静默——触发集漂移 = 事件永不命中,发放池漂移 = 采出假身份
-    混进席面);
-    ③ 值形:两元组均非空(触发集空 = 条件永假,发放池空 = 采样必炸,
-    登记笔误前置可见)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 角色名漂移:触发角色集与发放池逐名必须在 CHARACTERS(版本改名
+    不静默)。值形非空属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_MERGE_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -2761,9 +2531,6 @@ def _validate_env_merge_grants() -> None:
             f"ENV_MERGE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_triggers, _pool) in ENV_MERGE_GRANTS.items():
         for _label, _names in (('触发角色集', _triggers), ('发放池', _pool)):
-            if not _names:
-                raise ValueError(
-                    f"ENV_MERGE_GRANTS 值形({_n!r} {_label}):须为非空元组")
             for _name in _names:
                 if _name not in CHARACTERS:
                     raise ValueError(
@@ -2796,47 +2563,23 @@ ENV_INTEREST_GRANTS: dict[str, tuple[int, str]] = {
 
 
 def _validate_env_interest_grants() -> None:
-    """ENV_INTEREST_GRANTS 构建校验(import 即炸;沿 _validate_env_streak_
-    grants 先例):
+    """ENV_INTEREST_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:阈值须为 ≥1 的 int(bool 排除——isinstance(bool, int) 为真,
-    ≤0 = 条件永真使 done 守卫登记刻即触发,登记笔误前置可见,沿 streak ③);
-    角色名须为非空 str(空名 = 发放写出假身份);
-    ③ 角色名漂移:发放角色必须在 CHARACTER_ROSTER(data/cw_chars 注册表;
-    同文件 _validate_env_gifts ②先例——锁 data 注册表防版本改名静默失联,
-    写出注册表外名字 = 假身份混进 bench,沿 streak ②装备名漂移同构。
-    ``CHARACTERS`` 是 cw_pool 商店池域另一符号,勿混用);
-    ④ 双源对账:键在 ENV_GIFTS 有条目时,其 chars_conditional 具名集
-    (首元)须与本表发放角色一致——两表同出卡面(id 126),任一侧单独
-    改名即漂移,构建期炸(_validate_env_ore_grants ③ 双源同值同构)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默)。
+    阈值形/角色名形/双源对账(ENV_GIFTS.chars_conditional 首元对拍)属
+    防登记笔误/单侧改名类,已移除。
     """
     orphans = [n for n in ENV_INTEREST_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_INTEREST_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_threshold, _char) in ENV_INTEREST_GRANTS.items():
-        if not isinstance(_threshold, int) or isinstance(_threshold, bool) \
-                or _threshold < 1:
-            raise ValueError(
-                f"ENV_INTEREST_GRANTS 阈值形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_threshold!r}")
-        if not isinstance(_char, str) or not _char:
-            raise ValueError(
-                f"ENV_INTEREST_GRANTS 角色名形({_n!r}):须为非空 str,"
-                f"现值 {_char!r}")
         if _char not in CHARACTER_ROSTER:
             raise ValueError(
                 f"ENV_INTEREST_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                 f"版本改名?):{_char!r}")
-        _gift = ENV_GIFTS.get(_n)
-        _cond = _gift.chars_conditional if _gift is not None else ()
-        if not _cond or _cond[0][0] != _char:
-            raise ValueError(
-                f"ENV_INTEREST_GRANTS 双源失同步({_n!r}):ENV_GIFTS."
-                f"chars_conditional 首元 "
-                f"{_cond[0][0] if _cond else None!r} ≠ 本表发放角色 {_char!r}"
-                f"(两表同出卡面,失同步即构建期炸)")
 
 
 _validate_env_interest_grants()
@@ -2864,30 +2607,20 @@ ENV_ORE_OPEN_GRANTS: dict[str, tuple[int, int, tuple[str, ...], str]] = {
 
 
 def _validate_env_ore_open_grants() -> None:
-    """ENV_ORE_OPEN_GRANTS 构建校验(import 即炸;沿 _validate_env_
-    interest_grants / _validate_env_refresh_grants 先例):
+    """ENV_ORE_OPEN_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:首阈值与步长须为 ≥1 的 int(bool 排除——isinstance(bool, int)
-    为真;步长 ≤0 = 阈值 loop 死循环,首阈值 ≤0 = 登记刻即触发,
-    登记笔误前置可见,沿 interest ②);
-    ③ 具名角色名漂移:具名角色元组逐名必须在 CHARACTER_ROSTER(data/
-    cw_chars 注册表;写出注册表外名字 = 假身份混进 bench,沿 interest ③。
-    ``CHARACTERS`` 是 cw_pool 商店池域另一符号,勿混用);
-    ④ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空
-    (羁绊名错字/版本改名 → 池空 = 采样分支永远发不出,运行期只剩整体
-    缓发防御分支,登记笔误前置可见,T-19 池非空校验先例)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 具名角色名漂移:具名角色元组逐名必须在 CHARACTER_ROSTER(版本
+    改名不静默);
+    ③ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空(羁绊名
+    错字/版本改名都表现为池空)。值形属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_ORE_OPEN_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_ORE_OPEN_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_first, _step, _chars, _faction) in ENV_ORE_OPEN_GRANTS.items():
-        for _label, _val in (('首阈值', _first), ('步长', _step)):
-            if not isinstance(_val, int) or isinstance(_val, bool) or _val < 1:
-                raise ValueError(
-                    f"ENV_ORE_OPEN_GRANTS 值形({_n!r} {_label}):"
-                    f"须为 ≥1 的 int,现值 {_val!r}")
         for _name in _chars:
             if _name not in CHARACTER_ROSTER:
                 raise ValueError(
@@ -2897,7 +2630,7 @@ def _validate_env_ore_open_grants() -> None:
             raise ValueError(
                 f"ENV_ORE_OPEN_GRANTS 随机羁绊池空({_n!r}):"
                 f"chars_by_faction({_faction!r}) 现值非空校验失败"
-                f"(羁绊名漂移?),登记笔误前置可见")
+                f"(羁绊名漂移/登记笔误?)")
 
 
 _validate_env_ore_open_grants()
@@ -2951,66 +2684,31 @@ ENV_BATTLE_GRANTS: dict[str, EnvBattleGrant] = {
 
 
 def _validate_env_battle_grants() -> None:
-    """ENV_BATTLE_GRANTS 构建校验(import 即炸;沿 _validate_env_
-    interest_grants / _validate_env_ore_open_grants 先例):
+    """ENV_BATTLE_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 参与组形:presence_groups 非空且逐组非空(空外层 = 条件永真使
-    done 守卫登记刻即触发,空组 = 该组永不满足使发放永不可达,登记笔误
-    前置可见),逐名须为非空 str 且在 CHARACTER_ROSTER(data/cw_chars
-    注册表;``CHARACTERS`` 是 cw_pool 商店池域另一符号勿混用,锁 data
-    注册表防版本改名静默失联,沿 _validate_env_gifts ②先例);
-    ③ 发放角色形:reward_char 非空 str 且在 CHARACTER_ROSTER(同②漂移
-    面,写出注册表外名字 = 假身份混进 bench);
-    ④ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool 显式拒——bool 是
-    int 子类,0/负 = 解锁序位不后移使锁无消费面,登记笔误前置可见);
-    ⑤ 双源对账:键在 ENV_GIFTS 有条目时,其 chars_conditional 具名集
-    (首元)须与本表发放角色一致——两表同出卡面(id 129),任一侧单独
-    改名即漂移,构建期炸(_validate_env_interest_grants ④ 双源同值
-    同构)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 参与名漂移:presence_groups 逐名 ∈ CHARACTER_ROSTER(版本改名
+    不静默);
+    ③ 发放角色漂移:reward_char ∈ CHARACTER_ROSTER(版本改名不静默)。
+    组形/名形/锁期形/双源对账(ENV_GIFTS.chars_conditional 首元对拍)属
+    防登记笔误/单侧改名类,已移除。
     """
     orphans = [n for n in ENV_BATTLE_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_BATTLE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, _grant in ENV_BATTLE_GRANTS.items():
-        if not _grant.presence_groups \
-                or any(not g for g in _grant.presence_groups):
-            raise ValueError(
-                f"ENV_BATTLE_GRANTS 参与组形({_n!r}):presence_groups "
-                f"非空且逐组非空,现值 {_grant.presence_groups!r}")
         for _group in _grant.presence_groups:
             for _name in _group:
-                if not isinstance(_name, str) or not _name:
-                    raise ValueError(
-                        f"ENV_BATTLE_GRANTS 参与名形({_n!r}):须为非空 str,"
-                        f"现值 {_name!r}")
                 if _name not in CHARACTER_ROSTER:
                     raise ValueError(
                         f"ENV_BATTLE_GRANTS 参与名漂移({_n!r} 注册表无此人,"
                         f"版本改名?):{_name!r}")
-        _char = _grant.reward_char
-        if not isinstance(_char, str) or not _char:
-            raise ValueError(
-                f"ENV_BATTLE_GRANTS 发放角色形({_n!r}):须为非空 str,"
-                f"现值 {_char!r}")
-        if _char not in CHARACTER_ROSTER:
+        if _grant.reward_char not in CHARACTER_ROSTER:
             raise ValueError(
                 f"ENV_BATTLE_GRANTS 发放角色漂移({_n!r} 注册表无此人,"
-                f"版本改名?):{_char!r}")
-        _lock = _grant.deploy_lock_nodes
-        if not isinstance(_lock, int) or isinstance(_lock, bool) or _lock < 1:
-            raise ValueError(
-                f"ENV_BATTLE_GRANTS 锁期形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_lock!r}")
-        _gift = ENV_GIFTS.get(_n)
-        _cond = _gift.chars_conditional if _gift is not None else ()
-        if not _cond or _cond[0][0] != _char:
-            raise ValueError(
-                f"ENV_BATTLE_GRANTS 双源失同步({_n!r}):ENV_GIFTS."
-                f"chars_conditional 首元 "
-                f"{_cond[0][0] if _cond else None!r} ≠ 本表发放角色 {_char!r}"
-                f"(两表同出卡面,失同步即构建期炸)")
+                f"版本改名?):{_grant.reward_char!r}")
 
 
 _validate_env_battle_grants()
@@ -3053,18 +2751,13 @@ ENV_DEPLOY_LOCK_GRANTS: dict[str, EnvDeployLockGrant] = {
 
 
 def _validate_env_deploy_lock_grants() -> None:
-    """ENV_DEPLOY_LOCK_GRANTS 构建校验(import 即炸;沿 streak/refresh/
-    battle 登记表校验先例):
+    """ENV_DEPLOY_LOCK_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 规格过滤池非空(共享助手 ``_validate_random_char_spec`` 单一源;
-    治理口径同 _validate_env_gifts——值域四查已移除,只留池空单一哨);
-    ③ 锁期形:deploy_lock_nodes 须为 ≥1 的 int(bool
-    显式拒——ENV_BATTLE_GRANTS 锁期形④逐字同款);④ 双登记防呆:
-    ``set(ENV_DEPLOY_LOCK_GRANTS) ∩ set(ENV_GIFTS) = ∅``——同卡双表 =
-    赠卡双发 + 锁记录双写,import 期不可见(集合互斥同款先例 =
-    ENV_POOL_REWRITE ∩ ENV_ECONOMY 估值单落;refresh 的值对账豁免段是
-    值对账非集合互斥,不作先例)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 规格过滤池非空(共享助手 ``_validate_random_char_spec`` 单一源,
+    错字与版本漂移都致池空)。锁期形/双登记防呆(∩ ENV_GIFTS)属防登记
+    笔误类,已移除。
     """
     orphans = [n for n in ENV_DEPLOY_LOCK_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -3072,16 +2765,6 @@ def _validate_env_deploy_lock_grants() -> None:
             f"ENV_DEPLOY_LOCK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, _grant in ENV_DEPLOY_LOCK_GRANTS.items():
         _validate_random_char_spec('ENV_DEPLOY_LOCK_GRANTS', _n, _grant.spec)
-        _lock = _grant.deploy_lock_nodes
-        if not isinstance(_lock, int) or isinstance(_lock, bool) or _lock < 1:
-            raise ValueError(
-                f"ENV_DEPLOY_LOCK_GRANTS 锁期形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_lock!r}")
-    _overlap = set(ENV_DEPLOY_LOCK_GRANTS) & set(ENV_GIFTS)
-    if _overlap:
-        raise ValueError(
-            f"ENV_DEPLOY_LOCK_GRANTS ∩ ENV_GIFTS 非空(同卡双表 = 赠卡双发"
-            f" + 锁记录双写):{sorted(_overlap)}")
 
 
 _validate_env_deploy_lock_grants()
@@ -3122,49 +2805,16 @@ ENV_DELAYED_ITEM_GRANTS: dict[str, EnvDelayedItemGrant] = {
 
 
 def _validate_env_delayed_item_grants() -> None:
-    """ENV_DELAYED_ITEM_GRANTS 构建校验(import 即炸;沿 deploy_lock
-    登记表校验先例):
+    """ENV_DELAYED_ITEM_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② item 形:非空 str 且 ∉ CHARACTER_ROSTER(道具/角色通道串行防呆,
-    _validate_env_gifts 定时道具名同款判据);③ 倒计时形:open_delay_nodes
-    须为 ≥1 的 int(bool 显式拒——ENV_DEPLOY_LOCK_GRANTS 锁期形逐字
-    同款);④ 双登记防呆:
-    ``set(ENV_DELAYED_ITEM_GRANTS) ∩ set(ENV_GIFTS) = ∅``——同卡双表 =
-    道具双发(占席落位 + 队列登记各一份),先例 =
-    ENV_DEPLOY_LOCK_GRANTS ∩ ENV_GIFTS;⑤ 加速旗形:perfect_win_accel
-    必 bool(登记笔误前置可见)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    件名形/串行防呆/倒计时形/双登记防呆/加速旗形属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_DELAYED_ITEM_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_DELAYED_ITEM_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
-    for _n, _grant in ENV_DELAYED_ITEM_GRANTS.items():
-        _item = _grant.item
-        if not isinstance(_item, str) or not _item:
-            raise ValueError(
-                f"ENV_DELAYED_ITEM_GRANTS 件名形({_n!r}):须为非空 str,"
-                f"现值 {_item!r}")
-        if _item in CHARACTER_ROSTER:
-            raise ValueError(
-                f"ENV_DELAYED_ITEM_GRANTS 件名漂移({_n!r}):"
-                f"倒计时件名混入角色注册表(道具/角色通道串行防呆):"
-                f"{_item!r}")
-        _delay = _grant.open_delay_nodes
-        if not isinstance(_delay, int) or isinstance(_delay, bool) \
-                or _delay < 1:
-            raise ValueError(
-                f"ENV_DELAYED_ITEM_GRANTS 倒计时形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_delay!r}")
-        if not isinstance(_grant.perfect_win_accel, bool):
-            raise ValueError(
-                f"ENV_DELAYED_ITEM_GRANTS 加速旗形({_n!r}):须为 bool,"
-                f"现值 {_grant.perfect_win_accel!r}")
-    _overlap = set(ENV_DELAYED_ITEM_GRANTS) & set(ENV_GIFTS)
-    if _overlap:
-        raise ValueError(
-            f"ENV_DELAYED_ITEM_GRANTS ∩ ENV_GIFTS 非空(同卡双表 = 道具"
-            f"双发):{sorted(_overlap)}")
 
 
 _validate_env_delayed_item_grants()
@@ -3211,22 +2861,15 @@ ENV_SUPPLY_EQUIP_COUNT: dict[str, int] = {
 
 
 def _validate_env_supply_equip_count() -> None:
-    """ENV_SUPPLY_EQUIP_COUNT 构建校验(import 即炸;沿
-    _validate_env_streak_grants 先例):
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:≥2 的真 int(bool 排除——<2 与默认 1 件无差,登记笔误
-    前置可见)。"""
+    """ENV_SUPPLY_EQUIP_COUNT 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    值形属防登记笔误类,已移除。"""
     orphans = [n for n in ENV_SUPPLY_EQUIP_COUNT if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_SUPPLY_EQUIP_COUNT 孤儿键(base 无此环境?版本改名?):"
             f"{sorted(orphans)}")
-    for _n, _count in ENV_SUPPLY_EQUIP_COUNT.items():
-        if not isinstance(_count, int) or isinstance(_count, bool) \
-                or _count < 2:
-            raise ValueError(
-                f"ENV_SUPPLY_EQUIP_COUNT 值形({_n!r}):须为 ≥2 的 int,"
-                f"现值 {_count!r}")
 
 
 _validate_env_supply_equip_count()
@@ -3251,25 +2894,18 @@ ENV_ORE_PANEL_BONUS: dict[str, int] = {
 
 
 def _validate_env_ore_panel_bonus() -> None:
-    """ENV_ORE_PANEL_BONUS 构建校验(import 即炸;沿
-    _validate_env_supply_equip_count 先例):
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:≥1 的真 int(bool 排除;禁 0——表外默认即无增量,登记 0
-    与表外无差,登记笔误前置可见);
-    ③ 键集与扑满名单 PIGGY_ENV_NAMES **完全一致**(响亮向,禁 ⊆ 静默
+    """ENV_ORE_PANEL_BONUS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
+    ② 键集与扑满名单 PIGGY_ENV_NAMES **完全一致**(响亮向,禁 ⊆ 静默
     向):第三扑满环境出现(名单增员)或扑满卡移除(名单减员)即
-    import 炸,强制逐环境显式拍定占位增量,防名单扩员后增量静默缺档。"""
+    import 炸,强制逐环境显式拍定占位增量,防名单扩员后增量静默缺档
+    (游戏版本变更可独立触发 = 漂移哨)。值形属防登记笔误类,已移除。"""
     orphans = [n for n in ENV_ORE_PANEL_BONUS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_ORE_PANEL_BONUS 孤儿键(base 无此环境?版本改名?):"
             f"{sorted(orphans)}")
-    for _n, _bonus in ENV_ORE_PANEL_BONUS.items():
-        if not isinstance(_bonus, int) or isinstance(_bonus, bool) \
-                or _bonus < 1:
-            raise ValueError(
-                f"ENV_ORE_PANEL_BONUS 值形({_n!r}):须为 ≥1 的 int,"
-                f"现值 {_bonus!r}")
     # 函数内 import:沿 _validate_env_node_seq 先例,避免 cw_reward_node
     # → cw_game_state 一侧与本模块的潜在环(cw_reward_node 派生名单
     # 依赖 data 表 + cw_game_state,不依赖本模块,静态无环,但保持
@@ -3301,23 +2937,16 @@ ENV_SHOP_TWO_STAR_DEAL_PROB: dict[str, float] = {
 
 
 def _validate_env_shop_two_star_deal_prob() -> None:
-    """ENV_SHOP_TWO_STAR_DEAL_PROB 构建校验(import 即炸;沿
-    _validate_env_ore_panel_bonus 先例):
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:0 < p < 1 的 float(bool 排除;概率语义自带上下界,本表无
-    键集闭包要求——白名单制,表内即启用,与扑满矿表的名单闭包不同形)。"""
+    """ENV_SHOP_TWO_STAR_DEAL_PROB 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    值形属防登记笔误类,已移除。"""
     orphans = [n for n in ENV_SHOP_TWO_STAR_DEAL_PROB
                if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_SHOP_TWO_STAR_DEAL_PROB 孤儿键(base 无此环境?版本改名?):"
             f"{sorted(orphans)}")
-    for _n, _p in ENV_SHOP_TWO_STAR_DEAL_PROB.items():
-        if not isinstance(_p, float) or isinstance(_p, bool) \
-                or not 0.0 < _p < 1.0:
-            raise ValueError(
-                f"ENV_SHOP_TWO_STAR_DEAL_PROB 值形({_n!r}):"
-                f"须为 0<p<1 的 float,现值 {_p!r}")
 
 
 _validate_env_shop_two_star_deal_prob()
@@ -3399,32 +3028,17 @@ ENV_PICK_GRANTS: dict[str, int] = {
 
 
 def _validate_env_pick_grants() -> None:
-    """ENV_PICK_GRANTS 构建校验(import 即炸;沿 _validate_env_ore_grants
-    / _validate_env_refresh_grants 双源同值先例):
+    """ENV_PICK_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 值形:正 int(bool 排除——isinstance(True, int) 为真,False/True 形
-    混入 = 登记笔误,前置可见;0/负 = 条件永真或倒扣,禁);
-    ③ 双源同值:同键在 ENV_ECONOMY 有非空 gold_per_strategy_coef → 相等
-    (估值面与世界面同出卡面 id 147,任一侧单独改系数即失同步,构建期炸;
-    ENV_ORE_GRANTS/ENV_REFRESH_GRANTS 家族同款)。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
+    值形/双源同值(ENV_ECONOMY.gold_per_strategy_coef 对拍)属防登记
+    笔误/单侧改数类,已移除。
     """
     orphans = [n for n in ENV_PICK_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_PICK_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
-    for _n, _coef in ENV_PICK_GRANTS.items():
-        if not isinstance(_coef, int) or isinstance(_coef, bool) or _coef < 1:
-            raise ValueError(
-                f"ENV_PICK_GRANTS 值形({_n!r}):须为 ≥1 的 int(禁 bool),"
-                f"现值 {_coef!r}")
-        _econ = ENV_ECONOMY.get(_n)
-        _src = int(getattr(_econ, 'gold_per_strategy_coef', 0) or 0)
-        if _src and _src != _coef:
-            raise ValueError(
-                f"ENV_PICK_GRANTS 双源失同步({_n!r}):ENV_ECONOMY."
-                f"gold_per_strategy_coef={_src} ≠ 本表 {_coef}"
-                f"(估值面与世界面同出卡面,失同步即构建期炸)")
 
 
 _validate_env_pick_grants()
