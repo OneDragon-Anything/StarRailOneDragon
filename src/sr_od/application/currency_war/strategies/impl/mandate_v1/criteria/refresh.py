@@ -1,9 +1,12 @@
 """criteria/refresh——刷新面(§2.4)。
 
-四函数位(r0_stop/r1_start/r2_budget/crisis_refresh_invariant,
-R10-3 缺行封死后的完备集)。D-D(硬节点备战补强门)落点:
-``hard_node_reinforce_gate`` 按节点类型(遭遇/boss)接线 P26 备战门 +
-P40 刷新门的语境输入(共根组 2:威胁语境进决策输入)。
+刷新链三组件定型:判据(:func:`refresh_warranted`,三段式查表 +
+目标可买合取)→ 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve`
+供给,调用方装配)→ 发射。:func:`target_buyable` = 目标可买三腿
+并集判定尺(判据与免费刷新分支共吃,禁第二实现)。D-D(硬节点备战
+补强门)落点:``hard_node_reinforce_gate`` 按节点类型(遭遇/boss)
+接线 P26 备战门 + P40 刷新门的语境输入(共根组 2:威胁语境进决策
+输入)。
 """
 from __future__ import annotations
 
@@ -19,22 +22,19 @@ if TYPE_CHECKING:
 HARD_NODE_TYPES: frozenset[str] = frozenset({'encounter', 'boss'})
 
 
-def r0_stop(no_qualifying_set: bool, budget_exhausted: bool) -> bool:
-    """R0 维持结构门/R0-2 结构判据(覆盖刷新循环停止;零参数)。
-
-    合格集空(店面无目标域卡)∨ 预算递推耗尽 ⇒ 停刷。结构位,分支①
-    保留(旁路 r1/r2 后无循环可停,递推输入=店面快照+金,仍良定义——
-    R10-3 适用范围交叠声明)。
-    """
-    return no_qualifying_set or budget_exhausted
-
-
 def refresh_warranted(state: GameState,
-                      session: StrategySession) -> tuple[bool, str]:
-    """三段式刷新判据主式(shop_session §2.4)。
+                      session: StrategySession, *,
+                      k_members: tuple[str, ...] | None = None,
+                      counters: dict | None = None,
+                      dedup_names: set[str] | None = None,
+                      ) -> tuple[bool, str]:
+    """三段式刷新判据主式 + 目标可买合取(shop_session §2.4;
+    目标可买 = 2026-10-28 用户裁定三腿并集,判定单一源 =
+    :func:`target_buyable`)。
 
     **值得刷新 ⟺ 存在「当前星级 < 必要星级」的角色 ∧(等级 ∈ 最优
-    概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)**;分派注:
+    概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)∧ 目标
+    可买(目标卡刷出后买得到 = 有空位 ∨ 合成腿 ∨ 席位腿)**;分派注:
     等级 < 带下界时主式为假 → 不刷、升级优先(停留门覆盖)——三支是同一
     等级轴上的互斥完备分派,主式只取后两支为真。带归属绑定 = 当前停留
     目标的带(多目标费用档升序的当前目标——非逐角色∃带)。段边界:
@@ -43,16 +43,25 @@ def refresh_warranted(state: GameState,
       不刷;载体 = ``plane2_started`` 窗口谓词,宪 2 合规);
     - **P2 未锁窗口**(投资策略选定前的短暂窗口)= 候选缺件驱动:
       候选 top3 缺件中存在「等级 ≥ 其最优概率带下界」的成员 → 可刷
-      (概率带命中;金前提照旧由调用方装配);
+      (概率带命中;目标可买 = 缺件集任一成员满足三腿任一;金前提照旧
+      由调用方装配);
     - **锁定后** = 星级目标驱动(本函数主式;多目标停留顺序 = 未完成
       星级目标中费用档最低者,「定了 3★ 追到底无降档」由 need_star
       表承载)。
 
     判据形态 = 查表零计算(用户裁定 2026-10-12「期望价值难算不直观,
-    星级目标直接驱动」);原 R1 期望启动门(路径总账比较式)已由本查表
-    判据取代(P40/P47/P54 命题本体保留已登记)。金前提
-    (利息线账 R2 预算门 + 整级预留保护)与 P92 拦刷门 = 调用方装配,
-    不在本函数。返回 (是否值得刷,拒因键——判读归因)。
+    星级目标直接驱动」;原 R1 期望启动门已由本查表判据取代)。目标
+    可买合取在本函数内收口(2026-10-28 用户裁定:通道枚举型存在性门
+    整门删除,其误拦追星形态随之消除;该门符号已退役,禁按旧枚举
+    语义复活接线)。金前提(R2 预算门,预留 =
+    saturation_line + 停留目标实费档)与免费刷新分支的同款目标可买
+    检查 = 调用方装配,不在本函数。返回 (是否值得刷,拒因键——判读
+    归因;三腿全无 = ``target_unbuyable``)。
+
+    席位腿装配参数流(计数/去重/名单细化由调用方传入,签名实现批):
+    生产调用方(shop.py 刷新提案点)传 ``counters``/``dedup_names``/
+    ``k_members``(序 1 名单解析现值,含 K 空窗回退细化);缺省 =
+    判据直调面(direction_comp_of 基解析,零计数装配)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
@@ -83,6 +92,7 @@ def refresh_warranted(state: GameState,
         for u in (*bench_units_of(state), *front, *back):
             if u is not None:
                 held.add(str(u.char_id or ''))
+        qualified: list[str] = []
         for comp_name in state_of(state).line_candidates:
             for m in _candidate_members(comp_name, state):
                 if m in held:
@@ -92,8 +102,17 @@ def refresh_warranted(state: GameState,
                     continue
                 lo, _hi = levelup.prob_band_of_cost(int(ch.cost))
                 if level >= lo and refresh_prob(level, int(ch.cost)) > 0.0:
-                    return True, ''
-        return False, 'unlocked_no_qualified_gap'
+                    qualified.append(m)
+        if not qualified:
+            return False, 'unlocked_no_qualified_gap'
+        # 目标可买合取(未锁窗口):候选缺件集任一成员满足即可;
+        # 空位/席位腿成员无关,合成腿按成员名并集判定。
+        if not target_buyable(state, session,
+                              tuple(dict.fromkeys(qualified)),
+                              k_members=k_members, counters=counters,
+                              dedup_names=dedup_names):
+            return False, 'target_unbuyable'
+        return True, ''
     # 锁定后:星级目标驱动(带归属绑定 = 当前停留目标的带)。
     target = levelup.stay_target_of(state)
     if target is None:
@@ -101,10 +120,19 @@ def refresh_warranted(state: GameState,
     lo, _hi = levelup.prob_band_of_cost(target[2])
     if level < lo:
         # ①带下界 > 当前等级 → 升级优先(升到带内去刷,停留门覆盖),
-        # 本判据不刷([3] 语义)。
+        # 本判据不刷([3] 语义)。资金序声明(升级推迟期):本支维持
+        # 拒绝、不设解锁支——解锁支会在凑金在途帧放行刷,而刷新预留
+        # 无整级预留腿(升级触发态与刷新放行态带互斥),刷新烧凑金 →
+        # 「金被刷到下界、升级永久 defer」饿死环;资金线推迟态 = 攒金
+        # 收敛态(每轮节点收入,金上涨吃息;凑金域唯一出辖 = 终局域
+        # ALL IN),非死锁。
         return False, 'stay_gate_upgrade_first'
     # ②等级 ∈ 带 / ③等级 > 带上界(被推过,单调不可降——当前即剩余
-    # 可达最优照样刷):主式为真。
+    # 可达最优照样刷):主式为真,目标可买合取收口。
+    if not target_buyable(state, session, (target[0],),
+                          k_members=k_members, counters=counters,
+                          dedup_names=dedup_names):
+        return False, 'target_unbuyable'
     return True, ''
 
 
@@ -137,32 +165,9 @@ def _candidate_members(comp_name: str, state: GameState) -> tuple[str, ...]:
     return ()
 
 
-def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
-    """付费刷新动作发出点(r1)。EV 正性判据输入 None(未标定)
-    ⇒ 不刷(fail-closed)。
-
-    R1 启动门现行判据 = ``refresh_warranted`` 三段式查表(shop_session
-    §2.4;原路径总账比较式判据面已由查表判据取代),
-    本函数零调用面。保留 = 四函数位完备集
-    (r0_stop/r1_start/r2_budget/crisis_refresh_invariant,R10-3
-    缺行封死),禁按旧 EV 正性语义复活接线。
-    """
-    if ev_positive is None:
-        return False, 'ev_unavailable'
-    return ev_positive, ''
-
-
 def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
     """付费刷新预算门(r2;分支①=门关闭)。金−预留 ≥ 刷价才批。"""
     return gold - reserve >= refresh_cost
-
-
-def crisis_refresh_invariant(gold: int, hp_critical: bool) -> bool:
-    """P36-a 危机不变式(executor 结构位承载,本函数=纯数供交叉核对)。
-
-    危局帧刷新维持结构约束(危机成因不可达优先于危机特设出口,
-    [39] 裁定——hp 只进读数位)。返回 True = 不变式成立(允许刷新)。"""
-    return not (hp_critical and gold <= 0)
 
 
 def hard_node_reinforce_gate(node_type: str | None, gold: int,
@@ -207,13 +212,12 @@ def qualified_member_costs(buy_members: tuple[str, ...],
                            bench: list, deployed: list,
                            level: int) -> list[int]:
     """合格集成员费带 = 未 2★ 成型 ∧ 该级可刷出(refresh_prob>0)成员的
-    注册表 cost 列表(P91 活跃搜索方向费带单一源;P40 合格集资格过滤与
-    ``r2_card_reserve`` 同款语义,本函数为该过滤的公共承载位——R2 预留
-    卡价 min 消费与 P91 压牌库同轴带偏好同源,禁第二份过滤实现)。
+    注册表 cost 列表(P91 压牌库同轴带偏好单一消费源)。R2 预留 ρ 已改
+    锚停留目标实费档(:func:`r2_card_reserve`),不再经本过滤——两判定
+    源解耦(旧「同源消费」声明随 ρ 重定义废止)。
 
-    过滤序 = 成型先序(2★ 出域先于可追性判定,test_cw_refresh_ledger
-    锁 A 锁定的判定顺序);注册表缺项/无 cost 成员跳过。返回升序列表,
-    空列表 = 合格集空(该级无可追成员)。
+    过滤序 = 成型先序(2★ 出域先于可追性判定);注册表缺项/无 cost
+    成员跳过。返回升序列表,空列表 = 合格集空(该级无可追成员)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
@@ -233,146 +237,122 @@ def qualified_member_costs(buy_members: tuple[str, ...],
     return sorted(costs)
 
 
-def r2_card_reserve(k_members: tuple[str, ...],
-                    bench: list, deployed: list,
-                    state: GameState,
-                    level: int | None = None) -> int:
-    """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(公共单一源;修 R2 批
-    实现,原 shop 模块私有实现提升至此——落点裁定 = 方案审 v2:ρ 依赖
-    ``data/cw_chars.CHARACTERS`` 注册表与 ``refresh_prob`` 现读,属判据面,
-    禁进 kernel 经济层破坏其输入纯度;P54 floor 的 ρ/Σ预留分量同源消费,
-    禁第二实现)。
+def r2_card_reserve(state: GameState) -> int:
+    """R2 预算门卡价预留 ρ = 当前停留目标实费档(锁定支单一源;
+    2026-10-28 用户裁定实费档实现口径:ρ 取 ``levelup.stay_target_of``
+    返回目标元组的 target[2] resolved 实费档——变费卡随档,与带判据
+    同一目标元组,非注册表基价直查)。
 
-    ⚠ 同名异义锚:本 ρ(P54「合格集最低费卡价」)与
-    ``statefn/s_line.py`` 的 ``rho(delta_v_band, delta_v_pop, rounds)``
-    (P48 整买价值率)毫无关系,两 ρ 共存于同一模块树,消费禁接错源。
+    行为差申报:已 2★ 追 3★ 目标帧,旧「合格集最低费卡价」
+    口径被「无 2★ 成型」过滤排除 → 漏留其卡价;新口径按其卡价预留
+    (3 费 → 预留 3)。
 
-    可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
-    (shop.py R1 段)按 L* 重估传入——R1 已选等级的出牌面覆盖 R2 预留
-    卡价(用当前级过滤会在 L*≠当前级帧错档;原 P71-b 升级预算闸取缺省
-    当前级的消费位已随升级触发统一批删除)。升级侧花后金下界 =
-    ``levelup_fund_gate`` 同链(saturation_line)。
+    分支口径(分行声明,禁混引):
+    - 锁定支:stay_target 恒有值(目标空帧三段式判据先拒,R2 不可达),
+      ρ = 实费档;
+    - 未锁窗口:stay_target 恒空(未完成星级目标集未锁期为空集)→
+      ρ = 0,金线 = g* + 刷价——未锁窗口刷新目标 = 候选缺件集,无
+      单一目标价,如实声明;兜底值不进任何可达比较(该帧 ρ 分量恒零
+      是口径而非缺省)。
 
-    证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
-    CHARACTERS 注册表 cost,非字面量)。可追过滤与 R1 装配侧
-    (shop.py ``_r1_ledger_terms``)同一(该级出此费 refresh_prob>0 ∧
-    无 2★)——语义单一源不复制。单卡下界口径(P54 A2:P40 待标定清单
-    「最低费卡价 × 期望命中数」在单刷波粒度下的整数下界;多命中超出
-    部分 = 下一波 R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:
-    该帧 R1 必先以 no_chaseable_member 关闭,R2 不可达,兜底值不进
-    任何可达比较。
-
-    实现注:成员过滤消费 ``qualified_member_costs`` 公共承载位
-    (P91 同轴带同源;本函数语义/签名/返回值零变化——纯内部重构,
-    test_cw_interest_floor 私有名直引面不受影响)。
+    ⚠ 同名异义锚:本 ρ 与 ``statefn/s_line.py`` 的
+    ``rho(delta_v_band, delta_v_pop, rounds)``(P48 整买价值率)毫无
+    关系,两 ρ 共存于同一模块树,消费禁接错源。
     """
-    # 等级缺省读 = 容器读口 level_of(单型;显式 level 传入时跳过读,
-    # 存量对账面传非容器载体须带显式 level)
-    if level is None:
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            level_of,
-        )
-        _lvl = level_of(state)
-    else:
-        _lvl = int(level)
-    costs = qualified_member_costs(k_members, bench, deployed, _lvl)
-    return min(costs) if costs else 0
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        levelup,
+    )
+    target = levelup.stay_target_of(state)
+    return int(target[2]) if target is not None else 0
 
 
-def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
-                           bench_free: int, seat_recoverable: bool,
-                           missing_costs: list[int],
-                           stockpile_costs: list[int],
-                           merge_pair_costs: list[int],
-                           level: int,
-                           ev_face_open: bool,
-                           window_nonempty: bool,
-                           plugin_budget_open: bool = False,
-                           order4_zone_open: bool = False,
-                           c1_floor_cost: int | None = None,
-                           ) -> bool:
-    """P92 全通道可实现买入集非空判定尺(math_proofs P92;面②六桶审计
-    ①桶判定的单一源,「已登记结构的严格化非新门」口径)。
+def target_buyable(state: GameState,
+                   session: StrategySession,
+                   target_names: tuple[str, ...],
+                   *,
+                   k_members: tuple[str, ...] | None = None,
+                   counters: dict | None = None,
+                   dedup_names: set[str] | None = None,
+                   ) -> bool:
+    """目标可买三腿并集(2026-10-28 用户裁定;替代原存在性门的判定尺,
+    判据与免费刷新分支共吃,禁第二实现)。
 
-    语义:「任何店产都不会触发买入」的全通道语义(p40 :25/:63)——
-    四买入通道(dominance 1★ 净 0 / 义务 M2 / EV 买面 / 合成完备购)
-    的帧级可达性并集。全部为假 ⇒ 付费刷新净差 = −(c_eff+L) < 0 严格
-    (P92 命题),消费位(R1 发出前)据此拦阻。与已登记 R0-1 的分工:
-    R0-1(E=∅,成员合格性维)在 r1_commitment_account 先行;本判定尺
-    补其已登记语义的席满维(p40 :63「bench 满到没过渡牌可买」)与可购性
-    维(金不足且不可腾),两维在现行实现缺位。
+    目标卡刷出后买得到 ⟺ 有空位(bench_free ≥ 1)∨ 合成腿(目标名
+    ∈「买一张即触发同名同星合成」持有形态集)∨ 席位腿(可卖备战席
+    一件燃料腾出位)。三态并集语义 = 存在任一腾位/合成/空位路径即
+    放行——精确模拟「刷出后能否真买到」需重采样预测不可算;浪费面 =
+    放行后目标没刷出(本属搜牌成本),不产生新浪费。
 
-    逐通道口径(出处):
-    - dominance:``mandate.dominance_buy_eligible`` 直调(金>g* ∧ 席,
-      零第二实现)+ 结算线 单一源 ``shop.check_settlement_line``
-      直调(最便宜 1★ 形态;审查H2 修:原内联 gold−1 ≥ g* 系第二
-      实现,该谓词设立理由恰是防穿线判据漂移)——任一店产 1★ 线外件
-      即触发,池非空故只查帧级资格;
-    - 义务 M2(缺员+分支①囤分支):∃成员「该级可刷出(refresh_prob>0)
-      ∧ 金 ≥ 注册表 cost ∧ 席可落」;席可落 = bench_free>0 ∨
-      ``seat_recoverable``(腾位可达判定,调用方传店帧腾位分支同参
-      ``mandate.fuel_sell_candidates`` 资格面非空——存在可变现 1★
-      燃料件,M4 腾位/M2 通道的席位前置可满足;判定与腾位动作发出点同一
-      单源,装配单一入口 = ``shop.p92_seat_recoverable``,禁金额投影
-      代理。旧「P56 投影 liquid_refund>0 代理」已停用:其排除集口径
-      (projection 并 T3 活跃集 ≠ 腾位分支 defer 放行)与布尔化
-      (Σ退金>0 ≠ 资格非空)两向漂移随收窄一次消除,判定本体零改);
-    - EV 买面:``ev_face_open``(调用方传 not provisional.is_none
-      ('U_X');生产恒 None ⇒ 恒 False,如实建模现决策机器)∧ 席 ∧
-      ``window_nonempty``;
-    - 合成完备购(M2b):∃同名 1★×2 配对「refresh_prob(level,base)>0
-      ∧ 金 ≥ base」——**满栏不阻断**(merge §2.5 机制事实,p76「深追
-      不受席满阻断」,买入即自动合成净释放 1 席);
-    - 序 2 场况插件(通道集重建):``plugin_budget_open``
-      (会话累计额度 > 0——上阵空位已登记即有可买形态,板面差一人档
-      的插件件刷新可出;席位面并入 seat_ok);
-    - 序 4 压牌库分支(②(b) 死金/档 1/M6/垫件):``order4_zone_open``
-      (富余帧〔金 > g*〕或奖励帧死金形态的帧级可达——M6/档 1/垫件
-      的富余触发域与 ②(b) 的奖励帧低金域并集,调用方装配);
-    - C1 恒买邻位:``c1_floor_cost``(注册表核心最低费,非 None 即
-      通道池非空)∧ 席 ∧ 金 ≥ 最低费——核心在售即买,池非空故只查
-      帧级资格(与 dominance 通道同款口径)。
+    腿源(单一源,禁第二实现):
+    - 合成腿 = ``shop._merge_pair_names`` 现役谓词直调(恰 2 张全 1★
+      机器口径;谓词机制全集重写归买面改革批,其收扩后本判定自动跟进)。
+      目标名集由调用方按义务面取值(锁定支 = 停留目标名,未锁支 =
+      候选缺件集)——两域均构造性 ∈ 义务面,无需再过滤;
+    - 席位腿 = ``mandate.fuel_sell_candidates`` 直调,同参装配 =
+      ``sell_gate.sell_exclusions(channel='m4_fuel')`` 形态(原商店侧
+      腾位判定包装已随存在性门整门退役,其装配形态迁入本判定——
+      判定尺与腾位动作发出点同源);``counters``/``dedup_names`` 由
+      调用方(shop.py 刷新提案点)传入。
 
-    输入全为帧级现读/注册表量,零新自由参数;调用方装配候选 cost 列表
-    (缺员/囤分支/配对),判定尺只做通道合取判定。
+    席位腿口径 = 备战席燃料 only(真值源 bench-only;店内禁卖场上件,
+    满席腾位 = 关店走备战腾位后重进——「场上件腾位」释放的是上阵位
+    非买卡所需席位,不在本条件;深席堵恢复发生在访问间隙,目标可买
+    自然转真)。
     """
-    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+    from sr_od.application.currency_war.kernel import cw_intention
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        BENCH_CAPACITY,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_entries_of,
+        deployed_rows_of,
+        round_num_of,
+    )
+    bench = bench_entries_of(state)
+    # 空位腿:任一空位即可落任意目标卡(最廉腿,先判短路)。
+    if BENCH_CAPACITY - len(bench) >= 1:
+        return True
+    front, back = deployed_rows_of(state)
+    deployed = [d for d in (*front, *back) if d is not None]
+    # 合成腿:目标名 ∈ 现役形态对名集(shop 谓词单一源直调)。
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        shop as _shop,
+    )
+    pairs = _shop._merge_pair_names(bench, deployed)
+    if any(name in pairs for name in target_names):
+        return True
+    # 席位腿:fuel_sell_candidates 资格面非空(腾位分支同参装配)。
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
         mandate,
+        sell_gate,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.shop import (
-        check_settlement_line,
-    )
-
-    seat_ok = bench_free > 0 or seat_recoverable
-    # ① dominance 1★ 净 0(资格门单源直调 + 结算线 单一源
-    # check_settlement_line 直调,最便宜 1★ 形态;审查H2 修)
-    if mandate.dominance_buy_eligible(gold, bench_free, cap_resolved) \
-            and check_settlement_line(gold, 1, g_star)[0]:
-        return True
-    # ② 义务 M2:缺员(0→1)与分支①囤分支(1→2)同通道两形态
-    if seat_ok:
-        for cost in missing_costs:
-            if refresh_prob(level, cost) > 0.0 and gold >= cost:
-                return True
-        for cost in stockpile_costs:
-            if refresh_prob(level, cost) > 0.0 and gold >= cost:
-                return True
-    # ③ EV 买面(生产 fail-closed:U_X None ⇒ 通道恒空)
-    if ev_face_open and seat_ok and window_nonempty:
-        return True
-    # ④ 合成完备购(满栏不阻断;第三张可刷出且买得起)
-    for base in merge_pair_costs:
-        if refresh_prob(level, base) > 0.0 and gold >= base:
-            return True
-    # ⑤ 序 2 场况插件(通道集重建;插件件落 bench——席位维
-    # = seat_ok;席满帧的置换路径由 seat_recoverable 分支承载)
-    if plugin_budget_open and seat_ok:
-        return True
-    # ⑥ 序 4 压牌库分支(②(b) 死金/档 1/M6/垫件的帧级可达;席位维 =
-    # 至少一席可落——席满帧置换拒后无买入即无通道)
-    if order4_zone_open and (bench_free >= 1 or seat_recoverable):
-        return True
-    # ⑦ C1 恒买邻位(核心在售即买;池非空只查帧级资格)
-    return (c1_floor_cost is not None and seat_ok
-            and gold >= int(c1_floor_cost))
+    if k_members is None:
+        # 判据直调面缺省:方向阵容基解析(生产调用方传序 1 名单现值,
+        # 含 K 空窗回退细化——见 refresh_warranted docstring)。
+        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+            session_scope,
+        )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+            predicates,
+        )
+        k_members = tuple(predicates.line_members(
+            session_scope.direction_comp_of(state)))
+    _round = int(round_num_of(state) or 1)
+    cap_hold = cw_intention.locked_buy_cap_hold(state)
+    excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
+                                     cap_hold=cap_hold,
+                                     current_round=_round)
+    # 释放集与腾席动作发出点同参同源(漏算则在释放可达帧误判席不可腾
+    # → 误拦刷新)。
+    release = sell_gate.dead_pair_exit_release(
+        session, k_members, bench, deployed, _round,
+        cap_hold=cap_hold, counters=counters)
+    defer = mandate.stall_protect_active(session, round_num_of(state),
+                                         counters=counters)
+    cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
+                                         exclude_names=excl,
+                                         defer_names=defer,
+                                         counters=counters,
+                                         dedup_names=dedup_names,
+                                         merge_guard_release=release)
+    return bool(cands)

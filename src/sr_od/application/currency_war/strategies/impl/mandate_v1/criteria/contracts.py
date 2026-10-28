@@ -20,10 +20,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.strategies.impl.mandate_v1.audit.provisional import (
-    CalibValue,
-)
-
 
 @dataclass
 class ContractCtx:
@@ -36,11 +32,6 @@ class ContractCtx:
       空/None=目标线未成型)。
     - gold:决策帧金(消费位口径——商店波为支出后逻辑态金)。
     - reserve:S 预留值(消费位现读,如 b_target 组装结果)。
-    - ev_slot:EV 输入槽位现读的**原始对象**(防线硬化
-      防线硬化:由消费位硬编码声明位 ``ev_input_wired=True`` 改造)——
-      合法形态 = ``audit/provisional.get('V_GAP')`` 的返回物(None =
-      None 期 fail-closed / CalibValue = 槽位现读);裸 float/字面量 =
-      「回退字面量但保留声明」复发形态,违例。
     - k_target:战略层产物 target_comp **原值**(k_projection 前提的
       可核验派生输入,原声明位 ``k_none_domain_covered=True`` 改造)。
     - k_fallback_available:K 回退供给是否在场(消费位从
@@ -67,7 +58,6 @@ class ContractCtx:
     k_members: tuple[str, ...] | None = None
     gold: int | None = None
     reserve: int | None = None
-    ev_slot: object | None = field(default=None)
     k_target: object = field(default=None)
     k_fallback_available: bool = field(default=False)
     k_fallback_resolved: object = field(default=None)
@@ -115,20 +105,6 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
     拦截对象列,预留此处是预算语境输入而非硬约束③预留。
     """
     return ctx.gold is not None and ctx.reserve is not None
-
-
-def _ev_input_from_slot(ctx: ContractCtx) -> bool:
-    """先例(r1 零刷新接线):EV 判据输入系 provisional 槽位现读。
-
-    ZERO_REFRESH_DIAG §4.1 实现缺口:r1 输入为硬编码字面量 ``None``,
-    开闸路径不可达;修复批接线后消费位现读 ``V_GAP`` 槽位。
-    **可核验派生形态(防线硬化)**:前提不再采信
-    消费位硬编码声明,而是核验 ``ctx.ev_slot`` 的运行时类型——合法 =
-    ``None``(None 期 fail-closed,判据语义)或 ``CalibValue``
-    (``audit/provisional.get`` 的返回物);裸 float/字面量 = 复发
-    形态,违例弃权。
-    """
-    return ctx.ev_slot is None or isinstance(ctx.ev_slot, CalibValue)
 
 
 def _k_projection_domain_full(ctx: ContractCtx) -> bool:
@@ -245,20 +221,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '出辖两支 = 终局域末战 ALL IN/买断制,判据体内自判)——前提恒真',
         '11_shop_decisions §2 资金线门行'),
     # —— criteria/refresh ——
-    ('refresh', 'r0_stop'): Contract(
-        None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
-        'BYPASS_TABLE 对应行(R10-3 结构位)'),
-    ('refresh', 'r1_start'): Contract(
-        _ev_input_from_slot,
-        '付费刷新发射位:前提=EV 输入系 provisional V_GAP 槽位现读'
-        '(V̄ 封印族恒 None 不入此门;None 期 fail-closed 属判据语义)'
-        '——四函数位完备集保留行,禁按旧 EV 正性语义复活接线',
-        'ZERO_REFRESH_DIAG §4.1 实现缺口+§6 修法 2'),
     ('refresh', 'refresh_warranted'): Contract(
         None,
-        '三段式刷新判据主式(查表零计算:P1 恒不刷〔plane2_started 谓词〕'
-        '/P2 未锁窗口候选缺件/锁定后星级目标——带归属绑定 = 当前停留'
-        '目标的带);无标定槽位依赖',
+        '三段式刷新判据主式 + 目标可买合取(查表零计算:P1 恒不刷'
+        '〔plane2_started 谓词〕/P2 未锁窗口候选缺件/锁定后星级目标'
+        '——带归属绑定 = 当前停留目标的带;目标可买 = 有空位 ∨ 合成腿'
+        '∨ 席位腿三腿并集,三腿全无拒因 target_unbuyable);无标定槽位'
+        '依赖',
         'shop_session §2.4(迭代 2026-10-12;用户裁定「期望价值难算不'
         '直观,星级目标直接驱动」——R1 路径总账判据面退役的本批替代面)'),
     ('refresh', 'r2_budget'): Contract(
@@ -266,25 +235,18 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
         'r2 不在硬约束③ S 预留拦截对象列)',
         'ZERO_REFRESH_DIAG §3 第 3 条(规格辖域)+01_math_framework §3.4'),
-    ('refresh', 'crisis_refresh_invariant'): Contract(
-        None, 'P36-a 危机不变式(executor 结构位,本域纯数供对拍)',
-        'BYPASS_TABLE 对应行(结构不变式;R1-11)'),
     ('refresh', 'hard_node_reinforce_gate'): Contract(
         None, 'D-D 硬节点补强门(结构门,数值加权挂标定批)',
         'D-D 修复池(原文考古走 git 历史;现行=本判据)'),
     ('refresh', 'r2_card_reserve'): Contract(
-        None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
-        'R2 门同源消费,提升批)',
-        'P54-r2-interest-floor §②'),
-    ('refresh', 'all_channel_buy_exists'): Contract(
-        None, 'P92 全通道可实现买入集判定尺(R1 发射前存在性门;'
-        'p40 R0-1 席满维在册语义落地,非新门——math_proofs P92 '
-        '「在册结构的严格化」口径;T-263 批)',
-        'math_proofs P92 行+p40-refresh-ev §② R0-1'),
+        None, 'R2 预算门卡价预留 ρ 单一源(停留目标实费档现读纯函数;'
+        '锁定支恒有值,未锁窗口恒 0——两分支口径分行声明)',
+        '2026-10-28 用户裁定实费档实现口径(停留目标 = '
+        'stay_target_of 单一源)'),
     ('refresh', 'qualified_member_costs'): Contract(
-        None, '合格集费带单一源(P91 压库同轴带 + R2 预留卡价同源消费;'
+        None, '合格集费带单一源(P91 压牌库同轴带单一消费源;'
         '注册表现读纯函数;T-263 批)',
-        'math_proofs P91 行+p54-r2-interest-floor §②'),
+        'math_proofs P91 行'),
     # —— criteria/stockpile ——
     ('stockpile', 'stockpile_buy'): Contract(
         _s_reserve_line_formed,

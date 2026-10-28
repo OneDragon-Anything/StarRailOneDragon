@@ -21,8 +21,7 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
   一件占一个 bench 槽,槽位是下一轮跨档件的物理前置——容量按 bench
   空槽逐件扣减计入该机会成本(合成件净腾槽不占)。
 - **义务帧兑现**:release 分支(posture_release)消费 overflow/obligation
-  作为预算下界;g≥0 硬钳制在 authorize_release_refresh(执行层透支
-  修复)。
+  作为预算下界。
 - **利息计算基数守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
   富余段激活;I-1 锚)。
 
@@ -230,7 +229,7 @@ def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:
 
     调用契约:返回值 < want = 本笔不放行(消费不可拆,不花部分金额,
     也不替调用方改写金额)——截断只裁「可不可花满」,放行裁决仍在既有
-    预算门(authorize_release_refresh 等);量级按严口径 1 金/档报
+    预算门;量级按严口径 1 金/档报
     1-2 金/局,主判如实降级「方向披露」(提案 E-v2 §2 量级双口径)。
     """
     if essential:

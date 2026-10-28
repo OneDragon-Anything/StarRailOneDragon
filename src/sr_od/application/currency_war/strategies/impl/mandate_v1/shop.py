@@ -34,7 +34,7 @@ shop_refresh_*(三段式判据拒因族)/ levelup_*(会话升级意图门族:资
 门拒因 + levelup_transition_close 转场关店;键语义与写点注释见各分支
 段);
 承继键族(m2/m2_stockpile/m2b/protection_hoard/dead_gold_press/press_buy_
-deployable/m6/fuel_filler_stall/ev/core/dominance/p90-p94/p91)随各分支
+deployable/m6/fuel_filler_stall/ev/core/dominance/p90/p91/p94)随各分支
 并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
 退役删除,统一保护集 design §2.2;protection_hoard 三键 = 其语义承接)。P86 三分支旧键族(shop_no_target_*/
 hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照)。
@@ -218,40 +218,33 @@ def _shop_sell_refund(bc) -> int | None:
 #  P40/P47/P54 命题本体保留已登记。)
 
 
-def _r2_card_reserve(k_members: tuple[str, ...],
-                     bench: list, deployed: list,
-                     gs: GameState,
-                     level: int | None = None) -> int:
-    """R2 预算门 Σ预留卡价 ρ(单一源已提升至 criteria/refresh.
-    r2_card_reserve;P71 闸时代的别名重导出——该闸已随升级触发统一批
-    删除,本名保留使既有测试面(test_cw_interest_floor.py 私有名直引)
-    与生产调用点零漂移,语义/签名/等级过滤口径逐位不变,docstring 见
-    单一源本体)。"""
-    return crit_refresh.r2_card_reserve(k_members, bench, deployed,
-                                        gs, level=level)
+def _r2_card_reserve(gs: GameState) -> int:
+    """R2 预算门卡价预留 ρ(单一源 = criteria/refresh.r2_card_reserve;
+    本名保留使生产调用点零漂移,语义 = 停留目标实费档,未锁窗口恒 0
+    ——docstring 见单一源本体)。"""
+    return crit_refresh.r2_card_reserve(gs)
 
 
 def _merge_pair_names(bench: list[BenchSlot],
                       deployed: list[Unit]) -> set[str]:
-    """合成完备购形态对名集(M2b 循环与 P92 ④通道装配两处共吃的单一
-    源,禁第二实现):全局面(bench∪deployed)同名副本恰 2 张 ∧ 均
-    1★ 的角色名。
+    """合成完备购形态对名集(M2b 循环与判据目标可买合成腿两处共吃的
+    单一源,禁第二实现):全局面(bench∪deployed)同名副本恰 2 张 ∧
+    均 1★ 的角色名。
 
     机器口径申报(消费纪律):本谓词 = M2b 机器实现口径,非机制全集
     ——机制上「同名 1★ 凑满 3 即合成」(merge_mechanics.md §2 主例:
     备战 1★×2 + 场上 2★×1 → 买第三张 1★ 触发合成),机器只实现「恰
     2 张全 1★」单跳形态;「1★×2 与 ≥2★ 同名并存」的买三张通道机器
     未实现(两真实合成通道残余,设计边界;裁定档已删,git da3a7370ce
-    可溯)。未来 M2b 若补该形态,
-    本谓词须同步收扩——否则 P92 门将从「对齐机器」翻成「误杀真
-    通道」。
+    可溯)。未来 M2b 若补该形态,本谓词须同步收扩——否则目标可买
+    合成腿将从「对齐机器」翻成「误杀真通道」(刷新拒因面)。
 
     归一化/计数键逐字符同 ``decide_shop_action`` 内 ``_cnt``(同名同
     星副本计数):星级 ``(c.star or 1)``(None 视同 1★)、键
     ``(c.char_id or '')``、计数宇宙 bench∪deployed。资格维不在本
-    谓词适用范围(调用方各自过滤:M2b 循环天然约束于 buy_members,P92 装配
-    显式 ∩ buy_members——资格维对齐 M2b 实现,对抗审查问题 6
-    转正,reviews/T-295-方案对抗审.md)。
+    谓词适用范围(调用方各自过滤:M2b 循环天然约束于 buy_members,
+    合成腿消费 = 目标名 ∈ 本谓词名集——目标名构造性 ∈ 义务面,
+    资格维对齐 M2b 实现)。
     """
     copies: dict[str, list[int]] = {}
     for c in list(bench) + list(deployed):
@@ -262,57 +255,6 @@ def _merge_pair_names(bench: list[BenchSlot],
         copies.setdefault(cid, []).append(star)
     return {n for n, ss in copies.items()
             if len(ss) == 2 and all(s == 1 for s in ss)}
-
-
-def p92_seat_recoverable(session: StrategySession,
-                         bench: list[BenchSlot],
-                         k_members: tuple[str, ...],
-                         gs: GameState, *,
-                         cap_hold: int | None,
-                         current_round: int,
-                         defer_names: frozenset[str] | set[str],
-                         counters: dict | None = None,
-                         dedup_names: set[str] | None = None) -> bool:
-    """P92「席可落」腾席可达判定(IC-1 单源;收窄实现)。
-
-    真值 = ``mandate.fuel_sell_candidates`` 资格面非空,排除集与店帧
-    实际腾席分支(M2 缺员腾席位/m2_stockpile 腾席位/恒买腾席支)同一
-    装配 A 形态(``sell_gate.sell_exclusions(channel='m4_fuel')``,单一
-    入口禁第二排除集),T3 同轮保留走 defer 末位(转化类放行,与腾席
-    分支同参)——「存在可变现 1★ 燃料件」即席可落,判定尺与腾席动作发出点
-    同源,禁平行第二实现。
-
-    收窄沿革(旧代理为何停用):旧装配传 P56 投影 ``liquid_refund>0``
-    (金额投影代理)。其申报的偏宽面(占位件被当可变现候选)已随该
-    投影读的单一源化(fuel_sell_candidates 占位件滤门)闭合;残余失真
-    是**口径错配**双向漂:①排除集——投影视图并 T3 活跃集
-    (sell_gate.py projection 分支),而腾席分支对垫保是 defer 转化类放行
-    非排除 ⇒ T3 活跃帧投影读 0、席实际可腾,旧代理误判不可达 ⇒ P92
-    误拦(方向 = 过度拦刷,失刷新机会);②布尔化——「Σ退金>0」是
-    资金量语义非席可落能力布尔(零费候选角帧同误判)。本判定直引
-    腾席分支同参资格面,两向漂移一次消除;行为差方向 = P92 在 T3 活跃
-    帧少拦(差帧 ② 通道真实可达,旧拦为误拦),行为差测试 =
-    sr-od-test test_seat_recoverable_narrow.py。
-    ``counters``/``dedup_names`` 照传帧级共享载体
-    (``merge_material_guard_blocked`` 事件口径每帧每素材至多 1,与
-    P56 投影读/凑息/支付变现触达位同款纪律)。
-    """
-    excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
-                                     cap_hold=cap_hold,
-                                     current_round=current_round)
-    # 释放集与腾席动作发出点同参同源(判定尺同源约束覆盖释放旁路面:
-    # 漏算则 P92 在释放可达帧误判席不可落 → 误拦刷新)。
-    release = sell_gate.dead_pair_exit_release(
-        session, k_members, bench,
-        _deployed_units_of(gs),
-        current_round, cap_hold=cap_hold, counters=counters)
-    cands = mandate.fuel_sell_candidates(bench, k_members, state=gs,
-                                         exclude_names=excl,
-                                         defer_names=defer_names,
-                                         counters=counters,
-                                         dedup_names=dedup_names,
-                                         merge_guard_release=release)
-    return bool(cands)
 
 
 def _frame_search_windows(session: StrategySession, gs: GameState,
@@ -789,8 +731,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
        命中 ∧ 待付窗 / 未命中 → None 会话继续,design §2.1);
     5. 统一买入策略六序(契约 E;序 1 名单三态 + 席满置换账 + 金不足
        筹资,详见各段内注释);
-    6. 三段式刷新判据(§2.4 查表 + 金前提 + P92 拦刷门;免费刷新
-       不受限);
+    6. 三段式刷新判据(§2.4 查表 + 目标可买合取 + 金线闸;免费刷新
+        同过目标可买检查,金线不适用);
     7. 收工(置标记 + 写清单;读数会话零处理 ∧ 意图标记 → 不置标记)。
     """
     if getattr(state_of(session), 'cw4_counters', None) is None:
@@ -1959,110 +1901,62 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     elif _dom_ok and gold > g_star and bench_free <= 1:
         _count('dominance_band_wait')
 
-    # ===== 三段式刷新判据(shop_session §2.4)=====
+    # ===== 刷新链三组件:判据 → 金线闸 → 发射(shop_session §2.4;
+    # 目标可买合取与金线闸新算式 = 2026-10-28 用户裁定刷新链定型)=====
     _free_left = gs.free_refresh_left.value
     _is_free = _free_left is not None and int(_free_left) > 0
     if _is_free:
-        # 免费刷新不受判据覆盖(「白给的刷新照用,不构成主动刷」——概率
-        # 事件的免费刷新〔invest_effects 已登记〕;P92 严格劣证明覆盖付费
-        # 刷,免费刷净差 ≥ 0)。计数达阈族失效钩子照挂(协议②)。
-        shop_sess.note_refresh_counters(gs, 0)
-        _mark_processing()
-        return CwActionRefreshShopParam(cost=0, reason='free_refresh')
+        # 免费刷新纳入目标可买检查(金线不适用——免费):「白给的刷新
+        # 照用,不构成主动刷」(概率事件的免费刷新〔invest_effects 已
+        # 登记〕)以「刷出的目标卡买得到」为前提——免费刷不再无界,
+        # 目标不可买帧刷新零收益,拒绝 → 现行关店(负结果记忆标记归
+        # 买面改革批,本批不做记忆)。计数达阈族失效钩子照挂(协议②)。
+        # 免费腿目标名域:锁定支 = 停留目标名(单一源 stay_target_of);
+        # 未锁窗口 = 义务缺件集(本帧序 1 义务面现值——免费刷搜牌域
+        # 与买面同域;判定单一源 = crit_refresh.target_buyable)。
+        _free_target = _crit_levelup.stay_target_of(gs)
+        _free_names = (_free_target[0],) if _free_target is not None \
+            else tuple(missing)
+        if crit_refresh.target_buyable(gs, session, _free_names,
+                                       k_members=k_members,
+                                       counters=counters,
+                                       dedup_names=_mm_dedup):
+            shop_sess.note_refresh_counters(gs, 0)
+            _mark_processing()
+            return CwActionRefreshShopParam(cost=0, reason='free_refresh')
     _ok_w = False
     _wkey = 'contract_abstain'
     if contracts.ensure_contract(
             ('refresh', 'refresh_warranted'),
             contracts.ContractCtx(), counters):
-        _ok_w, _wkey = crit_refresh.refresh_warranted(gs, session)
+        _ok_w, _wkey = crit_refresh.refresh_warranted(
+            gs, session, k_members=k_members, counters=counters,
+            dedup_names=_mm_dedup)
     if not _ok_w:
         _count(f'shop_refresh_{_wkey}')
     else:
-        # 金前提:R2 预算门照旧(reserve = g* + ρ〔合格集最低费卡价〕)
-        # + 整级预留保护(载体 = 升级资格门判据现值同帧复用——凑金可达
-        # 域帧(待付窗)时 reserve 含整级批全量:发射条件 = 现金 ≥ 线 +
-        # 整批,基础 g* 预留已辖线,批全量入预留使刷新不烧升级凑金,
-        # 防「压牌库换卡↔升级凑不齐」活锁。判定轴 = gold_short 现值,
-        # 与升级执行/升级意图出口同帧同参零子集化。)
-        _reserve = g_star + _r2_card_reserve(k_members, bench, deployed, gs)
-        if _up_verdict == _crit_levelup.GATE_GOLD_SHORT:
-            _reserve += _up_clicks * _up_cost
+        # 金线闸:预留 = saturation_line + 停留目标实费档 ρ(2026-10-28
+        # 用户裁定实费档实现口径:ρ = stay_target 实费档,变费卡随档;
+        # 未锁窗口 stay_target 恒空 → ρ=0,金线 = g* + 刷价——两分支
+        # 口径分行声明于判据本体)。整级预留分支删(同日裁定:升级概率
+        # 带单判据
+        # 后升级触发态与刷新放行态带互斥,预留腿不可达;凑金等待帧的
+        # 刷新让位由判据①支「升级优先」直接承载——资金序 = 升级优先
+        # 于刷新,升级推迟期刷新维持拒绝、不设解锁支,防「刷新烧凑金
+        # → 升级永久 defer」饿死环)。
+        _reserve = g_star + _r2_card_reserve(gs)
         if contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
                 contracts.ContractCtx(gold=gold, reserve=_reserve),
                 counters):
             if crit_refresh.r2_budget(
                     gold, _reserve, refresh_cost_effective(gs=gs)):
-                # P92 拦刷门(输入面改造:通道集新读法 = 统一买入策略
-                # 买入类目通道〔序 1-5 + C1/dominance 邻位 + 置换(席
-                # 满帧买入路径 = seat_recoverable 分支)〕;P92 命题本体
-                # 挂起,本门 = 结构判据不依赖命题,待证钩子
-                # all_channel_exists。复核补分支:序 2 预算分支/
-                # 序 4 富余与奖励帧死金分支/C1 邻位分支已入集——装配面:
-                # 预算 = 会话累计额度现读;序 4 = 富余帧 ∨ 奖励帧低金;
-                # C1 地板 = 注册表核心最低费现算)。
-                _p92_ready = contracts.ensure_contract(
-                    ('refresh', 'all_channel_buy_exists'),
-                    contracts.ContractCtx(gold=gold), counters)
-                _p92_ok = False
-                if _p92_ready:
-                    _p92_missing = sorted(
-                        {int(CHARACTERS[m].cost) for m in missing
-                         if CHARACTERS.get(m) is not None
-                         and CHARACTERS[m].cost})
-                    # P92 拦刷门 stockpile 通道集推导域 = 义务面(design
-                    # §2.2 同族申报:囤货面成员已退出 stockpile 通道,
-                    # 判据随义务面收窄同步——反保守少拦刷向已申报)。
-                    _p92_stockpile = sorted(
-                        {int(CHARACTERS[m].cost) for m in obligation_members
-                         if CHARACTERS.get(m) is not None
-                         and CHARACTERS[m].cost
-                         and _cnt(m, 1) == 1 and _cnt(m, 2) == 0})
-                    _p92_pairs = sorted(
-                        {int(CHARACTERS[n].cost)
-                         for n in _merge_pair_names(bench, deployed)
-                         if n in set(buy_members)
-                         and CHARACTERS.get(n) is not None
-                         and CHARACTERS[n].cost})
-                    _p92_c1_floor = min(
-                        (int(CHARACTERS[n].cost)
-                         for n in CORE_SINGLE_CARD_REGISTRY
-                         if CHARACTERS.get(n) is not None
-                         and CHARACTERS[n].cost),
-                        default=None)
-                    _p92_ok = crit_refresh.all_channel_buy_exists(
-                        gold=gold, g_star=g_star,
-                        cap_resolved=cap_resolved,
-                        bench_free=bench_free,
-                        seat_recoverable=p92_seat_recoverable(
-                            session, bench, k_members, gs,
-                            cap_hold=_cap_hold_now,
-                            current_round=round_num_of(gs),
-                            defer_names=_t3_protect, counters=counters,
-                            dedup_names=_mm_dedup),
-                        missing_costs=_p92_missing,
-                        stockpile_costs=_p92_stockpile,
-                        merge_pair_costs=_p92_pairs,
-                        level=level_of(gs),
-                        ev_face_open=not provisional.is_none('U_X'),
-                        window_nonempty=bool(card_w),
-                        plugin_budget_open=_st.shop_plugin_budget > 0,
-                        order4_zone_open=(
-                            gold > g_star
-                            or (reward_node_suppressed(gs)
-                                and gold >= 1)),
-                        c1_floor_cost=_p92_c1_floor)
-                if _p92_ready and _p92_ok:
-                    shop_sess.note_refresh_counters(
-                        gs, refresh_cost_effective(gs=gs))
-                    _mark_processing()
-                    return CwActionRefreshShopParam(
-                        cost=refresh_cost_effective(gs=gs),
-                        reason='star_target')
-                if _p92_ready:
-                    _count('p92_no_buy_refresh_blocked')
-                    if _zone_hit:
-                        _count('must_spend_r1_no_buy_blocked')
+                shop_sess.note_refresh_counters(
+                    gs, refresh_cost_effective(gs=gs))
+                _mark_processing()
+                return CwActionRefreshShopParam(
+                    cost=refresh_cost_effective(gs=gs),
+                    reason='star_target')
             elif _zone_hit:
                 _count('must_spend_r1_budget_fail')
 

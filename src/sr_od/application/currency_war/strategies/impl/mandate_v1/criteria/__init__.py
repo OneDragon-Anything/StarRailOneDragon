@@ -55,24 +55,13 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '门', '不旁路', '升级资金线门(11 号稿 §2:现金口径单门,'
         '花后金 ≥ saturation_line;出辖 = 终局域 ALL IN/买断制)'),
     # —— criteria/refresh(01_math_framework §3.4)——
-    ('refresh', 'r0_stop'): (
-        '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),
-    ('refresh', 'r1_start'): (
-        '发射位', '旁路', 'R2-2 原判(r1_start 保留 = refresh 四函数位'
-        '完备集,零生产调用点)'),
-    ('refresh', 'r1_commitment_account'): (
-        '发射位', '旁路', 'R2-2 原判同位(现行语义:形式二可负担性'
-        '判据,全游戏定义量输入、无 provisional 槽位依赖;arm1 旁路集'
-        '成员)'),
     ('refresh', 'r2_budget'): (
         '门', '旁路=门关闭', 'R5-4(预算门不批)'),
     ('refresh', 'r2_card_reserve'): (
-        '状态函数', '不旁路', 'P54 §② ρ 公共单一源(提升批;'
-        'R2 门同源消费)'),
+        '状态函数', '不旁路', 'R2 预留 ρ 单一源(停留目标实费档;'
+        '锁定支恒有值,未锁窗口恒 0)'),
     ('refresh', 'hard_node_reinforce_gate'): (
         '门', '旁路=门关闭', 'D-D(硬节点补强门,消费面 r1/candidates 均臂①旁路)'),
-    ('refresh', 'crisis_refresh_invariant'): (
-        '结构不变式', '不旁路', 'R1-11(executor 结构位;本域纯数供对拍)'),
     # —— criteria/stockpile(01_math_framework §3.5;档匹配谓词/V_comp 表在 statefn/vopt)——
     ('stockpile', 'stockpile_buy'): (
         '发射位', '旁路', 'R2-2 原判'),

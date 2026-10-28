@@ -490,8 +490,7 @@ class DecisionTrace:
     # 口径(收窄申报):首版只计**刷新实花**(记账位 =
     # cw_screen_shop 执行回执位 accrue_release_spent;决策帧值 = 轮内截至采样时点累计)——
     # 买牌/升级是否计入「全渠道义务实花」在 mandate_v1 语义下未经证明,
-    # 裁决前收窄防虚高(宁窄勿虚;旧 authorize_release_refresh/
-    # _accrue_release_frame_spend 机制停用史与口径裁决)。
+    # 裁决前收窄防虚高(宁窄勿虚)。
     # 开分支判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     sess_release_spent: int | None = None

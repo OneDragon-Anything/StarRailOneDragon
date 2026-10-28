@@ -1,7 +1,7 @@
 """cw4 骨架义务执行器(M1-M7)——换核后落地;执行序规格=02_mandate_layer §3。
 
 单一 executor(每备战期骨架 pass),执行序(02_mandate_layer §3):
-crisis_refresh_invariant(结构位)→ M5(开局板)→ dominance_buy
+M5(开局板)→ dominance_buy
 (M2 前置支配买入,mandate 邻位)→ M2(线成员买入)→ M4(腾席卖出)
 → M1(同帧部署)→ M3(升级整批)→ M1′(新人口位补部署)→ M6
 (富余转压牌库)→ M7(装备转移)。
@@ -1075,8 +1075,6 @@ def run_mandate(frame: MandateFrame,
         _count('overflow_no_fuel')
         return []
 
-    # crisis_refresh_invariant(P36-a 结构位;刷新域=商店线,prep 帧无对象,
-    # 结构位在 executor——此处为序位声明,判据本体 refresh.crisis_refresh_invariant)
     # M5 开局板(§2.9 无数学面:开局帧(round_num≤1)板空且有 bench 件;
     # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,载体 = CwActionDeployMoveParam
     # 原子序[kernel select_deployments 逐帧现算,R2 原子通路])
