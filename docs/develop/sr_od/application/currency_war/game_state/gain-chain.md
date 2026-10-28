@@ -360,9 +360,9 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
     台账,锚定与否都不进失配网;先例 = T-5 财富宝钻/T-29 奖励全分支随机态;
     本支零采样不需 rng)。效果串 `equip_gift:<名>`,与 `env_gift:`/
     `env_star_grant:`/`item_gift:` 前缀分域。登记与构建校验 =
-    `_validate_env_gifts` ⑧⑨(装备名漂移 ∈ EQUIPMENTS / 装备-道具通道
-    同名互斥);策略侧共享校验的空发放集枚举随新字段同步(`STRATEGY_GRANTS`
-    两表共享家族义务,首例登记在环境侧)。
+    `_validate_env_gifts` 装备名漂移哨(逐名 ∈ EQUIPMENTS;治理口径
+    2026-10-28:防登记笔误类校验〔通道同名互斥/空发放集等〕已移除,
+    只留版本漂移哨,错名防线归评审与测试)。
   - **随机装备支**(`equips_random_immediate`,落地序 = 即时道具支之后、定时支
     之前):元素 = 装备类别名(EQUIPMENTS category 词),发放 = 类别池
     (`equips_by_category`,注册表派生单一源)内均匀掷骰选名 →

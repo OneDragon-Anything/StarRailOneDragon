@@ -43,7 +43,7 @@
 - 登记 = kernel `cw_investments.STRATEGY_GRANTS`(策略卡具名发放白名单:`chars_immediate`/`chars_conditional`/`advisor`,复用 `GiftGrant`;入册判据 = 效果原文「获得…角色名」直读,含无括号裸名;只强化不发放不入;roster-外目标与空名发放自动排除;非「获得」引导的实发放不入)。发放角色归属 = 效果原文机制事实,宪法五第②类留 kernel。
 - 「档→分」映射与折减 = 策略层 `gift_value.grant_gift_value`(`GIFT_TIER_SCORE` + advisor ×`ADVISOR_DISCOUNT`「付费期权 < 白得」;档位判定机器 `cw_comps.gift_hit_tier` 留 kernel)。
 - 即时集取最高档,条件集降一档;发放角色在未排除候选阵容名单外 → 该发放 0;无赠卡条目的卡赠卡分自然 0。
-- 构建期校验(import 即炸):孤儿键(注册表无此卡)/角色名漂移(`CHARACTER_ROSTER` 外)/空发放集/反扫候选闭集防线(机械反扫「获得…roster 名」全表命中 ⊆ grants ∪ 排除白名单,漏登记即炸)。
+- 构建期校验(import 即炸;2026-10-28 治理后只留漂移哨):孤儿键(注册表无此卡)/角色名漂移(`CHARACTER_ROSTER` 外)/反扫候选闭集防线(机械反扫「获得…roster 名」全表命中 ⊆ grants ∪ 排除白名单,漏登记即炸)。
 
 ### 2.4 立场分与系数(【拍】形态)
 
