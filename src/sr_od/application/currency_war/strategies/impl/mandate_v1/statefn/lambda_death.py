@@ -9,11 +9,12 @@ P51_V3_REBUILD v3.3+本模块为单一源):
   gen_pl_v33_json.py 从 P51_V3_REBUILD v3.3 运行产物生成,含逐格消费标签
   与空格回退处置)。**启动必载**(R2-4):import 时即加载;加载失败或格值
   None = 运行时损坏守卫 + 报警,不作合法缺省姿态。
-- **现行消费面 = 键构造与查表基础设施**(difficulty_band 派生审计登记/
-  hp_band 血带结构锚 predicates 观测件消费):λ 表本体保留为 P51 标定
-  工件;原决策消费族(λ 顾问/exposure 比较/差分复合项/升档器排序键/
-  floor_eff 保利息门)已随血线地板/λ 顾问/升档器删除链与拦截层删除链
-  停用——新增决策消费须先过
+- **现行消费面 = 查表基础设施**(difficulty_band 派生审计登记/
+  HP_BAND_NEAR_DEATH 血带结构锚 predicates 观测件消费):λ 表本体
+  保留为 P51 标定工件;原决策消费族(λ 顾问/exposure 比较/差分复合项/
+  升档器排序键/floor_eff 保利息门)已随血线地板/λ 顾问/升档器删除链与
+  拦截层删除链停用,键构造维(四维键串与血带映射)已随 hp 判据删除面
+  孤儿化撤除(R-6 裁定:λ 表血带维孤儿化申报)——新增决策消费须先过
   λ 表使用纪律审查(区间敞口比较 + 保守端 + 单调约束;禁边际引用、
   禁闸门,R30-4)。
 """
@@ -31,10 +32,10 @@ if TYPE_CHECKING:
 #: 表工件路径(与本模块同目录 data/ 下;启动必载,R2-4)
 _TABLE_PATH: Path = Path(__file__).parent / 'data' / 'lambda_death_pl_v33.json'
 
-#: 血带边界(PL 键血带维=P51_V3_REBUILD v3.3 键结构:hp≤15 / 15<hp≤40 / hp>40;
-#: hp 入路由键与「hp 不作因果输入」两条分写并存——用户裁定二,R27-3)
+#: 濒死带边界(血带结构锚单一源;消费 = statefn/predicates p1/p2_blood_floor
+#: 濒死带观测谓词阈值,R-7 保留面。血带维其余键结构已随 hp 判据删除面
+#: 撤除,R-6 孤儿化申报)
 HP_BAND_NEAR_DEATH: int = 15
-HP_BAND_MID: int = 40
 #: 难度带分界(P51 v3.3 Part 1 难度带定界数据分布驱动:(103,108)/(108,132))
 DIFFICULTY_BAND_BOUND: int = 108
 
@@ -118,34 +119,6 @@ def difficulty_band(difficulty_value: int | None) -> str | None:
     return 'D0' if difficulty_value < DIFFICULTY_BAND_BOUND else 'D1'
 
 
-def hp_band(hp: int | None) -> str | None:
-    """血量→血带(hp<=15 / hp15-40 / hp>40);hp 经 λ 间接入卖面价值数值合法
-    (裁定二/R27-3:hp 不入账本/不入金流,入概率路由键)。缺读 None→None。"""
-    if hp is None:
-        return None
-    if hp <= HP_BAND_NEAR_DEATH:
-        return 'hp<=15'
-    if hp <= HP_BAND_MID:
-        return 'hp15-40'
-    return 'hp>40'
-
-
-def make_key(difficulty: int | None, hp: int | None, plane: int,
-             node_type: str) -> str | None:
-    """四维观测量 → PL 键串(``D*|hp*|P*|node``)。
-
-    plane:位面序号 1/2/3(P2 起并入 ``P2+`` 键维,P51 v3.3 主表位面维二值化)。
-    任一维缺失(None/空)→ 返回 None(键观测量缺失=域外同款不卖/不判,
-    R27-2 断言③)。
-    """
-    d = difficulty_band(difficulty)
-    h = hp_band(hp)
-    if d is None or h is None or not node_type:
-        return None
-    pl = 'P1' if plane <= 1 else 'P2+'
-    return f'{d}|{h}|{pl}|{node_type}'
-
-
 def cell(key: str | None) -> LambdaCell | None:
     """键 → 表格(查表唯一入口;None=域外/空键/损坏态,三态同判 R52-4a)。"""
     if key is None or not _LAMBDA_TABLE:
@@ -154,9 +127,9 @@ def cell(key: str | None) -> LambdaCell | None:
 
 
 __all__ = [
-    'DIFFICULTY_BAND_BOUND', 'HP_BAND_MID', 'HP_BAND_NEAR_DEATH',
+    'DIFFICULTY_BAND_BOUND', 'HP_BAND_NEAR_DEATH',
     'LambdaCell', 'LambdaTableCorruptError', 'cell', 'difficulty_band',
-    'hp_band', 'make_key', 'table_loaded',
+    'table_loaded',
 ]
 
 

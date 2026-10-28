@@ -61,7 +61,6 @@ _SLOTS: dict[str, _Slot] = {
     'V_FURNACE': _Slot('#8 v_F/v_B 炉/死库存价值(sim 唯一标定通道)'),
     'C_FRAME_Q': _Slot('#9 c_frame/q(P34-b;q plaza 先验只撑量级)'),
     'DELTA_P_WIN': _Slot('#10 Δp(d→胜率换算;P43 只供外差项)'),
-    'P_HIT_Q_CONV': _Slot('#12 p_hit/q_conv(P36-b/c 危机预算阶梯)'),
     # —— 类型级封印族(R10-2:V̄ 拟合族永不作闸门)——
     'V_BAR': _Slot('#13 V̄ 刷新价值门量;比较项不授权,禁作闸门', sealed=True),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),

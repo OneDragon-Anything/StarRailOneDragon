@@ -452,17 +452,11 @@ class DecisionTrace:
     # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
     # 嵌套 v3_intention 即可读锁定产物。可选,旧记录缺省 '' 不破坏 schema。
     sess_p1_pair: str = ""
-    # —— `w603_telemetry_wiring/` 披露键序列化(血预算停手计数/末窗降格触发面/经验账本)——
-    # 三个 session 披露键此前「有写点、无遥测落盘」(decisions.jsonl 全文检索
+    # —— `w603_telemetry_wiring/` 披露键序列化(末窗降格触发面/经验账本)——
+    # session 披露键此前「有写点、无遥测落盘」(decisions.jsonl 全文检索
     # 零命中,判读盲区)。接出点=recorder 统一自 _CTX_MATCH_REF 的 session 取
     # (shop.py 的 extra 通道不动;record_outcome 板深快照同款模块槽先例)。
     # None/缺省 = 无 match 注册(离线/测试)或取值失败,旧 schema 不破坏。
-    # 血预算停手·停升级拒付计数(strategy_state_of(session).v3_blood_budget_rejects 透传;
-    # 写入端=arbiter/remediation 拒付面,局首清零)。
-    sess_blood_budget_rejects: int | None = None
-    # 血预算停手·搜索型刷新停付拒付计数(strategy_state_of(session).v3_blood_budget_refresh_rejects
-    # 透传;写入端=arbiter refresh 收尾,局首清零)。
-    sess_blood_budget_refresh_rejects: int | None = None
     # 血预算停手·终止分支决策位。⚠️ 与旧 sim 账本行键 terminal_release
     # 同名不同体(该账本已停用):本 schema 字段 = recorder
     # 侧实机透传位,写入面已接回 terminal_release_bit 单一源(recorder.py;
@@ -485,9 +479,8 @@ class DecisionTrace:
     sess_reserve_overflow: int | None = None
     # 当轮 release 义务预算(金;0=无 release 帧或零预算结转帧)。
     sess_release_budget: int | None = None
-    # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
-    # 'must_spend';'crisis'=危机金出口分支,判读兑换率分域勿漏
-    # 此值;'must_spend'=富余帧写点新增值域——shop 富余段段
+    # 义务来源(''/'flip'/'third_path'/'reserve_admission'/
+    # 'must_spend';'must_spend'=富余帧写点新增值域——shop 富余段段
     # 帧内 last-wins,轮界清零在披露键戳(写端 = economy_cycle.
     # disclose_budget)。现役 mandate_v1
     # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。

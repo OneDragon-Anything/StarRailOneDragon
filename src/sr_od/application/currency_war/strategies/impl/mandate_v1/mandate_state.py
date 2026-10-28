@@ -119,10 +119,6 @@ class StrategyState:
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
 
-    # ===== 血预算拒付披露(遥测;局)=====
-    v3_blood_budget_rejects: int = 0
-    v3_blood_budget_refresh_rejects: int = 0
-
     # ===== P2 承接快照(位面)=====
     v3_handoff: object = None
     v3_handoff_plane: int | None = None
@@ -171,7 +167,6 @@ class StrategyState:
     # 透传 + cw_decision_trace 披露族。披露面字段,禁决策判据消费
     v3_release_spent: int = 0
     v3_handoff_gap: int = 0
-    v3_handoff_hp_proj: int | None = None
 
     # ===== 消费侧惰性建(缺省值 = 原惰性初值)=====
     # A/B 注册表注入通道(cw_economy._registry_of 消费;None=缺省表)。
