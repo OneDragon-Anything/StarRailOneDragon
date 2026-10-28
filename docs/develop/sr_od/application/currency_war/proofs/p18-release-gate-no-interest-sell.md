@@ -1,5 +1,6 @@
 # P18:门生效帧无涨金动机卖候选(release 消费门的集合过滤不变式)
 
+> **命题状态:已停用（历史命题,判据载体已消亡）**——本篇所证的 release 门载体（`decision_v2/candidates.py::_release_sell_gate`/`posture_release.py::spend_gate_active`/开关 `release_spend_gate_enabled`）已随 decision_v2 旧栈删除,全仓零命中（2026-10-28 hp 判据族删除批复核）；`emergency_hp`（:81 for_gold 对齐行）同为词表删除符号、`candidates.py` 文件已不存在——**全篇门载体锚与行号按命题成文时点读,禁作现行代码事实引用**；集合过滤不变式的数学结论保留为结构档案,现行状态权威 = `math_proofs.md` 索引行。
 > 状态:**已证(集合过滤不变式;适用范围=候选生成器输出集,非帧内金账)**
 > 对象:已落地的 release 门——`decision_v2/candidates.py` 的
 > `_release_sell_gate` + `decision_v2/posture_release.py` 的 `spend_gate_active`。
