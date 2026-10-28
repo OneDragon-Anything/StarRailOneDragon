@@ -7,7 +7,7 @@
 ## 阅读门执行记录
 
 - **玩法文档全量(docs/game/currency_war/)**:economy.md 全文精读(§1 牌池/§2+§2.1 刷新与升级不刷新/§6 保血保经济/§7 阶段共识/§9 未决数值表[XP 表 2026-08-31 ✅ 定谳]/§10.1 收入与息律投资 cap 修正);gameplay.md(「金币购买经验提升等级,等级对应可上阵角色数量」);user_playstyle [16]/[32]/[41] 相关条;invest_effects(买断制息关换每节点4XP 等 XP 流族)。**声明跳过**:data/characters/ 72 件角色档、final_comps 十类——本件命题(升级时点机会成本)与单卡数值/阵容知识无交集,无消费点。
-- **注册表直调(值逐一亲核,不用被审方转述)**:`cw_state.py`(XP_TO_NEXT_LEVEL={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4)、`cw_factions.py`(INTEREST_THRESHOLD=50 / INTEREST_RATE=0.1)、`cw_effect_ledger.interest_with(default_cap=5)`、`cw_economy.py` L411(interest_cap_override 回退 50//10=5)。
+- **注册表直调(值逐一亲核,不用被审方转述)**:验证时点 `cw_state.py`(XP_TO_NEXT_LEVEL={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4;现载体 = `cw_economy.py` XP 表)、原 `cw_factions.py`(INTEREST_THRESHOLD=50 / INTEREST_RATE=0.1)、原 `cw_effect_ledger.interest_with(default_cap=5)`(两锚均**已随死代码清偿移除**;息律现单一源 = `cw_economy.interest` + `cw_plane_table.GOLD_CAP_INTEREST`/`DEFAULT_INTEREST_CAP`)、`cw_economy.py` L411(interest_cap_override 回退 50//10=5)。
 - **06_input_model §3**:注册表地图与「工具值估算地方以常量注释标明」边界,已读。
 - **公理栈(调参最小化公理,MATH_REVALIDATION_PLAN v3)**:支配性论证/参数带 CI+稳健性/拟合常数禁当闸门;超额收益隔离与纯金流经 P15v2 §0 口径复核。
 
@@ -33,7 +33,7 @@
 
 | 锚 | 单篇值 | 直调复核 | 判定 |
 |---|---|---|---|
-| I_max=5 金/轮 | interest_with default_cap=5;INTEREST_THRESHOLD=50×INTEREST_RATE=0.1 | `cw_effect_ledger.py:141` default_cap=5、`cw_factions.py:134-135` 一致 | ✓ |
+| I_max=5 金/轮 | interest_with default_cap=5;INTEREST_THRESHOLD=50×INTEREST_RATE=0.1 | 直调时点:`cw_effect_ledger.py:141` default_cap=5、`cw_factions.py:134-135` 一致(**两锚已随死代码清偿移除**;现锚 = `cw_economy.interest` 的 `DEFAULT_INTEREST_CAP` = `cw_plane_table.GOLD_CAP_INTEREST//10` = 5,值口径不变) | ✓ |
 | I_max 例外域 | 单篇称「零参数上界」「registry interest_cap 单一派生源」 | ⚠️ `interest_cap_override` 存在(息律投资 cap→9/10,economy §10.1「⚠️ p47 的 cap=5 非恒定」);单篇未声明例外域 | **缺口** |
 | C_up 升级价表 | 「逐级价表,代码注册表单一源;本命题不授权数值」 | XP 表 {3:4..9:84}/XP_PER_BUY=4/单击价兜底 4 亲调一致;单篇不数值消费 | ✓ |
 | XP 表状态标注 | 单篇未引 ±20% | economy §9 已于 2026-08-31 ✅ 定谳(「文档里提供的升级所需经验表就是对的」)——**本件无 P39/P48 那类 ±20% 陈旧残留**(不消费 XP 数值,天然免疫) | ✓ 干净 |

@@ -21,7 +21,7 @@
 | 锚点 | P13 引用 | 注册表现值 | 判定 |
 |---|---|---|---|
 | NODES_PER_PLANE/TOTAL_NODES | 9/(27) | `kernel/cw_plane_table.py:29-30` =9/27 | ✅ |
-| interest(g)=min(g//10,cap) | cap=5 | `cw_plane_table.interest` + `cw_factions.INTEREST_THRESHOLD=50` | ✅ |
+| interest(g)=min(g//10,cap) | cap=5 | `cw_economy.interest`(`DEFAULT_INTEREST_CAP` = `cw_plane_table.GOLD_CAP_INTEREST=50`//10;原 `cw_factions.INTEREST_THRESHOLD` 锚已随死代码清偿移除) | ✅ |
 | STREAK_GOLD_TABLE 四档 | 0-1→1/2-4→2/5→3/6+→4 | `cw_economy.py:43` =(1,1,2,2,2,3,4) | ✅ |
 | 基础金 | `BASE_REWARD_GOLD` | **常量名不存在**——现名 `BASE_INCOME=5`(`cw_economy.py:63`),且实测分段表 `REWARD_BASE_GOLD_BY_ROUND={1:3,2:4}`(:76)已落地 | ⚠️ 名字失效+值系证明时点快照(脚本 :36-38 已自声明冻结口径,缓解) |
 | 败轮金 | (未建模) | `LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`(70) | ⚠️ 缺席(归门③) |

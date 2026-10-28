@@ -1,7 +1,8 @@
 """P37v2.1 晚转 XP 机会成本 期望口径闭合自检(实机口径重证版;print 仅 ASCII,不进 src)。
 
 复算证明文档 docs/game/currency_war/research/proofs/p37-late-xp-conversion-cost.md (v2.1):
-  (1) 注册表直调锚:利息律常量(INTEREST_THRESHOLD/INTEREST_RATE/回退 cap=THRESHOLD//10)
+  (1) 注册表直调锚:利息律常量(GOLD_CAP_INTEREST/息律闭式 cw_economy.interest/
+      回退 cap=DEFAULT_INTEREST_CAP)
       与息律投资 interest_cap_override 例外域(开源节流 9/利息上调 10/买断制 0);
   (2) 收益端期望口径 E[I_gain] = q_full x cap,按 resolved cap 域(5/9/10)分列
       —— q_full 主口径=实机 replay 语料 154 局健康带(r4-r7 ∧ hp>25)465 轮满息占比
@@ -25,13 +26,13 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'src'))
 
-from sr_od.application.currency_war.data.cw_factions import (  # noqa: E402
-    INTEREST_RATE,
-    INTEREST_THRESHOLD,
-)
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
+    DEFAULT_INTEREST_CAP,
     LOSS_GOLD_BY_NODE,
     STREAK_GOLD_TABLE,
+)
+from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
+    GOLD_CAP_INTEREST,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ECONOMY,  # noqa: E402
@@ -73,9 +74,9 @@ def hazard_per_round(lam3: float) -> float:
 def main() -> None:
     # ---- (1) 注册表直调锚 ----
     print('== (1) registry anchors (direct import, no transcription) ==')
-    base_cap = INTEREST_THRESHOLD // 10  # cw_economy L411 回退式同一口径
-    print(f'INTEREST_THRESHOLD={INTEREST_THRESHOLD} INTEREST_RATE={INTEREST_RATE} '
-          f'-> full-interest gold/round = {int(INTEREST_THRESHOLD * INTEREST_RATE)}; '
+    base_cap = DEFAULT_INTEREST_CAP  # 息律闭式派生 = GOLD_CAP_INTEREST // 10
+    print(f'GOLD_CAP_INTEREST={GOLD_CAP_INTEREST} (息封顶金位, rate=1/10) '
+          f'-> full-interest gold/round = {GOLD_CAP_INTEREST // 10}; '
           f'base_cap(fallback)={base_cap}')
     overrides = {k: v.interest_cap_override for k, v in STRATEGY_ECONOMY.items()
                  if v.interest_cap_override is not None}

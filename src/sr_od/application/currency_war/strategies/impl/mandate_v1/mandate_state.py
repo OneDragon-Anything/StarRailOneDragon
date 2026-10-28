@@ -11,16 +11,19 @@ one_dragon 零 import 本类。
 清单,本类 = 默认策略实现的全量 realization):
 
 - **K 方向**(配方方向)→ ``target_comp``(锁定线槽,键面
-  归一后 = 候选-锁定制终态单写者键)/``locked_line``/``bridge_id``/
-  ``transition_framework``/``pending_deploys`` 意向面族;
+  归一后 = 候选-锁定制终态单写者键)/``bridge_id``/
+  ``transition_framework`` 意向面族(原 ``locked_line``/
+  ``pending_deploys`` 死槽字段已随死代码清偿移除);
 - **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发出登记簿,五出口
-  生命周期)/``v3_release``(泄息指令)族;
+  生命周期)+ 义务披露面(``v3_release_spent``/``v3_release_budget``/
+  ``v3_release_reason``;原 ``v3_release`` 泄息指令死槽已随死代码
+  清偿移除);
 - **CommitSignals** → ``commit_signals``(定型信号累积器〔评估数据表,
   §1.6 边界外保留项〕,投资选卡帧惰性建);
 - **S1 开店标志/S2 wanted 残差** → 已删除
   (会话标记/会话循环承接);
-- **刷新推论** → ``v3_dir_refresh_used``/``v2_round_refreshes`` 等刷新
-  计数与推论面;
+- **刷新推论** → 无独立字段(原 ``v3_dir_refresh_used``/``v2_round_refreshes``
+  死槽已随死代码清偿移除;刷新推论 = 期望态新鲜度派生);
 - **S3 升级检查不立变量**——升级检查 = 期望态
   新鲜度派生,非存储旗标,本类禁新增对应字段。
 

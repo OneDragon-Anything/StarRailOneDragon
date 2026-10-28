@@ -192,7 +192,7 @@ def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
 
     q = 单次刷新 5 格出现至少 1 张该卡的概率,超几何精确算
     (``_refresh_dist`` k_need=1 的 P(0) 补);held = 已持有该卡基础副本数
-    (1星1/2星3/3星9 折算,``acquirability_factor`` 同口径)——持有越多
+    (1星1/2星3/3星9 折算)——持有越多
     牌库越薄,窗越长。
     :return: 期望等待帧数;p≤0(该级刷不出该费)或 P(≥1)=0 → inf。
     """

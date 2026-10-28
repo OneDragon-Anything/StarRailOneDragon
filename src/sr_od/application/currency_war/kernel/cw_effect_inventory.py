@@ -218,7 +218,7 @@ class ActiveEffectInventory:
     prep_actions._level_up
     (既有);结算挂点 = CwScreenBattleWait 结算观察写端(_record_round_outcome
     非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
-    零 BATTLE_END 条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
+    零战斗结算触发条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
     §7.4)。
     """
 
@@ -545,7 +545,8 @@ class ActiveEffectInventory:
 # 引 STRATEGY_ECONOMY 同实例的纪律同款);未入模环境登记 UnitBuffRef 占位
 # (效果原文存档,可见性优先,bot 零响应),G 组(ENV_GIFTS)占位 notes 附
 # GiftGrant 摘要。查询口 = inventory 现有
-# 遍历(by_source/by_category/first);本登记端零决策消费——经济判据接登记
+# 遍历(by_source/first;原 ``by_category``/``by_trigger``/``predict_for``
+# 查询口已随死代码清偿移除);本登记端零决策消费——经济判据接登记
 # 数据归后续批。
 #
 # **表为什么是惰性构建函数而非模块级常量**:payload 需 cw_investments 真类

@@ -22,7 +22,7 @@
 | 通道 | 适用面 | 载体 |
 |---|---|---|
 | obs（外部事件/世界真值） | 世界分支 + 呈现分支的状态事实 | ①后端直接 obs 写点（`sim/cw_sim_base.py::sim_evidence` 证据族，`sim:` 前缀）；②观察生成器产物经 `kernel/cw_screen_report/report_screen_<snake>_obs` 落容器（与实机观察上报同一写通道） |
-| logic_action（动作应用） | 动作的字段转移全集，登记面 = `SHOP_PROJECTION_DOMAINS`（gold/bench/shop/xp/level/deployed/board/equips） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作随机采样分支 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
+| logic_action（动作应用） | 动作的字段转移全集，登记面 = 上报函数族域覆盖（gold/bench/shop/xp/level/deployed/board/equips;原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除,全集见 [../game_state/action-logic-state.md](../game_state/action-logic-state.md) §2 头注） | 动作 op 组装后直调 `kernel/cw_action_report/report_action_<snake>_param`（sim 与实机同一段 op 代码，零私有动作语义）；带随机的动作随机采样分支 rng 经 `install_backend` 注入（键形 `action/<tool>/<序号>`） |
 | 节点推进 | 终结动作上报 | kernel `report_node_advance`（trigger 封闭集 {settle_confirm, supply_confirm}），sim 与实机同源 |
 
 后端私有簿记（**不写容器**）：offer 去重集、overlay 队列、触发水位标志、随机流键坐标簿记、待授予候选下标、幂等守卫键、局结果面（`hp_trail`/`disclosures`）——实机不可观察的采样簿记按容器字段判据留后端私有（sim-design §5.1）。
@@ -62,8 +62,10 @@ kernel 决策面公共读口族（kernel/cw_game_state.py）：`plane_of` /
 `round_num_of` / `node_kind_of` / `gold_of` / `level_of` /
 `deployed_rows_of` / `bench_view_slots_of` / `bench_entries_of` /
 `bench_units_of` / `back_capacity_of` / `deployed_count_of` /
-`front_count_of` / `back_count_of` / `max_units_of` + 席位派生判定
-`bench_free_slots` / `bench_is_full`。
+`max_units_of` + 席位派生判定
+`bench_free_slots` / `bench_is_full`（原 `front_count_of`/`back_count_of`
+前后排计数读口已随死代码清偿移除,前排/后排计数 = `deployed_rows_of`
+行视图派生）。
 读口负责缺省形态归一（未观察域按各读口 docstring 的缺省口径，如
 gold 未读 = 0、back_layout 未读 = 机制基线 6），禁消费点自写兜底造成
 第二源；后端在此之上另有 Field 直读（gs.shop.value/gs.equips.value 等）。

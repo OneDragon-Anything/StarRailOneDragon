@@ -1,6 +1,6 @@
 # 部署(deploy · 已停用的画面 op;部署 = 备战决策环动作)
 
-> **停用申报**:部署机画面 op `CwScreenDeploy`(原 `operations/cw_screen/cw_screen_deploy.py`,单 node 拖拽批处理)已停用删除——组合壳 RunDeploy 随动作类型清单统一而停用后,部署的生产路径 = **备战决策环动作**:动作发出核(`strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点)逐帧现算发 `CwActionDeployMoveParam` 原子序 → 决策动作 node 经 `prep_actions.py::PrepActionExecutor._deploy_move` 执行拖拽 → 动作自上报 `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param` 计算部署逻辑态 → 决策循环以逻辑态续算(无防御上限;不收敛 = 策略实现 bug)。本篇不再描述画面 op,仅作路径指针与历史交互模型的单一索引。
+> **停用申报**:部署机画面 op `CwScreenDeploy`(原 `operations/cw_screen/cw_screen_deploy.py`,单 node 拖拽批处理)已停用删除——组合壳 RunDeploy 随动作类型清单统一而停用后,部署的生产路径 = **备战决策环动作**:动作发出核(`strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点)逐帧现算发 `CwActionDeployMoveParam` 原子序 → 决策动作 node 经备战访问执行面按注册表 `action_op_for` 分派 `CwActionDeployMoveOp` 执行拖拽(原执行器薄委托 `prep_actions.py::PrepActionExecutor._deploy_move` 已随死代码清偿移除) → 动作自上报 `kernel/cw_action_report/deploy_move.py::report_action_deploy_move_param` 计算部署逻辑态 → 决策循环以逻辑态续算(无防御上限;不收敛 = 策略实现 bug)。本篇不再描述画面 op,仅作路径指针与历史交互模型的单一索引。
 >
 > 「前台无角色」场景 = 确认步(`cw_loop.py::_frontless_confirm_step`,点掉提示弹窗,零恢复动作)+ 备战环自然重部署(重观察发现 bench 有人 → mandate 发部署序);原「前台无角色」恢复链(直调已停用的部署机画面 op 重拖)已停用。
 
@@ -10,7 +10,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无画面 op——部署 = 备战决策环动作 `CwActionDeployMoveOp`(`CwActionDeployMoveParam`,注册表已登记行) | 备战决策环执行器 `prep_actions.py::PrepActionExecutor._deploy_move`(薄委托经注册表类级解析组装;动作发出核 = `strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点逐帧发序) | 自上报 `report_action_deploy_move_param`(`kernel/cw_action_report/deploy_move.py`;bench→deployed 槽位平移 + board 维护) | 否(非终结,`terminal=False`):部署序在备战决策环内消化,机械执行零判效,落地归下一帧观察对账、拖拽静默未生效由决策循环按新观察自然重派;本访问不因部署终结,结束本次访问由备战画面 op(`CwScreenPrep`)自身出口承载 |
+| 无画面 op——部署 = 备战决策环动作 `CwActionDeployMoveOp`(`CwActionDeployMoveParam`,注册表已登记行;备战访问执行面经注册表 `action_op_for` 分派,原 `prep_actions.py::PrepActionExecutor._deploy_move` 薄委托已随死代码清偿移除) | 动作发出核 = `strategies/impl/mandate_v1/mandate.py` R2〔原子部署〕步的动作发出点逐帧发序 | 自上报 `report_action_deploy_move_param`(`kernel/cw_action_report/deploy_move.py`;bench→deployed 槽位平移 + board 维护) | 否(非终结,`terminal=False`):部署序在备战决策环内消化,机械执行零判效,落地归下一帧观察对账、拖拽静默未生效由决策循环按新观察自然重派;本访问不因部署终结,结束本次访问由备战画面 op(`CwScreenPrep`)自身出口承载 |
 
 部署拖点坐标全部来自备战建档(`货币战争-备战.备战栏-N` → `货币战争-备战.前排-N`/`货币战争-备战.后排-N` 中心,`DragCwChar.drag_char` 中心拖 + hold0)。
 

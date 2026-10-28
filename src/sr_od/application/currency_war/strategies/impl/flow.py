@@ -120,10 +120,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def _create_state(self) -> StrategyState:
         """策略器状态对象工厂钩子实现(session.md §3.1/§5.1;决策-2)。
 
-        每局冷建 StrategyState(本核即 mandate_v1 流程核;sim 初始相位注入
-        经 ensure_strategy_state 构造入口,不经本钩子)。live 初值
+        每局冷建 StrategyState(本核即 mandate_v1 流程核)。live 初值
         v3_phase='FORM'(原 on_match_start 的唯一非零缺省随
-        生命周期并入迁入冷建口)。
+        生命周期并入迁入冷建口;原 sim 侧相位注入入口已随死代码清偿
+        移除——sim 直构不经本钩子时相位恒缺省 '')。
         """
         st = StrategyState()
         st.v3_phase = 'FORM'

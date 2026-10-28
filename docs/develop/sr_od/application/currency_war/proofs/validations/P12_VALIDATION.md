@@ -9,8 +9,8 @@
 ## 阅读门执行记录
 
 - **玩法文档全量(docs/game/currency_war/)**:gameplay.md(生命值/位面结构/难度段)、user_playstyle [17]/[18]/[27]/[28]/[39]/[40] 全文精读([39] 收口推论③④为关键)、economy.md §10.2 掉血结构与位面槽序、math_proofs.md 索引全文、p11/p15/p25/p27/p29 相邻证明(引用面)、final_comps/h3_tier_core_crosstab 仅查引用关系。**声明跳过**:data/characters/ 72 件角色档、final_comps 十类正文、advantage_layouts/bosses——本件命题(V_D 收益侧口径)与单卡数值/阵容知识/优势布局无消费点。
-- **注册表直调(值逐一亲核,不用被审方转述)**:`kernel/cw_registry.py`(rung_value{1:1.4,2:3.0}→Δ=1.6;h3_win_rate{1:0.416,2:0.778}→Δ=0.362;hp_to_gold=0.5;expected_battle_loss=10;battles_left_est=5;vd_p2_loss=20.05 含 CI 注释)、`data/cw_battle_tables.py`(P2_BATTLE_WIN_P=0.11/P2_LOSS_BAND=(15,17);w193 分段带 battle_r1(14,28)/early(4,16)/late(15,25)/encounter(9,18)/boss(21,26))、`data/cw_shop_odds.expected_refreshes_for_card`(全表亲算)、`decision_v2/scoring.py` L700-780(P2 分支落地实况)。
-- **06_input_model §3**:注册表地图与「未建模 doc 手工同步」边界,已读;掉血常数不在 §3 表内(在 `data/cw_battle_tables`,符合「游戏数据值只在代码」)。
+- **注册表直调(值逐一亲核,不用被审方转述)**:`kernel/cw_registry.py`(rung_value{1:1.4,2:3.0}→Δ=1.6;h3_win_rate{1:0.416,2:0.778}→Δ=0.362;hp_to_gold=0.5;expected_battle_loss=10;battles_left_est=5;vd_p2_loss=20.05 含 CI 注释)、原 `data/cw_battle_tables.py`(P2_BATTLE_WIN_P=0.11/P2_LOSS_BAND=(15,17);w193 分段带——**该回退层模块已随死代码清偿整删**,掉血锚现役 = registry `vd_p2_loss` + `cw_coarse_battle` 两态拟合)、`data/cw_shop_odds.expected_refreshes_for_card`(全表亲算)、`decision_v2/scoring.py` L700-780(P2 分支落地实况)。
+- **06_input_model §3**:注册表地图与「未建模 doc 手工同步」边界,已读;掉血常数不在 §3 表内(原在 `data/cw_battle_tables`,该模块已随死代码清偿整删,现役 = `cw_coarse_battle`/registry,符合「游戏数据值只在代码」)。
 - **公理栈**:零调参(估计必带 CI+稳健性划分)/参数溯源/超额收益隔离/纯金流(**P15v2 §0 明文:`hp_to_gold × L_c` 形态的消费违规,整改归 P51 落地;P51 v3:「血不入任何账与自变量」**)。**本件核心风险=收益主分量恰为该违规形态**,门⑤正面裁决。
 
 ---
@@ -39,7 +39,7 @@
 |---|---|---|---|
 | Δrung=1.6 / Δwin=0.362 / hp_to_gold=0.5 / loss=10 / battles=5 | P1 骨架五参数 | registry 逐项一致(rung_value/h3_win_rate/hp_to_gold/expected_battle_loss/battles_left_est) | ✓ |
 | benefit_P1 28.3-37.9「与 W152 回放 23-38 吻」 | 验源引用 | W152 语料已灭(见门④),吻合性不可复核 | ⚠ 不可验 |
-| 掉血带 15-17/败 | W151 四局 8 败实测 | `cw_battle_tables.P2_LOSS_BAND=(15,17)` 存在,但注释自引同一 w151_p2 语料=**同源循环,非独立锚**;独立锚=P15v2 冻结语料(tools/cw/proofs/p15,git 持久):P2 battle 弃删失均值 **16.23,CI [15.32, 17.14]**——带与 CI 几乎重合,数值面互恰 | ✓ 数值 / ⚠ 证据等级 |
+| 掉血带 15-17/败 | W151 四局 8 败实测 | 原 `cw_battle_tables.P2_LOSS_BAND=(15,17)` 曾存在但注释自引同一 w151_p2 语料=**同源循环,非独立锚**(该常量已随死代码清偿随模块整删);独立锚=P15v2 冻结语料(tools/cw/proofs/p15,git 持久):P2 battle 弃删失均值 **16.23,CI [15.32, 17.14]**——带与 CI 几乎重合,数值面互恰 | ✓ 数值 / ⚠ 证据等级 |
 | 对照 P15v2 实测带 | (单篇未对照,lossp 用 16 中值) | P15v2 稳健性划分:**P2 battle 删失 56% → 仅下界可引(9.47),真值 ∈[9.5,∞)**;P1 battle 10.35 [9.43,11.18] 证「P1≈10 骨架不假、P2>P1 方向真」;现行 registry `vd_p2_loss=20.05` CI[15.0,25.1],注释明言「**旧值 16.0 系实测带拍值,无标定依据,已重校**」 | **缺口:单篇 16 中值的点估计地位已被两方(P15v2 分级+registry 重校)撤销** |
 | w193 分段带 | (单篇用平带) | battle_early(4,16)/late(15,25)/r1(14,28)——掉血带随轮位强分段,平带 15-17 抹掉早段低损(4-16)与晚段高损(15-25) | ⚠ 结构简化未声明 |
 | 44.3 vs 16.9-22.3 | 拒绝域移动主锚 | 亲算 V(j=2)=+27.4/+22.0 复现 | ✓(在 loss=16 前提下) |

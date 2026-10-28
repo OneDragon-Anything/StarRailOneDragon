@@ -153,10 +153,10 @@ class PartnerOption:
 
 class PartnerPick:
     """kernel 时代伙伴选卡返回载体,已被 ``cw_vocab.CwActionPickPartnerParam``
-    替代(替代关系已登记 = cw_vocab 该类 docstring);现役仅 ``EVENT_PICK_TYPES``
-    登记在场(登记面,零生产零消费)。
+    替代(替代关系已登记 = cw_vocab 该类 docstring);现役零登记零消费
+    (原 ``EVENT_PICK_TYPES`` 登记面已随死代码清偿移除)。
 
-    [索引定义] idx:历史语义 = 候选列表下标 0 基(登记面保留,现役零消费)。
+    [索引定义] idx:历史语义 = 候选列表下标 0 基(现役零消费)。
     """
     idx: int
     reason: str = ""

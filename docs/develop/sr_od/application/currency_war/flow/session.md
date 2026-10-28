@@ -66,16 +66,16 @@
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 迁出落点(目标态归属) |
 |---|---|---|---|---|
-| `target_comp` / `target_drought` / `pending_deploys` / `transition_framework` | update_target 策略推导 | 部署/买入/卖出决策 | 局/轮 | MandateState.意向面 |
+| `target_comp` / `target_drought` / ~~`pending_deploys`~~ / `transition_framework` | update_target 策略推导 | 部署/买入/卖出决策 | 局/轮 | MandateState.意向面 ~~`pending_deploys` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
 | `commit_signals` / `stash_comp` / `commit_flip_pending` / `focus_factions` | 定型信号推导 | update_target 线选择 | 局 | MandateState.定型面 |
 | `last_candidate_scores` / `last_candidate_scores_round` | 选线轮评分推导 | 遥测、shop 侧陈旧判定 | 轮 | MandateState.推导缓存 |
 | `v3_intention` | cw_intention 状态机(策略判据层) | kernel/mandate/sim 广域只读 | 局 | MandateState(核心意向状态机) |
-| `v3_evolution` / `v3_core_names` / `v3_mode` / `v3_alarm` / `v3_pending_rollback` / `v3_prev_hp` / `v3_last_intention_event` / `v3_intention_key` | 意向/演进/纪律推导 | mandate_v1 决策、on_match_start 清零 | 局/轮 | MandateState |
+| `v3_evolution` / `v3_core_names` / ~~`v3_mode`~~ / `v3_alarm` / `v3_pending_rollback` / `v3_prev_hp` / `v3_last_intention_event` / `v3_intention_key` | 意向/演进/纪律推导 | mandate_v1 决策、on_match_start 清零 | 局/轮 | MandateState ~~`v3_mode` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
 | ~~`v3_blood_budget_rejects` / `v3_blood_budget_refresh_rejects`~~ | 血预算拒付披露(策略) | 遥测 | 局 | MandateState **〔已随 hp 判据族删除删除——MandateState 侧计数器与遥测透传字段同批删除〕** |
-| `v3_handoff` / `v3_handoff_plane` | 位面 2 承接快照(策略计算) | decide_prep | 位面 | MandateState |
-| `v3_posture_unfulfilled` | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState |
+| ~~`v3_handoff` / `v3_handoff_plane`~~ | 位面 2 承接快照(策略计算) | decide_prep | 位面 | MandateState **〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕** |
+| ~~`v3_posture_unfulfilled`~~ | 仲裁帧级重算(策略) | 对账门遥测 | 帧 | MandateState **〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕** |
 | `cw4_counters`(动态属性,非 dataclass 字段) | 策略行为观测分键(mandate_v1/encounter/shop/entry 多点写) | decisions 行、cw4_counters.jsonl 局终快照、sim 轮差分账本、A/B 披露 | 局 | MandateState;**遥测消费线必须随迁保持可读**(§5.4) |
-| `v2_state` / `locked_line` / `bridge_id` | 决策层相位元组/终局阵容锁定/桥线(初版误判停用;对抗审查 A2 改判——**活读端** = cw_screen_buy_cards.py:658-662 直接属性访问入 decisions 行;**原活写端** = 旧引擎 engine_p1.py:672/701,已随引擎停用消解,见 §5.6 as-built 注) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6) |
+| ~~`v2_state` / `locked_line`~~ / `bridge_id` | 决策层相位元组/终局阵容锁定/桥线(初版误判停用;对抗审查 A2 改判——活读端 = 商店执行回执 decisions 行,**原读端宿主 `cw_screen_buy_cards.py` 已随商店访问重构停用**;**原活写端** = 旧引擎 engine_p1.py:672/701,已随引擎停用消解,见 §5.6 as-built 注) | decisions 行遥测 | 局 | MandateState.相位面(sim 初始相位改经状态构造,§5.6)~~`v2_state`/`locked_line` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
 | `memory`(dict) | 策略 scratch | 策略临时变量 | 局 | **随切换直接消解**(§6.3,用户裁定) |
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 计划外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已停用删除——现行接管补采无 gs 字段,真值经位面详情屏写门落容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
@@ -110,12 +110,12 @@
 
 | 组 | 属性(逐个) | 产生者/消费面备注 |
 |---|---|---|
-| 相位与镜像(每轮重算) | `v3_phase` / `v3_form_ok` / `v3_b_t` / `v3_dp_posture` / `v3_mirror_key` | write_shop_mirrors 每轮写;`v3_form_ok` 原有 sim 直写点(engine_p1.py:1098,已随引擎停用消解,§5.6) |
-| 成型停手 | `v3_formed_stop` | **行为面消费** = cw_screen_prep.py:2173 决策豁免联动 + cw_screen_buy_cards.py:639 入 decisions 行(非纯遥测) |
-| 补偿/稳态簿记 | `v2_remedy_used` / `v2_steady_lv_used` / `v3_steady_lv_abandoned` / `v3_remedy_abandoned` |  跨局清零计数 |
-| 轮笔数披露 | `v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy` | 遥测判读面(journal/局档案) |
-| 富余金强制释放与跨位面承接 | `v3_release` / `v3_release_round` / `v3_release_spent` / `v3_handoff_gap` / `v3_handoff_hp_proj` | 富余金强制释放指令及其跨位面承接记录——「把利息线以上的富余金币强制花掉」姿态的状态与执行进度(语义见 proofs/p17、p18);`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250);`v3_handoff_hp_proj` **〔已随 hp 判据族删除删除——孤儿字段(无写端无读端)同批删除〕** |
-| 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy.py:662 消费)/ `v3_dir_refresh_used`(刷新消耗计数,cw_registry.py:836)/ `v3_alloc_frame`(DP 姿态轮帧缓存;原引擎消费点已随停用消解)/ `v3_reserve_cap`(储备线披露;原引擎消费点已随停用消解) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值) |
+| 相位与镜像(每轮重算) | `v3_phase` / `v3_form_ok` / `v3_b_t` / ~~`v3_dp_posture`~~ / `v3_mirror_key` | write_shop_mirrors 每轮写;`v3_form_ok` 原有 sim 直写点(engine_p1.py:1098,已随引擎停用消解,§5.6)~~`v3_dp_posture` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
+| ~~`v3_formed_stop`~~ | 成型停手 | **行为面消费** = cw_screen_prep 决策豁免联动 + decisions 行入行(非纯遥测;宿主画面 op 已随商店访问重构停用)——**〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕** |
+| ~~`v2_remedy_used` / `v2_steady_lv_used` / `v3_steady_lv_abandoned` / `v3_remedy_abandoned`~~ | 补偿/稳态簿记 |  跨局清零计数——**〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕** |
+| ~~`v2_round_refreshes` / `v2_round_p1_early` / `v2_round_p2_core` / `v2_round_press_exempt` / `v2_round_press_copy`~~ | 轮笔数披露 | 遥测判读面(journal/局档案)——**〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除;`v2_round_refreshes` 模块 docstring 残留引用同批清理〕** |
+| 富余金强制释放与跨位面承接 | ~~`v3_release` / `v3_release_round`~~ / `v3_release_spent` / ~~`v3_handoff_gap`~~ / `v3_handoff_hp_proj` | 富余金强制释放指令及其跨位面承接记录——「把利息线以上的富余金币强制花掉」姿态的状态与执行进度(语义见 proofs/p17、p18);`v3_release_spent`/`v3_reserve_cap` 是遥测透传源(telemetry/schema.py:424/433、recorder.py:241/250);`v3_handoff_hp_proj` **〔已随 hp 判据族删除删除——孤儿字段(无写端无读端)同批删除〕**~~`v3_release`/`v3_release_round`/`v3_handoff_gap` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
+| 消费侧惰性建 | `v3_registry`(A/B 注册表注入通道,cw_economy 消费)/ ~~`v3_dir_refresh_used`~~(刷新消耗计数)/ ~~`v3_alloc_frame`~~(DP 姿态轮帧缓存;原引擎消费点已随停用消解)/ `v3_reserve_cap`(储备线披露;原引擎消费点已随停用消解) | 惰性建模式迁 MandateState 具名字段(缺省值即现惰性初值)~~`v3_dir_refresh_used`/`v3_alloc_frame` 〔已删除——死槽字段(读写消费面为零)随死代码全量清偿移除〕~~ |
 
 **遥测承诺精确化(消解「session 只剩 30 项」与「遥测 schema 零改」的表面矛盾)**:§6.1 迁移清单**扩大到全部 104 项**(含本节 24 个动态属性);遥测承诺收窄为——**decisions/schema/jsonl 的序列化 schema 与格式零改,但全部数据源读点改为经访问函数抽自 MandateState**。session 字段数与遥测 schema 本就无蕴含关系(动态属性从来不进 asdict,遥测可见性从来全靠显式读点),初版「schema 零改」表述未点明该依赖链,此处显式化(对抗审查 C1 采纳)。
 

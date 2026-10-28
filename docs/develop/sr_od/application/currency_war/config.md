@@ -46,14 +46,16 @@
 - **阵营轴保留**(成就需要特定阵容,如 8减益 → `faction_build_around=['减益']`);
   `faction_build_around` 用 **all() 语义**(多个必含 = 全部在场,多羁绊成就要求),与角色轴 any() 刻意不同。
 - **必含轴保留**:成就局常需「一定用某阵容」,「优先」表达不了「一定」。
-- 消费端落点:comp 侧 `_passes_steering` 硬过滤 + `_priority_boost` 软加分
-  (select_comp);选卡侧 = 两屏策略层策略器(投资策略 = `invest_strategy`,
+- 消费端落点:选卡侧 = 两屏策略层策略器(投资策略 = `invest_strategy`,
   详见 [strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);
   投资环境 = `invest_env`,
   详见 [strategy-docs/28_invest_env_screen.md](../strategy-docs/28_invest_env_screen.md))
   消费 priority `STEERING_PRIORITY_BONUS`(常量在 mandate_v1/pick_common,两屏共用)/
   forbid = 排除出候选(不走分值;子串匹配 OCR 容错);若所有候选都被禁用,
   退回选扣分最少的候选;投资策略屏另有按血量安全度分三档的保底。
+  必含轴(`faction_build_around`)的 comp 侧原消费面(`_passes_steering`
+  硬过滤/`_priority_boost` 软加分/`select_comp` 选靶)已随死代码清偿移除,
+  配置面保留;现行阵容锁定 = 候选-锁定制(`session_scope.write_line_lock`)。
 - 预设(§3.2)打包这些轴,不自建平行评分。
 
 ### 3.2 预设(画像 2 的一键入口,后续做)

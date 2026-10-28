@@ -6,7 +6,7 @@
 
 ## 阅读门(第 0 门)覆盖声明
 
-已读:research 全部关键篇(README/math_proofs/combat/economy/user_playstyle 重点条目 [27]/[39]/[40] 及战斗掉血节/h3_tier_core_crosstab/transitions/transition_combos/stage_transitions/board_structure + proofs/p15、p12 交叉引读)+ data 全部未建模篇(gameplay/bosses(节选)/data README;competitors/plaza_meta/advantage_layouts 经 README 索引面核对)+ final_comps(README 全文,单类篇经索引面)+ 06_input_model §3 注册表地图。characters/ 72 档经全文 grep 扫描(掉血/扣血/败局/数值锚零命中——角色档不含 HP 侧常量,与本件无关,如实声明为扫描级而非逐字精读)。注册表直调:`cw_battle_tables.py` 全文、`cw_registry.py` L330-380、`cw_coarse_battle.py` 全文、`scoring.py`/`ev.py`/`discipline.py`/`allocator.py` 消费点。
+已读:research 全部关键篇(README/math_proofs/combat/economy/user_playstyle 重点条目 [27]/[39]/[40] 及战斗掉血节/h3_tier_core_crosstab/transitions/transition_combos/stage_transitions/board_structure + proofs/p15、p12 交叉引读)+ data 全部未建模篇(gameplay/bosses(节选)/data README;competitors/plaza_meta/advantage_layouts 经 README 索引面核对)+ final_comps(README 全文,单类篇经索引面)+ 06_input_model §3 注册表地图。characters/ 72 档经全文 grep 扫描(掉血/扣血/败局/数值锚零命中——角色档不含 HP 侧常量,与本件无关,如实声明为扫描级而非逐字精读)。注册表直调:原 `cw_battle_tables.py` 全文(该回退层模块已随死代码清偿整删,本件所引其常量随 git 历史可溯)、`cw_registry.py` L330-380、`cw_coarse_battle.py` 全文、`scoring.py`/`ev.py`/`discipline.py`/`allocator.py` 消费点。
 
 ## 门① 内部推导逐步核 —— **过(两命题推导成立),附一处量化口径缺陷**
 
@@ -23,7 +23,7 @@
 - `cw_registry.vd_p1_loss_intercept=11.32 / vd_p1_loss_slope_rung=-0.37`(单一源)✓;`cw_coarse_battle._LOSS_FIT['battle'][1]=(11.32, -0.37, 11.07)` 同值✓;胜率表 battle 各 rung n 合计 106+116+47+9=**278** = 证明文「n=278」✓。
 - 直方池均值复算 = **11.0686 ≈ 代码 pooled 11.07** ✓(内部一致)。
 - 消费面数值锚:`sim/checks/segments._P1_LEVELUP_STOP_HP=11 = ceil(1×(11.32−0.37×2))` 复算正确✓。
-- **对账 `cw_battle_tables` 掉血常量(任务指定项)**:11.32/−0.37 **不在** `cw_battle_tables`(其 P1 掉血常量是回退层另一套模型:`LOSS_BASE=7.0 / LOSS_PER_ROUND=4.0 / BOSS_BY_DIR_ROUND`,按**轮次**递增;r7≈−23)与粗模型(按**成型档**,battle 败局均值≈10.6-11.3)**双源并存且量级不同**——语义不同(回退层含位置递增 B,粗模型是 B+P 混合均值),非矛盾,但注册表层存在两套掉血常数无互指声明,消费混用风险应登记。
+- **对账 `cw_battle_tables` 掉血常量(任务指定项)**:11.32/−0.37 **不在**原 `cw_battle_tables`(其 P1 掉血常量是回退层另一套模型:`LOSS_BASE=7.0 / LOSS_PER_ROUND=4.0 / BOSS_BY_DIR_ROUND`,按**轮次**递增;r7≈−23)与粗模型(按**成型档**,battle 败局均值≈10.6-11.3)**双源并存且量级不同**——语义不同(回退层含位置递增 B,粗模型是 B+P 混合均值),非矛盾,但注册表层存在两套掉血常数无互指声明,消费混用风险应登记(**后续处置:回退层模块已随死代码清偿整删,双源并存面消亡,粗模型为唯一掉血标定源**)。
 - **框架预判证实:上游无 CI**。证明文与 registry 只给斜率 SE=1.25(注释文本,非机器可读);**截距 SE/CI 全缺**;拟合语料目录 `.debug/temp/currency_war/w324_coarse_battle/`(含 fit_results.json/corpus/拟合脚本)已被临时文件清理**删除**(.debug 不入 git)——当前拟合**不可独立复现**,这是拟合件按公理「显式模型形态成立」的硬伤。
 
 ## 门③ 建模对象 vs 玩法文档原文 —— **过(机制方向一致),附混杂警告**
@@ -64,7 +64,7 @@
 | 门 | 判定 | 一句话依据 |
 |---|---|---|
 | ① 内部推导 | **过**(附缺陷) | 两命题代数/计数逐位复核全对;③ 数值全对 |
-| ② 数值锚点 | **不过** | 锚点可对但截距 CI 全缺、斜率 CI 仅存注释、源语料已删不可复现;cw_battle_tables 另一套掉血常数双源无互指 |
+| ② 数值锚点 | **不过** | 锚点可对但截距 CI 全缺、斜率 CI 仅存注释、源语料已删不可复现;原 cw_battle_tables 另一套掉血常数双源无互指(该回退层已随死代码清偿整删,双源面消亡) |
 | ③ 建模对象 | **过**(附边界) | 与 combat §3/[27] 机制方向一致;但现行 hp_to_gold×L_c 消费违金流公理,须改道 λ_death |
 | ④ 实证 | **不过** | 账本=同系数粗模型生成(循环)+ legacy 三批重复 + 独立实测语料已删 |
 | ⑤ 参数溯源 | **不过** | 斜率 CI 含 0;授权带放宽量与整数倍闸在 CI 内翻转;battles_left 阶梯与 P51 消费方向稳健 |
@@ -78,4 +78,4 @@
 3. **【口径修正】收益式按节点类型分段**:`Σ_类型 L_c(类型)×该类型剩余数`(encounter/boss 档已在 registry),替换「battle 档 × 全战斗计数」的低估——属证明文量化层修正,不触命题。
 4. **【消费面整改,随 P51 落地】**`hp_to_gold × L_c` 价值换算通道按金流公理退役:伤害只进 λ_death 的概率侧(桶×节点胜率×槽序计数合成)与机制叙述;授权带类消费改经 W_floor。P15 单篇补「消费边界」节注明。
 5. **【扩样清单】**:①battle rung2/r3 败局样本(现 n=47/9,battle rung3 不可辨)→ ≥30/格;②boss/encounter 高 rung 胜率薄桶(n=3/2)→ P51 λ_death 的真瓶颈,≥20/格;③P2 段语料(现 plane2 全靠别名,已知偏差 boss 均损 +4.57/钳制率 −38.8pp);④结算屏三项拆解字段进遥测(为建议 2 供数);⑤台账生成器修 legacy 同臂三批重复问题(或合并统计时披露去重)。
-6. **【注册表卫生】**`cw_battle_tables`(回退层,按轮次)与 `cw_coarse_battle._LOSS_FIT`(两态,按成型档)两套掉血常数加互指注释,防消费混用。
+6. **【注册表卫生——已结案】**原 `cw_battle_tables`(回退层,按轮次)与 `cw_coarse_battle._LOSS_FIT`(两态,按成型档)两套掉血常数的互指注建议:回退层模块已随死代码清偿整删,双源并存面消亡,`cw_coarse_battle` 为唯一掉血标定源,互指注不再需要。

@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `test_shop_projection_logic`)。登记面 = `SHOP_PROJECTION_DOMAINS`,本动作涉及的写域:
+容器(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `test_shop_projection_logic`)。域集全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注(原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除),本动作涉及的写域:
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|

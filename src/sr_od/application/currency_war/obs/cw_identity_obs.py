@@ -1594,7 +1594,7 @@ def read_ore_sights(ctx: SrContext, screen: MatLike,
 
     ``prev`` = 上一帧原始读数(两帧持存交叉验证;None = 首帧单帧采信,
     语义见 ``filter_persistent_ores``)。另:会话幻晶矿黑名单
-    (``note_phantom_ore`` 登记,点击后零消失的坐标)在此读侧过滤 ——
+    (会话属性 ``ore_phantom_points``,当前零写端恒空)在此读侧过滤 ——
     黑名单坐标不再进返回值,采晶矿环由此获得「放弃该目标」的出口。"""
     rect = _area_rect(ctx, '区域-奖励')
     if rect is None:

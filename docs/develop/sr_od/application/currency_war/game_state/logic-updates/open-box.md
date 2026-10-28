@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击占备战席 1 槽的补给箱道具开启:**终结动作**(= 发出后结束本次访问,返回主循环重新识别画面)——开箱即引入新事实(武装箱选择画面弹出),执行即本访问结束,返回主循环分发选卡。op 载体 = `operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal=True`,`terminal_wait=1.8s`;体迁薄委托 = `prep_actions.py::PrepActionExecutor._open_box`);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenBoxParam`(`slot: int | None`,None = 第一箱)。发出条件 = 备战策略产出 OpenBox。
+点击占备战席 1 槽的补给箱道具开启:**终结动作**(= 发出后结束本次访问,返回主循环重新识别画面)——开箱即引入新事实(武装箱选择画面弹出),执行即本访问结束,返回主循环分发选卡。op 载体 = `operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal=True`,`terminal_wait=1.8s`;体迁自执行器,原薄委托 `prep_actions.py::PrepActionExecutor._open_box` 已随死代码清偿移除,执行 = op 直执行 + 自上报);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenBoxParam`(`slot: int | None`,None = 第一箱)。发出条件 = 备战策略产出 OpenBox。
 
 ## 2. 逻辑态域集
 

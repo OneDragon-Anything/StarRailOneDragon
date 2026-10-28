@@ -24,8 +24,8 @@ row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 ar
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(刹车/回执登记与机械原语)与
-原方法薄委托(替身缝)。
+runner 包络(刹车/回执登记与机械原语)与薄委托族(替身缝:八桩零调用
+已删,``_open_bookcard`` 因单帧测试直调面保留)。
 """
 from __future__ import annotations
 
@@ -398,15 +398,15 @@ class PrepActionExecutor:
     # ===== 奖励域 =====
 
     def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;替身缝保留——测试直调面沿此缝)。"""
+        """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;
+        替身缝保留——真实保留理由 = 单帧测试直调面:
+        ``sr-od-test/test/sr_od/application/currency_war/operations/cw_op/
+        test_prep_action_ops.py::test_open_bookcard_executor_mechanical``
+        以本方法为入口驱动 op 机械行为;src 生产面零调用,分派单一形态
+        = 注册表 ``action_op_for``)。其余八桩(_collect_ore/_open_box/
+        _open_tome/_sell_bench/_sell_deployed/_deploy_move/_wear_equip/
+        _use_tool)全仓零调用含测试,已删。"""
         return self._dispatch_action(action)
-
-    # ===== 席位域 =====
-
-    # (薄委托 _collect_ore/_open_box/_open_tome/_sell_bench/_sell_deployed/
-    #  _deploy_move/_wear_equip/_use_tool 已删:分派单一形态 = 注册表
-    #  action_op_for(_dispatch_action),薄委托体全仓零调用含测试——
-    #  替身缝宣称的测试直调面仅 _open_bookcard 在场。)
 
     # ===== 装备/工具原子域(穿戴 / 工具按消耗品各立类;机械原语
     #       _equip_slot_drag_point/_owned_grid_locate

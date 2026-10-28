@@ -1,4 +1,4 @@
-"""货币战争 阵容库 + 战略层评分(comp_score / select_comp;纯逻辑,可测,不碰游戏)。
+"""货币战争 阵容库 + 战略层评分(comp_score;纯逻辑,可测,不碰游戏)。
 
 战略层:围绕目标阵容 commit + 转型 + 巨星。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
@@ -9,7 +9,9 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(strength/form_difficulty/level_plan 取舍)—— ``plaza_carry`` 字段
   是两层交叉核对锚点。覆盖易/中/难成型 + 各机制(含 debuff=buff 的燃血、augment 定义型的黑塔纪元)。
-- ``comp_score`` / ``select_comp``:按场面(gold/轮次/boss/已持牌/环境/词缀)多维打分选 target。
+- ``comp_score``:按场面(gold/轮次/boss/已持牌/环境/词缀)多维打分(评估数据面;
+  目标阵容锁定 = 候选-锁定制 ``session_scope.write_line_lock``,原 ``select_comp``
+  选靶入口已随死代码清偿移除)。
 
 **核心原则(用户 2026-08-03,贯彻全程)**:
 1. **一切阵容相关** —— equip/mechanics 都挂钩目标阵容,无孤立评分(不设通用 equip_score/词缀表)。
@@ -276,7 +278,7 @@ def derive_key_equips(comp: Comp) -> list[str]:
 
 @dataclass
 class ScoreContext:
-    """select_comp / comp_score 的每回合上下文(避免长参数列表)。"""
+    """comp_score 的每回合上下文(避免长参数列表)。"""
     bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=简报源未读得位,保位列表——实采源恒全识别)
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(AFFIX_MECHANIC_MAP 归一)
     env: str = ""                                                # 已选投资环境名(env_fit)
@@ -1152,7 +1154,7 @@ COMP_LIBRARY: list[Comp] = [
         # 白厄无阵营(cw_chars:104 factions=""),独立羁绊「救世主」(获所有前台非独立羁绊效果)。
         # 反甲流靠白厄单核 + 以牙还牙甲×3 受击反伤,**不靠阵营羁绊成型** → factions/form_tiers 空。
         # 阵容靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
-        # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),select_comp 候选但 progress 低。
+        # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),选靶候选但 progress 低。
         key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
         # boss 键规范名(BOSS_NICKNAMES:酒杯怪=造梦兄弟影业/琥珀王=铁盾安保集团/
         # 死龙=灰手生命科技;「红绿灯」经用户确认是小怪非 boss(2026-08-17),移除不建模)
@@ -1793,7 +1795,8 @@ def shop_supply(comp: Comp, gs: GameState) -> float:
     """阵容核心阵营的**本回合** shop 可得性 [0,1](shop-aware)。
 
     现仅用于 **drought bail 判定**(连续 N 回合 supply<1.0 → 弃不可达 target 重选;default 栈 drought bail 已停用,本函数保留为待办层消费面),
-    **不再驱动 select_comp**(:select_comp 改用理论 acquirability_factor,刷新独立 → 观察/单回合
+    **不进选靶评分**(原 select_comp 消费位及其理论可得性读口 `acquirability_factor`
+    已随死代码清偿移除——shop 可得性对选靶刷新独立 → 观察/单回合
     shop 无预测力)。保留本函数因 drought 需「本回合 shop 是否供得上核心」的实时观察。
 
     - 阵营在 **shop(本回合可买)** 出现 → **1.0**(本回合买得到核心牌 → drought 归 0)。
@@ -1912,7 +1915,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
 
     每张持有策略的绑定(``strategy_bindings``,派生)∩ 阵容(阵营/core 角色)命中 → 该策略
     对此阵容加成。归一 0..1:0.5 中性(无策略/无命中),每命中 +0.25 封顶 1.0(星徽套组双命中
-    = 三件套到手 → 1.0 满分,comp_score 显著抬 → select_comp/方向重估自然转向)。
+    = 三件套到手 → 1.0 满分,comp_score 显著抬 → 方向重估自然转向)。
     **augment 定义型阵容**:命中 ``AUGMENT_COMP_AFFINITY``(黑塔纪元/飞光等)按亲和
     覆盖计分(0.5 + 0.5×affinity)—— 拿到黑塔纪元对大黑塔阵容即 1.0,近乎硬绑(env_fit 同款语义)。
     无持有策略 → None(动态权重剔除,与 env_fit 同语义)。
@@ -1981,8 +1984,8 @@ def strength_base(comp: Comp) -> float:
 # ===== comp_score(候选阵容综合分)=====
 # 权重 = 各维度**importance 先验**(V4.4 research meta 校准;归一化 sum=1.0)。开发者阶段 6 手调(内部)。
 # 2026-08-04 实跑校准:W_PROG 0.35→0.45 / W_STR 0.10→0.05 / W_MECH 0.20→0.15。
-# 根因:select_comp 卡在无 progress 的高 strength 阵容(列车同行 S=1.0),但商店没刷其牌 → 不收敛、
-# 超长战斗。提 W_PROG 让 select_comp 偏好**可成型**(board 已有 progress,如 万敌 燃血:1)阵容而非
+# 根因:选靶评分卡在无 progress 的高 strength 阵容(列车同行 S=1.0),但商店没刷其牌 → 不收敛、
+# 超长战斗。提 W_PROG 让评分偏好**可成型**(board 已有 progress,如 万敌 燃血:1)阵容而非
 # 高强度不可成型。算账:万敌(progress0.125,str0.4) vs 列车同行(prog0,str1.0),旧 0.084<0.1(列车同行赢);
 # 新 0.45*0.125+0.05*0.4=0.076 > 0.45*0+0.05*1.0=0.05(万敌赢)= 选可成型。
 #

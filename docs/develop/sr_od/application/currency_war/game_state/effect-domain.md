@@ -44,8 +44,9 @@
   `game_state_of(session).effects`(同一实例,防第二账本)。
 - 写入方(接入点)六处在用,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
   效果域直摸测试(journal.md §6 硬约束①族)。
-- 读取入口 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/
-  `predict_for`;`by_source` 按 source='strategy'/'affix' 取值分源读,词缀源读取入口)。
+- 读取入口 = 查表方法(`by_source`/`first`/`counter`;原 `by_category`/`by_trigger`/
+  `predict_for` 查询口已随死代码清偿移除——在用读取 = 按源过滤与逐条直取;
+  `by_source` 按 source='strategy'/'affix' 取值分源读,词缀源读取入口)。
   对决策的输出 = 在场事实与进展读数;哪些效果需要决策姿态响应,由效果规格 duties
   声明承载(§8)。
 
@@ -179,12 +180,13 @@
 
 ### 7.1 声明面
 
-- `TriggerKind` 10 值(kernel/cw_effect_inventory.py:31-42):INSTANT / PLANE_START /
-  NODE_ENTER / BATTLE_END / LEVEL_UP / ON_REFRESH / ON_MERGE / ON_SELL /
-  SUPPLY_PHASE / CONDITIONAL。
-- `DurationKind` 4 值(:45-50):once / permanent / n_nodes / while_held(与持有绑定,
+- `TriggerKind` 7 值(kernel/cw_effect_inventory.py:55-63):INSTANT / PLANE_START /
+  NODE_ENTER / LEVEL_UP / ON_REFRESH / ON_MERGE / CONDITIONAL
+  (原 `BATTLE_END`/`ON_SELL`/`SUPPLY_PHASE` 三值在用零条目,已随死代码清偿移除,
+  见 §7.4)。
+- `DurationKind` 4 值(:66-71):once / permanent / n_nodes / while_held(与持有绑定,
   策略卡缺省;独立值供词缀源对齐语义)。
-- `EffectKind` 4 值(:53-58):economy / state / battlefield / unit_buff(unit_buff =
+- `EffectKind` 4 值(:74-79):economy / state / battlefield / unit_buff(unit_buff =
   游戏侧自算、bot 仅登记零响应,payload=`UnitBuffRef` :81-84)。
 - 规格载体 = `EffectSpec` 四元组(trigger × duration × category × payload)+ 键面
   (id/name 与官方数据层双匹配)+ 二义标注(pending/verdict/notes,pending 条目必带
@@ -251,27 +253,29 @@
 - **结算接入点现状**:`on_battle_end` **已接线**(kernel/cw_effect_inventory.py 定义;
   生产宿主 = CwScreenBattleWait 结算覆盖带 `_record_round_outcome` 非 telemetry_only
   分支,apply_settlement_cover 同分支同时序,独立 best-effort try 不与结算覆盖写入方
-  共享异常域)。注册表在用零 BATTLE_END 条目(§7.4)→ 行为面 = 结算事件标记
-  (`_EVENT_BATTLE_END`);条目计数/余量推进随建模批立 BATTLE_END 条目后经同一接入点
+  共享异常域)。注册表在用零战斗结算触发条目(§7.4)→ 行为面 = 结算事件标记
+  (`_EVENT_BATTLE_END`);条目计数/余量推进随建模批立战斗结算触发条目后经同一接入点
   自动生效,无需再改接线。
 
-### 7.4 零注册枚举值申报
+### 7.4 战斗结算/出售/补给触发(零注册申报)
 
-`BATTLE_END`/`ON_SELL`/`SUPPLY_PHASE` 三值在用零条目——枚举值**保留**(环境源与新卡
-建模的语义对齐预留),零条目 = 零驱动,不建事件。`ON_MERGE` 已有词缀源条目(**变宝
+战斗结算(`BATTLE_END`)/出售(`ON_SELL`)/补给(`SUPPLY_PHASE`)三类触发语义在用
+零条目,枚举值**未建**(原预留枚举值已随死代码清偿移除——在用零条目 = 零驱动,
+枚举成员随启用批按需新增),不建事件。`ON_MERGE` 已有词缀源条目(**变宝
 为废**,`AFFIX_EFFECT_SPECS`,§7.6);投资策略侧 ON_MERGE 仍零条目,候选驱动卡 =
 武力刷新(合成装备,官方限定「合成装备时」)。其余候选驱动卡(按卡文触发语义归类):
-按劳分配·剩余价值·无伤通关(战斗结算,BATTLE_END)/人力重组出售面(ON_SELL)/
-补给时点族(SUPPLY_PHASE)——启用 = 各自建模批先立规格条目、再接事件源,启用前按
+按劳分配·剩余价值·无伤通关(战斗结算)/人力重组出售面(出售时)/
+补给时点族——启用 = 各自建模批先立枚举值与规格条目、再接事件源,启用前按
 §6 观察收尾兜底。
 
 ### 7.5 事件框架已关闭(hook 机制不建)
 
 效果域的事件驱动 = 单版本事务内既有接入点(§7.3)+ state 内部派生;**不建**独立战斗
 结算事件、事件选择事件与 hook 订阅框架。依据:①注册表支撑为零——`STRATEGY_EFFECTS`
-零 BATTLE_END、零选择触发条目(§8 全表);②结算数据链路已在用零缺口(结算屏
-观察 → settlement 域覆盖 → 策略器惰性消费);③inventory 查询口 `by_trigger`/
-`predict_for`/`event_count` 无生产调用方(grep 可复核);④总纲设计理念「无独立事件流,
+零战斗结算触发、零选择触发条目(§8 全表);②结算数据链路已在用零缺口(结算屏
+观察 → settlement 域覆盖 → 策略器惰性消费);③inventory 触发过滤查询口已随死代码
+清偿移除(原 `by_trigger`/`predict_for` 无生产调用方;在用查询 = `by_source`/`first`/
+`event_count`,grep 可复核);④总纲设计理念「无独立事件流,
 一切派生产出都是 state 写入」(总纲 §2 理念 2)。
 
 ### 7.6 词缀源(source='affix')

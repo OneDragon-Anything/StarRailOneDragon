@@ -1065,7 +1065,7 @@ class CwScreenPrep(CwOperation):
         收起返回 True;非开态(真特效/overlay)返回 False。
 
         防线定位(0n 分支落地后):主防线已前移至外循环 0n 分支
-        (cw_loop `_shop_open_anchors_hit` 路由,商店态禁部署/出战调度);
+        (cw_loop 按「货币战争-备战-开商店」子态屏名路由,商店态禁部署/出战调度);
         本守卫降级为纵深防御二层——0n 分支漏收帧(如「备战阶段」OCR
         抖动)或入口绕过路由时兜底,语义不变。
 

@@ -52,7 +52,7 @@
 | 健康带 | r4-r7 ∧ hp 未入应急带(hp>emergency_hp=25)的非危机决策帧 | 应急带谓词的对偶;位面中期主经济窗 |
 | τ | 首达 lv7 的回合号(代理变量) | sim 找问题批 §1.3 口径;XP→等级→板深逐轮结转,τ 是「攒金晚转」的直接读数 |
 | q_full | 健康带满利息轮占比(行末金≥50)= **0.269(实机,点)** | 实机 replay 语料 154 局健康带 465 轮,run 级 cluster bootstrap 95%CI [0.212, 0.328];前后半 0.259/0.278 稳定;位面 1 0.261/位面 2 0.375 分列(§2A);sim 找问题批旧带 0.17-0.25 已被击穿,仅作对照;部分利息成分未测=敏感项(§1-B) |
-| cap | 单轮利息上限 = 5 金(实际生效值:默认局 5;利息规则投资局 9/10/0,见 §1-B 例外域) | `cw_factions.py` `INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`;`cw_effect_ledger.py interest_with(default_cap=5)`;`cw_investments.py STRATEGY_ECONOMY` override 域 |
+| cap | 单轮利息上限 = 5 金(实际生效值:默认局 5;利息规则投资局 9/10/0,见 §1-B 例外域) | 息律闭式本体 = `cw_economy.interest`(min(g//10, cap)),cap 缺省 = `cw_plane_table.GOLD_CAP_INTEREST//10 = 5`(`cw_economy.DEFAULT_INTEREST_CAP` 派生;原 `cw_factions.INTEREST_THRESHOLD/INTEREST_RATE` 与 `cw_effect_ledger.interest_with` 锚已随死代码清偿移除);override 域 = `cw_registry.interest_cap`(`cap_resolved_of_session` 聚合)/`cw_investments.py STRATEGY_ECONOMY` |
 | E[I_gain] | 延迟一轮的期望利息收益(期望口径,q_full×cap) | v2.1 主式收益端;**1.34 金/轮(点,默认域)**,CI [1.06, 1.64] |
 | L(τ) | 终局 hp 关于 τ 的条件中位曲线;每晚 1 轮 ≈ −5~−8 hp | **保守折价假设(关联级)**:sim 找问题批代理,含强选择效应;非「实测」(v2 降格,§2) |
 | ρ | hp→金当量显式模型参数(金/hp),消费带 [0.25, 0.5] | **拟合参数声明**:0.5=已作废注册表锚的敏感性上端(仅锚定),0.25=折半保守端;禁当闸门(§1-C) |
@@ -205,7 +205,7 @@ economy §7 阶段共识:**中期(位面 2)「稳定 ≥50,用利息升人口为
 | λ3 分层表 | P51 v3 §4-B-2(p≤7×battle 0.065 [0.046,0.086];run 级 cluster bootstrap;R=事后量等口径注见 P51 §5-10/§5-11) |
 | 败局伤害带 | P15v2(重新推导件,docs/game/currency_war/research/validations/P15v2_REPROOF.md;语料入库 tools/cw/proofs/p15)——仅概率侧/机制叙述消费 |
 | 连胜/败金表 | `cw_economy.py` `STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)` / `LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}` |
-| 常量单一源 | `cw_factions.py` `INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`;`cw_effect_ledger.py` `interest_with(default_cap=5)`;override 域=`cw_investments.py` `STRATEGY_ECONOMY`(开源节流 9/利息上调 10/买断制 0);利息档口径 `ev.interest_cost` |
+| 常量单一源 | 息律闭式本体 = `cw_economy.interest`,cap 缺省 = `cw_plane_table.GOLD_CAP_INTEREST//10 = 5`(原 `cw_factions.INTEREST_THRESHOLD/INTEREST_RATE` 与 `cw_effect_ledger.interest_with` 锚已随死代码清偿移除);override 域=`cw_investments.py` `STRATEGY_ECONOMY`(开源节流 9/利息上调 10/买断制 0)/`cw_registry.interest_cap`;利息档口径 `ev.interest_cost` |
 | 机制原文 | gameplay.md(等级→可上阵数量)、economy §2.1(升级不刷新商店)、economy §7(阶段共识)、economy §10.1(利息规则投资四类修正)、user_playstyle [32](人口 cap 当场生效) |
 | 决策记录 | (未证命题纪律);(应急带谓词);(XP 门槛即升);(连胜/败金表);P13(守 50 期望账) |
 | 关联命题 | P21/P23/P28/P33/P39/P47/P48/P51/P15v2 单篇(`proofs/` 目录);strategy-work §3(落地分档政策) |
@@ -214,7 +214,7 @@ economy §7 阶段共识:**中期(位面 2)「稳定 ≥50,用利息升人口为
 
 1. **量级复现测试**:按 §5 批规格复跑,§2 首达 lv7 三桶中位(41/33/30)与配对差(−15、23.2%)应在批内冻结样本域复现;池指纹不一致时数字不可跨比。L(τ) 补 CI(按批规格复跑 bootstrap)列为待办(验证建议 5)。**q_full 实机测试(v2.1 新)**:对 replay 语料按 §2A 口径重算,125/465=0.269 与 CI [0.212,0.328] 应复现(语料追加时按新全量重算并回填 §2A,点估计漂移 >0.03 时本篇裕度行需重标)。
 2. **A/B 回填测试**:早升分支 A/B 判读后,本篇 §4-1 判据行与 math_proofs P37 行须同批回填数字与结论兑换结果(回填只填数字与判决,禁改判据;判负则按 strategy-work §3 只留档不实现)。
-3. **闭合复算测试(脚本)**:`uv run python tools/cw/proofs/p37/p37v2_ev_closure.py` 全绿——断言测试 E[I_gain]pt=1.34(CI [1.06,1.64]) / λ 带 [0.78,1.48] / 败局金差 3-8 / ρ\*=0.269 / 默认域 ρ=0.5 最劣格 1.86× 与 **cap10 域 <1×(翻转)** 与 **ρ=0.25 格 <1×(翻转)**(v2.1 实机口径数字依据);注册表锚直调(INTEREST_THRESHOLD/RATE、override 域、连胜/败金表),值变更时脚本先红。
+3. **闭合复算测试(脚本)**:`uv run python tools/cw/proofs/p37/p37v2_ev_closure.py` 全绿——断言测试 E[I_gain]pt=1.34(CI [1.06,1.64]) / λ 带 [0.78,1.48] / 败局金差 3-8 / ρ\*=0.269 / 默认域 ρ=0.5 最劣格 1.86× 与 **cap10 域 <1×(翻转)** 与 **ρ=0.25 格 <1×(翻转)**(v2.1 实机口径数字依据);注册表锚直调(息律闭式/GOLD_CAP_INTEREST、override 域、连胜/败金表;原 INTEREST_THRESHOLD/RATE 锚名已随死代码清偿移除,脚本锚位随本批对齐),值变更时脚本先红。
 4. **敏感项测试(review 检查项)**:部分利息成分(只会推高 E[I],加剧下端翻转)与 cap9/10 域 q_full 行为未测(实机位面 2 段 0.375 提示高位面更高)——任何消费方引用裕度必须限定「默认利息规则域、ρ=0.5 锚、实机 q_full=0.269 单语料点估计口径」三个前提,且**禁止再引「2× 裕度」**(点口径 1.86×、CI 上端 1.52×)。
 5. **适用范围护栏测试**:任何消费本命题的策略改动不得引用其数值授权濒死/应急带升级行为(§3.1 反向护栏);cap10 域(利息上调)不得引用本命题符号闭合(§1-E 翻转行)。
 

@@ -5,9 +5,13 @@
 > sim61/62/63 三批全量:n=90 局 / 981 决策帧 / 108 场 boss 战,非抽样;
 > 明细与脚本在 `未入库临时档案(git 外)currency_war/form_score_predicate/`,判读
 > 出口已正式化)。
-> 口径:form_score = min(2, E + 0.3·Φ)/2,写者 = `flow.py`
-> `_restore_form_score_writer`;E = `cw_deploy_logic.engines_count`
-> (四体系引擎计数),Φ = `cw_line_defs.recipe_tier/RECIPE_BASE`。
+> 口径:form_score = min(2, E + 0.3·Φ)/2,写者 = 原 `flow.py`
+> `_restore_form_score_writer`(form_score 写面已由 B_t 替代口径承载,
+> 现役披露 = `cw_deploy_logic.board_target_line_weight`);E =
+> `cw_deploy_logic.engines_count`
+> (四体系引擎计数),Φ = `recipe_tier/RECIPE_BASE`(现载体 =
+> `kernel/cw_card_identity.py` 消费边,权威副本原在
+> `knowledge/cw_line_facts`,该副本已随死代码清偿移除)。
 
 ## 命题(形式化)
 

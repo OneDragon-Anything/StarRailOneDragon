@@ -7,15 +7,13 @@
 (n=35)—— 方差结构显著(>>桶宽 5),非近确定;决策点 hp 分布三区结构真实(0-39 占 43%
 = 临界+必死边缘大有人在)→ K0 止损门**通过**,分布 DP 立项成立。
 
-**v0 落地**(纯函数,离线):
-- ``first_passage_win(board_tier, hp, nodes_left)``:掉血桶分布(先验 × 二项抖动)下的
-  生存首达概率 —— gambler's ruin 的离散化数值积;
-- ``risk_posture(board_tier, hp, nodes_left)``:三区律(盈余/临界/必死边缘),边界由
-  P(win) 对 hp 的导数(λ_hp 峰形)解出;
-- ``p_win_lambda(board_tier, hp, nodes_left)``:λ_hp = P(win|hp+1) − P(win|hp)(峰形曲线)。
+**落地**(纯函数,离线):
+- ``hp_floor(board_tier, nodes_left, target_pwin, plane)``:hp 地板反解——最小 hp 使
+  P(win) ≥ target_pwin(「手写门变模型定理」的出口;消费位 = sim ``cw_sim_battle``)。
+  原 ``first_passage_win``/``risk_posture``/``p_win_lambda`` 三函数已随死代码
+  清偿移除(零生产消费面),分布卷积底座(``_survive_cdf``)保留为其留位。
 
-升级路径(并轨 V2):本模块立出口 API 供消费端(salvage/计价/
-evidence 门);换桶分布转移矩阵、刷新商店 Bernoulli 赌局化、hp 残值补丁为
+升级路径(并轨 V2):换桶分布转移矩阵、刷新商店 Bernoulli 赌局化、hp 残值补丁为
 后续扩展方向(K1-K3 判据)。
 """
 from __future__ import annotations

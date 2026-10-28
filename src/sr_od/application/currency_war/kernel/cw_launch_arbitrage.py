@@ -21,15 +21,16 @@ flow/README.md §1 决策控制分层铁律):
 
 1. 判定语义单一源 = 本模块(:func:`in_launch_spend_zone` 在
    ``kernel/cw_economy`` 与富余段共享 g* 链;单动作预算闸
-   :func:`launch_arbitration_gate`;分键名常量族);含全部
-   ``launch_arbitrage_*`` 分键名,两面直调禁字面量散写。
+   :func:`launch_arbitration_gate`;分键名常量 = GATE_BLOCKED_REASON/
+   KEY_GATE_BLOCKS,两面直调禁字面量散写)。
 2. 位次契约:动作发出帧仲裁段(flow 层特殊路径)已停用(受控决策分层
    铁律:决策闸门必须在策略侧,见 flow/README.md §1)——现役生产
    消费点 = 策略决策入口自限(flow.decide_shop_action 唯一提案产出后经
    :func:`launch_arbitration_gate` 谓词检,拒 = 决策改发 CloseShop 收
-   访问);``launch_arbitrage_*`` 分键族保留(存量 cw4_counters 判读面
-   读用;sim 与实机同链,无独立写点),生产写点现役仅 KEY_GATE_BLOCKS
-   (策略侧受阻分键)。
+   访问);分键名常量现役 = GATE_BLOCKED_REASON/KEY_GATE_BLOCKS 两个
+   (原其余 ``launch_arbitrage_*`` 分键常量已随死代码清偿移除,
+   存量 cw4_counters 中的历史键名仅作历史数据判读),生产写点现役仅
+   KEY_GATE_BLOCKS(策略侧受阻分键)。
    动作发出核本身零改动(生产发出调用面内部屏态复验保留
    作纵深防线)。
 3. 对账锚各守拓扑:N-1 三选一裁决(**如实降格**)= 生产侧遥测载体只有

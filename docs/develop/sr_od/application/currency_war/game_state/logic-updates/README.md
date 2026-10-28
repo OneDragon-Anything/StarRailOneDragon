@@ -12,7 +12,7 @@
 
 ## 逐动作专篇索引(注册表行 ↔ 专篇)
 
-**计数口径(以代码现值为准)**:行数/类数/尚无专篇的行数,一律以**读文档时点 `operations/cw_op/cw_action_registry.py` 代码现值**清点为准,本节不固化计数;注册表已演进 = 以当时代码现值重新清点。当前快照括注 = 34 行 / 27 op 类 / 已有专篇 27 行(20 个专篇文件,工具 7 行共 [tools.md](tools.md) 一篇;LevelUpShop 显式独立行已随 2026-10-17 迭代 T-4 双类型退役删除,买经验单类型单行)/ 尚无专篇 8 行(7 个 pick 行 + Obs 行:语义的在用记载 = [flow/action_ops.md](../../flow/action_ops.md) §4.5/§4.4 行 + 上报函数 docstring;超出本表登记面的补篇不批)。基准 = `cw_action_registry.py` 与 [flow/action_ops.md](../../flow/action_ops.md) §4;写域登记面 = `SHOP_PROJECTION_DOMAINS`(商店族)与各上报函数 docstring(备战族;原 `PREP_PROJECTION_DOMAINS` 登记面已随聚合写入入口停用)。映射粒度 = 注册行 → 专篇**文件**(一行对应一个专篇文件,不落小节);工具原子 7 行是先例例外,七行同指一个 op 类(`CwActionToolUseOp`),共一篇 [tools.md](tools.md)、内分逐类小节。
+**计数口径(以代码现值为准)**:行数/类数/尚无专篇的行数,一律以**读文档时点 `operations/cw_op/cw_action_registry.py` 代码现值**清点为准,本节不固化计数;注册表已演进 = 以当时代码现值重新清点。当前快照括注 = 34 行 / 27 op 类 / 已有专篇 27 行(20 个专篇文件,工具 7 行共 [tools.md](tools.md) 一篇;LevelUpShop 显式独立行已随 2026-10-17 迭代 T-4 双类型退役删除,买经验单类型单行)/ 尚无专篇 8 行(7 个 pick 行 + Obs 行:语义的在用记载 = [flow/action_ops.md](../../flow/action_ops.md) §4.5/§4.4 行 + 上报函数 docstring;超出本表登记面的补篇不批)。基准 = `cw_action_registry.py` 与 [flow/action_ops.md](../../flow/action_ops.md) §4;写域登记面 = 各上报函数族域覆盖(商店族全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除)与各上报函数 docstring(备战族;原 `PREP_PROJECTION_DOMAINS` 登记面已随聚合写入入口停用)。映射粒度 = 注册行 → 专篇**文件**(一行对应一个专篇文件,不落小节);工具原子 7 行是先例例外,七行同指一个 op 类(`CwActionToolUseOp`),共一篇 [tools.md](tools.md)、内分逐类小节。
 
 ### 商店族(3 行)
 

@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把 owned 装备库存网格内的一件拖到目标角色的已穿槽位。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionWearEquipParam`(已登记动作类型类,注册行 = 备战域 op;坐标参数化机械动作:字段 `item_name` / `char_name`('' = front-only 回退步)/ `row` ∈ front/back / `slot` = 画面物理槽位 1 基)。op 载体 = `operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._wear_equip` 薄委托)。**动作发出形态(穿戴原子通路)** = 决策核逐帧发出 WearEquip 序,发出顺序即执行顺序;计划构造 kernel 单一源 = `kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(决策侧逐帧现算,构造点唯一;`EquipWearStep` 为动作构造源,branch = m7 角色级分配 / front_only 身份读失败回退)。
+把 owned 装备库存网格内的一件拖到目标角色的已穿槽位。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionWearEquipParam`(已登记动作类型类,注册行 = 备战域 op;坐标参数化机械动作:字段 `item_name` / `char_name`('' = front-only 回退步)/ `row` ∈ front/back / `slot` = 画面物理槽位 1 基)。op 载体 = `operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`(非终结;体迁自执行器,原 `prep_actions.py::PrepActionExecutor._wear_equip` 薄委托已随死代码清偿移除,执行 = op 直执行 + 自上报)。**动作发出形态(穿戴原子通路)** = 决策核逐帧发出 WearEquip 序,发出顺序即执行顺序;计划构造 kernel 单一源 = `kernel/cw_equip_wear_plan.py::_build_equip_wear_plan`(决策侧逐帧现算,构造点唯一;`EquipWearStep` 为动作构造源,branch = m7 角色级分配 / front_only 身份读失败回退)。
 
 ## 2. 逻辑态域集
 
@@ -36,7 +36,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 写入分支)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py::PrepActionExecutor._wear_equip` / `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`;`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
+`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 写入分支)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py` 机械原语 `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`(原执行器薄委托 `PrepActionExecutor._wear_equip` 已随死代码清偿移除);`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
 
 ## 7. 语义验证
 

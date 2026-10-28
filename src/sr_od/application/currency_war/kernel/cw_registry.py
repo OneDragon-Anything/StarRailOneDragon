@@ -581,8 +581,8 @@ class DecisionV2Registry:
     #: 单合资格轮刷新次数上限(`w249_core2_reach/` 白盒估算初值:每轮 ≤2 次)
     directed_refresh_per_round: int = 2
     #: 每局刷新总上限(`w249_core2_reach/` 白盒估算初值:≈覆盖一颗 2★ 的第二跳
-    #: 6-7 次;消耗计数 strategy_state_of(session).v3_dir_refresh_used,decide_prep 轮首
-    #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
+    #: 6-7 次;原消耗计数字段 strategy_state_of(session).v3_dir_refresh_used
+    #: 已随死代码清偿移除——本上限现为非消费的声明性约束)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
     #: **本常量是非绑定约束(`w274_cap_batch/`/)**:合资格授权窗 = gap>0 ∧
     #: P1 末窗(窗 {r6..r9}),
@@ -612,8 +612,10 @@ class DecisionV2Registry:
     #  决策无换线判据对象(12 号篇 §1.4);零消费死字段,
     #  清理归后续批。)
     # (release 帧活栈消费门开关已随 第 4 态清理:开分支
-    # A/B 结案,消费门恒接线,判据单一源 = posture_release 消费门活值,
-    # 读 strategy_state_of(session).v3_release;旧开关/字段名见该 ADR。)
+    # A/B 结案,消费门恒接线;判据单一源 = economy_cycle 义务核算
+    # (``overflow``/``obligation``)+ 预算披露面(``disclose_budget``),
+    # 原 session.v3_release 泄息指令字段已随死代码清偿移除,
+    # 旧开关/字段名见该 ADR。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
     #: 设计决策(C3/C4 重设计裁决+C4 接线):

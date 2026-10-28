@@ -34,7 +34,7 @@
 | 锚点 | 注册表直调值 | 与 p48 比对 |
 |---|---|---|
 | XP_PER_BUY | `cw_state`=4 | ✓ |
-| XP_TO_NEXT_LEVEL | `{3:4,4:6,5:20,6:40,7:52,8:72,9:84}` | ✓(逐键);lv1-2 走 `.get(lv,4)` 默认,`cw_plane_table._XP_NEED` 另补 {1:4,2:4},一致 |
+| XP_TO_NEXT_LEVEL | `{3:4,4:6,5:20,6:40,7:52,8:72,9:84}` | ✓(逐键);lv1-2 走 `.get(lv,4)` 默认,原 `cw_plane_table._XP_NEED` 另补 {1:4,2:4} 一致(**该兜底表已随死代码清偿移除**,1/2 级兜底语义现驻 `cw_economy` 击数函数 need=4 兜底) |
 | 单击价 flat-4 | `XP_CLICK_COST_FALLBACK=4`(三帧 lv4/lv7;lv6/8/9 未覆盖) | ✓,A2 覆盖面声明与注册表注释同口径 |
 | 息律 | `cw_plane_table.GOLD_CAP_INTEREST=50`、`interest=min(g//10,5)` | ✓ |
 | 收入 | `cw_economy.BASE_INCOME=5`、`REWARD_BASE_GOLD_BY_ROUND={1:3,2:4}` | ✓ |

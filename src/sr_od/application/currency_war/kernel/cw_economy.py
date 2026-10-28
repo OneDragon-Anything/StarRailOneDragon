@@ -607,7 +607,8 @@ def refresh_cost_effective(refresh_count: int = 0,
     """刷新 EV 判据用的参数化刷价(基价直通)。
 
     (旧长线利好折价分支已停用,现行行为 = 恒基价;``refresh_count``/``registry``
-    参数保留占位,消费点 ev/posture_release/scoring 调用零改。机制真值
+    参数保留占位,消费点 = cw_line_switch/economy_cycle/ev/scoring 族
+    (原 posture_release 消费位已随死代码清偿移除)。机制真值
     (长线利好 30 刷后 1 金)仍在 cw_invest_data。)
 
     ``gs`` 给定时刷价 = GameState.shop_refresh_cost 现场识别值(观察通
@@ -706,14 +707,14 @@ def blood_xp_full_clicks(level: int) -> int:
     """下一级**全量击数** = ⌈XP_TO_NEXT_LEVEL[level]/XP_PER_BUY⌉([40]② 裁定字面
     「下一级血成本(⌈need/4⌉×6)」的击数项;N1 拍板全量口径)。
 
-    - 全量口径先例 = ``cw_plane_table.clicks_to_level``(同式,xp 结转忽略);
-      本函数与它的差异 = 权威表逐字(无 1/2 级 _XP_NEED 先验补全)。
+    - 全量口径先例 = 原平面表 ``clicks_to_level``(同式,xp 结转忽略;载体已随
+      死代码清偿移除);本函数与剩余口径的差异 = 权威表逐字(无 1/2 级先验补全)。
     - 与 ``clicks_to_next_level``(剩余口径 ⌈(need−cur)/4⌉)**语义不同,闸不消费
-      该函数**:cur>0 是常态(买牌 XP 直抬进度 + 购经验溢出结转,cw_state
-      .xp_apply_clicks),剩余口径系统性压低门槛、方向恒向放行,与 [40]②
+      该函数**:cur>0 是常态(买牌 XP 直抬进度 + 购经验溢出结转,
+      ``xp_apply_clicks``),剩余口径系统性压低门槛、方向恒向放行,与 [40]②
       「否则停」的保护目的反向。
     - 满级分支(R1):level≥MAX_PLAYER_LEVEL → 0 击(购买经验无效,与
-      cw_state.xp_apply_clicks/clicks_to_next_level 的满级返 0 同语义)
+      ``xp_apply_clicks``/``clicks_to_next_level`` 的满级返 0 同语义)
       ——分支必须在公式本体,否则字面公式对满级产出 ⌈兜底4/4⌉=1 击的
       6 血门槛,与「恒放行」申报分叉。
     - 1/2 级(权威表未收录,游戏内近乎白送)按兜底 need=4 → 1 击,与
@@ -836,14 +837,16 @@ class NodeGoal:
     """某节点(位面-轮)的节奏目标(阵容无关骨架;阵容只换 level_plan/core_chars 参数;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
-                                # 'release' 不经本投影(帧级态):生产单一源=
-                                # decision_v2.posture_release 经 session 通道;
+                                # 'release' 档现役无生产位(原帧级态生产口
+                                # decision_v2.posture_release 已随死代码清偿
+                                # 移除;义务语义现役 = economy_cycle 义务核算
+                                # + ``disclose_budget`` 披露面);
                                 # 本函数只产 level/adaptive/interest
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
     #: DP 授权的可刷次数上界(三方预算合并:随 NodeGoal 下传,消费侧与
-    #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
-    #: 模块注释:release 是义务(下界),DP/plan 是许可(上界),义务激活时
-    #: 义务优先,未激活时许可取交)。None=无 DP 信息(先验 fallback;不参与
+    #: plan 层 _refresh_cap 合并——release 是义务(下界),DP/plan 是许可
+    #: (上界),义务激活时义务优先,未激活时许可取交;原 posture_release
+    #: 注释载体已随死代码清偿移除)。None=无 DP 信息(先验 fallback;不参与
     #: 合并,许可侧原值)。
     refresh_budget: int | None = None
 
@@ -878,7 +881,8 @@ def get_node_goal(plane: int, round_num: int, *,
     三档 spend_mode 与决策核同源:adaptive/interest 的判据单一址 =
     本模块接缝 refresh_ev_budget(期 0b 自 decision_v2.economy_cycle
     下沉,R4)——本函数是其标量投影;'release' 档不经本函数(帧级态,
-    单一源=decision_v2.posture_release 经 session 通道)。
+    'release' 档现役无生产位(原帧级态生产口 decision_v2.posture_release
+    已随死代码清偿移除,义务语义现役 = economy_cycle 义务核算 + 披露面)。
     """
     _partial = (gold, level)
     if any(v is not None for v in _partial) and None in _partial:
@@ -1040,7 +1044,8 @@ def _target_core_cost(session: StrategySession) -> tuple[str, int]:
 def _owned_core_copies(gs: GameState, core: str) -> int:
     """目标核心已持有基础副本数 j(3合1 折算:star s → 3^(s-1);
     bench∪deployed 逐件计)。E_find 的 owned 修正输入
-    (cw_shop_odds.acquirability_factor 同口径);身份未识别的槽不计
+    (持有折算与 ``cw_shop_odds.reencounter_window_frames`` held 参数同口径:
+    1★1/2★3/3★9);身份未识别的槽不计
     ——保守方向=低估持有 → E_find 偏大 → 帽偏松(不缩供给侧)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_units_of,

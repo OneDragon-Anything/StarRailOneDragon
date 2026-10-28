@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把备战席某槽位的角色拖到出售区卖出,回收退款。op(动作类型清单摊平后商店/备战共用单一注册行)= `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`(唯一活执行路径;原商店域文件 `cw_sell_bench_action.py` 已停用删除,能力面语义由上报函数保留,判例见 §8);执行器 = `prep_actions.py::PrepActionExecutor._sell_bench`(拖拽原语共享 = `prep_actions.py::drag_bench_to_sell`)。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionSellBenchParam`(`bench_idx` = bench 槽位表下标 0-8)。
+把备战席某槽位的角色拖到出售区卖出,回收退款。op(动作类型清单摊平后商店/备战共用单一注册行)= `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`(唯一活执行路径;原商店域文件 `cw_sell_bench_action.py` 已停用删除,能力面语义由上报函数保留,判例见 §8;原执行器薄委托 `prep_actions.py::PrepActionExecutor._sell_bench` 已随死代码清偿移除,执行 = op 直执行 + 自上报;拖拽原语共享 = `prep_actions.py::drag_bench_to_sell`)。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionSellBenchParam`(`bench_idx` = bench 槽位表下标 0-8)。
 
 ## 2. 逻辑态域集
 
@@ -42,7 +42,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`(两个域写入统一为一份代码,原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;`prep_actions.py::PrepActionExecutor._sell_bench` / 上报直写主域 / `_executed_gold_delta`(金差仅回执保留证据) / `drag_bench_to_sell`。
+`kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`(两个域写入统一为一份代码,原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;op 载体 `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`(上报直写主域;原执行器薄委托 `prep_actions.py::PrepActionExecutor._sell_bench` 与其 `_executed_gold_delta` 金差回执读口已随死代码清偿移除);`prep_actions.py::drag_bench_to_sell`。
 
 ## 7. 语义验证(M1 测试)
 

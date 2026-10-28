@@ -1497,9 +1497,9 @@ def assemble_swap_plan_inputs(
     P4 容器形;发出侧 = 决策帧容器现读,执行侧 = SIFT 现读域,
     装配源契约分轨不变)。
 
-    :param deployed_n: 板满计数覆盖(执行侧喂 ``swap_arm_deployed_count``
-        真读槽位口径;None = 按 ``deployed`` 占用件数计——同一占用数
-        口径,含 SIFT 未识别占位件)。
+    :param deployed_n: 板满计数覆盖(原执行侧 ``swap_arm_deployed_count``
+        真读喂入面已随部署机执行侧停用并死代码清偿移除;None = 按
+        ``deployed`` 占用件数计——同一占用数口径,含 SIFT 未识别占位件)。
     """
     if state is None and cap is None:
         return None

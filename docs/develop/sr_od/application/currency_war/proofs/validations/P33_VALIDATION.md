@@ -21,7 +21,7 @@
 
 ## 阅读门声明
 
-已读:docs/game/currency_war/ 下 `user_playstyle.md` 全文(重点 [3]/[7]/[12]/[17]/[32]/[33]/[41] 原文)、`data/gameplay.md`(§金币等级商店原文、§机制表「上阵规模」行)、`research/economy.md` 相关节、`research/math_proofs.md` P33/P39/P46/P51 行、`proofs/p39-levelup-ev.md` 全文、`proofs/p46-spend-gate-rejection-ev.md` 相关行、`06_input_model.md` §2 GameState 棋盘/经济组 + §3 注册表地图;**注册表直调**:`cw_state.py`(XP_PER_BUY=4 / XP_TO_NEXT_LEVEL{3:4,…,9:84} / deploy_cap 语义 / `max_units()`=min(deploy_cap∨level, 4+6) / front_max·back_max=4·6)、`cw_economy.py` L540-589、`decision/decision_v2/ev.py` L262-336、`cw_plane_table.py` _XP_NEED;背景件:`DESIGN_MANDATE_LAYER.md`(M3/L66/L150/L208)、`AB_FAIL_ATTRIBUTION.md`(board_vacancy 恒 0/arm1 饿死)、`P39_VALIDATION.md` 全文(已判件,臂一相关结论复用其亲跑数据)、`TUNING_INVENTORY.md` #3/#4。
+已读:docs/game/currency_war/ 下 `user_playstyle.md` 全文(重点 [3]/[7]/[12]/[17]/[32]/[33]/[41] 原文)、`data/gameplay.md`(§金币等级商店原文、§机制表「上阵规模」行)、`research/economy.md` 相关节、`research/math_proofs.md` P33/P39/P46/P51 行、`proofs/p39-levelup-ev.md` 全文、`proofs/p46-spend-gate-rejection-ev.md` 相关行、`06_input_model.md` §2 GameState 棋盘/经济组 + §3 注册表地图;**注册表直调**:验证时点 `cw_state.py`(XP_PER_BUY=4 / XP_TO_NEXT_LEVEL{3:4,…,9:84} / deploy_cap 语义 / `max_units()`=min(deploy_cap∨level, 4+6) / front_max·back_max=4·6;现载体 = `cw_economy.py` XP 表)、`cw_economy.py` L540-589、`decision/decision_v2/ev.py` L262-336、原 `cw_plane_table.py` _XP_NEED(**已随死代码清偿移除**,1/2 级兜底语义现驻 `cw_economy` 剩余口径函数 docstring);背景件:`DESIGN_MANDATE_LAYER.md`(M3/L66/L150/L208)、`AB_FAIL_ATTRIBUTION.md`(board_vacancy 恒 0/arm1 饿死)、`P39_VALIDATION.md` 全文(已判件,臂一相关结论复用其亲跑数据)、`TUNING_INVENTORY.md` #3/#4。
 **跳过声明**:characters/ 72 档、final_comps/ 11 篇、plaza/transitions/screen_flow_timing 族——供 comp 知识与画面时序,与人口位 EV 的输入无交集(P39/ev.py 臂一输入清单只含 deployed/bench/level/deploy_cap/targets,无 comp 评分字段);`p33-spend-gate-rejection-ev.md` 归 P33(支出门)件的辖域,本件仅核对编号归属。
 
 ---
@@ -58,7 +58,7 @@ p39 L55 称「是否 >0 由备战席状态这一**可观测二元事实**决定�
 | 人口 cap 上限 10 | `cw_state.py` L230-231 front_max=4/back_max=6 | ✓(同上行勘误:上限 10 为基线局辖域,扩展局可至 13——10 槽跟踪表示钳制另案 后续批) |
 | XP_PER_BUY=4 | `cw_state.py` L42;购买经验单击模型 (实机 VLM 三帧 flat 4 金) | ✓ |
 | XP_TO_NEXT_LEVEL {3:4,4:6,5:20,6:40,7:52,8:72,9:84} | `cw_state.py` L43;economy §9 2026-08-31 用户定谒「表值即正确口径」(承 P39_VALIDATION 门②勘误) | ✓ |
-| 1-2 级门槛不在表 | `cw_observation.py` L1515「1-2 级门槛不在表(用户表从 LV.3 起)→ None」;`cw_plane_table._XP_NEED` 补 {1:4,2:4} 兜底 | ✓(边界注记:LV1-2 无权威源,由平面表补——[33] 语境几乎不触(人口位升级集中在 L5→L10 带),无实质风险) |
+| 1-2 级门槛不在表 | `cw_observation.py` L1515「1-2 级门槛不在表(用户表从 LV.3 起)→ None」;原 `cw_plane_table._XP_NEED` 补 {1:4,2:4} 兜底(**已随死代码清偿移除**;1/2 级兜底语义现驻 `cw_economy` 击数函数 docstring 的 need=4 兜底) | ✓(边界注记:LV1-2 无权威源,由兜底补——[33] 语境几乎不触(人口位升级集中在 L5→L10 带),无实质风险) |
 | 「等级=最低上场人数」表述 | `combat.md` L55「等级 = 最低上场人数(10 级 = 10 人口)」 | △ 措辞歧义:「最低」应为「等于」——机制是恒等非下界;与 gameplay 原文恒等式一致,判措辞瑕疵非建模错 |
 
 **门②判定:过**。等级-人口对应与全部常量锚注册表/原文直调一致。

@@ -36,8 +36,8 @@
 
 | 证明引用 | 实际锚点(直调核实) | 判定 |
 |---|---|---|
-| `cw_horizon.interest` | **模块已退役**(`cw_horizon` DP 面已删,非 DP 面迁至 `cw_plane_table`,见 develop/currency_war/strategy/01_posture.md「标定表/真值归属」);现行锚 = `cw_plane_table.interest()` = min(g//10, GOLD_CAP_INTEREST//10),`GOLD_CAP_INTEREST=50`(L31/L141-144) | 值口径一致,**引用名陈旧** |
-| 利息 cap=5 | `cw_registry.interest_cap=5`(L324);`cw_factions.INTEREST_THRESHOLD=50/INTEREST_RATE=0.1`(L134-135);sim `engine_p1.INTEREST_CAP=5` + `'interest': min(_icap, st.gold//10)`(L752,含投资覆写) | 一致 ✓ |
+| `cw_horizon.interest` | **模块已退役**(`cw_horizon` DP 面已删,非 DP 面迁至 `cw_plane_table`,见 develop/currency_war/strategy/01_posture.md「标定表/真值归属」);现行锚 = 息律闭式 `cw_economy.interest()` = min(g//10, cap),cap 缺省 `DEFAULT_INTEREST_CAP = GOLD_CAP_INTEREST//10`,`GOLD_CAP_INTEREST=50`(`cw_plane_table`;原 `cw_plane_table.interest` 载体已随死代码清偿下沉 `cw_economy`) | 值口径一致,**引用名陈旧** |
+| 利息 cap=5 | `cw_registry.interest_cap=5`(L324);原 `cw_factions.INTEREST_THRESHOLD=50/INTEREST_RATE=0.1`(L134-135,**已随死代码清偿移除**);sim `engine_p1.INTEREST_CAP=5` + `'interest': min(_icap, st.gold//10)`(L752,含投资覆写;engine 面已随 sim 重做停用) | 一致 ✓ |
 | 息损=跨档数×R | `decision_v2/ev.py interest_cost`(L64-90):tiers_crossed × recovery_rounds,收入项不出现 | 一致 ✓ |
 | 基础奖励实测 | `economy.md §10.1`:分段定谳 {1:3,2:4}+5(2026-09-11 回填——09-02 结算帧批 98 张直读补齐 1-3~1-8;本验证当时所引「1-1=3、1-2=4、1-9=5、P2r1=5,两批独立一致;1-3~1-8 无样本,两批冲突未消」的定谳前记载已结案) | 见门③ |
 
@@ -60,7 +60,7 @@
 
 | 常量 | 溯源 | 公理判定 |
 |---|---|---|
-| 利息 cap=5 | 四处平行常量:`cw_plane_table.GOLD_CAP_INTEREST//10`、`cw_factions.INTEREST_THRESHOLD//10`、`cw_registry.interest_cap`、sim `INTEREST_CAP`——同值但各自独立声明(注释互引、派生关系部分声明) | 值可溯 ✓;多源同值有漂移风险(cap 改动须四处同改),注记不改判 |
+| 利息 cap=5 | 直调时点四处平行常量:`cw_plane_table.GOLD_CAP_INTEREST//10`、原 `cw_factions.INTEREST_THRESHOLD//10`(**已随死代码清偿移除**)、`cw_registry.interest_cap`、sim `INTEREST_CAP`(engine 面已停用)——同值但各自独立声明(注释互引、派生关系部分声明;现役平行源收敛 = `cw_economy.DEFAULT_INTEREST_CAP` 派生 + `cw_registry.interest_cap` 覆写) | 值可溯 ✓;多源同值有漂移风险,注记不改判 |
 | 恢复轮数复算的连胜表 1/2/3 | `STREAK_GOLD_TABLE`(economy.md §10.1 四档实测,49/49) | ✓ |
 | 「连胜档递增」假设(每轮连胜+1 档) | 复算口径假设,非实测锚——连胜连升是胜轨典型态,注记即可 | 零调参 ✓(P7 证明本体无自由参数) |
 | base band [3,8] | 下界 3=实测(1-1);上界 8=未锚定先验 | 超额收益隔离 ✓(息/基础/连胜三通道分账);纯金流 ✓(无血入账) |

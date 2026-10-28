@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-拖拽使用装备注册表 category='工具' 的消耗品:owned 装备网格内工具 icon → 目标(装备件/角色槽位)机械拖曳。注册表七行(每动作类型一行)同指 `operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._use_tool` 薄委托):
+拖拽使用装备注册表 category='工具' 的消耗品:owned 装备网格内工具 icon → 目标(装备件/角色槽位)机械拖曳。注册表七行(每动作类型一行)同指 `operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(非终结;体迁自执行器,原 `prep_actions.py::PrepActionExecutor._use_tool` 薄委托已随死代码清偿移除,执行 = op 直执行 + 自上报):
 
 | 动作类型(`kernel/cw_vocab.py` 清单中的类) | 注册名 | 字段形 |
 |---|---|---|
@@ -30,8 +30,8 @@
 | 特权赋予卡·char | 已穿装备原位变换桥 `transform_worn_equip_to_privilege` 已登记(「哪件被选」随机归观察;在用执行分支只消费库存替换)|
 | 拆装扳手 | `op:` 形(执行域既有装备转移链)|
 | 精密拆装扳手 | `contribution:equip_wrench_duplicate_gold`(重复获得 +1 金,零直写,组合写收尾 = 获得回执窗)|
-| 员工投影仪 | 入席桥 `cw_effect_inventory.spawn_equip_bench_unit`(费用门表 `cw_affix_effects._TOOL_SPAWN_COST_GATE`,数值单一源 = `cw_effect_inventory.STAFF_PROJECTOR_COST_GATE`)|
-| 完美投影仪 | 同员工投影仪,无费用门 |
+| 员工投影仪 | 上报函数 `cw_action_report/tool_use.py::report_action_staff_projector_use_param`(费用门 ≤3 前置查,门值 3 = 调用位 `cost_gate=3`;原 `cw_affix_effects._TOOL_SPAWN_COST_GATE`/`cw_effect_inventory.STAFF_PROJECTOR_COST_GATE` 门表常量已随死代码清偿移除)→ 获得链 `cw_gain_chain.gain_character`(1★ 复制进席)|
+| 完美投影仪 | 同员工投影仪,无费用门(`cost_gate=0`) |
 | 好运令牌 | 入区桥 `cw_effect_inventory.grant_equip_item`(选定后确定面;判据面在用 fail-closed——读不到数据/条件不满足时默认走保守分支不动作,永不进准入)|
 
 ## 3. 确定面转移规则(逐条)
@@ -55,7 +55,7 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py` 七个动作类型类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/tool_use.py`(七具名上报函数 + `_REPORT_BY_CLASS`,写入方正本);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `_TOOL_SPAWN_COST_GATE` / `EQUIP_REWRITE_DECLARATIONS`;`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `STAFF_PROJECTOR_COST_GATE` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::PrepActionExecutor._use_tool` / `_owned_grid_locate`;`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
+`kernel/cw_vocab.py` 七个动作类型类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/tool_use.py`(七具名上报函数 + `_REPORT_BY_CLASS`,写入方正本;员工投影仪费用门值 3 = `report_action_staff_projector_use_param` 调用位);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `EQUIP_REWRITE_DECLARATIONS`(原 `_TOOL_SPAWN_COST_GATE`/`cw_effect_inventory.STAFF_PROJECTOR_COST_GATE` 门表常量已随死代码清偿移除);`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::_owned_grid_locate`(机械原语);`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
 
 ## 7. 语义验证
 

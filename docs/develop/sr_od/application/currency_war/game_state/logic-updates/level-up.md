@@ -14,7 +14,7 @@
 |---|---|---|
 | gold | 写 | `gold −= 动作 cost × 实击数`;None 跳写 |
 | xp | 写 | 二元组 `(当前级已攒, 升下一级门槛)`,推进算子单一源 = `xp_apply_clicks`(跨级结转 + 满级封顶零推进) |
-| level | **条件写**(2026-09-18 扩面) | 升档直写:跨档才写(`proj_levelup_level`);跳写对 = (level, xp) 同进退,任一未读整体跳写——等级滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板(`max_units_of` 经读口自动跟随)。`level` 在 `SHOP_PROJECTION_DOMAINS`(域集封闭申报) |
+| level | **条件写**(2026-09-18 扩面) | 升档直写:跨档才写(`proj_levelup_level`);跳写对 = (level, xp) 同进退,任一未读整体跳写——等级滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板(`max_units_of` 经读口自动跟随)。`level` 在域覆盖全集内(域集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除) |
 | shop / bench / equips | 跳写 | 商店牌面域:买经验上报零直写——商业间谍偷牌经随机态信号 + 世界分支呈现(2026-10-17 迭代 T-3),晋升名额变费未建模归观察(缺口 G8) |
 
 **备战域写入入口** = 同一上报函数 `report_action_level_up_param`(写入统一为一份代码):写域 = xp/**level**/gold(跳写对 (level, xp) 同进退,申报面 = 函数 docstring)。**deploy_cap 不写**——容量真值由观察侧写入方的防抖读承接(`max_units` 的 cap<level 兜底规则保守承接升级增量)。level/xp 缺读 = 域级跳写。
@@ -43,7 +43,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集扩面申报见 `SHOP_PROJECTION_DOMAINS` 登记面注)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在校验内;测试载体 = 单类型 `CwActionLevelUpParam`)。
+买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在校验内;测试载体 = 单类型 `CwActionLevelUpParam`)。
 
 ## 8. 判例注记(动作发出阶段)
 

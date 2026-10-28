@@ -39,7 +39,8 @@ U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
 11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(临时产物域,
 非单一源):批交付报告 ``.debug/temp/currency_war/统一state-R3.1-交付
 报告.md`` §5 与 ``统一state-R3.2-交付报告.md`` 曾载逐消费方迁移核对明细
-(R3.2 补行 3:cw_replay_reader/cw_divergence_stats/cw_node_validate)。
+(R3.2 补行 3:cw_replay_reader 等三消费方;其中两模块已随后续死代码
+清偿移除,清单权威 = retirement.md §7 现值)。
 """
 from __future__ import annotations
 

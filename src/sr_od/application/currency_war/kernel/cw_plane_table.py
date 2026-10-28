@@ -20,8 +20,6 @@ details/horizon-cleanup.md §2-§6。
 
 承载面(按消费面划定的最小集):
 - 本位面轮数真值:nodes_of_plane(实况读、不夹);
-- 升级费用查询:clicks_to_level/level_cost(逐帧现读单价 =
-  kernel cw_economy.xp_click_cost,本表只供次数);
 - 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
   .interest 唯一源,DEFAULT_INTEREST_CAP 由其派生);
 - 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,

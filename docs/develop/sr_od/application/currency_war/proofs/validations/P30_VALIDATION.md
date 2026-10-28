@@ -36,7 +36,7 @@
 | merge_progress 清零 −3.0×域权重 | 合成后 star≥2 → 该名让位 | `_merge_progress_count`(:192-222)「每名只计第 2 份(第 3 份 merge 成 2★ 后由 core_star 承接,star≥2 持有则本项让位,两侧不双计)」——docstring 与注释同一语义 | ✓ |
 | core_star +3.0×域权重 | star≥2 计入 | `_core_star_count`(:163-189) star≥2 门,bench ×`bench_form_weight` | ✓ |
 | targets 星级加权 3→2 下降 | 星级加权持有数降 | `targets`(:277-289)消费 `_held_star_weighted`(星级加权)且封顶 | ✓(方向) |
-| depth 下降(3→1) | bench 同名 3 副本=伪深度 | `_deployable_depth`(:321-331)= min(level, deployed_occupied+bench_occupied)——**bench 3 副本确实计 3 深度**,而场上同名同星 ≤1(机制恒成立约束)→ 伪深度成分实锤 | ✓ |
+| depth 下降(3→1) | bench 同名 3 副本=伪深度 | 原 `_deployable_depth`(:321-331)= min(level, deployed_occupied+bench_occupied)——**bench 3 副本确实计 3 深度**,而场上同名同星 ≤1(机制恒成立约束)→ 伪深度成分实锤(该函数已随死代码清偿移除,对账随 git 历史可溯) | ✓ |
 
 bench 域(0.35)下 merge_progress 与 core_star 同量级对消(注释自认「初值=core_star_unit 同量级」,`cw_registry.py` L469-471),targets/depth 两维净负 → 「合成候选差分<0」的结构推导**在 as-built 代码内成立** ✓。命题②的自我定位(「现状预期不成立(倒挂存在)」的评分学事实)与推导一致,不夸大 ✓。
 

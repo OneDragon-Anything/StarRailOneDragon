@@ -43,7 +43,7 @@
 |---|---|---|
 | `cw_horizon.interest` = min(g//10,5) | **模块已不存在**(全仓 grep `cw_horizon` 在 src 下零命中;现单一源 = `kernel/cw_plane_table.interest`,L144 `min(gold//10, GOLD_CAP_INTEREST//10)`,数学同式);P11 复算脚本 `tools/cw/proofs/w153_p11_p12_p2_refresh.py` L19 import 该已删模块,**实跑 ModuleNotFoundError,「可重跑复核」承诺失效**(亲测复现) | ❌ 引用漂移 |
 | `decision_v2.registry`(hp_to_gold=0.5) | 值对(`kernel/cw_registry.py` L322 `hp_to_gold: float = 0.5`),模块路径漂移(registry 在 kernel 不在 decision_v2) | ⚠ 路径漂移,值对 |
-| 息律常量 | `cw_factions.INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`;`cw_plane_table.GOLD_CAP_INTEREST=50`;`cw_economy.INTEREST_WEIGHT=4.0` | ✓ |
+| 息律常量 | 原锚 = `cw_factions.INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`、`cw_plane_table.GOLD_CAP_INTEREST=50`、`cw_economy.INTEREST_WEIGHT=4.0`——其中 factions 两锚与 `INTEREST_WEIGHT` 已随死代码清偿移除;现单一源 = `cw_plane_table.GOLD_CAP_INTEREST=50` + `cw_economy.interest`(`DEFAULT_INTEREST_CAP=GOLD_CAP_INTEREST//10`,override = `cw_registry.interest_cap`) | ✓(锚名随死代码清偿更替,值口径不变) |
 | `sell_refund` 手续费 | `cw_state.sell_refund`(L877-890):1★=cost 全额退、无手续费;star≥2 且 cost≥2 再 −1;cost=1 exempt(live 实测 2★1费=+3)——与 [11]「1★ 全额退=活期资产」的前提逐字吻合 | ✓ |
 | 溢余金影子价 ρ | `cw_registry` L409 显式条目(P11 出处注明) | ✓ |
 | 计算脚本 | 存在但 import 断(见上) | ❌ |
@@ -66,9 +66,9 @@
 
 ## 门四:实证 vs 账本(零息损购买行为预测可达性)
 
-- **静态同档判据:三层可达** ✓——①决策放行:`arbiter.interest_rule` L319-320(同息档 `after//10 >= gold//10` 放行)、L317-318(1 费净 0 放行)、L617+ 三相位共用前置臂(reason 串「[11] 同档/1费零息损放行」);②预算截断:`economy_cycle.tier_truncated_spend`(min(want, gold%10),零标定参数);③sim 账本检查器:`sim/checks/segments.seg_check_lossless_buy_missed`(判据逐字对齐口述精确口径 `(g//10)==((g−cost)//10)`,副本形态四分类豁免诚实)。遥测有卖回格(recorder sell_income)+ 金轨迹视图。**预测→行为→账本闭环成立**。
+- **静态同档判据:三层可达** ✓——①决策放行:`arbiter.interest_rule` L319-320(同息档 `after//10 >= gold//10` 放行)、L317-318(1 费净 0 放行)、L617+ 三相位共用前置臂(reason 串「[11] 同档/1费零息损放行」);②预算截断:原 `economy_cycle.tier_truncated_spend`(min(want, gold%10),零标定参数)已随死代码清偿移除(零生产调用方;预算截断语义现役 = economy_cycle 义务核算 + 商店决策侧自限);③sim 账本检查器:`sim/checks/segments.seg_check_lossless_buy_missed`(判据逐字对齐口述精确口径 `(g//10)==((g−cost)//10)`,副本形态四分类豁免诚实)。遥测有卖回格(recorder sell_income)+ 金轨迹视图。**预测→行为→账本闭环成立**。
 - **动态卖回通道:数学层成立、实现层部分可达** ⚠——「凑息向卖候选」(candidates for_gold/_release_sell_gate)存在,但 P46 登记的「买入意图定期/活期标记」**未落码**(P46 明言「实现面登记项,不改代码」)⇒ 「有卖回计划 ⇒ 不进否决域」的分支在实现层靠 posture/候选结构间接近似,无显式标记可审计;P47 待标定①(卖回时点 vs 息结算先后,±5 金深花格)未消。**动态零损的可证性是「数学已备、实证缺口两处」**。
-- **息律投资对「同一息档」判据的扰动(任务点名)**:注册表直调证实四类中第三类修改利息通道——`cw_investments`:开源节流 cap=9 / 利息上调 cap=10 / 买断制 cap=0(L≡0)+ 狸财经 +2;`cw_effect_ledger.interest_with`/`cw_economy` 聚合取 max。扰动核对:
+- **息律投资对「同一息档」判据的扰动(任务点名)**:注册表直调证实四类中第三类修改利息通道——`cw_investments`:开源节流 cap=9 / 利息上调 cap=10 / 买断制 cap=0(L≡0)+ 狸财经 +2;息律闭式聚合 = `cw_economy.interest`(原 `cw_effect_ledger.interest_with` 锚已随死代码清偿移除)。扰动核对:
   - **P11 的「g−s≥50 ⇒ Δ=0」在 cap≠5 局整体失效**(cap=10 时档线延至 100,g=160,s=90 → Δ=3≠0)——P11 全文 cap=5 隐含前提,**未做 P47 A1 式的 resolved 参数化声明**;
   - 同档谓词实现(`after//10` 比较、`gold%10` 截断)按 10 金步长计数,对 cap=9/10 **仍方向正确**(能捕到 50 上方新增档线的真实息损,偏保守侧);对买断制(cap=0)**过度保守**(无息局仍拦跨 10 线支出、`ev.interest_cost` 仍按裸 ⌊g/10⌋ 差计档=收不存在的息成本);
   - `ev.interest_cost` 本体**未夹 cap、未接 ledger override**:基线局 g>50 段也按裸 floor 差高估(例 interest_cost(75,30)=3 档,真实 Δ=1)——arbiter 侧靠「只在穿 50 时辖权+上界口径声明」兜住语义,但息律投资局(cap 9/10/0)下该式与真实息机制的偏差**无任何声明**。

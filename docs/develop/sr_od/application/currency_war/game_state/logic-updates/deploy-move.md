@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-把备战席某槽位的角色拖到上阵(前排/后排)指定槽落位——腾位链与部署义务的原子步。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionDeployMoveParam`(容器(GameState,游戏状态对象,下同)动作域,`cw_vocab.py::Action` 联合已登记;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`to_slot` = 排内 1 基画面槽号(表下标 = 排内槽号内联换算(to_row, to_slot))、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(非终结;体迁自执行器,`prep_actions.py::PrepActionExecutor._deploy_move` 薄委托)。**动作发出形态(原子通路)** = 决策核逐帧发出 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,返回主循环重新观察);组合壳(RunDeploy)已停用。**动作发出点的计划构造单一源** = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`;mandate 动作发出点与 cw_loop 出战链 `battle_chain_deploy_params` 共用,禁第二套计划装配);执行落位零现读——落位意图全部在载荷 `(to_row, to_slot)`,执行边与容器写侧按载荷直落。
+把备战席某槽位的角色拖到上阵(前排/后排)指定槽落位——腾位链与部署义务的原子步。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionDeployMoveParam`(容器(GameState,游戏状态对象,下同)动作域,`cw_vocab.py::Action` 联合已登记;字段 `bench_idx` = bench 槽位表下标 0-8、`to_row` ∈ front/back、`to_slot` = 排内 1 基画面槽号(表下标 = 排内槽号内联换算(to_row, to_slot))、`faction` = 上阵后 board 阵营计数所需,执行面不消费)。op 载体 = `operations/cw_op/cw_deploy_move_action.py::CwActionDeployMoveOp`(非终结;体迁自执行器,原薄委托 `prep_actions.py::PrepActionExecutor._deploy_move` 已随死代码清偿移除,执行 = op 直执行 + 自上报)。**动作发出形态(原子通路)** = 决策核逐帧发出 DeployMove 序,备战环逐帧执行决策输出的恰一个动作(None = 本帧无动作,返回主循环重新观察);组合壳(RunDeploy)已停用。**动作发出点的计划构造单一源** = `strategies/impl/mandate_v1/deploy_plan.py::deploy_plan_moves`(选人 `select_deployments_reasoned` + 排路由 `deploy_row_pref` + 槽位 `deploy_slot_plans`;mandate 动作发出点与 cw_loop 出战链 `battle_chain_deploy_params` 共用,禁第二套计划装配);执行落位零现读——落位意图全部在载荷 `(to_row, to_slot)`,执行边与容器写侧按载荷直落。
 
 ## 2. 逻辑态域集
 

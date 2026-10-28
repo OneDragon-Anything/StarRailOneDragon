@@ -2,7 +2,7 @@
 
 > 验证对象:`docs/game/currency_war/research/proofs/p38-completion-probability.md` 单篇 + `math_proofs.md` 索引行(P38)。只读,未改任何文件(本报告除外)。
 > 方法:五门逐门「过/不过+证据」;公理栈 = 零调参 / 参数溯源 / 超额收益隔离(连胜=0 底线)/ 纯金流(MATH_REVALIDATION_PLAN v3 + P51_VALIDATION §F 通用公理登记)。
-> 阅读门覆盖声明:已读 p38 全文、`math_proofs.md` 索引行、`cw_shop_odds.py` 全文(概率表/池参数/`_refresh_dist`/`expected_refreshes`/`acquirability_factor`)、`cw_economy.py` 中 SHOP_REFRESH_COST 直调、`cw_chars.py` 派生接口、`cw_comps.py` 的 `COMP_LIBRARY` 字段面(form_tiers/core_chars)、`economy.md` 全文(§1/§2/§2.1/§10.1/§10.2)、`gameplay.md`(完成场景相关检索)、`06_input_model.md` §3、redesign README、`MATH_REVALIDATION_PLAN.md` 公理相关节、`P47_VALIDATION.md`、`MATH_EMPIRICAL_ATTACK.md` 全文、`AB_R3_REPORT.md`、`p38_check.py`/`p38_adv2_probe.py` 全文。**无交集跳过声明**:`data/characters/` 72 篇、`final_comps/` 全集、`sources/` 外部攻略、combat/board_structure 等——与「商店牌池抽取的完成概率」无建模交集(卡面数值不进 q_k 公式,合格集只消费费用/阵营标签,已由注册表直调替代逐篇核对),特此声明。
+> 阅读门覆盖声明:已读 p38 全文、`math_proofs.md` 索引行、`cw_shop_odds.py` 全文(概率表/池参数/`_refresh_dist`/`expected_refreshes`;原 `acquirability_factor` 已随死代码清偿移除)、`cw_economy.py` 中 SHOP_REFRESH_COST 直调、`cw_chars.py` 派生接口、`cw_comps.py` 的 `COMP_LIBRARY` 字段面(form_tiers/core_chars)、`economy.md` 全文(§1/§2/§2.1/§10.1/§10.2)、`gameplay.md`(完成场景相关检索)、`06_input_model.md` §3、redesign README、`MATH_REVALIDATION_PLAN.md` 公理相关节、`P47_VALIDATION.md`、`MATH_EMPIRICAL_ATTACK.md` 全文、`AB_R3_REPORT.md`、`p38_check.py`/`p38_adv2_probe.py` 全文。**无交集跳过声明**:`data/characters/` 72 篇、`final_comps/` 全集、`sources/` 外部攻略、combat/board_structure 等——与「商店牌池抽取的完成概率」无建模交集(卡面数值不进 q_k 公式,合格集只消费费用/阵营标签,已由注册表直调替代逐篇核对),特此声明。
 > 亲跑复现:`p38_check.py` 与 `p38_adv2_probe.py` 均重跑全绿(命令与数值见门④),注册表锚点直调逐个复核。
 
 ## 门① 内部推导:过(带 2 处措辞级修正)

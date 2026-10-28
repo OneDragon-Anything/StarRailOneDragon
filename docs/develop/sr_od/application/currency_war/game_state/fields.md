@@ -1616,9 +1616,9 @@ win_reward_mult 施于连胜分量含奖励轮。单一源=STRATEGY_ECONOMY(经 
 #### SellBench 卖牌
 
 **基础行为**:备战席 −该牌 · 金币 +退款;**卖出角色装备全量回装备区**(装备库存
-写入);卖场上角色(_sell_deployed)→ 前台/后台 −该牌。
+写入);卖场上角色(SellDeployed 动作)→ 前台/后台 −该牌。
 
-**退款锚**=`cw_state.sell_refund`:1星=cost / 2星=×3 / 3星=×9 / 4星=×27
+**退款锚**=`cw_economy.sell_refund`:1星=cost / 2星=×3 / 3星=×9 / 4星=×27
 (`_SELL_MULT`);star≥2 ∧ cost≥2 再 −1 手续费——3/4 星的 ×9−1/×27−1 待实核。
 
 **修饰**:卖价倍增——大裁员/降本增效 sell_price_mult=2;×2 作用于含手续费净额还是
@@ -1792,7 +1792,7 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 - **写入**:触发时点由 ops 与 sim **双写入方**维护——接入点在用六处:选卡登记(同点接
   burst 桥 `apply_effect_burst_grant` 与板面重写桥 `apply_board_rewrite`)/节点
   tick/计数 bump/跳过递减(consume_use)/升级标记/**结算接入点 on_battle_end**(已
-  接线,宿主=battle_wait 结算覆盖带;注册表在用零 BATTLE_END 条目 → 行为面=结算
+  接线,宿主=battle_wait 结算覆盖带;注册表在用零战斗结算触发条目 → 行为面=结算
   事件标记,条目推进随建模批立条目后经同一接入点自动生效)。词缀源登记接入点 =
   `register_affixes_from_names`(简报/位面详情两读链产出点)。**获得链登记分支**:
   portal(投资环境)效果账本登记接入点 = `kernel/cw_gain_chain.py::gain_invest_env`
@@ -2211,7 +2211,8 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
   sig 必填 = family='logic_action'(渠道签名纪律)、group_id 按
   `act:<op类名>@<seq>` 先例在口内补齐;逻辑态直写值受观察覆盖(§2.3)。
 - 效果账本 = `ActiveEffectInventory`(登记/推进/计数/移除方法域;读取方
-  by_category/by_trigger/by_source/first/counter/predict_for);规格载体 =
+  by_source/first/counter;原 by_category/by_trigger/predict_for 查询口已随
+  死代码清偿移除);规格载体 =
   `EffectSpec` 四元组,声明式驱动单一源 = [effect-domain.md](effect-domain.md) §7。
 - StrategyState 结构单一源 = `strategies/impl/mandate_v1/mandate_state`(§6.1)。
 - **非 Field 簿记组与局级记录表**(治理面 = `cw_game_state.py` 模块头 §8.8;准入 =
@@ -2284,9 +2285,11 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
 ### 8.6 实现语义申报
 
 - **cost_source 取值清单三值**:badge=徽章直读 / roster=注册表查表 / roster_fallback=
-  徽章失读退查表(证据分级禁丢)。存储侧三值透传不折叠;消费侧归并函数 =
-  `cost_source_group`(三值→消费两域 badge/registry,roster_fallback 的「徽章失读」
-  分级只在归并面折叠、原值保留供归因;未知值保守归 registry)。
+  徽章失读退查表(证据分级禁丢)。存储侧三值透传不折叠;消费侧两域归并
+  (badge/registry,roster_fallback 的「徽章失读」分级只在归并面折叠、原值保留供
+  归因;未知值保守归 registry)**未落码**——原归并函数 `cost_source_group` 已随
+  死代码清偿移除(零生产调用方),归并语义 = 字段注释(`cw_game_state.py`
+  ShopCard.cost_source),接线归消费批。
 - **骨架与规格分叉对账(已登记例外)**:bench 载体=**BenchView**(slots+capacity)非
   Field[list[BenchSlot]];xp=**tuple[int,int]**(「X/Y」现读)——容量随效果改写需
   一等承载;「X/Y」升级进度按画面现读形状。

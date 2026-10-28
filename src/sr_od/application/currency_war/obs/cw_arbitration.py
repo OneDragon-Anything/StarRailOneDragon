@@ -153,8 +153,8 @@ def _board_rule_combine(badge_ocr: dict[str, int], computed: dict[str, int],
                         prep_like: bool, board_honest: bool,
                         ) -> tuple[dict[str, int], bool]:
     """:func:`combine_board_frame_gated` 的 (value, divergent) 投影
-    (arbitrate 三元组形态用;decisions 细节经 :func:`get_rule` 直调 combine
-    的同内核获取)。divergent = 存在任一分歧 faction(无论是否覆写)。"""
+    (arbitrate 三元组形态用;decisions 细节 = 同一 ``combine_board_frame_gated``
+    调用的第二返回值)。divergent = 存在任一分歧 faction(无论是否覆写)。"""
     merged, decisions = combine_board_frame_gated(
         badge_ocr, computed, prep_like, board_honest)
     return merged, bool(decisions)

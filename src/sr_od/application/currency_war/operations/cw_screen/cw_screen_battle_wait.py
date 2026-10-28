@@ -683,10 +683,10 @@ class CwScreenBattleWait(CwOperation):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
                 # 效果账本结算挂点(settlement 锚行为账本既有挂点提供
-                # 确定性触发时点,挂点语义零改动)。现役注册表零 BATTLE_END
-                # 条目(effect-domain §7.4 零条目 = 零驱动)→ 行为面 = 结算
-                # 事件标记计数;条目计数/余量推进待建模批立 BATTLE_END 条目
-                # 后经同一挂点自动生效。best-effort 同升级标记挂点纪律
+                # 确定性触发时点,挂点语义零改动)。现役注册表零战斗结算
+                # 触发条目(effect-domain §7.4 零条目 = 零驱动)→ 行为面 = 结算
+                # 事件标记计数;条目计数/余量推进待建模批立战斗结算触发条目
+                # (枚举值随启用批新增)后经同一挂点自动生效。best-effort 同升级标记挂点纪律
                 #(prep_actions 升级标记先例:观测失败不阻塞结算链)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (

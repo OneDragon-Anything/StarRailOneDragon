@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-点击占备战席 1 槽的秘密典籍道具开启:典籍离席腾槽 + 星徽四选一弹窗弹出;选卡不在本执行链,点完开启返回主循环(返回主循环)。**非终结**动作(与 OpenBox 的终结化不同,弹窗交给外循环的画面分支处理)。op 载体 = `operations/cw_op/cw_open_tome_action.py::CwActionOpenTomeOp`(体迁薄委托 = `prep_actions.py::PrepActionExecutor._open_tome`);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenTomeParam`(`slot: int | None`,None = 首件;与 OpenBox/OpenBookcard 同签名)。发出条件 = 备战策略产出 OpenTome。
+点击占备战席 1 槽的秘密典籍道具开启:典籍离席腾槽 + 星徽四选一弹窗弹出;选卡不在本执行链,点完开启返回主循环(返回主循环)。**非终结**动作(与 OpenBox 的终结化不同,弹窗交给外循环的画面分支处理)。op 载体 = `operations/cw_op/cw_open_tome_action.py::CwActionOpenTomeOp`(体迁自执行器,原薄委托 `prep_actions.py::PrepActionExecutor._open_tome` 已随死代码清偿移除,执行 = op 直执行 + 自上报);动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionOpenTomeParam`(`slot: int | None`,None = 首件;与 OpenBox/OpenBookcard 同签名)。发出条件 = 备战策略产出 OpenTome。
 
 ## 2. 逻辑态域集
 

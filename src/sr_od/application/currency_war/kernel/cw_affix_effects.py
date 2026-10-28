@@ -69,9 +69,9 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
     # 成长的烦恼:官方「在你达到8级后，每次购买经验会损失1金币。」(affix_effects_data
     # 同键原文;competitors.md 玩法知识面)。改写面 = CwActionLevelUpParam 经验金面:等级窗开窗后
     # 每次购经验 +1 金,确定性 → 归属 = 逻辑写(效果写入归属判据:结果可准确计算);
-    # 写端未接线,现走观察覆盖兜底。duties.predict = 买经验成本对账须预知(注意:
-    # predict_for 的 action→trigger 映射只回同 trigger 条目,本条 CONDITIONAL 不经
-    # 该口,写端取词缀修饰走 by_source('affix')/payload 字段直读)。
+    # 写端未接线,现走观察覆盖兜底。duties.predict = 买经验成本对账须预知;
+    # 写端取词缀修饰走 by_source('affix')/payload 字段直读(原 ``predict_for``
+    # action→trigger 预知通道已随死代码清偿移除)。
     # 字段镜像策略卡「成长的快乐」xp_click_discount_from_level 对(8 级起降价,
     # 此处反向加价);聚合通道不共用(词缀源不经 aggregate_economy)。
     '成长的烦恼': EffectSpec(

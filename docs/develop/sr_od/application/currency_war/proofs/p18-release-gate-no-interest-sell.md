@@ -58,11 +58,14 @@ tag ∈ {off_target, for_gold} ∧ spend_gate_active(…)  → 返回 None
 
 ### ④ 判据单一源无第二判定源
 
-`spend_gate_active`(`posture_release.py:225-237`)=
-`registry.release_spend_gate_enabled ∧ session.v3_release is not None`。
-`v3_release` 由 `evaluate_release` 每轮入口写入(与义务预算/latch 同源),
-消费面(scoring 利息 EV 中性/本门)经此读 release 态,不在各自层重算 FLIP
-——「门生效帧」的定义本身单源,命题前提无歧义。
+原判据链 `spend_gate_active`(`posture_release.py:225-237`)=
+`registry.release_spend_gate_enabled ∧ session.v3_release is not None`、
+`v3_release` 由 `evaluate_release` 每轮入口写入——该整链(开关合取项/
+泄息指令字段/独立模块)已随死代码清偿移除;release 姿态现役判据单一源 =
+economy_cycle 义务核算(`overflow`/`obligation`)+ 预算披露面
+(`disclose_budget`),卖出侧义务因类(`sell_gate.LaunchCause.obligation`)
+消费。「门生效帧」的定义随消费位迁移由实现批重钉(见 P18_VALIDATION
+修正建议);本节保留历史形态,单源纪律(不在各自层重算 FLIP)不变。
 
 ### ⑤ 反例检验(构造失败记录)
 

@@ -30,7 +30,7 @@
 | 门 `_release_sell_gate` = `candidates.py:366-389` | 现在在 **455-478**;行为逐行一致(tag ∉ 两档透传 / ∈两档 ∧ 门开 → None) | ✅ 语义成立,行号漂移 |
 | `_sell_tag` = `:392-427`,末行恒 `return _release_sell_gate(...)` | 现在在 **481-518**,末行(518)仍恒经门,无绕过路径 | ✅ 关键支点成立 |
 | 生成器卖段唯一生成点 = `:463-481` bench 循环 | 现在在 **556-574**;逐核 `generate_candidates` 全部动作类(买/兜底/卖/升级/刷新/部署/合成),SellBench 仍只在 bench 循环产生 | ✅ 成立 |
-| `spend_gate_active` = `posture_release.py:225-237`,定义为 `registry.release_spend_gate_enabled ∧ session.v3_release is not None` | 现在在 **765-775**;**定义已变**:`release_spend_gate_enabled` 注册表字段**已被删除**(增补 D 第 4 态清理,`cw_registry.py:949-951` 注释留档;A/B 开臂结案,消费门恒接线),现定义 = `session.v3_release is not None` | ⚠️ 前提过时,但**方向是强化**:门不再依赖开关,恒接线 |
+| `spend_gate_active` = `posture_release.py:225-237`,定义为 `registry.release_spend_gate_enabled ∧ session.v3_release is not None` | 现在在 **765-775**;**定义已变**:`release_spend_gate_enabled` 注册表字段**已被删除**(增补 D 第 4 态清理,`cw_registry.py:949-951` 注释留档;A/B 开臂结案,消费门恒接线),当时定义 = `session.v3_release is not None`(**续变:该字段与 `posture_release`/`evaluate_release`/`spend_gate_active` 判据链已随死代码清偿整删——release 卖门判据现役 = economy_cycle 义务核算 + `sell_gate` 义务因类;本验证表的锚定形态整体过时,重锚归 release 消费位迁移批**) | ⚠️ 前提过时,但**方向是强化**:门不再依赖开关,恒接线 |
 | `sell_tag_priority` 只有三档 | `cw_registry.py:48-50` 仍恰为 off_target/for_gold/free_bench 三档,无新增涨金向档 | ✅ 辖集完备性成立 |
 | 测试 B `test_release_gate_spares_free_bench_sell` | 存在于 `sr-od-test/.../test_cw_release_endgame.py:563/579` | ✅ 见门④ |
 
@@ -54,7 +54,7 @@
 
 ### 门⑤ 参数溯源(各常量;公理判定)— **通过,一处前提常量已失效**
 
-- 门体**零调参**:辖集字面量 `('off_target','for_gold')` 是结构常量非阈值;判据单源 `session.v3_release`(由 `evaluate_release` 每轮入口写入)——符合零调参公理。
+- 门体**零调参**:辖集字面量 `('off_target','for_gold')` 是结构常量非阈值;判据单源 = 验证时点的 `session.v3_release`(由 `evaluate_release` 每轮入口写入;**该判据链已随死代码清偿整删,现役判据 = economy_cycle 义务核算 + `sell_gate` 义务因类**)——符合零调参公理。
 - 前提常量 `registry.release_spend_gate_enabled`:**已随其增补 D 删除**——证明命题定义、边界第 3 条(「默认 False 时恒空洞真」)、反例表第 4 行(「开关关帧」)均引用该常量,现已失效;但失效方向是**强化**(门恒接线,命题辖域扩大为所有 release 帧,无空洞臂)。
 - 超额收益隔离:命题显式声明「不声明帧内金不涨」并枚举三个金账豁免面——无过度声明。
 - 纯金流:命题不涉金流数值,仅集合不变式,N/A(合规)。
@@ -68,7 +68,7 @@
 
 ## 3. 修正建议(供命题维护方采纳;本验证批未改动)
 
-1. **勘误前提定义**:命题的「门辖帧」改为 ≜ `spend_gate_active(session, registry) = True`(即 `session.v3_release is not None`),删除 `release_spend_gate_enabled` 合取项,并注明增补 D 后门恒接线、命题辖域扩大。
+1. **勘误前提定义**:命题的「门辖帧」改为 ≜ `spend_gate_active(session, registry) = True`(即验证时点的 `session.v3_release is not None`),删除 `release_spend_gate_enabled` 合取项,并注明增补 D 后门恒接线、命题辖域扩大——**本建议已被后续演进覆盖:该判据链已随死代码清偿整删,重锚 = economy_cycle 义务核算/`sell_gate` 义务因类(归 release 消费位迁移批)**。
 2. **刷新全部行号锚点**(candidates.py 455-478/481-518/556-574;posture_release.py 765-775),或改用符号名锚(建议后者,抗漂移)。
 3. **删/改边界第 3 条与反例表第 4 行**:开关臂已不存在,「恒空洞真」表述失效;保留一句历史注即可。
 4. **补记 `form_break_sell_blocked`**入守卫清单注记:提前返回 None,不削弱不变式。

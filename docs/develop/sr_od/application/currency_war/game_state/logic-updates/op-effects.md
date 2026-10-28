@@ -33,7 +33,7 @@
 
 ## 4. 写入桥逐件(cw_effect_inventory)
 
-**入席桥** `spawn_equip_bench_unit`:复制/发放单位落备战席首个空槽,`write_logic(gs.bench)` 直写。零写分支 = 超费用门(`cost_gate`,员工投影仪门表 `STAFF_PROJECTOR_COST_GATE`)/ 席满 / bench 未观察 → False 拒落(席满不是部分成功,是无落位);star 集 1..3 外 = 调用错显式报错。服务面 = 员工投影仪(拖拽回执,门形)/ 完美投影仪(无门)/ 数据拷贝仪族计数分支(成熟阈值表 `COPY_MACHINE_MATURE_BATTLES`)/ 分身墨镜族获得发放。
+**入席桥** `spawn_equip_bench_unit`:复制/发放单位落备战席首个空槽,`write_logic(gs.bench)` 直写。零写分支 = 超费用门(`cost_gate` 形参,门值由调用位传入;原员工投影仪门表常量 `STAFF_PROJECTOR_COST_GATE` 已随死代码清偿移除)/ 席满 / bench 未观察 → False 拒落(席满不是部分成功,是无落位);star 集 1..3 外 = 调用错显式报错。服务面 = 数据拷贝仪族计数分支(成熟阈值表 `COPY_MACHINE_MATURE_BATTLES`;员工/完美投影仪复制面已改走获得链 `cw_gain_chain.gain_character`,原桥投影仪服务面随 tool-gain-report 迭代收窄)/ 分身墨镜族获得发放。
 
 **入区桥** `grant_equip_item`:好运令牌等「选定后确定」面,装备库存追加一件直写;库存未观察 = False 零写留观察。
 

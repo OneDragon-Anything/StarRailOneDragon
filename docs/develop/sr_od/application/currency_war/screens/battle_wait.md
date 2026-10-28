@@ -65,7 +65,7 @@
 - **节点类型**:首领识别 id_mark(『货币战争-结算.标识-首领』画面位)> gs 推导(`kernel/cw_game_state.py::node_kind_of`;session 识别源已停用,单一源 = 容器)> 探针表兜底(`_node_type_from_table`,宿主 = `gs.node_books.plane_node_table`)> 缺省『普通战斗』;节点类型名统一 = `_normalize_node_type`。
 - **killed 判定两路**:进度符号(`progress_delta > 0`)+ killed 文本双置信度(读链 `read_round_outcome` 内)——均须在结算画面识别出来(胜负判定必须在结算画面识别,用户裁定);两主路径同失 = `killed=None` 观察收尾(诚实缺位,禁 HP 推断)。
 - **遭遇选档观测面**(环写位):`_cw_selection_write` → `kernel/cw_encounter_selection.py::record_settlement_row`(残留行不入环;telemetry-only 面 `killed` 非显式败局行抑制不入环);对账落盘 hook `_cw_selection_capture`(缺省关,启用点 = 标定采集显式接通)。
-- **效果账本结算挂点**:`game_state_of(session).effects.on_battle_end()`(在用注册表零 BATTLE_END 条目 = 行为面仅事件计数)+ 拷贝仪参与计数 `kernel/cw_effect_inventory.py::settle_copy_machine_participation`(成熟入席落日志)。各独立 best-effort 异常域,失败不阻塞结算链。
+- **效果账本结算挂点**:`game_state_of(session).effects.on_battle_end()`(在用注册表零战斗结算触发条目 = 行为面仅事件计数)+ 拷贝仪参与计数 `kernel/cw_effect_inventory.py::settle_copy_machine_participation`(成熟入席落日志)。各独立 best-effort 异常域,失败不阻塞结算链。
 - **页1 暂存合并**:进度/三项遥测暂存在页2 记录时合并消费(暂存值优先于页2 同帧读数;跨窗滞留即弃,防上一场污染下一场)。
 
 ## 7. 子态与 overlay

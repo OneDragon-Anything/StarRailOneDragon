@@ -413,7 +413,8 @@ def parse_streak(ocr_texts: list[str]) -> int | None:
     fixture 核实:结算屏 OCR 含 '连胜×0' 形态,**前缀连胜/连败 = 方向**(read_streak
     备战只读 magnitude 无方向)。OCR 偶把 × 读成 x/X/*;前缀与尾随数字在同一 token。
     失读(全帧无连胜/连败 token)→ None:『连胜×0』真 0 与失读 None 分写,None 化后
-    消费链守卫 = 结算观察半 None 跳过沿用 / is_losing_streak None 行跳过。
+    消费链守卫 = 结算观察半 None 跳过沿用(原 is_losing_streak None 行守卫已随
+    死代码清偿移除)。
     """
     for t in ocr_texts:
         if '连胜' in t or '连败' in t:
@@ -671,8 +672,9 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
                        comp_tag: str, node_type: str = '普通战斗'):
     """结算屏 → ``RoundOutcome``(观测回路 P1.5;结算观察半直写输入)。
 
-    OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
-    (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
+    OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0,
+    失败 0.0(置信度随 ``RoundOutcome`` 落遥测,原 trend 过滤消费已随死代码
+    清偿移除)。plane/round_num/comp_tag 由调用方
     (loop)传入。node_type:**结算屏自身解析优先**(r366/——局48 已实测确认
     购买单元内关店通道零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
