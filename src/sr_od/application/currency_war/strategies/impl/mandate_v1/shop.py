@@ -84,6 +84,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     Unit,
     bench_entries_of,
     deployed_rows_of,
+    effective_node_pos,
     gold_of,
     level_of,
     max_units_of,
@@ -227,34 +228,37 @@ def _r2_card_reserve(gs: GameState) -> int:
 
 def _merge_pair_names(bench: list[BenchSlot],
                       deployed: list[Unit]) -> set[str]:
-    """合成完备购形态对名集(M2b 循环与判据目标可买合成腿两处共吃的
-    单一源,禁第二实现):全局面(bench∪deployed)同名副本恰 2 张 ∧
-    均 1★ 的角色名。
+    """合成可触发名集(M2b 循环与判据目标可买合成腿两处共吃的单一源,
+    禁第二实现):全局面(bench∪deployed)同名**同星**副本恰 2 张(任一
+    星档计数 == 2)的角色名——机制全集口径。
 
-    机器口径申报(消费纪律):本谓词 = M2b 机器实现口径,非机制全集
-    ——机制上「同名 1★ 凑满 3 即合成」(merge_mechanics.md §2 主例:
-    备战 1★×2 + 场上 2★×1 → 买第三张 1★ 触发合成),机器只实现「恰
-    2 张全 1★」单跳形态;「1★×2 与 ≥2★ 同名并存」的买三张通道机器
-    未实现(两真实合成通道残余,设计边界;裁定档已删,git da3a7370ce
-    可溯)。未来 M2b 若补该形态,本谓词须同步收扩——否则目标可买
-    合成腿将从「对齐机器」翻成「误杀真通道」(刷新拒因面)。
+    机制依据 = merge_mechanics.md §1/§2「同名同星凑满 3 即合成」+ §3
+    恒成立约束「全场同名同星 ≤2」:任一星档第 3 张出现的瞬间即触发
+    合成,故「买一张即合成」的持有形态全集 = 1★ 档计数 == 2(恰 2 张
+    1★ / 场上 2★ + 备战 1★×2——买第 3 张 1★ 合成,与已持 2★ 无关,
+    产物 2★ 向 3★ 推进)∨ 2★ 档计数 == 2(2★×2 + 直出 2★ 卡——买即
+    合成 3★)。旧「恰 2 张全 1★」单跳口径只是其子集,旧 docstring 的
+    误杀警示(买三张通道未实现)由本全集口径消除。3★ 档不收(星级目标
+    追到底 = 3★,4★ 出机制文档域,收录会误放 3★ 档买入通道)。
 
     归一化/计数键逐字符同 ``decide_shop_action`` 内 ``_cnt``(同名同
     星副本计数):星级 ``(c.star or 1)``(None 视同 1★)、键
     ``(c.char_id or '')``、计数宇宙 bench∪deployed。资格维不在本
-    谓词适用范围(调用方各自过滤:M2b 循环天然约束于 buy_members,
-    合成腿消费 = 目标名 ∈ 本谓词名集——目标名构造性 ∈ 义务面,
-    资格维对齐 M2b 实现)。
+    谓词适用范围(调用方各自过滤):M2b 循环天然约束于 buy_members,
+    且对 1★ 买入通道再验「该名 1★ 档计数 == 2」(只有 2★ 档凑满进度
+    的名,买 1★ 不触发合成,禁混入 1★ 通道);合成腿消费 = 目标名 ∈
+    本谓词名集——目标名构造性 ∈ 义务面,资格维对齐。
     """
-    copies: dict[str, list[int]] = {}
+    counts: dict[str, dict[int, int]] = {}
     for c in list(bench) + list(deployed):
         u = mandate._slot_unit(c) \
             if getattr(c, 'kind', None) is not None else c
         cid = (getattr(u, 'char_id', '') or '') if u is not None else ''
         star = int(getattr(u, 'star', 1) or 1) if u is not None else 1
-        copies.setdefault(cid, []).append(star)
-    return {n for n, ss in copies.items()
-            if len(ss) == 2 and all(s == 1 for s in ss)}
+        counts.setdefault(cid, {})
+        counts[cid][star] = counts[cid].get(star, 0) + 1
+    return {n for n, ss in counts.items()
+            if ss.get(1, 0) == 2 or ss.get(2, 0) == 2}
 
 
 def _frame_search_windows(session: StrategySession, gs: GameState,
@@ -280,6 +284,29 @@ def _frame_search_windows(session: StrategySession, gs: GameState,
             card_search_window(level, omega))
 
 
+def _refresh_block_key(gs: GameState, gold: int, bench_used: int) -> tuple:
+    """刷新负结果记忆比对键(W11;载体字段 = ``StrategyState.
+    refresh_blocked``,读写单一消费位 = ``decide_shop_action`` 刷新提案
+    段)。键 = (生效节点序位, 金, 席位快照, 星级目标键)四元组:
+
+    - 节点序位 = ``effective_node_pos`` 现值(节点推进即键变——标记
+      节点级生命周期经值比对承载,跨节点残留键失配即失效);
+    - 金 = 会话金位读数现值(调用方传帧级 ``session_gold`` 投影);
+    - 席位快照 = 备战席占席数(腾位/买入/合成即键变——席位变化使目标
+      可买性可能翻转,记忆随之失效);
+    - 星级目标键 = ``unfinished_star_targets`` 名-必要星级序元组(星级
+      目标完成/集合变动即键变——判据输入面变化,记忆不得跨目标生效)。
+
+    取值时机 = 置位帧与消费帧各现读一次(同帧同参;禁快照跨帧复用)。
+    """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        levelup as _lvl,
+    )
+    targets = tuple(sorted(
+        (t[0], int(t[1])) for t in _lvl.unfinished_star_targets(gs)))
+    return (effective_node_pos(gs), int(gold), int(bench_used), targets)
+
+
 def shop_unbought_reasons(gs: GameState,
                           comp: Comp | None,
                           k_members: tuple[str, ...],
@@ -301,7 +328,9 @@ def shop_unbought_reasons(gs: GameState,
       分支的现状消除):``missing_unaffordable``(金不足)/
       ``missing_bench_full``(席满且无可腾燃料件)/ ``missing_no_path``
       (金席俱足仍未发出 = 异常态:发出被截断丢弃等,须查);
-    - 义务面已持有:``owned``;
+    - 义务面已持有:``owned``;锁定后星级目标已满足成员(need_star 口径
+      缺口 = 0,W5 追星改革)细分 ``star_goal_met``(显式停买拒因,
+      同名副本零推进——优先于下方持有形态细分);
     - 保护集囤货面(非义务面成员;design §2.3 D7 迁移——退役的
       ``transition_component`` 策展键语义由本键取代,占其原键序位,
       交集卡〔囤货面 ∧ 某阵容 transition_chars,如花火〕可辨性承继):
@@ -372,6 +401,11 @@ def shop_unbought_reasons(gs: GameState,
         if name in k_members:
             if name in owned:
                 # 线内已持有帧按持有形态细分拒因(与同帧实际动作一致):
+                # - W5 达标显式停买(锁定后):星级目标已满足成员的同名
+                #   副本零推进(缺口 = 0,买臂显式停买,序 1 缺件域/M2b/
+                #   m2_stockpile 三处门同口径)——优先于持有形态细分,拒因
+                #   = ``star_goal_met`` 可观测(旧口径落「四臂够不着,拒因
+                #   混杂」的 owned 桶,追查件缺陷 4);
                 # - 合并完成段(cnt=2 ∧ 无 2★):§3.6 满栏例外后买入直发
                 #   (免 bench_free 门),'merge_bench_full' 键停用;金不足
                 #   仍记 merge_unaffordable,金席俱足未发 = merge_ready
@@ -389,6 +423,13 @@ def shop_unbought_reasons(gs: GameState,
                 for d in deployed:
                     if (d.char_id or '') == name:
                         copies.append(d)
+                _need = (getattr(comp, 'need_star', None) or {}).get(name) \
+                    if comp is not None else None
+                if _need is not None \
+                        and session_scope.line_members_view(gs).locked \
+                        and max(int(c.star or 1) for c in copies) >= _need:
+                    out[name] = 'star_goal_met'
+                    continue
                 cnt1 = sum(1 for c in copies if (c.star or 1) == 1)
                 cnt2 = len(copies) - cnt1
                 cost = min((card_cost(c))
@@ -800,6 +841,20 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     deployed_names = [d.char_id or '' for d in deployed]
     bench_free = BENCH_CAPACITY - len(bench)
     owned = set(bench_names) | set(deployed_names)
+
+    def _cnt(name: str, star: int) -> int:
+        """同名同星副本计数(全局面 bench∪deployed;现行单一源)。"""
+        n = 0
+        for c in bench:
+            u = mandate._slot_unit(c)
+            if u is not None and (u.char_id or '') == name \
+                    and (u.star or 1) == star:
+                n += 1
+        for d in deployed:
+            if (d.char_id or '') == name and (d.star or 1) == star:
+                n += 1
+        return n
+
     cap_resolved = mandate._cap_of(session)
     g_star = saturation_line(cap_resolved)
     _cap_hold_now = cw_intention.locked_buy_cap_hold(gs)
@@ -869,7 +924,33 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         obligation_members = tuple(sorted(_cand_names))
         buy_members = tuple(sorted(
             set(obligation_members) | set(_protection)))
-    missing = [m for m in obligation_members if m not in owned]
+    # —— 缺件集口径分域(W5 追星改革;设计 details/shop-buy-reform.md §1)——
+    # 锁定后 = 缺口驱动:未持成员(现行口径,义务面照买)∪ 星级缺口成员
+    # (消费 ``unfinished_star_targets`` 判据现值,只消费不改编据本体——
+    # 修「义务面名单星级盲」:已持 2★ 追 3★ 成员同名 1★ 副本此前进不了
+    # 任何买臂,追查件缺陷 4);减去 M2b 即时合成快路径名(1★ 档恰 2 张——
+    # 该形态由 M2b 免席直发承接,进序 1 会被席满置换账拦掉,快路径语义
+    # 保留)。未锁窗口 = 维持现行候选缺件口径不变(未锁期星级目标集恒
+    # 空集,字面替换会清空未锁窗口 M2;行为变化申报仅限锁定后)。
+    # 达标集(锁定后星级目标已满足成员)= need_star 键 − 缺口集:同名
+    # 副本对达标成员零推进,买臂显式停买(拒因键 ``star_goal_met``)。
+    _star_gap_names: frozenset[str] = frozenset()
+    _star_done_names: frozenset[str] = frozenset()
+    _m2b_fast_names: frozenset[str] = frozenset()
+    if _line_view.locked:
+        _star_gap_names = frozenset(
+            t[0] for t in _crit_levelup.unfinished_star_targets(gs))
+        _star_need = set(getattr(k, 'need_star', None) or {})
+        _star_done_names = frozenset(
+            m for m in obligation_members
+            if m in _star_need and m not in _star_gap_names)
+        _m2b_fast_names = frozenset(
+            m for m in obligation_members if _cnt(m, 1) == 2)
+        missing = [m for m in obligation_members
+                   if (m not in owned or m in _star_gap_names)
+                   and m not in _m2b_fast_names]
+    else:
+        missing = [m for m in obligation_members if m not in owned]
 
     # P60 容量超限告警门(检查对象 = 义务面,design §2.2 对象面收窄——
     # 囤货面超容由置换账自然管理;分母 = cap_hold 现读)。
@@ -1177,19 +1258,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             return None
         return _funding_sell(card, order_class)
 
-    def _cnt(name: str, star: int) -> int:
-        """同名同星副本计数(全局面 bench∪deployed;现行单一源)。"""
-        n = 0
-        for c in bench:
-            u = mandate._slot_unit(c)
-            if u is not None and (u.char_id or '') == name \
-                    and (u.star or 1) == star:
-                n += 1
-        for d in deployed:
-            if (d.char_id or '') == name and (d.star or 1) == star:
-                n += 1
-        return n
-
     # ===== 序 1:目标阵容件 =====
     # 承继变更申报:满席腾位关店链(关店→备战卖→重开)废止——席满走
     # 店内置换账;金不足走会话内筹资;两类拦阻进机会清单。
@@ -1219,6 +1287,17 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     for m in obligation_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
             continue
+        if _line_view.locked:
+            if m in _star_gap_names:
+                # W5 缺口分域:缺口 > 0 成员已升格序 1 缺件买臂域(任意
+                # 星级照买,先行段已发射或入置换账),本囤臂不再重评——
+                # 防同帧双重置换/筹资评估与机会清单重复入账。
+                continue
+            if m in _star_done_names:
+                # W5 显式停买:星级目标已满足成员的同名副本零推进(追星
+                # 口径缺口 = 0),拒因键可观测(旧口径此处会买第二张 1★)。
+                _count('star_goal_met')
+                continue
         all_cands = _shop_candidates(m, 'm2_stockpile')
         cands1 = [c for c in all_cands if (c.star or 1) == 1]
         _spot2 = spot2_direct_out_card(
@@ -1252,11 +1331,21 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count('m2_stockpile_spot2_buy')
         return _emit_buy(card, 'm2_stockpile')
 
-    # M2b 升星合并完成买入(现行判据本体不动;满栏例外免席——机制
-    # 出处 merge_mechanics §2.5,买入即合成净释放 1 席)。
+    # M2b 升星合并完成买入(机制全集口径消费 :func:`_merge_pair_names`;
+    # 满栏例外免席——机制出处 merge_mechanics §2.5,买入即合成净释放
+    # 1 席)。W5 机制全集扩面:1★ 档恰 2 张 ∧ 已持同名 2★ 的形态(场上
+    # 2★ + 备战 1★×2)旧「恰 2 张全 1★」口径排除,本臂现承接——买第 3 张
+    # 1★ 合成第 2 个 2★,向 3★ 推进。1★ 买入合法性门 = 该名 1★ 档计数
+    # == 2(只有 2★ 档凑满 3 进度的名,买 1★ 不触发合成,无免席资格,
+    # 其缺口照买归序 1 缺件域)。
     _pairs = _merge_pair_names(bench, deployed)
     for m in buy_members:
-        if m not in _pairs:
+        if m not in _pairs or _cnt(m, 1) != 2:
+            continue
+        if _line_view.locked and m in _star_done_names:
+            # W5 显式停买:达标成员的合成完成买入同样零推进(如 1★ 目标
+            # 已持对仍凑合成),拒因键同序 1 口径。
+            _count('star_goal_met')
             continue
         all_cands = _shop_candidates(m, 'm2_merge_completion')
         shop_cands = [c for c in all_cands if (c.star or 1) == 1]
@@ -1360,9 +1449,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # —— ②(b) 死金压牌库(现行判据本体不动;消费位随会话循环接线)——
     if gold < g_star and reward_node_suppressed(gs):
         _dead_gold = gold - 10 * (gold // 10)
-        # prio0 缺口集推导域 = 义务面(design §2.2/§2.4,与 missing 同款
-        # 两推导同步收窄;囤货面缺口归囤臂,不入死金缺口账)。
-        _dg_gap = {m for m in obligation_members if m not in owned}
+        # prio0 缺口集推导域 = 缺件集(与 missing 同款两推导同步收窄,W5
+        # 缺口口径:锁定后含星级缺口成员;囤货面缺口归囤臂,不入死金缺口账)。
+        _dg_gap = set(missing)
         for _dg_prio in range(3):
             for card in _buy_view('dead_gold_press_buy'):
                 name = card.name or ''
@@ -1484,8 +1573,22 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # —— M6 富余转压牌库(现行判据本体不动;整买预留约束经 s_reserve
     # 与 R2 侧预留承载)——
+    # W4 停留刷窗口让位(设计 details/shop-buy-reform.md §2):窗口内
+    # (``refresh_warranted`` 为真)M6 压牌库囤货臂停用——窗口内金用途
+    # 优先级 = 刷新 + 目标卡钱,富余金留线上吃息;囤货买入与刷新争席是
+    # 支配性互斥(席位是刷新买卡的必要资源,追查件缺陷 3 归因 = M6 灌满
+    # 反锁刷新)。求值时点 = 本帧 M6 触发判定点即时求值(与刷新提案段
+    # 同帧同参,禁第二推导;判定轴复用总纲接口契约;非帧首快照)。免费
+    # 刷不耗金不受影响(窗口内免费刷仍可用);非窗口 M6 照常。
     _m6_exhausted = gold <= g_star   # 无富余 ⇒ 压牌库候选结构性耗尽(空转)
     _m6_arms = gold > g_star
+    if _m6_arms:
+        _m6_ok_w, _ = crit_refresh.refresh_warranted(
+            gs, session, k_members=k_members, counters=counters,
+            dedup_names=_mm_dedup)
+        if _m6_ok_w:
+            _count('m6_stay_window_yield')
+            _m6_arms = False
     if _m6_arms:
         ok2, _ = mandate.check_seats(
             bench_free, 0, needs_bench=True, needs_board=False,
@@ -1903,62 +2006,87 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # ===== 刷新链三组件:判据 → 金线闸 → 发射(shop_session §2.4;
     # 目标可买合取与金线闸新算式 = 2026-10-28 用户裁定刷新链定型)=====
-    _free_left = gs.free_refresh_left.value
-    _is_free = _free_left is not None and int(_free_left) > 0
-    if _is_free:
-        # 免费刷新纳入目标可买检查(金线不适用——免费):「白给的刷新
-        # 照用,不构成主动刷」(概率事件的免费刷新〔invest_effects 已
-        # 登记〕)以「刷出的目标卡买得到」为前提——免费刷不再无界,
-        # 目标不可买帧刷新零收益,拒绝 → 现行关店(负结果记忆标记归
-        # 买面改革批,本批不做记忆)。计数达阈族失效钩子照挂(协议②)。
-        # 免费腿目标名域:锁定支 = 停留目标名(单一源 stay_target_of);
-        # 未锁窗口 = 义务缺件集(本帧序 1 义务面现值——免费刷搜牌域
-        # 与买面同域;判定单一源 = crit_refresh.target_buyable)。
-        _free_target = _crit_levelup.stay_target_of(gs)
-        _free_names = (_free_target[0],) if _free_target is not None \
-            else tuple(missing)
-        if crit_refresh.target_buyable(gs, session, _free_names,
-                                       k_members=k_members,
-                                       counters=counters,
-                                       dedup_names=_mm_dedup):
-            shop_sess.note_refresh_counters(gs, 0)
-            _mark_processing()
-            return CwActionRefreshShopParam(cost=0, reason='free_refresh')
-    _ok_w = False
-    _wkey = 'contract_abstain'
-    if contracts.ensure_contract(
-            ('refresh', 'refresh_warranted'),
-            contracts.ContractCtx(), counters):
-        _ok_w, _wkey = crit_refresh.refresh_warranted(
-            gs, session, k_members=k_members, counters=counters,
-            dedup_names=_mm_dedup)
-    if not _ok_w:
-        _count(f'shop_refresh_{_wkey}')
+    # W11 刷新负结果记忆(轻量形态,非期望式;设计 details/shop-buy-
+    # reform.md §3):刷新提案被拒(目标可买 False ∨ 金线不足)→ 本帧
+    # 置会话标记 + 照常收店;外循环重进商店入口观察时标记存在且状态
+    # 三元组无变化 → 本帧跳过刷新提案(按六序买面/关店走,免费腿同受
+    # 约束——白给刷零收获重进循环消灭,免费次数保留不耗),直至状态
+    # 变化(节点推进/金变/席位变/星级目标完成)清标记。比对键 = (节点,
+    # 金, 席位快照, 星级目标键),节点推进与星级目标完成两清除条件以
+    # 键内分量比对承载(标记字段本体不进节点边界重置表,值比对 =
+    # shop_handled 同款双保险读法)。
+    _block_key = _refresh_block_key(gs, gold, len(bench))
+    if _st.refresh_blocked is not None \
+            and _st.refresh_blocked != _block_key:
+        _st.refresh_blocked = None
+    if _st.refresh_blocked is not None:
+        _count('shop_refresh_blocked_memory_skip')
     else:
-        # 金线闸:预留 = saturation_line + 停留目标实费档 ρ(2026-10-28
-        # 用户裁定实费档实现口径:ρ = stay_target 实费档,变费卡随档;
-        # 未锁窗口 stay_target 恒空 → ρ=0,金线 = g* + 刷价——两分支
-        # 口径分行声明于判据本体)。整级预留分支删(同日裁定:升级概率
-        # 带单判据
-        # 后升级触发态与刷新放行态带互斥,预留腿不可达;凑金等待帧的
-        # 刷新让位由判据①支「升级优先」直接承载——资金序 = 升级优先
-        # 于刷新,升级推迟期刷新维持拒绝、不设解锁支,防「刷新烧凑金
-        # → 升级永久 defer」饿死环)。
-        _reserve = g_star + _r2_card_reserve(gs)
-        if contracts.ensure_contract(
-                ('refresh', 'r2_budget'),
-                contracts.ContractCtx(gold=gold, reserve=_reserve),
-                counters):
-            if crit_refresh.r2_budget(
-                    gold, _reserve, refresh_cost_effective(gs=gs)):
-                shop_sess.note_refresh_counters(
-                    gs, refresh_cost_effective(gs=gs))
+        _free_left = gs.free_refresh_left.value
+        _is_free = _free_left is not None and int(_free_left) > 0
+        if _is_free:
+            # 免费刷新纳入目标可买检查(金线不适用——免费):「白给的刷新
+            # 照用,不构成主动刷」(概率事件的免费刷新〔invest_effects 已
+            # 登记〕)以「刷出的目标卡买得到」为前提——免费刷不再无界,
+            # 目标不可买帧刷新零收益,拒绝 → 置负结果记忆标记(免费腿
+            # 同受记忆约束)后照常收店。计数达阈族失效钩子照挂(协议②)。
+            # 免费腿目标名域:锁定支 = 停留目标名(单一源 stay_target_of);
+            # 未锁窗口 = 义务缺件集(本帧序 1 义务面现值——免费刷搜牌域
+            # 与买面同域;判定单一源 = crit_refresh.target_buyable)。
+            _free_target = _crit_levelup.stay_target_of(gs)
+            _free_names = (_free_target[0],) if _free_target is not None \
+                else tuple(missing)
+            if crit_refresh.target_buyable(gs, session, _free_names,
+                                           k_members=k_members,
+                                           counters=counters,
+                                           dedup_names=_mm_dedup):
+                shop_sess.note_refresh_counters(gs, 0)
                 _mark_processing()
-                return CwActionRefreshShopParam(
-                    cost=refresh_cost_effective(gs=gs),
-                    reason='star_target')
-            elif _zone_hit:
-                _count('must_spend_r1_budget_fail')
+                return CwActionRefreshShopParam(cost=0,
+                                                reason='free_refresh')
+            _st.refresh_blocked = _block_key
+        _ok_w = False
+        _wkey = 'contract_abstain'
+        if contracts.ensure_contract(
+                ('refresh', 'refresh_warranted'),
+                contracts.ContractCtx(), counters):
+            _ok_w, _wkey = crit_refresh.refresh_warranted(
+                gs, session, k_members=k_members, counters=counters,
+                dedup_names=_mm_dedup)
+        if not _ok_w:
+            _count(f'shop_refresh_{_wkey}')
+            if _wkey == 'target_unbuyable':
+                # W11:目标可买拒绝置标记(判据拒绝族其余键 = 升级优先/
+                # 带外等资金序与阶段语义,循环终止由其自身承载,不入记忆)。
+                _st.refresh_blocked = _block_key
+        else:
+            # 金线闸:预留 = saturation_line + 停留目标实费档 ρ(2026-10-28
+            # 用户裁定实费档实现口径:ρ = stay_target 实费档,变费卡随档;
+            # 未锁窗口 stay_target 恒空 → ρ=0,金线 = g* + 刷价——两分支
+            # 口径分行声明于判据本体)。整级预留分支删(同日裁定:升级概率
+            # 带单判据
+            # 后升级触发态与刷新放行态带互斥,预留腿不可达;凑金等待帧的
+            # 刷新让位由判据①支「升级优先」直接承载——资金序 = 升级优先
+            # 于刷新,升级推迟期刷新维持拒绝、不设解锁支,防「刷新烧凑金
+            # → 升级永久 defer」饿死环)。
+            _reserve = g_star + _r2_card_reserve(gs)
+            if contracts.ensure_contract(
+                    ('refresh', 'r2_budget'),
+                    contracts.ContractCtx(gold=gold, reserve=_reserve),
+                    counters):
+                if crit_refresh.r2_budget(
+                        gold, _reserve, refresh_cost_effective(gs=gs)):
+                    shop_sess.note_refresh_counters(
+                        gs, refresh_cost_effective(gs=gs))
+                    _mark_processing()
+                    return CwActionRefreshShopParam(
+                        cost=refresh_cost_effective(gs=gs),
+                        reason='star_target')
+                # W11:金线不足拒绝同置标记(拒绝态关店,无状态变化不重入
+                # 提刷——重入帧直接按六序/关店走,消除重复提刷白转帧)。
+                if _zone_hit:
+                    _count('must_spend_r1_budget_fail')
+                _st.refresh_blocked = _block_key
 
     # ---- D-D 硬节点补强门消费(观察级接线,现行)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(

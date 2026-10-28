@@ -417,6 +417,18 @@ class StrategyState:
     # 持有 3★ 名集快照(合成族失效的帧差检测基线;criteria/shop_session
     # .detect_merge_result_frame 单一写端)。
     held_3star_snapshot: dict = field(default_factory=dict)
+    # [索引定义] refresh_blocked = 刷新负结果记忆标记(W11,迭代
+    # 2026-10-28-hp-purge-refresh-reform;设计 = details/shop-buy-reform.md
+    # §3;mandate_state 新增字段行 = 3.3 行级分工,与 3.1 已清的计数器/
+    # 孤儿字段行区不重叠):值 = 比对键四元组 (生效节点序位, 金, 席位
+    # 快照, 星级目标键),键构造与读取单一源 = shop._refresh_block_key;
+    # None = 无标记。取值时机 = 置位帧/消费帧各现读一次(置位 = 刷新提案
+    # 被拒〔目标可买 False ∨ 金线不足〕帧,写端 = shop.py 刷新提案段三
+    # 拒绝位;消费 = 重进商店帧刷新提案段入口,三元组无变化 → 跳过刷新
+    # 提案)。生命周期 = 节点级(键含节点序位分量,跨节点残留经值比对
+    # 失效,同 ``shop_handled`` 双保险读法——不进节点边界重置表);状态
+    # 变化(金变/席位变/星级目标完成)同经键比对清标记。
+    refresh_blocked: tuple | None = None
 
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
