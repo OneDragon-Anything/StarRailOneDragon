@@ -1730,6 +1730,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 过滤对本域恒等;独立单位昔涟照发(族级口径 economy.md:94)。
     '昼之半神概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='昼之半神', star=1),),
                             equips_random_immediate=('简易',)),
+    # id 1011 效果原文直读:「夜之半神」= desc【夜之半神】直读(阵营羁绊名,与
+    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
+    # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
+    # economy.md 四卡线索名单不含夜之半神 = 装备身份零先验,均匀 v0 + 按卡固定
+    # 假说待校准);简易池 = category '简易' 现值 8 件;本域无专家(7 名 is_expert
+    # 全空),牌库时点过滤对本域恒等;独立单位昔涟照发(族级口径 economy.md:94)。
+    '夜之半神概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='夜之半神', star=1),),
+                            equips_random_immediate=('简易',)),
 }
 
 
@@ -1872,7 +1880,7 @@ ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
 
 #: 概念股族阵营刷新概率腿的「零建模」失真申报键(家族常量;键模板 =
 #: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
-#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008、env_1009、env_1010;消费面 = 披露清单,invest_effects.md §5 在案裁定为
+#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008、env_1009、env_1010、env_1011;消费面 = 披露清单,invest_effects.md §5 在案裁定为
 #: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
 #: (cw_shop_deal 采样按 REFRESH_PROB 费用基线,阵营轴无参数),刷出该
 #: 阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;解禁条件 =
@@ -1889,6 +1897,7 @@ ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS: tuple[str, ...] = (
     'env_1008_faction_refresh_odds_unmodeled',
     'env_1009_faction_refresh_odds_unmodeled',
     'env_1010_faction_refresh_odds_unmodeled',
+    'env_1011_faction_refresh_odds_unmodeled',
 )
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
