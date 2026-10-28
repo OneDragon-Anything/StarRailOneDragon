@@ -104,7 +104,7 @@ HP_LOSS_FULL: float = 30.0
 
 
 class PerformanceTracker:
-    """跨回合观测追踪器(掉血 trend → maybe_pivot 信号;comp_viability 观测项)。
+    """跨回合观测追踪器(掉血 trend 观测层;comp_viability 观测项)。
 
     ⚖️ 敌方侧无生产写端:_update_required_damage(no-op 体)/
     set_required_damage+required_damage(无读者)/boss_kill_signal(无调用)/_last_hp_after
@@ -239,31 +239,3 @@ def comp_viability(comp: Comp, gs: GameState, ctx: ScoreContext,
     obs_weight = clamp(0.1 + 0.4 * (rounds_seen / 18), 0.1, 0.5)
     prior_weight = 1.0 - obs_weight
     return clamp(prior_weight * prior + obs_weight * obs, 0.0, 1.0)
-
-
-# ===== 死局检测(三门;r5 + r6 F9)=====
-
-DEAD_HP: int = 20             # HP 低于此 + trend 高 + 锁不住血节点 → 死局(占位,待 difficulty 校准)
-TREND_THRESHOLD: float = HP_LOSS_FULL * 0.5   # trend 超此(归一化掉血 15+)算"锁不住血"
-LOCK_NODES: set[str] = {"boss", "遭遇", "精英"}   # 锁不住血的节点类型(普通关可能锁血翻盘)
-
-
-def is_run_dead(gs: GameState, tracker: PerformanceTracker,
-                next_node_type: str) -> bool:
-    """死局检测(三门):HP 低 + trend 高 + 下回合是锁不住血节点 → True。
-
-    r6 F9:"普通关可能锁血翻盘"依赖锁血机制 —— 阶段 4 实机确认货币战争是否有锁血;
-    无则删 next_node_type 门,纯 HP+trend 两门。trend None(冷启动)→ False(不误判死)。
-
-    [待办读点·hp 政策层申报] 本函数现属待办层(生产调用面空,测试仓经
-    桥调用),本行 hp 直读仅待办期原样保留、行为零变化;重挂生产消费
-    **必经政策层读口**——门后值 = kernel/cw_hp_policy.decision_hp
-    (gs, session),可信位 = hp_decision_trusted_of(gs),禁按直读形态
-    旁路(消费同门)。
-    """
-    trend = tracker.recent_hp_loss_trend(window=3)
-    if trend is None:
-        return False
-    if gs.hp.value is not None and gs.hp.value < DEAD_HP and trend > TREND_THRESHOLD:
-        return next_node_type in LOCK_NODES
-    return False

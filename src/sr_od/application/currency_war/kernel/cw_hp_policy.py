@@ -17,9 +17,6 @@ carried 语义(fields.md §2.1)承载;旧结算新鲜度门
 (journal 快照/遥测 recorder/局终写口)+ 写侧对账面(``cw_reconcile``)+
 帧→视图一次性装配面(过渡桥语义,现役存续面见登记集哨兵)+
 逻辑写端(效果账本 hp 支付)。
-kernel 决策簇待办读点(``cw_comps.maybe_pivot`` 保命分位 /
-``cw_performance.is_run_dead`` 死局门,生产调用面现空、测试仓经桥调用)
-重挂生产消费时必经本层读口,禁按旧注释直读 ``gs.hp.value``。
 """
 from __future__ import annotations
 

@@ -30,11 +30,9 @@ plaza Early 六巨头(藿藿/饮月/三月七/爻光/椒丘/艾丝妲),过渡工
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
-from sr_od.application.currency_war.kernel.cw_economy import effective_hp_threshold
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_units_of,
@@ -55,9 +53,6 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_performance import PerformanceTracker
 
 
 def clamp(x: float, lo: float, hi: float) -> float:
@@ -122,8 +117,8 @@ class Comp:
     flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 form_tiers)
     plaza_carry: str = ""        # plaza 实战聚类 carry 名(交叉核对锚,查 cw_plaza_comps.cluster_by_carry)
     # ⚖️ 位面强度维度:阵容在哪些位面乏力(被环境抽陀螺)。来源=攻略实证
-    # (V4.0-4.4 难度攻略「DOT 队第二位面被抽陀螺」);消费端=maybe_pivot 信号 3
-    # (保命转型按位面过滤——P2 危血时转 P2 乏力阵容 = 转完更死,实机局实证)。
+    # (V4.0-4.4 难度攻略「DOT 队第二位面被抽陀螺」);消费端 = cw_intention
+    # 甲分支位面过滤(P2+ 方向候选弱面剔除——转进乏力位面 = 转完更死,实机局实证)。
     weak_planes: tuple[int, ...] = ()
 
     # ===== 字段扩(C4 契约冻结语义;leader 裁决)=====
@@ -516,11 +511,10 @@ CORE_SINGLE_CARD_REGISTRY: dict[str, str] = {
 
 # ===== 角色↔路线复用网络(「整体灵活」建模;plaza 实证)=====
 # 方法论(用户 2026-08-16):角色池 75 个、plaza 聚类 29 个、羁绊组合 427 种 —— 多样性本身就是玩法。
-# 玩家在「角色→路线」复用网络上动态导航,不是「选一套阵容配齐它」。三个消费点:
+# 玩家在「角色→路线」复用网络上动态导航,不是「选一套阵容配齐它」。两个消费点:
 #   ① 买牌:枢纽角色(跨路线复用度高)拿了不亏 —— plaza 终局枢纽:千冶·刃28条路线/瓦尔特26/符玄26/
 #      缇宝24/花火22/开拓者·记忆17/星期日15;早期枢纽:藿藿10路线+265次Early出场/饮月/爻光/椒丘。
 #   ② 板面:早期骨架 = 便宜枢纽 × 低门槛羁绊(见 skeleton_factions)。
-#   ③ 转型:路线间共享角色越多转型越便宜(maybe_pivot 消费 pivot_overlap)。
 
 def char_routes() -> dict[str, set[str]]:
     """角色 → 可走路线(阵容名)集合 —— 从 COMP_LIBRARY 派生的复用网络(core+shared 计入)。
@@ -533,23 +527,6 @@ def char_routes() -> dict[str, set[str]]:
         for c in set(comp.core_chars) | set(comp.shared_chars):
             routes.setdefault(c, set()).add(comp.name)
     return routes
-
-
-def pivot_overlap(src: Comp, dst: Comp) -> float:
-    """src→dst 转型的角色重合度 0..1(共享缓冲;maybe_pivot 转型成本因子)。
-
-    dst 需求角色(core∪shared)中已被 src 需求覆盖的比例 —— 重合高 = 转型只是「换方向继续买」,
-    重合低 = 要推翻重来(卖板重买)。同阵容返 1.0。dst 无任何需求角色(理论不可能,core 至少 1)
-    返 0.5 中性;⚠️ 反甲白厄(core 仅白厄+shared 白厄)对任何 src 恒 0.0 —— 语义正确(它不与任何
-    阵容共享,转型=推翻),非 bug(交叉核对注 注记)。
-    """
-    if src.name == dst.name:
-        return 1.0
-    need = set(dst.core_chars) | set(dst.shared_chars)
-    if not need:
-        return 0.5   # 无共享语义可算(如反甲白厄):中性
-    have = set(src.core_chars) | set(src.shared_chars)
-    return clamp(len(need & have) / len(need), 0.0, 1.0)
 
 
 def skeleton_factions() -> set[str]:
@@ -2819,287 +2796,11 @@ def equip_allocation(comp: Comp | None,
     return out
 
 
-# ===== 转型(pivot)+ 巨星(select_megastar)=====
+# ===== 巨星(select_megastar)与 commit 判据 =====
 
-# T#97 commitment(单一定义,maybe_pivot 强粘 + cw_events 买牌 prefilter 拒 off-target 共用):
-# commit = 已成型(form_progress≥COMMIT_FRAC)**或**累计轮达 COMMIT_ROUND(spread board 的 form_progress
-# 永不达 COMMIT_FRAC → 轮数兜底)。commit 后:① maybe_pivot 提阈不弃成型阵容;② cw_events prefilter
-# 拒 off-target(commit 后买散牌 = spread 根因 → 该 Refresh 找 target / 攒金,drought bail 处理真不可达)。
-COMMIT_FRAC: float = 0.4           # form_progress ≥0.4 算已 commit(2 阵营阵容约 1 阵营过半)
-COMMIT_ROUND: int = 2
-COMMIT_STICK_FACTOR: float = 1.5   # 已 commit → pivot 阈值 ×1.5(0.10→0.15),更难弃成型阵容
-PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(交叉核对注:easier/losing/overlap 叠乘最低
-#                                   0.039 < comp_score 单轮自然抖动 ~0.06-0.1 → losing 窗口噪声级 churn)
-
-
-def target_committed(target: Comp, gs: GameState) -> bool:
-    """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_events prefilter(拒 off-target)共用。
-
-    commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
-    轮数兜底要求 form_progress>0 —— 防零投入误锁:board 全倒在别的阵容上(target 零投入)时不应算 commit
-    (明显错配,该 pivot;轮数兜底若不要求 fp>0,COMMIT_ROUND=2 绝对兜底会误杀信号1,
-    test_maybe_pivot_better_comp_emerges 校验此)。
-    spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
-    """
-    fp = form_progress(target, gs)
-    elapsed, _ = _schedule_elapsed_remaining(gs)
-    return (fp >= COMMIT_FRAC
-            or (elapsed >= COMMIT_ROUND and fp > 0))
-
-
-# pivot 冷却(防过度换线):换线漂移会让 P1 后段板面永远半成型——
-# 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
-# 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
-# 冷却守卫现状:session 冷却字段不存在,maybe_pivot 待办层的冷却守卫恒不触发。
-# 保命 pivot 也设冷却(1 轮/次,弱于信号1/2 的 3 轮,审计 cc119c14):危机允许转,
-# 但「信号3→转线→板面清零→更弱→又信号3」的连续翻转自激会被冷却掐断
-# (否则板面 14 阵营各×1 永不成型)。保命优先级仍最高(hp 危险时信号1/2 不参与),
-# 已在该阵容或刚转过 1 轮内 → 保持(板面不推倒,靠买牌/升人口补强度)。
-PIVOT_COOLDOWN_ROUNDS: int = 3
-PIVOT_SURVIVAL_COOLDOWN_ROUNDS: int = 1   # 保命 pivot 冷却(防连续翻转自激)
-
-
-def maybe_pivot(gs: GameState, ctx: ScoreContext, config, target: Comp | None,
-                tracker: PerformanceTracker | None = None) -> Comp | None:
-    """是否转型到新 target(返回新 Comp 或 None 不转)。
-    转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**():
-    3. **保命转型(最优先)**:hp < 0.75×effective_hp_threshold → 切最快成型的 easy 阵容
-       (typical_form_round 最小,**稳定不 churn**)。hp 危险时信号 1/2 不参与(防振荡死亡螺旋)。
-    1. 更优阵容涌现:存在 B 使 comp_score(B) > target + PIVOT_SCORE_GAP(本回合单次比较)。
-    2. ceiling 不可达:target.typical_form_round > 剩余轮次估算(已成型豁免)。
-
-    ⚠️ hp 危险时信号 3 独占:低 HP 下信号 1 的 best 随 board/shop 每轮变 → target 振荡 churn
-    + 选到高难度阵容 → 永不成型 → 死亡螺旋;故信号 3 提前 + 独占(返回稳定最快 easy,不让 1/2 churn)。
-    ⚠️ 启发式边界:转型成本用规则估算,不用多步搜索(03 正确性-5)。tracker 用于保命判断的观测(已接:``is_losing_streak`` 解锁 commit 锁做保命转型,L791)。
-    """
-    PIVOT_SCORE_GAP: float = 0.10   # 更优涌现阈值(占位,待实玩校准)
-    # ⚖️ 不变量统一守卫(用户定调治本):
-    # **不变量:任意两次 pivot 之间至少间隔 cooldown 轮,无例外**(含危机信号)。
-    # 守卫放**函数最顶部**(所有信号路径的唯一必经点)——分散检查会被未覆盖的
-    # 信号路径绕过(危机豁免路径实证绕过过分散检查)。单一入口后调用侧的
-    # 冷却门只是省算力优化,不再是守卫。
-    _sess_inv = getattr(ctx, 'session', None)
-
-    def _committed_inv(_sess, _gs) -> bool:
-        """committed(非双轨期)派生读(单一源 = cw_intention
-        .committed_authority;原 ``gs.dual_track_phase`` 字段直读随容器
-        化停用——容器无此字段,getattr 恒 False = 方向层判定静默漂移
-        实位。函数级懒 import 防环:本模块与
-        cw_intention 互相消费)。"""
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            committed_authority,
-        )
-        return committed_authority(_gs, _sess)
-    _cd_inv = getattr(_sess_inv, 'pivot_cooldown_until', 0) if _sess_inv else 0
-    if round_num_of(gs) <= _cd_inv:
-        log.info('[cw-pivot] p=%s r=%s 冷却中(至r%s,不变量:两次pivot至少隔冷却轮,'
-                 '无例外;板面靠买牌/合星/升级补)',
-                 plane_of(gs), round_num_of(gs), _cd_inv)
-        return None
-    # 双轨期(P1 未定型)信号1/2 全关(用户定调,实机四线摇摆实证):
-    # target_comp 是从近空板上按分选的(分=噪声),每来一张牌重排 → 每 1-4 轮 pivot →
-    # 四条零共享核心线各推倒一次 → 板永不成型 → P1 全输过去。
-    # 用户模型:P1 玩的 = 过渡框架(列车+仙舟)持续加深;终局线由贯穿件信号锁
-    # (CommitSignals,方向重估定型路径);涌现/ceiling 分差在双轨期无信息量。
-    # target 变更路径收敛为:①CommitSignals 定型②drought 弃线重 select
-    # ③定义型 augment(贯穿件级资源信号,下方 _defining_new)④定型后信号 1/2 照常。
-    # (易阵容成型快 → 少掉血;实测出现过 easy/medium gap 0.097 卡 0.10 没转、
-    # 慢成型持续掉血的案例;fewer 卡 + S 强的 easy 阵容转了更快成型)。target 已成型不降(不弃已完成阵容)。
-    PIVOT_EASIER_FACTOR: float = 0.7   # best 更易成型时阈值 ×0.7(0.10→0.07),倾向转易阵容
-    # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)
-    # 不因易阵容降阈被弃(COMMIT_* 为 maybe_pivot + cw_events prefilter 共用)。
-    _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
-    candidates = select_comp(gs, ctx, config, top_n=len(COMP_LIBRARY))
-    if not candidates:
-        return None
-    best = candidates[0]
-    # 保命独占语义:hp 危险时只认最快 easy 阵容,信号 1/2 不参与(防 churn:
-    # best 随 board/shop 每轮变 → target 振荡 + 高难度阵容永不成型 → 死亡螺旋)。
-    # 阈值域直传容器帧(effective_hp_threshold 已切 GameState 签名,
-    # _HpShim 手抄镜像字段桥已停用——输入字段职级/位面/轮次/
-    # 等级容器侧全就绪,禁再新增同型鸭子桥)。
-    _pivot_hp = int(0.75 * effective_hp_threshold(gs))
-    # 信号3保命优先于一切(含定型;实机 P2 振荡实证)——P2 hp 常驻<阈值
-    # → 保命每步触发「切 board progress 更高的 easy 线(列车)」,而 CommitSignals
-    # 定型每步又切回终局(反甲白厄 10.53 ready)→ 同轮内 3-4 次翻转,买牌方向
-    # 混乱(白厄+姬子/爻光/风堇混杂),P2 战力永远起不来。
-    # 修:**定型后保命 pivot 需落点 form_progress 显著更高**(≥当前+0.25,一次
-    # 性大步换线),不再是「有任何 progress 的最快 easy」——平级/略优不换,
-    # 消除与定型的每步拉锯;血线危机交买牌/装备侧加速(不弃线)。
-    # [待办读点·hp 政策层申报] 本函数现属待办层(生产调用面空,测试仓经
-    # 桥调用),hp 读约束照旧:重挂生产消费**必经政策层读口**——门后值 =
-    # kernel/cw_hp_policy.decision_hp(gs, session),可信位 =
-    # hp_decision_trusted_of(gs),禁按下方直读形态旁路(消费同门,
-    #)。本行直读仅待办期原样保留,行为零变化。
-    _hp = gs.hp.value
-    _committed_target = (target is not None and target_committed(target, gs))
-    if _hp is not None and _hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
-        # 冷却守卫已提函数顶(不变量单一入口),危机路径不再自查。
-        # 位面过滤:当前位面乏力的阵容不进保命候选(转过去 = 更死);
-        # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺是首个案例。
-        # 下一位面预转:过滤扩到 next_plane —— P1 末段保命转线若转进「下位面弱」的
-        # 阵容(如 DOT队 weak_planes=(2)),等于把死期从本节点推迟到 P2 首战。
-        # 收窄:仅本位面末段(round≥7)生效 —— 早段(P2 还远)保命只看当前位面,
-        # 别为远期弱项否决当下救急线。
-        # 当前+下一位面都 OK 才是合格落点;全滤光仍回退原池(有落点好过无)。
-        _next_plane = min(plane_of(gs) + 1, 3)
-        _plane_ok = [c for c in candidates if plane_of(gs) not in c.weak_planes
-                     and (round_num_of(gs) < 7 or _next_plane not in c.weak_planes)]
-        _pool = _plane_ok or candidates
-        # 双轨期保命**严格 easy(不回退原池)** ——
-        # hard 0-progress = 换个姿势死;
-        # 且要求**与当前板共享阵营**(min reset:保命转线别推倒仅有的羁绊)。
-        # 非双轨(已定型/已进 P2)保 fallback 原语义(有落点好过无)。
-        if not _committed_inv(_sess_inv, gs):
-            _board_factions = set(gs.board.value or {})
-            easy = [c for c in _pool if c.form_difficulty == 'easy'
-                    and _board_factions & set(c.factions)]
-            if not easy:
-                log.info('[cw-pivot] p=%s r=%s hp=%s<%s 双轨期保命无 strict-easy 共享线 → '
-                         '保持现状(板面靠买牌/合星/升级补,不推倒)',
-                         plane_of(gs), round_num_of(gs), _hp, _pivot_hp)
-                return None
-        else:
-            easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
-        with_progress = [c for c in easy if form_progress(c, gs) > 0]
-        if with_progress:
-            fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
-            if target is None or fastest.name != target.name:
-                # 定型后保命换线门槛——落点 progress 须显著更高(≥当前+0.25)
-                if _committed_target:
-                    _cur_fp = form_progress(target, gs)
-                    _new_fp = form_progress(fastest, gs)
-                    if _new_fp < _cur_fp + 0.25:
-                        log.info('[cw-pivot] p=%s r=%s hp=%s 信号3保命:已定型(%s fp=%.2f) '
-                                 '落点 %s fp=%.2f 未显著更高 → 保持(危机交买牌/装备侧——历史轮次 git 可溯)',
-                                 plane_of(gs), round_num_of(gs), _hp,
-                                 target.name, _cur_fp, fastest.name, _new_fp)
-                        return None
-                log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
-                         plane_of(gs), round_num_of(gs), _hp, _pivot_hp,
-                         target.name if target else 'None', fastest.name)
-                return fastest
-            return None   # 已在该 easy 阵容 → 保持(不让信号 1/2 churn 切走)
-        # 有 progress)被 easy 过滤排除,旧 fallback `pool=with_progress if with_progress else easy` → 选最快
-        if target is not None and form_progress(target, gs) > 0:
-            # target 有 progress(medium 也算)→ 保持(不弃有 progress 的去追 0-progress easy;转 0-foundation 必死)。
-            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无easy有progress → 保持 %s(有progress,不转0-foundation)',
-                     plane_of(gs), round_num_of(gs), _hp, _pivot_hp, target.name)
-            return None
-        fastest = min(easy, key=lambda c: c.typical_form_round or 99)
-        if target is None or fastest.name != target.name:
-            log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无progress → 最快easy %s',
-                     plane_of(gs), round_num_of(gs), _hp, _pivot_hp, fastest.name)
-            return fastest
-        return None
-    # commit 锁:已 commit 的 target **不被信号1(涌现)翻转**。comp_score 随 board 每 round 抖动(board 因
-    # buy 变)→ 信号1 反复越阈值 → target 振荡 → buy 每轮
-    # 为不同阵容买 → 永不集中 → 散板。COMMIT_STICK_FACTOR×1.5(0.15 阈)压不住(大 board 波动 gap 仍超)。
-    # commit 即锁定:只有信号3(HP 危机,上方已优先处理)/信号2(ceiling 不可达)/drought_bail(连续无供给)
-    # /losing-streak(obs 驱动保命)能解锁。人玩同理:commit 后不因「略优阵容」弃成型,只危机才转。
-    if target is None or best.name != target.name:
-        _committed = target is not None and target_committed(target, gs)
-        _losing = tracker is not None and target is not None and tracker.is_losing_streak(target.name)
-        # 定义型 augment 解锁 commit 锁:黑塔纪元类(affinity≥0.9)到手 =
-        # 局内最大机会事件(M1 资源入口),与 losing streak 同级解锁 —— 否则 commit 后 augment
-        # 定义型阵容永远进不来(中心卖点静默失效)。
-        _defining_new = any(augment_affinity(a).get(best.name, 0.0) >= 0.9
-                            for a in ctx.held_strategies)
-        # 换线供给门(防「转进死线」):换线出口(定义型/信号1)先查 best 线供给——
-        # shop 无+board 无(完全断供 0.0)则拒转(否则该线零供给 → form 卡死 →
-        # 装备过渡期持有永不过渡 → 旧残留+新全攒),弱信号 0.3(board 已有)放行。
-        # 与 drought 重选供给门同款。
-        # 空 shop(无观测,常见于离线/测试)= 不判(数据不足非断供)。
-        _best_supply = shop_supply(best, gs) if gs.shop.value else 1.0
-        if _best_supply <= 0.0:
-            log.info('[cw-pivot] p=%s r=%s 换线供给门:%s 完全断供(shop+board 无核心)→ 拒转(保持 %s;防转进死线锁死 form/装备)',
-                     plane_of(gs), round_num_of(gs), best.name,
-                     target.name if target else 'None')
-            if target is not None:
-                best = target   # 保持现线(gap=0 → 信号1不转)
-            else:
-                return None     # 无 target + 断供线不直选(下轮 emergent 重看)
-        elif _defining_new:
-            log.info('[cw-pivot] p=%s r=%s hp=%s 定义型augment解锁 %s->%s (资源入口,绕过 gap/commit 锁)',
-                     plane_of(gs), round_num_of(gs), _hp,
-                     target.name if target else 'None', best.name)
-            return best
-        if _committed and not _losing:
-            log.info('[cw-pivot] p=%s r=%s hp=%s target=%s 已commit → 锁定,跳过信号1(防振荡;best=%s 不转)',
-                     plane_of(gs), round_num_of(gs), _hp,
-                     target.name if target else 'None', best.name)
-        elif not _committed_inv(_sess_inv, gs):
-            # 双轨期信号1/2 关(实机四线摇摆实证):未成型板上 comp_score 分差是噪声,
-            # 每 1-4 轮 pivot 推倒重来 = P1 全输。target 由定型(CommitSignals)/drought/
-            # 定义型augment(上方已处理)管;涌现分差不构成换线证据。
-            log.info('[cw-pivot] p=%s r=%s hp=%s 双轨期 → 信号1/2 关(target=%s 保持;涌现分差'
-                     '在未成型板上是噪声,防四线摇摆)',
-                     plane_of(gs), round_num_of(gs), _hp,
-                     target.name if target else 'None')
-        else:
-            if target is None:
-                # 无 target(尚未承诺)→ 无忠诚对象,signal1 的 gap 检查不适用(它为防「弃 current target
-                # churn」而设,target=None 无可弃)→ 直接选 best。动态权重让 comp_score 诚实化
-                # (无数据不再注水 0.5 常量)→ 早期诚实低分也该有 target,不该卡 gap 阈留 None。
-                log.info('[cw-pivot] p=%s r=%s hp=%s 无 target → 直接选 best %s(未承诺,gap 检查不适用)',
-                         plane_of(gs), round_num_of(gs), _hp, best.name)
-                return best
-            target_score = comp_score(target, gs, ctx) if target is not None else 0.0
-            best_score = comp_score(best, gs, ctx)
-            gap = best_score - target_score
-            _required_gap = PIVOT_SCORE_GAP
-            _easier = (target is not None
-                       and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
-                       and form_progress(target, gs) < 1.0)
-            if _easier:
-                _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易阵容 → 降阈
-            _tag = ' [易comp降阈]' if _easier else ''
-            if _losing:
-                _required_gap *= 0.7
-                _tag += ' [viability losing]'
-            # 转型成本(复用网络):best 与 target 角色重合低 = 推翻重买 → 需更大 gap;
-            # 重合高 = 换方向继续买(便宜)→ 降阈。乘子范围 0.8(overlap≥0.5)~ 1.3(overlap<0.1)。
-            _overlap = pivot_overlap(target, best) if target is not None else 1.0
-            _required_gap *= (0.8 if _overlap >= 0.5 else (1.3 if _overlap < 0.1 else 1.0))
-            if _overlap >= 0.5:
-                _tag += f' [共享高{_overlap:.2f}降阈]'
-            elif _overlap < 0.1:
-                _tag += f' [共享低{_overlap:.2f}加阈]'
-                # 交叉核对注:form_tiers 空的阵容(反甲白厄)fp 恒 0 → 永不 commit → 信号 1 是它
-                # 唯一出路,再吃 ×1.3 加阈 = 最难逃的阵容(与 commit 锁的防振荡初衷相反 ——
-                # 那是给"已成型"的保护,它从没成型过)。降回 1.0。
-                if target is not None and not target.form_tiers:
-                    _required_gap /= 1.3
-                    _tag += '[无form_tiers回1.0]'
-            # 交叉核对注:叠乘下限(0.10×0.7×0.7×0.8=0.039 < comp_score 单轮自然抖动 ~0.06-0.1
-            # → losing 窗口内在重叠阵容间噪声级来回切)。设绝对下限防 churn。
-            _required_gap = max(_required_gap, PIVOT_GAP_FLOOR)
-            if gap > _required_gap:
-                log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
-                         plane_of(gs), round_num_of(gs), _hp,
-                         target.name if target else 'None', best.name,
-                         best_score, target_score, gap, _required_gap, _tag,
-                         {k: round(v, 2) for k, v in comp_score_breakdown(best, gs, ctx).items() if v is not None})
-                return best
-            log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
-                     plane_of(gs), round_num_of(gs), _hp,
-                     best.name, target.name if target else 'None', gap, _required_gap, _tag)
-    # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
-    if target is not None and target.typical_form_round > 0:
-        # remaining 按节点序列场字段求和(裁决点 9 就地自算):视界封顶
-        # modeled planes,固定 27 制闭式会在位面 ∉ 键集(含 P3)高估——
-        # P3 = 建模域外,bot 进 P3 即走结束链,不存在「P3 早段还剩节点」
-        # 的可达余量(不可达轮不计,细节 horizon-cleanup §8.2)。
-        _elapsed, remaining = _schedule_elapsed_remaining(gs)
-        if target.typical_form_round > remaining and form_progress(target, gs) < 1.0:
-            # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的阵容
-            easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
-            new = min(easy, key=lambda c: c.typical_form_round or 99)
-            log.info('[cw-pivot] p=%s r=%s 信号2ceiling %s->%s (form_round %s>剩%s)',
-                     plane_of(gs), round_num_of(gs), target.name, new.name,
-                     target.typical_form_round, remaining)
-            return new
-    return None
+# T#97 commitment(COMMIT_FRAC 单一定义;消费 = cw_equip_env 工具激活面
+# 的「未 commit」半支)。commit = 已成型(form_progress>=COMMIT_FRAC)。
+COMMIT_FRAC: float = 0.4           # form_progress >=0.4 算已 commit(2 阵营阵容约 1 阵营过半)
 
 
 # 盛会之星巨星 buff 表(米游社原文;2→6 档;select_megastar 按绑定选):
