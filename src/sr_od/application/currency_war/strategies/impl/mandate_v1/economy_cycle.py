@@ -6,13 +6,15 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
 ``(g − R*)+`` 是负有转化义务的死钱,每轮必须经三条转化通道(升级/
 刷新/买牌)之一转成战力,义务 = max(既有分支义务, min(富余, C_t))。
 
-- **R\* = 保利利息线**(利息线以内持有弱占优;排程升级储蓄分量已随
-  排程升级接缝删除——升级攒批资金保护由刷新侧「整级预留保护(判据
-  现值载体)」承载,不经 R*;
+- **R\* = 保利利息线**(利息线以内持有弱占优;升级攒批资金保护不经
+  R\* 预算层——升级侧 = 资格门⑥资金线门(现金口径花后守
+  ``saturation_line``,凑金域由备战侧凑金收敛),刷新侧 = 判据
+  「升级优先」支资金序与金线闸预留(g\* + 停留目标实费档 ρ =
+  ``criteria.refresh.r2_card_reserve``);
   刷新 EV 预算 = ``refresh_ev_budget`` 确定性预算式)。
-- **C_t 通道容量**(结构上限,由既有层逐帧算出):升级计划费 +
-  可买非期权件账(bench 余量约束)+ 刷价×刷新预算(refresh_ev_budget
-  预算式,值域 [0,6])。
+- **C_t 通道容量**(结构上限,由既有层逐帧算出):可买非期权件账
+  (bench 余量约束)+ 备战空位填补账(``bench_fill_account``)+ 刷价×
+  刷新预算(refresh_ev_budget 预算式,值域 [0,6])。
   **A-1 修复**:formation_gold_account 对未跨档件给
   ``d_rem × engine_jump_gold`` 的正账是「按兑现价卖期权」(已实测
   死法),这类期权件**不计入容量**——容量只计当帧跨档件
@@ -169,11 +171,11 @@ def bench_fill_account(gs: GameState, registry: DecisionV2Registry) -> int:
 
 def channel_capacity(gs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
-    """C_t = 非期权可买账 + 刷价×刷新预算。
+    """C_t = 非期权可买账 + 备战空位填补账 + 刷价×刷新预算。
 
-    升级计划费分量已随排程升级接缝删除(升级触发 = 策略层单判据三分
-    派,R* 升级排程分量恒 0;升级攒批资金保护由刷新侧整级预留承载,
-    不经 C_t)。刷新分量取 ``refresh_ev_budget``
+    C_t 无升级分量:升级支出不经容量预算——升级攒批资金保护由升级
+    资格门⑥资金线门(现金口径花后守 saturation_line)与刷新判据
+    「升级优先」支资金序承载。刷新分量取 ``refresh_ev_budget``
     预算式(查表核单一址;合法 0 帧契约见该函数
     docstring)。接缝符号懒 import 自 kernel 侧 cw_economy(局部别名
     绑定):monkeypatch 桩点重钉至 cw_economy 符号后经属性访问动态

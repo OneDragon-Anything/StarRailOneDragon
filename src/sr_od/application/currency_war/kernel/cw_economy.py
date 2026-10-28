@@ -895,8 +895,10 @@ def get_node_goal(plane: int, round_num: int, *,
     否则 → interest/hold。供给在任意帧恒有定义(预算收权迁移前预验尸
     D0 契约:None 级联面消灭),仅传参不全(迁移漏点)时退
     ``_expected_level`` 平滑先验 + adaptive(记 [cw-seam] debug 证据)。
-    「排程升级 → level/rush_level」姿态已随排程升级接缝删除(升级判据
-    归策略层单判据三分派;升级攒批资金保护由刷新侧整级预留承载)。
+    升级不占姿态位:升级触发归策略层单判据三分派,升级攒批资金保护 =
+    升级资格门⑥资金线门(现金口径花后守 saturation_line,凑金域由
+    备战侧凑金收敛)+ 刷新判据「升级优先」支资金序,不经 node_goal
+    预算。
 
     三档 spend_mode 与决策核同源:adaptive/interest 的判据单一址 =
     本模块接缝 refresh_ev_budget(期 0b 自 decision_v2.economy_cycle
@@ -1194,9 +1196,10 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
 def reserve_cap(gs: GameState, session: StrategySession | None) -> int:
     r"""R\*(t) = 保利利息线(11 号稿 §3 金前提行;R4 规则集标量)。
 
-    升级排程储蓄分量已随排程升级接缝删除(升级触发 = 策略层单判据
-    三分派,R* 升级排程分量恒 0):攒批资金保护完全由刷新侧「整级预留
-    保护(判据现值载体)」承载。本函数保留为预算层 R* 单一表达位
+    R\* 分量 = 保利利息线单项,升级不占 R\*(升级触发归策略层单判据
+    三分派):升级攒批资金保护 = 升级资格门⑥资金线门(现金口径花后守
+    saturation_line)+ 刷新判据「升级优先」支资金序。本函数保留
+    为预算层 R\* 单一表达位
     (消费位 = refresh_ev_budget 溢余面 / economy_cycle.overflow/
     disclose_budget 披露面),保利利息线分量单一源 =
     ``saturation_line(cap_resolved_of_session(session))``

@@ -708,11 +708,11 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     升级执行位置 = 备战画面(用户裁定 2026-10-17:商店画面不买经验,
     升级在备战画面做);本函数不再执行店内升级,收窄为「判定 + 关店
     转场」。资格门全链判定单一源 =
-    :func:`criteria.levelup.upgrade_gate_verdict`(七道成员集,与备战
+    :func:`criteria.levelup.upgrade_gate_verdict`(六道门序,与备战
     升级执行两屏同参消费,本函数零内联门、禁子集化;逐道拒因计数键域
     见该函数 docstring)——判定由调用方同帧一次评估后经 ``verdict``
-    四元组传入(本函数与刷新整级预留两消费面共用,§2.5③ 载体 = 判据
-    现值)。三分支:
+    四元组传入(单帧全链判定只此一次;升级资金面由其门⑥资金线门
+    承载)。三分支:
 
     - **判据命中 ∧ 本帧可发射** → 返回关店动作,**不置 handled 标记**
       (本次关店 = 升级转场,非「商店事情办完」;转场后升级先落地,
