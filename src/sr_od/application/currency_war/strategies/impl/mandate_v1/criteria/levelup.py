@@ -17,14 +17,13 @@
   下界 0 ⇒ 门恒过),口径 = 现金(花后金 = 现金 − 整批成本,活期
   退金不进放行算术);花后破线帧入凑金域判定(现金 + 备战席活期 −
   批 ≥ 线 → 凑金,凑至发射;不可达 → 整批推迟,拒因键
-  ``levelup_fund_line_defer``)。P21 危机带全域判定(富余段域内让位
-  随消费出口三层删除消亡,让位对象不存在);
+  ``levelup_fund_line_defer``)。
 - **支出形态**(单帧原子):判据通过 → 同帧发购买经验整批(实付上界
   = 发射时授权值,授权不跨帧携带)——「买一半」缺陷(逐帧单击 ×
   静态阈值逐帧重闸)由发射原子性消解;
 - **拦截层**(11 号稿 §2 拦截层处置):保留 = 资金线门
-  (:func:`levelup_fund_gate`)/ P21 血预算线(``level_spend_blocked``)/
-  等级帽闸(``lv9_stop``/``xp_ledger_stop``)。
+  (:func:`levelup_fund_gate`)/ 等级帽闸(``lv9_stop``/
+  ``xp_ledger_stop``)。
 """
 from __future__ import annotations
 
@@ -298,37 +297,37 @@ def upgrade_gate_verdict(gs: GameState,
     门则转场/发射后继不能合法兑现,开/关店环复活)。
 
     门序 = 现役发射门序:①奖励帧抑制(reward_node_suppressed)
-    ②等级帽(level_max)③升级判据命中(单判据三分派)④P21 危机带
-    全域判定(level_spend_blocked——危机带 ∧ 任意现金位帧均判定,富余
-    段域内让位已随消费出口三层删除消亡)⑤击数 > 0 ⑥血本位局血闸
-    ⑦资金线门(现金口径:花后金 = 现金 − 整批 ≥ saturation_line;
+    ②等级帽(level_max)③升级判据命中(单判据三分派)④击数 > 0
+    ⑤经验批支付门(币种通式:支付币余额 ≥ 整批成本,金本位局直通
+    ——金侧守线在门⑥,币种模式解析 = ``cw_investments.blood_xp_mode``)
+    ⑥资金线门(现金口径:花后金 = 现金 − 整批 ≥ saturation_line;
     花后破线帧按凑金可达性分派 gold_short/defer,凑金可达域再验整买
     纪律后 emit)。全部通过 → ``emit``。
 
     返回 ``(verdict, arm_key, clicks, click_cost)``:
 
     - ``miss``:判据未触发(无拒因计数——判据未命中非门拒);
-    - ``defer``:①-④⑥门拦或资金线门不可达 defer,拒因计数键已写入
+    - ``defer``:①-⑤门拦或资金线门不可达 defer,拒因计数键已写入
       ``counters``(键域:levelup_reward_node_defer / levelup_reject_
-      level_cap / levelup_crisis_defer / levelup_zero_clicks_defer /
-      levelup_blood_gate_defer / levelup_fund_line_defer;两屏判读面
-      共享同一键域——资金面拒因统一 ``levelup_fund_line_defer``);
+      level_cap / levelup_zero_clicks_defer / xp_batch_payment_defer /
+      levelup_fund_line_defer;两屏判读面共享同一键域——资金面拒因
+      统一 ``levelup_fund_line_defer``);
     - ``gold_short``:凑金可达域(花后破线 ∧ 现金 + 备战席活期 − 批
       ≥ 线):卖出只转化活期为现金,凑至「现金 − 批 ≥ 线」收敛到发射;
       凑金不可达帧(宽池可卖也守不住线)归 ``defer``——保守向申报
       (判定式用 bench-only 口径,凑金场景宽池 = 备战席 ∪ 场上无关
       角色,两口径分立继承现状);
-    - ``emit``:可发射(血本位局 = 血闸过即 emit;金本位局 = 花后守线
-      ∧ 整买纪律过)。``arm_key`` = 触发键(miss/前置 defer 恒 '');
-      ``clicks/click_cost`` = 整级批参数(emit/gold_short 语境有效,
-      miss/defer 恒 0)。
+    - ``emit``:可发射(血本位局 = 经验批支付门过即 emit;金本位局 =
+      花后守线 ∧ 整买纪律过)。``arm_key`` = 触发键(miss/前置 defer
+      恒 '');``clicks/click_cost`` = 整级批参数(emit/gold_short
+      语境有效,miss/defer 恒 0)。
 
     ``counters`` = None 时静默(契约层同款)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
-        blood_xp_gate_for,
         cap_resolved_of_session,
         clicks_to_next_level,
+        xp_batch_payment_gate_for,
         xp_click_cost,
     )
     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -367,30 +366,22 @@ def upgrade_gate_verdict(gs: GameState,
     if not trig:
         return GATE_MISS, '', 0, 0
     _count(f'levelup_trigger_{arm_key}')
-    # ===== 资格门④:P21 危机带全域判定(无域内让位)=====
-    if not contracts.ensure_contract(
-            ('levelup', 'level_spend_blocked'),
-            contracts.ContractCtx(), counters):
-        return GATE_DEFER, '', 0, 0
-    if level_spend_blocked(gs, session, reg):
-        _count('levelup_crisis_defer')
-        return GATE_DEFER, '', 0, 0
-    # ===== 资格门⑤:击数 > 0(整级批参数推导前置)=====
+    # ===== 资格门④:击数 > 0(整级批参数推导前置)=====
     clicks = clicks_to_next_level(gs)
     if clicks <= 0:
         _count('levelup_zero_clicks_defer')
         return GATE_DEFER, '', 0, 0
     click_cost = xp_click_cost(gs)
     batch_cost = clicks * click_cost
-    # ===== 资格门⑥:血本位局血闸(金本位局直通)=====
-    if not blood_xp_gate_for(gs, session):
-        _count('levelup_blood_gate_defer')
+    # ===== 资格门⑤:经验批支付门(币种通式,金本位局直通)=====
+    if not xp_batch_payment_gate_for(gs, session):
+        _count('xp_batch_payment_defer')
         return GATE_DEFER, '', 0, 0
     if blood_xp_mode(session) is not None:
-        # 血本位局:血闸已过 = 支付可行(血本位无金变现步,资金门无
+        # 血本位局:支付门已过 = 支付可行(血本位无金变现步,资金门无
         # 对象——花血非花金),可发射。
         return GATE_EMIT, arm_key, clicks, click_cost
-    # ===== 资格门⑦:资金线门(现金口径单门 → 凑金域分派)=====
+    # ===== 资格门⑥:资金线门(现金口径单门 → 凑金域分派)=====
     from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
         _bench_liquid_gold,
         _levelup_fund_line_ok,
@@ -417,7 +408,7 @@ def upgrade_gate_verdict(gs: GameState,
     return GATE_DEFER, '', 0, 0
 
 
-# ============================================================ 资金线门与 P21(拦截层保留件)
+# ============================================================ 资金线门(拦截层保留件)
 
 
 def _plane_last_battle(gs: GameState,
@@ -435,11 +426,11 @@ def _plane_last_battle(gs: GameState,
 def terminal_all_in(gs: GameState, session: StrategySession) -> bool:
     """终局域末战 ALL IN 判定(位面末战 ∧ R_全局 ≤ 1)。
 
-    单一源供 :func:`levelup_fund_gate` 豁免支与 :func:`level_spend_
-    blocked` ALL IN 豁免消费(末位面末战后金无任何消费场景,P41 终局
-    清仓恒优/P23 死亡域攥金价值恒零——ALL IN 维持花光原语义)。
-    ``r_remaining`` 门面场字段自算查表(R 含当前节点,决策帧最小值 =
-    末位面末战的 1;禁自推位面数——宪法 01 §8-1 位面参数化不变量)。
+    单一源供 :func:`levelup_fund_gate` 豁免支消费(末位面末战后金无
+    任何消费场景,P41 终局清仓恒优/P23 死亡域攥金价值恒零——ALL IN
+    维持花光原语义)。``r_remaining`` 门面场字段自算查表(R 含当前
+    节点,决策帧最小值 = 末位面末战的 1;禁自推位面数——宪法 01 §8-1
+    位面参数化不变量)。
     """
     if not _plane_last_battle(gs, session):
         return False
@@ -479,36 +470,3 @@ def levelup_fund_gate(gs: GameState, session: StrategySession,
         saturation_line,
     )
     return gold - clicks * click_cost >= saturation_line(cap_resolved)
-
-
-def level_spend_blocked(gs: GameState, session: StrategySession,
-                        registry: DecisionV2Registry | None = None) -> bool:
-    """P21 血预算线(危机带内整批经验授权让位保命面;line_and_upgrade
-    §2.3 保留件——P21 已证:hp ≤ 停升级线内升级收益到账 ≥1 战之后,
-    EV 严格为负)。动作发出点(备战第 4 步升级检查/商店会话升级意图
-    出口)消费;**全域判定**——富余段域内让位授权随消费出口三层删除
-    消亡(让位对象不存在),危机带帧无论金位一律拦。
-
-    ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
-    ``None`` 回读缺省表 = 直调兼容约定,禁新消费位依赖缺省。
-
-    两支,全部单一源判据,零新自由参数:
-    - ``discipline.blood_budget_levelup_blocked``(P21 停升级线);
-    - P2 危机带 ``discipline.p2_crisis_band``(hp ≤ ceil(2×vd_p2_loss)
-      ≈41 = P21 d=2「到账更慢」档)。
-    ALL IN 豁免(位面末 boss 战花光,[18])两支共享——末战花光是
-    时机判断非血线判断。hp 不可信帧 fail-closed 拒付(危机会在内)。
-    """
-    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-        blood_budget_levelup_blocked,
-        p2_crisis_band,
-    )
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
-    )
-    reg = registry if registry is not None else DEFAULT_REGISTRY
-    if blood_budget_levelup_blocked(gs, session, reg):
-        return True
-    if _plane_last_battle(gs, session):
-        return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
-    return p2_crisis_band(gs, session, reg)

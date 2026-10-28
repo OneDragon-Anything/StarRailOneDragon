@@ -960,8 +960,8 @@ def run_mandate(frame: MandateFrame,
     与 shop 侧同链)。域读经读口族与字段对照表。
 
     ``registry`` = 上下文注册表注入(等级帽单一源,第 4 消费位
-    登记待办的收尾):M3 链 ``lv9_stop``/``level_spend_blocked``
-    消费位读注入表的 ``level_max`` 与停付线字段,禁回读缺省表。
+    登记待办的收尾):M3 链 ``lv9_stop`` 消费位读注入表的 ``level_max``,
+    禁回读缺省表。
     ``None`` 回读 ``DEFAULT_REGISTRY`` 与 entry/shop ``_reg`` 通道同款
     约定(直调/测试面兼容,生产链经 entry.emit 恒注入);备战栈无 sim
     调用方,本通道无 sim 路径。
@@ -992,8 +992,8 @@ def run_mandate(frame: MandateFrame,
         counters = {}
         state_of(session).cw4_counters = counters
 
-    # 上下文注册表(等级帽单一源,收尾):M3 链
-    # lv9_stop / level_spend_blocked 消费注入表,禁回读缺省表;None→
+    # 上下文注册表(等级帽单一源,收尾):M3 链 lv9_stop 消费注入表,
+    # 禁回读缺省表;None→
     # 缺省表 = entry/shop _reg 通道同款直调兼容约定(生产链恒注入,
     # 备战栈无 sim 路径)。
     _reg = registry

@@ -51,8 +51,6 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('levelup', 'xp_ledger_stop'): (
         '判据/闭式', '不旁路', 'T-228(XP 期望账本停,lv9_stop 轮内盲区'
         '补位;shop M3 批/L3 两发射位与 lv9_stop 合取消费)'),
-    ('levelup', 'level_spend_blocked'): (
-        '谓词', '不旁路', '候选③(危机带经验授权让位,全域判定;发射位消费)'),
     ('levelup', 'fund_line_gate'): (
         '门', '不旁路', '升级资金线门(11 号稿 §2:现金口径单门,'
         '花后金 ≥ saturation_line;出辖 = 终局域 ALL IN/买断制)'),

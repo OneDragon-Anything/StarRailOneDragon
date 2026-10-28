@@ -240,10 +240,6 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '同位合取消费,消费位=shop M3 批/shop 溢余段 L3;live level_max=10 '
         '无门槛表项判据不辖,行为零变更)',
         'kernel/cw_economy.xp_apply_clicks 推进算子单一源'),
-    ('levelup', 'level_spend_blocked'): Contract(
-        None, '危机带经验授权让位(全域判定;判据自带 ALL IN 豁免与 '
-        'hp 不可信 fail-closed,前提恒真)',
-        'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
     ('levelup', 'fund_line_gate'): Contract(
         None, '升级资金线门(现金口径单门,花后金 ≥ saturation_line;'
         '出辖两支 = 终局域末战 ALL IN/买断制,判据体内自判)——前提恒真',
