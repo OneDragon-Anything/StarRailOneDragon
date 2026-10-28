@@ -1401,10 +1401,6 @@ def note_action_receipt(gs: GameState, *, op: str,
         (sim 点击受理不产此码);
       * ``定位缺失(按钮-收起)``——close_shop 定位缺失(零观察 op 报
         机械事实,不报业务态);
-      * ``定位缺失(按钮-商店)``——open_shop 直调体实机定位缺失
-        (sim 点击受理不产此码);
-      * ``定位缺失(按钮-收起)``——close_shop 定位缺失(零观察 op 报
-        机械事实,不报业务态);
       * ``定位缺失(按钮-确认)``——pick_supply 确认点击实机定位缺失
         (sim 点击受理不产此码);
       * ``未执行:定位缺失(按钮-出战|按钮-跳过)``——start_battle 两屏
@@ -1425,11 +1421,13 @@ def note_action_receipt(gs: GameState, *, op: str,
       局外工具链直调——shape 对存量消费者零新增键):写行时读 kernel
       决策上下文槽 take 读后清并入,值与同帧策略遥测信封 dtag 同值,
       一帧 dtag 至多进一条回执(重试链逐帧盖新各带各值,受阻行同带;
-      适用域 = 全仓仅 4 处产回执执行链,选择族上报路径不产回执不经此
-      读口)。键语义正本 = game_state/fields.md 回执契约节;
-    - **invariant「每动作 op 恰一条回执行」**(四调用点全域一致:
+      适用域 = 全仓仅 5 处产回执执行链——prep 统一口 / open_shop 直调
+      体 / close_shop 动作 op / shop visit 落地门 / pick_supply 确认链
+      ——,其余 11 个选择族入口不产回执不经此读口)。键语义正本 =
+      game_state/fields.md 回执契约节;
+    - **invariant「每动作 op 恰一条回执行」**(五调用点全域一致:
       prep 统一口 / open_shop 直调体 / close_shop 动作 op / shop visit
-      落地门):受阻动作也产行(reason 非空受阻码),exec_events「正在
+      落地门 / pick_supply 确认链):受阻动作也产行(reason 非空受阻码),exec_events「正在
       蒸发的失败数据」教训的并入位;停机短路在调用点之前抛出 = 执行被
       拒不产行(停机非动作);
     - 滚动窗 = :data:`RECEIPTS_WINDOW_CAP` 条先进先出,整窗帧替换写入

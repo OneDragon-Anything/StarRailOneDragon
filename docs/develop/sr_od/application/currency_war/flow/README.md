@@ -122,7 +122,7 @@
 - **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 层装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_prep_frame，决策输入 = 容器 game state 直读；旧 obs 黑板帧已停用）。
 - **装配点**：观察数据单一写端纪律保持（旧黑板帧已停用）；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留容器弃置——session 全量重建 by construction）。
 - **决策 hp 读口与可信位**（hp 决策消费面统一读口）：统一读口 = `kernel/cw_hp_policy.py::decision_hp`（gs.hp 直读）——『上一真值』由结算覆盖写端 + carried 语义承载（`../game_state/fields.md` §2.1）；可信位另经 `kernel/cw_hp_policy.py::hp_decision_trusted_of`（`gs.hp.source ∈ {observation, carried}`，prior/logic fail-closed——信息缺失时宁可判不可信,不猜值），禁与本口混写双位判定；新增 hp 决策消费点必经读口或登记豁免（消费同门申报纪律 = `kernel/cw_hp_policy.py` 模块头）。原『gated_hp 结算 HP 新鲜度门』（可信窗覆盖现读）已删除，失读窗不再有锚补，识别失准走识别优化批（git 历史可溯）。
-- **sim 消费面注记**:sim = 游戏后端（`sim/cw_sim_backend.py::SimBackend`，驱动反转——真流程当驱动者，世界在后端）：本节四层全图（外层循环 + 画面 op + 动作 op + 策略器）装上后端即在 sim 世界跑一局，**全决策面 sim 可达**（备战编排/商店/事件单选族消费同一套决策代码）；批量运行与 A/B 不在 sim 本体内（边界单一源 = [../sim/sim-design.md](../sim/sim-design.md) §8.3）；战斗结算随机输出面等校准缺口的判读限制单一源 = sim-design §8.2 申报清单。
+- **sim 消费面注记**:sim = 游戏后端（`sim/cw_sim_backend.py::SimBackend`，驱动反转——真流程当驱动者，世界在后端）：本节四层全图（外层循环 + 画面 op + 动作 op + 策略器）装上后端即在 sim 世界跑一局，**全决策面 sim 可达**（备战编排/商店/事件单选族消费同一套决策代码；补给决策面决策链接线已生效 = `decide_supply` sim 可调用，其选项池为占位分布——前置②换真实池完成前，补给判据的 sim 结论带占位分布失真声明，语义正本 = [../strategy-docs/30_supply_screen.md](../strategy-docs/30_supply_screen.md) §6）；批量运行与 A/B 不在 sim 本体内（边界单一源 = [../sim/sim-design.md](../sim/sim-design.md) §8.3）；战斗结算随机输出面等校准缺口的判读限制单一源 = sim-design §8.2 申报清单。
 
 ### 2.4 换核与 A/B(现状口径)
 

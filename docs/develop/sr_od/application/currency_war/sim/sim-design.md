@@ -163,7 +163,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 - `pending_loss`：败态待补偿登记（`kernel/cw_economy.py::LostNodeRef`）。写端 = 战斗结算失败分支；消费 = 轮首收入败局补偿支（口径见 kernel `cw_economy`），非 supply/reward 节点消费、败态跨轮保留至下一战斗轮。
 - `shop_locked`：整店锁。v1 恒 `False`（动作类型清单无锁通道，首版恒解锁 + 披露，字段先行占位；实机写端待锁图标观察补档）。
-- `diamond_count`：宝钻计数（UI 可见局内货币）。sim 写端 = 补给带钻选项落地写入；实机写端待补档。
+- `diamond_count`：宝钻计数（UI 可见局内货币）。sim 写端 = 补给带钻选项落地写入（`_on_supply_picked` 按 `DIAMOND_EQUIP_NAMES` 名单从 `chosen_supply` 现值派生）；**现役失配申报**：sim 占位池的钻标挂基础件名、不命中名单 → 宝钻腿接线在位但不发放，激活归占位分布真实化批裁定；实机写端待补档。
 
 ## 6. 双端消费契约
 
