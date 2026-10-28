@@ -468,9 +468,10 @@ import 即炸)防漂移。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:�
   合成素材组;kind = `BENCH_ITEM_KINDS` 映射值,武装箱系 = supply_box、
   专家邀请函 = bookcard;2026-10-24 批起带名,入位槽身份与发放写端同源
   不漂),未命中 = 角色。取值清单(词表键集)= 两张 GiftGrant 授予表的
-  `items_immediate` ∪ `items_scheduled`,由映射桥 `_validate_bench_item_kinds`
-  import 期双向闭合校验承接(漏登/孤儿键 import 炸,原派生式自动覆盖语义
-  等价);观察专属来源(星徽秘典,tome)不经授予通道不入词表(豁免)。
+  `items_immediate` ∪ `items_scheduled`(键集一致性归测试与评审把关;
+  漏登的运行期后果 = 落席直查 KeyError 响亮可见,2026-10-28 校验治理后
+  import 期双向闭合校验已移除);观察专属来源(星徽秘典,tome)不经授予
+  通道不入词表(豁免)。
 - **星级链记**:星级不入容器字段(overflow_card 只存身份串);链内工作池自记本次
   授予的星级(升星判断用链记真值)——写入即知真值,不依赖观察兜底口径。观察来源
   的溢出卡星级缺读按 1 兜底(现行口径,fields.md §3.2.21)。

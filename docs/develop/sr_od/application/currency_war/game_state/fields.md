@@ -323,8 +323,9 @@ empty = 空。unit/supply_box/tome/bookcard 占 1 槽、empty 不占
 **道具名字轴 `item`**(2026-10-24 批,schema 字段级新增非新域):道具类
 kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
 一致性权威 = 名字→类别映射桥 `BENCH_ITEM_KINDS`(kernel/cw_investments,
-键集 = 授予通道占席道具全量闭集、import 期双向闭合校验:简易/特权/进阶
-武装箱 → supply_box、专家邀请函 → bookcard):授予通道道具类槽构造一律
+键集 = 授予通道占席道具全量闭集:简易/特权/进阶武装箱 → supply_box、
+专家邀请函 → bookcard;键集一致性归测试与评审把关,import 期双向闭合
+校验已随 2026-10-28 校验治理移除):授予通道道具类槽构造一律
 `BenchSlot(kind=BENCH_ITEM_KINDS[item], item=item)`(直查非 .get,映射外
 道具名 KeyError 响亮);观察通道 = 模板钉名(银灰箱命中即简易武装箱/
 星徽秘典/专家邀请函,与映射表 import 期互检);**tome 豁免**——星徽秘典
