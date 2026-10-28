@@ -939,7 +939,7 @@ def _bond_gate_recalc_allowed(ctx: SwapPlanContext | None,
             _u = bench_slot_unit(ctx.bench[_i])
             _up_stars[getattr(_u, 'char_id', '') or ''] = \
                 int(getattr(_u, 'star', 1) or 1)
-    _ok, _leg = swap_bond_gate_benefit(
+    _ok, _branch = swap_bond_gate_benefit(
         ctx, victims=list(plan.sell_names), ups=_ups,
         pairs=list(zip(plan.sell_names, _ups, strict=True)),
         up_stars=_up_stars)
@@ -1615,7 +1615,7 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
                 # 分支分键(plan.arm = 胜出者资格族标注;禁新排序键):
                 # 双轨域 'transition'/'formed' 照旧;转型域 'bond_gate'
                 # 换新键族(design §2.3.1 arm 分键归宿:accept 闭集 =
-                # bond_gate_{leg}(leg ∈ tier/support/star/completion,
+                # bond_gate_{branch}(branch ∈ tier/support/star/completion,
                 # 首达分支检查序 = ④→①→②→③)+ victim 层来源键
                 # bond_gate_victim_tier_{tier}(值域 = 一级/二级/名单末位)
                 # ——3.5 预测表依赖此闭集)。
@@ -1624,8 +1624,8 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
                 elif _m1p.arm == 'bond_gate':
-                    if _m1p.bond_gate_leg:
-                        _count(f"bond_gate_{_m1p.bond_gate_leg}")
+                    if _m1p.bond_gate_branch:
+                        _count(f"bond_gate_{_m1p.bond_gate_branch}")
                     if _m1p.victim_tier:
                         _count(f"bond_gate_victim_tier_{_m1p.victim_tier}")
                 # 被换下场成员逐件归因分键(只随发出暴露;双轨域照旧)

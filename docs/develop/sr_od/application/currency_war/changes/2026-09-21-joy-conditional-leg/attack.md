@@ -16,10 +16,10 @@
 - `kernel/cw_action_report/pick_planner.py:58` `report_action_pick_planner_param` 两相形态、落地相门 `EVIDENCE_OVERLAY_CLOSED`(:55/:73)、三条分支分派 + 终态兜底(:79-88)与设计引用一致 ✓
 - `normalize_invest_name`(cw_investments.py:691-701)仅做分隔符形变归一,'欢愉契约' 无形变字符恒等返回;`active_env` 写入链已归一(pick_invest_env.py:26-50 `_canon_invest_name` → `gain_invest_env` 写 canon 名)——§2.2-4 在册判定 `normalize_invest_name(gs.active_env.value or '') == '欢愉契约'` 行为成立 ✓;开局种子 `''`(cw_game_state.py:1771)≠ 欢愉契约 → 不授予 ✓
 - import 方向:pick_planner → cw_gain_chain 无循环(cw_gain_chain.py import 面实读,不反向依赖 cw_action_report)✓;`gain_character(gs, name, star, *, rand, sig, evidence, producer)` 签名与 §2.2-1 调用形态(evidence=`joy_conditional:<单位名>`/producer=`_PLANNER_PRODUCER`)逐参对得上 ✓
-- sim 侧:`grep report_action_pick_planner_param|classify_planner_leg`(sim/ 零命中)——「sim 接线不在本批」申报成立;`rng` 缺省 None 下实机两调用点(cw_screen_yinlang.py:214 落地相 / cw_overlay_pick_action.py:418 发射相)均零改动 ✓
+- sim 侧:`grep report_action_pick_planner_param|classify_planner_branch`(sim/ 零命中)——「sim 接线不在本批」申报成立;`rng` 缺省 None 下实机两调用点(cw_screen_yinlang.py:214 落地相 / cw_overlay_pick_action.py:418 发射相)均零改动 ✓
 - `JOY_PROVISIONAL_KIND` src 内引用 = cw_gain_chain.py 4 处(:90 常量/:616/:640 docstring/:651-653 发射)全在删除面内;test_cw_dead_pair_exit.py 的 `provisional` 是无关模块(sim 校准注入),不构成退役面 ✓
 - weaken 退役 src 面 grep:`cw_events.py`(:905-906 词表注释/:908 常量/:1010 分类 docstring/:1030-1031 分支)、`pick_planner.py`(:19-20 模块 docstring/:67 函数 docstring/:88 兜底 reason)、`cw_overlay_pick_action.py:124`(env 注释);`decide_planner` 弱化档打分(:881-884)+ docstring(:844-857)。sim 零消费、cw_screen_yinlang.py 零字面量(不在文件面合理)✓
-- 测试断言面:test_cw_yinlang_phase32.py:160(`classify_planner_leg('使后续节点【弱化】')==('weaken','')`)、:273-286(`leg_type='weaken'` 落地相零留证)、:456-475(joy provisional 留证行)——design §2.6/landing 3.1 改写对象在此存在(范围申报问题见发现 5)✓
+- 测试断言面:test_cw_yinlang_phase32.py:160(`classify_planner_branch('使后续节点【弱化】')==('weaken','')`)、:273-286(`branch_type='weaken'` 落地相零留证)、:456-475(joy provisional 留证行)——design §2.6/landing 3.1 改写对象在此存在(范围申报问题见发现 5)✓
 - weaken 派发分支删除后行为推演:classify 删关键词降级分支 → 含弱化词未知名落 `PLANNER_LEG_UNKNOWN`(:1032 既有 return 兜住);破解芯片碰撞治理(锚先行 :1020-1022)不受影响;report 终态兜底(:88)保留 + reason 改名可落 ✓;decide_planner 删弱化档后未知名卡文按装备档 `_equip_value` 回落(注册表 miss = 0 分,与「未识别 0 分」等价)✓
 - 触发前置时序(欢愉契约送 1★ 银狼 → 单级合成 2★ → 弹窗才出现):与 ENV_GIFTS 数据 + gain_character 合成建模自洽;接管局 active_env 无写端、rider 判 '' 不授予——§2.4 边界申报成立 ✓
 - 撤闩判据合规:§2.6 已用「对欢愉契约落地调用断言零 provisional 行」等价形式,不触 AGENTS.md 10.4-4 源码扫描禁令 ✓;README 模板合规(无详设删行、attack.md 链接、进度态)✓
@@ -86,7 +86,7 @@
 
 - **问题**:「落地相四类入口(equip/upgrade/unknown 及已退役 weaken 的历史调用形态)之外,rider 触发以『落地相』为准——equip/upgrade/unknown 三条分支均触发 rider…」——「四类入口…之外」与「三条分支均触发」的集合关系、「已退役 weaken 的历史调用形态」指什么,均无法从字面复原;实现者要自行裁决测试入口集。
 - **证据**:design §2.6 原文;实码分支域 = {equip, upgrade, unknown} ∪ 发射相(退役后)。
-- **处置方向**:改封闭清单——「落地相入口 {equip, upgrade, unknown} 各断言 rider 恰一次授予;发射相断言零授予;(可选)leg_type='' 直调落地相断言 rider 仍触发」。
+- **处置方向**:改封闭清单——「落地相入口 {equip, upgrade, unknown} 各断言 rider 恰一次授予;发射相断言零授予;(可选)branch_type='' 直调落地相断言 rider 仍触发」。
 
 ### 发现 11 [建议] | design §1 | 错别字「专属独立羁姻」(羁绊)
 
@@ -103,7 +103,7 @@
 - **rider 与 upgrade 分支 applied=False 分支共存**:tier_ceiling/source_missing 时弹窗确实出现过,rider 已授予语义正确(触发 = 弹窗,非选项成功)。
 - **发射相零触发**:evidence 缺省分支先于 rider 落点 return,意图遥测零写不变。
 - **撤闩后 on_env_gained 欢愉契约行为**:仅 chars_immediate 分支(银狼LV.999 经 gain_character 入链),advisor 分道不涉及(advisor=False);ENV_GIFTS 数据不动,chars_conditional 字段保留为声明性档案(消费面 = 本模型 + 判读)。
-- **weaken 派发分支删除后的终态兜底**:unknown 分支后的裸 return 保留,reason 更名 `unrouted_leg_zero_write` 可落;leg_type 载荷来源(classify)已无 weaken 产出点,兜底仅防非法值。
+- **weaken 派发分支删除后的终态兜底**:unknown 分支后的裸 return 保留,reason 更名 `unrouted_leg_zero_write` 可落;branch_type 载荷来源(classify)已无 weaken 产出点,兜底仅防非法值。
 - **decide_planner 弱化档删除的决策面影响**:含弱化词未知名回落装备档(_equip_value miss = 0 分),与「未识别 0 分 idx 兜底」等价;§2.5-5「决策影响极小」申报成立。
 - **测试随迁的可判定性**:test_cw_yinlang_phase32:160/:283-286/:475 三处断言与 design §2.6 退役测试/撤闩判据一一对应,改写方向可执行(范围申报问题归发现 5)。
 - **接管局/3★接管/授予分布/星级先验**:§2.4 四条边界申报与实码及原文锚相符,观察覆盖兜底路径成立。
@@ -134,7 +134,7 @@
 | 7 条件分支族面边界 | 采纳:§1 明确不解决补族面申报(7 环境在册,本批仅欢愉契约 = 唯一已落地观测面;逐件 vs 统一框架候族批裁决) | design §1 |
 | 8 立项锚错批 + 措辞 | 采纳:立项指针改 2026-09-18 批「采证期运行协议」节;provisional_mark 措辞改「返回值中的效果名项」 | design §1/§2.2-6 |
 | 9 设计依据行缺 §2.5/§2.7 | 采纳 | landing 3.1 |
-| 10 全分支类型计数表述混乱 | 采纳:封闭清单式(equip/upgrade/unknown 各恰一次 + 发射相零 + leg_type='' 兜底形态) | design §2.6 |
+| 10 全分支类型计数表述混乱 | 采纳:封闭清单式(equip/upgrade/unknown 各恰一次 + 发射相零 + branch_type='' 兜底形态) | design §2.6 |
 | 11 「羁姻」错别字 | 采纳:改「羁绊」 | design §1 |
 
 ---
@@ -158,7 +158,7 @@
 | 7 族面边界 | ✓ 落对(§1 补族面申报段:观测面理由/候族批裁决/禁逐件无声展开)。**计数继承 r1 笔误,见 r2 发现 4** |
 | 8 立项锚 + 措辞 | ✓ 落对(§1 立项出处 = 2026-09-18 批「采证期运行协议」节 + 迁移史指针;§2.2-6「返回值中的 provisional_mark 效果名项」) |
 | 9 设计依据行 | ✓ 落对(landing「design.md §2.1-§2.7(含 §2.5 行为变化申报、§2.7 相邻批在飞核查)」) |
-| 10 计数判据表述 | ✓ 落对(§2.6 封闭清单:三条分支各恰一次 + 发射相零 + `leg_type=''` 直调兜底形态——直调形态语义核过:分派前 rider 已执行,兜底 return 不回退授予 ✓) |
+| 10 计数判据表述 | ✓ 落对(§2.6 封闭清单:三条分支各恰一次 + 发射相零 + `branch_type=''` 直调兜底形态——直调形态语义核过:分派前 rider 已执行,兜底 return 不回退授予 ✓) |
 | 11 错别字 | ✓ 落对(§1「独立羁绊」) |
 
 ### 2. r2 新发现
@@ -198,7 +198,7 @@
 - **rand 全通道 logic_rand 下 §2.5-1 校准面自洽性**:推演成立。授予写 bench(logic_rand 整表快照)→ 下一帧 heavy 观察 → `observe` 对 logic_rand 来源值不等覆盖落 `logic_rand_outcome` 行(cw_game_state.py:2479-2487,行内 expected/actual)→「模型选中单位 vs 实见单位」经整表 diff 判读,候选集两成员使 diff 判读可行(§2.4「判读面自证」)。粒度提示:outcome 行的 expected/actual 是整槽表快照而非单位单值,判读需一步整表 diff;bench 其他槽漂移会混入 diff(既有 rand 通道噪声语义,gs-opening-seed 批已在册申报同型面)——建议判读规约注明,非本批缺陷。§2.6 引用的「零 observe_vs_logic_mismatch」kind 名实存(cw_game_state.py:862 缺省 kind),锚真实。
 - **失效通道与 best-effort 的联动方向**:采纳 (a) 后 rider 异常被调用点捕获 → act 节点正常完成 → 不进重试 → 授予异常本身不再构成二次落地触发源;通道触发源收窄为分派分支异常,申报(§2.3)仍然充分且偏保守,方向向好。
 - **族面表述**:「逐件建模 vs 统一条件分支框架候族批裁决,禁逐件无声展开」边界句成立;计数修正见 r2 发现 4。
-- **`leg_type=''` 直调兜底形态测试**:分派前 rider 已执行,终态兜底 return 不回退授予——判据语义成立(实码 pick_planner.py:79-88 顺序结构核过)。
+- **`branch_type=''` 直调兜底形态测试**:分派前 rider 已执行,终态兜底 return 不回退授予——判据语义成立(实码 pick_planner.py:79-88 顺序结构核过)。
 
 ### 4. 全量同步复查(design ↔ landing ↔ 处置表 ↔ README)
 

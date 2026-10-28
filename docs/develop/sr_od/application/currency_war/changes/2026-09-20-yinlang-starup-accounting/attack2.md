@@ -36,7 +36,7 @@
 **修正方向**：§2.3 括注改为「动作报告写端统一供给口（cw_game_state.py:1136 docstring 自declared；obs 侧首例，同族现役形态 = 同文件 game_state_of(session) 系）；测试零改面 = 桩不扩签名（现役桩 test_cw_game_state.py:712-716 无需对齐）」。顺带：:179「该路径本就落 roster_fallback 留证」不精确（None-gs 兜底下 badge 命中 1/3/9 仍落 'badge'），可顺手改为「行为与迁移前逐位一致」。
 
 **G3. [minor] | design.md §2.2 | 落地相调用的 `param` 实参来源未交代；leg 载荷挂画面 op 实例字段、op 重建即丢的形态设计零申报——「应用一次」契约存在静默零应用边角。**
-正常路径来源链闭合，先说清：发射相 leg_type/norm_item 经 env 透传（cw_overlay_pick_action.py:409-415），落地相消费 `self._pending_leg`（cw_screen_yinlang.py:118-122 存、:199-206 消费）——发射与落地同在一个 `CwScreenYinLang` 实例的 round_wait 循环内，链闭合，迁移不破。但两个试读缺口：①新签名 `report_action_pick_planner_param(gs, param, sig, *, leg_type, norm_item, evidence)` 的 `param` 为必填位参，落地调用点（重入裁决出口）手里只有 `(leg_type, norm_item)` 二元组——pick 参数（idx/reason）未随 `_pending_leg` 持久化，:160「改调 report_action_pick_planner_param(..., evidence=...)」的省略号没回答 param 传什么，实现者须自行拍板（改存三元组/现构造/传 None）。②载荷的宿主是画面 op 实例字段：若确认已发但 op 在 overlay 关闭前死亡（节点重试预算耗尽/看门狗），重建实例 `_confirm_pending=False`、`_pending_leg=None`，落地证据到达时 :201 的 `_leg is not None and _leg[0]` 守卫静默跳过——证据到了、载荷没了、**零应用且零留证行**。该形态现役已存在、迁移原样继承，但设计的落地相契约写的是「应用一次」，对「零应用」边角只字未提。
+正常路径来源链闭合，先说清：发射相 branch_type/norm_item 经 env 透传（cw_overlay_pick_action.py:409-415），落地相消费 `self._pending_leg`（cw_screen_yinlang.py:118-122 存、:199-206 消费）——发射与落地同在一个 `CwScreenYinLang` 实例的 round_wait 循环内，链闭合，迁移不破。但两个试读缺口：①新签名 `report_action_pick_planner_param(gs, param, sig, *, branch_type, norm_item, evidence)` 的 `param` 为必填位参，落地调用点（重入裁决出口）手里只有 `(branch_type, norm_item)` 二元组——pick 参数（idx/reason）未随 `_pending_leg` 持久化，:160「改调 report_action_pick_planner_param(..., evidence=...)」的省略号没回答 param 传什么，实现者须自行拍板（改存三元组/现构造/传 None）。②载荷的宿主是画面 op 实例字段：若确认已发但 op 在 overlay 关闭前死亡（节点重试预算耗尽/看门狗），重建实例 `_confirm_pending=False`、`_pending_leg=None`，落地证据到达时 :201 的 `_leg is not None and _leg[0]` 守卫静默跳过——证据到了、载荷没了、**零应用且零留证行**。该形态现役已存在、迁移原样继承，但设计的落地相契约写的是「应用一次」，对「零应用」边角只字未提。
 **修正方向**：§2.2 补两句——落地调用 param 实参来源（建议 `_pending_leg` 扩为三元组携带 pick 参数，一句话定点）；evidence 到达而 `_pending_leg` 为空 = 留证行（新 kind，如 `planner_landing_payload_lost`）+ 申报该形态为已知边界（或挂账）。
 
 **G4. [minor] | design.md §2.2 | 测试迁移申报残留三块：§2.5 三测断言面、zero_writes 导入面、两个新写端的随批新测试。**
@@ -44,7 +44,7 @@ F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多�
 **修正方向**：§2.2 申报面拆齐四处（§2.2 迁移 + 导入改指；§2.5 三测复核 + 档行断言；§2.3 新增 resolve_cost_star 用例——已申报；§2.4 零影响——已申报），并把两个新写端的随批测试点名。
 
 **G5. [minor] | design.md §2.4 | 「rect 包含判定」语义未定（中心点 vs 整框），且过滤域由 y∈[300,420] 静默宽化为 rect y∈[180,455]，观察捕获集变化未评估。**
-现役过滤 = 全图 OCR 后按 y 带 [300,420] + x<960 二分（cw_screen_yinlang.py:160-171，判据用 `mrl.max.center` 中心点）；改为 area rect 后：①「包含判定」三解（中心点入 rect / 整框 ⊆ rect / 相交）设计未选——库内先例偏中心点（cw_observation.py `_anchor_hit_full_ocr` :1851-1852 中心点入 rect），但整框语义下跨界文本（卡间 35px 间隙 x1030-1065 上的长行）会双落空被丢，中心点语义则无此问题，选哪个影响边界文本归属；②两卡 rect 的 y 跨度 180-455 宽于现役 300-420 带，切换后卡顶/卡底区文字（标题带、脚注带）将新进文本桶——桶文本同时喂容器观察（planner_opts）与分支类型判定（classify_planner_leg 关键词锚），捕获集变化对两者的影响设计未评估（风险低：关键词锚 longest-match 对噪声稳，但「评估过零影响」与「没评估」是两回事）。
+现役过滤 = 全图 OCR 后按 y 带 [300,420] + x<960 二分（cw_screen_yinlang.py:160-171，判据用 `mrl.max.center` 中心点）；改为 area rect 后：①「包含判定」三解（中心点入 rect / 整框 ⊆ rect / 相交）设计未选——库内先例偏中心点（cw_observation.py `_anchor_hit_full_ocr` :1851-1852 中心点入 rect），但整框语义下跨界文本（卡间 35px 间隙 x1030-1065 上的长行）会双落空被丢，中心点语义则无此问题，选哪个影响边界文本归属；②两卡 rect 的 y 跨度 180-455 宽于现役 300-420 带，切换后卡顶/卡底区文字（标题带、脚注带）将新进文本桶——桶文本同时喂容器观察（planner_opts）与分支类型判定（classify_planner_branch 关键词锚），捕获集变化对两者的影响设计未评估（风险低：关键词锚 longest-match 对噪声稳，但「评估过零影响」与「没评估」是两回事）。
 **修正方向**：§2.4 补一句——包含判定 = 中心点入 rect（同 `_anchor_hit_full_ocr` 先例）；并如实申报捕获域宽化（300-420 → 180-455）及对 planner_opts 观察值的影响面（或按需在 rect 内二次用 y 带收窄，一句话定死）。
 
 **G6. [minor] | design.md §2.1/§1.4 | 变费族第二成员（策略赋予变费：飞光·映月驱动 1 费景元变 3/5 费）未入 §1.4 排除表，访问器边界未声明「当前仅银狼LV.999 有档覆盖」——治本核（同族第二次出现面）漏申报。**
@@ -70,9 +70,9 @@ F7 修订只落了 §2.2 侧。残留：①§2.5 落地后 deploy 变换窗多�
 | 投影审计登记纪律 + 双向完备测试 | cw_projection_audit.py:25-28、:58-60 | ✓（设计已申报登记行） |
 | `EVIDENCE_OVERLAY_CLOSED` 单一定义 @ pick_invest | :51；pick_invest 仅依赖 kernel → pick_planner 反向 import 无环 | ✓ |
 | zero_writes 现签名与新签名兼容（发射相「参数不变」） | zero_writes.py:127-129（新增 evidence kw 即目标形态） | ✓ |
-| 发射调用点 env 透传 leg_type/norm_item | cw_overlay_pick_action.py:409-415 | ✓ |
-| 落地记账块 :263-419；`_apply_equip_leg`/`_apply_upgrade_transform`/`_PLANNER_PRODUCER`/`_LV999_ID` 原样迁入面 | :263-419（文件恰 419 行止）、:304、:331、:269、:270 | ✓ |
-| `classify_planner_leg` 词表常量 | cw_events.py:904-907 | ✓ |
+| 发射调用点 env 透传 branch_type/norm_item | cw_overlay_pick_action.py:409-415 | ✓ |
+| 落地记账块 :263-419；`_apply_equip_branch`/`_apply_upgrade_transform`/`_PLANNER_PRODUCER`/`_LV999_ID` 原样迁入面 | :263-419（文件恰 419 行止）、:304、:331、:269、:270 | ✓ |
+| `classify_planner_branch` 词表常量 | cw_events.py:904-907 | ✓ |
 | §2.6「买支出随观察自动正确」 | cw_buy_card_action.py:137 `ledger.spend_executed += action.card.cost`、:188、:194 unit_cost 同源；card 即观察 ShopCard（cost = resolve_cost_star 产物） | ✓（主张成立） |
 | deploy_move 上报函数具 gs 形参，§2.5 插入点可实现 | :52、:104-107（变换判定）、:120-122（落场写）、:126-130（级联） | ✓ |
 | 新披露键命名族相容（kind/evidence 为自由串无注册表；同族先例 planner_upgrade_ambiguous 等 snake_case） | cw_screen_yinlang.py:288-299 等在册同族 | ✓ |

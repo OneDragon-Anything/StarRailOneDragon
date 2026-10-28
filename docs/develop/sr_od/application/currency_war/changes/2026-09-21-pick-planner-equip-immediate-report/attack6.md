@@ -20,7 +20,7 @@
 
 ### S2 [建议] `OverlayPickExecEnv` 类 docstring（:109-:128，尤其 :124-:127「随发射透传给上报函数登记意图遥测」）的改写归属两阶段范围均不覆盖——共享叙述面无主
 
-- **位置**：design §2.2 末行声明叙述面含「`OverlayPickExecEnv.leg_type/norm_item` 注释……各自屏阶段随批机械改写」；landing 3.1 文件面 = `cw_overlay_pick_action.py`（**仅 CwActionPickEquipOp 体**）；landing 3.2 文件面 = 同文件（**CwActionPickPlannerOp 体 + 模块头例外自述段**）。
+- **位置**：design §2.2 末行声明叙述面含「`OverlayPickExecEnv.branch_type/norm_item` 注释……各自屏阶段随批机械改写」；landing 3.1 文件面 = `cw_overlay_pick_action.py`（**仅 CwActionPickEquipOp 体**）；landing 3.2 文件面 = 同文件（**CwActionPickPlannerOp 体 + 模块头例外自述段**）。
 - **问题**：env dataclass 的 docstring 是**共享单一处**，既不属任一 op 类体也不属模块头；两个阶段的文件面限定词（「仅……体」）都排除了它。单相化后 :125-:126「随发射透传给上报函数**登记意图遥测**」成过期表述（上报函数此后一口写完整效果）。兜底措辞 grep（「两相/落地相/发射相」）**不命中**「登记意图遥测」——该面四条路（3.1 范围/3.2 范围/design 行的「各自屏」归属/兜底 grep）全部罩不住。试读问题：服从「仅……体」约束的 worker 谁都不能改它。
 - **权威源证据**：`cw_overlay_pick_action.py` :124-:127 实文；landing.md :10/:22 文件面限定词；design.md :64 叙述面行。
 - **建议修法**：landing 3.2 文件面括注扩为「CwActionPickPlannerOp 体 + 模块头例外自述段 + `OverlayPickExecEnv` 类 docstring 分支类型载荷段」（归 3.2，与 planner 载荷语义同源）。
@@ -51,11 +51,11 @@
 
 | 核对面 | 结果 |
 |---|---|
-| design §1↔§2↔landing 三阶段覆盖 | ✓ §1.3 解决/不解决面与 3.1/3.2/末阶段范围互恰；不解决面（upgrade 语义/classify_planner_leg/零写族屏/decide_equip_overlay_pick）landing 均未越界；§1.3 之外未发现漏 declared 面 |
+| design §1↔§2↔landing 三阶段覆盖 | ✓ §1.3 解决/不解决面与 3.1/3.2/末阶段范围互恰；不解决面（upgrade 语义/classify_planner_branch/零写族屏/decide_equip_overlay_pick）landing 均未越界；§1.3 之外未发现漏 declared 面 |
 | 依据逐条对码（§1.1 现状锚） | ✓ pick_planner.py :86-:104 四分支/evidence 门/:63 常量自持注释、pick_equip.py :40/:55、yinlang :204-:222 重入裁决出口+`_pending_leg`/`_pick_param`、equip_pick :125-:138+`_pick_pending`/`_pending_pick`、PickPlannerOp :408 置位、PickEquipOp 发射相 :609-:615 全部实存且如述 |
 | `normalize_registry_equip_name` 复用（T-1 已建） | ✓ cw_events.py :951 实现现盘；supply 先例 cw_screen_supply_node.py :304 在用；`normalize_equip_name` 本体 :930 不动、src 唯一组装点消费 = equip_pick :47/:168，无过度 |
 | cw_vocab 注释连带三处 | ✓ :733（supply norm_item 引 `normalize_equip_name` = T-1 后过期，supply 实用 registry 入口）+:735-:736（supply 两相措辞）+:906-:911（equip 两相措辞）三处实在 |
-| joy 收口序事实化 | ✓ commit 14dd40977 在主仓（rider + weaken 退役 + `unrouted_leg_zero_write`，commit message 自证）；`classify_planner_leg` 现役仅产 upgrade/equip/unknown（cw_events :994-:1026，无 weaken 分支）——「弱化词卡文落 unknown」口径与实码一致 |
+| joy 收口序事实化 | ✓ commit 14dd40977 在主仓（rider + weaken 退役 + `unrouted_leg_zero_write`，commit message 自证）；`classify_planner_branch` 现役仅产 upgrade/equip/unknown（cw_events :994-:1026，无 weaken 分支）——「弱化词卡文落 unknown」口径与实码一致 |
 | sig actor 换名申报 | ✓ 现役落地相 actor='CwScreenEquipPick'/'CwScreenYinLang'（两画面 op :135-:136/:217-:218），单相化后动作 op 类名（type(self).__name__ 先例在码）；§2.0 一句申报在册 |
 | 测试面（attack5 新增） | ✓ unified_action_4 :322 名/:333 桩/:339 断言、two_node_family :346（round_wait 断言，随派发即终结须同改）/:348、gain_chain import :41 + 恰 10 处 evidence 调用、t60 EQUIP_EVIDENCE 面（:40 import + :127/:218）——行号逐个相符；t60 :156 emission-intent-only 测试属 3.1「受影响测试」面（「含」非穷举，可开工） |
 | grep 三段式口径一致性 | ✓ design §3 验收锚 3 与 landing 兜底同口径（src + sr-od-test + docs 正本；豁免 changes/） |

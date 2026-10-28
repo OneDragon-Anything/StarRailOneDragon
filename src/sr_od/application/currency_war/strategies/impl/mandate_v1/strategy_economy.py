@@ -247,8 +247,8 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     # (长期主义系;count 分支按「剩余节点数 − 1」截断——「接下来」不含
     # 当前节点,剩余节点数含当前节点)
     if eff.gold_next_nodes_amount and eff.gold_next_nodes_count:
-        _legs = min(eff.gold_next_nodes_count, max(remaining - 1, 0))
-        acc += float(eff.gold_next_nodes_amount) * (1 + _legs)
+        _compounds = min(eff.gold_next_nodes_count, max(remaining - 1, 0))
+        acc += float(eff.gold_next_nodes_amount) * (1 + _compounds)
     # 通道 3:每节点金流
     if eff.gold_per_node:
         acc += float(eff.gold_per_node) * remaining

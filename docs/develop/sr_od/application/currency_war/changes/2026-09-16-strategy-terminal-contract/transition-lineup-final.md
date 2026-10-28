@@ -24,7 +24,7 @@
 - 希儿系组合的物化判据 = 希儿在板 AND(量子同频≥2 OR 贝洛伯格≥2)
   ——体系达成计数 = `knowledge/cw_engine_facts.py` `engines_count`;
   pair 物化 = `pair_target_comp` 兜底:他体系档为 AND 分支 + 放大器两条分支挂
-  OR(`SEELE_OR_LEGS`:量子≥2 ∨ 贝≥2 任一即成)+ 希儿挂 required_deployed
+  OR(`SEELE_OR_REQS`:量子≥2 ∨ 贝≥2 任一即成)+ 希儿挂 required_deployed
   (ADR-0613 口径,见 `cw_intention.py` 该函数注释)。
 
 **框架与配方对分层(避免两层档位混淆)**:

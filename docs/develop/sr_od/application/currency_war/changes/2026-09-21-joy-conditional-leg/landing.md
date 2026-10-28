@@ -8,7 +8,7 @@
 1, rand=True)`,evidence = `joy_conditional:<单位名>`);发射相零触发。
 `kernel/cw_gain_chain.py`——删除 `JOY_PROVISIONAL_KIND` 常量、`on_env_gained`
 欢愉契约翻来源分支与 provisional_mark effects 项,docstring 同步。
-**weaken 兜底档退役(裁定③)**:`kernel/cw_events.py`——`classify_planner_leg`
+**weaken 兜底档退役(裁定③)**:`kernel/cw_events.py`——`classify_planner_branch`
 关键词降级分支与 `PLANNER_LEG_WEAKEN` 常量删除(含弱化词未知名卡文 → unknown)、
 `decide_planner` 弱化档打分删除(两档制 = 升费档 > 装备档)、分支类型词表注释同步;
 `kernel/cw_action_report/pick_planner.py` weaken 派发分支删除(终态兜底 reason 改

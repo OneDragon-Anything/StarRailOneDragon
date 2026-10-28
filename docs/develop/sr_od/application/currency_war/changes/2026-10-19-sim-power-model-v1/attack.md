@@ -33,7 +33,7 @@
 
 ### 核实为真的主张(抽查通过,不构成发现)
 
-- **form_progress 纯度**(设计核心前提):`kernel/cw_comps.py:1792-1858` 只读 `gs.board`/`gs.deployed` 容器与 Comp 注册字段(form_tiers/or_legs/required_deployed/core_chars),无 session/意向/策略状态消费——「取大定义双侧同源」的前提成立;引用的「p59/17 号篇」两文档均在盘(`proofs/p59-formed-line-buyset-offline-fenced-disjoint.md`、`strategy-docs/17_stall_form_spend_authority.md`)。
+- **form_progress 纯度**(设计核心前提):`kernel/cw_comps.py:1792-1858` 只读 `gs.board`/`gs.deployed` 容器与 Comp 注册字段(form_tiers/or_reqs/required_deployed/core_chars),无 session/意向/策略状态消费——「取大定义双侧同源」的前提成立;引用的「p59/17 号篇」两文档均在盘(`proofs/p59-formed-line-buyset-offline-fenced-disjoint.md`、`strategy-docs/17_stall_form_spend_authority.md`)。
 - **kernel 单一源在位**:`_settle_rung`(cw_battle_calib.py:184)、`deployed_star_depth`(:57),且 `_star_depth_from_rows`(:74)提供旧流行口径对偶,双侧同源先例真实。
 - **语料计数算术**:64 文件/152,657 行/96,316 行三个数字精确复现(构成问题见发现 2)。
 - **U01 现状**:SIM_WIN_PROB=0.5、区间 [23,70]、散点锚 P2r1−23/遭遇−28/P3 遭遇−70(cw_sim_battle.py:36-42)与设计 §2.4 引用一致;结算面确不消费板面特征(§1 现状症状成立)。

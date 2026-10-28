@@ -1598,7 +1598,7 @@ class SimBackend:
         consume.md「sim 消费」),本层不重复出队。
         """
         if kind == 'planner':
-            self.disclosures[DISCLOSURE_PLANNER_EFFECT] = 'picked:report_leg'
+            self.disclosures[DISCLOSURE_PLANNER_EFFECT] = 'picked:report_branch'
         self._dismiss_modal()
         self._present_pending_overlay()
 

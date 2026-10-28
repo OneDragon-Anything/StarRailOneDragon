@@ -206,9 +206,9 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
     )
     roll_rng = action_sampling_rng('furnace_use', rng, _fallback=_DEFAULT_RNG)
     if param.target_kind == 'equip':
-        return _furnace_equip_leg(gs, param, sig, roll_rng)
+        return _furnace_equip_branch(gs, param, sig, roll_rng)
     if param.target_kind == 'char':
-        return _furnace_char_leg(gs, param, sig, roll_rng)
+        return _furnace_char_branch(gs, param, sig, roll_rng)
     # 词表外 target_kind = bug 面:零写留存证据禁猜(禁猜出口保持受理,
     # 消费真值归观察)。
     _defect_zero_write(sig, DEFECT_BRIDGE_ZERO_WRITE,
@@ -219,7 +219,7 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
     return LogicOutcome(applied=True, reason='furnace_unknown_target_kind')
 
 
-def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
+def _furnace_equip_branch(gs: GameState, param: Any, sig: ChannelSig,
                        rng: random.Random) -> LogicOutcome:
     """炉·拖装备入账分支:单笔合并采样替换写(rand 面)。"""
     inv = _equips_inv(gs)
@@ -262,7 +262,7 @@ def _furnace_equip_leg(gs: GameState, param: Any, sig: ChannelSig,
         reason=f'furnace_mutated({param.item_name}>{new_item})')
 
 
-def _furnace_char_leg(gs: GameState, param: Any, sig: ChannelSig,
+def _furnace_char_branch(gs: GameState, param: Any, sig: ChannelSig,
                       rng: random.Random) -> LogicOutcome:
     """炉·拖角色入账分支:①equips 采样链 rand 合并写(白名单件采样替换,越
     白名单穿戴件保留原样 + 聚合留存证据——其是否随动作消失未采证,v0 保留);

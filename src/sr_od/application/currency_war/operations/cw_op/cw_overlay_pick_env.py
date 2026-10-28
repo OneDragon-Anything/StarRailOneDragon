@@ -49,9 +49,9 @@ class OverlayPickExecEnv:
     round 结果恒成功不携带语义),op 类写;现行两 node 宿主画面 op 均不
     消费本字段(循环推进按宿主自身形态返回 round_wait),保留作分派面
     需要逐结果路由时的旁路面。
-    ``leg_type``/``norm_item`` = 银狼策划分支类型载荷(决策半经
-    ``classify_planner_leg`` 现算,随派发透传给上报函数
-    ——确认点击后立即上报完整效果分支;leg_type ∈ upgrade|equip|unknown,
+    ``branch_type``/``norm_item`` = 银狼策划分支类型载荷(决策半经
+    ``classify_planner_branch`` 现算,随派发透传给上报函数
+    ——确认点击后立即上报完整效果分支;branch_type ∈ upgrade|equip|unknown,
     norm_item = 归一件名或空)。
     """
 
@@ -70,6 +70,6 @@ class OverlayPickExecEnv:
     #             点击坐标取源见类 docstring need_select 句)
     picked: dict | None = None
     unselected: bool = False
-    leg_type: str = ''        # 策划分支类型载荷(decision 半 classify_planner_leg 产物)
+    branch_type: str = ''        # 策划分支类型载荷(decision 半 classify_planner_branch 产物)
     norm_item: str = ''       # 策划装备入账分支归一件名('' = 未解析/非装备入账分支)
     round_result: OperationRoundResult | None = None

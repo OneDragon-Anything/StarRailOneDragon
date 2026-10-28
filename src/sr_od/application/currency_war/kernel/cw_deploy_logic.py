@@ -1456,7 +1456,7 @@ class SwapPlan:
     (sell_names[k], up_bench[k]),1:1 配对骨架,序参数经
     ``SwapGroupOrder`` ports 注入)。域外胜出序 = victim 序首个可成交者,
     arm 只随胜出者标注;转型域组 = 最小充分组贪心的首个可行组。
-    组计划附加字段:``bond_gate_leg``(accept 分键首达分支,值域 =
+    组计划附加字段:``bond_gate_branch``(accept 分键首达分支,值域 =
     tier/support/star/completion)/``victim_tier``(首对 victim 层来源,
     值域 = 一级/二级/名单末位)/``bond_gate_reject``(拒绝侧分键来源,
     值域 = nogain/conservation/novictim,非空 = 转型域计划空)。
@@ -1467,7 +1467,7 @@ class SwapPlan:
     abstain: str = ''
     arm: str = ''
     #: 门 1 首达分支(accept 分键源;'tier'/'support'/'star'/'completion')
-    bond_gate_leg: str = ''
+    bond_gate_branch: str = ''
     #: 首对 victim 层来源('一级'/'二级'/'名单末位')
     victim_tier: str = ''
     #: 转型域计划空时的拒绝侧分键来源('nogain'/'conservation'/'novictim')
@@ -2027,7 +2027,7 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
                 # 试组:累积组 + 本对,门 1 现算(design §2.7 组生长语义)
                 _v = acc_victims + [v_name]
                 _u = acc_ups + [up_name]
-                ok, leg = swap_bond_gate_benefit(
+                ok, branch = swap_bond_gate_benefit(
                     ctx, victims=_v, ups=_u,
                     pairs=[(v_name, up_name)], up_stars={up_name: up_star})
                 if ok:
@@ -2036,7 +2036,7 @@ def _select_swap_group_plan(ctx: SwapPlanContext,
                         sell_names=[v for _ui, v in group],
                         up_bench=[u for u, _v in group],
                         reasons=reasons, arm='bond_gate',
-                        bond_gate_leg=leg,
+                        bond_gate_branch=branch,
                         victim_tier=tier_of.get(group[0][1], ''),
                     )   # 首个可行组即停(组定稿)
                 # 门 1 未过 → 内层换 victim 重试(design §2.7 组构造遍历序

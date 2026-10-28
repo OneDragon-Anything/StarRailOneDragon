@@ -64,7 +64,7 @@
 
 现状结构（实名，对抗审⑥勘误）：`CwScreenYinLang`（统一观察架构 observe/act 节点）→ 注册表分派 **`CwActionPickPlannerOp`**（`operations/cw_op/cw_overlay_pick_action.py:340`，域 env = `OverlayPickExecEnv`；旧名 `PlannerPickOp` 仅存于 `cw_screen_planner.py:197` 过期注释，随 3.4 注释同步清偿）。增量：
 
-**① 载荷上报**：所选选项内容 = 入参随发射上报（`leg_type` ∈ {`upgrade`|`weaken`|`equip`|`unknown`}、`norm_item` 归一件名或空）：
+**① 载荷上报**：所选选项内容 = 入参随发射上报（`branch_type` ∈ {`upgrade`|`weaken`|`equip`|`unknown`}、`norm_item` 归一件名或空）：
 
 - **分支类型判定单源（对抗审①，批内第一交付）**：判定函数落 kernel 独立单一源，**装备域优先**——先对银狼专属 10 件名单/件名锚匹配（含 longest-match 归一），命中即 equip（破解芯片卡文含「弱化」而实为装备例的碰撞由此消除，`cw_equipment_data.py:62` + gameplay 升星选项例）；不命中才降级「提升费用」→ upgrade、「弱化/降低敌人」→ weaken；空/未识别 → unknown。**禁复用 `decide_planner` 决策关键词当记账分类器**（决策打分关键词与记账分类谓词职责不同，混用 = 装备授予被误判零记账 → 失配停）；
 - equip 件名归一 = 卡面 OCR 文本 × `EQUIPMENTS` 注册表相似匹配，**最长名优先**（防「分身墨镜Max」被短名「分身墨镜」截胡；`one_dragon.utils.str_utils`，依据项目 AGENTS.md §7）；唯一命中 → 归一件名，零/多命中 → 未解析；
@@ -144,7 +144,7 @@
 
 ### 2.8 接口与生效纪律
 
-- **接口**：R1 载荷（`leg_type`/`norm_item`）是 R7（不在本迭代）的未来估值输入；获得后果应用函数是全渠道装备入栏的统一后置钩子（后续新装备后果按数据行扩展）。
+- **接口**：R1 载荷（`branch_type`/`norm_item`）是 R7（不在本迭代）的未来估值输入；获得后果应用函数是全渠道装备入栏的统一后置钩子（后续新装备后果按数据行扩展）。
 - **生效纪律**：3.2/3.4 改 Python 须重启项目 MCP server 才生效（项目 AGENTS.md §6）；实机验证窗按攒批纪律（改码批期不打断在跑局）。
 
 ### 2.9 关键取舍

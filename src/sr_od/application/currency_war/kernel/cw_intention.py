@@ -36,7 +36,7 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     CORE_SINGLE_CARD_REGISTRY,
     SEELE_CARRY_CHAR,
-    SEELE_OR_LEGS,
+    SEELE_OR_REQS,
     V2_FAMILIES,
     Comp,
     char_routes,
@@ -370,7 +370,7 @@ _P1_PAIR_PREF: tuple[str, ...] = tuple(
 # 禁互相渗透成双源):形态端口读**板面羁绊计数**(gs.board,经
 # form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
 # 本文件 form 链禁出现 _seele_system_support 消费。
-# 常量真源 = cw_comps.SEELE_OR_LEGS/SEELE_CARRY_CHAR(
+# 常量真源 = cw_comps.SEELE_OR_REQS/SEELE_CARRY_CHAR(
 # 0621-seele-static-form-or-fold 单一源归位:注册表数据层——静态套
 # 条目 import 期消费,留本文件会反向 import 成环;本模块经顶部
 # cw_comps 导入消费,禁再写本地第二份)。档位出处
@@ -425,7 +425,7 @@ def _seele_system_support(owned: set[str]) -> float:
     - 登记的待办指针(C1,前批遗留):量分支档位存在文档内部张力——本式 ÷2 取
       量≥2 主口径(定义表行),combo_methodology.md:133/170 写量 3;
       张力挂玩家确认(挂确认指针),确认改档落
-      ``SEELE_OR_LEGS``(形态端口单一源)并同步回改本式分母,
+      ``SEELE_OR_REQS``(形态端口单一源)并同步回改本式分母,
       禁两端口各自为政;
     - 登记的待办指针(C1,P86 攻击 r1 中低1 并入):去重计数的未覆盖形态 =
       同名同 1★ 副本对(实证:绯英×2/花火×2 同场合法态,合成进度
@@ -977,7 +977,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
       单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
       组合)→ form_tiers 只放**他体系档**(逐体系取桥池任一条的档);
-      放大器两条分支挂 ``or_legs``(``SEELE_OR_LEGS``:量≥2 ∨ 贝≥2 任一即
+      放大器两条分支挂 ``or_reqs``(``SEELE_OR_REQS``:量≥2 ∨ 贝≥2 任一即
       成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
       取代 ②的「桥池档+量子配方档」AND 全档口径
       (借 cw_recipe 完全体档把「凑到任一=成型」塌成「量3∧贝2 全档」,
@@ -998,7 +998,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
 
     bonds = _pair_bond_keys(pair)
     tiers: dict[str, int] = {}
-    or_legs: list[tuple[str, int]] = []
+    or_reqs: list[tuple[str, int]] = []
     required: tuple[str, ...] = ()
     for combo in BRIDGE_POOL:
         if set(combo.engine_bonds) == bonds:
@@ -1007,16 +1007,16 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     else:
         # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表),
         # 只保留本对键(防兜底混入对外体系);希儿系对再剥掉放大器键
-        # (放大器档位归 or_legs,不进 form_tiers 的 AND 账——)。
+        # (放大器档位归 or_reqs,不进 form_tiers 的 AND 账——)。
         for combo in BRIDGE_POOL:
             for bond, tier in combo.engine_bonds.items():
                 tiers.setdefault(bond, tier)
         tiers = {bond: tier for bond, tier in tiers.items() if bond in bonds}
         if SEELE_SYSTEM in pair:
-            amp_keys = {bond for bond, _tier in SEELE_OR_LEGS}
+            amp_keys = {bond for bond, _tier in SEELE_OR_REQS}
             tiers = {bond: tier for bond, tier in tiers.items()
                      if bond not in amp_keys}
-            or_legs = list(SEELE_OR_LEGS)
+            or_reqs = list(SEELE_OR_REQS)
             required = (SEELE_CARRY_CHAR,)
     if not tiers:
         return None
@@ -1027,7 +1027,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
         form_tiers=dict(sorted(tiers.items())),
         strength='A',
         form_difficulty='easy',
-        or_legs=or_legs,
+        or_reqs=or_reqs,
         required_deployed=required,
     )
 

@@ -57,7 +57,7 @@
 | 复查面 | 结果 |
 |---|---|
 | design §1 改动面 ↔ §2 方案 ↔ landing 三阶段 | 覆盖无遗漏无越界（3.1=equip 全件、3.2=planner 全件、末阶段=正本）；例外 = F5（cw_vocab 注释连带漏报）、F1/F2（正本清单自身缺漏）。landing 3.1 凭据含 `test_cw_yinlang_phase32.py` 全绿 = 跨阶段回归项，与「不含 planner 屏」边界不冲突（3.1 不动 planner 链路，测试应仍绿）✓ |
-| 引用锚存在性（符号/路径/节） | `CwActionPickPlannerOp.run`/`CwActionPickEquipOp.run`/`pick_planner.py`/`pick_equip.py`/`cw_screen_yinlang.py`/`cw_screen_equip_pick.py`/`classify_planner_leg`/`normalize_equip_name`/`normalize_registry_equip_name`/`_PLANNER_EQUIP_ANCHORS`/`emit_overlay_confirm`/`decide_equip_overlay_pick`/`decide_equip_pick`/`CwActionPickEquipParam.norm_item`/`apply_equip_acquire_consequence`/`merge_cascade_write`/`effective_cost`/`test_cw_yinlang_phase32.py`/`test_cw_pick_channels_t60.py` 全部实存且语义与引用相符 ✓；docstring 引证「未锁态语义（仅泛用分支）」在 cw_screen_equip_pick.py :156-157 在册 ✓；正本引用面例外 = F1/F2/F3 |
+| 引用锚存在性（符号/路径/节） | `CwActionPickPlannerOp.run`/`CwActionPickEquipOp.run`/`pick_planner.py`/`pick_equip.py`/`cw_screen_yinlang.py`/`cw_screen_equip_pick.py`/`classify_planner_branch`/`normalize_equip_name`/`normalize_registry_equip_name`/`_PLANNER_EQUIP_ANCHORS`/`emit_overlay_confirm`/`decide_equip_overlay_pick`/`decide_equip_pick`/`CwActionPickEquipParam.norm_item`/`apply_equip_acquire_consequence`/`merge_cascade_write`/`effective_cost`/`test_cw_yinlang_phase32.py`/`test_cw_pick_channels_t60.py` 全部实存且语义与引用相符 ✓；docstring 引证「未锁态语义（仅泛用分支）」在 cw_screen_equip_pick.py :156-157 在册 ✓；正本引用面例外 = F1/F2/F3 |
 | 消费点迁移总表 vs 全仓 grep | `EVIDENCE_OVERLAY_CLOSED` src 侧恰 4 文件（两定义+两 import 消费）✓、t60 EQUIP_EVIDENCE 面（import :40 + 调用 :127/:218）✓、yinlang_phase32 11 处（import + 10 调用，design 写「10+ 处」✓）；`_pick_pending`/`_pending_pick` 仅 equip_pick 本文件 ✓；`_confirm_pending`/`_pending_leg`/`_pick_param` 仅 yinlang 本文件 + planner op 置位（:408）✓（partner op :355 的同名置位属伙伴屏 `CwScreenPartner`，表已用「（yinlang）」限定，无过度退役）；`normalize_equip_name` equip 组装点换源 ✓、本体与银狼域消费面不动 ✓。**无遗漏、无过度**（src+test 口径；docs 侧缺口归 F1/F2） |
 | T-1 模板一致性 | 单相一口写/删 evidence 参数/常量仅本文件退役/归一换源 fail-closed/外循环重派治理均与 T-1（event-refresh design §2.0B + landing 3.1）及已落码的 pick_supply.py 现盘一致；「T-1 立样 + 外溢候选登记」承接关系在 T-1 design §1.3 明文（「PickPlanner/PickEquip…另批复制」）✓；偏离一处 = F5（注释连带未照抄） |
 | 增补 2/3 与 op-layer §1.2 合规 | 禁止清单第 4 条（:25 判重/防重复保护）原文支持「未生效重派→重复应用按 bug 接受、不设防」✓；「单相化后未生效重派=效果分支重复应用」与裁定兼容（裁定明言真报两次 = bug 域）✓；增补 3 零新增读屏成立——`emit_overlay_confirm` = 机械确认+固定等待+无条件 round_retry、不读屏（action_ops §2.3 :59 在册；entry_keyword 仅日志），equip 点卡定位由 env 传入 ✓ |
@@ -71,4 +71,4 @@
 
 ## ⑤ 零发现面声明
 
-以下面逐项攻击后**零实质发现**（证据见 ③ 表与 ④）：方案层单相化契约本体；upgrade 分支三态+档行逐位保持可行性；`classify_planner_leg` 不动边界（分支类型判定副产品非入栏归一器的定性与代码相符）；equip 换源主张（泛用件在键集）；零写族屏（巨星/伙伴等）不迁移边界与 op-layer §2.2 现行合法形态一致；src+test 消费点完备性；测试锚与「10+ 处」计数；T-1 承接关系；增补 2/3 逐条合规。
+以下面逐项攻击后**零实质发现**（证据见 ③ 表与 ④）：方案层单相化契约本体；upgrade 分支三态+档行逐位保持可行性；`classify_planner_branch` 不动边界（分支类型判定副产品非入栏归一器的定性与代码相符）；equip 换源主张（泛用件在键集）；零写族屏（巨星/伙伴等）不迁移边界与 op-layer §2.2 现行合法形态一致；src+test 消费点完备性；测试锚与「10+ 处」计数；T-1 承接关系；增补 2/3 逐条合规。

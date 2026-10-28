@@ -24,7 +24,7 @@
 - **权威源证据**：`kernel/cw_events.py:916-941`（阈值注释=银狼锚标定语境；唯一命中判据）；`data/cw_equipment_data.py:51-231`（158 名键集）；本审查复算表（79 名多命中清单已留档，可 `uv run python` 复现，判据 = 逐字复刻 `_similar_equip_hits`）。
 - **建议修法**（任一，写入 §2.0B 并同步 landing 3.1）：
   1. 注册表级入口加**精确命中快道**（text == 键名 → 直接返回），相似归一只作 OCR 形变救援层；
-  2. 照 `classify_planner_leg` 判定序第 1 步先例加 **containment longest-first** 优先（「碎星斩舰刀·特权」containment 命中自身先于基名），多命中只在相似层拒；
+  2. 照 `classify_planner_branch` 判定序第 1 步先例加 **containment longest-first** 优先（「碎星斩舰刀·特权」containment 命中自身先于基名），多命中只在相似层拒；
   3. 或多命中改「longest-match 取最长命中」+ 仅零命中/并列最长才拒——但须论证取最长在 OCR 缺字方向的安全性。
   无论选哪条，§2.0B 须补一段键集歧义分析（哪些名互撞、判据如何消解），验收锚 1 建议加一条「特权/后缀族名完美 OCR 归一命中」行为测试。
 

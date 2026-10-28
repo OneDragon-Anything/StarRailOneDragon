@@ -54,7 +54,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 │    `on_env_gained` 枚举(`ENV_GIFTS` `chars_immediate` 送卡入席 / advisor
 │    解锁分道 = `_unlock_experts` 写 `unlocked_experts` 顾问入商店,条件形态
 │    首例特邀专家:银狼含环境获得时点在场判定);欢愉契约的附带条件授予不在该枚举——触发事件 = 头号玩家选项
-│    弹窗被处理(银狼策划选择上报),授予 = 附带条件分支(代码 leg_type='rider')
+│    弹窗被处理(银狼策划选择上报),授予 = 附带条件分支(代码 branch_type='rider')
 │    `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`
 │    (`active_env` 欢愉契约已登记 → `gain_character` 1★ rand=True,写端 =
 │    rider 链内落位/合成写),正本 = ../game_state/gain-chain.md §3)

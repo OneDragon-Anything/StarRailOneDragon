@@ -8,3 +8,4 @@
 ## 迭代索引
 
 - [2026-10-12-abolish-node-ordinal](2026-10-12-abolish-node-ordinal/design.md) — 废弃全局节点编号,节点身份唯一表示 = `(位面,轮)` 键 + 视界族清扫(T-8 裁决点 9 指派);状态 = 对抗审中(轮 1 处置中);实施前置 = T-8 落地。
+- [2026-10-28-supply-decision-wiring](2026-10-28-supply-decision-wiring/design.md) — 补给决策链接线:sim 局 `decide_supply` 结构性不可达盲区消除(30 §6 前置①)+ PickSupply 回执接线+渲染器 dtag join;状态 = 已落地收尾(对抗 r2 收敛,6 任务全终态;残项前置②另批)。

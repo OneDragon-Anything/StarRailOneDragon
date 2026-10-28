@@ -216,7 +216,7 @@ bench 单位入账分支(`grant_bench_unit_cascade` 入席 1★+合成级联)+ �
 | # | 定位(现值行号) | 现文(摘要) | 收敛方式 |
 |---|---|---|---|
 | 10 | 模块头 L3 | 「……构造 = (ctx, param, env),design.md §1.1/§1.2)。」(裸 design.md,无迭代名) | 删「,design.md §1.1/§1.2」(换壳描述语义自足;在「自上报统一」段 L15-24 之外,属 F-7 清单实施,不受模块头段归口裁决影响) |
-| 11 | OverlayPickExecEnv docstring L124-125 | 「``leg_type``/``norm_item`` = 银狼策划分支类型载荷(银狼闭环 design §2.1①;决策半经 ``classify_planner_leg`` 现算,随派发透传……)」(族公共面,补给 op 消费此 env,无从让渡) | 删「银狼闭环 design §2.1①;」节号指针,余句不动(其现值已由迁移批改写为「确认点击后立即上报完整效果分支」口径) |
+| 11 | OverlayPickExecEnv docstring L124-125 | 「``branch_type``/``norm_item`` = 银狼策划分支类型载荷(银狼闭环 design §2.1①;决策半经 ``classify_planner_branch`` 现算,随派发透传……)」(族公共面,补给 op 消费此 env,无从让渡) | 删「银狼闭环 design §2.1①;」节号指针,余句不动(其现值已由迁移批改写为「确认点击后立即上报完整效果分支」口径) |
 | 12 | CwActionPickSupplyOp docstring L199-200 | 「**即时上报**(action_ops.md §1 增补 2,迭代 2026-09-21-event-refresh-unify-supply-pick):」 | 改「**即时上报**(契约单一源 = `flow/action_ops.md` §1 增补 2 与 §4.5 PickSupply 行):」 |
 | 13 | CwActionPickSupplyOp run 注释 L231-232 | 「# 立即自上报完整结果(design §2.0B 单相:owned += norm_item 规范名 + 单位入账分支 + 装备后果分支;……)」 | 删「design §2.0B 」字样:「# 立即自上报完整结果(单相:owned += norm_item 规范名 + 单位入账分支 + 装备后果分支;……)」 |
 | 14 | CwActionPickMegastarOp docstring L272 | 「(单次逻辑写入豁免面,派发前写——时序申报见迭代 design.md §2)。」 | 删「——时序申报见迭代 design.md §2」(「单次逻辑写入豁免面,派发前写」自足;巨星写时点正本 = op-layer.md §2.2 动作事实边界) |

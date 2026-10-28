@@ -46,7 +46,7 @@
   分相（发射相 = op 机械链发出后，意图遥测；落地相 = handler 重入裁决出口「入口锚不在 =
   overlay 已关」，应用一次）；pick 族落地时机口径 =
   `flow/action_ops.md` §2.3（「落地与否由下一轮重入的入口观察裁决」）。
-- **分支类型判定单源在库**：`kernel/cw_events.py::classify_planner_leg`（装备域优先，银狼专属
+- **分支类型判定单源在库**：`kernel/cw_events.py::classify_planner_branch`（装备域优先，银狼专属
   10 件名单锚 longest-match；银狼闭环 design §2.1① 对抗审① 产物）。
 - **池派生在 sim**：`sim/cw_sim_pool.py`——不变量派生（固定牌库
   `POOL_COPIES_PER_CARD`：1/2 费 27、3/4/5 费 9（`data/cw_shop_odds.py:33`）− 持有
@@ -138,7 +138,7 @@
 ### 2.2 pick_planner 迁移（两相 report，与 pick_invest 同构）
 
 - **新建** `kernel/cw_action_report/pick_planner.py`：
-  `report_action_pick_planner_param(gs, param, sig, *, leg_type='', norm_item='', evidence='')`
+  `report_action_pick_planner_param(gs, param, sig, *, branch_type='', norm_item='', evidence='')`
   - **发射相**（evidence 缺省）：意图遥测日志行，容器零写（确认未落地重走不重复）；
   - **落地相**（evidence = `EVIDENCE_OVERLAY_CLOSED`，常量自 `pick_invest.py` import，
     同族同值单一定义）：分支类型分派应用一次——
@@ -157,7 +157,7 @@
       （kind=`planner_upgrade_tier_ceiling`）；多枚/零枚分支档不动（留证行已证异常，
       禁在异常分支推档）；
     - **unknown**：零记账 + 留证行；**weaken**：零记账（现役原样）。
-  - 分支函数（`_apply_equip_leg`/`_apply_upgrade_transform`）与常量自
+  - 分支函数（`_apply_equip_branch`/`_apply_upgrade_transform`）与常量自
     `cw_screen_yinlang.py` 原样迁入，producer 常量随迁。
   - **落地相载荷来源**：发射 param 挂画面 op 实例（`self._pick_param`，与
     `_pending_leg` 同生命周期），重入裁决出口落地相复用。
@@ -207,7 +207,7 @@
   `_anchor_hit_full_ocr` 中心点位匹配同式，cw_observation.py:1851-1852）；
   **捕获集变化申报**：旧 y 带 [300,420]（卡描述+标题）→ 卡全域 rect
   y∈[180,455]（含费用角标/星级饰件文本）——卡内文本全属该卡语义，
-  `classify_planner_leg` 关键词匹配面不变；卡间间隙文本双不落，零影响。
+  `classify_planner_branch` 关键词匹配面不变；卡间间隙文本双不落，零影响。
 
 ### 2.5 上阵变费分支补档行
 

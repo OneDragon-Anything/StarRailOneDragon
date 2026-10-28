@@ -23,7 +23,7 @@
 分发即门)→ 观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,与现役决策
 体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
-零参决策 → ``classify_planner_leg``
+零参决策 → ``classify_planner_branch``
 分支类型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
 (``flow/action_ops.md`` §1 与 §4.5 PickPlanner 行:动作 op 确认
 点击后立即上报完整效果分支,零落地复查、零落地补写面——确认未生效 =
@@ -42,7 +42,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_events import (
-    classify_planner_leg,
+    classify_planner_branch,
 )
 from sr_od.application.currency_war.kernel.cw_screen_report.planner import (
     CwScreenPlannerObs,
@@ -192,14 +192,14 @@ class CwScreenYinLang(CwOperation):
                 f'卡位 area 缺失:{CwScreenYinLang.CARD_AREAS[pick.idx]}'
                 f'({CwScreenYinLang.CARD_AREA_SCREEN}),禁兜底坐标交回重读')
         # 分支类型载荷:判定单源 = kernel
-        # classify_planner_leg(装备域优先);随 env 透传给动作 op 上报
+        # classify_planner_branch(装备域优先);随 env 透传给动作 op 上报
         # (确认点击后立即写完整效果分支,单相即时上报)。
         _opt_text = (options[pick.idx].text
                      if 0 <= pick.idx < len(options) else '')
-        leg_type, norm_item = classify_planner_leg(_opt_text)
-        log.info('[cw][planner] 策划决策:%s → %s卡(%s) leg=%s/%s',
+        branch_type, norm_item = classify_planner_branch(_opt_text)
+        log.info('[cw][planner] 策划决策:%s → %s卡(%s) branch=%s/%s',
                  pick.reason, '左' if pick.idx == 0 else '右',
-                 options[pick.idx].text[:24], leg_type, norm_item or '-')
+                 options[pick.idx].text[:24], branch_type, norm_item or '-')
         # 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发
         # ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);
@@ -214,6 +214,6 @@ class CwScreenYinLang(CwOperation):
             OverlayPickExecEnv,
         )
         _env = OverlayPickExecEnv(op=self, target=target,
-                                  leg_type=leg_type, norm_item=norm_item)
+                                  branch_type=branch_type, norm_item=norm_item)
         action_op_for(pick, self.ctx, _env).execute()
         return self.round_success('策划选卡已派发(结果已即时上报)')

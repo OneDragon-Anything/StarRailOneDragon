@@ -22,7 +22,7 @@
 
 **解决**：①两屏 pick op 单相化（点完确认/点卡立即上报完整效果分支）；②画面 op 证据闩与重入裁决退役、派发即 `round_success` 终结；③两文件 `EVIDENCE_OVERLAY_CLOSED` 常量及全部消费面退役——`action_ops.md` §4.5 欠账段自此**全域清零**。
 
-**明确不解决**：upgrade 变换窗的前置硬校验语义（三态+档行逻辑逐位保持，只换调用时点）；`classify_planner_leg` 银狼锚分类器语义（planner 分支类型判定专用，不动）；巨星/伙伴等零写族 pick 屏（它们不是两相欠账——chosen_* 留守重入裁决是 `op-layer.md` §2.2 现行合法形态，迁移归后续批如有裁定）；equip 屏候选域判定判据（`decide_equip_overlay_pick` 不动）。
+**明确不解决**：upgrade 变换窗的前置硬校验语义（三态+档行逻辑逐位保持，只换调用时点）；`classify_planner_branch` 银狼锚分类器语义（planner 分支类型判定专用，不动）；巨星/伙伴等零写族 pick 屏（它们不是两相欠账——chosen_* 留守重入裁决是 `op-layer.md` §2.2 现行合法形态，迁移归后续批如有裁定）；equip 屏候选域判定判据（`decide_equip_overlay_pick` 不动）。
 
 ## 2. 方案
 
@@ -41,10 +41,10 @@
   - **归一升级（复用 T-1 已建入口）**：组装点 `normalize_equip_name`（银狼 10 件锚）换 `normalize_registry_equip_name`（注册表 158 名分层归一，T-1 已建）——本屏候选含泛用件（docstring「未锁态语义（仅泛用分支）」在册），10 件锚对泛用件恒 ''；注册表级让泛用注册表件规范名入栏，未命中 fail-closed 不写留证 + 观察覆盖自愈（与供给行同构）。`normalize_equip_name` 本体语义不动（银狼域其他消费面）。**注释连带三处**：`kernel/cw_vocab.py` `CwActionPickEquipParam.norm_item` 字段注释同步改写 + `CwActionPickSupplyParam.norm_item` T-1 遗留过期注释顺手清 + 两 param docstring「两相/落地相」措辞机械改写（T-1 模板注释连带先例）。
   - 画面 op：删 `_pick_pending`/`_pending_pick`/重入裁决出口门；act = 决策（越界/异常 fallback 第 1 张现状保持）→ 组装 param（idx + 注册表分层归一 norm_item）→ 派发 → `round_success` 终结。本屏零 chosen（选择存证已退役，docstring 在册）。
 - **骇入策划屏（planner，后做——复杂分支）**：
-  - `CwActionPickPlannerOp.run` = 点卡（env.target，避开「详情」按钮区选中点照旧）→ 固定等 1.2s → 确认点击（`emit_overlay_confirm`，裁决词「我来当策划」照旧）→ 立即 `report_action_pick_planner_param(gs, action, sig, leg_type=env.leg_type, norm_item=env.norm_item)`（单相；leg_type/norm_item 经 env kwargs 形态保持——planner 载荷先例，不迁 param）→ `round_success` 终结。体内 `op._confirm_pending = True` 置位删除。
-  - 落地效果分支**逐位保持**（实码四分支口径，attack2 F5 修正）：equip 分支（norm_item 命中 → 入栏+后果链；'' 翻来源留证）/ upgrade 变换窗三态+档行（前置硬校验，见 §2.0 时序等价论证）/ unknown 留证（**弱化词卡文落此**——弱化兜底档已退役，`classify_planner_leg` 现役不产出 weaken）/ unrouted 兜底零写（分类器现役不产出的防御分支，逐位保持）。**joy rider 收口申报（attack3 F4 事实化）**：rider 已随 commit 14dd40977 提交（`pick_planner.py` 约 +63 行变更 `_grant_joy_conditional`+rng，挂现落地相门；测试面 = `test_cw_gain_chain.py` import + 10 处 evidence 调用）——3.2 派工前置已满足；单相化时 rider 挂点随单相调用点逐位保持，`test_cw_gain_chain.py` 仅做删 evidence kwarg 机械改写，rider 分支行为测试仍归 joy 批验收面。
-  - 画面 op：删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门；act = 零参决策 → `classify_planner_leg` 分支类型 → 组装 env → 派发 → `round_success` 终结。本屏零 chosen 字段（现状即无）。
-  - **归一不升级**：planner 的 `norm_item` 来自 `classify_planner_leg`（分支类型判定单源，银狼锚语义 = 本屏判定域），**保持不动**——它不是入栏归一器，是分支类型分类器的副产品。
+  - `CwActionPickPlannerOp.run` = 点卡（env.target，避开「详情」按钮区选中点照旧）→ 固定等 1.2s → 确认点击（`emit_overlay_confirm`，裁决词「我来当策划」照旧）→ 立即 `report_action_pick_planner_param(gs, action, sig, branch_type=env.branch_type, norm_item=env.norm_item)`（单相；branch_type/norm_item 经 env kwargs 形态保持——planner 载荷先例，不迁 param）→ `round_success` 终结。体内 `op._confirm_pending = True` 置位删除。
+  - 落地效果分支**逐位保持**（实码四分支口径，attack2 F5 修正）：equip 分支（norm_item 命中 → 入栏+后果链；'' 翻来源留证）/ upgrade 变换窗三态+档行（前置硬校验，见 §2.0 时序等价论证）/ unknown 留证（**弱化词卡文落此**——弱化兜底档已退役，`classify_planner_branch` 现役不产出 weaken）/ unrouted 兜底零写（分类器现役不产出的防御分支，逐位保持）。**joy rider 收口申报（attack3 F4 事实化）**：rider 已随 commit 14dd40977 提交（`pick_planner.py` 约 +63 行变更 `_grant_joy_conditional`+rng，挂现落地相门；测试面 = `test_cw_gain_chain.py` import + 10 处 evidence 调用）——3.2 派工前置已满足；单相化时 rider 挂点随单相调用点逐位保持，`test_cw_gain_chain.py` 仅做删 evidence kwarg 机械改写，rider 分支行为测试仍归 joy 批验收面。
+  - 画面 op：删 `_confirm_pending`/`_pending_leg`/`_pick_param`/重入裁决出口门；act = 零参决策 → `classify_planner_branch` 分支类型 → 组装 env → 派发 → `round_success` 终结。本屏零 chosen 字段（现状即无）。
+  - **归一不升级**：planner 的 `norm_item` 来自 `classify_planner_branch`（分支类型判定单源，银狼锚语义 = 本屏判定域），**保持不动**——它不是入栏归一器，是分支类型分类器的副产品。
 
 ### 2.2 消费点迁移总表
 
@@ -61,14 +61,14 @@
 | `cw_vocab.py` CwActionPickSupplyParam.norm_item 注释 | `cw_vocab.py` :733 附近（T-1 遗留过期表述） | 3.1 顺手清（attack2 F7） |
 | `test_cw_unified_action_4.py` | `test_planner_pick_op_clicks_target_and_confirm`(:322-:340) 断言 `op._confirm_pending is True`（:333 桩/:339 断言）——校验的正是 3.2 要删的置位行 | 3.2 随批改写：删置位断言，点击链断言保留（attack5 A1） |
 | `test_cw_screen_two_node_family.py` | :348 断言引用 `_pick_pending` | 3.1 随批更新断言（attack5 A4） |
-| 两屏画面 op 模块/act docstring + `CwActionPickEquipOp` 类 docstring(:579-:584) + `OverlayPickExecEnv.leg_type/norm_item` 注释 | 两相叙述散布（多不带 `EVIDENCE_OVERLAY_CLOSED` 字面量，grep 罩不住） | 各自屏阶段随批机械改写，本行显式承接叙述面（attack5 A3） |
+| 两屏画面 op 模块/act docstring + `CwActionPickEquipOp` 类 docstring(:579-:584) + `OverlayPickExecEnv.branch_type/norm_item` 注释 | 两相叙述散布（多不带 `EVIDENCE_OVERLAY_CLOSED` 字面量，grep 罩不住） | 各自屏阶段随批机械改写，本行显式承接叙述面（attack5 A3） |
 | `test_cw_gain_chain.py`（joy rider 批带入） | import `EVIDENCE_OVERLAY_CLOSED`（自 pick_planner）+ 10 处 `evidence=` 调用（commit 14dd40977 随 rider 提交） | 3.2 随批机械改写（删 evidence kwarg，rider 行为测试仍归 joy 批）（attack3 F1） |
 
 ### 2.3 关键取舍（正本化时进动机段）
 
 - **两屏拆两阶段而非合并**：机械链不同（equip 点卡即选 / planner 有确认钮），独立验收粒度清晰；共享文件 `cw_overlay_pick_action.py` 串行批防冲突。
 - **equip 归一升级复用注册表分层入口而非保持银狼锚**：本屏候选含泛用件（在册），银狼锚恒 '' = 泛用件永不入栏（现状缺陷）；注册表级与供给行 owned 形态统一；未命中 fail-closed 同构。
-- **planner 载荷保持 env kwargs 不迁 param**：leg_type/norm_item 是分支类型分类产物非卡选择本体，env 透传先例现役；迁 param 无消费收益。
+- **planner 载荷保持 env kwargs 不迁 param**：branch_type/norm_item 是分支类型分类产物非卡选择本体，env 透传先例现役；迁 param 无消费收益。
 - **单相重复应用风险不设防**：增补 2 禁止清单第 4 条明文（确认未生效重派 = 代码 bug 域，禁判重保护）。**upgrade 分支重复应用的真实后果（修正论据）**：首次应用已把 (银狼LV.999,2★) 变换为 1★，二次上报走「零枚 → 留证零写」分支（`planner_upgrade_source_missing`）——档行不会 +1 两次；真实后果 = 缺陷留证 + 逻辑态失配待观察对账，方向（接受不设防）不变。
 - **并行协调申报（joy-conditional-leg 批，attack3 F4 定稿事实）**：rider 已随 commit 14dd40977 提交（现两相门形态 + `test_cw_gain_chain.py` 10 处 evidence 调用）。收口序 = ①joy 批提交 ✓（已完成）→ ②本批 3.2 单相化时 rider 挂点随调用点逐位保持迁移、`test_cw_gain_chain.py` 仅做删 evidence kwarg 机械改写 → ③rider 分支行为测试仍归 joy 批验收面。
 

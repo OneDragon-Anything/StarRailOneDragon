@@ -27,7 +27,7 @@
 ### A3. [建议] design.md §2.2 | 源码 docstring/注释迁移面未入表,且验收 grep 口径罩不住
 
 - **位置**:design §2.2 表(只列 cw_vocab 注释三处与 cw_overlay_pick_action 模块头)与 §3 验收锚 3 / landing 兜底 grep(范围 = EVIDENCE_OVERLAY_CLOSED 字面全域 + 「两相/落地相/发射相」仅 action_ops §4.5 与 action_exec §2 两文档)。
-- **问题**:随本批行为改写而失真的源码叙述面还有——①`cw_screen_equip_pick.py` 模块 docstring(:26-:34「重入裁决顶部…装备入账分支落地相按证据闩应用一次…两相语义」)与 act docstring(:117-:124);②`cw_screen_yinlang.py` 模块 docstring(:21-:38「效果分支证据闩…两相上报宿主…」)与 act docstring(:196-:203);③`cw_overlay_pick_action.py::CwActionPickEquipOp` 类 docstring(:579-:584「落地判定归画面 op 重入裁决」)与 run 内注释(:606-:608 发射相叙述);④`OverlayPickExecEnv.leg_type/norm_item` 字段注释(:124-:127「随发射透传给上报函数登记意图遥测」)。这些不带 EVIDENCE_OVERLAY_CLOSED 常量名者(①③④)验收锚 3 的 grep 与 landing 兜底 grep 均不命中,「正本与实现一致」判据亦不辖源码注释;表连 cw_vocab :733 一行注释都列了,却不列这四处,粒度不一致。
+- **问题**:随本批行为改写而失真的源码叙述面还有——①`cw_screen_equip_pick.py` 模块 docstring(:26-:34「重入裁决顶部…装备入账分支落地相按证据闩应用一次…两相语义」)与 act docstring(:117-:124);②`cw_screen_yinlang.py` 模块 docstring(:21-:38「效果分支证据闩…两相上报宿主…」)与 act docstring(:196-:203);③`cw_overlay_pick_action.py::CwActionPickEquipOp` 类 docstring(:579-:584「落地判定归画面 op 重入裁决」)与 run 内注释(:606-:608 发射相叙述);④`OverlayPickExecEnv.branch_type/norm_item` 字段注释(:124-:127「随发射透传给上报函数登记意图遥测」)。这些不带 EVIDENCE_OVERLAY_CLOSED 常量名者(①③④)验收锚 3 的 grep 与 landing 兜底 grep 均不命中,「正本与实现一致」判据亦不辖源码注释;表连 cw_vocab :733 一行注释都列了,却不列这四处,粒度不一致。
 - **权威源证据**:上述文件行号实测;design §2.2 表;design §3.3;landing 兜底行。
 - **建议修法**:表补一行「两屏画面 op 与 pick op 的模块/类/方法 docstring 及 env 字段注释两相叙述」→ 3.1/3.2 随批改写;或把兜底 grep 的「两相/落地相/发射相」扫描面从两文档扩到 src 改动文件。
 - **严重级**:建议(行为不破、ruff 不查,但与本迭代「实现者无需再设计 + 零残留」的申报深度不齐)。
@@ -59,7 +59,7 @@
 | `normalize_registry_equip_name` 复用(T-1 已建) | ✓ cw_events.py:951,158 键分层归一实现在册 |
 | joy 收口序事实化 | ✓ commit 14dd40977 在库(pick_planner/cw_events/cw_gain_chain/cw_overlay_pick_action 四文件);测试面在独立仓 sr-od-test d3f5788e(条件分支 rider 测试组)——双侧提交事实成立;挂点 = 现落地相门(pick_planner.py:94)✓;「+63 行」数值未逐行复核(差异不影响结论) |
 | 正本清单锚位逐条 | action_ops §1 增补 2/增补 3/§4.5 欠账段(:119,PickPlanner :127/PickEquip :135 两行)✓;action_exec §2 :24「其余屏(策划/补给/装备)」句 ✓;op-layer :33(已迁屏枚举)/:43(§1.2 欠账引用)/:96(§3 注悬空引用)/§3 :88(节点循环行含 YinLang/EquipPick)✓;planner.md :12/§4(:24-:31)/§5(:48-:49)/:55/:76 五处 ✓ §1 无涉 ✓;equip_pick.md :24/:26/:52 ✓;README §5.5(:105 节,:109 两相欠账句)/§6 :138(即时上报枚举)✓;fields.md §3.4 无需更新项核过(chosen 表述不辖 planner/equip,lv999 写端 :612 语义不变)✓;**pick-planner.md :14 = A2** |
-| 分支类型实码口径对齐 | ✓ classify_planner_leg 四步判定序与 weaken 退役(cw_events.py:994-:1024)↔ design「unknown 留证/弱化词落此/unrouted 兜底」一致;_apply_upgrade_transform 分支(unobserved/ceiling/零/多/恰一)↔ design「三态+档行逐位保持 + 前置硬校验」以「逐位保持」兜住 ✓;§2.3 重复应用后果论证(二次 → planner_upgrade_source_missing 留证零写)与码一致 ✓ |
+| 分支类型实码口径对齐 | ✓ classify_planner_branch 四步判定序与 weaken 退役(cw_events.py:994-:1024)↔ design「unknown 留证/弱化词落此/unrouted 兜底」一致;_apply_upgrade_transform 分支(unobserved/ceiling/零/多/恰一)↔ design「三态+档行逐位保持 + 前置硬校验」以「逐位保持」兜住 ✓;§2.3 重复应用后果论证(二次 → planner_upgrade_source_missing 留证零写)与码一致 ✓ |
 | 时序等价论证(§2.0) | ✓ emit_overlay_confirm 零观察零判效(_overlay_confirm.py:91-:119),确认点击→上报窗内无容器写端;旧落地时点前亦无写(同 op round_wait 窗内仅 OCR 门)——论证成立 |
 | sig actor 换名 + 增补 3 合规 | ✓ 现值 actor='CwScreenYinLang'/:218、'CwScreenEquipPick'/:137;供给/投资先例同款换名(action op 内 type(self).__name__)✓;迁移后动作 op 零新增读屏 ✓ |
 | 账本 T-5 承接出处(design §0) | 未独立复核(账本不在本轮权威源清单;低风险,建议维持原申报) |

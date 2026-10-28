@@ -87,9 +87,9 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
     item = str(getattr(param, 'norm_item', '') or '')
     extras = tuple(str(e) for e in (getattr(param, 'extra_norm_items', ())
                                     or ()))
-    equip_legs = (item, *extras)
+    equip_items = (item, *extras)
     steps: list[str] = []
-    if not char_name and not any(equip_legs):
+    if not char_name and not any(equip_items):
         # 内容全未知(兜底点卡路径):禁猜,受影响域值不变翻来源 + 留存证据。
         for dom, fld in (('bench', gs.bench), ('equips', gs.equips)):
             if fld.value is not None:
@@ -109,7 +109,7 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                                      producer=_PRODUCER, sig=sig)
         steps.append(f'char:{char_name}(placed={r.placed},'
                      f'merge={r.merge_steps})')
-    if not any(equip_legs):
+    if not any(equip_items):
         # 零装备名分支(char-only 列 / 件名全失读,两形态读链不可分):
         # 本列无装备名读数,装备域零写(无预测无期望,零翻来源)+ 留存证据
         # (日志行 + reason;装备域无写帧,evidence 参数无处挂)、不发
@@ -117,22 +117,22 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
         # 「装备名未解析」缺陷,本分支消除该伪缺陷;件名失读子况的失配
         # 仍由 equips 观察整表覆盖下一帧暴露(fail-visible)。
         log.info('[cw-pick-supply] 上报(char=%s 无装备名读数): %s',
-                 char_name, '; '.join(steps) or 'no-leg')
+                 char_name, '; '.join(steps) or 'no-branch')
         return LogicOutcome(applied=True, reason='no_equip_column',
                             world_decl=_DECL)
     # 装备入账分支 0..n 件:主件 → 附加件(画面 y 序),同 sig 同窗相邻(同一
     # 确认动作的原子面);非空件 = owned += 规范名 + 获得后果链(获得即
     # 送),'' 件逐件禁猜翻来源留存证据 fail-closed(已解析件照常入账)。
-    for _leg in equip_legs:
-        if _leg:
+    for _item in equip_items:
+        if _item:
             # 装备入账分支:owned += 规范名(账面恒标准名;单一源 = gs.equips
             # 现读-改写-回写,与 cw_exec_state 确认族同形)。
             owned = list(gs.equips.value or [])
-            owned.append(_leg)
+            owned.append(_item)
             gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
-                           evidence=f'owned[{_leg}] +1', sig=sig)
-            steps.append(f'owned:{_leg}')
-            c = apply_equip_acquire_consequence(gs, _leg, frame='pick_supply',
+                           evidence=f'owned[{_item}] +1', sig=sig)
+            steps.append(f'owned:{_item}')
+            c = apply_equip_acquire_consequence(gs, _item, frame='pick_supply',
                                                 rand=False, sig=sig)
             if c.performed:
                 steps.append(f'consequence:{c.granted}x{c.star}')
@@ -150,6 +150,6 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                          actual='unresolved', evidence='pick_supply_landing',
                          sig=sig, kind='pick_supply_name_unresolved')
     log.info('[cw-pick-supply] 上报(char=%s equips=%s): %s', char_name,
-             list(equip_legs), '; '.join(steps) or 'no-leg')
+             list(equip_items), '; '.join(steps) or 'no-branch')
     return LogicOutcome(applied=True, reason='landing_applied',
                         world_decl=_DECL)

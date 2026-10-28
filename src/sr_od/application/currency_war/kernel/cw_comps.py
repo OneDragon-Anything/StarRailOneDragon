@@ -178,10 +178,10 @@ class Comp:
     # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
     # 希儿系对分支(P1 配方锁伪阵容)+ COMP_LIBRARY 静态套「希儿量子」
     # (P2+ 锁定路径经 get_comp 消费静态条目;档位单一源 =
-    # SEELE_OR_LEGS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
+    # SEELE_OR_REQS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
     # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
     # (判据单一源契约)。
-    or_legs: list[tuple[str, int]] = field(default_factory=list)
+    or_reqs: list[tuple[str, int]] = field(default_factory=list)
     """OR 分支(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
     「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
     行;combo_methodology.md:133)。空 = 无 OR 分支(纯 AND)。进度折法:OR 组
@@ -600,7 +600,7 @@ V2_FAMILIES: tuple[str, ...] = (
 # cw_intention 经顶部 import 消费本常量(re-import 别名,其形态端口注
 # 「禁再写本地第二份」),单一源接线由测试仓接线守卫钉死(对象身份 `is`,
 # 本地第二份复发即红)。
-SEELE_OR_LEGS: tuple[tuple[str, int], ...] = (('量子同频', 2), ('贝洛伯格', 2))
+SEELE_OR_REQS: tuple[tuple[str, int], ...] = (('量子同频', 2), ('贝洛伯格', 2))
 SEELE_CARRY_CHAR: str = '希儿'
 
 COMP_LIBRARY: list[Comp] = [
@@ -828,7 +828,7 @@ COMP_LIBRARY: list[Comp] = [
         # (同键档位不入 AND 账,折法见 form_progress),档位值保留作线键/
         # 完全体账单结构载体——囤货采购集/晋升候选/换线距离账等消费读其
         # 键面,清空即残(银狼/佩拉/桑博等放大器成员会掉出采购集)。
-        or_legs=list(SEELE_OR_LEGS), required_deployed=(SEELE_CARRY_CHAR,),
+        or_reqs=list(SEELE_OR_REQS), required_deployed=(SEELE_CARRY_CHAR,),
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
@@ -1798,15 +1798,15 @@ def form_progress(comp: Comp, gs: GameState) -> float:
 
     OR 分支与 carry 条件折法(OR 组承接键;
     本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
-    全档 ∧ or_legs 组任一满 ∧ required_deployed 全在板」的单一源契约):
-    - ``or_legs`` 非空 → 折为**一条**虚拟分支,分支值 = 组内各分支进度的 max
+    全档 ∧ or_reqs 组任一满 ∧ required_deployed 全在板」的单一源契约):
+    - ``or_reqs`` 非空 → 折为**一条**虚拟分支,分支值 = 组内各分支进度的 max
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
       最好分支非均值);
     - **承接规则**:``form_tiers`` 中与 OR 分支**同键**的档位
       不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——静态套
-      希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_LEGS`` 承接,成型
+      希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_REQS`` 承接,成型
       判据即文档 OR 口径;pair 伪阵容两键集恒不相交,本规则对其逐位
-      零差)。档位值保留的用途见 ``Comp.or_legs`` 注;
+      零差)。档位值保留的用途见 ``Comp.or_reqs`` 注;
     - ``required_deployed`` 逐名折一条 0/1 虚拟分支(在板=1;入参无
       deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
     两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
@@ -1816,11 +1816,11 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     取代声明)。
     """
     if (not comp.form_tiers
-            and not getattr(comp, 'or_legs', None)
+            and not getattr(comp, 'or_reqs', None)
             and not getattr(comp, 'required_deployed', None)):
         return 0.0
-    or_legs = getattr(comp, 'or_legs', None) or []
-    or_owned = {f for f, _t in or_legs}   # OR 组承接键(同键档位免 AND 账)
+    or_reqs = getattr(comp, 'or_reqs', None) or []
+    or_owned = {f for f, _t in or_reqs}   # OR 组承接键(同键档位免 AND 账)
     _board = getattr(gs, 'board', None)
     board = getattr(_board, 'value', None) or {}
     total = 0.0
@@ -1830,9 +1830,9 @@ def form_progress(comp: Comp, gs: GameState) -> float:
             continue
         total += min(board.get(f, 0), tier) / tier
         n += 1
-    if or_legs:
+    if or_reqs:
         best = 0.0
-        for f, tier in or_legs:
+        for f, tier in or_reqs:
             if tier <= 0:
                 continue
             best = max(best, min(board.get(f, 0), tier) / tier)

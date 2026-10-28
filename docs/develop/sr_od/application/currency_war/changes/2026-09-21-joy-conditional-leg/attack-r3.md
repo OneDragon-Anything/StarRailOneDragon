@@ -11,9 +11,9 @@
 
 以下本轮独立实读相符,不作为攻击点:
 
-- `pick_planner.py:58` 两相形态/:73-78 发射相零写/:79-88 三条分支分派+兜底(现状 reason='weaken_leg_zero_write',`leg_type=''` 与 `'weaken'` 共用此兜底)/`:19-20`/:67/:88 weaken 字样行号——design §2.2-7③ 行号锚逐个相符 ✓
-- `cw_screen_yinlang.py:195`(node_max_retry_times=5)/:204-222(重入裁决出口;`:205` _confirm_pending 置 False、:210-211 载荷清空、:213 `_mgs is not None` 局外门、:214 落地相调用)/:255-256(载荷重建)——r1 发现 3 引用的失效通道语义逐行复核成立 ✓;classify 恒产非空 leg_type(`cw_events.py:1019` 空文本 → unknown),生产 leg_type='' 不可达,''直调 = 纯测试形态,design §2.6「兜底形态」注记准确 ✓
-- `cw_overlay_pick_action.py:124`(leg_type 词表注释)/:404(`_confirm_pending=True` 重置)/:418(发射相调用,evidence 缺省)锚准;发射相 actor=PlannerPickOp、落地相 actor=CwScreenYinLang,rider 随落地相 sig 归因与既有分支一致 ✓
+- `pick_planner.py:58` 两相形态/:73-78 发射相零写/:79-88 三条分支分派+兜底(现状 reason='weaken_leg_zero_write',`branch_type=''` 与 `'weaken'` 共用此兜底)/`:19-20`/:67/:88 weaken 字样行号——design §2.2-7③ 行号锚逐个相符 ✓
+- `cw_screen_yinlang.py:195`(node_max_retry_times=5)/:204-222(重入裁决出口;`:205` _confirm_pending 置 False、:210-211 载荷清空、:213 `_mgs is not None` 局外门、:214 落地相调用)/:255-256(载荷重建)——r1 发现 3 引用的失效通道语义逐行复核成立 ✓;classify 恒产非空 branch_type(`cw_events.py:1019` 空文本 → unknown),生产 branch_type='' 不可达,''直调 = 纯测试形态,design §2.6「兜底形态」注记准确 ✓
+- `cw_overlay_pick_action.py:124`(branch_type 词表注释)/:404(`_confirm_pending=True` 重置)/:418(发射相调用,evidence 缺省)锚准;发射相 actor=PlannerPickOp、落地相 actor=CwScreenYinLang,rider 随落地相 sig 归因与既有分支一致 ✓
 - `anchor_aware_write`(`cw_game_state.py:1792-1807`,`rand or not prep_anchored_of(gs)` 短路)与 r1 处置后 design §2.2-3「rand 形参优先于锚定状态」口径一致 ✓;`test_cw_gain_chain.py:244-262` 臂 1/2/3 测试实存,§2.6「与既有臂 3 测试同语义」引用准确 ✓
 - observe 通道:`cw_game_state.py:2476-2484`(logic_rand 差异 → `logic_rand_outcome` 行,等值不产行)、:2485-2495(logic 失配 → 三分流)、:863(`observe_vs_logic_mismatch` kind 实存)——§2.6 校准面判据与 §2.5-1「无失配网」申报锚全准 ✓
 - `roll_hacker_mod`(`cw_gain_effects.py:59-63`,`rng.choice` 纯函数)与 `gain_invest_strategy`/`on_strategy_gained` 的 `rng: Random | None = None` 缺省形态(:530/:688)——§2.2-2「rng 注入先例」两个先例均在册,形态可唯一推出 ✓
@@ -69,13 +69,13 @@
 
 ## 3. 已查证为协调的点(攻击过、不成立,留档防复议)
 
-- **触发路径封闭性**:生产落地相唯一入口 = CwScreenYinLang 重入裁决出口(cw_screen_yinlang.py:214;classify 恒产非空 leg_type,:1019);发射相调用点(cw_overlay_pick_action.py:418)evidence 缺省先于 rider 落点 return,零触发;局外 `_mgs is None` 不调 report(:213)。无第四调用点(grep 全 src)。
+- **触发路径封闭性**:生产落地相唯一入口 = CwScreenYinLang 重入裁决出口(cw_screen_yinlang.py:214;classify 恒产非空 branch_type,:1019);发射相调用点(cw_overlay_pick_action.py:418)evidence 缺省先于 rider 落点 return,零触发;局外 `_mgs is None` 不调 report(:213)。无第四调用点(grep 全 src)。
 - **在册判定的时序与幂等**:active_env 一局恰一次写(开局一次性选择,见 §1 暗默认核查),判定值在落地相期间恒定;「恰一次授予」由证据闩计数承载(r1 发现 3 已申报失效通道,本轮复核 :205-211/:255-256/:404 实码一致)。
 - **星级先验的处置哲学分岔合理**:immediate 分支 1★ 先验「先验错 = 响停修因」(rand=False → 失配网可见)vs 条件分支 1★ 先验「观察覆盖静默校准」(rand=True → 无失配网)——两者处置差异由通道差异决定,非双标。
 - **授予时点差**(弹窗出现 vs 确认关闭)已在 §2.8「残余不确定(分布形态/授予时点/星级先验)」辖域内,观察/outcome 行自然校准,无新增暴露面。
 - **bench 挤压/溢出**:gain_character 固定时序(席满 → overflow 写;溢出位被占 → 零写留证)为链纪律,生产容器 bench 冷建即种(A 类)不可达 None;§2.5-2 已申报高频触发的 bench 压力面。
 - **upgrade 分支前置计数不受 rider 干扰**:rider 授予的是火花/开拓者·欢愉(非银狼),`(银狼LV.999, 2★)` 恰一枚判定零影响;分支内现读语义见 §1。
-- **「发射相意图遥测」日志措辞**、`leg_type=''` 兜底形态、`_PLANNER_PRODUCER` 归因、evidence 后缀兼容:零新增面。
+- **「发射相意图遥测」日志措辞**、`branch_type=''` 兜底形态、`_PLANNER_PRODUCER` 归因、evidence 后缀兼容:零新增面。
 - **test 面可判定性**:§2.6 各判据(三条分支恰一次/发射相零/''兜底/rand 通道/撤闩等价形式/退役测试)逐条可落断言;test_cw_yinlang_phase32.py:160/:273-286 既有断言的改写由退役测试判据隐含(r1 已留档「可执行」,本轮复核维持)。
 
 ## 4. 前两轮已裁决面复核(只记复核后认为处置有误/不完整者)

@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-**单相**(上报宿主 = `kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`,与 pick_invest 同构;`CwActionPickPlannerOp` 确认点击后调用,`leg_type`/`norm_item` 经 `OverlayPickExecEnv` 随派发透传):
+**单相**(上报宿主 = `kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`,与 pick_invest 同构;`CwActionPickPlannerOp` 确认点击后调用,`branch_type`/`norm_item` 经 `OverlayPickExecEnv` 随派发透传):
 
 - **条件单位(rider)先行**(上报内、效果分支分派之前):欢愉契约已登记时采样授予一枚条件单位(获得链 `gain_character`,evidence = `joy_conditional:<单位名>`;授予失败不阻塞分支分派,调用点级 best-effort);
 - 按效果分支分派的容器(GameState,游戏状态对象,下同)写域:

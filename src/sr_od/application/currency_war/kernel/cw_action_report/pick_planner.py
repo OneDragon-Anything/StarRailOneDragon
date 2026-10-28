@@ -42,7 +42,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     merge_cascade_write,
 )
 from sr_od.application.currency_war.kernel.cw_events import (
-    PLANNER_LEG_EQUIP,
+    PLANNER_BRANCH_EQUIP,
     PLANNER_LEG_UNKNOWN,
     PLANNER_LEG_UPGRADE,
 )
@@ -80,7 +80,7 @@ def _with_decl(gs: GameState, outcome: LogicOutcome) -> LogicOutcome:
 
 
 def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
-                                     *, leg_type: str = '',
+                                     *, branch_type: str = '',
                                      norm_item: str = '',
                                      rng: random.Random | None = None) -> LogicOutcome:
     """银狼策划选择上报(即时单相:确认点击后一口写完整效果逻辑态)。
@@ -91,7 +91,7 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     / unknown 零记账+留存证据 / 未路由分支类型终态兜底零写。applied 出口构造
     后果声明(:func:`_decl`;拒出口 None)。
 
-    - ``leg_type``/``norm_item`` = 决策半分支类型载荷(classify_planner_leg
+    - ``branch_type``/``norm_item`` = 决策半分支类型载荷(classify_planner_branch
       产物,经 OverlayPickExecEnv 随派发透传);
     - ``rng`` = 条件分支采样注入点(缺省 None = 实机未播种猜测语义,与
       骇客改件采样同约定;sim 传流键 = 世界真值);
@@ -107,12 +107,12 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     # 条件分支 rider(上报内、分支类型分派之前):弹窗出现即触发,与选择
     # 哪条分支无关;授予失败不阻塞分支类型分派(调用点级 best-effort)。
     _grant_joy_conditional(gs, sig, rng)
-    if leg_type == PLANNER_LEG_EQUIP:
-        return _with_decl(gs, _apply_equip_leg(gs, norm_item, sig))
-    if leg_type == PLANNER_LEG_UPGRADE:
+    if branch_type == PLANNER_BRANCH_EQUIP:
+        return _with_decl(gs, _apply_equip_branch(gs, norm_item, sig))
+    if branch_type == PLANNER_LEG_UPGRADE:
         return _with_decl(gs, _apply_upgrade_transform(gs, sig))
-    if leg_type == PLANNER_LEG_UNKNOWN:
-        _emit_defect(field_name='planner_opts', expected='planner_leg',
+    if branch_type == PLANNER_LEG_UNKNOWN:
+        _emit_defect(field_name='planner_opts', expected='planner_branch',
                      actual='unrecognized_text', evidence='planner_landing',
                      sig=sig, kind='planner_leg_unknown')
         return LogicOutcome(applied=True, reason='unknown_leg_evidenced',
@@ -156,13 +156,13 @@ def _grant_joy_conditional(gs: GameState, sig: ChannelSig,
                        producer=_PLANNER_PRODUCER, sig=sig)
     except Exception as e:  # noqa: BLE001  调用点级 best-effort(显式例外)
         log.warning(f'[cw-pick-planner] 条件分支授予失败(不阻塞):{unit} {e}')
-        _emit_defect(field_name='bench', expected='条件腿授予成功',
+        _emit_defect(field_name='bench', expected='条件分支授予成功',
                      actual=f'授予异常:{e}',
                      evidence=f'joy_conditional:{unit}',
                      sig=sig, kind='joy_conditional_grant_failed')
 
 
-def _apply_equip_leg(gs: GameState, norm_item: str,
+def _apply_equip_branch(gs: GameState, norm_item: str,
                      sig: ChannelSig) -> LogicOutcome:
     """装备入账分支(确定性通道):入栏 + 获得后果链。"""
     if not norm_item:

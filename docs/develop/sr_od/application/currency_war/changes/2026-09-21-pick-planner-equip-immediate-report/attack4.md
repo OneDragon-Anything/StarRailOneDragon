@@ -14,9 +14,9 @@
 - **问题**:实读该文件,条目列清除面 = 文件头(:3)/§3(:23)/§5(:33)/§7(:41)/:37 过期句。**§2 逻辑态域集节遗漏三行**:
   - :11 「**两相**(上报宿主 = …与 pick_invest 同构)」节头;
   - :13 「**发射相**(evidence 缺省…):意图遥测日志行,容器零写」bullet;
-  - :17 「**unknown**:零记账 + 留证行;**weaken**:零记账」——weaken 分支已随 commit 14dd40977 删除(`classify_planner_leg` 现役 cw_events.py :994-1026 无 weaken 产出,实码核证),该行**现在就已与代码不一致**,本批清两相时若不同步清即持续违反 AGENTS §9「正本必须自足、与代码现状一致」。
+  - :17 「**unknown**:零记账 + 留证行;**weaken**:零记账」——weaken 分支已随 commit 14dd40977 删除(`classify_planner_branch` 现役 cw_events.py :994-1026 无 weaken 产出,实码核证),该行**现在就已与代码不一致**,本批清两相时若不同步清即持续违反 AGENTS §9「正本必须自足、与代码现状一致」。
   三行均无 `EVIDENCE_OVERLAY_CLOSED` 字面量(兜底 grep 一段抓不到),也不在 action_ops §4.5 / action_exec §2(兜底 grep 二段的限定范围)——按清单字面执行 = 永不清除。:14 落地相 bullet 含常量字面量,兜底可抓,不在本条指控内。attack3 F2 指控清单已含「§2 :13 发射相 bullet」,现稿修订收编了 :3/:23/:33/:41 却**仍漏 :13 与节头 :11**,且本轮新增 :17 weaken 失真行——同错误形态第 3 次出现。
-- **权威源证据**:`docs/…/game_state/logic-updates/pick-planner.md` :11/:13/:17 现文;`src/…/kernel/cw_events.py::classify_planner_leg`(:994-1026,无 weaken);commit 14dd40977 message「删 weaken 分类分支与常量(含弱化词未知名卡文落 unknown)」。
+- **权威源证据**:`docs/…/game_state/logic-updates/pick-planner.md` :11/:13/:17 现文;`src/…/kernel/cw_events.py::classify_planner_branch`(:994-1026,无 weaken);commit 14dd40977 message「删 weaken 分类分支与常量(含弱化词未知名卡文落 unknown)」。
 - **建议修法**:该条目清除面补「§2 :11(两相节头)/:13(发射相 bullet)/:17(weaken 行随弱化兜底档退役一并清)」;或在兜底段为该文件加「两相/发射相/落地相/weaken」措辞 grep。修法一句话即可,不动代码面。
 - **严重级**:阻塞。
 
@@ -50,10 +50,10 @@
 | EVIDENCE_OVERLAY_CLOSED 全域 grep(自行复核) | src 恰 4 文件(pick_planner :63 定义+:12/:74/:86、pick_equip :40 定义+:9/:48/:55、yinlang :49/:220、equip_pick :44/:137)✓;测试 t60 EQUIP_EVIDENCE 面(import :40 + :127/:218)✓、yinlang_phase32(import :55 + 恰 10 调用,「10+ 处」✓)、gain_chain(import :41 + 恰 10 调用)✓;docs 正本命中 = logic-updates :14/:37、planner.md :24/:55、equip_pick.md :24/:52——**全部在清单或兜底 grep 覆盖内** ✓;changes/ 豁免申报 ✓。判据「全域 grep 零命中(豁免 = changes/)」按字面可达 ✓ |
 | `_pick_pending`/`_pending_pick` | equip_pick 本文件(:74/:79/:125-129/:169/:180)✓;bookcard/expert_invite 同名属彼屏,表已限定 ✓;**two_node_family :348 已入 landing 3.1 文件面(:346/:348,实文核证 = round_wait 断言 + 置位断言,单相化后均须改)** ✓;无遗漏无过度 |
 | `_confirm_pending`/`_pending_leg`/`_pick_param` | yinlang 本文件(:108/:113/:116/:204-211/:255-256)+ pick op 置位 :408 ✓(均入表);:355 置位属 CwActionPickPartnerOp(伙伴屏),表已限定 ✓;wish_trial/partner/fortune/deploy_not_full 同名属彼屏 ✓;无遗漏无过度 |
-| `normalize_equip_name`(equip 组装点) | equip_pick :47 import + :168 组装点 ✓;`normalize_registry_equip_name` 在册(cw_events :951,158 键分层归一,docstring「补给侧」措辞与本批复用无冲突——语义纯函数可复用,设计申报「T-1 已建入口」✓);本体与银狼域消费面不动 ✓;planner 侧 classify_planner_leg 副产品 norm_item 不升级(设计 §2.1 明示)与实码 :1010-1011 口径一致 ✓ |
+| `normalize_equip_name`(equip 组装点) | equip_pick :47 import + :168 组装点 ✓;`normalize_registry_equip_name` 在册(cw_events :951,158 键分层归一,docstring「补给侧」措辞与本批复用无冲突——语义纯函数可复用,设计申报「T-1 已建入口」✓);本体与银狼域消费面不动 ✓;planner 侧 classify_planner_branch 副产品 norm_item 不升级(设计 §2.1 明示)与实码 :1010-1011 口径一致 ✓ |
 | cw_vocab 三处注释 | :733(supply norm_item 引 `normalize_equip_name` = T-1 后过期)+ :735-736 / :910-911(两 param 落地相/两相措辞)实在 ✓(分布 → F2 同步缺口) |
 | cw_overlay_pick_action 模块头 | :15-24「三线例外」自述段实在,含 pick_invest/pick_equip/pick_supply 分步自述(invest/supply 已迁现役失真、本批后 pick_equip/pick_planner 亦失真)✓;3.1 不动/3.2 改写分工明确 ✓;CwActionPickEquipOp.run 发射相注释 :606-608 随 3.1 体改 ✓ |
-| 分支类型实码口径 | `_apply_equip_leg`(命中入栏+后果链 / '' 翻来源留证)、`_apply_upgrade_transform`(三态:恰一枚变换+档行 :254-273 / 多枚翻来源留证 / 零枚·未观察 `planner_upgrade_source_missing` / 现档≥5 封顶闸)、unknown 留证、unrouted 兜底零写——design §2.1/landing 3.2 四分支表述与实码逐分支一致 ✓;§2.3「二次上报走零枚分支、档行不 +1 两次」论据与 :232-237 实码一致 ✓ |
+| 分支类型实码口径 | `_apply_equip_branch`(命中入栏+后果链 / '' 翻来源留证)、`_apply_upgrade_transform`(三态:恰一枚变换+档行 :254-273 / 多枚翻来源留证 / 零枚·未观察 `planner_upgrade_source_missing` / 现档≥5 封顶闸)、unknown 留证、unrouted 兜底零写——design §2.1/landing 3.2 四分支表述与实码逐分支一致 ✓;§2.3「二次上报走零枚分支、档行不 +1 两次」论据与 :232-237 实码一致 ✓ |
 | joy 收口序事实 | commit 14dd40977 实在;pick_planner.py numstat = **+63/−9**(design「+63 行」精确);`_grant_joy_conditional` 挂落地相门(:94)、rng 形参在;现落地相调用不传 rng(yinlang :214-220),单相化后 op.run 调用同不传 rng → rider 行为逐位等值 ✓;test_cw_gain_chain import+10 调用实在 ✓ |
 | 权威源条目节/行真实性 | action_ops §1 增补 2(:11)/增补 3(:13)/§2.3 欠账标注句(:59)/§4.5(:117-135,PickPlanner/PickEquip 两行 + 欠账标注段 :119)✓;action_exec §2 :24 原文与 attack2 F1 引用一致、「supply 确认行」= :33 ✓;op-layer :21-22/:33/:36-38/:43/:87-89/:96 ✓(§3 节点循环行 = :88,含 CwScreenEquipPick/CwScreenYinLang,landing「§3 节点循环行分型判据更新」有实锚);screens/README §5.5(:107-109)/§6(:138)✓;planner.md :12/:24/:29-40/:48-49/:55/:76 与 landing 五处清除面吻合 ✓;equip_pick.md :24/:52 ✓;op-layer §1.4/:43、§2.1/:51-55、§2.2/:78 chosen 留守规则与 design §1.3「零写族不解决」申报一致 ✓ |
 | design §1↔§2↔landing 三阶段边界 | 3.1(equip)/3.2(planner)/末阶段(正本)互斥完备;§1.3 之外未发现漏 declared 面;文件面路径全部真实存在 ✓ |

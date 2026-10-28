@@ -57,7 +57,7 @@
 | `EVIDENCE_OVERLAY_CLOSED` 在库（pick_invest） | pick_invest.py:51，值 'overlay_closed' | ✓ |
 | pick_invest 两相形态（发射相零写/落地相证据应用一次） | :10-17、:242-249 | ✓ |
 | `report_action_pick_planner_param` @ zero_writes.py:127 | :127 | ✓ |
-| 发射上报调用点 @ cw_overlay_pick_action.py:411 | :411-415（leg_type/norm_item 经 env 透传） | ✓ |
+| 发射上报调用点 @ cw_overlay_pick_action.py:411 | :411-415（branch_type/norm_item 经 env 透传） | ✓ |
 | `resolve_cost_star` @ cw_observation.py:1806，倍数∈{1,3,9} 否则兜底 | :1806-1823，行为与 §1.1-4 症状描述一致（badge=4,费=3 → 记 3费1★） | ✓ |
 | 调用点 @ :1988 | :1988 | ✓（但 gs 可得性见 F2） |
 | `bench_char_cost` @ :147 起始费语义 | :147-155 | ✓ |
@@ -65,7 +65,7 @@
 | `DEFAULT_GS_SCHEMA` 域映射、match_facts 域版本机制 | cw_game_state.py:158-164（match_facts: 2）、:2170 扩展先例 | ✓ |
 | Field 默认 None 归约可行 | Field.value 默认 None（:449）；`Field[int] = field(default_factory=Field)` 现役形态（:2150、:2203） | ✓ |
 | §8.2 头注（Unit 静态属性查注册表派生/禁另存） | :454-464 | ✓ |
-| `classify_planner_leg` / PLANNER_LEG_* | cw_events.py:944 / :904-907 | ✓ |
+| `classify_planner_branch` / PLANNER_LEG_* | cw_events.py:944 / :904-907 | ✓ |
 | `cw_projection_audit.py` 登记行机制 | :26、:164、:342（新字段不登记会红完备性测试——设计已申报登记） | ✓ |
 | yml `cw_yinlang_star_up.yml`：画面名/5 area/两卡 rect | 左卡 (560,180,1030,455)、右卡 (1065,180,1545,455)，逐字一致 | ✓ |
 | actor 遥测身份 'CwScreenYinLang' | planner.py:46（测试 test_cw_screen_report_ports.py:470 同测试） | ✓ |

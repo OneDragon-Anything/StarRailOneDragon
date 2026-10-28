@@ -45,7 +45,7 @@
 - `CwActionPickSupplyOp.run` = 点卡 → 0.6s → 点确认 → **立即** `report_action_pick_supply_param`（单相，一口写效果逻辑态）→ `report_node_advance(gs, trigger='supply_confirm')`（现状保持，点击即上报）→ `round_success` 终结交回。确认未生效 = 代码 bug，overlay 残留由外循环按当前画面重识别重派，修法 = 点击链可靠性（禁验证/重试补丁）。
 - **账面恒标准名，param 零扩字段**（用户裁定 2026-09-21：OCR 易错，账面名一律规范形态）：owned 权威写端 `read_equips` 本产规范名（模板逐格分类，`obs/cw_equipment.py`；模板键集 157 张 **⊆** 注册表 158 名——「财富」无模板，该名观察永不覆盖 = 自愈缺口，申报 + 模板采集挂账 data-collection 批，非本迭代），现行到账追加原始 OCR 名是账面异类形态——本批退出。**norm_item 锚集升级 + 分层归一**：`normalize_equip_name` 现锚 = 银狼专属 10 件穿戴门键（`cw_events._PLANNER_EQUIP_ANCHORS`），补给基础件不在其列 → 恒未解析；supply 侧改用**装备注册表级分层归一**（`kernel/cw_events.py` 新入口；planner 银狼锚归一语义不动，两入口分立），层级定死：
   1. **精确快道**：text 与注册表键名全等 → 直返。理由 = 纯「LCS 0.75 + 唯一命中」直移 158 名键集，完美 OCR 下实测 79/158 名多命中拒识（垃圾袋/金垃圾袋、生命之花/生命之环 0.75、追击/击破星徽互撞、昼/夜之半神星徽互撞、36 个特权名全撞进阶基名、白昼/极·白昼、Max/Pro 后缀族、命运族、穿刺/穿越死棘之枪）——相似判据不得为首层；
-  2. **containment longest-first**：注册表名 contained in text 取最长唯一（`classify_planner_leg` 判定序第 1 步先例；「·特权」类装饰噪声由本层消解）；并列最长 → 落相似层；
+  2. **containment longest-first**：注册表名 contained in text 取最长唯一（`classify_planner_branch` 判定序第 1 步先例；「·特权」类装饰噪声由本层消解）；并列最长 → 落相似层；
   3. **相似救援**：LCS ≥ 0.75 唯一命中 → 返回；多命中/零命中 → ''（禁猜，fail-closed）。
   行为测试 = 特权/后缀族/互撞族完美 OCR 命中 + 形变救援 + 多命中拒识（landing 3.1）。残余申报：OCR 把一件误读成另一件规范名（生命之花→生命之环类）归一层原理不可辨，入账暂态错名由观察覆盖自愈（覆盖序论证 = §2.3）。
   handler 组装点换用分层归一，param 现有字段（`char_name` roster 校验产物 + `norm_item` 分层归一）即 report 全部输入——**不扩 raw_item/has_diamond**。

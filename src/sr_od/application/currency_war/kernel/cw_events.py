@@ -253,7 +253,7 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 #: (零记账留存证据;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
 #: 已按原文二分法停用,静默零记账变响亮申报)。
 PLANNER_LEG_UPGRADE: str = 'upgrade'
-PLANNER_LEG_EQUIP: str = 'equip'
+PLANNER_BRANCH_EQUIP: str = 'equip'
 PLANNER_LEG_UNKNOWN: str = 'unknown'
 
 #: 装备域锚名单单一源 = 银狼专属 10 件穿戴门键集(data/cw_equipment_wear_
@@ -343,7 +343,7 @@ def normalize_registry_equip_name(text: str) -> str:
     return sim[0] if len(sim) == 1 else ''
 
 
-def classify_planner_leg(text: str) -> tuple[str, str]:
+def classify_planner_branch(text: str) -> tuple[str, str]:
     """银狼策划选项分支类型判定单源(记账分类器;全序)。
 
     判定序(装备域优先):
@@ -359,7 +359,7 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
        装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留存证据);
     4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
 
-    返回 ``(leg_type, norm_item)``:norm_item 仅 equip 分支携带归一件名,
+    返回 ``(branch_type, norm_item)``:norm_item 仅 equip 分支携带归一件名,
     其余分支恒 ''。
     """
     t = text or ''
@@ -367,12 +367,12 @@ def classify_planner_leg(text: str) -> tuple[str, str]:
         return (PLANNER_LEG_UNKNOWN, '')
     for anchor in _PLANNER_EQUIP_ANCHORS:   # longest-first:Max 先于短名
         if anchor in t:
-            return (PLANNER_LEG_EQUIP, anchor)
+            return (PLANNER_BRANCH_EQUIP, anchor)
     hits = _similar_equip_hits(t)
     if len(hits) == 1:
-        return (PLANNER_LEG_EQUIP, hits[0])
+        return (PLANNER_BRANCH_EQUIP, hits[0])
     if len(hits) > 1:
-        return (PLANNER_LEG_EQUIP, '')
+        return (PLANNER_BRANCH_EQUIP, '')
     if '提升费用' in t:
         return (PLANNER_LEG_UPGRADE, '')
     return (PLANNER_LEG_UNKNOWN, '')

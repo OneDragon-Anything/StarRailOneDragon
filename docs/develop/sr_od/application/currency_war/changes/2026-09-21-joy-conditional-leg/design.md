@@ -126,7 +126,7 @@
    `provisional_mark` 效果名项;模块 docstring 失败安全/条件分支自述同步改写。
    撤除后 `on_env_gained` 欢愉契约仅走 chars_immediate 分支(银狼LV.999 入链)。
 7. **weaken 兜底档退役(裁定③)**:剔除面全清单——①`cw_events.py`
-   `classify_planner_leg` 关键词降级分支(「弱化/降低敌人」→ weaken)与
+   `classify_planner_branch` 关键词降级分支(「弱化/降低敌人」→ weaken)与
    `PLANNER_LEG_WEAKEN` 常量及分支类型词表注释:含弱化词且装备名锚未命中的卡文改落
    **unknown**(留证行,失败显影方向——静默零记账变响亮申报);②`decide_planner`
    弱化档打分(55 分常数)**及其 docstring 三层定序自述删除——含散布在其余条目内的
@@ -201,8 +201,8 @@
 - **在册判定**:active_env 空/其他环境 → 零授予;欢愉契约 → 恰一次授予;
 - **rng 注入**:同 seed 同单位;两候选均可达;
 - **触发计数封闭清单**:落地相入口 `{equip, upgrade, unknown}` 各断言 rider 恰一次
-  授予;发射相断言零授予;`leg_type=''` 直调落地相断言 rider 仍触发(兜底形态);
-- **weaken 退役测试**:`classify_planner_leg('使后续节点【弱化】')` → `('unknown','')`
+  授予;发射相断言零授予;`branch_type=''` 直调落地相断言 rider 仍触发(兜底形态);
+- **weaken 退役测试**:`classify_planner_branch('使后续节点【弱化】')` → `('unknown','')`
   (不再 weaken);含弱化词已知装备名(破解芯片)仍 → equip(碰撞治理不回退);
   `decide_planner` 对无名弱化卡文零弱化档分;`report_action_pick_planner_param`
   终态兜底 reason = `unrouted_leg_zero_write`;

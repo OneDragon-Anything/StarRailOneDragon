@@ -301,7 +301,7 @@ return self.round_wait()
 - **坐标单一源 = 建档纯定位区「卡-强化1/2/3」(本批新建)**:建档 `cw_fortune_picker.yml` 增三行纯定位区(无模板/OCR 依赖,`pc_rect` 中心 = (510,480)/(900,480)/(1290,480) = 现役 `CARD_XS`/`CARD_Y` 2026-08-21 live 实锤字面量平移),经 MCP `upsert_screen_area` 落档并更新合并缓存(禁手改 yml);「待实机核」标志随迁(坐标真值不变,载体迁移非新证)。观察侧 `area_center` 主源 + None 回退 `(CARD_XS[i], CARD_Y)` 兜底常量 + `log.warning` 单行留证——兜底 = 与建档同真值的 live 实锤字面量,防建档误删致观察断裂,非第二坐标源(正本 §3.4.5a「禁 screen_info 二次取点回退」辖**读端** = 动作/上报层,观察写门内唯一出口不受涉);执行侧零取点零回退。本屏在册欠账「三卡文本读区未 area 化」本体不变(文本读区 = OCR 带,与本批点击坐标区两回事)。
 - **选中几何归观察侧**:点卡 y=480 避「详情」按钮带(y~430-462)的选中几何随坐标入容器(正本「动作/上报层零坐标现算」之推论),执行侧零几何现算。
 - **坐标与 OCR 解耦**:坐标源 = 建档 area(非 OCR 桶),OCR 全空时坐标照报——与「空表照写」(判据侧合法缺省,§2.3/F-1 边界在册)并行不悖;选卡点击恒有合法落点(空读下策略按 kernel 无匹配缺省卡 1 出 idx,动作 op 仍有点可点)。
-- **一文件条款(op-layer.md §1.2 :48)= 已由家族批落地销项**(commit d68c1f967 拆分 + a67d930a5 正本符号路径随迁):`CwActionPickFortuneOp` 现驻 `cw_pick_fortune_action.py`,registry import 已改源,本稿零迁移面。env 契约现值 = `cw_overlay_pick_env.py::OverlayPickExecEnv`(op/match/config/idx†/target†/need_select/picked/unselected/leg_type/norm_item/round_result;† = 退役中停喂,全族收敛后删);确认裁决词面已随 entry_keyword 退役消亡(543affce6),确认判步归重入裁决与外循环,本屏无该面。
+- **一文件条款(op-layer.md §1.2 :48)= 已由家族批落地销项**(commit d68c1f967 拆分 + a67d930a5 正本符号路径随迁):`CwActionPickFortuneOp` 现驻 `cw_pick_fortune_action.py`,registry import 已改源,本稿零迁移面。env 契约现值 = `cw_overlay_pick_env.py::OverlayPickExecEnv`(op/match/config/idx†/target†/need_select/picked/unselected/branch_type/norm_item/round_result;† = 退役中停喂,全族收敛后删);确认裁决词面已随 entry_keyword 退役消亡(543affce6),确认判步归重入裁决与外循环,本屏无该面。
 
 ### 4.2 代码面落点(§2.1 主体与 §3.1 :37 改写上叠加;v3 现树对齐)
 
