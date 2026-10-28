@@ -4704,7 +4704,7 @@ def max_units_of(gs: GameState) -> int:
     return min(base, DEPLOYED_FRONT_CAPACITY + back_capacity_of(gs))
 
 
-def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
+def scalar_projection_state(gold: int, level: int, plane: int,
                             round_num: int,
                             strategies: list[str] | None = None) -> GameState:
     """无 session 标量投影容器(一次性视图)。
@@ -4717,7 +4717,7 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
       扩修挂该调用面的 session 通道批;
     - **字段契约自覆盖于本 docstring**:
       node = NodeKey(plane, round_num, kind='')(帧未
-      识别的忠实镜像,禁写词表值冒充真值);gold/level/hp 观察直写;
+      识别的忠实镜像,禁写词表值冒充真值);gold/level 观察直写;
       back_layout = 机制基线 6(旧帧 back_max 缺省);bench = 全空视图
       (旧帧 pad 缺省);shop/encounter/supply = 离屏;shop_refresh_cost =
       刷新基价(旧帧字段缺省,单一源 = cw_economy.REFRESH_COST_BASE);
@@ -4743,7 +4743,6 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
                    evidence=_ev, sig=_sig)
         gs.observe(gs.gold, int(gold), evidence=_ev, sig=_sig)
         gs.observe(gs.level, int(level), evidence=_ev, sig=_sig)
-        gs.observe(gs.hp, int(hp), evidence=_ev, sig=_sig)
         gs.observe(gs.back_layout, 6, evidence=_ev, sig=_sig)
         gs.observe(gs.bench,
                    BenchView(slots=[BenchSlot(kind='empty')]

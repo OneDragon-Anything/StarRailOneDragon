@@ -7,7 +7,7 @@
 - **建模增量层** = 本文件手维护(API 给不了的人工建模):
   - ``STRATEGY_ECONOMY``(可数值化经济效果);
   - ``is_blood_economy``/``blood_xp_mode``(血本位判别与 XP 购买模式解析,
-    [40]① 选择回避 / [40]② 血闸共享判据);
+    [40]① 选择回避 / [40]② 支付能力检查定性——经验批支付门共享判据);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
   - ``STRATEGY_GRANTS``(策略卡具名发放登记,机制事实留 kernel;「档→分」
@@ -1217,8 +1217,9 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
     """血本位 XP 购买模式解析(返回 (卡名,每击血价);无 active 血本位卡 → None=金本位)。
 
     单一源 = 注册表 STRATEGY_ECONOMY.xp_buy_hp_cost 派生(先例 =
-    prep_actions.record_hp_pay_event 的 mode 判定;[40]② 血闸与遥测写点
-    经本助手同源消费)。多卡命中取 active_strategies 序首个
+    prep_actions.record_hp_pay_event 的 mode 判定;经验批支付门
+    (kernel/cw_economy.xp_batch_payment_gate_for,R-1 币种通式)与遥测
+    写点经本助手同源消费)。多卡命中取 active_strategies 序首个
     (现版本游戏仅『奋斗协议』单卡已登记;新血本位卡落地零改动)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """

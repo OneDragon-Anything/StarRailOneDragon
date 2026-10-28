@@ -27,8 +27,8 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
   富余段激活;I-1 锚)。
 
 分包期 0b(§3.3-①a/①b):接缝(refresh_ev_budget)
-与其依赖族(reserve_cap/_registry_of/is_emergency/
-_vd_core_of/REFRESH_ROLL_CAP)下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
+与其依赖族(reserve_cap/_registry_of/_vd_core_of/REFRESH_ROLL_CAP)
+下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
 (原 kernel→decision 断环边:cw_economy.get_node_goal 标量投影体内懒
 import 决策包)。本模块只余容量/义务核算层;接缝符号在函数内懒 import
 自 cw_economy——monkeypatch 桩点重钉至 cw_economy 符号后,属性动态

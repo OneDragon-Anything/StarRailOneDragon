@@ -31,9 +31,9 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 # 见 _loss_dist 边界声明;重尾一击型 boss 掉血 v1 用实测桶替换)
 CV_PRIOR: float = 0.5   # 组内变异系数先验(K0 实测 0.4-0.62 的收缩中值)
 
-# 三区边界先验(K2 涌现交叉核对锚:DEAD_HP=20 三门 / HP<40 分档 / 满利息 50)
+# 三区边界先验(K2 涌现交叉核对锚:必死边缘 hp=20 分位 / HP<40 分档 / 满利息 50)
 ZONE_CRITICAL_HP: int = 40     # 二区下界(分档先验;交叉核对锚)
-ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;交叉核对锚)
+ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(必死边缘 20 分位;交叉核对锚)
 
 
 def _p2_lcond_mix() -> float:
@@ -169,7 +169,7 @@ def risk_posture(board_tier: int, hp: int, nodes_left: int, plane: int = 1) -> s
     """三区律:盈余 / 临界 / 必死边缘。
 
     边界由 λ_hp 与 P(win) 联合解出(**非手写 hp 阈值**;弱板长程下「必死边缘」的 hp 绝对
-    值可高达 60+ —— 漂移把屏障推远,这正是固定 DEAD_HP=20 类手写门要被替代的证据):
+    值可高达 60+ —— 漂移把屏障推远,这正是固定手写血线门要被模型替代的证据):
     必死边缘 = P(win) < 35% 且 λ_hp 已回落(±1 血不改大局,该赌右尾);临界 = λ_hp 活跃
     (每点血实质改变活率);盈余 = 其余。
     """

@@ -10,8 +10,6 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     level_of,
-    plane_of,
-    round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ECONOMY,
@@ -132,14 +130,6 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 # fields.md §3.3.4),兜底分支在缺读帧照常触发。
 REFRESH_COST_BASE: int = 2
 
-# 保血阈值(策略校准参数,单一源在本代码;值随实机校准走 git,不走用户 yml)。
-# **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
-HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;语义「安全地板」,kernel 单一源)
-DIFFICULTY_HP_TABLE: dict[str, int] = {
-    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
-    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
-}
-
 
 def card_cost(card: ShopCard) -> int:
     """牌的费用:OCR 读到用真值,未知按 3 估(费用 1-5 中位)。"""
@@ -209,47 +199,6 @@ def effective_cost(gs: GameState, char_id: str) -> int:
     c = CHARACTERS.get(char_id)
     return c.cost if c and c.cost else 0
 
-
-def effective_hp_threshold(gs: GameState) -> int:
-    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
-    有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现
-    (输入 = ``GameState``;职级/位面/轮次/等级经容器域读法,输入字段
-    selected_difficulty/plane/round_num/level 容器侧全部就绪)。
-
-    高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
-    用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
-
-    ⚖️ (桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(桥),
-    改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
-    变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
-    精确零漂移(M57 验证行为保持)。
-    """
-    from sr_od.application.currency_war.kernel.cw_first_passage import (
-        board_tier_of,
-        plane_hp_ratio,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        level_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_node_schedule import (
-        PLANE_NODE_TABLES,
-    )
-
-    diff = (gs.selected_difficulty.value or '').strip()
-    base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
-    plane = plane_of(gs)
-    if plane <= 1:
-        return base
-    # 剩余战斗日程就地自算(裁决点 9:框架不供视界量,场字段求和,
-    # 修掉 27 制闭式与 [1,9] 夹取——安全阈封顶 modeled planes,序列表
-    # 键集 P1+P2+P3 全真值在表,行为申报 details/horizon-cleanup.md §8.4;
-    # 与 cw_intention._p1_pair_overwindow 同式互锚,禁单侧改式)。
-    # 位面 ∉ 序列表键集(≥4)= 表外防御 → 0(无未来掉血节点)。
-    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
-    nodes_left = (sum(len(t) for k, t in _tb.items() if k >= plane)
-                  - round_num_of(gs) + 1) if plane in _tb else 0
-    ratio = plane_hp_ratio(board_tier_of(level_of(gs)), nodes_left, plane=plane)
-    return min(100, int(base * ratio))
 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分(权重算账见下方注释块)
 
@@ -663,24 +612,7 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 # 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道
 # 封锁——登记 = math_proofs P43)。
 
-# 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
-# 攻略明文两分支 —— 已连胜→跌破利息档保连(#205「如果连胜就多D几个,利息保3」利息档降到 30;
-# #46「小搜争取连胜,不顺果断存钱」);未连胜+血安全→保息(#151「卡满50利息,大不了先输着先」;
-# #145「优先留着吃利息,前期掉点血没事」)。「来牌顺」= 商店有可买战力件(shop_supply,无牌跌破利息档也无处花)。
-# ⚠️ 用户定调(定性):**攻略的「卖血不低于40」不是急救触发线,是运营质量的
-# 报警线** —— 血低于它 = 前面跌破利息档决策已经错了;此时花光挺节点是「给前面的策略失败擦屁股」,
-# 断息后经济可能永远撑不起整局(死亡螺旋:血低→花光→息断→板半成型→又掉血→又花光)。
-# **目标是长期通关,不是苟住多少个节点**。故血低的正确响应 = 最小必要支出止损 + 息引擎
-# 尽量保住,真 ALL IN 只留给「位面末最后一战」(赢了带血/板进下位面,不存在后续经济问题)。
-# 该常量语义 = 运营质量报警线(策略层诊断/复盘用),不是 spending 触发器。
-HP_QUALITY_ALARM: int = 40            # 运营质量报警线(血低于此 = 前面跌破利息档决策错;诊断用)
-#: 攒利息门 hp 急救分位——血低于 职级阈值×此分位
-#: = 真活不下去(急救通道 _phase_weights 接管);中危带(此线与阈值之间)按用户定调
-#: 「血低是报警非触发」维持攒利息,不在此门跌破利息档(观察点:中危带持续漏买的场景留回放核)。
-HP_DISTRESS_FRAC: float = 0.5
-
 LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 提权(3→6):bot 不升等级
-
 
 # —— 购买经验决策 helper(机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_economy 单一源)——
 # ⚠️ 本接缝族签名已切 GameState。字段读统一经容器读口单一源
@@ -754,8 +686,8 @@ def xp_click_cost(gs: GameState) -> int:
       max(0) 钳。
 
     出域声明:奋斗协议(xp_buy_hp_cost)血本位下购经验币种切换为血,
-    本金费函数不适用(血闸独立车道 blood_xp_gate 承接);按钮显示非金
-    数值时显示价支读数同样出域,不在本函数补模。
+    本金费函数不适用(经验批支付门独立车道 xp_batch_payment_gate
+    承接);按钮显示非金数值时显示价支读数同样出域,不在本函数补模。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
@@ -789,8 +721,9 @@ def clicks_to_next_level(gs: GameState) -> int:
     return max(0, -(-(need - cur) // XP_PER_BUY))
 
 
-# ===== [40]② 血本位 XP 购买支付能力闸(判据与模式解析单一源在
-# ===== kernel,prep 批入口与 cw4 三消费位同源消费)=====
+# ===== 经验批支付门(币种通式;R-1 裁决:血本位局「血余额够不够买
+# ===== 下一级」与金本位局「金不够买不起」同构,是支付能力检查非 hp
+# ===== 判据——判据与模式解析单一源在 kernel,prep 批入口与 cw4 消费位同源)=====
 
 def blood_xp_full_clicks(level: int) -> int:
     """下一级**全量击数** = ⌈XP_TO_NEXT_LEVEL[level]/XP_PER_BUY⌉([40]② 裁定字面
@@ -814,56 +747,56 @@ def blood_xp_full_clicks(level: int) -> int:
     return -(-XP_TO_NEXT_LEVEL.get(level, 4) // XP_PER_BUY)
 
 
-def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
-                  level: int, cost: int) -> bool:
-    """[40]② 血本位 XP 购买支付能力闸(纯函数)。
+def xp_batch_payment_gate(balance: int | None, balance_readable: bool,
+                          level: int, cost: int) -> bool:
+    """经验批支付门·币种通式(纯函数;R-1 裁决归类)。
 
-    判据(裁定字面):血余额 ≥ 下一级血成本(⌈need/4⌉×6)才买经验,否则停。
-    ``hp_trusted ≥ blood_xp_full_clicks(level) × cost``;返回 True=放行。
+    判据:支付币余额 ≥ 整批成本(⌈need/4⌉×每击支付币价)才买经验,
+    ``balance ≥ blood_xp_full_clicks(level) × cost``;返回 True=放行。
 
-    - 授权链:闸读 hp 的授权 = [40]② 本身即用户逐项确认(2026-08-31 OPEN-6
-      裁定 + 同日三次简化「不留安全量」)+ 00_framework §3 硬闸门条款。与
-      [39] 的适用范围分界:[39] 禁 hp 作**运营质量信号**驱动决策;本闸是**支付
-      能力检查**——血被选卡变成 XP 的支付币种后,闸只回答「买不买得起下一级」,
-      不回答「该不该转型/止损」。两裁定并存不冲突(后者立法在后且更具体)。
-    - hp 不可信帧 fail-closed 返 False:沿 ``cw_discipline_rules
-      .blood_budget_levelup_blocked`` 同面同论证(误放=血线内追级,误拦=少
-      升一级,非对称)。``hp_readable`` = 该帧 hp 决策可信位(调用方经
+    - 币种通式语义(R-1):血本位局里血就是购经验的币种,「余额够不够
+      买下一级」与金本位局「金不够买不起」同构——支付能力检查,账户
+      读数非质量信号;金本位局的同构检查 = 金余额够不够,由升级发射门
+      序的资金线门(criteria/levelup 门⑥)承担,本门不辖金本位局
+      (消费适配层 mode=None 直通)。依据 = 11_shop_decisions.md:58
+      ([40]② 支付能力检查定性)。
+    - 支付币不可信帧 fail-closed 返 False(读数损坏防护,非 hp 判据
+      ——误放=买不起的购买、误拦=少买一批,取拒侧)。
+      ``balance_readable`` = 该帧支付币读数可信位(调用方经
       ``cw_discipline_rules.hp_decision_trusted`` 解析后传入)。
-    - 本函数**禁读** hp_pay 遥测(隔离申报):hp 输入 = 最近可信备战
-      帧值,与 P21 闸同一决策输入。
+    - 本函数**禁读** hp_pay 遥测(隔离申报):支付币输入 = 最近可信备战
+      帧值。
 
     「买一半」缺陷的 as-built 消歧(11 号篇 §2 支出形态):
-    部分购买的真实机理 = **逐帧单击发出形态 × 本闸静态全量阈值逐帧
-    重闸**——血支付中血量跌回阈值之下即停止发出、留下部分级;本闸
+    部分购买的真实机理 = **逐帧单击发出形态 × 本门静态全量阈值逐帧
+    重闸**——支付币余额跌回阈值之下即停止发出、留下部分级;本门
     本体(全量击数口径)从来不是截断源。修法 = 发出粒度整批化
-    (升级预授权 + 实付上界 = 授权血成本,执行帧不再逐帧重闸——
-    血余额为静态阈值,授权帧一次检查即无逐帧重闸复发面),闸本体
+    (升级预授权 + 实付上界 = 授权支付成本,执行帧不再逐帧重闸——
+    余额为静态阈值,授权帧一次检查即无逐帧重闸复发面),门本体
     语义不变。
     """
-    if not hp_readable:
+    if not balance_readable:
         return False
-    if hp_trusted is None:
-        # hp 无真值帧 fail-closed(消费点对 None 一律保守):误放与
-        # 误拦代价非对称,同 blood_budget_levelup_blocked 的 None 支。
+    if balance is None:
+        # 无真值帧 fail-closed(消费点对 None 一律保守):误放与
+        # 误拦代价非对称,取拒侧。
         return False
-    return hp_trusted >= blood_xp_full_clicks(level) * cost
+    return balance >= blood_xp_full_clicks(level) * cost
 
 
-def blood_xp_gate_for(gs: GameState | None,
-                      session: StrategySession) -> bool:
-    """血闸消费面适配(mode 解析 + 容器帧输入接线;prep 批入口与 cw4
-    三消费位共用)。
+def xp_batch_payment_gate_for(gs: GameState | None,
+                              session: StrategySession) -> bool:
+    """经验批支付门消费面适配(mode 解析 + 容器帧输入接线;prep 批入口
+    与 cw4 消费位共用)。
 
-    - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode`` →
-      None)→ True 直通:金模式升级零改动([40]② 适用范围 = XP 购买通道的**血**
-      支付形态)。
-    - gs 缺席 → False fail-closed(与判据本体 None 支同论证)。
-    - hp 消费 = 政策层读口 ``decision_hp`` 门后值 + ``hp_decision_trusted``
-      可信位(容器单一读口,消费同门):
-      与 P21 闸(``blood_budget_levelup_blocked``)同面同输入;店开态 hp
-      结构性不可见时容器沿用最近备战帧可信值(P21 同帧正常工作,
-      复盘 15 帧实证);level 取容器读口。
+    - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode``
+      → None)→ True 直通:金模式升级零改动(金侧「买不买得起」由升级
+      发射门序资金线门承担,本门不辖)。
+    - gs 缺席 → False fail-closed(与门本体 None 支同论证)。
+    - 支付币读数 = 政策层读口 ``decision_hp`` 门后值 +
+      ``hp_decision_trusted`` 可信位(容器单一读口,消费同门):
+      店开态读数结构性不可见时容器沿用最近备战帧可信值(同帧正常
+      工作,复盘 15 帧实证);level 取容器读口。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         blood_xp_mode,
@@ -878,8 +811,9 @@ def blood_xp_gate_for(gs: GameState | None,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import level_of
     from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
-    return blood_xp_gate(decision_hp(gs, session), hp_decision_trusted(gs),
-                         level_of(gs), mode[1])
+    return xp_batch_payment_gate(decision_hp(gs, session),
+                                 hp_decision_trusted(gs),
+                                 level_of(gs), mode[1])
 
 
 
@@ -951,7 +885,7 @@ class NodeGoal:
 
 
 def get_node_goal(plane: int, round_num: int, *,
-                  gold: int | None = None, level: int | None = None, hp: int | None = None,
+                  gold: int | None = None, level: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
     """查 (plane, round) → NodeGoal(确定性预算核单一供给)。
@@ -969,12 +903,11 @@ def get_node_goal(plane: int, round_num: int, *,
     下沉,R4)——本函数是其标量投影;'release' 档不经本函数(帧级态,
     单一源=decision_v2.posture_release 经 session 通道)。
     """
-    _partial = (gold, level, hp)
+    _partial = (gold, level)
     if any(v is not None for v in _partial) and None in _partial:
         log.debug('[cw-seam] get_node_goal 部分传参(%s)→ 走先验 fallback;迁移漏点排查',
-                  ('g' if gold is not None else '-') + ('l' if level is not None else '-')
-                  + ('h' if hp is not None else '-'))
-    if None not in (gold, level, hp):
+                  ('g' if gold is not None else '-') + ('l' if level is not None else '-'))
+    if None not in (gold, level):
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state。
@@ -990,7 +923,7 @@ def get_node_goal(plane: int, round_num: int, *,
         from sr_od.application.currency_war.kernel.cw_game_state import (
             scalar_projection_state as _proj,
         )
-        _st_gs = _proj(gold=gold, level=level, hp=hp, plane=plane,
+        _st_gs = _proj(gold=gold, level=level, plane=plane,
                        round_num=round_num, strategies=strategies)
         _rolls = min(6, refresh_ev_budget(_st_gs, None))
         if _rolls > 0:
@@ -1060,32 +993,13 @@ def _char_synergies(name: str) -> set[str]:
 # ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====
 # 原址:decision_v2.economy_cycle(kernel→decision 断环:本文件是 kernel 层,
 # cw_economy.get_node_goal 标量投影消费接缝,原函数体内懒 import 决策包
-# 成环)。refresh_ev_budget 最小重构——应急谓词 is_emergency 一并下沉
-# 本文件(一行纯谓词,decision_v2.filters 改 import 重定向,单一源不破),
-# 函数体零行为变化(等价测试=sr-od-test test_cw_w695_economy_seam.py +
+# 成环)。函数体零行为变化(等价测试=sr-od-test test_cw_w695_economy_seam.py +
 # 既有经济接缝桩点测试重钉)。排程升级接缝(schedule_upgrade)已随
 # 升级触发统一删除(升级判据归策略层单判据,R* 升级排程分量恒 0)。
 
 #: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷同源(git prior art),
 #: 不另造第二把尺)。自 economy_cycle 随接缝族同迁(单一源在本文件)。
 REFRESH_ROLL_CAP: int = 6
-
-
-def is_emergency(gs: GameState,
-                 session: StrategySession,
-                 registry: DecisionV2Registry) -> bool:
-    """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。
-
-    单一源在本文件(kernel)。hp 消费 = 政策层读口 ``decision_hp``
-    门后值(消费同门,读点显式施门,门幂等);``session``
-    形参 = hp 消费函数统一持 session 装配结算锚,
-    依据 = ``blood_budget_levelup_blocked(gs, session, registry)``
-    同形态,禁函数内私有第二门)。None(无真值且窗外)= False 保守
-    (应急带不误触发)。"""
-
-    from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
-    hp = decision_hp(gs, session)
-    return hp is not None and hp <= registry.emergency_hp
 
 
 def _registry_of(session: StrategySession) -> DecisionV2Registry:
@@ -1250,21 +1164,13 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     后帽**(ρ 归零与 min 帽取交即 0,数值良定);概率单一址=cw_shop_odds
     (与分配器 Π_refresh 估计器同源互指,禁第二概率口径)。
 
-    合法 0 帧契约(预算收权迁移前预验尸 D2 契约,判前锁;**适用范围=应急带**,
-    预算收权攻击审读 F1 收束;第三类=扩类):
-    - ① 应急帧(``is_emergency`` 单一源,hp≤emergency_hp)→ 0:
-      应激通道根本不产指令(release 让位结构,合并无从放大);
-    - ② g ≤ R* 常态帧(利息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
+    合法 0 帧契约(预算收权迁移前预验尸 D2 契约,判前锁):
+    - ① g ≤ R* 常态帧(利息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
       流过 scoring P2 窗判据(``refresh_budget<=0 → 让位``)与存息
       准入门,「>0 即行动授权」的语义在预算函数口径下成立;
-    - ③ 归零带归零帧(锁定核解析帧 ∧ ``omega_collapse_ratio`` 判据为真;
-      **例外注记:兜底链空帧归零判据恒 False,不属第三类**——D1「空帧
+    - ② 归零带归零帧(锁定核解析帧 ∧ ``omega_collapse_ratio`` 判据为真;
+      **例外注记:兜底链空帧归零判据恒 False,不属第二类**——D1「空帧
       不缩供给」契约优先)。
-    **血预算带(应急线以上)不在本函数适用范围**:预算字段
-    依公式照发,停手由 arbiter 拒付层兜底(discipline.
-    blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
-    搜索型刷新停付)——防线在拒付层不在预算层(「血预算帧→0」系虚标
-    契约已废除,现行契约如实收窄,穿透测试=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
     1 次/轮),与本预算不相交、不合并;按该车道对归零判据
     **同判据覆盖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点待办:
@@ -1272,8 +1178,6 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
     届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
-    if is_emergency(gs, session, reg):
-        return 0
     over = gold_of(gs) - reserve_cap(gs, session)
     if over <= 0:
         return 0

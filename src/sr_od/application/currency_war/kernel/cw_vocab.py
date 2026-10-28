@@ -61,12 +61,9 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (  # noqa: E40
     board_unique_key,  # noqa: F401
 )
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
-    DIFFICULTY_HP_TABLE,  # noqa: F401
-    HP_SAFE_THRESHOLD,  # noqa: F401
     REFRESH_COST_BASE,  # noqa: F401
     XP_CLICK_COST_FALLBACK,  # noqa: F401
     bench_char_cost,  # noqa: F401
-    effective_hp_threshold,  # noqa: F401
     sell_refund,  # noqa: F401
     xp_apply_clicks,  # noqa: F401
     xp_clicks_to_level,  # noqa: F401
