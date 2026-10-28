@@ -1763,6 +1763,21 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 无概念股卡且星核猎手契约具名对象仅卡芙卡,零联动)。
     '减益概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='减益', star=1),),
                             equips_random_immediate=('简易',)),
+    # id 1016 效果原文直读:「战技点」= desc【战技点】直读(流派羁绊名,与
+    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
+    # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
+    # economy.md 四卡线索名单不含战技点 = 装备身份零先验,均匀 v0 + 按卡固定
+    # 假说待校准);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
+    # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,青雀
+    # is_expert=True);独立单位 Archer 照发(族级口径 economy.md:94 点名
+    # 战技点(Archer),independent='魔术师');花火(2费,flows 战技点、量子同频)
+    # ≠ 火花(4费,flows 战技点、欢愉)两名形近成员,量子同频/欢愉均无概念股卡
+    # 零联动;具名交集 5 名正交:丹恒·饮月/花火 = 战技点契约具名、火花 =
+    # 战技点契约条件∪欢愉契约条件、远坂凛/Archer = 命运圣杯契约具名/条件
+    # (具名 vs 随机字段不相交);域独占 3 名 = 远坂凛/花火/Archer。本卡 =
+    # 概念股族第十五实例(族收官:登记至此 15/15)。
+    '战技点概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='战技点', star=1),),
+                            equips_random_immediate=('简易',)),
     # —— 邀请族首例(模式卡 T-63;后继邀请卡 T-64..T-82 逐卡套用本行形状,
     # 纯数据行零机制新增)——
     # id 1101 效果原文「获得一个【列车同行星徽】。」直读,PlazaPortal('1101');
@@ -1909,7 +1924,7 @@ ENV_CONCEPT_STOCK_ASSUMPTION_KEYS: tuple[str, ...] = (
 
 #: 概念股族阵营刷新概率分支的「零建模」失真申报键(家族常量;键模板 =
 #: ``env_<id>_faction_refresh_odds_unmodeled``,族卡随各自批次追加 id,
-#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008、env_1009、env_1010、env_1011、env_1012、env_1013、env_1014;消费面 = 披露清单,invest_effects.md §5 在案裁定为
+#: 本批收 env_1001、env_1002、env_1003、env_1004、env_1005、env_1006、env_1007、env_1008、env_1009、env_1010、env_1011、env_1012、env_1013、env_1014、env_1016(族收官,登记 15/15 齐);消费面 = 披露清单,invest_effects.md §5 在案裁定为
 #: 主披露,键为登记面载体):失真方向 = sim 商店发牌不模拟阵营权重
 #: (cw_shop_deal 采样按 REFRESH_PROB 费用基线,阵营轴无参数),刷出该
 #: 阵营角色频率系统性低于实机 → 低估该环境的找牌运气收益;解禁条件 =
@@ -1930,6 +1945,7 @@ ENV_FACTION_REFRESH_ODDS_UNMODELED_KEYS: tuple[str, ...] = (
     'env_1012_faction_refresh_odds_unmodeled',
     'env_1013_faction_refresh_odds_unmodeled',
     'env_1014_faction_refresh_odds_unmodeled',
+    'env_1016_faction_refresh_odds_unmodeled',
 )
 
 # (送卡「档→分」映射与 advisor 折减 = 策略层 gift_value
