@@ -28,7 +28,7 @@ class CwScreenSupplyNodeObs:
 
     [索引定义] ``options`` = 逐列选项(cw_node_obs.read_supply_options
     产物);列表序 = 画面物理列序(左→右,列数动态 3-5 禁写死,恒稳);
-    空 = 读缺(CARD_BODY 兜底路径),report 不写 ``supply``。元素类型 =
+    空 = 读缺(画面 op 空候选分支 = 零点击终结交回),report 不写 ``supply``。元素类型 =
     ``SupplyOption``(kernel.cw_events;与 ``SupplyPayload.options`` 元素
     声明同型)。
 
@@ -53,7 +53,7 @@ def report_screen_supply_node_obs(gs: GameState, obs: CwScreenSupplyNodeObs, *,
     写点锚 = cw_screen_supply_node.py::``CwScreenSupplyNode.observe``
     (观察 node 摄入;原写点以「本分支将调用 decide」为前提取
     ``[o for o, _ in opts]``,元素类型对齐 ``SupplyPayload.options`` 声明)。
-    options 空 = 读缺(CARD_BODY 兜底路径),整函数早退不写(含 left,
+    options 空 = 读缺(画面 op 空候选分支 = 零点击终结交回),整函数早退不写(含 left,
     invest_env names 空先 return 同构);``chosen_supply`` 留在(动作事实
     边界)。
     """

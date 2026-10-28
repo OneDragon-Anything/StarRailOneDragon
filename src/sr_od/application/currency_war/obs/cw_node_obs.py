@@ -217,7 +217,7 @@ def pair_refresh_counts_to_slots(
 # 前后结果逐一相同。
 _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 780)
-_SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 CwScreenSupplyNode.CARD_BODY;点卡身不开对话直接选中)
+_SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(实机卡身选中行实测值;点卡身不开对话直接选中)
 # 装备文本 x 聚簇阈值(同列互距):归档帧实证列距 ~352、列内双排装备名
 # 文本中心 x 漂移 ≤~60(图标 x 列内稳定、名 x 因名长漂移),200 双侧余量在案;
 # 超阈值 = 邻列装备(裂簇防线)。
@@ -378,7 +378,7 @@ def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOpt
     归并 = :func:`_group_supply_columns` 纯函数(角色锚点定列骨架 + 装备
     簇归锚;孤儿簇自成列不并入邻列,char-only 列一等成立)——本读链只喂
     OCR 坐标与文本 + SIFT 命中点。读不到(零锚点零装备簇)→ []
-    (handler 退默认 ``CARD_BODY``)。
+    (画面 op 空候选分支 = 零点击终结交回重读,禁盲选派发)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
     ocr_map = ctx.ocr_service.get_ocr_result_map(
