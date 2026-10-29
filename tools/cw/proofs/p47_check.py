@@ -6,7 +6,10 @@
   - 利息 interest(g) = min(g // 10, 5)(50 金满息 5 金/轮;cw_economy.interest 同构)
   - 基础奖励分段 1-1=3 / 1-2=4 / 其余 5(cw_economy.REWARD_BASE_GOLD_BY_ROUND + BASE_INCOME)
   - 连胜表 0-1->1 / 2-4->2 / 5->3 / 6+->4;败轮 battle=2 / encounter=boss=4
-  - 位面长度先验 P1=9 / P2=7 / P3=9(cw_plane_table.DEFAULT_PLANE_LENGTHS 语义)
+  - 位面长度先验 P1=9 / P2=7 / P3=9(证明时点快照:9 制几何常量 DEFAULT_PLANE_LENGTHS
+    已随几何层整体停用,现行数量真值=逐局 node_seq_by_plane 自适应——默认局
+    P1=9/P2=7、P3 进表自适应,见 cw_plane_table.nodes_of_plane;本件按快照值
+    自含,证明参照系不随生产常量漂移)
 
 三段自检(对应证明 p47 的命题 1/2/2):
   1) 守 50 策略的逐位面期望息流(g0 x 位面长度 x 净收入网格);

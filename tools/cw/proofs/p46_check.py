@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """P46 支出否决域数值自检(不进 src、不提交;print 仅 ASCII)。
 
-复算证明文档 docs/game/currency_war/research/proofs/p46-spend-gate-rejection-ev.md
+复算证明文档 docs/develop/sr_od/application/currency_war/proofs/p46-spend-gate-rejection-ev.md
 的三个代表场景 + 两个边界(多笔合成 / 溢余穿透)。
 口径单一源 = P13: t = interest(g) - interest(g-c), C = t * min(R, 3)。
 """
