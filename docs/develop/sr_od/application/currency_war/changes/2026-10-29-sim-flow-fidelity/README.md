@@ -1,6 +1,6 @@
 # sim 画面流程保真度修复 · 排查与方案
 
-> 状态:调研完成,待实施。触发 = 2026-10-29 sim 单局复盘发现「补给/遭遇/boss 节点零备战决策」,用户裁定:sim 必须忠实模拟游戏引擎的流程,全面排查漏项并修复。
+> 状态:批 A(kernel 声明层 + sim 世界模型 + 实机 flow 守卫)已实施,测试回归修复中。触发 = 2026-10-29 sim 单局复盘发现「补给/遭遇/boss 节点零备战决策」,用户裁定:sim 必须忠实模拟游戏引擎的流程,全面排查漏项并修复。
 
 ## 1. 实机流程模型 v2(权威口径,用户口述 2026-10-29)
 
@@ -104,3 +104,28 @@ sim-design.md §3.3(窗口序列改「备战先出+弹窗模态+回备战+弹店
 5. `docs/game/currency_war/research/economy.md`「恢复局商店锁死」条补接管形态二分(战斗中崩溃 = 锁死;备战暂离接管 = 正常)。
 
 历史迭代工件(changes/2026-09-22-screen-review/boss_briefing.md:114、changes/2026-10-12-prep-shop-workflow-redesign/ 两处「boss 不开店」表述)不回改——changes/ 为过程区,寿命 = 迭代;本 README 为勘误后的权威记录。
+
+## 5. 批 A 实施记录(2026-10-29)
+
+用户裁定自动开店形态 = 做法一(真弹店:sim 把画面切到开商店态,bot 经外循环商店访问路径接管)。改动清单:
+
+**kernel 声明层(实机/sim 共用)**:
+- `kernel/cw_game_state.py`:推进 trigger 封闭集 `supply_confirm` → `supply_finish`(actors 表同步);`node_screen_now` 稳态恒备战(位面首除外);`_node_advance_next_screen` 按新节点窗形态预测稳态(弹窗型节点 = 弹窗屏、battle/reward = 商店档、1-1 = 备战、位面首 = 位面过渡);`_NODE_KIND_NEXT_SCREENS` 表删除(消费方归零)。
+- `kernel/cw_action_report/start_battle.py`:supply 节点分支 → 转 `report_node_advance(trigger='supply_finish')`(出战即完成节点,无战斗无结算屏)。
+- `kernel/cw_action_report/pick_encounter.py`:声明 `battle_resolve/结算屏` → `pick_encounter/商店档`。
+- `kernel/cw_action_report/pick_supply.py`:声明 next_screen 补给屏 → 商店档。
+- `operations/cw_op/cw_pick_supply_action.py`:删「确认即 report_node_advance」支(节点推进归出战)。
+
+**sim 世界模型(cw_sim_backend.py)**:
+- `ADVANCE_TRIGGER_KINDS` 加 `pick_encounter`;advance 加分派 `_on_encounter_picked`。
+- `_present_node_screen`:所有节点底层恒备战档,节点弹窗改 `_present_modal` 模态(补给/遭遇/BOSS 简报);battle/reward 走 `_settle_on_prep`(备战+弹店);晶矿 spheres 写与子态保留。
+- `_settle_on_prep` 新 helper:落备战 + 自动弹店(1-1 例外内置;`_sub` 由调用方管理,商店模态保存 `_return_sub` 关店恢复子态)。
+- `_dismiss_and_settle_prep` 新 helper:弹窗选完统一口(节点窗让路 resume 场景不弹店)。
+- `_on_supply_picked`/`_on_encounter_picked` 尾挂统一口;BOSS 简报点空白点击源改 `_dismiss_and_settle_prep`;`_resolve_battle` 现役唯一来源 = 出战声明;`_node_window_target_base` 非 offer 恒备战(fortune 门)。
+
+**实机 flow 层**:
+- `operations/cw_loop.py` 补给节点分支加 `chosen_supply` 守卫:已确认的备战帧走默认备战分支(策略器 → 出战完成节点),未确认才点「返回补给阶段」——防修后死循环。
+
+**验证**:同 seed(20261022)全流程冒烟通过(局正常收口 fail_streak=0;补给/遭遇/boss 后备战窗口消费生效——旧局金滞留 67→119,新局 P2r4 消费 34 金;boss 简报后 prep_entry+shop_open 帧序与流程模型一致;1-1 不弹店;`decl_screen_drift` 零漂移)。测试回归 = 子 agent 修复中(64 处过时断言,失败面全在 sim 测试)。
+
+**已知行为变化(预期内)**:sim 局经济轨迹分布与历史批不可比(多出 6+ 个备战窗口的消费机会)——批 manifest 需声明 sim 版本;实机补给节点确认后不再直接进下一回合(回备战弹店,策略器获得消费窗口),实走验证待批 A 实机局。

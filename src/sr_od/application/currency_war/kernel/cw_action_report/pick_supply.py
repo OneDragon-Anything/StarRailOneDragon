@@ -30,8 +30,12 @@
 装备入栏/后果分支的写语义单点 = 本函数(补给确认无第二写边)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #12):applied 出口
-构造 ``WorldDecl``(trigger = ``pick_supply``;``next_screen`` = 补给屏
-——选卡后画面本瞬间不变,随后到的 node_advance 声明才切走),转移事件
+构造 ``WorldDecl``(trigger = ``pick_supply``;``next_screen`` = 商店档
+——2026-10-29 流程模型对齐:补给选完 overlay 关闭回备战,游戏自动弹出
+商店,出战即完成节点(流程模型单一源 =
+``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程模型
+节,#14);旧「选卡后画面停留补给屏,随后到的 node_advance 声明才切走」
+语义随「确认即推节点」废止),转移事件
 广播随本动作单轨切换摘除。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
@@ -47,6 +51,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     grant_bench_unit_cascade,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    SCREEN_SHOP_PANEL,
     ChannelSig,
     GameState,
     LogicOutcome,
@@ -61,14 +66,14 @@ _PRODUCER: str = 'CwActionPickSupplyParam'
 #: 声明见模块头;错 = 确定面失配响停修因)。
 _SUPPLY_GRANT_STAR: int = 1
 
-#: 补给声明的推进分派类别(详设 §2 表 #12;封闭集单一源 = sim 后端
+#: 补给声明的推进分派类别(封闭集单一源 = sim 后端
 #: advance 分派表键集,值零新词沿用现役动作名)。
 _DECL_TRIGGER: str = 'pick_supply'
 
 #: 补给声明(宝钻写归 backend ``_on_supply_picked`` 读容器现值,本上报
-#: 零写;next_screen 权威 = screen_info 补给档 + sim ``_on_supply_picked``
-#: 零画面写停留)。
-_DECL: WorldDecl = WorldDecl(next_screen='货币战争-补给',
+#: 零写;next_screen 权威 = 流程模型 #14——选完关闭 overlay 回备战并
+#: 自动弹店,稳态 = 商店档)。
+_DECL: WorldDecl = WorldDecl(next_screen=SCREEN_SHOP_PANEL,
                              trigger=_DECL_TRIGGER)
 
 

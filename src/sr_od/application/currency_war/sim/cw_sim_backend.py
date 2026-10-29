@@ -878,11 +878,14 @@ class SimRunResult:
 #: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界分支:上报声明触发,
 #: 非转移动作——next_screen 恒备战档,零画面转移);2026-10-19 用户
 #: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
-#: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移)。
+#: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
+#: 模型对齐批:``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
+#: 回备战并自动弹店,遭遇战改由出战触发——旧「选档落地即结算」随呈现
+#: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
     '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
     'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
-    'pick_invest_strategy', 'spy_shop_refresh',
+    'pick_invest_strategy', 'spy_shop_refresh', 'pick_encounter',
     'refresh_invest_env', 'refresh_invest_strategy',
 })
 
@@ -1103,7 +1106,11 @@ class SimBackend:
             self._advance_briefing()
         elif screen_name == SCREEN_BOSS_BRIEFING \
                 and area_name == '区域-空白点击':
-            self._resolve_battle()
+            # 2026-10-29 流程模型对齐:简报点空白关闭模态回备战并自动
+            # 弹店(#14 触发源「BOSS 简报关闭后」),boss 战由出战动作
+            # 触发(battle_resolve);旧「点空白 → _resolve_battle 直接
+            # 结算」随呈现改造废止。
+            self._dismiss_and_settle_prep()
         elif screen_name == SCREEN_PLANE_TRANSITION \
                 and area_name == '区域-空白点击':
             self._begin_node_window()
@@ -1200,6 +1207,35 @@ class SimBackend:
                 self.gs.observe(self.gs.shop, self._shop_record,
                                 evidence=sim_evidence('shop:reopen'),
                                 sig=obs_sig(group_id='sim:shop:reopen'))
+
+    def _settle_on_prep(self) -> None:
+        """落到备战档并按自动弹店规则呈现(2026-10-29 流程模型对齐,
+        流程模型单一源 = ``docs/game/currency_war/research/screen_flow_
+        timing.md`` 口述流程模型节 + #14):节点窗收尾或节点弹窗关闭回到
+        备战后,游戏自动弹出商店(bot 视角 = 开商店态直接呈现,策略器
+        商店会话经外循环商店访问路径接管);商店收起回备战 = 可操作主
+        窗口(close_shop 声明走 '' 纯转移 dismiss,不经本 helper,零
+        重弹面)。
+
+        1-1 例外不弹(#29:开局奖励替代商店;等待变体完成后进窗照常
+        走本 helper,例外内置)。``_sub`` 不在本 helper 内清理——子态
+        (晶矿面板等)由调用方在调用前置定,弹店经 ``_present_modal``
+        保存 ``_return_sub``、关店恢复,子态跨商店会话存续与实机一致
+        (商店收起后晶矿面板仍在)。"""
+
+        self._announce_screen(SCREEN_PREP)
+        self._screen = SCREEN_PREP
+        node = self.gs.node.value
+        if node is not None and (node.plane, node.round_num) != (1, 1):
+            self._open_shop()
+
+    def _dismiss_and_settle_prep(self) -> None:
+        """关闭节点弹窗模态回备战并弹店(弹窗选完类落点统一口;
+        节点窗让路恢复位优先——resume 场景落 offer/节点屏,不弹店,
+        由 resume 消费链的落点自行触发)。"""
+        self._dismiss_modal()
+        if self._screen == SCREEN_PREP:
+            self._settle_on_prep()
 
     def _sync_shop_record(self) -> None:
         """商店牌面记录懒同步(全部驱动入口调用):在屏 payload 非
@@ -1370,6 +1406,8 @@ class SimBackend:
             self._on_overlay_picked('planner')
         elif decl.trigger == 'pick_supply':
             self._on_supply_picked()
+        elif decl.trigger == 'pick_encounter':
+            self._on_encounter_picked()
         elif decl.trigger == 'pick_invest_env':
             self._on_invest_picked(opening=True)
         elif decl.trigger == 'pick_invest_strategy':
@@ -1505,7 +1543,11 @@ class SimBackend:
         :data:`DIAMOND_EQUIP_NAMES` 名单派生(列表任一件名命中即钻;
         写端 = 补给画面 op 确认即写)。派生失败边 = 钻名 OCR 误读 →
         列表名不匹配 → 宝钻发放分支漏发;装备观察(整表)与钻数观察下一帧
-        暴露失配,fail-visible 非静默)。"""
+        暴露失配,fail-visible 非静默)。
+
+        落点(2026-10-29 流程模型对齐):关闭补给模态回备战并自动弹店
+        (#14 触发源「补给选择完后」);节点推进归出战动作
+        (``supply_finish``),本分支零推进。"""
         chosen = self.gs.chosen_supply.value
         if chosen is not None and any(
                 n in DIAMOND_EQUIP_NAMES for n in chosen[1]):
@@ -1515,6 +1557,15 @@ class SimBackend:
                             sig=obs_sig(group_id='sim:diamond'))
         self.disclosures.setdefault(SUPPLY_DIAMOND_SLOT_PENDING,
                                     'uniform_slot')
+        self._dismiss_and_settle_prep()
+
+    def _on_encounter_picked(self) -> None:
+        """遭遇选定落地(2026-10-29 流程模型对齐):关闭遭遇模态回备战
+        并自动弹店(#14 触发源「遭遇选择完后」);遭遇战由出战动作触发
+        (battle_resolve 消费 ``chosen_encounter`` 现值,时点后移不改
+        消费语义——确认时已写容器)。效果面零写入(选档已由 kernel 上报
+        落 ``chosen_encounter``,本层零效果)。"""
+        self._dismiss_and_settle_prep()
 
     def _on_invest_picked(self, *, opening: bool) -> None:
         """投资选卡落地(效果 = kernel 获得链,经 report_action_pick_*
@@ -1787,8 +1838,10 @@ class SimBackend:
 
     @staticmethod
     def _screen_for_node(kind: str) -> str:
-        """节点类型 → 呈现屏档名(_present_node_screen 同一映射,锚定
-        trigger_screen 消费)。"""
+        """节点类型 → 关联屏档名(进窗锚定 ``observe_node_anchor`` 的
+        trigger_screen 消费——「节点条在哪个屏上被观察」的关联语义,
+        非呈现稳态屏;2026-10-29 呈现改造后窗起点底层恒备战,各节点屏
+        为其上模态,本映射仅承载锚定关联不再参与呈现)。"""
         return {'supply': SCREEN_SUPPLY, 'encounter': SCREEN_ENCOUNTER,
                 'boss': SCREEN_BOSS_BRIEFING}.get(kind, SCREEN_PREP)
 
@@ -1925,25 +1978,24 @@ class SimBackend:
     def _node_window_target_base(self) -> str:
         """节点窗起点即将呈现的底层屏(不执行呈现,仅判定 fortune 门)。
 
-        目标值参与门的备战/非备战二分:offer 槽命中 → 投资策略屏
-        (非备战侧,fortune 条目存活等待);其余 = 节点类型映射
-        (:meth:`_screen_for_node` 单一源——battle/reward → 备战,
-        supply/遭遇 → 各节点屏,boss → 简报)。"""
+        2026-10-29 呈现改造后所有节点类型的窗起点底层恒备战档(节点
+        弹窗都是备战上的模态),offer 槽命中例外(投资策略屏,非备战侧,
+        fortune 条目存活等待)。"""
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             return SCREEN_INVEST_STRATEGY
-        kind = node_sequence_of(
-            plane, self.gs.node_seq_by_plane.value)[r - 1]
-        return self._screen_for_node(kind)
+        return SCREEN_PREP
 
     def _present_offer_or_node_screen(self) -> None:
         """offer 日程检查 → 节点屏呈现(节点窗口让路恢复序)。
 
         权威序 = 旧引擎实测:overlay 选定后复走节点窗 offer 检查
-        (收尾检查序 overlay → offer → 下一节点),U07 固定日程生效于
+        (收尾检查序 overlay → offer → 节点呈现),U07 固定日程生效于
         本节点备战窗口前——overlay 让路不吞 offer 槽;窗口前段(收入/
-        环境金/商店全刷)已在本窗起点执行,恢复不重入。"""
+        环境金/商店全刷)已在本窗起点执行,恢复不重入。呈现本体 =
+        :meth:`_present_node_screen`(2026-10-29 改造后落点 = 备战底层
+        ±节点弹窗模态 ±自动弹店)。"""
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
@@ -2056,32 +2108,40 @@ class SimBackend:
             refresh=(0, 10, 20)))
 
     def _present_node_screen(self) -> None:
-        """按节点类型呈现对应屏(battle/reward → 备战档,reward = 晶矿
-        子态;supply → 补给;encounter → 遭遇节点;boss → BOSS 简报)。"""
+        """按节点类型呈现对应屏(2026-10-29 流程模型对齐,流程模型单一
+        源 = ``docs/game/currency_war/research/screen_flow_timing.md``
+        口述流程模型节):**所有节点类型底层恒备战档**——进节点先出备战
+        (过渡帧),节点弹窗(补给/遭遇/BOSS 简报)是备战上的模态
+        (:meth:`_present_modal`),弹窗关闭回备战并自动弹店
+        (:meth:`_dismiss_and_settle_prep` 系);battle/reward 无节点弹窗,
+        备战呈现即自动弹店(:meth:`_settle_on_prep`,1-1 例外内置);
+        reward 晶矿子态(面板矿+声明矿)保留备战档载荷形态。
+        旧「按节点类型直接呈现节点屏」语义( supply→补给屏等)随本改造
+        废止——节点屏档名现为备战底层上的模态。"""
         self._window_resume = ''
         plane, r = self._node_pos()
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
+        # 备战底层呈现(所有节点类型统一;晶矿 spheres 写按类型分叉在
+        # battle/reward 分支——挂接入口单写径不变)。子态清零 = 过渡帧
+        # 无子态(上一节点晶矿子态不跨节点残留;本节点子态在各自分支重定)。
+        self._sub = ''
+        self._announce_screen(SCREEN_PREP)
+        self._screen = SCREEN_PREP
         if kind == 'supply':
             rng = stream_rng(self.seed, f'M18/opts/p{plane}/r{r}')
             opts = supply_options(rng, normalize_invest_name(
                 str(self.gs.active_env.value or '')))
             report_screen_supply_node_obs(self.gs, CwScreenSupplyNodeObs(
                 in_node=True, options=list(opts), refresh_left=1))
-            self._announce_screen(SCREEN_SUPPLY)
-            self._screen = SCREEN_SUPPLY
-            self._sub = ''
+            self._present_modal(SCREEN_SUPPLY)
             return
         if kind == 'encounter':
             report_screen_encounter_obs(self.gs, CwScreenEncounterObs(
                 options=list(encounter_options()), refresh_left=None))
-            self._announce_screen(SCREEN_ENCOUNTER)
-            self._screen = SCREEN_ENCOUNTER
-            self._sub = ''
+            self._present_modal(SCREEN_ENCOUNTER)
             return
         if kind == 'boss':
-            self._announce_screen(SCREEN_BOSS_BRIEFING)
-            self._screen = SCREEN_BOSS_BRIEFING
-            self._sub = ''
+            self._present_modal(SCREEN_BOSS_BRIEFING)
             return
         # battle / reward → 备战档:奖励节点面板矿 + 位面开局声明矿
         # **同批合并**进一次 spheres 写(声明归属由生成函数 rng 掷,批内
@@ -2107,9 +2167,8 @@ class SimBackend:
             obs_sig=obs_sig(group_id='sim:ores'),
             hook_sig=logic_sig('sim:ores'),
             evidence=sim_evidence(f'ores:p{plane}r{r}'))
-        self._announce_screen(SCREEN_PREP)
-        self._screen = SCREEN_PREP
         self._sub = PREP_SUB_ORE if points else ''
+        self._settle_on_prep()
 
     def _plane_start_declared_points(
             self, plane: int,
@@ -2231,8 +2290,10 @@ class SimBackend:
             sig=obs_sig(group_id='sim:difficulty'))
 
     def _resolve_battle(self) -> None:
-        """coarse 战斗结算(随机输出面;start_battle/pick_encounter/
-        BOSS 简报点空白三源共用;重入幂等守卫 = 已结算节点键)。"""
+        """coarse 战斗结算(随机输出面;现役唯一来源 = 出战声明
+        battle_resolve——2026-10-29 呈现改造后,遭遇选完回备战/BOSS 简
+        报点空白回备战,两节点战斗改由出战动作触发,旧三源中两源废止;
+        重入幂等守卫 = 已结算节点键)。"""
         node = self.gs.node.value
         if node is None:
             return

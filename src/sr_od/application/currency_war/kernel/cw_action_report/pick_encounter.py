@@ -18,9 +18,12 @@
 __init__`` docstring)。本包 → 容器单向依赖。
 
 **后果声明**(动作后果声明化迭代,详设 world-decl.md §2 表 #4):applied
-出口构造 ``WorldDecl``(trigger = ``battle_resolve``;``next_screen`` =
-结算屏——遭遇「点击发出后即结束本次访问」选档落地即该遭遇战结算,权威 =
-screens/encounter.md §5 + sim ``pick_encounter → _resolve_battle``),
+出口构造 ``WorldDecl``(trigger = ``pick_encounter``;``next_screen`` =
+商店档——2026-10-29 流程模型对齐:遭遇选完 overlay 关闭回备战,游戏自动
+弹出商店,遭遇战由出战动作开打(流程模型单一源 =
+``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程模型
+节,#14);旧「选档落地即该遭遇战结算」语义(battle_resolve 直达)随
+sim 世界模型呈现改造废止),
 转移事件广播随本动作单轨切换摘除。
 """
 from __future__ import annotations
@@ -28,7 +31,7 @@ from __future__ import annotations
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    SCREEN_SETTLE,
+    SCREEN_SHOP_PANEL,
     ChannelSig,
     GameState,
     LogicOutcome,
@@ -39,9 +42,9 @@ from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 _PRODUCER: str = 'CwActionPickEncounterOp'
 
-#: 遭遇声明的推进分派类别(详设 §2 表 #4;封闭集单一源 = sim 后端
-#: advance 分派表键集,值零新词沿用归并过程名)。
-_DECL_TRIGGER: str = 'battle_resolve'
+#: 遭遇声明的推进分派类别(封闭集单一源 = sim 后端
+#: advance 分派表键集;选完落点 = 关遭遇模态回备战并自动弹店)。
+_DECL_TRIGGER: str = 'pick_encounter'
 
 
 def report_action_pick_encounter_param(gs: GameState, param: Any,
@@ -50,7 +53,7 @@ def report_action_pick_encounter_param(gs: GameState, param: Any,
 
     值 = payload 槽所选卡 ``(难度档, 奖励文本 join)``;槽离屏 / idx 越界
     = 缺陷留存证据不写(fail-closed)。出参 applied=False = 留存证据未写(非拒绝)。
-    applied 出口构造后果声明(battle_resolve;喂入与消费面 =
+    applied 出口构造后果声明(pick_encounter;喂入与消费面 =
     ``cw_sim_ports.declare_world`` / sim 后端 advance)。
     """
     _validate_sig(sig, ('logic_action',))
@@ -72,5 +75,5 @@ def report_action_pick_encounter_param(gs: GameState, param: Any,
                    produced_by=_PRODUCER, sig=sig)
     return LogicOutcome(
         applied=True, reason='chosen_written',
-        world_decl=WorldDecl(next_screen=SCREEN_SETTLE,
+        world_decl=WorldDecl(next_screen=SCREEN_SHOP_PANEL,
                              trigger=_DECL_TRIGGER))

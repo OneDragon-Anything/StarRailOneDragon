@@ -3,9 +3,10 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点卡选中 → 确认;确认点击后立即一口自上报完整结果
-(``report_action_pick_supply_param``)+ 节点推进上报;动作回执簿记
+(``report_action_pick_supply_param``);动作回执簿记
 (``_note_receipt``,两出口全簿记)照开/关商店动作 op 同形;刷新圆钮机械
-点击留在画面 op。
+点击留在画面 op。节点推进归出战动作(2026-10-29 流程模型对齐,见
+run docstring)。
 """
 from __future__ import annotations
 
@@ -21,7 +22,6 @@ from sr_od.application.currency_war.kernel.cw_action_report.pick_supply import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
-    report_node_advance,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionPickSupplyParam,
@@ -126,26 +126,20 @@ class CwActionPickSupplyOp(CwOperation):
         _note_receipt(self, receipt_reason, detail)
         # 立即自上报完整结果(单相:owned += norm_item 规范名
         # + 单位入账分支 + 装备后果分支;norm_item 未解析 = 翻来源留存证据)。
-        # 一次执行两支上报、每支出口各自紧跟一行喂入(A2 多支并喂契约 =
-        # 详设 world-decl.md §4);round data 携带最后一份(node_advance,
-        # 终结转移),先前声明仅经端口喂入不随 data 重复。
+        # 2026-10-29 流程模型对齐:确认后**不再上报节点推进**——游戏行为 =
+        # 补给选完关闭 overlay 回备战并自动弹店,出战动作才完成节点
+        #(流程模型单一源 = screen_flow_timing.md 口述流程模型节,#14);
+        # 旧「确认点击落地即 report_node_advance(supply_confirm)」随该
+        # 语义废止。round data 携带 pick_supply 声明(落点 = 商店档)。
         world_decl: WorldDecl | None = None
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
-            # 支 1:pick_supply 宝钻发放分支上报(拒/未发出出口声明 None →
-            # 喂入端口层 no-op;声明契约 = 详设 world-decl.md §2 表 #12)。
             pick_outcome = report_action_pick_supply_param(
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-            cw_sim_ports.declare_world(pick_outcome.world_decl)
-            # 支 2:节点推进上报(supply_confirm):确认点击落地即上报,重复上报
-            # 被 kernel 观察态门结构性挡;局外 gs 缺席同跳过(best-effort)。
-            if confirm_result.is_success:
-                advance_outcome = report_node_advance(
-                    gs, trigger='supply_confirm')
-                world_decl = advance_outcome.world_decl
-                cw_sim_ports.declare_world(world_decl)
+            world_decl = pick_outcome.world_decl
+            cw_sim_ports.declare_world(world_decl)
         # 选定事实现役归宿 = journal chosen 域(handler 派发前写)。
         return self.round_success('补给选择确认链已发(结果已即时上报)',
                                   data=world_decl)

@@ -3781,12 +3781,15 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
 # ============================================================ 节点推进动作上报(design §2.2/§2.3)
 
 #: 动作推进 trigger 封闭集(design §2.3;集外显式炸错)。
-NODE_ADVANCE_TRIGGERS: frozenset[str] = frozenset({'settle_confirm', 'supply_confirm'})
+#: supply_finish = 补给节点出战完成(2026-10-29 流程模型对齐:补给选完
+#: 回备战,出战即完成节点进下一回合,无战斗无结算屏;supply_confirm 已随
+#: 「确认即推节点」旧语义废止删除)。
+NODE_ADVANCE_TRIGGERS: frozenset[str] = frozenset({'settle_confirm', 'supply_finish'})
 
 #: trigger → journal 行 actor(留存证据归因;现役 _validate_sig 只校 family,actor 为自由归因标识,攻击 R2)。
 _NODE_ADVANCE_ACTORS: dict[str, str] = {
     'settle_confirm': 'CwOpSettleConfirm',
-    'supply_confirm': 'CwActionPickSupplyOp',
+    'supply_finish': 'CwActionStartBattleParam',
 }
 
 #: node_advance 声明的推进分派类别(详设 world-decl.md §2 表 #1/#2;
@@ -3797,15 +3800,48 @@ _NODE_ADVANCE_DECL_TRIGGER: str = 'node_advance'
 #: 与 sim 后端呈现屏同档名)。
 _NODE_PLANE_TRANSITION_SCREEN: str = '货币战争-位面过渡'
 
-#: 节点类型 → 下一画面档名映射(推导规则第四步;与 sim 后端
-#: ``_screen_for_node`` 同映射,battle/reward 归备战档;对照测试逐值钉死)。
-_NODE_KIND_NEXT_SCREENS: dict[str, str] = {
-    'supply': '货币战争-补给',
-    'encounter': '货币战争-遭遇节点',
-    'boss': SCREEN_BOSS_BRIEFING,
-    'battle': SCREEN_PREP_FRAME,
-    'reward': SCREEN_PREP_FRAME,
-}
+# (节点类型 → 下一画面档名映射表已删:2026-10-29 流程模型对齐后,节点
+#  稳态屏恒备战档(:func:`node_screen_now` 直返),类型化映射失去消费方;
+#  sim 侧同型映射 = ``_screen_for_node`` 保留——语义已改为进窗锚定的
+#  节点关联屏,非稳态屏。)
+
+
+def window_stable_screen_now(gs: GameState) -> str:
+    """当前生效节点窗的**稳态落点屏**预测(2026-10-29 流程模型对齐)。
+
+    消费方 = 「动作处理完后世界落到节点窗稳态」的声明推导(投资策略
+    选完等);与 :func:`node_screen_now` 的区别:彼 = 「返回底层」类
+    动作(关店/开卡)的落点(恒备战/位面过渡),此 = 含自动弹店与节点
+    弹窗形态的**顶层**稳态——reconcile 断言对象 = 顶层屏。
+
+    预测规则(流程模型单一源 =
+    ``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程
+    模型节):位面首节点窗起点 = 位面过渡屏(点空白后才进窗)→ 弹窗型
+    节点(补给/遭遇/BOSS 简报)窗稳态 = 备战底层上的节点弹窗模态(等
+    处理)→ battle/reward 回备战即自动弹店(#14)稳态 = 开商店,唯 1-1
+    例外不弹 = 备战档。恒非空串(降级形态回备战档,同
+    :func:`node_screen_now` 口径)。
+    """
+    pos = effective_node_pos(gs)
+    if pos is None:
+        return SCREEN_PREP_FRAME
+    seqs = gs.node_seq_by_plane.value
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    seq = tables.get(pos[0])
+    if seq is None or pos[1] > len(seq):
+        return SCREEN_PREP_FRAME
+    if pos[0] > 1 and pos[1] == 1:
+        return _NODE_PLANE_TRANSITION_SCREEN
+    kind = seq[pos[1] - 1]
+    if kind == 'supply':
+        return '货币战争-补给'
+    if kind == 'encounter':
+        return '货币战争-遭遇节点'
+    if kind == 'boss':
+        return SCREEN_BOSS_BRIEFING
+    if pos == (1, 1):
+        return SCREEN_PREP_FRAME
+    return SCREEN_SHOP_PANEL
 
 
 def _node_advance_next_screen(gs: GameState) -> str:
@@ -3817,17 +3853,23 @@ def _node_advance_next_screen(gs: GameState) -> str:
     = 局终('';对齐旧 eff 超总长优雅局终,现役表键 P1+P2+P3 全在,
     此臂 = 表外位面防御/OCR 位面误读形态,照常返回主循环,外循环走
     结束链)→ 位面内轮次超序列长 = 局终(modeled 位面内损坏坐标防御)
-    → 位面切换优先 → 节点类型映射。推导权威源 = kernel 节点日程真值表
+    → 位面切换优先 → 备战档。推导权威源 = kernel 节点日程真值表
     (:mod:`cw_node_schedule`)+ :func:`effective_node_pos`;**禁读容器
     ``gs.node`` 作推导口**——它是观察镜像,写端(观察漏斗/类型派生/
     sim backend)都在本构造点之后,此处读到的恒是旧节点。
+
+    2026-10-29 流程模型对齐:稳态落点段委托
+    :func:`window_stable_screen_now`(新节点窗形态预测:弹窗型节点 =
+    节点弹窗屏、battle/reward = 商店档、1-1 = 备战、位面首 = 位面
+    过渡);本函数保留局终判定臂(表外位面/超长 = '')。旧映射表随
+    呈现改造废止,预测推导单一源 = :func:`window_stable_screen_now`。
     """
     pos = effective_node_pos(gs)
     if pos is None:
         return ''   # 不可达(构造点保证 eff 在场;防御性诚实缺省)
     # 序列权威源 = 场字段现值(None = 未注册回退默认表,原行为):位面在表
-    # 判定/长度守卫/kind 取值三处同源;禁直查 node_sequence_of 抛错——
-    # 先判位面在表性再取长(表外位面 = 优雅局终非停机)。
+    # 判定/长度守卫两处同源;禁直查 node_sequence_of 抛错——先判位面在表
+    # 性再取长(表外位面 = 优雅局终非停机)。
     seqs = gs.node_seq_by_plane.value
     tables = seqs if seqs is not None else PLANE_NODE_TABLES
     seq = tables.get(pos[0])
@@ -3835,9 +3877,7 @@ def _node_advance_next_screen(gs: GameState) -> str:
         return ''
     if pos[1] > len(seq):
         return ''
-    if pos[0] > 1 and pos[1] == 1:
-        return _NODE_PLANE_TRANSITION_SCREEN
-    return _NODE_KIND_NEXT_SCREENS[seq[pos[1] - 1]]
+    return window_stable_screen_now(gs)
 
 
 def node_screen_now(gs: GameState) -> str:
@@ -3851,6 +3891,11 @@ def node_screen_now(gs: GameState) -> str:
     恒非空串:生效序位缺位/表外位面/槽越界(降级形态,正常对局不可达)
     回退备战档(历史口径)——声明面禁空串(空串 = 局终语义,误用会被
     对账判局终漂移)。
+
+    2026-10-29 流程模型对齐:节点弹窗(补给/遭遇/BOSS 简报)都是备战
+    底层画面上的模态,「返回节点屏」类动作(关店/选卡/开卡)的稳态落点
+    恒备战档——类型化节点屏旧映射(补给/遭遇/简报)随呈现改造废止;
+    位面首节点例外保留(窗起点 = 位面过渡屏,非模态)。
     """
     pos = effective_node_pos(gs)
     if pos is None:
@@ -3862,7 +3907,7 @@ def node_screen_now(gs: GameState) -> str:
         return SCREEN_PREP_FRAME
     if pos[0] > 1 and pos[1] == 1:
         return _NODE_PLANE_TRANSITION_SCREEN
-    return _NODE_KIND_NEXT_SCREENS[seq[pos[1] - 1]]
+    return SCREEN_PREP_FRAME
 
 
 def advance_node_effective(gs: GameState, candidate: NodePos, *,

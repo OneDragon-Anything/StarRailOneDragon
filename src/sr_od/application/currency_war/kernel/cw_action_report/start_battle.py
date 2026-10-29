@@ -23,6 +23,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     LogicOutcome,
     _validate_sig,
     game_state_of,
+    report_node_advance,
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
@@ -38,8 +39,19 @@ def report_action_start_battle_param(gs: GameState, param: Any, sig: ChannelSig,
     免战牌跳过递减(上报时递减,非「验证落地后」;标记由出战 op 上报,
     递减 best-effort,未登记 → consume_use 返 None 零动作)。
     applied 出口构造后果声明(battle_resolve;喂入与消费面 =
-    ``cw_sim_ports.declare_world`` / sim 后端 advance)。"""
+    ``cw_sim_ports.declare_world`` / sim 后端 advance)。
+
+    **补给节点分支**(2026-10-29 流程模型对齐):supply 节点出战 =
+    完成节点(无战斗无结算屏,流程模型单一源 =
+    ``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程
+    模型节——补给选完回备战,出战即进下一回合)→ 转
+    :func:`report_node_advance`(trigger = ``supply_finish``)按终结动作
+    推进,声明由该入口构造(node_advance,下一画面按其推导)。
+    """
     _validate_sig(sig, ('logic_action',))
+    node = gs.node.value
+    if node is not None and node.kind == 'supply':
+        return report_node_advance(gs, trigger='supply_finish')
     decl = WorldDecl(next_screen=SCREEN_SETTLE, trigger=_DECL_TRIGGER)
     if skip_substate and session is not None:
         from sr_od.application.currency_war.kernel.cw_investments import (

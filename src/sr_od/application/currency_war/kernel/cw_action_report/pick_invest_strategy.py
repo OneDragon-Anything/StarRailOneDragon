@@ -57,7 +57,13 @@ def report_action_pick_invest_strategy_param(
     - ``rng`` = 采样注入(sim 可播种;缺省链内生成);
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``(获得链
       结果可辨形态,投资双支对齐);出口构造后果声明
-      (:data:`_DECL_TRIGGER`,返回当前节点屏,推导 = ``node_screen_now``)。
+      (:data:`_DECL_TRIGGER`,next_screen = :func:`window_stable_screen_now`
+      窗稳态预测——2026-10-29 流程模型对齐:offer 选完 overlay 关闭回
+      备战,游戏自动弹出商店(#14 触发源「投资策略选完后」);offer 槽
+      节点多为 battle 型(稳态 = 商店档),改节点序列环境(战争边疆
+      P3 战斗→遭遇)下为遭遇模态屏,推导单一源收口),旧「返回当前
+      节点屏(node_screen_now)」随 sim 呈现改造废止——reconcile 断言
+      对象 = 顶层屏,备战档声明对弹店后商店态必失配)。
     """
     _validate_sig(sig, ('logic_action',))
     canon = _canon_invest_name(str(getattr(param, 'norm_name', '') or ''))
@@ -78,9 +84,9 @@ def report_action_pick_invest_strategy_param(
             gs, 'aha', KIND_SCREEN_NAMES['aha'],
             source='s5_pick@pick_invest_strategy')
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        node_screen_now,
+        window_stable_screen_now,
     )
     return LogicOutcome(
         applied=True, reason='gain_chain_applied',
-        world_decl=WorldDecl(next_screen=node_screen_now(gs),
+        world_decl=WorldDecl(next_screen=window_stable_screen_now(gs),
                              trigger=_DECL_TRIGGER))

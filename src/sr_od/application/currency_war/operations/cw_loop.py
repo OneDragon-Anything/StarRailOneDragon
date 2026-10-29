@@ -1680,17 +1680,34 @@ class CwLoop(CwOperation):
                          self._max_rounds, self._settle.rounds_done)
                 return self.round_success(
                     f'已跑 {self._settle.rounds_done} 轮停备战(达 max_rounds={self._max_rounds})')
-            # 补给节点(nodeseq 当前节点类型=supply):出战不推进(无出战打怪,确认补给即完成节点进下回合,
-            # live 确认)→ 点「返回补给阶段」进补给屏,下轮阶段一身份行「货币战争-补给」分发 CwScreenSupplyNode 选+确认。
+            # 补给节点(nodeseq 当前节点类型=supply):**补给未确认时**点「返回补给阶段」
+            # 进补给屏,下轮阶段一身份行「货币战争-补给」分发 CwScreenSupplyNode 选+确认。
+            # 2026-10-29 流程模型对齐:补给确认后游戏回备战并自动弹店,出战动作才
+            # 完成节点(start_battle 对 supply 走 supply_finish,无战斗)——补给已确认
+            # (chosen_supply 在场)的备战帧走默认备战分支(策略器备战决策 → 出战),
+            # 不得再回补给屏(死循环面)。恢复局例外:恢复局商店锁死只能出战
+            # (economy.md「恢复局商店锁死」条),出战链照常完成节点,零新增处理。
             # ⚠️ 用 nodeseq 节点类型判,非「返回补给阶段」按钮 —— 该按钮 battle 节点也在(可 revisit),不可靠
             # (实跑:1-6 battle 节点出战成功 + 也有该按钮)。nodeseq 读失败(非 clean 帧)→ 不 divert
             # (默认备战分支,保险不误判 battle 为 supply)。
             _cur_slot = next((s for s in (read_node_sequence(self.ctx, screen) or [])
                               if s.state == 'current'), None)
             if _cur_slot is not None and _cur_slot.node_type == 'supply':
-                self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
-                log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
-                return self.round_wait(wait=2)
+                _gs = None
+                try:
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        game_state_from_ctx,
+                    )
+                    _gs = game_state_from_ctx(self.ctx)
+                except Exception:  # noqa: BLE001  容器缺席 = 局外语境,按未确认处理
+                    _gs = None
+                _supply_confirmed = (_gs is not None
+                                     and _gs.chosen_supply.value is not None)
+                if not _supply_confirmed:
+                    self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
+                    log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
+                    return self.round_wait(wait=2)
+                log.info('[cw-loop] 补给节点已确认(chosen_supply 在场)→ 走备战分支(策略器决策 → 出战完成节点)')
             #  V-2 并入→再迁移:备战分支派发前的书册卡清场识别+点击
             # 曾迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``),
             # 用户裁定 开卡时机归策略实现管后该段撤销——识别
