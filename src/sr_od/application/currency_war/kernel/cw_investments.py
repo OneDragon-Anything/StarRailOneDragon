@@ -708,6 +708,17 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['加油站'], duties=DutyFlags(),
         notes='「现在」+1 刷=burst 分支登记期发放;每节点 +1=节点边界桥;'
               'instant_gold=8 选卡当场'),
+    # 免费午餐:官方「获得11次免费刷新。」(cw_invest_data.py:36,id 100301)。
+    # 登记期一次性发放的定性 = per_node_pick_node_grant.md §4 惯例表
+    # (纯立即型,无持续部分);卡文无「现在/立刻」措辞不触发「拿卡当节点
+    # 不发放」反推——该反推只辖需拆分立即/持续两段发放时点的卡,本卡
+    # 整卡即一段。入册使获得链登记腿 burst 桥按 payload.free_refresh_burst
+    # 一次性发放(live/sim 同链);同族其余挂值卡单卡边界另批接线。
+    '免费午餐': EffectSpec(
+        id='100301', name='免费午餐', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.ONCE, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['免费午餐'], duties=DutyFlags(),
+        notes='「获得11次免费刷新」=burst 腿,获得链登记期发放'),
 }
 
 
