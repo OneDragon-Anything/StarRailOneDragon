@@ -254,6 +254,20 @@ def income_modifiers_of(gs: GameState) -> tuple[float, int, int | None]:
         eff.interest_cap_override
 
 
+def strategy_boss_gold_of(gs: GameState) -> int:
+    """持卡策略聚合的进 boss 节点金(特战资金系,进 boss 节点每窗一笔)。
+
+    单一源 = ``aggregate_economy``(多卡求和);返回 0 = 无该金腿,
+    调用方(节点窗收口)零值零写。live 侧无此写端:金有整字段观察
+    覆盖,实机真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防
+    双计(裁定正本 = ``cw_effect_inventory.advance_node`` docstring
+    「尾款金面走观察覆盖兜底」行),sim 世界自持账无观察可兜,不发即
+    持卡局金系统性偏低,故唯 sim 侧补写。
+    """
+    return aggregate_economy(
+        list(gs.active_strategies.value or [])).gold_per_boss_node
+
+
 def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              node_type: str, streak: int,
                              pending_loss: LostNodeRef | None = None,
@@ -798,6 +812,17 @@ DISCLOSURE_AFFIX_SAMPLE: str = 'reset_affixes_sample_placeholder'
 #: 不进任何判定分支)。
 DISCLOSURE_BOND_TIER_SEMANTICS: str = 'env_bond_tier_semantics_level'
 
+#: 策略 boss 金通道披露键(特战资金系;纯声明,不进任何判定分支)。
+#: 载义:①sim 侧策略 boss 金腿 = 「调用方聚合单列」过渡形态
+#(:meth:`strategy_boss_gold_of` + 节点窗收口独立观察笔),承载方式随
+#: T1b 定夺迁移(round_start_income docstring 预留两承载方式,选分量
+#: 扩参则本腿合并进收入签名);②轮首收入口径常量(BASE_INCOME/
+#: LOSS_GOLD_BY_NODE/REWARD_BASE_GOLD_BY_ROUND,按实机逐轮金轨迹
+#: 整定)的校准样本域与本腿的叠加交互未实证(校准局是否含持卡局
+#: 不可考)——首次实机持卡局金轨迹对照时核,异常表现 = 持卡局金轨迹
+#: 系统性偏离。
+DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
+
 #: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
@@ -826,6 +851,9 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 羁绊档位触发语义申报(T-41,裁决点 3 电平语义为建模选择非实采;
     # 值串纯声明,语义单一源 = 判据函数 docstring)
     DISCLOSURE_BOND_TIER_SEMANTICS: 'level_reach_once_per_tier_done_sealed',
+    # 策略 boss 金通道申报(载义见键常量注:过渡形态随 T1b 迁移 +
+    # 收入口径常量校准交互未实证待持卡局对照)
+    DISCLOSURE_STRATEGY_BOSS_GOLD: 'caller_side_aggregate_pending_t1b_carrier',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
     # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
     # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
@@ -1916,6 +1944,25 @@ class SimBackend:
                                   rng=stream_rng(self.seed,
                                                  f'M21/env-boss/p{plane}/r{r}'),
                                   sig=logic_sig('sim:env'))
+        # 策略 boss 金腿(特战资金系):进 boss 节点窗发持卡聚合值,独立
+        # 观察笔(evidence/sig 与收入笔分键)——轮首收入三分量账
+        #(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
+        # 收入写。缺口来源:实机进 boss 节点真发聚合值,sim 世界自持账
+        # 无观察可兜,不发即持卡局金系统性偏低。与劳务派遣合同的角色
+        # 发放腿同段收口(定时道具后、商店全刷前;两腿互不读对方字段,
+        # 先后无行为差,同段为收口序单一)。承载方式 = 「调用方聚合
+        # 单列」过渡形态(round_start_income docstring 预留的两承载方式
+        # 之一),T1b 定夺后若选分量扩参,本腿随迁移合并进收入签名。
+        # 零值零写(未持卡零新增观察行);幂等复用窗口守卫(同节点窗
+        # 重放整段跳过),零新增守卫。
+        if kind == 'boss':
+            boss_gold = strategy_boss_gold_of(self.gs)
+            if boss_gold > 0:
+                gold_before = int(self.gs.gold.value or 0)
+                tag = f'strategy:boss_gold:p{plane}r{r}'
+                self.gs.observe(self.gs.gold, gold_before + boss_gold,
+                                evidence=sim_evidence(tag),
+                                sig=obs_sig(group_id=f'sim:{tag}'))
         # 环境直发策略取卡挂点(T-46 策略大师数量分支;设计 = T-46 定稿
         # §2.2(e)):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
         # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
