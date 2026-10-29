@@ -197,6 +197,7 @@ REINFORCEMENT_ASSUMPTION_KEYS: tuple[str, ...] = (
 _STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[int, int]] = {
     '二费援军': (2, 4),
     '三费援军': (3, 4),
+    '四费援军': (4, 4),
 }
 
 
