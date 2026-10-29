@@ -21,6 +21,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
 )
+from sr_od.application.currency_war.kernel.cw_investments import (
+    RandomCharSpec,
+    random_char_pool,
+)
 
 _PRODUCER = 'CwGainChain'
 
@@ -165,12 +169,102 @@ def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
     return _effect
 
 
+# ===== 援军族效果(策略卡获得时点随机同费角色群发:费用档注册池内均匀
+# ===== 掷骰 count 名 → 逐名 gain_character(rand=True) 入席,升星/溢出/
+# ===== 回调沿链现役;采样池复用随机赠卡家族载体 random_char_pool,禁直读
+# ===== chars_by_cost 另立第二采样源——先到者立形、后到复用)=====
+
+#: 建模假设档披露键(在册落点 = 本常量,随局披露面消费;校准只改采样口径
+#: 与披露键、不动结构;键形态沿骇客/晶矿同区先例):
+#: - uniform: 费用档注册池内均匀 v0(游戏真分布未知,是否受牌库剩余约束
+#:   未证;校准源 = logic_rand_outcome 行按效果串前缀 ``strategy_gift_
+#:   random:`` 归组);
+#: - star_prior: desc 未标星 → star=1 先验非结构值(实机直出高星时 bench
+#:   观察星级覆盖模型值,随机态不响灯);
+#: - with_replacement: 4 抽放回假设申报(实机放回性证据缺,归档帧/实采
+#:   校准通道)。
+REINFORCEMENT_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_gift_random_char_uniform',
+    'strategy_gift_random_char_star_prior',
+    'strategy_gift_random_char_with_replacement',
+)
+
+#: 援军族发放表单一源(卡规范名 → (费用档, 名数);卡文「获得N个随机
+#: X费角色」直读,本卡 = 模式卡,姊妹卡三费援军/四费援军逐字同构仅费用
+#: 档异,展开批各 +1 行零新设计)。效果体条目由下方工厂从本表生成,禁
+#: 另写字面量(箱腿先例同纪律:表与效果体两处独立字面量的漂移在备战
+#: 断言不可见,唯一致性测试与落位真值可暴露)。
+_STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[int, int]] = {
+    '二费援军': (2, 4),
+}
+
+
+def roll_reinforcement_names(rng: random.Random, cost: int,
+                             count: int) -> list[str]:
+    """援军族身份采样(纯函数;rng 注入,sim/live 共用同一语义)。
+
+    池 = 随机赠卡家族载体 :func:`random_char_pool` 派生(规格
+    ``RandomCharSpec(cost, star=1)``,type_tag 空 = 费用档全档;uniform
+    v0,分布形态未实测,披露键 ``strategy_gift_random_char_uniform``)。
+
+    **前置值域校验**:cost ∉ 1..5 → ValueError——cost=0 档系统单位
+    (狸猫对/佩佩族召唤)在册且非空,「池非空」哨防不住误传 0;值域限定
+    是系统单位不入随机发放池的唯一保证(发放口径 = 玩家可持有单位域)。
+
+    count 次独立 ``rng.choice`` **放回**(批内同 rng 实例顺序推进不重置,
+    晶矿掷序契约同口径:改序 = 掷序漂移;抽重可复现为设计语义非缺陷,
+    披露键 ``strategy_gift_random_char_with_replacement``)。
+    """
+    if cost not in (1, 2, 3, 4, 5):
+        raise ValueError(f'援军族费用档越界:cost={cost!r}(合法域 1-5;'
+                         f'cost=0 系统单位不入随机发放池)')
+    pool = random_char_pool(RandomCharSpec(cost=cost, star=1))
+    return [rng.choice(pool) for _ in range(count)]
+
+
+def _make_reinforcement_effect(cost: int,
+                               count: int) -> Callable[..., list[str]]:
+    """援军族效果体工厂(闭包销 = (费用档, 名数),单源取自
+    :data:`_STRATEGY_REINFORCEMENT_GRANTS`;形态镜像 _make_box_grant_effect)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained)。逐名采样 → ``gain_character``
+    入席:采样效果对子链传 rand=True(gain-chain.md §5 效果自身性质
+    传参),升星级联(单级 3 合 1)/席满溢出/bench 未观察拒落全部沿链
+    现役记账。星级 1 = desc 未标星的句式先验(先验错走随机态观察覆盖,
+    不响灯)。效果串 = ``strategy_gift_random:<名>@1star``,前缀 + @
+    后缀一体登记——@ 后缀 = 随机态校准数据归组键,只断前缀会漏校准
+    分组;发放事实与落位成败解耦,效果串恒 count 条(on_env_gained
+    赠卡通道同口径)。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_character,
+        )
+        steps: list[str] = []
+        for name in roll_reinforcement_names(rng, cost, count):
+            gain_character(gs, name, 1, rand=True, sig=sig,
+                           evidence='pick_invest_reinforcement',
+                           producer=_PRODUCER)
+            steps.append(f'strategy_gift_random:{name}@1star')
+        return steps
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
        for name, item in _STRATEGY_BOX_GRANTS.items()},
+    **{name: _make_reinforcement_effect(cost, count)
+       for name, (cost, count) in _STRATEGY_REINFORCEMENT_GRANTS.items()},
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
-开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成)。未收录名 = 零效果分派(查无
+开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
+_STRATEGY_REINFORCEMENT_GRANTS 生成)。未收录名 = 零效果分派(查无
 效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)职责分离
 声明见各表模块头。"""
