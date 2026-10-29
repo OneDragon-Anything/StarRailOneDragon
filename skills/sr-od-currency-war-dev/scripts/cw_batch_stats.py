@@ -14,9 +14,11 @@ p1_pair, state_board_factions/state_deployed(sim 行轮末快照)},
   边界:sim 决策帧 = 决策时点快照,末帧之后仍有动作的局行源金轻微高估局终金
   (cal4p 实测:行源中位 47.5 vs 引擎局账 39;HEAD 腿两源一致 = 5.0)。
 - ② 过渡凑齐率 = ① 同行凑齐判定。判定口径 = 行内 state 轮末快照现算
-  readiness 判据(单一源 = kernel/cw_launch_admission
-  ``readiness_form_ok_from_snapshot``;判据核 form_progress 鸭型桩契约
-  消费 board_factions/deployed 两键):决策行 ``form_ok`` 字段是策略器
+  readiness 判据(完备谓词单一源 = kernel/cw_launch_admission
+  ``readiness_form_ok``,成型折法唯一源 = kernel/cw_comps
+  ``form_progress``;快照 dict → form_progress 鸭型桩入参适配居本脚本
+  ``_readiness_from_snapshot``,消费 board_factions/deployed 两键,
+  返回 None = 判据不可判):决策行 ``form_ok`` 字段是策略器
   镜像写端(write_shop_mirrors)在商店决策帧时点的读数,与同行 state
   (引擎轮末值)不同时点——轮内升级解锁席位后补位达标的局镜像恒 False,
   凑齐率被低估(300 局样本中 4 局实证),故轮末快照可算时一律现算;
@@ -99,21 +101,36 @@ import re
 import statistics
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
-# src 判据引导(②④轮末现算的判据单一源 = kernel readiness 快照读口):
-# 自脚本位反推仓库 src 加入 sys.path,项目根直跑零前置;导入失败(异机
-# 裸语料/非仓布局)= 判据复用不可用,②④回退 form_ok 镜像读数(回退态
-# stderr 暴露一行,统计仍可算,读数口径降级如实申报)。
+# src 判据引导(②④轮末现算的完备谓词单一源 = kernel cw_launch_admission
+# readiness_form_ok,成型折法唯一源 = kernel form_progress;快照 dict →
+# 鸭型桩入参适配居本脚本 _readiness_from_snapshot):自脚本位反推仓库
+# src 加入 sys.path,项目根直跑零前置。仓内布局(src/ 在)而 import 失败
+# = kernel 符号失同步(代码断裂),显式报错不静默降级——降级会把 ②④
+# 读数无声翻错并掩盖断裂;非仓布局(异机裸语料/非仓目录,无 src/)= 判据
+# 复用环境性不可用,②④回退 form_ok 镜像读数(stderr 暴露一行,统计仍
+# 可算,读数口径降级如实申报)。
 _REPO_SRC = Path(__file__).resolve().parents[3] / 'src'
-if _REPO_SRC.is_dir() and str(_REPO_SRC) not in sys.path:
-    sys.path.insert(0, str(_REPO_SRC))
-try:
-    from sr_od.application.currency_war.kernel.cw_launch_admission import (
-        readiness_form_ok_from_snapshot,
+if _REPO_SRC.is_dir():
+    if str(_REPO_SRC) not in sys.path:
+        sys.path.insert(0, str(_REPO_SRC))
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        DeployedView,
     )
-except ImportError:   # pragma: no cover — 零 src 环境回退分支
-    readiness_form_ok_from_snapshot = None
-    print('[cw-batch-stats] src 判据不可用,②④回退 form_ok 镜像读数'
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        pair_target_comp,
+    )
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        readiness_form_ok,
+    )
+else:
+    get_comp = None                   # type: ignore[assignment]
+    DeployedView = None               # type: ignore[assignment]
+    pair_target_comp = None           # type: ignore[assignment]
+    readiness_form_ok = None          # type: ignore[assignment]
+    print('[cw-batch-stats] 非仓布局(无 src/),②④回退 form_ok 镜像读数'
           '(轮末现算停用)', file=sys.stderr)
 
 # 落盘根(2026-09-07 布局裁定,.debug/currency_war/telemetry/{live,matches,sim};
@@ -294,19 +311,53 @@ def _archive_rows(mid: str) -> dict:
 
 # ---------- 四指标 ----------
 
+def _readiness_from_snapshot(state_snapshot: dict | None, *,
+                             locked_comp: str = '',
+                             p1_pair: tuple[str, ...] = ()) -> bool | None:
+    """决策行轮末快照现读配方完备判据(kernel 判据核薄适配;返回 None =
+    判据不可判,消费面回退镜像读数,不虚构 False)。
+
+    入参适配 = 快照 dict → form_progress 鸭型桩(board.value + deployed
+    容器视图,轻量桩契约见 cw_comps.form_progress docstring);阵容解析
+    序与决策行锁定语义一致:locked_comp 非空 = 资格锁(cw_comps.get_comp
+    按名,未知名 = None);否则 p1_pair 非空 = P1 配方锁伪阵容
+    (cw_intention.pair_target_comp);两者皆空 = 判据不可判。完备谓词
+    语义零本地实现,单一源 = cw_launch_admission.readiness_form_ok
+    (form_progress ≥1.0)。判据符号不可用(非仓布局)/快照缺
+    board_factions(非 dict)/无阵容线索 → None。
+    """
+    if readiness_form_ok is None or not isinstance(state_snapshot, dict):
+        return None
+    board = state_snapshot.get('board_factions')
+    if not isinstance(board, dict):
+        return None
+    comp = get_comp(locked_comp) if locked_comp else None
+    if comp is None and p1_pair:
+        comp = pair_target_comp(tuple(p1_pair))
+    if comp is None:
+        return None
+    deployed = [SimpleNamespace(char_id=str(u.get('char_id') or ''))
+                for u in (state_snapshot.get('deployed') or [])
+                if isinstance(u, dict)]
+    view = SimpleNamespace(
+        board=SimpleNamespace(value=board),
+        deployed=SimpleNamespace(value=DeployedView(
+            front_slots=list(deployed), back_slots=[])))
+    return readiness_form_ok(view, comp)
+
+
 def _row_form_ok(row: dict) -> bool | None:
     """行凑齐判定(口径单一源 = 模块 docstring ②节):轮末快照现算优先
-    (kernel readiness 快照读口,消除镜像写端商店帧时点差),快照缺
-    输入/判据不可判(None)回退 form_ok 镜像读数——回退语义与旧口径
-    逐位等价,旧行/档案行零漂移。"""
-    if readiness_form_ok_from_snapshot is not None:
-        v = readiness_form_ok_from_snapshot(
-            {'board_factions': row.get('state_board_factions'),
-             'deployed': row.get('state_deployed')},
-            locked_comp=row.get('locked_comp') or '',
-            p1_pair=row.get('p1_pair') or ())
-        if v is not None:
-            return v
+    (kernel readiness_form_ok 薄适配 _readiness_from_snapshot,消除
+    镜像写端商店帧时点差),快照缺输入/判据不可判(None)回退 form_ok
+    镜像读数——回退语义与旧口径逐位等价,旧行/档案行零漂移。"""
+    v = _readiness_from_snapshot(
+        {'board_factions': row.get('state_board_factions'),
+         'deployed': row.get('state_deployed')},
+        locked_comp=row.get('locked_comp') or '',
+        p1_pair=row.get('p1_pair') or ())
+    if v is not None:
+        return v
     return row.get('form_ok')
 
 
