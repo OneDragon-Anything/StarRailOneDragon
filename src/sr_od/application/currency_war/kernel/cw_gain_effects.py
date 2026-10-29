@@ -196,6 +196,7 @@ REINFORCEMENT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #: 断言不可见,唯一致性测试与落位真值可暴露)。
 _STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[int, int]] = {
     '二费援军': (2, 4),
+    '三费援军': (3, 4),
 }
 
 
