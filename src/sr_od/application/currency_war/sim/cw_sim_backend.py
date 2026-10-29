@@ -54,6 +54,7 @@ wish_trial/star_tome/aha)呈现即卡 observe → 消费 + 逐 kind 披露,
 from __future__ import annotations
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
 from sr_od.application.currency_war.data.affix_effects_data import (
@@ -114,6 +115,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
+    STRATEGY_ECONOMY,
     aggregate_economy,
     normalize_invest_name,
 )
@@ -374,6 +376,44 @@ def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     gs.observe(gs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
     gs.observe(gs.xp, (cur, need), evidence=sim_evidence('xp:node'), sig=sig)
     return amount
+
+
+def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
+    """策略选卡落地拍即时经验入账(通用通道,辖域 = 注册表
+    xp_instant>0 全体,字段分派非单卡特判)。
+
+    为什么:sim 世界无观察、经验只有自持账,选卡当场即时型不在 kernel
+    获得链发放(链内加经验写会连带 live——live 同拍 = 观察覆盖零写,
+    经验面板画面可读,伟大征服口径),sim 不发即持卡局等级进度系统性
+    失真,下游商店发牌分布/上阵上限/升级决策全链读等级现值。数额 =
+    逐卡直读 :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**:
+    其聚合字段集不含 xp_instant,误走 = 静默零发放;且聚合语义 = 周期型
+    重评,与「选卡单事件一次性发放」不匹配,逐卡各发各的(同持多卡笔笔
+    独立)。升级结转/满级零推进复用 :func:`xp_apply_amount`;写入形态与
+    :func:`apply_node_xp` 同款,evidence 按 ``xp:strategy_pick:<卡名>``
+    与节点经验 ``xp:node`` 笔分账,sig 同组(同域字段同组,笔间靠
+    evidence 区分)。返回本批实际入账经验总量。
+    """
+    total = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        eff = STRATEGY_ECONOMY.get(canon)
+        amount = eff.xp_instant if eff is not None else 0
+        if amount <= 0:
+            continue
+        xp_field = gs.xp.value
+        level_field = gs.level.value
+        if xp_field is None or level_field is None:
+            continue
+        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
+                                     amount)
+        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+        sig = obs_sig(group_id='sim:xp')
+        evidence = sim_evidence(f'xp:strategy_pick:{canon}')
+        gs.observe(gs.level, level, evidence=evidence, sig=sig)
+        gs.observe(gs.xp, (cur, need), evidence=evidence, sig=sig)
+        total += amount
+    return total
 
 
 # ============================================================ 商店发牌件
@@ -823,6 +863,14 @@ DISCLOSURE_BOND_TIER_SEMANTICS: str = 'env_bond_tier_semantics_level'
 #: 系统性偏离。
 DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
 
+#: 策略选卡即时腿披露键(纯声明,不进任何判定分支)。载义:①策略选卡
+#: 「选牌当场即时型」世界腿现值 = xp_instant 已建(辖域 = 注册表
+#: xp_instant>0 全体,字段分派非单卡特判)/ 真即时金 instant_gold 未建
+#: (族批另议)——两形状均在册申报,防「通道存在 = 族全覆盖」误读;
+#: ②xp 腿数额 = 单卡直读注册表现值,条目修订腿值随单一源自动跟随,
+#: 无卡别硬编码。
+DISCLOSURE_STRATEGY_PICK_INSTANT: str = 'strategy_pick_instant_legs'
+
 #: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
@@ -854,6 +902,9 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 策略 boss 金通道申报(载义见键常量注:过渡形态随 T1b 迁移 +
     # 收入口径常量校准交互未实证待持卡局对照)
     DISCLOSURE_STRATEGY_BOSS_GOLD: 'caller_side_aggregate_pending_t1b_carrier',
+    # 策略选卡即时腿申报(载义见键常量注:xp_instant 腿已建与真即时金
+    # 未建两形状均在册)
+    DISCLOSURE_STRATEGY_PICK_INSTANT: 'xp_instant_legs_built_pick_gold_instant_pending',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
     # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
     # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
@@ -995,6 +1046,10 @@ class SimBackend:
     #  sidecar,呈现检查 = 问询时点[screen_identity] + advance 尾。)
     #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
     _box_pick_pending: int | None = field(init=False, default=None)
+    #: 策略选卡即时经验腿呈现闩(offer 呈现置 True、落地拍消费置 None;
+    #: 无闩的重复 advance = 零写防重放)。私有暂态不入容器/不入快照恢复
+    #: (:data:`_box_pick_pending` 同形先例)。
+    _strategy_pick_xp_latch: bool | None = field(init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -1632,6 +1687,17 @@ class SimBackend:
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
+        # 选卡落地拍即时经验腿(通用通道):sim 世界自持账补全——live 同拍
+        # 零写(经验面板画面可读 = 观察覆盖),sim 无观察,不发即持卡局
+        # 等级进度失真。拿卡名 = 呈现候选 ∩ 持有列表(offer 候选排除已持,
+        # 落地交集 = 刚拿入的卡;无效载荷获得链零容器写 → 交集空 → 零写)。
+        # 呈现闩防重放:闩消费先于发放判定,无闩的重复 advance 零写。
+        if not opening and self._strategy_pick_xp_latch:
+            self._strategy_pick_xp_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                apply_strategy_pick_xp(self.gs, picked)
         self._after_modal_pick(opening=opening)
 
     def _on_open_box(self) -> None:
@@ -2057,6 +2123,8 @@ class SimBackend:
             self._announce_screen(SCREEN_INVEST_STRATEGY)
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
+            # 策略 offer 呈现即置即时经验腿闩(落地拍消费,防重放)。
+            self._strategy_pick_xp_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
