@@ -566,6 +566,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 伪造占席身份);板面重写腿(同卡另一句)零改动在册,STRATEGY_
     # EFFECTS 注册行 board_rewrite 分派承载,本腿只辖装备句。
     '全员晋升': _make_named_equip_grant_effect('拆装扳手', 2),
+    # 无伤通关 = 具名装备授予族后继(卡文「立即获得1个【生命之花】」):
+    # 直书登记行直呼工厂;生命之花 = 简易类装备(cw_equipment_data),不在
+    # 精密金面判据映射内(gate 恒 None)走纯发放循环,精密在场不受污染。
+    # 条件金腿(战斗结束时无角色陷入无法战斗 → +1金)双端真值皆盲零建模
+    # (正本 = invest_effects.md §8 型③成员;估值失真口径由 STRATEGY_
+    # ECONOMY 注册行 instant_gold=1 在册承载,fields.md §4.1/§5.2),
+    # 金面禁直写不进效果体,本行只辖装备句。
+    '无伤通关': _make_named_equip_grant_effect('生命之花', 1),
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
@@ -575,7 +583,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
-由组合子组合双腿(非表生成),具名装备授予族(全员晋升)直书登记行由
+由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关)直书登记行由
 _make_named_equip_grant_effect 生成闭包,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
