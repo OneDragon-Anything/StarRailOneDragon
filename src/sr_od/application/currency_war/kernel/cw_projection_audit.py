@@ -424,6 +424,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'chosen_supply': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='补给选择结果(handler 写,无 chosen 观察读端)'),
+    'unchosen_supply': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='补给未选列快照(画面 op 真选分支确认窗写,'
+              'check_strategy_supply_salvage 消费即清;无观察读端)'),
     'chosen_megastar': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='盛会之星选择结果(handler 写,无 chosen 观察读端)'),

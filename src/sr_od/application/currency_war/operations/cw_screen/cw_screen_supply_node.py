@@ -455,15 +455,33 @@ class CwScreenSupplyNode(CwOperation):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
             )
+            _confirm_sig = ChannelSig(family='logic_action',
+                                      actor='CwScreenSupplyNode',
+                                      mode='compute')
             _gs.write_logic(
                 _gs.chosen_supply,
                 (_opt.char, (_opt.equip, *_opt.extra_equips)),
                 produced_by='CwScreenSupplyNode',
-                sig=ChannelSig(family='logic_action',
-                               actor='CwScreenSupplyNode',
-                               mode='compute'))
+                sig=_confirm_sig)
+            # 未选列快照(unchosen_supply)——**确认即写同窗**(与
+            # chosen_supply 同一确认动作原子面、同 sig 同窗):值 = 终屏列
+            # (obs 载体现值)按选定 idx 消账后的余列,按列身份计数不按
+            # 内容去重(重复列形下按内容消账有歧义)。消费端 = 打捞人才库
+            # 族检查函数 check_strategy_supply_salvage(进入下一补给阶段时
+            # 发放被掷列后写回 None)。机械执行态限定写:sim 局决策分支
+            # 可达本写点(决策输入统一 obs 载体后两态同链),但 sim 补给
+            # char 面未建模(占位池恒空)= 同一上游缺口族,未选集发放域
+            # fail-closed——sim 局不种本域,检查函数第 2 门恒早退零发放
+            #(披露键 strategy_salvage_sim_failclosed_decision_leg;真值
+            # 对齐归 sim 补给真值专项)。
+            if cw_sim_ports.mechanical_io_allowed():
+                _gs.write_logic(
+                    _gs.unchosen_supply,
+                    tuple(o for i, o in enumerate(options) if i != pick.idx),
+                    produced_by='CwScreenSupplyNode',
+                    sig=_confirm_sig)
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞节点动作
-            log.warning(f'[cw-supply] chosen_supply 记录失败(不阻塞): {e}')
+            log.warning(f'[cw-supply] 选定/未选列记录失败(不阻塞): {e}')
         log.info('[cw-supply] options=%s pick=idx%d %s left=%s',
                  [(o.char, o.equip, o.has_diamond) for o in options],
                  pick.idx, pick.reason, _left)

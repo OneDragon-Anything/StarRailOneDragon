@@ -2922,6 +2922,22 @@ class GameState:
     # 随机4费 = bench 观察)
     encounter_reward_claimed: Field[tuple[int, str] | None] = field(default_factory=Field)
     chosen_supply: Field[tuple[str, tuple[str, ...]] | None] = field(default_factory=Field)  # (角色,装备名列表;y 序;带钻与否自列表派生)
+    # 补给未选列快照(打捞人才库族「每次进入补给阶段后获得上一阶段未选列」
+    # 的发源域):最近一次补给阶段选定时刻的未选列 = 终屏列 − 选定列
+    # ( SupplyOption 实例序 = 画面物理列序)。None = 无未选定案(未记录/
+    # 已消费/兜底点卡轮/兜底读缺轮)。
+    # [索引定义] 元素 = SupplyOption(容器 supply payload 同型),列表序
+    #   = 画面物理列序(左→右)0 基,取值时机 = 执行期快照(选定确认动作
+    #   的终屏在屏列,阶段内刷新重掷以选定时刻终屏为准);
+    # 写入端 = 补给画面 op 决策体真选分支确认窗(与 chosen_supply 同 sig
+    #   同窗,机械执行态限定写——sim 局不种本域,sim 补给 char 面未建模
+    #   为同一上游缺口族,未选集发放域 fail-closed);按列身份计数不按
+    #   内容去重(重复列形下内容消账有歧义,chosen_supply 不携带列身份);
+    # 消费即清 = 进入下一补给阶段时 check_strategy_supply_salvage 发放
+    #   被掷列后写回 None(重入幂等:同阶段观察上报多次第 2 次起已清零发);
+    # 无观察读端(bot 自有事实面),无开局种子(None 声明缺省即开局真值,
+    # B/C 类字段一个不种同规)。
+    unchosen_supply: Field[tuple[SupplyOption, ...] | None] = field(default_factory=Field)
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)
     chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(档=货币战争-祈愿试炼,写端=cw_screen_wish_trial)

@@ -762,6 +762,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['存款回报'], duties=DutyFlags(),
         notes='条件免费刷 2/节点:上节点未花费才授予,经节点桥发放;无即时腿'),
+    # 打捞人才库:官方「每次进入补给阶段后，随机获得一个未被选择的角色
+    # 及其携带的装备。」(cw_invest_data.py,id 100701)。触发面 =
+    # SUPPLY_PHASE(枚举成员随本条目首个在册使用);发放域 = 补给未选列
+    # (世界既有列,SupplyOption 具名结构,非注册表池)→ BATTLEFIELD
+    # 载体(发放类世界写入非 ECONOMY/STATE 载体形态),新字段
+    # salvage_unchosen_supply = 本卡取值语义。检查函数 =
+    # cw_effect_inventory.check_strategy_supply_salvage(挂观察上报尾部,
+    # 直查 active_strategies 不消费条目——登记与消费分离现役形态);
+    # STRATEGY_GRANTS 不入册(具名-only 宪章:发放物 = 世界既有列,
+    # 非「获得…角色名」直读,不可具名)。触发语义二义保守支 =
+    # R-entry 读法(进入补给阶段 N+1 首个成功观察帧消费阶段 N 未选列;
+    # 官方文本对照:全都要·银同域「未选择」带显式「选择后」时点措辞),
+    # pending=True 待实采定案(披露键 strategy_salvage_trigger_entry_reading)。
+    '打捞人才库': EffectSpec(
+        id='100701', name='打捞人才库', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(salvage_unchosen_supply=True),
+        duties=DutyFlags(),
+        pending=True,
+        notes='待采:触发二义保守支=R-entry 读法(进入下一补给阶段时点'
+              '发放,源=上一阶段选定时刻未选列;裁 R-choice 则改值)'),
 }
 
 

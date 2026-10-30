@@ -61,6 +61,9 @@ class TriggerKind(StrEnum):
     ON_REFRESH = 'on_refresh'      # 每次刷新时(淘金客/概率事件/采购专员计数)
     ON_MERGE = 'on_merge'          # 合成时(武力刷新=合成装备时,官方限定;角色升星是否同触发面待裁决——GameState 设计 §5 星星相印)
     CONDITIONAL = 'conditional'    # 条件窗口(躺平冻结/经验就是财富改道/成长基金到级)
+    SUPPLY_PHASE = 'supply_phase'  # 进入补给阶段时(打捞人才库族「每次进入补给阶段后」;
+                                   # 发放源 = 上一阶段选定时刻未选列快照,见
+                                   # check_strategy_supply_salvage)
 
 
 class DurationKind(StrEnum):
@@ -101,6 +104,9 @@ class BattlefieldEffect:
     counter_every: int = 0                  # 每 N 次刷新计数门槛(采购专员金 7/彩 5)
     first_merge_equip_junk: float = 0.0     # 每位面首次合成进阶装备变垃圾袋概率(变宝为废=0.5;
                                             # 随机面→不建逻辑写,观察收口)
+    salvage_unchosen_supply: bool = False   # 进入补给阶段时发放上一补给阶段未选列(打捞人才库:
+                                            # 发放物 = 世界既有列 SupplyOption 结构,非注册表池;
+                                            # 不入 EconomyEffect——避开经济三分类闭集义务)
 
 
 @dataclass(frozen=True)
@@ -1700,3 +1706,163 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
     return EquipAcquireReport(item=item, granted=name, star=star,
                               merge_steps=r.merge_steps, performed=r.placed,
                               detail=r.detail)
+
+
+# ===== 打捞人才库族:进入补给阶段时点检查(策略域世界发放首例)=====
+# 卡面(id 100701,官方原文 cw_invest_data.PLAZA_AUGMENTS):「每次进入
+# 补给阶段后，随机获得一个未被选择的角色及其携带的装备。」——发放域 =
+# 补给未选列(世界既有列,SupplyOption 具名结构,非注册表池)。触发语义
+# 按 R-entry 读法建模(披露键 strategy_salvage_trigger_entry_reading):
+# 进入补给阶段 N+1 后的首个成功观察帧消费阶段 N 选定时刻的未选列快照;
+# 局内首个补给阶段无源零发。通道构型 = 检查函数 + 单点接线覆盖双端
+# (环境域刷新触发发放同构先例):唯一挂点 = 观察上报
+# report_screen_supply_node_obs 函数体尾部(live 补给 op 直调 / sim
+# 呈现与刷新 / sim op 观察改道链全过本口),读缺帧早退在挂点之前 =
+# 刻意不发放(无画面证据帧不发放,实际触发时点 = 首个成功观察帧)。
+# sim 面 fail-closed 零发放:未选集场字段写端 = live 补给 op 真选分支
+# (限机械执行态),sim 局不种本域(sim 补给 char 面未建模 = 同一上游
+# 缺口族,真值对齐归 sim 补给真值专项)→ 本函数第 2 门恒早退,零发放
+# 零接线(披露键 strategy_salvage_sim_failclosed_decision_leg)。
+
+#: 持卡判定名单集(集合任一成员 ∈ active_strategies 即持卡,精确名单
+#: 匹配):本族 + 卡「打捞人才库+」(id 100702,主腿同模式)接线义务 =
+#: 集合 +1 名零新设计;集合语义天然防同持双发(命中即发放一次,非逐名
+#: 发放)。+ 名未收前 + 卡持有局主腿静默零发放(申报面缺口显式化)。
+_SALVAGE_STRATEGY_NAMES: tuple[str, ...] = ('打捞人才库',)
+
+#: 未选列抽样的采样分支具名键(解析口 = cw_action_report
+#: .action_sampling_rng,注入槽优先缺省回退自掷;先例 =
+#: ENV_MERGE_GRANT_RNG_TOOL 同形态)。禁为 sim 装配本流键:sim 局恒在
+#: 第 2 门早退,流键只服务 live 与测试(无谓消耗 sim 采样序列引漂移)。
+STRATEGY_SALVAGE_RNG_TOOL: str = 'strategy_salvage'
+
+#: 发放列角色入席星级先验(获取面单位恒 1★,升星仅经合成;与补给选定
+#: 上报 pick_supply._SUPPLY_GRANT_STAR 同款先验。发放腿整体 rand=True
+#: 随机态,先验错 = 观察覆盖纠偏不响灯,披露键 strategy_salvage_star_prior)。
+_SALVAGE_GRANT_STAR: int = 1
+
+#: 建模假设档披露键(静态常量在册,无运行时 setdefault 动作;同区先例 =
+#: HACKER_MOD/ORE/ENV_RANDOM_CHAR_GRANT 等 ASSUMPTION_KEYS 常量族):
+#: - trigger_entry_reading:触发语义按 R-entry 读法(卡面「进入…后」措辞
+#:   + 全都要·银同域显式「选择后」的官方文本对照);裁 R-choice 则改值/
+#:   退役;实采判据 = 持卡局选定后至下一阶段进入前 bench 是否已多出单位。
+#: - uniform_over_unchosen:「随机」分布未标,未选列均匀 v0 采样先验
+#:   例外;校准源 = logic_rand_outcome 行按随机写 evidence 前缀
+#:   ``strategy_salvage:`` / ``strategy_salvage_equip:`` 归组。
+#: - star_prior:发放列角色星级卡面未标 → 1★ 先验(rand=True 下先验错
+#:   不响灯)。
+#: - sim_failclosed_decision_leg:sim 局未选集恒 None → 检查恒第 2 门
+#:   早退零发放;sim 补给 char 面未建模为同一上游缺口族。
+STRATEGY_SALVAGE_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_salvage_trigger_entry_reading',
+    'strategy_salvage_uniform_over_unchosen',
+    'strategy_salvage_star_prior',
+    'strategy_salvage_sim_failclosed_decision_leg',
+)
+
+
+def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
+    """打捞人才库族·进入补给阶段时点检查(发放被掷未选列,消费即清)。
+
+    门序(顺序即短路序,前门不过后门不触):
+
+    1. **持卡判定**:名单集(:data:`_SALVAGE_STRATEGY_NAMES`)任一成员
+       ∈ ``gs.active_strategies`` 现值 → 过,否则零写早退。直查容器
+       不消费效果账本条目(登记与消费分离现役形态);
+    2. ``gs.unchosen_supply.value`` 空/None → 零写早退(None = 无未选定
+       案:未记录/已消费/兜底轮;sim 局恒此门早退 = fail-closed 零发放);
+    3. **均匀掷 1 列**:未选列上均匀 v0(「随机」分布未标,采样先验例外;
+       披露键 strategy_salvage_uniform_over_unchosen)。rng =
+       ``action_sampling_rng(STRATEGY_SALVAGE_RNG_TOOL, None)`` 函数内
+       解析——注入槽优先,缺省回退自掷 = live 猜测口径;
+    4. **发放被掷列**,原语与补给选定上报(report_action_pick_supply_param)
+       同构:char 非空 → :func:`grant_bench_unit_cascade`(rand=True
+       随机态——掷骰是对游戏 RNG 的猜测,下一备战帧 bench/equips 整表
+       观察覆盖差异自动纠偏;producer 显式传观察上报同写端归属值,防
+       缺省归因混淆;席满/席未观察 = 原语现役拒落零写
+       detail='bench_full'/'bench_unobserved',角色腿拒落不阻断装备腿,
+       单级合成级联保留);装备腿 = 未选列名保持 OCR 原文(归一仅发生于
+       被选列选定窗),逐件先 :func:`normalize_registry_equip_name`
+       归一(两段式):命中 → ``owned += 规范名``(write_logic_rand
+       随机态)+ :func:`apply_equip_acquire_consequence`(获得即后果,
+       rand=True);归一失败('')件逐件禁猜 → equips 值不变翻来源 +
+       缺陷留证 fail-closed(错名不入账,观察覆盖自愈),已解析件照常
+       入账;char-only 列(char 非空 ∧ 装备名全空)= 合法形态,仅角色
+       腿零装备写零缺陷(补给选定上报零装备名分支同构——件名全失读
+       子况的失配仍由 equips 观察整表覆盖暴露);
+    5. **消费即清**:``gs.unchosen_supply`` 写回 None(逻辑态)——同
+       阶段观察上报多次(刷新重进重读)第 2 次起字段已清零发,重入幂等。
+
+    ``sig`` = 全部写共用渠道签名,必须 logic_action / logic_hook 族
+    (唯一挂点传入观察上报内部的 logic_action 签名,天然满足)。
+    效果串落点 = 随机写 evidence 串本身(char 腿
+    ``strategy_salvage:<名>@<star>star`` / 装备腿
+    ``strategy_salvage_equip:<件>``)——本函数不在获得链、无
+    GainOutcome.effects 载体,logic_rand_outcome 行归组键 = 原随机写
+    evidence(容器 logic_evidence 携带)。
+    """
+    strategies = gs.active_strategies.value or []
+    if not any(name in strategies for name in _SALVAGE_STRATEGY_NAMES):
+        return
+    unchosen = gs.unchosen_supply.value
+    if not unchosen:
+        return
+    # kernel 反向模块级零 import 契约:action_sampling_rng 住上报函数族
+    # 包,函数内惰性取(单向破环先例 = 环境合并触发发放)。
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    from sr_od.application.currency_war.kernel.cw_events import (
+        normalize_registry_equip_name,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        _emit_defect,
+    )
+    roll_rng = action_sampling_rng(STRATEGY_SALVAGE_RNG_TOOL, None)
+    col = roll_rng.choice(unchosen)
+    if col.char:
+        grant_bench_unit_cascade(
+            gs, col.char, _SALVAGE_GRANT_STAR, rand=True,
+            evidence=(f'strategy_salvage:{col.char}'
+                      f'@{_SALVAGE_GRANT_STAR}star'),
+            producer='CwScreenSupplyNode', sig=sig)
+    equip_texts = (col.equip, *col.extra_equips)
+    if not any(equip_texts):
+        # 零装备名分支(char-only 列 / 件名全失读,两形态读链不可分):
+        # 装备域零写零缺陷(补给选定上报同构;失配由 equips 观察整表
+        # 覆盖下一帧暴露,fail-visible)。直接跳到消费即清。
+        pass
+    else:
+        for text in equip_texts:
+            norm = normalize_registry_equip_name(text) if text else ''
+            if norm:
+                # 装备入账:owned += 规范名(账面恒标准名;单一源 =
+                # gs.equips 现读-改写-回写)+ 获得后果链(获得即送,
+                # 随机态通道与主链一致)。
+                owned = list(gs.equips.value or [])
+                owned.append(norm)
+                gs.write_logic_rand(
+                    gs.equips, owned, produced_by='CwScreenSupplyNode',
+                    evidence=f'strategy_salvage_equip:{norm}', sig=sig)
+                apply_equip_acquire_consequence(gs, norm,
+                                                frame='strategy_salvage',
+                                                rand=True, sig=sig)
+            else:
+                # 装备名未解析:禁猜,equips 值不变翻来源 + 留证
+                # fail-closed(分层归一多/零命中 = 件名不可辨,错名不入
+                # 账由观察覆盖自愈;未选列不经选定窗验证,归一失败率
+                # 天然高于被选列)。
+                if gs.equips.value is not None:
+                    gs.write_logic_rand(
+                        gs.equips, gs.equips.value,
+                        produced_by='CwScreenSupplyNode',
+                        evidence='strategy_salvage_name_unresolved',
+                        sig=sig)
+                _emit_defect(field_name='equips',
+                             expected='strategy_salvage_equip_name',
+                             actual='unresolved',
+                             evidence='strategy_salvage_landing',
+                             sig=sig, kind='strategy_salvage_name_unresolved')
+    gs.write_logic(gs.unchosen_supply, None,
+                   produced_by='CwScreenSupplyNode',
+                   evidence='strategy_salvage_consumed', sig=sig)

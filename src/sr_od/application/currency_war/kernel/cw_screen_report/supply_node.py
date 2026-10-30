@@ -56,6 +56,14 @@ def report_screen_supply_node_obs(gs: GameState, obs: CwScreenSupplyNodeObs, *,
     options 空 = 读缺(画面 op 空候选分支 = 零点击终结交回),整函数早退不写(含 left,
     invest_env names 空先 return 同构);``chosen_supply`` 留在(动作事实
     边界)。
+
+    函数体尾部挂打捞人才库族检查(check_strategy_supply_salvage,单点
+    接线覆盖双端:live op 直调 / sim 呈现与刷新 / sim op 观察改道链全过
+    本口)——挂点在早退**之后** = 读缺帧刻意不发放(无画面证据帧不发放),
+    R-entry 实际触发时点 = 进入补给阶段后的首个成功观察帧,读缺局发放
+    顺延(发放源 = 场字段 unchosen_supply 非 本帧容器 supply,时点顺延
+    语义无害);同阶段观察上报多次由「消费即清」幂等承接。sim 局同过
+    本口:未持卡/未选集 None 双门早退零发放(fail-closed)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',
@@ -68,3 +76,7 @@ def report_screen_supply_node_obs(gs: GameState, obs: CwScreenSupplyNodeObs, *,
     if obs.refresh_left is not None:
         gs.write_logic(gs.supply_refresh_left, int(obs.refresh_left),
                        produced_by='CwScreenSupplyNode', sig=sig)
+    from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+        check_strategy_supply_salvage,
+    )
+    check_strategy_supply_salvage(gs, sig)
