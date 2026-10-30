@@ -783,6 +783,29 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         pending=True,
         notes='待采:触发二义保守支=R-entry 读法(进入下一补给阶段时点'
               '发放,源=上一阶段选定时刻未选列;裁 R-choice 则改值)'),
+    # 打捞人才库+:姊妹展开卡(id 100702),句 1 与基础卡逐字同文 → 主腿
+    # 同 payload 同 trigger 纯登记(机制单一源 = 基础卡条目 + 检查函数,
+    # 本批零新设计;持卡判定 = 名单集 _SALVAGE_STRATEGY_NAMES 双名,集合
+    # 语义防同持双发)。句 2「获得1个随机简易装备和4金币」三面拆分注记
+    #(先例 = 商业间谍条目拆分注记):
+    # ① 主腿(未选列打捞)= 本条目辖域,触发二义沿基础卡保守支 R-entry,
+    #    pending=True 同判据;
+    # ② 句 2 装备腿 = 获得时点效果体,归 cw_gain_effects.PICK_INVEST_
+    #    EFFECTS(非本条目),时点保守支 = R-instant,披露键
+    #    strategy_salvage_plus_instant_reading;
+    # ③ 句 2 金腿 = STRATEGY_ECONOMY instant_gold=4 在册零动,发放端
+    #    缺口 = 族级待办(T-112 公司人才流动同款),非本条目辖域。
+    '打捞人才库+': EffectSpec(
+        id='100702', name='打捞人才库+', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(salvage_unchosen_supply=True),
+        duties=DutyFlags(),
+        pending=True,
+        notes='待采:主腿触发二义沿基础卡(100701)保守支=R-entry 读法;句2 '
+              '装备腿=获得时点效果体归 PICK_INVEST_EFFECTS,时点保守支='
+              'R-instant(披露键 strategy_salvage_plus_instant_reading);'
+              '句2 金腿=STRATEGY_ECONOMY instant_gold=4 在册零动,发放端'
+              '缺口=族级待办非本条目辖域'),
 }
 
 

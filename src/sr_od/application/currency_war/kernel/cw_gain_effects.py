@@ -17,6 +17,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable
 
+from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -258,15 +259,97 @@ def _make_reinforcement_effect(cost: int,
     return _effect
 
 
+# ===== 随机简易装备族效果(策略卡获得时点随机简易装备发放:简易池均匀
+# ===== v0 掷骰 count 件 → 逐件 gain_equipment(rand=True) 入栏,骇客
+# ===== roll_hacker_mod + gain_equipment 现役同构;腿族首例 = 打捞人才库+
+# =====(id 100702 句 2 装备腿),同族 15 卡后续批各自领取复用本表)=====
+
+#: 建模假设档披露键(在册落点 = 本常量,随局披露面消费;键形态沿骇客/
+#: 援军同区先例):
+#: - instant_reading: 句 2「获得1个随机简易装备和4金币」按获得时点即时腿
+#:   建模(instant_gold 注册口径「选牌当场给金」+ 同句式家族金币成分全
+#:   instant 在册——武装支援+/军火贸易族;裁 R-recurring 则改值/退役,
+#:   实采判据 = 拿卡后未进任何补给阶段前物品栏是否已多 1 件简易装备);
+#: - uniform_simple_pool: 池 = category='简易' 全集均匀 v0(「随机」分布
+#:   未标,采样先验例外;游戏真分布未知,是否受已有装备约束未证;校准源
+#:   = logic_rand_outcome 行按效果串前缀 ``strategy_random_equip:``
+#:   归组)。
+STRATEGY_SALVAGE_PLUS_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_salvage_plus_instant_reading',
+    'strategy_random_equip_uniform_simple_pool',
+)
+
+#: 随机简易装备族发放表单一源(卡规范名 → 件数;卡文「获得1个随机简易
+#: 装备」直读)。效果体条目由下方工厂从本表生成,禁另写字面量(箱腿/
+#: 援军表先例纪律:表与效果体两处独立字面量的漂移在备战断言不可见,
+#: 唯一致性测试与落位真值可暴露)。
+_STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, int] = {
+    '打捞人才库+': 1,
+}
+
+#: 随机简易装备池(category='简易' 全集,字母序确定性;池口径随装备注册
+#: 表传导)。与晶矿 cw_ore_reward._SIMPLE_EQUIP_POOL 同表达式同口径,
+#: 独立定义互指不跨模块引私有名(晶矿池为模块私有名;两池口径漂移由
+#: 测试侧同集断言守住)。
+_RANDOM_SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
+    name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
+
+
+def roll_random_simple_equip(rng: random.Random) -> str:
+    """单次随机简易装备身份采样(纯函数;rng 注入,sim/live 共用同一语义)。
+    池 = :data:`_RANDOM_SIMPLE_EQUIP_POOL`(等概率均匀;分布形态未实测,
+    披露键 ``strategy_random_equip_uniform_simple_pool``)。"""
+    return rng.choice(_RANDOM_SIMPLE_EQUIP_POOL)
+
+
+def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
+    """随机简易装备效果体工厂(闭包销 = 件数,单源取自
+    :data:`_STRATEGY_RANDOM_EQUIP_GRANTS`;形态镜像 _make_reinforcement_effect)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained)。逐件采样 → ``gain_equipment``
+    入栏:采样效果对子链传 rand=True(gain-chain.md §5 效果自身性质
+    传参),装备获得后果经 on_equipment_gained 回调自动消费;equips 未
+    观察 = 原语现役拒落跳写(detail='equips_unobserved')。装备无星级,
+    效果串不带 @<N>star 后缀:``strategy_random_equip:<名>``(落位)/
+    ``strategy_random_equip:<名>(skipped)``(跳写,骇客 mod_equip/
+    mod_sampled 两形态同构);发放事实与落位成败解耦,效果串恒 count 条。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿/援军先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_equipment,
+        )
+        steps: list[str] = []
+        for _ in range(count):
+            name = roll_random_simple_equip(rng)
+            eq = gain_equipment(gs, name, rand=True, sig=sig,
+                                evidence='pick_invest_random_equip',
+                                producer=_PRODUCER)
+            if eq.placed:
+                steps.append(f'strategy_random_equip:{name}')
+            else:
+                steps.append(f'strategy_random_equip:{name}(skipped)')
+        return steps
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
        for name, item in _STRATEGY_BOX_GRANTS.items()},
     **{name: _make_reinforcement_effect(cost, count)
        for name, (cost, count) in _STRATEGY_REINFORCEMENT_GRANTS.items()},
+    **{name: _make_random_equip_effect(count)
+       for name, count in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
-_STRATEGY_REINFORCEMENT_GRANTS 生成)。未收录名 = 零效果分派(查无
+_STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
+_STRATEGY_RANDOM_EQUIP_GRANTS 生成)。未收录名 = 零效果分派(查无
 效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)职责分离
 声明见各表模块头。"""

@@ -1725,10 +1725,10 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
 # 零接线(披露键 strategy_salvage_sim_failclosed_decision_leg)。
 
 #: 持卡判定名单集(集合任一成员 ∈ active_strategies 即持卡,精确名单
-#: 匹配):本族 + 卡「打捞人才库+」(id 100702,主腿同模式)接线义务 =
-#: 集合 +1 名零新设计;集合语义天然防同持双发(命中即发放一次,非逐名
-#: 发放)。+ 名未收前 + 卡持有局主腿静默零发放(申报面缺口显式化)。
-_SALVAGE_STRATEGY_NAMES: tuple[str, ...] = ('打捞人才库',)
+#: 匹配):基础卡「打捞人才库」(id 100701)+ 展开卡「打捞人才库+」
+#:(id 100702,主腿同模式,+卡成员 = T-95 批接线)。集合语义天然防同持
+#: 双发(命中即发放一次,非逐名发放)。
+_SALVAGE_STRATEGY_NAMES: tuple[str, ...] = ('打捞人才库', '打捞人才库+')
 
 #: 未选列抽样的采样分支具名键(解析口 = cw_action_report
 #: .action_sampling_rng,注入槽优先缺省回退自掷;先例 =
