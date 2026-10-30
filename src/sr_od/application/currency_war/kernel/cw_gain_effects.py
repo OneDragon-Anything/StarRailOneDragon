@@ -133,7 +133,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
 # ===== 2026-09-24-advanced-armory-box design §2.3)=====
 
 #: 开箱分支卡发放名单单一源(卡规范名 → 发放道具名;登记面镜像 =
-#: cw_investments.STRATEGY_GRANTS 四卡 items_immediate,一致性测试逐对
+#: cw_investments.STRATEGY_GRANTS 五卡 items_immediate,一致性测试逐对
 #: 相等——attack.md A4 阻断修订:禁效果体闭包常量与登记表两处独立字面量,
 #: 名字漂移在备战断言不可见[BenchSlot kind 与道具名解耦],唯本测试 +
 #: 席满溢出落位真值可暴露)。注册表条目由下方工厂从本表生成,禁另写字面量。
@@ -142,6 +142,7 @@ _STRATEGY_BOX_GRANTS: dict[str, str] = {
     '保守派': '进阶武装箱',
     '快请专家·彩': '进阶武装箱',
     '军火贸易': '简易武装箱',
+    '军火贸易+': '简易武装箱',
 }
 
 
@@ -381,7 +382,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name in STRATEGY_DELAYED_OFFERS},
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
-开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
+开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生——登记表 +1 行即自动获得
