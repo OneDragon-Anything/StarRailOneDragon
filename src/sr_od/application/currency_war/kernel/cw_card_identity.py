@@ -1,12 +1,10 @@
 """卡牌身份谓词(kernel;输入纯度面)。
 
-「自己人」(持有保护)身份判定单一源 = 策略层
-``mandate_v1/protection``(保护集,买卖两侧同源;域分派见其模块
-docstring),本模块不承载任何持有名单;C1 单卡核心 =
-``kernel.cw_comps.CORE_SINGLE_CARD_REGISTRY`` 直判。
-
 本模块现役唯一职责 = :func:`is_engine_piece` 引擎件身份谓词
 (注册表现算单一源;种子排除等消费方经本口取用)。
+
+(原持有保护身份面与 C1 单卡核心直判的指引行已随统一让位优先级
+迭代 3.4 退役删除——静态不许卖名单与 C1 单卡核心囤积规则整批退役。)
 
 依赖方向:本模块只 import data/knowledge/kernel 注册表,不 import
 strategies 面(kernel 输入纯度,同 cw_line_facts 声明)。

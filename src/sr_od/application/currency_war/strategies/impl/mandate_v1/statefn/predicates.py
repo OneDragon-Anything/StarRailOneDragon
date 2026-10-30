@@ -1,24 +1,25 @@
-"""板面/目标线谓词(目标线 K/零重叠)+「挂后台效果」资格谓词。
+"""板面/目标线谓词(目标线 K/零重叠)+ 卖出资格物理谓词。
 
 01_math_framework §2 的在产实现:目标线 K(阵容 的 core/shared/flex
-名单,cw_comps.COMP_LIBRARY 运行时可判定)与零重叠资格(M4 燃料件
-卖出前提)。升级触发不落本模块——单判据三分派单一源 =
-criteria/levelup.upgrade_trigger。
+名单,cw_comps.COMP_LIBRARY 运行时可判定)与零重叠资格。升级触发不落
+本模块——单判据三分派单一源 = criteria/levelup.upgrade_trigger。
+
+(「挂后台效果」资格谓词族 bench_effect_qualified/bench_effect_context
+已随旧评估器退役删除——统一让位优先级迭代 3.4:四处消费位整批退役,
+该维度由统一序列档 7 判定承载;cw_chars 的 bench_effect 数据字段保留
+为游戏数据。)
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
+from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_slot_unit,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    deployed_rows_of,
     plane_of,
     round_num_of,
 )
@@ -26,56 +27,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (
         BenchSlot,
-        Unit,
     )
-
-
-def bench_effect_context(state: GameState, unit: Unit,
-                         k_members: tuple[str, ...] = (),
-                         ) -> BenchEffectContext:
-    """三消费位(fuel_sell 豁免/凑利息档序资格/支付支撑变现)共享的语境
-    装配函数(IMPL_ADV_R200 症3:语境从容器现读,禁各通道自拼)。
-
-    可观测来源(逐项):
-    - ``rust_affix_present``:``gs.enemy_affixes`` 含
-      ``RUST_AFFIX_NAME``(与 kernel/cw_registry H2② 同一判据源);
-    - ``equipped``:被评估单位自身 ``unit.equips`` 非空(单位级现读,
-      恒可得);
-    - ``herta_star_supply``:黑塔纪元 augment 局(``gs.
-      active_strategies`` 含 ``proof.DIRECT_LINE_SIGNAL_STRATEGIES``
-      成员,单一源)∨ 板面(行域)存在星级供强承载对象
-      「大黑塔」(名册锚=cw_chars CHARACTERS['大黑塔'],银河学者星级
-      供强线)∨ 线内(K 成员含承载对象——换线过渡期语境)。
-
-    ``equipped`` 恒单位级现读。影响面=仅 bench_effect 载体件(现册仅
-    「黑塔」),纯燃料件类级默认不受影响。
-    """
-    equipped = bool(getattr(unit, 'equips', None))
-    affixes = list(state.enemy_affixes.value or ())
-    rust = RUST_AFFIX_NAME in affixes
-    herta = _herta_supply_present(state, k_members)
-    return BenchEffectContext(rust_affix_present=rust, equipped=equipped,
-                              herta_star_supply=herta)
-
-
-#: 星级供强的承载对象(供给目标;名册锚=cw_chars CHARACTERS 注册条目
-#: 「大黑塔」——小黑塔 bench_effect='星级供强' 的合成对象,final_daheita
-#: 线知识)。名取自注册表名,非拟合值。
-_HERTA_SUPPLY_TARGET: str = '大黑塔'
-
-
-def _herta_supply_present(state: GameState,
-                          k_members: tuple[str, ...]) -> bool:
-    """星级供强语境在场判定(例外①的观测面:augment 局 ∨ 板面 ∨ 线内)。"""
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import proof
-    strategies = list(state.active_strategies.value or ())
-    front, back = deployed_rows_of(state)
-    if any(s in proof.DIRECT_LINE_SIGNAL_STRATEGIES for s in strategies):
-        return True
-    if any((getattr(d, 'char_id', '') or '') == _HERTA_SUPPLY_TARGET
-           for d in (*front, *back) if d is not None):
-        return True
-    return _HERTA_SUPPLY_TARGET in k_members
 
 
 def line_members(comp: Comp | None) -> tuple[str, ...]:
@@ -200,52 +152,6 @@ def p2_blood_floor(state: GameState) -> bool:
         return False
     hp = state.hp.value
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
-
-
-@dataclass(frozen=True)
-class BenchEffectContext:
-    """「挂后台效果」资格谓词的语境输入(R32-中⑤ 前置半步 0)。
-
-    - ``rust_affix_present``:库藏生锈词缀是否在场(词缀识别名 =
-      ``cw_comps.RUST_AFFIX_NAME`` 单一源,01_math_framework §3.4 #4);
-    - ``equipped``:被评估单位当前是否已穿装备(谓词读装备态的分支入参——
-      穿装备改变词缀计数资格,与 01_math_framework §3.4 #4 无用件聚拢穿到工具人有交互);
-    - ``herta_star_supply``:黑塔·银河学者星级供强语境(板面/线内存在
-      大黑塔·银河学者成员,或黑塔纪元 augment 局)——例外①的显式枚举载体。
-    """
-
-    rust_affix_present: bool = False
-    equipped: bool = False
-    herta_star_supply: bool = False
-
-
-def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
-    """「挂后台效果」资格谓词(前置半步 0;单位级载体 = cw_chars.Character
-    ``bench_effect`` 字段,注册表单一源)。
-
-    语义:该 bench 单位的后台效果当前是否生效(生效 ⇒ 三消费位按「不可当
-    燃料/凑息件处置」处理)。判定 = 载体字段非空 ∧ 例外①②显式枚举:
-
-    - **例外①(黑塔·银河学者星级供强语境,含黑塔纪元 augment 局)**:小黑塔
-      (``bench_effect='星级供强'``)在星级供强语境下**保持资格**——其为
-      1 费件,类级默认(低费=燃料)会静默放行例外件,故必须显式枚举
-      (R32-中⑤ 载体缺口闭合的对象);语境不在场时星级供强无承载对象,
-      不享保护(回归燃料类)。
-    - **例外②(库藏生锈词缀局)**:生锈罚按未穿装备计数 ⇒ 合取条件
-      「生锈不在场 ∨ 该件已穿装备」——生锈在场且未穿 ⇒ 资格不成立
-      (排除出卖面桶不动子集);已穿装备 ⇒ 照常入桶不动子集。
-
-    三消费位(判据层步 4 落地时消费,本批只建载体):fuel_sell 豁免 /
-    凑利息档序资格 / 危局阀桶不动子集。
-    """
-    ch = CHARACTERS.get(name)
-    if ch is None or not getattr(ch, 'bench_effect', ''):
-        return False
-    # 例外①:星级供强语境显式枚举(语境不在场=无承载对象,不享保护)
-    if ch.bench_effect == '星级供强' and not ctx.herta_star_supply:
-        return False
-    # 例外②:生锈合取条件「生锈不在场 ∨ 已穿装备」(读装备态分支)
-    return not (ctx.rust_affix_present and not ctx.equipped)
 
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
@@ -388,8 +294,7 @@ def advances_four_system(name: str) -> bool:
 
 
 __all__ = [
-    'BenchEffectContext', 'RUST_AFFIX_NAME', 'advances_four_system',
-    'bench_effect_context', 'bench_effect_qualified',
+    'advances_four_system',
     'front_window_frame', 'front_window_table_ready', 'line_members',
     't5_p1_false', 'zero_form_frame', 'zero_overlap',
 ]

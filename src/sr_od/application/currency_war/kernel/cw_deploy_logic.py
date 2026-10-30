@@ -197,8 +197,8 @@ def board_target_line_weight(
     代理,预测力集中于 boss 战存活深度,对伤害差/终局 hp 仅弱正
     ——判读时按此边界解读,勿拔高用途)。与换人判据的支撑件计数
     (换人通道统一批新增判据)为**不同辖域的两个口径**:后者 = 锁定
-    终局阵容名单成员 ∪ 终局键集标签命中外部件(单一源 =
-    ``terminal_key_label_hit_names``/``_bond_gate_support_count``,
+    终局阵容名单成员 ∪ 终局键集标签命中外部件(判定核 = ``_bond_gate_support_count``
+    内联标签命中判定;
     进换人行为面、计数随 ``bond_gate_keys`` 变);本计数 = 四过渡体系
     披露口径,纯遥测不进判据、不随锁定键集变。两口径并存,禁互相
     替代。禁第二实现:任何 B_t
@@ -1318,32 +1318,6 @@ def support_view_char_is(ctx: SwapPlanContext, char_id: str) -> bool:
     ch = CHARACTERS.get(cid) if cid else None
     return ch is not None and bool(
         (set(ch.factions) | set(ch.flows)) & ctx.bond_gate_keys)
-
-
-def terminal_key_label_hit_names(
-        bond_gate_keys: frozenset[str] | set[str]) -> frozenset[str]:
-    """终局键集标签命中件名集(全注册表;design §2.1 标签命中判据的
-    集合形态单一源)。
-
-    谓词 = 单位羁绊标签(factions ∪ flows,读法单一源 = ``_bonds_named``,
-    与 ``support_view_char_is`` 同式)命中键集即计入——**不看是否已承载
-    激活档位**(design 2026-10-26-swap-channel-unified §2.8 排除谓词
-    语义钉死:现行 ``is_field_irrelevant_unit`` 仅资格级覆盖「有已达成
-    档」件,本集合盖住无档标签件的泄露面——义务基座按费用序截断〔B′〕
-    可把非名单标签件裁出保护面,来金通道即由此泄露);名单成员命中亦
-    计入 = 冗余兜底(义务集已保,无害)。键集空(未锁定帧无终局键集)
-    恒空集,谓词零面。教义锚:「哪怕下远坂凛都不能拆能量」(cw_comps.py
-    双王圣杯 branch_key 注记)——标签命中一律保护,bench 标签件为未来
-    板面成员同受保护。
-
-    消费面 = sell_gate 装配 A 身份段(来金族资格增补排除,design §2.8
-    堵回降口二);禁消费位自建第二份集合口径。
-    """
-    keys = set(bond_gate_keys)
-    if not keys:
-        return frozenset()
-    return frozenset(n for n in CHARACTERS if _bonds_named(n) & keys)
-
 
 def bench_target_count(ctx: SwapPlanContext | None, *,
                        bench: list | None = None) -> int:

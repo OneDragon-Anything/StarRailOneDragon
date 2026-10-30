@@ -38,21 +38,14 @@ class ContractCtx:
       v3_intention 在场性派生;缺供给帧=保守侧不回退,合法)。
     - k_fallback_resolved:消费位**实解析**的回退成员集(单一源
       cw_intention 调用的返回物;供给在场而解析为空 = 「回退字面量
-      空元组」复发形态,违例——p1 带恒违例;p2plus 带合法空须携带
-      k_fallback_source 证据,见该字段)。
+      空元组」复发形态,违例——p1 带恒违例;p2plus 带合法空 =
+      丙分支保利息缺省,统一让位优先级迭代 3.4 后 p2plus 带按带放行,
+      见 _k_projection_domain_full)。
     - k_fallback_band:分带 token(cw_intention.k_empty_window_fallback
-      第二返回值直传,零第二派生;P86 证明批 §4.6-1)。空窗期待按带
-      非对称:p1 带(p1_gap/p1_lock_band)回退集注册表派生构造性非空;
-      p2plus 带实现后空集合法(丙分支保利息帧)。None = 带未知,按 p1 带
+      第二返回值直传,零第二派生)。空窗期待按带非对称:p1 带
+      (p1_gap/p1_lock_band)回退集注册表派生构造性非空;p2plus 带
+      = 保利息缺省(合法空集)。None = 带未知,按 p1 带
       保守期待处置(空 = 违例)。
-    - k_fallback_source:p2plus 带合法空的来源证据(P86 证明批 §4.6-2;
-      合法值 = cw_intention.K_FALLBACK_SOURCE_THREE_ARM——判据分支评估
-      产出)。无来源标记的空集 = 复发形态,违例(检测力不松动)。
-    - locked_buy_members:锁定帧买侧采购集实解析
-      (cw_intention.locked_buy_membership 返回物)。合法形态 = None
-      (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(终局阵容锁定态);
-      其他对象 = 「字面量冒充解析结果」复发形态,违例。消费位 =
-      C1 核心卡通道契约。
     """
 
     k_members: tuple[str, ...] | None = None
@@ -62,8 +55,6 @@ class ContractCtx:
     k_fallback_available: bool = field(default=False)
     k_fallback_resolved: object = field(default=None)
     k_fallback_band: str | None = field(default=None)
-    k_fallback_source: str | None = field(default=None)
-    locked_buy_members: object | None = field(default=None)
 
 
 def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
@@ -75,25 +66,19 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
 
-    **P86 带维度扩展(无目标期三分支判据实现批;证明批 §4.3 裁决②)**:
-    k_members 空且系三分支判据评估产出的合法空(k_target=None ∧ 回退供给
-    在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
-    存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
-    R196 同型)不成立;富余带必花通道(dominance/EV)按裁决②
-    「富余段维持」不以本前提误伤,其自身带判据/候选门照旧覆盖。证据要件
-    与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
-    three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
-    (k_fallback_available False)维持旧违例语义(无评估证据的空 =
-    复发形态)。"""
+    **带维度非对称期待(P86 实现批,证明批 §4.6;统一让位优先级迭代
+    3.4 修订——甲/乙臂退役)**:p1 带
+    (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
+    (检测力保留);p2plus 带空集合法 = 丙分支保利息缺省帧(K 目标
+    未锁期源已切换为策略层候选快照三线并集 ∪ 配方成员,kernel 甲臂
+    兜底退役——原「来源证据 token」要件随判据分支退役删除,带本身即
+    合法空证据);供给缺帧(k_fallback_available False)维持旧违例
+    语义(无评估证据的空 = 复发形态)。"""
     if ctx.k_members:
         return True
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        K_FALLBACK_SOURCE_THREE_ARM,
-    )
     return (ctx.k_target is None and ctx.k_fallback_available
             and not ctx.k_fallback_resolved
-            and ctx.k_fallback_band == 'p2plus'
-            and ctx.k_fallback_source == K_FALLBACK_SOURCE_THREE_ARM)
+            and ctx.k_fallback_band == 'p2plus')
 
 
 def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
@@ -126,38 +111,20 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     复发形态,违例弃权。回退单一源=cw_intention.hoard_target_set /
     p1_early_pair_members(禁复制四体系全集逻辑)。
 
-    **带维度非对称期待(P86 实现批,证明批 §4.6)**:p1 带
+    **带维度非对称期待(P86 实现批,证明批 §4.6;统一让位优先级迭代
+    3.4 修订——甲/乙臂退役)**:p1 带
     (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
-    (检测力保留);p2plus 带实现后空集合法(两分支皆空 → 丙分支保利息帧),
-    但合法空必须携带来源证据——``k_fallback_source`` ==
-    cw_intention.K_FALLBACK_SOURCE_THREE_ARM(判据分支评估产出)才放行,
-    无来源空 = 复发形态守卫不松动。分期接线:停用常量在位期 p2plus
-    解析恒非空,本分支无行为面。"""
+    (检测力保留);p2plus 带空集合法 = 丙分支保利息缺省帧(甲臂判活
+    路径已随 K 源切换退役——原「来源证据 token」要件随判据分支退役
+    删除,带本身即合法空证据);供给缺帧(k_fallback_available False)
+    维持旧违例语义(无评估证据的空 = 复发形态)。"""
     if ctx.k_target is not None:
         return True
     if not ctx.k_fallback_available:
         return True
     if ctx.k_fallback_resolved:
         return True
-    if ctx.k_fallback_band == 'p2plus':
-        # 延迟 import(内核→契约面单向依赖;常量单一源在 cw_intention)
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            K_FALLBACK_SOURCE_THREE_ARM,
-        )
-        return ctx.k_fallback_source == K_FALLBACK_SOURCE_THREE_ARM
-    return bool(ctx.k_fallback_resolved)
-
-
-def _core_channel_locked_ctx(ctx: ContractCtx) -> bool:
-    """C1 核心卡通道前提:终局阵容锁定态语境,可核验派生形态。
-
-    前提 = ctx.locked_buy_members 系 cw_intention.locked_buy_membership
-    实解析物且非空(终局阵容锁定态);None = 未锁帧,通道不评估(设计判据式
-    前件,合法 fail 方向非违例)。空 frozenset / 非 frozenset 对象 =
-    「字面量冒充解析结果」复发形态,违例弃权。
-    """
-    return (isinstance(ctx.locked_buy_members, frozenset)
-            and bool(ctx.locked_buy_members))
+    return ctx.k_fallback_band == 'p2plus'
 
 
 @dataclass(frozen=True)
@@ -223,13 +190,15 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     # —— criteria/refresh ——
     ('refresh', 'refresh_warranted'): Contract(
         None,
-        '三段式刷新判据主式 + 目标可买合取(查表零计算:P1 恒不刷'
+        '三段式刷新判据主式(查表零计算:P1 恒不刷'
         '〔plane2_started 谓词〕/P2 未锁窗口候选缺件/锁定后星级目标'
-        '——带归属绑定 = 当前停留目标的带;目标可买 = 有空位 ∨ 合成腿'
-        '∨ 席位腿三腿并集,三腿全无拒因 target_unbuyable);无标定槽位'
-        '依赖',
+        '——带归属绑定 = 当前停留目标的带);目标可买合取已随预测门'
+        '退役删除(统一让位优先级迭代 3.4,dismantle §1——刷新时点'
+        '预测不可算,判据收敛三分派,拒因键 target_unbuyable 同批'
+        '退役);无标定槽位依赖',
         'shop_session §2.4(迭代 2026-10-12;用户裁定「期望价值难算不'
-        '直观,星级目标直接驱动」——R1 路径总账判据面退役的本批替代面)'),
+        '直观,星级目标直接驱动」——R1 路径总账判据面退役的本批替代面;'
+        '3.4 预测门整拆)'),
     ('refresh', 'r2_budget'): Contract(
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
@@ -270,26 +239,22 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'line,截断口径),与 s_reserve 可变现口径不同源不同面,'
         '非 mandate.check_s_reserve 消费位(T-193)',
         'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
-    ('mandate', 'core_single_card_buy_eligible'): Contract(
-        _core_channel_locked_ctx,
-        'C1 直通核心卡支配性支资格门:前提=锁线态(锁定采购集实解析在'
-        '场;未锁帧通道不评估)',
-        '设计《直通核心卡信号层入口》§2 案A+§4 P25 行'),
+    # (契约键 ('mandate','core_single_card_buy_eligible') 已随 C1 支
+    #  退役整删——统一让位优先级迭代 3.4,dismantle §2 跨文件死件。)
     # —— 第三病灶(K 空窗回退)消费位 ——
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
         '商店线方向 pass K 投影:前提=战略层产物 target_comp 值域全集'
         '含 None——回退辖三带(P1 空窗带=hoard_target_set 四体系全集 / '
-        'P1 锁线过渡带=p1_early_pair top-2 方向 / P2+ 带=三臂判据'
-        '[P86:甲臂判活=机器强锁门逐字方向采购集;甲臂空=合法空集'
-        '(丙臂守息,须携带 k_fallback_source=three_arm 证据;'
-        'weak/demoted 分带仍走跨线骨架)]),单一源=cw_intention(禁复制);'
-        '供给在场而回退解析空集即违例(p1 带恒违例;p2plus 带无来源'
-        '证据的空集违例)',
+        'P1 锁线过渡带=p1_early_pair top-2 方向 / P2+ 带=保利息缺省'
+        '[丙分支合法空集;甲臂判活路径与乙臂枢纽已随统一让位优先级'
+        '迭代 3.4 退役,K 目标未锁期源切换为策略层候选快照三线并集'
+        ' ∪ 配方成员]),单一源=cw_intention(禁复制);'
+        '供给在场而回退解析空集即违例(p1 带恒违例;p2plus 带合法空)',
         'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
         '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3'
         '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标)'
-        '+P86 证明批 §4.6(带维度非对称期待)'),
+        '+P86 证明批 §4.6(带维度非对称期待;3.4 甲/乙臂退役修订)'),
 }
 
 

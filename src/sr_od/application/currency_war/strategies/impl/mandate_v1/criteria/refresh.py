@@ -1,9 +1,15 @@
 """criteria/refresh——刷新面(§2.4)。
 
-刷新链三组件定型:判据(:func:`refresh_warranted`,三段式查表 +
-目标可买合取)→ 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve`
-供给,调用方装配)→ 发射。:func:`target_buyable` = 目标可买三腿
-并集判定尺(判据与免费刷新分支共吃,禁第二实现)。
+刷新链三组件定型:判据(:func:`refresh_warranted`,三段式查表)→
+金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve` 供给,调用方
+装配)→ 发射。
+
+预测门退役(统一让位优先级迭代 3.4,dismantle §1):旧「目标可买三腿
+并集」(:func:`target_buyable`,判据与免费刷新分支的合取门)整门删除
+——刷新时点信息不足、精确不可算,用信息最少的时点否决决策是
+g_20261029_084447 刷新卡死的直接机制(总纲 §1.2);判据收敛为三段式
+分派,免费腿改无条件刷(design §2.2)。该门符号已退役,禁按旧枚举
+语义复活接线。
 """
 from __future__ import annotations
 
@@ -17,18 +23,11 @@ if TYPE_CHECKING:
 
 
 def refresh_warranted(state: GameState,
-                      session: StrategySession, *,
-                      k_members: tuple[str, ...] | None = None,
-                      counters: dict | None = None,
-                      dedup_names: set[str] | None = None,
-                      ) -> tuple[bool, str]:
-    """三段式刷新判据主式 + 目标可买合取(shop_session §2.4;
-    目标可买 = 2026-10-28 用户裁定三腿并集,判定单一源 =
-    :func:`target_buyable`)。
+                      session: StrategySession) -> tuple[bool, str]:
+    """三段式刷新判据主式(shop_session §2.4)。
 
     **值得刷新 ⟺ 存在「当前星级 < 必要星级」的角色 ∧(等级 ∈ 最优
-    概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)∧ 目标
-    可买(目标卡刷出后买得到 = 有空位 ∨ 合成腿 ∨ 席位腿)**;分派注:
+    概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)**;分派注:
     等级 < 带下界时主式为假 → 不刷、升级优先(停留门覆盖)——三支是同一
     等级轴上的互斥完备分派,主式只取后两支为真。带归属绑定 = 当前停留
     目标的带(多目标费用档升序的当前目标——非逐角色∃带)。段边界:
@@ -37,25 +36,18 @@ def refresh_warranted(state: GameState,
       不刷;载体 = ``plane2_started`` 窗口谓词,宪 2 合规);
     - **P2 未锁窗口**(投资策略选定前的短暂窗口)= 候选缺件驱动:
       候选 top3 缺件中存在「等级 ≥ 其最优概率带下界」的成员 → 可刷
-      (概率带命中;目标可买 = 缺件集任一成员满足三腿任一;金前提照旧
-      由调用方装配);
+      (概率带命中;金前提照旧由调用方装配);
     - **锁定后** = 星级目标驱动(本函数主式;多目标停留顺序 = 未完成
       星级目标中费用档最低者,「定了 3★ 追到底无降档」由 need_star
       表承载)。
 
     判据形态 = 查表零计算(用户裁定 2026-10-12「期望价值难算不直观,
     星级目标直接驱动」;原 R1 期望启动门已由本查表判据取代)。目标
-    可买合取在本函数内收口(2026-10-28 用户裁定:通道枚举型存在性门
-    整门删除,其误拦追星形态随之消除;该门符号已退役,禁按旧枚举
+    可买合取已随预测门整门删除(统一让位优先级迭代 3.4,dismantle §1:
+    刷新时点预测不可算,判据收敛本三分派;该门符号已退役,禁按旧枚举
     语义复活接线)。金前提(R2 预算门,预留 =
-    saturation_line + 停留目标实费档)与免费刷新分支的同款目标可买
-    检查 = 调用方装配,不在本函数。返回 (是否值得刷,拒因键——判读
-    归因;三腿全无 = ``target_unbuyable``)。
-
-    席位腿装配参数流(计数/去重/名单细化由调用方传入,签名实现批):
-    生产调用方(shop.py 刷新提案点)传 ``counters``/``dedup_names``/
-    ``k_members``(序 1 名单解析现值,含 K 空窗回退细化);缺省 =
-    判据直调面(direction_comp_of 基解析,零计数装配)。
+    saturation_line + 停留目标实费档)= 调用方装配,不在本函数。
+    返回 (是否值得刷,拒因键——判读归因)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
@@ -99,13 +91,6 @@ def refresh_warranted(state: GameState,
                     qualified.append(m)
         if not qualified:
             return False, 'unlocked_no_qualified_gap'
-        # 目标可买合取(未锁窗口):候选缺件集任一成员满足即可;
-        # 空位/席位腿成员无关,合成腿按成员名并集判定。
-        if not target_buyable(state, session,
-                              tuple(dict.fromkeys(qualified)),
-                              k_members=k_members, counters=counters,
-                              dedup_names=dedup_names):
-            return False, 'target_unbuyable'
         return True, ''
     # 锁定后:星级目标驱动(带归属绑定 = 当前停留目标的带)。
     target = levelup.stay_target_of(state)
@@ -122,11 +107,7 @@ def refresh_warranted(state: GameState,
         # ALL IN),非死锁。
         return False, 'stay_gate_upgrade_first'
     # ②等级 ∈ 带 / ③等级 > 带上界(被推过,单调不可降——当前即剩余
-    # 可达最优照样刷):主式为真,目标可买合取收口。
-    if not target_buyable(state, session, (target[0],),
-                          k_members=k_members, counters=counters,
-                          dedup_names=dedup_names):
-        return False, 'target_unbuyable'
+    # 可达最优照样刷):主式为真。目标可买合取已随预测门删除(3.4)。
     return True, ''
 
 
@@ -243,95 +224,3 @@ def r2_card_reserve(state: GameState) -> int:
     )
     target = levelup.stay_target_of(state)
     return int(target[2]) if target is not None else 0
-
-
-def target_buyable(state: GameState,
-                   session: StrategySession,
-                   target_names: tuple[str, ...],
-                   *,
-                   k_members: tuple[str, ...] | None = None,
-                   counters: dict | None = None,
-                   dedup_names: set[str] | None = None,
-                   ) -> bool:
-    """目标可买三腿并集(2026-10-28 用户裁定;替代原存在性门的判定尺,
-    判据与免费刷新分支共吃,禁第二实现)。
-
-    目标卡刷出后买得到 ⟺ 有空位(bench_free ≥ 1)∨ 合成腿(目标名
-    ∈「买一张即触发同名同星合成」持有形态集)∨ 席位腿(可卖备战席
-    一件燃料腾出位)。三态并集语义 = 存在任一腾位/合成/空位路径即
-    放行——精确模拟「刷出后能否真买到」需重采样预测不可算;浪费面 =
-    放行后目标没刷出(本属搜牌成本),不产生新浪费。
-
-    腿源(单一源,禁第二实现):
-    - 合成腿 = ``shop._merge_pair_names`` 现役谓词直调(恰 2 张全 1★
-      机器口径;谓词机制全集重写归买面改革批,其收扩后本判定自动跟进)。
-      目标名集由调用方按义务面取值(锁定支 = 停留目标名,未锁支 =
-      候选缺件集)——两域均构造性 ∈ 义务面,无需再过滤;
-    - 席位腿 = ``mandate.fuel_sell_candidates`` 直调,同参装配 =
-      ``sell_gate.sell_exclusions(channel='m4_fuel')`` 形态(原商店侧
-      腾位判定包装已随存在性门整门退役,其装配形态迁入本判定——
-      判定尺与腾位动作发出点同源);``counters``/``dedup_names`` 由
-      调用方(shop.py 刷新提案点)传入。
-
-    席位腿口径 = 备战席燃料 only(真值源 bench-only;店内禁卖场上件,
-    满席腾位 = 关店走备战腾位后重进——「场上件腾位」释放的是上阵位
-    非买卡所需席位,不在本条件;深席堵恢复发生在访问间隙,目标可买
-    自然转真)。
-    """
-    from sr_od.application.currency_war.kernel import cw_intention
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        BENCH_CAPACITY,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_entries_of,
-        deployed_rows_of,
-        round_num_of,
-    )
-    bench = bench_entries_of(state)
-    # 空位腿:任一空位即可落任意目标卡(最廉腿,先判短路)。
-    if BENCH_CAPACITY - len(bench) >= 1:
-        return True
-    front, back = deployed_rows_of(state)
-    deployed = [d for d in (*front, *back) if d is not None]
-    # 合成腿:目标名 ∈ 现役形态对名集(shop 谓词单一源直调)。
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        shop as _shop,
-    )
-    pairs = _shop._merge_pair_names(bench, deployed)
-    if any(name in pairs for name in target_names):
-        return True
-    # 席位腿:fuel_sell_candidates 资格面非空(腾位分支同参装配)。
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        mandate,
-        sell_gate,
-    )
-    if k_members is None:
-        # 判据直调面缺省:方向阵容基解析(生产调用方传序 1 名单现值,
-        # 含 K 空窗回退细化——见 refresh_warranted docstring)。
-        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-            session_scope,
-        )
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-            predicates,
-        )
-        k_members = tuple(predicates.line_members(
-            session_scope.direction_comp_of(state)))
-    _round = int(round_num_of(state) or 1)
-    cap_hold = cw_intention.locked_buy_cap_hold(state)
-    excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
-                                     cap_hold=cap_hold,
-                                     current_round=_round)
-    # 释放集与腾席动作发出点同参同源(漏算则在释放可达帧误判席不可腾
-    # → 误拦刷新)。
-    release = sell_gate.dead_pair_exit_release(
-        session, k_members, bench, deployed, _round,
-        cap_hold=cap_hold, counters=counters)
-    defer = mandate.stall_protect_active(session, round_num_of(state),
-                                         counters=counters)
-    cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
-                                         exclude_names=excl,
-                                         defer_names=defer,
-                                         counters=counters,
-                                         dedup_names=dedup_names,
-                                         merge_guard_release=release)
-    return bool(cands)

@@ -8,9 +8,9 @@ V_MS/P_REC/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
 PER_ROUND/N_CRISIS/V_GAP〔换线机器与换线窗口侧〕、
 V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕、
 LEVELUP_MISSING_SET_AGG〔升级概率账臂删除〕、
-W_POP〔人口位臂删除〕
-——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)、
-随消费面登记后补(MERGE_PROGRESS_X2)。
+W_POP〔人口位臂删除〕、MERGE_PROGRESS_X2〔旧卖出价值函数退役,
+统一让位优先级迭代 3.4〕
+——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)。
 每项一个 ``Optional`` 槽位,
 **缺省 None = 对应判据分支 fail-closed**;标定值只能经本模块 ``inject``
 显式注入(带 CI 对象)——「注入即开闸」事故(TUNING#1/#2)的结构性防线,
@@ -64,13 +64,10 @@ _SLOTS: dict[str, _Slot] = {
     # —— 类型级封印族(R10-2:V̄ 拟合族永不作闸门)——
     'V_BAR': _Slot('#13 V̄ 刷新价值门量;比较项不授权,禁作闸门', sealed=True),
     'P3_LENGTH_STAT': _Slot('P3 长度统计量(R41-3【拟·语料统计】;通关语料出现前不可填)'),
-    # —— 卖出价值函数(契约 D 统一口径;design 契约 D/line_and_upgrade §4,
-    #    【拟·owner = 编排者、期限 = 一个对局周期】登记集成员)——
-    'MERGE_PROGRESS_X2': _Slot('合成进度 ×2 结构近似系数(line_and_upgrade §4:'
-                               '差一张 = 两张的再遇期权沉淀;None = fail-closed '
-                               '×1 线性运行——不放大持有期权 = 保守侧,'
-                               '标定对照完成后切 ×2;消费端 = criteria/'
-                               'sell_candidates.sell_gold_equivalent)'),
+    # —— 卖出价值函数槽已撤(统一让位优先级迭代 3.4:旧价值函数
+    #    sell_gold_equivalent 与 MERGE_PROGRESS_X2 登记槽随旧判据退役
+    #    删除——排序由统一让位序列承载,无标定项;原【拟】登记沿革见
+    #    git 历史)——
 }
 
 #: 槽位值存储(缺省全 None = fail-closed)
@@ -100,19 +97,12 @@ def is_none(name: str) -> bool:
 # 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
 # 不装假守卫);守卫只覆盖 ``value``,CI 端点系消费位扫描用信息不入守卫。
 # (P76 两槽守卫 _guard_delta_positive/_guard_e2_probability_band 已随
-# 证据门撤除。)
+# 证据门撤除;合成进度系数守卫 _guard_merge_progress_coef 已随
+# MERGE_PROGRESS_X2 撤槽删除——统一让位优先级迭代 3.4。)
 
-def _guard_merge_progress_coef(value: CalibValue) -> str | None:
-    """合成进度系数合法域 = [1, 2]:下界 1 = fail-closed 线性形态(<1 会
-    反转「差一张沉淀 ≥ 单张期权」的持有价值方向);上界 2 = 结构近似
-    声明域(「两张的再遇期权沉淀」,超出即超出申报的近似语义)。"""
-    return None if 1.0 <= value.value <= 2.0 else \
-        '合成进度 ×2 系数合法域 [1,2](结构近似声明域)'
-
-
-#: 守卫登记表(键 = 槽位名;随各槽标定逐个登记)
+#: 守卫登记表(键 = 槽位名;随各槽标定逐个登记;现役空表 = 全部槽位
+#: 无值域守卫)
 _VALUE_GUARDS: dict[str, Callable[[CalibValue], str | None]] = {
-    'MERGE_PROGRESS_X2': _guard_merge_progress_coef,
 }
 
 

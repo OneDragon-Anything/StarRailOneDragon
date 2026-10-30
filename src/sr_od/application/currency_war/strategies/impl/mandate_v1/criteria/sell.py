@@ -95,12 +95,13 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     ③ **槽位布尔门停用**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
        链归 P57 裁决,与本重写分账)。
 
-    资格谓词不变(占位件物理门 ∧ 1★ ∧ 零重叠 ∧ 无后台效果,与
+    资格谓词(占位件物理门 ∧ 1★ ∧ 零重叠,与
     funding_support_sell 同一;占位件恒拒判据单一源 =
     ``predicates.item_slot_unsellable`` 跨通道共享谓词,与 M4 燃料通道
-    同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环;
-    语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
-    统一)。序:``prefer_names``
+    同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环)。
+    「无后台效果」资格维已随旧评估器退役删除(统一让位优先级迭代
+    3.4:bench_effect_qualified 消费位拆除,该维度归统一序列档 7)。
+    序:``prefer_names``
     (刚买件名集合,R2-N1 发出约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
     架构下刚买件尚未入 bench,按名匹配同资格已登记件)优先,其余按
     (star, slot) 升序(funding_support 同款序)。
@@ -179,11 +180,9 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
-        if predicates.bench_effect_qualified(
-                name, predicates.bench_effect_context(state,
-                                                      bench_slot_unit(b),
-                                                      k_members)):
-            continue
+        # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
+        # 3.4:bench_effect_qualified 四消费位的凑息档序处拆除,该维度
+        # 由统一序列档 7 判定承载,priority-model §4。)
         qualified.append((i, b))
     # 序:刚买件优先(R2-N1),其余 (star,紧缩位) 升序(确定性;紧缩序
     # = 物理槽序,与旧 (star, slot) 逐位等价)
@@ -230,11 +229,12 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     gs)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
-    筹资面);变现对象 = 凑利息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
-    效果 ∧ 零重叠,占位件判据单一源 = ``predicates.item_slot_
+    筹资面);变现对象 = 凑利息档序同资格(占位件物理门 ∧ 1★ ∧
+    零重叠,占位件判据单一源 = ``predicates.item_slot_
     unsellable`` 跨通道共享谓词,与 M4 燃料/凑息同门——空名 1★ 禁
-    穿透资格循环;语境经 ``predicates.bench_effect_context`` 共享装配
-    现读——症3 三通道统一;卖回量最小化 [11]);跨帧语义 = 变现金
+    穿透资格循环;「无后台效果」资格维已随旧评估器退役删除——统一
+    让位优先级迭代 3.4:bench_effect_qualified 消费位拆除,该维度归
+    统一序列档 7;卖回量最小化 [11]);跨帧语义 = 变现金
     作用于下一备战期义务动作(延迟=1 备战期间隔,进遥测 reason)。
     无对象 ⇒ 空。
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
@@ -292,11 +292,9 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
-        if predicates.bench_effect_qualified(
-                name, predicates.bench_effect_context(state,
-                                                      bench_slot_unit(b),
-                                                      k_members)):
-            continue
+        # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
+        # 3.4:bench_effect_qualified 四消费位的危局阀桶处拆除,该维度
+        # 由统一序列档 7 判定承载,priority-model §4。)
         out.append(_slot_of(b, i))
         # 1★ 卖回净额 = sell_refund(1,注册表 cost) 派生(R196 症6:
         # 禁字面量 3 双源——bench_char_cost 未知名保守估 3 与旧值同构)

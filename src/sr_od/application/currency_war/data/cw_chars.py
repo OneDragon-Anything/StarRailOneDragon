@@ -37,12 +37,12 @@ class Character:
     # gain_chain(env/strategy advisor 道 + 装备通道),容器状态 =
     # GameState.unlocked_experts,池消费 = cw_pool。
     is_expert: bool = False
-    # 「挂后台效果」单位级载体(cw4 前置先行字段):该单位坐备战席
+    # 「挂后台效果」单位级载体(游戏数据字段):该单位坐备战席
     # 即生效的效果族标签(空串=无,纯燃料/战力件)。当前已登记:'星级供强'
     # (黑塔:备战席小黑塔星级合计供给大黑塔前后台强度,final_daheita_aoe §1
-    # 备战席经济学)。消费=decision/cw4/statefn/predicates.
-    # bench_effect_qualified(例外①②在谓词内显式枚举;本字段缺载时禁按
-    # 类级默认放行例外件——静默放行=载体缺口,即问题本体)。
+    # 备战席经济学)。(原判据消费 predicates.bench_effect_qualified 已随
+    # 旧评估器退役删除——统一让位优先级迭代 3.4:该维度由统一序列档 7
+    # 判定承载,本字段保留为游戏数据。)
     bench_effect: str = ""
 
     def position_pref(self) -> str:
