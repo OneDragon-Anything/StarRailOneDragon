@@ -4,7 +4,8 @@
 > 数据源(单一源代码,数值不抄):`cw_plane_table.GOLD_CAP_INTEREST`(利息封顶 50)、`cw_economy`(利息规则 gold//10 上限 5)、`CHARACTERS`(成员卡价注册表)、`cw_shop_odds.refresh_prob`(合格集可追性)、`cw_state.REFRESH_COST_BASE`(刷价基价 2);机制面 = economy.md §2/§10.1(利息=gold//10 上限 5)、§7(阶段经济共识:snowball 到 50 金)、user_playstyle [3](刷新后还能保证 50 金)
 > 依据(本批的实证出处):REFRESH_CFO_REPORT(存于未入库临时档案 `.debug/temp/currency_war/ab_run_20260903_r2/`,git 外)§6 明令「不要动 R2 预算门」的本批解除条件 + P53 §④ 申报 1(R2 预留下界缺位与刷新超调的交互,已登记待办、待裁决项 = 本批)+ horizon_vgap_b1_after.json(修 A 后刷新 77.83 次/局、金刷穿 0-4、2★ 0/30)
 > 提出:利息线 floor 独立修复批(2026-09);证明 = 本篇
-> 前置:P40(R2 预算门规范口径)、P47(L 递推)、P53(帧级 V̄_net,修 A)
+> 收口注(2026-10-29 历史清理批):P53 单篇已删除(V̄ 链整链停用后无现役消费面,git 历史可溯);本篇正文的「P53 §③/§④」「修 A」均为删除前文本的历史引用,按成文时点读;现行刷新判据正本 = strategy-docs/11_shop_decisions.md §3
+> 前置:P40(R2 预算门规范口径)、P47(L 递推)、P53(已删除,收口注见上)
 
 ## 命题
 
