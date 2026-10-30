@@ -668,6 +668,9 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
     (CwActionSellDeployedParam 坐标系)。失配 = 陈旧帧 fail-closed
     零动作返回主循环。卖出登记(record_round_sold) = 轮内新鲜度排除
     账本写端(资格面账本,非试错计数),与现行卖出位同口径。
+    取用观测键随发出落账(<counter>_tier_<n> 档位分布 /
+    <counter>_rng_tail_hit 随机尾键命中;键名族登记 =
+    telemetry/schema.py 键表节,载荷来源 = 评估器候选行观测字段)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
@@ -681,6 +684,12 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
             return []
         mandate.record_round_sold(session, gs, cand.char_id)
         st.cw4_counters[counter] = st.cw4_counters.get(counter, 0) + 1
+        if cand.tier is not None:
+            _tk = f'{counter}_tier_{int(cand.tier)}'
+            st.cw4_counters[_tk] = st.cw4_counters.get(_tk, 0) + 1
+        if cand.rng_tail_hit:
+            _rk = f'{counter}_rng_tail_hit'
+            st.cw4_counters[_rk] = st.cw4_counters.get(_rk, 0) + 1
         return [Emitted(CwActionSellBenchParam(bench_idx=vidx,
                                                reason=reason),
                         True, tag)]
@@ -691,6 +700,12 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
         return []
     mandate.record_round_sold(session, gs, cand.char_id)
     st.cw4_counters[counter] = st.cw4_counters.get(counter, 0) + 1
+    if cand.tier is not None:
+        _tk = f'{counter}_tier_{int(cand.tier)}'
+        st.cw4_counters[_tk] = st.cw4_counters.get(_tk, 0) + 1
+    if cand.rng_tail_hit:
+        _rk = f'{counter}_rng_tail_hit'
+        st.cw4_counters[_rk] = st.cw4_counters.get(_rk, 0) + 1
     return [Emitted(CwActionSellDeployedParam(deployed_idx=didx),
                     True, tag)]
 
@@ -1192,7 +1207,8 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
 # (凑息保护档阻断观测键 interest_round_protected_block 及其反事实支
 # _protected_member_blocks_interest 已随身份保护判据退役删除——统一让位
 # 优先级迭代 3.4,拆除清单 §3 遥测键面:保护件阻断类键的消费位(数据源
-# protection_membership)退役,键停止生产;schema 键表清理归 3.5 遥测批。)
+# protection_membership)退役,键停止生产;退役登记 = telemetry/schema.py
+# 键表节「停产键族」。)
 
 
 def _step7_node_end_interest(session: StrategySession,

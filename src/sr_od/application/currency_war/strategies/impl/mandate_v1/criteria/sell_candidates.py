@@ -32,7 +32,7 @@ C1 恒买席满腾位场景(``c1_make_room``,随 C1 支退役)整批删除——
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
@@ -190,6 +190,15 @@ class SellCandidate:
     unit: Unit           # 候选单位本体(frozen 值对象)
     char_id: str
     star: int
+    tier: int | None = None
+    """[观测载荷] 统一序列档位分量(``priority.sort_key`` 键首,1..8)。
+    取值时机 = 评估帧排序时随键快照;None = 未观测形态(缺省,兼容
+    旧构造)。判据零消费——仅供取用观测键(档位分布)读取。
+    """
+    rng_tail_hit: bool = False
+    """[观测载荷] 随机尾键命中:池内存在另一件与本件排序键去尾后
+    全同(等价牌群内部随机定序对本件实际生效,priority-model §4)。
+    取值时机同上;缺省 False = 未观测形态。判据零消费。"""
 
 
 def _deployed_rows_indexed(gs: GameState) -> list[tuple[Unit, str, int]]:
@@ -224,8 +233,10 @@ def evaluate_sell_candidates(
 
     输入 =(场景,容器状态);输出 =(按让位序排序的候选元组,拒因键
     ——候选非空恒 '',空候选暴露拒因)。让位序 = 先卖到后卖:统一
-    序列(priority.sell_order 升序,末位 = 最先让路)整体反转,消费位
-    取首位 = 序列末位。
+    序列(末位 = 最先让路)整体反转,消费位取首位 = 序列末位。
+    候选行随键携带观测载荷(``tier`` 档位 / ``rng_tail_hit`` 随机尾键
+    命中,见字段注)——取用观测键(档位分布/随机尾键命中)的数据源,
+    判据零消费。
 
     统一路径(五场景):
     1. 空板止损守卫(deployed = 0 帧全部卖出场景哑火,as-built 申报
@@ -339,10 +350,18 @@ def evaluate_sell_candidates(
             star=int(getattr(unit, 'star', 1) or 1))
     if not units:
         return (), REJECT_NO_CANDIDATES
-    ordered = crit_priority.sell_order(units, ctx)
-    yield_order: list[SellCandidate] = [
-        cands[('deployed' if u.deployed else 'bench', u.slot)]
-        for u in reversed(ordered)]
+    # 排序与观测同键(单一排序实现):带键排序回填观测载荷(档位 =
+    # 键首分量;随机尾键命中 = 池内键去尾同撞,等价牌群内部随机定序
+    # 对本件实际生效)。键值 = priority.sort_key 输出,判读口径与
+    # 键名族登记 = telemetry/schema.py 键表节(acquisition §6)。
+    keyed = crit_priority.sell_order_with_keys(units, ctx)
+    _prefixes = [k[:-1] for _u, k in keyed]
+    yield_order: list[SellCandidate] = []
+    for u, k in reversed(keyed):
+        cand = cands[('deployed' if u.deployed else 'bench', u.slot)]
+        yield_order.append(replace(
+            cand, tier=int(k[0]),
+            rng_tail_hit=_prefixes.count(k[:-1]) >= 2))
     if spec.cross_tier_only:
         # 跨档止盈(场景参数;design §2.4 保留行):仅「单件退金 ≥ 到
         # 下一利息档缺口」者可卖;无下一档(满档/买断制)= 无卖益,

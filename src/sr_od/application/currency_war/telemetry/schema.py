@@ -143,6 +143,56 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 """
 
 
+# ===== 统一让位优先级迭代观测键面(3.5 键表;键名登记单一源 = 本节 +
+# 各键写点注释——判读读本节键族与停产/保留面,触发时机语义读写点)=====
+# 载体 = 策略器状态 ``cw4_counters`` 计数容器(局终快照链/决策迹
+# emitted-fields 双通道落盘,见 kernel/cw_decision_trace.EMITTED_FIELDS)。
+#
+# 【停产键族】(判据退役后写点已删,生产恒缺键;读历史 cw4_counters
+# 按退役语义读,勿当在役键):
+# - shop_refresh_target_unbuyable:刷新预测门拒因(刷新时点「刷出后
+#   能否买到」不可算,判据收敛三分派);
+# - core_* 出口键族 / core_numeric_fail_closed / core_candidate_rejected:
+#   C1 单卡核心囤积规则出口键族(规则作废,锁后不换线无兑现通道);
+# - protection_hoard_hit/_no_fuel/_unaffordable:保护囤货臂出口键族
+#   (囤换线期权前提消亡,囤货臂退役);
+# - hub_option*:乙分支枢纽期权键族(hub 与候选体系重叠空心化,死链
+#   拆除——生产中零出现);
+# - kept_identity:死库存对保留因分键(dead_pair_exit_guard_kept_identity;
+#   卖出身份段退役后释放即可卖,观察位无对象);
+# - interest_round_protected_block:凑息保护档阻断观测键(凑息身份
+#   排除退役,反事实支无对象);
+# - protection_member_rejected:商店拒因标签(囤货面归属,囤货臂退役;
+#   shop_rejects 值域成员,历史行成员归并 non_line/owned);
+# - transition_hold_locked_frame:保护集持有关计数键(保护集买卖
+#   消费面全退役后无判读对象);
+# - shop_k_fallback_p2plus:K 甲臂兜底回退计数(K 目标未锁期源切换 =
+#   策略层候选快照三线并集 ∪ 配方成员;p2plus 带恒合法空集不进写支,
+#   p1_gap/p1_lock_band 两键在役)。
+#
+# 【保留键】(逐键核消费位后在役):
+# - shop_refresh_blocked_memory_skip:刷新负结果记忆跳过计数——金线
+#   不足置位分支在役,免费与付费同闸(写点 = mandate_v1/shop.py 记忆
+#   闸段);
+# - fuel_victim_protect_demoted:T3 同轮保留防线的转化类豁免分键词汇
+#   (cw_vocab.SELL_BENCH_CONVERT_REASONS 成员;M4 腾席被保垫件末位
+#   牺牲场景,非身份保护键——归循环防线保留清单)。
+#
+# 【新增观测键】(acquisition §6;写点 = 各卖出取用动作发出点,键值
+# 来源 = 评估器候选行 tier/rng_tail_hit 观测载荷):
+# - <take>_tier_<1..8>:各触发取用档位分布——take = 该触发的卖出
+#   计数键,值 = 被取用件统一序列排序键的档位分量;take 域 =
+#   {acquire_swap_sell, self_rescue_sell, ore_pad_sell,
+#   levelup_liquidate_sell, node_end_interest_sell,
+#   session_funding_sell}(前二者 = mandate_v1/shop.py 会话域,其余 =
+#   mandate_v1/entry.py 备战域);
+# - <take>_rng_tail_hit:随机尾键命中——被取用件与池内另一件排序键
+#   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
+#   (随机域判读:非等价件命中即键构造异常哨兵);
+# - acquire_swap_sell / acquire_swap_declined:获取流程置换成功/拒绝
+#   (末位=新牌放弃;3.2 六步流程落写点,3.5 登记键表)。
+
+
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
 
@@ -299,7 +349,12 @@ class DecisionTrace:
     level_readable: bool = True                   # level 真读到?(对齐 hp_readable;False=纯 _expected_level 启发式兜底帧——「兜底 4」与「真读 4」判读可分;旧档案缺省 True=按现有判读处理)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
-    shop_rejects: dict[str, str] = field(default_factory=dict)   # 商店波未买牌拒因串({牌名: 拒因};生产端=cw4/shop.shop_unbought_reasons,旧行缺省空 dict)
+    # 商店波未买牌拒因串({牌名: 拒因};生产端 = cw4/shop.shop_unbought_
+    # reasons,旧行缺省空 dict)。值域闭集单一源 = 生产端 docstring;
+    # 统一让位优先级迭代 3.4 起退役标签(protection_member_rejected/
+    # hub_option/core_candidate_rejected)停写,历史行按退役语义读
+    # (成员归并 non_line/owned 面,退役登记 = 上方键表节停产键族)。
+    shop_rejects: dict[str, str] = field(default_factory=dict)
     refresh_trigger: dict[str, int] = field(default_factory=dict)  # 刷新触发源分键({reason: 次数};生产端=recorder 自决策行 actions 统计(sim 账本行同名键同语义),'' 归 other 桶;旧行缺省空 dict)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
     # (ledger_fingerprint 台账指纹已停用——写端恒缺键、

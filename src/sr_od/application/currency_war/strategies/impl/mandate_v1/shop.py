@@ -25,23 +25,35 @@
 
 rng 中立:本模块零 rng 消费(会话流派生契约)。
 
-计数键(state_of(session).cw4_counters;键登记单一源 = 各键写点注释):
+计数键(state_of(session).cw4_counters;键登记单一源 = 各键写点注释,
+键名族与停产/保留面另登记 telemetry/schema.py「统一让位优先级迭代
+观测键面」键表节——判读读键表,触发时机读写点):
 会话循环键族 = shop_visit_restricted_frame / shop_close_read_noop /
 acquire_swap_*(席满买入六步流程:_sell/_declined/_merge_free_buy/
-stale_idx)/ session_funding_sell(_fallback_sell/
-leg_reject/exhausted)/ scene_plugin_buy_hit(_no_seat/budget_exhausted)/
-shop_refresh_*(三段式判据拒因族)/ levelup_*(会话升级意图门族:资格
-门拒因 + levelup_transition_close 转场关店;键语义与写点注释见各分支
-段);
+stale_idx;取用观测衍生 _sell_tier_<1..8>/_sell_rng_tail_hit)/
+session_funding_sell(_fallback_sell/leg_reject/exhausted;观测衍生
+_tier_<n>/_rng_tail_hit)/ scene_plugin_buy_hit(_no_seat/
+budget_exhausted)/ shop_refresh_*(三段式判据拒因族)/ levelup_*
+(会话升级意图门族:资格门拒因 + levelup_transition_close 转场关店;
+键语义与写点注释见各分支段);
+取用观测键族(统一让位优先级迭代 3.5):卖出取用计数键的观测衍生
+<take>_tier_<1..8>(被取用件统一序列档位分量)/ <take>_rng_tail_hit
+(随机尾键命中——等价牌群内部随机定序实际生效的取用计数);本域
+take = acquire_swap_sell/session_funding_sell,全 take 域(含备战域
+各场景)与判读口径见 telemetry/schema.py 键表节;写点 = 各卖出动作
+发出点(键值来源 = 评估器候选行 tier/rng_tail_hit 观测载荷);
 承继键族(m2/m2_stockpile/m2b/dead_gold_press/press_buy_
 deployable/m6/fuel_filler_stall/ev/dominance/p90/p91/p94)随各分支
 并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
 退役删除,统一保护集 design §2.2)。P86 三分支旧键族(shop_no_target_*/
 hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照)。
-统一让位优先级迭代 3.4 退役键族:core_*(C1 单卡核心囤积规则整规
-退役)/ protection_hoard_*(囤货臂退役)/ transition_hold_locked_frame
+统一让位优先级迭代 3.4 退役键族:shop_refresh_target_unbuyable
+(刷新预测门拒因)/ core_*(C1 单卡核心囤积规则整规退役)/
+protection_hoard_*(囤货臂退役)/ transition_hold_locked_frame
 (保护集持有关计数键)/ shop_k_fallback_p2plus(K 甲臂兜底退役,
 p1 带键照旧)——历史已停写键不另清理。
+保留键:shop_refresh_blocked_memory_skip(刷新负结果记忆跳过计数
+——金线不足置位分支在役,免费与付费同闸;写点 = 本模块记忆闸段)。
 
 M2 停摆续段缓存:商店域 cw4_m2_stall_latch 族已停用;席满
 表达 = 席满买入六步流程(3.2 置换账替换),不再有「无候选输入不变续段」的
@@ -822,6 +834,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             gs, _ist, session=session, registry=_reg)
         if _kfb:
             k_members = tuple(sorted(_kfb))
+            # 计数键 shop_k_fallback_<band>:p1 两带(p1_gap/p1_lock_band)
+            # 在役;p2plus 带甲臂退役后恒合法空集不进本支,同名键已停写
+            # (退役/保留面登记 = 模块头键表与 telemetry/schema.py 键表节)。
             _count(f'shop_k_fallback_{_band}')
     if _line_view.locked:
         # 锁定态(锁定线槽非空):P1 锁定局 = 过渡配方 ∪ 锁定线名单并集
@@ -1045,13 +1060,19 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     def _emit_sell_cand(cand, *, reason: str, counter_key: str) \
             -> CwActionSellBenchParam | None:
         """评估器候选 → 店内卖出动作(坐标换算:紧缩占席序 → 容器槽位
-        表下标;失配 = 陈旧帧 fail-closed 返回 None)。"""
+        表下标;失配 = 陈旧帧 fail-closed 返回 None)。观测键随取用
+        落账(档位分布/随机尾键命中;键名族登记 = telemetry/schema.py
+        键表节,载荷来源 = 评估器候选行 tier/rng_tail_hit)。"""
         vidx = mandate._bench_container_idx_by_compact(gs, cand.idx)
         if vidx is None:
             _count(f'{counter_key}_stale_idx')
             return None
         mandate.record_round_sold(session, gs, cand.char_id)
         _count(counter_key)
+        if getattr(cand, 'tier', None) is not None:
+            _count(f'{counter_key}_tier_{int(cand.tier)}')
+        if getattr(cand, 'rng_tail_hit', False):
+            _count(f'{counter_key}_rng_tail_hit')
         _mark_processing()
         return CwActionSellBenchParam(
             bench_idx=vidx, reason=reason,
@@ -1093,7 +1114,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             ShopUnit,
             assemble_priority_context,
             priority_rng_of,
-            sell_order,
+            sell_order_with_keys,
         )
         _name = str(card.name or '')
         _star = int(card.star or 1)
@@ -1155,7 +1176,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 str(u.char_id), int(u.star or 1), orig, False,
                 cost=(effective_cost(gs, str(u.char_id)) or None)))
         units.append(ShopUnit(_name, _star, card_cost(card)))
-        tail = sell_order(units, ctx)[-1]
+        keyed = sell_order_with_keys(units, ctx)
+        tail, _tail_key = keyed[-1]
         if isinstance(tail, ShopUnit):
             # 末位 = 新牌自己 → 放弃买入(拒绝语义:拦因键改「优先级
             # 不足」,acquisition §2;本牌进未消费机会清单——拒因成立于
@@ -1173,6 +1195,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             return None
         mandate.record_round_sold(session, gs, tail.name)
         _count('acquire_swap_sell')
+        # 取用观测键(键名族登记 = telemetry/schema.py 键表节):档位
+        # 分布 = 被取用件(尾牌)的档位分量;随机尾键命中 = 尾牌与池内
+        # 另一件排序键去尾全同(等价牌群内部随机定序实际生效)。判定域
+        # = 六步流程排序池(含新牌)——该池即末位判定的完整输入。
+        _prefixes = [k[:-1] for _u, k in keyed]
+        _count(f'acquire_swap_sell_tier_{int(_tail_key[0])}')
+        if _prefixes.count(_tail_key[:-1]) >= 2:
+            _count('acquire_swap_sell_rng_tail_hit')
         _mark_processing()
         return CwActionSellBenchParam(
             bench_idx=vidx, reason='shop_swap',

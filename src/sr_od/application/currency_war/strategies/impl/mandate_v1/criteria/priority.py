@@ -399,6 +399,22 @@ def sort_key(unit: HeldUnit | ShopUnit,
     return (8, prob, -_unit_cost(unit), -unit_star, in_hand, tail)
 
 
+def sell_order_with_keys(
+        units: list[HeldUnit | ShopUnit],
+        ctx: PriorityContext) -> list[tuple[HeldUnit | ShopUnit, PriorityKey]]:
+    """统一让位序列带排序键(观测面载体;排序实现与 :func:`sell_order`
+    同一份——键 = :func:`sort_key` 输出逐位同源,禁消费位自算第二份)。
+
+    返回按键升序的 ``(单位, 排序键)`` 列表(末位 = 最先让路)。观测
+    消费位(档位分布/随机尾键命中)从键分量直读:档位 = 键首分量,
+    尾键命中 = 池内存在另一件键去尾后与本件全同(等价牌群内部随机
+    定序实际生效,priority-model §4 随机域)。
+    """
+    keyed = [(u, sort_key(u, ctx)) for u in units]
+    keyed.sort(key=lambda p: p[1])
+    return keyed
+
+
 def sell_order(units: list[HeldUnit | ShopUnit],
                ctx: PriorityContext) -> list[HeldUnit | ShopUnit]:
     """统一让位序列(priority-model §5 消费侧约定)。
@@ -408,6 +424,4 @@ def sell_order(units: list[HeldUnit | ShopUnit],
     逐牌调 :func:`sort_key` 会推进随机流,同 seed 下同输入同序、
     跨次调用不保证逐位复现(随机域 = 手持等价牌群内部,无行为语义
     损失,priority-model §4)。"""
-    out: list[HeldUnit | ShopUnit] = sorted(
-        units, key=lambda u: sort_key(u, ctx))
-    return out
+    return [u for u, _k in sell_order_with_keys(units, ctx)]

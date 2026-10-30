@@ -444,8 +444,12 @@ def fuel_sell_candidates(bench: list[BenchSlot],
     ``defer_names``(T3 同轮保留=末位牺牲序;M4 腾席转化类放行,非绝对
     禁卖):集合内名字降为候选**末位**——存在非保候选时 victim 恒取
     非保件(被保件零成本存活);被保件是唯一燃料 ⇒ 照常放行卖出(为
-    义务买入腾位的转化类清算,非自旋;消费端命中时分键
-    ``fuel_victim_protect_demoted`` 并卖出销账)。稳定排序:仅把被保件
+    义务买入腾位的转化类清算,非自旋)。命中销账:消费端对被保件调
+    ``stall_buys_consume``(单一源 = sell_gate.consume_on_sell,账闭合
+    随统一簿 close_on_sell 分键承载);``fuel_victim_protect_demoted``
+    = 本场景的转化类豁免分键词汇(cw_vocab.SELL_BENCH_CONVERT_REASONS
+    成员;保留键——T3 防线键非身份保护键,归循环防线保留清单,
+    dismantle §3 遥测键面核对结论)。稳定排序:仅把被保件
     移尾,不改既有相对序——defer 空集时逐位等价旧序(零漂移)。
 
     带默认排序:slot 升序(确定性)。

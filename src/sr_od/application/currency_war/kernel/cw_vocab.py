@@ -232,12 +232,12 @@ class CwActionSellBenchParam:
 # 四键只覆盖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
 # ——豁免面按分键收敛,禁全开(各键独立消除各自误报窗口;扩键经
 # 方案审零阻断放行,出处 = 2026-09-08 同轮交互方案审)。
-# 发出侧填充现状(两通道分键起):两类放行键(T3 末位牺牲/
-# funding 两键)经 CwActionSellBenchParam.convert_reason 结构化字段填充(值域收窄,
-# 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
-# entry 换线归零通道位)。检查器按键分工判定,禁单键并读双源;
-# 键集保留 = 检查器豁免面单一源(键语义/豁免边不变,可核查面三格:
-# 缺省 ''/plain 值/跨轮陈旧恒不豁免)。
+# 发出侧填充现状:生产动作发出点现无 convert_reason 填充写点
+# (T-165 两通道历史填充面已随后续通道重写退役,git 可溯)——字段按
+# '' 缺省恒不豁免;line_switch_collapse 仍在役于 reason(孤儿证明
+# 打标制 + entry 换线归零通道位)。键集保留 = 检查器豁免面词汇
+# 单一源(键语义/豁免边不变;复活填充面先核检查器消费位再接线,
+# 可核查面三格:缺省 ''/plain 值/跨轮陈旧恒不豁免)。
 SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
     'fuel_victim_protect_demoted',
     'funding_support_stall_convert',
@@ -258,6 +258,10 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'funding_support',          # 支付筹资卖出(义务买金币位保障)
     'self_rescue_sell',         # 溢出告警自救卖出(十段工序第 0 步态 3;自救扩展面)
     'ore_make_room',            # 晶矿腾位垫件卖出(十段工序第 3 步;垫件谓词过滤后取价值最小)
+    'shop_swap',                # 席满买入六步流程卖旧(统一让位优先级迭代 3.2
+                                # 置换账替换后的在役取用通道;词 = 机制指认保留名,
+                                # 总纲 §2.8 黑话对照——旧店内置换账场景行已退役,
+                                # 本键 = 六步流程卖旧动作的发出登记值)
 })
 
 
