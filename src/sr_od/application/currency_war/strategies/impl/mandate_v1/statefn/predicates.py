@@ -122,6 +122,23 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
     return bench_slot_unit(unit) is None
 
 
+def is_unsellable_system_unit(name: str) -> bool:
+    """系统召唤单位物理门(cost=0 注册表单位,卖出资格跨通道共享谓词)。
+
+    真值 = 注册表登记 cost=0(现行 = 狸小虎/狸小龙/佩佩/狸职狸狸——
+    投资策略召唤单位,恒占后排、不可拖/不可卖,数据锚 = cw_chars.py
+    特殊召唤单位段)。真卖出系统单位是游戏无效交互;同时 cost=0 在
+    实费档缺失时会按中费 3 估(priority 档 8 概率分档),让位排序对它
+    产生无意义键值——本门 = 场景判据件池构建面唯一的系统单位防线,
+    与 :func:`item_slot_unsellable`(占位件物理门)同向互补:那面防
+    「非角色占席」误卖,本面防「cost=0 角色」误卖。未登记名(识别
+    残缺)不拦——按 mid-fee 估参与排序,卖出失败由上报链负结果兜底。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    c = CHARACTERS.get(name)
+    return c is not None and not c.cost
+
+
 def p1_blood_floor(state: GameState) -> bool:
     """P1 濒死带域谓词(hp ≤ HP_BAND_NEAR_DEATH ∧ plane 1 ∧ 可信)。
 

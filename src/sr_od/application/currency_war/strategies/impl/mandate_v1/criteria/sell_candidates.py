@@ -380,6 +380,9 @@ def _evaluate_deploy_swap_legacy(
     out: list[SellCandidate] = []
 
     def _ok(unit: Unit, *, is_bench: bool) -> bool:
+        if predicates.is_unsellable_system_unit(
+                str(getattr(unit, 'char_id', '') or '')):
+            return False
         if swap_sell_exclusion_reason(
                 str(getattr(unit, 'char_id', '') or ''), swap_ctx,
                 star=int(getattr(unit, 'star', 1) or 1),
@@ -449,7 +452,8 @@ def evaluate_sell_candidates(
        豁免;身份段退役归属 3.4 sell_gate 收缩,收敛前随装配照读)+
        合成素材拒入守卫(释放集旁路保留);自救面 = 全放行(仅占位件
        物理门);档 1(部署定型内,按角色名命中)不进输出——「永不
-       先卖」字面保证,板上同名牌同受保护;
+       先卖」字面保证,板上同名牌同受保护;系统召唤单位(cost=0,
+       不可卖)物理门与占位件门同向互补;
     4. ``priority.sell_order`` 排序(升序 = 最不该卖 → 最先让路),输出
        取其反转;
     5. 跨档止盈(仅节末凑息):让位序内保留「单件退金 ≥ 到下一利息档
@@ -519,6 +523,10 @@ def evaluate_sell_candidates(
         name = str(getattr(unit, 'char_id', '') or '') if unit else ''
         if unit is None or name == '':
             continue
+        if predicates.is_unsellable_system_unit(name):
+            # 系统召唤单位(cost=0)物理门:不可卖 + 实费档缺失会按中费
+            # 3 估产生无意义排序键(F-2;与占位件物理门同向互补)。
+            continue
         if name in target:
             continue
         if name in excl:
@@ -538,6 +546,8 @@ def evaluate_sell_candidates(
     for unit, _row, idx in deployed_indexed:
         name = str(unit.char_id or '')
         if name in target:
+            continue
+        if predicates.is_unsellable_system_unit(name):
             continue
         if name in excl:
             continue

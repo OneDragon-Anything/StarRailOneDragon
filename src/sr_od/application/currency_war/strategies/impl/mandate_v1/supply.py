@@ -172,6 +172,9 @@ def _rank_char_candidates(
         priority_rng_of,
         sort_key,
     )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+        predicates,
+    )
     frame = mandate.snapshot_frame(gs)
     out: list[tuple[SupplyOption, PriorityKey]] = []
     for o in char_pool:
@@ -214,6 +217,11 @@ def _rank_char_candidates(
                 continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
             u = bench_slot_unit(bs)
             if u is None or not u.char_id:
+                continue
+            if predicates.is_unsellable_system_unit(str(u.char_id)):
+                # 系统召唤单位(cost=0)物理门(与获取角色流程同款):
+                # 不可卖 + 实费档缺失按中费 3 估产生无意义排序键;
+                # 席位占用仍由虚拟局面如实承载。
                 continue
             units.append(HeldUnit(
                 str(u.char_id), int(u.star or 1), orig, False,

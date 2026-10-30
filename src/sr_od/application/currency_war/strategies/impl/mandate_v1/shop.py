@@ -1195,6 +1195,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if u is not None and u.char_id:
                 v_copies.setdefault(str(u.char_id), []).append(
                     int(u.star or 1))
+        # 排序装配 = 实况基准(3.1 对抗审定案,attack-impl-3.1.md F-1):
+        # 仅 held_copies 注入虚拟快照(升星模拟的席位释放/同名聚合由它
+        # 精确承载),need_star/stay_target/member_rank 按实况现算——
+        # 升星导致的达标态变化不进虚拟排序;方向保守(合成只升星,误差
+        # 只会多保护不会错卖)。
         ctx = assemble_priority_context(
             session, gs, deployed_names=target, held_copies=v_copies,
             rng=priority_rng_of(session, config))
@@ -1209,6 +1214,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             u = bench_slot_unit(bs)
             if u is None or not u.char_id:
                 continue
+            if predicates.is_unsellable_system_unit(str(u.char_id)):
+                # 系统召唤单位(cost=0)物理门:不可卖 + 实费档缺失会按
+                # 中费 3 估产生无意义排序键(F-2);席位占用仍由虚拟局面
+                # 如实承载(上一行不入池,不等于不入 sim)。
+                continue
             units.append(HeldUnit(
                 str(u.char_id), int(u.star or 1), orig, False,
                 cost=(effective_cost(gs, str(u.char_id)) or None)))
@@ -1216,8 +1226,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         tail = sell_order(units, ctx)[-1]
         if isinstance(tail, ShopUnit):
             # 末位 = 新牌自己 → 放弃买入(拒绝语义:拦因键改「优先级
-            # 不足」,acquisition §2;本牌进未消费机会清单,解拦复核
-            # 对本拦因无解拦动作——非瞬时可解除的拦阻)。
+            # 不足」,acquisition §2;本牌进未消费机会清单——拒因成立于
+            # 席满语境,席位空出后买入不再经六步流程,解拦复核按席满类
+            # 同轴放行,criteria/shop_session.shop_unblock_recheck)。
             _count('acquire_swap_declined')
             _record_opportunity(_name, 'priority_insufficient',
                                 card_cost(card), order_class)

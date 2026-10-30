@@ -18,6 +18,7 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.levelup import (
@@ -66,7 +67,10 @@ class HeldUnit:
     取值时机 = 生成期快照。判据不消费此键(等价牌的卖出序由随机尾键
     承载,槽位号兜底会引入「先买的先卖」系统性偏差,已拍板废弃)。"""
     deployed: bool
-    """是否在部署定型内(场上)。"""
+    """是否在部署定型内(场上)。
+    [全链零消费声明] 排序键各档全不消费此字段——场上/备战位同档同键
+    (在池即可卖 = 统一序列的字面语义,场位身份不参与让位排序);字段
+    保留仅作构造面语义自描述,防未来误把「场上」当保护维度接入。"""
     cost: int | None = None
     """牌面当前实费档(档 4/档 8 判定输入;None = 回退注册表起始费)。
     变费卡(现注册表仅银狼LV.999 三档)升费后由装配方供给现值,
@@ -207,7 +211,11 @@ def assemble_priority_context(
             c = get_comp(line_name) if line_name else None
             if c is None:
                 # 候选线名解析失败(注册表漂移)跳过该线,与
-                # protection.protection_membership 同款保守方向
+                # protection.protection_membership 同款「跳过并告警」
+                # 保守方向——静默跳过会让档 2/3 名单无声缺线,排错时
+                # 只能靠行为反推;告警给出线名才能定位漂移源头。
+                log.warning('[cw][priority] 候选线名解析失败(%s),'
+                            '跳过该线(档 2/3/5 名单缺线)', line_name)
                 continue
             members |= set(c.core_chars)
             members |= set(getattr(c, 'shared_chars', None) or ())
