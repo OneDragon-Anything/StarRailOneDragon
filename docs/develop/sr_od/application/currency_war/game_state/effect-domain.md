@@ -482,7 +482,11 @@ refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
 
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict;counter **不建**;清场出售 =
   确定性逻辑写面(出售金按卖价公式,归属判据 §6.3 确定性分支),发牌面随机交由观察收尾;
-  出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口,cw_investments.py:686-689)。
+  出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口,cw_investments.py:686-689);
+  sim 发牌面由后端发牌腿承接世界真值直写(`cw_sim_backend
+  .apply_strategy_pick_sell_all_deal`,挂 `_on_invest_picked` 选卡落地拍、呈现闩防重放,
+  授予出口 `grant_bucket_names` 逐档派生桶,判据 = `STRATEGY_EFFECTS` 过滤
+  `board_rewrite='sell_all'` 派生禁硬编码),live 维持观察覆盖零改动。
 - **证据**:规格 cw_investments.py:690-696(board_rewrite='sell_all');官方原文
   cw_invest_data.py:68「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个
   2星2费角色和2个2星1费角色。」

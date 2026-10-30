@@ -189,6 +189,15 @@
 | state 影响 | ①载体 = `EconomyEffect.streak_set` 字段(带符号绝对置位,0=无此腿;kernel `_ENGINE_CHANNEL_EXCLUDED_FIELDS` 一次性状态置位划界 + 策略侧 `_PENDING_MODELING_FIELDS` 双闭集伴随);写端 = sim 选卡落地拍 `gs.observe` 独立笔 `streak:strategy_pick:<卡名>`(sig 同组 `sim:streak`,与结算笔分账),呈现闩防重放(置位后战斗推进再重放不得把已转移真值回写成置位值);置位腿先于难度旗牌更新(伟大征服难度+连胜项同拍随置位后真值,实机对齐)。置位值经现役共享链自动跟随,零新增接线:结算转移五分支(战斗类胜 +1/战斗类败转负向计数/扑满胜 +1/扑满败清零/补给与普通奖励不动)、轮收入连胜分量查 `STREAK_GOLD_TABLE`、深井角斗场触发器、伟大征服难度项。live 零写 = 置位发生在选卡刻,真值经下一结算屏带符号读数观察覆盖收口(fields.md §3.2.12 写入方两分不变,投影审计 streak 行「零逻辑写端」陈述不变——本腿为 sim observe 写非逻辑写端) |
 | 策略层消费 | instant_gold=4 面值计分(现金通道,估值零漂移);streak_set 轨迹依赖待建模(`_PENDING_MODELING_FIELDS`,建模落地自动进现金分);选卡价值(置 4 后连胜金流变化 vs 高连胜被回落的机会核算)归策略侧立场域 |
 
+### 人力重组(2026-10-31 回填:出售+发牌两分支结构化建模)
+
+| 槽 | 内容 |
+|---|---|
+| 官方原文 | `cw_invest_data.py` PlazaAugment id=102801,名=人力重组,品质=银:「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费角色和2个2星1费角色。」 |
+| 机制 | 两段式(先出售后发牌,同族「先回归后重抽」时序口径):①出售面 = 全场(前台/后台/备战席)清空+退款按卖价公式入金,双端同链确定性逻辑写(板面重写桥 `apply_board_rewrite` SELL_ALL 分支);②发牌面 = 三档随机 2★(卡文语序费用降序 3→2→1,数量 1/2/2),采样空间 = 剩余池对应费用档桶(economy.md 定谳点名本卡),授予出口 `cw_pool.grant_bucket_names` 逐档派生桶+同 rng 实例放回抽 → `gain_character(star=2)` 落席;判据派生 = `STRATEGY_EFFECTS` 过滤 `board_rewrite='sell_all'`(`cw_sim_backend.SELL_ALL_REWRITE_STRATEGIES`,禁硬编码名单) |
+| state 影响 | **无新字段/无计数器**——出售面 = 容器清空+金币入账(既有字段);发牌面 = bench 现役容器落位(`gain_character` 原语,与存量同名的合成级联走链内),零容器面扩张。双端分工:live 发牌面零逻辑写(游戏侧发放,下一备战帧观察覆盖收口,桥「不造单位」裁定维持);sim 发牌面 = 后端世界真值直写(`cw_sim_backend.apply_strategy_pick_sell_all_deal`,挂 `_on_invest_picked` 选卡落地拍、呈现闩防重放,rng 流键 `M24/sell-all-deal` 可重放) |
+| 策略层消费 | duties=predict(选卡后板面/战力重估,出售退款+发牌资产核算归策略侧立场域);经济面无 STRATEGY_ECONOMY 条目(出售退款依赖场上构成非固定值,instant_gold 族不适用 = spec 注释自注缺口);发牌面估值打分空白(随机发放不可具名,不入具名打分) |
+
 ## 4. 待逐条确定占位清单
 
 目录 = `cw_investments.STRATEGY_EFFECTS` ∪ `STRATEGY_ECONOMY` **全集**(两注册表为
@@ -209,7 +218,7 @@
 | 5 | 无伤通关、招聘资金、招聘资金+、溜佩佩、溜佩佩+、保险 | 待逐条确定 |
 | 6 | 成长的快乐、固定理财+、经验到账、孪生素数、狸财经狸、不等价交换、星际和平保险 | 待逐条确定 |
 | 7 | 简单模式、难度修改器、砂里淘金、星星相印、武力刷新(世界发放腿已接线=合成事件型非轮首收入,免吸收判定;本表逐条确定归 own 批)、降本增效、概率事件、奋斗协议、市场干预 | 待逐条确定 |
-| 8 | 全员晋升、人力重组、免战牌(仅 STRATEGY_EFFECTS 有条目) | 待逐条确定 |
+| 8 | 全员晋升、免战牌(仅 STRATEGY_EFFECTS 有条目) | 待逐条确定 |
 
 **投资环境卡适用范围注**:`PLAZA_PORTALS`(cw_invest_data.py,投资环境)不在上列目录——
 环境效果的 state 影响暂由容器字段规格(fields.md)各字段行承载(节点序改写源 §3.2.2/词缀改写 §3.1.3/

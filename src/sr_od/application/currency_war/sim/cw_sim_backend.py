@@ -57,6 +57,7 @@ import random
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.affix_effects_data import (
     AFFIX_EFFECTS,
 )
@@ -72,6 +73,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     round_start_income,
     world_shop_refresh_cost,
     xp_apply_amount,
+)
+from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    BOARD_REWRITE_SELL_ALL,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
@@ -92,6 +96,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_grants,
     discharge_due_item_opens,
     discharge_due_strategy_grants,
+    gain_character,
     gain_equipment,
     gain_invest_env,
     gain_invest_strategy,
@@ -122,6 +127,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
+    STRATEGY_EFFECTS,
     aggregate_economy,
     normalize_invest_name,
 )
@@ -139,6 +145,9 @@ from sr_od.application.currency_war.kernel.cw_ore_channel import (
 )
 from sr_od.application.currency_war.kernel.cw_overlay_register import (
     consume_screen_change,
+)
+from sr_od.application.currency_war.kernel.cw_pool import (
+    grant_bucket_names,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     PIGGY_ENV_NAMES,
@@ -471,6 +480,74 @@ def apply_strategy_pick_streak(gs: GameState, picked: Sequence[str]) -> int:
                    sig=obs_sig(group_id='sim:streak'))
         applied += 1
     return applied
+
+
+#: 板面重写族出售支判据集(派生,禁硬编码名单)::data:`STRATEGY_EFFECTS`
+#: 过滤 ``payload.board_rewrite == BOARD_REWRITE_SELL_ALL``。辖域 =
+#: 注册表声明该语义的全体卡(现役成员唯「人力重组」;后继出售族卡按同
+#: 语义注册即自动入列,本文件零改)。卖价修饰族(大裁员/降本增效,住
+#: STRATEGY_ECONOMY)与仅注释归类未注册卡(现金为王)不入列,与桥出口
+#: 语义同界(族归类注释 = cw_investments 板面重写族条)。
+SELL_ALL_REWRITE_STRATEGIES: frozenset[str] = frozenset(
+    name for name, spec in STRATEGY_EFFECTS.items()
+    if str(getattr(getattr(spec, 'payload', None), 'board_rewrite', '')
+           or '') == BOARD_REWRITE_SELL_ALL)
+
+#: 出售发牌三档序列 ``(费用, 数量)``:卡文语序费用降序 3→2→1(卡文:
+#: 「获得1个随机的2星3费角色、2个2星2费角色和2个2星1费角色」;族级
+#: 读法「表内对序 = 卡文语序,禁按费用隐式重排」——本卡卡文即降序)。
+SELL_ALL_DEAL_TIERS: tuple[tuple[int, int], ...] = ((3, 1), (2, 2), (1, 2))
+
+
+def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
+                                      rng: random.Random) -> int:
+    """策略选卡落地拍出售发牌腿(板面重写族出售支,通用通道,辖域 =
+    :data:`SELL_ALL_REWRITE_STRATEGIES` 全体,判据分派非单卡特判)。
+
+    为什么:sim 世界自持无观察,live 发牌面 = 游戏侧发放、下一备战帧
+    观察覆盖收口(板面重写桥「本桥禁替发牌面造单位」裁定,三正本在册
+    零改动);sim 不发即持卡局 5 只 2★ 凭空缺失,合成素材池/held 派生/
+    部署决策下游全链失真。本腿 = sim 世界真值直写,live 局不经过 sim
+    后端,零假发牌。先卖后抽时序 = 挂点天然保证:kernel 获得链(含桥
+    出售面清空+退款)已在本腿执行前写完容器,held 归零 → 各档剩余池 =
+    固定牌库全集,桶出口「先回归后重抽」调用时序契约
+    (:func:`cw_pool.grant_bucket_names`)天然满足。
+
+    发牌本体 = 逐卡逐档(:data:`SELL_ALL_DEAL_TIERS`):桶出口派生桶 →
+    同 rng 实例 count 次放回抽(同名可重复;批内零升星:同名 2★×2 不足
+    3 合 1 门槛,与存量同名的合成照走链内级联)→ :func:`gain_character`
+    star=2 直接落席(rand=True = 采样语义声明,kernel 随机赠卡支同口径)。
+    2★ 与三档数量全卡面明写(「2星3费」),结构值非先验,禁实现为「发
+    3 只 1★ 再合成」——行为等价但证据面失真,且批内同名 2★×2 的 6 副本
+    语义依赖直接 2★ 形态(held 派生每只 2★ 计 3 副本)。桶出口恒缺省
+    extra_experts(「专家 ∈ 授予采样空间」无定案,调用方禁自填,cw_pool
+    在码申报)。空桶 = 注册表漂移态防御:零写 + log 警告不炸链(
+    on_env_gained 随机支同款);桶出口守恒破(剩余负值 raise)= cw_pool
+    显式炸错语义照抄不兜。rng 必须显式传参:缺省回退自掷破 sim 确定性
+    (蓝海腿同款纪律);三档共用同一实例按卡文语序推进(掷序契约:改序
+    = 掷序漂移)。返回发放单位数。
+    """
+    dealt = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        if canon not in SELL_ALL_REWRITE_STRATEGIES:
+            continue
+        for cost, count in SELL_ALL_DEAL_TIERS:
+            bucket = grant_bucket_names(gs, cost)
+            if not bucket:
+                # 运行期空 = 注册表漂移(出售刚清场,该费用档剩余池不应
+                # 为空);零写留 log 防御分支(随机赠卡池空支同款,
+                # 不改容器不炸链)
+                log.warning(f'[cw-sim] 出售发牌腿空桶(注册表漂移?):'
+                            f'cost={cost} card={canon}')
+                continue
+            for _ in range(count):
+                gain_character(gs, rng.choice(bucket), 2, rand=True,
+                               sig=logic_sig(group_id='sim:strategy'),
+                               evidence='sim:board_rewrite_deal',
+                               producer='SimBackend')
+                dealt += 1
+    return dealt
 
 
 # ============================================================ 商店发牌件
@@ -1169,6 +1246,13 @@ class SimBackend:
     #: 防重放实害 = 置位后战斗推进再重放会把已转移真值回写成置位值。
     #: 私有暂态不入容器/不入快照恢复(同形先例同上)。
     _strategy_pick_streak_latch: bool | None = field(init=False, default=None)
+    #: 策略选卡出售发牌腿呈现闩(板面重写族出售支;与 xp/streak 闩同点
+    #: 置位同拍消费,独立不共享——三腿语义独立,共享闩会让单腿测试直读
+    #: 互相牵连且无状态量收益)。防重放实害 = 无闩的重放 advance 会把
+    #: 5 只 2★ 二次发放(发放非幂等,与置位腿同害级)。私有暂态不入
+    #: 容器/不入快照恢复(同形先例同上)。
+    _strategy_pick_sell_deal_latch: bool | None = field(init=False,
+                                                        default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -1877,6 +1961,24 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_xp(self.gs, picked)
+        # 选卡落地拍出售发牌腿(板面重写族出售支):sim 世界自持账补全——
+        # live 同拍零写(游戏侧发 5 只 2★,下一备战帧观察覆盖收口,三正本
+        # 裁定零改动),sim 无观察,不发即持卡局资产面失真。先卖后抽时序
+        # = 挂点天然保证:kernel 获得链(含桥出售面)已在选卡首链写完,
+        # 本腿落桶出口时 held 已归零(出口时序契约前提)。拿卡名推导与
+        # 呈现闩防重放 = xp 腿同款(闩消费先于判定,交集空亦消费);
+        # 发牌资格归判据集分派非单卡特判;rng 显式流键构造(缺省回退自掷
+        # 破 sim 确定性;段位沿 M21/M22/M23 编号续,与商店发牌 M05/环境
+        # 族 M02 分域)。位置 = 链尾独立笔:本腿非环境无门控读面、非注册
+        # 表字段分派,与前置各腿零交互。
+        if not opening and self._strategy_pick_sell_deal_latch:
+            self._strategy_pick_sell_deal_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                apply_strategy_pick_sell_all_deal(
+                    self.gs, picked, stream_rng(self.seed,
+                                                'M24/sell-all-deal'))
         self._after_modal_pick(opening=opening)
 
     def _on_open_box(self) -> None:
@@ -2367,6 +2469,8 @@ class SimBackend:
             # 形状,重放防护窗以「呈现→落地」为界,复呈现后到达的重放
             # 属上游重试 bug 面)。
             self._strategy_pick_streak_latch = True
+            # 出售发牌腿闩同点置位(三腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_sell_deal_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -2445,9 +2549,10 @@ class SimBackend:
         self._screen = SCREEN_INVEST_STRATEGY
         self._sub = ''
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
-        # 置闩」口径,落地拍消费防重放)。
+        # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
+        self._strategy_pick_sell_deal_latch = True
         # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         self._offer_refreshable = False

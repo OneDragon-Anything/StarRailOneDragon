@@ -692,8 +692,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
         duties=DutyFlags(predict=True),
-        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=设计件 M8 编排,未接;'
-              '写归属=出售面逻辑写/发牌面观察收口(详设 §5 人力重组行)'),
+        notes='全场出售事件;执行时序编排(卖→发牌);'
+              '写归属=出售面逻辑写/发牌面 live 观察收口·sim 发牌腿承接'
+              '(cw_sim_backend.apply_strategy_pick_sell_all_deal)'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面适用范围。
     '躺平': EffectSpec(
