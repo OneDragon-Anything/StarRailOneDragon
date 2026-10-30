@@ -56,6 +56,7 @@ from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_PORTALS,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    BENCH_REROLL_RIGHT3,
     BOARD_REWRITE_SELL_ALL,
     BOARD_REWRITE_UPGRADE_ALL,
     BattlefieldEffect,
@@ -897,6 +898,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '「随机」(披露键 strategy_expiry_grant_simple_pool_uniform);'
               '进窗占席>3 行为不建模(披露键 '
               'bench_capacity_shrink_overflow_unmodeled)'),
+    # 公司人才流动:官方「每次进入新节点时，处在备战席最右侧3个位置的角色变为
+    # 随机的同费用角色。获得2金币。」(cw_invest_data.py:60,id 102101)。
+    # bench_reroll 族(备战席区间重掷族)效果面首个登记条目 = 族模式卡;
+    # 重掷面零执行端(游戏侧自行重掷,bot 备战帧观察收真值),登记腿三桥对
+    # 本 payload 全零动作(no-op 回归哨 = test_gain_chain.py 两锁)。
+    '公司人才流动': EffectSpec(
+        id='102101', name='公司人才流动', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(bench_reroll=BENCH_REROLL_RIGHT3),
+        duties=DutyFlags(track=True),
+        notes='随机重掷面零逻辑写、观察收口(effect-domain.md §6.3/§6.4);'
+              '区间=现役 capacity 尾 3 槽(与节省工位组合 capacity=3 时全席,'
+              '实采可校正);辖域仅 kind=unit 槽(箱/典/书卡位不涉);星级分布/'
+              '装备归属/被替换去向未采证(invest_effects.md 全员晋升行同式'
+              '申报);拿卡当节点不重掷(per_node_pick_node_grant.md §4,'
+              '无立即措辞,C 级佐证);+2 金=instant_gold=2 选卡当场 live '
+              '游戏发放+观察收口,sim 无此金腿(选卡即时金缺口=族级既有'
+              '待办,禁按双端生效找/建通道);族模式卡:姊妹乱成一锅粥/+'
+              '换 BENCH_REROLL_LEFT6,双载荷裁决位(bench_reroll 需 '
+              'BattlefieldEffect 载体、爆腿过 burst 桥需 EconomyEffect '
+              '载体,EffectSpec 单 payload 字段不可并存)归族展开批先裁'),
 }
 
 

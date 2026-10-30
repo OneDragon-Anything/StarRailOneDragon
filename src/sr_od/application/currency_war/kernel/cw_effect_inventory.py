@@ -189,6 +189,17 @@ BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售+再发牌
                                                         # 再发 2★ 随机角色进席
 
 
+# ===== 备战席区间重掷语义词表(BattlefieldEffect.bench_reroll 取值;防散落字符串)=====
+# 已登记条目 = 公司人才流动(cw_investments.STRATEGY_EFFECTS,官方文
+# cw_invest_data.py:60);重掷面 = 随机分支零逻辑写、观察收口,写归属单一源 =
+# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# §6.3/§6.4 与 §8 同名条。LEFT6 = 族预留(乱成一锅粥/乱成一锅粥+,
+# 352101/352102),未建条目。
+BENCH_REROLL_RIGHT3: str = 'right3_same_cost'   # 备战席最右 3 位变为随机同费角色
+BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随机同费角色
+                                                # (未建条目)
+
+
 # 事件标记键(追踪端标记,非策略计数器;下划线前缀与策略计数器空间隔离)
 _EVENT_LEVEL_UP = '_event_level_up'
 _EVENT_BATTLE_END = '_event_battle_end'
