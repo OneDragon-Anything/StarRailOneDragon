@@ -3524,6 +3524,10 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 真值归观察覆盖
     '人才激励': StrategyDelayedGrant(id='101601', delay_nodes=4,
                                       item='员工投影仪'),
+    # 人才激励+(id 101602 原文直读,cw_invest_data.py:55;与姊妹卡
+    # 唯一差异 = 倒计时 4→3,卡面「3个节点后」)
+    '人才激励+': StrategyDelayedGrant(id='101602', delay_nodes=3,
+                                       item='员工投影仪'),
 }
 
 
