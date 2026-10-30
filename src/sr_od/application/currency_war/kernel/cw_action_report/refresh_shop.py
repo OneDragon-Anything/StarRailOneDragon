@@ -58,6 +58,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     LogicOutcome,
     ShopActionExecuted,
     _validate_sig,
+    mark_gold_spent,
 )
 from sr_od.application.currency_war.kernel.cw_shop_deal import (
     sample_shop_deal,
@@ -105,6 +106,11 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
     else:
         free_determined = _left is not None and int(_left) > 0
     inv.record_refresh(free=free_determined)
+    if not free_determined:
+        # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):非免费帧
+        # = 花费事件,与账本 refresh_paid +1 同条件同口径——「未观察保守按
+        # 付费」的保守性一并继承;免费帧不置位。
+        mark_gold_spent(gs, produced_by=_PRODUCER, sig=_grp_sig)
     if free_determined:
         # 免费分支 Field 扣减(剩余语义,下限 0;None 基按 0 起算——
         # 显式 free=True 而 Field 未观察的形态只出现在注入测试)

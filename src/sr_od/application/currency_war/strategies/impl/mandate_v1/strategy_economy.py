@@ -98,8 +98,9 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #:   gold_at_level_target(成长基金型,到达等级概率未建模);
 #: - 刷新族:free_refresh_burst/free_refresh_per_node/refresh_surprise_
 #:   every/refresh_per_compose/refresh_free_chance/refresh_shop_rewrite_
-#:   every_3cost/free_refresh_cond_gold_above/step/cap(刷新机会成本模型
-#:   缺,P97 预算只证可达性不证单次价值);
+#:   every_3cost/free_refresh_cond_gold_above/step/cap/
+#:   free_refresh_cond_prev_node_unspent(刷新机会成本模型缺,P97 预算
+#:   只证可达性不证单次价值);
 #: - XP 通道:xp_per_refresh(刷新 XP 收入的价值缺金值口径)、
 #:   xp_buy_cost_discount/xp_click_discount_from_level/_at(P22 占优方向
 #:   已登记但金值未立);
@@ -121,6 +122,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'refresh_free_chance', 'refresh_shop_rewrite_every_3cost',
     'free_refresh_cond_gold_above', 'free_refresh_cond_gold_step',
     'free_refresh_cond_cap',
+    'free_refresh_cond_prev_node_unspent',
     'xp_per_refresh', 'xp_buy_cost_discount',
     'xp_click_discount_from_level', 'xp_click_discount_from_level_at',
     'win_reward_mult', 'sell_price_mult',
@@ -180,7 +182,9 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
                '大于买断制现金流),无字段载体',
     '气氛组': '战斗结束按 0 伤害角色数给 XP,无字段载体',
     '气氛组+': '同气氛组 +「获得8经验」即时 XP 分支,均无字段载体',
-    '存款回报': '条件免费刷新(上节点未花费 → 2 刷),无字段载体',
+    '存款回报': '条件免费刷新分支已建模(free_refresh_cond_prev_node_unspent=2,'
+              '发放经节点桥,载体在 cw_investments.STRATEGY_ECONOMY);'
+              '字段级估值 pending 归 _PENDING_MODELING_FIELDS 刷新族',
     '招财狗': '战斗胜利未损血 → 每佩佩 1 金(轨迹依赖:佩佩数×不败率),'
              '无字段载体',
     '免战牌': 'xp_instant=30 分支挂 STRATEGY_EFFECTS 载体(cw_investments.'

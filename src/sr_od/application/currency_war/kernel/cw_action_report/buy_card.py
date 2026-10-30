@@ -25,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_indexed_of_view,
     deployed_view_of_indexed,
     detect_merge_upgrade,
+    mark_gold_spent,
     shop_cards_to_legacy,
     shop_payload_content_cards,
 )
@@ -198,6 +199,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.effects.on_buy(card, star, k)
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
+
+    # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
+    #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;
+    #    同节点多笔判等跳写收敛在 mark_gold_spent 内。——
+    mark_gold_spent(gs, produced_by='CwActionBuyCardParam', sig=_grp_sig)
 
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42

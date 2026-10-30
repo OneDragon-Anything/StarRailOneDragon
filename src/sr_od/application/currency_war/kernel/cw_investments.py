@@ -96,6 +96,10 @@ class EconomyEffect:
     - free_refresh_cond_gold_above/step/cap: 条件判定族三元组(本金充裕系=50/10/3)——每次进入
       新节点时,金 > above 每额外 step 金 +1 次免费刷新、至多 cap 次;发放经
       grant_effect_node_refresh_balance 桥(节点 tick 采样,金=gs.gold 现值评估)
+    - free_refresh_cond_prev_node_unspent: 条件判定族·花费布尔形(存款回报=2)——
+      每次进入新节点时,上节点未花费(gs.prev_node_spent=False)才授予该值次数;
+      True 不授予,未写(None)= 保守零授予(禁猜);置位写端 = 四花费通道
+      mark_gold_spent,滚位 = 节点边界 roll_prev_node_spent(发放同经节点桥)
     - refresh_surprise_every: 每 N 次刷新刷出 5 张同费卡(采购专员;稳定器,提高刷新期望)
     - gold_per_three_5cost: 每购买 3 个 5 费角色给金
     - interest_cap_override: 利利息档上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)
@@ -119,6 +123,12 @@ class EconomyEffect:
     free_refresh_cond_gold_above: int = 0   # 触发金阈值(严格大于;本金充裕=50)
     free_refresh_cond_gold_step: int = 0    # 每额外该值金 +1 次免费刷(本金充裕=10)
     free_refresh_cond_cap: int = 0          # 单次触发至多授予次数封顶(本金充裕=3)
+    # 条件免费刷·单字段双职(次数+激活开关,>0 即激活;存款回报=2,卡面只有
+    # 固定值无梯度无封顶,不需要三元组式多字段配对):每次进入新节点时,
+    # 上节点未花费(prev_node_spent=False)→ 授予该值次数;True = 不授予;
+    # None/未写 = 保守零授予(禁猜,本金充裕金 None 同款口径);不做
+    # aggregate_economy 标量聚合(同三元组)
+    free_refresh_cond_prev_node_unspent: int = 0
     refresh_surprise_every: int = 0
     gold_per_three_5cost: int = 0
     interest_cap_override: int | None = None
@@ -229,6 +239,9 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 不入引擎族(非无条件持续通道),沿旧闭集原样划界
     'free_refresh_cond_gold_above', 'free_refresh_cond_gold_step',
     'free_refresh_cond_cap',
+    # 条件刷新·上节点未花费位(存款回报):同三元组划界——授予条件依赖
+    # 玩家上节点行为(逐节点边界评估),非无条件持续通道,不入引擎族
+    'free_refresh_cond_prev_node_unspent',
     # 补偿型(损血/上限损耗换算,不构成收入通道)
     'gold_per_20hp_lost', 'gold_per_hp_lost_now',
     'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
@@ -443,6 +456,13 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 只在 instant_gold(26 vs 45)。条件分支发放经节点桥(§3.3.6)。
     '本金充裕': EconomyEffect(instant_gold=26, free_refresh_cond_gold_above=50,
                               free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
+    # 存款回报:官方「每次进入新节点时,如果在上个节点没有花费金币,则获得
+    # 2次免费刷新。」(cw_invest_data.py:40,id 100501)。条件判定族第二形
+    # (花费布尔条件;本金充裕系=金梯度条件):单字段双职(次数+激活开关),
+    # 条件输入置位 = 四花费通道 mark_gold_spent,节点边界滚位 =
+    # roll_prev_node_spent(评估毕复位);发放经节点桥条件腿自动生效
+    # (prev_node_spent=False 才授予,None 保守零授予)。
+    '存款回报': EconomyEffect(free_refresh_cond_prev_node_unspent=2),
     '开源节流': EconomyEffect(instant_gold=10, interest_cap_override=9),
     '利息上调': EconomyEffect(instant_gold=25, interest_cap_override=10),
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
@@ -719,6 +739,19 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.ONCE, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['免费午餐'], duties=DutyFlags(),
         notes='「获得11次免费刷新」=burst 腿,获得链登记期发放'),
+    # 存款回报:官方「每次进入新节点时,如果在上个节点没有花费金币,则获得
+    # 2次免费刷新。」(cw_invest_data.py:40,id 100501,T-92)。条件判定族
+    # (形态镜像本金充裕):触发=节点进入、条件=上节点未花费
+    # (prev_node_spent=False)、授予=2;发放经节点桥条件腿自动生效
+    # (未写 None = 保守零授予禁猜);无即时腿(卡面无「现在/立刻」段)→
+    # burst 桥对本条目零额度 no-op。counter 不建(授予量恒 2 无累计量),
+    # duties 全空(无计数器/无预知/无姿态消费面)。payload 引
+    # STRATEGY_ECONOMY 同一实例(单一源)。
+    '存款回报': EffectSpec(
+        id='100501', name='存款回报', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['存款回报'], duties=DutyFlags(),
+        notes='条件免费刷 2/节点:上节点未花费才授予,经节点桥发放;无即时腿'),
 }
 
 

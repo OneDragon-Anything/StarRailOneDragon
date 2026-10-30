@@ -144,6 +144,11 @@ def apply_confirm_effect(session, payload: dict, *,
 
 def _apply_buy_card(session, action: dict, _eff) -> None:
     """dict 形 CwActionBuyCardParam 的金账推进(merge_simulate 单一引擎算购买数)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        ChannelSig,
+        game_state_of,
+        mark_gold_spent,
+    )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         merge_simulate,
     )
@@ -158,6 +163,15 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
         _advance_gold(session, -cost * max(1, res.buy_k or 1))
         _eff('gold', f"-{cost * max(1, res.buy_k or 1)}(买牌×{res.buy_k})",
              'gold')
+        # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):dict 形
+        # 买牌同属花费事件(回放/离线世界真值一致性;现役生产零调用)。
+        # sig 自构(actor='PrepActionExecutor' + mode='compute',对齐
+        # _advance_gold 既有构形——本作用域无动作窗 _grp_sig)。
+        mark_gold_spent(game_state_of(session),
+                        produced_by='PrepActionExecutor',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='PrepActionExecutor',
+                                       mode='compute'))
 
 
 

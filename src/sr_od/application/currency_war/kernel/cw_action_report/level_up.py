@@ -19,6 +19,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _record_lv8_window_start,
     _validate_sig,
     level_of,
+    mark_gold_spent,
 )
 
 
@@ -104,5 +105,9 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     # 升级窗口达成位记录(成功经验通道主挂点;内部自判条目在场 ∧ 未记录 ∧
     # level_of >= 阈值,零旁路条件——全量零动作安全,见 _record_lv8_window_start)。
     _record_lv8_window_start(gs)
+    # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):零费击
+    # (cost×clicks=0)= 无金离手不计花费;cost 缺省 0 视同零费。
+    if int(getattr(param, 'cost', 0) or 0) * clicks > 0:
+        mark_gold_spent(gs, produced_by='CwActionLevelUpParam', sig=_grp_sig)
     return LogicOutcome(applied=True, world_decl=_spy_decl)
 

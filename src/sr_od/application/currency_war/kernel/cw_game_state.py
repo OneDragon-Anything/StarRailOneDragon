@@ -1490,7 +1490,13 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
       时每额外 free_refresh_cond_gold_step 金 +1 次、至多 free_refresh_cond_cap;
       三字段齐备(>0)才激活,半配对保守 no-op。金未读(None)= 条件不可
       评估 → 该条目本拍零授予(禁猜;下一节点金可读时恢复评估,授予量
-      随当拍现值,不补发历史拍)。
+      随当拍现值,不补发历史拍);
+    - **条件判定·花费位**(存款回报,free_refresh_cond_prev_node_unspent,
+      fields.md §3.3.9):上节点未花费(gs.prev_node_spent is False)才授予
+      该值次数——True 不授予,未写(None,直构容器不跑种子)= 保守零授予
+      (禁猜,金 None 同款口径);条件输入置位 = 四花费通道
+      mark_gold_spent,滚位 = 本桥评估后 roll_prev_node_spent(调用侧
+      advanced 闸时序保证:桥先读旧值评估,滚位其后执行)。
 
     采样点 = 节点 tick 挂点(cw_loop 备战分支),**仅在 advance_node 返回
     advanced=True 时调用**(每节点恰一次,重复调用即双计;条件形态与静态
@@ -1498,7 +1504,8 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     记账 = 容器字段 ``gs.free_refresh_left`` write_logic 逻辑直写(2026-09-21
     Field 化:免费次数升格容器字段,观察锚定/动作扣减/发放登记三写端同格;
     None 基 = 0 起算,开局无免费次数 = 机制真值)。静态活载体 = 双手狸
-    (2/节点);条件活载体 = 本金充裕/+(50/10/3)。固定理财位面开始段
+    (2/节点);条件活载体 = 本金充裕/+(50/10/3)、存款回报(上节点未花费
+    →2)。固定理财位面开始段
     (PLANE_START)不属本形态——该未建模分支的单一登记点 =
     ``cw_investments.STRATEGY_ECONOMY_PENDING_MODELING``,本桥不另记。
     """
@@ -1516,6 +1523,16 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
             surplus = int(gold) - above
             if surplus > 0:
                 n_e += min(surplus // step, cap)
+        # 条件腿·上节点未花费(存款回报):True 不授予;未写(None,直构
+        # 容器不跑种子)= 保守零授予(禁猜,本金充裕金 None 同款口径);
+        # 此刻读的是上一节点花费位真值(本节点内花费已置 True,滚位在
+        # 本桥返回后才执行——_tick_effect_boundary_impl advanced 闸时序)。
+        n_unspent = int(getattr(payload,
+                                'free_refresh_cond_prev_node_unspent', 0) or 0)
+        if n_unspent > 0:
+            spent = gs.prev_node_spent.value
+            if spent is False:
+                n_e += n_unspent
         if n_e > 0:
             per_node += n_e
             srcs.append(e.spec.name)
@@ -1527,6 +1544,42 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
                    produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
                    if srcs else 'EffectLedgerBridge',
                    evidence=f'effect_node@{frame}' if frame else 'effect_node',
+                   sig=_bridge_sig(gs))
+
+
+def mark_gold_spent(gs: GameState, *, produced_by: str,
+                    sig: ChannelSig) -> None:
+    """金币花费事件置位(fields.md §3.3.9 存款回报条件输入):现值已 True
+    判等跳写(write_logic 无同值去重,库内省行惯例 = 调用方早退),否则
+    write_logic 置 True——同节点多笔花费只落一行,判等后账面行数 = 花费
+    状态变化数。逻辑写,无观察写端(审计行 AUDIT_PROCESS_ONLY 现值不变);
+    唯一能写 True 的就是本函数(单调 True 直至滚位),滚位唯一写端 =
+    roll_prev_node_spent。置位接线 = 四花费通道(买牌/购经验 cost>0/
+    付费刷新非免费帧/dict 形买牌,各上报函数内各一行)。守卫义务:伴生金
+    通道 apply_gold_delta 与自动代买腿(auto_buy_owned,BattlefieldEffect
+    在册声明现值零消费点)若未来出现花费事件,须随其建模批补本函数接线,
+    禁旁路直写本字段。"""
+    if gs.prev_node_spent.value is True:
+        return
+    gs.write_logic(gs.prev_node_spent, True, produced_by=produced_by,
+                   evidence='gold_spent_flag', sig=sig)
+
+
+def roll_prev_node_spent(gs: GameState, *, frame: str = '') -> None:
+    """节点边界滚位(fields.md §3.3.9):把「上节点是否花费」滚动为 False
+    (新节点起算)。滚位语义无条件(不依持卡——字段语义 = 节点滚动事实,
+    持卡与否只影响发放桥是否授予,不影响滚位本身);现值已 False 判等跳写
+    (write_logic 无同值去重,未花费节点边界零行,判等论证同
+    mark_gold_spent);仅逻辑写。调用时序 = _tick_effect_boundary_impl
+    advanced 闸内、发放桥之后(桥条件腿读上一节点花费位真值,评估毕滚位);
+    与桥同闸同去重,无重复滚位面;补推跳档形态沿用 per-node 桥族既有近似
+    (跳档只评估一次,不做逐节点补偿)。终局事件式(match_end)零 tick
+    零滚位——局终无后继节点,滚位无意义。"""
+    if gs.prev_node_spent.value is False:
+        return
+    gs.write_logic(gs.prev_node_spent, False, produced_by='NodeBoundaryRoll',
+                   evidence=(f'prev_node_spent_roll@{frame}' if frame
+                             else 'prev_node_spent_roll'),
                    sig=_bridge_sig(gs))
 
 
@@ -3774,6 +3827,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
                     _eff.spec.name)
     if advanced:
         grant_effect_node_refresh_balance(gs, frame=frame)
+        roll_prev_node_spent(gs, frame=frame)   # 存款回报条件评估毕,滚位新节点(§3.3.9)
         grant_effect_node_xp(gs, frame=frame)
     project_effect_capacity(gs)
 
