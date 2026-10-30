@@ -167,7 +167,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
 | s=U_L | `XP_TO_NEXT_LEVEL`/`XP_PER_BUY`(`cw_state.py:43-44`)+`clicks_to_next_level`/`xp_click_cost`(`cw_economy.py:267-283`) | 游戏定义量(2026-08-31 用户已最终确认表) |
 | ΔV_band=c_eff·ΔE | `expected_refreshes_for_card`(超几何,`cw_shop_odds`)+刷价真值 2 金(`SHOP_REFRESH_COST` :376) | 注册表直调,零标定 |
 | ΔV_pop=w·C_realize | ①支谓词:P39 修订式,同步锚对 = `schedule_upgrade` 分支①(`cw_economy.py:794-797`)/`_upgrade_ul_threshold_ok` :705-710;②支谓词:`kernel/cw_deploy_logic.has_deployable`(:207-237,动作发出×执行单一源,勘误锚——早稿 pop_slot 放宽支系融资分支非合格判据,见 §2.3) | 已证符号结构,w 不计值 |
-| (2) 血面 h>d·L_c | P21〔已停用归历史〕;`blood_budget_levelup_blocked`、`p2_crisis_band`(均已随 hp 判据族删除删除,符号归 git 历史) | 已证单一源〔判据面已删〕 |
+| (2) 血面 h>d·L_c | P21〔已删,档案 = p23 附录〕;`blood_budget_levelup_blocked`、`p2_crisis_band`(均已随 hp 判据族删除删除,符号归 git 历史) | 已证单一源〔判据面已删〕 |
 | ALL IN 豁免谓词 | `plane_last_battle`(`cw_discipline_rules.py:193-198`) | 既有单一源 |
 | [·]⁺ 尖括号 | 纯代数(欠款计价),无常数 | 结构 |
 
