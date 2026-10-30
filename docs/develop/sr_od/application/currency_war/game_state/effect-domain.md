@@ -121,7 +121,7 @@
 
 | 类别 | 定义(效果语义) | state 记录形态(counter 判据) | 触发驱动 | 实码代表例(锚) |
 |---|---|---|---|---|
-| 即时结算 | 选卡当场一次性结清 | counter 空(无动态) | 选卡落地(§7.3) | 全员晋升/人力重组(cw_investments.py:353/:363);成本控制 instant_gold(cw_investments.py:210) |
+| 即时结算 | 选卡当场一次性结清 | counter 空(无动态) | 选卡落地(§7.3) | 全员晋升/人力重组(cw_investments.py:679/:690);成本控制 instant_gold(cw_investments.py:210) |
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
@@ -470,17 +470,20 @@ refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict;counter **不建**(一次性);本体
   = 选卡当场板面重写(board_rewrite='upgrade_all_cost+1'),替换面随机 → 交由观察收尾;
   登记后实例即历史(once 无推进维度)。
-- **证据**:规格 cw_investments.py:353-358;官方原文 cw_invest_data.py:67「场上的所有
+- **证据**:规格 cw_investments.py:679-685;官方原文 cw_invest_data.py:67「场上的所有
   角色会永久升级成比自身高1费的随机角色(最大5费)。获得2个【拆装扳手】。」
 - **推理链**:once → 无进展维度;改写后板面画面直读 → 零额外 state;附带的拆装扳手
-  分支 = 装备交由观察收尾。
+  分支 = 装备库存精确增量,已结构化出列(策略卡获得效果腿 =
+  `cw_gain_effects.PICK_INVEST_EFFECTS['全员晋升']` 具名装备授予工厂经
+  `gain_equipment(rand=False)` 直写 gs.equips,精密金面前置 fail-closed 申报
+  在工厂;fields.md §3.2.15 获得链写入方段)。
 
 #### 人力重组(102801)
 
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict;counter **不建**;清场出售 =
   确定性逻辑写面(出售金按卖价公式,归属判据 §6.3 确定性分支),发牌面随机交由观察收尾;
-  出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口,cw_investments.py:360-362)。
-- **证据**:规格 cw_investments.py:363-368(board_rewrite='sell_all');官方原文
+  出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口,cw_investments.py:686-689)。
+- **证据**:规格 cw_investments.py:690-696(board_rewrite='sell_all');官方原文
   cw_invest_data.py:68「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个
   2星2费角色和2个2星1费角色。」
 - **推理链**:once 构同全员晋升;出售面确定性可算 → 逻辑写候选,发牌随机 → 观察

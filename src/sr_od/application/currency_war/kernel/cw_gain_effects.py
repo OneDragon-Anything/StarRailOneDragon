@@ -21,6 +21,7 @@ from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
+    _emit_defect,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_GRANTS,
@@ -351,6 +352,96 @@ def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
     return _effect
 
 
+# ===== 具名装备授予族效果(策略卡获得时点具名装备确定发放:逐件
+# ===== gain_equipment(rand=False) 入栏,随机简易装备工厂同构、差异 =
+# ===== 无采样;族模式卡 = 全员晋升(拆装扳手×2),同族后继卡(精密拆装
+# ===== 族/冶金炉/垃圾袋/星徽秘典等)按 (item, count) 直呼本工厂登记)=====
+
+#: 精密金面 fail-closed 申报行 kind(独立小块非 DEFECT_ 词表成员:语义
+#: 申报非缺陷告警,沿 cw_gain_chain.ENV_REROLL_DECL 先例形态)。金面
+#: 未建模期本腿拒入栏的留证通道;金面接线批落地时随前置分支一并退役。
+NAMED_EQUIP_PRECISE_DECL: str = 'named_equip_grant_precise_decl'
+
+#: 具名装备授予的精密金面判据映射(装备名 → 触发金面改道的在场判据物):
+#: 官方规则「已持精密拆装扳手后再获得拆装扳手,改为获得 1 金币」
+#: (cw_equipment_data 拆装扳手条目)属性挂在**物**上——按物判不按卡判,
+#: 后继卡直呼工厂发放同物时规则自动生效,卡级前置分支禁内嵌闭包
+#: (工厂泛化硬要求,否则卡级分支遗传会给不携金面规则的发放物误拒)。
+_NAMED_EQUIP_PRECISE_GATES: dict[str, str] = {
+    '拆装扳手': '精密拆装扳手',
+}
+
+
+def _make_named_equip_grant_effect(
+        item: str, count: int) -> Callable[..., list[str]]:
+    """具名装备授予效果体工厂(闭包销 = (装备名, 件数),登记行直书形参即
+    单一源;形态镜像 _make_random_equip_effect,差异 = 具名确定发放,
+    零采样面)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名发放确定
+    (rand=False,gain-chain.md §5:卡文无随机词;与环境侧即时装备支
+    rand=True 随机态〔2026-10-17 用户裁定,猜测写 + 观察覆盖纠偏〕系
+    两通道分野,正本注记 = fields.md §3.2.15 获得链写入方段)。逐件
+    ``gain_equipment`` 入栏,装备获得后果经 on_equipment_gained 回调
+    自动消费;equips 未观察 = 原语现役拒落零写。效果串逐件一条
+    ``named_equip_grant:<名>(placed=<bool>)``(沿箱腿 placed 形态,
+    拒落可审计;前缀与 box_grant=占席道具 / equip_grant=延时装备 /
+    strategy_random_equip=随机装备 分域,审计可独立过滤)。
+
+    **幂等不设防申报**:同局重复获得同卡(策略去重后注册段跳写、效果
+    腿照常分派)= 每次获得各发 count 件,现役不设判重闸——与全部注册
+    效果腿同规,不另立闸。
+
+    **精密金面前置(fail-closed)**:发放物命中
+    :data:`_NAMED_EQUIP_PRECISE_GATES` 且判据物在场
+    (held_equip_count ≥ 1,惰性 import,沿骇客卡先例)→ 整腿零容器写
+    + 申报行留证(:data:`NAMED_EQUIP_PRECISE_DECL`)+ 效果串仍逐件
+    登记(placed=False)。理由:官方真值 = 改 +1 金不进栏
+    (cw_effect_inventory.settle_wrench_duplicate_gold 窗口语义),
+    而金面组合写未建模、生产接线归获得回执覆盖批(接线归属注记 =
+    cw_affix_effects.py EQUIP_REWRITE_DECLARATIONS 精密拆装扳手行)
+    ——无条件入栏会在锚定态产假失配行、在未锚定态静默写假值;真值
+    归观察覆盖,覆盖批落地时回改本分支(金面生效 = 不入栏改入金)。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_equipment,
+        )
+        _ = rng   # 具名确定发放,无采样面(rng 形参沿注册表分派契约保留)
+        gate = _NAMED_EQUIP_PRECISE_GATES.get(item)
+        if gate is not None:
+            # 计数底座惰性 import(贡献算术模块头反向依赖链模块,函数内取
+            # 同骇客卡避环纪律;纯读零写)
+            from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                held_equip_count,
+            )
+            if held_equip_count(gs, gate) >= 1:
+                _emit_defect(field_name='equips',
+                             expected=f'{count}件{item}(精密在场,官方改道'
+                                      f'+{count}金)',
+                             actual='零容器写(fail-closed,金面未建模,'
+                                    '真值归观察/接线覆盖批)',
+                             evidence=f'pick_invest_named_equip:{item}',
+                             sig=sig, kind=NAMED_EQUIP_PRECISE_DECL)
+                return [f'named_equip_grant:{item}(placed=False)'
+                        for _ in range(count)]
+        steps: list[str] = []
+        for _ in range(count):
+            outcome = gain_equipment(gs, item, rand=False, sig=sig,
+                                     evidence='pick_invest_named_equip',
+                                     producer=_PRODUCER)
+            steps.append(f'named_equip_grant:{item}'
+                         f'(placed={outcome.placed})')
+        return steps
+
+    return _effect
+
+
 # ===== 策略延时 offer 族效果(策略卡获得时点入延迟队列:拿卡即登记
 # ===== 倒计时,到点呈现归 sim 专用腿,本模块零采样面)=====
 
@@ -467,6 +558,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 不入两族表同上(同名键顺序覆盖丢腿)。
     '武装支援+': _compose_grant_legs(_make_random_equip_effect(1),
                                      _make_reinforcement_effect(((4, 1),))),
+    # 全员晋升 = 具名装备授予族模式卡(卡文「获得2个【拆装扳手】」):
+    # 直书登记行(沿组合卡字面项区式样;族内后继卡同形直呼工厂,精密金面
+    # 前置按物判内嵌工厂、卡级分支零遗传)。拆装扳手 = 工具类装备
+    # (cw_equipment_data category='工具'),归 equips 装备库存域——禁入
+    # 占席道具通道(BENCH_ITEM_KINDS 全量显式映射无此物,错入 items 会
+    # 伪造占席身份);板面重写腿(同卡另一句)零改动在册,STRATEGY_
+    # EFFECTS 注册行 board_rewrite 分派承载,本腿只辖装备句。
+    '全员晋升': _make_named_equip_grant_effect('拆装扳手', 2),
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
@@ -476,7 +575,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
-由组合子组合双腿(非表生成),策略延时 offer 族由工厂自
+由组合子组合双腿(非表生成),具名装备授予族(全员晋升)直书登记行由
+_make_named_equip_grant_effect 生成闭包,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
 登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无

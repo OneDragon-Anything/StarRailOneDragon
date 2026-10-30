@@ -841,8 +841,11 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     - 全员晋升(BOARD_REWRITE_UPGRADE_ALL):替换面 = 随机(全场升为高 1 费
       随机角色),不可准确算 → **零逻辑写端,观察收口**(§5.3 归属判据随机
       分支)——本桥对它零写入,报告作负写端留存证据;附带「获得 2 个拆装扳手」
-      = 装备库存精确增量,但注册表无结构化载体(§5.2 缺口登记),经装备
-      观察覆盖收束,不在本桥建模。
+      = 装备库存精确增量,已结构化出列(策略卡获得效果腿 =
+      cw_gain_effects.PICK_INVEST_EFFECTS['全员晋升'],具名装备授予工厂经
+      gain_equipment 直写 gs.equips,精密金面前置 fail-closed 申报在工厂
+      docstring),不在本桥建模——本桥只辖板面重写句,装备句经获得链
+      ③段效果体分派(两腿容器域不相交,板面 equips)。
     - 人力重组(BOARD_REWRITE_SELL_ALL):出售面 = 确定性 → 逻辑写(§5.3
       归属判据确定性分支;容器清空写经锚定标志择道,未锚定期走随机态,
       见清空写段注释)——前台/后台/备战席清空 + 退款按卖价公式入金
@@ -866,8 +869,10 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 世界事实由后端
     世界分支真值直写(evidence `sim:` 族,`cw_sim_base.SIM_EVIDENCE_PREFIX`),
-    现役 sim 对这两卡零板面建模(选卡仅记名+经济分支),本桥在 sim 侧
-    零触达,属 sim 模型既有边界(未建模申报面 = sim-design §8.2)。
+    现役 sim 对这两卡的板面重写后果零建模(选卡仅记名+经济分支;全员晋升
+    附带装备腿经获得链 sim 同链生效,不在本申报面),本桥在 sim 侧
+    零触达,属 sim 模型既有边界(未建模申报面 = sim-design §8.2
+    「板面重写族」行)。
     sim 若建模这两卡的板面
     后果,改动面 = sim 真值域(卖全场+退款+发牌),经同写入口自动
     以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。
