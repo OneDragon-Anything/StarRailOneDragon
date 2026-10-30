@@ -2317,17 +2317,22 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
     '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
-    # —— 开箱分支 3 条(占席道具发放;效果原文对账 id = cw_invest_data.
-    # PLAZA_AUGMENTS:战术义眼++ 350403/保守派 351501/快请专家·彩 360201;
-    # 「获得1个/一件【进阶武装箱】」直读,数量 = 元素重复次数)——
-    # 三卡的战斗被动分支(战术义眼++能量恢复/保守派伤害减免/快请专家·彩能量
-    # 恢复)非「获得时点」效果,不属 GiftGrant 登记适用范围(归策略效果建模批);
+    # —— 开箱分支 4 条(占席道具发放;效果原文对账 id = cw_invest_data.
+    # PLAZA_AUGMENTS:战术义眼++ 350403/保守派 351501/快请专家·彩 360201/
+    # 军火贸易 101401;「获得1个/一件【箱】」直读,箱名 = items 元素,
+    # 数量 = 元素重复次数)——
+    # 另三卡的战斗被动分支(战术义眼++能量恢复/保守派伤害减免/快请专家·彩
+    # 能量恢复)非「获得时点」效果,不属 GiftGrant 登记适用范围(归策略效果
+    # 建模批);
     # 快请专家·彩只登记开箱分支:好运令牌非占席道具(入 items 会错进
     # BENCH_ITEM_NAMES 被当占席道具,归消耗品域)、「获得2个【】」空括号分支
     # 数据源缺口禁猜——两条分支查无登记即安静不写,真值归实机/数据源勘误。
     '战术义眼++': GiftGrant(items_immediate=('进阶武装箱',)),
     '保守派': GiftGrant(items_immediate=('进阶武装箱',)),
     '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
+    # 军火贸易:「获得1个【简易武装箱】」直读;金腿「获得4金币」经
+    # STRATEGY_ECONOMY instant_gold=4 在册(经济聚合面),不属本表登记范围。
+    '军火贸易': GiftGrant(items_immediate=('简易武装箱',)),
 }
 
 # ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
