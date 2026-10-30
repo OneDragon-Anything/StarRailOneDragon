@@ -239,6 +239,38 @@ def assemble_priority_context(
     )
 
 
+#: 随机流派生流的策略器 scratch 挂载键(键名 = 本模块前缀,mandate_state
+#: scratch 命名纪律;生命周期 = 局级,状态对象每局冷建自然隔离)。
+_PRIORITY_RNG_SCRATCH_KEY: str = 'priority.tier_rng'
+
+
+def priority_rng_of(session: object,
+                    config: object | None = None) -> random.Random:
+    """随机流读口(随机尾键单一取源;priority-model §4)。
+
+    - session 宿主自带 rng 槽(StrategySession 形态——kernel 旁表键位/
+      sim 直构)直用,策略随机语义单一源,不新增派生设施;
+    - 终态契约过渡形态(session 宿主 = gs 容器,零参 decide 管线传容器
+      本体,无 rng 槽):按 ``config.strategy_seed`` 播种局级流并挂策略
+      器状态 scratch(键见 :data:`_PRIORITY_RNG_SCRATCH_KEY`)——同
+      seed 同局同序满足复现契约;config 缺席帧 None→0,与策略器构造
+      段的缺省播法同值(cw_strategy 构造 None→0 固定种子)。
+    """
+    host = getattr(session, 'rng', None)
+    if isinstance(host, random.Random):
+        return host
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        state_of,
+    )
+    st = state_of(session)
+    rng = st.scratch.get(_PRIORITY_RNG_SCRATCH_KEY)
+    if not isinstance(rng, random.Random):
+        seed = getattr(config, 'strategy_seed', None)
+        rng = random.Random(seed if seed is not None else 0)
+        st.scratch[_PRIORITY_RNG_SCRATCH_KEY] = rng
+    return rng
+
+
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
     """档 2/3/5 阵容成员名单(两态;priority-model §2 名单源)。
 

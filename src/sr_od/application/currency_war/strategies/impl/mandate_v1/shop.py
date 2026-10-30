@@ -27,7 +27,8 @@ rng 中立:本模块零 rng 消费(会话流派生契约)。
 
 计数键(state_of(session).cw4_counters;键登记单一源 = 各键写点注释):
 会话循环键族 = shop_visit_restricted_frame / shop_close_read_noop /
-shop_swap_sell(_hit/declined)/ session_funding_sell(_fallback_sell/
+acquire_swap_*(席满买入六步流程:_sell/_declined/_merge_free_buy/
+stale_idx)/ session_funding_sell(_fallback_sell/
 leg_reject/exhausted)/ scene_plugin_buy_hit(_no_seat/budget_exhausted)/
 core_c1_make_room_sell/core_locked_c1_make_room_sell /
 shop_refresh_*(三段式判据拒因族)/ levelup_*(会话升级意图门族:资格
@@ -40,7 +41,7 @@ deployable/m6/fuel_filler_stall/ev/core/dominance/p90/p91/p94)随各分支
 hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照)。
 
 M2 停摆续段缓存:商店域 cw4_m2_stall_latch 族已停用;席满
-表达 = 店内置换账(shop_session §3),不再有「无候选输入不变续段」的
+表达 = 席满买入六步流程(3.2 置换账替换),不再有「无候选输入不变续段」的
 重复帧面。
 """
 from __future__ import annotations
@@ -71,6 +72,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     card_cost,
+    effective_cost,
     effective_refresh_prob,
     in_must_spend_zone,
     interest,
@@ -134,7 +136,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
     evaluate_sell_candidates,
-    sell_gold_equivalent,
     sell_line_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
@@ -143,6 +144,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan impor
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # 贯穿件恒囤名单单一源已迁 protection(design §2.1 单一源搬家),此处
 # 回导维持本模块既有消费点与外部 ``shop.CROSS_LINE_KEEP_NAMES`` 读面;
@@ -769,10 +773,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     4. 前置升级检查(:func:`_session_upgrade_check`;每轮买入评估前
        ——升级意图出口三分支:命中 ∧ 可发射 → 关店转场不置标记,
        命中 ∧ 待付窗 / 未命中 → None 会话继续,design §2.1);
-    5. 统一买入策略六序(契约 E;序 1 名单三态 + 席满置换账 + 金不足
-       筹资,详见各段内注释);
-    6. 三段式刷新判据(§2.4 查表 + 目标可买合取 + 金线闸;免费刷新
-        同过目标可买检查,金线不适用);
+    5. 统一买入策略六序(契约 E;序 1 名单三态 + 席满买入六步流程 +
+       金不足筹资,详见各段内注释);
+    6. 三段式刷新判据(免费刷新无条件刷〔design §2.2,外层记忆闸照旧〕
+       + 付费判据 + 金线闸);
     7. 收工(置标记 + 写清单;读数会话零处理 ∧ 意图标记 → 不置标记)。
     """
     if getattr(state_of(session), 'cw4_counters', None) is None:
@@ -928,7 +932,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # (消费 ``unfinished_star_targets`` 判据现值,只消费不改编据本体——
     # 修「义务面名单星级盲」:已持 2★ 追 3★ 成员同名 1★ 副本此前进不了
     # 任何买臂,追查件缺陷 4);减去 M2b 即时合成快路径名(1★ 档恰 2 张——
-    # 该形态由 M2b 免席直发承接,进序 1 会被席满置换账拦掉,快路径语义
+    # 该形态由 M2b 免席直发承接,进序 1 会被席满六步流程拦掉,快路径语义
     # 保留)。未锁窗口 = 维持现行候选缺件口径不变(未锁期星级目标集恒
     # 空集,字面替换会清空未锁窗口 M2;行为变化申报仅限锁定后)。
     # 达标集(锁定后星级目标已满足成员)= need_star 键 − 缺口集:同名
@@ -952,7 +956,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         missing = [m for m in obligation_members if m not in owned]
 
     # P60 容量超限告警门(检查对象 = 义务面,design §2.2 对象面收窄——
-    # 囤货面超容由置换账自然管理;分母 = cap_hold 现读)。
+    # 囤货面超容由席满六步流程自然管理;分母 = cap_hold 现读)。
     if obligation_members and _cap_hold_now is not None \
             and len(obligation_members) > _cap_hold_now:
         _count('shop_hoard_over_capacity')
@@ -1123,53 +1127,137 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                                bench_char_cost(cand.unit, gs)),
             expect=cand.char_id)
 
-    def _swap_account(card: ShopCard, order_class: str) -> Action | None:
-        """店内置换账(shop_session §3:席满且凑不成合成时的买入路径)。
+    def _acquire_swap(card: ShopCard, order_class: str,
+                      emit_buy: Callable[[], Action] | None = None
+                      ) -> Action | None:
+        """席满买入六步流程(统一让位优先级迭代 3.2;店内置换账整段替换,
+        规格 = changes/2026-10-29-unified-priority/details/acquisition-
+        and-sell.md §2 + 总纲 §2.3):
 
-        value(X) > value(Y)(同一金当量口径直比,无独立摩擦项——手续
-        费已含在变现价项、再遇折价已含在再遇期权项,双重计费形态作废);
-        不成立 → X 放弃进机会清单(拦因 = 席满)。P78-1 同 visit 禁卖
-        由装配 A 轮内硬面覆盖(fresh_buys 轮键事实集 ⊇ 会话内买入——会话
-        ⊂ 节点 = 轮)。Y 候选穷尽(备战席全是高价值持有)→ 同放弃路径
-        (健康态,X 等下节点牌面自动刷新)。
+        ① 局面只读快照 → ② 新牌虚拟置入备战位 → ③ 升星连锁模拟
+        (同名同星计数场上+备战混合达 3 合成、向三星推进、连锁到不再
+        触发;合成释放备战位计入虚拟局面)→ ④ ``mandate.select_
+        deployment`` 部署定型 → ⑤ 部署外全部持牌按 ``priority.sell_
+        order`` 排序(排序池 = 备战位——场上件不入卖出池,被部署挤下
+        件的离场归后续备战环节;新牌在手旗标 = 将获取,同优先级在手
+        优先)→ ⑥ 末位 = 新牌 → 放弃买入(拦因改「优先级不足」进
+        机会清单);末位 = 存量牌 → 发出卖旧——单动作契约:卖与买分
+        两帧,下帧重入买入自然完成置换。
+
+        ③ 后备战位净释放 → 无需让路直接买(总纲 §2.3 步骤 2;满栏
+        合成买语义,游戏对完成合成的买入照常接受)。直买仅经调用方
+        注入的臂内发射器 ``emit_buy``(承载该臂剩余门链与登记族语义);
+        门链未在本分支走全的臂(如 M6 席满环的 stockpile 判据在位外)
+        传 None = 净释放帧零动作,下帧席位已空由臂内正常买入路径接手
+        ——零让路语义已达成,不绕门直买。虚拟重算全程快照纯计算
+        (MandateFrame 构造,禁容器深拷贝)且零遥测(journal/策略遥测/
+        决策帧三通道零写入,acquisition-and-sell 问题约束节)。
         """
-        cands, _why = evaluate_sell_candidates(gs, 'shop_swap')
-        if not cands:
-            _record_opportunity(str(card.name or ''), 'bench_full',
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            bench_slot_unit,
+        )
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
+            HeldUnit,
+            ShopUnit,
+            assemble_priority_context,
+            priority_rng_of,
+            sell_order,
+        )
+        _name = str(card.name or '')
+        _star = int(card.star or 1)
+        frame = mandate.snapshot_frame(gs)
+        sim = mandate.simulate_acquired_units(
+            frame.bench, frame.deployed, _name, _star)
+        # 净释放判定 = 置入后单位可用空槽 > 0(占位件占槽不计入单位数,
+        # 与 BENCH_CAPACITY 同一口径——合成释放的是单位槽,占位件槽
+        # 不可卖不可放单位)。
+        _n_items = sum(1 for b in frame.bench
+                       if bench_slot_unit(b) is None)
+        if BENCH_CAPACITY - _n_items - len(sim.bench) > 0:
+            # 合成净释放备战位:无需让路(发射器在位 = 臂内门链已走全,
+            # 直买;缺省 None = 门链未全,零动作交下帧臂内正常路径)。
+            _count('acquire_swap_merge_free_buy')
+            if emit_buy is not None:
+                return emit_buy()
+            return None
+        v_bench = [bs for _i, bs in sim.bench]
+        v_frame = mandate.MandateFrame(
+            gold=frame.gold, level=frame.level, bench=v_bench,
+            deployed=sim.field, deploy_cap=frame.deploy_cap,
+            node_type=frame.node_type, stop_flag=False,
+            k_members=frame.k_members, round_num=frame.round_num,
+            overflow_warning=frame.overflow_warning)
+        prep = mandate.assemble_prep_context(session, gs, v_frame)
+        target = mandate.select_deployment(v_frame, prep)
+        # 虚拟持牌全量快照(档 2/5/6/7 聚合谓词看虚拟局面全量)。
+        v_copies: dict[str, list[int]] = {}
+        for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
+            if u is not None and u.char_id:
+                v_copies.setdefault(str(u.char_id), []).append(
+                    int(u.star or 1))
+        ctx = assemble_priority_context(
+            session, gs, deployed_names=target, held_copies=v_copies,
+            rng=priority_rng_of(session, config))
+        # 排序池 = 备战位(acquisition §2 步骤 5):存量牌以 HeldUnit
+        # (在手旗标 0)承载,新牌以 ShopUnit(将获取旗标 1)承载——虚拟
+        # 备战位里的新牌本体不重复入池(origin 哨兵 = len(frame.bench)),
+        # 否则新牌的在手影子会抢在其 ShopUnit 之前、末位判定失真。
+        units: list[HeldUnit | ShopUnit] = []
+        for orig, bs in sim.bench:
+            if orig >= len(frame.bench):
+                continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
+            u = bench_slot_unit(bs)
+            if u is None or not u.char_id:
+                continue
+            units.append(HeldUnit(
+                str(u.char_id), int(u.star or 1), orig, False,
+                cost=(effective_cost(gs, str(u.char_id)) or None)))
+        units.append(ShopUnit(_name, _star, card_cost(card)))
+        tail = sell_order(units, ctx)[-1]
+        if isinstance(tail, ShopUnit):
+            # 末位 = 新牌自己 → 放弃买入(拒绝语义:拦因键改「优先级
+            # 不足」,acquisition §2;本牌进未消费机会清单,解拦复核
+            # 对本拦因无解拦动作——非瞬时可解除的拦阻)。
+            _count('acquire_swap_declined')
+            _record_opportunity(_name, 'priority_insufficient',
                                 card_cost(card), order_class)
             return None
-        y = cands[0]
-        x_unit = Unit(char_id=str(card.name or ''),
-                      star=int(card.star or 1))
-        x_value = sell_gold_equivalent(gs, x_unit)
-        if not (x_value > y.gold_value):
-            _count('shop_swap_declined')
-            _record_opportunity(str(card.name or ''), 'bench_full',
-                                card_cost(card), order_class)
+        # 末位 = 存量牌 → 卖旧(坐标还原:虚拟尾牌的原紧缩占席序下标
+        # → 容器槽位表下标;失配 = 陈旧帧 fail-closed 零动作)。
+        vidx = mandate._bench_container_idx_by_compact(gs, tail.slot)
+        if vidx is None:
+            _count('acquire_swap_stale_idx')
             return None
-        act = _emit_sell_cand(y, reason='shop_swap',
-                              counter_key='shop_swap_sell')
-        if act is not None:
-            _count('shop_swap_sell_hit')
-            return act
-        return None
+        mandate.record_round_sold(session, gs, tail.name)
+        _count('acquire_swap_sell')
+        _mark_processing()
+        return CwActionSellBenchParam(
+            bench_idx=vidx, reason='shop_swap',
+            income=sell_refund(int(tail.star or 1),
+                               bench_char_cost(
+                                   Unit(char_id=tail.name, star=tail.star),
+                                   gs)),
+            expect=tail.name)
 
     def _funding_sell(card: ShopCard, order_class: str) -> Action | None:
         """筹资伴生卖出(shop_session §2.3:前置 = 买入判据已过 ∧ 金
         不足——不跌破利息档为未过判据的牌筹资)。
 
-        卖 1★ 全额退件凑缺口(session_funding 场景,评估器价值让位
-        序),凑够即买(下一帧买入分支自然接手)、不多卖;主路径尽 →
-        P78-5 四条件兜底豁免(funding 通道对价,单一源 = sell_gate.
-        funding_hold_fallback;两条分支必要条件:序 1/序 2 = 骨架义务血统
-        分支①,其余 = 对象级无损分支②);候选穷尽仍不足 → 该牌进机会清单
-        (拦因 = 金不足;义务类金不足入清单合法,其解拦购买允许跌破利息档
-        ——口述条目 6(登记簿已退役),§4.2 解拦复核规则)。缺口判定用账面金
+        统一序列末位备战位件凑缺口(session_funding 场景,3.2 改造:
+        排序单一源 = priority.sell_order,仅一星代理过滤退役【拍,总纲
+        §2.4】;店内禁卖场上 → 消费位只取备战席支,场上件 = 档 1 本就
+        序列永不先卖),凑够即买(下一帧买入分支自然接手)、不多卖;
+        主路径尽 → P78-5 四条件兜底豁免(funding 通道对价,单一源 =
+        sell_gate.funding_hold_fallback;两条分支必要条件:序 1/序 2 =
+        骨架义务血统分支①,其余 = 对象级无损分支②);候选穷尽仍不足
+        → 该牌进机会清单(拦因 = 金不足;义务类金不足入清单合法,其
+        解拦购买允许跌破利息档——§4.2 解拦复核规则)。缺口判定用账面金
         (读数协议④:多卖循环第二笔起禁逐笔开店重读)。"""
         need = card_cost(card)
         cands, _why = evaluate_sell_candidates(gs, 'session_funding')
-        if cands:
-            act = _emit_sell_cand(cands[0], reason='session_funding',
+        _cand = next((c for c in cands if c.zone == 'bench'), None)
+        if _cand is not None:
+            act = _emit_sell_cand(_cand, reason='session_funding',
                                   counter_key='session_funding_sell')
             if act is not None:
                 return act
@@ -1259,7 +1347,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # ===== 序 1:目标阵容件 =====
     # 承继变更申报:满席腾位关店链(关店→备战卖→重开)废止——席满走
-    # 店内置换账;金不足走会话内筹资;两类拦阻进机会清单。
+    # 席满买入六步流程(3.2:置换账替换);金不足走会话内筹资;两类
+    # 拦阻进机会清单。
     for m in missing:
         shop_cands = _shop_candidates(m, 'm2')
         if not shop_cands:
@@ -1267,7 +1356,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         card = shop_cands[0]
         cost = card_cost(card)
         if bench_free <= 0:
-            _sw = _swap_account(card, 'order_1')
+            def _emit_m2(card=card, m=m, cost=cost) -> Action | None:
+                # 席满分支的金门在置换评估后补(与现行分支序一致):
+                # 净释放帧金不足 = 零动作交筹资分支下帧处置。循环变量
+                # 经默认参绑定(ruff B023;本函数当帧即调用,无迟绑定面)。
+                if gold < cost:
+                    return None
+                _on_target_buy()
+                return _emit_buy(card, 'm2_line_member' if m in k_members
+                                 else 'm2_locked_member')
+            _sw = _acquire_swap(card, 'order_1', _emit_m2)
             if _sw is not None:
                 return _sw
             continue
@@ -1281,7 +1379,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                          else 'm2_locked_member')
 
     # m2_stockpile(分支① 囤分支,j=1 第二份;现行判据本体不动——含 P77
-    # 现货比较子;席满 → 置换账,金不足 → 筹资。遍历域 = 义务面,design
+    # 现货比较子;席满 → 六步流程,金不足 → 筹资。遍历域 = 义务面,design
     # §2.2:囤货面成员同名副本退出义务类买入/筹资,恢复压牌库/凑星通道)。
     for m in obligation_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
@@ -1289,7 +1387,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         if _line_view.locked:
             if m in _star_gap_names:
                 # W5 缺口分域:缺口 > 0 成员已升格序 1 缺件买臂域(任意
-                # 星级照买,先行段已发射或入置换账),本囤臂不再重评——
+                # 星级照买,先行段已发射或入六步流程),本囤臂不再重评——
                 # 防同帧双重置换/筹资评估与机会清单重复入账。
                 continue
             if m in _star_done_names:
@@ -1320,7 +1418,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 return _fd
             continue
         if bench_free <= 0:
-            _sw = _swap_account(card, 'order_1')
+            # m2_stockpile 席满分支:金门已过,净释放帧可直买。
+            _sw = _acquire_swap(
+                card, 'order_1',
+                lambda card=card: _emit_buy(card, 'm2_stockpile'))
             if _sw is not None:
                 return _sw
             _count('bench_full')
@@ -1367,7 +1468,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 采购由配方对并集承载,囤臂不聚焦)。命中 = 保护集成员 ∧ 未持有首
     # 副本(不限未点亮——已点亮但不在配方对体系的成员同臂承接)。门序 =
     # 1★ 全额退(refund_full_star_ok,[11] 零息损 + P46 豁免类「资产可
-    # 逆」)→ 金可负担(期权级,无筹资特权)→ 席(席满走店内置换账,
+    # 逆」)→ 金可负担(期权级,无筹资特权)→ 席(席满走六步流程,
     # 候选 = 非保护垫件;穷尽 = 放弃并计数)。买因 protection_hoard
     #(hold 类,LAUNCH_CAUSE_BY_ARM 单一映射);出口键 protection_hoard_
     # hit / protection_hoard_no_fuel / protection_hoard_unaffordable。
@@ -1384,7 +1485,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _record_opportunity(name, 'gold_short', cost, 'order_1')
                 continue
             if bench_free <= 0:
-                _sw = _swap_account(card, 'order_1')
+                # 席满 → 六步流程(金门已过,净释放帧可直买)。
+                _sw = _acquire_swap(
+                    card, 'order_1',
+                    lambda card=card: _emit_buy(card, 'protection_hoard'))
                 if _sw is not None:
                     return _sw
                 _count('protection_hoard_no_fuel')
@@ -1426,7 +1530,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     return _fd
                 continue
             if bench_free <= 0:
-                _sw = _swap_account(card, 'order_2')
+                # 席满 → 六步流程(金门已过,净释放帧可直买)。
+                _sw = _acquire_swap(
+                    card, 'order_2',
+                    lambda card=card: _emit_buy(card, 'scene_plugin_buy'))
                 if _sw is not None:
                     return _sw
                 _count('scene_plugin_no_seat')
@@ -1483,10 +1590,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     continue
                 if gold < cost:
                     continue
+                _dg_cause = ('obligation', 'hold', 'press')[_dg_prio]
                 if bench_free <= 0:
-                    # 席满 → 置换账(shop_session §2.2 序 4 行:席满帧
-                    # 买入路径 = 置换,价值比较拒 → 席满类机会清单)。
-                    _sw = _swap_account(card, 'order_4')
+                    # 席满 → 六步流程(金门已过;发射器携臂内因果类
+                    # launch_cause,净释放帧直买语义随臂)。
+                    _sw = _acquire_swap(
+                        card, 'order_4',
+                        lambda card=card, cause=_dg_cause: _emit_buy(
+                            card, 'dead_gold_press_buy',
+                            launch_cause=cause))
                     if _sw is not None:
                         return _sw
                     _count('dead_gold_press_bench_full_gate')
@@ -1497,7 +1609,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if not ok2:
                     break
                 _count('dead_gold_press_buy_hit')
-                _dg_cause = ('obligation', 'hold', 'press')[_dg_prio]
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
 
@@ -1561,8 +1672,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     _count('press_buy_deployable_unaffordable')
                     continue
                 if bench_free <= 0:
-                    # 席满 → 置换账(shop_session §2.2 序 4 行)。
-                    _sw = _swap_account(card, 'order_4')
+                    # 席满 → 六步流程(金门已过,净释放帧可直买)。
+                    _sw = _acquire_swap(
+                        card, 'order_4',
+                        lambda card=card: _emit_buy(card,
+                                                    'press_buy_deployable'))
                     if _sw is not None:
                         return _sw
                     _count('press_buy_deployable_bench_full_gate')
@@ -1593,16 +1707,17 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             bench_free, 0, needs_bench=True, needs_board=False,
             name='', deployed_names=deployed_names)
         if not ok2:
-            # 席满 → 置换账(shop_session §2.2 序 4 行;候选过滤 = M6
-            # 视图去义务面线内件〔design §2.2 排除面收窄〕——压牌库判据
-            # 的席位维由置换价值比较承载,判据本体不动)。
+            # 席满 → 六步流程(候选过滤 = M6 视图去义务面线内件
+            # 〔design §2.2 排除面收窄〕——压牌库判据的席位维由序列
+            # 末位让路承载;stockpile 判据在席位分支之外未走全,发射器
+            # 不注入 = 净释放帧零动作,下帧席位空由正常 M6 臂接手)。
             for card in _buy_view('m6'):
                 _m6_name = card.name or ''
                 if not _m6_name or _m6_name in obligation_members:
                     continue
                 if gold < card_cost(card):
                     continue
-                _sw = _swap_account(card, 'order_4')
+                _sw = _acquire_swap(card, 'order_4')
                 if _sw is not None:
                     return _sw
             _count('m6_bench_full')
@@ -1702,12 +1817,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         if not _ff_sale:
             _count('fuel_not_on_sale')
         elif bench_free <= 0:
-            # 席满 → 置换账(shop_session §2.2 序 4 行;1★ 垫件的低
-            # 价值通常被比较拒 → 机会清单,行为面与旧硬门一致)。
+            # 席满 → 六步流程(precheck 门在本分支之外未走全,发射器
+            # 不注入 = 净释放帧零动作,下帧席位空由正常垫件补位支接手)。
             for card in _ff_sale:
                 if gold - card_cost(card) < s_reserve:
                     continue
-                _sw = _swap_account(card, 'order_4')
+                _sw = _acquire_swap(card, 'order_4')
                 if _sw is not None:
                     return _sw
             _count('bench_full')
@@ -1787,8 +1902,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     bench_free, 0, needs_bench=True, needs_board=False,
                     name='', deployed_names=deployed_names)
                 if not ok_seat:
-                    # 席满 → 置换账(shop_session §2.2 序 3/5 行;生产
-                    # U_X None fail-closed 恒零候选,接线统一为零行为差)。
+                    # 席满 → 六步流程(生产 U_X None fail-closed 恒零
+                    # 候选,接线统一为零行为差;veto/金门在席位分支外
+                    # 未走全,发射器不注入 = 净释放帧零动作,下帧由
+                    # 正常 EV 买入路径接手)。
                     for cand in cands:
                         _slots = (gs.shop.value.cards
                                   if gs.shop.value is not None else [])
@@ -1799,7 +1916,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                                  and _slot.kind == 'content' else None)
                         if _card is None:
                             continue
-                        _sw = _swap_account(_card, 'order_5')
+                        _sw = _acquire_swap(_card, 'order_5')
                         if _sw is not None:
                             return _sw
                     _count('shop_ev_bench_wait')
@@ -1901,13 +2018,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 continue
             if bench_free <= 0:
                 # 席满恒买豁免价值比较(shop_session §2.2 第 7 条:C1
-                # 支配语义 = 跳过置换直买,核心在售即买,腾位按价值让位
-                # 自然发生——c1_make_room 场景评估器取首位直接卖,
-                # 摩擦否决仅覆盖非核心让位候选,行为变更申报)。
+                # 支配语义 = 跳过置换直买,核心在售即买,腾位按序列末位
+                # 让位自然发生——c1_make_room 场景评估器取首位直接卖;
+                # 店内禁卖场上 → 只取备战席支)。
                 _room, _why = evaluate_sell_candidates(gs, 'c1_make_room')
-                if _room:
-                    act = _emit_sell_cand(_room[0], reason='c1_make_room',
-                                          counter_key='c1_make_room_sell')
+                _room_cand = next((c for c in _room
+                                   if c.zone == 'bench'), None)
+                if _room_cand is not None:
+                    act = _emit_sell_cand(
+                        _room_cand, reason='c1_make_room',
+                        counter_key='c1_make_room_sell')
                     if act is not None:
                         _count('core_c1_make_room_sell')
                         return act
@@ -1946,9 +2066,11 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     if bench_free <= 0:
                         _room, _why2 = evaluate_sell_candidates(
                             gs, 'c1_make_room')
-                        if _room:
+                        _room_cand2 = next((c for c in _room
+                                            if c.zone == 'bench'), None)
+                        if _room_cand2 is not None:
                             act = _emit_sell_cand(
-                                _room[0], reason='c1_make_room',
+                                _room_cand2, reason='c1_make_room',
                                 counter_key='c1_make_room_sell')
                             if act is not None:
                                 _count('core_c1_make_room_sell')
@@ -2004,15 +2126,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _count('dominance_band_wait')
 
     # ===== 刷新链三组件:判据 → 金线闸 → 发射(shop_session §2.4;
-    # 目标可买合取与金线闸新算式 = 2026-10-28 用户裁定刷新链定型)=====
+    # 金线闸算式 = 2026-10-28 用户裁定刷新链定型;目标可买合取拆除 =
+    # 统一让位优先级迭代 3.2 免费腿先行 + 3.4 预测门整拆)=====
     # W11 刷新负结果记忆(轻量形态,非期望式;设计 details/shop-buy-
-    # reform.md §3):刷新提案被拒(目标可买 False ∨ 金线不足)→ 本帧
-    # 置会话标记 + 照常收店;外循环重进商店入口观察时标记存在且状态
-    # 三元组无变化 → 本帧跳过刷新提案(按六序买面/关店走,免费腿同受
-    # 约束——白给刷零收获重进循环消灭,免费次数保留不耗),直至状态
-    # 变化(节点推进/金变/席位变/星级目标完成)清标记。比对键 = (节点,
-    # 金, 席位快照, 星级目标键),节点推进与星级目标完成两清除条件以
-    # 键内分量比对承载(标记字段本体不进节点边界重置表,值比对 =
+    # reform.md §3):刷新提案被拒(金线不足;「目标不可买」置位分支已
+    # 随预测门退役,design §2.2)→ 本帧置会话标记 + 照常收店;外循环
+    # 重进商店入口观察时标记存在且状态三元组无变化 → 本帧跳过刷新提案
+    # (按六序买面/关店走;免费腿与付费同闸——置位标记帧免费刷同跳),
+    # 直至状态变化(节点推进/金变/席位变/星级目标完成)清标记。比对键
+    # = (节点, 金, 席位快照, 星级目标键),节点推进与星级目标完成两清除
+    # 条件以键内分量比对承载(标记字段本体不进节点边界重置表,值比对 =
     # shop_handled 同款双保险读法)。
     _block_key = _refresh_block_key(gs, gold, len(bench))
     if _st.refresh_blocked is not None \
@@ -2022,28 +2145,20 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _count('shop_refresh_blocked_memory_skip')
     else:
         _free_left = gs.free_refresh_left.value
-        _is_free = _free_left is not None and int(_free_left) > 0
-        if _is_free:
-            # 免费刷新纳入目标可买检查(金线不适用——免费):「白给的刷新
-            # 照用,不构成主动刷」(概率事件的免费刷新〔invest_effects 已
-            # 登记〕)以「刷出的目标卡买得到」为前提——免费刷不再无界,
-            # 目标不可买帧刷新零收益,拒绝 → 置负结果记忆标记(免费腿
-            # 同受记忆约束)后照常收店。计数达阈族失效钩子照挂(协议②)。
-            # 免费腿目标名域:锁定支 = 停留目标名(单一源 stay_target_of);
-            # 未锁窗口 = 义务缺件集(本帧序 1 义务面现值——免费刷搜牌域
-            # 与买面同域;判定单一源 = crit_refresh.target_buyable)。
-            _free_target = _crit_levelup.stay_target_of(gs)
-            _free_names = (_free_target[0],) if _free_target is not None \
-                else tuple(missing)
-            if crit_refresh.target_buyable(gs, session, _free_names,
-                                           k_members=k_members,
-                                           counters=counters,
-                                           dedup_names=_mm_dedup):
-                shop_sess.note_refresh_counters(gs, 0)
-                _mark_processing()
-                return CwActionRefreshShopParam(cost=0,
-                                                reason='free_refresh')
-            _st.refresh_blocked = _block_key
+        if _free_left is not None and int(_free_left) > 0:
+            # 免费刷新无条件刷(统一让位优先级迭代 3.2;design §2.2 免费
+            # 刷新行为声明):分支内零阶段/带/目标/目标可买判据门,免费
+            # 次数在册即刷——行为申报 = 唯一变化「目标可买」门删除,目标
+            # 不可买(备战位满)帧从「拦下不耗次数」变「照刷耗次数」(免费
+            # 不耗金,次数每节点重置/概率补给,低价值接受)。外层负结果
+            # 记忆闸(上方记忆键比对跳过)免费与付费同闸照旧——金线不足
+            # 置位帧不刷与现行一致;本分支不再置位记忆标记(「目标不可买」
+            # 置位随预测门退役,付费腿置位分支同步删除)。计数达阈族失效
+            # 钩子照挂(协议②)。
+            shop_sess.note_refresh_counters(gs, 0)
+            _mark_processing()
+            return CwActionRefreshShopParam(cost=0,
+                                            reason='free_refresh')
         _ok_w = False
         _wkey = 'contract_abstain'
         if contracts.ensure_contract(
@@ -2053,11 +2168,13 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 gs, session, k_members=k_members, counters=counters,
                 dedup_names=_mm_dedup)
         if not _ok_w:
+            # 拒因计数照落;「目标不可买」记忆置位分支删除(design §2.2:
+            # 该置位随预测门退役——预测门本体 = refresh_warranted 内
+            # target_buyable 合取,拆除归 3.4;收敛前该拒因仍可能命中,
+            # 仅不再记忆置位:重入帧重复提案计数,动作面不变 = 拒后照常
+            # 收店)。判据拒绝族其余键 = 升级优先/带外等资金序与阶段
+            # 语义,循环终止由其自身承载,不入记忆(现行口径不变)。
             _count(f'shop_refresh_{_wkey}')
-            if _wkey == 'target_unbuyable':
-                # W11:目标可买拒绝置标记(判据拒绝族其余键 = 升级优先/
-                # 带外等资金序与阶段语义,循环终止由其自身承载,不入记忆)。
-                _st.refresh_blocked = _block_key
         else:
             # 金线闸:预留 = saturation_line + 停留目标实费档 ρ(2026-10-28
             # 用户裁定实费档实现口径:ρ = stay_target 实费档,变费卡随档;

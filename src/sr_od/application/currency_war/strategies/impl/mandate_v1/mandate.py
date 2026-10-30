@@ -1856,6 +1856,143 @@ def select_deployment(frame: MandateFrame,
     return frozenset(deployed_names)
 
 
+# ============================================================
+# 局面快照与虚拟置牌(统一让位优先级迭代 3.2;获取角色流程与卖出触发
+# 的部署重排共享输入。契约 = changes/2026-10-29-unified-priority/details/
+# acquisition-and-sell.md §1 定案:局面快照纯计算,禁容器深拷贝)
+# ============================================================
+
+
+@dataclass(frozen=True)
+class SimAcquisition:
+    """虚拟置牌 + 升星连锁模拟的产物(:func:`simulate_acquired_units`)。
+
+    [索引定义] ``bench`` 每项 = (原紧缩占席序下标, 虚拟 BenchSlot):
+    下标坐标系 = 调用方传入 ``bench``(紧缩占席序)的 0 基下标,取值时机
+    = 生成期快照;合成素材项从列表消失、存活项与合成载体**保持原下标**
+    (载体留原位语义,与 kernel ``_merge_bench`` 同构)——消费位据此把
+    虚拟尾牌还原回当前容器槽位(置入的新牌 origin = len(bench) 哨兵,
+    不映射容器)。``field`` = 虚拟场上单位(传入 deployed 紧缩行序,
+    升星载体原位 replace)。
+    """
+
+    bench: list[tuple[int, BenchSlot]]
+    field: list[Unit]
+
+
+def snapshot_frame(gs: GameState) -> MandateFrame:
+    """局面只读快照(容器一次只读取 → MandateFrame)。
+
+    消费面 = 获取角色流程与卖出触发的部署重排(:func:`select_deployment`
+    的局面输入)。与 entry.emit 装配段的两处刻意差,均出自虚拟重算
+    零遥测红线(acquisition-and-sell 问题约束节:journal/策略遥测/
+    决策帧三通道零写入):
+    - K 空窗回退不展开——回退命中会写 ``prep_k_fallback_*`` 计数;
+      快照路径的 ``k_members`` 只承载 MandateFrame 形参完备性,
+      select_deployment(方向经 prep.target_comp 取)与统一序列判据
+      零消费,omit 无行为差;
+    - owned_equips 不读(M7 域输入,部署定型与让位排序零消费;None
+      缺省 = 识别域未就绪保守关的既有语义,此处语义无关)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_entries_of,
+        deployed_rows_of,
+        gold_of,
+        level_of,
+        max_units_of,
+        node_kind_of,
+        round_num_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
+        direction_comp_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+        predicates,
+    )
+    front, back = deployed_rows_of(gs)
+    return MandateFrame(
+        gold=gold_of(gs),
+        level=level_of(gs),
+        bench=list(bench_entries_of(gs)),
+        deployed=[d for d in (*front, *back) if d is not None],
+        deploy_cap=max_units_of(gs),
+        node_type=node_kind_of(gs),
+        stop_flag=False,
+        k_members=tuple(sorted(predicates.line_members(
+            direction_comp_of(gs)))),
+        round_num=int(round_num_of(gs) or 1),
+        overflow_warning=bool(gs.overflow_warning.value))
+
+
+def simulate_acquired_units(bench: list[BenchSlot],
+                            deployed: list[Unit],
+                            name: str, star: int) -> SimAcquisition:
+    """虚拟置牌 + 升星连锁模拟(获取角色流程第 2-3 步;纯函数零副作用)。
+
+    机制全集口径(与 11 号稿 §1 M2b / kernel ``_merge_bench`` 分组键
+    同一规则,总纲 §2.3):同名同星计数 = 场上+备战混合,计数达 3 合成
+    向高一级推进(2★ 满三合 3★,3★ 终态不再合成),连锁到不再触发;
+    合成组含场上件则场上副本承载升星(``_merge_bench`` 载体规则)。
+    装备继承/效果/羁绊重算等其余联动不模拟【拍,总纲 §2.3】——虚拟
+    产物零 equips,仅承载「谁在场、几星」的让位判定主轴。
+
+    新牌恒追加于备战位尾部(席满帧 = 溢出置入,由升星净释放或末位
+    让路消解——merge_mechanics §2.5 满栏合成买同款净释放语义;合成
+    释放量由调用方以 ``len(产物 bench) < len(传入 bench)`` 判读)。
+    """
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        Unit,
+    )
+    # 工作副本 = (原下标, 裸 Unit);场上侧 = (排位下标, 裸 Unit)。
+    v_bench: list[tuple[int, Unit]] = []
+    for i, b in enumerate(bench):
+        u = bench_slot_unit(b)
+        if u is not None and u.char_id:
+            v_bench.append((i, Unit(char_id=str(u.char_id),
+                                    star=int(u.star or 1))))
+    v_field: list[tuple[int, Unit]] = [
+        (i, Unit(char_id=str(d.char_id), star=int(d.star or 1)))
+        for i, d in enumerate(deployed)
+        if d is not None and d.char_id]
+    if name:
+        v_bench.append((len(bench), Unit(char_id=name,
+                                         star=int(star or 1))))
+    # 不动点连锁(轻量计数形态;分组键 = 同名同星,场上项先入组 =
+    # 载体扫描序,逐级重扫直到不再触发)。分组/摘除按**当前列表位次**
+    # 承载(origin 是 provenance 不参与位次运算——合成消耗后列表收缩,
+    # 按位次降序摘除才与收缩后的下标空间一致)。
+    while True:
+        groups: dict[tuple[str, int], list[tuple[int, int]]] = {}
+        for dom, pool in ((0, v_field), (1, v_bench)):
+            for pos, (_origin, u) in enumerate(pool):
+                groups.setdefault((str(u.char_id), int(u.star or 1)),
+                                  []).append((dom, pos))
+        merged = False
+        for (cname, cstar), locs in groups.items():
+            if cstar >= 3 or len(locs) < 3:
+                continue
+            take = locs[:3]
+            carrier_dom, carrier_pos = take[0]
+            for dom, pos in sorted(take[1:], reverse=True):
+                (v_field if dom == 0 else v_bench).pop(pos)
+            pool = v_field if carrier_dom == 0 else v_bench
+            pool[carrier_pos] = (pool[carrier_pos][0],
+                                 Unit(char_id=cname, star=cstar + 1))
+            merged = True
+            break   # 结构已变,重扫
+        if not merged:
+            break
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+    )
+    return SimAcquisition(
+        bench=[(i, BenchSlot(kind='unit', unit=u)) for i, u in v_bench],
+        field=[u for _i, u in v_field])
+
+
 def m7_wearable_exists(owned: list[str]) -> bool:
     """M7 装备穿戴放行判定①:owned 存在穿戴类件(注册表已登记 ∧ 非工具类)。
 

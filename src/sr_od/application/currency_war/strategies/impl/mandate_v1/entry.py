@@ -88,7 +88,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_can
     SellCandidate,
     evaluate_sell_candidates,
     is_field_irrelevant_unit,
-    is_ore_pad_unit,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
@@ -734,14 +733,15 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
         return [Emitted(CwActionCollectOreParam(
             points=select_ore_clicks(targets, ORE_CLICK_BATCH_MAX_K)),
             True, 'prep_spheres')]
-    # 席满:垫件身份判断(评估器 'ore_make_room' 场景 = 仅备战席 + 常规面;
-    # 消费 = 垫件谓词过滤后取价值最小)。
+    # 席满:统一序列末位让位(采晶矿前空位场景;3.2 改造 = 垫件谓词
+    # 过滤退役【拍,总纲 §2.7 无场景专属池子/身份过滤退役】——部署重排
+    # 后的全局面序列,末位即让位对象;无任何可卖件 → 放弃晶矿保留:
+    # 确定的高价值持有不换随机产出的让位只发生在序列真空时,挂待玩家
+    # 确认申报沿袭,prep_pipeline「关键取舍」节差分申报)。
     _cands, _why = evaluate_sell_candidates(gs, 'ore_make_room')
-    for _c in _cands:   # 评估器序 = 价值升序;首个垫件 = 价值最小垫件
-        if not is_ore_pad_unit(gs, _c.char_id, _c.star):
-            continue
+    if _cands:
         return _emit_sell_candidate(
-            session, gs, _c, reason='ore_make_room',
+            session, gs, _cands[0], reason='ore_make_room',
             tag='ore_make_room_sell', counter='ore_pad_sell')
     # 无垫件 → 放弃晶矿(白拿的必拿精神保留:垫件卖尽前的晶矿全拿;
     # 放弃仅发生在需要牺牲高价值持有时——挂待玩家确认,prep_pipeline
@@ -775,8 +775,10 @@ def _bench_liquid_gold(gs: GameState) -> int:
         bench_units_of,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
-        refund_full_star_ok,
         sell_line_membership,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
+        refund_full_star_ok,
     )
     line = sell_line_membership(gs)
     protection = protection_membership(gs, state_of(gs))
@@ -1244,16 +1246,18 @@ def _step7_node_end_interest(session: StrategySession,
                              gs: GameState,
                              registry: DecisionV2Registry | None
                              ) -> list[Emitted]:
-    """节末凑息步(工序第 8 步;22 号篇 §1 第 8 步;候选池 = 备战席 ∪
-    场上无关角色〔来金族,用户裁定 2026-10-13〕)。
+    """节末凑息步(工序第 8 步;22 号篇 §1 第 8 步;3.2 改造 = 统一序列
+    消费,场景池/身份面随评估器重写退役——部署重排后全局面序列,部署
+    定型内档 1 天然永不先卖,「凑金/凑息可卖场上无关角色」形态废止,
+    总纲 §2.7 行为申报)。
 
     触发 = 存在「单件退金 ≥ 到下一利息档缺口」的资格候选(缺口单一源
     = kernel ``next_interest_line``;跨不了档的卖出零利息收益,一件不
-    卖——金 10~19 区间卖光 bench 也不涨息,纯亏资产,[11] 卖回量最小
-    化的前件)。动作 = 取退金 ≥ 缺口中退金最小的 1★ 全额退件(评估器
-    'node_end_interest' 场景过滤),逐帧单张:跨档后下帧按新金位重评,
-    缺口重算自然收敛。空板守卫(deployed = 0 帧哑火)= 评估器 as-built
-    并入语义。本步卖出的退金由第 5 步入口统一复核(23 号篇契约 A)。
+    卖——跨档止盈保留为场景参数,评估器内实现)。动作 = 统一让位序列
+    末位一张(priority.sell_order,身份/星级代理过滤退役),逐帧单张:
+    跨档后下帧按新金位重评,缺口重算自然收敛。空板守卫(deployed = 0
+    帧哑火)= 评估器 as-built 并入语义。本步卖出的退金由第 5 步入口
+    统一复核(23 号篇契约 A)。
 
     升级凑金在途抑制(11 号篇 §2 帧交错规则①):升级判据命中帧本步
     零发出(同池候选竞争,凑金优先)。抑制载体 = 资格门判据同帧重评
@@ -1278,22 +1282,15 @@ def _step7_node_end_interest(session: StrategySession,
     if _line is None:
         return []
     _gap = _line - _gold
+    # 统一序列消费(3.2):跨档止盈已为节末凑息场景参数(评估器内实现,
+    # 仅「单件退金 ≥ 缺口」者入序列,按实际星级退金判——仅一星过滤退役
+    # 【拍,总纲 §2.4】),取用 = 让位序首位;无可行件 → 观测键分支。
     _cands, _why = evaluate_sell_candidates(gs, 'node_end_interest')
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        bench_char_cost,
-        sell_refund,
-    )
-    _feasible: list[tuple[int, int]] = []
-    for _i, _c in enumerate(_cands):
-        _r = sell_refund(1, bench_char_cost(_c.unit, gs))
-        if _r >= _gap:
-            _feasible.append((_r, _i))
-    if not _feasible:
-        # 常规合格集(退金 ≥ 缺口)为空——含「合格候选全保护档」帧
-        # (评估器候选整体为空的形态,_feasible 随空候选平凡为空):
-        # 观测键三合取(统一保护集 design §2.3)= 非零缺口 ∧ 无可行件
-        # ∧ 被排除保护成员存在退金 ≥ 缺口者(反事实支,枚举域见
-        # _protected_member_blocks_interest)。
+    if not _cands:
+        # 可行集(退金 ≥ 缺口)为空:观测键三合取(统一保护集 design
+        # §2.3)= 非零缺口 ∧ 无可行件 ∧ 被排除保护成员存在退金 ≥ 缺口者
+        # (反事实支,枚举域见 _protected_member_blocks_interest;键退役
+        # 归属 = 3.5 遥测批,本批语义冻结)。
         if _gap > 0 and _protected_member_blocks_interest(gs, _gap):
             _st = state_of(session)
             _ct = _st.cw4_counters
@@ -1303,7 +1300,6 @@ def _step7_node_end_interest(session: StrategySession,
             _ct[INTEREST_PROTECTED_BLOCK_KEY] = \
                 _ct.get(INTEREST_PROTECTED_BLOCK_KEY, 0) + 1
         return []
-    _r, _best_i = min(_feasible)   # 退金最小;并列取评估器让位序靠前
     return _emit_sell_candidate(
-        session, gs, _cands[_best_i], reason='interest_prep',
+        session, gs, _cands[0], reason='interest_prep',
         tag='interest_prep', counter='node_end_interest_sell')

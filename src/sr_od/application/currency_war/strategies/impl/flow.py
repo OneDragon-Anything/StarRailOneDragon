@@ -497,8 +497,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 # 注册表漂移:按未锁口径选卡(保守向——漏提权非错提权)
                 log.warning('[cw!][supply] locked_comp 解析失败(%s),'
                             '按未锁口径选卡', _ist.locked_comp)
+        # config 透传 = 补给第 2 级虚拟全局评估的随机流种子供给
+        #(统一让位优先级迭代 3.2;策略 seed 单一来源 = config.strategy_seed)。
         out = supply.decide(options, self.gs, locked_comp,
-                            _ist.demoted_endgame)
+                            _ist.demoted_endgame, config=self.config)
         if isinstance(out, supply.SupplyRefreshSuggestion):
             return CwActionRefreshSupplyParam(reason=out.reason)
         return CwActionPickSupplyParam(idx=out.idx, reason=out.reason)

@@ -336,8 +336,12 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     - 席满类:席位空出 = 备战可观察(``bench_free_slots`` 现读 > 0);
     - 金不足类:金位 = 账面供给(备战帧直读不可观察);账面失效时申报
       读数开门(不直接判不解拦——锚定后下帧复核);
+    - 优先级不足类(席满买入六步流程 3.2 拒因):同席满类席位空出解拦
+      ——拒因成立于「让路代价高于获取收益」的席满语境,席位空出后买入
+      不再经六步流程(正常买入路径无优先级门),记录随之失效;
     - 方向锁定不走本清单(锁定写入直接清标记,line_and_upgrade §1.4);
-      记录拦因闭集 = {席满,金不足}(ShopOpportunity.blocked_by 值域)。
+      记录拦因闭集 = {席满,金不足,优先级不足}
+      (ShopOpportunity.blocked_by 值域)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_free_slots,
@@ -350,7 +354,9 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     unblock = False
     need_gold_read = False
     for rec in records:
-        if rec.blocked_by == 'bench_full':
+        if rec.blocked_by in ('bench_full', 'priority_insufficient'):
+            # 优先级不足与席满同轴:拒因成立于席满语境(让路代价高于
+            # 获取收益),席位空出后买入不再经六步流程,记录随之失效。
             if bench_free > 0:
                 unblock = True
         elif rec.blocked_by == 'gold_short':

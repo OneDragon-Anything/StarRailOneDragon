@@ -1,34 +1,28 @@
-"""统一卖出候选评估器(契约 D 单一入口)。
+"""统一卖出候选评估器(三触发卖出判据件;统一让位优先级迭代 3.2 重写)。
 
-一个评估函数服务全部八类卖出场景(溢出自救/晶矿腾位/店内置换/会话内筹资/
-升级变现/节末凑息/部署换人/C1 恒买腾位),输入 =(场景,容器状态),输出 =
-按让位序排序的卖出候选或空。场景参数全集(候选池/资格面/消费方式)的
-唯一法定义处 = 迭代总纲 design.md 契约 D;价值评估函数统一口径 =
-line_and_upgrade §4(金当量三项 + 羁绊排序规则项)——本模块是它们的
-实现载体,禁各场景自算第二份。
+一个评估函数服务全部卖出触发场景(溢出紧急处理/采晶矿前空位/升级凑金/
+节末凑息/店内筹资 + 冻结遗留 deploy_swap),输入 =(场景,容器状态),
+输出 = 按让位序排序的卖出候选或空。规格单一源 =
+``changes/2026-10-29-unified-priority/details/acquisition-and-sell.md``
+§3(三触发卖出判据件)+ priority-model §5(卖出取用形态):
 
-**边界**:本模块 = 评估器本体 + 谓词 + 测试;各动作发出点接线分属
-备战工序/商店执行链/商店会话各消费位,``sell_gate``/``criteria/sell``
-三通道现行保留。
+- **统一序列消费**:各场景排序单一源 = ``criteria/priority.sell_order``
+  (禁第二排序实现,总纲 §2.9 接口契约 1)——部署重排
+  (``mandate.select_deployment``)定型后的全局面序列,末位起取用;
+- **无场景专属池子**【拍,总纲 §2.7】:部署定型内的牌 = 档 1 天然
+  永不先卖,场景不再各自设池;
+- **身份过滤退役**:填充牌过滤/凑息仅一星过滤/筹资仅一星过滤删除
+  (序列天然排序;「不设仅一星代理过滤」= 总纲 §2.4 拍板);
+- **循环防线保留**(与优先级正交,防操作空转,总纲 §2.4):窗口段/
+  L1 同轮禁卖/种子年龄豁免(常规面经 ``sell_exclusions`` 装配)+
+  合成素材拒入守卫含释放集旁路 + 空板止损守卫;溢出场景全资格豁免
+  保留(保命优先);跨档止盈保留为节末凑息场景参数;
+- 价值评估函数与羁绊谓词仅剩 deploy_swap 冻结遗留路径消费(生产
+  零消费面,拆除归属 3.4 旧判据拆除批);``is_field_irrelevant_unit``
+  另有节末凑息观测键反事实支消费(entry,键退役归 3.5)。
 
-结构:
-
-- 场景注册表(:data:`SCENE_SPECS`)——八场景(升级变现分备战/会话两域
-  共九行)各带候选池族/资格面/消费方式标记;消费方式由调用方(prep 各
-  步/shop 各序)按场景取,评估器只出排序候选;
-- 价值函数(:func:`sell_gold_equivalent`)——金当量三项(变现价/再遇
-  期权/合成进度),量纲与合成式按 line_and_upgrade §4 直读实现;
-- 线内身份集(:func:`sell_line_membership`)——锁定 = line_members_view
-  名单;未锁定 = 候选 top3 线内成员并集(判定源 = 候选快照,line_and_upgrade
-  §1.2「线内身份集 = 候选 top3 线内成员」);
-- 场上无关角色谓词(:func:`is_field_irrelevant_unit`)与有效羁绊贡献件
-  谓词(:func:`is_effective_bond_contributor`)——羁绊判定消费现有羁绊
-  注册表(FACTIONS tiers)与按排聚合单一源(board_by_row);
-- 垫件谓词(:func:`is_ore_pad_unit`)——晶矿场景过滤(prep_pipeline §1
-  第 2 步现文口径;P96 释放集「登记待办、暂不激活」申报域 = 垫件层——池级 FACE_REGULAR
-  仍含 dead_pair_exit_release 旁路为惰性面:垫件谓词恒拒 released 名〔同名对素材〕、
-  消费面走垫件过滤,行为零激活;P96 推进遥测/清账时一并收尾);
-- 评估器(:func:`evaluate_sell_candidates`)。
+**边界**:本模块 = 评估器本体;各动作发出点接线分属备战工序/商店
+会话各消费位,``sell_gate``/``criteria/sell`` 通道现行保留。
 """
 from __future__ import annotations
 
@@ -41,18 +35,19 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     reencounter_window_frames,
 )
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
-from sr_od.application.currency_war.kernel.cw_card_identity import (
-    is_engine_piece,
-)
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
+    cap_resolved_of_session,
+    effective_cost,
+    next_interest_line,
     sell_refund,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import bench_slot_unit
 from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_entries_of,
     deployed_rows_of,
+    gold_of,
     level_of,
     round_num_of,
 )
@@ -61,13 +56,9 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_reject_reason,
     same_star_count,
 )
-from sr_od.application.currency_war.kernel.cw_plugins import PLUGIN_LIBRARY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
-    protection_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     EMPTY_BOARD_SELL_GUARD_KEY,
@@ -79,9 +70,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope imp
     line_members_view,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
-    refund_full_star_ok,
-)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
@@ -93,31 +81,17 @@ if TYPE_CHECKING:
         Unit,
     )
 
-# ============================================================ 场景注册表(契约 D)
+# ============================================================ 场景注册表(三触发)
 
-
-#: 候选池族取值(契约 D 唯一定义处的实现形态;四族):
-#: - ``bench_only`` = 仅备战席(腾槽族〔自救/晶矿〕+ 店内四场景;
-#:   机理 = 解除溢出/买入晶矿/店内卖出均只腾备战槽,卖场上件无此效果,
-#:   店内另有 2026-10-12 用户裁定「店内禁卖场上」);
-#: - ``bench_union_field_irrelevant`` = 备战席 ∪ 场上无关角色(来金族:
-#:   节末凑息/备战升级变现;2026-10-13 用户裁定「来金目的卖谁都行」);
-#: - ``field_union_bench`` = 场上 ∪ 备战席(部署换人——场上锁定线成员/
-#:   有效羁绊件的唯一卖出场景,羁绊维在该场景生效)。
-POOL_BENCH_ONLY: str = 'bench_only'
-POOL_BENCH_FIELD_IRRELEVANT: str = 'bench_union_field_irrelevant'
-POOL_FIELD_AND_BENCH: str = 'field_union_bench'
 
 #: 资格面取值:
-#: - ``self_rescue_full`` = 自救扩展面(真全量持有——P78 资格仲裁族全通道
-#:   豁免:核心/④件/种子/同 visit 买入在自救场景豁免、线内件按价值序
-#:   末位可卖;「零停机出口」优先于硬资格,契约 D 自救行);
-#: - ``regular`` = 常规面(现行 sell_gate 排除集并入:装配 A(身份段 ∪
-#:   窗口段 ∪ L1 同轮硬面 ∪ 种子豁免)+ 合成素材拒入守卫(含死库存对
-#:   释放子谓词旁路)+ 挂后台效果资格);
+#: - ``self_rescue_full`` = 自救扩展面(真全量持有——循环防线与身份面
+#:   全放行,线内件按统一序列末位让位;「零停机出口」优先于防自旋,
+#:   acquisition §3 表溢出行,现行豁免保留);
+#: - ``regular`` = 常规面(循环防线:窗口段/L1 同轮禁卖/种子年龄豁免
+#:   经 sell_exclusions 装配 + 合成素材拒入守卫含释放集旁路);
 #: - ``deploy_swap_current`` = 换人现行判据(swap_sell_exclusion_reason
-#:   本体不动,契约 D 部署换人行;不经装配 A——该判据自带 membership/
-#:   fresh_buy/守恒门/素材守卫资格族)。
+#:   本体不动;冻结遗留路径,生产零消费面,3.4 处置)。
 FACE_SELF_RESCUE: str = 'self_rescue_full'
 FACE_REGULAR: str = 'regular'
 FACE_DEPLOY_SWAP: str = 'deploy_swap_current'
@@ -125,76 +99,49 @@ FACE_DEPLOY_SWAP: str = 'deploy_swap_current'
 
 @dataclass(frozen=True)
 class SellSceneSpec:
-    """一个卖出场景的参数行(契约 D 场景表的实现形态)。
+    """一个卖出场景的参数行(三触发场景表,acquisition §3 的实现形态)。
 
-    ``consumption`` = 消费方式标记(调用方按场景取的动作语义;评估器只出
-    排序候选,不执行消费):``sell_first`` 取首候选直接卖 / ``pad_filter_min``
-    垫件谓词过滤后取价值最小 / ``swap_account`` 置换账裁决 / ``sell_until_
-    gap_closed`` 卖到缺口闭合即止 / ``swap_pair`` 换人对(卖场上件 + 上阵
-    替补)/ ``sell_first_buy_core`` 腾位卖 Y 后买核心。
-    **P78-5 四条件兜底豁免不在本评估器**(契约 D 筹资/升级变现行资格面的
-    兜底分支):其触发前提 = 消费位状态(主路径空 ∧ 缺口未闭合 = gold <
-    need),超出「(场景,容器状态)」入参面——单一源 = ``sell_gate.
-    funding_hold_fallback``,由筹资(shop_session)与升级凑金(entry
-    备战第 4 步)消费循环在主路径尽时拼装,与现行消费位同构(触发前提
-    由消费位判,函数本体只承载兜底池定义)。
-    ``legacy_channel`` = P78 通道重映射(现行五通道资格面按契约 D 重映射:
-    凑息→节末凑息 / 筹资→会话内筹资 / m4_fuel→晶矿 / line_switch→停用
-    不接(部署换人走现行 swap 判据,不走其装配)/ projection→保留不动
-    (投影视图读位照旧,不进评估器场景);None = 不装配 A(自救豁免 /
-    换人自带判据)。非 projection 通道的装配 A 输出逐位相同,通道选择
-    仅承继族谱系语义。
+    各场景取用 = 部署重排定型后的统一序列末位起消费(帧级一卖、重评
+    收敛,消费位承载);本表只声明场景间真实存在差异的参数:
+
+    - ``face``:循环防线资格面(全资格豁免仅溢出;常规面防线清单见
+      模块头);
+    - ``cross_tier_only``:跨档止盈(节末凑息独有场景参数,design §2.4
+      保留行)——仅「单件退金 ≥ 到下一利息档缺口」的候选可卖,跨不了
+      档的卖出零利息收益,一件不卖;
+    - ``legacy_channel``:P78 通道标记(sell_exclusions 装配的通道谱系
+      参数;None = 不装配)。
     """
 
     scenario: str                # 场景 id(闭集成员)
-    pool: str                    # 候选池族(POOL_* 闭集)
-    face: str                    # 资格面(FACE_* 闭集)
-    one_star_refund_only: bool   # 仅 1★ 全额退件过滤(活期件口径)
-    consumption: str             # 消费方式标记(见类 docstring)
-    legacy_channel: str | None   # P78 通道重映射(None = 不装配 A)
-    sort_override: str | None = None   # 排序覆盖(SORT_OVERRIDE_* 闭集;None = 缺省让位序)
+    face: str                    # 循环防线资格面(FACE_* 闭集)
+    legacy_channel: str | None   # P78 通道标记(None = 不装配)
+    cross_tier_only: bool = False   # 跨档止盈(节末凑息)
 
 
-#: 排序覆盖值域(SellSceneSpec.sort_override;场景级排序键覆盖的登记
-#: 闭集,禁行内自创):
-#: - ``levelup_prep`` = 升级凑金排序键①②③(2026-10-17 迭代 design
-#:   §2.2,用户裁定 2026-10-17):①费用带外先卖(目标费用 = 当前停留
-#:   目标费用档,单一源 = ``criteria/levelup.stay_target_of``——刷新判据
-#:   带归属绑定同源;无停留目标帧①键不分组)②同组内低星先(高星压牌库
-#:   更深,后卖)③金当量升序兜底。实现见 :func:`evaluate_sell_candidates`
-#:   排序段。
-SORT_OVERRIDE_LEVELUP_PREP: str = 'levelup_prep'
-
-#: 场景注册表(闭集;契约 D 八场景——升级凑金会话内侧随店内侧变现场景
-#: 退役删除〔2026-10-17 迭代 T-4:商店域凑金随升级转场语义退役,
-#: design §2.5〕)。
-#: 消费方式/资格面逐行对齐契约 D 表格,禁行内自创第三口径。
+#: 场景注册表(闭集;三触发五场景 + 冻结遗留 deploy_swap):
+#: - ``shop_swap`` 行已随席满置换账被六步流程整段替换退役(3.2,
+#:   dismantle §2——六步流程直通 ``priority.sell_order``,不经本评估器);
+#: - ``c1_make_room`` 消费位归 3.4 C1 支拆除,收敛前随常规面统一序列
+#:   消费(其「评估首位直接卖」消费形态不变,排序源切换为统一序列);
+#: - ``deploy_swap`` 冻结遗留(部署换人域 design §2.2 不动;生产零
+#:   消费面,评估走旧路径,价值函数拆除时随批处置)。
 SCENE_SPECS: dict[str, SellSceneSpec] = {
     'self_rescue': SellSceneSpec(
-        'self_rescue', POOL_BENCH_ONLY, FACE_SELF_RESCUE, False,
-        'sell_first', None),
+        'self_rescue', FACE_SELF_RESCUE, None),
     'ore_make_room': SellSceneSpec(
-        'ore_make_room', POOL_BENCH_ONLY, FACE_REGULAR, False,
-        'pad_filter_min', 'm4_fuel'),
-    'shop_swap': SellSceneSpec(
-        'shop_swap', POOL_BENCH_ONLY, FACE_REGULAR, False,
-        'swap_account', 'shop_swap'),
+        'ore_make_room', FACE_REGULAR, 'm4_fuel'),
     'session_funding': SellSceneSpec(
-        'session_funding', POOL_BENCH_ONLY, FACE_REGULAR, True,
-        'sell_until_gap_closed', 'funding'),
+        'session_funding', FACE_REGULAR, 'funding'),
     'levelup_liquidate_prep': SellSceneSpec(
-        'levelup_liquidate_prep', POOL_BENCH_FIELD_IRRELEVANT, FACE_REGULAR,
-        False, 'sell_until_gap_closed', 'funding',
-        SORT_OVERRIDE_LEVELUP_PREP),
+        'levelup_liquidate_prep', FACE_REGULAR, 'funding'),
     'node_end_interest': SellSceneSpec(
-        'node_end_interest', POOL_BENCH_FIELD_IRRELEVANT, FACE_REGULAR, True,
-        'sell_until_gap_closed', 'interest'),
+        'node_end_interest', FACE_REGULAR, 'interest',
+        cross_tier_only=True),
     'deploy_swap': SellSceneSpec(
-        'deploy_swap', POOL_FIELD_AND_BENCH, FACE_DEPLOY_SWAP, False,
-        'swap_pair', None),
+        'deploy_swap', FACE_DEPLOY_SWAP, None),
     'c1_make_room': SellSceneSpec(
-        'c1_make_room', POOL_BENCH_ONLY, FACE_REGULAR, False,
-        'sell_first_buy_core', 'funding'),
+        'c1_make_room', FACE_REGULAR, 'funding'),
 }
 
 #: 场景闭集(新场景必须先在此登记再接线——枚举外值抛错,与 sell_gate
@@ -212,7 +159,8 @@ REJECT_SWAP_CTX_MISSING: str = 'deploy_swap_ctx_missing'
 REJECT_NO_CANDIDATES: str = 'no_candidates'
 
 
-# ============================================================ 价值函数(line_and_upgrade §4)
+# ============================================================ 价值函数(line_and_upgrade §4;deploy_swap 冻结遗留路径专用)
+
 
 #: 每轮息损边际率(金/轮)——再遇窗口折算金当量的乘子。口径出处 =
 #: line_and_upgrade §4:每利息档边际率 1 金【注·利息档粒度定义值】;真值
@@ -226,11 +174,6 @@ INTEREST_MARGIN_PER_ROUND: float = 1.0
 #: 期权 = 保守侧,标定对照完成后切 ×2)。
 MERGE_PROGRESS_X2_SLOT: str = 'MERGE_PROGRESS_X2'
 
-#: 差一张合成的判定阈值(同名同星持有 == 2;满 3 自动升星使稳态计数
-#: 恒 ≤ 2,见 cw_merge_simulate.merge_material_reject_reason 的不变量
-#: 论证)。
-_MERGE_PAIR_HELD: int = 2
-
 
 def _merge_pair_multiplier() -> float:
     """合成进度系数现读(provisional 槽:None = ×1 fail-closed,注入 = ×2)。"""
@@ -239,8 +182,8 @@ def _merge_pair_multiplier() -> float:
 
 
 def sell_gold_equivalent(gs: GameState, unit: Unit) -> float:
-    """手上牌的金当量(line_and_upgrade §4 统一口径;所有卖出场景共用,
-    禁各场景自算)。
+    """手上牌的金当量(line_and_upgrade §4;deploy_swap 冻结遗留路径
+    专用——五场景已切统一让位序列,本函数生产零消费面,拆除归属 3.4)。
 
     构成(金当量三项,全部为注册表查表确定式,无自由拟合参数——已标注
     项除外):
@@ -250,23 +193,13 @@ def sell_gold_equivalent(gs: GameState, unit: Unit) -> float:
     - **再遇期权** = ``reencounter_window_frames(level, cost, held)`` ×
       :data:`INTEREST_MARGIN_PER_ROUND`——再遇窗口折算金当量;held =
       同名同星持有计数现读(bench ∪ 场上全场域;line_and_upgrade §4
-      现文口径「已持有数 = 同名同星持有计数现读」,与查表函数自身
-      docstring 的基础副本折算口径(1★1/2★3/3★9 折算)存在偏差:
-      1★ 同值、2★+ 计数值 < 折算值——设计现文为权威,按计数口径取;
-      折算口径若启用属设计层变更,非本函数缺漏);
-    - **合成进度** = 差一张(同名同星持有 ≥ 2 且 star < 3——3★ 无下一
-      星档,完成档不存在按零散单张处理,裁量申报)→ 再遇期权 ×
+      现文口径「已持有数 = 同名同星持有计数现读」);
+    - **合成进度** = 差一张(同名同星持有 ≥ 2 且 star < 3)→ 再遇期权 ×
       :func:`_merge_pair_multiplier`(×2 结构近似【拟】,fail-closed
       = ×1);零散单张 = 自身再遇期权。
 
-    完成档语义:未锁定期「完成档」缺省 = 该成员自身下一星档(line_and_
-    upgrade §4,无目标线依赖)——差一张时「看到下一张」的再遇窗即完成
-    档再遇期权,由 ``reencounter_window_frames`` 的 held 参数天然承载,
-    无独立星级入参。羁绊贡献不是本函数的项(P3 作废不折金,排序规则项
-    由 :func:`evaluate_sell_candidates` 的 bond_drop 维承载)。
-
     返回值可为 ``inf``(该等级刷不出该费用档 ⇒ 再遇窗 inf ⇒ 持有期权
-    无限大 ⇒ 排序末位)——语义 = 极难再遇的持有最后让位。
+    无限大 ⇒ 排序末位)。
     """
     star = int(getattr(unit, 'star', 1) or 1)
     name = str(getattr(unit, 'char_id', '') or '')
@@ -274,7 +207,7 @@ def sell_gold_equivalent(gs: GameState, unit: Unit) -> float:
     held = _same_star_held_of(gs, name, star)
     window = reencounter_window_frames(level_of(gs), cost, held) \
         * INTEREST_MARGIN_PER_ROUND
-    pair = held >= _MERGE_PAIR_HELD and star < 3
+    pair = held >= 2 and star < 3
     merge_progress = window * (_merge_pair_multiplier() if pair else 1.0)
     return float(sell_refund(star, cost)) + window + merge_progress
 
@@ -294,16 +227,14 @@ def _same_star_held_of(gs: GameState, name: str, star: int) -> int:
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
     """卖出侧线内身份集(锁定 = ``line_members_view`` 名单〔core ∪
-    shared〕;未锁定 = 候选 top3 线内成员并集——判定源 = 候选快照,
-    line_and_upgrade §1.2「线内身份集 = 候选 top3 线内成员,替代
-    k_members 的线内判定职责」)。
+    shared〕;未锁定 = 候选 top3 线内成员并集——判定源 = 候选快照)。
 
-    消费面:评估器线内排除与自救末位分层、场上无关角色谓词、垫件谓词
-    的「非线内/非候选集成员」分支、装配 A 的 k_members 入参——同一集,
-    禁各消费点自建第二份名单口径(design 契约 B)。候选名注册表解析
+    消费面(3.2 后):常规面 sell_exclusions 装配 k_members 入参、
+    攒批资金口径(entry)、筹资兜底与买面投影位(shop;退役归 3.4)、
+    节末凑息观测键反事实支的「场上无关角色」分支(entry,键退役归
+    3.5)。同一集禁各消费点自建第二份名单口径。候选名注册表解析
     失败(漂移)跳过并告警——该线贡献空集,保守方向申报:少排除 =
-    多可卖 = 自救/让位面不受阻,线内保护面收窄由 3.7 候选判据的注册表
-    校验兜底。
+    多可卖 = 让位面不受阻。
     """
     view = line_members_view(gs)
     if view.locked:
@@ -348,13 +279,9 @@ def is_effective_bond_contributor(gs: GameState, unit: Unit, row: str) -> bool:
     """有效羁绊贡献件谓词:上场单位 ∧ 其任一羁绊标签当前有已激活档
     (人数 ≥ 注册表 tiers 最小档)。
 
-    口径申报:契约 D/line_and_upgrade 差分节定义「场上无关角色 = 非锁定
-    线成员 ∧ 非有效羁绊贡献件」,「有效羁绊贡献」无现成谓词(全仓检索
-    无此判定),按设计给的兜底口径「上场且激活羁绊的成员」实现——比
-    「卖后掉档」严格判定宽(计数超阈值的成员也算贡献件),保守向 =
-    保护面更大(更多场上件被排除出卖点候选池);排序规则项(掉档置后)
-    与本谓词分立,见 :func:`evaluate_sell_candidates` 的 bond_drop 维。
-    """
+    deploy_swap 冻结遗留路径与场上无关角色谓词的共享判定;统一序列
+    下的羁绊承载 = 档 7 判定(criteria/priority),本谓词不再进任何
+    卖出排序。"""
     counts = _board_tag_counts(gs)
     for tag in _unit_bond_tags(unit, row):
         info = FACTIONS.get(tag)
@@ -365,12 +292,8 @@ def is_effective_bond_contributor(gs: GameState, unit: Unit, row: str) -> bool:
 
 
 def bond_tier_drops_if_sold(gs: GameState, unit: Unit, row: str) -> bool:
-    """羁绊排序规则项:卖后掉当前板面羁绊档(line_and_upgrade §4——
-    不折金,P3 作废禁引数值;上阵位才有此代价,备战席位天然不掉档)。
-
-    判据 = 该单位任一标签的板面计数恰等于当前已激活最高档(移除后
-    跌破该档);备战席候选恒 False(不在板上,不参与计数)。
-    """
+    """羁绊排序规则项:卖后掉当前板面羁绊档(deploy_swap 冻结遗留路径
+    专用;备战席候选恒 False——不在板上,不参与计数)。"""
     counts = _board_tag_counts(gs)
     for tag in _unit_bond_tags(unit, row):
         info = FACTIONS.get(tag)
@@ -383,9 +306,9 @@ def bond_tier_drops_if_sold(gs: GameState, unit: Unit, row: str) -> bool:
 
 
 def is_field_irrelevant_unit(gs: GameState, unit: Unit, row: str) -> bool:
-    """场上无关角色谓词(来金族候选池的场上支准入;契约 D/2026-10-13
-    用户裁定):非锁定线成员(:func:`sell_line_membership` 判定)∧
-    非有效羁绊贡献件(:func:`is_effective_bond_contributor`)。
+    """场上无关角色谓词(来金族候选池的场上支准入历史谓词;现役消费 =
+    节末凑息观测键反事实支的 deployed 枚举,entry——键退役归 3.5):
+    非锁定线成员(:func:`sell_line_membership` 判定)∧ 非有效羁绊贡献件。
 
     ``row`` = 该单位所在排('front'/'back';羁绊标签的开拓者形态按排
     归一需要排信息)。
@@ -396,51 +319,7 @@ def is_field_irrelevant_unit(gs: GameState, unit: Unit, row: str) -> bool:
     return not is_effective_bond_contributor(gs, unit, row)
 
 
-# ============================================================ 垫件谓词(晶矿场景过滤)
-
-
-def is_ore_pad_unit(gs: GameState, char_id: str, star: int) -> bool:
-    """垫件谓词(晶矿腾位场景过滤;prep_pipeline §1 第 2 步现文口径):
-    卖出损失 ≈ 0 的持有。
-
-    合取六项(逐项单一源):
-
-    - 1★;
-    - 非线内(:func:`sell_line_membership`;未锁定期含候选 top3 成员——
-      囤货集排除防候选囤件被垫件卖出,与「囤终局件为终局阵容锁定准备」承诺
-      一致);
-    - 非合成素材(``merge_material_reject_reason`` 单一源——同名同星
-      另有副本即素材对);
-    - 非通用插件注册表成员(``PLUGIN_LIBRARY``——插件有座位价值不在
-      垫件集);
-    - 非保护集成员(``protection_membership``——统一保护集 design §2.3
-      垫件分支迁移:垫件 = 非自己人,registry 核心/四体系件有再遇期权不在
-      垫件集);
-    - 非种子身份件(``is_engine_piece`` 引擎件身份层——裁量申报:设计
-      文「非种子」按身份层取引擎件全集而非种子登记簿子集,引擎件 =
-      跨线羁绊结构件有保留价值;登记簿级种子已由常规面装配 A 排除,
-      身份层取超集 = 更保守的垫件收窄,无漏放)。
-
-    P96 释放集【登记待办、暂不激活】不并入(证明前提不随场景迁移,标定前晶矿
-    垫件不含释放集)。
-    """
-    if int(star or 1) != 1 or not char_id:
-        return False
-    if char_id in sell_line_membership(gs):
-        return False
-    if char_id in protection_membership(gs, state_of(gs)):
-        return False
-    front, back = deployed_rows_of(gs)
-    deployed = [d for d in (*front, *back) if d is not None]
-    if merge_material_reject_reason(char_id, 1, bench_entries_of(gs),
-                                    deployed):
-        return False
-    if char_id in PLUGIN_LIBRARY:
-        return False
-    return not is_engine_piece(char_id)
-
-
-# ============================================================ 评估器(契约 D 单一入口)
+# ============================================================ 评估器(三触发单一入口)
 
 
 @dataclass(frozen=True)
@@ -448,15 +327,13 @@ class SellCandidate:
     """一个卖出候选(评估器输出行;frozen 值对象)。
 
     [索引定义] ``idx`` 坐标系随 ``zone`` 分域:``zone='bench'`` = 备战席
-    紧缩占席序(``bench_entries_of`` 列表 0 基下标,与现行三通道候选位键
-    ``criteria/sell._slot_of`` 同构,发出侧经容器槽位表枚举对位还原);
-    ``zone='deployed'`` = 上场紧缩行序(``deployed_rows_of`` 两行拼接
-    〔前排在前〕的 0 基下标)。取值时机 = 评估帧现读(候选构造时快照)。
+    紧缩占席序(``bench_entries_of`` 列表 0 基下标,发出侧经容器槽位表
+    枚举对位还原);``zone='deployed'`` = 上场紧缩行序(``deployed_rows_of``
+    两行拼接〔前排在前〕的 0 基下标)。取值时机 = 评估帧现读(候选构造
+    时快照)。
 
-    ``gold_value`` = 金当量三项(:func:`sell_gold_equivalent`;可为
-    inf);``bond_drop`` = 羁绊排序规则项(卖后掉当前羁绊档;仅上场位
-    可 True);``line_member`` = 线内身份集成员标记(自救扩展面的末位
-    分层依据——线内件整体置末层后仍按金当量序,prep_pipeline §2)。
+    ``gold_value``/``bond_drop``/``line_member`` = deploy_swap 冻结遗留
+    路径的排序诊断维(统一序列路径恒缺省值,零消费)。
     """
 
     zone: str            # 'bench' | 'deployed'
@@ -464,9 +341,9 @@ class SellCandidate:
     unit: Unit           # 候选单位本体(frozen 值对象)
     char_id: str
     star: int
-    gold_value: float
-    bond_drop: bool
-    line_member: bool
+    gold_value: float = 0.0
+    bond_drop: bool = False
+    line_member: bool = False
 
 
 def _deployed_rows_indexed(gs: GameState) -> list[tuple[Unit, str, int]]:
@@ -486,119 +363,32 @@ def _deployed_rows_indexed(gs: GameState) -> list[tuple[Unit, str, int]]:
     return out
 
 
-def _regular_face_ok(unit: Unit, *, excl: frozenset[str],
-                     release: frozenset[str],
-                     bench: list[BenchSlot],
-                     deployed: list[Unit]) -> bool:
-    """常规面资格过滤(单候选;两段并入——装配 A 排除集 + 合成素材
-    拒入守卫〔含死库存对释放子谓词旁路〕)。挂后台效果资格 = 现行
-    三通道资格谓词的并入(bench_effect_qualified/bench_effect_context
-    单一源消费),在 :func:`_bench_effect_blocked` 单独分派——仅备战席
-    候选查,场上支不查(谓词语义 = 备战席后台效果生效)。
-    """
-    name = str(getattr(unit, 'char_id', '') or '')
-    star = int(getattr(unit, 'star', 1) or 1)
-    if name in excl:
-        return False
-    return not (merge_material_reject_reason(name, star, bench, deployed)
-                and name not in release)
-
-
-def _bench_effect_blocked(gs: GameState, unit: Unit,
-                          line: frozenset[str]) -> bool:
-    """挂后台效果资格拒入(备战席候选;语境装配单一源 =
-    ``predicates.bench_effect_context``,与现行三通道同门)。"""
-    return predicates.bench_effect_qualified(
-        str(getattr(unit, 'char_id', '') or ''),
-        predicates.bench_effect_context(gs, unit, tuple(line)))
-
-
-def evaluate_sell_candidates(
-        gs: GameState, scenario: str, *,
-        swap_ctx: SwapPlanContext | None = None,
-        counters: dict | None = None,
+def _evaluate_deploy_swap_legacy(
+        gs: GameState, swap_ctx: SwapPlanContext | None,
+        deployed_indexed: list[tuple[Unit, str, int]],
+        bench: list[BenchSlot],
 ) -> tuple[tuple[SellCandidate, ...], str]:
-    """统一卖出候选评估器(契约 D 单一入口)。
-
-    输入 =(场景,容器状态);输出 =(按让位序排序的候选元组,拒因键
-    ——候选非空恒 '',空候选暴露拒因)。让位序 = 先卖到后卖:
-
-    1. 线内末位分层(自救扩展面:线内件整体置末层,组内仍按金当量序;
-       常规面场景线内件已被资格面排除,本层恒 0);
-    2. 羁绊规则二分(不掉档组在前,掉档组在后——不折金的上阵位代价);
-    3. 组内金当量三项升序(:func:`sell_gold_equivalent`);
-    4. 确定性并列破除((zone, idx) 字典序——物理位序,禁随机/集合序)。
-
-    全场景共用空板守卫(现行为等价并入,prep_pipeline §1 第 0 步
-    as-built 申报:deployed = 0 帧全部卖出场景哑火,本设计不收窄)。
-
-    ``swap_ctx`` = deploy_swap 场景的换人判定语境(``SwapPlanContext``,
-    装配单一源 = ``cw_deploy_logic.assemble_swap_plan_inputs``,调用方
-    〔3.3 部署面〕从决策帧装配传入);缺省 None ⇒ deploy_swap 场景
-    fail-closed 拒评估(REJECT_SWAP_CTX_MISSING),非 deploy_swap 场景
-    忽略本参。
-
-    ``counters`` = 遥测分键容器(缺省 None = 守卫纯判读形态;A 装配的
-    计数面经策略器状态自带容器,不经本参)。
-    """
-    spec = SCENE_SPECS.get(scenario)
-    if spec is None:
-        raise ValueError(
-            f'未知卖出场景 {scenario!r}:合法闭集 = {sorted(SELL_SCENARIOS)}'
-            ' (design 契约 D;新场景先登记 SCENE_SPECS 再接线)')
-    deployed_indexed = _deployed_rows_indexed(gs)
-    deployed = [u for u, _row, _idx in deployed_indexed]
-    if empty_board_sell_blocked(deployed, counters=counters):
-        return (), EMPTY_BOARD_SELL_GUARD_KEY
-    if spec.face == FACE_DEPLOY_SWAP and swap_ctx is None:
+    """deploy_swap 冻结遗留评估路径(部署换人域 design §2.2 不动;
+    生产零消费面,判据与排序逐位同 3.2 前——价值函数拆除批随批处置)。"""
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        swap_sell_exclusion_reason,
+    )
+    if swap_ctx is None:
         return (), REJECT_SWAP_CTX_MISSING
-    bench = bench_entries_of(gs)
+    deployed = [u for u, _row, _idx in deployed_indexed]
     line = sell_line_membership(gs)
-    excl: frozenset[str] = frozenset()
-    release: frozenset[str] = frozenset()
-    if spec.face == FACE_REGULAR:
-        # 装配 A(现行 sell_gate 排除集并入;k_members = 线内身份集——
-        # 未锁定期候选成员判定替代 k_members 线内判定职责,line §1.2)+
-        # 死库存对释放集(素材守卫旁路,单一源 = dead_pair_exit_release,
-        # 判据本体禁自算)。身份段构成含终局键集标签命中件
-        # (design 2026-10-26-swap-channel-unified §2.8 堵回降口二,
-        # 单一源 = sell_gate.identity_exclusions/terminal_key_label_hit_
-        # names——本装配逐通道共用,身份段追加即全 FACE_REGULAR 通道
-        # 自动覆盖;禁在场景/池族层另设标签排除第二份)。
-        excl = sell_exclusions(
-            gs, tuple(sorted(line)), channel=spec.legacy_channel,
-            current_round=round_num_of(gs),
-            cap_hold=locked_buy_cap_hold(gs))
-        release = dead_pair_exit_release(
-            gs, tuple(sorted(line)), bench, deployed,
-            round_num_of(gs), cap_hold=locked_buy_cap_hold(gs))
+    out: list[SellCandidate] = []
 
-    def _face_ok(unit: Unit, *, is_bench: bool) -> bool:
-        """场景资格面分派(自救全量直通/常规面三段/换人现行判据)。"""
-        if spec.face == FACE_SELF_RESCUE:
-            return True   # 真全量:仅占位件物理门在前置循环拦截
-        if spec.face == FACE_DEPLOY_SWAP:
-            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                swap_sell_exclusion_reason,
-            )
-            return swap_sell_exclusion_reason(
+    def _ok(unit: Unit, *, is_bench: bool) -> bool:
+        if swap_sell_exclusion_reason(
                 str(getattr(unit, 'char_id', '') or ''), swap_ctx,
                 star=int(getattr(unit, 'star', 1) or 1),
-                bench=bench, deployed=deployed) == ''
-        if not _regular_face_ok(unit, excl=excl,
-                                release=release, bench=bench,
-                                deployed=deployed):
+                bench=bench, deployed=deployed) != '':
             return False
-        if is_bench and _bench_effect_blocked(gs, unit, line):
-            return False
-        if spec.one_star_refund_only:
-            return refund_full_star_ok(
-                int(getattr(unit, 'star', 1) or 1),
-                bench_char_cost(unit, gs))
-        return True
+        return not (is_bench and predicates.bench_effect_qualified(
+            str(getattr(unit, 'char_id', '') or ''),
+            predicates.bench_effect_context(gs, unit, tuple(line))))
 
-    out: list[SellCandidate] = []
-    # —— 备战席支(全场景池成员;占位件物理门 = 现行跨通道共享谓词)——
     for i, slot in enumerate(bench):
         if predicates.item_slot_unsellable(slot):
             continue
@@ -606,60 +396,185 @@ def evaluate_sell_candidates(
         name = str(getattr(unit, 'char_id', '') or '') if unit else ''
         if unit is None or name == '':
             continue
-        if not _face_ok(unit, is_bench=True):
+        if not _ok(unit, is_bench=True):
             continue
         out.append(SellCandidate(
             zone='bench', idx=i, unit=unit, char_id=name,
             star=int(getattr(unit, 'star', 1) or 1),
             gold_value=sell_gold_equivalent(gs, unit),
-            bond_drop=False,
             line_member=name in line))
-    # —— 场上支(按池族:来金族 = 仅无关角色;部署换人 = 全部上场件)——
-    if spec.pool in (POOL_BENCH_FIELD_IRRELEVANT, POOL_FIELD_AND_BENCH):
-        for unit, row, idx in deployed_indexed:
-            if spec.pool == POOL_BENCH_FIELD_IRRELEVANT \
-                    and not is_field_irrelevant_unit(gs, unit, row):
-                continue
-            if not _face_ok(unit, is_bench=False):
-                continue
-            out.append(SellCandidate(
-                zone='deployed', idx=idx, unit=unit,
-                char_id=str(unit.char_id or ''),
-                star=int(getattr(unit, 'star', 1) or 1),
-                gold_value=sell_gold_equivalent(gs, unit),
-                bond_drop=bond_tier_drops_if_sold(gs, unit, row),
-                line_member=str(unit.char_id or '') in line))
+    for unit, row, idx in deployed_indexed:
+        if not _ok(unit, is_bench=False):
+            continue
+        out.append(SellCandidate(
+            zone='deployed', idx=idx, unit=unit,
+            char_id=str(unit.char_id or ''),
+            star=int(getattr(unit, 'star', 1) or 1),
+            gold_value=sell_gold_equivalent(gs, unit),
+            bond_drop=bond_tier_drops_if_sold(gs, unit, row),
+            line_member=str(unit.char_id or '') in line))
     if not out:
         return (), REJECT_NO_CANDIDATES
-    if spec.sort_override == SORT_OVERRIDE_LEVELUP_PREP:
-        # 升级凑金排序键①②③(2026-10-17 迭代 design §2.2,用户裁定
-        # 2026-10-17;场景级覆盖,其余场景缺省让位序不动):
-        # ①费用带外先卖——目标费用 = 当前停留目标费用档(单一源 =
-        #   criteria/levelup.stay_target_of,刷新判据带归属绑定同源;
-        #   无停留目标帧〔未锁定 ∧ 无星级目标〕①键不分组);
-        # ②同组内低星先(高星为合成体、压牌库更深——后卖,能不卖就不卖);
-        # ③金当量升序兜底(统一价值函数,与其他卖出场景同一口径);
-        # 确定性并列破除((zone, idx) 字典序)。
-        # (本场景线内件已被常规面资格排除、场上支恒无关角色,缺省序的
-        # line_member/bond_drop 两层在该场景结构性恒 False,覆盖序不携带。)
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
-            levelup as _levelup,
-        )
-        _target = _levelup.stay_target_of(gs)
-        _tcost = int(_target[2]) if _target is not None else None
-
-        def _band_out(c: SellCandidate) -> int:
-            if _tcost is None:
-                return 0
-            cost = int(bench_char_cost(c.unit, gs) or 0)
-            return 0 if cost != _tcost else 1
-
-        out.sort(key=lambda c: (_band_out(c), c.star, c.gold_value,
-                                c.zone, c.idx))
-        return tuple(out), ''
     out.sort(key=lambda c: (c.line_member, c.bond_drop, c.gold_value,
                             c.zone, c.idx))
     return tuple(out), ''
+
+
+def _held_cost(gs: GameState, name: str) -> int | None:
+    """手持牌实费档供给(:attr:`HeldUnit.cost`;变费卡升费后现值,
+    单一源 = ``cw_economy.effective_cost``;未注册名读 0 → None 回退
+    判据件注册表保守估)。"""
+    return effective_cost(gs, name) or None
+
+
+def evaluate_sell_candidates(
+        gs: GameState, scenario: str, *,
+        swap_ctx: SwapPlanContext | None = None,
+        counters: dict | None = None,
+) -> tuple[tuple[SellCandidate, ...], str]:
+    """统一卖出候选评估器(三触发单一入口;acquisition §3)。
+
+    输入 =(场景,容器状态);输出 =(按让位序排序的候选元组,拒因键
+    ——候选非空恒 '',空候选暴露拒因)。让位序 = 先卖到后卖:统一
+    序列(priority.sell_order 升序,末位 = 最先让路)整体反转,消费位
+    取首位 = 序列末位。
+
+    统一路径(五场景):
+    1. 空板止损守卫(deployed = 0 帧全部卖出场景哑火,as-built 申报
+       沿袭);
+    2. 部署重排定型(``mandate.snapshot_frame`` + ``assemble_prep_context``
+       + ``select_deployment`` 纯函数现算;档 1 名集);
+    3. 全局面候选(备战席 ∪ 场上;无场景专属池子【拍】)经循环防线
+       过滤:常规面 = sell_exclusions(窗口段/L1 同轮禁卖/种子年龄
+       豁免;身份段退役归属 3.4 sell_gate 收缩,收敛前随装配照读)+
+       合成素材拒入守卫(释放集旁路保留);自救面 = 全放行(仅占位件
+       物理门);档 1(部署定型内,按角色名命中)不进输出——「永不
+       先卖」字面保证,板上同名牌同受保护;
+    4. ``priority.sell_order`` 排序(升序 = 最不该卖 → 最先让路),输出
+       取其反转;
+    5. 跨档止盈(仅节末凑息):让位序内保留「单件退金 ≥ 到下一利息档
+       缺口」者;无下一利息档(满档/买断制)或无可行件 = 空输出
+       (REJECT_NO_CANDIDATES,一件不卖)。
+
+    deploy_swap 场景走冻结遗留路径(:func:`_evaluate_deploy_swap_legacy`)。
+
+    ``swap_ctx`` = deploy_swap 场景的换人判定语境(装配单一源 =
+    ``cw_deploy_logic.assemble_swap_plan_inputs``);缺省 None ⇒ deploy_swap
+    场景 fail-closed 拒评估,非 deploy_swap 场景忽略本参。
+
+    ``counters`` = 遥测分键容器(缺省 None = 守卫纯判读形态)。
+    """
+    spec = SCENE_SPECS.get(scenario)
+    if spec is None:
+        raise ValueError(
+            f'未知卖出场景 {scenario!r}:合法闭集 = {sorted(SELL_SCENARIOS)}'
+            ' (acquisition §3;新场景先登记 SCENE_SPECS 再接线)')
+    deployed_indexed = _deployed_rows_indexed(gs)
+    deployed = [u for u, _row, _idx in deployed_indexed]
+    if empty_board_sell_blocked(deployed, counters=counters):
+        return (), EMPTY_BOARD_SELL_GUARD_KEY
+    bench = bench_entries_of(gs)
+    if spec.face == FACE_DEPLOY_SWAP:
+        return _evaluate_deploy_swap_legacy(gs, swap_ctx,
+                                            deployed_indexed, bench)
+    # —— 统一序列路径(部署重排定型 → 全局面序列)——
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        mandate,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+        priority as crit_priority,
+    )
+    frame = mandate.snapshot_frame(gs)
+    prep = mandate.assemble_prep_context(gs, gs, frame)
+    target = mandate.select_deployment(frame, prep)
+    ctx = crit_priority.assemble_priority_context(
+        gs, gs, deployed_names=target,
+        rng=crit_priority.priority_rng_of(gs))
+    excl: frozenset[str] = frozenset()
+    release: frozenset[str] = frozenset()
+    if spec.face == FACE_REGULAR:
+        # 循环防线装配(窗口段/L1 同轮禁卖/种子年龄豁免;身份段构成含
+        # 终局键集标签命中件——退役归属 3.4 sell_gate 身份段收缩,收敛
+        # 前随装配照读,禁在本层另设第二排除面)。释放集 = 死库存对
+        # 素材守卫旁路(单一源 = dead_pair_exit_release)。
+        line = sell_line_membership(gs)
+        excl = sell_exclusions(
+            gs, tuple(sorted(line)), channel=spec.legacy_channel,
+            current_round=round_num_of(gs),
+            cap_hold=locked_buy_cap_hold(gs))
+        release = dead_pair_exit_release(
+            gs, tuple(sorted(line)), bench, deployed,
+            round_num_of(gs), cap_hold=locked_buy_cap_hold(gs))
+    units: list[crit_priority.HeldUnit] = []
+    cands: dict[tuple[str, int], SellCandidate] = {}
+    # 档 1(部署定型内,按角色名命中)不进让位输出——「部署定型内的
+    # 牌永不先卖」的字面保证(priority-model §5);备战位上的同名牌
+    # 同受保护(档 1 按名命中 = 在手优先不换手形态,3.1 判据件语义)。
+    # 板空边界保守侧:部署外候选真空帧 = 空输出,不向部署需要面借牌。
+    # —— 备战席支(占位件物理门 = 现行跨通道共享谓词)——
+    for i, slot in enumerate(bench):
+        if predicates.item_slot_unsellable(slot):
+            continue
+        unit = bench_slot_unit(slot)
+        name = str(getattr(unit, 'char_id', '') or '') if unit else ''
+        if unit is None or name == '':
+            continue
+        if name in target:
+            continue
+        if name in excl:
+            continue
+        if merge_material_reject_reason(
+                name, int(getattr(unit, 'star', 1) or 1), bench,
+                deployed) and name not in release:
+            continue
+        units.append(crit_priority.HeldUnit(
+            name, int(getattr(unit, 'star', 1) or 1), i, False,
+            cost=_held_cost(gs, name)))
+        cands[('bench', i)] = SellCandidate(
+            zone='bench', idx=i, unit=unit, char_id=name,
+            star=int(getattr(unit, 'star', 1) or 1))
+    # —— 场上支(全局面序列;部署定型内 = 档 1 已被上道过滤,入池者
+    # 仅部署重排挤下的换阵牺牲件 = 部署外)——
+    for unit, _row, idx in deployed_indexed:
+        name = str(unit.char_id or '')
+        if name in target:
+            continue
+        if name in excl:
+            continue
+        if merge_material_reject_reason(
+                name, int(getattr(unit, 'star', 1) or 1), bench,
+                deployed) and name not in release:
+            continue
+        units.append(crit_priority.HeldUnit(
+            name, int(getattr(unit, 'star', 1) or 1), idx, True,
+            cost=_held_cost(gs, name)))
+        cands[('deployed', idx)] = SellCandidate(
+            zone='deployed', idx=idx, unit=unit, char_id=name,
+            star=int(getattr(unit, 'star', 1) or 1))
+    if not units:
+        return (), REJECT_NO_CANDIDATES
+    ordered = crit_priority.sell_order(units, ctx)
+    yield_order: list[SellCandidate] = [
+        cands[('deployed' if u.deployed else 'bench', u.slot)]
+        for u in reversed(ordered)]
+    if spec.cross_tier_only:
+        # 跨档止盈(场景参数;design §2.4 保留行):仅「单件退金 ≥ 到
+        # 下一利息档缺口」者可卖;无下一档(满档/买断制)= 无卖益,
+        # 一件不卖。
+        _gold = int(gold_of(gs) or 0)
+        _line = next_interest_line(_gold, cap_resolved_of_session(gs))
+        if _line is None:
+            return (), REJECT_NO_CANDIDATES
+        _gap = _line - _gold
+
+        def _refund(c: SellCandidate) -> int:
+            return sell_refund(int(c.star or 1),
+                               bench_char_cost(c.unit, gs))
+
+        yield_order = [c for c in yield_order if _refund(c) >= _gap]
+    if not yield_order:
+        return (), REJECT_NO_CANDIDATES
+    return tuple(yield_order), ''
 
 
 __all__ = [
@@ -668,21 +583,16 @@ __all__ = [
     'FACE_SELF_RESCUE',
     'INTEREST_MARGIN_PER_ROUND',
     'MERGE_PROGRESS_X2_SLOT',
-    'POOL_BENCH_FIELD_IRRELEVANT',
-    'POOL_BENCH_ONLY',
-    'POOL_FIELD_AND_BENCH',
     'REJECT_NO_CANDIDATES',
     'REJECT_SWAP_CTX_MISSING',
     'SCENE_SPECS',
     'SELL_SCENARIOS',
-    'SORT_OVERRIDE_LEVELUP_PREP',
     'SellCandidate',
     'SellSceneSpec',
     'bond_tier_drops_if_sold',
     'evaluate_sell_candidates',
     'is_effective_bond_contributor',
     'is_field_irrelevant_unit',
-    'is_ore_pad_unit',
     'sell_gold_equivalent',
     'sell_line_membership',
 ]

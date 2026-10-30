@@ -67,7 +67,7 @@ class ShopOpportunity:
     """
 
     card_name: str    # 牌名(注册表规范名)
-    blocked_by: str   # 拦因闭集:'bench_full'(席满)| 'gold_short'(金不足)
+    blocked_by: str   # 拦因闭集:'bench_full'(席满)| 'gold_short'(金不足)| 'priority_insufficient'(优先级不足,席满买入六步流程 3.2——席位空出即失效,与席满类同轴解拦)
     price: int        # 注册表价(金的解除线比对基准)
     order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接线枚举)
 

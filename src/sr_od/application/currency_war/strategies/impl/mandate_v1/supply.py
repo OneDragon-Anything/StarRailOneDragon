@@ -1,23 +1,26 @@
 """补给画面策略(mandate_v1;宪法六「一画面一策略文件」兑现)。
 
-判据结构 = 三级字典序(用户裁定 2026-09-24):**钻 > 终局角色 > 装备**。
-字典序而非加法合分:三轴量纲不可通约(人口位/终局阵容成员/装备),加法
+判据结构 = 三级字典序(用户裁定 2026-09-24):**钻 > 角色 > 装备**。
+字典序而非加法合分:三轴量纲不可通约(人口位/角色获取/装备),加法
 需新拍跨轴权值;字典序 = 裁定偏好的直接编码,零自由参数(轴间不可补偿
-——终局成员卡永远压过高价值装备卡,即裁定本意)。
+——幸存角色卡压过高价值装备卡,即裁定本意)。统一让位优先级迭代 3.2:
+第 2 级从「终局角色布尔判定 + 凑星平手裁决」改**虚拟全局评估形态**
+(规格 = changes/2026-10-29-unified-priority/details/acquisition-and-
+sell.md §3.1——补给选项中的角色按获取角色流程的评估形态逐个判定,
+与商店牌同一逻辑;「是否终局角色」布尔门随统一序列退役,总纲 §2.6
+消费点映射):
 
 - 第 1 级 钻:∃ ``SupplyOption.has_diamond`` → 带钻候选胜出(单钻直选;
   多张带钻 → 依次进第 2/3 级比出一张)。依据:财富宝钻 effect「团队规模
   上限+1,无论是否被角色穿戴…」、红钻/蓝钻 = 星徽合成材料
   (cw_equipment_data 装备注册表);检测集单一源 =
   ``kernel/cw_obs_core.DIAMOND_EQUIP_NAMES``(红钻/蓝钻/财富宝钻)。
-- 第 2 级 终局角色:激活 = ``locked_comp`` 非 None ∧ 非降格帧(用户
-  裁定「想要的角色只为终局考虑,不按过渡阵容选」)。名单 =
-  ``Comp.core_chars ∪ shared_chars``(不含 transition_chars——过渡成员
-  按裁定不入名单);``char`` 读缺(OCR 未命中,空串)的选项不进角色
-  候选(不猜,仍参与装备轴)。候选内多候选 tiebreak:①能凑星者先
-  (选入后与全场同名 1★ 恰成 3 张 = ``cw_merge_simulate.same_star_count``
-  ``(char, 1, bench, deployed) == 2``;布尔判据零梯度,count 1 与 0 不分);
-  ②仍并列 → 第 3 级装备比。
+- 第 2 级 角色(虚拟全局评估):候选 = 读到角色名的选项(char 读缺
+  不进候选、不猜,仍参与装备轴);每个候选按获取角色流程评估形态
+  逐个判定——虚拟置入局面 → 升星连锁模拟 → 部署重排 → 统一序列
+  定位:**被虚拟阵容淘汰的(排序末位 = 自己)排除**;幸存者按其虚拟
+  排序键(priority.sort_key,键小 = 优先级高)赋值;多个幸存者取键
+  最小。全部淘汰(候选皆劣于手里任一持有)→ 角色级空转,落第 3 级。
 - 第 3 级 装备:打分单一源 = 直调共享机器
   ``cw_equip_value.pick_equipment``((tier, base) 字典序,并列取输入序
   先者;「候选多选一禁第二套打分」= cw_equip_value 模块头裁定)。tier =
@@ -30,17 +33,18 @@
   gs 为纯函数输入,同口径同源)。
 
 刷新判据(用户裁定 2026-09-24「三级全空才刷」结构):建议刷 = 且仅 =
-手牌三级全空(无带钻 ∧ 角色级无候选或未激活 ∧ 装备级全体落 tier 0,
+手牌三级全空(无带钻 ∧ 角色级无幸存候选 ∧ 装备级全体落 tier 0,
 **只看档位不看通用值**——用户裁定读法 A,tier 0 内高通用值件帧仍属
 三级全空)∧ 次数闸放行。次数闸内嵌本函数(照 invest_env.decide 读
 ``env_refresh_left`` 同构):``gs.supply_refresh_left`` 读数 ≥1 才建议刷;
-None = 未观察 → 不建议刷(fail-closed);left 缺/尽 → 直接落第 3 级选卡
-(「三级全空 ∧ 建议刷但闸拒绝」的产出组合不存在,op 侧对照闸仅剩刷新
-锚点缺失一种触发面)。``EQUIP_GENERIC_VALUE`` 表在本批降格为 tier 内
-定序常数消费,表本体迁移义务不在本文件扩面。
+None = 未观察 → 不建议刷(fail-closed);left 缺/尽 → 直接落第 3 级选卡。
+``EQUIP_GENERIC_VALUE`` 表在本批降格为 tier 内定序常数消费,表本体迁移
+义务不在本文件扩面。
 
-已知失真申报:席满帧补给角色入账分支溢入单位不入 gs(记账层不建模溢出席)
-→ 凑星判据对该单位系统性漏计,归观察/记账批,本文件如实消费现值。
+虚拟重算载体纪律(acquisition-and-sell §1 定案):局面快照纯计算
+(``mandate.snapshot_frame`` 构造 + ``simulate_acquired_units`` 轻量
+升星连锁),禁容器深拷贝;副本零遥测——journal/策略遥测/决策帧三通道
+零写入(本模块判据为纯值出口,动作包装留 flow)。
 
 输出契约:纯值 dataclass(:class:`SupplyDecision` /
 :class:`SupplyRefreshSuggestion`),不含动作词表——动作包装
@@ -52,23 +56,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_equip_value import (
     equip_tier,
     pick_equipment,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
-    Unit,
     bench_units_of,
     deployed_rows_of,
-)
-from sr_od.application.currency_war.kernel.cw_merge_simulate import (
-    same_star_count,
 )
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_events import SupplyOption
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
+        PriorityKey,
+    )
 
 
 # ===== 输出契约(纯值 dataclass,不含动作词表)=====
@@ -97,15 +101,15 @@ class SupplyRefreshSuggestion:
 
 def decide(options: list[SupplyOption], gs: GameState,
            locked_comp: Comp | None, demoted_endgame: bool,
+           *, config: object | None = None,
            ) -> SupplyDecision | SupplyRefreshSuggestion:
-    """补给选卡决策(三级字典序:钻 > 终局角色 > 装备;纯值出口,flow
-    包装动作词表)。
+    """补给选卡决策(三级字典序:钻 > 角色〔虚拟全局评估〕> 装备;纯值
+    出口,flow 包装动作词表)。
 
     - options = 屏上候选(``gs.supply`` payload 槽序,左→右 = 画面列序);
-    - locked_comp = flow 经 ``get_comp`` 解析后的阵容对象(None = 未锁,
-      含套名解析失败回落);demoted_endgame = 降格帧直通(True → 角色级
-      与 key_equips 参照一律按未锁口径;防御位——现役降格路径已清
-      locked_comp,cw_intention 降格分支);
+    - locked_comp/demoted_endgame = 第 3 级装备轴参照(角色级不再消费
+      ——终局布尔门随统一序列退役);config = 随机流种子供给(缺省
+      None → 策略器构造缺省播法,``priority.priority_rng_of``);
     - 空候选帧 → idx=0 no-options(与旧码同形;现役观察层/op 守卫下
       不应到达,纯函数定义须完备)。
     """
@@ -114,38 +118,119 @@ def decide(options: list[SupplyOption], gs: GameState,
     diamonds = [o for o in options if o.has_diamond]
     if len(diamonds) == 1:
         return SupplyDecision(idx=diamonds[0].idx, reason='第1级:带钻')
-    wanted = _endgame_chars(locked_comp, demoted_endgame)
     # 决策比较池:多钻帧 = 带钻候选(第 1 级支配,钻内细分);无钻帧 =
     # 全体候选(空串 equip 名按未知参与,装备机器表外 0)。
     pool = diamonds if diamonds else options
-    # 第 2 级:终局成员候选(pool 内;char 读缺不进候选)。
-    char_pool = ([o for o in pool if o.char and o.char in wanted]
-                 if wanted is not None else [])
-    # 刷新判据(仅无钻帧可能三级全空):角色级空转 ∧ 装备级全体 tier 0
-    #(只看档位不看通用值,读法 A)。
-    if not diamonds and not char_pool and _all_tier_zero(
+    char_pool = [o for o in pool if o.char]
+    # 第 2 级:虚拟全局评估(角色候选逐个虚拟判定,幸存者升序)。
+    ranked = _rank_char_candidates(char_pool, gs,
+                                   config=config) if char_pool else []
+    # 刷新判据(仅无钻帧可能三级全空):角色级无幸存 ∧ 装备级全体
+    # tier 0(只看档位不看通用值,读法 A)。
+    if not diamonds and not ranked and _all_tier_zero(
             options, gs, locked_comp, demoted_endgame):
         left = gs.supply_refresh_left.value
         if left is not None and left >= 1:
             return SupplyRefreshSuggestion(
-                reason='refresh: 三级全空(无钻/角色级空转/装备全tier0)')
-    if char_pool:
-        return _pick_char_level(char_pool, gs, locked_comp, demoted_endgame,
-                                bool(diamonds))
+                reason='refresh: 三级全空(无钻/角色级无幸存/装备全tier0)')
+    if ranked:
+        o, key = ranked[0]
+        return SupplyDecision(
+            idx=o.idx,
+            reason=f'第2级角色:虚拟全局评估幸存 {o.char} '
+                   f'键首档={int(key[0])}')
     return _pick_equip_level(pool, gs, locked_comp, demoted_endgame,
                              bool(diamonds))
 
 
-def _endgame_chars(locked_comp: Comp | None,
-                   demoted_endgame: bool) -> frozenset[str] | None:
-    """第 2 级终局名单(None = 角色级空转:未锁定/降格帧)。
+def _rank_char_candidates(
+        char_pool: list[SupplyOption], gs: GameState, *,
+        config: object | None = None,
+) -> list[tuple[SupplyOption, PriorityKey]]:
+    """第 2 级虚拟全局评估(acquisition §3.1;与商店牌同一逻辑)。
 
-    名单 = core_chars ∪ shared_chars;不含 transition_chars(用户裁定
-    「不按过渡阵容选」)。"""
-    if locked_comp is None or demoted_endgame:
-        return None
-    return (frozenset(locked_comp.core_chars)
-            | frozenset(locked_comp.shared_chars))
+    每个候选角色:虚拟置入备战位 → 升星连锁模拟 → ``select_deployment``
+    部署重排 → 虚拟局面内统一序列定位。淘汰判定 = 排序末位 = 新牌自己
+    (含同优先级在手旗标的不换手形态),**仅置换需要存在时适用**——虚拟
+    置入后备战位仍有空位(含合成净释放) = 无让路对象,候选不经淘汰
+    (与获取角色流程「不再满位 → 无需让路直接买」同构,总纲 §2.3 步骤
+    2)。幸存者按新牌虚拟排序键赋值,返回按键升序(键小 = 优先级高,
+    取首位)。判定全程快照纯计算零遥测(禁容器深拷贝,
+    acquisition-and-sell §1)。
+    """
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        BENCH_CAPACITY,
+        bench_slot_unit,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        mandate,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
+        HeldUnit,
+        ShopUnit,
+        assemble_priority_context,
+        priority_rng_of,
+        sort_key,
+    )
+    frame = mandate.snapshot_frame(gs)
+    out: list[tuple[SupplyOption, PriorityKey]] = []
+    for o in char_pool:
+        sim = mandate.simulate_acquired_units(
+            frame.bench, frame.deployed, o.char, 1)
+        # 位移判定 = 置入后单位可用空槽 ≤ 0(占位件占槽不计入单位数,
+        # 与 BENCH_CAPACITY 同一口径):满位 = 需要让路 → 排序定位;
+        # 有空位 = 直接幸存(键取新牌虚拟排序键,供候选间比序)。
+        _n_items = sum(1 for b in frame.bench
+                       if bench_slot_unit(b) is None)
+        displacement = BENCH_CAPACITY - _n_items - len(sim.bench) <= 0
+        v_bench = [bs for _i, bs in sim.bench]
+        v_frame = mandate.MandateFrame(
+            gold=frame.gold, level=frame.level, bench=v_bench,
+            deployed=sim.field, deploy_cap=frame.deploy_cap,
+            node_type=frame.node_type, stop_flag=False,
+            k_members=frame.k_members, round_num=frame.round_num,
+            overflow_warning=frame.overflow_warning)
+        prep = mandate.assemble_prep_context(gs, gs, v_frame)
+        target = mandate.select_deployment(v_frame, prep)
+        # 虚拟持牌全量快照(聚合谓词看虚拟局面全量,与获取角色流程
+        # 同口径)。
+        v_copies: dict[str, list[int]] = {}
+        for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
+            if u is not None and u.char_id:
+                v_copies.setdefault(str(u.char_id), []).append(
+                    int(u.star or 1))
+        ctx = assemble_priority_context(
+            gs, gs, deployed_names=target, held_copies=v_copies,
+            rng=priority_rng_of(gs, config))
+        # 补给入席单位恒 1★(旧凑星判据同口径);牌面费用档 = 实费档
+        # 现查(未注册名 → 0 → 中费保守估,shop 侧同款口径)。排序池 =
+        # 存量牌(HeldUnit,在手旗标 0)+ 新牌(ShopUnit,将获取旗标 1)
+        # ——虚拟备战位里的新牌本体不重复入池(origin 哨兵),否则新牌
+        # 的在手影子会抢在其 ShopUnit 之前、末位判定失真。
+        new_unit = ShopUnit(o.char, 1, effective_cost(gs, o.char) or 3)
+        units: list[HeldUnit | ShopUnit] = []
+        for orig, bs in sim.bench:
+            if orig >= len(frame.bench):
+                continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
+            u = bench_slot_unit(bs)
+            if u is None or not u.char_id:
+                continue
+            units.append(HeldUnit(
+                str(u.char_id), int(u.star or 1), orig, False,
+                cost=(effective_cost(gs, str(u.char_id)) or None)))
+        units.append(new_unit)
+        # 排序定位一次求键(禁第二排序实现:判定消费 sort_key 本体,
+        # 升序末位 = 最先让路 = 键最大者)。
+        if displacement:
+            keys = [sort_key(u, ctx) for u in units]
+            last = max(range(len(units)), key=lambda i: keys[i])
+            if last == len(units) - 1:
+                continue   # 末位 = 新牌自己(最易让路)→ 被虚拟阵容淘汰
+            out.append((o, keys[-1]))
+        else:
+            out.append((o, sort_key(new_unit, ctx)))
+    out.sort(key=lambda t: t[1])
+    return out
 
 
 def _key_equips(locked_comp: Comp | None,
@@ -182,53 +267,6 @@ def _all_tier_zero(options: list[SupplyOption], gs: GameState,
                for o in options)
 
 
-def _can_merge_star(char: str, gs: GameState, bench: list[Unit],
-                    deployed: tuple[Unit, ...]) -> bool:
-    """能凑星 = 选入该角色后与全场(上阵行域 ∪ 备战席)同名 1★ 恰成
-    3 张(合成 2★)。deployed 须为行域展平的扁平 Unit 序列——(front,
-    back) 二元组直传会被条目身份协议 fail-closed 静默跳过 = 上阵域漏计。
-    补给入席单位恒 1★,3★ 合成不入判据(2×2★+1×1★ 不满足同名同星
-    ≥3 合一)。bench = ``bench_units_of`` 槽序裸 Unit(条目身份协议对
-    裸 Unit 正确,计数等价)。"""
-    return same_star_count(char, 1, bench, deployed) == 2
-
-
-def _reason(has_diamond: bool, tail: str) -> str:
-    """归因串拼装(多钻帧带第 1 级前缀,标明钻内细分路径)。"""
-    return f'第1级带钻 {tail}' if has_diamond else tail
-
-
-def _pick_char_level(char_pool: list[SupplyOption], gs: GameState,
-                     locked_comp: Comp | None, demoted_endgame: bool,
-                     has_diamond: bool) -> SupplyDecision:
-    """第 2 级选卡:能凑星者先(布尔,零梯度);仍并列 → 第 3 级装备比
-    (候选内同一打分机器,禁第二套)。"""
-    bench = bench_units_of(gs)
-    front, back = deployed_rows_of(gs)
-    deployed = (*front, *back)
-    mergeable = [o for o in char_pool
-                 if _can_merge_star(o.char, gs, bench, deployed)]
-    cand = mergeable if mergeable else char_pool
-    if len(cand) == 1:
-        o = cand[0]
-        tag = '凑星' if mergeable else '终局成员'
-        return SupplyDecision(
-            idx=o.idx, reason=_reason(has_diamond,
-                                      f'第2级角色:{tag} {o.char}'))
-    spare, total = _two_accounts(gs)
-    keys = _key_equips(locked_comp, demoted_endgame)
-    k = pick_equipment([o.equip for o in cand], key_equips=keys,
-                       owned_spare=spare, owned_total=total)
-    o = cand[k]
-    tier = equip_tier(o.equip, key_equips=keys,
-                      owned_spare=spare, owned_total=total)
-    return SupplyDecision(
-        idx=o.idx,
-        reason=_reason(has_diamond,
-                       f'第2级角色并列 装备定序 {o.equip or "?"}'
-                       f' tier={tier}'))
-
-
 def _pick_equip_level(pool: list[SupplyOption], gs: GameState,
                       locked_comp: Comp | None, demoted_endgame: bool,
                       has_diamond: bool) -> SupplyDecision:
@@ -241,7 +279,7 @@ def _pick_equip_level(pool: list[SupplyOption], gs: GameState,
     o = pool[k]
     tier = equip_tier(o.equip, key_equips=keys,
                       owned_spare=spare, owned_total=total)
+    tail = f'第3级装备 {o.equip or "?"} tier={tier}'
     return SupplyDecision(
         idx=o.idx,
-        reason=_reason(has_diamond,
-                       f'第3级装备 {o.equip or "?"} tier={tier}'))
+        reason=f'第1级带钻 {tail}' if has_diamond else tail)
