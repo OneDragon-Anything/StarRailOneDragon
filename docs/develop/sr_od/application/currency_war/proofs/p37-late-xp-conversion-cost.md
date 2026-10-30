@@ -208,7 +208,7 @@ economy §7 阶段共识:**中期(位面 2)「稳定 ≥50,用利息升人口为
 | 常量单一源 | 息律闭式本体 = `cw_economy.interest`,cap 缺省 = `cw_plane_table.GOLD_CAP_INTEREST//10 = 5`(原 `cw_factions.INTEREST_THRESHOLD/INTEREST_RATE` 与 `cw_effect_ledger.interest_with` 锚已随死代码清偿移除);override 域=`cw_investments.py` `STRATEGY_ECONOMY`(开源节流 9/利息上调 10/买断制 0)/`cw_registry.interest_cap`;利息档口径 `ev.interest_cost` |
 | 机制原文 | gameplay.md(等级→可上阵数量)、economy §2.1(升级不刷新商店)、economy §7(阶段共识)、economy §10.1(利息规则投资四类修正)、user_playstyle [32](人口 cap 当场生效) |
 | 决策记录 | (未证命题纪律);(应急带谓词);(XP 门槛即升);(连胜/败金表);P47(利息账) |
-| 关联命题 | P23(附录载原 P21/P28 沿革)/P33/P39/P47/P48/P51/P15v2 单篇(`proofs/` 目录);strategy-work §3(落地分档政策) |
+| 关联命题 | P23(附录载原 P21/P28 沿革)/P39/P47/P48/P51/P15v2 单篇(`proofs/` 目录);strategy-work §3(落地分档政策) |
 
 ## 6. 检验点
 

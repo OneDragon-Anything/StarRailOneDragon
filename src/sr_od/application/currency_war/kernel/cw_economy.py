@@ -813,8 +813,8 @@ def _expected_level(round_num: int, plane: int) -> int:
     """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
 
     【拟】社区先验待证待办:本曲线处置 = 立证明骨架
-    (docs/develop/sr_od/application/currency_war/proofs/p58-expected-level-schedule.md 草案,
-    由游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
+    (原 P58 骨架草案已随证明史清理删除,git 历史可溯;重derive 时按
+    游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
     派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或停用。
 
     P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(7 是 3费C 阵容的 level_plan 域,通用曲线取 6)。
