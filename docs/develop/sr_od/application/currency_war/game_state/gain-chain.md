@@ -515,6 +515,20 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   到点呈现归 sim 专用腿(不对称申报,live 队列恒悬置,域规格 =
   fields.md §3.2.26)。未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
+  **延时发放登记腿**(策略卡延时世界发放通道,人才激励 id 101601 首例,
+  与延时 offer 族并列独立域——本族到点产出 = 世界发放写,offer 族 =
+  选卡屏事件):注册表 `cw_investments.STRATEGY_DELAYED_GRANTS`(卡规范名
+  → id/倒计时/发放物,白名单制;构建校验三漂移哨 = 孤儿键/id 双匹配/
+  发放物名 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES)+1 行即自动获得登记腿
+  (效果体由该表派生)。效果体两步:即时腿 `gain_equipment(rand=False)`
+  具名入栏(效果串 `equip_grant:<发放物>(placed=<是否落位>)`;equips
+  未观察 = 拒落零写)+ 延时入队腿 `queue_delayed_strategy_grant`(§2
+  入队原语,登记 = 确定事件零采样):追加 `(卡名, 倒计时)` 到
+  `pending_strategy_grants` 一次 write 回写,效果串
+  `strategy_grant_scheduled:<发放物>@<节拍>`;到点发放归 sim 专用腿
+  `discharge_due_strategy_grants`(到期即弹除,发放物按注册表行归属
+  分道,不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26b)。
+  未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)
 

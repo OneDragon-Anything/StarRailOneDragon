@@ -118,7 +118,8 @@ carried、不受本硬边界约束;在屏失读不写、沿用旧值,在屏与�
 bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/level 3/
 xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
 {})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
-pending_strategy_offers ()/enemy_affixes []/overflow False/''/prev_node_spent
+pending_strategy_offers ()/pending_strategy_grants ()/enemy_affixes []/
+overflow False/''/prev_node_spent
 False)、晶矿附着/声明三域
 (ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
 幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)、环境
@@ -957,6 +958,46 @@ fail-closed 零写,闩同样不落——池现值维持达标时后续 tick 重�
 种子族)。
 
 **域归属**:独立键 `strategy_conditional_done`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。
+
+#### 3.2.26b 策略延时发放倒计时队列 pending_strategy_grants
+
+**语义**:已登记、未到点的**策略延时发放队列**——投资策略卡
+「N个节点后,获得【具名发放物】」类效果(人才激励 id 101601 首例:
+「获得1个【员工投影仪】,4个节点后,获得1个【员工投影仪】。」,即时腿
+经 `PICK_INVEST_EFFECTS` 工厂当场入栏,延时腿入本队列)的承载域。
+元素 = `(strategy 触发卡规范名, remaining 剩余节拍)`;倒计时坐标系 =
+自然数计数(非索引/非节点序位),与 pending_strategy_offers(§3.2.26)
+同口径:拿卡节点窗内登记不递减(「N个节点后」= 拿卡节点的第 N 个
+**后继**节点窗),到点判定 = `remaining <= 0`(到了及以后都算,错过不
+悬空)。**与 §3.2.26 并列独立域**:offer 族到点产出 = 选卡屏事件,
+本族到点产出 = 世界发放写(装备/占席道具入栏),消费原语不同不合并。
+登记表单一源 = `cw_investments.STRATEGY_DELAYED_GRANTS`(卡规范名 →
+id/倒计时/发放物,白名单制;构建校验只留漂移哨——孤儿键 + id 双匹配
++ 发放物名 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES)。
+
+**写入方**:唯一逻辑写入方 = 三口——①登记入队 = 获得链登记腿
+`queue_delayed_strategy_grant`(`PICK_INVEST_EFFECTS` 由登记表派生,
+拿卡即入队,效果串 `strategy_grant_scheduled:<发放物>@<节拍>`;确定
+事件零采样,rand=False 走 `_select_write` 单一收束);②递减 = 节点
+边界 tick 内联腿 `_tick_pending_strategy_grants`(advanced 闸内,同
+§3.2.26 递减腿语义;remaining=0 悬置不越减);③弹除回写 = sim 发放腿
+`_begin_node_window` 内 `discharge_due_strategy_grants`(到期即弹除,
+发放拒落零写 = 世界性丢失有界,留存证据于回写行;发放物按注册表行
+归属分道:∈ EQUIPMENTS → `gain_equipment` / ∈ BENCH_ITEM_NAMES →
+`gain_bench_item`)。**无观察写入方**——队列是卡文推算知识,游戏 UI
+无「待发放列表」可读。链式契约权威版本 = [gain-chain.md](gain-chain.md)
+§3。
+
+**双端不对称申报**(§3.2.26 同款):**实机局不接发放腿**——队列登记
+与递减同链照跑(模型推算知识,快照存续),实机发放由游戏自己执行,
+发放物以 equips 观察首见入账(audit `equips` 行吸收);sim = 世界真值
+(倒计时到点即入栏,窗口幂等守卫重放不双发)。
+
+**开局预填初值**:()(每局全新创建即持空队列,A 类;同
+pending_strategy_offers 种子族)。
+
+**域归属**:独立键 `pending_strategy_grants`(§3.7.1;独立键先例 =
 env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
 ### 3.3 商店开态(覆盖在备战画面之上)

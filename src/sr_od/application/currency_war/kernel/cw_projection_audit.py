@@ -228,6 +228,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' / 节点边界 tick 递减 / sim 呈现腿弹除回写),队列 = 卡文'
               '推算知识,无观察读端;实机局呈现腿不接(不对称申报,'
               'pending_item_grants 同款)'),
+    'pending_strategy_grants': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='策略延时发放倒计时队列(唯一逻辑写端 = 获得链登记腿入队'
+              ' / 节点边界 tick 递减 / sim 发放腿弹除回写),队列 = 卡文'
+              '推算知识,无观察读端;实机局发放腿不接(不对称申报,'
+              'pending_strategy_offers 同款:发放物以 equips 观察首见'
+              '入账)'),
     'strategy_conditional_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名,'
@@ -243,8 +250,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_ABSORB_RULE,
         basis='sell 回收/穿戴扣减/桥直写 + 工具动作上报写端(cw_action_'
               'report/tool_use:消耗移除与效果同笔合并写,炉随机面 = '
-              'logic_rand 采样链)。已知缺口:投资卡随机装备授予'
-              '现无写端无吸收(申报表族 2026-09-19 拆除待重设计),'
+              'logic_rand 采样链)+ 策略卡世界发放具名装备写端'
+              '(获得链 gain_equipment 确定发放尾追:延时发放/条件发放'
+              '两通道)。已知缺口:投资卡随机装备授予现无写端无吸收'
+              '(申报表族 2026-09-19 拆除待重设计,维持待其实现批消化),'
               '命中照真失配停'),
     'consumables': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

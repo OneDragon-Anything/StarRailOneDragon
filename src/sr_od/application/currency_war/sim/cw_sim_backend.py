@@ -89,6 +89,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_battle_grants,
     discharge_due_item_grants,
     discharge_due_item_opens,
+    discharge_due_strategy_grants,
     gain_equipment,
     gain_invest_env,
     gain_invest_strategy,
@@ -116,6 +117,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
+    STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
     aggregate_economy,
@@ -568,6 +570,11 @@ STRATEGY_DELAYED_OFFER_FIRED: str = 'strategy_delayed_offer_fired'
 #: 不相交),两分支预期均不触发——结构性守卫留证,实机对账见此键 =
 #: 可达性核算被证伪,升级重算。
 STRATEGY_DELAYED_OFFER_DEFERRED: str = 'strategy_delayed_offer_deferred'
+
+#: 策略延时发放到点留证披露键(值 = 触发卡@frame:发放物;对账面 =
+#: 实机局发放物入栏时点;「N个节点后」计数起点读法的证伪路径 = 同值
+#: 与实机帧 ±1 对照)。
+STRATEGY_DELAYED_GRANT_FIRED: str = 'strategy_delayed_grant_fired'
 
 
 def offer_slots(plane: int, round_num: int,
@@ -2106,6 +2113,27 @@ class SimBackend:
         # sig 组名沿 sim:env 与定时道具发放同窗。
         discharge_due_item_opens(self.gs, rand=False,
                                  sig=logic_sig('sim:env'))
+        # 策略延时发放到点入栏(策略卡「N个节点后获得发放物」族,人才
+        # 激励首例;与 offer 呈现腿并列独立域——本腿产出 = 世界发放写):
+        # 同一收口继承窗口幂等守卫(重放不双发);递减点 = kernel 节点
+        # 边界 tick(advance 尾段),动作上报/锚定补推两路径均先于本窗
+        # 开——本 advance 递减到 0 的条目本窗发放 = 「第 N 个后继节点
+        # 窗」读法落点。确定发放 → rand=False(gain-chain.md §5);独立
+        # sig 组名与环境 'sim:env' 区分(世界发放写非环境域,审计可分)。
+        # 到点留证披露键按「先读后发」取到期卡名(发放原语效果串只载
+        # 发放物不载卡名);注册表查行失败的防御条目由原语保留不弹除,
+        # 披露值以 '?' 标记发放物缺失。
+        due_grants = tuple((str(e[0]), int(e[1])) for e in
+                           (self.gs.pending_strategy_grants.value or ())
+                           if int(e[1]) <= 0)
+        if due_grants:
+            discharge_due_strategy_grants(self.gs, rand=False,
+                                          sig=logic_sig('sim:strategy_grant'))
+            for _name, _rem in due_grants:
+                _spec = STRATEGY_DELAYED_GRANTS.get(_name)
+                self.disclosures[STRATEGY_DELAYED_GRANT_FIRED] = (
+                    f'{_name}@{plane}-{r}:'
+                    f'{_spec.item if _spec is not None else "?"}')
         # 首领节点条件发放(劳务派遣合同分支2;条件单一源 = kernel
         # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
         # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,

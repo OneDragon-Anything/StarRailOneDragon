@@ -3485,3 +3485,79 @@ def _validate_strategy_encounter_battle_grants() -> None:
 
 
 _validate_strategy_encounter_battle_grants()
+
+
+# ===== 策略卡延时发放注册表(白名单制;策略延时世界发放通道模式件,
+# ===== 人才激励首例——双腿卡:即时装备腿走 PICK_INVEST_EFFECTS 工厂
+# ===== 即时支,延时腿经本表入倒计时队列)=====
+
+@dataclass(frozen=True)
+class StrategyDelayedGrant:
+    """策略卡「N个节点后,获得发放物」登记结构(策略延时发放通道专属
+    登记表;字段语义 = 卡面效果原文直读):
+
+    - delay_nodes: 延时节拍(「4个节点后」直读);到点窗 = 拿卡节点的
+      第 N 个后继节点窗(计数起点语义与效果账本「后继 N 节点」口径、
+      StrategyDelayedOffer 计数读法同族,desc 未写明计数起点处不实机查);
+    - item: 发放物名。分道判据:∈ EQUIPMENTS → 装备腿 gain_equipment;
+      ∈ BENCH_ITEM_NAMES → 占席道具腿 gain_bench_item(消费原语内逐次
+      查两词表,零新词表)。员工投影仪不入 BENCH_ITEM_NAMES:该词表
+      只从两张 GiftGrant 表派生,装备名并入即被误判占席道具(溢出腿
+      假道具),本表并列新表、不接入派生。
+
+    立专表辨析:GiftGrant items_scheduled = 绝对节点键域('位-轮')且
+    会把发放物错收进占席词表;效果账本 EffectSpec payload 闭集(经济/
+    战场/单位增益)不容「延时世界发放」维度;与 STRATEGY_DELAYED_OFFERS
+    消费形态不同(世界发放写 vs 选卡屏事件)不合并——新维度
+    (倒计时 + 具名发放物)专属专表。"""
+    id: str
+    delay_nodes: int
+    item: str
+
+
+STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
+    # 人才激励(效果原文「获得1个【员工投影仪】，4个节点后，获得1个
+    # 【员工投影仪】。」直读;效果原文对账 id = cw_invest_data
+    # .PLAZA_AUGMENTS 同 id 行;即时腿「获得1个【员工投影仪】」由
+    # PICK_INVEST_EFFECTS 工厂同批注册,不入本表)。同族展开卡各自
+    # 独立批领取,禁顺手代登记——池内被选中的未注册卡 = 安静不写,
+    # 真值归观察覆盖
+    '人才激励': StrategyDelayedGrant(id='101601', delay_nodes=4,
+                                      item='员工投影仪'),
+}
+
+
+def _validate_strategy_delayed_grants() -> None:
+    """STRATEGY_DELAYED_GRANTS 构建校验(import 即炸;治理口径 =
+    2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,镜像 _validate_strategy_delayed_offers 同款
+    收缩形态——本表落三哨,值域类(delay_nodes 形/下界)不加):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
+    仍在的漂移也炸);③ 发放物名漂移:item ∈ EQUIPMENTS ∪
+    BENCH_ITEM_NAMES(两词表均游戏数据派生,版本改名/移除可独立触发;
+    双域皆非 = 消耗品域/未知名,发放腿无从分道)。③的运行期实况 =
+    发放腿查行后零分道防御(log + 条目保留),import 期哨把拦截面前移
+    到构建期。delay_nodes 错值后果 = 拿卡入队按错拍倒计时(响亮面在
+    对账),防笔误类按治理裁定不加。
+    """
+    orphans = [n for n in STRATEGY_DELAYED_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_DELAYED_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _grant in STRATEGY_DELAYED_GRANTS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_grant.id}':
+            raise ValueError(
+                f"STRATEGY_DELAYED_GRANTS id 漂移:{_name!r} 登记 id="
+                f"{_grant.id} base={_base.source}")
+        if _grant.item not in EQUIPMENTS \
+                and _grant.item not in BENCH_ITEM_NAMES:
+            raise ValueError(
+                f"STRATEGY_DELAYED_GRANTS 发放物名漂移({_name!r} 装备表/占席"
+                f"词表均无此名,版本改名?):{_grant.item!r}")
+
+
+_validate_strategy_delayed_grants()
