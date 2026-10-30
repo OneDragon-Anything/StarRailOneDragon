@@ -3317,10 +3317,15 @@ class StrategyDelayedOffer:
 STRATEGY_DELAYED_OFFERS: dict[str, StrategyDelayedOffer] = {
     # 黄金期货(效果原文「5个节点后，进行一次不能刷新的黄金投资策略
     # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
-    # 同 id 行。注册面 = 仅本卡一行,同族展开卡各自独立批领取,禁顺手
-    # 代登记——金池内被选中的未注册卡 = 安静不写,真值归观察覆盖)
+    # 同 id 行。同族展开卡各自独立批领取,禁顺手代登记——金池内被选中
+    # 的未注册卡 = 安静不写,真值归观察覆盖)
     '黄金期货': StrategyDelayedOffer(id='101101', delay_nodes=5,
                                       offer_quality='金'),
+    # 黄金期货+(效果原文「4个节点后，进行一次不能刷新的黄金投资策略
+    # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行;与黄金期货仅倒计时数值不同,机制全量继承)
+    '黄金期货+': StrategyDelayedOffer(id='101102', delay_nodes=4,
+                                       offer_quality='金'),
 }
 
 
