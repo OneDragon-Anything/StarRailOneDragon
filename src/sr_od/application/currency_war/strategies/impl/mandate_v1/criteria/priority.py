@@ -95,9 +95,10 @@ class PriorityContext:
 
     九项输入对应 priority-model §1 清单(持牌全量快照/部署在场名集/
     锁定线名单视图/候选快照/过渡配方对成员/当前升星目标/必要星级表/
-    当前等级/随机流),另含 §3 档 2/3/5 档内序数键的迁移期载体
-    ``member_rank``(总纲 §2.1.1 迁移期形态 = core 0/其余 1,逐角色
-    精调归下一迭代外溢)。字段容器按装配后只读约定使用。
+    当前等级/随机流),另含 §3 档 2/3/5 档内序数键的装配产物
+    ``member_rank``(知识卡 ``member_priority`` 字段直读合成;迁移期
+    形态 = core 0/其余 1,逐角色精调归下一迭代外溢)。字段容器按装配
+    后只读约定使用。
 
     聚合谓词口径:档 2/5/6/7 的「持有最高星/总星级数/名下有无副本」
     均消费 ``held_copies`` 全量快照(备战位 ∪ 前后台),与池子过滤无关
@@ -133,10 +134,13 @@ class PriorityContext:
     各线取最大值)。表外成员 = 1(无升星要求;判定端缺省,含过渡配方
     物化对象等不在 COMP_LIBRARY 的名字)。"""
     member_rank: dict[str, int]
-    """档内优先级序数表(§3 档 2/3/5 ①键迁移期载体):成员名 → 序数,
-    core 命中任一活性线 = 0、其余 = 1,过渡配方成员统一 1(总纲
-    §2.1.1);跨线成员取最高 = core 并集命中即 0。表外成员判定端
-    缺省 1。"""
+    """档内优先级序数表(§3 档 2/3/5 ①键):成员名 → 序数,小 = 优先级
+    高。装配 = 各活性线知识卡 ``member_priority`` 字段直读
+    (cw_comps.member_rank_of,空表/旧数据回退 core 两档派生——总纲
+    §2.1.1 迁移期形态 = core 0/其余 1);跨线成员取各线最小序数(最高
+    优先,core 优先于非 core);过渡配方成员不入表(统一低档,
+    priority-model §3 配方支),表外成员判定端缺省 1。逐角色精调归
+    下一迭代外溢。"""
     level: int
     """⑧当前等级(档 8 概率查表键 refresh_prob(level, cost))。"""
     rng: random.Random
@@ -182,8 +186,16 @@ def assemble_priority_context(
     仅此帧适用——表只含未达标成员,达标成员判定端按缺省 1 自然落
     档 8);未锁定帧 = 候选三线并集 ∪ 过渡配方成员,need_star 取命中
     各线最大值(保守方向)。
+
+    序数装配(§3 档 2/3/5 ①键)= 知识卡 ``member_priority`` 字段
+    直读(:func:`cw_comps.member_rank_of`,空表/旧数据回退 core 两档
+    派生),跨线成员取各线最小序数(最高优先);过渡配方成员不入表
+    (统一低档,经判定端缺省 1 承载)。
     """
-    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_comps import (
+        get_comp,
+        member_rank_of,
+    )
     from sr_od.application.currency_war.kernel.cw_game_state import level_of
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
         state_of,
@@ -194,13 +206,19 @@ def assemble_priority_context(
     # 装配面统一读 gs 侧,禁两宿主混读出同帧两份方向态)。
     st = state_of(gs)
     members: set[str] = set()
-    cores: set[str] = set()
+    rank: dict[str, int] = {}
     need_star: dict[str, int] = {}
     candidate_out: frozenset[str] = frozenset()
     if view.locked:
         members = set(view.members)
         comp = get_comp(view.comp_name) if view.comp_name else None
-        cores = set(getattr(comp, 'core_chars', None) or ())
+        if comp is not None:
+            # 序数表 = 锁定线知识卡字段直读(空表回退两档派生)。配方
+            # 伪锁帧的锁名不在 COMP_LIBRARY(comp 为 None)→ 不建表,
+            # 全员经下方补缺/判定端缺省走低档 1——配方成员低优先级
+            # 规则在此分支的承载(priority-model §3 配方支;伪阵容
+            # core_chars 为全员 core 形态,直推即高档,禁读)。
+            rank = member_rank_of(comp)
         need_star = {name: int(need) for name, need, _cost
                      in unfinished_star_targets(gs)}
         # 锁定帧候选快照照读口真值冻结为空集(锁定写入连带清空停算,
@@ -219,7 +237,11 @@ def assemble_priority_context(
                 continue
             members |= set(c.core_chars)
             members |= set(getattr(c, 'shared_chars', None) or ())
-            cores |= set(c.core_chars)
+            # 序数表 = 各线知识卡字段直读;跨线成员取各线最小序数
+            # (序数小 = 优先级高,core 优先于非 core——与旧「cores
+            # 并集命中即 0」等价的合成式)。
+            for n, p in member_rank_of(c).items():
+                rank[n] = min(rank.get(n, p), p)
             for n, need in (getattr(c, 'need_star', None) or {}).items():
                 need_star[n] = max(need_star.get(n, 1), int(need))
         candidate_out = frozenset(members)
@@ -231,7 +253,10 @@ def assemble_priority_context(
             # P2 守卫使配方成员在 P2 进入帧自然退出本名单)
             recipe_members = frozenset(
                 {*rc.core_chars, *(getattr(rc, 'shared_chars', None) or ())})
-    rank = {n: (0 if n in cores else 1) for n in members}
+    # 表内补缺:字段未登记的成员按低档 1 兜底——配方成员(不经字段
+    # 直读面)统一低档在此完整承载;表外成员判定端缺省 1 不变。
+    for n in members:
+        rank.setdefault(n, 1)
     return PriorityContext(
         held_copies=held_copies if held_copies is not None
         else held_copies_of(gs),

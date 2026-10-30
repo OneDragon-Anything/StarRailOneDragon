@@ -243,6 +243,27 @@ class Comp:
     只囤不上,保守侧,22 号篇 §1 第 6 步 fail 方向声明)。判定消费端
     = mandate_v1 部署窗口辖域(数据 kernel / 判据策略层,宪 5 合宪申报
     同知识卡三字段)。"""
+    member_priority: dict[str, int] = field(default_factory=dict)
+    """阵容内成员优先级序数表(档 2/3/5 档内①键的知识卡单一源;规格 =
+    changes/2026-10-29-unified-priority/details/priority-model.md §3,
+    消费端 = mandate_v1/criteria/priority.py 装配)。
+    键 = 角色规范名(线终局成员 core ∪ shared),值 = 序数,
+    **小 = 优先级高**(与统一价值序「档位编号小 = 优先级高」同轴)。
+    迁移期形态【拍】= core 0/其余 1(:func:`derive_member_priority`
+    按 core_chars 派生,本字段不逐行手编;逐角色线内全序精调外溢
+    下一迭代)。空表由 ``__post_init__`` 落成即派生补齐——每个 Comp
+    实例(含 pair_target_comp 配方伪阵容)都带显式字段,「隐式两档 →
+    知识卡显式字段」的数据迁移本体;显式登记非空则原样保留(精调
+    迭代的填值载体)。跨线成员的合成(取最高优先)在消费端装配,
+    本字段只承载单线内取值。版本联动:阵容重跑时随知识层重核
+    (compo-knowledge 版本重跑流程清点范围)。"""
+
+    def __post_init__(self) -> None:
+        # 迁移期默认派生:空表 = 建库未显式登记 → 按 core_chars 两档
+        # 补齐(非空 = 精调登记,不覆写)。派生在构造期完成,消费端
+        # 经 member_rank_of 读到的恒是显式表。
+        if not self.member_priority:
+            self.member_priority = derive_member_priority(self)
 
     @property
     def all_factions(self) -> set[str]:
@@ -274,6 +295,34 @@ def derive_key_equips(comp: Comp) -> list[str]:
             else:
                 out.append(it)
     return out
+
+
+def derive_member_priority(comp: Comp) -> dict[str, int]:
+    """成员优先级两档派生(迁移期默认形态:core 0/其余 1)。
+
+    数据依据 = 统一让位优先级迭代 design §2.1.1【拍】:本迭代先按
+    core/shared 二元标记映射两档,逐角色线内全序精调外溢下一迭代。
+    同名双列(core_chars 与 shared_chars 交集,列车同行三月七类)
+    core 优先——序数小 = 优先级高,与旧装配「0 if n in cores else 1」
+    的并集口径一致(迁移前后等价的基准式)。"""
+    rank: dict[str, int] = dict.fromkeys(comp.core_chars, 0)
+    for n in comp.shared_chars:
+        rank.setdefault(n, 1)
+    return rank
+
+
+def member_rank_of(comp: Comp) -> dict[str, int]:
+    """成员优先级序数表读口(字段直读 + 旧数据回退;档 2/3/5 档内①键
+    单一源,消费端 = mandate_v1/criteria/priority.py 装配)。
+
+    - ``member_priority`` 非空 → 字段直读副本(防消费位原地改写注册表
+      内表);
+    - 空表(旧数据/未走构造器派生的动态形态)→ :func:`derive_member_priority`
+      两档回退——消费端无需感知字段新旧,向后兼容。
+    """
+    if comp.member_priority:
+        return dict(comp.member_priority)
+    return derive_member_priority(comp)
 
 
 @dataclass
