@@ -434,8 +434,10 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   注册表)→ 命中 → `gain_character`(表值星级;确定发放 → rand 原样透传)。
 - **on_strategy_gained(gs, strategy_name, *, rand, sig, rng=None)**(策略屏迁移批
   新增):查 ``cw_gain_effects.py::PICK_INVEST_EFFECTS``(策略卡获得效果注册表,
-  键 = 注册表规范名;在用 = 骇客专家:银狼 与 箱授予分支三卡 战术义眼++/保守派/
-  快请专家·彩)→ 命中 → 效果体执行。骇客卡链序 = 银狼分支 `gain_character` +
+  键 = 注册表规范名;在用全集单一源 = 该表本体与各生成表——骇客单行、
+  箱授予分支、援军族、随机简易装备族、策略延时 offer 族〔键集封闭断言
+  守两表面零漂移,枚举此处不逐卡复制〕)→ 命中 → 效果体执行。骇客卡链序 =
+  银狼分支 `gain_character` +
   商店池遥测申报行 + 改件 `gain_equipment(rand=True)` 采样入栏(改件后果经
   `on_equipment_gained` 回调)。箱授予分支三卡 = 获得时点占席道具发放:效果体消费
   `gain_bench_item`(§2.8;确定发放 → rand=False,效果串
@@ -444,7 +446,15 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   `cw_investments.STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等,
   一致性测试)。三卡的战斗被动效果(能量恢复/伤害减免)非「获得时点」效果,
   不在效果体(获得时点容器写分支适用范围外);快请专家·彩的好运令牌分支(非占席
-  道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。未建模申报归
+  道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。
+  **延时 offer 登记腿**(策略卡延时三选一通道,黄金期货首例):注册表
+  `cw_investments.STRATEGY_DELAYED_OFFERS`(卡规范名 → id/倒计时/候选品质,
+  白名单制)+1 行即自动获得登记腿(效果体由该表派生,键集封闭断言守住
+  两表面)。效果体消费 `queue_delayed_invest_offer`(§2 入队原语,登记 =
+  确定事件零采样):追加 `(卡名, 倒计时)` 到 `pending_strategy_offers`
+  一次 write 回写,效果串 `strategy_offer_scheduled:<品质>@<节拍>`;
+  到点呈现归 sim 专用腿(不对称申报,live 队列恒悬置,域规格 =
+  fields.md §3.2.26)。未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)

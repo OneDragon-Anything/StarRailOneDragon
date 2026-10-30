@@ -75,6 +75,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
+    STRATEGY_DELAYED_OFFERS,
     STRATEGY_EFFECTS,
     STRATEGY_GRANTS,
     equips_by_category,
@@ -645,6 +646,40 @@ def gain_bench_item(gs: GameState, item: str, *, rand: bool,
     """
     return _place_bench_item(gs, item, rand=rand, evidence=evidence,
                              sig=sig, producer=producer)
+
+
+def queue_delayed_invest_offer(gs: GameState, name: str, *,
+                               sig: ChannelSig,
+                               producer: str = GAIN_CHAIN_PRODUCER) -> str:
+    """策略延时 offer 入队原语(策略卡「N个节点后一次定品质三选一」
+    通道唯一登记写端):查 ``STRATEGY_DELAYED_OFFERS`` 登记行,追加
+    ``(卡名, delay_nodes)`` 到 ``gs.pending_strategy_offers`` 一次
+    write 回写,返回效果串 ``strategy_offer_scheduled:<品质>@<节拍>``。
+
+    - rand 语义:登记 = 确定事件(倒计时按登记值推算,零采样),写通道
+      仍经 :func:`_select_write` 单一收束(未锚定期自动随机态,箱腿
+      同约定,gain-chain.md §5);
+    - 消费语义不在本原语(不对称申报):到点呈现归 sim 专用腿
+      (cw_sim_backend,kernel 不 import sim);live 队列恒悬置 =
+      模型推算知识(快照存续,实机 offer 由游戏自己呈现,屏幕驱动
+      天然覆盖,零停机风险);
+    - 递归形态:到点呈现选中的卡若自身带登记行,经获得链
+      on_strategy_gained 重进本原语再入队(注册表驱动,机制测试锁;
+      现役注册面仅黄金期货,链式行为 = 族批注册落地后的交付态);
+    - 未登记卡调用 = KeyError 响亮(登记腿由注册表派生,生产不可达;
+      直调误用禁静默)。
+
+    公开动机:队列写入不在效果体 handler 内直写——handler 只做注册表
+    查行 + 本原语调用(与 _make_box_grant_effect → gain_bench_item
+    薄壳分工同款),写通道单一收束在链模块。"""
+    offer = STRATEGY_DELAYED_OFFERS[name]
+    queued = tuple(gs.pending_strategy_offers.value or ()) \
+        + ((name, int(offer.delay_nodes)),)
+    write = _select_write(gs, rand=False)
+    write(gs.pending_strategy_offers, queued, produced_by=producer,
+          evidence=f'queue_delayed_invest_offer:{name}', sig=sig)
+    return (f'strategy_offer_scheduled:{offer.offer_quality}'
+            f'@{offer.delay_nodes}')
 
 
 def _node_frame(gs: GameState) -> str:

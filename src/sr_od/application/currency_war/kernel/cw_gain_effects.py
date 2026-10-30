@@ -23,6 +23,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
+    STRATEGY_DELAYED_OFFERS,
     RandomCharSpec,
     random_char_pool,
 )
@@ -338,6 +339,35 @@ def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
     return _effect
 
 
+# ===== 策略延时 offer 族效果(策略卡获得时点入延迟队列:拿卡即登记
+# ===== 倒计时,到点呈现归 sim 专用腿,本模块零采样面)=====
+
+def _make_delayed_offer_effect(name: str) -> Callable[..., list[str]]:
+    """延时 offer 登记腿效果体工厂(闭包销 = 规范卡名,登记值单源取自
+    cw_investments.STRATEGY_DELAYED_OFFERS;形态镜像 _make_box_grant_effect
+    的「惰性 import 链原语 + 薄壳」分工——handler 只做注册表查行 +
+    原语调用,写通道单一收束在链模块)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained);``rng`` 不消费——登记腿零采样,
+    倒计时按登记值确定推算。入队即写(唯一登记写端),到期呈现归
+    sim 呈现腿(不对称申报,live 队列恒悬置)。效果串 =
+    ``strategy_offer_scheduled:<品质>@<节拍>``(@ 形态沿定时道具
+    ``item_scheduled`` 家族先例)。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿箱腿/援军先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            queue_delayed_invest_offer,
+        )
+        _ = rng   # 登记腿零采样,倒计时推算确定(rng 形参沿分派契约保留)
+        return [queue_delayed_invest_offer(gs, name, sig=sig)]
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
@@ -346,10 +376,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name, (cost, count) in _STRATEGY_REINFORCEMENT_GRANTS.items()},
     **{name: _make_random_equip_effect(count)
        for name, count in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
+    **{name: _make_delayed_offer_effect(name)
+       for name in STRATEGY_DELAYED_OFFERS},
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支三条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
-_STRATEGY_RANDOM_EQUIP_GRANTS 生成)。未收录名 = 零效果分派(查无
+_STRATEGY_RANDOM_EQUIP_GRANTS 生成,策略延时 offer 族由工厂自
+cw_investments.STRATEGY_DELAYED_OFFERS 派生——登记表 +1 行即自动获得
+登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无
 效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)职责分离
 声明见各表模块头。"""

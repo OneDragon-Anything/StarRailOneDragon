@@ -118,7 +118,8 @@ carried、不受本硬边界约束;在屏失读不写、沿用旧值,在屏与�
 bench/front_row/back_row/equips/occupied_equips/spheres)、经济域(gold 3/level 3/
 xp (0,4)/hp 82/streak 0/back_layout 6/deploy_cap 3/刷新计数 0/strategy_refresh_left
 {})、局级事实域(active_env ''/active_strategies []/pending_item_grants []/
-enemy_affixes []/overflow False/''/prev_node_spent False)、晶矿附着/声明三域
+pending_strategy_offers ()/enemy_affixes []/overflow False/''/prev_node_spent
+False)、晶矿附着/声明三域
 (ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
 幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)、环境
 条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
@@ -883,6 +884,44 @@ spheres 写同段,同帧序位一致)。
 
 **域归属**:独立键 `giftbox_sight`(独立键先例 = env_grants_done——不并入
 任何域版本 bump)。
+
+#### 3.2.26 策略延时 offer 倒计时队列 pending_strategy_offers
+
+**语义**:已登记、未到点呈现的**策略延时 offer 队列**——投资策略卡
+「N个节点后,进行一次不能刷新的X品质投资策略三选一」类效果(黄金期货
+id 101101 首例,「5个节点后,进行一次不能刷新的黄金投资策略三选一」)
+的承载域。元素 = `(strategy 触发卡规范名, remaining 剩余节拍)`;倒计时
+坐标系 = 自然数计数(非索引/非节点序位):拿卡节点窗内登记不递减
+(「N个节点后」= 拿卡节点的第 N 个**后继**节点窗,与效果账本「后继 N
+节点」口径逐值对齐——修饰局插入节点照计数,递减按有效推进次数,
+补推跨节点跳进一次只减 1);到点判定 = `remaining <= 0`(到了及以后都算,
+错过不悬空)。登记表单一源 = `cw_investments.STRATEGY_DELAYED_OFFERS`
+(卡规范名 → id/倒计时/候选品质,白名单制;构建校验只留漂移哨——孤儿键
++ id 双匹配)。
+
+**写入方**:唯一逻辑写入方 = 三口——①登记入队 = 获得链登记腿
+`queue_delayed_invest_offer`(`PICK_INVEST_EFFECTS` 由登记表派生,拿卡
+即入队,效果串 `strategy_offer_scheduled:<品质>@<节拍>`;确定事件零采样,
+rand=False 走 `_select_write` 单一收束);②递减 = 节点边界 tick 内联腿
+`_tick_pending_strategy_offers`(`_tick_effect_boundary_impl` advanced 闸内,
+与效果账本 advance_node 同闸——同节点重放零递减;remaining=0 悬置不越减);
+③弹除回写 = sim 呈现腿 `_present_due_extra_offer`(呈现即消费,防重入
+双呈现)。**无观察写入方**——队列是卡文推算知识,游戏 UI 无「待呈现
+列表」可读。链式契约权威版本 = [gain-chain.md](gain-chain.md) §3。
+
+**双端不对称申报**(pending_item_grants 同款):**实机局不接呈现腿**——
+队列登记与递减同链照跑(模型推算知识,快照存续),实机 offer 由游戏
+自己呈现,live 屏幕驱动对同画面(货币战争-投资策略)额外出现天然覆盖
+(刷新闸 `refresh_slots` 读缺 = 无授权,禁刷新卡零分支即承载);sim =
+世界真值(倒计时到点即呈现定品质不可刷新三选一,候选全目标品质池,
+序位计数照增)。递归形态(到点选中的卡自身带登记行)经获得链重进登记
+腿再入队,注册表驱动零新机制件(族批注册落地后即真行为)。
+
+**开局预填初值**:()(每局全新创建即持空队列,A 类;同 pending_item_grants
+种子族)。
+
+**域归属**:独立键 `pending_strategy_offers`(§3.7.1;独立键先例 =
+env_grants_done——本队列不并入任何域版本 bump,他域本体未变)。
 
 ### 3.3 商店开态(覆盖在备战画面之上)
 

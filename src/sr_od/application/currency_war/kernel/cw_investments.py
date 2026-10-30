@@ -3286,3 +3286,65 @@ def _validate_env_pick_grants() -> None:
 
 
 _validate_env_pick_grants()
+
+
+# ===== 策略卡延时 offer 注册表(白名单制;策略延时三选一 offer 通道
+# ===== 模式件,黄金期货首例)=====
+
+@dataclass(frozen=True)
+class StrategyDelayedOffer:
+    """策略卡「N个节点后,一次定品质不可刷新三选一」登记结构(策略延时
+    offer 通道专属登记表;字段语义 = 卡面效果原文直读):
+
+    - delay_nodes: 延时节拍(「5个节点后」直读);到点窗 = 拿卡节点的
+      第 N 个后继节点窗(计数起点语义与效果账本「后继 N 节点」口径对齐,
+      desc 未写明计数起点处不实机查);
+    - offer_quality: 候选品质(「黄金投资策略三选一」直读为金;值域 =
+      注册表 rarity 闭集 {'银','金','棱彩'},InvestmentStrategy.rarity
+      注释同源)。
+
+    「不能刷新」卡面语义不立字段:sim 呈现恒空刷新授权(refresh_slots
+    空表 = op 闸无授权)、live 刷新闸读缺 = 无授权,两侧零分支即承载。
+    立专表辨析:效果账本 EffectSpec payload 闭集(经济/战场/单位增益)
+    不容「延时流程事件」维度;STRATEGY_GRANTS(GiftGrant)维度不符
+    (具名发放物 vs 延时流程事件,消费端 = 估值两处)——新机制维度
+    (倒计时 + 定品质)专属专表。"""
+    id: str
+    delay_nodes: int
+    offer_quality: str
+
+
+STRATEGY_DELAYED_OFFERS: dict[str, StrategyDelayedOffer] = {
+    # 黄金期货(效果原文「5个节点后，进行一次不能刷新的黄金投资策略
+    # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行。注册面 = 仅本卡一行,同族展开卡各自独立批领取,禁顺手
+    # 代登记——金池内被选中的未注册卡 = 安静不写,真值归观察覆盖)
+    '黄金期货': StrategyDelayedOffer(id='101101', delay_nodes=5,
+                                      offer_quality='金'),
+}
+
+
+def _validate_strategy_delayed_offers() -> None:
+    """STRATEGY_DELAYED_OFFERS 构建校验(import 即炸;沿
+    _validate_strategy_effects 同款治理口径——只留漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
+    仍在的漂移也炸)。值域类校验(delay_nodes int/quality 越域)属防
+    登记笔误类,按 2026-10-28 治理裁定不加(漏登/错值后果 = 拿卡入队
+    或呈现腿查表 KeyError,响亮可见)。
+    """
+    orphans = [n for n in STRATEGY_DELAYED_OFFERS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_DELAYED_OFFERS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _offer in STRATEGY_DELAYED_OFFERS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_offer.id}':
+            raise ValueError(
+                f"STRATEGY_DELAYED_OFFERS id 漂移:{_name!r} 登记 id="
+                f"{_offer.id} base={_base.source}")
+
+
+_validate_strategy_delayed_offers()

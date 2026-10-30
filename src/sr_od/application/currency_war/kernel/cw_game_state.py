@@ -261,6 +261,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 元素 (件名, 解锁序位 NodePos))。独立键
                                 # 版本 1,同 env_grants_done 先例不并入
                                 # 他域 bump
+    'pending_strategy_offers': 1,  # 策略延时 offer 倒计时队列(元素
+                                # (触发卡规范名, 剩余节拍))。独立键
+                                # 版本 1,同 env_grants_done 先例不并入
+                                # 他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2270,6 +2274,9 @@ def seed_opening_state(gs: GameState) -> None:
     _seed(gs.active_strategies, [])
     _seed(gs.unlocked_experts, ())
     _seed(gs.pending_item_grants, [])
+    # 策略延时 offer 倒计时队列(空底座,同 pending_item_grants 种子族
+    # 先例——域值恒非 None,递减/到点判定零 None 防御)
+    _seed(gs.pending_strategy_offers, ())
     _seed(gs.enemy_affixes, [])
     _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
     _seed(gs.prev_node_spent, False)
@@ -2557,6 +2564,20 @@ class GameState:
     #(不对称申报,pending_item_grants 同款;完胜回退分支双端跑)。开局
     # 种子底座 = ()(A 类)。
     pending_item_opens: Field[tuple[tuple[str, tuple[int, int]], ...]] = field(
+        default_factory=Field)
+    # [索引定义] pending_strategy_offers = 已登记、未到点呈现的策略延时
+    # offer 队列(策略卡「N个节点后一次定品质不可刷新三选一」通道,
+    # 黄金期货首例)。元素 = (strategy 触发卡规范名, remaining 剩余节拍,
+    # 自然数计数非索引):递减挂 kernel 节点边界 tick(_tick_effect_boundary_
+    # impl 内并列新腿,与效果账本 advance_node 同一 advanced 位闸——
+    # 同节点重放零递减);到点判定 = remaining <= 0(到了及以后都算,
+    # 错过不悬空)。写入端 = 唯一逻辑写端 = 获得链登记腿入队(queue_
+    # delayed_invest_offer)/ 节点边界 tick 递减 / sim 呈现腿弹除回写,
+    # 无观察写端——队列 = 卡文推算知识,游戏 UI 无「待呈现列表」可读;
+    # 实机局不接呈现腿(不对称申报,pending_item_grants 同款:队列登记
+    # 后恒悬置,实机 offer 由游戏自己呈现,屏幕驱动天然覆盖,零停机
+    # 风险)。开局种子底座 = ()(A 类)。
+    pending_strategy_offers: Field[tuple[tuple[str, int], ...]] = field(
         default_factory=Field)
     # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
     # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。
@@ -3829,6 +3850,26 @@ def tick_effect_boundary(gs: GameState) -> None:
         log.warning(f'[cw][effect] 效果推进段失败(不阻塞): {e}')
 
 
+def _tick_pending_strategy_offers(gs: GameState) -> None:
+    """策略延时 offer 倒计时递减(节点边界 tick 内联腿;调用点 =
+    _tick_effect_boundary_impl 的 advanced 闸内,与效果账本 advance_node
+    同闸——同节点重放零递减,补推跨节点跳进一次 tick 只减 1,效果账本
+    同款既有语义):remaining > 0 才递减,0 悬置待呈现不越减为负;
+    批内一次 write_logic 回写,队列空/无变化判等跳写(write_logic 无
+    同值去重,库内省行惯例 = 调用方早退)。仅逻辑写,无观察写端。"""
+    queue = tuple(gs.pending_strategy_offers.value or ())
+    if not queue:
+        return
+    updated = tuple((name, remaining - 1) if remaining > 0
+                    else (name, remaining) for name, remaining in queue)
+    if updated == queue:
+        return
+    gs.write_logic(gs.pending_strategy_offers, updated,
+                   produced_by='NodeBoundaryRoll',
+                   evidence='tick_pending_strategy_offers',
+                   sig=_bridge_sig(gs))
+
+
 def _tick_effect_boundary_impl(gs: GameState) -> None:
     effective = effective_node_pos(gs)
     if effective is None:
@@ -3842,6 +3883,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
         log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;金面走观察覆盖兜底)',
                     _eff.spec.name)
     if advanced:
+        _tick_pending_strategy_offers(gs)
         grant_effect_node_refresh_balance(gs, frame=frame)
         roll_prev_node_spent(gs, frame=frame)   # 存款回报条件评估毕,滚位新节点(§3.3.9)
         grant_effect_node_xp(gs, frame=frame)
@@ -4595,6 +4637,12 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 元组重建);随快照存续 = 接管局队列不丢。
         'pending_item_opens': lambda d: tuple(
             (str(e[0]), (int(e[1][0]), int(e[1][1]))) for e in d),
+        # 策略延时 offer 倒计时队列:tuple 化重建(_json_safe 落快照为
+        # list-of-lists,元素 = (卡名, 剩余节拍));随快照存续 = 恢复局
+        # 倒计时不丢(sim 全程局呈现面恢复;live 恢复局队列悬置 = 模型
+        # 推算知识存续,不对称申报)。
+        'pending_strategy_offers': lambda d: tuple(
+            (str(x[0]), int(x[1])) for x in d),
         # 惊喜盒板件 ⏳N 读数观察域(迭代 2026-10-19-giftbox-piece-obs):
         # tuple 化重建(_json_safe 落快照为 list,int 保型);随快照存续
         # = 恢复局最近上报帧读数不丢(滞留语义不变)。

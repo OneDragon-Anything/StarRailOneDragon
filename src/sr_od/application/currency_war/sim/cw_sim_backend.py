@@ -115,6 +115,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_SUPPLY_EQUIP_COUNT,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
+    STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
     aggregate_economy,
     normalize_invest_name,
@@ -552,6 +553,20 @@ ENV_QUALITY_DISCLOSURE: str = 'env_quality_not_registered'
 
 #: 离群触发点未建模披露键(U07① ~1-2% 触发源未归因,不作机制建模)。
 OFFER_OUTLIER_DISCLOSURE: str = 'invest_offer_outlier_triggers_unmodeled'
+
+#: 策略延时 offer 呈现留证披露键(值 = 触发卡@frame;对账面 = 实机局
+#: 额外选卡屏出现时点;「N个节点后」计数起点读法的证伪路径 = 同值与
+#: 实机帧 ±1 对照。呈现路由第二判别面 = rng 流标签
+#: ``M11/offer-extra/...`` 与固定日程 ``M11/offer/...`` 分域)。
+STRATEGY_DELAYED_OFFER_FIRED: str = 'strategy_delayed_offer_fired'
+
+#: 策略延时 offer 顺延留证披露键(值 = 原因 scheduled_slot_occupied/
+#: window_cap + 悬置余量):同窗固定日程/联席槽在场,或本窗已呈现一次
+#: 时,到点条目悬置顺延下一窗(到点判定「到了及以后都算」天然承载,
+#: 不悬空不丢失)。现交付域冲突交集 = ∅(可达拿卡窗到点窗与槽窗集
+#: 不相交),两分支预期均不触发——结构性守卫留证,实机对账见此键 =
+#: 可达性核算被证伪,升级重算。
+STRATEGY_DELAYED_OFFER_DEFERRED: str = 'strategy_delayed_offer_deferred'
 
 
 def offer_slots(plane: int, round_num: int,
@@ -2206,24 +2221,40 @@ class SimBackend:
 
         2026-10-29 呈现改造后所有节点类型的窗起点底层恒备战档(节点
         弹窗都是备战上的模态),offer 槽命中例外(投资策略屏,非备战侧,
-        fortune 条目存活等待)。"""
+        fortune 条目存活等待);策略延时 offer 到期同例外(同一呈现通道
+        的模态,门判定与固定日程同待遇——overlay 先行时 fortune 条目
+        不被本窗消费)。"""
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
         if offer_slots(plane, r, active_env):
             return SCREEN_INVEST_STRATEGY
+        if self._has_due_extra_offer():
+            return SCREEN_INVEST_STRATEGY
         return SCREEN_PREP
 
+    def _has_due_extra_offer(self) -> bool:
+        """策略延时 offer 到期条目在队列(呈现门判定位,零副作用):
+        到点判定 = remaining <= 0(到了及以后都算)。"""
+        queue = self.gs.pending_strategy_offers.value or ()
+        return any(int(entry[1]) <= 0 for entry in queue)
+
     def _present_offer_or_node_screen(self) -> None:
-        """offer 日程检查 → 节点屏呈现(节点窗口让路恢复序)。
+        """offer 呈现检查序 = overlay 让路恢复后:策略延时 offer 到期 →
+        offer 日程 → 节点屏呈现(节点窗口让路恢复序)。
 
         权威序 = 旧引擎实测:overlay 选定后复走节点窗 offer 检查
         (收尾检查序 overlay → offer → 节点呈现),U07 固定日程生效于
         本节点备战窗口前——overlay 让路不吞 offer 槽;窗口前段(收入/
-        环境金/商店全刷)已在本窗起点执行,恢复不重入。呈现本体 =
+        环境金/商店全刷)已在本窗起点执行,恢复不重入。期货到期检查挂
+        日程检查**之前**:优先序 = 固定日程/联席槽 > 期货队列由
+        :meth:`_present_due_extra_offer` 内槽在场让路承载(同窗冲突
+        期货顺延并落披露键),槽空闲窗期货先于节点屏呈现。呈现本体 =
         :meth:`_present_node_screen`(2026-10-29 改造后落点 = 备战底层
         ±节点弹窗模态 ±自动弹店)。"""
         plane, r = self._node_pos()
         active_env = self.gs.active_env.value
+        if self._present_due_extra_offer():
+            return
         if offer_slots(plane, r, active_env):
             self._invest_pick_ordinal += 1
             fixed_schedule = (plane, r) in INVEST_OFFER_SCHEDULE
@@ -2266,6 +2297,78 @@ class SimBackend:
                                                   refresh_slots=refresh_slots))
             return
         self._present_node_screen()
+
+    def _present_due_extra_offer(self) -> bool:
+        """策略延时 offer 到期呈现(呈现腿,sim 专用;策略卡「N个节点后
+        一次定品质不可刷新三选一」通道唯一消费端,kernel 不 import 本
+        模块 = live 不对称的模块边界):读 ``pending_strategy_offers``
+        取首个 remaining <= 0 条目(登记序 = 确定性)。
+
+        优先序 = 固定日程/联席槽 > 期货队列:槽在场 = 本窗让路,到点
+        条目悬置顺延(deferred 披露;顺延不悬空——到点判定「到了及以后
+        都算」,下一空闲窗必呈现);本窗已呈现一次的余者同式顺延
+        (window_cap 披露)。呈现即消费(队列弹除与呈现同拍原子,呈现后
+        选卡经既有落地通道,防重入双呈现;呈现后选卡失败 = 动作域异常,
+        队列不回滚,世界偏穷一份 offer,有界一次一张)。呈现侧副作用 =
+        现役固定日程分支全量同款延伸:序位计数照增(「一切策略三选一
+        呈现都计数」口径,联席额外槽先例)、xp/streak 腿闩照置、刷新
+        簿记清零(定品质禁刷新 = 卡面「不能刷新」直读,refresh_slots
+        空表 = op 闸无授权,live 读缺同安全)。定品质 = 槽向量直取
+        登记品质池(观察面 = 候选全目标品质;环境品质改写不作用于本
+        通道——改写判据只挂固定日程分支,品质恒 = 登记值)。rng 流键
+        独立分域,重放稳定。返回是否呈现。"""
+        plane, r = self._node_pos()
+        active_env = str(self.gs.active_env.value or '')
+        if not self._has_due_extra_offer():
+            return False
+        if offer_slots(plane, r, active_env):
+            self.disclosures.setdefault(
+                STRATEGY_DELAYED_OFFER_DEFERRED,
+                f'scheduled_slot_occupied@'
+                f'{sum(1 for e in self.gs.pending_strategy_offers.value or () if int(e[1]) <= 0)}')
+            return False
+        queue = tuple(self.gs.pending_strategy_offers.value or ())
+        due = [(i, entry) for i, entry in enumerate(queue)
+               if int(entry[1]) <= 0]
+        _idx, (name, _remaining) = due[0]
+        spec = STRATEGY_DELAYED_OFFERS[name]
+        self._invest_pick_ordinal += 1
+        opts = sample_strategy_offer(
+            stream_rng(self.seed, f'M11/offer-extra/p{plane}/r{r}'),
+            self.excluded_invest,
+            forced_slots=(spec.offer_quality,) * OFFER_CANDIDATES)
+        keep = queue[:_idx] + queue[_idx + 1:]
+        self.gs.write_logic(self.gs.pending_strategy_offers, keep,
+                            produced_by='SimBackend',
+                            evidence=f'present_due_extra_offer:{name}',
+                            sig=logic_sig(group_id='sim:offer-extra'))
+        if due[1:]:
+            self.disclosures.setdefault(
+                STRATEGY_DELAYED_OFFER_DEFERRED,
+                f'window_cap@{len(due) - 1}')
+        self._window_resume = 'node'
+        self._announce_screen(SCREEN_INVEST_STRATEGY)
+        self._screen = SCREEN_INVEST_STRATEGY
+        self._sub = ''
+        # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
+        # 置闩」口径,落地拍消费防重放)。
+        self._strategy_pick_xp_latch = True
+        self._strategy_pick_streak_latch = True
+        # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
+        # 槽向量簿记同步清零 = 无刷新窗语义)。
+        self._offer_refreshable = False
+        self._offer_forced_slots = ()
+        self._offer_refresh_seq = 0
+        report_screen_invest_strategy_obs(self.gs,
+                                          CwScreenInvestStrategyObs(
+                                              entry_ok=True,
+                                              options=[
+                                                  (n, (i + 1) * 10, 10)
+                                                  for i, n in
+                                                  enumerate(opts)],
+                                              refresh_slots=[]))
+        self.disclosures[STRATEGY_DELAYED_OFFER_FIRED] = f'{name}@{plane}-{r}'
+        return True
 
     def _refresh_invest_strategy(self, slots: tuple[int, ...]) -> None:
         """投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定「sim 与实机一致
