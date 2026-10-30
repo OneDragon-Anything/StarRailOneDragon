@@ -7,6 +7,7 @@
 ## 1. 策略思路/算法概述
 
 - **选人围栏**:部署候选受围栏约束——引擎/配方体系件围栏 `DEPLOY_FENCE`(单一源 = `kernel/cw_launch_admission.py::DEPLOY_FENCE`,RECIPE ∪ ENGINE)与上阵资格(`cw_launch_admission.py::offtarget_sell_allowed`);排路由/槽位选择单一源 = 策略层 `mandate_v1/deploy_plan.py`(排 = `deploy_row_pref` 三级:阵容站位覆盖 > 注册表 position_pref 派生 > back 兜底,前排保证随迁;槽位 = `deploy_slot_plans` 按容器行列现值自定,后排上限 = `back_layout` 现值);后排布局选档单一入口 = `obs/cw_back_layout.py::select_back_layout`。
+- **选人核心纯函数形态(虚拟重算接口)**:「选谁在场」的判定核心抽取为纯函数 `select_deployment(frame, prep)`(宿主 = `mandate_v1/mandate.py`)——生产路径(备战部署动作生成)与虚拟路径(席满买入六步流程/补给选角色的虚拟重算,[11_shop_decisions.md](11_shop_decisions.md) §4.0 / [30_supply_screen.md](30_supply_screen.md) §2)消费**同一函数,判据本体零改动**(结构抽取,行为不变由现行部署测试守卫);`PrepContext` = 选人所需只读上下文的显式装配(锁定线名单视图/候选快照/过渡配方对/上阵窗口信号/部署缺口与容量等,装配单一源 = `assemble_prep_context`)。接口语义 = **目标态求取**(部署定型后谁在场),不模拟换阵路径——板满换阵仍归现行 M1″ 多帧单对机制(§1.1);虚拟重算载体 = `MandateFrame` 局面快照纯计算(禁容器深拷贝,journal/策略遥测/决策帧三通道零写入)。
 - **判据必需件首桶序**:选人序以目标阵容的 `required_deployed` 成员为第一优先桶(在用两实例 = 希儿系 pair 的 `pair_target_comp` 与静态套「希儿量子」;装配单一源 = `mandate_v1/deploy_plan.py::_deploy_plan_inputs`(动作发出点/出战链共用)与 kernel `assemble_swap_plan_inputs`(换人计划),消费 = `select_deployments` `required_names` 参)。依据 = 判据必要条件的支配论证:该件不在板该体系永远无法成型(希儿系判据的「希儿在板」合取支,`Comp.required_deployed` 字段契约),cap 竞争时空位让给普通成员 = 弱占优劣化;空集缺省 = 序逐位同旧(未接线消费面零漂移)。职责边界:只判断「能不能上一个人」的预检函数(shop 的 `can_deploy_single`、`cw_launch_admission.has_deployable`)不接收这份优先序参数——它们只判单一候选可上阵,与排序无关;边界申报见 `select_deployments` 注(策略层单一源)。
 - **换人卖出**:非目标阵容的上阵件挡目标成员上场时先卖腾位,被换下单位(victim)资格单一判定 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`(义务集 ∪ 新鲜度排除 ∪ 资格族,内按域分派);部署面换人是 M4 之外的姊妹卖出出口(`02_mandate_layer.md` §7)。换人判据全貌(域切分/双门四条分支/让位白名单/组贪心/守恒域切分/执行形态/放行/收敛不变式)= 本文 §1.1,已知边界与豁免清单 = 本文 §1.2。替补受上阵窗口辖域辖(窗口辖域定义 = [22_prep_screen.md](22_prep_screen.md) §1 第 6 步,数据载体 = 知识卡 `entry_signals`;锁定帧窗口谓词结构性恒 False,凡锁定帧替补均可上——两条分支豁免覆盖全件,窗口辖域篇同条)。
 - **补齐语义**:残余补部署 P24(空槽上任意围栏认可件零支出严格优先,`../proofs/p24-residual-fill-dominance.md`);放行条件纪律 = 计划空是合法稳态,发出方与执行方用同一谓词判空、为空就不发出动作(`10_prep_decisions.md` §1)。
@@ -39,8 +40,8 @@
 ### 1.2 换人域已知边界与豁免清单
 
 1. **双轨域遗留缺陷(P79-3 轴①死形状)**:`_redeploy_emission_allowed` 轴①两分支(非空义务集分支/空集对锁期分支)读备战席条目顶层 `char_id`,而容器形备战席条目(`BenchSlot`)无该顶层字段(身份在条目 `unit` 内)→ 轴①恒空 → 双轨域(pair 帧,arm='transition')恒帧级 defer(`redeploy_cost_gate_defer`)。码点 = `mandate.py` `_redeploy_emission_allowed`(容器 P4 迁移遗留);转型域不经本门(bond_gate 臂走发射帧复算统一门),死形状依赖在转型域消除;双轨域保留面按零行为差纪律禁顺手修。
-2. **卖出通道豁免(换人域卖出面的安全阀通道)**:①溢出自救(FACE_SELF_RESCUE 不经装配 A 身份段,bench 侧标签件仍可卖——经济安全阀);②funding_hold_fallback(P78-5 死锁帧兜底,与自救同类安全阀——标签件兼保护档持有件仍可经兜底在死锁帧卖出);③部署换人让位路径(义务集路径域豁免,§1.1 门 2)。
-3. **cap_hold 截断泄露面**:义务基座按容量费用序截断(`locked_buy_cap_hold` 截断集 B′)可把非名单标签件裁出保护面;装配 A 身份段终局键集标签分支(集合单一源 = `terminal_key_label_hit_names`)闭合该泄露——全 FACE_REGULAR 卖出通道共用装配自动覆盖,bench 侧含内(万敌单C lv5 hoard 超容量帧实证形态)。
+2. **卖出通道豁免(换人域卖出面的安全阀通道)**:①溢出紧急处理(全资格豁免——循环防线与身份面全放行,bench 侧标签件仍可卖——经济安全阀);②部署换人让位路径(义务集路径域豁免,§1.1 门 2)。原 P78-5 funding 兜底豁免(`funding_hold_fallback`)随卖出身份段退役整删——豁免对象(常规面禁卖的保护持有件)不再存在,凑钱卖出按统一让位序列取用([11_shop_decisions.md](11_shop_decisions.md) §4.1)。
+3. ~~cap_hold 截断泄露面~~:**已随卖出身份段退役消除**——原由装配身份段终局键集标签分支闭合的「义务基座按容量费用序截断把标签件裁出保护面」泄露,保护面本身退役后无对象(卖出取用按统一序列,无身份保护面可泄露;义务基座截断仍作用于序 1 义务面判定,`locked_buy_cap_hold` 在役)。
 4. **平面 1 分叉后果声明**:转型域判别子无位面门——配方完成后位面 1 板满帧即进换人域,换人发射与锚帧 victim 实例随轨迹分叉(判据改的预期内行为面;机制由单帧测试钉定,逐帧轨迹差异按预测表对照归因,不作缺陷立案除非机制违背)。
 
 ## 2. 会执行的动作清单

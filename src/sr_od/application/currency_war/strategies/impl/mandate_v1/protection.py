@@ -1,10 +1,9 @@
 """万金油贯穿件名单与过渡锁定状态槽(mandate_v1 策略实现层)。
 
-**保护集退役申报(统一让位优先级迭代 3.4,拆除清单 §3)**:本模块
-原「统一保护集」判据件(:func:`protection_membership` 及四体系全体
-成员集)已整段退役——静态不许卖名单与买面囤货判据随总纲 §2.5 拆除,
-「谁不该卖/谁该买」改由统一让位序列(criteria/priority.sell_order)
-与序 1 义务面承载;本模块保留的仅有两件**数据源/写入端**:
+本模块保留两件**数据源/写入端**(原「统一保护集」判据件
+:func:`protection_membership` 及四体系全体成员集已退役——静态不许卖
+名单与买面囤货判据随之拆除,「谁不该卖/谁该买」改由统一让位序列
+(criteria/priority.sell_order)与序 1 义务面承载;退役考古走 git 历史):
 
 - :data:`CROSS_LINE_KEEP_NAMES`(万金油四角色名单)——统一价值序
   档 6(全线留用层)的判定数据源(消费 = criteria/priority.py;
@@ -44,10 +43,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 #: 一致,出处 = docs/game/currency_war/research/stage_transitions.md Q1 表
 #: 第一档)。名单随攻略数据修订走 research 重跑,复核流程 =
 #: sr-od-currency-war-dev skill 的 references/version-update.md。
-#: (原「贯穿件恒囤」纪律已随万金油义务买入面退役废止——统一让位
-#: 优先级迭代 3.4 总纲 §2.7 申报②:万金油角色只有在恰为候选线/锁定线
-#: 成员时按序 1 正常买入,手里持有的未到两星前受档 6 保护、无自动
-#: 补货通道;本常量在役职责 = 档 6 数据源。)
+#: (万金油角色无自动补货通道——只在恰为候选线/锁定线成员时按序 1
+#: 义务面买入;手里持有的未到两星前受档 6 保护、不轻易卖。本常量
+#: 在役职责 = 档 6 数据源。)
 CROSS_LINE_KEEP_NAMES: frozenset[str] = frozenset({
     '千冶·刃', '三月七', '花火', '星期日',
 })
@@ -63,8 +61,8 @@ def refresh_transition_locked_systems(gs: GameState,
     门槛同一常数,禁另立阈值)。希儿系取支持度链字典的希儿系项——该
     项即 ``_seele_system_support`` 的输出(链内单一实现),其首行含希儿
     在场门:希儿缺席恒 0.0。**复用面不含 ``seele_system_formed``**(板面
-    域,成型停手语义;持有域选定见统一保护集 design 篇双源差异申报,
-    git 历史可溯)。
+    域,成型停手语义;本函数取持有域而非板面域——双源差异申报考古走
+    git 历史)。
 
     - 幂等只增:已入槽体系不因支持度回落移除(锁定持久化取舍);每次
       全量现算「本帧达标集」并与旧槽并集;

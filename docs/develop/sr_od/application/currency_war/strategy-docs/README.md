@@ -28,8 +28,8 @@
 | 篇 | 文件 | 一句话 |
 |---|---|---|
 | 10 | [10_prep_decisions.md](10_prep_decisions.md) | 备战画面决策：部署/装备/腾位判据 + 共同地基（机制速查/形式刻画/注册表形态） |
-| 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、买面（P55 阶段 2 已撤史实/P56 现行）、引擎池、卖出、刷新、升级、经济引擎、机制突变 |
-| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 切换终局阵容与意向：生命周期状态机、证据门与通用目标态定义、终局阵容切换机器四触发 |
+| 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、席满买入六步流程、买面（P55 阶段 2 已撤史实/P56 现行）、引擎池、卖出（统一让位优先级序列）、刷新、升级、经济引擎、机制突变 |
+| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 终局线选择（候选-锁定制：线分数/top3 候选/硬规则锁定、锁后不换线）与方向状态载体、P1 配方对链、未锁定期买面接线 |
 | 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18（投资事件面 18 类） |
 | 14 | [14_p1_consume_arms.md](14_p1_consume_arms.md) | 位面 1 经济循环消费分支：闲置金转战力的三个动作发出通道（买/升/刷）设计与硬前置裁决 |
 | 15 | [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md) | 观察层读数多源一致性与仲裁：双源冲突的采信规则、保留证据与布局档错位 |
@@ -42,14 +42,14 @@
 | 20 | [20_large_balance_must_spend.md](20_large_balance_must_spend.md) | 大额结余富余段（超出利息线的富余金）与富余消费出口序 |
 | 21 | [21_opening_window_and_tool_consume.md](21_opening_window_and_tool_consume.md) | 装备策略残余：开局期（opening）装备释放的放行条件收窄 + 工具件消费语义（承接 18_equip_wear_semantics.md） |
 | 22 | [22_prep_screen.md](22_prep_screen.md) | 备战画面策略面：收缩后动作清单(含商店期移入的卖备战/买经验)+ 判据权威定义指针（见 10/02/04/18） |
-| 23 | [23_shop_screen.md](23_shop_screen.md) | 商店开画面策略面：买/刷/关收缩动作面 + 满席腾位链 + 能力/策略判例(判据权威定义见 11) |
-| 24 | [24_deploy_segment.md](24_deploy_segment.md) | 部署执行段策略面：选人围栏/换人卖出/残余补部署(判据权威定义见 10 §1/02 §7) |
+| 23 | [23_shop_screen.md](23_shop_screen.md) | 商店开画面策略面：买/刷/关动作面 + 席满买入六步流程 + 能力/策略判例(判据权威定义见 11) |
+| 24 | [24_deploy_segment.md](24_deploy_segment.md) | 部署执行段策略面：选人围栏/选人核心纯函数（select_deployment 虚拟重算接口）/换人卖出/残余补部署(判据权威定义见 10 §1/02 §7) |
 | 25 | [25_event_overlays.md](25_event_overlays.md) | 事件面单选画面族策略：选卡 + 刷新建议(判据权威定义见 13/08;投资策略已拆 29、投资环境已拆 28、遭遇已拆 31) |
 | 26 | [26_battle_settlement.md](26_battle_settlement.md) | 战斗与结算期策略面：出战标准/结算读数供数/无战斗期独立决策申报(判据权威定义见 04) |
 | 27 | [27_transit_screens.md](27_transit_screens.md) | 过场与推进型画面(简报/BOSS简报/位面过渡/回大厅)：无策略决策面申报 |
 | 28 | [28_invest_env_screen.md](28_invest_env_screen.md) | 投资环境画面策略面：投资卡价值分 = 现金价值 + 阵容方向契合度 + 赠卡价值 + 用户偏好分 + 转向倾向，五项相加；刷新三态；排除规则(决策实现 = strategies/impl/mandate_v1/invest_env.py) |
 | 29 | [29_invest_strategy_screen.md](29_invest_strategy_screen.md) | 投资策略画面策略面：投资卡价值分五项相加（同 28 行，各部分定义见 28/29 篇正文）；结构分区：禁选/自拆台（与自身阵容相克的卡）/血本位三态（扣血换收益卡的处置）/定义型；逐卡刷新判据(P81 承接；决策实现 = strategies/impl/mandate_v1/invest_strategy.py) |
-| 30 | [30_supply_screen.md](30_supply_screen.md) | 补给画面策略面：三级字典序(钻>终局角色>装备)+凑星 tiebreak+刷新「三级全空才刷」(次数闸内嵌；判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/supply.py) |
+| 30 | [30_supply_screen.md](30_supply_screen.md) | 补给画面策略面：三级字典序(钻>角色〔虚拟全局评估〕>装备)+刷新「三级全空才刷」(次数闸内嵌；判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/supply.py) |
 | 31 | [31_encounter_screen.md](31_encounter_screen.md) | 遭遇画面策略面：按当前战力状态三档直选，配合经验需求分层与奖励优先级，并列按固定优先级打破平局；是否刷新另有阈值（详见本篇正文）(判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/encounter_pick.py) |
 | 遥测 | [strategy-telemetry.md](strategy-telemetry.md) | 策略遥测数据规范（DecisionRecord）：信封键闭集 + mandate_v1 payload 键表语义与判读注意（产生端 = 基类捕获缝自动采集；消费端 = 复盘渲染器按需装配） |
 
