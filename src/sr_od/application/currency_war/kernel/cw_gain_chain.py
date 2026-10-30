@@ -61,6 +61,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
     Unit,
+    _bridge_sig,
     _emit_defect,
     anchor_aware_write,
     apply_effect_burst_grant,
@@ -75,6 +76,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
+    STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_EFFECTS,
     STRATEGY_GRANTS,
@@ -680,6 +682,62 @@ def queue_delayed_invest_offer(gs: GameState, name: str, *,
           evidence=f'queue_delayed_invest_offer:{name}', sig=sig)
     return (f'strategy_offer_scheduled:{offer.offer_quality}'
             f'@{offer.delay_nodes}')
+
+
+#: 策略卡条件发放写端署名(家族单一标识,cw_env_grants._PRODUCER 同款
+#: 家族先例;写端 = 本模块 check_strategy_conditional_grants,tick 位
+#: 发放刻,新写端新名不沿用链缺省伪装连续)。
+_CONDITIONAL_PRODUCER: str = 'strategy_conditional_grant'
+
+
+def check_strategy_conditional_grants(gs: GameState) -> None:
+    """策略卡条件发放检查(节点边界 tick 内联腿,advanced 位闸;唯一调用
+    点 = cw_game_state._tick_strategy_conditional_grants,经函数级惰性
+    import 反向取本函数——本模块模块级依赖 cw_game_state,反向模块级
+    即环)。
+
+    遍历持卡(active_strategies 容器直读)∩ STRATEGY_CONDITIONAL_GRANTS,
+    跳过已闩(strategy_conditional_done);条件 = 角色池(备战 ∪ 上阵 ∪
+    溢出,gain_character 升星判断同池口径)内最大同名单位数 ≥ 阈值
+    (「8个一样的角色」卡面直读,升星产物计 1)→ gain_equipment 具名
+    发放(rand=False:达标即确定事件,无采样面)→ 发放成功(placed)
+    才落闩。拒落域(equips 未观察)不闩——池现值维持达标时后续 tick
+    重试自愈;bench 未观察(直构域)= 池不可评估整腿跳过,同拒落自愈
+    面。卖出/合成使同名计数回落不回滚已发放(闩 = 「首次」语义);同
+    tick 多张持卡条件卡各自独立判定发放。"""
+    view = gs.bench.value
+    if view is None:
+        return
+    counts: dict[str, int] = {}
+    for slot in view.slots:
+        if slot is not None and slot.kind == 'unit' \
+                and slot.unit is not None:
+            counts[slot.unit.char_id] = counts.get(slot.unit.char_id, 0) + 1
+    for u in deployed_indexed_of_view(gs.deployed.value):
+        if u is not None:
+            counts[u.char_id] = counts.get(u.char_id, 0) + 1
+    ovf = str(gs.overflow_card.value or '')
+    if ovf and ovf not in BENCH_ITEM_NAMES:
+        counts[ovf] = counts.get(ovf, 0) + 1
+    done = tuple(gs.strategy_conditional_done.value or ())
+    for name in gs.active_strategies.value or ():
+        spec = STRATEGY_CONDITIONAL_GRANTS.get(name)
+        if spec is None or name in done:
+            continue
+        if max(counts.values(), default=0) < spec.threshold_same_name:
+            continue
+        sig = _bridge_sig(gs)
+        evidence = f'strategy_conditional_grant:{name}'
+        out = gain_equipment(gs, spec.item, rand=False, sig=sig,
+                             evidence=evidence,
+                             producer=_CONDITIONAL_PRODUCER)
+        if out.placed:
+            # 登记事实直写(env_grants_done 同款:write_logic 直写非
+            # 随机态面;发放与封账同 evidence 同 sig 同组)
+            gs.write_logic(gs.strategy_conditional_done, done + (name,),
+                           produced_by=_CONDITIONAL_PRODUCER,
+                           evidence=evidence, sig=sig)
+            done = done + (name,)
 
 
 def _node_frame(gs: GameState) -> str:

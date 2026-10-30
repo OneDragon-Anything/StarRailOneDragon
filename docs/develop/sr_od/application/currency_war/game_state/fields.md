@@ -122,7 +122,9 @@ pending_strategy_offers ()/enemy_affixes []/overflow False/''/prev_node_spent
 False)、晶矿附着/声明三域
 (ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
 幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)、环境
-条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)。种子值依据逐字段申报面见迭代设计;hp 实证域 =
+条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)、策略卡
+条件发放已发标记(strategy_conditional_done ()——同族恒非 None,§3.2.26a)。
+种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/席位锚定标志位等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未置位本体)。
 
@@ -922,6 +924,34 @@ rand=False 走 `_select_write` 单一收束);②递减 = 节点边界 tick 内�
 
 **域归属**:独立键 `pending_strategy_offers`(§3.7.1;独立键先例 =
 env_grants_done——本队列不并入任何域版本 bump,他域本体未变)。
+
+#### 3.2.26a 策略卡条件发放已发标记 strategy_conditional_done
+
+**语义**:策略卡「首次达成世界条件后发放具名装备」通道的一次性封账集合
+(规模效应 id 101301 首例:「首次拥有8个一样的角色时,获得1个【完美投影
+仪】。」)。元素 = 规范卡名(注册表键同源,单一源 =
+`cw_investments.STRATEGY_CONDITIONAL_GRANTS` 白名单制);「首次」语义 =
+首个条件达成的 tick 发放并封账,此后不再查——卖出/合成使同名计数回落
+**不回滚**已发放(局内单调追加,无删除/递减/重置)。条件计数 = 角色池
+(备战 ∪ 上阵 ∪ 溢出,与升星判断同池)内最大同名**单位数**(升星产物
+计 1)。与 env 通道的条件闩 `env_grants_done`(元素 (env, 条件键) 键对
+域,§3.5.5)**通道分立**:env 按环境名键、策略卡按持卡集语义,键形与
+语义两异,混载 = 语义污染。
+
+**写入方**:唯一逻辑写入方 = 获得链检查腿
+`cw_gain_chain.check_strategy_conditional_grants`(节点边界 tick 内联腿,
+advanced 位闸,唯一调用点 = `_tick_effect_boundary_impl`;发放成功
+placed 刻追加,发放与封账同 evidence 同 sig 同组,evidence
+`strategy_conditional_grant:<卡名>`)。**拒落不闩**:equips 未观察窗发放
+fail-closed 零写,闩同样不落——池现值维持达标时后续 tick 重试自愈;池
+永久回落阈下则不发放(边界非缺陷)。**无观察写入方**——发放登记事实非
+观察投影。链式契约权威版本 = [gain-chain.md](gain-chain.md) §2.10。
+
+**开局预填初值**:()(每局全新创建即持空集,A 类;同 env_grants_done
+种子族)。
+
+**域归属**:独立键 `strategy_conditional_done`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
 ### 3.3 商店开态(覆盖在备战画面之上)
 

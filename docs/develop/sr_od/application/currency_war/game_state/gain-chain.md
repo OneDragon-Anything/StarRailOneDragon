@@ -186,6 +186,37 @@ write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
   不受此限——回退是模型知识修正非游戏动作(`check_env_item_open_perfect`,
   settle_confirm 分支挂点)。
 
+### 2.10 策略卡条件发放检查腿 check_strategy_conditional_grants(tick 位)
+
+`check_strategy_conditional_grants(gs) -> None`——策略卡「首次达成世界条件后
+发放具名装备」通道(首例规模效应 id 101301,登记表 =
+`cw_investments.STRATEGY_CONDITIONAL_GRANTS`,白名单制)的唯一检查本体,与
+发放原语同模块内聚。遍历持卡(`active_strategies` 容器直读)∩ 登记表,跳过
+已闩(`strategy_conditional_done`);条件 = 角色池(备战 ∪ 上阵 ∪ 溢出,与
+gain_character 升星判断同池)内**最大同名单位数** ≥ 阈值 → `gain_equipment`
+具名发放(`rand=False`,达标即确定事件)→ 发放成功(placed)才落闩。
+
+- **挂点 = 节点边界 tick 内联腿**(advanced 位闸,唯一调用点 =
+  `cw_game_state._tick_strategy_conditional_grants`,函数级惰性 import 反向
+  取本函数——本模块模块级依赖 cw_game_state,反向模块级即环):选 tick 位
+  的理由 = 获路全集不可枚举(买入双端不经 gain_character、补给走
+  grant_bench_unit_cascade、选卡真值归观察覆盖),获得事件侧任何钩子必然漏;
+  tick 单钩对容器现值求值,零枚举覆盖买入/补给/选卡/环境赠/开局初始阵容
+  全获路。同节点重放 advanced=False 零重复检查(与效果账本 advance_node
+  同闸)。
+- **计数口径 = 单位数**:升星产物计 1(2星 = 1个角色,「8个一样的角色」
+  量词「个」直修饰角色单位);3 合 1 升星使同名计数回落(3→1),闩前回落由
+  后续 tick 按现值重估。时延语义 = 达标 tick 即发放(≤ 当前节点窗);「首次」
+  = 首个计数达阈的 tick,闩后不再查——卖出/合成回落不回滚已发放。
+- **拒落不闩自愈**:`equips` 未观察(None)= fail-closed 零写零闩,池现值
+  维持达标时后续 tick 重试;bench 未观察(直构域)= 池不可评估整腿跳过,
+  同自愈面;池永久回落阈下则不发放(tick 时点达标才发,边界非缺陷)。
+- **写约定**:sig = `_bridge_sig(gs)`(tick 位既有写约定),evidence =
+  `strategy_conditional_grant:<卡名>`(gain_equipment 追加 `#equip` 后缀;
+  发放与封账同 evidence 同 sig 同组),producer = `strategy_conditional_grant`
+  (家族单一标识,cw_env_grants._PRODUCER 同款);封账 = write_logic 直写
+  (登记事实非随机态面,env_grants_done 同款)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

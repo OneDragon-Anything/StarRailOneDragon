@@ -265,6 +265,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # (触发卡规范名, 剩余节拍))。独立键
                                 # 版本 1,同 env_grants_done 先例不并入
                                 # 他域 bump——他域本体未变
+    'strategy_conditional_done': 1,  # 策略卡条件发放已发标记(策略卡
+                                # 条件腿「首次」封账;元素 = 规范卡名,
+                                # 发放成功刻追加局内恒存,详设 =
+                                # cw_gain_chain 检查腿 docstring)。独立
+                                # 键版本 1,同 env_grants_done 先例不
+                                # 并入他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2277,6 +2283,9 @@ def seed_opening_state(gs: GameState) -> None:
     # 策略延时 offer 倒计时队列(空底座,同 pending_item_grants 种子族
     # 先例——域值恒非 None,递减/到点判定零 None 防御)
     _seed(gs.pending_strategy_offers, ())
+    # 策略卡条件发放已发标记(空底座,同 env_grants_done 种子族先例
+    # ——域值恒非 None,检查腿跳过判定 membership 零 None 防御)
+    _seed(gs.strategy_conditional_done, ())
     _seed(gs.enemy_affixes, [])
     _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
     _seed(gs.prev_node_spent, False)
@@ -2578,6 +2587,19 @@ class GameState:
     # 后恒悬置,实机 offer 由游戏自己呈现,屏幕驱动天然覆盖,零停机
     # 风险)。开局种子底座 = ()(A 类)。
     pending_strategy_offers: Field[tuple[tuple[str, int], ...]] = field(
+        default_factory=Field)
+    # [索引定义] strategy_conditional_done = 已完成发放的策略卡条件腿
+    # 卡名集合(策略卡条件发放通道,规模效应 id 101301 首例)。元素 =
+    # 规范卡名(注册表键同源,单一源 =
+    # cw_investments.STRATEGY_CONDITIONAL_GRANTS);写入时机 = 检查腿
+    # 发放成功(placed)后单点写入,唯一写端 =
+    # cw_gain_chain.check_strategy_conditional_grants(tick 位;拒落域
+    # 不闩——池现值维持达标时后续 tick 重试自愈,placed 才封账);
+    # 消费 = 检查腿跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
+    # 无删除;「首次」语义——卖出/合成使同名计数回落不回滚已发放,
+    # 递减/重置不存在)。恢复局随快照存续 = 中断恢复对局不重发(rebuild
+    # tuple 化登记,env_grants_done 先例)。开局种子底座 = ()(A 类)。
+    strategy_conditional_done: Field[tuple[str, ...]] = field(
         default_factory=Field)
     # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
     # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。
@@ -3870,6 +3892,20 @@ def _tick_pending_strategy_offers(gs: GameState) -> None:
                    sig=_bridge_sig(gs))
 
 
+def _tick_strategy_conditional_grants(gs: GameState) -> None:
+    """策略卡条件发放检查腿(节点边界 tick 内联腿;调用点 =
+    _tick_effect_boundary_impl 的 advanced 闸内,与效果账本 advance_node
+    同闸——同节点重放零重复检查,现役四腿同闸并列、腿间各自幂等)。
+    kernel 反向模块级零 import 契约:cw_gain_chain 模块级依赖本模块,
+    反向模块级即环——函数内惰性取(gain_character 合并触发分支同款
+    先例)。本体(条件判定/发放/落闩)住 cw_gain_chain.check_strategy_
+    conditional_grants,与发放原语内聚。"""
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        check_strategy_conditional_grants,
+    )
+    check_strategy_conditional_grants(gs)
+
+
 def _tick_effect_boundary_impl(gs: GameState) -> None:
     effective = effective_node_pos(gs)
     if effective is None:
@@ -3887,6 +3923,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
         grant_effect_node_refresh_balance(gs, frame=frame)
         roll_prev_node_spent(gs, frame=frame)   # 存款回报条件评估毕,滚位新节点(§3.3.9)
         grant_effect_node_xp(gs, frame=frame)
+        _tick_strategy_conditional_grants(gs)
     project_effect_capacity(gs)
 
 
@@ -4643,6 +4680,10 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 推算知识存续,不对称申报)。
         'pending_strategy_offers': lambda d: tuple(
             (str(x[0]), int(x[1])) for x in d),
+        # 策略卡条件发放已发标记:tuple 化重建(_json_safe 落快照为
+        # list-of-str,元素 = 规范卡名);随快照存续 = 恢复局不重发
+        # (检查腿跳过判定天然闭合)。
+        'strategy_conditional_done': lambda d: tuple(str(x) for x in d),
         # 惊喜盒板件 ⏳N 读数观察域(迭代 2026-10-19-giftbox-piece-obs):
         # tuple 化重建(_json_safe 落快照为 list,int 保型);随快照存续
         # = 恢复局最近上报帧读数不丢(滞留语义不变)。

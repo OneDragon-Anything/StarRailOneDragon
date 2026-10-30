@@ -228,6 +228,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' / 节点边界 tick 递减 / sim 呈现腿弹除回写),队列 = 卡文'
               '推算知识,无观察读端;实机局呈现腿不接(不对称申报,'
               'pending_item_grants 同款)'),
+    'strategy_conditional_done': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名,'
+              '局内恒存随快照存续),无观察读端——发放登记事实非观察投影'
+              '(同族行先例 = env_grants_done);唯一逻辑写端 = '
+              'cw_gain_chain.check_strategy_conditional_grants(tick 位'
+              '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

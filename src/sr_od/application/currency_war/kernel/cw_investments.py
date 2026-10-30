@@ -3353,3 +3353,67 @@ def _validate_strategy_delayed_offers() -> None:
 
 
 _validate_strategy_delayed_offers()
+
+
+# ===== 策略卡条件发放登记表(白名单制;策略卡条件发放通道模式件)=====
+# 「首次达成世界条件后发放具名装备」族首例(规模效应 id 101301):条件
+# 检查不在拿卡时点(拿卡即时腿 = PICK_INVEST_EFFECTS 通道,handler 只在
+# 拿卡时点分派一次,维度不符),而在节点边界 tick 内联腿对容器现值求值
+# ——获路全集不可枚举(买入双端不经获得链角色原语/补给走 cascade/选卡
+# 真值归观察覆盖),tick 单钩状态检查零枚举覆盖全获路。表外卡一律无
+# 条目,禁从效果原文自动猜装(STRATEGY_GRANTS/ENV_GIFTS 同款纪律);
+# 同族后续卡按「注册行直用本通道」接入,异形条件(非同名计数)另案。
+# 消费端 = cw_gain_chain.check_strategy_conditional_grants(唯一调用点 =
+# cw_game_state tick advanced 闸)。
+
+@dataclass(frozen=True)
+class StrategyConditionalGrant:
+    """策略卡「首次拥有 N 个同名角色后发放具名装备」登记结构(策略卡
+    条件发放通道专属登记表;字段语义 = 卡面效果原文直读):
+
+    - item: 发放装备名(「【完美投影仪】」直读;值域 = 装备注册表名
+      闭集,笔误后果 = 检查腿发放 KeyError 响亮,校验面归评审把关
+      ——2026-10-28 治理口径);
+    - threshold_same_name: 同名角色单位数阈值(「8个一样的角色」直读
+      8;计数口径 = 单位数,升星产物计 1——量词「个」直修饰角色单位,
+      池口径 = 备战 ∪ 上阵 ∪ 溢出全池,与升星判断同池)。
+    """
+    id: str
+    item: str
+    threshold_same_name: int
+
+
+STRATEGY_CONDITIONAL_GRANTS: dict[str, StrategyConditionalGrant] = {
+    # 规模效应(id 101301 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id
+    # 行;「获得1个【完美投影仪】」直读入册,登记判据与 STRATEGY_GRANTS
+    # 「获得…」直读同源)
+    '规模效应': StrategyConditionalGrant(id='101301', item='完美投影仪',
+                                          threshold_same_name=8),
+}
+
+
+def _validate_strategy_conditional_grants() -> None:
+    """STRATEGY_CONDITIONAL_GRANTS 构建校验(import 即炸;沿
+    _validate_strategy_delayed_offers 同款治理口径——只留漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
+    仍在的漂移也炸)。值域类校验(threshold 形/下界、item 装备名闭集)
+    属防登记笔误类,按 2026-10-28 治理裁定不加(错值后果 = 检查腿永假
+    条件或发放 KeyError,响亮可见)。
+    """
+    orphans = [n for n in STRATEGY_CONDITIONAL_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_CONDITIONAL_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, _grant in STRATEGY_CONDITIONAL_GRANTS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_grant.id}':
+            raise ValueError(
+                f"STRATEGY_CONDITIONAL_GRANTS id 漂移:{_name!r} 登记 id="
+                f"{_grant.id} base={_base.source}")
+
+
+_validate_strategy_conditional_grants()
