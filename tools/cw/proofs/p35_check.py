@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
 
-from sr_od.application.currency_war.kernel.cw_state import (  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     XP_CLICK_COST_FALLBACK,
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,

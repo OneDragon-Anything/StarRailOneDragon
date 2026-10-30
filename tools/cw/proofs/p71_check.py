@@ -7,7 +7,7 @@
 - c: 73002 批账(s=60 穿线 28,L∈[3,9])与闸值 B_L 拦截构造。
 
 本脚本直调生产单一源复核(kernel 禁第二实现):
-- XP_TO_NEXT_LEVEL / XP_PER_BUY: kernel/cw_state.py(2026-08-31 用户定谒);
+- XP_TO_NEXT_LEVEL / XP_PER_BUY: kernel/cw_economy.py(2026-08-31 用户定谒);
 - REFRESH_PROB / expected_refreshes_for_card: data/cw_shop_odds.py(V4.4 权威);
 - loss_exact / saturation_line: kernel/cw_economy.py(P47 双轨迹递推)。
 
@@ -22,12 +22,10 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
-    loss_exact,
-    saturation_line,
-)
-from sr_od.application.currency_war.kernel.cw_state import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
+    loss_exact,
+    saturation_line,
 )
 
 CLICK_COST = 4   # flat-4(P39 A3;lv6/8/9 实测覆盖面边界在单篇边界 3)

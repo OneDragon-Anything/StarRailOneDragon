@@ -21,7 +21,7 @@ import sys
 from fractions import Fraction
 from pathlib import Path
 
-from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 
 BOARD_N = 9        # 板分母(单一源断言在断言 8:BENCH_CAPACITY == 9)
 TRANSITION_N = 8   # 过渡件分母(线外 8 件,探针双读法)

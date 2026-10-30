@@ -8,7 +8,7 @@
   xp_click_cost ≥ 4;唯一例外域 = 商业间谍折扣(xp_click_cost<4)。
 - flat-4 裁决下(xp_click_cost=4)两汇率恒等 1.00(全等级,等级只是中介量)。
 
-常量单一源:cw_state(XP_PER_BUY / XP_CLICK_COST_FALLBACK / REFRESH_COST_BASE)、
+常量单一源:cw_economy(XP_PER_BUY / XP_CLICK_COST_FALLBACK / REFRESH_COST_BASE)、
 cw_investments(淘金客 EconomyEffect.xp_per_refresh)。
 """
 
@@ -17,13 +17,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
 
-from sr_od.application.currency_war.kernel.cw_investments import (
-    STRATEGY_EFFECTS,  # noqa: E402
-)
-from sr_od.application.currency_war.kernel.cw_state import (  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     REFRESH_COST_BASE,
     XP_CLICK_COST_FALLBACK,
     XP_PER_BUY,
+)
+from sr_od.application.currency_war.kernel.cw_investments import (
+    STRATEGY_EFFECTS,  # noqa: E402
 )
 
 

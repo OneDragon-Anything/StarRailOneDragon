@@ -32,7 +32,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (  # noqa: E402
     expected_refreshes,
     refresh_prob,
 )
-from sr_od.application.currency_war.kernel.cw_state import sell_refund  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_economy import sell_refund  # noqa: E402
 
 C_EFF = 2  # SHOP_REFRESH_COST(cw_economy,经 p40 转引;刷价突变语境由调用方替换)
 SLOTS = 5  # cw_shop_odds.SHOP_SLOTS
