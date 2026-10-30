@@ -421,6 +421,31 @@ def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
     return _effect
 
 
+# ===== 多腿组合效果(混发卡专属:策略卡获得时点双腿/多腿组合发放,族首 =====
+# ===== 卡 = 武装支援;各腿复用单族工厂,组合卡不入任何单族表——表行生成 =====
+# ===== 的是单腿效果体,与组合体同名键经 dict 字面量顺序覆盖静默丢腿, =====
+# ===== 组合登记行 = 腿参数唯一出现点,单一源成立)=====
+
+def _compose_grant_legs(
+        *legs: Callable[..., list[str]]) -> Callable[..., list[str]]:
+    """多腿组合效果体工厂(闭包销 = 腿效果体序列,依组合登记行形参序)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained)。按形参序逐腿调用,各腿共享同一
+    ``(gs, sig, rng)``——同 rng 实例跨腿顺序推进不重置(掷序契约:
+    改序 = 掷序漂移,晶矿同口径);腿序 = 卡文语序(表内对序「禁隐式
+    重排」纪律同源),效果串按腿序拼接。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        steps: list[str] = []
+        for leg in legs:
+            steps.extend(leg(gs, sig=sig, rng=rng))
+        return steps
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
@@ -429,6 +454,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name, pairs in _STRATEGY_REINFORCEMENT_GRANTS.items()},
     **{name: _make_random_equip_effect(count)
        for name, count in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
+    # 武装支援 = 双腿混发组合卡(卡文「获得1件随机简易装备和2个随机3费
+    # 角色。」):直书登记行(非表生成),不入援军/随机简易装备两族表
+    # (入表 = 表生成的单腿效果体与组合体同名键顺序覆盖丢腿);腿序 =
+    # 卡文语序装备腿先/角色腿后,腿参数在此单次出现(单一源)。
+    '武装支援': _compose_grant_legs(_make_random_equip_effect(1),
+                                    _make_reinforcement_effect(((3, 2),))),
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
@@ -437,7 +468,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
-_STRATEGY_RANDOM_EQUIP_GRANTS 生成,策略延时 offer 族由工厂自
+_STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援)直书登记行由组合子
+组合双腿(非表生成),策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
 登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无
