@@ -1000,13 +1000,23 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     动作生成消费部署选人纯函数(统一让位优先级迭代 3.1 结构抽取,
     判据零改动,契约 = changes/2026-10-29-unified-priority/details/
     acquisition-and-sell.md §1):先经 ``mandate.select_deployment``
-    求部署定型名集(目标态),目标态 == 现板 = 部署已定型零动作;
-    diff 非空帧按下列三臂发射(发射器与臂内判据零改动,回归由现行
-    部署测试守)。行为申报:动作序列与定型收敛逐位同旧;定型帧不再
-    触达换阵发射器——其计划空分键(m1p_plan_empty 族/abstain 键)与
-    「窗口拦全」帧的 deploy_emit_held 分键不再写入(遥测覆盖面收窄
-    至有 diff 帧,键语义不变);cw4_m1p_*_pending 在定型帧同步复位
-    (与现行发射器无发射分支的帧级复位语义一致)。
+    求部署定型名集(目标态)。**定型早退辖域 = 非板满帧**(目标态 ==
+    现板 ∧ deploy_vacancy > 0 ⟺ M5/M1 窗口过滤后选人空 ⟹ 零动作);
+    板满帧不早退、一律落现行 M1″ 发射器——目标态名集对「同名升星对」
+    形状不敏感(换出换入同名不同星,名集相等而星级不等;同名离场 =
+    kernel bond_gate star 分支一等设计通道),名集相等 ≠ 无发射,
+    发射判定权归发射器原样承接(对抗审查实锤:无条件早退曾吞同名
+    升星对的 SellDeployed,升星换人通道停摆)。diff 非空帧按下列
+    三臂发射(发射器与臂内判据零改动,回归由现行部署测试守)。
+    行为申报:动作序列与定型收敛逐位同旧;非板满定型帧不再触达
+    换阵发射器与 ``_deployable``——其计划空分键(m1p_plan_empty 族/
+    abstain 键)、deploy_emit_held_<reason> 分键族与豁免开火读数
+    (deploy_emit_floor_ctx_open / deploy_emit_floor_exempt_open,
+    G1 生效门读数)在该域不再写入(遥测覆盖面收窄,键语义不变;
+    键族退役归属 = 3.4/3.5 拆除与遥测批);板满帧(含同名升星对与
+    计划空帧)动作与遥测逐位同旧;cw4_m1p_*_pending 在非板满定型帧
+    显式复位(与现行发射器无发射分支的帧级复位语义一致,板满帧由
+    发射器自身复位)。
 
     结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
     M1 空槽补位结构性收敛**——十段全扫单动作循环下第 4 步命中即
@@ -1030,7 +1040,10 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     target = mandate.select_deployment(frame, prep)
     current = {d.char_id for d in frame.deployed
                if d is not None and d.char_id}
-    if target == current:
+    if target == current and frame.deploy_vacancy > 0:
+        # 非板满定型帧:换阵计划内部板满门使目标态恒 == 现板,名集
+        # 相等即 M5/M1 选人空(发射面零动作);板满帧不在此早退——
+        # 名集相等仍可能是同名升星对(见 docstring 行为申报)。
         st = state_of(session)
         st.cw4_m1p_arm_pending = None
         st.cw4_m1p_plan_pending = None

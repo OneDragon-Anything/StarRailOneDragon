@@ -1802,7 +1802,14 @@ def select_deployment(frame: MandateFrame,
     deployed_names = {d.char_id for d in frame.deployed
                       if d is not None and d.char_id}
     # select_deployments 同参装配(与 deploy_plan._deploy_plan_inputs
-    # 键面逐一对齐;取值源 = prep 冻结字段,语义见 PrepContext 字段注)。
+    # 键面逐一对齐,取值源 = prep 冻结字段,语义见 PrepContext 字段注)。
+    # 一处显式键面差(对抗审查核对项):本处 recipe_floor_lock_exempt
+    # 传活性值,而 _deploy_plan_inputs(发射计划构造)不含该键(恒
+    # False)——豁免是该参唯一现行消费面(mandate._deployable 门)。
+    # 等价性:豁免只放宽配方底线围栏(up 豁免集 ⊇ 无豁免集),目标态
+    # == 现板时无豁免选人亦空 ⟹ 消费位(entry._step5_deploy)的定型
+    # 早退不吞无豁免口径本应发出的动作;diff 非空帧臂内以无豁免口径
+    # 的 _deployable 现判发射,发射序与旧逐位一致。
     _tgt, _fw_carry = deploy_target_sets(
         prep.target_comp, prep.transition_framework)
     inputs = {
