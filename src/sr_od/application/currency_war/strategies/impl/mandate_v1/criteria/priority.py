@@ -67,6 +67,10 @@ class HeldUnit:
     承载,槽位号兜底会引入「先买的先卖」系统性偏差,已拍板废弃)。"""
     deployed: bool
     """是否在部署定型内(场上)。"""
+    cost: int | None = None
+    """牌面当前实费档(档 4/档 8 判定输入;None = 回退注册表起始费)。
+    变费卡(现注册表仅银狼LV.999 三档)升费后由装配方供给现值,
+    现读单一源 = cw_economy.effective_cost;非变费卡可缺省。"""
 
 
 @dataclass(frozen=True)
@@ -248,13 +252,14 @@ def _member_names(ctx: PriorityContext) -> frozenset[str]:
 def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
     """牌的费用档(档 4/档 8 判定输入)。
 
-    商店牌 = 牌面自报费用;手持牌 = 注册表现查(CHARACTERS.cost,
-    单一源)。未知名/缺值按中费 3 保守估(注册表先例 =
-    mandate.cheapest_member_cost 与 shop 侧同款口径)。手持变费卡
-    (现注册表仅银狼LV.999 三档)按注册表起始费参与档 8 概率分档
-    ——档 4 仅辖非阵容成员,变费成员卡不入该档,偏差面收窄至
-    「变费卡恰为非成员手持件」的边角,如实申报。"""
+    商店牌 = 牌面自报费用;手持牌 = 牌面实费档(:attr:`HeldUnit.cost`,
+    变费卡升费后由装配方按 cw_economy.effective_cost 现值供给),
+    缺省回退注册表现查起始费(CHARACTERS.cost,单一源)。未知名/缺值
+    按中费 3 保守估(注册表先例 = mandate.cheapest_member_cost 与
+    shop 侧同款口径)。"""
     if isinstance(unit, ShopUnit):
+        return int(unit.cost)
+    if unit.cost is not None:
         return int(unit.cost)
     ch = CHARACTERS.get(unit.name)
     return int(ch.cost) if ch is not None and ch.cost else 3
