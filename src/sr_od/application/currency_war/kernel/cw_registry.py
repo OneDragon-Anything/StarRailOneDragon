@@ -231,11 +231,6 @@ class DecisionV2Registry:
     #: 全仓只留 discipline.boss_window_active 一处且仅作缺读兜底——
     #: P1 末节点恒为 boss 的节点图先验,r≥9 兜底)
     boss_window_fallback_round: int = 9
-    #: 扑满节点(奖励型战斗)单节点刷新豁免上限(迁移审计×迁移审计P8
-    #: 上限:凑羁绊支出 s≤0.277R,R 采集前保守取节点基础收入 6-9 金
-    #: → s≤2 金=1 次刷新;**禁深花保血**——扑满不掉血,真损失=打不过
-    #: 没奖励,轻投入凑羁绊刷伤害;R 真值采集后等比重标)
-    piggy_refresh_round_cap: int = 1
 
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table

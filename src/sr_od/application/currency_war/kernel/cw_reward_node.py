@@ -6,16 +6,13 @@
 entry posture 授权链首位)与 ②(b) 帧型判据全部消费本模块的同一谓词,
 禁第二套帧型判定(D3)。
 
-两个失效方向各自按自身误判代价定,显式声明防混用:
-- node_type 不可辨(None)→ **抑制关(fail-open 不抑制)**。为什么:
-  误拦升级 = 奖励帧人口停滞,误放 = 病灶复发一次;店开观察帧节点行
-  被遮恒 None(cw_observation.py「prep_shop_open 节点行被遮」在案)是
-  结构性常态,无先验可辨向,两难取宽。
-- active_env 不可辨(空串缺省)→ **守卫关(抑制照常)**。为什么:环境
-  缺省空串是常态先验——绝大多数局无过热环境;按「守卫开(豁免抑制)」
-  会使规则①在常态局结构性失效。扑满帧 node_type 仍读 'reward'
-  (cw_screen_prep.py「扑满=奖励图标已实证」在案),仅凭 node_type
-  不可辨扑满,守卫必须用环境名单判据。
+失效方向:node_type 不可辨(None)→ **抑制关(fail-open 不抑制)**。为什么:
+误拦升级 = 奖励帧人口停滞,误放 = 病灶复发一次;店开观察帧节点行
+被遮恒 None(cw_observation.py「prep_shop_open 节点行被遮」在案)是
+结构性常态,无先验可辨向,两难取宽。
+(原扑满例外守卫——扑满环境帧解除抑制——已随 P8 废弃删除:2026-10-29
+用户策略令「运营正确则战力与血线自洽,不为特殊节点改变节奏」+ 扑满
+节点 151 局实机与全部 sim 零观测;扑满帧并入规则①域,git 可溯。)
 
 依赖方向:kernel 只 import data 注册表,不 import strategies/obs。
 """
@@ -28,44 +25,29 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 #: 扑满环境名单(单一源派生):PLAZA_PORTALS 效果文本含「奖励节点替换」
-#: 的环境名——当前已登记命中 = id105 经济过热 / id119 经济严重过热
-#: (cw_invest_data.py;方案审 v3 已做派生完备性检查:PLAZA_PORTALS
-#: 全表内含该子串者仅此两行,其余命中在 PlazaAugment 表,不在名单源)。
-#: 派生式判据让版本重采自动跟上;失配方向(版本改词致漏派生)= 守卫
-#: 对过热局系统性关闭,代码内不可检测,已申报盲区(版本重采检查单
-#: 把 PLAZA_PORTALS 效果文本比对列入)。
+#: 的环境名——当前已登记命中 = id105 经济过热 / id119 经济严重过热。
+#: 派生式判据让版本重采自动跟上。**现役消费 = sim 扑满环境建模
+#: (cw_sim_backend.is_piggy_node)与 investments 扑满面板矿占位校验**——
+#: 原策略侧扑满例外守卫已随 P8 废弃删除(2026-10-29)。
 PIGGY_ENV_NAMES: frozenset[str] = frozenset(
     p.name for p in PLAZA_PORTALS if '奖励节点替换' in p.effect)
 
 
-def is_piggy_reward_frame(gs: GameState | None) -> bool:
-    """扑满例外守卫:奖励型节点 ∧ 本局环境在扑满名单 → 抑制解除。
-
-    环境读点 = ``state.active_env``(单一源 = 观测装配回写链:
-    session.active_env 经 cw_observation 装配非空才拷入 state,实现
-    禁绕开观测装配直读 session)。环境名不可辨(空串/不在名单)→
-    False(守卫关,抑制照常,理由见模块 docstring 失效方向②)。
-    """
-    if gs is None:
-        return False
-    return str(gs.active_env.value or '') in PIGGY_ENV_NAMES
-
-
 def reward_node_suppressed(gs: GameState | None) -> bool:
-    """规则①抑制谓词:可辨奖励帧 ∧ 非扑满环境 → 升级抑制。
+    """规则①抑制谓词:可辨奖励帧 → 升级抑制。
 
-    None fail-open(node_type 不可辨 → False)理由见模块 docstring
-    失效方向①;battle/encounter/boss 等战斗类节点恒 False(P72 预算闸
+    None fail-open(node_type 不可辨 → False)理由见模块 docstring;
+    battle/encounter/boss 等战斗类节点恒 False(P72 预算闸
     照旧,本规则不覆盖)。四消费位 + ②(b) 帧型判据共用本函数,禁第二套。
 
     ②(b) 同谓词同向声明(D3/方案规则②):压牌库买入分支的帧型判据就是
-    本函数的返回值——可辨奖励帧(非扑满)= ②(b) 活跃域;None 帧与
+    本函数的返回值——可辨奖励帧 = ②(b) 活跃域;None 帧与
     规则①同向取 False(②(b) 不发出),该域「禁死囤」由 ②(a) prep
     凑利息接线承载(其触发 = gold<g*,节点无关,见 mandate 接线注释);
     None 帧上 M3 因规则① fail-open 照常求值(两分支并存,义务分支先判)。
+    (原扑满例外——扑满环境帧抑制解除——已随 P8 废弃删除,2026-10-29,
+    git 可溯;扑满零观测,删除零行为差。)
     """
     if gs is None:
         return False
-    if str(node_kind_of(gs) or '') != 'reward':
-        return False
-    return not is_piggy_reward_frame(gs)
+    return str(node_kind_of(gs) or '') == 'reward'
