@@ -30,7 +30,7 @@
 - **锁定状态判据分支**（锁定采购集 `locked_buy_membership` 已解析帧）：registry 名单核心卡（谓词式唯一入选规则与封闭性双出处适用范围见 `cw_comps.CORE_SINGLE_CARD_REGISTRY` 注）在售且 ∉ 锁定采购集时，过 1★ 全额退（`vopt.refund_full_star_ok` 共享单一源）∧ 不跌破利息档区间（`predicates.t5_p1_false`，P47 L 项零损失；Ī 取 streak_pre=0 保守近似）∧ 席位（`mandate.check_seats` 共享单一源）∧ 可负担 ⇒ 放行囤入（买因 `core_single_card_buy`，不上场）。
 - **未锁定状态恒买分支**（规则③恒买放行；裁定原文归已停用裁定档案，git 历史可溯）：席/金物理硬闸继承，利息纪律/锁定单判/星级不继承（裁定「恒买」= 无条件；2★ 核心按店面现价过 `check_affordable`，恒买语义 = 持有价值非燃料可逆），买因 `core_single_card_buy:unlocked` + 计数键 `core_unlocked_buy_hit` 与锁定路径不混入同一分组。
 - **适用范围分界**：既有 dominance_buy 适用于「停买态∧富余带∧阵容外燃料件」，本通道适用于「不跌破利息档区间∧名单核心卡（锁定状态）/恒买（未锁定状态）」；锁定∧成型重叠带两通道动作同致（既有先手+判据共享）。开店标志位（OpenShop 动作节流）不适用于本通道；S 预留硬约束③对象列不含本通道（利息纪律由 L 项零损失承载，未锁定恒买分支无利息纪律）。
-- **观测键**：观测 = `core_candidate_seen`/`core_dominance_buy_hit`（锁定）+ `core_unlocked_buy_hit`（恒买）/`core_numeric_fail_closed` 键分账 + 拒绝原因拆键 `core_candidate_rejected`（规则③后语义收窄 = 席/金硬闸拒 fallback）；数值支（P48③ 统一式）登记待办不写入代码，双前置与启用条件见 01 §7 P25 钩子行（占位函数 p2_lock_buy 已随接管批删除，P25 语义载体唯一）。
+- **观测键**：观测 = `core_candidate_seen`/`core_dominance_buy_hit`（锁定）+ `core_unlocked_buy_hit`（恒买）/`core_numeric_fail_closed` 键分账 + 拒绝原因拆键 `core_candidate_rejected`（规则③后语义收窄 = 席/金硬闸拒 fallback）；数值支（P48③ 统一式）登记待办已随 P25 废弃删除（2026-10-29 证明史清理,git 可溯）——数值支如重立须走新命题批；结构支（支配性支）语义由本行与 §2 现行覆盖承载。
 - **席满腾位支（C1 恒买腾位场景）**：锁定状态资格门 `core_single_card_buy_eligible(locked_buy)` 只适用于锁定状态单判（席位维下放循环内）；两分支逐卡门序 = 锁定 星级→利息档→金→席 / 恒买 金→席（全门合取可交换，席空帧零漂移）。席门（备战席满）触发 **C1 恒买腾位**（§4.0 场景表末行）：**恒买豁免价值比较**——C1 支配语义 = 跳过置换直买，核心在售即买，腾位卖出按评估器价值让位首位自然发生（候选池仅备战席 + 常规资格面 + P78-1 同 visit 不豁免；卖 1 张即止，下一决策迭代原分支原判据买入，腾位增量金成本 ≡ 0，P76 甲 1★ 全额退）。无合法腾位候选 = **显式停止并计数**（观察分组 `*_no_fuel`；骨架义务优先于裁定类买入，禁卖义务件来凑恒买）。金闸双桶细分键（A4）：金不足按「卖后可足/仍不足」计 `*_unaffordable_fundable`/`*_unaffordable_strict`，两桶均不卖不买。锁定分支尾键 `core_numeric_fail_closed` 为 for-else 收窄语义：仅循环无 break 自然走完（星级/利息档/金闸弃帧）才落，席满停止帧不落。
 - **出口键闭集**（16 键）：`{core_unlocked,core_locked,transition}×{buy_hit,seat_swap,no_fuel,unaffordable_strict,unaffordable_fundable}`（三族×五后缀；buy_hit 逐族实名 = `core_unlocked_buy_hit`/`core_dominance_buy_hit`/`transition_component_buy_hit`；键登记单一源 = 本行 + `mandate_v1/shop.py` 写点注释）+ 尾键 `core_numeric_fail_closed`（seen 帧必落 ≥1）。原 sim 判红检测器 `sim/checks/ledger.check_core_ruling_seat_violation`（写端位出口键完备性，计数式轮级回退红则 Σseen>Σ出口键）已随自驱动引擎停用拆除，考古归 git。
 
@@ -193,7 +193,7 @@ value(牌) = 变现价 + 再遇期权 + 合成进度   （金当量项，可直�
 
 ## 6. 买面设计（P55/P56/P57；原 05 全文并入）
 
-> **P55 状态（用户裁定 2026-09-04）**：阶段 2（数值判据）已撤——ΔV_2★ 经验标定属战力建模、策略核心不依赖；2★ 决策现行覆盖 = §2「2★ 决策现行覆盖」（M2b 完成买入 + P20 方向序 + 终局阵容义务），Δλ_death=P12 自有货币保留。本节 P55 相关内容自此按史实读（结构面仅史）。P56/T1 不受影响（§6.3 现行）。
+> **P55 状态（用户裁定 2026-09-04）**：阶段 2（数值判据）已撤——ΔV_2★ 经验标定属战力建模、策略核心不依赖；2★ 决策现行覆盖 = §2「2★ 决策现行覆盖」（M2b 完成买入 + P20 方向序 + 终局阵容义务），Δλ_death 自有货币口径原挂 P12（已随 P12 废弃删除,2026-10-29,git 可溯）。本节 P55 相关内容自此按史实读（结构面仅史）。P56/T1 不受影响（§6.3 现行）。
 
 ### 6.1 三问题定义（设计输入）
 
