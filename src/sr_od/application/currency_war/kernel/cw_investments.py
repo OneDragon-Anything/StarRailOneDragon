@@ -65,6 +65,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EffectKind,
     EffectSpec,
     TriggerKind,
+    UnitBuffRef,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     PLANE_NODE_TABLES,
@@ -816,6 +817,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'R-instant(披露键 strategy_salvage_plus_instant_reading);'
               '句2 金腿=STRATEGY_ECONOMY instant_gold=4 在册零动,发放端'
               '缺口=族级待办非本条目辖域'),
+    # 全队的希望:官方「处在前台1号位的我方角色获得15%伤害增幅和15%生命增幅。」
+    # (cw_invest_data.py:45,PlazaAugment 101001)。战力类零响应登记
+    # (invest_effects.md §0 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记零响应」),策略源 UNIT_BUFF 首条 = ~155 战力类
+    # 后继登记形态的模式卡。trigger 占位形对齐环境源 _portal_placeholder_spec
+    # 先例(无离散触发事件,duties 全空零消费);effect_text 经数据面表达式
+    # 单一源,版本更新改文自动跟随。
+    '全队的希望': EffectSpec(
+        id='101001', name='全队的希望',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '101001')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(策略源 UNIT_BUFF 模式卡首条);'
+              '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
