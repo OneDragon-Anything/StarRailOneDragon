@@ -127,8 +127,8 @@
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
 | 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:253)、长期主义系 gold_next_nodes_*(:215-216) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(:272) |
-| 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(cw_investments.py:549)、成长的快乐 xp_click_discount_from_level_at=8(:550-551;2026-10-22 商业间谍设计稿收口批承 T-132 裁定点 6 清偿) |
-| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(cw_investments.py:468;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
+| 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
+| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
 
 ## 6. 派生值归位与读数权威
 
@@ -431,7 +431,7 @@
 - **论断**:LEVEL_UP / while_held / BATTLEFIELD;duties = predict+respond;counter **不建**。
   被动分支(购买经验花费 −1)= 惰性读取入口(§6.2),不入存储;触发分支(升级时刷新商店 +
   偷最贵 3 张)= 升级事件驱动,偷取哪 3 张 = 随机面交由观察收尾。
-- **证据**:规格 cw_investments.py:623-628(`BattlefieldEffect(steal_on_level_up=3)`;2026-10-22 商业间谍设计稿收口批锚订正);官方
+- **证据**:规格 `STRATEGY_EFFECTS['商业间谍']`(`BattlefieldEffect(steal_on_level_up=3)`);官方
   原文 cw_invest_data.py:244「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个
   角色。」
 - **推理链**:降价是持有期常数,读时消费(观察优先两支,§6.2)→ 无累计量;升级事件
@@ -501,7 +501,7 @@
    (node-derivation.md) 场景走查)。
 6. **连胜联动类 counter 有无**:记录形态两案(§5 表)——counter 空(连胜流为既有
    观察面)或按连胜事件 +1;该类在用无规格条目(关联字段 win_reward_mult/
-   difficulty_per_streak 注册行在册 `cw_investments.py:468`,消费直读注册表不经
+   difficulty_per_streak 注册行在册 `STRATEGY_ECONOMY['伟大征服']`,消费直读注册表不经
    效果清单——倍率走聚合+统一公式、难度走 M19 直读,规格条目无消费面),
    建模批到达时先裁后建。
 7. **免费刷新余额上限**:设计按无上限处理(不建封顶逻辑);实采观察核对大额授予时
