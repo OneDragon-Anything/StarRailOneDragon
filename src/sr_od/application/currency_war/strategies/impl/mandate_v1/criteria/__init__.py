@@ -60,8 +60,6 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('refresh', 'r2_card_reserve'): (
         '状态函数', '不旁路', 'R2 预留 ρ 单一源(停留目标实费档;'
         '锁定支恒有值,未锁窗口恒 0)'),
-    ('refresh', 'hard_node_reinforce_gate'): (
-        '门', '旁路=门关闭', 'D-D(硬节点补强门,消费面 r1/candidates 均臂①旁路)'),
     # —— criteria/stockpile(01_math_framework §3.5;档匹配谓词/V_comp 表在 statefn/vopt)——
     ('stockpile', 'stockpile_buy'): (
         '发射位', '旁路', 'R2-2 原判'),

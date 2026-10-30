@@ -235,9 +235,6 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
         'r2 不在硬约束③ S 预留拦截对象列)',
         'ZERO_REFRESH_DIAG §3 第 3 条(规格辖域)+01_math_framework §3.4'),
-    ('refresh', 'hard_node_reinforce_gate'): Contract(
-        None, 'D-D 硬节点补强门(结构门,数值加权挂标定批)',
-        'D-D 修复池(原文考古走 git 历史;现行=本判据)'),
     ('refresh', 'r2_card_reserve'): Contract(
         None, 'R2 预算门卡价预留 ρ 单一源(停留目标实费档现读纯函数;'
         '锁定支恒有值,未锁窗口恒 0——两分支口径分行声明)',

@@ -3,10 +3,7 @@
 刷新链三组件定型:判据(:func:`refresh_warranted`,三段式查表 +
 目标可买合取)→ 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve`
 供给,调用方装配)→ 发射。:func:`target_buyable` = 目标可买三腿
-并集判定尺(判据与免费刷新分支共吃,禁第二实现)。D-D(硬节点备战
-补强门)落点:``hard_node_reinforce_gate`` 按节点类型(遭遇/boss)
-接线 P26 备战门 + P40 刷新门的语境输入(共根组 2:威胁语境进决策
-输入)。
+并集判定尺(判据与免费刷新分支共吃,禁第二实现)。
 """
 from __future__ import annotations
 
@@ -17,9 +14,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
-
-# 硬节点类型(节点行识别词;D-D 语境维)
-HARD_NODE_TYPES: frozenset[str] = frozenset({'encounter', 'boss'})
 
 
 def refresh_warranted(state: GameState,
@@ -168,21 +162,6 @@ def _candidate_members(comp_name: str, state: GameState) -> tuple[str, ...]:
 def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
     """付费刷新预算门(r2;分支①=门关闭)。金−预留 ≥ 刷价才批。"""
     return gold - reserve >= refresh_cost
-
-
-def hard_node_reinforce_gate(node_type: str | None, gold: int,
-                             floor_gold: int) -> tuple[bool, str]:
-    """D-D 硬节点备战补强门(P26 备战门+P40 刷新门按节点类型接线)。
-
-    下一节点 ∈ HARD_NODE_TYPES ∧ 金 ≥ 保利息下界 ⇒ 放行补强意图
-    (定向 D 缺档件/治疗件);非硬节点 ⇒ 关。Δp_prep 挂标定
-    (标定前形态 = 结构门,数值加权随标定批)。
-    """
-    if node_type not in HARD_NODE_TYPES:
-        return False, 'not_hard_node'
-    if gold < floor_gold:
-        return False, 'gold_below_floor'
-    return True, ''
 
 
 def _entry_cid(x: object) -> str:

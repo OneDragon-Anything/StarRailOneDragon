@@ -90,7 +90,7 @@
 |---|---|---|---|
 | 行头 | —(身份与 join key) | schema_version / ts / run_id / difficulty / plane / round_num / strategy_id / ev_arm | 字段集沿用;**schema_version 取新文件自带独立版本常量**(定案 C7:初值 1,命名随落地批惯例对齐 `*_SCHEMA_VERSION` 先例,不动 telemetry/schema.py 模块级共用常量,见 §9) |
 | 钉 | ① state_ref 版本钉 | state_ref | 沿用(既有在用语义;历史档案钉面标记判读见 §8-2) |
-| 策略记忆 | ② 策略自身记忆 | **cw4_counters(新增,本设计核心)** + sess_* 披露族(成员封闭清单 = §2.4)+ v2_mode / v2_locked_line / v2_bridge / form_ok / b_t / formed_stop / piggy_reward / xp_expect_ledger / expected_paths / p26_prep_obs / shop_rejects / supply_pick | cw4_counters 新增(§3-§5,**首批发射**);披露族沿用在用字段语义、不改名不搬位,**首批发射不含、按消费需求逐批接线**(定案 C4,§2.4);其余沿用在用字段语义,不改名不搬位 |
+| 策略记忆 | ② 策略自身记忆 | **cw4_counters(新增,本设计核心)** + sess_* 披露族(成员封闭清单 = §2.4)+ v2_mode / v2_locked_line / v2_bridge / form_ok / b_t / formed_stop / piggy_reward / xp_expect_ledger / expected_paths / shop_rejects / supply_pick（p26_prep_obs 已随 P26 废弃删除,2026-10-29,git 可溯） | cw4_counters 新增(§3-§5,**首批发射**);披露族沿用在用字段语义、不改名不搬位,**首批发射不含、按消费需求逐批接线**(定案 C4,§2.4);其余沿用在用字段语义,不改名不搬位 |
 | 决策记录 | ③ 决策函数关键记录 | target_comp / candidate_scores / eval_breakdown / v3_intention / handoff / sess_p1_pair / dp_posture / posture_unfulfilled | 沿用 |
 | 动作 | ④ 动作 op | actions(逐项附 reason,归因键序单一源 = ACTION_REASON_SOURCE_KEYS) | 沿用 |
 | 停用面 | —(不入新文件) | state(全量快照 dict)/ hp / gold / hp_readable / gold_readable / level_readable / active_strategies / refresh_trigger / form_score / phase | 不发射(§2.3 逐项判据) |

@@ -43,11 +43,6 @@ RHO_SHOP_OBS_FIELDS: tuple[str, ...] = ('systems', 'pair', 'n_shop')
 """shop_snapshots 行 ``rho_obs`` 键面单一源(测试面;语义见 rho_shop_obs)。"""
 
 
-P26_PREP_OBS_FIELDS: tuple[str, ...] = ('node_type_next',)
-"""decisions 行 ``p26_prep_obs`` 键面单一源(P26 采集批测试面;语义见
-DecisionTrace.p26_prep_obs 注)。禁第二语义键——键集扩条只改本元组。"""
-
-
 def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
     """shop 单帧 ρ 实测分子:各体系「当前可买且对 form 有贡献」的在店件数。
 
@@ -463,21 +458,6 @@ class DecisionTrace:
     # 决策基于含期望推进值的画面。可选末尾追加字段,旧记录缺省 None 不破坏
     # schema。
     expected_paths: list[dict[str, Any]] | None = None
-    # —— P26 备战帧无条件采集(math_proofs P26 双登记采集批;纯观测零行为)——
-    # 19 号稿 §2.3-4 裁定:P26 标定样本面须另立采集点(备战帧无条件采样),
-    # 非 D-D 尾部帧计数位。本字段 = 该采集点:每备战决策帧一行平铺
-    # ``node_type_next``(下一节点类型标签 = P26 的 L_node 标签维度;来源
-    # 单一源 = 位面节点台账 ``cw_state.ledger_node_type`` 同源读链,即
-    # flow 掉血回落同表;**原始 token 不映射不猜**——battle/encounter/boss/
-    # elite/supply/reward/...,查不到 = '' 诚实缺省,分桶映射归离线标定批)。
-    # 键面单一源 = ``P26_PREP_OBS_FIELDS``;禁第二语义键。
-    # hp 边界(00_framework §3 硬闸门):本钩子**不采任何 hp/战力量**——
-    # L_node 分位口径(条件败面伤害尾部)走既有结算三项遥测授权面
-    # (outcomes 行 damage_base/damage_unfinished_progress/hp_after),
-    # 本批只申报离线 join,不加新 hp 读链。
-    # None = 无 match 注册(离线/测试缺省);dict 且 node_type_next='' =
-    # session 在场但台账未命中(不猜)。可选末尾追加字段,旧记录缺省 None。
-    p26_prep_obs: dict[str, Any] | None = None
     # —— 统一state R4 策略侧遥测演进(策略侧 state_ref 版本钉;
     # 返工方案 A 钉读点 = 决策读取完成时点)——
     # 决策行关联流程侧账本版本钉:``state_ref = '{run_id}#{v}'``,v =

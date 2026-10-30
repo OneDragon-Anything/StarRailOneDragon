@@ -88,7 +88,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     level_of,
     max_units_of,
-    node_kind_of,
     plane_of,
     round_num_of,
     shop_payload_content_cards,
@@ -2087,16 +2086,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if _zone_hit:
                     _count('must_spend_r1_budget_fail')
                 _st.refresh_blocked = _block_key
-
-    # ---- D-D 硬节点补强门消费(观察级接线,现行)----
-    _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(
-        node_kind_of(gs), gold_of(gs), g_star) \
-        if contracts.ensure_contract(
-            ('refresh', 'hard_node_reinforce_gate'),
-            contracts.ContractCtx(gold=gold_of(gs)), counters) \
-        else (False, '')
-    if _gate_open:
-        _count('shop_hard_node_gate_open')
 
     # ---- 收工(§2.5)----
     return _session_close(gs, _st, counters)
