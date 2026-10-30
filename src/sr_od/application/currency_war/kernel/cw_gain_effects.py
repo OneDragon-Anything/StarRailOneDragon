@@ -183,7 +183,9 @@ def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
 #: 与披露键、不动结构;键形态沿骇客/晶矿同区先例):
 #: - uniform: 费用档注册池内均匀 v0(游戏真分布未知,是否受牌库剩余约束
 #:   未证;校准源 = logic_rand_outcome 行按效果串前缀 ``strategy_gift_
-#:   random:`` 归组);
+#:   random:`` 归组;「随机」字样缺席的卡(扩充团队:desc 明写各档数量、
+#:   构成零随机仅进席身份随机)同键覆盖——先验依据 = fields.md 效果发牌
+#:   族随机组正本定性 + RandomCharSpec docstring 先验语义);
 #: - star_prior: desc 未标星 → star=1 先验非结构值(实机直出高星时 bench
 #:   观察星级覆盖模型值,随机态不响灯);
 #: - with_replacement: 4 抽放回假设申报(实机放回性证据缺,归档帧/实采
@@ -194,15 +196,20 @@ REINFORCEMENT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'strategy_gift_random_char_with_replacement',
 )
 
-#: 援军族发放表单一源(卡规范名 → (费用档, 名数);卡文「获得N个随机
-#: X费角色」直读,本卡 = 模式卡,姊妹卡三费援军/四费援军逐字同构仅费用
-#: 档异,展开批各 +1 行零新设计)。效果体条目由下方工厂从本表生成,禁
-#: 另写字面量(箱腿先例同纪律:表与效果体两处独立字面量的漂移在备战
-#: 断言不可见,唯一致性测试与落位真值可暴露)。
-_STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[int, int]] = {
-    '二费援军': (2, 4),
-    '三费援军': (3, 4),
-    '四费援军': (4, 4),
+#: 援军族发放表单一源(卡规范名 → (费用档, 名数) 对序列;单档卡写单对
+#: 字面 = 一档发放,多档混合卡按卡文语序逐对排列)。卡文「获得N个随机
+#: X费角色」直读单对;多档混合卡(扩充团队「获得2个1费角色，2个2费角色
+#: 和1个3费角色」)各档数量与费用档全为 desc 明写结构值——发放的档位×
+#: 数量构成零随机,随机面仅在各档池内的进席身份(抽样先验例外,uniform
+#: 披露键载义)。掷序 = 表内对序:工厂按对序循环、同 rng 实例顺序推进,
+#: 非「按费用排序」隐式重排(隐式排序会随卡文语序漂移)。效果体条目
+#: 由下方工厂从本表生成,禁另写字面量(箱腿先例同纪律:表与效果体两处
+#: 独立字面量的漂移在备战断言不可见,唯一致性测试与落位真值可暴露)。
+_STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[tuple[int, int], ...]] = {
+    '二费援军': ((2, 4),),
+    '三费援军': ((3, 4),),
+    '四费援军': ((4, 4),),
+    '扩充团队': ((1, 2), (2, 2), (3, 1)),
 }
 
 
@@ -229,20 +236,21 @@ def roll_reinforcement_names(rng: random.Random, cost: int,
     return [rng.choice(pool) for _ in range(count)]
 
 
-def _make_reinforcement_effect(cost: int,
-                               count: int) -> Callable[..., list[str]]:
-    """援军族效果体工厂(闭包销 = (费用档, 名数),单源取自
+def _make_reinforcement_effect(
+        pairs: tuple[tuple[int, int], ...]) -> Callable[..., list[str]]:
+    """援军族效果体工厂(闭包销 = (费用档, 名数) 对序列,单源取自
     :data:`_STRATEGY_REINFORCEMENT_GRANTS`;形态镜像 _make_box_grant_effect)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
-    cw_gain_chain.on_strategy_gained)。逐名采样 → ``gain_character``
-    入席:采样效果对子链传 rand=True(gain-chain.md §5 效果自身性质
-    传参),升星级联(单级 3 合 1)/席满溢出/bench 未观察拒落全部沿链
-    现役记账。星级 1 = desc 未标星的句式先验(先验错走随机态观察覆盖,
-    不响灯)。效果串 = ``strategy_gift_random:<名>@1star``,前缀 + @
-    后缀一体登记——@ 后缀 = 随机态校准数据归组键,只断前缀会漏校准
-    分组;发放事实与落位成败解耦,效果串恒 count 条(on_env_gained
-    赠卡通道同口径)。
+    cw_gain_chain.on_strategy_gained)。外层按表内对序循环,逐档
+    ``roll_reinforcement_names`` 采样 → 逐名 ``gain_character`` 入席:
+    同一 rng 实例跨档顺序推进不重置(掷序契约,改序 = 掷序漂移);采样
+    效果对子链传 rand=True(gain-chain.md §5 效果自身性质传参),升星
+    级联(单级 3 合 1)/席满溢出/bench 未观察拒落全部沿链现役记账。星级
+    1 = desc 未标星的句式先验(先验错走随机态观察覆盖,不响灯)。效果串
+    = ``strategy_gift_random:<名>@1star``,前缀 + @ 后缀一体登记——
+    @ 后缀 = 随机态校准数据归组键,只断前缀会漏校准分组;发放事实与落位
+    成败解耦,效果串恒 Σcount 条(on_env_gained 赠卡通道同口径)。
     """
 
     def _effect(gs: GameState, *, sig: ChannelSig,
@@ -253,11 +261,12 @@ def _make_reinforcement_effect(cost: int,
             gain_character,
         )
         steps: list[str] = []
-        for name in roll_reinforcement_names(rng, cost, count):
-            gain_character(gs, name, 1, rand=True, sig=sig,
-                           evidence='pick_invest_reinforcement',
-                           producer=_PRODUCER)
-            steps.append(f'strategy_gift_random:{name}@1star')
+        for cost, count in pairs:
+            for name in roll_reinforcement_names(rng, cost, count):
+                gain_character(gs, name, 1, rand=True, sig=sig,
+                               evidence='pick_invest_reinforcement',
+                               producer=_PRODUCER)
+                steps.append(f'strategy_gift_random:{name}@1star')
         return steps
 
     return _effect
@@ -416,8 +425,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
        for name, item in _STRATEGY_BOX_GRANTS.items()},
-    **{name: _make_reinforcement_effect(cost, count)
-       for name, (cost, count) in _STRATEGY_REINFORCEMENT_GRANTS.items()},
+    **{name: _make_reinforcement_effect(pairs)
+       for name, pairs in _STRATEGY_REINFORCEMENT_GRANTS.items()},
     **{name: _make_random_equip_effect(count)
        for name, count in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
     **{name: _make_delayed_offer_effect(name)
