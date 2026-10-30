@@ -997,6 +997,17 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     """部署调整步(工序第 6 步;22 号篇 §1 第 6 步;部署面判据照旧,
     判据本体不改动,仅调用时机移到商店会话之后)。
 
+    动作生成消费部署选人纯函数(统一让位优先级迭代 3.1 结构抽取,
+    判据零改动,契约 = changes/2026-10-29-unified-priority/details/
+    acquisition-and-sell.md §1):先经 ``mandate.select_deployment``
+    求部署定型名集(目标态),目标态 == 现板 = 部署已定型零动作;
+    diff 非空帧按下列三臂发射(发射器与臂内判据零改动,回归由现行
+    部署测试守)。行为申报:动作序列与定型收敛逐位同旧;定型帧不再
+    触达换阵发射器——其计划空分键(m1p_plan_empty 族/abstain 键)与
+    「窗口拦全」帧的 deploy_emit_held 分键不再写入(遥测覆盖面收窄
+    至有 diff 帧,键语义不变);cw4_m1p_*_pending 在定型帧同步复位
+    (与现行发射器无发射分支的帧级复位语义一致)。
+
     结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
     M1 空槽补位结构性收敛**——十段全扫单动作循环下第 4 步命中即
     emit 返回,升级帧到不了本步;下帧全扫 deploy_vacancy 更新后 M1
@@ -1012,6 +1023,18 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     终局重叠件按过渡成员正常上阵;全局累积型例外 = entry_signals 的
     always_on 信号类。
     """
+    # 部署定型名集一次求取(生产装配 = 容器/session 读口现取;三臂门
+    # 与选人判据核心 = mandate.select_deployment 纯函数单一源,本步
+    # 只承载动作发射)。
+    prep = mandate.assemble_prep_context(session, gs, frame)
+    target = mandate.select_deployment(frame, prep)
+    current = {d.char_id for d in frame.deployed
+               if d is not None and d.char_id}
+    if target == current:
+        st = state_of(session)
+        st.cw4_m1p_arm_pending = None
+        st.cw4_m1p_plan_pending = None
+        return []
     out: list[Emitted] = []
     deploy_intent_emitted = False
     # M5 开局板(开局配方 = 过渡体系开局)。

@@ -27,6 +27,7 @@ D-dup 谓词 = mandate_v1 deploy_plan.has_deployable 同源去重,发出×执行
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -1639,6 +1640,213 @@ def emit_swap_redeploy(frame: MandateFrame, session: StrategySession,
         _st.cw4_m1p_arm_pending = None
         _st.cw4_m1p_plan_pending = None
     return out
+
+
+# ============================================================
+# 部署选人纯函数接口(统一让位优先级迭代 3.1 结构抽取,判据零改动;
+# 契约 = changes/2026-10-29-unified-priority/details/acquisition-and-sell.md §1)
+# ============================================================
+
+
+@dataclass(frozen=True)
+class PrepContext:
+    """部署选人上下文装配(:func:`select_deployment` 的只读输入面)。
+
+    字段面按现行选人核心的实际读面反向枚举冻结(acquisition-and-sell
+    §1);每个字段注明现行读口。生产装配 = :func:`assemble_prep_context`
+    (容器/session 读口一次现取,取值语义与现行散读逐一对齐);虚拟
+    重算 = 调用方按同语义自构(虚拟 MandateFrame + 同源字段值)。
+    装配后只读约定;部署缺口/容量不设字段——读 frame 本体
+    (deploy_vacancy/deploy_cap,生产装配 = entry.emit 装配段经
+    max_units_of 容器派生链写入,同源同值)。
+    """
+
+    target_comp: object | None
+    """现行读口 = state_of(session).target_comp(deploy_plan.
+    _deploy_plan_inputs 同源;None = 无方向帧)。"""
+    transition_framework: str
+    """现行读口 = state_of(session).transition_framework
+    (deploy_target_sets 第二参,缺省 '' 同现行 `or ''` 读法)。"""
+    board_counts: dict[str, int]
+    """现行读口 = gs.board.value 字典现读(dict(state.board.value
+    or {});部署选人的 board 羁绊计数面)。"""
+    deploy_cap: int
+    """现行读口 = kernel max_units_of(gs)(M5/M1 选人 cap 参数现行读口;
+    与 frame.deploy_cap 生产装配同链同值——entry.emit 装配段同源)。"""
+    locked_factions: frozenset[str]
+    """现行读口 = cw_intention.locked_faction_scope(ist)(锁定帧体系键
+    围栏放行集;None 读数归一空集,同现行)。"""
+    recipe_floor_lock_exempt: bool
+    """现行读口 = cw_intention.locked_line_recipe_floor_conflict(ist)
+    (配方底线门锁定线语境豁免武装位;异常 fail-closed False,同
+    mandate._deployable 现行读法)。"""
+    window_blocked_names: frozenset[str]
+    """现行读口 = entry._deploy_window_blocked 对本 frame bench 名域的
+    装配时冻结值(上阵窗口适用范围;谓词本体单一源在 entry 不复制,
+    本集只冻结取值——同帧内谓词读数恒定,冻结不改变语义)。"""
+    swap_ctx: SwapPlanContext | None
+    """现行读口 = kernel assemble_swap_plan_inputs 装配产物(M1″ 换阵
+    计划输入,cap 参数传 frame.deploy_cap 同现行 emit_swap_redeploy;
+    None = 装配不可得,与现行同弃权语义)。"""
+
+
+def assemble_prep_context(session: StrategySession, gs: GameState,
+                          frame: MandateFrame) -> PrepContext:
+    """PrepContext 生产装配(容器/session 读口一次现取)。
+
+    各字段取值与现行选人核心的散读逐一对齐:target_comp/
+    transition_framework/v3_intention 读 mandate_state.state_of,
+    cap 读 max_units_of,board 读容器字典,窗口拦截集经现行谓词
+    ``entry._deploy_window_blocked`` 逐名求得(懒 import 防 import 环,
+    mandate ↔ entry 互调现行先例),换阵计划输入经 kernel 装配单一
+    源(与 emit_swap_redeploy 同函数同参形态)。"""
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assemble_swap_plan_inputs,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        max_units_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        locked_faction_scope,
+        locked_line_recipe_floor_conflict,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        entry,
+    )
+    st = state_of(session)
+    _ist = getattr(st, 'v3_intention', None)
+    try:
+        _rf = locked_line_recipe_floor_conflict(_ist)
+    except Exception:   # noqa: BLE001  豁免语境 best-effort:fail-closed
+        _rf = False
+    blocked = frozenset(
+        name for name in frozenset(frame.bench_names) - {''}
+        if entry._deploy_window_blocked(session, gs, name))
+    return PrepContext(
+        target_comp=getattr(st, 'target_comp', None),
+        transition_framework=getattr(st, 'transition_framework', '') or '',
+        board_counts=dict(gs.board.value or {}),
+        deploy_cap=max_units_of(gs),
+        locked_factions=(locked_faction_scope(_ist) or frozenset()),
+        recipe_floor_lock_exempt=_rf,
+        window_blocked_names=blocked,
+        swap_ctx=assemble_swap_plan_inputs(
+            session, state=gs,
+            deployed=list(frame.deployed),
+            bench=list(frame.bench), cap=frame.deploy_cap),
+    )
+
+
+def _prep_windowed_select_up(
+        blocked: frozenset[str]
+) -> Callable[..., tuple[list[int], list[int], dict[int, str]]]:
+    """select_swap_plan 的 select_up 注入(纯形态)。
+
+    entry._make_windowed_select_up 的冻结值镜像:过滤形状逐位同构
+    (窗口未到件从 up 集移入 held,不进拒因闭集),窗口谓词取值 =
+    ``blocked`` 冻结集(装配时经现行谓词对 frame.bench 名域求得;
+    select_swap_plan 注入调用传注的 bench = ctx.bench,装配源 =
+    frame.bench,与冻结集同名域)。"""
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        _slot_cid,
+        select_deployments_reasoned,
+    )
+
+    def _select_up(b: list[BenchSlot], **kwargs) -> tuple[
+            list[int], list[int], dict[int, str]]:
+        up, held, reasons = select_deployments_reasoned(b, **kwargs)
+        kept = [i for i in up if _slot_cid(b[i]) not in blocked]
+        if len(kept) == len(up):
+            return up, held, reasons
+        dropped = sorted(set(up) - set(kept))
+        return kept, list(held) + dropped, reasons
+
+    return _select_up
+
+
+def select_deployment(frame: MandateFrame,
+                      prep: PrepContext) -> frozenset[str]:
+    """部署定型名集(目标态求取纯函数;acquisition-and-sell §1 契约)。
+
+    输入局面快照(frame)+ 选人上下文装配(prep),返回「部署算法定型
+    的在场角色名集」。生产路径(entry._step5_deploy 动作生成)与虚拟
+    路径(获取角色流程的虚拟重算)消费同一函数;零遥测零 journal——
+    副本零写入三通道红线由纯函数形态天然承载。
+
+    臂序与判定核心与现行 _step5_deploy 三臂同源(判据零改动):
+    - M5 开局配方(round_num ≤ 1 ∧ 板空 ∧ bench 有件);
+    - M1 空槽补位(deploy_vacancy > 0);
+    - M1″ 板满换阵(目标完成集 = (板 − 计划 sell) ∪ 计划 up)。
+    判据单一源:选人 = deploy_plan.select_deployments_reasoned(围栏/
+    配方底线/cap/同名去重全在函数内);窗口过滤 = prep 冻结集(现行
+    谓词装配时取值);换阵 = kernel select_swap_plan + build_swap_
+    group_order 序参数,select_up 注入窗口过滤(同现行 _make_windowed_
+    select_up 形态)。
+
+    语义定案(acquisition-and-sell §1):本函数回答目标态,不模拟换阵
+    路径——板满换阵的多帧单对发射仍归现行 emit_swap_redeploy,发射
+    侧帧级闸(seam 门/升级推迟/P79-3 放行/复算撤计划)不进目标态,
+    目标态 = 换阵计划的收敛完成集;计划空/弃权/装配不可得帧目标态 =
+    现板名集(部署定型不变)。"""
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        deploy_target_sets,
+        deployed_bond_counts,
+        select_swap_plan,
+        swap_plan_up_names,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        _slot_cid,
+        build_swap_group_order,
+        select_deployments_reasoned,
+    )
+    deployed_names = {d.char_id for d in frame.deployed
+                      if d is not None and d.char_id}
+    # select_deployments 同参装配(与 deploy_plan._deploy_plan_inputs
+    # 键面逐一对齐;取值源 = prep 冻结字段,语义见 PrepContext 字段注)。
+    _tgt, _fw_carry = deploy_target_sets(
+        prep.target_comp, prep.transition_framework)
+    inputs = {
+        'bench': frame.bench,
+        'deployed_cids': deployed_names,
+        'deployed_fac': deployed_bond_counts(deployed_names),
+        'board': dict(prep.board_counts),
+        'cap': prep.deploy_cap,
+        'target_factions': _tgt,
+        'target_cores': set(getattr(prep.target_comp, 'core_chars', None)
+                            or ()),
+        'fw_carry': _fw_carry,
+        'locked_factions': prep.locked_factions,
+        'recipe_floor_lock_exempt': prep.recipe_floor_lock_exempt,
+        'required_names': frozenset(
+            getattr(prep.target_comp, 'required_deployed', ()) or ()),
+    }
+    blocked = prep.window_blocked_names
+    # M5 开局配方(现行 _step5_deploy 臂 1 同门)。
+    if frame.round_num <= 1 and not frame.deployed and frame.bench:
+        up, _held, _reasons = select_deployments_reasoned(**inputs)
+        kept = [i for i in up if _slot_cid(frame.bench[i]) not in blocked]
+        if kept:
+            return frozenset(_slot_cid(frame.bench[i]) for i in kept)
+    # M1 空槽补位(现行臂 2 同门;M5 有选人而窗口拦全帧落到本臂重判,
+    # 与现行「M5 零发出 → M1 续判」的穿落一致)。
+    if frame.deploy_vacancy > 0:
+        up, _held, _reasons = select_deployments_reasoned(**inputs)
+        kept = [i for i in up if _slot_cid(frame.bench[i]) not in blocked]
+        if kept:
+            return frozenset(
+                deployed_names | {_slot_cid(frame.bench[i]) for i in kept})
+    # M1″ 板满换阵(现行臂 3;计划内部自带板满门/义务排除/弃权闭集,
+    # 计划空 = 目标态不变)。
+    if prep.swap_ctx is not None:
+        plan = select_swap_plan(
+            prep.swap_ctx,
+            select_up=_prep_windowed_select_up(blocked),
+            group_order=build_swap_group_order(prep.swap_ctx))
+        if plan.nonempty:
+            return frozenset(
+                (deployed_names - set(plan.sell_names))
+                | set(swap_plan_up_names(plan, prep.swap_ctx)))
+    return frozenset(deployed_names)
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:

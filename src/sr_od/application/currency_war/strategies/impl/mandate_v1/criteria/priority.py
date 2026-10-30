@@ -1,0 +1,343 @@
+"""criteria/priority——角色统一让位优先级判据件(唯一排序判据源)。
+
+规格单一源 = ``changes/2026-10-29-unified-priority/details/priority-model.md``
+(八档判定表 §2 / 档内键表 §3 / 在手旗标与随机尾键 §4 / 卖出取用形态 §5);
+总纲 = 同目录 design.md §2.1。全部卖出/获取消费点(获取角色流程、溢出、
+凑钱凑位、补给选角色)只消费本模块 :func:`sort_key` / :func:`sell_order`,
+禁第二排序实现(总纲 §2.9 接口契约 1)。
+
+核心模型(总纲 §2.0):部署先行,优先级服务于让位——部署算法定型档 1,
+排序作用于部署定型后的局面,回答「手里这些牌谁该让路」。让路方向 =
+key 大者先卖(档位编号大 = 优先级低 = 先卖,与总纲 §2.1 一致);因此
+各档内「后卖」类属性(总星级数多/单卡星级高)在键里取负号、先卖类属性
+(档 8 概率高/低费)取正号。
+"""
+from __future__ import annotations
+
+import random
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.levelup import (
+    stay_target_of,
+    unfinished_star_targets,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
+    CROSS_LINE_KEEP_NAMES,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
+    LineMembersView,
+    direction_comp_of,
+    line_members_view,
+)
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+    )
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        StrategySession,
+    )
+
+#: 排序键 = (档位, *档内子键, 在手旗标, 随机尾键),字典序比较;
+#: 同档子键定长,跨档比较在档位分量即分出(元组比较短路,无跨型比较)。
+PriorityKey = tuple[int | float, ...]
+
+#: 档 7 羁绊名单(用户拍板,design §2.1 档 7 / priority-model §2;
+#: 巨星独特加成/敌人受伤提高+同频/护盾强度+伤害增幅/敌人挂离火)。
+#: 成员判定 = 角色自报 factions/flows 与本名单求交(单一真相源 =
+#: data/cw_factions.py FACTIONS 键 × cw_chars 自报,成员关系派生)。
+TIER7_BOND_NAMES: frozenset[str] = frozenset(
+    {'盛会之星', '量子同频', '护盾', '减益'})
+
+
+@dataclass(frozen=True)
+class HeldUnit:
+    """手持牌(场上/备战位统一形态;priority-model §1)。"""
+
+    name: str
+    """角色规范名(注册表键空间)。"""
+    star: int
+    """该副本星级。"""
+    slot: int
+    """[索引定义] 持牌容器的槽位表下标(备战位槽位表或上场行域,0 基);
+    取值时机 = 生成期快照。判据不消费此键(等价牌的卖出序由随机尾键
+    承载,槽位号兜底会引入「先买的先卖」系统性偏差,已拍板废弃)。"""
+    deployed: bool
+    """是否在部署定型内(场上)。"""
+
+
+@dataclass(frozen=True)
+class ShopUnit:
+    """商店/补给候选牌(在手旗标恒 = 将获取;priority-model §1)。"""
+
+    name: str
+    """角色规范名(注册表键空间)。"""
+    star: int
+    """牌面星级。"""
+    cost: int
+    """牌面费用档(店卡自报值;变费卡升费后店卡按当前档出现)。"""
+
+
+@dataclass(frozen=True)
+class PriorityContext:
+    """排序所需只读输入的装配体(一次性装配,禁散参;priority-model §1)。
+
+    九项输入对应 priority-model §1 清单(持牌全量快照/部署在场名集/
+    锁定线名单视图/候选快照/过渡配方对成员/当前升星目标/必要星级表/
+    当前等级/随机流),另含 §3 档 2/3/5 档内序数键的迁移期载体
+    ``member_rank``(总纲 §2.1.1 迁移期形态 = core 0/其余 1,逐角色
+    精调归下一迭代外溢)。字段容器按装配后只读约定使用。
+
+    聚合谓词口径:档 2/5/6/7 的「持有最高星/总星级数/名下有无副本」
+    均消费 ``held_copies`` 全量快照(备战位 ∪ 前后台),与池子过滤无关
+    ——池子过滤只决定哪些牌进入排序输出,聚合判定永远看全量。
+    """
+
+    held_copies: dict[str, list[int]]
+    """①持牌全量快照:角色名 → 该名全部副本星级列表(读源 = 备战位 ∪
+    前后台一次只读取,:func:`held_copies_of`)。"""
+    deployed_names: frozenset[str]
+    """②部署在场名集(档 1 判定输入;读源 = 部署接口
+    ``mandate.select_deployment`` 输出,接口契约见
+    details/acquisition-and-sell.md §1)。"""
+    line_view: LineMembersView
+    """③锁定线名单视图(读口 = session_scope.line_members_view;
+    锁定帧档 2/3/5 名单 = members,未锁定帧 = 空名单)。"""
+    candidate_members: frozenset[str]
+    """④候选快照成员并集(读口 = StrategyState.line_candidates 三线经
+    COMP_LIBRARY 成员展开 core ∪ shared;未锁定帧档 2/3/5 名单的候选支;
+    锁定帧候选快照恒空集,锁定写入时已清空停算)。"""
+    recipe_members: frozenset[str]
+    """⑤过渡配方对成员(读口 = 未锁定帧 direction_comp_of 回落
+    opening_recipe_comp 的 core ∪ shared;P1 即清空,进 P2 后读口恒
+    None = 本集恒空——kernel 配方支清空写点 = cw_intention.clear_p1_
+    recipe;锁定帧不适用,锁定终局阵容即退出条件之一)。"""
+    stay_target: tuple[str, int, int] | None
+    """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
+    criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
+    None = 未锁定窗口/无未完成目标,档 4 为空)。"""
+    need_star_by_member: dict[str, int]
+    """⑦必要星级表(读口 = 锁定帧 unfinished_star_targets 现役单一源;
+    未锁定帧 = 候选三线知识卡 need_star 字段 COMP_LIBRARY 直查、命中
+    各线取最大值)。表外成员 = 1(无升星要求;判定端缺省,含过渡配方
+    物化对象等不在 COMP_LIBRARY 的名字)。"""
+    member_rank: dict[str, int]
+    """档内优先级序数表(§3 档 2/3/5 ①键迁移期载体):成员名 → 序数,
+    core 命中任一活性线 = 0、其余 = 1,过渡配方成员统一 1(总纲
+    §2.1.1);跨线成员取最高 = core 并集命中即 0。表外成员判定端
+    缺省 1。"""
+    level: int
+    """⑧当前等级(档 8 概率查表键 refresh_prob(level, cost))。"""
+    rng: random.Random
+    """⑨随机流(档内等价牌的随机尾键;策略器自有随机流
+    StrategySession.rng 直用,构造时按 strategy_seed 播种,同 seed
+    同序——priority-model §4 定案,不新增派生设施)。"""
+
+
+def held_copies_of(gs: GameState) -> dict[str, list[int]]:
+    """持牌全量快照(备战位 ∪ 前后台一次只读取;priority-model §1 读源)。
+
+    返回角色名 → 该名全部副本星级列表(同名跨星全部副本参与聚合,
+    落档边界的「名下最高星/总星级数」以角色名为聚合键)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        deployed_rows_of,
+    )
+    copies: dict[str, list[int]] = {}
+    front, back = deployed_rows_of(gs)
+    for u in (*bench_units_of(gs), *front, *back):
+        if u is None or not u.char_id:
+            continue
+        copies.setdefault(u.char_id, []).append(int(u.star or 1))
+    return copies
+
+
+def assemble_priority_context(
+        session: StrategySession,
+        gs: GameState,
+        *,
+        deployed_names: frozenset[str],
+        held_copies: dict[str, list[int]] | None = None,
+        rng: random.Random | None = None) -> PriorityContext:
+    """PriorityContext 生产装配(session/gs 读口一次现取)。
+
+    ``deployed_names`` = 部署接口输出(消费位先经
+    ``mandate.select_deployment`` 求目标态);``held_copies`` 缺省 =
+    容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
+    ``rng`` 缺省 = session.rng(策略随机语义单一源)。
+
+    两态名单装配(priority-model §2 档 2 名单源):锁定帧 = 锁定线
+    名单,need_star 表取 ``unfinished_star_targets``(现役消费单一源,
+    仅此帧适用——表只含未达标成员,达标成员判定端按缺省 1 自然落
+    档 8);未锁定帧 = 候选三线并集 ∪ 过渡配方成员,need_star 取命中
+    各线最大值(保守方向)。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_game_state import level_of
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        state_of,
+    )
+    view = line_members_view(gs)
+    # 方向状态宿主 = gs.strategy_state(与 line_members_view 同宿主;
+    # 生产由 cw_strategy 状态 setter 同源接线,session/gs 同一对象——
+    # 装配面统一读 gs 侧,禁两宿主混读出同帧两份方向态)。
+    st = state_of(gs)
+    members: set[str] = set()
+    cores: set[str] = set()
+    need_star: dict[str, int] = {}
+    candidate_out: frozenset[str] = frozenset()
+    if view.locked:
+        members = set(view.members)
+        comp = get_comp(view.comp_name) if view.comp_name else None
+        cores = set(getattr(comp, 'core_chars', None) or ())
+        need_star = {name: int(need) for name, need, _cost
+                     in unfinished_star_targets(gs)}
+        # 锁定帧候选快照照读口真值冻结为空集(锁定写入连带清空停算,
+        # StrategyState.line_candidates 恒 = 空集);档 2/3/5 名单 =
+        # 锁定线名单,经 line_view.members 承载。
+    else:
+        for line_name in st.line_candidates:
+            c = get_comp(line_name) if line_name else None
+            if c is None:
+                # 候选线名解析失败(注册表漂移)跳过该线,与
+                # protection.protection_membership 同款保守方向
+                continue
+            members |= set(c.core_chars)
+            members |= set(getattr(c, 'shared_chars', None) or ())
+            cores |= set(c.core_chars)
+            for n, need in (getattr(c, 'need_star', None) or {}).items():
+                need_star[n] = max(need_star.get(n, 1), int(need))
+        candidate_out = frozenset(members)
+    recipe_members: frozenset[str] = frozenset()
+    if not view.locked:
+        rc = direction_comp_of(gs)
+        if rc is not None:
+            # 未锁定帧回落形态 = 过渡配方开局面(direction_comp_of 的
+            # P2 守卫使配方成员在 P2 进入帧自然退出本名单)
+            recipe_members = frozenset(
+                {*rc.core_chars, *(getattr(rc, 'shared_chars', None) or ())})
+    rank = {n: (0 if n in cores else 1) for n in members}
+    return PriorityContext(
+        held_copies=held_copies if held_copies is not None
+        else held_copies_of(gs),
+        deployed_names=deployed_names,
+        line_view=view,
+        candidate_members=candidate_out,
+        recipe_members=recipe_members,
+        stay_target=stay_target_of(gs),
+        need_star_by_member=need_star,
+        member_rank=rank,
+        level=int(level_of(gs)),
+        rng=rng if rng is not None else session.rng,
+    )
+
+
+def _member_names(ctx: PriorityContext) -> frozenset[str]:
+    """档 2/3/5 阵容成员名单(两态;priority-model §2 名单源)。
+
+    锁定帧 = 锁定线名单;未锁定帧 = 候选三线成员并集 ∪ 过渡配方对
+    成员(配方成员在配方体系存续期属候选体系)。"""
+    if ctx.line_view.locked:
+        return frozenset(ctx.line_view.members)
+    return frozenset(ctx.candidate_members) | frozenset(ctx.recipe_members)
+
+
+def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
+    """牌的费用档(档 4/档 8 判定输入)。
+
+    商店牌 = 牌面自报费用;手持牌 = 注册表现查(CHARACTERS.cost,
+    单一源)。未知名/缺值按中费 3 保守估(注册表先例 =
+    mandate.cheapest_member_cost 与 shop 侧同款口径)。手持变费卡
+    (现注册表仅银狼LV.999 三档)按注册表起始费参与档 8 概率分档
+    ——档 4 仅辖非阵容成员,变费成员卡不入该档,偏差面收窄至
+    「变费卡恰为非成员手持件」的边角,如实申报。"""
+    if isinstance(unit, ShopUnit):
+        return int(unit.cost)
+    ch = CHARACTERS.get(unit.name)
+    return int(ch.cost) if ch is not None and ch.cost else 3
+
+
+def _tier7_bond_member(name: str) -> bool:
+    """档 7 成员判定(角色自报 factions/flows 与拍板名单求交;
+    注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
+    ch = CHARACTERS.get(name)
+    if ch is None:
+        return False
+    return bool((set(ch.factions) | set(ch.flows)) & TIER7_BOND_NAMES)
+
+
+def sort_key(unit: HeldUnit | ShopUnit,
+             ctx: PriorityContext) -> PriorityKey:
+    """统一优先级排序键(八档判定按序命中即出 + 档内键 + 在手旗标 +
+    随机尾键;规格 = priority-model §2/§3/§4,判定表逐档对齐)。
+
+    让路方向 = key 大者先卖:「后卖」类属性(总星级数多/单卡星级高/
+    core 成员)取小键,「先卖」类属性(档 8 概率高/低费)取大键;
+    在手旗标 手持 = 0 / 将获取 = 1(同优先级在手优先,总纲 §2.7);
+    随机尾键 = ctx.rng 现抽,仅全部子键相等(同张手持等价牌群)时
+    参与定序,同 seed 同序。
+
+    落档边界(priority-model §2):「名下最高星/总星级数」以角色名
+    聚合全部在场+备战副本;升星达标(持有最高星 ≥ need_star)后低星
+    冗余副本落档 8;万金油/羁绊角色到两星后掉出档 6/7;档 8 的概率
+    分档按概率值(非费用号),概率同值并入同档后按费用号稳定序
+    (refresh_prob 缺键返 0,低等级帧 2-5 费撞值时低费先卖有真实
+    判别语义)。
+    """
+    name = unit.name
+    in_hand = 0 if isinstance(unit, HeldUnit) else 1
+    tail = ctx.rng.random()
+    copies = ctx.held_copies.get(name, [])
+    max_star = max(copies) if copies else 0
+    total_star = sum(copies)
+    unit_star = int(unit.star or 1)
+    is_member = name in _member_names(ctx)
+    # 档 1 前后台需要出战的(部署算法定型;按角色名命中,含商店同名牌
+    # ——在场角色的牌 = 部署需要面,获取流程中同优先级不换手)。
+    if name in ctx.deployed_names:
+        return (1, in_hand, tail)
+    # 档 2 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
+    # ≥ 2,need = 1 即无升星要求——落档边界谓词,need=1 成员未持落档 3 /
+    # 已持未到两星落档 5)。
+    need = ctx.need_star_by_member.get(name, 1)
+    if is_member and need >= 2 and max_star < need:
+        return (2, ctx.member_rank.get(name, 1), -total_star, -unit_star,
+                in_hand, tail)
+    # 档 3 阵容成员还没获取任何副本(仅商店牌可命中:手持牌自身即副本)。
+    if is_member and not copies:
+        return (3, ctx.member_rank.get(name, 1), in_hand, tail)
+    # 档 4 当前升星目标实费档的牌(压牌库价值;阵容成员整体排除——
+    # 含已达标成员,其副本按落档边界落档 8;目标为 None 本档为空)。
+    if ctx.stay_target is not None and not is_member \
+            and _unit_cost(unit) == ctx.stay_target[2]:
+        return (4, -unit_star, in_hand, tail)
+    # 档 5 成员已获取、无星级要求、还没到两星(阵容强度)。
+    if is_member and copies and need <= 1 and max_star < 2:
+        return (5, ctx.member_rank.get(name, 1), -total_star, in_hand, tail)
+    # 档 6 万金油名单还没到两星(全线留用层;到两星掉档 8)。
+    if name in CROSS_LINE_KEEP_NAMES and max_star < 2:
+        return (6, -total_star, in_hand, tail)
+    # 档 7 buff/debuff 羁绊成员还没到两星(到两星掉档 8)。
+    if _tier7_bond_member(name) and max_star < 2:
+        return (7, -total_star, in_hand, tail)
+    # 档 8 兜底:概率高者先卖(容易再遇),同概率档并入同档、低费先卖,
+    # 星级高者后卖。
+    prob = refresh_prob(ctx.level, _unit_cost(unit))
+    return (8, prob, -_unit_cost(unit), -unit_star, in_hand, tail)
+
+
+def sell_order(units: list[HeldUnit | ShopUnit],
+               ctx: PriorityContext) -> list[HeldUnit | ShopUnit]:
+    """统一让位序列(priority-model §5 消费侧约定)。
+
+    返回从「最不该卖」到「最先让路」的升序序列(末位 = 最先让路);
+    各触发消费位从末位向前取用(让路一张 / 取到凑够为止)。注意:
+    逐牌调 :func:`sort_key` 会推进随机流,同 seed 下同输入同序、
+    跨次调用不保证逐位复现(随机域 = 手持等价牌群内部,无行为语义
+    损失,priority-model §4)。"""
+    out: list[HeldUnit | ShopUnit] = sorted(
+        units, key=lambda u: sort_key(u, ctx))
+    return out
