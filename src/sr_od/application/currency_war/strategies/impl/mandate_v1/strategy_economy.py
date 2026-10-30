@@ -75,6 +75,10 @@ if TYPE_CHECKING:
 
 #: 计分通道字段(v1 公式直算,值全 = 注册表游戏定义【注】直读):
 #: - instant_gold:选卡当场一次性金(面值);
+#: - gold_at_final_supply:「进入最后一个补给阶段后」金(尾款交付,
+#:   面值——触发 = 展平全序列最末 supply 位〔必经节点,存活即到〕,
+#:   兑现结构性归计分桶,与 instant_gold 同判;等值迁移自 instant_gold
+#:   通道,现金分零漂移);
 #: - gold_next_nodes_amount/count:「现在及接下来 count 次」分期金配对
 #:   字段——**配对 count 半字段同入计分类**(消费公式两半齐用,分类粒度
 #:   = 字段,半字段缺席即分类校验炸出);
@@ -83,6 +87,7 @@ if TYPE_CHECKING:
 #: - xp_per_node / xp_instant:XP 通道(× XP_GOLD_RATE 折算)。
 _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
     'instant_gold',
+    'gold_at_final_supply',
     'gold_next_nodes_amount', 'gold_next_nodes_count',
     'gold_per_node', 'gold_per_boss_node', 'interest_flat_per_node',
     'xp_per_node', 'xp_instant',
@@ -215,6 +220,8 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     - instant_gold:选卡当场一次性金,面值(**勿读 gold_next_nodes_amount
       代「现在」分支**——长期主义系「现在」分支由 amount 现值承载,误读即漏
       现在分支);
+    - gold_at_final_supply:「进入最后一个补给阶段后」金,面值(尾款交付;
+      必经节点条件金与 instant_gold 同桶);
     - gold_next_nodes:「现在」分支 amount + count 节点分支 amount ×
       min(count, max(剩余节点数 − 1, 0))——「接下来」不含当前节点,按
       ``剩余节点数 − 1`` 截断(剩余节点数含当前节点,R≤count 终局帧多计
@@ -247,16 +254,20 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     # 通道 1:选卡当场一次性金(面值;「现在」分支另由 gold_next_nodes 承载)
     if eff.instant_gold:
         acc += float(eff.instant_gold)
-    # 通道 2:「现在及接下来 count 次进节点每次 amount 金」分期金
+    # 通道 2:「进入最后一个补给阶段后」金(尾款交付;面值直入——必经
+    # 节点条件金,与 instant_gold 同桶等值,估值零漂移)
+    if eff.gold_at_final_supply:
+        acc += float(eff.gold_at_final_supply)
+    # 通道 3:「现在及接下来 count 次进节点每次 amount 金」分期金
     # (长期主义系;count 分支按「剩余节点数 − 1」截断——「接下来」不含
     # 当前节点,剩余节点数含当前节点)
     if eff.gold_next_nodes_amount and eff.gold_next_nodes_count:
         _compounds = min(eff.gold_next_nodes_count, max(remaining - 1, 0))
         acc += float(eff.gold_next_nodes_amount) * (1 + _compounds)
-    # 通道 3:每节点金流
+    # 通道 4:每节点金流
     if eff.gold_per_node:
         acc += float(eff.gold_per_node) * remaining
-    # 通道 4:每 boss 节点金(剩余 boss 数 = 场字段序列自当前节点(含)
+    # 通道 5:每 boss 节点金(剩余 boss 数 = 场字段序列自当前节点(含)
     # 起 'boss' kind 直查——替代停用的「位面末槽 × 每位面恰一 boss」几何
     # 假设,修饰局 boss 位移与未来序列变异天然正确;封顶 modeled planes,
     # P3 虚拟末槽不再计入 → 默认局 P1 段 3→2、P2 起 2→1(行为申报
@@ -269,13 +280,13 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
             (seq[_from:] if k == cur_plane else seq).count('boss')
             for k, seq in _seqs.items() if k >= cur_plane)
         acc += float(eff.gold_per_boss_node) * _bosses
-    # 通道 5:固定息(每节点固定息上调整数,金等价直读)
+    # 通道 6:固定息(每节点固定息上调整数,金等价直读)
     if eff.interest_flat_per_node:
         acc += float(eff.interest_flat_per_node) * remaining
-    # 通道 6:每节点 XP 流
+    # 通道 7:每节点 XP 流
     if eff.xp_per_node:
         acc += float(eff.xp_per_node) * remaining * XP_GOLD_RATE
-    # 通道 7:即时 XP
+    # 通道 8:即时 XP
     if eff.xp_instant:
         acc += float(eff.xp_instant) * XP_GOLD_RATE
 

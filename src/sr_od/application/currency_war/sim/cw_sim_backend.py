@@ -121,6 +121,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
+    final_supply_pos,
     node_sequence_of,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -268,6 +269,23 @@ def strategy_boss_gold_of(gs: GameState) -> int:
     """
     return aggregate_economy(
         list(gs.active_strategies.value or [])).gold_per_boss_node
+
+
+def strategy_final_supply_gold_of(gs: GameState) -> int:
+    """持卡策略聚合的「最后一个补给阶段」金(尾款交付系,进锚点窗一笔)。
+
+    单一源 = ``aggregate_economy``(多卡求和);锚 = 展平全序列最末
+    supply 位(:func:`final_supply_pos`),整局一次——辖域与「后」字时点
+    两假设见披露键 ``DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE`` /
+    ``DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING``。返回 0 = 无该金腿,调用方
+    (节点窗收口)零值零写。live 侧无此写端:金有整字段观察覆盖,实机
+    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(裁定正本
+    = ``cw_effect_inventory.advance_node`` docstring「尾款金面走观察
+    覆盖兜底」行),sim 世界自持账无观察可兜,不发即持卡局金系统性偏低,
+    故唯 sim 侧补写。
+    """
+    return aggregate_economy(
+        list(gs.active_strategies.value or [])).gold_at_final_supply
 
 
 def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
@@ -871,6 +889,22 @@ DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
 #: 无卡别硬编码。
 DISCLOSURE_STRATEGY_PICK_INSTANT: str = 'strategy_pick_instant_legs'
 
+#: 策略尾款金·锚点辖域假设披露键(尾款交付;纯声明,不进任何判定分支)。
+#: 载义:①「最后一个补给阶段」按**全局一次**建模(锚 = 展平全序列最末
+#: supply 位,单一源 = ``cw_node_schedule.final_supply_pos``;措辞依据 =
+#: 卡文「最后一个」全局限定词,证伪路径 = 实机持卡局非锚 supply 节点窗
+#: 金轨迹 +30 即证伪为每位面各一次,改判定 = helper 换位面域扫描);②
+#: 修饰局锚点随场字段现值(继承 T-8 披露的场字段缺位回退默认表链路——
+#: 本卡 live 零写金,该链路零行为影响)。
+DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: str = 'final_supply_gold_scope_assumption'
+
+#: 策略尾款金·「后」字时点精度披露键(尾款交付;纯声明,不进任何判定
+#: 分支)。载义:①「进入…后」按节点进窗拍建模(与特战资金「时」字同
+#: 拍假设;若实机证伪为补给确认拍,live 观察覆盖兜底行为面无差,sim 发
+#: 放时点差一个窗内位置);②拿卡当节点不发放(选卡确认恒晚于窗口前段
+#: 聚合读,锚点错过即无——「尾款」语义自洽)。
+DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: str = 'final_supply_gold_timing_assumption'
+
 #: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
@@ -905,6 +939,10 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 策略选卡即时腿申报(载义见键常量注:xp_instant 腿已建与真即时金
     # 未建两形状均在册)
     DISCLOSURE_STRATEGY_PICK_INSTANT: 'xp_instant_legs_built_pick_gold_instant_pending',
+    # 策略尾款金两键(尾款交付;载义见键常量注:锚点辖域全局一次假设 +
+    # 「后」字时点进窗拍假设)
+    DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: 'final_supply_global_once_seq_pos_anchor',
+    DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: 'node_window_entry_beat_pick_miss_is_gone',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
     # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
     # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
@@ -2027,6 +2065,28 @@ class SimBackend:
                 gold_before = int(self.gs.gold.value or 0)
                 tag = f'strategy:boss_gold:p{plane}r{r}'
                 self.gs.observe(self.gs.gold, gold_before + boss_gold,
+                                evidence=sim_evidence(tag),
+                                sig=obs_sig(group_id=f'sim:{tag}'))
+        # 策略尾款金腿(尾款交付):进入「最后一个补给阶段」节点窗发持卡
+        # 聚合值——触发器 = **序列位置锚**((位面,轮) == 展平全序列最末
+        # supply 位,整局一次;单一源 = final_supply_pos 场字段现值派生,
+        # 修饰局零特判),与 boss 腿的节点类型触发器不同形态,不套其判定
+        # 代码。独立观察笔(evidence/sig 与收入笔分键)——轮首收入三分量
+        # 账(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
+        # 收入写;supply 支收入 = base+息照发,与本卡金平行分账。缺口来
+        # 源与 live 零写金裁定同 boss 金腿(sim 世界自持账无观察可兜)。
+        # 同段邻位收口(boss 金腿之后、商店全刷前;两腿互不读对方字段,
+        # 先后无行为差,同段为收口序单一)。零值零写;幂等复用窗口守卫
+        # (同节点窗重放整段跳过),零新增守卫。拿卡当节点不发放:聚合读
+        # 在窗口前段,选卡确认(offer 呈现后)恒晚于本读,同窗拿卡天然零
+        # 发放(现行建模域 offer 槽域与 supply 零重合,场景不可达,机制
+        # 防御语义)。
+        if (plane, r) == final_supply_pos(self.gs.node_seq_by_plane.value):
+            supply_gold = strategy_final_supply_gold_of(self.gs)
+            if supply_gold > 0:
+                gold_before = int(self.gs.gold.value or 0)
+                tag = f'strategy:final_supply_gold:p{plane}r{r}'
+                self.gs.observe(self.gs.gold, gold_before + supply_gold,
                                 evidence=sim_evidence(tag),
                                 sig=obs_sig(group_id=f'sim:{tag}'))
         # 环境直发策略取卡挂点(T-46 策略大师数量分支;设计 = T-46 定稿

@@ -108,6 +108,8 @@ class EconomyEffect:
     - xp_buy_cost_discount: 每击「购买经验」减金
     - win_reward_mult: 连胜奖励倍率(伟大征服 3)
     - gold_per_boss_node: 进首领节点给金(特战资金系;boss 占节点 ~1/9,消费侧折算)
+    - gold_at_final_supply: 进入最后一个补给阶段后给金(尾款交付;整局一次,
+      锚 = 展平全序列最末 supply 位,载体 = cw_node_schedule.final_supply_pos)
     - gold_next_nodes_amount/count: 「现在及接下来 count 次进节点每次 amount 金」(长期主义系;分期金)
     - gold_per_level_up: 每次升级给金(节节高升;P1 约 7 次升级,P2 再 2 次)
     - gold_per_20hp_lost: 每损 20HP 给金(保险;**故意不进经济分** —— 损血换钱是反向激励,仅建档)
@@ -180,6 +182,11 @@ class EconomyEffect:
     hp_max_loss_pct_of_loss: int = 0              # 永久创伤:每损失生命值的同值百分比计入生命上限损耗
                                           # (仅建档,不进经济分——gold_per_20hp_lost 同先例)
     hp_max_loss_cap_pct: int = 0                  # 生命上限损耗上限(原生命上限百分比基准;永久创伤=60)
+    gold_at_final_supply: int = 0         # 「进入最后一个补给阶段后」给金(尾款交付;锚 =
+                                          # 展平全序列最末 supply 位,整局一次;载体 =
+                                          # cw_node_schedule.final_supply_pos;修饰局
+                                          # 随场字段现值派生零特判,域内无 supply =
+                                          # None〔序列表未来形状防御,现表恒非空〕)
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -235,6 +242,9 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 一次性金族(当场/时点大额,无持续语义)
     'instant_gold', 'gold_at_node', 'gold_at_node_offset',
     'gold_at_level', 'gold_at_level_target',
+    # 时点金·序列位置锚(尾款交付):整局一次的必经节点条件金,世界腿 =
+    # sim 节点窗独立笔(final_supply_pos 锚),非持续通道
+    'gold_at_final_supply',
     # 条件刷新三元组(本金充裕系):条件窗口内逐节点补刷,旧闭集裁决
     # 不入引擎族(非无条件持续通道),沿旧闭集原样划界
     'free_refresh_cond_gold_above', 'free_refresh_cond_gold_step',
@@ -528,7 +538,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '无害垃圾': EconomyEffect(instant_gold=8),
     '胜利,还是胜利': EconomyEffect(instant_gold=4),
     '打捞人才库+': EconomyEffect(instant_gold=4),
-    '尾款交付': EconomyEffect(instant_gold=30),
+    '尾款交付': EconomyEffect(gold_at_final_supply=30),
     '免费午餐': EconomyEffect(free_refresh_burst=11),
     '特战资金+': EconomyEffect(gold_per_boss_node=11),
     '特战资金': EconomyEffect(gold_per_boss_node=7),
@@ -1035,6 +1045,7 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
             xp_buy_cost_discount=eff.xp_buy_cost_discount + e.xp_buy_cost_discount,
             win_reward_mult=eff.win_reward_mult,
             gold_per_boss_node=eff.gold_per_boss_node + e.gold_per_boss_node,
+            gold_at_final_supply=eff.gold_at_final_supply + e.gold_at_final_supply,
             gold_next_nodes_amount=eff.gold_next_nodes_amount + e.gold_next_nodes_amount,
             gold_next_nodes_count=max(eff.gold_next_nodes_count, e.gold_next_nodes_count),
             gold_per_level_up=eff.gold_per_level_up + e.gold_per_level_up,

@@ -244,6 +244,32 @@ def node_round_cap(plane: int,
     return len(seq) if seq is not None else 12
 
 
+def final_supply_pos(seqs: dict[int, tuple[str, ...]] | None = None,
+                     ) -> NodePos | None:
+    """展平全序列最后一个补给阶段位(「最后一个补给阶段」判定单一源;
+    锚点必为 supply 位,位置相等判定即含 kind 匹配,零冗余)。
+
+    卡文语义(尾款交付「进入最后一个补给阶段后,获得30金币」):「最后
+    一个」为全局限定词,锚 = 键升序位面拼接展平的全序中末个 supply 位,
+    整局恰一次(措辞先例 = 深井角斗场「本局首次」限定词辖全局;对照特战
+    资金「进入首领节点时」无限定词 = 每次进入)。默认表现值 (3,3);P3
+    入表后锚点域扩展自动跟随,零改动。
+
+    ``seqs`` 给定(= GameState 场字段现值)→ 字段即权威(None 回退默认
+    表,与 node_sequence_of/sequence_next 同参约定);modeled 域键升序
+    展平,末个 supply 返回其 (位面, 轮);域内无 supply 返回 None(现表
+    恒非空,None 支为序列表未来形状防御)。修饰局锚点随场字段现值天然
+    后移(人身意外险现值 (3,7)),零特判。
+    """
+    tables = seqs if seqs is not None else PLANE_NODE_TABLES
+    anchor: NodePos | None = None
+    for plane in sorted(tables):
+        for r, kind in enumerate(tables[plane], start=1):
+            if kind == 'supply':
+                anchor = (plane, r)
+    return anchor
+
+
 def validate_sequences() -> None:
     """真值表结构守卫(模块自检;长度=位面轮数、类型词表已登记)。
 
