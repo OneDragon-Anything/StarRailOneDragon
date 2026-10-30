@@ -86,6 +86,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    check_strategy_battle_grants,
     discharge_due_item_grants,
     discharge_due_item_opens,
     gain_equipment,
@@ -2736,6 +2737,18 @@ class SimBackend:
         # 恰发火一次。条件单一源 = kernel check_env_dot_grants,sig 同
         # streak 通道 logic_sig('sim:env'),返回值忽略(无回调面)。
         check_env_dot_grants(self.gs, logic_sig('sim:env'), count_battle=True)
+        # —— 策略卡战后触发发放(策略卡战后触发发放首例;接线点 = 既有
+        # 环境触发腿同段:dot 检查后、败局待办登记前,胜败两态共同路径
+        # ——卡文无「胜利」限定 = 败局存活也发;死亡局在本函数提前
+        # return 处已出局,不发放)。条件单一源 = kernel
+        # check_strategy_battle_grants(登记表 STRATEGY_ENCOUNTER_BATTLE_
+        # GRANTS,node_kind 传本函数结算点现值 kind,修饰局场字段改写天然
+        # 跟随零特判);sig = logic_sig('sim:strategy') 新组首落(发放写
+        # 为 logic 渠道,obs 族进 write_logic_rand 即炸渠道族校验);
+        # 幂等零新增守卫 = 本函数 _settled_key(同节点重放整段跳过);
+        # 返回值忽略(无回调面)。
+        check_strategy_battle_grants(self.gs, kind,
+                                     logic_sig('sim:strategy'))
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

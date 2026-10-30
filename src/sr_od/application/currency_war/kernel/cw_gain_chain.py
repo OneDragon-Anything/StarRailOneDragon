@@ -79,6 +79,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_EFFECTS,
+    STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_GRANTS,
     equips_by_category,
     normalize_invest_name,
@@ -738,6 +739,55 @@ def check_strategy_conditional_grants(gs: GameState) -> None:
                            produced_by=_CONDITIONAL_PRODUCER,
                            evidence=evidence, sig=sig)
             done = done + (name,)
+
+
+#: 策略卡战后触发发放写端署名(家族单一标识,先例 =
+#: _CONDITIONAL_PRODUCER 同款;写端 = 本模块 check_strategy_battle_grants,
+#: sim 结算位发放刻,新写端新名不沿用链缺省伪装连续)。
+_BATTLE_GRANT_PRODUCER: str = 'strategy_battle_grant'
+
+
+def check_strategy_battle_grants(gs: GameState, node_kind: str,
+                                 sig: ChannelSig) -> tuple[tuple[str, str], ...]:
+    """策略卡战后触发发放检查(「遭遇节点战斗结算后获得占席道具」触发器
+    单一源,策略卡战后触发发放首例;唯一调用点 = sim 结算腿——live 零写
+    观察覆盖:箱落备战席有画面真值,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序,沿 check_env_streak_grants 形态;逐序返回
+    空 = 未发放):
+
+    1. ``node_kind != 'encounter'`` →()(节点类型条件;kind = 调用方
+       传结算点现值,修饰局场字段改写天然跟随零特判);
+    2. 逐持卡(active_strategies 容器直读)查 STRATEGY_ENCOUNTER_
+       BATTLE_GRANTS,表外卡零条目跳过(集合语义:多卡同持各自独立
+       判定发放);
+    3. 逐道具 ``gain_bench_item`` 确定发放(rand=False:登记/环境类
+       确定发放,gain-chain.md §5;evidence
+       ``strategy_post_battle#<卡名>``)。
+
+    - **无 done 闩**:卡文无「首次」限定 = 每次遭遇节点战斗后都发
+      (可重复);防重 = 调用方节点键幂等守卫,不设第二守卫;
+    - **零 rng**:确定发放,落位位置由容器状态决定非采样;
+    - bench 未观察(None)→ 原语内拒落零写(placed=False 不计发放)
+      ——宁缺勿造,与 env 触发器同契约(开局种子底座下生产不可达,
+      直构/测试形态防御);席满溢出落位/溢出位被占零写留证 =
+      原语内建既定语义,本函数零二次判读;
+    - 返回实际发放的 (卡名, 道具名) 序列(登记表值逐对一致性的
+      断言面;生产调用零回调面,返回值忽略)。
+    """
+    if node_kind != 'encounter':
+        return ()
+    granted: list[tuple[str, str]] = []
+    for name in gs.active_strategies.value or ():
+        items = STRATEGY_ENCOUNTER_BATTLE_GRANTS.get(name)
+        if not items:
+            continue
+        for item in items:
+            if gain_bench_item(gs, item, rand=False, sig=sig,
+                               evidence=f'strategy_post_battle#{name}',
+                               producer=_BATTLE_GRANT_PRODUCER):
+                granted.append((name, item))
+    return tuple(granted)
 
 
 def _node_frame(gs: GameState) -> str:

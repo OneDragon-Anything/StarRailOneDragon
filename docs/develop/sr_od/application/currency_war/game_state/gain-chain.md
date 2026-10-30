@@ -217,6 +217,34 @@ gain_character 升星判断同池)内**最大同名单位数** ≥ 阈值 → `g
   (家族单一标识,cw_env_grants._PRODUCER 同款);封账 = write_logic 直写
   (登记事实非随机态面,env_grants_done 同款)。
 
+### 2.11 策略卡战后发放检查腿 check_strategy_battle_grants(结算位)
+
+`check_strategy_battle_grants(gs, node_kind, sig) -> tuple[tuple[str, str], ...]`
+——策略卡「遭遇节点战斗结算后发放占席道具」通道(首例以战养战 id 101501,
+登记表 = `cw_investments.STRATEGY_ENCOUNTER_BATTLE_GRANTS`,白名单制)的
+唯一检查本体,与发放原语同模块内聚(同域先例 = §2.10 条件腿)。逐持卡
+(`active_strategies` 容器直读)∩ 登记表,逐道具 `gain_bench_item` 确定发放
+(`rand=False`),返回实际发放的 (卡名, 道具名) 序列(登记表值一致性的
+断言面;生产调用零回调面返回值忽略)。本节为策略卡战后触发族的共用节,
+同族后继按「登记行直用本通道或各建各表」接入后在此扩员,禁另立平行节。
+
+- **挂点 = sim 结算腿**(现役唯一调用点 = `cw_sim_backend._resolve_battle`,
+  既有环境触发腿同段:dot 检查后、败局待办登记前——胜败两态共同路径,
+  卡文无「胜利」限定 = 败局存活也发;死亡局在 `_game_over` 提前 return
+  处已出局不发放。幂等零新增守卫 = `_settled_key` 节点键,同节点战斗重放
+  整段跳过);**live 零写观察覆盖**(箱落备战席有画面真值可读,开箱链来源
+  无关,与军火贸易箱腿 live 口径同型;判读面缺口 = live 遥测无该箱归因行,
+  与特战资金金腿 live 零写的判读缺口同性质)。
+- **无 done 闩(可重复)**:卡文无「首次」限定 = 每次遭遇节点战斗后都发,
+  与 §2.10「首次」闩语义通道分立;防重归调用方节点键守卫,本函数零二次
+  守卫。
+- **写约定**:sig 由调用方传入(sim = `logic_sig('sim:strategy')`,logic
+  渠道新组);evidence = `strategy_post_battle#<卡名>`(落席写 `#place`
+  后缀),producer = `strategy_battle_grant`(家族单一标识,§2.10 同款);
+  落位三态(备战空槽落位/席满溢出落位/溢出位被占零写留证)与 bench 未
+  观察拒落(宁缺勿造)全为 `gain_bench_item` 原语内建语义(§2.8),本
+  函数零二次判读。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

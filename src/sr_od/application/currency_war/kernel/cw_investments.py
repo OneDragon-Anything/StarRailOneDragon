@@ -3435,3 +3435,53 @@ def _validate_strategy_conditional_grants() -> None:
 
 
 _validate_strategy_conditional_grants()
+
+
+# ===== 策略卡战后触发发放注册表(以战养战;白名单制)=====
+# 「战斗结算后的世界发放」策略域首例:键 = 策略规范名,值 = 战后发放占席
+# 道具名元组。表外策略一律无条目,禁从效果原文自动猜装(ENV_STREAK_GRANTS/
+# STRATEGY_CONDITIONAL_GRANTS 同款纪律);表只收「遭遇节点战斗结算后」
+# 触发器形状(节点类型条件内嵌于触发函数,表不设节点键;扩形状时各建
+# 各表,沿 ENV_STREAK_GRANTS 表族先例)。与 GiftGrant items_immediate
+# 通道的语义边界:那条 = 选卡当场发放(登记本语义即错发),本表 =
+# 战后事件 + 可重复(无 done 闩,防重归调用方节点键幂等守卫)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_battle_grants(触发检查
+# 单一源,唯一调用点 = sim 结算腿;live 零写观察覆盖——箱落备战席有画面
+# 真值可读,实机局不接本通道)。
+STRATEGY_ENCOUNTER_BATTLE_GRANTS: dict[str, tuple[str, ...]] = {
+    # 每次遭遇节点战斗后获得 1 个简易武装箱(id 101501 原文直读,
+    # cw_invest_data.PLAZA_AUGMENTS 同 id 行;卡面金腿「获得6金币」归
+    # STRATEGY_ECONOMY instant_gold 在册,不进本表)
+    '以战养战': ('简易武装箱',),
+}
+
+
+def _validate_strategy_encounter_battle_grants() -> None:
+    """STRATEGY_ENCOUNTER_BATTLE_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_env_streak_grants docstring——
+    本表落两漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 道具名漂移:发放道具必须在 BENCH_ITEM_NAMES(占席道具
+    词表,游戏数据派生,版本改名/移除可独立触发)。②的运行期实况 =
+    落席原语查名字→类别映射直查 KeyError(响亮但迟:错误潜伏到首次
+    遭遇结算才炸,持卡局才可达),import 期哨把拦截面前移到构建期,
+    与「登记道具须在占席词表」的发放契约对齐。
+    """
+    orphans = [n for n in STRATEGY_ENCOUNTER_BATTLE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_ENCOUNTER_BATTLE_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, _items in STRATEGY_ENCOUNTER_BATTLE_GRANTS.items():
+        for _item in _items:
+            if _item not in BENCH_ITEM_NAMES:
+                raise ValueError(
+                    f"STRATEGY_ENCOUNTER_BATTLE_GRANTS 道具名漂移"
+                    f"({_name!r} 占席道具词表无此名,版本改名/漏并入?):"
+                    f"{_item!r}")
+
+
+_validate_strategy_encounter_battle_grants()

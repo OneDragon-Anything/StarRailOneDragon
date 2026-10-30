@@ -364,7 +364,13 @@ kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
   在册条目 = 特权阶级;实机不接、生产挂点 = sim 进节点收束,队列登记后保持原样、
   备战真值归观察覆盖——不对称申报在册);策略侧箱分支(`on_strategy_gained` 效果体 →
   `gain_bench_item`,evidence=`pick_invest_box_grant`,各进阶武装箱 ×1——战术义眼++/
-  保守派/快请专家·彩三卡,发放名单单一源 = cw_gain_effects `_STRATEGY_BOX_GRANTS`)。
+  保守派/快请专家·彩三卡,发放名单单一源 = cw_gain_effects `_STRATEGY_BOX_GRANTS`);
+  策略卡战后触发支(`check_strategy_battle_grants` 结算位发放,
+  evidence=`strategy_post_battle#<卡名>`,producer=`strategy_battle_grant`,
+  在册条目 = 以战养战 ×1——每次遭遇节点战斗结算后简易武装箱,登记单一源 =
+  cw_investments `STRATEGY_ENCOUNTER_BATTLE_GRANTS`,唯一调用点 = sim
+  `_resolve_battle` 结算腿,live 零写观察覆盖;链式契约权威版本 =
+  gain-chain.md §2.11)。
   T-2/2026-09-24 批落地时未申报,随本行一并清偿(2026-10-17,T-31 批文档义务
   +独立验收 C1 处置;纯文档申报,零行为)。
 **边界**:**容量唯一改写源=节省工位**(官方原文「在接下来3个节点只有3个备战席位置。
