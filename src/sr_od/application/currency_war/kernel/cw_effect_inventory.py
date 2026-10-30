@@ -1866,3 +1866,73 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
     gs.write_logic(gs.unchosen_supply, None,
                    produced_by='CwScreenSupplyNode',
                    evidence='strategy_salvage_consumed', sig=sig)
+
+
+# ===== 合成事件发放腿:穿戴 applied 出口检查(策略源 ON_MERGE 首接线)=====
+# 卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS):「合成装备时，获得2次
+# 刷新。」——挂点 = 穿戴上报函数 report_action_wear_equip_param applied
+# 出口(穿着即合成规则住上报 = kernel 单一源,live 动作 op 与 sim 动作
+# 注入同口,单点覆盖双端);合成次数 = 输入件数−输出件数(挂点现算,
+# 三拒绝分支 applied=False 早退恒不达 = 零发放天然成立)。装备栏内主动
+# 合成 bot 零执行零辖域(未来接线须接同款发放检查并申报);角色升星域
+# 显式排除——ON_MERGE 词表语义 = 合成时,装备合成与角色升星两事件域按
+# 挂点分开计数,本腿只认装备合成(fields.md §5.3 禁混账)。
+
+#: 发放腿持卡判定名单集(账本条目名精确匹配;先例 =
+#: :data:`_SALVAGE_STRATEGY_NAMES` 同形):现役成员 = 武力刷新
+#:(id 101801),装备合成触发经济卡现役仅此一张。名单钉卡而非
+#: trigger/category 字段匹配:事件域零歧义(同触发面的词缀源条目
+#: 变宝为废是 BATTLEFIELD 载体,不在名单天然隔离);后继同触发经济卡
+#: 随其建模批入名单并复用同一检查。
+_ON_MERGE_REFRESH_STRATEGY_NAMES: tuple[str, ...] = ('武力刷新',)
+
+#: 建模假设档披露键(静态常量在册,无运行时 setdefault 动作;先例 =
+#: STRATEGY_SALVAGE_ASSUMPTION_KEYS 同形)。登记两件实机未证事实:
+#: - live_timing_and_value:实机「合成装备时 +2 刷新」的到账时点与数值
+#:   真值未实采(逻辑账以本发放腿为准;商店帧观察锚定兜底可校验,漏发
+#:   可纠偏但时点漂移);
+#: - junked_still_grants:变宝为废垃圾化实际发生时合成事件是否照发
+#:   (kernel 按配方命中计数、垃圾化不改计数,两效果同事件独立结算;
+#:   实机若判「垃圾化取消合成事件」则改判)。
+#: 退役条件 = 实机对局采得合成帧免费刷轨迹(journal ``effects`` +
+#: ``free_refresh_left`` 轨迹)定案后回填 verdict 式记录。
+STRATEGY_ON_MERGE_LIVE_UNVERIFIED: tuple[str, ...] = (
+    'strategy_on_merge_live_timing_and_value',
+    'strategy_on_merge_junked_still_grants',
+)
+
+
+def apply_on_merge_refresh_grant(gs: GameState, *, merges: int,
+                                 frame: str = '') -> None:
+    """合成事件发放腿(策略侧 ON_MERGE 首接线;挂点 = 穿戴上报函数
+    applied 出口)。``merges`` = 本次动作内装备合成次数(自然数;挂点按
+    输入件数−输出件数现算)。逐账本 ON_MERGE 经济条目(名单集
+    :data:`_ON_MERGE_REFRESH_STRATEGY_NAMES` 精确匹配;登记腿缺位 =
+    零命中保守零动作)累计 ``payload.refresh_per_compose × merges``,
+    write_logic 累加进 ``gs.free_refresh_left``(三写端之发放登记,
+    None 基 = 0 起算,写签名复用 :func:`_equip_bridge_sig` 单一构造点)。
+    ``merges <= 0`` 或零命中 = no-op(零 Field 行);payload 无
+    refresh_per_compose 字段的条目(未来同触发异载体卡)鸭子缺省 0
+    天然零发放。sim 自主局零穿戴 = 零触发(装备域 sim 未建模既有边界,
+    不补建模);动作注入与 live 同经穿戴上报函数,世界真值同口。"""
+    if merges <= 0:
+        return
+    total = 0
+    srcs: list[str] = []
+    for e in gs.effects.entries:
+        if e.spec.name not in _ON_MERGE_REFRESH_STRATEGY_NAMES:
+            continue
+        n = int(getattr(e.spec.payload, 'refresh_per_compose', 0) or 0)
+        if n > 0:
+            total += n * merges
+            srcs.append(e.spec.name)
+    if total <= 0:
+        return
+    left = gs.free_refresh_left.value
+    gs.write_logic(gs.free_refresh_left,
+                   (0 if left is None else int(left)) + total,
+                   produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
+                   if srcs else 'EffectLedgerBridge',
+                   evidence=(f'effect_on_merge@{frame}' if frame
+                             else 'effect_on_merge'),
+                   sig=_equip_bridge_sig(gs))

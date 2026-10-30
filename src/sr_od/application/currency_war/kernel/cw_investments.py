@@ -856,6 +856,20 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '世界发放腿 = sim 到级检查函数(check_strategy_level_grants),'
               'trigger 占 CONDITIONAL 沿成功经验同族先例(词表 CONDITIONAL '
               '注释明列本卡)'),
+    # 武力刷新:官方「合成装备时，获得2次刷新。」(cw_invest_data.py:57,
+    # id 101801)。策略源 ON_MERGE 首条(词缀源先例 = 变宝为废,异表异链
+    # ——该条在 AFFIX_EFFECT_SPECS,不入本表故天然不在本发放腿辖域);
+    # 世界发放腿 = 穿戴上报函数 applied 出口合成事件检查
+    # (apply_on_merge_refresh_grant,合成次数 = 输入件数−输出件数),
+    # 发放进 free_refresh_left(三写端之发放登记第三写端)。登记期两桥
+    # 对本 payload 零额度/非战场 = no-op;数值单一源 = STRATEGY_ECONOMY
+    # 同一实例。
+    '武力刷新': EffectSpec(
+        id='101801', name='武力刷新', trigger=TriggerKind.ON_MERGE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['武力刷新'], duties=DutyFlags(),
+        notes='每次装备合成 +2 免费刷新,经穿戴上报合成事件腿发放;'
+              '官方限定装备合成(角色升星另域,fields.md §5.3 分开计数禁混账)'),
 }
 
 

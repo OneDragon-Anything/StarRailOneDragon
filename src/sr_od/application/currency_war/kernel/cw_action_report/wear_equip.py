@@ -193,4 +193,14 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动分支」无可同步;session 形参兼容保留。)
     # (事实事件广播已停用。)
+    # 合成事件发放腿(「合成装备时获得2次刷新」卡效果):穿着即合成的
+    # 合成次数 = 输入件数 − 输出件数,>0 才查账——三拒绝分支在上方早退
+    # (applied=False)不达此处,零合成零发放天然成立。惰性 import:效果
+    # 账本模块头零包内 import 契约同族纪律,防反向拉起成环。
+    merged = (len(unit.equips) + 1) - len(worn)
+    if merged > 0:
+        from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+            apply_on_merge_refresh_grant,
+        )
+        apply_on_merge_refresh_grant(gs, merges=merged, frame='wear')
     return LogicOutcome(applied=True)

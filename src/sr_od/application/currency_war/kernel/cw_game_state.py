@@ -2672,11 +2672,13 @@ class GameState:
     #  商店开态段刷新钮三态(免费态锚次数/付费域锚 0/整帧判不出跳写,
     #  obs/cw_observation);②动作扣减 = 刷新上报函数
     #  report_action_refresh_shop_param(未观察 None = 保守按付费不扣减
-    #  ——次数是记账面非决策闸);③发放登记 = 两桥
-    #  apply_effect_burst_grant / grant_effect_node_refresh_balance
-    #  (None 基 = 0 起算,开局无免费次数 = 机制真值)。失配对账 = Field
-    #  机制白送(observe 覆盖 logic 失配走既有 cw_mismatch_policy 失配告警,
-    #  零手写台账)。)
+    #  ——次数是记账面非决策闸);③发放登记 = burst 桥
+    #  apply_effect_burst_grant / 节点桥
+    #  grant_effect_node_refresh_balance / 合成事件腿
+    #  apply_on_merge_refresh_grant(宿主 = cw_effect_inventory,穿戴
+    #  applied 出口;None 基 = 0 起算,开局无免费次数 = 机制真值)。失配
+    #  对账 = Field 机制白送(observe 覆盖 logic 失配走既有
+    #  cw_mismatch_policy 失配告警,零手写台账)。)
     free_refresh_left: Field[int] = field(default_factory=Field)         # 商店免费刷新剩余次数(屏上「免费刷新 N」观察真值,None=未观察保守按付费)
 
     # —— 轮内新鲜度账(「本轮已买」半边;渠道② logic_action,写入=仅逻辑)——

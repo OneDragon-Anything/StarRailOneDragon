@@ -183,8 +183,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='商店免费刷新剩余次数(屏上「免费刷新 N」观察真值;观察写端'
               ' = 入口观察漏斗刷新钮三态锚定,免费态锚次数/付费域锚 0/判不出'
-              '跳写)+ 动作扣减/两发放桥 logic 直写(观察覆盖失配走 Field'
-              ' 既有安灯)'),
+              '跳写)+ 动作扣减/发放登记 logic 直写(burst 桥/节点边界桥/'
+              '合成事件腿三发放写端,后者宿主 = cw_effect_inventory;观察'
+              '覆盖失配走 Field 既有安灯)'),
     'encounter_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='遭遇刷新剩余次数(屏上「剩余次数：N」观察真值;观察写端'

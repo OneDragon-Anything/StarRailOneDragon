@@ -1070,7 +1070,10 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 - **per_node 族** free_refresh_per_node:加油站/搜打撤,每节点 1 次。
 - **NODE_ENTER 族** free_refresh_on_node_enter:双手狸开键盘!每节点 2 次。
 - **合成触发族** refresh_per_compose:武力刷新**合成装备时**每次获得 2 次刷新
-  (官方限定「合成装备时」——角色升星是否同触发面未登记,待裁决见 §5.3 星星相印)。
+  (官方限定「合成装备时」——角色升星是否同触发面未登记,待裁决见 §5.3 星星相印);
+  spec 条目已入 STRATEGY_EFFECTS(策略源 ON_MERGE 首条),世界发放腿 = 穿戴
+  上报 applied 出口合成事件检查 `apply_on_merge_refresh_grant`(cw_effect_
+  inventory;名单集匹配 + 合成次数 = 输入件数−输出件数,发放登记见 §3.3.6)。
 - **概率事件** refresh_free_chance=0.45:45% 判定、跨刷可重复触发;官方原文无付费
   限定——现按付费域建模〔待实机实证〕。
 - **burst 一次性海量族** free_refresh_burst:免费午餐 11 / 高效决策 9999(45 秒窗)/
@@ -1083,7 +1086,7 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 
 #### 3.3.6-3.3.8 刷新计数与免费余额载体
 
-免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = 桥 `apply_effect_burst_grant`/`grant_effect_node_refresh_balance`（None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
+免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = burst 桥 `apply_effect_burst_grant` / 节点桥 `grant_effect_node_refresh_balance` / 合成事件腿 `apply_on_merge_refresh_grant`（宿主 = cw_effect_inventory，穿戴上报 applied 出口；None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
 付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写入方 = 刷新上报函数 `report_action_refresh_shop_param` 单口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化停用，考古走 git。
 
 晶矿开启累计住**效果账本** `ActiveEffectInventory`（`ore_open_total`）。写入方 = 采晶矿上报函数 `report_action_collect_ore_param` 尾部单口（批内开成点数一次入账；席满/缺项∧level 缺读跳点不入账 = 「点开才计数」；生产 = 采晶矿 op 自上报，sim 与生产同段 op 代码同口）。消费方 = 战技点契约触发器 `check_env_ore_open_grants`（条件键与接线申报 = §3.5.5 词表行）。计数语义 = 全量（不限矿色/来源/奖励类型）。计数不进快照（接管局从 0 起 → 晚发放/不发形态显式接受，接受面 = 刷新两计数同款）。
