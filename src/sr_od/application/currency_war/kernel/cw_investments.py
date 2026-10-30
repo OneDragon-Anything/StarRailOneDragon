@@ -3372,8 +3372,8 @@ class StrategyConditionalGrant:
     条件发放通道专属登记表;字段语义 = 卡面效果原文直读):
 
     - item: 发放装备名(「【完美投影仪】」直读;值域 = 装备注册表名
-      闭集,笔误后果 = 检查腿发放 KeyError 响亮,校验面归评审把关
-      ——2026-10-28 治理口径);
+      闭集,EQUIPMENTS 为游戏数据派生注册表、版本改名可独立触发 →
+      构建期装备名漂移哨拦截,本表校验③);
     - threshold_same_name: 同名角色单位数阈值(「8个一样的角色」直读
       8;计数口径 = 单位数,升星产物计 1——量词「个」直修饰角色单位,
       池口径 = 备战 ∪ 上阵 ∪ 溢出全池,与升星判断同池)。
@@ -3393,14 +3393,20 @@ STRATEGY_CONDITIONAL_GRANTS: dict[str, StrategyConditionalGrant] = {
 
 
 def _validate_strategy_conditional_grants() -> None:
-    """STRATEGY_CONDITIONAL_GRANTS 构建校验(import 即炸;沿
-    _validate_strategy_delayed_offers 同款治理口径——只留漂移哨):
+    """STRATEGY_CONDITIONAL_GRANTS 构建校验(import 即炸;治理口径 =
+    2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,本表落三漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
     静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
-    仍在的漂移也炸)。值域类校验(threshold 形/下界、item 装备名闭集)
-    属防登记笔误类,按 2026-10-28 治理裁定不加(错值后果 = 检查腿永假
-    条件或发放 KeyError,响亮可见)。
+    仍在的漂移也炸);③ 装备名漂移:item ∈ EQUIPMENTS(同
+    _validate_env_gifts 装备名漂移哨同形——EQUIPMENTS 为游戏数据派生
+    注册表,版本更新改名/移除装备可独立触发)。③的运行期实况 = 错名
+    静默:gain_equipment 对未知名盲追加(幻影装备入栏)、
+    on_equipment_gained 查表 .get() 安静不写、检查腿居 tick 吞异常位
+    ——错名最终 = 静默幻影装备 + placed=True 永久落闩全程零报错,
+    import 期哨是唯一响亮拦截面。threshold 值域(形/下界)= 手抄
+    常量纯笔误类(游戏版本变更不可能独立触发),按治理裁定不加。
     """
     orphans = [n for n in STRATEGY_CONDITIONAL_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -3414,6 +3420,10 @@ def _validate_strategy_conditional_grants() -> None:
             raise ValueError(
                 f"STRATEGY_CONDITIONAL_GRANTS id 漂移:{_name!r} 登记 id="
                 f"{_grant.id} base={_base.source}")
+        if _grant.item not in EQUIPMENTS:
+            raise ValueError(
+                f"STRATEGY_CONDITIONAL_GRANTS 装备名漂移({_name!r} "
+                f"注册表无此装备,版本改名?):{_grant.item!r}")
 
 
 _validate_strategy_conditional_grants()
