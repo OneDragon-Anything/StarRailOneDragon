@@ -434,6 +434,39 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     return total
 
 
+def apply_strategy_pick_streak(gs: GameState, picked: Sequence[str]) -> int:
+    """策略选卡落地拍连胜置位入账(通用通道,辖域 = 注册表
+    streak_set≠0 全体,字段分派非单卡特判)。
+
+    为什么:sim 世界真值必须显式写——置位发生在选卡刻,到下一结算屏
+    带符号读数观察覆盖之间存在盲窗,观察无法承接(sim 不写即持卡局
+    连胜系统性失真,下游结算转移/轮收入连胜分量/深井角斗场触发/
+    伟大征服难度项全链读现值自动跟随)。与伟大征服「消费侧改写归
+    观察」的本质差异:那张卡改写的是游戏自身连胜更新规则(乘数/派生),
+    本通道在选卡拍直接改写字段值,状态侧置位须写端。语义 = 带符号
+    **绝对赋值**:desc「使当前连胜数变为4」明文直读,高连胜回落与
+    连败翻转均字面(禁外加 max 现值读法)。数额 = 逐卡直读
+    :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**:其聚合
+    字段集不含 streak_set,误走 = 静默零发放。写入形态与结算连胜写
+    同款(observe 通道,不触 write_logic 失配网),evidence 按
+    ``streak:strategy_pick:<卡名>`` 与结算笔 ``streak:pNrN`` 分账
+    可归因,sig 同组(同域字段同组,笔间靠 evidence 区分)。
+    返回置位卡数。
+    """
+    applied = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        eff = STRATEGY_ECONOMY.get(canon)
+        value = eff.streak_set if eff is not None else 0
+        if value == 0:
+            continue
+        gs.observe(gs.streak, int(value),
+                   evidence=sim_evidence(f'streak:strategy_pick:{canon}'),
+                   sig=obs_sig(group_id='sim:streak'))
+        applied += 1
+    return applied
+
+
 # ============================================================ 商店发牌件
 # (发牌算法本体 = kernel cw_shop_deal 单一源。)
 
@@ -1088,6 +1121,11 @@ class SimBackend:
     #: 无闩的重复 advance = 零写防重放)。私有暂态不入容器/不入快照恢复
     #: (:data:`_box_pick_pending` 同形先例)。
     _strategy_pick_xp_latch: bool | None = field(init=False, default=None)
+    #: 策略选卡连胜置位腿呈现闩(与 xp 闩同点置位同拍消费,独立不共享:
+    #: 两腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量收益)。
+    #: 防重放实害 = 置位后战斗推进再重放会把已转移真值回写成置位值。
+    #: 私有暂态不入容器/不入快照恢复(同形先例同上)。
+    _strategy_pick_streak_latch: bool | None = field(init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -1722,6 +1760,21 @@ class SimBackend:
                             producer='SimBackend',
                             rng=stream_rng(self.seed,
                                            'M02/env-reroll-gift'))
+        # 选卡落地拍连胜置位腿(通用通道,辖域 = 注册表 streak_set≠0
+        # 全体)。必须在难度旗牌更新之前:旗牌读 gs.streak 现值写备战
+        # 难度,先置位旗牌才随新值(伟大征服难度+连胜项同拍反映置位后
+        # 真值,实机对齐)。带符号绝对置位语义与禁聚合依据见
+        # :func:`apply_strategy_pick_streak`;live 同拍零写(置位到结算
+        # 之间 gs.streak 持旧值,真值经下一结算屏带符号读数观察覆盖
+        # 收口,fields.md streak 写入方两分不动)。拿卡名推导与呈现闩
+        # 防重放 = xp 腿同款:闩消费先于判定(交集空亦消费——每呈现窗
+        # 至多一次落地消费,无效载荷的重放同样不得再触发)。
+        if not opening and self._strategy_pick_streak_latch:
+            self._strategy_pick_streak_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                apply_strategy_pick_streak(self.gs, picked)
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
@@ -2185,6 +2238,10 @@ class SimBackend:
             self._sub = ''
             # 策略 offer 呈现即置即时经验腿闩(落地拍消费,防重放)。
             self._strategy_pick_xp_latch = True
+            # 连胜置位腿闩同点置位(独立闩;复呈现再置位 = xp 腿既有
+            # 形状,重放防护窗以「呈现→落地」为界,复呈现后到达的重放
+            # 属上游重试 bug 面)。
+            self._strategy_pick_streak_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,

@@ -116,7 +116,10 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #:   购买频次分布未采);
 #: - 血补偿族:gold_per_20hp_lost(未来损血期望未采,且未来建模同样触发
 #:   宪法三 hp 消费硬闸门)、gold_per_hp_lost_now(价值 = f(已损血),
-#:   宪法三硬闸门外第三消费点须用户逐项确认,未确认期 fail-closed = 0)。
+#:   宪法三硬闸门外第三消费点须用户逐项确认,未确认期 fail-closed = 0);
+#: - 状态置位族:streak_set(「使当前连胜数变为N」选卡当场带符号绝对
+#:   置位,首例 胜利,还是胜利 = 4)——置位带来的连胜金流变化是轨迹
+#:   依赖(后续胜负序列未定),估值价值未建模。
 _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'interest_cap_override',
     'gold_per_level_up',
@@ -134,6 +137,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'gold_per_2star2cost_merge', 'gold_per_3star_merge',
     'gold_per_three_5cost',
     'gold_per_20hp_lost', 'gold_per_hp_lost_now',
+    'streak_set',
 })
 
 #: 不计分通道字段(结构登记、永不为分):

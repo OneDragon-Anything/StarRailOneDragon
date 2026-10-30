@@ -187,6 +187,12 @@ class EconomyEffect:
                                           # cw_node_schedule.final_supply_pos;修饰局
                                           # 随场字段现值派生零特判,域内无 supply =
                                           # None〔序列表未来形状防御,现表恒非空〕)
+    streak_set: int = 0                   # 「使当前连胜数变为N」选卡当场带符号绝对置位
+                                          # (首例 胜利,还是胜利 4;值全部 =
+                                          # cw_invest_data 效果原文直读)。置位 =
+                                          # 赋值非增益:高连胜回落/连败翻转均字面
+                                          # 语义(卡文「变为」无 max/只升限定);0 =
+                                          # 无此腿
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -262,6 +268,10 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     'future_quality_upgrade', 'difficulty_inflation_exempt',
     # 负向结构登记(成本/加价,无正通道)
     'xp_click_surcharge_from_level', 'xp_click_surcharge_from_level_at',
+    # 一次性状态置位(非持续通道;一次性金族同款划界):「使当前连胜数
+    # 变为N」= 选卡当场对连胜真值绝对赋值,无双端持续语义;世界腿 =
+    # sim 选卡落地拍独立笔,live 观察覆盖兜底
+    'streak_set',
 })
 
 
@@ -536,7 +546,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '二极管': EconomyEffect(instant_gold=6),
     '免费升舱': EconomyEffect(instant_gold=4),
     '无害垃圾': EconomyEffect(instant_gold=8),
-    '胜利,还是胜利': EconomyEffect(instant_gold=4),
+    '胜利,还是胜利': EconomyEffect(instant_gold=4, streak_set=4),
     '打捞人才库+': EconomyEffect(instant_gold=4),
     '尾款交付': EconomyEffect(gold_at_final_supply=30),
     '免费午餐': EconomyEffect(free_refresh_burst=11),
