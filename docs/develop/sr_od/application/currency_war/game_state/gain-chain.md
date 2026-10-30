@@ -245,6 +245,51 @@ gain_character 升星判断同池)内**最大同名单位数** ≥ 阈值 → `g
   观察拒落(宁缺勿造)全为 `gain_bench_item` 原语内建语义(§2.8),本
   函数零二次判读。
 
+### 2.12 策略卡到级发放检查腿 check_strategy_level_grants(sim advance 位)
+
+`check_strategy_level_grants(gs) -> tuple[str, int] | None`——策略卡
+「到达指定等级时提供金币」通道(首例成长基金 id 101701,数据单一源 =
+`cw_investments.STRATEGY_ECONOMY` 级数配对字段 `gold_at_level`/
+`gold_at_level_target`,registry 驱动非专表,新到级卡登记行即自动覆盖)
+的**纯决策本体**:零写零 rng,返回待发放 `(规范卡名, 金额)` 或 None,
+两笔写(金 + done 闩)归调用方按所在端通道纪律执行。短路矩阵六序:
+①持卡 ∩ 到级条目(`gold_at_level_target>0`)空(未持卡/表外卡同路)
+→ None;②已闩(`strategy_conditional_done`)→ None;③level 现值
+None → 宁缺勿造;④gold 现值 None → 宁缺勿造**不封账**(本函数零写,
+值到位后下次检查自动重查发放);⑤现值级 < 目标级 → None;⑥达标 →
+返回 (卡名, 金额)。
+
+- **触发语义 = 状态检查型**:持卡 ∧ 级达标 ∧ 未闩即发,「拿卡时已 ≥
+  目标级」同发——等级 = 容器现值非事件流,拿卡时点无从回溯历史跨越
+  (§2.10「容器现值求值」同款先例);语义假设经 sim 披露键
+  `strategy_level_grant_state_semantics` 申报,实机证伪面 = 拿卡已达标
+  局的金变观察。
+- **挂点 = sim advance 双点**(`_on_node_advance` 推进点与
+  `_on_node_advance_terminal` 局终点,各一段内联接线,挂节点经验入账拍
+  之后——跨级事件发生点在 advance 不在节点窗内;局终点发放先于局终
+  声明):双点为经验源扩网后前瞻一致,现世界不可达下与单点行为全等,
+  裁单点则「局终跨级」一次性缺口永久缺失;**live 零接线**(金面禁直写,
+  实机发放由游戏自己执行,金整字段观察覆盖兜底,与特战资金金腿 live
+  口径同型;判读缺口 = live 遥测无该 +40 归因行,同性质缺口在册)。
+- **双通道分工**:金 = observe 独立笔(evidence
+  `strategy:level_gold:<卡名>`,sim 写统一前缀;sim 金写全 observe 现役
+  形态,金面禁直写辖效果账本到期接入点,本笔 = 世界合成非 logic 直写),
+  闩 = write_logic 直写 done 域(非金 Field 登记事实直写,
+  `discharge_due_item_grants` 先形),两笔异通道相邻同步执行(单线程无
+  并发观察者);sig 组 = `sim:strategy`(在役组,战后发放腿首落),
+  producer = `strategy_level_grant`(家族单一标识,公开常量——写端在
+  sim 接线段,跨模块引用署名)。幂等 = 决策函数 done 闩短路 + 调用方
+  节点序位守卫双保险(等级 sim 内单调不减,达标态持续为真靠闩封账非靠
+  跨越检测)。
+- **休眠正确路径(现役边界)**:现役 sim 经验写源(节点经验表 × 选卡
+  即时腿 `apply_strategy_pick_xp`)下全程等级上界 96(节点 70 + 即时
+  26)< 3→9 级累计门槛 194(`XP_TO_NEXT_LEVEL` 求和),全程封顶 7 级
+  → 本腿恒短路矩阵⑤序零写,条件真时行为正确(机制完整非占位);经验
+  源扩网(买经验建模/经验常量修订)零改激活,上界 ≥ 194 时休眠边界锁
+  先红触发重申报,披露键 `strategy_level_grant_dormant_in_sim` 申报。
+  局终同拍多卡双就绪边角:单笔返回契约会漏第二笔,现世界不可达,多卡
+  同型批落地时改列表返回或调用方循环并申报。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

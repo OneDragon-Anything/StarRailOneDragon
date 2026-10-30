@@ -835,6 +835,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(策略源 UNIT_BUFF 模式卡首条);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 成长基金:官方「在你到达9级时，提供40金币。」(cw_invest_data.py:56,
+    # id 101701)。数值/形状 = STRATEGY_ECONOMY 注册行在册零动(级数配对
+    # 字段 gold_at_level/gold_at_level_target,引擎排除桶一次性金族——
+    # 时点大额无持续语义,不参与 is_economy_engine 判定)。trigger 占
+    # CONDITIONAL:词表注释明列本卡(LEVEL_UP = 每次升级语义,本卡仅
+    # 9 级一次,不占);世界发放腿 = sim 到级检查函数
+    # (kernel/cw_gain_chain.check_strategy_level_grants,advance 双点接
+    # 线,现役 sim 经验常量下 9 级不可达 = 休眠正确路径,gain-chain.md
+    # §2.12);登记条目本批零行为消费(登记端可见性优先,成功经验同姿
+    # 态),行为在检查函数不经 inventory 条目驱动。duties 全空(无计数
+    # 器/无预知/无姿态消费面,本金充裕同形态);burst/板面两桥零行为
+    # (payload 无 instant/burst 字段、非 BattlefieldEffect)。
+    '成长基金': EffectSpec(
+        id='101701', name='成长基金', trigger=TriggerKind.CONDITIONAL,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['成长基金'], duties=DutyFlags(),
+        notes='一次性到级金门:到达 9 级 +40(级数配对字段 '
+              'gold_at_level/gold_at_level_target,引擎排除桶一次性金族);'
+              '世界发放腿 = sim 到级检查函数(check_strategy_level_grants),'
+              'trigger 占 CONDITIONAL 沿成功经验同族先例(词表 CONDITIONAL '
+              '注释明列本卡)'),
 }
 
 

@@ -127,8 +127,8 @@
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
 | 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:253)、长期主义系 gold_next_nodes_*(:215-216) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(:272) |
-| 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(cw_investments.py:249)、成长的快乐 xp_click_discount_from_level_at=8(:250-251) |
-| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(cw_investments.py:175;零建模先例,impacts §3) |
+| 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(cw_investments.py:549)、成长的快乐 xp_click_discount_from_level_at=8(:550-551;2026-10-22 商业间谍设计稿收口批承 T-132 裁定点 6 清偿) |
+| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(cw_investments.py:468;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
 
 ## 6. 派生值归位与读数权威
 
@@ -225,6 +225,19 @@
   `_record_lv8_window_start`(精确对齐),桥内检测 = 兜底(晚一拍保守);
   首例 = 成功经验 id 138,披露键族 `ENV_XP_WINDOW_DISCLOSURES`)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(以实际观察为准))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
+- **策略源到级金腿**(成长基金 id 101701 首例):kernel 纯决策函数
+  `check_strategy_level_grants`(kernel/cw_gain_chain.py,零写零 rng,
+  返回待发放 `(规范卡名, 金额)` 或 None;数据单一源 =
+  `STRATEGY_ECONOMY` 级数配对字段,registry 驱动非专表)/闸门 = 短路矩阵
+  六序(持卡 ∩ 到级条目 → done 闩 → level/gold 现值宁缺勿造不封账 →
+  级数比较)/挂点 = sim advance 双点(`_on_node_advance` 推进点 +
+  `_on_node_advance_terminal` 局终点,节点经验入账拍后各一段内联接线:
+  金 = observe 独立笔,sim 金写全 observe 现役形态;闩 = write_logic 直写
+  `strategy_conditional_done`,producer `strategy_level_grant`);
+  live 零接线(金面禁直写,观察覆盖兜底)/披露键 =
+  `strategy_level_grant_state_semantics`(状态检查型语义未经实机采证)+
+  `strategy_level_grant_dormant_in_sim`(现役 sim 经验常量下 9 级不可达,
+  到级腿休眠)。链式契约权威版本 = [gain-chain.md](gain-chain.md) §2.12。
 - **条件族采样金窗**:`grant_effect_node_refresh_balance` 的条件判定族(本金充裕
   系)按效果推进段执行时点的 `gs.gold` 现值评估——推进挂节点边界终结动作上报
   (settle_confirm/supply_confirm),动作帧的金 = 结算真值(结算观察链
@@ -418,7 +431,7 @@
 - **论断**:LEVEL_UP / while_held / BATTLEFIELD;duties = predict+respond;counter **不建**。
   被动分支(购买经验花费 −1)= 惰性读取入口(§6.2),不入存储;触发分支(升级时刷新商店 +
   偷最贵 3 张)= 升级事件驱动,偷取哪 3 张 = 随机面交由观察收尾。
-- **证据**:规格 cw_investments.py:323-328(`BattlefieldEffect(steal_on_level_up=3)`);官方
+- **证据**:规格 cw_investments.py:623-628(`BattlefieldEffect(steal_on_level_up=3)`;2026-10-22 商业间谍设计稿收口批锚订正);官方
   原文 cw_invest_data.py:244「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个
   角色。」
 - **推理链**:降价是持有期常数,读时消费(观察优先两支,§6.2)→ 无累计量;升级事件
@@ -487,8 +500,10 @@
    现判定规则下两形态均恰一次推进,不影响判定本体([node-derivation.md]
    (node-derivation.md) 场景走查)。
 6. **连胜联动类 counter 有无**:记录形态两案(§5 表)——counter 空(连胜流为既有
-   观察面)或按连胜事件 +1;该类在用无规格条目(唯一相关字段 difficulty_per_streak 在
-   评估面),建模批到达时先裁后建。
+   观察面)或按连胜事件 +1;该类在用无规格条目(关联字段 win_reward_mult/
+   difficulty_per_streak 注册行在册 `cw_investments.py:468`,消费直读注册表不经
+   效果清单——倍率走聚合+统一公式、难度走 M19 直读,规格条目无消费面),
+   建模批到达时先裁后建。
 7. **免费刷新余额上限**:设计按无上限处理(不建封顶逻辑);实采观察核对大额授予时
    余额是否溢出。
 8. **墙钟型效果的计数器形态**:高效决策(「获得9999次免费刷新,但是只持续45s」,

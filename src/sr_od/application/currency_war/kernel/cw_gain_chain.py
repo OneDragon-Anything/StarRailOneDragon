@@ -82,6 +82,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
+    STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_GRANTS,
@@ -823,6 +824,59 @@ def check_strategy_battle_grants(gs: GameState, node_kind: str,
                                producer=_BATTLE_GRANT_PRODUCER):
                 granted.append((name, item))
     return tuple(granted)
+
+
+#: 策略卡到级发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/
+#: _BATTLE_GRANT_PRODUCER 同款家族纪律;公开常量 = 写端在 sim 接线段
+#: ——决策函数纯判定零写,金/闩两笔写归调用方,sim 需跨模块引用署名,
+#: GAIN_CHAIN_PRODUCER 同公开例;新写端新名不沿用链缺省伪装连续)。
+LEVEL_GRANT_PRODUCER: str = 'strategy_level_grant'
+
+
+def check_strategy_level_grants(gs: GameState) -> tuple[str, int] | None:
+    """策略卡到级条件发放决策(成长基金 id 101701 首例;状态检查型语义
+    ——持卡 ∧ 等级达标 ∧ 未闩即发,「拿卡时已 ≥ 目标级」同发:等级是
+    容器现值非事件流,拿卡时点无从回溯历史跨越,T-102 条件腿「容器现值
+    求值」同款先例;语义假设经 sim 披露键申报,实机对拿卡已达标是否补发
+    未采证)。
+
+    契约:纯读零写零 rng,返回待发放 ``(规范卡名, 金额)`` 或 None;两笔
+    写(金 + done 闩)归调用方按所在端通道纪律执行(sim = 金 observe 独立
+    笔 + 闩 write_logic,advance 双点接线;live 零接线 = 金面禁直写,
+    观察覆盖兜底)。registry 驱动 = ``STRATEGY_ECONOMY`` 现值遍历,新到级
+    卡登记行即自动覆盖,零改本函数(局终同拍多卡双就绪边角:单笔返回
+    契约会漏第二笔,现世界不可达,多卡批落地时改列表返回并申报)。
+
+    短路矩阵(序即短路序,check_env_refresh_grants 七序形态):
+    1. active_strategies ∩ STRATEGY_ECONOMY 中 ``gold_at_level_target>0``
+       的条目,交集空 → None(未持卡/持表外到级卡同路;表外卡禁从效果
+       原文自动猜装);
+    2. 卡名 ∈ strategy_conditional_done → None(一次性封账,「首次」
+       语义——等级单调不减下达标态持续为真,靠闩封账非靠跨越检测);
+    3. gs.level.value None → None(等级从未观察,宁缺勿造);
+    4. gs.gold.value None → None(金未观察,宁缺勿造**不封账**——本
+       函数零写,值到位后下次检查自动重查发放);
+    5. 现值等级 < gold_at_level_target → None(现役 sim 经验常量下
+       全程封顶 7 级:节点 70 + 选卡即时腿 26 = 上界 96 < 3→9 级累计
+       门槛 194,XP_TO_NEXT_LEVEL 求和——本腿恒短路于此序 = 休眠正确
+       路径,sim 披露键申报;经验源扩网后零改激活,锁面固化边界);
+    6. 达标 → (卡名, gold_at_level)。
+    """
+    done = tuple(gs.strategy_conditional_done.value or ())
+    for name in gs.active_strategies.value or ():
+        eff = STRATEGY_ECONOMY.get(name)
+        if eff is None or eff.gold_at_level_target <= 0:
+            continue
+        if name in done:
+            continue
+        level = gs.level.value
+        gold = gs.gold.value
+        if level is None or gold is None:
+            continue
+        if int(level) < eff.gold_at_level_target:
+            continue
+        return (name, int(eff.gold_at_level))
+    return None
 
 
 def _node_frame(gs: GameState) -> str:

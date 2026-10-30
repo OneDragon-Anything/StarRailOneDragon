@@ -239,9 +239,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_PROCESS_ONLY,
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名,'
               '局内恒存随快照存续),无观察读端——发放登记事实非观察投影'
-              '(同族行先例 = env_grants_done);唯一逻辑写端 = '
+              '(同族行先例 = env_grants_done);逻辑写端两处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
-              '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)'),
+              '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
+              '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
+              '双点接线段写,producer strategy_level_grant)'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

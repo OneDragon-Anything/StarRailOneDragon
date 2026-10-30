@@ -86,7 +86,9 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_level_grants,
     discharge_due_item_grants,
     discharge_due_item_opens,
     discharge_due_strategy_grants,
@@ -961,6 +963,20 @@ DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: str = 'final_supply_gold_scope_assumption'
 #: 聚合读,锚点错过即无——「尾款」语义自洽)。
 DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: str = 'final_supply_gold_timing_assumption'
 
+#: 策略卡到级金·触发语义披露键(成长基金 id 101701;纯声明,不进任何
+#: 判定分支)。载义:「拿卡时已 ≥ 目标级也发放」状态检查型语义未经实机
+#: 采证(等级 = 容器现值非事件流,拿卡时点无从回溯历史跨越,策略条件腿
+#: 容器现值求值同款;若实机证伪为严格跨越事件型,检查函数改读升级事件
+#: 标记并随批退役本键)。
+DISCLOSURE_STRATEGY_LEVEL_SEMANTICS: str = 'strategy_level_grant_state_semantics'
+
+#: 策略卡到级金·sim 休眠披露键(成长基金 id 101701;纯声明,不进任何
+#: 判定分支)。载义:现役 sim 经验写源(节点经验表 × 选卡即时腿)下
+#: 全程等级上界 96(节点 70 + 即时 26)< 3→9 级累计门槛 194,到级金腿
+#: 休眠恒短路(上界封顶 7 级);经验源扩网(买经验建模/经验常量修订)
+#: 使上界 ≥ 194 时休眠锁先红触发边界重申报,本键随激活批复评退役。
+DISCLOSURE_STRATEGY_LEVEL_DORMANT: str = 'strategy_level_grant_dormant_in_sim'
+
 #: 全程披露常量表(恒已登记,与采样值无关的声明面)。
 _BASE_DISCLOSURES: dict[str, object] = {
     SIM_BATTLE_FACE: 'random_win_p0.5_hp_loss_uniform_[23,70]',
@@ -999,6 +1015,10 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 「后」字时点进窗拍假设)
     DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: 'final_supply_global_once_seq_pos_anchor',
     DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: 'node_window_entry_beat_pick_miss_is_gone',
+    # 策略卡到级金两键(成长基金;载义见键常量注:状态检查型语义未经
+    # 实机采证 + 现役经验常量下 9 级不可达到级腿休眠)
+    DISCLOSURE_STRATEGY_LEVEL_SEMANTICS: 'pick_already_at_level_also_grants_unverified',
+    DISCLOSURE_STRATEGY_LEVEL_DORMANT: 'bound_96_lt_threshold_194_cap_level7',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
     # 环境 XP 窗口通道披露键族(单一源 = kernel/cw_game_state
     # ENV_XP_WINDOW_DISCLOSURES,本处整表合并不复制键名)。
@@ -1701,6 +1721,33 @@ class SimBackend:
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
+        # —— 策略卡到级金腿(成长基金 id 101701 首例;条件单一源 =
+        # kernel check_strategy_level_grants 纯决策零写):挂经验入账后 =
+        # 跨级事件拍,先于新节点窗轮首收入(达标金计入本窗息算基数;
+        # 实机跨级金与节点金口径对位未逐帧采证,若实机为「跨级金落上
+        # 节点末口径」则本接线零偏差,否则一次性息差 ≤ min(40//10, 5)
+        # = 4 金,证伪路径 = 实机局跨级前后两窗利息差分)。双通道:sim
+        # 金写全 observe 现役形态(金面禁直写辖效果账本到期接入点,本笔
+        # = 世界合成非 logic 直写),闩 = write_logic(非金 Field 登记事
+        # 实直写,discharge_due_item_grants 先形);组名沿 sim:strategy
+        #(策略战后发放腿首落在役组)。现役 sim 经验常量下 9 级不可达
+        #(节点 70 + 选卡即时腿 26 = 上界 96 < 3→9 级门槛 194)= 休眠
+        # 正确路径恒短路零写,经验源扩网零改激活;幂等 = 决策函数 done
+        # 闩短路 + 本层序位守卫双保险。
+        _grant = check_strategy_level_grants(self.gs)
+        if _grant is not None:
+            _name, _amount = _grant
+            self.gs.observe(
+                self.gs.gold, int(self.gs.gold.value or 0) + _amount,
+                evidence=sim_evidence(f'strategy:level_gold:{_name}'),
+                sig=obs_sig(group_id='sim:strategy'))
+            self.gs.write_logic(
+                self.gs.strategy_conditional_done,
+                tuple(self.gs.strategy_conditional_done.value or ())
+                + (_name,),
+                produced_by=LEVEL_GRANT_PRODUCER,
+                evidence=f'strategy:level_gold:{_name}',
+                sig=logic_sig('sim:strategy'))
         self._entered_pos = eff
         self._enter_node_window(eff)
 
@@ -1716,6 +1763,24 @@ class SimBackend:
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
+        # —— 策略卡到级金腿局终点(与推进点同段决策/双通道写,挂经验
+        # 入账后、局终声明前 = 末节点跨级发放先于局终;双点为经验源扩网
+        # 后前瞻一致——现世界不可达下与单点行为全等,单点则「局终跨级
+        # 一次性缺口」永久缺失。通道/组名/休眠依据同推进点注释,不赘)。
+        _grant = check_strategy_level_grants(self.gs)
+        if _grant is not None:
+            _name, _amount = _grant
+            self.gs.observe(
+                self.gs.gold, int(self.gs.gold.value or 0) + _amount,
+                evidence=sim_evidence(f'strategy:level_gold:{_name}'),
+                sig=obs_sig(group_id='sim:strategy'))
+            self.gs.write_logic(
+                self.gs.strategy_conditional_done,
+                tuple(self.gs.strategy_conditional_done.value or ())
+                + (_name,),
+                produced_by=LEVEL_GRANT_PRODUCER,
+                evidence=f'strategy:level_gold:{_name}',
+                sig=logic_sig('sim:strategy'))
         self.disclosures[DISCLOSURE_RUN_COMPLETE] = 'survived_p3_boss'
         self._game_over()
 
