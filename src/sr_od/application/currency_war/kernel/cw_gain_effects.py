@@ -460,6 +460,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 卡文语序装备腿先/角色腿后,腿参数在此单次出现(单一源)。
     '武装支援': _compose_grant_legs(_make_random_equip_effect(1),
                                     _make_reinforcement_effect(((3, 2),))),
+    # 武装支援+ = 三腿分层组合卡(卡文「获得1件随机简易装备和1个随机4费
+    # 角色，获得6金币。」):效果体双腿同上(装备腿先/角色腿后,4 费池
+    # 放回抽 1);金腿分层 = STRATEGY_ECONOMY 注册行(instant_gold=6)在册
+    # 承载,金面禁直写不进效果体(sim 金发放写端缺口归 T-112 族级待办);
+    # 不入两族表同上(同名键顺序覆盖丢腿)。
+    '武装支援+': _compose_grant_legs(_make_random_equip_effect(1),
+                                     _make_reinforcement_effect(((4, 1),))),
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
@@ -468,8 +475,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
-_STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援)直书登记行由组合子
-组合双腿(非表生成),策略延时 offer 族由工厂自
+_STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
+由组合子组合双腿(非表生成),策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
 登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无
