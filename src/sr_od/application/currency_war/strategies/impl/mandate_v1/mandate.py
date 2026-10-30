@@ -75,13 +75,11 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
-    protection_membership,
-)
 
 # 卖出排除仲裁单一源:装配 A 与动作发出登记 API 本体在
-# sell_gate;本模块保留兼容再出口(sell_hold_exclusions 凑息身份段——
-# 测试/外部引用零断链;T3 垫保簿 stall_buys_* 三函数 shim,签名零断链)。
+# sell_gate;本模块保留兼容再出口(sell_hold_exclusions 凑息排除集——
+# Z1 身份面已随统一让位优先级迭代 3.4 退役,语义 = 循环防线全资格面;
+# T3 垫保簿 stall_buys_* 三函数 shim,签名零断链)。
 # 消费位已全量迁移 sell_exclusions
 # (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
@@ -388,46 +386,60 @@ def fuel_sell_candidates(bench: list[BenchSlot],
                          counters: dict | None = None,
                          dedup_names: set[str] | None = None,
                          ) -> list[BenchSlot]:
-    """fuel_sell 对象集:1★ ∧ 与终局阵容锁定零重叠 ∧ 边际贡献≈0
-    (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0)。
+    """fuel_sell 对象集:备战席可腾位候选(物理谓词 + 循环防线;
+    统一让位优先级迭代 3.4 收缩后的形态)。
 
     输入域 = 占席条目域(容器 ``BenchSlot`` 紧缩序,占位件 kind 面在域内;
     身份/星级经 ``bench_slot_unit`` 解包读口,benchchar-retirement P4
     容器形)。
 
-    「1★ 无后台效果件 ⇒ bench 维边际构造性 0,精确 0 界」旧表述已废
-    (勘误 N3①):裁定410 定案 ③④ 持有件
-    V_power>0——「1★ ∧ 无后台效果」不再蕴含边际 0。持有身份维不在本
-    函数内重判(单一源),由消费位注入统一装配 A 身份段承载
-    (``sell_gate.sell_exclusions``,P78-4:③④ 件本非燃料类,禁卖 =
-    P41 类资格本义);未注入身份段的本体调用只余物理谓词,语义 =
-    排除前的候选集上界。
+    **身份资格面退役申报(3.4,dismantle §3)**:原身份/代理资格门随静态
+    不许卖名单退役整段删除——``zero_overlap`` 门(K 线内禁卖)/一星门
+    (总纲 §2.4「不设仅一星代理过滤」拍板:凑钱卖出按统一序列取用,
+    一星全额退口径归预算投影/凑钱目标算术)/``bench_effect_qualified``
+    检查(挂后台效果资格,四消费位的第四处)——「谁不该卖」改由统一
+    让位序列(criteria/priority.sell_order)与消费位硬约束承载;M4 腾席环
+    的 ``check_irreversible``(硬约束④不可逆护栏)不变。``k_members``
+    形参保留 = 死库存买侧防线与消费位兼容读面。
 
-    ``exclude_names``(P60 治本):买面义务集成员禁入燃料集,消费端注入
-    ``locked_buy_membership`` 产物(与 EV 排除集同款)。排除后
-    Fuel ∩ B = ∅ ⟹ 换手循环势函数 Φ=|owned∩B| 单调不减、循环
-    ≤|B∖k| 次收敛;|B|>容量时诚实停摆(m2_retry_exhausted 计数,金
-    累积可判读)优于不可见换手。终局阵容锁定帧 buy_members ⊋ k_members,不
-    注入时 bench 上的 hoard 非核心件是合法燃料 → M4 卖 1 买 1 永恒
-    换手(伪装进展:net≈0 + drought 被买动作重置)。
+    ``exclude_names`` = **循环防线装配位**(窗口段/L1 同轮禁卖/种子年龄
+    豁免,单一入口 = ``sell_gate.sell_exclusions``;总纲 §2.4 保留项)——
+    原身份段装配内容(义务基座 ∪ 保护集 ∪ registry 核心)已随身份段
+    退役消失,参数保留 = 保留项防线的消费通道(同 visit 卖回防线 P78-1
+    经由本位生效);消费位传装配 A 现值,禁自建第二排除面。
 
-    bench_effect_qualified 件(挂后台效果资格,例外①②显式枚举)不入
-    燃料集——语境经 ``predicates.bench_effect_context(state, unit,
-    k_members)`` 共享装配从容器现读(IMPL_ADV_R200 症3:三卖面通道
-    统一消费)。带默认
-    排序:slot 升序(确定性)。
+    保留资格面(物理谓词/循环防线,总纲 §2.4 保留项):
 
-    合成素材拒入守卫(G-S1):候选 1★ 与场上(deployed 域,
-    ``state`` 现读;bench 域含自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因
-    键 ``merge_material_guard``(单一源 = ``cw_state.
-    merge_material_reject_reason``,与部署侧同键)拒入燃料集——防
-    g_20260906_081836 P2r1 案发形态(同名 2★ 唯一升级路径被腾席通道
-    卖断)。
-    ``counters`` 非 None 时拒因同键计数(键 ``merge_material_guard_
-    blocked``,与凑息/支付变现/换线通道同键分账);计数 = 事件口径
-    (C1 整改:同帧同名只计 1,去重载体 = ``dedup_names``——腾席环
-    while 重试对同一滞留素材重复触达不再重复 +1,单一源 =
-    ``cw_state.count_merge_material_blocked``)。
+    - 占位件恒拒(腾席资格物理门):备战槽非角色占位
+      物品(补给箱/星徽秘典/典籍书册等,容器槽位 kind 非 'unit' 识别
+      防线 = 观察写端 kind 落位)恒不入候选——
+      游戏真值 = 占位件无卖出交互且无金币现值(实机采证 2026-09-12:
+      同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
+      无金币现值、无出售项),任何星级不可变现。与部署侧 ``cw_deploy_
+      logic`` 'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖),
+      判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
+      观察面把占位件直喂 bench——本门 = 卖出发出前唯一资格防线;判据
+      单一源已上收为跨通道共享谓词 ``predicates.item_slot_unsellable``
+      (凑息/支付变现通道同门消费,禁第三处内联复制)。
+
+    - 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
+      板空帧腾席卖出分支同弱劣拒帧 → 本函数返空,消费位走各自既有「无
+      候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
+
+    - 合成素材拒入守卫(G-S1):候选 1★ 与场上(deployed 域,
+      ``state`` 现读;bench 域含自身)另有同名同星副本 ⇒ 2/3 合成进度
+      素材,拒因键 ``merge_material_guard``(单一源 = ``cw_state.
+      merge_material_reject_reason``,与部署侧同键)拒入燃料集——防
+      g_20260906_081836 P2r1 案发形态(同名 2★ 唯一升级路径被腾席通道
+      卖断)。``counters`` 非 None 时拒因同键计数(键 ``merge_material_
+      guard_blocked``);计数 = 事件口径(C1 整改:同帧同名只计 1,去重
+      载体 = ``dedup_names``——腾席环 while 重试对同一滞留素材重复触达
+      不再重复 +1,单一源 = ``cw_state.count_merge_material_blocked``)。
+
+    - ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
+      释放集——G-S1 判据处的**条件旁路**(先旁路后装配):拒因命中 ∧
+      名在释放集 ⇒ 跳过拒入、不计数(资格子谓词旁路,非新通道;单一源
+      = sell_gate.dead_pair_exit_release,消费位禁自算第二份)。
 
     ``defer_names``(T3 同轮保留=末位牺牲序;M4 腾席转化类放行,非绝对
     禁卖):集合内名字降为候选**末位**——存在非保候选时 victim 恒取
@@ -436,32 +448,8 @@ def fuel_sell_candidates(bench: list[BenchSlot],
     ``fuel_victim_protect_demoted`` 并卖出销账)。稳定排序:仅把被保件
     移尾,不改既有相对序——defer 空集时逐位等价旧序(零漂移)。
 
-    占位件恒拒(腾席资格物理门):备战槽非角色占位
-    物品(补给箱/星徽秘典/典籍书册等,容器槽位 kind 非 'unit' 识别
-    防线 = 观察写端 kind 落位)恒不入候选——
-    游戏真值 = 占位件无卖出交互且无金币现值(实机采证 2026-09-12:
-    同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
-    无金币现值、无出售项),任何星级不可变现。与部署侧 ``cw_deploy_
-    logic`` 'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖),
-    判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
-    观察面把占位件直喂 bench——本门 = 卖出发出前唯一资格防线;判据
-    单一源已上收为跨通道共享谓词 ``predicates.item_slot_unsellable``
-    (凑息/支付变现通道同门消费,禁第三处内联复制)。
-
-    空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
-    板空帧腾席卖出分支同弱劣拒帧 → 本函数返空,消费位走各自既有「无
-    候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
-
-    ``merge_guard_release``(缺省空集 = 零漂移端):死库存素材对
-    释放集——G-S1 判据处的**条件旁路**(先旁路后装配,序由行为测试③钉
-    死):拒因命中 ∧ 名在释放集 ⇒ 跳过拒入、不计数(资格子谓词旁路,
-    非新通道;单一源 = sell_gate.dead_pair_exit_release,消费位禁自算
-    第二份)。旁路只撕 G-S1 一道子谓词,下游装配 A 排除(exclude_names)
-    照旧全额生效。
+    带默认排序:slot 升序(确定性)。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
     _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return []
@@ -476,24 +464,11 @@ def fuel_sell_candidates(bench: list[BenchSlot],
         star = _slot_star(b)
         if name in exclude_names:
             continue
-        if star != 1:
-            continue
         if merge_material_reject_reason(name, star, bench, _deployed) \
                 and name not in merge_guard_release:
             if counters is not None:
                 count_merge_material_blocked(counters, name, dedup_names)
             continue
-        if not predicates.zero_overlap(name, k_members):
-            continue
-        try:
-            if predicates.bench_effect_qualified(
-                    name,
-                    predicates.bench_effect_context(state,
-                                                    bench_slot_unit(b),
-                                                    k_members)):
-                continue
-        except Exception:   # noqa: BLE001  注册表查无此名:类级默认(低费燃料)可判
-            pass
         out.append(b)
     # T3 末位牺牲序:被保件稳定移尾(非绝对禁卖——唯一燃料帧照常放行)
     out.sort(key=lambda b: _slot_cid(b) in defer_names)
@@ -768,27 +743,9 @@ def swap_transition_narrow_frame(state: GameState,
     return swap_bond_gate_domain_of(locked, fp, board_full)
 
 
-def core_single_card_buy_eligible(locked_buy: bool) -> bool:
-    """C1 直通核心卡支配性支资格门(设计《直通核心卡信号层入口》§2 案A;
-    零参数结构):终局阵容锁定态资格门。席位维自恒买腾席批下放商店动作发出点循环内——席满帧须入循环走腾席购买支
-    (帧门前件收窄防「席满帧循环外拦死 → 腾席支永不触达」的假修;
-    哨兵键与出口键闭集见恒买腾席方案 v2 §5.6,.debug/temp 在案)。
-
-    与 dominance_buy_eligible 同构分工:本门只覆盖终局阵容锁定态前件,逐卡判据
-    (CORE_SINGLE_CARD_REGISTRY 名单 / refund_full_star_ok 1★ 全额退 /
-    t5_p1_false 不跌破利息档 / check_seats 席位)在商店线动作发出点循环内现算。
-    终局阵容锁定态判据 = 锁定采购集
-    已解析(cw_intention.locked_buy_membership 非 None ⟺ locked_comp
-    非空);未锁帧通道不评估(设计判据式前件;phase 与 locked_comp
-    同点同置/同点清,单判惯例同 cw_intention.locked_line_recipe_floor_
-    conflict 注)。
-
-    适用范围分界(设计 §2 N2 路线 b):既有 dominance_buy 覆盖「停手态 ∧
-    富余带 ∧ 线外燃料件」;本通道覆盖「终局阵容锁定态 ∧ 不跌破利息档带 ∧ registry
-    名单核心卡」。(备战期开店标志已停用——会话标记承接,
-    本通道在商店决策访问位下游,无标志读/写。)
-    """
-    return locked_buy
+# (core_single_card_buy_eligible 已随 C1 支退役整删——统一让位优先级
+#  迭代 3.4,C1 单卡核心囤积规则作废,dismantle §2;契约键
+#  ('mandate','core_single_card_buy_eligible') 同批清除。)
 
 
 # ===== M1″ 终局阵容锁定转型域部署执行放行判定(设计文档旧称「放行条件」=
@@ -958,12 +915,10 @@ def run_mandate(frame: MandateFrame,
     事件粒度:续段缓存命中帧不增,量级骤降 ≠ 风暴消失,判读协议随批
     声明;观测对 m2_stall_cache_hit / m2_stall_cache_rederive 与重复帧
     键 m2_stall_repeat_frame 同期新增,语义与商店域一致)/
-    deadlock_only_transition_victim(保护集纯计数,零行为;统一保护集
-    design §2.4 键值重定义:m2_retry_exhausted 事件帧 ∧ 释放集并入候选
-    后燃料资格面仍空 ∧ bench 存在保护集非义务成员〔义务面 = M2 缺员源
-    k_members〕)+ dead_pair_exit_sold_m4_fuel /
+    dead_pair_exit_sold_m4_fuel /
     dead_pair_exit_sold_interest(释放成员实际卖出笔数,键族单一源 =
-    sell_gate 键族清单)。
+    sell_gate 键族清单)。(死锁计数键 deadlock_only_transition_victim
+    已随身份保护判据退役删除——统一让位优先级迭代 3.4。)
 
     备战期开店标志已随迭代 2026-10-12-prep-shop-workflow-redesign 批
     3.6/3.7 停用删除(防活锁职责 = 商店会话标记 shop_handled 承接;
@@ -1022,17 +977,20 @@ def run_mandate(frame: MandateFrame,
     # 告警在场 = 存在未安置溢出角色,此刻出战点击被游戏忽略(launch_dead
     # 停机钩子三连实证,prep.md 告警节)→ 本帧决策输出强收窄为单动作
     # CwActionSellBenchParam(腾位后溢出卡自动入自由槽,下入口帧告警消失恢复常规决策):
-    # CwActionStartBattleParam 禁发、买面/凑息/部署全冻结。候选与排除同源(wanted_close
-    # 分支 2 先例:统一装配 A channel='m4_fuel' + fuel_sell_candidates 全守卫
-    # ——占位件恒拒/合成素材拒入/T3 降序;零新增通道,reason 沿用
-    # m4_fuel_sell,构造事实分键 overflow_clear_sell/overflow_no_fuel)。
+    # CwActionStartBattleParam 禁发、买面/凑息/部署全冻结。候选与释放同源
+    # (wanted_close 分支 2 先例:fuel_sell_candidates 全守卫——占位件
+    # 恒拒/合成素材拒入/T3 降序;身份资格面已随统一让位优先级迭代 3.4
+    # 退役,零新增排除面,reason 沿用 m4_fuel_sell,构造事实分键
+    # overflow_clear_sell/overflow_no_fuel)。
     # 候选空集 = fail-closed 空批(禁乱卖被守卫件),返回主循环,环级无
     # 进展守卫兜底。
     if frame.overflow_warning:
+        # 循环防线装配(窗口段/L1 同轮禁卖/种子豁免;身份段已随统一
+        # 让位优先级迭代 3.4 退役——装配自动收缩)。
         _ov_excl = sell_exclusions(session, k, channel='m4_fuel',
                                    cap_hold=locked_buy_cap_hold(state),
                                    current_round=frame.round_num)
-        # 释放集同参同源(N3;与腾席分支/溢出门同一装配单点)。
+        # 释放集同参同源(N3;与腾席分支同一装配单点)。
         _ov_release = dead_pair_exit_release(
             session, k, frame.bench, frame.deployed, frame.round_num,
             cap_hold=locked_buy_cap_hold(state), counters=counters)
@@ -1082,11 +1040,13 @@ def run_mandate(frame: MandateFrame,
     # 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标;契约条目 =
     # flow/action_exec.md §1)。
     # exclude = sell_exclusions(session, k, channel='interest',
-    # current_round=frame.round_num):装配 A 全量形态(已落地,单一
-    # 入口 sell_gate)——义务基座(终局阵容锁定宽窄解析单点,与 shop
-    # 消费位同源——审查修复)∪ 保护集 ∪ registry 核心(持有件禁被
-    # 凑息卖回,身份单一源 = protection)∪ 窗口段(press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态
-    # 登记的 F1 终局阵容锁定清空语义废除(P78-3 证其错误),修法 = 轮界过期)。
+    # current_round=frame.round_num):装配 A 全量形态(单一入口
+    # sell_gate)。身份段(义务基座 ∪ 保护集 ∪ registry 核心)已随统一
+    # 让位优先级迭代 3.4 退役——凑息资格不再做身份排除(凑息 = 统一
+    # 序列取用形态的前身通道,身份承载归让位序);现役构成 = 循环防线
+    # (窗口段 press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态登记的
+    # F1 终局阵容锁定清空语义废除(P78-3 证其错误),修法 = 轮界过期;
+    # L1 同轮硬面;种子年龄豁免)。
     # defer = T3 同轮保留(垫保在凑息是绝对跳过 = 通道对价语义,与窗口
     # 段排除是两个面,sell.py:140-148)。
     _cap_resolved = _cap_of(session)
@@ -1205,14 +1165,11 @@ def run_mandate(frame: MandateFrame,
             else:
                 # _mm_dedup 帧级去重集已上移至 ②(a) 接线前创建(两守卫
                 # 触达位共享,声明见彼处)。
-                # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate),
-                # 成分:义务基座(本位此前漏注入——备战 F1 主案,
-                # prep_loop 攻击报告 F1 的「两域同函数分叉」在此闭死,
-                # 与 shop 消费位同源单点)∪ 保护集 ∪ registry 核心
-                # (P78-4:持有件本非燃料类,禁卖 = 类资格本义;身份
-                # 单一源 = protection,统一保护集 design §2.3)∪ 窗口段(
-                # press 登记活跃帧腾席同禁,P78 INV 通道无关)。T3 同轮
-                # 保护仍走 defer_names(转化类末位牺牲,通道对价语义不动)。
+                # 循环防线装配(窗口段/L1 同轮禁卖/种子豁免,单一入口
+                # sell_gate;身份段已随统一让位优先级迭代 3.4 退役——
+                # 装配自动收缩):腾席候选的线内件拦截由硬约束④
+                # check_irreversible 承载(不变),T3 同轮保护仍走
+                # defer_names(转化类末位牺牲,通道对价语义不动)。
                 _m4_excl = sell_exclusions(session, k, channel='m4_fuel',
                                            cap_hold=locked_buy_cap_hold(
                                                state),
@@ -1241,7 +1198,13 @@ def run_mandate(frame: MandateFrame,
                     _vname = _slot_cid(victim)
                     ok4, _ = check_irreversible(_vname, k)
                     if not ok4:
-                        break
+                        # 硬约束④不可逆护栏命中(防御位):身份排除面
+                        # (zero_overlap)退役后线内件可达候选集——护栏
+                        # 语义不变(线内件禁卖),处置由「终环」改「跳过
+                        # 该件继续找可腾件」(旧形态该分支不可达,候选集
+                        # 构造性不含线内件;改跳过使护栏与腾席目标兼容)。
+                        bench = [b for b in bench if b is not victim]
+                        continue
                     # T3 末位牺牲序命中 + 卖出销账(唯一燃料帧放行转化;
                     # 销账行为面保留)。Emitted.reason = route_tag 透传
                     # 载体填充:m4_fuel_sell = 腾席分支构造
@@ -1277,15 +1240,9 @@ def run_mandate(frame: MandateFrame,
                     if no_fuel:
                         _count('m2_stall_cache_rederive')
                         _st.cw4_m2_stall_latch = (True, _seg)
-                    # 保护集纯计数键(零行为;键值重定义 = 死锁帧释放集
-                    # 候选改保护集非义务成员——统一保护集 design §2.4,
-                    # 原「bench 存在 ④ 件」口径随 ④ 策展名单退役;义务面
-                    # = M2 缺员源 k_members)。
-                    if no_fuel and any(
-                            _slot_cid(b) in protection_membership(
-                                state, state_of(session)) - set(k)
-                            for b in frame.bench):
-                        _count('deadlock_only_transition_victim')
+                    # (死锁计数键 deadlock_only_transition_victim 已随
+                    # 身份保护判据退役删除——统一让位优先级迭代 3.4:保护
+                    # 集买面消费位全退役后该纯计数键无判读对象。)
                 else:
                     _emit_open_shop('m2_buy')
         else:
