@@ -44,7 +44,8 @@ dev = [
 
 [tool.uv]
 package = false
-cache-dir = "./.install/uv_cache"
+# 缓存目录不在此配置：本机经用户级环境变量 UV_CACHE_DIR 集中管理（如 D:\code\cache\uv），
+# 未设环境变量的机器走 uv 默认系统位置；写相对路径会把缓存收进项目目录（已废弃）。
 environments = ["sys_platform == 'win32'"]
 default-groups = []
 
