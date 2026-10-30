@@ -16,7 +16,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类清单**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 23 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 25 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -108,9 +108,10 @@
 
 ## 5. 分类清单(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **19 条,实码全量**(构建层校验与数据层
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **25 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
-加油站登记期 burst 建模条目,§8);词缀源
+加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
+——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项);词缀源
 注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
 评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
@@ -322,7 +323,7 @@ refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 23 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 25 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -450,6 +451,25 @@ refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
 - **推理链**:「每 N 次」= 周期门槛 → 需累计量 → counter(§3 规则 3);计数含免费刷
   (用户裁定:官方未限定「用金币」,对照淘金客明写「消耗金币」的排免费写法,impacts
   §3);费用参数 = 备战席最左读数,对账核验用;备战席最左摆位 = 策略变量(respond)。
+
+#### 合并同类项(102901)
+
+- **论断**:ON_REFRESH / while_held / ECONOMY;duties 全空(counter 不建——出对判定
+  逐刷独立,无剩余/门槛累计量);金腿 = 每次手动刷新事件条件金(出同名对 +1,
+  单刷至多一笔;卡面条件式单数语义,星级不参与);burst 4 刷 = 登记期一次性发放
+  (获得链登记腿)。策略源 ON_REFRESH 经济发放首条(淘金客 STATE/采购专员
+  BATTLEFIELD 为同触发异 category 先例,发放过滤按 trigger∧category 天然隔离)。
+- **证据**:规格 cw_investments.py(STRATEGY_ECONOMY 注册行 gold_per_refresh_pair=1
+  + free_refresh_burst=4,登记形态等值迁移自 instant_gold;STRATEGY_EFFECTS 条目
+  payload 引同一实例);发放 = cw_effect_inventory.apply_on_refresh_pair_gold_grant
+  挂刷新上报随机态腿后,sim_backend_installed 门控、observe 通道(live 零写观察
+  覆盖兜底);官方原文 cw_invest_data.py「刷新商店时，若刷新的角色中出现2个相同的
+  角色，获得1金币。获得4次免费刷新。」
+- **推理链**:逐刷独立条件 → counter 空;「刷新商店时」= 手动刷新动作(刷新触发
+  闭集 = 节点切换 + 手动,economy.md;挂点 = 手动动作唯一生产点,节点窗自动全刷
+  另口不经此),节点切换侧待实采,披露键 STRATEGY_REFRESH_PAIR_SCOPE_UNVERIFIED
+  在册;sim 判定输入 = 采样 = 世界真值,live 采样是猜测金面禁直写(零写);
+  live 补账 = 游戏侧真实加金 → 下次商店入口金位实读观察锚定(感知滞后窗同披露键)。
 
 #### 商业间谍(300201)
 

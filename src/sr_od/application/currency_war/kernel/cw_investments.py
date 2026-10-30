@@ -195,6 +195,12 @@ class EconomyEffect:
                                           # 赋值非增益:高连胜回落/连败翻转均字面
                                           # 语义(卡文「变为」无 max/只升限定);0 =
                                           # 无此腿
+    # —— 刷新触发条件金族(每次刷新事件条件触发,非选牌当场——
+    #    instant_gold 一次性语义辖不动;登记形态等值迁移先例 =
+    #    尾款交付 gold_at_final_supply)——
+    gold_per_refresh_pair: int = 0        # 合并同类项:刷新出 2 同名 +1 金
+                                          # (每次刷新事件条件触发;发放 =
+                                          # 刷新上报随机态腿后检查腿)
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -235,6 +241,7 @@ _ENGINE_CHANNEL_SINGLE_FIELDS: tuple[tuple[str, float | None], ...] = (
     ('refresh_free_chance', 0.0), ('refresh_shop_rewrite_every_3cost', 0),
     ('xp_per_refresh', 0), ('xp_per_node', 0), ('xp_buy_cost_discount', 0),
     ('xp_instant', 0),
+    ('gold_per_refresh_pair', 0),
 )
 #: 引擎配对字段通道:效果语义两半齐备才存在(「接下来 count 次每次
 #: amount」/「level 起单击减金」)——任一半缺省 = 通道不存在。
@@ -561,7 +568,16 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '躺平': EconomyEffect(instant_gold=20),
     '公司人才流动': EconomyEffect(instant_gold=2),
     '武装支援+': EconomyEffect(instant_gold=6),
-    '合并同类项': EconomyEffect(instant_gold=1, free_refresh_burst=4),
+    # 合并同类项(id 102901):「刷新商店时，若刷新的角色中出现2个相同的角色，
+    # 获得1金币。获得4次免费刷新。」(cw_invest_data.py:69 卡面直读)。金腿 =
+    # 刷新事件条件金,登记形态等值迁移自 instant_gold——「选牌当场给金」的
+    # 一次性语义与卡文「每次刷新条件触发」时点错位;双登记会在未来 instant_gold
+    # 世界发放腿建模时与本腿双发(需排除集特判 = 埋雷),迁移治本。发放 =
+    # 刷新上报随机态腿后检查腿(cw_effect_inventory.apply_on_refresh_pair_
+    # gold_grant,sim 装配态观察通道);估值 = 条件概率型(出对频次分布未采)
+    # fail-closed 0,策略侧待建模桶在册(strategy_economy._PENDING_MODELING_
+    # FIELDS);burst 4 刷经获得链登记腿自动发放。
+    '合并同类项': EconomyEffect(gold_per_refresh_pair=1, free_refresh_burst=4),
     '无伤通关': EconomyEffect(instant_gold=1),
     '招聘资金': EconomyEffect(instant_gold=4),
     '招聘资金+': EconomyEffect(instant_gold=5),
@@ -938,6 +954,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'CounterKey.REFRESH;采购专员·金/彩为同族 BattlefieldEffect '
               'counter_every 形态对照);待实机核:赠刷是否计入每4次计数/'
               '效果持续期(p40-refresh-ev.md 变体⑤);burst=5 登记期发放'),
+    # 合并同类项:官方「刷新商店时，若刷新的角色中出现2个相同的角色，获得1金币。
+    # 获得4次免费刷新。」(cw_invest_data.py:69,id 102901)。两腿:
+    # ① burst=4 经获得链登记腿自动发放(live/sim 同链,免费午餐同形);触发面
+    #    = ON_REFRESH/持续 = WHILE_HELD 为腿 B 的语义声明取准(桥/腿运行时不读
+    #    trigger,发放过滤按 trigger∧category 与声明一致);
+    # ② 金腿 = 每次手动刷新事件条件金——「刷新商店时」玩家语境 = 手动 D 牌,
+    #    刷新触发闭集 = 节点切换 + 手动(docs/game/currency_war/research/
+    #    economy.md),挂点 = 刷新上报 = 手动动作唯一生产点,节点切换自动全刷
+    #    (sim deal_shop 另口)不经此口;辖域待实采,披露键
+    #    STRATEGY_REFRESH_PAIR_SCOPE_UNVERIFIED 登记(cw_effect_inventory)。
+    #    发放 = 刷新上报随机态腿后检查腿 apply_on_refresh_pair_gold_grant
+    #    (逐 ON_REFRESH∧ECONOMY 条目过滤;sim_backend_installed 门控——
+    #    sim 采样即世界真值、判定成立经观察通道发金,live 采样是猜测金面禁
+    #    直写零写)。duties 全空(出对判定逐刷独立无累计量,无计数器/预知/
+    #    姿态消费面);per-node/板面两桥对本 payload 零行为(字段全缺省)。
+    '合并同类项': EffectSpec(
+        id='102901', name='合并同类项', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['合并同类项'], duties=DutyFlags(),
+        notes='刷新出对 +1 金经刷新上报随机态腿后检查腿(sim 真值判定,'
+              'live 观察覆盖兜底);burst=4 获得链登记腿自动发放'),
 }
 
 

@@ -25,6 +25,15 @@
   同窗)——世界发放域,不属计数/采样语义;sim 与生产同段 op 代码
   同口,单点覆盖双端。
 
+- **策略出对条件金分支**(策略源 ON_REFRESH 经济发放首接线):随机态
+  腿之后、仅 sim 装配态执行(``apply_on_refresh_pair_gold_grant``,
+  登记面 = ``cw_investments.STRATEGY_EFFECTS`` ON_REFRESH∧ECONOMY 条目
+  双过滤,判定 = 本次采样 payload 出同名对;发放 = 观察通道发金)——
+  sim 采样即世界真值,判定输入可直接消费;live 采样是猜测,金面禁
+  猜测直写(live 零写,金真值 = 下一商店入口观察覆盖;``cw_env_grants
+  .on_diamond_acquired`` 同口径)。burst 免费刷腿走获得链登记腿,不经
+  本分支。
+
 - **金账扣费分支**(2026-10-16 用户裁决,推翻 2026-09-21「金仍不写、
   以实际观察为准」旧裁定):费用单一源 = ``gs.shop_refresh_cost``
   容器直读(``value or REFRESH_COST_BASE``;live 商店开态观察漏斗
@@ -38,7 +47,10 @@
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
 ``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+写端留在 ``kernel/cw_game_state``;依赖方向 = 本包 → 容器单向 +
+本文件对 ``sim.cw_sim_ports`` 的装配判据单向腿(判据口零 kernel
+import,依赖无环结构自证;kernel → sim.ports 判据消费首例,发放
+函数本体仍住 kernel 包内零跨包)。
 """
 
 from __future__ import annotations
@@ -85,7 +97,8 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
       (produced_by/evidence 留存证据;下限 0,禁负值漂移)。
     - 随机态分支 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
-      台账,非失配)。
+      台账,非失配);策略出对条件金腿在同一分支块内、采样之后(见模块头,
+      仅 sim 装配态执行)。
     - 金账扣费:费用单一源 = 容器直读 ``gs.shop_refresh_cost.value or
       REFRESH_COST_BASE``(商店画面观察写入——live 开态漏斗 OCR / sim
       开店呈现,同一字段同一写法),非免费帧按当次价扣金;与 op 花销账
@@ -131,6 +144,21 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                                    probs=state_deal_probs(gs, int(_level)))
         gs.write_logic_rand(gs.shop, payload, produced_by=_PRODUCER,
                             evidence='refresh_random_sample', sig=_grp_sig)
+
+        # 策略出对条件金腿(随机态腿后、payload 在手):仅 sim 装配态执行
+        # ——sim 采样即世界真值,判定成立经观察通道发金;live 采样是猜测,
+        # 金面禁猜测直写(live 零写,真值 = 下一商店入口观察覆盖)。
+        # kernel → sim.ports 为 kernel 包判据消费首例(判据口零 kernel
+        # import,无环结构自证);发放函数本体住 kernel 包内,惰性 import
+        # 同文末诸桥纪律。挂点禁移函数尾:函数尾拿不到 payload 变量,误挂
+        # 会转向读商店旧值或猜测值(两皆违设计)。level 缺读帧采样腿跳写,
+        # 本腿同帧零发放(概率表按级索引,宁缺勿造同向)。
+        from sr_od.application.currency_war.sim import cw_sim_ports
+        if cw_sim_ports.sim_backend_installed():
+            from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                apply_on_refresh_pair_gold_grant,
+            )
+            apply_on_refresh_pair_gold_grant(gs, payload, frame='refresh')
 
     # 金账扣费分支:容器直读当次刷价(免费帧清零收归本函数集中执行;
     # free 判定单一源 = free_refresh_left 字段,与免费分支同一推导)。

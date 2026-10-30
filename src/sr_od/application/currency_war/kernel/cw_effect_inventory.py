@@ -49,6 +49,7 @@ if TYPE_CHECKING:
         BenchView,
         ChannelSig,
         GameState,
+        ShopPayload,
         Unit,
     )
     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -1966,6 +1967,96 @@ def apply_on_merge_refresh_grant(gs: GameState, *, merges: int,
                    evidence=(f'effect_on_merge@{frame}' if frame
                              else 'effect_on_merge'),
                    sig=_equip_bridge_sig(gs))
+
+
+# ===== 刷新出对条件金腿:策略源 ON_REFRESH 经济发放首接线 =====
+# 卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS,id 102901):「刷新商店时，
+# 若刷新的角色中出现2个相同的角色，获得1金币。获得4次免费刷新。」——金腿 =
+# 刷新事件条件金(挂点 = 刷新上报函数随机态腿后,手动动作唯一生产点;burst
+# 腿归获得链登记腿,本函数零辖)。「刷新商店时」辖域 = 仅手动刷新(刷新触发
+# 闭集 = 节点切换 + 手动,docs/game/currency_war/research/economy.md;节点窗
+# 自动全刷 = sim deal_shop 另口,不经刷新上报),残余不确定性走披露键实采。
+# 仅 sim 装配态执行:sim 采样即世界真值、判定成立经观察通道发金;live 采样是
+# 猜测,金面禁猜测直写(零写,金真值 = 下一商店入口观察覆盖兜底)。
+
+#: 发金观察笔证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀语义 =
+#: sim 后端世界分支外部事件写,本腿是 kernel 条件发放非后端事件,形态先例 =
+#: cw_env_grants._DIAMOND_EVIDENCE 同款申报)。正规流程下金位在每次刷新动作前
+#: 经商店入口观察锚定(source=observation),本笔覆盖不触失配对账;若未来出现
+#: 无观察衔接的连续刷新链,本笔与扣费腿 logic 写的窗口内差异会照真走失配
+#: 三分流(信号正确:流程跳过了入口观察)。
+_REFRESH_PAIR_GOLD_EVIDENCE: str = 'strategy_refresh_pair_gold'
+
+#: 建模假设档披露键(静态常量在册,无运行时 setdefault 动作;先例 =
+#: STRATEGY_CAPACITY_EXPIRY_ASSUMPTION_KEYS 同形)。登记两件实机未证/感知边界
+#: 事实:- strategy_refresh_pair_scope_unverified:「刷新商店时」辖域 = 仅手动
+#:   刷新为在册口径推得(触发闭集 + 挂点架构),节点切换自动全刷是否同触发未
+#:   实采——实采法 = 结算对账帧金差 vs 手动刷新帧金差分离,证伪后补 deal_shop
+#:   侧同款检查(后继批,不回改本挂点);- strategy_refresh_pair_live_lag:
+#:   live 条件金感知滞后窗——多次刷新出对未重进商店时 gs.gold 读数滞后于游戏
+#:   真值,下次商店入口观察锚定收敛(策略账面归兜底再锚定,shop_session
+#:   在册决策;drift 侦测可见,非缺陷)。退役条件 = 实机金轨迹定案辖域后
+#:   回填 verdict。
+STRATEGY_REFRESH_PAIR_SCOPE_UNVERIFIED: tuple[str, ...] = (
+    'strategy_refresh_pair_scope_unverified',
+    'strategy_refresh_pair_live_lag',
+)
+
+
+def apply_on_refresh_pair_gold_grant(gs: GameState, payload: ShopPayload, *,
+                                     frame: str = '') -> None:
+    """刷新出对条件金腿(策略源 ON_REFRESH 经济发放首接线;挂点 =
+    刷新上报函数随机态腿之后、仅 sim 装配态调用——live 采样是猜测,
+    金面禁猜测直写,live 金真值归观察覆盖兜底)。
+
+    - 判定 = payload 5 槽非空 card 按 name 计数,存在任意名 ≥2 即成立、
+      单次刷新至多一笔(卡面「若刷新的角色中出现2个相同的角色，获得1金币」
+      条件式单数语义直读;按对数多发 = 无文本依据的编造规则;星级不参与
+      判定——同名即同角色,采样面直出恒 1★,异 star 直构形态为语义完备性
+      覆盖非现役行为);
+    - 逐账本条目过滤 = trigger==ON_REFRESH ∧ category==ECONOMY(双过滤,
+      未来同触发经济卡自动入账零名单维护;淘金客 STATE/采购专员
+      BATTLEFIELD 天然隔离;payload 无 gold_per_refresh_pair 字段的条目
+      鸭子缺省 0 零授予);发金额 = Σ条目 gold_per_refresh_pair;
+    - 发金 = ``gs.observe(gs.gold, 现值 + Σ)``,sig 函数内自构 obs 族
+      (observe 渠道校验只收 obs 族;本模块零包内模块级 import 契约,
+      ChannelSig 惰性取,``cw_env_grants.on_diamond_acquired`` 同口径
+      ——sim 世界数值面 = 观察通道,禁 logic 写);
+    - gold 现值 None → 宁缺勿造跳过(条件逐刷独立,本腿无 done 闩,下次
+      刷新自动重查,重试零成本);
+    - 零 rng:判定输入 = 随机态腿已采 payload,本腿不另掷点。
+    """
+    counts: dict[str, int] = {}
+    for slot in payload.cards:
+        card = slot.card
+        if slot.kind != 'content' or card is None:
+            continue
+        name = str(card.name or '')
+        if not name:
+            continue
+        counts[name] = counts.get(name, 0) + 1
+    if not any(c >= 2 for c in counts.values()):
+        return
+    total = 0
+    for e in gs.effects.entries:
+        if e.spec.trigger is not TriggerKind.ON_REFRESH \
+                or e.spec.category is not EffectKind.ECONOMY:
+            continue
+        n = int(getattr(e.spec.payload, 'gold_per_refresh_pair', 0) or 0)
+        if n > 0:
+            total += n
+    if total <= 0:
+        return
+    g = gs.gold.value
+    if g is None:
+        return
+    from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
+    gs.observe(gs.gold, int(g) + total,
+               evidence=(f'{_REFRESH_PAIR_GOLD_EVIDENCE}@{frame}' if frame
+                         else _REFRESH_PAIR_GOLD_EVIDENCE),
+               sig=ChannelSig(family='obs', actor='StrategyRefreshPairGrant',
+                              mode='synthesized',
+                              group_id='strategy:refresh-pair-gold'))
 
 
 # ===== 到期发放腿:tick 到期段首个消费客户端(策略源 N_NODES 到期面)=====

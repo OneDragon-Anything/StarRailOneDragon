@@ -2025,8 +2025,9 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   直写,写入端 = `cw_gain_effects` 援军族工厂/组合子经获得链,见 §3.2.18 效果发牌族
   采样口径组)。
 - 时点型延迟/条件金(instant_gold/gold_per_node 表达不了时点——**字段载体缺失**):
-  剩余价值/按劳分配/无伤通关/躺平/藏一手/五百强/超发货币/合并同类项
-  (逐刷新条件金——时点/次数两错;尾款交付已出列,载体见下方「已结构化出列」)。
+  剩余价值/按劳分配/无伤通关/躺平/藏一手/五百强/超发货币
+  (逐刷新条件金的合并同类项已出列,载体见下方「已结构化出列」;尾款交付已出列,
+  同处)。
 - 计数载体:二手市场(20 刷后 +30 金+投影仪——**累计刷新总次数**载体,§3.3.8)。
 - 无字段面:圣杯任务链(任务激活态/进度无字段;**非战斗 hp 事件源**登记位)/效果
   发牌星级=按归属判据逐卡分面(§3.2.18)。
@@ -2047,6 +2048,13 @@ supply 位,整局一次〕,sim 世界腿 = 节点窗收口独立笔,live 观察�
 带符号绝对置位〔赋值非增益,高连胜回落/连败翻转均字面〕,sim 选卡落地拍
 `gs.observe` 独立笔 `streak:strategy_pick:<卡名>` 与结算笔分账,live 零写 =
 真值经下一结算屏带符号读数观察覆盖收口,§3.2.12 写入方两分不变);
+刷新出对条件金:合并同类项(`EconomyEffect.gold_per_refresh_pair` 字段 = 刷新出
+2 同名 +1 金,登记形态等值迁移自 instant_gold——「选牌当场」一次性语义与卡文
+「每次刷新条件触发」时点错位;`STRATEGY_EFFECTS` 条目 id 102901,ON_REFRESH/
+WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
+`cw_effect_inventory.apply_on_refresh_pair_gold_grant` 挂刷新上报随机态腿后,
+`sim_backend_installed()` 门控——sim 采样即世界真值、判定成立经观察通道发金
+(`gs.observe`,on_diamond 口径),live 零写观察覆盖兜底;§5.3 合并同类项行);
 容量改写:节省工位(**时限 3 节点、自动恢复**,§3.2.5;唯一容量改写源——
 `STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
 `expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
@@ -2308,6 +2316,22 @@ burst 结构化,出售动作本身=缺口登记 §5.2。
 「市场干预」条目(id 102201,ON_REFRESH/WHILE_HELD/ECONOMY,payload 引 STRATEGY_ECONOMY
 同一实例):burst 5 刷=登记腿 burst 桥发放(唯一写端),改写面零功能写端维持本节观察
 覆盖口径,计数面=duties.track 挂 CounterKey.REFRESH(登记后每次刷新推进)。
+
+#### 合并同类项(gold_per_refresh_pair=1)
+
+逻辑写入方=**刷新事件条件金,sim 门控观察笔**(每次手动刷新出同名对 +1 金,单刷
+至多一笔)。载体=「已结构化出列」合并同类项行:`STRATEGY_EFFECTS` 条目 id 102901
+(ON_REFRESH/WHILE_HELD/ECONOMY,payload 引 STRATEGY_ECONOMY 同一实例,登记形态
+等值迁移自 instant_gold),发放=`cw_effect_inventory.apply_on_refresh_pair_gold_grant`
+挂**刷新上报随机态腿后**(`report_action_refresh_shop_param` 内 `write_logic_rand`
+之后——判定输入 = 本次采样 payload,函数尾拿不到 payload 变量,禁移挂点)、
+`sim_backend_installed()` 门控:sim 采样即世界真值、判定成立经 `gs.observe` 发金
+(on_diamond 口径,sim 世界数值面 = 观察通道禁 logic 写;gold 未读 None 宁缺勿造
+跳过,条件逐刷独立下次刷新自动重查);live 零写(采样是猜测金面禁猜测直写),
+真值 = 下一商店入口观察覆盖兜底。burst 4 刷腿 = §3.3.5 登记腿发放,与本行分账。
+「刷新商店时」辖域 = 仅手动刷新(economy.md 刷新触发闭集 = 节点切换 + 手动;
+节点窗自动全刷不经刷新上报口),节点切换侧待实采,披露键
+`STRATEGY_REFRESH_PAIR_SCOPE_UNVERIFIED` 在册(cw_effect_inventory)。
 
 #### 远见(instant_gold=15 + future_quality_upgrade='prism' + difficulty_inflation_exempt)
 

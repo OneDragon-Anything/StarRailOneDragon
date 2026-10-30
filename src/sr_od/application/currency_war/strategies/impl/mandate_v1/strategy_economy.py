@@ -114,6 +114,8 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #:   分布未采);
 #: - 购买触发族:gold_per_three_5cost(每购买 3 个 5 费给金,非合成;
 #:   购买频次分布未采);
+#: - 刷新触发族:gold_per_refresh_pair(刷新出对条件金,出对频次分布
+#:   未采——条件概率型按兑现结构性归本桶,与合成触发族同判据);
 #: - 血补偿族:gold_per_20hp_lost(未来损血期望未采,且未来建模同样触发
 #:   宪法三 hp 消费硬闸门)、gold_per_hp_lost_now(价值 = f(已损血),
 #:   宪法三硬闸门外第三消费点须用户逐项确认,未确认期 fail-closed = 0);
@@ -136,6 +138,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'win_reward_mult', 'sell_price_mult',
     'gold_per_2star2cost_merge', 'gold_per_3star_merge',
     'gold_per_three_5cost',
+    'gold_per_refresh_pair',
     'gold_per_20hp_lost', 'gold_per_hp_lost_now',
     'streak_set',
 })
@@ -199,6 +202,11 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '免战牌': 'xp_instant=30 分支挂 STRATEGY_EFFECTS 载体(cw_investments.'
              'STRATEGY_EFFECTS 条目,不在 STRATEGY_ECONOMY 键空间;'
              '效果域文档在册)——未入现金通道',
+    # 合并同类项:金腿 = 刷新出对条件金(gold_per_refresh_pair,登记形态
+    # 等值迁移自 instant_gold);burst 4 刷腿已建模(获得链登记腿发放),
+    # 不列缺口。估值 fail-closed 申报句形态照现役值句。
+    '合并同类项': '刷新出对条件金腿(gold_per_refresh_pair)频次分布未采,'
+                 '估值 fail-closed=0',
 }
 
 
