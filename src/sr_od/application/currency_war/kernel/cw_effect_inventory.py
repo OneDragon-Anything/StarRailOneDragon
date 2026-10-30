@@ -26,11 +26,16 @@ EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
+
+# 装备注册表 = data 叶模块(单向依赖零环,机制层「零 import 包内模块」契约
+# 辖 kernel 包内;池常量需注册表派生,同 cw_gain_effects/cw_ore_reward 先例)。
+from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范允许);运行时 payload 按对象持有,
@@ -107,6 +112,13 @@ class BattlefieldEffect:
     salvage_unchosen_supply: bool = False   # 进入补给阶段时发放上一补给阶段未选列(打捞人才库:
                                             # 发放物 = 世界既有列 SupplyOption 结构,非注册表池;
                                             # 不入 EconomyEffect——避开经济三分类闭集义务)
+    capacity_limit: int = 0                 # 激活期备战席容量(效果账本容量逻辑态桥
+                                            # project_effect_capacity 的声明契约字段,字段名
+                                            # 由该桥 docstring 钉死;首个携带条目 = 节省工位 3;
+                                            # 0 = 非容量条目;注册期常量)
+    expiry_simple_equips: int = 0           # 条目到期拍发放的简易装备件数(到期发放腿 =
+                                            # apply_effect_expiry_grants;件数非索引,
+                                            # 注册期常量;0 = 无到期发放)
 
 
 @dataclass(frozen=True)
@@ -1936,3 +1948,80 @@ def apply_on_merge_refresh_grant(gs: GameState, *, merges: int,
                    evidence=(f'effect_on_merge@{frame}' if frame
                              else 'effect_on_merge'),
                    sig=_equip_bridge_sig(gs))
+
+
+# ===== 到期发放腿:tick 到期段首个消费客户端(策略源 N_NODES 到期面)=====
+# 卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS,id 101901):「在接下来3个
+# 节点只有3个备战席位置。随后，获得3件简易装备。」——容量窗本体 = 效果账本
+# 条目(N_NODES×3)+ 容量逻辑态直写桥 project_effect_capacity(挂点 = 节点
+# 边界 tick 尾段);「随后」= 条目到期移除拍,构造性锁步(单一载体:到期列表
+# 由 advance_node 返回,条目移除即不可重入,零第二账本/零闩)。到期装备发放
+# 落本腿而非延时队列第二登记:窗口条目本身即载体,双账本同闸锁步的协调成本
+# 无收益;金面禁 tick 直写防双计的裁定不辖装备——装备无金面双计风险。
+
+#: 到期发放腿·简易装备池(category='简易' 全集,字母序确定性;池口径随装备
+#: 注册表传导)。与晶矿 cw_ore_reward._SIMPLE_EQUIP_POOL、随机装备腿
+#: cw_gain_effects._RANDOM_SIMPLE_EQUIP_POOL 同表达式同口径,三处独立定义
+#: 互指不跨模块引私有名(三处公共化归族级待办;口径漂移由测试侧同集断言守住)。
+_EXPIRY_SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
+    name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
+
+#: 建模假设档披露键(静态常量在册,无运行时 setdefault 动作;先例 =
+#: STRATEGY_SALVAGE_ASSUMPTION_KEYS 同形)。登记三件 desc 未载/未证事实:
+#: - capacity_window_node_reading:窗口读法继承 advance_node 现役「后继 N
+#:   节点」算术(kernel 全族待实采旗,躺平同旗;证伪改守卫单点时本键改值/
+#:   退役);
+#: - expiry_grant_simple_pool_uniform:到期 3 件 = 简易池逐件独立均匀 v0、
+#:   可重复(desc 未标「随机」;校准源 = logic_rand_outcome 行按
+#:   ``strategy_grant_expiry:`` 前缀归组);
+#: - bench_capacity_shrink_overflow_unmodeled:进窗占席 >3 的压缩行为未建模
+#:   (桥不截断占席 + 留证、读链容量外命中丢弃 + 留证;desc 未写压缩行为,
+#:   禁猜,实机命中即缺陷台账 + 缺口登记升级)。
+STRATEGY_CAPACITY_EXPIRY_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_capacity_window_node_reading',
+    'strategy_expiry_grant_simple_pool_uniform',
+    'bench_capacity_shrink_overflow_unmodeled',
+)
+
+
+def apply_effect_expiry_grants(gs: GameState, expired: list[ActiveEffect], *,
+                               frame: str = '',
+                               rng: random.Random | None = None) -> None:
+    """到期发放腿(策略源 N_NODES 到期面首个消费客户端;挂点 = 节点边界
+    tick 到期段 ``_tick_effect_boundary_impl``,整段在 tick_effect_boundary
+    的 try/except best-effort 内,腿内异常不毒化派生链)。
+
+    逐到期条目读 ``payload.expiry_simple_equips``(鸭子缺省 0 = 无到期发放,
+    同窗异 payload 条目天然零发放),>0 逐件自简易池
+    (:data:`_EXPIRY_SIMPLE_EQUIP_POOL`)独立均匀采样,经
+    :func:`gain_equipment`(rand=True 随机态通道,继承获得后果链;装备栏
+    未观察 = 原语现役拒落零写)入栏;evidence 前缀 ``strategy_grant_expiry:``
+    (随机态校准归组面),producer = EffectLedgerBridge(写签名复用
+    :func:`_equip_bridge_sig` 单一构造点)。
+
+    一次性由构造保证:到期即从账本移除(advance_node),到期列表每条目至多
+    出现一次——无重入面,不设闩;同卡双持现役选卡排除集下不可达,可达性
+    变化时重派逐次授予、现役不设防。
+
+    ``rng`` 注入形参(缺省 None = 函数内缺省 ``random.Random()``):kernel
+    tick 无流键注入点,sim 批量该腿不可按 seed 复现(非战斗/非收入面,统计
+    影响限装备库存面;披露键 strategy_expiry_grant_simple_pool_uniform);
+    注入槽供测试钉样与后续接流键留口。
+    """
+    # kernel 反向模块级零 import 契约:cw_gain_chain 模块级依赖 cw_game_state
+    #(后者 import 本模块),反向模块级即环——函数内惰性取(合成事件腿
+    # action_sampling_rng 同款先例)。
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        gain_equipment,
+    )
+    if rng is None:
+        rng = random.Random()
+    for eff in expired:
+        n = int(getattr(eff.spec.payload, 'expiry_simple_equips', 0) or 0)
+        for _ in range(max(0, n)):
+            item = rng.choice(_EXPIRY_SIMPLE_EQUIP_POOL)
+            evidence = f'strategy_grant_expiry:{item}'
+            if frame:
+                evidence = f'{evidence}@{frame}'
+            gain_equipment(gs, item, rand=True, sig=_equip_bridge_sig(gs),
+                           evidence=evidence, producer='EffectLedgerBridge')

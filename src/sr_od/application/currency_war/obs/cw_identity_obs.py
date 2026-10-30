@@ -43,6 +43,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
     BenchView,
     Unit,
+    active_capacity_limit,
+    gs_of_ctx,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     BENCH_ITEM_KINDS,
@@ -778,19 +780,24 @@ def check_system_unit_layout(
 
 
 def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> BenchView | None:
-    """备战栏(9 槽)SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
+    """备战栏 SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
 
     SIFT 命中(角色槽)与已建档占槽物品(箱/秘典/书册卡,kind 识别期细分)
-    合成为定长 9 槽视图。**零占用 = 失读非全空**(P2-1 纪律,空集守卫
+    合成为槽位视图,表长 = 活跃备战席容量(容量时限效果激活期随 kernel
+    ``active_capacity_limit``,缺省 9——观察构造器容量感知,防 9 槽视图
+    覆盖 logic 容量值;识别槽面仍按画面建档 9 位采,容量外命中丢弃留证)。
+    **零占用 = 失读非全空**(P2-1 纪律,空集守卫
     驻本读链):overlay 残留/动画帧/
     识别退化都会产空读 → 返 None,调用方走 carried(宁缺勿造),禁把
-    「9 槽全空」当 observation 入记录。占用未识别的槽由召唤物停机钩子
+    「全槽空」当 observation 入记录。占用未识别的槽由召唤物停机钩子
     (func:`_summon_unknown_hook`)兜底,不静默丢弃。用途:离线重建 /
     漂移恢复 / 备战 heavy 观察。
     """
     hits = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
     _summon_unknown_hook(ctx, screen, hits)
-    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
+    gs = gs_of_ctx(ctx, None)
+    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen),
+                          capacity=active_capacity_limit(gs))
 
 
 # 模板钉名对照(观察写政策:模板钉得住名字的写名,用户裁定 2026-10-24)。
@@ -854,7 +861,8 @@ def _bench_item_kind_by_slot(
 
 
 def _bench_view_of(hits: list[tuple[int, Unit]],
-                   kind_by_slot: dict[int, tuple[str, str]]) -> BenchView | None:
+                   kind_by_slot: dict[int, tuple[str, str]],
+                   capacity: int = BENCH_CAPACITY_DEFAULT) -> BenchView | None:
     """SIFT 命中 + 占槽物品 (kind, 品名) → 备战席容器视图(观察写端值构造
     单一源,道具槽带名构造 = BenchSlot.item 身份轴)。
 
@@ -862,24 +870,28 @@ def _bench_view_of(hits: list[tuple[int, Unit]],
       槽位对承载);SIFT 命中先落槽(unit,item 恒 None),占槽物品只填
       **空槽**(身份胜出——与旧 ``_merge_item_occupied_slots``「已识别
       角色位跳过」同序),槽件 = ``BenchSlot(kind, item=品名)``;
-    - 槽位越界命中丢弃并 log 保留证据(物理槽 1..capacity 外 = 读链漂移信号,
-      静默丢弃 = 身份静默丢失);
+    - ``capacity`` = 活跃备战席容量(缺省默认 9,缺省路径行为逐位不变;
+      活跃值单一源 = kernel ``active_capacity_limit``,与容量逻辑态桥同源
+      ——容量时限效果激活期直产 capacity=N 槽表,防观察按 9 槽覆盖
+      logic 值刷缺陷台账);槽表按 capacity 建;
+    - 槽位越界命中(> capacity)丢弃并 log 保留证据(物理槽 1..capacity 外
+      = 读链漂移信号,静默丢弃 = 身份静默丢失);
     - 零占用 → None(失读非全空,见 :func:`read_bench_view`)。
     """
-    slots: list[BenchSlot] = [BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT
+    slots: list[BenchSlot] = [BenchSlot(kind='empty')] * capacity
     for s, u in (hits or []):
-        if 1 <= s <= BENCH_CAPACITY_DEFAULT:
+        if 1 <= s <= capacity:
             slots[s - 1] = BenchSlot(kind='unit', unit=u)
         else:
             log.warning('[cw!][identity] 备战席读链槽位越界丢弃:'
                         'slot=%s char=%s(SIFT/星级读链漂移信号)',
                         s, u.char_id)
     for s, (k, item_name) in kind_by_slot.items():
-        if 1 <= s <= BENCH_CAPACITY_DEFAULT and slots[s - 1].kind == 'empty':
+        if 1 <= s <= capacity and slots[s - 1].kind == 'empty':
             slots[s - 1] = BenchSlot(kind=k, item=item_name)
     if all(sl.kind == 'empty' for sl in slots):
         return None
-    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
+    return BenchView(slots=slots, capacity=capacity)
 
 
 def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
@@ -1164,7 +1176,9 @@ def read_bench_view_tiered(session, ctx: SrContext, screen: MatLike,
                                  _ctx_slots(ctx, '备战栏', 9), '',
                                  min_inliers=10)
     _summon_unknown_hook(ctx, screen, hits)
-    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen))
+    gs = gs_of_ctx(ctx, session)
+    return _bench_view_of(hits, _bench_item_kind_by_slot(ctx, screen),
+                          capacity=active_capacity_limit(gs))
 
 
 # ===== 简易武装箱识别(备战栏槽位;首见实机;模板治本) =====

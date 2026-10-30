@@ -870,6 +870,31 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['武力刷新'], duties=DutyFlags(),
         notes='每次装备合成 +2 免费刷新,经穿戴上报合成事件腿发放;'
               '官方限定装备合成(角色升星另域,fields.md §5.3 分开计数禁混账)'),
+    # 节省工位:官方「在接下来3个节点只有3个备战席位置。随后，获得3件简易
+    # 装备。」(cw_invest_data.PLAZA_AUGMENTS 同 id 行,id 101901)。容量时限族
+    # 模式卡(在册唯一容量改写条目):容量窗本体 = 效果账本条目(N_NODES×3,
+    # 余期追踪与窗口算术同躺平),容量消费走容器派生(bench_free_slots/
+    # bench_is_full),经容量逻辑态直写桥 project_effect_capacity 逐拍回写
+    # (payload.capacity_limit 声明契约);「随后」= 条目到期移除拍,构造性
+    # 锁步——单一载体零第二账本(不走 STRATEGY_DELAYED_GRANTS 队列第二登记),
+    # 到期 3 件简易装备 = tick 到期段发放腿 apply_effect_expiry_grants(策略源
+    # N_NODES 到期面首个消费客户端)。duties 只 track:容量消费端读容器派生,
+    # 无 predict(不做效果预知)/无 respond(姿态面不在范围)。
+    '节省工位': EffectSpec(
+        id='101901', name='节省工位',
+        trigger=TriggerKind.CONDITIONAL,          # 条件窗口族(躺平同形)
+        duration=DurationKind.N_NODES,
+        category=EffectKind.BATTLEFIELD,          # 容量 = 备战/板面域
+        payload=BattlefieldEffect(capacity_limit=3, expiry_simple_equips=3),
+        duties=DutyFlags(track=True),
+        duration_nodes=3,
+        pending=True,
+        notes='容量 3×3 节点后到期发 3 件简易装备;窗口读法沿 advance_node '
+              '现役待实采旗(披露键 strategy_capacity_window_node_reading);'
+              '到期发放物随机性=v0 假设——简易池独立均匀可重复,desc 未标'
+              '「随机」(披露键 strategy_expiry_grant_simple_pool_uniform);'
+              '进窗占席>3 行为不建模(披露键 '
+              'bench_capacity_shrink_overflow_unmodeled)'),
 }
 
 

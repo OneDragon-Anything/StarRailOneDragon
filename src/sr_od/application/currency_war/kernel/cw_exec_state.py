@@ -181,7 +181,9 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
 # cw_game_state.py);本模块保留领域常量/类型与三访问函数,见模块尾。
 # ============================================================
 
-BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
+BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变;激活期随容量
+# 时限效果——节省工位窗内 kernel 容量域照 3(fields.md §3.2.5),本常量 = 策略侧
+# 定长 9 基线消费面口径,分叉面 = 既有缺口不入容量建模批改动面)
 # deployed 动作坐标系:定长 10 槽表——下标 0-3 = 前排槽 1-4、
 # 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
 # 三信号裁决;上限 9 = 用户口述,board_structure.md)——超过 6 的

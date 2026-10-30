@@ -126,6 +126,7 @@ from sr_od.application.currency_war.kernel.cw_decision_ctx import (
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
     CounterKey,
+    apply_effect_expiry_grants,
 )
 from sr_od.application.currency_war.kernel.cw_encounter_selection import (
     EncounterLog,
@@ -1729,32 +1730,56 @@ ENV_XP_WINDOW_DISCLOSURES: dict[str, str] = {
 }
 
 
+def active_capacity_limit(gs: GameState) -> int:
+    """活跃备战席容量单一源:账本在册容量声明取 min(叠加收紧向),零声明 =
+    默认 9。容量逻辑态直写桥(project_effect_capacity)与观察构造器
+    (obs/cw_identity_obs._bench_view_of 调用点)共用本口,禁第二份
+    min/defaults 推导(两源分叉 = 观察/logic 混合态复发)。"""
+    limits = [int(getattr(e.spec.payload, 'capacity_limit', 0) or 0)
+              for e in gs.effects.entries]
+    limits = [n for n in limits if n > 0]
+    return min(limits) if limits else BENCH_CAPACITY_DEFAULT
+
+
 def project_effect_capacity(gs: GameState) -> None:
     """桥·容量逻辑态直写(§3.2.5):按账本已登记容量时限声明回写备战席容量——
     激活期 capacity=N、条目到期移除后自动回默认 9。
 
     声明契约:容量条目的 payload 携带 ``capacity_limit: int``(激活期容量;
-    注册表现零条目携带——§5.2 缺口登记「禁到注册表找规格」,载体归注册表
-    建模批候选,声明字段名由此钉死,首批容量条目入册即自动生效)。多声明
-    取 min(叠加收紧向)。当前零携带 → 直写恒等于默认 9(幂等 no-op,行为
-    与接线前逐位一致)。
+    首个携带条目 = 节省工位 101901,STRATEGY_EFFECTS)。多声明取 min(叠加
+    收紧向),limits 推导单一源 = :func:`active_capacity_limit`(观察构造器
+    同源)。零携带 → 直写恒等于默认 9(幂等 no-op,行为与接线前逐位一致)。
 
-    采样点 = 备战帧观察后(cw_loop 备战分支,**每 pass 重锚**):观察链
-    直产视图按默认容量建(bench_view 容量恒 9),会覆盖逻辑态直写值,故
-    观察后须重锚;
-    bench 从未观察(值 None)= 无容器可写,跳过(容量随 bench 首帧进入
-    记录)。建模批补首张容量条目时须同批补观察构造器的容量感知,防观察
-    覆盖 logic 值刷缺陷台账(本桥 docstring 即该义务的挂点)。
+    采样点 = 节点边界 tick 尾段(_tick_effect_boundary_impl,每次有效节点
+    推进后重锚):观察链直产视图按活跃容量建(观察构造器容量感知,同批
+    义务已落),桥逐拍回写;bench 从未观察(值 None)= 无容器可写,跳过
+    (容量随 bench 首帧进入记录)。
+
+    槽表归一(容量条目入册同批义务):目标容量 < 槽表长度时——容量之外
+    全为空槽 → 尾空截断到容量长(无损);容量之外存在占席槽 → **不截断**
+    (禁丢真值)+ log 缺陷级留证(进窗占席 >3 行为未建模,披露键
+    bench_capacity_shrink_overflow_unmodeled),容量字段照写。归一后槽表
+    长度 ≡ 容量:bench_place 按表长找空槽天然拒落容量外席,flow 驱动器
+    「全槽占用」裸判自动获得容量语义。
     """
-    limits = [int(getattr(e.spec.payload, 'capacity_limit', 0) or 0)
-              for e in gs.effects.entries]
-    limits = [n for n in limits if n > 0]
-    target = min(limits) if limits else BENCH_CAPACITY_DEFAULT
+    target = active_capacity_limit(gs)
     view = gs.bench.value
-    if view is None or view.capacity == target:
+    if view is None:
         return
-    gs.write_logic(gs.bench,
-                   BenchView(slots=list(view.slots), capacity=target),
+    slots = list(view.slots)
+    if len(slots) > target:
+        overflow = slots[target:]
+        if any(slot_occupies(s.kind) for s in overflow):
+            log.warning('[cw!][effect] 容量投影容量外占席不截断(留证):'
+                        'capacity=%s 表长=%s 容量外占席=%d',
+                        target, len(slots),
+                        sum(1 for s in overflow if slot_occupies(s.kind)))
+        else:
+            slots = slots[:target]
+    projected = BenchView(slots=slots, capacity=target)
+    if projected == view:
+        return
+    gs.write_logic(gs.bench, projected,
                    produced_by='EffectLedgerBridge',
                    evidence='capacity_project', sig=_bridge_sig(gs))
 
@@ -3964,6 +3989,11 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
     for _eff in expired:
         log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;金面走观察覆盖兜底)',
                     _eff.spec.name)
+    if expired:
+        # 到期发放腿(策略源 N_NODES 到期面首个消费客户端):金面禁此处直写
+        # 防双计的裁定不辖装备——装备无金面双计风险;一次性由构造保证
+        # (到期即移除,无重入面不设闩),body 见 apply_effect_expiry_grants。
+        apply_effect_expiry_grants(gs, expired, frame=frame)
     if advanced:
         _tick_pending_strategy_offers(gs)
         grant_effect_node_refresh_balance(gs, frame=frame)

@@ -377,8 +377,13 @@ kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
 **边界**:**容量唯一改写源=节省工位**(官方原文「在接下来3个节点只有3个备战席位置。
 随后,获得3件简易装备」)——时限效果,激活期间 capacity=3、3 节点后自动回 9,经
 效果账本容量逻辑态桥 `project_effect_capacity` 逻辑写入(桥声明契约=payload 鸭子属性
-capacity_limit;当前注册表零条目携带=恒默认 9 幂等 no-op;**首批容量条目入册须同批
-补观察构造器容量感知**,防观察覆盖 logic 刷缺陷记录表)。**晶矿不占席**——它是点击
+capacity_limit;**首批条目已入册**=STRATEGY_EFFECTS['节省工位'] id 101901,容量窗
+全链激活:limits 推导单一源=`active_capacity_limit`(桥与观察构造器同源,禁第二份
+推导),观察构造器容量感知(`_bench_view_of` capacity 入参,双调用点接线)与桥槽表
+尾空截断归一(容量外占席不截断+留证)两件同批义务已随首批条目落地)。到期「获得
+3件简易装备」= tick 到期段发放腿 `apply_effect_expiry_grants`(策略源 N_NODES 到期面
+首个消费客户端,evidence 前缀 `strategy_grant_expiry:`,随机性披露键见 §5 披露键组
+登记)。**晶矿不占席**——它是点击
 目标不是席位居民(角色/补给箱才落席占 1 槽、席满点不动)。席空数=**策略器侧派生
 计算,不入容器**(字段准入四问③):没读到=不确定、禁猜 0;sim 合成帧「箱不占席」
 =sim 内部口径约定(sim 无箱实体),记录模型按实机真值。**席满判定=同源派生**
@@ -1696,9 +1701,10 @@ plane/round 读取入口基底)——它供决策层坐标消费,属观察域写
 1. **注册表效果修饰**(成本币种/减费/免费 proc/升级时副作用/卖价倍增/按刷产经验/
    每节点经验/结构化金字段族〔按购计数=返利族/进首领节点=特战资金族/分期日程=
    长期主义族/按 2星2费合成=砂里淘金/按 3星合成=星星相印——载体见 §5.3〕),
-   单一源=cw_investments.STRATEGY_EFFECTS + STRATEGY_ECONOMY。**容量改写不在
-   注册表**——唯一源=节省工位,载体=§5.2 缺口登记;激活期容量=3 的字段逻辑态桥 =
-   `project_effect_capacity`(当前零条目携带=恒默认 9 幂等 no-op)。两条已登记纠偏:
+   单一源=cw_investments.STRATEGY_EFFECTS + STRATEGY_ECONOMY。**容量改写在注册表**——
+   唯一源=节省工位(STRATEGY_EFFECTS 条目 id 101901,容量时限族首例);激活期容量=3 的
+   字段逻辑态桥 = `project_effect_capacity`(limits 单一源=`active_capacity_limit`,
+   桥+观察构造器同源;槽表尾空截断归一,容量外占席不截断留证)。两条已登记纠偏:
    - **8 卡延迟/条件金映射纠偏**:剩余价值/按劳分配/无伤通关/躺平/藏一手/
      五百强/超发货币/合并同类项的卡文时点≠instant_gold/gold_per_node 字段语义
      (字段定义=选牌当场/每进节点)——记录模型不经这两字段消费此 8 卡,走观察
@@ -1951,7 +1957,10 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   cw_game_state.py):`apply_effect_burst_grant`(选卡时点一次性批量授予)/
   `grant_effect_node_refresh_balance`(每节点余额累加+条件判定族按金现值评估)/
   `project_effect_capacity`(容量逻辑态直写)/`apply_board_rewrite`(板面重写:全场出售面
-  逻辑写、替换面零逻辑写)。
+  逻辑写、替换面零逻辑写)。**到期发放腿**(宿主 cw_effect_inventory,挂 tick 到期段):
+  `apply_effect_expiry_grants`(条目到期拍装备面发放,策略源 N_NODES 到期面首个消费
+  客户端——节省工位「随后获得3件简易装备」;金面到期仍禁此处直写防双计,装备面
+  无双计风险)。
 - **到期与尾款**:到期条目移除=尾款触发面;尾款金面走**观察覆盖兜底**,禁到期接入点
   logic 直写金币防双计;确需单列逻辑写的建模者(如超发货币回流分支)按 impacts 条目
   申报接线。
@@ -1969,7 +1978,6 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 **无结构化规格的缺口**(注册表建模批候选;effect_inventory 的逻辑写入以卡文本效果
 为 provenance):
 
-- 容量改写:节省工位——**时限 3 节点、自动恢复**(§3.2.5;唯一容量改写源)。
 - XP 面:被动收入/人才空洞、人才济济/气氛组、气氛组+/孪生素数(一局上限 38)/
   空仓/赞美太阳/固定理财(即时段与位面开始段同卡两支)。
 - HP 面:恢复生机/健康充值(+30 生命与 30 **生命上限**——**hp_max 字段缺位**一并
@@ -2006,7 +2014,11 @@ supply 位,整局一次〕,sim 世界腿 = 节点窗收口独立笔,live 观察�
 胜利,还是胜利(连胜置位:`EconomyEffect.streak_set` 字段 = 「使当前连胜数变为N」
 带符号绝对置位〔赋值非增益,高连胜回落/连败翻转均字面〕,sim 选卡落地拍
 `gs.observe` 独立笔 `streak:strategy_pick:<卡名>` 与结算笔分账,live 零写 =
-真值经下一结算屏带符号读数观察覆盖收口,§3.2.12 写入方两分不变)。
+真值经下一结算屏带符号读数观察覆盖收口,§3.2.12 写入方两分不变);
+容量改写:节省工位(**时限 3 节点、自动恢复**,§3.2.5;唯一容量改写源——
+`STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
+`expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
+`apply_effect_expiry_grants` 腿,2026-10-30 首批条目入册)。
 
 **结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/长期主义族/
 砂里淘金/星星相印——effect_inventory 载体会改写容器字段,写入归属见 §5.3;砂里
@@ -2052,6 +2064,15 @@ supply 位,整局一次〕,sim 世界腿 = 节点窗收口独立笔,live 观察�
 **披露键组登记(desc/证据空白处的模型口径申报;常量单一源 = `cw_investments`,
 此处为登记面载体,防「未建模/先验假设」被误判为漏报)**:
 
+- 容量时限族三键 `STRATEGY_CAPACITY_EXPIRY_ASSUMPTION_KEYS`(常量宿主 =
+  `cw_effect_inventory`,随到期发放腿落位;首例 = 节省工位 id 101901,2026-10-30
+  已建模):窗口读法沿 advance_node 现役「后继 N 节点」算术
+  (strategy_capacity_window_node_reading,kernel 全族待实采旗,躺平同旗,证伪改
+  守卫单点时本键改值/退役)/ 到期 3 件 = 简易池逐件独立均匀 v0、可重复,desc 未标
+  「随机」(strategy_expiry_grant_simple_pool_uniform,校准源 = `logic_rand_outcome`
+  行按 `strategy_grant_expiry:` 前缀归组)/ 进窗占席 >3 压缩行为未建模
+  (bench_capacity_shrink_overflow_unmodeled,桥不截断占席+留证、读链容量外命中
+  丢弃+留证,实机命中即缺陷台账 + 缺口登记升级)。
 - 概念股族装备轴 `ENV_CONCEPT_STOCK_ASSUMPTION_KEYS` 三键(首例 = 追击概念股
   id 1001「开局时获得【追击】角色和初始简易装备」,随机阵营赠卡 + 随机简易
   装备 2026-10-27 已建模,登记 = `ENV_GIFTS` 随机规格阵营轴 + 随机装备类别
