@@ -606,7 +606,9 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;回血段=行为流不建模
     '市场干预': EconomyEffect(free_refresh_burst=5, refresh_shop_rewrite_every_3cost=4),
     # ↑ 「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」——池构成族突变旗标
-    #   (v_c/a_c 池面改写;消费规范见设计总纲注记,修复项14)
+    #   (v_c/a_c 池面改写;消费规范单一源 = fields.md「市场干预」节,
+    #   docs/develop/sr_od/application/currency_war/game_state/fields.md;
+    #   burst 5 刷发放面 = STRATEGY_EFFECTS 本卡条目登记腿)
 }
 
 
@@ -919,6 +921,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '换 BENCH_REROLL_LEFT6,双载荷裁决位(bench_reroll 需 '
               'BattlefieldEffect 载体、爆腿过 burst 桥需 EconomyEffect '
               '载体,EffectSpec 单 payload 字段不可并存)归族展开批先裁'),
+    # 市场干预:官方「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」。
+    # payload 引 STRATEGY_ECONOMY 同一实例(单一源):free_refresh_burst=5 经
+    # 获得链登记腿 burst 桥一次性发放(live/sim 同链,免费午餐 T-88 同形);
+    # refresh_shop_rewrite_every_3cost=4 载改写面(引擎判据/聚合语义已在册)。
+    # 改写面零功能写端:live 商店牌面观察即真值(采购专员同型);sim 世界
+    # 真值缺强制 3 费面(不建模边界申报)。
+    '市场干预': EffectSpec(
+        id='102201', name='市场干预', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['市场干预'],
+        duties=DutyFlags(track=True, predict=True, respond=True),
+        notes='改写面=下一次+每4次刷新全3费(周期值载体='
+              'refresh_shop_rewrite_every_3cost;计数面=duties.track 挂 '
+              'CounterKey.REFRESH;采购专员·金/彩为同族 BattlefieldEffect '
+              'counter_every 形态对照);待实机核:赠刷是否计入每4次计数/'
+              '效果持续期(p40-refresh-ev.md 变体⑤);burst=5 登记期发放'),
 }
 
 

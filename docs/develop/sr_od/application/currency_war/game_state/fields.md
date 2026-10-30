@@ -2256,7 +2256,10 @@ burst 结构化,出售动作本身=缺口登记 §5.2。
 #### 市场干预(refresh_shop_rewrite_every_3cost=4)
 
 逻辑写入方=**刷新计数的池构成改写**(下一次+每 4 次商店刷新全 3 费面)。同采购专员:
-读牌预知+观察覆盖兜底;burst 5 刷那条归 §3.3.5。
+读牌预知+观察覆盖兜底;burst 5 刷那条归 §3.3.5。已入册 `cw_investments.STRATEGY_EFFECTS`
+「市场干预」条目(id 102201,ON_REFRESH/WHILE_HELD/ECONOMY,payload 引 STRATEGY_ECONOMY
+同一实例):burst 5 刷=登记腿 burst 桥发放(唯一写端),改写面零功能写端维持本节观察
+覆盖口径,计数面=duties.track 挂 CounterKey.REFRESH(登记后每次刷新推进)。
 
 #### 远见(instant_gold=15 + future_quality_upgrade='prism' + difficulty_inflation_exempt)
 
