@@ -698,7 +698,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.N_NODES, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['躺平'], duties=DutyFlags(track=True, respond=True),
         duration_nodes=3,
-        notes='禁买+禁刷 3 节点后 +20 金'),
+        pending=True,
+        notes='禁买+禁刷 3 节点后 +20 金;待采:持续期读法(§10-3,登记当节点不推进守卫'
+              '为现役保守读)与 +20 金入账时点(§10-4,保守支=N+3 节点入口入账)'),
     # 免战牌:官方「进入战斗节点时,直接跳过战斗并进入下一个节点,可生效2次。
     # 获得30点经验。」(cw_invest_data.py:109,PlazaAugment 151301)。建模批件
     # 落注册表条目(设计 §次三件 5):次数类余量首例
