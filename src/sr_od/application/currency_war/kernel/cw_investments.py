@@ -3843,6 +3843,13 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 唯一差异 = 倒计时 4→3,卡面「3个节点后」)
     '人才激励+': StrategyDelayedGrant(id='101602', delay_nodes=3,
                                        item='员工投影仪'),
+    # 许诺特权(id 130201 原文直读,cw_invest_data.py:87;卡文
+    # 「在进入7个节点后，获得1个【特权武装箱】。」纯延时单句——
+    # 零即时腿,故登记腿载体 = cw_gain_effects 延时-only 单腿工厂,
+    # 禁走两腿工厂派生;发放物特权武装箱 = 占席道具,BENCH_ITEM_NAMES
+    # 分道的族内首个实成员,到点走 gain_bench_item)
+    '许诺特权': StrategyDelayedGrant(id='130201', delay_nodes=7,
+                                      item='特权武装箱'),
 }
 
 

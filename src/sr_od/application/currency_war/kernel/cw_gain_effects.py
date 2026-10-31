@@ -542,6 +542,33 @@ def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
     return _effect
 
 
+def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
+    """延时-only 登记腿效果体工厂(卡文纯延时单句卡专属:族内直用两腿
+    工厂会把即时装备腿错发给无即时句的卡——拿卡当场多发一件即时发放物,
+    行为级错误,故姊妹工厂并列、按卡文句式分流)。闭包销 = 规范卡名,
+    登记值单源取自 cw_investments.STRATEGY_DELAYED_GRANTS;形态镜像
+    _make_delayed_offer_effect 的「惰性 import 链原语 + 薄壳」分工。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参);
+    ``rng`` 不消费——登记 = 确定事件(倒计时按登记值推算,零采样)。
+    单腿 = 仅入队腿:queue_delayed_strategy_grant 唯一登记写端,到点
+    发放归 sim 专用腿(不对称申报,两腿工厂同款)。效果串 = 原语返回值
+    ``strategy_grant_scheduled:<item>@<节拍>``(构造点唯一住链模块,
+    本工厂零字面量);零即时腿零 equip_grant 串。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿两腿工厂先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            queue_delayed_strategy_grant,
+        )
+        _ = rng   # 登记腿零采样,倒计时推算确定(rng 形参沿分派契约保留)
+        return [queue_delayed_strategy_grant(gs, name, sig=sig)]
+
+    return _effect
+
+
 # ===== 多腿组合效果(混发卡专属:策略卡获得时点双腿/多腿组合发放,族首 =====
 # ===== 卡 = 武装支援;各腿复用单族工厂,组合卡不入任何单族表——表行生成 =====
 # ===== 的是单腿效果体,与组合体同名键经 dict 字面量顺序覆盖静默丢腿, =====
@@ -616,6 +643,13 @@ def _make_char_grant_effect(char: str) -> Callable[..., list[str]]:
     return _effect
 
 
+#: 延时发放族两腿成员(卡文「获得1个【X】，N个节点后…」带即时短句的
+#: 已注册卡 → PICK_INVEST_EFFECTS 内两腿工厂派生;卡文纯延时单句的注册卡
+#: 不入本集,走注册表内显式单行登记延时-only 载体——全表无差别派生会
+#: 错发即时腿。新展开卡注册 = 本集扩员或单行登记二选一随批显式做,漏做
+#: 由 PICK_INVEST_EFFECTS 键集闭集锁注册即红兜住)
+_STRATEGY_DELAYED_TWO_LEG_GRANTS: tuple[str, ...] = ('人才激励', '人才激励+')
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
@@ -674,7 +708,11 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
-       for name in STRATEGY_DELAYED_GRANTS},
+       for name in _STRATEGY_DELAYED_TWO_LEG_GRANTS},
+    # 许诺特权 = 延时-only 单腿展开卡首例(卡文「在进入7个节点后，获得
+    # 1个【特权武装箱】。」纯延时单句,零即时腿):显式单行登记延时-only
+    # 载体;效果串单枚 strategy_grant_scheduled(构造点住链原语)。
+    '许诺特权': _make_delayed_only_grant_effect('许诺特权'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
@@ -684,8 +722,9 @@ _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗)由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
-cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
-cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
-登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无
-效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)职责分离
-声明见各表模块头。"""
+cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句式
+分流:带即时短句的成员经两腿成员集走两腿工厂派生,纯延时单句卡显式单行
+登记延时-only 载体(直用两腿工厂 = 拿卡错发即时腿)——新展开卡注册随批
+二选一显式登记,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派
+(查无效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)
+职责分离声明见各表模块头。"""
