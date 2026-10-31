@@ -2698,7 +2698,7 @@ class GameState:
     encounter_refresh_left: Field[int] = field(default_factory=Field)     # 遭遇刷新剩余次数(§3.4.1;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_encounter_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 无遭遇刷新执行面 = 无 sim 写端;原「已用」计数与 per-visit 位随剩余语义化停用,闸消费与写端全迁本字段)
     supply_refresh_left: Field[int] = field(default_factory=Field)       # 补给刷新剩余次数(§3.4.2;屏上「剩余次数：N」观察真值,None=未观察;观察写端 = report_screen_supply_node_obs 摄入,读缺跳写、逐访问覆盖,无开局种子;sim 写端 = cw_sim_backend 补给节点入口初始 left 与刷新递减;原「已用」计数字段随剩余语义化停用,闸消费与写端全迁本字段)
     env_refresh_left: Field[int] = field(default_factory=Field)          # 投资环境刷新剩余次数(§3.4.3;屏上「剩余次数：N」观察真值;观察写端 = report_screen_invest_env_obs 摄入,读缺跳写;原 env_refresh_used「已用」字段随剩余语义化改名停用——零写端已登记,改名零消费断链)
-    strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 即以规范名为键,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名停用(其注释自declared「on_outcome 发出型钩子」写端与全仓零写端现状矛盾,改名时一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
+    strategy_refresh_left: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新剩余次数(§3.4.4;键 = 注册表规范卡名 normalize_invest_name 归一后——效果注册表 STRATEGY_EFFECTS 以规范名为键〔声明腿申报键 '#后缀' 例外,首例 '全都要·银#supply_delta',约定正本 = 该表全都要·银条目注释;本字段键空间恒为规范卡名〕,观察写端 OCR 名经同一归一函数入键,免双坐标系换算;观察写端 = report_screen_invest_strategy_obs 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖)。原 strategy_refresh_used「已用」随剩余语义化改名停用(其注释自declared「on_outcome 发出型钩子」写端与全仓零写端现状矛盾,改名时一并清除;闸消费口径 = 剩余 ≤0 = 尽;开局种子底座={} 无持卡,与键粒度增量写端协同)
 
     # (商店免费刷新剩余次数 = op-layer §1.4 ``*_refresh_left`` 剩余语义
     #  家族的商店域接入(用户裁定 2026-09-21 Field 化:免费刷新次数是画面
@@ -3053,8 +3053,11 @@ class GameState:
     #   同窗,机械执行态限定写——sim 局不种本域,sim 补给 char 面未建模
     #   为同一上游缺口族,未选集发放域 fail-closed);按列身份计数不按
     #   内容去重(重复列形下内容消账有歧义,chosen_supply 不携带列身份);
-    # 消费即清 = 进入下一补给阶段时 check_strategy_supply_salvage 发放
-    #   被掷列后写回 None(重入幂等:同阶段观察上报多次第 2 次起已清零发);
+    # 消费即清 = 双消费端(先到即清):选卡时点 check_strategy_take_all_
+    #   supply(全都要·银 R-choice,补给选定上报三 applied 出口前)+ 进入
+    #   下一补给阶段时 check_strategy_supply_salvage 发放被掷列后写回 None
+    #   (打捞人才库族 R-entry;本卡选卡即清先到 → 打捞腿后到早退零写;
+    #   重入幂等:同阶段观察上报多次第 2 次起已清零发);
     # 无观察读端(bot 自有事实面),无开局种子(None 声明缺省即开局真值,
     # B/C 类字段一个不种同规)。
     unchosen_supply: Field[tuple[SupplyOption, ...] | None] = field(default_factory=Field)

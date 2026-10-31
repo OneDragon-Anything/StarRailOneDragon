@@ -38,6 +38,13 @@
 语义随「确认即推节点」废止),转移事件
 广播随本动作单轨切换摘除。
 
+**选卡时点检查挂点(R-choice)**:三个 applied 出口前统一调
+``cw_effect_inventory.check_strategy_take_all_supply``(全都要·银
+「下1个补给阶段选择后」发放腿)——选择确认动作的 kernel 单口,live
+真选/兜底两态均经此;选择事件即耗一次性配额(事件消耗制,含内容全未知
+兜底轮),发放源 = 场字段 ``unchosen_supply``(检查函数内读,真选分支
+确认窗已同窗写入本阶段快照)。未持卡局该检查零写零闩,全链零变化。
+
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 容器单向依赖。
 """
@@ -48,6 +55,7 @@ from typing import Any
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     apply_equip_acquire_consequence,
+    check_strategy_take_all_supply,
     grant_bench_unit_cascade,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -106,6 +114,9 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                      actual='unresolved', evidence='pick_supply_landing',
                      sig=sig, kind='pick_supply_content_unresolved')
         log.info('[cw-pick-supply] 上报(内容未知): %s', '; '.join(steps))
+        # 全都要·银 R-choice 挂点(三出口统一,选择事件即耗——本兜底出口
+        # 亦然,源不可记录时零发放仅闩)。
+        check_strategy_take_all_supply(gs, sig)
         return LogicOutcome(applied=True, reason='content_unresolved',
                             world_decl=_DECL)
     if char_name:
@@ -123,6 +134,7 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
         # 仍由 equips 观察整表覆盖下一帧暴露(fail-visible)。
         log.info('[cw-pick-supply] 上报(char=%s 无装备名读数): %s',
                  char_name, '; '.join(steps) or 'no-branch')
+        check_strategy_take_all_supply(gs, sig)
         return LogicOutcome(applied=True, reason='no_equip_column',
                             world_decl=_DECL)
     # 装备入账分支 0..n 件:主件 → 附加件(画面 y 序),同 sig 同窗相邻(同一
@@ -156,5 +168,6 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                          sig=sig, kind='pick_supply_name_unresolved')
     log.info('[cw-pick-supply] 上报(char=%s equips=%s): %s', char_name,
              list(equip_items), '; '.join(steps) or 'no-branch')
+    check_strategy_take_all_supply(gs, sig)
     return LogicOutcome(applied=True, reason='landing_applied',
                         world_decl=_DECL)

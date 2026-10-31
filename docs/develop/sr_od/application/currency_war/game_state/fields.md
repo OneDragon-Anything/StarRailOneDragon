@@ -2133,7 +2133,11 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 容量改写:节省工位(**时限 3 节点、自动恢复**,§3.2.5;唯一容量改写源——
 `STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
 `expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
-`apply_effect_expiry_grants` 腿,2026-10-30 首批条目入册);具名装备授予:
+`apply_effect_expiry_grants` 腿,2026-10-30 首批条目入册);补给屏列数修饰:
+全都要·银(`BattlefieldEffect.supply_option_delta=-2` 声明载体——live 读链
+按实屏识别列数跟随禁写死,字段零消费挂点,sim 列数面零建模 = M18 简化域
+上游缺口;`STRATEGY_EFFECTS` 双条目异键登记〔canon 键 = 一次性全捞腿 +
+申报键 `'全都要·银#supply_delta'` = 本腿〕,2026-10-31 首条入册);具名装备授予:
 全员晋升(获得 2 个【拆装扳手】——装备库存精确增量,PICK_INVEST_EFFECTS
 效果体腿 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
 精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行)。

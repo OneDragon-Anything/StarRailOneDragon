@@ -1085,6 +1085,42 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(佩佩逛街 1% 前/后台强度);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger/duration '
               '占位形'),
+    # 全都要·银:官方「本局游戏中，补给阶段的可选项减少2个。下1个补给阶段
+    # 选择后，额外获得所有未选择的角色及装备。」(cw_invest_data.py:95,
+    # id 131001)。卡面两句双腿分治,同卡双 spec **异键登记首例**——申报键
+    # 约定正本(后继族卡沿用):同卡第二腿占 ``'<规范名>#<腿名>'`` 申报键,
+    # spec.name 恒为规范名(孤儿/id 校验按 name 查,两形态过校验面一致);
+    # 单取登记链 ``STRATEGY_EFFECTS.get(canon)`` 只自动登记 canon 键条目,
+    # 申报键条目 = 纯注册表声明,经该链永不入效果账本。
+    # 腿2(一次性全捞)占 canon 键(功能腿优先键位,族后继载体兼容):发放
+    # 腿 = cw_effect_inventory.check_strategy_take_all_supply(挂补给选定
+    # 上报三 applied 出口前,R-choice 时点——卡面「选择后」字面锚,与打捞
+    # 人才库 R-entry 分立;登记与消费分离,检查函数直查 active_strategies
+    # 不消费本条目);触发面 = SUPPLY_PHASE 第二在册使用。pending 保守支
+    # 承载两件待实采:兜底轮配额消耗制(事件消耗制 A 案)与未选钻列钻归属
+    # 零建模(披露键 strategy_take_all_unchosen_diamond_pending)。
+    '全都要·银': EffectSpec(
+        id='131001', name='全都要·银', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(salvage_all_unchosen_supply=True),
+        duties=DutyFlags(),
+        pending=True,
+        notes='待采:兜底轮配额消耗制保守支=事件消耗制(首个 applied 选择'
+              '事件即耗,含内容全未知兜底轮;漏记列由观察覆盖承接)+ 未选钻'
+              '列钻归属零建模(披露键 strategy_take_all_unchosen_diamond_'
+              'pending)'),
+    # 腿1(列数修饰 -2)占申报键(声明面条目):live 读链按实屏识别列数
+    # 跟随,字段零消费挂点(sim 列数面零建模 = M18 简化域上游缺口);经
+    # 单取登记链永不入效果账本,纯注册表声明。无未裁数值(-2 明写),
+    # 不设 pending。分立理由 = payload 字段互斥 + pending 异构(腿2 带保守
+    # 支/腿1 声明面),单 payload 不可并载两持续期语义(WHILE_HELD vs ONCE)。
+    '全都要·银#supply_delta': EffectSpec(
+        id='131001', name='全都要·银', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(supply_option_delta=-2),
+        duties=DutyFlags(),
+        notes='列数修饰腿(声明面,申报键条目经单取登记链不入效果账本);'
+              'live 读链实屏识别跟随零消费挂点,sim 列数面零建模'),
 }
 
 
