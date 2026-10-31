@@ -576,7 +576,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 - **on_strategy_gained(gs, strategy_name, *, rand, sig, rng=None)**(策略屏迁移批
   新增):查 ``cw_gain_effects.py::PICK_INVEST_EFFECTS``(策略卡获得效果注册表,
   键 = 注册表规范名;在用全集单一源 = 该表本体与各生成表——骇客单行、
-  箱授予分支、援军族、随机简易装备族、策略延时 offer 族〔键集封闭断言
+  箱授予分支、援军族、随机装备族、策略延时 offer 族〔键集封闭断言
   守两表面零漂移,枚举此处不逐卡复制〕)→ 命中 → 效果体执行。骇客卡链序 =
   银狼分支 `gain_character` +
   商店池遥测申报行 + 改件 `gain_equipment(rand=True)` 采样入栏(改件后果经
@@ -659,8 +659,10 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 - 链入口按自身性质定初值(投资环境/投资策略确认 = 确定性入口,False);
 - 递归调用点按**该效果自身性质**传参:效果体含采样 → 对其发起的子链传 `rand=True`;
   不含采样 → 原样透传;
-- 采样效果体在用实例:策略通道 = 骇客改件(`on_strategy_gained` 效果体,rng 经
-  `gain_invest_strategy` 形参注入);环境通道 = 随机赠卡支(`on_env_gained` 的
+- 采样效果体在用实例:策略通道 = 骇客改件与随机装备族(`on_strategy_gained`
+  效果体,rng 经 `gain_invest_strategy` 形参注入;随机装备族池 =
+  `equips_by_category` 注册表派生,类别池均匀 v0,分布披露键
+  `strategy_random_equip_uniform`);环境通道 = 随机赠卡支(`on_env_gained` 的
   `chars_random_immediate`,rng 经 `gain_invest_env` 形参注入,上报函数条件解析
   ——仅登记了随机支的环境才推 sim 动作采样序号,默认环境局 rng 消耗序列
   逐位不变)。

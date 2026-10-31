@@ -2069,9 +2069,10 @@ def apply_on_refresh_pair_gold_grant(gs: GameState, payload: ShopPayload, *,
 # 无收益;金面禁 tick 直写防双计的裁定不辖装备——装备无金面双计风险。
 
 #: 到期发放腿·简易装备池(category='简易' 全集,字母序确定性;池口径随装备
-#: 注册表传导)。与晶矿 cw_ore_reward._SIMPLE_EQUIP_POOL、随机装备腿
-#: cw_gain_effects._RANDOM_SIMPLE_EQUIP_POOL 同表达式同口径,三处独立定义
-#: 互指不跨模块引私有名(三处公共化归族级待办;口径漂移由测试侧同集断言守住)。
+#: 注册表传导)。与晶矿 cw_ore_reward._SIMPLE_EQUIP_POOL 同表达式同口径,
+#: 两处独立定义互指不跨模块引私有名(公共化归族级待办;口径漂移由测试侧
+#: 同集断言守住;策略侧随机装备腿不走本地池 = equips_by_category 注册表
+#: 派生单源)。
 _EXPIRY_SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
     name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
 

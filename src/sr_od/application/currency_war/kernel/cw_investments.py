@@ -1885,8 +1885,10 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     #   无载(放弃纪律)+ 无登记字段可容(扩字段 = 提前抽象且无合法填充值);
     #   live 掉落真值归 equips 观察,sim 世界缺掉落物 = 申报缺口(特权阶级
     #   不对称申报同型);随机星徽整族建模现状:劳务派遣合同已按「获得」
-    #   直读登记随机装备支(见上),买彩票系仍零建模,本卡佩戴/掉落两条分支
-    #   仍按上文口径归观察。
+    #   直读登记随机装备支(见上),买彩票(选卡落地)已按「获得」直读登记
+    #   策略侧随机装备支(cw_gain_effects._STRATEGY_RANDOM_EQUIP_GRANTS
+    #   星徽行,池同源 equips_by_category),本卡佩戴/掉落两条分支仍按上文
+    #   口径归观察。
     # 星级 = 用户裁定佩佩无星级(2026-10-15):链必填实参落 1 为占位非先验。
     '粗星佩佩': GiftGrant(chars_immediate=('佩佩',)),
     # 专家研讨会(id 139,效果原文「获得1个【专家邀请函】和1个【简易武装箱】。」
@@ -2405,6 +2407,10 @@ def _validate_env_gifts() -> None:
                 raise ValueError(
                     f"ENV_GIFTS 装备名漂移({_name!r} 注册表无此装备,"
                     f"版本改名?):{_eq!r}")
+    # 本闸系环境登记首例(劳务派遣合同)所立,消费面含策略侧随机装备支
+    # (买彩票经 cw_gain_effects._STRATEGY_RANDOM_EQUIP_GRANTS 星徽行搭
+    # 便车——泛化表不另设 import 期闸,沿族既定裁定)——单一闸两消费者,
+    # 环境登记迁移时勿误删本闸。
     if not equips_by_category('星徽'):
         raise ValueError(
             "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"

@@ -1,5 +1,6 @@
 """货币战争 获得效果面(cw_gain_effects):策略卡「获得时效果」的注册表 +
-效果函数体 + 骇客改件采样池。
+效果函数体 + 骇客改件采样池 + 随机装备泛化发放表((category, count) 行,
+池 = 装备注册表按类别派生单一源)。
 
 拆分归属:本模块 = **效果内容**(表 + 采样池 + 效果体),
 过程语义(链原语/合成/回调枚举)住 ``cw_gain_chain.py``。import 方向 =
@@ -17,7 +18,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable
 
-from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -273,51 +274,67 @@ def _make_reinforcement_effect(
     return _effect
 
 
-# ===== 随机简易装备族效果(策略卡获得时点随机简易装备发放:简易池均匀
-# ===== v0 掷骰 count 件 → 逐件 gain_equipment(rand=True) 入栏,骇客
-# ===== roll_hacker_mod + gain_equipment 现役同构;腿族首例 = 打捞人才库+
-# =====(id 100702 句 2 装备腿),同族 15 卡后续批各自领取复用本表)=====
+# ===== 随机装备族效果(策略卡获得时点随机装备发放:类别池均匀 v0 掷骰
+# ===== count 件 → 逐件 gain_equipment(rand=True) 入栏,骇客
+# ===== roll_hacker_mod + gain_equipment 现役同构;首例 = 打捞人才库+
+# =====(id 100702 句 2 装备腿,简易行),第二类别首例 = 买彩票(id 110101
+# ===== 星徽行,泛化 (category, count) 表一次成形防类别碎片),同族后继卡
+# ===== 各自领取按 (category, count) +1 行复用本表)=====
 
 #: 建模假设档披露键(在册落点 = 本常量,随局披露面消费;键形态沿骇客/
 #: 援军同区先例):
-#: - instant_reading: 句 2「获得1个随机简易装备和4金币」按获得时点即时腿
-#:   建模(instant_gold 注册口径「选牌当场给金」+ 同句式家族金币成分全
-#:   instant 在册——武装支援+/军火贸易族;裁 R-recurring 则改值/退役,
-#:   实采判据 = 拿卡后未进任何补给阶段前物品栏是否已多 1 件简易装备);
-#: - uniform_simple_pool: 池 = category='简易' 全集均匀 v0(「随机」分布
-#:   未标,采样先验例外;游戏真分布未知,是否受已有装备约束未证;校准源
-#:   = logic_rand_outcome 行按效果串前缀 ``strategy_random_equip:``
-#:   归组)。
+#: - instant_reading: 打捞人才库+ 句 2「获得1个随机简易装备和4金币」按获得
+#:   时点即时腿建模(instant_gold 注册口径「选牌当场给金」+ 同句式家族金币
+#:   成分全 instant 在册——武装支援+/军火贸易族;裁 R-recurring 则改值/
+#:   退役,实采判据 = 拿卡后未进任何补给阶段前物品栏是否已多 1 件简易装备)。
+#:   本常量辖该卡面金腿读法;全族采样分布假设另键,见
+#:   :data:`STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS`。
 STRATEGY_SALVAGE_PLUS_ASSUMPTION_KEYS: tuple[str, ...] = (
     'strategy_salvage_plus_instant_reading',
-    'strategy_random_equip_uniform_simple_pool',
 )
 
-#: 随机简易装备族发放表单一源(卡规范名 → 件数;卡文「获得1个随机简易
-#: 装备」直读)。效果体条目由下方工厂从本表生成,禁另写字面量(箱腿/
-#: 援军表先例纪律:表与效果体两处独立字面量的漂移在备战断言不可见,
-#: 唯一致性测试与落位真值可暴露)。
-_STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, int] = {
-    '打捞人才库+': 1,
+#: 随机装备族采样分布披露键(家族单键,类别无关 uniform v0):池 =
+#: ``equips_by_category(表值类别)`` 注册表派生全集均匀(「随机」分布
+#: 未标,采样先验例外;游戏真分布未知——实机「随机星徽」是否全池、
+#: 是否受持有约束均未证,「随机简易」同案;校准源 = logic_rand_outcome
+#: 行按效果串前缀 ``strategy_random_equip:`` 归组)。键类别无关:池派生
+#: 方式按类别同构、假设同一;简易行首例期的专项键
+#: ``strategy_random_equip_uniform_simple_pool`` 语义被本键覆盖,随表
+#: 泛化归并退役。
+STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_random_equip_uniform',
+)
+
+#: 随机装备族发放表单一源(卡规范名 → (装备类别名, 件数);卡文「获得
+#: N个随机X装备」直读,类别 ∈ EQUIPMENTS category 词表)。效果体条目由
+#: 下方工厂从本表生成,禁另写字面量(箱腿/援军表先例纪律:表与效果体
+#: 两处独立字面量的漂移在备战断言不可见,唯一致性测试与落位真值可暴露)。
+#: 泛化表不加专设 import 期校验(沿族既定裁定:池随注册表传导,池空属
+#: 数据面事故非本腿职责;'星徽' 行搭环境侧 import 期独立闸便车 =
+#: cw_investments._validate_env_gifts,单一闸两消费者),运行期池空走
+#: 工厂 log 防御分支零写兜底。
+_STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
+    '打捞人才库+': ('简易', 1),
+    '买彩票': ('星徽', 1),
 }
 
-#: 随机简易装备池(category='简易' 全集,字母序确定性;池口径随装备注册
-#: 表传导)。与晶矿 cw_ore_reward._SIMPLE_EQUIP_POOL 同表达式同口径,
-#: 独立定义互指不跨模块引私有名(晶矿池为模块私有名;两池口径漂移由
-#: 测试侧同集断言守住)。
-_RANDOM_SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
-    name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
+
+def roll_random_equip(rng: random.Random, category: str) -> str:
+    """单次随机装备身份采样(纯函数;rng 注入,sim/live 共用同一语义)。
+    池 = ``cw_investments.equips_by_category(category)`` 注册表派生单源
+    (函数内惰性 import,沿本模块效果体惰性纪律——公开注册表函数,零新增
+    模块级边;注册表构建序确定性,种子可复现)。等概率均匀;分布形态未
+    实测,披露键 ``strategy_random_equip_uniform``。池空 = 注册表漂移,
+    防御归工厂(本函数纯采样,零容器零日志面)。"""
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        equips_by_category,
+    )
+    return rng.choice(equips_by_category(category))
 
 
-def roll_random_simple_equip(rng: random.Random) -> str:
-    """单次随机简易装备身份采样(纯函数;rng 注入,sim/live 共用同一语义)。
-    池 = :data:`_RANDOM_SIMPLE_EQUIP_POOL`(等概率均匀;分布形态未实测,
-    披露键 ``strategy_random_equip_uniform_simple_pool``)。"""
-    return rng.choice(_RANDOM_SIMPLE_EQUIP_POOL)
-
-
-def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
-    """随机简易装备效果体工厂(闭包销 = 件数,单源取自
+def _make_random_equip_effect(
+        category: str, count: int) -> Callable[..., list[str]]:
+    """随机装备效果体工厂(闭包销 = (装备类别名, 件数),单源取自
     :data:`_STRATEGY_RANDOM_EQUIP_GRANTS`;形态镜像 _make_reinforcement_effect)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
@@ -328,7 +345,9 @@ def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
     效果串不带 @<N>star 后缀:``strategy_random_equip:<名>``(落位)/
     ``strategy_random_equip:<名>(skipped)``(跳写,骇客 mod_equip/
     mod_sampled 两形态同构);发放事实与落位成败解耦,效果串恒 count 条。
-    """
+    count>1 放回语义为 v0 口径(每次独立掷,可重复件名),后继多件卡另案
+    复核。池空 = 注册表漂移 → log 防御分支零写(不炸链,环境侧随机装备支
+    on_env_gained 同款)。"""
 
     def _effect(gs: GameState, *, sig: ChannelSig,
                 rng: random.Random) -> list[str]:
@@ -337,9 +356,19 @@ def _make_random_equip_effect(count: int) -> Callable[..., list[str]]:
         from sr_od.application.currency_war.kernel.cw_gain_chain import (
             gain_equipment,
         )
+
+        # 池空防御同源取池(泛化表不设 import 期闸,运行期 log 兜底,环境
+        # 侧随机装备支同款;正常路径与采样器同源,零第二表达式)
+        from sr_od.application.currency_war.kernel.cw_investments import (
+            equips_by_category,
+        )
+        if not equips_by_category(category):
+            log.warning(f'[cw-gain] 策略随机装备类别池空(注册表漂移?):'
+                        f'category={category!r}')
+            return []
         steps: list[str] = []
         for _ in range(count):
-            name = roll_random_simple_equip(rng)
+            name = roll_random_equip(rng, category)
             eq = gain_equipment(gs, name, rand=True, sig=sig,
                                 evidence='pick_invest_random_equip',
                                 producer=_PRODUCER)
@@ -592,20 +621,20 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name, item in _STRATEGY_BOX_GRANTS.items()},
     **{name: _make_reinforcement_effect(pairs)
        for name, pairs in _STRATEGY_REINFORCEMENT_GRANTS.items()},
-    **{name: _make_random_equip_effect(count)
-       for name, count in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
+    **{name: _make_random_equip_effect(cat, n)
+       for name, (cat, n) in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
     # 武装支援 = 双腿混发组合卡(卡文「获得1件随机简易装备和2个随机3费
-    # 角色。」):直书登记行(非表生成),不入援军/随机简易装备两族表
+    # 角色。」):直书登记行(非表生成),不入援军/随机装备两族表
     # (入表 = 表生成的单腿效果体与组合体同名键顺序覆盖丢腿);腿序 =
     # 卡文语序装备腿先/角色腿后,腿参数在此单次出现(单一源)。
-    '武装支援': _compose_grant_legs(_make_random_equip_effect(1),
+    '武装支援': _compose_grant_legs(_make_random_equip_effect('简易', 1),
                                     _make_reinforcement_effect(((3, 2),))),
     # 武装支援+ = 三腿分层组合卡(卡文「获得1件随机简易装备和1个随机4费
     # 角色，获得6金币。」):效果体双腿同上(装备腿先/角色腿后,4 费池
     # 放回抽 1);金腿分层 = STRATEGY_ECONOMY 注册行(instant_gold=6)在册
     # 承载,金面禁直写不进效果体(sim 金发放写端缺口归 T-112 族级待办);
     # 不入两族表同上(同名键顺序覆盖丢腿)。
-    '武装支援+': _compose_grant_legs(_make_random_equip_effect(1),
+    '武装支援+': _compose_grant_legs(_make_random_equip_effect('简易', 1),
                                      _make_reinforcement_effect(((4, 1),))),
     # 全员晋升 = 具名装备授予族模式卡(卡文「获得2个【拆装扳手】」):
     # 直书登记行(沿组合卡字面项区式样;族内后继卡同形直呼工厂,精密金面
@@ -640,8 +669,9 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
-_STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
-_STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
+_STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
+_STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
+装备注册表按类别派生),组合卡(武装支援/武装支援+)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗)由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自

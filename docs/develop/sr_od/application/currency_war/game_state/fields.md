@@ -630,14 +630,17 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   银/金/彩(进节点物品栏全量变同品质);保险的装备效果(每损 20 血获随机简易入区);
   变宝为废(词缀,每位面首次合成进阶装备 50% 变垃圾袋——随机面交由观察收尾,§5.3 词缀源)。
 - 获得链写入方(kernel,`GAIN_CHAIN_PRODUCER`,挂点 = `on_env_gained` 装备两支 +
-  `on_strategy_gained` 随机简易装备族,
+  `on_strategy_gained` 随机装备族,
   写通道 = `anchor_aware_write` 择口):即时装备支(2026-10-17 用户裁定 rand=True
   恒随机态——「选卡时点游戏实际发下」对首例环境未经实机判读核实,猜测写 + 观察
   覆盖纠偏;首例 = 红钻贵族「红钻」)+ 随机装备支(rand=True 类别池采样入栏,
   首例 = 劳务派遣合同「随机星徽」——T-19 落地时未申报,随本行一并清偿)
-  + 策略卡获得时点采样支(`cw_gain_effects.PICK_INVEST_EFFECTS` 随机简易装备族:
-  打捞人才库+ 句2,简易池(category='简易' 全集)均匀 → `gain_equipment(rand=True)`
-  入栏;采样口径已登记 = 随机态直写,校准归组键 = 效果串前缀 `strategy_random_equip:`)。
+  + 策略卡获得时点采样支(`cw_gain_effects.PICK_INVEST_EFFECTS` 随机装备族,
+  泛化表 `(category, count)` 行登记,池 = `equips_by_category` 注册表派生单源、
+  类别池均匀 → `gain_equipment(rand=True)` 入栏):打捞人才库+ 句2(简易池 =
+  category='简易' 全集)与买彩票(选卡落地采样星徽入栏,星徽池 = category='星徽'
+  全集)两条均为随机态直写,校准归组键 = 效果串前缀 `strategy_random_equip:`,
+  分布披露键 = `strategy_random_equip_uniform`(家族单键,类别无关 uniform v0)。
   **rand 两通道分野注记**(具名装备获得族级,新增同形腿按通道归属取值、禁跨通道
   「对齐」):同为「选卡时点获得具名装备」,env 侧即时装备支 = rand=True 恒随机态
   (上行 2026-10-17 用户裁定:卡面文本是唯一证据,猜测写 + 首观察静默覆盖纠偏);
@@ -742,8 +745,11 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   名单集 `_SALVAGE_STRATEGY_NAMES` 双名含 +卡,未选列均匀掷 1 列,char 腿
   `grant_bench_unit_cascade` / 装备腿归一两段式逐件 rand=True,消费即清 =
   `gs.unchosen_supply` 写回 None,场字段 §3.4.2);+ 卡句2 装备腿 = 获得时点采样
-  (`cw_gain_effects.PICK_INVEST_EFFECTS` 随机简易装备族:简易池均匀 →
+  (`cw_gain_effects.PICK_INVEST_EFFECTS` 随机装备族:简易池均匀 →
   `gain_equipment(rand=True)` 入栏,写入方见 §3.2.15 策略卡获得时点采样支)。
+  买彩票——获得时点采样星徽入栏(随机装备泛化表星徽行:星徽池 = category='星徽'
+  全集均匀 → `gain_equipment(rand=True)` 入栏,写入方见 §3.2.15 策略卡获得时点
+  采样支)。
   扩充团队——多档混合随机发牌(登记表 `cw_gain_effects._STRATEGY_REINFORCEMENT_GRANTS`:
   卡文「获得2个1费角色，2个2费角色和1个3费角色」= (费用档, 名数) 对序列,各档
   数量与费用档 = desc 明写结构值零随机、进席身份面随机〔抽样先验例外〕;效果体 =
@@ -753,7 +759,7 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   武装支援——组合双腿混发(组合登记 `cw_gain_effects.PICK_INVEST_EFFECTS['武装支援']`:
   卡文「获得1件随机简易装备和2个随机3费角色。」按卡文语序装备腿先/角色腿后,效果体 =
   组合子 `_compose_grant_legs` 按形参序逐腿调用、两腿共享同一 rng 顺序推进〔掷序契约:
-  改序 = 掷序漂移〕;装备腿 = 随机简易装备族工厂 1 件,简易池均匀 → `gain_equipment(
+  改序 = 掷序漂移〕;装备腿 = 随机装备族工厂 1 件,简易池均匀 → `gain_equipment(
   rand=True)` 入栏(§3.2.15);角色腿 = 援军族工厂 (3, 2) 对,3 费池放回抽 2 名 →
   `gain_character(1★, rand=True)` 入席,星级 1★ = desc 未标星句式先验;校准面 =
   `logic_rand_outcome` 行按双前缀(`strategy_random_equip:`/`strategy_gift_random:`)
@@ -762,7 +768,7 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   '武装支援+']`:卡文「获得1件随机简易装备和1个随机4费角色，获得6金币。」效果体
   双腿按卡文语序装备腿先/角色腿后,效果体 = 组合子 `_compose_grant_legs` 按形参序
   逐腿调用、两腿共享同一 rng 顺序推进〔掷序契约:改序 = 掷序漂移〕;装备腿 = 随机
-  简易装备族工厂 1 件,简易池均匀 → `gain_equipment(rand=True)` 入栏(§3.2.15);
+  装备族工厂 1 件,简易池均匀 → `gain_equipment(rand=True)` 入栏(§3.2.15);
   角色腿 = 援军族工厂 (4, 1) 对,4 费池放回抽 1 名 → `gain_character(1★, rand=True)`
   入席,星级 1★ = desc 未标星句式先验;金腿分层 = `cw_investments.STRATEGY_ECONOMY[
   '武装支援+']` 注册行(instant_gold=6)估值读端承载,金面禁直写不进效果体〔sim 金
