@@ -756,6 +756,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 发放物「好运令牌」与卡名异名(族内首例,物名单源住注册表 item);
     # 禁入两腿成员集(入集 = 拿卡错发即时装备腿)。
     '好运令牌·银': _make_delayed_only_grant_effect('好运令牌·银'),
+    # 是钻石总会发光 = 延时-only 单腿展开卡 + 族内首个随机发放行(卡文
+    # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句,零即时腿):
+    # 显式单行登记延时-only 载体;效果串 choice-set 形
+    # strategy_grant_scheduled:红钻|蓝钻@2(item 段 = 封闭集竖线连接,
+    # 单一构造点住链原语按 item or '|'.join(item_choices) 取段,本工厂
+    # 零字面量);登记腿零采样(掷骰时点 = 到点发放窗现掷,拿卡入队
+    # 预掷被否:队列只存卡名,live 队列不携永不兑现的预掷值);
+    # 禁入两腿成员集(入集 = 拿卡错发即时装备腿)。
+    '是钻石总会发光': _make_delayed_only_grant_effect('是钻石总会发光'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自

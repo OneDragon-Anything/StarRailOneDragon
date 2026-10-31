@@ -657,8 +657,9 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   **延时发放登记腿**(策略卡延时世界发放通道,人才激励 id 101601 首例,
   与延时 offer 族并列独立域——本族到点产出 = 世界发放写,offer 族 =
   选卡屏事件):注册表 `cw_investments.STRATEGY_DELAYED_GRANTS`(卡规范名
-  → id/倒计时/发放物,白名单制;构建校验三漂移哨 = 孤儿键/id 双匹配/
-  发放物名 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES)+1 行即自动获得登记腿
+  → id/倒计时/发放物,白名单制;构建校验漂移哨 = 孤儿键/id 双匹配/
+  发放物名(item 确定行与 item_choices 逐元素)∈ EQUIPMENTS ∪
+  BENCH_ITEM_NAMES)+1 行即自动获得登记腿
   (效果体由该表派生)。效果体两步:即时腿 `gain_equipment(rand=False)`
   具名入栏(效果串 `equip_grant:<发放物>(placed=<是否落位>)`;equips
   未观察 = 拒落零写)+ 延时入队腿 `queue_delayed_strategy_grant`(§2
@@ -672,7 +673,16 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   = 拿卡错发即时腿),效果体仅入队腿。入队条目数 = 注册表 `count`
   字段循环(数量单一源落注册表,先亏后盈 2 = 首例:同拍两条同卡条目
   逐条独立倒计时,到点逐条独立发放/独立席满判定;default 1 与单次
-  入队逐位一致)。
+  入队逐位一致)。随机 choice-set 行(是钻石总会发光 id 131101,族内
+  首个随机发放行):注册行 `item=''` + `item_choices` 封闭集(「获得
+  【红钻】或【蓝钻】」直读,非类别池),登记腿效果串两形并存——单物形
+  `strategy_grant_scheduled:好运令牌@3` 与 choice-set 形
+  `strategy_grant_scheduled:红钻|蓝钻@2`(封闭集竖线连接,构造点单一
+  住入队原语);队列仍只存卡名、随机值不入队,掷骰时点 = 到点发放窗
+  现掷(`discharge_due_strategy_grants` 增 `rng` 必传形参,均匀 v0 =
+  建模假设,披露键申报),采样行发放子链 rand=True(§5 效果体含采样
+  纪律;队列弹除行仍只载卡名随调用方 rand 透传),确定行零消费 rng
+  行为零变。
   未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)

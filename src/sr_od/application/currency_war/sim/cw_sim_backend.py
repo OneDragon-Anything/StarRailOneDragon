@@ -2417,22 +2417,40 @@ class SimBackend:
         # 同一收口继承窗口幂等守卫(重放不双发);递减点 = kernel 节点
         # 边界 tick(advance 尾段),动作上报/锚定补推两路径均先于本窗
         # 开——本 advance 递减到 0 的条目本窗发放 = 「第 N 个后继节点
-        # 窗」读法落点。确定发放 → rand=False(gain-chain.md §5);独立
-        # sig 组名与环境 'sim:env' 区分(世界发放写非环境域,审计可分)。
-        # 到点留证披露键按「先读后发」取到期卡名(发放原语效果串只载
-        # 发放物不载卡名);注册表查行失败的防御条目由原语保留不弹除,
-        # 披露值以 '?' 标记发放物缺失。
+        # 窗」读法落点。确定发放行 → rand=False(gain-chain.md §5);
+        # 随机 choice-set 行(是钻石总会发光首例)发放腿内部采样并覆盖
+        # rand=True,rng = 独立命名流 M26(采样消耗不与他流共享 → 同局
+        # 其余随机事件流零移位,固定 seed 面只受世界值变化影响)。
+        # 独立 sig 组名与环境 'sim:env' 区分(世界发放写非环境域,审计
+        # 可分)。到点留证披露键按「先读后发」取到期卡名与选中物(发放
+        # 原语效果串只载发放物不载卡名,采样行掷点结果只回传在效果串
+        # 内);注册表查行失败的防御条目由原语保留不弹除,披露值以
+        # '?' 标记发放物缺失。
         due_grants = tuple((str(e[0]), int(e[1])) for e in
                            (self.gs.pending_strategy_grants.value or ())
                            if int(e[1]) <= 0)
         if due_grants:
-            discharge_due_strategy_grants(self.gs, rand=False,
-                                          sig=logic_sig('sim:strategy_grant'))
-            for _name, _rem in due_grants:
+            grant_effects = discharge_due_strategy_grants(
+                self.gs, rand=False,
+                rng=stream_rng(self.seed,
+                               f'M26/strategy-grant/p{plane}/r{r}'),
+                sig=logic_sig('sim:strategy_grant'))
+            # 披露「选中物」按到期序对位解析效果串(确定行串值 = 登记
+            # 物,choice-set 行串值 = 掷点结果);仅注册表漂移条目无串
+            # (防御支)回退 '?'——choice 行 item='' 空值同以 '?' 标记,
+            # 不披露空。
+            _fired = [fx[len('delayed_grant:'):].split('(placed=')[0]
+                      for fx in grant_effects]
+            for _idx, (_name, _rem) in enumerate(due_grants):
                 _spec = STRATEGY_DELAYED_GRANTS.get(_name)
+                if _idx < len(_fired):
+                    _item = _fired[_idx]
+                elif _spec is not None:
+                    _item = _spec.item or '?'
+                else:
+                    _item = '?'
                 self.disclosures[STRATEGY_DELAYED_GRANT_FIRED] = (
-                    f'{_name}@{plane}-{r}:'
-                    f'{_spec.item if _spec is not None else "?"}')
+                    f'{_name}@{plane}-{r}:{_item}')
         # 首领节点条件发放(劳务派遣合同分支2;条件单一源 = kernel
         # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
         # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,

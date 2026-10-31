@@ -4032,6 +4032,15 @@ _validate_strategy_win_gold_grants()
 STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION: str = \
     'strategy_win_gold_scope_all_settlement_nodes'
 
+#: 策略延时发放随机 choice-set 行的均匀 v0 假设申报键(家族常量,后继
+#: 随机发放行随批扩元组,形态沿 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS
+#: 先例;消费面 = 实测校准与披露清单):desc 对「或」无概率载,红/蓝
+#: 各半为建模假设非游戏真值,禁猜数值;实机分布对照发现显著偏离 →
+#: 升级采集批校准,禁改码硬凑。首例 = 是钻石总会发光。
+STRATEGY_DELAYED_RANDOM_CHOICE_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_delayed_choice_uniform_v0',
+)
+
 
 # ===== 策略卡延时发放注册表(白名单制;策略延时世界发放通道模式件,
 # ===== 人才激励首例——双腿卡:即时装备腿走 PICK_INVEST_EFFECTS 工厂
@@ -4056,6 +4065,16 @@ class StrategyDelayedGrant:
       default 1 使既有行纸面与行为零变。数量不入 import 校验(2026-10-28
       治理口径「防登记笔误校验不加」,同 delay_nodes 值形查),对账归
       表域测试与评审。
+    - item_choices: 随机发放物封闭集合(「获得【红钻】或【蓝钻】」直读,
+      是钻石总会发光首例)。空 () = 确定发放行,发放物走 item 字段,既有
+      全部行纸面与行为零变;非空 = 到点发放时在集合内均匀掷一枚(掷骰
+      时点 = 到点发放窗,队列仍只存卡名随机值不入队;均匀 v0 = 建模
+      假设非游戏真值,desc 无概率载禁猜数值,披露键申报
+      STRATEGY_DELAYED_RANDOM_CHOICE_ASSUMPTION_KEYS)。与 item 恰一
+      有效(防登记笔误类,按 2026-10-28 治理口径不入 import 校验,对账
+      归表域测试);元素各过漂移哨(逐元素 ∈ EQUIPMENTS ∪
+      BENCH_ITEM_NAMES,版本改名/移除可独立触发,见
+      _validate_strategy_delayed_grants ④)。
 
     立专表辨析:GiftGrant items_scheduled = 绝对节点键域('位-轮')且
     会把发放物错收进占席词表;效果账本 EffectSpec payload 闭集(经济/
@@ -4066,6 +4085,7 @@ class StrategyDelayedGrant:
     delay_nodes: int
     item: str
     count: int = 1
+    item_choices: tuple[str, ...] = ()
 
 
 STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
@@ -4103,6 +4123,19 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
     '好运令牌·银': StrategyDelayedGrant(id='130901', delay_nodes=3,
                                         item='好运令牌'),
+    # 是钻石总会发光(id 131101 原文直读,cw_invest_data.py:96;卡文
+    # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句零即时腿,登记腿
+    # 载体 = cw_gain_effects 延时-only 单腿工厂;发放物 = 红钻/蓝钻具名
+    # 二元封闭集(族内首个随机发放行,item='' 占位走 item_choices,掷骰
+    # 时点 = 到点发放窗现掷,队列只存卡名随机值不入队);非类别池——
+    # 「特殊」类全类 17 件,财富宝钻/分身墨镜等 15 件非集合成员,池形
+    # 不适配;红钻/蓝钻 = EQUIPMENTS 特殊类装备非占席道具(BENCH_ITEM_
+    # NAMES 负成员,禁入占席通道),到点走装备分道 gain_equipment;
+    # 获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES);概率红/蓝均匀 v0
+    # = 建模假设,披露键申报)
+    '是钻石总会发光': StrategyDelayedGrant(
+        id='131101', delay_nodes=2, item='',
+        item_choices=('红钻', '蓝钻')),
 }
 
 
@@ -4110,16 +4143,20 @@ def _validate_strategy_delayed_grants() -> None:
     """STRATEGY_DELAYED_GRANTS 构建校验(import 即炸;治理口径 =
     2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本变更
     独立触发的漂移哨留」,镜像 _validate_strategy_delayed_offers 同款
-    收缩形态——本表落三哨,值域类(delay_nodes 形/下界)不加):
+    收缩形态——本表落四哨,值域类(delay_nodes 形/下界)与防登记笔误
+    类(item 与 item_choices 恰一)不加,恰一对账归表域测试):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
     静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
-    仍在的漂移也炸);③ 发放物名漂移:item ∈ EQUIPMENTS ∪
+    仍在的漂移也炸);③ 发放物名漂移:item 非空的确定行 ∈ EQUIPMENTS ∪
     BENCH_ITEM_NAMES(两词表均游戏数据派生,版本改名/移除可独立触发;
-    双域皆非 = 消耗品域/未知名,发放腿无从分道)。③的运行期实况 =
-    发放腿查行后零分道防御(log + 条目保留),import 期哨把拦截面前移
-    到构建期。delay_nodes 错值后果 = 拿卡入队按错拍倒计时(响亮面在
-    对账),防笔误类按治理裁定不加。
+    双域皆非 = 消耗品域/未知名,发放腿无从分道;choice-set 行 item=''
+    跳过本哨,物名由④逐元素辖);④ choice-set 元素漂移:非空
+    item_choices 逐元素 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES(镜像③形态,
+    采样行发放腿同按两词表分道)。③④的运行期实况 = 发放腿查行后零
+    分道防御(log + 条目保留),import 期哨把拦截面前移到构建期。
+    delay_nodes 错值后果 = 拿卡入队按错拍倒计时(响亮面在对账),防
+    笔误类按治理裁定不加。
     """
     orphans = [n for n in STRATEGY_DELAYED_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -4132,11 +4169,18 @@ def _validate_strategy_delayed_grants() -> None:
             raise ValueError(
                 f"STRATEGY_DELAYED_GRANTS id 漂移:{_name!r} 登记 id="
                 f"{_grant.id} base={_base.source}")
-        if _grant.item not in EQUIPMENTS \
+        if _grant.item \
+                and _grant.item not in EQUIPMENTS \
                 and _grant.item not in BENCH_ITEM_NAMES:
             raise ValueError(
                 f"STRATEGY_DELAYED_GRANTS 发放物名漂移({_name!r} 装备表/占席"
                 f"词表均无此名,版本改名?):{_grant.item!r}")
+        for _choice in _grant.item_choices:
+            if _choice not in EQUIPMENTS and _choice not in BENCH_ITEM_NAMES:
+                raise ValueError(
+                    f"STRATEGY_DELAYED_GRANTS 发放物元素漂移({_name!r} "
+                    f"choice-set 装备表/占席词表均无此名,版本改名?):"
+                    f"{_choice!r}")
 
 
 _validate_strategy_delayed_grants()

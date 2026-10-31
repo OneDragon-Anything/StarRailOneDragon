@@ -769,7 +769,9 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     产出 = 选卡屏事件,本族到点产出 = 世界发放写,消费原语不同不合并):
     查 ``STRATEGY_DELAYED_GRANTS`` 登记行,追加 ``(卡名, delay_nodes)``
     到 ``gs.pending_strategy_grants`` 一次 write 回写,返回效果串
-    ``strategy_grant_scheduled:<发放物>@<节拍>``。
+    ``strategy_grant_scheduled:<发放物段>@<节拍>``(发放物段单一构造点
+    在本原语:确定行 = 登记物名;随机 choice-set 行 = 封闭集竖线连接
+    如 ``红钻|蓝钻``——连接字面 ∉ EQUIPMENTS,天然不可与真物名混淆)。
 
     - rand 语义:登记 = 确定事件(倒计时按登记值推算,零采样),写通道
       仍经 :func:`_select_write` 单一收束(箱腿同约定,gain-chain.md §5);
@@ -789,7 +791,9 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     write = _select_write(gs, rand=False)
     write(gs.pending_strategy_grants, queued, produced_by=producer,
           evidence=f'strategy_grant_queue:{name}', sig=sig)
-    return f'strategy_grant_scheduled:{grant.item}@{grant.delay_nodes}'
+    return (f'strategy_grant_scheduled:'
+            f'{grant.item or "|".join(grant.item_choices)}'
+            f'@{grant.delay_nodes}')
 
 
 #: 策略卡条件发放写端署名(家族单一标识,cw_env_grants._PRODUCER 同款
@@ -2025,21 +2029,31 @@ def discharge_due_item_opens(gs: GameState, *, rand: bool,
 
 
 def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
+                                  rng: random.Random,
                                   sig: ChannelSig) -> tuple[str, ...]:
     """策略延时发放到点原语(策略延时世界发放通道;与
     discharge_due_item_grants 弹除语义同构的并列独立域):读
     ``pending_strategy_grants`` 现值,remaining <= 0 条目 = 到期
     (「到了及以后都算」,错过不悬空),逐条查 ``STRATEGY_DELAYED_GRANTS``
-    登记行取发放物分道发放——∈ EQUIPMENTS → gain_equipment(装备腿,
-    尾追入栏)/ ∈ BENCH_ITEM_NAMES → gain_bench_item(占席道具腿),
-    均确定发放随 rand 透传;队列条目只存卡名不存发放物 = 改名安全
-    单一源。到期即弹除不回队(发放即消费;发放拒落零写 = 该件世界性
-    丢失,留存证据于队列回写行,环境定时通道弹除语义同构)。保留队列
-    与现值判等非空才一次 write 回写。返回效果串(每条
-    ``delayed_grant:<item>(placed=<bool>)``,与落位成败解耦)。
+    登记行取发放物分道发放(随机 choice-set 行先在集合内均匀掷一枚再
+    分道)——∈ EQUIPMENTS → gain_equipment(装备腿,尾追入栏)/
+    ∈ BENCH_ITEM_NAMES → gain_bench_item(占席道具腿);队列条目只存
+    卡名不存发放物(随机值同样不入队)= 改名安全单一源。到期即弹除不
+    回队(发放即消费;发放拒落零写 = 该件世界性丢失,留存证据于队列
+    回写行,环境定时通道弹除语义同构)。保留队列与现值判等非空才一次
+    write 回写。返回效果串(每条 ``delayed_grant:<发放物>(placed=
+    <bool>)``,与落位成败解耦)。
 
-    - rand 语义:策略延时发放 = 确定发放,调用方传 ``rand=False``
+    - rand 语义:确定发放行(族内既有全部行)调用方传 ``rand=False``
       (gain-chain.md §5;写通道仍经 :func:`_select_write` 单一收束);
+      随机 choice-set 行(是钻石总会发光首例)例外:发放腿内部覆盖
+      ``rand=True``(效果体含采样 → 子链随机态纪律,gain-chain.md §5),
+      队列弹除行仍只载卡名、随调用方 rand 透传;
+    - rng 必传形参(无缺省,缺省回退自掷会破 sim 确定性):仅随机
+      choice-set 行消费(掷骰时点 = 到点发放窗现掷,``rng.choice`` 序列
+      均匀语义;均匀 v0 = 建模假设非游戏真值,披露键申报 =
+      STRATEGY_DELAYED_RANDOM_CHOICE_ASSUMPTION_KEYS);确定行零消费
+      (调用后 rng 状态逐位不变,同 seed 下既有卡行为零变);
     - 注册表查行失败防御(实现批后注册表漂移,正常不可达;import 校验
       在先):零写 + log warning + 条目保留不弹除,披露面 = 消费端
       sim 留证披露键,见值即注册表与队列失配,升级排查;
@@ -2061,21 +2075,34 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
             keep.append((name, int(remaining)))
             continue
         evidence = f'strategy_grant_due:{name}'
-        if grant.item in EQUIPMENTS:
-            outcome = gain_equipment(gs, grant.item, rand=rand, sig=sig,
+        if grant.item_choices:
+            # 随机 choice-set 行(是钻石总会发光首例):到点发放窗现掷
+            # (队列只存卡名随机值不入队 = 改名安全单一源不破);均匀 v0
+            # = 建模假设非游戏真值(披露键
+            # STRATEGY_DELAYED_RANDOM_CHOICE_ASSUMPTION_KEYS);效果体含
+            # 采样 → 发放子链走随机态写通道(gain-chain.md §5),队列
+            # 弹除行仍只载卡名维持调用方 rand 常量。占席支现役无实成员
+            # (前瞻边界:其 rand 语义随首个占席 choice-set 行批复核)。
+            chosen = rng.choice(grant.item_choices)
+            grant_rand = True
+        else:
+            chosen = grant.item
+            grant_rand = rand
+        if chosen in EQUIPMENTS:
+            outcome = gain_equipment(gs, chosen, rand=grant_rand, sig=sig,
                                      evidence=evidence,
                                      producer=GAIN_CHAIN_PRODUCER)
             placed = outcome.placed
-        elif grant.item in BENCH_ITEM_NAMES:
-            placed = gain_bench_item(gs, grant.item, rand=rand, sig=sig,
+        elif chosen in BENCH_ITEM_NAMES:
+            placed = gain_bench_item(gs, chosen, rand=grant_rand, sig=sig,
                                      evidence=evidence,
                                      producer=GAIN_CHAIN_PRODUCER)
         else:
             log.warning(f'[cw-gain] 策略延时发放物双域皆非(import 校验在先,'
-                        f'漂移防御),条目保留:{name!r} {grant.item!r}')
+                        f'漂移防御),条目保留:{name!r} {chosen!r}')
             keep.append((name, int(remaining)))
             continue
-        effects.append(f'delayed_grant:{grant.item}(placed={placed})')
+        effects.append(f'delayed_grant:{chosen}(placed={placed})')
     if tuple(keep) != queue:
         write = _select_write(gs, rand)
         write(gs.pending_strategy_grants, tuple(keep),
