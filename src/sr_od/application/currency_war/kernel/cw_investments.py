@@ -1157,6 +1157,29 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(进入战斗时后排≥4 名小队 15% 速度增幅,'
               '游戏侧自算,bot 仅登记);无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 正能量:官方「进入战斗时，我方小队恢复等同于能量上限20%的能量。」
+    # (cw_invest_data.py:100,PlazaAugment 150301)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/
+    # 团队力量·银/应援团 条目。恢复型(非增幅光环)归类:能量为战斗内
+    # 资源,与伤害减免同桶「战斗被动分支」(cw_gain_effects.py 三卡箱腿
+    # 注释),sim 战斗零建模;「能量上限」基数 = 受益角色自身上限(装备
+    # 同构措辞旁证:电光履·特权),游戏侧定义。
+    '正能量': EffectSpec(
+        id='150301', name='正能量',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150301')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(进入战斗时小队每名角色恢复自身能量上限 20%,'
+              '游戏侧自算,bot 仅登记);恢复型非增幅光环——能量为战斗内资源,'
+              '与伤害减免同桶战斗被动分支(cw_gain_effects.py 三卡箱腿注释),'
+              'sim 战斗 U01 零建模;「进入战斗时」无离散触发事件消费,'
+              'trigger 占位形(对齐 _portal_placeholder_spec 先例);'
+              '能量上限基数=受益角色自身(装备同构措辞惯例推断,非 desc 逐字,'
+              '游戏侧定义,bot 零响应)'),
 }
 
 

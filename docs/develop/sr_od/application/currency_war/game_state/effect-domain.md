@@ -16,7 +16,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类清单**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 33 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 34 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -108,12 +108,12 @@
 
 ## 5. 分类清单(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **33 条,实码全量**(构建层校验与数据层
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **34 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
 加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
 ——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项;含
-战力类 UNIT_BUFF 零响应登记五条 = 全队的希望/溜佩佩/溜佩佩+/团队力量·银/
-应援团,登记形态见 §7.1 unit_buff);词缀源
+战力类 UNIT_BUFF 零响应登记六条 = 全队的希望/溜佩佩/溜佩佩+/团队力量·银/
+应援团/正能量,登记形态见 §7.1 unit_buff);词缀源
 注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
 评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
@@ -330,7 +330,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 33 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 34 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -566,7 +566,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   救世主/头号玩家/领航员)排除,desc 明文零建模。同形先例 = 全队的希望(族首例)/
   溜佩佩/溜佩佩+;不绑阵营(泛用数值,`STRATEGY_BINDINGS` 零触碰,表外默认空绑定);
   现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
-- **证据**:规格 `STRATEGY_EFFECTS['团队力量·银']`(cw_investments.py 表尾条目);
+- **证据**:规格 `STRATEGY_EFFECTS['团队力量·银']`(cw_investments.py 战力类零响应族条目);
   官方原文 cw_invest_data.py:98「每有一个已激活的非独立羁绊，小队就会获得3%前/
   后台强度。」
 - **推理链**:羁绊计数随游戏内状态连续变化,无离散触发事件 → trigger 占
@@ -584,13 +584,32 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   观察读口零接线(无消费端:sim 战斗 U01 不消费 buff、live 游戏自算自显、策略侧
   选卡估值范围外)。不绑阵营(泛用全队数值,`STRATEGY_BINDINGS` 零触碰,表外默认
   空绑定);现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
-- **证据**:规格 `STRATEGY_EFFECTS['应援团']`(cw_investments.py 表尾条目);
+- **证据**:规格 `STRATEGY_EFFECTS['应援团']`(cw_investments.py 战力类零响应族条目);
   官方原文 cw_invest_data.py:99「进入战斗时，如果后排至少有4个角色，我方小队
   速度增幅提高15%。」
 - **推理链**:条件判定/计数/buff 生效全在游戏,进入战斗拍评估,无离散触发事件 →
   trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位零响应);
   无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md §0
   战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
+
+#### 正能量(150301)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter 不建);
+  payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
+  单一源);bot 零响应——本族首个**恢复型(非增幅光环)**条目:恢复事件(进入
+  战斗时小队每名角色恢复自身能量上限 20%)由游戏侧自算执行,能量为战斗内资源,
+  与伤害减免同桶「战斗被动分支」(cw_gain_effects.py 三卡箱腿注释同源归类),
+  sim 战斗 U01 零建模。不绑阵营(泛用全队数值,「恢复能量」≠能量队卡,
+  `STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 = 已注册名无 economy →
+  (0.0, False)(战力类不进经济模型)。
+- **证据**:规格 `STRATEGY_EFFECTS['正能量']`(cw_investments.py 表尾条目);
+  官方原文 cw_invest_data.py:100「进入战斗时，我方小队恢复等同于能量上限20%
+  的能量。」
+- **推理链**:恢复时机/恢复量计算/能量记账全在游戏,进入战斗拍执行,无离散触发
+  事件 → trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位
+  零响应);无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md
+  §0 战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记);「能量上限」
+  基数 = 受益角色自身(装备同构措辞惯例推断,非 desc 逐字),游戏侧定义零行为落点。
 
 ## 9. 已关闭事项记录(结论与依据;不再复议)
 
