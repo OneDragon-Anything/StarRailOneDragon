@@ -774,6 +774,15 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   '武装支援+']` 注册行(instant_gold=6)估值读端承载,金面禁直写不进效果体〔sim 金
   发放写端缺口 = 族级待办〕;校准面 = `logic_rand_outcome` 行按双前缀(
   `strategy_random_equip:`/`strategy_gift_random:`)归组,均匀分布未实测待校准)。
+  买彩票+——双腿组合混发(组合登记 `cw_gain_effects.PICK_INVEST_EFFECTS['买彩票+']`:
+  卡文「获得1个随机星徽和1个【冶金炉】。」按卡文语序随机腿先/具名腿后,效果体 =
+  组合子 `_compose_grant_legs` 按形参序逐腿调用、两腿共享同一 rng 顺序推进〔rng 恰
+  消费 1 次 = 腿1 采样,腿2 具名确定发放零采样面〕;腿1 = 随机装备族工厂 ('星徽', 1),
+  星徽池均匀 → `gain_equipment(rand=True)` 入栏(§3.2.15 策略卡获得时点采样支,随机
+  态直写);腿2 = 具名装备授予族工厂,冶金炉确定发放 `gain_equipment(rand=False)`
+  入栏(确定直写,精密金面判据映射不含冶金炉 gate 恒 None);校准面 = `logic_rand_outcome`
+  行按双前缀(`strategy_random_equip:`/`named_equip_grant:`)归组,星徽池均匀分布
+  未实测待校准)。
   链式规范权威版本 = [gain-chain.md](gain-chain.md) §3。
 未接采样口径的随机面到席与星级后果全部等观察覆盖收尾(采样口径已登记者 = 上行
 随机态直写,§2.5)。**名册边界**:上列=已点名代表,全量归

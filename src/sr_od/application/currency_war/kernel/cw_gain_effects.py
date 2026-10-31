@@ -623,6 +623,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
        for name, pairs in _STRATEGY_REINFORCEMENT_GRANTS.items()},
     **{name: _make_random_equip_effect(cat, n)
        for name, (cat, n) in _STRATEGY_RANDOM_EQUIP_GRANTS.items()},
+    # 买彩票+ = 双腿组合展开卡(卡文「获得1个随机星徽和1个【冶金炉】。」,
+    # 随机腿×具名腿双族交叉):直书登记行(非表生成),不入随机装备泛化表
+    # (同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无表,工厂直呼);
+    # 腿序 = 卡文语序随机腿先/具名腿后,腿参数在此单次出现(单一源);rng
+    # 恰消费 1 次(仅腿1 采样,腿2 具名确定发放零采样面);冶金炉 ∉ 精密
+    # 金面判据映射(gate 恒 None)走纯发放循环。
+    '买彩票+': _compose_grant_legs(_make_random_equip_effect('星徽', 1),
+                                   _make_named_equip_grant_effect('冶金炉', 1)),
     # 武装支援 = 双腿混发组合卡(卡文「获得1件随机简易装备和2个随机3费
     # 角色。」):直书登记行(非表生成),不入援军/随机装备两族表
     # (入表 = 表生成的单腿效果体与组合体同名键顺序覆盖丢腿);腿序 =
