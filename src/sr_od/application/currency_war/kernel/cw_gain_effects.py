@@ -733,6 +733,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 占席道具通道,不在精密金面判据映射内(gate 恒 None)走纯发放循环;
     # 获得零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES)。
     '赌神·银': _make_named_equip_grant_effect('随便骰子', 1),
+    # 无害垃圾 = 具名装备授予族后继(卡文「获得一个【垃圾袋】并获得8
+    # 金币。」,cw_invest_data.py:97):直书登记行直呼工厂;垃圾袋 = 特殊类
+    # 普通可穿件(cw_equipment_data.py:56 category='特殊';wear_rules 件级
+    # 专属门名单无它 = 全角色通用,穿戴面零涉),归 equips 装备库存域禁入
+    # 占席道具通道,不在精密金面判据映射内(gate 恒 None)走纯发放循环;
+    # 获得零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES);金腿「并获得8金币」=
+    # STRATEGY_ECONOMY instant_gold=8 在册承载,金面禁直写不进效果体,
+    # 写端缺口归 T-112 族级待办。
+    '无害垃圾': _make_named_equip_grant_effect('垃圾袋', 1),
     **{name: _make_char_grant_effect(char)
        for name, char in _STRATEGY_CHAR_GRANTS.items()},
     **{name: _make_delayed_offer_effect(name)
@@ -773,7 +782,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/
 精密拆装·银)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
-赌神·银)直书登记行由
+赌神·银/无害垃圾)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗)由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句式
