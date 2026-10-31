@@ -166,10 +166,13 @@ class EconomyEffect:
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
-    hp_instant: int = 0                   # 即时生命(健康充值 +30):选卡当场 hp 直加,
-                                          # 不 clip——sim 扣血绝对值制无上限消费
-                                          # (hp_max 字段缺位,缺口申报 = fields.md
-                                          # HP 面行),clip 属无消费端语义;0 = 无此腿
+    hp_instant: int = 0                   # 即时生命(健康充值 +30;负值 = 损失,
+                                          # 先亏后盈 −20):选卡当场 hp 直加,
+                                          # 不 clip(上下界同此——sim 扣血绝对值制
+                                          # 无上限消费,hp_max 字段缺位,缺口申报
+                                          # = fields.md HP 面行),clip 属无消费端
+                                          # 语义;负值支写端与损血档位触发扩挂点
+                                          # 见 apply_strategy_pick_hp;0 = 无此腿
     # —— 合成/出售触发族(裁定;均为「正常成型路上
     #     白得」的被动经济,选卡正常评估,不围绕改打法)——
     gold_per_2star2cost_merge: int = 0    # 砂里淘金:合 2星2费 得砂金(可卖 ≈ 现金)
@@ -622,6 +625,13 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '健康充值': EconomyEffect(hp_instant=30),   # 即时 hp 腿(卡面数值直读);+30 上限半句
                                                 # hp_max 字段缺位零建模,缺口申报单一源 =
                                                 # fields.md HP 面行
+    '先亏后盈': EconomyEffect(hp_instant=-20),
+    # ↑ 损血即时腿 = 卡面「损失20点小队生命值」数值直读取负(desc 明写
+    #   20,非设计数);延时腿(4 节点 2 箱)另走 STRATEGY_DELAYED_GRANTS,
+    #   两腿分道登记。负值 = sim 选卡落地拍扣血(直加不 clip,下界无消费端
+    #   语义镜像 +30 上界裁决),写端与损血档位触发扩挂点 =
+    #   apply_strategy_pick_hp 负值支;同字段正负成员并存(健康充值 +30 /
+    #   本卡 −20),字段分派通用通道自动双向覆盖。
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
     # 动态/血金互兑族
     '狸财经狸': EconomyEffect(interest_flat_per_node=2),
@@ -3050,8 +3060,9 @@ _validate_strategy_hp_loss_grants()
 #: 披露面 disclosures setdefault):一键承载三项建模假设——①「每损失
 #: 20 点」按当前局全程累计读法(发放刻取模,余数跨战结转);②损血记账
 #: = 实际写值差(保底截断后真值,「损失」不超持有量);③触发源域 =
-#: 仅战斗结算损血(现值 sim 损血结构性单点;后继非战斗损血源〔hp_
-#: instant 先亏后盈类〕落地批须扩挂点,否则静默漏计)。实机持卡局败局
+#: 战斗结算损血 + 选卡即时损血腿(先亏后盈类 hp_instant<0;扩挂点已
+#: 落码 = apply_strategy_pick_hp 负值支,选卡损血同拍入累计器,键名/
+#: 值串 battle_only 系落码时点形态冻结不随域扩展改名)。实机持卡局败局
 #: 金/装备收入对照可校准,差额暴露归本键。常量落位沿
 #: STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 先例(kernel 注册表模块)。
 STRATEGY_HP_LOSS_BUCKET_ASSUMPTION: str = \
@@ -4003,6 +4014,12 @@ class StrategyDelayedGrant:
       查两词表,零新词表)。员工投影仪不入 BENCH_ITEM_NAMES:该词表
       只从两张 GiftGrant 表派生,装备名并入即被误判占席道具(溢出腿
       假道具),本表并列新表、不接入派生。
+    - count: 单次入队条目数(「获得N个」直读,先亏后盈 2 = 族内首例
+      >1)。数量单一源落注册表:登记效果体按 count 循环逐条调用入队
+      原语(同拍 2 条队列条目,到点逐条独立发放/独立席满判定);
+      default 1 使既有行纸面与行为零变。数量不入 import 校验(2026-10-28
+      治理口径「防登记笔误校验不加」,同 delay_nodes 值形查),对账归
+      表域测试与评审。
 
     立专表辨析:GiftGrant items_scheduled = 绝对节点键域('位-轮')且
     会把发放物错收进占席词表;效果账本 EffectSpec payload 闭集(经济/
@@ -4012,6 +4029,7 @@ class StrategyDelayedGrant:
     id: str
     delay_nodes: int
     item: str
+    count: int = 1
 
 
 STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
@@ -4034,6 +4052,12 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 分道的族内首个实成员,到点走 gain_bench_item)
     '许诺特权': StrategyDelayedGrant(id='130201', delay_nodes=7,
                                       item='特权武装箱'),
+    # 先亏后盈(id 130701 原文直读,cw_invest_data.py:92;卡文延时腿 =
+    # 「4个节点后获得2个【简易武装箱】」,数量 2 = 族内首例 >1,承载见
+    # count 字段;伴随损血腿「损失20点小队生命值」另走 STRATEGY_ECONOMY
+    # hp 通道(hp_instant=-20),不入本表——两腿分道,同卡双通道登记)
+    '先亏后盈': StrategyDelayedGrant(id='130701', delay_nodes=4,
+                                      item='简易武装箱', count=2),
 }
 
 

@@ -597,7 +597,9 @@ None(None 跳过沿用),'连胜×0' 真 0 与失读 None 分写。
 sim 先验写端(策略选卡即时腿):sim 局选卡落地拍按注册表 `hp_instant` 字段直加世界
 真值(`cw_sim_backend.apply_strategy_pick_hp`,evidence `hp:strategy_pick:<卡名>`)——
 sim 世界无观察、血线是自持账,不发即持卡局系统性失真;**live 侧零逻辑写**维持两
-写入方结构(选卡 +30 由游戏自算,血量条观察覆盖收口)。
+写入方结构(选卡 +30 由游戏自算,血量条观察覆盖收口)。负成员(先亏后盈 −20)
+同通道直加不 clip:hp 可写负值,负 delta 同拍入损血档位累计器(§3.5.6c 扩挂点),
+下一败局才由 `apply_hp_outcome` 保底/局终分支接管。
 **边界**:不可信帧不写。容器存**门前真值**、消费视图施门在消费侧(hp_readable/
 hp_trusted 语义 = §8.7 旧 hp 消费视图并入口径,单一源 = cw_gs_view);「备战帧仅 shop 关闭态」
 的字面全局禁写与结算覆盖不冲突——结算是独立写入方。
@@ -1728,15 +1730,17 @@ bump);审计 = WRITE_END 行(写入端声明 + 两缺口指针)。
 per-card 键形,随其批裁。
 
 **写入端**:唯一逻辑写端 = `cw_gain_chain.check_strategy_hp_loss_grants`
-(累积 `write_logic` + 发放刻取模回写两笔同窗相邻;唯一调用点 = sim
-结算腿 `_resolve_battle` 策略金腿之后,防重 = sim `_settled_key` 同节点
-重放整段跳过;live 零写观察覆盖——金由游戏侧自发入账、equips 为观察
-域整表覆盖)。损血源现值 = 战斗结算单点(sim M14:奖励关恒胜/扑满
-豁免使损血结构性只存在于战斗类败局;死亡局 `_game_over` 早退天然零触);
-非战斗损血源(hp_instant 先亏后盈类选卡腿等)落地批须扩挂点,否则静默
-漏计——过渡由披露键 `STRATEGY_HP_LOSS_BUCKET_ASSUMPTION` 承载(一键
-三假设:桶结转/真值差/触发源域仅战斗结算,消费 = sim disclosures
-setdefault)。
+(累积 `write_logic` + 发放刻取模回写两笔同窗相邻;调用点两处 = sim
+结算腿 `_resolve_battle` 策略金腿之后〔防重 = sim `_settled_key` 同节点
+重放整段跳过〕+ sim 选卡即时损血腿 `apply_strategy_pick_hp` 负值支
+〔先亏后盈类,防重 = 呈现闩,−20 换算 +20 损失入账非「减负」〕;
+live 零写观察覆盖——金由游戏侧自发入账、equips 为观察域整表覆盖)。
+损血源现值 = 战斗结算 + 选卡即时损血腿两挂点(sim M14:奖励关恒胜/
+扑满豁免使战斗损血结构性只存在于战斗类败局;选卡损血经 hp_instant
+负成员直加);后继非战斗损血源落地批照两挂点先例随批扩挂,否则静默
+漏计——假设申报由披露键 `STRATEGY_HP_LOSS_BUCKET_ASSUMPTION` 承载
+(一键三假设:桶结转/真值差/触发源域,消费 = sim disclosures
+setdefault;键名/值串 battle_only 系落码时点形态冻结,不随域扩展改名)。
 
 **登记四件**:开局种子 = `0`(A 类;0 = 无累积语义中性,种 0 不伪装
 已触发);快照恢复 = int 保型直通免 rebuild 登记(`env_grant_uid_seq`

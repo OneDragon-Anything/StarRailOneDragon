@@ -455,9 +455,10 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     return total
 
 
-def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str]) -> int:
+def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
+                           rng: random.Random) -> int:
     """策略选卡落地拍即时生命入账(通用通道,辖域 = 注册表
-    hp_instant>0 全体,字段分派非单卡特判)。
+    hp_instant≠0 全体,正加负损双向,字段分派非单卡特判)。
 
     为什么:sim 世界无观察、hp 只有自持账(开局查表种 + 战斗结算写),
     选卡当场即时型不在 kernel 获得链发放——链内写 hp 会在 live 侧引入
@@ -466,21 +467,32 @@ def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str]) -> int:
     失真,败局余量/保底触发概率/局终时点全链读现值。数额 = 逐卡直读
     :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
     不含 hp_instant,误走 = 静默零发放);hp 无结转语义(xp_apply_amount
-    系 XP 特有),+N 直加。**不 clip**:sim 扣血绝对值制零上限消费
-    (hp_max 字段缺位,缺口申报单一源 = fields.md HP 面行),clip 属无
-    消费端语义,>100 可达 = 既有边界申报。写入经 observe 不触 floor
-    判定;None 防御支沿 :func:`cw_sim_battle.apply_hp_outcome` 未观察
-    零写形态(sim 局开局恒种,纯形态对齐);evidence 按
-    ``hp:strategy_pick:<卡名>`` 与开局 ``opening``/战斗 ``battle:hp``
-    笔分账可归因,sig 同组(同域字段同组,笔间靠 evidence 区分)。
-    返回本批实际入账笔数(调用方轨迹追加按写行粒度对齐,一笔一追加)。
-    """
+    系 XP 特有),+N 直加。**不 clip(上下界同此)**:sim 扣血绝对值制
+    零上限消费(hp_max 字段缺位,缺口申报单一源 = fields.md HP 面行),
+    clip 属无消费端语义,>100 可达 = 既有边界申报;负值支(先亏后盈
+    −20 首例)同判——hp 可写 ≤0(选卡写经 observe 直落,floor/dead
+    只存在于战斗结算域 apply_hp_outcome,后续败局按其现值分支判定),
+    下界无消费端语义镜像上界裁决。写入经 observe;None 防御支沿
+    :func:`cw_sim_battle.apply_hp_outcome` 未观察零写形态(sim 局开局
+    恒种,纯形态对齐);evidence 按 ``hp:strategy_pick:<卡名>`` 与开局
+    ``opening``/战斗 ``battle:hp`` 笔分账可归因,sig 同组(同域字段同
+    组,笔间靠 evidence 区分)。
+
+    负值支扩挂点(损血档位触发族第二挂点):hp 写后同拍调
+    :func:`cw_gain_chain.check_strategy_hp_loss_grants`,负 delta 取正
+    损失量入累计器(**非减负**——累计器单调增取模发放,「−20」换算
+    +20 损失计入),持保险局选卡损血同拍触发档位;logic_sig 与结算腿
+    同组,rng = 调用方显式传流键(装备采样专用,禁缺省回退自掷——
+    出售发牌腿同款纪律),触发函数零二次守卫防重 = 本腿呈现闩(闩消费
+    先于发放判定,重放零触发)。
+    返回本批实际入账笔数(调用方轨迹追加按写行粒度对齐,一笔一追加;
+    挂点写面 = 累计器/金/装备,不产 hp 写行,零扰轨迹同构)。"""
     applied = 0
     for name in picked:
         canon = normalize_invest_name(str(name or ''))
         eff = STRATEGY_ECONOMY.get(canon)
         amount = eff.hp_instant if eff is not None else 0
-        if amount <= 0:
+        if amount == 0:
             continue
         hp_now = gs.hp.value
         if hp_now is None:
@@ -489,6 +501,10 @@ def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str]) -> int:
                    evidence=sim_evidence(f'hp:strategy_pick:{canon}'),
                    sig=obs_sig(group_id='sim:battle'))
         applied += 1
+        if amount < 0:
+            check_strategy_hp_loss_grants(gs, -amount,
+                                          logic_sig=logic_sig('sim:strategy'),
+                                          rng=rng)
     return applied
 
 
@@ -1083,8 +1099,10 @@ DISCLOSURE_BOND_TIER_SEMANTICS: str = 'env_bond_tier_semantics_level'
 DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
 
 #: 策略选卡即时腿披露键(纯声明,不进任何判定分支)。载义:①策略选卡
-#: 「选牌当场即时型」世界腿现值 = xp_instant/hp_instant 已建(辖域各 =
-#: 注册表对应字段>0 全体,字段分派非单卡特判)/ 真即时金 instant_gold
+#: 「选牌当场即时型」世界腿现值 = xp_instant 已建(辖域 = 注册表字段>0
+#: 全体,字段分派非单卡特判)/ hp_instant 已建含负成员(正加负损双向,
+#: 辖域 = 字段≠0 全体;负值 = 损失直加不 clip,先亏后盈 −20 为首例,
+#: 负 delta 同拍入损血档位累计器非「减负」)/ 真即时金 instant_gold
 #: 未建(族批另议)——三形状均在册申报,防「通道存在 = 族全覆盖」误读;
 #: ②腿数额 = 单卡直读注册表现值,条目修订腿值随单一源自动跟随,无卡别
 #: 硬编码。
@@ -2072,19 +2090,26 @@ class SimBackend:
                     self.gs, picked, stream_rng(self.seed,
                                                 'M24/sell-all-deal'))
         # 选卡落地拍即时生命腿(hp 通道模式卡「健康充值」首落;通用通道,
-        # 辖域 = 注册表 hp_instant>0 全体):sim 世界自持账补全——live 同拍
-        # 零写(游戏自算,血量条观察覆盖收口,fields.md hp 写入闸无逻辑
-        # 写入方)。拿卡名推导与呈现闩防重放 = 前置三腿同款(闩消费先于
-        # 判定,交集空亦消费);不 clip/禁聚合依据见
-        # :func:`apply_strategy_pick_hp`。位置 = 链尾独立笔:与前置各腿
-        # 零交互(字段分派互斥:xp_instant / streak_set / 发牌判据集 /
-        # hp_instant)。轨迹追加 = observe 同笔语义(hp 写流 ↔ hp_trail
-        # 全序同构不变式按写行粒度对齐——腿返回笔数即写行数,逐笔追加)。
+        # 辖域 = 注册表 hp_instant≠0 全体,正加负损双向——负值支先亏后盈
+        # −20 随批扩面):sim 世界自持账补全——live 同拍零写(游戏自算,
+        # 血量条观察覆盖收口,fields.md hp 写入闸无逻辑写入方)。拿卡名
+        # 推导与呈现闩防重放 = 前置三腿同款(闩消费先于判定,交集空亦
+        # 消费);不 clip/禁聚合依据见 :func:`apply_strategy_pick_hp`。
+        # 负值支写后同拍扩挂损血档位触发器(持保险局选卡损血入累计器,
+        # 非「减负」——−20 换算 +20 损失计入,披露键 ③ 触发源域随批扩
+        # 两挂点);rng 显式流键构造(缺省回退自掷破 sim 确定性,出售发牌
+        # 腿同款纪律;独立子流与 M13 结算保险流分域,同 seed 其他流零
+        # 扰动)。位置 = 链尾独立笔:与前置各腿零交互(字段分派互斥:
+        # xp_instant / streak_set / 发牌判据集 / hp_instant)。轨迹追加 =
+        # observe 同笔语义(hp 写流 ↔ hp_trail 全序同构不变式按写行粒度
+        # 对齐——腿返回笔数即写行数,逐笔追加)。
         if not opening and self._strategy_pick_hp_latch:
             self._strategy_pick_hp_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
-            for _ in range(apply_strategy_pick_hp(self.gs, picked)):
+            for _ in range(apply_strategy_pick_hp(
+                    self.gs, picked,
+                    stream_rng(self.seed, 'M25/pick-hp-loss'))):
                 self._hp_trail_append()
         self._after_modal_pick(opening=opening)
 

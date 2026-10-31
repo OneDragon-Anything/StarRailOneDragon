@@ -558,10 +558,12 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参);
     ``rng`` 不消费——登记 = 确定事件(倒计时按登记值推算,零采样)。
-    单腿 = 仅入队腿:queue_delayed_strategy_grant 唯一登记写端,到点
-    发放归 sim 专用腿(不对称申报,两腿工厂同款)。效果串 = 原语返回值
-    ``strategy_grant_scheduled:<item>@<节拍>``(构造点唯一住链模块,
-    本工厂零字面量);零即时腿零 equip_grant 串。"""
+    单腿 = 仅入队腿:queue_delayed_strategy_grant 唯一登记写端,按
+    ``spec.count`` 循环逐条入队(数量单一源 = 注册表 count 字段,禁
+    效果体闭包另写字面;default 1 与单次入队逐位一致 = 既有卡零扰动),
+    同拍多条目逐条独立倒计时/到点独立发放。效果串 = 原语返回值
+    ``strategy_grant_scheduled:<item>@<节拍>`` 逐条枚(构造点唯一住链
+    模块,本工厂零字面量);零即时腿零 equip_grant 串。"""
 
     def _effect(gs: GameState, *, sig: ChannelSig,
                 rng: random.Random) -> list[str]:
@@ -571,7 +573,9 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
             queue_delayed_strategy_grant,
         )
         _ = rng   # 登记腿零采样,倒计时推算确定(rng 形参沿分派契约保留)
-        return [queue_delayed_strategy_grant(gs, name, sig=sig)]
+        spec = STRATEGY_DELAYED_GRANTS[name]
+        return [queue_delayed_strategy_grant(gs, name, sig=sig)
+                for _entry in range(spec.count)]
 
     return _effect
 
@@ -726,6 +730,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 1个【特权武装箱】。」纯延时单句,零即时腿):显式单行登记延时-only
     # 载体;效果串单枚 strategy_grant_scheduled(构造点住链原语)。
     '许诺特权': _make_delayed_only_grant_effect('许诺特权'),
+    # 先亏后盈 = 延时-only 单腿展开卡后继(卡文「损失20点小队生命值，
+    # 4个节点后获得2个【简易武装箱】。」混合形):登记腿只辖延时句,
+    # count=2 循环入队两枚效果串;伴随损血腿不入登记效果体——kernel 无
+    # hp 轨迹追加可调,链内写 hp 破「hp 写流 ↔ hp_trail 全序同构」不变
+    # 式,损血腿结构性只能在 sim 通道(apply_strategy_pick_hp 负值支),
+    # 本行零 hp 写防将来误并。
+    '先亏后盈': _make_delayed_only_grant_effect('先亏后盈'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
