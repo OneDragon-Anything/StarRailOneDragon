@@ -41,9 +41,9 @@
   载体(装备授予/sim 后端板面基座刷新),非容器路径口径。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者在已知身份域一致(deployed 按羁绊全集聚合 == board)。
-- CwActionDeployMoveParam 更新 deployed(槽位落位 = 载荷 (to_row, to_slot)
-  直落,坐标系;目标槽有人 = 交换交互);board 不随
-  CwActionDeployMoveParam 独立写(旧 ``_recount_board`` 写端已停用,容器侧随行写端挂钩重算)。
+- CwActionMoveUnitParam 更新 deployed(统一拖动:bench/场上全域,槽位
+  落位 = 载荷直落,目标槽有人 = 交换交互);board 不独立写(容器侧
+  随行写端挂钩重算)。
 - CwActionBuyCardParam 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
@@ -173,7 +173,7 @@ class CwActionSellBenchParam:
     ``expect``(代际校验第三块,激活;''=不校验):
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
-    (对齐 CwActionSellDeployedParam/CwActionSwapDeployParam 既有守卫形态)。
+    (对齐 CwActionSellDeployedParam 既有守卫形态)。
     **防线写入端核查(N3②)**:发出点
     = mandate_v1/shop.py 卖出动作发出点(M2 腾席两处/凑利息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
@@ -299,35 +299,7 @@ class CwActionLevelUpParam:
                            metadata={'action_key_exclude': True})
 
 
-@dataclass
-class CwActionDeployMoveParam:
-    """bench → 上阵(排 + 排内槽;完整落位意图入载荷)。
-
-    [坐标系] bench_idx = bench 槽位表下标 0-8(BenchView.slots);
-    落位 = (to_row, to_slot) 载荷直指——落位决策权归策略层,执行器与
-    容器写侧按载荷直落(子表下标 = to_slot−1),禁执行边现读首空位。
-    拖拽语义 = 游戏规则:目标槽空 = 放置,
-    有角色 = 交换交互(被占位角色回本载荷源槽);执行层不判断占位、
-    不拒、禁静默换槽,唯一失败形态 = 拖拽未生效(观察对账暴露)。
-    ``faction`` = 上阵后 board 阵营计数所需,动作发出点从容器槽位表
-    角色对象现取(simulate 的 CwActionDeployMoveParam 分支消费此字段)。
-    """
-    bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(同 CwActionSellBenchParam.bench_idx)
-    #             取值时机: 生成期=执行期(槽位表恒稳;simulate/mutate 按
-    #             下标读槽并置 None)
-    to_row: str      # "front" / "back"
-    to_slot: int
-    # [索引定义] 坐标系: 排内 1 基画面槽号(前排 1-4 / 后排 1-6,与装备族
-    #             CwActionWearEquipParam.slot 同坐标系;与 to_row 合成完整
-    #             落位,表下标 = to_row/to_slot 固定双射内联换算)
-    #             取值时机: 生成期快照(动作发出点从 kernel 指派/容器现值算出;
-    #             执行期与容器写侧按载荷直落,不再现读)
-    faction: str     # 该角色阵营(上阵后 board[faction] += 1)
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
-
+# (CwActionDeployMoveParam 已随部署统一批戊批收编删除:统一拖动 = CwActionMoveUnitParam 承载全部 bench→board/换位交互——unified-deploy-order §2.7/§4; 执行 op/report/registry 同批退役。)
 @dataclass
 class CwActionRefreshShopParam:
     cost: int = 0    # 刷新花费(实机 OCR 补)
@@ -417,32 +389,7 @@ class CwActionSellDeployedParam:
                            metadata={'action_key_exclude': True})
 
 
-@dataclass
-class CwActionSwapDeployParam:
-    """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
-
-    [坐标系] deployed_idx = state.deployed 槽位表下标 0-9/
-    bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳)。
-
-    装备随人走 = 换位移动单位对象本身(``equips`` 字段随对象迁移,
-    无单独装备转移步骤);上场者落目标排(``to_row``/行域承载),
-    开拓者按目标排做形态归一(同 CwActionDeployMoveParam 语义,单一源)。
-    """
-    deployed_idx: int
-    # [索引定义] 坐标系: deployed 槽位表下标 0-9(恒稳)
-    bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(恒稳)
-    #             取值时机(两者): 生成期=执行期(槽位表恒稳;expect_* 为
-    #             遥测观测字段,降级——记录生成期期望名供判读)
-    reason: str = ''
-    # 遥测观测字段(降级的代际校验):跨轮登记的提案
-    # 在槽位表下索引恒稳;名不符仍是跨代际换人提案的拒绝信号。
-    expect_deployed: str = ''  # 期望下场者名
-    expect_bench: str = ''     # 期望上场者名
-    route_tag: str = field(default='', kw_only=True,
-                           metadata={'action_key_exclude': True})
-
-
+# (CwActionSwapDeployParam 已随 kernel swap 机器/部署统一批戊批收编删除:场上去留 = 统一部署搜索定型 + 差分执行器,换位交互由统一拖动承载——unified-deploy-order §2.7/§4。)
 @dataclass
 class CwActionMoveUnitParam:
     """统一拖动(全域移动:front/back/bench 任意源 → 任意目标;部署统一批
@@ -481,8 +428,8 @@ class CwActionMoveUnitParam:
                            metadata={'action_key_exclude': True})
 
 
-Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam
-          | CwActionSellDeployedParam | CwActionSwapDeployParam | CwActionMoveUnitParam)
+Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionRefreshShopParam | CwActionCloseShopParam
+          | CwActionSellDeployedParam | CwActionMoveUnitParam)
 
 
 # ===== 统一词表·备战域动作(类体逐字保留,基类引用翻 CwAction)=====
@@ -991,8 +938,8 @@ class CwActionObsParam:
 # CwAction)`` 判定的零改动兼容保留;Python 3.10+ union isinstance 合法)。
 CwAction = (
         CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
-        CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
-        CwActionSwapDeployParam | CwActionMoveUnitParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
+        CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
+        CwActionMoveUnitParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
         CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
@@ -1006,7 +953,7 @@ CwAction = (
 # 动作从未真正执行(CwActionOpenTomeParam 曾漏登记,数百次拒绝被误读为
 # 执行失败;登记是入口门)。
 CW_ACTION_TYPES: tuple = (
-    CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
+    CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
     CwActionMoveUnitParam,
     CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
@@ -1072,3 +1019,6 @@ def reset_layout_unknown_state() -> None:
     fn = _layout_unknown_reset
     if fn is not None:
         fn()
+
+
+

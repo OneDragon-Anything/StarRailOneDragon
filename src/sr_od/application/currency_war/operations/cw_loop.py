@@ -489,7 +489,7 @@ class CwLoop(CwOperation):
     # 结算链常量族(SETTLE_* 族)现役单一源 = CwScreenBattleWait( 05-battle §1)。
     # 备战稳定门防护替身( §2.6/03-prep §1):①逐动作回流程层确认画面
     # (overlay 弹出当步即见,转入 overlay op)②触发计算式追加等待
-    # (03-prep §3 CwActionDeployMoveParam 行)③director 环入口清场+自动开店预收探针。
+    # (03-prep §3 部署动作行,载体已切 CwActionMoveUnitParam)③director 环入口清场+自动开店预收探针。
 
     #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源)。
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
@@ -1847,3 +1847,4 @@ def _get_or_init_allocator(ctx: SrContext):
         log.info(f'[cw-alloc] 分配器初始化失败(禁用): {e}')
         _ALLOCATOR = None
     return _ALLOCATOR
+

@@ -308,9 +308,6 @@ class MandateV1Strategy(CwFlowStrategy):
         from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
             report_action_sell_deployed_param,
         )
-        from sr_od.application.currency_war.kernel.cw_action_report.swap_deploy import (
-            report_action_swap_deploy_param,
-        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             ShopActionExecuted,
@@ -359,8 +356,6 @@ class MandateV1Strategy(CwFlowStrategy):
                 report_action_sell_bench_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionSellDeployedParam):
                 report_action_sell_deployed_param(gs, a, _sig)
-            elif isinstance(a, cw_state.CwActionSwapDeployParam):
-                report_action_swap_deploy_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionLevelUpParam):
                 report_action_level_up_param(
                     gs, a, _sig,
@@ -422,3 +417,6 @@ def decide_prep_frame(session: StrategySession, config: object,
                    if s is not None and slot_occupies(s.kind)}
     return entry.truncate_frame_stable(actions, session,
                                        bench_slots=bench_slots)
+
+
+

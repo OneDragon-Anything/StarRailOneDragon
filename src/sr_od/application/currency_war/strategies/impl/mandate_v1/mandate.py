@@ -127,7 +127,7 @@ if TYPE_CHECKING:
 # 白名单外动作一律视为变异 ⇒ 缓存失效 ⇒ 全量重推导(保守端 = 现行为)。
 # ⚠️ 守卫:加入新动作型前须验证其执行语义不动 bench/deployed/k/敌缀/
 # 意图集——现行唯一成员依据:CwActionLevelUpParam(买经验点击)只动 xp/level/gold;
-# prep 其余动作(CwActionSellBenchParam/RunDeploy/CwActionDeployMoveParam…)均触 φ 分量,禁入。
+# prep 其余动作(CwActionSellBenchParam/CwActionMoveUnitParam…)均触 φ 分量,禁入。
 M2_STALL_NONVARIANT_PREP_ACTIONS: frozenset[str] = frozenset({'CwActionLevelUpParam'})
 
 # bench 容量 B(R8-8 重试上限;kernel/cw_state.BENCH_CAPACITY 单一源,
@@ -1507,4 +1507,5 @@ def _emit_unified_deploy(out: list, session: StrategySession,
     for _a in battle_chain_deploy_params(session):
         out.append(Emitted(_a, True, tag))
     return bool(out)
+
 

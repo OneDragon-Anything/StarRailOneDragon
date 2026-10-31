@@ -62,7 +62,6 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwAction,
     CwActionCollectOreParam,
-    CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
@@ -169,8 +168,8 @@ _CONTINUABLE: tuple[type, ...] = (
 #: 前序动作累积静态推出,推不出即截断——契约 §3.2;CwActionCollectOreParam
 #: 行 = 条件:常态可续,末批可能掉箱后截断)
 _CONDITIONAL: tuple[type, ...] = (
-    CwActionSellBenchParam, CwActionSellDeployedParam, CwActionDeployMoveParam,
-    CwActionMoveUnitParam,                      # 统一拖动(部署统一批;bench 源/目标槽复检同 SellBench/DeployMove 形)
+    CwActionSellBenchParam, CwActionSellDeployedParam,
+    CwActionMoveUnitParam,                      # 统一拖动(部署统一批;bench 源/目标槽复检同 SellBench 形)
     CwActionCollectOreParam,                          # 条件:常态可续;末批可能掉箱后截断
 )
 
@@ -210,7 +209,7 @@ def truncate_frame_stable(actions: list[CwAction],
     conditional 类的复检(键 = 容器槽位表下标,动作发出器生产路径经 bridge
     供给生成期占用集):
 
-    - ``CwActionSellBenchParam``/``CwActionDeployMoveParam``:bench 槽位
+    - ``CwActionSellBenchParam``:bench 槽位
       引用对 ``bench_slots`` 复检 + 前序同序列卖出/拖出累积逻辑态(槽位
       卖出后从逻辑态集移除)——引用空槽/未知槽 ⇒ 推不出 ⇒ 该动作处
       截断 + ``emitter_conditional_truncated`` 计数。``bench_slots``
@@ -258,7 +257,7 @@ def truncate_frame_stable(actions: list[CwAction],
                 if not has_later_batch:
                     return _cut()  # 末批可能掉箱 ⇒ 其后截断(判型内语义)
                 continue
-            if isinstance(a, (CwActionSellBenchParam, CwActionDeployMoveParam)):
+            if isinstance(a, CwActionSellBenchParam):
                 if slots is not None and a.bench_idx not in slots:
                     _count('emitter_conditional_truncated')
                     return _cut()  # 名-槽一致性复检失败:推不出即截断
@@ -1369,3 +1368,6 @@ def _step7_node_end_interest(session: StrategySession,
     return _emit_sell_candidate(
         session, gs, _cands[0], reason='interest_prep',
         tag='interest_prep', counter='node_end_interest_sell')
+
+
+

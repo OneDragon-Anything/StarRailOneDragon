@@ -13,7 +13,7 @@ reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
 slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
-CwActionSellDeployedParam/CwActionDeployMoveParam)携**容器槽位表下标**(0 基,词表单一源 =
+CwActionSellDeployedParam/CwActionMoveUnitParam)携**容器槽位表下标**(0 基,词表单一源 =
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
 容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
@@ -513,6 +513,7 @@ class PrepActionExecutor:
         """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;替身缝保留)。"""
         detail, op_success = self._dispatch_action(CwActionStartBattleParam())
         return op_success, detail
+
 
 
 

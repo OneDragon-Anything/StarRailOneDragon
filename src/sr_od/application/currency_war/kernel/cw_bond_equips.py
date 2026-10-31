@@ -5,7 +5,7 @@
 
 - 实机计算路径:``cw_observation.board_from_deployed``(面板真值对齐);
 - sim/状态派生路径:``cw_state._recount_board``(= ``cw_battle_calib._board_counts_of``,
-  CwActionDeployMoveParam/事务/围栏后的 board 维护);
+  CwActionMoveUnitParam/事务后的 board 维护);
 - 检查镜像:``cw_sim_checks._board_agg_of_deployed_row``(账本行聚合)。
 
 口径分层(sim-wiring.md「羁绊口径分层」节):
@@ -203,3 +203,4 @@ def _recount_board(deployed: list) -> dict[str, int]:
         if f and f != '?':
             out[f] = out.get(f, 0) + 1
     return out
+

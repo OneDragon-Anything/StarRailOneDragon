@@ -39,7 +39,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionBuyCardParam,
     CwActionCloseShopParam,
     CwActionCollectOreParam,
-    CwActionDeployMoveParam,
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
@@ -80,9 +79,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_close_shop_action import
 )
 from sr_od.application.currency_war.operations.cw_op.cw_collect_ore_action import (
     CwActionCollectOreOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_deploy_move_action import (
-    CwActionDeployMoveOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_move_unit_action import (
     CwActionMoveUnitOp,
@@ -171,7 +167,9 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     # 双类型已退役,单类型单行)
     CwActionSellBenchParam: CwActionSellBenchOp,
     CwActionLevelUpParam: CwActionLevelUpOp,
-    CwActionDeployMoveParam: CwActionDeployMoveOp,
+    # (CwActionDeployMoveParam/CwActionSwapDeployParam 注册行已随部署统一
+    #  批戊批收编删除:零发出点,词表类同批退役——unified-deploy-order
+    #  §2.7/§4;统一拖动 = 唯一拖动承载。)
     CwActionSellDeployedParam: CwActionSellDeployedOp,
     # 统一拖动(部署统一批:全域移动四元组;旧 DeployMove/SwapDeploy
     # 两类随消费面切换退役,本行 = 唯一拖动承载)
@@ -256,3 +254,4 @@ def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:
     域执行环境结构化包(运行时不检查,项目既有风格)。词表外类型
     AssertionError 响亮暴露(语义同上)。"""
     return action_op_class_for(action)(ctx, action, env)
+

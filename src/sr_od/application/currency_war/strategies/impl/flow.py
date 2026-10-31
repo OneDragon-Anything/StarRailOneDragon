@@ -841,9 +841,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.kernel.cw_action_report.sell_deployed import (
             report_action_sell_deployed_param,
         )
-        from sr_od.application.currency_war.kernel.cw_action_report.swap_deploy import (
-            report_action_swap_deploy_param,
-        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
         )
@@ -897,8 +894,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 report_action_sell_bench_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionSellDeployedParam):
                 report_action_sell_deployed_param(gs, a, _sig)
-            elif isinstance(a, cw_state.CwActionSwapDeployParam):
-                report_action_swap_deploy_param(gs, a, _sig)
             elif isinstance(a, cw_state.CwActionLevelUpParam):
                 report_action_level_up_param(
                     gs, a, _sig, executed=ShopActionExecuted(levelup_clicks=1))
@@ -919,3 +914,6 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             'decide_shop_screen 驱动器 512 帧未收敛(策略器 bug:'
             f'末态 gold={gold_of(gs)} '
             f'bench={bench_is_full(gs)})')
+
+
+

@@ -18,8 +18,10 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
   空骨架合法;
 - 段 2 补人:候选生成器(近似,unified-deploy-order §2 段 2 近似
   申报——DP 候选生成 + 终评全量评分的正确性结构):线内件优先占席
-  (D8-3)+ 分组单位序贪心 + 组取舍变体;相位(过渡 ×4/×1)由段 3
-  终评按板面实测 L1 定(正确性保留,候选覆盖面申报见段 2 变体注释);
+  (D8-3)+ 分组单位序贪心 + 组取舍变体 + **分组背包 DP 联合分配**
+  (跨组增益捕获:多组部分凑档形态贪心序与单组变体覆盖不到,DP 按
+  组值增量背包取优;相位枚举 D7-3——锁定窗过渡组 ×4/×1 两相位
+  各一套候选,段 3 终评按板面实测 L1 定相位);
 - 段 3 评分取优:全候选板按 §1 评分函数**全量终评**(DP 组分只是
   候选生成内部度量,段 3 重算,单归属近似不影响终评正确性)→
   最高分组内排分配 → (站位分, 稳定键, 随机尾键) 定序取一。
@@ -513,13 +515,20 @@ def _position_score(members: list[SearchUnit], rows: dict[str, str],
 
 def _situation_seed(panel: DeploySearchPanel) -> int:
     """局面哈希播种(§1 D3-7:同一容器状态 → 同一 rng 序,跨帧稳定;
-    同帧多次搜索〔含 can_deploy_single 逐牌〕共享同序 rng)。"""
+    同帧多次搜索〔含 can_deploy_single 逐牌〕共享同序 rng)。
+
+    哈希 = 稳定摘要(zlib.crc32)——禁裸 ``hash()``:Python 字符串哈希按
+    进程随机化(PYTHONHASHSEED),sim 整局轨迹会随进程漂移(部署并列板
+    的 rng 尾键逐进程不同 → 同 seed 不同局;某进程落进备战连败环实测,
+    部署统一批戊批定位)。稳定摘要使同局面跨进程同 rng,sim 确定性
+    契约(同 seed 同轨迹)恢复。"""
+    import zlib
     material = ','.join(sorted(
         f'{u.char_id}:{u.star}:{u.origin}' for u in panel.units))
     material += f'|k{panel.k_budget}|f{panel.front_capacity}' \
                 f'|b{panel.back_capacity}|lk{int(panel.locked)}' \
                 f'|c{len(panel.candidate_comps)}'
-    return hash(material) & 0xFFFFFFFF
+    return zlib.crc32(material.encode('utf-8')) & 0xFFFFFFFF
 
 
 def search_deploy_target(panel: DeploySearchPanel,
@@ -676,6 +685,145 @@ def search_deploy_target(panel: DeploySearchPanel,
                 out.append([*skel, *grp])
         return out
 
+    def _contrib_of(u: SearchUnit) -> int:
+        """件贡献量(卡带双计件 2 / 普通件 1;cw_bond_equips 双计口径
+        D9-4,与 _unit_sort_key 首键同源)。"""
+        from sr_od.application.currency_war.kernel.cw_bond_equips import (
+            equip_bond_grants,
+        )
+        return 2 if any(equip_bond_grants(e) for e in u.equips) else 1
+
+    def _dp_fill(skel: tuple[SearchUnit, ...],
+                 line_keys: tuple[str, ...]) -> list[list[SearchUnit]]:
+        """分组背包 DP 补人候选(§2 段 2 设计基线的组间联合形态;unified-
+        deploy-order §2 段 2——骨架 + 线内件优先占席(D8-3)后,剩余席位
+        按「羁绊分组 + 万金油/希儿系特组」背包联合分配):补贪心序与单组
+        变体都覆盖不到的**多组部分凑档**形态(跨组增益捕获——两组各差
+        1-2 件成档时,贪心全局序可能交错取件致两组成档皆失,单组变体只
+        保一组;DP 按组值增量联合取优)。
+
+        近似口径(与设计 §2 段 2 近似申报同款,终评兜底):组值 = 组键
+        已达档增量 × L3 系数(首标签归属单键计,件次标签贡献不可见——
+        段 3 全量终评兜底);万金油组按件 ×2;希儿系二元不设特组——其
+        成型板由段 1 骨架枚举承载(P1 过渡对含希儿系键),放大器件按
+        阵营组归 DP,值差归段 3;相位枚举 D7-3——锁定窗过渡组 ×4/×1
+        两相位各跑一遍,终评实测 L1 定相位。
+
+        组内选件序 = _unit_sort_key(贡献量分档 → 排偏好 → 稳定键 →
+        名字序,D9-4/D6-6);DP 取优后剩余席位按同序 value-中性垫满
+        (板面满员形态与贪心候选一致,垫件价值归段 3 全量评分)。"""
+        skel_keys = {u.key for u in skel}
+        rest = [u for u in panel.units if u.key not in skel_keys]
+        budget = panel.k_budget - len(skel)
+        if budget <= 0 or not rest:
+            return []
+
+        def _srt(u: SearchUnit) -> tuple:
+            return _unit_sort_key(u, comp_pos, panel.current_board)
+
+        inline = [u for u in rest
+                  if _bonds_named(u.char_id)
+                  & (l1_keys_all | l2_keys_all | set(line_keys))]
+        inline.sort(key=_srt)
+        inline = inline[:budget]
+        inline_keys = {u.key for u in inline}
+        rest2 = [u for u in rest if u.key not in inline_keys]
+        rest2.sort(key=_srt)
+        rem_budget = budget - len(inline)
+        if rem_budget <= 0:
+            return []
+        # 基线 = 骨架 ∪ 线内件(骨架基线全量计分口径 D8-2 的组值侧简化:
+        # 组值只读组键计数,基线计数含骨架+线内件全部标签)。
+        base_units = [*skel, *inline]
+        base_counts = _tag_counts(base_units, tag_cache)
+        # 分组(首羁绊标签归属;万金油特组按件;希儿系特组二元)。
+        groups: dict[str, list[SearchUnit]] = {}
+        for u in rest2:
+            if u.char_id in CROSS_LINE_KEEP_NAMES:
+                groups.setdefault('\0universal', []).append(u)
+                continue
+            bonds = _bonds_named(u.char_id)
+            if bonds:
+                groups.setdefault(sorted(bonds)[0], []).append(u)
+        transition_keys = {k for k, _t in TRANSITION_TRAITS} \
+            | {_SEELE_SYSTEM_KEY}
+
+        def _l3_coef(bond: str, trans_keep: bool) -> int:
+            if bond in transition_keys:
+                return _L3_TRANSITION_KEEP if trans_keep else _L3_OTHER
+            return (_L3_BUFF_DEBUFF if bond in TIER7_BOND_NAMES
+                    else _L3_OTHER)
+
+        def _group_values(trans_keep: bool) -> dict[str, list[int]]:
+            """每组各取件数 0..len 的组值(增量口径)。"""
+            vals: dict[str, list[int]] = {}
+            for g, grp in groups.items():
+                vs = [0]
+                if g == '\0universal':
+                    for k in range(1, len(grp) + 1):
+                        vs.append(_L3_UNIVERSAL * k)
+                else:
+                    base = base_counts.get(g, 0)
+                    for k in range(1, len(grp) + 1):
+                        k_eff = sum(_contrib_of(u) for u in grp[:k])
+                        delta = (_achieved_tiers(g, base + k_eff)
+                                 - _achieved_tiers(g, base))
+                        vs.append(delta * _l3_coef(g, trans_keep))
+                vals[g] = vs
+            return vals
+
+        def _knapsack(vals: dict[str, list[int]],
+                      ) -> dict[str, int]:
+            """分组背包取件数(最大化 Σ组值,Σ件数 ≤ rem_budget;
+            同值取更多件——满员优先,垫满语义的取优侧承载)。"""
+            gnames = sorted(vals)
+            # dp[b] = (最优值, 回溯取件数字典);b = 已用席位。
+            dp: list[tuple[int, dict[str, int]]] = [
+                (0, {}) for _ in range(rem_budget + 1)]
+            for g in gnames:
+                vs = vals[g]
+                cap = len(vs) - 1
+                ndp: list[tuple[int, dict[str, int]]] = [
+                    (0, {}) for _ in range(rem_budget + 1)]
+                for b in range(rem_budget + 1):
+                    best = dp[b]
+                    for k in range(0, min(cap, b) + 1):
+                        cand_v = dp[b - k][0] + vs[k]
+                        # 同值取更多件(贪心满员形态对齐;组序字典序
+                        # 平局确定性)。
+                        cand = (cand_v, dp[b - k][1] | {g: k})
+                        if cand_v > best[0] or (cand_v == best[0]
+                                                and k > best[1].get(g, 0)):
+                            best = cand
+                    ndp[b] = best
+                dp = ndp
+            # 全预算行 = 最优(dp 值对席位占用单调不减,组内同值取更多件)。
+            return dp[rem_budget][1]
+
+        out_boards: list[list[SearchUnit]] = []
+        # 相位枚举(D7-3):锁定窗过渡组 ×4/×1 两相位各一套候选,段 3
+        # 终评按板面实测 L1 定相位。
+        phases = [True, False] if panel.locked else [False]
+        seen_mix: set[tuple] = set()
+        for trans_keep in phases:
+            take = _knapsack(_group_values(trans_keep))
+            chosen = [*inline]
+            for g in sorted(take):
+                for u in groups[g][:take[g]]:
+                    chosen.append(u)
+            # value-中性垫满(剩余席位按组单位序补满,形态与贪心一致)。
+            chosen_keys = {u.key for u in chosen}
+            for u in rest2:
+                if len(chosen) >= budget:
+                    break
+                if u.key not in chosen_keys:
+                    chosen.append(u)
+            mix = tuple(sorted(u.key for u in chosen))
+            if mix not in seen_mix and len(chosen) <= budget:
+                seen_mix.add(mix)
+                out_boards.append([*skel, *chosen])
+        return out_boards
+
     candidates: list[tuple[tuple[SearchUnit, ...], Comp | None,
                            tuple[str, ...]]] = []
     for skel, comp, keys in skeletons:
@@ -686,6 +834,8 @@ def search_deploy_target(panel: DeploySearchPanel,
         if skel:
             candidates.append((skel, comp, keys))   # 仅骨架变体
         for variant in _group_variants(skel):
+            candidates.append((tuple(variant), comp, keys))
+        for variant in _dp_fill(skel, keys):
             candidates.append((tuple(variant), comp, keys))
 
     # 同板去重(成员键集 + 评估上下文)。

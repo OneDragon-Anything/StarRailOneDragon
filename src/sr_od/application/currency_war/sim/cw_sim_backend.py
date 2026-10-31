@@ -3219,10 +3219,20 @@ class SimBackend:
         披露 run_complete / 死亡:hp 归零且保底已用,经结算死亡分支;
         重入安全)。终态呈现 = 大厅屏:流程经 CwScreenBattleWait 终局锚
         (③B terminal_lobby)→ 主循环 3c 收尾,与实机「终局结算 → 返回
-        货币战争 → 大厅」的消费链同形(sim 结算瞬时,直达终点)。"""
+        货币战争 → 大厅」的消费链同形(sim 结算瞬时,直达终点)。
+
+        局终清 pending:终局结算帧前的板面写(如部署拖动跨档)仍可
+        登记弹窗;实机局终 = 全部弹窗作废,sim 若保留登记,局终后的
+        身份问询懒呈现(:meth:`screen_identity`)会把模态压上大厅,
+        而 :meth:`advance` 对 done 世界早退不消费——选卡 op 无限重派
+        (驱动步上限 5000 烧穿后的失败截图风暴把整局拖到测试超时;
+        2026-10-31 统一部署批戊批后 DP 轨迹首次触达该态,定位实录)。
+        簿记(fired 集/计数)不清——其生命周期 = 局,与 pending 队列
+        语义分界(:func:`clear_screen_changes` 同口径)。"""
         self.done = True
         self._screen = SCREEN_LOBBY
         self._sub = ''
+        self.gs.screen_changes.pending.clear()
 
     def _hp_trail_append(self) -> None:
         hp = self.gs.hp.value

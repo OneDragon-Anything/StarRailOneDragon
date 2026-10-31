@@ -181,7 +181,7 @@ def effective_cost(gs: GameState, char_id: str) -> int:
     """角色**当前费用档**唯一读口(观察除数/账实结算/随机授予采样空间)。
 
     - 银狼LV.999 → 容器档 ``gs.lv999_cost_tier.value``(纯逻辑态,写端 =
-      pick_planner 升费分支 / deploy_move 上阵变费分支);未观察(None = 未触发
+      pick_planner 升费分支 / move_unit 上场变费分支);未观察(None = 未触发
       任何变换)归约 3(开局档语义默认);
     - 其余角色 → 注册表 ``CHARACTERS[char_id].cost``(静态);**未注册名 → 0**
       (无费用语义,禁用于金额计算——与 :func:`bench_char_cost` 未知 → 3
@@ -1172,3 +1172,4 @@ def reserve_cap(gs: GameState, session: StrategySession | None) -> int:
     不可能出现保利利息线高于持有增益归零点(利息帽截断点)的态。
     """
     return saturation_line(cap_resolved_of_session(session))
+

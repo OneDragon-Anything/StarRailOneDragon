@@ -521,7 +521,7 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
     ——每次升星事件恰好经过发火点一次,与 streak/refresh/boss 的
     「观察点重入」done 幂等场景不同型)。调用点 = 四发火点收尾(买牌
     上报/补给单位入账分支 grant_bench_unit_cascade/晶矿角色入账分支/获得链顶层
-    gain_character,均在各自全部容器写毕后调用;deploy_move/pick_planner
+    gain_character,均在各自全部容器写毕后调用;move_unit/pick_planner
     级联不可达不设,拷贝臂 spawn_equip_bench_unit 无级联不设——
     cw_investments.ENV_MERGE_GRANTS 区块注释)。
 
@@ -955,7 +955,7 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
 
 
 def deploy_lock_block_reason(gs: GameState, unit: Unit) -> str | None:
-    """上场锁守卫判定(单一源;消费 = deploy_move/swap_deploy 两上报入口)。
+    """上场锁守卫判定(单一源;消费 = move_unit 统一拖动上报上场分支)。
     实例匹配 = unit.uid 非空 ∧ 锁记录同 uid ∧ effective_node_pos(gs)
     < 解锁序位(元组字典序)→ 返回拒绝原因串
     'deploy_locked:<char>#uid<uid>#unlock<位>-<轮>';无命中 → None
@@ -1225,3 +1225,5 @@ def check_env_pick_grants(gs: GameState, held_after: int,
     gs.write_logic(gs.gold, int(gold) + amount, produced_by=_PRODUCER,
                    evidence=f'env_grant#{env}#pick{held_after}', sig=sig)
     return amount
+
+

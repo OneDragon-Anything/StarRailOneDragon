@@ -31,6 +31,15 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _validate_sig,
 )
 
+#: 变换窗触发单位(银狼LV.999,3★):拖上场变下一费用档 1★
+#: (design §2.1A;名单与星级 = 定案口径,机制单一源 =
+#: docs/game/gameplay/currency_war.md「银狼LV.999 升星升费」条;
+#: 常量宿主原 = deploy_move 上报模块,随其戊批收编删除迁入——
+#: 现役唯一消费者 = 本模块上场分支)。
+_TRANSFORM_CHAR_ID: str = '银狼LV.999'
+_TRANSFORM_STAR: int = 3
+_TRANSFORMED_STAR: int = 1
+
 
 def _slot_of(bench_slots: list, front_slots: list, back_slots: list,
              domain: str, slot: int) -> tuple[list, int] | None:
@@ -64,7 +73,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     dst=场上,含交换挤出形态)带三守卫:唯一性键(上场者与场上现存
     无同名,``board_unique_key``)/ 上场锁(``deploy_lock_block_
     reason``)/ 银狼变换窗(落场写下一费用档 1★ + 档行 + 级联,与
-    ``report_action_deploy_move_param`` 同核)。场上→场上纯换位与
+    旧 deploy_move 上报同核,随其戊批收编并入本核)。场上→场上纯换位与
     下场/席内挪位无锁无变换(开拓者形态归一除外)。
 
     bench/deployed 写后 board 羁绊计数随行写端挂钩重算(禁手写)。
@@ -72,11 +81,6 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
-    from sr_od.application.currency_war.kernel.cw_action_report.deploy_move import (
-        _TRANSFORM_CHAR_ID,
-        _TRANSFORM_STAR,
-        _TRANSFORMED_STAR,
-    )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         board_unique_key,
     )
@@ -270,3 +274,4 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     return LogicOutcome(
         applied=True,
         reason=str(getattr(param, 'reason', '') or ''))
+

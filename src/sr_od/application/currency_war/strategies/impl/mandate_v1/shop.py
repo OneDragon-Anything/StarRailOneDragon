@@ -122,7 +122,6 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionBuyCardParam,
     CwActionCloseShopParam,
-    CwActionDeployMoveParam,
     CwActionRefreshShopParam,
     CwActionSellBenchParam,
     CwActionSellDeployedParam,
@@ -330,8 +329,8 @@ def shop_unbought_reasons(gs: GameState,
     ``core_candidate_rejected``(C1 拒因拆键,C1 支退役)——三键历史
     已停写不另清理,成员统一落 ``non_line``/``owned``。
 
-    口径 = 帧首静态快照 + 逐动作累积投影:金按已发出 CwActionBuyCardParam 总价扣减、
-    CwActionSellBenchParam/CwActionSellDeployedParam/CwActionDeployMoveParam 的席与回金同步投影(修复:旧版只投影
+    口径 = 帧首静态快照 + 逐动作累积投影:金按已发出 CwActionBuyCardParam 总价扣减、\r
+    CwActionSellBenchParam/CwActionSellDeployedParam 的席与回金同步投影(修复:旧版只投影
     金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
     会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
     拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
@@ -360,8 +359,6 @@ def shop_unbought_reasons(gs: GameState,
             income = getattr(a, 'income', None)
             if income:
                 gold += income
-        elif isinstance(a, CwActionDeployMoveParam):
-            bench_free += 1     # bench→board:席释放(CwActionSwapDeployParam 一进一出净 0)
     trans = (set(getattr(comp, 'transition_chars', []) or [])
              if comp is not None else set())
     bought_names = {a.card.name or '' for a in actions
@@ -2153,3 +2150,4 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # ---- 收工(§2.5)----
     return _session_close(gs, _st, counters)
+

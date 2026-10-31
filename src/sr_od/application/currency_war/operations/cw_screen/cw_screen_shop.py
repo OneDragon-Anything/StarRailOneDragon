@@ -135,7 +135,6 @@ def _fmt_action(a: 'Action') -> str:
     """单 Action → 紧凑日志串(调试/复盘读 plan 用)。"""
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwActionBuyCardParam,
-        CwActionDeployMoveParam,
         CwActionLevelUpParam,
         CwActionRefreshShopParam,
         CwActionSellBenchParam,
@@ -144,8 +143,6 @@ def _fmt_action(a: 'Action') -> str:
         return f'Buy({a.card.faction}/{a.card.name}/{a.card.cost})'
     if isinstance(a, CwActionLevelUpParam):
         return f'LvUp({a.cost})'
-    if isinstance(a, CwActionDeployMoveParam):
-        return f'Deploy(bench{a.bench_idx}->{a.to_row})'
     if isinstance(a, CwActionRefreshShopParam):
         return 'Refresh'
     if isinstance(a, CwActionSellBenchParam):
