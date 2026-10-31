@@ -43,6 +43,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
+    CwActionMoveUnitParam,
     CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
@@ -82,6 +83,9 @@ from sr_od.application.currency_war.operations.cw_op.cw_collect_ore_action impor
 )
 from sr_od.application.currency_war.operations.cw_op.cw_deploy_move_action import (
     CwActionDeployMoveOp,
+)
+from sr_od.application.currency_war.operations.cw_op.cw_move_unit_action import (
+    CwActionMoveUnitOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_obs_action import (
     CwActionObsOp,
@@ -169,6 +173,9 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionLevelUpParam: CwActionLevelUpOp,
     CwActionDeployMoveParam: CwActionDeployMoveOp,
     CwActionSellDeployedParam: CwActionSellDeployedOp,
+    # 统一拖动(部署统一批:全域移动四元组;旧 DeployMove/SwapDeploy
+    # 两类随消费面切换退役,本行 = 唯一拖动承载)
+    CwActionMoveUnitParam: CwActionMoveUnitOp,
     CwActionWearEquipParam: CwActionWearEquipOp,
     CwActionCollectOreParam: CwActionCollectOreOp,
     CwActionOpenBoxParam: CwActionOpenBoxOp,

@@ -356,11 +356,11 @@ def _bench_container_idx_by_compact(state: GameState, pos: int) -> int | None:
 def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
     """动作发出面容器下标解析·deployed 域(条目对位:生产链 = 同帧同对象
     身份相等,测试/合成链等值重建兜底;前排命中 = 下标 0-3,后排 = 4+
-    〔定长 10 动作坐标系,后排 7-9 扩展格超出动作坐标系不可寻址——
-    tracked 表硬上限同族边界,3.2 继续适用〕;失配 None = fail-closed 跳过)。
+    排内 1 基〔SellDeployed 坐标域扩展:值域随 back_capacity_of 动态
+    6-9,扩格帧后排 7-9 可寻址,旧定长 10 截断退役〕;失配 None =
+    fail-closed 跳过)。
     场上同名唯一性不变量下,值相等对位与旧 (身份,槽号) 键等价。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
-        DEPLOYED_BACK_CAPACITY,
         DEPLOYED_FRONT_CAPACITY,
     )
     view = state.deployed.value
@@ -370,8 +370,7 @@ def _deployed_container_idx(state: GameState, victim: Unit) -> int | None:
         if u is victim or (u is not None and u == victim):
             return i
     for j, u in enumerate(view.back_slots or []):
-        if (u is victim or (u is not None and u == victim)) \
-                and j < DEPLOYED_BACK_CAPACITY:
+        if u is victim or (u is not None and u == victim):
             return DEPLOYED_FRONT_CAPACITY + j
     return None
 

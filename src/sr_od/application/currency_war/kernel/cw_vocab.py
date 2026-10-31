@@ -399,13 +399,14 @@ class CwActionPickEventParam:
 class CwActionSellDeployedParam:
     """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
 
-    [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(
-    front 0-3 / back 4-9,空槽 None,卖出置 None 不移位——索引跨动作组
-    恒稳)。
+    [坐标系] deployed_idx = 前排 0-3 / 后排 4+(排内 1 基槽号——
+    SellDeployed 坐标域扩展,unified-deploy-order §4 D4-2:值域随
+    ``back_capacity_of`` 动态 6-9,扩格帧后排 7-9 可直卖;空槽 None,
+    卖出置 None 不移位——索引跨动作组恒稳)。
     """
     deployed_idx: int
-    # [索引定义] 坐标系: deployed 槽位表下标 0-9(定长 10 槽,空槽
-    #             None)
+    # [索引定义] 坐标系: 前排 0-3 / 后排 4+ 排内 1 基(动态容量 6-9,
+    #             back_capacity_of 现读;旧定长 10 截断已随坐标域扩展退役)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 CwActionSellBenchParam)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
@@ -442,8 +443,46 @@ class CwActionSwapDeployParam:
                            metadata={'action_key_exclude': True})
 
 
+@dataclass
+class CwActionMoveUnitParam:
+    """统一拖动(全域移动:front/back/bench 任意源 → 任意目标;部署统一批
+    用户指令 2026-10-30「统一拖动角色 Op」——无纯「下场」动作废除,拖拽
+    语义全域统一 = 游戏规则:目标空 = 放置,有角色 = 交换)。
+
+    [坐标系] 单坐标系四元组 ``(src_domain, src_slot, dst_domain,
+    dst_slot)``,域 ∈ {'front','back','bench'};front 槽 1-4 基 1 /
+    back 槽 1-N 动态基 1(N = ``back_capacity_of`` 现值 6-9)/ bench
+    槽 0-8 基 0(沿用 ``CwActionSellBenchParam.bench_idx`` 基 0)。
+    越界 = fail-closed 拒发(执行 op 静态断言 + 上报口零写双防线)。
+
+    能力全集:上场(bench→场上空槽)/ 换人(bench→场上占槽交换)/
+    纯下场(场上→bench 空槽)/ 排错修正(场上→另一排一步)/ 备战席
+    内部挪位。消费点 = 差分执行器、出战链、获取让位虚拟评估(详设
+    unified-deploy-order §4 动作词表行)。
+
+    ``faction`` 不入动作字段:上报侧从容器槽位表现读派生(统一拖动的
+    容器写语义全部按源/目标域现值推演,faction 由 board 行写端挂钩
+    重算承载,无需载荷携带)。
+    """
+    src_domain: str
+    # 源域('front'|'back'|'bench')
+    src_slot: int
+    # [索引定义] 坐标系: front 1-4 / back 1-N 动态 / bench 0-8(基 0)
+    #             取值时机: 生成期快照(发出点从容器读口现取;执行与
+    #             上报按同一坐标直址,槽位表恒稳语义)
+    dst_domain: str
+    dst_slot: int
+    # [索引定义] 坐标系: 同 src_slot(域内 1 基,bench 例外 0 基)
+    #             取值时机: 生成期快照
+    reason: str = ''   # 归因记录字段(非指令;''=未标)
+    expect: str = ''   # 代际校验期望名(''=不校验,不符→拒绝;源槽
+    #             期望名——与 CwActionSellBenchParam.expect 同形)
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+
 Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam | CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam
-          | CwActionSellDeployedParam | CwActionSwapDeployParam)
+          | CwActionSellDeployedParam | CwActionSwapDeployParam | CwActionMoveUnitParam)
 
 
 # ===== 统一词表·备战域动作(类体逐字保留,基类引用翻 CwAction)=====
@@ -953,7 +992,7 @@ class CwActionObsParam:
 CwAction = (
         CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
         CwActionDeployMoveParam | CwActionRefreshShopParam | CwActionCloseShopParam | CwActionSellDeployedParam |
-        CwActionSwapDeployParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
+        CwActionSwapDeployParam | CwActionMoveUnitParam | CwActionCollectOreParam | CwActionOpenBoxParam | CwActionOpenTomeParam |
         CwActionOpenBookcardParam | CwActionWearEquipParam | CwActionFurnaceUseParam | CwActionPrivilegeCardUseParam |
         CwActionWrenchUseParam | CwActionPrecisionWrenchUseParam | CwActionStaffProjectorUseParam | CwActionPerfectProjectorUseParam |
         CwActionLuckyTokenUseParam | CwActionStartBattleParam | CwActionOpenShopParam | CwActionPickEventParam |
@@ -969,6 +1008,7 @@ CwAction = (
 CW_ACTION_TYPES: tuple = (
     CwActionBuyCardParam, CwActionSellBenchParam, CwActionLevelUpParam, CwActionDeployMoveParam, CwActionRefreshShopParam,
     CwActionCloseShopParam, CwActionSellDeployedParam,
+    CwActionMoveUnitParam,
     CwActionCollectOreParam, CwActionOpenBoxParam, CwActionOpenTomeParam, CwActionOpenBookcardParam,
     CwActionWearEquipParam,
     CwActionFurnaceUseParam, CwActionPrivilegeCardUseParam, CwActionWrenchUseParam, CwActionPrecisionWrenchUseParam,

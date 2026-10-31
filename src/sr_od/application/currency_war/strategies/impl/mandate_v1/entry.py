@@ -66,6 +66,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
+    CwActionMoveUnitParam,
     CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
@@ -169,6 +170,7 @@ _CONTINUABLE: tuple[type, ...] = (
 #: 行 = 条件:常态可续,末批可能掉箱后截断)
 _CONDITIONAL: tuple[type, ...] = (
     CwActionSellBenchParam, CwActionSellDeployedParam, CwActionDeployMoveParam,
+    CwActionMoveUnitParam,                      # 统一拖动(部署统一批;bench 源/目标槽复检同 SellBench/DeployMove 形)
     CwActionCollectOreParam,                          # 条件:常态可续;末批可能掉箱后截断
 )
 
@@ -263,6 +265,22 @@ def truncate_frame_stable(actions: list[CwAction],
                 out.append(a)
                 if slots is not None:
                     slots.discard(a.bench_idx)
+                continue
+            if isinstance(a, CwActionMoveUnitParam):
+                # 统一拖动复检(bench 源槽名-槽一致性;场上域无 bench 复检面):
+                # 源 bench 槽发出后保守释放(交换回填/清空两形态后续引用
+                # 均按新观察重建,续发不依赖回填位置);目标 bench 槽登记
+                # 占用(空槽落位/交换占位均变占用态)。
+                if slots is not None and a.src_domain == 'bench' \
+                        and a.src_slot not in slots:
+                    _count('emitter_conditional_truncated')
+                    return _cut()
+                out.append(a)
+                if slots is not None:
+                    if a.src_domain == 'bench':
+                        slots.discard(a.src_slot)
+                    if a.dst_domain == 'bench':
+                        slots.add(a.dst_slot)
                 continue
             # CwActionSellDeployedParam:deployed 槽表下标恒稳,序列内成立
             out.append(a)

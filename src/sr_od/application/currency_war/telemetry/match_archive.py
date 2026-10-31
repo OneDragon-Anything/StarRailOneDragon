@@ -57,7 +57,6 @@ from typing import Any
 
 from one_dragon.utils import log_utils
 from sr_od.application.currency_war.kernel.cw_exec_state import (
-    DEPLOYED_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -786,7 +785,10 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
             continue
         idx = a.get('deployed_idx')
         if isinstance(idx, bool) or not isinstance(idx, int) \
-                or not 0 <= idx < DEPLOYED_CAPACITY:
+                or not 0 <= idx < (DEPLOYED_FRONT_CAPACITY + 9):
+            # 上界 = 前排 4 + 后排布局上界 9(SellDeployed 坐标域扩展后
+            # deployed_idx 值域随 back_capacity_of 动态 6-9;解释器取
+            # 布局上界宽收,宁缺勿造语义不变)。
             continue
         row = 'front' if idx < DEPLOYED_FRONT_CAPACITY else 'back'
         slot_no = (idx + 1 if row == 'front'

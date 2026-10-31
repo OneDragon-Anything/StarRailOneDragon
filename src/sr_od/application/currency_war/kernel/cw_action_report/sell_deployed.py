@@ -26,19 +26,16 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
     变更)+ gold +退款 + 装备回收。
     deployed_idx 越界/空槽或 expect 失配 = applied=False 零写。
 
-    deployed_idx = 动作坐标系定长 10 下标(0-3 前排 / 4-9 后排槽 1-6;
-    窗口期桥,后排 7-9 扩展格超出动作坐标系不可卖——tracked 表硬上限
-    同族边界,3.2 续覆盖)。"""
+    deployed_idx = 前排 0-3 / 后排 4+(排内 1 基槽号,值域随
+    ``back_capacity_of`` 动态 6-9 扩格——SellDeployed 坐标域扩展
+    (unified-deploy-order §4:D4-2/D5-2 三落点之一,扩格帧直卖不再
+    截断);读侧直读 deployed 视图子表,不经定长 10 截断桥。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
     from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
         sell_refund,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_indexed_of_view,
-        deployed_view_of_indexed,
     )
 
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
@@ -49,21 +46,32 @@ def report_action_sell_deployed_param(gs: GameState, param: Any, sig: ChannelSig
                        evidence=evidence, sig=_grp_sig)
 
     view = gs.deployed.value
-    dep_slots = deployed_indexed_of_view(view)
-    idx = int(param.deployed_idx)   # 槽位表下标直取(统一坐标系)
-    if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
+    # 定长截断桥(deployed_indexed_of_view 后排 [:6])不适用:扩格帧
+    # 后排 7-9 直卖消费位切直读动态视图(桥本体与其余消费方零改动)。
+    front: list = list(view.front_slots or []) if view is not None else []
+    back: list = list(view.back_slots or []) if view is not None else []
+    idx = int(param.deployed_idx)   # 前排 0-3 / 后排 4+ 排内 1 基直址
+    if not (0 <= idx < len(front) + len(back)) \
+            or (front + back)[idx] is None:
         return LogicOutcome(
             applied=False, reason=f'deployed_idx_out_of_range:{idx}')
+    _sold = (front + back)[idx]
     if getattr(param, 'expect', '') \
-            and dep_slots[idx].char_id != param.expect:
+            and _sold.char_id != param.expect:
         return LogicOutcome(
             applied=False,
             reason=(f'stale_proposal:{param.expect}'
-                    f'!={dep_slots[idx].char_id}'))
-    scratch = list(dep_slots)
-    sold = scratch[idx]
-    scratch[idx] = None
-    _w(gs.deployed, deployed_view_of_indexed(scratch, view),
+                    f'!={_sold.char_id}'))
+    if idx < len(front):
+        sold = front[idx]
+        front[idx] = None
+    else:
+        sold = back[idx - len(front)]
+        back[idx - len(front)] = None
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        DeployedView,
+    )
+    _w(gs.deployed, DeployedView(front_slots=front, back_slots=back),
        'proj_sell_deployed')
     refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
                          bench_char_cost(sold, gs))
