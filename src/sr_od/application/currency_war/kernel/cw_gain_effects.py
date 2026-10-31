@@ -750,6 +750,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 式,损血腿结构性只能在 sim 通道(apply_strategy_pick_hp 负值支),
     # 本行零 hp 写防将来误并。
     '先亏后盈': _make_delayed_only_grant_effect('先亏后盈'),
+    # 好运令牌·银 = 延时-only 单腿展开卡(卡文「进入3个节点后，获得
+    # 1个【好运令牌】。」纯延时单句,零即时腿):显式单行登记延时-only
+    # 载体,效果串单枚 strategy_grant_scheduled(构造点住链原语);
+    # 发放物「好运令牌」与卡名异名(族内首例,物名单源住注册表 item);
+    # 禁入两腿成员集(入集 = 拿卡错发即时装备腿)。
+    '好运令牌·银': _make_delayed_only_grant_effect('好运令牌·银'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自

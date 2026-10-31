@@ -4058,6 +4058,15 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # hp 通道(hp_instant=-20),不入本表——两腿分道,同卡双通道登记)
     '先亏后盈': StrategyDelayedGrant(id='130701', delay_nodes=4,
                                       item='简易武装箱', count=2),
+    # 好运令牌·银(id 130901 原文直读,cw_invest_data.py:94;卡文
+    # 「进入3个节点后，获得1个【好运令牌】。」纯延时单句——零即时腿,
+    # 登记腿载体 = cw_gain_effects 延时-only 单腿工厂,禁走两腿工厂
+    # 派生;发放物「好运令牌」与卡名异名(族内首例),= EQUIPMENTS
+    # 注册表工具类装备(cw_equipment_data.py:192),非占席道具
+    # (BENCH_ITEM_NAMES 负成员,禁入占席通道),到点走装备分道
+    # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
+    '好运令牌·银': StrategyDelayedGrant(id='130901', delay_nodes=3,
+                                        item='好运令牌'),
 }
 
 
