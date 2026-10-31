@@ -1121,6 +1121,23 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(),
         notes='列数修饰腿(声明面,申报键条目经单取登记链不入效果账本);'
               'live 读链实屏识别跟随零消费挂点,sim 列数面零建模'),
+    # 团队力量·银:官方「每有一个已激活的非独立羁绊，小队就会获得3%前/后台强度。」
+    # (cw_invest_data.py:98,PlazaAugment 150101)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+ 条目。
+    # 羁绊激活计数 = 游戏侧真值(实机 OCR 左面板激活数,currency_war_config.py:6);
+    # 「非独立」= cw_factions.py 独立羁绊段七名排除,desc 明文。
+    '团队力量·银': EffectSpec(
+        id='150101', name='团队力量·银',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150101')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(每有一个已激活的非独立羁绊 3% 前/后台强度,'
+              '计数游戏侧自算,bot 仅登记);无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 

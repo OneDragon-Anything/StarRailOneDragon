@@ -330,7 +330,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 28 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 32 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -553,6 +553,26 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   获得4金币。」
 - **推理链**:改道 = 获得经验事件的产出改写(逻辑写入方改道候选),属事件产出语义而非
   实例进展 → counter 空;定案后按 verdict 回填算子字段并复推本论断。
+
+### 战力类零响应族
+
+#### 团队力量·银(150101)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter 不建);
+  payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
+  单一源);bot 零响应——羁绊激活计数与 3%×N 由游戏侧自算(激活真值 = 实机 OCR
+  左面板读数,currency_war_config.py「以实机 OCR 为真值」口径),登记只为审计可见。
+  「非独立羁绊」= cw_factions.py 独立羁绊段七名(挚爱之人/魔术师/大守护者/命运卜者/
+  救世主/头号玩家/领航员)排除,desc 明文零建模。同形先例 = 全队的希望(族首例)/
+  溜佩佩/溜佩佩+;不绑阵营(泛用数值,`STRATEGY_BINDINGS` 零触碰,表外默认空绑定);
+  现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
+- **证据**:规格 `STRATEGY_EFFECTS['团队力量·银']`(cw_investments.py 表尾条目);
+  官方原文 cw_invest_data.py:98「每有一个已激活的非独立羁绊，小队就会获得3%前/
+  后台强度。」
+- **推理链**:羁绊计数随游戏内状态连续变化,无离散触发事件 → trigger 占
+  PLANE_START 声明位对齐环境源 `_portal_placeholder_spec` 先例(占位零响应);
+  无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md §0
+  战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
 
 ## 9. 已关闭事项记录(结论与依据;不再复议)
 
