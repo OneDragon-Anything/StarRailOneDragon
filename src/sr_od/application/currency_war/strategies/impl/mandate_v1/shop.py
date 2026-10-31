@@ -664,19 +664,20 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
     升级执行两屏同参消费,本函数零内联门、禁子集化;逐道拒因计数键域
     见该函数 docstring)——判定由调用方同帧一次评估后经 ``verdict``
     四元组传入(单帧全链判定只此一次;升级资金面由其门⑥资金线门
-    承载)。三分支:
+    承载)。两分支:
 
     - **判据命中 ∧ 本帧可发射** → 返回关店动作,**不置 handled 标记**
       (本次关店 = 升级转场,非「商店事情办完」;转场后升级先落地,
       重开会话时概率档已是新档——「升级金优先于买牌金,先定概率档」
       的排序语义保留);
-    - **判据命中 ∧ 不可发射(待付窗)** → 返回 None,会话照常进入买牌
-      六序与刷新判据。「等节点收入」形态由此成立:会话经 §2.5 正常
-      收工置标记 → 出店 → 战斗 → 节点收入 → 备战侧凑金发射——不存在
+    - **金不足(花后破线恒 defer)/ 未命中** → 返回 None,会话照常
+      进入买牌六序与刷新判据。金不足 = 整批推迟等钱(用户裁定
+      2026-10-30:不存在升级卖牌凑金——保持最大压牌库,钱够了再升;
+      凑金待付窗分支已整删,`levelup_stockpile_wait` 键停产)。
+      「等节点收入」形态由此成立:会话经 §2.5 正常收工置标记 →
+      出店 → 战斗 → 节点收入 → 资金线自然过线再发射——不存在
       「开店即关」环(转场只在可发射帧发生,收店只在 §2.5 正常条件
-      发生)。待付窗两形态:凑金可达域(gold_short,备战侧凑金收敛)与
-      资金线不可达 defer(整批推迟等节点收入);
-    - 未命中 → None,照常。
+      发生)。
 
     资格门保证转场后零空转帧:店侧转场帧的后继(备战同参重评)必然
     命中且可发射,落店即执行。
@@ -693,12 +694,6 @@ def _session_upgrade_check(gs: GameState, session: StrategySession,
             counters.get('levelup_transition_close', 0) + 1
         state_of(gs).shop_read_intent = False
         return CwActionCloseShopParam()
-    if _verdict == levelup.GATE_GOLD_SHORT:
-        # 待付窗(凑金可达域):不凑金不发射,会话照常进入买牌六序
-        # 与刷新判据;凑金 = 备战侧 levelup_liquidate_prep 场景
-        # (资格门同参重评,凑至「现金 − 批 ≥ saturation_line」发射)。
-        counters['levelup_stockpile_wait'] = \
-            counters.get('levelup_stockpile_wait', 0) + 1
     return None
 
 
@@ -765,9 +760,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # ---- 3.5 店内合成结果帧检测(读数协议②合成族;不分源含买入致合成)----
     shop_sess.detect_merge_result_frame(gs)
 
-    # ---- 4 前置升级检查(升级意图出口,design §2.1 三分支;资格门全链
-    # 本帧一次判定,会话内两消费面共用——升级出口 + 刷新整级预留
-    # (§2.5③ 载体 = 判据现值,2026-10-17 迭代 T-4))----
+    # ---- 4 前置升级检查(升级意图出口,design §2.1 两分支——命中 ∧
+    # 可发射 → 关店转场不置标记,金不足(defer)/未命中 → None 会话继续;
+    # 资格门全链本帧一次判定,会话内两消费面共用——升级出口 + 刷新
+    # 判据载体(§2.5③ 载体 = 判据现值,2026-10-17 迭代 T-4))----
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup as _crit_levelup,
     )

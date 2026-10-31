@@ -168,7 +168,14 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   消费面全退役后无判读对象);
 # - shop_k_fallback_p2plus:K 甲臂兜底回退计数(K 目标未锁期源切换 =
 #   策略层候选快照三线并集 ∪ 配方成员;p2plus 带恒合法空集不进写支,
-#   p1_gap/p1_lock_band 两键在役)。
+#   p1_gap/p1_lock_band 两键在役);
+# - levelup_liquidate_sell 取用键族(levelup_liquidate_sell /
+#   _tier_<1..8> / _rng_tail_hit):升级凑金卖出取用计数族——备战
+#   第 4 步凑金卖出臂随凑金链整删(用户裁定 2026-10-30:不存在升级
+#   卖牌凑金,保持最大压牌库,钱够了再升),取用动作发出点退役,
+#   键族停产;
+# - levelup_stockpile_wait:商店会话升级意图出口的凑金待付窗计数
+#   (gold_short 分支唯一行为)——分支随 gold_short 臂整删停产。
 #
 # 【保留键】(逐键核消费位后在役):
 # - shop_refresh_blocked_memory_skip:刷新负结果记忆跳过计数——金线
@@ -183,9 +190,10 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 # - <take>_tier_<1..8>:各触发取用档位分布——take = 该触发的卖出
 #   计数键,值 = 被取用件统一序列排序键的档位分量;take 域 =
 #   {acquire_swap_sell, self_rescue_sell, ore_pad_sell,
-#   levelup_liquidate_sell, node_end_interest_sell,
-#   session_funding_sell}(前二者 = mandate_v1/shop.py 会话域,其余 =
-#   mandate_v1/entry.py 备战域);
+#   node_end_interest_sell, session_funding_sell}(前二者 =
+#   mandate_v1/shop.py 会话域,其余 = mandate_v1/entry.py 备战域;
+#   levelup_liquidate_sell 已随凑金链整删出 take 域,停产登记见上
+#   「停产键族」节);
 # - <take>_rng_tail_hit:随机尾键命中——被取用件与池内另一件排序键
 #   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
 #   (随机域判读:非等价件命中即键构造异常哨兵);

@@ -536,11 +536,11 @@ def emit(session: StrategySession,
 
     # —— 第 4 步:升级检查(design §2.2:判据每帧重评,无跨画面键;
     # 资格门全链 = criteria/levelup.upgrade_gate_verdict 两屏同参单一源。
-    # 命中后凑金与发射:全链通过 → 单帧原子整批(实付上界 = 发射时授权
-    # 值,授权不跨帧携带)+ 清 handled 标记;凑金域 → 凑金每帧一卖
-    # (levelup_liquidate_prep 场景,排序键①费用带外②低星③金当量);
-    # 凑金候选穷尽 → 整批推迟零动作等节点收入,拒因键
-    # levelup_fund_line_defer)——
+    # 命中后发射:全链通过 → 单帧原子整批(实付上界 = 发射时授权
+    # 值,授权不跨帧携带)+ 清 handled 标记;金不足(花后破线)→
+    # 整批推迟零动作等节点收入,拒因键 levelup_fund_line_defer
+    # (用户裁定 2026-10-30:不存在升级卖牌凑金——保持最大压牌库,
+    # 钱够了再升)——
     # (函数名 _step3_level_up 沿用旧序号,重命名随工序 sweep 批统一。)
     levelup_actions: list[Emitted] = _step3_level_up(session, gs, registry)
     if levelup_actions:
@@ -568,7 +568,7 @@ def emit(session: StrategySession,
     # —— 第 8 步:节末凑息(22 号篇 §1 节末凑息步)——所有花费决策
     # 完成后的最终利息线检查(为买而卖在会话内,为息而卖在本步;息按节末
     # 金位结算,提前卖会被后续购买把金位吃回去)。
-    _interest_out = _step7_node_end_interest(session, gs, registry)
+    _interest_out = _step7_node_end_interest(session, gs)
     if _interest_out:
         return _interest_out
 
@@ -771,42 +771,6 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
 # ============================================================ 升级检查(工序第 4 步)
 
 
-def _bench_liquid_gold(gs: GameState) -> int:
-    """攒批资金的活期分量(11 号篇 §2 攒批口径):备战席
-    **非线内 1★ 全额退活期卡**退金合计。
-
-    bench-only 口径——与契约 D 升级变现候选池(bench∪场上无关角色)
-    是两个分立维度:场上无关角色 1★ 退金**不计入**攒批基数(保守侧,
-    两处口径分立维护非同源,11 号篇 §2 攒批资金口径行)。
-    线内判定 = 卖出侧线内身份集(``sell_line_membership``:锁定线成员
-    ∨ 未锁定期候选 top3 成员——「卖自己人凑升级金不在语义内」)。
-    (保护集分支已随身份保护判据退役删除——统一让位优先级迭代 3.4,
-    总纲 §2.4:凑钱卖出按统一序列取用,凑金候选池无身份过滤,攒批
-    基数同步放开到全部非线内 1★ 全额退件。)"""
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        bench_char_cost,
-        sell_refund,
-    )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_units_of,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
-        sell_line_membership,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
-        refund_full_star_ok,
-    )
-    line = sell_line_membership(gs)
-    total = 0
-    for u in bench_units_of(gs):
-        name = str(u.char_id or '')
-        star = int(u.star or 1)
-        if name and name not in line \
-                and refund_full_star_ok(star, bench_char_cost(u, gs)):
-            total += sell_refund(star, bench_char_cost(u, gs))
-    return total
-
-
 def _levelup_fund_line_ok(gs: GameState, session: StrategySession,
                           gold: int, clicks: int, click_cost: int) -> bool:
     """升级资金线门装配口(11 号稿 §2 资金线门;单一装配位)。
@@ -837,31 +801,28 @@ def _levelup_fund_line_ok(gs: GameState, session: StrategySession,
 
 def _step3_level_up(session: StrategySession, gs: GameState,
                     registry: DecisionV2Registry | None) -> list[Emitted]:
-    """升级检查步(工序第 4 步;11 号稿 §2 单判据三分派 + 升级执行:
+    """升级检查步(工序第 4 步;11 号稿 §2 单判据 + 单帧原子发射:
     判据每帧重评,无跨画面键)。
 
     资格门全链判定单一源 = :func:`criteria.levelup.upgrade_gate_verdict`
     (与商店会话升级意图出口两屏同参消费,本函数零内联门)。
-    命中后凑金与发射:
+    命中后发射:
 
     - **全链通过** → 发购买经验整批,**单帧原子**(实付上界 = 发射时
       授权值;授权不再跨帧携带——「买一半」形态由发射原子性消解)+
       **清 handled 标记**(升级前若经会话正常收工置位,升级后概率档
       已变,本节点找牌与刷新判据需重评——非商业间谍路径的重开通道);
-    - **凑金域**(花后破线 ∧ 凑金可达,``gold_short``)→ 凑金:
-      ``levelup_liquidate_prep`` 场景每帧一卖、重扫续卖(候选/锁定阵容
-      外任意星级可卖,场景参数 ``one_star_refund_only`` False;排序键
-      ①费用带外先卖②低星先③金当量兜底,场景级覆盖见评估器)。凑金
-      目标 = 保线缺口闭合:凑至「现金 − 批 ≥ saturation_line」发射;
-    - **凑金候选穷尽** → 整批推迟(帧零动作,拒因键
-      ``levelup_fund_line_defer``——资金面拒因统一键;新触发臂均为
-      非义务账,穷尽 = 真不可达,推迟为正确语义);
-    - 其余 defer(门拦/凑金不可达)/未命中 → 零动作。
+    - **金不足**(花后破线)→ 整批推迟,帧零动作,拒因键
+      ``levelup_fund_line_defer``——升级发射 = 收入/利息净累积支配,
+      等节点收入自然过线(用户裁定 2026-10-30:不存在升级卖牌凑金
+      ——保持最大压牌库,钱够了再升;卖牌凑金链已整删,压牌库资产
+      不再被升级变现回抽);
+    - 其余 defer(门拦)/未命中 → 零动作。
 
-    血本位局(XP 以血支付):金凑金与变现步不适用(变现卖出对血支付
-    零贡献)——经验批支付门过即发射(单帧原子同款;R-1 币种通式:
-    血余额 ≥ 整批血成本 = 支付能力检查);不足 = 零购买(攒钱模式
-    = 等节点血收入)。
+    血本位局(XP 以血支付):变现步不适用(变现卖出对血支付零贡献)
+    ——经验批支付门过即发射(单帧原子同款;R-1 币种通式:血余额 ≥
+    整批血成本 = 支付能力检查);不足 = 零购买(攒钱模式 = 等节点
+    血收入)。
 
     (函数名 ``_step3_level_up`` 沿用旧工序序号,重命名随工序 sweep 批
     统一;本步现位 = 工序第 4 步。)
@@ -879,7 +840,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
     counters = st.cw4_counters
 
     # 金位读数门(23 号篇金位读数形态:备战域金位唯一供给 = 账面;
-    # 失效帧无法评估凑金/触发面 → 读数开店锚定,标记不动;账面宿主 =
+    # 失效帧无法评估资金线/触发面 → 读数开店锚定,标记不动;账面宿主 =
     # 容器态(state_of(gs),与会话标记/清单同宿主)。
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)
@@ -901,49 +862,15 @@ def _step3_level_up(session: StrategySession, gs: GameState,
         return [Emitted(CwActionLevelUpParam(
             cost=int(click_cost), clicks=max(1, clicks),
             auth_basis=arm_key), True, f'step3_levelup_batch:{arm_key}')]
-    if verdict != levelup.GATE_GOLD_SHORT:
-        # 未命中 / 资格门拦(拒因计数已由判定函数写入)= 零动作。
-        return []
-
-    # ===== 凑金(凑金域;每帧一卖、重扫续卖,天然收敛)=====
-    # 主路径 = 评估器升级变现场景(排序键①费用带外②低星③金当量,
-    # 场景级覆盖)。凑金穷尽 → 整批推迟(非义务账无兜底豁免——穷尽 =
-    # 真不可达,推迟零动作等节点收入)。
-    cands, _why = evaluate_sell_candidates(gs, 'levelup_liquidate_prep')
-    if cands:
-        out = _emit_sell_candidate(
-            session, gs, cands[0], reason='levelup_liquidate',
-            tag='levelup_liquidate_sell',
-            counter='levelup_liquidate_sell')
-        if out:
-            return out
-    counters['levelup_fund_line_defer'] = \
-        counters.get('levelup_fund_line_defer', 0) + 1
+    # 未命中 / 资格门拦(金不足恒 defer,拒因计数已由判定函数写入
+    # levelup_fund_line_defer)= 零动作。
     return []
 
 
-def _step3_liquidation_pending(session: StrategySession,
-                               gs: GameState,
-                               registry: DecisionV2Registry | None
-                               ) -> bool:
-    """升级判据命中判定(节末凑息步的抑制条件;2026-10-17 迭代 T-4
-    载体迁移,design §2.5①:预授权键读删除,条件改升级资格门同帧重评
-    ——判据命中(非 MISS 结论,含金量不足攒批待付帧与各资格门拒帧)
-    即凑金在途,凑息让位;未命中帧凑息照常。判定单一源 =
-    :func:`criteria.levelup.upgrade_gate_verdict`(counters 不传 = 静默
-    重评,拒因计数归升级执行步,本判定零计数副作用)。
-
-    抑制面拓宽申报(design §2.5① 预注册):键载体时代的抑制面 = 授权态
-    (键在)∧ 缺口未闭;判据载体覆盖全部命中帧——等级帽/奖励帧拦截等
-    非金拒帧也进抑制面(命中即升级议题在册,凑金优先于凑息),抑制面
-    拓宽、方向保守。凑金候选尚存与否由凑金步内评估器自然收敛,本判定
-    零独立候选口径。"""
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
-        levelup,
-    )
-    verdict, _arm, _clicks, _ccost = levelup.upgrade_gate_verdict(
-        gs, session, registry=registry)
-    return verdict != levelup.GATE_MISS
+# (升级凑金在途的节末凑息抑制谓词 _step3_liquidation_pending 已随
+# 凑金链整删(用户裁定 2026-10-30 选 A:等钱帧凑息照常——卖垫牌跨档
+# 增金正助「钱够了再升」);等级帽/奖励/等钱帧的节末凑息恢复运行,
+# 凑息触发不再咨询升级判据。)
 
 
 # ============================================================ 第 5 步:商店会话入口
@@ -1219,7 +1146,6 @@ def _step6_equip_tools(session: StrategySession, gs: GameState,
 
 def _step7_node_end_interest(session: StrategySession,
                              gs: GameState,
-                             registry: DecisionV2Registry | None
                              ) -> list[Emitted]:
     """节末凑息步(工序第 8 步;22 号篇 §1 第 8 步;3.2 改造 = 统一序列
     消费,场景池/身份面随评估器重写退役——部署重排后全局面序列,部署
@@ -1234,10 +1160,9 @@ def _step7_node_end_interest(session: StrategySession,
     帧哑火)= 评估器 as-built 并入语义。本步卖出的退金由第 5 步入口
     统一复核(23 号篇契约 A)。
 
-    升级凑金在途抑制(11 号篇 §2 帧交错规则①):升级判据命中帧本步
-    零发出(同池候选竞争,凑金优先)。抑制载体 = 资格门判据同帧重评
-    (2026-10-17 迭代 T-4,design §2.5①;预授权键读已随键退役删除,
-    抑制面拓宽申报见 :func:`_step3_liquidation_pending`)。
+    (升级凑金在途的凑息抑制已随凑金链整删——用户裁定 2026-10-30
+    选 A:等钱帧凑息照常,等级帽/奖励/等钱帧的节末凑息恢复运行;
+    凑息触发不再咨询升级判据,同帧重评的二次资格门调用一并退役。)
 
     金位读数门(23 号篇金位读数形态):账面失效帧无法判「缺口与候选
     退金」→ 读数开店锚定(标记不动),下帧重评。
@@ -1247,8 +1172,6 @@ def _step7_node_end_interest(session: StrategySession,
     随身份保护判据退役——凑息资格不再有保护身份排除,无可行件帧 =
     序列真空帧,反事实支无对象。
     """
-    if _step3_liquidation_pending(session, gs, registry):
-        return []
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)
     _gold = gold_of(gs)

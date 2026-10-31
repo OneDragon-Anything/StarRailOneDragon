@@ -15,9 +15,9 @@
 - **资金门**(11 号稿 §2 资金线门):下界单一源 =
   saturation_line(cap_resolved)(当前局最高利息线;买断制 cap=0 ⇒
   下界 0 ⇒ 门恒过),口径 = 现金(花后金 = 现金 − 整批成本,活期
-  退金不进放行算术);花后破线帧入凑金域判定(现金 + 备战席活期 −
-  批 ≥ 线 → 凑金,凑至发射;不可达 → 整批推迟,拒因键
-  ``levelup_fund_line_defer``)。
+  退金不进放行算术);花后破线恒整批推迟等钱,拒因键
+  ``levelup_fund_line_defer``(用户裁定 2026-10-30:不存在升级卖牌
+  凑金——保持最大压牌库,钱够了再升;凑金域分派臂已整删);
 - **支出形态**(单帧原子):判据通过 → 同帧发购买经验整批(实付上界
   = 发射时授权值,授权不跨帧携带)——「买一半」缺陷(逐帧单击 ×
   静态阈值逐帧重闸)由发射原子性消解;
@@ -283,7 +283,6 @@ def upgrade_trigger(gs: GameState, session: StrategySession,
 #: 升级意图出口与备战升级执行,资格门全链两屏同参)。
 GATE_MISS: str = 'miss'              # 判据未命中(单判据不触发;非门拒)
 GATE_DEFER: str = 'defer'            # 资格门拦(拒因计数已写入 counters)
-GATE_GOLD_SHORT: str = 'gold_short'  # 资金线门花后破线 ∧ 凑金可达——凑金域
 GATE_EMIT: str = 'emit'              # 全链通过,可发射
 
 
@@ -300,32 +299,28 @@ def upgrade_gate_verdict(gs: GameState,
     ②等级帽(level_max)③升级判据命中(单判据三分派)④击数 > 0
     ⑤经验批支付门(币种通式:支付币余额 ≥ 整批成本,金本位局直通
     ——金侧守线在门⑥,币种模式解析 = ``cw_investments.blood_xp_mode``)
-    ⑥资金线门(现金口径:花后金 = 现金 − 整批 ≥ saturation_line;
-    花后破线帧按凑金可达性分派 gold_short/defer,凑金可达域再验整买
-    纪律后 emit)。全部通过 → ``emit``。
+    ⑥资金线门(现金口径:花后金 = 现金 − 整批 ≥ saturation_line;花后
+    破线恒 defer 等钱——凑金域分派臂已整删,用户裁定 2026-10-30:不
+    存在升级卖牌凑金,保持最大压牌库,钱够了再升)。全部通过 →
+    ``emit``。
 
     返回 ``(verdict, arm_key, clicks, click_cost)``:
 
     - ``miss``:判据未触发(无拒因计数——判据未命中非门拒);
-    - ``defer``:①-⑤门拦或资金线门不可达 defer,拒因计数键已写入
-      ``counters``(键域:levelup_reward_node_defer / levelup_reject_
-      level_cap / levelup_zero_clicks_defer / xp_batch_payment_defer /
+    - ``defer``:①-⑥任一门拦,拒因计数键已写入 ``counters``(键域:
+      levelup_reward_node_defer / levelup_reject_level_cap /
+      levelup_zero_clicks_defer / xp_batch_payment_defer /
       levelup_fund_line_defer;两屏判读面共享同一键域——资金面拒因
-      统一 ``levelup_fund_line_defer``);
-    - ``gold_short``:凑金可达域(花后破线 ∧ 现金 + 备战席活期 − 批
-      ≥ 线):卖出只转化活期为现金,凑至「现金 − 批 ≥ 线」收敛到发射;
-      凑金不可达帧(宽池可卖也守不住线)归 ``defer``——保守向申报
-      (判定式用 bench-only 口径,凑金场景宽池 = 备战席 ∪ 场上无关
-      角色,两口径分立继承现状);
+      统一 ``levelup_fund_line_defer``,金不足帧与等级帽/奖励帧 verdict
+      同形,语义按「升级不发射帧」统称);
     - ``emit``:可发射(血本位局 = 经验批支付门过即 emit;金本位局 =
-      花后守线 ∧ 整买纪律过)。``arm_key`` = 触发键(miss/前置 defer
-      恒 '');``clicks/click_cost`` = 整级批参数(emit/gold_short
-      语境有效,miss/defer 恒 0)。
+      花后守线 ∧ 整买纪律过)。``arm_key`` = 触发键(miss/defer
+      恒 '');``clicks/click_cost`` = 整级批参数(emit 语境有效,
+      miss/defer 恒 0)。
 
     ``counters`` = None 时静默(契约层同款)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
-        cap_resolved_of_session,
         clicks_to_next_level,
         xp_batch_payment_gate_for,
         xp_click_cost,
@@ -338,9 +333,6 @@ def upgrade_gate_verdict(gs: GameState,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         contracts,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
-        saturation_line,
     )
 
     def _count(key: str) -> None:
@@ -372,7 +364,6 @@ def upgrade_gate_verdict(gs: GameState,
         _count('levelup_zero_clicks_defer')
         return GATE_DEFER, '', 0, 0
     click_cost = xp_click_cost(gs)
-    batch_cost = clicks * click_cost
     # ===== 资格门⑤:经验批支付门(币种通式,金本位局直通)=====
     if not xp_batch_payment_gate_for(gs, session):
         _count('xp_batch_payment_defer')
@@ -381,20 +372,16 @@ def upgrade_gate_verdict(gs: GameState,
         # 血本位局:支付门已过 = 支付可行(血本位无金变现步,资金门无
         # 对象——花血非花金),可发射。
         return GATE_EMIT, arm_key, clicks, click_cost
-    # ===== 资格门⑥:资金线门(现金口径单门 → 凑金域分派)=====
+    # ===== 资格门⑥:资金线门(现金口径单门;花后破线恒 defer)=====
     from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
-        _bench_liquid_gold,
         _levelup_fund_line_ok,
     )
     gold = gold_of(gs)
     if not _levelup_fund_line_ok(gs, session, gold, clicks, click_cost):
-        # 花后破线:凑金可达(现金 + bench 活期 − 批 ≥ 线)→ gold_short
-        # (凑金域,卖出收敛到发射);不可达 → defer(凑金候选穷尽语义
-        # 由备战凑金步计数,同键 levelup_fund_line_defer)。
-        liquid = _bench_liquid_gold(gs)
-        line = saturation_line(cap_resolved_of_session(session))
-        if gold + liquid - batch_cost >= line:
-            return GATE_GOLD_SHORT, arm_key, clicks, click_cost
+        # 花后破线 → 整批推迟等钱(凑金域分派臂已整删——用户裁定
+        # 2026-10-30:不存在升级卖牌凑金,保持最大压牌库,钱够了再升;
+        # 拒因键 levelup_fund_line_defer,计数点位 = 本判定函数,
+        # 两屏同参共享)。
         _count('levelup_fund_line_defer')
         return GATE_DEFER, '', 0, 0
     # 花后守线 ⇒ 现金 ≥ 批(线 ≥ 0)结构性蕴含整买纪律;契约核验与
@@ -448,10 +435,11 @@ def levelup_fund_gate(gs: GameState, session: StrategySession,
 
     检查式:花后金 = 现金 − 整批成本,下界单一源 =
     ``saturation_line(cap_resolved)``(当前局最高利息线;口径 = 现金,
-    活期退金不进放行算术——发射分支不消费活期资产,旧「现金+活期−批」
-    预支口径随批删除)。凑金域分派(花后破线帧按活期可达性分派
-    gold_short/defer)不在本门,消费位 = :func:`upgrade_gate_verdict`
-    门⑦。
+    活期退金不进放行算术——发射分支不消费活期资产)。花后破线帧的
+    处置 = 恒整批推迟等钱(拒因键 ``levelup_fund_line_defer``;凑金
+    域分派臂已整删——用户裁定 2026-10-30:不存在升级卖牌凑金,保持
+    最大压牌库,钱够了再升),消费位 = :func:`upgrade_gate_verdict`
+    门⑥。
 
     出辖两支(任一真 = 不设下界,让位语义各有已登记出处):
     - **终局域**::func:`terminal_all_in` 单一源(ALL IN 维持花光原

@@ -1,9 +1,10 @@
 """统一卖出候选评估器(三触发卖出判据件;统一让位优先级迭代 3.2 重写、
 3.4 旧判据拆除收敛)。
 
-一个评估函数服务全部卖出触发场景(溢出紧急处理/采晶矿前空位/升级凑金/
-节末凑息/店内筹资),输入 =(场景,容器状态),输出 = 按让位序排序的
-卖出候选或空。规格单一源 =
+一个评估函数服务全部卖出触发场景(溢出紧急处理/采晶矿前空位/
+节末凑息/店内筹资;升级凑金场景已随凑金链整删——用户裁定
+2026-10-30:不存在升级卖牌凑金,保持最大压牌库,钱够了再升),输入 =
+(场景,容器状态),输出 = 按让位序排序的卖出候选或空。规格单一源 =
 ``changes/2026-10-29-unified-priority/details/acquisition-and-sell.md``
 §3(三触发卖出判据件)+ priority-model §5(卖出取用形态):
 
@@ -112,14 +113,17 @@ class SellSceneSpec:
     cross_tier_only: bool = False   # 跨档止盈(节末凑息)
 
 
-#: 场景注册表(闭集;三触发五场景):
+#: 场景注册表(闭集;三触发四场景):
 #: - ``shop_swap`` 行已随席满置换账被六步流程整段替换退役(3.2,
 #:   dismantle §2——六步流程直通 ``priority.sell_order``,不经本评估器);
 #: - ``c1_make_room`` 行已随 C1 单卡核心支退役删除(3.4,dismantle §2
 #:   场景死行);
 #: - ``deploy_swap`` 冻结遗留行已随旧价值函数退役删除(3.4——部署换人
 #:   域判据本体 = kernel swap_sell_exclusion_reason 直接消费,不经本
-#:   评估器;评估路径生产零消费面,价值函数拆除时随批处置)。
+#:   评估器;评估路径生产零消费面,价值函数拆除时随批处置);
+#: - ``levelup_liquidate_prep`` 行已随升级凑金链整删退役(用户裁定
+#:   2026-10-30:不存在升级卖牌凑金——保持最大压牌库,钱够了再升;
+#:   金不足帧恒 defer 等钱,零卖出动作)。
 SCENE_SPECS: dict[str, SellSceneSpec] = {
     'self_rescue': SellSceneSpec(
         'self_rescue', FACE_SELF_RESCUE, None),
@@ -127,8 +131,6 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         'ore_make_room', FACE_REGULAR, 'm4_fuel'),
     'session_funding': SellSceneSpec(
         'session_funding', FACE_REGULAR, 'funding'),
-    'levelup_liquidate_prep': SellSceneSpec(
-        'levelup_liquidate_prep', FACE_REGULAR, 'funding'),
     'node_end_interest': SellSceneSpec(
         'node_end_interest', FACE_REGULAR, 'interest',
         cross_tier_only=True),
@@ -157,8 +159,8 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
 
     消费面:常规面 sell_exclusions 装配 k_members 入参、备战帧
     k_members 装配(entry.emit / mandate.snapshot_frame)、筹资兜底与
-    买面投影位(shop)、预算投影的 1★ 活期口径(entry 攒批/序 3-5
-    投影)。同一集禁各消费点自建第二份名单口径。候选名注册表解析
+    买面投影位(shop)、预算投影的 1★ 活期口径(序 3-5 投影——entry
+    攒批位已随凑金链整删)。同一集禁各消费点自建第二份名单口径。候选名注册表解析
     失败(漂移)跳过并告警——该线贡献空集,保守方向申报:少排除 =
     多可卖 = 让位面不受阻。
     """
@@ -252,7 +254,7 @@ def evaluate_sell_candidates(
     命中,见字段注)——取用观测键(档位分布/随机尾键命中)的数据源,
     判据零消费。
 
-    统一路径(五场景):
+    统一路径(四场景):
     1. 空板止损守卫(deployed = 0 帧全部卖出场景哑火,as-built 申报
        沿袭);
     2. 部署重排定型(``mandate.snapshot_frame`` + ``assemble_prep_context``
