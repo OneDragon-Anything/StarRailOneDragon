@@ -1246,6 +1246,30 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '计数(上阵 1 费角色数,3星1费按 3 计)与双属性数值(3% 速度/2% 伤害减免)'
               '游戏侧自算,bot 仅登记;无离散触发事件消费,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 榜样的力量·银:官方「战斗中，伤害统计排名第一的队员成为【榜样】，前/后台强度
+    # 提高25%。」(cw_invest_data PlazaAugment 150801;出处持久锚不挂行号——该文件系
+    # gen_plaza_invest.py 再生件,行号随重跑漂移)。战力类零响应登记
+    # (invest_effects.md 战力类总览行「强度」明列:不进经济模型;
+    # EffectKind.UNIT_BUFF「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/
+    # 溜佩佩/溜佩佩+/团队力量·银/应援团/正能量/完美开局/效率员工奖/基层贡献 条目。
+    # 「伤害统计排名第一→榜样」标记选择语义(伤害统计计量口径/并列排名第一取法/
+    # 榜样标记持续期)desc 无载 = 游戏侧定义,bot 零消费,判读申报不实机查;
+    # 「榜样」系官方卡文词面非注册名域对象:kernel 命中仅敌侧词缀「榜样激励」
+    # comp 适配映射面(cw_comps 榜样激励键),与本卡注册名异键零耦合;
+    # sim/strategies 零建模。「前/后台」与代码词表「前排/后排」字面不同字,
+    # 对应系判读非直译——单体两排泛用强度增益无位置限定,零行为后果。
+    '榜样的力量·银': EffectSpec(
+        id='150801', name='榜样的力量·银',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150801')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(单位强化:游戏侧自算,bot 仅登记);'
+              '标记选择(伤害统计排名第一,战斗中评估)与数值(25% 前/后台强度)'
+              '游戏侧自算,bot 仅登记;无离散触发事件消费,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
