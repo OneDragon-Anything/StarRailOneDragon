@@ -1270,6 +1270,28 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '标记选择(伤害统计排名第一,战斗中评估)与数值(25% 前/后台强度)'
               '游戏侧自算,bot 仅登记;无离散触发事件消费,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 当头一棒:官方「每个波次开始时，对生命上限最高的敌方目标造成1000%基础伤害，
+    # 并使其陷入【脆弱】：受到的伤害提高30%。」(cw_invest_data PlazaAugment 150901;
+    # 出处持久锚不挂行号——该文件系 gen_plaza_invest.py 再生件,行号随重跑漂移)。
+    # 战斗数值零响应登记(invest_effects.md 战力类总览行「强度」申报归类:不进经济
+    # 模型;EffectKind.UNIT_BUFF「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/
+    # 溜佩佩/溜佩佩+/团队力量·银/应援团/正能量/完美开局/效率员工奖/基层贡献/
+    # 榜样的力量·银 条目。族内首条敌方侧效果卡:对敌伤害+易伤,非我方单位增益,
+    # 载体词面张力经 notes 显式申报。波次触发/目标选取(生命上限最高)与数值全程
+    # 游戏侧自算:波次与脆弱词面 kernel/sim 全域零命中,cw_sim_enemy 系难度记录
+    # 非战斗单位,敌方目标域不存在读口,bot 零建模零观察。
+    '当头一棒': EffectSpec(
+        id='150901', name='当头一棒',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150901')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(战斗被动卡:对敌伤害+易伤,非我方单位增益,'
+              '载体词面张力显式申报);波次触发/目标选取与数值(1000% 伤害/'
+              '30% 易伤)游戏侧自算,bot 仅登记;无离散触发事件消费,'
+              'trigger 占位形(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
