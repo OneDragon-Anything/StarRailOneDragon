@@ -3833,6 +3833,60 @@ def _validate_strategy_conditional_grants() -> None:
 _validate_strategy_conditional_grants()
 
 
+# ===== 策略卡装备获得转换登记表(自由市场;白名单制)=====
+# 「每当你将要获得一件X装备时,改为获得Y」族首例(装备获得转换族模式卡:
+# 姊妹卡好运来 231601/独家代言 331401 目标为装备,装备目标分支留族批)。
+# 拦截点 = 获得原语 gain_equipment 顶段单一咽喉(消费端 =
+# cw_gain_chain.gain_equipment 守卫;获路全集不可枚举,T-102-attack F1
+# 教训同源——原语内拦截对一切经原语的获得事件自动全域覆盖,含持卡自身
+# 卡腿与开箱链;live 零写观察覆盖,实机转换由游戏自算,双容器观察自然
+# 对账)。表外卡一律无条目,禁从效果原文自动猜装(STRATEGY_CONDITIONAL_
+# GRANTS 同款纪律);键 = 卡规范名,值 = (源装备类别, 目标名);目标域
+# 判别 = 目标名 ∈ BENCH_ITEM_NAMES → 占席道具分支(现值唯一分支),
+# ∉ → 装备分支(族批未落,消费端对表行目标走该分支响亮拒绝禁静默)。
+STRATEGY_EQUIP_GAIN_CONVERSIONS: dict[str, tuple[str, str]] = {
+    # 自由市场(id 130601 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id
+    # 行;「将要获得一件简易装备」→ 源类别简易,「改为获得1个【简易武装
+    # 箱】」→ 目标占席道具,转换确定事件零采样)
+    '自由市场': ('简易', '简易武装箱'),
+}
+
+
+def _validate_strategy_equip_gain_conversions() -> None:
+    """STRATEGY_EQUIP_GAIN_CONVERSIONS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_hp_loss_grants docstring
+    ——源类别 ≠ 目标类别防自指属写表人纯笔误类不加,降为表域数据性质
+    测试〔设计稿 §2.2 四查按治理收敛〕;只留三漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 源类别漂移:类别池 equips_by_category 非空——类别名漂移
+    的运行期实况 = 拦截谓词永不命中、转换静默失效(无异常无台账),
+    import 期哨是唯一响亮拦截面(STRATEGY_HP_LOSS_GRANTS 装备类别漂移哨
+    同形);③ 目标名漂移:目标名 ∈ BENCH_ITEM_NAMES ∪ EQUIPMENTS——
+    错名运行期实况 = 占席道具域落席直查 KeyError 炸原语(BENCH_ITEM_
+    KINDS 全量显式制)或装备域盲追加幻影,import 期哨是唯一响亮拦截
+    面(_validate_strategy_conditional_grants 装备名漂移哨同理由)。"""
+    orphans = [n for n in STRATEGY_EQUIP_GAIN_CONVERSIONS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_EQUIP_GAIN_CONVERSIONS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, (_cat, _target) in STRATEGY_EQUIP_GAIN_CONVERSIONS.items():
+        if not equips_by_category(_cat):
+            raise ValueError(
+                f"STRATEGY_EQUIP_GAIN_CONVERSIONS 源类别漂移({_name!r} 类别"
+                f"注册表无装备,版本改名?):{_cat!r}")
+        if _target not in BENCH_ITEM_NAMES and _target not in EQUIPMENTS:
+            raise ValueError(
+                f"STRATEGY_EQUIP_GAIN_CONVERSIONS 目标名漂移({_name!r} 词表"
+                f"与装备注册表均无此名,版本改名?):{_target!r}")
+
+
+_validate_strategy_equip_gain_conversions()
+
+
 # ===== 策略卡战后触发发放注册表(以战养战;白名单制)=====
 # 「战斗结算后的世界发放」策略域首例:键 = 策略规范名,值 = 战后发放占席
 # 道具名元组。表外策略一律无条目,禁从效果原文自动猜装(ENV_STREAK_GRANTS/

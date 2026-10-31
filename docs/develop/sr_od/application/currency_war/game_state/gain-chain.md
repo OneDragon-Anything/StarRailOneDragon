@@ -79,6 +79,20 @@ producer=GAIN_CHAIN_PRODUCER)`(`rng` = 环境随机支采样注入,透传
 `gain_equipment(gs, item, *, rand, sig, evidence, producer)`:`gs.equips` 追加入栏
 (栏未观察[直构/sim 域] = 拒落零写,§6)→ `on_equipment_gained` 回调(§3)。装备无升星判断。
 
+**装备获得转换拦截**(自由市场批,登记表 =
+`cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS`,键 = 卡规范名,值 =
+(源装备类别, 目标名)):原语**顶段**守卫(在栏未观察早退之前,直构域持卡
+也转换)——持登记卡 ∧ item 属登记源类别 → 装备**不入栏**、**不触发**
+`on_equipment_gained` 后果分派,转发 `gain_bench_item` 发放目标(转换 =
+确定事件,rand=False 零 rng;目标域判别 `BENCH_ITEM_NAMES` 分道,现役唯一
+= 占席道具分支〔简易武装箱〕,装备目标分支留转换族批),出参 = 合成
+`GainOutcome(placed=箱落位结果, landing='skipped', detail='converted:<卡名>')`
+(调用方零改)。转换辖域 = 一切经本原语的获得事件字面全域(含持卡自身
+卡腿的随机简易采样与开箱链所得——「将要获得」无获路枚举,T-102-attack
+F1 教训同源;箱→简易→转换→箱单层终止:转发落位路径不再进入本原语);
+live 零写观察覆盖(实机转换由游戏自算,双容器观察自然对账);转发写
+evidence 前缀 `equip_gain_converted:`(后缀保留原获得事件串留证)。
+
 ### 2.4 获得投资策略 gain_invest_strategy
 
 `gain_invest_strategy(gs, session, strategy_name, *, rand, sig, rng=None,
@@ -705,6 +719,11 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据,
   猜测写 + 观察覆盖纠偏(先例 = T-5 财富宝钻随机态获得);语义 = 通道选择
   声明而非采样,不需 rng。
+- 零采样 rand=False 例外(自由市场批):装备获得转换(§2.3)= 确定事件
+  (「改为获得」无分布面),转发 `gain_bench_item` 恒 `rand=False` 确定面、
+  零 rng 消费——持卡局掷序不变(采样腿照常只消费自身抽样;同 seed 持/
+  不持卡两局随机数消耗一致,世界差异仅在写入内容),与上行的分野 =
+  转换目标具名确定无猜测写面,无「首观察纠偏」语义可申报。
 - 语义:任一写入位置的 rand 值 = 「本次写是否处于随机语义」,不承诺全链一致——采样效果
   只翻转它自己的子链。写通道 = 通道选择入口 `anchor_aware_write`(fields.md §2.6):
   未确认(锚定标志位 `prep_anchored` 未置)一律 `write_logic_rand`——开局预填初值/链落账是

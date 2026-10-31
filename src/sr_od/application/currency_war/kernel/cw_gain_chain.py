@@ -87,6 +87,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
+    STRATEGY_EQUIP_GAIN_CONVERSIONS,
     STRATEGY_GRANTS,
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
@@ -632,13 +633,67 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
     return outcome
 
 
+def _equip_gain_conversion_hit(gs: GameState,
+                               item: str) -> tuple[str, str] | None:
+    """装备获得转换命中判定(:data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 消费
+    端判定件):持卡(active_strategies 容器直读,check_strategy_conditional_
+    grants 同先例)∩ 转换登记表 ∧ item 属该卡登记源类别 → ``(目标名,
+    卡名)``;不持卡/未持转换卡/非登记类别 = None(零副作用零写零 rng)。
+
+    - 类别判 = EQUIPMENTS 查类别(.get 形):未知名不转换——保持原语既有
+      「盲追加幻影」行为边零改写(错名防线 = 登记面漂移哨,非本判定件);
+    - 转换 = 确定事件(「改为获得」无分布面),零采样零 rng 消费——持卡
+      局掷序不变,世界差异仅在写入内容;
+    - 目标域分支:目标 ∈ BENCH_ITEM_NAMES → 占席道具(现值唯一分支);
+      ∉ = 装备目标分支,转换族批(好运来/独家代言)未落 → 响亮拒绝
+      (登记哨③保证表行目标 ∈ 词表 ∪ 装备注册表,走到此支 = 装备分支
+      被现用而未实现,禁静默漏转换);
+    - 终止性:转发落位经占席道具原语,其路径不再进入装备原语——开箱环路
+      (箱→简易→转换→箱)与腿2 自我转换均单层终止,无需递归护栏。"""
+    held = gs.active_strategies.value
+    if not held:
+        return None
+    eq = EQUIPMENTS.get(item)
+    if eq is None:
+        return None
+    for card in held:
+        spec = STRATEGY_EQUIP_GAIN_CONVERSIONS.get(card)
+        if spec is None or eq.category != spec[0]:
+            continue
+        target = spec[1]
+        if target not in BENCH_ITEM_NAMES:
+            raise LookupError(
+                f'装备获得转换目标域分支未落({card!r} 目标 {target!r} 非'
+                f'占席道具,装备分支留转换族批;禁静默漏转换)')
+        return target, card
+    return None
+
+
 def gain_equipment(gs: GameState, item: str, *, rand: bool,
                    sig: ChannelSig, evidence: str,
                    producer: str) -> GainOutcome:
     """获得装备(gain-chain.md §2):equips 追加入栏(栏未观察 = 直构域
     拒落零写)→
     on_equipment_gained 回调(装备获得→送单位数据表分派)。装备无升星
-    判断;子链合成级数留存证据在子链遥测行,本出参 merge_levels 恒 0。"""
+    判断;子链合成级数留存证据在子链遥测行,本出参 merge_levels 恒 0。
+
+    装备获得转换拦截(顶段,在栏未观察早退之前——直构域持卡也转换,与
+    生产语义一致):持 :data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 在册卡 ∧
+    item 属登记源类别(:func:`_equip_gain_conversion_hit`)→ 被转换装备
+    不入栏、不触发 on_equipment_gained 后果分派,转发
+    :func:`gain_bench_item` 发放目标(rand=False 确定事件,转换零 rng),
+    出参 = 合成 ``GainOutcome(placed=落位结果, landing='skipped', detail=
+    'converted:<卡名>')``(调用方零改);转发写 evidence 前缀
+    ``equip_gain_converted:``(后缀保留原获得事件串留证)。live 零写
+    (实机转换由游戏自算,双容器观察自然对账)。"""
+    conv = _equip_gain_conversion_hit(gs, item)
+    if conv is not None:
+        target, card = conv
+        placed = gain_bench_item(gs, target, rand=False, sig=sig,
+                                 evidence=f'equip_gain_converted:{evidence}',
+                                 producer=producer)
+        return GainOutcome(placed=placed, landing='skipped', merge_levels=0,
+                           effects=(), detail=f'converted:{card}')
     inv = gs.equips.value
     if inv is None:
         # equips 未观察(None)= 开局种子底座下生产不可达(局容器缓存

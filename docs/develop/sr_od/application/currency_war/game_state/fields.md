@@ -651,6 +651,12 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   结构化写端,`PICK_INVEST_EFFECTS` 具名装备腿直书登记行):全员晋升/无伤通关/
   星星相印/买彩票+ 腿2/赌神·银(选卡落地获得随便骰子入栏,随便骰子 = 进阶类,
   不在精密金面判据映射 gate 恒 None 走纯发放)。
+- **转换腿零写入**(自由市场批,2026-10-31):「改为获得」转换在获得原语
+  顶段(gain-chain.md §2.3,登记表 `STRATEGY_EQUIP_GAIN_CONVERSIONS`)——
+  被转换装备**不入本域**(零写入、不触发获得后果分派);转换目标简易武装箱
+  = 占席道具域逻辑写(经 `gain_bench_item` 原语转发,evidence 前缀
+  `equip_gain_converted:`),落 §3.2.16 bench 道具槽 item 轴,不入本清单
+  写端。
 补给获得的装备 = 即时预期值写(上行 PickSupply 分支,`flow/action_ops.md` §4.5 即时单相,账面恒归一规范名);遭遇等事件获得的装备不记预期值,经观察覆盖收尾(§4.1 豁免)。
 
 #### 3.2.15b 已穿装备位置 occupied_equips
