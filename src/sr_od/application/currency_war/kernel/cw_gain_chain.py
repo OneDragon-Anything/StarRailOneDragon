@@ -45,6 +45,10 @@ from sr_od.application.currency_war.data.cw_chars import (
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
 )
+from sr_od.application.currency_war.kernel.cw_economy import (
+    XP_TO_NEXT_LEVEL,
+    xp_apply_amount,
+)
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
     EffectKind,
@@ -88,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_EQUIP_GAIN_CONVERSIONS,
+    STRATEGY_FIRST_BUY_XP_GRANTS,
     STRATEGY_GRANTS,
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
@@ -1034,6 +1039,91 @@ def check_strategy_star_merge_gold(
                               actor='StrategyStarMergeGoldGrant',
                               mode='synthesized',
                               group_id=f'strategy:star-merge-gold:{producer}'))
+
+
+#: 策略卡首购经验写端署名(家族单一标识,_CONDITIONAL_PRODUCER 同款
+#: 家族纪律;写端 = 本模块 check_strategy_first_buy_xp_grants,买牌上报
+#: 尾段发放刻,新写端新名不沿用链缺省伪装连续)。
+_FIRST_BUY_XP_PRODUCER: str = 'strategy_first_buy_xp_grant'
+
+
+def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
+                                       sig: ChannelSig) -> int:
+    """策略卡首购经验检查(「获得本投资策略后，首次购买1/2/3/4/5费角色
+    时，获得2/3/5/7/11点经验值」触发器单一源,孪生素数 id 200201 首例;
+    唯一调用点 = 买牌上报尾段发火腿——live 零写观察覆盖:实机经验由游戏
+    侧自发入账,经验条观察链(read_xp_progress)覆盖,实机局不接世界写)。
+
+    条件矩阵(顺序即短路序,check_strategy_battle_grants 形态):
+
+    1. 持卡 ∩ STRATEGY_FIRST_BUY_XP_GRANTS 为空(未持卡/表外卡同路,
+       表外卡禁从效果原文自动猜装)→ 0;
+    2. ``cost ∉ 1..5`` → 0(表外费用零发放留 log——购买费用域异常属
+       上游形态,不炸不静默;卡面桶域 1/2/3/4/5 明写);
+    3. ``first_buy_xp#<cost>`` ∈ strategy_conditional_done → 0(同桶
+       一次性闩;复合键 = 条件腿纯卡名键条款的费用粒度显式扩展——纯
+       卡名键会让同卡第二费用桶被误短路);
+    4. 查表 XP 量(值下标 = 费用−1)+ 写闩(write_logic,evidence
+       ``first_buy_xp#<cost>``,「首次」封账);
+    5. sim 门控世界写(函数内惰性 ``sim_backend_installed``,kernel→
+       sim.ports 判据消费先例 = 本模块 check_strategy_star_merge_gold):
+       True → :func:`xp_apply_amount` 推进 + gs.level/gs.xp observe
+       独立笔(evidence ``xp:first_buy:<cost>``,sig ``obs_sig('sim:xp')``
+       ——apply_node_xp 同域口径,只推进 level/xp 零附加动作);False
+       (live)→ 零写;
+    6. 返回 XP 量(断言面;生产调用零回调面,返回值忽略)。
+
+    - **失败语义 at-most-once**:步 4 落闩先于步 5 世界写,禁调换(调换
+      = 先写后闩,世界写与闩写之间异常会引入双发窗口);发放点整体
+      best-effort(调用腿吞异常不阻塞上报主链)——世界写一旦失败,闩已
+      落、该桶 XP 永久丢失仅 warning 留证,无重试、无自动补发;
+    - **一击多买 k>1 同桶单发**(一次购买动作一个费用桶,由卡面「首次」
+      可推导;与同口 on_buy 按实际张数计 k 次刻意分叉,调用腿勿照抄 k);
+    - **零 rng**:确定发放,无采样面;多卡同持各查各桶,XP 量按持卡
+      集合计(现役表单卡,合计语义 = 表扩员自然跟随);
+    - level/xp 未观察(直构/测试形态,sim 生产开局恒种)→ 世界写宁缺
+      勿造跳过(apply_node_xp 同形态)。
+    """
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_FIRST_BUY_XP_GRANTS]
+    if not held:
+        return 0
+    if not 1 <= cost <= 5:
+        log.info('[cw-gain] 首购经验费用桶域外(零发放留证): cost=%s', cost)
+        return 0
+    done = tuple(gs.strategy_conditional_done.value or ())
+    latch_key = f'first_buy_xp#{cost}'
+    if latch_key in done:
+        return 0
+    amount = sum(STRATEGY_FIRST_BUY_XP_GRANTS[n][cost - 1] for n in held)
+    # 闩写先于世界写(at-most-once 契约,见 docstring 失败语义;调换 =
+    # 双发窗口)。
+    gs.write_logic(gs.strategy_conditional_done, done + (latch_key,),
+                   produced_by=_FIRST_BUY_XP_PRODUCER,
+                   evidence=latch_key, sig=sig)
+    # kernel → sim 判据消费沿 cw_sim_ports 惰性 import 先例(函数内取,
+    # 模块级反向即环);live 未装配 = 零写纪律执行点(游戏自算,观察覆盖)。
+    from sr_od.application.currency_war.sim.cw_sim_ports import (
+        sim_backend_installed,
+    )
+    if sim_backend_installed():
+        xp_field = gs.xp.value
+        level_field = gs.level.value
+        if xp_field is not None and level_field is not None:
+            level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
+                                         amount)
+            need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+            from sr_od.application.currency_war.sim.cw_sim_base import (
+                obs_sig,
+                sim_evidence,
+            )
+            gs.observe(gs.level, level,
+                       evidence=sim_evidence(f'xp:first_buy:{cost}'),
+                       sig=obs_sig(group_id='sim:xp'))
+            gs.observe(gs.xp, (cur, need),
+                       evidence=sim_evidence(f'xp:first_buy:{cost}'),
+                       sig=obs_sig(group_id='sim:xp'))
+    return amount
 
 
 #: 策略卡到级发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/

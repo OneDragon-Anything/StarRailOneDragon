@@ -238,9 +238,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '入账)'),
     'strategy_conditional_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名,'
-              '局内恒存随快照存续),无观察读端——发放登记事实非观察投影'
-              '(同族行先例 = env_grants_done);逻辑写端四处 = '
+        basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名'
+              '或复合键 first_buy_xp#<费用>,局内恒存随快照存续),无观察'
+              '读端——发放登记事实非观察投影(同族行先例 = '
+              'env_grants_done);逻辑写端五处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
               '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
               '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
@@ -250,7 +251,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'strategy_level_equip_grant)+ 全都要·银选卡事件消耗闩'
               '(check_strategy_take_all_supply 挂补给选定上报三 applied '
               '出口,事件消耗制选卡即写,布尔形存在 = 配额已耗,producer '
-              'CwScreenSupplyNode 未选域发放写端家族值)'),
+              'CwScreenSupplyNode 未选域发放写端家族值)+ 策略卡首购经验'
+              '桶闩(check_strategy_first_buy_xp_grants 挂买牌上报尾段,'
+              'evidence first_buy_xp#<费用>,先闩后 sim 世界写 '
+              'xp:first_buy:* at-most-once,producer '
+              'strategy_first_buy_xp_grant)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'

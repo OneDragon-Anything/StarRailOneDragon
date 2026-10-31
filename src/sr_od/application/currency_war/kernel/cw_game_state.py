@@ -2648,13 +2648,19 @@ class GameState:
     pending_strategy_grants: Field[tuple[tuple[str, int], ...]] = field(
         default_factory=Field)
     # [索引定义] strategy_conditional_done = 已完成发放的策略卡条件腿
-    # 卡名集合(策略卡条件发放通道,规模效应 id 101301 首例)。元素 =
-    # 规范卡名(注册表键同源,单一源 =
-    # cw_investments.STRATEGY_CONDITIONAL_GRANTS);写入时机 = 检查腿
-    # 发放成功(placed)后单点写入,唯一写端 =
-    # cw_gain_chain.check_strategy_conditional_grants(tick 位;拒落域
-    # 不闩——池现值维持达标时后续 tick 重试自愈,placed 才封账);
-    # 消费 = 检查腿跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
+    # 键集合(策略卡条件发放通道,规模效应 id 101301 首例)。元素 =
+    # 规范卡名或复合键:卡名形 = 条件发放/到级腿注册表键同源(单一源 =
+    # cw_investments.STRATEGY_CONDITIONAL_GRANTS 等家族表);复合键 =
+    # ``first_buy_xp#<费用>`` 形(首购经验腿费用粒度闩,一卡五费用桶各
+    # 一发——纯卡名键会让同卡第二费用桶被误短路,孪生素数 id 200201
+    # 首例,对「元素 = 规范卡名」条款的显式扩展);写入时机 = 各检查腿
+    # 发放/发放决定成立后单点追加。写端 = cw_gain_chain.check_strategy_
+    # conditional_grants(tick 位;拒落域不闩——池现值维持达标时后续
+    # tick 重试自愈,placed 才封账)+ sim 到级金腿接线段 + check_strategy_
+    # level_equip_grants + check_strategy_take_all_supply(选卡事件消耗)
+    # + check_strategy_first_buy_xp_grants(买牌上报尾段,先闩后世界写
+    # at-most-once)——写端清单单一源 = cw_projection_audit 审计行;
+    # 消费 = 各检查腿跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
     # 无删除;「首次」语义——卖出/合成使同名计数回落不回滚已发放,
     # 递减/重置不存在)。恢复局随快照存续 = 中断恢复对局不重发(rebuild
     # tuple 化登记,env_grants_done 先例)。开局种子底座 = ()(A 类)。

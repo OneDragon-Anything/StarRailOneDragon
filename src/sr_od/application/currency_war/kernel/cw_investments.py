@@ -4083,6 +4083,51 @@ def _validate_strategy_conditional_grants() -> None:
 _validate_strategy_conditional_grants()
 
 
+# ===== 策略卡首购经验登记表(白名单制;购买触发族「获得本投资策略后,
+# ===== 首次购买X费角色时,获得Y点经验值」首例)=====
+# 世界发放单一源;消费端 = cw_gain_chain.check_strategy_first_buy_xp_grants
+# (唯一调用点 = 买牌上报尾段发火腿,live 零写观察覆盖)。表外卡一律无
+# 条目,禁从效果原文自动猜装(STRATEGY_CONDITIONAL_GRANTS 同款纪律);
+# 同族后续「首购」卡按「注册行直用本通道」接入。值下标 = 费用−1(费用
+# 域 1..5,表外费用零发放留证);一次性闩 = strategy_conditional_done
+# 复合键 ``first_buy_xp#<费用>``(费用粒度五桶各一发,纯卡名键会让同卡
+# 第二费用桶被误短路——对条件腿纯卡名键条款的显式扩展)。
+
+STRATEGY_FIRST_BUY_XP_GRANTS: dict[str, tuple[int, int, int, int, int]] = {
+    # 孪生素数:官方「获得本投资策略后，首次购买1/2/3/4/5费角色时，获得
+    # 2/3/5/7/11点经验值。」(id 200201 原文直读,cw_invest_data.PLAZA_
+    # AUGMENTS 同 id 行;五桶全 desc 明写,零披露键——读法申报制)
+    '孪生素数': (2, 3, 5, 7, 11),
+}
+
+
+def _validate_strategy_first_buy_xp_grants() -> None:
+    """STRATEGY_FIRST_BUY_XP_GRANTS 构建校验(import 即炸,两查):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联——运行期实况 = 触发函数持卡交集空,漏改 = 静默零发放);
+    ② 值形:恰 5 元全正 int tuple——值下标 = 费用−1 的读表契约成立
+    前提,短/长元组会让某费用桶取错值或越域,且错形运行期零报错
+    (选错桶只错发放量),import 期哨把拦截面前移到构建期。
+    """
+    orphans = [n for n in STRATEGY_FIRST_BUY_XP_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_FIRST_BUY_XP_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, _amounts in STRATEGY_FIRST_BUY_XP_GRANTS.items():
+        if (not isinstance(_amounts, tuple) or len(_amounts) != 5
+                or not all(isinstance(_a, int) and _a > 0
+                           for _a in _amounts)):
+            raise ValueError(
+                f"STRATEGY_FIRST_BUY_XP_GRANTS 值形({_name!r} 须 5 元全正"
+                f" int tuple,下标 = 费用−1):{_amounts!r}")
+
+
+_validate_strategy_first_buy_xp_grants()
+
+
 # ===== 策略卡装备获得转换登记表(自由市场;白名单制)=====
 # 「每当你将要获得一件X装备时,改为获得Y」族首例(装备获得转换族模式卡:
 # 姊妹卡好运来 231601/独家代言 331401 目标为装备,装备目标分支留族批)。

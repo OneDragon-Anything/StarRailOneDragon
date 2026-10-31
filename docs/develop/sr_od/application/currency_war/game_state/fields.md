@@ -1027,7 +1027,8 @@ env_grants_done——本队列不并入任何域版本 bump,他域本体未变)�
 域,§3.5.5)**通道分立**:env 按环境名键、策略卡按持卡集语义,键形与
 语义两异,混载 = 语义污染。
 
-**写入方**:逻辑写入方两处——①获得链检查腿
+**写入方**:逻辑写入方多处(清单权威 = cw_projection_audit 审计行
+`strategy_conditional_done` 行)——①获得链检查腿
 `cw_gain_chain.check_strategy_conditional_grants`(节点边界 tick 内联腿,
 advanced 位闸,唯一调用点 = `_tick_effect_boundary_impl`;发放成功
 placed 刻追加,发放与封账同 evidence 同 sig 同组,evidence
@@ -1035,7 +1036,12 @@ placed 刻追加,发放与封账同 evidence 同 sig 同组,evidence
 101701:kernel `check_strategy_level_grants` 纯决策,sim advance 双点
 接线段(节点经验入账拍)write_logic 直写,evidence
 `strategy:level_gold:<卡名>`,producer `strategy_level_grant`;金/级
-现值未观察宁缺勿造不闩,值到位后下次检查自愈)。**拒落不闩**(①):
+现值未观察宁缺勿造不闩,值到位后下次检查自愈);③策略卡首购经验桶闩
+(孪生素数 id 200201:kernel `check_strategy_first_buy_xp_grants` 挂
+买牌上报尾段发火腿,write_logic 直写复合键 `first_buy_xp#<费用>`
+(费用粒度五桶各一发),evidence `first_buy_xp#<费用>`,producer
+`strategy_first_buy_xp_grant`;闩先于 sim 世界写 `xp:first_buy:*`
+at-most-once,live 零世界写经验条观察链覆盖)。**拒落不闩**(①):
 equips 未观察窗发放
 fail-closed 零写,闩同样不落——池现值维持达标时后续 tick 重试自愈;池
 永久回落阈下则不发放(边界非缺陷)。**无观察写入方**——发放登记事实非
@@ -2111,7 +2117,7 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 为 provenance):
 
 - XP 面:被动收入/人才空洞、人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
-  xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 38)/
+  xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 28)/
   空仓/赞美太阳/固定理财(即时段与位面开始段同卡两支)。
 - HP 面:恢复生机/健康充值(+30 生命与 30 **生命上限**——**hp_max 字段缺位**一并
   申报)/成本控制(条件回血 +15 生命上限——hp_max 第二来源)。

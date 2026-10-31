@@ -216,6 +216,25 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
 
+    # —— 首购经验腿(「获得本投资策略后，首次购买X费角色时，获得Y经验」
+    #    族,首例 = 孪生素数):购买事实全毕后判据一次(持卡 ∧ 费用桶域
+    #    ∧ 一次性闩),费用取数 = card_cost 与本函数扣价同源零新增链。
+    #    函数内自门 sim 装配(live 零写,经验条观察链覆盖);闩先于世界写
+    #    (at-most-once,失败语义见触发函数 docstring)。一击多买 k>1 同
+    #    费用桶恒单发(卡面「首次」语义,与上方 on_buy 计 k 次刻意分叉,
+    #    勿照抄 k)。best-effort:发放分支异常不阻塞上报主链(上方 on_buy
+    #    回调分支同纪律;下方专家触发腿为零吞错状态写,分层不同勿混)。
+    #    拒买(applied=False 早退)不可达本段。kernel 反向模块级零 import
+    #    契约:函数内惰性取(上方惰性块同款)。——
+    try:
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            check_strategy_first_buy_xp_grants,
+        )
+        check_strategy_first_buy_xp_grants(gs, cost=card_cost(card),
+                                           sig=_grp_sig)
+    except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+        _log.warning(f'[cw-buy] 首购经验腿发放分支失败(不阻塞): {e}')
+
     # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
     #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;
     #    同节点多笔判等跳写收敛在 mark_gold_spent 内。——
