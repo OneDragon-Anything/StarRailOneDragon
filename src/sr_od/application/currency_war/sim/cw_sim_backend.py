@@ -318,6 +318,22 @@ def strategy_final_supply_gold_of(gs: GameState) -> int:
         list(gs.active_strategies.value or [])).gold_at_final_supply
 
 
+def strategy_invest_node_gold_of(gs: GameState) -> int:
+    """持卡策略聚合的每节点金(定期福利系,进任意节点窗每窗一笔)。
+
+    单一源 = ``aggregate_economy``(多卡求和);注册族姊妹剩余价值/按劳
+    分配的注册值系战斗表现条件金的每节点期望近似(条件与上限未注册,
+    双端零建模),腿骑聚合自动跟随、无双计。返回 0 = 无该金腿,调用方
+    (节点窗收入段)零值零写。live 侧无此写端:金有整字段观察覆盖,实机
+    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(裁定正本
+    = ``cw_effect_inventory.advance_node`` docstring「尾款金面走观察
+    覆盖兜底」行),sim 世界自持账无观察可兜,不发即持卡局金系统性偏低,
+    故唯 sim 侧补写。
+    """
+    return aggregate_economy(
+        list(gs.active_strategies.value or [])).gold_per_node
+
+
 def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              node_type: str, streak: int,
                              pending_loss: LostNodeRef | None = None,
@@ -2427,6 +2443,26 @@ class SimBackend:
         # 上窗以来状态变动(连胜/选卡)在此反映;本窗内选卡的即时反映
         # 由 _on_invest_picked 写点承担。
         self._update_difficulty_flag()
+        # 投资策略每节点金腿(定期福利系):进任意节点窗发持卡聚合值,
+        # 独立观察笔(evidence/sig 与收入笔分键)——轮首收入三分量账
+        #(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
+        # 收入写。挂点钉在收入段最前(扑满递延快照与轮首收入之前):
+        # 卡面「每次进入新节点时」= 最早时点,窗开先落账后,扑满快照与
+        # 轮首收入的利息基数(均读金现值)自然含本腿,与 live 口径「利息
+        # 计算基数 = 结算前金现值」(cw_effect_inventory)同向。boss 金腿
+        # /尾款金腿挂收口段、不入同节点利息基数——两卡 desc 时点语义不
+        # 同(「进入首领节点时」/「最后一个补给阶段后」 vs 无条件每节点
+        # 息账前给金),各自挂点均有在册支撑,基数序分叉为显式申报非静默
+        #(统一收口提案归 round_start_income 承载方式定夺批)。零值零写
+        #(未持卡零新增观察行);幂等复用窗口守卫(同节点窗重放整段跳过),
+        # 零新增守卫。
+        invest_gold = strategy_invest_node_gold_of(self.gs)
+        if invest_gold > 0:
+            gold_before = int(self.gs.gold.value or 0)
+            tag = f'strategy:invest_node_gold:p{plane}r{r}'
+            self.gs.observe(self.gs.gold, gold_before + invest_gold,
+                            evidence=sim_evidence(tag),
+                            sig=obs_sig(group_id=f'sim:{tag}'))
         # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
