@@ -1223,6 +1223,29 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '速度最高三名角色及其忆灵)与数值(10% 速度增幅)游戏侧自算,'
               'bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 基层贡献:官方「你的场上每有一个1费角色，我方小队获得3%速度增幅和2%伤害减免。
+    # 3星1费改为提供3倍。」(cw_invest_data PlazaAugment 150701;出处持久锚不挂
+    # 行号——该文件系 gen_plaza_invest.py 再生件,行号随重跑漂移)。战力类零响应
+    # 登记(invest_effects.md 战力类总览行「速度」明列:不进经济模型;
+    # EffectKind.UNIT_BUFF「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/
+    # 溜佩佩/溜佩佩+/团队力量·银/应援团/正能量/完美开局/效率员工奖 条目。
+    # 逐体计数语义(上阵 1 费角色计数、3星1费按 3 计、并列取法)= 游戏侧定义,
+    # bot 零消费(kernel cost 读口群 card_cost/bench_char_cost/effective_cost/
+    # sell_refund 系经济域观察读口,非效果建模件,零接线);速度/伤害减免真值
+    # 全游戏侧,sim 不建模(全域零命中)。「场上」= 上阵编队(与备战栏分立,
+    # drag_cw_char.py _ROWS 三键)。
+    '基层贡献': EffectSpec(
+        id='150701', name='基层贡献',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150701')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(单位强化:游戏侧自算,bot 仅登记);'
+              '计数(上阵 1 费角色数,3星1费按 3 计)与双属性数值(3% 速度/2% 伤害减免)'
+              '游戏侧自算,bot 仅登记;无离散触发事件消费,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
