@@ -630,6 +630,24 @@ class CwScreenBattleWait(CwOperation):
                             ChannelSig(family='logic_hook',
                                        actor='CwScreenBattleWait',
                                        group_id='battle-wait:env-grant'))
+                    # —— 策略卡到级装备腿(live 结算覆盖位单点,与 streak
+                    # 触发同窗并列:level 真值恰在此落账,覆盖写端跳过
+                    # level 观察则检查同口径不调——None 不调)。条件单一源
+                    # = kernel check_strategy_level_equip_grants(双端同
+                    # 链,sim advance 双点同函数);返回值刻意忽略 = live
+                    # 无回调:宝钻的 deploy_cap/back_layout/diamond_count
+                    # 联动属观察域识别器(逻辑侧禁写),回调仅 sim 侧消费。
+                    # sig = logic_hook 族同 streak live 形态,组号按触发名
+                    # 区分(同窗多触发各归各组,台账可对账)。
+                    if _assets.get('level') is not None:
+                        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+                            check_strategy_level_equip_grants,
+                        )
+                        check_strategy_level_equip_grants(
+                            gs_of_ctx(self.ctx, _session),
+                            ChannelSig(family='logic_hook',
+                                       actor='CwScreenBattleWait',
+                                       group_id='battle-wait:strategy-level-grant'))
                     # —— 利息累计账入账 + 条件发放(来源 A:胜局结算屏
                     # 「获得金币总览」面板息行直读,T-27 迭代设计 §2.5;
                     # 计数时点 = 结算覆盖窗内、金真值落账后)。面板只在

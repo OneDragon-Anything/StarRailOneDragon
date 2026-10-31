@@ -327,6 +327,40 @@ None → 宁缺勿造;④gold 现值 None → 宁缺勿造**不封账**(本函�
   setdefault),实机持卡局奖励关/扑满关结算屏金收入对照可校准,差额
   暴露归披露键校准面。
 
+### 2.14 策略卡等级装备发放检查腿 check_strategy_level_equip_grants(live 结算位 + sim advance 双点)
+
+`check_strategy_level_equip_grants(gs, sig) -> str | None`——策略卡
+「升到9级时，获得【财富宝钻】」通道(首例钻石商人 id 130401,登记表 =
+`cw_investments.STRATEGY_LEVEL_GRANTS` 白名单:键 = 策略规范名,值 =
+`StrategyLevelGrant(id, level_target, item)`)的唯一检查本体,kernel
+直写形态(函数内发放 + 落闩,check_env_streak_grants 同构;与 §2.12
+金支「纯决策 + 调用方写」分工相反——装备腿不在金面禁直写辖域,双端
+同链零分叉)。条件矩阵六序(序即短路序):①持卡 ∩ 登记表空 → None;
+②卡名 ∈ `strategy_conditional_done` → None(一次性封账);③level
+现值 None → None 不封账(宁缺勿造,读裸值非 level_of——缺省 1 读口
+会把未观察伪装成低级);④equips 现值 None → None 不封账(禁半发放,
+闩只在发放同窗登记,后续检查重查);⑤现值等级 < level_target → None;
+⑥达标 → `gain_equipment`(rand=False 确定事件 logic 写,evidence
+`strategy_level_grant:<卡名>`,producer
+`strategy_level_equip_grant`)→ placed=True 落闩(同 evidence 同 sig
+相邻原子)并返回装备名;placed=False 零闩返回 None(重试自愈)。
+
+- **双端同链三调用点**:live = 结算覆盖位单点(`cw_screen_battle_wait`
+  结算窗,level 资产 None 不调〔与覆盖写端跳过 level 观察同口径〕,
+  sig = logic_hook 族 group `battle-wait:strategy-level-grant`,返回
+  值刻意忽略);sim = advance 双点(`_on_node_advance` 推进点 +
+  `_on_node_advance_terminal` 局终点,均挂节点经验入账拍、先于新节点
+  窗/胜局披露,sig = `logic_sig('sim:strategy')`);返回非 None → sim
+  侧调宝钻回调 `on_diamond_acquired`(世界数值面三写,live 零回调
+  ——deploy_cap/back_layout/diamond_count 联动属观察域识别器)。
+- **与金支异名并存**(§2.12 契约零改):「升级类条件卡各建各表各函数」
+  在码指令 + 用户裁定(不预建统一条件框架)双锚;共域闩不分叉(同一
+  `strategy_conditional_done` Field 纯卡名,卡名即全域能量键)。
+- **休眠申报**:现役 sim 经验常量下 9 级不可达(全程封顶 7 级),本腿
+  恒短路于第⑤序 = 休眠正确路径(§2.12 同族口径,两披露键两腿共用);
+  经验源扩网后零改激活。本表登记第二行时单笔返回契约会漏「局终同拍
+  双卡双就绪」第二笔,届点 = 第二行登记批改列表返回或调用方循环。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

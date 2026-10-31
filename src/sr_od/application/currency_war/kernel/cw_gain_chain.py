@@ -88,6 +88,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_GRANTS,
+    STRATEGY_LEVEL_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
     normalize_invest_name,
@@ -1025,6 +1026,74 @@ def check_strategy_level_grants(gs: GameState) -> tuple[str, int] | None:
         if int(level) < eff.gold_at_level_target:
             continue
         return (name, int(eff.gold_at_level))
+    return None
+
+
+#: 策略卡等级装备发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/
+#: _BATTLE_GRANT_PRODUCER/LEVEL_GRANT_PRODUCER 同款家族纪律;写端 =
+#: 本模块 check_strategy_level_equip_grants,发放与落闩两笔均函数内
+#: 直写,无跨模块引用面故模块私有;新写端新名不沿用链缺省伪装连续)。
+_LEVEL_EQUIP_PRODUCER: str = 'strategy_level_equip_grant'
+
+
+def check_strategy_level_equip_grants(gs: GameState,
+                                      sig: ChannelSig) -> str | None:
+    """策略卡等级条件装备发放触发检查(钻石商人首例;双端同链单一源,
+    live/sim 各在等级真值落点调用;kernel 直写形态 = 函数内发放 + 落闩,
+    check_env_streak_grants 同构,调用方按所在端纪律传 logic 族 sig)。
+
+    条件矩阵(顺序即短路序,逐序返回 None = 未发放):
+
+    1. active_strategies ∩ STRATEGY_LEVEL_GRANTS 空 → None(未持卡/
+       持表外卡同路;表外卡禁从效果原文自动猜装);
+    2. 卡名 ∈ strategy_conditional_done → None(一次性封账,「首次」
+       语义——等级单调不减下达标态持续为真,靠闩封账非靠跨越检测,
+       金支 check_strategy_level_grants 同判);
+    3. ``gs.level.value`` None → None 不封账(等级从未观察,宁缺勿造;
+       读裸值非 level_of——缺省 1 读口会把未观察伪装成低级,行为等价
+       但披露面失真);
+    4. ``gs.equips.value`` None → None 不封账(发放承载缺失,禁半发放
+       ——闩只在发放同窗登记,条件每次检查重查;开局种子底座下生产
+       不可达,直构/测试形态防御);
+    5. 现值等级 < level_target → None(现役 sim 经验常量下全程封顶
+       7 级,本腿恒短路于此序 = 休眠正确路径,sim 披露键申报;经验源
+       扩网后零改激活);
+    6. 达标 → gain_equipment(rand=False:达标即确定事件,无采样面)
+       → placed=True:落闩 write_logic(strategy_conditional_done 追加
+       卡名,同 evidence 同 sig,两笔相邻同窗原子),返回装备名(调用方
+       据此决定是否调宝钻回调——sim 专用,live 刻意忽略返回值:宝钻的
+       deploy_cap/back_layout/diamond_count 联动属观察域识别器,逻辑侧
+       禁写);placed=False(拒落)零闩返回 None,后续检查自动重试自愈。
+
+    - sig = 两写共用(obs 族进 write 即炸渠道族校验);零 rng;
+    - 与金支异名并存零改其契约:「升级类条件卡各建各表各函数」在码指令
+      + 用户裁定(env-conditional-grants design.md「不预建统一条件
+      框架」)双锚;共域闩不分叉(同一 Field 纯卡名,同卡名不可能同时
+      属两张条件发放卡,卡名即全域能量键)。
+    """
+    done = tuple(gs.strategy_conditional_done.value or ())
+    for name in gs.active_strategies.value or ():
+        spec = STRATEGY_LEVEL_GRANTS.get(name)
+        if spec is None or name in done:
+            continue
+        level = gs.level.value
+        equips = gs.equips.value
+        if level is None or equips is None:
+            continue
+        if int(level) < spec.level_target:
+            continue
+        evidence = f'strategy_level_grant:{name}'
+        out = gain_equipment(gs, spec.item, rand=False, sig=sig,
+                             evidence=evidence,
+                             producer=_LEVEL_EQUIP_PRODUCER)
+        if not out.placed:
+            return None
+        # 登记事实直写(发放与封账同 evidence 同 sig 同组,check_env_
+        # streak_grants/check_strategy_conditional_grants 同款相邻原子)
+        gs.write_logic(gs.strategy_conditional_done, done + (name,),
+                       produced_by=_LEVEL_EQUIP_PRODUCER,
+                       evidence=evidence, sig=sig)
+        return spec.item
     return None
 
 

@@ -111,7 +111,8 @@ from sr_od.application.currency_war.kernel.cw_pool import grant_char_pool
 _PRODUCER: str = 'env_conditional_grant'
 
 #: done 域条件键:具名触发器「本局首次连胜达成」(当前唯一形状;
-#: 升级类条件键各建各表各函数,不进本模块)。
+#: 升级类条件键各建各表各函数,不进本模块——钻石商人已立
+#: cw_investments.STRATEGY_LEVEL_GRANTS 专表)。
 FIRST_STREAK_KEY: str = 'first_streak'
 
 #: done 域条件键:刷新次数阈值触发器(每环境至多一个刷新触发器,
@@ -1096,9 +1097,11 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
 
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
-    """宝钻获得回调(世界数值面联动;唯一调用点 = sim 深井发放路径,
-    3.3 接线;**supply 补给宝钻不采纳**——钻类型未建模,归 3.3 覆盖;
-    **live 不调**——三域 live 写端 = 观察识别器,逻辑侧禁写)。
+    """宝钻获得回调(世界数值面联动;调用点 = sim 两个世界发放路径——
+    深井连胜发放与环境利息/连胜族同域接线,及策略卡到级装备发放(sim
+    advance 双点接线),两路共用本回调零改动;**supply 补给宝钻不采纳**
+    ——钻类型未建模,归连胜路径覆盖;**live 不调**——三域 live 写端 =
+    观察识别器,逻辑侧禁写)。
 
     - ``equip_name != '财富宝钻'`` → 直接返回(cap 加成语义只属财富
       宝钻;红/蓝钻是补给视觉族同框,无 cap 语义——依据 cw_obs_core

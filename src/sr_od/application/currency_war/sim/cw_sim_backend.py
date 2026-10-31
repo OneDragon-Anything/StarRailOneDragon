@@ -92,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_level_equip_grants,
     check_strategy_level_grants,
     check_strategy_win_gold_grants,
     discharge_due_item_grants,
@@ -1103,16 +1104,16 @@ DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: str = 'final_supply_gold_scope_assumption'
 #: 聚合读,锚点错过即无——「尾款」语义自洽)。
 DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: str = 'final_supply_gold_timing_assumption'
 
-#: 策略卡到级金·触发语义披露键(成长基金 id 101701;纯声明,不进任何
-#: 判定分支)。载义:「拿卡时已 ≥ 目标级也发放」状态检查型语义未经实机
-#: 采证(等级 = 容器现值非事件流,拿卡时点无从回溯历史跨越,策略条件腿
-#: 容器现值求值同款;若实机证伪为严格跨越事件型,检查函数改读升级事件
-#: 标记并随批退役本键)。
+#: 策略卡到级条件·触发语义披露键(成长基金金腿 + 钻石商人装备腿两腿
+#: 共用;纯声明,不进任何判定分支)。载义:「拿卡时已 ≥ 目标级也发放」
+#: 状态检查型语义未经实机采证(等级 = 容器现值非事件流,拿卡时点无从
+#: 回溯历史跨越,策略条件腿容器现值求值同款;若实机证伪为严格跨越事件
+#: 型,两检查函数同批改读升级事件标记并随批退役本键)。
 DISCLOSURE_STRATEGY_LEVEL_SEMANTICS: str = 'strategy_level_grant_state_semantics'
 
-#: 策略卡到级金·sim 休眠披露键(成长基金 id 101701;纯声明,不进任何
-#: 判定分支)。载义:现役 sim 经验写源(节点经验表 × 选卡即时腿)下
-#: 全程等级上界 96(节点 70 + 即时 26)< 3→9 级累计门槛 194,到级金腿
+#: 策略卡到级条件·sim 休眠披露键(成长基金金腿 + 钻石商人装备腿两腿
+#: 共用;纯声明,不进任何判定分支)。载义:现役 sim 经验写源(节点经验
+#: 表 × 选卡即时腿)下全程等级上界低于 3→9 级累计门槛 194,到级两腿
 #: 休眠恒短路(上界封顶 7 级);经验源扩网(买经验建模/经验常量修订)
 #: 使上界 ≥ 194 时休眠锁先红触发边界重申报,本键随激活批复评退役。
 DISCLOSURE_STRATEGY_LEVEL_DORMANT: str = 'strategy_level_grant_dormant_in_sim'
@@ -1901,6 +1902,18 @@ class SimBackend:
                 produced_by=LEVEL_GRANT_PRODUCER,
                 evidence=f'strategy:level_gold:{_name}',
                 sig=logic_sig('sim:strategy'))
+        # —— 策略卡到级装备腿(钻石商人;条件单一源 = kernel
+        # check_strategy_level_equip_grants 直写形态:发放 + 落闩两笔均
+        # 在 kernel 函数内,logic 渠道,组名沿 sim:strategy 在役组)。
+        # 接线点 = 经验入账后、新节点窗前(宝钻的 deploy_cap +1/后排格数
+        # 自本窗生效 = 世界真值序);返回非 None → 宝钻回调(入参只传
+        # 装备名,sig 由回调内构 obs 族,深井发放路径同分工)。live 结算
+        # 位同函数零回调。现役经验常量下 9 级不可达 = 休眠正确路径恒
+        # 短路零写;幂等 = kernel 函数 done 闩短路 + 本层序位守卫双保险。
+        _equip_grant = check_strategy_level_equip_grants(
+            self.gs, logic_sig('sim:strategy'))
+        if _equip_grant is not None:
+            on_diamond_acquired(self.gs, _equip_grant)
         self._entered_pos = eff
         self._enter_node_window(eff)
 
@@ -1934,6 +1947,14 @@ class SimBackend:
                 produced_by=LEVEL_GRANT_PRODUCER,
                 evidence=f'strategy:level_gold:{_name}',
                 sig=logic_sig('sim:strategy'))
+        # —— 策略卡到级装备腿局终点(与推进点同段直写形态/组名,挂经验
+        # 入账后、胜局披露前 = 末节点跨级也发放;双点为经验源扩网后前瞻
+        # 一致——现世界不可达下与单点行为全等。宝钻回调分工与休眠依据
+        # 同推进点注释,不赘)。
+        _equip_grant = check_strategy_level_equip_grants(
+            self.gs, logic_sig('sim:strategy'))
+        if _equip_grant is not None:
+            on_diamond_acquired(self.gs, _equip_grant)
         self.disclosures[DISCLOSURE_RUN_COMPLETE] = 'survived_p3_boss'
         self._game_over()
 

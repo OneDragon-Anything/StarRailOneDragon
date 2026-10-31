@@ -1598,7 +1598,9 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 `sim:env-diamond`〕:diamond_count +1 / deploy_cap = level + equips 中财富
 宝钻计数〔拥有即算、可叠加〕/ back_layout = min(9, 现值+1),现值 None 以
 机制基线 6 起算;非财富宝钻早退;**supply 带钻补给不采纳回调**——钻类型
-未建模)。
+未建模)。**第二触发源 = 策略卡到级装备发放**(钻石商人;sim advance 双点
+接线 `logic_sig('sim:strategy')`,`check_strategy_level_equip_grants` 返回
+财富宝钻同调本回调,回调零改动共用;live 结算位同函数零回调)。
 
 **登记四件**:开局种子 = `()`(§2.6,同晶矿声明族恒非 None);**快照恢复** =
 `restore_state_snapshot` 恢复表登记(逐元素 (str, str) 重建 tuple-of-tuple);

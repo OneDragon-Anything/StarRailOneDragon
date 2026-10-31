@@ -2899,7 +2899,8 @@ _validate_env_pool_rewrite()
 # 表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款纪律)。
 # 消费面 = kernel/cw_env_grants.check_env_streak_grants(触发检查单一源,
 # live/sim 结算接线都调它);表只收「连胜触发器」形状,升级类条件卡
-# (钻石商人等)触发点各不相同,各建各表不并入本表(总纲「明确不解决」)。
+# (钻石商人等)触发点各不相同,各建各表不并入本表(总纲「明确不解决」;
+# 钻石商人已立 STRATEGY_LEVEL_GRANTS 专表,下方邻位)。
 ENV_STREAK_GRANTS: dict[str, tuple[int, str]] = {
     # 本局首次 5 连胜 → 财富宝钻(id 104 原文直读,cw_invest_data PlazaPortal('104'))
     '深井角斗场': (5, '财富宝钻'),
@@ -2926,6 +2927,73 @@ def _validate_env_streak_grants() -> None:
 
 
 _validate_env_streak_grants()
+
+
+# ===== 策略卡等级触发发放注册表(钻石商人;白名单制)=====
+# 「升级类条件卡各建各表」在码指令(上方 ENV_STREAK_GRANTS 表注释)与
+# 用户裁定(env-conditional-grants design.md:19「不预建统一条件框架」)
+# 的承接表:与 ENV_STREAK_GRANTS(连胜触发器)分表不并。表只收「等级
+# 触发装备发放」形状;金发放等级卡归 STRATEGY_ECONOMY 等级触发族字段
+# (gold_at_level/gold_at_level_target),两载体并存显式豁免合并(条件源
+# 同形、发放通道异构)。表外卡一律无条目,禁从效果原文自动猜装
+# (STRATEGY_CONDITIONAL_GRANTS 同款纪律);消费端 =
+# cw_gain_chain.check_strategy_level_equip_grants(live 结算位 + sim
+# advance 双点同链调用)。
+
+@dataclass(frozen=True)
+class StrategyLevelGrant:
+    """策略卡「升到目标等级后发放具名装备」登记结构(策略卡等级触发
+    发放通道专属登记表,首例钻石商人;字段语义 = 卡面效果原文直读):
+
+    - level_target: 触发等级(「升到9级时」直读「9」;等级单调不减,
+      达标态持续为真靠 done 闩封账非靠跨越检测——状态检查型语义,
+      check_strategy_level_grants 金支同款先例);
+    - item: 发放装备名(「【财富宝钻】」直读;值域 = 装备注册表名
+      闭集,构建期装备名漂移哨拦截——STRATEGY_CONDITIONAL_GRANTS
+      校验③同款)。"""
+    id: str
+    level_target: int
+    item: str
+
+
+STRATEGY_LEVEL_GRANTS: dict[str, StrategyLevelGrant] = {
+    # 钻石商人(id 130401 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id
+    # 行;「升到9级时,获得【财富宝钻】」直读入册)
+    '钻石商人': StrategyLevelGrant(id='130401', level_target=9,
+                                   item='财富宝钻'),
+}
+
+
+def _validate_strategy_level_grants() -> None:
+    """STRATEGY_LEVEL_GRANTS 构建校验(import 即炸;治理口径与三漂移哨
+    形状 = _validate_strategy_conditional_grants 同款——只能由写表人
+    笔误触发的校验删〔level_target 形/值域属手抄常量纯笔误类,按
+    2026-10-28 裁定不加〕,能被游戏版本变更独立触发的漂移哨留):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后
+    静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
+    仍在的漂移也炸);③ 装备名漂移:item ∈ EQUIPMENTS——错名运行期
+    实况 = 静默幻影(gain_equipment 盲追加 + on_equipment_gained 查表
+    .get() 安静不写 + live 调用位返回值刻意忽略),import 期哨是唯一
+    响亮拦截面。"""
+    orphans = [n for n in STRATEGY_LEVEL_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_LEVEL_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _grant in STRATEGY_LEVEL_GRANTS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_grant.id}':
+            raise ValueError(
+                f"STRATEGY_LEVEL_GRANTS id 漂移:{_name!r} 登记 id="
+                f"{_grant.id} base={_base.source}")
+        if _grant.item not in EQUIPMENTS:
+            raise ValueError(
+                f"STRATEGY_LEVEL_GRANTS 装备名漂移({_name!r} 注册表无此"
+                f"装备,版本改名?):{_grant.item!r}")
+
+
+_validate_strategy_level_grants()
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====
