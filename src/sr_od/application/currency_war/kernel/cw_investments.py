@@ -1292,6 +1292,30 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '载体词面张力显式申报);波次触发/目标选取与数值(1000% 伤害/'
               '30% 易伤)游戏侧自算,bot 仅登记;无离散触发事件消费,'
               'trigger 占位形(对齐 _portal_placeholder_spec 先例)'),
+    # 幸运喷雾:官方「我方小队的幸运一击伤害提高25%。」(cw_invest_data.py
+    # PlazaAugment 151201;出处持久锚不挂行号——该文件系 gen_plaza_invest.py
+    # 再生件,行号随重跑漂移)。战力类零响应登记(invest_effects.md 战力类
+    # 总览行「幸运」明列:不进经济模型;EffectKind.UNIT_BUFF「游戏侧自算,
+    # bot 仅登记零响应」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/团队力量·银/
+    # 应援团/正能量/完美开局/效率员工奖/基层贡献/榜样的力量·银/当头一棒
+    # 条目。「幸运一击伤害」= 战斗内独立乘区伤害增幅(幸运一击与暴击独立
+    # 计算,机制正本 = combat.md 幸运一击乘区节),非泛用强度、非双端盲区
+    # 形态:机制有正本承载,后继族卡禁转引「盲区」口径;「幸运一击」系战斗
+    # 机制名非召唤单位注册名(kernel 命中仅敌侧词缀克制映射/机制属性映射/
+    # 敌侧依赖面,与本卡注册名异键零耦合),敌侧词缀域零触碰。
+    '幸运喷雾': EffectSpec(
+        id='151201', name='幸运喷雾',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '151201')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(同「全队的希望」泛用属性 buff 登记形态);'
+              '全队幸运一击伤害 +25%(战斗内独立乘区,机制正本 combat.md '
+              '幸运一击乘区节,非盲区形态)游戏侧自算,bot 仅登记;'
+              '无离散触发事件消费,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
