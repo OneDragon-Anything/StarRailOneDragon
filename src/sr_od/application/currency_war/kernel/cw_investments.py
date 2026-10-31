@@ -59,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BENCH_REROLL_RIGHT3,
     BOARD_REWRITE_SELL_ALL,
     BOARD_REWRITE_UPGRADE_ALL,
+    EQUIPS_REROLL_SAME_QUALITY,
     BattlefieldEffect,
     CounterKey,
     DurationKind,
@@ -982,6 +983,30 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '换 BENCH_REROLL_LEFT6,双载荷裁决位(bench_reroll 需 '
               'BattlefieldEffect 载体、爆腿过 burst 桥需 EconomyEffect '
               '载体,EffectSpec 单 payload 字段不可并存)归族展开批先裁'),
+    # 公司军火更新·银:官方「每次进入新节点时，你物品栏里的装备变为同品质的
+    # 其他装备。获得1件随机简易装备。」(cw_invest_data.py:86,id 130101)。
+    # 双腿异注册面组合卡:变异腿 = 本条目(NODE_ENTER 持续触发,「物品栏装备
+    # 同品质变异」效果面首个登记条目 = 族模式卡);发放腿「获得1件随机简易
+    # 装备」= cw_gain_effects 泛化随机装备表行('简易' 行,与打捞人才库+
+    # 同池同形),两注册面各辖一腿零冲突(不经组合子:组合子辖同一效果体内
+    # 多腿,本卡两腿异效果体)。变异面零执行端(游戏侧节点进入自行变异,
+    # bot 备战帧 equips 整表观察收真值),登记腿三桥对本 payload 全零动作
+    # (no-op 回归哨 = 测试锁)。
+    '公司军火更新·银': EffectSpec(
+        id='130101', name='公司军火更新·银', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(equips_reroll=EQUIPS_REROLL_SAME_QUALITY),
+        duties=DutyFlags(track=True),
+        notes='物品栏装备同品质变异面零逻辑写、观察收口(effect-domain.md '
+              '§6.3 随机分支/§6.4 随机资产面);「同品质」=同 category 先验'
+              '(冶金炉 same_category 在册先例 tool_use.py:82,未证);变异'
+              '辖域类别集/是否排除自身/工具特殊类可变性未采证,零落码零消费'
+              ';拿卡当节点不变异(per_node_pick_node_grant.md,无立即措辞,'
+              'C 级佐证);duties 不设 predict(现役读链无节点进入前需预知'
+              '物品栏变异的消费面);发放腿=泛化随机装备表行(简易 1 件,'
+              '随机性由家族单键 strategy_random_equip_uniform 承载);族模式'
+              '卡:金 230601 展开腿2=简易 2 件/彩 330601 展开腿2=特权 1 件,'
+              '本条目 payload 复用同词表值'),
     # 市场干预:官方「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」。
     # payload 引 STRATEGY_ECONOMY 同一实例(单一源):free_refresh_burst=5 经
     # 获得链登记腿 burst 桥一次性发放(live/sim 同链,免费午餐 T-88 同形);

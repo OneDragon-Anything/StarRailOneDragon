@@ -316,6 +316,7 @@ STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS: tuple[str, ...] = (
 _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     '打捞人才库+': ('简易', 1),
     '买彩票': ('星徽', 1),
+    '公司军火更新·银': ('简易', 1),
 }
 
 

@@ -107,6 +107,9 @@ class BattlefieldEffect:
                                             # BOARD_REWRITE_*;写归属桥 =
                                             # apply_board_rewrite)
     bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;未建条目)
+    equips_reroll: str = ''                 # 物品栏装备同品质变异(公司军火更新族,
+                                            # 取值 = EQUIPS_REROLL_SAME_QUALITY;
+                                            # 金/彩未建条目;写归属 = 观察收口)
     counter_every: int = 0                  # 每 N 次刷新计数门槛(采购专员金 7/彩 5)
     first_merge_equip_junk: float = 0.0     # 每位面首次合成进阶装备变垃圾袋概率(变宝为废=0.5;
                                             # 随机面→不建逻辑写,观察收口)
@@ -199,6 +202,18 @@ BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售+再发牌
 BENCH_REROLL_RIGHT3: str = 'right3_same_cost'   # 备战席最右 3 位变为随机同费角色
 BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随机同费角色
                                                 # (未建条目)
+
+
+# ===== 物品栏装备同品质变异语义词表(BattlefieldEffect.equips_reroll 取值;
+# 防散落字符串)=====
+# 已登记条目 = 公司军火更新·银(cw_investments.STRATEGY_EFFECTS,官方文
+# cw_invest_data.py:86);变异面 = 随机分支零逻辑写、观察收口,写归属单一源 =
+# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# §6.3/§6.4 与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
+# furnace_mutate_pool 在册先例,tool_use 域),未证零消费。银/金/彩三卡
+# 变异腿同文共用本常量(金 230601/彩 330601 未建条目,差异全在发放腿)。
+EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备变为
+                                                       # 同品质的其他装备
 
 
 # 事件标记键(追踪端标记,非策略计数器;下划线前缀与策略计数器空间隔离)

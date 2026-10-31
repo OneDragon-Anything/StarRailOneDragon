@@ -330,7 +330,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 27 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 28 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -433,6 +433,26 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   反映每节点重掷);姊妹乱成一锅粥/+ 展开存在双载荷裁决位(重掷需 BattlefieldEffect、
   爆腿过 burst 桥需 EconomyEffect,EffectSpec 单 payload 字段不可并存),归族展开批
   先裁。
+
+#### 公司军火更新·银(130101)
+
+- **论断**:NODE_ENTER / while_held / BATTLEFIELD;duties = track;counter **不建**
+  (每节点变异无累计/剩余语义);变异面 = 随机分支零逻辑写、观察收口(§6.3/§6.4),
+  bot 零执行端代码,真值由下一备战帧 equips 整表观察(现役观察链)覆盖;「同品质」
+  = 同 category 先验(冶金炉 same_category 在册先例,未证);发放腿「获得1件随机
+  简易装备」= 泛化随机装备表行(简易 1 件),登记面分离。
+- **证据**:规格 cw_investments.py(`BattlefieldEffect(equips_reroll=
+  EQUIPS_REROLL_SAME_QUALITY)`,物品栏装备变异效果面首个登记条目 = 族模式卡);
+  官方原文 cw_invest_data.py:86「每次进入新节点时，你物品栏里的装备变为同品质的
+  其他装备。获得1件随机简易装备。」
+- **推理链**:「每次进入新节点时」= 节点进入持续触发,无剩余/门槛语义 → counter 空;
+  变异结果随机(§6.3 随机分支/§6.4 随机资产面)交由观察收尾,变异辖域类别集/是否
+  排除自身/工具特殊类可变性未采证不消费;拿卡当节点不变异(per_node_pick_node_grant.md,
+  无立即措辞,C 级佐证);duties 不设 predict(现役读链无节点进入前需预知物品栏变异的
+  消费面);双腿异注册面(变异腿 = 本条目,发放腿 = PICK_INVEST_EFFECTS 泛化表行)不经
+  组合子(组合子辖同一效果体内多腿);sim 变异面零建模(变换族既定边界,公司人才流动
+  同判);族模式卡:金(230601)/彩(330601)展开时本条目 payload 复用同词表值,差异
+  全在发放腿泛化表行。
 
 ### 动作计数族
 
