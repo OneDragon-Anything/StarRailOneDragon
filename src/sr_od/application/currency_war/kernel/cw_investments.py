@@ -1138,6 +1138,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(每有一个已激活的非独立羁绊 3% 前/后台强度,'
               '计数游戏侧自算,bot 仅登记);无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 应援团:官方「进入战斗时，如果后排至少有4个角色，我方小队速度增幅提高15%。」
+    # (cw_invest_data.py:99,PlazaAugment 150201)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/
+    # 团队力量·银 条目。条件「后排至少有4个角色」= 上阵后排计数(与备战栏
+    # 分立,drag_cw_char.py:39 _ROWS 三键;后排容量 6-9),进入战斗时由
+    # 游戏评估施加,bot 零消费(back_capacity_of 观察读口不接线);15%
+    # 速度增幅由游戏自算。
+    '应援团': EffectSpec(
+        id='150201', name='应援团',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150201')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(进入战斗时后排≥4 名小队 15% 速度增幅,'
+              '游戏侧自算,bot 仅登记);无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
