@@ -161,6 +161,10 @@ class EconomyEffect:
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
+    hp_instant: int = 0                   # 即时生命(健康充值 +30):选卡当场 hp 直加,
+                                          # 不 clip——sim 扣血绝对值制无上限消费
+                                          # (hp_max 字段缺位,缺口申报 = fields.md
+                                          # HP 面行),clip 属无消费端语义;0 = 无此腿
     # —— 合成/出售触发族(裁定;均为「正常成型路上
     #     白得」的被动经济,选卡正常评估,不围绕改打法)——
     gold_per_2star2cost_merge: int = 0    # 砂里淘金:合 2星2费 得砂金(可卖 ≈ 现金)
@@ -281,6 +285,11 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 变为N」= 选卡当场对连胜真值绝对赋值,无双端持续语义;世界腿 =
     # sim 选卡落地拍独立笔,live 观察覆盖兜底
     'streak_set',
+    # 一次性 hp 直给(选卡当场对 hp 真值 +N 直加,无双端持续语义;
+    # 一次性金族同款划界):世界腿 = sim 选卡落地拍独立笔,live 观察覆盖
+    # 兜底;不入现金通道——hp 定价通道作废正本(invest_effects.md 血金
+    # 互兑裁定),hp 永不折金
+    'hp_instant',
 })
 
 
@@ -597,6 +606,9 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——此处只建即时刷;位面开始段待建模
     '经验到账': EconomyEffect(xp_instant=10),
     '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
+    '健康充值': EconomyEffect(hp_instant=30),   # 即时 hp 腿(卡面数值直读);+30 上限半句
+                                                # hp_max 字段缺位零建模,缺口申报单一源 =
+                                                # fields.md HP 面行
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
     # 动态/血金互兑族
     '狸财经狸': EconomyEffect(interest_flat_per_node=2),
