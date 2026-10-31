@@ -1180,6 +1180,28 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'trigger 占位形(对齐 _portal_placeholder_spec 先例);'
               '能量上限基数=受益角色自身(装备同构措辞惯例推断,非 desc 逐字,'
               '游戏侧定义,bot 零响应)'),
+    # 完美开局:官方「战斗中，关卡进度小于40%时，我方小队前/后台强度提高40%。」
+    # (cw_invest_data.py:101,PlazaAugment 150501)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/
+    # 团队力量·银/应援团/正能量 条目。条件「关卡进度<40%」由游戏在战斗中
+    # 评估(战斗内进度条机制见 docs/game/currency_war/research/combat.md
+    # 「遭遇奖励=伤害进度达标制」条),读数定义游戏侧,bot 零消费不接线;
+    # 「前/后台」与代码词表「前排/后排」(drag_cw_char.py:39 _ROWS)字面
+    # 不同字,对应系判读非直译——全队两排泛用增幅无位置限定,零行为后果;
+    # 数值 40% 由游戏自算。
+    '完美开局': EffectSpec(
+        id='150501', name='完美开局',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150501')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(战斗中关卡进度<40% 小队前/后台强度提高40%,'
+              '条件与数值游戏侧自算,bot 仅登记;关卡进度读法定义游戏侧,'
+              '判读申报制不在读法间拍死);无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
