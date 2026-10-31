@@ -454,11 +454,12 @@ def merge_material_reject_reason(name: str, star: int,
 
     判据:``c_excl = same_star_count(name, star, bench∪deployed) − 1``
     (含自身全场域计数再扣 victim 自己)``≥ 1`` ⇒ 拒入资格集,拒因键
-    ``merge_material_guard``——与部署侧 ``cw_deploy_logic.
-    swap_sell_exclusion_reason`` 的拒因闭集**同名同键**(同一守卫语义
-    的两个卖出路径实现点;计数单一源 = ``same_star_count``,禁消费方
-    手搓同式)。适用范围 = bench 四卖出通道(M4 燃料/凑利息卖/支付变现/
-    换线归零),各通道原有资格谓词不动,只追加本子谓词。
+    ``merge_material_guard``——历史对偶位 = 部署侧 ``cw_deploy_logic.
+    swap_sell_exclusion_reason`` 的同名拒因键(kernel swap 机器已随部署
+    统一批丁收编删除,该键现役唯一源 = 本函数;计数单一源 =
+    ``same_star_count``,禁消费方手搓同式)。适用范围 = bench 四卖出
+    通道(M4 燃料/凑利息卖/支付变现/换线归零),各通道原有资格谓词
+    不动,只追加本子谓词。
     数学依据:同名同星满 3 即自动升星且不变量「场上同名同星 ≤1」
     (merge_mechanics.md §1/§2)⇒ c_excl≥2 稳态不可达,守卫生效域
     恒为 c_excl=1(2/3 合成进度,差最后一张)——卖出即销毁距 2★

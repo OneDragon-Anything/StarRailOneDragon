@@ -250,8 +250,6 @@ class StrategyState:
     v3_disclosure_key: tuple[int, int] | None = None
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即逻辑态后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
-    # M1″ seam 门唯一写点(mandate.py;值源 = M1P_SEAM_VERIFIED)。
-    cw4_m1p_seam_verified: bool = False
     # 利息上限覆写单一源 = session.active_strategies 经 aggregate_economy
     # 聚合(cw_economy.cap_resolved_of_session 消费)。
 
@@ -288,18 +286,10 @@ class StrategyState:
 
     # ===== 账外补充·第二波(实施收尾扫描时按 §6.1 并入的策略侧动态
     # 属性;写入端均在 mandate_v1,消费面含执行侧经访问函数只读)=====
-    # M1″ pending 分支(mandate 写,deploy 消费后清 None)。
-    cw4_m1p_arm_pending: object = None
-    # M1″ 计划载荷 pending(mandate 写):
-    # {'sell': [victim 名], 'up': [上序名单],
-    # 'arm': 胜出臂标注(transition=双轨域 / bond_gate=转型域组计划),
-    # 'occ': 计划时点板占用数}。
-    # 消费半停用(随部署机)(原部署段核对读端已删),现役零读端暴露
-    # (已登记申报 = projection_contract.md §4.3);载荷仅作核对与快路径
-    # 准入的历史形态申报,**不改卖出仲裁权**(卖谁 = 动作发出点按同一判定集
-    # 现算,已登记分工维持,分工裁决)。旧 'trans_domain' 键随域谓词
-    # 退役删除(design §2.3.1),域事实改由 'arm' 可判定。
-    cw4_m1p_plan_pending: object = None
+    # (M1″ pending 载体 cw4_m1p_arm_pending/cw4_m1p_plan_pending 与 seam
+    #  门旗 cw4_m1p_seam_verified 已随部署统一批丁丁收编删除——
+    #  emit_swap_redeploy 发射缝随 kernel swap 机器退役,载体失去判读
+    #  对象;unified-deploy-order §2.7/§4。)
     # 素材滞留首见轮账(名 → 首见帧轮次)。
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。

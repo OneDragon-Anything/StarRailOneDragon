@@ -84,7 +84,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     get_comp,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    deploy_target_sets,
     deployed_bond_counts,
     record_fresh_buy,
 )
@@ -130,6 +129,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     ShopCard,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    deploy_plan,
     entry,
     mandate,
     proof,
@@ -154,9 +154,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
     sell_line_membership,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-    can_deploy_single,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
@@ -1390,9 +1387,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         """
         from types import SimpleNamespace
 
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            deployed_bond_counts,
-        )
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             bench_slot_unit,
         )
@@ -1405,7 +1399,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             readiness_launch_decision,
         )
         from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-            has_deployable,
+            launch_deploy_pending_virtual,
         )
         from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
             line_members,
@@ -1459,7 +1453,8 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             )
             _decision = readiness_launch_decision(
                 _panel, _comp, line_members=line_members,
-                deploy_plan_available_fn=has_deployable)
+                deploy_pending_fn=lambda _p: launch_deploy_pending_virtual(
+                    session, gs, _r_bench, _t_units))
             if not _decision.get('armed'):
                 return True   # 非受限态,无追加要求
         except Exception:   # noqa: BLE001  面板缺列/评估异常 = fail-closed
@@ -1743,16 +1738,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         elif _pd_vac < 1:
             _count('press_buy_deployable_no_vacancy')
         else:
-            _pd_tgt, _pd_fw = deploy_target_sets(k)
-            try:
-                _pd_lfs = cw_intention.locked_faction_scope(_ist) \
-                    if _ist is not None else frozenset()
-            except Exception:   # noqa: BLE001 兜底 best-effort(现行)
-                _pd_lfs = frozenset()
-            try:
-                _pd_rf = cw_intention.locked_line_recipe_floor_conflict(_ist)
-            except Exception:   # noqa: BLE001 豁免语境 fail-closed(现行)
-                _pd_rf = False
+            # 可上场预检 = 快照+X 跑统一搜索、X ∈ target 判定(阶段 5/6 丁
+            # 改接;旧七桶 can_deploy_single 围栏预检随选人族收编,
+            # deploy_target_sets/fw_carry/locked_faction_scope/配方底线
+            # 豁免入参同批退役——unified-deploy-order §4 can_deploy_single 行)。
             for card in _buy_view('press_buy_deployable'):
                 name = card.name or ''
                 if not name or name in obligation_members:
@@ -1768,24 +1757,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         and refund_full_star_ok(1, cost):
                     _count('press_buy_deployable_filler_excluded')
                     continue
-                _pd_mch = get_char(name)
-                _pd_cand = BenchSlot(
-                    kind='unit',
-                    unit=Unit(char_id=name, star=(card.star or 1)))
                 try:
-                    _pd_ok, _pd_why = can_deploy_single(
-                        _pd_cand, bench,
-                        deployed_cids=set(deployed_names),
-                        deployed_fac=deployed_bond_counts(
-                            set(deployed_names)),
-                        board=deployed_bond_counts(set(deployed_names)),
-                        cap=(_cap_now if _cap_now else 10 ** 6),
-                        target_factions=_pd_tgt,
-                        target_cores=set(),
-                        fw_carry=_pd_fw,
-                        locked_factions=_pd_lfs or frozenset(),
-                        recipe_floor_lock_exempt=_pd_rf)
-                except Exception:   # noqa: BLE001 查询不可得 fail 向
+                    _pd_ok, _pd_why = deploy_plan.can_deploy_single_unified(
+                        session, gs, name, int(card.star or 1))
+                except Exception:   # noqa: BLE001  查询不可得 fail 向
                     _pd_ok, _pd_why = False, 'precheck_unavailable'
                 if not _pd_ok:
                     _count('press_buy_deployable_fenced')
@@ -1954,38 +1929,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if gold - cost < s_reserve:
                     _count('below_reserve')
                     continue
-                _cand_bc = BenchSlot(
-                    kind='unit',
-                    unit=Unit(char_id=name, star=1))
-                _tgt2, _fw2 = deploy_target_sets(k)
+                # 可上场预检改接统一搜索(阶段 5/6 丁;旧七桶
+                # can_deploy_single + deploy_target_sets/fw_carry/
+                # locked_faction_scope/配方底线豁免入参随选人族收编,
+                # unified-deploy-order §4 can_deploy_single 行)。
                 try:
-                    _lfs = cw_intention.locked_faction_scope(
-                        _ist) if _ist is not None \
-                        else frozenset()
-                except Exception:   # noqa: BLE001 兜底 best-effort
-                    _lfs = frozenset()
-                try:
-                    _rf_ctx = cw_intention \
-                        .locked_line_recipe_floor_conflict(_ist)
-                except Exception:   # noqa: BLE001 豁免语境 fail-closed
-                    _rf_ctx = False
-                try:
-                    _ff_ok, _ff_why = can_deploy_single(
-                        _cand_bc, bench,
-                        deployed_cids=set(deployed_names),
-                        deployed_fac=deployed_bond_counts(
-                            set(deployed_names)),
-                        board=deployed_bond_counts(set(deployed_names)),
-                        cap=(_cap_now if _cap_now
-                             else 10 ** 6),
-                        target_factions=_tgt2,
-                        target_cores=set(),
-                        fw_carry=_fw2,
-                        locked_factions=_lfs or frozenset(),
-                        recipe_floor_lock_exempt=_rf_ctx)
-                except Exception:   # noqa: BLE001 查询不可得
-                    _ff_ok, _ff_why = False, \
-                        'precheck_unavailable'
+                    _ff_ok, _ff_why = deploy_plan.can_deploy_single_unified(
+                        session, gs, name, 1)
+                except Exception:   # noqa: BLE001  查询不可得
+                    _ff_ok, _ff_why = False, 'precheck_unavailable'
                 if not _ff_ok:
                     if _ff_why == 'precheck_unavailable':
                         _count('fuel_filler_stall_'

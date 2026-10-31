@@ -135,9 +135,10 @@ class SellSceneSpec:
 #:   dismantle §2——六步流程直通 ``priority.sell_order``,不经本评估器);
 #: - ``c1_make_room`` 行已随 C1 单卡核心支退役删除(3.4,dismantle §2
 #:   场景死行);
-#: - ``deploy_swap`` 冻结遗留行已随旧价值函数退役删除(3.4——部署换人
-#:   域判据本体 = kernel swap_sell_exclusion_reason 直接消费,不经本
-#:   评估器;评估路径生产零消费面,价值函数拆除时随批处置);
+#: - ``deploy_swap`` 冻结遗留行已随旧价值函数退役删除(3.4;kernel
+#:   swap 机器(swap_sell_exclusion_reason 含)亦已随部署统一批丁整链
+#:   收编——unified-deploy-order §2.7/§4,被换下者回 bench 由统一让位序
+#:   处置,部署换人域无独立卖出资格面);
 #: - ``levelup_liquidate_prep`` 行已随升级凑金链整删退役(用户裁定
 #:   2026-10-30:不存在升级卖牌凑金——保持最大压牌库,钱够了再升;
 #:   金不足帧恒 defer 等钱,零卖出动作);

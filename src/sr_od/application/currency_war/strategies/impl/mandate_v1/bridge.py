@@ -106,7 +106,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         CwActionStartBattleParam,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        has_deployable,
+        launch_deploy_pending,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
@@ -114,7 +114,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     _st = state_of(gs)
     _decision = readiness_launch_decision(
         gs, getattr(_st, 'target_comp', None), line_members=line_members,
-        deploy_plan_available_fn=has_deployable)
+        deploy_pending_fn=lambda _gs: launch_deploy_pending(gs, _gs))
     if not _decision.get('armed'):
         _st.cw4_launch_spend_visited = False   # 出战就绪段结束,段旗复位
         return None
@@ -174,14 +174,14 @@ def launch_restricted_session_active(gs: GameState) -> bool:
         readiness_launch_decision,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        has_deployable,
+        launch_deploy_pending,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
     _decision = readiness_launch_decision(
         gs, getattr(state_of(gs), 'target_comp', None), line_members=line_members,
-        deploy_plan_available_fn=has_deployable)
+        deploy_pending_fn=lambda _gs: launch_deploy_pending(gs, _gs))
     if not _decision.get('armed'):
         return False
     cap = cap_resolved_of_session(gs)

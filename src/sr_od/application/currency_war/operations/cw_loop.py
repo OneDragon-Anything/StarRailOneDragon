@@ -151,8 +151,8 @@ def locked_resume_sync_and_battle(op, ctx):
     策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
     CwActionStartBattleParam,板面调整被跳过(实证:恢复局首战快照 board_before 为空
     ——部署面零执行)。本函数在 CwActionStartBattleParam 前插一次 **部署原子序同步步**
-    (RunDeploy 组合壳已停用,按策略层部署计划现算逐
-    move 发 CwActionDeployMoveParam——板空时计划恒空,与零商店交互形态同构;锁定
+    (按策略层部署计划现算逐 move 发统一拖动/换星直卖原子——阶段 5/6 丁
+    起计划 = 统一部署搜索定型 + 差分执行器;板空时计划恒空,与零商店交互形态同构;锁定
     局「商店探针零响应」禁令只覆盖商店域,部署面不受覆盖)。
 
     证据位语义(最严读法申报「发出即写」):同步步
@@ -205,9 +205,9 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
       battle):首战前插备战同步步,**发出即置位**证据位
       ``op._cw_locked_sync_done``(回执已停用,失败概念随之消解);
-      锁定确认分支复位证据位。同步步载体 = CwActionDeployMoveParam 原子序(
-      RunDeploy 组合壳已停用,按策略层部署计划现算逐 move 发;
-      恢复局卖出通道整体跳过语义不变——board 未观察时计划恒空)。
+      锁定确认分支复位证据位。同步步载体 = 统一拖动/换星直卖原子序
+      (按策略层部署计划现算逐 move 发;恢复局卖出通道整体跳过语义
+      不变——board 未观察时计划恒空)。
     - ``sync_once=False``(达标分支面,调用面 = 策略层前置动作发出点):
       **不过标志**——每达标帧都部署原子序 + CwActionStartBattleParam(部署面现读重建,
       已同步形态下零 move 即零待部署;标志只覆盖恢复局面,达标分支第二次发出
@@ -240,7 +240,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
                     ex.execute(_mv)   # 机械执行无返回
                 # 发出即写(申报;回执已停用,失败概念消解)
                 op._cw_locked_sync_done = True
-                log.info('[cw-loop] 恢复局备战同步步(CwActionDeployMoveParam×%d)已发出: %s',
+                log.info('[cw-loop] 恢复局备战同步步(部署原子×%d)已发出: %s',
                          len(_moves), getattr(ex, 'last_detail', ''))
             else:
                 log.debug('[cw-loop] 恢复局同步步已置位,跳过部署原子序')
@@ -265,29 +265,10 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
         getattr(ex, 'last_detail', '')
 
 
-def readiness_admission_report(state, comp) -> dict:
-    """达标分支 G1 准入预估(§9.2 三元+victim 收尾,动作发出面暴露用)。
-
-    实现单一源 = ``kernel.cw_launch_admission.launch_admission_report``
-    (动作发出面观测批迁出:sim 桶不可依 app 层——包依赖矩阵 LEGAL_EDGES,
-    纯判据入 kernel 后 sim 后端/cw_loop/测试三方共用;线成员谓词由本
-    调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
-    **帧对齐说明**(预估源 = 容器单例 game_state_of,装配源迁移
-    ——旧 last_state 滞后帧+过渡桥装箱停用;单例与滞后帧同为备战观察
-    写端刷新,预估暴露非拦截,一轮滞后语义本就可接受)见彼处 docstring。
-    ``state`` = session(容器单例取源)。
-    """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        game_state_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_launch_admission import (
-        launch_admission_report,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-        line_members,
-    )
-    return launch_admission_report(game_state_of(state), comp,
-                                   line_members=line_members)
+# (达标分支 G1 准入预估 readiness_admission_report 与 deploy_swap_no_victim
+#  计数位已随部署统一批丁收编删除:统一部署搜索下板满帧经交换交互上场,
+#  「无合格 victim → 出战无腾位」形态结构性不存在——unified-deploy-order
+#  §2.7/§4 M4 姊妹出口行;victim 资格判据面的收编随 kernel swap 机器批。)
 
 
 def _launch_screen_recheck(op, ctx) -> tuple[bool, Any]:
@@ -385,23 +366,6 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
     if _ov_hit is not None:
         return False, f'readiness_overlay_hold:{_ov_hit}'
     if face == 'armed':
-        _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-        try:
-            _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
-            if _sess is not None and _tc_adm is not None:
-                _adm = readiness_admission_report(_sess, _tc_adm)
-                if (_adm['board_full'] and _adm['bench_core_waiting']
-                        and _adm['victim_missing']):
-                    counters = getattr(strategy_state_of(_sess),
-                                       'cw4_counters', None)
-                    if isinstance(counters, dict):
-                        counters['deploy_swap_no_victim'] = \
-                            counters.get('deploy_swap_no_victim', 0) + 1
-                    log.warning('[cw!][loop] 达标臂 G1:板满 ∧ bench core '
-                                '待上 ∧ 无合格 victim → 本帧出战无腾位'
-                                '(显影,deploy_swap_no_victim)')
-        except Exception as e:  # noqa: BLE001  准入预估 best-effort
-            log.debug('[cw-loop] G1 准入预估失败(不阻塞): %s', e)
         return launch_prepared_battle(op, ctx, sync_once=False)
     return launch_prepared_battle(op, ctx, sync_once=True)
 

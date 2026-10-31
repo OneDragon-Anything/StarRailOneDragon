@@ -111,6 +111,26 @@ def deploy_diff_actions(
     return out
 
 
+def deploy_diff_target_actions(session, gs: GameState,
+                               target: dict[str, tuple[str, int]]) -> list:
+    """目标板 → 差分动作序的 session 感知入口(fresh 拦截账本自动装配;
+    第 6 步常规部署 / 计划游标驱板 / 出战链部署原子序三消费面共用,
+    禁各面自写 fresh 装配)。
+
+    定型收敛(target 空 = fail-closed 容量矛盾 / diff 空 = 已就位)→
+    返回 [](消费面零动作形态)。"""
+    if not target:
+        return []
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        fresh_buys_of,
+    )
+    try:
+        fresh = frozenset(fresh_buys_of(session))
+    except Exception:   # noqa: BLE001  新鲜度账本缺读 = 无 fresh 面
+        fresh = frozenset()
+    return deploy_diff_actions(gs, target, fresh=fresh)
+
+
 def _cell(u) -> tuple[str, int] | None:
     """场上 Unit → (名, 星);空槽/未知件(char_id 空)→ 标记保留
     (未知件占格不可挤,D3-13;用 (None, 0) 哨兵区分空槽)。"""

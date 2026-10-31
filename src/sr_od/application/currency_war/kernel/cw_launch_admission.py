@@ -3,31 +3,26 @@
 单一实现居 kernel(只依 kernel(cw_line_defs/cw_state)与 data 注册表):
 消费面(生产 cw_loop 调用面/测试)共用,零第二份。
 
-victim 资格单一源 = offtarget_sell_allowed fenced 分支全条件(判据语义
-见其 docstring,两处实现一致);cw_op_deploy 保留同名
-re-export,既有消费路径(生产 deploy 卖出分支/测试)零迁移。
-
 出战就绪质量合取:达标分支判据 = 配方完备(readiness_form_ok)
-∧(板面支撑满额 ∨ 部署计划不可得 fail-open)——质量维只消费 B_t 通道
-支撑结构派生量(目标线支撑计数/槽位占用/部署计划存在性;支撑判定 =
+∧(板面支撑满额 ∨ 部署差分不在途 fail-open)——质量维只消费 B_t 通道
+支撑结构派生量(目标线支撑计数/槽位占用/部署差分在途;支撑判定 =
 阵容自家核准集 core∪shared ∪ 外部阵营视图,全机制定义量零自由参数),
 禁 2★ 计数/装备覆盖/强度评分直入(00 §1 禁战力建模 + P62 form_score
 饱和零信息已证)。
+
+部署差分在途谓词(``deploy_pending_fn`` 注入;部署统一批丁换语义,原
+``has_deployable`` 七桶判空退役——unified-deploy-order §4 发射抑制谓词
+行):语义 = 统一部署搜索定型 + 差分执行器对当前容器 **diff 非空**
+(还有部署动作在途 → 质量推迟帧让部署收敛);注入实现在策略层
+deploy_plan(``launch_deploy_pending`` 族,含推判重放的虚拟面板路径,
+kernel 层禁 strategies 直引的依赖倒置契约同 line_members)。
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
-    bench_entries_of,
     deployed_rows_of,
-    max_units_of,
-)
-from sr_od.application.currency_war.kernel.cw_line_defs import (
-    ENGINE_FACTIONS as _ENGINE_FENCE,
-)
-from sr_od.application.currency_war.kernel.cw_line_defs import (
-    RECIPE_FACTIONS as _RECIPE,
 )
 
 if TYPE_CHECKING:
@@ -38,75 +33,13 @@ if TYPE_CHECKING:
         GameState,
     )
 
-# 部署围栏集 = RECIPE ∪ ENGINE(桥派生单一源 = cw_line_defs;r357 收束:
-# 围栏必须随桥派生集走,局部 frozenset 双源已被 r271 批清退)。
-# cw_op_deploy._DEPLOY_FENCE 自本常量别名(消费路径兼容,实现单一)。
-DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
-
 # 质量闸观测分键名(单一源;写点 = cw_loop 达标
 # 分支判定位,best-effort sink,待标定①载体)——消费面禁
 # 字面量散写(三审07轮 C2),键名改这里即全链跟随。
 LAUNCH_QUALITY_DEFER_FRAMES_KEY: str = 'launch_quality_defer_frames'
 #: 质量评估异常帧分键(fail-open 暴露;出战就绪∧quality_eval_error 帧,
-# 与「配方不完备」常态帧单义区分,残量禁静默)。
+#: 与「配方不完备」常态帧单义区分,残量禁静默)。
 LAUNCH_QUALITY_EVAL_ERROR_KEY: str = 'launch_quality_eval_error'
-
-
-def offtarget_sell_allowed(char_id: str, bonds: set[str],
-                           target_factions: set[str],
-                           target_cores: set[str], *,
-                           fenced_offline_sellable: bool = False,
-                           protect_names: frozenset[str] = frozenset()
-                           ) -> bool:
-    """/:off-target 卖出候选判据(纯函数,测试面)。
-
-    run 26 已实测确认(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
-    off-target,把买/演进层仍在买入的引擎·配方体系件(仙舟三人组:藿藿×3/
-    饮月×2/爻光×1)反复卖出——同期商店 plan 不停 ``Buy(仙舟/...)`` = 买→卖→买
-    振荡(两层目标视图分歧:deploy 看终局阵容,买/演进层看意向体系对/骨架纪律)。
-    振荡熔断:**引擎/配方体系件(``DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
-    围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
-    同源反向。真要换人走演进层显式 CwActionSellDeployedParam 原子序(有保护集分级,
-    ;原 CompTransaction 事务载体已停用),不归 deploy 的机会性腾位通道管。
-
-    换阵卖出义务分支(板满换阵死锁修复;第七局 r9 实证):
-    ``fenced_offline_sellable=True`` 时,off-line 的引擎/配方件(**bonds ∌
-    target、∉ protect_names**)让位可卖。依据:熔断防的振荡前提 =「买/演进层
-    仍在买入该体系件」;线已成型(fp=1.00,单一源 ``cw_comps.form_progress``)
-    后买侧对旧线 fenced 件已无需求,保留保护只剩闭死腾位通道的副作用
-    (艾丝妲=旧线持续伤害/黑塔被护 → sold 0/2 → RunDeploy 单签名守卫停机)。
-    ``protect_names`` = 新线 core∪shared(禁卖护栏不因换阵解除,P41②口径;
-    core 件本就被 ``target_cores`` 挡,shared 件经本参显式兜住)。target 单位
-    判定(阵营/流派交集)在两分支下都不变。
-    """
-    if char_id and (char_id in target_cores or char_id in protect_names):
-        return False   # core/新线 core∪shared 保留(live 花火误卖根由;P41②)
-    if bonds & target_factions:
-        return False   # target 单位,保留
-    if fenced_offline_sellable:
-        return True    # 换阵卖出义务分支:off-line 引擎/配方件让位(线已成型)
-    # 引擎/配方体系件恒不卖(振荡熔断)
-    return not (bonds & DEPLOY_FENCE)
-
-
-def protect_names_of(comp: Comp) -> frozenset[str]:
-    """换阵卖出义务分支的保护域(新线禁卖集)= core∪shared∪替班者全集。
-
-    替班者分支依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
-    转副C沉淀』」(cw_comps)——卖替班者本就违替班语义。仅 core∪shared
-    时存在保护域缺口:替班者凭 substitute_plan 直入买面义务集
-    (``locked_buy_membership`` → ``_line_hoard``),不经任何羁绊检查,
-    可对阵容整体 off-line 且 fenced(P59 注册表反例:黄泉减益×卡芙卡,
-    bonds={持续伤害,星核猎手} ∩ all_factions=∅)→ 义务分支判可卖,同一
-    身份 M2 义务买 ↔ 换阵分支卖 = 买↔卖振荡。新增替班者自动入保护域。
-    """
-    names = set(getattr(comp, 'core_chars', []) or []) \
-        | set(getattr(comp, 'shared_chars', []) or [])
-    for sub in getattr(comp, 'substitute_plan', None) or []:
-        name = sub.get('替班者') if isinstance(sub, dict) else None
-        if name:
-            names.add(name)
-    return frozenset(names)
 
 
 def readiness_form_ok(gs: GameState | None, comp: Comp | None) -> bool:
@@ -124,8 +57,8 @@ def readiness_form_ok(gs: GameState | None, comp: Comp | None) -> bool:
 
 
 def launch_board_quality_report(gs: GameState, comp: Comp, *,
-                                deploy_plan_available_fn: Callable[
-                                    [...], bool]) -> dict:
+                                deploy_pending_fn: Callable[[GameState], bool]
+                                ) -> dict:
     """出战就绪质量维报告(纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
@@ -141,27 +74,21 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     - ``occupied`` = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,
       行域本身即紧凑占用序,含未识别占位单位)。支撑计数 ≤ 占用数恒成立,
       判据下限取该平凡上界 ⇒
-      ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。四体系线阵容
-      该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
-      ——披露口径本体温测零改,本报告附 ``b_t_disclosure``
-      供判读对账。
-    - ``deploy_plan_available`` = 注入的部署计划可入性谓词(单一源 =
-      mandate_v1 deploy_plan.has_deployable;kernel 层禁 strategies 直引,
-      由调用方注入同一函数对象——依赖倒置契约同 line_members)。
+      ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。
+    - ``deploy_pending`` = 注入的部署差分在途谓词(单一源 =
+      mandate_v1 deploy_plan.launch_deploy_pending 族;kernel 层禁
+      strategies 直引,由调用方注入同一函数对象——依赖倒置契约同
+      line_members)。
 
-    fail-open 语义:线外件在场但部署计划不可得 ⇒
+    fail-open 语义:线外件在场但部署差分不在途 ⇒
     质量目标不可达帧,降格为配方完备发出(「不可达不关闸」防死锁教义);
     推迟帧
-    (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
-    部署原子序推进换人/填板;换人触发有限性载体 = 转型域换人
-    收敛不变式,math_proofs P98),金尽稳态由
+    (``defer_by_quality``)必有部署动作在途(差分非空 ⇒ 下环
+    统一拖动序推进换人/填板;换人触发有限性载体 = 统一部署搜索
+    定型的稳定键/rng 局面哈希播种,unified-deploy-order §1),金尽稳态由
     收益耗尽分支兜底(判据与 出战就绪零耦合)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        board_target_line_weight,
-        deployed_bond_counts,
-    )
     front, back = deployed_rows_of(gs)
     deployed = [d for d in (*front, *back) if d is not None]
     view = set(getattr(comp, 'all_factions', None) or [])
@@ -182,45 +109,27 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
         if (set(ch.factions) | set(ch.flows)) & view:
             line_weight += 1
     occupied = len(deployed)
-    cids = {d.char_id for d in deployed if d.char_id}
-    try:
-        cap = int(max_units_of(gs))
-    except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
-        cap = 10 ** 6
-    plan_available = deploy_plan_available_fn(
-        bench_entries_of(gs),
-        deployed_cids=cids,
-        deployed_fac=deployed_bond_counts(cids),
-        board=dict(gs.board.value or {}),
-        cap=cap,
-        target_factions=set(getattr(comp, 'factions', None) or ()),
-        target_cores=set(getattr(comp, 'core_chars', None) or ()),
-    )
+    plan_available = bool(deploy_pending_fn(gs))
     load_bearing_full = line_weight >= occupied
     return {'load_bearing_full': load_bearing_full,
-            'deploy_plan_available': bool(plan_available),
+            'deploy_plan_available': plan_available,
             'line_weight': line_weight, 'occupied': occupied,
-            'b_t_disclosure': board_target_line_weight(
-                [d.char_id for d in deployed if d.char_id]),
             'defer_by_quality': not load_bearing_full
-                                and bool(plan_available)}
+                                and plan_available}
 
 
 def readiness_launch_decision(gs: GameState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]],
-                              deploy_plan_available_fn: Callable[
-                                  [...], bool]) -> dict:
+                              deploy_pending_fn: Callable[[GameState], bool]
+                              ) -> dict:
     """达标分支判据核(单一源;sim 决策下沉两小批之①上收;
     出战就绪质量合取见行内申报)。
 
     返回 dict:``armed``(发出判据成立 = 配方完备 ``readiness_form_ok``
-    ∧〔板面支撑满额 ∨ 部署计划不可得 fail-open〕,质量维定义与防死锁
-    语义见 :func:`launch_board_quality_report`/——配方分支阈值
-    唯一面 = form_progress 语义,质量分支零自由参数)、``auth_basis``
+    ∧〔板面支撑满额 ∨ 部署差分不在途 fail-open〕,质量维定义与防死锁
+    语义见 :func:`launch_board_quality_report`)、``auth_basis``
     (触发分支名,与生产 LaunchBattle/CwActionLevelUpParam.auth_basis 观测同键名族)、
-    ``admission``(出战就绪时的 G1 准入三元 = ``launch_admission_report``;
-    best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
-    出战就绪)、``quality``(配方完备帧的质量维报告;
+    ``quality``(配方完备帧的质量维报告;
     None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
     出战就绪维持配方分支结果,防死锁优先)、
     ``quality_eval_error``(评估异常暴露旗:True = quality=None 系
@@ -236,20 +145,20 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
     :param line_members: 线成员谓词注入参,单一源 =
         strategies.impl.mandate_v1.statefn.predicates.line_members(kernel
         桶禁直引 strategies,由调用方注入同一函数对象——与
-        launch_admission_report 同契约)。
-    :param deploy_plan_available_fn: 部署计划可入性谓词注入参,单一源 =
-        strategies.impl.mandate_v1.deploy_plan.has_deployable(kernel 层
-        禁直引 strategies,由调用方注入同一函数对象——依赖倒置契约同
-        line_members;benchchar-retirement P3 起选人谓词迁策略层)。
+        ``readiness_form_ok`` 消费面同契约)。
+    :param deploy_pending_fn: 部署差分在途谓词注入参,单一源 =
+        strategies.impl.mandate_v1.deploy_plan.launch_deploy_pending 族
+        (kernel 层禁直引 strategies,由调用方注入同一函数对象——依赖
+        倒置契约同 line_members;语义 = 统一部署搜索定型 + 差分非空,
+        推判重放经 ``launch_deploy_pending_virtual`` 同族注入)。
     """
     armed = readiness_form_ok(gs, comp)
     quality = None
     quality_eval_error = False
-    admission = None
     if armed:
         try:
             quality = launch_board_quality_report(
-                gs, comp, deploy_plan_available_fn=deploy_plan_available_fn)
+                gs, comp, deploy_pending_fn=deploy_pending_fn)
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
             # 不关闸,防死锁优先)
             quality = None
@@ -259,91 +168,15 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
         armed = True if quality is None else (
             quality['load_bearing_full']
             or not quality['deploy_plan_available'])
-    if armed:
-        try:
-            admission = launch_admission_report(
-                gs, comp, line_members=line_members)
-        except Exception:   # noqa: BLE001  准入预估 best-effort(观测不炸)
-            admission = None
     return {'armed': armed, 'auth_basis': 'readiness_form_ok',
-            'admission': admission, 'quality': quality,
+            'quality': quality,
             'quality_eval_error': quality_eval_error}
 
 
-def launch_admission_report(gs: GameState, comp: Comp, *,
-                            line_members: Callable[[Comp], set[str]]) -> dict:
-    """达标分支 G1 准入预估(§9.2 准入三元 + victim 收束,动作发出面暴露用)。
-
-    返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
-    数 ``state.max_units()``;旧口径 = 物理槽位总数 DEPLOYED_CAPACITY,level 驱动 cap 全域
-    <10 ⇒ 该分键结构性不暴露;换占用数 vs max_units 与 swap 分支同一裁决
-    先例(禁物理门),占用数单一源 = 容器行成员计数)、``bench_core_waiting``(三元②:bench 存在线内
-    待上场件——口径 = core∪shared(line_members)∨ 阵营交集,
-    与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
-    victim)。
-
-    victim 资格单一源 = offtarget_sell_allowed fenced 分支全条件(off-line
-    ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者)。**不附 1★ 全退门**——
-    换人卖出无退款资格前置,提案侧多一道门只会造成 victim_missing 误暴露。
-    提案侧预估基于期望态现读;执行时刻机械单发零现读,落地归观察对账
-    (预估与执行间无现读重建面)。
-    三元不全/victim 缺失**只暴露不拦截**(出战优先;准入是观测面,
-    非第二道闸)。
-
-    :param line_members: 线成员谓词(注入参;单一源 =
-        strategies.impl.mandate_v1.statefn.predicates.line_members——
-        本模块在 kernel 层,包依赖矩阵禁 kernel→strategies 直引,由
-        调用方注入同一函数对象,禁各调用面自写第二实现)。
-    """
-    from sr_od.application.currency_war.data.cw_chars import get_char
-
-    # 容器单位域现读(P4 容器形):deployed = 行域紧缩序,bench = 占席
-    # 条目域(BenchSlot,身份经解包口取)。
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
-    front, back = deployed_rows_of(gs)
-    deployed = [d for d in (*front, *back) if d is not None]
-    _bench_entries = bench_entries_of(gs)
-
-    def _bench_name(b) -> str:
-        u = bench_slot_unit(b)
-        return (getattr(u, 'char_id', '') or '') if u is not None else ''
-    cores = set(getattr(comp, 'core_chars', []) or [])
-    line = set(line_members(comp))
-    protect = protect_names_of(comp)
-    t_factions = set(getattr(comp, 'all_factions', []) or [])
-    # 板满口径 = 占用数 vs max_units(与 swap 分支同裁决:禁物理槽位门);
-    # cap 缺读 = 质量闸兜底同口径(不暴露板满)。
-    try:
-        _cap = int(max_units_of(gs))
-    except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
-        _cap = 10 ** 6
-    board_full = len(deployed) >= _cap
-    bench_core_waiting = False
-    for b in _bench_entries:
-        name = _bench_name(b)
-        if name in line:
-            bench_core_waiting = True
-            break
-        ch = get_char(name)
-        if ch is not None and (set(ch.factions) | set(ch.flows)) & t_factions:
-            bench_core_waiting = True
-            break
-    victim_missing = True
-    for d in deployed:
-        name = d.char_id or ''
-        if not name or name in cores or name in protect:
-            continue
-        ch = get_char(name)
-        if ch is None:
-            continue
-        bonds = set(ch.factions) | set(ch.flows)
-        if not offtarget_sell_allowed(name, bonds, t_factions, cores,
-                                      fenced_offline_sellable=True,
-                                      protect_names=protect):
-            continue
-        victim_missing = False
-        break
-    return {'board_full': board_full, 'bench_core_waiting': bench_core_waiting,
-            'victim_missing': victim_missing}
+# (G1 准入预估 launch_admission_report(victim 三元:board_full/bench_
+#  core_waiting/victim_missing)与 victim 资格单一源 offtarget_sell_allowed/
+#  protect_names_of、部署围栏 DEPLOY_FENCE(振荡熔断份)已随部署统一批
+#  丁收编删除:统一部署搜索下板满帧 bench core 经交换交互上场,「无合格
+#  victim → 出战无腾位」形态结构性不存在,消费位(cw_loop 达标臂 G1
+#  预估块)同批删除——unified-deploy-order §2.7/§4;部署在途观测改由
+#  质量维 deploy_pending 承载。)

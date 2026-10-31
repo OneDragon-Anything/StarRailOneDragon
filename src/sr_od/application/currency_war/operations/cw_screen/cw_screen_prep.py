@@ -591,8 +591,14 @@ class CwScreenPrep(CwOperation):
         纯观察审计族)不在本通道,仍归观察 node;帧代次标注归决策循环
         写点(本方法零帧代次写);event_overlay 由调用方裁决(动作 op 抛
         CwObsOverlayBail 返回主循环重新分发)。唯一调用方 = CwActionObsOp。
+
+        sim 端口改道与单轮入口观察同款(:meth:`_observe_node` 的
+        ``sim_or_live_observation``):sim 装配后由后端观察生成器直出——
+        live 观察链含二次截图兜底(read_shop_cards 商店开态门),sim
+        controller 桩触碰即炸,禁直跑 live 链。
         """
-        return self._observe(heavy=True)
+        return cw_sim_ports.sim_or_live_observation(
+            '货币战争-备战', lambda: self._observe(heavy=True))
 
     def _reconcile_tracking(self, bench: BenchView | None,
                             deployed: DeployedView | None, screen=None) -> tuple:

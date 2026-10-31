@@ -384,57 +384,51 @@ def _bench_char_at(gs: GameState, container_idx: int) -> str:
 def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               session: StrategySession, state: GameState,
                               tag: str, *, window_scope: bool) -> None:
-    """部署动作发出点(第 0 步态 1 与第 6 步共用;选人/落位/对位单一源 =
-    ``deploy_plan.deploy_plan_moves``——判据本体不改动,prep_pipeline
-    22 号篇 §1 第 6 步)。
+    """告警帧态 1 上阵安置动作发出点(部署统一批丁收编后的专用执行路径,
+    unified-deploy-order §4 entry 备战工序部署面行 D3-4:告警帧常规搜索
+    跳过,态 1 上阵腾槽 = 专用路径——bench 真单位直落场上空槽(腾 bench
+    席),载体 = 统一拖动;窗口豁免照旧(上阵纯为腾槽保命,告警解除后
+    下轮全扫恢复常规部署)。
 
-    ``window_scope`` = 是否施加上阵窗口适用范围:第 6 步 True(终局成员在
-    其上线窗口前不上阵);第 0 步态 1 False(告警帧豁免——上阵纯为腾槽
-    保命,告警解除后下轮全扫窗口适用范围恢复正常,22 号篇 第 0 步
-    态 1 豁免行)。板满前置门与现行 ``mandate._emit_deploy_moves`` 同门
-    同源。
+    选人 = bench 扫描序(占位件/板上同名剔除;cap 有空位即态 1 前提)
+    ——告警帧的救援语义只求确定性腾槽,排序质量无诉求(旧七桶序随选人
+    族收编退役);落位 = ``deploy_plan.deploy_slot_plans`` 单一源(排
+    路由 + 前排保证 + 空槽选择)。``window_scope`` 形参保留(恒不拦:
+    态 1 豁免语义的显式载体,防未来调用面误接窗口过滤)。
     """
-    if mandate._deploy_cap_full_gate(session, state, frame):
-        return
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        deploy_plan_moves,
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
     )
-    for bi, row, slot, faction in deploy_plan_moves(frame, session, state):
-        if window_scope and _deploy_window_blocked(
-                session, state, _bench_char_at(state, int(bi))):
-            continue
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_entries_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        _slot_cid,
+        deploy_slot_plans,
+    )
+    bench = bench_entries_of(state)
+    on_board = set(frame.deployed_names)
+    # 选人:bench 真单位(占位件经解包口自然剔除)∧ 名不在板上(同名
+    # 去重;未识别 char_id='' 恒不在 on_board = 旧「照旧上」fail-open)。
+    up_idx = [i for i, b in enumerate(bench)
+              if bench_slot_unit(b) is not None
+              and _slot_cid(b) not in on_board]
+    if not up_idx:
+        return
+    _comp = getattr(state_of(session), 'target_comp', None)
+    for bi, row, slot in deploy_slot_plans(bench, up_idx, _comp, state):
         out.append(mandate.Emitted(
-            CwActionDeployMoveParam(bench_idx=int(bi),
-                                    to_row=row,
-                                    to_slot=int(slot),
-                                    faction=faction),
+            CwActionMoveUnitParam(
+                src_domain='bench', src_slot=int(bi),
+                dst_domain=row, dst_slot=int(slot),
+                reason='m0_self_rescue_deploy'),
             True, tag))
 
 
-def _make_windowed_select_up(session: StrategySession, gs: GameState):
-    """select_swap_plan 的 select_up 注入包装(第 6 步换人替补的上阵窗口
-    适用范围——契约 D 部署换人行:替补受窗口适用范围覆盖,窗口未到的终局替补
-    不可上 = 窗口适用范围自然结果,换人通道由过渡替补在产)。
-
-    过滤形态:窗口未到件从 up 集移入 held(不给拒因键——窗口适用范围是帧级
-    defer 非资格拒,不进 select_deployments 拒因闭集);被滤后 up 空的
-    假想板面由 select_swap_plan 自然判计划不成立。
-    """
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        _slot_cid,
-        select_deployments_reasoned,
-    )
-
-    def _select_up(bench, **kwargs):
-        up, held, reasons = select_deployments_reasoned(bench, **kwargs)
-        kept = [i for i in up if not _deploy_window_blocked(
-            session, gs, _slot_cid(bench[i]))]
-        if len(kept) == len(up):
-            return up, held, reasons
-        dropped = sorted(set(up) - set(kept))
-        return kept, list(held) + dropped, reasons
-
-    return _select_up
+# (select_swap_plan 的 select_up 注入包装 _make_windowed_select_up(第 6 步
+#  换人替补的上阵窗口适用范围)已随部署统一批丁收编删除:第 6 步切差分
+#  执行器,窗口谓词过滤进搜索段 0 枚举硬约束(unified-deploy-order §4
+#  entry 备战工序部署面行;谓词本体 _deploy_window_blocked 保留为唯一源)。)
 
 
 # ============================================================ emit(十段全扫)
@@ -461,19 +455,6 @@ def emit(session: StrategySession,
     st = state_of(session)
     if getattr(st, 'cw4_counters', None) is None:
         st.cw4_counters = {}
-
-    # M1″ seam 门写点·生产面(emit prologue;session 属性,值源 =
-    # mandate.M1P_SEAM_VERIFIED 常量,出处与回滚路径见该常量注释;
-    # 测试面写点 = run_mandate prologue,两面同值同源)。补点依据 =
-    # 换人发射缝(emit_swap_redeploy)的对齐核对开闸常量早已置 True,
-    # 写点此前残留测试面 prologue——生产 entry 面恒缺省 False,非空
-    # 换人计划恒被 m1p_input_seam_pending 拦(C1 局 g_20261026_203023
-    # 遥测实锤 m1p_input_seam_pending=1 ∧ m1p_fired=0;design §2.7
-    # 执行形态要求组计划可发射)。
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
-        M1P_SEAM_VERIFIED,
-    )
-    st.cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
 
     # 决策判据载体一次置顶(同帧同视图纪律,禁函数内二次取容器)。
     gs = game_state_of(session)
@@ -674,9 +655,8 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
     态 1 上阵安置(非卖出,不受该守卫覆盖;22 号篇 第 0 步申报)。
     """
     # 态 1:上阵安置(免费;cap 有空位 ∧ 备战席有可上阵单位——豁免窗口
-    # 适用范围,部署判据本体与现行 M1 同源)。
-    if frame.deploy_vacancy > 0 \
-            and mandate._deployable(frame, session, gs):
+    # 适用范围;选人 = bench 扫描序腾槽语义,发射器内自带空候选短路)。
+    if frame.deploy_vacancy > 0:
         _out: list[Emitted] = []
         _emit_deploy_moves_scoped(_out, frame, session, gs,
                                   'm0_self_rescue_deploy', window_scope=False)
@@ -1199,21 +1179,9 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     )
     prep = mandate.assemble_prep_context(session, gs, frame)
     target = mandate.select_deployment(frame, prep)
-    fresh = frozenset()
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        fresh_buys_of,
-    )
-    try:
-        fresh = frozenset(fresh_buys_of(session))
-    except Exception:   # noqa: BLE001  新鲜度账本缺读 = 无 fresh 面
-        fresh = frozenset()
-    actions = deploy_diff.deploy_diff_actions(gs, target, fresh=fresh)
+    actions = deploy_diff.deploy_diff_target_actions(session, gs, target)
     if not actions:
-        # 定型收敛帧:复位旧发射器帧级 pending(与现行发射器无发射
-        # 分支的帧级复位语义一致)。
-        st = state_of(session)
-        st.cw4_m1p_arm_pending = None
-        st.cw4_m1p_plan_pending = None
+        # 定型收敛帧:零动作正常返回(扫描推进)。
         return []
     st = state_of(session)
     st.cw4_counters['deploy_diff_actions'] = \
