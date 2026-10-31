@@ -1202,6 +1202,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '条件与数值游戏侧自算,bot 仅登记;关卡进度读法定义游戏侧,'
               '判读申报制不在读法间拍死);无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 效率员工奖:官方「进入战斗时，速度最高的三名角色及其忆灵速度增幅提高10%。」
+    # (cw_invest_data.py:102,PlazaAugment 150601)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/
+    # 团队力量·银/应援团/正能量/完美开局 条目。对象选择(速度排序取前三、
+    # 及其忆灵绑定、并列取法)= 游戏侧定义,bot 零消费;速度真值与排序全
+    # 游戏侧,sim 不建模速度。「及其忆灵」系官方卡文词面(更快,更幸运/
+    # 绕口令/软弱无力词缀逐字同型;幸运之子/人海战术系忆灵词面同域近似
+    # 型),非注册名域对象。
+    '效率员工奖': EffectSpec(
+        id='150601', name='效率员工奖',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '150601')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族第 8 条);对象选择(进入战斗时'
+              '速度最高三名角色及其忆灵)与数值(10% 速度增幅)游戏侧自算,'
+              'bot 仅登记;无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 

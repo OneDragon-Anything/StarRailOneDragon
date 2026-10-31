@@ -16,7 +16,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类清单**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 35 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 36 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -108,12 +108,12 @@
 
 ## 5. 分类清单(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **35 条,实码全量**(构建层校验与数据层
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **36 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
 加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
 ——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项;含
-战力类 UNIT_BUFF 零响应登记七条 = 全队的希望/溜佩佩/溜佩佩+/团队力量·银/
-应援团/正能量/完美开局,登记形态见 §7.1 unit_buff);词缀源
+战力类 UNIT_BUFF 零响应登记八条 = 全队的希望/溜佩佩/溜佩佩+/团队力量·银/
+应援团/正能量/完美开局/效率员工奖,登记形态见 §7.1 unit_buff);词缀源
 注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
 评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
@@ -330,7 +330,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 35 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 36 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -623,10 +623,30 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   对应系判读非直译(全队两排泛用增幅,无位置限定,零行为后果)。不绑阵营(泛用
   数值,`STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 = 已注册名无
   economy → (0.0, False)(战力类不进经济模型)。
-- **证据**:规格 `STRATEGY_EFFECTS['完美开局']`(cw_investments.py 表尾条目);
+- **证据**:规格 `STRATEGY_EFFECTS['完美开局']`(cw_investments.py 战力类零响应族条目);
   官方原文 cw_invest_data.py:101「战斗中，关卡进度小于40%时，我方小队前/后台
   强度提高40%。」
 - **推理链**:条件评估窗口/进度读数/增益生效全在游戏,战斗中评估,无离散触发
+  事件 → trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位
+  零响应);无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md
+  §0 战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
+
+#### 效率员工奖(150601)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter 不建);
+  payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
+  单一源);bot 零响应——本族首张**逐体点名对象选择卡**(区别于族内既有全队/条件
+  面形态):对象(进入战斗时速度最高的三名角色及其忆灵)与数值(10% 速度增幅)均
+  由游戏侧自算评估施加。速度真值/排序/前三选取/并列取法全游戏侧(repo 无速度
+  读口/排序原语:sim 全域零命中,kernel「速度」命中仅策略知识域词表与装备估值
+  注释);「忆灵」系官方卡文词面非建模对象(kernel/sim 零建模)。不绑阵营(泛用
+  数值,「速度最高的三名」系通用属性排序选择非阵营语义,`STRATEGY_BINDINGS`
+  零触碰,表外默认空绑定);现金分支 = 已注册名无 economy → (0.0, False)(战力类
+  不进经济模型)。
+- **证据**:规格 `STRATEGY_EFFECTS['效率员工奖']`(cw_investments.py 表尾条目);
+  官方原文 cw_invest_data.py:102「进入战斗时，速度最高的三名角色及其忆灵速度
+  增幅提高10%。」
+- **推理链**:对象选取/速度排序/增幅生效全在游戏,进入战斗拍评估,无离散触发
   事件 → trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位
   零响应);无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md
   §0 战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
