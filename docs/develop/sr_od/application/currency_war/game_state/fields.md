@@ -1111,7 +1111,8 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 - **per_node 族** free_refresh_per_node:加油站/搜打撤,每节点 1 次。
 - **NODE_ENTER 族** free_refresh_on_node_enter:双手狸开键盘!每节点 2 次。
 - **合成触发族** refresh_per_compose:武力刷新**合成装备时**每次获得 2 次刷新
-  (官方限定「合成装备时」——角色升星是否同触发面未登记,待裁决见 §5.3 星星相印);
+  (官方限定「合成装备时」;角色 3 星合成共用 ON_MERGE 触发面已裁决〔星星相印,
+  见 §5.3——生产点分离+payload 字段判别,两域分开计数禁混账〕);
   spec 条目已入 STRATEGY_EFFECTS(策略源 ON_MERGE 首条),世界发放腿 = 穿戴
   上报 applied 出口合成事件检查 `apply_on_merge_refresh_grant`(cw_effect_
   inventory;名单集匹配 + 合成次数 = 输入件数−输出件数,发放登记见 §3.3.6)。
@@ -2260,11 +2261,16 @@ effect_inventory 等级日程(逻辑写入方候选)。
 
 #### 星星相印(gold_per_3star_merge=5)
 
-逻辑写入方=**合成 3 星触发**(ON_MERGE 载体已登记——武力刷新 refresh_per_compose
-先例)。时点=合成事件非轮首,禁轮首吸收;接线前观察覆盖兜底。
-**边界**:ON_MERGE 先例(武力刷新)=**装备**合成事件(官方限定「合成装备时」);
-角色 3 星合成是否共用 ON_MERGE 触发面未登记——**待裁决**;裁决前两事件域分开计数,
-禁混账。
+逻辑写入方=**合成 3 星触发**(ON_MERGE 载体,已裁决归一口径:角色 3 星合成与装备
+合成〔武力刷新〕共用本触发面)。时点=合成事件非轮首,禁轮首吸收;live 零写,
+观察覆盖兜底。**边界(已裁决)**:两事件域由「生产点分离 + payload 字段判别」
+保证零交叉——角色合成生产点只发角色事件(buy/gain 两域单点双调
+`check_strategy_star_merge_gold`,cw_gain_chain;仅 sim 装配态经观察通道发金),
+装备合成生产点只发装备事件(`apply_on_merge_refresh_grant` 名单集另路);同触发
+条目按各自 payload 字段过滤,双向鸭子缺省 0 天然隔离,两域分开计数禁混账。
+装备腿(员工投影仪 ×1)= `cw_gain_effects.PICK_INVEST_EFFECTS['星星相印']`
+具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips(§3.2.15 获得
+链写入方段)。
 
 #### 全员晋升(EffectSpec board_rewrite='upgrade_all_cost+1')
 

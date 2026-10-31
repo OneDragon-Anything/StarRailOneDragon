@@ -59,6 +59,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         bench_place,
     )
     from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        check_strategy_star_merge_gold,
         expert_conditional_trigger,
     )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
@@ -189,6 +190,21 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
             check_env_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             _log.warning(f'[cw-buy] 合并升星触发发放分支失败(不阻塞):'
+                         f'{merge_facts} {e}')
+        # —— 星星相印合成金腿(角色 3 星合成事件条件金):事件源 = 本函数
+        #    既有 merge_facts 采集复用,过滤 3 星产物计数——满栏分支
+        #    on_merge 出口已通(T-26),与 pre/after 星级差分形行为等价,
+        #    采集形免二次推演、与 env 腿共用单一事件源。函数内自门 sim
+        #    装配(live 零写);sim 局金位刚经 proj_buy_gold logic 写,
+        #    发放 observe 相邻异通道覆盖落 sim:engine 抑制分支 = 记账路径
+        #    (T-108 同拍相邻写先例,发放函数 docstring 申报)。best-effort:
+        #    发放分支异常不阻塞上报主链。——
+        try:
+            check_strategy_star_merge_gold(gs, tuple(merge_facts),
+                                           sig=_grp_sig,
+                                           producer='CwActionBuyCardParam')
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            _log.warning(f'[cw-buy] 合成金腿发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
 
     # —— 购买回调分支(获取计算完时点):简单分支 + 合成连锁 + 升星分支全毕

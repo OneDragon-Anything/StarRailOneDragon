@@ -47,6 +47,8 @@ from sr_od.application.currency_war.data.cw_equipment_data import (
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
+    EffectKind,
+    TriggerKind,
     _portal_acquired_key,
     apply_board_rewrite,
     register_portal_from_env,
@@ -614,6 +616,17 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             log.warning(f'[cw-gain] 合并升星触发发放分支失败(不阻塞):'
                         f'{acc.facts} {e}')
+        # 星星相印合成金腿同区发火(挂点选型 = T-26 顶层收尾段与
+        # check_env_merge_grants 同区:链递归中途 gs 写未收束,顶层发火保
+        # 一致,与买牌上报发火段同一时序纪律;随 _write_merge_step 尾逐级
+        # 发火行为等价,单点收尾免逐级短路维护)。函数内自门 sim 装配
+        # (live 零写),异常不阻塞链主分支。
+        try:
+            check_strategy_star_merge_gold(gs, tuple(acc.facts), sig=sig,
+                                           producer=producer)
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning(f'[cw-gain] 合成金腿发放分支失败(不阻塞):'
+                        f'{acc.facts} {e}')
     return outcome
 
 
@@ -887,6 +900,79 @@ def check_strategy_win_gold_grants(gs: GameState, *, won: bool,
     if str(gs.overflow_card.value or '') == _WIN_GOLD_COUNT_UNIT:
         n += 1
     return n * sum(STRATEGY_WIN_GOLD_GRANTS[name] for name in held)
+
+
+def check_strategy_star_merge_gold(
+        gs: GameState, star_merge_events: tuple[tuple[str, int], ...], *,
+        sig: ChannelSig, producer: str) -> None:
+    """合成 3 星事件条件金发放腿(「每次合成3星角色时，获得5金币」触发器
+    单一源,星星相印 id 104001;调用点 = 角色 3 星合成两生产域单点双调——
+    买牌上报合并发火段 + 获得链顶层收尾,事件形状 = ``(角色名, 合成后
+    星级)`` 元组序列,与 :func:`check_env_merge_grants` 入参同形)。发放
+    由 STRATEGY_EFFECTS ON_MERGE ∧ ECONOMY 条目驱动:同触发装备域经济卡
+    (武力刷新)经穿戴上报名单集另路,本腿 payload 字段
+    ``gold_per_3star_merge`` 判别双向鸭子缺省 0,两域零串扰(fields.md
+    §5.3 生产点分离禁混账)。
+
+    条件矩阵(顺序即短路序,逐序返回 = 零动作):
+
+    1. ``star_merge_events`` 空 → 零动作;
+    2. ``to_star == 3`` 事件计数 0(升星非 3 星档,如级联中间级 1→2)
+       → 零动作——发放量 = 3 星事件数 × ``gold_per_3star_merge``,
+       「每次合成3星」按合成结果事件计,级联一次调用只计一个 3 星事件;
+    3. 账本双过滤(ON_MERGE ∧ ECONOMY)后无 ``gold_per_3star_merge>0``
+       命中(未持卡 = 条目缺位,持表外卡同路;表外卡禁从效果原文自动
+       猜装)→ 零动作——未来同触发异载体卡鸭子缺省 0 天然零发放;
+    4. sim 后端未装配(live 形态)→ 零写(金面禁猜测直写:实机 +5 由
+       游戏自发,合成无独立画面,下一商店/备战帧金观察覆盖兜底);
+    5. gold 现值 None → 宁缺勿造跳过(事件携带事实无 done 闩,下个合成
+       事件自动重查,重试零成本)。
+
+    - 金写 = ``gs.observe`` 独立 evidence 笔,evidence 带 ``sim:engine:``
+      命名空间(sim 侧策略金腿家族统一形态:T-108 到级/尾款金、T-130
+      胜利金同款)——本腿挂点金位可为 logic 来源(买牌上报内金位刚经
+      proj_buy_gold 同事务 logic 写),覆盖必须落失配抑制分支 = 记账路径,
+      禁入真失配告警;与刷新出对金腿(挂点金位恒观察锚定,裸 tag)的
+      形态差异由挂点金位来源状态决定,两腿各自自洽;
+    - sig = 函数内自构 obs 族(observe 渠道校验只收 obs 族;入参 sig 为
+      logic 族仅溯源申报不消费,T-121 同款纪律);``producer`` 入
+      group_id 供判读分域(buy/gain 来源可过滤);
+    - 零 rng:事件计数确定,无采样面;多卡同持各自独立判定
+      (ledger 遍历语义,出对金腿同形)。
+    """
+    if not star_merge_events:
+        return
+    count = sum(1 for _name, new_star in star_merge_events
+                if int(new_star) == 3)
+    if count <= 0:
+        return
+    total = 0
+    for e in gs.effects.entries:
+        if e.spec.trigger is not TriggerKind.ON_MERGE \
+                or e.spec.category is not EffectKind.ECONOMY:
+            continue
+        n = int(getattr(e.spec.payload, 'gold_per_3star_merge', 0) or 0)
+        if n > 0:
+            total += n * count
+    if total <= 0:
+        return
+    # kernel → sim 判据消费沿 cw_sim_ports 惰性 import 先例(函数内取,
+    # 模块级反向即环);live 未装配早退 = 零写纪律执行点。
+    from sr_od.application.currency_war.sim.cw_sim_ports import (
+        sim_backend_installed,
+    )
+    if not sim_backend_installed():
+        return
+    g = gs.gold.value
+    if g is None:
+        return
+    from sr_od.application.currency_war.sim.cw_sim_base import sim_evidence
+    gs.observe(gs.gold, int(g) + total,
+               evidence=sim_evidence(f'strategy_star_merge_gold:{count}'),
+               sig=ChannelSig(family='obs',
+                              actor='StrategyStarMergeGoldGrant',
+                              mode='synthesized',
+                              group_id=f'strategy:star-merge-gold:{producer}'))
 
 
 #: 策略卡到级发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/

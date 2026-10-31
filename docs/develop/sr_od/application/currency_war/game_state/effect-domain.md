@@ -129,7 +129,7 @@
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
 | 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:253)、长期主义系 gold_next_nodes_*(:215-216) |
-| 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(:272) |
+| 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(§7.4,N=1 事件直结退化形) |
 | 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
 | 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
 
@@ -284,7 +284,12 @@
 世界发放腿 = §7.3 合成事件行——穿戴上报 applied 出口检查 `apply_on_merge_
 refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
 `free_refresh_left`;实机到账时点/垃圾化交互两件未证事实挂披露键
-`STRATEGY_ON_MERGE_LIVE_UNVERIFIED`)。其余候选驱动卡(按卡文触发语义归类):
+`STRATEGY_ON_MERGE_LIVE_UNVERIFIED`);后继条目 = **星星相印**(角色 3 星合成
+每事件 +5 金;触发面已裁决归一 = 共用 ON_MERGE 载体,两事件域由生产点分离 +
+payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_merge_gold`
+(buy/gain 两域单点双调,仅 sim 装配态观察通道发金,live 零写观察覆盖),装备
+合成域经上列名单集另路;分类 = 计数门槛 N=1 事件直结退化形——无跨帧计数器、
+无 GameState 新字段、零 rng;live 零写零披露键)。其余候选驱动卡(按卡文触发语义归类):
 按劳分配·剩余价值·无伤通关·气氛组·气氛组+(战斗结算)/人力重组出售面(出售时)/
 补给时点族——启用 = 各自建模批先立枚举值与规格条目、再接事件源,启用前按
 §6 观察收尾兜底。

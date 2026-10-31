@@ -623,6 +623,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # ECONOMY 注册行 instant_gold=1 在册承载,fields.md §4.1/§5.2),
     # 金面禁直写不进效果体,本行只辖装备句。
     '无伤通关': _make_named_equip_grant_effect('生命之花', 1),
+    # 星星相印 = 具名装备授予族后继(卡文「立刻获得1个【员工投影仪】」):
+    # 直书登记行直呼工厂;员工投影仪 = 工具类装备(cw_equipment_data
+    # category='工具'),归 equips 装备库存域禁入占席道具通道,不在精密
+    # 金面判据映射内(gate 恒 None)走纯发放循环;获得零级联
+    # (∉ EQUIP_ACQUIRE_CONSEQUENCES)。卡文前半句合成金腿 = STRATEGY_
+    # EFFECTS ON_MERGE 条目 + 合成事件发放腿另路(kernel),两腿异族,
+    # 本行只辖装备句。
+    '星星相印': _make_named_equip_grant_effect('员工投影仪', 1),
     **{name: _make_char_grant_effect(char)
        for name, char in _STRATEGY_CHAR_GRANTS.items()},
     **{name: _make_delayed_offer_effect(name)

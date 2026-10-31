@@ -917,6 +917,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['武力刷新'], duties=DutyFlags(),
         notes='每次装备合成 +2 免费刷新,经穿戴上报合成事件腿发放;'
               '官方限定装备合成(角色升星另域,fields.md §5.3 分开计数禁混账)'),
+    # 星星相印:官方「每次合成3星角色时，获得5金币。立刻获得1个【员工投影
+    # 仪】。」(cw_invest_data.py:83,id 104001)。策略侧 ON_MERGE 后继条目
+    # (首条 = 武力刷新):触发面归一口径 = 角色 3 星合成共用 ON_MERGE 载体,
+    # 两事件域由「生产点分离 + payload 字段判别」保证零交叉——本卡发放腿只
+    # 认角色合成生产点(buy/gain 两域 check_strategy_star_merge_gold),装备
+    # 合成域经 apply_on_merge_refresh_grant 名单集另路,本 payload 无
+    # refresh_per_compose 字段、反向同构,双向鸭子缺省 0 天然隔离
+    # (fields.md §5.3 分开计数禁混账)。世界发放腿 = 合成事件条件金(仅 sim
+    # 装配态经观察通道发金,live 零写观察覆盖兜底);装备腿 = PICK_INVEST_
+    # EFFECTS 登记行(员工投影仪 ×1,具名装备授予工厂),两腿异族。duties
+    # 全空(事件直结 = 计数门槛 N=1 退化形,无跨帧计数器/无预知/无姿态
+    # 消费面);数值单一源 = STRATEGY_ECONOMY 同一实例。
+    '星星相印': EffectSpec(
+        id='104001', name='星星相印', trigger=TriggerKind.ON_MERGE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['星星相印'], duties=DutyFlags(),
+        notes='每次合成3星角色 +5金经合成事件发放腿(角色合成生产点;装备'
+              '合成域不经本条目,两域分开计数 fields.md §5.3);装备腿 = '
+              '具名装备登记行另路(员工投影仪×1)'),
     # 节省工位:官方「在接下来3个节点只有3个备战席位置。随后，获得3件简易
     # 装备。」(cw_invest_data.PLAZA_AUGMENTS 同 id 行,id 101901)。容量时限族
     # 模式卡(在册唯一容量改写条目):容量窗本体 = 效果账本条目(N_NODES×3,
