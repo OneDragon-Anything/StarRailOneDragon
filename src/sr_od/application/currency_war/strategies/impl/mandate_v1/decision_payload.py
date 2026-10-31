@@ -39,11 +39,11 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     entry,
     session_scope,
 )
+from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
+    sell_line_membership,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-    predicates,
 )
 
 if TYPE_CHECKING:
@@ -80,21 +80,20 @@ def _k_members_key(gs: GameState,
     """k_members + k_fallback 键:现行 K 名单与其供给来源标注。
 
     算法与备战帧同源(:func:`entry.emit` 顶段,K 空窗回退分支同参):
-    ``predicates.line_members(direction_comp_of(gs))`` 为空(方向键
-    None)且意向载体在场时,走
-    :func:`cw_intention.k_empty_window_fallback` 回退分支取成员集;
+    k_members = 统一线内名单(:func:`sell_line_membership`,单一准入
+    §2.1——候选 ∪ 配方 ∪ 锁定线并集)为空(名单真空)且意向载体在场时,
+    走 :func:`cw_intention.k_empty_window_fallback` 回退分支取成员集;
     ``k_fallback`` 记回退分支是否产出成员(hit)与分带名(band):
     band 非空 ⟺ 回退分支已运行(带值 = cw_intention 分带 token,
-    'p1_gap'/'p1_lock_band'/'p2plus'),band 空串 ⟺ 分支未运行(方向
-    在场或意向缺帧);hit=False 且 band 非空 = 分支运行但派生空集
+    'p1_gap'/'p1_lock_band'/'p2plus'),band 空串 ⟺ 分支未运行(名单
+    非空或意向缺帧);hit=False 且 band 非空 = 分支运行但派生空集
     (合法空形态)。payload 重推导不写备战帧的
     ``prep_k_fallback_<band>`` 计数(纯读纪律,计数唯一写端在
     entry.emit)。
     """
-    k = session_scope.direction_comp_of(gs)
-    k_members = list(predicates.line_members(k))
+    k_members = sorted(sell_line_membership(gs))
     fallback = {'hit': False, 'band': ''}
-    if k is None:
+    if not k_members:
         ist = getattr(state_of(gs), 'v3_intention', None)
         if ist is not None:
             from sr_od.application.currency_war.kernel import cw_intention

@@ -21,6 +21,10 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+from sr_od.application.currency_war.kernel.cw_economy import sell_refund
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+    star_base_copies,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.levelup import (
     stay_target_of,
     unfinished_star_targets,
@@ -30,8 +34,8 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
     LineMembersView,
-    direction_comp_of,
     line_members_view,
+    plane2_started_of,
 )
 
 if TYPE_CHECKING:
@@ -42,7 +46,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-#: 排序键 = (档位, *档内子键, 在手旗标, 随机尾键),字典序比较;
+#: 排序键 = (档位, *档内子键, 退金损失, 在手旗标, 随机尾键),字典序比较;
 #: 同档子键定长,跨档比较在档位分量即分出(元组比较短路,无跨型比较)。
 PriorityKey = tuple[int | float, ...]
 
@@ -120,10 +124,12 @@ class PriorityContext:
     COMP_LIBRARY 成员展开 core ∪ shared;未锁定帧档 2/3/5 名单的候选支;
     锁定帧候选快照恒空集,锁定写入时已清空停算)。"""
     recipe_members: frozenset[str]
-    """⑤过渡配方对成员(读口 = 未锁定帧 direction_comp_of 回落
-    opening_recipe_comp 的 core ∪ shared;P1 即清空,进 P2 后读口恒
-    None = 本集恒空——kernel 配方支清空写点 = cw_intention.clear_p1_
-    recipe;锁定帧不适用,锁定终局阵容即退出条件之一)。"""
+    """⑤过渡配方对成员(读口 = ``StrategyState.opening_recipe_comp``
+    槽位直读 + **读前判窗**——准入唯一判据 = ``plane2_started_of``
+    窗口谓词,进位面 2 即退出,锁定不是退出条件;锁定帧照收 = P1 锁定局
+    名单为锁定线 ∪ 配方并集。进 P2 后装配侧配方支恒空集,槽位残留
+    不消费〔判窗在直读之前,与 direction_comp_of 读口内防御等价〕;
+    kernel 配方支清空写点 = cw_intention.clear_p1_recipe)。"""
     stay_target: tuple[str, int, int] | None
     """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
     criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
@@ -181,11 +187,13 @@ def assemble_priority_context(
     容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
     ``rng`` 缺省 = session.rng(策略随机语义单一源)。
 
-    两态名单装配(priority-model §2 档 2 名单源):锁定帧 = 锁定线
-    名单,need_star 表取 ``unfinished_star_targets``(现役消费单一源,
-    仅此帧适用——表只含未达标成员,达标成员判定端按缺省 1 自然落
-    档 8);未锁定帧 = 候选三线并集 ∪ 过渡配方成员,need_star 取命中
-    各线最大值(保守方向)。
+    两态名单装配(priority-model §2 档 2 名单源;单一准入 = changes/
+    2026-10-30-roster-plane1-union design §2.1):锁定帧 = 锁定线
+    名单 ∪ 过渡配方成员(P1 锁定局并集),need_star 表取
+    ``unfinished_star_targets``(现役消费单一源,仅此帧适用——表只含
+    未达标成员,达标成员判定端按缺省 1 自然落档 8);未锁定帧 = 候选
+    三线并集 ∪ 过渡配方成员,need_star 取命中各线最大值(保守方向)。
+    配方支两态共用同一读口(槽位直读 + 读前判窗),进 P2 后恒空集。
 
     序数装配(§3 档 2/3/5 ①键)= 知识卡 ``member_priority`` 字段
     直读(:func:`cw_comps.member_rank_of`,空表/旧数据回退 core 两档
@@ -223,7 +231,8 @@ def assemble_priority_context(
                      in unfinished_star_targets(gs)}
         # 锁定帧候选快照照读口真值冻结为空集(锁定写入连带清空停算,
         # StrategyState.line_candidates 恒 = 空集);档 2/3/5 名单 =
-        # 锁定线名单,经 line_view.members 承载。
+        # 锁定线名单(line_view.members 承载)∪ 配方支(recipe_members,
+        # P1 锁定局并集;进 P2 后配方支恒空集,判定端无需重复判窗)。
     else:
         for line_name in st.line_candidates:
             c = get_comp(line_name) if line_name else None
@@ -246,11 +255,13 @@ def assemble_priority_context(
                 need_star[n] = max(need_star.get(n, 1), int(need))
         candidate_out = frozenset(members)
     recipe_members: frozenset[str] = frozenset()
-    if not view.locked:
-        rc = direction_comp_of(gs)
+    if not plane2_started_of(gs):
+        # 配方支槽位直读 + 读前判窗(单一准入 §2.1):配方成员进不进
+        # 名单唯一判据 = plane2_started_of,锁定不是退出条件——P1
+        # 锁定局配方照收;禁经 direction_comp_of 反推名单(方向读口
+        # 回答「现行方向是谁」,其锁定不回落的语义 ≠ 名单退出条件)。
+        rc = st.opening_recipe_comp
         if rc is not None:
-            # 未锁定帧回落形态 = 过渡配方开局面(direction_comp_of 的
-            # P2 守卫使配方成员在 P2 进入帧自然退出本名单)
             recipe_members = frozenset(
                 {*rc.core_chars, *(getattr(rc, 'shared_chars', None) or ())})
     # 表内补缺:字段未登记的成员按低档 1 兜底——配方成员(不经字段
@@ -305,12 +316,14 @@ def priority_rng_of(session: object,
 
 
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
-    """档 2/3/5 阵容成员名单(两态;priority-model §2 名单源)。
+    """档 2/3/5 阵容成员名单(两态;priority-model §2 名单源;单一准入
+    = roster-plane1-union design §2.1)。
 
-    锁定帧 = 锁定线名单;未锁定帧 = 候选三线成员并集 ∪ 过渡配方对
-    成员(配方成员在配方体系存续期属候选体系)。"""
+    锁定帧 = 锁定线名单 ∪ 过渡配方对成员(P1 锁定局并集——锁定不是
+    配方退出条件;进 P2 后装配侧配方支恒空集,判定端无需重复判窗);
+    未锁定帧 = 候选三线成员并集 ∪ 过渡配方对成员。"""
     if ctx.line_view.locked:
-        return frozenset(ctx.line_view.members)
+        return frozenset(ctx.line_view.members) | frozenset(ctx.recipe_members)
     return frozenset(ctx.candidate_members) | frozenset(ctx.recipe_members)
 
 
@@ -330,6 +343,22 @@ def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
     return int(ch.cost) if ch is not None and ch.cost else 3
 
 
+def _refund_loss(unit: HeldUnit | ShopUnit) -> int:
+    """档内并列金币 tie-break 键(用户裁定 2026-10-30 三,金币维全局
+    核查表;roster-plane1-union design §2.2 第 1 项)。
+
+    口径 = 再购同件成本 − 卖出退金:再购成本 = 实费档 × 同名 1★ 基础
+    副本折算(合成链重建价,折算单一源 = ``star_base_copies``);退金 =
+    ``sell_refund`` 单一源。由此 1★ 全额退损失 0 最优,2★+ 折价(合成
+    手续费,cost=1 exempt 同损 0)损失 1——同档并列时选不亏的卖,
+    保住已付手续费的资产;主判据仍 = 统一序价值序保资产,本键仅在
+    现行档内键全部并列后参与定序。键内方向 = 取负号(损失大 = 后卖
+    类属性,与模块头「后卖类属性取负号」约定一致)。"""
+    cost = _unit_cost(unit)
+    star = int(unit.star or 1)
+    return cost * star_base_copies(star) - sell_refund(star, cost)
+
+
 def _tier7_bond_member(name: str) -> bool:
     """档 7 成员判定(角色自报 factions/flows 与拍板名单求交;
     注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
@@ -345,10 +374,14 @@ def sort_key(unit: HeldUnit | ShopUnit,
     随机尾键;规格 = priority-model §2/§3/§4,判定表逐档对齐)。
 
     让路方向 = key 大者先卖:「后卖」类属性(总星级数多/单卡星级高/
-    core 成员)取小键,「先卖」类属性(档 8 概率高/低费)取大键;
-    在手旗标 手持 = 0 / 将获取 = 1(同优先级在手优先,总纲 §2.7);
-    随机尾键 = ctx.rng 现抽,仅全部子键相等(同张手持等价牌群)时
+    core 成员/退金损失大)取小键,「先卖」类属性(档 8 概率高/低费)
+    取大键;在手旗标 手持 = 0 / 将获取 = 1(同优先级在手优先,总纲
+    §2.7);随机尾键 = ctx.rng 现抽,仅全部子键相等(同张手持等价牌群)时
     参与定序,同 seed 同序。
+
+    档内合成序(用户裁定三;现行档内键不删):统一序档 → 现行档内键
+    (rank/星级/概率/费用)→ 退金损失(:func:`_refund_loss`,损失小者
+    先卖)→ 在手旗标(稳定键)→ 随机尾。
 
     落档边界(priority-model §2):「名下最高星/总星级数」以角色名
     聚合全部在场+备战副本;升星达标(持有最高星 ≥ need_star)后低星
@@ -364,39 +397,43 @@ def sort_key(unit: HeldUnit | ShopUnit,
     max_star = max(copies) if copies else 0
     total_star = sum(copies)
     unit_star = int(unit.star or 1)
+    # 退金损失取负入键(损失大 = 后卖):仅同档现行键全并列时参与定序。
+    refund_loss = -_refund_loss(unit)
     is_member = name in _member_names(ctx)
     # 档 1 前后台需要出战的(部署算法定型;按角色名命中,含商店同名牌
     # ——在场角色的牌 = 部署需要面,获取流程中同优先级不换手)。
     if name in ctx.deployed_names:
-        return (1, in_hand, tail)
+        return (1, refund_loss, in_hand, tail)
     # 档 2 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
     # ≥ 2,need = 1 即无升星要求——落档边界谓词,need=1 成员未持落档 3 /
     # 已持未到两星落档 5)。
     need = ctx.need_star_by_member.get(name, 1)
     if is_member and need >= 2 and max_star < need:
         return (2, ctx.member_rank.get(name, 1), -total_star, -unit_star,
-                in_hand, tail)
+                refund_loss, in_hand, tail)
     # 档 3 阵容成员还没获取任何副本(仅商店牌可命中:手持牌自身即副本)。
     if is_member and not copies:
-        return (3, ctx.member_rank.get(name, 1), in_hand, tail)
+        return (3, ctx.member_rank.get(name, 1), refund_loss, in_hand, tail)
     # 档 4 当前升星目标实费档的牌(压牌库价值;阵容成员整体排除——
     # 含已达标成员,其副本按落档边界落档 8;目标为 None 本档为空)。
     if ctx.stay_target is not None and not is_member \
             and _unit_cost(unit) == ctx.stay_target[2]:
-        return (4, -unit_star, in_hand, tail)
+        return (4, -unit_star, refund_loss, in_hand, tail)
     # 档 5 成员已获取、无星级要求、还没到两星(阵容强度)。
     if is_member and copies and need <= 1 and max_star < 2:
-        return (5, ctx.member_rank.get(name, 1), -total_star, in_hand, tail)
+        return (5, ctx.member_rank.get(name, 1), -total_star,
+                refund_loss, in_hand, tail)
     # 档 6 万金油名单还没到两星(全线留用层;到两星掉档 8)。
     if name in CROSS_LINE_KEEP_NAMES and max_star < 2:
-        return (6, -total_star, in_hand, tail)
+        return (6, -total_star, refund_loss, in_hand, tail)
     # 档 7 buff/debuff 羁绊成员还没到两星(到两星掉档 8)。
     if _tier7_bond_member(name) and max_star < 2:
-        return (7, -total_star, in_hand, tail)
+        return (7, -total_star, refund_loss, in_hand, tail)
     # 档 8 兜底:概率高者先卖(容易再遇),同概率档并入同档、低费先卖,
     # 星级高者后卖。
     prob = refresh_prob(ctx.level, _unit_cost(unit))
-    return (8, prob, -_unit_cost(unit), -unit_star, in_hand, tail)
+    return (8, prob, -_unit_cost(unit), -unit_star,
+            refund_loss, in_hand, tail)
 
 
 def sell_order_with_keys(

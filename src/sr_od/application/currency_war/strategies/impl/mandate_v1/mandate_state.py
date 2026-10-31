@@ -302,8 +302,9 @@ class StrategyState:
     # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方对物化链
     # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运)。每备战
     # 期自写,非节点作用域键(节点边界不重置);P2 起物化链停写(窗口
-    # 谓词覆盖),残留值不消费(direction_comp_of 的未锁回落仅在未锁定态
-    # 被读,锁定态恒走锁定线)。
+    # 谓词覆盖),残留值不消费——名单类读口(priority 装配/
+    # sell_line_membership)判窗在直读之前,direction 读口的 P2 守卫
+    # 等价(锁定态名单读口也读本键,均 P2 后恒空)。
     opening_recipe_comp: Comp | None = None
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制

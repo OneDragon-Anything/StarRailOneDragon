@@ -1864,11 +1864,8 @@ def snapshot_frame(gs: GameState) -> MandateFrame:
         node_kind_of,
         round_num_of,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
-        direction_comp_of,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-        predicates,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
+        sell_line_membership,
     )
     front, back = deployed_rows_of(gs)
     return MandateFrame(
@@ -1879,8 +1876,11 @@ def snapshot_frame(gs: GameState) -> MandateFrame:
         deploy_cap=max_units_of(gs),
         node_type=node_kind_of(gs),
         stop_flag=False,
-        k_members=tuple(sorted(predicates.line_members(
-            direction_comp_of(gs)))),
+        # k_members 读口 = 统一线内名单(单一准入 §2.1:候选 ∪ 配方 ∪
+        # 锁定线并集;换源不消亡,保留面消费 = 溢出告警门卖出装配/
+        # cheapest_member_cost 金需求侧)。复用阶段 1 成员判定函数,
+        # 禁手搓第二份名单。
+        k_members=tuple(sorted(sell_line_membership(gs))),
         round_num=int(round_num_of(gs) or 1),
         overflow_warning=bool(gs.overflow_warning.value))
 

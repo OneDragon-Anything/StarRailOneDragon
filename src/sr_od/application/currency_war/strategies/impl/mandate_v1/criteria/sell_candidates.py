@@ -66,6 +66,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import 
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
     line_members_view,
+    plane2_started_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
@@ -147,27 +148,40 @@ REJECT_NO_CANDIDATES: str = 'no_candidates'
 
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
-    """卖出侧线内身份集(锁定 = ``line_members_view`` 名单〔core ∪
-    shared〕;未锁定 = 候选 top3 线内成员并集——判定源 = 候选快照)。
+    """卖出侧线内身份集(单一准入口径 = roster-plane1-union design
+    §2.1):锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
+    **∪ 过渡配方成员**;未锁定 = 候选 top3 线内成员并集(判定源 =
+    候选快照)**∪ 过渡配方成员**。配方支两态共用同一读口 =
+    ``opening_recipe_comp`` 槽位直读 + 读前判窗(``plane2_started_of``
+    ——进位面 2 即退出,锁定不是退出条件,P1 锁定局配方照收)。
 
-    消费面:常规面 sell_exclusions 装配 k_members 入参、筹资兜底与
+    消费面:常规面 sell_exclusions 装配 k_members 入参、备战帧
+    k_members 装配(entry.emit / mandate.snapshot_frame)、筹资兜底与
     买面投影位(shop)、预算投影的 1★ 活期口径(entry 攒批/序 3-5
     投影)。同一集禁各消费点自建第二份名单口径。候选名注册表解析
     失败(漂移)跳过并告警——该线贡献空集,保守方向申报:少排除 =
     多可卖 = 让位面不受阻。
     """
     view = line_members_view(gs)
-    if view.locked:
-        return frozenset(view.members)
     names: set[str] = set()
-    for comp_name in state_of(gs).line_candidates:
-        comp = get_comp(comp_name) if comp_name else None
-        if comp is None:
-            log.warning('[cw!][sell-cand] 候选线名解析失败(%s),该线成员不入线内集',
-                        comp_name)
-            continue
-        names |= set(comp.core_chars)
-        names |= set(getattr(comp, 'shared_chars', None) or ())
+    if view.locked:
+        names |= set(view.members)
+    else:
+        for comp_name in state_of(gs).line_candidates:
+            comp = get_comp(comp_name) if comp_name else None
+            if comp is None:
+                log.warning('[cw!][sell-cand] 候选线名解析失败(%s),该线成员不入线内集',
+                            comp_name)
+                continue
+            names |= set(comp.core_chars)
+            names |= set(getattr(comp, 'shared_chars', None) or ())
+    # 配方支(两态共用):槽位直读 + 读前判窗——与 priority 装配同口径
+    # (§2.1:禁经 direction_comp_of 拼名单;进 P2 后本支恒空集)。
+    if not plane2_started_of(gs):
+        rc = state_of(gs).opening_recipe_comp
+        if rc is not None:
+            names |= set(rc.core_chars)
+            names |= set(getattr(rc, 'shared_chars', None) or ())
     return frozenset(names)
 
 

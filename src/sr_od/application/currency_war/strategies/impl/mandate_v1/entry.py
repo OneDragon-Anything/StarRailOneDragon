@@ -87,6 +87,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
     SellCandidate,
     evaluate_sell_candidates,
+    sell_line_membership,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
@@ -462,13 +463,18 @@ def emit(session: StrategySession,
 
     # 骨架帧装配(部署面共用输入;stop_flag 构造性 False——成型停买线 = 买面
     # 判据,消费位在商店域(shop.py 自装配),备战域 M2 已移店内)。
-    # k = 现行方向阵容(锁定线优先,未锁 = 过渡配方开局面;键面归一
-    # 归一后的统一读口 direction_comp_of——12 号篇 §2 消费面分派)。
-    _k = session_scope.direction_comp_of(session)
-    k_members = predicates.line_members(_k)
+    # k_members 读口 = 统一线内名单(单一准入 §2.1:候选 ∪ 配方 ∪ 锁定线
+    # 并集;换源不消亡,保留面消费 = 溢出告警门卖出装配/金需求侧
+    # cheapest_member_cost)。复用阶段 1 成员判定函数 sell_line_membership,
+    # 禁手搓第二份名单(旧读口 predicates.line_members(direction_
+    # comp_of) 已随换源退役——方向读口回答「现行方向是谁」,P1 锁定局
+    # 看不见配方成员即其名单语义缺陷)。
+    k_members = tuple(sorted(sell_line_membership(gs)))
     # K 空窗回退(部署围栏目标供给;回退单一源 = cw_intention,与商店域
     # 同源消费,禁复制兜底逻辑;ist 缺失 = 意向供给缺帧,保守侧不回退)。
-    if _k is None:
+    # 空窗判定 = 名单真空(未锁定 ∧ 候选/配方全空);旧「无方向」判定
+    # 随 direction 读口换源退役。
+    if not k_members:
         from sr_od.application.currency_war.kernel import cw_intention
         _ist = getattr(st, 'v3_intention', None)
         if _ist is not None:
