@@ -1709,6 +1709,35 @@ fail-open(模型放行、实机游戏仍拒,披露键
 漂移);schema = 独立域键版本 1(同 env_grants_done 先例,不并入他域
 bump);审计 = WRITE_END 行(写入端声明 + 两缺口指针)。
 
+#### 3.5.6c 损血档位触发累积器 strategy_hp_loss_accum
+
+**语义**:int 逻辑态域——损血档位触发发放的全程累积器(保险 id 130501
+首例,策略卡损血触发通道首例;登记表 =
+`cw_investments.STRATEGY_HP_LOSS_GRANTS`,值 = (档位阈值损血, 每档金,
+随机装备类别, 每档件数))。坐标系 = **当前局全程累计「实际损血」**:
+战斗结算 hp 写值差(保底截断后真值),非结算 outcome 面值(「损失」
+不超持有量);「每损失20点」按全程累计读法建模,发放刻取模、余数跨战
+结转(周期型触发器,无 done 闩;与 STRATEGY_LEVEL_GRANTS 等级一次性
+通道各建各表)。单成员机制域 int 形——第二张损血触发卡入表时升级
+per-card 键形,随其批裁。
+
+**写入端**:唯一逻辑写端 = `cw_gain_chain.check_strategy_hp_loss_grants`
+(累积 `write_logic` + 发放刻取模回写两笔同窗相邻;唯一调用点 = sim
+结算腿 `_resolve_battle` 策略金腿之后,防重 = sim `_settled_key` 同节点
+重放整段跳过;live 零写观察覆盖——金由游戏侧自发入账、equips 为观察
+域整表覆盖)。损血源现值 = 战斗结算单点(sim M14:奖励关恒胜/扑满
+豁免使损血结构性只存在于战斗类败局;死亡局 `_game_over` 早退天然零触);
+非战斗损血源(hp_instant 先亏后盈类选卡腿等)落地批须扩挂点,否则静默
+漏计——过渡由披露键 `STRATEGY_HP_LOSS_BUCKET_ASSUMPTION` 承载(一键
+三假设:桶结转/真值差/触发源域仅战斗结算,消费 = sim disclosures
+setdefault)。
+
+**登记四件**:开局种子 = `0`(A 类;0 = 无累积语义中性,种 0 不伪装
+已触发);快照恢复 = int 保型直通免 rebuild 登记(`env_grant_uid_seq`
+同款,`_json_safe` 对 int 无漂移);schema = 独立键版本 1(同
+env_grants_done 先例,不并入他域 bump);审计 = PROCESS_ONLY 行(无
+观察读取方,发放记账过程量)。
+
 ### 3.6 任何画面:事件浮层与派生域
 
 #### 3.6.1 事件浮层 event_overlay

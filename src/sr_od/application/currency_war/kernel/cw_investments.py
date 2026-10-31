@@ -2996,6 +2996,68 @@ def _validate_strategy_level_grants() -> None:
 _validate_strategy_level_grants()
 
 
+# ===== 策略卡损血档位触发发放注册表(保险;白名单制)=====
+# 「触发点各不相同,各建各表」纪律的承接表(段注释正本 = 上方
+# STRATEGY_LEVEL_GRANTS 段):与 STRATEGY_LEVEL_GRANTS 等级一次性通道
+# 分表——本表 = 损血档位**周期型**触发器(无 done 闩,发放记账 = 累积器
+# 取模,累积容器 = cw_game_state.strategy_hp_loss_accum),触发点/状态
+# 形状/载荷三重不同构,禁并入;与 STRATEGY_WIN_GOLD_GRANTS(胜利结算
+# 条件金)触发点亦不同(损血败局 vs 胜局)。键 = 策略规范名,值 =
+# (档位阈值损血, 每档金, 随机装备类别, 每档件数)。表外卡一律无条目,
+# 禁从效果原文自动猜装(STRATEGY_LEVEL_GRANTS 同款纪律)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_hp_loss_grants(触发检查
+# 单一源,唯一调用点 = sim 结算腿;live 零写观察覆盖——金由游戏侧自发
+# 入账、equips 为观察域整表覆盖,实机局不接本通道)。
+STRATEGY_HP_LOSS_GRANTS: dict[str, tuple[int, int, str, int]] = {
+    # 保险(id 130501 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行;
+    # 「每损失20点小队生命值,获得5金币和1个随机简易装备」直读:阈值
+    # 20/每档 5 金/随机装备类别简易/每档 1 件,数值面全 desc 明写)。
+    # 金载荷与 STRATEGY_ECONOMY 注册行 gold_per_20hp_lost 同值(同出
+    # 卡面同句;两表面同值对账归本表域测试断言把关,2026-10-28 治理
+    # 裁定 import 校验不加)。
+    '保险': (20, 5, '简易', 1),
+}
+
+
+def _validate_strategy_hp_loss_grants() -> None:
+    """STRATEGY_HP_LOSS_GRANTS 构建校验(import 即炸;治理口径 = 用户
+    裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更独立
+    触发的漂移哨留」,同 _validate_strategy_level_grants docstring——
+    阈值/金/件数形与双源同值属手抄常量纯笔误、单侧改数类,不加,对账
+    归评审与本表域测试把关;只留两漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 装备类别漂移:类别池 equips_by_category 非空——类别名
+    漂移的运行期实况 = 池空静默幻影(发放腿零写无发放,无异常无台账),
+    import 期哨是唯一响亮拦截面(on_env_gained 随机装备支池空防御分支
+    同理由,彼处为运行期 log,本处前移至 import 期)。"""
+    orphans = [n for n in STRATEGY_HP_LOSS_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_HP_LOSS_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, (_thr, _gold, _cat, _cnt) in STRATEGY_HP_LOSS_GRANTS.items():
+        if not equips_by_category(_cat):
+            raise ValueError(
+                f"STRATEGY_HP_LOSS_GRANTS 装备类别漂移({_name!r} 类别"
+                f"注册表无装备,版本改名?):{_cat!r}")
+
+
+_validate_strategy_hp_loss_grants()
+
+
+#: 损血档位触发发放建模假设披露键(desc 无载面的申报,消费 = sim 随局
+#: 披露面 disclosures setdefault):一键承载三项建模假设——①「每损失
+#: 20 点」按当前局全程累计读法(发放刻取模,余数跨战结转);②损血记账
+#: = 实际写值差(保底截断后真值,「损失」不超持有量);③触发源域 =
+#: 仅战斗结算损血(现值 sim 损血结构性单点;后继非战斗损血源〔hp_
+#: instant 先亏后盈类〕落地批须扩挂点,否则静默漏计)。实机持卡局败局
+#: 金/装备收入对照可校准,差额暴露归本键。常量落位沿
+#: STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 先例(kernel 注册表模块)。
+STRATEGY_HP_LOSS_BUCKET_ASSUMPTION: str = \
+    'strategy_hp_loss_bucket_carry_truth_diff_battle_only'
+
+
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====
 # **世界发放域**(条件达成的世界发放第二例,ENV_STREAK_GRANTS 同族):
 # 键 = 环境规范名,值 = (计数键,阈值,金,装备名可空)。装备可空 =

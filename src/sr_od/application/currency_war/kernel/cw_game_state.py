@@ -277,6 +277,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # cw_gain_chain 检查腿 docstring)。独立
                                 # 键版本 1,同 env_grants_done 先例不
                                 # 并入他域 bump——他域本体未变
+    'strategy_hp_loss_accum': 1,  # 损血档位触发累积器(保险;周期型
+                                # 触发器全程累计实际损血,发放刻取模,
+                                # 无 done 闩;int 保型直通免 rebuild
+                                # 登记,同 env_grant_uid_seq 先例)。
+                                # 独立键版本 1,同 env_grants_done
+                                # 先例不并入他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2319,6 +2325,10 @@ def seed_opening_state(gs: GameState) -> None:
     # 策略卡条件发放已发标记(空底座,同 env_grants_done 种子族先例
     # ——域值恒非 None,检查腿跳过判定 membership 零 None 防御)
     _seed(gs.strategy_conditional_done, ())
+    # 损血档位触发累积器(零底座,同 env_grant_uid_seq 计数器种子族
+    # 先例——域值恒非 None,触发函数累加取模零 None 防御;0 = 无累积
+    # 语义中性,种 0 不伪装已触发,gs-opening-seed A/B/C 判据 A 类)
+    _seed(gs.strategy_hp_loss_accum, 0)
     _seed(gs.enemy_affixes, [])
     _seed(gs.shop_refresh_cost, REFRESH_COST_BASE)
     _seed(gs.prev_node_spent, False)
@@ -2853,6 +2863,22 @@ class GameState:
     # 辖 _json_safe 无类型标形状 dict/list/tuple,int 无漂移;恢复后从存续
     # 值续号,不与恢复的锁记录 uid 撞号)。开局种子底座 = 0。
     env_grant_uid_seq: Field[int] = field(default_factory=Field)
+
+    # [索引定义] strategy_hp_loss_accum = 损血档位触发累积器(逻辑态;
+    # 保险 id 130501 首例,损血触发族首例——「每损失20点小队生命值」
+    # 按当前局全程累计读法,发放刻取模、余数跨战结转,周期型触发器
+    # 无 done 闩;登记表 = cw_investments.STRATEGY_HP_LOSS_GRANTS)。
+    # 坐标系 = 当前局全程累计「实际损血」(战斗结算 hp 写值差,保底截断
+    # 后真值,非结算 outcome 面值);取值时机 = 战斗结算刻追加、发放刻
+    # 取模回写,恒稳跨节点。写入端 = 唯一逻辑写端 =
+    # cw_gain_chain.check_strategy_hp_loss_grants(累积/取模两笔 write_
+    # logic,sim 结算腿单调用点;live 零写观察覆盖)。恢复局随快照存续
+    # (int 保型直通免 rebuild 登记,env_grant_uid_seq 同款——_json_safe
+    # 对 int 无漂移)。None = 未初始化(直构/测试域;函数侧按 0 防御,
+    # 计数通道 value or 0 先例,不伪装已积累)。单成员机制域 int 形——
+    # 第二张损血触发卡入表时升级 per-card 键形,随其批裁。开局种子底座
+    # = 0(A 类;0 = 无累积语义中性)。
+    strategy_hp_loss_accum: Field[int] = field(default_factory=Field)
 
     # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;
     # 节点改写环境建模(统一注册表 = cw_node_schedule.ENV_NODE_REWRITE_

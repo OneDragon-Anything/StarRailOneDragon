@@ -92,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
     check_strategy_win_gold_grants,
@@ -130,6 +131,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
+    STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     aggregate_economy,
     get_strategy,
@@ -2959,6 +2961,12 @@ class SimBackend:
         if is_piggy_node(self.gs) and outcome.hp_delta < 0:
             # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
             outcome = replace(outcome, hp_delta=0)
+        # 损血档位触发的损血实值锚(保险;hp_before = apply 前现值,
+        # 「规定取法」= 设计内唯一——保底截断局写后值恒 1,不可由
+        # (outcome.hp_delta, 写后现值) 反推面值前真值;真值差口径 =
+        # 「损失」不超持有量)。None 防御 = hp 从未观察(直构域)时
+        # 触发腿按零损血跳过,apply_hp_outcome 未观察零写同款防御。
+        hp_before = int(self.gs.hp.value or 0)
         _floor, dead = apply_hp_outcome(self.gs, outcome)
         self._hp_trail_append()
         # —— 结算环帧补写(T-33 完胜判定数据面,设计 §2.4):与 live 同一
@@ -3081,6 +3089,32 @@ class SimBackend:
             self.disclosures.setdefault(
                 STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
                 'all_settlement_nodes_v0')
+        # —— 策略卡损血档位触发发放(保险 id 130501 首例,损血触发族
+        # 首例;接线点 = 策略卡胜利金腿之后、败局待办登记之前,胜败两态
+        # 共同路径——触发判据 = 实际损血非胜利,胜局零损血/扑满豁免形态
+        # 在触发函数首序自然零通过;死亡局在本函数提前 return 处已出局,
+        # 不发放)。损血实值 = hp_before 与写后现值差(保底截断后真值,
+        # 「损失」不超持有量;hp 从未观察 → 前后均 0 → 零损血天然跳过,
+        # apply_hp_outcome 未观察零写同款防御)。条件单一源 = kernel
+        # check_strategy_hp_loss_grants(周期型:累积器全程累计 + 发放刻
+        # 取模,无 done 闩;防重零新增守卫 = 本函数 _settled_key,同节点
+        # 重放整段跳过);sig = logic_sig('sim:strategy') 沿策略战后发放
+        # 腿同组(金写 obs 族签名由函数内构);rng = 独立子流键
+        # M13/{p}/{r}/ins(装备采样专用,禁复用 M13 主流实例——其消耗序
+        # = 文档化契约「胜负+扣血/进度依序」,续用即延展耦合;独立子流 =
+        # 同 seed 其他流零扰动);发放非空 → 建模假设披露键随局申报
+        #(三假设:桶结转/真值差/触发源域仅战斗结算,后继非战斗损血源
+        # 落地批须扩挂点,过渡由本键承载)。
+        hp_lost = hp_before - int(self.gs.hp.value or 0)
+        gold_gain, _hp_loss_equips = check_strategy_hp_loss_grants(
+            self.gs, hp_lost,
+            logic_sig=logic_sig('sim:strategy'),
+            rng=stream_rng(self.seed,
+                           f'M13/{node.plane}/{node.round_num}/ins'))
+        if gold_gain > 0:
+            self.disclosures.setdefault(
+                STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
+                'bucket_carry_truth_diff_battle_only_v0')
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

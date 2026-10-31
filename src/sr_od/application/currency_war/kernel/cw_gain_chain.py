@@ -88,6 +88,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_GRANTS,
+    STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
@@ -1095,6 +1096,114 @@ def check_strategy_level_equip_grants(gs: GameState,
                        evidence=evidence, sig=sig)
         return spec.item
     return None
+
+
+#: 策略卡损血档位触发发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/
+#: _LEVEL_EQUIP_PRODUCER 同款家族纪律;写端 = 本模块
+#: check_strategy_hp_loss_grants,sim 结算位发放刻,新写端新名不沿用
+#: 链缺省伪装连续)。
+_HP_LOSS_GRANT_PRODUCER: str = 'strategy_conditional_grant'
+
+
+def check_strategy_hp_loss_grants(gs: GameState, hp_lost: int, *,
+                                  logic_sig: ChannelSig,
+                                  rng: random.Random | None = None,
+                                  producer: str = _HP_LOSS_GRANT_PRODUCER,
+                                  ) -> tuple[int, list[str]]:
+    """策略卡损血档位触发发放检查(「每损失20点小队生命值,获得5金币和
+    1个随机简易装备」触发器单一源,保险 id 130501 首例,损血触发族首例;
+    唯一调用点 = sim 结算腿——live 零写观察覆盖:金由游戏侧自发入账、
+    equips 为观察域 owned_equips 识别器整表覆盖,实机局不接本通道)。
+
+    **周期型触发器,无 done 闩**:「每损失20点」按当前局全程累计读法
+    (累积余数结转,发放刻取模),每战斗结算重查;防重归调用方节点键
+    幂等守卫,本函数零二次守卫。与等级一次性通道(STRATEGY_LEVEL_
+    GRANTS + done 闩)各建各表各函数,形状不通用。
+
+    条件矩阵(顺序即短路序,沿 check_env_streak_grants 形态):
+
+    1. ``hp_lost <= 0`` → (0, [])(胜局/奖励关恒胜/扑满豁免零损血,
+       零写零累积);
+    2. 未持卡('保险' not in active_strategies)→ **零写零累积**(不持卡
+       期间损血不入账,取卡后不追溯——拿卡前损血无从回溯,触发面以持卡
+       期为域);
+    3. 累积:``accum = (strategy_hp_loss_accum 现值 or 0) + hp_lost``,
+       write_logic 直写(登记事实域,env_grants_done 直写先例;evidence
+       ``strategy_hp_loss:accum:p<位面>r<轮>``);
+    4. 桶数 = accum // 表载阈值;桶数 0 → 返回 (0, [])(余数留存累积器,
+       跨战结转);
+    5. 发放刻:accum %= 表载阈值回写(同 sig 同窗相邻写;阈值/金/类别/
+       件数一律取 STRATEGY_HP_LOSS_GRANTS 表载值,禁字面双写——防表行
+       演化成双源);金 = 桶数 × 表载每档金,``gs.observe`` 世界数值面
+       独立笔(扑满收入 observe 金同款;obs 族签名函数内构
+       obs_sig(group_id='sim:strategy'),evidence 带 sim:engine 前缀——
+       金位可为 logic 来源(买牌上报同事务 logic 写),前缀命中失配抑制
+       分支 = 记账路径,禁入真失配告警,check_strategy_star_merge_gold
+       同判);
+    6. 装备 = 每档 1 件:池 = equips_by_category(表载类别),池空 → log
+       防御分支零写(注册表漂移,不炸链;on_env_gained 随机装备支同款,
+       import 期哨已拦类别名漂移,此支为运行期纵深防御);逐档
+       ``rng.choice(pool)`` → ``gain_equipment(rand=True, sig=入参
+       logic_sig, producer 显式传)``(evidence ``strategy_hp_loss:<名>``);
+    7. 返回 (金, 发放装备名表)(调用方 sim 专用消费,披露键申报面)。
+
+    纪律标注:
+
+    - **含 rng**(装备采样):rng 形参缺省回退自掷 = 采样是猜测口径,
+      正式消费 = sim 传流键(独立子流,check_env_boss_grants 逐函数标注
+      纪律同款);
+    - **sig 单形态**:logic 族签名 = 入参 ``logic_sig``(累积器两笔 +
+      装备一笔共用);obs 族签名(金写)由函数内构——两族来源不同禁混用,
+      入参 logic 族传入 observe 即炸渠道族校验(on_diamond_acquired
+      先例原文);
+    - evidence 前缀 ``strategy_hp_loss:`` 与 ``income:``/``streak:`` 族
+      分列可过滤审计;
+    - 双持不可能(active_strategies 按名去重)→ 单累积器无判重闸(现役
+      不设防申报);单成员机制域——第二张损血触发卡入表时升级 per-card
+      键形,随其批裁。
+    """
+    spec = STRATEGY_HP_LOSS_GRANTS.get('保险')
+    if hp_lost <= 0 or spec is None \
+            or '保险' not in (gs.active_strategies.value or ()):
+        return 0, []
+    threshold, gold_each, equip_cat, equip_cnt = spec
+    nd = gs.node.value
+    frame = f'p{nd.plane}r{nd.round_num}' if nd is not None else ''
+    accum = int(gs.strategy_hp_loss_accum.value or 0) + int(hp_lost)
+    gs.write_logic(gs.strategy_hp_loss_accum, accum,
+                   produced_by=producer,
+                   evidence=f'strategy_hp_loss:accum:{frame}',
+                   sig=logic_sig)
+    buckets = accum // threshold
+    if buckets <= 0:
+        return 0, []
+    # 发放刻取模回写(同 sig 同窗相邻写;余数跨战结转 = 累积器承载)
+    gs.write_logic(gs.strategy_hp_loss_accum, accum % threshold,
+                   produced_by=producer,
+                   evidence=f'strategy_hp_loss:accum:{frame}',
+                   sig=logic_sig)
+    gold = buckets * gold_each
+    from sr_od.application.currency_war.sim.cw_sim_base import (
+        obs_sig,
+        sim_evidence,
+    )
+    gs.observe(gs.gold, int(gs.gold.value or 0) + gold,
+               evidence=sim_evidence(f'strategy_hp_loss:{frame}'),
+               sig=obs_sig(group_id='sim:strategy'))
+    granted: list[str] = []
+    pool = equips_by_category(equip_cat)
+    if not pool:
+        log.warning(f'[cw-gain] 随机装备类别池空(注册表漂移?):'
+                    f'保险 category={equip_cat!r}')
+        return gold, granted
+    eq_rng = rng if rng is not None else random.Random()
+    for _ in range(buckets * equip_cnt):
+        name = eq_rng.choice(pool)
+        gain_equipment(gs, name, rand=True, sig=logic_sig,
+                       evidence=f'strategy_hp_loss:{name}',
+                       producer=producer)
+        granted.append(name)
+    return gold, granted
 
 
 def _node_frame(gs: GameState) -> str:

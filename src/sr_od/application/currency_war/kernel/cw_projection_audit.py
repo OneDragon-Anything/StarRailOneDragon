@@ -248,6 +248,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '装备腿(check_strategy_level_equip_grants 直写形态,live '
               '结算位 + sim advance 双点同链,producer '
               'strategy_level_equip_grant)'),
+    'strategy_hp_loss_accum': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'
+              '损血,发放刻取模余数结转,周期型触发器无 done 闩),无观察'
+              '读端——发放记账过程量(同族行先例 = env_grants_done/'
+              'ore_declared_done);唯一逻辑写端 = cw_gain_chain.'
+              'check_strategy_hp_loss_grants'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),
