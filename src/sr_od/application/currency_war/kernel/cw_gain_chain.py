@@ -86,6 +86,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_GRANTS,
+    STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
     normalize_invest_name,
 )
@@ -824,6 +825,68 @@ def check_strategy_battle_grants(gs: GameState, node_kind: str,
                                producer=_BATTLE_GRANT_PRODUCER):
                 granted.append((name, item))
     return tuple(granted)
+
+
+#: 胜利结算条件金计数单位(卡面直读:「每有一个佩佩」——佩佩 = 本表
+#: 语义的计数目标;与 STRATEGY_GRANTS 招财狗行 chars_immediate 及
+#: cw_gain_effects 具名角色发放名单同名单一源对拍归测试锁。表扩计数
+#: 目标异构卡时随批改表值形态,本常量随迁)。
+_WIN_GOLD_COUNT_UNIT: str = '佩佩'
+
+
+def check_strategy_win_gold_grants(gs: GameState, *, won: bool,
+                                   hp_delta: int) -> int:
+    """策略卡胜利结算条件金检查(「战斗胜利后，若未损失小队生命值，
+    则每有一个佩佩就会为你提供1金币」触发器单一源,招财狗 id 103501
+    首例;唯一调用点 = sim 结算腿——live 零写观察覆盖:金由游戏侧
+    自发入账,下一结算屏金真值覆盖自动吸收,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序,check_strategy_battle_grants 形态):
+
+    1. 持卡 ∩ STRATEGY_WIN_GOLD_GRANTS 为空(未持卡/表外卡同路,
+       表外卡禁从效果原文自动猜装)→ 0;
+    2. ``not won`` → 0(胜利判据);
+    3. ``hp_delta != 0`` → 0(未损血判据;两条件并列必要:扑满败局
+       形态 won=False ∧ hp_delta=0 存在(sim 扑满不掉血豁免只改
+       hp_delta 保留掷点 won),单条件 hp_delta==0 会误发——双写保
+       desc 原文两半句,未来输出面演进不缺语义);
+    4. 数佩佩:合并池(备战槽 ∪ 上阵两排槽 ∪ 溢出位,与升星判断
+       同池口径——佩佩恒后台,仍可因席满落溢出/未上阵在备战,都是
+       玩家「有」的佩佩)内身份 == :data:`_WIN_GOLD_COUNT_UNIT` 的
+       单位数 n(单位数不折星,2星佩佩 = 1个佩佩,「每有一个佩佩」
+       量词「个」直修饰单位;bench/deployed 未观察 None → 该域计 0
+       宁缺勿造,env 触发器同契约;溢出位按身份串计,溢出「有件未
+       识别」形态〔overflow_warning ∧ 身份空串〕自然计 0,sim 生产
+       不可达——溢出身份由获得链直写恒有串)→ 返回 n × 表值。
+
+    - **零 rng**:条件全真值,无采样面;
+    - **无 done 闩**(周期型):每战斗结算重查,防重归调用方节点键
+      幂等守卫,本函数零二次守卫;
+    - **纯读零写**(契约同 check_strategy_level_grants:决策与写面
+      分离)——返回金数,写面(observe 金独立笔)归调用方,故无
+      sig 入参,与 check_env_streak_grants 自带写面形态差异显式申报;
+    - 触发域(desc 无载面:卡面「战斗胜利」未限定节点类型)= 全部
+      结算节点,由调用方挂点承载(结算腿不设节点类型守卫);假设经
+      STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 披露键随局申报。
+    """
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_WIN_GOLD_GRANTS]
+    if not held or not won or hp_delta != 0:
+        return 0
+    n = 0
+    bench = gs.bench.value
+    if bench is not None:
+        for slot in bench.slots:
+            if slot is not None and slot.kind == 'unit' \
+                    and slot.unit is not None \
+                    and str(slot.unit.char_id) == _WIN_GOLD_COUNT_UNIT:
+                n += 1
+    for u in deployed_indexed_of_view(gs.deployed.value):
+        if u is not None and str(u.char_id) == _WIN_GOLD_COUNT_UNIT:
+            n += 1
+    if str(gs.overflow_card.value or '') == _WIN_GOLD_COUNT_UNIT:
+        n += 1
+    return n * sum(STRATEGY_WIN_GOLD_GRANTS[name] for name in held)
 
 
 #: 策略卡到级发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/

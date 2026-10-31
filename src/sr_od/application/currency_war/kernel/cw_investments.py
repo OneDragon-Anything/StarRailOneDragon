@@ -3691,6 +3691,55 @@ def _validate_strategy_encounter_battle_grants() -> None:
 _validate_strategy_encounter_battle_grants()
 
 
+# ===== 策略卡胜利结算条件金注册表(招财狗;白名单制)=====
+# 「战斗胜利后，若未损失小队生命值，则每有一个佩佩就会为你提供1金币」
+# 策略域首例:键 = 策略规范名,值 = 每佩佩金数。表外策略一律无条目,
+# 禁从效果原文自动猜装(STRATEGY_ENCOUNTER_BATTLE_GRANTS 同款纪律)。
+# 与 STRATEGY_ECONOMY instant_gold 的语义边界:那条 = 获得时点一次性
+# 金,本表 = 战斗结算条件可重复金(每战斗结算重查,无 done 闩;防重
+# 归调用方节点键幂等守卫)。佩佩召唤腿「获得一个佩佩」归 cw_gain_effects
+# 具名角色发放名单在册,不入本表。
+# 消费面 = kernel/cw_gain_chain.check_strategy_win_gold_grants(触发
+# 检查单一源,唯一调用点 = sim 结算腿;live 零写观察覆盖——金由游戏
+# 侧自发入账,下一结算屏金真值覆盖自动吸收,实机局不接本通道)。
+STRATEGY_WIN_GOLD_GRANTS: dict[str, int] = {
+    # 招财狗(id 103501 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id
+    # 行;卡面两数值明写:每佩佩 1 金)
+    '招财狗': 1,
+}
+
+
+def _validate_strategy_win_gold_grants() -> None:
+    """STRATEGY_WIN_GOLD_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本
+    变更独立触发的漂移哨留」,同 _validate_strategy_encounter_battle_
+    grants docstring——本表只落孤儿键一哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。每佩佩金数为手抄常量,纯笔误类(游戏版本变更不可能独立
+    触发),值域校验按治理裁定不加。
+    """
+    orphans = [n for n in STRATEGY_WIN_GOLD_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_WIN_GOLD_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_win_gold_grants()
+
+
+#: 胜利结算条件金触发域假设披露键(desc 未写明处的申报,消费 = sim
+#: 随局披露面 disclosures setdefault):desc「战斗胜利后」未限定节点
+#: 类型,建模 v0 = 全部结算节点(含奖励关/扑满关)——奖励关恒胜白拿
+#: 即发,扑满败局(won=False ∧ hp_delta=0)由双判据短路不发;实机
+#: 持卡局奖励关/扑满关结算屏金收入对照可校准,差额暴露归本键。常量
+#: 落位沿 ENV_REROLL_ASSUMPTION_POOL 先例(kernel 注册表模块)。
+STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION: str = \
+    'strategy_win_gold_scope_all_settlement_nodes'
+
+
 # ===== 策略卡延时发放注册表(白名单制;策略延时世界发放通道模式件,
 # ===== 人才激励首例——双腿卡:即时装备腿走 PICK_INVEST_EFFECTS 工厂
 # ===== 即时支,延时腿经本表入倒计时队列)=====

@@ -53,7 +53,7 @@
 
 ### 批 4 行为条件流
 - **存款回报**(银):上节点没花钱 → 2 免费刷(期权成本进每回合决策)。
-- **招财狗**(银):胜利且无损 → 每佩佩 +1 金(微量,策略层现金分未建模登记,量级在此声明)。
+- **招财狗**(银,id 103501,**win 结算腿首例**,2026-10-31 已建模):胜利且无损 → 每佩佩 +1 金(微量,策略层现金分未建模登记,量级在此声明)。世界真值腿已建模:登记表 `cw_investments.STRATEGY_WIN_GOLD_GRANTS` 白名单(键 = 策略规范名,值 = 每佩佩金数;构建校验孤儿键哨,值域按 2026-10-28 治理判据不设)+ 消费 = `kernel/cw_gain_chain.check_strategy_win_gold_grants`(纯读零写:胜 ∧ 未损血 ∧ 佩佩数三条件,佩佩计数 = 备战∪上阵∪溢出合并池单位数不折星),唯一调用点 = sim `_resolve_battle` 结算腿 observe 金独立笔(evidence `strategy_win_gold:p<位面>r<轮>`,收入笔后相邻);live 零写观察覆盖(金由游戏侧自发入账,结算屏真值覆盖收束);触发域 = desc 未写明面,按全部结算节点建模(奖励关恒胜白拿即发,扑满败局 won=False∧hp_delta=0 双判据短路不发),假设经披露键 `strategy_win_gold_scope_all_settlement_nodes` 随局申报,实机差额归披露键校准面;佩佩召唤腿「获得一个佩佩」 = `cw_gain_effects._STRATEGY_CHAR_GRANTS` 名单 +1 复用具名角色发放族。
 - **星星相印**(银):每合 3星 +5 金(一局 1-3 次 ≈ 5-15 金)。
 - **气氛组/+**(银):战斗后每 2 个零伤角色 +1XP(+即时 8XP)。
 - **深井角斗场**(环境 id 104):本局首次达成 5 连胜时获得 1 个财富宝钻 → **结算连胜触发器**(`cw_investments.ENV_STREAK_GRANTS` 白名单首例):条件判定在战斗结算时点(连胜真值落账后 `kernel/cw_env_grants.check_env_streak_grants`,live/sim 结算接线同调),「本局首次」一次性由 `env_grants_done` 标记承担(域规格 = fields.md §3.5.5)。发放 = 财富宝钻进装备库存(随机态写——宝钻落位不可观察,`write_logic_rand` 可能世界快照;实机由下一备战帧 equips 观察覆盖差异自动纠偏,**呈现面无新增**);宝钻获得的世界数值联动 = diamond_count +1 / deploy_cap 重算(level+财富宝钻数)/ back_layout +1,仅 sim 侧回调(`on_diamond_acquired`),live 归观察域。

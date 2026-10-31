@@ -93,6 +93,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
     check_strategy_level_grants,
+    check_strategy_win_gold_grants,
     discharge_due_item_grants,
     discharge_due_item_opens,
     discharge_due_strategy_grants,
@@ -128,6 +129,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
+    STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     aggregate_economy,
     normalize_invest_name,
 )
@@ -3007,6 +3009,31 @@ class SimBackend:
         # 返回值忽略(无回调面)。
         check_strategy_battle_grants(self.gs, kind,
                                      logic_sig('sim:strategy'))
+        # —— 策略卡胜利结算条件金(招财狗 id 103501 首例;接线点 =
+        # 策略卡战后触发发放之后、败局待办登记之前,胜败两态共同路径。
+        # 触发域 = 全部结算节点,本接线不设节点类型守卫——卡面「战斗
+        # 胜利」未限定节点类型,desc 无载面按字面全节点建模,假设经
+        # STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 披露键随局申报,实机差额
+        # 归披露键校准面)。条件单一源 = kernel
+        # check_strategy_win_gold_grants(纯读零写:胜 ∧ 未损血 ∧ 佩佩
+        # 数三条件函数内短路,扑满败局 won=False ∧ hp_delta=0 形态
+        # 自然零发;死亡局已在本函数提前 return 处出局);写面 =
+        # observe 金独立笔(世界数值面写端通道分工,扑满收入 observe
+        # 金同款;obs 族,组名 'sim:strategy' 沿在役惯例 obs/logic
+        # 共用——同名 logic 组 = 策略战后发放腿);幂等零新增守卫 =
+        # 本函数 _settled_key(同节点重放整段跳过)。
+        gold_gain = check_strategy_win_gold_grants(
+            self.gs, won=won, hp_delta=outcome.hp_delta)
+        if gold_gain > 0:
+            gold_now = int(self.gs.gold.value or 0)
+            self.gs.observe(
+                self.gs.gold, gold_now + gold_gain,
+                evidence=sim_evidence(
+                    f'strategy_win_gold:p{node.plane}r{node.round_num}'),
+                sig=obs_sig(group_id='sim:strategy'))
+            self.disclosures.setdefault(
+                STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
+                'all_settlement_nodes_v0')
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

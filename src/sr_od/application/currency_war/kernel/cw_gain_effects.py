@@ -538,9 +538,9 @@ def _compose_grant_legs(
 
 
 # ===== 具名角色发放族效果(策略卡获得时点具名角色确定发放:gain_character
-# ===== (rand=False) 入席,落位/回调/升星/席满溢出全沿链现役;族首落 =
-# ===== 溜佩佩/溜佩佩+(佩佩召唤族,世界腿),后继卡(招财狗/佩佩驾到/
-# ===== 艾丝妲的猛犬!)设计批 +1 行复用本表)=====
+# ===== (rand=False) 入席,落位/回调/升星/席满溢出全沿链现役;现役成员 =
+# ===== 溜佩佩/溜佩佩+(族首落)/招财狗(佩佩召唤族,世界腿),后继卡
+# ===== (佩佩驾到/艾丝妲的猛犬!)+1 行复用本表)=====
 
 #: 具名角色发放名单单一源(卡规范名 → 发放角色;登记面镜像 =
 #: cw_investments.STRATEGY_GRANTS 对应卡 chars_immediate,一致性测试
@@ -550,6 +550,7 @@ def _compose_grant_legs(
 _STRATEGY_CHAR_GRANTS: dict[str, str] = {
     '溜佩佩': '佩佩',
     '溜佩佩+': '佩佩',
+    '招财狗': '佩佩',
 }
 
 
@@ -634,8 +635,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关)直书登记行由
-_make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+)
-由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
+_make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
+招财狗)由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
 登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无
