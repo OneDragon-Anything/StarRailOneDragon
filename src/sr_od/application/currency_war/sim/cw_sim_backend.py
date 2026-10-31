@@ -141,6 +141,7 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
     final_supply_pos,
     node_sequence_of,
+    sequence_next,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     DIAMOND_EQUIP_NAMES,
@@ -256,6 +257,14 @@ COMBAT_NODE_TYPES: frozenset[str] = frozenset({'battle', 'encounter', 'boss'})
 #: 非战斗收入分支节点词表(分支优先级:supply/reward 先于败补,kernel
 #: 分支序;败态在这些轮保留待下一战斗轮消费)。
 INCOME_BRANCH_NODE_TYPES: frozenset[str] = frozenset({'supply', 'reward'})
+
+#: 免战跳过按钮替换/跳过消费的节点辖域(免战牌;卡面「进入战斗节点时」
+#: 词义类型读法 = 仅普通战斗——「战斗 ↔ 遭遇」「首领」「奖励」卡词汇分立
+#: 先例在册,词义依据同战争边疆 T-18 类型读法)。实机按钮出现面失配
+#: (遭遇/首领/奖励备战帧也替换按钮)的校准挂披露键
+#: :data:`CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION`,失配 = 本常量单点改值
+#: 跟随,禁按 ``COMBAT_NODE_TYPES`` 顺延扩域。
+CW_SKIP_NODE_KINDS: frozenset[str] = frozenset({'battle'})
 
 
 @dataclass(frozen=True)
@@ -1108,6 +1117,22 @@ DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
 #: 硬编码。
 DISCLOSURE_STRATEGY_PICK_INSTANT: str = 'strategy_pick_instant_legs'
 
+#: 免战跳过辖域假设披露键(免战牌;纯声明,不进任何判定分支):跳过辖域
+#: = :data:`CW_SKIP_NODE_KINDS`(仅普通战斗)系卡词汇类型读法假设,
+#: 实机按钮出现面(遭遇/首领/奖励备战帧是否同样替换为跳过)校准挂点;
+#: 失配可观测路径 = live 跳过声明(battle_skip)到达而本辖域不含该节点
+#: 类型 → 分派落空响亮(ValueError 守卫族)或对账漂移告警。发射点 =
+#: 跳过消费拍(假设兑现时点)。
+CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION: str = 'cw_skip_scope_battle_only_assumption'
+
+#: 免战跳过结算语义暂定披露键(免战牌;纯声明,不进任何判定分支):
+#: 跳过结算语义族(hp/streak/收入不动 + 被跳节点经验照常入账 + 直进
+#: 下一节点窗)= live 暂定表述(fields.md §4.2「跳过=无结算帧」结构性
+#: 事实 + action-logic-state.md §5/§7 比对计划行)的建模化,实机局
+#: 跳过前后字段比对批为消费方;证伪即改 :meth:`SimBackend._skip_battle`
+#: 对应支。发射点 = 跳过消费拍。
+CW_SKIP_SETTLEMENT_SEMANTICS_PENDING: str = 'cw_skip_settlement_semantics_pending'
+
 #: 策略尾款金·锚点辖域假设披露键(尾款交付;纯声明,不进任何判定分支)。
 #: 载义:①「最后一个补给阶段」按**全局一次**建模(锚 = 展平全序列最末
 #: supply 位,单一源 = ``cw_node_schedule.final_supply_pos``;措辞依据 =
@@ -1235,12 +1260,14 @@ class SimRunResult:
 #: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
 #: 模型对齐批:``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
 #: 回备战并自动弹店,遭遇战改由出战触发——旧「选档落地即结算」随呈现
-#: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明)。
+#: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明);免战牌建模批
+#: 增 ``battle_skip``(免战跳过声明,来源 = 出战上报跳过子态分支,
+#: kernel ``_SKIP_DECL_TRIGGER`` 同批)。
 ADVANCE_TRIGGER_KINDS: frozenset[str] = frozenset({
-    '', 'node_advance', 'battle_resolve', 'open_box', 'pick_box_card',
-    'pick_megastar', 'pick_planner', 'pick_supply', 'pick_invest_env',
-    'pick_invest_strategy', 'spy_shop_refresh', 'pick_encounter',
-    'refresh_invest_env', 'refresh_invest_strategy',
+    '', 'node_advance', 'battle_resolve', 'battle_skip', 'open_box',
+    'pick_box_card', 'pick_megastar', 'pick_planner', 'pick_supply',
+    'pick_invest_env', 'pick_invest_strategy', 'spy_shop_refresh',
+    'pick_encounter', 'refresh_invest_env', 'refresh_invest_strategy',
 })
 
 #: 对账豁免场景键(建模内合法失配 = 最上层呈现屏 ≠ 底层稳态画面,
@@ -1452,14 +1479,35 @@ class SimBackend:
         3.2 语义 = 画面档匹配(问询屏 == 当前呈现屏;模态屏族在场时
         底层屏区域不可见)。3.4 联调细化 = 不可呈现浮层的在场锚恒
         False(:data:`_UNPRESENTED_OVERLAY_ANCHORS`,呈现态查询语义)。
-        等待变体(wait_one_one)在问询时立即完成(sim 世界瞬时呈现,
-        动画无时间维)。"""
+        免战牌按钮替换子态(免战牌建模批):备战/开商店两屏上持卡且
+        余量 > 0 且节点在跳过辖域 → 出战按钮替换为跳过(与出战 op
+        「查不到出战 fallback 查跳过」的双屏查找同构;独立于静态排除表,
+        后者零改动)。等待变体(wait_one_one)在问询时立即完成(sim
+        世界瞬时呈现,动画无时间维)。"""
         self._maybe_finish_wait()
         self._sync_shop_record()
         if screen_name != self._screen:
             return False
+        if screen_name in (SCREEN_PREP, SCREEN_SHOP) \
+                and area_name in ('按钮-出战', '按钮-跳过'):
+            node = self.gs.node.value
+            if node is not None and node.kind in CW_SKIP_NODE_KINDS:
+                # battle 节点按钮对真值 = 子态开关:免战在场余量>0 →
+                # 出战 False/跳过 True;用尽移除(entry 离场)→ 出战
+                # True/跳过 False(设计 §4-5)。出辖域节点不走本分支 =
+                # 现役语义维持(出战恒可见)。
+                if area_name == '按钮-跳过':
+                    return self._skip_card_active()
+                return not self._skip_card_active()   # 按钮-出战
         return area_name not in _UNPRESENTED_OVERLAY_ANCHORS.get(
             screen_name, ())
+
+    def _skip_card_active(self) -> bool:
+        """免战牌跳过子态开关(免战牌 entry 在场且 ``remaining_uses > 0``);
+        问询屏与节点辖域限定由调用方承担——按钮 area 单源归备战屏,
+        开商店叠加帧同位(出战 op 双屏查找同构)。"""
+        entry = self.gs.effects.first(STRATEGY_EFFECTS['免战牌'].id)
+        return entry is not None and (entry.remaining_uses or 0) > 0
 
     def click_answer(self, op, screen_name: str, area_name: str,
                      until_find_all, until_not_find_all):
@@ -1772,6 +1820,14 @@ class SimBackend:
                 self._on_node_advance()
         elif decl.trigger == 'battle_resolve':
             self._resolve_battle()
+        elif decl.trigger == 'battle_skip':
+            if decl.next_screen == '':
+                # 局终防御臂(声明构造面 _skip_next_screen 空串臂同源:
+                # 后继 None/表外位面;默认辖域战斗节点非位面末,现规则集
+                # 不可达):终局消费腿,对齐 node_advance 终局事件式形态。
+                self._on_node_advance_terminal()
+            else:
+                self._skip_battle()
         elif decl.trigger == 'open_box':
             self._on_open_box()
         elif decl.trigger == 'pick_box_card':
@@ -1905,7 +1961,8 @@ class SimBackend:
         # = 世界合成非 logic 直写),闩 = write_logic(非金 Field 登记事
         # 实直写,discharge_due_item_grants 先形);组名沿 sim:strategy
         #(策略战后发放腿首落在役组)。现役 sim 经验常量下 9 级不可达
-        #(节点 70 + 选卡即时腿 26 = 上界 96 < 3→9 级门槛 194)= 休眠
+        #(节点 70 + 选卡即时腿 64 = 上界 134 < 3→9 级门槛 194;即时腿
+        # 键集显式扩集制,免战牌 +30 入注册面随批重申报)= 休眠
         # 正确路径恒短路零写,经验源扩网零改激活;幂等 = 决策函数 done
         # 闩短路 + 本层序位守卫双保险。
         _grant = check_strategy_level_grants(self.gs)
@@ -3167,6 +3224,70 @@ class SimBackend:
                             sig=obs_sig(group_id='sim:loss'))
         self._screen = SCREEN_SETTLE
         self._sub = ''
+
+    def _skip_battle(self) -> None:
+        """免战跳过消费(免战牌;现役唯一来源 = 出战声明 battle_skip):
+        被跳节点战斗不发生——零战斗面(不掷 U01、不掉血、无结算收入
+        落账、无连胜转移、无环境/策略战后发放、无难度记录、无结算环帧行、
+        无败局待办登记,清单面 = :meth:`_resolve_battle` 全战斗结算的
+        补集),被跳节点经验照常入账 + 世界直进下一节点窗。
+
+        入账段镜像 :meth:`_on_node_advance` 现值记账段(含策略卡到级金腿
+        与到级装备腿):跳过拍 = 跨级事件拍,漏镜像则跳过跨级不触发到级
+        发放 = 与常规推进分叉;通道/写形态/组名逐字同构,休眠依据与幂等
+        说明同推进点注释,不赘。uses 递减不在本腿(单一写端 = 上报腿
+        start_battle consume_use,本腿零递减防双写)。重入幂等守卫 =
+        已结算节点键(:attr:`_settled_key`;skip 后又到的 battle_resolve
+        /重复 battle_skip 同键空转,零双账);后到的 kernel node_advance
+        声明经 :meth:`_on_node_advance` 序位守卫自然空转。"""
+        node = self.gs.node.value
+        if node is None:
+            return
+        key = (node.plane, node.round_num)
+        if self._settled_key == key:
+            return
+        self._settled_key = key
+        self.disclosures.setdefault(CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION,
+                                    'battle_only_v0')
+        self.disclosures.setdefault(CW_SKIP_SETTLEMENT_SEMANTICS_PENDING,
+                                    'hp_streak_income_untouched_v0')
+        # 被跳节点经验照常入账(被离开节点的类型;与 _on_node_advance 对
+        # 被离开节点的入账同段——跳过 = 节点完成,裁决点 7 默认案)。
+        apply_node_xp(self.gs, node_type=node.kind)
+        # —— 策略卡到级金腿(记账段镜像,挂经验入账后 = 跨级事件拍,
+        # 先于新节点窗轮首收入:达标金计入本窗息算基数)。
+        _grant = check_strategy_level_grants(self.gs)
+        if _grant is not None:
+            _name, _amount = _grant
+            self.gs.observe(
+                self.gs.gold, int(self.gs.gold.value or 0) + _amount,
+                evidence=sim_evidence(f'strategy:level_gold:{_name}'),
+                sig=obs_sig(group_id='sim:strategy'))
+            self.gs.write_logic(
+                self.gs.strategy_conditional_done,
+                tuple(self.gs.strategy_conditional_done.value or ())
+                + (_name,),
+                produced_by=LEVEL_GRANT_PRODUCER,
+                evidence=f'strategy:level_gold:{_name}',
+                sig=logic_sig('sim:strategy'))
+        # —— 策略卡到级装备腿(记账段镜像;返回非 None → 宝钻回调,
+        # 入参分工同推进点)。
+        _equip_grant = check_strategy_level_equip_grants(
+            self.gs, logic_sig('sim:strategy'))
+        if _equip_grant is not None:
+            on_diamond_acquired(self.gs, _equip_grant)
+        # 世界直进下一节点窗(位面首过渡/常规窗由 _enter_node_window 内部
+        # 分支呈现,新窗全部腿经 _begin_node_window 窗口幂等守卫自动继承)。
+        eff = effective_node_pos(self.gs)
+        nxt = (sequence_next(eff, self.gs.node_seq_by_plane.value)
+               if eff is not None else None)
+        if nxt is None:
+            # 防御臂(与 advance 分派 battle_skip+'' 同臂语义;声明面预测
+            # 非空而世界后继为 None = 声明与状态机漂移,对账面自然留证)。
+            self._on_node_advance_terminal()
+            return
+        self._entered_pos = nxt
+        self._enter_node_window(nxt)
 
     # (巨星/planner 触发评估器与银狼全域星基线已停用:判据 = 容器值回调[cw_faction_callbacks],簿记 =
     #  ScreenChanges sidecar,呈现 = pending 检查。)

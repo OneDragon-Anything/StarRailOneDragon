@@ -327,7 +327,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 **OpenShop**（开店意图，`kernel/cw_prep_actions.py::OpenShop`，备战环终结）与 **StartBattle**（出战，备战访问终结·唯一完成态）是**转移动作**：它们只把画面从 A 转移到 B，不按游戏规则改写任何局内资源。**Obs**（环内重观察，`operations/cw_op/cw_obs_action.py::CwActionObsOp`）同类逻辑态 = 空：它的容器更新通道 = 宿主画面 op 的完整观察(全量识别)链重跑（观察聚合入口直写 = 观察边界对账，非动作逻辑态直写）；动作上报面零写（`zero_writes.py::report_action_obs_param` 占位）。
 
 - **OpenShop**：容器逻辑态 = 空（显式声明）。开店不触发刷新（基础刷新触发只有「节点切换」+「手动」，`research/economy.md` §2.1）；开店后牌面/gold = 入口观察重建（观察面）。
-- **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（op 自上报 `report_action_start_battle_param`：hp/gold/streak 零推进；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过经上报即递减（`report_action_start_battle_param` 内 `consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；「跳过后 hp/streak/收入不动」= 待实机实证的暂定表述（§7「跳过不动」行）。发射重发/连败停机 = 流程防线（[action_exec.md](../flow/action_exec.md) §7），不属逻辑态。
+- **StartBattle**：容器逻辑态 = 空（显式声明）。进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管（op 自上报 `report_action_start_battle_param`：hp/gold/streak 零推进；败轮金按轮首补发口径，fields.md §4.2 轮首收入）。**免战牌子态**：出战按钮变「跳过」；跳过经上报即递减（`report_action_start_battle_param` 内 `consume_use`，归零移除——效果账本侧确定性维护，非 GameState 字段逻辑态）；跳过事实走声明通道（免战牌建模批：skip_substate 出口构造 `battle_skip` 声明，`next_screen` = 跳过后下一节点窗稳态屏推导 `_skip_next_screen`；常规出口 (结算屏, battle_resolve) 不变），sim 消费 = `_skip_battle`（被跳节点经验照常入账 + 世界直进下一节点窗、零战斗面）——「跳过后 hp/streak/收入不动」已按暂定表述建模（披露键 `cw_skip_settlement_semantics_pending` 随局申报），实机比对仍挂 §7「跳过不动」行。发射重发/连败停机 = 流程防线（[action_exec.md](../flow/action_exec.md) §7），不属逻辑态。
 - **Obs**：容器逻辑态 = 空（显式声明；策略发射后宿主 `CwScreenPrep.reobserve_in_visit` 重跑观察链，帧代次标 full 归决策循环写入位置——方向重估触发同入口帧）。重观察见事件 overlay = 抛 `CwObsOverlayBail` 返回主循环重新分发（画面路由归外循环，环内不消化）。
 
 依据：`kernel/cw_prep_actions.py::OpenShop`/`StartBattle`；`kernel/cw_action_report/zero_writes.py::report_action_open_shop_param`、`start_battle.py::report_action_start_battle_param` 与 `report_action_obs_param` docstring（零写/零推进申报）；`fields.md` §4.2 出战。
@@ -350,6 +350,6 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 | 好运令牌定向池结构（「四件」vs「3+3」）与判据面（R(c) 推荐表未采集） | 好运令牌（§4.7/§3A.2） | 判据面 fail-closed 永不进准入；`LuckyTokenUse` 类随族立档 + 动作发出点禁无判据发出，逻辑态 = 工具 −1 + 获得面按选定后确定直写 | 拖一次令牌数选项实机采集（proofs/p14 Q5）+ 判据面建模批补档 |
 | 商业间谍「升级时刷新商店并偷最贵 3 张」副作用 | LevelUp（两形态） | 升级分支只写经验/金；牌面偷取后果归下一帧观察 | 持商业间谍局升级时刻前后商店牌面比对 |
 | 晋升名额「买经验时随机一槽变高 1 费」副作用 | LevelUp（两形态） | 同商业间谍行（随机面归观察） | 持晋升名额局买经验前后牌面费用比对 |
-| 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对 | 免战局跳过前后三字段比对 |
+| 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对。sim 侧已按暂定表述建模（`_skip_battle` 零战斗面,披露键 `cw_skip_settlement_semantics_pending`）,证伪即改 sim 消费腿对应支 | 免战局跳过前后三字段比对 |
 
 （随机面类目——刷新新牌、冶金炉产物、晶矿内容、掉落金额——**不在本表**：它们受 §1.2 确定性原则约束，是原则性的观察收尾，不是待补档缺口。）

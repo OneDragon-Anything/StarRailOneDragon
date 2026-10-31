@@ -14,7 +14,7 @@
 |---|---|---|
 | SellDeployed owned 恢复 | `report_action_sell_deployed_param` | tracked 快照被卖单位装备逐件回收(「卖场上装备全额返还」;原执行账单写者面随函数内聚单点化)。金分支同函数(`sell_refund` 直写) |
 | WearEquip owned + equips | `report_action_wear_equip_param` | 发出即登记零比对形态:`gs.equips` −1 + 目标角色 equips +1(物理 (row,slot) 内联换算;owned 无此件只跳 owned 侧) |
-| StartBattle 免战递减 | `report_action_start_battle_param` | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(CwActionStartBattleOp 上报携带)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作) |
+| StartBattle 免战递减 | `report_action_start_battle_param` | 唯一逻辑推进 = 免战牌跳过递减:`skip_substate=True`(CwActionStartBattleOp 上报携带)→ `effects.consume_use`(上报时递减,非「验证落地后」;登记面缺位的局返 None 零动作)。同出口构造 `battle_skip` 声明喂入 sim(递减单写端 = 本上报腿;sim `_skip_battle` 消费零递减防双写) |
 | CollectOre 容器摘晶矿 | `report_action_collect_ore_param` | 零金账推进(晶矿金金额执行点不可推算 = 声明盲区)+ 载荷坐标精确摘除容器 `spheres` 晶矿(金真值由观察收尾;金吸收规则现无,重设计项——见 [collect-ore.md](collect-ore.md) §2/§4) |
 | SellBench 回金/装备回收/溢出卡处理 | `report_action_sell_bench_param` | 回金唯一写入位置 + C6 装备回收 + 溢出卡处理内聚(原执行侧 SellBench 分支整支已删,防止双重记账) |
 | LevelUp 经验/等级/金 | `report_action_level_up_param` | 单一写入位置,金币分支按 `action.cost`×击数直写(金币写入不经执行侧) |
@@ -53,7 +53,7 @@
 - `CounterKey.BUY`:买牌上报函数获取计算完时点回调 `gs.effects.on_buy` 推进(`kernel/cw_action_report/buy_card.py`;对全部声明 `duties.track` 的已登记条目推进,消费按 (spec_id, key) 隔离读;满栏一击多买按实际张数 k 计 k 次,live/sim 同源)——返利族「每购 3 张 5 费」计数面;
 - `CounterKey.REFRESH`:刷新上报函数统一触发(`report_action_refresh_shop_param` → `gs.effects.record_refresh`:refresh_total 恒 +1、付费帧 refresh_paid +1、同帧 bump)——采购专员族「每刷 7/5 次」触发面 + 选卡评估全量计数(refresh_total/refresh_paid);
 - 晶矿开启计数:`ore_open_total`(采晶矿上报函数尾部经 `gs.effects.record_ore_open` 单口,批内开成点数一次入账;席满/缺项∧level 缺读跳点不入账 = 「点开才计数」,`opened == 0` 早退零计数)——战技点契约「打开20个晶矿后」晶矿开启阈值触发面(消费方 = `check_env_ore_open_grants`,接线与域申报见 [collect-ore.md](collect-ore.md) §2.1);
-- 免战牌次数:`consume_use`(跳过执行落地递减,归零移除,见 [start-battle.md](start-battle.md));
+- 免战牌次数:`consume_use`(跳过型出战上报内递减,归零移除,见 [start-battle.md](start-battle.md);sim 侧跳过消费零递减 = 单一写端在上报腿,免战牌建模批);
 - 升级事件:`effects.on_level_up`(挂点 = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp` 内,发出即登记,best-effort 观测零决策语义)。
 
 ## 7. 事件线 pick 族 → 专篇

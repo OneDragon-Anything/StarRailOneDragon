@@ -214,9 +214,9 @@ unit_buff);词缀源
 | 节点推进 | 推进生效原语 `advance_node_effective` 尾段 `tick_effect_boundary`(kernel/cw_game_state.py;推进输入两路径同源同尾段 = ①节点边界终结动作上报 `report_node_advance`(trigger 封闭集 {settle_confirm, supply_confirm},观察态门)②观察 id_mark 确认补推 `observe_node_anchor` 的读数序位领先/首次确认分支);同节点去重守卫在 inventory 内(`advance_node` 键契约:入参 `node_key` = `(位面, 轮)` 生效序位元组,同序位相等去重;「登记当节点不推进」守卫 = `acquired_key >= node_key` 元组比较;全局去重键 = `(run_id, 生效序位)`) | PLANE_START / NODE_ENTER / CONDITIONAL-N_NODES 型 | 节点类 counter +1,每节点恰一次(推进有效位为闸门) |
 | 动作执行落地 | 刷新 = 上报函数统一触发(`report_action_refresh_shop_param` → `record_refresh`,kernel/cw_action_report/refresh_shop.py;含刷新两计数入账 + `bump_key(CounterKey.REFRESH)`)/ 购买 = 买牌上报函数内获取计算完时点回调 `gs.effects.on_buy`(kernel/cw_action_report/buy_card.py;bump CounterKey.BUY + 购买族效果分派,满栏一击多买按实际张数 k 计 k 次,live/sim 同源);均未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
 | 合成事件(装备) | 穿戴上报 `report_action_wear_equip_param` applied 出口合成事件检查 `apply_on_merge_refresh_grant`(kernel/cw_effect_inventory.py;穿着即合成规则住上报 = kernel 单一源,live 动作 op 与 sim 动作注入同口单点覆盖;合成次数 = 输入件数−输出件数,三拒绝分支早退零发放) | ON_MERGE(装备合成) | 发放型非计数器:逐账本条目(名单集精确匹配,登记腿缺位保守零动作)`refresh_per_compose × 合成次数` 直写 `free_refresh_left`;装备栏内主动合成 bot 零执行零辖域,角色升星域另域禁混账(fields.md §5.3) |
-| 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
+| 跳过消耗 | `consume_use`(跳过型出战上报内,`kernel/cw_action_report/start_battle.py`;出战 op 跳过子态自上报,上报时递减) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
-| 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448)+ 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |
+| 选卡落地 | `register_strategy`(获得链 best-effort 登记腿 `kernel/cw_gain_chain.py`,选卡上报函数族驱动;免战牌同口自动登记)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |
 | 获得链登记(portal 源) | 获得链原语 `kernel/cw_gain_chain.py::gain_invest_env` → `register_portal_from_env`(kernel/cw_effect_inventory.py;投资环境动作落地接入经动作上报 `report_action_pick_invest_param` portal 支进入) | INSTANT(portal 效果) | 登记入清单 |
 
 - **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/cw_game_state.py):
@@ -393,14 +393,24 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 #### 免战牌(151301)
 
-- **论断**:NODE_ENTER / while_held / STATE(payload=`EconomyEffect(xp_instant=30)`);
-  duties = track;次数余量 counter **建**(驱动 = 跳过执行成功回执 `consume_use`;剩余 =
-  2 − counter,counter 达 2 = 移除/效果离场);+30 经验 = 选卡当场,零建模(§6.4)。
-- **证据**:规格 cw_investments.py:387-392(duration_uses=2);官方原文 cw_invest_data.py:
+- **论断**:NODE_ENTER / while_held / STATE(payload 引 `STRATEGY_ECONOMY['免战牌']`
+  同一实例 = `EconomyEffect(xp_instant=30)`,单一源);duties = track;次数余量载体
+  `duration_uses=2 → remaining_uses`(播种/递减/归零移除走 effect_inventory
+  次数类通道);递减挂点 = 跳过型出战上报(出战 op 跳过子态 →
+  `report_action_start_battle_param` 内 `consume_use`,上报时递减,用尽移除)。
+  sim 消费面 = `battle_skip` 声明分支(跳过过程:战斗不发生——hp/连胜/收入
+  落账/难度记录/结算环帧行全零写,被跳节点经验照常入账 + 世界直进下一节点窗,
+  与 `_on_node_advance` 入账同构,含策略卡到级金/装备腿记账段镜像);+30 经验 =
+  选牌当场即时(§4 投资选择通用通道 `xp_instant`:选卡落地拍世界腿 + 估值
+  现金计分;登记时代「零建模(§6.4)」口径随通用通道落码改判入册)。跳过辖域 =
+  仅 kind='battle'(卡词汇类型读法;披露键 `cw_skip_scope_battle_only_assumption`
+  挂实机按钮出现面校准,失配常量单点改值跟随)。
+- **证据**:规格 cw_investments.py `STRATEGY_EFFECTS['免战牌']` 条目 +
+  `STRATEGY_ECONOMY['免战牌']` 注册行(duration_uses=2);官方原文 cw_invest_data.py:
   109「进入战斗节点时,直接跳过战斗并进入下一个节点,可生效2次。获得30点经验。」
-- **推理链**:「可生效 2 次」= 次数余量 → 累计量 → counter;跳过机制本体由次数余量
-  维度承载,不占改写载荷(spec 注释已登记);登记接入点与消耗接入点解耦,登记面缺位的局
-  零动作不虚构递减(§7.3 登记接入点纪律)。
+- **推理链**:「可生效 2 次」= 次数余量 → `duration_uses` 载体(次数类首例);
+  跳过机制本体由次数余量维度承载,不占改写载荷;登记接入点与消耗接入点解耦,
+  登记面缺位的局零动作不虚构递减(§7.3 登记接入点纪律)。
 
 #### 加油站(200301)
 

@@ -622,6 +622,12 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——此处只建即时刷;位面开始段待建模
     '经验到账': EconomyEffect(xp_instant=10),
     '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
+    '免战牌': EconomyEffect(xp_instant=30),
+    # ↑ 免战牌经验半句(id 151301「获得30点经验」)——选牌当场即时型,
+    #   xp_instant 字段分派通用通道(sim 选卡落地拍腿)自动覆盖并现金
+    #   计分;跳过机制本体非经济流,由 STRATEGY_EFFECTS 条目次数余量
+    #   承载(duration_uses=2)。本行 = 条目 payload 的单一源(条目改引
+    #   同一实例,登记时代旧口径 = 条目内联 EconomyEffect)。
     '健康充值': EconomyEffect(hp_instant=30),   # 即时 hp 腿(卡面数值直读);+30 上限半句
                                                 # hp_max 字段缺位零建模,缺口申报单一源 =
                                                 # fields.md HP 面行
@@ -763,15 +769,17 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # (duration_uses=2 → remaining_uses,§3.2.19 正本=effect_inventory
     # .remaining_uses,§8.6-3),递减挂点 = 跳过型出战上报(kernel
     # 出战 op 自上报(report_action_start_battle_param)
-    # 子态,上报时递减——出战域重设计),用尽移除。+30 经验 = 选牌当场
-    # 即时经验(§4 投资选择通用通道,xp_instant 词表;§5.2 显式豁免——即时
-    # 到账不入缺口清单,经观察覆盖收束)。trigger=NODE_ENTER(跳过发生在
+    # 子态,上报时递减——出战域重设计),用尽移除;sim 消费面 =
+    # battle_skip 声明分支(跳过过程,战斗不发生、节点照常推进)。
+    # +30 经验 = 选牌当场即时经验(xp_instant 通用通道;payload 引
+    # STRATEGY_ECONOMY['免战牌'] 同一实例 = 单一源,选卡落地拍世界腿与
+    # 估值现金计分同此行)。trigger=NODE_ENTER(跳过发生在
     # 进入战斗节点时点);归 STATE 族(发给自己的经验)而跳过机制本体由
     # 次数余量维度承载,不占 BattlefieldEffect 改写载荷。
     '免战牌': EffectSpec(
         id='151301', name='免战牌', trigger=TriggerKind.NODE_ENTER,
         duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
-        payload=EconomyEffect(xp_instant=30), duties=DutyFlags(track=True),
+        payload=STRATEGY_ECONOMY['免战牌'], duties=DutyFlags(track=True),
         duration_uses=2,
         notes='跳过战斗×2(remaining_uses 正本);+30 经验选牌当场'),
     # 本金充裕/+:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,

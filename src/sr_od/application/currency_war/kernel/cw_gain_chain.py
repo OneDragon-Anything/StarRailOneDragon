@@ -1067,7 +1067,7 @@ def check_strategy_level_grants(gs: GameState) -> tuple[str, int] | None:
     4. gs.gold.value None → None(金未观察,宁缺勿造**不封账**——本
        函数零写,值到位后下次检查自动重查发放);
     5. 现值等级 < gold_at_level_target → None(现役 sim 经验常量下
-       全程封顶 7 级:节点 70 + 选卡即时腿 26 = 上界 96 < 3→9 级累计
+       全程封顶 8 级:节点 70 + 选卡即时腿 64 = 上界 134 < 3→9 级累计
        门槛 194,XP_TO_NEXT_LEVEL 求和——本腿恒短路于此序 = 休眠正确
        路径,sim 披露键申报;经验源扩网后零改激活,锁面固化边界);
     6. 达标 → (卡名, gold_at_level)。

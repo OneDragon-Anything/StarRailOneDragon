@@ -206,9 +206,9 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS 刷新族',
     '招财狗': '战斗胜利未损血 → 每佩佩 1 金(轨迹依赖:佩佩数×不败率),'
              '无字段载体',
-    '免战牌': 'xp_instant=30 分支挂 STRATEGY_EFFECTS 载体(cw_investments.'
-             'STRATEGY_EFFECTS 条目,不在 STRATEGY_ECONOMY 键空间;'
-             '效果域文档在册)——未入现金通道',
+    '免战牌': '跳过机制分支无经济字段载体(省一场战斗的价值面不折现,'
+             '世界面已建 = sim battle_skip 消费通道);即时 XP 腿已挂 '
+             'xp_instant=30(现金计分)',
     # 合并同类项:金腿 = 刷新出对条件金(gold_per_refresh_pair,登记形态
     # 等值迁移自 instant_gold);burst 4 刷腿已建模(获得链登记腿发放),
     # 不列缺口。估值 fail-closed 申报句形态照现役值句。

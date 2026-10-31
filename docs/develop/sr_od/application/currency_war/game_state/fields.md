@@ -817,8 +817,13 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
 
 观察面=本屏替换按钮与计数;出战见 §4 出战行。**载体归一**:激活态+剩余次数权威版本 =
 effect_inventory(免战牌 EffectSpec 条目 `duration_uses=2` → `remaining_uses`,
-递减接入点=跳过执行成功回执 `consume_use`;容器内无平行 Field,骨架曾设的
+递减接入点=跳过型出战上报 `kernel/cw_action_report/start_battle.py` 内
+`consume_use`(上报时递减,非「验证落地后」;归零移除);容器内无平行 Field,骨架曾设的
 skip_battle_active/remaining 两 Field 已按权威版本移除,负向测试防复发)。
+**sim 消费面**(免战牌建模批):sim 侧递减零写(单一写端 = 上报腿),跳过消费 =
+`battle_skip` 声明分支(`sim/cw_sim_backend.py::_skip_battle`);备战/开商店两屏
+按钮替换子态由 sim `visible` 动态分支承载(出战 op「查不到出战 fallback 查跳过」
+的双屏查找同构)。
 
 #### 3.2.20 当前局投资环境(备战屏 overlay 通道)
 
@@ -2021,11 +2026,17 @@ reason `no_equip_column` 载体)不发缺陷)+ bench 单位分支(`grant_bench_u
 #### 出战
 
 节点终态落盘 · 记录冻结待结算。
-**免战牌分支**:出战按钮替换为「跳过(N/N)」。结构性事实:跳过=无结算帧、无结算
+**免战牌分支**:出战按钮替换为「跳过(N/N)」。**声明面**(免战牌建模批):跳过子态
+上报构造 `battle_skip` 声明(`next_screen` = 跳过后下一节点窗稳态屏,推导 =
+`start_battle._skip_next_screen`;常规出口 (结算屏, battle_resolve) 不变)。
+结构性事实:跳过=无结算帧、无结算
 载荷,结算覆盖段对本节点无写入,hp/streak/收入全部经下一备战观察覆盖(覆盖时三字段
-必须做核对)。「跳过后 hp/streak/收入不动」=待实机实证的暂定表述,迁移回归测试禁按
-其断言。免战激活态+剩余次数=effect_inventory(§3.2.19);「免战用尽后按钮恢复出战」
-待验挂观察工作清单。
+必须做核对)。「跳过后 hp/streak/收入不动」= 建模 + 待实证比对——sim 侧已按此
+建模(`_skip_battle` 零战斗面 + 被跳节点经验照常入账 + 直进下一节点窗,披露键
+`cw_skip_settlement_semantics_pending` 随局申报),实机侧仍待免战局跳过前后
+三字段比对证伪(action-logic-state.md §7 比对计划行为消费批),迁移回归测试禁按
+暂定表述断言。免战激活态+剩余次数=effect_inventory(§3.2.19);「免战用尽后按钮恢复出战」
+待验挂观察工作清单(sim 侧已按恢复建模,visible 子态锁在册)。
 
 #### 结算覆盖(战后)
 

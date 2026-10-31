@@ -265,7 +265,8 @@ class ActiveEffectInventory:
 
     写端(挂点)生产接线(设计 §5.1/§次三;单一实例 =
     GameState.effects,session 无独立字段——历史兼容读口 property 已撤,
-    写读直经 game_state_of(session).effects,载体归一防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
+    写读直经 game_state_of(session).effects,载体归一防双账本):选卡登记 =
+    获得链登记腿(kernel/cw_gain_chain.py,选卡上报函数族驱动;免战牌同口
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     动作上报链(购买 = cw_action_report/buy_card 的 on_buy 回调,刷新 =
     cw_action_report/refresh_shop 经 record_refresh 单口);跳过递减 = kernel

@@ -60,6 +60,7 @@ spy_shop_refresh
 | 17 | pick_expert_invite | `cw_action_report/zero_writes.py` | `''` | `'货币战争-备战'` | 已核定（attack.md §二：expert_invite.md §3 明示「弹窗关回备战」） |
 | 18 | close_shop | `cw_action_report/close_shop.py` | `''` | `'货币战争-备战'` | 已核（shop.md §5 关店回备战；离屏写端 = 本上报） |
 | 19 | level_up（条件声明） | `kernel/cw_action_report/level_up.py::report_action_level_up_param`（2026-10-17 迭代 T-3 增） | `spy_shop_refresh` | `'货币战争-备战'` | 已核（升级真跨级 ∧ 持商业间谍〔EffectSpec 300201 判定单一源 `cw_investments.spy_on_level_up_active`〕才附声明,`applied=True` 无间谍/未跨级 = None——条件构造点,准入判据「backend 专属活」例外申报:世界分支 = sim 抽 5 偷 3 呈现牌面,实机端游戏自算故进 trigger;单一源 = backend `ADVANCE_TRIGGER_KINDS`,键集已扩) |
+| 20 | start_battle 免战跳过出口 | `kernel/cw_action_report/start_battle.py::report_action_start_battle_param`（skip_substate 分支;免战牌建模批 T-161 增） | `battle_skip` | `_skip_next_screen` 推导 = 跳过后下一节点窗稳态屏（规则族 = `window_stable_screen_now` 对后继序位求值;后继 None = 局终事件式 `''`,禁 SETTLE 类回退） | 已核（sim `_skip_battle` 消费;键集 = `ADVANCE_TRIGGER_KINDS` 同批扩;对照锁 = kernel test_world_decl 免战跳过出口/位面首合成两用例 + sim test_battle_skip_sim_chain） |
 
 **`node_advance` 的 next_screen 推导规则**（声明构造点 = `report_node_advance` 推进落账**后**；`node_ord` 已是新节点序——序数字段随推进写，与观察镜像 `gs.node` 无关，见 §1 单值依据/R1 复审定案）：
 
