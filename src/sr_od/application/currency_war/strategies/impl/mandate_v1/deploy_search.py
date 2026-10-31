@@ -408,8 +408,12 @@ def _unit_sort_key(u: SearchUnit, comp_pos: Comp | None,
 def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
         -> list[int]:
     """骨架前缀截断点集合(档位形态集合:每键的各档激活人数 +
-    全取——t=0 与 t=可达档各一套形态,§2 段 1 D-15)。"""
+    全取——t=0 与 t=可达档各一套形态,§2 段 1 D-15;**空键集
+    (空羁绊线)时全前缀**——无档位锚点,required/core 逐件渐进
+    形态 = 池序前缀全枚举)。"""
     cuts: set[int] = {0, len(pool)}
+    if not keys:
+        cuts.update(range(len(pool) + 1))
     for k in keys:
         if k == _SEELE_SYSTEM_KEY:
             cuts.update({1, 2, 3})
@@ -423,16 +427,25 @@ def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
 
 def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
                  comp_pos: Comp | None) -> dict[str, str] | None:
-    """段 3 排分配(char_positions 强制 → deploy_row_pref → back 兜底
-    + 前排保证 + 前后排容量 + 开拓者形态排约束;溢出 = 站位分损失
-    最小者让位〔row_pref 兜底级排序,§2 段 3 牺牲序〕;不可解 →
-    None(容量矛盾,由排分配容量约束排除)。"""
+    """段 3 排分配(char_positions 强制 → 场上件**现排滞回** →
+    deploy_row_pref → back 兜底 + 前排保证 + 前后排容量 + 开拓者形态
+    排约束;溢出 = 站位分损失最小者让位〔row_pref 兜底级排序,§2 段 3
+    牺牲序〕;不可解 → None(容量矛盾,由排分配容量约束排除)。
+
+    现排滞回(§1 稳定键「与现板面一致数」的结构化承载,宽域):场上件
+    的排偏好起点 = 现排——row_pref 符合度(pos)不压滞回,等分板上现
+    板保持原排(结构化滞回);注册表强约束(char_positions)仍最高优先,
+    容量溢出时按牺牲序让位。"""
     cp = (getattr(comp_pos, 'char_positions', None) or {})
     prefs: dict[str, str] = {}
     for u in members:
         hit = cp.get(u.char_id)
-        prefs[u.char_id] = hit if hit in ('front', 'back') \
-            else deploy_row_pref(u.char_id, comp_pos)
+        if hit in ('front', 'back'):
+            prefs[u.char_id] = hit
+        elif u.origin == 'board' and u.row in ('front', 'back'):
+            prefs[u.char_id] = u.row
+        else:
+            prefs[u.char_id] = deploy_row_pref(u.char_id, comp_pos)
     front = [u for u in members if prefs[u.char_id] == 'front']
     back = [u for u in members if prefs[u.char_id] == 'back']
     # 前排保证(出战硬要求前排有角色):前排空 → 牺牲序 = back 偏好
@@ -443,17 +456,25 @@ def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
         front.append(sacrifice)
         if sacrifice in back:
             back.remove(sacrifice)
-    # 容量溢出让位(无 char_positions 强制的软偏好件先让)。
+    # 容量溢出让位(无 char_positions 强制的软偏好件先让;迁移无条件
+    # ——对侧空也迁,「and 对侧非空」旧前置会使纯单排偏好板卡死在
+    # 溢出态返回 None)。两排全溢出 = K 超物理容(结构不可达,防御)。
     def _soft(u: SearchUnit, row: str) -> int:
         return 1 if cp.get(u.char_id) == row else 0
-    while len(front) > panel.front_capacity and back:
-        mv = max(front, key=lambda u: (_soft(u, 'front'), u.char_id))
-        front.remove(mv)
-        back.append(mv)
-    while len(back) > panel.back_capacity and front:
-        mv = max(back, key=lambda u: (_soft(u, 'back'), u.char_id))
-        back.remove(mv)
-        front.append(mv)
+    guard = len(members) + 2
+    while (len(front) > panel.front_capacity
+           or len(back) > panel.back_capacity) and guard > 0:
+        guard -= 1
+        if len(front) > panel.front_capacity:
+            mv = max(front, key=lambda u: (_soft(u, 'front'), u.char_id))
+            front.remove(mv)
+            back.append(mv)
+        elif len(back) > panel.back_capacity:
+            mv = max(back, key=lambda u: (_soft(u, 'back'), u.char_id))
+            back.remove(mv)
+            front.append(mv)
+        else:
+            break
     if len(front) > panel.front_capacity \
             or len(back) > panel.back_capacity:
         return None
@@ -468,18 +489,21 @@ def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
 def _position_score(members: list[SearchUnit], rows: dict[str, str],
                     comp_pos: Comp | None,
                     current_board: dict[str, str]) -> tuple[int, int]:
-    """(站位分, 稳定键):站位分 = char_positions 符合数 + 前后台
-    符合度(deploy_row_pref 判据);稳定键 = 与现板面一致数(名+排
-    粒度,星维不进——星变更本就该动板,§1 D3-7)。"""
+    """(站位分, 稳定键):站位分 = 分配排对**偏好起点**(char_positions
+    强制 > 场上件现排滞回 > deploy_row_pref,与 :func:`_assign_rows`
+    同一 prefs 序)的符合数;稳定键 = 与现板面一致数(名+排粒度,星维
+    不进——星变更本就该动板,§1 D3-7)。"""
     cp = (getattr(comp_pos, 'char_positions', None) or {})
     pos = 0
     for u in members:
-        want_cp = cp.get(u.char_id)
-        row = rows.get(u.char_id)
-        if want_cp in ('front', 'back'):
-            if row == want_cp:
-                pos += 1
-        elif deploy_row_pref(u.char_id, comp_pos) == row:
+        hit = cp.get(u.char_id)
+        if hit in ('front', 'back'):
+            want = hit
+        elif u.origin == 'board' and u.row in ('front', 'back'):
+            want = u.row
+        else:
+            want = deploy_row_pref(u.char_id, comp_pos)
+        if rows.get(u.char_id) == want:
             pos += 1
     stable = sum(
         1 for u in members
@@ -514,13 +538,28 @@ def search_deploy_target(panel: DeploySearchPanel,
     def _pool_of(keys: tuple[str, ...],
                  member_names: frozenset[str]) -> list[SearchUnit]:
         """体系/线骨架件池:羁绊标签 ∩ 键系 ∪ 线名单成员,骨架内按
-        选件序排序(骨架优先圈 engine_required 铁三角形态由成员序
-        承载,§2 段 1)。"""
+        选件序排序(**锁定线核心优先、逐档**,§2 段 1:required >
+        core > shared > 标签件——骨架优先圈 engine_required 铁三角
+        形态由成员序承载)。"""
+        comp = panel.locked_comp if panel.locked else None
+        req = tuple(comp.required_deployed or ()) if comp is not None else ()
+        core = set(comp.core_chars) if comp is not None else set()
         pool = [u for u in panel.units
                 if (_bonds_named(u.char_id) & set(keys)
                     or u.char_id in member_names)]
-        pool.sort(key=lambda u: _unit_sort_key(u, comp_pos,
-                                               panel.current_board))
+
+        def _line_rank(u: SearchUnit) -> int:
+            if not panel.locked:
+                return 2
+            if u.char_id in req:
+                return 0
+            if u.char_id in core:
+                return 1
+            return 2
+
+        pool.sort(key=lambda u: (
+            _line_rank(u),
+            *_unit_sort_key(u, comp_pos, panel.current_board)))
         return pool
 
     def _line_keys_of(comp: Comp | None) -> tuple[str, ...]:
@@ -735,8 +774,12 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
     )
 
     st = state_of(session)
-    view = session_scope.line_members_view(gs)
-    locked = view.locked
+    # 锁定窗直读调用方 session 的策略状态(line_members_view 的
+    # state_of(gs) 依赖 gs.strategy_state 接线,虚拟路径调用方
+    # (shop 评估/sell_candidates 传 gs 当 session)不保证接线——
+    # 统一走 session 槽,判据 = target_comp 非空即锁定,与
+    # line_members_view 同判不同宿主)。
+    locked = getattr(st, 'target_comp', None) is not None
     locked_comp = getattr(st, 'target_comp', None) if locked else None
     plane1 = not session_scope.plane2_started_of(gs)
     _ist = getattr(st, 'v3_intention', None)
@@ -791,8 +834,9 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
                 continue
             ch = CHARACTERS.get(cid)
             if ch is not None and not ch.cost:
-                # 召唤物/系统件(cost=0):固定后台,剔除出枚举,
-                # 占 K 占格。
+                # 召唤物/系统件(cost=0,狸小虎族):固定后台,剔除出
+                # 枚举,占 K 占格(判定 = predicates.is_unsellable_
+                # system_unit 同一 cost=0 口径,单一源对齐)。
                 system_on_board += 1
                 if row == 'back':
                     system_in_back += 1
@@ -801,8 +845,9 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
                     and getattr(u, 'uid', None) is not None) \
                     or cid in lock_names:
                 continue
-            if entry._deploy_window_blocked(session, gs, cid):
-                continue
+            # 窗口谓词只辖**新上场**(§3.9:场上件上场时已过谓词,窗口
+            # 单调(只开不关)恒满足——已就位件不重新过滤,违例形态归
+            # 观察侧 fail-closed 换下留证)。
             units.append(_mk(cid, int(u.star or 1), 'board', row,
                              getattr(u, 'uid', None),
                              tuple(getattr(u, 'equips', None) or ())))
@@ -864,3 +909,82 @@ def _all_units(gs: GameState) -> list:
         if u is not None:
             out.append(u)
     return out
+
+
+def panel_from_virtual(session: StrategySession, gs: GameState,
+                       bench_slots: list, field_units: list,
+                       ) -> DeploySearchPanel:
+    """虚拟路径面板(获取让位评估步 3 / can_deploy_single 快照+X:
+    生产面板容器读口 + 虚拟 bench/场上单位替换,§1 接口契约③)。
+
+    ``bench_slots`` = 虚拟 bench 槽位条目列表(升星连锁模拟产物,
+    SimAcquisition.bench 的 BenchSlot 半);``field_units`` = 虚拟场
+    上单位(紧缩序,排映射 = 现板同名保持原排、新上者 back 兜底)。
+    窗口谓词/锁/容量过滤与生产装配同核(段 0 同一过滤管道)。
+    """
+    panel = build_deploy_panel(session, gs)
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        effective_cost,
+    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    locks = tuple(gs.env_grant_deploy_locks.value or ())
+    lock_uids = frozenset(uid for _c, uid, _u in locks)
+    lock_names = frozenset(c for c, _uid, _u in locks)
+    lv999_tier = effective_cost(gs, '银狼LV.999')
+
+    def _mk(cid, star, origin, row, uid, equips):
+        eff_star = star
+        if cid == '银狼LV.999' and star >= 3 and lv999_tier < 5:
+            eff_star = 1
+        from types import SimpleNamespace
+        return SearchUnit(
+            key=board_unique_key(SimpleNamespace(char_id=cid)) or cid,
+            char_id=cid, star=eff_star, origin=origin, row=row, uid=uid,
+            equips=equips)
+
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        entry,
+    )
+    units: list[SearchUnit] = []
+    for u in field_units:
+        if u is None or not (u.char_id or ''):
+            continue
+        cid = str(u.char_id)
+        uid = getattr(u, 'uid', None)
+        if (uid is not None and uid in lock_uids) or cid in lock_names:
+            continue
+        # 窗口谓词只辖新上场(§3.9 场上件恒满足)。
+        units.append(_mk(cid, int(u.star or 1), 'board',
+                         panel.current_board.get(cid, 'back'), uid,
+                         tuple(getattr(u, 'equips', None) or ())))
+    for b in bench_slots:
+        u = bench_slot_unit(b) if b is not None else None
+        if u is None or not (u.char_id or ''):
+            continue
+        cid = str(u.char_id)
+        uid = getattr(u, 'uid', None)
+        if (uid is not None and uid in lock_uids) or cid in lock_names:
+            continue
+        if entry._deploy_window_blocked(session, gs, cid):
+            continue
+        units.append(_mk(cid, int(u.star or 1), 'bench', '', uid,
+                         tuple(getattr(u, 'equips', None) or ())))
+    by_key: dict[str, SearchUnit] = {}
+    for u in units:
+        cur = by_key.get(u.key)
+        if cur is None or u.star > cur.star \
+                or (u.star == cur.star and u.origin == 'board'):
+            by_key[u.key] = u
+    units = sorted(by_key.values(), key=lambda u: u.char_id)
+    return DeploySearchPanel(
+        units=tuple(units),
+        k_budget=panel.k_budget, front_capacity=panel.front_capacity,
+        back_capacity=panel.back_capacity, locked=panel.locked,
+        locked_comp=panel.locked_comp,
+        candidate_comps=panel.candidate_comps, p1_pair=panel.p1_pair,
+        plane1=panel.plane1,
+        current_board={
+            str(u.char_id): panel.current_board.get(str(u.char_id), 'back')
+            for u in field_units if u is not None and u.char_id})

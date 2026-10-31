@@ -1180,16 +1180,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if emit_buy is not None:
                 return emit_buy()
             return None
-        # 步 3:部署定型(快照 + X;接口契约③——排序池的档 1 排除面)。
+        # 步 3:部署定型(快照 + X;接口契约③——排序池的档 1 排除面;
+        # 阶段 5/6 = 统一部署搜索内核,名集消费 = frozenset(target))。
         v_bench = [bs for _i, bs in sim.bench]
-        v_frame = mandate.MandateFrame(
-            gold=frame.gold, level=frame.level, bench=v_bench,
-            deployed=sim.field, deploy_cap=frame.deploy_cap,
-            node_type=frame.node_type, stop_flag=False,
-            k_members=frame.k_members, round_num=frame.round_num,
-            overflow_warning=frame.overflow_warning)
-        prep = mandate.assemble_prep_context(session, gs, v_frame)
-        target_plus = mandate.select_deployment(v_frame, prep)
+        prep = mandate.assemble_prep_context(session, gs, frame)
+        target_plus = mandate.select_deployment(
+            frame, prep, virtual_bench=v_bench, virtual_field=sim.field)
         # 步 4:排序池 = 部署外件全集(虚拟局面聚合谓词输入 + 实况基准
         # 装配,3.1 对审定案:held_copies 注入虚拟快照,need_star/
         # stay_target/member_rank 按实况现算——方向保守,误差只会多保护)。
@@ -1344,16 +1340,18 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         return None
 
     def _prefix_target_board(frame, prefix: list) \
-            -> tuple[frozenset[str], int]:
+            -> tuple[dict[str, tuple[str, int]], int]:
         """净腾校验的「当前 − 前缀」定型(SF-2/SF-6:输入 = 当前局面 −
         前缀件,与步 3 的(当前 + X)定型不同输入**不可合并**;design
         PV-9——评估帧搜索上界 = 2 次〔步 3 + 本定型〕,多场上件 victim
         递归帧上界 = 1 + N)。
 
-        返回 (T 名集, 定型上场数):T = ``select_deployment`` 对「当前 −
-        前缀」局面的定型名集;上场数 = |T − 现板剩名集| = 定型会从 bench
-        顶上场的件数——净腾 ≥ 1 ⟺ 上场数 ≥ 1(卖场上件级联腾出 bench
-        占用的可达性判定,PV-4)。虚拟重算纯函数:零遥测零 journal。
+        返回 (T, 定型上场数):T = 统一部署搜索对「当前 − 前缀」局面的
+        定型板面(名 → (排, 星),阶段 5/6 接口契约②——计划变量
+        ``YieldPlan.target_board`` 直接承载);上场数 = |T − 现板剩名集|
+        = 定型会从 bench 顶上场的件数——净腾 ≥ 1 ⟺ 上场数 ≥ 1(卖场
+        上件级联腾出 bench 占用的可达性判定,PV-4)。虚拟重算纯函数:
+        零遥测零 journal。
         """
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             bench_slot_unit,
@@ -1365,19 +1363,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _r_deployed = [d for d in frame.deployed
                        if d is not None
                        and str(d.char_id or '') not in _pnames]
-        _r_frame = mandate.MandateFrame(
-            gold=frame.gold, level=frame.level, bench=_r_bench,
-            deployed=_r_deployed, deploy_cap=frame.deploy_cap,
-            node_type=frame.node_type, stop_flag=False,
-            k_members=frame.k_members, round_num=frame.round_num,
-            overflow_warning=frame.overflow_warning)
-        _prep = mandate.assemble_prep_context(session, gs, _r_frame)
-        _t = mandate.select_deployment(_r_frame, _prep)
+        _prep = mandate.assemble_prep_context(session, gs, frame)
+        _t = mandate.select_deployment(
+            frame, _prep,
+            virtual_bench=_r_bench, virtual_field=_r_deployed)
         _board_left = {str(d.char_id or '') for d in _r_deployed}
-        return _t, len(_t - _board_left)
+        return _t, len(set(_t) - _board_left)
 
     def _saturation_ok(frame, prefix: list, vgold: int,
-                       t_board: frozenset[str] | None) -> bool:
+                       t_board: dict[str, tuple[str, int]] | None) -> bool:
         """金币要求集②饱和线(design §2.2 第 4 项步 5;裁定二——优先级
         里的金币考虑本来就该含它):虚拟交易后局面若进入出战准备态,
         花后金须 ≥ 饱和线;判定 = 对现成 readiness 函数重放一次(纯函数,

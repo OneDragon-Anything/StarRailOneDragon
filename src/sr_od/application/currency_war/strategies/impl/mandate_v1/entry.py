@@ -813,47 +813,48 @@ def _step_yield_plan(session: StrategySession,
                 continue
             _yield_plan_fail(st, counters, plan)
             return None
-        # deploy 步骤:进展判定(覆盖数)→ 完成检查 → 取缺位者上场。
-        _t = plan.target_board or frozenset()
-        _covered = len(_t & _board_names)
-        if _covered > plan.progress_mark:
-            plan.progress_mark = _covered
+        # deploy 步骤(阶段 5/6 差分执行器驱动,§3.5 D8-1 定稿:拖动与
+        # 重观察交替 + 完整卡死检测):
+        # - 上帧已发拖动(pending_reobserve)→ 本帧发 obs(in_place)
+        #   环内重观察(观察帧对账:自上报推演 vs 实读板面);
+        # - 每帧先判进展(已就位名字数——名+排+星全对):增 → 清零;
+        #   连续 2 次重观察不增(含无动作帧,禁挤/未知件占目标槽形态
+        #   也计入)→ 级联卡死 → 失败出口③;
+        # - T 已就位(diff 空)→ 步骤完成推进;diff 非空 → 发差分
+        #   首动作(统一拖动/换星直卖),pending_reobserve 置位;
+        # - 无动作可发帧(缺位者不在 bench/容量矛盾)→ 发 obs
+        #   in_place 重观察,扫描不前进,卡死计数照常累加(下帧再计
+        #   一次 = 出口)。
+        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+            deploy_diff,
+        )
+        _t = plan.target_board or {}
+        if plan.pending_reobserve:
+            plan.pending_reobserve = False
+            return [Emitted(CwActionObsParam(scope='in_place'),
+                            True, 'yield_plan_reobserve')]
+        _settled = deploy_diff.settled_count(gs, _t)
+        if _settled > plan.progress_mark:
+            plan.progress_mark = _settled
             plan.stall_frames = 0
         else:
             plan.stall_frames += 1
             if plan.stall_frames >= 2:
-                # 连续 2 帧覆盖数不增(含无动作帧,S7-9)→ 级联卡死 → ③。
+                # 连续 2 次重观察后 diff 无进展 → 级联卡死 → ③。
                 _yield_plan_fail(st, counters, plan)
                 return None
-        _missing = sorted(_t - _board_names)
-        if not _missing:
+        if deploy_diff.diff_settled(gs, _t):
             plan.cursor += 1
-            continue   # T 已覆盖 → 步骤完成(序列尽则下方清槽)
-        _name = _missing[0]
-        _compact = _bench_compact_idx(gs, _name)
-        if _compact is None:
-            # 缺位者不在 bench(被合并/被卖等)→ 无动作可发帧:in_place
-            # 重观察,扫描不前进,卡死计数已累加(下帧再计一次 = 出口)。
+            continue   # T 已就位 → 步骤完成(序列尽则下方清槽)
+        _actions = deploy_diff.deploy_diff_actions(gs, _t)
+        if not _actions:
+            # 无动作帧:in_place 重观察,扫描不前进,卡死计数已累加。
             return [Emitted(CwActionObsParam(scope='in_place'),
                             True, 'yield_plan_hold')]
-        _row, _slot = _plan_slot_for(gs, session, _compact, _name)
-        if _row is None:
-            return [Emitted(CwActionObsParam(scope='in_place'),
-                            True, 'yield_plan_hold')]
-        _bidx = mandate._bench_container_idx_by_compact(gs, _compact)
-        if _bidx is None:
-            _yield_plan_fail(st, counters, plan)
-            return None
+        plan.pending_reobserve = True
         counters['yield_plan_step'] = \
             counters.get('yield_plan_step', 0) + 1
-        from sr_od.application.currency_war.data.cw_chars import (
-            char_first_faction,
-        )
-        return [Emitted(
-            CwActionDeployMoveParam(
-                bench_idx=_bidx, to_row=_row, to_slot=_slot,
-                faction=char_first_faction(_name)),
-            True, 'yield_plan_deploy')]
+        return [Emitted(_actions[0], True, 'yield_plan_deploy')]
     # ② 序列空 → 清槽 → 扫描继续(开店由第 5 步常规机制发,SF-10)。
     st.yield_plan = None
     counters['yield_plan_completed'] = \
@@ -1178,86 +1179,46 @@ def _step4_shop_session_pending(session: StrategySession,
 def _step5_deploy(session: StrategySession, gs: GameState,
                   frame: MandateFrame,
                   levelup_actions: list[Emitted]) -> list[Emitted]:
-    """部署调整步(工序第 6 步;22 号篇 §1 第 6 步;部署面判据照旧,
-    判据本体不改动,仅调用时机移到商店会话之后)。
+    """部署调整步(工序第 6 步;阶段 5/6 切差分执行器——unified-
+    deploy-order §5 步骤映射:第 6 步 = 搜索定型 + 差分执行器
+    (``_step5_deploy`` 旧三臂定型 + ``_make_windowed_select_up`` 换人
+    替补均被替换,与前置步级联共用 §3 执行器)。
 
-    动作生成消费部署选人纯函数(统一让位优先级迭代 3.1 结构抽取,
-    判据零改动,契约 = changes/2026-10-29-unified-priority/details/
-    acquisition-and-sell.md §1):先经 ``mandate.select_deployment``
-    求部署定型名集(目标态)。**定型早退辖域 = 非板满帧**(目标态 ==
-    现板 ∧ deploy_vacancy > 0 ⟺ M5/M1 窗口过滤后选人空 ⟹ 零动作);
-    板满帧不早退、一律落现行 M1″ 发射器——目标态名集对「同名升星对」
-    形状不敏感(换出换入同名不同星,名集相等而星级不等;同名离场 =
-    kernel bond_gate star 分支一等设计通道),名集相等 ≠ 无发射,
-    发射判定权归发射器原样承接(对抗审查实锤:无条件早退曾吞同名
-    升星对的 SellDeployed,升星换人通道停摆)。diff 非空帧按下列
-    三臂发射(发射器与臂内判据零改动,回归由现行部署测试守)。
-    行为申报:动作序列与定型收敛逐位同旧;非板满定型帧不再触达
-    换阵发射器与 ``_deployable``——其计划空分键(m1p_plan_empty 族/
-    abstain 键)、deploy_emit_held_<reason> 分键族与豁免开火读数
-    (deploy_emit_floor_ctx_open / deploy_emit_floor_exempt_open,
-    G1 生效门读数)在该域不再写入(遥测覆盖面收窄,键语义不变;
-    键族退役归属 = 3.4/3.5 拆除与遥测批);板满帧(含同名升星对与
-    计划空帧)动作与遥测逐位同旧;cw4_m1p_*_pending 在非板满定型帧
-    显式复位(与现行发射器无发射分支的帧级复位语义一致,板满帧由
-    发射器自身复位)。
+    形态 = 常规部署差分(非计划执行期):**零读屏多动作循环 + 入口
+    heavy 对账**现状维持(§3.5 D9-3:无卡死判定需求,收敛由下一入口
+    对账兜底;假收敛最坏 = 带误差板打完当前节点、战后对账纠回——
+    常规纯移动可逆故入口对账足够)。溢出告警帧 = 搜索与差分执行器
+    全跳过(emit 溢出门早退承载);窗口谓词/上场锁过滤在搜索段 0
+    (枚举硬约束,谓词本体单一源 = 本模块 ``_deploy_window_blocked``)。
 
-    结构(判据本体与 run_mandate 部署段同源;升级后补部署经**下帧
-    M1 空槽补位结构性收敛**——十段全扫单动作循环下第 4 步命中即
-    emit 返回,升级帧到不了本步;下帧全扫 deploy_vacancy 更新后 M1
-    以零卖出成本接管,「卖出不可逆 > 等一帧」的原语义由该结构承载,
-    不设独立 M1′ 分支):
-    - M5 开局配方(开局帧 round_num ≤ 1 ∧ 板空 ∧ bench 有件);
-    - M1 空槽凑人数补位(deploy_vacancy > 0;任意合法单位上阵优于空槽,
-      P24 残余补部署——升级开新 vacancy 的补部署也经本分支);
-    - M1″ 板满换阵补部署(m1p 换人;替补受上阵窗口适用范围覆盖)。
-
-    上阵窗口适用范围(用户裁定 2026-10-12):终局成员在其上线窗口前不上阵
-    ——纯终局件谓词 + 窗口判定见 :func:`_deploy_window_blocked`;过渡∩
-    终局重叠件按过渡成员正常上阵;全局累积型例外 = entry_signals 的
-    always_on 信号类。
+    动作 = 统一拖动/换星直卖序列(帧稳定 conditional 续发,同序列
+    bench 槽位复检);每帧重算幂等,执行进度由容器逻辑态自上报推进。
     """
-    # 部署定型名集一次求取(生产装配 = 容器/session 读口现取;三臂门
-    # 与选人判据核心 = mandate.select_deployment 纯函数单一源,本步
-    # 只承载动作发射)。
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        deploy_diff,
+    )
     prep = mandate.assemble_prep_context(session, gs, frame)
     target = mandate.select_deployment(frame, prep)
-    current = {d.char_id for d in frame.deployed
-               if d is not None and d.char_id}
-    if target == current and frame.deploy_vacancy > 0:
-        # 非板满定型帧:换阵计划内部板满门使目标态恒 == 现板,名集
-        # 相等即 M5/M1 选人空(发射面零动作);板满帧不在此早退——
-        # 名集相等仍可能是同名升星对(见 docstring 行为申报)。
+    fresh = frozenset()
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        fresh_buys_of,
+    )
+    try:
+        fresh = frozenset(fresh_buys_of(session))
+    except Exception:   # noqa: BLE001  新鲜度账本缺读 = 无 fresh 面
+        fresh = frozenset()
+    actions = deploy_diff.deploy_diff_actions(gs, target, fresh=fresh)
+    if not actions:
+        # 定型收敛帧:复位旧发射器帧级 pending(与现行发射器无发射
+        # 分支的帧级复位语义一致)。
         st = state_of(session)
         st.cw4_m1p_arm_pending = None
         st.cw4_m1p_plan_pending = None
         return []
-    out: list[Emitted] = []
-    deploy_intent_emitted = False
-    # M5 开局板(开局配方 = 过渡体系开局)。
-    if (frame.round_num <= 1 and not frame.deployed and frame.bench
-            and mandate._deployable(frame, session, gs)):
-        _emit_deploy_moves_scoped(out, frame, session, gs,
-                                  'm5_opening_board', window_scope=True)
-        deploy_intent_emitted = bool(out)
-    # M1 同帧部署(空槽补位)。
-    if (not deploy_intent_emitted and frame.deploy_vacancy > 0
-            and mandate._deployable(frame, session, gs)):
-        _emit_deploy_moves_scoped(out, frame, session, gs,
-                                  'm1_deploy', window_scope=True)
-    # M1″ 板满换阵(m1p 换人;up 候选经窗口适用范围包装注入)。defer_actions
-    # 输入在十段全扫下单动作循环下结构性恒空(第 4 步命中即 emit 返回,
-    # 升级帧到不了本步)——同帧升级推迟换人的语义由结构承载:升级帧
-    # 第 4 步先行返回 + 下帧 M1 空槽补位以零卖出成本接管(卖出不可逆
-    # > 等一帧)。
-    if not any(isinstance(e.action, (CwActionDeployMoveParam,
-                                     CwActionSellDeployedParam))
-               for e in out):
-        out.extend(mandate.emit_swap_redeploy(
-            frame, session, gs,
-            select_up=_make_windowed_select_up(session, gs),
-            defer_actions=levelup_actions))
-    return out
+    st = state_of(session)
+    st.cw4_counters['deploy_diff_actions'] = \
+        st.cw4_counters.get('deploy_diff_actions', 0) + len(actions)
+    return [mandate.Emitted(a, True, 'step6_deploy_diff') for a in actions]
 
 
 # ============================================================ 第 7 步:装备与工具

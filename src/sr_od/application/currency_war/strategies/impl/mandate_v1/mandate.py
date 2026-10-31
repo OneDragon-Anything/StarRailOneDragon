@@ -1648,6 +1648,13 @@ class PrepContext:
     """现行读口 = kernel assemble_swap_plan_inputs 装配产物(M1″ 换阵
     计划输入,cap 参数传 frame.deploy_cap 同现行 emit_swap_redeploy;
     None = 装配不可得,与现行同弃权语义)。"""
+    session_ref: object | None = None
+    """搜索面板装配引用(阶段 5/6 统一部署搜索:select_deployment
+    面板装配的 session 入参;虚拟重算 = 面板替换承载,本字段仅供
+    生产路径。旧选人读口字段(target_comp/transition_framework 等)
+    保留 = 兼容读面,新内核不消费)。"""
+    gs_ref: object | None = None
+    """搜索面板装配引用(同上;gs = 决策容器)。"""
 
 
 def assemble_prep_context(session: StrategySession, gs: GameState,
@@ -1694,6 +1701,8 @@ def assemble_prep_context(session: StrategySession, gs: GameState,
             session, state=gs,
             deployed=list(frame.deployed),
             bench=list(frame.bench), cap=frame.deploy_cap),
+        session_ref=session,
+        gs_ref=gs,
     )
 
 
@@ -1725,95 +1734,36 @@ def _prep_windowed_select_up(
 
 
 def select_deployment(frame: MandateFrame,
-                      prep: PrepContext) -> frozenset[str]:
-    """部署定型名集(目标态求取纯函数;acquisition-and-sell §1 契约)。
+                      prep: PrepContext,
+                      *,
+                      virtual_bench: list | None = None,
+                      virtual_field: list | None = None,
+                      ) -> dict[str, tuple[str, int]]:
+    """部署定型(统一部署搜索内核;阶段 5/6 换内核,消费接口改版 =
+    总纲接口契约②:target_board = 角色名 → (排, 选定星)——星维承载
+    就位粒度名+排+星;档 1 名集消费 = ``frozenset(target)``)。
 
-    输入局面快照(frame)+ 选人上下文装配(prep),返回「部署算法定型
-    的在场角色名集」。生产路径(entry._step5_deploy 动作生成)与虚拟
-    路径(获取角色流程的虚拟重算)消费同一函数;零遥测零 journal——
-    副本零写入三通道红线由纯函数形态天然承载。
+    生产路径(= 三路共用定型:卖出评估器/获取让位/出战链)面板装配 =
+    ``deploy_search.build_deploy_panel``(段 0 硬约束过滤:唯一性键
+    归一/窗口谓词/上场锁/召唤物/未知件);虚拟路径(获取让位评估步 3
+    快照+X,接口契约③)= ``virtual_bench``/``virtual_field`` 传升星
+    连锁模拟产物(SimAcquisition 两半),窗口谓词共享、成员域分窗
+    声明(部署枚举池 = 全部真实单位)。
 
-    臂序与判定核心与现行 _step5_deploy 三臂同源(判据零改动):
-    - M5 开局配方(round_num ≤ 1 ∧ 板空 ∧ bench 有件);
-    - M1 空槽补位(deploy_vacancy > 0);
-    - M1″ 板满换阵(目标完成集 = (板 − 计划 sell) ∪ 计划 up)。
-    判据单一源:选人 = deploy_plan.select_deployments_reasoned(围栏/
-    配方底线/cap/同名去重全在函数内);窗口过滤 = prep 冻结集(现行
-    谓词装配时取值);换阵 = kernel select_swap_plan + build_swap_
-    group_order 序参数,select_up 注入窗口过滤(同现行 _make_windowed_
-    select_up 形态)。
-
-    语义定案(acquisition-and-sell §1):本函数回答目标态,不模拟换阵
-    路径——板满换阵的多帧单对发射仍归现行 emit_swap_redeploy,发射
-    侧帧级闸(seam 门/升级推迟/P79-3 放行/复算撤计划)不进目标态,
-    目标态 = 换阵计划的收敛完成集;计划空/弃权/装配不可得帧目标态 =
-    现板名集(部署定型不变)。"""
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        deploy_target_sets,
-        deployed_bond_counts,
-        select_swap_plan,
-        swap_plan_up_names,
+    评分函数纯函数(§1 接口契约④:消费容器状态,sim 可跑,禁 IO);
+    rng 局面哈希播种(同一容器状态 → 同一 target,跨帧稳定)。
+    """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        deploy_search,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
-        _slot_cid,
-        build_swap_group_order,
-        select_deployments_reasoned,
-    )
-    deployed_names = {d.char_id for d in frame.deployed
-                      if d is not None and d.char_id}
-    # select_deployments 同参装配(与 deploy_plan._deploy_plan_inputs
-    # 键面逐一对齐,取值源 = prep 冻结字段,语义见 PrepContext 字段注)。
-    # 一处显式键面差(对抗审查核对项):本处 recipe_floor_lock_exempt
-    # 传活性值,而 _deploy_plan_inputs(发射计划构造)不含该键(恒
-    # False)——豁免是该参唯一现行消费面(mandate._deployable 门)。
-    # 等价性:豁免只放宽配方底线围栏(up 豁免集 ⊇ 无豁免集),目标态
-    # == 现板时无豁免选人亦空 ⟹ 消费位(entry._step5_deploy)的定型
-    # 早退不吞无豁免口径本应发出的动作;diff 非空帧臂内以无豁免口径
-    # 的 _deployable 现判发射,发射序与旧逐位一致。
-    _tgt, _fw_carry = deploy_target_sets(
-        prep.target_comp, prep.transition_framework)
-    inputs = {
-        'bench': frame.bench,
-        'deployed_cids': deployed_names,
-        'deployed_fac': deployed_bond_counts(deployed_names),
-        'board': dict(prep.board_counts),
-        'cap': prep.deploy_cap,
-        'target_factions': _tgt,
-        'target_cores': set(getattr(prep.target_comp, 'core_chars', None)
-                            or ()),
-        'fw_carry': _fw_carry,
-        'locked_factions': prep.locked_factions,
-        'recipe_floor_lock_exempt': prep.recipe_floor_lock_exempt,
-        'required_names': frozenset(
-            getattr(prep.target_comp, 'required_deployed', ()) or ()),
-    }
-    blocked = prep.window_blocked_names
-    # M5 开局配方(现行 _step5_deploy 臂 1 同门)。
-    if frame.round_num <= 1 and not frame.deployed and frame.bench:
-        up, _held, _reasons = select_deployments_reasoned(**inputs)
-        kept = [i for i in up if _slot_cid(frame.bench[i]) not in blocked]
-        if kept:
-            return frozenset(_slot_cid(frame.bench[i]) for i in kept)
-    # M1 空槽补位(现行臂 2 同门;M5 有选人而窗口拦全帧落到本臂重判,
-    # 与现行「M5 零发出 → M1 续判」的穿落一致)。
-    if frame.deploy_vacancy > 0:
-        up, _held, _reasons = select_deployments_reasoned(**inputs)
-        kept = [i for i in up if _slot_cid(frame.bench[i]) not in blocked]
-        if kept:
-            return frozenset(
-                deployed_names | {_slot_cid(frame.bench[i]) for i in kept})
-    # M1″ 板满换阵(现行臂 3;计划内部自带板满门/义务排除/弃权闭集,
-    # 计划空 = 目标态不变)。
-    if prep.swap_ctx is not None:
-        plan = select_swap_plan(
-            prep.swap_ctx,
-            select_up=_prep_windowed_select_up(blocked),
-            group_order=build_swap_group_order(prep.swap_ctx))
-        if plan.nonempty:
-            return frozenset(
-                (deployed_names - set(plan.sell_names))
-                | set(swap_plan_up_names(plan, prep.swap_ctx)))
-    return frozenset(deployed_names)
+    if virtual_bench is not None or virtual_field is not None:
+        panel = deploy_search.panel_from_virtual(
+            prep.session_ref, prep.gs_ref,
+            virtual_bench, virtual_field or [])
+    else:
+        panel = deploy_search.build_deploy_panel(
+            prep.session_ref, prep.gs_ref, frame)
+    return deploy_search.search_deploy_target(panel)
 
 
 # ============================================================

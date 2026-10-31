@@ -130,19 +130,27 @@ class YieldPlan:
     """
 
     steps: list[YieldPlanStep] = field(default_factory=list)
-    target_board: frozenset[str] | None = None
-    """目标板 T(部署定型名集;席位语境 =「当前 − 前缀」定型板面〔与
-    步 3 的「当前 + X」定型不同输入,design SF-6〕;纯金语境 = None)。"""
+    target_board: dict[str, tuple[str, int]] | None = None
+    """目标板 T(阶段 5/6 统一部署搜索定型:名 → (排, 星),就位粒度
+    名+排+星——unified-deploy-order 接口契约②;席位语境 =「当前 −
+    前缀」定型板面〔与步 3 的「当前 + X」定型不同输入,design SF-6〕;
+    纯金语境 = None)。"""
     context: str = 'seat'
     cursor: int = 0
     node_stamp: tuple[int, int] | None = None
     progress_mark: int = -1
-    """[索引定义] 驱板步骤的最近观察进展度量(T 名集与现板名集交集
-    基数;取值时机 = 前置步每帧现读;-1 = 尚未观察)。卡死检测数据源:
-    连续 2 帧本值不增 = 驱板无进展 → 失败出口(本阶段简化版,统一拖动/
-    交替重观察属部署统一批)。"""
+    """[索引定义] 驱板步骤的最近观察进展度量(已就位名字数——名+排
+    +星全对者;取值时机 = 计划执行期观察帧对账后现读;-1 = 尚未观察)。
+    卡死检测数据源:连续 2 次重观察后本值不增(含无动作帧,DF-7/S7-9)
+    = 驱板卡死 → 失败出口③(unified-deploy-order §3.5 完整版,替换
+    阶段 3 简化版)。"""
     stall_frames: int = 0
-    """连续无进展帧数(驱板步骤卡死计数;进展恢复即清零)。"""
+    """连续无进展重观察次数(驱板步骤卡死计数;进展恢复即清零;
+    计数域 = 观察帧对账后,被第 0 步自救抢占的帧不累加也不清零)。"""
+    pending_reobserve: bool = False
+    """[索引定义] 拖动/重观察交替位(§3.5 D8-1):True = 上帧已发
+    统一拖动、本帧提案应返回 CwActionObsParam(in_place 环内重观察)
+    后清位。取值时机 = 拖动发出帧置位 / obs 发出帧清位。"""
 
 
 @dataclass

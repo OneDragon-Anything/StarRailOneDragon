@@ -330,7 +330,10 @@ def evaluate_sell_candidates(
     )
     frame = mandate.snapshot_frame(gs)
     prep = mandate.assemble_prep_context(gs, gs, frame)
-    target = mandate.select_deployment(frame, prep)
+    # 部署定型(阶段 5/6 统一部署搜索内核):返回 target_board =
+    # 名 → (排, 星);档 1 名集消费 = 键集(接口契约②)。
+    target_board = mandate.select_deployment(frame, prep)
+    target = frozenset(target_board)
     ctx = crit_priority.assemble_priority_context(
         gs, gs, deployed_names=target,
         rng=crit_priority.priority_rng_of(gs))
