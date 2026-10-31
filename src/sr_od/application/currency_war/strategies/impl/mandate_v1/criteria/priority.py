@@ -368,6 +368,30 @@ def _tier7_bond_member(name: str) -> bool:
     return bool((set(ch.factions) | set(ch.flows)) & TIER7_BOND_NAMES)
 
 
+def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:
+    """凑息卖出豁免谓词(单一源;roster-plane1-union design §2.2 第 5 项)。
+
+    豁免集 = 线内成员 ∧ 手持 ∧ 星未达目标:``is_member ∧
+    max_star < max(need, 2)``。成员名单与目标星读口同源(sort_key
+    同一装配体:名单 = :func:`_member_names` §2.1 单一准入;need =
+    ``need_star_by_member`` 现役读口——锁定帧 unfinished_star_targets/
+    未锁帧候选知识卡,表外成员缺省 1;星级按角色名聚合 ``held_copies``
+    全量快照)。need ≤ 1 的成员底线两星(与档 5 阵容强度形态同杆),
+    need ≥ 2 按目标星——现行排序形态下豁免件 = 档 2 升星主线/档 5
+    阵容强度;达标成员(≥ max(need,2))掉档 8 已完成资产,不豁免。
+
+    仅供利息动机卖出场景(节末凑息候选池过滤)消费;被迫类卖出
+    (溢出/晶矿/获取让位)全员参与统一序列,禁挂本谓词——动机二分
+    (§2.2 第 5 项:为利息而卖不得动阵容在建件;因席位/金币被迫按
+    优先级卖出的不受此限)。消费点手搓第二份名单/判据 = 违例。"""
+    copies = ctx.held_copies.get(name, [])
+    if not copies:
+        return False   # 非手持(档 3 店内未获取件)不豁免——卖出池只有手持件,防御位
+    max_star = max(copies)
+    need = ctx.need_star_by_member.get(name, 1)
+    return name in _member_names(ctx) and max_star < max(need, 2)
+
+
 def sort_key(unit: HeldUnit | ShopUnit,
              ctx: PriorityContext) -> PriorityKey:
     """统一优先级排序键(八档判定按序命中即出 + 档内键 + 在手旗标 +

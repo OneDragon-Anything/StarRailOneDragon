@@ -1374,6 +1374,12 @@ def _step7_node_end_interest(session: StrategySession,
     定型内档 1 天然永不先卖,「凑金/凑息可卖场上无关角色」形态废止,
     总纲 §2.7 行为申报)。
 
+    凑息豁免(roster-plane1-union design §2.2 第 5 项):候选池剔除
+    线内未达标成员(线内 ∧ 手持 ∧ 星未达目标)——为利息不得动阵容
+    在建件,是为利息绝对不可卖,非排序后移;被迫类卖出(溢出/晶矿/
+    获取让位)不适用。池空 → 零动作,剔光帧落观测键(评估器写点,
+    见下方调用注释)。
+
     触发 = 存在「单件退金 ≥ 到下一利息档缺口」的资格候选(缺口单一源
     = kernel ``next_interest_line``;跨不了档的卖出零利息收益,一件不
     卖——跨档止盈保留为场景参数,评估器内实现)。动作 = 统一让位序列
@@ -1403,8 +1409,14 @@ def _step7_node_end_interest(session: StrategySession,
     # 统一序列消费(3.2):跨档止盈已为节末凑息场景参数(评估器内实现,
     # 仅「单件退金 ≥ 缺口」者入序列,按实际星级退金判——仅一星过滤退役
     # 【拍,总纲 §2.4】),取用 = 让位序首位;无可行件 = 序列真空,
-    # 零动作(观测键已随身份段退役,3.4)。
-    _cands, _why = evaluate_sell_candidates(gs, 'node_end_interest')
+    # 零动作(观测键已随身份段退役,3.4)。凑息豁免(roster-plane1-
+    # union design §2.2 第 5 项):线内未达标成员为利息绝对不可卖,
+    # 评估器池过滤承载;剔光帧(唯一可行件全为线内未达标成员 → 零
+    # 动作)观测键随 counters 载体落账(写点 = 评估器,键 =
+    # sell_candidates.INTEREST_EXEMPT_DEPLETED_KEY)。
+    _cands, _why = evaluate_sell_candidates(
+        gs, 'node_end_interest',
+        counters=state_of(gs).cw4_counters)
     if not _cands:
         return []
     return _emit_sell_candidate(

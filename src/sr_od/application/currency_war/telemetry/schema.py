@@ -204,6 +204,14 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 # - <take>_rng_tail_hit:随机尾键命中——被取用件与池内另一件排序键
 #   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
 #   (随机域判读:非等价件命中即键构造异常哨兵);
+# - node_end_interest_exempt_depleted(阶段 4;roster-plane1-union
+#   design §2.2 第 5 项,登记点原挂同设计 §2.2 第 3 项):凑息豁免
+#   剔光帧计数——节末凑息跨档止盈后的可行池全为线内未达标成员、被
+#   豁免剔空 → 零卖出动作(该帧形态在豁免落地前不可观测;
+#   无豁免时该帧会卖出在建阵容件 → 有豁免零动作,§2.5「凑息频率
+#   略降」判读落到此形态的份额)。写点 = criteria/sell_candidates.
+#   evaluate_sell_candidates(counters 载体;消费位 = mandate_v1/
+#   entry.py 第 8 步传 cw4_counters);
 # - acquire_swap_sell / acquire_swap_declined:统一获取让位成功/拒绝
 #   (末位/扩位遇 X 放弃;阶段 3 起含金不足语境,拦因分键 =
 #   机会清单 blocked_by 字段而非计数键);

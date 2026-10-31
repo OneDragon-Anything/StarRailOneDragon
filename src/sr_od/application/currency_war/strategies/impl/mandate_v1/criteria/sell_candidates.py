@@ -20,7 +20,12 @@
 - **循环防线保留**(与优先级正交,防操作空转,总纲 §2.4):窗口段/
   L1 同轮禁卖/种子年龄豁免(常规面经 ``sell_exclusions`` 装配)+
   合成素材拒入守卫含释放集旁路 + 空板止损守卫;溢出场景全资格豁免
-  保留(保命优先);跨档止盈保留为节末凑息场景参数;
+  保留(保命优先);跨档止盈保留为节末凑息场景参数;**凑息豁免**
+  (roster-plane1-union design §2.2 第 5 项)同为节末凑息场景参数
+  ——候选池剔除线内未达标成员(线内 ∧ 手持 ∧ 星未达目标,谓词
+  单一源 = ``priority.interest_exempt_member``;为利息绝对不可卖,
+  非排序后移;池空 → 零卖出),被迫类卖出(溢出/晶矿/获取让位)
+  不适用——动机二分:因席位/金币被迫按优先级让位的无豁免;
 
 **旧判据退役申报(3.4,dismantle §3 卖侧)**:旧价值函数(变现价 +
 再遇期权 + 合成进度口径的 ``sell_gold_equivalent`` 三项、
@@ -105,6 +110,9 @@ class SellSceneSpec:
     - ``cross_tier_only``:跨档止盈(节末凑息独有场景参数,design §2.4
       保留行)——仅「单件退金 ≥ 到下一利息档缺口」的候选可卖,跨不了
       档的卖出零利息收益,一件不卖;
+    - ``exempt_unmet_members``:凑息豁免(节末凑息独有场景参数,
+      roster-plane1-union design §2.2 第 5 项)——候选池剔除线内
+      未达标成员,池空零卖出;字段语义详见字段注;
     - ``legacy_channel``:P78 通道标记(sell_exclusions 装配的通道谱系
       参数;None = 不装配)。
     """
@@ -113,6 +121,13 @@ class SellSceneSpec:
     face: str                    # 循环防线资格面(FACE_* 闭集)
     legacy_channel: str | None   # P78 通道标记(None = 不装配)
     cross_tier_only: bool = False   # 跨档止盈(节末凑息)
+    exempt_unmet_members: bool = False
+    """凑息豁免(节末凑息独有;roster-plane1-union design §2.2 第 5 项):
+    候选池剔除线内未达标成员(线内 ∧ 手持 ∧ 星未达目标,谓词单一源 =
+    ``priority.interest_exempt_member``)——为利息绝对不可卖,非排序
+    后移;达标线内件(掉档 8 已完成资产)与非线内件照常参与。仅利息
+    动机场景可声明 True;被迫类(溢出/晶矿/获取让位)恒 False
+    (动机二分)。"""
 
 
 #: 场景注册表(闭集;三触发三场景):
@@ -137,7 +152,7 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         'ore_make_room', FACE_REGULAR, 'm4_fuel'),
     'node_end_interest': SellSceneSpec(
         'node_end_interest', FACE_REGULAR, 'interest',
-        cross_tier_only=True),
+        cross_tier_only=True, exempt_unmet_members=True),
 }
 
 #: 场景闭集(新场景必须先在此登记再接线——枚举外值抛错,与 sell_gate
@@ -148,6 +163,16 @@ SELL_SCENARIOS: frozenset[str] = frozenset(SCENE_SPECS)
 #: 「无候选」路径处置——自救场景 = 点消耗品出路承接,prep_pipeline §1
 #: 第 0 步态 4)。
 REJECT_NO_CANDIDATES: str = 'no_candidates'
+
+#: 凑息豁免剔光帧观测键(roster-plane1-union design §2.2 第 5 项;
+#: 登记点原挂同设计 §2.2 第 3 项):节末凑息跨档止盈后的可行池全为
+#: 线内未达标成员、被豁免剔空 → 零卖出动作的帧计数。设计指出该帧
+#: 形态在豁免落地前不可观测;本键使「无豁免会卖出在建阵容
+#: 件 → 有豁免零动作」的行为翻转可判读(§2.5 凑息频率略降落到此
+#: 形态的份额)。写点 = :func:`evaluate_sell_candidates`(counters
+#: 载体;消费位 = entry 第 8 步传 ``cw4_counters``);键名族登记 =
+#: telemetry/schema.py 键表节。
+INTEREST_EXEMPT_DEPLETED_KEY: str = 'node_end_interest_exempt_depleted'
 
 
 # ============================================================ 线内身份集
@@ -263,20 +288,28 @@ def evaluate_sell_candidates(
        沿袭);
     2. 部署重排定型(``mandate.snapshot_frame`` + ``assemble_prep_context``
        + ``select_deployment`` 纯函数现算;档 1 名集);
-    3. 全局面候选(备战席 ∪ 场上;无场景专属池子【拍】)经循环防线
-       过滤:常规面 = sell_exclusions(窗口段/L1 同轮禁卖/种子年龄
-       豁免;身份段已随统一让位优先级迭代 3.4 退役,装配自动收缩)+
-       合成素材拒入守卫(释放集旁路保留);自救面 = 全放行(仅占位件
-       物理门);档 1(部署定型内,按角色名命中)不进输出——「永不
-       先卖」字面保证,板上同名牌同受保护;系统召唤单位(cost=0,
-       不可卖)物理门与占位件门同向互补;
+    3. 全局面候选(备战席 ∪ 场上;无场景专属池子【拍】——利息动机
+       例外 = 凑息豁免池过滤,见步 6)经循环防线过滤:常规面 =
+       sell_exclusions(窗口段/L1 同轮禁卖/种子年龄豁免;身份段已随
+       统一让位优先级迭代 3.4 退役,装配自动收缩)+ 合成素材拒入
+       守卫(释放集旁路保留);自救面 = 全放行(仅占位件物理门);
+       档 1(部署定型内,按角色名命中)不进输出——「永不先卖」字面
+       保证,板上同名牌同受保护;系统召唤单位(cost=0,不可卖)物理
+       门与占位件门同向互补;
     4. ``priority.sell_order`` 排序(升序 = 最不该卖 → 最先让路),输出
        取其反转;
     5. 跨档止盈(仅节末凑息):让位序内保留「单件退金 ≥ 到下一利息档
        缺口」者;无下一利息档(满档/买断制)或无可行件 = 空输出
-       (REJECT_NO_CANDIDATES,一件不卖)。
+       (REJECT_NO_CANDIDATES,一件不卖);
+    6. 凑息豁免(仅节末凑息;roster-plane1-union design §2.2 第 5 项):
+       可行池剔除线内未达标成员(谓词单一源 =
+       ``priority.interest_exempt_member``——为利息绝对不可卖,非
+       排序后移);豁免把可行池剔空(无豁免时该帧会卖出在建阵容件)
+       的帧落 :data:`INTEREST_EXEMPT_DEPLETED_KEY` 观测键;池空 →
+       零卖出(现行「序列真空零动作」语义)。被迫类场景不走本步。
 
-    ``counters`` = 遥测分键容器(缺省 None = 守卫纯判读形态)。
+    ``counters`` = 遥测分键容器(缺省 None = 守卫纯判读形态,豁免
+    过滤照常、观测键不落)。
     """
     spec = SCENE_SPECS.get(scenario)
     if spec is None:
@@ -399,12 +432,30 @@ def evaluate_sell_candidates(
         yield_order = [c for c in yield_order if _refund(c) >= _gap]
     if not yield_order:
         return (), REJECT_NO_CANDIDATES
+    if spec.exempt_unmet_members:
+        # 凑息豁免(场景参数;design §2.2 第 5 项):跨档止盈后的可行池
+        # 剔除线内未达标成员——谓词单一源 = priority.interest_exempt_
+        # member(线内 ∧ 手持 ∧ 星未达目标;为利息绝对不可卖,非排序
+        # 后移),达标线内件(档 8 已完成资产)与非线内件照常参与。
+        # 剔光判定取「可行池非空(上方已保证)∧ 豁免后空」:计的是
+        # 豁免真正翻转卖出→零动作的帧(无豁免时该帧会卖出在建阵容
+        # 件);可行池本空帧已在上方提前返回,不落观测键。被迫类场景
+        # 不走本步(动机二分)。
+        kept = [c for c in yield_order
+                if not crit_priority.interest_exempt_member(c.char_id, ctx)]
+        if not kept and counters is not None:
+            counters[INTEREST_EXEMPT_DEPLETED_KEY] = \
+                counters.get(INTEREST_EXEMPT_DEPLETED_KEY, 0) + 1
+        yield_order = kept
+    if not yield_order:
+        return (), REJECT_NO_CANDIDATES
     return tuple(yield_order), ''
 
 
 __all__ = [
     'FACE_REGULAR',
     'FACE_SELF_RESCUE',
+    'INTEREST_EXEMPT_DEPLETED_KEY',
     'REJECT_NO_CANDIDATES',
     'SCENE_SPECS',
     'SELL_SCENARIOS',
