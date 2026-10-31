@@ -193,7 +193,8 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '被动收入': '每节点 XP = 备战席最左侧角色基础费用(量级可达 ~125 当量'
                '大于买断制现金流),无字段载体',
     '气氛组': '战斗结束按 0 伤害角色数给 XP,无字段载体',
-    '气氛组+': '同气氛组 +「获得8经验」即时 XP 分支,均无字段载体',
+    '气氛组+': '战斗结束按 0 伤害角色数给 XP 腿无字段载体(同气氛组);'
+              '即时 XP 腿已挂 xp_instant=8',
     '存款回报': '条件免费刷新分支已建模(free_refresh_cond_prev_node_unspent=2,'
               '发放经节点桥,载体在 cw_investments.STRATEGY_ECONOMY);'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS 刷新族',

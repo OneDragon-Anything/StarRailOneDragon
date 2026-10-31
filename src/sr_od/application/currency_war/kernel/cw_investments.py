@@ -596,6 +596,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '固定理财+': EconomyEffect(free_refresh_burst=3),
     # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——此处只建即时刷;位面开始段待建模
     '经验到账': EconomyEffect(xp_instant=10),
+    '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
     # 动态/血金互兑族
     '狸财经狸': EconomyEffect(interest_flat_per_node=2),
