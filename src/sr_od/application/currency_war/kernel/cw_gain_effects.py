@@ -537,6 +537,54 @@ def _compose_grant_legs(
     return _effect
 
 
+# ===== 具名角色发放族效果(策略卡获得时点具名角色确定发放:gain_character
+# ===== (rand=False) 入席,落位/回调/升星/席满溢出全沿链现役;族首落 =
+# ===== 溜佩佩/溜佩佩+(佩佩召唤族,世界腿),后继卡(招财狗/佩佩驾到/
+# ===== 艾丝妲的猛犬!)设计批 +1 行复用本表)=====
+
+#: 具名角色发放名单单一源(卡规范名 → 发放角色;登记面镜像 =
+#: cw_investments.STRATEGY_GRANTS 对应卡 chars_immediate,一致性测试
+#: 逐对相等,箱腿 _STRATEGY_BOX_GRANTS 同构)。注册表条目由下方工厂从
+#: 本表生成,禁另写字面量(表与效果体两处独立字面量的漂移在备战断言
+#: 不可见,箱腿 A4 教训同纪律)。
+_STRATEGY_CHAR_GRANTS: dict[str, str] = {
+    '溜佩佩': '佩佩',
+    '溜佩佩+': '佩佩',
+}
+
+
+def _make_char_grant_effect(char: str) -> Callable[..., list[str]]:
+    """具名角色发放效果体工厂(闭包销 = 发放角色名,单源取自
+    :data:`_STRATEGY_CHAR_GRANTS`;形态镜像 _make_box_grant_effect,
+    差异 = 发放对象是角色,走 gain_character)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名确定发放
+    (rand=False,gain-chain.md §5:卡文无随机词、选卡确认 = 确定性入口)。
+    星级实参恒 1 = 占位非先验:佩佩系 cost0 系统召唤单位无星级概念
+    (cw_chars 在册),链签名必填星参落占位值,环境侧佩佩发放已立同判。
+    落位/回调/升星/席满溢出语义全部沿 gain_character 现役,零新增链为。
+    效果串 ``char_grant:<名>(placed=<bool>,merge=<int>)``——前缀独立
+    分域(box_grant=占席道具/named_equip_grant=装备/strategy_gift_
+    random=随机角色群发),审计可独立过滤;merge = 本次获得链上升星
+    级数(单发恒 0,升星级联随串留证)。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿先例,模块
+        # docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_character,
+        )
+        _ = rng   # 具名确定发放,无采样面(rng 形参沿注册表分派契约保留)
+        r = gain_character(gs, char, 1, rand=False, sig=sig,
+                           evidence='pick_invest_char_grant',
+                           producer=_PRODUCER)
+        return [f'char_grant:{char}(placed={r.placed},merge={r.merge_levels})']
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
@@ -574,6 +622,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # ECONOMY 注册行 instant_gold=1 在册承载,fields.md §4.1/§5.2),
     # 金面禁直写不进效果体,本行只辖装备句。
     '无伤通关': _make_named_equip_grant_effect('生命之花', 1),
+    **{name: _make_char_grant_effect(char)
+       for name, char in _STRATEGY_CHAR_GRANTS.items()},
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
@@ -584,7 +634,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机简易装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成,组合卡(武装支援/武装支援+)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关)直书登记行由
-_make_named_equip_grant_effect 生成闭包,策略延时 offer 族由工厂自
+_make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+)
+由工厂自 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族由工厂自
 cw_investments.STRATEGY_DELAYED_GRANTS 派生——登记表 +1 行即自动获得
 登记腿,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派(查无

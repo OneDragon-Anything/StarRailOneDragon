@@ -988,6 +988,37 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['合并同类项'], duties=DutyFlags(),
         notes='刷新出对 +1 金经刷新上报随机态腿后检查腿(sim 真值判定,'
               'live 观察覆盖兜底);burst=4 获得链登记腿自动发放'),
+    # 溜佩佩/溜佩佩+:官方「获得9金币，什么都没带的佩佩会在你的后排逛街，
+    # 让小队获得1%前/后台强度。」/「获得15金币，…」(cw_invest_data.py
+    # PLAZA_AUGMENTS 103401/103402)。三腿分治登记:金腿(9/15 金)=
+    # STRATEGY_ECONOMY instant_gold 在册承载,不属本条目(选卡即时金世界
+    # 写端缺口 = 族级待办禁直写);佩佩发放腿 = STRATEGY_GRANTS 登记 +
+    # PICK_INVEST_EFFECTS 效果体(获得链分派);本条目只辖战力类腿(1%
+    # 前/后台强度)= UNIT_BUFF 零响应登记(游戏侧自算 bot 仅登记)。
+    # 无离散触发事件,trigger/duration 占位形(_portal_placeholder_spec
+    # 先例);effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    '溜佩佩': EffectSpec(
+        id='103401', name='溜佩佩',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '103401')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(佩佩逛街 1% 前/后台强度);'
+              '游戏侧自算,bot 仅登记;无离散触发事件,trigger/duration '
+              '占位形'),
+    '溜佩佩+': EffectSpec(
+        id='103402', name='溜佩佩+',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '103402')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(佩佩逛街 1% 前/后台强度);'
+              '游戏侧自算,bot 仅登记;无离散触发事件,trigger/duration '
+              '占位形'),
 }
 
 
@@ -2353,11 +2384,14 @@ _validate_env_gifts()
 
 
 # ===== 策略卡具名发放登记表(白名单制)=====
-# 底册 = 双母体对账(86 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
+# 底册 = 双母体对账(90 条):①STRATEGY_BINDINGS 角色绑定条目 ∩ 「获得…直读」
 # 形态机械预筛(68 条白得 + 11 条顾问);②全表效果文本反扫(「获得…roster 名」)
 # 补网 4 条(龙虎兄弟狸/佩佩驾到/艾丝妲的猛犬!/招财狗——无角色绑定的直读
-# 发放,佩佩 ∈ CHARACTER_ROSTER);③开箱分支 3 条(战术义眼++/保守派/快请专家·彩,
-# 「获得…【进阶武装箱】」占席道具直读,迭代 2026-09-24-advanced-armory-box)。
+# 发放,佩佩 ∈ CHARACTER_ROSTER);③开箱分支 5 条(战术义眼++/保守派/快请
+# 专家·彩/军火贸易/军火贸易+,「获得…【箱】」占席道具直读,迭代
+# 2026-09-24-advanced-armory-box);④非直读人工转正 2 条(溜佩佩/溜佩佩+,
+# 卡面「佩佩逛街」句 = 效果实现发放但非「获得」直读引导,人工裁定入册,
+# 反扫白名单两键同批退役)。
 # 发放角色归属 = 效果原文机制事实,宪法五
 # 第②类判据留 kernel(与 ENV_GIFTS 留 kernel 同判据);「档→分」映射与
 # advisor 折减 = 策略层 gift_value.grant_gift_value(消费位 =
@@ -2503,6 +2537,11 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 军火贸易+:「获得1个【简易武装箱】」直读;金腿「获得8金币」经
     # STRATEGY_ECONOMY instant_gold=8 在册(经济聚合面),不属本表登记范围。
     '军火贸易+': GiftGrant(items_immediate=('简易武装箱',)),
+    # —— 非直读人工转正 2 条(佩佩逛街句:「效果实现发放但非『获得』
+    # 直读引导」,人工裁定入册;反扫白名单两键同批退役,注册后排除因
+    # 「未登记」不复存在)——
+    '溜佩佩': GiftGrant(chars_immediate=('佩佩',)),
+    '溜佩佩+': GiftGrant(chars_immediate=('佩佩',)),
 }
 
 # ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
@@ -2536,18 +2575,16 @@ BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
 #   字样,非直读发放;
 # - 快请专家·金/彩:「获得1个【】/2个【】」空名不可具名(注册键各自独立);
 # - 孪生姵姵:发放对象「姵姵」∉ CHARACTER_ROSTER(反扫命中的「佩佩」系
-#   「和你的佩佩一模一样」对比句非发放);
-# - 溜佩佩/溜佩佩+:「…佩佩会在你的后排逛街」系效果实现发放但无「获得」
-#   直读引导(反扫窗口命中的「获得9/15金币」 govern 金币非佩佩)。
+#   「和你的佩佩一模一样」对比句非发放)。
 # 統一排除口径覆盖未来同类:roster-外目标与空名发放天然不产反扫命中,自动
 # 排除不逐条记因;本白名单只收现存例外。
+# (溜佩佩/溜佩佩+ 两键已随注册入 STRATEGY_GRANTS 退役——记因「实发放但
+# 非『获得』引导」在注册后失真,防线由注册表覆盖,删留行为等价取洁净。)
 _STRATEGY_GRANTS_SCAN_EXCLUSIONS: dict[str, str] = {
     '愚者恶作剧': '概率变形发放、无「获得」字样',
     '快请专家·金': '「获得1个【】」空名不可具名',
     '快请专家·彩': '「获得2个【】」空名不可具名',
     '孪生姵姵': '发放对象姵姵不在 CHARACTER_ROSTER',
-    '溜佩佩': '实发放但非「获得」引导(佩佩逛街句)',
-    '溜佩佩+': '实发放但非「获得」引导(佩佩逛街句)',
 }
 
 
