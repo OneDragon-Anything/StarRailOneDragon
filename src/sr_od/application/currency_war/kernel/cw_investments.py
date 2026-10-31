@@ -149,6 +149,10 @@ class EconomyEffect:
     difficulty_delta: int = 0             # 静态难度 Δ(简单模式 −3 等;36 号账本消费)
     difficulty_per_streak: int = 0        # 动态难度(伟大征服:难度+连胜数)
     difficulty_node_types: tuple[str, ...] = ()   # Δ 限定节点型(难度修改器:遭遇+首领)
+    encounter_tier_extremes_only: bool = False
+    # 遭遇候选空间收窄旗标(二极管):持卡局遭遇节点呈现集 = 档位全集
+    # 最低+最高两档。语义旗标无数值;端点由 sim 呈现面从 encounter_options()
+    # (档数单一源 = ENCOUNTER_TIER_COUNT)首尾派生,禁在此写数。
     future_quality_upgrade: str = ''      # 远见:后续策略节点品质改写('prism';期权侧消费)
     difficulty_inflation_exempt: bool = False    # 远见:不增加敌人难度
     gold_at_level: int = 0                # 成长基金:到达该级给金(级数配对字段)
@@ -279,6 +283,10 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 难度/期权族(难度→价值需战力建模;远见品质改写系期权)
     'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
     'future_quality_upgrade', 'difficulty_inflation_exempt',
+    # 遭遇收窄旗标(二极管):结构旗标不构成持续通道,难度族同组同依据
+    # (2026-10-28 校验治理后本桶无 import 炸防线,漏登记 = 漏分类静默
+    # 不炸,评审面把关 = is_economy_engine 治理注)
+    'encounter_tier_extremes_only',
     # 负向结构登记(成本/加价,无正通道)
     'xp_click_surcharge_from_level', 'xp_click_surcharge_from_level_at',
     # 一次性状态置位(非持续通道;一次性金族同款划界):「使当前连胜数
@@ -561,7 +569,11 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
     '经验就是财富': EconomyEffect(instant_gold=4),
-    '二极管': EconomyEffect(instant_gold=6),
+    '二极管': EconomyEffect(instant_gold=6, hp_instant=10,
+                            encounter_tier_extremes_only=True),
+    # ↑ hp=卡面「获得10小队生命值和生命上限」即时半句直读(hp_max 半句
+    #   零建模,缺口 = cw_affix_effects 四源注);收窄旗标 = sim 呈现面
+    #   encounter_options_for 消费(端点全档首尾派生,本表无数值)。
     '免费升舱': EconomyEffect(instant_gold=4),
     '无害垃圾': EconomyEffect(instant_gold=8),
     '胜利,还是胜利': EconomyEffect(instant_gold=4, streak_set=4),

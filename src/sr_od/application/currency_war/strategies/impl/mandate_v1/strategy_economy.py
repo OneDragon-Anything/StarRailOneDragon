@@ -67,7 +67,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon i
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# ===== 字段分类(50 字段三分;单一源 = 三集合,构建校验兜底)=====
+# ===== 字段分类(51 字段三分;单一源 = 三集合,构建校验兜底)=====
 # 分类判据与29 号稿 §2.1 逐通道对应:「计分」= v1 落地通道公式可算;
 # 「待建模」= 有字段分支但价值模型缺(fail-closed = 0,建模落地自动进);
 # 「不计」= 结构登记永不为分。字段分类校验覆盖「有字段分支」;卡级登记
@@ -147,7 +147,8 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: - 血本位分区覆盖:xp_buy_hp_cost/hp_gold_swap(invest_strategy 血本位
 #:   三态序以 is_blood_economy 集合排除覆盖,价值面不入现金账);
 #: - 难度族:difficulty_delta/difficulty_per_streak/difficulty_node_types
-#:   (难度→价值需战力建模,宪法一禁域);
+#:   (难度→价值需战力建模,宪法一禁域);encounter_tier_extremes_only
+#:   (二极管遭遇收窄结构旗标,端点 sim 呈现面派生无数值,同禁域);
 #: - 期权/远见族:future_quality_upgrade/difficulty_inflation_exempt
 #:   (远见品质改写 = 期权待建模,均匀分布假设未证);
 #: - 负向结构登记:xp_click_surcharge_from_level/_at、hp_max_loss_pct_of_
@@ -158,6 +159,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'xp_buy_hp_cost', 'hp_gold_swap',
     'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
+    'encounter_tier_extremes_only',
     'future_quality_upgrade', 'difficulty_inflation_exempt',
     'xp_click_surcharge_from_level', 'xp_click_surcharge_from_level_at',
     'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
@@ -317,7 +319,7 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
 
 
 def _validate_field_classification() -> None:
-    """EconomyEffect 全字段三分分类校验(50 字段;未分类字段 = 建模缺口
+    """EconomyEffect 全字段三分分类校验(51 字段;未分类字段 = 建模缺口
     静默,炸出——沿 env 批立场表覆盖校验的治理形态,对象从 83 环境换成
     字段闭集)。
 

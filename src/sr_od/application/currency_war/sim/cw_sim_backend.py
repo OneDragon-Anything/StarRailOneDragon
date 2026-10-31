@@ -131,6 +131,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     aggregate_economy,
+    get_strategy,
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
@@ -910,6 +911,29 @@ def encounter_options() -> tuple[EncounterOption, ...]:
                         rewards=[f'金+{ENCOUNTER_REWARD_GOLD_PLACEHOLDER}'
                                  f'(占位,{ENCOUNTER_PARAMS_PENDING_U22})'])
         for i in range(ENCOUNTER_TIER_COUNT))
+
+
+def encounter_options_for(strategy_names: list[str]) -> tuple[EncounterOption, ...]:
+    """遭遇呈现集(持卡收窄;二极管 = 全档两端派生 + idx 重排)。
+
+    辖域 = 注册表 ``encounter_tier_extremes_only`` 全体(任一持卡命中即
+    收窄,「本场对局中」= 局级持续语义),payload 读法沿
+    ``cw_sim_enemy._strategy_delta_of`` 同款单一形状(get_strategy ×
+    normalize_invest_name,禁新立读法)。端点 = :func:`encounter_options`
+    首/尾派生,零新数值(档数单一源 = ``ENCOUNTER_TIER_COUNT``,U22 校准
+    自动跟随);idx 重建 = 呈现集 0 基位次——三消费方同域承重(策略器
+    输出 ``o.idx`` / 上报 ``options[param.idx]`` 取载荷 / 机械链两卡位),
+    不重排则策略器输出原档位下标越界,守卫 AssertionError。零 rng:确定
+    性收窄,种子流无漂移;无命中返回全集原样(现行为零变化)。
+    """
+    opts = encounter_options()
+    for raw in strategy_names:
+        s = get_strategy(normalize_invest_name(raw))
+        if s is not None and s.economy is not None \
+                and s.economy.encounter_tier_extremes_only:
+            return tuple(
+                replace(o, idx=i) for i, o in enumerate((opts[0], opts[-1])))
+    return opts
 
 
 def is_piggy_node(gs: GameState) -> bool:
@@ -2733,7 +2757,9 @@ class SimBackend:
             return
         if kind == 'encounter':
             report_screen_encounter_obs(self.gs, CwScreenEncounterObs(
-                options=list(encounter_options()), refresh_left=None))
+                options=list(encounter_options_for(
+                    list(self.gs.active_strategies.value or []))),
+                refresh_left=None))
             self._present_modal(SCREEN_ENCOUNTER)
             return
         if kind == 'boss':
