@@ -64,12 +64,85 @@ class ShopOpportunity:
     步入口的解拦复核(判定函数 3.6 建造)。字段集 = 解拦判定所需最小面
     (金位解除线 = 注册表价 `price` 比对、`order_class` = 解拦后重评的
     归属序)。
+
+    `blocked_by` = 'priority_insufficient_gold'(金不足/叠加态语境的统一
+    获取让位拒绝,roster-plane1-union design §2.2 第 4 项步 6 分键)记录
+    必带 `gold_snapshot`/`gold_gap`/`shelf_signature` 三字段(解拦分轴
+    数据载体,design S5-4/S6-4);其余键三字段缺省 None(各自解拦轴不
+    消费)。
     """
 
     card_name: str    # 牌名(注册表规范名)
-    blocked_by: str   # 拦因闭集:'bench_full'(席满)| 'gold_short'(金不足)| 'priority_insufficient'(优先级不足,席满买入六步流程 3.2——席位空出即失效,与席满类同轴解拦)
+    blocked_by: str
+    """拦因闭集:'bench_full'(席满;**零写入死键**——现行无写入端,闭集
+    保留)| 'gold_short'(金不足池穷尽)| 'priority_insufficient'(优先级
+    不足·席满语境;解拦轴 = 席位空出即失效)| 'priority_insufficient_
+    gold'(优先级不足·金不足语境含叠加态;解拦轴 = 金位增量 ≥ 缺口
+    绝对值 ∨ 重开店帧首评货架签名对比,shop_session 解拦分轴)。"""
     price: int        # 注册表价(金的解除线比对基准)
     order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接线枚举)
+    gold_snapshot: int | None = None
+    """[索引定义] 记录时点金快照(priority_insufficient_gold 金位增量轴
+    的基值;取值时机 = 让位评估帧现读会话金;写端 = shop 统一获取让位
+    评估,其他键恒 None)。"""
+    gold_gap: int | None = None
+    """[索引定义] 虚拟金币缺口绝对值 = |记录时虚拟金币|(前缀空口径
+    gold − cost;解拦线 = 金位增量 ≥ 本值;写端同上)。"""
+    shelf_signature: tuple[str, ...] | None = None
+    """[索引定义] 记录时点货架签名(当前牌面名集排序元组;重开店帧首评
+    对比——签名不同 = 新货架必重评,记录销项;节点边界天然换货架必换
+    签名;写端同上)。"""
+
+
+@dataclass
+class YieldPlanStep:
+    """获取让位计划的单步骤(通用有序步骤序列;总纲 roster-plane1-union
+    design §2.2 第 4 项写端载荷 + 用户裁定补录「载荷 = 通用有序步骤序列」)。
+
+    ``kind`` 值域:'sell'(卖出前缀件——场上件经 SellDeployed 执行,备战
+    件经 SellBench 执行,落位由执行端按 name 现读分派)/ 'deploy'(驱
+    板面至 T——目标板名集覆盖判定,零搜索执行算术)。
+    """
+
+    kind: str                # 'sell' | 'deploy'
+    name: str = ''           # sell 类目标角色名;deploy 步骤恒 ''
+    issued: bool = False
+    """[索引定义] 卖出动作已发出待下帧对账(卖失败检测载体:issued ∧
+    目标仍在场/在席 = 卖出执行层失败 → 计划失败出口;取值时机 = 动作
+    发出帧置位,对账帧读后随游标推进)。"""
+
+
+@dataclass
+class YieldPlan:
+    """获取让位跨画面计划变量(商店决策一次定型,备战照单执行零重验;
+    总纲 design §2.2 第 4 项 + 用户裁定补录「跨画面计划变量终版」)。
+
+    - ``steps`` = 卖前缀件(让位序,末位先卖)→(席位语境)驱板面至 T;
+      纯金语境无 deploy 步骤(``target_board`` = None,场位缺口由常规
+      部署步自然补);
+    - ``context`` = 'seat' | 'gold' 计划语境(写入时定格;执行失败记键
+      按此分键:席位 → priority_insufficient / 纯金 →
+      priority_insufficient_gold);
+    - ``cursor`` = 执行态游标(下一未完成步骤下标,0 基;步骤完成判定
+      通过后推进);
+    - ``node_stamp`` = 节点戳 (plane, round_num) 均 1 基(跨节点残留
+      双保险——重置表为主,戳不等 = 失效清槽,同 shop_handled 形态)。
+    """
+
+    steps: list[YieldPlanStep] = field(default_factory=list)
+    target_board: frozenset[str] | None = None
+    """目标板 T(部署定型名集;席位语境 =「当前 − 前缀」定型板面〔与
+    步 3 的「当前 + X」定型不同输入,design SF-6〕;纯金语境 = None)。"""
+    context: str = 'seat'
+    cursor: int = 0
+    node_stamp: tuple[int, int] | None = None
+    progress_mark: int = -1
+    """[索引定义] 驱板步骤的最近观察进展度量(T 名集与现板名集交集
+    基数;取值时机 = 前置步每帧现读;-1 = 尚未观察)。卡死检测数据源:
+    连续 2 帧本值不增 = 驱板无进展 → 失败出口(本阶段简化版,统一拖动/
+    交替重观察属部署统一批)。"""
+    stall_frames: int = 0
+    """连续无进展帧数(驱板步骤卡死计数;进展恢复即清零)。"""
 
 
 @dataclass
@@ -288,6 +361,23 @@ class StrategyState:
     # 时点兜底,读布尔标志(session_scope.plane2_started_of)非位面
     # 元组字面量比较(宪法第 2 条合规的窗口谓词形态)。
     plane2_started: bool = False
+
+    # ===== 获取让位跨画面计划变量(roster-plane1-union design §2.2
+    #       第 4 项;节点作用域——重置表登记 + 节点戳双保险;写端单一源
+    #       = shop.py 统一获取让位评估,执行端单一源 = entry.py 前置步
+    #       计划游标)=====
+    # [索引定义] yield_plan = 待执行计划槽:None = 无计划(扫描正常推进);
+    # 非 None = 前置步优先于第 1-9 步逐帧消化(含第 5 步开店与第 9 步
+    # 出战——计划未完成不出战);bridge 前置动作发出点让位谓词消费同一
+    # 槽。写入端 = 商店买入臂 victim = 场上件帧(关店不置标记 = 返程);
+    # 清空点三处:序列空(完成)/执行失败出口/节点边界重置+戳双保险。
+    yield_plan: YieldPlan | None = None
+    # [索引定义] x_path_failed = X 路径失败标记:True = 本节点内 X 的
+    # 场上件让位路径已失败(计划执行失败置位),商店重评时让位评估排除
+    # 场上件 victim(只走备战件路径或池穷尽机会清单)。独立节点作用域
+    # 布尔(失败信息独立字段——新计划覆写 yield_plan 不丢本标记);写端
+    # 单一源 = entry 前置步失败出口。
+    x_path_failed: bool = False
 
     # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;
     #       键面归一:锁定线槽 = target_comp〔意向面段,终态单写者 =

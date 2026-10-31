@@ -176,6 +176,12 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   键族停产;
 # - levelup_stockpile_wait:商店会话升级意图出口的凑金待付窗计数
 #   (gold_short 分支唯一行为)——分支随 gold_short 臂整删停产。
+# - session_funding_sell 取用键族(session_funding_sell/_tier_<1..8>/
+#   _rng_tail_hit)与 session_funding_exhausted:会话内筹资键族——
+#   随统一获取让位评估收编退役(roster-plane1-union design §2.2
+#   第 4 项 + 用户裁定 2026-10-30:金不足与席满同一评估,session_
+#   funding 场景行/funding 通道/专属计数整链删除),取用计数并入
+#   acquire_swap_sell 键族。
 #
 # 【保留键】(逐键核消费位后在役):
 # - shop_refresh_blocked_memory_skip:刷新负结果记忆跳过计数——金线
@@ -190,15 +196,27 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 # - <take>_tier_<1..8>:各触发取用档位分布——take = 该触发的卖出
 #   计数键,值 = 被取用件统一序列排序键的档位分量;take 域 =
 #   {acquire_swap_sell, self_rescue_sell, ore_pad_sell,
-#   node_end_interest_sell, session_funding_sell}(前二者 =
-#   mandate_v1/shop.py 会话域,其余 = mandate_v1/entry.py 备战域;
-#   levelup_liquidate_sell 已随凑金链整删出 take 域,停产登记见上
+#   node_end_interest_sell}(acquire_swap_sell = mandate_v1/shop.py
+#   会话域统一获取让位评估〔阶段 3 起含原会话内筹资取用〕,其余 =
+#   mandate_v1/entry.py 备战域;levelup_liquidate_sell 已随凑金链整删、
+#   session_funding_sell 已随筹资场景退役出 take 域,停产登记见上
 #   「停产键族」节);
 # - <take>_rng_tail_hit:随机尾键命中——被取用件与池内另一件排序键
 #   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
 #   (随机域判读:非等价件命中即键构造异常哨兵);
-# - acquire_swap_sell / acquire_swap_declined:获取流程置换成功/拒绝
-#   (末位=新牌放弃;3.2 六步流程落写点,3.5 登记键表)。
+# - acquire_swap_sell / acquire_swap_declined:统一获取让位成功/拒绝
+#   (末位/扩位遇 X 放弃;阶段 3 起含金不足语境,拦因分键 =
+#   机会清单 blocked_by 字段而非计数键);
+# - acquire_yield_*(阶段 3;roster-plane1-union design §2.2 第 4 项):
+#   acquire_yield_exhausted(池穷尽)/acquire_yield_restricted_skip
+#   (受限会话帧跳过)/acquire_swap_field_victim(victim = 场上件,
+#   写跨画面计划);
+# - yield_plan_* 计划变量生命周期四计数(S5-9;写点 =
+#   mandate_v1/shop.py 写端 + mandate_v1/entry.py 前置步):写入
+#   yield_plan_written / 执行 yield_plan_step(每消化一动作)/完成
+#   yield_plan_completed(序列空清槽)/执行失败 yield_plan_failed_
+#   priority_insufficient|_gold(按计划语境分键;节点戳失效 =
+#   yield_plan_stamp_mismatch)。
 
 
 # ===== 序列化(dataclass → JSON-safe dict)=====

@@ -85,15 +85,16 @@ if TYPE_CHECKING:
 #: 卖出通道闭集(方案 v3 §3.1 + 迭代 2026-10-12 P78 五通道重映射)。
 #: 新通道必须先在此登记再接线——枚举外值拒收(单一入口防线,防「新通道
 #: 绕 A 手搓排除」的第五通道复发形态)。通道族谱(shop_session §5 承继
-#: 清单 P78 行):interest = 节末凑息;funding = 会话内筹资/升级变现
-#: (funding 同款通道对价;P78-5 兜底豁免已随身份段退役删除——3.4);
-#: m4_fuel = 备战域晶矿腾位/告警自救;m4_fuel 语义现由评估器
-#: 'ore_make_room'/'self_rescue' 场景承载;line_switch 换线整合通道已随
-#: 候选-锁定制停用撤档(line_and_upgrade §1.6);shop_swap = 店内置换账
-#: 通道已随六步流程整段替换退役(3.4,SCENE_SPECS 同步);projection =
-#: 投影视图读端(P78-6 读端同源)。
+#: 清单 P78 行):interest = 节末凑息;m4_fuel = 备战域晶矿腾位/告警
+#: 自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景承载;
+#: line_switch 换线整合通道已随候选-锁定制停用撤档(line_and_upgrade
+#: §1.6);shop_swap = 店内置换账通道已随六步流程整段替换退役(3.4,
+#: SCENE_SPECS 同步);funding = 会话内筹资通道已随统一获取让位评估
+#: 收编退役(roster-plane1-union design §2.2 第 4 项:金不足与席满
+#: 同一评估,场景行与通道同批删除——阶段 2 偏差⑤预留点的兑现);
+#: projection = 投影视图读端(P78-6 读端同源)。
 SELL_CHANNELS: frozenset[str] = frozenset({
-    'interest', 'funding', 'm4_fuel', 'projection',
+    'interest', 'm4_fuel', 'projection',
 })
 
 #: 买因闭集(买入分支 → 因果类映射的值域)。闭集外值
@@ -291,8 +292,9 @@ def stall_protect_active(session: StrategySession, current_round: int | None,
                          *, counters: dict | None = None,
                          ) -> frozenset[str]:
     """T3 垫保单类视图(stall_protect 因果类;defer 通道专用——垫保
-    在凑息是绝对跳过、在 M4/funding 是降序放行,通道对价语义,与窗口
-    段排除是两个面)。press 类登记名不入本视图;轮界过期与本视图共享
+    在凑息是绝对跳过、在 M4 是降序放行,通道对价语义,与窗口
+    段排除是两个面。funding 通道随会话内筹资场景退役后,降序放行
+    域 = m4_fuel 单通道)。press 类登记名不入本视图;轮界过期与本视图共享
     单点销账(两类一同过期,过期计数按因类分键,禁双读端重复计数)。"""
     return _expire_and_read(session, current_round,
                             face_causes=frozenset({'stall_protect'}),
@@ -826,8 +828,9 @@ def sell_exclusions(session: StrategySession,
     # 读源 = kernel fresh_buys 轮键事实集(全因类完备,见模块 docstring
     # L1 段);减两个 carve-out——
     # ① 垫保:stall_protect 登记活跃名从硬面剔除,继续走既有
-    #    defer 通道(凑息绝对跳过/M4·funding 降序放行 = 转化类放行
-    #    保全,P78-5′ 已登记语义);轮号不可得帧不剔除(fail-closed)。
+    #    defer 通道(凑息绝对跳过/M4 降序放行 = 转化类放行
+    #    保全,P78-5′ 已登记语义;funding 通道已随筹资场景退役,
+    #    降序放行域 = m4_fuel 单通道);轮号不可得帧不剔除(fail-closed)。
     # ② 换线孤儿:孤儿清算 = 账闭合豁免语境,不经硬面。
     _t3 = (stall_protect_active(session, current_round)
            if current_round is not None else frozenset())
@@ -905,7 +908,7 @@ def empty_board_sell_blocked(deployed: object, *,
     相对不卖弱劣——1★ 全额退净金 0(P76 甲)+ 部署/合成期权损失 ≥0;
     2★+ 卖出净损金(P76 甲手续费)+ 期权损失。守卫非消费授权、零 hp、
     零动作发出点;拒因分键落 ``counters[EMPTY_BOARD_SELL_GUARD_KEY]``,
-    禁静默。复合事务(M4 腾位/funding 筹资)卖出分支在空板帧同被覆盖 =
+    禁静默。复合事务(M4 腾位/统一获取让位)卖出分支在空板帧同被覆盖 =
     资格面收窄 → 消费位走各自既有「无候选」诚实停摆路径(m2_retry_
     exhausted / bench_full / 空动作发出,先例 = P78-4 燃料资格收窄);
     恢复正路 = 部署(P24 零支出)与买面,守卫零覆盖。若观测证明腾位抑制

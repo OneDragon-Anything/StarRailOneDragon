@@ -66,6 +66,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionFurnaceUseParam,
     CwActionLevelUpParam,
     CwActionLuckyTokenUseParam,
+    CwActionObsParam,
     CwActionOpenBookcardParam,
     CwActionOpenBoxParam,
     CwActionOpenShopParam,
@@ -154,7 +155,15 @@ _TRUNCATION_POINTS: tuple[type, ...] = (
 #: 终点(只能作序列最后一个动作;CwActionStartBattleParam = 出战环出口)
 _TERMINAL: tuple[type, ...] = (CwActionStartBattleParam,)
 #: 可续(画面零迁移/坐标不变)
-_CONTINUABLE: tuple[type, ...] = (CwActionLevelUpParam,)
+_CONTINUABLE: tuple[type, ...] = (
+    CwActionLevelUpParam,
+    # 重观察动作(in_place = 当前画面环内重观察):零迁移/零坐标,满足
+    # 「可续」语义;现役发出面 = 备战决策环无动作可发帧(计划前置步
+    # 无进展帧/空序列兜底)——单一动作级发出,序列续发面为零。登记
+    # 义务(动作发出器增补条目须回契约改版,flow/action_exec.md §1)
+    # 由此声明;分类表契约改版随部署统一批(D5-1)统一回正本。
+    CwActionObsParam,
+)
 #: 条件续(bench 索引结构恒稳 + 名-槽一致性复检;board 空位/星级合成按
 #: 前序动作累积静态推出,推不出即截断——契约 §3.2;CwActionCollectOreParam
 #: 行 = 条件:常态可续,末批可能掉箱后截断)
@@ -507,6 +516,16 @@ def emit(session: StrategySession,
         _rescue = _step0_overflow_self_rescue(session, gs, frame)
         return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
+    # —— 前置步:计划游标逐帧消化(第 0 步溢出自救后新插;roster-
+    #    plane1-union design §2.2 第 4 项执行端 + 用户裁定补录「跨画面
+    #    计划变量终版」:商店决策一次定型,备战照单执行零重验)——
+    # 槽在期间本步优先于第 1-9 全部步(含第 5 步开店与第 9 步出战——
+    # 计划未完成不出战);被第 0 步自救抢占的帧本步不运行(告警帧零
+    # 计划观察,DF-7:不累加也不清零卡死计数)。
+    _plan_out = _step_yield_plan(session, gs)
+    if _plan_out is not None:
+        return _plan_out
+
     # —— 第 1 步:商店随机态重开(2026-10-17 迭代 design §2.2 第 1 步/
     # §2.4)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
     # 的 3 张,用户裁定「很高的优先级」;置于溢出自救之后、资源动作之前):
@@ -662,6 +681,209 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
     log.warning('[cw!][self-rescue] 溢出告警帧自救序全不可行'
                 '(态 4 防御分支;拒因键 = %s)', _why)
     return []
+
+
+# ============================================================ 前置步:计划游标(阶段 3)
+
+
+def _yield_plan_fail(st, counters: dict, plan) -> None:
+    """计划失败出口③(design §2.2 第 4 项执行端:V 不在场/卖失败/级联
+    卡死三态同款)——清槽 + X 路径失败标记置位 + 恢复扫描;下轮商店重评
+    走 bench 件路径或机会清单(标记消费 = shop 统一获取让位评估排除
+    场上件 victim,PV-8)。
+
+    计数键按计划语境分键(观测键族「执行失败」;语境写入时定格):
+    席位 → yield_plan_failed_priority_insufficient / 纯金 →
+    yield_plan_failed_priority_insufficient_gold。
+    """
+    st.yield_plan = None
+    st.x_path_failed = True
+    _key = ('yield_plan_failed_priority_insufficient'
+            if plan.context == 'seat'
+            else 'yield_plan_failed_priority_insufficient_gold')
+    counters[_key] = counters.get(_key, 0) + 1
+
+
+def _step_yield_plan(session: StrategySession,
+                     gs: GameState) -> list[Emitted] | None:
+    """前置步:计划游标逐帧消化(工序第 0 步后新插;总纲 design §2.2
+    第 4 项执行端 = 照计划操作零重验,逐帧消化步骤序列)。
+
+    - 槽空/节点戳失效 → 返回 None(扫描正常推进);
+    - ① 取下一未完成步骤:**卖步骤**(目标 V 已不在场/席 = 执行失败
+    走③;在场/席 → 发 SellDeployed/SellBench〔按 name 现读落位分派〕,
+    issued 位置位待下帧对账;issued ∧ 目标仍在原域 = 卖出执行层失败
+    走③)/**驱板步骤**(T 名集覆盖判定,缺位者从 bench 上场——本阶段
+    用现行 deploy_plan 落位算术(deploy_row_pref + 空槽选择),统一
+    拖动/交替重观察属部署统一批;卡死检测简化版 = 连续 2 帧覆盖数
+    不增〔含无动作帧,S7-9〕→ 失败出口③);
+    - ② 序列空 → 清槽 → 返回 None 扫描继续(**开店 = 非序列步骤**
+    〔SF-10〕,由第 5 步常规机制发);
+    - ③ 执行失败 → :func:`_yield_plan_fail`(清槽 + 标记 + 按语境
+    记键)→ 恢复扫描;
+    - 驱板步骤无动作可发帧(缺位者不在 bench 等)→ CwActionObsParam
+    (in_place 环内重观察)——扫描不前进,卡死计数照常累加。
+
+    **零重验/零搜索**(用户裁定「跨画面计划变量终版」:备战执行零
+    搜索——T 已定型,差分与落位是执行算术):select_deployment/
+    assemble_prep_context 等搜索面零调用;卖步骤 = 名在场性现读 +
+    坐标换算;驱板步骤 = 名集覆盖比对 + 落位算术。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_units_of,
+        effective_node_pos,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        Emitted,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+        YieldPlan,
+    )
+    st = state_of(gs)
+    plan: YieldPlan | None = st.yield_plan
+    if plan is None:
+        return None
+    # 节点戳双保险(同 shop_handled 形态:重置表为主,戳不等 = 跨节点
+    # 残留失效清槽)。
+    if plan.node_stamp is None or plan.node_stamp != effective_node_pos(gs):
+        st.yield_plan = None
+        st.cw4_counters['yield_plan_stamp_mismatch'] = \
+            st.cw4_counters.get('yield_plan_stamp_mismatch', 0) + 1
+        return None
+    counters: dict = st.cw4_counters
+    front, back = deployed_rows_of(gs)
+    _board_names = {str(d.char_id or '') for d in (*front, *back)
+                    if d is not None and d.char_id}
+    _bench_names = {str(u.char_id or '') for u in bench_units_of(gs)
+                    if u is not None and u.char_id}
+    while plan.cursor < len(plan.steps):
+        step = plan.steps[plan.cursor]
+        if step.kind == 'sell':
+            _on_board = step.name in _board_names
+            _on_bench = (not _on_board) and step.name in _bench_names
+            if _on_board or _on_bench:
+                if step.issued:
+                    # 上帧已发出 ∧ 目标仍在原域 = 卖出执行层失败 → ③。
+                    _yield_plan_fail(st, counters, plan)
+                    return None
+                step.issued = True
+                counters['yield_plan_step'] = \
+                    counters.get('yield_plan_step', 0) + 1
+                mandate.record_round_sold(session, gs, step.name)
+                if _on_board:
+                    _didx = _deployed_idx_by_name(gs, step.name)
+                    if _didx is None:
+                        # 名在场但槽位对位失配(陈旧帧)→ fail-closed 走③。
+                        _yield_plan_fail(st, counters, plan)
+                        return None
+                    return [Emitted(
+                        CwActionSellDeployedParam(deployed_idx=_didx),
+                        True, 'yield_plan_sell')]
+                _bidx = mandate._bench_container_idx_by_compact(
+                    gs, _bench_compact_idx(gs, step.name))
+                if _bidx is None:
+                    _yield_plan_fail(st, counters, plan)
+                    return None
+                return [Emitted(
+                    CwActionSellBenchParam(bench_idx=_bidx,
+                                           reason='yield_plan_sell'),
+                    True, 'yield_plan_sell')]
+            # 目标已不在场/席:未发 = 计划失效(V 不在场形态)→ ③;
+            # 已发 = 卖出已生效 → 步骤完成推进。
+            if step.issued:
+                plan.cursor += 1
+                continue
+            _yield_plan_fail(st, counters, plan)
+            return None
+        # deploy 步骤:进展判定(覆盖数)→ 完成检查 → 取缺位者上场。
+        _t = plan.target_board or frozenset()
+        _covered = len(_t & _board_names)
+        if _covered > plan.progress_mark:
+            plan.progress_mark = _covered
+            plan.stall_frames = 0
+        else:
+            plan.stall_frames += 1
+            if plan.stall_frames >= 2:
+                # 连续 2 帧覆盖数不增(含无动作帧,S7-9)→ 级联卡死 → ③。
+                _yield_plan_fail(st, counters, plan)
+                return None
+        _missing = sorted(_t - _board_names)
+        if not _missing:
+            plan.cursor += 1
+            continue   # T 已覆盖 → 步骤完成(序列尽则下方清槽)
+        _name = _missing[0]
+        _compact = _bench_compact_idx(gs, _name)
+        if _compact is None:
+            # 缺位者不在 bench(被合并/被卖等)→ 无动作可发帧:in_place
+            # 重观察,扫描不前进,卡死计数已累加(下帧再计一次 = 出口)。
+            return [Emitted(CwActionObsParam(scope='in_place'),
+                            True, 'yield_plan_hold')]
+        _row, _slot = _plan_slot_for(gs, session, _compact, _name)
+        if _row is None:
+            return [Emitted(CwActionObsParam(scope='in_place'),
+                            True, 'yield_plan_hold')]
+        _bidx = mandate._bench_container_idx_by_compact(gs, _compact)
+        if _bidx is None:
+            _yield_plan_fail(st, counters, plan)
+            return None
+        counters['yield_plan_step'] = \
+            counters.get('yield_plan_step', 0) + 1
+        from sr_od.application.currency_war.data.cw_chars import (
+            char_first_faction,
+        )
+        return [Emitted(
+            CwActionDeployMoveParam(
+                bench_idx=_bidx, to_row=_row, to_slot=_slot,
+                faction=char_first_faction(_name)),
+            True, 'yield_plan_deploy')]
+    # ② 序列空 → 清槽 → 扫描继续(开店由第 5 步常规机制发,SF-10)。
+    st.yield_plan = None
+    counters['yield_plan_completed'] = \
+        counters.get('yield_plan_completed', 0) + 1
+    return None
+
+
+def _bench_compact_idx(gs: GameState, name: str) -> int | None:
+    """bench 紧缩占席序下标 → 名对位(缺位者/目标名的现读定位;陈旧
+    帧名不在席 = None)。身份解包 = ``bench_slot_unit`` 统一读口。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    for _compact, slot in enumerate(bench_entries_of(gs)):
+        _u = bench_slot_unit(slot)
+        if _u is not None and str(_u.char_id or '') == name:
+            return _compact
+    return None
+
+
+def _deployed_idx_by_name(gs: GameState, name: str) -> int | None:
+    """场上名 → deployed 槽位表下标(前排 0-3/后排 4+;场上同名唯一性
+    不变量下首中即真;不在场 = None)。"""
+    _d = mandate._deployed_container_idx(
+        gs, next((u for u in _deployed_units_of(gs)
+                  if str(u.char_id or '') == name), None))
+    return _d
+
+
+def _plan_slot_for(gs: GameState, session: StrategySession,
+                   compact_idx: int, name: str) -> tuple[str | None, int]:
+    """驱板步骤的落位算术(现行 deploy_plan 机制单一源复用:
+    ``deploy_slot_plans`` 的排路由 + 前排保证 + 空槽选择——本阶段零
+    搜索执行算术,统一拖动属部署统一批)。
+
+    返回 (row, slot);排容量不可得(两排满)→ (None, 0) = 无动作帧
+    (交卡死计数)。
+    """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.deploy_plan import (
+        deploy_slot_plans,
+    )
+    _comp = getattr(state_of(gs), 'target_comp', None)
+    _plans = deploy_slot_plans(bench_entries_of(gs), [compact_idx],
+                               _comp, gs)
+    if not _plans:
+        return None, 0
+    _bi, _row, _slot = _plans[0]
+    return _row, int(_slot)
 
 
 def _emit_sell_candidate(session: StrategySession, gs: GameState,

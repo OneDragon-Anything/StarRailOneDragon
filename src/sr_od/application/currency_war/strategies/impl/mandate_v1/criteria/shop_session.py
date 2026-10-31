@@ -333,15 +333,23 @@ class RecheckOutcome:
 def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     """解拦复核判定函数(入口段·关门态;备战第 5 步入口唯一触发)。
 
-    - 席满类:席位空出 = 备战可观察(``bench_free_slots`` 现读 > 0);
-    - 金不足类:金位 = 账面供给(备战帧直读不可观察);账面失效时申报
-      读数开门(不直接判不解拦——锚定后下帧复核);
-    - 优先级不足类(席满买入六步流程 3.2 拒因):同席满类席位空出解拦
-      ——拒因成立于「让路代价高于获取收益」的席满语境,席位空出后买入
-      不再经六步流程(正常买入路径无优先级门),记录随之失效;
+    按键分轴(roster-plane1-union design §2.2 第 4 项步 6 S5-4/S6-4/
+    S7-5;旧 session_funding 解拦轴〔金 ≥ price〕随场景退役——统一
+    让位的金位轴按记录语境分轴):
+
+    - 席满类 ``bench_full`` / 优先级不足·席满语境 ``priority_insufficient``:
+      席位空出 = 备战可观察(``bench_free_slots`` 现读 > 0)即解拦;
+    - 优先级不足·金不足语境(含叠加态)``priority_insufficient_gold``:
+      金位轴 = 账面金相对记录时点快照(``gold_snapshot``)增量 ≥ 缺口
+      绝对值(``gold_gap``)即解拦;账面失效时申报读数开门(路径③,锚定
+      后下帧复核)——关门态读不到货架,重开驱动 = 金位轴(备战侧可读
+      金)+ 节点边界(新货架必新签名);签名轴在**重开店帧首评**消费
+      (:func:`shop_recheck_face_signature`,会话入口内务段);
+    - 金不足池穷尽类 ``gold_short``:现行轴(金位 ≥ price 解除线);
     - 方向锁定不走本清单(锁定写入直接清标记,line_and_upgrade §1.4);
-      记录拦因闭集 = {席满,金不足,优先级不足}
-      (ShopOpportunity.blocked_by 值域)。
+      记录拦因闭集 = {席满,金不足,优先级不足·席满语境,优先级不足·
+      金不足语境}(ShopOpportunity.blocked_by 值域;bench_full 为零写入
+      死键,闭集保留)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_free_slots,
@@ -355,9 +363,19 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     need_gold_read = False
     for rec in records:
         if rec.blocked_by in ('bench_full', 'priority_insufficient'):
-            # 优先级不足与席满同轴:拒因成立于席满语境(让路代价高于
-            # 获取收益),席位空出后买入不再经六步流程,记录随之失效。
+            # 优先级不足·席满语境与席满同轴:拒因成立于席满语境(让路
+            # 代价高于获取收益),席位空出后买入不再经让位评估(正常
+            # 买入路径无优先级门),记录随之失效。
             if bench_free > 0:
+                unblock = True
+        elif rec.blocked_by == 'priority_insufficient_gold':
+            # 金位轴(金增量 ≥ 缺口绝对值;载体缺失 = 旧形态记录,
+            # 保守解拦交店内段/买入臂重评收敛)。
+            if st.gold_ledger is None:
+                need_gold_read = True
+            elif (rec.gold_snapshot is None or rec.gold_gap is None) \
+                    or int(st.gold_ledger) - int(rec.gold_snapshot) \
+                    >= int(rec.gold_gap):
                 unblock = True
         elif rec.blocked_by == 'gold_short':
             if st.gold_ledger is None:
@@ -365,6 +383,33 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
             elif int(st.gold_ledger) >= int(rec.price):
                 unblock = True
     return RecheckOutcome(unblock, need_gold_read)
+
+
+def shop_recheck_face_signature(gs: GameState) -> int:
+    """优先级不足·金语境的签名轴(重开店帧首评;design §2.2 第 4 项
+    S7-5——解拦复核在关门态读不到货架,签名对比 = 重开店后的首帧:
+    签名 ≠ 记录签名 → 记录销项〔新货架必重评,买入臂照常自评——货架/
+    金位现况即最新,撞闸按现行闸处理〕;签名相同 → 记录保持有效)。
+
+    挂点 = 商店会话 visit 入口内务段(与 :func:`shop_recheck_drop_off_
+    face` 同点,decide_shop_action 两路入口同源)。返回销项数。
+    """
+    records = session_scope.shop_opportunities_of(gs)
+    if not records:
+        return 0
+    face_sig = tuple(sorted(
+        c.name or '' for c in shop_payload_content_cards(gs.shop.value)))
+    kept = tuple(
+        rec for rec in records
+        if not (rec.blocked_by == 'priority_insufficient_gold'
+                and rec.shelf_signature is not None
+                and tuple(rec.shelf_signature) != face_sig))
+    dropped = len(records) - len(kept)
+    if dropped:
+        state_of(gs).shop_opportunities = kept
+        log.info('[cw][shop-recheck] 签名轴验证:清单 %d 条中 %d 条货架'
+                 '签名已变,销项(重开店帧首评)', len(records), dropped)
+    return dropped
 
 
 def shop_recheck_drop_off_face(gs: GameState) -> int:
@@ -407,6 +452,7 @@ __all__ = [
     'note_refresh_counters',
     'session_gold',
     'shop_recheck_drop_off_face',
+    'shop_recheck_face_signature',
     'shop_unblock_recheck',
     'sync_gold_ledger',
 ]

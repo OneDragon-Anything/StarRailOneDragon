@@ -69,6 +69,10 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
 
     - 判定核 = kernel ``readiness_launch_decision``(线成员谓词注入
       单一源 = statefn.predicates.line_members,禁内联第二实现);
+    - **计划槽非空谓词**(S7-2,roster-plane1-union design §2.2 第 4
+      项):出战就绪 ∧ 跨画面计划槽非空 → 让位于十段扫描(备战前置步
+      逐帧消化计划;段旗复位——计划期视同就绪段结束,计划完成后新段
+      允许再访;其余短路功能零改);
     - 质量推迟帧(出战就绪 ∧ defer_by_quality)不发出,分键
       ``launch_quality_defer_frames``;评估异常帧分键
       ``launch_quality_eval_error`` 后照常发出(fail-open 防死锁,
@@ -113,6 +117,13 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         deploy_plan_available_fn=has_deployable)
     if not _decision.get('armed'):
         _st.cw4_launch_spend_visited = False   # 出战就绪段结束,段旗复位
+        return None
+    if getattr(_st, 'yield_plan', None) is not None:
+        # 计划槽非空 → 让位于十段扫描(S7-2:roster-plane1-union design
+        # §2.2 第 4 项——计划未完成不出战,槽在期间备战前置步优先于
+        # 第 1-9 全部步〔含第 5 步开店与第 9 步出战〕;计划期打断出战
+        # 就绪段,段旗复位——计划完成后新段可再访)。
+        _st.cw4_launch_spend_visited = False
         return None
     _ct = _st.cw4_counters
     _quality = _decision.get('quality')

@@ -81,7 +81,11 @@ if TYPE_CHECKING:
 #    (契约 C;候选快照随签名重算自然更新、配方物化链每备战期自写,
 #    均非节点作用域键)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
-#    分支为单调事实,且锁定后无消费面)。
+#    分支为单调事实,且锁定后无消费面);
+# ⑦ 获取让位跨画面计划槽 yield_plan → 清空 + X 路径失败标记
+#    x_path_failed → 复位(roster-plane1-union design §2.2 第 4 项:
+#    节点切换 = 新货架新局面,旧计划/失败标记语义死亡;槽另带节点戳
+#    双保险,见 mandate_state 字段注)。
 # (升级预授权重置行已随 2026-10-17 迭代 T-4 键退役删除——
 #  判据同帧重评后无跨帧授权可清。)
 _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
@@ -93,6 +97,8 @@ _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_visit_restricted', False),
     ('shop_session_processing', False),
     ('shop_plugin_budget', 0),
+    ('yield_plan', None),
+    ('x_path_failed', False),
 )
 
 
