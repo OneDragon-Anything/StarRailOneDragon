@@ -1344,6 +1344,29 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '触发(战斗开始后行动值达 100,战斗中评估)与数值(伤害增幅 40%)游戏侧自算,'
               'bot 仅登记;无离散触发事件消费,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 星级压制:官方「我方小队获得10%速度增幅，攻击星级低于自身的敌人后，
+    # 额外造成1次等同于原伤害20%的真实伤害。」(cw_invest_data PlazaAugment
+    # 201001,再生件不挂行号——版本更新重跑 gen_plaza_invest.py 行号必漂)。
+    # 战力类零响应登记(EffectKind.UNIT_BUFF「游戏侧自算,bot 仅登记零响应」),
+    # 复合卡单条目 = 速度光环 + 攻击条件追伤被动双 clause 由 effect_text
+    # 全文承载。clause 2 触发(逐攻击命中后比较攻击者与目标敌人星级)与数值
+    # (20% 原伤害的真实伤害)由游戏在战斗中评估:敌方星级无 repo 读口
+    # (cw_sim_enemy 系难度记录非战斗单位,敌人信息浮层屏档在册读数 = 等级),
+    # sim 战斗 U01 无逐攻击事件流;bot 零消费、读数不接线。无板面/备战席
+    # 写入面;无离散触发事件消费,trigger 占位形(对齐 _portal_placeholder_spec
+    # 先例)。
+    '星级压制': EffectSpec(
+        id='201001', name='星级压制',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '201001')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(复合卡:速度光环+攻击条件追伤);'
+              '触发(攻击星级低于自身的敌人后,战斗中逐攻击评估)与数值游戏侧自算,'
+              'bot 仅登记;星级读法判读申报制留痕(读法并列不拍死);'
+              '无离散触发事件,trigger 占位形(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
