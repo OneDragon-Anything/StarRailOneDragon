@@ -1110,6 +1110,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         4. 排序池 = 部署外件全集(虚拟备战位 ∪ 虚拟场上部署外件;
         victim 落位决定执行路径):X 以 ShopUnit(将获取旗标)入池,
         存量以 HeldUnit(在手旗标)入池,``sell_order_with_keys`` 排序;
+        **X 不进档 1 保护**——档 1 的 deployed_names 输入剔除 X 名(X 是
+        「将获取」的假设性入场者,档 1 保护对象 = 存量资产;X 的去留
+        正是本评估要回答的问题,不得经虚拟定型自我保护),X 恒按卡面
+        价值(统一序八档判定)参与排序,末位判定不受虚拟定型收编影响
+        ——任意组成(含 X 与持件有同羁绊标签搭档、被段 2 DP 收编进
+        虚拟定型的形态)下「末位 = X → 放弃」分支均可达;
         5. 虚拟金币 = gold − cost(X) + Σ让位序前缀退金(按排序末位起
         累计);金币要求集三项——① 可购性(虚拟金币 ≥ 0)② 饱和线
         (虚拟交易后局态受限时花后金 ≥ 饱和线,判定 = readiness 函数
@@ -1188,8 +1194,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if u is not None and u.char_id:
                 v_copies.setdefault(str(u.char_id), []).append(
                     int(u.star or 1))
+        # X 不进档 1 保护(步 4 申报语义):X 与场上/bench 持件有同羁绊
+        # 标签搭档时段 2 DP 会凑档把 X 收编进虚拟定型,X 名进 target →
+        # 档 1 按名命中 → X 自我保护、末位失稳。deployed_names 剔除 X 名
+        # (X 按卡面价值参与排序);target 名集本体不剔除——虚拟定型仍
+        # 含 X 参与板面构成,存量件的档 1 排除面(下方两处 in target_plus
+        # 过滤)不因 X 剔除而变化。
         ctx = assemble_priority_context(
-            session, gs, deployed_names=target_plus, held_copies=v_copies,
+            session, gs,
+            deployed_names=frozenset(target_plus) - {_name},
+            held_copies=v_copies,
             rng=priority_rng_of(session, config))
         # 存量牌以 HeldUnit(在手旗标 0)承载,新牌以 ShopUnit(将获取
         # 旗标 1)承载——虚拟备战位里的新牌本体不重复入池(origin 哨兵
