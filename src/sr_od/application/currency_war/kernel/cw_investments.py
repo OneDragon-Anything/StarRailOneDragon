@@ -765,6 +765,34 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
 HYPEREMIT_SPEC_ID: str = '202501'
 HYPEREMIT_SPEC_NAME: str = '超发货币'
 
+# ===== 大扩招扣金计划(策略卡扣金腿的现算单一源)=====
+# 卡文「每损失4金币，获得一个随机4费角色，最多扣除40金币」(cw_invest_
+# data.py id 203101)的三结构常数与现算函数。消费两端 = sim 扣金负腿
+# (cw_sim_backend 选卡落地拍,世界真值)与获得链随机角色腿
+# (cw_gain_effects 效果体,发放数量)——数量口径必须同源,分写两处会
+# 在基数变化时漂移。放 kernel:两消费端中 sim 在 sim 包,import 方向
+# 只允许 sim→kernel(kernel 模块级禁 import sim,gain-chain 模块边界),
+# 故函数不能住 sim 侧。
+
+#: 卡文「每损失4金币」直读(步进单位)。
+RECRUIT_STEP_GOLD: int = 4
+#: 卡文「最多扣除40金币」直读(扣金上限)。
+RECRUIT_MAX_DEDUCT: int = 40
+
+
+def dakuozhao_deduction_plan(gold: int) -> tuple[int, int]:
+    """大扩招扣金计划(扣金额, 角色数),纯函数。
+
+    ``n = min(gold // 4, 10)``;扣金 = ``n * 4``。取整读法 = 只扣
+    4 的整数倍、余金保留:「每损失4金币」按步进单位整数倍计,残金
+    不消失;全扣式(扣 min(gold, 40) 再整除)会出现「扣了金没发角色」
+    的残金损失,与交换率字面相悖且无先例支撑。
+    """
+    n = min(gold // RECRUIT_STEP_GOLD,
+            RECRUIT_MAX_DEDUCT // RECRUIT_STEP_GOLD)
+    return n * RECRUIT_STEP_GOLD, n
+
+
 STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 淘金客:官方「你每次消耗金币刷新商店,都会获得2经验值」;免费刷不产 XP(「消耗金币」
     # 文本充分;实采复核待办)。姿态谓词/CwActionLevelUpParam 抑制属淘金客姿态面适用范围,现不接。

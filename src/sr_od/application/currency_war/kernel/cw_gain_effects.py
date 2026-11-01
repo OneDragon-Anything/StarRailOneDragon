@@ -28,6 +28,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     RandomCharSpec,
+    dakuozhao_deduction_plan,
     random_char_pool,
 )
 
@@ -272,6 +273,53 @@ def _make_reinforcement_effect(
         return steps
 
     return _effect
+
+
+# ===== 变量计数随机角色腿(策略卡获得时点按持金现算发放只数:卡文
+# ===== 「每损失N金币,获得一个随机X费角色」族首例 = 大扩招;差异于援军
+# ===== 族 = 表载常量名数,本族发放只数非表载,按拿卡拍持金现算,故
+# ===== 不入 _STRATEGY_REINFORCEMENT_GRANTS 表、专用效果体直书)=====
+
+def _apply_effect_recruit_drain(gs: GameState, *, sig: ChannelSig,
+                                rng: random.Random) -> list[str]:
+    """效果函数·大扩招(策略卡,变量计数随机角色腿)。
+
+    发放只数按拿卡拍持金现算(:func:`dakuozhao_deduction_plan` 角色数
+    分量,单一源住 cw_investments)——卡文「每损失4金币,获得一个随机
+    4费角色」= 扣金与发放同判据,数量随持金线性变化(0..10)。本函数
+    **只取 n 零扣金**:扣金归 sim 选卡落地拍负腿世界真值(sim 专用,
+    live 游戏自扣观察覆盖,金面禁逻辑直写),效果体写金会让 live 误写
+    实机自扣的金面;双端发放量无差(公式读同一持金基数,本函数零写金)。
+    持金读数缺(None)= 按 0 现算 → n=0 零发放(fail-closed 缺播防御,
+    与 sim 侧读法同形)。
+
+    链序:池 = ``random_char_pool(RandomCharSpec(cost=4, star=1))``
+    (星级 desc 未标 = 1 先验,RandomCharSpec 家族口径)→ 同 rng 实例
+    n 抽**放回**(可重复同名,批内同 rng 顺序推进不重置,援军族掷序
+    契约同口径)→ 逐只 ``gain_character(rand=True)``,落位/升星级联/
+    席满溢出沿链四态记账(随机态写入走台账纠偏 + bench 观察覆盖)。
+
+    假设面(池内均匀 v0 / star=1 先验 / n 抽放回)语义与策略侧随机
+    赠卡族级披露键 :data:`REINFORCEMENT_ASSUMPTION_KEYS` 三键同构,
+    零新增独立键;扣金取整读法由正本 invest_effects.md B 类裁定行
+    承载。效果串 ``strategy_gift_random:<名>@1star`` 逐只一条(发放
+    事实与落位成败解耦)。
+    """
+    # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿/援军先例,模块
+    # docstring import 方向声明)
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        gain_character,
+    )
+    _, n = dakuozhao_deduction_plan(int(gs.gold.value or 0))
+    steps: list[str] = []
+    pool = random_char_pool(RandomCharSpec(cost=4, star=1))
+    for _ in range(n):
+        name = rng.choice(pool)
+        gain_character(gs, name, 1, rand=True, sig=sig,
+                       evidence='pick_invest_recruit_drain',
+                       producer=_PRODUCER)
+        steps.append(f'strategy_gift_random:{name}@1star')
+    return steps
 
 
 # ===== 绑定型随机角色授予族效果(策略卡获得时点随机角色发放 + 名字绑定:
@@ -836,6 +884,17 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 不入两族表同上(同名键顺序覆盖丢腿)。
     '武装支援+': _compose_grant_legs(_make_random_equip_effect('简易', 1),
                                      _make_reinforcement_effect(((4, 1),))),
+    # 大扩招 = 变量计数随机角色腿 + 具名装备腿组合卡(卡文「每损失4金币,
+    # 获得一个随机4费角色，最多扣除40金币。获得1个【完美投影仪】」):
+    # 直书登记行(非表生成——援军族表载常量名数,本卡发放只数按拿卡拍
+    # 持金现算,表形 (费用档, 名数) 装不下变量计数,专用效果体直书);
+    # 腿序 = 卡文语序随机角色腿先/具名腿后,腿参数在此单次出现(单一源)。
+    # 扣金腿不入本效果体:金面禁逻辑直写,扣金归 sim 选卡落地拍负腿
+    # 世界真值(live 游戏自扣观察覆盖);+16 金腿 = STRATEGY_ECONOMY 注册
+    # 行 instant_gold=16 在册承载,发放写端缺口维持族级待办。
+    '大扩招': _compose_grant_legs(_apply_effect_recruit_drain,
+                                   _make_named_equip_grant_effect(
+                                       '完美投影仪', 1)),
     # 全员晋升 = 具名装备授予族模式卡(卡文「获得2个【拆装扳手】」):
     # 直书登记行(沿组合卡字面项区式样;族内后继卡同形直呼工厂,精密金面
     # 前置按物判内嵌工厂、卡级分支零遗传)。拆装扳手 = 工具类装备
@@ -939,7 +998,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/
-精密拆装·银)直书登记行
+精密拆装·银/大扩招)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/

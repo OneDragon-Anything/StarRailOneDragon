@@ -144,6 +144,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     aggregate_economy,
+    dakuozhao_deduction_plan,
     get_strategy,
     normalize_invest_name,
     strategy_loss_battle_modifier,
@@ -1582,6 +1583,12 @@ class SimBackend:
     #: 动作零噪声)。私有暂态不入容器/不入快照恢复(同形先例同上)。
     _strategy_pick_hyperemit_drain_latch: bool | None = field(
         init=False, default=None)
+    #: 策略选卡大扩招扣金负腿呈现闩(与前置七闩同点置位同拍消费,独立
+    #: 不共享——八腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 收益)。防重放实害 = 窗内重放会把扣金二次申报(扣金非幂等,重放
+    #: 多扣一笔金)。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    _strategy_pick_recruit_drain_latch: bool | None = field(
+        init=False, default=None)
     #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
     #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
     #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
@@ -2295,6 +2302,36 @@ class SimBackend:
         opts = (self.gs.invest_env_opts.value if opening
                 else self.gs.invest_strategy_opts.value) or []
         (self.excluded_env if opening else self.excluded_invest).update(opts)
+        # 选卡落地拍大扩招扣金负腿(卡文「每损失4金币…最多扣除40金币」
+        # 现算扣金,世界真值补全):live 同拍零写(游戏自扣,金整字段观察
+        # 覆盖收口,金面禁直写)。判别沿兄弟腿「呈现候选 ∩ 持有列表」交集
+        # 形态(裸读呈现候选会把同框未选候选误燃);呈现闩防重放(扣金非
+        # 幂等,重放多扣一笔)。扣金计划单一源 = dakuozhao_deduction_plan
+        # (与获得链随机角色腿的发放只数同函数,两端数量口径天然一致);
+        # 只扣 4 的整数倍、余金保留(取整读法,正本 = invest_effects.md
+        # B 类裁定行);判别名 = PICK_INVEST_EFFECTS 登记键(注册面与负腿
+        # 两字面量由键集闭集锁 + 本腿 evidence 锁兜漂移)。不置花费位:
+        # 强制扣金非玩家操作支出,与买卡/升级/刷新花费通道分立。n=0
+        #(持金 <4)零写零笔;扣后金自然参与下窗计息(先于下窗窗开,无
+        # 基数序新语义)。位置 = 排除集累计后独立笔:本腿非环境无门控
+        # 读面、非注册表字段分派,与后续各腿零交互;位置不变式(须在
+        # _after_modal_pick 前)随函数整体满足。
+        if not opening and self._strategy_pick_recruit_drain_latch:
+            self._strategy_pick_recruit_drain_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if '大扩招' in picked:
+                deduct, cnt = dakuozhao_deduction_plan(
+                    int(self.gs.gold.value or 0))
+                if cnt > 0:
+                    gold_now = int(self.gs.gold.value or 0)
+                    self.gs.observe(self.gs.gold, gold_now - deduct,
+                                    evidence=sim_evidence(
+                                        'strategy:recruit_drain:大扩招'),
+                                    sig=obs_sig(group_id='sim:strategy'))
+                    log.info('[cw-sim] 大扩招扣金腿:持金 %s 扣 %s'
+                             '(发 %s 只 4 费随机角色)',
+                             gold_now, deduct, cnt)
         # 追加随机环境型(在册名 = cw_investments.ENV_REROLL_NAMES,现役
         # 唯一 = 蓝海 id113):选卡首链(上报函数)已完成「获得本环境」全部
         # 写分支(active_env + 即时金 + 申报行);本分支紧接世界掷骰出卷中名,
@@ -3174,6 +3211,8 @@ class SimBackend:
             self._strategy_pick_plane_refire_latch = True
             # 超发货币负债腿闩同点置位(七腿独立闩同形;防重放窗同界)。
             self._strategy_pick_hyperemit_drain_latch = True
+            # 大扩招扣金负腿闩同点置位(八腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_recruit_drain_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3254,13 +3293,14 @@ class SimBackend:
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置;分期
         # 金初始化腿闩同形照置;位面段补发腿闩同形照置;超发货币负债腿
-        # 闩同形照置。
+        # 闩同形照置;大扩招扣金负腿闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
         self._strategy_pick_gold_next_nodes_latch = True
         self._strategy_pick_plane_refire_latch = True
         self._strategy_pick_hyperemit_drain_latch = True
+        self._strategy_pick_recruit_drain_latch = True
         # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         self._offer_refreshable = False
