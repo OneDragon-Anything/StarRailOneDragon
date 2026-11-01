@@ -946,6 +946,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 口径)。
     '贝洛伯格星徽': _compose_grant_legs(_make_named_equip_grant_effect('贝洛伯格星徽', 1),
                                     _make_char_grant_effect('希儿')),
+
+    # 星间旅人星徽 = 具名装备×具名角色双腿组合登记行(卡文语序徽→人;
+    # 腿1 rand=False 策略卡侧具名腿通道归属;腿2 银枝 1★ 先验家族
+    # 口径)。
+    '星间旅人星徽': _compose_grant_legs(_make_named_equip_grant_effect('星间旅人星徽', 1),
+                                    _make_char_grant_effect('银枝')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
