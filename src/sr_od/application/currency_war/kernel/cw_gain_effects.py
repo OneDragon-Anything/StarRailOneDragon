@@ -804,6 +804,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 金面判据映射(gate 恒 None)走纯发放循环。
     '买彩票+': _compose_grant_legs(_make_random_equip_effect('星徽', 1),
                                    _make_named_equip_grant_effect('冶金炉', 1)),
+    # 五百强 = 双具名组合登记行(卡文「立即获得【折叠小刀】、【和平手枪】。」,
+    # 具名腿×具名腿):同卡两件不同具名、条件金腿(首次 500 强度 +30 金)零
+    # 建模归属型③、获得零级联;两件 ∉ 精密金面判据映射(gate 恒 None)走纯
+    # 发放循环,零随机面(rng 不消费);腿序 = 卡文语序。
+    '五百强': _compose_grant_legs(_make_named_equip_grant_effect('折叠小刀', 1),
+                                  _make_named_equip_grant_effect('和平手枪', 1)),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
