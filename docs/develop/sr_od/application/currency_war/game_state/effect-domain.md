@@ -378,6 +378,20 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   环境域 `_apply_env_plane_start` 同窗先形)。pending 已随建模批回填(用户裁定,
   §10-10),保守支注释消解。
 
+#### 固定理财+(201802)
+
+- **论断**:与姊妹固定理财(201801)同构全量同判——PLANE_START / permanent /
+  STATE;counter 不建;双腿分段发放,数值异(即时段 xp_instant 6 + burst 3,
+  位面段 xp_per_plane 6 + free_refresh_per_plane 3),载体/双挂点分工/中途
+  拿卡登记拍全额补发读法全部共享姊妹条目语义(用户裁定 2026-11-01 对两卡
+  一次拍定,裁决联动禁两态),零新增机制件(桥/腿按 payload 字段鸭子读,
+  本卡条目入账本即自动覆盖)。
+- **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
+  ECONOMY 同一实例;注册行四字段 6/6/3/3);官方原文 cw_invest_data.py:131
+  「现在以及每个位面开始时，获得6经验值和3次免费刷新。」
+- **推理链**:卡文逐字同构仅数值异 → 同 posture 判例(T-178 先例:裁决联动
+  禁两态);pending 与姊妹同批撤除(notes 记同判裁定),verdict 维持 None。
+
 #### 双手狸开键盘！(204101)
 
 - **论断**:NODE_ENTER / while_held / BATTLEFIELD;duties = track+predict;counter **不建**
@@ -887,5 +901,6 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
    以注册表全集为准(impacts §4)。
 10. **注册表 verdict 回填**:固定理财已回填——位面段建模随批落地、中途拿卡
     所在位面补发经用户裁定(2026-11-01)拍定,pending 撤除、保守支消解
-    (§8 固定理财条目);经验就是财富 verdict 回填待实采定案。剩余回填动作
-    归各卡建模批随批执行。
+    (§8 固定理财条目);姊妹固定理财+ 随同判展开批同态回填(pending 撤除,
+    notes 记同判,§8 固定理财+ 条目);经验就是财富 verdict 回填待实采定案。
+    剩余回填动作归各卡建模批随批执行。

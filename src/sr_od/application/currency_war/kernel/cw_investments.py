@@ -683,8 +683,16 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   所在位面(已开始)位面段登记拍全额补发 = 用户裁定 2026-11-01 拍定,
     #   承载 = apply_effect_plane_refire_grant(语义正本 = STRATEGY_EFFECTS
     #   本卡条目 notes)
-    '固定理财+': EconomyEffect(free_refresh_burst=3),
-    # ↑ 姊妹行(位面段 6/3 归 T-183 展开批,本批不动)
+    '固定理财+': EconomyEffect(xp_instant=6, xp_per_plane=6,
+                              free_refresh_burst=3, free_refresh_per_plane=3),
+    # ↑ 「现在以及每个位面开始时,获得6经验值和3次免费刷新」双腿分段
+    #   (姊妹行同构):即时段(xp_instant/burst,登记期发放)+ 位面段
+    #   (xp_per_plane/free_refresh_per_plane)——位面段刷新支经效果推进
+    #   tick 位面开始桥(cw_game_state.apply_effect_plane_start_grant)、
+    #   XP 支经 sim 位面首节点窗腿(cw_sim_backend);中途拿卡时所在位面
+    #   (已开始)位面段登记拍全额补发与姊妹固定理财同判(用户裁定
+    #   2026-11-01),承载 = apply_effect_plane_refire_grant(语义正本 =
+    #   STRATEGY_EFFECTS 本卡条目 notes)
     '经验到账': EconomyEffect(xp_instant=10),
     '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
     '免战牌': EconomyEffect(xp_instant=30),
@@ -769,6 +777,20 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '(刷新支=kernel 推进 tick 位面开始桥、XP 支=sim 位面首节点窗'
               '腿);中途拿卡所在位面(已开始)位面段登记拍全额补发(用户'
               '裁定 2026-11-01 拍定,原保守支不补发随裁定消解)'),
+    # 固定理财+:官方「现在以及每个位面开始时,获得6经验值和3次免费刷新」。
+    # 与姊妹固定理财卡文同构(6/3),双腿分段/发放载体/中途拿卡补发读法
+    # 全量同判(用户裁定 2026-11-01 对两卡一次拍定,语义正本 = 姊妹条目
+    # 注释;裁决联动禁两态)。
+    '固定理财+': EffectSpec(
+        id='201802', name='固定理财+', trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.PERMANENT, category=EffectKind.STATE,
+        payload=STRATEGY_ECONOMY['固定理财+'],
+        duties=DutyFlags(track=True, respond=True),
+        notes='双腿分段:即时段(现在)=xp_instant+free_refresh_burst 登记期'
+              '发放;位面段=xp_per_plane+free_refresh_per_plane 位面开始发放'
+              '(刷新支=kernel 推进 tick 位面开始桥、XP 支=sim 位面首节点窗'
+              '腿);中途拿卡所在位面(已开始)位面段登记拍全额补发(用户'
+              '裁定 2026-11-01 拍定,与姊妹固定理财同判)'),
     # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
     # 四歧义(改道是否吞策略给的 XP/转换同事件性/上限/版本变体)见该条目待采待办;
     # 定案前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定案后补 payload。

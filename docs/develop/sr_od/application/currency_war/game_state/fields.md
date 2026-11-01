@@ -573,7 +573,7 @@ select_ore_clicks docstring + 模块头)。
 成对现读;胜局结算页也可见,§3.5.1);重复经验族逻辑写入方=xp_per_refresh(淘金客:
 每次**付费**刷新 +2——官方原文「消耗金币」限定,免费帧不产 XP)与 xp_per_node
 (买断制:每节点 +4);xp_instant 选牌当场 = 观察覆盖(伟大征服口径 2026-09-10);
-位面开始周期族(xp_per_plane,固定理财)live 同为观察覆盖——sim 世界腿 =
+位面开始周期族(xp_per_plane,固定理财/+)live 同为观察覆盖——sim 世界腿 =
 位面首节点窗(`xp:strategy_plane:p{位面}`)+ 选卡拍补发腿(中途拿卡时当前已
 开始位面登记拍全额补发,`xp:strategy_plane_refire:<卡名>`,用户裁定 2026-11-01)。
 **边界**:「族」=注册表已结构化成员,非全量游戏事实(未结构化成员见 §5.2 缺口
@@ -1295,11 +1295,11 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 - **条件判定族** free_refresh_cond_gold_above/step/cap:本金充裕/+——金>above 每额外
   step 金 +1 次、至多 cap(50/10/3);已结构化入注册表(STRATEGY_EFFECTS 两条
   EffectSpec),经节点桥 `grant_effect_node_refresh_balance` 按金现值评估自动生效。
-- **位面开始周期族** free_refresh_per_plane:固定理财 2(每位面 1 号节点推进边界
+- **位面开始周期族** free_refresh_per_plane:固定理财系 2/3(每位面 1 号节点推进边界
   一次,经位面开始桥 `apply_effect_plane_start_grant`;「第 N 位面开始时」类发放
   落该位面 1 号节点,sim `_apply_env_plane_start` 同窗同判)。中途拿卡时当前已
   开始位面其位面段登记拍全额补发 = 补发桥 `apply_effect_plane_refire_grant`
-  (用户裁定 2026-11-01 拍定补发;后续位面照常,两桥同字段不重复)。
+  (用户裁定 2026-11-01 拍定补发,两卡同判;后续位面照常,两桥同字段不重复)。
 
 #### 3.3.6-3.3.8 刷新计数与免费余额载体
 
@@ -2457,14 +2457,15 @@ payload 位)。
 结构化字段已登记(gold_at_level/gold_at_level_target)——缺容器写入方,挂
 effect_inventory 等级日程(逻辑写入方候选)。
 
-#### 固定理财位面开始段
+#### 固定理财系位面开始段
 
 已建模落地(2026-11-01;原缺口「注册表自注位面开始段待建模」消解):位面段双
-字段 xp_per_plane=4 / free_refresh_per_plane=2 在册——刷新支 = 位面开始桥
-(位面 1 号节点推进边界,fields.md §3.3.5 位面开始周期族行)+ 中途拿卡时当前
-已开始位面登记拍全额补发桥(用户裁定 2026-11-01 拍定补发);XP 支 = sim 世界
-腿(位面首节点窗 + 选卡拍补发),live 观察覆盖(§3.2.10)。即时段活载体现状:
-burst=固定理财 2(xp_instant=4 同批挂值)。
+字段 xp_per_plane / free_refresh_per_plane 两卡在册(固定理财 4/2、固定理财+
+6/3)——刷新支 = 位面开始桥(位面 1 号节点推进边界,fields.md §3.3.5 位面开始
+周期族行)+ 中途拿卡时当前已开始位面登记拍全额补发桥(用户裁定 2026-11-01
+拍定补发,两卡同判);XP 支 = sim 世界腿(位面首节点窗 + 选卡拍补发),live
+观察覆盖(§3.2.10)。即时段活载体现状:burst=固定理财系 2/3(xp_instant=4/6
+同批挂值)。
 
 #### 奋斗协议首领战结束回 50 血
 
