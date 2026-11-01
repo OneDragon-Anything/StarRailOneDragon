@@ -649,7 +649,7 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   泛化表 `(category, count)` 行登记,池 = `equips_by_category` 注册表派生单源、
   类别池均匀 → `gain_equipment(rand=True)` 入栏):打捞人才库+ 句2(简易池 =
   category='简易' 全集)与买彩票(选卡落地采样星徽入栏,星徽池 = category='星徽'
-  全集)、空仓(id 202401 选卡落地采样简易装备入栏,同简易池)均为随机态直写,
+  全集)、空仓(id 202401)/空仓+(id 202402,姊妹行同泛化表)选卡落地采样简易装备入栏,同简易池,均为随机态直写,
   校准归组键 = 效果串前缀 `strategy_random_equip:`,
   分布披露键 = `strategy_random_equip_uniform`(家族单键,类别无关 uniform v0)。
   **rand 两通道分野注记**(具名装备获得族级,新增同形腿按通道归属取值、禁跨通道
@@ -2318,7 +2318,7 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 全员晋升(获得 2 个【拆装扳手】——装备库存精确增量,PICK_INVEST_EFFECTS
 效果体腿 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
 精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行);
-节点条件 XP:空仓(「物品栏和备战席没有任何装备(消耗品除外)」每节点 +2——
+节点条件 XP:空仓/空仓+(同谓词白名单 STRATEGY_EMPTY_EQUIP_XP_GRANTS,「物品栏和备战席没有任何装备(消耗品除外)」每节点 +2/+2——
 条件谓词 = `check_strategy_empty_equip_xp` 纯判定单一源,登记表 =
 `STRATEGY_EMPTY_EQUIP_XP_GRANTS`,sim 世界写 = 节点窗挂点 `xp:empty_slot`
 独立笔〔升 `xp_apply_amount` 结转,live 零写观察覆盖〕;消耗品判据词表 =

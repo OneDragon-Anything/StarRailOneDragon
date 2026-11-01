@@ -450,6 +450,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 不入本表——另立 cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS(节点
     # 条件 XP 通道,判定 = check_strategy_empty_equip_xp)。
     '空仓': ('简易', 1),
+    '空仓+': ('简易', 1),
 }
 
 

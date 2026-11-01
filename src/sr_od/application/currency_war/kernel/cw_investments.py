@@ -700,6 +700,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   (已开始)位面段登记拍全额补发与姊妹固定理财同判(用户裁定
     #   2026-11-01),承载 = apply_effect_plane_refire_grant(语义正本 =
     #   STRATEGY_EFFECTS 本卡条目 notes)
+    '空仓+': EconomyEffect(xp_instant=10),
     '经验到账': EconomyEffect(xp_instant=10),
     '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
     '免战牌': EconomyEffect(xp_instant=30),
@@ -4861,6 +4862,7 @@ STRATEGY_EMPTY_EQUIP_XP_GRANTS: dict[str, int] = {
     # 即时腿「获得1件随机的简易装备」归 cw_gain_effects 随机装备族泛化表,
     # 不入本表)
     '空仓': 2,
+    '空仓+': 2,
 }
 
 
