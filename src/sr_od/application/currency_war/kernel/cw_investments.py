@@ -613,7 +613,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '专家招募': EconomyEffect(instant_gold=4),
     '大扩招': EconomyEffect(instant_gold=16),
     '五百强': EconomyEffect(instant_gold=30),
-    '成本控制': EconomyEffect(instant_gold=8),
+    '成本控制': EconomyEffect(instant_gold=8, hp_instant=15),
     '剩余价值': EconomyEffect(gold_per_node=1),
     '四费晋升': EconomyEffect(instant_gold=12),
     '小复制+': EconomyEffect(instant_gold=13),
