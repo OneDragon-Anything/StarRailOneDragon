@@ -439,6 +439,11 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 1件随机简易装备」触发时点非选卡拍,不入本表——另立
     # cw_investments.STRATEGY_BOSS_BATTLE_GRANTS(扩形状各建各表)。
     '枪在手': ('简易', 1),
+    # 枪在手+(id 200502)「立刻获得2件随机简易装备」即时腿直读行;count=2
+    # 放回语义首个实成员(两次独立掷可重复同件,工厂 docstring 放回口径的
+    # 兑现点——卡面无「不同」限定,放回即 v0 直读);战后腿与模式卡同句
+    # 同值,另立 cw_investments.STRATEGY_BOSS_BATTLE_GRANTS 行。
+    '枪在手+': ('简易', 2),
 }
 
 
