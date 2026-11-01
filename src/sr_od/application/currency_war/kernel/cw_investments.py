@@ -873,6 +873,23 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='卖全场+6 刷选卡当场;×2 卖价修饰缺口 G4 待实采(净额/基础价),'
               '退款按基础公式'),
+    # 降本增效:官方「出售场上和备战席的所有角色，获得双倍价格的金币。
+    # 你接下来6次购买角色是免费的。」(cw_invest_data.py:136)。卖全场族
+    # 素出售第二张注册卡(姊妹大裁员同构出售腿;人力重组走 _DEAL 值非素);
+    # 卖价 ×2 修饰 = sell_price_mult(STRATEGY_ECONOMY 在册),退款施径 =
+    # 缺口 G4(fields.md §4 SellBench 修饰行单一源),闭合前退款按基础公式。
+    # 免费购买腿 = 次数类余量载体(duration_uses=6 → remaining_uses,免战牌
+    # 首例机制):uses 维度与 duration 类别独立播种(_seed_progress),
+    # duration=ONCE 只注记出售腿一次性语义;递减挂点 = 买牌上报单点
+    # (report_action_buy_card_param,按张计,k 张 = k 次),用尽移除。
+    '降本增效': EffectSpec(
+        id='202301', name='降本增效', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
+        duties=DutyFlags(predict=True, track=True),
+        duration_uses=6,
+        notes='卖全场+双倍卖价缺口 G4 待实采(净额/基础价),退款按基础公式;'
+              '6 次购买免费(remaining_uses 正本,买牌上报递减,用尽移除)'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面适用范围。
     '躺平': EffectSpec(

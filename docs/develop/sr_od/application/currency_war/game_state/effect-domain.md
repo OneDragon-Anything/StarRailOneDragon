@@ -334,7 +334,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 44 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 46 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -598,6 +598,30 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   退款,写域不相交,序间零依赖);退款 = 场上构成依赖无字段载体(卡级 PENDING
   登记在册,估值 fail-closed=0);卖价 ×2 净额/基础价口径 desc 未写明,禁猜维持
   缺口(fields.md §4 SellBench 修饰行单一源)。
+
+#### 降本增效(202301)
+
+- **论断**:INSTANT / once / BATTLEFIELD;duties = predict+track;双腿登记型
+  单条目双载:出售面 = 素出售语义(`board_rewrite='sell_all'`,确定性清场退款;
+  ×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);免费
+  购买腿 = **uses 有界窗口与 INSTANT/ONCE 并装**(`duration_uses=6` →
+  `remaining_uses` 播种,uses 维度与 duration 类别独立)——「接下来6次购买角色
+  是免费的」= 获得时点起按张计的有界余量(k 张 = k 次),递减挂点 = 买牌上报
+  单点(`report_action_buy_card_param` 免费闸:免 min(k, 余量) 张、余张照付,
+  全免帧零金写,拒买早退零递减),用尽移除(第 6 张买毕条目离场,后续买牌恢复
+  扣金);免费帧不计花销(买牌两通道 mark_gold_spent 置位豁免,同函数刷新通道
+  「非免费帧」同判);素出售不入 sim 发牌判据集,零假发牌。
+- **证据**:规格 `cw_investments.STRATEGY_EFFECTS['降本增效']`(payload=
+  BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),duration_uses=6);
+  注册行 `STRATEGY_ECONOMY['降本增效']` sell_price_mult=2.0 = ×2 卖价修饰对账源;
+  批量递减 helper = `ActiveEffectInventory.consume_uses_up_to`;官方原文
+  cw_invest_data.py:136「出售场上和备战席的所有角色，获得双倍价格的金币。你
+  接下来6次购买角色是免费的。」
+- **推理链**:出售面构同大裁员素出售(登记腿桥双端同链,姊妹卡同构);免费
+  购买腿 = 免战牌 uses 载体复用(次数类首例机制),ONCE 注记只辖出售腿一次性
+  语义(机译无 ONCE 移除逻辑,uses 独立播种);predict = 买牌对账须预知免费
+  价,track = 次数余量剩余期量(免战牌 track=True 同形);×2 施径缺口与免费
+  购买呈现面(商店牌面价格显示形态)均归实采域(停机钩子名单在册,人工采集)。
 
 ### 条件窗口族
 

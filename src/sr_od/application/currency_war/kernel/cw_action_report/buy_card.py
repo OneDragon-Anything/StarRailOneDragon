@@ -33,8 +33,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
-    """买牌上报:gold −单价×k + bench 落位 + 合成连锁 + payload −k
-    ((name, star) 计数)+ 购买翻星(策略卡购买翻星注册表落位星级判定,
+    """买牌上报:gold −单价×(k−免费张数) + bench 落位 + 合成连锁 + payload −k
+    ((name, star) 计数)+ 免费购买闸(降本增效 uses 余量,按张计免
+    min(k, 余量) 张,全免帧零金写)+ 购买翻星(策略卡购买翻星注册表落位星级判定,
     翻转只改 Unit 构造星,payload 匹配与 on_buy 持购买原星;applied 后
     置闩 best-effort)+ 升星分支整表覆盖(买前快照三件组基点,快照在
     本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
@@ -151,9 +152,23 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         if k_apply is None:
             return LogicOutcome(applied=False, reason='bench_full')
         k = k_exec if k_exec is not None else max(1, int(k_apply))
+    # —— 免费购买闸(降本增效「接下来6次购买角色是免费的」):名字直查
+    #    同形(函数内惰性取,守 kernel 反向模块级零 import 契约;免费购买
+    #    族现役单成员)。购前查在场条目余量 → 免 min(k, 余量) 张、余张照
+    #    付(按张计:k 张 = k 次,on_buy 购买计数判例同判据);上报时递减
+    #    (非验证落地后,免战牌先例),拒买早退不触本段(序位在上方拒买
+    #    return 之后 = 零虚耗余量)。全免帧零金写(扣 0 不落行);金未读帧
+    #    递减照常(游戏侧余量消耗与账面观察无关),金写照跳。——
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        STRATEGY_EFFECTS,
+    )
+    _free_k = 0
+    _fb_spec = STRATEGY_EFFECTS.get('降本增效')
+    if _fb_spec is not None:
+        _free_k = gs.effects.consume_uses_up_to(_fb_spec.id, k)
     g = gs.gold.value
-    if g is not None:
-        _w(gs.gold, int(g) - card_cost(card) * k, 'proj_buy_gold')
+    if g is not None and _free_k < k:
+        _w(gs.gold, int(g) - card_cost(card) * (k - _free_k), 'proj_buy_gold')
     if payload is not None:
         slots = list(payload.cards)
         while len(slots) < 5:
@@ -287,8 +302,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
     #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;
-    #    同节点多笔判等跳写收敛在 mark_gold_spent 内。——
-    mark_gold_spent(gs, produced_by='CwActionBuyCardParam', sig=_grp_sig)
+    #    非免费帧才置位(同函数刷新通道「付费刷新非免费帧」同判——免费
+    #    购买零金变动,误置位会让存款回报的条件输入失真);同节点多笔判
+    #    等跳写收敛在 mark_gold_spent 内。——
+    if _free_k < k:
+        mark_gold_spent(gs, produced_by='CwActionBuyCardParam', sig=_grp_sig)
 
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42

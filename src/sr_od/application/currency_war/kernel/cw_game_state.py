@@ -1676,8 +1676,10 @@ def mark_gold_spent(gs: GameState, *, produced_by: str,
     write_logic 置 True——同节点多笔花费只落一行,判等后账面行数 = 花费
     状态变化数。逻辑写,无观察写端(审计行 AUDIT_PROCESS_ONLY 现值不变);
     唯一能写 True 的就是本函数(单调 True 直至滚位),滚位唯一写端 =
-    roll_prev_node_spent。置位接线 = 四花费通道(买牌/购经验 cost>0/
-    付费刷新非免费帧/dict 形买牌,各上报函数内各一行)。守卫义务:伴生金
+    roll_prev_node_spent。置位接线 = 四花费通道(买牌非免费帧/购经验
+    cost>0/付费刷新非免费帧/dict 形买牌非免费帧,各上报函数内各一行;
+    买牌两通道的免费帧豁免 = 免费购买零金变动不属花费事件,误置位会让
+    存款回报条件输入失真)。守卫义务:伴生金
     通道 apply_gold_delta 与自动代买腿(auto_buy_owned,BattlefieldEffect
     在册声明现值零消费点)若未来出现花费事件,须随其建模批补本函数接线,
     禁旁路直写本字段。"""

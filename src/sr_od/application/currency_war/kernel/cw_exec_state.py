@@ -143,11 +143,15 @@ def apply_confirm_effect(session, payload: dict, *,
 
 
 def _apply_buy_card(session, action: dict, _eff) -> None:
-    """dict 形 CwActionBuyCardParam 的金账推进(merge_simulate 单一引擎算购买数)。"""
+    """dict 形 CwActionBuyCardParam 的金账推进(merge_simulate 单一引擎算购买数;
+    免费购买闸与买牌上报单点同构:免张数源 = 实扣张数,免费帧零金写零置位)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         ChannelSig,
         game_state_of,
         mark_gold_spent,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        STRATEGY_EFFECTS,
     )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         merge_simulate,
@@ -159,14 +163,27 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
     bench, dep = _session_seats(session)
     res = merge_simulate(bench, dep, name, star, k=k,
                          in_shop_count=action.get('in_shop_count'))
-    if cost:
-        _advance_gold(session, -cost * max(1, res.buy_k or 1))
-        _eff('gold', f"-{cost * max(1, res.buy_k or 1)}(买牌×{res.buy_k})",
+    bought = max(1, res.buy_k or 1)
+    # 免费购买闸(降本增效,与买牌上报单点同闸同豁免):免张数源 =
+    # 实扣张数(与扣金张数同一来源,超额部分由 helper 钳制;两入口零
+    # 语义分叉的对齐口径)。递减 = 游戏侧事实,与金账观察无关,先于
+    # 金写判定;全免帧零金写零置位。
+    _free = 0
+    _spec = STRATEGY_EFFECTS.get('降本增效')
+    if _spec is not None:
+        _free = game_state_of(session).effects.consume_uses_up_to(
+            _spec.id, bought)
+    _paid = bought - _free
+    if cost and _paid > 0:
+        _advance_gold(session, -cost * _paid)
+        _free_tag = f',免费{_free}' if _free else ''
+        _eff('gold', f"-{cost * _paid}(买牌×{res.buy_k}{_free_tag})",
              'gold')
-        # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):dict 形
-        # 买牌同属花费事件(回放/离线世界真值一致性;现役生产零调用)。
-        # sig 自构(actor='PrepActionExecutor' + mode='compute',对齐
-        # _advance_gold 既有构形——本作用域无动作窗 _grp_sig)。
+        # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):付费帧
+        # 才置位(免费帧零金变动不属花费事件,与买牌上报单点同豁免)。
+        # dict 形买牌同属花费事件(回放/离线世界真值一致性;现役生产零
+        # 调用)。sig 自构(actor='PrepActionExecutor' + mode='compute',
+        # 对齐 _advance_gold 既有构形——本作用域无动作窗 _grp_sig)。
         mark_gold_spent(game_state_of(session),
                         produced_by='PrepActionExecutor',
                         sig=ChannelSig(family='logic_action',

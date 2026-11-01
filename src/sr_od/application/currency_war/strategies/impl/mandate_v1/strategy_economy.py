@@ -238,6 +238,13 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '大裁员': '卖全场退款腿无字段载体(依赖场上构成,非估值常量);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
+    # 降本增效:免费购买腿已建(uses 载体 duration_uses=6,世界通道 =
+    # STRATEGY_EFFECTS 条目 + 买牌上报免费闸);估值未入现金通道(免
+    # 费省下的购牌金依赖后续购买行为,轨迹依赖族);×2 卖价修饰同大裁员
+    # (sell_price_mult 轨迹依赖族待建模,施径口径待实采)。
+    '降本增效': '免费购买腿(6 次,uses 载体已建,估值未入现金通道);'
+              '×2 卖价修饰(sell_price_mult)施径口径待实采,'
+              '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
 }
 
 

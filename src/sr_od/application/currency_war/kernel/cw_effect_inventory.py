@@ -202,10 +202,10 @@ SOURCE_AFFIX: str = 'affix'
 
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
-# 已登记条目 = 全员晋升/人力重组/大裁员(cw_investments.STRATEGY_EFFECTS,官方文
-# cw_invest_data.py:67/:68/:134);写入归属单一源 =
+# 已登记条目 = 全员晋升/人力重组/大裁员/降本增效(cw_investments.STRATEGY_EFFECTS,
+# 官方文 cw_invest_data.py:67/:68/:134/:136);写入归属单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §8 同名条
-# (全员晋升/人力重组/大裁员)。
+# (全员晋升/人力重组/大裁员/降本增效)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
 # 出售支按「卡文是否携带发牌腿」两值细分:出售 = 语义本体(清场退款),
@@ -475,6 +475,24 @@ class ActiveEffectInventory:
         if e.remaining_uses <= 0:
             self.entries.remove(e)
         return e.remaining_uses
+
+    def consume_uses_up_to(self, spec_id: str, n: int) -> int:
+        """次数类余量批量递减(免费购买腿「接下来 N 次购买免费」;挂点 =
+        买牌上报单点,免战牌出战上报递减同族)。逐张语义的批量扣减:至
+        n 张扣完或余量耗尽,返回实际覆盖张数 = min(n, 递减前余量)——
+        k 张购买按张计(k 张 = k 次),部分免费 = 免余量张、余张照付。
+        未登记/非次数类 → 0 零动作(:meth:`consume_use` 保守端同纪律,
+        递减挂点与登记挂点解耦)。归零移除语义与 consume_use 一致
+        (用尽 = 效果离场):批量扣减后单次移除,不做循环 consume_use——
+        归零移除下 first() 返 None,循环形余量耗尽即踩空。"""
+        e = self.first(spec_id)
+        if e is None or e.remaining_uses is None:
+            return 0
+        free = min(max(0, int(n)), e.remaining_uses)
+        e.remaining_uses -= free
+        if e.remaining_uses <= 0:
+            self.entries.remove(e)
+        return free
 
     def on_level_up(self) -> None:
         """升级事件标记(挂点 = prep_actions._level_up 成功返回处)。"""
@@ -899,7 +917,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
       .bench_char_cost,未知 char_id 退中费 3)。发牌面 = 随机 → **不建
       逻辑写,进席落位 live 走观察覆盖、sim 由后端发牌腿承接**——本桥
       禁替发牌面造单位;发牌腿是人力重组卡文附加面非出售语义固有
-      (大裁员素出售无发牌),具发牌腿卡以 _DEAL 值声明。
+      (大裁员/降本增效素出售无发牌),具发牌腿卡以 _DEAL 值声明。
 
     **字段从未观察(value=None)= 无容器可写,跳过**(同族先例 =
     project_effect_capacity):选卡后的下一备战帧观察必全量重读板面,
@@ -916,13 +934,13 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     **sim 语义申报(适用性/对齐)**:本桥本体不接 sim——sim 世界事实由
     后端世界分支真值直写(evidence `sim:` 族,
-    `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族三注册卡按面分述:
-    人力重组/大裁员出售面 = **双端同链已通**(本桥经获得链在 sim 局真实
+    `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族四注册卡按面分述:
+    人力重组/大裁员/降本增效出售面 = **双端同链已通**(本桥经获得链在 sim 局真实
     执行,存量锁钉死);人力重组发牌面(2★ 三档随机)= sim 由后端发牌腿
     承接(`cw_sim_backend.apply_strategy_pick_sell_all_deal`,判据集 =
     具发牌腿语义值派生,挂 `_on_invest_picked` 选卡落地拍,授予出口派生
     桶直写,live 零假发牌——本桥「禁替发牌面造单位」裁定对双端维持);
-    大裁员素出售无发牌面(卡文无发牌句,不入发牌判据集,sim 局零假发
+    大裁员/降本增效素出售无发牌面(卡文无发牌句,不入发牌判据集,sim 局零假发
     牌),其卖价 ×2 修饰 = 全族缺口低估申报(退款按基础公式记,口径待
     实采);全员晋升替换面 = 维持 sim 零建模(穿戴装备归属未采证,禁猜;
     其拆装扳手×2 装备腿经获得链 sim 同链生效,不在本申报面)。残余未建模
