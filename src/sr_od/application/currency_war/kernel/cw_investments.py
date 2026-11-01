@@ -1410,6 +1410,36 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '触发(攻击星级低于自身的敌人后,战斗中逐攻击评估)与数值游戏侧自算,'
               'bot 仅登记;星级读法判读申报制留痕(读法并列不拍死);'
               '无离散触发事件,trigger 占位形(对齐 _portal_placeholder_spec 先例)'),
+    # 星变:官方「战斗开始时，使一个随机1费角色变为3星。」(cw_invest_data
+    # PlazaAugment 201601,再生件不挂行号——版本更新重跑 gen_plaza_invest.py
+    # 行号必漂)。战斗变形零响应登记(星级结构变形,非数值增益——载体取最
+    # 邻近零响应桶 UNIT_BUFF「游戏侧自算,bot 仅登记」,词面张力显式申报)。
+    # 变形持续性 desc 未明文(同语体「永久」与「在这场战斗中」两方向标记词
+    # 均缺席,同构姊妹读博深造同缺席),用户裁定(2026-11-01)拍定临时:变形
+    # 仅当次战斗内生效,战斗结束复原,板面零净变化——卖价/合成池账/星级读点
+    # 不受影响;变形世界写端未建模(板面临时态零读写口),临时性仅申报。
+    # 触发拍(战斗开始时)/对象选取(随机1费角色,判读申报默认上阵参战)/
+    # 战斗数值全程游戏侧自算:战斗开始机制轴 kernel/sim 全域零命中
+    # (TriggerKind 无对应成员,sim 战斗为瞬时结算随机面)。随机目标选卡默认
+    # 不选:变形随机改写羁绊构成破坏策略预判,按「随机发放不可具名,不入具名
+    # 打分,恒 off」在册先例口径,本卡选卡估值零承载恒 off(不进
+    # STRATEGY_ECONOMY/STRATEGY_GRANTS/立场表)。
+    '星变': EffectSpec(
+        id='201601', name='星变',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '201601')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(星级结构变形非数值增益,载体词面张力显式'
+              '申报);变形持续性用户裁定 2026-11-01 拍定临时(仅当次战斗内'
+              '生效,战斗结束复原,板面零净变化,卖价/池账/星级读点不受影响;'
+              '变形世界写端未建模,临时性仅申报);触发拍(战斗开始时)/对象'
+              '选取(随机1费角色,判读申报默认上阵参战)与数值游戏侧自算,'
+              'bot 仅登记;随机目标效果不入具名打分,选卡估值恒 off(策略'
+              '默认不选);无离散触发事件消费,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
