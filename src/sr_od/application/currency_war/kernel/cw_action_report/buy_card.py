@@ -206,6 +206,19 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             _log.warning(f'[cw-buy] 合成金腿发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
+        # —— 策略卡合成触发发放腿(「合成2星2费角色时获得砂金」族,
+        #    注册表 = STRATEGY_MERGE_GRANTS):事件源 = 本函数既有
+        #    merge_facts 采集复用,判据 = 产物星级+费用双匹配。函数内
+        #    自门 sim 装配(live 零写);与上方两腿独立 try 互不短路。
+        #    best-effort:发放分支异常不阻塞上报主链。——
+        try:
+            from sr_od.application.currency_war.kernel.cw_gain_chain import (
+                check_strategy_merge_grants,
+            )
+            check_strategy_merge_grants(gs, tuple(merge_facts), sig=_grp_sig)
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            _log.warning(f'[cw-buy] 策略卡合成发放分支失败(不阻塞):'
+                         f'{merge_facts} {e}')
 
     # —— 购买回调分支(获取计算完时点):简单分支 + 合成连锁 + 升星分支全毕
     #    后触发,计数归上报单点(live/sim 同源,消除落地门计数分叉);

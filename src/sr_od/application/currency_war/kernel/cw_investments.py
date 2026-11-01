@@ -2850,7 +2850,9 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '盗用身份': GiftGrant(
         chars_conditional=(('火花', '进入第二位面的首领节点时'),),
     ),
-    # 砂里淘金:「合成2星2费角色时」条件发放
+    # 砂里淘金:「合成2星2费角色时」条件发放(估值域登记,本条目零世界
+    # 发放运行时消费;世界发放通道 = STRATEGY_MERGE_GRANTS +
+    # cw_gain_chain.check_strategy_merge_grants)
     '砂里淘金': GiftGrant(
         chars_conditional=(('砂金', '合成2星2费角色时'),),
     ),
@@ -3479,6 +3481,58 @@ def _validate_env_merge_grants() -> None:
 
 
 _validate_env_merge_grants()
+
+
+# ===== 策略卡合并升星触发发放注册表(砂里淘金;白名单制)=====
+# **世界发放域**(条件发放登记表,ENV_STREAK/REFRESH/BOSS/MERGE/INTEREST/
+# ORE_OPEN/BATTLE/DEPLOY_LOCK_GRANTS 同族;**键域首例 = 投资策略卡**,
+# 先例族键 = 环境规范名):键 = 卡规范名,值 = (判据星级, 判据费用,
+# 发放角色名) 三元组。语义 = 持有该卡期间,每合成出「产物星级 ∧ 产物
+# 费用」双匹配的角色(new_star+cost 双匹配),获得 1 个发放角色
+# (1★ 先验:卡面无星级,沿合成发放族用户裁定「发放 1★」先验,实机
+# 取证后可校正);逐级逐事件 = 用户裁定「每完成一级 3 合 1 各发一次」
+# 判例同判(级联逐级各查各发)。表外卡一律无条目,禁从效果原文自动
+# 猜装(白名单制注册纪律,ENV_MERGE_GRANTS 区块同款)。
+# **表间豁免声明**(ENV_MERGE_GRANTS 同款显式声明):本表键与
+# STRATEGY_GRANTS 共存 = 合法形态(两表同键各表各域——STRATEGY_GRANTS
+# 的 chars_conditional 辖估值域档位机器,本表辖世界发放);与
+# STRATEGY_ECONOMY 的 gold_per_2star2cost_merge(折金近似估值腿)无写
+# 冲突(彼腿按金折算下界估值,本表按角色具名世界真值,语义正本 =
+# fields.md §5.3 砂里淘金小节)。消费面 =
+# kernel/cw_gain_chain.check_strategy_merge_grants(触发检查单一源,
+# 事件携带事实无 done 标记;四发火点 = 买牌上报/晶矿角色入账分支/
+# 补给级联/获得链顶层,与 check_env_merge_grants 同点独立 try 并排)。
+STRATEGY_MERGE_GRANTS: dict[str, tuple[int, int, str]] = {
+    # 砂里淘金(id 201501 原文直读,cw_invest_data.py「合成2星2费角色时，
+    # 获得1张【砂金】。」):判据 2星+2费,发放 1 个砂金(2 费,cw_chars)
+    '砂里淘金': (2, 2, '砂金'),
+}
+
+
+def _validate_strategy_merge_grants() -> None:
+    """STRATEGY_MERGE_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28,见 _validate_env_gifts docstring——只留漂移哨,
+    _validate_env_merge_grants 同字形):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);
+    ② 发放角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默)。
+    判据值域(星级/费用)与三元组非负属防登记笔误类,已移除(值形对账
+    归注册行直测锁承担)。
+    """
+    orphans = [n for n in STRATEGY_MERGE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_MERGE_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _n, (_star, _cost, _char) in STRATEGY_MERGE_GRANTS.items():
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"STRATEGY_MERGE_GRANTS 角色名漂移({_n!r} 注册表无此人,"
+                f"版本改名?):{_char!r}")
+
+
+_validate_strategy_merge_grants()
 
 
 # ===== 环境利息累计触发发放注册表(公司契约;白名单制)=====

@@ -1704,6 +1704,19 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             log.warning('[cw-effect] 合并升星触发发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
+        # 策略卡合成触发发放腿(「合成2星2费角色时获得砂金」族,注册表 =
+        # STRATEGY_MERGE_GRANTS):事件源 = 既有 merge_facts 采集复用,
+        # 判据 = 产物星级+费用双匹配。函数内自门 sim 装配(live 零写);
+        # 与上方腿独立 try 互不短路。best-effort:发放分支异常不阻塞入席
+        # 主链(上方腿同纪律)。
+        try:
+            from sr_od.application.currency_war.kernel.cw_gain_chain import (
+                check_strategy_merge_grants,
+            )
+            check_strategy_merge_grants(gs, tuple(merge_facts), sig=_sig)
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning('[cw-effect] 策略卡合成发放分支失败(不阻塞):'
+                        f'{merge_facts} {e}')
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
     #    §2.3):入席 + merge_cascade_write 级联 + 触发发放分支全毕后判据

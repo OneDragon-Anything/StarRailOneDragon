@@ -2485,8 +2485,12 @@ effect_inventory 等级日程(逻辑写入方候选)。
 
 **官方文本=发 1 张【砂金】角色非发金**——注册表按金折算=近似。族行如实分叉:
 ①发牌分支——并入 §3.2.18 发牌族(裁定不建逻辑态、交由观察收尾;发牌星级未证,禁把
-注册表折算值作核对预期);②折金分支——申报不记预期值/逻辑写入方候选(ON_MERGE
-同型载体)。
+注册表折算值作核对预期);②折金分支——申报不记预期值,估值域归 STRATEGY_GRANTS
+条件腿(档位机器降档在册);世界发放通道已落码 = `STRATEGY_MERGE_GRANTS` 白名单表
++ `cw_gain_chain.check_strategy_merge_grants` 触发函数(非 ON_MERGE EffectSpec
+条目,本卡不消费 ON_MERGE 枚举——发放物为角色 payload 装不下,与星星相印发金
+载体分工两域零耦合),sim 世界真值发放(1★ 砂金,星级先验未证同①)、live 零写
+沿 §3.2.18,合成升星四发火点与 `check_env_merge_grants` 同点独立 try 并排。
 
 #### 星星相印(gold_per_3star_merge=5)
 

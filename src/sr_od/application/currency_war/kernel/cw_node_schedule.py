@@ -23,8 +23,11 @@
 
 **模块归属**:真值表住 kernel(依赖方向架构锁:``node_advance`` 声明的
 ``next_screen`` 推导权威源 = 本表 + ``effective_node_pos``,推导在
-``report_node_advance``(kernel),kernel 禁 import sim
-(``cw_deploy_logic`` 已登记);sim 后端同源 import 本表。
+``report_node_advance``(kernel),kernel 模块级禁 import sim
+(``cw_deploy_logic`` 已登记);kernel 触发/判定函数对 ``cw_sim_ports``
+的**函数内惰性判据消费**(sim 装配门控等)沿在册先例放行
+(cw_gain_chain/cw_gain_effects/refresh_shop 各惰性块同形),模块级
+import 仍禁;sim 后端同源 import 本表。
 """
 from __future__ import annotations
 

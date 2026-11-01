@@ -39,6 +39,7 @@ from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTERS,
     EXPERT_CHARS,
     assert_expert_names,
 )
@@ -104,6 +105,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_GRANTS,
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
+    STRATEGY_MERGE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
     normalize_invest_name,
@@ -643,6 +645,14 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             log.warning(f'[cw-gain] 合成金腿发放分支失败(不阻塞):'
                         f'{acc.facts} {e}')
+        # 砂里淘金合成发放腿同区发火(挂点与上方两腿同区:链递归中途
+        # gs 写未收束,顶层发火保一致,与买牌上报发火段同一时序纪律;
+        # 函数内自门 sim 装配(live 零写),异常不阻塞链主分支)。
+        try:
+            check_strategy_merge_grants(gs, tuple(acc.facts), sig=sig)
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning(f'[cw-gain] 策略卡合成发放分支失败(不阻塞):'
+                        f'{acc.facts} {e}')
     return outcome
 
 
@@ -1047,6 +1057,82 @@ def check_strategy_star_merge_gold(
                               actor='StrategyStarMergeGoldGrant',
                               mode='synthesized',
                               group_id=f'strategy:star-merge-gold:{producer}'))
+
+
+def check_strategy_merge_grants(gs: GameState,
+                                facts: tuple[tuple[str, int], ...], *,
+                                sig: ChannelSig) -> tuple[str, ...]:
+    """策略卡合并升星触发发放检查(「合成2星2费角色时，获得1张【砂金】」
+    触发器单一源,策略卡合成触发发放首例砂里淘金,注册表 =
+    ``cw_investments.STRATEGY_MERGE_GRANTS``;调用点 = 合成升星四发火点
+    并排——买牌上报/晶矿角色入账分支/补给级联/获得链顶层,与
+    :func:`check_env_merge_grants` 同点独立 try,事件形状 = ``(角色名,
+    合成后星级)`` 元组序列同形)。发放物为角色,效果账本 payload 装不下
+    → 白名单表 + 触发函数独立载体(与 EffectSpec 载体分工:发放金走
+    payload、发放角色走本表,两域零耦合)。
+
+    条件矩阵(顺序即短路序,逐序返回空 = 零发放):
+
+    1. 持卡交集空(active_strategies ∩ 表键,未持卡/表外卡同路——表外
+       卡禁从效果原文自动猜装)→ 零动作;
+    2. facts 过滤后零命中(判据 = 产物 ``new_star`` == 表星级 ∧
+       ``CHARACTERS.get(cid)`` 命中且 ``.cost`` == 表费用;.get 为 None
+       = 注册表外名该条视为不匹配跳过——facts 现值恒出自注册表两源,
+       防未来源扩转抛)→ 零动作;
+    3. sim 门控(函数内惰性 ``sim_backend_installed``,kernel→sim.ports
+       判据消费先例形):未装配(live 形态)→ 零写——策略卡发牌族正本
+       (不建逻辑写、交由观察收尾):实机发放由游戏自发,星级观察 +
+       bench 整表观察覆盖兜底,禁猜测直写;
+    4. 逐条命中 → :func:`gain_character` 具名发放(1★ 先验,
+       ``rand=False`` 确定写零采样——发放物具名非池,env 版采样注入槽
+       本函数不需要;同窗多条命中逐条发,逐级触发判例 = 用户裁定
+       「每完成一级 3 合 1 各发一次」)。
+
+    - 递归有限终止:发放物(砂金 2 费)∈ 触发费用域,发放落席凑齐同名
+      三只会再合成再发火——每轮「合成 2★ → 发回 1 个 1★」净耗 2 个
+      同名 1★(3 合 1 消耗 3、发放回 1),同名 1★ 库存单调递减有下界,
+      获得链「无三连即终止」天然辖;不设深度闸(结构论证替代,env 版
+      同判,本卡发放物在触发域为与 env 版的显式差异);
+    - 拒落语义零新闸:bench 未观察/席满溢出位占 = :func:`gain_character`
+      链内既有拒落/留证/溢出落位语义,本函数不另设闸;效果串照返
+      (发放事实与落位成败解耦,env 版同阶口径);
+    - 零 rng:发放物具名唯一无采样面;多卡同持各自独立判定(表遍历
+      语义,表扩员自然跟随)。
+    """
+    if not facts:
+        return ()
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_MERGE_GRANTS]
+    if not held:
+        return ()
+    hits: list[str] = []
+    for cid, new_star in facts:
+        for card in held:
+            want_star, want_cost, _reward = STRATEGY_MERGE_GRANTS[card]
+            if int(new_star) != want_star:
+                continue
+            ch = CHARACTERS.get(cid)
+            if ch is None or ch.cost != want_cost:
+                continue
+            hits.append(card)
+            break  # 同一事件同卡只发一次(多卡同持各判各发)
+    if not hits:
+        return ()
+    # kernel → sim 判据消费沿 cw_sim_ports 惰性 import 先例(函数内取,
+    # 模块级反向即环);live 未装配早退 = 零写纪律执行点。
+    from sr_od.application.currency_war.sim.cw_sim_ports import (
+        sim_backend_installed,
+    )
+    if not sim_backend_installed():
+        return ()
+    effects: list[str] = []
+    for card in hits:
+        reward = STRATEGY_MERGE_GRANTS[card][2]
+        evidence = f'strategy_merge_grant:{card}'
+        gain_character(gs, reward, 1, rand=False, sig=sig,
+                       evidence=evidence, producer=GAIN_CHAIN_PRODUCER)
+        effects.append(evidence)
+    return tuple(effects)
 
 
 #: 策略卡首购经验写端署名(家族单一标识,_CONDITIONAL_PRODUCER 同款
