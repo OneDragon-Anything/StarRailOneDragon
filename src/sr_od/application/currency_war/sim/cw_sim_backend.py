@@ -75,7 +75,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     xp_apply_amount,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
-    BOARD_REWRITE_SELL_ALL,
+    BOARD_REWRITE_SELL_ALL_DEAL,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
@@ -701,16 +701,17 @@ def apply_strategy_pick_streak(gs: GameState, picked: Sequence[str]) -> int:
     return applied
 
 
-#: 板面重写族出售支判据集(派生,禁硬编码名单)::data:`STRATEGY_EFFECTS`
-#: 过滤 ``payload.board_rewrite == BOARD_REWRITE_SELL_ALL``。辖域 =
-#: 注册表声明该语义的全体卡(现役成员唯「人力重组」;后继出售族卡按同
-#: 语义注册即自动入列,本文件零改)。卖价修饰族(大裁员/降本增效,住
-#: STRATEGY_ECONOMY)与仅注释归类未注册卡(现金为王)不入列,与桥出口
-#: 语义同界(族归类注释 = cw_investments 板面重写族条)。
+#: 出售发牌腿判据集(派生,禁硬编码名单):板面重写族出售支中**卡文携带
+#: 发牌腿**的卡——判据 = :data:`STRATEGY_EFFECTS` 过滤
+#: ``payload.board_rewrite == BOARD_REWRITE_SELL_ALL_DEAL``。发牌腿是人力
+#: 重组卡文附加面、非出售语义固有:素出售卡(大裁员/降本增效/现金为王,
+#: 'sell_all' 值)无发牌面,不入列——不细分则素出售卡注册即自动入列,
+#: sim 局将向无发牌卡注入假 2★(世界假单位污染)。按语义值细分后,后继
+#: 具发牌腿卡以 _DEAL 值注册自动入列,素出售卡注册零扰动。
 SELL_ALL_REWRITE_STRATEGIES: frozenset[str] = frozenset(
     name for name, spec in STRATEGY_EFFECTS.items()
     if str(getattr(getattr(spec, 'payload', None), 'board_rewrite', '')
-           or '') == BOARD_REWRITE_SELL_ALL)
+           or '') == BOARD_REWRITE_SELL_ALL_DEAL)
 
 #: 出售发牌三档序列 ``(费用, 数量)``:卡文语序费用降序 3→2→1(卡文:
 #: 「获得1个随机的2星3费角色、2个2星2费角色和2个2星1费角色」;族级

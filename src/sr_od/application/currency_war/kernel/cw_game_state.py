@@ -1509,8 +1509,7 @@ def apply_effect_burst_grant(gs: GameState, spec: Any, *,
     紧随调用);记账 = 容器字段 ``gs.free_refresh_left`` write_logic 逻辑
     直写(2026-09-21 Field 化:免费次数升格容器字段,观察锚定/动作扣减/
     发放登记三写端同格;None 基 = 0 起算——开局无免费次数 = 机制真值,
-    发放即首次落值)。额度 0 或 payload 无此字段(如 BattlefieldEffect
-    族)= no-op(零 Field 行)。
+    发放即首次落值)。额度 0 或 payload 无此字段 = no-op(零 Field 行)。
     """
     n = int(getattr(getattr(spec, 'payload', None), 'free_refresh_burst', 0) or 0)
     if n <= 0:

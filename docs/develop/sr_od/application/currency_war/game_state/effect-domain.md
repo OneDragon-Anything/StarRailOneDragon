@@ -16,7 +16,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类清单**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 43 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 44 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -334,7 +334,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 43 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 44 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -577,6 +577,27 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   2星2费角色和2个2星1费角色。」
 - **推理链**:once 构同全员晋升;出售面确定性可算 → 逻辑写候选,发牌随机 → 观察
   交由观察收尾;执行时序编排(卖→发牌)= 执行链适用范围,非本篇。
+
+#### 大裁员(202101)
+
+- **论断**:INSTANT / once / BATTLEFIELD;duties = predict(清场+6 刷改变商店决策
+  上下文,买牌/读牌对账须预知);counter **不建**(一次性 burst 无剩余期);双腿
+  登记型单条目双载:出售面 = 素出售语义(`board_rewrite='sell_all'`,确定性清场
+  退款;×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);
+  刷腿 = `free_refresh_burst=6` 挂战场载体(burst 桥登记拍单次发放,
+  **BattlefieldEffect 载体携 burst 首例**,与 free_refresh_on_node_enter 同值域、
+  发放挂点不同:登记拍单次 vs 节点边界);发牌腿非本卡卡文面——sim 发牌判据按
+  「卡文是否携带发牌腿」语义值细分(`'sell_all_deal'` vs 素 `'sell_all'`),素出售
+  卡不入集,sim 局零假发牌。
+- **证据**:规格 `cw_investments.STRATEGY_EFFECTS['大裁员']`(payload=
+  BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL, free_refresh_burst=6);
+  注册行 `STRATEGY_ECONOMY['大裁员']` burst=6 = 估值面对账源,注册值原 5 = 已裁
+  漂移随批订正);官方原文 cw_invest_data.py:134「出售场上和备战席的所有角色，
+  获得双倍价格的金币。获得6次免费刷新。」
+- **推理链**:双腿同拍各司其职(burst 桥写 free_refresh_left / 板面重写桥清场
+  退款,写域不相交,序间零依赖);退款 = 场上构成依赖无字段载体(卡级 PENDING
+  登记在册,估值 fail-closed=0);卖价 ×2 净额/基础价口径 desc 未写明,禁猜维持
+  缺口(fields.md §4 SellBench 修饰行单一源)。
 
 ### 条件窗口族
 

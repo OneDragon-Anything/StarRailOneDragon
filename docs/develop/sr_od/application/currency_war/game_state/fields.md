@@ -1289,7 +1289,9 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 - **概率事件** refresh_free_chance=0.45:45% 判定、跨刷可重复触发;官方原文无付费
   限定——现按付费域建模〔待实机实证〕。
 - **burst 一次性海量族** free_refresh_burst:免费午餐 11 / 高效决策 9999(45 秒窗)/
-  及时雨 4 / 大裁员 6(**以官方卡文为准**——注册表 5 漂移,反转裁定=以官方卡文为准)/
+  及时雨 4 / 大裁员 6(**已订正**:注册值原 5 = 已裁漂移,反转裁定以官方卡文为
+  准,注册行已随建模批改 6;条目载体 = STRATEGY_EFFECTS 大裁员条 burst 桥登记拍
+  发放)/
   乱成一锅粥 5 / 乱成一锅粥+ 7 / 合并同类项 4 / 固定理财系 2/3(**非一次性**:即时段
   之外每相位面开始重复发放,§5.3 固定理财行)/ 市场干预 5。
 - **条件判定族** free_refresh_cond_gold_above/step/cap:本金充裕/+——金>above 每额外
@@ -1957,8 +1959,9 @@ plane/round 读取入口基底)——它供决策层坐标消费,属观察域写
      尾款交付已迁出本清单:gold_at_final_supply 单列建模,锚=展平全序列最末
      supply 位,sim 世界腿独立笔,live 观察覆盖兜底不变)。
    - **大裁员 burst 数值反转**:注册表 free_refresh_burst=5 vs 官方卡文=6
-     ——以官方卡文 6 为准 + 注册表漂移标注。数据权限序=**base 官方文本 > 手工
-     overlay > 文档转述**。
+     ——以官方卡文 6 为准。数据权限序=**base 官方文本 > 手工
+     overlay > 文档转述**。〔已订正:注册行随建模批改 6,与卡文一致,
+     代码=STRATEGY_ECONOMY['大裁员']〕
 2. **基础机制注意**(合成链/穿着即合成/满栏自动多买——非注册表项、基础游戏机制),
    单一源=merge_mechanics.md + cw_synthesis.py。
 
@@ -2530,7 +2533,7 @@ effect_inventory 等级日程(逻辑写入方候选)。
 申报留证——官方金面改道 +1 金/件未建模,接线归获得回执覆盖批,届时回改前置分支;
 §3.2.15 获得链写入方段)。
 
-#### 人力重组(EffectSpec board_rewrite='sell_all')
+#### 人力重组(EffectSpec board_rewrite='sell_all_deal')
 
 逻辑写入方=**全场出售**:前台/后台/备战席所有角色清空、退款按卖价公式入金币(§3.2.9)
 ——出售面精确可算、保留逻辑写(实现=板面重写桥 `apply_board_rewrite` 出售面分支,
@@ -2547,9 +2550,11 @@ effect_inventory 等级日程(逻辑写入方候选)。
 `gain_character(star=2)` 直接落席,rng 流键 `M24/sell-all-deal` 显式
 构造(同 seed 可重放);live 同拍零写(游戏侧发放,下一备战帧观察
 覆盖收口,本桥「不造单位」裁定对双端维持)。判据 = `STRATEGY_EFFECTS`
-过滤 `board_rewrite='sell_all'` 派生(`cw_sim_backend
-.SELL_ALL_REWRITE_STRATEGIES`,禁硬编码名单)。sim 候选供给面是否
-覆盖此二卡 = 保真度申报面(维护义务 = sim-design §8.2),不改变桥
+过滤 `board_rewrite='sell_all_deal'` 派生(`cw_sim_backend
+.SELL_ALL_REWRITE_STRATEGIES`,禁硬编码名单;语义值细分——发牌腿 =
+本卡卡文附加面、非出售语义固有,素出售卡 'sell_all'(大裁员等)不入集,
+sim 局零假发牌)。sim 候选供给面是否覆盖出售族 = 保真度申报面(维护义务
+= sim-design §8.2),不改变桥
 语义。出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口)。
 
 #### 卖全场族(大裁员/降本增效/现金为王——出售面)
@@ -2558,8 +2563,10 @@ effect_inventory 等级日程(逻辑写入方候选)。
 角色清空、退款金入账——确定性、选卡时点可知。随属修饰:大裁员/降本增效=双倍卖价
 (SellBench 卖价修饰);大裁员+6 次免费刷新(§3.3.5 来源族);降本增效=6 次购买免费
 (BuyCard 错扣防护,§5.2 金面已登);现金为王=护盾记忆量(护盾=出售所得金×1000——
-**护盾余量=ActiveEffect 计数器记账**,不设独立字段)。三卡注册表仅 sell_price_mult/
-burst 结构化,出售动作本身=缺口登记 §5.2。
+**护盾余量=ActiveEffect 计数器记账**,不设独立字段)。大裁员已注册 STRATEGY_EFFECTS
+条目(出售面 + burst=6 单条目双载,BATTLEFIELD;发牌腿非其卡文面,sim 发牌判据
+按语义值细分不入集),出售动作按基础公式记(×2 施于净额/基础价缺口 G4 待实采);
+降本增效/现金为王维持缺口登记 §5.2。
 
 #### 采购专员族(refresh_surprise_every=7/5)
 

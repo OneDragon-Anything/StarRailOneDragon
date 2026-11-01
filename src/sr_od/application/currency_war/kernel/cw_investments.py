@@ -58,6 +58,7 @@ from sr_od.application.currency_war.data.cw_invest_data import (
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BENCH_REROLL_RIGHT3,
     BOARD_REWRITE_SELL_ALL,
+    BOARD_REWRITE_SELL_ALL_DEAL,
     BOARD_REWRITE_UPGRADE_ALL,
     EQUIPS_REROLL_SAME_QUALITY,
     BattlefieldEffect,
@@ -619,9 +620,15 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '小复制': EconomyEffect(instant_gold=7),
     '长期主义+': EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3),
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
-    '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
-    # ↑ 免费刷 + 卖价×2。5=已裁漂移,官方卡文=6(base 层 plaza:202101):
-    #   纠偏 5→6 是行为面变更,归建模批走方案审/审查;改 6 前以 5 为现行行为,读值方禁自行 +1。
+    '大裁员': EconomyEffect(free_refresh_burst=6, sell_price_mult=2.0),
+    # ↑ 免费刷 + 卖价×2。free_refresh_burst=6 = 官方卡文直读(base 层
+    #   plaza:202101,cw_invest_data.py:134),反转裁定 = 以官方卡文为准
+    #   (fields.md §3.3.5 burst 来源族 + §4 SellBench 修饰行在册);注册值
+    #   原为 5 = 已裁漂移且无运行时消费点(当时无 STRATEGY_EFFECTS 条目,
+    #   两桥不触发),非任何一端的现行行为——「6 次免费刷新」真正落码载体
+    #   = STRATEGY_EFFECTS['大裁员'] 条目(burst 桥同条目双载),本注册行
+    #   = 估值面与条目载荷的对账源。卖价 ×2 施于净额/基础价 = 缺口 G4 待
+    #   实采(fields.md §4 SellBench 修饰行单一源),闭合前退款按基础公式。
     # 嘴硬:败局修饰两腿 = 卡面「受到的小队生命值伤害提高5点/维持原来的连胜数」
     #   直读;消费 = strategy_loss_battle_modifier 聚合 + sim 结算 hp 腿与
     #   streak 转移形参(读法边界见字段注)。金腿「获得6金币」选卡当场在册。
@@ -842,15 +849,30 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
     # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读
-    # 归类同族:全员晋升/人力重组/现金为王=即时全场板面重写/出售)。
+    # 归类同族:全员晋升/人力重组/大裁员/现金为王=即时全场板面重写/出售)。
     '人力重组': EffectSpec(
         id='102801', name='人力重组', trigger=TriggerKind.INSTANT,
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL_DEAL),
         duties=DutyFlags(predict=True),
         notes='全场出售事件;执行时序编排(卖→发牌);'
               '写归属=出售面逻辑写/发牌面 live 观察收口·sim 发牌腿承接'
               '(cw_sim_backend.apply_strategy_pick_sell_all_deal)'),
+    # 大裁员:官方「出售场上和备战席的所有角色，获得双倍价格的金币。获得6次免费刷新。」
+    # (cw_invest_data.py:134)。卖全场族注册卡,板面重写桥素出售语义清场+基础
+    # 公式退款;发牌腿非本卡卡文面(sim 发牌判据按语义值细分,素出售不入集,
+    # 防假 2★ 注入)。刷腿 = free_refresh_burst=6 挂战场载体(burst 桥登记拍
+    # 单次发放,载体扩字段首例双载——选卡一次性发放与 board_rewrite 清场
+    # 两桥同条目各司其职);×2 卖价修饰缺口 G4 申报见 STRATEGY_ECONOMY
+    # 注册行注。
+    '大裁员': EffectSpec(
+        id='202101', name='大裁员', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL,
+                                  free_refresh_burst=6),
+        duties=DutyFlags(predict=True),
+        notes='卖全场+6 刷选卡当场;×2 卖价修饰缺口 G4 待实采(净额/基础价),'
+              '退款按基础公式'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面适用范围。
     '躺平': EffectSpec(

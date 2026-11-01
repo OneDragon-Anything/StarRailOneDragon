@@ -230,6 +230,14 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 不列缺口。估值 fail-closed 申报句形态照现役值句。
     '合并同类项': '刷新出对条件金腿(gold_per_refresh_pair)频次分布未采,'
                  '估值 fail-closed=0',
+    # 大裁员:卖全场退款腿 = 无字段载体(退款额依赖场上构成,非估值常量;
+    # 出售面世界通道已建 = STRATEGY_EFFECTS 条目登记腿双桥);×2 卖价修饰
+    # 挂 sell_price_mult(待建模字段分类塌 0),施于净额/基础价口径待实采
+    # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前世界面退款按
+    # 基础公式记(sim 低估申报制)。
+    '大裁员': '卖全场退款腿无字段载体(依赖场上构成,非估值常量);'
+              '×2 卖价修饰(sell_price_mult)施径口径待实采,'
+              '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
 }
 
 
