@@ -141,6 +141,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     aggregate_economy,
     get_strategy,
     normalize_invest_name,
+    strategy_loss_battle_modifier,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
@@ -445,31 +446,48 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
 
 
 def streak_income_after(streak: int, *, node_type: str,
-                        won: bool) -> int:
+                        won: bool, keep_on_loss: bool = False) -> int:
     """收入侧无符号连胜计数转移(战斗类胜 +1/败归零;奖励/补给不动)。
 
-    保留口 = 纯函数判读/测试对账;后端运行面用容器带符号派生,不再持
-    第二账。"""
+    keep_on_loss = 败局连胜维持(嘴硬族;仅带符号正值维持,读法边界见
+    :func:`streak_signed_after`):辖战斗类败局分支,无符号口径下正值
+    保留原值、零维持与清零等值;无 piggy 形参,扑满帧经 node_type=
+    'reward' 恒原样返回,扑满帧维持语义不在本口辖域(断言归
+    :func:`streak_signed_after` 面)。维持的是计数,败局收入恒无连胜
+    成分(收入公式战败无),与金账无关。保留口 = 纯函数判读/测试对账;
+    后端运行面用容器带符号派生,不再持第二账。缺省 False = 现行为
+    逐位不变。"""
     if node_type not in COMBAT_NODE_TYPES:
         return streak
+    if not won and keep_on_loss:
+        return streak if streak > 0 else 0
     return streak + 1 if won else 0
 
 
 def streak_signed_after(streak_signed: int, *, node_type: str,
-                        won: bool, piggy: bool = False) -> int:
+                        won: bool, piggy: bool = False,
+                        keep_on_loss: bool = False) -> int:
     """容器带符号连胜转移(连胜 +/连败 −;战斗类胜 +1/败取负向计数;
     奖励/补给轮不动;与旧引擎逐位同式)。
 
     扑满帧例外(piggy=True,2026-10-10 用户裁定):胜 +1/败清零——
-    败清零非负账;深井角斗场等连胜触发器读共用账自然跟随。"""
+    败清零非负账;深井角斗场等连胜触发器读共用账自然跟随。
+
+    keep_on_loss = 败局连胜维持(嘴硬族):读法边界 = 仅带符号正值维持
+    ——「原来的连胜数」字面辖域 = 连胜计数,零/连败无连胜数可维持,
+    desc 未写负值分支 = 判读申报制(后继族稿禁当定谳转引);辖域 =
+    战斗类与扑满帧两败局分支(signed>0 → 原值保留,非正值照常转移),
+    胜局/奖励/补给分支形参不参与。缺省 False = 现行为逐位不变。"""
     if piggy:
         if won:
             return streak_signed + 1 if streak_signed > 0 else 1
-        return 0
+        return streak_signed if (keep_on_loss and streak_signed > 0) else 0
     if node_type not in COMBAT_NODE_TYPES:
         return streak_signed
     if won:
         return streak_signed + 1 if streak_signed > 0 else 1
+    if keep_on_loss and streak_signed > 0:
+        return streak_signed
     return streak_signed - 1 if streak_signed < 0 else -1
 
 
@@ -3287,6 +3305,19 @@ class SimBackend:
         if is_piggy_node(self.gs) and outcome.hp_delta < 0:
             # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
             outcome = replace(outcome, hp_delta=0)
+        # —— 败局修饰 hp 腿(嘴硬族首例;接线点 = 扑满豁免之后、损血实值
+        # 锚/apply_hp_outcome 之前:hp_before 锚、结算环帧行与损血档位
+        # 容器差分全部按修饰后损血记账,修饰腿插入序与各消费腿无关)。
+        # 聚合单一源 = kernel strategy_loss_battle_modifier(卡直读禁
+        # aggregate_economy)。三重门 = 败局 ∧ 存在基础伤害 ∧ 修饰非零:
+        # 扑满帧豁免后 hp_delta=0 零基础不产生伤害(豁免优先,「扑满不掉
+        # 血」同向);死局连带(追加扣血可推过 0)经 apply_hp_outcome
+        # 既有保底/死亡语义如实结算。零 rng(同 seed 其他节点随机序列
+        # 不漂移);live 零写观察覆盖(游戏自算,结算屏读数入容器)。
+        hp_extra, keep = strategy_loss_battle_modifier(
+            list(self.gs.active_strategies.value or []))
+        if (not outcome.won) and outcome.hp_delta < 0 and hp_extra:
+            outcome = replace(outcome, hp_delta=outcome.hp_delta - hp_extra)
         # 损血档位触发的损血实值锚(保险;hp_before = apply 前现值,
         # 「规定取法」= 设计内唯一——保底截断局写后值恒 1,不可由
         # (outcome.hp_delta, 写后现值) 反推面值前真值;真值差口径 =
@@ -3350,7 +3381,8 @@ class SimBackend:
             check_env_interest_grants(self.gs, logic_sig('sim:env'))
             self._piggy_income_snap = None
         signed = streak_signed_after(int(self.gs.streak.value or 0),
-                                     node_type=kind, won=won, piggy=piggy)
+                                     node_type=kind, won=won, piggy=piggy,
+                                     keep_on_loss=keep)
         self.gs.observe(self.gs.streak, signed,
                         evidence=sim_evidence(
                             f'streak:p{node.plane}r{node.round_num}'),

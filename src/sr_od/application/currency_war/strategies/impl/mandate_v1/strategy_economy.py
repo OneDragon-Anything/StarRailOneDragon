@@ -121,7 +121,10 @@ _CASH_SCORED_FIELDS: frozenset[str] = frozenset({
 #:   宪法三硬闸门外第三消费点须用户逐项确认,未确认期 fail-closed = 0);
 #: - 状态置位族:streak_set(「使当前连胜数变为N」选卡当场带符号绝对
 #:   置位,首例 胜利,还是胜利 = 4)——置位带来的连胜金流变化是轨迹
-#:   依赖(后续胜负序列未定),估值价值未建模。
+#:   依赖(后续胜负序列未定),估值价值未建模;keep_streak_on_loss
+#:   (败局连胜维持,首例 嘴硬,读法边界见字段注)——维持省下的连胜
+#:   金流价值是轨迹依赖(后续胜负序列未定;连胜全程价值量级见
+#:   combat.md),估值未建模。
 _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'interest_cap_override',
     'gold_per_level_up',
@@ -141,6 +144,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'gold_per_refresh_pair',
     'gold_per_20hp_lost', 'gold_per_hp_lost_now',
     'streak_set',
+    'keep_streak_on_loss',
 })
 
 #: 不计分通道字段(结构登记、永不为分):
@@ -152,7 +156,8 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: - 期权/远见族:future_quality_upgrade/difficulty_inflation_exempt
 #:   (远见品质改写 = 期权待建模,均匀分布假设未证);
 #: - 负向结构登记:xp_click_surcharge_from_level/_at、hp_max_loss_pct_of_
-#:   loss/hp_max_loss_cap_pct(无正账可折);
+#:   loss/hp_max_loss_cap_pct、loss_hp_extra(败局额外扣血,纯负向成本
+#:   无正账可折,首例 嘴硬;消费 = sim 结算 hp 腿);
 #: - 定价出域族:hp_instant(健康充值 +30 生命直给)——hp 定价通道作废
 #:   正本(invest_effects.md 血金互兑裁定)支撑「永不为分」,非「待建模」
 #:   (无未来进分语义);世界面发放 = sim 选卡落地拍独立笔。
@@ -163,6 +168,7 @@ _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'future_quality_upgrade', 'difficulty_inflation_exempt',
     'xp_click_surcharge_from_level', 'xp_click_surcharge_from_level_at',
     'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
+    'loss_hp_extra',
     'hp_instant',
 })
 

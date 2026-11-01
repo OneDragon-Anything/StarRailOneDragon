@@ -213,6 +213,21 @@ class EconomyEffect:
     gold_per_refresh_pair: int = 0        # 合并同类项:刷新出 2 同名 +1 金
                                           # (每次刷新事件条件触发;发放 =
                                           # 刷新上报随机态腿后检查腿)
+    # —— 战斗结算修饰族(败局帧修饰,非收入通道;聚合 =
+    #    strategy_loss_battle_modifier,live 游戏自算 + 观察覆盖零写)——
+    loss_hp_extra: int = 0                # 败局额外扣血:战斗失败时在基础败局伤害上追加
+                                          # (「伤害提高」语义 = 加重,非减免;首例 嘴硬 5,
+                                          # 值 = cw_invest_data 效果原文直读)。仅作用于
+                                          # 存在基础伤害的败局帧(三重门 = 败局 ∧
+                                          # hp_delta<0 ∧ 本字段非零;扑满帧豁免优先,
+                                          # 零基础不产生伤害——「扑满不掉血」同向);
+                                          # 0 = 无此腿
+    keep_streak_on_loss: bool = False     # 败局连胜维持:战斗失败时连胜计数不清零(首例
+                                          # 嘴硬)。读法边界 = 仅带符号正值维持——
+                                          # 「原来的连胜数」字面辖域 = 连胜计数,零/
+                                          # 连败无连胜数可维持,非正值照常败局转移
+                                          # (desc 未写负值分支 = 判读申报制,后继族稿
+                                          # 禁当定谳转引);False = 无此腿
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -302,6 +317,10 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 兜底;不入现金通道——hp 定价通道作废正本(invest_effects.md 血金
     # 互兑裁定),hp 永不折金
     'hp_instant',
+    # 战斗结算修饰族(非收入通道;难度族同款划界):败局帧战斗结算修饰
+    # (hp 加重/连胜维持),世界腿 = sim 结算 hp 腿与 streak 转移形参,
+    # live 游戏自算 + 观察覆盖;修饰不产生金流,不入引擎判定
+    'loss_hp_extra', 'keep_streak_on_loss',
 })
 
 
@@ -322,6 +341,27 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
         if getattr(economy, amt) != 0 and getattr(economy, cnt) != 0:
             return True
     return False
+
+
+def strategy_loss_battle_modifier(active_names: list[str]) -> tuple[int, bool]:
+    """持卡败局修饰聚合(战斗结算修饰族首例 嘴硬):败局额外扣血求和、
+    连胜维持取或。
+
+    逐名归一后直读 :data:`STRATEGY_ECONOMY` 现值(卡直读禁
+    ``aggregate_economy``:其聚合字段集不含战斗结算修饰族字段,误走 =
+    静默漏读);表外卡名跳过。零 rng 零副作用纯读;sim 结算帧调用,
+    live 零消费(游戏自算,结算屏观察覆盖)。返回 ``(hp_extra_sum,
+    keep_any)``。
+    """
+    hp_extra_sum = 0
+    keep_any = False
+    for name in active_names:
+        eff = STRATEGY_ECONOMY.get(normalize_invest_name(str(name or '')))
+        if eff is None:
+            continue
+        hp_extra_sum += eff.loss_hp_extra
+        keep_any = keep_any or eff.keep_streak_on_loss
+    return hp_extra_sum, keep_any
 
 
 # 引擎字段三分类常量的完备校验已随 2026-10-28 校验治理移除(闭集缺位/
@@ -569,7 +609,10 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
     # ↑ 免费刷 + 卖价×2。5=已裁漂移,官方卡文=6(base 层 plaza:202101):
     #   纠偏 5→6 是行为面变更,归建模批走方案审/审查;改 6 前以 5 为现行行为,读值方禁自行 +1。
-    '嘴硬': EconomyEffect(instant_gold=6),
+    # 嘴硬:败局修饰两腿 = 卡面「受到的小队生命值伤害提高5点/维持原来的连胜数」
+    #   直读;消费 = strategy_loss_battle_modifier 聚合 + sim 结算 hp 腿与
+    #   streak 转移形参(读法边界见字段注)。金腿「获得6金币」选卡当场在册。
+    '嘴硬': EconomyEffect(instant_gold=6, loss_hp_extra=5, keep_streak_on_loss=True),
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
     '经验就是财富': EconomyEffect(instant_gold=4),
