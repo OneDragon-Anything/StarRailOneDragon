@@ -94,6 +94,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     GAIN_CHAIN_PRODUCER,
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_bench_count_xp,
     check_strategy_bond_battle_grants,
     check_strategy_boss_battle_grants,
     check_strategy_empty_equip_xp,
@@ -3033,6 +3034,45 @@ class SimBackend:
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:empty_slot')
+                self.gs.observe(self.gs.level, level, evidence=xp_ev,
+                                sig=xp_sig)
+                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
+                                sig=xp_sig)
+        # 策略卡备战席计数经验腿(「节点开始时，如果备战席角色小于等于4名，
+        # 则获得3经验」族,人才空洞 id 202601 首例):进窗事实点在窗口幂等
+        # 守卫内(重放不双发),kernel 检查函数单一源
+        # check_strategy_bench_count_xp(纯读零写,未持卡/条件不满足零写,
+        # 零 done 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位
+        # 收口(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
+        # node_char/羁绊交付/空仓;同段为收口序单一——邻位 ≠ 互不影响,
+        # 对账见下)。前置腿本卡谓词输入域(bench 单位数)写端对账:计数
+        # 口径 = bench_units_of 仅单位槽(占位件/空槽不计,desc「角色」
+        # 文义直读,判读申报制非定谳);**node_char 复制腿写 bench 单位且
+        # 位于本挂点前——现序下其复制单位计入本窗 ≤4 判定**(与空仓腿
+        # 「互不读对方字段、互序无关」不同:本卡谓词输入域恰是 node_char
+        # 的写入域,相对序敏感面)。与 node_char 的相对序官方无定谳 =
+        # 判读申报制辖域,现位申报:node_char 之后、商店全刷前(证伪路径
+        # = 实机双持价值投资族 + 席内单位 ≤4 局 XP 发放观察,证伪则改序
+        # 重申报)。挂点钉在商店全刷前:XP 输出与同窗发牌有真实耦合(全刷
+        # 直读 gs.level 取发牌概率),先写 = 本窗发牌分布按升级后等级,
+        # 与卡面「节点开始时…获得」的即时到账语义一致(顺序非无关,禁以
+        # 后写形态表述)。live 零写观察覆盖(实机 XP 由游戏自算自显,经验
+        # 条观察链 read_xp_progress 覆盖;live 不评估条件——备战席单位计数
+        # live 观察通道在册〔read_bench_view〕可对账,对账义务归采集批,
+        # 零写义务不变)。XP 世界写与节点经验/即时经验同域同组
+        # (sig 'sim:xp'),evidence 独立笔 'xp:bench_count' 分账;零 rng
+        # 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
+        # (apply_node_xp 同形态)。
+        bench_xp = check_strategy_bench_count_xp(self.gs)
+        if bench_xp > 0:
+            xp_field = self.gs.xp.value
+            level_field = self.gs.level.value
+            if xp_field is not None and level_field is not None:
+                level, cur = xp_apply_amount(int(level_field),
+                                             int(xp_field[0]), bench_xp)
+                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+                xp_sig = obs_sig(group_id='sim:xp')
+                xp_ev = sim_evidence('xp:bench_count')
                 self.gs.observe(self.gs.level, level, evidence=xp_ev,
                                 sig=xp_sig)
                 self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,

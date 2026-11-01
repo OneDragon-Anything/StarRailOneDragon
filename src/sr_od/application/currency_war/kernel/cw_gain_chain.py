@@ -84,6 +84,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     anchor_aware_write,
     apply_effect_burst_grant,
     apply_effect_plane_refire_grant,
+    bench_units_of,
     bench_view_of_working,
     deployed_indexed_of_view,
     deployed_view_of_indexed,
@@ -96,6 +97,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_NAMES,
     HYPEREMIT_SPEC_ID,
     INVESTMENT_ENVS,
+    STRATEGY_BENCH_COUNT_XP_GRANTS,
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
     STRATEGY_BUY_STAR_FLIP_GRANTS,
@@ -1276,6 +1278,49 @@ def check_strategy_empty_equip_xp(gs: GameState) -> int:
                 and slot.unit.equips:
             return 0
     return sum(STRATEGY_EMPTY_EQUIP_XP_GRANTS[n] for n in held)
+
+
+def check_strategy_bench_count_xp(gs: GameState) -> int:
+    """策略卡备战席计数经验检查(「节点开始时，如果备战席角色小于等于4名，
+    则获得3经验」触发器单一源,人才空洞 id 202601 首例;**纯读零写零
+    rng**——kernel 判定无 sig 形参零世界写,唯一调用点 = sim 节点窗挂点
+    写端;零 done 闩:卡面无「首次」限定,每节点窗可重复,幂等归窗口守卫。
+    live 不评估本条件(实机 XP 由游戏自算自显,经验条观察链覆盖)。
+
+    条件矩阵(顺序即短路序):
+
+    1. None 防御:策略集/备战席任一未观察 → 0(fail-closed 与「宁可漏发
+       不误发」同向——bench 未观察时无法计数,``bench_units_of`` 的空席
+       缺省语义〔[]〕会误判「席空 ≤4 恒成立」,禁沿用它,须显式拦截;
+       sim 生产开局种子底座不触发,直构/单测域触发);
+    2. 持卡 ∩ :data:`STRATEGY_BENCH_COUNT_XP_GRANTS` 为空(未持卡/表外卡
+       同路,表外卡禁从效果原文自动猜装)→ 0;
+    3. 计数:``count = len(bench_units_of(gs))``——单位域读口单一源,
+       仅 ``kind='unit'`` 槽计入(占位件 tome/bookcard/supply_box 与空槽
+       不计:desc「角色」文义直读 + 读口 docstring 语义;判读申报制非
+       定谳,证伪路径 = 实机持占席道具 + 席内单位 ≤4 局 XP 发放观察;
+       溢出单位不在 BenchView slots,结构性不计);
+    4. 逐行判:持卡各条 ``(op, threshold, xp)``,op='le' ∧ count ≤
+       threshold → 累加 xp;op='ge' ∧ count ≥ threshold → 累加 xp
+       (表外比较符不匹配任何分支 = 不发放,「宁可漏发」同向);
+    5. 返回总额(单卡一行一次;双持姊妹 ≤4 与 ≥8 条件域不相交,总额
+       至多一项非零)。
+    """
+    strategies = gs.active_strategies.value
+    bench = gs.bench.value
+    if strategies is None or bench is None:
+        return 0
+    held = [n for n in strategies if n in STRATEGY_BENCH_COUNT_XP_GRANTS]
+    if not held:
+        return 0
+    count = len(bench_units_of(gs))
+    total = 0
+    for n in held:
+        op, threshold, xp = STRATEGY_BENCH_COUNT_XP_GRANTS[n]
+        if (op == 'le' and count <= threshold) or \
+                (op == 'ge' and count >= threshold):
+            total += xp
+    return total
 
 
 #: 策略卡购买翻星写端署名(家族单一标识,_FIRST_BUY_XP_PRODUCER 同款

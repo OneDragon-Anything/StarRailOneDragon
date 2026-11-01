@@ -2254,11 +2254,14 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 **无结构化规格的缺口**(注册表建模批候选;effect_inventory 的逻辑写入以卡文本效果
 为 provenance):
 
-- XP 面:被动收入/人才空洞、人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
+- XP 面:被动收入/人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
   xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 28)/赞美太阳/固定理财
   (即时段与位面开始段同卡两支)。(空仓已出列:条件腿世界通道 =
   `STRATEGY_EMPTY_EQUIP_XP_GRANTS` + `check_strategy_empty_equip_xp` +
   sim 节点窗挂点,evidence `xp:empty_slot`;策略侧估值零登记维持,
+  「已结构化出列」段同录。人才空洞已出列:备战席计数条件腿世界通道 =
+  `STRATEGY_BENCH_COUNT_XP_GRANTS` + `check_strategy_bench_count_xp` +
+  sim 节点窗挂点,evidence `xp:bench_count`;策略侧估值零登记维持,
   「已结构化出列」段同录。)
 - HP 面:恢复生机/健康充值(+30 生命与 30 **生命上限**——**hp_max 字段缺位**一并
   申报)/成本控制(条件回血 +15 生命上限——hp_max 第二来源)。
@@ -2323,7 +2326,13 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 `STRATEGY_EMPTY_EQUIP_XP_GRANTS`,sim 世界写 = 节点窗挂点 `xp:empty_slot`
 独立笔〔升 `xp_apply_amount` 结转,live 零写观察覆盖〕;消耗品判据词表 =
 `CONSUMABLE_EQUIP_CATEGORIES` = {工具, 特殊};即时腿随机简易入栏归
-§3.2.15 策略卡获得时点采样支;策略侧估值零登记维持)。
+§3.2.15 策略卡获得时点采样支;策略侧估值零登记维持)。人才空洞(备战席
+计数条件腿白名单 STRATEGY_BENCH_COUNT_XP_GRANTS,「备战席角色≤4名」
+每节点 +3——条件谓词 = `check_strategy_bench_count_xp` 纯判定单一源,
+计数口径 = `bench_units_of` 仅单位槽〔占位件/空槽不计,判读申报制〕,
+sim 世界写 = 节点窗挂点 `xp:bench_count` 独立笔〔升 `xp_apply_amount`
+结转,live 零写观察覆盖〕;姊妹人才济济〔≥8〕后继批 +1 行;策略侧估值
+零登记维持)。
 
 **结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/
 砂里淘金/星星相印——effect_inventory 载体会改写容器字段,写入归属见 §5.3;砂里

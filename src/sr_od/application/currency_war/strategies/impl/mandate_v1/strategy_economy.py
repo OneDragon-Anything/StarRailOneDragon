@@ -210,6 +210,12 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 空仓+:即时 10XP 走 xp_instant 通道(现金分自动激活),窗腿 2XP 同空仓
     # 谓词,装备腿 1 件简易同泛化表;估值零登记维持(随机装备不可具名)
     '空仓+': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
+    # 人才空洞:节点条件 XP 腿(备战席角色 ≤4 名每节点 +3)已建世界通道 =
+    # cw_investments.STRATEGY_BENCH_COUNT_XP_GRANTS + kernel 纯判定 +
+    # sim 节点窗挂点;条件流挂 xp_per_node 无条件通道 = 系统性失真
+    # (空仓同判),STRATEGY_ECONOMY 零条目维持
+    '人才空洞': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
+              '估值零登记维持',
     # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
     # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
     '狸财经狸': '取款分支(金<20 取 10)+存款分支(P3 首领取全部存款)无字段载体;'
