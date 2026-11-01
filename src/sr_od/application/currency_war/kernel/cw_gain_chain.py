@@ -44,6 +44,7 @@ from sr_od.application.currency_war.data.cw_chars import (
     assert_expert_names,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import (
+    CONSUMABLE_EQUIP_CATEGORIES,
     EQUIPMENTS,
 )
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
@@ -101,6 +102,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
+    STRATEGY_EMPTY_EQUIP_XP_GRANTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_EQUIP_GAIN_CONVERSIONS,
     STRATEGY_FIRST_BUY_XP_GRANTS,
@@ -1220,6 +1222,55 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
                        evidence=sim_evidence(f'xp:first_buy:{cost}'),
                        sig=obs_sig(group_id='sim:xp'))
     return amount
+
+
+def check_strategy_empty_equip_xp(gs: GameState) -> int:
+    """策略卡空仓经验检查(「进入新节点时，如果物品栏和备战席没有任何
+    装备(消耗品除外)，则获得N经验值」触发器单一源,空仓 id 202401 首例;
+    **纯读零写零 rng**——kernel 判定无 sig 形参零世界写,唯一调用点 =
+    sim 节点窗挂点写端;零 done 闩:卡面无「首次」限定,每节点窗可重复,
+    幂等归窗口守卫。live 不评估本条件(备战席单位穿戴无观察通道,结构性
+    边界非缺口;实机 XP 由游戏自算自显,经验条观察链覆盖)。
+
+    条件矩阵(顺序即短路序):
+
+    1. None 防御:策略集/物品栏/备战席任一未观察 → 0(fail-closed 与
+       「宁可漏发不误发」同向——sim 生产开局种子底座不触发,直构/单测域
+       触发);
+    2. 持卡 ∩ :data:`STRATEGY_EMPTY_EQUIP_XP_GRANTS` 为空(未持卡/表外卡
+       同路,表外卡禁从效果原文自动猜装)→ 0;
+    3. 物品栏面:逐名查 EQUIPMENTS 类别,消耗品词表
+       (``CONSUMABLE_EQUIP_CATEGORIES`` = {工具, 特殊},识别侧口径单一源)
+       内跳过;存在任意非消耗品件 → 0。名字不在册按装备计(log 留证)——
+       sim 结构性不可达(gain_equipment 发放源均注册表内),分支仅为读链
+       漂移兜底;XP 是奖励,误发 = 捏造世界真值,宁可漏发不误发;
+    4. 备战席位面:逐槽 kind='unit' 且 ``unit.equips`` 非空 → 0(占席
+       道具/书册槽非装备不涉;上阵两排与溢出位不在卡面「物品栏和备战席」
+       文义辖域——判读申报制非定谳,证伪路径 = 实机上阵穿满空仓局 XP
+       发放观察;溢出位系模型无穿戴数据的结构性边界);
+    5. 全部通过 → 返回表值 XP 量(多卡同持求和,XP 量按持卡集合计)。
+    """
+    strategies = gs.active_strategies.value
+    equips = gs.equips.value
+    bench = gs.bench.value
+    if strategies is None or equips is None or bench is None:
+        return 0
+    held = [n for n in strategies if n in STRATEGY_EMPTY_EQUIP_XP_GRANTS]
+    if not held:
+        return 0
+    for name in equips:
+        eq = EQUIPMENTS.get(name)
+        if eq is None:
+            log.warning('[cw-gain] 空仓经验物品栏名字不在装备注册表'
+                        '(读链漂移?,按装备计零发放): %r', name)
+            return 0
+        if eq.category not in CONSUMABLE_EQUIP_CATEGORIES:
+            return 0
+    for slot in bench.slots:
+        if slot.kind == 'unit' and slot.unit is not None \
+                and slot.unit.equips:
+            return 0
+    return sum(STRATEGY_EMPTY_EQUIP_XP_GRANTS[n] for n in held)
 
 
 #: 策略卡购买翻星写端署名(家族单一标识,_FIRST_BUY_XP_PRODUCER 同款

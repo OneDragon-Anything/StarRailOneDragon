@@ -95,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_battle_grants,
     check_strategy_bond_battle_grants,
     check_strategy_boss_battle_grants,
+    check_strategy_empty_equip_xp,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
@@ -2905,6 +2906,40 @@ class SimBackend:
                                     f'M13/{plane}/{r}/strategy-bond'),
             sig=logic_sig('sim:strategy'),
             producer=GAIN_CHAIN_PRODUCER)
+        # 策略卡空仓经验腿(「进入新节点时，如果物品栏和备战席没有任何装备
+        # (消耗品除外)，则获得2经验值」族,空仓首例):进窗事实点在窗口幂等
+        # 守卫内(重放不双发),kernel 检查函数单一源
+        # check_strategy_empty_equip_xp(纯读零写,未持卡/非空仓零写,零 done
+        # 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位收口
+        #(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
+        # node_char/羁绊交付;互不读对方字段,先后无行为差,同段为收口序
+        # 单一)。前置腿装备域写端对账:本挂点前唯一装备域写端 = 延时发放
+        # 两行(「好运令牌·银」工具类/「是钻石总会发光」红钻蓝钻特殊类),
+        # 发放物恰全落消耗品判据词表 {工具, 特殊} → 对条件谓词透明零行为
+        # 差;其余前置腿(轮首收入/位面环境/定时道具/开盒/boss 腿)核净非
+        # 装备域写端,谓词输入 = 窗开时刻装备状态现值。挂点钉在商店全刷前:
+        # XP 输出与同窗发牌有真实耦合(全刷直读 gs.level 取发牌概率),
+        # 先写 = 本窗发牌分布按升级后等级,与卡面「进入新节点时…获得」的
+        # 即时到账语义一致(顺序非无关,禁以后写形态表述)。live 零写观察
+        # 覆盖(实机 XP 由游戏自算自显,经验条观察链 read_xp_progress 覆盖;
+        # live 不评估条件——备战席单位穿戴无观察通道,结构性边界非缺口)。
+        # XP 世界写与节点经验/即时经验同域同组(sig 'sim:xp'),evidence
+        # 独立笔 'xp:empty_slot' 分账;零 rng 确定发放;level/xp 未观察 =
+        # 零写留待观察覆盖,禁猜(apply_node_xp 同形态)。
+        empty_xp = check_strategy_empty_equip_xp(self.gs)
+        if empty_xp > 0:
+            xp_field = self.gs.xp.value
+            level_field = self.gs.level.value
+            if xp_field is not None and level_field is not None:
+                level, cur = xp_apply_amount(int(level_field),
+                                             int(xp_field[0]), empty_xp)
+                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+                xp_sig = obs_sig(group_id='sim:xp')
+                xp_ev = sim_evidence('xp:empty_slot')
+                self.gs.observe(self.gs.level, level, evidence=xp_ev,
+                                sig=xp_sig)
+                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
+                                sig=xp_sig)
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

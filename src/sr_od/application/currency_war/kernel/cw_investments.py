@@ -4843,3 +4843,43 @@ def _validate_strategy_buy_star_flip_grants() -> None:
 
 
 _validate_strategy_buy_star_flip_grants()
+
+
+# ===== 策略卡空仓经验登记表(白名单制;「进入新节点时，如果物品栏和备战
+# ===== 席没有任何装备(消耗品除外)，则获得N经验值」节点条件 XP 族首例)=====
+# 判定单一源;消费端 = kernel/cw_gain_chain.check_strategy_empty_equip_xp
+# (纯读零写零 rng,世界写端 = sim 节点窗挂点唯一调用口;零 done 闩——卡面
+# 无「首次」限定,每节点窗可重复,幂等归窗口守卫)。表外卡一律无条目,禁从
+# 效果原文自动猜装(STRATEGY_FIRST_BUY_XP_GRANTS 同款纪律);同族后继卡
+# (姊妹展开/同触发面族)按「注册行直用本通道」接入(消耗品判据词表 =
+# data 层 CONSUMABLE_EQUIP_CATEGORIES,判据面 import,禁本地平行定义)。
+
+STRATEGY_EMPTY_EQUIP_XP_GRANTS: dict[str, int] = {
+    # 空仓:官方「进入新节点时，如果物品栏和备战席没有任何装备(消耗品
+    # 除外)，则获得2经验值。」(id 202401 原文直读,cw_invest_data
+    # .PLAZA_AUGMENTS 同 id 行;值 = 每满足一次发放的 XP 量,卡面明写;
+    # 即时腿「获得1件随机的简易装备」归 cw_gain_effects 随机装备族泛化表,
+    # 不入本表)
+    '空仓': 2,
+}
+
+
+def _validate_strategy_empty_equip_xp_grants() -> None:
+    """STRATEGY_EMPTY_EQUIP_XP_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_buy_star_flip_grants
+    docstring——本表只落孤儿键一哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。XP 量系卡面手抄常量,游戏数值改版只改「正确值」,正确转录值
+    恒为正 int(哨不响),纯笔误类值形查按治理裁定不加,对账归本表域测试
+    把关(行值精确断言 + id 对拍,防线强于 import 期形查)。"""
+    orphans = [n for n in STRATEGY_EMPTY_EQUIP_XP_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_EMPTY_EQUIP_XP_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_empty_equip_xp_grants()

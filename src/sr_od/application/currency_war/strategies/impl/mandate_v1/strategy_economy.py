@@ -201,6 +201,12 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
     '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',
+    # 空仓:节点条件 XP 腿(物品栏+备战席无装备〔消耗品除外〕每节点 +2)
+    # 已建世界通道 = cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS + kernel
+    # 纯判定 + sim 节点窗挂点;即时腿 1 件随机简易 = cw_gain_effects 随机
+    # 装备族泛化表(零估值面,无具名 gift);条件流挂 xp_per_node 无条件
+    # 通道 = 系统性失真(孪生素数同判),STRATEGY_ECONOMY 零条目维持
+    '空仓': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
     # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
     # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
     '狸财经狸': '取款分支(金<20 取 10)+存款分支(P3 首领取全部存款)无字段载体;'

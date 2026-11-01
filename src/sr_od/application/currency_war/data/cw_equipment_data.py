@@ -47,6 +47,16 @@ EQUIP_TOOL_CATEGORY: str = '工具'
 工具消费 = `CwActionToolUseOp`;禁再写本地平行定义。"""
 
 
+CONSUMABLE_EQUIP_CATEGORIES: frozenset[str] = frozenset(
+    {EQUIP_TOOL_CATEGORY, '特殊'})
+"""消耗品类别判据单一源(「工具」= 本文件 EQUIP_TOOL_CATEGORY 常量引名,
+零第二字面量;「特殊」= 宝钻/垃圾袋等杂件类,该类现无类别常量,字面只在
+此写一次)。口径出处 = 识别侧 owned 装备栏采集的混排判据(obs/recognizers/
+battle_prep_recognizer:category ∈ {工具, 特殊} = 消耗品,其余 = 装备)。
+消费 = kernel 判据面(空仓经验条件谓词 check_strategy_empty_equip_xp 的
+「消耗品除外」豁免);禁再写本地平行定义。"""
+
+
 # ===== EQUIPMENTS 全量注册表(158 件;# 特殊 17 / # 进阶 36 / # 星徽 22 / # 白昼 6 / # 特权 36 / # 简易 8 / # 工具 7 / # 命运 18 / # 骇客 8)=====
 EQUIPMENTS: dict[str, Equipment] = {e.name: e for e in [
     # —— 特殊(17) ——

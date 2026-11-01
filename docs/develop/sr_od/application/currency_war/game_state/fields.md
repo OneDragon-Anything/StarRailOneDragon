@@ -649,7 +649,8 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   泛化表 `(category, count)` 行登记,池 = `equips_by_category` 注册表派生单源、
   类别池均匀 → `gain_equipment(rand=True)` 入栏):打捞人才库+ 句2(简易池 =
   category='简易' 全集)与买彩票(选卡落地采样星徽入栏,星徽池 = category='星徽'
-  全集)两条均为随机态直写,校准归组键 = 效果串前缀 `strategy_random_equip:`,
+  全集)、空仓(id 202401 选卡落地采样简易装备入栏,同简易池)均为随机态直写,
+  校准归组键 = 效果串前缀 `strategy_random_equip:`,
   分布披露键 = `strategy_random_equip_uniform`(家族单键,类别无关 uniform v0)。
   **rand 两通道分野注记**(具名装备获得族级,新增同形腿按通道归属取值、禁跨通道
   「对齐」):同为「选卡时点获得具名装备」,env 侧即时装备支 = rand=True 恒随机态
@@ -2254,8 +2255,11 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 为 provenance):
 
 - XP 面:被动收入/人才空洞、人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
-  xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 28)/
-  空仓/赞美太阳/固定理财(即时段与位面开始段同卡两支)。
+  xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 28)/赞美太阳/固定理财
+  (即时段与位面开始段同卡两支)。(空仓已出列:条件腿世界通道 =
+  `STRATEGY_EMPTY_EQUIP_XP_GRANTS` + `check_strategy_empty_equip_xp` +
+  sim 节点窗挂点,evidence `xp:empty_slot`;策略侧估值零登记维持,
+  「已结构化出列」段同录。)
 - HP 面:恢复生机/健康充值(+30 生命与 30 **生命上限**——**hp_max 字段缺位**一并
   申报)/成本控制(条件回血 +15 生命上限——hp_max 第二来源)。
 - streak 面:嘴硬(败战维持原连胜数)。
@@ -2313,7 +2317,13 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 申报键 `'全都要·银#supply_delta'` = 本腿〕,2026-10-31 首条入册);具名装备授予:
 全员晋升(获得 2 个【拆装扳手】——装备库存精确增量,PICK_INVEST_EFFECTS
 效果体腿 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
-精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行)。
+精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行);
+节点条件 XP:空仓(「物品栏和备战席没有任何装备(消耗品除外)」每节点 +2——
+条件谓词 = `check_strategy_empty_equip_xp` 纯判定单一源,登记表 =
+`STRATEGY_EMPTY_EQUIP_XP_GRANTS`,sim 世界写 = 节点窗挂点 `xp:empty_slot`
+独立笔〔升 `xp_apply_amount` 结转,live 零写观察覆盖〕;消耗品判据词表 =
+`CONSUMABLE_EQUIP_CATEGORIES` = {工具, 特殊};即时腿随机简易入栏归
+§3.2.15 策略卡获得时点采样支;策略侧估值零登记维持)。
 
 **结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/
 砂里淘金/星星相印——effect_inventory 载体会改写容器字段,写入归属见 §5.3;砂里

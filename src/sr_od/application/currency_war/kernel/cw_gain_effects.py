@@ -444,6 +444,12 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 兑现点——卡面无「不同」限定,放回即 v0 直读);战后腿与模式卡同句
     # 同值,另立 cw_investments.STRATEGY_BOSS_BATTLE_GRANTS 行。
     '枪在手+': ('简易', 2),
+    # 空仓(id 202401)「获得1件随机的简易装备」即时腿直读行(cw_invest_
+    # data.PLAZA_AUGMENTS 同 id 行);同卡条件腿「进入新节点时,如果物品栏
+    # 和备战席没有任何装备(消耗品除外),则获得2经验值」触发时点非选卡拍,
+    # 不入本表——另立 cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS(节点
+    # 条件 XP 通道,判定 = check_strategy_empty_equip_xp)。
+    '空仓': ('简易', 1),
 }
 
 
