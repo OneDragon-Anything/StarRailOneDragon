@@ -372,11 +372,20 @@ def launch_battle_unified(op, ctx, *, face: str) -> tuple[bool, str]:
 
 
 def _prep_anchors_hit(op, screen) -> bool:
-    """备战双锚命中判定(小helper,复用身份分发锚表同款两锚;禁判据外散写)。"""
-    return (op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
+    """备战双锚命中判定(小helper,复用身份分发锚表同款两锚;禁判据外散写)。
+
+    第二锚免战子态双形态(currency_war_prep.md「跳过(N/N)」按钮替换节):
+    「免战牌」激活的战斗节点,出战按钮被替换为「跳过」(同位置)——锚只认
+    「出战」会把免战备战帧判非备战(出战前屏态复验恒 stale,出战永不发)。
+    实机 = 「按钮-跳过」OCR 锚同位可命中;sim = 后端 visible 按钮对真值。
+    """
+    if not op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
+                                 crop_first=False).is_success:
+        return False
+    return (op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
                                   crop_first=False).is_success
-            and op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
-                                      crop_first=False).is_success)
+            or op.round_by_find_area(screen, '货币战争-备战', '按钮-跳过',
+                                     crop_first=False).is_success)
 
 
 def _dispatch_pos(ctx: Any) -> tuple[int, int]:
@@ -1439,7 +1448,8 @@ class CwLoop(CwOperation):
         # 处理浮层,处理完屏名回 A 类才交还(互踢推演成立);开商店等已
         # 独立建档的备战子态同理由屏名区分。穿透双锚 _prep_anchors_hit
         # 已不用于本停机位(穿透语义会把「选择伙伴」帧误判干净备战立即
-        # 交还,与路由③互踢)——其本体与另外三处「底图判定」调用点不动。
+        # 交还,与路由③互踢)——其本体不动,调用点 = _launch_screen_recheck
+        # (出战前屏态复验)与阶段二备战认领两处(语义分界 = exit_chain §3)。
         if self._stop_at_prep and get_in_match_screen_name(
                 self.ctx, screen) in PREP_DIRECT_EXIT_SCREENS:
             return self.round_success('已到可交还退出调度的备战态(含免战)')
@@ -1559,11 +1569,17 @@ class CwLoop(CwOperation):
         # 1. 备战阶段 → 备战单轮 op(CwScreenPrep 单轮五段:观察→对账→决策→
         #    期望态→执行,结束本次访问本循环; P3b 返工定稿:内环已拆,外循环是
         #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在阶段一身份分发处理。
-        # 画面判定 = **双锚**(用户定调「全面的 id mark」):「备战标识-购买经验」
-        # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
-        # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
-        if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
-                and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
+        # 画面判定 = **双锚**(用户定调「全面的 id mark」;第二锚含免战子态
+        # 形态——「按钮-跳过」定位锚非 id_mark,标记它会破坏备战档身份):第一锚
+        # 「备战标识-购买经验」(左下,conf 0.9999)+ 第二锚「按钮-出战」(右,跨
+        # shop 开/关子态恒在;单锚在 overlay 半开帧可从底层透出命中,prep.md
+        # §时序)∨「按钮-跳过」。第二锚免战子态双形态(currency_war_prep.md
+        # 「跳过(N/N)」按钮替换节):免战牌激活的战斗节点出战按钮被「跳过」
+        # 替换——只认出战则免战备战帧落未知兜底,连续未识别触顶整局报废
+        # (sim 实证 seed 20261015)。两锚同位区(rect 跳过略宽,覆盖
+        # 「跳过(N/N)」计数文本,lcs 收紧 0.9);误命中需同帧命中第一锚,
+        # 仅备战系布局成立。判定单一源 = _prep_anchors_hit(禁散写)。
+        if _prep_anchors_hit(self, screen):
             self._fallback_clear_pending()
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已停用, §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
