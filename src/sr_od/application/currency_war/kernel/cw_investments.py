@@ -4228,6 +4228,48 @@ def _validate_strategy_encounter_battle_grants() -> None:
 _validate_strategy_encounter_battle_grants()
 
 
+# ===== 策略首领战后发放注册表(枪在手;白名单制)=====
+# 「首领节点战斗结算后世界发放」策略域:键 = 策略规范名,值 = (装备类别
+# 词, 件数) 扁平二元组(单档;多档族卡出现时沿表值形状泛化先例扩序列,
+# 本批不预泛化——首例触发器形状单一)。触发面 = boss 节点战斗结算(节点
+# 类型条件内嵌于触发函数,表不设节点键——扩形状各建各表,设计
+# designs/T-105-yizhan-yangzhan.md §2.1 口径);发放物 = 随机装备(类别
+# 池采样),与 STRATEGY_ENCOUNTER_BATTLE_GRANTS(占席道具确定发放)形状
+# 异构故不共表。卡面无「胜利」限定 = 败局存活也发、无「首次」限定 =
+# 可重复(无 done 闩,防重归调用方节点键幂等守卫);live 零写观察覆盖
+# (装备入栏有画面真值可读,实机局不接本通道)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_boss_battle_grants(触发
+# 检查单一源,唯一调用点 = sim 结算腿)。
+STRATEGY_BOSS_BATTLE_GRANTS: dict[str, tuple[str, int]] = {
+    # 每次 boss 节点战斗结算后 1 件随机简易装备(枪在手 id 200501 原文
+    # 直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行;同卡「立刻获得」即时
+    # 腿 = cw_gain_effects._STRATEGY_RANDOM_EQUIP_GRANTS 泛化表行,两腿
+    # 触发时点异构分表)
+    '枪在手': ('简易', 1),
+}
+
+
+def _validate_strategy_boss_battle_grants() -> None:
+    """STRATEGY_BOSS_BATTLE_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_encounter_battle_grants
+    docstring——本表只落孤儿键一哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。类别词/件数为手抄常量,纯笔误类按治理裁定不加值形/件数查;
+    类别池随注册表传导,池空属数据面事故非本表职责(泛化表族既定裁定),
+    运行期走触发函数 log 防御分支零写兜底,对账归表域测试。"""
+    orphans = [n for n in STRATEGY_BOSS_BATTLE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BOSS_BATTLE_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_boss_battle_grants()
+
+
 # ===== 策略卡胜利结算条件金注册表(招财狗;白名单制)=====
 # 「战斗胜利后，若未损失小队生命值，则每有一个佩佩就会为你提供1金币」
 # 策略域首例:键 = 策略规范名,值 = 每佩佩金数。表外策略一律无条目,

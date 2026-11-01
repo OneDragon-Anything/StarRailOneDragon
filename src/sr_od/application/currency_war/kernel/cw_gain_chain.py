@@ -64,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_gain_effects import (
     _STRATEGY_CHAR_GRANT_BINDINGS,
     PICK_INVEST_EFFECTS,
+    roll_random_equip,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
@@ -86,6 +87,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
+    STRATEGY_BOSS_BATTLE_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
@@ -1356,6 +1358,80 @@ def check_strategy_hp_loss_grants(gs: GameState, hp_lost: int, *,
                        producer=producer)
         granted.append(name)
     return gold, granted
+
+
+#: 策略卡首领战后发放写端署名(家族单一标识,_BATTLE_GRANT_PRODUCER/
+#: _HP_LOSS_GRANT_PRODUCER 同款家族纪律;写端 = 本模块
+#: check_strategy_boss_battle_grants,sim 结算位发放刻,新写端新名不沿用
+#: 链缺省伪装连续)。
+_BOSS_BATTLE_GRANT_PRODUCER: str = 'strategy_boss_battle_grant'
+
+
+def check_strategy_boss_battle_grants(gs: GameState, node_kind: str,
+                                      sig: ChannelSig,
+                                      rng: random.Random | None = None,
+                                      ) -> tuple[str, ...]:
+    """策略卡首领战后随机装备发放检查(「首领战后,获得1件随机简易装备」
+    触发器单一源,枪在手 id 200501 首例;唯一调用点 = sim 结算腿——live
+    零写观察覆盖:装备入栏有画面真值可读,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序,check_strategy_battle_grants 形态;逐序返回
+    空 = 未发放):
+
+    1. ``node_kind != 'boss'`` →()(节点类型条件;kind = 调用方传结算点
+       现值,修饰局场字段改写天然跟随零特判——人身意外险 boss 位后移/
+       战争边疆 P3 boss 位保留,两类修饰均不改 boss 位 kind);
+    2. 逐持卡(active_strategies 容器直读)查 STRATEGY_BOSS_BATTLE_
+       GRANTS,表外卡零条目跳过(集合语义:多卡同持各自独立判定发放;
+       表外卡禁从效果原文自动猜装);
+    3. 逐持卡逐档:池 = ``equips_by_category(表载类别)``,池空 → log
+       防御分支零写(注册表漂移,不炸链;泛化随机装备族既定裁定——池随
+       注册表传导,池空属数据面事故);采样复用
+       ``cw_gain_effects.roll_random_equip``(单一采样源,禁第二采样表达
+       式,披露键 ``strategy_random_equip_uniform`` 同源)→
+       ``gain_equipment(rand=True, sig=入参 sig, producer=家族常量)``
+       (evidence ``strategy_boss_battle#<卡名>``,原语内追加 ``#equip``
+       后缀;rand=True = 采样效果子链,gain-chain.md §5);
+    4. 返回实际发放装备名序列(断言面;sim 调用点忽略返回值,live 无
+       调用点——live 零写)。
+
+    纪律标注:
+
+    - **含 rng**(装备采样):rng 形参缺省回退自掷 = 采样是猜测口径,正式
+      消费 = sim 传流键(check_env_boss_grants/check_strategy_hp_loss_
+      grants 逐函数标注纪律同款);
+    - **sig 单形态**:logic 族入参(装备写 logic 渠道随机态);
+    - **无 done 闩**(可重复):卡面无「首次」限定 = 每次 boss 节点战斗
+      后都发(现役日程三位面末位 boss,一局最多 3 次);防重 = 调用方
+      节点键幂等守卫,本函数零二次守卫;
+    - **败局存活也发**:卡面无「胜利」限定 = 胜败两态共同路径直读(挂点
+      在败局待办登记之前);死亡局在调用方提前 return 处已出局不发放;
+    - **双持不可能**(active_strategies 按名去重)→ 无判重闸(现役不设防
+      申报);单成员机制域,同族新卡入表随批裁流键粒度。
+    """
+    if node_kind != 'boss':
+        return ()
+    granted: list[str] = []
+    for name in gs.active_strategies.value or ():
+        spec = STRATEGY_BOSS_BATTLE_GRANTS.get(name)
+        if spec is None:
+            continue
+        category, count = spec
+        # 池空防御同源取池(正常路径与采样器同源,零第二采样表达式;
+        # roll_random_equip 纯采样零防御面,池空哨归本函数)
+        pool = equips_by_category(category)
+        if not pool:
+            log.warning(f'[cw-gain] 随机装备类别池空(注册表漂移?):'
+                        f'{name} category={category!r}')
+            continue
+        eq_rng = rng if rng is not None else random.Random()
+        for _ in range(count):
+            equip = roll_random_equip(eq_rng, category)
+            gain_equipment(gs, equip, rand=True, sig=sig,
+                           evidence=f'strategy_boss_battle#{name}',
+                           producer=_BOSS_BATTLE_GRANT_PRODUCER)
+            granted.append(equip)
+    return tuple(granted)
 
 
 #: 策略卡每节点绑定角色复制发放写端署名(家族单一标识,_CONDITIONAL_

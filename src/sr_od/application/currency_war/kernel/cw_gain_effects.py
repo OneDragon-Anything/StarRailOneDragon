@@ -434,6 +434,11 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 经原语时被转换腿拦截消费——净得 1 箱,rng 消耗序不变(先掷后转),
     # 非特例豁免(设计 designs/T-143-ziyou-shichang.md §2.1)。
     '自由市场': ('简易', 1),
+    # 枪在手(id 200501)「立刻获得1件随机简易装备」即时腿直读行(cw_
+    # invest_data.PLAZA_AUGMENTS 同 id 行);同卡战后腿「首领战后,获得
+    # 1件随机简易装备」触发时点非选卡拍,不入本表——另立
+    # cw_investments.STRATEGY_BOSS_BATTLE_GRANTS(扩形状各建各表)。
+    '枪在手': ('简易', 1),
 }
 
 

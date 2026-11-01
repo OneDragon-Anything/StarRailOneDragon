@@ -92,6 +92,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_boss_battle_grants,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
@@ -3277,6 +3278,22 @@ class SimBackend:
             self.disclosures.setdefault(
                 STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
                 'bucket_carry_truth_diff_battle_only_v0')
+        # —— 策略卡首领战后随机装备发放(枪在手 id 200501 首例;接线点 =
+        # 策略卡损血腿之后、败局待办登记之前,胜败两态共同路径——卡面无
+        # 「胜利」限定 = 败局存活也发;死亡局在本函数提前 return 处已出局,
+        # 不发放)。条件单一源 = kernel check_strategy_boss_battle_grants
+        # (登记表 STRATEGY_BOSS_BATTLE_GRANTS,node_kind 传本函数结算点
+        # 现值 kind,修饰局场字段改写天然跟随零特判);sig =
+        # logic_sig('sim:strategy') 沿策略战后发放腿同组;rng = 独立子流
+        # 键 M13/{p}/{r}/boss-grant(装备采样专用,禁复用 M13 主流实例——
+        # 独立子流 = 同 seed 其他流零扰动,'ins' 键同构先例);幂等零新增
+        # 守卫 = 本函数 _settled_key(同节点重放整段跳过);返回值忽略
+        # (无回调面);live 零写观察覆盖(装备入栏有画面真值可读)。
+        check_strategy_boss_battle_grants(
+            self.gs, kind,
+            sig=logic_sig('sim:strategy'),
+            rng=stream_rng(self.seed,
+                           f'M13/{node.plane}/{node.round_num}/boss-grant'))
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

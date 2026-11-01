@@ -375,6 +375,43 @@ None → 宁缺勿造;④gold 现值 None → 宁缺勿造**不封账**(本函�
   经验源扩网后零改激活。本表登记第二行时单笔返回契约会漏「局终同拍
   双卡双就绪」第二笔,届点 = 第二行登记批改列表返回或调用方循环。
 
+### 2.15 策略卡首领战后随机装备发放检查腿 check_strategy_boss_battle_grants(结算位)
+
+`check_strategy_boss_battle_grants(gs, node_kind, sig, rng=None) -> tuple[str, ...]`
+——策略卡「首领战后,获得1件随机简易装备」通道(首例枪在手 id 200501,
+登记表 = `cw_investments.STRATEGY_BOSS_BATTLE_GRANTS` 白名单:键 = 策略
+规范名,值 = (装备类别词, 件数) 扁平二元组)的唯一检查本体,策略卡战后
+触发族第三形状(boss 触发 + 随机装备采样双新形状,限策略域;与 §2.11
+占席道具确定发放/§2.13 胜利条件金形状异构故各建各表,同族禁另立平行
+通道)。条件矩阵三序(序即短路序,§2.11 形态):①`node_kind != 'boss'`
+→ 空(节点类型条件内嵌于触发函数,表不设节点键;修饰局 boss 位 kind
+不变天然跟随);②逐持卡查登记表,表外卡零条目跳过;③逐持卡逐档:池 =
+`equips_by_category(表载类别)`,池空 log 防御分支零写(池随注册表传导,
+池空属数据面事故,泛化随机装备族既定裁定),采样复用
+`cw_gain_effects.roll_random_equip` 单一采样源 →
+`gain_equipment(rand=True)`,返回实际发放装备名序列(断言面;sim 调用点
+忽略返回值,live 无调用点)。
+
+- **挂点 = sim 结算腿**(现役唯一调用点 = `cw_sim_backend._resolve_battle`,
+  策略卡损血腿之后、败局待办登记之前,胜败两态共同路径——卡面无
+  「胜利」限定 = 败局存活也发;死亡局在 `_game_over` 提前 return 处已
+  出局不发放。幂等零新增守卫 = `_settled_key` 节点键,同节点战斗重放
+  整段跳过);**live 零写观察覆盖**(装备入栏有画面真值可读;判读面
+  缺口 = live 遥测无「首领战后 +1 随机简易」归因行,与 §2.11 箱腿 live
+  零写判读缺口同性质)。
+- **无 done 闩(可重复)**:卡面无「首次」限定 = 每次 boss 节点战斗后
+  都发(现役日程三位面末位 boss,一局最多 3 次);防重归调用方节点键
+  守卫,本函数零二次守卫。双持不可能(active_strategies 按名去重)→
+  无判重闸。
+- **写约定**:sig 由调用方传入(sim = `logic_sig('sim:strategy')`,§2.11
+  同组);evidence = `strategy_boss_battle#<卡名>`(`gain_equipment`
+  原语内追加 `#equip` 后缀),producer = `strategy_boss_battle_grant`
+  (家族单一标识,§2.11 同款新写端新名);rng = sim 独立子流键
+  `M13/{位面}/{轮}/boss-grant`(装备采样专用,与 §2.10 家族「新采样点
+  须独立流键」纪律同源;形参缺省回退自掷 = 猜测口径,正式消费 = sim
+  传流键);采样分布假设骑随机装备族披露键 `strategy_random_equip_uniform`
+  (类别无关单键,校准源按 evidence 前缀分列互不污染,零新增键)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果
