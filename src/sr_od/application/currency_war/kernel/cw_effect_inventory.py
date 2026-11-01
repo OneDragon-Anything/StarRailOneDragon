@@ -189,6 +189,7 @@ class CounterKey:
     REFRESH_TOTAL = 'refresh_total'   # 刷新全量累计(免费+付费;二手市场阈值评估)
     REFRESH_PAID = 'refresh_paid'     # 付费刷新累计(长线利好「花费金币进行30次刷新」)
     XP_GRANTED = 'xp_granted'   # 升级窗口已发放节点数(成功经验;写端唯一 = 发放桥 grant_effect_node_xp,窗口耗尽判定读本键)
+    LOST = 'lost'   # 超发货币负债额快照(拿卡拍持有金;写端唯一 = 获得链登记腿播值 kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数,禁猜测写;消费端 = sim 清零/回流两腿世界真值)
 
 
 # ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====

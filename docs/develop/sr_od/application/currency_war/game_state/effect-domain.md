@@ -96,19 +96,21 @@
   现金为王的护盾余量)= 实例内 counters 键值承载,**不设独立 state 字段、不扩
   payload**。先例 = 超发货币负债额(impacts §3 超发货币条目);其余随逐条确定流程
   落 impacts 条目后即为已登记先例。
-- **与现行载体的等价申报**:现行 `ActiveEffect`(kernel/cw_effect_inventory.py:128-139)
+- **与现行载体的等价申报**:现行 `ActiveEffect`(kernel/cw_effect_inventory.py:
+  class `ActiveEffect` :254,余期/计数器字段区 :265-278)
   以 `remaining_nodes`/`remaining_uses`(递减余期)+ `counters`(单调计数)三维承载。
   递减余期与单调 counter **语义等价**:`remaining ≡ N − counter`,且共用同一推进守卫
   (§7.3 节点推进);差异是表示法与导出侧,不是语义分叉。表示法迁移归实施批,批位
   候用户裁决(§10-1);迁移完成前,效果域语义按等价式读取。播种双轨现状:登记时
   N_NODES 类播 `remaining_nodes=duration_nodes`、`duration_uses>0` 播
-  `remaining_uses=duration_uses`(`register_strategy`,:164-177)。
+  `remaining_uses=duration_uses`(`register_strategy` 播种链 `_seed_progress`
+  :343/`_register` :353,登记口 `register_strategy` :365)。
 - 实例生命周期 = 登记 → 推进(计数/发放)→ 移除(到期/用尽);once 类无推进维度,
   登记后即历史。移除同时点的一次性发放 = **尾款**(到期/到点金面,见 §7.3)。
 
 ## 5. 分类清单(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **43 条,实码全量**(构建层校验与数据层
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **47 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
 加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
 ——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项;含
@@ -132,7 +134,7 @@ unit_buff);词缀源
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
-| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:618)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 容器落位 = `strategy_gold_next_nodes_left` 递减形〔fields.md §3.2.26e〕,counter 口径正本 = strategy-env-impacts.md 用户裁决段) |
+| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:681)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 容器落位 = `strategy_gold_next_nodes_left` 递减形〔fields.md §3.2.26e〕,counter 口径正本 = strategy-env-impacts.md 用户裁决段) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(§7.4,N=1 事件直结退化形) |
 | 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
 | 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
@@ -261,10 +263,19 @@ unit_buff);词缀源
   per_node_pick_node_grant.md`,证据分级 A 原文)。登记期发放「每效果×节点至多
   一次」由结构保证(发放接入点唯一 + 一次拿卡单事件),不设去重状态。
 - **到期与尾款**:到期条目移除 = 尾款触发面;尾款金面走**观察覆盖兜底**,禁到期接入点
-  logic 直写金币防双计(`advance_node` 契约,:234-236);确需单列逻辑写的建模者
-  (如超发货币回流分支)按 impacts 条目申报接线。
-- **登记接入点纪律**:登记面 best-effort,失败不阻塞选卡主链(cw_screen_invest_strategy.py
-  :424-454);递减/消耗接入点与登记接入点解耦——登记面缺位的局 `consume_use` 返回 None
+  logic 直写金币防双计(`advance_node` 契约,`cw_effect_inventory.advance_node`
+  docstring 尾款行);确需单列逻辑写的建模者
+  (如超发货币回流分支)按 impacts 条目申报接线。超发货币接线现状(2026-11 实现批):
+  live 零写(游戏自扣自发,金整字段观察覆盖兜底),回流 = sim 节点窗世界腿。
+  **t=5/6 对表**:注册行 `gold_at_node_offset=5`(cw_investments.py:681)的 offset
+  语义 =「须完整过去的节点数」,发放入口序 = offset+1 = 拿卡后第 6 次节点入口
+  (单一源 = strategy-env-impacts.md 超发货币条目用户裁定 2026-09-10
+  「5个节点后=第6个节点才获取」;载体表达 = STRATEGY_EFFECTS 条目 duration_nodes=6)。
+- **登记接入点纪律**:登记面 best-effort,失败不阻塞选卡主链(登记挂点 = 获得链
+  `kernel/cw_gain_chain.py::gain_invest_strategy` ②,选卡上报函数族驱动;唯一生产
+  调用方 = 动作 op `operations/cw_op/cw_pick_invest_action.py`——原画面 op 写点
+  cw_screen_invest_strategy.py:424-454 已停用退役);递减/消耗接入点与登记接入点解耦
+  ——登记面缺位的局 `consume_use` 返回 None
   零动作,保守端 = 记录缺失,不虚构递减(:261-275)。词缀源登记接入点 = 词缀读链产出点
   `cw_affix_effects.register_affixes_from_names`(简报屏/位面详情屏两链,§7.6)。
   **portal(投资环境)效果登记接入点** = 获得链 `kernel/cw_gain_chain.py::

@@ -2468,10 +2468,14 @@ cw_opening_hp,,禁第二份数值源)。实例登记端=`register_affix`(播种�
 
 #### 超发货币(两条效果)
 
-选卡失去现有全部金 → t+5 回流「失去额+70」(**非恒 70**)。归属=逻辑写入,两条
-分支:①负债分支——选卡时点金币→0(write_logic 直写);②回流分支——失去额快照+70
-@t+5(失去额暂存=effect_inventory 条目计数器键 counters['lost'];账本形状无独立
-payload 位)。
+选卡失去现有全部金 → t+5 回流「失去额+70」(**非恒 70**)。已落地:负债额 X =
+effect_inventory 条目计数器键 `counters[CounterKey.LOST]`(播值端 = 获得链登记腿
+`gain_invest_strategy` 登记帧金读数,禁猜测写;账本形状无独立 payload 位);
+STRATEGY_EFFECTS 条目在册(id 202501,duration_nodes=6 = 发放入口序 = 注册行
+gold_at_node_offset+1)。两条分支 live **零写金**(游戏自扣自发,金整字段观察覆盖
+兜底);sim 世界真值两腿:①清零腿——选卡落地拍(evidence
+`strategy:hyperemit_drain:<卡名>`);②回流腿——第 6 入口节点窗先付(evidence
+`strategy:hyperemit:<卡名>:p{plane}r{r}`,支付入本窗息基数,与定期福利同向)。
 
 #### 成长基金(9 级 +40)
 

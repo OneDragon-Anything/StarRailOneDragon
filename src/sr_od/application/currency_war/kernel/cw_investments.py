@@ -757,6 +757,14 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
 # 首条语义全引 cw_invest_data 官方原文;二义条目 pending=True + notes 保守支,不拍死——
 # 定案后回填 verdict(单一语义以实采为准)。
 # 边界:只产策略源;环境('portal')/词缀('affix')双源注册属环境/词缀效果适用范围,此处不建其条目。
+# ===== 超发货币单卡判别常量(金面播值负债卡首例)=====
+# 负债播值腿(kernel 获得链登记腿)与 sim 清零/回流两腿共用的条目判别键,
+# 集中此处防字面量散落(cw_gain_chain/cw_sim_backend 双消费)。与注册表的
+# 一致性由 _validate_strategy_effects id 双匹配闸兜底(漂移 import 即炸),
+# 键×id 对拍另有测试直锁。
+HYPEREMIT_SPEC_ID: str = '202501'
+HYPEREMIT_SPEC_NAME: str = '超发货币'
+
 STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 淘金客:官方「你每次消耗金币刷新商店,都会获得2经验值」;免费刷不产 XP(「消耗金币」
     # 文本充分;实采复核待办)。姿态谓词/CwActionLevelUpParam 抑制属淘金客姿态面适用范围,现不接。
@@ -1535,6 +1543,34 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'bot 仅登记;随机目标效果不入具名打分,选卡估值恒 off(策略'
               '默认不选);无离散触发事件消费,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 超发货币:官方「失去你现在所有的金币，并在5个节点后，获得该金币数+70
+    # 的总金币。」(cw_invest_data.py:139,id 202501)。金面播值负债卡首例,
+    # 两腿分治:负债分支 = 拿卡拍持有金 G→0(X=G 快照);回流分支 = 拿卡后
+    # 第 6 次节点入口一次性回流 G+70,条目同拍移除,不重发不补发。
+    # duration_nodes=6 = 触发入口序的载体表达——发放入口序 = 注册行
+    # gold_at_node_offset(5)+1,换算依据 = strategy-env-impacts.md 超发货币
+    # 条目用户裁定(2026-09-10)「5个节点后=第6个节点才获取」。负债额 X =
+    # 实例 counters[CounterKey.LOST] 伴生数值空间(fields.md §5.3 处方载体,
+    # effect-domain §4 伴生数值空间先例),播值端 = 获得链登记腿
+    #(kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数)。live 零写金
+    #(游戏自扣自发,金整字段观察覆盖兜底——effect-domain「到期与尾款」
+    # 防双计裁定;impacts 条目「逻辑写」字样的实现位 = sim 世界写端);
+    # sim 两腿 = 世界真值(清零腿挂选卡落地拍、回流腿挂节点窗推进锚
+    # pre-read 两拍,evidence 前缀 strategy:hyperemit_drain:<卡名> /
+    # strategy:hyperemit:<卡名>:p{plane}r{r})。duties 全空:余期推进 =
+    # N_NODES 结构自动,回流发放不住 duties(消费面 = sim 世界腿直读
+    # 条目,登记与消费分离现役形态)。不入 STRATEGY_DELAYED_GRANTS 族表:
+    # 发放物为金不入物品词表族表(族表构建校验发放物闸在码亦拒),回流
+    # 载体 = 本条目单载体制(sim 腿消费条目,零第二份状态)。
+    '超发货币': EffectSpec(
+        id='202501', name='超发货币', trigger=TriggerKind.CONDITIONAL,
+        duration=DurationKind.N_NODES, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['超发货币'], duties=DutyFlags(),
+        duration_nodes=6,
+        notes='负债拍播值 counters[LOST] = 登记帧金读数(获得链登记腿);'
+              '回流 = 拿卡后第 6 次节点入口(入口序 = offset+1,impacts '
+              '用户裁定 2026-09-10);live 零写观察覆盖,sim 世界真值两挂点;'
+              '发放物为金不入 STRATEGY_DELAYED_GRANTS 物品词表族表'),
 }
 
 

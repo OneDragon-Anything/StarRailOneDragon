@@ -57,6 +57,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
+    CounterKey,
     EffectKind,
     TriggerKind,
     _portal_acquired_key,
@@ -93,6 +94,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_BOSS_GRANTS,
     ENV_GIFTS,
     ENV_REROLL_NAMES,
+    HYPEREMIT_SPEC_ID,
     INVESTMENT_ENVS,
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
@@ -131,6 +133,9 @@ GAIN_CHAIN_PRODUCER: str = 'CwGainChain'
 DEFECT_OVERFLOW_TAKEN: str = 'gain_chain_overflow_slot_taken'
 DEFECT_PORTAL_REGISTER: str = 'gain_chain_portal_register_failed'
 DEFECT_STRATEGY_REGISTER: str = 'gain_chain_strategy_register_failed'
+#: 超发货币负债播值跳过 kind(登记帧金读数 None):负债额计数缺省 +
+#: 缺陷留存证据,禁猜测写(零新增披露键,保守形态 = 本台账行承载)。
+DEFECT_LOST_GOLD_UNREAD: str = 'gain_chain_lost_counter_gold_unread'
 DEFECT_COND_BENCH_UNOBSERVED: str = 'gain_chain_cond_bench_unobserved'
 
 #: 无效载荷拒绝 kind(策略/环境名归一后为空/'?'——零写 + 留存证据;无效输入
@@ -1907,7 +1912,9 @@ def gain_invest_strategy(gs: GameState, session: object,
        策略时,按名字去重就行了」;跳写后登记/效果分支照常);
     2. **效果账本登记**(best-effort:`session=None` = 跳过[局外/测试
        形态],容器写照常):``STRATEGY_EFFECTS`` 归一名命中 →
-       ``effects.register_strategy`` + burst 桥 ``apply_effect_burst_grant``
+       ``effects.register_strategy`` + 负债播值腿(超发货币单卡:登记帧
+       金读数快照入 ``counters[CounterKey.LOST]``,金读数 None = 缺陷
+       留存证据禁猜测写)+ burst 桥 ``apply_effect_burst_grant``
        + 位面段补发桥 ``apply_effect_plane_refire_grant``(用户裁定
        2026-11-01:中途拿卡所在已开始位面登记拍全额补发)
        + 板面重写桥 ``apply_board_rewrite``
@@ -1947,7 +1954,22 @@ def gain_invest_strategy(gs: GameState, session: object,
             if _spec is not None:
                 _key = _portal_acquired_key(gs, session)
                 _frame = _node_frame(gs)
-                gs.effects.register_strategy(_spec, _key)
+                _entry = gs.effects.register_strategy(_spec, _key)
+                # 金面播值负债卡首例(超发货币):登记帧金读数快照入条目
+                # counters[LOST](fields.md §5.3 处方载体,effect-domain §4
+                # 伴生数值空间;live 读数 = 观察值,sim 读数 = 世界真值)。
+                # 本播值 = 容器簿记非金写,live 行为零变化;金读数 None =
+                # 计数缺省 + 缺陷留存证据(禁猜测写)。
+                if _spec.id == HYPEREMIT_SPEC_ID:
+                    _gold = gs.gold.value
+                    if _gold is None:
+                        _emit_defect(field_name='gold',
+                                     expected='登记帧金读数在场(负债额播值)',
+                                     actual=f'gold={_gold!r}',
+                                     evidence=f'gain_invest_strategy:{canon}',
+                                     sig=sig, kind=DEFECT_LOST_GOLD_UNREAD)
+                    else:
+                        _entry.counters[CounterKey.LOST] = int(_gold)
                 apply_effect_burst_grant(gs, _spec, frame=_frame)
                 # 位面段中途拿卡补发(用户裁定 2026-11-01 拍定):登记时点
                 # 当前位面已开始 → 该位面段刷新支登记拍全额补发,后续位面

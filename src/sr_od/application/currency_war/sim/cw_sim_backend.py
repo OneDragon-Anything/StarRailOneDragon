@@ -76,6 +76,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BOARD_REWRITE_SELL_ALL_DEAL,
+    CounterKey,
 )
 from sr_od.application.currency_war.kernel.cw_env_grants import (
     check_env_boss_grants,
@@ -131,6 +132,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_ASSUMPTION_POOL,
     ENV_REROLL_NAMES,
     ENV_SUPPLY_EQUIP_COUNT,
+    HYPEREMIT_SPEC_ID,
+    HYPEREMIT_SPEC_NAME,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
     STRATEGY_DELAYED_GRANTS,
@@ -1571,6 +1574,19 @@ class SimBackend:
     #: 同上)。
     _strategy_pick_plane_refire_latch: bool | None = field(init=False,
                                                            default=None)
+    #: 策略选卡超发货币负债腿呈现闩(与前置六闩同点置位同拍消费,独立
+    #: 不共享——七腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 收益)。防重放实害 = 窗内重放会把金清零笔二次申报(负债清零本身
+    #: −0 幂等,但金已为 0 短路下重放连证据笔都不应再出——闩使重放零
+    #: 动作零噪声)。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    _strategy_pick_hyperemit_drain_latch: bool | None = field(
+        init=False, default=None)
+    #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
+    #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
+    #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
+    #: 声明见 :meth:`_enter_node_window` 回流腿注释。
+    _hyperemit_payoff_pending: tuple[str, int] | None = field(
+        init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -2404,6 +2420,42 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_gold_next_nodes_init(self.gs, picked)
+        # 选卡落地拍超发货币负债腿(金面播值负债卡清零支,世界真值补全):
+        # live 同拍零写(游戏自扣,金整字段观察覆盖收口,金面禁直写三锚
+        # T-85 定形)。判别三重:呈现闩防重放(前腿同形)→ 本拍拿卡名判别
+        #(呈现候选 ∩ 持有列表,前置各腿同款推导;条目在册不能单独作本拍
+        # 信号——条目生命跨 6 个节点入口,窗内后继拿卡事件「在册」仍真,
+        # 只按条目判会误清后继窗累积收入)→ 条目在册校验(单载体制:条目
+        # = 获得链登记产物,兼负债额快照载体;条目缺 = bypass 路径未经
+        # 获得链,保守零动作 + disclosures 留证——零新增披露键,内联运行
+        # 时键承载保守形态)。动作:负债额读 counters[LOST](缺播防御 =
+        # 以扣减前金现值兜底同值);金清零写独立证据笔
+        # strategy:hyperemit_drain:<卡名>(−G 增量 = 写前金 − 0,金轨迹
+        # 对账可导);金已为 0 短路零写(重放 −0 幂等,T-177 同写点同形
+        # 防御取舍)。位置 = 链尾独立笔:与前置各腿零交互(非注册表字段
+        # 分派,条目判别);扣后下一窗利息按扣后金算,自然跟随。
+        if not opening and self._strategy_pick_hyperemit_drain_latch:
+            self._strategy_pick_hyperemit_drain_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if HYPEREMIT_SPEC_NAME in picked:
+                _em = self.gs.effects.first(HYPEREMIT_SPEC_ID)
+                if _em is None:
+                    self.disclosures.setdefault(
+                        'strategy_hyperemit_bypass_no_entry',
+                        'picked_without_registered_effect_entry')
+                else:
+                    gold_now = int(self.gs.gold.value or 0)
+                    if gold_now > 0:
+                        _lost = int(_em.counters.get(CounterKey.LOST,
+                                                     gold_now))
+                        tag = f'strategy:hyperemit_drain:{_em.spec.name}'
+                        self.gs.observe(self.gs.gold, 0,
+                                        evidence=sim_evidence(tag),
+                                        sig=obs_sig(group_id='sim:strategy'))
+                        log.info('[cw-sim] 超发货币负债腿:%s 清零 '
+                                 '(快照 %s,现持 %s,增量 −%s)',
+                                 _em.spec.name, _lost, gold_now, gold_now)
         self._after_modal_pick(opening=opening)
 
     def _on_open_box(self) -> None:
@@ -2624,6 +2676,46 @@ class SimBackend:
                         sig=obs_sig(group_id='sim:node'))
         # 节点序位锚定(sim 写端 = 世界呈现节点,与实机「备战帧顶栏/补给屏
         # 节点条」观察锚定同口;终结动作推进的观察态门以此为前提)。
+        # 超发货币回流腿(金面播值负债卡回流支,前读两拍跨窗挂起形):
+        # 拍① = 窗内现读条目——remaining_nodes == 1 即「下一入口 = 第 6 次
+        # 入口」(remaining ≡ N − counter 等价式;第 6 次节点入口 = 注册行
+        # offset+1,impacts 用户裁定 2026-09-10),快照回流额 = counters[LOST]
+        # + payload.gold_at_node 挂起;拍② = 下一窗开窗先付挂起额一笔,
+        # evidence 笔 strategy:hyperemit:<卡名>:p{plane}r{r}。跨窗挂起的
+        # 机制根因:sim 动作流的节点效果递减发生在动作上报路径
+        #(kernel advance_node_effective 尾段,settle_confirm/supply_finish
+        # 上报内)先于本方法——窗口内现读恒为 tick 后状态,条目归零移除
+        # 已随第 6 入口的转换 tick 发生,本方法内无 pre-tick 可读位;挂起
+        # 值 = 设计稿「前读值」概念的跨窗承载(设计稿锚前提 = 推进锚执行
+        # 递减,经引擎链实测在 sim 动作流不成立,批次报告随批申报)。持久
+        # 状态仍只有条目一份:挂起值 = 一次性消费单窗暂态(呈现闩同形
+        # 私有暂态,不入容器/不入快照恢复),一次性消费即自防重;局终未
+        # 消费挂起随局蒸发不补发。发放点先于 _begin_node_window 收入段
+        # = 支付入本窗利息基数(与定期福利 T-162 落账入基数序同向,禁
+        # 静默分叉);位面过渡早退分支在本腿之后 → 位面首入口照常回流
+        #(计数域 = 节点入口事件全型,supply/reward/battle/boss/修饰局
+        # 插入节点照计数,T-106 判例)。live 零写(游戏自发,金整字段
+        # 观察覆盖兜底)。
+        # 拍② 先行:上一窗挂起的回流额在本窗开窗先付(本窗 = 第 6 次入口;
+        # 支付先于本窗收入段 = 入息基数,T-162 同向)。
+        if self._hyperemit_payoff_pending is not None:
+            _em_name, _amount = self._hyperemit_payoff_pending
+            self._hyperemit_payoff_pending = None
+            tag = f'strategy:hyperemit:{_em_name}:p{pos[0]}r{pos[1]}'
+            self.gs.observe(
+                self.gs.gold, int(self.gs.gold.value or 0) + _amount,
+                evidence=sim_evidence(tag),
+                sig=obs_sig(group_id='sim:strategy'))
+            log.info('[cw-sim] 超发货币回流腿:%s + %s(第 6 入口,p%sr%s)',
+                     _em_name, _amount, pos[0], pos[1])
+        # 拍① 后行:本窗现读条目——remaining_nodes == 1 即「下一入口 =
+        # 第 6 次入口」,快照回流额挂起待下一窗支付。
+        _em = self.gs.effects.first(HYPEREMIT_SPEC_ID)
+        if _em is not None and _em.remaining_nodes == 1:
+            self._hyperemit_payoff_pending = (
+                _em.spec.name,
+                int(_em.counters.get(CounterKey.LOST, 0))
+                + int(getattr(_em.spec.payload, 'gold_at_node', 0) or 0))
         observe_node_anchor(self.gs, pos,
                             trigger_screen=self._screen_for_node(kind),
                             actor='SimBackend')
@@ -3040,6 +3132,8 @@ class SimBackend:
             self._strategy_pick_gold_next_nodes_latch = True
             # 位面段补发腿闩同点置位(六腿独立闩同形;防重放窗同界)。
             self._strategy_pick_plane_refire_latch = True
+            # 超发货币负债腿闩同点置位(七腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_hyperemit_drain_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3119,12 +3213,14 @@ class SimBackend:
         self._sub = ''
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置;分期
-        # 金初始化腿闩同形照置;位面段补发腿闩同形照置。
+        # 金初始化腿闩同形照置;位面段补发腿闩同形照置;超发货币负债腿
+        # 闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
         self._strategy_pick_gold_next_nodes_latch = True
         self._strategy_pick_plane_refire_latch = True
+        self._strategy_pick_hyperemit_drain_latch = True
         # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         self._offer_refreshable = False
