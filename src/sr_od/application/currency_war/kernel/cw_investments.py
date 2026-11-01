@@ -859,7 +859,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(free_refresh_on_node_enter=2, auto_buy_owned=True),
         duties=DutyFlags(track=True, predict=True),
-        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(W610-P1 §1.5-6 挂时序实采)'),
+        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(挂时序实证归采集批);腿3 自动购买零登记 = bot 双端零响应(触发面型① eligible 载体未建,scoped 决策禁落放弃表防锚死后继族);召唤单位零建模,实机名待族级实机取证批'),
     # 采购专员·金/彩:官方「每7/5次刷新,商店会刷出5张费用相同的角色,费用为你备战席
     # 最左侧角色的费用」。刷新计数器走 inventory counters[CounterKey.REFRESH]。
     '采购专员·金': EffectSpec(
