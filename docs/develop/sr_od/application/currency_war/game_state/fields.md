@@ -124,7 +124,9 @@ False)、晶矿附着/声明三域
 (ore_rewards {}/ore_declared_pending ()/ore_declared_done ()——域值恒非 None,
 幂等守卫 membership 判定与挂接入口合并写零 None 防御,§3.2.8a/§3.2.8b)、环境
 条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)、策略卡
-条件发放已发标记(strategy_conditional_done ()——同族恒非 None,§3.2.26a)。
+条件发放已发标记(strategy_conditional_done ()——同族恒非 None,§3.2.26a)、
+绑定型随机角色授予名字绑定域(strategy_char_grant_bindings {}——同族恒非
+None,§3.2.26c)。
 种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/席位锚定标志位等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未置位本体)。
@@ -741,7 +743,7 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   随机面走随机组);星核猎手契约(同战斗发流萤);节节高升(发 2★、费用=等级−4
   最小 1 费——星级/费用确定,进席身份若随机则身份面走随机组)。
 - **随机/待证面(身份随机或构成未证)=不建逻辑写,交由观察收尾**:大扩招(随机 4 费至多 10 个)、砂里淘金
-  (发【砂金】,星级未证暂随本组)、天降救兵、价值投资、援军族、
+  (发【砂金】,星级未证暂随本组)、天降救兵、援军族、
   全都要·银/金/彩、劳务派遣合同、人力重组(live 观察覆盖;sim 发牌面
   由后端发牌腿承接世界真值直写,§5.3 人力重组行 sim 语义申报);
   愚者恶作剧已移出本族
@@ -777,6 +779,19 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   工厂按表内对序循环,逐档费用档注册池内均匀采样 `gain_character(1★, rand=True)`
   走获得链固定时序落位/回调/合成,校准面 = `logic_rand_outcome` 行,均匀分布未实测
   待校准)。
+  价值投资·金——绑定型随机角色授予(获得时点腿 + 每节点复制腿双分支,2026-11-01
+  随本卡建模批移入本组):获得时点腿 = 采样发放 1 名 2★1费(登记表
+  `cw_gain_effects._STRATEGY_CHAR_GRANT_BINDINGS`:(费用档, 名数, 到手星级),
+  表驱动生成式注册;1 费池全档均匀放回 → `gain_character(2★, rand=True)` 走
+  获得链固定时序,采样即世界真值 sim/live 猜测写观察纠偏,校准面 =
+  `logic_rand_outcome` 行按效果串前缀 `strategy_gift_random:` 归组,星级 2★ =
+  desc 明写结构值非先验)伴生 **sim 门控写绑定**(`gs.strategy_char_grant_
+  bindings`,live 零写,§3.2.26c);每节点复制腿 = sim 节点窗收口世界真值发放
+  (kernel `cw_gain_chain.check_strategy_node_char_grants`:每节点窗 1 名 1★
+  绑定同名、补给后继窗 3 名,零 rng 确定发放;live 零写观察覆盖——实机复制
+  单位由游戏自发入席,下一备战帧 bench 整表观察覆盖)。「补给后」读法 = 前一
+  进入节点为补给 → 本次进入 1+2=3 名;拿卡当节点不发放 = 选卡发生在节点窗
+  offer 段、绑定写入晚于本窗复制腿的自然形态。
   武装支援——组合双腿混发(组合登记 `cw_gain_effects.PICK_INVEST_EFFECTS['武装支援']`:
   卡文「获得1件随机简易装备和2个随机3费角色。」按卡文语序装备腿先/角色腿后,效果体 =
   组合子 `_compose_grant_legs` 按形参序逐腿调用、两腿共享同一 rng 顺序推进〔掷序契约:
@@ -1091,6 +1106,41 @@ id/倒计时/发放物,白名单制;构建校验只留漂移哨——孤儿键 +
 pending_strategy_offers 种子族)。
 
 **域归属**:独立键 `pending_strategy_grants`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。
+
+#### 3.2.26c 绑定型随机角色授予名字绑定域 strategy_char_grant_bindings
+
+**语义**:绑定型随机角色授予卡(价值投资·金 id 200401 首例:「获得1个
+随机的2星1费角色。每次进入新节点时，获得1星的该角色，补给后额外获得
+2个，持续至本局游戏结束。」)的**名字身份绑定域**——获得时点采样掷得
+的角色名落账于此,作为每节点复制发放腿(「获得1星的该角色」)的唯一
+确定性解析源(直接从备战席现值派生不可行:玩家可出售/再合成原单位,
+desc 无「在场」条件,绑定 = 名字身份随局存续)。键 = 注册表卡规范名
+(单一源 = `cw_gain_effects._STRATEGY_CHAR_GRANT_BINDINGS`,白名单制);
+值 = 绑定角色规范名;缺键 = 未绑定。与 `strategy_conditional_done`
+(§3.2.26a)分域:本域为持续型值(逐节点发放判据,局内存续),非
+「首次」布尔闩;双持姊妹卡各键并存,零判重闸(持卡按名去重,键天然
+唯一)。
+
+**写入方**:唯一逻辑写入方 = 获得效果体采样后 sim 门控写
+(`cw_gain_effects._make_bound_char_grant_effect`:采样发放完成后,
+`sim_backend_installed()` True → `write_logic` 合并 `{卡名: 名}`,
+evidence `value_invest_bind:<卡名>:<名>`;live 零写——掷骰是猜测,假
+绑定静默存续不可接受:本域为复制发放腿唯一判据且无观察纠偏通道)。**
+无观察写入方**——掷骰结果非画面可读面。链式契约权威版本 =
+[gain-chain.md](gain-chain.md) §2(检查腿 `check_strategy_node_char_
+grants` docstring)。
+
+**消费端**:唯一 = sim 节点窗收口复制发放腿 `cw_gain_chain.
+check_strategy_node_char_grants`(每节点窗 1 名 1★ 绑定同名、补给后继
+窗 1+2=3 名,零 rng 确定发放;持卡未绑定 = 状态机缺口,defect 留证
+fail-closed 零发放);live 局复制发放腿结构性零触发,域恒空 = live
+正常态。
+
+**开局预填初值**:{}(每局全新创建即持空 dict,A 类;同
+pending_item_grants 种子族)。
+
+**域归属**:独立键 `strategy_char_grant_bindings`(§3.7.1;独立键先例 =
 env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
 ### 3.3 商店开态(覆盖在备战画面之上)

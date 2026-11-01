@@ -277,6 +277,13 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # cw_gain_chain 检查腿 docstring)。独立
                                 # 键版本 1,同 env_grants_done 先例不
                                 # 并入他域 bump——他域本体未变
+    'strategy_char_grant_bindings': 1,  # 绑定型随机角色授予名字绑定域
+                                # (键 = 卡规范名,值 = 获得时点采样掷得
+                                # 的绑定角色名;每节点复制发放腿唯一发放
+                                # 判据,获得效果体 sim 门控写,live 零写
+                                # = live 局复制发放腿结构性零触发)。独立
+                                # 键版本 1,同 env_grants_done 先例不
+                                # 并入他域 bump——他域本体未变
     'strategy_hp_loss_accum': 1,  # 损血档位触发累积器(保险;周期型
                                 # 触发器全程累计实际损血,发放刻取模,
                                 # 无 done 闩;int 保型直通免 rebuild
@@ -2325,6 +2332,10 @@ def seed_opening_state(gs: GameState) -> None:
     # 策略卡条件发放已发标记(空底座,同 env_grants_done 种子族先例
     # ——域值恒非 None,检查腿跳过判定 membership 零 None 防御)
     _seed(gs.strategy_conditional_done, ())
+    # 绑定型随机角色授予名字绑定域(空底座,同 pending_item_grants 种子
+    # 族先例——域值恒非 None,复制发放腿键查判定零 None 防御;空 dict =
+    # 未持绑定卡的正常态)
+    _seed(gs.strategy_char_grant_bindings, {})
     # 损血档位触发累积器(零底座,同 env_grant_uid_seq 计数器种子族
     # 先例——域值恒非 None,触发函数累加取模零 None 防御;0 = 无累积
     # 语义中性,种 0 不伪装已触发,gs-opening-seed A/B/C 判据 A 类)
@@ -2665,6 +2676,23 @@ class GameState:
     # 递减/重置不存在)。恢复局随快照存续 = 中断恢复对局不重发(rebuild
     # tuple 化登记,env_grants_done 先例)。开局种子底座 = ()(A 类)。
     strategy_conditional_done: Field[tuple[str, ...]] = field(
+        default_factory=Field)
+    # [索引定义] strategy_char_grant_bindings = 绑定型随机角色授予的名字
+    # 绑定域(获得效果体采样腿伴生,价值投资·金首例:「获得1个随机的
+    # 2星1费角色。每次进入新节点时,获得1星的该角色,补给后额外获得2个」
+    # ——「该角色」= 名字身份绑定,出售/再合成原单位不影响复制发放,
+    # desc 无「在场」条件)。键 = 注册表卡规范名,值 = 获得时点采样掷得
+    # 的绑定角色规范名;缺键 = 未绑定。写端声明:唯一逻辑写端 = 获得效果
+    # 体采样后 sim 门控写(cw_gain_effects._make_bound_char_grant_effect
+    # ——绑定即世界真值才可落账),无观察写端——绑定是掷骰结果非画面
+    # 可读面;live 局零写(掷骰是猜测,假绑定静默存续不可接受——本域
+    # 为复制发放腿唯一发放判据且无观察纠偏通道),复制发放腿
+    # (cw_gain_chain.check_strategy_node_char_grants)live 结构性零触发
+    # ,域恒空 = live 正常态。与 strategy_conditional_done 分域:本域为
+    # 持续型值(逐节点发放判据,局内存续),非「首次」布尔闩。开局种子
+    # 底座 = {}(A 类,同 pending_item_grants 种子族先例);双持姊妹卡
+    # 各键并存,零判重闸(持卡按名去重,键天然唯一)。
+    strategy_char_grant_bindings: Field[dict[str, str]] = field(
         default_factory=Field)
     # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
     # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。
@@ -4802,6 +4830,12 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # list-of-str,元素 = 规范卡名);随快照存续 = 恢复局不重发
         # (检查腿跳过判定天然闭合)。
         'strategy_conditional_done': lambda d: tuple(str(x) for x in d),
+        # 绑定型随机角色授予名字绑定域:str→str 键值双显式化重建
+        # (dict 值形 _json_safe 本就直透,显式化 = 重建面单一声明点,
+        # 防快照路径键/值类型漂移静默半态);随快照存续 = 恢复局复制
+        # 发放腿判据不丢。
+        'strategy_char_grant_bindings': lambda d: {
+            str(k): str(v) for k, v in d.items()},
         # 惊喜盒板件 ⏳N 读数观察域(迭代 2026-10-19-giftbox-piece-obs):
         # tuple 化重建(_json_safe 落快照为 list,int 保型);随快照存续
         # = 恢复局最近上报帧读数不丢(滞留语义不变)。

@@ -263,6 +263,17 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '读端——发放记账过程量(同族行先例 = env_grants_done/'
               'ore_declared_done);唯一逻辑写端 = cw_gain_chain.'
               'check_strategy_hp_loss_grants'),
+    'strategy_char_grant_bindings': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='绑定型随机角色授予名字绑定域(键 = 卡规范名,值 = 获得时点'
+              '采样掷得的绑定角色名;持续型值非「首次」布尔闩,与 '
+              'strategy_conditional_done 分域),无观察读端——掷骰结果非'
+              '画面可读面;唯一逻辑写端 = cw_gain_effects.'
+              '_make_bound_char_grant_effect(采样后 sim 门控写,live 零写'
+              ':live 掷骰是猜测且本域为复制发放腿唯一判据,假绑定静默存续'
+              '不可接受);消费端 = cw_gain_chain.'
+              'check_strategy_node_char_grants(持卡未绑定 fail-closed 零'
+              '发放留证 gain_chain_strategy_char_bind_missing)'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

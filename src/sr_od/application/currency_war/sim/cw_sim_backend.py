@@ -95,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
+    check_strategy_node_char_grants,
     check_strategy_win_gold_grants,
     discharge_due_item_grants,
     discharge_due_item_opens,
@@ -2625,6 +2626,31 @@ class SimBackend:
                 gain_invest_strategy(self.gs, None, _name, rand=False,
                                      sig=logic_sig('sim:env'),
                                      rng=_pick_rng)
+        # 策略卡每节点绑定角色复制发放腿(「每次进入新节点时,获得1星的
+        # 该角色,补给后额外获得2个」族,价值投资·金首例):进窗事实点在
+        # 窗口幂等守卫内(重放不双发),kernel 检查函数单一源
+        # check_strategy_node_char_grants(持卡 ∩ 绑定域驱动,未持卡零
+        # 写)。与同段多腿邻位收口(定时道具/开盒/boss 发放/boss 金/尾款
+        # 金/直发取卡;互不读对方字段,先后无行为差,同段为收口序单一)
+        # ——挂点在商店全刷前:「每次进入新节点时」= 本窗内最早段,复制
+        # 单位先于本窗商店发牌落席。prev_kind 现值推导(调用方现算,不
+        # 新增存储):同位面取前序位;r=1 跨位面取前位面序列末位(现役
+        # 日程三位面末位恒 boss → 「补给后」跨位面不可达,分支为防御
+        # 代码,节点改写环境扩册自动正确);P1r1 无前节点 = None(基础
+        # 1 名照发)。零 rng 确定发放 → rand=False 语义由检查腿内定;
+        # live 零写观察覆盖(实机复制单位由游戏自发入席,下一备战帧
+        # bench 整表观察覆盖);sig 组名 'sim:strategy'(策略世界发放
+        # 家族,与延时发放 'sim:strategy_grant' 分组,本腿零采样)。
+        _seqs = self.gs.node_seq_by_plane.value
+        _cur_seq = node_sequence_of(plane, _seqs)
+        if r >= 2:
+            _prev_kind: str | None = _cur_seq[r - 2]
+        elif plane >= 2:
+            _prev_kind = node_sequence_of(plane - 1, _seqs)[-1]
+        else:
+            _prev_kind = None
+        check_strategy_node_char_grants(self.gs, prev_kind=_prev_kind,
+                                        sig=logic_sig('sim:strategy'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

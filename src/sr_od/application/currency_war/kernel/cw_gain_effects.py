@@ -274,6 +274,116 @@ def _make_reinforcement_effect(
     return _effect
 
 
+# ===== 绑定型随机角色授予族效果(策略卡获得时点随机角色发放 + 名字绑定:
+# ===== 采样池/掷序复用援军族单一源,差异 = 到手星级表载 + 采样后 sim 门
+# ===== 控写绑定域,供每节点复制发放腿消费;族首卡 = 价值投资·金(卡面
+# ===== cw_invest_data.py 200401:「获得1个随机的2星1费角色。每次进入新
+# ===== 节点时,获得1星的该角色,补给后额外获得2个,持续至本局游戏结束。」),
+# ===== 姊妹价值投资·彩(2星2费同构)+1 行复用本表)=====
+
+#: 随机角色授予族采样分布披露键(家族常量,收编援军族在册两键——uniform
+#: v0 = 费用档注册池内均匀未实测 / with_replacement = 放回抽样申报;本卡
+#: 零新增键内容。star 维不随本族设键:绑定卡到手星级 = desc 明写结构值
+#: 非先验,star 先验键 ``strategy_gift_random_char_star_prior`` 仍属援军
+#: 族三键常量 :data:`REINFORCEMENT_ASSUMPTION_KEYS`,不随本族携带。消费
+#: 面 = 实测校准与披露清单,在册先例 = 同区家族常量形)。
+STRATEGY_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_gift_random_char_uniform',
+    'strategy_gift_random_char_with_replacement',
+)
+
+#: 绑定型随机角色授予表单一源(卡规范名 → (费用档, 名数, 到手星级)):
+#: 援军族表形 (费用档, 名数) 的显式 star 维扩展(星级行 = 卡文「2星」
+#: 明写结构值,非援军族未标星先验;末元星级的族形修订由族首例卡携带)。
+#: 效果体条目由下方工厂从本表
+#: 生成,禁另写字面量(援军/箱腿同纪律:表与效果体两处独立字面量的漂移
+#: 在备战断言不可见,唯一致性测试与落位真值可暴露)。绑定名消费面 =
+#: 每节点复制发放腿(cw_gain_chain.check_strategy_node_char_grants),
+#: 绑定承载域 = GameState.strategy_char_grant_bindings。
+_STRATEGY_CHAR_GRANT_BINDINGS: dict[str, tuple[int, int, int]] = {
+    '价值投资·金': (1, 1, 2),
+}
+
+
+def _make_bound_char_grant_effect(
+        card: str, cost: int, count: int, star: int) -> Callable[..., list[str]]:
+    """绑定型随机角色授予效果体工厂(闭包销 = (卡规范名, 费用档, 名数,
+    到手星级),单源取自 :data:`_STRATEGY_CHAR_GRANT_BINDINGS`;形态镜像
+    _make_reinforcement_effect,差异 = 星级表载 + 采样后写绑定域)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
+    cw_gain_chain.on_strategy_gained)。逐名采样 → ``gain_character``
+    入席:采样 = :func:`random_char_pool` 注册表派生池(规格
+    ``RandomCharSpec(cost, star=star)``,禁 chars_by_cost 第二采样源,
+    援军族 import 方向声明同款)内均匀放回抽 count 名(援军族掷序契约:
+    批内同 rng 顺序推进不重置,抽重可复现为设计语义);前置值域校验
+    cost ∈ 1..5 ∧ star ∈ 1..3 → ValueError(cost=0 系统单位不入随机
+    发放池,援军族同款哨;star 值域 = Unit.star 合法域,越界 = 表行
+    笔误响应亮);采样效果对子链传 rand=True(gain-chain.md §5),升星
+    级联/席满溢出/bench 未观察拒落全沿链现役。效果串
+    ``strategy_gift_random:<名>@<star>star``(前缀 + @ 后缀一体登记:
+    @ 后缀 = 随机态校准数据归组键,只断前缀会漏校准分组)。
+
+    **采样后 sim 门控写绑定**(本族独有腿,每节点复制发放腿的唯一发放
+    判据):kernel→sim.ports 函数内惰性 import(在码先例 =
+    cw_gain_chain.check_strategy_star_merge_gold/check_strategy_first_
+    buy_xp_grants)——``sim_backend_installed()`` True → 绑定即世界
+    真值,``gs.write_logic`` 直写 ``gs.strategy_char_grant_bindings``
+    合并 ``{卡名: 名}``(多卡同局双持各键并存;evidence
+    ``value_invest_bind:<卡名>:<名>``);False(live)→ 零写绑定:live
+    掷骰是猜测(效果串面下一备战帧观察纠偏),假绑定即使无消费面也禁
+    入容器——绑定域无观察纠偏通道且为复制发放腿唯一判据,假绑定静默
+    存续不可接受(同码先例 = cw_gain_chain.on_env_gained 随机装备绑定
+    分支无条件双端写,其域有 done 键随写可对账,本域刻意更严)。
+
+    **拿卡当节点不发**(申报为读法非缺陷):选卡发生在该节点窗 offer
+    段,窗已开、本窗复制发放腿已走完,绑定写入晚于本窗腿 = 自然从下一
+    节点起发放,「每次进入新节点时」文义自洽。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿/援军先例,
+        # 模块 docstring import 方向声明)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_character,
+        )
+        if cost not in (1, 2, 3, 4, 5) or star not in (1, 2, 3):
+            raise ValueError(
+                f'绑定型随机角色授予表值越界:cost={cost!r} star={star!r}'
+                f'(合法域 cost 1-5 / star 1-3;cost=0 系统单位不入随机'
+                f'发放池,star 值域 = Unit.star 合法域)')
+        steps: list[str] = []
+        picked: list[str] = []
+        pool = random_char_pool(RandomCharSpec(cost=cost, star=star))
+        for _ in range(count):
+            name = rng.choice(pool)
+            picked.append(name)
+            gain_character(gs, name, star, rand=True, sig=sig,
+                           evidence='pick_invest_bound_char',
+                           producer=_PRODUCER)
+            steps.append(f'strategy_gift_random:{name}@{star}star')
+        # 采样后 sim 门控写绑定(放在发放循环后:掷序契约 = 采样全部
+        # 完成再落账,掷点顺序与援军族同构可复现;live 零写禁假绑定入
+        # 容器——复制发放腿唯一判据,假值静默存续不可接受)
+        from sr_od.application.currency_war.sim.cw_sim_ports import (
+            sim_backend_installed,
+        )
+        if sim_backend_installed():
+            # 绑定名 = 现役表行 count=1 的采样名;count>1 行「该角色」
+            # 指代未载(卡文单数),绑定语义归其登记批裁,禁 picked[0]
+            # 静默代答——届时在登记面显式补语义。
+            merged = dict(gs.strategy_char_grant_bindings.value or {})
+            merged[card] = picked[0]
+            gs.write_logic(gs.strategy_char_grant_bindings, merged,
+                           produced_by=_PRODUCER,
+                           evidence=f'value_invest_bind:{card}:{picked[0]}',
+                           sig=sig)
+        return steps
+
+    return _effect
+
+
 # ===== 随机装备族效果(策略卡获得时点随机装备发放:类别池均匀 v0 掷骰
 # ===== count 件 → 逐件 gain_equipment(rand=True) 入栏,骇客
 # ===== roll_hacker_mod + gain_equipment 现役同构;首例 = 打捞人才库+
@@ -744,6 +854,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '无害垃圾': _make_named_equip_grant_effect('垃圾袋', 1),
     **{name: _make_char_grant_effect(char)
        for name, char in _STRATEGY_CHAR_GRANTS.items()},
+    # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
+    # 2星1费角色。每次进入新节点时,获得1星的该角色,补给后额外获得2个」):
+    # 生成式注册条由工厂自 _STRATEGY_CHAR_GRANT_BINDINGS 生成(表与效果体
+    # 禁两处字面量,援军族同纪律);获得时点腿 = 采样发放 + sim 门控写
+    # 绑定域,每节点复制腿归 sim 节点窗收口(check_strategy_node_char_
+    # grants),两腿分治。
+    **{name: _make_bound_char_grant_effect(name, *spec)
+       for name, spec in _STRATEGY_CHAR_GRANT_BINDINGS.items()},
     **{name: _make_delayed_offer_effect(name)
        for name in STRATEGY_DELAYED_OFFERS},
     **{name: _make_delayed_grant_effect(name)
