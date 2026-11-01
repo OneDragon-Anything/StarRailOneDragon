@@ -1324,6 +1324,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '幸运一击乘区节,非盲区形态)游戏侧自算,bot 仅登记;'
               '无离散触发事件消费,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 延迟收益:官方「在战斗开始100行动值后，我方小队伤害增幅提高40%。」
+    # (cw_invest_data PlazaAugment 200701,再生件不挂行号——版本更新重跑
+    # gen_plaza_invest.py 行号必漂)。战力类零响应登记(EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记零响应」),登记形态 = UNIT_BUFF 族零响应形。
+    # 触发条件(战斗开始后行动值累计达 100,战斗中评估;行动值读数定义正本
+    # 无机制条目,判读申报制)由游戏在战斗中评估,bot 零消费、读数不接线;
+    # 无板面/备战席写入面,归 UNIT_BUFF 零响应形(非容量/槽位约束载体);
+    # 数值(伤害增幅 40%)由游戏自算。
+    '延迟收益': EffectSpec(
+        id='200701', name='延迟收益',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '200701')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族展开卡);'
+              '触发(战斗开始后行动值达 100,战斗中评估)与数值(伤害增幅 40%)游戏侧自算,'
+              'bot 仅登记;无离散触发事件消费,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
