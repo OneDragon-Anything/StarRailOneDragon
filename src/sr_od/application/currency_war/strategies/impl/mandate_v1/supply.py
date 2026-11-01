@@ -56,7 +56,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_economy import effective_cost
 from sr_od.application.currency_war.kernel.cw_equip_value import (
     equip_tier,
     pick_equipment,
@@ -157,6 +156,12 @@ def _rank_char_candidates(
     2)。幸存者按新牌虚拟排序键赋值,返回按键升序(键小 = 优先级高,
     取首位)。判定全程快照纯计算零遥测(禁容器深拷贝,
     acquisition-and-sell §1)。
+
+    装配 = 统一入口 :func:`priority.assemble_candidate_eval`(候选评估
+    装配整函数,与商店获取让位同一实现;域差异仅候选牌三件套——补给
+    候选恒 1★、选卡零成本)。候选不进档 1 保护(裁定五 2026-11-01:
+    补给沿用统一优先级,候选 = 假设性入场者按卡面档定序,与商店 X 同
+    款;同名凑星价值由档 2 成员星目标聚合承载)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         BENCH_CAPACITY,
@@ -166,14 +171,8 @@ def _rank_char_candidates(
         mandate,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
-        HeldUnit,
-        ShopUnit,
-        assemble_priority_context,
-        priority_rng_of,
+        assemble_candidate_eval,
         sort_key,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-        predicates,
     )
     frame = mandate.snapshot_frame(gs)
     out: list[tuple[SupplyOption, PriorityKey]] = []
@@ -186,47 +185,20 @@ def _rank_char_candidates(
         _n_items = sum(1 for b in frame.bench
                        if bench_slot_unit(b) is None)
         displacement = BENCH_CAPACITY - _n_items - len(sim.bench) <= 0
-        v_bench = [bs for _i, bs in sim.bench]
-        v_frame = mandate.MandateFrame(
-            gold=frame.gold, level=frame.level, bench=v_bench,
-            deployed=sim.field, deploy_cap=frame.deploy_cap,
-            node_type=frame.node_type, stop_flag=False,
-            k_members=frame.k_members, round_num=frame.round_num,
-            overflow_warning=frame.overflow_warning)
-        prep = mandate.assemble_prep_context(gs, gs, v_frame)
-        target = mandate.select_deployment(v_frame, prep)
-        # 虚拟持牌全量快照(聚合谓词看虚拟局面全量,与获取角色流程
-        # 同口径)。
-        v_copies: dict[str, list[int]] = {}
-        for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
-            if u is not None and u.char_id:
-                v_copies.setdefault(str(u.char_id), []).append(
-                    int(u.star or 1))
-        ctx = assemble_priority_context(
-            gs, gs, deployed_names=target, held_copies=v_copies,
-            rng=priority_rng_of(gs, config))
-        # 补给入席单位恒 1★(旧凑星判据同口径);牌面费用档 = 实费档
-        # 现查(未注册名 → 0 → 中费保守估,shop 侧同款口径)。排序池 =
-        # 存量牌(HeldUnit,在手旗标 0)+ 新牌(ShopUnit,将获取旗标 1)
-        # ——虚拟备战位里的新牌本体不重复入池(origin 哨兵),否则新牌
-        # 的在手影子会抢在其 ShopUnit 之前、末位判定失真。
-        new_unit = ShopUnit(o.char, 1, effective_cost(gs, o.char) or 3)
-        units: list[HeldUnit | ShopUnit] = []
-        for orig, bs in sim.bench:
-            if orig >= len(frame.bench):
-                continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
-            u = bench_slot_unit(bs)
-            if u is None or not u.char_id:
-                continue
-            if predicates.is_unsellable_system_unit(str(u.char_id)):
-                # 系统召唤单位(cost=0)物理门(与获取角色流程同款):
-                # 不可卖 + 实费档缺失按中费 3 估产生无意义排序键;
-                # 席位占用仍由虚拟局面如实承载。
-                continue
-            units.append(HeldUnit(
-                str(u.char_id), int(u.star or 1), orig, False,
-                cost=(effective_cost(gs, str(u.char_id)) or None)))
-        units.append(new_unit)
+        # 部署定型:virtual 两半传升星连锁模拟产物,虚拟定型真实消费
+        # 候选置入的虚拟局面(升星连锁合成/换人定型均被感知;原「构造
+        # v_frame 传第一参」形态 = 定型读真实容器、候选从未进定型,
+        # 已随统一装配修复——第一参本就是生产路径形参,virtual 分派
+        # 不消费它)。
+        prep = mandate.assemble_prep_context(gs, gs, frame)
+        target = mandate.select_deployment(
+            frame, prep,
+            virtual_bench=[bs for _i, bs in sim.bench],
+            virtual_field=sim.field)
+        ctx, units = assemble_candidate_eval(
+            gs, gs, sim=sim, base_bench_len=len(frame.bench),
+            target=target, name=str(o.char), star=1, cost=0,
+            config=config)
         # 排序定位一次求键(禁第二排序实现:判定消费 sort_key 本体,
         # 升序末位 = 最先让路 = 键最大者)。
         if displacement:
@@ -236,7 +208,7 @@ def _rank_char_candidates(
                 continue   # 末位 = 新牌自己(最易让路)→ 被虚拟阵容淘汰
             out.append((o, keys[-1]))
         else:
-            out.append((o, sort_key(new_unit, ctx)))
+            out.append((o, sort_key(units[-1], ctx)))
     out.sort(key=lambda t: t[1])
     return out
 

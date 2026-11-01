@@ -1,0 +1,12 @@
+# 补给统一优先级（supply-unified）
+
+## 文档
+- 设计总纲:[design.md](design.md)
+- 落地:随设计对抗收敛后并入本文档（小迭代，单阶段）
+
+## 背景
+母迭代「统一优先级三面收敛」（2026-10-30-roster-plane1-union）收尾时申报的 supply 三件耦合遗留，用户裁定核心问题后立项。
+
+## 进度
+- 迭代设计:✅ 一轮对抗收敛（attack-round1.md,10 项零阻断全处置）;落地段已并入 design §5
+- 落地:✅ 单阶段完成——提取件 `priority.assemble_candidate_eval`（三段一体）/supply 传参修复（virtual 两半接线,v_frame 死参收敛删除）/补给池统一部署外全集/候选零成本;正本 30 号篇 §2.1 统一语义声明 + 01↔11 互指清定;测试 = test_supply 旧凑星用例退役迁移 + supply/test_decide.py 五用例（翻转锁/档 2 承载/收编反例/field 比较域/两域同键,红验双向实证检定力）;CW 快速集 2674 全绿。

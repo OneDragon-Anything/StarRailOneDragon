@@ -90,7 +90,6 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     card_cost,
-    effective_cost,
     effective_refresh_prob,
     in_must_spend_zone,
     interest,
@@ -1151,8 +1150,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
             HeldUnit,
             ShopUnit,
-            assemble_priority_context,
-            priority_rng_of,
+            assemble_candidate_eval,
             sell_order_with_keys,
         )
         # 受限会话前置(S7-4/S9-6):真源读口现算,非 visit 快照字面闸。
@@ -1186,57 +1184,14 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         prep = mandate.assemble_prep_context(session, gs, frame)
         target_plus = mandate.select_deployment(
             frame, prep, virtual_bench=v_bench, virtual_field=sim.field)
-        # 步 4:排序池 = 部署外件全集(虚拟局面聚合谓词输入 + 实况基准
-        # 装配,3.1 对审定案:held_copies 注入虚拟快照,need_star/
-        # stay_target/member_rank 按实况现算——方向保守,误差只会多保护)。
-        v_copies: dict[str, list[int]] = {}
-        for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
-            if u is not None and u.char_id:
-                v_copies.setdefault(str(u.char_id), []).append(
-                    int(u.star or 1))
-        # X 不进档 1 保护(步 4 申报语义):X 与场上/bench 持件有同羁绊
-        # 标签搭档时段 2 DP 会凑档把 X 收编进虚拟定型,X 名进 target →
-        # 档 1 按名命中 → X 自我保护、末位失稳。deployed_names 剔除 X 名
-        # (X 按卡面价值参与排序);target 名集本体不剔除——虚拟定型仍
-        # 含 X 参与板面构成,存量件的档 1 排除面(下方两处 in target_plus
-        # 过滤)不因 X 剔除而变化。
-        ctx = assemble_priority_context(
-            session, gs,
-            deployed_names=frozenset(target_plus) - {_name},
-            held_copies=v_copies,
-            rng=priority_rng_of(session, config))
-        # 存量牌以 HeldUnit(在手旗标 0)承载,新牌以 ShopUnit(将获取
-        # 旗标 1)承载——虚拟备战位里的新牌本体不重复入池(origin 哨兵
-        # = len(frame.bench)),否则新牌的在手影子会抢在其 ShopUnit 之前、
-        # 末位判定失真。
-        units: list[HeldUnit | ShopUnit] = []
-        for orig, bs in sim.bench:
-            if orig >= len(frame.bench):
-                continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
-            u = bench_slot_unit(bs)
-            if u is None or not u.char_id:
-                continue
-            if predicates.is_unsellable_system_unit(str(u.char_id)):
-                # 系统召唤单位(cost=0)物理门:不可卖 + 实费档缺失会按
-                # 中费 3 估产生无意义排序键(F-2);席位占用仍由虚拟局面
-                # 如实承载(不入池 ≠ 不入 sim)。
-                continue
-            if str(u.char_id) in target_plus:
-                continue   # 档 1(部署定型内,按名命中)不入让位池
-            units.append(HeldUnit(
-                str(u.char_id), int(u.star or 1), orig, False,
-                cost=(effective_cost(gs, str(u.char_id)) or None)))
-        for _di, u in enumerate(sim.field):
-            if u is None or not u.char_id:
-                continue
-            if predicates.is_unsellable_system_unit(str(u.char_id)):
-                continue
-            if str(u.char_id) in target_plus:
-                continue
-            units.append(HeldUnit(
-                str(u.char_id), int(u.star or 1), _di, True,
-                cost=(effective_cost(gs, str(u.char_id)) or None)))
-        units.append(ShopUnit(_name, _star, cost))
+        # 步 4:候选评估装配 = 统一入口(与补给选角同一实现;X 不进
+        # 档 1 保护/部署外全集池/虚拟持牌快照聚合三段一体,域差异仅
+        # 候选牌三件套——商店 X 按牌面带费。段内语义与 X 收编形态的
+        # 自我保护防线见 assemble_candidate_eval docstring)。
+        ctx, units = assemble_candidate_eval(
+            session, gs, sim=sim, base_bench_len=len(frame.bench),
+            target=target_plus, name=_name, star=_star, cost=cost,
+            config=config)
         keyed = sell_order_with_keys(units, ctx)
         _prefixes = [k[:-1] for _u, k in keyed]
 

@@ -45,6 +45,9 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        SimAcquisition,
+    )
 
 #: 排序键 = (档位, *档内子键, 退金损失, 在手旗标, 随机尾键),字典序比较;
 #: 同档子键定长,跨档比较在档位分量即分出(元组比较短路,无跨型比较)。
@@ -286,6 +289,96 @@ def assemble_priority_context(
 #: 随机流派生流的策略器 scratch 挂载键(键名 = 本模块前缀,mandate_state
 #: scratch 命名纪律;生命周期 = 局级,状态对象每局冷建自然隔离)。
 _PRIORITY_RNG_SCRATCH_KEY: str = 'priority.tier_rng'
+
+
+def assemble_candidate_eval(
+        session: StrategySession,
+        gs: GameState,
+        *,
+        sim: SimAcquisition,
+        base_bench_len: int,
+        target: dict[str, tuple[str, int]],
+        name: str, star: int, cost: int,
+        config: object | None = None,
+) -> tuple[PriorityContext, list[HeldUnit | ShopUnit]]:
+    """候选评估装配整函数(获取让位〔11 号稿 §4.0 步 4〕与补给选角
+    〔30 号篇 §2.1〕的统一入口;补给统一优先级裁定后两域同一实现)。
+
+    三段一体,禁消费位手搓第二份装配:虚拟持牌全量快照聚合 →
+    优先级装配(档 1 名集 = 定型名集减候选名)→ 让位池构造(部署外
+    全集 = 虚拟备战位 ∪ 虚拟场上部署外件)。域差异仅候选牌三件套由
+    调用方给值(商店 X 按牌面带费;补给候选恒 1★、选卡零成本——
+    零成本进键 = 档 8 概率分量取 0〔免费件无「再遇成本」语义〕、
+    档 4 压牌库带永不含)。
+
+    - ``sim`` = 升星连锁模拟产物;``base_bench_len`` = 快照备战位长
+      (置入新牌的 origin 哨兵 = len(bench),据此甄别新牌本体,由
+      ShopUnit 承载不双计——新牌的在手影子抢先会失真末位判定);
+    - ``target`` = 虚拟定型输出(``select_deployment`` 返回值;名集
+      消费 = frozenset(target))。候选名只从档 1 名集减去、不从
+      ``target`` 本体剔除(虚拟定型仍含候选参与板面构成,存量件的
+      档 1 排除面不因减名变化):候选 = 「假设性入场者」,其去留
+      正是评估要回答的问题,进档 1 保护会经虚拟定型自我保护、
+      「末位 = 候选」分支在收编形态不可达;
+    - 返回 ``(ctx, units)``:``units`` 末位恒为候选 ShopUnit(将获取
+      旗标);存量件以 HeldUnit(在手旗标)承载,部署定型内件(档 1
+      按名命中)与系统召唤件(不可卖物理门;席位占用仍由虚拟局面
+      如实承载)不入池。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        effective_cost,
+    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_slot_unit,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+        predicates,
+    )
+    v_bench = [bs for _i, bs in sim.bench]
+    # 段 1:虚拟持牌全量快照(档 2/5/6/7 聚合谓词看虚拟局面全量——
+    # 含置入候选与升星连锁产物,与池子过滤无关)。
+    v_copies: dict[str, list[int]] = {}
+    for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
+        if u is not None and u.char_id:
+            v_copies.setdefault(str(u.char_id), []).append(
+                int(u.star or 1))
+    # 段 2:优先级装配——档 1 名集 = 定型名集减候选名(dict 冒
+    # frozenset 的类型面问题随统一装配消除,名集恒 frozenset)。
+    ctx = assemble_priority_context(
+        session, gs,
+        deployed_names=frozenset(target) - {name},
+        held_copies=v_copies,
+        rng=priority_rng_of(session, config))
+    # 段 3:让位池 = 部署外全集(bench 侧 + field 侧同构过滤:定型
+    # 内件不入池、系统件不入池;field 撤下件〔虚拟定型换人后被移出
+    # 定型的在场件〕入池——两域同一比较域)。
+    target_names = frozenset(target)
+    units: list[HeldUnit | ShopUnit] = []
+    for orig, bs in sim.bench:
+        if orig >= base_bench_len:
+            continue   # 置入的新牌 = 由 ShopUnit 承载,不双计
+        u = bench_slot_unit(bs)
+        if u is None or not u.char_id:
+            continue
+        if predicates.is_unsellable_system_unit(str(u.char_id)):
+            continue
+        if str(u.char_id) in target_names:
+            continue   # 档 1(部署定型内,按名命中)不入让位池
+        units.append(HeldUnit(
+            str(u.char_id), int(u.star or 1), orig, False,
+            cost=(effective_cost(gs, str(u.char_id)) or None)))
+    for _di, u in enumerate(sim.field):
+        if u is None or not u.char_id:
+            continue
+        if predicates.is_unsellable_system_unit(str(u.char_id)):
+            continue
+        if str(u.char_id) in target_names:
+            continue
+        units.append(HeldUnit(
+            str(u.char_id), int(u.star or 1), _di, True,
+            cost=(effective_cost(gs, str(u.char_id)) or None)))
+    units.append(ShopUnit(name, star, cost))
+    return ctx, units
 
 
 def priority_rng_of(session: object,
