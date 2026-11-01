@@ -2331,7 +2331,7 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 每节点 +3——条件谓词 = `check_strategy_bench_count_xp` 纯判定单一源,
 计数口径 = `bench_units_of` 仅单位槽〔占位件/空槽不计,判读申报制〕,
 sim 世界写 = 节点窗挂点 `xp:bench_count` 独立笔〔升 `xp_apply_amount`
-结转,live 零写观察覆盖〕;姊妹人才济济〔≥8〕后继批 +1 行;策略侧估值
+结转,live 零写观察覆盖〕;姊妹人才济济〔≥8〕已接入同白名单(2026-11-01,ge 行);策略侧估值
 零登记维持)。
 
 **结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/

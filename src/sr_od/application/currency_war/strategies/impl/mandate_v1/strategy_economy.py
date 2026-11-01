@@ -216,6 +216,9 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # (空仓同判),STRATEGY_ECONOMY 零条目维持
     '人才空洞': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
+
+    '人才济济': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
+              '估值零登记维持',
     # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
     # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
     '狸财经狸': '取款分支(金<20 取 10)+存款分支(P3 首领取全部存款)无字段载体;'
