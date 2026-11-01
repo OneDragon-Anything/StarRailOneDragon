@@ -4102,13 +4102,16 @@ STRATEGY_FIRST_BUY_XP_GRANTS: dict[str, tuple[int, int, int, int, int]] = {
 
 
 def _validate_strategy_first_buy_xp_grants() -> None:
-    """STRATEGY_FIRST_BUY_XP_GRANTS 构建校验(import 即炸,两查):
+    """STRATEGY_FIRST_BUY_XP_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本
+    变更独立触发的漂移哨留」,同 _validate_strategy_win_gold_grants
+    docstring——本表只落孤儿键一哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
-    静默失联——运行期实况 = 触发函数持卡交集空,漏改 = 静默零发放);
-    ② 值形:恰 5 元全正 int tuple——值下标 = 费用−1 的读表契约成立
-    前提,短/长元组会让某费用桶取错值或越域,且错形运行期零报错
-    (选错桶只错发放量),import 期哨把拦截面前移到构建期。
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。五桶经验数为手抄常量,纯笔误类(游戏版本变更不可能把
+    5 元全正 int tuple 变非法;卡面数值漂移后元组仍是合法形,哨不响),
+    值形校验按治理裁定不加,对账归评审与本表域测试把关(行值精确
+    断言 + id 对拍,防线强于 import 期形查)。
     """
     orphans = [n for n in STRATEGY_FIRST_BUY_XP_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -4116,13 +4119,6 @@ def _validate_strategy_first_buy_xp_grants() -> None:
         raise ValueError(
             f"STRATEGY_FIRST_BUY_XP_GRANTS 孤儿键(base 无此卡?):"
             f"{sorted(orphans)}")
-    for _name, _amounts in STRATEGY_FIRST_BUY_XP_GRANTS.items():
-        if (not isinstance(_amounts, tuple) or len(_amounts) != 5
-                or not all(isinstance(_a, int) and _a > 0
-                           for _a in _amounts)):
-            raise ValueError(
-                f"STRATEGY_FIRST_BUY_XP_GRANTS 值形({_name!r} 须 5 元全正"
-                f" int tuple,下标 = 费用−1):{_amounts!r}")
 
 
 _validate_strategy_first_buy_xp_grants()
