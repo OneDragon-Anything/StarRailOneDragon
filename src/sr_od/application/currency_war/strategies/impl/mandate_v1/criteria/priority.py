@@ -10,7 +10,7 @@
 排序作用于部署定型后的局面,回答「手里这些牌谁该让路」。让路方向 =
 key 大者先卖(档位编号大 = 优先级低 = 先卖,与总纲 §2.1 一致);因此
 各档内「后卖」类属性(总星级数多/单卡星级高)在键里取负号、先卖类属性
-(档 8 概率高/低费)取正号。
+(档 10 概率高/低费)取正号。
 """
 from __future__ import annotations
 
@@ -27,7 +27,6 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.levelup import (
     stay_target_of,
-    unfinished_star_targets,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
     CROSS_LINE_KEEP_NAMES,
@@ -53,7 +52,8 @@ if TYPE_CHECKING:
 #: 同档子键定长,跨档比较在档位分量即分出(元组比较短路,无跨型比较)。
 PriorityKey = tuple[int | float, ...]
 
-#: 档 7 羁绊名单(用户拍板,design §2.1 档 7 / priority-model §2;
+#: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户拍板,
+#: design §2.1 档 7 / priority-model §2;
 #: 巨星独特加成/敌人受伤提高+同频/护盾强度+伤害增幅/敌人挂离火)。
 #: 成员判定 = 角色自报 factions/flows 与本名单求交(单一真相源 =
 #: data/cw_factions.py FACTIONS 键 × cw_chars 自报,成员关系派生)。
@@ -79,7 +79,7 @@ class HeldUnit:
     (在池即可卖 = 统一序列的字面语义,场位身份不参与让位排序);字段
     保留仅作构造面语义自描述,防未来误把「场上」当保护维度接入。"""
     cost: int | None = None
-    """牌面当前实费档(档 4/档 8 判定输入;None = 回退注册表起始费)。
+    """牌面当前实费档(档 6/档 10 判定输入;None = 回退注册表起始费)。
     变费卡(现注册表仅银狼LV.999 三档)升费后由装配方供给现值,
     现读单一源 = cw_economy.effective_cost;非变费卡可缺省。"""
 
@@ -102,12 +102,12 @@ class PriorityContext:
 
     九项输入对应 priority-model §1 清单(持牌全量快照/部署在场名集/
     锁定线名单视图/候选快照/过渡配方对成员/当前升星目标/必要星级表/
-    当前等级/随机流),另含 §3 档 2/3/5 档内序数键的装配产物
+    当前等级/随机流),另含档 2/3/4/5/7 档内序数键的装配产物
     ``member_rank``(知识卡 ``member_priority`` 字段直读合成;迁移期
     形态 = core 0/其余 1,逐角色精调归下一迭代外溢)。字段容器按装配
     后只读约定使用。
 
-    聚合谓词口径:档 2/5/6/7 的「持有最高星/总星级数/名下有无副本」
+    聚合谓词口径:档 2/3/4/5/7/8/9 的「持有最高星/总星级数/名下有无副本」
     均消费 ``held_copies`` 全量快照(备战位 ∪ 前后台),与池子过滤无关
     ——池子过滤只决定哪些牌进入排序输出,聚合判定永远看全量。
     """
@@ -121,10 +121,10 @@ class PriorityContext:
     details/acquisition-and-sell.md §1)。"""
     line_view: LineMembersView
     """③锁定线名单视图(读口 = session_scope.line_members_view;
-    锁定帧档 2/3/5 名单 = members,未锁定帧 = 空名单)。"""
+    锁定帧成员档(2/3/4/5/7)名单 = members,未锁定帧 = 空名单)。"""
     candidate_members: frozenset[str]
     """④候选快照成员并集(读口 = StrategyState.line_candidates 三线经
-    COMP_LIBRARY 成员展开 core ∪ shared;未锁定帧档 2/3/5 名单的候选支;
+    COMP_LIBRARY 成员展开 core ∪ shared;未锁定帧成员档名单的候选支;
     锁定帧候选快照恒空集,锁定写入时已清空停算)。"""
     recipe_members: frozenset[str]
     """⑤过渡配方对成员(读口 = ``StrategyState.opening_recipe_comp``
@@ -136,14 +136,16 @@ class PriorityContext:
     stay_target: tuple[str, int, int] | None
     """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
     criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
-    None = 未锁定窗口/无未完成目标,档 4 为空)。"""
+    None = 未锁定窗口/无未完成目标,档 6 为空)。"""
     need_star_by_member: dict[str, int]
-    """⑦必要星级表(读口 = 锁定帧 unfinished_star_targets 现役单一源;
+    """⑦必要星级表(读口 = 锁定帧锁定线知识卡 need_star 字段全量
+    照录——达标成员不缺省,完成品保护档 2/4 的锁定帧判定输入;
     未锁定帧 = 候选三线知识卡 need_star 字段 COMP_LIBRARY 直查、命中
     各线取最大值)。表外成员 = 1(无升星要求;判定端缺省,含过渡配方
     物化对象等不在 COMP_LIBRARY 的名字)。"""
     member_rank: dict[str, int]
-    """档内优先级序数表(§3 档 2/3/5 ①键):成员名 → 序数,小 = 优先级
+    """档内优先级序数表(档 2/3/4/5/7 ①键,序数取值规则 =
+    priority-model §3):成员名 → 序数,小 = 优先级
     高。装配 = 各活性线知识卡 ``member_priority`` 字段直读
     (cw_comps.member_rank_of,空表/旧数据回退 core 两档派生——总纲
     §2.1.1 迁移期形态 = core 0/其余 1);跨线成员取各线最小序数(最高
@@ -151,7 +153,7 @@ class PriorityContext:
     priority-model §3 配方支),表外成员判定端缺省 1。逐角色精调归
     下一迭代外溢。"""
     level: int
-    """⑧当前等级(档 8 概率查表键 refresh_prob(level, cost))。"""
+    """⑧当前等级(档 10 概率查表键 refresh_prob(level, cost))。"""
     rng: random.Random
     """⑨随机流(档内等价牌的随机尾键;策略器自有随机流
     StrategySession.rng 直用,构造时按 strategy_seed 播种,同 seed
@@ -190,15 +192,18 @@ def assemble_priority_context(
     容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
     ``rng`` 缺省 = session.rng(策略随机语义单一源)。
 
-    两态名单装配(priority-model §2 档 2 名单源;单一准入 = changes/
+    两态名单装配(成员档 2/3/4/5/7 名单源;单一准入 = changes/
     2026-10-30-roster-plane1-union design §2.1):锁定帧 = 锁定线
-    名单 ∪ 过渡配方成员(P1 锁定局并集),need_star 表取
-    ``unfinished_star_targets``(现役消费单一源,仅此帧适用——表只含
-    未达标成员,达标成员判定端按缺省 1 自然落档 8);未锁定帧 = 候选
-    三线并集 ∪ 过渡配方成员,need_star 取命中各线最大值(保守方向)。
-    配方支两态共用同一读口(槽位直读 + 读前判窗),进 P2 后恒空集。
+    名单 ∪ 过渡配方成员(P1 锁定局并集),need_star 表 = 锁定线
+    知识卡 need_star 字段全量照录(达标成员不缺省——need≥2 完成
+    品保护档 2 的锁定帧判定输入;``unfinished_star_targets`` 本体
+    不动,其「未完成目标」原始语义与其余消费位不受影响);未锁定
+    帧 = 候选三线并集 ∪ 过渡配方成员,need_star 取命中各线最大值
+    (保守方向)。配方支两态共用同一读口(槽位直读 + 读前判窗),
+    进 P2 后恒空集。
 
-    序数装配(§3 档 2/3/5 ①键)= 知识卡 ``member_priority`` 字段
+    序数装配(档 2/3/4/5/7 ①键,序数取值规则 = priority-model §3)
+    = 知识卡 ``member_priority`` 字段
     直读(:func:`cw_comps.member_rank_of`,空表/旧数据回退 core 两档
     派生),跨线成员取各线最小序数(最高优先);过渡配方成员不入表
     (统一低档,经判定端缺省 1 承载)。
@@ -230,22 +235,30 @@ def assemble_priority_context(
             # 规则在此分支的承载(priority-model §3 配方支;伪阵容
             # core_chars 为全员 core 形态,直推即高档,禁读)。
             rank = member_rank_of(comp)
-        need_star = {name: int(need) for name, need, _cost
-                     in unfinished_star_targets(gs)}
+        # need_star 表 = 知识卡字段全量照录,达标成员不缺省:缺省 1 会
+        # 让 need≥2 完成品保护谓词在锁定帧永不命中、达标完成品错落
+        # 无星级要求档——「只收未达标成员」是 unfinished_star_targets
+        # 的「未完成目标」原始语义,不满足本表语义,本帧不经其装配
+        # (其本体与升级触发/停留目标等其余消费位不受影响);配方伪锁
+        # 帧 comp 为 None → 表空,判定端缺省照旧。
+        need_star = {name: int(need) for name, need
+                     in (getattr(comp, 'need_star', None) or {}).items()}
         # 锁定帧候选快照照读口真值冻结为空集(锁定写入连带清空停算,
-        # StrategyState.line_candidates 恒 = 空集);档 2/3/5 名单 =
-        # 锁定线名单(line_view.members 承载)∪ 配方支(recipe_members,
-        # P1 锁定局并集;进 P2 后配方支恒空集,判定端无需重复判窗)。
+        # StrategyState.line_candidates 恒 = 空集);成员档(2/3/4/5/7)
+        # 名单 = 锁定线名单(line_view.members 承载)∪ 配方支
+        # (recipe_members,P1 锁定局并集;进 P2 后配方支恒空集,判定端
+        # 无需重复判窗)。
     else:
         for line_name in st.line_candidates:
             c = get_comp(line_name) if line_name else None
             if c is None:
                 # 候选线名解析失败(注册表漂移)跳过该线,与
                 # protection.protection_membership 同款「跳过并告警」
-                # 保守方向——静默跳过会让档 2/3 名单无声缺线,排错时
-                # 只能靠行为反推;告警给出线名才能定位漂移源头。
+                # 保守方向——静默跳过会让成员档(2/3/4/5/7)名单无声
+                # 缺线,排错时只能靠行为反推;告警给出线名才能定位
+                # 漂移源头。
                 log.warning('[cw][priority] 候选线名解析失败(%s),'
-                            '跳过该线(档 2/3/5 名单缺线)', line_name)
+                            '跳过该线(档 2/3/4/5/7 名单缺线)', line_name)
                 continue
             members |= set(c.core_chars)
             members |= set(getattr(c, 'shared_chars', None) or ())
@@ -308,8 +321,8 @@ def assemble_candidate_eval(
     优先级装配(档 1 名集 = 定型名集减候选名)→ 让位池构造(部署外
     全集 = 虚拟备战位 ∪ 虚拟场上部署外件)。域差异仅候选牌三件套由
     调用方给值(商店 X 按牌面带费;补给候选恒 1★、选卡零成本——
-    零成本进键 = 档 8 概率分量取 0〔免费件无「再遇成本」语义〕、
-    档 4 压牌库带永不含)。
+    零成本进键 = 档 10 概率分量取 0〔免费件无「再遇成本」语义〕、
+    档 6 压牌库带永不含)。
 
     - ``sim`` = 升星连锁模拟产物;``base_bench_len`` = 快照备战位长
       (置入新牌的 origin 哨兵 = len(bench),据此甄别新牌本体,由
@@ -335,8 +348,8 @@ def assemble_candidate_eval(
         predicates,
     )
     v_bench = [bs for _i, bs in sim.bench]
-    # 段 1:虚拟持牌全量快照(档 2/5/6/7 聚合谓词看虚拟局面全量——
-    # 含置入候选与升星连锁产物,与池子过滤无关)。
+    # 段 1:虚拟持牌全量快照(档 2/3/4/5/7/8/9 聚合谓词看虚拟局面
+    # 全量——含置入候选与升星连锁产物,与池子过滤无关)。
     v_copies: dict[str, list[int]] = {}
     for u in (*(bench_slot_unit(b) for b in v_bench), *sim.field):
         if u is not None and u.char_id:
@@ -409,8 +422,8 @@ def priority_rng_of(session: object,
 
 
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
-    """档 2/3/5 阵容成员名单(两态;priority-model §2 名单源;单一准入
-    = roster-plane1-union design §2.1)。
+    """成员档(2/3/4/5/7)阵容成员名单(两态;priority-model §2 名单
+    源;单一准入 = roster-plane1-union design §2.1)。
 
     锁定帧 = 锁定线名单 ∪ 过渡配方对成员(P1 锁定局并集——锁定不是
     配方退出条件;进 P2 后装配侧配方支恒空集,判定端无需重复判窗);
@@ -421,7 +434,7 @@ def _member_names(ctx: PriorityContext) -> frozenset[str]:
 
 
 def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
-    """牌的费用档(档 4/档 8 判定输入)。
+    """牌的费用档(档 6/档 10 判定输入)。
 
     商店牌 = 牌面自报费用;手持牌 = 牌面实费档(:attr:`HeldUnit.cost`,
     变费卡升费后由装配方按 cw_economy.effective_cost 现值供给),
@@ -453,7 +466,8 @@ def _refund_loss(unit: HeldUnit | ShopUnit) -> int:
 
 
 def _tier7_bond_member(name: str) -> bool:
-    """档 7 成员判定(角色自报 factions/flows 与拍板名单求交;
+    """档 9 成员判定(原档 7,名单与判定规则不变、仅档号位移;
+    角色自报 factions/flows 与拍板名单求交;
     注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
     ch = CHARACTERS.get(name)
     if ch is None:
@@ -467,11 +481,12 @@ def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:
     豁免集 = 线内成员 ∧ 手持 ∧ 星未达目标:``is_member ∧
     max_star < max(need, 2)``。成员名单与目标星读口同源(sort_key
     同一装配体:名单 = :func:`_member_names` §2.1 单一准入;need =
-    ``need_star_by_member`` 现役读口——锁定帧 unfinished_star_targets/
+    ``need_star_by_member`` 现役读口——锁定帧锁定线知识卡全量照录/
     未锁帧候选知识卡,表外成员缺省 1;星级按角色名聚合 ``held_copies``
-    全量快照)。need ≤ 1 的成员底线两星(与档 5 阵容强度形态同杆),
-    need ≥ 2 按目标星——现行排序形态下豁免件 = 档 2 升星主线/档 5
-    阵容强度;达标成员(≥ max(need,2))掉档 8 已完成资产,不豁免。
+    全量快照)。need ≤ 1 的成员底线两星(与档 7 阵容强度形态同杆),
+    need ≥ 2 按目标星——现行排序形态下豁免件 = 档 3 升星主线/档 7
+    阵容强度;达标成员(≥ max(need,2))经完成品保护档 2/4 殿后、
+    非保留张副本落兜底档 10,均不豁免。
 
     仅供利息动机卖出场景(节末凑息候选池过滤)消费;被迫类卖出
     (溢出/晶矿/获取让位)全员参与统一序列,禁挂本谓词——动机二分
@@ -479,19 +494,43 @@ def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:
     优先级卖出的不受此限)。消费点手搓第二份名单/判据 = 违例。"""
     copies = ctx.held_copies.get(name, [])
     if not copies:
-        return False   # 非手持(档 3 店内未获取件)不豁免——卖出池只有手持件,防御位
+        return False   # 非手持(档 5 店内未获取件)不豁免——卖出池只有手持件,防御位
     max_star = max(copies)
     need = ctx.need_star_by_member.get(name, 1)
     return name in _member_names(ctx) and max_star < max(need, 2)
 
 
+def is_kept_unit(unit: HeldUnit | ShopUnit, unit_star: int,
+                 copies: list[int]) -> bool:
+    """保留张谓词(排序单位 = 单张牌的核心判定位;档 2/档 4 完成品
+    保护共用)。
+
+    本张是该名保留张 = 本张星级 == 名下最高星 且 该最高星在此名下
+    仅此一张(``unit_star == max_star ∧ copies.count(max_star) == 1``;
+    ``copies`` = 该名全部副本星级聚合快照)。等价群自愈语义:同星
+    多张时全部不属保留张(等价牌先卖哪张无差别,全落兜底档 10),
+    任一张卖出后名下张数变化,剩余最高星张自动恢复保留身份。
+
+    身份域:仅 :class:`HeldUnit`(在手牌)可为保留张,:class:`ShopUnit`
+    (候选牌)恒 False——获取让位评估的虚拟语境下,将获取的 X 不享受
+    完成品保护,「末位 = X → 放弃买入」分支保持可达(与 X 不进档 1
+    部署保护同构:保护对象 = 已入手资产,候选值不值得买仍由让位试探
+    回答,不由排序身份预支)。
+    """
+    if not isinstance(unit, HeldUnit):
+        return False
+    max_star = max(copies) if copies else 0
+    return unit_star == max_star and copies.count(max_star) == 1
+
+
 def sort_key(unit: HeldUnit | ShopUnit,
              ctx: PriorityContext) -> PriorityKey:
-    """统一优先级排序键(八档判定按序命中即出 + 档内键 + 在手旗标 +
-    随机尾键;规格 = priority-model §2/§3/§4,判定表逐档对齐)。
+    """统一优先级排序键(十档判定按序命中即出 + 档内键 + 在手旗标 +
+    随机尾键;档内序数键与随机流契约 = priority-model §3/§4,判定表
+    以本函数体逐档注释为准)。
 
     让路方向 = key 大者先卖:「后卖」类属性(总星级数多/单卡星级高/
-    core 成员/退金损失大)取小键,「先卖」类属性(档 8 概率高/低费)
+    core 成员/退金损失大)取小键,「先卖」类属性(档 10 概率高/低费)
     取大键;在手旗标 手持 = 0 / 将获取 = 1(同优先级在手优先,总纲
     §2.7);随机尾键 = ctx.rng 现抽,仅全部子键相等(同张手持等价牌群)时
     参与定序,同 seed 同序。
@@ -500,12 +539,14 @@ def sort_key(unit: HeldUnit | ShopUnit,
     (rank/星级/概率/费用)→ 退金损失(:func:`_refund_loss`,损失小者
     先卖)→ 在手旗标(稳定键)→ 随机尾。
 
-    落档边界(priority-model §2):「名下最高星/总星级数」以角色名
-    聚合全部在场+备战副本;升星达标(持有最高星 ≥ need_star)后低星
-    冗余副本落档 8;万金油/羁绊角色到两星后掉出档 6/7;档 8 的概率
-    分档按概率值(非费用号),概率同值并入同档后按费用号稳定序
-    (refresh_prob 缺键返 0,低等级帧 2-5 费撞值时低费先卖有真实
-    判别语义)。
+    落档边界:「名下最高星/总星级数」以角色名聚合全部在场+备战副本;
+    排序单位 = 单张牌——同名的牌按保留张身份(:func:`is_kept_unit`)
+    分家,星级要求内的完成品(每名保留恰好一张最高星)居档 2/4,要求
+    以外的多余副本与同星等价群落兜底档 10(等价群自愈:任一张卖出后
+    剩余最高星张自动恢复保留身份);万金油/羁绊角色到两星后掉出
+    档 8/9;档 10 的概率分档按概率值(非费用号),概率同值并入同档后
+    按费用号稳定序(refresh_prob 缺键返 0,低等级帧 2-5 费撞值时低费
+    先卖有真实判别语义)。
     """
     name = unit.name
     in_hand = 0 if isinstance(unit, HeldUnit) else 1
@@ -523,35 +564,53 @@ def sort_key(unit: HeldUnit | ShopUnit,
     # 享受部署保护会把「末位 = X → 放弃」分支变成不可达(XT-1 同步)。
     if name in ctx.deployed_names:
         return (1, refund_loss, in_hand, tail)
-    # 档 2 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
-    # ≥ 2,need = 1 即无升星要求——落档边界谓词,need=1 成员未持落档 3 /
-    # 已持未到两星落档 5)。
+    # 档 2 完成品保护:need≥2 达标成员的保留张(名下最高星的唯一张,
+    # 含超额完成如 3★)。排序单位 = 单张牌:达标名下的冗余副本(低星/
+    # 同星多张)保留谓词不中、档 3 亦不中(max_star 已达标),自然落
+    # 兜底档 10(零新增显式判定路径)。
     need = ctx.need_star_by_member.get(name, 1)
-    if is_member and need >= 2 and max_star < need:
+    if is_member and need >= 2 and max_star >= need \
+            and is_kept_unit(unit, unit_star, copies):
         return (2, ctx.member_rank.get(name, 1), -total_star, -unit_star,
                 refund_loss, in_hand, tail)
-    # 档 3 阵容成员还没获取任何副本(仅商店牌可命中:手持牌自身即副本)。
+    # 档 3 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
+    # ≥ 2,need = 1 即无升星要求——落档边界谓词,need=1 成员未持落档 5 /
+    # 已持未到两星落档 7)。
+    if is_member and need >= 2 and max_star < need:
+        return (3, ctx.member_rank.get(name, 1), -total_star, -unit_star,
+                refund_loss, in_hand, tail)
+    # 档 4 完成品保护:need≤1(无星级要求)成员到两星后的保留张——
+    # 底线两星口径,2★ 本体与超额 3★ 均按实际最高星受保;凑两星中间态
+    # (max_star<2)不入本档,走档 7 过程保护;空 copies 由 max_star≥2
+    # 与保留谓词双重自然排除。
+    if is_member and need <= 1 and max_star >= 2 \
+            and is_kept_unit(unit, unit_star, copies):
+        return (4, ctx.member_rank.get(name, 1), -total_star, -unit_star,
+                refund_loss, in_hand, tail)
+    # 档 5 阵容成员还没获取任何副本(仅商店牌可命中:手持牌自身即副本)。
     if is_member and not copies:
-        return (3, ctx.member_rank.get(name, 1), refund_loss, in_hand, tail)
-    # 档 4 当前升星目标实费档的牌(压牌库价值;阵容成员整体排除——
-    # 含已达标成员,其副本按落档边界落档 8;目标为 None 本档为空)。
+        return (5, ctx.member_rank.get(name, 1), refund_loss, in_hand, tail)
+    # 档 6 当前升星目标实费档的牌(压牌库价值;阵容成员整体排除——
+    # 成员副本按完成品保护档 2/4、升星主线档 3 或凑两星档 7 各归其档;
+    # 目标为 None 本档为空)。
     if ctx.stay_target is not None and not is_member \
             and _unit_cost(unit) == ctx.stay_target[2]:
-        return (4, -unit_star, refund_loss, in_hand, tail)
-    # 档 5 成员已获取、无星级要求、还没到两星(阵容强度)。
+        return (6, -unit_star, refund_loss, in_hand, tail)
+    # 档 7 成员已获取、无星级要求、还没到两星(阵容强度/凑两星过程
+    # 保护;原档 5 语义原样保留,仅档号位移)。
     if is_member and copies and need <= 1 and max_star < 2:
-        return (5, ctx.member_rank.get(name, 1), -total_star,
+        return (7, ctx.member_rank.get(name, 1), -total_star,
                 refund_loss, in_hand, tail)
-    # 档 6 万金油名单还没到两星(全线留用层;到两星掉档 8)。
+    # 档 8 万金油名单还没到两星(全线留用层;到两星掉兜底档 10)。
     if name in CROSS_LINE_KEEP_NAMES and max_star < 2:
-        return (6, -total_star, refund_loss, in_hand, tail)
-    # 档 7 buff/debuff 羁绊成员还没到两星(到两星掉档 8)。
+        return (8, -total_star, refund_loss, in_hand, tail)
+    # 档 9 buff/debuff 羁绊成员还没到两星(到两星掉兜底档 10)。
     if _tier7_bond_member(name) and max_star < 2:
-        return (7, -total_star, refund_loss, in_hand, tail)
-    # 档 8 兜底:概率高者先卖(容易再遇),同概率档并入同档、低费先卖,
+        return (9, -total_star, refund_loss, in_hand, tail)
+    # 档 10 兜底:概率高者先卖(容易再遇),同概率档并入同档、低费先卖,
     # 星级高者后卖。
     prob = refresh_prob(ctx.level, _unit_cost(unit))
-    return (8, prob, -_unit_cost(unit), -unit_star,
+    return (10, prob, -_unit_cost(unit), -unit_star,
             refund_loss, in_hand, tail)
 
 
