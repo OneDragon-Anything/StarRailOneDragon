@@ -412,6 +412,66 @@ None → 宁缺勿造;④gold 现值 None → 宁缺勿造**不封账**(本函�
   传流键);采样分布假设骑随机装备族披露键 `strategy_random_equip_uniform`
   (类别无关单键,校准源按 evidence 前缀分列互不污染,零新增键)。
 
+### 2.16 策略卡羁绊条件两拍发放检查腿 check_strategy_bond_battle_grants(结算位武装)+ discharge_strategy_bond_battle_grants(节点窗位交付)
+
+`check_strategy_bond_battle_grants(gs, sig, producer=GAIN_CHAIN_PRODUCER)
+-> bool` + `discharge_strategy_bond_battle_grants(gs, *, rng, sig,
+producer=GAIN_CHAIN_PRODUCER) -> int`——策略卡「激活8个羁绊并完成一场
+战斗后，进入节点时获得5个随机星徽」通道(首例不要小看我们的羁绊
+id 200901,登记表 = `cw_investments.STRATEGY_BOND_BATTLE_GRANTS` 白名单:
+键 = 策略规范名,值 = (羁绊激活数阈值, 装备类别词, 件数) 扁平三元组
+单档)的唯一检查本体,策略卡战后触发族第四形状:**触发-发放两拍制**
+(持续条件门槛 × 事件触发 × 节点窗交付——desc「进入节点时获得」=
+发放时点在下一节点窗开非结算拍,与 §2.11/§2.13/§2.15 结算拍直发形状
+异构故各建各表;武装拍与发放拍之间无板面写窗,两拍评估的板面状态等值,
+分拍系卡面时点保真非语义分歧)。条件矩阵(武装拍,序即短路序):
+
+1. 持卡交集(`active_strategies.value` ∩ 登记表键集)空 → False;
+2. 激活羁绊数评估(零 rng):逐羁绊 `max(board 容器计数, board_by_row
+   身份聚合)` 取 max 判激活(`_faction_count` 判激活侧同款);双源双
+   未观察 → 激活数 = 0 fail-closed;FACTIONS 外未知名不计;激活判据 =
+   计数 ≥ `FACTIONS[tag].tiers[0]`(档位单一源;独立羁绊 tiers=(1,)
+   单人即激活,与左面板同口径——**board_by_row 身份聚合只算
+   factions+flows 不含 independent**,独立行只有 board 容器〔左面板
+   直读〕可承载,双源 max 融合下实机两源互补);
+3. 逐持卡:激活数 ≥ 表载阈值 → `write_logic` 置武装标记
+   `strategy_bond_battle_armed = True`(evidence
+   `strategy_bond_battle#arm:<卡名>`,三态场字段 = fields.md §3.2.26d)。
+
+发放拍(discharge):武装标记非 True → 0;逐持卡:池 =
+`equips_by_category(表载类别)` 池空 log 防御零写(泛化随机装备族
+既定裁定),逐件 `rng.choice(pool)` ×表载件数(逐件独立掷 = 放回
+v0)→ `gain_equipment(rand=True)`(evidence
+`strategy_bond_battle#<卡名>`,原语 `#equip` 后缀);收尾
+`write_logic` 置 `strategy_bond_battle_armed = False`(evidence
+`strategy_bond_battle#consume`),返回实际发放件数(断言面)。
+
+- **挂点 = sim 双挂点**(武装拍 = `_resolve_battle` 策略战后腿段尾
+  boss 腿后、败局待办登记前,胜败两态共同路径——卡面无「胜利」限定
+  = 败局存活也武装,死亡局在 `_game_over` 提前 return 处已出局;
+  交付拍 = `_begin_node_window` 多腿邻位收口段 node_char 腿后、商店
+  全刷前,不按 kind 分叉任意窗开都查——武装事实已由结算拍锚定,窗拍
+  零条件;幂等零新增守卫 = `_settled_key`/窗口幂等守卫既有两面);
+  **live 零写观察覆盖**(武装标记系 sim 世界内部状态无 live 观察通道,
+  装备入栏有画面真值;判读面缺口 = live 遥测无归因行,§2.15 同性质,
+  live 佐证可经板面左面板对账链回溯)。
+- **无 done 闩(可重复)**:卡面无「首次」限定 = 战后触发族直读——
+  每有一场合格战斗即武装一次,其下一节点窗交付 1 次,一局发放次数 =
+  合格战斗数;P3 末 boss 武装后无下一窗 = 武装无消费,armed 残值随局
+  销毁零遗留。
+- **写约定**:两函数 producer 形参带链缺省、sim 挂点两调用点显式传;
+  交付拍 **rng 形参必填无缺省**(采样强制显式注入——本腿唯一消费方 =
+  sim 挂点传流键,无 live 调用点,无缺省形态则采样猜测口径的结构性
+  风险面消失,较 §2.15「缺省回退自掷」更严);rng = sim 独立子流键
+  `M13/{位面}/{轮}/strategy-bond`(策略战后发放族子键式沿 ins/
+  boss-grant 先例);采样分布假设骑家族披露键
+  `strategy_random_equip_uniform`(校准源按 evidence 前缀分列互不
+  污染,零新增键)。
+- **扩卡前瞻**:武装标记现役单 bool 系单成员表形态;第二张同族卡入表
+  且双持时须改 per-card 武装态(如武装卡名集容器)并在发放拍补逐卡
+  阈值复核(现役发放拍逐持卡发放不复核该卡阈值)——扩卡批义务,现役
+  表单成员不可达零行为影响。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

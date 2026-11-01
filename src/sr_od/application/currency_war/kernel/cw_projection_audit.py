@@ -274,6 +274,17 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '不可接受);消费端 = cw_gain_chain.'
               'check_strategy_node_char_grants(持卡未绑定 fail-closed 零'
               '发放留证 gain_chain_strategy_char_bind_missing)'),
+    'strategy_bond_battle_armed': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='策略卡羁绊条件战后发放武装标记(三态 None=未观察/False='
+              '已消费/True=武装;触发-发放两拍制状态载体:结算拍评估「持卡'
+              ' ∧ 战斗完成 ∧ 激活羁绊数 ≥ 表载阈值」置 True,下一节点窗'
+              '拍采样交付后置 False),无观察读端——条件评估真值系 sim '
+              '世界内部判定(板面激活数),live 无独立观察通道(装备入栏 '
+              '= equips 观察覆盖);唯一逻辑写端两处 = cw_gain_chain.'
+              'check_strategy_bond_battle_grants(武装)/ '
+              'discharge_strategy_bond_battle_grants(消费),唯一调用点 '
+              '= sim 结算腿与节点窗收口腿'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

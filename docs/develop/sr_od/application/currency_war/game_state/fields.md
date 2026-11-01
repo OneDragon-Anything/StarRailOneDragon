@@ -128,7 +128,9 @@ False)、晶矿附着/声明三域
 绑定型随机角色授予名字绑定域(strategy_char_grant_bindings {}——同族恒非
 None,§3.2.26c)。
 种子值依据逐字段申报面见迭代设计;hp 实证域 =
-A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/席位锚定标志位等
+A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/席位锚定标志位/策略卡
+羁绊条件战后发放武装标记(strategy_bond_battle_armed——None = 未观察 =
+未武装同义,discharge 侧「非 True 短路」判据下零种子行为等价,§3.2.26d)等
 **不种**——None 在这些字段上是设计语义(离屏/未选择/未置位本体)。
 
 **语义例外立据**:`logic_rand` 已登记纪律「策略器消费前必须重观察」对预填初值构成
@@ -1145,6 +1147,36 @@ fail-closed 零发放);live 局复制发放腿结构性零触发,域恒空 = liv
 pending_item_grants 种子族)。
 
 **域归属**:独立键 `strategy_char_grant_bindings`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。
+
+#### 3.2.26d 策略卡羁绊条件战后发放武装标记 strategy_bond_battle_armed
+
+**语义**:策略卡羁绊条件战后发放通道(不要小看我们的羁绊 id 200901
+首例:「激活8个羁绊并完成一场战斗后，进入节点时获得5个随机星徽」)的
+**触发-发放两拍制状态载体**——desc「进入节点时获得」= 发放时点在下一
+节点窗开非结算拍,结算拍只评估条件不发放。三态:None = 未观察(开局
+/未武装同义)/True = 武装(条件达成的战斗已结算,待下一节点窗交付)/
+False = 已消费(窗拍交付完成)。单成员表形态(登记表 =
+`cw_investments.STRATEGY_BOND_BATTLE_GRANTS` 单行):第二张同族卡入表
+双持时须改 per-card 武装态(触发函数扩卡前瞻申报)。
+
+**写入方**:唯一逻辑写入方两处 = 结算拍武装(`cw_gain_chain.
+check_strategy_bond_battle_grants`:持卡 ∧ 战斗完成 ∧ 激活羁绊数 ≥
+表载阈值,`write_logic` True,evidence `strategy_bond_battle#arm:<卡名>`;
+唯一调用点 = sim 结算腿)与节点窗拍消费(`cw_gain_chain.
+discharge_strategy_bond_battle_grants`:交付后 `write_logic` False,
+evidence `strategy_bond_battle#consume`;唯一调用点 = sim 节点窗收口)。
+**无观察写入方**——激活羁绊数条件评估系 sim 世界内部判定(板面真值),
+live 无独立观察通道(装备入栏 = equips 观察覆盖)。链式契约权威版本 =
+[gain-chain.md](gain-chain.md) §2.16。
+
+**消费端**:唯一 = 节点窗拍交付腿(armed 非 True 短路零发放);
+live 局两腿结构性零触发,域恒 None = live 正常态。
+
+**开局预填初值**:不种(None = 未观察 = 未武装同义,「非 True 短路」
+判据下零种子行为等价,§2.6 不种类;bool 保型直通免 rebuild 登记)。
+
+**域归属**:独立键 `strategy_bond_battle_armed`(§3.7.1;独立键先例 =
 env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
 ### 3.3 商店开态(覆盖在备战画面之上)

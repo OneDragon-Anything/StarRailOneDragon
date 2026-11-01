@@ -4295,6 +4295,50 @@ def _validate_strategy_boss_battle_grants() -> None:
 _validate_strategy_boss_battle_grants()
 
 
+# ===== 策略卡羁绊条件战后发放注册表(不要小看我们的羁绊;白名单制)=====
+# 「激活 N 个羁绊并完成一场战斗后,进入节点时获得 M 个随机 X 装备」策略域
+# 首例:键 = 策略规范名,值 = (羁绊激活数阈值, 装备类别词, 件数) 扁平三元
+# 组(单档;多档族卡出现时沿表值形状泛化先例扩序列,本批不预泛化——首例
+# 触发器形状单一)。触发-发放两拍制:结算拍评估「持卡 ∧ 战斗完成 ∧ 激活
+# 羁绊数 ≥ 阈值」写武装标记,节点窗拍武装在场即采样发放——desc「进入节点
+# 时获得」= 发放时点在下一节点窗开非结算拍,与既有战后腿(结算拍直发)
+# 形状异构故不共表(扩形状各建各表,STRATEGY_ENCOUNTER_BATTLE_GRANTS 同
+# 款纪律);频次 = 可重复无 done 闩(卡面无「首次」限定,战后触发族直读
+# 一致:每有一场合格战斗,其下一节点窗交付 1 次)。武装标记 = GameState
+# 场字段 strategy_bond_battle_armed(两拍间唯一状态载体)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_bond_battle_grants(结算拍
+# 武装)/ discharge_strategy_bond_battle_grants(节点窗拍交付)两枚触发
+# 函数(唯一调用点 = sim 结算腿与节点窗收口腿;live 零写观察覆盖——装备
+# 入栏有画面真值可读,实机局不接本通道)。
+STRATEGY_BOND_BATTLE_GRANTS: dict[str, tuple[int, str, int]] = {
+    # 激活8个羁绊并完成一场战斗后,进入节点时获得5个随机星徽
+    # (id 200901 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行;
+    # 数值两枚为卡面明写常量,非 desc 未写明的猜测建模)
+    '不要小看我们的羁绊': (8, '星徽', 5),
+}
+
+
+def _validate_strategy_bond_battle_grants() -> None:
+    """STRATEGY_BOND_BATTLE_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_boss_battle_grants
+    docstring——本表只落孤儿键一哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。阈值/类别词/件数为手抄常量,纯笔误类按治理裁定不加值形查;
+    类别池随注册表传导,池空属数据面事故非本表职责(泛化随机装备族既定
+    裁定),运行期走触发函数 log 防御分支零写兜底,对账归表域测试。"""
+    orphans = [n for n in STRATEGY_BOND_BATTLE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BOND_BATTLE_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_bond_battle_grants()
+
+
 # ===== 策略卡胜利结算条件金注册表(招财狗;白名单制)=====
 # 「战斗胜利后，若未损失小队生命值，则每有一个佩佩就会为你提供1金币」
 # 策略域首例:键 = 策略规范名,值 = 每佩佩金数。表外策略一律无条目,

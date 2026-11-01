@@ -290,6 +290,15 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 登记,同 env_grant_uid_seq 先例)。
                                 # 独立键版本 1,同 env_grants_done
                                 # 先例不并入他域 bump——他域本体未变
+    'strategy_bond_battle_armed': 1,  # 策略卡羁绊条件战后发放武装标记
+                                # (两拍制:结算拍评估条件置 True、节点
+                                # 窗拍交付后置 False;三态 None=未观察/
+                                # False=已消费/True=武装,None 系设计
+                                # 语义不种开局底座;bool 保型直通免
+                                # rebuild 登记,同 env_grant_uid_seq
+                                # 先例)。独立键版本 1,同 env_grants_
+                                # done 先例不并入他域 bump——他域
+                                # 本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2693,6 +2702,27 @@ class GameState:
     # 底座 = {}(A 类,同 pending_item_grants 种子族先例);双持姊妹卡
     # 各键并存,零判重闸(持卡按名去重,键天然唯一)。
     strategy_char_grant_bindings: Field[dict[str, str]] = field(
+        default_factory=Field)
+    # [索引定义] strategy_bond_battle_armed = 策略卡羁绊条件战后发放的
+    # 武装标记(触发-发放两拍制状态载体;不要小看我们的羁绊 id 200901
+    # 首例:「激活8个羁绊并完成一场战斗后,进入节点时获得5个随机星徽」
+    # ——desc「进入节点时获得」= 发放时点在下一节点窗开,结算拍只评估
+    # 条件不发放)。三态语义:None = 未观察(开局/未武装同义)/True =
+    # 武装(条件达成的战斗已结算,待下一节点窗交付)/False = 已消费
+    # (窗拍交付完成)。写入端 = 唯一逻辑写端两处 = 结算拍武装
+    # (cw_gain_chain.check_strategy_bond_battle_grants,True)与节点窗
+    # 拍消费(cw_gain_chain.discharge_strategy_bond_battle_grants,
+    # False),无观察写端——条件评估真值(板面激活数)sim 世界内部判定,
+    # live 无独立观察通道(装备入栏 = equips 观察覆盖,不对称申报同族
+    # 先例);取值时机 = sim 世界执行期现值(结算拍置 True → 下一窗拍
+    # 消费置 False,局内两态交替恒稳,跨节点存续随快照)。None 系设计
+    # 语义:discharge 侧「非 True 短路」判据下未观察与未武装同义,
+    # 开局不种种子底座(node_seq_by_plane 同款 B/C 类不种规);bool
+    # 保型直通免 rebuild 登记(env_grant_uid_seq 先例)。单成员表形态:
+    # 武装态现役单 bool(表 = STRATEGY_BOND_BATTLE_GRANTS 单行),第二
+    # 张同族卡入表双持时须改 per-card 武装态(触发函数扩卡前瞻申报)。
+    # 开局种子底座 = None(不种,A/B 判据 B 类——None 即设计语义)。
+    strategy_bond_battle_armed: Field[bool | None] = field(
         default_factory=Field)
     # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
     # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。

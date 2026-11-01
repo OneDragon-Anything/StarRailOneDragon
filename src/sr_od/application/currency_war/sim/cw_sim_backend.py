@@ -90,8 +90,10 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
 )
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
+    GAIN_CHAIN_PRODUCER,
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
+    check_strategy_bond_battle_grants,
     check_strategy_boss_battle_grants,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
@@ -101,6 +103,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_grants,
     discharge_due_item_opens,
     discharge_due_strategy_grants,
+    discharge_strategy_bond_battle_grants,
     gain_character,
     gain_equipment,
     gain_invest_env,
@@ -2658,6 +2661,26 @@ class SimBackend:
             _prev_kind = None
         check_strategy_node_char_grants(self.gs, prev_kind=_prev_kind,
                                         sig=logic_sig('sim:strategy'))
+        # 策略卡羁绊条件节点窗交付拍(不要小看我们的羁绊 id 200901 首例;
+        # 触发-发放两拍制的发放拍,武装拍 = 结算腿 check_strategy_bond_
+        # battle_grants):进窗事实点在窗口幂等守卫内(重放不双发),武装
+        # 在场即采样交付——desc「进入节点时获得」= 本窗内最早段,发放物
+        # 先于本窗商店发牌落位。kernel 检查函数单一源 discharge_strategy_
+        # bond_battle_grants(armed 非 True 短路,未武装局零写);不按
+        # kind 分叉(任意节点窗开都查武装——武装事实已由结算拍锚定,窗
+        # 拍零条件);与同段多腿邻位收口(定时道具/开盒/boss 发放/boss 金/
+        # 尾款金/直发取卡/node_char;互不读对方字段,先后无行为差,同段
+        # 为收口序单一);sig = logic_sig('sim:strategy') 沿策略战后发放
+        # 腿同组;rng = 独立子流键 M13/{p}/{r}/strategy-bond(策略战后
+        # 发放族子键式沿 'ins'/'boss-grant' 先例,装备采样专用禁复用 M13
+        # 主流实例——独立子流 = 同 seed 其他流零扰动);幂等零新增守卫 =
+        # 窗口幂等守卫,零新增;返回值忽略(无回调面);live 零写观察覆盖
+        # (装备入栏有画面真值可读)。
+        discharge_strategy_bond_battle_grants(
+            self.gs, rng=stream_rng(self.seed,
+                                    f'M13/{plane}/{r}/strategy-bond'),
+            sig=logic_sig('sim:strategy'),
+            producer=GAIN_CHAIN_PRODUCER)
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')
@@ -3300,6 +3323,21 @@ class SimBackend:
             sig=logic_sig('sim:strategy'),
             rng=stream_rng(self.seed,
                            f'M13/{node.plane}/{node.round_num}/boss-grant'))
+        # —— 策略卡羁绊条件战后武装拍(不要小看我们的羁绊 id 200901
+        # 首例;触发-发放两拍制的武装拍,接线点 = 策略卡首领战后腿之后、
+        # 败局待办登记之前,胜败两态共同路径——卡面无「胜利」限定 =
+        # 败局存活也武装;死亡局在本函数提前 return 处已出局,不武装)。
+        # 条件单一源 = kernel check_strategy_bond_battle_grants(持卡 ∩
+        # 登记表 STRATEGY_BOND_BATTLE_GRANTS,激活羁绊数板面真值评估,
+        # 达标写武装标记;采样与发放归下一节点窗开拍——desc「进入节点时
+        # 获得」= 发放时点在节点窗非结算拍);sig = logic_sig('sim:strategy')
+        # 沿策略战后发放腿同组;零 rng(武装拍零采样);幂等零新增守卫 =
+        # 本函数 _settled_key(同节点重放整段跳过);返回值忽略(无回调
+        # 面);live 零写观察覆盖(武装标记无 live 观察通道,装备入栏有
+        # 画面真值可读)。
+        check_strategy_bond_battle_grants(
+            self.gs, sig=logic_sig('sim:strategy'),
+            producer=GAIN_CHAIN_PRODUCER)
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

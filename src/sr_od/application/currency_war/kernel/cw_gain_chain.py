@@ -45,6 +45,10 @@ from sr_od.application.currency_war.data.cw_chars import (
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
 )
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_board_by_row import (
+    board_by_row_of,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
     xp_apply_amount,
@@ -87,6 +91,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_GIFTS,
     ENV_REROLL_NAMES,
     INVESTMENT_ENVS,
+    STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_GRANTS,
@@ -1432,6 +1437,141 @@ def check_strategy_boss_battle_grants(gs: GameState, node_kind: str,
                            producer=_BOSS_BATTLE_GRANT_PRODUCER)
             granted.append(equip)
     return tuple(granted)
+
+
+def check_strategy_bond_battle_grants(gs: GameState,
+                                      sig: ChannelSig,
+                                      producer: str = GAIN_CHAIN_PRODUCER,
+                                      ) -> bool:
+    """策略卡羁绊条件战后发放武装检查(「激活8个羁绊并完成一场战斗后,
+    进入节点时获得5个随机星徽」触发器单一源,不要小看我们的羁绊 id 200901
+    首例;唯一调用点 = sim 结算腿——live 零写观察覆盖:武装标记系 sim 世界
+    内部状态无 live 观察通道,实机局不接本通道)。
+
+    触发-发放两拍制的**武装拍**(零 rng):本函数只评估条件并写武装标记,
+    采样与发放归节点窗拍 :func:`discharge_strategy_bond_battle_grants`
+    ——desc「进入节点时获得」= 发放时点在下一节点窗开非结算拍,两拍制
+    为卡面时点保真(武装拍与发放拍之间无板面写窗,两拍评估的板面状态
+    等值,分拍非语义分歧)。
+
+    条件矩阵(顺序即短路序,沿 check_strategy_battle_grants 无闩形态;
+    防重归调用方 `_settled_key` 节点键幂等守卫,本函数零二次守卫):
+
+    1. 持卡交集(``active_strategies.value`` ∩ STRATEGY_BOND_BATTLE_
+       GRANTS 键集)为空 → False(表外卡一律无条目,禁从效果原文自动
+       猜装);
+    2. 激活羁绊数评估:逐羁绊 ``max(board 容器计数, board_by_row 身份
+       聚合计数)`` 取 max 判激活(判激活侧 max 容错,cw_system_cards.
+       _faction_count 同款——漏判激活比多判更伤);board 与 deployed
+       双未观察 → 激活数 = 0 fail-closed 宁缺勿造;FACTIONS 外未知名
+       不计;激活判据 = 计数 ≥ ``FACTIONS[tag].tiers[0]``(档位单一
+       源 = FACTIONS;独立羁绊 tiers=(1,) 单人即激活,与左面板显示
+       同口径);
+    3. 逐持卡:激活数 ≥ 表载阈值 → ``write_logic`` 置武装标记
+       ``strategy_bond_battle_armed = True``(evidence
+       ``strategy_bond_battle#arm:<卡名>``),返回是否武装(断言面;
+       生产调用零回调面,sim 挂点忽略返回值)。
+
+    纪律标注:
+
+    - **零 rng**:武装拍零采样(采样归发放拍),逐函数标注纪律同款;
+    - **无 done 闩(可重复)**:卡面无「首次」限定 = 战后触发族直读——
+      每有一场「激活 ≥ 阈值状态下完成的战斗」即武装一次,其下一节点窗
+      交付 1 次;败局存活也武装(卡面无「胜利」限定,胜败两态共同路径;
+      死亡局在调用方 `_game_over` 提前 return 处已出局不武装);
+    - **扩卡前瞻**:武装标记现役单 bool 系单成员表形态;第二张同族卡
+      入表且双持时须改 per-card 武装态(如武装卡名集容器)并在发放拍
+      补逐卡阈值复核(现役发放拍逐持卡发放不复核该卡阈值)——扩卡批
+      义务,现役表单成员不可达零行为影响。
+    """
+    held = [n for n in gs.active_strategies.value or ()
+            if n in STRATEGY_BOND_BATTLE_GRANTS]
+    if not held:
+        return False
+    board_counts = gs.board.value or {}
+    row_counts = board_by_row_of(gs).total()
+    activated = 0
+    for tag in set(board_counts) | set(row_counts):
+        faction = FACTIONS.get(tag)
+        if faction is None or not faction.tiers:
+            continue
+        if max(int(board_counts.get(tag, 0)), int(row_counts.get(tag, 0))) \
+                >= faction.tiers[0]:
+            activated += 1
+    armed_any = False
+    for name in held:
+        threshold, _category, _count = STRATEGY_BOND_BATTLE_GRANTS[name]
+        if activated < threshold:
+            continue
+        gs.write_logic(gs.strategy_bond_battle_armed, True,
+                       produced_by=producer,
+                       evidence=f'strategy_bond_battle#arm:{name}',
+                       sig=sig)
+        armed_any = True
+    return armed_any
+
+
+def discharge_strategy_bond_battle_grants(gs: GameState, *,
+                                          rng: random.Random,
+                                          sig: ChannelSig,
+                                          producer: str = GAIN_CHAIN_PRODUCER,
+                                          ) -> int:
+    """策略卡羁绊条件节点窗交付检查(触发-发放两拍制的**发放拍**,与
+    :func:`check_strategy_bond_battle_grants` 武装拍配对;唯一调用点 =
+    sim 节点窗收口腿——live 零写观察覆盖:装备入栏有画面真值可读,实机
+    局不接本通道)。
+
+    过程(顺序即短路序):
+
+    1. 武装标记非 True(``strategy_bond_battle_armed.value is not True``)
+       → 0(None = 未观察未武装 / False = 已消费,两态同路零发放);
+    2. 逐持卡查 STRATEGY_BOND_BATTLE_GRANTS:池 = ``equips_by_category``
+       (表载类别),池空 → log 防御分支零写(注册表漂移,不炸链;泛化
+       随机装备族既定裁定——池随注册表传导,池空属数据面事故);逐件
+       ``rng.choice(pool)`` 采样 → ``gain_equipment(rand=True)``
+       (evidence ``strategy_bond_battle#<卡名>``,原语内追加 ``#equip``
+       后缀;逐件独立掷 = 放回语义,卡面无「不同」限定放回即直读;
+       rand=True = 采样效果子链,gain-chain.md §5);
+    3. 消费武装:``write_logic`` 置 ``strategy_bond_battle_armed =
+       False``(evidence ``strategy_bond_battle#consume``)——armed 每
+       窗消费一次,下场合格战斗再武装(可重复无 done 闩),返回实际
+       发放件数(断言面;生产调用零回调面,sim 挂点忽略返回值)。
+
+    纪律标注:
+
+    - **含 rng,形参必填无缺省**:采样强制显式注入(较损血腿「缺省回退
+      自掷」更严——本腿唯一消费方 = sim 挂点传流键,无 live 调用点,
+      无缺省形态则采样猜测口径的结构性风险面消失);
+    - **sig 单形态**:logic 族入参(武装消费笔与装备随机态写均 logic
+      渠道);
+    - **发放拍不复核逐卡阈值**:武装事实已由武装拍锚定(两拍间无板面
+      写窗,板面状态等值),窗拍零条件重评——扩卡前瞻(逐卡阈值复核)
+      见武装拍 docstring,现役单成员不可达。
+    """
+    if gs.strategy_bond_battle_armed.value is not True:
+        return 0
+    granted = 0
+    for name in gs.active_strategies.value or ():
+        spec = STRATEGY_BOND_BATTLE_GRANTS.get(name)
+        if spec is None:
+            continue
+        _threshold, category, count = spec
+        pool = equips_by_category(category)
+        if not pool:
+            log.warning(f'[cw-gain] 随机装备类别池空(注册表漂移?):'
+                        f'{name} category={category!r}')
+            continue
+        for _ in range(count):
+            equip = rng.choice(pool)
+            gain_equipment(gs, equip, rand=True, sig=sig,
+                           evidence=f'strategy_bond_battle#{name}',
+                           producer=producer)
+            granted += 1
+    gs.write_logic(gs.strategy_bond_battle_armed, False,
+                   produced_by=producer,
+                   evidence='strategy_bond_battle#consume',
+                   sig=sig)
+    return granted
 
 
 #: 策略卡每节点绑定角色复制发放写端署名(家族单一标识,_CONDITIONAL_
