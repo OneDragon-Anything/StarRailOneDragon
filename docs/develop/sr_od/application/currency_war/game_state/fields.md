@@ -1063,9 +1063,13 @@ env_grants_done——本队列不并入任何域版本 bump,他域本体未变)�
 首个条件达成的 tick 发放并封账,此后不再查——卖出/合成使同名计数回落
 **不回滚**已发放(局内单调追加,无删除/递减/重置)。条件计数 = 角色池
 (备战 ∪ 上阵 ∪ 溢出,与升星判断同池)内最大同名**单位数**(升星产物
-计 1)。与 env 通道的条件闩 `env_grants_done`(元素 (env, 条件键) 键对
-域,§3.5.5)**通道分立**:env 按环境名键、策略卡按持卡集语义,键形与
-语义两异,混载 = 语义污染。
+计 1)。复合键两形:``first_buy_xp#<费用>``(首购经验腿费用粒度闩,一卡
+五费用桶各一发)与 ``take_all#<卡名>#<已耗事件序>``(全都要族配额闩,
+每耗 1 格追加一键,判定 = 前缀计数 < 配额 map `_TAKE_ALL_SUPPLY_QUOTA`
+银 1/金 2——布尔形会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
+统一计数形;域单调追加契约保持,判定不依赖序号取值)。与 env 通道的条件
+闩 `env_grants_done`(元素 (env, 条件键) 键对域,§3.5.5)**通道分立**:
+env 按环境名键、策略卡按持卡集语义,键形与语义两异,混载 = 语义污染。
 
 **写入方**:逻辑写入方多处(清单权威 = cw_projection_audit 审计行
 `strategy_conditional_done` 行)——①获得链检查腿
@@ -1447,10 +1451,11 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
   去重——重复列形下按内容消账有歧义)。**写入方 = 画面 op 真选分支确认即写
   同窗**(`CwScreenSupplyNode` 决策体,与 `chosen_supply` 同 sig 同窗;机械执行态
   限定写——sim 局不种本域,sim 补给 char 面未建模为同一上游缺口族,未选集发放域
-  fail-closed)。**消费即清** = 进入下一补给阶段时
-  `check_strategy_supply_salvage` 发放被掷列后写回 None(打捞人才库族
-  「每次进入补给阶段后随机获得一个未被选择的角色及其携带的装备」的发源域;
-  重入幂等:同阶段观察上报多次第 2 次起已清零发)。无观察读端(bot 自有事实面,
+  fail-closed)。**消费即清双消费端** = 全都要族选卡时点检查
+  `check_strategy_take_all_supply`(R-choice,补给选定上报三 applied 出口前,
+  先到——选定上报即清)+ `check_strategy_supply_salvage` 发放被掷列后写回
+  None(打捞人才库族 R-entry,下一补给进入时点,后到早退零写;重入幂等:
+  同阶段观察上报多次第 2 次起已清零发)。无观察读端(bot 自有事实面,
   审计面 = projection-audit process_only)。
 
 #### 3.4.3 投资环境屏
@@ -2330,10 +2335,11 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 `STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
 `expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
 `apply_effect_expiry_grants` 腿,2026-10-30 首批条目入册);补给屏列数修饰:
-全都要·银(`BattlefieldEffect.supply_option_delta=-2` 声明载体——live 读链
+全都要·银/金(`BattlefieldEffect.supply_option_delta=-2` 声明载体——live 读链
 按实屏识别列数跟随禁写死,字段零消费挂点,sim 列数面零建模 = M18 简化域
-上游缺口;`STRATEGY_EFFECTS` 双条目异键登记〔canon 键 = 一次性全捞腿 +
-申报键 `'全都要·银#supply_delta'` = 本腿〕,2026-10-31 首条入册);具名装备授予:
+上游缺口;`STRATEGY_EFFECTS` 每卡双条目异键登记〔canon 键 = 发放腿 +
+申报键 `'<规范名>#supply_delta'` = 本腿〕,银 2026-10-31 首条入册、金
+2026-11-02 第二实例);具名装备授予:
 全员晋升(获得 2 个【拆装扳手】——装备库存精确增量,PICK_INVEST_EFFECTS
 效果体腿 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
 精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行);

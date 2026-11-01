@@ -1982,41 +1982,56 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
                    evidence='strategy_salvage_consumed', sig=sig)
 
 
-# ===== 全都要·银:补给选定时点检查(全都要族模式卡;R-choice 挂点)=====
-# 卡面(id 131001,官方原文 cw_invest_data.PLAZA_AUGMENTS):「本局游戏中，
-# 补给阶段的可选项减少2个。下1个补给阶段选择后，额外获得所有未选择的角色
-# 及装备。」两句双腿分治,登记载体 = 两条 EffectSpec(cw_investments.STRATEGY_
-# EFFECTS:canon 键归本腿,申报键 '全都要·银#supply_delta' 归列数修饰腿,
-# 申报键约定正本 = 该表条目注释):
+# ===== 全都要族:补给选定时点检查(R-choice 挂点;族模式卡 = 全都要·银)=====
+# 族卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS,姊妹卡同构唯配额差异):
+# 银(id 131001)「本局游戏中，补给阶段的可选项减少2个。下1个补给阶段选择
+# 后，额外获得所有未选择的角色及装备。」/ 金(id 203501)「……下2个补给
+# 阶段选择后……」——「下 N 个」N = 配额格数(银 1/金 2,单一源 =
+# :data:`_TAKE_ALL_SUPPLY_QUOTA`)。各卡两句双腿分治,登记载体 = 每卡两条
+# EffectSpec(cw_investments.STRATEGY_EFFECTS:canon 键归发放腿,申报键
+# ``'<规范名>#supply_delta'`` 归列数修饰腿,申报键约定正本 = 该表全都要·银
+# 条目注释):
 # - 腿1(列数修饰 -2)= :attr:`BattlefieldEffect.supply_option_delta` 声明
 #   载体,live 读链按实屏识别列数跟随(补给 op 模块头「列数以
 #   read_supply_options 实际识别为准,禁写死」在册),零消费挂点;sim 列数面
 #   零建模(M18 简化域上游缺口,真值对齐归 sim 补给真值专项,打捞族裁决同型)。
-# - 腿2(一次性全捞)= 本检查函数。挂点 = 补给选定上报
+# - 腿2(配额 N 逐事件全捞)= 本检查函数。挂点 = 补给选定上报
 #   report_action_pick_supply_param 三个 applied 出口前(R-choice 时点——
-#   卡面「下1个……选择后」字面自证;与打捞人才库 R-entry 挂点分立,两卡触发
-#   面读法各有字面锚互不冲突:打捞 = 进入时点,本卡 = 选定后时点,官方文本
-#   对照已在打捞条目注册注释背书)。
-# 配额消耗制 = **事件消耗制**:首个 applied 选择事件即耗(含内容全未知兜底轮
-# ——兜底轮是游戏侧真实选择,配额随之消耗;模型无源零发放,漏记列由下一备战
-# 帧观察覆盖入账 fail-visible,与打捞兜底轮同族口径)。备选「可记录消耗制」
-# (仅源可记录才耗)会让兜底顺延后的次轮补发成游戏未发生的幻影写,被在册
-# 禁猜硬裁定压住不采(保守支申报 = STRATEGY_EFFECTS 腿2 条目 pending notes)。
-# 一次性封账 = ``strategy_conditional_done`` 共域卡名闩(布尔形:存在 = 已耗;
-# 先例 = 到级条件族同域闩;全都要·金「下2个」/彩 recurring 后继带配额/
-# 周期语义,闩判定逻辑统一随其批对表)。
-# 与打捞人才库族共存边界(共享场字段 ``unchosen_supply`` 双消费者):本卡
+#   卡面「下 N 个……选择后」字面自证;与打捞人才库 R-entry 挂点分立,两卡
+#   触发面读法各有字面锚互不冲突:打捞 = 进入时点,本族 = 选定后时点,官方
+#   文本对照已在打捞条目注册注释背书)。
+# 配额消耗制 = **事件消耗制**:每个 applied 选择事件耗 1 格(含内容全未知
+# 兜底轮——兜底轮是游戏侧真实选择,配额随之消耗;模型无源零发放,漏记列由
+# 下一备战帧观察覆盖入账 fail-visible,与打捞兜底轮同族口径)。备选「可记录
+# 消耗制」(仅源可记录才耗)会让兜底顺延后的次轮补发成游戏未发生的幻影写,
+# 被在册禁猜硬裁定压住不采(保守支申报 = STRATEGY_EFFECTS 腿2 条目
+# pending notes)。
+# 配额封账 = ``strategy_conditional_done`` 共域计数闩(键 =
+# ``take_all#<卡名>#<已耗事件序>``,每耗 1 格追加一键;键形先例 =
+# first_buy_xp#<费用> 费用桶复合键,域单调追加契约保持——判定只数前缀,
+# 不依赖序号取值)。**禁布尔形(键存在 = 已耗)与计数形并存同域**:配额 >1
+# 时布尔判定把部分耗尽(已耗 1 格、尚剩格)误判耗尽 = 静默漏发,族内统一
+# 计数形;全都要·彩(id 331701,recurring 每次选择后)后继 = 配额取无界
+# 语义随其批对表。双持(银+金)= 同一选择事件两卡各耗各的 1 格、各发各的
+# 未选列(发放域内容同源,重复发放 = 卡面叠加语义零判重闸,姊妹双持族先例)。
+# 与打捞人才库族共存边界(共享场字段 ``unchosen_supply`` 双消费者):本族
 # R-choice 先消费清空 → 打捞腿下一补给进入 R-entry 后到早退零写——两卡同持
 # 时打捞腿饿死 = desc 未写明的交互域,由 rand=True 猜测写 + 观察覆盖承接。
 # 腿1 压缩本腿发放域:选择拍在屏列已被 −2,未选域常态 ≤1 列、实测下限局
 # 0 列空转(发放域规模随腿1 联动,族级注记)。
 
-#: 持卡判定名单集(先例 = :data:`_SALVAGE_STRATEGY_NAMES` 同形):全都要·银
-#:(id 131001)。集合语义防同持双发;不并入打捞集——发放语义异构(全列
-#: 一次性 vs 随机单列 recurring),合并 = 名单集语义耦合(独立双函数)。
-#: 全都要·金(id 203501,配额 2)/彩(id 331701,recurring)后继批扩员随其
-#: 建模批。
-_TAKE_ALL_SUPPLY_STRATEGY_NAMES: tuple[str, ...] = ('全都要·银',)
+#: 族闩键前缀(strategy_conditional_done 域内本族键空间,与纯卡名键 /
+#: first_buy_xp# 复合键空间互不相交):完整键 = ``<前缀><卡名>#<已耗序号>``。
+_TAKE_ALL_LATCH_PREFIX: str = 'take_all#'
+
+#: 持卡判定与配额单一源(值形 map 泛化,先例 = 打捞族名单集 tuple 同位):
+#: 键 = 卡规范名,值 = 卡面「下 N 个补给阶段选择后」的配额格数——全都要·银
+#:(id 131001)= 1、全都要·金(id 203501)= 2。判定与配额读取合一防两抄本
+#: 漂移;不并入打捞集——发放语义异构(全列逐事件 vs 随机单列 recurring),
+#: 合并 = 名单集语义耦合(独立双函数)。map 键集与 STRATEGY_EFFECTS name
+#: 集的一致性锁 = 测试仓表域锁(防写表人笔误形,不入 import 校验——治理
+#: 口径先例 = 打捞族)。
+_TAKE_ALL_SUPPLY_QUOTA: dict[str, int] = {'全都要·银': 1, '全都要·金': 2}
 
 #: 发放列角色入席星级先验(获取面单位恒 1★,升星仅经合成;与
 #: :data:`_SALVAGE_GRANT_STAR` 同款先验。发放腿整体 rand=True 随机态,
@@ -2039,21 +2054,24 @@ STRATEGY_TAKE_ALL_ASSUMPTION_KEYS: tuple[str, ...] = (
 
 
 def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
-    """全都要·银·补给选定时点检查(事件消耗制:选卡即耗,发放即清)。
+    """全都要族·补给选定时点检查(事件消耗制:每事件耗 1 格,发放即清)。
 
     门序(顺序即短路序,前门不过后门不触):
 
-    1. **持卡判定**:名单集(:data:`_TAKE_ALL_SUPPLY_STRATEGY_NAMES`)任一
-       成员 ∈ ``gs.active_strategies`` 现值 → 过,否则零写零闩早退(未持卡
+    1. **持卡判定**:配额 map(:data:`_TAKE_ALL_SUPPLY_QUOTA`)任一键 ∈
+       ``gs.active_strategies`` 现值 → 过,否则零写零闩早退(未持卡
        局全链零变化;直查容器不消费效果账本条目,登记与消费分离现役形态);
-    2. **一次性闩门**:卡名 ∈ ``gs.strategy_conditional_done`` → 零写早退
-       (布尔形存在 = 已耗;同窗重复出口/后续补给选择全静默);
-    3. **事件消耗闩**:落闩 write_logic(done 追加持卡名)——事件消耗制在
-       此统一处理:不论源可否记录,首个 applied 选择事件即耗配额(挂点三个
-       applied 出口都会到达本函数,兜底轮亦然);
+    2. **配额计数闩门**:逐持卡数域内 ``take_all#<卡名>#`` 前缀键数 =
+       已耗格数,全部 ≥ 各自配额 → 零写早退(配额耗尽后同窗重复出口/
+       后续补给选择全静默;耗尽残迹 = done 键簿记留域,审计可考);
+    3. **事件消耗闩**:逐未耗尽卡追加 ``take_all#<卡名>#<已耗+1>`` 键
+       (write_logic)——事件消耗制在此统一处理:不论源可否记录,每个
+       applied 选择事件即耗 1 格(挂点三个 applied 出口都会到达本函数,
+       兜底轮亦然);
     4. **源检查**:``gs.unchosen_supply.value`` 空/None → 零发放早退(None =
        无未选定案:未记录/兜底轮;sim 局恒此形态 = fail-closed 零发放);
-    5. **全未选列逐列发放**(「所有」= 零采样,全链无 rng 消费——不接
+    5. **全未选列逐卡逐列发放**(每未耗尽卡各发一遍,双持重复发放 = 卡面
+       叠加语义零判重闸;「所有」= 零采样,全链无 rng 消费——不接
        action_sampling_rng,sim 采样序列零扰动):char 非空 →
        :func:`grant_bench_unit_cascade`(rand=True 随机态——未选列内容未经
        游戏动作确认,归一仅发生于被选列,读链内容是模型侧读数非游戏确认
@@ -2076,18 +2094,28 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     (logic_action 族,挂点传入上报内部签名)。
     """
     strategies = gs.active_strategies.value or []
-    held = tuple(n for n in _TAKE_ALL_SUPPLY_STRATEGY_NAMES
-                 if n in strategies)
+    held = tuple(n for n in _TAKE_ALL_SUPPLY_QUOTA if n in strategies)
     if not held:
         return
     done = tuple(gs.strategy_conditional_done.value or ())
-    if any(n in done for n in held):
+    # 计数形配额闩门(门 2):前缀键数 = 已耗格数,< 配额放行。布尔形
+    # (键存在 = 已耗)会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
+    # 统一计数形禁两形并存。
+    spent = {n: sum(1 for k in done
+                    if k.startswith(f'{_TAKE_ALL_LATCH_PREFIX}{n}#'))
+             for n in held}
+    due = tuple(n for n in held if spent[n] < _TAKE_ALL_SUPPLY_QUOTA[n])
+    if not due:
         return
-    # 事件消耗闩(门 3):先于发放分支——兜底轮(源不可记录)也在此封账,
-    # evidence 与 char 腿同族前缀(账面归组一致)。
-    gs.write_logic(gs.strategy_conditional_done, done + held,
-                   produced_by='CwScreenSupplyNode',
-                   evidence=f'strategy_take_all:{held[0]}', sig=sig)
+    # 事件消耗闩(门 3):逐未耗尽卡追加一键,先于发放分支——兜底轮(源不可
+    # 记录)也在此封账;序号 = 写入时点「已耗+1」快照(审计可读,判定只数
+    # 前缀不依赖序号);evidence 与 char 腿同族前缀(账面归组一致)。
+    for name in due:
+        latch = f'{_TAKE_ALL_LATCH_PREFIX}{name}#{spent[name] + 1}'
+        gs.write_logic(gs.strategy_conditional_done, done + (latch,),
+                       produced_by='CwScreenSupplyNode',
+                       evidence=f'strategy_take_all:{name}', sig=sig)
+        done = done + (latch,)
     unchosen = gs.unchosen_supply.value
     if not unchosen:
         return
@@ -2098,46 +2126,49 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     from sr_od.application.currency_war.kernel.cw_game_state import (
         _emit_defect,
     )
-    for col in unchosen:
-        if col.char:
-            grant_bench_unit_cascade(
-                gs, col.char, _TAKE_ALL_GRANT_STAR, rand=True,
-                evidence=(f'strategy_take_all:{col.char}'
-                          f'@{_TAKE_ALL_GRANT_STAR}star'),
-                producer='CwScreenSupplyNode', sig=sig)
-        equip_texts = (col.equip, *col.extra_equips)
-        if not any(equip_texts):
-            # 零装备名分支(char-only 列 / 件名全失读,两形态读链不可分):
-            # 装备域零写零缺陷,失配由 equips 观察整表覆盖暴露(打捞腿同构)。
-            continue
-        for text in equip_texts:
-            norm = normalize_registry_equip_name(text) if text else ''
-            if norm:
-                # 装备入账:owned += 规范名(单一源 = gs.equips 现读-改写-
-                # 回写)+ 获得后果链(获得即送,随机态通道与主链一致)。
-                owned = list(gs.equips.value or [])
-                owned.append(norm)
-                gs.write_logic_rand(
-                    gs.equips, owned, produced_by='CwScreenSupplyNode',
-                    evidence=f'strategy_take_all_equip:{norm}', sig=sig)
-                apply_equip_acquire_consequence(gs, norm,
-                                                frame='strategy_take_all',
-                                                rand=True, sig=sig)
-            else:
-                # 装备名未解析:禁猜,equips 值不变翻来源 + 留证
-                # fail-closed(未选列不经选定窗验证,归一失败率天然高于
-                # 被选列;错名不入账由观察覆盖自愈)。
-                if gs.equips.value is not None:
+    # 门 5 逐卡逐列发放:双持(银+金)各发各的,内容同源重复 = 卡面叠加语义。
+    for _name in due:
+        for col in unchosen:
+            if col.char:
+                grant_bench_unit_cascade(
+                    gs, col.char, _TAKE_ALL_GRANT_STAR, rand=True,
+                    evidence=(f'strategy_take_all:{col.char}'
+                              f'@{_TAKE_ALL_GRANT_STAR}star'),
+                    producer='CwScreenSupplyNode', sig=sig)
+            equip_texts = (col.equip, *col.extra_equips)
+            if not any(equip_texts):
+                # 零装备名分支(char-only 列 / 件名全失读,两形态读链不可分):
+                # 装备域零写零缺陷,失配由 equips 观察整表覆盖暴露(打捞腿同构)。
+                continue
+            for text in equip_texts:
+                norm = normalize_registry_equip_name(text) if text else ''
+                if norm:
+                    # 装备入账:owned += 规范名(单一源 = gs.equips 现读-改写-
+                    # 回写)+ 获得后果链(获得即送,随机态通道与主链一致)。
+                    owned = list(gs.equips.value or [])
+                    owned.append(norm)
                     gs.write_logic_rand(
-                        gs.equips, gs.equips.value,
-                        produced_by='CwScreenSupplyNode',
-                        evidence='strategy_take_all_name_unresolved',
-                        sig=sig)
-                _emit_defect(field_name='equips',
-                             expected='strategy_take_all_equip_name',
-                             actual='unresolved',
-                             evidence='strategy_take_all_landing',
-                             sig=sig, kind='strategy_take_all_name_unresolved')
+                        gs.equips, owned, produced_by='CwScreenSupplyNode',
+                        evidence=f'strategy_take_all_equip:{norm}', sig=sig)
+                    apply_equip_acquire_consequence(gs, norm,
+                                                    frame='strategy_take_all',
+                                                    rand=True, sig=sig)
+                else:
+                    # 装备名未解析:禁猜,equips 值不变翻来源 + 留证
+                    # fail-closed(未选列不经选定窗验证,归一失败率天然高于
+                    # 被选列;错名不入账由观察覆盖自愈)。
+                    if gs.equips.value is not None:
+                        gs.write_logic_rand(
+                            gs.equips, gs.equips.value,
+                            produced_by='CwScreenSupplyNode',
+                            evidence='strategy_take_all_name_unresolved',
+                            sig=sig)
+                    _emit_defect(field_name='equips',
+                                 expected='strategy_take_all_equip_name',
+                                 actual='unresolved',
+                                 evidence='strategy_take_all_landing',
+                                 sig=sig,
+                                 kind='strategy_take_all_name_unresolved')
     gs.write_logic(gs.unchosen_supply, None,
                    produced_by='CwScreenSupplyNode',
                    evidence='strategy_take_all_consumed', sig=sig)

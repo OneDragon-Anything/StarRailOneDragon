@@ -1303,6 +1303,37 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(),
         notes='列数修饰腿(声明面,申报键条目经单取登记链不入效果账本);'
               'live 读链实屏识别跟随零消费挂点,sim 列数面零建模'),
+    # 全都要·金:官方「本局游戏中，补给阶段的可选项减少2个。下2个补给阶段
+    # 选择后，额外获得所有未选择的角色及装备。」(cw_invest_data.py:150,
+    # id 203501)。全都要族第二实例,双腿异键登记沿银卡首例(申报键约定正本
+    # = 上方全都要·银条目注释),姊妹卡面同构唯「下 N 个」N = 配额差异。
+    # 腿2(配额 2 逐事件全捞)占 canon 键:发放腿 =
+    # cw_effect_inventory.check_strategy_take_all_supply 族共享引擎(配额
+    # 单一源 = 该模块 _TAKE_ALL_SUPPLY_QUOTA map,银 1/金 2,挂点与银卡同三
+    # applied 出口)。duration 用 WHILE_HELD 而非银卡 ONCE:「下2个」非一次
+    # 性,ONCE 形在配额 2 下失真,配额耗尽即停语义由计数闩承载(免战牌用尽
+    # 即停语义形)。pending 保守支沿银卡同形两件待实采。
+    '全都要·金': EffectSpec(
+        id='203501', name='全都要·金', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(salvage_all_unchosen_supply=True),
+        duties=DutyFlags(),
+        pending=True,
+        notes='待采:兜底轮配额消耗制保守支=事件消耗制(每个 applied 选择'
+              '事件耗 1 格,含内容全未知兜底轮;漏记列由观察覆盖承接)+ 未选'
+              '钻列钻归属零建模(披露键 strategy_take_all_unchosen_diamond_'
+              'pending)'),
+    # 腿1(列数修饰 -2)占申报键(声明面条目,银卡同形第二实例):live 读链
+    # 按实屏识别列数跟随,字段零消费挂点(sim 列数面零建模 = M18 简化域上游
+    # 缺口);经单取登记链永不入效果账本,纯注册表声明。无未裁数值(-2 明写),
+    # 不设 pending。
+    '全都要·金#supply_delta': EffectSpec(
+        id='203501', name='全都要·金', trigger=TriggerKind.SUPPLY_PHASE,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(supply_option_delta=-2),
+        duties=DutyFlags(),
+        notes='列数修饰腿(声明面,申报键条目经单取登记链不入效果账本);'
+              'live 读链实屏识别跟随零消费挂点,sim 列数面零建模'),
     # 团队力量·银:官方「每有一个已激活的非独立羁绊，小队就会获得3%前/后台强度。」
     # (cw_invest_data.py:98,PlazaAugment 150101)。战力类零响应登记
     # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF

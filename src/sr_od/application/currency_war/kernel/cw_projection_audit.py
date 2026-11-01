@@ -248,9 +248,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '双点接线段写,producer strategy_level_grant)+ 策略卡到级'
               '装备腿(check_strategy_level_equip_grants 直写形态,live '
               '结算位 + sim advance 双点同链,producer '
-              'strategy_level_equip_grant)+ 全都要·银选卡事件消耗闩'
+              'strategy_level_equip_grant)+ 全都要族选卡事件消耗闩'
               '(check_strategy_take_all_supply 挂补给选定上报三 applied '
-              '出口,事件消耗制选卡即写,布尔形存在 = 配额已耗,producer '
+              '出口,事件消耗制每事件耗 1 格,计数键 take_all#<卡名>#<序号> '
+              '前缀计数 < 配额(map 银 1/金 2),producer '
               'CwScreenSupplyNode 未选域发放写端家族值)+ 策略卡首购经验'
               '桶闩(check_strategy_first_buy_xp_grants 挂买牌上报尾段,'
               'evidence first_buy_xp#<费用>,先闩后 sim 世界写 '
@@ -508,7 +509,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_PROCESS_ONLY,
         basis='补给未选列快照(画面 op 真选分支确认窗写,双消费即清 = '
               'check_strategy_supply_salvage(R-entry 打捞腿)+ '
-              'check_strategy_take_all_supply(全都要·银 R-choice 选卡'
+              'check_strategy_take_all_supply(全都要族 R-choice 选卡'
               '时点,先到——选卡即清,打捞腿下一补给进入后到早退零写);'
               '无观察读端)'),
     'chosen_megastar': ProjectionAuditRow(
