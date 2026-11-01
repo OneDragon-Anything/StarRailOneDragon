@@ -928,6 +928,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 精密金面判据映射(gate 恒 None)走纯发放循环;腿序 = 卡文语序。
     '欢愉星徽': _compose_grant_legs(_make_named_equip_grant_effect('欢愉星徽', 1),
                                    _make_char_grant_effect('绯英')),
+
+    # 列车同行星徽 = 具名装备×具名角色双腿组合登记行(卡文语序徽→人;
+    # 腿1 rand=False 策略卡侧具名腿通道归属;腿2 丹恒·饮月 1★——卡文
+    # 无星级词,1★ 先验家族口径,T-203 星级披露键同源)。
+    '列车同行星徽': _compose_grant_legs(_make_named_equip_grant_effect('列车同行星徽', 1),
+                                    _make_char_grant_effect('丹恒·饮月')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
