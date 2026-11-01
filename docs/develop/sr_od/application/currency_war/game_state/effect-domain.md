@@ -571,8 +571,8 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   sim 发牌面由后端发牌腿承接世界真值直写(`cw_sim_backend
   .apply_strategy_pick_sell_all_deal`,挂 `_on_invest_picked` 选卡落地拍、呈现闩防重放,
   授予出口 `grant_bucket_names` 逐档派生桶,判据 = `STRATEGY_EFFECTS` 过滤
-  `board_rewrite='sell_all'` 派生禁硬编码),live 维持观察覆盖零改动。
-- **证据**:规格 cw_investments.py:690-696(board_rewrite='sell_all');官方原文
+  `board_rewrite='sell_all_deal'` 派生禁硬编码),live 维持观察覆盖零改动。
+- **证据**:规格 cw_investments.py:690-696(board_rewrite='sell_all_deal');官方原文
   cw_invest_data.py:68「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个
   2星2费角色和2个2星1费角色。」
 - **推理链**:once 构同全员晋升;出售面确定性可算 → 逻辑写候选,发牌随机 → 观察
@@ -582,7 +582,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict(清场+6 刷改变商店决策
   上下文,买牌/读牌对账须预知);counter **不建**(一次性 burst 无剩余期);双腿
-  登记型单条目双载:出售面 = 素出售语义(`board_rewrite='sell_all'`,确定性清场
+  登记型单条目双载:出售面 = 素出售语义(`board_rewrite='sell_all_deal'`,确定性清场
   退款;×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);
   刷腿 = `free_refresh_burst=6` 挂战场载体(burst 桥登记拍单次发放,
   **BattlefieldEffect 载体携 burst 首例**,与 free_refresh_on_node_enter 同值域、
