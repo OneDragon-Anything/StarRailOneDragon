@@ -34,7 +34,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """买牌上报:gold −单价×k + bench 落位 + 合成连锁 + payload −k
-    ((name, star) 计数)+ 升星分支整表覆盖(买前快照三件组基点,快照在
+    ((name, star) 计数)+ 购买翻星(策略卡购买翻星注册表落位星级判定,
+    翻转只改 Unit 构造星,payload 匹配与 on_buy 持购买原星;applied 后
+    置闩 best-effort)+ 升星分支整表覆盖(买前快照三件组基点,快照在
     本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
     升星触发发放收尾(级联采集的升星事实交触发检查,升星分支写毕后
     best-effort 发火,触发分支异常 log 不阻塞上报主链)。
@@ -59,8 +61,10 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         bench_place,
     )
     from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        check_strategy_buy_star_flip,
         check_strategy_star_merge_gold,
         expert_conditional_trigger,
+        mark_strategy_buy_star_flip_consumed,
     )
     from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         _apply_full_bench_merge_buy,
@@ -99,6 +103,24 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     card = param.card
     name = str(getattr(card, 'name', '') or '')
     star = int(getattr(card, 'star', 1) or 1)
+    # —— 购买翻星落位判定(「购买的下1个X费角色立刻升到N星」族,注册表
+    #    = STRATEGY_BUY_STAR_FLIP_GRANTS,首例四费晋升):落位星级在 Unit
+    #    构造前判定一次——「立刻」= 翻星先于合成级联,翻转件以目标星级
+    #    身份参与合成判定(家族判读申报制非定谳,登记表区块注释同句申
+    #    报)。翻转只改本处落位星:payload 移除匹配与 on_buy 回调持购买
+    #    原星(交易对象与效果账本按购买面计,错位 = 商店按目标星匹配
+    #    移除 0 张)。目标星级现役恒 2 = 表值镜像(表域 {2, 3} 预留族扩
+    #    展,第二目标值卡落地批随批改读表值——「本批不预泛化」先例同
+    #    款纪律);满栏合成买路径翻转面不建模(整卡入参,登记表区块注
+    #    释边界申报)。best-effort:谓词异常按未翻转降级留 log 不阻塞
+    #    上报主链。——
+    land_star = star
+    try:
+        if check_strategy_buy_star_flip(gs, name=name, star=star,
+                                        cost=card_cost(card), sig=_grp_sig):
+            land_star = 2
+    except Exception as e:  # noqa: BLE001  谓词失败不阻塞(留 log)
+        _log.warning(f'[cw-buy] 购买翻星谓词分支失败(按未翻转降级): {e}')
     payload = gs.shop.value
     shop_view = shop_cards_to_legacy(shop_payload_content_cards(payload))
     # k 来源:executed 给定 = 回执 k(live);None = 理想执行自算(简单分支 1,
@@ -118,7 +140,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     _dep_pre_sig = _dep_sig(pre_dep)
     placed = bench_place(
         scratch_b, BenchSlot(kind='unit', unit=Unit(char_id=name,
-                                                    star=star))) is not None
+                                                    star=land_star))) is not None
     if placed:
         k = k_exec if k_exec is not None else 1
         _merge_bench(scratch_b, scratch_d, on_merge=_collect_merge)
@@ -247,6 +269,21 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                            sig=_grp_sig)
     except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
         _log.warning(f'[cw-buy] 首购经验腿发放分支失败(不阻塞): {e}')
+
+    # —— 购买翻星消费闩置位(注册表 = STRATEGY_BUY_STAR_FLIP_GRANTS):
+    #    翻转事实在上方落位分支确立,此处封账「下1个」消耗(applied 后
+    #    尾段,消耗 = 未闩 ∧ 购买费用匹配,无星级轴——已达标星级购买
+    #    翻转 no-op 照常消耗,置闩函数 docstring 申报分轴)。满栏合成买
+    #    路径翻转面不建模(落位分支不翻转)而闩照置 = 购买事件消耗语义
+    #    一致面,低频边界留证。best-effort:置闩分支异常不阻塞上报主链
+    #    (上方触发腿同纪律;at-most-once 失败语义见置闩函数 docstring)。
+    #    拒买(applied=False 早退)不可达本段。kernel 反向模块级零 import
+    #    契约:函数内惰性取(顶部惰性块同款)。——
+    try:
+        mark_strategy_buy_star_flip_consumed(gs, cost=card_cost(card),
+                                             sig=_grp_sig)
+    except Exception as e:  # noqa: BLE001  置闩分支失败不阻塞(留 log)
+        _log.warning(f'[cw-buy] 购买翻星置闩分支失败(不阻塞): {e}')
 
     # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
     #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;

@@ -95,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
+    STRATEGY_BUY_STAR_FLIP_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
@@ -1219,6 +1220,97 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
                        evidence=sim_evidence(f'xp:first_buy:{cost}'),
                        sig=obs_sig(group_id='sim:xp'))
     return amount
+
+
+#: 策略卡购买翻星写端署名(家族单一标识,_FIRST_BUY_XP_PRODUCER 同款
+#: 家族纪律;写端 = 买牌上报尾段置闩刻,新写端新名不沿用链缺省伪装连续)。
+BUY_STAR_FLIP_PRODUCER: str = 'strategy_buy_star_flip_grant'
+
+
+def _buy_star_flip_armed(gs: GameState, *, star: int,
+                         cost: int) -> tuple[str, ...]:
+    """购买翻星 armed 卡名集派生(纯读零写零 rng;唯一消费端 = 翻转谓
+    词 check_strategy_buy_star_flip——置闩消耗集过滤轴不同〔无星级轴〕,
+    在 mark 端独立派生,禁误共用本函数)。逐卡过滤:未闩(读取带
+    ``or ()`` None 防御,缺省 None 是合法设计语义)∧ 购买费用 == 表费用
+    过滤档(购买卡 cost 单维过滤,首购经验腿触发判据同型)∧ 购买星级
+    < 表目标星级(已达标星级购买 = 翻转 no-op,消耗语义不在此轴、归置
+    闩消耗集)。"""
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_BUY_STAR_FLIP_GRANTS]
+    if not held:
+        return ()
+    done = tuple(gs.strategy_conditional_done.value or ())
+    armed: list[str] = []
+    for card in held:
+        if card in done:
+            continue
+        want_cost, want_star = STRATEGY_BUY_STAR_FLIP_GRANTS[card]
+        if int(cost) != want_cost or int(star) >= want_star:
+            continue
+        armed.append(card)
+    return tuple(armed)
+
+
+def check_strategy_buy_star_flip(gs: GameState, *, name: str, star: int,
+                                 cost: int, sig: ChannelSig) -> bool:
+    """策略卡购买翻星检查(「你购买的下1个4费角色将立刻升到2星」触发器
+    单一源,四费晋升 id 202201 首例;**纯谓词零写零 rng**——翻转本体 =
+    买牌上报链 Unit 构造位 land_star 消费本判定,一次性封账 = applied 后
+    置闩腿 :func:`mark_strategy_buy_star_flip_consumed`,本函数零写)。
+
+    条件矩阵(顺序即短路序):持卡 ∩ 注册表为空(未持卡/表外卡同路,
+    表外卡禁从效果原文自动猜装)→ False;逐卡未闩 ∧ 费用档匹配 ∧
+    购买星级 < 目标星级(已达标星级购买恒 False,翻转 no-op 但「下1个」
+    消耗照常——消耗语义归置闩腿,与本谓词分轴);任一卡 armed → True。
+
+    - ``name`` = 购买卡规范名(现役判据不消费——费用/星级两维过滤全表
+      驱动;入参保留为家族签名稳定位,后继「按角色名过滤」类卡复用本
+      签名零重排);
+    - ``sig`` = 渠道签名透传位(纯谓词不写零消费;调用点 = 买牌上报链
+      逻辑动作窗,签名随家族检查腿形状对齐)。
+
+    时序口径 = 翻星先于合成级联(「立刻」字面 + 发牌 2★ 直出同构;家族
+    判读申报制非定谳,登记表区块注释同句申报,实机采证 = 持同名高星件
+    购买观察落席星级)。双端同写零 sim 门控:接线在共享上报函数内物理
+    单点(live = 确定性投影,板面观察对账兜底;sim = 世界真值),
+    kernel→sim.ports 首例 import 义务不经本族引入。
+    """
+    return bool(_buy_star_flip_armed(gs, star=star, cost=cost))
+
+
+def mark_strategy_buy_star_flip_consumed(gs: GameState, *, cost: int,
+                                         sig: ChannelSig) -> tuple[str, ...]:
+    """购买翻星一次性封账(消耗集落闩;唯一调用点 = 买牌上报 applied 后
+    尾段置闩腿)。消耗集 = 未闩 ∧ 购买费用匹配(**无星级轴**——「下1个
+    4费角色」指下一次购买事件、与其星级无关:已 2★ 4 费购买翻转 no-op
+    照常消耗;与 :func:`_buy_star_flip_armed` 的翻转轴刻意分轴,勿合一,
+    签名不收 star 即该分轴的结构承载)。纯卡名键落 strategy_conditional_
+    done 共域;evidence = ``strategy_buy_star_flip:<卡名>``(多卡同拍
+    「+」连接);返回置闩卡名元组(断言面,生产调用零回调面)。
+
+    - **失败语义 at-most-once**(check_strategy_first_buy_xp_grants 同款
+      纪律句):闩写天性后于翻转(翻转定落位星、闩在 applied 后),窗口
+      = 上报函数内异常非正常路径;置闩腿整体 best-effort——闩写一旦失败,
+      该卡翻星机会在窗口内可重复武装仅 warning 留证,无重试无自动补发;
+    - 拒买(applied=False 早退)不可达调用点,闩不会被失败购买误置;
+    - 零 rng:确定事件零采样面。
+    """
+    done_pre = tuple(gs.strategy_conditional_done.value or ())
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_BUY_STAR_FLIP_GRANTS]
+    consumable = tuple(
+        n for n in held
+        if n not in done_pre
+        and int(cost) == STRATEGY_BUY_STAR_FLIP_GRANTS[n][0])
+    if not consumable:
+        return ()
+    gs.write_logic(gs.strategy_conditional_done, done_pre + consumable,
+                   produced_by=BUY_STAR_FLIP_PRODUCER,
+                   evidence='strategy_buy_star_flip:'
+                            + '+'.join(consumable),
+                   sig=sig)
+    return consumable
 
 
 #: 策略卡到级发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER/

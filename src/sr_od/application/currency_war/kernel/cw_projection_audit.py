@@ -241,7 +241,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名'
               '或复合键 first_buy_xp#<费用>,局内恒存随快照存续),无观察'
               '读端——发放登记事实非观察投影(同族行先例 = '
-              'env_grants_done);逻辑写端五处 = '
+              'env_grants_done);逻辑写端六处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
               '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
               '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
@@ -255,7 +255,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '桶闩(check_strategy_first_buy_xp_grants 挂买牌上报尾段,'
               'evidence first_buy_xp#<费用>,先闩后 sim 世界写 '
               'xp:first_buy:* at-most-once,producer '
-              'strategy_first_buy_xp_grant)'),
+              'strategy_first_buy_xp_grant)+ 策略卡购买翻星消耗闩'
+              '(mark_strategy_buy_star_flip_consumed 挂买牌上报 applied '
+              '后尾段,纯卡名键,evidence strategy_buy_star_flip:<卡名>,'
+              '翻转在落位拍先于闩写 at-most-once,producer '
+              'strategy_buy_star_flip_grant)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'

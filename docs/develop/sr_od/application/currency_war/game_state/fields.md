@@ -1066,7 +1066,13 @@ placed 刻追加,发放与封账同 evidence 同 sig 同组,evidence
 买牌上报尾段发火腿,write_logic 直写复合键 `first_buy_xp#<费用>`
 (费用粒度五桶各一发),evidence `first_buy_xp#<费用>`,producer
 `strategy_first_buy_xp_grant`;闩先于 sim 世界写 `xp:first_buy:*`
-at-most-once,live 零世界写经验条观察链覆盖)。**拒落不闩**(①):
+at-most-once,live 零世界写经验条观察链覆盖);④策略卡购买翻星消耗闩
+(四费晋升 id 202201:kernel `mark_strategy_buy_star_flip_consumed` 挂
+买牌上报 applied 后尾段,write_logic 直写纯卡名键,消耗 = 未闩 ∧ 购买
+费用匹配无星级轴〔已达标星级购买翻转 no-op 照常消耗〕,evidence
+`strategy_buy_star_flip:<卡名>`,producer `strategy_buy_star_flip_grant`;
+翻转在落位拍先于闩写 at-most-once,双端同写零 sim 门控——翻转 = 共享
+上报链确定性投影,板面观察对账兜底)。**拒落不闩**(①):
 equips 未观察窗发放
 fail-closed 零写,闩同样不落——池现值维持达标时后续 tick 重试自愈;池
 永久回落阈下则不发放(边界非缺陷)。**无观察写入方**——发放登记事实非

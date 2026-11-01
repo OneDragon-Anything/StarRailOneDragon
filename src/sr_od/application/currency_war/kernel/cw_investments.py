@@ -4779,3 +4779,69 @@ def _validate_strategy_delayed_grants() -> None:
 
 
 _validate_strategy_delayed_grants()
+
+
+# ===== 策略卡购买翻星登记表(白名单制;购买触发翻星族「购买的下1个
+# ===== X费角色立刻升到N星」首例)=====
+# 翻转判定单一源;消费端 = kernel/cw_gain_chain.check_strategy_buy_star_
+# flip(纯谓词,买牌上报链落位星级判定消费——Unit 构造位翻星/applied 后
+# 置闩两处接线,翻转不改 payload 移除匹配与 on_buy 回调的购买原星)。
+# 表外卡一律无条目,禁从效果原文自动猜装(STRATEGY_FIRST_BUY_XP_GRANTS
+# 同款纪律);同族后续「购买下1个X费升星」类卡按「注册行直用本通道」
+# 接入(姊妹卡着眼当下全档枚举行共用本表,值形迁移归其实现批对表)。
+# 一次性闩 = strategy_conditional_done 纯卡名键(「下1个」= 下一次购买
+# 事件语义封账;首购经验的复合键是费用粒度五桶扩展,本族无桶面不沿用)。
+# 时序口径 = 翻星在落位时生效、先于合成级联(卡面「立刻」字面 + 发牌
+# 2★ 直出同构先例;家族判读申报制承载非定谳——后继族稿引用须现值重核,
+# 实机采证路径 = 持同名高星件购买观察落席星级)。
+
+STRATEGY_BUY_STAR_FLIP_GRANTS: dict[str, tuple[int, int]] = {
+    # 四费晋升:官方「你购买的下1个4费角色将立刻升到2星。获得12金币。」
+    # (id 202201 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行;费用
+    # 过滤档 4/目标星级 2 两维全卡面明写,零披露键;同卡金腿「获得12金
+    # 币」归 STRATEGY_ECONOMY instant_gold 在册,不进本表)
+    '四费晋升': (4, 2),
+}
+
+
+def _validate_strategy_buy_star_flip_grants() -> None:
+    """STRATEGY_BUY_STAR_FLIP_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」——纯笔误类值形查(元组形/件数)不加,行值防线
+    = 表域测试行值精确断言;本表落值域合法性四查,理由 = 错值运行期实况
+    = 谓词静默永不匹配(无 KeyError 无台账无失败行),import 期哨是唯一
+    响亮拦截面):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 费用档域:值[0] ∈ 1..5(游戏费用桶域,错档 = 该卡翻星腿
+    永不触发);③ 目标星级域:值[1] ∈ {2, 3}(翻星目标域——游戏星级
+    上限 3,1 = 「升到1星」自相矛盾;3 为族扩展预留、现役仅 2);④ 顾问
+    型零冲突:键不得为 STRATEGY_GRANTS 顾问行(advisor=True 卡的获得走
+    特邀专家付费期权通道非普通商店购买,费用/星级购买过滤判据语义不适
+    配,双登记 = 机制冲突防呆)。"""
+    orphans = [n for n in STRATEGY_BUY_STAR_FLIP_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BUY_STAR_FLIP_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, (_cost, _target_star) in STRATEGY_BUY_STAR_FLIP_GRANTS.items():
+        if not 1 <= _cost <= 5:
+            raise ValueError(
+                f"STRATEGY_BUY_STAR_FLIP_GRANTS 费用档域破({_name!r} 游戏"
+                f"费用桶域 1..5,错档 = 翻星腿静默失效):{_cost!r}")
+        if _target_star not in (2, 3):
+            raise ValueError(
+                f"STRATEGY_BUY_STAR_FLIP_GRANTS 目标星级域破({_name!r} 翻星"
+                f"目标域 {{2, 3}},1 = 「升到1星」自相矛盾):{_target_star!r}")
+    _advisor_conflicts = [
+        n for n in STRATEGY_BUY_STAR_FLIP_GRANTS
+        if getattr(STRATEGY_GRANTS.get(n), 'advisor', False)
+    ]
+    if _advisor_conflicts:
+        raise ValueError(
+            f"STRATEGY_BUY_STAR_FLIP_GRANTS 顾问型冲突(特邀专家顾问行走付费"
+            f"期权通道,禁入普通购买过滤表):{sorted(_advisor_conflicts)}")
+
+
+_validate_strategy_buy_star_flip_grants()
