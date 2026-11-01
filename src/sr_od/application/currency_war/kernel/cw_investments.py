@@ -4807,41 +4807,22 @@ STRATEGY_BUY_STAR_FLIP_GRANTS: dict[str, tuple[int, int]] = {
 def _validate_strategy_buy_star_flip_grants() -> None:
     """STRATEGY_BUY_STAR_FLIP_GRANTS 构建校验(import 即炸;治理口径 =
     用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
-    独立触发的漂移哨留」——纯笔误类值形查(元组形/件数)不加,行值防线
-    = 表域测试行值精确断言;本表落值域合法性四查,理由 = 错值运行期实况
-    = 谓词静默永不匹配(无 KeyError 无台账无失败行),import 期哨是唯一
-    响亮拦截面):
+    独立触发的漂移哨留」,同 _validate_strategy_win_gold_grants
+    docstring——本表只落孤儿键一哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
-    失联);② 费用档域:值[0] ∈ 1..5(游戏费用桶域,错档 = 该卡翻星腿
-    永不触发);③ 目标星级域:值[1] ∈ {2, 3}(翻星目标域——游戏星级
-    上限 3,1 = 「升到1星」自相矛盾;3 为族扩展预留、现役仅 2);④ 顾问
-    型零冲突:键不得为 STRATEGY_GRANTS 顾问行(advisor=True 卡的获得走
-    特邀专家付费期权通道非普通商店购买,费用/星级购买过滤判据语义不适
-    配,双登记 = 机制冲突防呆)。"""
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。费用档/目标星级系卡面手抄常量,游戏数值改版只改「正确值」,
+    正确转录值恒在域内(哨不响),纯笔误类值域查按治理裁定不加,对账归
+    评审与本表域测试把关(行值精确断言 + id 对拍,防线强于 import 期
+    形查);顾问型跨表双登记互斥(STRATEGY_GRANTS 顾问行)同属防呆类
+    同判不加——手工注册表版本变更不可能自动产生冲突行。
+    """
     orphans = [n for n in STRATEGY_BUY_STAR_FLIP_GRANTS
                if n not in INVESTMENT_STRATEGIES]
     if orphans:
         raise ValueError(
             f"STRATEGY_BUY_STAR_FLIP_GRANTS 孤儿键(base 无此卡?):"
             f"{sorted(orphans)}")
-    for _name, (_cost, _target_star) in STRATEGY_BUY_STAR_FLIP_GRANTS.items():
-        if not 1 <= _cost <= 5:
-            raise ValueError(
-                f"STRATEGY_BUY_STAR_FLIP_GRANTS 费用档域破({_name!r} 游戏"
-                f"费用桶域 1..5,错档 = 翻星腿静默失效):{_cost!r}")
-        if _target_star not in (2, 3):
-            raise ValueError(
-                f"STRATEGY_BUY_STAR_FLIP_GRANTS 目标星级域破({_name!r} 翻星"
-                f"目标域 {{2, 3}},1 = 「升到1星」自相矛盾):{_target_star!r}")
-    _advisor_conflicts = [
-        n for n in STRATEGY_BUY_STAR_FLIP_GRANTS
-        if getattr(STRATEGY_GRANTS.get(n), 'advisor', False)
-    ]
-    if _advisor_conflicts:
-        raise ValueError(
-            f"STRATEGY_BUY_STAR_FLIP_GRANTS 顾问型冲突(特邀专家顾问行走付费"
-            f"期权通道,禁入普通购买过滤表):{sorted(_advisor_conflicts)}")
 
 
 _validate_strategy_buy_star_flip_grants()
