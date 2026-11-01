@@ -6,9 +6,9 @@
 凑金,保持最大压牌库,钱够了再升;会话内筹资场景已随统一获取让位评估
 收编退役——roster-plane1-union design §2.2 第 4 项:获取受阻〔席满 ∨
 金不足〕走买入臂内联统一评估,禁经本注册表),输入 =
-(场景,容器状态),输出 = 按让位序排序的卖出候选或空。规格单一源 =
-``changes/2026-10-29-unified-priority/details/acquisition-and-sell.md``
-§3(三触发卖出判据件)+ priority-model §5(卖出取用形态):
+(场景,容器状态),输出 = 按让位序排序的卖出候选或空。三触发卖出判据件
+规格单一源 = strategy-docs/11_shop_decisions.md §4.0;统一序列判定与
+卖出取用形态规格正本 = strategy-docs/32_unified_sell_priority.md(§3/§8):
 
 - **统一序列消费**:各场景排序单一源 = ``criteria/priority.sell_order``
   (禁第二排序实现,总纲 §2.9 接口契约 1)——部署重排
@@ -243,7 +243,8 @@ class SellCandidate:
     """
     rng_tail_hit: bool = False
     """[观测载荷] 随机尾键命中:池内存在另一件与本件排序键去尾后
-    全同(等价牌群内部随机定序对本件实际生效,priority-model §4)。
+    全同(等价牌群内部随机定序对本件实际生效,随机尾键契约 =
+    strategy-docs/32_unified_sell_priority.md §7)。
     取值时机同上;缺省 False = 未观测形态。判据零消费。"""
 
 
@@ -356,7 +357,8 @@ def evaluate_sell_candidates(
     units: list[crit_priority.HeldUnit] = []
     cands: dict[tuple[str, int], SellCandidate] = {}
     # 档 1(部署定型内,按角色名命中)不进让位输出——「部署定型内的
-    # 牌永不先卖」的字面保证(priority-model §5);备战位上的同名牌
+    # 牌永不先卖」的字面保证(卖出取用形态正本 =
+    # strategy-docs/32_unified_sell_priority.md §8);备战位上的同名牌
     # 同受保护(档 1 按名命中 = 在手优先不换手形态,3.1 判据件语义)。
     # 板空边界保守侧:部署外候选真空帧 = 空输出,不向部署需要面借牌。
     # —— 备战席支(占位件物理门 = 现行跨通道共享谓词)——

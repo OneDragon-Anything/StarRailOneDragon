@@ -51,6 +51,7 @@
 | 29 | [29_invest_strategy_screen.md](29_invest_strategy_screen.md) | 投资策略画面策略面：投资卡价值分五项相加（同 28 行，各部分定义见 28/29 篇正文）；结构分区：禁选/自拆台（与自身阵容相克的卡）/血本位三态（扣血换收益卡的处置）/定义型；逐卡刷新判据(P81 承接；决策实现 = strategies/impl/mandate_v1/invest_strategy.py) |
 | 30 | [30_supply_screen.md](30_supply_screen.md) | 补给画面策略面：三级字典序(钻>角色〔虚拟全局评估〕>装备)+刷新「三级全空才刷」(次数闸内嵌；判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/supply.py) |
 | 31 | [31_encounter_screen.md](31_encounter_screen.md) | 遭遇画面策略面：按当前战力状态三档直选，配合经验需求分层与奖励优先级，并列按固定优先级打破平局；是否刷新另有阈值（详见本篇正文）(判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/encounter_pick.py) |
+| 32 | [32_unified_sell_priority.md](32_unified_sell_priority.md) | 统一让位序列判定规格（正本）：十档判定表/保留张定义与落档边界/排序输入契约与两态名单/档内键口径注/随机尾键/卖出取用形态——全部卖出让位排序的单一规格源（实现 = criteria/priority.py::sort_key，禁第二排序实现） |
 | 遥测 | [strategy-telemetry.md](strategy-telemetry.md) | 策略遥测数据规范（DecisionRecord）：信封键闭集 + mandate_v1 payload 键表语义与判读注意（产生端 = 基类捕获缝自动采集；消费端 = 复盘渲染器按需装配） |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）

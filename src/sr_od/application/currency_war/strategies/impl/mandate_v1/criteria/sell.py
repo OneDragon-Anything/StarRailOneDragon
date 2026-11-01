@@ -182,7 +182,8 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
             continue
         # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
         # 3.4:bench_effect_qualified 四消费位的凑息档序处拆除,该维度
-        # 由统一序列档 7 判定承载,priority-model §4。)
+        # 由统一序列档 9 判定承载,判定表正本 =
+        # strategy-docs/32_unified_sell_priority.md §3。)
         qualified.append((i, b))
     # 序:刚买件优先(R2-N1),其余 (star,紧缩位) 升序(确定性;紧缩序
     # = 物理槽序,与旧 (star, slot) 逐位等价)
@@ -294,7 +295,8 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
             continue
         # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
         # 3.4:bench_effect_qualified 四消费位的危局阀桶处拆除,该维度
-        # 由统一序列档 7 判定承载,priority-model §4。)
+        # 由统一序列档 9 判定承载,判定表正本 =
+        # strategy-docs/32_unified_sell_priority.md §3。)
         out.append(_slot_of(b, i))
         # 1★ 卖回净额 = sell_refund(1,注册表 cost) 派生(R196 症6:
         # 禁字面量 3 双源——bench_char_cost 未知名保守估 3 与旧值同构)

@@ -244,8 +244,8 @@ class Comp:
     = mandate_v1 部署窗口辖域(数据 kernel / 判据策略层,宪 5 合宪申报
     同知识卡三字段)。"""
     member_priority: dict[str, int] = field(default_factory=dict)
-    """阵容内成员优先级序数表(档 2/3/4/5/7 档内①键的知识卡单一源;规格 =
-    changes/2026-10-29-unified-priority/details/priority-model.md §3,
+    """阵容内成员优先级序数表(档 2/3/4/5/7 档内①键的知识卡单一源;序数取值
+    规格正本 = strategy-docs/32_unified_sell_priority.md §2,
     消费端 = mandate_v1/criteria/priority.py 装配)。
     键 = 角色规范名(线终局成员 core ∪ shared),值 = 序数,
     **小 = 优先级高**(与统一价值序「档位编号小 = 优先级高」同轴)。

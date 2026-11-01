@@ -1,14 +1,14 @@
 """criteria/priority——角色统一让位优先级判据件(唯一排序判据源)。
 
-规格单一源 = ``changes/2026-10-29-unified-priority/details/priority-model.md``
-(八档判定表 §2 / 档内键表 §3 / 在手旗标与随机尾键 §4 / 卖出取用形态 §5);
-总纲 = 同目录 design.md §2.1。全部卖出/获取消费点(获取角色流程、溢出、
-凑钱凑位、补给选角色)只消费本模块 :func:`sort_key` / :func:`sell_order`,
-禁第二排序实现(总纲 §2.9 接口契约 1)。
+判定规格单一源 = strategy-docs/32_unified_sell_priority.md(下称 32 号稿)
+(排序输入与两态名单 §2 / 十档判定表 §3 / 保留张与落档边界 §4-§5 /
+档内键口径注 §6 / 在手旗标与随机尾键 §7 / 卖出取用形态 §8)。全部
+卖出/获取消费点(获取角色流程、溢出、凑钱凑位、补给选角色)只消费
+本模块 :func:`sort_key` / :func:`sell_order`,禁第二排序实现(32 号稿 §1)。
 
-核心模型(总纲 §2.0):部署先行,优先级服务于让位——部署算法定型档 1,
+核心模型:部署先行,优先级服务于让位——部署算法定型档 1,
 排序作用于部署定型后的局面,回答「手里这些牌谁该让路」。让路方向 =
-key 大者先卖(档位编号大 = 优先级低 = 先卖,与总纲 §2.1 一致);因此
+key 大者先卖(档位编号大 = 优先级低 = 先卖);因此
 各档内「后卖」类属性(总星级数多/单卡星级高)在键里取负号、先卖类属性
 (档 10 概率高/低费)取正号。
 """
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 PriorityKey = tuple[int | float, ...]
 
 #: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户拍板,
-#: design §2.1 档 7 / priority-model §2;
+#: 判定表正本 = 32 号稿 §3 档 9 行;
 #: 巨星独特加成/敌人受伤提高+同频/护盾强度+伤害增幅/敌人挂离火)。
 #: 成员判定 = 角色自报 factions/flows 与本名单求交(单一真相源 =
 #: data/cw_factions.py FACTIONS 键 × cw_chars 自报,成员关系派生)。
@@ -63,7 +63,7 @@ TIER7_BOND_NAMES: frozenset[str] = frozenset(
 
 @dataclass(frozen=True)
 class HeldUnit:
-    """手持牌(场上/备战位统一形态;priority-model §1)。"""
+    """手持牌(场上/备战位统一形态;32 号稿 §2)。"""
 
     name: str
     """角色规范名(注册表键空间)。"""
@@ -86,7 +86,7 @@ class HeldUnit:
 
 @dataclass(frozen=True)
 class ShopUnit:
-    """商店/补给候选牌(在手旗标恒 = 将获取;priority-model §1)。"""
+    """商店/补给候选牌(在手旗标恒 = 将获取;32 号稿 §2)。"""
 
     name: str
     """角色规范名(注册表键空间)。"""
@@ -98,13 +98,13 @@ class ShopUnit:
 
 @dataclass(frozen=True)
 class PriorityContext:
-    """排序所需只读输入的装配体(一次性装配,禁散参;priority-model §1)。
+    """排序所需只读输入的装配体(一次性装配,禁散参;32 号稿 §2)。
 
-    九项输入对应 priority-model §1 清单(持牌全量快照/部署在场名集/
+    输入清单与各字段读口见 32 号稿 §2(持牌全量快照/部署在场名集/
     锁定线名单视图/候选快照/过渡配方对成员/当前升星目标/必要星级表/
-    当前等级/随机流),另含档 2/3/4/5/7 档内序数键的装配产物
+    当前等级/随机流,另含档 2/3/4/5/7 档内序数键的装配产物
     ``member_rank``(知识卡 ``member_priority`` 字段直读合成;迁移期
-    形态 = core 0/其余 1,逐角色精调归下一迭代外溢)。字段容器按装配
+    形态 = core 0/其余 1,逐角色精调归下一迭代外溢))。字段容器按装配
     后只读约定使用。
 
     聚合谓词口径:档 2/3/4/5/7/8/9 的「持有最高星/总星级数/名下有无副本」
@@ -145,23 +145,23 @@ class PriorityContext:
     物化对象等不在 COMP_LIBRARY 的名字)。"""
     member_rank: dict[str, int]
     """档内优先级序数表(档 2/3/4/5/7 ①键,序数取值规则 =
-    priority-model §3):成员名 → 序数,小 = 优先级
+    32 号稿 §2):成员名 → 序数,小 = 优先级
     高。装配 = 各活性线知识卡 ``member_priority`` 字段直读
     (cw_comps.member_rank_of,空表/旧数据回退 core 两档派生——总纲
     §2.1.1 迁移期形态 = core 0/其余 1);跨线成员取各线最小序数(最高
     优先,core 优先于非 core);过渡配方成员不入表(统一低档,
-    priority-model §3 配方支),表外成员判定端缺省 1。逐角色精调归
+    32 号稿 §2 配方支),表外成员判定端缺省 1。逐角色精调归
     下一迭代外溢。"""
     level: int
     """⑧当前等级(档 10 概率查表键 refresh_prob(level, cost))。"""
     rng: random.Random
     """⑨随机流(档内等价牌的随机尾键;策略器自有随机流
     StrategySession.rng 直用,构造时按 strategy_seed 播种,同 seed
-    同序——priority-model §4 定案,不新增派生设施)。"""
+    同序——32 号稿 §7 定案,不新增派生设施)。"""
 
 
 def held_copies_of(gs: GameState) -> dict[str, list[int]]:
-    """持牌全量快照(备战位 ∪ 前后台一次只读取;priority-model §1 读源)。
+    """持牌全量快照(备战位 ∪ 前后台一次只读取;32 号稿 §2 读源)。
 
     返回角色名 → 该名全部副本星级列表(同名跨星全部副本参与聚合,
     落档边界的「名下最高星/总星级数」以角色名为聚合键)。"""
@@ -202,7 +202,7 @@ def assemble_priority_context(
     (保守方向)。配方支两态共用同一读口(槽位直读 + 读前判窗),
     进 P2 后恒空集。
 
-    序数装配(档 2/3/4/5/7 ①键,序数取值规则 = priority-model §3)
+    序数装配(档 2/3/4/5/7 ①键,序数取值规则 = 32 号稿 §2)
     = 知识卡 ``member_priority`` 字段
     直读(:func:`cw_comps.member_rank_of`,空表/旧数据回退 core 两档
     派生),跨线成员取各线最小序数(最高优先);过渡配方成员不入表
@@ -232,7 +232,7 @@ def assemble_priority_context(
             # 序数表 = 锁定线知识卡字段直读(空表回退两档派生)。配方
             # 伪锁帧的锁名不在 COMP_LIBRARY(comp 为 None)→ 不建表,
             # 全员经下方补缺/判定端缺省走低档 1——配方成员低优先级
-            # 规则在此分支的承载(priority-model §3 配方支;伪阵容
+            # 规则在此分支的承载(32 号稿 §2 配方支;伪阵容
             # core_chars 为全员 core 形态,直推即高档,禁读)。
             rank = member_rank_of(comp)
         # need_star 表 = 知识卡字段全量照录,达标成员不缺省:缺省 1 会
@@ -396,7 +396,7 @@ def assemble_candidate_eval(
 
 def priority_rng_of(session: object,
                     config: object | None = None) -> random.Random:
-    """随机流读口(随机尾键单一取源;priority-model §4)。
+    """随机流读口(随机尾键单一取源;32 号稿 §7)。
 
     - session 宿主自带 rng 槽(StrategySession 形态——kernel 旁表键位/
       sim 直构)直用,策略随机语义单一源,不新增派生设施;
@@ -422,7 +422,7 @@ def priority_rng_of(session: object,
 
 
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
-    """成员档(2/3/4/5/7)阵容成员名单(两态;priority-model §2 名单
+    """成员档(2/3/4/5/7)阵容成员名单(两态;32 号稿 §2 名单
     源;单一准入 = roster-plane1-union design §2.1)。
 
     锁定帧 = 锁定线名单 ∪ 过渡配方对成员(P1 锁定局并集——锁定不是
@@ -526,8 +526,8 @@ def is_kept_unit(unit: HeldUnit | ShopUnit, unit_star: int,
 def sort_key(unit: HeldUnit | ShopUnit,
              ctx: PriorityContext) -> PriorityKey:
     """统一优先级排序键(十档判定按序命中即出 + 档内键 + 在手旗标 +
-    随机尾键;档内序数键与随机流契约 = priority-model §3/§4,判定表
-    以本函数体逐档注释为准)。
+    随机尾键;档内序数键与随机流契约 = 32 号稿 §2/§7,判定表
+    正本 = 32 号稿 §3,本函数体为实现、逐档注释为行内定位)。
 
     让路方向 = key 大者先卖:「后卖」类属性(总星级数多/单卡星级高/
     core 成员/退金损失大)取小键,「先卖」类属性(档 10 概率高/低费)
@@ -623,7 +623,7 @@ def sell_order_with_keys(
     返回按键升序的 ``(单位, 排序键)`` 列表(末位 = 最先让路)。观测
     消费位(档位分布/随机尾键命中)从键分量直读:档位 = 键首分量,
     尾键命中 = 池内存在另一件键去尾后与本件全同(等价牌群内部随机
-    定序实际生效,priority-model §4 随机域)。
+    定序实际生效,32 号稿 §7 随机域)。
     """
     keyed = [(u, sort_key(u, ctx)) for u in units]
     keyed.sort(key=lambda p: p[1])
@@ -632,11 +632,11 @@ def sell_order_with_keys(
 
 def sell_order(units: list[HeldUnit | ShopUnit],
                ctx: PriorityContext) -> list[HeldUnit | ShopUnit]:
-    """统一让位序列(priority-model §5 消费侧约定)。
+    """统一让位序列(32 号稿 §8 消费侧约定)。
 
     返回从「最不该卖」到「最先让路」的升序序列(末位 = 最先让路);
     各触发消费位从末位向前取用(让路一张 / 取到凑够为止)。注意:
     逐牌调 :func:`sort_key` 会推进随机流,同 seed 下同输入同序、
     跨次调用不保证逐位复现(随机域 = 手持等价牌群内部,无行为语义
-    损失,priority-model §4)。"""
+    损失,32 号稿 §7)。"""
     return [u for u, _k in sell_order_with_keys(units, ctx)]
