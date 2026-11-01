@@ -425,7 +425,9 @@ def sort_key(unit: HeldUnit | ShopUnit,
     refund_loss = -_refund_loss(unit)
     is_member = name in _member_names(ctx)
     # 档 1 前后台需要出战的(部署算法定型;按角色名命中,含商店同名牌
-    # ——在场角色的牌 = 部署需要面,获取流程中同优先级不换手)。
+    # ——在场角色的牌 = 部署需要面)。获取让位评估例外:将获取的 X 不进
+    # deployed_names(shop 侧装配时减名)——X 的去留正是评估要回答的问题,
+    # 享受部署保护会把「末位 = X → 放弃」分支变成不可达(XT-1 同步)。
     if name in ctx.deployed_names:
         return (1, refund_loss, in_hand, tail)
     # 档 2 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
