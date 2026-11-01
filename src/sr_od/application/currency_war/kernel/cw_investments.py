@@ -4023,6 +4023,13 @@ STRATEGY_DELAYED_OFFERS: dict[str, StrategyDelayedOffer] = {
     # 同 id 行;与黄金期货仅倒计时数值不同,机制全量继承)
     '黄金期货+': StrategyDelayedOffer(id='101102', delay_nodes=4,
                                        offer_quality='金'),
+    # 彩虹期货(效果原文「5个节点后，进行一次不能刷新的棱彩投资策略
+    # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行(PlazaAugment 201101)。数据行 rarity='金' 与 offer 定
+    # 品质「棱彩」两语义并列——卡自身品质与 offer 产出池品质,混淆
+    # 即反转)
+    '彩虹期货': StrategyDelayedOffer(id='201101', delay_nodes=5,
+                                      offer_quality='棱彩'),
 }
 
 
