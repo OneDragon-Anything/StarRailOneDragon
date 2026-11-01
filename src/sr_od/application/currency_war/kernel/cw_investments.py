@@ -2812,6 +2812,7 @@ STRATEGY_HIRING_LETTER_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     '招聘资金',
     '招聘资金+',
     '专家招募',
+    '专家招募+',
 )
 
 #: 开局替换型赠卡(首例 = 人才储备 id 144)的语义假设申报键(卡级两键,

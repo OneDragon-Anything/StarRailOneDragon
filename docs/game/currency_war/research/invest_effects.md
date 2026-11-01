@@ -143,6 +143,7 @@
 | 人才下沉 2★ 直出概率 | ⚠️ 用户占位建模(2026-10-16) | desc 无数值;占位 0.2/卡待实采校准,注册表 `ENV_SHOP_TWO_STAR_DEAL_PROB` + 披露键 `shop_two_star_deal_prob_user_placeholder`;效力仅本卡,后续同型卡须各自取得用户拍定;选卡估值按 0 定案 |
 | 偶像经济礼盒内容 / 员工投影仪角色分布 | ❌ 放弃 | 文本无数字 |
 | 不等价交换 hp 截断细节 | 按字面 swap,保守 clip | 文本只有「交换」 |
+| 聘用书道具腿(族 4 张) | 零建模(披露键申报) | desc 无存放/开启语义;披露键 \STRATEGY_HIRING_LETTER_UNMODELED_ASSUMPTION_KEYS\ 四员在册(凭证道具通道族批落地时扩表接入) |
 
 **API 顺带发现**:`equipment_list`(101 条)带结构化 `compose_list` 合成图与 `priority`/`category`——装备合成的权威源候选(优于手维护);`trait_info_list` 的 `layers` 字段为空,羁绊阈值仍以 `cw_factions` 为准。
 
