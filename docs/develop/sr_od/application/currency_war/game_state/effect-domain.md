@@ -132,7 +132,7 @@ unit_buff);词缀源
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
-| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:253)、长期主义系 gold_next_nodes_*(:215-216) |
+| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:618)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 容器落位 = `strategy_gold_next_nodes_left` 递减形〔fields.md §3.2.26e〕,counter 口径正本 = strategy-env-impacts.md 用户裁决段) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(§7.4,N=1 事件直结退化形) |
 | 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
 | 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |

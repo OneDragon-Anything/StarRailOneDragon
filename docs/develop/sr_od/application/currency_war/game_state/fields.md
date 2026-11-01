@@ -126,7 +126,8 @@ False)、晶矿附着/声明三域
 条件发放已发标记(env_grants_done ()——同族恒非 None,§3.5.5)、策略卡
 条件发放已发标记(strategy_conditional_done ()——同族恒非 None,§3.2.26a)、
 绑定型随机角色授予名字绑定域(strategy_char_grant_bindings {}——同族恒非
-None,§3.2.26c)。
+None,§3.2.26c)、分期金剩余腿数容器(strategy_gold_next_nodes_left {}——
+同族恒非 None,§3.2.26e)。
 种子值依据逐字段申报面见迭代设计;hp 实证域 =
 A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/席位锚定标志位/策略卡
 羁绊条件战后发放武装标记(strategy_bond_battle_armed——None = 未观察 =
@@ -1179,7 +1180,40 @@ live 局两腿结构性零触发,域恒 None = live 正常态。
 **域归属**:独立键 `strategy_bond_battle_armed`(§3.7.1;独立键先例 =
 env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
-### 3.3 商店开态(覆盖在备战画面之上)
+#### 3.2.26e 分期金剩余腿数容器 strategy_gold_next_nodes_left
+
+**语义**:分期金族策略卡(长期主义 id 201301 首例:「现在及接下来3次进入
+新节点时，每次获得7金币。」;姊妹长期主义+ id 201302 = 9 金币同构)的
+**「接下来 count 次」递减状态域**——拿卡时按注册值 `gold_next_nodes_
+count`(=3)初始化,此后每进入一个新节点窗消耗一期,归零即停。键 = 注册表
+卡规范名,值 = 该卡剩余发金腿数自然数;每卡独立条目非聚合槽(双持姊妹卡
+各键并存、各窗各付各额,零判重闸,§3.2.26c 同形;聚合 payload amount
+求和/count 取 max = 策略侧选卡估值口径,对分期双持 = 畸形,禁作世界支付
+源);缺键 = 未持该卡/未初始化,耗尽条目留置 0 不清除。「现在」腿(拿卡
+当场 +7)无世界写端 = T-112 族级待办维持不建,本域不承载。
+
+**写入方**:唯一逻辑写入方两处,均 sim 门控写(`cw_sim_backend`):①拿卡
+落地拍初始化(`_on_invest_picked` 分期金初始化腿 `apply_strategy_pick_
+gold_next_nodes_init`,值 = 注册值 count 直接赋值——同卡重拿 =
+`excluded_invest` 排除闸下不可达,直接赋值即重置语义,防御性默认);
+②节点窗收入段递减(`_begin_node_window` 分期金腿 `apply_invest_
+installment_gold`,发金与递减同拍,evidence `strategy:installment:pN
+rN`)。**无观察写入方**——剩余腿数 = 卡文推算知识,游戏 UI 无读面;
+live 局零写(游戏自算自显,金整字段观察覆盖收口,live 假计数入容器无
+纠偏通道故禁)。
+
+**消费端**:唯一 = sim 节点窗分期金腿(逐卡判剩余 >0 → 按注册值
+`gold_next_nodes_amount` 发金 → 递减;耗尽短路零写,终局剩余腿自然蒸发
+不补发;全节点型计数,supply/reward/battle/boss/插入节点照算);live 局
+结构性零触发,域恒空 = live 正常态。
+
+**开局预填初值**:{}(每局全新创建即持空 dict,A 类;同
+strategy_char_grant_bindings 种子族先例)。
+
+**域归属**:独立键 `strategy_gold_next_nodes_left`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。
+
+#### 3.3 商店开态(覆盖在备战画面之上)
 
 > 商店面板弹在备战画面上:牌面区字段在本屏写入;下层备战画面被覆盖/压暗——**本屏
 > 不写血量**(该态该区不显示,防护见 §3.2.13)、**不写前台/后台/备战席**(3 合 1
@@ -2262,10 +2296,11 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 效果体腿 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
 精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行)。
 
-**结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/长期主义族/
+**结构化已登记、缺容器写入方申报的载体(非缺口)**:返利族/特战资金族/
 砂里淘金/星星相印——effect_inventory 载体会改写容器字段,写入归属见 §5.3;砂里
 淘金发牌星级缺口并入 §3.2.18。**板面重写族**(EffectSpec board_rewrite):全员晋升/
-人力重组——写入归属见 §5.3 两行。
+人力重组——写入归属见 §5.3 两行。长期主义族已出列(分期金剩余腿数容器落位,
+`strategy_gold_next_nodes_left`,§3.2.26e)。
 
 **逐卡补登(具写入面的改写/触发源)**:
 
@@ -2441,7 +2476,10 @@ effect_inventory 等级日程(逻辑写入方候选)。
 #### 长期主义族(gold_next_nodes_amount=7/9 + count=3)
 
 逻辑写入方=**分期日程**(「现在及接下来 3 次进入新节点」每次发金)。时点=逐节点非
-轮首。
+轮首。容器已落位 = `strategy_gold_next_nodes_left`(§3.2.26e):拿卡落地拍按
+注册值 count 初始化、节点窗收入段每窗递减(sim 门控写,live 零写);「现在」腿
+(拿卡当场金)无世界写端 = T-112 族级待办维持不建,实存性披露键 =
+`STRATEGY_GOLD_NEXT_NODES_NOW_LEG_UNVERIFIED`(cw_sim_backend)。
 
 #### 砂里淘金(gold_per_2star2cost_merge=2)
 

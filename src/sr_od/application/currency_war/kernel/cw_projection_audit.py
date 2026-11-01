@@ -274,6 +274,17 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '不可接受);消费端 = cw_gain_chain.'
               'check_strategy_node_char_grants(持卡未绑定 fail-closed 零'
               '发放留证 gain_chain_strategy_char_bind_missing)'),
+    'strategy_gold_next_nodes_left': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='分期金剩余腿数容器(键 = 卡规范名,值 = 该卡剩余「进入新'
+              '节点」发金腿数;每卡独立条目非聚合槽,双持姊妹卡各键并存,'
+              '与 strategy_char_grant_bindings 同形),无观察读端——剩余'
+              '腿数 = 卡文推算知识,游戏 UI 无读面;唯一逻辑写端两处 = '
+              'cw_sim_backend._on_invest_picked(拿卡落地拍初始化,值 = '
+              '注册值 gold_next_nodes_count 直接赋值,重置语义 = 排除闸'
+              '下防御性默认)与 _begin_node_window 收入段分期金腿(发金'
+              '与递减同拍),均 sim 门控写,live 零写——live 分期发放由'
+              '游戏自算自显,金整字段观察覆盖收口'),
     'strategy_bond_battle_armed': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='策略卡羁绊条件战后发放武装标记(三态 None=未观察/False='

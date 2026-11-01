@@ -299,6 +299,15 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 先例)。独立键版本 1,同 env_grants_
                                 # done 先例不并入他域 bump——他域
                                 # 本体未变
+    'strategy_gold_next_nodes_left': 1,
+                                # 分期金剩余腿数容器(长期主义系「现在及
+                                # 接下来 count 次进节点每次 amount 金」的
+                                # 递减状态;键 = 卡规范名,值 = 该卡剩余
+                                # 发金腿数自然数;拿卡落地拍初始化 =
+                                # 注册值 gold_next_nodes_count,节点窗
+                                # 收入段每窗递减,sim 门控写,live 零写)。
+                                # 独立键版本 1,同 env_grants_done 先例
+                                # 不并入他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2345,6 +2354,10 @@ def seed_opening_state(gs: GameState) -> None:
     # 族先例——域值恒非 None,复制发放腿键查判定零 None 防御;空 dict =
     # 未持绑定卡的正常态)
     _seed(gs.strategy_char_grant_bindings, {})
+    # 分期金剩余腿数容器(空底座,同 strategy_char_grant_bindings 种子
+    # 族先例——域值恒非 None,节点窗腿键查判定零 None 防御;空 dict =
+    # 未持分期卡的正常态)
+    _seed(gs.strategy_gold_next_nodes_left, {})
     # 损血档位触发累积器(零底座,同 env_grant_uid_seq 计数器种子族
     # 先例——域值恒非 None,触发函数累加取模零 None 防御;0 = 无累积
     # 语义中性,种 0 不伪装已触发,gs-opening-seed A/B/C 判据 A 类)
@@ -2702,6 +2715,30 @@ class GameState:
     # 底座 = {}(A 类,同 pending_item_grants 种子族先例);双持姊妹卡
     # 各键并存,零判重闸(持卡按名去重,键天然唯一)。
     strategy_char_grant_bindings: Field[dict[str, str]] = field(
+        default_factory=Field)
+    # [索引定义] strategy_gold_next_nodes_left = 分期金剩余腿数容器
+    # (策略卡「现在及接下来 count 次进入新节点时,每次获得 amount 金」
+    # 的递减状态,长期主义 id 201301 首例;「现在」腿拿卡当场金无世界
+    # 写端 = T-112 族级待办维持不建,本域只承载「接下来」段的计数)。
+    # 键 = 注册表卡规范名,值 = 该卡剩余发金腿数自然数;每卡独立条目
+    # 非聚合槽(双持姊妹卡各键并存各窗各付各额,零判重闸,同
+    # strategy_char_grant_bindings 形;聚合 payload amount 求和/count
+    # 取 max = 策略侧估值口径,对分期双持 = 畸形,禁作世界支付源);
+    # 缺键 = 未持该卡/未初始化,耗尽条目留置 0 不清除。写端声明:唯一
+    # 逻辑写端两处 = sim 拿卡落地拍初始化(cw_sim_backend.
+    # _on_invest_picked 分期金初始化腿,值 = 注册值 gold_next_nodes_
+    # count 直接赋值——同卡重拿 = excluded_invest 排除闸下不可达,
+    # 直接赋值即重置语义,防御性默认)与节点窗收入段递减(cw_sim_
+    # backend._begin_node_window 分期金腿,发金与递减同拍),均 sim
+    # 门控写,live 零写——live 分期发放由游戏自算自显,金整字段观察
+    # 覆盖收口(fields.md HP 同款结构,金有真读)。无观察写端(剩余
+    # 腿数 = 卡文推算知识,游戏 UI 无「剩余期数」读面)。计数语义对表:
+    # 正本口径 = strategy-env-impacts.md 用户裁决段「counter 单调从 0
+    # 起,节点入口 +1,到 3 耗尽」(向上计数);本容器 = 向下递减,两态
+    # 等价(剩余 = count − 已进节点数),正本句维持单一源不双写。取值
+    # 时机 = sim 世界执行期现值,跨节点存续随快照。开局种子底座 =
+    # {}(A 类,同 strategy_char_grant_bindings 种子族先例)。
+    strategy_gold_next_nodes_left: Field[dict[str, int]] = field(
         default_factory=Field)
     # [索引定义] strategy_bond_battle_armed = 策略卡羁绊条件战后发放的
     # 武装标记(触发-发放两拍制状态载体;不要小看我们的羁绊 id 200901
@@ -4866,6 +4903,12 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 发放腿判据不丢。
         'strategy_char_grant_bindings': lambda d: {
             str(k): str(v) for k, v in d.items()},
+        # 分期金剩余腿数容器:str→int 键值双显式化重建(同
+        # strategy_char_grant_bindings 形:dict 值形 _json_safe 本就
+        # 直透,显式化 = 重建面单一声明点,防快照路径键/值类型漂移静默
+        # 半态);随快照存续 = 恢复局剩余腿数不丢(节点窗腿判据存续)。
+        'strategy_gold_next_nodes_left': lambda d: {
+            str(k): int(v) for k, v in d.items()},
         # 惊喜盒板件 ⏳N 读数观察域(迭代 2026-10-19-giftbox-piece-obs):
         # tuple 化重建(_json_safe 落快照为 list,int 保型);随快照存续
         # = 恢复局最近上报帧读数不丢(滞留语义不变)。

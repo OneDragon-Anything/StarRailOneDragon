@@ -339,6 +339,71 @@ def strategy_invest_node_gold_of(gs: GameState) -> int:
         list(gs.active_strategies.value or [])).gold_per_node
 
 
+#: 分期金现在腿实存性披露键(建模假设档,静态常量在册,无运行时
+#: setdefault 动作;家族先例 = cw_effect_inventory.
+#: STRATEGY_ON_MERGE_LIVE_UNVERIFIED 同形)。登记一件实机未证事实:
+#: 用户裁决(strategy-env-impacts.md 用户裁决段,2026-09-10)把长期主义
+#: 系按「拿卡当场 +7 + 接下来 3 次进节点各 +7」4 次处理,并明示
+#: 「不确定是不是4次」——「现在」腿在拿卡拍是否真发、与节点腿是否
+#: 分离,持卡局档案金轨迹核对(当场段有无即判 4/3)。sim 现役只建模
+#: 节点腿(现在腿世界写端 = T-112 族级待办维持不建);live 由游戏
+#: 自算自显,本假设零误真值。退役条件 = 实机局采得拿卡帧金轨迹定案。
+STRATEGY_GOLD_NEXT_NODES_NOW_LEG_UNVERIFIED: str = (
+    'strategy_gold_next_nodes_now_leg_unverified')
+
+
+def apply_invest_installment_gold(gs: GameState, *, plane: int,
+                                  round_num: int) -> int:
+    """持卡分期金节点窗腿(长期主义系「接下来 count 次」,进任意节点
+    窗每卡每窗一笔)。
+
+    递减容器 = ``gs.strategy_gold_next_nodes_left``(键 = 卡规范名,值
+    = 剩余腿数):逐卡判剩余 >0 → 按 :data:`STRATEGY_ECONOMY` 注册值
+    ``gold_next_nodes_amount`` 支付该卡独立金笔 → 剩余递减;耗尽短路
+    零写(条目留置 0),游戏终局剩余腿自然蒸发不补发。支付源 = 各条目
+    注册值按卡名直读,**禁 aggregate_economy**:聚合 amount 求和/count
+    取 max = 策略侧选卡估值口径,对分期双持 = 畸形(count 取 max 丢一
+    卡窗口、amount 求和错额);世界真值 = desc 逐卡字面「每次获得7/9
+    金币」。与在码 gold_per_node 腿(定期福利系)同窗并存 = 同段两笔
+    独立写、互不聚合。evidence 前缀钉死
+    ``strategy:installment:<卡名>:p{plane}r{r}``(完整卡名段+分隔符:
+    「长期主义」系「长期主义+」真前缀,消费侧过滤禁裸前缀匹配);
+    容器递减 = 单笔 write_logic 簿记(非金 Field 登记事实直写先形)。
+    注册表缺行/零额 = 条目悬空跳过不递减(下次窗重试自愈,拒落域不闩
+    同向)。幂等性住调用方窗口守卫(:meth:`SimBackend._begin_node_
+    window`),本函数无内建幂等——窗口路径外直调会双发。live 侧无此
+    写端:金有整字段观察覆盖,实机真发由下一备战帧金观察覆盖兜底
+    (金面禁 logic 直写防双计,裁定正本 = ``cw_effect_inventory
+    .advance_node`` docstring);sim 世界自持账无观察可兜,不发即持卡
+    局分期段系统性偏低,故唯 sim 侧补写。全节点型计数:凡进窗即一期
+    (supply/reward/battle/boss/修饰局插入节点照算,纯节点事件判例
+    T-106 稿承 T-98 §1.1)。返回本窗发金笔数(审计/测试消费)。
+    """
+    remaining = dict(gs.strategy_gold_next_nodes_left.value or {})
+    if not remaining:
+        return 0
+    fired = 0
+    for canon, left in list(remaining.items()):
+        if int(left) <= 0:
+            continue
+        eff = STRATEGY_ECONOMY.get(canon)
+        amount = eff.gold_next_nodes_amount if eff is not None else 0
+        if amount <= 0:
+            continue
+        tag = f'strategy:installment:{canon}:p{plane}r{round_num}'
+        gs.observe(gs.gold, int(gs.gold.value or 0) + amount,
+                   evidence=sim_evidence(tag),
+                   sig=obs_sig(group_id='sim:strategy'))
+        remaining[canon] = int(left) - 1
+        fired += 1
+    if fired:
+        gs.write_logic(gs.strategy_gold_next_nodes_left, remaining,
+                       produced_by='SimBackend',
+                       evidence=f'strategy:installment:p{plane}r{round_num}',
+                       sig=logic_sig('sim:strategy'))
+    return fired
+
+
 def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              node_type: str, streak: int,
                              pending_loss: LostNodeRef | None = None,
@@ -637,6 +702,39 @@ def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
                                producer='SimBackend')
                 dealt += 1
     return dealt
+
+
+def apply_strategy_pick_gold_next_nodes_init(
+        gs: GameState, picked: Sequence[str]) -> int:
+    """策略选卡落地拍分期金剩余腿数初始化(通用通道,辖域 = 注册表
+    ``gold_next_nodes_count`` > 0 全体,字段分派非单卡特判)。
+
+    为什么:「接下来 count 次进节点每次 amount 金」的递减状态必须在
+    拿卡刻定格——节点窗腿(:func:`apply_invest_installment_gold`)按
+    剩余腿数发放,无初始化写点则递减容器永空 = 持卡局分期段整段静默
+    零发。数额 = 注册值 ``gold_next_nodes_count`` 直读(键 = 卡规范名
+    每卡独立条目,双持姊妹卡各键并存各窗各付各额,禁聚合槽);直接
+    赋值 = 同卡重拿重置语义(现役 ``excluded_invest`` 采样排除闸下
+    同卡重拿不可达,重置 = 防御性默认,族申报「重派逐次授予、现役
+    不设防」同向)。live 零写:live 分期发放由游戏自算自显,金整字段
+    观察覆盖收口,假计数入容器无纠偏通道故禁。evidence
+    ``strategy:gold_next_nodes_init:<卡名>``。返回初始化条数。
+    """
+    applied = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        eff = STRATEGY_ECONOMY.get(canon)
+        count = eff.gold_next_nodes_count if eff is not None else 0
+        if count <= 0:
+            continue
+        merged = dict(gs.strategy_gold_next_nodes_left.value or {})
+        merged[canon] = int(count)
+        gs.write_logic(gs.strategy_gold_next_nodes_left, merged,
+                       produced_by='SimBackend',
+                       evidence=f'strategy:gold_next_nodes_init:{canon}',
+                       sig=logic_sig('sim:strategy'))
+        applied += 1
+    return applied
 
 
 # ============================================================ 商店发牌件
@@ -1391,6 +1489,14 @@ class SimBackend:
     #: +N hp 二次发放(直加非幂等,与置位/发牌腿同害级)。私有暂态不入
     #: 容器/不入快照恢复(同形先例同上)。
     _strategy_pick_hp_latch: bool | None = field(init=False, default=None)
+    #: 策略选卡分期金初始化腿呈现闩(gold-next-nodes 通道;与 xp/streak/
+    #: sell-deal/hp 闩同点置位同拍消费,独立不共享——五腿语义独立,共享
+    #: 闩会让单腿测试直读互相牵连且无状态量收益)。防重放实害 = 无闩的
+    #: 重放 advance 会把已递减的剩余腿数重置回初值(窗腿已消费的期数
+    #: 凭空回补,分期多发)。私有暂态不入容器/不入快照恢复(同形先例
+    #: 同上)。
+    _strategy_pick_gold_next_nodes_latch: bool | None = field(
+        init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -2195,6 +2301,20 @@ class SimBackend:
                     self.gs, picked,
                     stream_rng(self.seed, 'M25/pick-hp-loss'))):
                 self._hp_trail_append()
+        # 选卡落地拍分期金剩余腿数初始化腿(「接下来 count 次」递减容器
+        # 状态;通用通道辖域 = 注册表 gold_next_nodes_count>0 全体):
+        # sim 世界自持账补全——live 同拍零写(游戏自算自显,金整字段观察
+        # 覆盖收口),sim 无初始化则节点窗分期腿永空 = 持卡局分期段静默
+        # 零发。拿卡名推导与呈现闩防重放 = 前置各腿同款(闩消费先于
+        # 判定,交集空亦消费);初始化 = 直接赋值(键 = 卡名每卡独立条目,
+        # 同卡重拿重置 = 排除闸下防御性默认)。位置 = 链尾独立笔:与
+        # 前置各腿零交互(字段分派互斥:gold_next_nodes_count)。
+        if not opening and self._strategy_pick_gold_next_nodes_latch:
+            self._strategy_pick_gold_next_nodes_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                apply_strategy_pick_gold_next_nodes_init(self.gs, picked)
         self._after_modal_pick(opening=opening)
 
     def _on_open_box(self) -> None:
@@ -2474,6 +2594,16 @@ class SimBackend:
             self.gs.observe(self.gs.gold, gold_before + invest_gold,
                             evidence=sim_evidence(tag),
                             sig=obs_sig(group_id=f'sim:{tag}'))
+        # 分期金腿(长期主义系「接下来 count 次」):递减容器逐卡判剩余,
+        # 窗开先落账 + 入同节点利息基数(裁决点 5 默认案,与上方 gold_per_
+        # node 聚合腿无条件同挂点序——本写点仍在扑满递延快照与轮首收入
+        # 之前);与聚合腿同段两笔独立写、互不聚合(每卡独立 evidence 笔,
+        # 支付源 = 各条目注册值按卡名直读,禁聚合 payload)。全节点型
+        # 计数:凡进窗即一期(supply/reward/battle/boss/修饰局插入节点
+        # 照算,纯节点事件判例 T-106 稿承 T-98 §1.1);游戏终局剩余腿
+        # 自然蒸发不补发。零值零写(未持分期卡零新增观察行);幂等复用
+        # 窗口守卫,零新增守卫。
+        apply_invest_installment_gold(self.gs, plane=plane, round_num=r)
         # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
@@ -2772,6 +2902,8 @@ class SimBackend:
             self._strategy_pick_sell_deal_latch = True
             # 即时生命腿闩同点置位(四腿独立闩同形;防重放窗同界)。
             self._strategy_pick_hp_latch = True
+            # 分期金初始化腿闩同点置位(五腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_gold_next_nodes_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -2850,10 +2982,12 @@ class SimBackend:
         self._screen = SCREEN_INVEST_STRATEGY
         self._sub = ''
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
-        # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置。
+        # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置;分期
+        # 金初始化腿闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
+        self._strategy_pick_gold_next_nodes_latch = True
         # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         self._offer_refreshable = False
