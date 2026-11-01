@@ -1384,11 +1384,6 @@ def find_tomes(screen: MatLike, slots: list[tuple[int, Rect]]) -> list[tuple[int
     return out
 
 
-def read_tomes(ctx: SrContext, screen: MatLike) -> list[tuple[int, Point]]:
-    """备战栏星徽秘典(``备战栏-1..9``)→ ``[(slot_idx, center)]``(点两次开启 → 星徽四选一)。"""
-    return find_tomes(screen, _ctx_slots(ctx, '备战栏', 9))
-
-
 # ===== [幻影机制已证伪标记] 「试用角色揭示卡」=====
 # 历史定性更正(用户已定案):备战栏偶现的发光金卡 = **动画帧**(合成/
 # 到账类瞬态特效),不是可点道具。旧判定曾据单帧把它建模成「试用角色揭示卡」
