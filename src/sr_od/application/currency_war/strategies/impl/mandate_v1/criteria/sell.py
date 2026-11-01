@@ -100,7 +100,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     ``predicates.item_slot_unsellable`` 跨通道共享谓词,与 M4 燃料通道
     同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环)。
     「无后台效果」资格维已随旧评估器退役删除(统一让位优先级迭代
-    3.4:bench_effect_qualified 消费位拆除,该维度归统一序列档 7)。
+    3.4:bench_effect_qualified 消费位拆除,该维度归统一序列档 9)。
     序:``prefer_names``
     (刚买件名集合,R2-N1 发出约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
     架构下刚买件尚未入 bench,按名匹配同资格已登记件)优先,其余按
@@ -234,7 +234,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     unsellable`` 跨通道共享谓词,与 M4 燃料/凑息同门——空名 1★ 禁
     穿透资格循环;「无后台效果」资格维已随旧评估器退役删除——统一
     让位优先级迭代 3.4:bench_effect_qualified 消费位拆除,该维度归
-    统一序列档 7;卖回量最小化 [11]);跨帧语义 = 变现金
+    统一序列档 9;卖回量最小化 [11]);跨帧语义 = 变现金
     作用于下一备战期义务动作(延迟=1 备战期间隔,进遥测 reason)。
     无对象 ⇒ 空。
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。

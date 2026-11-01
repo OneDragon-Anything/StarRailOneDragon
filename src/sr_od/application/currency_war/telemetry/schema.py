@@ -193,7 +193,7 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #
 # 【新增观测键】(acquisition §6;写点 = 各卖出取用动作发出点,键值
 # 来源 = 评估器候选行 tier/rng_tail_hit 观测载荷):
-# - <take>_tier_<1..8>:各触发取用档位分布——take = 该触发的卖出
+# - <take>_tier_<1..10>:各触发取用档位分布——take = 该触发的卖出
 #   计数键,值 = 被取用件统一序列排序键的档位分量;take 域 =
 #   {acquire_swap_sell, self_rescue_sell, ore_pad_sell,
 #   node_end_interest_sell}(acquire_swap_sell = mandate_v1/shop.py

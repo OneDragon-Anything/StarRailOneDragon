@@ -6,7 +6,7 @@
 
 (「挂后台效果」资格谓词族 bench_effect_qualified/bench_effect_context
 已随旧评估器退役删除——统一让位优先级迭代 3.4:四处消费位整批退役,
-该维度由统一序列档 7 判定承载;cw_chars 的 bench_effect 数据字段保留
+该维度由统一序列档 9 判定承载;cw_chars 的 bench_effect 数据字段保留
 为游戏数据。)
 """
 from __future__ import annotations
@@ -80,7 +80,7 @@ def is_unsellable_system_unit(name: str) -> bool:
     真值 = 注册表登记 cost=0(现行 = 狸小虎/狸小龙/佩佩/狸职狸狸——
     投资策略召唤单位,恒占后排、不可拖/不可卖,数据锚 = cw_chars.py
     特殊召唤单位段)。真卖出系统单位是游戏无效交互;同时 cost=0 在
-    实费档缺失时会按中费 3 估(priority 档 8 概率分档),让位排序对它
+    实费档缺失时会按中费 3 估(priority 档 10 概率分档),让位排序对它
     产生无意义键值——本门 = 场景判据件池构建面唯一的系统单位防线,
     与 :func:`item_slot_unsellable`(占位件物理门)同向互补:那面防
     「非角色占席」误卖,本面防「cost=0 角色」误卖。未登记名(识别

@@ -244,7 +244,7 @@ class Comp:
     = mandate_v1 部署窗口辖域(数据 kernel / 判据策略层,宪 5 合宪申报
     同知识卡三字段)。"""
     member_priority: dict[str, int] = field(default_factory=dict)
-    """阵容内成员优先级序数表(档 2/3/5 档内①键的知识卡单一源;规格 =
+    """阵容内成员优先级序数表(档 2/3/4/5/7 档内①键的知识卡单一源;规格 =
     changes/2026-10-29-unified-priority/details/priority-model.md §3,
     消费端 = mandate_v1/criteria/priority.py 装配)。
     键 = 角色规范名(线终局成员 core ∪ shared),值 = 序数,
@@ -312,7 +312,7 @@ def derive_member_priority(comp: Comp) -> dict[str, int]:
 
 
 def member_rank_of(comp: Comp) -> dict[str, int]:
-    """成员优先级序数表读口(字段直读 + 旧数据回退;档 2/3/5 档内①键
+    """成员优先级序数表读口(字段直读 + 旧数据回退;档 2/3/4/5/7 档内①键
     单一源,消费端 = mandate_v1/criteria/priority.py 装配)。
 
     - ``member_priority`` 非空 → 字段直读副本(防消费位原地改写注册表

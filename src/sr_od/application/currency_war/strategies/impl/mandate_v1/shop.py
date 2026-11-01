@@ -31,14 +31,14 @@ rng 中立:本模块零 rng 消费(会话流派生契约)。
 会话循环键族 = shop_visit_restricted_frame / shop_close_read_noop /
 acquire_yield_*(统一获取让位评估:_sell/_declined/_merge_free_buy/
 stale_idx/_field_victim/exhausted/restricted_skip;取用观测衍生
-_sell_tier_<1..8>/_sell_rng_tail_hit)/ yield_plan_written(跨画面计划
+_sell_tier_<1..10>/_sell_rng_tail_hit)/ yield_plan_written(跨画面计划
 变量写入计数;执行端生命周期四计数键族 = entry.py 前置步)/
 scene_plugin_buy_hit(_no_seat/
 budget_exhausted)/ shop_refresh_*(三段式判据拒因族)/ levelup_*
 (会话升级意图门族:资格门拒因 + levelup_transition_close 转场关店;
 键语义与写点注释见各分支段);
 取用观测键族(统一让位优先级迭代 3.5):卖出取用计数键的观测衍生
-<take>_tier_<1..8>(被取用件统一序列档位分量)/ <take>_rng_tail_hit
+<take>_tier_<1..10>(被取用件统一序列档位分量)/ <take>_rng_tail_hit
 (随机尾键命中——等价牌群内部随机定序实际生效的取用计数);本域
 take = acquire_swap_sell,全 take 域(含备战域
 各场景)与判读口径见 telemetry/schema.py 键表节;写点 = 各卖出动作
@@ -822,7 +822,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # cw_intention 三分支判据的甲/乙臂路径已退役(丙分支保利息缺省,
     # k_empty_window_fallback p2plus 带收敛空集),改由策略层
     # 「候选快照三线成员并集 ∪ 配方成员」承载(下方未锁定支装配,
-    # 与优先级档 2/3/5 名单同源);kernel 侧 p1 带(p1_gap/p1_lock_band)
+    # 与优先级档 2/3/4/5/7 名单同源);kernel 侧 p1 带(p1_gap/p1_lock_band)
     # 回退保留(在役,防「K 空→零买入→支持度永不涨」死锁环)。
     k = session_scope.direction_comp_of(session)
     k_members = predicates.line_members(k)
@@ -853,10 +853,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     else:
         # 未锁定 = 候选态(统一让位优先级迭代 3.4 重建,R5-01 方向②):
         # - 义务面 = 候选快照三线成员并集 ∪ 配方成员 ∪ 方向阵容基
-        #   (K 空窗帧即候选并集承载,与优先级档 2/3/5 名单同源——
+        #   (K 空窗帧即候选并集承载,与优先级档 2/3/4/5/7 名单同源——
         #   三线成员都进入序 1 义务面,金约束门与统一序列兜底卖出共存;
         #   万金油贯穿件恒囤项删除【拍,总纲 §2.7 申报②:万金油退出
-        #   义务买入面,手里持有的未到两星前受档 6 保护、无自动补货
+        #   义务买入面,手里持有的未到两星前受档 8 保护、无自动补货
         #   通道】);
         # - 买面名单 = 义务面(宽集收窄:原「义务面 ∪ 保护集」的宽集
         #   前提 = 保护集囤货语义,囤货臂退役后前提消亡,总纲 §2.5)。
@@ -1112,7 +1112,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         **X 不进档 1 保护**——档 1 的 deployed_names 输入剔除 X 名(X 是
         「将获取」的假设性入场者,档 1 保护对象 = 存量资产;X 的去留
         正是本评估要回答的问题,不得经虚拟定型自我保护),X 恒按卡面
-        价值(统一序八档判定)参与排序,末位判定不受虚拟定型收编影响
+        价值(统一序十档判定)参与排序,末位判定不受虚拟定型收编影响
         ——任意组成(含 X 与持件有同羁绊标签搭档、被段 2 DP 收编进
         虚拟定型的形态)下「末位 = X → 放弃」分支均可达;
         5. 虚拟金币 = gold − cost(X) + Σ让位序前缀退金(按排序末位起

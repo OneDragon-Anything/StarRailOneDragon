@@ -161,7 +161,7 @@ def _rank_char_candidates(
     装配整函数,与商店获取让位同一实现;域差异仅候选牌三件套——补给
     候选恒 1★、选卡零成本)。候选不进档 1 保护(裁定五 2026-11-01:
     补给沿用统一优先级,候选 = 假设性入场者按卡面档定序,与商店 X 同
-    款;同名凑星价值由档 2 成员星目标聚合承载)。
+    款;同名凑星价值由档 3 成员星目标聚合承载)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         BENCH_CAPACITY,
