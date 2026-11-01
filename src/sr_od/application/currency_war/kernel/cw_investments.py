@@ -2846,6 +2846,16 @@ STRATEGY_HIRING_LETTER_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     '专家招募+',
 )
 
+
+# 广聚天下英才(203601)假设申报三键(全员发放族首例;键粒度 = 卡别键
+# 独立,随机赠卡 star_prior 家族键不混用——本卡全员确定性发放无采样面,
+# star_prior 系随机赠卡族专用):
+STRATEGY_ALL_CHARS_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_all_chars_pool_includes_expert',
+    'strategy_all_chars_star_prior_1',
+    'strategy_all_chars_overflow_truncation',
+)
+
 #: 开局替换型赠卡(首例 = 人才储备 id 144)的语义假设申报键(卡级两键,
 #: 形态沿家族常量先例;消费面 = 披露清单,防 desc 空白处的模型口径被误当
 #: 已证真值):

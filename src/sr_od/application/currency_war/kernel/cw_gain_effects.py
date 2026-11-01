@@ -150,6 +150,40 @@ _STRATEGY_BOX_GRANTS: dict[str, str] = {
 }
 
 
+def _make_all_cost_chars_effect(cost: int) -> Callable[..., list[str]]:
+    """全员同费档发放效果体工厂(闭包销 = 费用档;「获得所有N费角色各一
+    个」族首例 = 广聚天下英才)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参);
+    ``rng`` 零消费——全员确定性发放(rand=False,无采样面),显式丢弃。
+    池 = ``chars_by_cost(cost)`` 注册表派生全集(静态池,含专家——策略
+    侧发放族家族口径,披露键 ``strategy_all_chars_pool_includes_expert``
+    承载改判挂点);逐名 ``gain_character(rand=False)`` 入席(升星/溢出/
+    级联沿链现役,零特判);效果串逐名一条恒 Σ池数条(发放事实与落位
+    成败解耦,零写名带落位失败标注)。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿先例)
+        _ = rng  # 零随机面(全员确定性发放)
+        from sr_od.application.currency_war.data.cw_chars import (
+            chars_by_cost,
+        )
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_character,
+        )
+        steps: list[str] = []
+        for ch in chars_by_cost(cost):
+            name = ch.name
+            gain_character(gs, name, 1, rand=False, sig=sig,
+                           evidence='pick_invest_all_chars',
+                           producer=_PRODUCER)
+            steps.append(f'all_cost_chars:{name}@1star')
+        return steps
+
+    return _effect
+
 def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
     """开箱分支效果体工厂(闭包销 = 发放道具名,单源取自
     :data:`_STRATEGY_BOX_GRANTS`)。
@@ -858,6 +892,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 发放循环,零随机面(rng 不消费);腿序 = 卡文语序。
     '五百强': _compose_grant_legs(_make_named_equip_grant_effect('折叠小刀', 1),
                                   _make_named_equip_grant_effect('和平手枪', 1)),
+
+    # 广聚天下英才 = 全员同费档直书登记行(卡文「获得所有2费角色各一个。」,
+    # 池 = chars_by_cost(2) 注册表派生全集,静态池含专家——策略侧发放族
+    # 家族口径,披露键承载改判挂点;零随机面 rng 不消费;不入泛化随机表——
+    # 同名键 dict 顺序覆盖丢腿,本卡全员确定发放非采样)。
+    '广聚天下英才': _make_all_cost_chars_effect(2),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
