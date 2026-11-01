@@ -1523,6 +1523,44 @@ def apply_effect_burst_grant(gs: GameState, spec: Any, *,
                    evidence=_ev, sig=_bridge_sig(gs))
 
 
+def apply_effect_plane_refire_grant(gs: GameState, spec: Any, *,
+                                    frame: str = '') -> None:
+    """桥·位面开始形态·中途拿卡补发(登记时点单次,与 burst 桥同挂点族):
+    登记时点判「当前位面已开始」→ 把本条目声明的位面开始免费刷新额度
+    **全额**补发进免费刷新剩余次数(非按比例;用户裁定 2026-11-01 拍定
+    ——「现在以及每个位面开始时」族中途拿卡时,当前已开始的位面其位面
+    段照常发放,后续位面开始事件照常走位面开始桥
+    :func:`apply_effect_plane_start_grant`,两桥互不重复)。
+
+    为什么:位面开始桥只对登记后到达的 (plane,1) 推进边界发放,拿卡晚于
+    位面开始时该位面段对持卡局系统性缺失;裁定 = 持卡即视同享有当位面
+    位面段、拿卡拍补发。已开始判据 = 策略卡登记恒发生于节点窗内(策略选
+    卡全日程非 round-1,开场 1-1 前弹的是投资环境——live 正本
+    screen_flow_timing.md「第一次投资策略 overlay」节;direct grant 挂点
+    亦在窗内),进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node``
+    在场即已开始;node 缺席(局外/未观察形态)= 保守零补发(禁猜)。
+
+    范围 = 仅本拍登记条目(spec):在场老卡该位面段已在位面开始桥发讫,
+    全账本迭代会双发。载体 = payload.free_refresh_per_plane(与位面开始
+    桥同字段);幂等 = 登记挂点单次调用承载(burst 桥同形,本桥不设闸,
+    其余挂点不得重复调);额度 0 或 node 缺席 = no-op(零 Field 行)。
+    XP 支不在本桥(XP = 世界真值,live 零写观察覆盖、sim 选卡拍补发腿
+    apply_strategy_plane_refire_xp;kernel 不 import cw_sim,架构锁 =
+    kernel 全目录零 sim import 模块边界,cw_gain_chain/cw_deploy_logic
+    同源契约)。"""
+    n = int(getattr(getattr(spec, 'payload', None),
+                    'free_refresh_per_plane', 0) or 0)
+    if n <= 0 or gs.node.value is None:
+        return
+    _ev = (f'effect_plane_refire@{frame}' if frame
+           else 'effect_plane_refire')
+    left = gs.free_refresh_left.value
+    gs.write_logic(gs.free_refresh_left, (0 if left is None else int(left)) + n,
+                   produced_by=(f'EffectLedgerBridge:'
+                                f'{getattr(spec, "name", "") or "unknown"}'),
+                   evidence=_ev, sig=_bridge_sig(gs))
+
+
 def grant_effect_node_refresh_balance(gs: GameState, *,
                                       frame: str = '') -> None:
     """桥·per_node + 条件判定形态(每节点发放):节点边界一次,把全部在场
@@ -1552,9 +1590,10 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
     Field 化:免费次数升格容器字段,观察锚定/动作扣减/发放登记三写端同格;
     None 基 = 0 起算,开局无免费次数 = 机制真值)。静态活载体 = 双手狸
     (2/节点);条件活载体 = 本金充裕/+(50/10/3)、存款回报(上节点未花费
-    →2)。固定理财位面开始段
-    (PLANE_START)不属本形态——该未建模分支的单一登记点 =
-    ``cw_investments.STRATEGY_ECONOMY_PENDING_MODELING``,本桥不另记。
+    →2)。固定理财位面开始段(PLANE_START)不属本形态——周期发放独立
+    形态,单一发放点 = :func:`apply_effect_plane_start_grant`(位面 1 号
+    节点推进边界;中途拿卡补发 = apply_effect_plane_refire_grant 登记拍),
+    本桥不另记。
     """
     per_node = 0
     srcs: list[str] = []
@@ -1591,6 +1630,43 @@ def grant_effect_node_refresh_balance(gs: GameState, *,
                    produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
                    if srcs else 'EffectLedgerBridge',
                    evidence=f'effect_node@{frame}' if frame else 'effect_node',
+                   sig=_bridge_sig(gs))
+
+
+def apply_effect_plane_start_grant(gs: GameState, *, plane: int,
+                                   frame: str = '') -> None:
+    """桥·位面开始形态(周期):位面 1 号节点推进边界一次,把全部在场条目
+    声明的位面开始免费刷新额度累加进免费刷新剩余次数(§3.3.5 位面周期族
+    首例:固定理财 2;载体 = payload.free_refresh_per_plane)。XP 支不在
+    本桥(XP = 世界真值,live 零写观察覆盖、sim 独占写端 = 位面首节点窗
+    腿 cw_sim_backend;kernel 不 import cw_sim,架构锁 = kernel 全目录
+    零 sim import 模块边界,cw_gain_chain/cw_deploy_logic 同源契约)。
+
+    采样点 = 效果推进 tick(:func:`_tick_effect_boundary_impl`,advanced ∧
+    位面 1 号节点;推进原语去重叠加效果账本 advance_node 去重,每
+    (plane,1) 恰一次,不另设 done 闩——per-node 桥同形)。记账 = 容器
+    字段 ``gs.free_refresh_left`` write_logic(「观察写入 + 动作扣减 +
+    发放登记」三写入方同格,fields.md §3.3.5;per-node 桥同形)。额度
+    0 或 payload 无此字段(BattlefieldEffect 族)= no-op(零 Field 行)。
+    中途拿卡时所在位面(已开始)的补发不归本桥(登记拍单次,补发桥
+    :func:`apply_effect_plane_refire_grant`;用户裁定 2026-11-01 拍定)。
+    """
+    total = 0
+    srcs: list[str] = []
+    for e in gs.effects.entries:
+        n = int(getattr(e.spec.payload, 'free_refresh_per_plane', 0) or 0)
+        if n > 0:
+            total += n
+            srcs.append(e.spec.name)
+    if total <= 0:
+        return
+    left = gs.free_refresh_left.value
+    gs.write_logic(gs.free_refresh_left,
+                   (0 if left is None else int(left)) + total,
+                   produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
+                   if srcs else 'EffectLedgerBridge',
+                   evidence=(f'effect_plane@{frame}' if frame
+                             else 'effect_plane'),
                    sig=_bridge_sig(gs))
 
 
@@ -4038,9 +4114,10 @@ def tick_effect_boundary(gs: GameState) -> None:
 
     - 推进闸:effective None → 整段跳过(「未观察不当真进节点」守卫,禁虚耗
       余期/虚累余额);
-    - 账本推进(内置去重兜底同序幂等)→ 到期留存证据 → 刷新/升级窗口
-      发放(advanced 位闸,grant_effect_node_refresh_balance +
-      grant_effect_node_xp)→ 容量重锚;
+    - 账本推进(内置去重兜底同序幂等)→ 到期留存证据 → 刷新/位面开始/
+      升级窗口发放(advanced 位闸,grant_effect_node_refresh_balance +
+      apply_effect_plane_start_grant[位面 1 号节点] + grant_effect_node_xp)
+      → 容量重锚;
     - 经济参数 = 容器直读 active_strategies(空/None → 聚合缺省);
     - 异常边界:吞 Exception 记 warning 不上抛(不毒化派生链)。
 
@@ -4127,6 +4204,12 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
     if advanced:
         _tick_pending_strategy_offers(gs)
         grant_effect_node_refresh_balance(gs, frame=frame)
+        if effective[1] == 1:
+            # 位面 1 号节点 = 位面开始(「第 N 位面开始时」类发放落该位面
+            # 1 号节点推进边界,sim _apply_env_plane_start 同窗同判;刷新支
+            # = 位面开始桥,XP 支 = sim 窗腿双挂点分工)
+            apply_effect_plane_start_grant(gs, plane=effective[0],
+                                           frame=frame)
         roll_prev_node_spent(gs, frame=frame)   # 存款回报条件评估毕,滚位新节点(§3.3.9)
         grant_effect_node_xp(gs, frame=frame)
         _tick_strategy_conditional_grants(gs)

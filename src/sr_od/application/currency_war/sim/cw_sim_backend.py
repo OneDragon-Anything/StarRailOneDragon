@@ -568,6 +568,53 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     return total
 
 
+def apply_strategy_plane_refire_xp(gs: GameState,
+                                   picked: Sequence[str]) -> int:
+    """策略选卡落地拍位面段补发经验入账(通用通道,辖域 = 注册表
+    xp_per_plane>0 全体,字段分派非单卡特判;用户裁定 2026-11-01 拍定:
+    「现在以及每个位面开始时」族中途拿卡时,当前已开始的位面其位面段
+    登记拍全额补发,后续位面开始事件照常走位面首节点窗腿)。
+
+    为什么:位面段 XP 世界腿挂 sim 位面首节点窗(:meth:`SimBackend
+    ._apply_strategy_plane_start_xp`),只对登记后到达的 (plane,1) 窗
+    发放,拿卡晚于位面开始时该位面段对持卡局系统性缺失(sim 无观察,
+    不补即持卡局等级进度失真,即时经验腿同缺口来源)。已开始判据与
+    kernel 登记拍补发桥(apply_effect_plane_refire_grant)同口径:策略卡
+    登记恒发生于节点窗内(策略选卡全日程非 round-1,开场 1-1 前弹的是
+    投资环境——live 正本 screen_flow_timing.md「第一次投资策略 overlay」
+    节),进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场
+    即已开始,None = 保守零补发(禁猜)。数额 = 逐卡直读
+    :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
+    不含 xp_per_plane,误走 = 静默零发放);写入形态与
+    :func:`apply_node_xp` 同款,evidence 按
+    ``xp:strategy_plane_refire:<卡名>`` 与节点经验/即时经验笔分账,sig
+    同组(同域字段同组,笔间靠 evidence 区分)。返回本批实际入账经验
+    总量。
+    """
+    if gs.node.value is None:
+        return 0
+    total = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        eff = STRATEGY_ECONOMY.get(canon)
+        amount = eff.xp_per_plane if eff is not None else 0
+        if amount <= 0:
+            continue
+        xp_field = gs.xp.value
+        level_field = gs.level.value
+        if xp_field is None or level_field is None:
+            continue
+        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
+                                     amount)
+        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+        sig = obs_sig(group_id='sim:xp')
+        evidence = sim_evidence(f'xp:strategy_plane_refire:{canon}')
+        gs.observe(gs.level, level, evidence=evidence, sig=sig)
+        gs.observe(gs.xp, (cur, need), evidence=evidence, sig=sig)
+        total += amount
+    return total
+
+
 def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
                            rng: random.Random) -> int:
     """策略选卡落地拍即时生命入账(通用通道,辖域 = 注册表
@@ -1515,6 +1562,13 @@ class SimBackend:
     #: 同上)。
     _strategy_pick_gold_next_nodes_latch: bool | None = field(
         init=False, default=None)
+    #: 策略选卡位面段补发腿呈现闩(xp_per_plane 通道;与前置五闩同点置位
+    #: 同拍消费,独立不共享——六腿语义独立,共享闩会让单腿测试直读互相
+    #: 牵连且无状态量收益)。防重放实害 = 无闩的重放 advance 会把 +4 XP
+    #: 二次发放(直加非幂等)。私有暂态不入容器/不入快照恢复(同形先例
+    #: 同上)。
+    _strategy_pick_plane_refire_latch: bool | None = field(init=False,
+                                                           default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
     hp_trail: list[int] = field(default_factory=list)
     disclosures: dict[str, object] = field(default_factory=dict)
@@ -2279,6 +2333,21 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_xp(self.gs, picked)
+        # 选卡落地拍位面段补发经验腿(「现在以及每个位面开始时」族中途拿
+        # 卡补发,用户裁定 2026-11-01 拍定:当前已开始的位面其位面段登记
+        # 拍全额补发,后续位面照常;通用通道辖域 = 注册表 xp_per_plane>0
+        # 全体):sim 世界自持账补全——live 同拍零写(经验面板画面可读 =
+        # 观察覆盖),sim 不补即持卡局等级进度失真。拿卡名推导与呈现闩防
+        # 重放 = 即时经验腿同款(闩消费先于判定,交集空亦消费);已开始
+        # 判据/禁聚合/写入形态见 :func:`apply_strategy_plane_refire_xp`。
+        # 位置 = 即时经验腿后独立笔:同域 XP 字段分派(xp_instant /
+        # xp_per_plane 互斥读),与其余各腿零交互。
+        if not opening and self._strategy_pick_plane_refire_latch:
+            self._strategy_pick_plane_refire_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                apply_strategy_plane_refire_xp(self.gs, picked)
         # 选卡落地拍出售发牌腿(板面重写族出售支):sim 世界自持账补全——
         # live 同拍零写(游戏侧发 5 只 2★,下一备战帧观察覆盖收口,三正本
         # 裁定零改动),sim 无观察,不发即持卡局资产面失真。先卖后抽时序
@@ -2650,6 +2719,12 @@ class SimBackend:
         # 位面开局环境发放分道:声明矿环境走声明入队(金在点击兑现时
         # 入账),其余环境保留直发通道(通道留置)。
         self._apply_env_plane_start(plane)
+        if r == 1:
+            # 位面首节点窗:策略域位面开始 XP 腿(固定理财首例;增发货币
+            # 环境分道同窗先形,窗口幂等守卫承接重放不双发)。刷新支不在此
+            # ——kernel 推进边界拍位面开始桥(双挂点分工,拍点差申报 =
+            # 先推进后开窗,XP 支略后)
+            self._apply_strategy_plane_start_xp(plane)
         # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
         # design §2.4):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
@@ -2922,6 +2997,8 @@ class SimBackend:
             self._strategy_pick_hp_latch = True
             # 分期金初始化腿闩同点置位(五腿独立闩同形;防重放窗同界)。
             self._strategy_pick_gold_next_nodes_latch = True
+            # 位面段补发腿闩同点置位(六腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_plane_refire_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3001,11 +3078,12 @@ class SimBackend:
         self._sub = ''
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩三腿同形照置;分期
-        # 金初始化腿闩同形照置。
+        # 金初始化腿闩同形照置;位面段补发腿闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
         self._strategy_pick_gold_next_nodes_latch = True
+        self._strategy_pick_plane_refire_latch = True
         # 刷新授权簿记照写(定品质禁刷新:不可刷新 = 卡面直读,空授权;
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         self._offer_refreshable = False
@@ -3200,6 +3278,38 @@ class SimBackend:
             check_ore_declared_level(self.gs, hook_sig=logic_sig('sim:env'))
             return
         self._apply_env_plane_gold(plane)
+
+    def _apply_strategy_plane_start_xp(self, plane: int) -> None:
+        """策略域位面开始 XP 腿(「现在以及每个位面开始时」族位面段 XP
+        支;载体 = STRATEGY_ECONOMY.xp_per_plane,固定理财 4 首条目,
+        字段分派非单卡特判;效果登记账本迭代辖域与 kernel 位面开始刷新
+        桥 apply_effect_plane_start_grant 同域——刷新支 = kernel 推进边界
+        拍、XP 支 = 本窗腿,双挂点分工与即时经验腿 live 观察覆盖口径
+        一致)。触发 = _begin_node_window 内 r==1(位面首节点窗;
+        ``_window_begun_pos`` 窗口幂等守卫承接重放不双发,与
+        _apply_env_plane_start 同窗同守卫)。数额 = 迭代账本鸭子读合计
+        (同持多卡求和单笔;XP 写入 = observe 世界笔,无 produced_by)。
+        live 无本腿(本函数住 sim)——kernel 零 sim import,XP 世界真值
+        live 归观察覆盖。容器缺读(None)= 本拍零写留待观察覆盖,禁猜;
+        零值零写(未持卡零新增观察行)。"""
+        total = 0
+        for e in self.gs.effects.entries:
+            n = int(getattr(e.spec.payload, 'xp_per_plane', 0) or 0)
+            if n > 0:
+                total += n
+        if total <= 0:
+            return
+        xp_field = self.gs.xp.value
+        level_field = self.gs.level.value
+        if xp_field is None or level_field is None:
+            return
+        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
+                                     total)
+        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+        sig = obs_sig(group_id='sim:xp')
+        evidence = sim_evidence(f'xp:strategy_plane:p{plane}')
+        self.gs.observe(self.gs.level, level, evidence=evidence, sig=sig)
+        self.gs.observe(self.gs.xp, (cur, need), evidence=evidence, sig=sig)
 
     def _apply_env_plane_gold(self, plane: int) -> None:
         """环境结构化经济通道·直发分支(M02:已结构化子集直接生效——位面

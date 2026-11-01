@@ -81,6 +81,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     _emit_defect,
     anchor_aware_write,
     apply_effect_burst_grant,
+    apply_effect_plane_refire_grant,
     bench_view_of_working,
     deployed_indexed_of_view,
     deployed_view_of_indexed,
@@ -1764,6 +1765,8 @@ def gain_invest_strategy(gs: GameState, session: object,
     2. **效果账本登记**(best-effort:`session=None` = 跳过[局外/测试
        形态],容器写照常):``STRATEGY_EFFECTS`` 归一名命中 →
        ``effects.register_strategy`` + burst 桥 ``apply_effect_burst_grant``
+       + 位面段补发桥 ``apply_effect_plane_refire_grant``(用户裁定
+       2026-11-01:中途拿卡所在已开始位面登记拍全额补发)
        + 板面重写桥 ``apply_board_rewrite``
        (acquired_key = 节点序位快照);失败 log + 缺陷留存证据(``DEFECT_STRATEGY_
        REGISTER``)、不阻塞;
@@ -1803,6 +1806,11 @@ def gain_invest_strategy(gs: GameState, session: object,
                 _frame = _node_frame(gs)
                 gs.effects.register_strategy(_spec, _key)
                 apply_effect_burst_grant(gs, _spec, frame=_frame)
+                # 位面段中途拿卡补发(用户裁定 2026-11-01 拍定):登记时点
+                # 当前位面已开始 → 该位面段刷新支登记拍全额补发,后续位面
+                # 开始事件照常(位面开始桥);XP 支 = sim 选卡拍补发腿
+                #(kernel 零 XP 写端纪律同 burst 腿 live 观察覆盖口径)
+                apply_effect_plane_refire_grant(gs, _spec, frame=_frame)
                 _rw = apply_board_rewrite(gs, _spec, frame=_frame)
                 if _rw is not None:
                     log.info('[cw-gain] 板面重写桥:%s(退款 %s/清空域 %s)',

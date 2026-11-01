@@ -228,6 +228,18 @@ class EconomyEffect:
                                           # 连败无连胜数可维持,非正值照常败局转移
                                           # (desc 未写负值分支 = 判读申报制,后继族稿
                                           # 禁当定谳转引);False = 无此腿
+    # —— 位面开始周期族(「现在以及每个位面开始时」双段卡的位面段;
+    #     首例 固定理财 4/2,策略域位面粒度周期发放)——
+    xp_per_plane: int = 0                 # 每位面开始 +经验(固定理财 4)。XP = 世界
+                                          # 真值:live 零写观察覆盖,sim 世界腿 =
+                                          # 位面首节点窗(cw_sim_backend)——双挂点
+                                          # 分工同 xp_instant 通道
+    free_refresh_per_plane: int = 0       # 每位面开始 +免费刷新次数(固定理财 2)。
+                                          # 刷新 = bot 决策逻辑态:发放 = kernel 位面
+                                          # 开始桥 apply_effect_plane_start_grant
+                                          # (推进 tick 位面 1 号节点),中途拿卡时
+                                          # 所在位面登记拍全额补发 =
+                                          # apply_effect_plane_refire_grant
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -264,10 +276,11 @@ _ENGINE_CHANNEL_SINGLE_FIELDS: tuple[tuple[str, float | None], ...] = (
     ('interest_flat_per_node', 0), ('interest_cap_override', None),
     ('win_reward_mult', 1.0), ('sell_price_mult', 1.0),
     ('free_refresh_per_node', 0), ('free_refresh_burst', 0),
+    ('free_refresh_per_plane', 0),
     ('refresh_surprise_every', 0), ('refresh_per_compose', 0),
     ('refresh_free_chance', 0.0), ('refresh_shop_rewrite_every_3cost', 0),
     ('xp_per_refresh', 0), ('xp_per_node', 0), ('xp_buy_cost_discount', 0),
-    ('xp_instant', 0),
+    ('xp_instant', 0), ('xp_per_plane', 0),
     ('gold_per_refresh_pair', 0),
 )
 #: 引擎配对字段通道:效果语义两半齐备才存在(「接下来 count 次每次
@@ -660,9 +673,18 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 时点日程族
     '超发货币': EconomyEffect(gold_at_node=70, gold_at_node_offset=5),
     # ↑ 负债部分(失去现有全部金)由消费端按持有金处理,数值侧只记回流 +70
-    '固定理财': EconomyEffect(xp_per_node=0, free_refresh_burst=2),   # 即时段(位面开始段见下,待建模)
+    '固定理财': EconomyEffect(xp_instant=4, xp_per_plane=4,
+                              free_refresh_burst=2, free_refresh_per_plane=2),
+    # ↑ 「现在以及每个位面开始时,获得4经验值和2次免费刷新」双腿分段:
+    #   即时段(xp_instant/burst,登记期发放)+ 位面段(xp_per_plane/
+    #   free_refresh_per_plane,策略域位面周期发放首例)——位面段刷新支经
+    #   效果推进 tick 位面开始桥(cw_game_state.apply_effect_plane_start_
+    #   grant)、XP 支经 sim 位面首节点窗腿(cw_sim_backend);中途拿卡时
+    #   所在位面(已开始)位面段登记拍全额补发 = 用户裁定 2026-11-01 拍定,
+    #   承载 = apply_effect_plane_refire_grant(语义正本 = STRATEGY_EFFECTS
+    #   本卡条目 notes)
     '固定理财+': EconomyEffect(free_refresh_burst=3),
-    # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——此处只建即时刷;位面开始段待建模
+    # ↑ 姊妹行(位面段 6/3 归 T-183 展开批,本批不动)
     '经验到账': EconomyEffect(xp_instant=10),
     '气氛组+': EconomyEffect(xp_instant=8),   # 即时腿;条件腿(战斗结束零伤害角色计数)无字段载体,PENDING 在册
     '免战牌': EconomyEffect(xp_instant=30),
@@ -728,14 +750,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['淘金客'], duties=DutyFlags(respond=True),
         notes='每次付费刷新+2XP;查询键 xp_per_refresh'),
     # 固定理财:官方「现在以及每个位面开始时,获得4经验值和2次免费刷新」。
-    # 待采:开头「现在」段与「每个位面开始」段是否同一 trigger 双发(overlay STRATEGY_ECONOMY
-    # 注释已标注位面开始部分拆分);保守支=按 PLANE_START 单触发建模。
+    # 双腿分段:即时段(现在)= xp_instant+free_refresh_burst 登记期发放;
+    # 位面段 = xp_per_plane+free_refresh_per_plane 位面开始发放(刷新支 =
+    # kernel 推进 tick 位面开始桥 apply_effect_plane_start_grant、XP 支 =
+    # sim 位面首节点窗腿)。中途拿卡时所在位面(已开始)是否补发位面段
+    # 曾为二义冻结面,用户裁定(2026-11-01)拍定补发:登记时点判位面已
+    # 开始 → 登记拍全额补发(非按比例),后续位面开始事件照常——承载 =
+    # kernel 登记拍补发桥 apply_effect_plane_refire_grant(刷新支)+ sim
+    # 选卡拍补发 XP 腿(apply_strategy_plane_refire_xp);原保守支(不补
+    # 发)随裁定消解,pending 撤除。族级:同触发词族稿(公司严选/终身学习)
+    # 明文共享本裁定不另立键。
     '固定理财': EffectSpec(
         id='201801', name='固定理财', trigger=TriggerKind.PLANE_START,
         duration=DurationKind.PERMANENT, category=EffectKind.STATE,
         payload=STRATEGY_ECONOMY['固定理财'], duties=DutyFlags(track=True, respond=True),
-        pending=True,
-        notes='待采:即时段与位面段是否双发;保守支=PLANE_START 单触发'),
+        notes='双腿分段:即时段(现在)=xp_instant+free_refresh_burst 登记期'
+              '发放;位面段=xp_per_plane+free_refresh_per_plane 位面开始发放'
+              '(刷新支=kernel 推进 tick 位面开始桥、XP 支=sim 位面首节点窗'
+              '腿);中途拿卡所在位面(已开始)位面段登记拍全额补发(用户'
+              '裁定 2026-11-01 拍定,原保守支不补发随裁定消解)'),
     # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
     # 四歧义(改道是否吞策略给的 XP/转换同事件性/上限/版本变体)见该条目待采待办;
     # 定案前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定案后补 payload。

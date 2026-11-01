@@ -572,7 +572,10 @@ select_ore_clicks docstring + 模块头)。
 **写入方**:本屏等级/升级所需经验文本观察覆盖(xp 载体 = `tuple[int,int]`,「X/Y」
 成对现读;胜局结算页也可见,§3.5.1);重复经验族逻辑写入方=xp_per_refresh(淘金客:
 每次**付费**刷新 +2——官方原文「消耗金币」限定,免费帧不产 XP)与 xp_per_node
-(买断制:每节点 +4);xp_instant 选牌当场 = 观察覆盖(伟大征服口径 2026-09-10)。
+(买断制:每节点 +4);xp_instant 选牌当场 = 观察覆盖(伟大征服口径 2026-09-10);
+位面开始周期族(xp_per_plane,固定理财)live 同为观察覆盖——sim 世界腿 =
+位面首节点窗(`xp:strategy_plane:p{位面}`)+ 选卡拍补发腿(中途拿卡时当前已
+开始位面登记拍全额补发,`xp:strategy_plane_refire:<卡名>`,用户裁定 2026-11-01)。
 **边界**:「族」=注册表已结构化成员,非全量游戏事实(未结构化成员见 §5.2 缺口
 登记);持「经验就是财富」时本族写入方**改道为金**(§5.3 该族行)。
 
@@ -1292,10 +1295,15 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 - **条件判定族** free_refresh_cond_gold_above/step/cap:本金充裕/+——金>above 每额外
   step 金 +1 次、至多 cap(50/10/3);已结构化入注册表(STRATEGY_EFFECTS 两条
   EffectSpec),经节点桥 `grant_effect_node_refresh_balance` 按金现值评估自动生效。
+- **位面开始周期族** free_refresh_per_plane:固定理财 2(每位面 1 号节点推进边界
+  一次,经位面开始桥 `apply_effect_plane_start_grant`;「第 N 位面开始时」类发放
+  落该位面 1 号节点,sim `_apply_env_plane_start` 同窗同判)。中途拿卡时当前已
+  开始位面其位面段登记拍全额补发 = 补发桥 `apply_effect_plane_refire_grant`
+  (用户裁定 2026-11-01 拍定补发;后续位面照常,两桥同字段不重复)。
 
 #### 3.3.6-3.3.8 刷新计数与免费余额载体
 
-免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = burst 桥 `apply_effect_burst_grant` / 节点桥 `grant_effect_node_refresh_balance` / 合成事件腿 `apply_on_merge_refresh_grant`（宿主 = cw_effect_inventory，穿戴上报 applied 出口；None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
+免费刷新剩余次数 = 容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = burst 桥 `apply_effect_burst_grant` / 节点桥 `grant_effect_node_refresh_balance` / 位面开始桥 `apply_effect_plane_start_grant` 与登记拍补发桥 `apply_effect_plane_refire_grant`（「现在以及每个位面开始时」族,§3.3.5 位面开始周期族行）/ 合成事件腿 `apply_on_merge_refresh_grant`（宿主 = cw_effect_inventory，穿戴上报 applied 出口；None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
 付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写入方 = 刷新上报函数 `report_action_refresh_shop_param` 单口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化停用，考古走 git。
 
 晶矿开启累计住**效果账本** `ActiveEffectInventory`（`ore_open_total`）。写入方 = 采晶矿上报函数 `report_action_collect_ore_param` 尾部单口（批内开成点数一次入账；席满/缺项∧level 缺读跳点不入账 = 「点开才计数」；生产 = 采晶矿 op 自上报，sim 与生产同段 op 代码同口）。消费方 = 战技点契约触发器 `check_env_ore_open_grants`（条件键与接线申报 = §3.5.5 词表行）。计数语义 = 全量（不限矿色/来源/奖励类型）。计数不进快照（接管局从 0 起 → 晚发放/不发形态显式接受，接受面 = 刷新两计数同款）。
@@ -2451,8 +2459,12 @@ effect_inventory 等级日程(逻辑写入方候选)。
 
 #### 固定理财位面开始段
 
-待建模(注册表自注「位面开始段待建模」;EffectSpec pending 保守支=PLANE_START 单
-触发)。活载体现状:即时段 burst=固定理财 2。
+已建模落地(2026-11-01;原缺口「注册表自注位面开始段待建模」消解):位面段双
+字段 xp_per_plane=4 / free_refresh_per_plane=2 在册——刷新支 = 位面开始桥
+(位面 1 号节点推进边界,fields.md §3.3.5 位面开始周期族行)+ 中途拿卡时当前
+已开始位面登记拍全额补发桥(用户裁定 2026-11-01 拍定补发);XP 支 = sim 世界
+腿(位面首节点窗 + 选卡拍补发),live 观察覆盖(§3.2.10)。即时段活载体现状:
+burst=固定理财 2(xp_instant=4 同批挂值)。
 
 #### 奋斗协议首领战结束回 50 血
 

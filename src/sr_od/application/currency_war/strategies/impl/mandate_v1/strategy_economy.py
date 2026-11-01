@@ -145,6 +145,12 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'gold_per_20hp_lost', 'gold_per_hp_lost_now',
     'streak_set',
     'keep_streak_on_loss',
+    # 位面开始周期族(xp_per_plane/free_refresh_per_plane,固定理财位面
+    # 段):世界发放腿已建模(kernel 位面开始桥/补发桥 + sim 位面窗腿/
+    # 选卡拍补发腿);估值通道未建——剩余位面数视界口现网无现成成员
+    #(xp_per_node 通道折算基数 = 剩余节点数,位面粒度须自建视界口),
+    # 激活归估值批,先按待建模塌 0
+    'xp_per_plane', 'free_refresh_per_plane',
 })
 
 #: 不计分通道字段(结构登记、永不为分):
@@ -175,19 +181,23 @@ _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
 # ===== 「待建模」卡级已登记(键 = 注册表规范卡名,值 = 未建模分支清单描述)=====
 # **卡级登记适用范围 = 无字段分支 ∪ 字段已登记未挂值分支**(区别于字段分类校验的
 # 「有字段分支」适用范围):字段分类校验只扫 EconomyEffect 已挂值条目,扫不到
-# 「字段已登记但条目未挂值」(如固定理财系 xp_instant 在字段闭集里而条目
-# 缺省)与「无字段分支」(效果结构在注册表无对应字段),唯卡级登记覆盖得住。
+# 「字段已登记但条目未挂值」与「无字段分支」(效果结构在注册表无对应字段),
+# 唯卡级登记覆盖得住(「字段已登记未挂值」先例 = 固定理财系 xp_instant,
+# 2026-11-01 建模批挂值后转入「无字段分支」形态代表 = 固定理财+ 位面段)。
 # 已登记行覆盖未建模分支的**可见性**(治理账,非运行时闸——已建模分支照常计分,
 # 见 strategy_economy_value docstring);建模落地后改写对应行描述。
 STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 固定理财系:官方「现在以及每个位面开始时,获得4/6经验值和2/3次免费
-    # 刷新」——「现在」段 XP 分支字段已登记未挂值 +「位面开始段」XP/刷新分支
-    # 无字段(cw_investments.STRATEGY_ECONOMY 条目注释已登记注明);
-    # 「现在」段刷新分支 2/3 刷已挂 free_refresh_burst(归刷新族字段待建模)
-    '固定理财': '「现在」段XP分支(字段在册未挂值);「位面开始段」XP分支+'
-               '刷新分支(无字段);刷新分支(free_refresh_burst=2,刷新族待建模)',
-    '固定理财+': '「现在」段XP分支(字段在册未挂值);「位面开始段」XP分支+'
-                '刷新分支(无字段);刷新分支(free_refresh_burst=3,刷新族待建模)',
+    # 刷新」——即时段(「现在」段 XP/刷新)已挂值发放(xp_instant=4/
+    # free_refresh_burst=2);位面段字段已挂值、发放腿已建(kernel 位面
+    # 开始桥/登记拍补发桥 + sim 位面首节点窗腿/选卡拍补发腿,用户裁定
+    # 2026-11-01 拍定中途拿卡所在位面补发);策略侧估值通道未建(两字段
+    # 归 _PENDING_MODELING_FIELDS 待建模分类塌 0,激活归估值批)
+    '固定理财': '位面段估值通道未建(xp_per_plane/free_refresh_per_plane'
+               '待建模分类塌 0);即时段与位面段世界发放腿均已建',
+    '固定理财+': '「现在」段刷新值已挂 free_refresh_burst=3 但 STRATEGY_'
+                'EFFECTS 缺条目 = burst 发放腿死建模(T-183 展开批补条);'
+                '位面段 XP/刷新两分支无字段(6/3 归 T-183)',
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
     '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',

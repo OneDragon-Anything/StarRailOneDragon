@@ -359,14 +359,24 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 #### 固定理财(201801)
 
 - **论断**:PLANE_START / permanent / STATE;counter **不建**(permanent 无到期,无剩余
-  语义);发放分支双时点——当场段(登记时点)+ 每位面开始段(节点推进事件判等「位面
-  开始」),免费刷新分支入计数域余额,XP 分支零建模(§6.4)。
-- **证据**:规格 cw_investments.py:306-311(pending=True,保守支 = PLANE_START 单触发);
-  官方原文 cw_invest_data.py:130「现在以及每个位面开始时,获得4经验值和2次免费刷新。」
+  语义);发放分支双腿分段——即时段(「现在」)= xp_instant 4 + burst 2,登记期
+  发放(burst 桥 + 登记拍补发桥);位面段 = xp_per_plane 4 + free_refresh_per_plane
+  2,位面开始发放,**双挂点分工**:刷新支 = 位面开始桥 `apply_effect_plane_start_
+  grant`(kernel 推进 tick 位面 1 号节点,per-node 桥同形幂等:advanced ∧ 位面
+  首节点,不另设 done 闩)、XP 支 = sim 位面首节点窗腿(kernel 零 sim import,
+  XP = 世界真值 live 观察覆盖)——同一位面开始两拍:先推进边界(kernel 刷新支)
+  后开窗(sim XP 支),账户面等价、evidence 时序可辨,拍点差显式申报非对齐改造。
+  **中途拿卡**:当前已开始的位面其位面段登记拍全额补发(刷新支 = 补发桥
+  `apply_effect_plane_refire_grant`、XP 支 = sim 选卡拍补发腿;已开始判据 = 登记
+  恒在节点窗内 → gs.node 在场即已开始,node 缺席保守零补发)——用户裁定
+  2026-11-01 拍定,原保守支(不补发)随裁定消解,pending 撤除。
+- **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
+  ECONOMY 同一实例;注册行四字段 4/4/2/2);官方原文 cw_invest_data.py:130
+  「现在以及每个位面开始时,获得4经验值和2次免费刷新。」
 - **推理链**:「现在以及每个位面开始」= 双时点并列(双发读法已定案,impacts §3 固定
-  理财条目);位面段发放经效果域段急算(§6.1-1),注册表 pending 标注与保守支注释为
-  回填前现状(回填归注册表维护批,§10-10)。位面开始段建模位 = STRATEGY_ECONOMY
-  注释自注待建模(cw_investments.py:255-257)。
+  理财条目);位面段 = 策略域位面粒度周期发放首例(载体先例 = per-node 桥同形放大,
+  环境域 `_apply_env_plane_start` 同窗先形)。pending 已随建模批回填(用户裁定,
+  §10-10),保守支注释消解。
 
 #### 双手狸开键盘！(204101)
 
@@ -875,6 +885,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 9. **经济效果讨论口径与实码口径对应**:讨论口径 89 条 vs 实码评估面 92 条/目录并集
    97 卡/官方全集 334 条(§5 基数申报);精确对应关系候核对。不阻塞:逐条确定目录
    以注册表全集为准(impacts §4)。
-10. **注册表 verdict 回填**:固定理财双发读法已定案(impacts §3),注册表 pending 标注
-    与保守支注释未回填;经验就是财富 verdict 回填待实采定案。回填动作归注册表
-    维护批。
+10. **注册表 verdict 回填**:固定理财已回填——位面段建模随批落地、中途拿卡
+    所在位面补发经用户裁定(2026-11-01)拍定,pending 撤除、保守支消解
+    (§8 固定理财条目);经验就是财富 verdict 回填待实采定案。剩余回填动作
+    归各卡建模批随批执行。
