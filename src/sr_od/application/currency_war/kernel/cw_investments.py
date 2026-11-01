@@ -2856,6 +2856,12 @@ STRATEGY_ALL_CHARS_ASSUMPTION_KEYS: tuple[str, ...] = (
     'strategy_all_chars_overflow_truncation',
 )
 
+# 艾丝妲的猛犬!(203801)佩戴腿零建模披露键(T-16 §8-1 用户裁定同源:
+# 佩佩穿戴面零读写口,穿刺死棘之枪不建模入佩佩身上):
+STRATEGY_WORN_EQUIP_UNMODELED_KEYS: tuple[str, ...] = (
+    'strategy_worn_equip_unmodeled',
+)
+
 #: 开局替换型赠卡(首例 = 人才储备 id 144)的语义假设申报键(卡级两键,
 #: 形态沿家族常量先例;消费面 = 披露清单,防 desc 空白处的模型口径被误当
 #: 已证真值):
