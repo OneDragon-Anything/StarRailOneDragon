@@ -1286,6 +1286,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '变形持续性承 T-180 案 A 判读申报制;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 装备党:官方「激活狼狩羁绊时，狼狩角色们每穿戴一件装备，就获得4%
+    # 伤害增幅和2%速度增幅。获得【椒丘】和【飞霄】。」(cw_invest_data.py,
+    # id 252201)。
+    # 战力类零响应登记(UNIT_BUFF 族):条件段(羁绊激活+计件增幅)与两段
+    # 增幅游戏侧自算,bot 零响应(计件读法两读 bot 行为恒等判读申报制
+    # 留痕);腿 2/3 送卡在 PICK_INVEST_EFFECTS char×char 组合行(本表零
+    # 条目);effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    '装备党': EffectSpec(
+        id='252201', name='装备党',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '252201')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '羁绊激活计件与两段增幅游戏侧自算,bot 仅登记;'
+              '送卡两腿在 PICK_INVEST_EFFECTS 组合行;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。

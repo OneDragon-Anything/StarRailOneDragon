@@ -1104,6 +1104,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 表防撞键;rng 零消费)。
     '人在旅途': _compose_grant_legs(_make_char_grant_effect('绯英'),
                                  _make_char_grant_effect('银枝')),
+
+    # 装备党 = char×char 双角色组合登记行(卡文「获得【椒丘】和【飞霄】」;
+    # 两腿皆具名角色 rand=False;效果串 2 条按卡文语序;条件段【狼狩激活
+    # 计件增幅】游戏侧自算,bot 零建模;腿参数唯一出现点,不入泛化表防
+    # 撞键;rng 零消费)。
+    '装备党': _compose_grant_legs(_make_char_grant_effect('椒丘'),
+                                 _make_char_grant_effect('飞霄')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
