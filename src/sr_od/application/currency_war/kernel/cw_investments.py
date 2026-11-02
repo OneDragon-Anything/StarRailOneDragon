@@ -1188,6 +1188,23 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '选择语义与两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # OOTD·金:官方「我方小队每穿戴一件不同的装备，获得3%生命提高，6%
+    # 前/后台强度。」(cw_invest_data.py, id 251301)。
+    # 战力类零响应登记(UNIT_BUFF 族):「不同的装备」/「生命提高」两读法
+    # 差全游戏侧内部口径 bot 零响应域行为恒等判读申报制留痕(T-256/T-242/
+    # T-257 同形);effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    'OOTD·金': EffectSpec(
+        id='251301', name='OOTD·金',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251301')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '件数计数与两段增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
