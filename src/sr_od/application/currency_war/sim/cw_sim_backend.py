@@ -1597,6 +1597,12 @@ class SimBackend:
     #: 多扣一笔金)。私有暂态不入容器/不入快照恢复(同形先例同上)。
     _strategy_pick_recruit_drain_latch: bool | None = field(
         init=False, default=None)
+    #: 策略选卡宝钻世界联动腿呈现闩(与前置八闩同点置位同拍消费,独立
+    #: 不共享——九腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 收益)。防重放实害 = 宝钻回调三写非幂等(diamond_count +1 /
+    #: back_layout +1,窗内重放会伪 +1)。私有暂态不入容器/不入快照恢复
+    #: (同形先例同上)。
+    _strategy_pick_diamond_latch: bool | None = field(init=False, default=None)
     #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
     #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
     #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
@@ -2383,6 +2389,29 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_streak(self.gs, picked)
+        # 选卡落地拍宝钻世界联动腿(这么大的钻石 = 首例,用户裁定
+        # 2026-11-02 拍读法 B;卡级点名判别 = 设计默认案最小推导,T-87
+        # 通道批落地时归一为共享推导腿,先落方定形):sim 世界自持账补全
+        # ——live 同拍零写(diamond_count/deploy_cap/back_layout 三域
+        # live 归观察识别器跟踪,逻辑侧禁写,投影审计契约)。拿卡名推导
+        # 与呈现闩防重放 = 前置各腿同款(闩消费先于判定,交集空亦消费;
+        # 回调三写非幂等,重放伪 +1)。发放落地门 = equips 现值非 None:
+        # 宝钻装备腿(kernel 效果体)在拒落档(equips 未观察)下不入栏,
+        # 此时回调会伪写 diamond_count/back_layout +1(equips_unobserved
+        # 同判据,T-141 到级腿 placed 门同构);sim 种子底座 equips=[] 下
+        # 门恒开,门系形态级卫生面(直构/测试形态防御)。执行时序 = 腿1
+        # 效果体入栏写之后(获得链首链先于本落地腿),deploy_cap 派生读
+        # 现值天然含新宝钻。回调入参只传装备名,三写 observe 通道 sig
+        # 由回调内构(on_diamond_acquired 零改动复用);位置 = 难度旗更
+        # 新之前(家族惯例:选卡落地拍效果腿先于同拍难度读数;deploy_cap
+        # 与难度无耦合,位置纯为家族一致性)。
+        if not opening and self._strategy_pick_diamond_latch:
+            self._strategy_pick_diamond_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if ('这么大的钻石' in picked
+                    and self.gs.equips.value is not None):
+                on_diamond_acquired(self.gs, '财富宝钻')
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
@@ -3253,6 +3282,8 @@ class SimBackend:
             self._strategy_pick_hyperemit_drain_latch = True
             # 大扩招扣金负腿闩同点置位(八腿独立闩同形;防重放窗同界)。
             self._strategy_pick_recruit_drain_latch = True
+            # 宝钻世界联动腿闩同点置位(九腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_diamond_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3370,7 +3401,8 @@ class SimBackend:
         # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩同形照置;即时生命
         # 腿闩同形照置;分期金初始化腿闩同形照置;位面段补发腿闩同形照置;
-        # 超发货币负债腿闩同形照置;大扩招扣金负腿闩同形照置。
+        # 超发货币负债腿闩同形照置;大扩招扣金负腿闩同形照置;宝钻世界
+        # 联动腿闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
@@ -3379,6 +3411,7 @@ class SimBackend:
         self._strategy_pick_plane_refire_latch = True
         self._strategy_pick_hyperemit_drain_latch = True
         self._strategy_pick_recruit_drain_latch = True
+        self._strategy_pick_diamond_latch = True
         # 刷新授权簿记(逐卡按登记 refresh_count;0 = 不可刷 = 空授权,
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         refreshable = spec.refresh_count > 0

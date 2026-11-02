@@ -839,7 +839,9 @@ def _compose_grant_legs(
 # ===== (rand=False) 入席,落位/回调/升星/席满溢出全沿链现役;名单值形 =
 # ===== (发放角色, 发放只数),只数 = 卡面明写结构值缺省 1,工厂逐次发放;
 # ===== 现役成员 = 溜佩佩/溜佩佩+(族首落)/招财狗/艾丝妲的猛犬!(佩佩族)/
-# ===== 狸职手续(狸职狸狸×3,召唤临时工),后继卡 +1 行复用本表)=====
+# ===== 狸职手续(狸职狸狸×3,召唤临时工),后继单腿卡 +1 行复用本表;
+# ===== 佩佩×装备等双腿组合卡不入本表——腿参数落 PICK_INVEST_EFFECTS
+# ===== 组合登记行,入表 = 同名键顺序覆盖丢腿)=====
 
 #: 具名角色发放名单单一源(卡规范名 → (发放角色, 发放只数);登记面镜像 =
 #: cw_investments.STRATEGY_GRANTS 对应卡 chars_immediate——只数不进登记,
@@ -1187,6 +1189,26 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 写端缺口归 T-112 族级待办。
     '无害垃圾': _make_named_equip_grant_effect('垃圾袋', 1),
     '黄金垃圾': _make_named_equip_grant_effect('金垃圾袋', 1),
+    # 这么大的钻石 = 具名角色×具名装备双腿组合登记行(卡文「佩佩携带
+    # 【财富宝钻】出现，这么大的钻石，送给你！」,用户裁定 2026-11-02
+    # 拍读法 B:佩佩真实入后台 + 宝钻入装备栏;腿序 = 卡文语序佩佩腿先/
+    # 宝钻腿后):直书组合行不入具名角色发放族泛化表——入表 = spread
+    # 生成的单腿效果体与本组合体同名键顺序覆盖丢腿,组合登记行 = 腿参数
+    # 唯一出现点(单一源,欢愉星徽同形先例)。佩佩腿 = 具名角色确定发放
+    # (rand=False,星级 1 占位非先验,佩佩无星级环境侧同判;佩佩恒后台
+    # 建模在册 = 单位入队现役链承载,后台空间变化归宝钻世界联动非佩佩
+    # 腿特判);宝钻腿 = 具名装备确定发放(rand=False,特殊类普通可穿件,
+    # ∉ 精密金面判据映射 gate 恒 None 走纯发放循环,获得零级联
+    # ∉ EQUIP_ACQUIRE_CONSEQUENCES);宝钻世界数值联动(diamond_count/
+    # deploy_cap/back_layout)= sim 选卡落地拍拿卡腿直调 on_diamond_
+    # acquired(效果体零涉,三域 live 归观察识别器);宝钻「携带」句
+    # (穿戴形态)零建模 = cw_investments.STRATEGY_DESC_UNMODELED_KEYS
+    # 披露键 strategy_worn_equip_unmodeled 申报(消费方非立键方,用户
+    # 裁定 2026-11-02 确认名单成立);rng 零消费(双腿具名确定发放零
+    # 采样面)。
+    '这么大的钻石': _compose_grant_legs(_make_char_grant_effect('佩佩'),
+                                     _make_named_equip_grant_effect(
+                                         '财富宝钻', 1)),
     **{name: _make_char_grant_effect(char, count)
        for name, (char, count) in _STRATEGY_CHAR_GRANTS.items()},
     # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
@@ -1289,7 +1311,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/
-精密拆装·银/大扩招/回收计划)直书登记行
+精密拆装·银/大扩招/回收计划/这么大的钻石)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
