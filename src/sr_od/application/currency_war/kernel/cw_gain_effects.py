@@ -1091,6 +1091,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 定谳];腿参数唯一出现点,不入泛化表防撞键;rng 零消费)。
     '读博深造': _compose_grant_legs(_make_char_grant_effect('艾丝妲'),
                                  _make_char_grant_effect('阮·梅')),
+
+    # 钢铁美学 = 单角色组合登记行(卡文「获得【希儿】」;单腿具名角色
+    # rand=False;效果串 1 条;战斗段【造物引擎】强化与禁灭游戏侧自算,
+    # bot 零建模;希儿 1★ 先验家族口径;腿参数唯一出现点,不入泛化表防
+    # 撞键;rng 零消费)。
+    '钢铁美学': _compose_grant_legs(_make_char_grant_effect('希儿')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
