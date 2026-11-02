@@ -1076,6 +1076,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 家族口径;与列车同行星徽同人 = 星徽族重复人名现值,零特判)。
     '战技点星徽': _compose_grant_legs(_make_named_equip_grant_effect('战技点星徽', 1),
                                      _make_char_grant_effect('丹恒·饮月')),
+
+    # 双人舞 = char×char 双角色组合登记行首例(卡文「获得【千冶·刃】和
+    # 【卡芙卡】」;两腿皆具名角色 rand=False;效果串 2 条按卡文语序;
+    # 条件段【猎星人】激活机制游戏侧自算,bot 零建模;腿参数唯一出现点,
+    # 不入泛化表防撞键;rng 零消费)。
+    '双人舞': _compose_grant_legs(_make_char_grant_effect('千冶·刃'),
+                                 _make_char_grant_effect('卡芙卡')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
