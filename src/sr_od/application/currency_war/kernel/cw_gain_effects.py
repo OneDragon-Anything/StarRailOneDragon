@@ -1112,6 +1112,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '装备党': _compose_grant_legs(_make_char_grant_effect('椒丘'),
                                  _make_char_grant_effect('飞霄')),
 
+    # 借力打力 = char×char 双角色组合登记行(卡文「获得【黑塔】和【缇宝】」;
+    # 两腿皆具名角色 rand=False;效果串 2 条按卡文语序;条件段【借力球伤
+    # 害分摊比例增长】敌方侧召唤物参数游戏侧自算,bot 零建模;腿参数唯一
+    # 出现点,不入泛化表防撞键;rng 零消费)。
+    '借力打力': _compose_grant_legs(_make_char_grant_effect('黑塔'),
+                                 _make_char_grant_effect('缇宝')),
+
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
     # 点,不入具名角色发放族泛化表防撞键;rng 零消费)。条件段【盛会之星
