@@ -958,6 +958,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 口径)。
     '仙舟星徽': _compose_grant_legs(_make_named_equip_grant_effect('仙舟星徽', 1),
                                     _make_char_grant_effect('藿藿')),
+
+    # 狼狩星徽 = 具名装备×具名角色双腿组合登记行(卡文语序徽→人;
+    # 腿1 rand=False 策略卡侧具名腿通道归属;腿2 椒丘 1★ 先验家族
+    # 口径)。
+    '狼狩星徽': _compose_grant_legs(_make_named_equip_grant_effect('狼狩星徽', 1),
+                                    _make_char_grant_effect('椒丘')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
