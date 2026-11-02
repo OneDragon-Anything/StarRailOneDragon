@@ -1169,6 +1169,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '降阈换伤两段游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 榜样的力量·金:官方「战斗中，伤害统计排名第一的队员成为【榜样】，
+    # 前/后台强度提高40%。其他队员前/后台强度提高10%。」(cw_invest_data.py,
+    # id 251201)。
+    # 战力类零响应登记(UNIT_BUFF 族):选择语义(伤害统计第一/并列取法/
+    # 榜样持续期)与两段增幅游戏侧自算,bot 零响应(选择语义零建模 =
+    # T-125 同词面先例+榜样的力量·银同形落码直证);effect_text 经数据面
+    # 表达式单一源,版本更新改文自动跟随。
+    '榜样的力量·金': EffectSpec(
+        id='251201', name='榜样的力量·金',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251201')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '选择语义与两段增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
