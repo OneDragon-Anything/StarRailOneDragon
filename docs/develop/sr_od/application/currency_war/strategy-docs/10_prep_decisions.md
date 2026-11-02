@@ -198,9 +198,9 @@
 
 | 注册表 | 动作 | 内容 |
 |---|---|---|
-| COMP_LIBRARY | 增 | star_targets、entry_signals、slot_structure、external_deps、downgrade_paths、**segment_tier_tables（分段档表——[12_line_and_intention.md](12_line_and_intention.md) §1 通用目标态定义的载体）** |
-| | 删 | level_plan、typical_form_round（预编节奏停用） |
-| | 留 | core_chars/form_tiers(+max)/families/special_systems/equip_assign/equip_taboos/char_positions/mechanic_attributes/countered_by_bosses/flex_factions/shared_chars |
+| COMP_LIBRARY | 增 | entry_signals（已建）；原规划 star_targets 由知识卡 `need_star` 承载（[12_line_and_intention.md](12_line_and_intention.md) §1.4）；slot_structure/external_deps/downgrade_paths/segment_tier_tables 未建 |
+| | 删 | 典型轮次/前期强度等十个零消费字段（2026-11-02 清理批：typical_form_round、early_power、weak_planes、form_tiers_max、branch_key、branch_of、free_slots、special_systems、equip_synergy、global_accumulators——消费实证单一源 = git 该批 commit；档位谱真值载体 = `FACTIONS.tiers`）。原删项 level_plan 已复活为现役（经济统一论） |
+| | 留 | core_chars/form_tiers/family/substitute_plan/equip_assign/equip_taboos/char_positions/mechanic_attributes/countered_by_bosses/flex_factions/shared_chars |
 | 新 TRANSITION_SYSTEMS | 建 | 四体系封闭：判据+人员要求+功能链+两两组合语义 |
 | 新 PLUGIN_LIBRARY | 建 | 通用插件池（跨阵容骨架+消耗品层），含座位价值注记 |
 | 新 SIGNAL_REGISTRY | 建 | 入场信号分层表（策略驱动/专属/核心到手/资源/兜底） |
