@@ -1186,6 +1186,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # STRATEGY_ECONOMY instant_gold=8 在册承载,金面禁直写不进效果体,
     # 写端缺口归 T-112 族级待办。
     '无害垃圾': _make_named_equip_grant_effect('垃圾袋', 1),
+    '黄金垃圾': _make_named_equip_grant_effect('金垃圾袋', 1),
     **{name: _make_char_grant_effect(char, count)
        for name, (char, count) in _STRATEGY_CHAR_GRANTS.items()},
     # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
