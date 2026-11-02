@@ -2086,6 +2086,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '前台=游戏词面(代码域前排,DeployedView.front_slots),'
               '星魂满阶溢出处理游戏侧语义未采证不建模不猜测;'
               '无离散触发事件,trigger 占位形'),
+    # 爆仓:官方「我方小队攻击敌方目标后，若其生命值百分比少于16%，将其
+    # 【斩杀】。」(cw_invest_data.py, id 253301)。
+    # 战斗域三重皆盲零建模登记(UNIT_BUFF 族):斩杀阈值触发面/生命值百分
+    # 比读数/斩杀执行面游戏侧自算,bot 零响应(REVIEW-T173 同卡反复独立
+    # 复测成立;effect_text 经数据面表达式单一源,版本更新改文自动跟随)。
+    '爆仓': EffectSpec(
+        id='253301', name='爆仓',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '253301')),
+        duties=DutyFlags(),
+        notes='战斗域三重皆盲零建模登记(UNIT_BUFF 族);'
+              '斩杀阈值与执行游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'),
 }
 
 
