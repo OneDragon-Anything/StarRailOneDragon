@@ -1205,6 +1205,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '件数计数与两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 打人就打脸·金:官方「我方小队幸运一击率提高10%，造成幸运一击伤害后
+    # 使受击目标陷入【脆弱】：受到的伤害提高30%，持续1回合。」
+    # (cw_invest_data.py, id 251401)。
+    # 战力类零响应登记(UNIT_BUFF 族,敌方侧脆弱施加同构 = 当头一棒在码
+    # 先例):幸运一击段/脆弱段两段游戏侧自算,bot 零响应(敌方侧桶语义
+    # 问题句 = T-157 同款 notes 申报,单条目结构定形封死);effect_text
+    # 经数据面表达式单一源,版本更新改文自动跟随。
+    '打人就打脸·金': EffectSpec(
+        id='251401', name='打人就打脸·金',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251401')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '幸运一击段与敌方侧脆弱段游戏侧自算,bot 仅登记;'
+              '敌方侧桶语义按 T-157 同款申报,单条目定形;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
