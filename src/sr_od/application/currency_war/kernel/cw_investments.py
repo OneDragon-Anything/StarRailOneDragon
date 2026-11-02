@@ -1094,6 +1094,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '条件族与两段增幅与叠加语义游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 创伤小组:官方「我方小队伤害增幅提高15%，进入战斗时，生命上限降低
+    # 30%，受到致命攻击时，行动值惩罚减少20点。」(cw_invest_data.py, id
+    # 250801)。
+    # 战力类零响应登记(UNIT_BUFF 族):伤害增幅/生命上限/行动值惩罚三段
+    # 游戏侧自算,bot 零响应(hp_max 零建模 = T-127 同判;clause③ 行动值
+    # 惩罚读法 A/B 无行为分叉判读申报制留痕 T-170 正本+姊妹同判形);
+    # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    '创伤小组': EffectSpec(
+        id='250801', name='创伤小组',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250801')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '三段游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
