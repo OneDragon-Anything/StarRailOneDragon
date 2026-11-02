@@ -1111,6 +1111,10 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # ECONOMY 注册行 instant_gold=1 在册承载,fields.md §4.1/§5.2),
     # 金面禁直写不进效果体,本行只辖装备句。
     '无伤通关': _make_named_equip_grant_effect('生命之花', 1),
+    # 幸运星祝福 = 具名装备单腿直书登记行(卡文「获得1个【幸运星】」;
+    # rand=False 策略卡侧具名腿通道归属;腿2 祝福面 = UNIT_BUFF 零响应
+    # 登记载体,STRATEGY_EFFECTS 条目承载,祝福族首例)。
+    '幸运星祝福': _make_named_equip_grant_effect('幸运星', 1),
     # 星星相印 = 具名装备授予族后继(卡文「立刻获得1个【员工投影仪】」):
     # 直书登记行直呼工厂;员工投影仪 = 工具类装备(cw_equipment_data
     # category='工具'),归 equips 装备库存域禁入占席道具通道,不在精密

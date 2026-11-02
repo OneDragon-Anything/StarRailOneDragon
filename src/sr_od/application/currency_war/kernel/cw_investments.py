@@ -1075,6 +1075,20 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(策略源 UNIT_BUFF 模式卡首条);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
+    # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
+    # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    '幸运星祝福': EffectSpec(
+        id='230101', name='幸运星祝福',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '230101')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(祝福族首例);'
+              '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 成长基金:官方「在你到达9级时，提供40金币。」(cw_invest_data.py:56,
     # id 101701)。数值/形状 = STRATEGY_ECONOMY 注册行在册零动(级数配对
     # 字段 gold_at_level/gold_at_level_target,引擎排除桶一次性金族——
