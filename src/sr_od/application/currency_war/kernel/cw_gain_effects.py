@@ -1109,6 +1109,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 伪造占席身份);板面重写腿(同卡另一句)零改动在册,STRATEGY_
     # EFFECTS 注册行 board_rewrite 分派承载,本腿只辖装备句。
     '全员晋升': _make_named_equip_grant_effect('拆装扳手', 2),
+    '全武行': _make_named_equip_grant_effect('武器大师', 1),
     # 无伤通关 = 具名装备授予族后继(卡文「立即获得1个【生命之花】」):
     # 直书登记行直呼工厂;生命之花 = 简易类装备(cw_equipment_data),不在
     # 精密金面判据映射内(gate 恒 None)走纯发放循环,精密在场不受污染。
