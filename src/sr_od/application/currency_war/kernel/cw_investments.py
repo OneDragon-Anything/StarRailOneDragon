@@ -1113,6 +1113,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '三段游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 绕口令:官方「进入战斗时，前台一号位角色及其忆灵获得等同于后台一号位
+    # 角色30%后台强度的前台强度，后台一号位角色及其忆灵获得等同于前台一号
+    # 位角色30%前台强度的后台强度。」(cw_invest_data.py, id 250901)。
+    # 战力类零响应登记(UNIT_BUFF 族):「一号位」读法二义但零响应下 bot
+    # 行为恒同判读申报制留痕;忆灵零建模家族口径;effect_text 经数据面
+    # 表达式单一源,版本更新改文自动跟随。
+    '绕口令': EffectSpec(
+        id='250901', name='绕口令',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250901')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '换位镜像增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
