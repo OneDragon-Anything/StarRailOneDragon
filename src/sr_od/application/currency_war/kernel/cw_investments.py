@@ -1100,6 +1100,17 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(祝福族第 2 条);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    '和平手枪祝福': EffectSpec(
+        id='230301', name='和平手枪祝福',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '230301')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(祝福族第 3 条);'
+              '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 成长基金:官方「在你到达9级时，提供40金币。」(cw_invest_data.py:56,
     # id 101701)。数值/形状 = STRATEGY_ECONOMY 注册行在册零动(级数配对
     # 字段 gold_at_level/gold_at_level_target,引擎排除桶一次性金族——

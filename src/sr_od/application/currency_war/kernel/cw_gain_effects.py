@@ -1116,6 +1116,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 登记载体,STRATEGY_EFFECTS 条目承载,祝福族首例)。
     '幸运星祝福': _make_named_equip_grant_effect('幸运星', 1),
     '折叠小刀祝福': _make_named_equip_grant_effect('折叠小刀', 1),
+    '和平手枪祝福': _make_named_equip_grant_effect('和平手枪', 1),
     # 星星相印 = 具名装备授予族后继(卡文「立刻获得1个【员工投影仪】」):
     # 直书登记行直呼工厂;员工投影仪 = 工具类装备(cw_equipment_data
     # category='工具'),归 equips 装备库存域禁入占席道具通道,不在精密
