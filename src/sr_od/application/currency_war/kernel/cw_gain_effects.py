@@ -765,9 +765,11 @@ def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
 
 
 def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
-    """延时-only 登记腿效果体工厂(卡文纯延时单句卡专属:族内直用两腿
-    工厂会把即时装备腿错发给无即时句的卡——拿卡当场多发一件即时发放物,
-    行为级错误,故姊妹工厂并列、按卡文句式分流)。闭包销 = 规范卡名,
+    """延时-only 登记腿效果体工厂(卡文纯延时单句卡顶层注册专属:族内
+    直用两腿工厂会把即时装备腿错发给无即时句的卡——拿卡当场多发一件即时
+    发放物,行为级错误,故姊妹工厂并列、按卡文句式分流;另作组合登记行的
+    延时入队腿载体,回收计划 = 随机腿×入队腿组合首例——组合上下文的即时
+    腿由随机腿承载,本工厂只贡献入队腿)。闭包销 = 规范卡名,
     登记值单源取自 cw_investments.STRATEGY_DELAYED_GRANTS;形态镜像
     _make_delayed_offer_effect 的「惰性 import 链原语 + 薄壳」分工。
 
@@ -1201,13 +1203,27 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 预掷被否:队列只存卡名,live 队列不携永不兑现的预掷值);
     # 禁入两腿成员集(入集 = 拿卡错发即时装备腿)。
     '是钻石总会发光': _make_delayed_only_grant_effect('是钻石总会发光'),
+    # 回收计划 = 随机腿×延时入队腿双腿组合展开卡(卡文「获得1件进阶装备，
+    # 并在5个节点后获得1件随机简易装备。」):直书组合登记行(非表生成),
+    # 不入随机装备泛化表(同名键 dict 顺序覆盖静默丢即时腿——泛化表生成式
+    # spread 在本字面量前段,组合行在后段按字面量顺序覆盖前者)、不入延时
+    # 表(表行生成的是单腿效果体,双族交叉唯组合子承载,买彩票+ 同判);
+    # 腿序 = 卡文语序即时随机腿先/延时入队腿后;随机腿参数(进阶,1)在此
+    # 单次出现(单一源),入队腿登记值单源取自 STRATEGY_DELAYED_GRANTS 行
+    # (延时-only 工厂作腿只贡献入队);rng 恰消费 1 次(仅即时腿采样,
+    # 入队腿零采样面);「获得1件进阶装备」缺「随机」词判读申报制 = 随机
+    # 类别池均匀 v0(STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS 家族键类别
+    # 无关承载,零新增键;回收计划表行注释引设计稿判读节)。
+    '回收计划': _compose_grant_legs(
+        _make_random_equip_effect('进阶', 1),
+        _make_delayed_only_grant_effect('回收计划')),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/
-精密拆装·银/大扩招)直书登记行
+精密拆装·银/大扩招/回收计划)直书登记行
 由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾)直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
@@ -1215,7 +1231,8 @@ _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜�
 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句式
 分流:带即时短句的成员经两腿成员集走两腿工厂派生,纯延时单句卡显式单行
-登记延时-only 载体(直用两腿工厂 = 拿卡错发即时腿)——新展开卡注册随批
+登记延时-only 载体(直用两腿工厂 = 拿卡错发即时腿),随机腿×入队腿组合
+(回收计划)由组合子组合双腿——新展开卡注册随批
 二选一显式登记,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派
 (查无效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)
 职责分离声明见各表模块头。"""

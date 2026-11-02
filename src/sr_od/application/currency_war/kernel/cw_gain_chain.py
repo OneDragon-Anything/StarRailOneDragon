@@ -809,7 +809,8 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     到 ``gs.pending_strategy_grants`` 一次 write 回写,返回效果串
     ``strategy_grant_scheduled:<发放物段>@<节拍>``(发放物段单一构造点
     在本原语:确定行 = 登记物名;随机 choice-set 行 = 封闭集竖线连接
-    如 ``红钻|蓝钻``——连接字面 ∉ EQUIPMENTS,天然不可与真物名混淆)。
+    如 ``红钻|蓝钻``;随机类别池行 = ``随机<类别>(类别池)`` 池标记形——
+    两连接字面均 ∉ EQUIPMENTS,天然不可与真物名混淆)。
 
     - rand 语义:登记 = 确定事件(倒计时按登记值推算,零采样),写通道
       仍经 :func:`_select_write` 单一收束(箱腿同约定,gain-chain.md §5);
@@ -829,8 +830,13 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     write = _select_write(gs, rand=False)
     write(gs.pending_strategy_grants, queued, produced_by=producer,
           evidence=f'strategy_grant_queue:{name}', sig=sig)
-    return (f'strategy_grant_scheduled:'
-            f'{grant.item or "|".join(grant.item_choices)}'
+    # Python 3.11 无 PEP 701,嵌套同引号 f-string 非法,发放物段先取段再
+    # 拼串(三选一登记:确定行 item / choice-set 行竖线连接 / 类别池行
+    # 池标记,构造点唯一住本原语,效果体工厂零字面量)。
+    item_seg = (grant.item
+                or '|'.join(grant.item_choices)
+                or f'随机{grant.item_category}(类别池)')
+    return (f'strategy_grant_scheduled:{item_seg}'
             f'@{grant.delay_nodes}')
 
 
@@ -2730,7 +2736,8 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
     ``pending_strategy_grants`` 现值,remaining <= 0 条目 = 到期
     (「到了及以后都算」,错过不悬空),逐条查 ``STRATEGY_DELAYED_GRANTS``
     登记行取发放物分道发放(随机 choice-set 行先在集合内均匀掷一枚再
-    分道)——∈ EQUIPMENTS → gain_equipment(装备腿,尾追入栏)/
+    分道;随机类别池行先在注册表派生池内均匀掷一枚再分道)——
+    ∈ EQUIPMENTS → gain_equipment(装备腿,尾追入栏)/
     ∈ BENCH_ITEM_NAMES → gain_bench_item(占席道具腿);队列条目只存
     卡名不存发放物(随机值同样不入队)= 改名安全单一源。到期即弹除不
     回队(发放即消费;发放拒落零写 = 该件世界性丢失,留存证据于队列
@@ -2738,19 +2745,21 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
     write 回写。返回效果串(每条 ``delayed_grant:<发放物>(placed=
     <bool>)``,与落位成败解耦)。
 
-    - rand 语义:确定发放行(族内既有全部行)调用方传 ``rand=False``
+    - rand 语义:确定发放行(族内既有确定行)调用方传 ``rand=False``
       (gain-chain.md §5;写通道仍经 :func:`_select_write` 单一收束);
-      随机 choice-set 行(是钻石总会发光首例)例外:发放腿内部覆盖
-      ``rand=True``(效果体含采样 → 子链随机态纪律,gain-chain.md §5),
+      随机行例外:发放腿内部覆盖 ``rand=True``(效果体含采样 → 子链随机
+      态纪律,gain-chain.md §5)——choice-set 行(是钻石总会发光首例)与
+      类别池行(回收计划首例,池分布与泛化随机装备族同一,披露键 =
+      STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS 类别无关单键,零新增)两形;
       队列弹除行仍只载卡名、随调用方 rand 透传;
-    - rng 必传形参(无缺省,缺省回退自掷会破 sim 确定性):仅随机
-      choice-set 行消费(掷骰时点 = 到点发放窗现掷,``rng.choice`` 序列
-      均匀语义;均匀 v0 = 建模假设非游戏真值,披露键申报 =
-      STRATEGY_DELAYED_RANDOM_CHOICE_ASSUMPTION_KEYS);确定行零消费
+    - rng 必传形参(无缺省,缺省回退自掷会破 sim 确定性):仅随机行消费
+      (choice-set 行与类别池行掷骰时点 = 到点发放窗现掷,``rng.choice``
+      序列均匀语义;均匀 v0 = 建模假设非游戏真值);确定行零消费
       (调用后 rng 状态逐位不变,同 seed 下既有卡行为零变);
     - 注册表查行失败防御(实现批后注册表漂移,正常不可达;import 校验
       在先):零写 + log warning + 条目保留不弹除,披露面 = 消费端
-      sim 留证披露键,见值即注册表与队列失配,升级排查;
+      sim 留证披露键,见值即注册表与队列失配,升级排查;类别池行池空
+      同形防御(池随注册表传导,import 期哨在先,此处运行期兜底);
     - live 不接本原语(不对称申报,模块边界承担:调用仅存在于 sim
       模块,kernel 不 import sim);实机发放由游戏自己执行,装备入栏
       = equips 观察首见,audit 'equips' 行吸收。"""
@@ -2778,6 +2787,22 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
             # 弹除行仍只载卡名维持调用方 rand 常量。占席支现役无实成员
             # (前瞻边界:其 rand 语义随首个占席 choice-set 行批复核)。
             chosen = rng.choice(grant.item_choices)
+            grant_rand = True
+        elif grant.item_category:
+            # 随机类别池行(回收计划首例):掷骰时点 = 到点发放窗现掷
+            # (随机值不预掷,队列只存卡名同上);池 = equips_by_category
+            # 注册表派生单源(与泛化随机装备族工厂同表达式,均匀 v0 =
+            # 建模假设,披露键 = STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS
+            # 类别无关单键);池空 = 注册表漂移 → log 防御 + 条目保留
+            # 不弹除(查行失败同形,零写);采样后走既有 EQUIPMENTS 分道,
+            # 发放子链随机态写通道同上。
+            pool = equips_by_category(grant.item_category)
+            if not pool:
+                log.warning(f'[cw-gain] 策略延时发放类别池空(注册表漂移?),'
+                            f'条目保留:{name!r} {grant.item_category!r}')
+                keep.append((name, int(remaining)))
+                continue
+            chosen = rng.choice(pool)
             grant_rand = True
         else:
             chosen = grant.item

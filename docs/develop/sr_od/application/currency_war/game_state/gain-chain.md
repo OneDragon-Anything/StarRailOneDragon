@@ -759,7 +759,8 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   选卡屏事件):注册表 `cw_investments.STRATEGY_DELAYED_GRANTS`(卡规范名
   → id/倒计时/发放物,白名单制;构建校验漂移哨 = 孤儿键/id 双匹配/
   发放物名(item 确定行与 item_choices 逐元素)∈ EQUIPMENTS ∪
-  BENCH_ITEM_NAMES)+1 行即自动获得登记腿
+  BENCH_ITEM_NAMES/类别池(item_category 非空行,equips_by_category
+  派生池非空))+1 行即自动获得登记腿
   (效果体由该表派生)。效果体两步:即时腿 `gain_equipment(rand=False)`
   具名入栏(效果串 `equip_grant:<发放物>(placed=<是否落位>)`;equips
   未观察 = 拒落零写)+ 延时入队腿 `queue_delayed_strategy_grant`(§2
@@ -782,7 +783,16 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   现掷(`discharge_due_strategy_grants` 增 `rng` 必传形参,均匀 v0 =
   建模假设,披露键申报),采样行发放子链 rand=True(§5 效果体含采样
   纪律;队列弹除行仍只载卡名随调用方 rand 透传),确定行零消费 rng
-  行为零变。
+  行为零变。随机类别池行(回收计划 id 230701,族内首个类别池发放行):
+  注册行 `item=''` + `item_category`(「随机简易装备」直读,池 =
+  `equips_by_category` 注册表派生单源,与随机装备族工厂同表达式),
+  效果串池标记形 `strategy_grant_scheduled:随机简易(类别池)@5`(池
+  标记字面 ∉ EQUIPMENTS,构造点同一住入队原语);掷骰时点/队列形态/
+  发放子链 rand=True 与 choice-set 行同构,池空 = 注册表漂移 → log
+  防御 + 条目保留(查行失败同形)。组合登记行(随机腿×延时入队腿双族
+  交叉,回收计划):两腿同属选卡获得时点经 `_compose_grant_legs` 组合
+  注册,不入泛化表/延时表(表行生成的单腿效果体与组合体同名键 dict
+  字面量顺序覆盖静默丢腿,买彩票+ 同判)。
   未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)

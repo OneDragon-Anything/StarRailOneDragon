@@ -4929,6 +4929,16 @@ class StrategyDelayedGrant:
       归表域测试);元素各过漂移哨(逐元素 ∈ EQUIPMENTS ∪
       BENCH_ITEM_NAMES,版本改名/移除可独立触发,见
       _validate_strategy_delayed_grants ④)。
+    - item_category: 随机发放物类别池(「获得1件随机简易装备」直读,回收
+      计划首例)。空串 = 非池形行,既有全部行纸面与行为零变;非空 = 到点
+      发放时在 ``equips_by_category(本值)`` 注册表派生池内均匀掷一枚
+      (掷骰时点 = 到点发放窗现掷,队列同样只存卡名随机值不入队;均匀 v0
+      = 建模假设,池形分布与泛化随机装备族同一,家族披露键
+      STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS 类别无关单键承载,零新增键;
+      词表单一源 = Equipment.category 字段注释,池随注册表传导,漂移哨
+      见 _validate_strategy_delayed_grants ⑤)。与 item/item_choices
+      三选一登记(防登记笔误类同治理口径不入 import 校验,三方恰一对账
+      归表域测试)。
 
     立专表辨析:GiftGrant items_scheduled = 绝对节点键域('位-轮')且
     会把发放物错收进占席词表;效果账本 EffectSpec payload 闭集(经济/
@@ -4940,6 +4950,7 @@ class StrategyDelayedGrant:
     item: str
     count: int = 1
     item_choices: tuple[str, ...] = ()
+    item_category: str = ''
 
 
 STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
@@ -4990,6 +5001,17 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     '是钻石总会发光': StrategyDelayedGrant(
         id='131101', delay_nodes=2, item='',
         item_choices=('红钻', '蓝钻')),
+    # 回收计划(id 230701 原文直读,cw_invest_data.py:185;卡文延时腿 =
+    # 「并在5个节点后获得1件随机简易装备」→ 类别池形(item_category
+    # 族首例,item='' 占位,简易 8 件全集即目标全集,掷骰时点 = 到点
+    # 发放窗现掷,队列只存卡名随机值不入队)。同卡即时腿「获得1件进阶
+    # 装备」不在本表——两腿同属选卡获得时点,登记腿 = PICK_INVEST_
+    # EFFECTS 组合登记行(随机进阶腿×延时入队腿,cw_gain_effects,不入
+    # 泛化表防同名键覆盖丢即时腿);「随机」词在本腿显式,即时腿进阶
+    # 装备缺词判读申报制(随机类别池均匀 v0 读法 =
+    # designs/T-237-huishou-jihua.md §1.3,后继引用禁当定谳转引))
+    '回收计划': StrategyDelayedGrant(id='230701', delay_nodes=5, item='',
+                                     item_category='简易'),
 }
 
 
@@ -4997,7 +5019,7 @@ def _validate_strategy_delayed_grants() -> None:
     """STRATEGY_DELAYED_GRANTS 构建校验(import 即炸;治理口径 =
     2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本变更
     独立触发的漂移哨留」,镜像 _validate_strategy_delayed_offers 同款
-    收缩形态——本表落四哨,值域类(delay_nodes 形/下界)与防登记笔误
+    收缩形态——本表落五哨,值域类(delay_nodes 形/下界)与防登记笔误
     类(item 与 item_choices 恰一)不加,恰一对账归表域测试):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
@@ -5007,7 +5029,12 @@ def _validate_strategy_delayed_grants() -> None:
     双域皆非 = 消耗品域/未知名,发放腿无从分道;choice-set 行 item=''
     跳过本哨,物名由④逐元素辖);④ choice-set 元素漂移:非空
     item_choices 逐元素 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES(镜像③形态,
-    采样行发放腿同按两词表分道)。③④的运行期实况 = 发放腿查行后零
+    采样行发放腿同按两词表分道);⑤ 类别池漂移:非空 item_category 的
+    类别池 equips_by_category 非空(值 ∈ 装备类别词表的派生承载——池 =
+    注册表 category 等值过滤,词表成员资格与池非空充要,词表单一源 =
+    Equipment.category 字段注释,镜像 _validate_strategy_hp_loss_grants
+    ②同形;池空的运行期实况 = 发放腿类别池查空防御 log + 条目保留,
+    import 期哨把拦截面前移到构建期)。③④的运行期实况 = 发放腿查行后零
     分道防御(log + 条目保留),import 期哨把拦截面前移到构建期。
     delay_nodes 错值后果 = 拿卡入队按错拍倒计时(响亮面在对账),防
     笔误类按治理裁定不加。
@@ -5035,6 +5062,11 @@ def _validate_strategy_delayed_grants() -> None:
                     f"STRATEGY_DELAYED_GRANTS 发放物元素漂移({_name!r} "
                     f"choice-set 装备表/占席词表均无此名,版本改名?):"
                     f"{_choice!r}")
+        if _grant.item_category \
+                and not equips_by_category(_grant.item_category):
+            raise ValueError(
+                f"STRATEGY_DELAYED_GRANTS 类别漂移({_name!r} 类别池注册表"
+                f"无装备,版本改名?):{_grant.item_category!r}")
 
 
 _validate_strategy_delayed_grants()
