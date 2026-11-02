@@ -1217,6 +1217,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '回收计划': _compose_grant_legs(
         _make_random_equip_effect('进阶', 1),
         _make_delayed_only_grant_effect('回收计划')),
+
+    # 回收计划+ = 双腿组合登记行(卡文「获得1件进阶装备,并在4个节点后获得
+    # 1件随机简易装备」;腿1 随机进阶/腿2 延时入队类别池第 2 例,4 节点;
+    # 不入泛化表防同名键覆盖丢腿,腿参数唯一出现点;判读申报制随 T-237
+    # 在案口径,禁当定谳转引)。
+    '回收计划+': _compose_grant_legs(_make_random_equip_effect('进阶', 1),
+                                 _make_delayed_only_grant_effect('回收计划+')),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自

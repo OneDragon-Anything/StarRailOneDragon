@@ -5012,6 +5012,12 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # designs/T-237-huishou-jihua.md §1.3,后继引用禁当定谳转引))
     '回收计划': StrategyDelayedGrant(id='230701', delay_nodes=5, item='',
                                      item_category='简易'),
+    # 回收计划+(id 230702 原文直读,cw_invest_data.py:186;卡文延时腿 =
+    # 「并在4个节点后获得1件随机简易装备」→ 类别池形第 2 例(item=
+    # 占位,简易池到点现掷;即时腿「获得1件进阶装备」不在本表——
+    # PICK_INVEST_EFFECTS 组合登记行承载,判读申报制随 T-237 在案口径))
+    '回收计划+': StrategyDelayedGrant(id='230702', delay_nodes=4, item='',
+                                     item_category='简易'),
 }
 
 
