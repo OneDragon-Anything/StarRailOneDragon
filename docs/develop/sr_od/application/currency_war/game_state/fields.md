@@ -2647,13 +2647,18 @@ sim 局零假发牌)。sim 候选供给面是否覆盖出售族 = 保真度申�
 (SellBench 卖价修饰);大裁员+6 次免费刷新(§3.3.5 来源族);降本增效=6 次购买免费
 (uses 载体已建,免费闸 = 买牌上报单点 `consume_uses_up_to`,免费帧不计花销);
 现金为王=护盾记忆量(护盾=出售所得金×1000——
-**护盾余量=ActiveEffect 计数器记账**,不设独立字段)。大裁员已注册 STRATEGY_EFFECTS
+**护盾余量=ActiveEffect 计数器记账**,不设独立字段;已落规格:
+`counters['shield_bank']`=桥退款×1000 同闸记账,写端唯一=板面重写桥)。大裁员已注册 STRATEGY_EFFECTS
 条目(出售面 + burst=6 单条目双载,BATTLEFIELD;发牌腿非其卡文面,sim 发牌判据
 按语义值细分不入集),出售动作按基础公式记(×2 施于净额/基础价缺口 G4 待实采);
 降本增效已注册 STRATEGY_EFFECTS 条目(出售面 + 免费购买腿 `duration_uses=6`
 单条目双载,BATTLEFIELD;素出售不入 sim 发牌判据集),出售动作按基础公式记
 (×2 施于净额/基础价缺口 G4 待实采),免费购买腿经买牌上报免费闸恢复真值
-(uses 递减、用尽移除恢复扣金);现金为王维持缺口登记 §5.2。
+(uses 递减、用尽移除恢复扣金);现金为王已注册 STRATEGY_EFFECTS 条目
+(素出售 + 护盾记忆量 `counters['shield_bank']` 承载,BATTLEFIELD;素出售
+不入 sim 发牌判据集),出售按标准卖价公式(卡文无「双倍」句,零卖价修饰),
+护盾记忆量=桥退款×1000 同闸记账(空场/部分读零记账,正本 effect-domain
+§4 伴生数值空间),护盾授予=每场进入战斗游戏侧自算 bot 零响应。
 
 #### 采购专员族(refresh_surprise_every=7/5)
 

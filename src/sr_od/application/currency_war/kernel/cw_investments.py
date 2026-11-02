@@ -1735,6 +1735,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '两段增幅与节点增长句游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 现金为王:官方「出售场上和备战席的所有角色，之后每场进入战斗时，为我方
+    # 前台提供护盾，护盾量等同于该次出售角色所获得总金币数*1000。」
+    # (cw_invest_data.py:200)。卖全场族素出售第三张注册卡(大裁员/降本增效
+    # 姊妹,人力重组走 _DEAL 值非素):出售面 = 板面重写桥素出售语义清场 +
+    # 基础公式退款(卡文无「双倍」句,无卖价修饰);护盾面 = 「每场进入战斗
+    # 时前台获盾」持久被动游戏侧自算(bot 零响应,U01 sim 战斗零消费),
+    # 记忆量 = 桥退款权威写入同闸记账实例 counters[CounterKey.SHIELD_BANK]
+    # (= 退款×1000 卡文明写,常量承载;写端唯一 = 板面重写桥,空场/部分读
+    # 零记账),不设独立字段(正本 fields.md 卖全场族行/effect-domain §4
+    # 伴生数值空间)。
+    '现金为王': EffectSpec(
+        id='250301', name='现金为王', trigger=TriggerKind.INSTANT,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
+        duties=DutyFlags(predict=True),
+        notes='出售面=板面重写桥素出售(人力重组同构);护盾记忆量=桥退款'
+              '×1000 记实例 counters[SHIELD_BANK](正本 fields.md 卖全场族'
+              '行/effect-domain §4);护盾授予=每场进入战斗游戏侧自算 '
+              'bot 零响应'),
 }
 
 

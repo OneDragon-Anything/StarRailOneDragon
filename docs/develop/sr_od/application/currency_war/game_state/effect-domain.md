@@ -94,8 +94,9 @@
 
 - **伴生数值空间**:效果需随实例携带的数值(超发货币的负债额/狸财经狸的存款余额/
   现金为王的护盾余量)= 实例内 counters 键值承载,**不设独立 state 字段、不扩
-  payload**。先例 = 超发货币负债额(impacts §3 超发货币条目);其余随逐条确定流程
-  落 impacts 条目后即为已登记先例。
+  payload**。在册先例 = 超发货币负债额(impacts §3 超发货币条目)与现金为王护盾
+  记忆量(`counters['shield_bank']` = 板面重写桥出售支退款×1000 同闸记账,写端
+  唯一 = 桥);其余随逐条确定流程落 impacts 条目后即为已登记先例。
 - **与现行载体的等价申报**:现行 `ActiveEffect`(kernel/cw_effect_inventory.py:
   class `ActiveEffect` :254,余期/计数器字段区 :265-278)
   以 `remaining_nodes`/`remaining_uses`(递减余期)+ `counters`(单调计数)三维承载。
@@ -130,7 +131,7 @@ unit_buff);词缀源
 
 | 类别 | 定义(效果语义) | state 记录形态(counter 判据) | 触发驱动 | 实码代表例(锚) |
 |---|---|---|---|---|
-| 即时结算 | 选卡当场一次性结清 | counter 空(无动态) | 选卡落地(§7.3) | 全员晋升/人力重组(cw_investments.py:679/:690);成本控制 instant_gold(cw_investments.py:210) |
+| 即时结算 | 选卡当场一次性结清 | counter 空(无动态)或**伴生数值型非空**(现金为王 `shield_bank`=出售退款×1000,登记拍单写无推进——与限时段/延迟时点的**余期推进型**〔按节点 +1〕两类非空口径并列,§4 伴生数值空间) | 选卡落地(§7.3) | 全员晋升/人力重组/现金为王(cw_investments.py:679/:690/表尾);成本控制 instant_gold(cw_investments.py:210) |
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
@@ -345,7 +346,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 46 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 58 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -633,6 +634,30 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   语义(机译无 ONCE 移除逻辑,uses 独立播种);predict = 买牌对账须预知免费
   价,track = 次数余量剩余期量(免战牌 track=True 同形);×2 施径缺口与免费
   购买呈现面(商店牌面价格显示形态)均归实采域(停机钩子名单在册,人工采集)。
+
+#### 现金为王(250301)
+
+- **论断**:INSTANT / while_held / BATTLEFIELD;duties = predict(出售后板面
+  空,部署/买牌对账须预知);counter **建**(伴生数值型,先例 = 超发货币
+  LOST):`counters['shield_bank']` = 出售退款合计×1000(卡文明写系数,常量
+  承载),写端唯一 = 板面重写桥出售支(与退款权威写入同闸:空场退款零/出售域
+  未全读 → 零记账等观察收口,禁部分记账),登记拍单写、无推进维度
+  (while_held 实例随局存活,余量读数成立)。出售面 = 素出售语义确定性逻辑写
+  (大裁员/降本增效同构;卡文无「双倍」句,无卖价修饰,退款 = 标准卖价);
+  护盾授予面(「每场进入战斗时前台获盾」持久被动)= 游戏侧自算,bot 零响应
+  (UNIT_BUFF 族零响应教义同判;U01 sim 战斗纯随机零消费 = 结构性边界),
+  counter 为世界真值记账,现役零代码消费。
+- **证据**:规格 `cw_investments.STRATEGY_EFFECTS['现金为王']`(payload=
+  BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL));记账段 =
+  cw_effect_inventory.apply_board_rewrite 出售支尾(CASH_KING_SHIELD_PER_GOLD
+  =1000 常量承载,CounterKey.SHIELD_BANK 键常量);官方原文 cw_invest_data.py:200
+  「出售场上和备战席的所有角色，之后每场进入战斗时，为我方前台提供护盾，护盾量
+  等同于该次出售角色所获得总金币数*1000。」
+- **推理链**:护盾量 = 出售面退款合计的一次性函数(先出售、后按量供盾)→
+  记账点与退款同一权威判据(桥内 spec-id 门控单一源,live/sim 双端同链自动
+  一致,登记腿每局至多一次无重入闸);量值 desc 明写(×1000)可建模,刷新/
+  叠层/受盾位次 desc 未写 = 全部放弃(禁猜,游戏侧自算);触发面「每场进入
+  战斗」零新增词表值零响应登记(§7.4 教义,候选驱动启用前提不满足)。
 
 ### 条件窗口族
 

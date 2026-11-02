@@ -190,6 +190,7 @@ class CounterKey:
     REFRESH_PAID = 'refresh_paid'     # 付费刷新累计(长线利好「花费金币进行30次刷新」)
     XP_GRANTED = 'xp_granted'   # 升级窗口已发放节点数(成功经验;写端唯一 = 发放桥 grant_effect_node_xp,窗口耗尽判定读本键)
     LOST = 'lost'   # 超发货币负债额快照(拿卡拍持有金;写端唯一 = 获得链登记腿播值 kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数,禁猜测写;消费端 = sim 清零/回流两腿世界真值)
+    SHIELD_BANK = 'shield_bank'   # 现金为王护盾记忆量快照(出售退款合计×1000;写端唯一 = 板面重写桥出售支 apply_board_rewrite,与退款权威写入同闸,空场/出售域未全读零记账;伴生数值型世界真值记账,现役零代码消费面)
 
 
 # ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====
@@ -203,10 +204,10 @@ SOURCE_AFFIX: str = 'affix'
 
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
-# 已登记条目 = 全员晋升/人力重组/大裁员/降本增效(cw_investments.STRATEGY_EFFECTS,
-# 官方文 cw_invest_data.py:67/:68/:134/:136);写入归属单一源 =
-# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §8 同名条
-# (全员晋升/人力重组/大裁员/降本增效)。
+# 已登记条目 = 全员晋升/人力重组/大裁员/降本增效/现金为王(cw_investments
+# .STRATEGY_EFFECTS,官方文 cw_invest_data.py:67/:68/:134/:136/:200);写入
+# 归属单一源 = docs/develop/sr_od/application/currency_war/game_state
+# /effect-domain.md §8 同名条(全员晋升/人力重组/大裁员/降本增效/现金为王)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
 # 出售支按「卡文是否携带发牌腿」两值细分:出售 = 语义本体(清场退款),
@@ -877,6 +878,17 @@ def _portal_acquired_key(gs: object, session: object) -> tuple[int, int] | None:
 # 已停用。)
 
 
+# ===== 现金为王单卡判别/换算常量(板面重写桥出售支记账门用)=====
+# 条目判别键与换算系数集中此处防字面量散落(消费端 = 本桥出售支记账段;
+# 与注册表 cw_investments.STRATEGY_EFFECTS['现金为王'].id 的一致性由键×id
+# 对拍测试直锁,同 cw_investments.HYPEREMIT_SPEC_ID 先例——本模块「模块头
+# 零包内 import」契约禁反向引注册表,常量故宿本侧)。
+CASH_KING_SPEC_ID: str = '250301'
+#: 卡文「护盾量等同于该次出售角色所获得总金币数*1000」的换算系数直读
+#(金币→护盾量;数值单一源在此,桥记账与测试对拍共用,禁散落副本)。
+CASH_KING_SHIELD_PER_GOLD: int = 1000
+
+
 @dataclass(frozen=True)
 class BoardRewriteReport:
     """板面重写桥执行报告(留存证据/测试用;零决策消费)。"""
@@ -914,11 +926,15 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
       兼发牌腿):出售面 = 确定性 → 逻辑写(§5.3
       归属判据确定性分支;容器清空写经锚定标志择道,未锚定期走随机态,
       见清空写段注释)——前台/后台/备战席清空 + 退款按卖价公式入金
-      (单一源 = cw_state.sell_refund,费用查表单一源 = cw_state
-      .bench_char_cost,未知 char_id 退中费 3)。发牌面 = 随机 → **不建
-      逻辑写,进席落位 live 走观察覆盖、sim 由后端发牌腿承接**——本桥
-      禁替发牌面造单位;发牌腿是人力重组卡文附加面非出售语义固有
-      (大裁员/降本增效素出售无发牌),具发牌腿卡以 _DEAL 值声明。
+      (退款单一源 = cw_economy.sell_refund,费用查表单一源 =
+      cw_economy.bench_char_cost,未知 char_id 退中费 3)。发牌面 = 随机
+      → **不建逻辑写,进席落位 live 走观察覆盖、sim 由后端发牌腿承接**
+      ——本桥禁替发牌面造单位;发牌腿是人力重组卡文附加面非出售语义固有
+      (大裁员/降本增效/现金为王素出售无发牌),具发牌腿卡以 _DEAL 值
+      声明。护盾记忆量(现金为王单卡):退款权威写入同闸记账实例
+      counters[CounterKey.SHIELD_BANK] = 退款 × CASH_KING_SHIELD_PER_GOLD
+      (spec-id 门控,见记账段注释;空场/出售域未全读零记账等观察收口,
+      禁部分记账)。
 
     **字段从未观察(value=None)= 无容器可写,跳过**(同族先例 =
     project_effect_capacity):选卡后的下一备战帧观察必全量重读板面,
@@ -935,15 +951,16 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
 
     **sim 语义申报(适用性/对齐)**:本桥本体不接 sim——sim 世界事实由
     后端世界分支真值直写(evidence `sim:` 族,
-    `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族四注册卡按面分述:
-    人力重组/大裁员/降本增效出售面 = **双端同链已通**(本桥经获得链在 sim 局真实
-    执行,存量锁钉死);人力重组发牌面(2★ 三档随机)= sim 由后端发牌腿
+    `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族五注册卡按面分述:
+    人力重组/大裁员/降本增效/现金为王出售面 = **双端同链已通**(本桥经获得链在 sim 局真实
+    执行,存量锁钉死;现金为王护盾记账在本桥出售支段内,双端随链自动
+    一致);人力重组发牌面(2★ 三档随机)= sim 由后端发牌腿
     承接(`cw_sim_backend.apply_strategy_pick_sell_all_deal`,判据集 =
     具发牌腿语义值派生,挂 `_on_invest_picked` 选卡落地拍,授予出口派生
     桶直写,live 零假发牌——本桥「禁替发牌面造单位」裁定对双端维持);
-    大裁员/降本增效素出售无发牌面(卡文无发牌句,不入发牌判据集,sim 局零假发
-    牌),其卖价 ×2 修饰 = 全族缺口低估申报(退款按基础公式记,口径待
-    实采);全员晋升替换面 = 维持 sim 零建模(穿戴装备归属未采证,禁猜;
+    大裁员/降本增效/现金为王素出售无发牌面(卡文无发牌句,不入发牌判据集,sim 局零假发
+    牌),大裁员/降本增效卖价 ×2 修饰 = 全族缺口低估申报(退款按基础公式记,口径待
+    实采;现金为王卡文无「双倍」句,退款 = 标准卖价);全员晋升替换面 = 维持 sim 零建模(穿戴装备归属未采证,禁猜;
     其拆装扳手×2 装备腿经获得链 sim 同链生效,不在本申报面)。残余未建模
     申报面 = sim-design §8.2「板面重写族」行。
 
@@ -1050,6 +1067,18 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     if gs.gold.value is not None and refund > 0 and not partial_read:
         gs.write_logic(gs.gold, int(gs.gold.value) + refund,
                        produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
+    # 护盾记忆量记账(现金为王单卡,spec-id 门控;写端唯一 = 本段):与退款
+    # 权威写入同闸(出售域全读 ∧ 退款非零)——空场(退款零)/出售域未全读
+    #(partial_read,输入不完整 §6.3)两态护盾随退款同拍零记账等观察收口,
+    # 禁部分记账(护盾量 = 退款合计的一次性函数,按部分退款记账即记错量)。
+    # 登记腿每局至多一次(投资单选族选卡即耗),无重入闸;系数 = 卡文明写
+    # ×1000(CASH_KING_SHIELD_PER_GOLD 单一源);实例 = 获得链登记腿先行
+    # 注册的同 id 条目,缺席(直调桥未登记形态)静默跳过。
+    if spec.id == CASH_KING_SPEC_ID and not partial_read and refund > 0:
+        _shield_entry = gs.effects.first(spec.id)
+        if _shield_entry is not None:
+            _shield_entry.counters[CounterKey.SHIELD_BANK] = \
+                refund * CASH_KING_SHIELD_PER_GOLD
     return BoardRewriteReport(rewrite=rewrite, refund_gold=refund,
                               sold_units=len(sold),
                               cleared_fields=tuple(cleared),
