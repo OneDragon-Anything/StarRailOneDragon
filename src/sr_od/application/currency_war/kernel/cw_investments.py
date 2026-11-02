@@ -5033,6 +5033,12 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # EFFECTS 组合登记行承载,两腿异构不入泛化表防撞键);到点 BENCH
     # 分道 gain_bench_item(rand=False),四查 BENCH 分支过)。
     '红钻闪耀': StrategyDelayedGrant(id='231201', delay_nodes=3, item='简易武装箱'),
+    # 蓝钻闪耀(id 231301 原文直读,cw_invest_data.py:193;卡文延时腿 =
+    # 「进入3个节点后，获得【简易武装箱】」→ 定名道具直填形(item 直填
+    # count 缺省 1;即时腿「获得1个【蓝钻】」不在本表——PICK_INVEST_
+    # EFFECTS 组合登记行承载,两腿异构不入泛化表防撞键);到点 BENCH
+    # 分道 gain_bench_item(rand=False),四查 BENCH 分支过)。
+    '蓝钻闪耀': StrategyDelayedGrant(id='231301', delay_nodes=3, item='简易武装箱'),
 }
 
 
