@@ -59,7 +59,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_intention import locked_buy_cap_hold
+from sr_od.application.currency_war.kernel.cw_intention import (
+    _pair_members,
+    locked_buy_cap_hold,
+)
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_reject_reason,
 )
@@ -180,12 +183,15 @@ INTEREST_EXEMPT_DEPLETED_KEY: str = 'node_end_interest_exempt_depleted'
 
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
-    """卖出侧线内身份集(单一准入口径 = roster-plane1-union design
-    §2.1):锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
-    **∪ 过渡配方成员**;未锁定 = 候选 top3 线内成员并集(判定源 =
-    候选快照)**∪ 过渡配方成员**。配方支两态共用同一读口 =
-    ``opening_recipe_comp`` 槽位直读 + 读前判窗(``plane2_started_of``
-    ——进位面 2 即退出,锁定不是退出条件,P1 锁定局配方照收)。
+    """卖出侧线内身份集(双层名单口径 = dual-layer-candidates design
+    §2.4-5):锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
+    **∪ 过渡候选成员**;未锁定 = 实候选(证据门版快照)三线成员并集
+    **∪ 过渡候选成员**。过渡支两态共用同一读口 =
+    ``transition_candidates`` 槽各对 ``_pair_members`` 展开 + 读前判窗
+    (``plane2_started_of``——进位面 2 即退出,锁定不是退出条件,
+    P1 锁定局照收;**与买面同源**——同一槽展开,成员展开单一源 =
+    kernel ``_pair_members``,与 ``shop._transition_candidate_members``
+    同集)。
 
     消费面:常规面 sell_exclusions 装配 k_members 入参、备战帧
     k_members 装配(entry.emit / mandate.snapshot_frame)、买面投影位
@@ -207,13 +213,12 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
                 continue
             names |= set(comp.core_chars)
             names |= set(getattr(comp, 'shared_chars', None) or ())
-    # 配方支(两态共用):槽位直读 + 读前判窗——与 priority 装配同口径
-    # (§2.1:禁经 direction_comp_of 拼名单;进 P2 后本支恒空集)。
+    # 过渡支(两态共用):槽展开 + 读前判窗——与 priority 装配/买面
+    # 同口径(禁经 direction_comp_of 拼名单;进 P2 后本支恒空集,
+    # clear_p1_recipe 同点清空 + 判窗双保险)。
     if not plane2_started_of(gs):
-        rc = state_of(gs).opening_recipe_comp
-        if rc is not None:
-            names |= set(rc.core_chars)
-            names |= set(getattr(rc, 'shared_chars', None) or ())
+        for pair in (state_of(gs).transition_candidates or ()):
+            names |= _pair_members(tuple(pair))
     return frozenset(names)
 
 

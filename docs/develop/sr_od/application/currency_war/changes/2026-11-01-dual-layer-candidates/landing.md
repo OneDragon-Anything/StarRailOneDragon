@@ -41,7 +41,7 @@
 **范围**:`priority.py` 成员档双层名单(实候选证据门版 ∪ 过渡候选)与 `member_rank` 二元组化(含缺省 `(1, CANDIDATE_TOP_N)` 与补缺 :285-286);`sell_candidates.py` 过渡候选支(替换单配方支,凑息豁免名单同源)。单帧测试:双层名单/同档垫底/缺省值/重叠归终局/过渡完成品档 4/豁免域含过渡在建件。
 **边界**:十档结构与键域 1..10 零改动;档 1/6/8/9/10 不分层;deploy_search 不动(部署骨架全枚举现行);完成品保护批断言全绿。
 **设计依据**:design.md §2.4/§2.6-7/§2.7。
-**文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/priority.py`;`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/sell_candidates.py`;测试仓 `test_priority.py`(必红改写)、`test_sell_candidates.py`(必红改写)。
+**文件面**:`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/priority.py`;`src/sr_od/application/currency_war/strategies/impl/mandate_v1/criteria/sell_candidates.py`;测试仓 `criteria/test_priority.py`(必红改写)、`criteria/test_sell_candidates.py`(必红改写)、**`mandate_v1/test_mandate.py` 与 `mandate_v1/test_decision_payload.py`(塞槽 fixture 随批迁移——opening_recipe_comp 塞槽 → transition_candidates,2026-11-01 落地期补列:名单源换源的同型传染,design §2.8 清单本含两文件)**。
 **依赖**:3.1 与 3.2(终局半边名单 = 实候选证据门版,由 3.2 的 line_select 改动产生)。
 **优先级建议**:1
 **完成判据**:

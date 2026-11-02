@@ -11,6 +11,12 @@
 key 大者先卖(档位编号大 = 优先级低 = 先卖);因此
 各档内「后卖」类属性(总星级数多/单卡星级高)在键里取负号、先卖类属性
 (档 10 概率高/低费)取正号。
+
+成员档双层装配(dual-layer-candidates design §2.4):终局成员 =
+实候选(证据门版快照)三线并集,过渡成员 = 过渡候选各对成员并集
+(``transition_candidates`` 槽展开),进同一档判定(2/3/4/5/7)谓词
+同构;``member_rank`` 键 = (层, 位次) 二元组,字典序承载「同档占位、
+档内垫底」,十档结构与键域零改动。
 """
 from __future__ import annotations
 
@@ -22,11 +28,15 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
+from sr_od.application.currency_war.kernel.cw_intention import _pair_members
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     star_base_copies,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.levelup import (
     stay_target_of,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
+    CANDIDATE_TOP_N,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import (
     CROSS_LINE_KEEP_NAMES,
@@ -50,7 +60,14 @@ if TYPE_CHECKING:
 
 #: 排序键 = (档位, *档内子键, 退金损失, 在手旗标, 随机尾键),字典序比较;
 #: 同档子键定长,跨档比较在档位分量即分出(元组比较短路,无跨型比较)。
-PriorityKey = tuple[int | float, ...]
+#: 成员档(2/3/4/5/7)①键为 (层, 位次) 二元组(嵌套元组分量,同档内
+#: 同型比较;§2.4-3)。
+PriorityKey = tuple[int | float | tuple[int, int], ...]
+
+#: member_rank 判定端缺省(表外/非候选成员)= 过渡层末位 (1, CANDIDATE_TOP_N)
+#: ——与第三候选并列垫底,由后续键判别(dual-layer-candidates design
+#: §2.4-3;复用候选数常数,零新数值)。
+RANK_TRANSITION_BOTTOM: tuple[int, int] = (1, CANDIDATE_TOP_N)
 
 #: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户拍板,
 #: 判定表正本 = 32 号稿 §3 档 9 行;
@@ -101,7 +118,7 @@ class PriorityContext:
     """排序所需只读输入的装配体(一次性装配,禁散参;32 号稿 §2)。
 
     输入清单与各字段读口见 32 号稿 §2(持牌全量快照/部署在场名集/
-    锁定线名单视图/候选快照/过渡配方对成员/当前升星目标/必要星级表/
+    锁定线名单视图/候选快照/过渡候选成员/当前升星目标/必要星级表/
     当前等级/随机流,另含档 2/3/4/5/7 档内序数键的装配产物
     ``member_rank``(知识卡 ``member_priority`` 字段直读合成;迁移期
     形态 = core 0/其余 1,逐角色精调归下一迭代外溢))。字段容器按装配
@@ -123,16 +140,19 @@ class PriorityContext:
     """③锁定线名单视图(读口 = session_scope.line_members_view;
     锁定帧成员档(2/3/4/5/7)名单 = members,未锁定帧 = 空名单)。"""
     candidate_members: frozenset[str]
-    """④候选快照成员并集(读口 = StrategyState.line_candidates 三线经
-    COMP_LIBRARY 成员展开 core ∪ shared;未锁定帧成员档名单的候选支;
-    锁定帧候选快照恒空集,锁定写入时已清空停算)。"""
+    """④实候选成员并集(读口 = StrategyState.line_candidates 三线经
+    COMP_LIBRARY 成员展开 core ∪ shared;**证据门版快照**——dual-layer-
+    candidates design §2.1-1/§2.2-1:零证据线不入候选,热度只作有
+    证据线间排序;未锁定帧成员档名单的终局半边。锁定帧候选快照恒空集,
+    锁定写入时已清空停算)。"""
     recipe_members: frozenset[str]
-    """⑤过渡配方对成员(读口 = ``StrategyState.opening_recipe_comp``
-    槽位直读 + **读前判窗**——准入唯一判据 = ``plane2_started_of``
-    窗口谓词,进位面 2 即退出,锁定不是退出条件;锁定帧照收 = P1 锁定局
-    名单为锁定线 ∪ 配方并集。进 P2 后装配侧配方支恒空集,槽位残留
-    不消费〔判窗在直读之前,与 direction_comp_of 读口内防御等价〕;
-    kernel 配方支清空写点 = cw_intention.clear_p1_recipe)。"""
+    """⑤过渡候选成员并集(读口 = ``StrategyState.transition_candidates``
+    槽各对经 ``cw_intention._pair_members`` 展开 + **读前判窗**——准入
+    唯一判据 = ``plane2_started_of`` 窗口谓词,进位面 2 即退出,锁定不是
+    退出条件;锁定帧照收 = P1 锁定局名单为锁定线 ∪ 过渡候选并集。进 P2
+    后装配侧本支恒空集,槽位残留不消费〔判窗在直读之前〕;槽清空写点 =
+    cw_intention.clear_p1_recipe。未锁定帧成员档名单的过渡半边
+    (dual-layer-candidates design §2.4-2)。"""
     stay_target: tuple[str, int, int] | None
     """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
     criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
@@ -140,18 +160,22 @@ class PriorityContext:
     need_star_by_member: dict[str, int]
     """⑦必要星级表(读口 = 锁定帧锁定线知识卡 need_star 字段全量
     照录——达标成员不缺省,完成品保护档 2/4 的锁定帧判定输入;
-    未锁定帧 = 候选三线知识卡 need_star 字段 COMP_LIBRARY 直查、命中
-    各线取最大值)。表外成员 = 1(无升星要求;判定端缺省,含过渡配方
-    物化对象等不在 COMP_LIBRARY 的名字)。"""
-    member_rank: dict[str, int]
-    """档内优先级序数表(档 2/3/4/5/7 ①键,序数取值规则 =
-    32 号稿 §2):成员名 → 序数,小 = 优先级
-    高。装配 = 各活性线知识卡 ``member_priority`` 字段直读
-    (cw_comps.member_rank_of,空表/旧数据回退 core 两档派生——总纲
-    §2.1.1 迁移期形态 = core 0/其余 1);跨线成员取各线最小序数(最高
-    优先,core 优先于非 core);过渡配方成员不入表(统一低档,
-    32 号稿 §2 配方支),表外成员判定端缺省 1。逐角色精调归
-    下一迭代外溢。"""
+    未锁定帧 = 实候选三线知识卡 need_star 字段 COMP_LIBRARY 直查、命中
+    各线取最大值)。**过渡候选成员不入表**(统一缺省 1——§2.3-5
+    过渡成员星级要求统一 need=1);表外成员 = 1(无升星要求;判定端
+    缺省,含过渡候选成员等不经 COMP_LIBRARY 查询面的名字)。"""
+    member_rank: dict[str, tuple[int, int]]
+    """档内优先级序数表(档 2/3/4/5/7 ①键,取值规则 = 32 号稿 §2 +
+    dual-layer-candidates design §2.4-3):成员名 → (层, 位次) 二元组,
+    小 = 优先级高。终局成员 = (0, 线内序数)——各活性线知识卡
+    ``member_priority`` 字段直读(cw_comps.member_rank_of,空表/旧数据
+    回退 core 两档派生——总纲 §2.1.1 迁移期形态 = core 0/其余 1),
+    跨线成员取各线最小序数(字典序 min,core 优先于非 core);过渡
+    成员 = (1, 候选位次)(``transition_candidates`` 槽内 1 基位次,跨
+    多候选对成员取最小位次);重叠成员归终局(装配序终局在前 + 过渡
+    setdefault,rank 取终局值,零特判)。表外成员判定端缺省
+    :data:`RANK_TRANSITION_BOTTOM` = (1, CANDIDATE_TOP_N)。逐角色
+    精调归下一迭代外溢。"""
     level: int
     """⑧当前等级(档 10 概率查表键 refresh_prob(level, cost))。"""
     rng: random.Random
@@ -178,6 +202,28 @@ def held_copies_of(gs: GameState) -> dict[str, list[int]]:
     return copies
 
 
+def _transition_member_ranks(
+        transition_candidates: tuple[tuple[str, ...], ...] = (),
+        ) -> dict[str, tuple[int, int]]:
+    """过渡候选槽 → 成员位次表((1, 候选位次);dual-layer-candidates
+    design §2.4-3)。
+
+    成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
+    另写展开);位次 = 槽内 1 基索引,槽序 = 候选排序键((对级支持度
+    降序,对级声明序)下的序——位次小 = 候选强)。``setdefault`` 写入:
+    跨多候选对成员取最小位次(槽序升序迭代,首见即最小)。参数缺省
+    () = 无候选供给(与 kernel ``locked_buy_scope`` 的槽透传参数化
+    同形态——候选不经装配内现算,接线方传 ``transition_candidates``
+    槽值,禁第二源);返回表键集 = 各对成员并集(过渡半边名单源,
+    与买面 ``shop._transition_candidate_members`` 同集)。
+    """
+    out: dict[str, tuple[int, int]] = {}
+    for idx, pair in enumerate(transition_candidates, start=1):
+        for n in _pair_members(tuple(pair)):
+            out.setdefault(n, (1, idx))
+    return out
+
+
 def assemble_priority_context(
         session: StrategySession,
         gs: GameState,
@@ -192,21 +238,22 @@ def assemble_priority_context(
     容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
     ``rng`` 缺省 = session.rng(策略随机语义单一源)。
 
-    两态名单装配(成员档 2/3/4/5/7 名单源;单一准入 = changes/
-    2026-10-30-roster-plane1-union design §2.1):锁定帧 = 锁定线
-    名单 ∪ 过渡配方成员(P1 锁定局并集),need_star 表 = 锁定线
-    知识卡 need_star 字段全量照录(达标成员不缺省——need≥2 完成
-    品保护档 2 的锁定帧判定输入;``unfinished_star_targets`` 本体
-    不动,其「未完成目标」原始语义与其余消费位不受影响);未锁定
-    帧 = 候选三线并集 ∪ 过渡配方成员,need_star 取命中各线最大值
-    (保守方向)。配方支两态共用同一读口(槽位直读 + 读前判窗),
-    进 P2 后恒空集。
+    两态名单装配(成员档 2/3/4/5/7 名单源;双层 = dual-layer-
+    candidates design §2.4-2):锁定帧 = 锁定线名单 ∪ 过渡候选成员
+    (P1 锁定局并集),need_star 表 = 锁定线知识卡 need_star 字段全量
+    照录(达标成员不缺省——need≥2 完成品保护档 2 的锁定帧判定输入;
+    ``unfinished_star_targets`` 本体不动,其「未完成目标」原始语义与
+    其余消费位不受影响);未锁定帧 = 实候选(证据门版快照)三线并集
+    ∪ 过渡候选成员,need_star 取命中各线最大值(保守方向),过渡成员
+    不入表(统一缺省 1,§2.3-5)。过渡支两态共用同一读口
+    (transition_candidates 槽展开 + 读前判窗),进 P2 后恒空集。
 
-    序数装配(档 2/3/4/5/7 ①键,序数取值规则 = 32 号稿 §2)
-    = 知识卡 ``member_priority`` 字段
-    直读(:func:`cw_comps.member_rank_of`,空表/旧数据回退 core 两档
-    派生),跨线成员取各线最小序数(最高优先);过渡配方成员不入表
-    (统一低档,经判定端缺省 1 承载)。
+    序数装配(档 2/3/4/5/7 ①键,(层, 位次) 二元组;§2.4-3)
+    = 知识卡 ``member_priority`` 字段直读(:func:`cw_comps.member_rank_of`,
+    空表/旧数据回退 core 两档派生)包 ``(0, 线内序数)``,跨线成员取
+    各线最小序数(最高优先);过渡成员经槽位次包 ``(1, 候选位次)``
+    (跨对取最小位次);装配序终局在前 + 过渡 ``setdefault`` ——重叠
+    成员 rank 取终局值(零特判)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import (
         get_comp,
@@ -222,19 +269,19 @@ def assemble_priority_context(
     # 装配面统一读 gs 侧,禁两宿主混读出同帧两份方向态)。
     st = state_of(gs)
     members: set[str] = set()
-    rank: dict[str, int] = {}
+    rank: dict[str, tuple[int, int]] = {}
     need_star: dict[str, int] = {}
     candidate_out: frozenset[str] = frozenset()
     if view.locked:
         members = set(view.members)
         comp = get_comp(view.comp_name) if view.comp_name else None
         if comp is not None:
-            # 序数表 = 锁定线知识卡字段直读(空表回退两档派生)。配方
-            # 伪锁帧的锁名不在 COMP_LIBRARY(comp 为 None)→ 不建表,
-            # 全员经下方补缺/判定端缺省走低档 1——配方成员低优先级
-            # 规则在此分支的承载(32 号稿 §2 配方支;伪阵容
+            # 序数表 = 锁定线知识卡字段直读(空表回退两档派生),包
+            # (0, 线内序数)。配方伪锁帧的锁名不在 COMP_LIBRARY
+            # (comp 为 None)→ 不建表,全员经下方补缺/判定端缺省走
+            # 低档——配方成员低优先级规则在此分支的承载(伪阵容
             # core_chars 为全员 core 形态,直推即高档,禁读)。
-            rank = member_rank_of(comp)
+            rank = {n: (0, p) for n, p in member_rank_of(comp).items()}
         # need_star 表 = 知识卡字段全量照录,达标成员不缺省:缺省 1 会
         # 让 need≥2 完成品保护谓词在锁定帧永不命中、达标完成品错落
         # 无星级要求档——「只收未达标成员」是 unfinished_star_targets
@@ -245,8 +292,8 @@ def assemble_priority_context(
                      in (getattr(comp, 'need_star', None) or {}).items()}
         # 锁定帧候选快照照读口真值冻结为空集(锁定写入连带清空停算,
         # StrategyState.line_candidates 恒 = 空集);成员档(2/3/4/5/7)
-        # 名单 = 锁定线名单(line_view.members 承载)∪ 配方支
-        # (recipe_members,P1 锁定局并集;进 P2 后配方支恒空集,判定端
+        # 名单 = 锁定线名单(line_view.members 承载)∪ 过渡支
+        # (recipe_members,P1 锁定局并集;进 P2 后过渡支恒空集,判定端
         # 无需重复判窗)。
     else:
         for line_name in st.line_candidates:
@@ -262,35 +309,39 @@ def assemble_priority_context(
                 continue
             members |= set(c.core_chars)
             members |= set(getattr(c, 'shared_chars', None) or ())
-            # 序数表 = 各线知识卡字段直读;跨线成员取各线最小序数
-            # (序数小 = 优先级高,core 优先于非 core——与旧「cores
-            # 并集命中即 0」等价的合成式)。
+            # 序数表 = 各线知识卡字段直读,包 (0, 线内序数);跨线成员
+            # 取各线最小序数(二元组字典序 min,(0,·) 域内 = 序数最小,
+            # core 优先于非 core——与旧「cores 并集命中即 0」等价的
+            # 合成式)。
             for n, p in member_rank_of(c).items():
-                rank[n] = min(rank.get(n, p), p)
+                r_final = (0, p)
+                rank[n] = min(rank.get(n, r_final), r_final)
             for n, need in (getattr(c, 'need_star', None) or {}).items():
                 need_star[n] = max(need_star.get(n, 1), int(need))
         candidate_out = frozenset(members)
-    recipe_members: frozenset[str] = frozenset()
-    if not plane2_started_of(gs):
-        # 配方支槽位直读 + 读前判窗(单一准入 §2.1):配方成员进不进
-        # 名单唯一判据 = plane2_started_of,锁定不是退出条件——P1
-        # 锁定局配方照收;禁经 direction_comp_of 反推名单(方向读口
-        # 回答「现行方向是谁」,其锁定不回落的语义 ≠ 名单退出条件)。
-        rc = st.opening_recipe_comp
-        if rc is not None:
-            recipe_members = frozenset(
-                {*rc.core_chars, *(getattr(rc, 'shared_chars', None) or ())})
-    # 表内补缺:字段未登记的成员按低档 1 兜底——配方成员(不经字段
-    # 直读面)统一低档在此完整承载;表外成员判定端缺省 1 不变。
+    # 表内补缺:字段未登记的终局成员按 (0, 1) 兜底(终局层低位次);
+    # 表外成员判定端缺省 RANK_TRANSITION_BOTTOM 不变。
     for n in members:
-        rank.setdefault(n, 1)
+        rank.setdefault(n, (0, 1))
+    # 过渡支(两态共用,dual-layer-candidates design §2.4-2/§2.4-3):
+    # transition_candidates 槽展开 + 读前判窗——过渡成员进不进名单唯一
+    # 判据 = plane2_started_of,锁定不是退出条件——P1 锁定局照收;禁经
+    # direction_comp_of 反推名单(方向读口回答「现行方向是谁」,其锁定
+    # 不回落的语义 ≠ 名单退出条件)。装配序在终局半边 + 补缺之后:
+    # setdefault 承载重叠归终元(rank 取终局值,零特判)与跨对最小位次。
+    transition_members: frozenset[str] = frozenset()
+    if not plane2_started_of(gs):
+        transition_ranks = _transition_member_ranks(st.transition_candidates)
+        transition_members = frozenset(transition_ranks)
+        for n, r in transition_ranks.items():
+            rank.setdefault(n, r)
     return PriorityContext(
         held_copies=held_copies if held_copies is not None
         else held_copies_of(gs),
         deployed_names=deployed_names,
         line_view=view,
         candidate_members=candidate_out,
-        recipe_members=recipe_members,
+        recipe_members=transition_members,
         stay_target=stay_target_of(gs),
         need_star_by_member=need_star,
         member_rank=rank,
@@ -422,12 +473,12 @@ def priority_rng_of(session: object,
 
 
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
-    """成员档(2/3/4/5/7)阵容成员名单(两态;32 号稿 §2 名单
-    源;单一准入 = roster-plane1-union design §2.1)。
+    """成员档(2/3/4/5/7)阵容成员名单(双层;32 号稿 §2 名单源 +
+    dual-layer-candidates design §2.4-2)。
 
-    锁定帧 = 锁定线名单 ∪ 过渡配方对成员(P1 锁定局并集——锁定不是
-    配方退出条件;进 P2 后装配侧配方支恒空集,判定端无需重复判窗);
-    未锁定帧 = 候选三线成员并集 ∪ 过渡配方对成员。"""
+    锁定帧 = 锁定线名单 ∪ 过渡候选成员(P1 锁定局并集——锁定不是
+    过渡支退出条件;进 P2 后装配侧过渡支恒空集,判定端无需重复判窗);
+    未锁定帧 = 实候选(证据门版)三线成员并集 ∪ 过渡候选成员。"""
     if ctx.line_view.locked:
         return frozenset(ctx.line_view.members) | frozenset(ctx.recipe_members)
     return frozenset(ctx.candidate_members) | frozenset(ctx.recipe_members)
@@ -480,10 +531,12 @@ def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:
 
     豁免集 = 线内成员 ∧ 手持 ∧ 星未达目标:``is_member ∧
     max_star < max(need, 2)``。成员名单与目标星读口同源(sort_key
-    同一装配体:名单 = :func:`_member_names` §2.1 单一准入;need =
+    同一装配体:名单 = :func:`_member_names` 双层并集;need =
     ``need_star_by_member`` 现役读口——锁定帧锁定线知识卡全量照录/
-    未锁帧候选知识卡,表外成员缺省 1;星级按角色名聚合 ``held_copies``
-    全量快照)。need ≤ 1 的成员底线两星(与档 7 阵容强度形态同杆),
+    未锁帧实候选知识卡,过渡候选成员不入表缺省 1(§2.4-5 豁免语义
+    对过渡成员同构生效:need=1 → 底线两星,未满两星的过渡在建件
+    同受豁免);星级按角色名聚合 ``held_copies`` 全量快照)。
+    need ≤ 1 的成员底线两星(与档 7 阵容强度形态同杆),
     need ≥ 2 按目标星——现行排序形态下豁免件 = 档 3 升星主线/档 7
     阵容强度;达标成员(≥ max(need,2))经完成品保护档 2/4 殿后、
     非保留张副本落兜底档 10,均不豁免。
@@ -537,7 +590,11 @@ def sort_key(unit: HeldUnit | ShopUnit,
 
     档内合成序(用户裁定三;现行档内键不删):统一序档 → 现行档内键
     (rank/星级/概率/费用)→ 退金损失(:func:`_refund_loss`,损失小者
-    先卖)→ 在手旗标(稳定键)→ 随机尾。
+    先卖)→ 在手旗标(稳定键)→ 随机尾。成员档 ①键 rank = (层, 位次)
+    二元组(dual-layer-candidates design §2.4-3:终局 (0, 线内序数)/
+    过渡 (1, 候选位次)/表外缺省 :data:`RANK_TRANSITION_BOTTOM`)——
+    字典序承载「同档占位、档内垫底」:同档内过渡成员键恒大于终局
+    成员,先让路。
 
     落档边界:「名下最高星/总星级数」以角色名聚合全部在场+备战副本;
     排序单位 = 单张牌——同名的牌按保留张身份(:func:`is_kept_unit`)
@@ -571,25 +628,26 @@ def sort_key(unit: HeldUnit | ShopUnit,
     need = ctx.need_star_by_member.get(name, 1)
     if is_member and need >= 2 and max_star >= need \
             and is_kept_unit(unit, unit_star, copies):
-        return (2, ctx.member_rank.get(name, 1), -total_star, -unit_star,
-                refund_loss, in_hand, tail)
+        return (2, ctx.member_rank.get(name, RANK_TRANSITION_BOTTOM),
+                -total_star, -unit_star, refund_loss, in_hand, tail)
     # 档 3 有星级要求但还没升到目标星(升星主线;「有星级要求」= need_star
     # ≥ 2,need = 1 即无升星要求——落档边界谓词,need=1 成员未持落档 5 /
     # 已持未到两星落档 7)。
     if is_member and need >= 2 and max_star < need:
-        return (3, ctx.member_rank.get(name, 1), -total_star, -unit_star,
-                refund_loss, in_hand, tail)
+        return (3, ctx.member_rank.get(name, RANK_TRANSITION_BOTTOM),
+                -total_star, -unit_star, refund_loss, in_hand, tail)
     # 档 4 完成品保护:need≤1(无星级要求)成员到两星后的保留张——
     # 底线两星口径,2★ 本体与超额 3★ 均按实际最高星受保;凑两星中间态
     # (max_star<2)不入本档,走档 7 过程保护;空 copies 由 max_star≥2
     # 与保留谓词双重自然排除。
     if is_member and need <= 1 and max_star >= 2 \
             and is_kept_unit(unit, unit_star, copies):
-        return (4, ctx.member_rank.get(name, 1), -total_star, -unit_star,
-                refund_loss, in_hand, tail)
+        return (4, ctx.member_rank.get(name, RANK_TRANSITION_BOTTOM),
+                -total_star, -unit_star, refund_loss, in_hand, tail)
     # 档 5 阵容成员还没获取任何副本(仅商店牌可命中:手持牌自身即副本)。
     if is_member and not copies:
-        return (5, ctx.member_rank.get(name, 1), refund_loss, in_hand, tail)
+        return (5, ctx.member_rank.get(name, RANK_TRANSITION_BOTTOM),
+                refund_loss, in_hand, tail)
     # 档 6 当前升星目标实费档的牌(压牌库价值;阵容成员整体排除——
     # 成员副本按完成品保护档 2/4、升星主线档 3 或凑两星档 7 各归其档;
     # 目标为 None 本档为空)。
@@ -599,8 +657,8 @@ def sort_key(unit: HeldUnit | ShopUnit,
     # 档 7 成员已获取、无星级要求、还没到两星(阵容强度/凑两星过程
     # 保护;原档 5 语义原样保留,仅档号位移)。
     if is_member and copies and need <= 1 and max_star < 2:
-        return (7, ctx.member_rank.get(name, 1), -total_star,
-                refund_loss, in_hand, tail)
+        return (7, ctx.member_rank.get(name, RANK_TRANSITION_BOTTOM),
+                -total_star, refund_loss, in_hand, tail)
     # 档 8 万金油名单还没到两星(全线留用层;到两星掉兜底档 10)。
     if name in CROSS_LINE_KEEP_NAMES and max_star < 2:
         return (8, -total_star, refund_loss, in_hand, tail)
