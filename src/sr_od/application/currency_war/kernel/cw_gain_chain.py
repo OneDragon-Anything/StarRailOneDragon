@@ -51,6 +51,9 @@ from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_by_row import (
     board_by_row_of,
 )
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+    deployed_bond_counts,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
     xp_apply_amount,
@@ -113,11 +116,13 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
     STRATEGY_EQUIP_COUNT_XP_GRANTS,
     STRATEGY_EQUIP_GAIN_CONVERSIONS,
+    STRATEGY_FACTION_COUNT_GRANTS,
     STRATEGY_FIRST_BUY_XP_GRANTS,
     STRATEGY_GRANTS,
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
     STRATEGY_MERGE_GRANTS,
+    STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
     normalize_invest_name,
@@ -2102,6 +2107,143 @@ def check_strategy_node_char_grants(gs: GameState, *,
                            producer=_NODE_CHAR_GRANT_PRODUCER)
         granted += n
     return granted
+
+
+#: 策略卡赠礼条件双腿发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER
+#: 同款家族纪律;写端 = 本模块 check_strategy_gift_grants,sim 节点窗
+#: 收口发放刻,新写端新名不沿用链缺省伪装连续)。
+_GIFT_GRANT_PRODUCER: str = 'strategy_gift_grant'
+
+#: 赠礼腿键·羁绊人数腿(封账复合键后段;封闭集随表扩展,新腿新常量——
+#: 键值 = 判据形状语义名,与登记表 STRATEGY_FACTION_COUNT_GRANTS 一一对应)。
+STRATEGY_GIFT_LEG_FACTION_COUNT: str = 'faction_count'
+
+#: 赠礼腿键·节点类型腿(同上;与登记表 STRATEGY_REWARD_NODE_GRANTS 一一
+#: 对应,判定形状 = 持卡后首个 kind=='reward' 节点入窗)。
+STRATEGY_GIFT_LEG_NEXT_REWARD_NODE: str = 'next_reward_node'
+
+
+def check_strategy_gift_grants(gs: GameState, *, node_kind: str,
+                               sig: ChannelSig) -> tuple[str, ...]:
+    """策略卡赠礼条件双腿发放检查(「激活4【巡海游侠】时…获得…2星【黄泉】
+    (携【星间旅人星徽】)/进入下一个奖励节点时，获得【波提欧】」触发器
+    单一源,迷之旅人 id 253601 首例;唯一调用点 = sim 节点窗收口——live
+    零写观察覆盖:角色落席/装备入栏均有画面真值,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序,check_strategy_conditional_grants 拒落自愈
+    形态):两腿同构段 = 逐持卡查各自登记表(表外卡零条目跳过,禁从效果
+    原文自动猜装)→ 封账闩短路(一次性)→ 发放(rand=False 确定发放)→
+    落位(placed)才落闩(拒落域不闩,条件维持达标时下窗重试自愈)。
+
+    腿1(羁绊人数条件,任意节点入窗评估):
+
+    1. 封账闩 ``'<卡名>#faction_count'`` ∈ strategy_grants_done → 跳过;
+    2. ``gs.deployed``/携带装备腿的 ``gs.equips`` 未观察 → 整腿跳过不标
+       done(参与真值/入栏承载缺,宁缺勿造——生产域开局种子恒非 None,
+       直构域防御;deployed 缺则计数不可评估,equips 缺则徽与角色拆拍
+       会引双发面,两承载原子同窗);
+    3. 计数 = ``deployed_bond_counts({上阵单位 char_id})[判据阵营]``
+       ≥ 判据人数(计数单一源 = cw_deploy_logic 注册表口径:参与 =
+       上阵,bench 不算;未达标跳过不标 done,下窗重查);
+    4. 达标 → ``gain_character(发放角色, 星级, rand=False)`` → placed
+       才发携带装备 ``gain_equipment(rand=True)`` 并落闩——随机态认知
+       通道(装备域在册裁定:红钻贵族 2026-10-17 猜测写+观察纠偏;角色
+       确定发放具名非采样,徽面 rand=True 系写通道语义非采样,零 rng
+       消费);携带装备 '' = 无装备腿,直接落闩;
+    5. 角色落位后装备写即同拍完成(携带 = 入栏非穿戴,穿戴关系不建模;
+       获得后果 = EQUIP_ACQUIRE_CONSEQUENCES 表外零夹带)。
+
+    腿2(节点类型条件,kind=='reward' 门控):
+
+    1. ``node_kind != 'reward'`` → 整腿跳过(kind = 调用方传节点窗现值,
+       锚定序列真值);
+    2. 封账闩 ``'<卡名>#next_reward_node'`` ∈ strategy_grants_done →
+       跳过;
+    3. ``gain_character(发放角色, 星级, rand=False)`` → placed 才落闩
+       (bench 未观察拒落零写不闩,自愈同腿1)。
+
+    - **「下一个」语义的结构性实现(零基线零队列)**:领取动作发生在
+      策略 offer 窗内,该节点的窗口收尾已在选卡前执行完毕(窗口幂等
+      守卫),选卡节点本窗不重查 → 腿2 首次可达评估点 = 下一节点入窗;
+      该节点 kind=='reward' 且持卡且未发即「下一个奖励节点」,非 reward
+      则继续等待后续 reward 节点;局终方向无 reward 可达永不发放 = 卡面
+      语义忠实非缺口;
+    - **封账闩域 = strategy_grants_done(GameState 独立新域)**:元素 =
+      ``'<卡名>#<腿键>'`` 复合键(腿键 = 本模块两常量,封闭集随表扩展;
+      复合键形 = strategy_bond_tier_fired 逐档闩同款);与
+      strategy_conditional_done 分域(本域键含腿键段,域语义 = 赠礼
+      条件双腿「首次」簿记);
+    - **零 rng 采样**(角色具名确定发放;徽腿 rand=True 非采样,无掷序
+      消费——同 seed 双跑重放仅受世界值变化影响);**零 uid**(双持
+      不可达:active_strategies 按名去重追加,卡名粒度封账即足);
+    - 返回实际发放 evidence 串元组(断言面;生产调用零回调面,sim 挂点
+      忽略返回值)。
+    """
+    done = tuple(gs.strategy_grants_done.value or ())
+    granted: list[str] = []
+    held = gs.active_strategies.value or ()
+    # —— 腿1:羁绊人数条件(任意节点入窗评估)——
+    for name in held:
+        spec = STRATEGY_FACTION_COUNT_GRANTS.get(name)
+        if spec is None:
+            continue
+        faction, threshold, char_name, star, equip_name = spec
+        latch = f'{name}#{STRATEGY_GIFT_LEG_FACTION_COUNT}'
+        if latch in done:
+            continue
+        deployed = gs.deployed.value
+        if deployed is None:
+            continue
+        if equip_name and gs.equips.value is None:
+            continue
+        count = deployed_bond_counts(
+            {u.char_id for u in deployed_indexed_of_view(deployed)
+             if u is not None}).get(faction, 0)
+        if count < threshold:
+            continue
+        evidence = f'strategy_gift:{name}#{STRATEGY_GIFT_LEG_FACTION_COUNT}'
+        out = gain_character(gs, char_name, star, rand=False, sig=sig,
+                             evidence=evidence,
+                             producer=_GIFT_GRANT_PRODUCER)
+        if not out.placed:
+            continue
+        if equip_name:
+            # 携带装备同拍入栏(随机态认知通道非采样;徽写失败不回滚
+            # 不重试——前置 equips 未观察守卫已挡唯一拒落域,角色重发
+            # 换徽 = 双发面更劣)
+            gain_equipment(gs, equip_name, rand=True, sig=sig,
+                           evidence=f'{evidence}:equip',
+                           producer=_GIFT_GRANT_PRODUCER)
+        # 登记事实直写(条件发放腿闩同款:发放与封账同 evidence 同 sig)
+        gs.write_logic(gs.strategy_grants_done, done + (latch,),
+                       produced_by=_GIFT_GRANT_PRODUCER,
+                       evidence=evidence, sig=sig)
+        done = done + (latch,)
+        granted.append(evidence)
+    # —— 腿2:节点类型条件(kind=='reward' 门控)——
+    if node_kind != 'reward':
+        return tuple(granted)
+    for name in held:
+        spec = STRATEGY_REWARD_NODE_GRANTS.get(name)
+        if spec is None:
+            continue
+        char_name, star = spec
+        latch = f'{name}#{STRATEGY_GIFT_LEG_NEXT_REWARD_NODE}'
+        if latch in done:
+            continue
+        evidence = (f'strategy_gift:{name}'
+                    f'#{STRATEGY_GIFT_LEG_NEXT_REWARD_NODE}')
+        out = gain_character(gs, char_name, star, rand=False, sig=sig,
+                             evidence=evidence,
+                             producer=_GIFT_GRANT_PRODUCER)
+        if not out.placed:
+            continue
+        gs.write_logic(gs.strategy_grants_done, done + (latch,),
+                       produced_by=_GIFT_GRANT_PRODUCER,
+                       evidence=evidence, sig=sig)
+        done = done + (latch,)
+        granted.append(evidence)
+    return tuple(granted)
 
 
 def _node_frame(gs: GameState) -> str:

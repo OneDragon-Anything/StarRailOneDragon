@@ -3637,6 +3637,9 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
         chars_conditional=(('砂金', '合成2星2费角色时'),),
     ),
     # 迷之旅人:两条分支均条件(激活4巡海游侠时 2星黄泉/下一奖励节点 波提欧)
+    # 世界发放通道 = STRATEGY_FACTION_COUNT_GRANTS +
+    # STRATEGY_REWARD_NODE_GRANTS(cw_gain_chain.check_strategy_gift_grants);
+    # 本条目 = 估值域注释性底册,零运行时发放消费
     '迷之旅人': GiftGrant(
         chars_conditional=(
             ('黄泉', '激活4巡海游侠时获得2星黄泉'),
@@ -5744,6 +5747,78 @@ def _validate_strategy_bond_tier_grants() -> None:
 
 
 _validate_strategy_bond_tier_grants()
+
+
+# ===== 策略卡赠礼条件双腿注册表(迷之旅人 id 253601 首例;白名单制,
+# ===== 各建各表——现役发放注册表家族形态,注册纪律 = 禁从效果原文自动
+# ===== 猜装;估值域登记 STRATEGY_GRANTS 同名条目为注释性底册,世界发放
+# ===== 唯一通道 = 本双表 + cw_gain_chain.check_strategy_gift_grants)=====
+# 腿1:羁绊人数条件(卡面「激活4【巡海游侠】时…获得…2星【黄泉】」直读)。
+# 键 = 策略规范名;值 = (判据阵营, 判据人数, 发放角色, 星级, 携带装备名|'')。
+# 星级 2 = desc 明写「2星」(显式星级句式:游戏写明星级时 desc 明写
+# 「N星」);判据人数 4 = 卡面「激活4」直读,计数口径 = 上阵人数
+# (deployed_bond_counts 注册表单一源,bench 不算)。
+# 携带装备 = 装备域入栏(非穿戴:补给列契约语义「角色入席不带装备、
+# 装备入栏」,契约正本 = cw_events.SupplyOption docstring;'' = 无装备腿)。
+STRATEGY_FACTION_COUNT_GRANTS: dict[str, tuple[str, int, str, int, str]] = {
+    '迷之旅人': ('巡海游侠', 4, '黄泉', 2, '星间旅人星徽'),
+}
+# 腿2:节点类型条件(卡面「进入下一个奖励节点时，获得【波提欧】」直读)。
+# 值 = (发放角色, 星级);星级 1 = desc 未标 1★ 先验(获得链规范
+# gain-chain.md「星级未标 = 1★ 先验」惯例;实机判读后若校准,改表值
+# 常量即一行,响应停防线兜底)。
+# 「下一个奖励节点」判定 = 持卡后首个 kind=='reward' 节点入窗
+# (触发函数内嵌,表不设节点键——形状单一,扩形状各建各表)。
+STRATEGY_REWARD_NODE_GRANTS: dict[str, tuple[str, int]] = {
+    '迷之旅人': ('波提欧', 1),
+}
+
+
+def _validate_strategy_gift_grants() -> None:
+    """STRATEGY_FACTION_COUNT_GRANTS / STRATEGY_REWARD_NODE_GRANTS 双表
+    构建校验(import 即炸;治理口径 = 2026-10-28 裁定「只能由写表人笔误
+    触发的校验删,能被游戏版本变更独立触发的漂移哨留」,同
+    _validate_strategy_conditional_grants docstring——本域落四漂移哨;
+    星级值域/人数下界系手抄常量纯笔误类,按治理裁定不加,行值精确断言
+    归表域测试把关,防线强于 import 期形查):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联);② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本
+    改名不静默——错名运行期 = gain_character 对未注册名零落位或幻影,
+    import 期哨是唯一响亮拦截面);③ 阵营名漂移:判据阵营必须在
+    FACTIONS(判据源失联 = 条件腿静默永不达标);④ 装备名漂移:携带
+    装备 '' 或在 EQUIPMENTS(同 _validate_strategy_conditional_grants
+    装备名漂移哨同形——错名 = 盲追加幻影装备入栏)。
+    """
+    for table, label in ((STRATEGY_FACTION_COUNT_GRANTS, 'FACTION_COUNT'),
+                         (STRATEGY_REWARD_NODE_GRANTS, 'REWARD_NODE')):
+        orphans = [n for n in table if n not in INVESTMENT_STRATEGIES]
+        if orphans:
+            raise ValueError(
+                f"STRATEGY_{label}_GRANTS 孤儿键(base 无此卡?):"
+                f"{sorted(orphans)}")
+    for _name, (_faction, _n, _char, _star, _equip) \
+            in STRATEGY_FACTION_COUNT_GRANTS.items():
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"STRATEGY_FACTION_COUNT_GRANTS 角色名漂移({_name!r} "
+                f"注册表无此角色,版本改名?):{_char!r}")
+        if _faction not in FACTIONS:
+            raise ValueError(
+                f"STRATEGY_FACTION_COUNT_GRANTS 判据阵营漂移({_name!r} "
+                f"FACTIONS 无此羁绊,版本改名?):{_faction!r}")
+        if _equip and _equip not in EQUIPMENTS:
+            raise ValueError(
+                f"STRATEGY_FACTION_COUNT_GRANTS 装备名漂移({_name!r} "
+                f"注册表无此装备,版本改名?):{_equip!r}")
+    for _name, (_char, _star) in STRATEGY_REWARD_NODE_GRANTS.items():
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"STRATEGY_REWARD_NODE_GRANTS 角色名漂移({_name!r} "
+                f"注册表无此角色,版本改名?):{_char!r}")
+
+
+_validate_strategy_gift_grants()
 
 
 # ===== 策略卡装备计数经验登记表(白名单制;「每拥有一件【白昼装备】以及其

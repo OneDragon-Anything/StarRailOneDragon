@@ -527,6 +527,45 @@ producer=_BOND_TIER_PRODUCER) -> tuple[str, ...]`——策略卡「<门槛羁绊
   (3/7/10)与门槛羁绊档位(2/3/4/5/6)异构故档位入表,判定挂结算拍
   ——两域形状相似、判据源与时点异构,勿互相对表合并。
 
+### 2.18 策略卡赠礼条件双腿发放检查腿 check_strategy_gift_grants(节点窗位)
+
+`check_strategy_gift_grants(gs, *, node_kind, sig) -> tuple[str, ...]`
+——策略卡「激活4【巡海游侠】时…获得…2星【黄泉】(携【星间旅人星徽】)
+/进入下一个奖励节点时，获得【波提欧】」通道(首例迷之旅人 id 253601,
+双登记表 = `cw_investments.STRATEGY_FACTION_COUNT_GRANTS`(判据阵营,
+判据人数,发放角色,星级,携带装备|'')/ `STRATEGY_REWARD_NODE_GRANTS`
+(发放角色,星级),白名单制各建各表)的唯一检查本体,策略卡条件发放族
+节点窗评估形状。两腿同构段 = 逐持卡查表 → 封账闩短路 → 确定发放 →
+placed 才落闩(拒落自愈沿 §2.10 同款):
+
+1. **腿1(羁绊人数条件,任意节点入窗评估)**:`'<卡名>#faction_count'`
+   ∈ 闩域(`strategy_grants_done`,fields.md §3.2.26g)→ 跳过;
+   deployed/equips 未观察整腿零写零闩(宁缺勿造——徽与角色同拍原子,
+   拆拍引双发面);计数 = `deployed_bond_counts`(注册表单一源:参与 =
+   上阵,bench 不算)< 判据人数 → 跳过不闩下窗重查;达标 →
+   `gain_character(rand=False)` 2★黄泉 → placed 才发携带装备
+   `gain_equipment(rand=True)`(随机态认知通道:红钻贵族 2026-10-17
+   用户裁定,猜测写+观察纠偏;零 rng 消费非采样)并落闩(携带 = 入栏
+   非穿戴,获得后果表外零夹带);
+2. **腿2(节点类型条件,kind=='reward' 门控)**:非 reward 整腿跳过;
+   `'<卡名>#next_reward_node'` ∈ 闩域 → 跳过;`gain_character(1★
+   波提欧, rand=False)` → placed 才落闩(星级未标 = 1★ 先验,gain-chain
+   在册惯例,响应停防线兜底)。
+
+- **「下一个」语义的结构性实现(零基线零队列)**:领取动作发生在策略
+  offer 窗内,该节点窗口收尾已在选卡前执行完毕(窗口幂等守卫),选卡
+  节点本窗不重查 → 腿2 首次可达评估点 = 下一节点入窗;联席决策 2-6 槽
+  (领取时点本身在 reward 节点)同被「窗口先于选卡」序天然豁免;局终
+  方向无 reward 可达永不发放 = 卡面语义忠实非缺口;
+- **挂点 = sim 单挂点**(`_begin_node_window` 条件发放段尾、商店全刷前
+  ——发放物先于本窗商店发牌落席;窗口幂等守卫 + done 闩双层幂等零新增
+  守卫);**live 零写观察覆盖**(角色落席/装备入栏均有画面真值);
+- **零 rng 采样 零 uid**(角色具名确定发放;双持按名去重结构性不可达,
+  卡名粒度封账即足);封账闩域 = strategy_grants_done(GameState 独立
+  新域,per-card '<卡名>#<腿键>' 复合键,与 strategy_conditional_done
+  分域);返回实际发放 evidence 串元组(`strategy_gift:<卡名>#<腿键>`,
+  断言面,生产调用忽略)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

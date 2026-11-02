@@ -315,6 +315,12 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 源 = cw_gain_chain 检查腿 docstring)。
                                 # 独立键版本 1,同 env_grants_done 先例
                                 # 不并入他域 bump——他域本体未变
+    'strategy_grants_done': 1,  # 策略卡赠礼条件双腿已发标记(元素 =
+                                # '<卡名>#<腿键>' 复合键,「首次」封账,
+                                # 发放落位刻追加局内恒存;判据单一源 =
+                                # cw_gain_chain 检查腿 docstring)。独立
+                                # 键版本 1,同 env_grants_done 先例不
+                                # 并入他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -2450,6 +2456,10 @@ def seed_opening_state(gs: GameState) -> None:
     # done 种子族先例——域值恒非 None,检查腿 membership 判定零 None
     # 防御;空 tuple = 无档已发的正常态)
     _seed(gs.strategy_bond_tier_fired, ())
+    # 策略卡赠礼条件双腿已发标记(空底座,同 strategy_conditional_done
+    # 种子族先例——域值恒非 None,检查腿 membership 判定零 None 防御;
+    # 空 tuple = 无腿已发的正常态)
+    _seed(gs.strategy_grants_done, ())
     # 损血档位触发累积器(零底座,同 env_grant_uid_seq 计数器种子族
     # 先例——域值恒非 None,触发函数累加取模零 None 防御;0 = 无累积
     # 语义中性,种 0 不伪装已触发,gs-opening-seed A/B/C 判据 A 类)
@@ -2870,6 +2880,26 @@ class GameState:
     # 快照恢复(tuple-str 重建,env_grants_done 先例)。开局种子底座 =
     # ()(A 类,同 strategy_conditional_done 种子族先例)。
     strategy_bond_tier_fired: Field[tuple[str, ...]] = field(
+        default_factory=Field)
+    # [索引定义] strategy_grants_done = 策略卡赠礼条件双腿已发标记(「首次」
+    # 簿记;迷之旅人 id 253601 首例:「激活4【巡海游侠】时…获得…2星【黄泉】
+    # (携【星间旅人星徽】)/进入下一个奖励节点时，获得【波提欧】」——两腿
+    # 各闩各的,元素 = '<卡名>#<腿键>' 复合键,strategy_bond_tier_fired 逐档
+    # 闩同款复合键形)。[坐标系] 元素两段:卡名段 = 条件发放注册表键同源
+    # (单一源 = cw_investments.STRATEGY_FACTION_COUNT_GRANTS /
+    # STRATEGY_REWARD_NODE_GRANTS);腿键段 = 触发函数模块常量封闭集
+    # ('faction_count'/'next_reward_node',随表扩展新腿新常量)。[取值时机]
+    # = 恒稳(局内单调追加无删除——卖出/换阵使羁绊计数回落不回滚已发放;
+    # 恢复局随快照存续 = 中断恢复不重发)。[写入端] = 唯一逻辑写端 =
+    # cw_gain_chain.check_strategy_gift_grants(发放落位刻逐腿追加,拒落
+    # 域不闩重试自愈),无观察写端——条件评估真值(上阵羁绊计数)sim 世界
+    # 内部判定 live 无独立观察通道(角色落席/装备入栏 = bench/equips 观察
+    # 覆盖,不对称申报同族先例)。消费 = 检查腿跳过判定 + 快照恢复
+    # (tuple-str 重建,env_grants_done 先例)。与 strategy_conditional_done
+    # 分域:本域键含腿键段(一卡双腿各闩各的),彼域键 = 纯卡名/费用桶形,
+    # 域语义不同不混用。开局种子底座 = ()(A 类,同
+    # strategy_conditional_done 种子族先例)。
+    strategy_grants_done: Field[tuple[str, ...]] = field(
         default_factory=Field)
     # [索引定义] giftbox_sight = 惊喜盒板件 ⏳N 读数(观察域,纯旁路证据;
     # 模型世界真值 = pending_item_opens 队列,本域不参与任何行为分支)。
@@ -5018,6 +5048,10 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 快照为 list-of-str,元素 = '<卡名>#<档位>' 复合键);随快照存续
         # = 恢复局不重发(检查腿跳过判定天然闭合)。
         'strategy_bond_tier_fired': lambda d: tuple(str(x) for x in d),
+        # 策略卡赠礼条件双腿已发标记:tuple 化重建(_json_safe 落快照为
+        # list-of-str,元素 = '<卡名>#<腿键>' 复合键);随快照存续 = 恢复
+        # 局不重发(检查腿跳过判定天然闭合)。
+        'strategy_grants_done': lambda d: tuple(str(x) for x in d),
         # 绑定型随机角色授予名字绑定域:str→str 键值双显式化重建
         # (dict 值形 _json_safe 本就直透,显式化 = 重建面单一声明点,
         # 防快照路径键/值类型漂移静默半态);随快照存续 = 恢复局复制

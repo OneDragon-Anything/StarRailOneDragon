@@ -310,6 +310,16 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '入栏 = equips 观察覆盖,不对称申报同族先例);唯一逻辑写端 '
               '= cw_gain_chain.check_strategy_bond_tier_grants(发放落位'
               '刻逐档追加,拒落域不闩重试自愈),唯一调用点 = sim 结算腿'),
+    'strategy_grants_done': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='策略卡赠礼条件双腿已发标记(「首次」簿记,元素 = '
+              "'<卡名>#<腿键>' 复合键,腿键 = faction_count/next_reward_"
+              'node 封闭集,一卡双腿各闩各的),无观察读端——条件评估真值'
+              '(上阵羁绊计数/节点类型)系 sim 世界内部判定,live 无独立观察'
+              '通道(角色落席/装备入栏 = bench/equips 观察覆盖,不对称申报'
+              '同族先例);唯一逻辑写端 = cw_gain_chain.'
+              'check_strategy_gift_grants(发放落位刻逐腿追加,角色 placed '
+              '才闩,拒落域不闩重试自愈),唯一调用点 = sim 节点窗收口'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),

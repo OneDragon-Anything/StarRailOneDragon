@@ -100,6 +100,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_boss_battle_grants,
     check_strategy_empty_equip_xp,
     check_strategy_equip_count_xp,
+    check_strategy_gift_grants,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
@@ -3222,6 +3223,30 @@ class SimBackend:
                                 sig=xp_sig)
                 self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
                                 sig=xp_sig)
+        # 策略卡赠礼条件双腿(迷之旅人 id 253601 首例;「激活4【巡海游侠】
+        # 时…获得…2星【黄泉】(携【星间旅人星徽】)」= 羁绊人数条件腿,
+        # 任意节点入窗评估;「进入下一个奖励节点时，获得【波提欧】」=
+        # 节点类型条件腿):进窗事实点在窗口幂等守卫内(重放不双发),kernel
+        # 检查函数单一源 check_strategy_gift_grants(持卡 ∩ 双登记表驱动,
+        # 未持卡零写;一次性封账 = strategy_grants_done 逐腿复合键,落位才
+        # 闩拒落自愈)。与同段多腿邻位收口(定时道具/开盒/延时发放/boss
+        # 发放/boss 金/尾款金/直发取卡/node_char/羁绊交付/空仓/备战席计数
+        # /装备计数;同段为收口序单一——邻位 ≠ 互不影响,对账见下)。前置腿
+        # 本卡腿1 谓词输入域(deployed)写端对账:直发取卡腿位于本挂点前且
+        # 经获得链效果体可写板面(板面重写族),现序下其产出计入本窗羁绊
+        # 计数(先变板面后计数 = 进窗快照口径);相对序官方无定谳 = 判读
+        # 申报制辖域,现位申报:装备计数 XP 腿后、商店全刷前(证伪路径 =
+        # 实机持卡局直发取卡改板面同窗计数观察,证伪则改序重申报);其余
+        # 前置腿写域(金/XP/bench/equips)与本卡计数零交集零敏感。腿2 发放
+        # 物先于本窗商店发牌落席(「进入下一个奖励节点时」= 本窗内最早段,
+        # 与 node_char 复制腿同向)。kind = 窗内已算变量直传零转换(节点序列
+        # 真值,修饰局天然跟随)。零 rng 采样(角色具名确定发放;徽腿
+        # rand=True 系随机态认知通道非采样,无掷序消费);live 零写观察覆盖
+        #(角色落席/装备入栏有画面真值可读,实机局不接本通道);sig 组名
+        # 'sim:strategy' 沿策略战后发放腿同组;幂等零新增守卫 = 窗口幂等
+        # 守卫 + done 闩双层;返回值忽略(无回调面)。
+        check_strategy_gift_grants(self.gs, node_kind=kind,
+                                   sig=logic_sig('sim:strategy'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')
