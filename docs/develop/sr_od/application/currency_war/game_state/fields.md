@@ -1803,6 +1803,11 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 未建模)。**第二触发源 = 策略卡到级装备发放**(钻石商人;sim advance 双点
 接线 `logic_sig('sim:strategy')`,`check_strategy_level_equip_grants` 返回
 财富宝钻同调本回调,回调零改动共用;live 结算位同函数零回调)。
+**第三触发源 = 策略卡拿卡发放**(这么大的钻石,用户裁定 2026-11-02
+读法 B「佩佩真实入后台」;sim 选卡落地拍拿卡腿 `_on_invest_picked`
+支内点名判别 + 发放落地门 `equips` 现值非 None〔拒落档禁半联动〕后
+同调本回调,回调零改动共用;live 拿卡走 pick 链效果体入栏,三域联动
+归观察识别器零回调)。
 
 **登记四件**:开局种子 = `()`(§2.6,同晶矿声明族恒非 None);**快照恢复** =
 `restore_state_snapshot` 恢复表登记(逐元素 (str, str) 重建 tuple-of-tuple);
