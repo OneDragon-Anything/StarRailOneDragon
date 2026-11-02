@@ -1228,6 +1228,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 在案口径,禁当定谳转引)。
     '回收计划+': _compose_grant_legs(_make_random_equip_effect('进阶', 1),
                                  _make_delayed_only_grant_effect('回收计划+')),
+
+    # 红钻闪耀 = 具名装备×延时入队双腿组合登记行(卡文「获得1个【红钻】。
+    # 进入3个节点后，获得【简易武装箱】」;腿1 具名红钻 rand=False;腿2
+    # 入队腿 STRATEGY_DELAYED_GRANTS 行承载,3 节点;不入泛化表防撞键,
+    # 腿参数唯一出现点;红钻 ∉ 精密金面判据映射 gate 恒 None,获得零级联
+    # ∉ EQUIP_ACQUIRE_CONSEQUENCES,腿序 = 卡文语序,rng 零消费)。
+    '红钻闪耀': _compose_grant_legs(_make_named_equip_grant_effect('红钻', 1),
+                                 _make_delayed_only_grant_effect('红钻闪耀')),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
