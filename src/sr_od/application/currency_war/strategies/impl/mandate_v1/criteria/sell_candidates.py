@@ -183,8 +183,8 @@ INTEREST_EXEMPT_DEPLETED_KEY: str = 'node_end_interest_exempt_depleted'
 
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
-    """卖出侧线内身份集(双层名单口径 = dual-layer-candidates design
-    §2.4-5):锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
+    """卖出侧线内身份集(双层名单口径 = 32 号稿 §2):
+    锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
     **∪ 过渡候选成员**;未锁定 = 实候选(证据门版快照)三线成员并集
     **∪ 过渡候选成员**。过渡支两态共用同一读口 =
     ``transition_candidates`` 槽各对 ``_pair_members`` 展开 + 读前判窗

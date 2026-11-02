@@ -79,8 +79,8 @@ if TYPE_CHECKING:
 # ⑥ 方向状态本身(target_comp / line_candidates /
 #    opening_recipe_comp / transition_candidates)不重置——锁定为一次性
 #    决策跨节点持续保留(契约 C;候选快照随签名重算自然更新、配方物化链
-#    与过渡候选槽随方向节拍贵段重算自写〔update_p1_recipe,dual-layer-
-#    candidates design §2.3-3 写端单一〕,均非节点作用域键,清空点 =
+#    与过渡候选槽随方向节拍贵段重算自写〔update_p1_recipe,
+#    12 号篇 §3 写端单一〕,均非节点作用域键,清空点 =
 #    进 P2〔clear_p1_recipe〕)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
 #    分支为单调事实,且锁定后无消费面);
@@ -276,7 +276,7 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
     - 未锁定态:每帧对全部 20 线算分(:func:`line_select.line_score_key`
       字典序:环境分级 → 持有证据级 → 攻略热度,注册序终局),top3 写
       候选快照(``line_candidates``,派生快照非持久状态)——**证据门
-      开启版**(dual-layer-candidates design §2.1-1:零证据线不入,
+      开启版**(12 号篇 §1.2 候选入选证据门:零证据线不入,
       热度只作有证据线间排序;开局零信号 = 空候选合法形态);随后求值
       锁定双触发(:func:`line_select.evaluate_lock`——硬规则查表同帧
       多命中取线分数最高 + 热度 tie-break + 注册序终局;时点兜底 =
@@ -344,7 +344,7 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       ③ kernel 派生缓存同步(见下行)。
       (旧升级预授权连带清键已随 2026-10-17 迭代 T-4 键退役删除——
       判据同帧重评,无跨帧授权可清。)
-      **P1 过渡层维持核对(dual-layer-candidates design §2.3-6)**:锁定
+      **P1 过渡层维持核对(12 号篇 §1.2 P1 锁定局采购通道)**:锁定
       不辖配方链——过渡候选槽/配方物化链/opening_recipe_comp 键不在
       本函数连带面(P1 锁定局配方链照常每 game-round 重算,退场清空
       只在进 P2 = clear_p1_recipe),现行语义零改动。

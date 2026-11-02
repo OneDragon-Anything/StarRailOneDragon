@@ -12,7 +12,7 @@ key 大者先卖(档位编号大 = 优先级低 = 先卖);因此
 各档内「后卖」类属性(总星级数多/单卡星级高)在键里取负号、先卖类属性
 (档 10 概率高/低费)取正号。
 
-成员档双层装配(dual-layer-candidates design §2.4):终局成员 =
+成员档双层装配(32 号稿 §2):终局成员 =
 实候选(证据门版快照)三线并集,过渡成员 = 过渡候选各对成员并集
 (``transition_candidates`` 槽展开),进同一档判定(2/3/4/5/7)谓词
 同构;``member_rank`` 键 = (层, 位次) 二元组,字典序承载「同档占位、
@@ -65,8 +65,8 @@ if TYPE_CHECKING:
 PriorityKey = tuple[int | float | tuple[int, int], ...]
 
 #: member_rank 判定端缺省(表外/非候选成员)= 过渡层末位 (1, CANDIDATE_TOP_N)
-#: ——与第三候选并列垫底,由后续键判别(dual-layer-candidates design
-#: §2.4-3;复用候选数常数,零新数值)。
+#: ——与第三候选并列垫底,由后续键判别(32 号稿 §2
+#: 成员档序数键;复用候选数常数,零新数值)。
 RANK_TRANSITION_BOTTOM: tuple[int, int] = (1, CANDIDATE_TOP_N)
 
 #: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户拍板,
@@ -141,8 +141,8 @@ class PriorityContext:
     锁定帧成员档(2/3/4/5/7)名单 = members,未锁定帧 = 空名单)。"""
     candidate_members: frozenset[str]
     """④实候选成员并集(读口 = StrategyState.line_candidates 三线经
-    COMP_LIBRARY 成员展开 core ∪ shared;**证据门版快照**——dual-layer-
-    candidates design §2.1-1/§2.2-1:零证据线不入候选,热度只作有
+    COMP_LIBRARY 成员展开 core ∪ shared;**证据门版快照**——12 号篇
+    §1.2 候选入选证据门:零证据线不入候选,热度只作有
     证据线间排序;未锁定帧成员档名单的终局半边。锁定帧候选快照恒空集,
     锁定写入时已清空停算)。"""
     recipe_members: frozenset[str]
@@ -152,7 +152,7 @@ class PriorityContext:
     退出条件;锁定帧照收 = P1 锁定局名单为锁定线 ∪ 过渡候选并集。进 P2
     后装配侧本支恒空集,槽位残留不消费〔判窗在直读之前〕;槽清空写点 =
     cw_intention.clear_p1_recipe。未锁定帧成员档名单的过渡半边
-    (dual-layer-candidates design §2.4-2)。"""
+    (32 号稿 §2 双层名单)。"""
     stay_target: tuple[str, int, int] | None
     """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
     criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
@@ -165,8 +165,8 @@ class PriorityContext:
     过渡成员星级要求统一 need=1);表外成员 = 1(无升星要求;判定端
     缺省,含过渡候选成员等不经 COMP_LIBRARY 查询面的名字)。"""
     member_rank: dict[str, tuple[int, int]]
-    """档内优先级序数表(档 2/3/4/5/7 ①键,取值规则 = 32 号稿 §2 +
-    dual-layer-candidates design §2.4-3):成员名 → (层, 位次) 二元组,
+    """档内优先级序数表(档 2/3/4/5/7 ①键,取值规则 = 32 号稿 §2):
+    成员名 → (层, 位次) 二元组,
     小 = 优先级高。终局成员 = (0, 线内序数)——各活性线知识卡
     ``member_priority`` 字段直读(cw_comps.member_rank_of,空表/旧数据
     回退 core 两档派生——总纲 §2.1.1 迁移期形态 = core 0/其余 1),
@@ -205,8 +205,7 @@ def held_copies_of(gs: GameState) -> dict[str, list[int]]:
 def _transition_member_ranks(
         transition_candidates: tuple[tuple[str, ...], ...] = (),
         ) -> dict[str, tuple[int, int]]:
-    """过渡候选槽 → 成员位次表((1, 候选位次);dual-layer-candidates
-    design §2.4-3)。
+    """过渡候选槽 → 成员位次表((1, 候选位次);32 号稿 §2)。
 
     成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
     另写展开);位次 = 槽内 1 基索引,槽序 = 候选排序键((对级支持度
@@ -238,8 +237,8 @@ def assemble_priority_context(
     容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
     ``rng`` 缺省 = session.rng(策略随机语义单一源)。
 
-    两态名单装配(成员档 2/3/4/5/7 名单源;双层 = dual-layer-
-    candidates design §2.4-2):锁定帧 = 锁定线名单 ∪ 过渡候选成员
+    两态名单装配(成员档 2/3/4/5/7 名单源;双层 = 32 号稿 §2):
+    锁定帧 = 锁定线名单 ∪ 过渡候选成员
     (P1 锁定局并集),need_star 表 = 锁定线知识卡 need_star 字段全量
     照录(达标成员不缺省——need≥2 完成品保护档 2 的锁定帧判定输入;
     ``unfinished_star_targets`` 本体不动,其「未完成目标」原始语义与
@@ -323,7 +322,7 @@ def assemble_priority_context(
     # 表外成员判定端缺省 RANK_TRANSITION_BOTTOM 不变。
     for n in members:
         rank.setdefault(n, (0, 1))
-    # 过渡支(两态共用,dual-layer-candidates design §2.4-2/§2.4-3):
+    # 过渡支(两态共用,32 号稿 §2 双层名单):
     # transition_candidates 槽展开 + 读前判窗——过渡成员进不进名单唯一
     # 判据 = plane2_started_of,锁定不是退出条件——P1 锁定局照收;禁经
     # direction_comp_of 反推名单(方向读口回答「现行方向是谁」,其锁定
@@ -473,8 +472,7 @@ def priority_rng_of(session: object,
 
 
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
-    """成员档(2/3/4/5/7)阵容成员名单(双层;32 号稿 §2 名单源 +
-    dual-layer-candidates design §2.4-2)。
+    """成员档(2/3/4/5/7)阵容成员名单(双层;32 号稿 §2 名单源)。
 
     锁定帧 = 锁定线名单 ∪ 过渡候选成员(P1 锁定局并集——锁定不是
     过渡支退出条件;进 P2 后装配侧过渡支恒空集,判定端无需重复判窗);
@@ -591,7 +589,7 @@ def sort_key(unit: HeldUnit | ShopUnit,
     档内合成序(用户裁定三;现行档内键不删):统一序档 → 现行档内键
     (rank/星级/概率/费用)→ 退金损失(:func:`_refund_loss`,损失小者
     先卖)→ 在手旗标(稳定键)→ 随机尾。成员档 ①键 rank = (层, 位次)
-    二元组(dual-layer-candidates design §2.4-3:终局 (0, 线内序数)/
+    二元组(32 号稿 §2:终局 (0, 线内序数)/
     过渡 (1, 候选位次)/表外缺省 :data:`RANK_TRANSITION_BOTTOM`)——
     字典序承载「同档占位、档内垫底」:同档内过渡成员键恒大于终局
     成员,先让路。

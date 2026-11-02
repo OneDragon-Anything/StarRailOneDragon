@@ -122,11 +122,11 @@ class IntentionState:
     """**P1 锁定目标数据形态(显式可读,约束基准契约)**:
 
     - 读口 = ``strategy_state_of(session).v3_intention.p1_pair``——
-      **门控候选首位**(dual-layer-candidates §2.3-3:候选首位对级
+      **门控候选首位**(12 号篇 §3:候选首位对级
       支持度 ≥ ``P1_PAIR_LOCK_MIN_SUPPORT`` 才写,否则空对;冻结帧钉
       frozen_pair)的派生态:四体系键的一或二元组(1 元对 = 门控首位
       恰为单体系对的帧——单席满/超满而第二体系未达门槛;渐进第二席
-      职能由候选并集承载,§2.6-4,不再产渐进 2 元对),按
+      职能由候选并集承载,不再产渐进 2 元对),按
       ``_P1_PAIR_PREF`` 序规整,非空即「P1 锁定帧目标=该体系对」;
       空元组=空窗期(未锁);P2+ 恒空(P2+ 锁定目标=``locked_comp``)。
     - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
@@ -189,9 +189,9 @@ class IntentionState:
     ``p1_pair_frozen_pair``)。置位 = 事件闩:F=False ∧ 非封印帧 ∧
     **冻结评估域**(全候选空间中对级支持度 ≥1.0 的**双体系对**,扫描序
     = 候选排序键((支持度, 声明序) 降序)不截断——超满对先于恰满对;
-    dual-layer-candidates §2.3-4)中首个 ``form_progress >= 1.0``
+    12 号篇 §3 冻结语义)中首个 ``form_progress >= 1.0``
     (板面成型);**单体系对不进冻结域**(「单体系锁停」死锁结构性
-    免疫,§2.6-9——旧超窗冻结单对形态消亡);空域/空对永不置位;
+    免疫——旧超窗冻结单对形态消亡);空域/空对永不置位;
     fp 回落不自动清位。解冻闭集(p1_pair 域恰两项)= {面③超窗出口,
     位面末(exit_p1)}——闭集之外零解冻事件。与
     ``p1_pair_frozen_obs``(上方,纯观测快照)零行为交互,两字段独立。"""
@@ -505,8 +505,8 @@ def p1_gap_window(gs: GameState) -> bool:
     return max(sup.values(), default=0.0) < P1_PAIR_LOCK_MIN_SUPPORT
 
 
-#: 过渡候选数(【拍】2026-11-01 迭代 dual-layer-candidates 总纲 §0:
-#: 与终局候选数同值复用——值单一源 = strategies/impl/mandate_v1/
+#: 过渡候选数(【拍】2026-11-01 用户裁定:与终局候选数同值复用——值单一源 =
+#: strategies/impl/mandate_v1/
 #: line_select.CANDIDATE_TOP_N;kernel 禁 import impl(依赖矩阵),
 #: 两处值禁单侧漂移,改值须两处同改)。
 _P1_PAIR_CANDIDATE_TOP_N: int = 3
@@ -516,9 +516,9 @@ def _p1_pair_support(pair: tuple[str, ...],
                      sup: dict[str, float]) -> float:
     """对级支持度 = min(各席席级支持度)(木桶语义);单体系对 = 该席席级。
 
-    席级表 = ``_p1_system_support`` 现行值(零口径改动,dual-layer-
-    candidates §2.7 不变式);min 聚合依据 = 「先凑齐」——和/均值使
-    单席满的对虚高(§2.10 取舍)。"""
+    席级表 = ``_p1_system_support`` 现行值(零口径改动,12 号篇 §3
+    席级函数);min 聚合依据 = 「先凑齐」——和/均值使
+    单席满的对虚高(木桶语义)。"""
     return min(sup.get(f, 0.0) for f in pair)
 
 
@@ -882,7 +882,7 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
                      st: object = None,
                      ) -> IntentionState:
     """P1 过渡配方链驱动(体系对候选机器;每 game-round 恰一次,就地改
-    ist 并返回;dual-layer-candidates §2.3-3/§2.3-4)。
+    ist 并返回;12 号篇 §3)。
 
     候选制形态(旧四层谓词族已退役——退役登记 = math_proofs P-T166
     行,考古走 git 历史;现行判据 = 候选排序键纯函数((对级支持度,
@@ -1126,7 +1126,7 @@ def k_empty_window_fallback(gs: GameState,
     - p1_gap:P1 空窗带(支持度 < 锁门槛)→ hoard 四体系引擎件全集
       (消「K 空→零买入→支持度永不涨」死锁环);
     - p1_lock_band:P1 终局阵容锁定过渡带 → 过渡候选首位方向成员
-      (候选机器同源现算,dual-layer-candidates §2.3-7 单一源——
+      (候选机器同源现算,12 号篇 §2 K 空窗行——
       「空窗期同样有方向」职能由候选首位承载,禁双源),派生空 ⇒
       链 hoard 全集兜底;
     - p2plus:P2+ → **保利息缺省**(空集,不囤——统一让位优先级迭代
@@ -1164,8 +1164,8 @@ def committed_authority(state: GameState | None,
       短窗 committed=False〔双轨期口径〕,锁定时点与原接近);
       ② ``ist.p1_pair`` 非空——P1 配方锁已立(**门控候选首位**,派生
       态产物)。
-      **序②门控等价性(行为无变化论证,dual-layer-candidates
-      §2.6-4)**:p1_pair = 门控候选首位(对级支持度 ≥1.0 才写)。
+      **序②门控等价性(行为无变化论证,12 号篇
+      §2 committed 行)**:p1_pair = 门控候选首位(对级支持度 ≥1.0 才写)。
       非空 ⟺ 首位支持度 ≥1.0;排序降序 ⟹ 首位 ≥1.0 ⟺ 候选中存在
       支持度 ≥1.0 的对 ⟺ 存在单体系对(席级 ≥1.0,希儿系对此时席级
       也 ≥1.0 过门槛)⟺ 席级最高支持度 ≥1.0 = 旧 gate_first 合格集
@@ -1227,7 +1227,7 @@ def locked_buy_scope(ist: IntentionState | None,
     不存在「非目标件」)。
 
     - P1 配方支 = **过渡候选并集**(各候选对 ``_pair_members`` 成员
-      并集;dual-layer-candidates §2.6-5 定版:非空边界从「p1_pair
+      并集;12 号篇 §4 locked_buy_scope 行定版:非空边界从「p1_pair
       非空(≥1.0)」移到「候选非空(任一体系 >0)」——(0,1) 支持度带
       从 None 不约束翻转为并集约束,方向纪律提前〔有倾向即约束
       机会买〕,显式申报;冻结后槽单元素 = 冻结对成员,与现行语义
@@ -1281,7 +1281,7 @@ def locked_buy_membership(ist: IntentionState | None,
     (受息律/预算覆盖),不是 M2 骨架义务(无条件照买),升格即越分层,
     故本函数不复用 ``locked_buy_scope`` 直取。需要完整约束基准(对件
     免 demote/fence 面)的消费方仍用 ``locked_buy_scope``。
-    **维持 p1_pair 直读申报(dual-layer-candidates §2.6-5)**:配方支
+    **维持 p1_pair 直读申报(12 号篇 §4)**:配方支
     不随 scope 族切候选并集——M2 义务面 = 锁局承诺面,与 scope(机会
     买约束面)刻意分层;新 p1_pair 值形态(单满 1 元对 vs 旧渐进
     2 元对)使 P1 ①锁局 M2 义务集收窄(第二体系件移出 M2 义务面、

@@ -29,7 +29,7 @@
 |---|---|---|
 | 10 | [10_prep_decisions.md](10_prep_decisions.md) | 备战画面决策：部署/装备/腾位判据 + 共同地基（机制速查/形式刻画/注册表形态） |
 | 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、获取让位评估流程（原席满买入六步）、买面（P55 阶段 2 已撤史实/P56 现行）、引擎池、卖出（统一让位优先级序列）、刷新、升级、经济引擎、机制突变 |
-| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 终局线选择（候选-锁定制：线分数/top3 候选/硬规则锁定、锁后不换线）与方向状态载体、P1 配方对链、未锁定期买面接线 |
+| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 终局线选择（候选-锁定制：线分数/证据门 top3 实候选/硬规则锁定、锁后不换线）与方向状态载体（含过渡候选槽）、P1 体系对候选机器、未锁定期买面接线 |
 | 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18（投资事件面 18 类） |
 | 14 | [14_p1_consume_arms.md](14_p1_consume_arms.md) | 位面 1 经济循环消费分支：闲置金转战力的三个动作发出通道（买/升/刷）设计与硬前置裁决 |
 | 15 | [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md) | 观察层读数多源一致性与仲裁：双源冲突的采信规则、保留证据与布局档错位 |
@@ -51,7 +51,7 @@
 | 29 | [29_invest_strategy_screen.md](29_invest_strategy_screen.md) | 投资策略画面策略面：投资卡价值分五项相加（同 28 行，各部分定义见 28/29 篇正文）；结构分区：禁选/自拆台（与自身阵容相克的卡）/血本位三态（扣血换收益卡的处置）/定义型；逐卡刷新判据(P81 承接；决策实现 = strategies/impl/mandate_v1/invest_strategy.py) |
 | 30 | [30_supply_screen.md](30_supply_screen.md) | 补给画面策略面：三级字典序(钻>角色〔虚拟全局评估〕>装备)+刷新「三级全空才刷」(次数闸内嵌；判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/supply.py) |
 | 31 | [31_encounter_screen.md](31_encounter_screen.md) | 遭遇画面策略面：按当前战力状态三档直选，配合经验需求分层与奖励优先级，并列按固定优先级打破平局；是否刷新另有阈值（详见本篇正文）(判据权威定义自足本篇,决策实现 = strategies/impl/mandate_v1/encounter_pick.py) |
-| 32 | [32_unified_sell_priority.md](32_unified_sell_priority.md) | 统一让位序列判定规格（正本）：十档判定表/保留张定义与落档边界/排序输入契约与两态名单/档内键口径注/随机尾键/卖出取用形态——全部卖出让位排序的单一规格源（实现 = criteria/priority.py::sort_key，禁第二排序实现） |
+| 32 | [32_unified_sell_priority.md](32_unified_sell_priority.md) | 统一让位序列判定规格（正本）：十档判定表/保留张定义与落档边界/排序输入契约与双层名单（实候选 ∪ 过渡候选，member_rank 二元组）/档内键口径注/随机尾键/卖出取用形态——全部卖出让位排序的单一规格源（实现 = criteria/priority.py::sort_key，禁第二排序实现） |
 | 遥测 | [strategy-telemetry.md](strategy-telemetry.md) | 策略遥测数据规范（DecisionRecord）：信封键闭集 + mandate_v1 payload 键表语义与判读注意（产生端 = 基类捕获缝自动采集；消费端 = 复盘渲染器按需装配） |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）

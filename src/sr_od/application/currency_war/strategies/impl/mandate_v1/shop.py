@@ -220,7 +220,7 @@ def _r2_card_reserve(gs: GameState) -> int:
 
 def _transition_candidate_members(st) -> set[str]:
     """过渡候选槽 → 体系对成员并集(序 1 义务面配方半边单一源;
-    dual-layer-candidates design §2.3-6/§2.6-2)。
+    12 号篇 §1.2/§4)。
 
     成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
     另写展开);槽空(P1 无羁绊开局/进 P2 清空)返回空集。**买面不读
@@ -232,8 +232,8 @@ def _transition_candidate_members(st) -> set[str]:
     return out
 
 
-#: 冷启动臂的三羁绊体系键集(仙舟/列车同行/持续伤害;dual-layer-
-#: candidates design §2.3-8 as-built 申报:与 kernel ``ENGINE_FACTIONS``
+#: 冷启动臂的三羁绊体系键集(仙舟/列车同行/持续伤害;11 号稿 §1
+#: 冷启动臂条款 as-built 申报:与 kernel ``ENGINE_FACTIONS``
 #: 当前同集、不含护盾——冷启动限定三羁绊,派生自 ``TRANSITION_TRAITS``
 #: 键(策略层现算成员域,**禁改 ENGINE_FACTIONS 派生源**;前瞻防御桥池
 #: 未来演进引入护盾,P78-7 种子判定面零变化)。
@@ -873,7 +873,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count(f'shop_k_fallback_{_band}')
     if _line_view.locked:
         # 锁定态(锁定线槽非空):P1 锁定局 = 锁定线 ∪ 过渡候选成员并集
-        #(配方支 = 过渡候选并集,dual-layer-candidates design §2.3-6
+        #(配方支 = 过渡候选并集,12 号篇 §1.2 P1 锁定局采购通道
         #「买面不读 opening_recipe_comp」——物化单对角色 = 部署开局面,
         # 买面配方半边由候选并集承载,保「义务面与成员档族名单同源」
         # 不变式);P2 起 = 锁定线名单单源(退出条件载体 = plane2_started
@@ -888,7 +888,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 set(_line_view.members) | _recipe_names))
         obligation_members = buy_members
     else:
-        # 未锁定 = 候选态(双层候选;dual-layer-candidates design §2.6-1):
+        # 未锁定 = 候选态(双层候选;12 号篇 §4):
         # - 义务面 = **实候选(证据门版快照)∪ 过渡候选(槽值成员并集)**
         #   (§2.2-6 逐面定版:零信号期买面收窄——实候选经证据门点亮、
         #   过渡候选承载配方半边,opening_recipe_comp 物化单对不进买面;
@@ -1613,7 +1613,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
         _on_target_buy()
         return _emit_buy(card, 'm2_merge_completion')
 
-    # —— 冷启动臂(双空窗完备性;dual-layer-candidates design §2.3-8;
+    # —— 冷启动臂(双空窗完备性;11 号稿 §1;
     #    序位 = 序 1 层内 missing 循环之后、资格臂之前)——
     # 触发 = 未锁定 ∧ 实候选空(证据门版快照——锁定态快照被连带清空,
     # 未锁守卫防锁定局误触)∧ 过渡候选空(无羁绊开局)∧ 三羁绊支持度
@@ -1651,7 +1651,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _on_target_buy()
                 return _emit_buy(card, 'cold_start_buy')
 
-    # —— 货架资格臂(单张买入估值;dual-layer-candidates design §2.2-2;
+    # —— 货架资格臂(单张买入估值;11 号稿 §1;
     #    序 1 层内殿后,同帧多资格件按货架槽序)——
     # 资格判据(窄门,过门即义务):X ∈ 货架可见 ∧ X ∈ 某虚拟 top3 线的
     # CARRY/骨架级(carry_set ∪ key_items;插件级不触发)∧ 该线 ∈ 虚拟

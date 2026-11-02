@@ -207,7 +207,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         意向层机器停用后,贵段 = **P1 过渡配方链驱动**
         (``update_p1_recipe``——体系对候选重算/门控候选首位/双对
         form_ok 冻结状态机;``st=_ms`` 传参使过渡候选槽随贵段写入,
-        dual-layer-candidates design §2.3-3);位面适用范围以窗口谓词
+        12 号篇 §3);位面适用范围以窗口谓词
         承载(``plane2_started_of``
         布尔标志,宪法第 2 条合规——P1 配方物化触发的整改形态,非
         ``_plane_v == 1`` 位面字面量;P2 起停驱并清配方锁
@@ -245,7 +245,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
           (配方对伪阵容;窗口谓词覆盖——P2 起停写;物化源 = 过渡候选
           槽**无门控候选首位**(
-          dual-layer-candidates design §2.3-3——「空窗期同样有方向」
+          12 号篇 §3 配方物化——「空窗期同样有方向」
           职能承接,部署开局面恒有最强方向、不随 p1_pair 门控变 None;
           稳定性申报 §2.6-7:未冻结期每轮随支持度事件可换,冻结后 =
           冻结对(槽单元素)));

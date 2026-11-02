@@ -121,7 +121,7 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'm2_locked_member': 'obligation',
     'm2_stockpile': 'obligation',
     'm2_merge_completion': 'obligation',
-    # 序 1 扩展臂 ×2(dual-layer-candidates design §2.2-3/§2.3-8,义务类):
+    # 序 1 扩展臂 ×2(11 号稿 §1 序 1 扩展臂条款,义务类):
     # 货架资格臂 = 单张买入估值的方向投资件(虚拟 top3 资格,τ=∞ 义务账,
     # 卖出资格走 P78 义务账期);冷启动臂 = 双空窗三羁绊 1 费件见即买
     # (义务可逆——1★ 全额退)。均无金线闸、见即买,席位检查走买入管线
