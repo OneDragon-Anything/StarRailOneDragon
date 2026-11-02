@@ -1260,6 +1260,18 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # rng 仅腿2 消费)。
     '好运令牌·金': _compose_grant_legs(_make_named_equip_grant_effect('好运令牌', 1),
                                      _make_random_equip_effect('简易', 1)),
+
+    # 升级锅炉 = 具名装备授予族后继(卡文「对简易装备使用冶金炉会使其变为
+    # 随机进阶装备，获得2个【冶金炉】。」):句②发放腿 = 选卡即得(用户裁定
+    # 2026-11-02:获得句后置于条件句亦判即得——「立刻标记」家族口径的
+    # 反例首例,后继族卡引用该口径须携本反例括注);冶金炉 = 工具类装备
+    # (cw_equipment_data category='工具'),归 equips 装备库存域禁入占席
+    # 道具通道,不在精密金面判据映射内(gate 恒 None)走纯发放循环,获得
+    # 零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES);同物 ×2(小复制/全员晋升同款
+    # count=2 循环逐件一条);句①升格修饰面零建模(持卡对简易烧炉升格
+    # 进阶的炉上报链行为零改动,「同类别池」v0 假设披露键在册承载与卡文
+    # 的升格张力,校准归 v0 校准批,失配走既有观察对账)。
+    '升级锅炉': _make_named_equip_grant_effect('冶金炉', 2),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
