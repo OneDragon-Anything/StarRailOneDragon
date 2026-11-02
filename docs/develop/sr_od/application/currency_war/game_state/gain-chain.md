@@ -743,13 +743,16 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   发放角色;与登记面镜像 `cw_investments.STRATEGY_GRANTS` 三卡
   `chars_immediate` 逐对相等,一致性测试;族后继卡 +1 行复用)。
   **延时 offer 登记腿**(策略卡延时三选一通道,黄金期货首例):注册表
-  `cw_investments.STRATEGY_DELAYED_OFFERS`(卡规范名 → id/倒计时/候选品质,
-  白名单制)+1 行即自动获得登记腿(效果体由该表派生,键集封闭断言守住
-  两表面)。效果体消费 `queue_delayed_invest_offer`(§2 入队原语,登记 =
-  确定事件零采样):追加 `(卡名, 倒计时)` 到 `pending_strategy_offers`
-  一次 write 回写,效果串 `strategy_offer_scheduled:<品质>@<节拍>`;
-  到点呈现归 sim 专用腿(不对称申报,live 队列恒悬置,域规格 =
-  fields.md §3.2.26)。未建模申报归
+  `cw_investments.STRATEGY_DELAYED_OFFERS`(卡规范名 → 腿元组
+  (id/倒计时/候选品质/刷新授权),白名单制;倒计时 0 = 拿卡拍立即腿;
+  白银投资 = 族首张双腿卡,两腿 @0+@3)+1 行即自动获得登记腿(效果体由
+  该表派生,键集封闭断言守住两表面)。效果体消费
+  `queue_delayed_invest_offer`(§2 入队原语,登记 = 确定事件零采样):
+  逐腿追加 `(卡名, 倒计时)` 到 `pending_strategy_offers` 一次 write
+  回写(登记序 = 腿序,同卡双条目形态白银投资首例),效果串
+  `strategy_offer_scheduled:<品质>@<节拍>` 每腿一枚;到点呈现归 sim
+  专用腿(不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26)。
+  未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
   **延时发放登记腿**(策略卡延时世界发放通道,人才激励 id 101601 首例,
   与延时 offer 族并列独立域——本族到点产出 = 世界发放写,offer 族 =

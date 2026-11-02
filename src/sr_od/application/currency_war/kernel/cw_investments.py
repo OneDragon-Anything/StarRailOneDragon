@@ -4429,18 +4429,23 @@ _validate_env_pick_grants()
 
 @dataclass(frozen=True)
 class StrategyDelayedOffer:
-    """策略卡「N个节点后,一次定品质不可刷新三选一」登记结构(策略延时
+    """策略卡「N个节点后,一次定品质三选一」登记结构(策略延时
     offer 通道专属登记表;字段语义 = 卡面效果原文直读):
 
-    - delay_nodes: 延时节拍(「5个节点后」直读);到点窗 = 拿卡节点的
+    - delay_nodes: 延时节拍(「5个节点后」直读);**0 = 拿卡拍立即呈现**
+      (「立刻进行一次…三选一」直读,呈现挂点 = sim 拿卡拍立即腿,
+      与 ≥1 的窗首到期腿双挂点分立);≥1 = 到点窗 = 拿卡节点的
       第 N 个后继节点窗(计数起点语义与效果账本「后继 N 节点」口径对齐,
       desc 未写明计数起点处不实机查);
     - offer_quality: 候选品质(「黄金投资策略三选一」直读为金;值域 =
       注册表 rarity 闭集 {'银','金','棱彩'},InvestmentStrategy.rarity
-      注释同源)。
+      注释同源);
+    - refresh_count: offer 刷新授权次数(「选择有3次刷新机会」直读 3;
+      0 = 不可刷 = 「不能刷新」卡面直读,呈现恒空刷新授权(refresh_slots
+      空表 = op 闸无授权)、live 刷新闸读缺 = 无授权,两侧零分支即承载;
+      数值单一源 = 本字段,呈现授权逐卡按其呈现(sim 呈现面与实机
+      「计数印在卡上」同形),对账面 = 实机局该 offer 刷新钮读数对照)。
 
-    「不能刷新」卡面语义不立字段:sim 呈现恒空刷新授权(refresh_slots
-    空表 = op 闸无授权)、live 刷新闸读缺 = 无授权,两侧零分支即承载。
     立专表辨析:效果账本 EffectSpec payload 闭集(经济/战场/单位增益)
     不容「延时流程事件」维度;STRATEGY_GRANTS(GiftGrant)维度不符
     (具名发放物 vs 延时流程事件,消费端 = 估值两处)——新机制维度
@@ -4448,33 +4453,50 @@ class StrategyDelayedOffer:
     id: str
     delay_nodes: int
     offer_quality: str
+    refresh_count: int = 0
 
 
-STRATEGY_DELAYED_OFFERS: dict[str, StrategyDelayedOffer] = {
+STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
     # 黄金期货(效果原文「5个节点后，进行一次不能刷新的黄金投资策略
     # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行。同族展开卡各自独立批领取,禁顺手代登记——金池内被选中
-    # 的未注册卡 = 安静不写,真值归观察覆盖)
-    '黄金期货': StrategyDelayedOffer(id='101101', delay_nodes=5,
-                                      offer_quality='金'),
+    # 的未注册卡 = 安静不写,真值归观察覆盖。值形 = 腿元组(登记序 =
+    # 确定性;单腿卡一元元组):窗首到期腿呈现取元组内最大节拍腿,
+    # delay_nodes=0 立即腿由 sim 拿卡拍挂点消费、窗首通道不辖——
+    # 呈现语义只读品质+刷新授权,同值腿序无歧义)
+    '黄金期货': (StrategyDelayedOffer(id='101101', delay_nodes=5,
+                                       offer_quality='金'),),
     # 黄金期货+(效果原文「4个节点后，进行一次不能刷新的黄金投资策略
     # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行;与黄金期货仅倒计时数值不同,机制全量继承)
-    '黄金期货+': StrategyDelayedOffer(id='101102', delay_nodes=4,
-                                       offer_quality='金'),
+    '黄金期货+': (StrategyDelayedOffer(id='101102', delay_nodes=4,
+                                        offer_quality='金'),),
     # 彩虹期货(效果原文「5个节点后，进行一次不能刷新的棱彩投资策略
     # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行(PlazaAugment 201101)。数据行 rarity='金' 与 offer 定
     # 品质「棱彩」两语义并列——卡自身品质与 offer 产出池品质,混淆
     # 即反转)
-    '彩虹期货': StrategyDelayedOffer(id='201101', delay_nodes=5,
-                                      offer_quality='棱彩'),
+    '彩虹期货': (StrategyDelayedOffer(id='201101', delay_nodes=5,
+                                       offer_quality='棱彩'),),
     # 彩虹期货+(效果原文「4个节点后，进行一次不能刷新的棱彩投资策略
     # 三选一。」直读;效果原文对账 id = cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行(PlazaAugment 201102);与彩虹期货仅倒计时数值不同,机制
     # 全量继承——卡自身品质与 offer 产出池品质两语义并列,混淆即反转)
-    '彩虹期货+': StrategyDelayedOffer(id='201102', delay_nodes=4,
-                                       offer_quality='棱彩'),
+    '彩虹期货+': (StrategyDelayedOffer(id='201102', delay_nodes=4,
+                                        offer_quality='棱彩'),),
+    # 白银投资(效果原文「立刻进行一次白银投资策略三选一，选择有3次
+    # 刷新机会。3个节点后，再获得一个。」直读;效果原文对账 id =
+    # cw_invest_data.PLAZA_AUGMENTS 同 id 行)——族首个双腿卡,两腿
+    # 元组(登记序 = 腿序,确定性):腿1 立刻三选一(delay_nodes=0,
+    # 拿卡拍立即呈现);腿2 「3个节点后再获得一个」= 完整包复刻(再来
+    # 一次「白银三选一+3刷」,句序一致读法)。两腿同品质银池 + 同刷新
+    # 授权 3;本卡品质金 ∈ 金池、offer 定品质银 → 采样无自指。
+    '白银投资': (StrategyDelayedOffer(id='203201', delay_nodes=0,
+                                       offer_quality='银',
+                                       refresh_count=3),
+                 StrategyDelayedOffer(id='203201', delay_nodes=3,
+                                      offer_quality='银',
+                                      refresh_count=3)),
 }
 
 
@@ -4484,21 +4506,23 @@ def _validate_strategy_delayed_offers() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
     静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id(改名且 id
-    仍在的漂移也炸)。值域类校验(delay_nodes int/quality 越域)属防
-    登记笔误类,按 2026-10-28 治理裁定不加(漏登/错值后果 = 拿卡入队
-    或呈现腿查表 KeyError,响亮可见)。
+    仍在的漂移也炸;逐腿检——双腿卡两腿同 id 同源对拍)。值域类校验
+    (delay_nodes int/quality 越域/refresh_count 值域)属防登记笔误类,
+    按 2026-10-28 治理裁定不加(漏登/错值后果 = 拿卡入队或呈现腿查表
+    KeyError,响亮可见)。
     """
     orphans = [n for n in STRATEGY_DELAYED_OFFERS
                if n not in INVESTMENT_STRATEGIES]
     if orphans:
         raise ValueError(
             f"STRATEGY_DELAYED_OFFERS 孤儿键(base 无此卡?):{sorted(orphans)}")
-    for _name, _offer in STRATEGY_DELAYED_OFFERS.items():
+    for _name, _legs in STRATEGY_DELAYED_OFFERS.items():
         _base = INVESTMENT_STRATEGIES.get(_name)
-        if _base is not None and _base.source != f'plaza:{_offer.id}':
-            raise ValueError(
-                f"STRATEGY_DELAYED_OFFERS id 漂移:{_name!r} 登记 id="
-                f"{_offer.id} base={_base.source}")
+        for _offer in _legs:
+            if _base is not None and _base.source != f'plaza:{_offer.id}':
+                raise ValueError(
+                    f"STRATEGY_DELAYED_OFFERS id 漂移:{_name!r} 登记 id="
+                    f"{_offer.id} base={_base.source}")
 
 
 _validate_strategy_delayed_offers()

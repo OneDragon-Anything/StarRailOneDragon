@@ -102,7 +102,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 → 位面开局环境金（kernel cw_investments.INVESTMENT_ENVS 结构化通道）
 → 商店自动全刷（整店锁跳过；kernel sample_shop_deal 采样）
 → overlay 队列检查（非空 → 让路呈现压住节点屏，选定后复走 offer 检查——让路不吞 offer 槽）
-→ offer 日程检查（投资策略/环境定期投放——每局固定轮次各一次,「联席决策」环境在 2-6 节点追加;命中 → 呈现投资策略选卡屏）。策略延时 offer 到期检查挂日程检查之前（优先序 = 固定日程/联席槽 > 期货队列:槽在场或本窗已呈现一次 → 到点条目悬置顺延下一窗,披露键 `strategy_delayed_offer_deferred`;到点呈现定品质不可刷新三选一走同一投资策略屏,呈现即消费队列弹除,rng 流键 `M11/offer-extra/...` 与固定日程分域,呈现留证键 `strategy_delayed_offer_fired`;队列域与 live 不对称申报 = fields.md §3.2.26）
+→ offer 日程检查（投资策略/环境定期投放——每局固定轮次各一次,「联席决策」环境在 2-6 节点追加;命中 → 呈现投资策略选卡屏）。策略延时 offer 到期检查挂日程检查之前（优先序 = 固定日程/联席槽 > 延时 offer 队列:槽在场或本窗已呈现一次 → 到点条目悬置顺延下一窗,披露键 `strategy_delayed_offer_deferred`;到点呈现定品质三选一走同一投资策略屏,刷新授权逐卡按登记 refresh_count 呈现〔0 = 不可刷 = 空授权〕,呈现即消费队列弹除,rng 流键 `M11/offer-extra/...` 与固定日程分域,呈现留证键 `strategy_delayed_offer_fired`;队列域与 live 不对称申报 = fields.md §3.2.26）。拿卡拍立即腿（登记 delay_nodes=0,白银投资首例）不辖窗首检查——挂选卡落地尾段（`_on_invest_picked` 内、模态返回之前）:弹除本拍拿卡同拍登记的 delay-0 条目并立即呈现第二选卡（经同一 report 通道重入落地,每拍至多一次）,rng 流键 `M11/offer-extra/pick/...` 分键,呈现留证键 `strategy_immediate_offer_fired`。
 → 按节点类型呈现对应屏（battle/reward → 备战档，reward = 晶矿子态；
   supply → 补给屏；encounter → 遭遇屏；boss → BOSS 简报）
 ```

@@ -705,10 +705,10 @@ def _make_delayed_offer_effect(name: str) -> Callable[..., list[str]]:
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——登记腿零采样,
-    倒计时按登记值确定推算。入队即写(唯一登记写端),到期呈现归
-    sim 呈现腿(不对称申报,live 队列恒悬置)。效果串 =
-    ``strategy_offer_scheduled:<品质>@<节拍>``(@ 形态沿定时道具
-    ``item_scheduled`` 家族先例)。"""
+    倒计时按登记值确定推算。入队即写(唯一登记写端,双腿卡一次调用
+    两条件目入队,登记序 = 腿序),到期呈现归 sim 呈现腿(不对称申报,
+    live 队列恒悬置)。效果串 = ``strategy_offer_scheduled:<品质>@<节拍>``
+    每腿一枚(@ 形态沿定时道具 ``item_scheduled`` 家族先例)。"""
 
     def _effect(gs: GameState, *, sig: ChannelSig,
                 rng: random.Random) -> list[str]:
@@ -718,7 +718,7 @@ def _make_delayed_offer_effect(name: str) -> Callable[..., list[str]]:
             queue_delayed_invest_offer,
         )
         _ = rng   # 登记腿零采样,倒计时推算确定(rng 形参沿分派契约保留)
-        return [queue_delayed_invest_offer(gs, name, sig=sig)]
+        return list(queue_delayed_invest_offer(gs, name, sig=sig))
 
     return _effect
 
