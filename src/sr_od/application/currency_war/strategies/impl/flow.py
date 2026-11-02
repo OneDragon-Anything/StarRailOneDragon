@@ -41,7 +41,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
     clear_p1_recipe,
-    p1_early_pair,
     pair_target_comp,
     update_p1_recipe,
 )
@@ -206,8 +205,10 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """方向节拍贵段(每 game-round 恰一次;键守卫)。
 
         意向层机器停用后,贵段 = **P1 过渡配方链驱动**
-        (``update_p1_recipe``——配方对派生/冻结标志,line_and_upgrade
-        §1.6 保留项);位面适用范围以窗口谓词承载(``plane2_started_of``
+        (``update_p1_recipe``——体系对候选重算/门控候选首位/双对
+        form_ok 冻结状态机;``st=_ms`` 传参使过渡候选槽随贵段写入,
+        dual-layer-candidates design §2.3-3);位面适用范围以窗口谓词
+        承载(``plane2_started_of``
         布尔标志,宪法第 2 条合规——P1 配方物化触发的整改形态,非
         ``_plane_v == 1`` 位面字面量;P2 起停驱并清配方锁
         ``clear_p1_recipe``)。终局线选择不经本段——候选-锁定制在
@@ -220,7 +221,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         if _ms.v3_intention_key != key:
             _ms.v3_intention_key = key
             if not session_scope.plane2_started_of(state):
-                update_p1_recipe(state, ist, self.registry)
+                update_p1_recipe(state, ist, self.registry, st=_ms)
             else:
                 # 进 P2:配方锁退场 + 开局面键同点清空(写端单一出口,
                 # review-37 P1——P2 未锁窗禁消费过期 P1 配方;幂等,
@@ -242,17 +243,22 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
           ``session_scope.write_line_lock``(硬规则/时点兜底命中帧,
           P1 锁定局「互不覆写」的落地);
         - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
-          (配方对伪阵容;窗口谓词覆盖——P2 起停写;空窗帧按
-          ``p1_early_pair`` 无门槛方向物化,「空窗期同样有方向」的
-          已登记语义保持);
+          (配方对伪阵容;窗口谓词覆盖——P2 起停写;物化源 = 过渡候选
+          槽**无门控候选首位**(替代旧 p1_early_pair 无门槛 fallback,
+          dual-layer-candidates design §2.3-3——「空窗期同样有方向」
+          职能承接,部署开局面恒有最强方向、不随 p1_pair 门控变 None;
+          稳定性申报 §2.6-7:未冻结期每轮随支持度事件可换,冻结后 =
+          冻结对(槽单元素)));
         - ``v3_core_names`` = 现行方向(锁定线优先,未锁 = 配方)核心名。
         """
         ist = self._ensure_intention(_ms)
         comp = getattr(_ms, 'target_comp', None)
         if comp is None and not session_scope.plane2_started_of(state):
-            pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
-                or p1_early_pair(state, ist)
-            _ms.opening_recipe_comp = pair_target_comp(pair) if pair else None
+            candidates = tuple(
+                getattr(_ms, 'transition_candidates', ()) or ())
+            pair = candidates[0] if candidates else ()
+            _ms.opening_recipe_comp = pair_target_comp(pair) \
+                if pair else None
         direction = comp if comp is not None \
             else getattr(_ms, 'opening_recipe_comp', None)
         _ms.v3_core_names = set(direction.core_chars) if direction else set()

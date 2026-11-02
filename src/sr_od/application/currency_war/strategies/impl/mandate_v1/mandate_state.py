@@ -387,13 +387,28 @@ class StrategyState:
     #③——锁定后读本键恒 = 空集,消费端无需另查锁定旗标)。
     line_candidates: tuple[str, ...] = ()
     # 过渡配方开局面键(契约 B 第三键):部署开局面数据源(P1 过渡
-    # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方对物化链
-    # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运)。每备战
-    # 期自写,非节点作用域键(节点边界不重置);P2 起物化链停写(窗口
-    # 谓词覆盖),残留值不消费——名单类读口(priority 装配/
-    # sell_line_membership)判窗在直读之前,direction 读口的 P2 守卫
-    # 等价(锁定态名单读口也读本键,均 P2 后恒空)。
+    # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方物化链
+    # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运;物化源
+    # = 过渡候选槽首位〔无门控,空窗期恒有最强方向〕——dual-layer-
+    # candidates design §2.3-3,冻结后 = 冻结对)。方向节拍贵段随
+    # 候选重算自写,非节点作用域键(节点边界不重置);P2 起物化链停写
+    # (窗口谓词覆盖 + clear_p1_recipe 同点清空),残留值不消费——
+    # 名单类读口(priority 装配/sell_line_membership)判窗在直读之前,
+    # direction 读口的 P2 守卫等价(锁定态名单读口也读本键,均 P2 后
+    # 恒空)。
     opening_recipe_comp: Comp | None = None
+    # [索引定义] transition_candidates = 过渡候选槽(kernel 体系对候选
+    # 机器的输出快照):值 = 体系对元组的有序元组,元素坐标系 = 四体系键
+    # 闭集(cw_intention._P1_PAIR_PREF:仙舟/持续伤害/列车同行/希儿系)
+    # 的一或二元组、对内按声明序规整;序 = 候选排序键((对级支持度降序,
+    # 对级声明序),对级支持度 = min 席级,希儿系对入候选门槛 = 席级
+    # 1.0)下的前 3 位(dual-layer-candidates design §2.3-2/§2.3-3);
+    # 冻结后 = 单元素(冻结对,恒二元组)。取值时机 = 每 game-round 配方
+    # 链重算帧现算覆写(写入端单一源 = cw_intention.update_p1_recipe 的
+    # st 鸭子参数,flow 贵段传入本对象);进 P2 由 clear_p1_recipe 同点
+    # 清空。非节点作用域键(候选随支持度事件重排,节点边界不重置);
+    # 无羁绊开局合法空(冷启动兜底归商店臂,design §2.3-8)。
+    transition_candidates: tuple[tuple[str, ...], ...] = ()
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
