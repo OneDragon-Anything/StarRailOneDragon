@@ -1077,6 +1077,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '精密拆装·银': _compose_grant_legs(
         _make_named_equip_grant_effect('精密拆装扳手', 1),
         _make_random_equip_effect('简易', 1)),
+
+    # 精密拆装·金 = 三腿组合登记行(卡文「获得1个【精密拆装扳手】，1个
+    # 【冶金炉】和2个随机简易武装」;腿1 具名扳手/腿2 具名炉 rand=False
+    # 确定写;腿3 随机简易×2 放回抽 T-167 判例,恰 2 次掷;效果串恒 4 条
+    # 按卡文语序;不入泛化表防同名键覆盖丢腿,腿参数唯一出现点;rng
+    # 仅腿3 消费)。
+    '精密拆装·金': _compose_grant_legs(_make_named_equip_grant_effect('精密拆装扳手', 1),
+                                     _make_named_equip_grant_effect('冶金炉', 1),
+                                     _make_random_equip_effect('简易', 2)),
     # 武装支援 = 双腿混发组合卡(卡文「获得1件随机简易装备和2个随机3费
     # 角色。」):直书登记行(非表生成),不入援军/随机装备两族表
     # (入表 = 表生成的单腿效果体与组合体同名键顺序覆盖丢腿);腿序 =
