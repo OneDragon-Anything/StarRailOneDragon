@@ -884,9 +884,9 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
     """P1 过渡配方链驱动(体系对候选机器;每 game-round 恰一次,就地改
     ist 并返回;dual-layer-candidates §2.3-3/§2.3-4)。
 
-    候选制形态(四层谓词族——在任优先单席易手/排序维星级当量选席/
-    argmin e_rounds 渐进估计器/换席可行性门——已随本批整体退役,
-    §2.6-6;替代 = 候选排序键纯函数((对级支持度, 声明序))确定性):
+    候选制形态(旧四层谓词族已退役——退役登记 = math_proofs P-T166
+    行,考古走 git 历史;现行判据 = 候选排序键纯函数((对级支持度,
+    声明序))确定性):
 
     - **候选重算**:全候选空间排序 → 支持度 > 0 的体系对(希儿系对
       门槛 = 席级 1.0)取 top3 写 ``transition_candidates`` 槽

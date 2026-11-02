@@ -244,7 +244,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
           P1 锁定局「互不覆写」的落地);
         - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
           (配方对伪阵容;窗口谓词覆盖——P2 起停写;物化源 = 过渡候选
-          槽**无门控候选首位**(替代旧 p1_early_pair 无门槛 fallback,
+          槽**无门控候选首位**(
           dual-layer-candidates design §2.3-3——「空窗期同样有方向」
           职能承接,部署开局面恒有最强方向、不随 p1_pair 门控变 None;
           稳定性申报 §2.6-7:未冻结期每轮随支持度事件可换,冻结后 =

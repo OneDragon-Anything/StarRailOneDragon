@@ -1,6 +1,6 @@
 """mandate_v1 决策载荷(decision_payload 钩子的 v1 实现;纯读投影)。
 
-职责 = 决策帧出口后,从容器 game state + 策略器状态**现读**三个键组
+职责 = 决策帧出口后,从容器 game state + 策略器状态**现读**五个键组
 (语义正本 = strategy-docs/strategy-telemetry.md;判据载体出处 =
 strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 方向状态):
@@ -9,7 +9,11 @@ strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 - ``k_members`` + ``k_fallback``:现行 K 名单与它的供给来源标注
   (回退分支命中帧防把回退成员误读为锁定线成员);
 - ``window``:终局库成员的上线窗口判据结论现值(候选 A「上阵窗口
-  自锁」的复核面——该判据此前无任何落点)。
+  自锁」的复核面——该判据此前无任何落点);
+- ``transition_candidates``:过渡候选槽现值(体系对候选机器的输出
+  快照;判读双层候选形态与冻结收敛);
+- ``member_rank``:统一优先级档内序数表现值((层, 位次) 二元组表;
+  判读双层装配与同档垫底)。
 
 纯读纪律:本模块零写(不碰 cw4_counters/容器域/意向缓存);K 空窗
 回退分支重推导 = 与备战帧(:func:`entry.emit` 顶段)同函数同参再算一遍
@@ -25,6 +29,7 @@ wrapper 在决策入口返回后调用,异常由 wrapper 降级 ``{}``(捕获缝
 """
 from __future__ import annotations
 
+import random
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_comps import (
@@ -38,6 +43,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     entry,
     session_scope,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
+    assemble_priority_context,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.sell_candidates import (
     sell_line_membership,
@@ -146,9 +154,34 @@ def _window_key(gs: GameState, k_members: list[str]) -> dict[str, dict]:
     return window
 
 
+def _transition_candidates_key(gs: GameState) -> list[list[str]]:
+    """transition_candidates 键:过渡候选槽现值(体系对元组照录为
+    嵌套 list,JSON 行行自足;冻结后 = 单元素冻结对,进 P2 清空——
+    槽语义单一源 = mandate_state.StrategyState.transition_candidates)。"""
+    return [list(pair) for pair in state_of(gs).transition_candidates]
+
+
+def _member_rank_key(gs: GameState) -> dict[str, tuple[int, int]]:
+    """member_rank 键:统一优先级档内序数表((层, 位次) 二元组)现值。
+
+    与卖出评估器**同一装配函数**现算(:func:`priority.
+    assemble_priority_context`,禁在本模块复制装配逻辑 = 第二实现):
+    终局成员 = (0, 线内序数) / 过渡成员 = (1, 候选位次),重叠归终局
+    (装配序承载,零特判)。``deployed_names`` 空集与固定种子 rng =
+    占位参数——member_rank 装配只读方向状态与知识卡,不消费部署名集
+    (档 1 判定专用字段)与随机流(等价牌随机尾键专用),占位不污染
+    rank 现值;rng 显式传占位是为绕开缺省读口 ``priority_rng_of``
+    的 scratch 写面(纯读纪律:本模块零写)。表外成员判定端缺省
+    :data:`priority.RANK_TRANSITION_BOTTOM` 不在本表(仅装配产物
+    照录)。"""
+    ctx = assemble_priority_context(
+        gs, gs, deployed_names=frozenset(), rng=random.Random(0))
+    return dict(ctx.member_rank)
+
+
 def build_decision_payload(gs: GameState,
                            registry: DecisionV2Registry | None) -> dict:
-    """mandate_v1 v1 决策载荷(三键组;调用契约见模块 docstring)。
+    """mandate_v1 v1 决策载荷(五键组;调用契约见模块 docstring)。
 
     ``registry`` = 策略器实例注册表(K 空窗回退分支 G 门同参透传,
     与备战帧消费同源)。全键 gs/state 现读,零写。
@@ -159,4 +192,6 @@ def build_decision_payload(gs: GameState,
         'k_members': k_members,
         'k_fallback': k_fallback,
         'window': _window_key(gs, k_members),
+        'transition_candidates': _transition_candidates_key(gs),
+        'member_rank': _member_rank_key(gs),
     }

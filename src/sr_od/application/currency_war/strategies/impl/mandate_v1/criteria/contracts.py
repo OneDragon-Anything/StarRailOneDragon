@@ -108,8 +108,9 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     (``k_fallback_available`` False)= 保守侧不回退,合法 fail 方向
     (与 committed_authority 缺供给同款);供给在场而
     ``k_fallback_resolved`` 为空 = 「回退字面量空元组但保留声明」
-    复发形态,违例弃权。回退单一源=cw_intention.hoard_target_set /
-    p1_early_pair_members(禁复制四体系全集逻辑)。
+    复发形态,违例弃权。回退单一源=cw_intention.k_empty_window_fallback
+    (p1_gap 带 hoard_target_set / p1_lock_band 带候选首位成员派生,
+    禁复制四体系全集逻辑)。
 
     **带维度非对称期待(P86 实现批,证明批 §4.6;统一让位优先级迭代
     3.4 修订——甲/乙臂退役)**:p1 带
@@ -246,7 +247,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         _k_projection_domain_full,
         '商店线方向 pass K 投影:前提=战略层产物 target_comp 值域全集'
         '含 None——回退辖三带(P1 空窗带=hoard_target_set 四体系全集 / '
-        'P1 锁线过渡带=p1_early_pair top-2 方向 / P2+ 带=保利息缺省'
+        'P1 锁线过渡带=过渡候选首位方向成员 / P2+ 带=保利息缺省'
         '[丙分支合法空集;甲臂判活路径与乙臂枢纽已随统一让位优先级'
         '迭代 3.4 退役,K 目标未锁期源切换为策略层候选快照三线并集'
         ' ∪ 配方成员]),单一源=cw_intention(禁复制);'

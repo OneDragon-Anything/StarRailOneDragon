@@ -328,6 +328,13 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
   控制流原因),发射臂标签次之(route_tag = mandate_v1 Emitted.reason 经
   bridge.decide_prep_frame 透传),授权/豁免记录兜底(CwActionLevelUpParam.auth_basis /
   CwActionSellBenchParam.convert_reason,「记录非指令」形态)。
+- 买入 reason 的臂级分键纪律:序 1 扩展臂——货架资格臂
+  (``shelf_qualify_buy``)与冷启动臂(``cold_start_buy``)各自独立
+  成键(因果类均为 obligation,注册闭集 = sell_gate.
+  LAUNCH_CAUSE_BY_ARM),禁合并为笼统买入键:两臂触发场景不同
+  (资格臂 = CARRY/骨架级货架牌虚拟 top3 资格;冷启动臂 = 双空窗
+  三羁绊 1 费件见即买),分键保判读面按臂分账触发频率,合并即丢失
+  分臂观测。
 - 键集扩条只改本元组;各键的值域闭集归其定义模块(sell_gate/
   cw_vocab.SELL_BENCH_REASONS 等),本元组不做第二登记。
 """

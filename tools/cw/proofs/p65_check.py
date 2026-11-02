@@ -19,9 +19,10 @@ DESIGN.md §2.1/§3):
 
 本脚本直调生产单一源复核(kernel 禁第二实现;v2 修订:晋升侧不再自实现
 公式,直调生产 promote_candidates——公式已落码,G8 观测载体在用):
-- promote_candidates / _pair_bond_keys / _v2_comps / _core_reachable /
-  line_completion_feasibility / intention_core / _derive_p1_pair /
-  _asset_thickness / encounter_window_rounds:cw_intention.py;
+- _pair_bond_keys / _v2_comps / _core_reachable /
+  line_completion_feasibility / intention_core / p1_pair_candidates_of /
+  _asset_thickness / encounter_window_rounds:cw_intention.py
+  (promote_candidates 已改本脚本冻结副本,见其段注释);
 - COMP_LIBRARY / V2_FAMILIES:cw_comps.py(12 线枚举域);
 - TRANSITION_TRAITS:cw_deploy_logic.py(三羁绊体系键单一源)。
 
@@ -31,6 +32,7 @@ from __future__ import annotations
 
 import itertools
 import sys
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -38,13 +40,13 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRA
 from sr_od.application.currency_war.kernel.cw_intention import (
     _asset_thickness,
     _core_reachable,
-    _derive_p1_pair,
     _pair_bond_keys,
     _v2_comps,
     _visible_chars,
     encounter_window_rounds,
     intention_core,
     line_completion_feasibility,
+    p1_pair_candidates_of,
 )
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
@@ -102,7 +104,7 @@ def promote_candidates(gs: GameState,
         if not _core_reachable(c, gs, vis):
             continue
         if gs.plane == 2 and line_completion_feasibility(
-                gs, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
+                gs, c, session, vis) <= reg.revoke_miss_tolerance_eps:
             continue
         out.append(c)
     return out
@@ -173,15 +175,27 @@ def check_snapshot() -> None:
 
 class _StubState:
     """纯函数评估用最小状态桩(生产判据只读这些属性;bench/deployed 空
-    = 核心不可见口径由 visible 参数显式注入)。"""
+    = 核心不可见口径由 visible 参数显式注入)。
+
+    容器读口桩(容器化迁移后鸭子直存 int 不再兼容,与 ``gs.plane``
+    桩属性同款处理):``node``(生产 plane_of/round_num_of 读
+    ``gs.node.value``)/``level``(level_of 读 ``gs.level.value``)/
+    ``node_seq_by_plane``(total_remaining_nodes 读
+    ``gs.node_seq_by_plane.value``,None = 回退默认节点表);脚本内
+    自读处仍用裸属性(plane/round_num/hp/bench/deployed)。"""
 
     def __init__(self, plane: int, level: int, hp: int, round_num: int) -> None:
         self.plane = plane
-        self.level = level
+        self.level = SimpleNamespace(value=level)
         self.hp = hp
         self.round_num = round_num
-        self.bench = []
-        self.deployed = []
+        self.node = SimpleNamespace(value=SimpleNamespace(
+            plane=plane, round_num=round_num))
+        self.node_seq_by_plane = SimpleNamespace(value=None)
+        # bench/deployed 未观察桩(容器读口 value=None → 空池;需注入
+        # 成员的场景(_pair_achievable)在构造后覆写 bench 容器桩)。
+        self.bench = SimpleNamespace(value=None)
+        self.deployed = SimpleNamespace(value=None)
         self.shop = []
         self.enemy_affixes = ()
 
@@ -205,7 +219,7 @@ def _handoff_candidates(state, ist, session, reg, visible) -> list:
             and state.plane not in (c.weak_planes or ())
             and _core_reachable(c, state, visible)
             and (state.plane != 2
-                 or line_completion_feasibility(state, c, session, reg, visible)
+                 or line_completion_feasibility(state, c, session, visible)
                  > reg.revoke_miss_tolerance_eps)]
 
 
@@ -250,20 +264,36 @@ def _line_tiers(name: str) -> set[str]:
 
 
 def _pair_achievable(target: tuple[str, ...]) -> bool:
-    """pair 可派生性复核:_derive_p1_pair 在支持度 1.0 资产上的派生结果
-    恰为 target(门槛 P1_PAIR_LOCK_MIN_SUPPORT=1.0)。体系键 k 可达
-    支持度 1.0 ⟺ 注册表存在 ≥ 档数个该体系成员(仙舟3/列车2/DOT2,
-    希儿系单卡)。成员名从 CHARACTERS 注册表现查,禁手抄。"""
+    """pair 可派生性复核:体系对候选机器(:func:`p1_pair_candidates_of`)
+    在对级支持度 1.0 资产上的候选首位(= 门控首位,构造资产对级支持度
+    1.0 ≥ 门槛 P1_PAIR_LOCK_MIN_SUPPORT)恰为 target。体系键 k 可达
+    支持度 1.0 ⟺ 注册表存在 ≥ 档数个该体系成员(仙舟3/列车2/DOT2;
+    希儿系 = 希儿 + 任 1 去重放大器满 1.0,分级公式单一源
+    ``_seele_system_support``)。成员名从 CHARACTERS 注册表现查,禁手抄;
+    构造选「纯标签」成员(不带第二三羁绊标签的多标签件)——多标签件
+    双计他系支持度,可能产出超满单体系对抢先位,构造失真。"""
     tiers = dict(TRANSITION_TRAITS)
+    tier_keys = set(tiers)
     bench_names: list[str] = []
     for k in target:
         if k == '希儿系':
             bench_names.append('希儿')
+            amps = [name for name, ch in CHARACTERS.items()
+                    if name != '希儿'
+                    and ('量子同频' in ch.flows
+                         or '贝洛伯格' in ch.factions)
+                    and not (set(ch.factions)
+                             | set(ch.flows)) & tier_keys]
+            assert amps, '注册表无纯标签希儿放大器(构造前提漂移)'
+            bench_names.append(amps[0])
             continue
         need = tiers[k]
         members = [name for name, ch in CHARACTERS.items()
-                   if k in (set(ch.factions) | set(ch.flows))]
-        assert len(members) >= need, f'体系 {k} 注册表成员不足 {need}: {members}'
+                   if k in (set(ch.factions) | set(ch.flows))
+                   and not (set(ch.factions)
+                            | set(ch.flows)) & (tier_keys - {k})]
+        assert len(members) >= need, (
+            f'体系 {k} 注册表纯标签成员不足 {need}: {members}')
         bench_names.extend(members[:need])
 
     class _Bc:
@@ -272,10 +302,14 @@ def _pair_achievable(target: tuple[str, ...]) -> bool:
             self.faction = ''
 
     state = _StubState(1, 5, 50, 1)
-    state.bench = [_Bc(n) for n in bench_names]
-    got = _derive_p1_pair(state)
-    return (tuple(sorted(got, key=_PREF.index))
-            == tuple(sorted(target, key=_PREF.index)))
+    # bench 容器桩(生产 bench_units_of 读 gs.bench.value.slots 的
+    # kind='unit' 槽;全 unit 槽 = 构造成员全体入池)。
+    state.bench = SimpleNamespace(value=SimpleNamespace(
+        slots=[SimpleNamespace(kind='unit', unit=_Bc(n))
+               for n in bench_names]))
+    cands = p1_pair_candidates_of(state)
+    return bool(cands) and tuple(cands[0]) == tuple(
+        sorted(target, key=_PREF.index))
 
 
 def check_pair_nonempty_and_evicted_hole() -> None:
@@ -331,12 +365,14 @@ def check_sort_keys_unchanged() -> None:
         keyed = sorted(
             cands,
             key=lambda c: (-_asset_thickness(c, state),
-                           encounter_window_rounds(intention_core(c), state.level)),
+                           encounter_window_rounds(
+                               intention_core(c), state.level.value)),
         )
         assert [c.name for c in keyed] == [c.name for c in sorted(
             cands, key=lambda c: (-_asset_thickness(c, state),
                                   encounter_window_rounds(
-                                      intention_core(c), state.level)))]
+                                      intention_core(c),
+                                      state.level.value)))]
     print('[断言4] 排序键 = 移交候选既有键(厚度降序→再遇窗升序),零新增 ✓')
 
 

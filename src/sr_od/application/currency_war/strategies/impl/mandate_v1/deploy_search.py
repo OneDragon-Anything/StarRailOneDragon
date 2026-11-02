@@ -12,7 +12,8 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
   召唤物/系统件(cost=0)固定后台剔除、未知身份件保留现位不入枚举
   (禁挤)、窗口谓词与上场锁过滤(虚拟件 uid=None 名命中锁名单按
   fail-closed,D-8 事故复活路径封死);
-- 段 1 圈人:候选族按窗口分域(P1 = 四体系两两组合 + 单体系渐进;
+- 段 1 圈人:候选族按窗口分域(P1 = 四体系两两组合 + 单体系对,
+  候选空间同款对域;
   P2+ 未锁 = 候选三线;锁定 = 锁定线羁绊骨架 ∪ P1 过渡家族照常
   枚举),骨架 = 档位形态集合(体系件前缀的档位截断点),全枚举,
   空骨架合法;
@@ -618,8 +619,8 @@ def search_deploy_target(panel: DeploySearchPanel,
                 for cut in _prefix_cuts(pool, pair):
                     skeletons.append((tuple(pool[:cut]), None, pair))
     elif panel.plane1:
-        # P1 未锁:四体系两两组合 + 单体系渐进(|I∩Q|=1 第二席按
-        # _progressive_second_seat 同款单体系骨架语义,二轮补问 3)。
+        # P1 未锁:四体系两两组合 + 单体系对(候选空间同款对域;
+        # 部署骨架全枚举零截断,形态与窗口分域声明一致)。
         for pair in _transition_pairs(panel):
             pool = _pool_of(pair, _transition_names(pair))
             for cut in _prefix_cuts(pool, pair):
