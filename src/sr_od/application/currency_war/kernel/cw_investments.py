@@ -4927,6 +4927,14 @@ STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
                  StrategyDelayedOffer(id='203201', delay_nodes=3,
                                       offer_quality='银',
                                       refresh_count=3)),
+    # 摸个鱼吧I:官方「获得专家顾问【青雀】，并使其在本局游戏中加入商店。
+    # 获得6金币。深思熟虑5个节点后，青雀会想出黄金投资策略！」
+    # (cw_invest_data.py, id 260101)。延时腿:深思熟虑 5 节点 → 金投资
+    # 提议(delay_nodes=5/offer_quality=金,refresh_count 缺省=可刷新基形
+    # 沿 201103 先例);腿1 顾问解锁/腿2 金6 已在册零动作(grants 面白得
+    # 桶,本表零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
+    '摸个鱼吧I': (StrategyDelayedOffer(id='260101', delay_nodes=5,
+                                 offer_quality='金'),),
 }
 
 
