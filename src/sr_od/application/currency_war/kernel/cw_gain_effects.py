@@ -1083,6 +1083,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 不入泛化表防撞键;rng 零消费)。
     '双人舞': _compose_grant_legs(_make_char_grant_effect('千冶·刃'),
                                  _make_char_grant_effect('卡芙卡')),
+
+    # 读博深造 = char×char 双角色组合登记行(卡文「获得【艾丝妲】和
+    # 【阮·梅】」;两腿皆具名角色 rand=False;效果串 2 条按卡文语序;
+    # 条件段【银河学者激活+随机 1/2 费升 3 星】游戏侧自算,bot 零建模;
+    # 变形持续性 = T-180 在册用户裁定案 A 临时+策略默认不选[pending=False
+    # 定谳];腿参数唯一出现点,不入泛化表防撞键;rng 零消费)。
+    '读博深造': _compose_grant_legs(_make_char_grant_effect('艾丝妲'),
+                                 _make_char_grant_effect('阮·梅')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无

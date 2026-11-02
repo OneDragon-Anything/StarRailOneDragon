@@ -1264,6 +1264,28 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '腿1 具名授予在 PICK_INVEST_EFFECTS 直书行;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 读博深造:官方「战斗开始时，若银河学者羁绊处于激活状态，一名随机的
+    # 1费或2费银河学者变成3星。获得【艾丝妲】和【阮·梅】。」
+    # (cw_invest_data.py, id 251901)。
+    # 战力类零响应登记(UNIT_BUFF 族):条件段(羁绊激活+随机升星)游戏侧
+    # 自算,bot 零响应;变形持续性 = T-180 在册用户裁定案 A 临时+策略默认
+    # 不选(姊妹同判,pending=False 定谳);腿 2/3 送卡在 PICK_INVEST_
+    # EFFECTS char×char 组合行(本表零条目);effect_text 经数据面表达式
+    # 单一源,版本更新改文自动跟随。
+    '读博深造': EffectSpec(
+        id='251901', name='读博深造',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251901')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '条件段与随机升星游戏侧自算,bot 仅登记;'
+              '送卡两腿在 PICK_INVEST_EFFECTS 组合行;'
+              '变形持续性承 T-180 案 A 判读申报制;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
