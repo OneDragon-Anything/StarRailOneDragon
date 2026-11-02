@@ -140,11 +140,26 @@ def _line_sort_key(comp: Comp, held_chars: frozenset[str],
 
 
 def compute_candidates(held_chars: frozenset[str],
-                       held_invest: frozenset[str]) -> tuple[str, ...]:
+                       held_invest: frozenset[str], *,
+                       evidence_gate: bool = False) -> tuple[str, ...]:
     """全 20 线算分取 top N 候选(§1.3:每帧对全部线算分,top3 为候选;
-    签名幂等——同持有面重算同值)。返回线名元组(分数降序)。"""
+    签名幂等——同持有面重算同值)。返回线名元组(分数降序)。
+
+    ``evidence_gate``(缺省关闭 = 现行全量版;dual-layer-candidates
+    design §2.1-1/§2.2-1,候选快照消费开启版——其余调用方现行口径
+    不变):开启版只收**证据维非零**的线(``line_score_key`` 前四维:
+    环境命中 ∨ CARRY 在手 ∨ 骨架 ≥1 ∨ 插件 ≥1),零证据线不入候选
+    ——热度降为有证据线间的排序,不再是入选理由;开局零持有零环境
+    = 空候选(合法形态,时点兜底空候选分支 §2.2-9 承接)。**虚拟评估
+    入口**(§2.2-2):``held_chars`` 即证据集,调用方传「在手 ∪ 货架」
+    + 不开门 = 虚拟 top3(现行全量排序,资格器消费排位)。
+    """
     ranked = sorted(COMP_LIBRARY,
                     key=lambda c: _line_sort_key(c, held_chars, held_invest))
+    if evidence_gate:
+        ranked = [c for c in ranked
+                  if any(v != 0 for v in
+                         line_score_key(c, held_chars, held_invest)[:4])]
     return tuple(c.name for c in ranked[:CANDIDATE_TOP_N])
 
 
@@ -179,6 +194,10 @@ def evaluate_lock(candidates: tuple[str, ...],
       ``plane2_started``(3.1 窗口谓词:第 10 结点 = 首入 (2,*) 段,
       P1 内即时/延迟加场卡被结算节点边界锚排除)∧ ``p2_strategy_pick_done``
       (P2 起首次投资策略三选一完成——active_strategies 集合增长侦测)。
+      **空候选兜底分支**(dual-layer-candidates design §2.2-9:证据门
+      下空候选可达,此兜底为真规则):候选空 → 锁全 20 线全序首名
+      (缺省全量版重算取首;零证据帧首名 = 热度首线,现行全序的退化
+      情形)。
 
     锁后只读由调用侧(``session_scope`` 锁定守卫)承载:本函数只在
     未锁定态被求值。
@@ -186,6 +205,8 @@ def evaluate_lock(candidates: tuple[str, ...],
     hits = hard_lock_hit_lines(held_chars, held_invest)
     if hits:
         return hits[0]
-    if plane2_started and p2_strategy_pick_done and candidates:
-        return candidates[0]
+    if plane2_started and p2_strategy_pick_done:
+        if candidates:
+            return candidates[0]
+        return compute_candidates(held_chars, held_invest)[0]
     return None

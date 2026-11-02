@@ -81,9 +81,11 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 from sr_od.application.currency_war.kernel import cw_intention
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
 from sr_od.application.currency_war.kernel.cw_comps import (
+    carry_set,
     get_comp,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+    TRANSITION_TRAITS,
     deployed_bond_counts,
     record_fresh_buy,
 )
@@ -129,6 +131,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     deploy_plan,
     entry,
+    line_select,
     mandate,
     proof,
     sell_gate,
@@ -213,6 +216,39 @@ def _r2_card_reserve(gs: GameState) -> int:
     本名保留使生产调用点零漂移,语义 = 停留目标实费档,未锁窗口恒 0
     ——docstring 见单一源本体)。"""
     return crit_refresh.r2_card_reserve(gs)
+
+
+def _transition_candidate_members(st) -> set[str]:
+    """过渡候选槽 → 体系对成员并集(序 1 义务面配方半边单一源;
+    dual-layer-candidates design §2.3-6/§2.6-2)。
+
+    成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
+    另写展开);槽空(P1 无羁绊开局/进 P2 清空)返回空集。**买面不读
+    ``opening_recipe_comp``**——物化单对 = 候选首位(⊆ 候选并集),
+    其角色 = 部署开局面(§2.3-6「买面不读它」定版)。"""
+    out: set[str] = set()
+    for pair in (getattr(st, 'transition_candidates', None) or ()):
+        out |= cw_intention._pair_members(pair)
+    return out
+
+
+#: 冷启动臂的三羁绊体系键集(仙舟/列车同行/持续伤害;dual-layer-
+#: candidates design §2.3-8 as-built 申报:与 kernel ``ENGINE_FACTIONS``
+#: 当前同集、不含护盾——冷启动限定三羁绊,派生自 ``TRANSITION_TRAITS``
+#: 键(策略层现算成员域,**禁改 ENGINE_FACTIONS 派生源**;前瞻防御桥池
+#: 未来演进引入护盾,P78-7 种子判定面零变化)。
+_COLD_BOND_KEYS: frozenset[str] = frozenset(
+    bond for bond, _tier in TRANSITION_TRAITS)
+
+
+def _cold_start_member(name: str) -> bool:
+    """冷启动成员域判定(§2.3-8):标签(阵营 ∪ 流派)命中三羁绊键——
+    希儿系贡献件(量子同频/贝洛伯格)不在域内(希儿系点亮不构成冷启动
+    退出,也不构成触发;三羁绊限定)。"""
+    ch = CHARACTERS.get(name)
+    if ch is None:
+        return False
+    return bool((set(ch.factions) | set(ch.flows)) & _COLD_BOND_KEYS)
 
 
 def _merge_pair_names(bench: list[BenchSlot],
@@ -836,34 +872,30 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             # (退役/保留面登记 = 模块头键表与 telemetry/schema.py 键表节)。
             _count(f'shop_k_fallback_{_band}')
     if _line_view.locked:
-        # 锁定态(锁定线槽非空):P1 锁定局 = 过渡配方 ∪ 锁定线名单并集
-        #(配方物化链不覆盖 P1 配方件);P2 起 = 锁定线名单单源(退出条件
-        # 载体 = plane2_started 窗口谓词,line_and_upgrade §1.3 分域)。
+        # 锁定态(锁定线槽非空):P1 锁定局 = 锁定线 ∪ 过渡候选成员并集
+        #(配方支 = 过渡候选并集,dual-layer-candidates design §2.3-6
+        #「买面不读 opening_recipe_comp」——物化单对角色 = 部署开局面,
+        # 买面配方半边由候选并集承载,保「义务面与成员档族名单同源」
+        # 不变式);P2 起 = 锁定线名单单源(退出条件载体 = plane2_started
+        # 窗口谓词,line_and_upgrade §1.3 分域)。
         # 锁定态买面不动:义务面 = 买面名单(保护集并集形态已随囤货臂
         # 退役废止——design §2.5 买面行)。
         if _p2_started:
             buy_members = tuple(sorted(set(_line_view.members)))
         else:
-            _recipe = getattr(_st, 'opening_recipe_comp', None)
-            _recipe_names = set(predicates.line_members(_recipe)) \
-                if _recipe is not None else set()
+            _recipe_names = _transition_candidate_members(_st)
             buy_members = tuple(sorted(
                 set(_line_view.members) | _recipe_names))
         obligation_members = buy_members
     else:
-        # 未锁定 = 候选态(统一让位优先级迭代 3.4 重建,R5-01 方向②):
-        # - 义务面 = 候选快照三线成员并集 ∪ 配方成员 ∪ 方向阵容基
-        #   (K 空窗帧即候选并集承载,与优先级档 2/3/4/5/7 名单同源——
-        #   三线成员都进入序 1 义务面,金约束门与统一序列兜底卖出共存;
-        #   万金油贯穿件恒囤项删除【拍,总纲 §2.7 申报②:万金油退出
-        #   义务买入面,手里持有的未到两星前受档 8 保护、无自动补货
-        #   通道】);
+        # 未锁定 = 候选态(双层候选;dual-layer-candidates design §2.6-1):
+        # - 义务面 = **实候选(证据门版快照)∪ 过渡候选(槽值成员并集)**
+        #   (§2.2-6 逐面定版:零信号期买面收窄——实候选经证据门点亮、
+        #   过渡候选承载配方半边,opening_recipe_comp 物化单对不进买面;
+        #   开局双空窗 = 空买面合法形态,冷启动臂/货架资格臂兜底,§2.3-8);
         # - 买面名单 = 义务面(宽集收窄:原「义务面 ∪ 保护集」的宽集
         #   前提 = 保护集囤货语义,囤货臂退役后前提消亡,总纲 §2.5)。
-        _cand_names: set[str] = set(k_members)
-        _recipe = getattr(_st, 'opening_recipe_comp', None)
-        if _recipe is not None:
-            _cand_names |= set(predicates.line_members(_recipe))
+        _cand_names: set[str] = _transition_candidate_members(_st)
         for _cn in _st.line_candidates:
             _comp_c = get_comp(_cn) if _cn else None
             if _comp_c is None:
@@ -1580,6 +1612,90 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             continue
         _on_target_buy()
         return _emit_buy(card, 'm2_merge_completion')
+
+    # —— 冷启动臂(双空窗完备性;dual-layer-candidates design §2.3-8;
+    #    序位 = 序 1 层内 missing 循环之后、资格臂之前)——
+    # 触发 = 未锁定 ∧ 实候选空(证据门版快照——锁定态快照被连带清空,
+    # 未锁守卫防锁定局误触)∧ 过渡候选空(无羁绊开局)∧ 三羁绊支持度
+    # 会话内现算全 0(退出判据 = 同一现算:任一三羁绊 >0 即停,希儿系
+    # 点亮不算——防希儿开局帧误判退出/触发)。买面 = 货架三羁绊派生
+    # 成员域的 **1 费 1★ 件见即买**(义务类;1 费档收窄保守向,1★ 全额
+    # 退 ⇒ 义务可逆;防「K 空 → 零买入 → 支持度永不涨」死锁环,12 号稿
+    # §4:89 死锁防线承接)。门链 = m2 义务臂同款(无金线闸;金不足/
+    # 席满走统一获取让位评估,席位检查走买入管线自带)。
+    if not _line_view.locked and not _st.line_candidates \
+            and not (getattr(_st, 'transition_candidates', None) or ()):
+        _sup3 = cw_intention._p1_system_support(gs)
+        if not any(_sup3[bond] > 0.0 for bond, _t in TRANSITION_TRAITS):
+            for card in _buy_view('cold_start_buy'):
+                _cs_name = card.name or ''
+                _cs_ch = CHARACTERS.get(_cs_name) if _cs_name else None
+                if _cs_ch is None or int(_cs_ch.cost or 0) != 1 \
+                        or int(card.star or 1) != 1:
+                    continue
+                if not _cold_start_member(_cs_name):
+                    continue
+                cost = card_cost(card)
+                if gold < cost:
+                    _sw = _acquire_yield(card, 'order_1')
+                    if _sw is not None:
+                        return _sw
+                    continue
+                if bench_free <= 0:
+                    _sw = _acquire_yield(
+                        card, 'order_1',
+                        lambda card=card: _emit_buy(card, 'cold_start_buy'))
+                    if _sw is not None:
+                        return _sw
+                    continue
+                _on_target_buy()
+                return _emit_buy(card, 'cold_start_buy')
+
+    # —— 货架资格臂(单张买入估值;dual-layer-candidates design §2.2-2;
+    #    序 1 层内殿后,同帧多资格件按货架槽序)——
+    # 资格判据(窄门,过门即义务):X ∈ 货架可见 ∧ X ∈ 某虚拟 top3 线的
+    # CARRY/骨架级(carry_set ∪ key_items;插件级不触发)∧ 该线 ∈ 虚拟
+    # top3。虚拟评估 = ``compute_candidates(在手 ∪ 货架)``**不开证据门**
+    # (照现行全量排序,资格器消费排位)——零持久化:生命周期 = 本商店
+    # 决策帧,消费位唯一 = 单张买入资格(§2.7 不变式);投资面(环境分级)
+    # 用真实持有,货架不构成投资证据。买入写持有 → 签名变 → 实候选经
+    # 证据门点亮 → 整线义务面跟进(信号进 → 买入 → 点亮闭环)。锁定态
+    # 不评:义务面 = 锁定线名单(§2.2-6 逐面定版),资格臂的方向点亮
+    # 语义与「锁后不换线」不变式互斥。
+    if not _line_view.locked:
+        _shelf_names = _face_names(gs)
+        if _shelf_names:
+            _virt_top3 = line_select.compute_candidates(
+                frozenset(owned | _shelf_names),
+                line_select.held_invest_names_of(gs))
+            _qual_names: set[str] = set()
+            for _vn in _virt_top3:
+                _vc = get_comp(_vn) if _vn else None
+                if _vc is None:
+                    continue
+                _qual_names |= carry_set(_vc)
+                _qual_names |= set(_vc.key_items or ())
+            if _qual_names:
+                for card in _buy_view('shelf_qualify_buy'):
+                    _sq_name = card.name or ''
+                    if not _sq_name or _sq_name not in _qual_names:
+                        continue
+                    cost = card_cost(card)
+                    if gold < cost:
+                        _sw = _acquire_yield(card, 'order_1')
+                        if _sw is not None:
+                            return _sw
+                        continue
+                    if bench_free <= 0:
+                        _sw = _acquire_yield(
+                            card, 'order_1',
+                            lambda card=card: _emit_buy(
+                                card, 'shelf_qualify_buy'))
+                        if _sw is not None:
+                            return _sw
+                        continue
+                    _on_target_buy()
+                    return _emit_buy(card, 'shelf_qualify_buy')
 
     # (新囤货臂已整段退役——统一让位优先级迭代 3.4,总纲 §2.5 买面行:
     # 非候选的四体系成员期权囤货,存在前提〔囤换线期权〕与单卡核心囤积

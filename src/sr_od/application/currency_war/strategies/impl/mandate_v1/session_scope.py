@@ -275,7 +275,9 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
       :func:`write_line_lock` 连带③);
     - 未锁定态:每帧对全部 20 线算分(:func:`line_select.line_score_key`
       字典序:环境分级 → 持有证据级 → 攻略热度,注册序终局),top3 写
-      候选快照(``line_candidates``,派生快照非持久状态);随后求值
+      候选快照(``line_candidates``,派生快照非持久状态)——**证据门
+      开启版**(dual-layer-candidates design §2.1-1:零证据线不入,
+      热度只作有证据线间排序;开局零信号 = 空候选合法形态);随后求值
       锁定双触发(:func:`line_select.evaluate_lock`——硬规则查表同帧
       多命中取线分数最高 + 热度 tie-break + 注册序终局;时点兜底 =
       plane2_started ∧ P2 投资策略选卡完成),命中即经
@@ -287,7 +289,8 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
     _update_p2_pick_done(gs, st)
     held_chars = line_select.held_chars_of(gs)
     held_invest = line_select.held_invest_names_of(gs)
-    candidates = line_select.compute_candidates(held_chars, held_invest)
+    candidates = line_select.compute_candidates(
+        held_chars, held_invest, evidence_gate=True)
     st.line_candidates = candidates
     lock_name = line_select.evaluate_lock(
         candidates, held_chars, held_invest,
