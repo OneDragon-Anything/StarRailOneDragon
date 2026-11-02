@@ -1052,6 +1052,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 口径;登记条目 chars_immediate=('砂金',) 与本卡人腿同源,零触碰)。
     '护盾星徽': _compose_grant_legs(_make_named_equip_grant_effect('护盾星徽', 1),
                                     _make_char_grant_effect('砂金')),
+
+    # 战技点星徽 = 具名装备×具名角色双腿组合登记行(卡文语序徽→人;
+    # 腿1 rand=False 策略卡侧具名腿通道归属;腿2 丹恒·饮月 1★ 先验
+    # 家族口径;与列车同行星徽同人 = 星徽族重复人名现值,零特判)。
+    '战技点星徽': _compose_grant_legs(_make_named_equip_grant_effect('战技点星徽', 1),
+                                     _make_char_grant_effect('丹恒·饮月')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无
