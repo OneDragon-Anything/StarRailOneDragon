@@ -514,6 +514,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     '打捞人才库+': ('简易', 1),
     '买彩票': ('星徽', 1),
     '公司军火更新·银': ('简易', 1),
+    '公司军火更新·金': ('简易', 2),
     # 自由市场(id 130601)腿2「获得1个随机的简易装备」直读行;腿1 转换
     # 腿不辖本表(「改为获得」条件改写另表
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段拦截),
