@@ -1225,6 +1225,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '敌方侧桶语义按 T-157 同款申报,单条目定形;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 团队力量·金:官方「每有一个已激活的羁绊，小队就会获得6%前/后台强度
+    # 和4%生命增幅。」(cw_invest_data.py, id 251501)。
+    # 战力类零响应登记(UNIT_BUFF 族):「已激活的羁绊」缺「非独立」读法
+    # 分歧 = 游戏侧语义(计数与两段增幅全游戏侧自算,bot 零响应,判读申报
+    # 制留痕 T-150 同窗姊妹先例);effect_text 经数据面表达式单一源,版本
+    # 更新改文自动跟随。
+    '团队力量·金': EffectSpec(
+        id='251501', name='团队力量·金',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251501')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '羁绊计数与两段增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
