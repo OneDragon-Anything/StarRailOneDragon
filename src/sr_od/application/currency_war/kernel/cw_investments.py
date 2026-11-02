@@ -1075,6 +1075,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(策略源 UNIT_BUFF 模式卡首条);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 三三三:官方「3星/3费/穿戴3件装备的角色，获得10%速度增幅和20%前/
+    # 后台强度，满足不同条件的效果可叠加。」(cw_invest_data.py, id
+    # 250701)。
+    # 战力类零响应登记(UNIT_BUFF 族):条件族与两段增幅与叠加语义游戏侧
+    # 自算,bot 零响应(叠加句/条件辖域两读均落零响应域行为恒同,判读申报
+    # 制留痕 T-170 正本/T-253/T-254 同判形);effect_text 经数据面表达式
+    # 单一源,版本更新改文自动跟随。
+    '三三三': EffectSpec(
+        id='250701', name='三三三',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250701')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '条件族与两段增幅与叠加语义游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
