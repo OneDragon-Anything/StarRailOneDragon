@@ -3269,6 +3269,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 零建模 = T-16 §8-1 用户裁定同判,披露键申报)。
     '步狸村之谜': GiftGrant(items_immediate=('简易武装箱',)),
     '阿哈大悦': GiftGrant(items_immediate=('简易武装箱',)),
+    # 秘密典籍:箱腿直读「获得1个【星徽秘典】」(对账 id 230901;
+    # 金腿 instant_gold=8 在册零改动;流程面占席→开典籍→星徽四选一
+    # →选卡观察全链在码零触碰)。
+    '秘密典籍': GiftGrant(items_immediate=('星徽秘典',)),
     # —— 非直读人工转正 2 条(佩佩逛街句:「效果实现发放但非『获得』
     # 直读引导」,人工裁定入册;反扫白名单两键同批退役,注册后排除因
     # 「未登记」不复存在)——
@@ -3307,6 +3311,7 @@ BENCH_ITEM_KINDS: dict[str, str] = {
     '特权武装箱': 'supply_box',
     '进阶武装箱': 'supply_box',
     '专家邀请函': 'bookcard',
+    '星徽秘典': 'tome',
 }
 
 BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
