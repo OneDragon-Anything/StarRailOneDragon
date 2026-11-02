@@ -10,7 +10,10 @@
 两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合):穿戴落位与
 合成在同一写序内完成——owned 摘件 → worn 集合成 → 目标域整表重建写
 (bench/deployed 两域,合成产物落 worn 集尾;
-前后排 = deployed 单字段视图)。规则住本上报
+前后排 = deployed 单字段视图)。持装备获得转换卡局的合成产物经转换
+预测面替换(判定单源 = cw_gain_chain 转换登记表,合成域与获得域同判,
+禁第二份类别谓词——预测产物与实机游戏自算转换同形,对账不失真)。
+规则住本上报
 = kernel 单一源(sim 与实机动作分支同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
 
@@ -26,6 +29,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
@@ -46,9 +50,16 @@ WEAR_LIMIT: int = 3
 _PRODUCER = 'CwActionWearEquipParam'
 
 
-def _wear_synthesis(equips: list[str]) -> list[str]:
+def _wear_synthesis(equips: list[str],
+                    convert: Callable[[str], str] | None = None
+                    ) -> list[str]:
     """穿着即合成(worn 集内两两配方,循环至无可合成;K8 闭合保证
-    终止:基础件对数有限,每次合成件数 −1)。"""
+    终止:基础件对数有限,每次合成件数 −1)。
+
+    convert = 合成产物获得转换注入(持「合成与获得进阶装备时改为获得Y」
+    卡局的产物替换,判定单源 = cw_gain_chain 转换登记表预测面;None =
+    零转换感知)。转换产物以替换名入 worn 集——登记目标不属配方组件域
+    (recipes 空,如好运令牌工具类),不再参与后续配方,终止性不变。"""
     items = list(equips)
     changed = True
     while changed:
@@ -58,6 +69,8 @@ def _wear_synthesis(equips: list[str]) -> list[str]:
             for j in range(i + 1, len(items)):
                 target = synthesize_target(items[i], items[j])
                 if target is not None:
+                    if convert is not None:
+                        target = convert(target)
                     items = [t for k, t in enumerate(items)
                              if k not in (i, j)]
                     items.append(target)
@@ -67,6 +80,20 @@ def _wear_synthesis(equips: list[str]) -> list[str]:
             if merged:
                 break
     return items
+
+
+def _synthesis_convert(gs: GameState) -> Callable[[str], str] | None:
+    """合成产物转换判定构建(持装备获得转换卡局返回产物替换回调,判定
+    单源 = cw_gain_chain 转换预测面惰性转调;不持卡 = None,连链模块
+    import 都不发生,零转换感知局零开销)。穿着即合成的产物 = 游戏侧
+    「合成获得进阶装备」,持「改为获得」卡局的预测须与获得链同判定,
+    禁第二份类别谓词表达式。"""
+    if not gs.active_strategies.value:
+        return None
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        equip_gain_conversion_target,
+    )
+    return lambda item: equip_gain_conversion_target(gs, item) or item
 
 
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
@@ -179,7 +206,8 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                        f'row={getattr(param, "row", "")!r} '
                        f'slot={getattr(param, "slot", 0)!r}')
     domain, idx, unit = located
-    worn = _wear_synthesis(list(unit.equips) + [param.item_name])
+    worn = _wear_synthesis(list(unit.equips) + [param.item_name],
+                           convert=_synthesis_convert(gs))
     if len(worn) > WEAR_LIMIT:
         return _reject('wear_over_cap_rejected',
                        f'合成后 ≤{WEAR_LIMIT} 件',

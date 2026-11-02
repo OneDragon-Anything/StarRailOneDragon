@@ -542,6 +542,16 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 条件 XP 通道,判定 = check_strategy_empty_equip_xp)。
     '空仓': ('简易', 1),
     '空仓+': ('简易', 1),
+    # 好运来(id 231601)腿2「获得2件随机简易装备」即时腿直读行(cw_
+    # invest_data.PLAZA_AUGMENTS 同 id 行);count=2 放回语义实成员
+    # (两次独立掷可重复同件,卡面无「不同」限定,放回即 v0 直读,
+    # 枪在手+ 判例同口径)。腿1 转换腿(「合成与获得进阶装备时，改为
+    # 获得一个【好运令牌】」)不辖本表——「改为获得」条件改写另表
+    # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段
+    # 拦截,两腿分治(自由市场同构);自我交互属卡面字面:选卡先注册后
+    # 跑本效果,掷得的采样名 ∈ 简易池不入本卡进阶谓词照常入栏(设计
+    # designs/T-248-haoyunlai.md §2.3)。
+    '好运来': ('简易', 2),
 }
 
 

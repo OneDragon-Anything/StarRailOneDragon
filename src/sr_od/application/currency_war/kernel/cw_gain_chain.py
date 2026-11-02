@@ -678,12 +678,14 @@ def _equip_gain_conversion_hit(gs: GameState,
       「盲追加幻影」行为边零改写(错名防线 = 登记面漂移哨,非本判定件);
     - 转换 = 确定事件(「改为获得」无分布面),零采样零 rng 消费——持卡
       局掷序不变,世界差异仅在写入内容;
-    - 目标域分支:目标 ∈ BENCH_ITEM_NAMES → 占席道具(现值唯一分支);
-      ∉ = 装备目标分支,转换族批(好运来/独家代言)未落 → 响亮拒绝
-      (登记哨③保证表行目标 ∈ 词表 ∪ 装备注册表,走到此支 = 装备分支
-      被现用而未实现,禁静默漏转换);
-    - 终止性:转发落位经占席道具原语,其路径不再进入装备原语——开箱环路
-      (箱→简易→转换→箱)与腿2 自我转换均单层终止,无需递归护栏。"""
+    - 目标域分支选型不在本判定件(纯判定):目标 ∈ BENCH_ITEM_NAMES →
+      占席道具分支(消费端转发占席道具原语),∉ → 装备分支(消费端名字
+      替换落原插入路径),两分支语义住 :func:`gain_equipment` 顶段;
+    - 单事件单转换(不重入):占席道具分支转发落位经占席道具原语,其
+      路径不再进入装备原语;装备分支消费端直落写入段不再重查本判定。
+      结构性佐证 = 登记目标不属任何在册源类别(简易武装箱 = 占席道具
+      不入装备注册表;好运令牌 = 工具类 ∉ 源类别集),误重入亦零再
+      转换,无需递归护栏。"""
     held = gs.active_strategies.value
     if not held:
         return None
@@ -694,13 +696,20 @@ def _equip_gain_conversion_hit(gs: GameState,
         spec = STRATEGY_EQUIP_GAIN_CONVERSIONS.get(card)
         if spec is None or eq.category != spec[0]:
             continue
-        target = spec[1]
-        if target not in BENCH_ITEM_NAMES:
-            raise LookupError(
-                f'装备获得转换目标域分支未落({card!r} 目标 {target!r} 非'
-                f'占席道具,装备分支留转换族批;禁静默漏转换)')
-        return target, card
+        return spec[1], card
     return None
+
+
+def equip_gain_conversion_target(gs: GameState, item: str) -> str | None:
+    """装备获得转换预测判定(公开只读面,零写零 rng):持卡 ∧ item 属
+    登记源类别 → 获得转换目标名;否则 None。消费面 = 非获得写端的产物
+    预测判定(穿着即合成的合成产物预测,wear_equip 穿戴上报合成链注入;
+    live 合成产物由游戏自算转换,预测须与获得链同判定防对账失真)。写端
+    拦截 = :func:`gain_equipment` 顶段,判定单一源 =
+    :func:`_equip_gain_conversion_hit`(本函数薄转调,禁第二份判定
+    表达式)。"""
+    hit = _equip_gain_conversion_hit(gs, item)
+    return None if hit is None else hit[0]
 
 
 def gain_equipment(gs: GameState, item: str, *, rand: bool,
@@ -714,20 +723,41 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
     装备获得转换拦截(顶段,在栏未观察早退之前——直构域持卡也转换,与
     生产语义一致):持 :data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 在册卡 ∧
     item 属登记源类别(:func:`_equip_gain_conversion_hit`)→ 被转换装备
-    不入栏、不触发 on_equipment_gained 后果分派,转发
-    :func:`gain_bench_item` 发放目标(rand=False 确定事件,转换零 rng),
-    出参 = 合成 ``GainOutcome(placed=落位结果, landing='skipped', detail=
-    'converted:<卡名>')``(调用方零改);转发写 evidence 前缀
-    ``equip_gain_converted:``(后缀保留原获得事件串留证)。live 零写
-    (实机转换由游戏自算,双容器观察自然对账)。"""
+    不入栏、按目标域两分支发放(rand=False 确定事件,转换零 rng),出参
+    detail = ``converted:<卡名>``(调用方零改),转发/写入 evidence
+    前缀 ``equip_gain_converted:``(后缀保留原获得事件串留证):
+    - 目标 ∈ BENCH_ITEM_NAMES(占席道具分支,自由市场族):转发
+      :func:`gain_bench_item`,出参 = 合成 ``GainOutcome(placed=落位
+      结果, landing='skipped', …)``,箱席满走溢出落位既有语义;
+    - 目标 ∉ BENCH_ITEM_NAMES(装备分支,好运来族):名字替换后落原
+      插入路径(写入 + :func:`on_equipment_gained` 以替换名分派)——
+      直落不再重查守卫 = 单事件单转换;转换产物类别不属任何在册源类别
+      (好运令牌 = 工具类),误重入亦零再转换。栏未观察 = 拒落零写,
+      detail = 'equips_unobserved'(与原插入路径同语义档)。
+    live 零写(实机转换由游戏自算,双容器观察自然对账)。"""
     conv = _equip_gain_conversion_hit(gs, item)
     if conv is not None:
         target, card = conv
-        placed = gain_bench_item(gs, target, rand=False, sig=sig,
-                                 evidence=f'equip_gain_converted:{evidence}',
-                                 producer=producer)
-        return GainOutcome(placed=placed, landing='skipped', merge_levels=0,
-                           effects=(), detail=f'converted:{card}')
+        if target in BENCH_ITEM_NAMES:
+            placed = gain_bench_item(gs, target, rand=False, sig=sig,
+                                     evidence=f'equip_gain_converted:{evidence}',
+                                     producer=producer)
+            return GainOutcome(placed=placed, landing='skipped',
+                               merge_levels=0, effects=(),
+                               detail=f'converted:{card}')
+        inv = gs.equips.value
+        if inv is None:
+            # equips 未观察:转换发生在入栏前,拒落零写不回滚改写为入栏
+            # (占席道具分支拒落不回滚同语义档)。
+            return GainOutcome(placed=False, landing='skipped',
+                               merge_levels=0, effects=(),
+                               detail='equips_unobserved')
+        write = _select_write(gs, rand=False)
+        write(gs.equips, list(inv) + [target], produced_by=producer,
+              evidence=f'equip_gain_converted:{evidence}#equip', sig=sig)
+        effects = on_equipment_gained(gs, target, rand=False, sig=sig)
+        return GainOutcome(placed=True, landing='skipped', merge_levels=0,
+                           effects=effects, detail=f'converted:{card}')
     inv = gs.equips.value
     if inv is None:
         # equips 未观察(None)= 开局种子底座下生产不可达(局容器缓存
