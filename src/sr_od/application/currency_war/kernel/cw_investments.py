@@ -1717,6 +1717,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '两段增幅与条件段(在场数>8)游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 打通上下游·金:官方「我方小队速度增幅提高10%。每个节点开始时，速度
+    # 增幅额外提高1%。」(cw_invest_data.py, id 250201)。
+    # 战力类零响应登记(UNIT_BUFF 族):两段速度增幅与节点增长句游戏侧自算,
+    # bot 零响应(增长句 bot 零响应域判读申报制);trigger 占位形
+    # (PLANE_START 与 NODE_ENTER 稿明文零行为差);effect_text 经数据面
+    # 表达式单一源,版本更新改文自动跟随。
+    '打通上下游·金': EffectSpec(
+        id='250201', name='打通上下游·金',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250201')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '两段增幅与节点增长句游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
