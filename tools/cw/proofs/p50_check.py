@@ -1,6 +1,6 @@
 """P50 冶金炉角色用法与回收流水线 数值自检(不进 src;print 仅 ASCII)。
 
-复算证明文档 docs/game/currency_war/research/proofs/p50-furnace-character-mode-ev.md:
+复算证明文档 docs/develop/sr_od/application/currency_war/proofs/p50-furnace-character-mode-ev.md:
   (1) 注册表地基:简易池 8 / 进阶池 36 / K8 闭合(8 基础件);冶金炉效果文本双用法;
       升级锅炉(金增强 230801)效果文本「简易→随机进阶 + 获 2 个炉」;
   (2) 吞吐账:每炉命中率表(P(>=1 命中) 与 E[命中数],r=1..3 次重掷;
@@ -14,8 +14,12 @@
       最优点在 d==0 (mod 3);
   (5) 组件路径期望(精确线性方程组解):交叉目标 E[基础重掷]=12 / 自配=16 vs
       进阶直取=36——合成免费(equipment_mechanics)下组件路径炉效 2.25-3 倍;
-  (6) 升级锅炉账:每用净炉增量 +1(-1+2),炉库存单调不降(F0>=1 永不枯竭);
-      期望基础件消耗 36/命中;三通道资源账单 + 盈亏平衡不等式;
+  (6) 升级锅炉账(裁定 G 2026-11-02 重推:选卡即得 +2、每用纯 -1,流程侧零发放;
+      原读法 P「每用净 +1 自给不枯竭」随裁定系统性失效):有限续航——空手选卡
+      F0=+2 至多再烧 2 次,库存路径单调不增不穿仓;锅炉通道 E=36 炉 + 36 件
+      基础死库存(炉效与直取同价、零炉优势);三通道账单 + 双支配结论(组件
+      路径炉/件两维严格优、直取炉维同价件维严格优;盈亏平衡 17/6 废除,改
+      salvage 逃逸阈代数锚);
   (7) 准入捆绑约束(R1 两支,min(d,3) 显式建模):
       (a) 替换支(池>=3):同 d 同 r,EV 退化 = -Sum(ell) 线性、零吞吐补偿;
       (b) 增量支(池<3):混批增大 d -> 多得一次掷,净账 = w - ell(边际掷价值 w),
@@ -28,7 +32,8 @@
       支撑只含基础件);hoard_gaps/recycle_qualified 互斥性例证(阿雅线)。
 
 口径:池均匀 = p42 A9 同款承重假设(实测分布后幅度项复核);炉到货外生
-(投资牌流,economy §8 / equipment_mechanics §5 获取通道)。
+(投资牌流,economy §8 / equipment_mechanics §5 获取通道;裁定 G 后含锅炉局
+——锅炉不产炉,原「非锅炉局」边界撤回)。
 """
 import os
 import random
@@ -159,32 +164,54 @@ check(e_cross < e_direct and e_self < e_direct, '组件路径炉效应优于进�
 check(abs(e_direct / e_cross - 3.0) < 1e-9, '直取/交叉 恰 3 倍')
 check(abs(e_direct / e_self - 2.25) < 1e-9, '直取/自配 恰 2.25 倍')
 
-# ---------- (6) 升级锅炉账 ----------
-# 对简易使用:耗 1 炉 -> 随机进阶 + 获 2 炉 => 净炉增量 +1/用。
-delta = -1 + 2
-check(delta == 1, '锅炉净炉增量应为 +1')
-f0, stock, min_stock = 1, 1, 1
-for _ in range(1000):            # 库存路径:F0>=1 时单调不降、永不为 0
-    stock += delta
+# ---------- (6) 升级锅炉账(裁定 G 2026-11-02 重推:选卡即得 +2,每用纯 -1) ----------
+# 裁定事实(权威记录 = .debug/progress/2026-09-23-invest-effects-calc/
+# PENDING-DECISIONS.md T-239 已裁定小节):选卡落地立刻获得 2 个冶金炉
+# (无前置炉需求);之后每次烧炉纯消耗 1 炉(流程侧炉上报链零发放);
+# 句①升格修饰不影响炉数量。原读法 P(每用 +2 -> 净 +1 自给不枯竭)随裁定
+# 系统性失效,本节按 G 重推。PICK 登记行与键集闭集锁归实现批测试面
+# (test_gain_chain.py),本脚本不重复登记面断言。
+GRANT_AT_PICK = 2    # 选卡即得炉数(一次性,案 G)
+COST_PER_USE = 1     # 每用消耗(纯消耗,零发放)
+stock, min_stock, uses = GRANT_AT_PICK, GRANT_AT_PICK, 0
+while stock >= COST_PER_USE:     # 无其他炉源:烧到枯竭为止,路径单调不增
+    stock -= COST_PER_USE
     min_stock = min(min_stock, stock)
-check(min_stock >= f0, '锅炉模式下炉库存应单调不降(F0=1)')
-e_boiler_basics = float(N_ADV)   # 每用 1/36 命中特定进阶 -> E[基础件消耗]=36
-print(f'\n[6] boiler: delta=+1 furnace/use, min_stock={min_stock}, '
-      f'E[basic consumed per hit]={e_boiler_basics:.0f}')
-# 三通道资源账单(目标 = 特定进阶 A):
-#   advance-mode : E=36 炉   , 0 件库存销毁(循环喂)
+    uses += 1
+check(uses == GRANT_AT_PICK, 'G 模型:空手选卡 F0=+2,至多再烧 2 次(有限续航)')
+check(stock == 0 and min_stock >= 0,
+      'G 模型:库存单调不增且不穿仓(与 P 模型的单调不降恰相反)')
+e_boiler_basics = float(N_ADV)    # 每用销毁 1 基础件 + 1/36 命中 -> E[基础件消耗/命中]=36
+e_boiler_furnaces = float(N_ADV)  # 每用纯耗 1 炉零回收 -> E[炉消耗/命中]=36,与直取同价
+print(f'\n[6] boiler (ruling G): grant=+{GRANT_AT_PICK} at pick, -{COST_PER_USE}/use, '
+      f'standalone uses={uses} (finite endurance), '
+      f'E[basic consumed/hit]={e_boiler_basics:.0f}, E[furnaces/hit]={e_boiler_furnaces:.0f}')
+# 三通道资源账单(目标 = 特定进阶 A;G 模型下锅炉通道炉效与直取同价、零炉优势):
+#   advance-mode : E=36 炉   , 0 件库存销毁(循环喂;前提 >=1 件进阶死库存起步)
 #   component    : E=12/16 炉, 2 件基础死库存销毁(合成消耗), 合成免费
-#   boiler       : E=0 净炉  , E=36 件基础死库存销毁(+1 炉/用自给)
-# 盈亏平衡(R2 方向修正):boiler 优 <=> 36*v_B - salvage < 12*v_F + 2*v_B
-#   <=> v_F/v_B > (36-2-salvage/v_B)/12 <= 34/12(salvage>=0 ⟹ 阈值 <= 34/12,
-#   salvage=0 取上确界 = 保守充分阈;salvage 升高阈值降低、更利好锅炉;自配通道
-#   (34-s)/16 更低,17/6 为两通道最保守值)
-breakeven = Fraction(36 - 2, 12)
-check(breakeven == Fraction(17, 6), '盈亏平衡比应为 17/6 ~ 2.833')
-print('  channel bills: adv=36 furnaces | comp=12/16 furnaces + 2 basics | '
-      'boiler=36 basics + 0 net furnaces')
-print(f'  breakeven v_F/v_B > {float(breakeven):.3f} (conservative sufficient threshold, '
-      f'salvage=0 supremum; salvage raises -> threshold drops, favors boiler)')
+#   boiler       : E=36 炉 + E=36 件基础死库存 + 有限续航 F0 次封顶
+#                  (单卡自带 F0=2 次,期望命中 2/36;36 炉账单兑现前提 = 外部炉源补流)
+# 双支配(原盈亏平衡 17/6 废除,改支配性结论;salvage 只记锅炉产物残值,沿原账口径):
+#   vs 组件路径:12/16 < 36 且 2 < 36,炉/件两维逐维严格优(零参数,结构级);
+#   vs 直取:炉维同价 36=36,件维 0 < 36 严格(前提 = 有进阶死库存可起步);
+#   salvage 逃逸阈:锅炉翻优组件 <=> s > 24*v_F + 34*v_B;翻优直取 <=> s > 36*v_B
+#   (原模型 salvage 仅二阶修正——17/6 阈值成立前提即 s << 36*v_B,逃逸域在
+#   原适用范围之外)
+check(e_cross < e_boiler_furnaces and e_self < e_boiler_furnaces,
+      '组件路径炉维严格优于锅炉通道(12/16 < 36,双支配·组件支)')
+check(e_boiler_basics > 2, '组件路径件维严格优于锅炉通道(2 < 36,双支配·组件支)')
+check(e_boiler_furnaces == e_direct, '锅炉通道炉效与直取同价(36=36,零炉优势)')
+check(e_boiler_basics > 0, '直取支配锅炉:件销毁维 0 < 36 严格(炉维同价)')
+vf = vb = Fraction(1, 1)
+flip_component = 24 * vf + 34 * vb    # 锅炉翻优组件所需 salvage(v_B 尺度)
+flip_direct = 36 * vb                 # 锅炉翻优直取所需 salvage(v_B 尺度)
+check(flip_component == Fraction(58, 1) and flip_direct == Fraction(36, 1),
+      'salvage 逃逸阈代数锚:s>58 / s>36(v_B 尺度),远超原二阶残值口径')
+print('  channel bills (G): adv=36 furnaces | comp=12/16 furnaces + 2 basics | '
+      'boiler=36 furnaces + 36 basics + F0-use cap')
+print(f'  dominance: boiler dominated by comp (both dims strict) and by direct '
+      f'(furnaces tie, stock strict); salvage escape s>{flip_component} (vs comp) '
+      f'/ s>{flip_direct} (vs direct)')
 
 # ---------- (7) 准入捆绑约束(R1 两支:min(d,3) 显式建模) ----------
 # r = min(d, 3):d = 入池件数。替换支(池>=3)与增量支(池<3)分账。
