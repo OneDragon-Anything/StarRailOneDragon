@@ -1769,6 +1769,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '计数辖域与两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 前段发力:官方「我方小队在进入战斗时行动提前40%，前/后台强度提高
+    # 60%，每经过1行动值，降低1%，最多降低至0。」(cw_invest_data.py,
+    # id 250601)。
+    # 战力类零响应登记(UNIT_BUFF 族):行动提前段/衰减段/两段增幅游戏侧
+    # 自算,bot 零响应(T-157 当头一棒/T-170 延迟收益在册先例,duration
+    # WHILE_HELD 族缺省 12 在册成员全同形);effect_text 经数据面表达式
+    # 单一源,版本更新改文自动跟随。
+    '前段发力': EffectSpec(
+        id=next(a.id for a in PLAZA_AUGMENTS if a.name == '前段发力'),
+        name='前段发力',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250601')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '行动提前/衰减/两段增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 现金为王:官方「出售场上和备战席的所有角色，之后每场进入战斗时，为我方
     # 前台提供护盾，护盾量等同于该次出售角色所获得总金币数*1000。」
     # (cw_invest_data.py:200)。卖全场族素出售第三张注册卡(大裁员/降本增效
