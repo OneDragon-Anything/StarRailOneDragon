@@ -1253,6 +1253,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # ∉ EQUIP_ACQUIRE_CONSEQUENCES,腿序 = 卡文语序,rng 零消费)。
     '蓝钻闪耀': _compose_grant_legs(_make_named_equip_grant_effect('蓝钻', 1),
                                  _make_delayed_only_grant_effect('蓝钻闪耀')),
+
+    # 好运令牌·金 = 具名装备×随机简易双腿组合登记行(卡文「获得1个【好运
+    # 令牌】和1件随机简易装备」;腿1 具名令牌 rand=False 确定写;腿2 简易
+    # 池 8 件均匀随机;不入泛化表防同名键覆盖丢组合腿,腿参数唯一出现点;
+    # rng 仅腿2 消费)。
+    '好运令牌·金': _compose_grant_legs(_make_named_equip_grant_effect('好运令牌', 1),
+                                     _make_random_equip_effect('简易', 1)),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
