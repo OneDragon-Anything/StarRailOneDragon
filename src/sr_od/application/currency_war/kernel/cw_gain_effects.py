@@ -1111,6 +1111,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 撞键;rng 零消费)。
     '装备党': _compose_grant_legs(_make_char_grant_effect('椒丘'),
                                  _make_char_grant_effect('飞霄')),
+
+    # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
+    # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
+    # 点,不入具名角色发放族泛化表防撞键;rng 零消费)。条件段【盛会之星
+    # 羁绊激活时,首次激活3/7/10个不同的非独立羁绊后获得【盛会之星星徽】】
+    # 非零建模——条件装备腿走 STRATEGY_BOND_TIER_GRANTS 注册表 + 结算拍
+    # 检查腿单拍发放,与本即时角色腿分表分治;GRANTS 条目 equips_immediate
+    # 维持()(条件发放禁误补即时字段,误补 = gate 语义丢失)。
+    '梦境大舞台': _compose_grant_legs(_make_char_grant_effect('花火')),
     # 精密拆装·银 = 双腿组合展开卡(卡文「获得1个【精密拆装扳手】。获得1个
     # 随机简易武装。」,具名腿×随机腿双族交叉):直书登记行(非表生成),不入
     # 随机装备泛化表(同名键 dict 顺序覆盖丢腿)、不入具名装备授予族(该族无

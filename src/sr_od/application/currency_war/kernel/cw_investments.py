@@ -5591,3 +5591,93 @@ def _validate_strategy_bench_count_xp_grants() -> None:
 
 
 _validate_strategy_bench_count_xp_grants()
+
+
+# ===== 策略卡羁绊档位条件发放注册表(梦境大舞台;白名单制)=====
+# 「<门槛羁绊>羁绊激活时,战斗中首次激活 A/B/C 个不同的非独立羁绊后,
+# 获得【具名装备】」策略域首例:键 = 策略规范名,值 = StrategyBondTierGrant
+# (gate_faction, tiers, item)。档位入表(区别于环境侧 ENV_BOND_TIER_
+# GRANTS 档位单一源 = FACTIONS tiers——本域卡面档位(3/7/10)与门槛
+# 羁绊自身档位(2/3/4/5/6)两套数值异构,卡面明写常量必须显式登记,防
+# 随 FACTIONS 改版静默漂移)。触发-发放单拍制:结算拍状态评估(gate ∧
+# 激活非独立羁绊数 ≥ 档位)逐档首达直接具名发放,发放时点 = 结算拍本
+# 拍——卡面「战斗中…后获得」无「进入节点时」载体句,与战后触发族
+# (结算拍武装 + 节点窗交付两拍制,发放时点在下一节点窗开)时点语义
+# 异构故不共表(扩形状各建各表,STRATEGY_BOND_BATTLE_GRANTS 同款
+# 纪律)。「首次」= 逐档一次性(各档首达各发一件,一局上限 Σ档位件;
+# 降档再回不重发,祈愿「首达档一次」簿记同口径);闩 = 策略侧首达簿记
+# strategy_bond_tier_fired(GameState 独立新域,per-card '<卡名>#<档位>'
+# 复合键,首购经验腿费用粒度闩同款复合键形)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_bond_tier_grants(触发
+# 检查单一源,唯一调用点 = sim 结算腿;live 零写观察覆盖——星徽入栏有
+# 画面真值可读,实机局不接本通道)。同卡即时角色腿(「获得【花火】」)
+# = cw_gain_effects.PICK_INVEST_EFFECTS 组合登记行承载,本表只辖条件
+# 装备腿;STRATEGY_GRANTS 条目 equips_immediate 维持()(条件发放不入
+# 即时字段,误补会把 gate 语义降级为拿卡即发,同卡两腿分表分治)。
+# 表外策略一律无条目,禁从效果原文自动猜装(STRATEGY_BOND_BATTLE_
+# GRANTS 同款纪律);同族后继「gate + 多档 + 具名 + 逐档闩」卡按注册行
+# 直用本通道接入。
+
+@dataclass(frozen=True)
+class StrategyBondTierGrant:
+    """策略卡「<门槛羁绊>激活时,战斗中首次激活 A/B/C 个不同的非独立
+    羁绊后,获得【具名装备】」登记结构(策略卡羁绊档位条件发放通道专属
+    登记表;字段语义 = 卡面效果原文直读):
+
+    - gate_faction: 门槛羁绊(FACTIONS 键;其计数 ≥ 自身 tiers[0] 才
+      进入档位评估——「羁绊激活时」平读 = 前置状态条件,状态检查型
+      持续满足,gate 关闭期不发放不记档);
+    - tiers: 档位阈值序列(「首次激活3/7/10个」直读,升序登记;逐档
+      首达各发一件,升序 = 同拍跳档时各档发放语序单一源);
+    - item: 逐档发放具名装备(EQUIPMENTS 键,「获得【盛会之星星徽】」
+      直读;逐档发放同一件)。
+    """
+    gate_faction: str
+    tiers: tuple[int, ...]
+    item: str
+
+
+STRATEGY_BOND_TIER_GRANTS: dict[str, StrategyBondTierGrant] = {
+    # 盛会之星羁绊激活时,战斗中首次激活3/7/10个不同的非独立羁绊后,
+    # 获得【盛会之星星徽】(id 252301 原文直读,cw_invest_data
+    # .PLAZA_AUGMENTS 同 id 行;档位 3/7/10 = 卡面明写常量,gate 基数
+    # 2 = FACTIONS tiers[0] 派生非登记值;「不同的非独立羁绊」计数排除
+    # 独立羁绊、门槛羁绊自身计入,判据归触发函数单一源)
+    '梦境大舞台': StrategyBondTierGrant(
+        gate_faction='盛会之星', tiers=(3, 7, 10), item='盛会之星星徽'),
+}
+
+
+def _validate_strategy_bond_tier_grants() -> None:
+    """STRATEGY_BOND_TIER_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_conditional_grants
+    docstring——本表落三漂移哨;档位升序哨按同治理删除:值形/阈值形
+    纯笔误类,游戏数值改版只改「正确值」不破坏升序性,行值精确断言归
+    表域测试把关,防线强于 import 期形查):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
+    静默失联);② gate 漂移:gate_faction 必须在 FACTIONS(档位判据
+    派生源失联 = 条件腿静默失效);③ 装备名漂移:item 必须在
+    EQUIPMENTS(_validate_env_bond_tier_grants 装备名漂移哨同形——
+    EQUIPMENTS 为游戏数据派生注册表,版本更新改名/移除装备可独立触发;
+    错名运行期 = gain_equipment 对未知名盲追加幻影装备入栏,import 期
+    哨是唯一响亮拦截面)。"""
+    orphans = [n for n in STRATEGY_BOND_TIER_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BOND_TIER_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, _grant in STRATEGY_BOND_TIER_GRANTS.items():
+        if _grant.gate_faction not in FACTIONS:
+            raise ValueError(
+                f"STRATEGY_BOND_TIER_GRANTS gate 羁绊漂移({_name!r} "
+                f"FACTIONS 无此羁绊,版本改名?):{_grant.gate_faction!r}")
+        if _grant.item not in EQUIPMENTS:
+            raise ValueError(
+                f"STRATEGY_BOND_TIER_GRANTS 装备名漂移({_name!r} "
+                f"注册表无此装备,版本改名?):{_grant.item!r}")
+
+
+_validate_strategy_bond_tier_grants()

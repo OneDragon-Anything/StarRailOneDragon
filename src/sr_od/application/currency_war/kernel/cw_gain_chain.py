@@ -99,6 +99,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     STRATEGY_BENCH_COUNT_XP_GRANTS,
     STRATEGY_BOND_BATTLE_GRANTS,
+    STRATEGY_BOND_TIER_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
     STRATEGY_BUY_STAR_FLIP_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
@@ -122,6 +123,9 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
     resolve_plane_node_seqs,
 )
 from sr_od.application.currency_war.kernel.cw_pool import grant_char_pool
+from sr_od.application.currency_war.kernel.cw_system_cards import (
+    _faction_count,
+)
 
 #: 链内写端缺省署名(gain-chain.md §2:写点迁移属申报过的行为变化,新写端新名,
 #: 不沿用旧名伪装连续;动作落地接入显式传同值)。
@@ -1892,6 +1896,85 @@ def discharge_strategy_bond_battle_grants(gs: GameState, *,
                    evidence='strategy_bond_battle#consume',
                    sig=sig)
     return granted
+
+
+#: 策略卡羁绊档位条件发放写端署名(家族单一标识,_CONDITIONAL_PRODUCER
+#: 同款家族先例;写端 = 本模块 check_strategy_bond_tier_grants,sim
+#: 结算位发放刻,新写端新名不沿用链缺省伪装连续)。
+_BOND_TIER_PRODUCER: str = 'strategy_bond_tier_grant'
+
+
+def check_strategy_bond_tier_grants(gs: GameState,
+                                    sig: ChannelSig,
+                                    producer: str = _BOND_TIER_PRODUCER,
+                                    ) -> tuple[str, ...]:
+    """策略卡羁绊档位条件发放检查(「<门槛羁绊>羁绊激活时,战斗中首次
+    激活 A/B/C 个不同的非独立羁绊后,获得【具名装备】」触发器单一源,
+    梦境大舞台 id 252301 首例;唯一调用点 = sim 结算腿——live 零写观察
+    覆盖:星徽入栏有画面真值可读,实机局不接本通道)。
+
+    触发-发放**单拍制**(结算拍状态评估直接发放,与战后触发族两拍制
+    时点语义异构;防重归调用方 `_settled_key` 节点键幂等守卫,本函数
+    零二次守卫)。条件矩阵(顺序即短路序):
+
+    1. 持卡交集(``active_strategies.value`` ∩ STRATEGY_BOND_TIER_
+       GRANTS 键集)为空 → 空元组(表外卡一律无条目,禁从效果原文
+       自动猜装);
+    2. gate 判据(逐持卡):门槛羁绊计数 < 自身 tiers[0] → 本卡整腿
+       跳过零写零闩——「羁绊激活时」= 前置状态条件,状态检查型持续
+       满足,gate 关闭期不武装不记档;gate 后开而计数已达标 → 首个
+       达标结算发放(漏判激活比多判更伤容错方向同源);
+    3. 激活非独立羁绊全集:FACTIONS 逐族 ``计数 ≥ tiers[0]`` ∧
+       ``category != 'independent'`` 过滤取集合——卡面「不同的非独立
+       羁绊」平读排除独立 7 族(卡面显式限定词,代码侧排除本卡首例消
+       费 category 字段),gate 羁绊自身计入(非独立族,平读无限定
+       排除词);计数走 :func:`cw_system_cards._faction_count`(board
+       容器 × board_by_row 身份聚合双源取 max 容错——判激活侧非计费
+       侧;L2 星徽装备贡献只有 board 容器(左面板真值口径)承载,双源
+       max 融合天然计入;双源双缺 → 0 零武装 fail-closed);
+    4. 逐档首达闩 + 发放:``spec.tiers`` 升序逐档,激活数 ≥ 档位 ∧
+       ``'<卡名>#<档位>'`` ∉ 闩域(strategy_bond_tier_fired)→
+       ``gain_equipment(rand=False)`` 具名确定发放(零 rng,较类别
+       采样族更窄单路径)→ 发放落位(placed)才落闩(拒落域不闩,
+       equips 未观察时重试自愈,条件发放腿同款);同拍多档(单结算
+       板面跳档)按 tiers 升序逐档各发一件,语序固定;闩命中后永不
+       再发(降档再回不弹,祈愿首达档簿记判例同口径)。
+
+    返回实际发放 evidence 串元组(断言面;生产调用零回调面,sim 挂点
+    忽略返回值)。
+    """
+    held = [n for n in gs.active_strategies.value or ()
+            if n in STRATEGY_BOND_TIER_GRANTS]
+    if not held:
+        return ()
+    fired = tuple(gs.strategy_bond_tier_fired.value or ())
+    granted: list[str] = []
+    for name in held:
+        spec = STRATEGY_BOND_TIER_GRANTS[name]
+        if _faction_count(gs, spec.gate_faction) \
+                < FACTIONS[spec.gate_faction].tiers[0]:
+            continue
+        activated = {f for f, info in FACTIONS.items()
+                     if info.category != 'independent'
+                     and _faction_count(gs, f) >= info.tiers[0]}
+        for tier in spec.tiers:
+            if len(activated) < tier:
+                continue
+            latch_key = f'{name}#{tier}'
+            if latch_key in fired:
+                continue
+            evidence = f'strategy_bond_tier:{name}@{tier}'
+            out = gain_equipment(gs, spec.item, rand=False, sig=sig,
+                                 evidence=evidence, producer=producer)
+            if not out.placed:
+                continue
+            # 登记事实直写(条件发放腿闩同款:发放与封账同 evidence
+            # 同 sig 同组;逐档单笔,同拍多档按 tiers 升序逐笔)
+            gs.write_logic(gs.strategy_bond_tier_fired, fired + (latch_key,),
+                           produced_by=producer, evidence=evidence, sig=sig)
+            fired = fired + (latch_key,)
+            granted.append(evidence)
+    return tuple(granted)
 
 
 #: 策略卡每节点绑定角色复制发放写端署名(家族单一标识,_CONDITIONAL_

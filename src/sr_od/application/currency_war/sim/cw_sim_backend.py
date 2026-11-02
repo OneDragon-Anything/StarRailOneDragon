@@ -96,6 +96,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_battle_grants,
     check_strategy_bench_count_xp,
     check_strategy_bond_battle_grants,
+    check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
     check_strategy_empty_equip_xp,
     check_strategy_hp_loss_grants,
@@ -3945,6 +3946,18 @@ class SimBackend:
         check_strategy_bond_battle_grants(
             self.gs, sig=logic_sig('sim:strategy'),
             producer=GAIN_CHAIN_PRODUCER)
+        # —— 策略卡羁绊档位条件发放(梦境大舞台 id 252301 首例;接线点 =
+        # 羁绊条件战后武装拍之后、败局待办登记之前,胜败两态共同路径——
+        # 卡面无「胜利」限定 = 败局存活也评;死亡局在本函数提前 return 处
+        # 已出局,不发放)。触发-发放单拍制(区别于上一腿两拍制:本卡
+        # 「战斗中…后获得」发放时点 = 结算拍本拍,无节点窗载体句),条件
+        # 单一源 = kernel check_strategy_bond_tier_grants(gate + 激活非
+        # 独立羁绊档位评估 + 逐档首达闩,具名确定发放);sig =
+        # logic_sig('sim:strategy') 沿策略战后发放腿同组;零 rng(具名
+        # 确定发放零采样);幂等零新增守卫 = 本函数 _settled_key(同节点
+        # 重放整段跳过);返回值忽略(无回调面);live 零写观察覆盖
+        #(星徽入栏有画面真值可读)。
+        check_strategy_bond_tier_grants(self.gs, logic_sig('sim:strategy'))
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

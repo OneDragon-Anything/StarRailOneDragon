@@ -301,6 +301,15 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'check_strategy_bond_battle_grants(武装)/ '
               'discharge_strategy_bond_battle_grants(消费),唯一调用点 '
               '= sim 结算腿与节点窗收口腿'),
+    'strategy_bond_tier_fired': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='策略卡羁绊档位条件发放已发档位闩(逐档「首次」簿记,元素 '
+              "= '<卡名>#<档位>' 复合键,first_buy_xp#<费用> 复合键同款;"
+              '降档再回不弹,祈愿首达档簿记判例),无观察读端——条件评估真值'
+              '系 sim 世界内部判定(板面激活数),live 无独立观察通道(星徽'
+              '入栏 = equips 观察覆盖,不对称申报同族先例);唯一逻辑写端 '
+              '= cw_gain_chain.check_strategy_bond_tier_grants(发放落位'
+              '刻逐档追加,拒落域不闩重试自愈),唯一调用点 = sim 结算腿'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),
