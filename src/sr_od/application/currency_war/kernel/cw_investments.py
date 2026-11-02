@@ -1735,6 +1735,23 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '两段增幅与节点增长句游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 独狼:官方「若角色不具有已激活的非独立羁绊，使其获得120%前/后台强度
+    # 和36%伤害减免。」(cw_invest_data.py, id 250401)。
+    # 战力类零响应登记(UNIT_BUFF 族):条件段「非独立羁绊」与两段增幅游戏
+    # 侧自算,bot 零响应(条件时点读法游戏侧内部口径判读申报制);effect_text
+    # 经数据面表达式单一源,版本更新改文自动跟随。
+    '独狼': EffectSpec(
+        id='250401', name='独狼',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '250401')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '条件段与两段增幅游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 现金为王:官方「出售场上和备战席的所有角色，之后每场进入战斗时，为我方
     # 前台提供护盾，护盾量等同于该次出售角色所获得总金币数*1000。」
     # (cw_invest_data.py:200)。卖全场族素出售第三张注册卡(大裁员/降本增效
