@@ -1131,6 +1131,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '换位镜像增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 风暴骑士:官方「前台一号位角色获得150%速度增幅。进入战斗时，该角色
+    # 回合开始时，受到等同于生命上限70%固定数值的风属性附加伤害。」
+    # (cw_invest_data.py, id 251001)。
+    # 战力类零响应登记(UNIT_BUFF 族):速度增幅/self-debuff 反噬段游戏侧
+    # 自算,bot 零响应(「一号位」读法与 clause② 周期性读法判读申报制
+    # T-258 DONE 立制;70% 伤害语境承 T-257 在册归类;混合极性 sim 双
+    # clause 方向申报);effect_text 经数据面表达式单一源,版本更新改文
+    # 自动跟随。
+    '风暴骑士': EffectSpec(
+        id='251001', name='风暴骑士',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251001')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '增幅与反噬两段游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
