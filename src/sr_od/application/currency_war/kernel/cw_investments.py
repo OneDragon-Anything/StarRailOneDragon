@@ -2064,6 +2064,28 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '本条目不承载;腿 3 那刻夏授予在 STRATEGY_GRANTS;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 星魂升华:官方「本局游戏中，我方前台角色的星魂提高1阶」
+    # (cw_invest_data.py PlazaAugment 253101)。战力类零响应登记
+    # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
+    # 「游戏侧自算,bot 仅登记零响应」)。星魂 = 本体账号养成映射进局
+    # (gameplay.md 角色招募规则节:前台角色沿用账号星魂),本卡效果 =
+    # 前台角色映射星魂 +1 阶,游戏侧自算,bot 零响应。「前台」= 游戏
+    # 词面,代码域 = 前排(DeployedView.front_slots,判读申报制禁当
+    # 定谳转引);无离散触发事件,trigger 占位形对齐环境源
+    # _portal_placeholder_spec 先例;effect_text 经 PLAZA_AUGMENTS
+    # id 恰一命中单一源(版本更新改文自动跟随,id 漂移 import 即炸)。
+    '星魂升华': EffectSpec(
+        id='253101', name='星魂升华',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '253101')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记;游戏侧自算,bot 仅登记;'
+              '前台=游戏词面(代码域前排,DeployedView.front_slots),'
+              '星魂满阶溢出处理游戏侧语义未采证不建模不猜测;'
+              '无离散触发事件,trigger 占位形'),
 }
 
 
