@@ -219,6 +219,14 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
 
     '人才济济': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
+    # 赞美太阳:节点条件 XP 腿(每拥有一件【白昼装备】以及其原型装备,
+    # 进入新节点每件 +1)已建世界通道 = cw_investments
+    # .STRATEGY_EQUIP_COUNT_XP_GRANTS(计数域 = DAYLIGHT_EQUIP_XP_NAME_SET
+    # 白昼系名集)+ kernel 纯判定 + sim 节点窗挂点;动态计数挂 xp_per_node
+    # 无条件通道 = 系统性失真(零拥有局虚计/多件局漏计,空仓/人才空洞
+    # 同判),STRATEGY_ECONOMY 零条目维持
+    '赞美太阳': '装备计数经验腿已建世界通道 STRATEGY_EQUIP_COUNT_XP_GRANTS;'
+              '估值零登记维持',
     # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
     # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
     '狸财经狸': '取款分支(金<20 取 10)+存款分支(P3 首领取全部存款)无字段载体;'

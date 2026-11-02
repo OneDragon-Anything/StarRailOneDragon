@@ -87,11 +87,13 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_units_of,
     bench_view_of_working,
     deployed_indexed_of_view,
+    deployed_rows_of,
     deployed_view_of_indexed,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     BENCH_ITEM_KINDS,
     BENCH_ITEM_NAMES,
+    DAYLIGHT_EQUIP_XP_NAME_SET,
     ENV_BOSS_GRANTS,
     ENV_GIFTS,
     ENV_REROLL_NAMES,
@@ -109,6 +111,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     STRATEGY_EMPTY_EQUIP_XP_GRANTS,
     STRATEGY_ENCOUNTER_BATTLE_GRANTS,
+    STRATEGY_EQUIP_COUNT_XP_GRANTS,
     STRATEGY_EQUIP_GAIN_CONVERSIONS,
     STRATEGY_FIRST_BUY_XP_GRANTS,
     STRATEGY_GRANTS,
@@ -1365,6 +1368,51 @@ def check_strategy_bench_count_xp(gs: GameState) -> int:
                 (op == 'ge' and count >= threshold):
             total += xp
     return total
+
+
+def check_strategy_equip_count_xp(gs: GameState) -> int:
+    """策略卡装备计数经验检查(「每拥有一件【白昼装备】以及其原型装备，
+    在进入新节点时就获得1点经验」触发器单一源,赞美太阳 id 252401 首例;
+    **纯读零写零 rng**——kernel 判定无 sig 形参零世界写,唯一调用点 =
+    sim 节点窗挂点写端;零 done 闩:卡面无「首次」限定,每节点窗可重复,
+    幂等归窗口守卫。live 不评估本条件(实机 XP 由游戏自算自显,经验条
+    观察链覆盖)。
+
+    条件矩阵(顺序即短路序):
+
+    1. None 防御:策略集未观察 → 0(fail-closed 与「宁可漏发不误发」
+       同向——sim 生产开局种子底座不触发,直构/单测域触发);
+    2. 持卡 ∩ :data:`STRATEGY_EQUIP_COUNT_XP_GRANTS` 为空(未持卡/表外卡
+       同路,表外卡禁从效果原文自动猜装)→ 0;
+    3. 计数:白昼系名集(:data:`DAYLIGHT_EQUIP_XP_NAME_SET`)四源持有
+       件数 = 前排已穿 + 后排已穿 + 备战席已穿(记录内)+ 装备库存
+       (:func:`held_equip_count` 同基座按名集展开,现函数零触碰)——
+       拥有口径,官方文无「装备者」限定,宽口径多计进对账可见优于漏计
+       静默;字段未观察 = 该源跳过不猜,少计只漏发不误发;备战席装备
+       图标观察面 = 负探针盲区,记录内持有可能被低估,盲区随观察面建模
+       收窄,消费侧对账按真值归因;
+    4. 返回 = 件数 × 持卡各行值合计(多卡同持求和,XP 量按持卡集合计)。
+    """
+    strategies = gs.active_strategies.value
+    if strategies is None:
+        return 0
+    held = [n for n in strategies if n in STRATEGY_EQUIP_COUNT_XP_GRANTS]
+    if not held:
+        return 0
+    names = DAYLIGHT_EQUIP_XP_NAME_SET
+    count = 0
+    for units in deployed_rows_of(gs):
+        for u in units:
+            count += sum(1 for e in (u.equips or []) if e in names)
+    view = gs.bench.value
+    if view is not None:
+        for s in view.slots:
+            if s is not None and s.kind == 'unit' and s.unit is not None:
+                count += sum(1 for e in (s.unit.equips or []) if e in names)
+    inv = gs.equips.value
+    if inv is not None:
+        count += sum(1 for e in inv if e in names)
+    return count * sum(STRATEGY_EQUIP_COUNT_XP_GRANTS[n] for n in held)
 
 
 #: 策略卡购买翻星写端署名(家族单一标识,_FIRST_BUY_XP_PRODUCER 同款

@@ -2039,6 +2039,31 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '×1000 记实例 counters[SHIELD_BANK](正本 fields.md 卖全场族'
               '行/effect-domain §4);护盾授予=每场进入战斗游戏侧自算 '
               'bot 零响应'),
+    # 赞美太阳:官方「每拥有一件【白昼装备】以及其原型装备，在进入新节点时
+    # 就获得1点经验。角色每穿戴一件【白昼装备】，幸运一击率提高10%。获得
+    # 【那刻夏】。」(cw_invest_data.py, id 252401)。
+    # 三腿分治:腿 1 装备计数经验 = 条件 XP 族世界通道
+    # STRATEGY_EQUIP_COUNT_XP_GRANTS + kernel 判定 + sim 节点窗挂点(本表
+    # 不承载——动态计数挂无条件通道 = 零拥有局虚计/多件局漏计,且载荷
+    # 类型闭集 UNIT_BUFF→UnitBuffRef);腿 2 幸运穿戴计件 = 战力类零响应
+    # 登记(invest_effects 战力类「幸运」直辖,游戏侧自算,bot 仅登记);
+    # 腿 3 具名授予在 STRATEGY_GRANTS 直书行(本表零条目);effect_text
+    # 经数据面表达式单一源,版本更新改文自动跟随。
+    '赞美太阳': EffectSpec(
+        id='252401', name='赞美太阳',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '252401')),
+        duties=DutyFlags(),
+        notes='腿 2 幸运一击率 +10%/件战力类零响应登记(UNIT_BUFF 族);'
+              '穿戴计数与增幅游戏侧自算,bot 仅登记;'
+              '腿 1 经验腿 = STRATEGY_EQUIP_COUNT_XP_GRANTS 世界通道'
+              '(拥有 = 四源持有口径,判定单一源在 cw_gain_chain),'
+              '本条目不承载;腿 3 那刻夏授予在 STRATEGY_GRANTS;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
@@ -5681,3 +5706,65 @@ def _validate_strategy_bond_tier_grants() -> None:
 
 
 _validate_strategy_bond_tier_grants()
+
+
+# ===== 策略卡装备计数经验登记表(白名单制;「每拥有一件【白昼装备】以及其
+# ===== 原型装备，在进入新节点时就获得1点经验」装备计数调制 XP 族首例)=====
+# 判定单一源;消费端 = kernel/cw_gain_chain.check_strategy_equip_count_xp
+# (纯读零写零 rng,世界写端 = sim 节点窗挂点唯一调用口;零 done 闩——卡面
+# 无「首次」限定,每节点窗可重复,幂等归窗口守卫)。表外卡一律无条目,禁从
+# 效果原文自动猜装(STRATEGY_EMPTY_EQUIP_XP_GRANTS 同款纪律);同族后继
+# 「按装备持有件数给经验」卡按注册行直用本通道接入。
+
+STRATEGY_EQUIP_COUNT_XP_GRANTS: dict[str, int] = {
+    # 赞美太阳:官方「每拥有一件【白昼装备】以及其原型装备，在进入新节点时
+    # 就获得1点经验。」(id 252401 原文直读,cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行;值 = 每件每节点 XP 量,卡面明写)。计数域 = 白昼系名集
+    # DAYLIGHT_EQUIP_XP_NAME_SET(见下);拥有口径 = 四源持有
+    # (held_equip_count 同基座,官方文无「装备者」限定,宽口径多计进对账
+    # 可见优于漏计静默);动态计数禁挂 xp_per_node 无条件通道(静态挂值 =
+    # 零拥有局虚计/多件局漏计,空仓/人才空洞族同判,STRATEGY_ECONOMY 零
+    # 条目维持)。
+    '赞美太阳': 1,
+}
+
+
+#: 白昼系计数名集(「【白昼装备】以及其原型装备」的程序化口径):白昼类
+#: 全集(注册表 category 派生,禁本地平行名单——注册表白昼段扩员自动跟上)
+#: ∪ 三基件名(「其原型装备」= 变体链基件,词面直读)。特权变体三件
+#: (「·特权」后缀)按词面不入(判读申报制非定谳);两读法行为等价的依据
+#: = 特权件 sim 结构性不可达(零羁绊世界不产白昼;合成排除白昼/特权类;
+#: 随机装备池仅简易/进阶)→ 两读法计数恒等,裁据变更须族批同步重申报。
+DAYLIGHT_EQUIP_XP_NAME_SET: frozenset[str] = frozenset(
+    {n for n, _e in EQUIPMENTS.items() if _e.category == '白昼'}
+    | {'光速螺旋桨', '武器大师', '斩首行动'})
+
+
+def _validate_strategy_equip_count_xp_grants() -> None:
+    """STRATEGY_EQUIP_COUNT_XP_GRANTS / DAYLIGHT_EQUIP_XP_NAME_SET 构建
+    校验(import 即炸;治理口径 = 用户裁定 2026-10-28「只能由写表人笔误
+    触发的校验删,能被游戏版本变更独立触发的漂移哨留」,同
+    _validate_strategy_empty_equip_xp_grants docstring——本域落两哨):
+
+    ① 孤儿键:表键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);XP 量系卡面手抄常量,值形查按治理不加,对账归本表域测试把关
+    (行值精确断言 + id 对拍,防线强于 import 期形查)。② 装备名漂移:
+    名集全体必须在 EQUIPMENTS(白昼半区派生自注册表恒在册,哨实辖三基件
+    名半区——版本改名/移除基件即炸;错名运行期 = 计数恒 0 静默漏发,
+    import 期哨是唯一响亮拦截面,_validate_strategy_bond_tier_grants
+    装备名漂移哨同形)。"""
+    orphans = [n for n in STRATEGY_EQUIP_COUNT_XP_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_EQUIP_COUNT_XP_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    missing = sorted(n for n in DAYLIGHT_EQUIP_XP_NAME_SET
+                     if n not in EQUIPMENTS)
+    if missing:
+        raise ValueError(
+            f"DAYLIGHT_EQUIP_XP_NAME_SET 装备名漂移(注册表无此装备,"
+            f"版本改名?):{missing}")
+
+
+_validate_strategy_equip_count_xp_grants()

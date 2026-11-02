@@ -99,6 +99,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
     check_strategy_empty_equip_xp,
+    check_strategy_equip_count_xp,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
@@ -3180,6 +3181,43 @@ class SimBackend:
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:bench_count')
+                self.gs.observe(self.gs.level, level, evidence=xp_ev,
+                                sig=xp_sig)
+                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
+                                sig=xp_sig)
+        # 策略卡装备计数经验腿(「每拥有一件【白昼装备】以及其原型装备，
+        # 在进入新节点时就获得1点经验」族,赞美太阳 id 252401 首例):进窗
+        # 事实点在窗口幂等守卫内(重放不双发),kernel 检查函数单一源
+        # check_strategy_equip_count_xp(纯读零写,未持卡/零持有零写,零
+        # done 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位
+        # 收口(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
+        # node_char/羁绊交付/空仓/备战席计数;同段为收口序单一——邻位 ≠
+        # 互不影响,对账见下)。前置腿本卡谓词输入域(装备库存与穿戴)写端
+        # 对账:空仓腿零装备域写(空仓守卫恰要求物品栏无非消耗品);羁绊
+        # 交付腿/直发取卡腿/延时发放腿位于本挂点前且可写装备域(随机星徽/
+        # 新卡随机装备/延时具名装备)——现序下其产出计入本窗件数(先入栏
+        # 后计数 = 「拥有」进窗快照口径)。相对序官方无定谳 = 判读申报制
+        # 辖域,现位申报:备战席计数腿后、商店全刷前(证伪路径 = 实机持卡
+        # 局同窗装备入栏 XP 发放观察,证伪则改序重申报)。挂点钉在商店全刷
+        # 前:XP 输出与同窗发牌有真实耦合(全刷直读 gs.level 取发牌概率),
+        # 先写 = 本窗发牌分布按升级后等级,与卡面「进入新节点时…获得」的
+        # 即时到账语义一致(顺序非无关,禁以后写形态表述)。live 零写观察
+        # 覆盖(实机 XP 由游戏自算自显,经验条观察链 read_xp_progress 覆盖;
+        # live 不评估条件——四源持有观察通道在册〔库存/穿戴〕可对账,对账
+        # 义务归采集批,零写义务不变)。XP 世界写与节点经验/即时经验同域
+        # 同组(sig 'sim:xp'),evidence 独立笔 'xp:equip_count' 分账;零 rng
+        # 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
+        # (apply_node_xp 同形态)。
+        equip_xp = check_strategy_equip_count_xp(self.gs)
+        if equip_xp > 0:
+            xp_field = self.gs.xp.value
+            level_field = self.gs.level.value
+            if xp_field is not None and level_field is not None:
+                level, cur = xp_apply_amount(int(level_field),
+                                             int(xp_field[0]), equip_xp)
+                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+                xp_sig = obs_sig(group_id='sim:xp')
+                xp_ev = sim_evidence('xp:equip_count')
                 self.gs.observe(self.gs.level, level, evidence=xp_ev,
                                 sig=xp_sig)
                 self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
