@@ -1119,6 +1119,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '借力打力': _compose_grant_legs(_make_char_grant_effect('黑塔'),
                                  _make_char_grant_effect('缇宝')),
 
+    # 量子力学 = 单角色组合登记行(卡文「获得【希儿】」;单腿具名角色
+    # rand=False;效果串 1 条;条件段【量子同频星数档位】游戏侧自算,
+    # bot 零建模;希儿 1★ 先验家族口径,希儿同物组合行第三例[钢铁美学/
+    # 量子同频星徽后];腿参数唯一出现点,不入泛化表防撞键;rng 零消费)。
+    '量子力学': _compose_grant_legs(_make_char_grant_effect('希儿')),
+
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
     # 点,不入具名角色发放族泛化表防撞键;rng 零消费)。条件段【盛会之星
