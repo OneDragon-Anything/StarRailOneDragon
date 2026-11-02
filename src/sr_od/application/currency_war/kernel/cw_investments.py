@@ -1243,6 +1243,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '羁绊计数与两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 钻石恒永久:官方「获得1个【红钻】，角色每携带1件钻石或由钻石合成的
+    # 装备，在进入新节点时会永久获得3%伤害增幅。」(cw_invest_data.py,
+    # id 251601)。
+    # 双腿卡:腿1 具名授予走 PICK_INVEST_EFFECTS 直书登记行(红钻 1 件,
+    # 本表零条目);腿2 携带增长战力面零响应登记(UNIT_BUFF 族)——携带
+    # 读法/合成边角/增长句游戏侧自算,bot 零响应(钻石词域两读法行为全等
+    # 判读申报制;红钻走 on_diamond_acquired 早退零触发在码);effect_text
+    # 经数据面表达式单一源,版本更新改文自动跟随。
+    '钻石恒永久': EffectSpec(
+        id='251601', name='钻石恒永久',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '251601')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '携带计数与增长段游戏侧自算,bot 仅登记;'
+              '腿1 具名授予在 PICK_INVEST_EFFECTS 直书行;'
+              '无离散触发事件,trigger 占位形'
+              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。

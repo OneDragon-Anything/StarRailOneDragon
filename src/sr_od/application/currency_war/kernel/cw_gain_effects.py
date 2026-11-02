@@ -1189,6 +1189,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 写端缺口归 T-112 族级待办。
     '无害垃圾': _make_named_equip_grant_effect('垃圾袋', 1),
     '黄金垃圾': _make_named_equip_grant_effect('金垃圾袋', 1),
+    '钻石恒永久': _make_named_equip_grant_effect('红钻', 1),
     # 这么大的钻石 = 具名角色×具名装备双腿组合登记行(卡文「佩佩携带
     # 【财富宝钻】出现，这么大的钻石，送给你！」,用户裁定 2026-11-02
     # 拍读法 B:佩佩真实入后台 + 宝钻入装备栏;腿序 = 卡文语序佩佩腿先/
