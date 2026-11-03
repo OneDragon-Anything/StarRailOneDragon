@@ -714,8 +714,11 @@ class CwActionPickInvestStrategyParam:
     (``normalize_invest_name``,OCR 原始名不静默改写由 handler 持有)。
     动作 op 点完确认**立即自上报完整结果**(写入 game state;用户裁定
     「选择动作执行就按成功处理,没有选到就是代码 bug」,原分步上报废除)。
-    norm_name/route_tag 不入动作实例键(归因载荷不改变动作身份,同
-    route_tag 先例)。
+    norm_name/route_tag/margin 不入动作实例键(归因载荷不改变动作身份,
+    同 route_tag 先例)。``margin`` = 次名分量遥测载荷(决策评分帧的
+    竞争域次名,键形 = pick-margin-telemetry design §2.2-2;None =
+    非选卡出口/空候选帧不落值,经 decision_payload 钩子键 pick_margin
+    透传)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
@@ -727,6 +730,8 @@ class CwActionPickInvestStrategyParam:
                            metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+    margin: dict | None = field(default=None, kw_only=True,
+                                metadata={'action_key_exclude': True})
 
 
 @dataclass
@@ -734,7 +739,8 @@ class CwActionPickInvestEnvParam:
     """投资环境屏选择(投资环境 3 选 1;投资策略屏 = CwActionPickInvestStrategyParam)。
 
     拆类与上报语义同 CwActionPickInvestStrategyParam:点完确认立即自
-    上报完整结果(获得投资环境 → gain_invest_env 整链)。
+    上报完整结果(获得投资环境 → gain_invest_env 整链)。``margin``
+    语义同策略屏侧(pick-margin-telemetry design §2.2-1 键形)。
     """
     idx: int
     # [索引定义] 坐标系: 同 CwActionPickInvestStrategyParam.idx。
@@ -743,6 +749,8 @@ class CwActionPickInvestEnvParam:
                            metadata={'action_key_exclude': True})
     route_tag: str = field(default='', kw_only=True,
                            metadata={'action_key_exclude': True})
+    margin: dict | None = field(default=None, kw_only=True,
+                                metadata={'action_key_exclude': True})
 
 
 @dataclass

@@ -23,8 +23,11 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
   系数,压不过 S 线方向分 = 「用户点名是偏好不是支配」);user-forbid =
   排除出候选(28 号稿 §3)。
 
-argmax 取最高,平分取先。禁选(env_forbid 命中)与自拆台(:func:`_counters_dot`,
-28 号稿 §3)= 排除出候选。
+argmax 取最高,平分取先。禁选(env_forbid 命中)与阵容冲突出域 =
+排除出候选(28 号稿 §3);选卡克制(counters_dot 硬排除迁移,
+2026-11-03-unified-line-scoring design §3.2/§7)= 克制锚点线主派的
+候选减 :data:`cw_line_scales.COUNTER_PICK_PENALTY`(纯加权;环境名
+不含词缀注册名族,该分量现行恒 0——机制与策略屏同源,判据不双源)。
 
 阵容冲突护栏(changes/2026-10-17-invest-direction-guard,下称「护栏设计」
 §2.2/§2.4):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
@@ -48,7 +51,7 @@ kernel 侧 env 评估机器(裸分/送卡档/阵营 floor/经济域带/环境帧
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
@@ -69,12 +72,13 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.gift_value import
     named_gift_value,
     random_faction_gift_value,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
-    BOARD_DOT_COUNT_THRESHOLD,
-    STEERING_PRIORITY_BONUS,
+from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
+    anchor_line_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
-    counters_dot as _counters_dot,
+    STEERING_PRIORITY_BONUS,
+    counter_pick_penalty,
+    punished_mechs_of,
 )
 
 if TYPE_CHECKING:
@@ -91,9 +95,14 @@ class InvestEnvDecision:
 
     idx = options 容器下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与四组件分解,仅观测)。
+    margin = 次名分量遥测(pick-margin-telemetry design §2.2-1 键形
+    ``{runner_up, runner_up_total, margin}``,值源 = 决策评分帧 scores
+    列表[含转向轴],禁用 option_total;竞争域仅 1 候选 → 三键 null;
+    空候选帧不落值 None;仅观测,决策面零消费)。
     """
     idx: int
     reason: str
+    margin: dict | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -312,56 +321,82 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  env_priority: list[str],
                  env_forbid: list[str],
                  basis: frozenset[str]) -> tuple[list[float], list[float],
-                                                 list[tuple[float, float, float, float]],
+                                                 list[tuple[float, ...]],
                                                  list[bool]]:
-    """帧评分一次(选卡/刷新两入口共享,禁二次评分;板面 DoT/减益计数
-    循环外单帧单读,沿旧机器纪律):
-    返回 (总分含转向轴,转向加分,四组件,排除标记)。
+    """帧评分一次(选卡/刷新两入口共享,禁二次评分;选卡锚点线/受克
+    属性集循环外单帧单读,沿旧机器纪律):
+    返回 (总分含转向轴,转向加分,五组件,排除标记)。
 
     basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):出域槽
-    (候选环境有指向且与基准零交,§2.4)并入 excluded 槽位表——与禁选/
-    自拆台同通道,禁选槽触发建议刷与全排除回退两条既有路径原样复用,
-    零新出口形态。"""
-    board = gs.board.value or {}
-    on_dot = sum(board.get(_f, 0) for _f in ('持续伤害', '减益')) \
-        >= BOARD_DOT_COUNT_THRESHOLD
+    (候选环境有指向且与基准零交,§2.4)并入 excluded 槽位表——与禁选
+    同通道,禁选槽触发建议刷与全排除回退两条既有路径原样复用,
+    零新出口形态。克制减分(counters_dot 硬排除迁移,design §3.2/§7)
+    = 组件分量:环境名不含词缀注册名族,该分量现行恒 0——机制与策略屏
+    同源(锚点线 = :func:`line_select.anchor_line_of`),判据不双源。"""
+    anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
+    punished = punished_mechs_of(anchor)
     scores: list[float] = []
     steers: list[float] = []
-    components: list[tuple[float, float, float, float]] = []
+    components: list[tuple[float, ...]] = []
     excluded: list[bool] = []
     for _opt in options:
         _cash, _dir, _gift, _stance = _components(
             _opt, gs, locked_comp, demoted_endgame, evicted)
         _steer = STEERING_PRIORITY_BONUS if any(
             _p in _opt for _p in env_priority) else 0.0
+        _counter = float(counter_pick_penalty(_opt, punished))
         # 出域标记(护栏设计 §2.3 规则表):基准非空 ∧ 候选有指向 ∧ 与
         # 基准零交;通用环境(指向集空)与基准空帧恒不标记
         _scope = env_faction_scope(_opt)
         _off = bool(basis) and bool(_scope) and not (_scope & basis)
-        _excluded = any(_p in _opt for _p in env_forbid) \
-            or (on_dot and _counters_dot(_opt)) or _off
-        scores.append(_cash + _dir + _gift + _stance + _steer)
+        _excluded = any(_p in _opt for _p in env_forbid) or _off
+        scores.append(_cash + _dir + _gift + _stance + _steer + _counter)
         steers.append(_steer)
-        components.append((_cash, _dir, _gift, _stance))
+        components.append((_cash, _dir, _gift, _stance, _counter))
         excluded.append(_excluded)
     return scores, steers, components, excluded
 
 
-def _pick_decision(scores: list[float], steers: list[float],
-                   components: list[tuple[float, float, float, float]],
+def _runner_up_margin(options: list[str], scores: list[float],
+                      best_idx: int, excluded: list[bool]) -> dict:
+    """次名分量收集(纯观测,pick-margin-telemetry design §2.2-1;与
+    胜者同一竞争域——``excluded`` 传实际排除表 = 竞争域,全排除退化帧
+    由调用方传空表 = 全体域,与 argmax 的域选择同一逻辑)。
+
+    次名 = 域内除胜者外的首个最高分(平分取先,与 :func:`_argmax_first`
+    的严格大于语义同构,禁另立排序);域内不足 2 候选 → 三键 null 形态。
+    只读现值算差,不参与任何决策(argmax 与域过滤逻辑逐行不动)。"""
+    runner = -1
+    for i in range(len(scores)):
+        if i == best_idx or (i < len(excluded) and excluded[i]):
+            continue
+        if runner < 0 or scores[i] > scores[runner]:
+            runner = i
+    if runner < 0:
+        return {'runner_up': None, 'runner_up_total': None, 'margin': None}
+    return {'runner_up': options[runner], 'runner_up_total': scores[runner],
+            'margin': scores[best_idx] - scores[runner]}
+
+
+def _pick_decision(options: list[str], scores: list[float],
+                   steers: list[float],
+                   components: list[tuple[float, ...]],
                    excluded: list[bool]) -> InvestEnvDecision:
     """评分帧 → 选卡决策(argmax 取最高,平分取先;全排除退化帧对全体
     候选(含被禁)取 argmax 最不负分者——28 号稿 §3 退化帧形态,reason
-    标 all-excluded-fallback 供判读)。"""
+    标 all-excluded-fallback 供判读)。margin = 竞争域次名(全排除退化
+    帧按全体域取,reason tag 已携退化标记供判读)。"""
     best_idx = _argmax_first(scores, excluded)
     if best_idx < 0:
         best_idx = _argmax_first(scores, [])
         return InvestEnvDecision(
             idx=best_idx,
             reason='all-excluded-fallback '
-                   + _breakdown(best_idx, scores, steers, components))
+                   + _breakdown(best_idx, scores, steers, components),
+            margin=_runner_up_margin(options, scores, best_idx, []))
     return InvestEnvDecision(
-        idx=best_idx, reason=_breakdown(best_idx, scores, steers, components))
+        idx=best_idx, reason=_breakdown(best_idx, scores, steers, components),
+        margin=_runner_up_margin(options, scores, best_idx, excluded))
 
 
 def decide_pick(options: list[str], gs: GameState, locked_comp: str,
@@ -384,7 +419,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     scores, steers, components, excluded = _score_frame(
         options, gs, locked_comp, demoted_endgame, frozenset(evicted),
         env_priority, env_forbid, basis)
-    return _pick_decision(scores, steers, components, excluded)
+    return _pick_decision(options, scores, steers, components, excluded)
 
 
 def decide(options: list[str], gs: GameState, locked_comp: str,
@@ -395,10 +430,10 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
     - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
       evicted = 意向状态三参同源直通(flow 解析后传入,28 号稿 §2.9
       「意向解析留 flow」);
-    - 禁选(env_forbid 命中,子串匹配与白名单一致)、自拆台(板面
-      持续伤害+减益 ≥ 2 时克制 DoT/减益的候选)与阵容冲突出域槽
+    - 禁选(env_forbid 命中,子串匹配与白名单一致)与阵容冲突出域槽
       (护栏设计 §2.4,基准 = :func:`_conflict_basis`)= 排除出候选
-      (excluded 槽位表同通道);
+      (excluded 槽位表同通道);克制减分为组件分量(见 :func:`_score_frame`
+      docstring,counters_dot 硬排除迁移);
     - 建议刷 = 排除槽存在 ∨ 帧最好总分 < REFRESH_THRESHOLD,且次数闸
       ``gs.env_refresh_left ≥ 1``;建议刷成立 → RefreshSuggestion,
       否则 → InvestEnvDecision(argmax 取最高,平分取先;全排除退化帧
@@ -429,7 +464,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
             return RefreshSuggestion(
                 reason=f'refresh: 帧最好总分 {max(scores):.0f}'
                        f' < 阈值 {REFRESH_THRESHOLD:.1f}')
-    return _pick_decision(scores, steers, components, excluded)
+    return _pick_decision(options, scores, steers, components, excluded)
 
 
 def _argmax_first(scores: list[float],
@@ -448,9 +483,11 @@ def _argmax_first(scores: list[float],
 
 
 def _breakdown(idx: int, scores: list[float], steers: list[float],
-               components: list[tuple[float, float, float, float]]) -> str:
-    """归因串:总分 + 四组件分解 + 转向轴(仅观测,进 reason)。"""
-    _cash, _dir, _gift, _stance = components[idx]
+               components: list[tuple[float, ...]]) -> str:
+    """归因串:总分 + 五组件分解 + 转向轴(仅观测,进 reason;克制减分
+    环境名族现行恒 0,分量保留与策略屏同形)。"""
+    _cash, _dir, _gift, _stance, _counter = components[idx]
     return (f'pick total={scores[idx]:.0f}'
             f' cash={_cash:.0f} dir={_dir:.0f} gift={_gift:.0f}'
-            f' stance={_stance:.0f} steer={steers[idx]:.0f}')
+            f' stance={_stance:.0f} steer={steers[idx]:.0f}'
+            f' counter={_counter:.0f}')

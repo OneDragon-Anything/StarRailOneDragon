@@ -1257,6 +1257,7 @@ def select_deployment(frame: MandateFrame,
                       *,
                       virtual_bench: list | None = None,
                       virtual_field: list | None = None,
+                      margin_out: dict | None = None,
                       ) -> dict[str, tuple[str, int]]:
     """部署定型(统一部署搜索内核;阶段 5/6 换内核,消费接口改版 =
     总纲接口契约②:target_board = 角色名 → (排, 选定星)——星维承载
@@ -1268,6 +1269,12 @@ def select_deployment(frame: MandateFrame,
     快照+X,接口契约③)= ``virtual_bench``/``virtual_field`` 传升星
     连锁模拟产物(SimAcquisition 两半),窗口谓词共享、成员域分窗
     声明(部署枚举池 = 全部真实单位)。
+
+    ``margin_out`` = 可选次名分量收集出参(pick-margin-telemetry
+    design §2.1:透传段 3 收集,纯函数零状态写;真实出口 =
+    entry._step5_deploy 传入,虚拟 4 调用点[shop 获取让位×2/
+    sell_candidates/supply]不传即零写入——sell_candidates 与 entry
+    实参形态相同,分流只能由调用侧承载)。
 
     评分函数纯函数(§1 接口契约④:消费容器状态,sim 可跑,禁 IO);
     rng 局面哈希播种(同一容器状态 → 同一 target,跨帧稳定)。
@@ -1282,7 +1289,7 @@ def select_deployment(frame: MandateFrame,
     else:
         panel = deploy_search.build_deploy_panel(
             prep.session_ref, prep.gs_ref, frame)
-    return deploy_search.search_deploy_target(panel)
+    return deploy_search.search_deploy_target(panel, margin_out=margin_out)
 
 
 # ============================================================

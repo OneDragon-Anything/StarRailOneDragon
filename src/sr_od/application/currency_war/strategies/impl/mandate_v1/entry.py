@@ -1177,8 +1177,17 @@ def _step5_deploy(session: StrategySession, gs: GameState,
         deploy_diff,
     )
     prep = mandate.assemble_prep_context(session, gs, frame)
-    target = mandate.select_deployment(frame, prep)
+    # 次名分量收集出参(真实出口唯一传入点,pick-margin-telemetry
+    # design §2.1:虚拟 4 调用点不传,分流由调用侧承载)。
+    _margin: dict = {}
+    target = mandate.select_deployment(frame, prep, margin_out=_margin)
     actions = deploy_diff.deploy_diff_target_actions(session, gs, target)
+    # 遥测槽写入(先算差异再写槽:diff 空 → diff_empty 形态,非空 →
+    # top-2 键形;搜索返 {}(_margin 收集为空)不落值——写入时点在
+    # 真实出口,无第二实现)。
+    if _margin:
+        state_of(session).deploy_margin = (
+            {'diff_empty': True} if not actions else _margin)
     if not actions:
         # 定型收敛帧:零动作正常返回(扫描推进)。
         return []

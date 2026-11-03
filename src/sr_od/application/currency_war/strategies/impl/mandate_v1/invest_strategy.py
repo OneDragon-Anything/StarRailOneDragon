@@ -6,22 +6,30 @@
 env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 (分值族不相加、靠层次常数定先后的设计禁复辟)。
 
-总分公式(29 号稿 §1)::
+总分公式(29 号稿 §1;统一阵容评分迭代后六组件)::
 
-    总分 = 现金分 + 方向分 + 赠卡分 + 立场分 + 转向轴加分
+    总分 = 现金分 + 方向分 + 赠卡分 + 立场分 + 转向轴加分 + 克制减分
 
 - 现金分 = strategy_economy.strategy_economy_value(resolved ∧ > 0 才计,
   fail-closed 恒 0);
-- 方向分组件恒 0(strength/方向分链整线下线,29 号稿 §2.2 方向分行废止);
+- 方向分(2026-11-03-unified-line-scoring 选卡侧统一,design §3.2)=
+  卡 × **候选 top1 线**的线分引擎加分(:func:`strategy_line_bonus`
+  通道派生;锚 = :func:`line_select.anchor_line_of`,P1/P2 同式,
+  锁定帧 = 锁定线)——量纲申报:方向分/克制减分携线分数量级
+  (:mod:`kernel.cw_line_scales`),与现金/赠分的金等价标尺合并是统一
+  评分设计的拍板形态(纯加权和一个公式),定义卡支配由 +500 压过现金
+  满档实现(旧定义型分区退役);
 - 赠卡分 = STRATEGY_GRANTS + gift_value.grant_gift_value(29 号稿 §2.3);
 - 立场分 = :data:`STANCE_SCORE`(【拍】形态,现行无非零行;表外卡恒 0);
 - 转向轴 = strategy_priority 命中 + :data:`pick_common.
   STEERING_PRIORITY_BONUS`(软偏好,立场系数);strategy_forbid = 排除出
-  候选(不走分值,29 号稿 §2.4)。
+  候选(不走分值,29 号稿 §2.4);
+- 克制减分(counters_dot 硬排除迁移,design §3.2/§7)= 克制 top1 线
+  主派的卡 −:data:`cw_line_scales.COUNTER_PICK_PENALTY`(纯加权,
+  「自拆台」排除分区与「定义型分区」随布尔排除位退役)。
 
-结构分区(选卡序,29 号稿 §3 + invest-direction-guard §2.3,全部零拍值):
-阵容冲突护栏出域 → 禁选排除 → 自拆台(适用范围护栏)→ 血本位三态 →
-定义型分区 → 组件总分 argmax;归因标签按管线序拼接,护栏未生效帧
+结构分区(选卡序,29 号稿 §3,全部零拍值):阵容冲突护栏出域 → 禁选
+排除 → 血本位三态 → 组件总分 argmax;归因标签按管线序拼接,护栏未生效帧
 tag/输出与无护栏逐位一致。
 
 阵容冲突护栏(changes/2026-10-17-invest-direction-guard,下称「护栏设计」
@@ -32,7 +40,11 @@ E-豁免同款(不入帧级顶级/不计 max_N/恒入动作集/不算 L1)。
 
 刷新判据(29 号稿 §4;P81 承接):帧级门与槽级顶级两谓词分立,
 帧级门 = 候选恰 3 ∧ 全精确分类 ∧ 无帧级顶级卡 ∧(终局阵容锁定帧 max_N≠1);
-槽级动作集 = 非槽级顶级可刷/被禁与出域恒入/唯一 L1 守卫。
+槽级动作集 = 非槽级顶级可刷/被禁与出域恒入/唯一 L1 守卫。**顶级类派生
+修订**(design §3.2):定义型查表布尔退役 → 「给 top1 线加分 ≥
+:data:`DEFINING_BONUS_MIN`(强档阈值,一处常数)」——实证升档
+(+750)/定义卡(+500)过阈,概念股/契约档(+300)不入(现行亲和表
+语义对齐:概念股/契约为环境卡,策略侧本无此档)。
 
 输出契约(29 号稿 §4)::func:`decide` 返回纯值 dataclass
 (:class:`InvestStrategyDecision` / :class:`StrategyRefreshSuggestion`,
@@ -44,15 +56,15 @@ kernel ``decide_event`` 不复存在,模块停用史)。
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_comps import (
-    augment_affinity,
-    get_comp,
-)
+from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
+from sr_od.application.currency_war.kernel.cw_invest_channels import (
+    strategy_line_bonus,
+)
 from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_STRATEGIES,
     STRATEGY_BINDINGS,
@@ -67,13 +79,17 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     resolve_strategy_canonical,
     strategy_faction_scope,
 )
+from sr_od.application.currency_war.kernel.cw_line_scales import INVEST_DEFINING
 from sr_od.application.currency_war.strategies.impl.mandate_v1.gift_value import (
     grant_gift_value,
 )
+from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
+    anchor_line_of,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
-    BOARD_DOT_COUNT_THRESHOLD,
     STEERING_PRIORITY_BONUS,
-    counters_dot,
+    counter_pick_penalty,
+    punished_mechs_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.strategy_economy import (
     strategy_economy_value,
@@ -84,6 +100,12 @@ if TYPE_CHECKING:
         CurrencyWarConfig,
     )
 
+#: 定义卡强档阈值(design §3.2:「顶级不刷」=「给 top1 线加分 ≥ 本值的
+#: 卡不刷新换掉」,一处常数):实证升档(+750)/定义卡(+500)过阈;
+#: 概念股/契约档(+300)不入。锚 = :func:`anchor_line_of`(P1/P2 同式,
+#: 锁定帧 = 锁定线;空候选帧锚缺失 → 方向分 0 → 不过阈,保守缺省)。
+DEFINING_BONUS_MIN: int = INVEST_DEFINING
+
 
 # ===== 输出契约(29 号稿 §4X:纯值 dataclass,不含动作词表)=====
 
@@ -92,14 +114,19 @@ class InvestStrategyDecision:
     """选卡决策。
 
     idx = options 容器下标(0 基;候选序 = 调用方传入序,取值时机 =
-    本帧决策期快照);reason = 归因串(总分与五组件分解,仅观测);
-    total = 组件总分(统一标尺,分 = 金等价);components = 五组件分解
-    (现金,方向,赠卡,立场,转向轴),与总分同帧快照,仅观测。
+    本帧决策期快照);reason = 归因串(总分与六组件分解,仅观测);
+    total = 组件总分(统一标尺,分 = 金等价;方向/克制携线分数量级,
+    见模块 docstring 量纲申报);components = 六组件分解
+    (现金,方向,赠卡,立场,转向轴,克制减分),与总分同帧快照,仅观测。
+    margin = 次名分量遥测(pick-margin-telemetry design §2.2-2,键形
+    与边界值表同 invest_env.InvestEnvDecision;取域 = 结构分区竞争域
+    [:func:`_pick_domain` 输出],空候选帧不落值 None;仅观测)。
     """
     idx: int
     reason: str
     total: float
     components: tuple[float, float, float, float, float]
+    margin: dict | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -224,32 +251,36 @@ def _conflict_basis(gs: GameState, locked_comp: str,
 def _components(canonical: str | None, opt: str, gs: GameState,
                 locked_comp: str, demoted_endgame: bool,
                 evicted: frozenset[str],
-                strategy_priority: list[str]) -> tuple[
-        float, float, float, float, float, float]:
-    """单候选五组件 (现金,方向,赠卡,立场,转向轴) + 总分;未解析名
-    (垃圾名)→ 全 0。
+                strategy_priority: list[str], anchor, punished: frozenset[str],
+                ) -> tuple[float, float, float, float, float, float, float]:
+    """单候选六组件 (现金,方向,赠卡,立场,转向轴,克制减分) + 总分;
+    未解析名(垃圾名)→ 全 0。
 
     - 现金分走 canonical(resolved ∧ > 0 才计,fail-closed 恒 0);
-    - 方向分组件恒 0(方向分链整线下线;
-      终局阵容锁定集 = 终局阵容锁定阵营线成员并集(空串/降格帧 → 未锁口径);
+    - 方向分 = 卡 × 选卡锚点线的通道派生加分(design §3.2 选卡侧统一;
+      ``anchor`` = :func:`anchor_line_of` 产物,None〔锚缺失帧〕→ 恒 0);
     - 赠卡分:STRATEGY_GRANTS + grant_gift_value(无条目自然 0);
     - 立场分:空表恒 0(表外卡默认 0);
     - 转向轴:strategy_priority 子串命中(OCR 容错,与白名单一致)加
-      STEERING_PRIORITY_BONUS(软偏好)。
+      STEERING_PRIORITY_BONUS(软偏好);
+    - 克制减分:选项克制锚点线主派 → COUNTER_PICK_PENALTY(counters_dot
+      硬排除迁移,design §3.2;锚缺失帧不减)。
     """
     if canonical is None:
-        return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        return (0.0,) * 7
     cash, resolved = strategy_economy_value(canonical, gs)
     cash_v = cash if (resolved and cash > 0) else 0.0
-    direction = 0.0   # 方向分链整线下线(strength/LINE_STRENGTH_SCORE 删除),恒 0
+    direction = float(
+        strategy_line_bonus(canonical, anchor) if anchor is not None else 0)
     grant = STRATEGY_GRANTS.get(canonical)
     gift = grant_gift_value(grant, evicted) if grant is not None else 0.0
     stance = STANCE_SCORE[canonical].score if canonical in STANCE_SCORE \
         else _STANCE_ZERO
     steer = STEERING_PRIORITY_BONUS if any(p in opt for p in strategy_priority) \
         else 0.0
-    total = cash_v + direction + gift + stance + steer
-    return (cash_v, direction, gift, stance, steer, total)
+    counter = float(counter_pick_penalty(opt, punished))
+    total = cash_v + direction + gift + stance + steer + counter
+    return (cash_v, direction, gift, stance, steer, counter, total)
 
 
 # ===== 帧评分存档(单次评分循环内随算随记,禁二次评分)=====
@@ -262,6 +293,9 @@ class _Cand:
     idx = options 容器下标(0 基,取值时机 = 本帧决策期快照);
     exact = 归一后精确命中注册表(get_strategy;LCS 兜底不入刷新分类,
     fail-closed——评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严);
+    defining = 派生顶级位(design §3.2:给锚点线加分 ≥
+    ``DEFINING_BONUS_MIN``——旧 augment_affinity 查表布尔退役;锚缺失帧
+    方向分 0 → 恒 False);
     align_n = 终局阵容锁定帧绑定元素命中数(未锁定帧恒 0,N 无语义);
     off_direction = 阵容冲突护栏出域标记(基准非空 ∧ 指向集非空 ∧ 与基准
     零交,护栏设计 §2.3;基准空帧/通用卡恒 False)。
@@ -270,7 +304,7 @@ class _Cand:
     opt: str
     canonical: str | None
     total: float
-    components: tuple[float, float, float, float, float]
+    components: tuple[float, float, float, float, float, float]
     forbidden: bool
     blood: bool
     defining: bool
@@ -286,7 +320,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  strategy_priority: list[str],
                  strategy_forbid: list[str],
                  basis: frozenset[str]) -> list[_Cand]:
-    """帧评分一次(选卡/刷新两入口共享;板面 DoT/减益计数循环外单帧单读,
+    """帧评分一次(选卡/刷新两入口共享;锚点线/受克属性集循环外单帧单读,
     沿旧机器纪律)。
 
     env 名防御(29 号稿 §3):get_env(o) 命中的候选 = 注册表交叉
@@ -298,6 +332,10 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     非 None 的候选算指向集并标出域——评分帧保留全量候选(不前置过滤,
     帧级门「候选恰 3」与刷新分类全量可见),排除在 :func:`_pick_domain`。"""
     locked_frame = bool(locked_comp) and not demoted_endgame
+    # 选卡锚点线(design §3.2 r4/R4-4:锁定帧 = 锁定线;未锁帧 = 候选首名,
+    # P1/P2 同式)——顶级保护/方向分/克制减分三消费同锚,单帧单读。
+    anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
+    punished = punished_mechs_of(anchor)
     cands: list[_Cand] = []
     for i, opt in enumerate(options):
         forbidden = any(p in opt for p in strategy_forbid)
@@ -315,8 +353,6 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
         exact = st is not None
         eff = st.economy if st is not None else None
         blood = is_blood_economy(eff)
-        defining = bool(augment_affinity(canonical)) if canonical is not None \
-            else False
         engine = is_economy_engine(eff) if st is not None else False
         bindings = STRATEGY_BINDINGS.get(canonical) if canonical is not None \
             else None
@@ -327,13 +363,14 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
         scope = strategy_faction_scope(canonical) \
             if canonical is not None else frozenset()
         off_direction = bool(basis) and bool(scope) and not (scope & basis)
-        cash, direction, gift, stance, steer, total = _components(
+        cash, direction, gift, stance, steer, counter, total = _components(
             canonical, opt, gs, locked_comp, demoted_endgame, evicted,
-            strategy_priority)
+            strategy_priority, anchor, punished)
         cands.append(_Cand(
             idx=i, opt=opt, canonical=canonical, total=total,
-            components=(cash, direction, gift, stance, steer),
-            forbidden=forbidden, blood=blood, defining=defining,
+            components=(cash, direction, gift, stance, steer, counter),
+            forbidden=forbidden, blood=blood,
+            defining=(direction >= DEFINING_BONUS_MIN),
             engine=engine, exact=exact, align_n=align_n,
             direction=direction, off_direction=off_direction))
     return cands
@@ -364,12 +401,12 @@ def _argmax_tiebreak(cands: list[_Cand]) -> _Cand:
 # ===== 结构分区(29 号稿 §3;全部零拍值)=====
 
 
-def _pick_domain(cands: list[_Cand],
-                 on_dot: bool) -> tuple[list[_Cand], str]:
+def _pick_domain(cands: list[_Cand]) -> tuple[list[_Cand], str]:
     """结构分区,返回 (竞争域,归因标签串)。落地序 = 阵容冲突护栏 → 禁选
-    → 自拆适用范围护栏 → 血本位三态 → 定义型(29 号稿 §3 + 护栏设计
-    §2.3);标签按管线序拼接、空格分隔,常规帧空串(护栏未生效帧输出与
-    无护栏逐位一致)。
+    → 血本位三态(29 号稿 §3 + 护栏设计 §2.3;统一阵容评分迭代:自拆台
+    排除与定义型分区随布尔排除位退役——克制改选卡减分、定义型支配由
+    方向分 +500 数值实现,design §3.2/§7);标签按管线序拼接、空格
+    分隔,常规帧空串(护栏未生效帧输出与无护栏逐位一致)。
 
     0. 阵容冲突护栏:出域候选(off_direction,与全部持有指向都冲突)
        排除——部分出域才滤(域收缩不可选,非负分);全部出域 → 回退全
@@ -377,16 +414,8 @@ def _pick_domain(cands: list[_Cand],
        all-excluded-fallback 同形态);
     1. 禁选排除:被禁候选出局;禁选致候选域全空 → 全体候选(含被禁)
        退化(标签 all-excluded-fallback,调用方 argmax 最不负分者);
-    2. 自拆台(适用范围护栏):板面 持续伤害+减益 ≥ 阈值时,克制 DoT/减益的
-       候选 = 自拆台,**仅作用于非血非禁候选域**(禁选已先行收窄,此处
-       即非血域);排除后该域空 → 自拆卡回归(自拆是策略回避立场非用户
-       意志,不得制造血卡上位——1 自拆+2 血、2 禁+1 自拆复合帧与旧机器
-       L1 行为对齐);
-    3. 血本位三态序:非血域非空 → 其内竞争;仅非禁血卡可选 → 血卡间
-       竞争(判据 = is_blood_economy,kernel 注册表派生零名单);
-    4. 定义型分区:竞争域内存在定义型卡(augment_affinity 命中,「拿到
-       即改写本局玩法」机制级声明)→ 域收缩为定义型子集,域内多张按
-       组件总分 argmax(支配性优先的新机兑现,29 号稿 §3-4)。
+    2. 血本位三态序:非血域非空 → 其内竞争;仅非禁血卡可选 → 血卡间
+       竞争(判据 = is_blood_economy,kernel 注册表派生零名单)。
     """
     tags: list[str] = []
     off = [c for c in cands if c.off_direction]
@@ -401,19 +430,8 @@ def _pick_domain(cands: list[_Cand],
         tags.append('all-excluded-fallback')
         return cands, ' '.join(tags)
     nonblood = [c for c in live if not c.blood]
-    if nonblood:
-        if on_dot:
-            kept = [c for c in nonblood if not counters_dot(c.opt)]
-            domain = kept if kept else nonblood   # 自拆掏空 → 自拆卡回归
-        else:
-            domain = nonblood
-    else:
-        # 仅非禁血卡可选 → 血卡间竞争(L2;血克制卡无罚无排除,近死区)
-        domain = [c for c in live if c.blood]
-    defining = [c for c in domain if c.defining]
-    if defining:
-        tags.append('defining-zone')
-        return defining, ' '.join(tags)
+    # 仅非禁血卡可选(非血域空)→ 血卡间竞争(L2;血克制卡减分照计,近死区)
+    domain = nonblood or [c for c in live if c.blood]
     if all(c.blood for c in domain):
         tags.append('blood-forced')
     return domain, ' '.join(tags)
@@ -423,27 +441,40 @@ def _pick_domain(cands: list[_Cand],
 
 
 def _breakdown(c: _Cand) -> str:
-    """归因串:总分 + 五组件分解(仅观测,进 reason;形态 = 测试仓
+    """归因串:总分 + 六组件分解(仅观测,进 reason;形态 = 测试仓
     行为测试 test_invest_strategy.py 锚定的 ``pick total=...`` 前缀)。"""
-    _cash, _dir, _gift, _stance, _steer = c.components
+    _cash, _dir, _gift, _stance, _steer, _counter = c.components
     return (f'pick total={c.total:.0f}'
             f' cash={_cash:.0f} dir={_dir:.0f} gift={_gift:.0f}'
-            f' stance={_stance:.0f} steer={_steer:.0f}')
+            f' stance={_stance:.0f} steer={_steer:.0f}'
+            f' counter={_counter:.0f}')
 
 
-def _pick_decision(cands: list[_Cand],
-                   on_dot: bool) -> InvestStrategyDecision:
+def _pick_decision(cands: list[_Cand]) -> InvestStrategyDecision:
     """评分帧 → 选卡决策(结构分区 + 组件总分 argmax,平分裁决键取先;
-    空候选帧不进本函数,由入口防御)。"""
-    domain, tag = _pick_domain(cands, on_dot)
+    空候选帧不进本函数,由入口防御)。
+
+    margin = 竞争域次名分量(纯观测,pick-margin-telemetry design
+    §2.2-2):次名 = 域内除胜者外按**同一平分裁决键** :func:`_tie_key`
+    的最高者(禁另立排序);域内不足 2 候选 → 三键 null 形态。收集面
+    只加变量不改序——argmax 与域过滤逻辑逐行不动。"""
+    domain, tag = _pick_domain(cands)
     winner = _argmax_tiebreak(domain)
     # 分区退化/收缩标签前缀(仅观测归因;管线序拼接):护栏出域/全出域
-    # 回退/全禁帧退化/血强制帧/定义型分区收缩;常规帧无前缀(reason 形态
+    # 回退/全禁帧退化/血强制帧;常规帧无前缀(reason 形态
     # = 测试仓行为测试锚定的 pick total=... 前缀)
     reason = f'{tag} {_breakdown(winner)}' if tag else _breakdown(winner)
+    runner = max((c for c in domain if c is not winner), key=_tie_key,
+                 default=None)
+    if runner is None:
+        margin: dict = {'runner_up': None, 'runner_up_total': None,
+                        'margin': None}
+    else:
+        margin = {'runner_up': runner.opt, 'runner_up_total': runner.total,
+                  'margin': winner.total - runner.total}
     return InvestStrategyDecision(
         idx=winner.idx, reason=reason, total=winner.total,
-        components=winner.components)
+        components=winner.components, margin=margin)
 
 
 def decide_pick(options: list[str], gs: GameState, locked_comp: str,
@@ -464,14 +495,12 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
         # 可达,29 号稿 §3)
         return InvestStrategyDecision(
             idx=0, reason='empty-frame: 无候选退化', total=0.0,
-            components=(0.0, 0.0, 0.0, 0.0, 0.0))
+            components=(0.0,) * 6)
     basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     cands = _score_frame(options, gs, locked_comp, demoted_endgame,
                          frozenset(evicted), strategy_priority, strategy_forbid,
                          basis)
-    on_dot = sum((gs.board.value or {}).get(f, 0)
-                 for f in ('持续伤害', '减益')) >= BOARD_DOT_COUNT_THRESHOLD
-    return _pick_decision(cands, on_dot)
+    return _pick_decision(cands)
 
 
 def decide(options: list[str], gs: GameState, locked_comp: str,
@@ -489,33 +518,32 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
       (含未锁定帧)→ 整帧不刷,槽级不评;帧级门过 → 槽级动作集 = 非槽级
       顶级可刷/被禁与出域恒入/唯一 L1 守卫,动作集非空 → 建议(输出槽序
       元组;刷新余量三闸留 op 层,结构零改动);
-    - **帧级顶级类 = 定义型 ∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
+    - **帧级顶级类 = 派生顶级(给锚点线加分 ≥ ``DEFINING_BONUS_MIN``,
+      design §3.2)∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
       判定、不计 max_N);**槽级顶级类 = 帧级顶级类 ∨ 对齐保护**(终局
-      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——方向分
-      链整线下线后无「触 S/A 档线」判定,保守向不保护)。
+      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——锚缺失
+      帧方向分 0,保守向不保护)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
     if not options:
         return InvestStrategyDecision(
             idx=0, reason='empty-frame: 无候选退化', total=0.0,
-            components=(0.0, 0.0, 0.0, 0.0, 0.0))
+            components=(0.0,) * 6)
     basis = _conflict_basis(gs, locked_comp, demoted_endgame)
     cands = _score_frame(options, gs, locked_comp, demoted_endgame,
                          frozenset(evicted), strategy_priority, strategy_forbid,
                          basis)
-    on_dot = sum((gs.board.value or {}).get(f, 0)
-                 for f in ('持续伤害', '减益')) >= BOARD_DOT_COUNT_THRESHOLD
     locked_frame = bool(locked_comp) and not demoted_endgame
 
-    slots = _refresh_slots(cands, on_dot, locked_frame)
+    slots = _refresh_slots(cands, locked_frame)
     if slots:
         return StrategyRefreshSuggestion(
             reason=f'refresh: 帧级门过,可刷槽 {len(slots)}/3', slots=slots)
-    return _pick_decision(cands, on_dot)
+    return _pick_decision(cands)
 
 
-def _refresh_slots(cands: list[_Cand], on_dot: bool,
+def _refresh_slots(cands: list[_Cand],
                    locked_frame: bool) -> tuple[int, ...]:
     """刷新判据(29 号稿 §4;P81 判据结构迁入,帧级/槽级两谓词分立)。
 
@@ -546,9 +574,9 @@ def _refresh_slots(cands: list[_Cand], on_dot: bool,
     # 槽级动作集:非槽级顶级可刷;被禁/出域槽恒入(被禁∧顶级/出域槽:
     # 永不被选,保护无对象 → 不保护;出域占槽应刷掉换本线卡机会,护栏
     # 设计 §2.3)。槽级顶级 = 帧级顶级 ∨ 对齐保护(终局阵容锁定帧 =
-    # 非血 ∧ N≥2;未锁定帧 = 非血 ∧ 触 S/A 档线——血卡保护语义由血本位
-    # 三态序覆盖,注册表演化出「血卡+绑定」时按已登记 J7 申报裁:保护无对象
-    # → 不保护)
+    # 非血 ∧ N≥2;未锁定帧 = 恒 False——锚缺失帧方向分 0,保守向不保护;
+    # 血卡保护语义由血本位三态序覆盖,注册表演化出「血卡+绑定」时按已
+    # 登记 J7 申报裁:保护无对象 → 不保护)
     action = [c.idx for c in cands
               if c.forbidden or c.off_direction
               or not (c.defining or c.engine

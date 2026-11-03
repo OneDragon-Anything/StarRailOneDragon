@@ -236,6 +236,10 @@ class MandateV1Strategy(CwFlowStrategy):
         # 时序 = 边界 → 签名 → 决策;line_and_upgrade §3 执行时序节)。
         session_scope.handle_node_boundary(self.gs)
         session_scope.refresh_line_if_needed(self.gs)
+        # 部署私有槽入口清(pick-margin-telemetry design §2.1 帧定界
+        # 双保险之一:防跨帧陈旧——上一 prep 帧写槽后 emit 段/truncate
+        # 抛异常的残留槽在此兜底清空,非部署帧读到恒空的结构保证)。
+        state_of(self.gs).deploy_margin = None
         # 过渡锁定槽刷新(写点 = 决策入口前置段,与 refresh_line_if_needed
         # 同点;写入端单一源 = protection.refresh_transition_locked_systems。
         # 幂等只增,槽现役零行为消费面 → 现行决策零影响;统一保护集
@@ -369,16 +373,28 @@ class MandateV1Strategy(CwFlowStrategy):
             f'末态 gold={gold_of(gs)} '
             f'bench={bench_is_full(gs)})')
 
-    def decision_payload(self) -> dict:
-        """决策载荷钩子覆写(策略遥测 mandate_v1 v1 三键组)。
+    def decision_payload(self, result: Action | None = None) -> dict:
+        """决策载荷钩子覆写(策略遥测 mandate_v1 v1 八键 = 现读 6 +
+        产物透传 2)。
 
         语义与键表正本 = strategy-docs/strategy-telemetry.md;实现 =
         :func:`decision_payload.build_decision_payload` 纯读投影
-        (出口后 gs/state 现读,零写、不改决策行为)。registry 透传
-        实例注册表(K 空窗回退分支 G 门与备战帧同参)。异常不自吞——
-        基类 wrapper 的降级 {} 兜底是唯一降级通道(捕获缝约定)。
+        (现读键 = 出口后 gs/state 现读,零写、不改决策行为;产物
+        透传键 = 动作字段/私有槽出口快照,``result`` = wrapper 传入
+        的入口返回值)。registry 透传实例注册表(K 空窗回退分支 G 门
+        与备战帧同参)。异常不自吞——基类 wrapper 的降级 {} 兜底是
+        唯一降级通道(捕获缝约定)。
+
+        部署私有槽读后清(pick-margin-telemetry design §2.1 帧定界
+        双保险之二:槽非空时读键后即清,一次性消费——非部署帧读到
+        恒空;decision_payload.py 模块零写纪律不动,清槽挂本覆写)。
         """
-        return decision_payload.build_decision_payload(self.gs, self.registry)
+        payload = decision_payload.build_decision_payload(
+            self.gs, self.registry, result=result)
+        st = state_of(self.gs)
+        if st.deploy_margin is not None:
+            st.deploy_margin = None
+        return payload
 
 
 def decide_prep_frame(session: StrategySession, config: object,

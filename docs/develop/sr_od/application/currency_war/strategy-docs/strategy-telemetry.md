@@ -24,7 +24,7 @@
 
 ## 2. payload 键表(mandate_v1 v1)
 
-payload 三键组全部为**决策帧出口后的 gs/state 现读**(禁依赖决策入口内部局部量),纯读、不改决策行为。实现位 = `strategies/impl/mandate_v1/decision_payload.py`(薄委托入口 `bridge.MandateV1Strategy.decision_payload`)。
+payload 八键(键闭集)分**两类来源**:**现读键** 6(direction / k_members / k_fallback / window / transition_candidates / member_rank)= 决策帧出口后的 gs/state **现读**;**产物透传键** 2(pick_margin / deploy_margin)= 词表动作字段与私有槽,均为**决策帧出口时点快照**。两类皆纯读、不改决策行为(禁依赖未入决策产物与既许槽位的内部局部量)。实现位 = `strategies/impl/mandate_v1/decision_payload.py`(薄委托入口 `bridge.MandateV1Strategy.decision_payload`);产物透传通道设计 = changes/2026-11-02-pick-margin-telemetry(该迭代收尾后语义并入本表,通道正本 = 词表字段/槽位定义注释)。
 
 | 键 | 类型 | 语义 | 读口 |
 |---|---|---|---|
@@ -32,6 +32,10 @@ payload 三键组全部为**决策帧出口后的 gs/state 现读**(禁依赖决
 | `k_members` | `[str]` | 现行 K(目标线)名单:锁定帧 = 锁定线成员(core ∪ shared 注册表序);P1 未锁帧 = 过渡配方开局面成员;回退分支命中帧 = 回退派生成员(排序序,此时读 `k_fallback` 定来源) | `statefn.predicates.line_members(direction_comp_of(gs))`,空方向时回退分支(左) |
 | `k_fallback` | `{hit: bool, band: str}` | K 空窗回退分支标注:方向键 None 且意向载体在场时,备战/商店两域共用的回退单一源派生成员集。`hit` = 该分支产出了成员;`band` = 分带 token(`'p1_gap'` / `'p1_lock_band'` / `'p2plus'`)。**判读规则:band 非空 ⟺ 回退分支已运行;`hit=True` 的 `k_members` 来自回退派生,不是锁定线成员**;`hit=False ∧ band` 非空 = 分支运行但合法空集。band 空串 = 分支未运行(方向在场或意向缺帧) | `cw_intention.k_empty_window_fallback`(同参重推导,不写其备战帧计数键) |
 | `window` | `{char: {open: bool, sig: [kind, threshold]\|null}}` | 上线窗口判据现值(候选 A「上阵窗口自锁」的复核面:终局成员在窗口未到时不上阵,此前该判据无任何落点)。角色集 = `k_members` ∪ **持有域**(备战席 ∪ 场上)出现的终局库成员——被窗口挡在备战席的终局件是判域主体,只看上场板面会漏。`open` = 窗口判定核直调结论(缺信号行 fail 恒假);`sig` = 该角色在窗口查表序(锁定 = 仅锁定线;未锁定 = 全库)内首个信号行 `[kind, threshold]`,无信号行 = null。`kind` 闭集:`synergy`(板面主羁绊计数 ≥ 阈值)/ `level`(玩家等级 ≥ 阈值)/ `plane_end`(第二位面已启动)/ `always_on`(恒真)。键序 = 角色名排序 | `entry._entry_window_open`(唯一判定核,同包私有限内访问)/ `Comp.entry_signals` / 成员集常量 `entry._ENDGAME_LIBRARY_MEMBERS` |
+| `transition_candidates` | `[[str]]` | 过渡候选槽现值(体系对元组照录为嵌套 list,JSON 行行自足):值 = 四体系键闭集的一或二元组、按候选排序键取前 3;冻结后 = 单元素冻结对(恒二元组),进 P2 清空(槽语义单一源 = `mandate_state.StrategyState.transition_candidates` 定义注释)。判读 = 双层候选形态与冻结收敛 | `state.transition_candidates` |
+| `member_rank` | `{char: (层, 位次)}` | 统一优先级档内序数表现值:终局成员 = `(0, 线内序数)`、过渡成员 = `(1, 候选位次)`,重叠归终局;表外成员不入本表。判读 = 双层装配与同档垫底(装配 = 卖出评估器同一 `assemble_priority_context`,零第二实现) | `priority.assemble_priority_context`(同参现算;deployed_names/rng = 不污染 rank 的占位参数) |
+| `pick_margin` | `{runner_up, runner_up_total, margin} \| null` | 投资环境/投资策略**选卡帧**的次名分量(产物透传键):`runner_up` = 竞争域内次名(环境面全排除退化帧按全体域取,reason tag 已携退化标记;策略面 = 结构分区竞争域)、`runner_up_total` = 次名总分(决策评分帧现值,含转向轴)、`margin` = 胜者与次名的总分差。**边界值**:竞争域仅 1 候选 → 三键 null;空候选帧/刷新建议帧/非选卡帧 → 键值 null(该帧无此分量)。值源 = 决策产物 `margin` 字段(`InvestEnvDecision`/`InvestStrategyDecision`),经词表动作字段(`CwActionPickInvestEnvParam`/`CwActionPickInvestStrategyParam` 的 `margin`,不入动作实例键)由 flow 拷入,wrapper 传 `result` 入钩子透传 | 动作实例 `margin` 字段(通道 = 词表动作类字段) |
+| `deploy_margin` | `{runner_up, first_diff_layer, layer_gap} \| {diff_empty} \| null` | 部署定型(备战第 6 步**真实出口**)的次名分量(产物透传键):`runner_up` = 挑战者板签名(成员集与胜者不同的最高板的排序名列表——排序键 = 部署搜索段 3 定序全键同款,板签名承载判读所需「次高板是谁与成员差」)、`first_diff_layer` = 评分三层首异层号(1-3;三层全同尾键决胜 → 0)、`layer_gap` = 首异层的层差。**边界值**:无挑战者(dedup 后仅一可行板)→ `runner_up`/`first_diff_layer`/`layer_gap` 三键 null(与尾键决胜的 0/0 区分);diff 空收敛帧 → `{"diff_empty": true}` 形态;搜索返 {} / 非部署帧 → 键值 null。虚拟定型 4 调用点(获取让位×2/卖出评估/补给虚拟置牌)不落值(不传收集出参)。帧定界 = 私有槽入口清+读后清双保险 | 私有槽 `StrategyState.deploy_margin`(写端单一源 = `entry._step5_deploy` 在 deploy_diff 后写入;键形正本 = 槽定义注释) |
 
 判读注意(payload 通用):payload 由渲染器通用键值渲染,渲染器不解释语义——语义一律以本篇键表为准;某键在某帧的值 = 该帧出口后现读,与信封 `node` 同帧。
 

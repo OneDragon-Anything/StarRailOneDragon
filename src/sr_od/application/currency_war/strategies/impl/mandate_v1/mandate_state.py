@@ -496,6 +496,22 @@ class StrategyState:
     # 变化(金变/席位变/星级目标完成)同经键比对清标记。
     refresh_blocked: tuple | None = None
 
+    # ===== 部署定型次名分量遥测槽(changes/2026-11-02-pick-margin-
+    #       telemetry design §2.1 私有槽通道;帧定界 = 入口清+读后清
+    #       双保险)=====
+    # [索引定义] deploy_margin = 部署定型(备战第 6 步 select_deployment
+    # 真实出口)的次名分量键值:键形 = design §2.2-3 {runner_up: 挑战者
+    # 板签名(排序名列表)|null, first_diff_layer: 首异层号(0-3)|null,
+    # layer_gap: 层差|null},diff 空收敛帧 = {"diff_empty": True} 形态。
+    # 坐标系/取值时机 = 决策帧出口时点快照(非持久状态,单帧定界);
+    # 写入端单一源 = entry._step5_deploy 在 deploy_diff 计算后写入
+    # (搜索返 {} 不落值);消费端 = decision_payload 键 deploy_margin,
+    # 读后清挂 bridge.decision_payload 覆写(该模块零写纪律不动),
+    # 入口清挂 bridge.decide_prep_screen 入口(防跨帧陈旧;异常路径
+    # 残留由下一 prep 帧入口清兜底)。None = 无定型遥测(非部署帧/
+    # 已消费/搜索失败)。
+    deploy_margin: dict | None = None
+
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
     # ①键名加模块前缀防冲突;②生命周期 = 局级(状态对象每局新建自然

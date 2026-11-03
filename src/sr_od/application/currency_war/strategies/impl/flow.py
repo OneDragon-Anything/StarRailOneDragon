@@ -422,23 +422,33 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                                        reason=out.reason)
         # 选卡结果喂 CommitSignals(条件活遥测;建议帧不落此段)。
         self._feed_invest_strategy_signals(options)
-        return pick_param_cls(idx=out.idx, reason=out.reason)
+        # margin 拷入(词表动作字段通道,pick-margin-telemetry design
+        # §2.1:决策产物次名分量 → 动作实例,经 decision_payload 钩子
+        # 键 pick_margin 透传;建议帧不选卡,自然不拷)。
+        return pick_param_cls(idx=out.idx, reason=out.reason,
+                              margin=out.margin)
 
     def _feed_invest_strategy_signals(self, options: list) -> None:
-        """所选帧对各线的 affinity → 阵容分贡献(策略 2.0 权重;纯遥测,
+        """所选帧对各线的通道派生线分加分 → 阵容分贡献(纯遥测,
         决策面零消费——投资源不参与证明自身的反自馈检查现状即合规)。
-        喂入面申报(29 号稿 §4 遥测条款):建议帧跳过喂入——
-        常规建议帧被帧级门拦定义型 → affinity 键喂入恒空,跳过即零漂移;
-        E-豁免角例外 = 被禁定义型卡不拦建议帧,该帧会喂入非空
-        affinity,跳过 = 纯遥测漂移(决策面零消费、罕见角,如实申报)。
+        判读口径申报(统一阵容评分迭代 design §6:遥测流保持不断,
+        改读新派生函数):值 = 投资通道派生线分加分(cw_line_scales
+        数量级:实证升档 750/定义卡 500/强档 300/中档 150/flex 软档
+        30),**非**旧 ``augment_affinity`` 的 0..1 亲和权重——跨批判读
+        勿混读两口径。喂入面申报(29 号稿 §4 遥测条款):建议帧跳过
+        喂入——常规建议帧被帧级门拦顶级卡 → 通道加分键喂入恒空,跳过
+        即零漂移;E-豁免角例外 = 被禁顶级卡不拦建议帧,该帧会喂入非空
+        加分,跳过 = 纯遥测漂移(决策面零消费、罕见角,如实申报)。
         best-effort:信号喂入失败不影响决策。"""
         try:
-            from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
+            from sr_od.application.currency_war.kernel.cw_invest_channels import (
+                strategy_line_bonuses,
+            )
             scores: dict[str, float] = {}
             for opt in options:
-                aff = augment_affinity(opt)
+                aff = strategy_line_bonuses(opt)
                 for comp_name, v in aff.items():
-                    scores[comp_name] = max(scores.get(comp_name, 0.0), v)
+                    scores[comp_name] = max(scores.get(comp_name, 0.0), float(v))
             if scores:
                 from sr_od.application.currency_war.kernel.cw_transition import (
                     CommitSignals,
@@ -482,7 +492,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
                 return CwActionRefreshInvestCardsParam(
                     slots=tuple(range(len(options))), reason=out.reason)
-        return pick_param_cls(idx=out.idx, reason=out.reason)
+        # margin 拷入(同策略轴侧,pick-margin-telemetry design §2.1)。
+        return pick_param_cls(idx=out.idx, reason=out.reason,
+                              margin=out.margin)
 
     def decide_supply(self) -> CwActionPickSupplyParam | CwActionRefreshSupplyParam:
         """补给选装备/出钻(终态零参口;候选 = ``gs.supply`` payload)。

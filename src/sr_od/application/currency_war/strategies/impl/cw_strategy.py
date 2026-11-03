@@ -128,9 +128,10 @@ def _wrap_decision_entry(fn: Callable[..., Any]) -> Callable[..., Any]:
             dtag = f'{self.STRATEGY_ID}:{dseq}'
             result = fn(self, *args, **kwargs)
             # payload 钩子异常降级 {}(capture-store §3;信封构造为容缺
-            # 读取、不可抛,不与之合并守卫面)。
+            # 读取、不可抛,不与之合并守卫面)。入参 = 入口返回值(产物
+            # 透传键的通道载体,pick-margin-telemetry design §2.1)。
             try:
-                payload = self.decision_payload()
+                payload = self.decision_payload(result)
             except Exception as e:  # noqa: BLE001  载荷故障降级,不毒化决策
                 payload = {}
                 log.debug(f'[cw-strategy] decision_payload skip: {e}')
@@ -264,12 +265,18 @@ class CwStrategy(ABC, Generic[_TState]):
         基类不感知具体字段)。生命周期 = 一局(实例不跨局 → 状态天然隔离)。"""
         return None
 
-    def decision_payload(self) -> dict:
+    def decision_payload(self, result: Any = None) -> dict:
         """决策载荷钩子(捕获缝出口收载荷;缺省 {} = 零载荷,子类覆写)。
 
-        wrapper 在原方法返回后调用,异常降级 {}(capture-store §3)。
-        载荷只许「出口后 gs/state 现读」,禁依赖决策入口内部局部量
-        (更细域内量由策略经私有 state 槽自存、钩子里读)。
+        wrapper 在原方法返回后调用,入参 ``result`` = 入口返回值(词表
+        动作字段透传载荷的通道载体;带缺省参 = 非破坏扩展——旧签名
+        覆写收到多余实参 TypeError 走 wrapper 既有异常降级 {} 通道,
+        不静默毒化决策返回值),钩子异常降级 {}(capture-store §3)。
+        载荷两类来源(语义正本 = strategy-docs/strategy-telemetry.md):
+        **现读键**(出口后 gs/state 现读)与**产物透传键**(词表动作
+        字段与私有槽,均为决策帧出口时点快照)——禁依赖未入决策产物
+        与既许槽位的内部局部量(更细域内量由策略经私有 state 槽自存、
+        钩子里读)。
         """
         return {}
 
