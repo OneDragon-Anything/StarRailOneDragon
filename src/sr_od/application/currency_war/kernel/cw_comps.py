@@ -413,7 +413,9 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["以牙还牙甲", "以牙还牙甲", "自适应外骨骼"],
         # A 流铁三角(final_jizi A 节):三月七第一件=自适应外骨骼(刚需:前排
         # 减伤25%+受击概率大增=吸仇恨)+姬子以牙还牙甲×2-3(取 ×2 底稿口径;
-        # 反甲×3 完全体留给实装校准);恒等约束 key_equips=equip_assign 投影。
+        # 反甲×3 完全体留给实装校准)+三月七鞋(速度=盾循环)——反重力皮靴=
+        # 通用速度件,不入 key_equips 分化面(A/B 均可穿,装备证据按分化件计);
+        # 恒等约束 key_equips=equip_assign 投影。
         # 机制:反震吃「受击」,吸仇恨件互斥(攻略:「不要杰帕德,分受击概率」)。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(攻略 @4-6,星3「低血+相邻目标也获得护盾」→中段=相邻覆盖最大化,final_jizi_train 关键站位节;取中值@5)
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
@@ -442,16 +444,18 @@ COMP_LIBRARY: list[Comp] = [
         # 复制动能剑)/星期日(直伤)——助战技直伤结算方向。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
-        key_equips=["火力风暴潮", "高周波电锯", "冷笑话引擎"],
-        # B 流装备公式(final_jizi B 节):姬子风暴潮+电锯(输出件最大公约数)/
-        # 花火冷笑话引擎(现行 assign 原样);三月七外骨骼归 A 铁三角不随 B。
+        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯", "冷笑话引擎"],
+        # B 流装备公式(final_jizi B 节 L42 明文「火力风暴潮×2+高周波电锯」;
+        # B套=冷笑话/动能剑/特权件等变化):姬子风暴潮×2+电锯/花火冷笑话
+        # 引擎;三月七外骨骼归 A 铁三角不随 B。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(同 A;领航员载体共享)
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         # ===== 姬子列车家族·B 直伤 =====
         family="姬子列车",
         bond_signal="列车同行",
         sub_tiers={"减益": 2},   # B 流减益2(58%)
-        equip_assign={"姬子·启行": ["火力风暴潮", "高周波电锯"], "花火": ["冷笑话引擎"]},
+        equip_assign={"姬子·启行": ["火力风暴潮", "火力风暴潮", "高周波电锯"],
+                      "花火": ["冷笑话引擎"]},
         # ===== 知识卡字段(A/B 共享;数据源=final_comps/final_jizi_train.md)=====
         need_star={
             '姬子·启行': 3, '三月七': 2, '花火': 2, '瓦尔特': 1,
@@ -1787,7 +1791,7 @@ def select_megastar(gs: GameState, target: Comp | None,
 
     选择序(按阵容引擎 × 巨星乘区,详 strategy/02_comp §7):
     1. target.core_chars 里的盛会之星(在阵 core 天然绑定,如追击飞霄×知更鸟);
-    2. COMP_MEGASTAR_PREFERENCE[target.name](阵容级偏好序,20 套全覆盖);
+    2. COMP_MEGASTAR_PREFERENCE[target.name](阵容级偏好序,21 套全覆盖);
     3. 首个可选(naive)。
     候选空 → None;无 target 且候选非空 → 返回首个可选(naive 兜底)。
     (旧第 3 序「机械属性兜底」读 mechanic_attributes——该字段已随评分器族

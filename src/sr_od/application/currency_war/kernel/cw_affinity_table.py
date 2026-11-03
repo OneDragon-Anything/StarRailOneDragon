@@ -425,7 +425,7 @@ def affix_restart_hit(line_name: str,
 def _validate_affinity_table() -> None:
     """构建校验(import 即炸):词缀键必须在 AFFIX_EFFECTS 注册名空间
     (手编表写错名 = 分值静默失效);线名必须在 COMP_LIBRARY(同理);
-    泛化层轴表覆盖全 20 线(缺行 = 该线泛化静默失效)。
+    泛化层轴表覆盖全 21 线(缺行 = 该线泛化静默失效)。
     boss 面校验见 :func:`_validate_boss_table`(同文件)。"""
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     line_names = {c.name for c in COMP_LIBRARY}

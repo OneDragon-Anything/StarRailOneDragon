@@ -277,7 +277,7 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
     - 锁定后只读锁定线:锁定线槽(``target_comp``)非空时本段在缓存
       同步后直接返回(候选快照停算,锁定写入时已清空——
       :func:`write_line_lock` 连带③);
-    - 未锁定态:每帧对全部 20 线算分(:func:`line_select.line_score_key`
+    - 未锁定态:每帧对全部 21 线算分(:func:`line_select.line_score_key`
       单值和:证据 + 投资通道派生 + 词缀 + boss〔批 2 前恒 0〕+ 热度,
       注册序终局;开局简报上下文 = :func:`line_select.opening_ctx_of`
       现读),top3 写候选快照(``line_candidates``,派生快照非持久状态)

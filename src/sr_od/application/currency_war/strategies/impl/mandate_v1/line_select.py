@@ -291,7 +291,7 @@ def _line_sort_key(comp: Comp, held_chars: frozenset[str],
 def compute_candidates(held_chars: frozenset[str],
                        opening_ctx: OpeningCtx, *,
                        evidence_gate: bool = False) -> tuple[str, ...]:
-    """全 20 线算分取 top N 候选(§1.2:每帧对全部线算分,top3 为候选;
+    """全 21 线算分取 top N 候选(§1.2:每帧对全部线算分,top3 为候选;
     签名幂等——同持有面重算同值)。返回线名元组(分数降序,注册序终局)。
 
     ``evidence_gate``(候选快照消费开启版):只收证据门为正的线
@@ -323,7 +323,7 @@ def evaluate_lock(candidates: tuple[str, ...],
     拿到什么都不直接锁,分数说话;触发 = ``plane2_started``(窗口谓词,
     首入 (2,*) 段)∧ ``p2_strategy_pick_done``(P2 起首次投资策略三选一
     完成侦测)→ **候选首名**(候选元组已按全序降序)。**空候选兜底分支**
-    (§1.3:证据门下空候选可达,兜底为真规则):候选空 → 锁全 20 线全序
+    (§1.3:证据门下空候选可达,兜底为真规则):候选空 → 锁全 21 线全序
     首名(缺省全量版重算取首;零证据帧首名 = 热度首线)。
 
     锁后只读由调用侧(``session_scope`` 锁定守卫)承载:本函数只在
@@ -358,7 +358,7 @@ def anchor_line_of(gs: GameState, locked_comp: str,
 
 
 def _validate_line_anchor() -> None:
-    """锚表构建校验(import 即炸):全 20 线覆盖 + 锚 ∈ 角色注册表
+    """锚表构建校验(import 即炸):全 21 线覆盖 + 锚 ∈ 角色注册表
     (手编表写错名 = 锚档静默失效)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     names = {c.name for c in COMP_LIBRARY}
