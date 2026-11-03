@@ -1,68 +1,54 @@
 ---
 name: sr-od-account-inspection
-description: 当需要摸清星铁账号的养成情况（有哪些角色、养成深度、开拓力/委托/每日实训等动态状态、深渊进度）并整理成账号档案时用——官方米游社数据接口为主路线，游戏内画面读取为兜底。凡是「了解账号」「查角色练度」「看开拓力/体力/委托」「整理账号数据」「账号托管第一步」「打深渊/忘却之庭前的账号盘点」都用，即使没明说。英文：inspect Star Rail account, fetch player data via miHoYo game_record API, build account profile, scan roster。
+description: 需要查询崩坏:星穹铁道账号的米游社数据（角色列表：等级/稀有度/星魂数/命途/光锥摘要）时用——通过 mys MCP 三工具（mys_login/mys_logout/mys_get_characters）直连米游社官方接口，秒级返回。凡是「查角色」「看账号」「拉账号数据」都用。英文：inspect Star Rail account via mys MCP tools。
 ---
 
-# 星铁账号巡检
+# 崩铁账号查询（米游社 MCP 三工具）
 
-没做完这 6 步不算完成：
+账号数据的唯一路线：`sr_od` MCP server 上的三个工具（`backend/mcp/mys_tools.py`），直连米游社官方接口。
 
-1. ☐ 探测官方接口可用性：卡片接口一发判全部前置（方法见 [references/api.md](references/api.md)），判据：返回 `retcode 0` 且含星铁卡片 —— 必做
-2. ☐ 接口通则拉数据：卡片 → 账号概览/实时便签/角色列表；index/note 返回 `10041`（星铁明细数据当前不可用码）则跳到第 3 步，卡片数据（等级/角色数/成就数）仍有效 —— 必做
-3. ☐ 游戏内扫描（MCP server 须在跑，daemon `start_sr_od_mcp_server` 拉起）：
-   a. 动态状态：菜单 → 指南 → 生存索引页 OCR 右上角（开拓力 x/300、沉浸器 0/12）→ 切「每日实训」TAB OCR 活跃度（500/500=已完成）
-   b. 角色清单：菜单 → 角色 → 左下网格图标切「角色列表」视图 → 逐屏 `drag(300,900→300,350)` 滚动 + `analyze_screen(save_image=true)` 存档到 `.debug/account/roster/pageN.png`（滚到列表底部：连续两屏内容相同即停）
-   c. 判读外包：派视觉子 agent 判读全部 pageN.png 产出 `roster_raw.json`（判读规则让子 agent 标 confidence，低置信的后续复核）—— 必做
-4. ☐ 合并落档：跑 `uv run python tools/account/merge_profile.py`（校验 + 合并进 `config/idx/account_profile.yml`，gitignore 已排除），判据：脚本输出 `[OK]` —— 必做
-5. ☐ 深渊进度：指南 → 逐光捡金 TAB → 忘却之庭分类 → 看进度/星数（如 0/12、0/36）；实测发现「从未打开过战绩展示页的账号，先在漫游签证-战绩展示页打开一次才能解锁数据」（首次进入有记忆紊流弹窗，`NODE_FIRST_CLICK_EMPTY` 已建档） —— 必做
-6. ☐ 账号档案 `config/idx/account_profile.yml` 四节齐全（meta/dynamic/roster/abyss），低置信角色在 `unverified_gap` 记数 —— 必做
+## 前置
 
-## 数据路线选择
+- MCP server（sr_od）已启动；改动 `src/sr_od/backend/**` 后需重启 server 才生效
+- 会话与设备文件在 `config/<实例>/mys/`（session.json = cookie 会话、role.json = 角色定位缓存、device.json = 设备身份；gitignore 内，不入库）
 
-- 默认走**官方接口路线**（references/api.md）：结构化 JSON，分钟级。当前可用面：卡片接口（全游戏绑定+等级/成就）；星铁 index/note 受 `10041` 阻塞（现象与解法见 api.md 分诊表）。
-- 接口盲区走**游戏内画面读取**（第 3 步剧本）：角色清单、动态状态、深渊进度都已实测可读。
-- 两路线数据合并进同一份档案，不双源。
+## 工具
 
-## 账号档案格式
+### 1. `mys_login(username, password)` —— 密码登录
 
-`config/idx/account_profile.yml`（个人数据，已 gitignore）：
+⚠️ **知情声明（调用前必须向使用者转达）**：密码作为工具参数会传入大模型上下文，存在泄露风险，是否继续由使用者自行决定。
 
-```yaml
-meta:        # 昵称/UID/区服/开拓等级/成就数（来源：官方卡片接口）
-dynamic:     # 开拓力/沉浸器/每日实训/委托（来源：指南页 OCR）
-showcase:    # 星海同行/战绩展示/漫游动态（来源：漫游签证页）
-roster:      # 角色清单 name/element/path/level/rarity/confidence（来源：列表截图判读）
-abyss:       # 三大深渊进度（来源：逐光捡金页）
-combat_profile:  # 实战验证过的队伍与战斗观察
-```
+返回统一信封 `{status, message, data}`，按 status 处置：
 
-## 账号认知分层（判断「还缺什么信息」用）
+| status | 含义 | 处置 |
+|---|---|---|
+| `success` | 登录成功（session.json 落盘，密码不落盘） | 直接用 `mys_get_characters` |
+| `already_logged_in` | 会话有效 | 直接用 `mys_get_characters` |
+| `verification_required` | 极验触发 | 打开 `data.url` 本地验证页，**人工**完成滑块/点选（最多 3 次），后台自动续跑；完成后用 `mys_get_characters` 验证 |
+| `session_expired` | 旧会话已标记过期 | 直接重试 `mys_login` 即可 |
+| `error` | -3208 密码错误过多 / -3235 账号风险等 | **即停勿重试**，按 message 提示使用者 |
 
-| 层 | 内容 | 数据来源 | 当前覆盖 |
-|---|---|---|---|
-| 骨架 | 角色数、稀有度、命途、等级 | 接口卡片 + 列表判读 | ✅ |
-| 养成深度 | 星魂（部分）、光锥、遗器、行迹 | 接口 10041 阻塞；游戏内逐角色详情（慢，未做） | ⚠ 部分 |
-| 动态状态 | 开拓力、委托、每日实训、活动进度 | 指南页 OCR + 接口 note（阻塞） | ✅（OCR 路） |
-| 培养意图 | 用户想练谁、当前目标 | 只能问用户 | 需用户输入 |
+### 2. `mys_get_characters()` —— 角色列表
 
-## 凭据纪律
+- 返回 `success` + 角色数组：`id` / `name` / `level` / `rarity` / `rank`(星魂数) / `element` / `base_type`(命途) / `equip`(光锥摘要 name/level/rank/rarity)
+- 秒级返回；会话过期时返回 `session_expired`（**不清除任何本机数据**，只提示重新登录）
 
-- 登录凭据是 HttpOnly cookie，**不落盘、不写进会话文本、不进档案**；只在浏览器内存中流转。
-- 档案文件只含账号数据，不含任何 token。
+### 3. `mys_logout()` —— 登出
 
-## 深渊攻略工作流（实战验证）
+- 清除本机 `session.json` 与 `role.json`（保留 `device.json`）；幂等
 
-忘却之庭（逐光捡金）的配队**不需要自己想**，官方给全了：
+## 会话管理
 
-1. 入口：指南 →「逐光捡金」TAB → 选分类（忘却之庭/虚构叙事/末日幻影）→「传送」
-2. 选关画面点目标关卡 → 编队页右上「**通关阵容**」→「推荐阵容」tab = 活跃玩家真实通关阵容
-3. 「一键上阵」自动填全部节点队伍（会自动切命途，确认弹窗点确认；「显示我的持有情况」开关可核对自己有没有这些角色）
-4. 「混沌回忆」进入 → 走近敌人（key `w` 前进）→ 点右下攻击 → **自动战斗**等结果
-5. 高难敌人有机制提示（如银枝「触发扭矩反打降低罪血涡旋伤害」）——弱点覆盖不足会被机制团灭，纯堆输出不行
+- 会话持久化在 `config/<实例>/mys/session.json`，每次调用滚动续期；失效时**只打过期标记，不清除任何数据文件**，重新登录即恢复
+- **备份/恢复会话文件必须先停 MCP server 再离线操作**——进程存活期间恢复的文件会被下一次调用的滚动续存覆盖（实测教训，详见 `docs/develop/sr_od/backend/mys.md`）
 
-实测战绩（2026-10-14）：第 9-11 关全部满星，12 关星启模式节点一 3 轮速通；节点二 DOT 队被赞达尔机制团灭（配队推荐不是万能，机制克制仍需人研究）。
+## 边界
 
-## 已知边界（2026-10 实测）
+- 本版本只提供角色列表；全练度明细（星魂/遗器/词条，`avatar/info`）与数据接口 1034 风控验证链为后续迭代
+- 游戏内逐格扫描路线已移除（效率原因，2026-11-04）；`config/idx/` 下的旧档案文件为历史留存
 
-- 米游社明细接口 `10041`：与签名/头/隐私开关无关（原神同调用返回 1034 风控码证明链路正确），疑似需米游社 App 侧的某个开通动作；游戏内打开战绩展示页可把 `10035`（未开通）变成 `10041`，但 `10041` 本身未解。角色养成明细（光锥/遗器/行迹）当前只能游戏内逐角色读取。
-- 预设编队共享角色：忘却之庭上下半分别应用预设队时，共用角色会被后应用的队抢走（1 号位缺人），需切「角色列表」TAB 手动补。
+## 相关文档（实现与协议规格，按需查阅）
+
+- `docs/develop/sr_od/backend/mys.md` —— sr_od 封装与三工具正本
+- `docs/develop/one_dragon/mys/README.md` —— 通用登录客户端正本（会话/验证/红线全量说明）
+- `docs/develop/sr_od/application/account_profile/miyoushe-api-flow.md` —— 米游社协议规格（端点/签名/验证分支）
