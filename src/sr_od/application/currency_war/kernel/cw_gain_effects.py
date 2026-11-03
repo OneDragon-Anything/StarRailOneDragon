@@ -144,20 +144,20 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
 #: 相等——attack.md A4 阻断修订:禁效果体闭包常量与登记表两处独立字面量,
 #: 名字漂移在备战断言不可见[BenchSlot kind 与道具名解耦],唯本测试 +
 #: 席满溢出落位真值可暴露)。注册表条目由下方工厂从本表生成,禁另写字面量。
-_STRATEGY_BOX_GRANTS: dict[str, str] = {
-    '战术义眼++': '进阶武装箱',
-    '保守派': '进阶武装箱',
-    '快请专家·彩': '进阶武装箱',
-    '军火贸易': '简易武装箱',
-    '军火贸易+': '简易武装箱',
-    '步狸村之谜': '简易武装箱',
+_STRATEGY_BOX_GRANTS: dict[str, tuple[str, ...]] = {
+    '战术义眼++': ('进阶武装箱',),
+    '保守派': ('进阶武装箱',),
+    '快请专家·彩': ('进阶武装箱',),
+    '军火贸易': ('简易武装箱',),
+    '军火贸易+': ('简易武装箱',),
+    '步狸村之谜': ('简易武装箱',),
     # 阿哈大悦:箱腿直读「获得1个【简易武装箱】」(获得时点 = 激活链
     # 尾段,时点差系猜测写+观察纠偏先例,sim 严格等价差异窗无决策消费;
     # 40% 伤害增幅/拆散回栏 = 召唤物战斗数值面零建模 T-205 裁定同判)。
-    '阿哈大悦': '简易武装箱',
+    '阿哈大悦': ('简易武装箱',),
     # 秘密典籍:箱腿直读「获得1个【星徽秘典】」(金腿 instant_gold=8 在册)。
-    '秘密典籍': '星徽秘典',
-    '秘密典籍+': '进阶武装箱',
+    '秘密典籍': ('星徽秘典',),
+    '秘密典籍+': ('进阶武装箱',),
 }
 
 
@@ -224,7 +224,8 @@ def _make_random_star_char_effect(cost: int, star: int,
     return _effect
 
 
-def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
+def _make_box_grant_effect(items: tuple[str, ...]) -> Callable[
+        ..., list[str]]:
     """开箱分支效果体工厂(闭包销 = 发放道具名,单源取自
     :data:`_STRATEGY_BOX_GRANTS`)。
 
@@ -243,10 +244,13 @@ def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
             gain_bench_item,
         )
         _ = rng   # 开箱分支确定发放,无采样面(rng 形参沿注册表分派契约保留)
-        placed = gain_bench_item(gs, item, rand=False, sig=sig,
-                                 evidence='pick_invest_box_grant',
-                                 producer=_PRODUCER)
-        return [f'box_grant:{item}(placed={placed})']
+        steps: list[str] = []
+        for it in items:
+            placed = gain_bench_item(gs, it, rand=False, sig=sig,
+                                     evidence='pick_invest_box_grant',
+                                     producer=_PRODUCER)
+            steps.append(f'box_grant:{it}(placed={placed})')
+        return steps
 
     return _effect
 
@@ -1183,6 +1187,11 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('完美投影仪', 1)),
 
     # 临时工合约 = 具名装备授予单行(卡文「获得8个【员工投影仪】」;
+    # 武装突入 = 双箱组合登记行(卡文「遭遇节点的奖励变为2倍。获得2个
+    # 【简易武装箱】」;腿2 数量 = 双元素元组[奖励×2 腿双端盲零建模第三
+    # 例,两截口径];镜像表泛化后工厂循环保留逐件三态语义)。
+    '武装突入': _make_box_grant_effect(('简易武装箱',
+                                             '简易武装箱')),
     # count=8 逐件八条 rand=False,效果串 ×8 named_equip_grant;
     # 伴生消失腿 = STRATEGY_EQUIP_EXPIRY_GRANTS 白名单表承载[下个节点
     # 全部未使用的员工投影仪消失],两腿异构不入同表;rng 零消费;不入
@@ -1196,7 +1205,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 全单箱键,一致性测试单向 BOX→SG 不扰);效果串 2 条;掷序契约同
     # 援军族;不入泛化表防撞键。
     '天降救兵': _compose_grant_legs(_make_random_star_char_effect(1, 3),
-                                 _make_box_grant_effect('简易武装箱')),
+                                 _make_box_grant_effect(('简易武装箱',))),
 
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
