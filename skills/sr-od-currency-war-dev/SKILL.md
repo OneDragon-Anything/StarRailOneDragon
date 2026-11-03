@@ -18,6 +18,8 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
+| 阵容定义字段设计(Comp schema 新增/修订/评审) | comp-definition(字段准入五判据+目标态快照原则:不抄攻略三阶段,按终局形态定义;时间过程归策略机制层;先读再动) | comp-definition |
+| 游戏版本更新(CW 侧适配) | version-update 清单(数据重采/阵容重跑/万金油名单复核/注册表核对;总流程归 sr-od-version-update-adaptation) | version-update |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域主线验收 | autonomous-loop |
 | ADR / as-built 维护 | §文档同步 | — |
@@ -40,9 +42,11 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`(分篇入口;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案已按用户令停用) |
 | 单套阵容打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
+| **阵容定义字段设计方法论**(字段准入判据/目标态快照原则/时间维度归属/名单多胞胎警惕) | [references/comp-definition.md](references/comp-definition.md) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
 | 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md) |
+| 版本更新后 CW 域要做哪些事(适配清单) | [references/version-update.md](references/version-update.md)(数据重采/阵容重跑/万金油名单复核/版本敏感注册表核对) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
 | 运行状态/焦点/待办 | `.debug/progress/` 根下的当前活跃迭代目录(未封存)入口 `进度.md`——多迭代三层结构(迭代目录→app→三池),规范=od-dev-progress-tracking §2.5。**卫生纪律**:只放活状态(焦点/待办/判读结论),轮次叙事/过期记录切归档文件留指针;单文件超 ~800 行即触发归档整理 |
 
