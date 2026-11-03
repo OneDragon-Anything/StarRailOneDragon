@@ -11,7 +11,9 @@ data/affix_effects_data 的 ``AFFIX_EFFECTS`` 注册名(52 词缀,运行时采�
 其余 11 已审线扩行 + 未登记线兜底层(方向保守:只给怕不给吃)。
 
 同词缀方向逐线相反是本表存在理由(design §1 第 4 条「词缀吃怕是阵容
-特定知识」):正当防卫对万敌 +900/对姬子列车 +750 族外其余怕(本表)。
+特定知识」):正当防卫对万敌 +900、其余登记线均怕(−150,列车同行亦怕
+正当防卫);列车同行另吃受击触发族(忍无可忍/同步行动)+750(敌方
+多动=反震燃料)。
 
 万敌无燃料底线(design §4 a 类·独例):开局词缀 ∩ 燃料集 = 空 →
 :data:`cw_line_scales.RESTART_PENALTY`(与重开级同档);燃料集 =
@@ -179,11 +181,11 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
     # ===== 龙丹战技点(final_longtail_others 龙丹节)=====
     '龙丹战技点': {
         # 「开局怕:正当防卫/极速制冷/丢失幸运类词条」(final_longtail_others
-        # L49 攻略原文细节补记)——开局限定语义:词条只作用于开局判定
-        # (线分本就开局简报消费,口径一致)。
-        '正当防卫': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」'),
-        '极速制冷': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」'),
-        '丢失幸运': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」'),
+        # L49 攻略原文细节补记)——开局怕(攻略口径);现行消费面为全局
+        # 线分,延展全局(保守向压分)。
+        '正当防卫': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」;延展全局(保守向压分)'),
+        '极速制冷': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」;延展全局(保守向压分)'),
+        '丢失幸运': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」;延展全局(保守向压分)'),
     },
     # ===== 列车同行(final_jizi_train A 反震节;批 3 A/B 拆分后重写)=====
     '列车同行': {
@@ -200,11 +202,11 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
         '正当防卫': AffixStance(score=FEAR_PENALTY, note='final_jizi_train A 节「怕正当防卫」'),
         '能量逃逸': AffixStance(
             score=FEAR_PENALTY,
-            note='final_jizi_train 构造机理「能量逃逸(150 能量大招受能量逃逸影响)」(史料级)'),
+            note='final_jizi_train §6 脆弱点「能量逃逸(150 能量大招受能量逃逸影响)」(史料级)'),
         '时间刺客': AffixStance(score=FEAR_PENALTY, note='final_jizi_train A 节「怕时间刺客」'),
-        # 重症难题:构造机理「重症难题(治疗/护盾削弱)克三月七盾循环(史料级)」
-        # (final_jizi_train L212-213)。
-        '重症难题': AffixStance(score=FEAR_PENALTY, note='final_jizi_train 构造机理「克三月七盾循环」(史料级)'),
+        # 重症难题:§6 脆弱点「重症难题(治疗/护盾削弱)克三月七盾循环
+        # (史料级)」(final_jizi_train L212-213)。
+        '重症难题': AffixStance(score=FEAR_PENALTY, note='final_jizi_train §6 脆弱点「克三月七盾循环」(史料级)'),
     },
     # ===== 昼神阿雅 / 反甲白厄:词缀面无实证记载,不建行(走兜底层)=====
     # 昼神阿雅:counter 仅 boss 面(「counter:电视机 boss → 避」,boss 表辖)。
@@ -453,9 +455,10 @@ class BossStance:
 
 #: boss 吃怕表(键 = boss 规范公司名,BOSS_MECHANICS 名空间;俗称经
 #: ``normalize_boss_name`` 归位)。数据底账 = 4 线实证(design §3.4:
-#: 姬子 4 只〔扑满归强敌段〕/希儿蕉研组/阿雅电视机/白厄史瓦罗)+
-#: D4 类级兜底(README D4 清单类级适用,逐条注释声明);boss 面初版单向
-#: (只登怕/重开级,无吃档)。
+#: 姬子 4 只〔扑满归强敌段〕/希儿蕉研组/阿雅电视机/白厄史瓦罗)——
+#: **无直接记载不登记**(D4 清单唯红绿灯带类级括注且适用线均已实证,
+#: 其余条目无类级指向不外推);其余 16 线 boss 面空白声明接受(表尾注),
+#: 版本重跑攻略 boss 记载补登;boss 面初版单向(只登怕/重开级,无吃档)。
 BOSS_AFFINITY: dict[str, dict[str, BossStance]] = {
     # ===== 列车同行(final_jizi_train 节奏与 counter 节)=====
     # 「counter:扑满(拖时间)/死龙/酒杯怪/电视机/存护星神/红绿灯(白厄子
@@ -489,26 +492,15 @@ BOSS_AFFINITY: dict[str, dict[str, BossStance]] = {
             score=RESTART_PENALTY,
             note='final_baie_reflect「史瓦罗 = 重开级(攻略多帖共识)」'),
     },
-    # ===== D4 类级兜底(README D4 清单类级适用;注释声明,design §3.4
-    # 「16 线空白 boss 面用 D4 类级清单兜底或声明接受」选类级兜底)=====
-    # 蕉研组克量子系→希儿(实证上条)/圣杯类:机制链佐证 = 蕉研组 boss
-    # 图鉴「使我方全体能量、战技点减少」(bosses.md 造梦互动娱乐)克圣杯
-    # 两条互斥燃料线(Saber 能量/Archer 战技点,final_grail_dual 构造
-    # 机理 §1「两条互斥的燃料线」)。
-    '命运圣杯红A': {
-        '造梦互动娱乐': BossStance(
-            score=FEAR_PENALTY,
-            note='README D4 类级兜底(蕉研组克圣杯类);机制链 = 蕉研组削战技点克 Archer 战技点燃料线(bosses.md 图鉴)'),
-    },
-    '双王圣杯': {
-        '造梦互动娱乐': BossStance(
-            score=FEAR_PENALTY,
-            note='README D4 类级兜底(蕉研组克圣杯类);机制链 = 蕉研组削能量克 Saber 能量循环(bosses.md 图鉴)'),
-    },
-    # 其余 14 线 boss 面空白:README D4 清单无该线类级适用项
-    # (红绿灯克反甲系之姬子A类 = 批 3 拆分线,本批不存在;扑满克反震姬子
-    # 类 = 列车同行已实证登记于强敌段)——声明接受空白(design §3.4 兜底
-    # 二选一),版本重跑攻略 boss 记载补登。
+    # ===== 其余 16 线 boss 面空白声明(design §3.4「D4 类级清单兜底或
+    # 声明接受」二选一,选声明接受)=====
+    # README D4 清单逐项核:唯红绿灯带类级括注「反甲系」——其适用线
+    # (反甲白厄/万敌单C)已经实证登记(红绿灯归非 boss 强敌段,万敌见
+    # final_wandi_burn 词条矩阵);蕉研组/扑满/死龙/酒杯怪/电视机/存护
+    # 星神在 D4 原文**无类级指向**,其余线不据此外推(「无直接记载不
+    # 登记」——类推自图鉴机制的克制行属推断,不作为登记依据);圣杯
+    # 两线(命运圣杯红A/双王圣杯)boss 面空白接受,版本重跑攻略 boss
+    # 记载补登。
 }
 
 #: 非 boss 强敌吃怕表(设计 §3.4「单列知识条目,作用点=开局线分」)。
