@@ -72,7 +72,6 @@ class AccountProfileApp(SrApplication):
         self._scrolled_to_top: bool = False  # 滚顶节点重入闸:retry 轮经 node_from 重入时跳过重复拖拽
         self._bottom_rounds: int = 0  # 滑块到底后的连续空转轮数(到底判定)
         self._done_names: set[str] = set()  # 本次运行已归档角色名(full 模式跨轮回去重,重叠行快速跳过)
-        self._known_by_pos: dict[tuple[int, int], str] = {}  # 格子位置→角色名缓存(跨轮保留)
         # 产物基础:incremental=读旧档作增量底表;full=本轮画面实扫到的角色为唯一真相,
         # 不掺旧档(旧档可能是错位时代的脏数据,混入会永久化缺陷)——落在磁盘上的旧档
         # 会被首轮 _save_output 整体覆盖
@@ -173,12 +172,14 @@ class AccountProfileApp(SrApplication):
 
         cells = self._matcher.detect_cells(self.screenshot(), self.ctx.ocr.ocr)
         for cell in cells:
-            if not mode_full:
-                # 增量:SIFT 命中且已扫的格子直接跳过(零点击)
-                if not cell['miss'] and cell['cn'] in self.profiles:
+            # SIFT 命中格按名零点击跳过:full=本轮已归档(相邻屏重叠行);incremental=旧档案已有。
+            # cell['cn'] 是模板目录名(中英混合,如 jingliu/万敌),须映射成中文名再比——
+            # 原样比对中文名档案时英文代号格恒不命中,零点击跳过形同虚设
+            mapped = self._matcher.cn_name(cell['cn']) if cell['cn'] else None
+            if mapped is not None:
+                if mapped in self._done_names:
                     continue
-                known_cn = self._known_by_pos.get(cell['abs_key'])
-                if cell['miss'] and known_cn is not None and known_cn in self.profiles:
+                if not mode_full and mapped in self.profiles:
                     continue
             self._scan_one_character(cell, cell['cn'] or '未知', mode_full)
 

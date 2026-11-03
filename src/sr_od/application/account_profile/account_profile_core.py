@@ -128,7 +128,10 @@ class AvatarMatcher:
         两路键:数字游戏 ID 查 _id_map;模板目录名(英文代号,与 SIFT 命中的 cn 字段同源)查 _en_map。
         """
         info = self._id_map.get(avatar_id) or self._en_map.get(avatar_id.strip().lower())
-        return normalize_cn_name(info.get('cn') if info else None)
+        if info:
+            return normalize_cn_name(info.get('cn'))
+        # 中文目录名(如 万敌)不在两套键里,过白名单清洗即为中文名;数字 ID/噪声清洗不过返回 None
+        return normalize_cn_name(avatar_id)
 
     def detect_cells(self, screen: MatLike, ocr_func) -> list[dict]:
         """动态识别列表格:以每个「等级」底标为锚,标出全部完整可见格并识别头像。
