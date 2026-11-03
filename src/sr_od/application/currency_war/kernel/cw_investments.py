@@ -2171,6 +2171,21 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战力类零响应登记(UNIT_BUFF 族);'
               '随机角色/箱/免费刷新腿落码通道齐备,登记条目为'
               '在场标记+姿态面;无离散触发事件,trigger 占位形'),
+    # 利息上调:官方「获得25金币。你的最大利息提升至10金币。」
+    # (cw_invest_data.py:249)。声明性条目(payload = STRATEGY_ECONOMY
+    # 同实例单一源首例):静态分量 interest_cap_override=10 注册行承载
+    # (消费链七层锚在码),instant_gold=25 系族级缺口维持(T-112 口径
+    # 零登记);两读法行为零分叉,登记条目为在场标记+姿态面。
+    '利息上调': EffectSpec(
+        id='300801', name='利息上调',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['利息上调'], duties=DutyFlags(),
+        pending=False,
+        notes='声明性条目(payload 同实例单一源首例);'
+              '静态分量 interest_cap_override=10 注册行承载;'
+              'instant_gold=25 族级缺口维持'),
 }
 
 
