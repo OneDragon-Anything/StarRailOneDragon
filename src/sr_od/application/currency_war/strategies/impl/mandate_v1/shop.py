@@ -1656,18 +1656,22 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 资格判据(窄门,过门即义务):X ∈ 货架可见 ∧ X ∈ 某虚拟 top3 线的
     # CARRY/骨架级(carry_set ∪ key_items;插件级不触发)∧ 该线 ∈ 虚拟
     # top3。虚拟评估 = ``compute_candidates(在手 ∪ 货架)``**不开证据门**
-    # (照现行全量排序,资格器消费排位)——零持久化:生命周期 = 本商店
-    # 决策帧,消费位唯一 = 单张买入资格(§2.7 不变式);投资面(环境分级)
-    # 用真实持有,货架不构成投资证据。买入写持有 → 签名变 → 实候选经
-    # 证据门点亮 → 整线义务面跟进(信号进 → 买入 → 点亮闭环)。锁定态
-    # 不评:义务面 = 锁定线名单(§2.2-6 逐面定版),资格臂的方向点亮
-    # 语义与「锁后不换线」不变式互斥。
+    # (照全量排序,资格器消费排位)——零持久化:生命周期 = 本商店
+    # 决策帧,消费位唯一 = 单张买入资格(§2.7 不变式);投资面(通道派生)
+    # 用真实持有,货架不构成投资证据。**词缀/boss 可得性声明**(统一阵容
+    # 评分迭代 design §6):虚拟路径经 ``opening_ctx_of`` 与主链同源现读
+    # ——简报数据已观察则照常进分,未观察(无简报数据帧)自然置空 =
+    # 外部分 0,声明接受(虚拟评估只回答「买这张牌点亮哪条线」,词缀/boss
+    # 分量对全线的相对排位与主链一致,不构成虚拟偏差)。买入写持有 →
+    # 签名变 → 实候选经证据门点亮 → 整线义务面跟进(信号进 → 买入 →
+    # 点亮闭环)。锁定态不评:义务面 = 锁定线名单(§2.2-6 逐面定版),
+    # 资格臂的方向点亮语义与「锁后不换线」不变式互斥。
     if not _line_view.locked:
         _shelf_names = _face_names(gs)
         if _shelf_names:
             _virt_top3 = line_select.compute_candidates(
                 frozenset(owned | _shelf_names),
-                line_select.held_invest_names_of(gs))
+                line_select.opening_ctx_of(gs))
             _qual_names: set[str] = set()
             for _vn in _virt_top3:
                 _vc = get_comp(_vn) if _vn else None

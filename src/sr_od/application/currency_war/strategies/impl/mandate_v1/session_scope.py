@@ -189,18 +189,20 @@ def _held_units(gs: GameState) -> list[Unit]:
 
 
 def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
-    """方向证据签名(line_and_upgrade §3 步骤 1)。
+    """方向证据签名(12 号篇 §3 步骤 1;统一阵容评分迭代扩参)。
 
     构成 = 持有名单(备战席 ∪ 场上,(char_id, star) 多重集,排序成序)
     + 装备持有 + 投资效果集(active_strategies)+ **投资环境
-    (active_env)** + 等级 + 节点号 + 锁定态。为什么等级入签名:店内
-    整级购买经验后等级变 → 概率表变 → 候选分数与刷新判据期望全变,
-    消费旧等级概率 = 评估陈旧(设计原文)。env 入签名(review-37 R1):
-    环境分级与策略型锁定消费 held_invest(strategies ∪ env),env 变
-    化而签名其余分量不变时幂等跳过会漏重算(评分/锁定延迟到下一
-    签名变化帧)。锁定态入签名:锁定写入为一次性事件,写入后签名含
-    锁定标志、此后只读。签名只做相等比较(幂等跳过判据),持有名单
-    排序保证顺序无关。
+    (active_env)** + **开局词缀/boss**(enemy_affixes/plane_bosses 排序
+    分量)+ 等级 + 节点号 + 锁定态。为什么等级入签名:店内整级购买经验
+    后等级变 → 概率表变 → 候选分数与刷新判据期望全变,消费旧等级概率 =
+    评估陈旧(设计原文)。env 入签名(review-37 R1)与词缀/boss 入签名
+    (2026-11-03-unified-line-scoring design §6,沿 env 先例):两者现进
+    线分(投资通道派生/词缀分),变化而签名其余分量不变时幂等跳过会漏
+    重算——词缀/boss 简报观察晚于开局首帧(中断恢复位面详情转正帧),
+    缺签名分量 = 候选消费静默旧值。锁定态入签名:锁定写入为一次性事件,
+    写入后签名含锁定标志、此后只读。签名只做相等比较(幂等跳过判据),
+    持有名单/词缀/boss 排序保证顺序无关。
     """
     held = sorted((u.char_id, int(u.star)) for u in _held_units(gs))
     equips = gs.equips.value or ()
@@ -210,6 +212,8 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
         tuple(sorted(equips)),
         tuple(sorted(strategies)),
         gs.active_env.value or '',
+        tuple(sorted(gs.enemy_affixes.value or ())),
+        tuple(sorted(b for b in (gs.plane_bosses.value or ()) if b)),
         int(level_of(gs)),
         effective_node_pos(gs),
         st.target_comp,
@@ -267,33 +271,34 @@ def _update_p2_pick_done(gs: GameState, st: StrategyState) -> None:
 
 
 def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
-    """方向状态重算(签名变化时执行;候选-锁定制真内核,line_and_upgrade
-    §1.2-§1.4;判据本体单一源 = :mod:`line_select`)。
+    """方向状态重算(签名变化时执行;统一阵容评分真内核,12 号篇
+    §1.2-§1.3;判据本体单一源 = :mod:`line_select`)。
 
     - 锁定后只读锁定线:锁定线槽(``target_comp``)非空时本段在缓存
       同步后直接返回(候选快照停算,锁定写入时已清空——
       :func:`write_line_lock` 连带③);
     - 未锁定态:每帧对全部 20 线算分(:func:`line_select.line_score_key`
-      字典序:环境分级 → 持有证据级 → 攻略热度,注册序终局),top3 写
-      候选快照(``line_candidates``,派生快照非持久状态)——**证据门
-      开启版**(12 号篇 §1.2 候选入选证据门:零证据线不入,
-      热度只作有证据线间排序;开局零信号 = 空候选合法形态);随后求值
-      锁定双触发(:func:`line_select.evaluate_lock`——硬规则查表同帧
-      多命中取线分数最高 + 热度 tie-break + 注册序终局;时点兜底 =
-      plane2_started ∧ P2 投资策略选卡完成),命中即经
-      :func:`write_line_lock` 写入(锁定动作发生的域内立即生效,§3)。
+      单值和:证据 + 投资通道派生 + 词缀 + boss〔批 2 前恒 0〕+ 热度,
+      注册序终局;开局简报上下文 = :func:`line_select.opening_ctx_of`
+      现读),top3 写候选快照(``line_candidates``,派生快照非持久状态)
+      ——**证据门开启版**(12 号篇 §1.2:线分量 env ∨ carry ∨ 骨架 ∨
+      插件 > 0,不含热度;零证据线不入,开局零信号 = 空候选合法形态);
+      随后求值锁定判定(:func:`line_select.evaluate_lock`——P2 时点兜底
+      唯一路径:硬规则/即时锁全退役,``plane2_started ∧ P2 投资策略选卡
+      完成`` → 候选首名),命中即经 :func:`write_line_lock` 写入(锁定
+      动作发生的域内立即生效,§3)。
     """
     _sync_derived_lock_cache(st)
     if st.target_comp is not None:
         return
     _update_p2_pick_done(gs, st)
     held_chars = line_select.held_chars_of(gs)
-    held_invest = line_select.held_invest_names_of(gs)
+    opening_ctx = line_select.opening_ctx_of(gs)
     candidates = line_select.compute_candidates(
-        held_chars, held_invest, evidence_gate=True)
+        held_chars, opening_ctx, evidence_gate=True)
     st.line_candidates = candidates
     lock_name = line_select.evaluate_lock(
-        candidates, held_chars, held_invest,
+        candidates, held_chars, opening_ctx,
         plane2_started=st.plane2_started,
         p2_strategy_pick_done=st.p2_strategy_pick_done)
     if lock_name is not None:

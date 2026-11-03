@@ -538,6 +538,7 @@ def _situation_seed(panel: DeploySearchPanel) -> int:
 
 
 def search_deploy_target(panel: DeploySearchPanel,
+                         margin_out: dict | None = None,
                          ) -> dict[str, tuple[str, int]]:
     """统一部署搜索主入口(三段;纯函数零 IO,§1 接口契约④)。
 
@@ -546,6 +547,11 @@ def search_deploy_target(panel: DeploySearchPanel,
     的排内 1 基槽号,None = diff 执行层自适应落位)。候选全不可排
     (容量矛盾,结构不可达防御)→ 返回空 dict(消费端 fail-closed
     按现板定型,申报)。
+
+    ``margin_out`` = 可选次名分量收集出参(pick-margin-telemetry
+    design §2.1:段 3 并行收集,纯函数零状态写——传入非 None dict
+    且搜索成功时填 §2.2-3 键形;缺省 None = 不收集,虚拟定型调用点
+    不传即零开销零写入;搜索返 {} 时保持空 = 调用方据此不落值)。
     """
     rng = random.Random(_situation_seed(panel))
     comp_pos = panel.locked_comp if panel.locked else None
@@ -857,6 +863,11 @@ def search_deploy_target(panel: DeploySearchPanel,
     # ---- 段 3 评分取优(全量终评 + 排分配 + 字典序)----
     best_key: tuple | None = None
     best_out: tuple[tuple[SearchUnit, ...], dict[str, str]] | None = None
+    # 次名分量并行收集(纯观测,design §2.1/§2.2-3;条目 = (全键,
+    # 成员键集, 三层分, 排序板签名)——收集面只加变量,评分/比较/取优
+    # 逻辑逐行不动;margin_out None 时零收集零开销)。
+    _scored: list[tuple[tuple, frozenset[str], tuple[float, float, int],
+                        list[str]]] = []
     for members, comp, keys in dedup.values():
         l1, l2, l3 = selection_score(panel, list(members), comp, keys,
                                      tag_cache)
@@ -867,11 +878,34 @@ def search_deploy_target(panel: DeploySearchPanel,
                                       panel.current_board)
         rng_tail = rng.random()
         key = (l1, l2, l3, pos, stable, rng_tail)
+        if margin_out is not None:
+            _scored.append((key, frozenset(u.key for u in members),
+                            (l1, l2, l3),
+                            sorted(u.char_id for u in members)))
         if best_key is None or key > best_key:
             best_key = key
             best_out = (members, rows)
     if best_out is None:
         return {}
+    if margin_out is not None:
+        # 挑战者 = 成员集与胜者不同的最高板(排序键 = 段 3 全键同款,
+        # design §2.2-3 禁另立排序;dedup 键含评估上下文 → 同成员集
+        # 不同 comp/keys 的板不算挑战者)。无挑战者 → 三键 null 形态
+        # (与尾键决胜的 0/0 区分);三层全同(尾键决胜)→ 首异层 0/层差 0。
+        _winner = max(_scored, key=lambda t: t[0])
+        _chal = max((t for t in _scored if t[1] != _winner[1]),
+                    key=lambda t: t[0], default=None)
+        if _chal is None:
+            margin_out.update(runner_up=None, first_diff_layer=None,
+                              layer_gap=None)
+        else:
+            _layer, _gap = 0, 0
+            for _i in range(3):
+                if _winner[2][_i] != _chal[2][_i]:
+                    _layer, _gap = _i + 1, _winner[2][_i] - _chal[2][_i]
+                    break
+            margin_out.update(runner_up=_chal[3], first_diff_layer=_layer,
+                              layer_gap=_gap)
     members, rows = best_out
     # target 第三元 = 槽位级登记的排内 1 基槽号(char_positions 经
     # parse_char_position;无登记/排级 = None → diff 执行层自适应落位)。
@@ -933,7 +967,7 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
         compute_candidates,
-        held_invest_names_of,
+        opening_ctx_of,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
         state_of,
@@ -957,7 +991,7 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
             if u.char_id:
                 held.add(str(u.char_id))
         cand_names = compute_candidates(frozenset(held),
-                                        held_invest_names_of(gs))
+                                        opening_ctx_of(gs))
         candidate_comps = tuple(c for c in
                                 (get_comp(n) for n in cand_names)
                                 if c is not None)
