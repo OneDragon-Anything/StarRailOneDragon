@@ -179,11 +179,13 @@ BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
 #: 加速(卡面「将其」= 本卡赠卡)。键形态登记单一源 = fields.md §3.5.5。
 DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
 
-#: done 域条件键:环境倒计时件完胜加速(T-34 命运礼物;每环境至多一个,
-#: (env, 本键) 天然唯一 + 获得刻幂等不重写)。写入端 =
-#: cw_gain_chain.on_env_gained 延迟道具支线(perfect_win_accel 开时,
-#: 获得刻与开盒队列登记同窗);消费端 = check_env_item_open_perfect
-#: 完胜改写——只回退本键集环境的 pending_item_opens 条目解锁位。
+#: done 域条件键:世界发放域(环境 ∪ 策略)倒计时件完胜加速(首例 =
+#: T-34 命运礼物;每卡至多一个,(卡名, 本键) 天然唯一 + 获得刻幂等不
+#: 重写)。写入端双道 = cw_gain_chain.on_env_gained(环境道)/
+#: on_strategy_gained(策略道,首例 = 偶像经济)延迟道具支线
+#:(perfect_win_accel 开时,获得刻与开盒队列登记同窗);消费端 =
+#: check_env_item_open_perfect 完胜改写——只回退本键集卡名的
+#: pending_item_opens 条目解锁位。
 DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 
 #: done 域条件键前缀:羁绊档位触发器(T-41 特邀专家:加拉赫;格式
@@ -879,7 +881,7 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
 
 def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
                                 ) -> tuple[str, ...]:
-    """完胜回退检查(环境倒计时件家族,登记表 =
+    """完胜回退检查(世界发放域〔环境 ∪ 策略〕倒计时件家族,登记表 =
     ``cw_investments.ENV_DELAYED_ITEM_GRANTS``;唯一调用点 =
     report_node_advance settle_confirm 分支,check_env_deploy_lock_perfect
     调用邻位,惰性 import 同款;分支在 advance_node_effective 真推进
@@ -895,9 +897,11 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     §3 零改动清单),本函数与 T-33 完胜分支零代码耦合(域不同:
     env_grant_deploy_locks vs pending_item_opens)。
 
-    作用域 = env_grants_done 中本表 perfect_win_accel=True 环境的
-    ``delayed_open_accel`` 键集(DELAYED_OPEN_ACCEL_KEY,获得刻由
-    cw_gain_chain.on_env_gained 延迟道具支线登记);改写 =
+    作用域 = env_grants_done 中本表 perfect_win_accel=True 卡名
+    (环境 ∪ 策略,键查表卡名无关——循环变量名 env_name 系环境道首例
+    词面残留,行为 = 通用卡名键)的 ``delayed_open_accel`` 键集
+    (DELAYED_OPEN_ACCEL_KEY,获得刻由 cw_gain_chain.on_env_gained /
+    on_strategy_gained 延迟道具支线双道登记);改写 =
     pending_item_opens 中件名命中作用域 ∧ unlock > 生效序位的条目各沿
     序列表前驱回退一步(:func:`sequence_prev`,修饰域 gs.node_seq_by_plane
     现值传入缺省回退默认表;P1 首节点前驱不存在 = 不回退留原值,纯防御),

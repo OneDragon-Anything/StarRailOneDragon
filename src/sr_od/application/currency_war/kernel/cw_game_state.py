@@ -2740,18 +2740,20 @@ class GameState:
     # 备战真值归观察覆盖)。开局种子底座 = [](A 类)。
     pending_item_grants: Field[list[dict]] = field(default_factory=Field)
     # [索引定义] pending_item_opens = 已获得、待倒计时归零开盒的战利品区
-    # 倒计时件队列(环境延迟开盒通道,T-34 命运礼物首例;设计 = T-34
-    # 设计稿 §2.2,迭代 2026-09-23-invest-effects-calc)。元素 = (item 件名,
+    # 倒计时件队列(世界发放域延迟开盒通道〔环境 ∪ 策略〕,环境首例 =
+    # T-34 命运礼物、策略首例 = 偶像经济火花礼盒;设计 = T-34/T-329
+    # 设计稿,迭代 2026-09-23-invest-effects-calc)。元素 = (item 件名,
     # unlock NodePos 解锁位);unlock 坐标系 = NodePos(位面,轮次)字典序、
-    # 1 基(cw_node_schedule.NodePos 同式);取值时机 = 环境获得刻写(获得
+    # 1 基(cw_node_schedule.NodePos 同式);取值时机 = 卡获得刻写(获得
     # 刻生效序位沿日程表步进 open_delay_nodes 步,T-33 锁分支同式,步进按
     # 当时日程定格);到期判定 = 当前生效序位 ≥ 解锁位(字典序,到了及
     # 以后都算,错过不悬空),命中即弹除(discharge_due_item_opens 原语)。
-    # 写入端 = 唯一逻辑写端 = on_env_gained 登记入队 / discharge_due_item_
-    # opens 到点弹除 / 完胜回退分支(check_env_item_open_perfect)解锁位
-    # 回退;无观察写端(队列 = 卡文推算知识;战利品区板件显示另建观察域
-    # giftbox_sight——旁路读数留证,本队列三写端与语义不受其影响,写入
-    # 端申报见 cw_projection_audit.py 同名行);实机局不接开盒原语
+    # 写入端 = 唯一逻辑写端 = on_env_gained(环境道)/ on_strategy_gained
+    # (策略道)登记入队 / discharge_due_item_opens 到点弹除 / 完胜回退
+    # 分支(check_env_item_open_perfect)解锁位回退;无观察写端(队列 =
+    # 卡文推算知识;战利品区板件显示另建观察域 giftbox_sight——旁路读数
+    # 留证,本队列三写端与语义不受其影响,写入端申报见
+    # cw_projection_audit.py 同名行);实机局不接开盒原语
     #(不对称申报,pending_item_grants 同款;完胜回退分支双端跑)。开局
     # 种子底座 = ()(A 类)。
     pending_item_opens: Field[tuple[tuple[str, tuple[int, int]], ...]] = field(

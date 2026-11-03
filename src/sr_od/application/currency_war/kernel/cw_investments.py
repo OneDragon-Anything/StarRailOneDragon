@@ -4861,21 +4861,28 @@ def _validate_env_deploy_lock_grants() -> None:
 _validate_env_deploy_lock_grants()
 
 
-# ===== 环境「战利品区倒计时件 + 节点倒计时开盒」登记表(白名单制)=====
+# ===== 世界发放域「战利品区倒计时件 + 节点倒计时开盒」登记表(白名单制;
+# 域 = 环境 ∪ 策略)=====
 # 立形首例 = 命运礼物(id 134「立刻获得一个【惊喜盒】,倒计时12个节点后
 # 礼盒打开,战斗完胜后,倒计时额外减少1点。」,PlazaPortal('134'),
-# cw_invest_data.py)。惊喜盒 = 战利品区浮动件非占席(实机板件实证 =
-# 与晶矿球同区,T-34 设计稿 §1 两帧证据),故不入 GiftGrant(道具通道 =
-# _place_bench_item 占席落位,与板件位置直接矛盾)、不入 BENCH_ITEM_NAMES
-# 词表(非占席,词表派生式零扩)。消费面:到手分支 = cw_gain_chain.
-# on_env_gained 延迟道具支线(纯队列登记零席位写);开盒分支 =
+# cw_invest_data.py);策略道首例 = 偶像经济(id 303401「获得【火花】和
+# 一个【火花礼盒】，倒计时10个节点后礼盒打开,……战斗完胜时,额外减少1
+# 点倒计时。」,PlazaAugment)。惊喜盒/火花礼盒 = 战利品区浮动件非占席
+# (实机板件实证 = 与晶矿球同区,T-34 设计稿 §1 两帧证据),故不入
+# GiftGrant(道具通道 = _place_bench_item 占席落位,与板件位置直接矛盾)、
+# 不入 BENCH_ITEM_NAMES 词表(非占席,词表派生式零扩)。策略卡「获得
+# 【角色】+ 倒计时件」双腿分表:角色腿住 STRATEGY_GRANTS(chars_immediate),
+# 礼盒腿住本表——两表发放通道互斥(具名送卡 vs 队列登记),同卡双登记
+# 合法非双发放(环境域 ∩ENV_GIFTS=∅ 防呆是环境单域语义,不外扩)。消费
+# 面:到手分支 = cw_gain_chain.on_env_gained(环境道)/on_strategy_gained
+# (策略道)延迟道具支线(纯队列登记零席位写);开盒分支 =
 # cw_gain_chain.discharge_due_item_opens 原语(sim 进节点收口挂点,
 # 实机局不接);完胜加速分支 = kernel/cw_env_grants.
 # check_env_item_open_perfect(report_node_advance settle_confirm 分支)。
 @dataclass(frozen=True)
 class EnvDelayedItemGrant:
-    """环境「战利品区倒计时件」结构(世界发放域专属登记表;
-    字段语义 = id 134 原文直读 + 实机板件实证):
+    """世界发放域(环境 ∪ 策略)「战利品区倒计时件」结构;
+    字段语义 = id 134/id 303401 原文直读 + 实机板件实证:
     - item: 倒计时件名(「【惊喜盒】」直读;战利品区浮动件非占席——
       实证 = reward_giftbox_phantom.webp 与晶矿球同区);
     - open_delay_nodes: 开盒倒计时节点数(「12个节点」直读);
@@ -4892,6 +4899,14 @@ ENV_DELAYED_ITEM_GRANTS: dict[str, EnvDelayedItemGrant] = {
     # 命运礼物(id 134 原文直读,cw_invest_data.py:402)
     '命运礼物': EnvDelayedItemGrant(item='惊喜盒', open_delay_nodes=12,
                                     perfect_win_accel=True),
+    # 偶像经济(id 303401 原文直读,cw_invest_data.py:277)——策略卡
+    # 倒计时件首例:角色腿「获得【火花】」住 STRATEGY_GRANTS
+    # (chars_immediate 具名送卡通道),礼盒腿住本表 = 双腿分表(策略卡
+    # 获得挂点 = on_strategy_gained,与环境道 on_env_gained 同构两道);
+    # 开盒内容「提供大量奖励」卡面无载 = 投资建模边界裁定放弃
+    # (docs/game/currency_war/research/invest_effects.md §5 裁定行)。
+    '偶像经济': EnvDelayedItemGrant(item='火花礼盒', open_delay_nodes=10,
+                                    perfect_win_accel=True),
 }
 
 
@@ -4899,13 +4914,19 @@ def _validate_env_delayed_item_grants() -> None:
     """ENV_DELAYED_ITEM_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
     2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
-    ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联)。
-    件名形/串行防呆/倒计时形/双登记防呆/加速旗形属防登记笔误类,已移除。
+    ① 孤儿键:键必须在 INVESTMENT_ENVS ∪ INVESTMENT_STRATEGIES(世界发放
+    域 = 环境 ∪ 策略;版本更新改名/移除后静默失联——双查式写法避免构造
+    两 dict 的临时并集)。件名形/串行防呆/倒计时形/双登记防呆/加速旗形
+    属防登记笔误类,已移除(策略卡「角色腿住 STRATEGY_GRANTS + 礼盒腿住
+    本表」双腿分表合法,首例 = 偶像经济;环境域 ∩ENV_GIFTS=∅ 防呆系
+    环境单域语义,禁外扩到策略域)。
     """
-    orphans = [n for n in ENV_DELAYED_ITEM_GRANTS if n not in INVESTMENT_ENVS]
+    orphans = [n for n in ENV_DELAYED_ITEM_GRANTS
+               if n not in INVESTMENT_ENVS and n not in INVESTMENT_STRATEGIES]
     if orphans:
         raise ValueError(
-            f"ENV_DELAYED_ITEM_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+            f"ENV_DELAYED_ITEM_GRANTS 孤儿键(base 无此环境/策略?):"
+            f"{sorted(orphans)}")
 
 
 _validate_env_delayed_item_grants()

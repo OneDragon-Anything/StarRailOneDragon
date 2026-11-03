@@ -3841,7 +3841,7 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        sig: ChannelSig,
                        rng: random.Random | None = None) -> tuple[str, ...]:
     """「获得投资策略」触发型效果枚举(gain-chain.md §3;枚举即收敛
-    无注册表):三条分支依次消费——
+    无注册表):四条分支依次消费——
 
     1. **advisor 解锁分支**:查 ``STRATEGY_GRANTS``(顾问入商店族登记,
        advisor=True 11 条)→ :func:`_unlock_experts` 写解锁状态(官方
@@ -3863,7 +3863,22 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
        (``STRATEGY_AFFIX_DISABLE_EMPTY_DECL``)。选择规则 = 确定性取尾
        (姊妹卡机制取尾换装),零掷骰即零流键消费(不与敌后破坏
        env_affix_disable 采样流共槽);
-    3. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
+    3. **延迟道具支线**(``ENV_DELAYED_ITEM_GRANTS`` 命中,世界发放域
+       登记表白名单,环境道 :func:`on_env_gained` 同支函数级镜像——
+       策略卡「获得【角色】+ 倒计时件」双腿分表的礼盒腿,首例 = 偶像
+       经济火花礼盒):倒计时件 = 战利品区浮动件非占席(实机板件实证 =
+       与晶矿球同区,T-34 设计稿 §1)→ 纯队列登记零席位写(不碰
+       bench/overflow 任何字段);开盒内容不建模(卡面 desc 无载,
+       裁定 = invest_effects.md §5 裁定行)。解锁位 = 获得刻生效序位
+       沿节点日程表步进 ``open_delay_nodes`` 步(计数起点 = 获得节点
+       计入,T-34 设计稿裁决点 3;生效序位未锚定 = 开局段结构性形态,
+       防御基准 (1,1);步进遇 None〔局终方向〕停留最后合法值);
+       ``perfect_win_accel`` 开时 ``env_grants_done`` 幂等写
+       ``(卡名, DELAYED_OPEN_ACCEL_KEY)`` 作用域键(消费 =
+       check_env_item_open_perfect,按键查表卡名无关)。效果串
+       ``item_open_scheduled:<件名>@<位>-<轮>``;零 rng(到手确定件名、
+       解锁位确定推算);
+    4. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
        ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
        查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
        ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
@@ -3903,6 +3918,58 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                   evidence=f'on_strategy_gained:{canon}#affix_disable',
                   sig=sig)
             effects.append(f'strategy_affix_disable:{removed}')
+    # 延迟道具支线(世界发放域登记表白名单,环境道 on_env_gained 延迟
+    # 支线同构镜像——策略卡「获得【角色】+倒计时件」双腿分表的礼盒腿,
+    # 首例 = 偶像经济火花礼盒,设计 = T-329 设计稿 §2.1,迭代
+    # 2026-09-23-invest-effects-calc):倒计时件 = 战利品区浮动件非占席
+    # (实机板件实证,T-34 设计稿 §1)→ 纯队列登记零席位写(不调
+    # _place_bench_item,不碰 bench/overflow 任何字段);开盒内容不建模
+    # (卡面 desc 无载,裁定 = invest_effects.md §5 裁定行)。解锁位 =
+    # 获得刻生效序位沿节点日程表步进 open_delay_nodes 步(计数起点 =
+    # 获得节点计入,T-34 设计稿裁决点 3;生效序位未锚定 = 开局段结构性
+    # 形态,防御基准 (1,1);步进遇 None(局终方向)停留最后合法值,
+    # 环境道同款)。零 rng(到手确定件名、解锁位确定推算);rand 语义
+    # 与链内其余写同(_select_write 收口)。kernel 反向模块级零 import
+    # 契约:函数内惰性取(on_env_gained 延迟支线同款函数级避环)。
+    from sr_od.application.currency_war.kernel.cw_env_grants import (
+        DELAYED_OPEN_ACCEL_KEY,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        effective_node_pos,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_DELAYED_ITEM_GRANTS,
+    )
+    from sr_od.application.currency_war.kernel.cw_node_schedule import (
+        sequence_next,
+    )
+    _delayed = ENV_DELAYED_ITEM_GRANTS.get(canon)
+    if _delayed is not None:
+        base = effective_node_pos(gs) or (1, 1)
+        unlock = base
+        for _ in range(_delayed.open_delay_nodes):
+            nxt = sequence_next(unlock, gs.node_seq_by_plane.value)
+            if nxt is None:
+                break   # 局终方向无后继:停留最后合法值(环境道同款)
+            unlock = nxt
+        write = _select_write(gs, rand)   # 与链内其余写同收口
+        write(gs.pending_item_opens,
+              tuple(gs.pending_item_opens.value or ())
+              + ((_delayed.item, unlock),),
+              produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'on_strategy_gained:{canon}#open_queue', sig=sig)
+        if _delayed.perfect_win_accel:
+            done = tuple(gs.env_grants_done.value or ())
+            if (canon, DELAYED_OPEN_ACCEL_KEY) not in done:
+                # 幂等:重复获得不重写(队列两条独立条目照登记,加速
+                # 作用域 done 键只写一次)
+                gs.write_logic(gs.env_grants_done,
+                               done + ((canon, DELAYED_OPEN_ACCEL_KEY),),
+                               produced_by=GAIN_CHAIN_PRODUCER,
+                               evidence=(f'on_strategy_gained:{canon}'
+                                         f'#accel_scope'), sig=sig)
+        effects.append(f'item_open_scheduled:{_delayed.item}'
+                       f'@{unlock[0]}-{unlock[1]}')
     fn = PICK_INVEST_EFFECTS.get(canon)
     if fn is None:
         return tuple(effects)

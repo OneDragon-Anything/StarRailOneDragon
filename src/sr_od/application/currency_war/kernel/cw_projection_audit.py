@@ -409,11 +409,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '自愈无主动清理,记录滞留至局终'),
     'pending_item_opens': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='环境倒计时件开盒队列(T-34 命运礼物,元素 (件名, 解锁序位'
-              ' NodePos),无观察读端——队列 = 卡文推算知识,战利品区板件'
+        basis='世界发放域〔环境∪策略〕倒计时件开盒队列(环境首例 T-34 '
+              '命运礼物、策略首例偶像经济,元素 (件名, 解锁序位 NodePos),'
+              '无观察读端——队列 = 卡文推算知识,战利品区板件'
               '显示另建观察域 giftbox_sight〔旁路读数留证,本队列三写端与'
               '语义不受其影响〕;'
-              '逻辑写端 = cw_gain_chain.on_env_gained 登记入队 + '
+              '逻辑写端 = cw_gain_chain.on_env_gained / on_strategy_gained '
+              '登记入队双道 + '
               'discharge_due_item_opens 到点弹除(sim 进节点收口,实机'
               '不接)+ check_env_item_open_perfect 完胜回退三口,消费端'
               ' = 开盒原语单一;到点比对自愈无主动清理'),

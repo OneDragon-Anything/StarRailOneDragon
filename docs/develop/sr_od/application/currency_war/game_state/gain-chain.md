@@ -715,7 +715,9 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     零采样分支)。到点开盒 = §2.9 原语(sim 专用,实机不接)。首例 =
     命运礼物(id 134「立刻获得一个【惊喜盒】,倒计时12个节点后礼盒打开,
     战斗完胜后,倒计时额外减少1点。」;建模知识正本 = invest_effects.md
-    命运礼物条)。
+    命运礼物条)。同族第二例 = 偶像经济火花礼盒(策略道,on_strategy_gained
+    延迟道具支线,世界发放域键域扩双道后自动跟随;指针 = 本文件
+    on_strategy_gained 段延迟道具支线节)。
   - **词缀失效删除分支**(`cw_gain_chain.ENV_AFFIX_DISABLE_ENV` 命中,延迟
     道具支线之后、ENV_GIFTS 查表之前;硬编码分支沿 DOT_CONTRACT_ENV
     枚举即收敛先例,单卡零复用面不入登记表):选敌后破坏(id 146
@@ -940,6 +942,24 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   实机已失效而模型未删,偏差全程持续)。难度 −5/+8 金两腿 =
   `STRATEGY_ECONOMY` 注册行静态承载(无获得时点动作,估值难度禁域
   fail-closed / 金面值),零链上分支。
+  **延迟道具支线**(`cw_investments.ENV_DELAYED_ITEM_GRANTS` 命中,世界
+  发放域登记表白名单,环境道 §3 on_env_gained 延迟道具支线同构镜像;
+  策略卡「获得【角色】+倒计时件」双腿分表——角色腿住 STRATEGY_GRANTS
+  具名送卡通道、礼盒腿住本队列,两表发放通道互斥非双发放):获得当刻
+  **纯队列登记零席位写**——件 = 棋盘右上战利品区浮动件非占席(禁
+  `_place_bench_item` 调用、禁 bench/overflow 任何字段),队列 =
+  `pending_item_opens`(fields.md §3.2.25)追加 `(件名, 解锁序位)`
+  (解锁序位 = 获得刻生效序位沿节点日程表步进 `open_delay_nodes` 步,
+  计数起点 = 获得节点计入〔T-34 设计稿裁决点 3〕;未锚定窗防御基准
+  (1,1);步进遇 None 停留最后合法值);`perfect_win_accel` 开时追加
+  done 条件键 `delayed_open_accel`(幂等不重写,作用域按键查表卡名
+  无关;消费 = `check_env_item_open_perfect` 完胜回退,settle_confirm
+  分支挂点,解锁位沿序列表前驱回退一步、多次完胜累积)。效果串单行
+  `item_open_scheduled:<名>@<位>-<轮>`;**零 rng**(到手确定件名、
+  解锁位确定推算、开盒确定事件)。到点开盒 = §2.9 原语(sim 专用,
+  实机不接)。首例 = 偶像经济(id 303401「获得【火花】和一个
+  【火花礼盒】，倒计时10个节点后礼盒打开,……战斗完胜时,额外减少1
+  点倒计时。」;建模知识正本 = invest_effects.md 偶像经济条)。
   未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)
