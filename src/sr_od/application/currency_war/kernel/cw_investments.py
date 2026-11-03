@@ -5133,6 +5133,18 @@ STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
                  StrategyDelayedOffer(id='203201', delay_nodes=3,
                                       offer_quality='银',
                                       refresh_count=3)),
+    # 黄金投资:官方「立刻进行一次黄金品质投资策略三选一，选择有3次刷新
+    # 机会。3个节点后，再获得一个。」(cw_invest_data.py:265)。双腿同形
+    # 白银投资[T-198 用户裁定 2026-11-02 案 A「完整包复刻」辖卡联动行
+    # 明文本卡到序自动辖定]:腿1 立刻金三选一(delay_nodes=0/offer_quality
+    # =金/refresh_count=3)+腿2 三节点后完整包复刻(delay_nodes=3 同金
+    # 同刷 3);本卡品质金 ∈ 金池、offer 定金 → 采样无自指同白银论证。
+    '黄金投资': (StrategyDelayedOffer(id='302201', delay_nodes=0,
+    offer_quality='金',
+    refresh_count=3),
+    StrategyDelayedOffer(id='302201', delay_nodes=3,
+    offer_quality='金',
+    refresh_count=3)),
     # 摸个鱼吧I:官方「获得专家顾问【青雀】，并使其在本局游戏中加入商店。
     # 获得6金币。深思熟虑5个节点后，青雀会想出黄金投资策略！」
     # (cw_invest_data.py, id 260101)。延时腿:深思熟虑 5 节点 → 金投资
