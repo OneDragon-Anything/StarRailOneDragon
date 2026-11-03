@@ -429,6 +429,10 @@ STRATEGY_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #: 绑定承载域 = GameState.strategy_char_grant_bindings。
 _STRATEGY_CHAR_GRANT_BINDINGS: dict[str, tuple[int, int, int]] = {
     '价值投资·金': (1, 1, 2),
+    # 价值投资·彩:展开卡[id 302601,T-165 机制件五件已落码自动跟随;卡文
+    # 「获得1个随机的2星2费角色。每次进入新节点时，获得1星的该角色，补给
+    # 后额外获得2个」= (cost, count, star) = (2, 1, 2) 直读]。
+    '价值投资·彩': (2, 1, 2),
 }
 
 
