@@ -1,24 +1,26 @@
-"""敌情注册表。
+"""敌情注册表(boss 俗称映射 + 机制 tag 观察分组)。
 
-**诊断**:对手信息「管线已建、资产为零、消费两个散件」—— boss_fit 接缝建成数周
-出口接空表(comp.countered_by_bosses 用俗称「剧目/电视机」,而 state.plane_bosses 是规范
-公司名「造梦兄弟影业」,**名字空间错位 → 永不命中**,task#73 的遗留问题)。本模块:
-①BOSS_NICKNAMES 俗称→规范名映射(打通 boss_fit);
-②BOSS_MECHANICS 20 boss 机制 tag 注册表(bosses.md 图鉴实采,版本 V4.4);
-③matchup(阵容机制属性 × boss 机制)结构层 —— 可解释 reasons 输出。
+①BOSS_NICKNAMES 俗称→规范名映射(简报 boss 读数两段转换第一段;
+白厄重开级 boss 记载用俗称「史瓦罗」,2026-11 统一阵容评分批 2 补映射);
+②BOSS_MECHANICS 20 boss 机制 tag 注册表(bosses.md 图鉴实采,版本 V4.4)
+——tag 只作观察分组,**不参线分**(线侧 boss 克制单一源 =
+``kernel/cw_affinity_table.BOSS_AFFINITY`` 攻略实证吃怕表)。
 
 数据来源:docs/game/currency_war/data/bosses.md(游戏内数据银行图鉴 OCR,权威;
 **2026-08-17 重采 20/20 全量**,原始截图 .debug/temp/currency_war/boss_shots_0817/)。
-克制方向:competitors.md + comp_library.md 攻略对策句(🟡 多源,
-E2 判据:与人类共识方向一致率 ≥85% 待实机校验)。
 """
 from __future__ import annotations
 
-# ===== ①俗称 → 规范公司名(打通 boss_fit 的名字空间错位) =====
+# ===== ①俗称 → 规范公司名(简报 boss 读数归一;bosses.md 旧档遗留说明) =====
 # 来源:bosses.md 图鉴标题括注 + 用户核对(2026-08-17):
 #   电视机=造梦互动娱乐 / 死龙=灰手生命科技 / 酒杯怪=造梦兄弟影业(荒宴醉/欢宴罪酒宴主题)。
 #   琥珀王=铁盾安保集团(V3.7 攻略"杰帕德反击=模拟宇宙琥珀王回归"+用户确认;以牙还牙反击)。
 #   红绿灯=小怪非 boss(用户确认,忽略)。
+#   史瓦罗=深穹智械科技( bosses.md 图鉴括注「代表:史瓦罗」;白厄重开级 boss
+#   记载用此名——统一阵容评分批 2 入表,final_baie_reflect「史瓦罗 = 重开级」)。
+#   ⚠️ 祸源萨姆→虫人兵器**不入**(待实机校验:虫人兵器代表「示死祸源:深魇蝗灾」
+#   vs 火线动力机甲代表「星核猎手·萨姆」词素两可,登记在
+#   cw_affinity_table.BOSS_NAME_PENDING 待验证表)。
 BOSS_NICKNAMES: dict[str, str] = {
     '剧目': '造梦兄弟影业',
     '蕉研组': '造梦互动娱乐',
@@ -27,10 +29,12 @@ BOSS_NICKNAMES: dict[str, str] = {
     '死龙': '灰手生命科技',        # 用户确认(2026-08-17)
     '酒杯怪': '造梦兄弟影业',      # 用户确认(2026-08-17)
     '琥珀王': '铁盾安保集团',      # 用户确认(2026-08-17;反击=琥珀王回归语境)
+    '史瓦罗': '深穹智械科技',      # bosses.md 图鉴括注(代表:史瓦罗);批 2 入表
 }
 
 # ===== ②boss 机制注册表(20 个;bosses.md 实采,2026-08-17 重采校准) =====
-# tag 词汇(与 MECHANIC_COUNTERS 同本体):
+# tag 词汇(观察分组用;线侧克制方向不消费本表——单一源 =
+# kernel/cw_affinity_table.BOSS_AFFINITY 攻略实证吃怕表):
 #   aoe(boss 群攻多)/ summon(召唤多目标)/ dot(持续伤害)/ control(冻结/禁锢/支配)/
 #   heal_cut(削治疗)/ self_heal(自我治疗)/ counter_attack(反击)/ share_hp(共享血量)/
 #   break_bonus(击破利好机制)/ crit_resist(克暴击)/ shield_break(削韧克护盾)/

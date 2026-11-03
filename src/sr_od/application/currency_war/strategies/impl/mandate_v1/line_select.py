@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_affinity_table import (
     affix_line_score,
+    boss_line_score,
+    strong_enemy_score,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
@@ -123,12 +125,14 @@ class OpeningCtx:
     """开局简报上下文(design §6 扩参方案:r4/Y4-4——线分词缀/boss/投资
     分量的输入面,从 GameState 现读;调用方构造,签名幂等)。
 
-    - ``enemy_affixes``:开局简报词缀名元组(键空间 = AFFIX_EFFECTS 注册名;
-      词缀分/无燃料底线消费);
-    - ``plane_bosses``:三位面 boss 名(非 None 项;boss 分批 2 落地,
-      批 1 恒 0 分,字段先行承载);
+    - ``enemy_affixes``:开局简报词缀名元组(键空间 = AFFIX_EFFECTS 注册名
+      + 独立强敌键「红绿灯」——词缀读链对未注册名透传,强敌表经词缀行
+      通道消费;词缀分/无燃料底线消费);
+    - ``plane_bosses``:三位面 boss 名(非 None 项;boss 分 = Σ三只克制,
+      均权——位面真值 CollectPlaneIntel 后逐位面的权重精细档先均权);
     - ``held_invest``:投资持有名集(active_strategies ∪ active_env)——
-      投资环境分 + 投资策略分(通道派生)消费。
+      投资环境分 + 投资策略分(通道派生)+ 扑满强敌可见通道(持有扑满
+      环境 = 经济环境产物开局可见)消费。
     """
 
     enemy_affixes: tuple[str, ...] = ()
@@ -185,8 +189,8 @@ class LineScore:
     plugin: int     # 证据·插件层(线成员 − carry − key_items,+500/名)
     heat: int       # 攻略热度(LINE_HEAT × +1/点)
     invest: int     # 投资环境分 + 投资策略分(通道派生,§3.1/§3.2)
-    affix: int      # 词缀分(吃怕表 §3.3,含重开级/无燃料底线)
-    boss: int       # boss 分(Σ三只克制 §3.4;批 2 boss 面落地前恒 0)
+    affix: int      # 词缀分(吃怕表 §3.3,含重开级/无燃料底线/兜底泛化)
+    boss: int       # 敌情克制分(§3.4:Σ三只 boss + 非 boss 强敌——红绿灯/扑满)
 
     @property
     def total(self) -> int:
@@ -207,7 +211,8 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
     证据层逐名一档(锚 > 其余 core > 骨架 > 插件——同名角色跨层不重复
     计分:骨架 = key_items 命中 − carry,插件 = 线成员命中 − carry −
     key_items);invest = 持有名逐个过环境/策略两通道派生(一名只命中
-    自家注册表,无双计);boss 分量批 2 前恒 0(design §8 批次划分)。
+    自家注册表,无双计);boss = Σ三只克制 + 非 boss 强敌(§3.4,批 2
+    落地——红绿灯经词缀行通道/扑满经投资持有通道)。
     """
     anchor = LINE_ANCHOR[comp.name]
     carry = carry_set(comp)
@@ -227,7 +232,9 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
         heat=HEAT_PER_POINT * LINE_HEAT.get(comp.name, 0),
         invest=invest,
         affix=affix_line_score(comp.name, opening_ctx.enemy_affixes),
-        boss=0,
+        boss=boss_line_score(comp.name, opening_ctx.plane_bosses)
+             + strong_enemy_score(comp.name, opening_ctx.enemy_affixes,
+                                  opening_ctx.held_invest),
     )
 
 
