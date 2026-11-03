@@ -103,6 +103,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_bond_battle_grants,
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
+    check_strategy_boss_end_heal,
     check_strategy_empty_equip_xp,
     check_strategy_equip_count_xp,
     check_strategy_gift_grants,
@@ -148,6 +149,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
     STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
+    STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
+    STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
@@ -4398,6 +4401,45 @@ class SimBackend:
         # 重放整段跳过);返回值忽略(无回调面);live 零写观察覆盖
         #(星徽入栏有画面真值可读)。
         check_strategy_bond_tier_grants(self.gs, logic_sig('sim:strategy'))
+        # —— 策略卡首领战结束回血(奋斗协议 id 301801 首例;接线点 =
+        # 策略腿区尾段:羁绊档位腿之后、败局待办登记之前,胜败两态共同
+        # 路径——卡面无「胜利」限定 = 败局存活也回;死亡局在本函数提前
+        # return 处已出局,不回血)。挂点序位三重依据:①在结算环行之后
+        # ——回血笔不进本场环行,本场完胜差分零污染(ring 前置则 boss
+        # 战自身环行差分直接被 +50 污染);②在损血差分(hp_lost 取值)
+        # 之后——+50 不污染损血档位判据;③回血笔落在本场环行与次战斗
+        # 环行之间 → 次节点完胜判据(相邻环行 hp 持平差分)结构性漏判,
+        # 方向单一偏严 = 该判据既有偏差面条款辖内新事件源,经披露键随局
+        # 申报。条件单一源 = kernel check_strategy_boss_end_heal(Σ 持卡
+        # boss_end_heal_hp,纯读零写);写面 = observe hp 独立笔 +
+        # _hp_trail_append 成对(first_run 容器不变式②——写流与轨迹
+        # 全序同构,写一笔追一笔)。**直加不 clip**(正部 HP 加法在码
+        # 家族形:选卡即时腿 apply_strategy_pick_hp/获得时点回血
+        # apply_equip_acquire_hp 同判——hp_max 字段缺位零上限消费,
+        # clip 属无消费端语义;live 真实小队生命上限未采证,经披露键随局
+        # 申报,实采证伪 → 常量改值零迁移)。hp 未观察(None)= 无基座
+        # 零写零追加(禁造假基座,apply_hp_outcome 未观察零写同款)。
+        # sig = obs 族 'sim:strategy' 组(世界数值面 observe 分工,
+        # 策略胜利金腿同组;evidence 与选卡即时腿 hp:strategy_pick 分账)。
+        # 幂等零新增守卫 = 本函数 _settled_key(同节点重放整段跳过);
+        # live 零写观察覆盖(回血后血量条真值入容器自动收口)。
+        boss_heal = check_strategy_boss_end_heal(self.gs)
+        if kind == 'boss' and boss_heal > 0:
+            hp_now = self.gs.hp.value
+            if hp_now is not None:
+                self.gs.observe(
+                    self.gs.hp, int(hp_now) + boss_heal,
+                    evidence=sim_evidence(
+                        f'strategy:boss_heal:p{node.plane}'
+                        f'r{node.round_num}'),
+                    sig=obs_sig(group_id='sim:strategy'))
+                self._hp_trail_append()
+                self.disclosures.setdefault(
+                    STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
+                    'direct_add_no_clip_v0')
+                self.disclosures.setdefault(
+                    STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
+                    'next_node_perfect_missed_strict_v0')
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

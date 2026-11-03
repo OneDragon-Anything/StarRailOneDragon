@@ -189,8 +189,14 @@ class EconomyEffect:
                                           # → 消费侧折算期望刷价 = 基准 2×(1−0.45)=1.1
                                           # (MechanismMutation.refresh_price_mult 通道)
     xp_buy_hp_cost: int = 0               # 奋斗协议(棱彩):购经验每击耗 6 血非金
-                                          # (成本币种切换;首领战结束回 50 血=行为段,
-                                          # 不入经济账,仅本注释留档)
+                                          # (成本币种切换;首领战回血腿 =
+                                          # boss_end_heal_hp 独立字段)
+    boss_end_heal_hp: int = 0             # 奋斗协议(棱彩):首领战斗结束回复 50 血
+                                          # (战斗结算型 HP 世界腿:条件单一源 =
+                                          # cw_gain_chain.check_strategy_boss_end_heal,
+                                          # sim 结算段策略腿区发放,live 游戏自算
+                                          # 观察覆盖零写;卡文无「首次」限定 =
+                                          # 每首领战结算都发,无 done 闩)
     refresh_shop_rewrite_every_3cost: int = 0  # 市场干预(银):下一次和每 4 次刷新全 3 费面
                                           # (池构成族突变旗标字段;5 次免费刷走 free_refresh_burst)
     # —— 词缀源效果字段(敌人词缀改写源;结构化注册 =
@@ -354,10 +360,12 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 兜底;不入现金通道——hp 定价通道作废正本(invest_effects.md 血金
     # 互兑裁定),hp 永不折金
     'hp_instant',
-    # 战斗结算修饰族(非收入通道;难度族同款划界):败局帧战斗结算修饰
-    # (hp 加重/连胜维持),世界腿 = sim 结算 hp 腿与 streak 转移形参,
+    # 战斗结算修饰族(非收入通道;难度族同款划界):战斗结算帧 HP/连胜
+    # 修饰与结算型回血(hp 加重/连胜维持/首领战结束回血 boss_end_heal_hp
+    # ——一次性结算面 HP 变更非持续通道),世界腿 = sim 结算 hp 腿
+    # (loss_hp_extra 形参 / boss_end_heal_hp 结算段策略腿区独立笔),
     # live 游戏自算 + 观察覆盖;修饰不产生金流,不入引擎判定
-    'loss_hp_extra', 'keep_streak_on_loss',
+    'loss_hp_extra', 'keep_streak_on_loss', 'boss_end_heal_hp',
 })
 
 
@@ -773,9 +781,14 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '概率事件': EconomyEffect(refresh_free_chance=0.45),
     # ↑ 「刷新时有45%概率获得一次免费刷新」——期望刷价口径 2×0.55=1.1
     #   (MechanismMutation.refresh_price_mult=0.55)
-    '奋斗协议': EconomyEffect(xp_buy_hp_cost=6),
+    '奋斗协议': EconomyEffect(xp_buy_hp_cost=6, boss_end_heal_hp=50),
     # ↑ 「购买经验值消耗6点小队生命值而非金币。首领战斗结束时回复50点小队生命值」——
-    #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;回血段=行为流不建模
+    #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;
+    #   回血腿 = 战斗结算型 HP 世界腿(每首领战结算都发,数值直读),
+    #   消费单一源 = cw_gain_chain.check_strategy_boss_end_heal(纯读零写)
+    #   → sim 结算段策略腿区尾段发放,live 游戏自算观察覆盖;建模假设经
+    #   STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION / _PERFECT_WIN_BIAS /
+    #   _DISPLAY_PHASE_UNVERIFIED 三披露键随局/判读申报
     '市场干预': EconomyEffect(free_refresh_burst=5, refresh_shop_rewrite_every_3cost=4),
     # ↑ 「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」——池构成族突变旗标
     #   (v_c/a_c 池面改写;消费规范单一源 = fields.md「市场干预」节,
@@ -4333,6 +4346,25 @@ _validate_strategy_hp_loss_grants()
 #: STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 先例(kernel 注册表模块)。
 STRATEGY_HP_LOSS_BUCKET_ASSUMPTION: str = \
     'strategy_hp_loss_bucket_carry_truth_diff_battle_only'
+
+
+# ===== 首领战回血腿建模假设披露键(奋斗协议 boss_end_heal_hp;消费 = sim
+# ===== 随局披露面 disclosures setdefault + 判读申报,常量落位沿
+# ===== STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 先例/kernel 注册表模块)=====
+# 三键各承载一项建模假设:
+# - cap:sim 回血直加不 clip(正部 HP 加法家族形,hp_max 字段缺位零上限
+#   消费),live 真实小队生命上限未采证;实采证伪(如存在上限)→ 常量改值
+#   零迁移(补 clip 常量,消费端 = sim 结算段回血腿);
+# - perfect_win_bias:持卡局首领战次节点完胜结构性漏判——回血笔在结算
+#   环行之后,次战斗结算环行 hp_after 差分含 +50,完胜判据(相邻环行
+#   hp 持平,cw_env_grants.check_env_deploy_lock_perfect)漏判,方向
+#   单一偏严(该判据偏差面条款辖内新事件源);
+# - display_phase:live 首领战结算屏显示相位(游戏回血先于/后于屏显)
+#   未采证,实机结算环行 hp_after 是否含 +50 判读申报制,不实机查。
+STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION: str = 'strategy_boss_heal_hp_cap_unverified'
+STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS: str = 'strategy_boss_heal_perfect_win_bias'
+STRATEGY_BOSS_HEAL_DISPLAY_PHASE_UNVERIFIED: str = \
+    'strategy_boss_heal_display_phase_unverified'
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====

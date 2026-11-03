@@ -127,6 +127,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
+    get_strategy,
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
@@ -1923,6 +1924,35 @@ def check_strategy_boss_battle_grants(gs: GameState, node_kind: str,
                            producer=_BOSS_BATTLE_GRANT_PRODUCER)
             granted.append(equip)
     return tuple(granted)
+
+
+def check_strategy_boss_end_heal(gs: GameState) -> int:
+    """策略卡首领战结束回血检查(「首领战斗结束时回复50点小队生命值」
+    触发器单一源,奋斗协议 id 301801 首例;唯一调用点 = sim 结算腿——
+    live 零写观察覆盖:hp 由游戏自算,结算屏血量读数入容器,实机局不接
+    本通道)。
+
+    条件矩阵(check_strategy_battle_grants 形态):持卡为空 → 0;逐持卡
+    经 get_strategy 归一(active_strategies 存量 OCR 原始名不静默 miss,
+    blood_xp_mode 同法)取 economy.boss_end_heal_hp 求和,表外卡/无经济
+    条目卡自然零贡献。登记载体 = STRATEGY_ECONOMY 字段直读,零白名单表
+    (回血量 = EconomyEffect.boss_end_heal_hp 单一源,族新卡挂字段即
+    自动入列)。节点类型门归调用方(kind == 'boss' 在 sim 结算腿——本
+    函数对任意持卡局返回合量,调用方限定首领战结算点消费)。
+
+    - **零 rng**:条件全真值,无采样面;
+    - **无 done 闩**(可重复):卡面无「首次」限定 = 每次首领战结算都
+      发;防重归调用方节点键幂等守卫,本函数零二次守卫;
+    - **纯读零写**(契约同 check_strategy_win_gold_grants):返回回血
+      合量,写面(observe hp 独立笔 + hp_trail 成对追加)归调用方。
+    """
+    heal = 0
+    for name in gs.active_strategies.value or ():
+        strategy = get_strategy(name)
+        if strategy is None or strategy.economy is None:
+            continue
+        heal += int(strategy.economy.boss_end_heal_hp)
+    return heal
 
 
 def check_strategy_bond_battle_grants(gs: GameState,

@@ -162,6 +162,9 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: 不计分通道字段(结构登记、永不为分):
 #: - 血本位分区覆盖:xp_buy_hp_cost/hp_gold_swap(invest_strategy 血本位
 #:   三态序以 is_blood_economy 集合排除覆盖,价值面不入现金账);
+#:   boss_end_heal_hp(奋斗协议首领战回血腿)= HP 世界面发放同 hp_instant
+#:   归定价出域族(hp 定价通道作废,hp 永不折金;世界腿 = sim 结算段
+#:   策略腿区独立笔);
 #: - 难度族:difficulty_delta/difficulty_per_streak/difficulty_node_types
 #:   (难度→价值需战力建模,宪法一禁域);encounter_tier_extremes_only
 #:   (二极管遭遇收窄结构旗标,端点 sim 呈现面派生无数值,同禁域);
@@ -174,7 +177,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #:   正本(invest_effects.md 血金互兑裁定)支撑「永不为分」,非「待建模」
 #:   (无未来进分语义);世界面发放 = sim 选卡落地拍独立笔。
 _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
-    'xp_buy_hp_cost', 'hp_gold_swap',
+    'xp_buy_hp_cost', 'hp_gold_swap', 'boss_end_heal_hp',
     'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
     'encounter_tier_extremes_only',
     'future_quality_upgrade', 'difficulty_inflation_exempt',
