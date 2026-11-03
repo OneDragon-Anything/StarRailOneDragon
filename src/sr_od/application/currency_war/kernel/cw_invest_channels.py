@@ -173,6 +173,29 @@ def env_line_bonuses(env_name: str) -> dict[str, int]:
             if (v := env_line_bonus(norm, c)) > 0}
 
 
+def env_strong_lines(env_name: str) -> tuple[str, ...]:
+    """环境名 → **全档命中**线名元组(羁绊 ∈ 线 form_tiers/or_reqs;flex
+    降档线不入——flex = 弱关联,不构成「为谁服务」面)。
+
+    消费 = 阵容冲突护栏指向集(``cw_investments.env_faction_scope`` 通道
+    派生分支):护栏问强方向冲突,弱关联线(线分里 +30/0 降档)不该制造
+    兼容性。与线分的 flex 降档规则分工:线分回答「值几分」(flex 弱关联
+    仍值软档分),本函数回答「是否定向」(flex 不算)。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    norm = normalize_invest_name(env_name)
+    e = INVESTMENT_ENVS.get(norm)
+    if e is None or e.category not in _ENV_CATEGORY_TIER or not e.faction:
+        return ()
+    out: list[str] = []
+    for comp in COMP_LIBRARY:
+        core_keys = set(comp.form_tiers) \
+            | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
+        if e.faction in core_keys:
+            out.append(comp.name)
+    return tuple(out)
+
+
 def strategy_line_bonuses(strategy_name: str) -> dict[str, int]:
     """策略名 → {线名: 加分}(全库扫描;flow 遥测喂入的替换查询口,
     替代退役的 ``augment_affinity``;判读口径 = 通道派生线分加分,

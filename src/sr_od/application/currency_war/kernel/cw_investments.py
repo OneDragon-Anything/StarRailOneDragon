@@ -38,6 +38,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTER_ROSTER,
@@ -2695,6 +2699,28 @@ def spy_on_level_up_active(session) -> int:
     return 0
 
 
+def level_up_gift_active(gs: GameState) -> bool:
+    """节节高升升级发放腿现读(True = 持有且注册在册;升级回调判定单一源)。
+
+    在册判定 = ``STRATEGY_ECONOMY['节节高升']``(gold_per_level_up > 0;
+    本卡不立 EffectSpec,经济注册行 = 唯一登记面——注册表漂移保守侧
+    缺失即效果退役零行为);持有判定 = 现役 held 判据(active_strategies
+    容器字段,形状镜像 :func:`spy_on_level_up_active`)。入参 = 直取
+    GameState(消费位 = 升级上报回调,体内 gs 现成;spy 的 session 形
+    须先 game_state_of 归一,两形不通用禁照抄)。返回 bool 非张数:本腿
+    每级恒发 1 名,张数语义只属间谍。消费位唯一 = level_up 上报回调
+    节节高升块,禁第二处内联(spy 同纪律)。
+    """
+    econ = STRATEGY_ECONOMY.get('节节高升')
+    if econ is None or econ.gold_per_level_up <= 0:
+        return False   # 注册表漂移保守侧(条目移除 = 效果退役,零行为)
+    for name in (gs.active_strategies.value or []):
+        s = get_strategy(name)
+        if s is not None and s.name == '节节高升':
+            return True
+    return False
+
+
 def resolve_strategy_canonical(name: str) -> str | None:
     """候选名 → 投资策略注册表规范名(归一 + LCS 兜底)。
 
@@ -2720,39 +2746,44 @@ def resolve_strategy_canonical(name: str) -> str | None:
 # 2026-10-17-invest-direction-guard/design.md §2.1)=====
 # 指向集 = 「这张投资服务哪些阵容阵营」的阵营名集合:非空 = 有阵容指向;
 # 空 = 通用卡(纯经济/纯战力/随机角色族/时代规则类),无冲突可判。全部
-# 派生自既有注册表(零手抄登记,版本重采自动跟);线库(cw_comps)反向
-# 引用一律函数内延迟 import——cw_comps 模块级已引 cw_investments,反向
-# 模块级即成环(augment_affinity 先例)。消费位 = strategies/impl/
+# 派生自既有注册表(零手抄登记,版本重采自动跟);线库(cw_comps)/通道
+# 派生(cw_invest_channels)反向引用一律函数内延迟 import——两者模块级
+# 均已引本文件,反向模块级即成环。消费位 = strategies/impl/
 # mandate_v1/invest_strategy 冲突基准(§2.2);锁定线指向不设函数
 # (锁定 Comp.factions 消费侧现读)。
 
 def env_faction_scope(env_name: str) -> frozenset[str]:
-    """投资环境的阵容指向集(faction 分支 + 亲和分支;§2.1)。
+    """投资环境的阵容指向集(faction 分支 + 通道派生分支;§2.1)。
 
     - faction 分支:``INVESTMENT_ENVS[env].faction`` 非空入集(概念股/邀请/
       契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);
-    - 亲和分支:``ENV_COMP_AFFINITY`` 该环境值键 = 线名,取各线 Comp.factions
-      **全集**入集——副阵营随线带入(命运圣杯邀请亲和含双王圣杯 → 指向集
-      = {命运圣杯, 能量}:能量组件卡可服务双王线的能量副羁绊,判兼容是
-      语义本意;特邀专家:桑博 faction 空但亲和专家桑博DOT,单 faction 分支
-      会误判通用)。线名缺 Comp(注册表漂移)→ 跳过不炸,指向集收窄
+    - 通道派生分支(统一阵容评分迭代起替换旧亲和分支):
+      ``cw_invest_channels.env_strong_lines`` 全档命中线(羁绊 ∈ 目标线
+      form_tiers/or_reqs;flex 降档弱关联线不入——护栏问「为谁服务」,
+      弱关联不构成服务面)取各线 Comp.factions **全集**入集——副阵营随线
+      带入(命运圣杯邀请命中双王圣杯 → 指向集 = {命运圣杯, 能量}:能量
+      组件卡可服务双王线的能量副羁绊,判兼容是语义本意;概念股/邀请/
+      契约的主羁绊多线共享时多线并入,如 列车同行概念股 → 列车同行 +
+      龙丹战技点)。线名缺 Comp(注册表漂移)→ 跳过不炸,指向集收窄
       宁放行(与角色入账分支未注册跳过同 fail 方向)。
 
     环境名不在注册表 → 空集;入参先 ``normalize_invest_name``——持有名
-    OCR 形变不归一 = 查表 miss → 护栏基准弱化漏拦(与 strategy_lock_hit/
-    env_fit/augment_affinity 查表先例同口径)。
+    OCR 形变不归一 = 查表 miss → 护栏基准弱化漏拦(与通道派生查询口
+    同口径;env/策略注册表查询归一防线先例)。
     """
     e = INVESTMENT_ENVS.get(normalize_invest_name(env_name))
     if e is None:
         return frozenset()
     from sr_od.application.currency_war.kernel.cw_comps import (
-        augment_env_affinity,
         get_comp,
+    )
+    from sr_od.application.currency_war.kernel.cw_invest_channels import (
+        env_strong_lines,
     )
     out: set[str] = set()
     if e.faction:
         out.add(e.faction)
-    for line_name in augment_env_affinity(env_name):
+    for line_name in env_strong_lines(env_name):
         comp = get_comp(line_name)
         if comp is not None:
             out |= set(comp.factions)

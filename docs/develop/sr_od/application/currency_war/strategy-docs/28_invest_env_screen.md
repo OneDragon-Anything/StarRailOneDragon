@@ -23,11 +23,11 @@
 
 ## 3. 排除与转向轴(交互规则)
 
-> **共用判据单一源** = [13_pick_family.md](13_pick_family.md) §4(代码 = `strategies/impl/mandate_v1/pick_common.py`)——转向轴常数与自拆台阈值为投资环境/投资策略两画面共用,语义细则归彼处,本节只记本屏落点;禁止在本篇复制第二份语义(宪法六:双源即违例)。
+> **共用判据单一源** = [13_pick_family.md](13_pick_family.md) §4(代码 = `strategies/impl/mandate_v1/pick_common.py`)——转向轴常数与选卡克制减分为投资环境/投资策略两画面共用,语义细则归彼处,本节只记本屏落点;禁止在本篇复制第二份语义(宪法六:双源即违例)。
 
-- **阵容冲突护栏**(指向集单一源 = `kernel/cw_investments.env_faction_scope`,策略侧 `strategy_faction_scope` 同文件):候选环境阵容指向集与基准空交 → 并入排除通道(与禁选/自拆台同一条 excluded 合取,`_score_frame` 内组装)。基准 = 锁定线 `Comp.factions`(锁定帧,历史误持不入基;降格帧锁线不入基回持有基)∨ 已持有投资(环境+策略)指向并集(未锁定帧,同名归一查询);基准空(无指向持有 ∧ 未锁定)→ 不辖,选卡与无护栏逐位一致。全部候选出域且次数闸尽 → 全排除退化帧(下行)。环境指向 = faction 分支(概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破)+ 亲和分支(ENV_COMP_AFFINITY 各线 factions 并集,副阵营随线带入)。依据:策略槽不服务异线阵容(与策略侧同判据,29 号稿 §5 裁定 2026-10-17)。
+- **阵容冲突护栏**(指向集单一源 = `kernel/cw_investments.env_faction_scope`,策略侧 `strategy_faction_scope` 同文件):候选环境阵容指向集与基准空交 → 并入排除通道(与禁选同一条 excluded 合取,`_score_frame` 内组装)。基准 = 锁定线 `Comp.factions`(锁定帧,历史误持不入基;降格帧锁线不入基回持有基)∨ 已持有投资(环境+策略)指向并集(未锁定帧,同名归一查询);基准空(无指向持有 ∧ 未锁定)→ 不辖,选卡与无护栏逐位一致。全部候选出域且次数闸尽 → 全排除退化帧(下行)。环境指向 = faction 分支(概念股/邀请/契约全量登记,专家类例外特邀专家:加拉赫→击破)+ 通道派生分支(统一阵容评分迭代起替换旧亲和分支:`cw_invest_channels.env_strong_lines` 全档命中线〔羁绊 ∈ form_tiers/or_reqs,flex 弱关联线不入〕各线 factions 并集,副阵营随线带入;专家类目通用 0——所赠角色走证据分)。依据:策略槽不服务异线阵容(与策略侧同判据,29 号稿 §5 裁定 2026-10-17)。
 - **禁选**:config `env_forbid` 子串命中 → 排除出候选。
-- **自拆台**:板面 持续伤害+减益 计数 ≥ `BOARD_DOT_COUNT_THRESHOLD` 时,克制 DoT/减益的候选排除(机制归一调 kernel `AFFIX_MECHANIC_MAP`/`MECHANIC_COUNTERS`——「是否克制」是事实判定留 kernel;「排除它」是策略,在画面文件)。
+- **选卡克制减分**(counters_dot 硬排除迁移,统一阵容评分迭代):克制锚点线主派的候选减 `COUNTER_PICK_PENALTY`(纯加权,组件分量;环境名不含词缀注册名族,生产帧恒 0——机制与策略屏同源,「是否克制」是 kernel 机制表事实判定留 kernel;「减分」是策略,在共用件)。
 - **priority**:`env_priority` 子串命中 → 加 `STEERING_PRIORITY_BONUS`(固定偏好分,软偏好——压不过 S 档阵容的方向分,「用户点名是偏好不是支配」)。
 - **全排除退化帧**(三候选全被排除):对全体候选(含被禁)取 argmax 最不负分者,原因编码以 `all-excluded-fallback` 开头(判读面唯一标识)。
 
@@ -45,5 +45,5 @@
 投资策略画面已消费本批共用件(其正本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),复用落点三句:
 
 - **策略卡现金分** = 策略层新入口 `strategy_economy.strategy_economy_value`(消费 kernel `EconomyEffect` per-node/一次性通道)——与本屏 `env_economy_value`(消费 `EnvEconomyEffect` 整局规则改写通道)公式分立,不复用同一入口;
-- **共用件提升形态** = mandate_v1 包内共用模块 `pick_common`(转向轴/自拆台单一源,文档面 = `13_pick_family.md` §4),非跨策略包——跨策略共用待第二策略实现出现时再评估;
+- **共用件提升形态** = mandate_v1 包内共用模块 `pick_common`(转向轴/克制减分单一源,文档面 = `13_pick_family.md` §4),非跨策略包——跨策略共用待第二策略实现出现时再评估;
 - **赠卡口径** = 策略屏走 kernel `STRATEGY_GRANTS` + `gift_value.grant_gift_value` 新口——非本屏 `named_gift_value`/`random_faction_gift_value` 在用具名/随机两口径;两屏共用面 = 档→分映射(`GIFT_TIER_SCORE`/`ADVISOR_DISCOUNT`)与 `line_value_best` 三种意向状态判定内层入口。
