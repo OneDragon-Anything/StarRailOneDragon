@@ -125,6 +125,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
     STRATEGY_MERGE_GRANTS,
+    STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_ORE_OPEN_EFFECTS,
     STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
@@ -133,6 +134,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
+    PLANE_NODE_TABLES,
+    NodePos,
+    node_sequence_of,
     resolve_plane_node_seqs,
 )
 from sr_od.application.currency_war.kernel.cw_ore_reward import (
@@ -616,12 +620,16 @@ def gain_invest_env(gs: GameState, session: object, env_name: str, *,
     write = _select_write(gs, rand)
     write(gs.active_env, canon, produced_by=producer,
           evidence=f'gain_invest_env:{canon}', sig=sig)
-    # 节点序列场字段写分支(设计 §2.1,**写点唯一**):修饰规则唯一
-    # 计算点 = resolve_plane_node_seqs,注册即落全量(改写注册表内
-    # 修饰表/表外默认表,无半态);通道 = write_logic(序列由 desc 规则化
-    # 确定,可准确计算 → 逻辑写,非采样面),插在 active_env 落账后。
-    # live 与 sim 同走本获得链(report_action_pick_invest_env_param 同源),
-    # 单点覆盖双端。
+    # 节点序列场字段 env 注册写分支(设计 §2.1;**双写端之一**,第二写端
+    # = 策略卡条件改写 sim 节点窗开挂点,evidence='node_seq:strategy',
+    # 载体 = cw_sim_backend._enter_node_window):修饰规则唯一计算点 =
+    # resolve_plane_node_seqs,注册即落全量(改写注册表内修饰表/表外
+    # 默认表,无半态);通道 = write_logic(序列由 desc 规则化确定,可
+    # 准确计算 → 逻辑写,非采样面),插在 active_env 落账后。live 与
+    # sim 同走本获得链(report_action_pick_invest_env_param 同源),env
+    # 注册写单点覆盖双端。相对序申报:同局先策略改写后选环境 → env
+    # 注册写整表覆盖策略改写(后写赢),双改写叠加交互零特判(判读
+    # 申报制,证伪路径 = 实机双改写叠加局观察)。
     gs.write_logic(gs.node_seq_by_plane,
                    resolve_plane_node_seqs(canon),
                    produced_by=producer, evidence='node_seq:env', sig=sig)
@@ -2461,6 +2469,99 @@ def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
               evidence=f'on_strategy_gained:{"+".join(newly)}#reward_ore',
               sig=sig)
     return total
+
+
+# ===== 策略卡条件节点序列改写域(决议:娱乐星球 id 302301 首例,策略侧
+# ===== mid-run 条件改写首例;注册表 = cw_investments.STRATEGY_NODE_
+# ===== REWRITE_TRIGGERS,与 env 侧 ENV_NODE_REWRITE_RULES 键域互斥禁互挂,
+# ===== 与 T-283 STRATEGY_REWARD_NODE_GRANTS 同触发面异 payload 各建各表)=====
+
+def _remaining_non_boss_to_reward(
+        seqs: dict[int, tuple[str, ...]], pos: NodePos,
+) -> dict[int, tuple[str, ...]]:
+    """改写词实现:「将本局游戏剩余的非首领节点替换为奖励节点」。
+
+    域 = 当前序位之后全位面展平槽位(「本局游戏剩余的」无位面限定词,
+    字典序展平全序 = 节点身份全序,cw_node_schedule NodePos 契约);逐槽
+    ``kind != 'boss' → 'reward'``(「非首领」逐字明写排除项 = 仅 boss
+    保留,补给/遭遇/奖励位全换),当前位与此前槽位原样复用(对象同一性
+    与 resolve_plane_node_seqs 同形,消费侧逐值断言不因重建失真)。零 rng
+    纯计算零写。
+    """
+    out: dict[int, tuple[str, ...]] = {}
+    for plane in sorted(seqs):
+        seq = seqs[plane]
+        if plane < pos[0]:
+            out[plane] = seq
+            continue
+        mods = list(seq)
+        start = pos[1] if plane == pos[0] else 0
+        for i in range(start, len(mods)):
+            if mods[i] != 'boss':
+                mods[i] = 'reward'
+        out[plane] = tuple(mods)
+    return out
+
+
+#: 改写词 → 实现分派表(词表单一源;表值笔误 = 直接键索引 KeyError 响亮
+#: 可见,2026-10-28 治理口径不设 import 期闭集哨;词表扩员随族批同批扩
+#: 分派,禁函数体内硬编码卡名/词分支)。
+_NODE_REWRITE_WORD_IMPLS: dict[
+    str, Callable[[dict[int, tuple[str, ...]], NodePos],
+                  dict[int, tuple[str, ...]]],
+] = {
+    'remaining_non_boss_to_reward': _remaining_non_boss_to_reward,
+}
+
+
+def check_strategy_node_rewrite(gs: GameState, *, pos: NodePos,
+                                gold: int,
+                                ) -> dict[int, tuple[str, ...]] | None:
+    """策略卡条件节点序列改写决策(「进入战斗时，若拥有180枚金币，将
+    本局游戏剩余的非首领节点替换为奖励节点」触发器单一源,决议:娱乐
+    星球 id 302301 首例;唯一调用点 = sim 节点窗开挂点
+    ``_enter_node_window``——live 零写观察覆盖:实机改写由游戏自算自演,
+    bot 经既有节点观察链承接,偏离留证不自动改写)。
+
+    纯决策零写零 rng:入参 ``gold`` = 评估口径金现值(轮首收入前——
+    apply_round_start_income 在 ``_begin_node_window`` 收入段,晚于窗开
+    挂点;调用方传挂点刻现值),``pos`` = 当前节点序位(场字段坐标系,
+    1 基)。条件矩阵(顺序即短路序,任一不满足 → None):
+
+    1. 持卡交集(``active_strategies`` ∩ STRATEGY_NODE_REWRITE_TRIGGERS
+       键集)为空 → None(表外卡一律无条目,禁从效果原文自动猜装);
+    2. 闩短路:卡名 ∈ strategy_conditional_done(纯卡名键,共域纪律,
+       与 strategy_grants_done 分域)→ None(改写一局至多一次;改写后
+       剩余槽位无 battle 位天然幂等,闩仅省同值冗余写);
+    3. 触发时机/当前槽类型:触发时机词表扩员各建各分支,现役唯一成员
+       'battle_entry' 要求当前槽 kind=='battle'(「进入战斗」类型读法
+       仅普通战斗,T-18 词义边界先例;kind = 场字段现值锚定序列真值,
+       None 未注册回退默认表,node_sequence_of 同参约定,reward/encounter
+       轴排除论证 = 注册表头注释);
+    4. gold < 门槛 → None(表值,卡面明写)。
+
+    全过 → 改写词分派产出改写后全 dict(键域保持现值;当前位与 boss 位
+    不动,后继消费面 sequence_next/节点窗 kind/round 上限读场字段自动
+    跟随),调用方一拍两写:场字段改写值 + 闩追加(同 evidence 同组)。
+    """
+    held = [n for n in gs.active_strategies.value or ()
+            if n in STRATEGY_NODE_REWRITE_TRIGGERS]
+    if not held:
+        return None
+    done = gs.strategy_conditional_done.value or ()
+    seqs = gs.node_seq_by_plane.value
+    kind = node_sequence_of(pos[0], seqs)[pos[1] - 1]
+    for name in held:
+        if name in done:
+            continue
+        timing, threshold, word = STRATEGY_NODE_REWRITE_TRIGGERS[name]
+        if timing != 'battle_entry' or kind != 'battle':
+            continue
+        if gold < threshold:
+            continue
+        return _NODE_REWRITE_WORD_IMPLS[word](
+            seqs if seqs is not None else dict(PLANE_NODE_TABLES), pos)
+    return None
 
 
 # ===== 晶矿开启触发发放域(黄晶矿工 id 302101 策略卡域「开启晶矿时」

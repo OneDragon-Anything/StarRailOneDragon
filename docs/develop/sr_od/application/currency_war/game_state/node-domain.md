@@ -22,6 +22,15 @@
 身份的载荷属性不入键,防第二失真源;类型读法与仲裁
 见 §7 与 [fields.md](fields.md) §3.2.1。
 
+序列的**第二修饰腿** = 策略卡条件改写(mid-run,与 env 注册刻写构成场字段
+双写端):策略卡「进入战斗时条件满足 → 本局剩余非首领节点替换为奖励节点」
+类(登记表 = `cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS`,决议:娱乐
+星球 id 302301 首例)由 sim 节点窗开挂点条件触发整表覆盖写(evidence
+`node_seq:strategy`,一局至多一次,闩 = `strategy_conditional_done` 纯卡名
+键共域)。与 env 注册写(上段,`node_seq:env`)的相对序 = 后写赢:先策略
+改写后选改写环境 → env 注册值覆盖策略值,双改写叠加零特判(判读申报制)。
+字段契约单一源 = [fields.md](fields.md) §3.2.2b。
+
 ## 2. 推进模型与字段结构(指针)
 
 **推进模型一句话**:节点推进 = 上一节点**终结动作落地**的上报
@@ -42,7 +51,7 @@ value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_nod
 | `node_pos: Field[tuple[int, int]]` | 节点序位(`NodePos` 元组),**两态字段**:id_mark 确认态 observation(确认 helper 解析读数直写,节点域专用口不经通用 observe())/ 推进态 logic(终结动作上报经原语写入,推进未确认态) | 同上 |
 | `node_hist_pos` | run 内单调水位 + 去重第二道防线;run 段随容器重基线 | 同上 |
 | `node: Field[NodeKey]` | plane/round/kind 观察镜像(聚合入口写入方保留,决策层坐标消费) | 同上 |
-| `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写入位置唯一 = `gain_invest_env` 尾段,注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.1 |
+| `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写入位置 = 双写端(env 注册刻 `gain_invest_env` 尾段 + 策略卡触发刻 sim 节点窗开挂点,一局至多一次),注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.2b |
 
 画面上下文域 `prev_screen`/`current_screen` = 两个独立事实的原始读数(观察域,
 写入位置 = 观察聚合入口;开局链分支写入位置已随触发模型换代停用,开局链段不再写上下文对),

@@ -112,6 +112,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
     check_strategy_node_char_grants,
+    check_strategy_node_rewrite,
     check_strategy_reward_ore_grants,
     check_strategy_win_gold_grants,
     consume_strategy_interest_topup,
@@ -157,6 +158,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
     STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
+    STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     StrategyDelayedOffer,
     aggregate_economy,
@@ -2934,6 +2936,47 @@ class SimBackend:
         observe_node_anchor(self.gs, pos,
                             trigger_screen=self._screen_for_node(kind),
                             actor='SimBackend')
+        # 策略卡条件节点序列改写腿(决议:娱乐星球 id 302301 策略侧首例;
+        # 「进入战斗时，若拥有180枚金币，将本局游戏剩余的非首领节点替换
+        # 为奖励节点」触发器单一源 = kernel check_strategy_node_rewrite,
+        # 白名单表 STRATEGY_NODE_REWRITE_TRIGGERS 驱动,注册表 = 策略卡域
+        # cw_investments,cw_investments.py 表头辖域互斥申报在卷:env 名
+        # 键域归 ENV_NODE_REWRITE_RULES 注册刻无条件应用,策略卡名键域归
+        # 本腿条件触发,两表键域互斥)。挂点 = 窗开拍非防漏——位面过渡
+        # 分支提前 return 后过渡屏点击照常收尾本窗(_begin_node_window),
+        # 挂收尾只会迟不会漏;取窗开的真实优点 = 触发时点贴「进入战斗」
+        # 窗开语义(过渡屏呈现即评估,不待点击)+ 当前位已按旧 kind
+        # observe 零失真(改写不含当前位,本窗收尾重读现值零失真)。
+        # gold 口径 = 轮首收入前(apply_round_start_income 在窗收尾收入段
+        # 晚于本挂点;同段前序 = 超发回流腿先付,其金入判定口径,判读
+        # 申报制)。kernel 纯决策零写,命中才本侧一拍两写:场字段改写值
+        # (evidence='node_seq:strategy',与 env 注册写 'node_seq:env'
+        # 分键双写端)+ 闩追加(strategy_conditional_done 纯卡名键共域,
+        # 键集 = 持卡∩表未闩成员——改写后剩余槽位无 battle 位,后续
+        # 不再有可达评估点,同拍全量封账不可能跳过会发的后续触发;
+        # 证伪前提随 env 覆盖边申报)。相对序申报:策略改写后同局再选
+        # 节点改写环境 → env 注册写整表覆盖策略改写(后写赢),双改写
+        # 叠加交互零特判(判读申报制,证伪路径 = 实机双改写叠加局观察)。
+        # 零 rng;live 零写观察覆盖(实机改写游戏自算自演,bot 经既有
+        # 节点观察链承接,偏离留证不自动改写);后继推进 sequence_next/
+        # 各消费面读场字段自动跟随。
+        _rw_seqs = check_strategy_node_rewrite(
+            self.gs, pos=pos, gold=int(self.gs.gold.value or 0))
+        if _rw_seqs is not None:
+            _rw_ev = sim_evidence('node_seq:strategy')
+            self.gs.write_logic(self.gs.node_seq_by_plane, _rw_seqs,
+                                produced_by='SimBackend:strategy_node_rewrite',
+                                evidence=_rw_ev,
+                                sig=logic_sig('sim:strategy'))
+            _rw_done = tuple(self.gs.strategy_conditional_done.value or ())
+            _rw_latch = [n for n in (self.gs.active_strategies.value or ())
+                         if n in STRATEGY_NODE_REWRITE_TRIGGERS
+                         and n not in _rw_done]
+            self.gs.write_logic(
+                self.gs.strategy_conditional_done,
+                _rw_done + tuple(_rw_latch),
+                produced_by='SimBackend:strategy_node_rewrite',
+                evidence=_rw_ev, sig=logic_sig('sim:strategy'))
         self._window_resume = ''
         if pos[0] > 1 and pos[1] == 1:
             # 位面过渡(U20:全继承无重置;点空白后收尾节点窗口)

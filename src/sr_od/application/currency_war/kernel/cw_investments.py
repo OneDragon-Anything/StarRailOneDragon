@@ -6313,3 +6313,59 @@ def _validate_strategy_ore_open_effects() -> None:
 
 
 _validate_strategy_ore_open_effects()
+
+
+# ===== 策略卡条件节点序列改写注册表(决议:娱乐星球 id 302301 首例,
+# ===== 策略侧 mid-run 条件改写首例;白名单制,各建各表——env 侧节点
+# ===== 改写单一户口 = cw_node_schedule.ENV_NODE_REWRITE_RULES,两表
+# ===== 键域互斥:彼表键 = 环境名、注册刻无条件应用,本表键 = 策略卡
+# ===== 规范名、节点窗开条件触发应用,禁互挂)=====
+# 卡面原文(cw_invest_data.py):「你受到的伤害加倍，进入战斗时，若拥有
+# 180枚金币，将本局游戏剩余的非首领节点替换为奖励节点。获得50金币。」
+# 键 = 策略规范名(normalize_invest_name 归一口径,半角冒号规范名);
+# 值 = (触发时机, 金门槛, 改写词) 三元组:
+# - 触发时机 'battle_entry' = 「进入战斗时」卡面直读,类型读法仅普通
+#   战斗(kind=='battle' 节点窗开;词义边界先例 = 投资环境迭代设计
+#   T-18 §2.3:卡文体系指称奖励节点时显式写「奖励节点」,触发句泛称
+#   不入 reward 轴、遭遇类同理不入——sim 结构事实 = reward 位窗开亦走
+#   战斗结算,排除依据 = 词面体系非结构;轴取舍直接决定首触发点位次,
+#   判读申报制);
+# - 金门槛 180 = 卡面明写常量;评估口径 = 轮首收入前(节点窗开拍,
+#   apply_round_start_income 在窗收尾收入段晚于窗开,「进入…时」字面);
+# - 改写词 = kernel 分派键(封闭集,词表扩员随族批;表值笔误后果 =
+#   决策函数词表分派 KeyError 响亮可见,按 2026-10-28 治理不设 import
+#   期闭集哨)。
+# 改写域 = 当前序位之后全位面展平槽位 kind != 'boss' → 'reward'(「本局
+# 游戏剩余的」无位面限定词 = 展平域;「非首领」逐字明写排除项 = 仅 boss
+# 保留,补给/遭遇/奖励位全换),当前位与 boss 位不动;一局至多一次
+# (闩 = strategy_conditional_done 纯卡名键,共域纪律与 strategy_grants_
+# done 分域;改写后剩余槽位无 battle 位天然幂等,闩仅省同值冗余写)。
+# 腿A instant_gold=50 = STRATEGY_ECONOMY 在册零动(发放写端缺口 = 族级
+# 待办维持);腿C 「伤害加倍」= 战斗数值域零建模(sim 战斗无伤害模型
+# 家族同判,零登记不入 UNIT_BUFF)。消费面 = kernel/cw_gain_chain.
+# check_strategy_node_rewrite(纯决策单一源,唯一调用点 = sim 节点窗开
+# 挂点;live 零写观察覆盖——实机改写由游戏自算自演,bot 经既有节点
+# 观察链承接,偏离留证不自动改写)。表外策略一律无条目,禁从效果原文
+# 自动猜装;同族后继「进入战斗时/节点条件改写序列」卡按注册行直用本
+# 通道接入。
+STRATEGY_NODE_REWRITE_TRIGGERS: dict[str, tuple[str, int, str]] = {
+    '决议:娱乐星球': ('battle_entry', 180, 'remaining_non_boss_to_reward'),
+}
+
+
+def _validate_strategy_node_rewrite_triggers() -> None:
+    """STRATEGY_NODE_REWRITE_TRIGGERS 构建校验(import 即炸;治理口径 =
+    2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更独立触发
+    的漂移哨留」同族表——本域唯一哨:孤儿键,表键必须在
+    INVESTMENT_STRATEGIES,版本改名/移除后静默失联;金门槛/触发时机/
+    改写词值域闭集查系手抄常量纯笔误类按治理删,行值精确断言归本表域
+    测试把关)。"""
+    orphans = [n for n in STRATEGY_NODE_REWRITE_TRIGGERS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_NODE_REWRITE_TRIGGERS 孤儿键(base 无此卡?):'
+            f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+
+
+_validate_strategy_node_rewrite_triggers()

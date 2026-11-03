@@ -243,7 +243,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名'
               '或复合键 first_buy_xp#<费用>,局内恒存随快照存续),无观察'
               '读端——发放登记事实非观察投影(同族行先例 = '
-              'env_grants_done);逻辑写端六处 = '
+              'env_grants_done);逻辑写端七处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
               '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
               '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
@@ -262,7 +262,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '(mark_strategy_buy_star_flip_consumed 挂买牌上报 applied '
               '后尾段,纯卡名键,evidence strategy_buy_star_flip:<卡名>,'
               '翻转在落位拍先于闩写 at-most-once,producer '
-              'strategy_buy_star_flip_grant)'),
+              'strategy_buy_star_flip_grant)+ 策略卡节点序列改写闩'
+              '(check_strategy_node_rewrite 决策、sim 节点窗开挂点写,'
+              '纯卡名键,evidence node_seq:strategy,与场字段改写值同拍'
+              '同组,producer SimBackend:strategy_node_rewrite)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'
@@ -433,8 +436,10 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='逐位面节点序列场字段(T-8;键 = 位面 1 基,值 = 节点类型序,'
               'None = 未注册回退默认表),无观察读端——序列由环境 desc 规则'
               '化确定可计算,观察对账走节点行 CV 读→live 台账独立通道(失配'
-              '留证不自动改写);唯一逻辑写端 = cw_gain_chain.gain_invest_env '
-              "尾段(evidence='node_seq:env',注册即落全量)"),
+              '留证不自动改写);逻辑写端双写 = cw_gain_chain.gain_invest_env '
+              "尾段(evidence='node_seq:env',注册即落全量)+ 策略卡条件改写"
+              "(sim 节点窗开挂点,evidence='node_seq:strategy',登记表 = "
+              'cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS,一局至多一次)'),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

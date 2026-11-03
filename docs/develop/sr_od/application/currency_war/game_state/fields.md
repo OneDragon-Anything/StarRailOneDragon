@@ -263,11 +263,19 @@ rand 通道,§2.6)→ ②先验(首个聚合入口帧按档 82/62;非实证档�
 类型序,取值清单与 `PLANE_NODE_TABLES` 同)。节点身份(序位键)的权威源:后继原语
 `sequence_next`/next_screen 推导/观察锚定/round 读数上限
 (`node_round_cap`)全量经本字段。
-**写入口**:逻辑态 `write_logic`,写入位置唯一 = `gain_invest_env` 尾段
-(evidence=`node_seq:env`)——修饰规则唯一计算点 =
+**写入口**:逻辑态 `write_logic`,**双写端**(均无观察写入方):①env 注册刻
+= `gain_invest_env` 尾段(evidence=`node_seq:env`)——修饰规则唯一计算点 =
 `cw_node_schedule.resolve_plane_node_seqs`,注册即落全量(改节点序列环境
 (统一注册表 `ENV_NODE_REWRITE_RULES`:人身意外险插入型/战争边疆替换型)
-落修饰表,其余环境落默认表,无半态);无观察写入方。
+落修饰表,其余环境落默认表,无半态);②策略卡触发刻 = sim 节点窗开挂点
+(`cw_sim_backend._enter_node_window`,observe 锚定后/位面过渡分支前,
+evidence=`node_seq:strategy`),登记表 =
+`cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS`(决议:娱乐星球 id 302301
+首例:「进入战斗时拥有 180 金 → 当前序位之后非 boss 槽位全替换为奖励
+节点」,触发时机类型读法仅普通战斗,gold 口径 = 轮首收入前,一局至多一次,
+闩 = `strategy_conditional_done` 纯卡名键;live 零写观察覆盖——实机改写由
+游戏自算自演,偏离留证不自动改写)。相对序申报:同局先策略改写后选改写
+环境 → env 注册写整表覆盖策略改写(后写赢,判读申报制)。
 **None 回退契约**:None = 未注册态(位面 1 前段/恢复接管/recorder replay),消费方
 回退默认表(位面 1 内两制同值,回退无窗;位面 2 回退比在用 9 收紧 7、位面 3 回退
 7——上限三态单一源 = `node_round_cap`)。
@@ -2545,7 +2553,9 @@ STRATEGY_BENCH_LEAVE_GOLD_GRANTS,「备战席的1星花火/火花进节点留
   (`STRATEGY_ECONOMY.instant_gold=4` 在册,kernel 发放端缺口 = 族级待办)。
 - 保险的装备效果:每损 20 血获 1 随机简易装备(注册表未结构化,仅金;三条效果申报见
   §5.3 保险族)。
-- 决议:娱乐星球:节点序改写效果登记于 §3.2.2 节点序列记录表。
+- 决议:娱乐星球:节点序改写效果登记于 §3.2.2b 场字段 + 策略卡改写注册表
+  (`STRATEGY_NODE_REWRITE_TRIGGERS`;§3.2.2 为 node_path 观察台账,非本卡
+  登记面)。
 - 着眼当下:下一个购买角色变 2★ + 该卡从商店移除(与四费晋升同族并案;注册表仅
   instant_gold=5)。
 - 晋升名额:购买经验时商店随机一角色变高 1 费(LevelUp 副作用的商店牌面改写;**无

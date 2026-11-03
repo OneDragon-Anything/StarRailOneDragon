@@ -2794,7 +2794,9 @@ class GameState:
     # tick 重试自愈,placed 才封账)+ sim 到级金腿接线段 + check_strategy_
     # level_equip_grants + check_strategy_take_all_supply(选卡事件消耗)
     # + check_strategy_first_buy_xp_grants(买牌上报尾段,先闩后世界写
-    # at-most-once)——写端清单单一源 = cw_projection_audit 审计行;
+    # at-most-once)+ 策略卡节点序列改写闩(sim 节点窗开挂点,纯卡名键,
+    # evidence 'node_seq:strategy',条件全过才闩)——写端清单单一源 =
+    # cw_projection_audit 审计行;
     # 消费 = 各检查腿跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
     # 无删除;「首次」语义——卖出/合成使同名计数回落不回滚已发放,
     # 递减/重置不存在)。恢复局随快照存续 = 中断恢复对局不重发(rebuild
@@ -3127,10 +3129,16 @@ class GameState:
     # 键 = 位面 1 基(与 NodeKey.plane 同
     # 坐标系,恒只含键 {1,2,3}),值 = 节点类型序
     # (元素 ∈ cw_node_schedule.NODE_KINDS,与 PLANE_NODE_TABLES 同词表)。
-    # 取值时机 = 环境注册刻一次性落全量(修饰表或默认表,无半态),局内
+    # 取值时机 = 环境注册刻一次性落全量(修饰表或默认表,无半态)+ 策略
+    # 卡条件改写刻一局至多一次整表覆盖(窗开触发,纯卡名闩防重,双写
+    # 见下),局内
     # 恒存;**None = 未注册态**(P1 前段),消费方回退默认表(P1 内两制
-    # 同值,回退无窗)。写入端 = cw_gain_chain.gain_invest_env 尾段单一
-    # 写径(evidence='node_seq:env'),无观察写端——观察对账面 = 备战帧
+    # 同值,回退无窗)。写入端 = **双写端**(均逻辑写,无观察写端):
+    # ① env 注册刻 = cw_gain_chain.gain_invest_env 尾段
+    # (evidence='node_seq:env');② 策略卡触发刻 = sim 节点窗开挂点
+    # (evidence='node_seq:strategy',载体 = cw_sim_backend._enter_node_
+    # window,登记表 = cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS,
+    # 一局至多一次)——观察对账面 = 备战帧
     # 节点行动态槽数 CV 读(cw_node_reader)→ live 台账 seq_by_plane
     # (cw_exec_state),台账与本字段可逐位对照,失配留存证据不自动改写。
     # 消费面 = 节点序列正反解/next_screen 推导/观察锚定/round 值域上限
