@@ -54,6 +54,7 @@
 
 ### 批 4 行为条件流
 - **存款回报**(银):上节点没花钱 → 2 免费刷(期权成本进每回合决策)。
+- **开源节流**(棱,id 300101,**同字段条件输入第二消费卡**,2026-11-03 已建模):上节点没花钱 → 息顶满至帽(resolved cap;cap→9 引擎通道在册选卡即活,economy.md §10.1 收入修正四分类归③利息通道修改)。世界真值腿已建模:kernel 判定 `cw_economy.strategy_interest_floor`(持卡∧`prev_node_spent is False` → resolved 帽,聚合取宽含并持;True/None/未持卡 → 0 禁猜)+ 捕获 `cw_gain_chain.capture_strategy_interest_topup`(tick 闸滚位前置数,效果账本条目 `INTEREST_TOPUP` 计数载体,置数禁累加)+ 消费 = sim 节点窗开读后清零传 `round_start_income(interest_floor=…)` 息分量下限(层序 max(息, floor)+flat,并持狸财经狸且未花费 9+2=11;扑满节点入递延快照随行,评估时点 = 进节点时点);live 零写观察覆盖(实机息自算自显,息行读链既有);instant_gold=10 选卡金腿缺口族级(T-112 口径)维持。
 - **招财狗**(银,id 103501,**win 结算腿首例**,2026-10-31 已建模):胜利且无损 → 每佩佩 +1 金(微量,策略层现金分未建模登记,量级在此声明)。世界真值腿已建模:登记表 `cw_investments.STRATEGY_WIN_GOLD_GRANTS` 白名单(键 = 策略规范名,值 = 每佩佩金数;构建校验孤儿键哨,值域按 2026-10-28 治理判据不设)+ 消费 = `kernel/cw_gain_chain.check_strategy_win_gold_grants`(纯读零写:胜 ∧ 未损血 ∧ 佩佩数三条件,佩佩计数 = 备战∪上阵∪溢出合并池单位数不折星),唯一调用点 = sim `_resolve_battle` 结算腿 observe 金独立笔(evidence `strategy_win_gold:p<位面>r<轮>`,收入笔后相邻);live 零写观察覆盖(金由游戏侧自发入账,结算屏真值覆盖收束);触发域 = desc 未写明面,按全部结算节点建模(奖励关恒胜白拿即发,扑满败局 won=False∧hp_delta=0 双判据短路不发),假设经披露键 `strategy_win_gold_scope_all_settlement_nodes` 随局申报,实机差额归披露键校准面;佩佩召唤腿「获得一个佩佩」 = `cw_gain_effects._STRATEGY_CHAR_GRANTS` 名单 +1 复用具名角色发放族。
 - **星星相印**(银):每合 3星 +5 金(一局 1-3 次 ≈ 5-15 金)。
 - **气氛组/+**(银):战斗后每 2 个零伤角色 +1XP(+即时 8XP)。

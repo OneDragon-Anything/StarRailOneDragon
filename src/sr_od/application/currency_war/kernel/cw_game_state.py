@@ -4274,6 +4274,15 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
             # = 位面开始桥,XP 支 = sim 窗腿双挂点分工)
             apply_effect_plane_start_grant(gs, plane=effective[0],
                                            frame=frame)
+        # 开源节流条件息顶满捕获(fields.md §3.3.9 条件输入族第二消费卡):
+        # 调用位必须在滚位行之前——捕获读「上节点是否花费」的滚位前真值,
+        # 置载体交 sim 节点窗消费;放滚位后会读恒 False 使顶满恒发。
+        # kernel 反向模块级零 import 契约 → 函数内惰性取
+        # (_tick_strategy_conditional_grants 同款)。
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            capture_strategy_interest_topup,
+        )
+        capture_strategy_interest_topup(gs, frame=frame)
         roll_prev_node_spent(gs, frame=frame)   # 存款回报条件评估毕,滚位新节点(§3.3.9)
         grant_effect_node_xp(gs, frame=frame)
         _tick_strategy_conditional_grants(gs)

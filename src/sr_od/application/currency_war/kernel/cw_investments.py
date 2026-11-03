@@ -1013,6 +1013,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
         payload=STRATEGY_ECONOMY['存款回报'], duties=DutyFlags(),
         notes='条件免费刷 2/节点:上节点未花费才授予,经节点桥发放;无即时腿'),
+    # 开源节流:官方「获得10金币，利息上限提升至9。进入新节点时，如果上个
+    # 节点你没有花费金币，则可获得最大利息的金币数。」(cw_invest_data.py,
+    # id 300101)。条件判定族(与存款回报共用同一条件输入 prev_node_spent,
+    # 发放物异构 = 利息金非免费刷新,不入免费刷新桥):条件金腿 = 轮首收入
+    # 息分量顶满至 resolved 帽(economy.md §10.1 收入修正四分类本卡归③
+    # 利息通道修改;kernel 策略 = cw_economy.strategy_interest_floor,捕获
+    # = cw_gain_chain.capture_strategy_interest_topup,tick 闸滚位前置数
+    # 交 sim 节点窗消费;cap→9 帽腿 = 引擎通道在册选卡即活)。条目即顶满
+    # 载体宿主(捕获/消费都挂本条目 INTEREST_TOPUP 计数,结构性必需);
+    # 账本桥对本条目全 no-op(burst=0 零额度早退/payload 非 BattlefieldEffect
+    # 板面零重写);instant_gold=10 选卡金腿缺口族级(T-112 口径);duties
+    # 全空(无计数器/无预知/无姿态消费面)。payload 引 STRATEGY_ECONOMY
+    # 同一实例(单一源)。
+    '开源节流': EffectSpec(
+        id='300101', name='开源节流', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['开源节流'], duties=DutyFlags(),
+        notes='息顶满至帽(条件:上节点未花费,经收入 floor 参差;'
+              'cap→9 引擎通道在册即活;instant_gold=10 选卡金腿缺口族级'),
     # 打捞人才库:官方「每次进入补给阶段后，随机获得一个未被选择的角色
     # 及其携带的装备。」(cw_invest_data.py,id 100701)。触发面 =
     # SUPPLY_PHASE(枚举成员随本条目首个在册使用);发放域 = 补给未选列

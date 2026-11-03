@@ -191,6 +191,7 @@ class CounterKey:
     XP_GRANTED = 'xp_granted'   # 升级窗口已发放节点数(成功经验;写端唯一 = 发放桥 grant_effect_node_xp,窗口耗尽判定读本键)
     LOST = 'lost'   # 超发货币负债额快照(拿卡拍持有金;写端唯一 = 获得链登记腿播值 kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数,禁猜测写;消费端 = sim 清零/回流两腿世界真值)
     SHIELD_BANK = 'shield_bank'   # 现金为王护盾记忆量快照(出售退款合计×1000;写端唯一 = 板面重写桥出售支 apply_board_rewrite,与退款权威写入同闸,空场/出售域未全读零记账;伴生数值型世界真值记账,现役零代码消费面)
+    INTEREST_TOPUP = 'interest_topup'   # 开源节流条件息顶满待消费额(resolved 帽;写端唯一 = cw_gain_chain 捕获函数置数,消费 = sim 节点窗读后清零——置数语义禁累加,窗口异常未消费时累加会放大错发)
 
 
 # ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====
@@ -551,6 +552,17 @@ class ActiveEffectInventory:
         e = self.first(spec_id)
         if e is not None:
             e.counters[key] = e.counters.get(key, 0) + n
+
+    def set_counter(self, spec_id: str, key: str, value: int) -> None:
+        """计数器置数(覆盖写非自增;条目不在场零动作,bump 同款静默形)。
+
+        适用 = 「条件评估结果」类单拍快照键(现役 = INTEREST_TOPUP 开源节流
+        条件息顶满待消费额):每拍覆写 0↔帽,与自增形(bump)语义分立——
+        置数键禁走 bump(窗口异常未消费时累加会把单拍值放大成错发)。
+        """
+        e = self.first(spec_id)
+        if e is not None:
+            e.counters[key] = value
 
     def bump_key(self, key: str, n: int = 1) -> None:
         """动作侧全量计数推进(挂点 = 刷新上报函数,§5.1「刷新=计数累加」;

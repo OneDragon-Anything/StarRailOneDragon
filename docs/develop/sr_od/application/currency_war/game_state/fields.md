@@ -1440,6 +1440,16 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
   一次性 2 次额度**)。必要输入字段「**上节点是否花费**」= `prev_node_spent`
   (观察需求,跨节点金币口径事实;写入方=节点边界接线,未接线期间保持 None=无读数
   机会的数据事实)。
+- **开源节流**(id 300101,棱彩):同字段第二消费卡——消费形态 = **收入息分量顶满**
+  (条件=上节点零花费,与存款回报共用 `prev_node_spent` 同字段同写端同滚位;
+  发放物异构 = 利息金非免费刷新,不入免费刷新桥)。kernel 判定 =
+  `cw_economy.strategy_interest_floor`(持卡∧`prev_node_spent is False` →
+  resolved 利息帽,聚合取宽含并持;True/None/未持卡 → 0 禁猜),捕获 =
+  `cw_gain_chain.capture_strategy_interest_topup`(kernel tick 闸滚位前置数,
+  效果账本条目 `INTEREST_TOPUP` 计数载体,**置数禁累加**),消费 = sim 节点窗开
+  读后清零传 `round_start_income` 新缺省参 `interest_floor`(息分量下限,层序
+  max(息, floor)+flat;扑满节点入递延快照随行);live 零写观察覆盖(实机息自算
+  自显,息行读链既有)。
 - **每节点自动刷新 1 次**:单列为基础行为事实,**不并入免费额度**。前置=**未锁店**
   (锁店不自动刷新,见 §3.3.10);锁×自动刷新交互待验。锁按钮与牌锁定模板已建档——
   缺口=缺实机识别接线(字段已已登记,见下节)。

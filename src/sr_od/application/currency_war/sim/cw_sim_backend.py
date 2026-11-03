@@ -107,6 +107,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_level_grants,
     check_strategy_node_char_grants,
     check_strategy_win_gold_grants,
+    consume_strategy_interest_topup,
     discharge_due_item_grants,
     discharge_due_item_opens,
     discharge_due_strategy_grants,
@@ -420,6 +421,7 @@ def apply_invest_installment_gold(gs: GameState, *, plane: int,
 def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              node_type: str, streak: int,
                              pending_loss: LostNodeRef | None = None,
+                             interest_floor: int = 0,
                              ) -> IncomeApplied:
     """轮首收入结算并 obs 写金(节点推进序列调用一次)。
 
@@ -429,6 +431,8 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
       ``gs.pending_loss``):非 supply/reward 节点传入触发 kernel 败补支
       (U04 口径);supply/reward 轮不传(败态跨轮保留,仅下一战斗轮
       消费——与 kernel 分支序一致);消费后清回 None 由调用方负责。
+    - ``interest_floor`` = 开源节流条件息顶满下限(载体消费位传入,见
+      ``_begin_node_window``;直调面〔单测/单元锁〕不传 = 零漂移)。
     """
     mult, flat, cap = income_modifiers_of(gs)
     gold_before = int(gs.gold.value or 0)
@@ -437,7 +441,7 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
     row = round_start_income(
         plane, round_num, node_type, gold_before, streak,
         lost_node=effective_loss, win_reward_mult=mult,
-        interest_flat=flat, interest_cap=cap)
+        interest_flat=flat, interest_cap=cap, interest_floor=interest_floor)
     gold_after = gold_before + row.total
     tag = f'income:p{plane}r{round_num}'
     gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
@@ -1632,8 +1636,10 @@ class SimBackend:
     _window_begun_pos: NodePos | None = field(init=False, default=None)
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
     #: 「战败时无连胜成分」需胜负,窗口开时未知 → 基数冻结(金/进轮
-    #: 连胜/收入修饰 = 轮初口径),结算分支胜负后落账并清回 None。
-    _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None]]
+    #: 连胜/收入修饰/开源节流息顶满下限 = 轮初口径;floor 评估时点 =
+    #: tick 捕获 = 进节点时点,结算刻重评估会读扑满节点自身花费禁),
+    #: 结算分支胜负后落账并清回 None。
+    _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None], int]
                          | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
     #: :meth:`_reconcile_next_screen`;元素 = (延后时点已进窗节点序位,声明),
@@ -2964,17 +2970,23 @@ class SimBackend:
         # 自然蒸发不补发。零值零写(未持分期卡零新增观察行);幂等复用
         # 窗口守卫,零新增守卫。
         apply_invest_installment_gold(self.gs, plane=plane, round_num=r)
+        # 开源节流条件息顶满消费(kernel tick 捕获→载体→窗开消费契约的
+        # 消费半边,读+清单清点):floor 评估时点 = tick 捕获 = 进节点时点
+        # (卡面「进入新节点时」口径);非扑满支随收入透传,扑满支入快照
+        # 四元组递延——结算时重评估会读到扑满节点自身的花费(时点漂移),
+        # 快照随行禁现读。
+        interest_floor = consume_strategy_interest_topup(self.gs)
         # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
         # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
         pending = self.gs.pending_loss.value
         if is_piggy_node(self.gs):
             # 扑满节点收入递延:统一公式败局形需胜负,窗口开时未知 →
-            # 只冻结基数(金/进轮连胜/修饰 = 轮初口径),结算分支落账
-            # (_resolve_battle);支付时点 = 结算屏,与实机一致。
+            # 只冻结基数(金/进轮连胜/修饰/顶满下限 = 轮初口径),结算分支
+            # 落账(_resolve_battle);支付时点 = 结算屏,与实机一致。
             self._piggy_income_snap = (
                 int(self.gs.gold.value or 0),
                 max(int(self.gs.streak.value or 0), 0),
-                income_modifiers_of(self.gs))
+                income_modifiers_of(self.gs), interest_floor)
         else:
             # 非扑满清递延快照(纯防御,幂等清理,现网不可达路径零行为
             # 变化):扑满局奖励节点必走上分支;残留快照若带入非扑满
@@ -2985,7 +2997,7 @@ class SimBackend:
             apply_round_start_income(
                 self.gs, plane=plane, round_num=r, node_type=kind,
                 streak=max(int(self.gs.streak.value or 0), 0),
-                pending_loss=pending)
+                pending_loss=pending, interest_floor=interest_floor)
         if kind not in INCOME_BRANCH_NODE_TYPES and pending is not None:
             clear_pending_loss(self.gs,
                                sig=obs_sig(group_id='sim:loss'))
@@ -3935,12 +3947,12 @@ class SimBackend:
             # 胜局 = 基础+进轮连胜×倍率+息)。基数 = 窗口开快照(轮初口径,
             # 息按窗口开金),支付时点 = 结算屏与实机一致;增量落当前金,
             # 窗口内购物波动不受影响。
-            gold_snap, streak_in, (mult, flat, cap) = \
+            gold_snap, streak_in, (mult, flat, cap), floor = \
                 self._piggy_income_snap
             row = round_start_income(
                 node.plane, node.round_num, 'reward', gold_snap, streak_in,
                 win_reward_mult=mult, interest_flat=flat, interest_cap=cap,
-                lost_round=not won)
+                interest_floor=floor, lost_round=not won)
             gold_now = int(self.gs.gold.value or 0)
             tag = f'income:p{node.plane}r{node.round_num}'
             self.gs.observe(self.gs.gold, gold_now + row.total,

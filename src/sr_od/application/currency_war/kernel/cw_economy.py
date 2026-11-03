@@ -251,6 +251,29 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
     return max(0, int(interest_cap_override))
 
 
+def strategy_interest_floor(gs: GameState) -> int:
+    """开源节流条件息顶满额(条件金腿「进入新节点时,如果上个节点你没有
+    花费金币,则可获得最大利息的金币数」;fields.md §3.3.9 条件输入族
+    第二消费卡):持卡(按 active_strategies 名单)∧ 上节点未花费
+    (prev_node_spent is False)→ resolved 利息帽(聚合链取宽,含本卡
+    自身 9/并持利息上调 10);未持卡/已花费(True)/条件不可评估(None)
+    → 0 保守零顶满(本金充裕金 None 同款禁猜口径)。条件输入的置位与
+    滚位机制单一源 = mark_gold_spent 四花费通道 + roll_prev_node_spent
+    (cw_game_state),本函数只读不写;捕获挂点 = kernel tick 闸滚位前
+    (cw_gain_chain.capture_strategy_interest_topup,晚于滚位读恒 False
+    = 顶满恒发错发形态,时序约束由 tick 闸调用位承载)。
+    命名区分:cw_registry.RegView.interest_floor() 是策略侧收入纪律视图
+    的预算面地板(interest_floor_override 覆写/ALL IN 清零),与本函数
+    (世界条件金腿的息分量下限)同名异义,两域零数据耦合。"""
+    if '开源节流' not in (gs.active_strategies.value or []):
+        return 0
+    if gs.prev_node_spent.value is not False:   # True=已花费不授;None=不可评估禁猜
+        return 0
+    cap = aggregate_economy(
+        list(gs.active_strategies.value or [])).interest_cap_override
+    return interest_cap_resolved(cap)
+
+
 def cap_resolved_of_session(session: StrategySession | None) -> int:
     """cap_resolved 现读(session resolved 链;利息帽三源归一)。
 
@@ -508,6 +531,7 @@ def round_start_income(
         win_reward_mult: float = 1.0,
         interest_flat: int = 0,
         interest_cap: int | None = None,
+        interest_floor: int = 0,
         lost_round: bool = False) -> RoundStartIncome:
     """轮首收入三支单一源(统一观察架构 §7-T1:同输入必同输出,禁第二份)。
 
@@ -526,6 +550,13 @@ def round_start_income(
       聚合单一源=EconomyEffect.interest_flat_per_node)。
     - ``interest_cap``:resolved 利息帽(None→DEFAULT_INTEREST_CAP;归一口
       =:func:`interest_cap_resolved`,禁调用方内联 cap 字面量)。
+    - ``interest_floor``:息分量下限(开源节流条件金腿「上节点未花费 →
+      息顶满至帽」的消费形;帽界分量内顶满 = ``max(息, floor)``,flat
+      修饰层照加其后——flat 与帽两修饰层分立,interest_flat_per_node
+      字段注释「与 interest_cap 无关」同口径)。缺省 0 = 现状零漂移;
+      传值唯一来源 = tick 闸捕获载体(sim 节点窗消费/live 接线批同契约),
+      禁调用方现读 :func:`strategy_interest_floor` 顶替——现读时点若在
+      滚位后条件恒 False,顶满恒不发的错发形态由载体契约杜绝。
     - 值域注:奖励/常规轮的 base 经 :func:`reward_base_gold` 平面感知
       取键(P2r1/P3r1 单键误返 3 hazard 在此消灭);r8 位面大奖励
       (待办,sim 少发 ~9)与事件金不在本函数适用范围(触发面不同,
@@ -554,7 +585,8 @@ def round_start_income(
         base = reward_base_gold(plane, round_num)
         streak_amt = _streak_component(streak, win_reward_mult)
         branch = 'combat'
-    interest_amt = (interest(gold, interest_cap_resolved(interest_cap))
+    interest_amt = (max(interest(gold, interest_cap_resolved(interest_cap)),
+                        interest_floor)
                     + interest_flat)
     return RoundStartIncome(branch=branch, base=base, interest=interest_amt,
                             streak=streak_amt,

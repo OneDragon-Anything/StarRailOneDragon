@@ -56,6 +56,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
+    strategy_interest_floor,
     xp_apply_amount,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
@@ -1386,6 +1387,52 @@ def check_strategy_bench_count_xp(gs: GameState) -> int:
                 (op == 'ge' and count >= threshold):
             total += xp
     return total
+
+
+# ============================================================ 开源节流条件息顶满(tick 捕获→窗口消费对)
+# 载体契约单一源(设计 = 迭代 designs/T-295-kaiyuan-jieru.md §2.3;锁
+# 「tick 捕获 → 窗口消费清零」契约,不锁载体形):tick 闸滚位前捕获置数
+# → sim 节点窗开消费读清。两函数同文件内聚;条件判定单一源 =
+# cw_economy.strategy_interest_floor。
+
+
+def capture_strategy_interest_topup(gs: GameState, *,
+                                    frame: str = '') -> None:
+    """开源节流条件息顶满捕获(kernel tick 闸 advanced 闸内调用,调用位
+    必须在 roll_prev_node_spent 之前——滚位后读恒 False 使顶满恒发,
+    该时序约束由 tick 闸调用位承载,本函数不自证):
+
+    条件判定 = :func:`cw_economy.strategy_interest_floor`(持卡 ∧
+    prev_node_spent is False → resolved 帽;否则 0),结果经效果账本
+    「开源节流」条目 INTEREST_TOPUP 计数**置数**(覆盖写非自增:窗口
+    异常未消费时,自增会把单拍值放大成错发;置数形态 live 未接线期逐
+    节点覆写 0↔帽,零消费面无害簿记)。条目不在场(选卡登记分支失败
+    等)零动作静默——登记缺陷已由获得链登记分支留存证据,此处不双报。
+    frame 仅入日志作节点身份标识(与 tick 闸 frame 同键语义)。"""
+    floor = strategy_interest_floor(gs)
+    spec = STRATEGY_EFFECTS.get('开源节流')
+    if spec is not None:
+        gs.effects.set_counter(spec.id, CounterKey.INTEREST_TOPUP, floor)
+    if floor > 0:
+        log.info('[cw-gain] 开源节流息顶满捕获 floor=%s @%s', floor, frame)
+
+
+def consume_strategy_interest_topup(gs: GameState) -> int:
+    """开源节流条件息顶满消费半边(与捕获函数配对的唯一读清点):读
+    INTEREST_TOPUP 载体 → 立即清零 → 返回 floor 值交收入 floor 参
+    (kernel round_start_income 息分量下限)。条目不在场读 0。
+    唯一调用点 = sim 节点窗开(``_begin_node_window`` 幂等守卫内)。
+
+    **live 接线批义务句**:settle_node_boundary_gold(cw_effect_inventory)
+    生产接线落地时须同读+清本载体传 floor 参——禁在其接线点现读
+    strategy_interest_floor 顶替(live 接线点在 tick 滚位之后,现读恒
+    False 读数 = 恒不发的同型错发;载体消费为唯一正确位)。"""
+    spec = STRATEGY_EFFECTS.get('开源节流')
+    if spec is None:
+        return 0
+    floor = gs.effects.counter(spec.id, CounterKey.INTEREST_TOPUP)
+    gs.effects.set_counter(spec.id, CounterKey.INTEREST_TOPUP, 0)
+    return floor
 
 
 def check_strategy_bench_leave_gold(
