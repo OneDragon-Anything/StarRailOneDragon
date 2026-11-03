@@ -10,13 +10,14 @@
 > - V4.4 新增 3 个:[article/76684289](https://www.miyoushe.com/sr/article/76684289)(形单影只/高费审美/低费审美)。
 > - V4.2 词缀一览交叉:[article/75627078](https://www.miyoushe.com/sr/article/75627078)。
 >
-> **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;按**机制分类**便于 comp 克制/受利判断(mechanics_fit 双向)。
-> **词缀效果原文的单一源 = `src/sr_od/application/currency_war/data/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖;机制克/利映射在 `cw_comps.MECHANIC_COUNTERS`)——本文是机制分类/克制启示的叙事层,数值以注册表为准。
+> **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;本文按**机制分类**作词缀索引(效果原文分类,便于查阅)。
+> **词缀效果原文的单一源 = `src/sr_od/application/currency_war/data/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖)——本文是机制分类叙事层,数值以注册表为准。
+> **方向判定归口(2026-11 统一阵容评分迭代)**:词缀×线克/利**方向**不再由本文件机制分类预判——逐线吃怕单一源 = `kernel/cw_affinity_table`(攻略实证词缀+boss 吃怕表;未登记线兜底层只给怕不给吃);选卡克制减分 = `cw_comps.MECHANIC_COUNTERS`(经 `AFFIX_MECHANIC_MAP` 归一,消费 = 策略层 pick_common.counter_pick_penalty)。本文各级「克X/利X」注记为攻略叙事参考,**不构成策略输入**(机制泛化不预判方向——正当防卫对白厄受击流两推断打架等案例已在吃怕表逐线裁决)。
 > 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 `cw_investments.py::INVESTMENT_ENVS` 敌后破坏)。
 
 ---
 
-## 按机制分类(策略用:counter = 克某类 comp;synergy = 利某类 comp)
+## 按机制分类(词缀索引;克/利方向判定归口见篇首声明)
 
 ### 1. 属性熄火(7,按属性 counter 整队)🟡
 对应属性的我方目标伤害只造成 1 点,施放 4 次攻击后解除。**克纯色/单属性队**。
@@ -127,7 +128,7 @@
 
 ---
 
-## 策略映射(mechanics_fit 用;详 cw_comps.MECHANIC_COUNTERS/SYNERGIES)
+## 机制 tag 映射(MECHANIC_COUNTERS 注册表;消费 = 策略层 pick_common 选卡克制减分。克/利方向判定归口见篇首声明——本段为注册表内容的叙事镜像)
 
 **counter(克 comp 机械属性)**:
 - 属性熄火 ×7 → `[依赖<属性>]`(风/火/冰/雷/物理/量子/虚数 各一;纯色队被克)
