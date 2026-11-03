@@ -19,6 +19,8 @@ dependencies = [
     "gensim==4.3.3",
     "pygit2==1.19.0",
     "psutil>=7.2.2",
+    # 米游社登录 RSA 加密（one_dragon/mys）；此前经 mcp→pyjwt[crypto] 传递可用，显式声明消除传递链断裂风险（T-1 配套基建）
+    "cryptography>=42.0.0",
 ]
 
 [dependency-groups]

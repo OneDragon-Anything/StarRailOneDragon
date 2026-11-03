@@ -1280,6 +1280,7 @@ name = "starrail-onedragon"
 version = "3.4.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "cryptography", marker = "sys_platform == 'win32'" },
     { name = "gensim", marker = "sys_platform == 'win32'" },
     { name = "librosa", marker = "sys_platform == 'win32'" },
     { name = "mss", marker = "sys_platform == 'win32'" },
@@ -1318,6 +1319,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=42.0.0" },
     { name = "gensim", specifier = "==4.3.3" },
     { name = "librosa", specifier = "==0.10.2.post1" },
     { name = "mss", specifier = "==9.0.1" },
