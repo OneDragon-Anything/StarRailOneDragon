@@ -4935,6 +4935,15 @@ STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
     # 桶,本表零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
     '摸个鱼吧I': (StrategyDelayedOffer(id='260101', delay_nodes=5,
                                  offer_quality='金'),),
+    # 摸个鱼吧II:官方「获得2个【青雀】和6金币。深思熟虑5个节点后，青雀会
+    # 想出棱彩投资策略！」(cw_invest_data.py, id 260201)。延时腿:深思熟
+    # 虑 5 节点 → 棱彩投资提议(delay_nodes=5/offer_quality=棱彩,refresh_
+    # count 缺省=可刷新基形沿 201103 先例);腿1「2个青雀」= 注册行维持
+    # 单元素,数量 2 失真申报(REVIEW-T287 裁决点 2:估值集合级零影响,
+    # 族批统一口径提级呈报)/腿2 金6 已在册零动作(grants 面白得桶,本表
+    # 零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
+    '摸个鱼吧II': (StrategyDelayedOffer(id='260201', delay_nodes=5,
+                                 offer_quality='棱彩'),),
 }
 
 
