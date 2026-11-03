@@ -6158,6 +6158,39 @@ def _validate_strategy_reward_ore_grants() -> None:
             f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
 
 
+
+
+# —— 装备到期消失白名单(临时工合约 id 301901 腿2;「进入下个节点时，
+# 所有未使用的【员工投影仪】都会消失」原文直读;表值 = 到期消失装备名
+# 集合,移除域 = 全名域「所有」直读;载体 = 白名单表三件套[T-292 在码
+# 先例形];闩 fire 即封[与移除写是否非空解耦])。
+STRATEGY_EQUIP_EXPIRY_GRANTS: dict[str, tuple[str, ...]] = {
+    '临时工合约': ('员工投影仪',),
+}
+
+
+def _validate_strategy_equip_expiry_grants() -> None:
+    """STRATEGY_EQUIP_EXPIRY_GRANTS 构建校验(import 即炸族纪律;两查:
+    ① 键 ∈ INVESTMENT_STRATEGIES(孤儿键漂移哨);② 值 ∈ EQUIPMENTS
+    (装备名漂移哨——错名运行期 = 移除集恒空静默漏消,import 期哨是
+    唯一响亮拦截面)。"""
+    orphans = [n for n in STRATEGY_EQUIP_EXPIRY_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_EQUIP_EXPIRY_GRANTS 孤儿键(base 无此卡?):'
+            f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIPMENTS,
+    )
+    bad = [item for items in STRATEGY_EQUIP_EXPIRY_GRANTS.values()
+           for item in items if item not in EQUIPMENTS]
+    if bad:
+        raise ValueError(
+            f'STRATEGY_EQUIP_EXPIRY_GRANTS 装备名漂移(EQUIPMENTS 无此名):'
+            f'{bad}(版本改名/移除后未清;错名 = 移除集恒空静默漏消)')
+
+
 def _validate_strategy_bench_left_cost_xp_grants() -> None:
     """STRATEGY_BENCH_LEFT_COST_XP_GRANTS 构建校验(import 即炸;治理口径
     = 2026-10-28「笔误哨删/漂移哨留」同族三表——本域唯一哨:孤儿键,表键

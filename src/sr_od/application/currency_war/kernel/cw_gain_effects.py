@@ -1182,6 +1182,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_random_star_char_effect(4, 2, count=3),
         _make_named_equip_grant_effect('完美投影仪', 1)),
 
+    # 临时工合约 = 具名装备授予单行(卡文「获得8个【员工投影仪】」;
+    # count=8 逐件八条 rand=False,效果串 ×8 named_equip_grant;
+    # 伴生消失腿 = STRATEGY_EQUIP_EXPIRY_GRANTS 白名单表承载[下个节点
+    # 全部未使用的员工投影仪消失],两腿异构不入同表;rng 零消费;不入
+    # 泛化表防撞键)。
+    '临时工合约': _make_named_equip_grant_effect('员工投影仪', 8),
+
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
     # 双档卡面明写,援军族单一源采样 roll star 参扩展首例消费);腿2 =

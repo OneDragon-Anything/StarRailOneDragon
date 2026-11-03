@@ -2457,6 +2457,46 @@ def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
     return total
 
 
+def check_strategy_equip_expiry(gs: GameState, *,
+                                 sig: ChannelSig) -> tuple[str, ...]:
+    """装备到期消失检查(临时工合约 id 301901 腿2;「进入下个节点时，
+    所有未使用的【员工投影仪】都会消失」触发器单一源,唯一调用点 =
+    sim 节点窗收口——live 零写观察覆盖:装备栏读数由游戏侧节点过渡
+    自然承接,零新增观察义务)。
+
+    条件矩阵:持卡∩表 → 未持卡空集;闩 fire 即封(与移除写是否非空
+    解耦——「下个节点」到期一次性语义,重放零重发);移除集 = ∪表值
+    ∩ gs.equips 按名过滤(全名域「所有」直读,波及他源在栏件如实
+    申报;闩封后到货件不受任何影响)。形态 A 纯读零写零 rng——闩写由
+    调用方与移除写同拍承载(strategy_conditional_done 共域)。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        STRATEGY_EQUIP_EXPIRY_GRANTS,
+    )
+    held = gs.active_strategies.value
+    if not held:
+        return ()
+    remove: set[str] = set()
+    fired: list[str] = []
+    done = set(gs.strategy_conditional_done.value or ())
+    equips = set(gs.equips.value or ())
+    for name in held:
+        if name not in STRATEGY_EQUIP_EXPIRY_GRANTS:
+            continue
+        if name in done:
+            continue
+        fired.append(name)
+        remove |= set(STRATEGY_EQUIP_EXPIRY_GRANTS[name]) & equips
+    if fired:
+        merged = tuple(sorted(set(done) | set(fired)))
+        write = _select_write(gs, False)
+        write(gs.strategy_conditional_done, merged,
+              produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'strategy_equip_expiry:{"+".join(fired)}',
+              sig=sig)
+    return tuple(sorted(remove))
+
+
 def _node_frame(gs: GameState) -> str:
     """链内 frame 字符串(「位面-轮」统一标识,如 ``2-3``;节点未观察 =
     空——登记分支 evidence 用;编号时代的 p{plane}-r{round} 双形态随键

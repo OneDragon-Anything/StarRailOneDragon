@@ -106,6 +106,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_boss_end_heal,
     check_strategy_empty_equip_xp,
     check_strategy_equip_count_xp,
+    check_strategy_equip_expiry,
     check_strategy_gift_grants,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
@@ -3487,6 +3488,22 @@ class SimBackend:
         self._strategy_reward_ore_pending = \
             check_strategy_reward_ore_grants(self.gs, node_kind=kind,
                                              sig=logic_sig('sim:strategy'))
+        # 装备到期消失(临时工合约 id 301901 腿2;「进入下个节点时，所有
+        # 未使用的【员工投影仪】都会消失」触发器单一源 = kernel
+        # check_strategy_equip_expiry,白名单表驱动)。现位申报:晶矿腿后、
+        # 商店全刷前(证伪路径 = 实机持卡局装备消失时点与本窗发牌耦合观察,
+        # 证伪则改序重申报)。移除写 = write_logic 独立笔(evidence
+        # strategy_equip_expiry:带卡名段);闩与移除同拍(kernel 函数内落闩,
+        # 本侧消费返回集执行移除写);移除集空 = 零写留待观察。
+        expired = check_strategy_equip_expiry(self.gs,
+                                              sig=logic_sig('sim:strategy'))
+        if expired:
+            kept = [e for e in (self.gs.equips.value or [])
+                    if e not in expired]
+            self.gs.write_logic(self.gs.equips, kept,
+                                produced_by='SimBackend:equip_expiry',
+                                evidence='strategy_equip_expiry:expiry',
+                                sig=logic_sig('sim:strategy'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

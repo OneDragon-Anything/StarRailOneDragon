@@ -18,6 +18,8 @@
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
 5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 76 条的在域形态。
 
+> 邻位申报(临时工合约批):新白名单表 STRATEGY_EQUIP_EXPIRY_GRANTS(装备到期消失)非 STRATEGY_EFFECTS 条目,§7 生命周期不适用;判定函数 check_strategy_equip_expiry 纯读零写零 rng,闩写 strategy_conditional_done 共域。
+
 不管什么(单一源在别处,本篇只引用,防双源):
 
 | 语义面 | 单一源 |
