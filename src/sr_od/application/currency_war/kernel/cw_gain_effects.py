@@ -1306,6 +1306,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 发放物「好运令牌」与卡名异名(族内首例,物名单源住注册表 item);
     # 禁入两腿成员集(入集 = 拿卡错发即时装备腿)。
     '好运令牌·银': _make_delayed_only_grant_effect('好运令牌·银'),
+    '快请专家·金': _make_delayed_only_grant_effect('快请专家·金'),
     # 是钻石总会发光 = 延时-only 单腿展开卡 + 族内首个随机发放行(卡文
     # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句,零即时腿):
     # 显式单行登记延时-only 载体;效果串 choice-set 形

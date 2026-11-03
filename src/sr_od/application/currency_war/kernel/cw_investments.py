@@ -5485,6 +5485,14 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # EFFECTS 组合登记行承载,两腿异构不入泛化表防撞键);到点 BENCH
     # 分道 gain_bench_item(rand=False),四查 BENCH 分支过)。
     '蓝钻闪耀': StrategyDelayedGrant(id='231301', delay_nodes=3, item='简易武装箱'),
+    # 快请专家·金(id 260401 原文直读,cw_invest_data.py:237;卡文延时腿 =
+    # 「4个节点后，获得2个【员工投影仪】」→ 定名道具直填形 + count=2
+    # (T-144 count 判例);即时腿「获得1个【】」空名道具 = 零建模维持
+    # (排除白名单在册,desc 未写明不实机查),不在本表——延时-only
+    # 单句卡,PICK_INVEST_EFFECTS 延时-only 显式行承载;到点 BENCH
+    # 分道 gain_bench_item(rand=False)×2。
+    '快请专家·金': StrategyDelayedGrant(id='260401', delay_nodes=4,
+                                      item='员工投影仪', count=2),
 }
 
 
