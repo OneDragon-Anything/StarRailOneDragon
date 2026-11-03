@@ -88,7 +88,10 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
     消费方清单:节点基础经验入账 ``apply_node_xp``(sim/cw_sim_backend)
     + 白送经验发放原语 ``grant_xp``(kernel/cw_game_state,环境 XP
     窗口通道;两消费方经本单一实现共享升级结转式,禁第二份)。
-    """
+
+    消费方第三项 = sim 节点窗静态量通道(xp:strategy_per_node,
+    买断制 xp_per_node=4;前两项 = 节点经验/即时经验通道)。
+"""
     if amount <= 0 or level >= MAX_PLAYER_LEVEL:
         return level, xp_cur
     cur = xp_cur + amount

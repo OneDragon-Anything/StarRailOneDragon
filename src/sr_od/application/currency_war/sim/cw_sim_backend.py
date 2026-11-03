@@ -307,6 +307,13 @@ def income_modifiers_of(gs: GameState) -> tuple[float, int, int | None]:
         eff.interest_cap_override
 
 
+def strategy_xp_per_node_of(gs: GameState) -> int:
+    """持卡聚合的每节点静态经验量(买断制 xp_per_node=4 消费面;
+    单一源 = aggregate_economy 求和分量,静态量通道,禁动态计数挂此
+    ——条件 XP 族走各自 check_* 纯判定)。零 rng 纯读。"""
+    return aggregate_economy(list(gs.active_strategies.value or [])).xp_per_node
+
+
 def strategy_boss_gold_of(gs: GameState) -> int:
     """持卡策略聚合的进 boss 节点金(特战资金系,进 boss 节点每窗一笔)。
 
@@ -3347,6 +3354,29 @@ class SimBackend:
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:bench_left_cost')
+                self.gs.observe(self.gs.level, level, evidence=xp_ev,
+                                sig=xp_sig)
+                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
+                                sig=xp_sig)
+        # 条件 XP 族外唯一静态量通道(买断制 id 300901 xp_per_node=4;
+        # 聚合薄读 strategy_xp_per_node_of 单一源,静态量禁动态计数挂此
+        # ——条件 XP 族走各自 check_* 纯判定)。现位申报:被动收入腿后、
+        # 商店全刷前(证伪路径 = 实机持卡局同窗发牌等级耦合观察,证伪则
+        # 改序重申报)。XP 世界写与节点经验/即时经验同域同组
+        # (sig 'sim:xp'),evidence 独立笔 'xp:strategy_per_node' 分账;
+        # 零 rng 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
+        # (apply_node_xp 同形态)。
+        strategy_xp = strategy_xp_per_node_of(self.gs)
+        if strategy_xp > 0:
+            xp_field = self.gs.xp.value
+            level_field = self.gs.level.value
+            if xp_field is not None and level_field is not None:
+                level, cur = xp_apply_amount(int(level_field),
+                                             int(xp_field[0]),
+                                             strategy_xp)
+                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+                xp_sig = obs_sig(group_id='sim:xp')
+                xp_ev = sim_evidence('xp:strategy_per_node')
                 self.gs.observe(self.gs.level, level, evidence=xp_ev,
                                 sig=xp_sig)
                 self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
