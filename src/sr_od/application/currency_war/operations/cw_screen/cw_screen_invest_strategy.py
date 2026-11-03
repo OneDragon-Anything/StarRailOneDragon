@@ -49,7 +49,6 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_action_report.zero_writes import (
     report_action_refresh_invest_cards_param,
 )
-from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     game_state_from_ctx,
@@ -57,7 +56,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     is_blood_economy,
-    is_economy_engine,
     normalize_invest_name,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
@@ -84,17 +82,17 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 
-def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
+def _guard_classify(name: str, config) -> tuple[bool, bool, bool]:
     """刷新链逐步守卫的单名分类(D*-free,纯函数可单测)。
 
-    返回 ``(exact, blood, forbidden, top)``:
+    返回 ``(exact, blood, forbidden)``:
     - exact = 策略注册表归一后精确命中(轴钉死:环境名/形变名 → False = 不可
       分类,消费方停链 fail-closed——与 kernel 帧级闸同一严格轴);
-    - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁);
-    - ``top`` = 顶级判定(S1 定义型 ∨ S2 经济引擎档)。返回值随链语义演进:
-      现役消费 = 闸 3 的 L1 计算(exact/blood/forbidden);top 输出现在无
-      消费方(原「新卡达顶级停链」随 结束本次访问裁定停用),保留
-      返回形状供闸内联解包,语义 = 帧内单名顶级事实。
+    - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁)。
+    (旧第四位 ``top``〔顶级判定,消费 = 已停用的「新卡达顶级停链」〕
+    已随统一阵容评分迭代清理退役——顶级判定现经线分引擎派生且依赖
+    选卡锚点线〔gs 面〕,D*-free 单名签名承载不了;刷新链守卫三闸
+    均不消费顶级位,随手清理,design §6 退役消费点全列。)
     帧级 D*-dependent 判据(对齐档 N/max_N)只在 kernel:handler 禁直调 kernel
     判据算刷新建议(G1——直调会丢 D*① 三参换基),本 helper 只服务执行期守卫
     与中断检查,不产决策。
@@ -103,10 +101,9 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool, bool]:
     forbidden = any(p in name
                     for p in (getattr(config, 'strategy_forbid', None) or []))
     if st is None:
-        return False, False, forbidden, False
+        return False, False, forbidden
     blood = is_blood_economy(st.economy)
-    top = bool(augment_affinity(name)) or is_economy_engine(st.economy)
-    return True, blood, forbidden, top
+    return True, blood, forbidden
 
 
 class CwScreenInvestStrategy(CwOperation):
@@ -316,7 +313,7 @@ class CwScreenInvestStrategy(CwOperation):
                 if _left is not None and _left <= 0:
                     continue
                 # 闸 3:F2 唯一 L1 槽守卫(按当前名集现算)。
-                _l1_now = [j for j, (_ex_flag, _b, _f, _t) in
+                _l1_now = [j for j, (_ex_flag, _b, _f) in
                            enumerate(_guard_classify(n, config) for n in names)
                            if _ex_flag and not _b and not _f]
                 if _l1_now == [_i]:
