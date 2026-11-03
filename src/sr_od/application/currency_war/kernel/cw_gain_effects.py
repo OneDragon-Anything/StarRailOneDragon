@@ -192,7 +192,8 @@ def _make_all_cost_chars_effect(cost: int) -> Callable[..., list[str]]:
 
     return _effect
 
-def _make_random_star_char_effect(cost: int, star: int) -> Callable[
+def _make_random_star_char_effect(cost: int, star: int,
+                                  count: int = 1) -> Callable[
         ..., list[str]]:
     """随机星档角色单行效果体工厂(援军族同构;star = 卡面明写结构值,
     非句式先验——天降救兵「随机3星1费角色」双档全明直读)。
@@ -208,11 +209,14 @@ def _make_random_star_char_effect(cost: int, star: int) -> Callable[
         from sr_od.application.currency_war.kernel.cw_gain_chain import (
             gain_character,
         )
-        name = roll_reinforcement_names(rng, cost, 1, star=star)[0]
-        gain_character(gs, name, star, rand=True, sig=sig,
-                       evidence='pick_invest_random_star',
-                       producer=_PRODUCER)
-        return [f'strategy_gift_random:{name}@{star}star']
+        steps = []
+        for _ in range(count):
+            name = roll_reinforcement_names(rng, cost, 1, star=star)[0]
+            gain_character(gs, name, star, rand=True, sig=sig,
+                           evidence='pick_invest_random_star',
+                           producer=_PRODUCER)
+            steps.append(f'strategy_gift_random:{name}@{star}star')
+        return steps
 
     return _effect
 
@@ -1164,6 +1168,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 前行;rand=False 卡文无随机词工厂 docstring 定谳;腿参数唯一出现
     # 点,不入泛化表防撞键;rng 零消费)。
     '停云顾问': _make_named_equip_grant_effect('光能电池', 1),
+
+    # 及时雨 = 随机星档角色×箱腿组合登记行(卡文「获得3个随机2星4费角色
+    # 和1个【完美投影仪】，获得4次免费刷新」;腿1 = 随机 2星4费×3
+    # (count=3 援军族采样复用);腿2 = 完美投影仪箱腿工厂;腿3 = 4 次
+    # 免费刷新在 STRATEGY_ECONOMY burst 注册行零动作[:599];两腿卡不入
+    # _STRATEGY_BOX_GRANTS;效果串 4 条(3 角色+1 箱);掷序契约同援军族;
+    # 不入泛化表防撞键。
+    '及时雨': _compose_grant_legs(
+        _make_random_star_char_effect(4, 2, count=3),
+        _make_box_grant_effect('完美投影仪')),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3

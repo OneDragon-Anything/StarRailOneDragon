@@ -2155,6 +2155,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='付费域口径待实采(任意刷 proc 与否);'
               '查询键 refresh_free_chance;'
               '产出随机面观察收口,实例为在场标记+姿态面'),
+    # 及时雨:官方「获得3个随机2星4费角色和1个【完美投影仪】，获得4次
+    # 免费刷新。」(cw_invest_data.py:248)。战力类零响应登记(UNIT_BUFF
+    # 族):三行为腿落码通道齐备(随机角色 PICK 组合行/投影仪箱腿同行/
+    # 免费刷新 ECONOMY burst 注册行零动作),登记条目为在场标记+姿态面;
+    # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    '及时雨': EffectSpec(
+        id='300701', name='及时雨',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '300701')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '随机角色/箱/免费刷新腿落码通道齐备,登记条目为'
+              '在场标记+姿态面;无离散触发事件,trigger 占位形'),
 }
 
 
@@ -3793,6 +3809,10 @@ BENCH_ITEM_KINDS: dict[str, str] = {
     '进阶武装箱': 'supply_box',
     '专家邀请函': 'bookcard',
     '星徽秘典': 'tome',
+    # 完美投影仪(及时雨 id 300701 箱腿,原文直读 cw_invest_data.py:248;
+    # 类别 = supply_box 同款占席道具;映射缺键 = KeyError 响亮单一源
+    # 纪律,BENCH_ITEM_NAMES 随 frozenset 派生自动跟上)。
+    '完美投影仪': 'supply_box',
 }
 
 BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
