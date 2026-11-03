@@ -25,6 +25,9 @@
 用户占位 2026-10-16,非 desc 真值,披露键
 ``shop_two_star_deal_prob_user_placeholder``);直出 3 星概率 = 0(U12
 口径维持,仅明确效果触发的变费/升星机制建模)。
+强制费用档整店发牌(:func:`sample_shop_deal_forced`)= 卡面「开启一个
+由N个独特M费角色组成的商店」的显式例外通道(费用档定死 + unique 去
+重均为卡面明文,不占基线 U13 判例)。
 """
 from __future__ import annotations
 
@@ -102,3 +105,67 @@ def state_deal_probs(gs: GameState, level: int) -> dict[int, float]:
     probs = {cost: effective_refresh_prob(gs, level, cost)
              for cost in range(1, 6)}
     return {cost: p for cost, p in probs.items() if p > 0}
+
+
+def sample_shop_deal_forced(gs: GameState, rng: random.Random, *, cost: int,
+                            unique: bool, level: int) -> ShopPayload:
+    """强制费用档整店发牌采样(纯函数;零容器写,纯度边界同模块头)。
+
+    卡面语 =「开启一个由5个独特N费角色组成的商店」(首条目 公司严选
+    301401,EconomyEffect.shop_rewrite_forced_cost/unique 承载)。与
+    基线 :func:`sample_shop_deal` 的两处分叉均为卡面明文直读,非判例
+    例外:①费用档定死不掷点;②``unique=True`` 同帧去重(基线 U13
+    「无去重记载不加规则」辖基线;卡面「5个独特4费角色」为 desc 自载
+    的显式例外)。
+
+    名集 = :func:`drawable_names`(商店发牌出口单一源,≥9 过滤与已
+    解锁专家口径自动跟随,零透传)。unique 分支 = ``rng.sample`` 无放回
+    一次抽 min(SHOP_SLOTS, len(名集)) 名(单次调用,消耗随机数序列随
+    种子重放确定);非 unique 分支 = 逐槽 ``rng.choice``(现役无调用形,
+    预留对称——与基线逐槽独立同构)。名集空 → 5 槽全 empty;不足 →
+    填尽量多、余槽留 empty(基线空槽语义),短缺由调用方披露计数
+    (短缺口径 = 事件,非缺槽数)。
+
+    2★ 直出翻星腿与基线共享(裁决 = 环境卡面「商店中有概率出现2星角色」
+    辖商店全量,强制店同为商店发牌,豁免需另立排除规则无卡面依据):
+    ``ENV_SHOP_TWO_STAR_DEAL_PROB`` 命中 active_env 时,每个非空槽在
+    抽名后独立掷 ``rng.random() < p``,命中升 2★(cost×3,名集语义
+    不变——unique 去重以名集为界,翻星不改名)。unique 分支抽名与翻星
+    掷点的相对序 = 先全量抽名再逐槽掷(单次 sample 的结构使然,与基线
+    逐槽交错形不同——两函数各自种子重放确定,跨函数序列无对账约定);
+    非 unique 分支与基线逐槽同序(抽名→翻星),同种子同序列可对账。
+
+    ``refresh_probs`` = :func:`state_deal_probs` 现值真值(刷新概率显示
+    面与本卡无关,维持现值;已知差异:该函数无观测概率条时逐档退基线表
+    不带轮岗翻倍,与节点窗全刷的重掷形可不同——仅显示面,登记为已知
+    差异)。逐名 ShopCard 构造沿基线(faction = 注册表首阵营或'散',
+    star = 翻星结果,cost_source='roster',slot = 序)。
+    """
+    names = drawable_names(gs, cost)
+    two_star_p = ENV_SHOP_TWO_STAR_DEAL_PROB.get(
+        str(gs.active_env.value or ''), 0.0)
+    slots: list[ShopSlot] = []
+    picked = (rng.sample(names, min(SHOP_SLOTS, len(names)))
+              if unique and names else [])
+    for i in range(SHOP_SLOTS):
+        card: ShopCard | None = None
+        if i < len(picked):
+            name = picked[i]
+            card_cost = cost
+        elif not unique and names:
+            name = rng.choice(names)
+            card_cost = cost
+        else:
+            slots.append(ShopSlot(kind='empty'))
+            continue
+        ch = CHARACTERS[name]
+        star = 1
+        if two_star_p > 0 and rng.random() < two_star_p:
+            star = 2
+            card_cost = cost * 3
+        card = ShopCard(
+            name=name, faction=(ch.factions or ('散',))[0],
+            cost=card_cost, star=star, cost_source='roster', slot=i + 1)
+        slots.append(ShopSlot(kind='content', card=card))
+    return ShopPayload(cards=slots,
+                       refresh_probs=state_deal_probs(gs, level))

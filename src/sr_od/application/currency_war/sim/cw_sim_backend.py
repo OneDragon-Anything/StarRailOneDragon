@@ -61,7 +61,10 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.affix_effects_data import (
     AFFIX_EFFECTS,
 )
-from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
+from sr_od.application.currency_war.data.cw_shop_odds import (
+    REFRESH_PROB,
+    SHOP_SLOTS,
+)
 from sr_od.application.currency_war.data.cw_synthesis import SYNTHESIS_BASES
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
     roll_rotation_per_stage,
@@ -204,7 +207,10 @@ from sr_od.application.currency_war.kernel.cw_screen_report.supply_node import (
     CwScreenSupplyNodeObs,
     report_screen_supply_node_obs,
 )
-from sr_od.application.currency_war.kernel.cw_shop_deal import sample_shop_deal
+from sr_od.application.currency_war.kernel.cw_shop_deal import (
+    sample_shop_deal,
+    sample_shop_deal_forced,
+)
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.sim.cw_sim_base import (
@@ -638,6 +644,47 @@ def apply_strategy_plane_refire_xp(gs: GameState,
         gs.observe(gs.xp, (cur, need), evidence=evidence, sig=sig)
         total += amount
     return total
+
+
+def apply_strategy_plane_refire_gold(gs: GameState,
+                                     picked: Sequence[str]) -> int:
+    """策略选卡落地拍位面段补发金入账(通用通道,辖域 = 注册表
+    gold_per_plane>0 全体,字段分派非单卡特判;用户裁定 2026-11-01 族级
+    拍定的「现在及每个位面开始时」族中途拿卡补发,与 XP 支
+    :func:`apply_strategy_plane_refire_xp` 同判同形)。
+
+    为什么:位面段金世界腿挂 sim 位面首节点窗(:meth:`SimBackend
+    ._apply_strategy_plane_start_gold`),只对登记后到达的 (plane,1) 窗
+    发放,拿卡晚于位面开始时该位面段对持卡局系统性缺失——live 同拍零写
+    (游戏自加,金整字段观察覆盖收口,金面禁直写),sim 不补即持卡局金
+    轨线失真,下游利息/购买力全链读金现值。已开始判据与 XP 支同口径:
+    策略卡登记恒发生于节点窗内(策略选卡全日程非 round-1),进窗推进
+    已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场即已开始,
+    None = 保守零补发(禁猜)。数额 = 逐卡直读 :data:`STRATEGY_ECONOMY`
+    现值,**禁 aggregate_economy**(聚合字段集不含 gold_per_plane,误走 =
+    静默零发放);逐卡各一笔独立 observe(evidence 按
+    ``strategy:plane_gold_refire:<卡名>`` 与位面窗金腿
+    ``strategy:plane_gold:p<位面>`` 分账,sig 同组 sim:strategy 同域
+    字段,笔间靠 evidence 区分)。容器金缺读(None)= 本拍零写留待观察
+    覆盖,禁猜(env 形 None 视 0 照写会伪造金绝对值假真值,不取)。
+    返回本批实际入账卡数。"""
+    if gs.node.value is None:
+        return 0
+    applied = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        eff = STRATEGY_ECONOMY.get(canon)
+        amount = eff.gold_per_plane if eff is not None else 0
+        if amount <= 0:
+            continue
+        gold_now = gs.gold.value
+        if gold_now is None:
+            continue
+        gs.observe(gs.gold, int(gold_now) + amount,
+                   evidence=sim_evidence(f'strategy:plane_gold_refire:{canon}'),
+                   sig=obs_sig(group_id='sim:strategy'))
+        applied += 1
+    return applied
 
 
 def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
@@ -1643,6 +1690,13 @@ class SimBackend:
     #: 已收尾节点窗口的节点序位(None = 尚无;窗口前段幂等守卫,
     #: :meth:`_begin_node_window`)。
     _window_begun_pos: NodePos | None = field(init=False, default=None)
+    #: 窗口起点持有策略快照(选卡拍改写/补发双腿的「本拍新获得」限定
+    #: 判据):记录时刻 = 节点窗幂等守卫同拍(重放不重拍),消费 =
+    #: _on_invest_picked 尾段取差分后**前滚并入现值**(链式选卡同窗二次
+    #: 落地时差分 = 本拍新获得,旧卡不重燃;重放落地差分恒空 = 零写)。
+    #: 私有暂态不入容器/不入快照恢复(呈现闩同形先例)。
+    _strategies_at_window_start: tuple[str, ...] = field(init=False,
+                                                         default=())
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
     #: 「战败时无连胜成分」需胜负,窗口开时未知 → 基数冻结(金/进轮
     #: 连胜/收入修饰/开源节流息顶满下限 = 轮初口径;floor 评估时点 =
@@ -2554,6 +2608,33 @@ class SimBackend:
                         log.info('[cw-sim] 超发货币负债腿:%s 清零 '
                                  '(快照 %s,现持 %s,增量 −%s)',
                                  _em.spec.name, _lost, gold_now, gold_now)
+        # 选卡拍商店改写腿 + 位面段补发双腿(「现在及每个位面开始时」族,
+        # 公司严选 301401 首条目;通用通道辖域 = 注册表 shop_rewrite_
+        # forced_cost>0 / gold_per_plane>0 全体,字段分派非单卡特判)。
+        # 触发面 = 窗口起点快照差分限定「本拍新获得」——本方法是环境/
+        # 策略双支统一口,扫描式遍历持有表会在后续拿他卡时反复触发(卡面
+        # 「现在」= 获得时点,无此语义);快照在节点窗守卫同拍记录,差分
+        # 消费后前滚并入现值(链式选卡〔delay-0 呈现〕同窗二次落地时差分
+        # = 本拍新获得,旧卡不重燃;重放落地差分恒空 = 零写,无闩自防)。
+        # 改写腿 = kernel 强制采样器单源直写(live 同拍零写观察覆盖);
+        # 位面段补发 = 用户裁定 2026-11-01 族级拍定(中途拿卡判当前位面
+        # 已开始 → 登记拍全额补发·非按比例,后续位面照常):金腿沿
+        # apply_strategy_plane_refire_xp 同判形(node 在场即已开始,
+        # None = 保守零补发禁猜),补发改写腿同拍独立流键/evidence——
+        # 同拍「选卡改写 × 补发改写」双触发两腿都发(固定理财族「两腿
+        # 都发」同判,journal 双行如实登记禁静默合并)。位置 = 链尾、
+        # 拿卡拍立即腿呈现之前:重入选卡须先于模态返回(呈现体 return
+        # 早退会吞本拍),先于呈现 = 改写属本拍落地语义非呈现副作用。
+        if not opening:
+            now_held = tuple(self.gs.active_strategies.value or ())
+            new_picked = [n for n in now_held
+                          if n not in self._strategies_at_window_start]
+            self._strategies_at_window_start = now_held
+            if new_picked:
+                self._apply_strategy_shop_rewrite_gain(new_picked)
+                if self.gs.node.value is not None:
+                    apply_strategy_plane_refire_gold(self.gs, new_picked)
+                    self._apply_strategy_shop_rewrite_refire(new_picked)
         # 拿卡拍立即腿(delay_nodes=0 承载,白银投资首例):队列存在
         # 本拍刚拿卡的 delay-0 条目(拿卡同拍登记,remaining 恒 0 未递减;
         # delayed 腿到点条目非本拍入队,不入本挂点辖域——顺延语义归
@@ -2880,6 +2961,10 @@ class SimBackend:
         if self._window_begun_pos == pos_key:
             return
         self._window_begun_pos = pos_key
+        # 窗口起点持有策略快照(守卫同拍):选卡拍改写/补发双腿的差分
+        # 基线(重放同窗守卫早退不重拍,差分语义跨重放稳定)。
+        self._strategies_at_window_start = tuple(
+            self.gs.active_strategies.value or ())
         kind = node_sequence_of(plane, self.gs.node_seq_by_plane.value)[r - 1]
         # 备战画面敌方难度读数观察(裁定 2026-10-14):窗开即敌方难度读数可见时点,
         # 上窗以来状态变动(连胜/选卡)在此反映;本窗内选卡的即时反映
@@ -3022,6 +3107,10 @@ class SimBackend:
             # ——kernel 推进边界拍位面开始桥(双挂点分工,拍点差申报 =
             # 先推进后开窗,XP 支略后)
             self._apply_strategy_plane_start_xp(plane)
+            # 策略域位面开始金腿(公司严选首例,「现在及每个位面开始时」
+            # 族位面段金支):XP 支同窗邻位独立笔,注册表直读禁聚合;窗口
+            # 幂等守卫承接重放不双发。
+            self._apply_strategy_plane_start_gold(plane)
         # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
         # design §2.4):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
@@ -3406,6 +3495,18 @@ class SimBackend:
                 rotation_on=rotation_on)
             deal_shop(self.gs, rng, level=int(self.gs.level.value or 3),
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
+        # 位面首节点窗策略域强制店改写腿(M05 全刷之后后置覆盖;公司严选
+        # 首例。「每个位面开始时…开启商店」)。后置覆盖与「替换 M05」观察
+        # 等价(玩家所见最终店面同为强制面),差异仅 rng 消耗与 journal
+        # 行数——取改动面最小形(基线 M05 块内不加特判分支)。锁交互沿
+        # 间谍效果腿形(无锁守卫;效果触发的商店写不入 M05 自动全刷的锁
+        # 豁免域,真值待实采与间谍卡共享同一实采裁决,零新增键)。
+        # journal 形态:位面首节点窗 shop 域恰两行 = M05 deal 行 + 本覆盖行
+        #(evidence 可辨 shop:deal / shop:rewrite:plane)——复盘/对账工具
+        # 按「每节点窗一行 deal」假设会误报,防误读注记随披露计数落
+        # :meth:`_write_forced_shop_rewrite`。
+        if r == 1:
+            self._apply_strategy_plane_start_shop_rewrite(plane, r)
         # overlay 呈现检查(旧引擎收尾序:overlay 先于 offer;呈现压住
         # 节点屏,选定经 _dismiss_modal 恢复位复走 offer 检查——让路
         # 不吞 offer 槽)。修正:fortune
@@ -3859,6 +3960,128 @@ class SimBackend:
         evidence = sim_evidence(f'xp:strategy_plane:p{plane}')
         self.gs.observe(self.gs.level, level, evidence=evidence, sig=sig)
         self.gs.observe(self.gs.xp, (cur, need), evidence=evidence, sig=sig)
+
+    def _apply_strategy_plane_start_gold(self, plane: int) -> None:
+        """策略域位面开始金腿(「现在及每个位面开始时」族位面段金支,
+        公司严选 3 首条目,策略域位面周期金首例;载体 =
+        EconomyEffect.gold_per_plane,注册表直读禁聚合——聚合字段集不含
+        本字段,误走 = 静默零发放)。触发 = _begin_node_window 内 r==1,
+        XP 支同窗邻位(位面首节点窗;``_window_begun_pos`` 窗口幂等守卫
+        承接重放不双发)。写形 = 合计单笔 observe(同持多卡求和;金 = 世界
+        真值,live 同拍零写观察覆盖,金面禁直写硬裁定在 live 侧)。容器
+        金缺读(None)= 本拍零写留待观察覆盖,禁猜(env 直发形 None 视 0
+        照写会伪造金绝对值假真值,不取——缺口面 = 观察覆盖前金腿静默,
+        有意分道取 xp 形)。零值零写(未持卡零新增观察行)。"""
+        total = 0
+        for name in (self.gs.active_strategies.value or ()):
+            eff = STRATEGY_ECONOMY.get(normalize_invest_name(str(name or '')))
+            if eff is not None:
+                total += eff.gold_per_plane
+        if total <= 0:
+            return
+        gold_now = self.gs.gold.value
+        if gold_now is None:
+            return
+        self.gs.observe(
+            self.gs.gold, int(gold_now) + total,
+            evidence=sim_evidence(f'strategy:plane_gold:p{plane}'),
+            sig=obs_sig(group_id='sim:strategy'))
+
+    def _apply_strategy_plane_start_shop_rewrite(self, plane: int,
+                                                 r: int) -> None:
+        """策略域位面开始强制店改写腿(M05 全刷后后置覆盖;「现在及每个
+        位面开始时」族位面段改写支,公司严选 4 首条目)。辖域 = 持有表中
+        命中 ``shop_rewrite_forced_cost>0`` 的卡(现役至多一张,逐卡独立
+        笔;流键携卡名防同窗多卡撞流)。采样与写经共享助手
+        :meth:`_write_forced_shop_rewrite`(kernel 强制采样器单源,商店
+        发牌出口 = drawable_names)。"""
+        for name in (self.gs.active_strategies.value or ()):
+            canon = normalize_invest_name(str(name or ''))
+            eff = STRATEGY_ECONOMY.get(canon)
+            if eff is None or eff.shop_rewrite_forced_cost <= 0:
+                continue
+            self._write_forced_shop_rewrite(
+                eff, canon,
+                stream_key=f'M28/rewrite-plane/p{plane}r{r}:{canon}',
+                tag=f'shop:rewrite:plane:p{plane}r{r}',
+                counter_key='shop_rewrite_plane_count')
+
+    def _write_forced_shop_rewrite(self, eff, canon: str, *,
+                                   stream_key: str, tag: str,
+                                   counter_key: str) -> None:
+        """强制店改写采样与容器写(三触发拍共享助手:选卡 gain /
+        位面 plane / 补发 refire;差异只在流键/evidence/计数键)。
+
+        kernel 强制采样器单源(:func:`sample_shop_deal_forced`,费用档
+        定死 + unique 去重);写 = gs.observe 直写(sim 世界真值,live
+        同拍零写观察覆盖)。披露三计数(sim 私有簿记,键域:
+        shop_rewrite_gain_count / shop_rewrite_plane_count /
+        shop_rewrite_shortfall_count)= 两拍改写触发累计 / 桶不足 5 事件
+        累计(事件口径,非缺槽数)。商店记录镜像 = 端口懒同步自动覆盖,
+        零显式 sync(M22 间谍腿同形)。对账注记:位面首节点窗 shop 域
+        恰两行(M05 deal + rewrite:plane),按「每节点窗一行 deal」假设
+        的复盘/对账工具会误报。"""
+        rng = stream_rng(self.seed, stream_key)
+        payload = sample_shop_deal_forced(
+            self.gs, rng, cost=int(eff.shop_rewrite_forced_cost),
+            unique=bool(eff.shop_rewrite_forced_unique),
+            level=int(self.gs.level.value or 3))
+        self.gs.observe(self.gs.shop, payload,
+                        evidence=sim_evidence(tag),
+                        sig=obs_sig(group_id=f'sim:{tag}'))
+        self.disclosures[counter_key] = \
+            self.disclosures.get(counter_key, 0) + 1
+        content = sum(1 for s in payload.cards if s.card is not None)
+        if content < SHOP_SLOTS:
+            self.disclosures['shop_rewrite_shortfall_count'] = \
+                self.disclosures.get('shop_rewrite_shortfall_count', 0) + 1
+            log.info('[cw-sim] 强制店改写短缺:%s 桶 %s 张/5 槽(%s)',
+                     canon, content, tag)
+        log.info('[cw-sim] 强制店改写:%s → 全店 %s 费 %s(%s)',
+                 canon, eff.shop_rewrite_forced_cost,
+                 '独特' if eff.shop_rewrite_forced_unique else '不去重', tag)
+
+    def _apply_strategy_shop_rewrite_gain(self,
+                                          new_names: Sequence[str]) -> None:
+        """选卡拍强制店改写腿(「现在…开启一个由5个独特4费角色组成的
+        商店」,公司严选 4 首条目)。辖域 = 本拍新获得表中命中
+        ``shop_rewrite_forced_cost>0`` 的卡(现役至多一张,逐卡独立笔;
+        流键携卡名防链式选卡同窗撞流)。「本拍新获得」限定 = 窗口起点
+        快照差分(调用方消费后前滚),扫描式遍历持有表会在后续拿他卡时
+        反复触发——卡面「现在」= 获得时点一次,无此语义。"""
+        for name in new_names:
+            canon = normalize_invest_name(str(name or ''))
+            eff = STRATEGY_ECONOMY.get(canon)
+            if eff is None or eff.shop_rewrite_forced_cost <= 0:
+                continue
+            plane, r = self._node_pos()
+            self._write_forced_shop_rewrite(
+                eff, canon,
+                stream_key=f'M27/rewrite-gain/p{plane}r{r}:{canon}',
+                tag=f'shop:rewrite:gain:p{plane}r{r}',
+                counter_key='shop_rewrite_gain_count')
+
+    def _apply_strategy_shop_rewrite_refire(self,
+                                            new_names: Sequence[str]) -> None:
+        """选卡拍位面段补发改写腿(用户裁定 2026-11-01 族级拍定:中途拿
+        卡判当前位面已开始 → 位面段〔+金 + 强制店改写〕登记拍全额补发,
+        后续位面照常;公司严选位面段两腿的补发改写支)。辖域 = 本拍新
+        获得表中命中 ``shop_rewrite_forced_cost>0`` 的卡;独立流键与
+        evidence(refire)——同拍「选卡改写 × 补发改写」双触发两腿都发
+        (固定理财族「两腿都发」同判,journal 双行如实登记禁静默合并),
+        共流键会使双腿采出同一序列假同貌。node 缺席保守零补发(禁猜,
+        金腿 :func:`apply_strategy_plane_refire_gold` 同判)。"""
+        for name in new_names:
+            canon = normalize_invest_name(str(name or ''))
+            eff = STRATEGY_ECONOMY.get(canon)
+            if eff is None or eff.shop_rewrite_forced_cost <= 0:
+                continue
+            plane, r = self._node_pos()
+            self._write_forced_shop_rewrite(
+                eff, canon,
+                stream_key=f'M29/rewrite-refire/p{plane}r{r}:{canon}',
+                tag=f'shop:rewrite:refire:p{plane}r{r}',
+                counter_key='shop_rewrite_plane_count')
 
     def _apply_env_plane_gold(self, plane: int) -> None:
         """环境结构化经济通道·直发分支(M02:已结构化子集直接生效——位面

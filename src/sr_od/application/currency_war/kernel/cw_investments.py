@@ -245,6 +245,23 @@ class EconomyEffect:
                                           # (推进 tick 位面 1 号节点),中途拿卡时
                                           # 所在位面登记拍全额补发 =
                                           # apply_effect_plane_refire_grant
+    gold_per_plane: int = 0               # 每位面开始 +金(公司严选 3;策略域位面周期金
+                                          # 首例,命名沿 xp_per_plane 在码形;环境域
+                                          # 对应形 = EnvEconomyEffect.gold_per_plane_
+                                          # start)。金 = 世界真值:live 零写观察覆盖,
+                                          # sim 世界腿 = 位面首节点窗(cw_sim_backend),
+                                          # 中途拿卡所在位面登记拍全额补发 = sim
+                                          # 选卡拍补发金腿(同域 XP 支同判形);缺读
+                                          # 零写禁猜
+    shop_rewrite_forced_cost: int = 0     # 获得时+每位面开始:全店强制 N 费发牌(公司严选
+                                          # 4;0 = 无此腿)。触发双拍 = 卡面「现在及
+                                          # 每个位面开始时」(获得拍 = 选卡改写腿,
+                                          # 位面拍 = 位面首节点窗改写腿,两腿共享
+                                          # kernel 采样器 sample_shop_deal_forced
+                                          # 单源;后置覆盖语义见 sim 侧)
+    shop_rewrite_forced_unique: bool = False  # 强制发牌同帧去重(卡面「独特」= 5 槽名
+                                          # 互异;基线 U13 允许重复的 desc 自载显式
+                                          # 例外;仅与上一字段配对生效,单挂无语义)
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:
@@ -287,6 +304,8 @@ _ENGINE_CHANNEL_SINGLE_FIELDS: tuple[tuple[str, float | None], ...] = (
     ('xp_per_refresh', 0), ('xp_per_node', 0), ('xp_buy_cost_discount', 0),
     ('xp_instant', 0), ('xp_per_plane', 0),
     ('gold_per_refresh_pair', 0),
+    ('gold_per_plane', 0),
+    ('shop_rewrite_forced_cost', 0), ('shop_rewrite_forced_unique', False),
 )
 #: 引擎配对字段通道:效果语义两半齐备才存在(「接下来 count 次每次
 #: amount」/「level 起单击减金」)——任一半缺省 = 通道不存在。
@@ -602,7 +621,17 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '藏一手': EconomyEffect(instant_gold=80),
     '及时雨': EconomyEffect(free_refresh_burst=4),
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
-    '公司严选': EconomyEffect(instant_gold=3),
+    '公司严选': EconomyEffect(instant_gold=3, gold_per_plane=3,
+                              shop_rewrite_forced_cost=4,
+                              shop_rewrite_forced_unique=True),
+    # ↑ 「现在及每个位面开始时，开启一个由5个独特4费角色组成的商店，并获得3金币」
+    #   三腿分段:即时段(instant_gold 在册维持 = 估值面,金面禁直写硬裁定——
+    #   发放写端缺口族级 T-112 口径)+ 位面段(gold_per_plane,sim 位面首节点窗
+    #   金腿)+ 商店改写对(shop_rewrite_forced_cost/unique,触发双拍 = 选卡改写
+    #   腿 + 位面首节点窗改写腿,kernel 采样器 sample_shop_deal_forced 单源,
+    #   「独特」= 同帧去重);中途拿卡所在位面(已开始)位面段登记拍全额补发 =
+    #   用户裁定 2026-11-01 拍定(族级与固定理财同判,承载 = sim 选卡拍补发
+    #   双腿;语义正本 = STRATEGY_EFFECTS 本卡条目 notes)
     '节节高升': EconomyEffect(gold_per_level_up=1),
     '本金充裕+': EconomyEffect(instant_gold=45, free_refresh_cond_gold_above=50,
                                free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
@@ -839,6 +868,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '(刷新支=kernel 推进 tick 位面开始桥、XP 支=sim 位面首节点窗'
               '腿);中途拿卡所在位面(已开始)位面段登记拍全额补发(用户'
               '裁定 2026-11-01 拍定,与姊妹固定理财同判)'),
+    # 公司严选:官方「现在及每个位面开始时，开启一个由5个独特4费角色组成
+    # 的商店，并获得3金币」(cw_invest_data.py id 301401)。双腿分段:
+    # 即时段(现在)= instant_gold(在册估值面,金面禁直写——发放写端缺口
+    # 族级维持)+ 选卡改写腿(sim 选卡尾段强制采样);位面段 = gold_per_
+    # plane + 位面开始改写腿(sim 位面首节点窗,M05 全刷后后置覆盖)。中途
+    # 拿卡所在位面(已开始)位面段登记拍全额补发(用户裁定 2026-11-01,
+    # 与固定理财族同判;承载 = sim 选卡拍补发双腿,同拍双改写两腿都发)。
+    # 「独特」= 同帧去重,桶不足填尽量多、余槽留空;2★ 直出翻星腿与基线
+    # 共享(人才下沉局)。
+    '公司严选': EffectSpec(
+        id='301401', name='公司严选', trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.PERMANENT, category=EffectKind.STATE,
+        payload=STRATEGY_ECONOMY['公司严选'],
+        duties=DutyFlags(track=True, respond=True),
+        notes='双腿分段:即时段(现在)=instant_gold(在册估值面,金面禁直写'
+              '发放写端缺口族级)+选卡改写腿(sim 选卡尾段);位面段=gold_per_'
+              'plane+位面开始改写腿(位面首节点窗,M05 全刷后后置)。中途拿卡'
+              '所在位面(已开始)位面段登记拍全额补发(用户裁定 2026-11-01 '
+              '拍定,与固定理财族同判)。「独特」=同帧去重,桶不足填尽量多、'
+              '余槽留空;2★ 直出翻星腿与基线共享(人才下沉局)'),
     # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
     # 四歧义(改道是否吞策略给的 XP/转换同事件性/上限/版本变体)见该条目待采待办;
     # 定案前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定案后补 payload。

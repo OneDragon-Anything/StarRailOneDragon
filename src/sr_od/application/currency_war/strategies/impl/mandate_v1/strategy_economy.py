@@ -151,6 +151,12 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     #(xp_per_node 通道折算基数 = 剩余节点数,位面粒度须自建视界口),
     # 激活归估值批,先按待建模塌 0
     'xp_per_plane', 'free_refresh_per_plane',
+    # 位面周期金/强制店改写对(公司严选):gold_per_plane 与上两字段同判
+    # (位面粒度视界口缺,塌 0;世界发放腿已建 = sim 位面首节点窗金腿 +
+    # 选卡拍补发金腿);shop_rewrite_forced_cost/unique = 强制店改写呈现
+    # 面腿(触发拍店面内容改写,非现金流通道),估值范围外申报
+    'gold_per_plane',
+    'shop_rewrite_forced_cost', 'shop_rewrite_forced_unique',
 })
 
 #: 不计分通道字段(结构登记、永不为分):
@@ -198,6 +204,14 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
                '待建模分类塌 0);即时段与位面段世界发放腿均已建',
     '固定理财+': '位面段估值通道未建(xp_per_plane/free_refresh_per_plane'
                 '待建模分类塌 0);即时段与位面段世界发放腿均已建',
+    # 公司严选:官方「现在及每个位面开始时，开启一个由5个独特4费角色组成
+    # 的商店，并获得3金币」——即时段 instant_gold 面值已计分(现金通道);
+    # 位面段金与商店改写对已挂值、世界发放腿已建(sim 位面首节点窗金腿/
+    # 改写腿 + 选卡拍改写腿/补发双腿,改写 = 呈现面腿非现金流);估值通道
+    # 未建(三字段待建模分类塌 0,激活归估值批)
+    '公司严选': '位面段估值通道未建(gold_per_plane/shop_rewrite_forced_'
+               'cost/unique 待建模分类塌 0);即时段面值已计分,位面段世界'
+               '发放腿均已建',
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
     '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',

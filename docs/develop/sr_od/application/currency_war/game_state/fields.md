@@ -576,6 +576,11 @@ select_ore_clicks docstring + 模块头)。
 货币负债/回流两分支(§5.3);板面重写桥出售退款面(§5.3 人力重组/卖全场族)。其余
 效果金的完整清单以 §5.3 效果族归属与 §5.2 登记为准——未接线者一律经观察覆盖兜底,
 不是本字段逻辑写入方。
+位面开始周期族金支(gold_per_plane,公司严选)live 同为观察覆盖——sim 世界腿 =
+位面首节点窗(`strategy:plane_gold:p{位面}`,同持多卡求和单笔)+ 选卡拍补发腿
+(中途拿卡时当前已开始位面登记拍全额补发,`strategy:plane_gold_refire:<卡名>`,
+用户裁定 2026-11-01 族级;容器金缺读零写禁猜——观察覆盖前金腿静默,xp 形分道,
+env 直发形 None 视 0 照写会伪造金绝对值假真值不取)。
 **边界**:None=不可读,不可信不写。
 
 #### 3.2.10 经验等级 level / xp
@@ -1363,7 +1368,14 @@ BuyCard 动作 op 按 slot 自容器取点执行;原「screen_info「商店牌-N
 (bench/rows+注册表合成规则自算;已建的 ✦ 观察读取器降级为核对信号、不作
 写入端——✦ 高帧系统性漏读)。
 **写入方**:商店帧观察覆盖(逐槽三态判定;**定长不变量** = 产出恒 5 槽);
-执行侧逻辑态直写入口 BuyCard 落地槽置换为 empty(§4.2)。
+执行侧逻辑态直写入口 BuyCard 落地槽置换为 empty(§4.2)。sim 世界腿·效果触发
+强制店改写(公司严选 `shop_rewrite_forced_cost`/`shop_rewrite_forced_unique`,
+2026-11-03 出列,§5.2 本卡行):选卡拍(`shop:rewrite:gain:p{位面}r{轮}`)+
+位面首节点窗(`shop:rewrite:plane:p{位面}r{轮}`,M05 全刷后**后置覆盖**)+
+选卡拍补发(`shop:rewrite:refire:p{位面}r{轮}`,用户裁定 2026-11-01 族级);
+发牌 = kernel `sample_shop_deal_forced` 单源(费用档定死 + 「独特」同帧去重,
+翻星腿与基线共享);**位面首节点窗 shop 域恰两行**(M05 deal + 改写覆盖)——
+按「每节点窗一行 deal」假设的对账工具会误报;live 同拍零写观察覆盖。
 **全 unknown 窗行为**:牌面含 unknown 槽 = 花钱动作(BuyCard/RefreshShop/
 LevelUp)禁发射、终结集降级仅 CloseShop(决策入口前置门,不猜——纵深
 第二线);主防线 = 商店 op 入口观察即停(读链终判含 unknown 槽 →
@@ -2412,8 +2424,7 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   定额扣金建模;现算计划单一源 = `cw_investments.dakuozhao_deduction_plan`,世界
   真值写端 = sim 选卡落地拍负腿,evidence `strategy:recruit_drain:大扩招`,live
   零写观察覆盖)/狸财经狸(金<20 取 10/位面 3 首领取全部存款——存款余额=该效果
-  ActiveEffect 计数器记账,**不设独立字段**)/策略大师/公司严选(位面开始特殊商店面)/
-  搜打撤/高效决策(45 秒窗结束移除所有免费刷新的清零效果)。
+  ActiveEffect 计数器记账,**不设独立字段**)/策略大师/搜打撤/高效决策(45 秒窗结束移除所有免费刷新的清零效果)。
 - 发牌进席改写源补登(金币/备战席双写入面;发牌族=**按归属判据逐卡分面**,§3.2.18):
   广聚天下英才(扩充团队、武装支援、武装支援+、大扩招已出列——采样口径已登记随机态
   直写,写入端 = `cw_gain_effects` 援军族工厂/组合子经获得链,见 §3.2.18 效果发牌族
@@ -2451,6 +2462,19 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 `cw_effect_inventory.apply_on_refresh_pair_gold_grant` 挂刷新上报随机态腿后,
 `sim_backend_installed()` 门控——sim 采样即世界真值、判定成立经观察通道发金
 (`gs.observe`,on_diamond 口径),live 零写观察覆盖兜底;§5.3 合并同类项行);
+公司严选(「现在及每个位面开始时，开启一个由5个独特4费角色组成的商店，并获得
+3金币」世界腿三件出列,2026-11-03:即时段 instant_gold=3 在册估值面维持〔金面
+禁直写硬裁定——发放写端缺口族级 T-112 口径不变〕;位面段金 `gold_per_plane=3`
+= sim 位面首节点窗 `strategy:plane_gold:p{位面}` 单笔 + 选卡拍补发
+`strategy:plane_gold_refire:<卡名>`〔用户裁定 2026-11-01 族级,中途拿卡判当前
+位面已开始登记拍全额补发,容器金缺读零写禁猜,§3.2.9 周期族金支行〕;商店改写对
+`shop_rewrite_forced_cost=4`/`shop_rewrite_forced_unique=True` = kernel
+`sample_shop_deal_forced` 单源〔费用档定死 + 「独特」同帧去重 + 翻星腿与基线
+共享〕,三拍写腿 = 选卡 `shop:rewrite:gain:p{位面}r{轮}` / 位面首节点窗
+`shop:rewrite:plane:p{位面}r{轮}`〔M05 全刷后后置覆盖,shop 域 journal 恰两行〕
+/ 补发 `shop:rewrite:refire:p{位面}r{轮}`〔同拍「选卡改写 × 补发改写」双触发
+两腿都发,journal 双行如实登记禁静默合并〕,§3.3.1 写入方段;live 全域零写观察
+覆盖;策略侧估值三字段待建模塌 0);
 容量改写:节省工位(**时限 3 节点、自动恢复**,§3.2.5;唯一容量改写源——
 `STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
 `expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
