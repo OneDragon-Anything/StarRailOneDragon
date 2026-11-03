@@ -8,13 +8,16 @@
 - 模块职责与跨层契约：changes/mys-account-mcp/design.md §2.2 mys_client
   小节、§2.5 契约 1/3。
 
-职责分界（design.md §2.1 定死）：login 是单轮语义——一次请求 + 分诊，验证
-触发时只解析并返回挑战（AigisChallenge），验证循环与票据重发由上层控制器
-持有，本模块不做任何重试。凭据红线（design.md §2.6）：密码仅在 login 调用
-栈内存（RSA 加密后进请求体）；cookie 只入内存罐与 session.json；两者不进
-任何日志与异常文本——本模块异常只携带 retcode 与服务端 message 文案。
+职责分界（design.md §2.1 定死）：login 与 complete_verification 均是单轮
+语义——login 一次请求 + 分诊，验证触发时解析并返回挑战（AigisChallenge）；
+complete_verification 组装票据回传头、原样重发一次并观察结果；验证「循环」
+（每轮重开验证页、重试上限计数）由上层控制器持有，本模块不做任何跨请求编排。
+凭据红线（design.md §2.6）：密码仅在 login 调用栈内存（RSA 加密后进请求体）；
+cookie 只入内存罐与 session.json；两者不进任何日志与异常文本——本模块异常
+只携带 retcode 与服务端 message 文案。
 """
 
+import base64
 import json
 from dataclasses import dataclass
 from typing import Literal
@@ -52,6 +55,15 @@ from one_dragon.mys.mys_signing import (
 
 #: 登录触发人机验证的 retcode（官方枚举 NeedAigis，login-verification-research.md §2.3）
 LOGIN_NEED_VERIFICATION_RETCODE: int = -3101
+
+#: x-rpc-aigis 头名：触发时响应携带挑战、重发时请求回传票据，同名
+#: （login-verification-research.md §2.1/§4.2）
+AIGIS_HEADER_NAME: str = 'x-rpc-aigis'
+
+#: 票据被拒 retcode（处置一致——携带新挑战则继续、未携带则补发裸登录取新挑战；
+#: -3102 依据 login-verification-research.md §2.3（genshin.py 映射 + 实测记录
+#: S6 真机往返），-3202 依据同文档 §10.4-1（Snap.Hutao 码表），两码并存待实测定案）
+TICKET_REJECTED_RETCODES: frozenset[int] = frozenset({-3102, -3202})
 
 
 @dataclass
@@ -162,6 +174,25 @@ def _parse_aigis_challenge(raw_header: str | None) -> AigisChallenge:
     )
 
 
+def _assemble_aigis_header(challenge: AigisChallenge, ticket: dict) -> str:
+    """组装票据回传头 ``{session_id};{base64(JSON(票据))}``
+    （login-verification-research.md §4.2 三源一致）。
+
+    v4 票据（以 lot_number 在场识别）补 ``captcha_id``（取挑战 data 的 gt，
+    缺则补——组件一般自带）与 ``userInfo={"session_id": …}``（QRscanner 规格，
+    逐字节复刻官方行为，research §4.2）；gt3 三元组原值透传，不拼 ``|jordan``
+    （research §10.4-5：参考实现裸三元组实测可用）。不改动调用方传入的 ticket。
+    """
+    assembled = dict(ticket)
+    if 'lot_number' in assembled:
+        if 'captcha_id' not in assembled:
+            assembled['captcha_id'] = challenge.data.get('gt')
+        assembled['userInfo'] = {'session_id': challenge.session_id}
+    ticket_json = json.dumps(assembled, ensure_ascii=False, separators=(',', ':'))
+    encoded = base64.b64encode(ticket_json.encode('utf-8')).decode('ascii')
+    return f'{challenge.session_id};{encoded}'
+
+
 def _resolve_request_url(path_or_url: str) -> str:
     """双形态目标解析（design.md §2.2 request）：以 http 开头 = 绝对 URL，
     仅允许 https 且主机在白名单（mys_const.HOST_WHITELIST），违规 ValueError
@@ -191,6 +222,10 @@ class MysClient:
         self._device: DeviceIdentity = device
         self._http_send: HttpSend = http_send
         self._jar: dict[str, str] = dict(store.load_cookies())
+        # 重发基座（complete_verification 专用，见 login 内留存点注释）：None =
+        # 本实例尚未发起过 login，此时 complete_verification 无重发凭据可用
+        self._last_login_headers: dict[str, str] | None = None
+        self._last_login_body: bytes | None = None
 
     # ---- 登录（单轮）----
 
@@ -223,6 +258,12 @@ class MysClient:
             ensure_ascii=False,
             separators=(',', ':'),
         ).encode('utf-8')
+        # 重发基座留存（design.md §2.2 complete_verification「原样重发」）：
+        # 票据重发须与首轮请求 body/其余头逐字节一致（官方前端拦截器语义，
+        # login-verification-research.md §4.1），而 complete_verification 签名
+        # 不含账密——最近一次登录请求的加密产物在此留存，DS 由重发方重新生成
+        self._last_login_headers = dict(headers)
+        self._last_login_body = body
         result = self._http_send(LOGIN_URL, 'POST', headers, body)
         payload = _parse_json_payload(result, 'login')
         aigis_header = header_get(result.headers, 'x-rpc-aigis')
@@ -247,13 +288,72 @@ class MysClient:
             return LoginResult(status='ok', challenge=None)
         raise MysApiError(retcode, _message_of(payload))
 
+    # ---- 人机验证（单轮收口）----
+
+    def complete_verification(self, challenge: AigisChallenge, ticket: dict) -> LoginResult:
+        """验证单轮收口：票据组装 → 回传头 → 原样重发 loginByPassword → 分诊。
+
+        单轮语义（design.md §2.2 / §2.5 契约 2，无内部循环）：带票据重发恰一次。
+        分诊：retcode==0 → Set-Cookie 全量入罐 + save_session_full 整体覆盖落盘
+        （expired 标记随覆盖消失；role.json 一并清除——验证完成即登录事件完成，
+        登录态可能换绑，与 login 成功路径同一收取逻辑）→ ok；-3101 或 aigis 头
+        非空（双条件，message 文案不参与）→ need_verification + 新挑战；票据被拒
+        （-3102/-3202）且响应未携带新 aigis 头 → 自动补发一次裸 loginByPassword
+        （无票据）取 -3101 新挑战后 need_verification——补发同样只此一层，不递归；
+        -3208/-3235/其余码 MysApiError 上抛且不落盘。验证「循环」归上层控制器。
+
+        重发口径（login-verification-research.md §4.1/§4.3、§10.3-10）：复用最近
+        一次 login 的 body 与其余头逐字节一致（官方前端拦截器「config 原样重发」
+        语义），仅 DS 重新生成（保守口径，多源一致实践）并追加 x-rpc-aigis 头。
+
+        Raises:
+            ValueError: 同实例尚未执行过 login（无重发基座可复用）。
+        """
+        stashed_headers = self._last_login_headers
+        stashed_body = self._last_login_body
+        if stashed_headers is None or stashed_body is None:
+            raise ValueError(
+                'complete_verification 需在同实例 login 之后调用（重发需复用最近一次登录请求的 body 与头）'
+            )
+        headers = dict(stashed_headers)
+        headers['ds'] = ds_login()
+        headers[AIGIS_HEADER_NAME] = _assemble_aigis_header(challenge, ticket)
+        result = self._http_send(LOGIN_URL, 'POST', headers, stashed_body)
+        payload = _parse_json_payload(result, 'complete_verification')
+        aigis_header = header_get(result.headers, AIGIS_HEADER_NAME)
+        retcode = _require_retcode(payload)
+        if retcode in TICKET_REJECTED_RETCODES and aigis_header is None:
+            # 票据被拒且该响应未带新挑战：补发一次裸登录（无票据，DS 同样重新
+            # 生成）取 -3101 新挑战；此后不再有第二层补发（单轮语义）
+            bare_headers = dict(stashed_headers)
+            bare_headers['ds'] = ds_login()
+            result = self._http_send(LOGIN_URL, 'POST', bare_headers, stashed_body)
+            payload = _parse_json_payload(result, 'complete_verification')
+            aigis_header = header_get(result.headers, AIGIS_HEADER_NAME)
+            retcode = _require_retcode(payload)
+        if retcode == 0:
+            cookies = _extract_set_cookie_pairs(result.headers)
+            if not cookies:
+                # 成功判据与 login 同口径：retcode==0 且 Set-Cookie 非空（flow.md §2.5）
+                raise MysApiError(0, '登录响应未下发任何 Set-Cookie，会话不可用')
+            self._jar.update(cookies)
+            self._store.clear()
+            self._store.save_session_full(dict(self._jar))
+            return LoginResult(status='ok', challenge=None)
+        if retcode == LOGIN_NEED_VERIFICATION_RETCODE or aigis_header is not None:
+            return LoginResult(
+                status='need_verification', challenge=_parse_aigis_challenge(aigis_header)
+            )
+        raise MysApiError(retcode, _message_of(payload))
+
     # ---- 通用业务请求 ----
 
     def request(self, path_or_url: str, query: dict) -> dict:
         """通用 mys GET（单请求，无重试）：game_record 基座相对路径或白名单
         绝对 URL；头 = game_record 头 + 设备头 + Cookie 罐全量，DS2 按查询
-        参数签名。响应 Set-Cookie 先滚动入罐并续存（保留 expired 标记——服务端
-        滚动下发不因业务失败而中断）；retcode 命中 ``SESSION_EXPIRED_RETCODES``
+        参数签名。响应 Set-Cookie 在响应处理入口滚动入罐并续存（保留 expired
+        标记——flow.md §4.4「无论成败都收取」口径，服务端滚动下发不因业务失败
+        而中断）；retcode 命中 ``SESSION_EXPIRED_RETCODES``
         抛 MysSessionExpired；1034 落入通用非 0 分支按裸 MysApiError 抛出
         （1034 验证链本迭代不实现，design.md §1 明确不解决项 7）；成功返回
         data 字段（非 dict 视为空）。"""
@@ -275,11 +375,13 @@ class MysClient:
         if self._jar:
             headers['Cookie'] = '; '.join(f'{name}={value}' for name, value in self._jar.items())
         result = self._http_send(url, 'GET', headers, None)
-        payload = _parse_json_payload(result, 'request')
+        # 滚动收取在业务分诊之前（flow.md §4.4「无论成败都收取」口径）：非 2xx /
+        # 非 JSON 响应的 Set-Cookie 同样入罐续存，后才做业务分诊
         rolling = _extract_set_cookie_pairs(result.headers)
         if rolling:
             self._jar.update(rolling)
             self._store.save_cookies(dict(self._jar))
+        payload = _parse_json_payload(result, 'request')
         retcode = _require_retcode(payload)
         if retcode in SESSION_EXPIRED_RETCODES:
             raise MysSessionExpired(retcode, _message_of(payload))
