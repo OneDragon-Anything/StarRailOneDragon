@@ -48,6 +48,15 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     ``_record_lv8_window_start``(环境「成功经验」通道主挂点——买经验推 8
     时记达成节点位,窗口发放归 kernel 发放桥 grant_effect_node_xp;未持
     条目/未达标/生效位未锚定 = 零动作)。
+
+    **节节高升升级发放腿**(商业间谍块后,同跨级分支内):真跨级 ∧
+    在册持有(单一源 = ``cw_investments.level_up_gift_active``)∧ sim
+    门(sim 端口已装)→ kernel 发放体
+    ``cw_gain_effects.apply_level_up_char_gift`` 按跨级等级序列各发 1 名
+    2★ 角色(费用 = 各自达成等级减 4,池域钳制);live 端口未装 = 零
+    采样零写——实机该角色由游戏引擎发放,bench 备战 heavy 观察自然
+    吸收(shop_session 协议①同区定谳)。金腿「+1 金币」不在本回调
+    (记账层伴生通道,升级发射帧承载)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -102,6 +111,26 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
                 # 世界分支①-③声明(op 层喂入 sim 后端;实机 no-op)。
                 _spy_decl = WorldDecl(next_screen=SCREEN_PREP_FRAME,
                                       trigger='spy_shop_refresh')
+            # —— 节节高升升级发放腿(卡面「每次升级时获得1个2星角色」;
+            # sim 门内世界发放,live 零写 = 观察承接定谳维持;spy 块先
+            # 后置本块零触碰,回调序不扰)——
+            from sr_od.application.currency_war.kernel.cw_investments import (
+                level_up_gift_active,
+            )
+            if level_up_gift_active(gs):
+                from sr_od.application.currency_war.kernel.cw_gain_effects import (
+                    apply_level_up_char_gift,
+                )
+                from sr_od.application.currency_war.sim.cw_sim_ports import (
+                    sim_backend_installed,
+                )
+                if sim_backend_installed():
+                    # 连跳逐级:跨 Δ 级按中间等级序列各发 1 名,费用随各
+                    # 自达成等级(卡面「每次升级时」直读;金腿伴生每批
+                    # +1 平发系伴生既有口径,双腿口径差在卷申报)。
+                    apply_level_up_char_gift(
+                        gs, levels=list(range(int(_lv_v) + 1, _new_lvl + 1)),
+                        sig=_grp_sig)
     # 升级窗口达成位记录(成功经验通道主挂点;内部自判条目在场 ∧ 未记录 ∧
     # level_of >= 阈值,零旁路条件——全量零动作安全,见 _record_lv8_window_start)。
     _record_lv8_window_start(gs)

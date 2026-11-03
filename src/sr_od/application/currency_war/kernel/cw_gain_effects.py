@@ -31,6 +31,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     dakuozhao_deduction_plan,
     random_char_pool,
 )
+from sr_od.application.currency_war.kernel.cw_pool import (
+    grant_char_pool,
+)
 
 _PRODUCER = 'CwGainChain'
 
@@ -1446,3 +1449,73 @@ cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句�
 二选一显式登记,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派
 (查无效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)
 职责分离声明见各表模块头。"""
+
+
+# ===== 升级触发世界发放腿(策略卡持卡期升级时点发放,族首卡 = 节节高升
+# ===== id 301101「在你每次升级时获得1个2星角色和1金币。这个角色的费用是
+# ===== 你的等级减4(最小值：1费)」;金腿 = 记账层伴生协议①现值零改动
+# ===== (ECONOMY 注册行 + shop_session.LEVELUP_COMPANION_GOLD 伴生,双端
+# ===== 同链),本节只辖角色腿:升级上报回调跨级分支 sim 门内调用,live
+# ===== 零写 = 观察承接定谳维持(实机该角色由游戏引擎发放,bench 备战
+# ===== heavy 观察自然吸收))=====
+
+#: 升级发放腿采样分支具名流键(注入槽解析 = sim 世界真值,流键形
+#: ``action/level_up_gift/<序>``;先例 = ENV_MERGE_GRANT_RNG_TOOL 同形态)。
+LEVEL_UP_GIFT_RNG_TOOL: str = 'level_up_gift'
+
+#: 升级发放腿建模假设档披露键(在册落点 = 本常量,随局披露面消费;键形态
+#: 沿骇客/援军同区先例):
+#: - level_up_gift_cost_clamp_pool_domain: 满级段费用钳制口径申报——卡面
+#:   「费用是你的等级减4(最小值：1费)」只载下钳 1,未载满级段(等级 10
+#:   理论 6 费)口径;上钳 5 = 随机赠卡采样费用轴注册值域(chars_by_cost
+#:   输入域 1-5)代码事实非实测游戏行为,desc 无载不实机查。
+LEVEL_UP_GIFT_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'level_up_gift_cost_clamp_pool_domain',
+)
+
+
+def apply_level_up_char_gift(gs: GameState, *, levels: list[int],
+                             sig: ChannelSig) -> list[str]:
+    """节节高升升级发放腿(逐跨级等级各发 1 名 2★ 角色;消费位唯一 =
+    升级上报回调跨级分支 sim 门内,live 不调用不采样)。
+
+    链序(逐级):费用档 = ``max(1, min(5, lv - 4))``(卡面「等级减4
+    最小值：1费」直读 + 满级段上钳 5 = 费用轴池域,披露键
+    ``level_up_gift_cost_clamp_pool_domain``)→ 采样池 =
+    :func:`cw_pool.grant_char_pool`(规格域 ∩ 当时牌库、未解锁专家剔除
+    ——授予采样通道在册裁定 2026-10-28,禁直接 random_char_pool 静态
+    取池)→ 按名均匀掷 1 名(:data:`LEVEL_UP_GIFT_RNG_TOOL` 流键,注入槽
+    = 世界真值;门内才进本函数,live 恒零采样)→ :func:`gain_character`
+    (star=2 卡面明写结构值,rand=True 采样支;落位/升星级联/席满溢出
+    沿链现役,bench 未观察拒落零写为原语内置语义零特判)→ 效果串
+    ``levelup_gift_char:<名>@2star``(前缀独立分域,@ 后缀一体登记)。
+
+    零金写申报:金腿「每次升级时获得……1金币」= 记账层伴生现值
+    (升级发射帧容器写已覆盖 sim 世界金),本函数再写金即双记——架构性
+    排除。运行期空池 = 注册表漂移(费用轴恒非专家域,现库不可达),零写
+    留 log 防御分支(环境随机赠卡支同款)。
+    """
+    # 惰性 import 链原语(运行时解析破环;沿骇客/箱腿先例,模块
+    # docstring import 方向声明)
+    # kernel 反向模块级零 import 契约:action_sampling_rng 住上报函数族
+    # 包,函数内惰性取(gain-chain.md §8 单向破环先例)。
+    from sr_od.application.currency_war.kernel.cw_action_report import (
+        action_sampling_rng,
+    )
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        gain_character,
+    )
+    roll_rng = action_sampling_rng(LEVEL_UP_GIFT_RNG_TOOL, None)
+    steps: list[str] = []
+    for lv in levels:
+        cost = max(1, min(5, lv - 4))
+        pool = grant_char_pool(gs, RandomCharSpec(cost=cost, star=2))
+        if not pool:
+            log.warning(f'[cw-gain] 节节高升升级发放池空(注册表漂移?):'
+                        f'lv={lv} cost={cost}')
+            continue
+        name = roll_rng.choice(pool)
+        gain_character(gs, name, 2, rand=True, sig=sig,
+                       evidence='levelup_gift_char', producer=_PRODUCER)
+        steps.append(f'levelup_gift_char:{name}@2star')
+    return steps
