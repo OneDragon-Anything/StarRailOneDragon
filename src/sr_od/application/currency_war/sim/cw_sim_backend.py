@@ -96,6 +96,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_battle_grants,
     check_strategy_bench_count_xp,
     check_strategy_bench_leave_gold,
+    check_strategy_bench_left_cost_xp,
     check_strategy_bond_battle_grants,
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
@@ -3328,6 +3329,28 @@ class SimBackend:
         # 守卫 + done 闩双层;返回值忽略(无回调面)。
         check_strategy_gift_grants(self.gs, node_kind=kind,
                                    sig=logic_sig('sim:strategy'))
+        # 条件 XP 族第 4 形(被动收入 id 300601;备战席左一角色基础费用
+        # 动态量,量形 = 单角色属性直读族内首例)。现位申报:gift 双腿后、
+        # 商店全刷前(证伪路径 = 实机持卡局左一角色与本窗商店发牌费用档
+        # 耦合观察,证伪则改序重申报);XP 世界写与节点经验/即时经验同域
+        # 同组(sig 'sim:xp'),evidence 独立笔 'xp:bench_left_cost' 分账;
+        # 零 rng 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
+        # (apply_node_xp 同形态;cost=0/无单位零发放门在判定端)。
+        left_cost_xp = check_strategy_bench_left_cost_xp(self.gs)
+        if left_cost_xp > 0:
+            xp_field = self.gs.xp.value
+            level_field = self.gs.level.value
+            if xp_field is not None and level_field is not None:
+                level, cur = xp_apply_amount(int(level_field),
+                                             int(xp_field[0]),
+                                             left_cost_xp)
+                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
+                xp_sig = obs_sig(group_id='sim:xp')
+                xp_ev = sim_evidence('xp:bench_left_cost')
+                self.gs.observe(self.gs.level, level, evidence=xp_ev,
+                                sig=xp_sig)
+                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
+                                sig=xp_sig)
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')

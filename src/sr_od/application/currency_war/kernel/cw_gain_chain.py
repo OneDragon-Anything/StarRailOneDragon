@@ -2355,6 +2355,29 @@ def check_strategy_gift_grants(gs: GameState, *, node_kind: str,
     return tuple(granted)
 
 
+def check_strategy_bench_left_cost_xp(gs: GameState) -> int:
+    """条件 XP 族第 4 形纯判定(被动收入;备战席左一角色基础费用)。
+
+    四序矩阵(全零→0):未持卡 0 / bench 未观察 0 / 无单位 0 /
+    cost=0 系统单位 0(xp>0 门)。基础费用 = Character.cost 注册值
+    静态派生(升费档零载体不猜);「最左」= 槽序头第一单位
+    (bench_leftmost_unit_of 单一源);纯读零写零 rng。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_leftmost_unit_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        STRATEGY_BENCH_LEFT_COST_XP_GRANTS,
+    )
+    held = gs.active_strategies.value
+    if not held or not (set(held) & set(STRATEGY_BENCH_LEFT_COST_XP_GRANTS)):
+        return 0
+    unit = bench_leftmost_unit_of(gs)
+    if unit is None:
+        return 0
+    return max(int(unit.char.cost), 0) if getattr(unit.char, 'cost', 0) else 0
+
+
 def _node_frame(gs: GameState) -> str:
     """链内 frame 字符串(「位面-轮」统一标识,如 ``2-3``;节点未观察 =
     空——登记分支 evidence 用;编号时代的 p{plane}-r{round} 双形态随键

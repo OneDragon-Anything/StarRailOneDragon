@@ -5974,6 +5974,31 @@ STRATEGY_EQUIP_COUNT_XP_GRANTS: dict[str, int] = {
     # 条目维持)。
     '赞美太阳': 1,
 }
+# —— 条件 XP 族第 4 形(备战席左一角色基础费用,量 = 单角色属性直读
+# 「族内首例」;计数乘法形三表 :5668/:5708/:5966 之外另立成员集合——
+# 量源不同:三表 = 持有/计数×静态量,本表 = 槽序头单位 cost 直读)——
+# 被动收入:官方「每次进入新节点时获得经验，数值等同于你备战席最左侧角色
+# 的基础费用。」(id 300601 原文直读,cw_invest_data.py:247;表值 = 成员
+# 集合载体,XP 量 = 世界派生非表内常量,故集合形非 int 形;cost=0 系统
+# 单位零发放[xp>0 门];「最左」= BenchView 槽序头第一单位[占位件/空槽
+# 跳过];基础费用 = Character.cost 注册值静态派生,升费档零载体不猜)。
+STRATEGY_BENCH_LEFT_COST_XP_GRANTS: frozenset[str] = frozenset(
+    {'被动收入'})
+
+
+def _validate_strategy_bench_left_cost_xp_grants() -> None:
+    """STRATEGY_BENCH_LEFT_COST_XP_GRANTS 构建校验(import 即炸;治理口径
+    = 2026-10-28「笔误哨删/漂移哨留」同族三表——本域唯一哨:孤儿键,表键
+    必须在 INVESTMENT_STRATEGIES,版本改名/移除后静默失联;XP 量为世界派生
+    无常量,值域形查不适用)。"""
+    orphans = [n for n in STRATEGY_BENCH_LEFT_COST_XP_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_BENCH_LEFT_COST_XP_GRANTS 孤儿键(base 无此卡?):'
+            f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+
+
 
 
 #: 白昼系计数名集(「【白昼装备】以及其原型装备」的程序化口径):白昼类

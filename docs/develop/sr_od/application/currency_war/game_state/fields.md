@@ -2391,7 +2391,7 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
 **无结构化规格的缺口**(注册表建模批候选;effect_inventory 的逻辑写入以卡文本效果
 为 provenance):
 
-- XP 面:被动收入/人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
+- XP 面:/人才济济/气氛组、气氛组+(气氛组+ 即时腿已挂
   xp_instant=8,条件腿仍缺口)/孪生素数(一局上限 28)/赞美太阳/固定理财
   (即时段与位面开始段同卡两支)。(空仓已出列:条件腿世界通道 =
   `STRATEGY_EMPTY_EQUIP_XP_GRANTS` + `check_strategy_empty_equip_xp` +

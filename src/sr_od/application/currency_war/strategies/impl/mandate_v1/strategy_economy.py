@@ -245,7 +245,7 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # —— 注册表外经济语义卡代表例(economy 未注册但 research 已登记明列
     # 经济结构 = 建模待修问题形态,按无已建模机械成分 0 分申报低估;
     # invest_effects 批 3/4 已登记,禁凭 research 记载凭直觉给分)——
-    '被动收入': '每节点 XP = 备战席最左侧角色基础费用(量级可达 ~125 当量'
+    '被动收入': '每节点 XP 经验腿已建世界通道 STRATEGY_BENCH_LEFT_COST_XP_GRANTS;估值零登记维持'
                '大于买断制现金流),无字段载体',
     '气氛组': '战斗结束按 0 伤害角色数给 XP,无字段载体',
     '气氛组+': '战斗结束按 0 伤害角色数给 XP 腿无字段载体(同气氛组);'

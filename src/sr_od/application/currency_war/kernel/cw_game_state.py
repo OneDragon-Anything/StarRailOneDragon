@@ -5164,6 +5164,15 @@ def bench_units_of(gs: GameState) -> list[Unit]:
             if s is not None and s.kind == 'unit' and s.unit is not None]
 
 
+def bench_leftmost_unit_of(gs: GameState) -> Unit | None:
+    """备战席最左侧单位读口(槽序头第一单位;占位件/空槽跳过,
+    复用 :func:`bench_units_of` 槽序保序读口,禁第二份槽序遍历)。
+    采购专员族后继复用单一源;bench 未观察/无单位 = None(cost=0
+    系统单位照常返回,零发放门在消费端 xp>0)。"""
+    units = bench_units_of(gs)
+    return units[0] if units else None
+
+
 def bench_entries_of(gs: GameState) -> list[BenchSlot]:
     """备战席占席条目读口(容器原生,紧缩序):BenchView 槽序中占席槽
     (``kind != 'empty'``,单位与占位件都在内)的 ``BenchSlot``,顺序 =
