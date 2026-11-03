@@ -12,8 +12,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 
 - 现金分 = strategy_economy.strategy_economy_value(resolved ∧ > 0 才计,
   fail-closed 恒 0);
-- 方向分 = line_value_best 内层入口(触线集在构造侧求值,阵容 空间;
-  29 号稿 §2.2);
+- 方向分组件恒 0(strength/方向分链整线下线,29 号稿 §2.2 方向分行废止);
 - 赠卡分 = STRATEGY_GRANTS + gift_value.grant_gift_value(29 号稿 §2.3);
 - 立场分 = :data:`STANCE_SCORE`(【拍】形态,现行无非零行;表外卡恒 0);
 - 转向轴 = strategy_priority 命中 + :data:`pick_common.
@@ -50,7 +49,6 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_comps import (
-    COMP_LIBRARY,
     augment_affinity,
     get_comp,
 )
@@ -71,10 +69,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.gift_value import (
     grant_gift_value,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.line_value import (
-    LINE_STRENGTH_SCORE,
-    line_value_best,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
     BOARD_DOT_COUNT_THRESHOLD,
@@ -175,59 +169,8 @@ def _econ_effect_flag(eff: EconomyEffect | None) -> int:
 
 
 # ===== 单卡组件(29 号稿 §2)=====
-
-
-def _touched_line_comps(canonical: str,
-                        evicted: frozenset[str]) -> frozenset[str]:
-    """卡的触线集阵容 空间像(构造侧求值;29 号稿 §2.2)。
-
-    - 阵营绑定分支:绑定阵营 f 的阵营线成员阵容 = {c ∈ COMP_LIBRARY :
-      f ∈ c.factions}——**线排除像 = 该线全体成员阵容 ∈ evicted ⇔ 线
-      排除**(整体死亡判据);线活则全体成员入集,含已被 evicted 的成员
-      (线级整体排除语义,方向分虚高向,有意选择并申报——29 号稿
-      §2.2 线级口径行为差异申报);
-    - 角色绑定分支(窄口径):core_chars 含绑定角色的阵容,逐阵容 自身
-      ∈ evicted 才排除;
-    - 两条分支并集即触线集。STRATEGY_BINDINGS 未建模卡 → 空集(方向分 0)。
-    """
-    bindings = STRATEGY_BINDINGS.get(canonical)
-    if bindings is None:
-        return frozenset()
-    bound_facs, bound_chars = bindings
-    out: set[str] = set()
-    # —— 阵营线逐线判生死(线排除像 = 全体成员 ∈ evicted;非逐阵容)——
-    for f in bound_facs:
-        line_members = frozenset(c.name for c in COMP_LIBRARY
-                                 if f in c.factions)
-        if line_members and line_members <= evicted:
-            continue   # 线死:整线退场
-        out |= line_members
-    # —— 角色绑定窄口径:阵容 自身被逐才排除 ——
-    for comp in COMP_LIBRARY:
-        if comp.name in evicted:
-            continue
-        if any(ch in comp.core_chars for ch in bound_chars):
-            out.add(comp.name)
-    return frozenset(out)
-
-
-def _locked_line_comps(locked_comp: str,
-                       evicted: frozenset[str]) -> frozenset[str]:
-    """终局阵容锁定阵营线的成员阵容 并集(阵营族展开的阵容 空间像;29 号稿
-    §2.2)。终局阵容锁定阵容 不在 COMP_LIBRARY → 空集(无对齐语义);
-    线生死判据与触线集同款——终局阵容锁定全线死 → 空集(方向分 0,「evicted
-    收窄后线退场」)。"""
-    lc = get_comp(locked_comp)
-    if lc is None:
-        return frozenset()
-    out: set[str] = set()
-    for f in lc.factions:
-        line_members = frozenset(c.name for c in COMP_LIBRARY
-                                 if f in c.factions)
-        if line_members and line_members <= evicted:
-            continue
-        out |= line_members
-    return frozenset(out)
+# (旧方向分触线集构造 _touched_line_comps/_locked_line_comps 已随方向分链
+# 整线下线删除——29 号稿 §2.2 方向分行废止,git 历史可溯。)
 
 
 def _locked_alignment_n(bindings: tuple[frozenset[str], frozenset[str]] | None,
@@ -287,7 +230,7 @@ def _components(canonical: str | None, opt: str, gs: GameState,
     (垃圾名)→ 全 0。
 
     - 现金分走 canonical(resolved ∧ > 0 才计,fail-closed 恒 0);
-    - 方向分:触线集构造侧求值(线排除像已应用)→ line_value_best;
+    - 方向分组件恒 0(方向分链整线下线;
       终局阵容锁定集 = 终局阵容锁定阵营线成员并集(空串/降格帧 → 未锁口径);
     - 赠卡分:STRATEGY_GRANTS + grant_gift_value(无条目自然 0);
     - 立场分:空表恒 0(表外卡默认 0);
@@ -298,10 +241,7 @@ def _components(canonical: str | None, opt: str, gs: GameState,
         return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     cash, resolved = strategy_economy_value(canonical, gs)
     cash_v = cash if (resolved and cash > 0) else 0.0
-    touched = _touched_line_comps(canonical, evicted)
-    locked = (_locked_line_comps(locked_comp, evicted)
-              if (locked_comp and not demoted_endgame) else frozenset())
-    direction = line_value_best(touched, locked, demoted_endgame)
+    direction = 0.0   # 方向分链整线下线(strength/LINE_STRENGTH_SCORE 删除),恒 0
     grant = STRATEGY_GRANTS.get(canonical)
     gift = grant_gift_value(grant, evicted) if grant is not None else 0.0
     stance = STANCE_SCORE[canonical].score if canonical in STANCE_SCORE \
@@ -551,8 +491,8 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
       元组;刷新余量三闸留 op 层,结构零改动);
     - **帧级顶级类 = 定义型 ∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
       判定、不计 max_N);**槽级顶级类 = 帧级顶级类 ∨ 对齐保护**(终局
-      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 非血 ∧ 触 S/A 档线
-      ——方向分 ≥ A 档,档位边界取自 LINE_STRENGTH_SCORE 无新常数)。
+      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——方向分
+      链整线下线后无「触 S/A 档线」判定,保守向不保护)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -627,8 +567,8 @@ def _refresh_slots(cands: list[_Cand], on_dot: bool,
 
 
 def _alignment_guard(c: _Cand, locked_frame: bool) -> bool:
-    """槽级对齐保护位(终局阵容锁定帧 N≥2 / 未锁定帧触 S/A 档线;非血条件由
-    调用方合取)。"""
+    """槽级对齐保护位(终局阵容锁定帧 N≥2;非血条件由调用方合取)。
+    未锁定帧恒 False——方向分链下线后无「触 S/A 档线」判定,保守向不保护。"""
     if locked_frame:
         return c.align_n >= 2
-    return c.direction >= LINE_STRENGTH_SCORE['A']
+    return False

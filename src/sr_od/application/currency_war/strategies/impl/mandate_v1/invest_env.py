@@ -13,7 +13,8 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
 
 - 现金分 = env_economy.env_economy_value(resolved ∧ > 0 才计,fail-closed
   恒 0);
-- 方向分 = line_value.line_value(概念股/邀请;28 号稿 §2 方向分行);
+- 方向分组件恒 0(strength/方向分链整线下线,28 号稿 §2 方向分行废止,
+  环境方向差异由赠卡分/立场分承载);
 - 赠卡分 = gift_value 具名口径(ENV_GIFTS)+ 概念股随机阵营口径(28 号稿
   §2 赠卡分行);
 - 立场分 = :data:`STANCE_SCORE`(【拍】形态,每行带理由;
@@ -50,7 +51,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY, get_comp
+from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ECONOMY,
@@ -67,10 +68,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.gift_value import
     GIFT_TIER_SCORE,
     named_gift_value,
     random_faction_gift_value,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.line_value import (
-    LINE_STRENGTH_SCORE,
-    line_value,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
     BOARD_DOT_COUNT_THRESHOLD,
@@ -209,13 +206,9 @@ def _validate_stance_coverage() -> None:
 
 
 def _validate_coefficient_tables() -> None:
-    """系数表键完备校验:线强度档分覆盖阵容库全部强度档;赠卡档分覆盖
-    档位机器全部四档(28 号稿 §2 赠卡分行;缺键 = 对应线/卡静默零分 → import 即炸)。"""
-    _lib_tiers = {c.strength for c in COMP_LIBRARY}
-    _missing_line = _lib_tiers - set(LINE_STRENGTH_SCORE)
-    if _missing_line:
-        raise ValueError(
-            f"线强度档分缺键(COMP_LIBRARY 出现未登记强度档):{sorted(_missing_line)}")
+    """系数表键完备校验:赠卡档分覆盖档位机器全部四档(28 号稿 §2 赠卡分行;
+    缺键 = 对应卡静默零分 → import 即炸)。线强度档分已随 strength 字段/
+    LINE_STRENGTH_SCORE 整链下线移除(方向分组件归零)。"""
     _gift_tiers = {'core', 'shared', 'transition', 'off'}
     _missing_gift = _gift_tiers - set(GIFT_TIER_SCORE)
     if _missing_gift:
@@ -235,9 +228,11 @@ def _components(name: str, gs: GameState, locked_comp: str,
     """单环境四组件 (现金,方向,赠卡,立场);未注册名 → 全 0(OCR 形变)。
 
     - 现金分:resolved ∧ > 0 才计,fail-closed 恒 0(28 号稿 §1/§2);
-    - 方向分适用面 = 概念股/邀请(28 号稿 §2 方向分行);契约/特邀专家只计赠卡;
+    - 方向分组件恒 0(strength/LINE_STRENGTH_SCORE 整链下线,28 号稿 §2
+      方向分行废止——环境选卡不区分「利好的线强不强」,概念股/邀请的
+      方向差异由赠卡分/立场分承载);
     - 概念股额外加随机阵营赠卡分(「白得该阵营角色」;「找牌概率提高」
-      「初始简易装备」v1 不计 = 申报低估向,28 号稿 §2 方向分行);
+      「初始简易装备」v1 不计 = 申报低估向);
     - 立场分:表行缺省 0(表外环境立场不入表,28 号稿 §2 立场分行)。
     """
     cash, resolved = env_economy_value(name, gs)
@@ -245,8 +240,6 @@ def _components(name: str, gs: GameState, locked_comp: str,
     env = get_env(name)
     faction = env.faction if env is not None else ''
     _dir = 0.0
-    if env is not None and env.category in ('概念股', '邀请'):
-        _dir = line_value(faction, locked_comp, demoted_endgame, evicted)
     gift = named_gift_value(name, evicted)
     if env is not None and env.category == '概念股' and faction:
         gift += random_faction_gift_value(faction, evicted)

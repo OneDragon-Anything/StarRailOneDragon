@@ -8,7 +8,7 @@
 ## 1. 标尺(统一加法)
 
 - **单位 = 分;1 分 := 1 金等价**(归一化约定,非语义拍值;经验值折金沿 `env_economy.XP_GOLD_RATE` 承载)。旧 kernel 的多标尺层次压制(裸分/送卡档/阵营 floor/经济域带各标尺不可比,靠层次常数定先后)已整体停用。
-- **总分 = 现金分 + 方向分 + 赠卡分 + 立场分 + 转向轴加分**;取总分最高者,平分取先(同分取候选序靠前)。
+- **总分 = 现金分 + 赠卡分 + 立场分 + 转向轴加分**;取总分最高者,平分取先(同分取候选序靠前)。
 - 加法合法的前提:所有分值声明为同一标尺上的量(分差有含义);立场表按「分值思维」维护(拍的是量级与差距,不是名次)。
 - 数字来源标注(四种)核对:现金 A 类精确通道 = 【注】游戏定义值 + 【推】位面到达加权;C 类估算通道 = 【拟】(值+置信区间+来源+截止,fail-closed 退路);立场分 = 【拍】(用户策略立场的登记值,合法性来自裁定本身,不是任何形态的推导产物)。
 
@@ -17,7 +17,7 @@
 | 组件 | 单一源 | 语义要点 |
 |---|---|---|
 | 现金分 | `env_economy.env_economy_value(name, gs) -> (expected_gold, resolved)` | 环境经济通道折金等价期望;`resolved ∧ > 0` 才计,fail-closed 恒 0(缺参/置信区间方向不闭合/未入模)。A 类精确(增发货币/蓝海/成功经验/策略大师)、C 类估算(经济过热系,零有效估计期恒 fail-closed)、gold_after_refreshes 系(长线利好/二手市场)= **拍值注册** `_GOLD_AFTER_REFRESHES_FIXED`(无条件计,不读局内刷新计数;定标依据 = `../proofs/p97-refresh-budget.md` §7)、品质改写层(**层 E** = 品质改写型环境会把策略牌池的品质改写,这一项算的是改写后取卡的金流期望比不改写时抬升多少的增量口径;`_pool_rewrite_value`,当前态 fail-closed,转正准入门未过) |
-| 方向分 | `line_value.line_value(faction, locked_comp, demoted_endgame, evicted)` | 只适用于概念股/邀请(邀请只计方向分)。候选阵容集三口径:①基础集 = 未被 evicted(已排除阵容名单)排除 ∧ `COMP_LIBRARY` 阵容含该环境阵营;②意向已锁定终局阵容 ∧ 非降格帧 → 基础集 ∩ {已锁定的终局阵容}(不含该阵营 → 0);③未锁定终局阵容或降格帧 → 基础集全体取 max(版本先验,不做信号加权)。阵容价值 = 强度档分 `LINE_STRENGTH_SCORE`(键 S/A/B) |
+| 方向分 | **已废止(2026-11-03 零消费清理批)** | 原语义 = 概念股/邀请按触线集取 `LINE_STRENGTH_SCORE` 强度档分;随 `Comp.strength` 字段与 `line_value.py` 整链下线移除(消费实证 = 选线不读 strength、唯此一消费链;git 历史可溯)。环境方向差异由赠卡分/立场分承载 |
 | 赠卡分 | `gift_value.named_gift_value / random_faction_gift_value` | 具名赠卡(契约 ×7 + 特邀专家 ×4,登记 = kernel `cw_investments.ENV_GIFTS` 留 kernel):档位判定复用 kernel `cw_comps.gift_hit_tier`(机制事实判定留 kernel),档→分映射 `GIFT_TIER_SCORE`;advisor(付费顾问期权)同档分乘 `ADVISOR_DISCOUNT`(付费期权 < 白得)。随机阵营赠卡(概念股「获得某阵营角色」)= 该阵营注册成员(`cw_chars.chars_by_faction`)在未排除候选阵容 core∪shared∪transition 名单中出现者的档位分**算术平均**(随机发放取无偏口径;无成员已登记 → 0)。白得卡全员集外 → 赠卡分自然 0,环境其余成分照常计分(旧整体失格规则已删) |
 | 立场分 | `invest_env.STANCE_SCORE`(`StanceRow.score` + 每行裁定理由) | 仅登记「无机械成分」环境(判定 = 无阵营 ∧ 不在 ENV_GIFTS ∧ 不在 ENV_ECONOMY,价值不含可推导成分,纯立场)+ 点名零值机械环境;表外环境立场恒 0。覆盖由构建期校验兜底(缺行 import 即炸) |
 

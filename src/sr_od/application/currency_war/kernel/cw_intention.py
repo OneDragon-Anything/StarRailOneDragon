@@ -759,8 +759,6 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
         factions=sorted(bonds),
         core_chars=sorted(_pair_members(pair)),
         form_tiers=dict(sorted(tiers.items())),
-        strength='A',
-        form_difficulty='easy',
         or_reqs=or_reqs,
         required_deployed=required,
     )

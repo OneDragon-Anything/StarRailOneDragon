@@ -44,7 +44,6 @@ _RECIPES: dict[str, Comp] = {
         name='过渡·仙舟配方', factions=['仙舟', '持续伤害'],
         core_chars=framework_members('仙舟'),
         form_tiers={'仙舟': 3},
-        strength='A', form_difficulty='easy',
         # 过渡期站位(爻光必后台,站位规则住在终局阵容,
         # 配方伪阵容需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
@@ -53,7 +52,6 @@ _RECIPES: dict[str, Comp] = {
         name='过渡·列车配方', factions=['列车同行'],
         core_chars=framework_members('列车'),
         form_tiers={'列车同行': 4},
-        strength='A', form_difficulty='easy',
     ),
     # 量子框架(量子=第三过渡配方;
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
@@ -61,7 +59,6 @@ _RECIPES: dict[str, Comp] = {
         name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
         core_chars=framework_members('量子'),
         form_tiers={'量子同频': 3, '贝洛伯格': 2},
-        strength='A', form_difficulty='easy',
     ),
 }
 

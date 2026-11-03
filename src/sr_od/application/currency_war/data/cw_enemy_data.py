@@ -58,50 +58,11 @@ BOSS_MECHANICS: dict[str, tuple[str, ...]] = {
     '绘师家族产业': ('aoe', 'dot', 'summon'),                     # 怨火灼身DoT高覆盖+吞神子嗣(2026-08-17 采)
 }
 
-# boss 机制 tag → 克/利我方阵容机制属性(结构层;comp_library.md/competitors.md 攻略句)
-# key=boss tag;counters=克我方属性(我方带此属性 → 打该 boss 减分);synergies=利我方属性。
 BOSS_MECHANIC_NICKS: dict[str, str] = {
     # 俗称→机制 tag 挂钩(俗称已全部定位规范名或确认为小怪,此表只剩非 boss 词缀类)
     '单体boss': 'single_burst',  # 单体爆发 boss(长战)
     '单体长战': 'single_burst',
     '永久创伤': 'heal_cut',      # 掉血削上限(敌人词缀,非 boss;挂 tag 复用)
-}
-
-# 我方 comp.mechanic_attributes 俗称 → 结构 tag(与上面 BOSS_MECHANIC_NICKS 对齐)
-COMP_ATTR_TAGS: dict[str, str] = {
-    '速度依赖': 'speed_dep',
-    '高频攻击': 'freq_high',
-    '治疗护盾': 'heal_shield',
-    '持续伤害': 'dot_dep',
-    '燃血': 'blood_burn',
-    '治疗': 'heal_dep',
-    '群攻': 'aoe_clear',
-    '击破': 'break_dep',
-    '暴击': 'crit_dep',
-    '幸运一击': 'crit_dep',
-    '护盾': 'shield_dep',
-    '减益叠加': 'debuff_dep',
-    '欢愉叠层': 'joy_stack',
-    '反击': 'counter_dep',
-}
-
-# 结构克/利表(boss tag × 我方 tag;方向:boss 的该机制 克/利 我方的该机制)
-# 依据:bosses.md 克制启示 + comp_library.md 攻略句(🟡 多源,待 E2 校验)
-_TAG_COUNTERS: dict[str, tuple[str, ...]] = {
-    'heal_cut': ('heal_dep', 'heal_shield'),      # 削治疗克治疗队
-    'crit_resist': ('crit_dep',),                  # 速效进化克暴击
-    'counter_attack': ('freq_high',),              # 反击克高频(每击挨反)
-    'thorns': ('freq_high',),                      # 反伤克高频低单次
-    'speed_lock': ('speed_dep',),                  # 禁速克速度依赖
-    'freq_limit': ('freq_high',),                  # 频率限制克高频
-    'freeze_combo': ('melee_front',),              # 冻结增伤(前排近战承压)
-    'control': ('joy_stack',),                     # 控制(解控前)扰连携节奏
-}
-_TAG_SYNERGIES: dict[str, tuple[str, ...]] = {
-    'summon': ('aoe_clear',),                      # 召唤多目标 → 群攻清
-    'break_bonus': ('break_dep',),                 # 击破奖励机制 → 击破流利
-    'share_hp': ('aoe_clear', 'single_burst_ok'),  # 共享血量 → 群攻/单点皆可
-    'aoe': ('shield_dep',),                        # boss AoE → 护盾挡
 }
 
 
@@ -123,27 +84,3 @@ def boss_tags(bosses: list[str]) -> tuple[str, str]:
     return ','.join(canon), ','.join(sorted(tags))
 
 
-def matchup(comp_mechanics: list[str], bosses: list[str]) -> tuple[float, list[str]]:
-    """结构层 matchup:我方阵容机制属性 × 本局 boss 机制 → (score, reasons)。
-
-    score ∈ [0,1],0.5 中性;每条克制 -0.15,每条利好 +0.12(方向先验,E2 待校);
-    reasons 可解释输出(「boss机制×我方属性=克/利」),供日志/复盘/问询卡消费。
-    空 boss / 无机制 → (0.5, [])(中性,boss_fit None 语义由调用方处理)。
-    """
-    if not bosses or not comp_mechanics:
-        return 0.5, []
-    _canon, tags_str = boss_tags(bosses)
-    tags = {t for t in tags_str.split(',') if t}
-    my_tags = {COMP_ATTR_TAGS.get(m, m) for m in comp_mechanics if m}
-    score = 0.5
-    reasons: list[str] = []
-    for bt in tags:
-        for mt in _TAG_COUNTERS.get(bt, ()):
-            if mt in my_tags:
-                score -= 0.15
-                reasons.append(f'boss[{bt}]×我方[{mt}]=克')
-        for mt in _TAG_SYNERGIES.get(bt, ()):
-            if mt in my_tags:
-                score += 0.12
-                reasons.append(f'boss[{bt}]×我方[{mt}]=利')
-    return max(0.0, min(1.0, score)), reasons
