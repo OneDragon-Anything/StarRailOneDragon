@@ -1171,13 +1171,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 
     # 及时雨 = 随机星档角色×箱腿组合登记行(卡文「获得3个随机2星4费角色
     # 和1个【完美投影仪】，获得4次免费刷新」;腿1 = 随机 2星4费×3
-    # (count=3 援军族采样复用);腿2 = 完美投影仪箱腿工厂;腿3 = 4 次
+    # (count=3 援军族采样复用);腿2 = 完美投影仪装备授予(装备入栏形,生命之花同款;完美投影仪 ∈ EQUIPMENTS 工具类,非占席道具);腿3 = 4 次
     # 免费刷新在 STRATEGY_ECONOMY burst 注册行零动作[:599];两腿卡不入
     # _STRATEGY_BOX_GRANTS;效果串 4 条(3 角色+1 箱);掷序契约同援军族;
     # 不入泛化表防撞键。
     '及时雨': _compose_grant_legs(
         _make_random_star_char_effect(4, 2, count=3),
-        _make_box_grant_effect('完美投影仪')),
+        _make_named_equip_grant_effect('完美投影仪', 1)),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3

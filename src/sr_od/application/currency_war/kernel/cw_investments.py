@@ -3809,10 +3809,6 @@ BENCH_ITEM_KINDS: dict[str, str] = {
     '进阶武装箱': 'supply_box',
     '专家邀请函': 'bookcard',
     '星徽秘典': 'tome',
-    # 完美投影仪(及时雨 id 300701 箱腿,原文直读 cw_invest_data.py:248;
-    # 类别 = supply_box 同款占席道具;映射缺键 = KeyError 响亮单一源
-    # 纪律,BENCH_ITEM_NAMES 随 frozenset 派生自动跟上)。
-    '完美投影仪': 'supply_box',
 }
 
 BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
