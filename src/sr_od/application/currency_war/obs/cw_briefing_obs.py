@@ -143,10 +143,9 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 
     读不到 / area 缺 → []。
 
-    boss×线克制的知识层已接通(bosses.md 图鉴 + final_comps 攻略实证 →
-    ``cw_affinity_table.BOSS_AFFINITY`` 4 线实证 + D4 类级兜底;旧
-    ``comp.countered_by_bosses`` 字段已随统一阵容评分迭代退役)。boss 阵营
-    (红色标签内)OCR 暂不读(红底干扰,待视觉核实后再决定是否采)。
+    boss×线克制的知识层 = ``cw_affinity_table.BOSS_AFFINITY``(攻略实证
+    4 线,其余线空白声明)。boss 阵营(红色标签内)OCR 暂不读(红底干扰,
+    待视觉核实后再决定是否采)。
     """
     rect = _area_rect(ctx, '区域-首领行', BRIEFING_SCREEN)
     if rect is None:

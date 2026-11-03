@@ -3,7 +3,7 @@
 > **来源**:游戏内 **数据银行 → 竞争对手图鉴**(20 个,权威)。
 > **重采(2026-08-17 22:29-22:35,用户截图 60 张)**:图鉴 20/20 全解锁,全量重采(含此前截断的技能全文、阶段二、第 20 boss);原始截图 `.debug/temp/currency_war/boss_shots_0817/`(OCR 逐图结果 `ocr.jsonl` / 分组 `summary.md`)。早期 2026-08-05 采集已被本次覆盖校准。
 > **定位**:**「竞争对手」= 位面 boss**(每局 3 位面各 1 boss,池中随机 3)。**不是敌人词缀**(敌人词缀见 [competitors.md](competitors.md))。位面序真值 = `CwScreenPlaneIntel` 位面详情实采 → `session.briefing_bosses` → `state.plane_bosses` → 线分 boss 分量(消费端 `kernel/cw_affinity_table.BOSS_AFFINITY`,统一阵容评分批 2 起);简报 `read_bosses` 只产候选集(卡片排列≠位面序)。
-> **用途**:boss 战斗机制(技能)→ 观察分组(`BOSS_MECHANICS` tag);**boss×线克制方向单一源 = `kernel/cw_affinity_table` boss 吃怕表(攻略实证,统一阵容评分迭代 §3.4)**——原逐 boss「核心机制/克制启示」两行人工推断层已随该迭代删除(2026-11,回归图鉴技能原文;方向判定不双源)。
+> **用途**:本文件只存图鉴技能原文(战斗机制观察分组 = `BOSS_MECHANICS` tag);**boss×线克制方向单一源 = `kernel/cw_affinity_table` boss 吃怕表(攻略实证,统一阵容评分迭代 §3.4)——本文件不设克制层,方向判定不双源**。
 > ⚠️ OCR 系统性丢字已按模式修复(「我方目标/大幅提高/大量量子属性」等),存疑处以原始截图为准。
 
 ## boss 全集(20/20 全采,2026-08-17)
