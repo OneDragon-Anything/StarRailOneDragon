@@ -8,7 +8,7 @@
   5/6 乙起;旧七桶选人族已随部署统一批丁丁批收编删除——unified-
   deploy-order §2/§4):target_board = 角色名 → (排, 选定星);
 - 排路由(:func:`deploy_row_pref`,三级):阵容站位覆盖(``Comp.char_
-  positions`` 字段契约「阵容特定站位要求,覆盖命途默认」)> 注册表
+  positions`` 字段契约「阵容特定站位要求,覆盖注册表站位真值默认」)> 注册表
   ``get_char(char_id).position_pref()`` 派生 > back 兜底——旧链路备战
   候选恒按后排、注册表偏好被丢弃的行为变化申报项
   在此落地;
@@ -65,7 +65,7 @@ def deploy_row_pref(char_id: str, comp: object | None) -> str:
     """落位排路由(策略三级;design §2.2「每人的排全部由策略实现决定」)。
 
     ① 阵容 站位覆盖:``Comp.char_positions``(字段契约「阵容 特定站位
-       要求(角色→front/back),覆盖命途 position_pref 默认」;已登记实例
+       要求(角色→front/back),覆盖注册表 position_pref 默认」;已登记实例
        = 爻光必后台/万敌独前排/知更鸟前台,攻略实证);
     ② 注册表派生:``get_char(char_id).position_pref()``(design §2.1
        「position_pref 不入形状,消费点经注册表按 char_id 派生;禁全局

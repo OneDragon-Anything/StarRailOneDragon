@@ -18,7 +18,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
-| 阵容定义字段设计(Comp schema 新增/修订/评审) | comp-definition(字段准入五判据+目标态快照原则:不抄攻略三阶段,按终局形态定义;时间过程归策略机制层;先读再动) | comp-definition |
+| 阵容定义字段设计(Comp schema 新增/修订/评审) | comp-definition(两条定谳:①不抄攻略三阶段,按终局形态定义,时间过程归策略机制层;②角色靠深入游戏理解逐个敲定(统计只给候选),两层分离=文档层完全理解/实现层策略消费最小集;字段准入五判据;先读再动) | comp-definition |
 | 游戏版本更新(CW 侧适配) | version-update 清单(数据重采/阵容重跑/万金油名单复核/注册表核对;总流程归 sr-od-version-update-adaptation) | version-update |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域主线验收 | autonomous-loop |

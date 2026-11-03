@@ -95,9 +95,10 @@ class Comp:
     key_equips: list[str] = field(default_factory=list)      # 关键装备(可含重复,如阿雅需 2 反重力皮靴)
     shared_chars: list[str] = field(default_factory=list)    # 与其他阵容共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
-    # 阵容特定站位要求(角色→"front"/"back"),覆盖命途 position_pref 默认 ——
+    # 阵容特定站位要求(角色→"front"/"back"),覆盖注册表 position_pref 默认
+    # (CW 玩法每角色的可选站位真值,cw_chars.position:技能效果绑定站位)——
     # 攻略实证:爻光必后台(绯英攻略反向论证:后台跑条给前台多开大,总伤更高)、万敌独前排(燃血吃受击)、
-    # 知更鸟前台(追击支撑)。空 = 全按命途默认。
+    # 知更鸟前台(追击支撑)。空 = 全按注册表默认。
     char_positions: dict[str, str] = field(default_factory=dict)
     version_tag: str = "V4.4"    # 版本维护用
     flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 form_tiers)
