@@ -54,22 +54,26 @@ MAX_PLAYER_LEVEL: int = 10
 
 
 def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
-                    xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
+                    xp_per_buy: int = XP_PER_BUY,
+                    level_cap: int = MAX_PLAYER_LEVEL) -> tuple[int, int]:
     """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
 
     语义单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
     溢出结转(消费方 = 升级上报函数 ``report_action_level_up_param``,
     live 与 sim 同一段 op 代码同消费)。
-    封顶 MAX_PLAYER_LEVEL(10)级(live 与 sim 同语义:满级后购买经验无效)。
+    封顶 ``level_cap`` 级(live 与 sim 同语义:达帽后购买经验无效)。
 
     [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
     xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
     写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
+    [帽形参] ``level_cap`` 缺省 = MAX_PLAYER_LEVEL(无卡既有语义,全部
+    存量调用面零破);持等级帽卡的世界真值腿由调用方传
+    ``level_cap_of(gs)`` resolved 值(禁内联字面量)。
     """
-    if clicks <= 0 or level >= MAX_PLAYER_LEVEL:
+    if clicks <= 0 or level >= level_cap:
         return level, xp_cur   # 封顶/零意图:购买经验无效,零推进(live 语义)
     cur = xp_cur + clicks * xp_per_buy
-    while level < MAX_PLAYER_LEVEL:
+    while level < level_cap:
         need = XP_TO_NEXT_LEVEL.get(level, 4)
         if cur < need:
             break
@@ -78,10 +82,12 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
     return level, cur
 
 
-def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
+def xp_apply_amount(level: int, xp_cur: int, amount: int,
+                    level_cap: int = MAX_PLAYER_LEVEL) -> tuple[int, int]:
     """任意经验量推进 ``(level, xp_cur)``(升级结转与 ``xp_apply_clicks``
-    单一源同式:攒满门槛即升级、溢出结转;cap = ``MAX_PLAYER_LEVEL``,
-    满级零推进——lv10 分母未定,按 U18 口径不再累计)。
+    单一源同式:攒满门槛即升级、溢出结转;cap = ``level_cap`` 形参,
+    缺省 = ``MAX_PLAYER_LEVEL``,达帽零推进——lv10 分母未定,按 U18 口径
+    不再累计)。
 
     通用量版理由:节点基础经验含非单击倍数(+2/+12),无法折成
     「购买经验击数」走既有算子。
@@ -89,13 +95,16 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int) -> tuple[int, int]:
     + 白送经验发放原语 ``grant_xp``(kernel/cw_game_state,环境 XP
     窗口通道;两消费方经本单一实现共享升级结转式,禁第二份)。
 
-    消费方第三项 = sim 节点窗静态量通道(xp:strategy_per_node,
-    买断制 xp_per_node=4;前两项 = 节点经验/即时经验通道)。
+    消费方第三项起 = sim 节点窗静态量与条件 XP 族(xp:strategy_per_node
+    买断制 xp_per_node=4 / xp_instant 即时经验 / xp_per_plane 位面段 /
+    空·席计数·装备计数·首购等条件 XP 世界腿)——全部世界真值腿统一
+    经 ``level_cap_of`` 随链传帽(持等级帽卡时等级轴整体收窄,任一腿
+    漏传 = 越帽高估);无卡缺省语义零变。
 """
-    if amount <= 0 or level >= MAX_PLAYER_LEVEL:
+    if amount <= 0 or level >= level_cap:
         return level, xp_cur
     cur = xp_cur + amount
-    while level < MAX_PLAYER_LEVEL:
+    while level < level_cap:
         need = XP_TO_NEXT_LEVEL.get(level, 4)
         if cur < need:
             break
@@ -252,6 +261,44 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
     if interest_cap_override is None:
         return DEFAULT_INTEREST_CAP
     return max(0, int(interest_cap_override))
+
+
+def level_cap_resolved(level_cap_override: int | None = None) -> int:
+    """resolved 等级帽(「无覆写回默认」的单点归一;帽改写族与
+    :func:`interest_cap_resolved` 同构第三段形)。
+
+    override=None(默认局/未持等级帽卡)→ MAX_PLAYER_LEVEL;注册表
+    覆写值(控制规模 7)由调用方经聚合链传入。归一层 =
+    min(MAX_PLAYER_LEVEL, max(1, 覆写)):覆写系**合法收窄**(「变为」
+    系绝对覆写非提升),上界收口防未来「提升至 N」形卡越 10,下界
+    收 1 防等级轴冻结(现役无此形,防御性归一);禁在判据侧内联 cap
+    字面量——全部等级推进世界真值腿经 :func:`level_cap_of` 随链取帽。
+    """
+    if level_cap_override is None:
+        return MAX_PLAYER_LEVEL
+    return min(MAX_PLAYER_LEVEL, max(1, int(level_cap_override)))
+
+
+def level_cap_of(gs: GameState) -> int:
+    """持卡等级帽现读(active_strategies 聚合链 → resolved;等级推进
+    世界真值腿的取帽单一入口)。
+
+    覆写单一源 = ``aggregate_economy(gs.active_strategies).
+    level_cap_override``(注册表派生、零新参数):持等级帽卡(控制
+    规模 7)→ 聚合取严(并持双帽卡更严上限赢)→ resolved 归一层;
+    未持帽卡 → None → MAX_PLAYER_LEVEL(行为零差)。
+
+    消费位 = 全部等级推进世界真值腿:live 买经验上报满级门
+    (cw_action_report/level_up)+ sim 节点经验/即时经验/位面段/
+    条件 XP 族各窗腿 + kernel 白送经验原语(grant_xp)与首购经验世界写
+    (cw_gain_chain)。边界:策略侧等级判据(lv9_stop 等)读注册表
+    level_max,系「实机无卡真值」另一把尺——世界面拒发与策略侧规划的
+    失配 = 决策质量议题,禁为对齐改注册表常量。
+    """
+    strategies = list(gs.active_strategies.value or [])
+    override = (aggregate_economy(strategies).level_cap_override
+                if strategies else None)
+    return level_cap_resolved(override)
 
 
 def strategy_interest_floor(gs: GameState) -> int:

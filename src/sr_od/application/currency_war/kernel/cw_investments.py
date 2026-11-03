@@ -111,6 +111,12 @@ class EconomyEffect:
     - refresh_surprise_every: 每 N 次刷新刷出 5 张同费卡(采购专员;稳定器,提高刷新期望)
     - gold_per_three_5cost: 每购买 3 个 5 费角色给金
     - interest_cap_override: 利利息档上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)
+    - level_cap_override: 等级帽覆写(控制规模「最大等级变为7级」= 7;None = 不改写)。
+      解析-聚合-消费三段形与 interest_cap_override 同构:解析单一源 =
+      cw_economy.level_cap_resolved,聚合取严(更严上限赢),归一层再
+      min(MAX_PLAYER_LEVEL, 覆写) 收窄防提升形卡越界;消费接线 = 全部等级
+      推进世界真值腿经 cw_economy.level_cap_of 随链。策略侧判据(lv 规划
+      等)读注册表 level_max,系「实机无卡真值」另一把尺,禁与本字段混读
     - xp_per_refresh: 每次刷新 +经验
     - xp_per_node: 每节点 +经验
     - xp_buy_cost_discount: 每击「购买经验」减金
@@ -142,6 +148,7 @@ class EconomyEffect:
     refresh_surprise_every: int = 0
     gold_per_three_5cost: int = 0
     interest_cap_override: int | None = None
+    level_cap_override: int | None = None
     xp_per_refresh: int = 0
     xp_per_node: int = 0
     xp_buy_cost_discount: int = 0
@@ -366,6 +373,12 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # (loss_hp_extra 形参 / boss_end_heal_hp 结算段策略腿区独立笔),
     # live 游戏自算 + 观察覆盖;修饰不产生金流,不入引擎判定
     'loss_hp_extra', 'keep_streak_on_loss', 'boss_end_heal_hp',
+    # 进度轴结构改写族(非收入通道;难度族同桶划界轴「是否持续通道」):
+    # 「最大等级变为N」= 持卡对等级轴上限的绝对改写,零金流零周期发放,
+    # 世界消费走 kernel 解析 helper(cw_economy.level_cap_resolved /
+    # level_cap_of,聚合取严 + min(MAX_PLAYER_LEVEL, 覆写) 收窄防越界),
+    # 不构成持续收入通道,不入引擎判定
+    'level_cap_override',
 })
 
 
@@ -625,7 +638,14 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 期权/难度侧由 33/36 号消费)
     '贸易专家:停云': EconomyEffect(instant_gold=10),
     '佩佩驾到': EconomyEffect(instant_gold=8),
-    '控制规模': EconomyEffect(instant_gold=40),
+    # 控制规模:「最大等级变为7级，获得【财富宝钻】和40金币。」(卡面原文,
+    # cw_invest_data PlazaAugment id 302901,棱彩)。三腿分治:帽改写腿 =
+    # level_cap_override=7(数值 = 卡面明写零猜;聚合取严 + resolved 归一层
+    # min(MAX_PLAYER_LEVEL, 覆写),消费接线 = 全部等级推进世界真值腿);
+    # 宝钻腿 = cw_gain_effects.PICK_INVEST_EFFECTS 具名装备登记行(确定发放)
+    # + sim 检查腿匹配名归一;40 金腿 = instant_gold=40 在册估值零漂
+    # (选卡金发放写端缺口 = instant_gold 族级既有申报,与藏一手同通道)。
+    '控制规模': EconomyEffect(instant_gold=40, level_cap_override=7),
     '藏一手': EconomyEffect(instant_gold=80),
     '及时雨': EconomyEffect(free_refresh_burst=4),
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
@@ -2502,6 +2522,9 @@ def economy_effect_of(name: str) -> EconomyEffect:
 def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     """聚合多策略经济效果:加法字段求和;interest_cap_override 取**最大**(更宽上限赢,
     买断制 0 单独持有时生效 —— 与其它利息策略并持时游戏取宽值,保守建模取 max 非 min);
+    level_cap_override 取**最小**(更严上限赢——「变为」系绝对覆写非提升,双帽卡
+    并存保守执行;归一层再 min(MAX_PLAYER_LEVEL, 覆写) 收窄,见
+    cw_economy.level_cap_resolved);
     win_reward_mult 取**最大**(不叠乘)。
 
     五族枚举补全(分型登记形态;原 design_economy §E6 已删档,取回口径=
@@ -2517,6 +2540,7 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     """
     eff = EconomyEffect()
     caps: list[int] = []
+    level_caps: list[int] = []
     mults: list[float] = []
     for n in strategy_names:
         e = economy_effect_of(n)
@@ -2530,6 +2554,7 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
                                     else (eff.refresh_surprise_every or e.refresh_surprise_every)),
             gold_per_three_5cost=eff.gold_per_three_5cost + e.gold_per_three_5cost,
             interest_cap_override=eff.interest_cap_override,
+            level_cap_override=eff.level_cap_override,
             xp_per_refresh=eff.xp_per_refresh + e.xp_per_refresh,
             xp_per_node=eff.xp_per_node + e.xp_per_node,
             xp_buy_cost_discount=eff.xp_buy_cost_discount + e.xp_buy_cost_discount,
@@ -2570,10 +2595,14 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
         )
         if e.interest_cap_override is not None:
             caps.append(e.interest_cap_override)
+        if e.level_cap_override is not None:
+            level_caps.append(e.level_cap_override)
         if e.win_reward_mult != 1.0:
             mults.append(e.win_reward_mult)
     if caps:
         eff = replace(eff, interest_cap_override=max(caps))
+    if level_caps:
+        eff = replace(eff, level_cap_override=min(level_caps))
     if mults:
         eff = replace(eff, win_reward_mult=max(mults))
     return eff

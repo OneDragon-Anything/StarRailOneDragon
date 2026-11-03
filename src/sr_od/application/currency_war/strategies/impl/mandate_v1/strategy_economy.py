@@ -67,7 +67,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.horizon i
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# ===== 字段分类(51 字段三分;单一源 = 三集合,构建校验兜底)=====
+# ===== 字段分类(全字段三分;单一源 = 三集合,构建校验兜底)=====
 # 分类判据与29 号稿 §2.1 逐通道对应:「计分」= v1 落地通道公式可算;
 # 「待建模」= 有字段分支但价值模型缺(fail-closed = 0,建模落地自动进);
 # 「不计」= 结构登记永不为分。字段分类校验覆盖「有字段分支」;卡级登记
@@ -176,6 +176,12 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: - 定价出域族:hp_instant(健康充值 +30 生命直给)——hp 定价通道作废
 #:   正本(invest_effects.md 血金互兑裁定)支撑「永不为分」,非「待建模」
 #:   (无未来进分语义);世界面发放 = sim 选卡落地拍独立笔。
+#: - 进度轴结构改写族:level_cap_override(等级帽覆写,首例 控制规模
+#:   「最大等级变为7级」= 7)——世界面消费走 kernel 解析 helper
+#:   (cw_economy.level_cap_of,聚合取严 + min(MAX_PLAYER_LEVEL, 覆写)
+#:   收窄),零金流非现金流通道,结构登记永不为分(与引擎排除桶同桶
+#:   划界轴「是否持续通道」);策略侧等级判据仍读注册表 level_max,
+#:   系「实机无卡真值」另一把尺,禁与本字段混读。
 _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'xp_buy_hp_cost', 'hp_gold_swap', 'boss_end_heal_hp',
     'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
@@ -185,6 +191,7 @@ _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'hp_max_loss_pct_of_loss', 'hp_max_loss_cap_pct',
     'loss_hp_extra',
     'hp_instant',
+    'level_cap_override',
 })
 
 # ===== 「待建模」卡级已登记(键 = 注册表规范卡名,值 = 未建模分支清单描述)=====
@@ -400,7 +407,7 @@ def strategy_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
 
 
 def _validate_field_classification() -> None:
-    """EconomyEffect 全字段三分分类校验(51 字段;未分类字段 = 建模缺口
+    """EconomyEffect 全字段三分分类校验(未分类字段 = 建模缺口
     静默,炸出——沿 env 批立场表覆盖校验的治理形态,对象从 83 环境换成
     字段闭集)。
 

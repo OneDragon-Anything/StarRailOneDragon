@@ -27,8 +27,9 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
                                  executed: ShopActionExecuted | None = None) -> LogicOutcome:
     """购买经验上报(单击/多击):xp/level 跨门槛推进(推进算子单一源 =
     ``xp_apply_clicks``,跨级连跳+溢出结转)+ gold −cost×clicks 直写。
-    满级 = applied=False + reason='level_cap' 零写(MAX_PLAYER_LEVEL
-    封顶单一源);executed None = 击数自算 1(理想执行,sim 路径)。
+    达帽 = applied=False + reason='level_cap' 零写(帽单一源 =
+    ``cw_economy.level_cap_of``:无卡 = MAX_PLAYER_LEVEL,持等级帽卡 =
+    注册表覆写经聚合归一);executed None = 击数自算 1(理想执行,sim 路径)。
     现役触发面 = 备战域(商店域发射已随 2026-10-17 迭代 T-1 退役,
     商店域双类型词表随 T-4 退役删除)。
 
@@ -62,8 +63,8 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     from dataclasses import replace as _dc_replace
 
     from sr_od.application.currency_war.kernel.cw_economy import (
-        MAX_PLAYER_LEVEL,
         XP_TO_NEXT_LEVEL,
+        level_cap_of,
         xp_apply_clicks,
     )
 
@@ -78,7 +79,11 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     if clicks is None:
         return LogicOutcome(applied=False, reason='levelup_clicks_not_fed')
     clicks = max(0, int(clicks))
-    if level_of(gs) >= MAX_PLAYER_LEVEL:
+    # 满级门取帽单一源 = level_cap_of(无卡 = MAX_PLAYER_LEVEL 既有语义;
+    # 持等级帽卡时门随帽提前——live 侧与游戏自算拒发同向,世界写分歧由
+    # 下一帧观察 reconcile 兜底,现役观察覆盖语义不变)。
+    _cap = level_cap_of(gs)
+    if level_of(gs) >= _cap:
         return LogicOutcome(applied=False, reason='level_cap')
     g = gs.gold.value
     if g is not None:
@@ -88,7 +93,8 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     xp_v = gs.xp.value
     _spy_decl = None
     if xp_v is not None and _lv_v is not None:
-        _new_lvl, _cur = xp_apply_clicks(int(_lv_v), int(xp_v[0]), clicks)
+        _new_lvl, _cur = xp_apply_clicks(int(_lv_v), int(xp_v[0]), clicks,
+                                         level_cap=_cap)
         _w(gs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
            'proj_levelup_xp')
         if _new_lvl != int(_lv_v):

@@ -1728,8 +1728,10 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
     模块头反向 import 本模块读口,模块级 import 成环,惰性纪律同文末诸桥);
     写端 = gs.xp 推进对 + gs.level 跨级直写(write_logic,produced_by
     ='EffectLedgerBridge:成功经验',与 grant_effect_node_refresh_balance
-    同 produced_by 词根),满级门 = 算子自带(level >= MAX_PLAYER_LEVEL
-    零推进,语义与 xp_apply_clicks 封顶支等价;**算子返回零变化 → 跳写**,
+    同 produced_by 词根),满级门 = 算子自带(帽形参经 ``level_cap_of``
+    随链——无卡 = MAX_PLAYER_LEVEL 既有语义,持等级帽卡时等级轴随注册表
+    覆写收窄;level >= 帽零推进,语义与 xp_apply_clicks 封顶支等价;
+    **算子返回零变化 → 跳写**,
     写端零行、level/xp 值不变——发放事件照跑留证,世界值域零扰动)。
 
     - level/xp 任一未观察(None)→ 零动作(与买经验上报同款 None 门:
@@ -1742,13 +1744,15 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
         return
     from sr_od.application.currency_war.kernel.cw_economy import (
         XP_TO_NEXT_LEVEL,
+        level_cap_of,
         xp_apply_amount,
     )
     lv_v = gs.level.value
     xp_v = gs.xp.value
     if lv_v is None or xp_v is None:
         return
-    new_lvl, cur = xp_apply_amount(int(lv_v), int(xp_v[0]), int(amount))
+    new_lvl, cur = xp_apply_amount(int(lv_v), int(xp_v[0]), int(amount),
+                                   level_cap=level_cap_of(gs))
     if new_lvl == int(lv_v) and cur == int(xp_v[0]):
         return   # 算子零变化(满级封顶支)→ 跳写:level/xp 值不变,零写行
     pd = 'EffectLedgerBridge:成功经验'

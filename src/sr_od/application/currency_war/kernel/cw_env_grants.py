@@ -1098,9 +1098,10 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
     """宝钻获得回调(世界数值面联动;调用点 = sim 世界发放路径族——
-    深井连胜发放(sim 结算段接线)与策略卡到级装备发放(sim advance 双点
+    深井连胜发放(sim 结算段接线)、策略卡到级装备发放(sim advance 双点
     接线 + 跳过记账段镜像共三点)、及策略卡拿卡发放(选卡落地拍拿卡腿,
-    这么大的钻石 = 用户裁定 2026-11-02 读法 B),各路共用本回调零改动;
+    这么大的钻石 = 用户裁定 2026-11-02 读法 B、控制规模 = 帽改写卡随批
+    归一同支),各路共用本回调零改动;
     **supply 补给宝钻不采纳**——钻类型未建模,归连胜路径覆盖;
     **live 不调**——三域 live 写端 = 观察识别器,逻辑侧禁写)。
 

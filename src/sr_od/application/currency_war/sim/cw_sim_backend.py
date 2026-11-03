@@ -73,6 +73,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
     LostNodeRef,
     RoundStartIncome,
+    level_cap_of,
     round_start_income,
     world_shop_refresh_cost,
     xp_apply_amount,
@@ -551,6 +552,8 @@ def apply_node_xp(gs: GameState, *, node_type: str) -> int:
 
     写容器 xp = (当前级已攒,升下一级所需);集外节点型 = 0 经验不入账
     (词表漂移在调用方暴露)。返回本节点实际入账经验量。
+    帽形参经 ``level_cap_of`` 随链(持等级帽卡时节点经验同样受帽——
+    等级轴世界真值单一收窄,与购买经验门同链;无卡缺省语义零变)。
     """
     amount = NODE_XP_BY_TYPE.get(node_type, 0)
     if amount <= 0:
@@ -559,7 +562,8 @@ def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     level_field = gs.level.value
     if xp_field is None or level_field is None:
         return 0
-    level, cur = xp_apply_amount(int(level_field), int(xp_field[0]), amount)
+    level, cur = xp_apply_amount(int(level_field), int(xp_field[0]), amount,
+                                 level_cap=level_cap_of(gs))
     need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
     sig = obs_sig(group_id='sim:xp')
     gs.observe(gs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
@@ -578,7 +582,8 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     逐卡直读 :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**:
     其聚合字段集不含 xp_instant,误走 = 静默零发放;且聚合语义 = 周期型
     重评,与「选卡单事件一次性发放」不匹配,逐卡各发各的(同持多卡笔笔
-    独立)。升级结转/满级零推进复用 :func:`xp_apply_amount`;写入形态与
+    独立)。升级结转/满级零推进复用 :func:`xp_apply_amount`(帽经
+    ``level_cap_of`` 随链,与节点经验腿同链收窄);写入形态与
     :func:`apply_node_xp` 同款,evidence 按 ``xp:strategy_pick:<卡名>``
     与节点经验 ``xp:node`` 笔分账,sig 同组(同域字段同组,笔间靠
     evidence 区分)。返回本批实际入账经验总量。
@@ -595,7 +600,7 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
         if xp_field is None or level_field is None:
             continue
         level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     amount)
+                                     amount, level_cap=level_cap_of(gs))
         need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
         sig = obs_sig(group_id='sim:xp')
         evidence = sim_evidence(f'xp:strategy_pick:{canon}')
@@ -642,7 +647,7 @@ def apply_strategy_plane_refire_xp(gs: GameState,
         if xp_field is None or level_field is None:
             continue
         level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     amount)
+                                     amount, level_cap=level_cap_of(gs))
         need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
         sig = obs_sig(group_id='sim:xp')
         evidence = sim_evidence(f'xp:strategy_plane_refire:{canon}')
@@ -2472,9 +2477,11 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_streak(self.gs, picked)
-        # 选卡落地拍宝钻世界联动腿(这么大的钻石 = 首例,用户裁定
-        # 2026-11-02 拍读法 B;卡级点名判别 = 设计默认案最小推导,T-87
-        # 通道批落地时归一为共享推导腿,先落方定形):sim 世界自持账补全
+        # 选卡落地拍宝钻世界联动腿(拿卡即发宝钻的策略卡族共用:这么大的
+        # 钻石 = 首例(用户裁定 2026-11-02 拍读法 B)、控制规模 = 帽改写卡
+        # 随批归一同支(两卡各发宝钻×1,同名同物回调零差);卡级点名判别 =
+        # 设计默认案最小推导,选卡通道批落地时归一为共享推导腿,先落方
+        # 定形):sim 世界自持账补全
         # ——live 同拍零写(diamond_count/deploy_cap/back_layout 三域
         # live 归观察识别器跟踪,逻辑侧禁写,投影审计契约)。拿卡名推导
         # 与呈现闩防重放 = 前置各腿同款(闩消费先于判定,交集空亦消费;
@@ -2492,7 +2499,7 @@ class SimBackend:
             self._strategy_pick_diamond_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
-            if ('这么大的钻石' in picked
+            if (('这么大的钻石' in picked or '控制规模' in picked)
                     and self.gs.equips.value is not None):
                 on_diamond_acquired(self.gs, '财富宝钻')
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
@@ -3368,7 +3375,8 @@ class SimBackend:
             level_field = self.gs.level.value
             if xp_field is not None and level_field is not None:
                 level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), empty_xp)
+                                             int(xp_field[0]), empty_xp,
+                                             level_cap=level_cap_of(self.gs))
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:empty_slot')
@@ -3407,7 +3415,8 @@ class SimBackend:
             level_field = self.gs.level.value
             if xp_field is not None and level_field is not None:
                 level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), bench_xp)
+                                             int(xp_field[0]), bench_xp,
+                                             level_cap=level_cap_of(self.gs))
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:bench_count')
@@ -3444,7 +3453,8 @@ class SimBackend:
             level_field = self.gs.level.value
             if xp_field is not None and level_field is not None:
                 level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), equip_xp)
+                                             int(xp_field[0]), equip_xp,
+                                             level_cap=level_cap_of(self.gs))
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:equip_count')
@@ -3490,7 +3500,8 @@ class SimBackend:
             if xp_field is not None and level_field is not None:
                 level, cur = xp_apply_amount(int(level_field),
                                              int(xp_field[0]),
-                                             left_cost_xp)
+                                             left_cost_xp,
+                                             level_cap=level_cap_of(self.gs))
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:bench_left_cost')
@@ -3513,7 +3524,8 @@ class SimBackend:
             if xp_field is not None and level_field is not None:
                 level, cur = xp_apply_amount(int(level_field),
                                              int(xp_field[0]),
-                                             strategy_xp)
+                                             strategy_xp,
+                                             level_cap=level_cap_of(self.gs))
                 need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
                 xp_sig = obs_sig(group_id='sim:xp')
                 xp_ev = sim_evidence('xp:strategy_per_node')
@@ -4017,7 +4029,7 @@ class SimBackend:
         if xp_field is None or level_field is None:
             return
         level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     total)
+                                     total, level_cap=level_cap_of(self.gs))
         need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
         sig = obs_sig(group_id='sim:xp')
         evidence = sim_evidence(f'xp:strategy_plane:p{plane}')

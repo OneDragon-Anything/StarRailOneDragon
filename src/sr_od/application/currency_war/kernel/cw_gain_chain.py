@@ -56,6 +56,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
+    level_cap_of,
     strategy_interest_floor,
     xp_apply_amount,
 )
@@ -1297,7 +1298,7 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
         level_field = gs.level.value
         if xp_field is not None and level_field is not None:
             level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                         amount)
+                                         amount, level_cap=level_cap_of(gs))
             need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
             from sr_od.application.currency_war.sim.cw_sim_base import (
                 obs_sig,
