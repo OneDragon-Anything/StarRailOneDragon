@@ -1,14 +1,17 @@
-"""米游社账号 MCP 三工具 + 访问控制器（``MysAccessController``）。
+"""米游社账号 MCP 四工具 + 访问控制器（``MysAccessController``）。
 
 设计出处：changes/mys-account-mcp/design.md §2.4（装配/状态机/并发语义/三工具/
-知情声明原文）+ §2.5 契约 6 + §2.6（凭据红线）。职责分界（design.md §2.1）：
+知情声明原文）+ §2.5 契约 6 + §2.6（凭据红线）；changes/mys-roster-detail/
+design.md §2 契约 5（第四工具 ``mys_get_roster_detail``，信封语义与
+``mys_get_characters`` 完全一致，复用同一状态机与信封文案）。职责分界（design.md §2.1）：
 验证的「单轮」在 ``one_dragon.mys.mys_client``（3.3 交付），验证的「循环」在
 本控制器——持有 verifier、attempt 计数上限、每轮重开验证页。
 
 并发语义（design.md §2.4 定死，控制器锁串行化入口）：
 - awaiting_ticket 期二次 ``mys_login``：不重复登录——新账密即收即弃（不存储
   不加密），返回现存 ``verification_required`` 信封 + 现存 URL；
-- awaiting_ticket 期 ``mys_get_characters``：返回 ``verification_required``
+- awaiting_ticket 期 ``mys_get_characters`` 与 ``mys_get_roster_detail``：
+  返回 ``verification_required``
   信封（附现存 URL），不裸打请求；
 - awaiting_ticket 期 ``mys_logout``：执行登出 + 状态回 idle + verifier 关闭，
   此后的迟到票据被状态闸丢弃（显式登出后任何迟到验证结果不得静默重建会话）；
@@ -21,13 +24,15 @@
   （会话已落盘且未标记过期 → ``already_logged_in``；已标记过期 → 跳过判定
   走正常登录，成功后整体覆盖、标记随覆盖消失）。
 
-会话过期处置（design.md §2.4/§2.6）：``mys_get_characters`` 收到
-``MysSessionExpired`` → ``store.mark_expired()``（**不清任何文件**，重登失败时
+会话过期处置（design.md §2.4/§2.6）：``mys_get_characters`` 与
+``mys_get_roster_detail`` 收到 ``MysSessionExpired`` →
+``store.mark_expired()``（**不清任何文件**，重登失败时
 旧数据原样保留）→ 信封 ``session_expired``；清除仅发生于用户显式登出或登录
 成功整体覆盖。
 
 信封脱敏（landing §3.4 判据）：任何信封的 message/data 不含 cookie/token/
-密码——信封内容只有固定文案、验证页 URL 与角色列表；异常文本只透传
+密码——信封内容只有固定文案、验证页 URL、角色列表与角色明细（明细载荷经
+``character_to_dict`` 序列化，冻结字段集不含任何凭据字段）；异常文本只透传
 ``MysApiError`` 的 retcode 与服务端 message（client 层已保证不含本机凭据）。
 
 FastMCP 工具入参日志核查结论（landing §3.4 判据，实读 mcp 1.28.1 源码）：
@@ -218,6 +223,39 @@ class MysAccessController:
             return _envelope('success', f'共获取 {len(characters)} 名角色',
                              [character_to_dict(c) for c in characters])
 
+    def get_roster_detail(self) -> dict:
+        """角色名册明细入口（``mys_get_roster_detail`` 业务语义；design.md §2
+        契约 5：信封逐态与 ``get_characters`` 完全一致，仅成功载荷换明细）：
+        awaiting 期不裸打请求；``MysSessionExpired`` → 打过期标记（不清任何
+        文件）+ ``session_expired``；1034 → 专属文案；其余业务错误 →
+        ``error`` 透传 retcode；成功载荷经 ``character_to_dict`` 序列化
+        ``CharacterDetail`` 冻结字段集（不含任何凭据字段）。"""
+        with self._lock:
+            if self._last_error is not None:
+                error = self._last_error
+                self._last_error = None
+                return _envelope('error', error)
+            if self._state == STATE_AWAITING_TICKET:
+                return _envelope(
+                    'verification_required', VERIFICATION_REQUIRED_MESSAGE, {'url': self._verify_url}
+                )
+            try:
+                details = self._hsr_client.get_characters_detail()
+            except MysSessionExpired:
+                # 过期处置（design.md §2.4/§2.6）：只打标记不清任何文件
+                self._store.mark_expired()
+                return _envelope('session_expired', SESSION_EXPIRED_MESSAGE)
+            except MysApiError as e:
+                if e.code == 1034:
+                    return _envelope('error', RISK_CONTROL_1034_MESSAGE)
+                detail = e.message if e.message else '无服务端文案'
+                return _envelope('error', f'获取角色明细失败(retcode={e.code}): {detail}')
+            except ValueError as e:
+                # 请求目标非法（白名单外主机等），在发请求前被拒
+                return _envelope('error', f'获取角色明细失败: {e}')
+            return _envelope('success', f'共获取 {len(details)} 名角色明细',
+                             [character_to_dict(d) for d in details])
+
     # ---- 状态机内部（调用方须持控制器锁）----
 
     def _is_logged_in(self) -> bool:
@@ -342,7 +380,7 @@ def _get_controller(backend: SrBackendContext) -> MysAccessController:
 
 
 def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
-    """注册米游社账号三工具（由 ``create_mcp_server`` 调用，与既有
+    """注册米游社账号四工具（由 ``create_mcp_server`` 调用，与既有
     register_prompts 模式一致）。工具函数只做信封透传：全部业务语义
     （状态机/验证循环/过期处置/脱敏）在 ``MysAccessController``，行为测试
     以控制器为对象。"""
@@ -400,3 +438,24 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
               专属提示（本版本未实现该验证链）。
         """
         return _get_controller(backend).get_characters()
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="获取角色名册明细"))
+    def mys_get_roster_detail() -> dict:
+        """获取崩坏:星穹铁道全角色名册明细（每名角色的遗器六件套词条明细/位面饰品/星魂/行迹/属性面板，词条与面板属性均为中文名）。数据量较大（64 角色全量）。会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
+
+        Returns:
+            统一信封 ``{"status","message","data"}``：
+            - ``success``：``data`` 为角色明细数组，每项为轻口径十字段
+              （id/name/level/rarity/rank/element/element_cn/base_type/
+              base_type_cn/equip）加五组明细：relics（遗器六件套，每件含
+              主/副词条 name_cn/value/times）、ornaments（位面饰品，与
+              遗器同构）、ranks（星魂全量含解锁状态）、skills（行迹类型
+              与分段文案）、properties（属性面板 base/add/final 字符串值）；
+            - ``verification_required``：登录验证等待中，``data.url`` 为本机
+              验证页地址（本次调用未发起数据请求）；
+            - ``session_expired``：会话已过期，仅打标记提醒重新登录（mys_login），
+              本机数据不受影响；
+            - ``error``：接口业务失败；数据接口触发风控验证（1034）时返回
+              专属提示（本版本未实现该验证链）。
+        """
+        return _get_controller(backend).get_roster_detail()
