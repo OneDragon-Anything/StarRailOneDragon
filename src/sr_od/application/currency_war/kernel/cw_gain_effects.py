@@ -1133,6 +1133,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 点,不入泛化表防撞键;rng 零消费)。
     '加拉赫顾问': _make_named_equip_grant_effect('生命之花', 1),
 
+    # 停云顾问 = 具名装备授予单行(卡文「获得【光能电池】和4金币」;
+    # 腿1 顾问解锁/腿2 金4 已在册零动作[GRANTS advisor 面+ECONOMY
+    # instant_gold=4];本行 = 光能电池具名授予腿,同形模板 = 加拉赫顾问
+    # 前行;rand=False 卡文无随机词工厂 docstring 定谳;腿参数唯一出现
+    # 点,不入泛化表防撞键;rng 零消费)。
+    '停云顾问': _make_named_equip_grant_effect('光能电池', 1),
+
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
     # 点,不入具名角色发放族泛化表防撞键;rng 零消费)。条件段【盛会之星
