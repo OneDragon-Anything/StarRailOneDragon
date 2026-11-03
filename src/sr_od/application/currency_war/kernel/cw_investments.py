@@ -6057,6 +6057,10 @@ STRATEGY_BENCH_LEFT_COST_XP_GRANTS: frozenset[str] = frozenset(
 # 治理删,唯一哨 = 孤儿键漂移哨)。
 STRATEGY_REWARD_ORE_GRANTS: dict[str, int] = {
     '彩虹矿': 1,
+    # 彩虹矿+:纯展开卡(id 301202,卡文「在下个奖励节点额外获取一个
+    # 棱彩晶矿」与本卡同形强度差,T-306 稿裁决点 6 默认案 A 同判;表值 1
+    # 同本卡,发矿数卡面明写)。
+    '彩虹矿+': 1,
 }
 
 
