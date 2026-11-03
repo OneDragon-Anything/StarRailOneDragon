@@ -382,6 +382,8 @@ retcode 10034 时响应头 `x-rpc-verify` 内嵌 JSON `{ticket, token}`（`accou
 
 **自家实现端到端校对（2026-11-04）**：按本规格实现的 `one_dragon/mys/`（登录/aigis 分支/通用请求）+ `sr_od/mys/`（崩铁角色列表）已在真机 MCP 环境端到端跑通并验收（迭代 mys-account-mcp，T-5 实机报告）：密码登录两次均零人机验证通过、角色发现 + index 返回 64 角色、空罐/登出后打接口实测命中会话失效映射（码值经信封脱敏未透出）、1034 未出现。规格与实现零出入。
 
+**avatar/info 往返校对（2026-11-04，迭代 mys-roster-detail）**：`hkrpg/api/avatar/info?need_wiki=true` 经自家客户端实机往返验收——64 角色全量明细（遗器/位面饰品/星魂/行迹/面板）7201 项逐项对账 0 mismatch；`data.property_info`（56 码官方词典）与 `need_wiki` 开关语义实证；**端点勘误实证**：`hkrpg/api/index` 只出轻名册 12 字段/角色，明细数据仅在 avatar/info（规划器合并产物曾致此混淆，见 changes/mys-roster-detail/design.md §1 勘误节）。
+
 ### 8.3 外部出处
 
 - UIGF-org/mihoyo-api-collect（CC BY-NC 4.0）：鉴权 `other/authentication.md`、密码登录 `hoyolab/login/password_passport.md`、错误码 `other/error_code.md`、Token `hoyolab/user/token.md`——https://github.com/UIGF-org/mihoyo-api-collect
