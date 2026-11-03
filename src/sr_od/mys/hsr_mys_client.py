@@ -16,8 +16,11 @@ changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细�
    v2 增 ``element_cn``/``base_type_cn`` 两中文字段（码表经
    ``sr_od.mys.hsr_codes`` 解析，接口层直接出中文，消费方零查表）。
    icon 等大体积字段不透传（本封装的消费方是练度盘点，不是资源下载）。
-3. 角色明细映射（``get_characters_detail``）：与轻口径打同一个端点，
-   对同一响应做富映射——遗器/位面饰品/星魂/行迹/属性面板到
+3. 角色明细映射（``get_characters_detail``）：打全量明细端点
+   ``hkrpg/api/avatar/info``（``need_wiki=true`` 是五词典与明细数组的来源
+   开关；``hkrpg/api/index`` 每角色只有轻口径 12 字段、不含遗器/星魂/
+   行迹/面板——design.md §1 端点勘误，实机验收实证），对响应做富映射——
+   遗器/位面饰品/星魂/行迹/属性面板到
    ``CharacterDetail`` 冻结字段集（契约 3/4）；词条显示名走
    ``hsr_codes`` 三层查表，响应原生 ``data.property_info`` 键归一 int
    后作动态词典透传；遗器 lore desc/icon/figure/内部 id 等不透传。
@@ -222,7 +225,8 @@ class HsrPanelProperty:
 class CharacterDetail:
     """角色全量明细（冻结字段集契约 3——字段增删即契约失败）。
 
-    与 ``HsrCharacter`` 同端点（``hkrpg/api/index``）富映射：轻口径 10 字段
+    全量明细端点 ``hkrpg/api/avatar/info`` 富映射（``hkrpg/api/index`` 只有
+    轻口径字段、不含明细——design.md §1 端点勘误）：轻口径 10 字段
     语义不变，追加遗器/饰品/星魂/行迹/面板五组明细。desc(遗器 lore)/icon/
     figure/URL/point_id 等大体积与内部形态字段一律不透传（契约 4 清单）。
 
@@ -295,13 +299,15 @@ class HsrMysClient:
         return [_map_character(avatar) for avatar in avatar_list]
 
     def get_characters_detail(self) -> list[CharacterDetail]:
-        """获取崩铁角色全量明细（与 ``get_characters`` 同端点的富映射口径）。
+        """获取崩铁角色全量明细（``hkrpg/api/avatar/info`` 富映射口径）。
 
-        管线与 v1 轻口径一致（过期短路 → 角色定位 → index 请求），一次调用
-        只打一次接口；响应原生 ``data.property_info``（键为字符串）归一 int
-        后作动态词典透传给词条/面板中文名查表（hsr_codes 三层查表契约）。
-        ``avatar_list`` 逐条富映射 ``CharacterDetail``（契约 3）；缺失
-        avatar_list 按协议错误上抛，不静默返回空列表掩盖响应形态漂移。
+        管线前置与 v1 轻口径一致（过期短路 → 角色定位），端点不同：avatar/info
+        需带 ``need_wiki=true`` 才回 ``property_info`` 等五词典与全量明细数组
+        （design.md §1 端点勘误），一次调用只打一次接口；响应原生
+        ``data.property_info``（键为字符串）归一 int 后作动态词典透传给词条/
+        面板中文名查表（hsr_codes 三层查表契约）。``avatar_list`` 逐条富映射
+        ``CharacterDetail``（契约 3）；缺失 avatar_list 按协议错误上抛，不
+        静默返回空列表掩盖响应形态漂移。
 
         Raises:
             MysSessionExpired: 本地过期标记命中，或服务端会话失效码（透传）。
@@ -310,10 +316,13 @@ class HsrMysClient:
         if self._store.is_expired():
             raise MysSessionExpired(LOCAL_EXPIRED_CODE, '本地会话已标记过期，请重新登录')
         role_id, server = self._resolve_role()
-        data = self._client.request('hkrpg/api/index', {'role_id': role_id, 'server': server})
+        data = self._client.request(
+            'hkrpg/api/avatar/info',
+            {'need_wiki': 'true', 'role_id': role_id, 'server': server},
+        )
         avatar_list = data.get('avatar_list')
         if not isinstance(avatar_list, list):
-            raise MysApiError(-1, 'index 响应缺少 avatar_list 字段')
+            raise MysApiError(-1, 'avatar/info 响应缺少 avatar_list 字段')
         property_info = _normalize_property_info(data.get('property_info'))
         return [_map_character_detail(avatar, property_info) for avatar in avatar_list]
 
