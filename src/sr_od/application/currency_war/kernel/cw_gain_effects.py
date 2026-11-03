@@ -192,6 +192,31 @@ def _make_all_cost_chars_effect(cost: int) -> Callable[..., list[str]]:
 
     return _effect
 
+def _make_random_star_char_effect(cost: int, star: int) -> Callable[
+        ..., list[str]]:
+    """随机星档角色单行效果体工厂(援军族同构;star = 卡面明写结构值,
+    非句式先验——天降救兵「随机3星1费角色」双档全明直读)。
+
+    采样 = roll_reinforcement_names(cost, star=star)(单一源;掷序契约
+    同援军族);发放 = gain_character(star=star, rand=True)(随机态效果
+    自身性质传参,升星级联/席满溢出沿链现役记账);效果串 =
+    ``strategy_gift_random:<名>@<star>star``(@ 后缀一体登记同援军族)。
+    """
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_character,
+        )
+        name = roll_reinforcement_names(rng, cost, 1, star=star)[0]
+        gain_character(gs, name, star, rand=True, sig=sig,
+                       evidence='pick_invest_random_star',
+                       producer=_PRODUCER)
+        return [f'strategy_gift_random:{name}@{star}star']
+
+    return _effect
+
+
 def _make_box_grant_effect(item: str) -> Callable[..., list[str]]:
     """开箱分支效果体工厂(闭包销 = 发放道具名,单源取自
     :data:`_STRATEGY_BOX_GRANTS`)。
@@ -259,7 +284,7 @@ _STRATEGY_REINFORCEMENT_GRANTS: dict[str, tuple[tuple[int, int], ...]] = {
 
 
 def roll_reinforcement_names(rng: random.Random, cost: int,
-                             count: int) -> list[str]:
+                             count: int, *, star: int = 1) -> list[str]:
     """援军族身份采样(纯函数;rng 注入,sim/live 共用同一语义)。
 
     池 = 随机赠卡家族载体 :func:`random_char_pool` 派生(规格
@@ -277,7 +302,7 @@ def roll_reinforcement_names(rng: random.Random, cost: int,
     if cost not in (1, 2, 3, 4, 5):
         raise ValueError(f'援军族费用档越界:cost={cost!r}(合法域 1-5;'
                          f'cost=0 系统单位不入随机发放池)')
-    pool = random_char_pool(RandomCharSpec(cost=cost, star=1))
+    pool = random_char_pool(RandomCharSpec(cost=cost, star=star))
     return [rng.choice(pool) for _ in range(count)]
 
 
@@ -1139,6 +1164,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 前行;rand=False 卡文无随机词工厂 docstring 定谳;腿参数唯一出现
     # 点,不入泛化表防撞键;rng 零消费)。
     '停云顾问': _make_named_equip_grant_effect('光能电池', 1),
+
+    # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
+    # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
+    # 双档卡面明写,援军族单一源采样 roll star 参扩展首例消费);腿2 =
+    # 箱腿工厂(简易武装箱);两腿卡不入 _STRATEGY_BOX_GRANTS(该表现役
+    # 全单箱键,一致性测试单向 BOX→SG 不扰);效果串 2 条;掷序契约同
+    # 援军族;不入泛化表防撞键。
+    '天降救兵': _compose_grant_legs(_make_random_star_char_effect(1, 3),
+                                 _make_box_grant_effect('简易武装箱')),
 
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现

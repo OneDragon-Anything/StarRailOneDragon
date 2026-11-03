@@ -3734,6 +3734,9 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 零建模 = T-16 §8-1 用户裁定同判,披露键申报)。
     '步狸村之谜': GiftGrant(items_immediate=('简易武装箱',)),
     '阿哈大悦': GiftGrant(items_immediate=('简易武装箱',)),
+    # 天降救兵:箱腿直读「获得1个【简易武装箱】」(随机角色腿 = PICK 组合
+    # 登记行随机星档工厂承载,不入本表);两腿卡不入 _STRATEGY_BOX_GRANTS。
+    '天降救兵': GiftGrant(items_immediate=('简易武装箱',)),
     # 秘密典籍:箱腿直读「获得1个【星徽秘典】」(对账 id 230901;
     # 金腿 instant_gold=8 在册零改动;流程面占席→开典籍→星徽四选一
     # →选卡观察全链在码零触碰)。
