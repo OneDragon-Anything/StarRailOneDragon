@@ -2,7 +2,7 @@
 
 > 画面 = 货币战争-备战(建档 `assets/game_data/screen_info/currency_war_battle_prep.yml`);**能力面**(游戏可用动作全集/op 映射/结束访问语义)= [../screens/README.md](../screens/README.md) §5.3。本篇 = 该画面的**策略面**:决策工序(十段全扫)+ 会执行的动作清单 + 形式判据指针。
 > **单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧实际观察为准;**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
-> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:升级判据 = [11_shop_decisions.md](11_shop_decisions.md) §2;卖出候选评估器 = [11_shop_decisions.md](11_shop_decisions.md) §4;骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);部署/上阵窗口判据 = [10_prep_decisions.md](10_prep_decisions.md);hp 使用边界 = [00_framework.md](00_framework.md) §3;装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);终局线选择 = [12_line_and_intention.md](12_line_and_intention.md);商店会话语义 = [23_shop_screen.md](23_shop_screen.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
+> 判据权威定义的唯一权威文档 = 既有编号篇(文件名见下),**引用不重复**:升级判据 = [11_shop_decisions.md](11_shop_decisions.md) §2;卖出候选评估器 = [11_shop_decisions.md](11_shop_decisions.md) §4;骨架义务 M1-M7(每局必做的七项基础义务:M1 部署终局阵容成员、M2 义务买入、M3 角色升级、M4 备战席满腾位、M5 开局板面、M6 富余金必花、M7 装备穿戴)= [02_mandate_layer.md](02_mandate_layer.md);部署判据 = [10_prep_decisions.md](10_prep_decisions.md);hp 使用边界 = [00_framework.md](00_framework.md) §3;装备穿戴语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md);终局线选择 = [12_line_and_intention.md](12_line_and_intention.md);商店会话语义 = [23_shop_screen.md](23_shop_screen.md)。数值单一源在代码(常量名形态)。流程编排 = `../flow/prep_visit.md`。
 
 ## 1. 决策工序:十段全扫(第 0-9 步)
 
@@ -13,7 +13,7 @@
 **第 0 步:溢出告警自救。**
 - 触发 = `gs.overflow_warning` 为真。机制事实:告警在场 = 备战席 9 格全满且溢出位有一张卡(角色或占席道具),溢出卡阻断进入战斗;解除方式唯一 = 腾出一个备战席空槽,溢出卡自动归位。
 - 自救动作序按损失递增排列(免费腾位在前、有损卖出最后),每帧重评取首个可行:
-  1. **上阵安置**(免费腾位):场上人口上限有空位 ∧ 备战席有可上阵单位 → 拖上阵(腾出备战席槽 → 溢出卡归位;同时是有效部署)。告警帧豁免上阵窗口辖域——上阵纯为腾槽保命,告警解除后窗口辖域恢复正常。
+  1. **上阵安置**(免费腾位):场上人口上限有空位 ∧ 备战席有可上阵单位 → 拖上阵(腾出备战席槽 → 溢出卡归位;同时是有效部署)。
   2. **点开消耗品**(免费腾位):无上阵安置可行 ∧ 备战席有已知占席物品(书册卡/补给箱/星徽秘典)→ 点开腾槽(占席道具不可卖但可点开)。
   3. **卖出**(有损腾位):候选评估非空 → 按卖出候选评估器的**自救全资格豁免面**卖出首位候选(循环防线与身份面全放行——保命优先于防自旋,豁免仅辖本场景;取用 = 部署重排定型后的统一让位优先级序列末位起,判据单一源 = [11_shop_decisions.md](11_shop_decisions.md) §4.0 场景表)。
   4. 全部不可行 → 防御性分支:零动作返回主循环(识别异常真实形态的兜底;全量可卖下候选空在结构上不可达)。
@@ -36,9 +36,9 @@
 **第 5 步:商店会话。** 入口先调**解拦复核**(未消费机会清单的解拦判定,分键分轴:席满类 `bench_full`/`priority_insufficient` 席位空出即解拦;金不足类 `priority_insufficient_gold` 金位相对记录时点增量 ≥ 记录的缺口绝对值、或重开店帧货架签名变化即解拦;判据单一源 = `criteria/shop_session.shop_unblock_recheck`)——任一记录拦因解除 → 清「本节点已处理」标记;然后判标记 ≠ 当前节点号。满足 → 输出 `CwActionOpenShopParam` 开店;不满足 → 跳过本步。本步是备战侧**决策性**开店意图的唯一来源(金位读数开商店为辅助形态——读金非处理决策,语义单一源 = [23_shop_screen.md](23_shop_screen.md));计划变量序列清空后的开店也由本步常规机制发(前置步不发开店)。部署产生的腾位效果由本步入口的清单复核自然消费,无独立重开钩子。
 
 **第 6 步:部署调整。** 部署 = **统一部署搜索·评分制定型 + 差分执行器执行**(选人/站位/评分/差分判据单一源 = [24_deploy_segment.md](24_deploy_segment.md) §1:搜索枚举手牌组合按评分取最优目标板,执行 = 现板面 → 目标板的统一拖动/换星直卖差分序;换人 = 交换交互,无独立换人机器);调用时机在商店会话之后(先逛店再统一部署)。要点:
-- **上阵窗口辖域**:终局成员在其上线窗口前不上阵——窗口 = 阵容知识声明的上线条件(核心等级/羁绊齐/变阵点等);数据载体 = `kernel/cw_comps.py::COMP_LIBRARY` 的 `entry_signals` 字段(信号类 + 阈值),缺行 → 窗口恒假(纯终局件一律只囤不上,保守侧)。纯终局件谓词 = 终局库成员 ∧ 非现行过渡配方成员(未锁定期按全库知识判定,锁定后按锁定线名单);过渡∩终局重叠件按过渡成员正常上阵;**锁定帧两条分支豁免覆盖全件**(判定单一源 = `entry.py::_deploy_window_blocked` 两条分支:现行过渡/方向配方成员分支①与锁定线外囤件分支②任一必中)→ 窗口谓词在锁定帧结构性恒 False,凡锁定帧替补均可上,与 entry_signals 登记与否无关;未锁帧窗口照登记语义。窗口外成员与上场锁件 = 搜索枚举硬约束(不入参评全集)。全局累积型角色例外(越早越好,例外判定 = entry_signals 的累积型信号类);羁绊组齐信号 = 上线条件之一。判据与建表口径 = [10_prep_decisions.md](10_prep_decisions.md) §5。
+- **无上阵窗口辖域**(已退役,2026-11 用户终裁「可退役」:万敌 1 条/白厄 3 条知识真空接受损失,不回流策略层)——上场时机 = 部署搜索的骨架/L1 完成度自适应(终局件在未成型面板被 L1 递减自然挤出,成型骨架齐时自然上场);退化观测挂 sim(终局件在板率/血线),明显再议。
 - 部署枚举按**唯一性键**归一(角色名归一,开拓者各排形态互斥;同名多副本取最高星——板上同名并存结构性不可达)。
-- 方向读口:现行方向 = 锁定线优先,未锁 = 过渡配方开局面(`session_scope.direction_comp_of`);搜索候选族按窗口分域自行装配(P1 过渡体系组合/锁定线/候选三线,[24_deploy_segment.md](24_deploy_segment.md) §1),无方向(K 空窗)时目标供给经 K 空窗回退(`kernel/cw_intention.k_empty_window_fallback`,回退单一源,禁复制兜底逻辑)。
+- 方向读口:现行方向 = 锁定线优先,未锁 = 过渡配方开局面(`session_scope.direction_comp_of`);搜索候选族按阶段分域自行装配(P1 过渡体系组合/锁定线/候选三线,[24_deploy_segment.md](24_deploy_segment.md) §1),无方向(K 空窗)时目标供给经 K 空窗回退(`kernel/cw_intention.k_empty_window_fallback`,回退单一源,禁复制兜底逻辑)。
 
 **第 7 步:装备与工具。** 装备穿戴 = 现行完整实现保留(合成规划/分配/转移,语义 = [18_equip_wear_semantics.md](18_equip_wear_semantics.md));工具使用判据 = `kernel/cw_equip_env.evaluate_tool_actions`;调用位置固定为部署之后。
 
@@ -71,7 +71,7 @@
 
 | 动作 | 动作类型(op 载体) | 触发判据(指针) |
 |---|---|---|
-| 统一拖动(上场/换人/换排/下场/备战席内挪位) | `MoveUnit`(四元组 `src_domain/src_slot/dst_domain/dst_slot`,front 1-4 基 1/back 1-N 动态基 1/bench 0-8 基 0;动作发出点逐帧现算,坐标契约 = [../flow/action_exec.md](../flow/action_exec.md) §1) | 第 6 步部署调整:统一部署搜索定型 + 差分执行器([24_deploy_segment.md](24_deploy_segment.md) §1;上阵窗口辖域 = 枚举硬约束);前置步驱板步骤;第 0 步自救态 1(告警帧窗口豁免) |
+| 统一拖动(上场/换人/换排/下场/备战席内挪位) | `MoveUnit`(四元组 `src_domain/src_slot/dst_domain/dst_slot`,front 1-4 基 1/back 1-N 动态基 1/bench 0-8 基 0;动作发出点逐帧现算,坐标契约 = [../flow/action_exec.md](../flow/action_exec.md) §1) | 第 6 步部署调整:统一部署搜索定型 + 差分执行器([24_deploy_segment.md](24_deploy_segment.md) §1;上场锁 = 枚举硬约束,无上阵窗口约束——已退役);前置步驱板步骤;第 0 步自救态 1 |
 | 卖备战(自救/晶矿腾位/节末凑息/前置步计划卖出) | `SellBench` | 第 0/3/8 步场景 + 前置步卖出步骤;评估器与资格面 = [11_shop_decisions.md](11_shop_decisions.md) §4 |
 | 买经验(购买经验整批发射,升级的唯一支出形态) | `LevelUp` | 第 4 步升级检查:单判据三分派 + 单帧原子发射([11_shop_decisions.md](11_shop_decisions.md) §2) |
 | 开商店(决策性/读数/随机态重开三形态) | `OpenShop` | 第 1 步随机态重开(design §2.4)/第 5 步商店会话(解拦复核 + 标记判重);读数开商店 = 金位读数辅助形态([23_shop_screen.md](23_shop_screen.md)) |
