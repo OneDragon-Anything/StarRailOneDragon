@@ -2121,6 +2121,40 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战斗域三重皆盲零建模登记(UNIT_BUFF 族);'
               '斩杀阈值与执行游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'),
+    # 领航专家:姬子:官方「获得专家顾问【姬子】，并使其在本局游戏中加入
+    # 商店。战斗开始时，姬子邀请大家品尝咖啡，根据她的星级使我方全体
+    # 行动提前40%/70%/100%，获得25%/50%/90%速度增幅，所有前台角色损失
+    # 40%当前生命值。」(cw_invest_data.py, id 260901)。
+    # 战力类零响应登记(UNIT_BUFF 族):行动提前段/速度增幅段/HP 损失段
+    # 游戏侧自算,bot 零响应(星级轴读法判读申报制留痕;行动提前读法 =
+    # T-255/T-257 同族先例);effect_text 经数据面表达式单一源,版本更新
+    # 改文自动跟随。
+    '领航专家:姬子': EffectSpec(
+        id='260901', name='领航专家:姬子',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '260901')),
+        duties=DutyFlags(),
+        notes='战力类零响应登记(UNIT_BUFF 族);'
+              '行动提前/速度增幅/HP 损失段游戏侧自算,bot 仅登记;'
+              '无离散触发事件,trigger 占位形'),
+    # 概率事件:官方「刷新时有45%概率获得一次免费刷新。」
+    # (cw_invest_data.py:245)。付费域口径 = 研究文档现值
+    # (invest_effects.md「现按付费域建模」,待实机实证任意刷是否 proc;
+    # 官方原文无「付费」限定,二义未实采 → pending 如实标注)。
+    # 世界写入面 = §6.3 随机分支:概率写免费刷新余额不建逻辑写入方,
+    # 交由观察收尾;live 真值 = 商店观察漏斗直达容器,零新增写端;
+    # sim 产出腿零建模(家族先例 = 淘金客 +2XP 零建模面)。
+    '概率事件': EffectSpec(
+        id='300401', name='概率事件', trigger=TriggerKind.ON_REFRESH,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['概率事件'], duties=DutyFlags(respond=True),
+        pending=True,
+        notes='付费域口径待实采(任意刷 proc 与否);'
+              '查询键 refresh_free_chance;'
+              '产出随机面观察收口,实例为在场标记+姿态面'),
 }
 
 
