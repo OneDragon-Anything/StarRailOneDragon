@@ -1125,6 +1125,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 量子同频星徽后];腿参数唯一出现点,不入泛化表防撞键;rng 零消费)。
     '量子力学': _compose_grant_legs(_make_char_grant_effect('希儿')),
 
+    # 加拉赫顾问 = 具名装备授予单行(卡文「获得【生命之花】和4金币」;
+    # 腿1 顾问解锁/腿2 金4 已在册零动作[GRANTS advisor 面+ECONOMY
+    # instant_gold=4];本行 = 生命之花具名授予腿,同物同形先例 = 无伤通关
+    # :1198;生命之花 = 简易类装备,不在精密金面判据映射 gate 恒 None 走
+    # 纯发放;rand=False 卡文无随机词工厂 docstring 定谳;腿参数唯一出现
+    # 点,不入泛化表防撞键;rng 零消费)。
+    '加拉赫顾问': _make_named_equip_grant_effect('生命之花', 1),
+
     # 梦境大舞台 = 单角色组合登记行(卡文「获得【花火】」句③,花火 1★
     # 先验家族口径;rand=False 具名确定发放,效果串 1 条;腿参数唯一出现
     # 点,不入具名角色发放族泛化表防撞键;rng 零消费)。条件段【盛会之星
