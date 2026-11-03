@@ -1,13 +1,14 @@
 """mandate_v1 决策载荷(decision_payload 钩子的 v1 实现;纯读投影)。
 
-职责 = 决策帧出口后组装八个键(语义正本 =
+职责 = 决策帧出口后组装七个键(语义正本 =
 strategy-docs/strategy-telemetry.md;判据载体出处 =
 strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 方向状态),两类来源:
 
-- 现读键 6(direction/k_members/k_fallback/window/transition_
+- 现读键 5(direction/k_members/k_fallback/transition_
   candidates/member_rank):容器 game state + 策略器状态**现读**
-  (语义正本 = strategy-telemetry.md 键表);
+  (语义正本 = strategy-telemetry.md 键表;window 键已随 entry_signals
+  整体退役);
 - 产物透传键 2(pick_margin/deploy_margin):词表动作字段与私有槽,
   均为**决策帧出口时点快照**(pick-margin-telemetry design §2.2)。
 
@@ -21,25 +22,14 @@ deploy_margin 读槽后清挂 bridge 覆写,读后清不入本模块);K 空窗
 消费契约:``bridge.MandateV1Strategy.decision_payload`` 薄委托本模块;
 wrapper 在决策入口返回后调用(入参 result = 入口返回值,产物透传键
 pick_margin 的载体),异常由 wrapper 降级 ``{}``(捕获缝
-约定,本模块不自行吞异常)。私有限内访问申报:entry 模块的
-``_entry_window_open``/``_ENDGAME_LIBRARY_MEMBERS`` 是窗口判定的
-唯一判定核与其数据面常量,同包消费经设计允许。
+约定,本模块不自行吞异常)。
 """
 from __future__ import annotations
 
 import random
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_comps import (
-    COMP_LIBRARY,
-    get_comp,
-)
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    bench_units_of,
-    deployed_rows_of,
-)
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-    entry,
     session_scope,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
@@ -53,13 +43,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
-        LineMembersView,
     )
 
 
@@ -109,47 +95,6 @@ def _k_members_key(gs: GameState,
             if members:
                 k_members = sorted(members)
     return k_members, fallback
-
-
-def _window_comp_sequence(view: LineMembersView) -> list[Comp]:
-    """窗口判据的阵容查表序(:func:`entry._entry_window_open` 体内
-    同式镜像——锁定 = 仅锁定线;未锁定 = 全库):sig 描述取自与窗口
-    结论同一查表序的首个信号行,结论与依据同源。"""
-    if view.locked:
-        return [c for c in (get_comp(view.comp_name),) if c is not None]
-    return list(COMP_LIBRARY)
-
-
-def _window_key(gs: GameState, k_members: list[str]) -> dict[str, dict]:
-    """window 键:角色 → 上线窗口判据 {open, sig}。
-
-    角色集 = k_members ∪ 持有域(bench ∪ deployed)出现的终局库成员
-    (:func:`entry._ENDGAME_LIBRARY_MEMBERS`)——候选 A「上阵窗口自锁」
-    的判域正是被窗口挡在备战席的终局件,只看上场板面会漏掉被挡件,
-    故持有域整体纳入。``open`` = :func:`entry._entry_window_open`
-    直调(唯一判定核);``sig`` = 该角色在窗口查表序(:func:
-    `_window_comp_sequence`)内首个信号行 ``[kind, threshold]``,
-    无信号行 = None(open 侧同语义 fail 恒假)。键序 = 角色名排序
-    (帧间 diff 稳定)。
-    """
-    front, back = deployed_rows_of(gs)
-    held = {str(getattr(u, 'char_id', '') or '')
-            for u in (*bench_units_of(gs), *front, *back) if u is not None}
-    chars = sorted(set(k_members) | (held & entry._ENDGAME_LIBRARY_MEMBERS))
-    if not chars:
-        return {}
-    comps = _window_comp_sequence(session_scope.line_members_view(gs))
-    window: dict[str, dict] = {}
-    for char in chars:
-        sig: list | None = None
-        for comp in comps:
-            row = comp.entry_signals.get(char)
-            if row is not None:
-                sig = [row[0], row[1]]
-                break
-        window[char] = {'open': entry._entry_window_open(gs, char),
-                        'sig': sig}
-    return window
 
 
 def _transition_candidates_key(gs: GameState) -> list[list[str]]:
@@ -213,7 +158,8 @@ def build_decision_payload(gs: GameState,
         'direction': _direction_key(gs),
         'k_members': k_members,
         'k_fallback': k_fallback,
-        'window': _window_key(gs, k_members),
+        # window 键已随 entry_signals 整体退役(2026-11 用户终裁)——历史
+        # 落盘数据不受影响,新帧不再产该键
         'transition_candidates': _transition_candidates_key(gs),
         'member_rank': _member_rank_key(gs),
         'pick_margin': _pick_margin_key(result),

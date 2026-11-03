@@ -34,7 +34,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
 from sr_od.application.currency_war.kernel.cw_economy import (
     cap_resolved_of_session,
     in_must_spend_zone,
@@ -290,111 +289,26 @@ def truncate_frame_stable(actions: list[CwAction],
     return out
 
 
-# ============================================================ 上阵窗口适用范围(22 号篇 第 6 步)
-
-#: 终局库成员并集(core ∪ shared 全线去重;纯终局件谓词的「终局库成员」
-#: 分支——未锁定期按全库知识判定的数据面,22 号篇 第 6 步)。
-_ENDGAME_LIBRARY_MEMBERS: frozenset[str] = frozenset(
-    name
-    for _comp in COMP_LIBRARY
-    for name in (*_comp.core_chars, *(_comp.shared_chars or ())))
-
-
-def _entry_window_open(gs: GameState, char_id: str) -> bool:
-    """角色上线窗口判定(22 号篇 第 6 步;数据 = COMP_LIBRARY
-    ``entry_signals`` 建表,缺行 fail 恒假)。
-
-    查线顺序:锁定 → 仅锁定线的信号行;未锁定 → 全库任一含该角色的线
-    (候选囤件窗口未到时照囤不上,窗口适用范围同样适用)。信号类闭集语义见
-    ``Comp.entry_signals`` 字段注:``synergy`` = 该线主羁绊
-    (bond_signal,缺省 form_tiers 首键)板面计数 ≥ 阈值;``level`` =
-    玩家等级 ≥ 阈值;``plane_end`` = 终局位面段已启动(窗口谓词形态 =
-    ``session_scope.plane2_started_of``,宪法第 2 条合规);``always_on``
-    = 恒真(全局累积型例外)。
-    """
-    from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
-    view = session_scope.line_members_view(gs)
-    if view.locked:
-        from sr_od.application.currency_war.kernel.cw_comps import get_comp
-        comps = [c for c in (get_comp(view.comp_name),) if c is not None]
-    else:
-        comps = list(COMP_LIBRARY)
-    _board_counts: dict[str, int] | None = None
-    for comp in comps:
-        sig = comp.entry_signals.get(char_id)
-        if sig is None:
-            continue
-        kind, threshold = sig
-        if kind == 'always_on':
-            return True
-        if kind == 'level':
-            if level_of(gs) >= int(threshold):
-                return True
-        elif kind == 'plane_end':
-            if session_scope.plane2_started_of(gs):
-                return True
-        elif kind == 'synergy':
-            if _board_counts is None:
-                front, back = deployed_rows_of(gs)
-                _board_counts = board_by_row(front, back).total()
-            # 主羁绊 = form_tiers 首键(旧 bond_signal 字段已退役——21 线中
-            # 20 线填值与首键等值,黄泉减益同值键序对齐后全库零行为差)
-            tag = comp.form_tiers and next(iter(comp.form_tiers))
-            if tag and _board_counts.get(tag, 0) >= int(threshold):
-                return True
-    return False
-
-
-def _deploy_window_blocked(session: StrategySession,
-                           gs: GameState, char_id: str) -> bool:
-    """纯终局件窗口适用范围判定(22 号篇 第 6 步)。
-
-    纯终局件谓词 = 终局库成员 ∧ 非现行过渡配方成员(未锁定期按全库
-    知识判定,锁定后按锁定线名单);窗口未到 → True(挡上阵)。过渡∩
-    终局重叠件 = 过渡成员正常上阵(它们的上阵是过渡行为,不挡)。未识别
-    件(char_id='')fail-open 照旧上(与部署谓词同口径)。
-    """
-    if not char_id:
-        return False
-    k = session_scope.direction_comp_of(session)
-    if char_id in predicates.line_members(k):
-        return False   # 现行过渡/方向配方成员 = 过渡行为正常上阵
-    view = session_scope.line_members_view(gs)
-    if view.locked:
-        if char_id not in view.members:
-            return False   # 锁定线外的囤件非当前终局成员(其上阵 = 插件/P24 行为)
-    elif char_id not in _ENDGAME_LIBRARY_MEMBERS:
-        return False
-    return not _entry_window_open(gs, char_id)
-
-
-def _bench_char_at(gs: GameState, container_idx: int) -> str:
-    """bench 容器槽位表下标 → 角色规范名(占位件/空槽 = '';
-    窗口适用范围过滤的部署计划行身份读点)。"""
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        bench_slot_unit,
-    )
-    view = gs.bench.value
-    if view is None or not 0 <= container_idx < len(view.slots):
-        return ''
-    unit = bench_slot_unit(view.slots[container_idx])
-    return str(unit.char_id or '') if unit is not None else ''
+# (上阵窗口适用范围判定〔_entry_window_open/_deploy_window_blocked/
+#  _ENDGAME_LIBRARY_MEMBERS/_bench_char_at〕已整体退役——2026-11 用户终裁
+#  「可退役」:万敌 1 条/白厄 3 条知识真空接受损失,不回流策略层,上场时机
+#  由 deploy_search 骨架/L1 完成度自适应承载,sim 观测退化明显再议;退役
+#  时点的行为面登记 = 测试仓 6 场景单帧锚。)
 
 
 def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               session: StrategySession, state: GameState,
-                              tag: str, *, window_scope: bool) -> None:
+                              tag: str) -> None:
     """告警帧态 1 上阵安置动作发出点(部署统一批丁收编后的专用执行路径,
     unified-deploy-order §4 entry 备战工序部署面行 D3-4:告警帧常规搜索
     跳过,态 1 上阵腾槽 = 专用路径——bench 真单位直落场上空槽(腾 bench
-    席),载体 = 统一拖动;窗口豁免照旧(上阵纯为腾槽保命,告警解除后
+    席),载体 = 统一拖动(上阵纯为腾槽保命,告警解除后
     下轮全扫恢复常规部署)。
 
     选人 = bench 扫描序(占位件/板上同名剔除;cap 有空位即态 1 前提)
     ——告警帧的救援语义只求确定性腾槽,排序质量无诉求(旧七桶序随选人
     族收编退役);落位 = ``deploy_plan.deploy_slot_plans`` 单一源(排
-    路由 + 前排保证 + 空槽选择)。``window_scope`` 形参保留(恒不拦:
-    态 1 豁免语义的显式载体,防未来调用面误接窗口过滤)。
+    路由 + 前排保证 + 空槽选择)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
@@ -427,8 +341,8 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
 # (select_swap_plan 的 select_up 注入包装 _make_windowed_select_up(第 6 步
 #  换人替补的上阵窗口适用范围)已随部署统一批丁收编删除:第 6 步切差分
-#  执行器,窗口谓词过滤进搜索段 0 枚举硬约束(unified-deploy-order §4
-#  entry 备战工序部署面行;谓词本体 _deploy_window_blocked 保留为唯一源)。)
+#  执行器;窗口谓词过滤亦随 entry_signals 整体退役拆除——上场时机 =
+#  部署搜索骨架/L1 完成度自适应。)
 
 
 # ============================================================ emit(十段全扫)
@@ -643,7 +557,7 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
     """第 0 步溢出告警自救序(22 号篇 §1 第 0 步;按损失递增,
     每帧重评取首个可行,无试错计数)。
 
-    态序:① 上阵安置(免费腾位,告警帧豁免窗口适用范围——上阵纯为腾槽
+    态序:① 上阵安置(免费腾位,上阵纯为腾槽
     保命)→ ② 点开消耗品(免费腾位;占席道具不可卖但可点开)→
     ③ 卖出(有损腾位;评估器自救扩展面 = 仅备战席 + 真全量持有,P78
     资格仲裁族全通道豁免、线内件按价值序末位让位)→ ④ 防御性分支
@@ -654,12 +568,12 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
     后态判定,deployed = 0 帧卖出哑火——deployed = 0 帧的自救主路径 =
     态 1 上阵安置(非卖出,不受该守卫覆盖;22 号篇 第 0 步申报)。
     """
-    # 态 1:上阵安置(免费;cap 有空位 ∧ 备战席有可上阵单位——豁免窗口
-    # 适用范围;选人 = bench 扫描序腾槽语义,发射器内自带空候选短路)。
+    # 态 1:上阵安置(免费;cap 有空位 ∧ 备战席有可上阵单位;选人 =
+    # bench 扫描序腾槽语义,发射器内自带空候选短路)。
     if frame.deploy_vacancy > 0:
         _out: list[Emitted] = []
         _emit_deploy_moves_scoped(_out, frame, session, gs,
-                                  'm0_self_rescue_deploy', window_scope=False)
+                                  'm0_self_rescue_deploy')
         if _out:
             return _out
     # 态 2:点开消耗品(免费;占席道具腾槽)。
@@ -1160,16 +1074,14 @@ def _step5_deploy(session: StrategySession, gs: GameState,
                   frame: MandateFrame,
                   levelup_actions: list[Emitted]) -> list[Emitted]:
     """部署调整步(工序第 6 步;阶段 5/6 切差分执行器——unified-
-    deploy-order §5 步骤映射:第 6 步 = 搜索定型 + 差分执行器
-    (``_step5_deploy`` 旧三臂定型 + ``_make_windowed_select_up`` 换人
-    替补均被替换,与前置步级联共用 §3 执行器)。
+    deploy-order §5 步骤映射:第 6 步 = 搜索定型 + 差分执行器,
+    与前置步级联共用 §3 执行器)。
 
     形态 = 常规部署差分(非计划执行期):**零读屏多动作循环 + 入口
     heavy 对账**现状维持(§3.5 D9-3:无卡死判定需求,收敛由下一入口
     对账兜底;假收敛最坏 = 带误差板打完当前节点、战后对账纠回——
     常规纯移动可逆故入口对账足够)。溢出告警帧 = 搜索与差分执行器
-    全跳过(emit 溢出门早退承载);窗口谓词/上场锁过滤在搜索段 0
-    (枚举硬约束,谓词本体单一源 = 本模块 ``_deploy_window_blocked``)。
+    全跳过(emit 溢出门早退承载);上场锁过滤在搜索段 0(枚举硬约束)。
 
     动作 = 统一拖动/换星直卖序列(帧稳定 conditional 续发,同序列
     bench 槽位复检);每帧重算幂等,执行进度由容器逻辑态自上报推进。

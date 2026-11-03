@@ -10,9 +10,10 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
 - 段 0 枚举准备(build_deploy_panel 装配):唯一性键归一(开拓者各排
   形态互斥)、同键多副本取最高星(落场后形态:银狼 3★ 上场即 1★)、
   召唤物/系统件(cost=0)固定后台剔除、未知身份件保留现位不入枚举
-  (禁挤)、窗口谓词与上场锁过滤(虚拟件 uid=None 名命中锁名单按
-  fail-closed,D-8 事故复活路径封死);
-- 段 1 圈人:候选族按窗口分域(P1 = 四体系两两组合 + 单体系对,
+  (禁挤)、上场锁过滤(虚拟件 uid=None 名命中锁名单按
+  fail-closed,D-8 事故复活路径封死;无上阵窗口硬约束——entry_signals
+  整体退役,上场时机 = 骨架/L1 完成度自适应);
+- 段 1 圈人:候选族按阶段分域(P1 = 四体系两两组合 + 单体系对,
   候选空间同款对域;
   P2+ 未锁 = 候选三线;锁定 = 锁定线羁绊骨架 ∪ P1 过渡家族照常
   枚举),骨架 = 档位形态集合(体系件前缀的档位截断点),全枚举,
@@ -120,7 +121,7 @@ class DeploySearchPanel:
     """
 
     units: tuple[SearchUnit, ...]
-    """枚举单位全集(段 0 已过滤:窗口外/上场锁件不入此集——它们不
+    """枚举单位全集(段 0 已过滤:上场锁件不入此集——它们不
     参与任何候选板)。"""
     k_budget: int
     """真人可上场数 = max_units_of − 场上召唤物/系统件 − 场上未知件
@@ -633,7 +634,7 @@ def search_deploy_target(panel: DeploySearchPanel,
                     skeletons.append((tuple(pool[:cut]), None, pair))
     elif panel.plane1:
         # P1 未锁:四体系两两组合 + 单体系对(候选空间同款对域;
-        # 部署骨架全枚举零截断,形态与窗口分域声明一致)。
+        # 部署骨架全枚举零截断,形态与阶段分域声明一致)。
         for pair in _transition_pairs(panel):
             pool = _pool_of(pair, _transition_names(pair))
             for cut in _prefix_cuts(pool, pair):
@@ -942,10 +943,11 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
                        ) -> DeploySearchPanel:
     """搜索面板生产装配(容器读口全列一次现取;§1 虚拟面板字段域)。
 
-    段 0 过滤在此执行:窗口谓词(entry._deploy_window_blocked 现役
-    谓词本体保留为唯一源)/上场锁(uid 命中记录;虚拟件 uid=None 名
+    段 0 过滤在此执行:上场锁(uid 命中记录;虚拟件 uid=None 名
     命中锁名单即视为锁,fail-closed)/召唤物系统件(cost=0,固定后台
     末位剔除)/未知身份件不入枚举但占 K 占格(§2 段 0 D3-13/D5-6)。
+    **无窗口硬约束**(entry_signals 整体退役,2026-11 用户终裁):上场
+    时机 = 骨架/L1 完成度自适应(终局件在未成型面板自然被 L1 递减挤出)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
@@ -962,7 +964,6 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
         max_units_of,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        entry,
         session_scope,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
@@ -1045,9 +1046,6 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
                     and getattr(u, 'uid', None) is not None) \
                     or cid in lock_names:
                 continue
-            # 窗口谓词只辖**新上场**(§3.9:场上件上场时已过谓词,窗口
-            # 单调(只开不关)恒满足——已就位件不重新过滤,违例形态归
-            # 观察侧 fail-closed 换下留证)。
             units.append(_mk(cid, int(u.star or 1), 'board', row,
                              getattr(u, 'uid', None),
                              tuple(getattr(u, 'equips', None) or ())))
@@ -1058,8 +1056,6 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
         cid = str(u.char_id)
         uid = getattr(u, 'uid', None)
         if (uid is not None and uid in lock_uids) or cid in lock_names:
-            continue
-        if entry._deploy_window_blocked(session, gs, cid):
             continue
         units.append(_mk(cid, int(u.star or 1), 'bench', '', uid,
                          tuple(getattr(u, 'equips', None) or ())))
@@ -1120,7 +1116,7 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
     ``bench_slots`` = 虚拟 bench 槽位条目列表(升星连锁模拟产物,
     SimAcquisition.bench 的 BenchSlot 半);``field_units`` = 虚拟场
     上单位(紧缩序,排映射 = 现板同名保持原排、新上者 back 兜底)。
-    窗口谓词/锁/容量过滤与生产装配同核(段 0 同一过滤管道)。
+    锁/容量过滤与生产装配同核(段 0 同一过滤管道)。
     """
     panel = build_deploy_panel(session, gs)
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -1144,9 +1140,6 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
             char_id=cid, star=eff_star, origin=origin, row=row, uid=uid,
             equips=equips)
 
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        entry,
-    )
     units: list[SearchUnit] = []
     for u in field_units:
         if u is None or not (u.char_id or ''):
@@ -1155,7 +1148,6 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
         uid = getattr(u, 'uid', None)
         if (uid is not None and uid in lock_uids) or cid in lock_names:
             continue
-        # 窗口谓词只辖新上场(§3.9 场上件恒满足)。
         units.append(_mk(cid, int(u.star or 1), 'board',
                          panel.current_board.get(cid, 'back'), uid,
                          tuple(getattr(u, 'equips', None) or ())))
@@ -1166,8 +1158,6 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
         cid = str(u.char_id)
         uid = getattr(u, 'uid', None)
         if (uid is not None and uid in lock_uids) or cid in lock_names:
-            continue
-        if entry._deploy_window_blocked(session, gs, cid):
             continue
         units.append(_mk(cid, int(u.star or 1), 'bench', '', uid,
                          tuple(getattr(u, 'equips', None) or ())))

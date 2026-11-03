@@ -532,9 +532,8 @@ def _p1_pair_decl_key(pair: tuple[str, ...]) -> tuple[float, ...]:
 
 def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
     """体系对 → COMP_LIBRARY 线名映射(统一阵容评分 design §6 配方锁
-    联动):线**主派**羁绊(``bond_signal`` ∨ form_tiers 首键——主派判定
-    与 entry_signals 派生同口径)∈ 体系对羁绊键集(:func:`_pair_bond_keys`,
-    希儿系展开 = 量子同频+贝洛伯格)。
+    联动):线**主派**羁绊(``bond_signal`` ∨ form_tiers 首键)∈ 体系对
+    羁绊键集(:func:`_pair_bond_keys`,希儿系展开 = 量子同频+贝洛伯格)。
 
     例:持续伤害对 → (DOT队, 专家桑博DOT)(两线 bond_signal 均为
     持续伤害);希儿系对 → (希儿量子,)(专家桑博DOT 的贝洛伯格 2 是
