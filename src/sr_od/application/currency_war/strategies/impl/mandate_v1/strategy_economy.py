@@ -162,7 +162,8 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: 不计分通道字段(结构登记、永不为分):
 #: - 血本位分区覆盖:xp_buy_hp_cost/hp_gold_swap(invest_strategy 血本位
 #:   三态序以 is_blood_economy 集合排除覆盖,价值面不入现金账);
-#:   boss_end_heal_hp(奋斗协议首领战回血腿)= HP 世界面发放同 hp_instant
+#:   boss_end_heal_hp(奋斗协议首领战回血腿)/battle_end_heal_hp(星际
+#:   和平保险战斗结束回血腿,全战斗域)= HP 世界面发放同 hp_instant
 #:   归定价出域族(hp 定价通道作废,hp 永不折金;世界腿 = sim 结算段
 #:   策略腿区独立笔);
 #: - 难度族:difficulty_delta/difficulty_per_streak/difficulty_node_types
@@ -184,6 +185,7 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #:   系「实机无卡真值」另一把尺,禁与本字段混读。
 _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
     'xp_buy_hp_cost', 'hp_gold_swap', 'boss_end_heal_hp',
+    'battle_end_heal_hp',
     'difficulty_delta', 'difficulty_per_streak', 'difficulty_node_types',
     'encounter_tier_extremes_only',
     'future_quality_upgrade', 'difficulty_inflation_exempt',

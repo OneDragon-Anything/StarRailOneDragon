@@ -177,6 +177,16 @@ class EconomyEffect:
     interest_flat_per_node: int = 0       # 狸财经狸:每节点固定息(与 interest_cap 无关)
     hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
+    battle_end_heal_hp: int = 0           # 星际和平保险(棱彩):战斗结束回复
+                                          # 10 血(战斗结算型 HP 世界腿:条件
+                                          # 单一源 =
+                                          # cw_gain_chain.check_strategy_
+                                          # battle_end_heal,sim 结算段策略
+                                          # 腿区发放,全战斗域 =
+                                          # COMBAT_NODE_TYPES 三型,live 游
+                                          # 戏自算观察覆盖零写;卡文无
+                                          # 「首次」限定 = 每战斗结算都发,
+                                          # 无 done 闩)
     xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
     hp_instant: int = 0                   # 即时生命(健康充值 +30;负值 = 损失,
                                           # 先亏后盈 −20):选卡当场 hp 直加,
@@ -369,10 +379,12 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     'hp_instant',
     # 战斗结算修饰族(非收入通道;难度族同款划界):战斗结算帧 HP/连胜
     # 修饰与结算型回血(hp 加重/连胜维持/首领战结束回血 boss_end_heal_hp
-    # ——一次性结算面 HP 变更非持续通道),世界腿 = sim 结算 hp 腿
-    # (loss_hp_extra 形参 / boss_end_heal_hp 结算段策略腿区独立笔),
-    # live 游戏自算 + 观察覆盖;修饰不产生金流,不入引擎判定
+    # /战斗结束回血 battle_end_heal_hp——一次性结算面 HP 变更非持续通道),
+    # 世界腿 = sim 结算 hp 腿(loss_hp_extra 形参 / boss_end_heal_hp +
+    # battle_end_heal_hp 结算段策略腿区独立笔),live 游戏自算 + 观察
+    # 覆盖;修饰不产生金流,不入引擎判定
     'loss_hp_extra', 'keep_streak_on_loss', 'boss_end_heal_hp',
+    'battle_end_heal_hp',
     # 进度轴结构改写族(非收入通道;难度族同桶划界轴「是否持续通道」):
     # 「最大等级变为N」= 持卡对等级轴上限的绝对改写,零金流零周期发放,
     # 世界消费走 kernel 解析 helper(cw_economy.level_cap_resolved /
@@ -786,7 +798,20 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # ↑ API 全文:30 本金进不了字段(非给玩家);息+2/节点;金<20 取 10(流动性保险,
     #   行为条件流);P3 首领取全部存款(存款累计值消费端推)。数值侧先建固定息。
     '不等价交换': EconomyEffect(hp_gold_swap=True),
-    '星际和平保险': EconomyEffect(gold_per_hp_lost_now=True),
+    '星际和平保险': EconomyEffect(gold_per_hp_lost_now=True,
+                                  battle_end_heal_hp=10),
+    # ↑ 「获得等同于你已损失生命数量的金币。战斗后恢复10点小队生命值。」
+    #   双腿:①选卡衍生金腿 = 世界派生计算形(与静态 instant_gold 族级缺口
+    #   分野,invest_effects.md 血金互兑行正本),世界写端 = sim 选卡落地拍
+    #   独立笔 strategy:hp_loss_gold;「已损失」= 开局血量−当前血量(clamp
+    #   ≥0)+ 基线 = sim 开局模型值(查表),live 真实口径未采证,经
+    #   STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION 披露键随局申报(判读
+    #   申报制,后继族稿禁当定谳转引);估值面 fail-closed 0 维持(宪法三
+    #   辖估值消费,世界真值腿不触)。②战斗结束回血腿 = 每战斗结算都发
+    #   (数值直读,无 done 闩),消费单一源 =
+    #   cw_gain_chain.check_strategy_battle_end_heal(纯读零写)→ sim
+    #   结算段策略腿区尾段发放;触发域判读申报(扑满/奖励关边界)=
+    #   STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION,live 游戏自算观察覆盖零写
     # C 类:难度交互(显数值;36 号账本消费)
     '简单模式': EconomyEffect(difficulty_delta=-3),
     '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
@@ -4392,15 +4417,37 @@ STRATEGY_HP_LOSS_BUCKET_ASSUMPTION: str = \
 #   消费),live 真实小队生命上限未采证;实采证伪(如存在上限)→ 常量改值
 #   零迁移(补 clip 常量,消费端 = sim 结算段回血腿);
 # - perfect_win_bias:持卡局首领战次节点完胜结构性漏判——回血笔在结算
-#   环行之后,次战斗结算环行 hp_after 差分含 +50,完胜判据(相邻环行
+#   环行之后,次战斗结算环行 hp_after 差分含回血量,完胜判据(相邻环行
 #   hp 持平,cw_env_grants.check_env_deploy_lock_perfect)漏判,方向
-#   单一偏严(该判据偏差面条款辖内新事件源);
+#   单一偏严(该判据偏差面条款辖内新事件源)。同族事件源扩面:星际和平
+#   保险 battle_end_heal_hp(全战斗域每战斗结算回血,频次 ×N 扩)落码后
+#   同键辖内申报,判据偏差面零新增(两腿回血笔插入位同段);
 # - display_phase:live 首领战结算屏显示相位(游戏回血先于/后于屏显)
-#   未采证,实机结算环行 hp_after 是否含 +50 判读申报制,不实机查。
+#   未采证,实机结算环行 hp_after 是否含回血量判读申报制,不实机查。
 STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION: str = 'strategy_boss_heal_hp_cap_unverified'
 STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS: str = 'strategy_boss_heal_perfect_win_bias'
 STRATEGY_BOSS_HEAL_DISPLAY_PHASE_UNVERIFIED: str = \
     'strategy_boss_heal_display_phase_unverified'
+
+
+# ===== 星际和平保险(id 303001)双腿建模假设披露键(消费 = sim 随局披露
+# ===== 面 disclosures setdefault + 判读申报制,常量落位沿
+# ===== STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 先例/kernel 注册表模块)=====
+# 两键各承载一组建模假设(desc 未写明处申报,证伪路径 = 实机持卡局对照):
+# - baseline:①「已损失生命数量」= 开局血量−当前血量(clamp ≥0;desc
+#   「已损失」= 状态量语义基 = gameplay.md「初始小队生命值」,备选读法
+#   上限−当前/累计损血未取);②开局基线 = sim 开局模型值(hp_trail[0],
+#   查表 82/62),live 真实基线与真实口径未采证,后继族稿禁当定谳转引。
+#   证伪路径 = 实机持卡局选卡金收入对照;
+# - scope:战斗结束回血触发域 = COMBAT_NODE_TYPES 三型(battle/encounter/
+#   boss)——扑满战后零回血系语义收窄(扑满具战斗实体而 kind 词表不含
+#   reward,对称申报面 = STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 反向先例),
+#   奖励关(真无战斗实体)/补给(无结算)排除;live「战斗后」真实触发域
+#   未采证,证伪路径 = 实机持卡局扑满战/奖励关结算屏 hp 对照。
+STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION: str = \
+    'strategy_hp_loss_gold_baseline_opening_minus_current_sim_model'
+STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION: str = \
+    'strategy_battle_heal_scope_combat_node_types_piggy_excluded'
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====

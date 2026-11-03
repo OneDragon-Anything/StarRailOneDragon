@@ -97,6 +97,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_gain_chain import (
     GAIN_CHAIN_PRODUCER,
     LEVEL_GRANT_PRODUCER,
+    check_strategy_battle_end_heal,
     check_strategy_battle_grants,
     check_strategy_bench_count_xp,
     check_strategy_bench_leave_gold,
@@ -109,6 +110,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_equip_count_xp,
     check_strategy_equip_expiry,
     check_strategy_gift_grants,
+    check_strategy_hp_loss_gold,
     check_strategy_hp_loss_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
@@ -151,6 +153,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     HYPEREMIT_SPEC_NAME,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
+    STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION,
     STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
     STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
     STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
@@ -159,6 +162,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_ECONOMY,
     STRATEGY_EFFECTS,
     STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
+    STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION,
     STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     StrategyDelayedOffer,
@@ -1679,6 +1683,13 @@ class SimBackend:
     #: back_layout +1,窗内重放会伪 +1)。私有暂态不入容器/不入快照恢复
     #: (同形先例同上)。
     _strategy_pick_diamond_latch: bool | None = field(init=False, default=None)
+    #: 策略选卡已损血衍生金腿呈现闩(星际和平保险 id 303001 首例;与前置
+    #: 九闩同点置位同拍消费,独立不共享——十腿语义独立,共享闩会让单腿
+    #: 测试直读互相牵连且无状态量收益)。防重放实害 = 衍生金非幂等,窗内
+    #: 重放会把金笔二次申报(多加一笔金)。私有暂态不入容器/不入快照恢复
+    #: (同形先例同上)。
+    _strategy_pick_hp_loss_gold_latch: bool | None = field(init=False,
+                                                           default=None)
     #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
     #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
     #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
@@ -2621,6 +2632,40 @@ class SimBackend:
                         log.info('[cw-sim] 超发货币负债腿:%s 清零 '
                                  '(快照 %s,现持 %s,增量 −%s)',
                                  _em.spec.name, _lost, gold_now, gold_now)
+        # 选卡落地拍已损血衍生金腿(「获得等同于你已损失生命数量的金币」,
+        # 星际和平保险 id 303001 首例;通用通道辖域 = 注册表
+        # gold_per_hp_lost_now 全体,世界派生计算形非静态字段):sim 世界
+        # 自持账补全——live 同拍零写(游戏自算自发,金余额观察覆盖收口,
+        # 金面禁直写三锚 T-85 定形)。已损失口径与开局基线来源见
+        # :func:`check_strategy_hp_loss_gold`(基线 = hp_trail[0] 开局
+        # 真值,reset 序尾已记录,pick 时点恒在场);条件单一源 = kernel
+        # 检查函数(卡直读注册行禁聚合)。建模假设经
+        # STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION 随局申报(判读申报
+        # 制)。拿卡名推导与呈现闩防重放 = 前置各腿同款(闩消费先于判定,
+        # 交集空亦消费——每呈现窗至多一次落地消费,无效载荷的重放同样
+        # 不得再触发);零损失选卡(开局即选)检查函数返回 0 = 零笔零
+        # 申报(与游戏「已损失 0 → 金 0」自算同形)。位置 = 链尾独立笔:
+        # 与前置各腿零交互(金域加笔,扣金负腿为减向分账,evidence 分账
+        # 可归因);先于立即腿呈现体(其 return 早退会吞本拍落地语义)。
+        if not opening and self._strategy_pick_hp_loss_gold_latch:
+            self._strategy_pick_hp_loss_gold_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            if picked:
+                gold_gain = check_strategy_hp_loss_gold(
+                    self.gs, opening_hp=self.hp_trail[0])
+                if gold_gain > 0:
+                    gold_now = int(self.gs.gold.value or 0)
+                    self.gs.observe(self.gs.gold, gold_now + gold_gain,
+                                    evidence=sim_evidence(
+                                        'strategy:hp_loss_gold'),
+                                    sig=obs_sig(group_id='sim:strategy'))
+                    self.disclosures.setdefault(
+                        STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION,
+                        'opening_minus_current_sim_model_v0')
+                    log.info('[cw-sim] 已损血衍生金腿:开局 %s 现值 %s '
+                             '衍生金 +%s', self.hp_trail[0],
+                             int(self.gs.hp.value or 0), gold_gain)
         # 选卡拍商店改写腿 + 位面段补发双腿(「现在及每个位面开始时」族,
         # 公司严选 301401 首条目;通用通道辖域 = 注册表 shop_rewrite_
         # forced_cost>0 / gold_per_plane>0 全体,字段分派非单卡特判)。
@@ -3672,6 +3717,8 @@ class SimBackend:
             self._strategy_pick_recruit_drain_latch = True
             # 宝钻世界联动腿闩同点置位(九腿独立闩同形;防重放窗同界)。
             self._strategy_pick_diamond_latch = True
+            # 已损血衍生金腿闩同点置位(十腿独立闩同形;防重放窗同界)。
+            self._strategy_pick_hp_loss_gold_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3790,7 +3837,7 @@ class SimBackend:
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩同形照置;即时生命
         # 腿闩同形照置;分期金初始化腿闩同形照置;位面段补发腿闩同形照置;
         # 超发货币负债腿闩同形照置;大扩招扣金负腿闩同形照置;宝钻世界
-        # 联动腿闩同形照置。
+        # 联动腿闩同形照置;已损血衍生金腿闩同形照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
@@ -3800,6 +3847,7 @@ class SimBackend:
         self._strategy_pick_hyperemit_drain_latch = True
         self._strategy_pick_recruit_drain_latch = True
         self._strategy_pick_diamond_latch = True
+        self._strategy_pick_hp_loss_gold_latch = True
         # 刷新授权簿记(逐卡按登记 refresh_count;0 = 不可刷 = 空授权,
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         refreshable = spec.refresh_count > 0
@@ -4506,6 +4554,49 @@ class SimBackend:
                         f'r{node.round_num}'),
                     sig=obs_sig(group_id='sim:strategy'))
                 self._hp_trail_append()
+                self.disclosures.setdefault(
+                    STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
+                    'direct_add_no_clip_v0')
+                self.disclosures.setdefault(
+                    STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
+                    'next_node_perfect_missed_strict_v0')
+        # —— 策略卡战斗结束回血(星际和平保险 id 303001 首例;战斗结束
+        # 回血族第二成员,全战斗域扩 = T-313 首领战限定域的族级邻腿;接线
+        # 点 = 策略腿区尾段 boss 回血腿之后、败局待办登记之前,胜败两态
+        # 共同路径——卡面「战斗后」无「胜利」限定 = 败局存活也回;死亡局
+        # 在本函数提前 return 处已出局,不回血)。挂点序位依据同 boss 腿
+        # 三重(结算环行后零污染/损血差分后/环行间插入 → 完胜判据结构性
+        # 漏判,同族事件源经 STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS 键随局
+        # 申报,频次 ×N 扩)。条件单一源 = kernel
+        # check_strategy_battle_end_heal(Σ 持卡 battle_end_heal_hp,纯读
+        # 零写,与 boss 腿函数独立不相串);节点门 = kind ∈
+        # COMBAT_NODE_TYPES 三型现役单一源词表——扑满 ∈ reward 零回血系
+        # 语义收窄(扑满具战斗实体而词表不含 reward),奖励关/补给排除,
+        # 经 STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION 随局申报(判读申报
+        # 制)。写面 = observe hp 独立笔 + _hp_trail_append 成对(不变式
+        # ②写流↔轨迹同构)。**直加不 clip**(正部 HP 加法家族形:
+        # apply_strategy_pick_hp/apply_equip_acquire_hp/boss 回血腿同判
+        # ——hp_max 字段缺位零上限消费,clip 属无消费端语义;cap 假设面
+        # = STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION 家族键,值同
+        # direct_add_no_clip_v0 零双源)。hp 未观察(None)= 无基座零写
+        # 零追加(禁造假基座,apply_hp_outcome 未观察零写同款)。sig =
+        # obs 族 'sim:strategy' 组(世界数值面 observe 分工;evidence 与
+        # boss 腿 strategy:boss_heal 分账)。幂等零新增守卫 = 本函数
+        # _settled_key(同节点重放整段跳过);live 零写观察覆盖。
+        battle_heal = check_strategy_battle_end_heal(self.gs)
+        if kind in COMBAT_NODE_TYPES and battle_heal > 0:
+            hp_now = self.gs.hp.value
+            if hp_now is not None:
+                self.gs.observe(
+                    self.gs.hp, int(hp_now) + battle_heal,
+                    evidence=sim_evidence(
+                        f'strategy:battle_heal:p{node.plane}'
+                        f'r{node.round_num}'),
+                    sig=obs_sig(group_id='sim:strategy'))
+                self._hp_trail_append()
+                self.disclosures.setdefault(
+                    STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION,
+                    'combat_node_types_piggy_excluded_v0')
                 self.disclosures.setdefault(
                     STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
                     'direct_add_no_clip_v0')

@@ -1970,6 +1970,85 @@ def check_strategy_boss_end_heal(gs: GameState) -> int:
     return heal
 
 
+def check_strategy_hp_loss_gold(gs: GameState, *, opening_hp: int) -> int:
+    """策略卡选卡时点已损血衍生金检查(「获得等同于你已损失生命数量的
+    金币」触发器单一源,星际和平保险 id 303001 首例;唯一调用点 = sim
+    选卡落地拍腿——live 零写观察覆盖:金由游戏自算自发,金余额读数入容
+    器,实机局不接本通道)。
+
+    口径(判读申报制,披露键
+    ``STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION`` 随局申报,后继族稿禁
+    当定谳转引):「已损失」= ``opening_hp − 当前 hp``(clamp ≥0)——
+    desc「已损失」为状态量语义(从未拥有过的不算),语义基 =
+    gameplay.md「开拓者拥有初始小队生命值」;开局基线由调用方传 sim
+    开局模型值(hp_trail[0],查表开局真值),live 真实基线未采证。
+    衍生金额形自带口径(世界派生计算),与静态 instant_gold 族级写端
+    缺口分野(T-112 口径),禁搭静态族便车。
+
+    条件矩阵(check_strategy_boss_end_heal 形态):hp 从未观察(None)→
+    0(禁造假基座,apply_hp_outcome 未观察零写同款防御);逐持卡经
+    get_strategy 归一(active_strategies 存量 OCR 原始名不静默 miss)
+    取 ``gold_per_hp_lost_now is True`` 成员,各按已损血全额计入(每卡
+    一条「等同于已损血数」完整金额,非按卡分摊);表外卡/无经济条目卡/
+    无此腿卡自然零贡献。hp 高于开局(回血后)→ clamp 0,负差不产生金。
+
+    - **零 rng**:条件全真值,无采样面;
+    - **无 done 闩**(选卡一次性):选卡每局至多一次由调用链天然单发
+      (呈现闩防重放归 sim 落地腿),本函数零二次守卫;
+    - **纯读零写**(契约同 check_strategy_boss_end_heal):返回衍生金
+      合量,写面(observe 金独立笔 + 披露键)归调用方;
+    - **禁聚合**:卡直读 STRATEGY_ECONOMY 注册行(逐卡 get_strategy),
+      aggregate_economy 布尔字段聚合形态不含本腿判据,误走 = 静默零发。
+    """
+    if opening_hp < 0:
+        raise ValueError(
+            f'开局基线负值(调用方传参错误,开局真值恒非负):{opening_hp}')
+    hp_now = gs.hp.value
+    if hp_now is None:
+        return 0
+    hp_lost = max(0, opening_hp - int(hp_now))
+    if hp_lost == 0:
+        return 0
+    amount = 0
+    for name in gs.active_strategies.value or ():
+        strategy = get_strategy(name)
+        if strategy is None or strategy.economy is None:
+            continue
+        if strategy.economy.gold_per_hp_lost_now:
+            amount += hp_lost
+    return amount
+
+
+def check_strategy_battle_end_heal(gs: GameState) -> int:
+    """策略卡战斗结束回血检查(「战斗后恢复10点小队生命值」触发器单一
+    源,星际和平保险 id 303001 首例;唯一调用点 = sim 结算腿——live 零
+    写观察覆盖:hp 由游戏自算,结算屏血量读数入容器,实机局不接本通道)。
+
+    条件矩阵(check_strategy_boss_end_heal 同构,战斗结束回血族第二成
+    员——两函数独立不相串, Σ 各自字段零交叉):持卡为空 → 0;逐持卡经
+    get_strategy 归一(active_strategies 存量 OCR 原始名不静默 miss)
+    取 economy.battle_end_heal_hp 求和,表外卡/无经济条目卡自然零贡献。
+    登记载体 = STRATEGY_ECONOMY 字段直读,零白名单表(回血量 =
+    EconomyEffect.battle_end_heal_hp 单一源,族新卡挂字段即自动入列)。
+    节点类型门归调用方(kind ∈ COMBAT_NODE_TYPES 在 sim 结算腿——本函
+    数对任意持卡局返回合量,触发域判读申报归披露键
+    ``STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION``)。
+
+    - **零 rng**:条件全真值,无采样面;
+    - **无 done 闩**(可重复):卡面无「首次」限定 = 每次战斗结算都
+      发;防重归调用方节点键幂等守卫,本函数零二次守卫;
+    - **纯读零写**(契约同 check_strategy_boss_end_heal):返回回血
+      合量,写面(observe hp 独立笔 + hp_trail 成对追加)归调用方。
+    """
+    heal = 0
+    for name in gs.active_strategies.value or ():
+        strategy = get_strategy(name)
+        if strategy is None or strategy.economy is None:
+            continue
+        heal += int(strategy.economy.battle_end_heal_hp)
+    return heal
+
+
 def check_strategy_bond_battle_grants(gs: GameState,
                                       sig: ChannelSig,
                                       producer: str = GAIN_CHAIN_PRODUCER,

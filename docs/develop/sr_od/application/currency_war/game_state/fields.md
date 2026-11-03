@@ -589,6 +589,11 @@ select_ore_clicks docstring + 模块头)。
 (中途拿卡时当前已开始位面登记拍全额补发,`strategy:plane_gold_refire:<卡名>`,
 用户裁定 2026-11-01 族级;容器金缺读零写禁猜——观察覆盖前金腿静默,xp 形分道,
 env 直发形 None 视 0 照写会伪造金绝对值假真值不取)。
+已损血衍生金支(gold_per_hp_lost_now,星际和平保险)live 同为观察覆盖——sim 世界腿 =
+选卡落地拍独立笔(`strategy:hp_loss_gold`,金额 = max(0, 开局−当前),开局基线 =
+sim 开局模型值 hp_trail[0];「已损失」口径与基线来源系判读申报制,披露键
+`STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION` 随局申报,条件单一源 =
+`cw_gain_chain.check_strategy_hp_loss_gold`)。
 **边界**:None=不可读,不可信不写。
 
 #### 3.2.10 经验等级 level / xp
@@ -632,6 +637,14 @@ sim 世界无观察、血线是自持账,不发即持卡局系统性失真;**liv
 写入方结构(选卡 +30 由游戏自算,血量条观察覆盖收口)。负成员(先亏后盈 −20)
 同通道直加不 clip:hp 可写负值,负 delta 同拍入损血档位累计器(§3.5.6c 扩挂点),
 下一败局才由 `apply_hp_outcome` 保底/局终分支接管。
+sim 先验写端(战斗结算型回血腿):sim 局战斗结算段策略腿区按注册表回血字段直加
+世界真值——首领战支(boss_end_heal_hp,奋斗协议,evidence `strategy:boss_heal:
+p{位面}r{轮}`)与全战斗域支(battle_end_heal_hp,星际和平保险,evidence
+`strategy:battle_heal:p{位面}r{轮}`,kind ∈ COMBAT_NODE_TYPES 三型,触发域判读
+申报 = `STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION`)同族两腿,直加不 clip 家族形
+(hp_max 字段缺位),hp_trail 成对追加(写流↔轨迹同构);条件单一源 =
+`cw_gain_chain.check_strategy_boss_end_heal` / `check_strategy_battle_end_heal`;
+live 同为观察覆盖维持两写入方结构。
 **边界**:不可信帧不写。容器存**门前真值**、消费视图施门在消费侧(hp_readable/
 hp_trusted 语义 = §8.7 旧 hp 消费视图并入口径,单一源 = cw_gs_view);「备战帧仅 shop 关闭态」
 的字面全局禁写与结算覆盖不冲突——结算是独立写入方。
@@ -2656,8 +2669,10 @@ cw_opening_hp,,禁第二份数值源)。实例登记端=`register_affix`(播种�
 #### 保险族(损血返金 + 装备效果 + 回血)
 
 官方文三条效果=损血返金 + 每损 20 血获 1 随机简易装备 + 星际和平保险战后回 10 血。
-归属=申报不记预期值——损血后金币经结算/轮首观察覆盖;回血效果的 hp 经观察覆盖;
-装备效果=装备库存经观察覆盖(注册表未把装备效果结构化——缺口登记 §5.2)。
+归属=申报不记预期值——损血后金币经结算/轮首观察覆盖(选卡衍生金腿已出列,§3.2.9
+`strategy:hp_loss_gold` sim 写端行);回血效果的 hp 已出列(sim 结算段策略腿区世界
+写端,§3.2.13 回血腿行,触发域判读申报披露键随局);装备效果=装备库存经观察覆盖
+(注册表未把装备效果结构化——缺口登记 §5.2)。
 
 #### 节节高升(gold_per_level_up + 2★ 发放效果)
 
