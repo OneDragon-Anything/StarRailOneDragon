@@ -530,7 +530,51 @@ def _p1_pair_decl_key(pair: tuple[str, ...]) -> tuple[float, ...]:
     return idx + (math.inf,) * (2 - len(idx))
 
 
-def _p1_pair_space(sup: dict[str, float]) -> list[tuple[str, ...]]:
+def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
+    """体系对 → COMP_LIBRARY 线名映射(统一阵容评分 design §6 配方锁
+    联动):线**主派**羁绊(``bond_signal`` ∨ form_tiers 首键——主派判定
+    与 entry_signals 派生同口径)∈ 体系对羁绊键集(:func:`_pair_bond_keys`,
+    希儿系展开 = 量子同频+贝洛伯格)。
+
+    例:持续伤害对 → (DOT队, 专家桑博DOT)(两线 bond_signal 均为
+    持续伤害);希儿系对 → (希儿量子,)(专家桑博DOT 的贝洛伯格 2 是
+    次档非主派,不入——主派判定防次档键把 DOT 线错挂进希儿系对)。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    bonds = _pair_bond_keys(pair)
+    out: list[str] = []
+    for c in COMP_LIBRARY:
+        main = c.bond_signal or next(iter(c.form_tiers), '')
+        if main in bonds:
+            out.append(c.name)
+    return tuple(out)
+
+
+def _pair_restart_dead(pair: tuple[str, ...], gs: GameState) -> bool:
+    """体系对全线重开级判定(design §6:线分含 −100000 的体系对不入
+    p1_pair_space 候选):映射线集非空 ∧ 每条线词缀面或 boss 面重开级
+    命中(kernel 侧原语 :func:`cw_affinity_table.affix_restart_hit` /
+    ``boss_restart_hit``——cw_intention 禁 import 策略层线分引擎,重开级
+    命中 = 吃怕/boss 表可判子集;证据/投资分量恒非负不影响判定)。
+
+    线集空(防御,当前四体系全有映射)→ False(fail-open 配方锁照常)。
+    扑满强敌(怕档 −150 非重开级)不参与本判定——排除档只认重开级。"""
+    from sr_od.application.currency_war.kernel.cw_affinity_table import (
+        affix_restart_hit,
+        boss_restart_hit,
+    )
+    lines = _p1_pair_lines(pair)
+    if not lines:
+        return False
+    affixes = tuple(gs.enemy_affixes.value or ())
+    bosses = tuple(b for b in (gs.plane_bosses.value or ()) if b)
+    return all(affix_restart_hit(ln, affixes)
+               or boss_restart_hit(ln, bosses, affixes)
+               for ln in lines)
+
+
+def _p1_pair_space(sup: dict[str, float],
+                   gs: GameState | None = None) -> list[tuple[str, ...]]:
     """全候选空间排序序列(不截断):体系对 = 单体系对(4)+ 双体系
     组合(6),按(对级支持度降序, 对级声明序)排序;对内体系按
     ``_P1_PAIR_PREF`` 序规整(与 ``p1_pair`` 值形态同口径)。
@@ -539,14 +583,23 @@ def _p1_pair_space(sup: dict[str, float]) -> list[tuple[str, ...]]:
     = 候选机器同源排序函数不截断」);超满对(支持度 >1.0)排在恰满
     对前——冻结扫描序申报(§2.3-4)。排序键确定(支持度 = 羁绊计数/
     档,事件驱动变化,帧间稳定;声明序键两两不同)——防摇摆语义 =
-    支持度不变则序不变,替代旧「在任粘滞」(§2.6-6)。"""
+    支持度不变则序不变,替代旧「在任粘滞」(§2.6-6)。
+
+    ``gs`` 非空时启用配方锁联动过滤(design §6 统一阵容评分):全线
+    重开级的体系对不入序列(:func:`_pair_restart_dead`——重开级数值排他,
+    P1 不往该方向囤牌);过滤后为空(全体系对极低分)→ 回退未过滤序列
+    ——配方锁照常运行,不过渡干预终局分(锁定/P2 线分路径零关联)。"""
     pairs: list[tuple[str, ...]] = []
     for i, a in enumerate(_P1_PAIR_PREF):
         pairs.append((a,))
         for b in _P1_PAIR_PREF[i + 1:]:
             pairs.append((a, b))
-    return sorted(pairs, key=lambda p: (-_p1_pair_support(p, sup),
-                                        _p1_pair_decl_key(p)))
+    ranked = sorted(pairs, key=lambda p: (-_p1_pair_support(p, sup),
+                                          _p1_pair_decl_key(p)))
+    if gs is None:
+        return ranked
+    alive = [p for p in ranked if not _pair_restart_dead(p, gs)]
+    return alive or ranked
 
 
 def p1_pair_candidates_of(gs: GameState) -> tuple[tuple[str, ...], ...]:
@@ -565,7 +618,7 @@ def p1_pair_candidates_of(gs: GameState) -> tuple[tuple[str, ...], ...]:
     sup = _p1_system_support(gs)
     seele_ok = sup.get(SEELE_SYSTEM, 0.0) >= P1_PAIR_LOCK_MIN_SUPPORT
     out: list[tuple[str, ...]] = []
-    for p in _p1_pair_space(sup):
+    for p in _p1_pair_space(sup, gs):
         if SEELE_SYSTEM in p and not seele_ok:
             continue
         if _p1_pair_support(p, sup) <= 0.0:
@@ -931,7 +984,7 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
         slot_value = (pair,)
     else:
         sup = _p1_system_support(gs)
-        ranked = _p1_pair_space(sup)
+        ranked = _p1_pair_space(sup, gs)
         seele_ok = (sup.get(SEELE_SYSTEM, 0.0)
                     >= P1_PAIR_LOCK_MIN_SUPPORT)
         candidates = [p for p in ranked
