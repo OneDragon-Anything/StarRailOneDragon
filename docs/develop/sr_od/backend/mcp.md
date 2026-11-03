@@ -4,7 +4,7 @@
 
 ## 工具
 
-27 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
+30 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
 
 | MCP tool | 委托 | 返回 |
 |---|---|---|
@@ -35,6 +35,9 @@
 | `close_game` | `backend.close_game()` | `{success, result}`（信号已发，非已关闭；controller 吞异常，用 `check_game_window` 验证） |
 | `list_mcp_usage_guides` | `mcp/prompts.py` | 可用操作指南目录，相当于帮助索引 |
 | `get_mcp_usage_guide(name, app_id=None)` | `mcp/prompts.py` | 指定操作指南正文，相当于任务级 `--help` |
+| `mys_login(username, password)` | `mys_tools.py` `MysAccessController` | 统一信封 `{status, message, data}`：`success` / `already_logged_in` / `verification_required`（含本地验证页 URL，人工过验后台自动续跑）/ `error`（-3208/-3235 即停）。⚠️ 知情声明（tool 描述含）：密码会作为工具参数传入大模型上下文，由使用者自行决定；成功仅落盘 cookie 会话（config/当前实例/mys/），密码不落盘 |
+| `mys_logout()` | `mys_tools.py` | `{status: success}`（幂等；清 session.json 与 role.json、保留 device.json） |
+| `mys_get_characters()` | `mys_tools.py` → `HsrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
 
 要点：
 
@@ -55,6 +58,7 @@
 - MCP tool 不返回运行日志正文；客户端需要用 `get_run_status` 轮询是否完成，GUI 服务页负责展示日志。
 - `close_game` / `click_game` / `key_tap` / `drag` / `input_text` 是独立同步操作，不走运行槽；`click_game` / `drag` 使用 1080p 游戏空间坐标。底层 click / key_tap / drag **无内置等待**，连续操作或 `capture` 前建议 sleep 等动画（见各 tool 描述的 ⚠️ 提醒）。
 - `list_mcp_usage_guides` / `get_mcp_usage_guide` 把 prompt 模板以普通 tool 暴露，方便不会主动消费 MCP prompts 的客户端发现。
+- `mys_*` 三工具走 `mys_tools.py` 的 `MysAccessController` 状态机（idle/awaiting_ticket，验证循环上限 3）；会话失效只打标记不清任何本机数据；凭据纪律与协议规格见 [mys.md](mys.md)（⚠️ `mys_login` 的密码经 LLM 上下文，工具描述含知情声明）。
 - 理念：MCP 只做感知 / 操作，编码 / 调试交给 AI（[design-principles.md](design-principles.md)）。
 
 ## Instructions
