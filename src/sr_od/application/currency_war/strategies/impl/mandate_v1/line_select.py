@@ -23,6 +23,7 @@
 """
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -53,13 +54,22 @@ if TYPE_CHECKING:
 
 
 #: 攻略热度映射常量表(排序立场数据,落策略层;数据源与口径见
-#: strategy-docs/12_line_and_intention.md §1.1——十类帖数→20 线类级映射,
+#: strategy-docs/12_line_and_intention.md §1.1——十类帖数→21 线类级映射,
 #: 长尾八线共享「其他长尾」桶;未登记线取 0 = 缺表 fail 方向)。
 #: 量级:每点 +:data:`cw_line_scales.HEAT_PER_POINT`(满热度 274 < 1 插件
 #: ——持有实证 > 社区先验)。
 LINE_HEAT: dict[str, int] = {
     # —— 十类(类级篇数)——
-    '列车同行': 274,        # 姬子列车
+    '列车同行·反震': 165,    # 姬子列车 A 反震(底稿 ~60%×274;批 3 拆分)
+    '列车同行·直伤': 70,     # 姬子列车 B 输出(底稿 ~25%×274;批 3 拆分)
+    # 特化 ~15%(≈39 篇,final_jizi C 节八变体)不拆挂——按特化形态主输出
+    # 结算方向归入声明(示意归属,版本重跑校准锚,不进 A/B 热度值):
+    # 战技点7永动→B(直伤系)/圣杯4→B(姬子保底过渡=输出核心,final_grail
+    # 「姬子保底过渡→双核心」)/欢愉5→B(开拓者绑定堆前台强度,final_yinlang
+    # 「前台强度轻松5000+」)/追击转→B(追击=附加攻击直伤)/直伤星期日→B
+    # (形态名明示)/仙舟8→B(召唤叠段直伤,无反震记载)/双姬子→B(输出
+    # 复用形态)/白厄混血→A(反震系;「姬子后台+白厄带队反震」外部线索归
+    # final_baie_reflect 篇)。对账:165+70+39=274(底稿姬子类全量)。
     '命运圣杯红A': 118,     # 圣杯双核心
     '双王圣杯': 118,        # 圣杯双核心
     '狼尊欢愉': 68,         # 银狼欢愉
@@ -90,7 +100,8 @@ LINE_HEAT: dict[str, int] = {
 #: 已登记分歧 = 火花星间旅人(聚类锚『火花』vs 攻略明文花火主C——评分锚
 #: 按攻略重述取花火,分歧登记在 final_comps 交叉核对记录)。
 LINE_ANCHOR: dict[str, str] = {
-    '列车同行': '姬子·启行',      # S 级真神(V4.4 合集);「核心到手使过渡板保留率翻倍」
+    '列车同行·反震': '姬子·启行',   # S 级真神;A/B 两套锚同卡(攻略「开局
+    '列车同行·直伤': '姬子·启行',   # 刷到即上」锚姬子本体,拆分只分引擎方向)
     '命运圣杯红A': 'Archer',      # 高倍率九五核心(任务系统产出,到手即接棒)
     '千冶减益': '千冶·刃',        # plaza 聚类 carry(n=29)
     '绯英欢愉': '绯英',
@@ -132,12 +143,16 @@ class OpeningCtx:
       均权——位面真值 CollectPlaneIntel 后逐位面的权重精细档先均权);
     - ``held_invest``:投资持有名集(active_strategies ∪ active_env)——
       投资环境分 + 投资策略分(通道派生)+ 扑满强敌可见通道(持有扑满
-      环境 = 经济环境产物开局可见)消费。
+      环境 = 经济环境产物开局可见)消费;
+    - ``held_equips``:装备持有多重集(批 3:装备证据分量输入面)——
+      key_equips 逐件持有证据(A/B 拆分线的分化面,design §5「B 唯一
+      分化面 = 装备证据」)。
     """
 
     enemy_affixes: tuple[str, ...] = ()
     plane_bosses: tuple[str, ...] = ()
     held_invest: frozenset[str] = frozenset()
+    held_equips: tuple[str, ...] = ()
 
 
 def opening_ctx_of(gs: GameState) -> OpeningCtx:
@@ -148,8 +163,10 @@ def opening_ctx_of(gs: GameState) -> OpeningCtx:
     """
     affixes = tuple(gs.enemy_affixes.value or ())
     bosses = tuple(b for b in (gs.plane_bosses.value or ()) if b)
+    equips = tuple(gs.equips.value or ())
     return OpeningCtx(enemy_affixes=affixes, plane_bosses=bosses,
-                      held_invest=held_invest_names_of(gs))
+                      held_invest=held_invest_names_of(gs),
+                      held_equips=equips)
 
 
 def held_chars_of(gs: GameState) -> frozenset[str]:
@@ -181,12 +198,15 @@ class LineScore:
     """线分数值分解(design §2 单值和的命名分量;``total`` = 各分量和)。
 
     分量即证据门判据面(:attr:`gate_positive` = env ∨ carry ∨ 骨架 ∨
-    插件 > 0,**不含热度**——12 号篇 §1.2「热度不是入选理由」保持)。
+    插件 > 0,**不含热度/装备**——12 号篇 §1.2「热度不是入选理由」保持;
+    装备证据只排序不点亮:纯装备零角色帧「线未点亮」语义保持,买到装备
+    ≠ 能上人)。
     """
 
     carry: int      # 证据·carry 层(锚 +8000/名 + 其余 core +4000/名)
     skeleton: int   # 证据·骨架层(key_items − carry,+2000/名)
     plugin: int     # 证据·插件层(线成员 − carry − key_items,+500/名)
+    equip: int      # 证据·装备层(key_equips 逐件持有,+500/件=插件档;批 3)
     heat: int       # 攻略热度(LINE_HEAT × +1/点)
     invest: int     # 投资环境分 + 投资策略分(通道派生,§3.1/§3.2)
     affix: int      # 词缀分(吃怕表 §3.3,含重开级/无燃料底线/兜底泛化)
@@ -194,8 +214,8 @@ class LineScore:
 
     @property
     def total(self) -> int:
-        return (self.carry + self.skeleton + self.plugin + self.heat
-                + self.invest + self.affix + self.boss)
+        return (self.carry + self.skeleton + self.plugin + self.equip
+                + self.heat + self.invest + self.affix + self.boss)
 
     @property
     def gate_positive(self) -> bool:
@@ -204,15 +224,31 @@ class LineScore:
                 or self.skeleton > 0 or self.plugin > 0)
 
 
+def equip_evidence_bonus(comp: Comp,
+                         held_equips: tuple[str, ...]) -> int:
+    """装备证据分量(批 3;design §5「B 唯一分化面 = 装备证据」的线分
+    承载):线 ``key_equips`` 逐件持有,每件 :data:`PLUGIN_BONUS`
+    (插件档复用——同为「线构成件的持有实证」,与角色插件层同族,
+    零新常数);多重集计数(key_equips 重复件按重复计,如以牙还牙甲×2)。
+
+    拆分线分化语义:A/B key_equips 无交集(甲族+外骨骼 vs 风暴潮+电锯+
+    冷笑话)→ 专属装备在手即该线证据上升、姊妹线不动。
+    """
+    held = Counter(held_equips)
+    return PLUGIN_BONUS * sum(min(held.get(name, 0), need)
+                              for name, need
+                              in Counter(comp.key_equips or []).items())
+
+
 def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
                          opening_ctx: OpeningCtx) -> LineScore:
     """线分数值分解(§1.1 单值和的分量计算;纯函数,同输入同值)。
 
-    证据层逐名一档(锚 > 其余 core > 骨架 > 插件——同名角色跨层不重复
-    计分:骨架 = key_items 命中 − carry,插件 = 线成员命中 − carry −
-    key_items);invest = 持有名逐个过环境/策略两通道派生(一名只命中
-    自家注册表,无双计);boss = Σ三只克制 + 非 boss 强敌(§3.4,批 2
-    落地——红绿灯经词缀行通道/扑满经投资持有通道)。
+    证据层逐名一档(锚 > 其余 core > 骨架 > 插件 > 装备件——同名角色跨层
+    不重复计分:骨架 = key_items 命中 − carry,插件 = 线成员命中 − carry −
+    key_items;装备 = key_equips 逐件持有);invest = 持有名逐个过环境/策略
+    两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
+    boss 强敌(§3.4——红绿灯经词缀行通道/扑满经投资持有通道)。
     """
     anchor = LINE_ANCHOR[comp.name]
     carry = carry_set(comp)
@@ -229,6 +265,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
               + CARRY_CORE * len(core_hits),
         skeleton=SKELETON_BONUS * len(skeleton_hits),
         plugin=PLUGIN_BONUS * len(plugin_hits),
+        equip=equip_evidence_bonus(comp, opening_ctx.held_equips),
         heat=HEAT_PER_POINT * LINE_HEAT.get(comp.name, 0),
         invest=invest,
         affix=affix_line_score(comp.name, opening_ctx.enemy_affixes),

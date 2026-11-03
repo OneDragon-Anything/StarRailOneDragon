@@ -52,9 +52,11 @@ EVIDENCE_UPGRADE: dict[tuple[str, str], int] = {
     ('量子同频邀请', '希儿量子'): EVIDENCE_UPGRADE_BONUS,
     ('量子同频星徽', '希儿量子'): EVIDENCE_UPGRADE_BONUS,
     ('量子同频星徽套组', '希儿量子'): EVIDENCE_UPGRADE_BONUS,
-    # 罗刹开局改变三月七身份 = 列车线策略驱动信号(final_jizi_train
-    # 直通线信号谱「策略驱动」层;final_comps README A3)。
-    ('本姑娘就是罗刹', '列车同行'): EVIDENCE_UPGRADE_BONUS,
+    # 罗刹开局改变三月七身份 = 列车系策略驱动信号(final_jizi_train
+    # 直通线信号谱「策略驱动」层;final_comps README A3)。三月七领航员
+    # A/B 双形态共用 → 拆分后两套同登(同加不改变 A/B 相对序)。
+    ('本姑娘就是罗刹', '列车同行·反震'): EVIDENCE_UPGRADE_BONUS,
+    ('本姑娘就是罗刹', '列车同行·直伤'): EVIDENCE_UPGRADE_BONUS,
 }
 
 #: 定义卡表(design §2「投资强档·定义卡」:黑塔纪元/专家邀请/飞光——
@@ -91,6 +93,11 @@ ENGINE_SYNERGY_FACTIONS: dict[str, tuple[str, ...]] = {
     # 两线主派同为减益,机制上面板同效)。
     '离火燎原': ('减益',),
 }
+# 姬子拆分(批 3)通道命中声明:通道②③④(类目派生)与⑤引擎表按羁绊键
+# 命中——列车系两套 form_tiers 同键(列车同行 4)→ 加分相同(语义正确:
+# 环境通道服务羁绊供给,不分引擎结算方向)。A/B 差异面归线分装备证据
+# 分量与词缀吃怕表(A 受击流不吃速度类增益/B 大招流吃充能类增益——
+# 未来引擎表新增列车条目时按 cw_affinity_table.LINE_ENGINE_KIND 轴挂)。
 
 #: 环境类目 → 通道档(design §3.1;经济/规则/时代三类目通用类不在表 =
 #: 线分 0;**专家类目走顾问入商店通道**——见 ``_advisor_line_bonus``)。

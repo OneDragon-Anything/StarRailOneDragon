@@ -11,9 +11,9 @@ data/affix_effects_data 的 ``AFFIX_EFFECTS`` 注册名(52 词缀,运行时采�
 其余 11 已审线扩行 + 未登记线兜底层(方向保守:只给怕不给吃)。
 
 同词缀方向逐线相反是本表存在理由(design §1 第 4 条「词缀吃怕是阵容
-特定知识」):正当防卫对万敌 +900、其余登记线均怕(−150,列车同行亦怕
-正当防卫);列车同行另吃受击触发族(忍无可忍/同步行动)+750(敌方
-多动=反震燃料)。
+特定知识」):正当防卫对万敌 +900、其余登记线均怕(−150,列车系 A/B
+两套亦怕正当防卫);列车同行·反震另吃受击触发族(忍无可忍/同步行动)
++750(敌方多动=反震燃料;·直伤 B 无吃行)。
 
 万敌无燃料底线(design §4 a 类·独例):开局词缀 ∩ 燃料集 = 空 →
 :data:`cw_line_scales.RESTART_PENALTY`(与重开级同档);燃料集 =
@@ -187,18 +187,18 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
         '极速制冷': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」;延展全局(保守向压分)'),
         '丢失幸运': AffixStance(score=FEAR_PENALTY, note='final_longtail_others 龙丹节「开局怕」;延展全局(保守向压分)'),
     },
-    # ===== 列车同行(final_jizi_train A 反震节;批 3 A/B 拆分后重写)=====
-    '列车同行': {
+    # ===== 列车同行·反震(A 主体;final_jizi_train A 反震节;批 3 拆分)=====
+    '列车同行·反震': {
         # 「词条:吃忍无可忍/同步行动/怪物提速;怕正当防卫/能量逃逸/时间刺客」
         # (final_jizi_train L25,A 反震主体形态)——怪物提速俗称待采集
         # (AFFIX_ALIASES_PENDING);+750=受击触发类燃料档(design §5 姬子A
         # 「吃…(+750 受击触发类)」,反震吃敌方多动)。
         '忍无可忍': AffixStance(
             score=AFFIX_STRONG_FUEL,
-            note='final_jizi_train A 节「吃忍无可忍」(受击触发类燃料);批 3 拆分重写'),
+            note='final_jizi_train A 节「吃忍无可忍」(受击触发类燃料)'),
         '同步行动': AffixStance(
             score=AFFIX_STRONG_FUEL,
-            note='final_jizi_train A 节「吃同步行动」(受击触发类燃料);批 3 拆分重写'),
+            note='final_jizi_train A 节「吃同步行动」(受击触发类燃料)'),
         '正当防卫': AffixStance(score=FEAR_PENALTY, note='final_jizi_train A 节「怕正当防卫」'),
         '能量逃逸': AffixStance(
             score=FEAR_PENALTY,
@@ -207,6 +207,17 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
         # 重症难题:§6 脆弱点「重症难题(治疗/护盾削弱)克三月七盾循环
         # (史料级)」(final_jizi_train L212-213)。
         '重症难题': AffixStance(score=FEAR_PENALTY, note='final_jizi_train §6 脆弱点「克三月七盾循环」(史料级)'),
+    },
+    # ===== 列车同行·直伤(B;final_jizi_train B 输出节无词条记载)=====
+    '列车同行·直伤': {
+        # 怕集同 A 保守复制(design §5「B 节无记载保守复制」——A 节类级
+        # counter 证据覆盖两形态);无吃行(受击燃料档属 A 反震引擎,B
+        # 直伤不吃)。注:机制推演 B 可能更怕正当防卫(直伤高频攻击吃
+        # 反伤),无实证不升档(design §5)。
+        '正当防卫': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
+        '能量逃逸': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
+        '时间刺客': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
+        '重症难题': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
     },
     # ===== 昼神阿雅 / 反甲白厄:词缀面无实证记载,不建行(走兜底层)=====
     # 昼神阿雅:counter 仅 boss 面(「counter:电视机 boss → 避」,boss 表辖)。
@@ -244,7 +255,8 @@ LINE_MAINC_ELEMENT: dict[str, str] = {
 # 判据 = 线主C排位(char_positions 覆盖 > cw_chars position 注册);
 # 'common' 无实证覆盖 = 前后台灵活/无固定主力面,不入轴(不泛化)。
 FRONT_LINES: frozenset[str] = frozenset({
-    '列车同行',        # 姬子·启行 front(@0-1 前排首位,final_jizi_train 站位节)
+    '列车同行·反震',   # 姬子·启行 front(@0-1 前排首位,final_jizi_train 站位节;A/B 共享 core/站位)
+    '列车同行·直伤',   # 同 A(拆分只分装备/引擎结算方向,站位不分岔)
     '命运圣杯红A',     # Archer front(构造机理:前排 0-3 位 102/120)
     '希儿量子',        # 希儿 front(×3C@0 标准式)
     '黄泉减益',        # 黄泉 front(×3C@0)
@@ -264,10 +276,15 @@ BACK_LINES: frozenset[str] = frozenset({
     '火花星间旅人',    # 花火 back(注册表)
 })
 
-#: B1 引擎型分类(20 线;README B1 三类 + final_comps 各篇引擎节/cw_comps
-#: 条目注释补核)。消费 = 兜底层泛化(大招流×能量逃逸;dot×净化身心)。
+#: B1 引擎型分类(21 线,批 3 姬子拆分;README B1 三类 + final_comps 各篇
+#: 引擎节/cw_comps 条目注释补核)。消费 = 兜底层泛化(大招流×能量逃逸;
+#: dot×净化身心)——A/B 两套均有词缀登记行走表不走泛化,轴值此处作
+#: 分类标注/文档锚(通道⑤未来条目挂轴声明:A 受击流不吃速度类增益/
+#: B 大招流吃充能类增益)。旧「姬子拆分前双轴任一 hit 即中档」声明随
+#: 拆分退役,各归各轴。
 LINE_ENGINE_KIND: dict[str, str] = {
-    '列车同行': '受击',      # 盾反姬子 A 主体(README B1 受击流;批 3 拆分改判)
+    '列车同行·反震': '受击',   # 盾反姬子 A 主体(README B1 受击流)
+    '列车同行·直伤': '大招',   # B 输出姬子:助战技直伤+风暴潮叠层(final_jizi B 节;批 3 归轴)
     '命运圣杯红A': '行动',   # Archer 战技连发(README B1 行动流)
     '千冶减益': '行动',      # 千冶·刃皮靴断层第一(速度=攻击触发频率,本条 plaza 校准注)
     '绯英欢愉': '大招',      # 终结技循环吃阿哈加成+永久增幅(README B1 大招流)
@@ -460,18 +477,27 @@ class BossStance:
 #: 其余条目无类级指向不外推);其余 16 线 boss 面空白声明接受(表尾注),
 #: 版本重跑攻略 boss 记载补登;boss 面初版单向(只登怕/重开级,无吃档)。
 BOSS_AFFINITY: dict[str, dict[str, BossStance]] = {
-    # ===== 列车同行(final_jizi_train 节奏与 counter 节)=====
+    # ===== 列车同行 A/B 两套(final_jizi_train 节奏与 counter 节)=====
     # 「counter:扑满(拖时间)/死龙/酒杯怪/电视机/存护星神/红绿灯(白厄子
-    # 形态)」(L77)——扑满/红绿灯归非 boss 强敌段;存护星神待验证映射表;
+    # 形态)」(L77)——姬子线 boss 克制引擎结算双形态同源(类级记载),
+    # 两套同登记;扑满/红绿灯归非 boss 强敌段;存护星神待验证映射表;
     # 红绿灯「(白厄子形态)」注记正名 = 克白厄子形态非姬子(design §3.4,
     # 与 README「红绿灯→转姬子」一致,不登本行)。
-    '列车同行': {
+    '列车同行·反震': {
         '灰手生命科技': BossStance(   # 死龙(BOSS_NICKNAMES 归位)
-            score=FEAR_PENALTY, note='final_jizi_train counter 节「死龙」(俗称经 BOSS_NICKNAMES 归位)'),
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「死龙」(A/B 双形态同源)'),
         '造梦兄弟影业': BossStance(   # 酒杯怪
-            score=FEAR_PENALTY, note='final_jizi_train counter 节「酒杯怪」'),
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「酒杯怪」(A/B 双形态同源)'),
         '造梦互动娱乐': BossStance(   # 电视机
-            score=FEAR_PENALTY, note='final_jizi_train counter 节「电视机」'),
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「电视机」(A/B 双形态同源)'),
+    },
+    '列车同行·直伤': {
+        '灰手生命科技': BossStance(
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「死龙」(A/B 双形态同源)'),
+        '造梦兄弟影业': BossStance(
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「酒杯怪」(A/B 双形态同源)'),
+        '造梦互动娱乐': BossStance(
+            score=FEAR_PENALTY, note='final_jizi_train counter 节「电视机」(A/B 双形态同源)'),
     },
     # ===== 希儿量子(final_seele_quantum counter 节「蕉研组 boss(攻略)」)=====
     '希儿量子': {
@@ -526,13 +552,19 @@ STRONG_ENEMY_AFFINITY: dict[str, dict[str, BossStance]] = {
     },
     # 扑满怕档(counter 有解降档,design §3.3):姬子反震慢速「打不动扑满
     # 拖到结束」,但瓦尔特延后倒计时是机制解(final_jizi_train「老杨必拿」)
-    # → 降档为怕 −150 而非重开级。定性出处注:拖时间克反震慢速为
+    # → 降档为怕 −150 而非重开级(A/B 双形态同登记——拖时间克慢速对直伤
+    # 形态同向,B 无独立解记载)。定性出处注:拖时间克反震慢速为
     # final_jizi_train A 节记载;「扑满 = 经济环境产物」的实机呈现面
     # (过热环境局奖励节点扑满化)出处 = invest_effects.md 经济过热条。
-    '列车同行': {
+    '列车同行·反震': {
         '扑满': BossStance(
             score=FEAR_PENALTY,
             note='final_jizi_train「打不动扑满拖到结束」;瓦尔特延后=机制解降档(design §3.3)'),
+    },
+    '列车同行·直伤': {
+        '扑满': BossStance(
+            score=FEAR_PENALTY,
+            note='A 节类级记载 A/B 同源(拖时间克慢速;瓦尔特机制解同用)'),
     },
 }
 
