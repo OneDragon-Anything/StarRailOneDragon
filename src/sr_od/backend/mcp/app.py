@@ -35,6 +35,7 @@ from sr_od.backend.mcp.config_app import (
     make_list_app_configs,
     make_set_config,
 )
+from sr_od.backend.mcp.mys_tools import register_mys_tools
 from sr_od.backend.mcp.prompts import (
     register_prompt_tools,
     register_prompts,
@@ -556,6 +557,9 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="删除配置列表项"))(make_delete_config_item(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="描述配置结构"))(make_describe_config(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出可改配置"))(make_list_app_configs(backend))
+    # 米游社账号三工具（登录/登出/角色列表；控制器单例在首次调用时装配，
+    # 注册期不构建——backend 为测试替身时零副作用）
+    register_mys_tools(mcp, backend)
     register_prompts(mcp)
     register_prompt_tools(mcp)
 
