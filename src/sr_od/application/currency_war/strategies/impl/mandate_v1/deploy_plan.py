@@ -30,6 +30,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import get_char
+from sr_od.application.currency_war.kernel.cw_comps import parse_char_position
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_FRONT_CAPACITY,
     bench_slot_unit,
@@ -77,8 +78,10 @@ def deploy_row_pref(char_id: str, comp: object | None) -> str:
     """
     cp = getattr(comp, 'char_positions', None) or {}
     hit = cp.get(char_id)
-    if hit in ('front', 'back'):
-        return hit
+    if hit is not None:
+        # 槽位级值('front@0' 类)经 parse 取排——排路由只消费排维
+        row, _slot = parse_char_position(hit)
+        return row
     ch = get_char(char_id) if char_id else None
     if ch is not None:
         return ch.position_pref()
@@ -140,7 +143,18 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
         else:
             row, chosen, fallback = 'back', be, fe
         if chosen:
-            slot = chosen.pop(0)
+            # 槽位级登记优先:该件在 char_positions 带槽位值且指定槽
+            # 在本排空槽集内 → 优先占(软约束:被占/超容回退最低空槽)
+            slot = None
+            _cp = getattr(comp, 'char_positions', None) or {}
+            _hit = _cp.get(_slot_cid(bench[bi]))
+            if _hit is not None:
+                _row_p, _slot_p = parse_char_position(_hit)
+                if _slot_p is not None and _row_p == row and _slot_p in chosen:
+                    chosen.remove(_slot_p)
+                    slot = _slot_p
+            if slot is None:
+                slot = chosen.pop(0)
         elif fallback:
             row = 'front' if row == 'back' else 'back'
             slot = fallback.pop(0)

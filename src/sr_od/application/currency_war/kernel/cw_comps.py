@@ -95,10 +95,15 @@ class Comp:
     key_equips: list[str] = field(default_factory=list)      # 关键装备(可含重复,如阿雅需 2 反重力皮靴)
     shared_chars: list[str] = field(default_factory=list)    # 与其他阵容共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
-    # 阵容特定站位要求(角色→"front"/"back"),覆盖注册表 position_pref 默认
+    # 阵容特定站位要求(角色→排级或槽位级),覆盖注册表 position_pref 默认
     # (CW 玩法每角色的可选站位真值,cw_chars.position:技能效果绑定站位)——
-    # 攻略实证:爻光必后台(绯英攻略反向论证:后台跑条给前台多开大,总伤更高)、万敌独前排(燃血吃受击)、
-    # 知更鸟前台(追击支撑)。空 = 全按注册表默认。
+    # 值域:'front'/'back'(排级,自适应选槽)| 'front@0'-'front@3'/
+    # 'back@4'-'back@9'(槽位级,@n = board_index 全局槽位坐标,与攻略
+    # 记号同源:0-3=前排槽1-4、4-9=后排槽1-6;解析见 parse_char_position)。
+    # 槽位级语义 = 落位优先占该槽(被占/超容 → 该排自适应回退,软约束)。
+    # 攻略实证:爻光必后台(后台跑条给绯英多开大,总伤更高)、万敌独前排
+    # (燃血吃受击)、知更鸟前台(追击支撑)、万敌/绯英@0 一号位(标准式)、
+    # 三月七@4-6 后排中段(护盾相邻覆盖最大化)。空 = 全按注册表默认。
     char_positions: dict[str, str] = field(default_factory=dict)
     version_tag: str = "V4.4"    # 版本维护用
     flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 form_tiers)
@@ -226,11 +231,48 @@ class Comp:
         # 经 member_rank_of 读到的恒是显式表。
         if not self.member_priority:
             self.member_priority = derive_member_priority(self)
+        # 站位值域建库期校验(排级/槽位级;消费端信任值合法,解析
+        # 单一源 = parse_char_position)
+        for _who, _pos in self.char_positions.items():
+            if _pos not in _VALID_CHAR_POSITIONS:
+                raise ValueError(
+                    f'{self.name}: char_positions[{_who!r}] = {_pos!r} '
+                    '不在合法值域(front/back/front@0-3/back@4-9)')
 
     @property
     def all_factions(self) -> set[str]:
         """核心 + 弹性羁绊全集(亲和/过滤/板面判定用;成型判定仍只看 form_tiers)。"""
         return set(self.factions) | set(self.flex_factions)
+
+
+#: char_positions 合法值域(排级两值 + 槽位级;@n = board_index 全局坐标)
+_VALID_CHAR_POSITIONS: frozenset[str] = frozenset({'front', 'back'}) | {
+    f'front@{i}' for i in range(4)} | {f'back@{i}' for i in range(4, 10)}
+
+
+def parse_char_position(value: str) -> tuple[str, int | None]:
+    """char_positions 值解析 → (排, 排内槽号或 None)。
+
+    值域与坐标系(字段值 = board_index 全局槽位坐标,与攻略记号同源):
+    - ``'front'``/``'back'``:排级 → ``(排, None)``(落位自适应选槽);
+    - ``'front@0'``-``'front@3'``/``'back@4'``-``'back@9'``:槽位级 →
+      返回**排内 1 基槽号**(``front@0``→``('front', 1)``、
+      ``back@5``→``('back', 2)``——@4=后排槽1,依此类推 @n-3);
+      语义 = 落位优先占该槽(被占/超容 → 该排自适应回退,软约束)。
+    值合法性由 ``Comp.__post_init__`` 建库期校验;本函数对未校验值
+    raise ValueError(数据错误早暴露,禁静默降级)。"""
+    if value in ('front', 'back'):
+        return value, None
+    if '@' in value:
+        row, _, num = value.partition('@')
+        if row in ('front', 'back') and num.isdigit():
+            slot = int(num)
+            if row == 'front' and 0 <= slot <= 3:
+                return row, slot + 1
+            if row == 'back' and 4 <= slot <= 9:
+                return row, slot - 3
+    raise ValueError(f'char_positions 非法值: {value!r}'
+                     '(合法: front/back/front@0-3/back@4-9)')
 
 
 def derive_key_equips(comp: Comp) -> list[str]:
@@ -512,6 +554,7 @@ COMP_LIBRARY: list[Comp] = [
         # 恒等约束(多重集不变)下以 A 流首选件(外骨骼)入表。B 流拆分放开恒等时
         # 姬子侧补 以牙还牙甲×2。
         # 成型羁绊队:战力=列车同行4 档乘区(评分求交侧已随评分器族删除,知识载体 = MECHANIC 表)
+        char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(攻略 @4-6,星3「低血+相邻目标也获得护盾」→中段=相邻覆盖最大化,final_jizi_train 关键站位节;取中值@5)
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         # ===== 姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
         family="姬子列车",
@@ -658,7 +701,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区
-        char_positions={"爻光": "back", "绯英": "front"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排一号位(攻略 Final 标准式 25 帖归纳 @0,2026-11-04 Common 全量审查登记)
+        char_positions={"爻光": "back", "绯英": "front@0"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排1号位(攻略 Final 标准式@0,25 帖归纳,2026-11-04 Common 全量审查登记)
         transition_chars=["花火"],   # 交叉核对注:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # ===== 欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族",
@@ -1280,7 +1323,7 @@ COMP_LIBRARY: list[Comp] = [
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
 
-        char_positions={"万敌": "front"},   # 站位:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
+        char_positions={"万敌": "front@0"},   # 站位:万敌永远前排1号位(攻略硬约束,final_wandi_burn「万敌@0 独占前排」;燃血吃受击)
         key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 交叉核对注:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
 # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # 长夜月是 core(夜半记录)

@@ -47,6 +47,7 @@ from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_bond_equips import (
     unit_bond_tags,
 )
+from sr_od.application.currency_war.kernel.cw_comps import parse_char_position
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     TRANSITION_TRAITS,
     _bonds_named,
@@ -443,8 +444,10 @@ def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
     prefs: dict[str, str] = {}
     for u in members:
         hit = cp.get(u.char_id)
-        if hit in ('front', 'back'):
-            prefs[u.char_id] = hit
+        if hit is not None:
+            # 槽位级值('front@0' 类)经 parse 取排——排分配只消费排维,
+            # 槽位维在 target 第三元承载(diff 执行层落位)
+            prefs[u.char_id] = parse_char_position(hit)[0]
         elif u.origin == 'board' and u.row in ('front', 'back'):
             prefs[u.char_id] = u.row
         else:
@@ -463,7 +466,9 @@ def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
     # ——对侧空也迁,「and 对侧非空」旧前置会使纯单排偏好板卡死在
     # 溢出态返回 None)。两排全溢出 = K 超物理容(结构不可达,防御)。
     def _soft(u: SearchUnit, row: str) -> int:
-        return 1 if cp.get(u.char_id) == row else 0
+        hit = cp.get(u.char_id)
+        return 1 if (hit is not None
+                     and parse_char_position(hit)[0] == row) else 0
     guard = len(members) + 2
     while (len(front) > panel.front_capacity
            or len(back) > panel.back_capacity) and guard > 0:
@@ -500,8 +505,8 @@ def _position_score(members: list[SearchUnit], rows: dict[str, str],
     pos = 0
     for u in members:
         hit = cp.get(u.char_id)
-        if hit in ('front', 'back'):
-            want = hit
+        if hit is not None:
+            want = parse_char_position(hit)[0]
         elif u.origin == 'board' and u.row in ('front', 'back'):
             want = u.row
         else:
@@ -536,9 +541,11 @@ def search_deploy_target(panel: DeploySearchPanel,
                          ) -> dict[str, tuple[str, int]]:
     """统一部署搜索主入口(三段;纯函数零 IO,§1 接口契约④)。
 
-    返回 target_board = {角色名: (排, 选定星)}(接口契约②,载荷星维
-    承载就位粒度名+排+星)。候选全不可排(容量矛盾,结构不可达防御)
-    → 返回空 dict(消费端 fail-closed 按现板定型,申报)。
+    返回 target_board = {角色名: (排, 选定星, 槽位或 None)}(接口契约②,
+    载荷星维承载就位粒度名+排+星;槽位维 = char_positions 槽位级登记
+    的排内 1 基槽号,None = diff 执行层自适应落位)。候选全不可排
+    (容量矛盾,结构不可达防御)→ 返回空 dict(消费端 fail-closed
+    按现板定型,申报)。
     """
     rng = random.Random(_situation_seed(panel))
     comp_pos = panel.locked_comp if panel.locked else None
@@ -866,7 +873,15 @@ def search_deploy_target(panel: DeploySearchPanel,
     if best_out is None:
         return {}
     members, rows = best_out
-    return {u.char_id: (rows[u.char_id], u.star) for u in members}
+    # target 第三元 = 槽位级登记的排内 1 基槽号(char_positions 经
+    # parse_char_position;无登记/排级 = None → diff 执行层自适应落位)。
+    # 槽位不进站位分/排分配(搜索只定排与成员,槽位是执行层落位约束)
+    _cp = (getattr(comp_pos, 'char_positions', None) or {}) \
+        if comp_pos is not None else {}
+    _slots = {
+        n: parse_char_position(v)[1] for n, v in _cp.items()}
+    return {u.char_id: (rows[u.char_id], u.star,
+                        _slots.get(u.char_id)) for u in members}
 
 
 def _transition_pairs(panel: DeploySearchPanel) -> list[tuple[str, ...]]:

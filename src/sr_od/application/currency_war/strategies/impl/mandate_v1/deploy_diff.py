@@ -36,12 +36,18 @@ _DIFF_ACTION_CAP: int = 40
 
 def deploy_diff_actions(
         gs: GameState,
-        target: dict[str, tuple[str, int]],
+        target: dict[str, tuple[str, int, int | None]],
         *,
         fresh: frozenset[str] = frozenset(),
         ) -> list:
     """现板面 → target 的统一拖动/换星直卖动作序列(§3;幂等——每帧
     重算取序,执行进度由容器逻辑态自上报推进)。
+
+    target 值 = (排, 星, 槽位或 None);槽位级(char_positions 槽位
+    登记,board_index 转排内 1 基)**只在落位时机生效**——上场
+    (_place_missing)与换排(_fix_misrow)的目标槽优先占指定槽,
+    被占/超容回退 D-4 自适应序;**不触发已就位件(名+排+星全对)
+    的槽位重排**(软约束,避免无谓扰动)。
 
     动作序 = 换星直卖(同名异星对两步之一,§3.3)→ 缺位者上场(bench
     → 场上,D-4 落位槽选择)→ 错位者排修正(场上直拖一步)→ 多余者
@@ -75,7 +81,7 @@ def deploy_diff_actions(
             for i, cell in enumerate(row_list):
                 if cell is None or cell[0] not in target:
                     continue
-                t_row, t_star = target[cell[0]]
+                t_row, t_star, _t_slot = target[cell[0]]
                 if cell[1] >= t_star:
                     continue
                 # bench 有该名高星副本 → 直卖场上低星(两步之一)。
@@ -112,7 +118,8 @@ def deploy_diff_actions(
 
 
 def deploy_diff_target_actions(session, gs: GameState,
-                               target: dict[str, tuple[str, int]]) -> list:
+                               target: dict[str, tuple[str, int, int | None]],
+                               ) -> list:
     """目标板 → 差分动作序的 session 感知入口(fresh 拦截账本自动装配;
     第 6 步常规部署 / 计划游标驱板 / 出战链部署原子序三消费面共用,
     禁各面自写 fresh 装配)。
@@ -168,29 +175,44 @@ def _bench_slots_of(gs) -> list:
     return list(bench_view_slots_of(gs) or [])
 
 
-def _target_slot_for(domain: str, row_list: list, target) -> int | None:
+def _target_slot_for(domain: str, row_list: list, target,
+                     prefer: int | None = None) -> int | None:
     """D-4 落位槽选择:同排内取「多余者(名 ∉ target)> 错位者(在
     target 排错)」的槽,禁占已就位者(名+排皆对)与未知件槽(禁挤);
-    空槽最优先。返回排内 1 基槽号;满员(无可占槽)→ None。"""
+    空槽最优先。返回排内 1 基槽号;满员(无可占槽)→ None。
+
+    ``prefer``(char_positions 槽位级登记经 target 第三元传入):指定槽
+    状态可占(空/多余者/错位者——同 D-4 可占性分类)→ 优先返回;
+    不可占(已就位者/未知件占)或超排容量 → 回退自适应序(软约束)。"""
     empty = None
     extra = None
     misrow = None
+    prefer_ok = False
     for i, cell in enumerate(row_list):
+        slot_no = i + 1
         if cell is None:
             if empty is None:
-                empty = i + 1
+                empty = slot_no
+            if slot_no == prefer:
+                prefer_ok = True
             continue
         if cell[0] == '':
             continue   # 未知件:禁挤
         if cell[0] not in target:
             if extra is None:
-                extra = i + 1
+                extra = slot_no
+            if slot_no == prefer:
+                prefer_ok = True
             continue
         if target[cell[0]][0] != domain:
             if misrow is None:
-                misrow = i + 1
+                misrow = slot_no
+            if slot_no == prefer:
+                prefer_ok = True
             continue
-        # 已就位者(名+排皆对):禁占
+        # 已就位者(名+排皆对):禁占(prefer 命中亦不让)
+    if prefer is not None and prefer_ok:
+        return prefer
     for pick in (empty, extra, misrow):
         if pick is not None:
             return pick
@@ -208,7 +230,7 @@ def _place_missing(target, front: list, back: list, bench: list,
     bench 源槽 = 该名副本槽;目标槽被占 = 交换(被占者回 bench 源槽,
     bench 占用不变)。"""
     on_board = {c[0] for c in (*front, *back) if c is not None and c[0]}
-    for name, (row, _star) in sorted(target.items()):
+    for name, (row, _star, t_slot) in sorted(target.items()):
         if name in on_board:
             continue
         src = next((i for i, bc in enumerate(bench)
@@ -216,7 +238,7 @@ def _place_missing(target, front: list, back: list, bench: list,
         if src is None:
             continue   # 缺位者不在 bench(被合并/被卖)→ 无动作帧
         row_list = front if row == 'front' else back
-        slot = _target_slot_for(row, row_list, target)
+        slot = _target_slot_for(row, row_list, target, prefer=t_slot)
         if slot is None:
             continue   # 容量矛盾/禁挤形态 → 无动作帧(卡死计数域)
         occ = row_list[slot - 1]
@@ -241,13 +263,13 @@ def _fix_misrow(target, front: list, back: list,
         for i, cell in enumerate(row_list):
             if cell is None or cell[0] == '' or cell[0] not in target:
                 continue
-            t_row, _t_star = target[cell[0]]
+            t_row, _t_star, t_slot = target[cell[0]]
             if t_row == src_domain:
                 continue
             if _fresh_ok(cell, fresh):
                 continue   # fresh 件换排跳过挂起
             dst_list = front if t_row == 'front' else back
-            slot = _target_slot_for(t_row, dst_list, target)
+            slot = _target_slot_for(t_row, dst_list, target, prefer=t_slot)
             if slot is None:
                 continue
             occ = dst_list[slot - 1]
@@ -290,7 +312,7 @@ def _disembark_extra(target, front: list, back: list, bench: list,
 
 
 def diff_settled(gs: GameState,
-                 target: dict[str, tuple[str, int]]) -> bool:
+                 target: dict[str, tuple[str, int, int | None]]) -> bool:
     """就位判定(名+排+星全对):diff 空 = 已收敛。计划执行期的卡死
     检测数据源(§3.5:观察帧对账后的已就位集)。"""
     return settled_count(gs, target) == len(target) and not _extra_on_board(
@@ -298,7 +320,7 @@ def diff_settled(gs: GameState,
 
 
 def settled_count(gs: GameState,
-                  target: dict[str, tuple[str, int]]) -> int:
+                  target: dict[str, tuple[str, int, int | None]]) -> int:
     """已就位名字数(名+排+星全对者;计划游标 progress_mark 数据源,
     §3.5 计数域 = 观察帧对账后的已就位集)。"""
     front, back = _rows_of(gs)
@@ -315,7 +337,7 @@ def settled_count(gs: GameState,
 
 
 def _extra_on_board(gs: GameState,
-                    target: dict[str, tuple[str, int]]) -> bool:
+                    target: dict[str, tuple[str, int, int | None]]) -> bool:
     """多余者(场上名 ∉ target 的已知身份件)在场判定。"""
     front, back = _rows_of(gs)
     for u in (*front, *back):
