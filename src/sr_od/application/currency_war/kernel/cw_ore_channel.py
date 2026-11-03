@@ -10,6 +10,9 @@ details/ore-reward-channel.md §4-§5)。
 两处即键漂移(声明金被「消失清洗 + 新现重掷」链路静默蒸发)。两端
 (live 3.4 / sim 3.3 接线)spheres 写一律经 :func:`report_spheres_observed`,
 禁第二写径。
+(范围注记:「一律经此」辖**观察写径**——动作/获得侧直写 spheres 为
+策略晶矿授予矿新立形(采晶矿上报触发腿 + 策略卡获得链立刻腿),授予矿
+身份若与后续观察真值不配对由步序 5 消失清洗自清,零观察写径污染。)
 
 通道分工(硬约束,依据 = ``cw_game_state.write_logic_rand`` docstring:
 附着奖励在实机是猜测 → 只能走随机态;通道混域会让消费门

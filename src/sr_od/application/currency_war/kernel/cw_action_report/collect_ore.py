@@ -31,9 +31,13 @@ __init__`` docstring)。本包 → 容器单向依赖。
 ``cw_effect_inventory.ore_open_total``,消费方 = 战技点契约触发器);
 ②**环境条件发放分支**(``cw_investments.ENV_ORE_OPEN_GRANTS`` 在册环境:
 战技点契约) = 计数入账后尾部触发检查(``check_env_ore_open_grants``,
-与 refresh_shop 环境条件发放分支同构)——世界发放域,不属计数/采样
-语义;sim 与生产同段 op 代码同口,单点覆盖双端。窗序确定:晶矿自身
-奖励写(含合并升星触发分支)→ 晶矿开启计数入账 → 战技点契约触发分支。
+与 refresh_shop 环境条件发放分支同构);③**策略卡晶矿开启发放分支**
+(``cw_investments.STRATEGY_ORE_OPEN_EFFECTS`` 在册策略卡:黄晶矿工首例)
+= 契约腿后独立触发检查(``check_strategy_ore_open_effects``,逐开掷
+低一档腿 + 授予矿世界写;开成点色档列按载荷序收集,跳点不入列)——
+世界发放域,不属计数/采样语义;sim 与生产同段 op 代码同口,单点覆盖
+双端。窗序确定:晶矿自身奖励写(含合并升星触发分支)→ 晶矿开启计数
+入账 → 战技点契约触发分支 → 策略卡晶矿开启触发分支。
 """
 from __future__ import annotations
 
@@ -116,7 +120,9 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     晶矿开启计数与战技点契约触发发放:整批奖励写毕后 ``opened`` 经
     ``record_ore_open`` 单口入账,再尾部触发检查(check_env_ore_open_
     grants;计数先入账后检查,窗序 = 矿奖励 → 计数 → 触发分支;
-    opened == 0 早退路径零计数零触发——分支清单详见模块头)。
+    opened == 0 早退路径零计数零触发——分支清单详见模块头)。策略卡晶矿
+    开启触发发放腿同尾部独立调用块(契约腿后;开成点色档列消费,持卡
+    掷点授予矿,check_strategy_ore_open_effects,窗序 = 契约分支后)。
     """
     _validate_sig(sig, ('logic_action',))
     from sr_od.application.currency_war.kernel.cw_action_report import (
@@ -165,6 +171,9 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     skipped = 0
     missing_level = 0
     merge_facts: list[tuple[str, int]] = []
+    # 开成点色档列(载荷序;策略卡晶矿开启触发腿消费——席满/缺级跳点
+    # 不入列,「点开才触发」与计数分支同口径)
+    opened_tiers: list[str] = []
 
     def _collect_merge(cid: str, new_star: int) -> None:
         # 升星事实采集(合并升星触发发放;纯追加,发火在整批写毕后)
@@ -209,6 +218,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             detached.pop(attach_key, None)
             _w_rand(gs.ore_rewards, detached, f'ore_reward_detach#ore{k}')
         opened += 1
+        opened_tiers.append(p[0])
 
         written = {'spheres'}
         rolled_domain = {'gold': 'gold', 'equip': 'equips',
@@ -317,12 +327,28 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 晶矿开启计数分支 + 环境条件发放分支(整批奖励写毕后收尾:窗序
     #    确定 = 矿奖励写(含合并升星触发分支)→ 计数入账 → 战技点契约
-    #    触发分支;计数先入账后检查,检查时计数现值含本批。「点开才
-    #    计数」:opened 只计开成点,席满/缺项∧level 缺读跳点不入账;
-    #    opened == 0 早退路径零计数零触发)——
+    #    触发分支 → 策略卡开启触发分支;计数先入账后检查,检查时计数现值
+    #    含本批。「点开才计数」:opened 只计开成点,席满/缺项∧level 缺读
+    #    跳点不入账;opened == 0 早退路径零计数零触发)——
     if opened:
         gs.effects.record_ore_open(opened)
         check_env_ore_open_grants(gs, _grp_sig)
+        # —— 策略卡晶矿开启触发发放腿(「开启晶矿时」族,黄晶矿工 id
+        #    302101 首例,注册表 = STRATEGY_ORE_OPEN_EFFECTS):逐开掷
+        #    低一档腿 + 授予矿世界写;live 同口掷 = 预测写(观察覆盖自愈),
+        #    sim = 世界真值。函数内自门持卡交集(未持卡零写零流键消耗);
+        #    与契约腿独立 try 互不短路。best-effort:发放分支异常不阻塞
+        #    上报主链(合并升星触发分支同纪律)。kernel 反向模块级零
+        #    import 契约:函数内惰性取。——
+        try:
+            from sr_od.application.currency_war.kernel.cw_gain_chain import (
+                check_strategy_ore_open_effects,
+            )
+            check_strategy_ore_open_effects(gs, tuple(opened_tiers),
+                                            sig=_grp_sig, level=level)
+        except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
+            log.warning(f'[cw-ore] 策略卡晶矿开启发放分支失败(不阻塞):'
+                        f'{e}')
 
     if opened == 0:
         # 批内含缺项∧level 缺读跳点即非「全部席满跳过」——具体原因

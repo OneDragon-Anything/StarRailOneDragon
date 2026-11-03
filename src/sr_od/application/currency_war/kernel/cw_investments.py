@@ -6252,3 +6252,52 @@ def _validate_strategy_equip_count_xp_grants() -> None:
 
 
 _validate_strategy_equip_count_xp_grants()
+
+
+# ===== 策略晶矿开启效果注册表(黄晶矿工 id 302101 首例,策略卡域
+# ===== 「开启晶矿时」触发侧首例;白名单制,各建各表——发放注册表家族
+# ===== 纪律,禁从效果原文自动猜装)=====
+# 卡面原文(cw_invest_data.py):「开启晶矿时，有50%概率获得一个低一档
+# 的晶矿，有极低概率获得棱彩晶矿。立刻获得一个黄金晶矿。」
+# 键 = 策略规范名;值 = (低一档概率, 立刻黄金晶矿数) 二元组:
+# - 低一档概率 = 逐开掷点值(「有50%概率」卡面直读,每次晶矿开启独立掷);
+# - 立刻黄金晶矿数 = 获得时点发放量(「立刻获得一个」卡面直读,现值
+#   唯一成员 = 1)。
+# 「极低概率获得棱彩晶矿」腿 desc 无数值,零建模不进表值(披露键见
+# STRATEGY_ORE_OPEN_ASSUMPTION_KEYS;若后续拍定数值,表扩三元组零结构变更)。
+# 与 ENV_ORE_OPEN_GRANTS 辨析:彼表键域 = 环境名×阈值封账(战技点契约,
+# 发角色),本表键域 = 策略名×逐开概率(发矿),键形/值形/校验/触发载体
+# 均不同,禁互挂。
+STRATEGY_ORE_OPEN_EFFECTS: dict[str, tuple[float, int]] = {
+    '黄晶矿工': (0.5, 1),
+}
+
+#: 建模假设档披露键(desc 空白处申报,消费面 = 披露清单,防模型口径被
+#: 误当已证真值;值串常驻、随局可辨):
+#: - strategy_ore_tier_down_prism_prob_unknown: 「极低概率获得棱彩晶矿」
+#:   腿概率值 desc 无数(定性词),按「desc 没写明的数值一律放弃建模」
+#:   在册裁定放弃,触发检查只掷低一档腿;
+#: - strategy_ore_tier_chain_inferred: 低一档链序(棱彩→金→蓝→灰)系
+#:   推断非档案——视觉半径带 gold~44/blue~32/gray~18 单调递减
+#:   (cw_identity_obs 建档注释)+ 卡池品质阶梯 棱彩>金 词面对齐;蓝/灰
+#:   官方矿名零记载,实机首遇校归 game 侧补档。
+STRATEGY_ORE_OPEN_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'strategy_ore_tier_down_prism_prob_unknown',
+    'strategy_ore_tier_chain_inferred',
+)
+
+
+def _validate_strategy_ore_open_effects() -> None:
+    """STRATEGY_ORE_OPEN_EFFECTS 构建校验(import 即炸;治理口径 =
+    2026-10-28「笔误哨删/漂移哨留」同族表——本域唯一哨:孤儿键,表键
+    必须在 INVESTMENT_STRATEGIES,版本改名/移除后静默失联;概率/金矿数
+    为卡面手抄常量,值形查按治理不加,行值防线 = 本表域注册行直测锁)。"""
+    orphans = [n for n in STRATEGY_ORE_OPEN_EFFECTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_ORE_OPEN_EFFECTS 孤儿键(base 无此卡?):'
+            f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+
+
+_validate_strategy_ore_open_effects()

@@ -27,6 +27,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
+    STRATEGY_ORE_OPEN_EFFECTS,
     RandomCharSpec,
     dakuozhao_deduction_plan,
     random_char_pool,
@@ -950,10 +951,53 @@ def _make_char_grant_effect(char: str, count: int = 1) -> Callable[..., list[str
 #: 由 PICK_INVEST_EFFECTS 键集闭集锁注册即红兜住)
 _STRATEGY_DELAYED_TWO_LEG_GRANTS: tuple[str, ...] = ('人才激励', '人才激励+')
 
+
+def _make_ore_open_pick_effect(count: int) -> Callable[..., list[str]]:
+    """晶矿立刻腿效果体工厂(黄晶矿工 id 302101 首例;卡文「立刻获得一个
+    黄金晶矿」获得时点世界写,闭包销 = 发放金矿数,取值自
+    ``cw_investments.STRATEGY_ORE_OPEN_EFFECTS`` 表值位 1——工厂自表生成
+    禁另写字面量,箱腿 A4 教训:效果体闭包常量与登记表两处独立字面量的
+    漂移在备战断言不可见;触发腿与获得链共用同一注册表单源)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``;**rng 消费** = 矿内容采样
+    (:func:`roll_ore_reward` 必耗随机,骇客腿 roll_hacker_mod 先例——
+    「金矿确定发放」仅对发放物数量成立,矿内容是采样面;箱腿「rng 不
+    消费」类比不适用;流键 = pick_invest_strategy 既有注入,零新流键)。
+    世界写 = ``cw_gain_chain._grant_ores_to_world``(与晶矿开启触发腿
+    同一授予写函数两调用点复用,禁两实现:合成形序空间 max+1 续接 +
+    ore_rewards 授予时点 roll;level 缺读 = 矿仍入世界无附着,点击走既有
+    缺项兜底;``gs.spheres.value`` None 直构 OreSight 起底)。live 该写 =
+    随机态预测(实机给矿位置未采),下一备战轻段现读覆盖自愈;sim = 世界
+    真值。效果串 = 金矿 grant 串一条。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        # 惰性 import 授予写函数与 evidence 基串(运行时解析破环;模块
+        # docstring import 方向声明——本模块效果体函数内惰性 import 链
+        # 模块,先例 = 骇客/箱腿)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            _STRATEGY_ORE_PICK_EV,
+            _grant_ores_to_world,
+        )
+        level = gs.level.value
+        n = _grant_ores_to_world(gs, ('金',) * count, sig=sig,
+                                 level=level, rng=rng,
+                                 evidence_base=_STRATEGY_ORE_PICK_EV)
+        return [f'{_STRATEGY_ORE_PICK_EV}#{n}'] if n else []
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
        for name, item in _STRATEGY_BOX_GRANTS.items()},
+    # 晶矿立刻腿(黄晶矿工 id 302101 首例;卡文「立刻获得一个黄金晶矿」
+    # 获得时点世界写):工厂自 STRATEGY_ORE_OPEN_EFFECTS 表生成(单源,
+    # 触发腿同表 = cw_gain_chain.check_strategy_ore_open_effects,零双
+    # 字面量;表扩员自动跟随)。
+    **{name: _make_ore_open_pick_effect(count)
+       for name, (_prob, count) in STRATEGY_ORE_OPEN_EFFECTS.items()},
     **{name: _make_reinforcement_effect(pairs)
        for name, pairs in _STRATEGY_REINFORCEMENT_GRANTS.items()},
     **{name: _make_random_equip_effect(cat, n)

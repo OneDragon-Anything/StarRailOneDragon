@@ -82,6 +82,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
     ChannelSig,
     GameState,
+    OreSight,
     Unit,
     _bridge_sig,
     _emit_defect,
@@ -124,6 +125,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_HP_LOSS_GRANTS,
     STRATEGY_LEVEL_GRANTS,
     STRATEGY_MERGE_GRANTS,
+    STRATEGY_ORE_OPEN_EFFECTS,
     STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
@@ -132,6 +134,10 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     resolve_plane_node_seqs,
+)
+from sr_od.application.currency_war.kernel.cw_ore_reward import (
+    OreReward,
+    roll_ore_reward,
 )
 from sr_od.application.currency_war.kernel.cw_pool import grant_char_pool
 from sr_od.application.currency_war.kernel.cw_system_cards import (
@@ -2455,6 +2461,170 @@ def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
               evidence=f'on_strategy_gained:{"+".join(newly)}#reward_ore',
               sig=sig)
     return total
+
+
+# ===== 晶矿开启触发发放域(黄晶矿工 id 302101 策略卡域「开启晶矿时」
+# ===== 触发侧首例;注册表 = cw_investments.STRATEGY_ORE_OPEN_EFFECTS,
+# ===== 与环境侧战技点契约表各建各表禁互挂)=====
+
+#: 触发腿采样具名键(模块内近函数,消费点唯一 =
+#: :func:`check_strategy_ore_open_effects`;先例 = cw_env_grants.
+#: ORE_OPEN_GRANT_RNG_TOOL 同形态)。
+_STRATEGY_ORE_OPEN_RNG_TOOL: str = 'strategy_ore_open'
+
+#: live 识别色档 → sim 规范色档归一表(live 字符串域 'gold'|'blue'|'gray'
+#: = cw_identity_obs 色档分类现值;sim 规范域 = '金'/'蓝'/'灰'/'棱彩',
+#: sim 面板锚 REWARD_ORE_PANEL_ANCHOR 成员域;'棱彩' 本域直通不入本表)。
+_ORE_TIER_LIVE_TO_CANON: dict[str, str] = {
+    'gold': '金', 'blue': '蓝', 'gray': '灰',
+}
+
+#: 低一档链表(棱彩→金→蓝→灰;灰 = 链底 None 零发放,宁缺勿造)。链序
+#: 系推断非档案(披露键 strategy_ore_tier_chain_inferred 常驻申报):
+#: 视觉半径带 gold~44/blue~32/gray~18 单调递减(cw_identity_obs 建档
+#: 注释)+ 卡池品质阶梯 棱彩>金 词面对齐;未知色档不入表 = 零发放
+#: log 留痕,链序错 = 单档少发非错发世界写(错误方向保守)。
+_ORE_TIER_NEXT_DOWN: dict[str, str | None] = {
+    '棱彩': '金', '金': '蓝', '蓝': '灰', '灰': None,
+}
+
+#: 授予矿世界写端署名(触发腿+立刻腿共用;journal/台账过滤键独立可辨,
+#: 不冒充 collect_ore 本体写)。
+_STRATEGY_ORE_OPEN_PRODUCER: str = 'strategy_ore_open_effects'
+#: 触发腿授予矿 spheres 写 evidence 基串(「一次写一 evidence」族惯例,
+#: 一写一串 ``<基串>#{授予数}``)。
+_STRATEGY_ORE_OPEN_EV: str = 'strategy_ore_open_grant'
+#: 立刻腿(获得时点黄金晶矿)spheres 写 evidence 基串(同族分前缀,
+#: 审计可独立过滤)。
+_STRATEGY_ORE_PICK_EV: str = 'strategy_ore_pick_grant'
+
+
+def _grant_ores_to_world(gs: GameState, tiers: tuple[str, ...], *,
+                         sig: ChannelSig, level: int | None,
+                         rng: random.Random,
+                         evidence_base: str) -> int:
+    """授予矿世界写(晶矿开启触发腿与获得链立刻腿共用单源,禁两实现)。
+
+    spheres 补点 × ore_rewards 附着,批尾一次性两写:
+
+    - **spheres 补点**(evidence ``<evidence_base>#{授予数}``):授予点 =
+      ``(档, 序*10, 10, 10)``,序取**合成形序空间 max+1 续接**——合成形
+      判别式 = ``x%10==0 ∧ y==10 ∧ r==10``(sim 世界合成坐标带),序 =
+      x//10,基准 = max(合成形序, 默认 0)逐授予递增。禁 count/len 基准:
+      批尾 spheres 现值为点击摘除后**非连续子集**,len 基准会使授予序落回
+      剩余区间撞键(by_xy 求交覆盖遮蔽剩余矿/同坐标摘除连带吞矿/ore_rewards
+      'x,y' 键覆盖附着);两先例 count 基准的安全前提 = 基准集为从 1 连续
+      枚举的呈现全集(本函数语境不满足)。live 真实观察点半径带 18-44 恒
+      不满足判别式 → 基准 0,授予点落 (10,10) 起专用带,与真实面板区无
+      几何交;``gs.spheres.value`` None 时直构 OreSight 起底(获得链 pick
+      形态,备战首观察覆盖自愈);
+    - **ore_rewards 附着**(evidence ``<evidence_base>_attach#{附着数}``):
+      逐矿授予时点 :func:`roll_ore_reward`(生成侧前移同款,rng 同实例
+      顺序推进),新 dict 合并一次写(冻结帧替换语义,禁就地改);
+      ``level`` None → 该批矿不掷内容(矿仍入世界,点击走既有缺项兜底
+      路径,零新机制)。
+
+    返回授予矿数(= len(tiers),断言面)。"""
+    if not tiers:
+        return 0
+    view = gs.spheres.value
+    remaining = list(view.points) if view is not None else []
+    # 合成形序空间(判别式三条件与序号推导见 docstring;int 归一防浮点形变)
+    seqs = [int(q[1]) // 10 for q in remaining
+            if int(q[1]) % 10 == 0 and int(q[2]) == 10 and int(q[3]) == 10]
+    base = max(seqs, default=0)
+    granted_pts: list[tuple[str, int, int, int]] = []
+    attach: dict[str, OreReward] = {}
+    for j, tier in enumerate(tiers, 1):
+        pt = (tier, (base + j) * 10, 10, 10)
+        granted_pts.append(pt)
+        if level is not None:
+            attach[f'{pt[1]},{pt[2]}'] = roll_ore_reward(rng, int(level))
+    points = tuple(remaining) + tuple(granted_pts)
+    gs.write_logic_rand(gs.spheres, OreSight(
+        count=len(points),
+        colors=tuple(dict.fromkeys(p[0] for p in points)),
+        points=points),
+        produced_by=_STRATEGY_ORE_OPEN_PRODUCER,
+        evidence=f'{evidence_base}#{len(granted_pts)}', sig=sig)
+    if attach:
+        merged = dict(gs.ore_rewards.value or {})
+        merged.update(attach)
+        gs.write_logic_rand(gs.ore_rewards, merged,
+                            produced_by=_STRATEGY_ORE_OPEN_PRODUCER,
+                            evidence=f'{evidence_base}_attach#{len(attach)}',
+                            sig=sig)
+    return len(granted_pts)
+
+
+def check_strategy_ore_open_effects(gs: GameState,
+                                    opened_colors: tuple[str, ...], *,
+                                    sig: ChannelSig,
+                                    level: int | None) -> int:
+    """策略卡晶矿开启触发发放检查(黄晶矿工 id 302101 首例;注册表 =
+    ``cw_investments.STRATEGY_ORE_OPEN_EFFECTS``;唯一调用点 = 采晶矿
+    上报尾部契约腿后独立调用块,live/sim 同一段 op 代码同口——live 同口
+    掷 = 预测写(实机发放位置未采),下一备战现读覆盖自愈;实机自动开启
+    矿不经点击 → 不入 opened_colors,观察覆盖兜底)。返回本批授予矿数
+    (0 = 零发放零写;仅日志面消费)。
+
+    逐开掷「低一档」腿(表值概率,卡面明写);「极低概率棱彩」腿 desc
+    无数值零建模(披露键 ``strategy_ore_tier_down_prism_prob_unknown``)。
+    零 done 闩:逐开可重复触发(卡面无「首次/每 N 个」限次词),无封账
+    语义。
+
+    条件矩阵(顺序即短路序):
+
+    1. ``opened_colors`` 空 → 0(调用方 ``opened == 0`` 早退已辖,双保险);
+    2. 持卡交集(active_strategies 归一后 ∩ 表键)空 → 0(此时不取流键
+       rng——「无命中不消耗采样流键」,战技点契约族形同款);
+    3. 逐点 loop(opened_colors 载荷序;同持多卡表遍历各判各发,表扩员
+       自然跟随):色档归一(live 英文 → sim 规范域,'棱彩' 直通,未知
+       宁缺勿造 log 留痕)→ 链映射取低一档(链底灰 = 该点跳过零发放)
+       → 掷点 → 掷中累积授予矿(档 = 映射结果);
+    4. 批尾一次性世界写(:func:`_grant_ores_to_world`),返回授予矿数。
+
+    - rng = 函数体内惰性 ``action_sampling_rng(
+      _STRATEGY_ORE_OPEN_RNG_TOOL, None)``(函数不设 rng 形参;首个满足
+      掷点条件的点确认后才解析取键——持卡交集空或全点链底/未知色档零
+      命中时流键零消耗,sim 动作序列逐位不变;注入槽 = sim 世界真值,
+      回退自掷 = live 猜测口径,同一采样函数两副面孔)。
+    """
+    if not opened_colors:
+        return 0
+    held = [normalize_invest_name(n)
+            for n in (gs.active_strategies.value or ())
+            if normalize_invest_name(n) in STRATEGY_ORE_OPEN_EFFECTS]
+    if not held:
+        return 0
+    granted: list[str] = []
+    roll_rng: random.Random | None = None
+    for color in opened_colors:
+        tier = (_ORE_TIER_LIVE_TO_CANON.get(color) if color not in
+                _ORE_TIER_NEXT_DOWN else color)
+        if tier is None:
+            # 未知色档(live 未来新档):宁缺勿造零发放,log 留痕可辨
+            log.warning(f'[cw-gain-chain] 晶矿色档不在归一表(宁缺勿造'
+                        f'零发放): {color!r}')
+            continue
+        down = _ORE_TIER_NEXT_DOWN.get(tier)
+        if down is None:
+            continue   # 链底(灰)零发放
+        for card in held:
+            if roll_rng is None:
+                # 首个满足掷点条件的点确认后才取键(无命中不消耗采样流键)
+                from sr_od.application.currency_war.kernel.cw_action_report import (
+                    action_sampling_rng,
+                )
+                roll_rng = action_sampling_rng(
+                    _STRATEGY_ORE_OPEN_RNG_TOOL, None)
+            if roll_rng.random() < STRATEGY_ORE_OPEN_EFFECTS[card][0]:
+                granted.append(down)
+    if not granted:
+        return 0
+    _grant_ores_to_world(gs, tuple(granted), sig=sig, level=level,
+                         rng=roll_rng, evidence_base=_STRATEGY_ORE_OPEN_EV)
+    return len(granted)
 
 
 def check_strategy_equip_expiry(gs: GameState, *,
