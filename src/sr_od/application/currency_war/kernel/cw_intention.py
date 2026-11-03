@@ -723,9 +723,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       其「框架单独成型档」适用范围不变)。
       注:桥线对平局无平滑性偏好;若 v2 需要
       同等偏好需另行设计。
-    - level_plan 不设:升级账退默认(升级通道的息引擎前置是独立
-      杠杆,不搭本批车)。
-    """
+      """
     if not pair:
         return None
     from sr_od.application.currency_war.kernel.cw_bridge_pool import BRIDGE_POOL
@@ -756,7 +754,6 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
         return None
     return Comp(
         name='过渡配方·' + '+'.join(pair),
-        factions=sorted(bonds),
         core_chars=sorted(_pair_members(pair)),
         form_tiers=dict(sorted(tiers.items())),
         or_reqs=or_reqs,
@@ -1023,14 +1020,12 @@ def clear_p1_recipe(ist: IntentionState, st: object = None) -> None:
 def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     """意向线囤货采购集(目标件定义节 class2 口径的落地):
 
-    角色件 = core_chars ∪ shared_chars ∪ 替班者 ∪ 羁绊成员(form_tiers/sub_tiers
+    角色件 = core_chars ∪ shared_chars(替班者已并入成员名单承载)
+    ∪ 羁绊成员(form_tiers/sub_tiers
     键阵营下的注册表成员);装备件 = derive_key_equips(到人配方投影)− equip_taboos
     (具名禁忌;类级禁忌如「护盾件(类)」由买侧/装备层消费,本层不展开)。
     """
     chars = set(comp.core_chars) | set(comp.shared_chars)
-    for sub in comp.substitute_plan:
-        if sub.get('替班者'):
-            chars.add(sub['替班者'])
     factions = set(comp.form_tiers) | set(comp.sub_tiers)
     if factions:
         for name, c in CHARACTERS.items():

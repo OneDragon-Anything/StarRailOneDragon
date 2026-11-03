@@ -817,7 +817,7 @@ def read_xp_progress(ctx: SrContext, screen: MatLike,
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 
     OCR 购买经验(y848)下方 ~y935 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
-    level 升级时机决策用(cur 接近 next → 即将升级,影响 level_plan/买经验优先级)。
+    level 升级时机决策用(cur 接近 next → 即将升级,影响找牌窗口/买经验优先级)。
 
     OCR ``文本-升级所需经验`` 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
 
@@ -977,7 +977,7 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
 
 
 # last-known-good (plane, round):plane 单调递增、round 同位面内递增;过渡帧 OCR 失败时
-# 返回上次成功值,避免 fallback (1,1) 误导 level_plan/支出 gate(实跑发现:
+# 返回上次成功值,避免 fallback (1,1) 误导支出 gate(实跑发现:
 # plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
 _last_phase_round: tuple[int, int] | None = None
 
@@ -1055,7 +1055,7 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
 
     单调守卫(审计 P0,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
     读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 保留证据(毒化面:
-    level_plan/支出 gate/P2P3 概率表/_expected_level 兜底全歪)。
+    支出 gate/P2P3 概率表/_expected_level 兜底全歪)。
 
     数字 fallback 分支已停用(延迟审计候选③):该分支唯一合法产出 (1,1) 与
     无历史兜底返回值完全重合,结构上不可能改变任何返回值;近两日 868 次被拒全为
@@ -1111,7 +1111,7 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
         _phase_round_suspect = None   # 倒退消失(前进/正常读)→ 挂起自愈
         _last_phase_round = new
         return _last_phase_round
-    # OCR 失败(过渡帧/错源单数字)→ 返回上次成功值,避免 (1,1) 误导 level_plan
+    # OCR 失败(过渡帧/错源单数字)→ 返回上次成功值,避免 (1,1) 误导找牌窗口
     if _last_phase_round is not None:
         return _last_phase_round
     return 1, 1

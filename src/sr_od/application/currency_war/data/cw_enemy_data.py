@@ -30,7 +30,7 @@ BOSS_NICKNAMES: dict[str, str] = {
 }
 
 # ===== ②boss 机制注册表(20 个;bosses.md 实采,2026-08-17 重采校准) =====
-# tag 词汇(与 comp.mechanic_attributes/MECHANIC_COUNTERS 同本体):
+# tag 词汇(与 MECHANIC_COUNTERS 同本体):
 #   aoe(boss 群攻多)/ summon(召唤多目标)/ dot(持续伤害)/ control(冻结/禁锢/支配)/
 #   heal_cut(削治疗)/ self_heal(自我治疗)/ counter_attack(反击)/ share_hp(共享血量)/
 #   break_bonus(击破利好机制)/ crit_resist(克暴击)/ shield_break(削韧克护盾)/

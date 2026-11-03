@@ -804,9 +804,9 @@ SHOP_REFRESH_COST: int = REFRESH_COST_BASE
 
 # (通用升级曲线 _DEFAULT_LEVEL_GOAL 已停用 2026-09-04,「未证即停用」裁定:
 # 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
-# lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:阵容未填
-# level_plan 时不退回通用曲线(该回退路径载体已删),升级压力仅由
-# 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据覆盖。)
+# lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处;comp 级手编曲线
+# (旧 level_plan)亦已退役——节奏自适应涌现,comp-definition 第一条。
+# 升级压力仅由节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据覆盖。)
 
 
 def _expected_level(round_num: int, plane: int) -> int:
@@ -817,7 +817,7 @@ def _expected_level(round_num: int, plane: int) -> int:
     游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
     派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或停用。
 
-    P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(7 是 3费C 阵容的 level_plan 域,通用曲线取 6)。
+    P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(通用曲线取 6)。
     P2:**2-1 即 7**(升7找主C;H1 修复后 bot 进 P2 应带 7)/ 2-5 前留 7 慢D主C三星 /
     2-6 升 8 搜5费 / 2-7 遭遇前阵容齐。
     P3:3-1 升 8 / 3-3+ 冲 9(3-7 boss 前瓦尔特[5费]需 9)。
@@ -834,7 +834,7 @@ def _expected_level(round_num: int, plane: int) -> int:
 @dataclass
 
 class NodeGoal:
-    """某节点(位面-轮)的节奏目标(阵容无关骨架;阵容只换 level_plan/core_chars 参数;14 §2.0)。"""
+    """某节点(位面-轮)的节奏目标(阵容无关骨架;阵容相关参数只有找牌目标 core 通道;14 §2.0)。"""
     target_level: int           # 该节点目标等级(地板);plan level gate 显式 gate
     spend_mode: str             # saving/interest/level/hold/spend/allin/adaptive(§2.2 经济档位)
                                 # 'release' 档现役无生产位(原帧级态生产口

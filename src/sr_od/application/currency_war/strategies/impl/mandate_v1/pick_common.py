@@ -40,7 +40,7 @@ def counters_dot(opt: str) -> bool:
     选项名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制
     属性(子串包含匹配保留 OCR 容错语义;未知名不命中 = 不排除)。
     """
-    affix_map, counters, _ = merged_mechanic_tables()
+    affix_map, counters = merged_mechanic_tables()
     for affix, tag in affix_map.items():
         if affix in opt and not DOT_PUNISHED_MECHS.isdisjoint(
                 counters.get(tag, ())):

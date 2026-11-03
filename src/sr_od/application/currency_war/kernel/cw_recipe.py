@@ -41,7 +41,7 @@ _RECIPES: dict[str, Comp] = {
     # 「框架牌不上场被卖」回归向量)。键面补全后框架并集语义被配方吸收,
     # deploy_target_sets 的显式 ∪ 停用(装配单一源纪律:并集语义只许一处)。
     '仙舟': Comp(
-        name='过渡·仙舟配方', factions=['仙舟', '持续伤害'],
+        name='过渡·仙舟配方',
         core_chars=framework_members('仙舟'),
         form_tiers={'仙舟': 3},
         # 过渡期站位(爻光必后台,站位规则住在终局阵容,
@@ -49,14 +49,14 @@ _RECIPES: dict[str, Comp] = {
         char_positions={'爻光': 'back'},
     ),
     '列车': Comp(
-        name='过渡·列车配方', factions=['列车同行'],
+        name='过渡·列车配方',
         core_chars=framework_members('列车'),
         form_tiers={'列车同行': 4},
     ),
     # 量子框架(量子=第三过渡配方;
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
     '量子': Comp(
-        name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
+        name='过渡·量子配方',
         core_chars=framework_members('量子'),
         form_tiers={'量子同频': 3, '贝洛伯格': 2},
     ),
