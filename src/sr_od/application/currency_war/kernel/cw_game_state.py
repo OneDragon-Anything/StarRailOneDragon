@@ -2691,7 +2691,7 @@ class GameState:
     # sim/cw_sim_backend 结算失败分支;实机可观察(结算屏败局)影响玩法(败补金),
     # 按容器字段判据入容器。
     pending_loss: Field[LostNodeRef | None] = field(default_factory=Field)
-    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读;词缀域写尾回调先验重算 = 第④写端,T-45 敌后破坏删除分支经 cw_opening_hp.on_enemy_affixes_logic_write 走 write_prior,与②先验同通道)
+    hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线;开局种子底座=实证基线值,三写端时序 种子→先验→真读;词缀域写尾回调先验重算 = 第④写端,敌后破坏/退化两删除分支经 cw_opening_hp.on_enemy_affixes_logic_write 走 write_prior,与②先验同通道——mid-run〔节点窗在动〕跳写守卫住回调,开局先验通道 mid-run 停用)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
     # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
     # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(
@@ -2721,7 +2721,7 @@ class GameState:
     encounter_log: EncounterLog = field(default_factory=EncounterLog)
     plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,保位 3 槽;None=简报源未读得(实采源恒全识别,识别失败响亮暴露不留 None)
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3;开局种子底座=''=未选择)
-    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写/获得链删除分支〔敌后破坏失效删除,经 _select_write 择道随机态;写端申报 = cw_projection_audit 同名行〕)
+    enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境;开局种子底座=[],简报/接管位面详情覆写/获得链删除分支〔敌后破坏失效删除 + 退化策略腿取尾删除,均经 _select_write 择道随机态,读链 center.x 升序排序锚保位置域序;写端申报 = cw_projection_audit 同名行〕)
     active_strategies: Field[list[str]] = field(default_factory=Field)   # 持有投资策略名单(§3.4.4;品质锚挂建模批;开局种子底座=[]未持卡)
     unlocked_experts: Field[tuple[str, ...]] = field(default_factory=Field)  # 本局已解锁入池专家顾问规范名(economy.md §1:专家初始不参与普通商店招募,经投资环境/投资策略/专家邀请函等通道解锁后本局加入商店;池派生消费 = cw_pool 按名并入 EXPERT_COPIES_ASSUMED 副本)。开局种子底座=()未解锁;只增不减(现役解锁通道无回收语义)。写入端 = 获得链 advisor 道(cw_gain_chain.on_env_gained/on_strategy_gained)+ 装备通道(on_equipment_gained 分身墨镜族)+ 条件形态触发判据(cw_gain_chain.expert_conditional_trigger 三渠道);成员闭集闸 = cw_chars.assert_expert_names。条件形态条目(现役首例 = 特邀专家:银狼)的写入时点 = 触发事件(首次获得银狼LV.999,含环境获得时点在场判定挂点),非环境获得时点的即时名单
     # [索引定义] pending_item_grants = 已登记、未到点发放的定时道具队列(环境

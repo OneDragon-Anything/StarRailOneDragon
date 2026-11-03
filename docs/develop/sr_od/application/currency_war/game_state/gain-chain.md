@@ -703,7 +703,8 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
     设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。T-14 蓝海追加
     链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
-    触发,设计披露键 6);姊妹卡退化失效分支复用本机制(T-291 批套用)。
+    触发,设计披露键 6);姊妹卡退化策略腿已按本机制落地(on_strategy_gained
+    硬编码分支,选择规则换取尾,mid-run 守卫住 HP 回调,见下)。
     设计正本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost|faction, star, type_tag)` 随机赠卡规格(家族载体,「随机N费」与
@@ -887,6 +888,26 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   交叉,回收计划):两腿同属选卡获得时点经 `_compose_grant_legs` 组合
   注册,不入泛化表/延时表(表行生成的单腿效果体与组合体同名键 dict
   字面量顺序覆盖静默丢腿,买彩票+ 同判)。
+  **策略链词缀失效分支**(退化 id 260601「使最右侧的敌人词缀失效，并使
+  敌人难度-5。获得8金币。」失效腿;硬编码沿敌后破坏 `ENV_AFFIX_DISABLE_ENV`
+  枚举即收敛先例,禁入 `PICK_INVEST_EFFECTS` 四名闭集——键集闭集锁,
+  误登记吃红;生效方案 = 迭代 2026-09-23-invest-effects-calc
+  designs/REVIEW-T291.md §3 改判建模,机制单一源 = T-45 设计稿 §2.5):
+  选退化 → 词缀名单非空时**取尾删 1 个**——「最右侧」= 容器尾元素
+  (容器序 = 词缀横条位置域,读链 center.x 升序排序锚保序,简报/位面
+  详情两读链同锚),剩余列表整条替换写回;经 `_select_write` 择道且
+  rand=True 双保险声明采样链——live 开局窗选卡未锚定自动落随机态,
+  mid-run 锚定窗也落随机态(策略卡可中途获得,位面详情补观察闭环同链
+  转正);删除写触发词缀域写尾 HP 先验回调(`cw_opening_hp.
+  on_enemy_affixes_logic_write`,**mid-run 跳写守卫住回调**:节点窗在动
+  时当期 hp 禁被开局先验覆写,fields.md §3.1.6 第④写端);效果串
+  `strategy_affix_disable:<词缀名>`(与 `env_affix_disable:<名>` 族同形
+  分前缀,审计归组)。选择规则 = **确定性取尾**(姊妹卡机制取尾换装),
+  零掷骰即零流键消费——不与敌后破坏 `env_affix_disable` 采样流共槽。
+  容器空 → 跳过删除,零写 + 申报行(`STRATEGY_AFFIX_DISABLE_EMPTY_DECL`,
+  实机已失效而模型未删,偏差全程持续)。难度 −5/+8 金两腿 =
+  `STRATEGY_ECONOMY` 注册行静态承载(无获得时点动作,估值难度禁域
+  fail-closed / 金面值),零链上分支。
   未收录卡安静不写。
 
 ## 4. 溢出落位规则(双写入方)

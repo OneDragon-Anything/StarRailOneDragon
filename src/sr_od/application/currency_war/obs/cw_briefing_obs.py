@@ -42,6 +42,12 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
     ``AFFIX_MECHANIC_MAP``(cw_comps)映射机制 tag;未知词缀透传(mechanics_fit 中性)。
     读不到 / area 缺 → [](不覆盖容器 ``enemy_affixes``)。
 
+    返回序 = **位置域序**(center.x 升序 = 词缀横条画面左→右):容器
+    ``enemy_affixes`` 序即画面位置域的确定性前提——获得链「最右侧」取尾
+    删除消费尾元素(退化策略卡;敌后破坏均匀随机与序无关)。OCR 引擎
+    返回序无排序保证,不排序则「列表尾 ≠ 画面右端」;等值 x 稳定排序
+    保持 OCR 序(横条同排 y 恒同,等值 x 为同位次读数拆分的次序申报面)。
+
     OCR 名 vs competitors 数据名可能差(如 OCR「后台熄火」= competitors「前后台熄火」),
     透传原名,匹配在 AFFIX_MECHANIC_MAP(待实机校准补全,见 competitors.md 待确定)。
     """
@@ -54,6 +60,7 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
         # 词缀名:中文为主,2-7 字(第二位面强化6/前后台熄火5/火之熄火4/同步行动4);滤数字/符号/短噪声
         if 2 <= len(name) <= 7 and re.search(r'[一-鿿]', name) and not re.search(r'\d', name):
             out.append((name, r.center))
+    out.sort(key=lambda item: item[1].x)
     return out
 
 
@@ -75,6 +82,9 @@ def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     位面详情屏「区域-词缀横条」(y965-1015,含「敌人难度108」前缀段)。
     ``CwScreenPlaneIntel`` 开位面详情采集时同帧调用(零额外交互)。
     滤噪同 ``read_affixes_with_pos``(中文 2-7 字滤数字;难度段含数字自然滤)。
+    返回序 = **位置域序**(center.x 升序,与简报读链同一排序锚——两写径
+    落同一容器,序语义必须一致:「最右侧」取尾删除消费横条画面右端;
+    等值 x 稳定排序保持 OCR 序)。
     OCR 名 vs 数据名映射差异透传(同简报口径,AFFIX_MECHANIC_MAP 处理)。
     读不到 / area 缺 → []。
     """
@@ -82,12 +92,12 @@ def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     rect = _area_rect(ctx, '区域-词缀横条', DETAIL_SCREEN)
     if rect is None:
         return []
-    out: list[str] = []
-    for r in _ocr(ctx, screen, rect):
-        name = r.data.strip()
-        if 2 <= len(name) <= 7 and re.search(r'[一-鿿]', name) and not re.search(r'\d', name):
-            out.append(name)
-    return out
+    hits = [r for r in _ocr(ctx, screen, rect)
+            if 2 <= len(r.data.strip()) <= 7
+            and re.search(r'[一-鿿]', r.data.strip())
+            and not re.search(r'\d', r.data.strip())]
+    hits.sort(key=lambda r: r.center.x)
+    return [r.data.strip() for r in hits]
 
 
 def parse_enemy_difficulty(texts: list[str]) -> int | None:

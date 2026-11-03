@@ -20,8 +20,9 @@ settlement 源 hp_confidence=1.0)**。
 模块 = 档表与现算函数的域归属(挂点 = ``cw_game_state._write_logic_frame``
 enemy_affixes 分支,logic/logic_rand 两通道同经;观察写不经该宿主 =
 零回调,deployed 写尾回调级联同契约)。T-45 敌后破坏删除分支的 HP 跟随
-载体;姊妹卡退化(T-291)mid-run 复用时须显式处置「当期 hp 已有真值
-被先验覆写」残面(设计稿 §2.5 登记,本卡开局窗 hp=seed 无真值可踩)。
+载体;姊妹卡退化(策略卡)同宿主复用,其 mid-run 获得态由回调内
+「节点窗在动跳写」守卫承接——开局先验通道 mid-run 停用,当期 hp
+(真读/沿用/效果支付)不被覆写。
 """
 from __future__ import annotations
 
@@ -110,6 +111,12 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
     跳写边界(全列,任一命中即零写):
     - ``old_names`` None(种子写/字段首写):diff 语义 = 全量消失候选,
       回调防种子误触发直接跳过;
+    - **mid-run 节点窗在动**(``gs.node.value`` 非 None):节点窗在动 =
+      已过开局窗,当期 hp 由真读/沿用/效果支付承载——开局先验重算对该态
+      只有「静默踩踏」一个效果(策略卡退化可中途获得,其词缀删除写会
+      触发本回调;词缀失效不追溯已结战斗的 HP,游戏语义同向),一律
+      跳写 = 开局先验通道 mid-run 停用。开局窗(node 未锚)照旧重算:
+      敌后破坏/退化开局选卡时 hp = 种子或先验,无真值可踩;
     - 消失词缀不命中 :data:`_AFFIX_HP_DELTA`(空 diff 同此):HP 与该词缀
       集零耦合,零 HP 写;
     - 现算返回 None(非实证难度档):先验表只填实证档禁外推,跳写。
@@ -129,6 +136,11 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
     """
     if old_names is None:
         return   # 种子写防误触发(设计 §2.3 N5:None 档全量消失候选不判)
+    if gs.node.value is not None:
+        # mid-run 跳写守卫:节点窗在动 = 开局先验通道停用(宿主 docstring
+        # 跳写边界 2;策略卡退化 mid-run 获得场景的残面处置——先验覆写
+        # 当期 hp = 静默踩踏,禁)。
+        return
     vanished = set(old_names or []) - set(new_names or [])
     if not vanished & set(_AFFIX_HP_DELTA):
         return   # 消失词缀不命中 HP 档(含空 diff)→ 零 HP 写

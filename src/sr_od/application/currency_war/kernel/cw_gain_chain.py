@@ -178,6 +178,18 @@ ENV_AFFIX_DISABLE_EMPTY_DECL: str = 'env_affix_disable_empty_container'
 #: 零复用面不入登记表;normalize_invest_name 归一恒等——纯中文名)。
 ENV_AFFIX_DISABLE_ENV: str = '敌后破坏'
 
+#: 退化(id 260601)策略规范名(策略链词缀失效分支判定键,枚举即收敛
+#: 硬编码沿 ENV_AFFIX_DISABLE_ENV 先例,单卡零复用面不入登记表;
+#: normalize_invest_name 归一恒等——纯中文名)。
+STRATEGY_AFFIX_DISABLE_STRATEGY: str = '退化'
+
+#: 退化词缀失效分支的空容器申报行 kind(选卡时词缀容器空[简报失读等]→
+#: 跳过删除:实机已失效而模型未删,偏差全程持续无自愈——该态容器非
+#: 随机态,补观察谓词不命中;沿 ENV_AFFIX_DISABLE_EMPTY_DECL 同形,
+#: 语义申报非缺陷告警;设计 = 迭代 2026-09-23-invest-effects-calc
+#: designs/REVIEW-T291.md §3,机制单一源 = 敌后破坏已落三腿机制)。
+STRATEGY_AFFIX_DISABLE_EMPTY_DECL: str = 'strategy_affix_disable_empty_container'
+
 
 @dataclass(frozen=True)
 class GainOutcome:
@@ -2282,8 +2294,9 @@ def gain_invest_strategy(gs: GameState, session: object,
        来源的共同必经点,live 上报与 sim 选卡/直发双端覆盖):单一源 =
        ``cw_env_grants.check_env_pick_grants``,注册后现读长度即含本张
        已持有数,异常零吞上抛(容器写分支纪律);
-    3. **触发策略效果**:`on_strategy_gained`(查 ``PICK_INVEST_EFFECTS``
-       分派;未收录卡安静不写)。
+    3. **触发策略效果**:`on_strategy_gained`(advisor 分道 + 策略链词缀
+       失效分支〔退化硬编码〕+ 查 ``PICK_INVEST_EFFECTS`` 分派;未收录卡
+       安静不写)。
 
     rand 纪律:投资策略确认 = 确定性入口(False);效果体含采样(骇客
     改件)→ 对其子链翻转 rand=True(§5)。``rng`` = 采样注入点(缺省
@@ -3238,13 +3251,29 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        sig: ChannelSig,
                        rng: random.Random | None = None) -> tuple[str, ...]:
     """「获得投资策略」触发型效果枚举(gain-chain.md §3;枚举即收敛
-    无注册表):两条分支依次消费——
+    无注册表):三条分支依次消费——
 
     1. **advisor 解锁分支**:查 ``STRATEGY_GRANTS``(顾问入商店族登记,
        advisor=True 11 条)→ :func:`_unlock_experts` 写解锁状态(官方
        效果文「使其在本局游戏中加入商店」= 入池可刷;与
        :func:`on_env_gained` advisor 道同一原语);
-    2. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
+    2. **策略链词缀失效分支**(``STRATEGY_AFFIX_DISABLE_STRATEGY`` 命中,
+       硬编码沿敌后破坏 ``ENV_AFFIX_DISABLE_ENV`` 枚举即收敛先例,禁入
+       ``PICK_INVEST_EFFECTS`` 四名闭集):选退化 → 词缀名单非空时取尾
+       删 1 个(「最右侧」= 容器尾元素,容器序 = 词缀横条位置域,读链
+       center.x 升序排序锚保序,cw_briefing_obs 两读链)、剩余列表整条
+       替换写回;经 :func:`_select_write` 择道且 rand=True 双保险声明
+       采样链——live 开局窗选卡未锚定自动落随机态,mid-run 锚定窗也落
+       随机态(策略卡可中途获得,位面详情补观察闭环同链转正);删除写
+       触发词缀域写尾 HP 先验回调(cw_opening_hp.
+       on_enemy_affixes_logic_write,mid-run 跳写守卫住回调:节点窗在动
+       时当期 hp 禁被开局先验覆写);效果串
+       ``strategy_affix_disable:<词缀名>``(与 ``env_affix_disable:<名>``
+       族同形分前缀,审计归组)。容器空 → 跳过删除,零写 + 申报行
+       (``STRATEGY_AFFIX_DISABLE_EMPTY_DECL``)。选择规则 = 确定性取尾
+       (姊妹卡机制取尾换装),零掷骰即零流键消费(不与敌后破坏
+       env_affix_disable 采样流共槽);
+    3. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
        ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
        查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
        ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
@@ -3258,6 +3287,32 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                         sig=sig)
         effects.append(f'advisor_unlock:{canon}:'
                        f'{"+".join(_grant.chars_immediate)}')
+    # 策略链词缀失效分支(退化 id 260601「使最右侧的敌人词缀失效，并使
+    # 敌人难度-5。获得8金币。」——失效腿建模 = 删除式取尾,机制单一源 =
+    # 敌后破坏已落三腿机制(T-45 设计稿 §2.5 族面条款:选择规则均匀随机
+    # 换为取尾;生效方案 = designs/REVIEW-T291.md §3 改判建模);难度-5/
+    # +8 金两腿 = STRATEGY_ECONOMY 注册行在册静态承载,无获得时点动作)
+    if canon == STRATEGY_AFFIX_DISABLE_STRATEGY:
+        _aff = list(gs.enemy_affixes.value or [])
+        if not _aff:
+            # 空容器边界(沿敌后破坏披露键 3 同形):选卡时容器空(简报
+            # 失读等)→ 跳过删除,零写 + 申报行留证(实机已失效而模型未删)。
+            _emit_defect(field_name='enemy_affixes',
+                         expected='词缀名单非空(可执行失效删除)',
+                         actual='空容器(实机已失效而模型未删,偏差申报)',
+                         evidence=f'on_strategy_gained:{canon}', sig=sig,
+                         kind=STRATEGY_AFFIX_DISABLE_EMPTY_DECL)
+        else:
+            # 取尾删除:「最右侧」= 容器尾元素(容器序 = 词缀横条位置域,
+            # 读链 center.x 升序排序锚保序,cw_briefing_obs);确定性选择
+            # 零掷骰,rng 形参零消费(直构/测试形态注入亦不改变选择)。
+            removed = _aff[-1]
+            write = _select_write(gs, True)
+            write(gs.enemy_affixes, _aff[:-1],
+                  produced_by=GAIN_CHAIN_PRODUCER,
+                  evidence=f'on_strategy_gained:{canon}#affix_disable',
+                  sig=sig)
+            effects.append(f'strategy_affix_disable:{removed}')
     fn = PICK_INVEST_EFFECTS.get(canon)
     if fn is None:
         return tuple(effects)

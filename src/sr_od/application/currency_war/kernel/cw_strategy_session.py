@@ -116,9 +116,10 @@ class StrategySession:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # (briefing_affixes/briefing_bosses session 份已停用:
     #  单一源 = gs.enemy_affixes/gs.plane_bosses,写端 = 简报/位面详情采集/
-    #  prep 补采直写/获得链删除分支〔敌后破坏失效删除,随机态写 + 位面详情
-    #  补观察转正,T-45〕;affixes 幂等覆盖读+采、bosses 恒覆写含读空清、
-    #  保位 None 不滤语义全部上移容器写端。)
+    #  prep 补采直写/获得链删除分支〔敌后破坏失效删除 + 退化策略腿取尾
+    #  删除,随机态写 + 位面详情补观察转正,T-45/退化批〕;affixes 幂等
+    #  覆盖读+采、bosses 恒覆写含读空清、保位 None 不滤语义全部上移容器
+    #  写端。)
     # (selected_difficulty/enemy_difficulty session 份已停用:
     #  单一源 = gs.selected_difficulty/gs.enemy_difficulty,写端 = 入口链
     #  漏斗/briefing 写端直写。)
