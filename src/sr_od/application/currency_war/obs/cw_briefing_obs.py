@@ -4,8 +4,9 @@
 + 词缀效果采集落盘(``affix_effects_data.py`` 运行时自写,写端 = ``write_affix_effects``,
 生产调用方 = ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing._collect_affix_effects``
 简报词缀点采链)。
-下游:容器 ``enemy_affixes`` → ``mechanics_fit``(cw_comps);``plane_bosses`` → ``boss_fit``
-(字段正本 = ``game_state/fields.md`` §3.1.3)。
+下游:容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table 吃怕表+泛化层)
+;``plane_bosses`` → 线分 boss 分量(``cw_affinity_table.BOSS_AFFINITY``;统一
+阵容评分迭代批 2 起;字段正本 = ``game_state/fields.md`` §3.1.3)。
 
 共享 helper(``_area_rect``/``_ocr``/``BRIEFING_SCREEN``)在 ``cw_obs_core``。
 """
@@ -38,8 +39,9 @@ from sr_od.context.sr_context import SrContext
 def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Point]]:
     """简报词缀行 → ``(词缀名, center)`` 列表(center 用于 click 弹 tooltip 采效果)。
 
-    读简报「区域-词缀行」area OCR → 词缀文字(滤数字/符号/短噪声)+ 其 center。下游
-    ``AFFIX_MECHANIC_MAP``(cw_comps)映射机制 tag;未知词缀透传(mechanics_fit 中性)。
+    读简报「区域-词缀行」area OCR → 词缀文字(滤数字/符号/短噪声)+ 其 center。
+    下游 = 线分词缀分量(``cw_affinity_table`` 吃怕表:注册名查表 + 未注册名
+    含独立强敌键「红绿灯」经强敌表消费);未知词缀透传(未登记线走兜底泛化)。
     读不到 / area 缺 → [](不覆盖容器 ``enemy_affixes``)。
 
     返回序 = **位置域序**(center.x 升序 = 词缀横条画面左→右):容器
@@ -135,14 +137,16 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序真值**(「排列≠位面序」
     系单条日志孤证误判,勿据此改排列语义;裁定语义正本 = ``game_state/fields.md``
     §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写容器
-    ``plane_bosses``,消费链 boss_fit)。``CwScreenPlaneIntel`` 位面详情实采保留为
+    ``plane_bosses``,消费链 = 线分 boss 分量 ``cw_affinity_table.BOSS_AFFINITY``,
+    统一阵容评分批 2 起)。``CwScreenPlaneIntel`` 位面详情实采保留为
     **中断恢复场景重采**通道(对局中内存丢失时补采)+ 对账真值源。
 
     读不到 / area 缺 → []。
 
-    ⚠️ 数据层待补(同 competitors.md,后续浏览器/图鉴采):boss 机制 + 哪些阵容怕哪个 boss
-    (``comp.countered_by_bosses``)。当前 ``comp.countered_by_bosses`` 多为空 → boss_fit 中性 0.5;识别链路先通,
-    数据层后续接上即生效。boss 阵营(红色标签内)OCR 暂不读(红底干扰,待视觉核实后再决定是否采)。
+    boss×线克制的知识层已接通(bosses.md 图鉴 + final_comps 攻略实证 →
+    ``cw_affinity_table.BOSS_AFFINITY`` 4 线实证 + D4 类级兜底;旧
+    ``comp.countered_by_bosses`` 字段已随统一阵容评分迭代退役)。boss 阵营
+    (红色标签内)OCR 暂不读(红底干扰,待视觉核实后再决定是否采)。
     """
     rect = _area_rect(ctx, '区域-首领行', BRIEFING_SCREEN)
     if rect is None:
@@ -156,9 +160,9 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     return bosses
 
 
-#: boss 名两段转换参考表:取 boss_fit 消费端已有的规范 boss 名注册表
-#: (``cw_enemy_data.BOSS_MECHANICS`` 的 20 个规范公司名 key——``state.plane_bosses``
-#: 的下游消费者 ``boss_fit``/``cw_enemy_data.boss_tags`` 都按这套名字匹配)。
+#: boss 名两段转换参考表:规范 boss 名注册表(``cw_enemy_data.BOSS_MECHANICS``
+#: 的 20 个规范公司名 key——``state.plane_bosses`` 的下游消费者
+#: ``cw_affinity_table.boss_line_score``/``cw_enemy_data.boss_tags`` 都按这套名字匹配)。
 #: 简报卡 boss 名可能是俗称/简称(如「电视机」vs 规范「造梦互动娱乐」)或 OCR 形变:
 #: ①俗称/简称经 ``cw_enemy_data.normalize_boss_name``(``BOSS_NICKNAMES`` 映射)
 #: 精确命中规范名;②不中再 LCS 相似匹配归一(次高分差拒判,同 op-layer
@@ -181,7 +185,7 @@ def clean_boss_names_by_lcs(names: list[str]) -> list[str] | None:
     匹配(``lcs_resolve_strict``,阈值过滤 + 次高分差拒判)。
     失败语义:任一读数两段皆不中 ∨ LCS 近分歧义 = 转换失败 → 返回 None,
     调用方 ``observe`` 据此 round_fail 零写零上报返回主循环重新观察(禁原名透传
-    带病上报——错名直接进 boss_fit 评分)。
+    带病上报——错名直接进线分 boss 分量)。
     """
     from sr_od.application.currency_war.data.cw_enemy_data import (
         BOSS_MECHANICS,
@@ -346,12 +350,13 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
         '**本文件由 ``write_affix_effects``(``obs/cw_briefing_obs.py``)运行时自动维护**,\n'
         '生产调用方 = ``CwScreenBriefing._collect_affix_effects``(采到**新**词缀 → 写入);\n'
         '**已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +\n'
-        '截图待人工 review。运行时写入**不影响已加载内存**(下游 mechanics_fit 用 import 时的旧值)\n'
+        '截图待人工 review。运行时写入**不影响已加载内存**(线分词缀分量用 import 时的旧值)\n'
         '→ **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。\n'
         '\n'
         '格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。\n'
-        'mechanics_fit 接线(词缀→tag→comp 克制评分)已在 cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS/SYNERGIES\n'
-        '落地(接 ``comp_score`` W_MECH);本文件只采 effect 原文(ground truth,不参策略)。\n'
+        '词缀×线克/利方向单一源 = ``kernel/cw_affinity_table`` 吃怕表(本文件名空间 = 其键空间);\n'
+        '选卡克制减分 = cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS(策略层 pick_common)。\n'
+        '本文件只采 effect 原文(ground truth,不参策略)。\n'
         '"""\n'
         'from __future__ import annotations\n\n'
         'AFFIX_EFFECTS: dict[str, str] = ' + json.dumps(current, ensure_ascii=False, indent=4) + '\n'

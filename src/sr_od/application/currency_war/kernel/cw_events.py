@@ -48,8 +48,10 @@ class EncounterOption:
     ``encounter_pick.py``)。
     difficulty:难度档 1-6(画面标题「遭遇其X」派生,OCR 漏读「一」→ 1;
     越高敌人越强、奖励越好)。
-    affixes:敌人词缀 OCR 原名(经 ``AFFIX_MECHANIC_MAP`` → 机制 tag;
-    选项 UI 不显词缀、战后才显——现役写端恒空列表,死输入申报已登记)。
+    affixes:敌人词缀 OCR 原名(**词缀轴已废,写端恒空列表**——遭遇选项 UI
+    不显词缀、画面无数据源,产品事实;词缀作用于线分的唯一时点 = 开局简报
+    词缀行,统一阵容评分迭代 design §3.3「作用点单点」)。字段保留为
+    观察载荷契约形状(消费端恒按空集)。
     rewards:奖励(钻/装备/金币;偏好序消费 = 策略层 encounter_pick
     reward_tier 档序)。
     """

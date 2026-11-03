@@ -3,12 +3,13 @@
 **本文件由 ``write_affix_effects``(``obs/cw_briefing_obs.py``)运行时自动维护**,
 生产调用方 = ``CwScreenBriefing._collect_affix_effects``(采到**新**词缀 → 写入);
 **已存在词缀不再被 OCR 覆盖**——词缀效果是静态数据,现有值更可信,divergent 仅 log +
-截图待人工 review。运行时写入**不影响已加载内存** → **下轮启动重新 import 生效**。
-人工也可直接编辑本文件(校准/补全)。
+截图待人工 review。运行时写入**不影响已加载内存**(线分词缀分量用 import 时的旧值)
+→ **下轮启动重新 import 生效**。人工也可直接编辑本文件(校准/补全)。
 
 格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。
-本文件只采 effect 原文(ground truth,不参策略;词缀→tag 关系表 = cw_comps.AFFIX_MECHANIC_MAP
-+ MECHANIC_COUNTERS/SYNERGIES,消费 = 遭遇/补给选项判定)。
+词缀×线克/利方向单一源 = ``kernel/cw_affinity_table`` 吃怕表(本文件名空间 = 其键空间);
+选卡克制减分 = cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS(策略层 pick_common)。
+本文件只采 effect 原文(ground truth,不参策略)。
 """
 from __future__ import annotations
 

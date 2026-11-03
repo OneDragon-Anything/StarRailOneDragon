@@ -3,9 +3,10 @@
 简报观察(敌人词缀/位面序 boss/敌人难度)+ 词缀效果采集(best-effort)
 + 点「下一步」,完成承诺 = 固定时长(BRIEFING_SETTLE_S,锚后 ~1s)。
 
-下游链路(不变):容器 ``enemy_affixes`` → mechanics_fit;
+下游链路(不变):容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table
+吃怕表,统一阵容评分迭代起);
 ``plane_bosses``(位面序真值,字段正本 =
-``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.1.3)→ boss_fit。
+``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.1.3)→ 线分 boss 分量。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 画面身份门(id_mark「标识-本场对局首领」,miss = round_fail
@@ -132,8 +133,8 @@ class CwScreenBriefing(CwOperation):
                         log.info('[cw-briefing] 词缀效果账本登记: %s', _reg)
                 except Exception as e:   # noqa: BLE001  登记面失败不阻塞
                     log.warning(f'[cw-briefing] 词缀效果账本登记失败(不阻塞): {e}')
-        # 位面序真值:每次进简报屏都重读;读得 → 两段转换归一(boss_fit
-        # 消费端规范名;①精确命中/②LCS)→ report 恒覆写(自愈首次误读);
+        # 位面序真值:每次进简报屏都重读;读得 → 两段转换归一(线分 boss
+        # 分量消费端规范名;①精确命中/②LCS)→ report 恒覆写(自愈首次误读);
         # 读空 → report 跳过写(不擦同局已读真值);归一失败(任一候选
         # 两段皆不中)→ 观察失败 round_fail 零写零上报返回主循环重新观察
         # (op-layer.md §1.1 观察标准化门;禁带病上报)。

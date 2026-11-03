@@ -541,8 +541,9 @@ COMP_LIBRARY: list[Comp] = [
         # B 套=特权版风暴潮(plaza 实证 特权风暴潮三件);战场进化手册**不是本套件**
         # (是小黑塔星级装备,归大黑塔条目)。
         key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权"],
-        # boss 键规范名(俗称键经 BOSS_NICKNAMES 归位规范公司名,
-        # 与 state.plane_bosses 同名字空间;出处=final_seele_quantum counter 节「蕉研组 boss」)
+        # (旧 countered_by_bosses 占位注释已随统一阵容评分迭代批 2 删除——
+        # boss×线克制单一源 = cw_affinity_table.BOSS_AFFINITY,希儿×蕉研组
+        # 登记在彼;出处 = final_seele_quantum counter 节「蕉研组 boss」)
 # 单属性队:量子同频4 属性型羁绊主档 ≥4(final_comps README D3「希儿怕量子熄火」,
         # plaza 希儿聚类 36/38 篇核心羁绊=量子同频)——量子熄火局对本套是主输出瘫痪级 counter。
         # 成型羁绊队:量子同频/贝洛伯格档位乘区。两者均为复活 tag(已永久滤除,见 ``_W878_RETIRED_TAGS``)。
@@ -580,10 +581,11 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["击破", "治疗", "追击", "量子同频"],
         plaza_carry="黄泉",
         key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨", "永动机"],
-        # 「单体boss」是 boss 原型描述非公司名(BOSS_NICKNAMES 不含,永不命中;且占位会
-        # 屏蔽 matchup 结构层兜底)——单体乏力由机制 counter 面
-        # 走 cw_enemy_data.matchup 的 single_burst 结构通道表达。
-# 攻略:单体 boss 黄泉输出乏力(俗称键零效,走 matchup 结构通道)
+        # 单体乏力不登 boss 行(旧「单体boss」占位是原型描述非公司名,已随
+        # 统一阵容评分迭代批 2 删除——boss 吃怕单一源 =
+        # cw_affinity_table.BOSS_AFFINITY,攻略无黄泉×单体 boss 实证记载,
+        # 版本重跑补登)。
+# 攻略:单体 boss 黄泉输出乏力(未入 boss 吃怕表——无公司名指向,待实机核)
         shared_chars=["刃", "乱破", "符玄", "卡芙卡"],   # 成型羁绊队:巡海4+减益4 档乘区;卡芙卡 = 替班者转成员(黄泉缺席时顶 C,不卖转副C;DOT 队核心亦常驻此线)
         transition_chars=["刃", "椒丘", "桑博"],
         # ===== 黄泉减益家族(无流派;第四件=装备池)=====
@@ -765,7 +767,7 @@ COMP_LIBRARY: list[Comp] = [
         # ⚠️ (注册表交叉核对):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
         # —— 核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
         key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"],   # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型
-# 无 countered 数据:单体长战类非公司名,走 matchup 结构层
+# (银枝×单体长战类非公司名,不登 boss 吃怕表——同黄泉条目处置,待实机核)
         shared_chars=["翡翠", "知更鸟"],
         transition_chars=["椒丘", "星期日", "刃"],
         family="legacy",
@@ -790,8 +792,9 @@ COMP_LIBRARY: list[Comp] = [
         # 阵容靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
         # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),选靶候选但 progress 低。
         key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
-        # boss 键规范名(BOSS_NICKNAMES:酒杯怪=造梦兄弟影业/琥珀王=铁盾安保集团/
-        # 死龙=灰手生命科技;「红绿灯」经用户确认是小怪非 boss(2026-08-17),移除不建模)
+        # (旧 countered_by_bosses 占位注释已随统一阵容评分迭代批 2 删除——白厄
+        # boss 克制登记在 cw_affinity_table:史瓦罗=重开级 + 红绿灯=非 boss 强敌
+        # 重开级;「红绿灯」= 小怪非 boss(用户确认 2026-08-17),走强敌段词缀行通道)
 # 依赖合成装备:以牙还牙甲×3 反甲链+掩体生成枪=胜利条件本身(final_baie_reflect 明文
         # 「反甲装备流」);装备依赖词条(变宝为废)的选型侧降分载体(合成侧由 junk_first 处理,
         # 两半互补)。羁绊维判非成型羁绊队:factions/form_tiers 空,装备流例外。

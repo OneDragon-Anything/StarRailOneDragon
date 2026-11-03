@@ -2637,8 +2637,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             pass
         # r358d(遥测全面性审计接线,缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
-        # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
-        # 连胜门)同源。注入点单一(此处),策略器的
+        # 词缀/巨星/伙伴/连胜)与决策(线分词缀/boss 分量/
+        # 连胜门)同源(旧 mechanics_fit/boss_fit 评分器已随统一
+        # 阵容评分迭代退役,消费面 = cw_affinity_table 吃怕表)。
+        # 注入点单一(此处),策略器的
         # 方向刷新注入保留(两处都幂等:非空才覆)。
         # (终态契约 §B:active 双字段与 briefing 双字段中继全部停用——
         #  写端(选择 handler/简报/位面详情采集/prep 补采)直入容器,

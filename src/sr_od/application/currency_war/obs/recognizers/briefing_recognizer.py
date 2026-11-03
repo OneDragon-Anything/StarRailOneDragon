@@ -2,7 +2,8 @@
 
 ``analyze_screen`` 精准命中「货币战争-简报」后,框架按 ``screen_name`` 查表调用本识别器,把简报画面的
 结构化领域事实(**敌人词缀** + **3 位面首领名**)塞进返回的 ``extras``,供智能体 / HTTP 消费方直接读用,
-不必自己 OCR / 看图。词缀 / boss 是敌人对策的核心输入(``mechanics_fit`` / ``boss_fit``)。
+不必自己 OCR / 看图。词缀 / boss 是敌人对策的核心输入(线分词缀/boss 分量 =
+``kernel/cw_affinity_table`` 吃怕表消费,统一阵容评分迭代批 2 起)。
 
 **并发安全(关键)**:本 ``recognize`` 必须是**纯读** —— 不写 ``self.``、不写模块全局、不读写
 ``cw_match.session``(同 ``battle_prep_recognizer``,原因见该模块)。故:

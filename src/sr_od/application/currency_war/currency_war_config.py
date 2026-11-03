@@ -28,8 +28,9 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 
 # 枚举合法值(构造时校验,typo/大小写错静默落入默认)——现无枚举字段。
 
-# boss 克制 = comp-vs-boss 机制级(comp.countered_by_bosses + boss_fit + task#73 机制建模),
-# 非阵营级。
+# boss 克制 = 线分 boss 分量(单一源 = kernel/cw_affinity_table.BOSS_AFFINITY,
+# 攻略实证吃怕表;统一阵容评分迭代批 2 起——旧 comp.countered_by_bosses/boss_fit
+# 接缝已随该迭代退役),非阵营级。
 
 # 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
 # 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),消费 = 策略层
