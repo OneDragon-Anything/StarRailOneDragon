@@ -2231,6 +2231,14 @@ STRATEGY_GIFT_LEG_FACTION_COUNT: str = 'faction_count'
 #: 对应,判定形状 = 持卡后首个 kind=='reward' 节点入窗)。
 STRATEGY_GIFT_LEG_NEXT_REWARD_NODE: str = 'next_reward_node'
 
+#: 赠礼腿键·奖励节点晶矿腿(与登记表 STRATEGY_REWARD_ORE_GRANTS 一一
+#: 对应,判定形状 = 任意 kind=='reward' 节点入窗;彩虹矿 id 301201 首例,
+#: 骑 strategy_grants_done 复合串闩形,载体自证差异 = 晶矿无 placement
+#: 发放即闩,不沿迷之旅人 placed 门)。
+STRATEGY_GIFT_LEG_REWARD_ORE: str = 'reward_ore'
+
+
+
 
 def check_strategy_gift_grants(gs: GameState, *, node_kind: str,
                                sig: ChannelSig) -> tuple[str, ...]:
@@ -2376,6 +2384,47 @@ def check_strategy_bench_left_cost_xp(gs: GameState) -> int:
     if unit is None:
         return 0
     return max(int(unit.char.cost), 0) if getattr(unit.char, 'cost', 0) else 0
+
+
+def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
+                                     sig: ChannelSig) -> int:
+    """节点条件晶矿发放检查(彩虹矿 id 301201 首例;「进入新的奖励节点
+    时，获得1个晶矿」触发器单一源,唯一调用点 = sim 节点窗收口——live
+    零写观察覆盖:晶矿实体画面可读,实机局不接本通道)。
+
+    条件矩阵:持卡∩表 → 未持卡 0;node_kind != 'reward' → 0(锚定序
+    真值);封账闩 ``'<卡名>#reward_ore'`` ∈ strategy_grants_done → 0
+    (骑已落码复合串闩形,晶矿无 placement 载体自证发放即闩,不沿
+    迷之旅人 placed 门);闩未命中 → 落闩并返回发矿数(表值,卡面明写)。
+    零 rng 纯判定零 kernel→sim import。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        STRATEGY_REWARD_ORE_GRANTS,
+    )
+    held = gs.active_strategies.value
+    if not held:
+        return 0
+    total = 0
+    done = set(gs.strategy_grants_done.value or ())
+    newly: list[str] = []
+    for name in held:
+        if name not in STRATEGY_REWARD_ORE_GRANTS:
+            continue
+        latch = f'{name}#{STRATEGY_GIFT_LEG_REWARD_ORE}'
+        if latch in done:
+            continue
+        newly.append(latch)
+        total += STRATEGY_REWARD_ORE_GRANTS[name]
+    if node_kind != 'reward':
+        return 0
+    if newly:
+        merged = tuple(sorted(set(done) | set(newly)))
+        write = _select_write(gs, False)
+        write(gs.strategy_grants_done, merged,
+              produced_by=GAIN_CHAIN_PRODUCER,
+              evidence=f'on_strategy_gained:{"+".join(newly)}#reward_ore',
+              sig=sig)
+    return total
 
 
 def _node_frame(gs: GameState) -> str:

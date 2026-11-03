@@ -6048,6 +6048,31 @@ STRATEGY_BENCH_LEFT_COST_XP_GRANTS: frozenset[str] = frozenset(
     {'被动收入'})
 
 
+
+
+# —— 节点条件晶矿发放白名单(彩虹矿 id 301201 首例;「进入新的奖励节点时,
+# 获得1个晶矿」原文直读,cw_invest_data.py:254;表值 = 发矿数,卡面明写;
+# 载体 = T-283 迷之旅人三件套形状[白名单表+检查函数+窗首挂点],其稿 :322
+# 移交句逐字点名本卡+「封闭集随表扩展」授权骑字段;值形哨按 2026-10-28
+# 治理删,唯一哨 = 孤儿键漂移哨)。
+STRATEGY_REWARD_ORE_GRANTS: dict[str, int] = {
+    '彩虹矿': 1,
+}
+
+
+def _validate_strategy_reward_ore_grants() -> None:
+    """STRATEGY_REWARD_ORE_GRANTS 构建校验(import 即炸;治理口径 =
+    2026-10-28「笔误哨删/漂移哨留」同族表——本域唯一哨:孤儿键,表键
+    必须在 INVESTMENT_STRATEGIES,版本改名/移除后静默失联;发矿数为
+    卡面手抄常量,值域形查不适用,对账归本表域测试把关)。"""
+    orphans = [n for n in STRATEGY_REWARD_ORE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_REWARD_ORE_GRANTS 孤儿键(base 无此卡?):'
+            f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+
+
 def _validate_strategy_bench_left_cost_xp_grants() -> None:
     """STRATEGY_BENCH_LEFT_COST_XP_GRANTS 构建校验(import 即炸;治理口径
     = 2026-10-28「笔误哨删/漂移哨留」同族三表——本域唯一哨:孤儿键,表键

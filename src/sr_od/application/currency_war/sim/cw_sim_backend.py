@@ -107,6 +107,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
     check_strategy_node_char_grants,
+    check_strategy_reward_ore_grants,
     check_strategy_win_gold_grants,
     consume_strategy_interest_topup,
     discharge_due_item_grants,
@@ -1647,6 +1648,9 @@ class SimBackend:
     #: 连胜/收入修饰/开源节流息顶满下限 = 轮初口径;floor 评估时点 =
     #: tick 捕获 = 进节点时点,结算刻重评估会读扑满节点自身花费禁),
     #: 结算分支胜负后落账并清回 None。
+    _strategy_reward_ore_pending: int = 0
+    """窗内待呈现晶矿数(买断制块后条件发放腿写入,_present_node_screen
+    消费;窗内幂等不置零,设计稿 r1-O2 修后写法)。"""
     _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None], int]
                          | None) = field(init=False, default=None)
     #: 对账延后声明队列(豁免场景内 next_screen 等值断言延后至稳态,
@@ -3381,6 +3385,16 @@ class SimBackend:
                                 sig=xp_sig)
                 self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
                                 sig=xp_sig)
+        # 节点条件晶矿发放(彩虹矿 id 301201 首例;「进入新的奖励节点时，
+        # 获得1个晶矿」触发器单一源 = kernel check_strategy_reward_ore_grants,
+        # 白名单表 STRATEGY_REWARD_ORE_GRANTS 驱动)。现位申报:买断制静态
+        # XP 腿后、商店全刷前(证伪路径 = 实机持卡局晶矿呈现时点与本窗发牌
+        # 耦合观察,证伪则改序重申报)。窗内 transient 承载(镜像
+        # _piggy_income_snap 先例),呈现段由 _present_node_screen 补点;
+        # 返回值忽略(无回调面);live 零写观察覆盖。
+        self._strategy_reward_ore_pending = \
+            check_strategy_reward_ore_grants(self.gs, node_kind=kind,
+                                             sig=logic_sig('sim:strategy'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')
@@ -3751,7 +3765,13 @@ class SimBackend:
         panel = (reward_ore_panel_points(
             str(self.gs.active_env.value or ''))
             if kind == 'reward' else ())
-        points = panel + self._plane_start_declared_points(plane, len(panel))
+        reward_ore_extra = getattr(self, '_strategy_reward_ore_pending', 0) \
+            if kind == 'reward' else 0
+        extra_points = tuple(
+            ('棱彩', 10 * (len(panel) + i + 1), 10, 10)
+            for i in range(reward_ore_extra))
+        points = panel + self._plane_start_declared_points(plane, len(panel)) \
+            + extra_points
         # spheres 写一律过挂接入口(单一写径,禁第二写径):非 ore 备战
         # 呈现空读照写 count=0 亦过入口——空批零生成、清理上节点残留
         # 矿身份(容差配对在 sim 为恒等,合成坐标恒稳)。
