@@ -57,8 +57,8 @@ CHECK_EXCEPTIONS: dict[str, str] = {
     "15063": "升星高费档,注册表只建起始费档 15061",
 }
 
-# plaza 站位 → 注册表站位(CHARACTERS.position 词汇:front/back/flex)。
-POSITION_MAP = {"Front": "front", "Back": "back", "Common": "flex"}
+# plaza 站位 → 注册表站位(CHARACTERS.position 词汇:front/back/common)。
+POSITION_MAP = {"Front": "front", "Back": "back", "Common": "common"}
 
 # 费用档底色(BGR,imdecode 采样空间;烘焙合成用,与现库已烘底色逐像素一致)。
 # 来源:2026-08-17 冻结自旧手采库 character_cw_portrait 角块中位数(原 gen_templates 运行时采样;

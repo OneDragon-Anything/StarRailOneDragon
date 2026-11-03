@@ -23,7 +23,7 @@ class Character:
     """单个货币战争角色(V4.4 图鉴规范数据)。"""
     name: str                   # 规范名(如 "姬子·启行"/"Archer",非"红A")
     cost: int                   # 费用 1-5(图鉴 rate;卡芙卡=2 等)
-    position: str               # "front"(前台)/ "back"(后台)/ "flex"(前后台)
+    position: str               # "front"(前台)/ "back"(后台)/ "common"(前后台皆可,官方 Common:技能效果不绑定排)
     char_type: str              # 类型:输出/治疗/护盾/辅助(多标签用 "、" 分隔,如 "治疗、辅助")
     factions: tuple[str, ...]   # 阵营羁绊(仙舟/贝洛伯格/…;无则空)
     flows: tuple[str, ...]      # 流派羁绊(击破/燃血/…;无则空)
@@ -46,10 +46,16 @@ class Character:
     bench_effect: str = ""
 
     def position_pref(self) -> str:
-        """部署站位偏好 → "front"/"back"(flex 默认 back,可被阵容阵型覆盖)。"""
+        """部署站位偏好 → "front"/"back"(common 默认 back,可被阵容层 char_positions 覆盖)。
+
+        common(官方 Common=双排皆可)默认 back 是**无知识时的安全兜底**(后排不挨打、
+        不占前排保证位),非游戏定义——游戏对 Common 本就没有排定义。排差异来自阵容
+        机制面(受击方向/前后台强度分配/装备排绑定/巡海后台供增益类),有机制证据时
+        经 Comp.char_positions 覆盖(2026-11-04 全量审查 17 名终局 Common 成员:
+        仅绯英实证前排需覆盖,万敌/爻光/知更鸟三例既有覆盖维持,其余默认即实证)。"""
         if self.position == "front":
             return "front"
-        return "back"   # back / flex → back(flex 可前可后,默认后排放后续阵容阵型调整)
+        return "back"   # back / common → back
 
 
 # ===== 开拓者形态切换(用户指示:羁绊计算须注意其特殊性) =====
@@ -105,39 +111,39 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     # —— 1 费 ——
     _ch("阿格莱雅", 1, "front", "输出", "昼之半神", "能量", source="6552"),
     _ch("乱破", 1, "front", "输出", "巡海游侠", "击破", source="6551"),
-    _ch("大丽花", 1, "flex", "输出", "盛会之星", "击破", source="6999"),
+    _ch("大丽花", 1, "common", "输出", "盛会之星", "击破", source="6999"),
     _ch("艾丝妲", 1, "front", "辅助", "银河学者", "持续伤害", source="6536"),
-    _ch("黑塔", 1, "flex", "输出", "银河学者", "群攻", source="6535",
+    _ch("黑塔", 1, "common", "输出", "银河学者", "群攻", source="6535",
          bench_effect="星级供强"),
     _ch("青雀", 1, "front", "输出", "仙舟", "战技点", source="6534", is_expert=True),
     _ch("飞霄", 1, "front", "输出", "狼狩", "追击", source="6373"),
     _ch("椒丘", 1, "front", "治疗、辅助", "狼狩", "持续伤害、减益", source="6531"),  # trait 对齐 plaza:+狼狩(characters.md 阵营速查早已有,注册表漏)
-    _ch("加拉赫", 1, "flex", "治疗", "盛会之星", "治疗、击破", source="6522", is_expert=True),
-    _ch("娜塔莎", 3, "flex", "治疗", "贝洛伯格", "治疗", source="6548"),  # 费用勘误 1→3(广场 config rarity+bwiki 双源)
-    _ch("桑博", 1, "flex", "输出", "贝洛伯格、星间旅人", "持续伤害", source="6554", is_expert=True),
+    _ch("加拉赫", 1, "common", "治疗", "盛会之星", "治疗、击破", source="6522", is_expert=True),
+    _ch("娜塔莎", 3, "common", "治疗", "贝洛伯格", "治疗", source="6548"),  # 费用勘误 1→3(广场 config rarity+bwiki 双源)
+    _ch("桑博", 1, "common", "输出", "贝洛伯格、星间旅人", "持续伤害", source="6554", is_expert=True),
     _ch("赛飞儿", 1, "front", "辅助", "夜之半神", "追击、减益", source="6553"),
-    _ch("万敌", 1, "flex", "输出", "夜之半神", "燃血", source="6541"),
+    _ch("万敌", 1, "common", "输出", "夜之半神", "燃血", source="6541"),
     _ch("翡翠", 1, "back", "输出、辅助", "公司", "群攻", source="6550"),
     _ch("停云", 1, "back", "辅助", "仙舟", "能量", source="", is_expert=True),  # 补录:plaza id=1202,is_expert 专家顾问,技能佳音降祥瑞
-    _ch("藿藿", 1, "flex", "治疗、辅助", "仙舟", "治疗、能量", source="6398"),
+    _ch("藿藿", 1, "common", "治疗、辅助", "仙舟", "治疗、能量", source="6398"),
     _ch("三月七", 1, "back", "护盾", "列车同行", "护盾", source="6537"),
     _ch("刃", 1, "back", "输出", "星核猎手", "燃血", source="6532", is_expert=True),
     _ch("貊泽", 1, "back", "输出、辅助", "狼狩", "追击", source="6530", is_expert=True),  # trait 对齐 plaza:-减益
-    _ch("远坂凛", 1, "flex", "输出", "命运圣杯", "战技点", source="7879"),
+    _ch("远坂凛", 1, "common", "输出", "命运圣杯", "战技点", source="7879"),
     # —— 2 费 ——(卡芙卡图鉴 rate=2费,1费阵容常用)
-    _ch("卡芙卡", 2, "flex", "输出、辅助", "星核猎手", "持续伤害", source="6538"),
+    _ch("卡芙卡", 2, "common", "输出、辅助", "星核猎手", "持续伤害", source="6538"),
     _ch("千冶·刃", 2, "back", "输出", "星核猎手", "燃血、减益", source="7886"),
-    _ch("吉尔伽美什", 2, "flex", "输出", "命运圣杯", "能量", source="7880"),
-    _ch("绯英", 2, "flex", "输出", "星间旅人", "欢愉", source="7467"),
-    _ch("不死途", 2, "flex", "输出", "巡海游侠", "追击", source="7465"),
-    _ch("爻光", 1, "flex", "辅助", "仙舟", "欢愉", source="7000"),  # 费用勘误 2→1(广场 config rarity+bwiki 双源)
+    _ch("吉尔伽美什", 2, "common", "输出", "命运圣杯", "能量", source="7880"),
+    _ch("绯英", 2, "common", "输出", "星间旅人", "欢愉", source="7467"),
+    _ch("不死途", 2, "common", "输出", "巡海游侠", "追击", source="7465"),
+    _ch("爻光", 1, "common", "辅助", "仙舟", "欢愉", source="7000"),  # 费用勘误 2→1(广场 config rarity+bwiki 双源)
     _ch("砂金", 2, "front", "护盾、输出", "公司", "追击、护盾", source="6400"),
     _ch("阮·梅", 2, "back", "辅助", "银河学者", "击破", source="6399"),
-    _ch("银枝", 2, "flex", "输出、辅助", "星间旅人", "群攻", source="6392"),  # 站位对齐 plaza Common=flex(2026-08-15)
+    _ch("银枝", 2, "common", "输出、辅助", "星间旅人", "群攻", source="6392"),  # 站位对齐 plaza Common(2026-08-15)
     _ch("丹恒·饮月", 2, "front", "输出", "仙舟、列车同行", "战技点", source="6383"),
     _ch("风堇", 2, "front", "治疗、输出", "昼之半神", "治疗、燃血", source="6540"),
     _ch("丹恒·腾荒", 2, "back", "护盾", "夜之半神", "护盾", source="6539"),
-    _ch("缇宝", 2, "flex", "辅助、输出", "昼之半神", "群攻、量子同频", source="6542"),
+    _ch("缇宝", 2, "common", "辅助、输出", "昼之半神", "群攻、量子同频", source="6542"),
     _ch("花火", 2, "back", "辅助", "盛会之星", "战技点、量子同频", source="6401"),
     _ch("灵砂", 2, "front", "治疗、输出", "狼狩", "治疗、击破", source="6261"),
     _ch("佩拉", 2, "back", "辅助、输出", "贝洛伯格", "减益", source="6133", is_expert=True),  # trait 对齐 plaza:+减益
@@ -146,19 +152,19 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("姬子", 3, "back", "输出", "列车同行", "击破", source="6272", is_expert=True),
     _ch("忘归人", 3, "back", "辅助、输出", "仙舟", "击破", source="6549"),
     _ch("希儿", 3, "front", "输出", "贝洛伯格", "量子同频", source="6547"),
-    _ch("Saber", 3, "flex", "输出", "命运圣杯", "能量", source="6546"),
-    _ch("刻律德菈", 3, "flex", "辅助", "夜之半神", "战技点", source="6544"),
+    _ch("Saber", 3, "common", "输出", "命运圣杯", "能量", source="6546"),
+    _ch("刻律德菈", 3, "common", "辅助", "夜之半神", "战技点", source="6544"),
     _ch("那刻夏", 3, "back", "输出、辅助", "昼之半神", "群攻", source="6543"),
     _ch("镜流", 3, "back", "输出", "狼狩", "燃血", source="6284"),
     _ch("黄泉", 3, "front", "输出", "巡海游侠", "减益", source="6290"),
     _ch("真理医生", 3, "front", "输出", "银河学者、星间旅人", "追击", source="6285"),
-    _ch("星期日", 3, "flex", "辅助", "盛会之星、列车同行", "能量", source="6185"),
+    _ch("星期日", 3, "common", "辅助", "盛会之星、列车同行", "能量", source="6185"),
     _ch("白厄", 3, "front", "输出", "", "", independent="救世主", source="6134"),
     _ch("银狼LV.999", 3, "front", "输出", "星核猎手", "欢愉", independent="头号玩家", source="7466"),  # ⚠️ 3/4/5 费三档(升星升费):开局商店仅刷 3 费档,2 星升费后商店才出现高费档(用户口述);cost=起始费,多档建模待策略层需要时扩(广场 id 15061/15062/15063)
     # —— 4 费 ——
     _ch("开拓者·欢愉", 4, "back", "辅助", "列车同行", "能量、欢愉", source="7469"),  # trait 对齐 plaza 8009:+能量
     _ch("火花", 4, "front", "输出", "星间旅人", "战技点、欢愉", source="7001"),
-    _ch("长夜月", 4, "flex", "输出、辅助", "夜之半神", "燃血", source="6545"),  # trait 对齐 plaza:-战技点
+    _ch("长夜月", 4, "common", "输出、辅助", "夜之半神", "燃血", source="6545"),  # trait 对齐 plaza:-战技点
     _ch("海瑟音", 4, "front", "输出", "昼之半神", "持续伤害", source="6269"),
     _ch("波提欧", 4, "front", "输出", "巡海游侠", "击破", source="6268"),
     _ch("符玄", 4, "back", "治疗、辅助", "仙舟", "治疗、量子同频", source="6259"),  # trait 对齐 plaza:-贝洛伯格
@@ -166,7 +172,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("大黑塔", 4, "front", "输出", "银河学者", "群攻", source="6249"),
     _ch("遐蝶", 4, "front", "输出", "夜之半神", "燃血", source="6248"),
     _ch("开拓者·记忆", 4, "front", "辅助、输出", "列车同行", "能量", source="6247"),  # trait 对齐:+列车同行(plaza 共享模板+bwiki 记忆页;plaza 隐藏条目8007为共享壳)
-    _ch("银狼", 4, "flex", "辅助、输出", "星核猎手", "量子同频", source="6245", is_expert=True),
+    _ch("银狼", 4, "common", "辅助、输出", "星核猎手", "量子同频", source="6245", is_expert=True),
     _ch("杰帕德", 4, "front", "护盾、输出", "贝洛伯格", "护盾", source="6244"),
     _ch("彦卿", 4, "back", "输出", "仙舟、狼狩", "减益", source="6132"),
     # —— 5 费 ——
