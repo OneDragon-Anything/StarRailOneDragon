@@ -5684,6 +5684,59 @@ def _validate_strategy_bench_count_xp_grants() -> None:
 _validate_strategy_bench_count_xp_grants()
 
 
+# ===== 策略卡备战席条件离场金登记表(白名单制;「进入新节点时，备战席的
+# ===== 1星【X】会留下N金币并去别处找乐子」身份条件离场产金族)=====
+# 判定单一源;消费端 = kernel/cw_gain_chain.check_strategy_bench_leave_gold
+# (纯读零写零 rng,世界写端 = sim 节点窗挂点唯一调用口〔金写 + 离场写〕;
+# 零 done 闩——卡面无「首次」限定,每节点窗条件成立即触发,幂等归窗口
+# 守卫)。表外卡一律无条目,禁从效果原文自动猜装;同族后继卡按「注册行
+# 直用本通道」接入。
+
+STRATEGY_BENCH_LEAVE_GOLD_GRANTS: dict[str, tuple[tuple[str, int, int], ...]] = {
+    # 愚者恶作剧:官方「商店中出现的的2/4费卡有20%的概率变为【花火】/
+    # 【火花】，进入新节点时，备战席的1星【花火】/【火花】会留下2/4金币
+    # 并去别处找乐子。」(id 260701 原文直读,cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行;「的的」双字系数据源原文勿当笔误修);值 = ((角色名, 星级,
+    # 离场金), ...),数值全 desc 明写零占位:星级恒 1(「1星」明写,2星
+    # 豁免 = 星轴不匹配自然跳过),离场金与费用档平行(花火 2 费留 2 金/
+    # 火花 4 费留 4 金);「留下…金币并去别处找乐子」= 金为产出非卖价
+    # 公式,离场 = 单位移出备战席(非出售退款语义)。辖域 = 备战席槽位
+    # 单位面(bench_units_of 读口语义:占位件与空槽不计,desc「角色」
+    # 文义直读;上阵位/溢出位不在 desc「备战席」文义内)。
+    '愚者恶作剧': (('花火', 1, 2), ('火花', 1, 4)),
+}
+
+
+def _validate_strategy_bench_leave_gold_grants() -> None:
+    """STRATEGY_BENCH_LEAVE_GOLD_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_bench_count_xp_grants
+    docstring——本表落孤儿键/角色名两哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。角色名:必须在 CHARACTER_ROSTER(游戏角色词表改版即触发,
+    漂移哨)。星级/金币量系卡面手抄常量,游戏数值改版只改「正确值」,
+    正确转录值恒在域内(哨不响),纯笔误类值形/值域查按治理裁定不加,
+    对账归本表域测试把关(行值精确断言 + id 对拍 plaza:260701,防线
+    强于 import 期形查)。"""
+    orphans = [n for n in STRATEGY_BENCH_LEAVE_GOLD_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BENCH_LEAVE_GOLD_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    unknown_chars = sorted({
+        row[0] for rows in STRATEGY_BENCH_LEAVE_GOLD_GRANTS.values()
+        for row in rows} - set(CHARACTER_ROSTER))
+    if unknown_chars:
+        raise ValueError(
+            f"STRATEGY_BENCH_LEAVE_GOLD_GRANTS 角色名不在 CHARACTER_ROSTER:"
+            f"{unknown_chars}")
+
+
+_validate_strategy_bench_leave_gold_grants()
+
+
 # ===== 策略卡羁绊档位条件发放注册表(梦境大舞台;白名单制)=====
 # 「<门槛羁绊>羁绊激活时,战斗中首次激活 A/B/C 个不同的非独立羁绊后,
 # 获得【具名装备】」策略域首例:键 = 策略规范名,值 = StrategyBondTierGrant

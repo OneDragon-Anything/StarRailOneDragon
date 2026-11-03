@@ -95,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     LEVEL_GRANT_PRODUCER,
     check_strategy_battle_grants,
     check_strategy_bench_count_xp,
+    check_strategy_bench_leave_gold,
     check_strategy_bond_battle_grants,
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
@@ -140,6 +141,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     HYPEREMIT_SPEC_NAME,
     INVESTMENT_ENVS,
     INVESTMENT_STRATEGIES,
+    STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
@@ -2865,6 +2867,73 @@ class SimBackend:
         # 上窗以来状态变动(连胜/选卡)在此反映;本窗内选卡的即时反映
         # 由 _on_invest_picked 写点承担。
         self._update_difficulty_flag()
+        # 策略卡备战席条件离场金腿(「进入新节点时，备战席的1星【花火】/
+        # 【火花】会留下2/4金币并去别处找乐子」族,愚者恶作剧 id 260701
+        # 首例):进窗事实点在窗口幂等守卫内(重放不双发),kernel 检查函数
+        # 单一源 check_strategy_bench_leave_gold(纯读零写,未持卡/无匹配
+        # 单位零写,零 done 闩——卡面无「首次」限定,每节点窗条件成立即
+        # 触发)。挂点钉在收入段最前(与定期福利金腿同段邻位、扑满递延
+        # 快照与轮首收入之前——离场金入本节点利息基数,与 live 轮初口径
+        # 「利息计算基数 = 结算前金现值」同向,T-162 定形;离场腾槽在任何
+        # 后续读数前生效)。计划非空两笔写:①金写 = observe Σ计划金币
+        # 独立笔(与收入三分量账分键;evidence 含逐单位明细
+        # 'strategy:bench_leave_gold:<卡名>:p<位面>r<轮>:名@s槽+金;…');
+        # ②离场写 = BenchView 整视图结构性写(匹配槽置空槽,卖备战席角色
+        # 置 empty 同形,capacity 不动;两笔互不读对方字段,先后无行为差,
+        # 序 = 卡文语序「留下金币并去别处找乐子」先金后离场)。
+        # **相对序现位申报**(沿人才空洞计数腿先例治理模式):本腿位于同窗
+        # 全部 bench 谓词消费之前——移出 1星花火/火花会改变后续 bench 谓词
+        # 输入域:人才空洞计数 XP 腿(≤4/≥8 门槛计数,如 6→4 触发 ≤4 多发
+        # 3XP)/空仓 XP 腿与装备计数 XP 腿(离场单位身上装备随移出,装备域
+        # 输入收窄)/node_char 复制腿(落席空槽候选增多;谓词本体零交互——
+        # 价值投资族绑定 = 随机 1 费角色,花火 2 费/火花 4 费永不被绑定)。
+        # 相对序官方无定谳 = 判读申报制辖域,现位 = 收入段最前(证伪路径 =
+        # 实机持卡局节点窗内离场与 XP/复制发放的先后观察,证伪则改序重
+        # 申报)。live 零写观察覆盖(实机离场与离场金由游戏自算自显,备战
+        # 席整表观察 + 金观察链覆盖);零 rng 确定结算。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            BenchSlot,
+            BenchView,
+        )
+        leave_plan = check_strategy_bench_leave_gold(self.gs)
+        if leave_plan:
+            leave_card = next(
+                (n for n in (self.gs.active_strategies.value or ())
+                 if n in STRATEGY_BENCH_LEAVE_GOLD_GRANTS), '')
+            leave_detail = ';'.join(
+                f'{name}@s{slot}+{gold}'
+                for slot, name, gold in leave_plan)
+            leave_tag = (f'strategy:bench_leave_gold:{leave_card}'
+                         f':p{plane}r{r}:{leave_detail}')
+            self.gs.observe(
+                self.gs.gold,
+                int(self.gs.gold.value or 0)
+                + sum(g for _, _, g in leave_plan),
+                evidence=sim_evidence(leave_tag),
+                sig=obs_sig(group_id='sim:strategy'))
+            view = self.gs.bench.value
+            if view is not None:
+                slots = list(view.slots)
+                for slot_idx, name, _gold in leave_plan:
+                    if 0 <= slot_idx < len(slots):
+                        s = slots[slot_idx]
+                        if (s is not None and s.kind == 'unit'
+                                and s.unit is not None
+                                and s.unit.char_id == name):
+                            slots[slot_idx] = BenchSlot(kind='empty')
+                        else:
+                            # 判定与写刻间槽内容漂移(同窗内前置腿写席
+                            # 才可达;当前段序收入段最前,无前置写席腿
+                            # = 现网不可达防御):留证跳写不误清他人槽。
+                            log.warning(
+                                '[cw-sim] bench_leave_gold 槽内容与'
+                                '判定漂移,跳写留证: p%sr%s slot=%s',
+                                plane, r, slot_idx)
+                self.gs.observe(
+                    self.gs.bench,
+                    BenchView(slots=slots, capacity=view.capacity),
+                    evidence=sim_evidence(leave_tag),
+                    sig=obs_sig(group_id='sim:strategy'))
         # 投资策略每节点金腿(定期福利系):进任意节点窗发持卡聚合值,
         # 独立观察笔(evidence/sig 与收入笔分键)——轮首收入三分量账
         #(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入

@@ -103,6 +103,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     HYPEREMIT_SPEC_ID,
     INVESTMENT_ENVS,
     STRATEGY_BENCH_COUNT_XP_GRANTS,
+    STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOND_TIER_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
@@ -1385,6 +1386,55 @@ def check_strategy_bench_count_xp(gs: GameState) -> int:
                 (op == 'ge' and count >= threshold):
             total += xp
     return total
+
+
+def check_strategy_bench_leave_gold(
+        gs: GameState) -> list[tuple[int, str, int]]:
+    """策略卡备战席条件离场金检查(「进入新节点时，备战席的1星【花火】/
+    【火花】会留下2/4金币并去别处找乐子」触发器单一源,愚者恶作剧 id
+    260701 首例;**纯读零写零 rng**——kernel 判定无 sig 形参零世界写,
+    唯一调用点 = sim 节点窗挂点写端〔金写 + 离场写〕;零 done 闩:卡面
+    无「首次」限定,每节点窗条件成立即触发,幂等归窗口守卫。live 不评估
+    本条件(实机离场与离场金由游戏自算自显,备战席整表观察 + 金观察链
+    覆盖)。
+
+    条件矩阵(顺序即短路序,check_strategy_bench_count_xp 同纪律):
+
+    1. None 防御:策略集/备战席任一未观察 → [](fail-closed 与「宁可漏发
+       不误发」同向——sim 生产开局种子底座不触发,直构/单测域触发);
+    2. 持卡 ∩ :data:`STRATEGY_BENCH_LEAVE_GOLD_GRANTS` 为空(未持卡/表外卡
+       同路,表外卡禁从效果原文自动猜装)→ [];
+    3. 逐槽扫:直接遍历 ``BenchView.slots`` 而非 ``bench_units_of``——
+       本判定须返回槽位序供离场写定位,紧缩读口丢位置;计入口径与
+       ``bench_units_of`` docstring 同源 = 仅 ``kind='unit'`` 且 unit 非
+       None 槽(占位件 tome/bookcard/supply_box 与空槽不计,desc「角色」
+       文义直读;溢出单位不在 BenchView slots,结构性不计;上阵位不入
+       desc「备战席」文义);身份轴 = ``Unit.char_id``(角色名,与表行
+       角色名同轴)∧ 星级 = 表行星级(现值恒 1,desc「1星」明写;2星
+       豁免 = 星轴不匹配自然跳过);
+    4. 返回离场计划 ``[(槽位序, 角色名, 离场金), ...]``——槽位序 =
+       ``BenchView.slots`` 0 基列表下标(slots[i] = 物理槽 i+1,容器
+       docstring 坐标系;**取值时机 = 判定刻快照**,消费端〔sim 离场写〕
+       在同一窗口内按此定位置空,跨窗复用无效);持卡集合去重后逐行匹配,
+       单单位至多命中一行(表行角色名互异),计划内槽位序唯一。
+    """
+    strategies = gs.active_strategies.value
+    bench = gs.bench.value
+    if strategies is None or bench is None:
+        return []
+    rows = {row for name in set(strategies)
+            for row in STRATEGY_BENCH_LEAVE_GOLD_GRANTS.get(name, ())}
+    if not rows:
+        return []
+    plan: list[tuple[int, str, int]] = []
+    for idx, slot in enumerate(bench.slots):
+        if slot is None or slot.kind != 'unit' or slot.unit is None:
+            continue
+        for name, star, gold in rows:
+            if slot.unit.char_id == name \
+                    and int(slot.unit.star or 1) == star:
+                plan.append((idx, name, gold))
+    return plan
 
 
 def check_strategy_equip_count_xp(gs: GameState) -> int:

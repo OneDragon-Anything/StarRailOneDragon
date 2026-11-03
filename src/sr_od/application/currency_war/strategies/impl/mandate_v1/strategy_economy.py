@@ -219,6 +219,13 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
 
     '人才济济': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
+    # 愚者恶作剧:双腿分治——离场金腿(备战席 1星花火/火花进节点留 2/4 金
+    # 离场)已建世界通道 = cw_investments.STRATEGY_BENCH_LEAVE_GOLD_GRANTS
+    # + kernel 纯判定 + sim 节点窗挂点;商店变形腿(2/4 费 20% 变花火/火花)
+    # = 随机资产面零建模申报(effect-domain §6.4 用户裁定直辖,市场活力
+    # 同型,live 观察覆盖,sim 收益面低估);估值零登记维持
+    '愚者恶作剧': '离场金腿已建世界通道 STRATEGY_BENCH_LEAVE_GOLD_GRANTS;'
+              '商店变形腿随机资产面零建模申报(观察覆盖);估值零登记维持',
     # 赞美太阳:节点条件 XP 腿(每拥有一件【白昼装备】以及其原型装备,
     # 进入新节点每件 +1)已建世界通道 = cw_investments
     # .STRATEGY_EQUIP_COUNT_XP_GRANTS(计数域 = DAYLIGHT_EQUIP_XP_NAME_SET
