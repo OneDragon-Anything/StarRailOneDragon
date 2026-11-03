@@ -337,8 +337,9 @@ def _entry_window_open(gs: GameState, char_id: str) -> bool:
             if _board_counts is None:
                 front, back = deployed_rows_of(gs)
                 _board_counts = board_by_row(front, back).total()
-            tag = comp.bond_signal or (
-                comp.form_tiers and next(iter(comp.form_tiers)))
+            # 主羁绊 = form_tiers 首键(旧 bond_signal 字段已退役——21 线中
+            # 20 线填值与首键等值,黄泉减益同值键序对齐后全库零行为差)
+            tag = comp.form_tiers and next(iter(comp.form_tiers))
             if tag and _board_counts.get(tag, 0) >= int(threshold):
                 return True
     return False

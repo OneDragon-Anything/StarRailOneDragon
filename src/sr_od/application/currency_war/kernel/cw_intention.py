@@ -544,7 +544,7 @@ def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
     bonds = _pair_bond_keys(pair)
     out: list[str] = []
     for c in COMP_LIBRARY:
-        main = c.bond_signal or next(iter(c.form_tiers), '')
+        main = next(iter(c.form_tiers), '')   # 主羁绊=form_tiers 首键(bond_signal 已退役,黄泉键序对齐)
         if main in bonds:
             out.append(c.name)
     return tuple(out)
