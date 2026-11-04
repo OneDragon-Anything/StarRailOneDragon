@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import cv2
+import numpy as np
 
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.base.screen.template_loader import TemplateLoader
@@ -47,6 +48,27 @@ _MIN_CONFIDENCE: float = 0.70       #: 单命中置信门槛(低于 = 无识别�
 _AMBIGUITY_RATIO: float = 1.25      #: top1/top2 歧义比门槛(低于 = 返回候选不硬猜)
 _EMPTY_SLOT_MEAN_V: float = 60.0    #: 空槽判定:裁片平均 V 低于此 = 空槽
 _ACTIVE_TAB_MEAN_V: float = 140.0   #: tab 激活判定:标签区平均 V 高于此 = 激活
+
+# --------------------------------------------------------------------------
+# 弱点属性(建议属性)识别:OCR 锚「建议属性」→ 标签下方图块带 → 色块检测 →
+# 元素模板匹配(element_weakness 底板合成模板)主判 + 色相域交叉仲裁。
+# 锚定位使识别对布局平移不敏感(环境描述行数变化会推移下方内容,固定 rect 会错位)。
+# 色相域标定:2026-11-04 实机帧(物竞天择其一/其十)6 blob 全对 —— 雷 H≈122 /
+# 量子 H≈144 / 冰 H≈95 / 虚数 H≈26 / 火 H≈1 / 物理=白色纹样(S<30,V>150);
+# 风未见样本,按色相域预留(模板已入库,出现样本后回验)。
+# --------------------------------------------------------------------------
+_WEAKNESS_ANCHOR_TEXT: str = '建议属性'
+_WEAKNESS_ZONE_W: int = 200          #: 图块带搜索区宽(锚点左对齐)
+_WEAKNESS_ZONE_H: int = 60           #: 图块带搜索区高(标签底缘起)
+_WEAKNESS_HUE_BUCKETS: tuple[tuple[str, int, int], ...] = (
+    ('火', 0, 12), ('火', 168, 179), ('虚数', 15, 35), ('风', 40, 80),
+    ('冰', 84, 110), ('雷', 112, 132), ('量子', 136, 158),
+)
+_ELEMENT_NAMES: tuple[str, ...] = ('火', '冰', '雷', '风', '量子', '虚数', '物理')
+_ELEMENT_TEMPLATE_DIR: str = 'element_weakness'
+_WEAKNESS_BLOB_MIN: int = 16         #: 图标色块外接框下限(px,膨胀后)
+_WEAKNESS_BLOB_MAX: int = 64         #: 图标色块外接框上限
+_WEAKNESS_TM_MIN: float = 0.45       #: TM 置信下限(低于 = 走色相域回退)
 
 # --------------------------------------------------------------------------
 # 左侧角色网格几何(相对「区域-角色网格」rect 原点;2026-11-04 实机帧标定)
@@ -129,6 +151,8 @@ class TlTeamView:
         left_tab: 左侧当前激活 tab('角色列表' | '预设编队');识别失败 None。
         slot1: 队伍 1 槽位识别(4 元素,下标 = 槽位序 0 基)。
         slot2: 队伍 2 槽位识别(同上)。
+        weaknesses1: 队伍 1 行「建议属性」弱点属性名(该波敌人弱点;左右序)。
+        weaknesses2: 队伍 2 行弱点属性名(同上)。
         character_grid: 角色列表 tab 的可见网格;非该 tab 为 None。
         preset_teams: 预设编队 tab 的队伍组;非该 tab 为 None。
     """
@@ -139,6 +163,8 @@ class TlTeamView:
     left_tab: str | None
     slot1: list[MemberGuess]
     slot2: list[MemberGuess]
+    weaknesses1: list[str]
+    weaknesses2: list[str]
     character_grid: list[GridCell] | None
     preset_teams: list[PresetTeam] | None
 
@@ -277,6 +303,137 @@ def read_team_slots(ctx: SrContext, image: MatLike) -> tuple[list[MemberGuess], 
     return slots[0], slots[1]
 
 
+def ensure_element_templates(ctx: SrContext) -> dict[str, TemplateInfo]:
+    """元素弱点模板(元素名→TemplateInfo;assets/template/element_weakness/<元素>/raw.png)。
+
+    模板源 = 客户端解包 ``IconDamageType*`` 官方图标(64px RGBA),入库前预合成到
+    实采底板色(RGB 31,30,50)上 —— 与游戏内「暗色圆板 + 彩色纹样」渲染一致。
+    缓存 ctx(只读资源,幂等,并发安全);缺失降级为空 dict(走色相域回退)。
+    """
+    cached = getattr(ctx, 'tl_element_templates', None)
+    if cached:
+        return cached
+    loader = TemplateLoader()
+    out: dict[str, TemplateInfo] = {}
+    for cname in _ELEMENT_NAMES:
+        t = loader.get_template(_ELEMENT_TEMPLATE_DIR, cname)
+        if t is not None:
+            out[cname] = t
+    ctx.tl_element_templates = out
+    return out
+
+
+def _weakness_hue(crop: MatLike) -> int:
+    """色块裁片彩色纹样像素的中位 H(S>60,V>80;无彩像素返 -1)。"""
+    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
+    s, v = hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
+    colored = (s > 60) & (v > 80)
+    if int(colored.sum()) < 15:
+        return -1
+    return int(np.median(hsv[:, :, 0][colored]))
+
+
+def _weakness_hue_element(hue: int) -> str | None:
+    """色相中位 → 元素名(域表见 _WEAKNESS_HUE_BUCKETS;域外 None)。"""
+    for name, lo, hi in _WEAKNESS_HUE_BUCKETS:
+        if lo <= hue <= hi:
+            return name
+    return None
+
+
+def _classify_weakness_blob(crop: MatLike, templates: dict[str, TemplateInfo]) -> str | None:
+    """弱点图块裁片 → 元素名。
+
+    TM 主判:元素模板(底板合成图)缩放到色块尺寸后 CCOEFF_NORMED(模板已含底板,
+    与游戏渲染一致;CCOEFF 去均值抑制底色差)。两道交叉:
+    - 白色纹样直判:blob 内白像素占优(相邻图标边缘可能渗入少量彩像素,按占比裁断)
+      → 物理(白色双剑=物理,标定 2026-11-04 实机帧);
+    - 紫对仲裁:TM 最佳为 雷/量子 且色相明确落在另一域 → 按色相纠正(同色不同相,
+      TM 色彩主导会互串,实机帧实测雷/量子互错);
+    - 低分回退:TM < 阈值 → 色相域判定(全 blob 标定全对)。
+    """
+    bh, bw = crop.shape[:2]
+    hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
+    s, v = hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
+    colored_px = int(((s > 60) & (v > 80)).sum())
+    white_px = int(((s < 30) & (v > 150)).sum())
+    if white_px >= 30 and white_px >= colored_px * 2:
+        return '物理'
+    hue = int(np.median(hsv[:, :, 0][(s > 60) & (v > 80)])) if colored_px >= 15 else -1
+    best_name: str | None = None
+    best_score = -1.0
+    for cname, t in templates.items():
+        t_s = cv2.resize(t.raw, (bw, bh), interpolation=cv2.INTER_AREA)
+        res = cv2.matchTemplate(crop, t_s, cv2.TM_CCOEFF_NORMED)
+        res = np.nan_to_num(res, nan=0.0, posinf=0.0, neginf=0.0)
+        score = float(res.max())
+        if score > best_score:
+            best_name, best_score = cname, score
+    if best_name is None:
+        return None
+    if best_name in ('雷', '量子') and hue >= 0:
+        hue_elem = _weakness_hue_element(hue)
+        if hue_elem in ('雷', '量子') and hue_elem != best_name:
+            return hue_elem
+    if best_score < _WEAKNESS_TM_MIN:
+        return _weakness_hue_element(hue)
+    return best_name
+
+
+def _detect_weakness_blobs(zone: MatLike) -> list[tuple[int, int, int, int]]:
+    """图块带 → 图标外接框列表(按 x 序;彩色纹样 + 白色纹样双路,膨胀融臂去重)。"""
+    hsv = cv2.cvtColor(zone, cv2.COLOR_RGB2HSV)
+    s, v = hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
+    kernel = np.ones((3, 3), np.uint8)
+    boxes: list[tuple[int, int, int, int]] = []
+    seen: list[tuple[int, int]] = []
+    for mask_bool in ((s > 60) & (v > 80), (s < 30) & (v > 150)):
+        mask = mask_bool.astype(np.uint8) * 255
+        mask = cv2.dilate(mask, kernel, iterations=1)
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in cnts:
+            x, y, w, h = cv2.boundingRect(c)
+            if not (_WEAKNESS_BLOB_MIN <= w <= _WEAKNESS_BLOB_MAX
+                    and _WEAKNESS_BLOB_MIN <= h <= _WEAKNESS_BLOB_MAX):
+                continue
+            if any(abs(x - sx) < 12 and abs(y - sy) < 12 for sx, sy in seen):
+                continue
+            seen.append((x, y))
+            boxes.append((x, y, w, h))
+    boxes.sort(key=lambda b: b[0])
+    return boxes
+
+
+def read_team_weaknesses(ctx: SrContext, image: MatLike) -> tuple[list[str], list[str]]:
+    """两队伍行「建议属性」弱点属性名(该波敌人弱点,左右序)。
+
+    OCR 锚「建议属性」定位图块带(布局平移不敏感);空列表 = 锚未读到或无色块
+    (降级不编造)。行序按锚 y 排序(上行=队伍1,下行=队伍2)。
+    """
+    templates = ensure_element_templates(ctx)
+    results = ctx.ocr_service.get_ocr_result_list(image=image)
+    anchors = sorted(
+        (r for r in results if _WEAKNESS_ANCHOR_TEXT in (r.data or '')),
+        key=lambda r: r.y,
+    )
+    rows: list[list[str]] = []
+    for a in anchors[:2]:
+        x1 = max(0, a.x - 15)
+        y1 = a.y + a.h + 2
+        zone = image[y1:y1 + _WEAKNESS_ZONE_H, x1:x1 + _WEAKNESS_ZONE_W]
+        names: list[str] = []
+        for (bx, by, bw, bh) in _detect_weakness_blobs(zone):
+            pad = 4
+            crop = zone[max(0, by - pad):by + bh + pad, max(0, bx - pad):bx + bw + pad]
+            name = _classify_weakness_blob(crop, templates)
+            if name:
+                names.append(name)
+        rows.append(names)
+    if len(rows) >= 2:
+        return rows[0], rows[1]
+    return [], []
+
+
 def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
     """角色列表 tab 的可见网格(4 列 × 可见 4 行;几何标定见模块 docstring)。"""
     area_rect = _get_area_rect(ctx, '区域-角色网格')
@@ -321,6 +478,7 @@ def collect_tl_team_info(ctx: SrContext, image: MatLike) -> TlTeamView:
     elif tab == '预设编队':
         preset_teams = read_preset_teams(ctx, image)
     slot1, slot2 = read_team_slots(ctx, image)
+    weaknesses1, weaknesses2 = read_team_weaknesses(ctx, image)
     return TlTeamView(
         stage_name=read_stage_name(ctx, image),
         environment_text=read_environment(ctx, image),
@@ -328,6 +486,8 @@ def collect_tl_team_info(ctx: SrContext, image: MatLike) -> TlTeamView:
         left_tab=tab,
         slot1=slot1,
         slot2=slot2,
+        weaknesses1=weaknesses1,
+        weaknesses2=weaknesses2,
         character_grid=character_grid,
         preset_teams=preset_teams,
     )

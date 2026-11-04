@@ -36,6 +36,9 @@ class TlTeamRecognizer(ScreenRecognizer):
         'slot1': '队伍1 槽位 list[MemberGuess](4 元素按槽位序;元素 {char,confident,candidates,empty},'
                  'char=中文名仅置信时给,歧义时看 candidates(降序前3),empty=空槽)',
         'slot2': '队伍2 槽位 list[MemberGuess](同 slot1)',
+        'weaknesses1': '队伍1 行「建议属性」弱点属性名 list(该波敌人弱点,左右序;'
+                       '元素图标模板匹配主判+色相仲裁,解不出的图标不进列表)',
+        'weaknesses2': '队伍2 行弱点属性名 list(同 weaknesses1)',
         'character_grid': '角色列表 tab:可见网格 list[GridCell](元素 {row,col,guess};row/col 0 基,'
                           '4 列×可见 4 行,滚动后需多帧);非该 tab 为 null',
         'preset_teams': '预设编队 tab:队伍组 list[PresetTeam](元素 {team_idx,members};team_idx 1 基从上到下,'
