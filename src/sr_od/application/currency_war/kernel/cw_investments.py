@@ -3990,6 +3990,13 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 发放腿 cw_gain_effects._STRATEGY_CHAR_GRANTS('狸职手续' → ×3);穿戴
     # 句/周期离场句零建模 = STRATEGY_DESC_UNMODELED_KEYS 两键申报。
     '狸职手续': GiftGrant(chars_immediate=('狸职狸狸',)),
+    # 狸财经狸:获得句「获得1个【狸狸】」直读,发放对象为卡面用名「狸狸」
+    # ∉ CHARACTER_ROSTER(反扫结构性零命中),登记名按名称归一纪律「狸狸」→「狸职狸狸」(实机浮窗名,成本=0 后台召唤单位)
+    # (cw_chars.py 员表 source 注记同源系族;龙虎兄弟狸/狸职狸狸同形在码);
+    # 息腿每回合利息+2 = STRATEGY_ECONOMY interest_flat 注册行在役(登记
+    # 非运行时发放,零实现义务);30 本金/取款/存款/位面首领取款分支
+    # PENDING 维持待实机证实;尾句彩蛋零建模。
+    '狸财经狸': GiftGrant(chars_immediate=('狸职狸狸',)),
 }
 
 # ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
