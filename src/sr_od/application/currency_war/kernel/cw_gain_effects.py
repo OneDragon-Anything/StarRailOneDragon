@@ -1285,6 +1285,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('贝洛伯格星徽', 1),
         _make_char_grant_effect('希儿'),
         _make_named_equip_grant_effect('武器大师', 1)),
+    # 星间旅人星徽套组 = 三腿组合登记行(套组族第 4 张;卡文「获得1个【星
+    # 间旅人星徽】，和1个【银枝】，以及1个【永动机】」语序直读:
+    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态在册口径];星级
+    # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢腿,沿
+    # 组合行家族纪律)。
+    '星间旅人星徽套组': _compose_grant_legs(
+        _make_named_equip_grant_effect('星间旅人星徽', 1),
+        _make_char_grant_effect('银枝'),
+        _make_named_equip_grant_effect('永动机', 1)),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
