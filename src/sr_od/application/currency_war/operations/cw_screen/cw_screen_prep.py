@@ -297,7 +297,7 @@ class CwScreenPrep(CwOperation):
                 # helper 单一源:first_anchor/advance 补推/reanchor/
                 # stale_dropped)。锚定输入与旧备战分支同源(read_phase_round
                 # 直读/缓存/守卫语义不变);漏斗已退出推进域,本写端 = 干净
-                # 备战帧的唯一生产锚定点(外循环仲裁路径的 prep_clean 漏斗读
+                # 备战帧的唯一生产识别标志点(外循环仲裁路径的 prep_clean 漏斗读
                 # 不挂锚定,攻击 R4 适用范围界定)。读数缺位/局外 = 跳过(禁猜,
                 # best-effort 不阻塞观察链)。
                 if _st is not None and _st.plane is not None \
