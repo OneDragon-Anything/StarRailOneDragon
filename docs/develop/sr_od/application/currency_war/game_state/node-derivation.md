@@ -2,7 +2,7 @@
 
 > 本文档所属 = game_state 设计目录,总纲见 [README](README.md)。术语与图例:保留词(id_mark 确认/对账/帧/单一源等)与数字来源标注四形态【注】【推】【拟】【拍】见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 > **定位**:本文 = 节点推进判定规则本体的唯一权威出处——只写现行规则(触发面/观察态门/三原语/四分支处置/类型派生/停用申报);旧版规则组的演进与勘误过程归 git 历史,正文不复写。
-> 实现锚 = kernel `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py);载体规范(版本 id/单版本事务/渠道签名/行型)单一源 = [journal.md](journal.md) §2-§3,本文不复写。
+> 实现引用 = kernel `report_node_advance`/`advance_node_effective`/`observe_node_anchor`(cw_game_state.py);载体规范(版本 id/单版本事务/渠道签名/行型)单一源 = [journal.md](journal.md) §2-§3,本文不复写。
 
 ---
 ## ① 结论(判定方案一句话版)
@@ -28,7 +28,7 @@ id_mark 确认 helper,两写入位置共用:CwScreenPrep 备战顶栏 / CwScreen
 是推进触发面。节点身份唯一表示 = 序位键 `(位面, 轮)`(`NodePos` 元组,1 基,
 对外标识「位面-轮」标签形态;与效果账本 `advance_node` 同键),位面末节点推进经
 `sequence_next` 自然跨位面。旧四规则组(备战/位面过渡/BOSS 简报/
-弹窗)、守卫族、缓存守卫、幂等锚、循环分支写入位置(`_note_branch_screen`)已整体停用
+弹窗)、守卫族、缓存守卫、幂等识别标志、循环分支写入位置(`_note_branch_screen`)已整体停用
 (§3.3-6 停用申报);类型派生权威链保留,BOSS 类型直定迁移至 CwScreenBossBriefing
 观察 node(经 `_write_derived_node_type`,简报屏仍是 boss 类型权威)。生效序读取入口 =
 `effective_node_pos` = max(node_pos 现值, node_hist_pos)(元组字典序取大,
@@ -43,12 +43,12 @@ id_mark 确认 helper,两写入位置共用:CwScreenPrep 备战顶栏 / CwScreen
 
 判定来源速记(现行模型):id_mark 族 = `round_by_find_area`(screen_info 识别标志);OCR = `round_by_ocr`;双识别标志(两个 id_mark 同帧命中) = 备战「备战标识-购买经验」+「按钮-出战」;**settle** = 结算确认动作上报(`report_node_advance(trigger='settle_confirm')`,宿主 CwOpSettleConfirm)/ **supply** = 补给确认动作上报(supply_confirm,宿主 CwActionPickSupplyOp)/ **id_mark 确认** = `observe_node_anchor`(prep = CwScreenPrep 备战顶栏 / supply-bar = CwScreenSupplyNode 补给屏节点条),零 = 不推进不确认。行号 = 历史工作树快照,判读按符号名定位。
 
-| # | 边(从 → 到) | 判定来源(识别锚/判定值) | node_enter 语义(规则) |
+| # | 边(从 → 到) | 判定来源(识别识别标志/判定值) | node_enter 语义(规则) |
 |---|---|---|---|
 | E1 | 入口链 → 难度确认 → 位面简报 | 「标识-本场对局首领」(:2231) | 零(开局链段;入口链不接上报,简报屏自身不触发) |
 | E2 | 简报「下一步」→ 位面过渡 | OCR「点击空白处继续」(:2192) | 零(位面过渡分支已停用,过渡屏不推进;跨位面由后继原语 `sequence_next` 随结算确认自然承载,开局同样零) |
 | E3 | 位面过渡 → 投资环境 | 「标识-投资环境」(:2247) | 零(开局事件) |
-| E4 | 投资环境 → 等 1-1(WaitOneOne)→ 1-1 备战帧 | 「标识-备战阶段」轮询 → 备战双识别标志(:2277) | **id_mark 确认 first_anchor 建首锚(1-1)**(`observe_node_anchor` v=None 首次确认行,写入位置 = CwScreenPrep 备战顶栏;开局链期间拾取的效果由首帧尾段发放);开局链各屏零推进 |
+| E4 | 投资环境 → 等 1-1(WaitOneOne)→ 1-1 备战帧 | 「标识-备战阶段」轮询 → 备战双识别标志(:2277) | **id_mark 确认 first_anchor 建首识别标志(1-1)**(`observe_node_anchor` v=None 首次确认行,写入位置 = CwScreenPrep 备战顶栏;开局链期间拾取的效果由首帧尾段发放);开局链各屏零推进 |
 | E5 | 备战帧 → 备战环(CwScreenPrep)→ 出战 | 双识别标志 → dispatch(:2932) | 零(节点段内,重入;确认走再次确认分支) |
 | E6 | 出战 → 战斗窗 → 结算窗 | 战斗窗标志位 ∨ 帧识别标志(:2982/:3114) | 零(段内相位) |
 | E7 | 结算「继续挑战」→ 下一节点画面 | 下一画面二态:干净备战帧(慢弹窗)∨ 弹窗(快弹窗) | **settle 上报**(CwOpSettleConfirm:点击即上报,零证据探查;上报先于下一节点任何画面分派恒成立) |
@@ -107,8 +107,8 @@ ENV_NODE_REWRITE_RULES`)经场字段
 
 > 本节 = 派生规则唯一权威出处。现行模型(用户裁定 2026-09-20,2026-09-21 修正):节点推进 = 终结动作
 > 上报;观察 = 对账确认 + 兜底。旧四规则组(备战/位面过渡/BOSS 简报/弹窗)、
-> 守卫族、缓存守卫、幂等锚、恢复局禁用分支已整体停用(本节 6 号停用申报),旧版
-> 全文入 git 历史。实现锚 = kernel `report_node_advance`/
+> 守卫族、缓存守卫、幂等识别标志、恢复局禁用分支已整体停用(本节 6 号停用申报),旧版
+> 全文入 git 历史。实现引用 = kernel `report_node_advance`/
 > `advance_node_effective`/`observe_node_anchor`(cw_game_state.py)。
 
 **1. 节点边界定义**:
@@ -118,7 +118,7 @@ ENV_NODE_REWRITE_RULES`)经场字段
 > `sequence_next` 自然跨位面(位面末 → 下一位面首)。备战画面从「推进触发面」
 > 改判为**对账确认面**(确认写入位置 = CwScreenPrep 备战顶栏);补给屏节点条同为
 > 确认面(补给「自动弹」形态——无本节点备战帧——的唯一确认点)。开局首节点
-> (E4,无前置终结动作)由观察确认建首锚(首次确认行);入口链(cw_entry/)不接上报。
+> (E4,无前置终结动作)由观察确认建首识别标志(首次确认行);入口链(cw_entry/)不接上报。
 
 **2. 动作推进路径(`report_node_advance`,动作路径唯一入口)**:
 
@@ -166,7 +166,7 @@ candidate 去重守卫(candidate ≤ 生效序位 → 零推进返回,同序位�
 (观察采纳新读数即确认态——否则补推后源态落 logic,下一次终结动作被门误挡一帧))→
 `node_hist_pos` 占位(单调水位,元组比较)→ **效果推进尾段 `tick_effect_boundary`**
 (账本 `advance_node` + 在场效果盘点发放 `grant_effect_node_refresh_balance`
-+ 容量重锚 `project_effect_capacity`)同临界区执行。确认补推(读数序位领先/
++ 容量重新引用 `project_effect_capacity`)同临界区执行。确认补推(读数序位领先/
 首次确认)同样
 是真实节点进入(恢复局/锁定臂/漏报的自愈路径),序位前进不经尾段即该节点
 每节点发放永久丢失。确认直写不经通用 observe()(读数序位领先 logic 现值时
@@ -178,7 +178,7 @@ candidate 去重守卫(candidate ≤ 生效序位 → 零推进返回,同序位�
 
 | 分支 | 处置 | 依据 |
 |---|---|---|
-| v = None(首次确认) | 任何 R 经原语落账(observation 确认态)+ 尾段发放 | E4 开局建首锚 / 恢复局重建;开局链期间拾取的效果由此首帧发放 |
+| v = None(首次确认) | 任何 R 经原语落账(observation 确认态)+ 尾段发放 | E4 开局建首识别标志 / 恢复局重建;开局链期间拾取的效果由此首帧发放 |
 | R > v | 观察采纳新读数经原语(observation;**补推 = 漏上报自愈**,序位前进同帧拿到尾段发放) | 绝对值坐标,采纳即对齐 |
 | R == v | 直写同值(observation;**logic 态此分支 = 动作推进被观察确认翻确认态**,下一节点终结动作由此解锁) | 重复上报解锁即确认语义 |
 | R < v | 不写 + obs_event arbitrate 保留证据(**读数倒退不采信**) | 节点序位局内单调(游戏无回退流转,E15 终局除外);R<v 只能是读数误读或点击未生效产生的假推进残余;跨位面 ((1,10) < (2,1)) 由字典序自然严格,无需序列查询 |
@@ -202,7 +202,7 @@ plane/round → `observe_node_anchor((plane, round))`;读数链
 **5. 类型派生(权威链;触发点随触发模型换代迁移)**:节点类型 `node.kind` 权威链 =
 ①专属画面直定——**BOSS 简报屏 `CwScreenBossBriefing` 观察 node**(经 kernel
 `_write_derived_node_type` 直定 boss 类型;目标 = 已被奖励关结算确认推进的 hist
-节点。**直定前置守卫**:直定仅在简报 op 被分派(锚命中)时发生,而点击即上报
+节点。**直定前置守卫**:直定仅在简报 op 被分派(识别标志命中)时发生,而点击即上报
 (2 号)⇒ hist 已在 boss 节点——「hist 落后、
 类型写错节点」的形态结构性不可达;简报屏重入走冲突纪律幂等,零序号写)+ 
 ②商店查现行链(接口 = `chain_node_type`,链写入方在用:过渡屏 + 备战帧整帧覆盖;
@@ -215,11 +215,11 @@ plane/round → `observe_node_anchor((plane, round))`;读数链
 
 **6. 停用申报(触发模型换代原子切换,一次提交完成、无并存窗口)**:
 
-| 停用物 | 原位置(符号锚,kernel/cw_game_state.py 除注明外) |
+| 停用物 | 原位置(符号名引用,kernel/cw_game_state.py 除注明外) |
 |---|---|
 | 旧弹窗推断分支本体 + 守卫族/弹窗族常量 + 缓存守卫 + 恢复局禁用分支 | `_derive_node_inferred`、`SCREEN_CONTEXT_POPUP_FAMILY`、`SCREEN_CONTEXT_GUARD_PREV` |
 | 位面过渡分支 | `_derive_node_plane_transition`(跨位面由后继原语 `sequence_next` 承载) |
-| BOSS 简报分支 + 幂等锚(序号半部) | `_derive_node_boss_brief`(类型直定半迁移至 CwScreenBossBriefing) |
+| BOSS 简报分支 + 幂等识别标志(序号半部) | `_derive_node_boss_brief`(类型直定半迁移至 CwScreenBossBriefing) |
 | 循环分支写入位置 ×5 | `cw_loop._note_branch_screen` 及五处调用点(BOSS简报/位面过渡/简报/投资环境/等待1-1);开局链五屏上下文对写入随之消失——零逻辑消费,journal 画像面变化 |
 | 休眠类型直定三成员 | `SCREEN_NODE_TYPE_DIRECT` 遭遇/补给/策略行 |
 | 旧备战派生写法 | `_derive_node_observed` 的 write_logic 写法 → 确认 helper |

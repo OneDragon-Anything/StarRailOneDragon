@@ -1,6 +1,6 @@
 # 买牌(BuyCard)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则与两态制纪律见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则与两态制纪律见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。
 
 ## 1. 动作是什么
 
@@ -48,7 +48,7 @@
 - 买牌无 expect 陈旧提案域(SellBench 族语义,本动作无此域);执行侧另有提案守卫 `cw_shop_action_ops.py::guard_proposal_vs_expected`(所购牌名须在期望态店中,防策略器跨代际提案);
 - 知识缺口 G1:非满栏一次点击恒买 1 张 = 框架推论未实测,闭合前按 k=1 记账,买后观察多张 → 对账纠偏 + 缺陷记录表;G2:满栏连升(own=0)按拒买实现(申报边界)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星写内聚;获取计算完时点触发 `gs.effects.on_buy` 购买回调)/ `kernel/cw_game_state.py::detect_merge_upgrade`;`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`;`kernel/cw_economy.py::card_cost`;`kernel/cw_exec_state.py::bench_place`;落地门 = `operations/cw_screen/cw_screen_shop.py::apply_action_outcome`(计数与暴露的保留面;BUY 计数已迁上报函数 on_buy 回调单点)。
 

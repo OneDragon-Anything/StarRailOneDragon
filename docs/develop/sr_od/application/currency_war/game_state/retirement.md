@@ -32,7 +32,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 |---|---|---|
 | decisions | 停用(新写) | 「行内全量 GameState」自足形态=流水直系前身;流程侧职责归 journal,决策侧内容归策略侧决策行——一条流装不下两类语义(两文件模型由来) |
 | outcomes | 字段并入+流停用 | 结算真值=画面 op 观察,`apply_settlement_cover` 写入后随快照行自带;伤害三分量不入 state(无决策消费),归宿两案待裁决(fields.md 扩 Settlement vs 流水行可选 extra 槽) |
-| exogenous | 停用(无独立事件流) | kind 逐值并入(节点推进→派生写入行/popup→obs_event/briefing→开局事实域/event_choice→chosen 域/sell_income·hp_pay·level_up→②写入行/resumed→中继行族等);battle_done 旧写入位置停写与旧流停写同批;cw_anchor 四 carrier_kind 归宿随锚处置待裁决 |
+| exogenous | 停用(无独立事件流) | kind 逐值并入(节点推进→派生写入行/popup→obs_event/briefing→开局事实域/event_choice→chosen 域/sell_income·hp_pay·level_up→②写入行/resumed→中继行族等);battle_done 旧写入位置停写与旧流停写同批;cw_anchor 四 carrier_kind 归宿随识别标志处置待裁决 |
 | spend_ledger | 拆分:字段并入+部分停用 | 金真值→gold 域;计数→计数域+质量标记;plan_truncated/refresh_skipped→receipts 发射行字段;duration/boundary/progressed=纯工程面停用归日志 |
 | shop_snapshots | 字段并入候选+流停用 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不并入→判读侧离线派生 |
 | cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 状态容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭测试(test_cw4_key_closure) |

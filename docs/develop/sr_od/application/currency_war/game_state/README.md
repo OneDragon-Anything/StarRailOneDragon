@@ -148,7 +148,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测记录表的接入 |
 | [retirement.md](retirement.md) | 旧 12 流停用逐流处置与消费方迁移清单 |
 | [action-logic-state.md](action-logic-state.md) | 动作逻辑态总则:两态制纪律(+逻辑随机态扩展)、写入入口归属硬规则(动作 op 只上报动作,逻辑态更新由 game state 独占)、确定面/随机面、拒绝语义 |
-| [logic-updates/](logic-updates/README.md) | 逐动作逻辑态更新规格(每动作 op 一篇:域集/转移规则/随机面/拒绝语义/kernel 符号锚) |
+| [logic-updates/](logic-updates/README.md) | 逐动作逻辑态更新规格(每动作 op 一篇:域集/转移规则/随机面/拒绝语义/kernel 符号名引用) |
 
 ## 5. 边界与姊妹文档
 

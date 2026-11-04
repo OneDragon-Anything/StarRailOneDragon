@@ -1,6 +1,6 @@
 # 买经验(LevelUp)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
 
 ## 1. 动作是什么
 
@@ -17,7 +17,7 @@
 | level | **条件写**(2026-09-18 扩面) | 升档直写:跨档才写(`proj_levelup_level`);跳写对 = (level, xp) 同进退,任一未读整体跳写——等级滞留会让下一击按旧级重算(花金零等级推进),而等级 = 席位 cap 解锁地板(`max_units_of` 经读口自动跟随)。`level` 在域覆盖全集内(域集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除) |
 | shop / bench / equips | 跳写 | 商店牌面域:买经验上报零直写——商业间谍偷牌经随机态信号 + 状态副本分支呈现(2026-10-17 迭代 T-3),晋升名额变费未建模归观察(缺口 G8) |
 
-**备战域写入入口** = 同一上报函数 `report_action_level_up_param`(写入统一为一份代码):写域 = xp/**level**/gold(跳写对 (level, xp) 同进退,申报面 = 函数 docstring)。**deploy_cap 不写**——容量真值由观察侧写入方的防抖读承接(`max_units` 的 cap<level 兜底规则保守承接升级增量)。level/xp 缺读 = 域级跳写。升级连锁副作用(商业间谍信号 + spy 状态副本分支声明 / 节节高升 2★ / 窗口锚)= 经升级值变更回调(`cw_levelup_callbacks.on_level_up_change`,宿主挂 level 写尾;源 = 任意经验来源升级),非本上报函数直写——本上报的跨级 level 直写在写尾自动触发,spy 声明经状态容器(GameState)簿记队列于上报尾读出喂入。
+**备战域写入入口** = 同一上报函数 `report_action_level_up_param`(写入统一为一份代码):写域 = xp/**level**/gold(跳写对 (level, xp) 同进退,申报面 = 函数 docstring)。**deploy_cap 不写**——容量真值由观察侧写入方的防抖读承接(`max_units` 的 cap<level 兜底规则保守承接升级增量)。level/xp 缺读 = 域级跳写。升级连锁副作用(商业间谍信号 + spy 状态副本分支声明 / 节节高升 2★ / 窗口识别标志)= 经升级值变更回调(`cw_levelup_callbacks.on_level_up_change`,宿主挂 level 写尾;源 = 任意经验来源升级),非本上报函数直写——本上报的跨级 level 直写在写尾自动触发,spy 声明经状态容器(GameState)簿记队列于上报尾读出喂入。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -37,7 +37,7 @@
 - 击数回执缺失:`applied=False, reason='levelup_clicks_not_fed'` 跳写;
 - 血本位模式(奋斗协议):成本币种切血,金费函数出域——经验批支付门独立车道(`xp_batch_payment_gate`,fail-closed——读不到数据/条件不满足时默认走保守分支不动作)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/level_up.py::report_action_level_up_param`;`kernel/cw_economy.py::xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `XP_PER_BUY` / `XP_TO_NEXT_LEVEL` / `XP_CLICK_COST_FALLBACK` / `MAX_PLAYER_LEVEL` / `xp_batch_payment_gate` / `xp_batch_payment_gate_for`;`prep_actions.py::PrepActionExecutor._level_up`;发出方 cost 装载 = `strategies/impl/mandate_v1/entry.py`(备战发射点现算装载)。
 

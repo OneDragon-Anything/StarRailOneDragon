@@ -1,6 +1,6 @@
 # 采晶矿(CollectOre)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。**本动作 = 逻辑随机态的首个落地**(随机采样契约权威版本 = `cw_merge_simulate.py::_merge_bench` docstring)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。**本动作 = 逻辑随机态的首个落地**(随机采样契约权威版本 = `cw_merge_simulate.py::_merge_bench` docstring)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。
 
 ## 1. 动作是什么
 
@@ -45,7 +45,7 @@ None 域边界:值 None(未观察)的域跳写(留空不写、等观察覆盖)�
 - 逐点跳过:该点席满 → 晶矿留在 spheres(出参见下);
 - 动作级出参:全部开成 = `applied=True`;混合批 = `applied=True, 'ore_partial_open_skipped'`;全部席满跳过 = `applied=False, 'bench_full_no_open'`。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/collect_ore.py::report_action_collect_ore_param`(采样+逐步随机写单点);`kernel/cw_ore_reward.py::roll_ore_reward` + `ORE_ASSUMPTION_KEYS`(采样器常量面);`kernel/cw_merge_simulate.py::_merge_bench(on_step=…)`(合成链步回调);`kernel/cw_prep_actions.py::select_ore_clicks` / `ore_click_targets_of`;`operations/cw_op/cw_collect_ore_action.py::CwActionCollectOreOp`。
 
