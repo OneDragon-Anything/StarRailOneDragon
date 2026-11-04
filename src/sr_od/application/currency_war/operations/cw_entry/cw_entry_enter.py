@@ -70,14 +70,14 @@ class CwEntryEnter(CwOperation):
         screen = self.last_screenshot
 
         # 入口链弹窗守卫(注册表统一入口,supply→jade→badge 序位见
-        # cw_entry_start.ENTRY_POPUP_GUARDS;/):纵深挂点——
+        # cw_entry_start.ENTRY_POPUP_GUARDS;/):纵深调用点——
         # 弹窗可盖在指南页/朝露公馆入口任意一帧上,不接住则下方「前往参与」/
-        # 大厅锚/F 分支全部落空 → 节点预算耗尽。
+        # 大厅识别标志/F 分支全部落空 → 节点预算耗尽。
         popup = try_handle_entry_popups(self, screen)
         if popup is not None:
             return popup
 
-        # 到达大厅:左菜单「创业指南」(大厅独有锚点;lobby screen_info area 判定,替代全屏 ocr)。
+        # 到达大厅:左菜单「创业指南」(大厅独有识别标志;lobby screen_info area 判定,替代全屏 ocr)。
         # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
         if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success:
             log.info('[cw-entry] 到达货币战争大厅')
