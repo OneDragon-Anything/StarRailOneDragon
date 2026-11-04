@@ -12,7 +12,7 @@
 
 ## 3. 观察面
 
-轮询单标志判定(观察 node 两早退:标志命中 / 超时);超时基 = `_first_seen_ts`(首见非就绪帧时钟起点)。obs = `CwScreenWaitOneOneObs`(`on_screen`/`screen`,位于 `kernel/cw_screen_report/wait_one_one.py`;标志命中轮装载,轮询轮与超时轮不装载——标志判定外零读屏);report = `report_screen_wait_one_one_obs` 占位调用(本屏在用代码零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零容器写端。
+轮询单标志判定(观察 node 两早退:标志命中 / 超时);超时基 = `_first_seen_ts`(首见非就绪帧时钟起点)。obs = `CwScreenWaitOneOneObs`(`on_screen`/`screen`,位于 `kernel/cw_screen_report/wait_one_one.py`;标志命中轮装载,轮询轮与超时轮不装载——标志判定外零读屏);report = `report_screen_wait_one_one_obs` 占位调用(本屏在用代码零字段写操作点,接口为统一形态占位;match/gs 缺席跳过)。零字段写操作端。
 
 ## 4. 动作面
 
@@ -20,7 +20,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——纯等待零推进(无任何点击;标志轮询由画面 op 内置完成) | 画面 op 内置动作(内置动作 = 画面 op 内部代码直接执行的固定动作,不经动作注册表派发;观察 node `observe` 轮询 `round_wait`;决策动作 node `act` 零动作 success 结束本次访问) | `report_screen_wait_one_one_obs` 占位调用(标志命中轮;在用代码零容器写点,统一形态占位) | 是(识别标志「货币战争-备战.标识-备战阶段」命中 → act round_success 结束本次访问;超时 ≥ `ONE_ONE_MAX_WAIT_S` → 存图保留证据 + round_fail 返回主循环) |
+| 无动作 op——纯等待零推进(无任何点击;标志轮询由画面 op 内置完成) | 画面 op 内置动作(内置动作 = 画面 op 内部代码直接执行的固定动作,不经动作注册表派发;观察 node `observe` 轮询 `round_wait`;决策动作 node `act` 零动作 success 结束本次访问) | `report_screen_wait_one_one_obs` 占位调用(标志命中轮;在用代码零字段写操作点,统一形态占位) | 是(识别标志「货币战争-备战.标识-备战阶段」命中 → act round_success 结束本次访问;超时 ≥ `ONE_ONE_MAX_WAIT_S` → 存图保留证据 + round_fail 返回主循环) |
 
 零动作(纯等待;轮询间隔 = `ONE_ONE_POLL_INTERVAL_S`,上界 = `ONE_ONE_MAX_WAIT_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`)。
 

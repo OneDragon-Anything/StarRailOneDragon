@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 返回主循环重新判定)→ objective 一次读 → `report_screen_wish_trial_obs` 落容器(容器 = GameState,游戏状态对象,下同)`wish_trial_opts` / `wish_trial_opts_xy`(空桶照写,同门双写,op-layer.md §1.1「选择坐标观察上报」条款)→ obs 挂实例属性。决策动作 node = 顶部落地复查(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5;E 系编号 = 事件面编号,目录见该篇)。决策出口无屏内兜底:无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门);返回 None/动作类型清单外 = 具名 round_fail、不发出无依据的动作、返回主循环(op-layer.md §1.1 出口③),pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位),策略异常自然传播;守卫均在派发前、零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产实例直发,流程侧零值域改写。选卡坐标 = 容器 `wish_trial_opts_xy`(选项坐标伴随域,与候选名域 `wish_trial_opts` 同序等长):观察上报与名字域同门一并入容器(op-layer.md §1.1「选择坐标观察上报」条款,坐标单一真相源 = 观察上报),动作 op 按 idx 自容器取点,缺席/越界 = 守卫断言;确认钮等静态控件识别标志 = screen_info area 现取不变。选卡确认链经 `CwActionPickWishTrialOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
+**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写状态容器(GameState)的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-祈愿试炼」,miss = round_fail 返回主循环重新判定)→ objective 一次读 → `report_screen_wish_trial_obs` 落状态容器(状态容器 = GameState,游戏状态对象,下同)`wish_trial_opts` / `wish_trial_opts_xy`(空桶照写,同门双写,op-layer.md §1.1「选择坐标观察上报」条款)→ obs 挂实例属性。决策动作 node = 顶部落地复查(确认 pending = 上轮已发确认的 `(objectives, pick_idx)` 快照;标识不在 = overlay 已关 → 此刻才写 `chosen_wish` + success;标识在 = 未落地 → 清标志重走)→ 零参决策 `match.strategy.decide_wish_trial()`(候选自状态容器槽;打分:金币类/阵营词命中/刷新购买操作向 + 效果偏置基分,权重常量单一源 = `strategies/impl/pick_bias.py::PICK_BIAS`,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5;E 系编号 = 事件面编号,目录见该篇)。决策出口无屏内兜底:无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门);返回 None/动作类型清单外 = 具名 round_fail、不发出无依据的动作、返回主循环(op-layer.md §1.1 出口③),pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位),策略异常自然传播;守卫均在派发前、零点击,fail 出口非循环出口、非防御上限;选卡派发 = 策略产实例直发,流程侧零值域改写。选卡坐标 = 状态容器 `wish_trial_opts_xy`(选项坐标伴随域,与候选名域 `wish_trial_opts` 同序等长):观察上报与名字域同门一并入状态容器(op-layer.md §1.1「选择坐标观察上报」条款,坐标单一真相源 = 观察上报),动作 op 按 idx 自状态容器取点,缺席/越界 = 守卫断言;确认钮等静态控件识别标志 = screen_info area 现取不变。选卡确认链经 `CwActionPickWishTrialOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批)→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
 
 ## 3. 观察面
 
@@ -21,7 +21,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自容器取[op-layer §1.1「选择坐标观察上报」条款];两守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写容器、消费真值归观察的动作类,容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 返回主循环(见 §5) |
+| `CwActionPickWishTrialOp`(`CwActionPickWishTrialParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickWishTrialParam` 实例(`OverlayPickExecEnv` 仅携 op;坐标由动作 op 自状态容器取[op-layer §1.1「选择坐标观察上报」条款];两守卫派发前,流程侧零值域改写) | 自上报 `report_action_pick_wish_trial_param`(零写族 = 上报不写状态容器、消费真值归观察的动作类,状态容器零写) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「货币战争-祈愿试炼.标识-祈愿试炼」不在 = 补写 `chosen_wish` + success 返回主循环(见 §5) |
 | (无 match,无对局上下文,非动作) | — | — | 不设早退支(op-layer §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路自然失败,局内不达此态 |
 | (决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:动作类型清单外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,返回主循环 |
 
@@ -29,10 +29,10 @@
 
 ```
 objs = 观察轮 obs 载体(无对局上下文不设早退支,用户裁决 2026-09-22 全族删门)
-pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
+pick = decide_wish_trial()(零参;候选读状态容器 wish_trial_opts 槽)
   (返回 None/动作类型清单外 = round_fail 含原值;idx 越界 = AssertionError;策略异常自然传播)
-坐标 = 容器 wish_trial_opts_xy[pick.idx](动作 op 内取;缺席 = 守卫断言,op-layer §1.1「选择坐标观察上报」条款)→ 置确认 pending → 直发 pick 派发
-  (动作 op 内:按容器坐标 mouse_move + click[点卡身选中:金色边框 + 确认选择亮]
+坐标 = 状态容器 wish_trial_opts_xy[pick.idx](动作 op 内取;缺席 = 守卫断言,op-layer §1.1「选择坐标观察上报」条款)→ 置确认 pending → 直发 pick 派发
+  (动作 op 内:按状态容器坐标 mouse_move + click[点卡身选中:金色边框 + 确认选择亮]
    → 1.0s → 点「按钮-确认选择」[round_by_find_and_click_area,success_wait 1.5;
    本屏独有检测,不与 partner/megastar 的同名钮撞——祈愿识别标志在前已分流]
    → 自上报 report_action_pick_wish_trial_param)
@@ -41,7 +41,7 @@ pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
    chosen_wish 写端随之在复查点,防未落地轮留幻影登记)
 ```
 
-交互陷阱:ESC 不关本 overlay(禁键盘纪律下无替代键路径,唯一出口 = 选卡+确认);卡位不建 screen_info area(op-layer.md §1.1「选择坐标观察上报」条款已裁定该边界 = 选项坐标入坐标域);选卡坐标 = 观察上报容器 `wish_trial_opts_xy`(op-layer.md §1.1「选择坐标观察上报」条款)。
+交互陷阱:ESC 不关本 overlay(禁键盘纪律下无替代键路径,唯一出口 = 选卡+确认);卡位不建 screen_info area(op-layer.md §1.1「选择坐标观察上报」条款已裁定该边界 = 选项坐标入坐标域);选卡坐标 = 观察上报状态容器 `wish_trial_opts_xy`(op-layer.md §1.1「选择坐标观察上报」条款)。
 
 ## 5. 终结与交回
 
@@ -76,5 +76,5 @@ pick = decide_wish_trial()(零参;候选读容器 wish_trial_opts 槽)
 ## 9. 遥测与测试面
 
 - journal op 名 =「祈愿试炼」;op 内日志 tag = `[cw-wish]`(决策描述/点击点)。
-- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报容器/坐标域同门双写/入口门 miss fail/wish 落地裁决时点写/决策出口守卫——无对局上下文无早退支自然失败、动作类型清单外/None round_fail、idx 越界断言、直发零重建)、test_cw_unified_action_4.py(确认链机械行为测试:点击点 = 容器 `wish_trial_opts_xy[param.idx]`,缺席/越界 = 守卫断言)、test_screen_report_ports.py(report 写面契约:双域写 + 等长守卫)、test_cw_game_state_consume.py(chosen_wish 接线测试)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/坐标域同门双写/入口门 miss fail/wish 落地裁决时点写/决策出口守卫——无对局上下文无早退支自然失败、动作类型清单外/None round_fail、idx 越界断言、直发零重建)、test_cw_unified_action_4.py(确认链机械行为测试:点击点 = 状态容器 `wish_trial_opts_xy[param.idx]`,缺席/越界 = 守卫断言)、test_screen_report_ports.py(report 写面契约:双域写 + 等长守卫)、test_cw_game_state_consume.py(chosen_wish 接入调用测试)。
 - game 侧知识:画面与机制(节点级 quest、奖励形态) = [../../../../game/screens/currency_war_wish_trial.md](../../../../../game/screens/currency_war_wish_trial.md);决策规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E5。

@@ -1,6 +1,6 @@
 # 商店开画面(shop · 货币战争-备战-开商店)
 
-> 代码 = `operations/cw_screen/cw_screen_shop.py::CwScreenShop`(两 node 画面 op:观察 node + 决策动作 node)+ `operations/cw_screen/cw_screen_prep.py::visit_open_shop`(生产调用编排单一源)。职责:商店打开态的一次访问——入口观察(唯一读屏点)→ 单动作 round_wait 决策循环(执行 → 逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同)→ 终结动作返回主循环(结束本次访问 = 本访问结束、控制权返回主循环重新识别画面;下同)。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = `operations/cw_screen/cw_screen_shop.py::CwScreenShop`(两 node 画面 op:观察 node + 决策动作 node)+ `operations/cw_screen/cw_screen_prep.py::visit_open_shop`(生产调用编排单一源)。职责:商店打开态的一次访问——入口观察(唯一读屏点)→ 单动作 round_wait 决策循环(执行 → 逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写状态容器(GameState)的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同)→ 终结动作返回主循环(结束本次访问 = 本访问结束、控制权返回主循环重新识别画面;下同)。路径根 = `src/sr_od/application/currency_war/`。
 > **决策判据(买什么/卖什么/刷不刷/升不升)一律不在本篇**——本篇只管「循环怎么转、期望态怎么推进、何时离店」;判据见 [../../strategy-docs/11_shop_decisions.md](../strategy-docs/11_shop_decisions.md)。
 
 ## 1. 分发判定
@@ -22,7 +22,7 @@
 
 ```
 点击点位/升级钮/刷新钮 screen_info 定位核实(缺失 = 建档漂移显式 round_fail,禁兜底坐标静默点击)
-→ read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器(容器 = GameState,游戏状态对象,下同)直写(obs 族渠道签名;
+→ read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗状态容器(状态容器 = GameState,游戏状态对象,下同)直写(obs 族渠道签名;
    产出 GameStateReadReceipt 回执)
 → 未识别卡停机闸(读链终判仍含 unknown 槽 → stop_running 保留证据 + round_fail)
 → 免费刷新次数观察登记(漏斗 shop-open 段自带,复用刷新钮三态在用读,零新增读屏:
@@ -37,7 +37,7 @@
 → 店开帧预算披露覆写(gold 真值入链,overflow/budget 三预算字段;每访问一次)
 ```
 
-观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [op-layer.md](op-layer.md) §1.3;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。画面 obs 类 = `CwScreenShopObs`(`kernel/cw_screen_report/shop.py`,report 保持占位):观察 node 产入口回执同面镜像挂实例属性(供决策侧/测试消费),无容器摄入面——容器写端在观察漏斗 `read_game_state`。
+观察写入 = ①观察态上报进 GameState 的观察边界;段内不比对、不重建(统一规范 = [op-layer.md](op-layer.md) §1.3;关键信息未观察由字段态值前置拦截,见 §5 全 unknown 窗)。画面 obs 类 = `CwScreenShopObs`(`kernel/cw_screen_report/shop.py`,report 保持占位):观察 node 产入口回执同面镜像挂实例属性(供决策侧/测试消费),无状态容器摄入面——字段写操作端在观察漏斗 `read_game_state`。
 
 ## 4. 动作面
 
@@ -64,14 +64,14 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
   │            (total_buy/spend_executed/bought_names)→ 满栏自动多买补差(k 单一源)
   │    LevelUp:点购买经验单击 → 动画等待(clicks 序列 = 动作内部步骤,决策循环逐帧重组)
   │    RefreshShop(访问终结):点刷新 → 固定等待(`REFRESH_CLICK_SETTLE_WAIT_S`)
-  │            → 发出即记账(刷价 = 容器刷价现值,失读回基价常量)→ 自上报
+  │            → 发出即记账(刷价 = 状态容器刷价现值,失读回基价常量)→ 自上报
   │            (计数 + Field 免费次数分支扣减 + write_logic_rand 随机态)
   │    SellBench(能力面;注册行已更替备战域):拖拽机械单发 → 发出即记账
   │    CloseShop(访问终结):执行位找「按钮-收起」→ miss = 定位缺失(动作未发出)；
   │            命中 = 点击 + 固定等待 → 清场上报;零转移验证
   ├─ 落地门 apply_action_outcome(调用环单一源):execute 无返回(发出即职责完成,零判效——判效 = 执行侧判定动作是否生效,零判效 = 不判定、落地事实归下一帧观察;下同);
   │    门保留为结构防线——未落地 ⇒ 两侧都不动;期望态推进 = op 自上报单点
-  ├─ op 自上报(容器规则通道,纯计算零读屏)直写容器
+  ├─ op 自上报(状态容器规则通道,纯计算零读屏)直写状态容器
   终结判定读注册表 action_op_class_for(action).terminal:
     非终结 = round_wait;终结(RefreshShop/CloseShop)= round_success 返回主循环
     (访问动作日志行结束本次访问前 log;回执 detail = 执行账汇总串)
@@ -96,7 +96,7 @@ while True(round_wait 单动作循环;循环内零读屏,帧不消费):
 ## 6. 状态上报面
 
 - 动作 → 上报函数:op 自上报 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param` 单点(买牌 = `report_action_buy_card_param`,快照与合成升星分支内聚,升星判据单一源 = `kernel/cw_game_state.py::detect_merge_upgrade`;购买计数回调 `gs.effects.on_buy` = 买牌上报函数内获取计算完时点单点,live/sim 同源);逐动作规格 = [../game_state/logic-updates/](../game_state/logic-updates/README.md)。
-- 免费刷新剩余次数位于容器字段 `gs.free_refresh_left`(Field,剩余语义):观察登记(§3)/刷新上报扣减/发放登记三写端同格;付费/全量刷新计数留效果账本累计。
+- 免费刷新剩余次数位于状态容器字段 `gs.free_refresh_left`(Field,剩余语义):观察登记(§3)/刷新上报扣减/发放登记三写端同格;付费/全量刷新计数留效果账本累计。
 
 ## 7. 子态与 overlay
 
