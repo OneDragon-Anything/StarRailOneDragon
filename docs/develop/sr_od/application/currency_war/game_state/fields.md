@@ -761,6 +761,12 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   节点窗到点经 `discharge_due_strategy_grants` 装备分道写(sim 专用条目,
   live 归观察覆盖)——周期 repeat 行,到点发放后同参重排队至局终,队列长度
   恒 1 自续,写 evidence 前缀 `strategy_grant_due:`)。
+  分解万物(腿1 选卡落地获得物质分解液×1 入栏 = 逻辑写,具名工厂直呼
+  rand=False 确定发放,物质分解液 = 进阶类,不在精密金面判据映射 gate 恒
+  None 走纯发放;腿2「本局游戏中所有进阶装备变成物质分解液」变换面 =
+  游戏侧自动改写(卡文「本局游戏中」持续标记),bot 零执行端、备战帧
+  equips 整表观察收真值——登记面 `STRATEGY_EFFECTS` 分解万物条目承载
+  (装备变换词表 `EQUIPS_TRANSFORM_ADVANCED_MATTER`),零本域写端)。
 - **转换分支**(「改为获得」,2026-10-31 批 + 装备目标分支):转换在获得原语
   顶段(gain-chain.md §2.3,登记表 `STRATEGY_EQUIP_GAIN_CONVERSIONS`)——
   被转换装备**不入本域**(零写入、不触发获得后果分派);按目标域分道:

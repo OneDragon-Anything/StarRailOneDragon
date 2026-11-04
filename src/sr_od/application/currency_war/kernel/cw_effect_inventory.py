@@ -141,6 +141,10 @@ class BattlefieldEffect:
                                             # 战场载体载数值发放字段非首例
                                             # (steal_on_level_up/free_refresh_on_node_
                                             # enter 同域先例),burst 桥鸭子类型读取自动兼容
+    equips_transform: str = ''              # 物品栏装备固定变换(分解万物:全部进阶装备变物质分解液;取值 =
+                                            # EQUIPS_TRANSFORM_ADVANCED_MATTER;与 equips_reroll 互不复用——
+                                            # 变异 = 同品质随机重掷/变换 = 固定目标具名件;变换面零执行端
+                                            # (游戏侧自动改写),写归属 = 观察收尾)
 
 
 @dataclass(frozen=True)
@@ -245,6 +249,17 @@ BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随
 # 变异条目同文共用本常量(银/金/彩三卡 SE 条目全建,差异全在发放条目)。
 EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备变为
                                                        # 同品质的其他装备
+
+
+# ===== 物品栏装备固定变换语义词表(BattlefieldEffect.equips_transform 取值;
+# 防散落字符串)=====
+# 已登记条目 = 分解万物(cw_investments.STRATEGY_EFFECTS,官方文
+# cw_invest_data.py:324);变换面 = 游戏侧自动改写(卡文「本局游戏中」持续
+# 标记),bot 零执行端、备战帧 equips 整表观察收真值,写归属单一源 =
+# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
+# §6.3/§6.4 与 §8 同名条。与 EQUIPS_REROLL_SAME_QUALITY 互不复用(语义
+# 顶替禁制:变异 = 同品质随机重掷,变换 = 固定目标具名件,两语义异型)。
+EQUIPS_TRANSFORM_ADVANCED_MATTER: str = 'advanced_to_matter_all'   # 物品栏全部进阶装备变为物质分解液
 
 
 # 事件标记键(追踪端标记,非策略计数器;下划线前缀与策略计数器空间隔离)

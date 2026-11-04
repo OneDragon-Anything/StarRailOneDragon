@@ -65,6 +65,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BOARD_REWRITE_SELL_ALL_DEAL,
     BOARD_REWRITE_UPGRADE_ALL,
     EQUIPS_REROLL_SAME_QUALITY,
+    EQUIPS_TRANSFORM_ADVANCED_MATTER,
     BattlefieldEffect,
     CounterKey,
     DurationKind,
@@ -2418,6 +2419,40 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '列表 rc_missing 现状维持(cw_equip_env 推荐表未采集,失败即空);'
           '零写端下任何读法 bot 行为零分叉(登记有无与发放后果解耦,观察链'
 '自动吸收)。'),
+    # 分解万物(id 331801):官方「获得一个【物质分解液】，本局游戏中，你的
+    # 所有进阶装备变成【物质分解液】。它将额外造成3次伤害，对普通/精英及
+    # 首领敌人分别造成2%/1%生命上限百分比的真实伤害，并使我方小队获得
+    # 4%伤害减免。」(cw_invest_data.py:324)。三面分治:腿1「获得一个物质
+    # 分解液」= 发放条目(cw_gain_effects.PICK_INVEST_EFFECTS 具名工厂
+    # 直呼行,rand=False 确定发放);腿2「本局游戏中所有进阶装备变成物质
+    # 分解液」= 本条目(装备身份改写登记型,物品栏变异族同域先例:
+    # PLANE_START 占位触发〔零行为差纯键面惯例,变换面系游戏侧自动改写
+    # 非本端动作〕/WHILE_HELD 持有期,变换面零执行端——bot 备战帧 equips
+    # 整表观察收真值,登记侧三桥对本 payload 全零动作,no-op 回归哨 =
+    # 测试锁);腿3 追伤/减伤数值面 = 战力类零建模(invest_effects.md
+    # 战力类裁定:不进经济模型)。
+    '分解万物': EffectSpec(
+        id='331801', name='分解万物', trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(
+            equips_transform=EQUIPS_TRANSFORM_ADVANCED_MATTER),
+        duties=DutyFlags(track=True),
+        pending=True,
+        notes='腿2 辖域二义 pending 冻结(保守支 = 读法 B 窄辖域:仅拿卡'
+              '时点存量进阶装备一次性改写,后续获得件不受辖;verdict 回填'
+              '通道留实采,表纪律「定案后回填 verdict 单一语义以实采为'
+              '准」);主读法判读注记 = 读法 A 持续状态面(卡文「本局游戏'
+              '中」持续标记:持卡期全部进阶含后续获得件与冶金炉变异进阶'
+              "产物均变换,改写域 = category='进阶' 36 件,物质分解液自身"
+              '∈ 域内发放件同名幂等零特判;改写目标 = 进阶版,·特权变体'
+              '排除);变换面零执行端(游戏侧自动改写,bot 备战帧 equips '
+              '整表观察收真值,effect-domain.md §6.3/§6.4 收口形态),登记'
+              '侧三桥对 payload 全零动作(测试锁);拿卡当节点不变换(无立'
+              '即措辞,C 级佐证);腿3 追伤/减伤数值面 = 战力类零建模('
+              'invest_effects.md 战力类裁定「不进经济模型」,数值不在装备'
+              '注册行 props;装备本体 effect 真伤系装备描述域正本游戏侧自'
+              '算,与卡面叠加面分野),判读两维并列申报禁当定谳:源绑定'
+              '(卡源限定/任意源)×生效域(穿戴者/全体小队)'),
 }
 
 
