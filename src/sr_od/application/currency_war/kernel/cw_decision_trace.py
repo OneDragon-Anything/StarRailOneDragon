@@ -139,7 +139,7 @@ DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
 #: 停用面字段(§2.3 逐项判据):统一 state 可算/已停用/死字段,不入新
 #: 文件行(瘦身判据「凡统一 state 可算的内容不存」的适用面)。
 RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
-    'state',            # 全量 state 快照(容器期 = serialize_state 产物,full_state_snapshot
+    'state',            # 全量 state 快照(状态容器期 = serialize_state 产物,full_state_snapshot
                         # 形状;2026-09-13 状态收敛批前历史行 = 旧帧序列化形状);
                         # journal 行行自足,state_ref 钉行即含
     'hp',               # 统一 state 经济域可算(钉行现值)
@@ -149,7 +149,7 @@ RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
     'level_readable',   # 同上
     'active_strategies',  # 统一 state 局级事实域字段
     'form_score',       # 已停用字段(schema 自申报历史数据只读,替代披露 = b_t)
-    'phase',            # 死字段(v2 相位机停用无写端;与容器 v3_phase 非同一载体)
+    'phase',            # 死字段(v2 相位机停用无写端;与状态容器 v3_phase 非同一载体)
 )
 
 #: 派生列不入行(定案 C3):refresh_trigger 由判读侧离线自同行 actions
