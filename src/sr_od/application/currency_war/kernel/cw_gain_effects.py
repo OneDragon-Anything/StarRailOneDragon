@@ -1446,6 +1446,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('战技点星徽', 1),
         _make_char_grant_effect('丹恒·饮月'),
         _make_named_equip_grant_effect('高周波电锯', 1)),
+    # 优势火力论 = 双腿组合登记行(卡文「获得1个【特权赋予卡】和1个【简
+    # 易武装箱】」语序直读:卡→箱;rand=False 确定发放[fields.md 分野即
+    # 终态在册口径];箱工厂 tuple 形[T-315 泛化落码现签名];特权赋予卡使
+    # 用面七锚在册零改动;不入单族镜像表沿组合行家族纪律)。
+    '优势火力论': _compose_grant_legs(
+        _make_named_equip_grant_effect('特权赋予卡', 1),
+        _make_box_grant_effect(('简易武装箱',))),
 
     # 天降救兵 = 随机星档角色×箱条目组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;条目1 = 随机星档角色(cost=1/star=3
