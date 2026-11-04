@@ -1,6 +1,6 @@
 # 13 pick 族薄判据（十二接口 + 事件面目录）
 
-> 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器并入补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判停用删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向;判据单源分轴:投资策略 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`(权威版本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),投资环境 = 策略层 `strategies/impl/mandate_v1/invest_env.py`(权威版本 = [28_invest_env_screen.md](28_invest_env_screen.md)),遭遇 = 策略层 `strategies/impl/mandate_v1/encounter_pick.py`(权威版本 = [31_encounter_screen.md](31_encounter_screen.md)),其余 pick 族 = `kernel/cw_events`/`kernel/cw_comps`;跨画面共用判据唯一权威模块 = 本篇 §4,代码 = `strategies/impl/mandate_v1/pick_common.py`）。事件面目录（E1-E18：投资事件面 18 类决策点，编号沿用 08_events.md 的注册表）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
+> 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器并入补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原三三口 `decide_equip_pick` 随选择装备屏误判停用删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向;判据单源分轴:投资策略 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`(权威版本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),投资环境 = 策略层 `strategies/impl/mandate_v1/invest_env.py`(权威版本 = [28_invest_env_screen.md](28_invest_env_screen.md)),遭遇 = 策略层 `strategies/impl/mandate_v1/encounter_pick.py`(权威版本 = [31_encounter_screen.md](31_encounter_screen.md)),其余 pick 族 = `kernel/cw_events`/`kernel/cw_comps`;跨画面共用判据唯一权威模块 = 本篇 §4,代码 = `strategies/impl/mandate_v1/pick_common.py`）。事件面目录（E1-E18：投资事件面 18 类决策点，编号沿用 08_events.md 的注册表）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（两阶段画面分发）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待立项推导（判据立项引用见 08）。
 > 术语（首现定义）：**单一源** = 某语义在全仓只有一个权威定义处，其余一律引用不复制；**权威版本** = 该设计语义的权威文档；**判据权威定义** = 判据的正式定义所在（引用格式：「判据权威定义见 X」）；**fail-closed** = 读数或判据存疑时，朝「犯错代价小」的方向取值或拒绝动作。
@@ -56,11 +56,11 @@
 
 **持续型形态约束**（被动改写决策面输入，invest_effects §4 D 类）：节省工位/人才空洞/济济/多元化团队/人海战术/规模效应——消费点 = [10_prep_decisions.md](10_prep_decisions.md) §3 板满门与备战席稀缺定价、§1 部署谓词、[11_shop_decisions.md](11_shop_decisions.md) §1 插件边际贡献；以 max_units/bench_cap/bond_cap 谓词族接入，值随已选环境动态。
 
-**供给面三处硬缺**（第一版全量事件面的实现瓶颈，均需实机画面；盘点唯一权威源 = redesign/OBS_SUPPLY_INVENTORY.md）：①E12 商店锁（四件全缺）；②E10 工具使用（从不进决策快照、使用拖拽 op 全缺）；③E5 圣杯试炼生命周期（任务条件检测/激活门槛/完成态零供给）。
+**供给面三处硬缺**（三一版全量事件面的实现瓶颈，均需实机画面；盘点唯一权威源 = redesign/OBS_SUPPLY_INVENTORY.md）：①E12 商店锁（四件全缺）；②E10 工具使用（从不进决策快照、使用拖拽 op 全缺）；③E5 圣杯试炼生命周期（任务条件检测/激活门槛/完成态零供给）。
 
 ## 3. 禁项与纪律（沿用 08 §0/§2）
 
-- 事件判据禁自带数值（宪法第 4 条）；"奖励偏好序"类知识判据须标注知识来源，不得伪装为推导。
+- 事件判据禁自带数值（宪法三 4 条）；"奖励偏好序"类知识判据须标注知识来源，不得伪装为推导。
 - 供给三缺未补前，对应事件的实现 = 保守跳过 + 计数披露，禁猜测分类（与契约 fail-closed 同款纪律）。
 - 一切"环境/突变改变机制输入"经 resolved input 原则消费（[11_shop_decisions.md](11_shop_decisions.md) §8）；战力族/资产发放族不进经济 resolved。
 
