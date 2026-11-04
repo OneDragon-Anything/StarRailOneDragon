@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;投资环境域的例外收窄见 §6)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(miss = round_fail 返回主循环重新判定)→ **一次读全**(候选 + 全局刷新剩余,无稳定帧等待)→ `report_screen_invest_env_obs` 落容器 `invest_env_opts` + `env_refresh_left` 槽 → obs 挂实例属性。决策动作 node = **不写游戏状态**(选择事实不写本 node;active_env 注册/portal 登记/环境赠卡入席全在动作落地链,见 §6)——零参决策 `match.strategy.decide_invest_env()`(候选自容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_env.py`,正本 = [../strategy-docs/28_invest_env_screen.md](../strategy-docs/28_invest_env_screen.md);环境帧刷新判据在策略层,handler 禁直调判据算刷新建议,接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 整组刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestEnvParam`;**动作 op 点完确认立即上报完整结果**——经获得链 `gain_invest_env` 记)→ **round_success 终结返回主循环**(选完即结束本次访问 = [op-layer.md](op-layer.md) §1.1 + [README.md](README.md) §6;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重分类。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;投资环境域的例外收窄见 §6)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(miss = round_fail 返回主循环重新判定)→ **一次读全**(候选 + 全局刷新剩余,无稳定帧等待)→ `report_screen_invest_env_obs` 落状态容器(GameState) `invest_env_opts` + `env_refresh_left` 槽 → obs 挂实例属性。决策动作 node = **不写游戏状态**(选择事实不写本 node;active_env 注册/portal 登记/环境赠卡入席全在动作落地链,见 §6)——零参决策 `match.strategy.decide_invest_env()`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_env.py`,权威版本 = [../strategy-docs/28_invest_env_screen.md](../strategy-docs/28_invest_env_screen.md);环境帧刷新判据在策略层,handler 禁直调判据算刷新建议,接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 整组刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestEnvParam`;**动作 op 点完确认立即上报完整结果**——经获得链 `gain_invest_env` 记)→ **round_success 终结返回主循环**(选完即结束本次访问 = [op-layer.md](op-layer.md) §1.1 + [README.md](README.md) §6;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重分类。
 
 ## 3. 观察面
 
-入口单次观察(观察 node)——观察 node 内联序:入口锚探测(miss = `hit=False`,观察 node round_fail 早退,无复探窗)→ 命中后**一次读全**(无稳定帧等待):候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)+ 全局刷新剩余计数(`read_invest_refresh_counts(ctx, screen, 'env')`,首条 = (剩余次数, x, y),读缺 = None)→ **观察标准化门** `_standardize_options`(规范 = [op-layer.md](op-layer.md) §1.1):逐候选两段转换——形变归一 `normalize_invest_name` 精确命中注册表 → 不中再 LCS 相似匹配兜底(阈值常量 `ENV_LCS_THRESHOLD` ∧ 最高/次高分差 ≥ 歧义 margin 常量 `ENV_LCS_AMBIGUITY_MARGIN`——分差过近 = 注册表内歧义不可分辨,同分/近分一律拒判);两候选命中同一注册名 = 同名拒判,与转换失败同判(选项互斥屏,卡面与注册表一一对应,重复名 = 必有误读)。任一候选转换失败 ∨ 近分歧义 ∨ 同名命中 = 观察 node round_fail 整函数早退,不写容器不上报,交外循环重观察重读;容器 `invest_env_opts` 值域自此 = 标准注册名。残余风险登记:共享词素族单字误读(如「击口概念股」对击破/追击概念股近分跨名借分)由分差拒判拦截,表现为该访问 round_fail 多一轮重观察,非静默错名;残余风险 = 分差内真歧义被判失败,同为多一轮重观察。观察 payload = `CwScreenInvestEnvObs`(`hit`/`options`/`refresh`/`screen`,住 `kernel/cw_screen_report/invest_env.py`);report = `report_screen_invest_env_obs` 候选写容器 `invest_env_opts` 槽 + 刷新剩余写 `env_refresh_left`(观察写端,读缺跳写;空候选不写;match/gs 缺席的局外兜底路径跳过)。决策零参读容器槽,刷新闸直接消费 obs 携带读数。
+入口单次观察(观察 node)——观察 node 内联序:入口锚探测(miss = `hit=False`,观察 node round_fail 早退,无复探窗)→ 命中后**一次读全**(无稳定帧等待):候选读取 `_read_options`(全图 OCR,卡名行 y 带 360-410 + 2-8 字 + 排除表过滤,左→右排序)+ 全局刷新剩余计数(`read_invest_refresh_counts(ctx, screen, 'env')`,首条 = (剩余次数, x, y),读缺 = None)→ **观察标准化门** `_standardize_options`(规范 = [op-layer.md](op-layer.md) §1.1):逐候选两段转换——形变归一 `normalize_invest_name` 精确命中注册表 → 不中再 LCS 相似匹配兜底(阈值常量 `ENV_LCS_THRESHOLD` ∧ 最高/次高分差 ≥ 歧义 margin 常量 `ENV_LCS_AMBIGUITY_MARGIN`——分差过近 = 注册表内歧义不可分辨,同分/近分一律拒判);两候选命中同一注册名 = 同名拒判,与转换失败同判(选项互斥屏,卡面与注册表一一对应,重复名 = 必有误读)。任一候选转换失败 ∨ 近分歧义 ∨ 同名命中 = 观察 node round_fail 整函数早退,不写状态容器不上报,交外循环重观察重读;状态容器 `invest_env_opts` 值域自此 = 标准注册名。残余风险登记:共享词素族单字误读(如「击口概念股」对击破/追击概念股近分跨名借分)由分差拒判拦截,表现为该访问 round_fail 多一轮重观察,非静默错名;残余风险 = 分差内真歧义被判失败,同为多一轮重观察。观察 payload = `CwScreenInvestEnvObs`(`hit`/`options`/`refresh`/`screen`,住 `kernel/cw_screen_report/invest_env.py`);report = `report_screen_invest_env_obs` 候选写状态容器 `invest_env_opts` 槽 + 刷新剩余写 `env_refresh_left`(观察写端,读缺跳写;空候选不写;match/gs 缺席的局外兜底路径跳过)。决策零参读状态容器槽,刷新闸直接消费 obs 携带读数。
 
 ## 4. 动作面
 
@@ -32,11 +32,11 @@ names = opts 卡名;空候选 → round_fail 显式失败(不发出无依据的�
 未注册环境名逐个告警(该项 env_fit 走中性 fallback)
 (无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期;
   用户裁决 2026-09-22 全族删门,禁回填此类单跑防御分支)
-act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
+act = match.strategy.decide_invest_env()(零参,输入 = 状态容器标准名
   invest_env_opts 槽——观察标准化门产出,值域 = 标准注册名)
 ├─ 整组重掷刷新 = 终结动作(与策略屏不同构:单全局钮 + 单全局计数):
 │    闸 = obs.refresh 携带读数 >0 才有授权(观察段一次读全,决策环不识别;
-│      读缺 = 无授权失败安全)∧ 容器 env_refresh_left 剩余口径对照(≤0 = 尽)
+│      读缺 = 无授权失败安全)∧ 状态容器 env_refresh_left 剩余口径对照(≤0 = 尽)
 │    闸败(建议帧但无授权/读缺)→ 同访问重调 decide_invest_env 落选卡:
 │      flow 层 scratch 键 (kind, 候选元组) 同帧去重——建议帧首调发建议、
 │      紧随重调落选卡并清键,选卡不漂移;防御 = 重调仍返刷新建议(策略
@@ -57,14 +57,14 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 │    弹窗被处理(银狼策划选择上报),授予 = 附带条件分支(代码 branch_type='rider')
 │    `kernel/cw_action_report/pick_planner.py::_grant_joy_conditional`
 │    (`active_env` 欢愉契约已登记 → `gain_character` 1★ rand=True,写端 =
-│    rider 链内落位/合成写),正本 = ../game_state/gain-chain.md §3)
+│    rider 链内落位/合成写),权威版本 = ../game_state/gain-chain.md §3)
 ├─ 台账变异窗:选卡链派发**前**开窗(env_grace_until = now + 45s 常量
 │    ENV_GRACE_S)——环境选择是位面节点序列唯一变异源,确认到节点行
 │    重读之间的查表不一致是合法变异,三票校验不得落缺陷台账
 │    (关窗迁备战帧链写端)
 └─ 选卡确认链:派发 CwActionPickInvestOp(机械链在动作 op 内,点完确认
      立即上报完整结果经获得链记;派发 param 携真实选中 idx(纯 idx 上报,
-     名字自容器标准名单一源按序号提供——规范 = op-layer.md §1.1),
+     名字自状态容器标准名单一源按序号提供——规范 = op-layer.md §1.1),
      定位点 = 「区域-卡牌描述行」center.y[兜底常量 450] + 该卡 center-x
      [点立绘/卡名不选中,点描述区才选中],确认钮 = 「按钮-确认」建档查找
      点击(动作 op 内,全族统一),裁决词「投资环境」)
@@ -90,15 +90,15 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 - `active_env` 写入:动作落地获得链写(`kernel/cw_gain_chain.py::gain_invest_env`,
   写行署名 `GAIN_CHAIN_PRODUCER`;**写时点 = 动作执行时**——动作 op 点完确认
   立即上报,契约 = [../flow/action_ops.md](../flow/action_ops.md) §1「用户裁定(点完即写)」、
-  链式规范正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)
-  §2.1/§8;链内无效载荷拒绝 = 不写保留证据,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §2.1 步 0;本屏不写游戏状态)。
+  链式规范权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)
+  §2.1/§8;链内无效载荷拒绝 = 不写保留证据,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §2.1 步 0;本屏不写游戏状态)。
 - portal 效果登记:`gain_invest_env` 链内分支 → `kernel/cw_effect_inventory.py::
   register_portal_from_env`(best-effort,失败保留证据不阻塞;经济判据接登记数据归后续批)。
 - 环境赠卡入席/席满溢出落位:`gain_invest_env` → `on_env_gained` 枚举 →
   `gain_character`(入席/溢出/升星链)。欢愉契约的附带条件授予不在本枚举
-  (触发条件/写端/正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §3;
+  (触发条件/写端/权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md) §3;
   见 §4 选卡分支申报)。
-- 候选观察:`report_screen_invest_env_obs` 候选写容器 `invest_env_opts` 槽 +
+- 候选观察:`report_screen_invest_env_obs` 候选写状态容器 `invest_env_opts` 槽 +
   刷新剩余写 `env_refresh_left`(观察写端,读缺跳写)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.3 / §4「投资选择」;效果账 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8;效果激活账本 = fields.md §5.1。
 
@@ -112,7 +112,7 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 - 刷新零效果保留证据(缺陷台账 L2 记录,不停机不改道);偏移错 → 刷新未命中时重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次外环重进(能力退化非事故,复测即修)。
 - 读缺守卫:计数读缺 = 无授权(失败安全);无帧 = 刷新链跳过。
 - 台账变异窗(45s)防确认后节点行刷新窗口内的三票校验误报。
-- 获得链守卫(动作落地时点,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)):
+- 获得链守卫(动作落地时点,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md)):
   portal 登记分支 best-effort 失败保留证据不阻塞(已迁链内);特邀专家(advisor)卡面
   不入席——经解锁写原语 `_unlock_experts` 写 `unlocked_experts`(顾问入商店;
   条件形态首例特邀专家:银狼含环境获得时点在场判定,未命中零写效果串空尾);
@@ -123,5 +123,5 @@ act = match.strategy.decide_invest_env()(零参,输入 = 容器标准名
 
 - journal op 名 =「投资环境」(本屏身份分支链另有「等待 1-1」独立行);op 内日志 tag = `[cw-env]`(计数读数/options/chose/reason、刷新结束本次访问)。
 - 缺陷分键 = `invest_env.refresh_no_effect`(record_defect L2 保留证据)。
-- 测试(逐项与测试实存对齐;测试仓根 = `sr-od-test/test/sr_od/application/currency_war/`):观察门 miss 早退 + 候选一次读落容器 `invest_env_opts` + obs 挂实例属性 = `test_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;观察标准化门(可转换名 → 容器/obs 标准名,含归一精确与 LCS 兜底命中路径[「彩虹吋代」不过严回归锚];转换失败乱串 / 两候选命中同一注册名 / LCS 近分歧义[「击口概念股」双真名近分] → round_fail 不写不上报) = 同文件 `test_invest_env_observe_standardization_gate`;`env_refresh_left` 观察写端两条写入路径(计数读得值写入 / 读缺跳写) = 同文件 `test_invest_env_refresh_left_observed_write` + `test_screen_report_ports.py`(`_case_invest_env` 值与来源测试、空桩摄入序 `invest_env` 行:候选空整函数早退不写含 left);空候选不发出无依据的动作 = `test_obs_arch_phase_screens.py::test_invest_env_empty_opts_fail_not_blindfire`;发出即终结 + 发出时点写入交叉核对(active_env 已写) = `test_obs_arch_phase_screens.py::test_invest_env_active_env_written_at_dispatch`;无 match 局外不设早退支 = 单跑缺上下文沿正常链路失败(AttributeError,零派发零点击) = `test_obs_arch_phase_screens.py::test_invest_env_out_of_match_no_early_exit_normal_chain`;机械链与 param 类型分派 + 即时上报接线 = `test_cw_unified_action_4.py::test_invest_pick_op_clicks_target_confirms_and_self_reports`;刷新零效果对账保留证据(缺陷分键 `invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py::test_invest_env_refresh_no_effect_reconcile_records_defect`;portal 链与防污染(容器播种承载纯 idx 取名) = `test_cw_yinlang_phase32.py::test_invest_portal_landing_no_card_pollution`(ENV_GIFTS 全量发放 = 同文件 `test_invest_portal_env_gifts_full_access`);纯 idx 上报契约(名字自容器标准名单一源按序号提供,容器缺读/idx 越界 = 响亮失败)测试面 = `test_cw_action_report_contract.py` param 冒烟测试(invest_env 行随按 idx 取名契约播种容器承载)+ `test_cw_yinlang_phase32.py` portal 测试(idx → 链收容器同序标准名);链内无效载荷拒绝(detail=`invalid_payload` / active_env 零写 / 缺陷行 `pick_invest_invalid_payload`) = `test_gain_chain.py::test_gain_invest_env_invalid_payload_zero_write`;命名/sig/写入域完备测试 = `test_screen_report_ports.py`。
+- 测试(逐项与测试实存对齐;测试仓根 = `sr-od-test/test/sr_od/application/currency_war/`):观察门 miss 早退 + 候选一次读落状态容器 `invest_env_opts` + obs 挂实例属性 = `test_obs_arch_phase_screens.py::test_invest_env_observe_gate_and_report`;观察标准化门(可转换名 → 状态容器/obs 标准名,含归一精确与 LCS 兜底命中路径[「彩虹吋代」不过严回归锚];转换失败乱串 / 两候选命中同一注册名 / LCS 近分歧义[「击口概念股」双真名近分] → round_fail 不写不上报) = 同文件 `test_invest_env_observe_standardization_gate`;`env_refresh_left` 观察写端两条写入路径(计数读得值写入 / 读缺跳写) = 同文件 `test_invest_env_refresh_left_observed_write` + `test_screen_report_ports.py`(`_case_invest_env` 值与来源测试、空桩摄入序 `invest_env` 行:候选空整函数早退不写含 left);空候选不发出无依据的动作 = `test_obs_arch_phase_screens.py::test_invest_env_empty_opts_fail_not_blindfire`;发出即终结 + 发出时点写入交叉核对(active_env 已写) = `test_obs_arch_phase_screens.py::test_invest_env_active_env_written_at_dispatch`;无 match 局外不设早退支 = 单跑缺上下文沿正常链路失败(AttributeError,零派发零点击) = `test_obs_arch_phase_screens.py::test_invest_env_out_of_match_no_early_exit_normal_chain`;机械链与 param 类型分派 + 即时上报接入调用 = `test_cw_unified_action_4.py::test_invest_pick_op_clicks_target_confirms_and_self_reports`;刷新零效果对账保留证据(缺陷分键 `invest_env.refresh_no_effect`) = `test_cw_unified_action_4.py::test_invest_env_refresh_no_effect_reconcile_records_defect`;portal 链与防污染(状态容器播种承载纯 idx 取名) = `test_cw_yinlang_phase32.py::test_invest_portal_landing_no_card_pollution`(ENV_GIFTS 全量发放 = 同文件 `test_invest_portal_env_gifts_full_access`);纯 idx 上报契约(名字自状态容器标准名单一源按序号提供,状态容器缺读/idx 越界 = 响亮失败)测试面 = `test_cw_action_report_contract.py` param 冒烟测试(invest_env 行随按 idx 取名契约播种状态容器承载)+ `test_cw_yinlang_phase32.py` portal 测试(idx → 链收状态容器同序标准名);链内无效载荷拒绝(detail=`invalid_payload` / active_env 零写 / 缺陷行 `pick_invest_invalid_payload`) = `test_gain_chain.py::test_gain_invest_env_invalid_payload_zero_write`;命名/sig/写入域完备测试 = `test_screen_report_ports.py`。
 - game 侧知识:画面与机制(环境 = 整局增益) = [../../../../game/screens/currency_war_invest_env.md](../../../../../game/screens/currency_war_invest_env.md);环境刷新判据 = `kernel/cw_events.py` 环境帧分支 + [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1。

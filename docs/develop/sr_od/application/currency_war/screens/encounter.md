@@ -9,16 +9,16 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 返回主循环重新判定)→ **门命中即用 node runner 帧一次读**(候选 + 剩余次数,同帧同源;原「入口 2s 稳定期」已删,时序口径已由 [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23 取代,用户裁定 2026-09-21;候选读缺的失败安全 = §4 空候选不点击终结)→ `report_screen_encounter_obs` 落容器 `encounter` 域 + `encounter_refresh_left`(摄入序照先例:options 空整函数早退不写含 left;match/gs 缺席的局外兜底路径跳过 report)→ obs 与刷新文本锚点挂实例属性。决策动作 node = 零参决策(候选自容器 `encounter` 槽;决策本体 = `strategies/impl/mandate_v1/encounter_pick.py`——flow `decide_encounter` 零参口直调,能力态直通形,判据语义单一源 = [../strategy-docs/31_encounter_screen.md](../strategy-docs/31_encounter_screen.md);规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ **三出口均终结访问**(发出即终结,落地复查已停用;合同 = [op-layer.md](op-layer.md) §1.1 出口①,投资两屏/补给同形态):①刷新 = 点钮一次 + 2s → round_success 终结;②选卡 = 派发确认链(机械链 + chosen 即时上报在动作 op 内)→ round_success 终结;③空候选 = 不点击直接结束本次访问、返回主循环重新识别画面。决策返回动作类型清单外的值/None = 具名 round_fail,不发出无依据的动作([op-layer.md](op-layer.md) §1.1 出口③,消息含策略器原值);pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位);两守卫均派发前零点击,非循环出口、非防御上限;选卡派发 = 策略产实例直发(无重建无钳位,流程侧零值域改写)。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门(「标识-遭遇节点」,miss = round_fail 返回主循环重新判定)→ **门命中即用 node runner 帧一次读**(候选 + 剩余次数,同帧同源;原「入口 2s 稳定期」已删,时序口径已由 [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #23 取代,用户裁定 2026-09-21;候选读缺的失败安全 = §4 空候选不点击终结)→ `report_screen_encounter_obs` 落状态容器(GameState) `encounter` 域 + `encounter_refresh_left`(摄入序照先例:options 空整函数早退不写含 left;match/gs 缺席的局外兜底路径跳过 report)→ obs 与刷新文本锚点挂实例属性。决策动作 node = 零参决策(候选自状态容器 `encounter` 槽;决策本体 = `strategies/impl/mandate_v1/encounter_pick.py`——flow `decide_encounter` 零参口直调,能力态直通形,判据语义单一源 = [../strategy-docs/31_encounter_screen.md](../strategy-docs/31_encounter_screen.md);规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ **三出口均终结访问**(发出即终结,落地复查已停用;合同 = [op-layer.md](op-layer.md) §1.1 出口①,投资两屏/补给同形态):①刷新 = 点钮一次 + 2s → round_success 终结;②选卡 = 派发确认链(机械链 + chosen 即时上报在动作 op 内)→ round_success 终结;③空候选 = 不点击直接结束本次访问、返回主循环重新识别画面。决策返回动作类型清单外的值/None = 具名 round_fail,不发出无依据的动作([op-layer.md](op-layer.md) §1.1 出口③,消息含策略器原值);pick idx 越界 = 守卫断言 AssertionError(op-layer.md §1.3,禁钳位);两守卫均派发前零点击,非循环出口、非防御上限;选卡派发 = 策略产实例直发(无重建无钳位,流程侧零值域改写)。确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(修法 = 点击链可靠性)。
 
 ## 3. 观察面
 
 入口单次观察(观察 node;决策循环不再读屏)——门命中即读,无稳定期等待:
 
-- 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项卡面 UI 不显词缀,词缀住「货币战争-敌人信息浮层」覆盖层——已建档,chips OCR 实测可读,读数通道就绪,接线消费待后续批);选档判据不消费词缀(词缀维度 = 未消费输入,判据语义 = [../strategy-docs/31_encounter_screen.md](../strategy-docs/31_encounter_screen.md))。
+- 选项读取 `obs/cw_node_obs.py::read_encounter_options`:卡标题「遭遇其X」正则 → 难度档(「一」笔画细常漏读,无数字 = 难度 1);奖励带(y 600-695,排「奖励预览」标签)文本按 x 就近归卡;`affixes` 恒空(选项卡面 UI 不显词缀,词缀住「货币战争-敌人信息浮层」覆盖层——已建档,chips OCR 实测可读,读数通道就绪,接入调用消费待后续批);选档判据不消费词缀(词缀维度 = 未消费输入,判据语义 = [../strategy-docs/31_encounter_screen.md](../strategy-docs/31_encounter_screen.md))。
 - 刷新剩余 `read_encounter_refresh_count`:OCR「剩余次数:N」(矩形带常量,全/半角冒号都认)→ `(剩余次数, 文本中心)`;读缺 = None(= 未观察,闸拒绝)。
 
-观察 payload = `CwScreenEncounterObs`(`options`/`refresh_left`/`screen`,住 `kernel/cw_screen_report/encounter.py`);report = `report_screen_encounter_obs`:候选写容器 `encounter` 域(EncounterPayload;空候选整函数早退不写含 left)+ **`refresh_left` 摄入 `encounter_refresh_left`**(剩余语义观察写端,读缺跳写、逐访问覆盖;None = 未观察 = 拒绝刷新)。
+观察 payload = `CwScreenEncounterObs`(`options`/`refresh_left`/`screen`,住 `kernel/cw_screen_report/encounter.py`);report = `report_screen_encounter_obs`:候选写状态容器 `encounter` 域(EncounterPayload;空候选整函数早退不写含 left)+ **`refresh_left` 摄入 `encounter_refresh_left`**(剩余语义观察写端,读缺跳写、逐访问覆盖;None = 未观察 = 拒绝刷新)。
 
 ## 4. 动作面
 
@@ -26,8 +26,8 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickEncounterParam` 实例(env 只携宿主 `op`;idx 即策略产值,流程侧零改写;越界 = 守卫断言、动作类型清单外 = 具名 fail,均在派发前;卡位由动作 op 内读建档 area(缺失 = 显式 round_fail 返回主循环重新识别画面,禁兜底坐标),确认钮 = `round_by_find_and_click_area` 全族统一) | **发出即写**(确认点击后立即写入)`report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷保留证据不写 fail-closed;画面 op 守卫先查动作类型/值域,report 层离屏/越界保留证据不写保留为字段级防线) | **是(发出即终结)**:发出后 round_success 终结返回主循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
-| 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 内置动作(容器 `encounter_refresh_left` 闸 + 锚点对照闸 → 放行:同帧「剩余次数:N」文本中心锚定偏移 `_REFRESH_BTN_DX`(-100)`mouse_move`+`click` + 2s 固定等待) | 无自上报(刷新 = 结束本次访问,新选项由外循环重进后的入口观察现读承载,**访问内不重读、不二次覆盖写、不重决策**) | **是(终结)**:round_success 结束本次访问;拒绝帧(剩余 ≤0 或 None)decide 次数闸内嵌直接落选卡,不进刷新分支;建议刷 ∧ 刷新圆钮锚读缺 → 重调一次决策,仍返建议(锚持续读缺 = 无界循环面)→ `round_fail` 结束本次访问计入外循环重派上限(防线,有界收敛) |
+| `CwActionPickEncounterOp`(`CwActionPickEncounterParam`) | 注册表工厂 `action_op_for` 直发策略产 `CwActionPickEncounterParam` 实例(env 只携宿主 `op`;idx 即策略产值,流程侧零改写;越界 = 守卫断言、动作类型清单外 = 具名 fail,均在派发前;卡位由动作 op 内读建档 area(缺失 = 显式 round_fail 返回主循环重新识别画面,禁兜底坐标),确认钮 = `round_by_find_and_click_area` 全族统一) | **发出即写**(确认点击后立即写入)`report_action_pick_encounter_param`(`kernel/cw_action_report/pick_encounter.py`:确认点击后立即写 `chosen_encounter`,值组装 = 状态容器 `encounter` payload 槽 `options[param.idx]`,离屏/越界 = 缺陷保留证据不写 fail-closed;画面 op 守卫先查动作类型/值域,report 层离屏/越界保留证据不写保留为字段级防线) | **是(发出即终结)**:发出后 round_success 终结返回主循环;落地判定归观察侧(overlay 残留由外循环重识别重派) |
+| 分支刷新(无注册表动作 op;`CwActionRefreshNodeOptionsParam` 仅策略建议载体) | 画面 op 内置动作(状态容器 `encounter_refresh_left` 闸 + 锚点对照闸 → 放行:同帧「剩余次数:N」文本中心锚定偏移 `_REFRESH_BTN_DX`(-100)`mouse_move`+`click` + 2s 固定等待) | 无自上报(刷新 = 结束本次访问,新选项由外循环重进后的入口观察现读承载,**访问内不重读、不二次覆盖写、不重决策**) | **是(终结)**:round_success 结束本次访问;拒绝帧(剩余 ≤0 或 None)decide 次数闸内嵌直接落选卡,不进刷新分支;建议刷 ∧ 刷新圆钮锚读缺 → 重调一次决策,仍返建议(锚持续读缺 = 无界循环面)→ `round_fail` 结束本次访问计入外循环重派上限(防线,有界收敛) |
 | (空候选,非动作) | — | — | **是**:不点击,round_success 直接终结返回主循环重新识别画面(候选读缺禁盲选派发确认——选卡确认不可逆消耗本节点) |
 | (决策无有效输出/pick idx 越界,非动作) | — | — | 守卫 fail:动作类型清单外/None = round_fail(含原值)、idx 越界 = AssertionError;零点击零派发,返回主循环 |
 
@@ -48,9 +48,9 @@
 
 ## 6. 状态上报面
 
-- 候选观察:`report_screen_encounter_obs` 写容器 `encounter` 域(空候选不写)+ `encounter_refresh_left`(剩余语义观察写端)。
+- 候选观察:`report_screen_encounter_obs` 写状态容器 `encounter` 域(空候选不写)+ `encounter_refresh_left`(剩余语义观察写端)。
 - `chosen_encounter`:写端 = **动作侧发出即写**(`kernel/cw_action_report/pick_encounter.py`,用户裁定 2026-09-21 遭遇例外改判,先例 = 投资域 chosen 迁获得链;值 = (难度档, 奖励文本),盲选/越界不写防假值固化;发出即写语义 = 意图记录,确认未生效窗内暂态假值由重派覆盖自愈);**兑现后清(单次消费,见下)**。
-- `encounter_reward_claimed`(顶层字段,`tuple[int, str] | None`):遭遇奖励兑现记录 = 最近一次伤害达标兑现的所选值,单槽逐遭遇覆盖。写端 = 结算兑现回调 `kernel/cw_encounter_selection.py::claim_encounter_reward`(挂点 = `CwOpSettleConfirm` 确认点击后、推进上报前):判定遭遇节点需要两处证据同时命中(node 镜像 token 'encounter' ∧ ring 尾行 node_type=='遭遇';原「结算行 note」载体不可实现,依据 = attack3 迭代第 1 轮已定案结论)∧ 达标 = `progress_delta > 0` 单判(遭遇奖励 = 伤害进度达标制非清场制,机制依据 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3);兑现即清 `chosen_encounter`(单次消费:镜像残留/驻留重访/结算覆盖陈旧三类残留一并清除,天然幂等)。**数值不直写防双源**:金币真值 = `settle_truth` 结算读数、随机4费 = bench 观察(以实际观察为准);兑现记录 = 语义账面(在用消费面 = 审计投影唯一,策略器收益对账读端为登记已登记的待办)。已知盲点:两处证据存在同源面,镜像记录缺失时该遭遇的奖励不会兑现(宁可漏发、不可误发)。
+- `encounter_reward_claimed`(顶层字段,`tuple[int, str] | None`):遭遇奖励兑现记录 = 最近一次伤害达标兑现的所选值,单槽逐遭遇覆盖。写端 = 结算兑现回调 `kernel/cw_encounter_selection.py::claim_encounter_reward`(插入位置 = `CwOpSettleConfirm` 确认点击后、推进上报前):判定遭遇节点需要两处证据同时命中(node 镜像 token 'encounter' ∧ ring 尾行 node_type=='遭遇';原「结算行 note」载体不可实现,依据 = attack3 迭代第 1 轮已定案结论)∧ 达标 = `progress_delta > 0` 单判(遭遇奖励 = 伤害进度达标制非清场制,机制依据 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3);兑现即清 `chosen_encounter`(单次消费:镜像残留/驻留重访/结算覆盖陈旧三类残留一并清除,天然幂等)。**数值不直写防双源**:金币真值 = `settle_truth` 结算读数、随机4费 = bench 观察(以实际观察为准);兑现记录 = 语义账面(在用消费面 = 审计投影唯一,策略器收益对账读端为登记已登记的待办)。已知盲点:两处证据存在同源面,镜像记录缺失时该遭遇的奖励不会兑现(宁可漏发、不可误发)。
 - 刷新计数:`encounter_refresh_used` 已用计数与 `encounter_refreshed_in_visit` per-visit 位已停用(剩余语义化),闸 = `encounter_refresh_left` 剩余语义观察真值(kernel 闸与画面对照闸同读该字段)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.1 / §4「事件选择」;选择落地语义 = fields.md §4。
 
@@ -75,5 +75,5 @@
 
 - journal op 名 =「遭遇节点」;op 内日志 tag = `[cw-encounter]`(options/pick/refresh、刷新圆钮坐标、不点击终结归因)。
 - 兑现回调归因串可见化:`[cw-settle-confirm]` 行(claimed/未触发归因)。
-- 测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_event_screens.py`(门/观察接线+left 摄入/发出即终结/空候选不点击/刷新终结恰一次/闸拒绝/闸不一致防线 round_fail/兑现回调/决策无输出具名 fail/idx 越界断言九个断言点)+ `test_screen_report_ports.py`(摄入序:空候选整函数早退含 left)+ `test_cw_game_state_consume.py`(chosen 记录面:report 直调真选/离屏/越界)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_event_screens.py`(门/观察接入调用+left 摄入/发出即终结/空候选不点击/刷新终结恰一次/闸拒绝/闸不一致防线 round_fail/兑现回调/决策无输出具名 fail/idx 越界断言九个断言点)+ `test_screen_report_ports.py`(摄入序:空候选整函数早退含 left)+ `test_cw_game_state_consume.py`(chosen 记录面:report 直调真选/离屏/越界)。
 - game 侧知识:画面与交互模型 = [../../../../game/screens/currency_war_encounter.md](../../../../../game/screens/currency_war_encounter.md);分支刷新机制(优势布局授予,每局 1 次)= [../../../../game/currency_war/data/advantage_layouts.md](../../../../../game/currency_war/data/advantage_layouts.md);难度/节点表 = [../../../../game/currency_war/data/competitors.md](../../../../../game/currency_war/data/competitors.md);遭遇奖励达标制 = [../../../../game/currency_war/research/combat.md](../../../../../game/currency_war/research/combat.md) §3;时序口径(含 #23 取代关系)= [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md)。

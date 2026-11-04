@@ -11,7 +11,7 @@
 
 **横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss,现行分发判据与该裁定一致)。
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落容器 `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,正本 = [../strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,正本 = [../game_state/gain-chain.md](../game_state/gain-chain.md))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
 
 ## 3. 观察面
 
@@ -22,7 +22,7 @@
 
 (旧 1s 稳定帧已删,读缺自愈 = 复探窗 + 外循环重派;空候选 → 决策动作 node round_fail 显式失败,见 §2/§5。)
 
-观察 payload = `CwScreenInvestStrategyObs`(`entry_ok`/`options`/`refresh_slots`/`first_ocr_map`/`screen`,住 `kernel/cw_screen_report/invest_strategy.py`);report = `report_screen_invest_strategy_obs` 候选写容器 `invest_strategy_opts` 槽 + 逐卡剩余合并写 `strategy_refresh_left`(观察写端,键 = 规范卡名,读缺键跳写;names 空 = OCR 未读得不写;match/gs 缺席的局外兜底路径跳过)。决策零参读容器槽,刷新闸直接消费 obs 携带余量。
+观察 payload = `CwScreenInvestStrategyObs`(`entry_ok`/`options`/`refresh_slots`/`first_ocr_map`/`screen`,住 `kernel/cw_screen_report/invest_strategy.py`);report = `report_screen_invest_strategy_obs` 候选写状态容器 `invest_strategy_opts` 槽 + 逐卡剩余合并写 `strategy_refresh_left`(观察写端,键 = 规范卡名,读缺键跳写;names 空 = OCR 未读得不写;match/gs 缺席的局外兜底路径跳过)。决策零参读状态容器槽,刷新闸直接消费 obs 携带余量。
 
 ## 4. 动作面
 
@@ -39,10 +39,10 @@
 names = opts 卡名;空候选 → round_fail 显式失败(不发出无依据的动作)
 (无 match 局外不设早退支——单跑缺上下文沿正常链路失败即预期;
   用户裁决 2026-09-22 全族删门,禁回填此类单跑防御分支)
-act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_strategy_opts 槽)
+act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 invest_strategy_opts 槽)
 ├─ 逐卡刷新 = 终结动作(act.refresh_slots 非空):
 │    闸1 obs.refresh_slots 槽余量 >0(权威闸,读缺 = 无授权失败安全);
-│    闸2 容器 strategy_refresh_left 剩余口径对照(剩余次数 ≤0 = 已刷完,
+│    闸2 状态容器 strategy_refresh_left 剩余口径对照(剩余次数 ≤0 = 已刷完,
 │      不能再刷;键缺失由闸1裁决;观察写端每访问覆盖,与闸1同帧同值);
 │    闸3 唯一 L1 档守卫(_guard_classify 现算:候选中只剩一张既非血量类、
 │      也非禁用类的卡[L1 档] → 该槽禁止刷新——避免把唯一可选卡刷掉)
@@ -87,8 +87,8 @@ act = match.strategy.decide_invest_strategy()(零参,候选读容器 invest_stra
 ## 6. 状态上报面
 
 - **持卡登记**(获得链 `gain_invest_strategy`,动作 op 即时上报):GameState `active_strategies` 按名字去重追加(裁定:持卡列表恒无重复名)+ 效果账本登记分支 best-effort(`STRATEGY_EFFECTS` 命中 → `effects.register_strategy`(acquired_key = 节点序位快照)+ burst 桥 `apply_effect_burst_grant` + 板面重写桥 `apply_board_rewrite`;失败 log + 缺陷保留证据 `gain_chain_strategy_register_failed`,不阻塞)+ `on_strategy_gained` 效果分派(骇客专家:银狼 = 狼单位授予分支经 `gain_character` 入席 + 商店池申报行 + 改件 `gain_equipment` 采样链)。画面 op 无选择写点(三桥已自画面 op 迁链)。
-- **刷新剩余次数**:`strategy_refresh_left` 观察写端(观察 report 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖;值 = 剩余,≤0 = 尽);画面 op 零计数写点,闸 1 = obs 携带余量、闸 2 = 容器对照。
-- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.4 / §4「投资选择」;效果账挂点 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8(事件线选择非逻辑态通道)。
+- **刷新剩余次数**:`strategy_refresh_left` 观察写端(观察 report 摄入「刷新次数N」读数,读缺键跳写、已观察键覆盖;值 = 剩余,≤0 = 尽);画面 op 零计数写点,闸 1 = obs 携带余量、闸 2 = 状态容器对照。
+- 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.4 / §4「投资选择」;效果账插入位置 = [../game_state/logic-updates/op-effects.md](../game_state/logic-updates/op-effects.md) §8(事件线选择非逻辑态通道)。
 
 ## 7. 子态与 overlay
 

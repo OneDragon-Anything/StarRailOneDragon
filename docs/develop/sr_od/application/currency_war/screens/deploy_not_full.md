@@ -12,7 +12,7 @@
 
 ## 3. 观察面
 
-轻观察:payload = `CwScreenDeployNotFullObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/deploy_not_full.py`);标识门在观察 node(miss → `round_fail` 返回主循环)。report = `report_screen_deploy_not_full_obs` 占位调用(本屏在用零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
+轻观察:payload = `CwScreenDeployNotFullObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/deploy_not_full.py`);标识门在观察 node(miss → `round_fail` 返回主循环)。report = `report_screen_deploy_not_full_obs` 占位调用(本屏在用零字段写操作点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
 
 ## 4. 动作面
 
@@ -20,7 +20,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——确认链由内置动作完成(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 内置动作(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零容器写点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由落地复查判——id_mark 不在 = 弹窗已关 → `round_success` 返回主循环(见 §5) |
+| 无动作 op——确认链由内置动作完成(`_confirm_and_dismiss`:勾「本局不再提示」+ 确认) | 画面 op 内置动作(`_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click`)+ 确认(`_overlay_confirm.py::emit_overlay_confirm`)+ 置位 `_confirm_pending`) | 观察侧 `report_screen_deploy_not_full_obs`(占位调用挂观察 node,本屏零字段写操作点;动作本体无自上报) | 否(非终结):确认后 `round_wait` 循环推进;落地由落地复查判——id_mark 不在 = 弹窗已关 → `round_success` 返回主循环(见 §5) |
 
 `_confirm_and_dismiss`:勾 `货币战争-未达上限警告.勾选-本局不再提示`(`_overlay_confirm.py::safe_click` 带防吞点击 + 0.3s)→ 确认(`_overlay_confirm.py::emit_overlay_confirm`,mouse_move 缓解 + success_wait=3.0)→ 置位 `_confirm_pending`(落地判定归下一轮落地复查)。坐标 = screen_info 现取优先,**缺失才用兜底常量**(`CHECKBOX_NO_PROMPT(912,589)` / `BTN_CONFIRM(1159,653)`)——与「禁兜底坐标」一般红线不同的 as-built 例外,在此申报。
 
@@ -43,4 +43,4 @@
 
 ## 9. 遥测与测试面
 
-- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为测试 act 侧两个测试点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接线恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
+- journal op 名 = 「未达上限确认」;frame_tag = `overlay_deploy_not_full`;dispatch wait=3(与确认收尾 success_wait 同口径);日志 tag `[cw-deploywarn]`。测试:`sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(`test_reentry_arbitration_flag_gate_combination` = 落地复查×门组合行为测试 act 侧两个测试点;`test_deploy_not_full_observe_gate_and_placeholder_report` = 观察门 miss 早退 / obs 装载 / 占位 report 接入调用恰一次与 gs 缺席跳过);建档 = `currency_war_deploy_not_full.yml`。
