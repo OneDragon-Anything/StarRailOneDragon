@@ -60,7 +60,7 @@ def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     的落点):本层是分布模型 estimand(每节点无条件期望掉血 ± CV 抖动,
     喂首达生存卷积),DP 层是确定性期望递推——两者共用同一标定(胜率表
     +条件败面档)但函数不同,数值对齐 ≠ 函数同一;本层不再持有独立位面
-    乘数自由度,位面维全部来自 registry 标定(版本锚=registry.
+    乘数自由度,位面维全部来自 registry 标定(版本基准=registry.
     p2_loss_calib_version)。
     """
     if plane <= 1:

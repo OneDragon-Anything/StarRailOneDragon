@@ -1,6 +1,6 @@
 """货币战争交互 overlay 生命周期注册表(单一枚举点)。
 
-每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
+每个 overlay 一条 :class:`OverlaySpec` 声明(识别标志/语义类/退场动作/派发序),
 五个消费面(P0 清场 / director bail / cw_loop 派发 / 退出恢复链 /
 UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
 结构性缺口(病灶;设计单一源 = 设计收束终版五条定案)。
@@ -59,7 +59,7 @@ class OverlaySpec:
     # ── 识别 ──
     # 键;必须已建档于 assets/game_data/screen_info(与 screen_info 同键空间)
     screen_name: str
-    # 识别锚 area 名(五消费面统一走此锚,禁各自再写锚)
+    # 识别标志 area 名(五消费面统一走此锚,禁各自再写锚)
     anchor_area: str
     # ── 语义 ──
     # 'decision' | 'display' | 'system'(SEMANTIC_* 常量)

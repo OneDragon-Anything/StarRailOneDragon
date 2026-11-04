@@ -3,7 +3,7 @@
 设计 = 统一观察架构的流程转点观测锚机制(原设计件已删,git 历史可溯)
 §12:在流程确定性转点上触发的一次结构化观测(锚),三要素 = 确定性触发
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
-(ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体
+(ANCHOR_REGISTRY 封闭集)、标记点行七字段封装(AnchorEvent)与事件行载体
 接入调用(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
 **载体停用声明(后现状)**:ExogenousEvent 流出口已停用为恒 no-op
 桩(cw_telemetry_exit.record_exogenous),出战就绪与否都不落行;登记表各
@@ -12,13 +12,13 @@
 
 **观测-only 边界(§12.0,用户裁定)**:本模块只做数据采集与计数登记,
 状态改写/效果施加明确出栈(效果施加语义归 §8.2 效果结构化词表线)——
-锚行 payload 的 ``effect_ref`` 槽位预留恒空(非空 = 红,结构锁见
-emit_anchor),消费侧守卫(决策代码禁读锚行)= 测试仓 grep 守卫,隔离
+标记点行 payload 的 ``effect_ref`` 槽位预留恒空(非空 = 红,结构锁见
+emit_anchor),消费侧守卫(决策代码禁读标记点行)= 测试仓 grep 守卫,隔离
 边界不是纸面声明。本模块 API 面不收 ctx/session/op 宿主对象(结构性
 写向隔离:拿不到就写不了),零 run 状态触碰(§12.5-3 停机钩子分流)。
 
-**封闭集纪律(§12.2,登记式先例 = SELL_CHANNELS)**:新锚先入登记表再接入调用,集外锚 = 红;触发
-时点型逐锚显式申报(landed/emitted/boundary,§6.4 轴三型),禁静默选型。
+**封闭集纪律(§12.2,登记式先例 = SELL_CHANNELS)**:新标记点先入登记表再接入调用,集外锚 = 红;触发
+时点型逐标记点显式申报(landed/emitted/boundary,§6.4 轴三型),禁静默选型。
 **H1 裁决(实现批钉死,2026-09-10)**:boundary 型锚的申报面 = 本登记表
 行的触发时点型列(设计 §12.3 末段已定锚登记行必带该字段),不另立
 BOUNDARY_TRIGGERED_DECLARED 独立表、不改既有 EMIT 表——第二申报面即双源。
@@ -28,7 +28,7 @@ BOUNDARY_TRIGGERED_DECLARED 独立表、不改既有 EMIT 表——第二申报�
 未落地(buy/refresh 触发口随 §6.4 执行器并入方案成立,R-J 待办在案,
 禁绕过并入私接触发;boundary 触发口与注册表触达机制待 H6 终裁,禁静默
 选型),接入调用落地时同步扩测试仓零消费守卫白名单。sim 侧零动
-(sim 桶零 import 有锁;「实机先行」= sim 域锚行落盘面待接入调用,接入调用前
+(sim 桶零 import 有锁;「实机先行」= sim 域标记点行落盘面待接入调用,接入调用前
 sim 域只验事实来源存在性,§12.4-A)。
 
 闭集内 = §12.2 以「实机先行」标记的 8 锚;实机-only(box_opened/
@@ -54,7 +54,7 @@ TRIGGER_AXIS: frozenset[str] = frozenset({
     ANCHOR_TRIGGER_LANDED, ANCHOR_TRIGGER_EMITTED, ANCHOR_TRIGGER_BOUNDARY,
 })
 
-#: 口径域封闭值域(§12.3 scope:消费侧跨批对读计数前必核,防口径混用的锚侧预防)。
+#: 口径域封闭值域(§12.3 scope:消费侧跨批对读计数前必核,防口径混用的标记点侧预防)。
 ANCHOR_SCOPES: frozenset[str] = frozenset({'global', 'plane', 'unit'})
 
 
@@ -62,12 +62,12 @@ ANCHOR_SCOPES: frozenset[str] = frozenset({'global', 'plane', 'unit'})
 
 @dataclass(frozen=True)
 class AnchorSpec:
-    """锚登记表行(§12.3:每锚一行,基类级持有的登记清单面)。
+    """标记点登记表行(§12.3:每标记点一行,基类级持有的登记清单面)。
 
     字段逐条对应 §12.3 末段声明:anchor_id / 触发时点型 / 宿主 /
     载体 kind / sim 适用域 / evidence_required / 前置依赖 / 申报出处。
     ``carrier_kind=None`` 申报「载体 = 既有多写点面(非单一
-    ExogenousEvent kind)」,锚行落盘路由待 H2 schema 修订批钉死。
+    ExogenousEvent kind)」,标记点行落盘路由待 H2 schema 修订批钉死。
     ``evidence_required`` 初判全部 False(§12.3;判定事实型锚 H3 定案后
     改 True 并申报判定依据),True 时发出必须带 evidence_refs(指标 5
     留存证据在锚点定义内,非事后补采)。
@@ -83,17 +83,17 @@ class AnchorSpec:
     source: str
 
 
-# ===== 锚行(§12.3 七字段封装,全部锚共用)=====
+# ===== 标记点行(§12.3 七字段封装,全部锚共用)=====
 
 @dataclass
 class AnchorEvent:
-    """一次锚触发的记录行(§12.3 锚行封装)。
+    """一次锚触发的记录行(§12.3 标记点行封装)。
 
     七字段组到物理列的映射:①anchor_id;②trigger_type;③时点键 =
     ts/run_id/plane/round_num/unit_seq(unit_seq 仅商店域动作锚,坐标 =
     (plane,round) 内购买单元序,1 起);
-    ④payload(逐锚类型化槽位待 H2;effect_ref 槽位预留恒空,§12.0);
-    ⑤scope;⑥evidence_refs;⑦produced_by(锚宿主 op 类名,沿登记件
+    ④payload(逐标记点类型化槽位待 H2;effect_ref 槽位预留恒空,§12.0);
+    ⑤scope;⑥evidence_refs;⑦produced_by(标记点宿主 op 类名,沿登记件
     produced_by 口径)。
 
     [索引定义] unit_seq:坐标系 = run 内 (plane, round) 键下的购买单元序
@@ -131,7 +131,7 @@ class AnchorEvent:
         }
 
 
-# ===== 登记表(封闭集;新锚 = 先改本表再接入调用,集外锚 = 红)=====
+# ===== 登记表(封闭集;新标记点 = 先改本表再接入调用,集外锚 = 红)=====
 
 ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'buy_landed': AnchorSpec(
@@ -229,7 +229,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
 
 # ===== payload 值域申报面(§12.5-4 闭集消费;kernel 零上层依赖)=====
 
-#: 逐锚 payload 字段 → 值域闭集的「符号名锚」(定义点唯一,不抄值):
+#: 逐标记点 payload 字段 → 值域闭集的「符号名锚」(定义点唯一,不抄值):
 #: 键 = anchor_id,内层 = payload 字段名 → '模块.符号' 引用串。
 #: kernel 禁上层依赖(sell_gate 住 strategies 层),故登记面只存引用,
 #: 值由装配点经 register_payload_domain_values 显式注入(缺省关 + 启动点

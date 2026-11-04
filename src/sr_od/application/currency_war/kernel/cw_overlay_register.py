@@ -40,7 +40,7 @@ SCREEN_CHANGE_KINDS: frozenset[str] = frozenset({
     'aha',            # 阿哈简易装备选择(无上报动作;锚 = 备战.标识-简易装备)
 })
 
-#: kind → 分发档名单一源(检测提示锚 = 画面档;aha 无独立画面档,
+#: kind → 分发档名单一源(检测提示标志 = 画面档;aha 无独立画面档,
 #: 锚 = 备战屏上的标识区,档名取底层备战屏)。
 KIND_SCREEN_NAMES: dict[str, str] = {
     'partner': '货币战争-列车同行',

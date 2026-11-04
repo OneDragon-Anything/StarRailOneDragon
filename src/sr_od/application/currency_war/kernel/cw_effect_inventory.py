@@ -211,9 +211,9 @@ SOURCE_AFFIX: str = 'affix'
 # /effect-domain.md §8 同名条(全员晋升/人力重组/大裁员/降本增效/现金为王)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
-# 出售支按「卡文是否携带发牌腿」两值细分:出售 = 语义本体(清场退款),
-# 发牌腿 = 人力重组卡文附加面、非出售语义固有——素出售卡(大裁员/降本增效/
-# 现金为王)复用 SELL_ALL 值,具发牌腿卡(人力重组)用 _DEAL 值声明;sim 发牌
+# 出售支按「卡文是否携带发牌条目」两值细分:出售 = 语义本体(清场退款),
+# 发牌条目 = 人力重组卡文附加面、非出售语义固有——素出售卡(大裁员/降本增效/
+# 现金为王)复用 SELL_ALL 值,具发牌条目卡(人力重组)用 _DEAL 值声明;sim 发牌
 # 腿判据集 = 过滤 _DEAL 值派生(cw_sim_backend.SELL_ALL_REWRITE_STRATEGIES),
 # 素出售卡注册不入集,sim 局零假发牌。
 BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售(素语义):清场退款,
@@ -935,14 +935,14 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
       docstring),不在本桥建模——本桥只辖板面重写句,装备句经获得链
       ③段效果体分派(两条效果条目状态容器域不相交,板面 equips)。
     - 出售支(BOARD_REWRITE_SELL_ALL 素出售/BOARD_REWRITE_SELL_ALL_DEAL
-      兼发牌腿):出售面 = 确定性 → 逻辑写(§5.3
+      兼发牌条目):出售面 = 确定性 → 逻辑写(§5.3
       归属判据确定性分支;状态容器清空写经锚定标志择道,未锚定期走随机态,
       见清空写段注释)——前台/后台/备战席清空 + 退款按卖价公式入金
       (退款单一源 = cw_economy.sell_refund,费用查表单一源 =
       cw_economy.bench_char_cost,未知 char_id 退中费 3)。发牌面 = 随机
-      → **不建逻辑写,进席落位 live 走观察覆盖、sim 由后端发牌腿承接**
-      ——本桥禁替发牌面造单位;发牌腿是人力重组卡文附加面非出售语义固有
-      (大裁员/降本增效/现金为王素出售无发牌),具发牌腿卡以 _DEAL 值
+      → **不建逻辑写,进席落位 live 走观察覆盖、sim 由后端发牌条目承接**
+      ——本桥禁替发牌面造单位;发牌条目是人力重组卡文附加面非出售语义固有
+      (大裁员/降本增效/现金为王素出售无发牌),具发牌条目卡以 _DEAL 值
       声明。护盾记忆量(现金为王单卡):退款权威写入同闸记账实例
       counters[CounterKey.SHIELD_BANK] = 退款 × CASH_KING_SHIELD_PER_GOLD
       (spec-id 门控,见记账段注释;空场/出售域未全读零记账等观察收尾,
@@ -966,9 +966,9 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族五注册卡按面分述:
     人力重组/大裁员/降本增效/现金为王出售面 = **实机和模拟器两边同链已通**(本桥经获得链在 sim 局真实
     执行,存量锁钉死;现金为王护盾记账在本桥出售支段内,实机和模拟器两边随链自动
-    一致);人力重组发牌面(2★ 三档随机)= sim 由后端发牌腿
+    一致);人力重组发牌面(2★ 三档随机)= sim 由后端发牌条目
     承接(`cw_sim_backend.apply_strategy_pick_sell_all_deal`,判据集 =
-    具发牌腿语义值派生,挂 `_on_invest_picked` 选卡落地拍,授予出口派生
+    具发牌条目语义值派生,挂 `_on_invest_picked` 选卡落地拍,授予出口派生
     桶直写,live 零假发牌——本桥「禁替发牌面造单位」裁定对实机和模拟器两边维持);
     大裁员/降本增效/现金为王素出售无发牌面(卡文无发牌句,不入发牌判据集,sim 局零假发
     牌),大裁员/降本增效卖价 ×2 修饰 = 全族缺口低估申报(退款按基础公式记,口径待
@@ -994,9 +994,9 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
         # 仅作负写端留存证据;本分支禁新增任何写入。
         return BoardRewriteReport(rewrite=rewrite, refund_gold=0, sold_units=0)
 
-    # —— sell_all 族(素出售 + 兼发牌腿):全场出售形态 ——
+    # —— sell_all 族(素出售 + 兼发牌条目):全场出售形态 ——
     # 出售面两语义值同段执行;发牌面不归本桥(live 观察覆盖/sim 后端
-    # 发牌腿,判据按语义值细分,见词表注)。
+    # 发牌条目,判据按语义值细分,见词表注)。
     # 卖价/费用单一源在 cw_state(与预期态/策略侧同源);函数内 import 维持
     # 本模块「模块头零包内 import」契约(机制层离线可单测)。
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -2032,11 +2032,11 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # EffectSpec(cw_investments.STRATEGY_EFFECTS:canon 键归发放条目,申报键
 # ``'<规范名>#supply_delta'`` 归列数修饰腿,申报键约定权威版本 = 该表全都要·银
 # 条目注释):
-# - 腿1(列数修饰 -2)= :attr:`BattlefieldEffect.supply_option_delta` 声明
+# - 条目1(列数修饰 -2)= :attr:`BattlefieldEffect.supply_option_delta` 声明
 #   载体,live 读链按实屏识别列数跟随(补给 op 模块头「列数以
 #   read_supply_options 实际识别为准,禁写死」已登记),零消费插入位置;sim 列数面
 #   零建模(M18 简化域上游缺口,真值对齐归 sim 补给真值专项,打捞族裁决同型)。
-# - 腿2(配额 N 逐事件全捞)= 本检查函数。插入位置 = 补给选定上报
+# - 条目2(配额 N 逐事件全捞)= 本检查函数。插入位置 = 补给选定上报
 #   report_action_pick_supply_param 三个 applied 出口前(R-choice 时点——
 #   卡面「下 N 个……选择后」字面自证;与打捞人才库 R-entry 插入位置分立,两卡
 #   触发面读法各有字面锚互不冲突:打捞 = 进入时点,本族 = 选定后时点,官方
@@ -2045,7 +2045,7 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # 兜底轮——兜底轮是游戏侧真实选择,配额随之消耗;模型无源零发放,漏记列由
 # 下一备战帧观察覆盖入账 fail-visible,与打捞兜底轮同族口径)。备选「可记录
 # 消耗制」(仅源可记录才耗)会让兜底顺延后的次轮补发成游戏未发生的幻影写,
-# 被已登记禁猜硬裁定压住不采(保守支申报 = STRATEGY_EFFECTS 腿2 条目
+# 被已登记禁猜硬裁定压住不采(保守支申报 = STRATEGY_EFFECTS 条目2 条目
 # pending notes)。
 # 配额封账 = ``strategy_conditional_done`` 共域计数一次性标志位(键 =
 # ``take_all#<卡名>#<已耗事件序>``,每耗 1 格追加一键;键形先例 =
@@ -2056,10 +2056,10 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # 语义随其批对表。双持(银+金)= 同一选择事件两卡各耗各的 1 格、各发各的
 # 未选列(发放域内容同源,重复发放 = 卡面叠加语义零判重闸,姊妹双持族先例)。
 # 与打捞人才库族共存边界(共享场字段 ``unchosen_supply`` 双消费者):本族
-# R-choice 先消费清空 → 打捞腿下一补给进入 R-entry 后到早退零写——两卡同持
-# 时打捞腿饿死 = desc 未写明的交互域,由 rand=True 猜测写 + 观察覆盖承接。
-# 腿1 压缩本条目发放域:选择拍在屏列已被 −2,未选域常态 ≤1 列、实测下限局
-# 0 列空转(发放域规模随腿1 联动,族级注记)。
+# R-choice 先消费清空 → 打捞条目下一补给进入 R-entry 后到早退零写——两卡同持
+# 时打捞条目饿死 = desc 未写明的交互域,由 rand=True 猜测写 + 观察覆盖承接。
+# 条目1 压缩本条目发放域:选择拍在屏列已被 −2,未选域常态 ≤1 列、实测下限局
+# 0 列空转(发放域规模随条目1 联动,族级注记)。
 
 #: 族一次性标志位键前缀(strategy_conditional_done 域内本族键空间,与纯卡名键 /
 #: first_buy_xp# 复合键空间互不相交):完整键 = ``<前缀><卡名>#<已耗序号>``。
@@ -2117,7 +2117,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
        :func:`grant_bench_unit_cascade`(rand=True 随机态——未选列内容未经
        游戏动作确认,归一仅发生于被选列,读链内容是模型侧读数非游戏确认
        回执;猜测写由下一备战帧 bench/equips 整表观察覆盖差异自动纠偏;
-       producer = 'CwScreenSupplyNode' 未选域发放写端家族值,与打捞腿同
+       producer = 'CwScreenSupplyNode' 未选域发放写端家族值,与打捞条目同
        归属防缺省归因混淆;席满/席未观察 = 原语现役拒落零写
        detail='bench_full'/'bench_unobserved',单列拒落不阻断本列装备条目与
        后续列);装备条目 = 逐件 :func:`normalize_registry_equip_name` 归一
@@ -2160,7 +2160,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     unchosen = gs.unchosen_supply.value
     if not unchosen:
         return
-    # kernel 反向模块级零 import 契约:函数内惰性取(打捞腿同款先例)。
+    # kernel 反向模块级零 import 契约:函数内惰性取(打捞条目同款先例)。
     from sr_od.application.currency_war.kernel.cw_events import (
         normalize_registry_equip_name,
     )
@@ -2179,7 +2179,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
             equip_texts = (col.equip, *col.extra_equips)
             if not any(equip_texts):
                 # 零装备名分支(char-only 列 / 件名全失读,两形态读链不可分):
-                # 装备域零写零缺陷,失配由 equips 观察整表覆盖暴露(打捞腿同构)。
+                # 装备域零写零缺陷,失配由 equips 观察整表覆盖暴露(打捞条目同构)。
                 continue
             for text in equip_texts:
                 norm = normalize_registry_equip_name(text) if text else ''

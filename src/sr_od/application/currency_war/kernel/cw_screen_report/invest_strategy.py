@@ -1,7 +1,7 @@
 """投资策略屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
-观察面 = 入口锚命中与稳定窗 + 一次读全(逐卡读数 (卡名, x, y) + 逐卡
+观察面 = 入口识别标志命中与稳定窗 + 一次读全(逐卡读数 (卡名, x, y) + 逐卡
 刷新剩余次数配对)。report 摄入点 = operations/cw_screen/
 cw_screen_invest_strategy.py::``CwScreenInvestStrategy.observe``(观察
 node);适用范围边界:选择事实(active_strategies)经动作落地链写(动作 op
@@ -24,7 +24,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 class CwScreenInvestStrategyObs:
     """投资策略屏观察结果(摄入口 = :func:`report_screen_invest_strategy_obs`)。
 
-    - ``entry_ok``:入口锚命中且在窗内(True 才进决策;False = 复探
+    - ``entry_ok``:入口识别标志命中且在窗内(True 才进决策;False = 复探
       超窗,观察侧 round_retry,report 不调)。
     - ``options``:(卡名, x, y) 元组列表;[索引定义] 列表序 = 画面物理
       卡位序(左→右,刷新建议 slots 与此序同坐标系);取值时机 = 入口

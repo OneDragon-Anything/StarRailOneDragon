@@ -1,7 +1,7 @@
 """武装箱选择屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
-观察面 = 入口锚复验(标识-请选择)+ OCR 卡名行(2-8 字过滤,x 升序;
+观察面 = 入口识别标志复验(标识-请选择)+ OCR 卡名行(2-8 字过滤,x 升序;
 标准化生产半住观察侧——读数经装备注册表两段转换 + 坐标解点后组装 obs,
 op-layer.md §1.1 观察标准化门/选择坐标观察上报)。report 摄入点 =
 operations/cw_screen/cw_screen_box_pick.py::``CwScreenBoxPick.observe``

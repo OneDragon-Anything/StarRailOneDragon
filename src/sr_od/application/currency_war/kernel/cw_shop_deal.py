@@ -126,7 +126,7 @@ def sample_shop_deal_forced(gs: GameState, rng: random.Random, *, cost: int,
     填尽量多、余槽留 empty(基线空槽语义),短缺由调用方披露计数
     (短缺口径 = 事件,非缺槽数)。
 
-    2★ 直出翻星腿与基线共享(裁决 = 环境卡面「商店中有概率出现2星角色」
+    2★ 直出翻星条目与基线共享(裁决 = 环境卡面「商店中有概率出现2星角色」
     辖商店全量,强制店同为商店发牌,豁免需另立排除规则无卡面依据):
     ``ENV_SHOP_TWO_STAR_DEAL_PROB`` 命中 active_env 时,每个非空槽在
     抽名后独立掷 ``rng.random() < p``,命中升 2★(cost×3,名集语义

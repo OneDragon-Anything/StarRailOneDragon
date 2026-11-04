@@ -19,9 +19,9 @@
 写点(部署 held、仲裁、耗尽分支等)归入其发生后的下一行窗口。发出频率 =
 调用频率,一收束一行,无内部节流(量级论证 §5.3:~40-80 行/局)。
 
-**窗口与锚**(§5.1):写口持有锚(上一行收束时点的状态容器内容快照,按局段
-重置,与状态容器同界);本行收束时点现读策略计数状态容器 → 与锚逐键求差 → 发出 →
-更新锚。行首窗口起点 = 局段起点(状态容器每局全新创建,空 dict)。消失键按「缺席 = 0」
+**窗口与基线**(§5.1):写口持有锚(上一行收束时点的状态容器内容快照,按局段
+重置,与状态容器同界);本行收束时点现读策略计数状态容器 → 与基线逐键求差 → 发出 →
+更新标记点。行首窗口起点 = 局段起点(状态容器每局全新创建,空 dict)。消失键按「缺席 = 0」
 入账(状态容器重建形态),保证望远镜恒等式(§5.2)在前缀和重建口径下精确成立。
 
 **数学契约与降格主张**(§5.2,定案 C1):窗口增量满足望远镜恒等式——
@@ -45,7 +45,7 @@
 延伸)。
 
 **缺省关与装配**(注入槽模式,同 ``cw_state_journal``/``set_defect_sink``
-先例):sink 缺席 = 行不落盘,写口差分与锚推进照常(记录被动,不改决策
+先例):sink 缺席 = 行不落盘,写口差分与基线推进照常(记录被动,不改决策
 路径语义);生产装配单点调 :func:`install_decision_trace`(run 归属复用
 进程级供给槽,前置 = ``cw_state_journal.install_state_telemetry`` 已装;
 槽缺席 = 行全视为局外拒写,诚实缺失)。局外(run_id 空)拒写假行(§3.2.3
@@ -192,7 +192,7 @@ def decision_trace_instance() -> StateJournal | None:
 
 # ============================================================ 锚(窗口差分状态)
 
-#: 锚旁表(session 旁表模式,同 ``game_state_of`` 弱引用表 + 裸对象属性 +
+#: 基线旁表(session 旁表模式,同 ``game_state_of`` 弱引用表 + 裸对象属性 +
 #: id 表三级兜底先例):键 = 局身份 session,新 session = 新局段 = 锚每局全新创建
 #: (§5.1 局段边界:锚、行序、前缀和全部以局段为界;恢复局跨段 = 多行多段
 #: 各自自洽,状态容器每局每局全新创建天然保证,无跨段账务耦合)。
@@ -202,7 +202,7 @@ _ANCHOR_BY_ID: dict[int, dict[str, int]] = {}
 
 
 def _anchor_get(session: object) -> dict[str, int] | None:
-    """取锚(三级兜底读;无锚 = None = 首行窗口起点为局段起点)。"""
+    """取基线(三级兜底读;无锚 = None = 首行窗口起点为局段起点)。"""
     try:
         return _ANCHOR_BY_SESSION.get(session)
     except TypeError:   # 不可弱引用对象(测试桩)
@@ -213,7 +213,7 @@ def _anchor_get(session: object) -> dict[str, int] | None:
 
 
 def _anchor_set(session: object, anchor: dict[str, int]) -> None:
-    """存锚(与 :func:`_anchor_get` 同三级兜底;值 = 浅拷贝快照)。"""
+    """存基线(与 :func:`_anchor_get` 同三级兜底;值 = 浅拷贝快照)。"""
     try:
         _ANCHOR_BY_SESSION[session] = anchor
         return
@@ -228,7 +228,7 @@ def _anchor_set(session: object, anchor: dict[str, int]) -> None:
 def reset_decision_trace_anchor(session: object) -> None:
     """复位某局段的锚(下一行窗口起点回到局段起点;测试与残局修复用)。
 
-    生产路径无需调用:新 session = 新局段 = 新锚;本函数仅服务于测试
+    生产路径无需调用:新 session = 新局段 = 新标记点;本函数仅服务于测试
     隔离与「同 session 复用重跑」的诊断场景。"""
     with contextlib.suppress(TypeError):
         _ANCHOR_BY_SESSION.pop(session, None)
@@ -239,7 +239,7 @@ def reset_decision_trace_anchor(session: object) -> None:
 
 
 def reset_decision_trace_all_anchors() -> None:
-    """清空锚旁表(测试隔离用;进程级全局,防跨用例残留)。"""
+    """清空基线旁表(测试隔离用;进程级全局,防跨用例残留)。"""
     _ANCHOR_BY_SESSION.clear()
     _ANCHOR_BY_ID.clear()
 
@@ -270,7 +270,7 @@ def record_decision_frame(session: object, *,
     求值过程自身产生的计数写点因此落入本行窗口;收束之后的执行侧写点归
     下一行窗口。一收束一行,无内部节流。
 
-    - ``session`` = 局身份(:class:`StrategySession`);锚旁表按键引用,
+    - ``session`` = 局身份(:class:`StrategySession`);基线旁表按键引用,
       新 session = 新局段 = 首行窗口起点为局段起点;
     - ``state_ref_version`` = 钉版本(调用方在「决策读取完成时点」捕获后
       显式传入;R4 语义沿用:显式 int 直用零回读,观察完成与落盘之间有
@@ -293,7 +293,7 @@ def record_decision_frame(session: object, *,
     counters = getattr(st, 'cw4_counters', None)
     cw4_payload: dict[str, int] | None
     if counters is None:
-        # 无策略载体(§4 None 语义):发出 None,不猜;锚不动(无状态容器
+        # 无策略载体(§4 None 语义):发出 None,不猜;基线不动(无状态容器
         # 无窗口账务)。
         cw4_payload = None
     else:

@@ -1029,9 +1029,9 @@ COMP_LIBRARY: list[Comp] = [
 
 
 # ===== CARRY 锚派生(12 号篇 §1.1「plaza_carry ∪ core_chars 合流」)=====
-# CARRY 档口径分两层:**合流全集** = ``carry_set``(单名锚 ∪ core_chars 全员,
+# CARRY 档口径分两层:**合流全集** = ``carry_set``(单名基准 ∪ core_chars 全员,
 # 3.7 持有证据 CARRY 档按「持有任一档内成员」判定)——「无单一直接字段,
-# 派生申报」的完整实现;**单名锚** = plaza_carry(聚类注册表锚,层间交叉核对面),
+# 派生申报」的完整实现;**单名基准** = plaza_carry(聚类注册表锚,层间交叉核对面),
 # 3 条空值线(「空 = 无 n≥5 聚类对应」本身是聚类覆盖度信息)按攻略明文逐线
 # 补全如下——不改 plaza_carry 字段值,覆写即破坏两层交叉核对锚语义:
 CARRY_ANCHOR_FALLBACK: dict[str, str] = {
@@ -1046,11 +1046,11 @@ CARRY_ANCHOR_FALLBACK: dict[str, str] = {
 
 
 def carry_anchor(comp: Comp) -> str:
-    """线 CARRY 单名锚(聚类交叉核对锚;CARRY 档全集见 ``carry_set``——本函数只供
-    锚名消费面:聚类交叉核对/空值线补全/锚分歧登记;持有证据分档勿单用本名)。
+    """线 CARRY 单名基准(聚类交叉核对锚;CARRY 档全集见 ``carry_set``——本函数只供
+    锚名消费面:聚类交叉核对/空值线补全/基准分歧登记;持有证据分档勿单用本名)。
 
     plaza_carry 非空 → 直接用(聚类交叉核对锚);空值线查 ``CARRY_ANCHOR_FALLBACK``
-    (攻略明文补全,依据就地注释);两者皆缺 → ''(锚缺失申报态,消费侧按无锚处理)。
+    (攻略明文补全,依据就地注释);两者皆缺 → ''(基准缺失申报态,消费侧按无锚处理)。
     ⚠️ 锚与攻略核心输出位存在个别分歧(火花星间旅人:plaza_carry='火花' vs
     攻略明文花火主C)——分歧登记在 知识卡建表交叉核对记录,锚字段保持聚类真值不覆写。
     """
@@ -1063,7 +1063,7 @@ def carry_set(comp: Comp) -> set[str]:
     """线 CARRY 档成员全集(持有证据分 CARRY 档口径;12 号篇 §1.1
     「plaza_carry ∪ core_chars 合流」的派生落地;3.7 消费)。
 
-    = {``carry_anchor`` 单名锚} ∪ ``core_chars`` 全员——锚是聚类交叉核对锚(层间
+    = {``carry_anchor`` 单名基准} ∪ ``core_chars`` 全员——锚是聚类交叉核对锚(层间
     校准面),core_chars 是核心角色另册;合流后**任一成员在手都计入 CARRY 档**
     (大头档,与 key_items 骨架档/插件档三分,§1.2)。空值 3 线经 fallback
     补全后同样并入。core 至少 1 人 → 返回恒非空;消费侧禁自拼合流集(判据双源)。

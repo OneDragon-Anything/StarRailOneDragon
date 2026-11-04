@@ -28,7 +28,7 @@ class CwScreenWishTrialObs:
     无空门,决策侧无兜底:决策无有效输出 = 守卫 fail 零盲发,申报见
     screens/wish_trial.md §8)。
 
-    [索引定义] ``option_points`` = 各卡槽位坐标(x = 桶锚 ``CARD_XS``、
+    [索引定义] ``option_points`` = 各卡槽位坐标(x = 桶基准 ``CARD_XS``、
     y = 卡身 ``CARD_Y``,观察期一次解析);键 = ``options`` 列表下标 idx
     (0 起,左→右画面物理序,与策略器输出下标、动作词表
     ``CwActionPickWishTrialParam.idx`` 同一坐标系零换算);取值时机 =

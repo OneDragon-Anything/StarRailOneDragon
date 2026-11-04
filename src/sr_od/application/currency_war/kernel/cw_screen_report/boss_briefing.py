@@ -36,7 +36,7 @@ def report_screen_boss_briefing_obs(gs: GameState,
     - **直定前置守卫(去证据门形态,用户裁定 2026-09-21)**:结算确认
       点击即上报(无证据等待)⇒ 上报先于下一节点任何画面渲染恒成立
       ⇒ 简报 op 被分派时 hist 已被 settle_confirm 推进至 boss 节点
-      ——「hist 落后、类型写错节点」结构性不可达。hist None(锚先于
+      ——「hist 落后、类型写错节点」结构性不可达。hist None(基线先于
       任何上报的假想形态)= 零写禁猜(防御性保留);
     - 序位推进半部已停用:boss 节点序位由结算确认上报推进,本口
       零 node_pos 写;

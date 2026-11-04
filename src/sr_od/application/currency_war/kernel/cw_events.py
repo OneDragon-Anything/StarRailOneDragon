@@ -294,7 +294,7 @@ def normalize_equip_name(text: str) -> str:
 
 
 # ===== 补给装备名注册表级分层归一(迭代 2026-09-21-event-refresh-unify-
-# ===== supply-pick design §2.0B;与上方银狼锚归一两入口分立,互不复用)=====
+# ===== supply-pick design §2.0B;与上方银狼基准集归一两入口分立,互不复用)=====
 
 #: 装备注册表全键集 longest-first 定序(分层归一第 2 层 containment 与
 #: 第 3 层相似的遍历序;构建期定序,「分身墨镜Max」先于「分身墨镜」受检)。
@@ -305,8 +305,8 @@ _REGISTRY_EQUIP_NAMES: tuple[str, ...] = tuple(
 def normalize_registry_equip_name(text: str) -> str:
     """补给侧装备名归一(注册表 158 键全键集分层归一;design §2.0B)。
 
-    与 :func:`normalize_equip_name`(银狼锚 10 件集)分立:补给基础件不在
-    银狼锚名单,恒未解析——故另立本入口,键集 = 装备注册表全键集。
+    与 :func:`normalize_equip_name`(银狼基准集 10 件集)分立:补给基础件不在
+    银狼基准集名单,恒未解析——故另立本入口,键集 = 装备注册表全键集。
 
     层级(定死,相似判据不得为首层——纯 LCS 0.75 直移 158 名键集时,
     完美 OCR 下 79/158 名多命中拒识:垃圾袋/金垃圾袋、生命之花/生命之环
@@ -351,7 +351,7 @@ def classify_planner_branch(text: str) -> tuple[str, str]:
     判定序(装备域优先):
     1. **锚匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
        longest-first)件名 containment 命中 → equip,归一件名 = 命中锚
-       (破解芯片卡文含「弱化」的碰撞在此消解——锚先于关键词);
+       (破解芯片卡文含「弱化」的碰撞在此消解——基线先于关键词);
     2. **相似归一**:锚未中 → :func:`_similar_equip_hits`——唯一命中 →
        equip(OCR 形变救援);**多命中 → equip 且件名未解析**(norm_item
        ='':多件注册表名同时高相似 = 装备信号成立而件名不可辨,禁猜——

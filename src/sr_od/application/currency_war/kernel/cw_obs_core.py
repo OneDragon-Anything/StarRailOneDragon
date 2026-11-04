@@ -140,7 +140,7 @@ UPPER_SCREENS_NON_OVERLAY: tuple[str, ...] = (
     # 装备详情浮窗(点右侧装备弹,备战底层 UI 全可见)与 角色信息提示(悬停角色
     # tooltip)同型穿透:唯一真值锚(装备推荐)只属角色详情大面板,两形态帧
     # 判不出角色详情 → 回落备战判定被放行(离线复跑实证:3 张真值帧
-    # equip_detail_roller/synth_target/char_detail 锚 OCR 全空、prep-like=True;
+    # equip_detail_roller/synth_target/char_detail 识别标志 OCR 全空、prep-like=True;
     # 画面档按形态拆分后此处同步扩容,与 同手法)。
     '货币战争-备战-装备详情浮窗',
     '货币战争-备战-角色信息提示',
@@ -160,7 +160,7 @@ UPPER_SCREENS: tuple[str, ...] = (
 )
 
 # 金币说明 overlay 锚(Revision):C 类无档案 overlay(无独立 screen
-# 档案,进不了 UPPER_SCREENS),保留锚 OCR 判定作为钩子帧态门的补充第三段
+# 档案,进不了 UPPER_SCREENS),保留识别标志 OCR 判定作为钩子帧态门的补充第三段
 # (证据帧 034f8ef3:标题锚「标识-金币说明」pc_rect (1000,370,1165,435))。
 _GOLD_INFO_ANCHOR_AREA: str = '标识-金币说明'
 _GOLD_INFO_ANCHOR_TEXT: str = '金币说明'
@@ -197,7 +197,7 @@ def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
 
 
 def gold_info_overlay_open(ctx: SrContext, screen: MatLike) -> bool:
-    """金币说明 overlay 在场判定(Revision 第三段;锚 OCR,
+    """金币说明 overlay 在场判定(Revision 第三段;识别标志 OCR,
     全图 OCR 缓存复用)。C 类无档案 overlay:无独立 screen 档案进不了
     ``UPPER_SCREENS``,两段式天然看不见 → 钩子停机前以锚命中作补充排除。
     best-effort:锚 area 缺失/异常 → False(不拦,回落两段式)。

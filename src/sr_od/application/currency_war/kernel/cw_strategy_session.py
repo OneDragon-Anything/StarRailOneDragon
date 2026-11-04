@@ -4,7 +4,7 @@
 框架每局新建、局终销毁)。职责单一(用户 2026-09-06 裁定,设计件
 `docs/develop/sr_od/application/currency_war/flow/session.md` as-designed):本类**只承载
 「从游戏画面观察到的数据」**(框架读屏与识别层守卫产生;策略器只读)
-+ 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
++ 框架设施(rng 种子契约基准 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
 (mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局每局全新创建)。
 执行层不设独立状态载体(执行层状态类目已停用,git 历史可溯):
@@ -100,7 +100,7 @@ class StrategySession:
     # (last_state 槽已停用:三写点(备战观察×2/
     #  买牌融合段)与全部遗留读者已切状态容器单例(game_state_of);备战
     #  快照的现役宿主 = 状态容器,观察喂入 = read_game_state 漏斗。)
-    # (终态契约 §A 防御缓存已删:结算 hp 锚 last_hp/last_hp_t、对账锚
+    # (终态契约 §A 防御缓存已删:结算 hp 锚 last_hp/last_hp_t、对账基准
     #  last_hp_real/last_hp_real_node、hp 下行拒信通道 hp_suspect、左移
     #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
     #  识别值 node_type_current——真值职责归 gs(覆盖写端 + carried +
@@ -127,7 +127,7 @@ class StrategySession:
     # ⚠️ 显式种子化:default 禁止 OS 熵种子,default=
     # 固定种子 0 的独立实例;真实随机面由消费方显式注入——生产 run loop
     # 按 cw_config.strategy_seed 覆盖(operations/cw_loop.py)。
-    # 本字段是公开随机接口的种子契约锚。
+    # 本字段是公开随机接口的种子契约基准。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # (prep_obs_frame 黑板帧槽已停用——迭代

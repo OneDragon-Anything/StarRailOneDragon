@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 OVERFLOW_THRESHOLD = 200      # 敌方全属性 −100% 溢出 bug(V4.4 实测 211;UP 实录)
 OVERFLOW_EVIDENCE = 'bracketed'   # unverified→verified→refuted;refuted 时 gambit 停用
 DIFFICULTY_FLOOR = 0
-GROWTH_PER_STREAK = 1.0       # 伟大征服动态项:当前连胜数(实测锚)
+GROWTH_PER_STREAK = 1.0       # 伟大征服动态项:当前连胜数(实测基准)
 
 
 @dataclass
