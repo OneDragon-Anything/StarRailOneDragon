@@ -35,14 +35,14 @@
 
 ## 4. 刷新判据
 
-- **建议刷 = 排除槽存在 ∨ 帧最好总分 < `REFRESH_THRESHOLD`**,且次数闸 `gs.env_refresh_left ≥ 1`(容器读数 None = 未观察 → 不建议刷,fail-closed)。
+- **建议刷 = 排除槽存在 ∨ 帧最好总分 < `REFRESH_THRESHOLD`**,且次数闸 `gs.env_refresh_left ≥ 1`(状态容器(GameState)读数 None = 未观察 → 不建议刷,fail-closed)。
 - `REFRESH_THRESHOLD` = 全部 83 条环境**无轴总分**的均值,构建期由注册表+系数+立场表派生(单一源 = 表,表改阈值自动随动)。依据:重掷免费,重掷后帧最好期望 ≥ 单抽期望 = 全表均值(取均值 = 保守向);不取低分位——立场 0 值条目多,分位阈值会沉到 0 附近令判据失效。
-- **输出契约**:`decide` 返回纯值 dataclass(`InvestEnvDecision(idx, reason)` / `RefreshSuggestion(reason)`),不含动作类型值。flow 包装:`RefreshSuggestion` → `CwActionRefreshInvestCardsParam`(slots = 全帧槽位真值标记——环境屏整组重掷、单全局钮,handler 只消费真值);`InvestEnvDecision` → `CwActionPickInvestEnvParam`。handler 侧 obs.refresh 现读闸 + 容器 env_refresh_left 对照闸原样,op 层零改动。
-- **同帧去重 memo**(flow scratch):建议帧首调发建议;handler 刷新闸全败同访问重调时,落选卡走 `decide_pick`(与 decide 同一评分基线,零选卡漂移)并清 memo 键;再调恢复首调建议语义。sim 复用预留 `decide_pick`(现 sim 投资面 = offer 采样 + inject_choices 直写容器,不经本入口)。
+- **输出契约**:`decide` 返回纯值 dataclass(`InvestEnvDecision(idx, reason)` / `RefreshSuggestion(reason)`),不含动作类型值。flow 包装:`RefreshSuggestion` → `CwActionRefreshInvestCardsParam`(slots = 全帧槽位真值标记——环境屏整组重掷、单全局钮,handler 只消费真值);`InvestEnvDecision` → `CwActionPickInvestEnvParam`。handler 侧 obs.refresh 现读闸 + 状态容器 env_refresh_left 对照闸原样,op 层零改动。
+- **同帧去重 memo**(flow scratch):建议帧首调发建议;handler 刷新闸全败同访问重调时,落选卡走 `decide_pick`(与 decide 同一评分基线,零选卡漂移)并清 memo 键;再调恢复首调建议语义。sim 复用预留 `decide_pick`(现 sim 投资面 = offer 采样 + inject_choices 直写状态容器,不经本入口)。
 
 ## 5. 共用模块复用预留
 
-投资策略画面已消费本批共用件(其正本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),复用落点三句:
+投资策略画面已消费本批共用件(其权威版本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),复用落点三句:
 
 - **策略卡现金分** = 策略层新入口 `strategy_economy.strategy_economy_value`(消费 kernel `EconomyEffect` per-node/一次性通道)——与本屏 `env_economy_value`(消费 `EnvEconomyEffect` 整局规则改写通道)公式分立,不复用同一入口;
 - **共用件提升形态** = mandate_v1 包内共用模块 `pick_common`(转向轴/克制减分单一源,文档面 = `13_pick_family.md` §4),非跨策略包——跨策略共用待第二策略实现出现时再评估;

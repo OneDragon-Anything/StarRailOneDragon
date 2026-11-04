@@ -1,17 +1,17 @@
 # 31 遭遇画面策略(encounter screen)
 
 > 画面 = 货币战争-遭遇节点(选难度档二选一 + 每局一次分支刷新;**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5)。本篇 = 该画面的**策略面**(宪法六「一画面一策略文件、一画面一策略文档」兑现;宪法五/六原文 = [00_framework.md](00_framework.md) §1 第 5/6 条)。
-> 决策本体 = `strategies/impl/mandate_v1/encounter_pick.py::decide`(纯值出口);动作包装 = `strategies/impl/flow.py::decide_encounter`(零参口,候选自容器 `encounter` payload);画面 op = `operations/cw_screen/cw_screen_encounter.py`(观察 + 决策动作两 node,能力细节 = [../screens/encounter.md](../screens/encounter.md))。pick 族接口规格 = [13_pick_family.md](13_pick_family.md) §1 `decide_encounter` 行、事件面目录 = [08_events.md](08_events.md) E3 行——彼处只留指针,判据细节不在彼处复制,判据权威定义即本篇、无需外跳(反向指针);数值单一源在代码(本篇只写常量名,立场值单一源 = `encounter_pick.py` 立场常量区)。
-> 术语(首现定义):**单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**结算观测环** = 结算行滚动的定深容器(`gs.settlement_ring`,每普通战斗行记 killed/进度填充率等);**删失** = 某场结果的 killed 读数为 None(结果未观察到,不作胜负证据);**κ_S 战力状态** = 由窗口两场胜负归纳的当前作战能力三档(足量/边缘/不足);**可及集** = 当前战力状态下允许进入选档比较的候选档集合;**fill 分支** = 恰一胜时用败局侧进度填充率给战力状态降档的分支;**fail-closed** = 读数缺失时取不放行/不动作的保守分支;**【拍】立场值** = 用户策略立场的登记值(非推导产物、非观测估计,合法性来自裁定本身;章程 = [01_math_framework.md](01_math_framework.md) §6);**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
+> 决策本体 = `strategies/impl/mandate_v1/encounter_pick.py::decide`(纯值出口);动作包装 = `strategies/impl/flow.py::decide_encounter`(零参口,候选自状态容器(GameState) `encounter` payload);画面 op = `operations/cw_screen/cw_screen_encounter.py`(观察 + 决策动作两 node,能力细节 = [../screens/encounter.md](../screens/encounter.md))。pick 族接口规格 = [13_pick_family.md](13_pick_family.md) §1 `decide_encounter` 行、事件面目录 = [08_events.md](08_events.md) E3 行——彼处只留指针,判据细节不在彼处复制,判据权威定义即本篇、无需外跳(反向指针);数值单一源在代码(本篇只写常量名,立场值单一源 = `encounter_pick.py` 立场常量区)。
+> 术语(首现定义):**单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**结算观测环** = 结算行滚动的定深状态容器(`gs.settlement_ring`,每普通战斗行记 killed/进度填充率等);**删失** = 某场结果的 killed 读数为 None(结果未观察到,不作胜负证据);**κ_S 战力状态** = 由窗口两场胜负归纳的当前作战能力三档(足量/边缘/不足);**可及集** = 当前战力状态下允许进入选档比较的候选档集合;**fill 分支** = 恰一胜时用败局侧进度填充率给战力状态降档的分支;**fail-closed** = 读数缺失时取不放行/不动作的保守分支;**【拍】立场值** = 用户策略立场的登记值(非推导产物、非观测估计,合法性来自裁定本身;章程 = [01_math_framework.md](01_math_framework.md) §6);**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
 
 ## 1. 裁定登记
 
 本画面判据结构由四项裁定定死;立场值合法性 = 裁定本身(裁定即证据):
 
 1. **结算观测授权**:以结算观测读数(敌方通道 killed/进度填充率)作遭遇决策输入并入 GameState 持久化——授权 = [04_survival_budget.md](04_survival_budget.md) §7 对账表第 9 行(用户 2026-09-12 逐项确认,硬闸门例外扩大程序完成)。**适用范围 = 数据输入通道与持久化**:该行授权的是「读数可用 + 可持久化」,不构成判据结构的授权;结构合法性载体见第 3 项。kernel 保留面 = 结算观测持久化基建(`SettlementRing`/`record_settlement_row`/`EncounterLog`/兑现回调 `claim_encounter_reward`,驻 `kernel/cw_encounter_selection.py`)与观察载荷契约(`EncounterOption`)——判据与标定面已全部离开 kernel(2026-09-24 迁移批,宪法五)。
-2. **刷新剩余语义**(用户 2026-09-21,全域规范 = [../screens/op-layer.md](../screens/op-layer.md) §1.4):「可否再刷」一律消费屏显「剩余次数：N」观察读数(容器 `gs.encounter_refresh_left`,None = 未观察 → 拒刷)。
+2. **刷新剩余语义**(用户 2026-09-21,全域规范 = [../screens/op-layer.md](../screens/op-layer.md) §1.4):「可否再刷」一律消费屏显「剩余次数：N」观察读数(状态容器 `gs.encounter_refresh_left`,None = 未观察 → 拒刷)。
 3. **【拍】立场登记三项批准**(2026-09-24,同一裁决门一并批准生效):
-   - **章程 §6 修订**(取代 [01_math_framework.md](01_math_framework.md) §6 分界条款):原文「凡『数值大小参与方向/闸门判断』的量归【推】/【拟】纪律」——本画面论证该归属对**偏好型闸门值**失义(【拟】三要素〔置信区间/标定义务/期限〕预设「对世界的观测信念」,而立场 cap 与偏好序是对偏好方向的登记:无观测对象、无置信区间语义);修订新增**闸门位立场值**形态:登记即立场、零拟合零观测。
+   - **章程 §6 修订**(取代 [01_math_framework.md](01_math_framework.md) §6 分界条款):原文「凡『数值大小参与方向/闸门判断』的量归【推】/【拟】纪律」——本画面论证该归属对**偏好型闸门值**失义(【拟】三要素〔置信区间/标定义务/期限〕预设「对状态副本(GameState)的观测信念」,而立场 cap 与偏好序是对偏好方向的登记:无观测对象、无置信区间语义);修订新增**闸门位立场值**形态:登记即立场、零拟合零观测。
    - **战力状态为边缘时的难度上限**:κ_S = 边缘时可及难度档 ≤ `EDGE_CAP`(立场常量,保守向:能力缺口最近出现过、无余量论证)。
    - **奖励偏好序**:钻 > 装备 > 金币 > 末档(立场常量,过目登记 = `REWARD_ORDER_APPROVED`)。
    - 两值登记表 = `encounter_pick.py` 立场常量区(集中一处,值单一源在代码)。**用户备注**:两项为暂定值,实机遥测数据累积后重拍(重拍触发器 = 遭遇帧判读积累)。**重拍回退机制**:立场常量任一置 None → decide 走「立场未过目」回退态(恒最低档零刷新,§2.6)——重拍 = 直接编辑立场常量区,commit 即过目凭据。
@@ -30,7 +30,7 @@ decide(options, gs)
 
 - **签名最小**:无阵容意向参(词缀轴 = 死输入——遭遇选项 UI 不显词缀、战后才显,难度轴按战力状态判);无刷新已用参(次数闸内嵌,读剩余语义)。
 - **空候选帧**:`options` 空 → `EncounterPickDecision(idx=0, reason='no-options')`(纯函数定义完备;观察层守卫——读不到标题返空列表零点击——下不可达)。
-- **依赖面**:容器读口 `gs.settlement_ring`(结算观测环窗口)/`gs.encounter_log`(经验档层)/`gs.encounter_refresh_left`(刷新阀);奖励检测集 = `kernel/cw_obs_core.DIAMOND_EQUIP_NAMES`(kernel 手维护读数域真值,生成文件不可作宿主);装备注册表 `data/cw_equipment_data.EQUIPMENT_ROSTER`。依赖方向:策略层 → kernel/data 单向(kernel 零指向 strategies、策略层零 import obs,宪法五)。
+- **依赖面**:状态容器读口 `gs.settlement_ring`(结算观测环窗口)/`gs.encounter_log`(经验档层)/`gs.encounter_refresh_left`(刷新阀);奖励检测集 = `kernel/cw_obs_core.DIAMOND_EQUIP_NAMES`(kernel 手维护读数域真值,生成文件不可作宿主);装备注册表 `data/cw_equipment_data.EQUIPMENT_ROSTER`。依赖方向:策略层 → kernel/data 单向(kernel 零指向 strategies、策略层零 import obs,宪法五)。
 
 ### 2.1 窗口(最近 2 普战行)
 
@@ -88,4 +88,4 @@ sim 局结算环无写端(sim 侧结算链不调 `record_settlement_row`)→ κ_
 4. **档位↑⇒奖励价值↑ 采样验证**:选档主序「难度档最高」的奖励侧依据现 = 游戏原文定性句 + 单帧实测(`docs/game/screens/currency_war_encounter.md`);升档的奖励价值增益须实机采样验证(原【拟】登记待办载体 = 本节)。
 5. **位面 2 序列两源对账**:节点日程两源分歧未定案——kernel 真值表 `kernel/cw_node_schedule.py`(依据 `docs/game/currency_war/research/plane_schedule_observed.md`:位面 1 = 补给@r5 + 遭遇@r7,位面 2 = 补给@r3 + 遭遇@r5,两位面均单遭遇)vs [../../../../../game/currency_war/research/economy.md](../../../../../game/currency_war/research/economy.md) §10.2 实测表位面 2 行 = 双遭遇(该行整体 1 帧待复核)。定案前窗口维持普战口径。
 6. **窗口战斗类变体触发器**:同位面第二遭遇确证 / 位面 3 采齐运行任一出现 → 重评「战斗类窗口(普战+遭遇)」改形(遭遇行 killed 与普战行 killed 同为敌方通道生存证据,裁定 1 授权适用范围内;boss 行不入窗——伤害读数结构异构(不同档),两源表下 boss 均为位面末节点 = boss 后无遭遇决策点)。届时须补行为面论证(遭遇行证据适用性 × κ_S 三档组合语义 × fill/删失分支交互),无行为面确证的语义变更不做。
-7. **补给屏同形分支行为统一(非风险,随补给域批顺手对齐)**:补给屏重调分支(「建议刷 ∧ 对照闸拒绝 → 零点击结束本次访问、返回主循环」)与遭遇屏同构——观察先于决策、次数文本同源双信号(上报容器 + 圆钮定位读数),「建议刷 ∧ 定位读数缺失」结构性不可达,两屏该分支均为死分支兜底;遭遇屏形态 = round_fail / 补给屏形态 = 零点击返回主循环,行为统一随补给域批顺手对齐即可,非义务。
+7. **补给屏同形分支行为统一(非风险,随补给域批顺手对齐)**:补给屏重调分支(「建议刷 ∧ 对照闸拒绝 → 零点击结束本次访问、返回主循环」)与遭遇屏同构——观察先于决策、次数文本同源双信号(上报状态容器 + 圆钮定位读数),「建议刷 ∧ 定位读数缺失」结构性不可达,两屏该分支均为死分支兜底;遭遇屏形态 = round_fail / 补给屏形态 = 零点击返回主循环,行为统一随补给域批顺手对齐即可,非义务。
