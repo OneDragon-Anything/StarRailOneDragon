@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `test_shop_projection_logic`)。域集全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注(原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除),本动作涉及的写域:
+状态容器(GameState)(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `test_shop_projection_logic`)。域集全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注(原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除),本动作涉及的写域:
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -19,7 +19,7 @@
 | board | 派生随写 | **派生量**:front_row/back_row 有行写入时挂钩 `GameState._resync_board_delta` 自动增量重算,随上行条件写触发,禁止在此分支手写 board |
 | xp / level / equips / hp | 跳写 | 买牌不产经验(零购买子集反证,`research/xp-rules.md` §2);不触装备域 |
 
-执行侧配套(非容器域):op 内主域直写同步(shop 视图透传)、买前裁片保留证据、效果账本 `CounterKey.BUY` 计数推进(挂在执行落地门 `apply_action_outcome`)。
+执行侧配套(非状态容器域):op 内主域直写同步(shop 视图透传)、买前裁片保留证据、效果账本 `CounterKey.BUY` 计数推进(挂在执行落地门 `apply_action_outcome`)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -44,7 +44,7 @@
 
 ## 5. 拒绝语义
 
-- **满栏且合成不可达** = 游戏拒买:`LogicOutcome(applied=False, reason='bench_full')`,零容器写——金不扣、牌不下架;
+- **满栏且合成不可达** = 游戏拒买:`LogicOutcome(applied=False, reason='bench_full')`,零字段写操作——金不扣、牌不下架;
 - 买牌无 expect 陈旧提案域(SellBench 族语义,本动作无此域);执行侧另有提案守卫 `cw_shop_action_ops.py::guard_proposal_vs_expected`(所购牌名须在期望态店中,防策略器跨代际提案);
 - 知识缺口 G1:非满栏一次点击恒买 1 张 = 框架推论未实测,闭合前按 k=1 记账,买后观察多张 → 对账纠偏 + 缺陷记录表;G2:满栏连升(own=0)按拒买实现(申报边界)。
 
@@ -56,9 +56,9 @@
 
 买牌动作转移语义单一源 = 上报函数 `report_action_buy_card_param` 单点(快照数据与合成升星写都内聚在此):常态分支 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏分支 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(测试 `test_shop_projection_logic`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
-商店期默认策略动作面 = 买牌/刷新/关店(判例 = [screens/README](../../screens/README.md) §5,2026-09-14);买牌是商店期主力动作(策略判据 = strategy-docs/23_shop_screen.md)。备战域无买牌(牌只在商店买)。
+商店期默认策略动作面 = 买牌/刷新/关店(先例 = [screens/README](../../screens/README.md) §5,2026-09-14);买牌是商店期主力动作(策略判据 = strategy-docs/23_shop_screen.md)。备战域无买牌(牌只在商店买)。
 
 ## 9. 依据
 

@@ -3,7 +3,7 @@
 > 本文档所属 = game_state 设计目录(本目录总纲)。
 > **命名对应注**:本文档所称 **GameState**(统一 state),即代码类名
 > (`src/sr_od/application/currency_war/kernel/cw_game_state.py`;
-> 旧名 BoardState/旧模块名 cw_board_state.py,两者指同一容器)。
+> 旧名 BoardState/旧模块名 cw_board_state.py,两者指同一状态容器(GameState))。
 > 路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
 
 
@@ -85,7 +85,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   (无告警无停机),不经失配的三种标准处理分支——三分支 = ①白名单差异直接采纳
   ②logic_rand 预期内差异记录采纳 ③真失配记缺陷并停机。**已知缺口**:bench/equips 投资卡随机授予、
   晶矿随机金现无吸收规则(随机对账申报面 2026-09-19 用户裁定整体拆除待重设计;
-  重设计机制位置 = 逻辑随机态 write_logic_rand,写入方接线归后续批),
+  重设计机制位置 = 逻辑随机态 write_logic_rand,写入方接入调用归后续批),
   命中照真失配停。
 - **board 派生量**(禁独立写):上阵羁绊计数 = front_row/back_row 单位集合的派生量,
   逻辑写入方经 `write_logic` 行域挂钩 `_resync_board_delta` 单一源自动重算(观察基座 +
@@ -100,7 +100,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   ([fields.md](fields.md) §3.2.1;类型派生权威链与冲突保留证据单一源 =
   [node-derivation.md](node-derivation.md) §3.3-5,指针 = [node-domain.md](node-domain.md) §7)。
 
-**容器字段投影完备性审计**:每个字段都在 `kernel/cw_projection_audit.py` 登记了
+**状态容器字段投影完备性审计**:每个字段都在 `kernel/cw_projection_audit.py` 登记了
 「游戏改动会不会导致观察对不上」的分类(`PROJECTION_AUDIT`;「无写入方无规则」
 缺口恒空,齐全性由测试仓 test_board_derived_and_reorder.py 保证);字段级语义权威版本
 仍 = [fields.md](fields.md)。
@@ -117,7 +117,7 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 | 派生域(derivation) | top_bar_raw(观察层)/ node_pos(逻辑层,`(位面, 轮)` 序位)/ prev_screen / current_screen / node_hist_pos(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
 | 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
 | 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
-| 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 容器字段 free_refresh_left(Field,剩余语义,三写入方同格);付费/全量两计数放在效果账本(写入方=刷新上报函数);prev_node_spent 保留容器(economy 面) | ①观察+②动作+③效果桥 |
+| 商店刷新计数域(refresh_counters) | 免费刷新剩余次数 = 状态容器字段 free_refresh_left(Field,剩余语义,三写入方同格);付费/全量两计数放在效果账本(写入方=刷新上报函数);prev_node_spent 保留状态容器(economy 面) | ①观察+②动作+③效果桥 |
 | 节点屏刷新计数域(node_screen_refresh) | env_refresh_left / strategy_refresh_left(逐卡,键 = 注册表规范卡名)/ encounter_refresh_left / supply_refresh_left(四字段均剩余语义:屏显「剩余次数」观察真值;旧 `*_refresh_used` 已用计数字段已停用,考古走 git) | ①观察(各屏观察 report 数据进入点摄入,读缺跳写、None = 未观察 = 拒绝;encounter 写入方 = `report_screen_encounter_obs`)+ sim 写入方(仅 supply_refresh_left;遭遇/投资两屏无 sim 刷新执行面;逐字段规格 = fields.md §3.4.1–§3.4.4) |
 | 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
 | 晶矿域(spheres) | spheres | ①观察 |
@@ -152,11 +152,11 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 
 ## 5. 边界与姊妹文档
 
-- **sim 表示分界**:sim 与 live 同一容器类型、同一份单例(`game_state_of(session)`)
-  ——后端世界真值写 obs 渠道,动作效果经动作 op 上报函数族走 logic_action 渠道
-  (渠道签名写入口,渠道族封闭集见 §3);不存在「容器 ↔
+- **sim 表示分界**:sim 与 live 同一状态容器类型、同一份单例(`game_state_of(session)`)
+  ——后端状态副本里的值写 obs 渠道,动作效果经动作 op 上报函数族走 logic_action 渠道
+  (渠道签名写入口,渠道族封闭集见 §3);不存在「状态容器 ↔
   中间帧」映射层(原推演内核帧及其合成口已随帧通道停用,考古归 git 历史)。
-  表示分界与接线底账 = [fields.md](fields.md) §9 与 [../sim/sim-wiring.md](../sim/sim-wiring.md)。
+  表示分界与对接对照表 = [fields.md](fields.md) §9 与 [../sim/sim-wiring.md](../sim/sim-wiring.md)。
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,权威版本)——字段清单/决策 op
   写入面/效果族归属/生命周期/治理面;与其冲突时以代码现状为准,正文随代码同步修订。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md))——本目录引用不复写。

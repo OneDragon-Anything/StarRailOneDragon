@@ -8,15 +8,15 @@
 
 ## 2. 逻辑态域集
 
-**容器腾位写入**(上报函数 = `kernel/cw_action_report/open_bookcard.py::report_action_open_bookcard_param`,op 自上报):bench 槽位 kind `bookcard` → `empty`(开卡即腾位,占席事实进容器(GameState,游戏状态对象,下同))。守卫 = bench 未观察 / 槽不存在 / 槽类型不符 → 陈旧提案零写;`slot=None` = 首个 `kind='bookcard'` 槽。**类型边界申报**:书册卡槽容器 kind = `'bookcard'` 独立分型(观察链 `find_bookcards` 槽号集构造),不并入 `'supply_box'` 降级口径——降级口径下开箱分支会对卡槽误发 OpenBox(腾位 kind 门单一源 = `kernel/cw_action_report/open_bookcard.py::report_action_open_bookcard_param`)。
+**状态容器(GameState)腾位写入**(上报函数 = `kernel/cw_action_report/open_bookcard.py::report_action_open_bookcard_param`,op 自上报):bench 槽位 kind `bookcard` → `empty`(开卡即腾位,占席事实进状态容器(GameState,游戏状态对象,下同))。守卫 = bench 未观察 / 槽不存在 / 槽类型不符 → 陈旧提案零写;`slot=None` = 首个 `kind='bookcard'` 槽。**类型边界申报**:书册卡槽状态容器 kind = `'bookcard'` 独立分型(观察链 `find_bookcards` 槽号集构造),不并入 `'supply_box'` 降级口径——降级口径下开箱分支会对卡槽误发 OpenBox(腾位 kind 门单一源 = `kernel/cw_action_report/open_bookcard.py::report_action_open_bookcard_param`)。
 
 **其它域零写**:选卡后果(专家邀请函五选一)随机面归观察。
 
 ## 3. 确定面转移规则(逐条)
 
-1. 书册卡道具占备战席 1 槽(与补给箱/秘密典籍并列第三件占席道具);点槽「开启」→ 道具离席腾槽(容器 bench 槽 kind → `empty`,`bench_free_slots` 派生 +1);
+1. 书册卡道具占备战席 1 槽(与补给箱/秘密典籍并列第三件占席道具);点槽「开启」→ 道具离席腾槽(状态容器 bench 槽 kind → `empty`,`bench_free_slots` 派生 +1);
 2. 专家邀请函五选一弹窗弹出;选卡决策 = 弹窗画面 op `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite`(默认策略单一源 = `choose_expert_index` 原位),由外循环按画面分发(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发);本动作不选卡;
-3. **动作发出形态**(开卡时机归策略实现管):动作发出点 = 策略器 entry ① prep 实体面卡片分支(容器 bench kind `'bookcard'` 触发)→ 本动作**终结**(= 发出后结束本次访问;op 类 `terminal=True`,与 OpenBox 终结化同构,规范锚 = op-layer.md §1.4)→ 备战环返回主循环,弹窗帧不进完整观察;每次访问恰发一张,其余张由下一访问观察后自然续清;
+3. **动作发出形态**(开卡时机归策略实现管):动作发出点 = 策略器 entry ① prep 实体面卡片分支(状态容器 bench kind `'bookcard'` 触发)→ 本动作**终结**(= 发出后结束本次访问;op 类 `terminal=True`,与 OpenBox 终结化同构,规范锚 = op-layer.md §1.4)→ 备战环返回主循环,弹窗帧不进完整观察;每次访问恰发一张,其余张由下一访问观察后自然续清;
 4. 动画等待 = `_OVERLAY_ANIM_WAIT_S` 固定等待(等待归产生动画的操作;弹窗就位与否交下一帧观察)。
 
 ## 4. 随机面 / 观察面
@@ -35,9 +35,9 @@
 
 ## 7. 语义验证
 
-腾位写入语义单一源 = `report_action_open_bookcard_param`(bench kind 'bookcard' → 'empty',陈旧提案零写;行为测试 = `test_cw_unified_action_2c::test_open_bookcard_logic_state_frees_slot`,容器版腾位测试)。选卡后果归观察(选择落地不记预期值)。原聚合写入入口分支与 sim 整帧副本载体(simulate)已随动作 op 重组与 sim 重做停用,考古归 git。
+腾位写入语义单一源 = `report_action_open_bookcard_param`(bench kind 'bookcard' → 'empty',陈旧提案零写;行为测试 = `test_cw_unified_action_2c::test_open_bookcard_logic_state_frees_slot`,状态容器版腾位测试)。选卡后果归观察(选择落地不记预期值)。原聚合写入入口分支与 sim 整帧副本载体(simulate)已随动作 op 重组与 sim 重做停用,考古归 git。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 **备战期**(动作发出点 = 策略器卡片分支):卡片先于箱/典籍分支(旧入口清场先于观察的全局序),弹窗选卡交外循环按画面分发;商店期无本动作(占席道具只在备战画面可见可点)。
 

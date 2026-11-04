@@ -18,7 +18,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 
 **停用理由(修正口径)**:流散乱(12 流分片、跨流 join 复盘、同一事实多处副本)+
 写入位置不全(开局 1-1/补给→备战等空缺时点)+ 无渠道签名(真读/兜底不可分,靠散字段)
-+ 无统一 state(GameState/ExpectedEntry/tracked 族多容器并行)——**非查询/重放问题**
++ 无统一 state(GameState/ExpectedEntry/tracked 族多状态容器(GameState)并行)——**非查询/重放问题**
 (在用查询本就是读行,统一流水延续读行模型并强化)。
 
 ## 2. 逐流处置表
@@ -35,7 +35,7 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 | exogenous | 停用(无独立事件流) | kind 逐值并入(节点推进→派生写入行/popup→obs_event/briefing→开局事实域/event_choice→chosen 域/sell_income·hp_pay·level_up→②写入行/resumed→中继行族等);battle_done 旧写入位置停写与旧流停写同批;cw_anchor 四 carrier_kind 归宿随锚处置待裁决 |
 | spend_ledger | 拆分:字段并入+部分停用 | 金真值→gold 域;计数→计数域+质量标记;plan_truncated/refresh_skipped→receipts 发射行字段;duration/boundary/progressed=纯工程面停用归日志 |
 | shop_snapshots | 字段并入候选+流停用 | 牌面=state 的 shop payload 域,offer/refresh 各为一行观察写入行,独立快照流冗余;rho_obs 不并入→判读侧离线派生 |
-| cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭测试(test_cw4_key_closure) |
+| cw4_counters | 流停用(键级审计已定案:效果域 0 键/策略行为键 256 字面+16 闭族 80 实例+9 开放族全保留=策略侧决策行 strategy-state 载体,无消费删 0 键) | 键=策略 state 状态容器(StrategyState.cw4_counters),sim 红则/轮差分/预注册不经流照旧;局终级全键聚合=局终域行载荷 ``MatchFinal.cw4_counters``;键全集登记单一源=封闭测试(test_cw4_key_closure) |
 | defect_ledger | **保留专用(待裁决)** | 案 A=并入 obs_event;案 B(倾向)=保留专用流——severity 判级/复现计数/verdict 取值清单/失配告警联动(失配告警=缺陷触发的报警停机联动)是「质量索引」不是「证据内容」;裁保留时 refs 改指 journal `(run_id,v)` 键+寿命联动 |
 | op_journal | **停用(2026-09-15 用户裁定,写入方删除批写入代码)** | op 耗时画像/op 序列归 server 主日志 `[cw-op]` 行(dispatch/仲裁出口行);进程中断证据 = 实机段无 match_final 收尾 + 行流 ts 戛止(中断时点活动签名 = 尾行 sig.actor);动作回执/金差账已在 state 流 receipts/gold 行登记 |
 | 终结出口「观察重派」语义 | 停用(2026-10-17 terminal-fail-status 批) | 参数违法类改 op 内守卫断言、area 类删检查直接使用(自然异常);终结出口失败透传(防线可数);「陈旧载荷/观察重派」「禁兜底坐标交回重读」吸收语义退役——失败如实上报,重派治理归外环防线 |
@@ -55,8 +55,8 @@ obs_conflicts/runs`,recorder 写入面/match_archive 切片/全仓落盘调用�
 前置件(产出归迁移批,不在本文预列)。
 
 **已定案代码落地形态(键并入归两文件模型②的策略自身记忆要素,决策行文件落地
-前由策略 state 容器承载)**:效果域 0 键(①空转,效果域 inventory 与本容器零交
-集);策略行为键 256 字面+16 闭族 80 实例+9 开放域族全保留在策略 state 容器
+前由策略 state 状态容器承载)**:效果域 0 键(①空转,效果域 inventory 与本状态容器零交
+集);策略行为键 256 字面+16 闭族 80 实例+9 开放域族全保留在策略 state 状态容器
 (②,无消费删 0 键,弱消费键随迁);流载体停用,局终级全键聚合改由局终域行载荷
 ``MatchFinal.cw4_counters`` 携带。键全集登记单一源 = 封闭测试(测试仓
 test_cw4_key_closure:字面全集对齐+参数化族登记+豁免清单三层,扫描方法=审计七
@@ -75,7 +75,7 @@ test_cw4_key_closure:字面全集对齐+参数化族登记+豁免清单三层,�
 原影子口径的旧排期框架已随直迁裁定作废(推翻影子双写;首批写面删除已按直迁口径执行 9 流写入方删除)。旧影子框架各批次的实际承载内容(按内容命名,编号已废):写入口与渠道签名/流水落盘与 journal 常开化/obs_event 登记面并入 = 交付于统一 state 直迁系列;派生规则与类型派生 = 已交付(测试族+落地审+实机窗口承担验收);判读/哨兵/运行时消费面切换、cw4 键级审计与键并入、决策面/sim 切换 = 各自成批交付;写面删除与 GameState 本体删除 = 删除批次收尾,归档只读保留。
 
 链观察实施批独立切分,见 [chain-observation.md](chain-observation.md)。
-**落地状态(链观察落地批 2026-09-16)**:链写入方/查链接线/diff 证据已交付
+**落地状态(链观察落地批 2026-09-16)**:链写入方/查链接入调用/diff 证据已交付
 (载体 NodeChain/TokenCell + 过渡屏与备战帧写入方 + `chain_diff` 行 +
 类型派生四②商店查链);记录表停用(含 `ledger_node_type` 残余消费点
 read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面盘点)
@@ -112,13 +112,13 @@ read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面
 | 1 | 判读 CLI(`telemetry/cli.py`+`query.py` 视图族) | 新视图族改读两文件(按行读+行间差分,零重放);旧视图读旧档案只读保留至停写批 | 待 | 消费面切换批 |
 | 2 | 对局档案装配(`telemetry/match_archive.py`) | 切片改两文件+待裁决的保留专用流;派生列改从流水行派生(comps/pivot 标待策略侧);旧档案只读兼容 | 待 | 消费面切换批 |
 | 3 | 回放/修复工具(`tools/cw/replay_to_md.py`、`repair_invest_attribution.py`;自原遥测设计件(已删,git 可溯)的档案行拆出单列——本文 11 面对原表 10 行=拆行细化,非矛盾) | 改读新档案面(随装配器 v12) | 已迁(2026-10-16:replay_to_md 就地重写为 journal 行模型版,经档案切片 `state/journal.jsonl` 单键读新账,commit 84ecddaf4+161cccdc8;repair_invest_attribution 经 match_archive 装配切片读数,已在当前面,无需再迁) | 消费面切换批 |
-| 4 | sim 账本三消费面(`sim/checks/ledger.py` 红则判据/`sim/engine_p1.py` 轮差分/`sim/ab_core_swap.py` 预注册披露) | 按逐 key 审计结论切新载体,三面同批;sim runner 经统一写入口落流水(引擎直写容器口径;原合成口已随帧通道停用);deployed→front/back 槽位映射前置 | 待 | 停写批前置 |
+| 4 | sim 账本三消费面(`sim/checks/ledger.py` 红则判据/`sim/engine_p1.py` 轮差分/`sim/ab_core_swap.py` 预注册披露) | 按逐 key 审计结论切新载体,三面同批;sim runner 经统一写入口落流水(引擎直写状态容器口径;原合成口已随帧通道停用);deployed→front/back 槽位映射前置 | 待 | 停写批前置 |
 | 5 | 复测批/AB 判读(`tools/cw/ab_judge.py`、`cw_batch_stats.py`) | sim 账本切新面后指标重接 | 待 | 消费面切换批 |
 | 6 | defect_ledger(若裁保留专用;幸存流+旧流消费方双身份) | refs 目标迁移(指 journal `(run_id,v)` 键)+寿命联动(随 run 段同批淘汰) | 待(随 §2 保留裁) | 消费面切换批 |
 | 7 | 校准/证明脚本(`tools/cw/proofs/*`、`win_model_*`) | 存量语料归档只读不迁移;新语料走新视图;跨期语料窗受寿命契约约束 | 待 | 消费面切换批后按需 |
 | 8 | 哨兵脚本组(`sr-od-currency-war-dev` skill scripts/:cw_sentinel/cw_runs_gap/cw_early_stop) | 尾读改 journal.jsonl(runs 断流探测→局终域行断流探测);过渡期盯旧流至停写批 | 待 | 消费面切换批 |
-| 9 | 运行时内部(cw_loop 心跳/summary 兜底/Δ池再生触发/终局防重读门) | 心跳改读版本 id;兜底回填与 Δ 池再生的触发改挂局终域行落盘事件;终局防重改挂 match_final 写前查重(运行时控制面豁免类) | 待 | 观察接线批/消费面切换批 |
-| 10 | 策略侧决策行(在用 DecisionTrace) | 瘦身演进落文+接线;行面钉字段 = state_ref 单字段(过渡钉面标记 pin_scope 已停用删除——行面钉字段终裁 = state_ref 单字段,历史档案判读知识见 [决策行文件schema设计.md](决策行文件schema设计.md) §8-2) | 待 | 接线 = 决策面切换批后另批(决策行文件落地批,验收绿后立卡,已定案) |
+| 9 | 运行时内部(cw_loop 心跳/summary 兜底/Δ池再生触发/终局防重读门) | 心跳改读版本 id;兜底回填与 Δ 池再生的触发改挂局终域行落盘事件;终局防重改挂 match_final 写前查重(运行时控制面豁免类) | 待 | 观察接入调用批/消费面切换批 |
+| 10 | 策略侧决策行(在用 DecisionTrace) | 瘦身演进落文+接入调用;行面钉字段 = state_ref 单字段(过渡钉面标记 pin_scope 已停用删除——行面钉字段终裁 = state_ref 单字段,历史档案判读知识见 [决策行文件schema设计.md](决策行文件schema设计.md) §8-2) | 待 | 接入调用 = 决策面切换批后另批(决策行文件落地批,验收绿后立卡,已定案) |
 | 11 | action_log 成败消费面(cw_evolution applied-gate/sim 引擎两处) | 改观察侧驱动(reconcile 对比口径:发射行+后续快照);「零成败 receipts」前置事实已成立(receipt-applied-retire 批:回执 = 纯动作事实 + reason 受阻码,无成败字段),旧数据源抽取解禁随本批判读口径对齐(原行内 `cw_bench_equips` 申报面消费方已随死代码清偿移除,消费面清单随之收窄) | 待 | 消费面切换批(与决策行同批) |
 
 「不适用」档预留:清单内消费面经评估确认与新面无交集时标不适用并附一句理由,禁静默
@@ -131,7 +131,7 @@ read_game_state 查表优先/装备 O1 门/三票 重接与 session 表冻结面
 | 日期 | 变更 | 凭据 |
 |---|---|---|
 | 2026-09-11(前) | 初版:13 流处置表(§2)+cw4 逐 key 审计(§3)+两文件模型(§4)+影子期旧排期框架与前置六条(影子口径)+11 消费面清单(§7);两轮批面修正(文档审释义补注、对账口径滞后同步) | 进度账本 game_state 目录批;审结论 = 本地评审档案(不入库) |
-| 2026-09-11 | 直迁重构:影子期旧排期框架与前置六条影子口径作废——§5 排期改指直迁原排期件、§6 前置条件改直迁形态、逐批落点对照叙述链收敛为本表;§2 board_state_archive 行「影子期继续在产」改「停写前继续在产(在用)」 | (直迁裁定)/ (首批写面删除批落档+本重构兑现);排期正本 = 原排期件(git 可溯) |
+| 2026-09-11 | 直迁重构:影子期旧排期框架与前置六条影子口径作废——§5 排期改指直迁原排期件、§6 前置条件改直迁形态、逐批落点对照叙述链收敛为本表;§2 board_state_archive 行「影子期继续在产」改「停写前继续在产(在用)」 | (直迁裁定)/ (首批写面删除批落档+本重构兑现);排期权威版本 = 原排期件(git 可溯) |
 | 2026-09-11 | §2 invest_cards 行「停写前须定案」兑现落档:定案 = 接受断供,恢复路径 = strategy_offer 域建模(挂评估批);同批落 obs 缺陷 refs 指冻结档案的判读指针处置(后果 2/3 两件收尾) | (定案)/ (首批写面删除批——写入方先于定案停用的批序事实如实申报) |
-| 2026-09-12 | §7 #10 行修订:迁移动作列「消费切换子集落地前 state_ref 带 pin_scope 标记」随字段停用删除作废——行面钉字段 = state_ref 单字段,历史档案判读知识指 schema 权威版本 §8-2;批次列改「接线 = 决策面切换批后另批」 | 行面钉字段终裁 = state_ref 单字段(定案记录 git 历史可溯);字段停用执行(commit b0775d8b) |
+| 2026-09-12 | §7 #10 行修订:迁移动作列「消费切换子集落地前 state_ref 带 pin_scope 标记」随字段停用删除作废——行面钉字段 = state_ref 单字段,历史档案判读知识指 schema 权威版本 §8-2;批次列改「接入调用 = 决策面切换批后另批」 | 行面钉字段终裁 = state_ref 单字段(定案记录 git 历史可溯);字段停用执行(commit b0775d8b) |
 | 2026-09-15 | §2 op_journal 行改判停用(原「保留专用(待裁决)」):op 调用流归宿 = 主日志 `[cw-op]` 行;停滞检测/活跃局判定/监控轮询经核实零依赖该流(停用对哨兵组零迁移零降级);存量档案双键切片(op_journal + state/journal)冻结只读,SCHEMA_VERSION 冻结 12 防重装配摘除 | 用户裁定 2026-09-15;消费盘点与迁移映射 = 进度账本设计件 |
