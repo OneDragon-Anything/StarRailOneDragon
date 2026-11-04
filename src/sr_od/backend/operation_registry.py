@@ -102,6 +102,34 @@ def _annotation_display(annotation: 'Any') -> str:
     return str(annotation)
 
 
+def _resolve_annotations(cls: type) -> 'dict[str, Any]':
+    """把 ``cls.__init__`` 的注解解析为真实类型,剔除 self/ctx 与 *args/**kwargs。
+
+    ``from __future__ import annotations`` 下 ``inspect.signature`` 拿到的注解是字符串,
+    字符串裸名匹配认不得 ``list[str]``/``dict[str, str]`` 等泛型写法 → 泛型列表参数被
+    误判为不可序列化(2026-11-04 实测:``team_names: list[str]`` 被 run_operation 拒收)。
+    用 ``typing.get_type_hints`` 按定义模块命名空间求值还原;前向引用解析失败时回退
+    原始字符串注解(行为与修复前一致,由裸名匹配兜底)。
+    """
+    try:
+        return {
+            name: hint
+            for name, hint in typing.get_type_hints(cls.__init__).items()
+            if name not in ('self', 'ctx', 'return')
+        }
+    except Exception:  # noqa: BLE001 求值失败回退字符串注解
+        try:
+            sig = inspect.signature(cls.__init__)
+        except (TypeError, ValueError):
+            return {}
+        return {
+            p.name: p.annotation
+            for p in sig.parameters.values()
+            if p.name not in ('self', 'ctx')
+            and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        }
+
+
 def _annotation_json_serializable(annotation: 'Any') -> bool:
     """判断类型注解是否 JSON 可序列化(标量/list/dict/Optional/Union;自定义类 → False)。
 
@@ -140,6 +168,61 @@ def _annotation_coercible(annotation: 'Any') -> bool:
     return callable(getattr(annotation, 'from_dict', None))
 
 
+def _value_matches_annotation(value: 'Any', annotation: 'Any') -> bool:
+    """轻量核对 JSON 值与注解是否相符(只拦「明确不符」,无法判定一律放行)。
+
+    只处理能静态判定的形态:标量 / list / dict / Optional(None 或匹配任一非 None 分支)。
+    Union 多分支、字符串注解、未参数化容器等无法可靠判定 → True 放行,交给 op 构造期校验。
+    """
+    if annotation is inspect.Parameter.empty:
+        return True
+    origin = typing.get_origin(annotation)
+    if origin is types.UnionType or origin is typing.Union:
+        args = typing.get_args(annotation)
+        if value is None:
+            return type(None) in args
+        return any(
+            a is not type(None) and _value_matches_annotation(value, a) for a in args
+        )
+    if value is None:
+        return annotation is type(None)
+    if isinstance(annotation, type):
+        if annotation is bool:
+            return isinstance(value, bool)   # bool 是 int 子类,必须先判
+        if annotation in (str, int, float):
+            return isinstance(value, annotation)
+        if annotation is list:
+            return isinstance(value, list)
+        if annotation is dict:
+            return isinstance(value, dict)
+        if annotation is tuple:
+            return isinstance(value, tuple)
+        if annotation is set:
+            return isinstance(value, (set, frozenset))
+    if origin is list:
+        return isinstance(value, list)
+    if origin is dict:
+        return isinstance(value, dict)
+    if origin is tuple:
+        return isinstance(value, tuple)
+    if origin is set:
+        return isinstance(value, (set, frozenset))
+    if isinstance(annotation, str):
+        # 字符串注解(求值失败回退):仅裸名可判
+        name = annotation.strip()
+        checks = {
+            'str': str, 'int': int, 'float': float, 'bool': bool,
+            'list': list, 'dict': dict, 'tuple': tuple,
+        }
+        if name in checks:
+            expected = checks[name]
+            if expected is bool:
+                return isinstance(value, bool)
+            return isinstance(value, expected)
+        return True
+    return True
+
+
 def coerce_dataclass_params(cls: type, args: dict) -> dict:
     """实例化前,把 ``@dataclass + from_dict`` 参数的 dict 值反序列化为实例。
 
@@ -150,14 +233,16 @@ def coerce_dataclass_params(cls: type, args: dict) -> dict:
         sig = inspect.signature(cls.__init__)
     except (TypeError, ValueError):
         return args
+    hints = _resolve_annotations(cls)
     coerced = dict(args)
     for p in sig.parameters.values():
         if p.name in ('self', 'ctx'):
             continue
         if p.name not in coerced:
             continue
-        if _annotation_coercible(p.annotation) and isinstance(coerced[p.name], dict):
-            coerced[p.name] = p.annotation.from_dict(coerced[p.name])
+        annotation = hints.get(p.name, p.annotation)
+        if _annotation_coercible(annotation) and isinstance(coerced[p.name], dict):
+            coerced[p.name] = annotation.from_dict(coerced[p.name])
     return coerced
 
 
@@ -167,20 +252,22 @@ def _reflect_params(cls: type) -> list[OperationParam]:
         sig = inspect.signature(cls.__init__)
     except (TypeError, ValueError):
         return []
+    hints = _resolve_annotations(cls)
     params: list[OperationParam] = []
     for p in sig.parameters.values():
         if p.name in ('self', 'ctx'):
             continue
         if p.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
             continue  # 跳过 *args / **kwargs
+        annotation = hints.get(p.name, p.annotation)
         required = p.default is inspect.Parameter.empty
         params.append(OperationParam(
             name=p.name,
-            annotation=_annotation_display(p.annotation),
+            annotation=_annotation_display(annotation),
             required=required,
             default=None if required else repr(p.default),
-            json_serializable=_annotation_json_serializable(p.annotation),
-            coercible=_annotation_coercible(p.annotation),
+            json_serializable=_annotation_json_serializable(annotation),
+            coercible=_annotation_coercible(annotation),
         ))
     return params
 
@@ -293,11 +380,13 @@ def validate_args(cls: type, args: dict) -> str | None:
     except (TypeError, ValueError) as e:
         return f'无法反射 __init__ 签名: {e}'
 
+    hints = _resolve_annotations(cls)
     for p in sig.parameters.values():
         if p.name in ('self', 'ctx'):
             continue
         if p.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
             continue
+        annotation = hints.get(p.name, p.annotation)
         required = p.default is inspect.Parameter.empty
         if required and p.name not in args:
             return f'缺少必填参数: {p.name}'
@@ -305,12 +394,19 @@ def validate_args(cls: type, args: dict) -> str | None:
         # 传标量/列表/None 会绕过 coerce,错误类型进 op 构造 → 在此明确拒绝。
         if (
             p.name in args
-            and _annotation_coercible(p.annotation)
+            and _annotation_coercible(annotation)
             and not isinstance(args[p.name], dict)
         ):
             return f'参数 {p.name} 必须为 dict'
-        if p.name in args and not _annotation_json_serializable(p.annotation) and not _annotation_coercible(p.annotation):
-            return f'参数 {p.name} 为不支持的数据类型({_annotation_display(p.annotation)}),请走 application'
+        if p.name in args and not _annotation_json_serializable(annotation) and not _annotation_coercible(annotation):
+            return f'参数 {p.name} 为不支持的数据类型({_annotation_display(annotation)}),请走 application'
+        if (
+            p.name in args
+            and not _annotation_coercible(annotation)
+            and not _value_matches_annotation(args[p.name], annotation)
+        ):
+            return (f'参数 {p.name} 的值类型与注解不符'
+                    f'(期望 {_annotation_display(annotation)},得到 {type(args[p.name]).__name__})')
 
     # 校验提供的值本身可 JSON 序列化(防御:调用方传入非 JSON 原生对象)
     for name, value in args.items():

@@ -45,18 +45,15 @@ class TlFillTeamsOp(SrOperation):
     _SCROLL_FROM: Point = Point(300, 760)
     _SCROLL_TO: Point = Point(300, 430)
 
-    def __init__(self, ctx: SrContext, team_names_csv: str):
+    def __init__(self, ctx: SrContext, team_names: list[str]):
         """
         Args:
-            team_names_csv: 按波次顺序拼接的角色中文名,逗号分隔(MCP 标量入参;
-                与脸库识别名一致),每 4 人切分为一波(当前混忆 2 波 = 8 人)。
+            team_names: 按波次顺序拼接的角色中文名列表(与脸库识别名一致),
+                每 4 人切分为一波(当前混忆 2 波 = 8 人)。
         """
         SrOperation.__init__(self, ctx, op_name='逐光捡金 清空并填充编队')
-        team_names = [n.strip() for n in team_names_csv.replace('，', ',').split(',') if n.strip()]
         if len(team_names) % 4 != 0 or not 1 <= len(team_names) // 4 <= 4:
-            self.teams: list[list[str]] = []
-            self.round_fail(f'角色数须为 4 的倍数且波数 1-4: {len(team_names)}')
-            return
+            raise ValueError(f'角色数须为 4 的倍数且波数 1-4: {len(team_names)}')
         self.teams: list[list[str]] = [
             team_names[i:i + 4] for i in range(0, len(team_names), 4)
         ]

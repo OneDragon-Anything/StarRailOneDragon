@@ -35,12 +35,11 @@ class TlStartChallengeOp(SrOperation):
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
     STATUS_FAIL: ClassVar[str] = '战斗失败'
 
-    def __init__(self, ctx: SrContext, team_names_csv: str,
+    def __init__(self, ctx: SrContext, team_names: list[str],
                  first_node: bool = True, skip_click_start: bool = False):
         """
         Args:
-            team_names_csv: 本波编队角色中文名,逗号分隔(MCP 标量入参;与填充一致,
-                秘技顺序按角色 technique_type 决策)。
+            team_names: 本波编队角色中文名列表(与填充一致;秘技顺序按角色 technique_type 决策)。
             first_node: 是否第一个波次(进入时弹 buff 说明,需点空白关闭)。
             skip_click_start: 跳过点最终开始(用于已在节点画面内的恢复续跑,
                 如上次 op 在点击后中途失败的现场)。
@@ -48,13 +47,13 @@ class TlStartChallengeOp(SrOperation):
         SrOperation.__init__(self, ctx, op_name='逐光捡金 开始挑战')
         self.first_node: bool = first_node
         self.skip_click_start: bool = skip_click_start
-        names = [n.strip() for n in team_names_csv.replace('，', ',').split(',') if n.strip()]
         self.team: list[Character] = []
-        for name in names:
+        for name in team_names:
             char = next((c for c in CHARACTER_LIST if c.cn == name), None)
             if char is None:
-                self.round_fail(f'未知角色名: {name}')
-                return
+                # 构造期参数错误直接 raise(调用方/run_operation 捕获后干净报错);
+                # 不能用 round_fail —— 其返回值在 __init__ 里会被丢弃,op 会带着缺员队伍继续跑
+                raise ValueError(f'未知角色名: {name}')
             self.team.append(char)
 
     @operation_node(name='点击最终开始', is_start_node=True)
