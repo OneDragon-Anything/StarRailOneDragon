@@ -86,6 +86,10 @@ class FooRecognizer(ScreenRecognizer):
 - `settlement_recognizer.py`（结算）：复用纯函数 `parse_settlement_hp` + 全屏 OCR 命中 analyze 缓存；**不**复用需 plane/round 的 `read_round_outcome`。
 - `invest_strategy_recognizer.py`（投资策略）：自写 OCR `区域-卡名行` + 正则筛选项名。
 
+游戏业务侧参考（SIFT 头像识别 + tab 态分支）：
+
+- `treasures_lightward/obs/recognizers/tl_team_recognizer.py`（忘却之庭-编队）：读核心在同级 `obs/tl_team_obs.py`——tab 激活态按标签区亮度判别驱动左侧列表分支；队伍槽/网格/预设卡头像走脸库 `character_avatar` SIFT（`TemplateLoader` 特征缓存 + `feature_match_for_one`，与 `check_team_members_in_world` 同范式）；歧义以候选集诚实返回不硬猜。
+
 > 识别器只读不 click / 不写状态。需 click 才能拿的信息（如简报词缀效果要点词缀弹 tooltip）不在 recognizer 产 —— 走 operation 流程或预采注册表（`affix_effects_data`）。
 
 ### OCR 缓存复用（省冗余 OCR）
