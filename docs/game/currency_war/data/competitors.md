@@ -12,7 +12,7 @@
 >
 > **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;本文按**机制分类**作词缀索引(效果原文分类,便于查阅)。
 > **词缀效果原文的单一源 = `src/sr_od/application/currency_war/data/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖)——本文是机制分类叙事层,数值以注册表为准。
-> **方向判定归口(2026-11 统一阵容评分迭代)**:词缀×线克/利**方向**不再由本文件机制分类预判——逐线吃怕单一源 = `kernel/cw_affinity_table`(攻略实证词缀+boss 吃怕表;未登记线兜底层只给怕不给吃);选卡克制减分 = `cw_comps.MECHANIC_COUNTERS`(经 `AFFIX_MECHANIC_MAP` 归一,消费 = 策略层 pick_common.counter_pick_penalty)。本文各级「克X/利X」注记为攻略叙事参考,**不构成策略输入**(机制泛化不预判方向——正当防卫对白厄受击流两推断打架等案例已在吃怕表逐线裁决)。
+> **方向判定归口(2026-11 统一阵容评分迭代)**:词缀×线克/利**方向**不再由本文件机制分类预判——逐线吃怕单一源 = `kernel/cw_affinity_table`(攻略实证词缀+boss 吃怕表;未登记线兜底层只给怕不给吃);选卡克制减分 = 策略层 `pick_common.AFFIX_COUNTERS_FACTIONS`(词缀→受克羁绊名直写表,消费 = `pick_common.counter_pick_penalty`;原 `MECHANIC_COUNTERS` 三件套间接链路已随克制表直写迭代删除)。本文各级「克X/利X」注记为攻略叙事参考,**不构成策略输入**(机制泛化不预判方向——正当防卫对白厄受击流两推断打架等案例已在吃怕表逐线裁决)。
 > 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 `cw_investments.py::INVESTMENT_ENVS` 敌后破坏)。
 
 ---
@@ -34,7 +34,7 @@
 - **冷冻冬眠**:我方受致命攻击未倒时陷冻结 2 回合。
 - **沉重脚步**:敌攻击后,受击我方行动延后 8%。
 
-### 4. DoT / 减益 克星 🟢(MECHANIC_COUNTERS 注册表已建模,消费 = 策略层 pick_common.counters_dot 选卡自拆台排除)
+### 4. DoT / 减益 克星 🟢(选卡克制直写表 `pick_common.AFFIX_COUNTERS_FACTIONS` 已登记「净化身心→持续伤害/减益」,消费 = 选卡克制减分 `counter_pick_penalty`)
 - **净化身心**:敌 HP 首次 <50% 时解所有负面 + 回 10% 血(每解 1 个额外 2%)。→ **克 DoT/减益队**(持续伤害/减益主派遇此别玩)。
 
 ### 5. 燃血克星(重要修正)🟡
@@ -128,7 +128,7 @@
 
 ---
 
-## 机制 tag 映射(MECHANIC_COUNTERS 注册表;消费 = 策略层 pick_common 选卡克制减分。克/利方向判定归口见篇首声明——本段为注册表内容的叙事镜像)
+## 机制 tag 映射(原 `MECHANIC_COUNTERS` 注册表的叙事镜像——该表已随克制表直写迭代删除,现役选卡克制面 = `pick_common.AFFIX_COUNTERS_FACTIONS` 直写表仅 2 条活链路〔净化身心/永久创伤〕;本段保留为机制分类叙事参考,不构成策略输入)
 
 **counter(克 comp 机械属性)**:
 - 属性熄火 ×7 → `[依赖<属性>]`(风/火/冰/雷/物理/量子/虚数 各一;纯色队被克)

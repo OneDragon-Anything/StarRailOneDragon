@@ -70,7 +70,7 @@
 
 | 件 | 归属声明 |
 |---|---|
-| 机制克制惩罚 −100（MECHANIC_COUNTERS，机制注册表唯一权威源） | 同型改形候选（克制方向 = 机制注册表有据、−100 属【拍】值 → 降档语义）；因消费面跨事件/遭遇且该表为独立唯一权威源（原裁定文件已删档），登记归事件面命题批一并处置，本批不动 |
+| 机制克制惩罚 −100(原 MECHANIC_COUNTERS 链路) | **已随克制表直写迭代处置**(词缀映射表/克制表/改名层三件套删除,克制事实改 `pick_common.AFFIX_COUNTERS_FACTIONS` 词缀→受克羁绊名直写表承载;降档语义 = 选卡克制减分 `COUNTER_PICK_PENALTY`,纯加权非排除;原行「登记归事件面命题批一并处置」的待办随之关闭) |
 | 补给通用装备价值（原 `_EQUIP_VALUE`（decide_supply 通用装备价值，V4.4 版经验先验，原出处 cw_events.py:293）+ key_equip +10 经验拟合形态；该内联形态原址 = cw_events.py:616-647，已随 2026-09-24 补给屏策略层迁移删除） | **登记待办已关闭（改形已实现，2026-09-24 补给屏策略层迁移执行；权威版本 = [30_supply_screen.md](30_supply_screen.md)，决策本体 = `strategies/impl/mandate_v1/supply.py`）**：新结构映射——「带钻支配（零参数已就位）」= 选卡第一级（定序最高档定性，与 30 篇对齐；完整支配论证留 E4 数学批）；角色轴 = 第二级（原登记待办没有的新增细则，只为终局）；「key_equip 命中」= 装备轴 tier 3（需求未满足直击，`equip_tier` 需求计数）；「功能定序」= 同 tier 通用值定序（`EQUIP_GENERIC_VALUE` 表本体现址 = `cw_equip_value.py:42-80`，降格为 tier 内定序常数，表值零变化）。原行所引 `check_equip_value_*` 相干性检查锁（sim/checks/ledger.py:970/1035）全仓 src+测试仓零命中，引用清理 |
 | decide_encounter 难度定价（P9 gap 公式、encounter_tier_score） | 损伤引用族，形态③纪律适用（带 CI/出处声明+登记重新校验），P15v2 重校专批处置（经验分停用裁定划界），本批不动 |
 | PICK_BIAS 平表（E17 星徽秘典/E5 圣杯试炼，strategies/impl/pick_bias.py；E18 武装箱面已迁共享机器 `cw_equip_value` 序数分档——box 两常数随 armory-box-value 停用） | 数值原样迁移的【拍】值平表，消费点活 → 同型改形登记待办（三层/三项定序声明），登记归事件面命题批与 pick 族知识判据对账（13_pick_family.md §0 已声明值在代码） |

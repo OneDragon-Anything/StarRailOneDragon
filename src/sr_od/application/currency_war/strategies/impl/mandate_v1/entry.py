@@ -13,9 +13,9 @@
      → 第 5 步 商店会话 → 第 6 步 部署调整 → 第 7 步 装备与工具
      → 第 8 步 节末凑息 → 第 9 步 出战
 
-模块分工:买面/凑息/腾位的备战域动作发出点(dominance/M2/M4/M6
-凑息分支)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
-卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
+模块分工:买面/凑息/腾位的备战域动作发出点(M2/M4/M6 凑息分支,含
+    M6 一星兜底带)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
+    卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
 升级判据本体与发射资格门全链 = ``criteria/levelup``(11 号篇 §2 +
 design §2.1 七道成员集单一源),本模块只做工序接入调用与发出组装。
 部署/装备/工具判据单一源 = deploy_plan / cw_equip_wear_plan /

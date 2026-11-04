@@ -200,13 +200,13 @@
 |---|---|---|
 | COMP_LIBRARY | 增 | 原规划 star_targets 由知识卡 `need_star` 承载（[12_line_and_intention.md](12_line_and_intention.md) §1.4）;entry_signals 曾建后整体退役（2026-11 用户终裁「可退役」——万敌 1 条/白厄 3 条知识真空接受损失,上场时机 = 部署搜索骨架/L1 完成度自适应）;slot_structure/external_deps/downgrade_paths/segment_tier_tables 未建 |
 | | 删 | 典型轮次/前期强度等十个零消费字段（2026-11-02 清理批：typical_form_round、early_power、weak_planes、form_tiers_max、branch_key、branch_of、free_slots、special_systems、equip_synergy、global_accumulators——消费实证单一源 = git 该批 commit；档位谱真值载体 = `FACTIONS.tiers`）。评估参数四字段与评分器族（2026-11-03 批：strength、form_difficulty、mechanic_attributes、countered_by_bosses + comp_score/六 fit/ScoreContext/W_* 整族——孤儿评分器实证 + strength 唯一活链投资方向分随 `line_value.py` 整链下线，28/29 号稿方向分行废止申报）。原删项 level_plan 已复活为现役（经济统一论） |
-| | 留 | core_chars/form_tiers/family/substitute_plan/equip_assign/equip_taboos/char_positions/mechanic_attributes/countered_by_bosses/flex_factions/shared_chars |
-| 新 TRANSITION_SYSTEMS | 建 | 四体系封闭：判据+人员要求+功能链+两两组合语义 |
+| | 留 | core_chars/faction_reqs(羁绊要求优先级结构:档 0 = 核心羁绊层、档 ≥1 = 加分层;原 form_tiers/sub_tiers 两字段已合并)/family/substitute_plan/equip_assign/equip_taboos/char_positions/flex_factions/shared_chars |
+| 新 TRANSITION_LIBRARY | 建 | 过渡阵容库(开局过渡条目,与 COMP_LIBRARY 两套独立库;三型条目 = 点名/羁绊/混合,[12_line_and_intention.md](12_line_and_intention.md) §3);体系判据数据层 = `cw_system_cards.SYSTEM_CARDS`(组合决策层已退役,数据层保留) |
 | 新 PLUGIN_LIBRARY | 建 | 通用插件池（跨阵容骨架+消耗品层），含座位价值注记 |
 | 新 SIGNAL_REGISTRY | 建 | 入场信号分层表（策略驱动/专属/核心到手/资源/兜底） |
 | 新 MECHANIC_SYNERGIES | 建 | 战力族映射载体（[11_shop_decisions.md](11_shop_decisions.md) §机制突变：战力关键词→机制 tag→克制/亲和） |
 | 新 INVEST_MUTATIONS | 建 | 多源效果突变登记（§机制突变在 11）：结构化解析语义 + resolution 三分态 + 消费点 |
-| MECHANIC_COUNTERS/BOSS 表 | 留 | 词缀双向 + boss 机制 tag（证据门环境通道输入） |
+| MECHANIC_COUNTERS(克制机器三件套) | 删 | 词缀映射表 `AFFIX_MECHANIC_MAP`/克制表 `MECHANIC_COUNTERS`/改名层 `LINE_FACTION_TO_MECH` 随克制表直写迭代删除,换 `AFFIX_COUNTERS_FACTIONS` 词缀→受克羁绊名直写表(选卡减分,宿主 `pick_common.py`);BOSS 机制 tag(证据门环境通道输入)不受影响 |
 
 数学需求清单：P38/P39/P40/P41/P42/P43/P46/P47/P48/P49 已收尾（01 §3 七面表）；待证钩子余 P56 与 P72 收尾支（01 §7/11 §买面；P8/P12/P25/P26/P29/P55/P57 已删或消解，git 可溯）。规则：每件完成后无偏对抗评审；sim 交叉核对纳入验证阶段。
 

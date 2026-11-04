@@ -116,8 +116,9 @@ def check_v1_deprecated_form_self_refutes() -> None:
 
 
 def check_conversion_and_endpoints() -> None:
-    """断言 8: 折算 0.75 次/轮与带端点算术 + 板分母单一源(F8-1 处置,
-    与 p88_check 断言 7 同标:BENCH_CAPACITY 直调断言)。"""
+    """断言 8: 折算 0.75 次/轮与带端点算术 + 板分母单一源(F8-1 处置;
+    断言形态承自已退役的 P88 复算脚本同款交叉验证——BENCH_CAPACITY
+    直调断言,该脚本已随 P88 命题退役删除,交叉验证对象考古走 git 历史)。"""
     assert BENCH_CAPACITY == BOARD_N, \
         f'板分母单一源漂移: BENCH_CAPACITY={BENCH_CAPACITY} ≠ {BOARD_N}'
     assert Fraction(3, 4) == Fraction(75, 100), '3 件/4 轮 = 0.75'

@@ -44,9 +44,12 @@ take = acquire_swap_sell,全 take 域(含备战域
 各场景)与判读口径见 telemetry/schema.py 键表节;写点 = 各卖出动作
 发出点(键值来源 = 评估器候选行 tier/rng_tail_hit 观测载荷);
 承继键族(m2/m2_stockpile/m2b/dead_gold_press/press_buy_
-deployable/m6/fuel_filler_stall/ev/dominance/p90/p91/p94)随各分支
+deployable/m6〔含 m6_fallback_band 一星兜底带键族〕/
+fuel_filler_stall/ev/p90/p91/p94)随各分支
 并入保留,键语义与写点注释见各分支段(原 transition 族随 ④ 转投分支
-退役删除,统一保护集 design §2.2)。P86 三分支旧键族(shop_no_target_*/
+退役删除,统一保护集 design §2.2;dominance 族键随富余买入通道
+退役停写——通道并入 M6 一星兜底带,comp-structure-unification 3.4,
+历史键不清理)。P86 三分支旧键族(shop_no_target_*/
 hub_option_*)随并入停用(对照表 = 迭代目录 P86 并入对照)。
 统一让位优先级迭代 3.4 退役键族:shop_refresh_target_unbuyable
 (刷新预测门拒因)/ core_*(C1 单卡核心囤积规则整规退役)/
@@ -580,8 +583,10 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
     利息帽参数化链,买断制 g*=0 时被 check_affordable 蕴含即 no-op)。
 
     为什么需要(五件结构事实的合取,§背景):①资格门单边——
-    dominance 分支原只查买前 gold > g* 与 check_affordable,是全部
-    discretionary 买分支中唯一无买后线检查的分支;②单动作串行链——一次
+    discretionary 买分支的买前资格门(买前 gold > g* 与
+    check_affordable)不含买后线检查(历史动机首证于已退役的
+    富余买入通道——该通道无买后线检查的形态见 git 历史;现役
+    消费位 = 档 1 可上场非定向买);②单动作串行链——一次
     店访每帧买一张、金为期望态现值,串行消费下末笔可穿线;③P78-1 同
     visit 禁卖回(定义性抵消买入);④T3 同轮垫保——买入即入动作发出登记
     簿(press 类 τ=同轮),卖回恢复通道当轮结构性不可达;⑤息结算在

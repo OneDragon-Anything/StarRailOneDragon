@@ -29,7 +29,7 @@
 |---|---|---|
 | 10 | [10_prep_decisions.md](10_prep_decisions.md) | 备战画面决策：部署/装备/腾位判据 + 共同地基（机制速查/形式刻画/注册表形态） |
 | 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、获取让位评估流程（原席满买入六步）、买面（P55 阶段 2 已撤史实/P56 现行）、引擎池、卖出（统一让位优先级序列）、刷新、升级、经济引擎、机制突变 |
-| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 终局线选择（候选-锁定制：线分数/证据门 top3 实候选/硬规则锁定、锁后不换线）与方向状态载体（含过渡候选槽）、P1 体系对候选机器、未锁定期买面接入调用 |
+| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 终局线选择（候选-锁定制：线分数/证据门 top3 实候选/硬规则锁定、锁后不换线）与方向状态载体（含过渡候选槽）、过渡阵容库条目候选机器、未锁定期买面接入调用 |
 | 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18（投资事件面 18 类） |
 | 14 | [14_p1_consume_arms.md](14_p1_consume_arms.md) | 位面 1 经济循环消费分支：闲置金转战力的三个动作发出通道（买/升/刷）设计与硬前置裁决 |
 | 15 | [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md) | 观察层读数多源一致性与仲裁：双源冲突的采信规则、保留证据与布局档错位 |

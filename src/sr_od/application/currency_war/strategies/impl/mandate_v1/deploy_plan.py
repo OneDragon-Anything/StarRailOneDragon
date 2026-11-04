@@ -279,8 +279,10 @@ def can_deploy_single_unified(session: StrategySession, gs: GameState,
     'not_in_target' 搜索定型未含 X / 'dead_stock_pair' 同名 1★ 第二张
     死库存对(买侧对偶守卫先行:搜索唯一性键归一把重复副本吸收进同键,
     X ∈ target 对既有副本恒平凡真,买面防重对语义由
-    ``dead_stock_pair_buy_reject_reason`` 单一源承载,与 dominance 臂
-    同守卫;旧七桶拒因闭集随选人族退役)。
+    ``dead_stock_pair_buy_reject_reason`` 单一源承载,在 M6 一星兜底带
+    同拦截(富余买入已并入 M6 兜底带——原独立富余买入通道随
+    comp-structure-unification 3.4 退役,防线随场景归并;旧七桶拒因
+    闭集随选人族退役)。
 
     查询不可得(装配异常)由调用方按 ``precheck_unavailable`` 分键处理
     (与旧 ``can_deploy_single`` 契约同向)。"""
