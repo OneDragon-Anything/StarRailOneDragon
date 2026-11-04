@@ -40,7 +40,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     SEELE_CARRY_CHAR,
     SEELE_OR_REQS,
-    V2_FAMILIES,
     Comp,
     derive_key_equips,
     form_progress,
@@ -240,9 +239,9 @@ class HoardTarget:
 
 # ===== 内部派生 =====
 
-def _v2_comps() -> list[Comp]:
-    """候选线集 = COMP_LIBRARY 中 v2 家族键非 legacy 的套(9 家族载体)。"""
-    return [c for c in COMP_LIBRARY if c.family in V2_FAMILIES]
+# (旧 _v2_comps「v2 候选过滤(排除 legacy 线)」已删:消费端早已零调用——
+#  统一部署/选线体系替代 v2 候选机制后死链,8 条 legacy 线实际一直
+#  正常参与选线;Comp.family 字段随链退役,git 可溯)
 
 
 def intention_core(comp: Comp) -> str:
@@ -539,7 +538,6 @@ def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
     持续伤害);希儿系对 → (希儿量子,)(专家桑博DOT 的贝洛伯格 2 是
     次档非主派,不入——主派判定防次档键把 DOT 线错挂进希儿系对)。
     """
-    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     bonds = _pair_bond_keys(pair)
     out: list[str] = []
     for c in COMP_LIBRARY:
