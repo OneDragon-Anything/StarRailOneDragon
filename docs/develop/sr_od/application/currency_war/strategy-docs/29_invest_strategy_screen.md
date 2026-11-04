@@ -1,7 +1,7 @@
 # 29 投资策略画面策略(invest strategy screen)
 
 > 画面 = 货币战争-投资策略(局内固定节点的策略卡三选一,可**逐卡**刷新);**能力面** = [../screens/README.md](../screens/README.md) §5.2/§5.5。本篇 = 该画面的**策略面**(宪法六「一画面一策略文件、一画面一策略文档」)。
-> 决策本体 = `strategies/impl/mandate_v1/invest_strategy.py::decide / decide_pick`(纯值出口);组件模块同目录 `strategy_economy.py`(现金分)/ `line_select.py`(方向分锚点线)/ `gift_value.py`(赠卡分)/ `pick_common.py`(转向轴与克制减分共用件);kernel 机制事实 = `cw_investments`(注册表/STRATEGY_BINDINGS/STRATEGY_GRANTS/is_blood_economy/is_economy_engine/resolve_strategy_canonical)与 `cw_invest_channels`(投资通道派生)/`cw_line_scales`(数量级标尺);动作包装与同帧去重 = `strategies/impl/flow.py::_decide_invest` kind='strategy' 分支;画面 op = `operations/cw_screen/cw_screen_invest_strategy.py`。判据权威定义引用不重复,数值单一源在代码(本篇只写常量名)。
+> 决策本体 = `strategies/impl/mandate_v1/invest_strategy.py::decide / decide_pick`(纯值出口);组件模块同目录 `strategy_economy.py`(现金分)/ `line_select.py`(方向分引用点线)/ `gift_value.py`(赠卡分)/ `pick_common.py`(转向轴与克制减分共用件);kernel 机制事实 = `cw_investments`(注册表/STRATEGY_BINDINGS/STRATEGY_GRANTS/is_blood_economy/is_economy_engine/resolve_strategy_canonical)与 `cw_invest_channels`(投资通道派生)/`cw_line_scales`(数量级标尺);动作包装与同帧去重 = `strategies/impl/flow.py::_decide_invest` kind='strategy' 分支;画面 op = `operations/cw_screen/cw_screen_invest_strategy.py`。判据权威定义引用不重复,数值单一源在代码(本篇只写常量名)。
 > 术语(首现定义):**单一源** = 该信息的唯一权威出处;**帧** = 一次截取游戏画面并做一次决策的时点;**对账** = 预期记账状态与实际读数的比对核验;**fail-closed** = 读不到数据时默认走保守分支;**视界** = 决策考虑的未来时间跨度(此处 = 剩余节点数);**终局阵容已锁定**(`locked_comp`)= 最终阵容已确定、此后围绕它买牌的状态;**血本位** = 扣血换收益的卡族(如奋斗协议/不等价交换);**数字来源标注(四种)**:【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值。
 
 ## 1. 标尺(统一加法)
@@ -34,9 +34,9 @@
 
 **统一阵容评分迭代(2026-11-03)复活为通道派生分量**(旧「绑定关系命中候选阵容集取 LINE_STRENGTH_SCORE 档分」链已随 strength 字段整链下线,考古走 git 历史):
 
-- 方向分 = 卡 × **选卡锚点线**的线分引擎加分:锚 = `line_select.anchor_line_of`(锁定帧〔非降格〕= 锁定线;未锁帧 = 证据门版候选首名,**P1/P2 同一公式**——旧查表〔augment_affinity,已退役〕同样不依赖锁定帧,行为变更仅在锚点抖动面与锚缺失面,入 sim);加分 = `cw_invest_channels.strategy_line_bonus`(实证覆盖升档/定义卡/⑤引擎匹配/③星徽效果原文;查询入口先归一)。
-- **defining 布尔退役**:顶级保护(「不刷掉」)= 方向分 ≥ `invest_strategy.DEFINING_BONUS_MIN`(强档阈值,一处常数 = 定义卡档 +500;实证升档 +750 同过)——不再查亲和表,锚缺失帧方向分 0 → 不保护(保守缺省)。
-- 降格帧锚点回候选首名(锁线阵营不再辖选卡方向);空候选帧锚缺失 → 方向分/克制减分恒 0。
+- 方向分 = 卡 × **选卡引用点线**的线分引擎加分:引用 = `line_select.anchor_line_of`(锁定帧〔非降格〕= 锁定线;未锁帧 = 证据门版候选首名,**P1/P2 同一公式**——旧查表〔augment_affinity,已退役〕同样不依赖锁定帧,行为变更仅在引用点抖动面与引用缺失面,入 sim);加分 = `cw_invest_channels.strategy_line_bonus`(实证覆盖升档/定义卡/⑤引擎匹配/③星徽效果原文;查询入口先归一)。
+- **defining 布尔退役**:顶级保护(「不刷掉」)= 方向分 ≥ `invest_strategy.DEFINING_BONUS_MIN`(强档阈值,一处常数 = 定义卡档 +500;实证升档 +750 同过)——不再查亲和表,引用缺失帧方向分 0 → 不保护(保守缺省)。
+- 降格帧引用点回候选首名(锁线阵营不再辖选卡方向);空候选帧引用缺失 → 方向分/克制减分恒 0。
 
 ### 2.3 赠卡分
 
@@ -56,7 +56,7 @@
 - **落地序** = 阵容冲突护栏 → 禁选排除 → 血本位三态序(血本位 = 扣血换收益的卡族,如奋斗协议/不等价交换;三态见下)→ 组件总分 argmax。旧「自拆台排除」与「定义型分区」随布尔排除位退役(统一阵容评分迭代):克制改选卡减分分量(本节下方)、定义型支配由方向分 +500 数值实现。
 - **阵容冲突护栏**(指向集单一源 = `kernel/cw_investments.env_faction_scope`/`strategy_faction_scope`):候选卡阵容指向集与基准空交 → 出域排除。基准 = 锁定线 `Comp.factions`(锁定帧,历史误持不入基;降格帧锁线不入基回持有基)∨ 已持有投资(环境+策略)指向并集(未锁定帧);基准空(无指向持有 ∧ 未锁定)→ 不辖,选卡与无护栏逐位一致。出域标记在评分帧逐卡承载,排除在结构分区第一步域收缩;全部候选出域 → 回退全体候选 argmax(tag `off-direction fallback`)。刷新侧出域卡与被禁同款处置(见 §4)。依据:策略槽只服务本局阵容方向——手里已有圣杯环境时,服务仙舟/银河学者的组件卡(琼玉专家:青雀/黑塔纪元类)对本局无用且挤占策略槽。
 - **禁选**:`strategy_forbid` 子串命中 → 排除出候选;禁选致候选域全空 → 全体候选(含被禁)按组件总分 argmax 最不负分者(用户「有替代永不选」在无替代帧无对象),原因编码以 `all-excluded-fallback` 开头(判读面唯一标识)。
-- **克制减分**(counters_dot 硬排除迁移,共用判据单一源 = [13_pick_family.md](13_pick_family.md) 共用判据节,代码 = `pick_common`):克制锚点线主派的候选给选卡分 −`cw_line_scales.COUNTER_PICK_PENALTY`(克制档,纯加权非排除);主派→受克属性映射批 1 为直接同名对(持续伤害→DoT/减益→减益/燃血→燃血),触发时序差异申报 = 现行板面 DoT/减益计数 ≥2(成型后)→ 新锚点线主派即触发(P1 更早更广),行为变更入 sim。
+- **克制减分**(counters_dot 硬排除迁移,共用判据单一源 = [13_pick_family.md](13_pick_family.md) 共用判据节,代码 = `pick_common`):克制引用点线主派的候选给选卡分 −`cw_line_scales.COUNTER_PICK_PENALTY`(克制档,纯加权非排除);主派→受克属性映射批 1 为直接同名对(持续伤害→DoT/减益→减益/燃血→燃血),触发时序差异申报 = 现行板面 DoT/减益计数 ≥2(成型后)→ 新引用点线主派即触发(P1 更早更广),行为变更入 sim。
 - **血本位三态序**(判据 = `is_blood_economy`,kernel 注册表派生零名单):有非血卡可选 → 非血卡内部竞争;只剩非禁血卡可选 → 血卡之间竞争;全部被禁 → 全体候选一起竞争。
 - **候选解析**统一走 `resolve_strategy_canonical`(归一 + LCS 兜底;LCS 兜底命中即告警 = 观测点);组件查表全走 canonical。**env 名防御**:入口对候选做 `get_env(o)` 命中断言(防注册表交叉演化下 env 名 LCS 误中策略名),违例候选跳过解析、0 分垫底。
 - **空候选帧** = 观察层失约:决策退化 `idx=0` 并标注原因,不抛错不盲发(op 层空候选已 round_fail 拦截,此态仅防御可达)。
@@ -65,7 +65,7 @@
 ## 4. 刷新判据与输出契约(P81 承接)
 
 - 判据权威定义、谓词形状与优势论证 = `../proofs/p81-invest-refresh-dominance.md`(换基增补节)与 `../proofs/math_proofs.md` P81 行;代码承载 = `invest_strategy._refresh_slots`。本篇不复制逐谓词,只记结构:帧级门(候选恰 3 ∧ 全精确分类 ∧ 帧内无帧级顶级卡 ∧ 终局阵容已锁定帧 max_N≠1)与槽级顶级两谓词分立;帧级门失败 → 整帧不刷;帧级门过 → 槽级动作集(非槽级顶级可刷 ∨ 被禁槽恒入 − F2 唯一首层守卫)非空 → 建议刷。
-- **帧级顶级类** = 派生顶级(方向分 ≥ `DEFINING_BONUS_MIN`,§2.2)∨ 持续通道引擎(`is_economy_engine`);**E-豁免**:被禁卡与阵容冲突出域卡不入帧级顶级判定、不计 max_N、恒入刷新动作集(出域卡占槽应刷掉换本局阵容方向卡机会;F2 唯一首层守卫的 L1 集合同样剔除出域槽)。**槽级顶级类** = 帧级顶级类 ∨ 对齐保护(终局阵容已锁定帧 = 非血 ∧ N≥2 元素命中;未锁定终局阵容帧 = 恒 False——锚缺失帧方向分 0,保守向不保护)。
+- **帧级顶级类** = 派生顶级(方向分 ≥ `DEFINING_BONUS_MIN`,§2.2)∨ 持续通道引擎(`is_economy_engine`);**E-豁免**:被禁卡与阵容冲突出域卡不入帧级顶级判定、不计 max_N、恒入刷新动作集(出域卡占槽应刷掉换本局阵容方向卡机会;F2 唯一首层守卫的 L1 集合同样剔除出域槽)。**槽级顶级类** = 帧级顶级类 ∨ 对齐保护(终局阵容已锁定帧 = 非血 ∧ N≥2 元素命中;未锁定终局阵容帧 = 恒 False——引用缺失帧方向分 0,保守向不保护)。
 - 刷新分类**精确命中-only**(LCS 不入分类,按对抗审查条目 G8 取保守兜底;评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严);G8 消费序 = 先判帧级门、后取分类。
 - **输出契约**:`decide` 返回纯值 `InvestStrategyDecision(idx, reason, total, components)` ∨ `StrategyRefreshSuggestion(reason, slots)`,不含动作类型值(flow 包装 `CwActionPickInvestStrategyParam`/`CwActionRefreshInvestCardsParam`;与 env 侧 `RefreshSuggestion` 不共享不继承——两屏刷新语义不同构,同名歧义以屏别前缀消解)。`decide_pick` = 同一评分基线的纯选卡口,永不建议刷(flow 同帧去重 memo 命中后的落选卡入口)。
 - handler 三闸(obs 逐槽余量现读/状态容器(GameState) `strategy_refresh_left` 对照/F2 守卫)与同帧去重 memo(建议帧首调发建议 → 三闸全败重调走 `decide_pick` 落选卡并清键 → 再调恢复首调语义)结构归 flow/op 层,判据侧零感知。sim 复用预留 `decide`/`decide_pick`(sim 后端全链呈现本屏,判据改动属可 A/B 面)。
@@ -83,7 +83,7 @@
 
 ## 6. 边界与动机
 
-- **阵容冲突护栏的基准取「已持有投资指向并集」而非「方向线」**(锁定后切锁线阵营):方向线判定要处理信号时序(锁定写入滞后于信号到手)、P2 兜底锁定、P1 配方帧三类形态,每类都有失明/抖动补丁;持有指向模型基准只看现值,三类形态不存在。同一持有面存在三种消费口径,分野(统一阵容评分迭代后):**投资通道派生**(`kernel/cw_invest_channels`,回答「这张卡给哪条线加几分」——线分与选卡方向分共用)、**指向集**(本护栏,回答「这张卡与已有阵容方向冲不冲突」)、**候选锚点线**(`line_select.anchor_line_of`,回答「当前朝哪条线选卡」——锁定帧/候选首名)——三问三答不禁双口径。
+- **阵容冲突护栏的基准取「已持有投资指向并集」而非「方向线」**(锁定后切锁线阵营):方向线判定要处理信号时序(锁定写入滞后于信号到手)、P2 兜底锁定、P1 配方帧三类形态,每类都有失明/抖动补丁;持有指向模型基准只看现值,三类形态不存在。同一持有面存在三种消费口径,分野(统一阵容评分迭代后):**投资通道派生**(`kernel/cw_invest_channels`,回答「这张卡给哪条线加几分」——线分与选卡方向分共用)、**指向集**(本护栏,回答「这张卡与已有阵容方向冲不冲突」)、**候选引用点线**(`line_select.anchor_line_of`,回答「当前朝哪条线选卡」——锁定帧/候选首名)——三问三答不禁双口径。
 - **出域 = 域收缩非负分**:负分须拍「多大负分压得过各类正分」的自由参数,违背本篇零拍值纪律;排除语义 = 裁定「不可选」非「不优」,排除后剩余域 argmax 照常。
 - **指向集为宽口径**:角色分支 = 注册表 factions 全集 ∪ 成员分支(线 core∪shared),与方向分触线集的窄口径(角色分支只认线 core,防方向分虚高)分工——护栏问「为谁服务」(全像),方向分问「对锁定线值几分」(主轴)。
 - **宪法五**(框架层只留游戏原始真值):注册表、绑定表、发放登记、血本位判别、引擎判别、canonical 解析器 = 游戏原始真值与机制事实判定,留 kernel;评序、折算、立场全驻策略层。

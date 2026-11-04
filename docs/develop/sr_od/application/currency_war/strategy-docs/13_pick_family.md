@@ -2,7 +2,7 @@
 
 > 本篇为新写薄篇：pick 族 = CwStrategy 的 12 个选项决策接口(全部在 ABC 契约面;2026-09 pick-op-unify 批随执行器并入补入 fortune/expert_invite 两入口,原 `decide_invest` 已双相拆分为 `decide_invest_env`/`decide_invest_strategy` 零参终态口;原第三口 `decide_equip_pick` 随选择装备屏误判停用删除,2026-09-22)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py` 实现反向;判据单源分轴:投资策略 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`(权威版本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)),投资环境 = 策略层 `strategies/impl/mandate_v1/invest_env.py`(权威版本 = [28_invest_env_screen.md](28_invest_env_screen.md)),遭遇 = 策略层 `strategies/impl/mandate_v1/encounter_pick.py`(权威版本 = [31_encounter_screen.md](31_encounter_screen.md)),其余 pick 族 = `kernel/cw_events`/`kernel/cw_comps`;跨画面共用判据唯一权威模块 = 本篇 §4,代码 = `strategies/impl/mandate_v1/pick_common.py`）。事件面目录（E1-E18：投资事件面 18 类决策点，编号沿用 08_events.md 的注册表）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（两阶段画面分发）；本篇只管"选项怎么选"。
-> 每项标注**判据状态**：有规格（判据可执行）/ 待立项推导（判据立项锚见 08）。
+> 每项标注**判据状态**：有规格（判据可执行）/ 待立项推导（判据立项引用见 08）。
 > 术语（首现定义）：**单一源** = 某语义在全仓只有一个权威定义处，其余一律引用不复制；**权威版本** = 该设计语义的权威文档；**判据权威定义** = 判据的正式定义所在（引用格式：「判据权威定义见 X」）；**fail-closed** = 读数或判据存疑时，朝「犯错代价小」的方向取值或拒绝动作。
 
 ## 0. 共同形态
@@ -69,6 +69,6 @@
 pick 族内多画面共用的用户转向轴与选卡克制减分判据归本节唯一权威模块（宪法六「共用判据显式抽离」——文档面归判据权威定义所在篇、代码面归共用模块；画面篇只留指针，禁复制语义）：
 
 - **用户转向轴**：`STEERING_PRIORITY_BONUS`(priority 子串命中软加分,立场系数——「用户点名是偏好不是支配」)。消费画面 = 投资环境(§1 `decide_invest_env` 行,指针 = 28 篇 §3)与投资策略(§1 `decide_invest_strategy` 行,指针 = 29 篇 §2.4)。
-- **选卡克制减分**(2026-11-03 统一阵容评分迭代:旧「自拆台排除」随布尔排除位退役,git 历史可溯):`counter_pick_penalty`(克制锚点线主派的候选 −`cw_line_scales.COUNTER_PICK_PENALTY`,纯加权非排除;「是否克制」是 kernel 机制表事实判定,「减分」是策略)+ `punished_mechs_of`/`LINE_FACTION_TO_MECH`(锚点线主派 → 受克机制属性映射,批 1 直接同名对)。锚 = `line_select.anchor_line_of`(锁定帧 = 锁定线;未锁帧 = 候选首名,P1/P2 同式)。消费画面同上(28 篇 §3 / 29 篇 §3);触发时序差异申报见 29 篇 §3。
+- **选卡克制减分**(2026-11-03 统一阵容评分迭代:旧「自拆台排除」随布尔排除位退役,git 历史可溯):`counter_pick_penalty`(克制引用点线主派的候选 −`cw_line_scales.COUNTER_PICK_PENALTY`,纯加权非排除;「是否克制」是 kernel 机制表事实判定,「减分」是策略)+ `punished_mechs_of`/`LINE_FACTION_TO_MECH`(引用点线主派 → 受克机制属性映射,批 1 直接同名对)。引用 = `line_select.anchor_line_of`(锁定帧 = 锁定线;未锁帧 = 候选首名,P1/P2 同式)。消费画面同上(28 篇 §3 / 29 篇 §3);触发时序差异申报见 29 篇 §3。
 
 画面文件 → 共用模块单向依赖,禁画面文件互相 import;新增共用判据先落本节与 `pick_common.py`,再由画面篇引用。
