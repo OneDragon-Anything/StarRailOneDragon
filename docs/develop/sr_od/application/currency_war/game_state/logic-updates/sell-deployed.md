@@ -4,11 +4,11 @@
 
 ## 1. 动作是什么
 
-把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:动作类型 + 容器(GameState,游戏状态对象,下同)逻辑态直写 + sim 消费在用,商店期默认发出的动作不含本动作(生产策略面归备战域)。执行载体 = `operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(注册表行);换人卖出(m1p 分支)= mandate 动作发出点逐件产 `CwActionSellDeployedParam` 原子,同一执行载体,卖谁判据单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionSellDeployedParam`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后)。
+把已上阵(前排/后排)的某个单位拖到出售区卖出,回收退款并腾出上阵位。v2 动作族成员:动作类型 + 状态容器(GameState)(GameState,游戏状态对象,下同)逻辑态直写 + sim 消费在用,商店期默认发出的动作不含本动作(生产策略面归备战域)。执行载体 = `operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(注册表行);换人卖出(m1p 分支)= mandate 动作发出点逐件产 `CwActionSellDeployedParam` 原子,同一执行载体,卖谁判据单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionSellDeployedParam`(`deployed_idx` = deployed 槽位表下标 0-9,0-3 前/4-9 后)。
 
 ## 2. 逻辑态域集
 
-**容器写入入口(商店/备战两个数据域的写入统一为一份代码)** = 上报函数 `kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(原商店侧/备战侧的历史两份随动作 op 重组合并为一):
+**字段写操作入入口(商店/备战两个数据域的写入统一为一份代码)** = 上报函数 `kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(原商店侧/备战侧的历史两份随动作 op 重组合并为一):
 
 | 域 | 写 / 跳写(跳写 = 留空不写、等观察覆盖) | 说明 |
 |---|---|---|
@@ -46,10 +46,10 @@
 
 卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`test_shop_projection_logic`)钉住,v2 族金样直接校验 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 停用)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
-生产策略面归**备战期**(部署期换人/腾位卖,策略判据 = strategy-docs/24 号篇):商店域 v2 动作族能力面保留(上报函数 `report_action_sell_deployed_param` 在用),生产策略面归备战期(注册表单行已登记,备战域 op);商店期默认发出的动作 = 买/刷/关(判例 = [screens/README](../../screens/README.md) §5)。
+生产策略面归**备战期**(部署期换人/腾位卖,策略判据 = strategy-docs/24 号篇):商店域 v2 动作族能力面保留(上报函数 `report_action_sell_deployed_param` 在用),生产策略面归备战期(注册表单行已登记,备战域 op);商店期默认发出的动作 = 买/刷/关(先例 = [screens/README](../../screens/README.md) §5)。
 
 ## 9. 依据
 
-`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param` docstring(v2 族语义正本);[fields.md](../fields.md) §3.2.3(上阵角色 deployed)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。
+`research/economy.md` §3;`research/equipment_mechanics.md` §1 与「装备转移机制」节(卖角色 = 装备回区主力通道);`kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param` docstring(v2 族语义权威版本);[fields.md](../fields.md) §3.2.3(上阵角色 deployed)/§4.2 SellBench 行(「卖场上角色 → 前台/后台 −该牌」)。

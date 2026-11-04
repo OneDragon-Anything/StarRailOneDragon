@@ -10,22 +10,22 @@
 
 | 域 | 写 / 跳写(跳写 = 留空不写、等观察覆盖) | 说明 |
 |---|---|---|
-| gold | 免费帧零扣;非免费帧写 | 上报函数直读容器刷价扣金:`gold −= (shop_refresh_cost.value or REFRESH_COST_BASE)`(免费帧 0 不写;费用单一源 = 容器,live 开态漏斗 OCR / sim 开店呈现写同一字段,与 op 花销账同式同源;2026-10-16 用户裁决,推翻 2026-09-21「金仍不写」旧裁定;`executed.refresh_paid` 参数通道随费用单一源退役,字段已删) |
+| gold | 免费帧零扣;非免费帧写 | 上报函数直读状态容器(GameState)刷价扣金:`gold −= (shop_refresh_cost.value or REFRESH_COST_BASE)`(免费帧 0 不写;费用单一源 = 状态容器,live 开态漏斗 OCR / sim 开店呈现写同一字段,与 op 花销账同式同源;2026-10-16 用户裁决,推翻 2026-09-21「金仍不写」旧裁定;`executed.refresh_paid` 参数通道随费用单一源退役,字段已删) |
 | shop | **随机态写入(`write_logic_rand`)** | 刷新上报在计数后经 kernel 发牌采样器 `kernel/cw_shop_deal.py::sample_shop_deal`(与 sim `deal_shop` 同一发牌代码)采 5 槽 payload,经 `write_logic_rand` 随机态专用通道写——实机上采样是猜测,观察覆盖差异 = 预期内(落 `logic_rand_outcome` 记录行,不触发失配告警),真值 = 下一入口观察(以实际观察为准);level 缺读该分支跳写(概率表按级索引,宁缺勿造) |
 | free_refresh_left | 免费帧写(逻辑态) | 免费判定 = Field 值 > 0(入口观察确认的剩余次数;None = 未观察 → 保守按付费,不扣 Field——次数是记账面非决策闸);免费帧 `write_logic` 扣减(max(0, left−1),下限 0) |
 | refresh_total / refresh_paid(效果账本) | 写(计数分支) | 写入方 = 刷新上报函数经 `gs.effects.record_refresh` 单一入口(`kernel/cw_effect_inventory.py`);refresh_total 恒 +1,免费帧不动 refresh_paid(付费累计,长线利好阈值型,免费帧混入即污染) |
-| shop_refresh_cost | **跳写** | 本动作对本域零写(费用读现值)。写入方 = live 现场 OCR(观察通道)+ sim 开店呈现写回(kernel 渲染世界真值经观察通道写,fields.md §3.3.4);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
+| shop_refresh_cost | **跳写** | 本动作对本域零写(费用读现值)。写入方 = live 现场 OCR(观察通道)+ sim 开店呈现写回(kernel 渲染状态副本里的值经观察通道写,fields.md §3.3.4);免费帧「免费」读数 None → 不落 0(付费域纯净性) |
 
 ## 3. 确定面转移规则(逐条)
 
 1. **免费次数扣减**(Field 扣减):free 判定输入 = 显式 `free` 优先(喂入口保留,在用调用方恒 None),None 回退 Field 值判定;免费帧经 `write_logic(gs.free_refresh_left, max(0, left−1))` 扣减(produced_by/evidence 保留证据)。免费刷新的事实可见性 = Field 既有的失配告警(观察确认与动作扣减不符即停机)——零手写对账记录表;
 2. **计数**(`record_refresh` 单一入口,未落地不计数):refresh_total 恒 +1;免费帧 refresh_paid 不写;同帧推进按策略触发计数(`bump_key(CounterKey.REFRESH)`,采购专员族门槛面)——「一次刷新,账本一处入账」;
 3. **随机态写入**:采样器按 `REFRESH_PROB[level]` 费用档加权掷点 + 档内可进店名集均匀抽(`data/cw_shop_odds.py` 注册表;剩余牌库派生 = `kernel/cw_pool.py::drawable_names`),逐槽独立、允许重复同名;sim 与实机走同一发牌代码(两执行面同源,详见 [../../flow/projection_contract.md](../../flow/projection_contract.md) §3.6);
-4. **金币扣减**(免费感知分支):`gold −= 容器刷价`(费用单一源 = `gs.shop_refresh_cost.value or REFRESH_COST_BASE`,免费帧清零收归本函数集中执行,与 op 花销账同式同读恒等;live/sim 同段代码双端生效,2026-10-16 用户裁决)。
+4. **金币扣减**(免费感知分支):`gold −= 状态容器刷价`(费用单一源 = `gs.shop_refresh_cost.value or REFRESH_COST_BASE`,免费帧清零收归本函数集中执行,与 op 花销账同式同读恒等;live/sim 同段代码实机(live)和模拟器(sim)两边生效,2026-10-16 用户裁决)。
 
 ## 4. 随机面
 
-**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实证 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,容器 Field 同格登记,见 [../fields.md](../fields.md) 商店免费刷新节)。
+**刷后的新牌面 = 整店 5 槽全换**(非逐槽补空,实机实证 `research/economy.md` §2.1)→ 上报函数以随机态采样预写期望态(`write_logic_rand` 通道;观察覆盖 = 预期内),真值归下一入口观察。免费刷新的概率事件(免费次数获得)= 两效果桥发放(`apply_effect_burst_grant`/`grant_effect_node_refresh_balance`,状态容器 Field 同格登记,见 [../fields.md](../fields.md) 商店免费刷新节)。
 
 **UI 陷阱已登记**:面板右下「刷新金币数」区域实际印的是利息徽标(min(gold//10,5)),不是刷价(三路来源交叉核对后已定案,`REFRESH_COST_BASE` 注)。
 
@@ -39,11 +39,11 @@
 
 ## 7. 语义验证(M1 测试)
 
-刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影测试 M1(`test_shop_projection_logic`:付费刷新扣容器价/免费帧金域零扣/免费次数 Field 扣减,均在校验内)。原差异申报「金币分支仅 sim 喂 `executed.refresh_paid`」已随费用单一源 = 容器直读(2026-10-16 用户裁决)消除:live/sim 同段代码双端同写,参数通道退役(字段已删)。
+刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影测试 M1(`test_shop_projection_logic`:付费刷新扣状态容器价/免费帧金域零扣/免费次数 Field 扣减,均在校验内)。原差异申报「金币分支仅 sim 喂 `executed.refresh_paid`」已随费用单一源 = 状态容器直读(2026-10-16 用户裁决)消除:live/sim 同段代码两边同写,参数通道退役(字段已删)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
-商店期默认动作面 = 买牌/刷新/关店(判例 = [screens/README](../../screens/README.md) §5);刷新在列,发出判据 = strategy-docs/23_shop_screen.md(利息线门槛等)。备战域无刷新动作(刷新属商店画面)。
+商店期默认动作面 = 买牌/刷新/关店(先例 = [screens/README](../../screens/README.md) §5);刷新在列,发出判据 = strategy-docs/23_shop_screen.md(利息线门槛等)。备战域无刷新动作(刷新属商店画面)。
 
 ## 9. 依据
 

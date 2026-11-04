@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)`equips` 域**有写**:owned −1(已登记才减),上报函数单点。tracked 写账随动作同步(op 自上报 `report_action_wear_equip_param` 内聚):
+状态容器(GameState)(GameState,游戏状态对象,下同)`equips` 域**有写**:owned −1(已登记才减),上报函数单点。tracked 写账随动作同步(op 自上报 `report_action_wear_equip_param` 内聚):
 
 | 账 | 负责写入的代码 | 内容 |
 |---|---|---|
@@ -36,16 +36,16 @@
 
 ## 6. kernel 符号锚
 
-`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 写入分支)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入容器读口);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py` 机械原语 `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`(原执行器薄委托 `PrepActionExecutor._wear_equip` 已随死代码清偿移除);`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
+`kernel/cw_vocab.py::CwActionWearEquipParam`;`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param`(tracked 写入分支)/ 内联换算;`kernel/cw_equip_wear_plan.py::_build_equip_wear_plan` / `EquipWearStep`(四路输入状态容器读口);`kernel/cw_comps.py::EQUIP_CAPACITY`;`prep_actions.py` 机械原语 `_owned_grid_locate` / `_equip_slot_drag_point` / `PREP_DRAG_SETTLE_WAIT_S`(原执行器薄委托 `PrepActionExecutor._wear_equip` 已随死代码清偿移除);`operations/cw_op/cw_wear_equip_action.py::CwActionWearEquipOp`;`obs/cw_back_layout.py::select_back_layout`。
 
 ## 7. 语义验证
 
-WearEquip = 容器写语义动作(非零写族成员):容器 `equips` 域 owned −1(已登记才减)+ 目标角色 equips +1,两处写入内聚于上报函数 `report_action_wear_equip_param` 单点(行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试容器写集断言);落地真值(穿没穿)归观察边界 reconcile。
+WearEquip = 字段写操作语义动作(非零写族成员):状态容器 `equips` 域 owned −1(已登记才减)+ 目标角色 equips +1,两处写入内聚于上报函数 `report_action_wear_equip_param` 单点(行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试字段写操作集断言);落地真值(穿没穿)归观察边界 reconcile。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 备战期(穿戴 = 备战期发出的动作,动作发出点 = mandate M7 装备计划;商店期无穿戴动作)。
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md)(视觉域动作容器零写契约);`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param` docstring(发出即记账形态与 session 跳过申报);`kernel/cw_equip_wear_plan.py` 模块头(计划构造迁居/构造点唯一);[fields.md](../fields.md) §4.1(穿着即合成豁免)/ §4.2 RunEquip 行(基础行为面);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。
+[../action-logic-state.md](../action-logic-state.md)(视觉域动作状态容器零写契约);`kernel/cw_action_report/wear_equip.py::report_action_wear_equip_param` docstring(发出即记账形态与 session 跳过申报);`kernel/cw_equip_wear_plan.py` 模块头(计划构造迁居/构造点唯一);[fields.md](../fields.md) §4.1(穿着即合成豁免)/ §4.2 RunEquip 行(基础行为面);`research/equipment_mechanics.md` §1(穿着即合成/装备上限 3 件)。

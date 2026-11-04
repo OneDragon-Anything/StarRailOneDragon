@@ -8,18 +8,18 @@
 
 ## 2. 逻辑态域集
 
-**容器(GameState,游戏状态对象,下同)全域零写(显式声明「逻辑态 = 空」)**:进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管(`apply_settlement_cover` 结算覆盖写入方;败轮金按轮首补发口径)。上报函数 `report_action_start_battle_param` 的申报:进战斗,hp/gold/streak 由结算屏观察覆盖接管,零推进。
+**状态容器(GameState)(GameState,游戏状态对象,下同)全域零写(显式声明「逻辑态 = 空」)**:进战斗后 hp/gold/streak 全部由结算屏真值覆盖接管(`apply_settlement_cover` 结算覆盖写入方;败轮金按轮首补发口径)。上报函数 `report_action_start_battle_param` 的申报:进战斗,hp/gold/streak 由结算屏观察覆盖接管,零推进。
 
-**后果声明面**(免战牌建模批):applied 出口构造 `WorldDecl`——常规出口 = (结算屏, `battle_resolve`);免战跳过出口 = (跳过后下一节点窗稳态屏, `battle_skip`,推导 = 同文件 `_skip_next_screen`:生效序位 → `sequence_next` 后继 → 位面首 = 位面过渡/弹窗型节点 = 节点弹窗档/battle·reward = 开商店档/1-1 = 备战档,后继 None = 局终事件式空串)。声明分支按 op 点击事实(`skip_substate`),不随递减簿记成败回改(递减缺席 = 世界照跳,回改会让 sim 照打战斗与实机分叉);sim 消费 = `advance` 的 `battle_skip` 分支 → `_skip_battle`。
+**后果声明面**(免战牌建模批):applied 出口构造 `WorldDecl`——常规出口 = (结算屏, `battle_resolve`);免战跳过出口 = (跳过后下一节点窗稳态屏, `battle_skip`,推导 = 同文件 `_skip_next_screen`:生效序位 → `sequence_next` 后继 → 位面首 = 位面过渡/弹窗型节点 = 节点弹窗档/battle·reward = 开商店档/1-1 = 备战档,后继 None = 局终事件式空串)。声明分支按 op 点击事实(`skip_substate`),不随递减簿记成败回改(递减缺席 = 状态副本(GameState)照跳,回改会让 sim 照打战斗与实机分叉);sim 消费 = `advance` 的 `battle_skip` 分支 → `_skip_battle`。
 
 效果账本域(非 GameState 字段):**免战牌子态**的跳过在上报动作时次数递减(§3 第 1 条)。
 
 ## 3. 确定面转移规则(逐条)
 
-1. **上报动作**(非容器域):op 完成步(点击出战/跳过 + 弹窗确认后)直调自己的上报函数 `report_action_start_battle_param`;免战牌子态(`skip_substate=True`)在上报函数内执行效果账本 consume_use(上报时递减,未登记零动作)+ 构造 `battle_skip` 声明(`next_screen` = `_skip_next_screen` 推导,见 §2);常规出口构造 (结算屏, battle_resolve) 声明。战斗窗口置位归外循环(出战点击落地由游戏承载,op 零判效)。
+1. **上报动作**(非状态容器域):op 完成步(点击出战/跳过 + 弹窗确认后)直调自己的上报函数 `report_action_start_battle_param`;免战牌子态(`skip_substate=True`)在上报函数内执行效果账本 consume_use(上报时递减,未登记零动作)+ 构造 `battle_skip` 声明(`next_screen` = `_skip_next_screen` 推导,见 §2);常规出口构造 (结算屏, battle_resolve) 声明。战斗窗口置位归外循环(出战点击落地由游戏承载,op 零判效)。
 2. **常规发出**(执行器):找钮(「按钮-出战」;免战子态查「按钮-跳过」;备战 + 开商店两屏正交态查找——免战与商店开可叠加,叠加帧识别为开商店屏)→ mouse_move + click(基本单击)→ 固定等待 1.0s(`POST_CLICK_WAIT_S`,弹窗渲染窗,不轮询)→ 单帧截图弹窗收尾(「货币战争-未达上限警告」= 勾「勾选-本局不再提示」+ 点「按钮-确认」,对齐 CwScreenDeployNotFull;「货币战争-提示-前台无角色」= 点「按钮-确认」;都没有 = 完成——出战点击后的真弹窗全清单已排查仅此两类)→ 上报动作事实结束本次访问。旧的发出后验证机制(6×0.5s 转移轮询/备战标识消失验证/POST_LAUNCH_BLOCKERS 拦截弹窗守卫/重发长按下/失焦守卫/launch_dead 连败停机)已整删:op 不判效,结束后画面状态由外循环下一帧重判;
 3. **零重试零判效**:点击未落地/被拒不重发不计数——返回主循环重新判定,下一周期策略自然重提案;点击丢失的停顿监测归哨兵(框架不裁策略卡死)。
-4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过点击并完成上报 → 效果账本次数递减(上报时递减,§3 第 1 条)(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减挂点与登记挂点解耦(登记面缺位的局 consume_use 返 None 零动作,不会使动作回执报错);「用尽后按钮恢复出战」待实机验(观察工作清单)。
+4. **免战牌子态**(策略卡「免战牌」激活):出战按钮变「跳过(N/N)」= 本节点直跳战斗(免 2 次战);跳过点击并完成上报 → 效果账本次数递减(上报时递减,§3 第 1 条)(`kernel/cw_effect_inventory.py::ActiveEffectInventory.consume_use`:remaining_uses −1,归零移除;余量种子 = `EffectSpec.duration_uses`)。递减插入位置与登记插入位置解耦(登记面缺位的局 consume_use 返 None 零动作,不会使动作回执报错);「用尽后按钮恢复出战」待实机验(观察工作清单)。
 
 ## 4. 随机面
 
@@ -31,7 +31,7 @@
 - area 缺失 = 确定性失败禁兜底坐标(detail =「area 缺失:<area 名>」,按序列未完成上报「未执行」结束本次访问);
 - 出战被拒弹窗(未达上限警告/前台无角色)= op 内点确认后完成并结束本次访问;重部署归策略部署义务(下一备战帧自然提案),框架零恢复链。
 - 停机刹车:运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
-- 容器零写语义下无 applied=False 拒绝形态(上报函数恒零容器写,`applied=True` 受理)。
+- 状态容器零写语义下无 applied=False 拒绝形态(上报函数恒零字段写操作,`applied=True` 受理)。
 
 ## 6. kernel 符号锚
 
@@ -39,11 +39,11 @@
 
 ## 7. 语义验证
 
-StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切画面不改资源),节点推进判定本体 = 终结动作上报 + 观察确认(单一源 = [../node-derivation.md](../node-derivation.md)),不经本动作承载。「逻辑态 = 空」的容器声明:本动作不改写局内资源,真值由节点边界/结算覆盖承载。无 M1 直接校验对象;原 sim 整帧副本载体(simulate)已停用,考古归 git。
+StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切画面不改资源),节点推进判定本体 = 终结动作上报 + 观察确认(单一源 = [../node-derivation.md](../node-derivation.md)),不经本动作承载。「逻辑态 = 空」的状态容器声明:本动作不改写局内资源,真值由节点边界/结算覆盖承载。无 M1 直接校验对象;原 sim 整帧副本载体(simulate)已停用,考古归 git。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
-**备战期出口(唯一完成态)**(判例 = [screens/README](../../screens/README.md) §4 终结总表):出战落地 = 备战访问终结,返回主循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发出准入判据(armed 判定,mandate_v1 前置动作发出点消费)= kernel `cw_launch_admission` 判据族(`readiness_launch_decision`),不属本篇。
+**备战期出口(唯一完成态)**(先例 = [screens/README](../../screens/README.md) §4 终结总表):出战落地 = 备战访问终结,返回主循环战斗分支。免战子态下「跳过」同语义点它(推进节点)。发出准入判据(armed 判定,mandate_v1 前置动作发出点消费)= kernel `cw_launch_admission` 判据族(`readiness_launch_decision`),不属本篇。
 
 ## 9. 依据
 
@@ -51,4 +51,4 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切�
 
 ## 10. 同族:OpenShop(开店)
 
-转场族另一注册行,逻辑态同为**空**;逐动作逻辑态已拆专篇 = [open-shop.md](open-shop.md)(terminal 承载行;容器零写;流程层消费 = `cw_screen_prep._open_shop_phase`)。
+转场族另一注册行,逻辑态同为**空**;逐动作逻辑态已拆专篇 = [open-shop.md](open-shop.md)(terminal 承载行;状态容器零写;流程层消费 = `cw_screen_prep._open_shop_phase`)。

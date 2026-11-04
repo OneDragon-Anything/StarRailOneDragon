@@ -4,11 +4,11 @@
 
 ## 总则(必读)
 
-1. **写入入口归属(硬规则)**:动作 op 只负责执行画面动作 + 机械执行后**直调自己的上报函数**(动作语义单一源 = `kernel/cw_action_report/` 上报函数族,每动作一文件一函数 `report_action_<snake>_param`;不对游戏状态做任何写入的动作集中在 `zero_writes.py`)。**逻辑态的更新写入由上报函数族独占**(函数内 `gs.write_logic`,kernel → 容器(GameState,游戏状态对象,下同)单向依赖);dict 确认族的到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。op 层/策略层禁自带逻辑态记账函数或并行登记路径,禁新增按类型聚合的转移函数(现无任何聚合分派点;上报函数调用方 = 动作 op 直调与商店序列驱动器直调)。
-2. **两态制(+逻辑随机态扩展)**:容器每字段只有两种值来源——观察态(`observe()` 写,来自画面识别)与逻辑态(动作后推算,`write_logic()` 写);同一帧两者冲突时**以实际观察为准**(本目录「帧」= 一帧截图,即某一时刻的画面快照)。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;随机效果按采样结果推算直写,无法采样的留给观察;观察覆盖差异属预期,策略器消费前必须重新观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 [../fields.md](../fields.md) §2.1/§2.5。席位主域的「未观察」态由锚定标志 `tracked_account_observed` 承载(未经观察确认,值不可消费;与「已观察下的空」类型可分)。**对账**(观察读数与推算值的比对,不一致以实际观察为准)唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行(../../screens/op-layer.md §1.3)。
+1. **写入入口归属(硬规则)**:动作 op 只负责执行画面动作 + 机械执行后**直调自己的上报函数**(动作语义单一源 = `kernel/cw_action_report/` 上报函数族,每动作一文件一函数 `report_action_<snake>_param`;不对游戏状态做任何写入的动作集中在 `zero_writes.py`)。**逻辑态的更新写入由上报函数族独占**(函数内 `gs.write_logic`,kernel → 状态容器(GameState)(GameState,游戏状态对象,下同)单向依赖);dict 确认族的到账 = `kernel/cw_exec_state.py::apply_confirm_effect`。op 层/策略层禁自带逻辑态记账函数或并行登记路径,禁新增按类型聚合的转移函数(现无任何聚合分派点;上报函数调用方 = 动作 op 直调与商店序列驱动器直调)。
+2. **两态制(+逻辑随机态扩展)**:状态容器每字段只有两种值来源——观察态(`observe()` 写,来自画面识别)与逻辑态(动作后推算,`write_logic()` 写);同一帧两者冲突时**以实际观察为准**(本目录「帧」= 一帧截图,即某一时刻的画面快照)。效果本身随机的推算口径走**逻辑随机态**(`write_logic_rand()` 写,来源 `logic_rand`;随机效果按采样结果推算直写,无法采样的留给观察;观察覆盖差异属预期,策略器消费前必须重新观察),见 [../action-logic-state.md](../action-logic-state.md) §1.2 与 [../fields.md](../fields.md) §2.1/§2.5。席位主域的「未观察」态由锚定标志 `tracked_account_observed` 承载(未经观察确认,值不可消费;与「已观察下的空」类型可分)。**对账**(观察读数与推算值的比对,不一致以实际观察为准)唯一发生点 = 画面 op 上报观察数据进 game state 的观察边界,由 game state 执行(../../screens/op-layer.md §1.3)。
 3. **确定面/随机面**:逻辑态只写确定面(结果可准确计算的部分);随机面两档落法——推算不出可靠值的域**跳写**(留空不写、等下一帧观察覆盖),有确定口径/期望口径的按逻辑随机态直写(`write_logic_rand`),见 [../action-logic-state.md](../action-logic-state.md) §1.2。
-4. **拒绝语义**:游戏拒买/拒上/期望失配 → 上报函数返回 `LogicOutcome(applied=False, reason)`,零容器写(不改动游戏状态)。
-5. **判例**:商店期默认策略动作面 = 买牌/刷新/关店;卖备战与买经验收缩至备战期(判例见 [screens/README](../../screens/README.md) §5 与 strategy-docs/23_shop_screen.md)。**席满/腾位形态(2026-09-15 用户裁定修正)**:不是「关店→备战卖→重开」一条自动链——关店时**返回主循环(重新识别画面)**,由备战 op 在自己的决策周期自行判断与卖出;商店期为何关店、备战要做什么、何时重开,由**策略实现自行记录状态**(框架侧提供跨段状态载体与路由保证:节点内关店/重开牌面持久;策略侧多画面联动的重设计归后续迭代)。
+4. **拒绝语义**:游戏拒买/拒上/期望失配 → 上报函数返回 `LogicOutcome(applied=False, reason)`,零字段写操作(不改动游戏状态)。
+5. **先例**:商店期默认策略动作面 = 买牌/刷新/关店;卖备战与买经验收缩至备战期(先例见 [screens/README](../../screens/README.md) §5 与 strategy-docs/23_shop_screen.md)。**席满/腾位形态(2026-09-15 用户裁定修正)**:不是「关店→备战卖→重开」一条自动链——关店时**返回主循环(重新识别画面)**,由备战 op 在自己的决策周期自行判断与卖出;商店期为何关店、备战要做什么、何时重开,由**策略实现自行记录状态**(框架侧提供跨段状态载体与路由保证:节点内关店/重开牌面持久;策略侧多画面联动的重设计归后续迭代)。
 
 ## 逐动作专篇索引(注册表行 ↔ 专篇)
 
@@ -35,7 +35,7 @@
 | OpenBox | `CwActionOpenBoxOp` | [open-box.md](open-box.md) | 零写族 `zero_writes`(终结动作——发出即结束本次访问、返回主循环,数据由下一入口的观察覆盖) |
 | OpenTome | `CwActionOpenTomeOp` | [open-tome.md](open-tome.md) | `report_action_open_tome_param` 腾位(释放备战席槽位:bench kind tome → empty) |
 | OpenBookcard | `CwActionOpenBookcardOp` | [open-bookcard.md](open-bookcard.md) | `report_action_open_bookcard_param` 腾位(释放备战席槽位:bench kind bookcard → empty;终结动作,动作发出点 = 策略器卡片分支) |
-| FurnaceUse | `CwActionToolUseOp` | [tools.md](tools.md) | 容器直写(正本 = `tool_use.py` 七函数) |
+| FurnaceUse | `CwActionToolUseOp` | [tools.md](tools.md) | 状态容器直写(权威版本 = `tool_use.py` 七函数) |
 | PrivilegeCardUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
 | WrenchUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
 | PrecisionWrenchUse | `CwActionToolUseOp` | [tools.md](tools.md) | 同上 |
@@ -47,14 +47,14 @@
 
 | 注册行 | op 类 | 专篇 | 上报函数(动作语义单一源) |
 |---|---|---|---|
-| StartBattle | `CwActionStartBattleOp` | [start-battle.md](start-battle.md) | `report_action_start_battle_param`(容器零写,结算屏观察覆盖接管;免战牌跳过次数递减集中在同一函数) |
+| StartBattle | `CwActionStartBattleOp` | [start-battle.md](start-battle.md) | `report_action_start_battle_param`(状态容器零写,结算屏观察覆盖接管;免战牌跳过次数递减集中在同一函数) |
 | OpenShop | `CwActionOpenShopOp` | [open-shop.md](open-shop.md) | 零写族 `zero_writes`(承载 `terminal=True` 终结标志的注册行,流程层 `_open_shop_phase` 消费) |
 
 ### 观察族(1 行)
 
 | 注册行 | op 类 | 专篇 | 上报函数(动作语义单一源) |
 |---|---|---|---|
-| Obs | `CwActionObsOp` | ——(尚无专篇) | 零写占位 `report_action_obs_param`(容器更新通道 = 观察数据的聚合入口本体;契约正本 = [flow/action_ops.md](../../flow/action_ops.md) §4.4) |
+| Obs | `CwActionObsOp` | ——(尚无专篇) | 零写占位 `report_action_obs_param`(状态容器更新通道 = 观察数据的聚合入口本体;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §4.4) |
 
 ### 事件线 pick 族(12 行,按在用两档分型)
 
