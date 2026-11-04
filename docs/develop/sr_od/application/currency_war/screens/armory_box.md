@@ -12,7 +12,7 @@
 
 ## 3. 观察面
 
-轻观察:payload = `CwScreenArmoryBoxObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/armory_box.py`);标识门在观察 node(miss → `round_fail` 返回主循环)。report = `report_screen_armory_box_obs` 占位调用(本屏在用零容器写点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
+轻观察:payload = `CwScreenArmoryBoxObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/armory_box.py`);标识门在观察 node(miss → `round_fail` 返回主循环)。report = `report_screen_armory_box_obs` 占位调用(本屏在用零字段写操作点,接口为统一形态占位;match/gs 缺席跳过)。零 GameState 写端。
 
 ## 4. 动作面
 
@@ -20,7 +20,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进由内置动作完成(`_close_dialog` 点 × 关闭) | 画面 op 内置动作(`_close_dialog`:`area_center` 读 `货币战争-武装箱弹窗.按钮-关闭` center + `mouse_move`+`click`) | `report_screen_armory_box_obs`(占位零容器写点,观察 node 调用;动作自身无上报) | 是(落地复查:点 × 已发 ∧ 标识 id_mark 不在 = 弹窗已关 → `round_success` 结束本次访问;id_mark 在 = 点击未落地 `round_wait` 重点) |
+| 无动作 op——单步推进由内置动作完成(`_close_dialog` 点 × 关闭) | 画面 op 内置动作(`_close_dialog`:`area_center` 读 `货币战争-武装箱弹窗.按钮-关闭` center + `mouse_move`+`click`) | `report_screen_armory_box_obs`(占位零字段写操作点,观察 node 调用;动作自身无上报) | 是(落地复查:点 × 已发 ∧ 标识 id_mark 不在 = 弹窗已关 → `round_success` 结束本次访问;id_mark 在 = 点击未落地 `round_wait` 重点) |
 
 唯一动作 = 点 ×:`_close_dialog` 读 `货币战争-武装箱弹窗.按钮-关闭` center(`kernel/cw_obs_core.py::area_center`,缺失 = `round_fail`)→ `mouse_move`+`click`(防吞点击)→ 固定 1s → 置位 `_click_pending`。弹窗内箱图标为展示图不可点(op 零消费;档案「按钮-开箱点击」为未消费定位区)。关闭不属 `kernel/cw_vocab.py::CW_ACTION_TYPES`(推进非动作)。
 

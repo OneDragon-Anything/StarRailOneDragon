@@ -1,7 +1,7 @@
 # 位面简报(briefing · 货币战争-简报)
 
-> 代码 = `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(两 node 直继承 `SrOperation`)。职责:开局序列第一步的简报观察收敛单 op——读词缀/三 boss/敌人难度(report 落容器)+ 词缀效果采集(best-effort)+ 点「下一步」。路径根 = `src/sr_od/application/currency_war/`。
-> 两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门 → 三读数一次读 → `report_screen_briefing_obs` 落容器(三闸在 report 内);词缀效果点采/登记保留在观察侧。决策动作 node = 顶部落地复查(「下一步」已发 → 标识不在 = 已离开简报 → success 结束本次访问;标识在 = 未落地重点)→ 点「下一步」→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费)。
+> 代码 = `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(两 node 直继承 `SrOperation`)。职责:开局序列第一步的简报观察收敛单 op——读词缀/三 boss/敌人难度(report 落状态容器(GameState))+ 词缀效果采集(best-effort)+ 点「下一步」。路径根 = `src/sr_od/application/currency_war/`。
+> 两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 画面身份门 → 三读数一次读 → `report_screen_briefing_obs` 落状态容器(三闸在 report 内);词缀效果点采/登记保留在观察侧。决策动作 node = 顶部落地复查(「下一步」已发 → 标识不在 = 已离开简报 → success 结束本次访问;标识在 = 未落地重点)→ 点「下一步」→ `round_wait` 循环推进(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费)。
 
 ## 1. 分发判定
 
@@ -10,7 +10,7 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(观察收敛单 op:入口观察 + 三字段容器直写 + 词缀点采 + 推进 + 结束本次访问;零策略器问询、零逻辑态账)。内嵌词缀效果采集段 = 观察面义务(点采 tooltip 不终结;画面能力面 = [README.md](README.md) §5.1)。落地复查标志 `_click_pending`(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察):机械部分完成即结束本次访问,落地判定归下一轮复查的标识观察)。
+**空决策形态**(观察收敛单 op:入口观察 + 三字段状态容器直写 + 词缀点采 + 推进 + 结束本次访问;零策略器问询、零逻辑态账)。内嵌词缀效果采集段 = 观察面义务(点采 tooltip 不终结;画面能力面 = [README.md](README.md) §5.1)。落地复查标志 `_click_pending`(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察):机械部分完成即结束本次访问,落地判定归下一轮复查的标识观察)。
 
 ## 3. 观察面
 
@@ -20,7 +20,7 @@
 - 位面序真值:`read_bosses`(「区域-首领行」)→ `clean_boss_names_by_lcs` 两段转换归一(boss_fit 消费端规范名;任一候选两段皆不中 = 转换失败,observe round_fail 不写不上报返回主循环重新观察,规范 = op-layer.md §1.1 观察标准化门);
 - 敌人难度:`read_briefing_enemy_difficulty`(「标识-敌人难度」→ `parse_enemy_difficulty`)。
 
-词缀效果采集段 `_collect_affix_effects`:逐词缀点采(center 点击 → tooltip 弹出等待 → 截图 → `read_affix_effect`)→ 对注册表 `data/affix_effects_data.py` 最新(`load_affix_effects_from_file`)比对 → **新名/不一致才** `save_affix_screenshot` + 收集写回(`write_affix_effects`;写回本轮内存不生效,下轮 import 生效);OCR 采不到即跳过;best-effort 失败不阻塞点「下一步」。观察 payload = `CwScreenBriefingObs`;观察上报即对账边界 = `report_screen_briefing_obs` 落容器(三闸在 report 内;字段语义见 §6)。
+词缀效果采集段 `_collect_affix_effects`:逐词缀点采(center 点击 → tooltip 弹出等待 → 截图 → `read_affix_effect`)→ 对注册表 `data/affix_effects_data.py` 最新(`load_affix_effects_from_file`)比对 → **新名/不一致才** `save_affix_screenshot` + 收集写回(`write_affix_effects`;写回本轮内存不生效,下轮 import 生效);OCR 采不到即跳过;best-effort 失败不阻塞点「下一步」。观察 payload = `CwScreenBriefingObs`;观察上报即对账边界 = `report_screen_briefing_obs` 落状态容器(三闸在 report 内;字段语义见 §6)。
 
 ## 4. 动作面
 
@@ -29,7 +29,7 @@
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
 | 无注册表动作 op——词缀效果点采(观察侧采集分支) | 画面 op 内置动作(观察 node `_collect_affix_effects`:逐词缀 center 点击采 tooltip) | 无 report(采集写端 best-effort,见 §3) | 否(点采 tooltip 不终结;采集/登记失败不阻塞推进) |
-| 无动作 op——单步推进由内置动作完成 | 画面 op 内置动作(决策动作 node `act`:`round_by_find_and_click_area` 点「货币战争-简报.按钮-下一步」) | 无自上报(观察上报 = `report_screen_briefing_obs` 落容器,观察 node 承载) | 是(点推进即终结):`round_wait` 机械部分完成即结束本次访问循环推进,落地复查标识不在 = `round_success`(wait=`BRIEFING_SETTLE_S`)返回主循环 |
+| 无动作 op——单步推进由内置动作完成 | 画面 op 内置动作(决策动作 node `act`:`round_by_find_and_click_area` 点「货币战争-简报.按钮-下一步」) | 无自上报(观察上报 = `report_screen_briefing_obs` 落状态容器,观察 node 承载) | 是(点推进即终结):`round_wait` 机械部分完成即结束本次访问循环推进,落地复查标识不在 = `round_success`(wait=`BRIEFING_SETTLE_S`)返回主循环 |
 
 单动作 = 点「货币战争-简报.按钮-下一步」(`round_by_find_and_click_area`,success_wait=2)。交互时序:锚(本场对局首领)出现后 ~1s 动画完结为可点稳定时机(screen_flow_timing #1);固定时长完成承诺在出口等待(`BRIEFING_SETTLE_S`,常量单一源 = `operations/cw_screen/cw_flow_const.py`),点击本身无前缓冲。无已知交互陷阱。
 
@@ -41,13 +41,13 @@
 
 ## 6. 状态上报面
 
-容器直写(`report_screen_briefing_obs`,三字段统一写语义;obs = `CwScreenBriefingObs`(`on_screen`/`enemy_affixes`/`plane_bosses`/`enemy_difficulty`/`screen`,住 `kernel/cw_screen_report/briefing.py`);session 份停用,gs 单一源)。三字段同口径:**读到非空恒覆写,读空跳过写**——读缺=跳过写项目口径(瞬时 OCR 失手不擦同局已读真值);三读数一局内恒定,覆写无信息损失;跨局残留由每局容器开局新建、局终整体丢弃挡死,不靠本写点清场:
+状态容器直写(`report_screen_briefing_obs`,三字段统一写语义;obs = `CwScreenBriefingObs`(`on_screen`/`enemy_affixes`/`plane_bosses`/`enemy_difficulty`/`screen`,住 `kernel/cw_screen_report/briefing.py`);session 份停用,gs 单一源)。三字段同口径:**读到非空恒覆写,读空跳过写**——读缺=跳过写项目口径(瞬时 OCR 失手不擦同局已读真值);三读数一局内恒定,覆写无信息损失;跨局残留由每局状态容器开局新建、局终整体丢弃挡死,不靠本写点清场:
 
 - `gs.enemy_affixes` → mechanics_fit;
 - `gs.plane_bosses`:语义 = 位面序真值(boss_fit 消费端规范名,经 `clean_boss_names_by_lcs` 两段转换归一;任一候选转换失败 = 观察失败,round_fail 不写不上报返回主循环重新观察,规范 = op-layer.md §1.1 观察标准化门);
 - `gs.enemy_difficulty`:恒稳开局基线(逐帧敌方难度读数真读到达即覆盖)。
 
-词缀效果采集/运行时登记挂点保留在观察侧:每次进屏重读重采,点采对注册表 `data/affix_effects_data.py` 比对自身幂等(一致即跳过,无重复收集);登记 = `kernel/cw_affix_effects.py::register_affixes_from_names`(命中结构化注册才入账本;best-effort)。无落地登记件(三字段容器直写 = 观察写端,非动作发出登记)。
+词缀效果采集/运行时登记插入位置保留在观察侧:每次进屏重读重采,点采对注册表 `data/affix_effects_data.py` 比对自身幂等(一致即跳过,无重复收集);登记 = `kernel/cw_affix_effects.py::register_affixes_from_names`(命中结构化注册才入账本;best-effort)。无落地登记件(三字段状态容器直写 = 观察写端,非动作发出登记)。
 
 ## 7. 子态与 overlay
 
