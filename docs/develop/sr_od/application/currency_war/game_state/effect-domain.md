@@ -384,7 +384,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 #### 固定理财(201801)
 
 - **论断**:PLANE_START / permanent / STATE;counter **不建**(permanent 无到期,无剩余
-  语义);发放分支双腿分段——即时段(「现在」)= xp_instant 4 + burst 2,登记期
+  语义);发放分支分两段——即时段(「现在」)= xp_instant 4 + burst 2,登记期
   发放(burst 桥 + 登记拍补发桥);位面段 = xp_per_plane 4 + free_refresh_per_plane
   2,位面开始发放,**两处插入位置分工**:刷新支 = 位面开始桥 `apply_effect_plane_start_
   grant`(kernel 推进 tick 位面 1 号节点,per-node 桥同形幂等:advanced ∧ 位面
@@ -406,7 +406,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 #### 固定理财+(201802)
 
 - **论断**:与姊妹固定理财(201801)同构全量同判——PLANE_START / permanent /
-  STATE;counter 不建;双腿分段发放,数值异(即时段 xp_instant 6 + burst 3,
+  STATE;counter 不建;分两段发放,数值异(即时段 xp_instant 6 + burst 3,
   位面段 xp_per_plane 6 + free_refresh_per_plane 3),载体/两处插入位置分工/中途
   拿卡登记拍全额补发读法全部共享姊妹条目语义(用户裁定 2026-11-01 对两卡
   一次人为定为,裁决联动禁两态),零新增机制件(桥/分支按 payload 字段鸭子类型读取(duck typing),
@@ -421,7 +421,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 
 - **论断**:PLANE_START / permanent / STATE;duties = track+respond(对表姊妹
   固定理财写进代码形);counter **不建**;payload = STRATEGY_ECONOMY 同一实例。
-  三腿分段:即时段(「现在」)= instant_gold 3 已登记估值面(金面禁直写——发放
+  分三段:即时段(「现在」)= instant_gold 3 已登记估值面(金面禁直写——发放
   写端缺口族级 T-112 口径,零 kernel 桥);选卡改写分支 = sim 选卡尾段,窗口起点
   快照差分限定「本拍新获得」(消费后快照前滚,链式选卡不重燃旧卡、重放差分
   恒空);位面段 = gold_per_plane 3(**策略域位面周期金首例**)+ 位面开始改写分支
@@ -537,7 +537,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   变异结果随机(§6.3 随机分支/§6.4 随机资产面)交由观察收尾,变异辖域类别集/是否
   排除自身/工具特殊类可变性未采证不消费;拿卡当节点不变异(per_node_pick_node_grant.md,
   无立即措辞,C 级佐证);duties 不设 predict(现役读链无节点进入前需预知物品栏变异的
-  消费面);双腿异注册面(变异条目 = 本条目,发放分支 = PICK_INVEST_EFFECTS 泛化表行)不经
+  消费面);两条效果条目分别注册(变异条目 = 本条目,发放分支 = PICK_INVEST_EFFECTS 泛化表行)不经
   组合子(组合子辖同一效果体内多分支);sim 变异面零建模(变换族既定边界,公司人才流动
   同判);族模式卡:金(230601)/彩(330601)展开时本条目 payload 复用同词表值,差异
   全在发放分支泛化表行。

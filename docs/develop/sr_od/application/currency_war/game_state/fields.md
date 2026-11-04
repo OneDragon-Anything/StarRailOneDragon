@@ -650,7 +650,7 @@ sim 先验写端(战斗结算型回血分支):sim 局战斗结算段策略分支
 状态副本里的值——首领战支(boss_end_heal_hp,奋斗协议,evidence `strategy:boss_heal:
 p{位面}r{轮}`)与全战斗域支(battle_end_heal_hp,星际和平保险,evidence
 `strategy:battle_heal:p{位面}r{轮}`,kind ∈ COMBAT_NODE_TYPES 三型,触发域判读
-申报 = `STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION`)同族两腿,直加不 clip 家族形
+申报 = `STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION`)同族两分支,直加不 clip 家族形
 (hp_max 字段缺位),hp_trail 成对追加(写流↔轨迹同构);条件单一源 =
 `cw_gain_chain.check_strategy_boss_end_heal` / `check_strategy_battle_end_heal`;
 live 同为观察覆盖维持两写入方结构。
@@ -735,7 +735,7 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
    精密金面判据映射 gate 恒 None 走纯发放)/全武行(选卡落地获得武器大师×1
    入栏)/钻石恒永久 分支1(选卡落地获得红钻×1 入栏,红钻 = 特殊类普通可穿件,
    不在精密金面判据映射 gate 恒 None 走纯发放)。
-  组合卡双腿成员(双腿混发,
+  组合卡两条效果条目(混发,
   两通道分野各归其位):精密拆装·银(选卡落地获得精密拆装扳手 +1 随机简易
   入栏)= 分支1 逻辑写 + 分支2 随机态直写(结构化写端,`PICK_INVEST_EFFECTS`
   组合效果体分支;「随机简易武装」卡文词形同 '简易' 池——类别词表无第二候选,
@@ -878,7 +878,7 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   单位由游戏自发入席,下一备战帧 bench 整表观察覆盖)。「补给后」读法 = 前一
   进入节点为补给 → 本次进入 1+2=3 名;拿卡当节点不发放 = 选卡发生在节点窗
   offer 段、绑定写入晚于本窗复制分支的自然形态。
-  武装支援——组合双腿混发(组合登记 `cw_gain_effects.PICK_INVEST_EFFECTS['武装支援']`:
+  武装支援——组合两条效果条目混发(组合登记 `cw_gain_effects.PICK_INVEST_EFFECTS['武装支援']`:
   卡文「获得1件随机简易装备和2个随机3费角色。」按卡文语序装备分支先/角色分支后,效果体 =
   组合子 `_compose_grant_legs` 按形参序逐分支调用、两分支共享同一 rng 顺序推进〔掷序契约:
   改序 = 掷序漂移〕;装备分支 = 随机装备族工厂 1 件,简易池均匀 → `gain_equipment(
@@ -1051,14 +1051,14 @@ NodePos)`;解锁序位坐标系 = NodePos(位面,轮)字典序、1 基(§2.2 节
 `on_strategy_gained`(策略道)延迟道具支线
 (**纯队列登记零席位写**:件 = 棋盘右上战利品区浮动件非占席,实机板件实证 =
 与晶矿球同区,禁入 bench/overflow/消耗品库存任何域,BENCH_ITEM_NAMES 词表
-零扩;策略卡「获得【角色】+倒计时件」双腿分表——角色分支住 STRATEGY_GRANTS
+零扩;策略卡「获得【角色】+倒计时件」两分支分表——角色分支住 STRATEGY_GRANTS
 具名送卡通道、礼盒分支住本队列,首例 = 偶像经济);②到点弹除 = `discharge_due_item_opens`(sim 进节点收尾插入位置,实机局
 不接——实机开盒由游戏自己执行,板件消失/奖励落席归现役观察覆盖,不对称申报
 同 pending_item_grants;开盒零产出写入,开盒内容卡面无载放弃建模);③完胜
 回退 = `check_env_item_open_perfect`(settle_confirm 分支插入位置,结算环判据同
 T-33 完胜口径,两边跑——解锁位回退是纯模型知识修正,与开盒原语 live 不接
 无矛盾)。**无观察写入方**——队列是卡文推算知识;战利品区板件显示另建观察
-读数域 `giftbox_sight`(§3.2.25a,纯旁路留证,本队列三口与语义不受其影响)。
+读数域 `giftbox_sight`(§3.2.25a,纯旁路留证,本队列三个登记入口与语义不受其影响)。
 链式契约权威版本 =
 [gain-chain.md](gain-chain.md) §2/§3。
 
@@ -1487,9 +1487,9 @@ live「每次进店读屏重读刷价」,2026-10-16 用户裁决;不走 write_lo
 #### 3.3.6-3.3.8 刷新计数与免费余额载体
 
 免费刷新剩余次数 = 状态容器字段 `free_refresh_left`（Field，剩余语义，「观察写入 + 动作扣减 + 发放登记」三写入方同格）：观察写入 = 开店入口观察时按刷新按钮三种状态写 free_refresh_left——显示免费次数照写、显示付费写 0、读不出不写；动作扣减 = 刷新上报函数 `report_action_refresh_shop_param`（None = 未观察保守按付费，不扣 Field）；发放登记 = burst 桥 `apply_effect_burst_grant` / 节点桥 `grant_effect_node_refresh_balance` / 位面开始桥 `apply_effect_plane_start_grant` 与登记拍补发桥 `apply_effect_plane_refire_grant`（「现在以及每个位面开始时」族,§3.3.5 位面开始周期族行）/ 合成事件分支 `apply_on_merge_refresh_grant`（宿主 = cw_effect_inventory，穿戴上报 applied 出口；None 基 = 0 起算，开局无免费次数 = 机制真值）。失配对账 = Field 既有失配告警（observe 覆盖 logic 失配停机，零手写记录）。
-付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写入方 = 刷新上报函数 `report_action_refresh_shop_param` 单口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化停用，考古走 git。
+付费/全量两计数住**效果账本** `ActiveEffectInventory`（`refresh_paid`/`refresh_total`）。写入方 = 刷新上报函数 `report_action_refresh_shop_param` 唯一入口（生产 = 刷新 op 自上报）。消费方 = 选卡评估（`cw_env_economy` 通道5，全量/付费阈值）+ 按策略触发面（`CounterKey.REFRESH`，采购专员族）。原效果账本 `free_refresh_balance` 字段与 `grant_free_refreshes` 出口已随 Field 化停用，考古走 git。
 
-晶矿开启累计住**效果账本** `ActiveEffectInventory`（`ore_open_total`）。写入方 = 采晶矿上报函数 `report_action_collect_ore_param` 尾部单口（批内开成点数一次入账；席满/缺项∧level 缺读跳点不入账 = 「点开才计数」；生产 = 采晶矿 op 自上报，sim 与生产同段 op 代码同口）。消费方 = 战技点契约触发器 `check_env_ore_open_grants`（条件键与接入调用申报 = §3.5.5 词表行）。计数语义 = 全量（不限矿色/来源/奖励类型）。计数不进快照（接管局从 0 起 → 晚发放/不发形态显式接受，接受面 = 刷新两计数同款）。
+晶矿开启累计住**效果账本** `ActiveEffectInventory`（`ore_open_total`）。写入方 = 采晶矿上报函数 `report_action_collect_ore_param` 尾部唯一入口（批内开成点数一次入账；席满/缺项∧level 缺读跳点不入账 = 「点开才计数」；生产 = 采晶矿 op 自上报，sim 与生产同段 op 代码同口）。消费方 = 战技点契约触发器 `check_env_ore_open_grants`（条件键与接入调用申报 = §3.5.5 词表行）。计数语义 = 全量（不限矿色/来源/奖励类型）。计数不进快照（接管局从 0 起 → 晚发放/不发形态显式接受，接受面 = 刷新两计数同款）。
 
 #### 3.3.9 条件性免费发放与每节点自动刷新
 
@@ -1875,7 +1875,7 @@ done 短路兜第二层。**触发时点假设**(desc 无载申报,实采插入�
 【托帕&账账】」卡面直读;阈值 40 卡面数值,发放单数缺省,星级 1★ 先验
 族)。计数域 = `gs.effects.interest_earned`(统一公式 interest 分量全
 分支累计,**含息 flat 修饰**;写端 = sim 收入应用两处 + live 三来源计数
-刻,经 `record_interest_earned` 单口;不入快照 → 接管局计数归零)。条件
+刻,经 `record_interest_earned` 唯一入口;不入快照 → 接管局计数归零)。条件
 矩阵六序短路:空 env/不已登记/已 done/计数不足 → 零写;bench 缺读(直构域
 防御,生产恒非 None)缓发不标 done;达标 → `gain_character`(rand=False
 确定发放,环境发放无采样)+ done 两笔相邻写(同 evidence
@@ -2000,7 +2000,7 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 **无 tick 无主动清理**——到期 = 比对自愈,记录滞留至局终(上限 ≈ 一次性
 发放数);卖牌/合成消耗后锁记录孤悬永不匹配(同款自愈)。
 
-**触发与写入方**(逻辑写端三口,两模块):`check_env_battle_grants` 发放刻
+**触发与写入方**(逻辑写端三个登记入口,两模块):`check_env_battle_grants` 发放刻
 (settle_confirm 分支接入调用,黑天鹅直登相邻,live/sim 同口)同窗四笔——
 发号(`env_grant_uid_seq` +1,evidence 前缀 `env_grant#<环境>#battle` +
 `#uid`)+ 角色链(`gain_character` 1★ 确定发放 rand=False,**uid 随
@@ -2267,7 +2267,7 @@ win_reward_mult 施于连胜分量含奖励轮。单一源=STRATEGY_ECONOMY(经 
 免费帧零 XP,同帧跨级后本帧发牌即用升级后 level)。
 **刷新执行事实组行为口径**(计数 = 效果账本统一计算
 (`ActiveEffectInventory.record_refresh`;写入方 = 刷新上报函数
-`report_action_refresh_shop_param` 单口,生产 = 刷新 op 自上报)——refresh_total
+`report_action_refresh_shop_param` 唯一入口,生产 = 刷新 op 自上报)——refresh_total
 恒 +1;**免费帧闸 = 不进 refresh_paid**(付费域纯净性;免费判定输入 = 显式 free
 真值优先,回退 Field 值 `free_refresh_left.value > 0`,None = 未观察保守按付费
 不扣 Field),免费帧同时经 Field 免费分支扣减(下限 0)。刷价字段不写(写入方=现场
@@ -2960,7 +2960,7 @@ Field 定义 + `cw_loop` 写入位置(`ResumeAttach`/`takeover_resumed` journal 
 
 轮内账域(round_ledger,gs_schema 域版本 1)唯一字段;渠道 = ②动作 `logic_action`。
 **值形状 = `{'phase': (plane, round) | None, 'names': list[str]}`**(键式申报:phase
-= 账所属轮,None = 未定轮;names = 本轮已买卡名集,JSON 序列化安全形)。写读单口 =
+= 账所属轮,None = 未定轮;names = 本轮已买卡名集,JSON 序列化安全形)。写与读的唯一入口 =
 `cw_deploy_logic.record_fresh_buy` 写 / `fresh_buys_of`/`fresh_buys_sell_face` 读
 (写入位置内部做状态容器字段转形;sim/live 同口)。消费 = 部署换出守卫(`fresh_buys_of`
 相位键对读)+ 卖闸互斥面(`fresh_buys_sell_face`)。
@@ -3167,4 +3167,4 @@ sim 无独立局面表示:sim 与 live 同一状态容器类型同一份单例
   现仍无 sim 写入位置登记的域 = node_path / consumables / settlement /
   top_bar_raw / node_pos / receipts / match_final,逐域最终归属
   (建模边界 vs 接入调用缺口)以 sim-wiring 逐域表为准并待接入调用评估项
-  裁决;本节不再维护封闭枚举,防与逐域底账双源漂移。
+  裁决;本节不再维护封闭枚举,防与逐域对照表双源漂移。

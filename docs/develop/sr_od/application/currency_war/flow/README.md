@@ -24,7 +24,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 ├─ 画面指挥(35 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
 │ 观察 node:门 → 显式读屏(唯一读屏点)→ CwScreenXxxObs →          │
 │   report_screen_*_obs 落状态容器(kernel/cw_screen_report/ 每屏一文件)│
-│ 决策动作 node:落地复查 → 决策(状态容器零参读;空发射 = Obs outer 口径)│
+│ 决策动作 node:落地复查 → 决策(状态容器零参读;本帧无动作 = Obs outer 口径)│
 │   → 动作(零读屏)→ round_wait 循环(无防御上限);终结动作返回主循环  │
 │ 备战(CwScreenPrep):heavy 观察+接管补采+审计留在观察侧的观察 node;       │
 │   决策动作 = 单动作 while 循环;商店编排(_open_shop_phase)        │
@@ -37,7 +37,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 │   单动作循环逐帧恰取一个动作(接口返回 CwAction | None,    │
 │   None = 本帧无动作);商店决策 = decide_shop_action 单动作   │
 │   接口;flow.py 旧备战骨架（相位机/腾位链等 10 方法+session  │
-│   字段）已删（考古走 git 历史）;pick 族 12 接口与冷建/结算   │
+│   字段）已删（考古走 git 历史）;pick 族 12 接口与每局全新创建/结算   │
 │   并入仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_vocab.py 词表 + prep_actions.py 执行器│
 │ + cw_screen_shop.py 商店画面 op 两 node + cw_action_registry.py 单一注册表  │
@@ -51,7 +51,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 └────────────────────────────────────────────────────────────────┘
 ```
 
-图下白话解读：备战决策链：先消费方向版本标记 → 检查是否直接出战（出战就绪帧短路返回）→ 非就绪帧披露预算 → 逐帧决策循环（①读备战实况 → ②套数学证明 → ③必要时升档/换线评估 → ④执行骨架义务 M1-M7 → ⑤按期望值选动作 → ⑥无动作则出战）；商店决策走单动作接口。图中其余旧词对照："备战 1/大厅 3c/0n"等为代码内历史分支号（现已全部换成按画面身份分发）；"armed 帧"= 出战就绪帧；"词表"= 动作类型清单；"冷建"= 每局全新创建；"空发射"= 本帧无动作；"零判效"= 只点击不判断是否生效。
+图下白话解读：备战决策链：先消费方向版本标记 → 检查是否直接出战（出战就绪帧短路返回）→ 非就绪帧披露预算 → 逐帧决策循环（①读备战实况 → ②套数学证明 → ③必要时升档/换线评估 → ④执行骨架义务 M1-M7 → ⑤按期望值选动作 → ⑥无动作则出战）；商店决策走单动作接口。图中其余旧词对照："备战 1/大厅 3c/0n"等为代码内历史分支号（现已全部换成按画面身份分发）；"armed 帧"= 出战就绪帧；"词表"= 动作类型清单；"零判效"= 只点击不判断是否生效。
 
 分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。节点推进喂入 = **动作上报 + 画面 op id_mark 确认**：战斗/补给节点终结动作 op 上报（kernel `report_node_advance`，trigger 封闭集 {settle_confirm, supply_confirm}）+ 画面 op 观察 id_mark 确认（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`）；观察漏斗与外循环分支写点不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
 

@@ -156,7 +156,7 @@ sig: ChannelSig) -> tuple[str, ...]`——环境定时道具通道(§3 道具通
   发放即出队,重放调用查无命中、零写零效果。原语自身无幂等闸:生产接入点无重入面,
   未来实机接入点接入调用时按其重入面另评。
 - **rand 语义**:环境发放 = 确定发放,调用方传 `rand=False`(§5;写通道仍统一走
-  通道选择入口单口)。
+  通道选择的唯一入口函数)。
 - **零吞错与次序**:落位异常上抛(§6),队列回写收尾——先逐项落位、后回写发放后
   的保留队列,异常时队列不丢账。
 - **实机局不接本原语**:队列登记后保持原样,备战真值由观察覆盖
@@ -200,7 +200,7 @@ write 回写保留队列。返回效果串 = 每命中项 `item_opened:<名>`。
   调用之后一行,同一收尾继承窗口幂等守卫(窗口重放不双发;队列命中即出队,
   重放查无命中天然幂等同款);sig 组名沿 `sim:env`。
 - **rand 语义**:开盒 = 确定事件(非采样),调用方传 `rand=False`(§5);写
-  通道走通道选择入口单口;生效序位缺读(effective_node_pos None)→ 零写,
+  通道走通道选择的唯一入口函数;生效序位缺读(effective_node_pos None)→ 零写,
   命中集空 → 零写。
 - **实机局不接本原语**(不对称申报,fields.md §3.2.25):实机开盒由游戏自己
   执行,队列条目到点后滞留不弹(纯知识域,现役无消费者);完胜回退分支实机(live)和模拟器(sim)两边跑
@@ -709,7 +709,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
 点击兑现入账),两表同出卡面原文,金额一致性归评审与 ore 域测试把关
 (双源同值校验已随治理移除)。⑤`ENV_DELAYED_ITEM_GRANTS`(**倒计时件通道**:获得刻
 纯队列登记零席位写 → sim 进节点收尾到点开盒(§2.9)→ settle_confirm 完胜
-回退三口全链零采样;域规格 = fields.md §3.2.25)。
+回退三个登记入口全链零采样;域规格 = fields.md §3.2.25)。
 
 - **on_env_gained(gs, session, env_name, *, rand, sig, rng=None)**:查 `cw_investments.py::
   ENV_GIFTS`(投资环境 → 具名发放数据表,即时/随机/定时三通道)。命中后**先按
@@ -1022,7 +1022,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   fail-closed / 金面值),零链上分支。
   **延迟道具支线**(`cw_investments.ENV_DELAYED_ITEM_GRANTS` 命中,状态副本
   发放域登记表白名单,环境道 §3 on_env_gained 延迟道具支线同构镜像;
-  策略卡「获得【角色】+倒计时件」双腿分表——角色分支住 STRATEGY_GRANTS
+  策略卡「获得【角色】+倒计时件」两分支分表——角色分支住 STRATEGY_GRANTS
   具名送卡通道、礼盒分支住本队列,两表发放通道互斥非双发放):获得当刻
   **纯队列登记零席位写**——件 = 棋盘右上战利品区浮动件非占席(禁
   `_place_bench_item` 调用、禁 bench/overflow 任何字段),队列 =
