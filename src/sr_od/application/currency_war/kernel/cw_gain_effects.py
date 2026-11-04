@@ -86,11 +86,11 @@ def _make_owned_emblem_copy_effect() -> Callable[..., list[str]]:
 
     def _effect(gs, *, sig, rng) -> list[str]:
         # 惰性 import 链原语(运行时解析破环;骇客腿同款)
-        from sr_od.application.currency_war.kernel.cw_gain_chain import (
-            gain_equipment,
-        )
         from sr_od.application.currency_war.data.cw_equipment_data import (
             get_equip,
+        )
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_equipment,
         )
         equips_val = gs.equips.value
         if equips_val is None:
@@ -1494,6 +1494,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 册行骑 T-87 通道,双腿分表;空池/未观察 fail-closed 零写;标记循环
     # 不继承单域腿零增益)。
     '复印件': _make_owned_emblem_copy_effect(),
+    # 客制化服务 = 数量三件直书登记行(卡文句②「获得3个【幸运星】」;
+    # rand=False 确定发放,同物 幸运星祝福单件行族形 + 数量极值 临时工
+    # 合约×8 先例;句①「【随便骰子】会为你的角色随机出其推荐列表中的
+    # 装备」= 随便骰子固有行为说明,判读申报制零建模零登记[两读法 bot
+    # 行为零差异:随机填充观察收口在码+推荐表 rc_missing 在码];零 SE 条
+    # 目[卡面零增幅句,祝福族 SE 系增幅半句非授予句]零 GRANTS 条目)。
+    '客制化服务': _make_named_equip_grant_effect('幸运星', 3),
     # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
     # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
     # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」
