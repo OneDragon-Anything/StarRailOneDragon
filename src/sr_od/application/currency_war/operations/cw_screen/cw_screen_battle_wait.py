@@ -2,16 +2,16 @@
 
 接 「出战 op 结束本次访问循环」之后的战斗/结算窗口:等结算画面 → 结算处理(遥测读点 →
 点「继续挑战」)→ 完成判据白名单任一出现(备战系/补给/遭遇/投资策略/强敌来袭/
-位面过渡锚)→ round_success 结束本次访问主循环分发;「前往结算」链的团灭终局(多页 →
+位面过渡识别标志)→ round_success 结束本次访问主循环分发;「前往结算」链的团灭终局(多页 →
 返回货币战争 → 大厅)= 第三出口,round_success(status='terminal_lobby') 交整局
 退出(主循环 3c 收尾)。
 
 
 结构判据(od-dev-write-operation「循环驱动玩法」):本 op = node-per-op 的
-**逻辑单元生命周期 owner**——战斗+结算是一个单元(开始=出战,结束=白名单锚/
+**逻辑单元生命周期 owner**——战斗+结算是一个单元(开始=出战,结束=白名单识别标志/
 团灭终局),单元内多阶段(等待/页1 动画/结算页/败局链),节点作用域预算 =
 未知帧 bail 上界 + 出战宽限。外循环只回答「在不在战斗窗口」
-(驻留标志 + 帧锚双入口),不进单元内部分类。
+(驻留标志 + 帧基准双入口),不进单元内部分类。
 
 分支链分类(挑战成功结算/失败结算页/点空白加速/前往结算链/战斗过场屏/
 战斗宽限/未知帧 bail)与各分支动作语义 = screens/battle_wait.md §4;
@@ -22,18 +22,18 @@
 
 自动战斗检测:①段(等结算画面)轮询消费
 「自动战斗未开启」信号(画面右下角「我方行动中」待操作帧,连续 ~5s
-双锚)→ 点「按钮-自动战斗开关」自愈;判据与判效边界随分支实现注释,
+两个识别标志同帧命中)→ 点「按钮-自动战斗开关」自愈;判据与判效边界随分支实现注释,
 语义申报 = screens/battle_wait.md §4(等待结算画面行·自动战斗自愈分支)
 与 §8(连续命中计时)。
 
 驻留状态机豁免(用户裁定):本屏 = **驻留状态机**
 (内部 while 处理结算帧,round_wait 逐轮分类),「观察 node + 决策动作
-node」两段形态不适配——出口判定(大厅终局锚/完成白名单)与分支链在
+node」两段形态不适配——出口判定(大厅终局识别标志/完成白名单)与分支链在
 单 node 内逐轮重判,拆两 node 会把出口判定与分支序的轮次耦合切开。
 直继承 SrOperation;内部结算链(settlement 页循环/_write_settlement_
 observation/apply_settlement_cover/SettlementState)语义保真。
 kernel/cw_screen_report/battle_wait
-保持占位(零 op 层观察容器写点)。结构参数:SettlementState 跨局状态机
+保持占位(零 op 层观察状态容器写点)。结构参数:SettlementState 跨局状态机
 注入(``__init__(ctx, st, config)``,RunLoop 持有);
 ``node_max_retry_times=400`` 归节点。本屏 sim 分支 = 不适用
 (sim 事实来源为 coarse 结算产出非画面段),等价判据主要支撑 = 实机
@@ -85,7 +85,7 @@ if TYPE_CHECKING:
 
 #: 结算完成判据白名单(③段出口判定单一源;语义 = 「已回备战系画面」的
 #: 到达判定(宽;面板就位判定由循环判定序承接)。位面简报不在切换链上
-#: (仅入场出现一次),不列。BOSS简报锚 = 阵营徽记
+#: (仅入场出现一次),不列。BOSS简报识别标志 = 阵营徽记
 #: 模板(OCR 标题误读免疫)。
 SETTLE_COMPLETION_ANCHORS: tuple[tuple[str, str], ...] = (
     ('货币战争-备战', '备战标识-购买经验'),
@@ -99,11 +99,11 @@ SETTLE_COMPLETION_ANCHORS: tuple[tuple[str, str], ...] = (
 def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
     """结算完成判据白名单任一命中(③段出口判定;本模块单一源)。
 
-    备战用单锚(宽到达判定;「按钮-出战」双锚精判是循环备战分支的
-    职责,此处重复即双源)。BOSS简报锚 = 阵营徽记模板(OCR 误读免疫);
-    「强敌」片段判别为锚 miss 的兜底(判别单一源见
+    备战用单个识别标志(宽到达判定;「按钮-出战」双识别标志精判是循环备战分支的
+    职责,此处重复即双源)。BOSS简报识别标志 = 阵营徽记模板(OCR 误读免疫);
+    「强敌」片段判别为识别标志 miss 的兜底(判别单一源见
     cw_screen_boss_briefing)——boss 帧完成判定结束本次访问循环阶段一身份接管。
-    位面过渡锚(boss 局每位面开始出现一次;boss 简报帧已在上方排他
+    位面过渡识别标志(boss 局每位面开始出现一次;boss 简报帧已在上方排他
     ——共享文案不误判为本白名单项)。
     """
     for _scr, _area in SETTLE_COMPLETION_ANCHORS:
@@ -116,7 +116,7 @@ def hit_settle_completion_anchor(op: SrOperation, screen) -> bool:
     )
     _texts = read_ocr_texts(op.ctx, screen)
     if is_boss_briefing_texts(_texts):
-        return True   # boss 简报帧(徽记模板锚 miss 的形态)→ 完成判定,结束本次访问循环阶段一身份接管
+        return True   # boss 简报帧(徽记模板识别标志 miss 的形态)→ 完成判定,结束本次访问循环阶段一身份接管
     return op.round_by_ocr(screen, '点击空白处继续',
                            lcs_percent=0.8).is_success
 
@@ -126,14 +126,14 @@ def _write_settlement_observation(session: StrategySession,
     """结算观察半直写(单一写点)。
 
     现役 = performance.record(streak/hp/gold/level 真值链已由结算覆盖写端
-    直入容器 gs:streak_after 带符号;last_streak session 份已停用)。独立成模块级函数:被测面 = 纯写点(观察层产物),单测直调即经
+    直入状态容器 gs:streak_after 带符号;last_streak session 份已停用)。独立成模块级函数:被测面 = 纯写点(观察层产物),单测直调即经
     生产链路(op 回路是唯一调用方)。
     """
     session.performance.record(obs)
 
 
-#: 战斗窗覆盖度守卫的窗口单元出口集(bail 不计:帧锚可重入续同窗,计则
-#: 假阳——同一 battle_ts 的后续窗观测落地后锚即匹配;bail 形态自有
+#: 战斗窗覆盖度守卫的窗口单元出口集(bail 不计:帧基准可重入续同窗,计则
+#: 假阳——同一 battle_ts 的后续窗观测落地后基准即匹配;bail 形态自有
 #: op 截图留存证据(prefix=battle_wait_bail)+ 未知兜底链留存证据暴露,不依赖本守卫)。
 _COVERAGE_EXIT_STATUSES: frozenset[str] = frozenset(
     {'back_to_loop', 'terminal_lobby'})
@@ -153,11 +153,11 @@ def count_settlement_obs_coverage_miss(st: SettlementState,
     判定:窗口单元 success 出口(白名单命中 back_to_loop / 团灭终局
     terminal_lobby)+ 出战开窗在(battle_ts 非 None = RunLoop 出战开窗点
     注入)+ 本窗零结算观测行(settled_battle_ts ≠ battle_ts,同源
-    monotonic 锚比较)→ 落一行 L1 台账行。
+    monotonic 基准比较)→ 落一行 L1 台账行。
 
-    边界:中断恢复的对局/残留屏经帧锚入窗无出战锚(battle_ts=None)不计——无窗
-    开锚不成窗,该形态由残留屏判据与未知兜底链自证;telemetry-only 败局
-    补录行同样刷新窗锚(结算观测行含败局链,覆盖率口径与判读一致)。
+    边界:中断恢复的对局/残留屏经帧基准入窗无出战识别标志(battle_ts=None)不计——无窗
+    开基准不成窗,该形态由残留屏判据与未知兜底链自证;telemetry-only 败局
+    补录行同样刷新窗基准(结算观测行含败局链,覆盖率口径与判读一致)。
 
     Returns:
         是否落了覆盖度缺失行(测试断言面;生产消费 = 台账行本身)。
@@ -194,12 +194,12 @@ class SettlementState:
       conf≥0.9 才更新);
     - saw_defeat_settlement = 败局标志:本局见过任一显式败局结算帧
       (3c 假 win 守卫消费);
-    - rounds_done = 已完成战斗轮数(新结算帧计数;轮锚点 = 挑战成功结算);
+    - rounds_done = 已完成战斗轮数(新结算帧计数;轮基准点 = 挑战成功结算);
     - settle_page1_progress / settle_page1_settle = 结算页1 三项遥测暂存
       (页2 记录时合并消费,用后清);
     - settle_p1_ts = 结算页1 面板渲染延迟门计时(SETTLE_PANEL_WAIT_S);
     - last_settle_fp / last_loss_fp = 同屏指纹防重(结算帧计数/败局行防重);
-    - auto_off_first_ts = 自动战斗未开检测首见时刻(连续 ~5s 待操作双锚命中
+    - auto_off_first_ts = 自动战斗未开检测首见时刻(连续 ~5s 待操作两个识别标志命中
       才判未开并点击开关;防技能演出相似视觉单帧误判);
     - first_settlement_seen / run_start_ts / is_new_match = relaunch 残留
       结算屏判据三件(run_start_ts/is_new_match 由 RunLoop
@@ -207,7 +207,7 @@ class SettlementState:
     - battle_ts = 出战时刻(RunLoop 战斗窗口开窗点注入;op 据此
       判「战斗进行中合法静止」宽限);
     - saw_settlement = 本窗口已见结算屏(RunLoop 据此关战斗 watch 宽限);
-    - settled_battle_ts = 结算观测窗锚:最近一次「结算观测」行落点时点的
+    - settled_battle_ts = 结算观测窗基准:最近一次「结算观测」行落点时点的
       battle_ts 快照(坐标系 = battle_ts 同源 monotonic 时钟;取值时机 =
       _record_round_outcome 行写点写入,含 telemetry-only 败局补录行)。
       战斗窗 exit 覆盖度守卫据此判「本窗(出战开窗)全程零结算观测行」:
@@ -232,7 +232,7 @@ class SettlementState:
     battle_ts: float | None = None
     saw_settlement: bool = False
     settled_battle_ts: float | None = None
-    # 利息入账节点闩(T-27 来源 A/B 唯一计数刻守卫):最近一次利息
+    # 利息入账节点一次性标志位(T-27 来源 A/B 唯一计数刻守卫):最近一次利息
     # 入账的 (位面, 轮)。取值时机 = 入账成功刻写入(_record_round_outcome
     # 来源 A/B 块);同节点结算重处理(确认失败重入/同败局多帧指纹)与
     # 跨路径重放(胜局覆盖块 + 前往结算补录行)据此零双加——每节点收入
@@ -276,7 +276,7 @@ class CwScreenBattleWait(CwOperation):
     #
     # 自动战斗检测:战斗进行中宽限轮询处
     #(下方 _in_battle_grace 分支)是本检测的消费点——「我方行动中」
-    # 待操作帧连续 ~5s 双锚命中 → 点「按钮-自动战斗开关」自愈
+    # 待操作帧连续 ~5s 两个识别标志命中 → 点「按钮-自动战斗开关」自愈
     #(判据与判效边界见模块头自动战斗检测段;实现见分支)。
 
     def _in_battle_grace(self, now: float) -> bool:
@@ -290,7 +290,7 @@ class CwScreenBattleWait(CwOperation):
     # 白名单语义 = 「已回备战系画面」的到达判定(宽;面板就位判定由循环
     # 判定序承接,不在本 op 承诺内)。位面简报不在切换链上
     # (仅入场出现一次),不列。
-    # 判定本体 = 本模块 ``hit_settle_completion_anchor``(锚表见上方;
+    # 判定本体 = 本模块 ``hit_settle_completion_anchor``(识别标志表见上方;
     # 状态机出口判据,非动作验证)。
 
     def _hit_completion_anchor(self, screen) -> bool:
@@ -305,7 +305,7 @@ class CwScreenBattleWait(CwOperation):
 
         difficulty_node 装填双态(拨盘 = kernel D_ENC_VARIANT,定案前 None):
         普战行恒 live 门(observation 态 ∧ 非空);遭遇行 (i) = observation 态、
-        (ii) = observation/carried 自证态(简报值无容器入口,自证链封闭)。
+        (ii) = observation/carried 自证态(简报值无状态容器入口,自证链封闭)。
         encounter_tier = 遭遇行取 chosen_encounter 落点档(选择落地写入先于
         结算)。残留行不入环(旧局键,跨局污染排除)。归因串返回留痕。"""
         from sr_od.application.currency_war.kernel.cw_encounter_selection import (
@@ -415,7 +415,7 @@ class CwScreenBattleWait(CwOperation):
                                 verdict='留证-结算屏真值覆盖 last-known',
                                 reader_source='settlement_vs_prep_round',
                                 gap_large=False, auto_resolved=True,
-                                # refs = journal (run_id,v) 对账锚(outcomes
+                                # refs = journal (run_id,v) 对账基准(outcomes
                                 # 流已停用,不挂流式 refs)。
                                 refs=journal_refs(),
                                 note='观测自检框架设计 §2.7:同轮双读不等留证;'
@@ -434,7 +434,7 @@ class CwScreenBattleWait(CwOperation):
                             verdict='留证-结算屏读数落后 last-known 判 OCR 假阳拒',
                             reader_source='settlement_vs_prep_round',
                             gap_large=False, auto_resolved=True,
-                            # refs = journal (run_id,v) 对账锚(outcomes
+                            # refs = journal (run_id,v) 对账基准(outcomes
                             # 流已停用,不挂流式 refs)。
                             refs=journal_refs(),
                             note='观测自检框架设计 §2.7;残留屏豁免')
@@ -448,8 +448,8 @@ class CwScreenBattleWait(CwOperation):
                 gs_of_ctx,
                 node_kind_of,
             )
-            # node 优先序:首领识别锚(画面位) > gs 推导(session 识别源
-            # 已停用,单一源 = 容器) > 探针表(宿主 = gs.node_books) > 缺省。
+            # node 优先序:首领识别标志(画面位) > gs 推导(session 识别源
+            # 已停用,单一源 = 状态容器) > 探针表(宿主 = gs.node_books) > 缺省。
             _node = 'boss' if _is_boss else self._normalize_node_type(
                 node_kind_of(gs_of_ctx(self.ctx, _session))
                 or self._node_type_from_table(_session, _plane, _round)
@@ -477,7 +477,7 @@ class CwScreenBattleWait(CwOperation):
             # 推断胜负」非识别,HP 对比兜底门已删,且其轮次邻接时基在
             # 修饰局 (1,10)↔(2,1) 整合(旧全局编号按固定 9 轮每面折算,
             # 两节点折算同值,邻接判恒假)。两主路径同失 = killed=None
-            # 观察收口(诚实缺位,无 HP 推断路径)。
+            # 观察面只靠画面读数(诚实缺位,无 HP 推断路径)。
             if _obs.killed is None and _obs.progress_delta is not None:
                 _obs.killed = _obs.progress_delta > 0
                 log.info('[cw-bwait] killed 进度符号判定:progress=%s → %s',
@@ -510,12 +510,12 @@ class CwScreenBattleWait(CwOperation):
                 # 形态 = 该节点息不计数,宁缺勿造)。「前往结算」补录
                 # 路径非 telemetry 不进本块 = 零计数防双计(与 1f 行构成
                 # 同一败局的双补录行,指纹按帧面必不合并,息只随本刻计
-                # 一次;同节点重放由入账节点闩拦)。基座金 = 出战前最后
+                # 一次;同节点重放由入账节点一次性标志位拦)。基座金 = 出战前最后
                 # 备战帧金观察(战斗期间金库不变,gs.gold 现值即该值;
                 # None = 从未观察 → 推算 None 宁缺不计数);cap/flat
                 # 推算单一源 = estimate_node_interest(kernel 公式纯读)。
                 # record 先于 check 同组相邻。独立 try:本刻失败不毒化
-                # 外层结算观测窗锚刷新(覆盖度守卫面)。
+                # 外层结算观测窗基准刷新(覆盖度守卫面)。
                 if _st.interest_counted_pos != (_plane, _round):
                     try:
                         from sr_od.application.currency_war.kernel.cw_env_grants import (
@@ -540,7 +540,7 @@ class CwScreenBattleWait(CwOperation):
                         log.warning('[cw-bwait] 败局息推算计数失败'
                                     '(不阻塞): %s', e)
             if not telemetry_only:
-                # —— 观察半直写(hp 结算锚已停用,真值链由结算覆盖写端
+                # —— 观察半直写(hp 结算识别标志已停用,真值链由结算覆盖写端
                 # 承载)——
                 _write_settlement_observation(_session, _obs)
                 # (策略半入槽 pending_round_outcomes 已停用
@@ -550,7 +550,7 @@ class CwScreenBattleWait(CwOperation):
                     _st.last_outcome_hp = _obs.hp_after
                 # 结算屏真值覆盖(纯观察直写:hp/gold/streak/level 全可信):
                 # hp 真值链走结算观察直写→last_outcome_hp(上);gold/level/
-                # 经验经 apply_settlement_cover 直写容器(容器半为唯一宿主)。
+                # 经验经 apply_settlement_cover 直写状态容器(状态容器半为唯一宿主)。
                 # best-effort,失败不阻塞;失配 = 推算 bug,缺陷台账留存证据,
                 # 无登记的待办环节。
                 try:
@@ -560,7 +560,7 @@ class CwScreenBattleWait(CwOperation):
                     )
                     _assets = parse_settlement_assets(_ocr_texts)
                     if _assets.get('gold') is None:
-                        # 旧版「存量 <N>」token 锚在当前版本结算布局不存在
+                        # 旧版「存量 <N>」token 识别标志在当前版本结算布局不存在
                         #(实机胜局解析全失败,证据帧见
                         # read_settle_gold_opt docstring)→ 退定点读右上角
                         # 金币存量;仍失败则本局无金真值覆盖(gold=None)。
@@ -593,7 +593,7 @@ class CwScreenBattleWait(CwOperation):
                     from sr_od.application.currency_war.kernel.cw_performance import (
                         HP_CONFIDENCE_THRESHOLD,
                     )
-                    # streak 真值先行提取(下方条件发放触发的接线条件面:
+                    # streak 真值先行提取(下方条件发放触发的接入调用条件面:
                     # None = 覆盖写端跳过 streak 观察,检查同口径不调)
                     _streak_after = getattr(_obs, 'streak', None)
                     apply_settlement_cover(
@@ -612,7 +612,7 @@ class CwScreenBattleWait(CwOperation):
                                 and _assets.get('xp_next') is not None)
                             else None),
                         note=f'battle_done:{getattr(_obs, "node_type", None)}')
-                    # —— 环境条件发放触发(接线点 = 结算覆盖后,连胜真值
+                    # —— 环境条件发放触发(接入调用点 = 结算覆盖后,连胜真值
                     # 已落账;条件单一源 = kernel check_env_streak_grants,
                     # 条件登记表 = kernel ENV_STREAK_GRANTS)。与覆盖写共享
                     # 本 best-effort try:覆盖写异常 = streak 未落账,连本
@@ -630,10 +630,10 @@ class CwScreenBattleWait(CwOperation):
                             ChannelSig(family='logic_hook',
                                        actor='CwScreenBattleWait',
                                        group_id='battle-wait:env-grant'))
-                    # —— 策略卡到级装备腿(live 结算覆盖位单点,与 streak
+                    # —— 策略卡到级装备效果条目(live 结算覆盖位单点,与 streak
                     # 触发同窗并列:level 真值恰在此落账,覆盖写端跳过
                     # level 观察则检查同口径不调——None 不调)。条件单一源
-                    # = kernel check_strategy_level_equip_grants(双端同
+                    # = kernel check_strategy_level_equip_grants(实机和模拟器两边同
                     # 链,sim advance 双点同函数);返回值刻意忽略 = live
                     # 无回调:宝钻的 deploy_cap/back_layout/diamond_count
                     # 联动属观察域识别器(逻辑侧禁写),回调仅 sim 侧消费。
@@ -654,8 +654,8 @@ class CwScreenBattleWait(CwOperation):
                     # 胜局结算屏出现:「前往结算」补录路径(位面结束/轮败
                     # 多页,非 telemetry 同进本块)执行帧为按钮页无面板,
                     # 解析 None 零计数,与来源 A 不混计;同节点重处理
-                    #(确认失败重入等)由入账节点闩拦零双加。息行缺席
-                    #(面板在) = 息 0 照常入账;锚不在/值失读 = None 该
+                    #(确认失败重入等)由入账节点一次性标志位拦零双加。息行缺席
+                    #(面板在) = 息 0 照常入账;识别标志不在/值失读 = None 该
                     # 刻不计数(宁缺勿造)。record 先于 check 同组相邻;
                     # sig = logic_hook 族同 streak live 形态(两触发同窗
                     # 同组,台账归组一致)。闭合校验 = 兜底留证不阻塞。
@@ -685,7 +685,7 @@ class CwScreenBattleWait(CwOperation):
                                            actor='CwScreenBattleWait',
                                            group_id='battle-wait:env-grant'))
                             _st.interest_counted_pos = (_plane, _round)
-                    # —— 持续伤害契约条件分支猜测写(T-28;挂点 = 结算覆盖窗,
+                    # —— 持续伤害契约条件分支猜测写(T-28;插入位置 = 结算覆盖窗,
                     # streak 检查同窗同族):每次战斗结算「假设获得黑天鹅」
                     # 随机态垫入备战(幂等守卫防叠写,宁缺勿造同族)。证实
                     # 只认备战屏观察(v2-2 裁定:live 无定时保底),本窗
@@ -700,11 +700,11 @@ class CwScreenBattleWait(CwOperation):
                                    group_id='battle-wait:env-grant'))
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
-                # 效果账本结算挂点(settlement 锚行为账本既有挂点提供
-                # 确定性触发时点,挂点语义零改动)。现役注册表零战斗结算
+                # 效果账本结算插入位置(settlement 识别标志行为账本既有插入位置提供
+                # 确定性触发时点,插入位置语义零改动)。现役注册表零战斗结算
                 # 触发条目(effect-domain §7.4 零条目 = 零驱动)→ 行为面 = 结算
                 # 事件标记计数;条目计数/余量推进待建模批立战斗结算触发条目
-                # (枚举值随启用批新增)后经同一挂点自动生效。best-effort 同升级标记挂点纪律
+                # (枚举值随启用批新增)后经同一插入位置自动生效。best-effort 同升级标记插入位置纪律
                 #(prep_actions 升级标记先例:观测失败不阻塞结算链)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -714,8 +714,8 @@ class CwScreenBattleWait(CwOperation):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
                                 '(不阻塞): %s', e)
-                # 装备写端·拷贝仪参与计数结算(生产接线;载体 =
-                # settle_copy_machine_participation,指定挂点 = 战斗结算
+                # 装备写端·拷贝仪参与计数结算(生产接入调用;载体 =
+                # settle_copy_machine_participation,指定插入位置 = 战斗结算
                 # 覆盖带 on_battle_end 同分支同时序):现值
                 # 观察面(前台+后台已登记单位)逐件推进参与计数,整除阈值
                 # 成熟经入席桥落 1★ 复制;对局无拷贝仪穿戴 = 零扫描命中
@@ -737,8 +737,8 @@ class CwScreenBattleWait(CwOperation):
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 拷贝仪参与结算挂点失败'
                                 '(不阻塞): %s', e)
-            # 结算观测窗锚刷新(覆盖度守卫的「本窗已观测」凭据;含
-            # telemetry-only 败局补录行——行写点即锚,异常中断路径不刷新,
+            # 结算观测窗基准刷新(覆盖度守卫的「本窗已观测」凭据;含
+            # telemetry-only 败局补录行——行写点即基准,异常中断路径不刷新,
             # exit 守卫按真缺失计):
             _st.settled_battle_ts = _st.battle_ts
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
@@ -774,7 +774,7 @@ class CwScreenBattleWait(CwOperation):
         _pos = None
         _match = self.ctx.cw_match
         _sess = getattr(_match, 'session', None) if _match else None
-        # 序位锚 = 容器节点读口(节点未观察 = 证据
+        # 序位基准 = 状态容器节点读口(节点未观察 = 证据
         # 不足不置位标志,fail-closed)。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -850,7 +850,7 @@ class CwScreenBattleWait(CwOperation):
     def _dispatch_frame(self, screen) -> OperationRoundResult:
         """分支链(挑战成功结算/失败页 1f 全链/点空白加速/前往结算链/
         过场屏/战斗宽限/未知帧 bail 的序位即语义,**分支序禁重排**;
-        出口判定(终局锚/白名单)归 wait() 原位先行)。"""
+        出口判定(终局识别标志/白名单)归 wait() 原位先行)。"""
         # ②段:挑战成功结算(读点 → 继续挑战;screen_flow_timing #25
         # 读点前等 1.5s)
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
@@ -1053,11 +1053,11 @@ class CwScreenBattleWait(CwOperation):
         # ①段:等待结算画面出现。战斗进行中 = 合法静止(宽限)。
         if self._in_battle_grace(time.monotonic()):
             # 自动战斗检测(实机建档):「我方行动
-            # 待操作」双锚(单攻+回复技能按钮)**连续 ~5s** 命中 = 自动未开
+            # 待操作」两个识别标志(单攻+回复技能按钮)**连续 ~5s** 命中 = 自动未开
             # (战斗在我方回合停住等操作)→ 鼠标点击右上自动战斗开关开启
             # (点击而非按键:开关为画面按钮,键盘对窗口焦点敏感)。单帧
             # 命中可能是技能演出相似视觉,故连续计时防误判;开关动作后
-            # wait=2 覆盖切换生效窗。锚 rect 建档于 currency_war_battle.yml。
+            # wait=2 覆盖切换生效窗。识别标志 rect 建档于 currency_war_battle.yml。
             _auto_pending = (
                 self.round_by_find_area(
                     screen, '货币战争-战斗', '标识-我方行动待操作',

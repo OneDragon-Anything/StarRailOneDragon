@@ -1,4 +1,4 @@
-"""备战执行器 CwScreenPrep:画面执行 / 对账接线(依赖 obs/ 识别工具箱,
+"""备战执行器 CwScreenPrep:画面执行 / 对账接入调用(依赖 obs/ 识别工具箱,
 留 app 合法向)。
 
 对账职责 = 纯观察审计族(羁绊显示,heavy 定型帧
@@ -7,7 +7,7 @@
 
 形态(两 node 直继承 SrOperation):观察 node = 环装配前置(执行器构建
 /缓存复位)+ 环入口清场 + 开商店收起 + heavy 观察 → CwScreenPrepObs
-(可选域经 report_screen_prep_obs 落容器)+ 事件 overlay 早退返回主循环 +
+(可选域经 report_screen_prep_obs 落状态容器)+ 事件 overlay 早退返回主循环 +
 接管补采委派 + 纯观察审计族;决策动作 node = 单动作决策循环(无防御
 上限,用户裁定:不收敛 = 策略实现 bug)。书册卡的开卡时机归策略实现管
 (用户裁定 2026-09-19):观察链产 kind='bookcard' 槽位,策略器 entry ①
@@ -128,7 +128,7 @@ if TYPE_CHECKING:
 ENTRY_OVERLAY_CLOSE: dict[str, str] = {
     spec.screen_name: spec.close_area for spec in derive_clearable()
 }
-#: 清场轮数上限(每轮:逐屏锚探 → 命中点关闭 → settle;无命中即出)。
+#: 清场轮数上限(每轮:逐屏识别标志探查 → 命中点关闭 → settle;无命中即出)。
 ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
 #: 点关闭后的画面过渡等待(秒)。
 ENTRY_OVERLAY_SETTLE_S: float = 1.0
@@ -167,9 +167,9 @@ def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
 
 class CwScreenPrep(CwOperation):
     """备战决策环(两 node 形态):观察 node(环装配前置 + 清场 + heavy
-    观察 → CwScreenPrepObs 可选域 report 落容器 + 事件 overlay 早退 +
+    观察 → CwScreenPrepObs 可选域 report 落状态容器 + 事件 overlay 早退 +
     接管补采委派 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
-    决策(容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
+    决策(状态容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败
     回执;终结 op 发出即返回主循环)→ 逻辑态直写(动作 op 自上报))。
     决策循环无防御上限(用户裁定:不收敛 = 策略实现 bug)。
     """
@@ -182,12 +182,12 @@ class CwScreenPrep(CwOperation):
         # = 经验期望账本推进(CwActionLevelUpParam/CwActionOpenShopParam 两通道),随
         # 期望账拆除停用——「未落地不计数」防线
         # 由逻辑态直写(买经验自上报)与观察覆盖
-        # 承接。免战牌额度递减现役接线点 = 出战上报路径(上报时经
+        # 承接。免战牌额度递减现役接入调用点 = 出战上报路径(上报时经
         # kernel 效果账本 consume_use 扣减);刷新免费闸计数现役 =
-        # 效果账本 `record_refresh` 单口,经刷新上报函数触发
+        # 效果账本 `record_refresh` 唯一入口,经刷新上报函数触发
         # (kernel/cw_effect_inventory.py::record_refresh);商店域执行
-        # 链接线点 = 动作 op 自上报(BUY 计数 = 上报函数 on_buy 回调
-        # 单点,刷新 = report_action_refresh_shop_param 单口)。
+        # 链接入调用点 = 动作 op 自上报(BUY 计数 = 上报函数 on_buy 回调
+        # 单点,刷新 = report_action_refresh_shop_param 唯一入口)。
 
     # ===== 观察(只由现成 reader 产出)=====
 
@@ -230,10 +230,10 @@ class CwScreenPrep(CwOperation):
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
         # 扫描集单一源 = kernel/cw_overlay_registry 的 decision 派生段(B 面切换,
-        # 零成员变化):锚 = spec.anchor_area,tag = spec.bail_tag,消费方拼
+        # 零成员变化):识别标志 = spec.anchor_area,tag = spec.bail_tag,消费方拼
         # '事件overlay:' 前缀。命中即短路;break 语义与手写清单时代一致。
         # 遍历序 = 注册表声明序(与旧手写序不同但行为等价):各 decision overlay
-        # 是全屏顶层弹窗,单帧锚互斥(历史帧组 ≤1 命中实证),先命中哪个即哪个
+        # 是全屏顶层弹窗,单帧识别标志互斥(历史帧组 ≤1 命中实证),先命中哪个即哪个
         # overlay 在场;且任一 decision overlay 在场的外层行为相同(即刻 bail 交
         # 外环 handler),序只影响多命中假想帧的 tag 归属。
         for _spec in derive_decision():
@@ -242,7 +242,7 @@ class CwScreenPrep(CwOperation):
                     crop_first=False).is_success:
                 obs.event_overlay = _spec.bail_tag
                 break
-        # (席空数 = 容器 bench_free_slots 派生,前排槽数 =
+        # (席空数 = 状态容器 bench_free_slots 派生,前排槽数 =
         #  row_area_centers 现算;front/back_occupied = 交叉核对分支识别轻字段,
         #  消费在观察链内部存续。)
         front_pts = row_area_centers(self.ctx, '前排')
@@ -263,12 +263,12 @@ class CwScreenPrep(CwOperation):
                                source='director', op=self,
                                shop_open=obs.shop_open,   # gold 仅 shop 开态可信门
                                session=self._session())   # SIFT 三层漏斗(session 优先匹配)
-            # P6 观察链直产:observe_full 回传容器形状(备战席 BenchView /
+            # P6 观察链直产:observe_full 回传状态容器形状(备战席 BenchView /
             # 上场位 (前排命中对,后排命中对)——读侧
-            # 仍分排读屏,落容器 = 一次 observe 写 DeployedView(两排同帧
+            # 仍分排读屏,落状态容器 = 一次 observe 写 DeployedView(两排同帧
             # 合一,视图构造单一源 = kernel deployed_view_of_hits)。templates
             # 未加载 → None → 下方换空载体(与旧 [] 等价:对账空读可清账、
-            # 容器写端 carry)。
+            # 状态容器写端 carry)。
             _bench_view = _of.get('bench_view')
             _dep_hits = _of.get('deployed_rows')
             _dep_view_in = (None if _dep_hits is None else
@@ -283,7 +283,7 @@ class CwScreenPrep(CwOperation):
             _st = _of.get('read_receipt')
             session = self._session()
             # PrepObservation 消费切换转适配器:
-            # 决策读自 GameState 容器单例(read_game_state 漏斗直写;
+            # 决策读自 GameState 状态容器单例(read_game_state 漏斗直写;
             # 旧 last_state 装配源契约随装配源迁移终结,换源核销;
             # obs.state 视图槽已随黑板槽停用消亡)。
             if session is not None:
@@ -321,7 +321,7 @@ class CwScreenPrep(CwOperation):
                                        screen='货币战争-备战', mode='read',
                                        quality={'bench': 'real_read'})
                 # 备战席观察写端(观察写端=本屏;P6 直产):read_bench_view
-                # 直产容器视图(占位件 kind 识别期细分,零换形),对账门后
+                # 直产状态容器视图(占位件 kind 识别期细分,零换形),对账门后
                 # 副本随写(星级保旧/装备续接同帧共享)。
                 # 空视图 = 失读非全空(overlay 残留/动画帧/识别退化)——
                 # 走 carried(失读保旧值;宁缺勿造,先例=商店空牌面观察漏斗
@@ -340,7 +340,7 @@ class CwScreenPrep(CwOperation):
                                  '不写(保 logic 逻辑态值,下帧干净帧覆盖)')
                     else:
                         _gs_obs.observe(_gs_obs.bench, _bench_obs, sig=_prep_sig)
-                        # —— 持续伤害契约观察证实(T-28;挂点 = bench 整表
+                        # —— 持续伤害契约观察证实(T-28;插入位置 = bench 整表
                         # 观察同步点,证实消费本帧观察值):观察含黑天鹅 &&
                         # env active && 未证实 → done 封账(不区分来源,
                         # v2-5 裁定;观察无 → 零写,猜测态由观察覆盖契约
@@ -358,7 +358,7 @@ class CwScreenPrep(CwOperation):
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
                 # 上场席位观察写端(与 bench 写端同环同纪律;P6 直产;
-                # 合一写):读侧仍分排读屏,落容器 =
+                # 合一写):读侧仍分排读屏,落状态容器 =
                 # 一次 observe 写 DeployedView(两排同帧合一——换排/重排/
                 # 容量变化都是单字段整值替换,无跨字段中间态);空读(两排
                 # 全空)= 失读非全空 → carry,禁「全场无人」假观察;特效窗
@@ -385,7 +385,7 @@ class CwScreenPrep(CwOperation):
                                   frame=_dep_frame,
                                   sig=_dep_carried_sig)
                 # 备战帧现行链写端:slots 由 observe_full
-                # heavy 回传(原弃槽点改造),写容器在 director 侧(单写者
+                # heavy 回传(原弃槽点改造),写状态容器在 director 侧(单写者
                 # 原则);逐格映射/写门/基线回填语义见函数 docstring。
                 # 节点行观察消费位同帧同点(详设 §2.8):槽序表/台账/图标
                 # 采集写点随迁此处,识别复用现役读零新增。
@@ -400,12 +400,12 @@ class CwScreenPrep(CwOperation):
                 # 合成特效窗影响,无需 is_merge_effect_window 门)。
                 if _of.get('owned_equips') is not None:
                     # gs.equips 观察写端即单一源,商店线权重/
-                    # flow 打分/库存 ±1 分支全部读容器。
+                    # flow 打分/库存 ±1 分支全部读状态容器。
                     _gs_obs.observe(_gs_obs.equips,
                                     list(_of.get('owned_equips')),
                                     sig=_prep_sig)
                 if _of.get('occupied_equips') is not None:
-                    # 穿戴位置观察写端:采集产物 {(row, slot): [件名]} → 容器键
+                    # 穿戴位置观察写端:采集产物 {(row, slot): [件名]} → 状态容器键
                     # 'front:1' 形态(tuple 键 JSON 序列化不安全);失读
                     # None 不写保现值(同 owned 守卫族,宁缺勿造)。
                     _gs_obs.observe(
@@ -415,14 +415,14 @@ class CwScreenPrep(CwOperation):
                          in _of.get('occupied_equips').items()},
                         sig=_prep_sig)
                 # 声明入队/过期电平检查(
-                # 详设 ore-reward-channel §5 live 接线规约):判定点固定在
+                # 详设 ore-reward-channel §5 live 接入调用规约):判定点固定在
                 # observe_full 回执后、spheres 写前——node 域 plane 的写点
                 # 在回执内的 read_game_state 漏斗,回执前无「旧 plane 现值」
                 # 可交叉核对(observe_node_anchor 只推进序号不更新 plane);次序
                 # 硬约束 = 入队完成先于同帧 spheres 写(接反则位面首帧新现
                 # 生成时声明未入队,该帧后无新现即永不附着)。电平规则本体
                 # (无边沿/无 op 成员,守卫住 GameState)单一源在 kernel,
-                # 本点只接线;node 未锚定 = 函数内自跳过(下一 heavy 帧兜住)。
+                # 本点只接入调用;node 未锚定 = 函数内自跳过(下一 heavy 帧兜住)。
                 check_ore_declared_level(_gs_obs, hook_sig=_ORE_HOOK_SIG)
                 # 晶矿点击目标观察写端(空读照写 count=0——空读 = 真无晶矿,
                 # 跳写会留上一帧残留假晶矿坐标喂进点击载荷(幽灵晶矿);
@@ -585,7 +585,7 @@ class CwScreenPrep(CwOperation):
     def reobserve_in_visit(self) -> PrepObservation:
         """访问内重观察(CwActionObs 动作执行通道;screens/op-layer.md §1.1 读屏点
         规范的已登记例外):决策环内策略显式发出 CwActionObs 才触发的
-        heavy 观察链重跑——漏斗直写容器 = 观察边界对账(「重新观察上报」)。
+        heavy 观察链重跑——漏斗直写状态容器 = 观察边界对账(「重新观察上报」)。
 
         适用范围 = 最小重观察:入口专属段(环入口清场/开商店收起/接管补采/
         纯观察审计族)不在本通道,仍归观察 node;帧代次标注归决策循环
@@ -609,14 +609,14 @@ class CwScreenPrep(CwOperation):
 
         统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移保留证据/
         obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。载体 =
-        P6 直产容器形状(备战席 BenchView / 上场位 DeployedView——
+        P6 直产状态容器形状(备战席 BenchView / 上场位 DeployedView——
         读侧分排读屏、对账载体 = 合一视图);失读
         None → 空视图承载(旧链 [] 语义:对账空读可清账,非
         「读失败不覆盖」)。
 
         Returns:
             ``(是否写回, 门后 bench 视图, 门后 deployed 视图)`` —— 门后副本
-            供同帧容器观察写端消费(星级保旧/装备续接随副本共享)。
+            供同帧状态容器观察写端消费(星级保旧/装备续接随副本共享)。
         """
         session = self._session()
         if session is None:
@@ -631,7 +631,7 @@ class CwScreenPrep(CwOperation):
             screen, source='director', ctx=self.ctx)
 
     def _reconcile_faction_display(self, obs: PrepObservation) -> None:
-        """备战稳定帧羁绊显示对账(cw_faction_obs 接线;零决策:不一致仅落
+        """备战稳定帧羁绊显示对账(cw_faction_obs 接入调用;零决策:不一致仅落
         缺陷台账,不纠漂不重读——羁绊状态以计算侧为主源,显示只作对账票)。
 
         computed 侧 = ``board_from_deployed``(主域 deployed 派生工作表,
@@ -662,7 +662,7 @@ class CwScreenPrep(CwOperation):
             reading = read_displayed_factions(self.ctx, frame)
             result = compare_factions(computed, reading.entries,
                                       reading.unreadable)
-            # 台账行 plane/round = 容器读口。
+            # 台账行 plane/round = 状态容器读口。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 plane_of,
                 round_num_of,
@@ -726,9 +726,9 @@ class CwScreenPrep(CwOperation):
         序列:执行器构建 + 缓存复位 → 环入口清场(ENTRY_OVERLAY_CLOSE =
         过渡相位表「可一键关闭」子集)→ 开商店收起探针 → heavy 观察 →
         CwScreenPrepObs 装配(可选域经 :func:`report_screen_prep_obs` 在
-        原写点位落容器:链域在 heavy 观察链内、接管域在补采簇内,字段在
+        原写点位落状态容器:链域在 heavy 观察链内、接管域在补采簇内,字段在
         场才写)→ 帧代次标注 → 事件 overlay 早退返回主循环 → 接管补采 →
-        审计族消费。书册卡不再入口代清:识别 kind 进容器,开卡时机由
+        审计族消费。书册卡不再入口代清:识别 kind 进状态容器,开卡时机由
         策略器 entry ① 卡片分支裁决(用户裁定 2026-09-19,发出的
         CwActionOpenBookcardParam 为终结动作,返回语义与原入口代发一致)。"""
         match = self._match()
@@ -754,7 +754,7 @@ class CwScreenPrep(CwOperation):
             # overlay 在场 → 返回主循环重新识别分发(无计数;对应外循环 overlay 分发/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
             return self.round_success(f'事件overlay({obs.event_overlay})交回外循环分发', wait=0.8)
-        # 中断恢复的对局补采委派(挂点随观察段平移;编排单一源 =
+        # 中断恢复的对局补采委派(插入位置随观察段平移;编排单一源 =
         # CwEntryPlaneIntel,本 op 只判触发与透传,详见方法注释)
         _tk = self._delegate_plane_intel_if_needed(session)
         if _tk is not None:
@@ -785,7 +785,7 @@ class CwScreenPrep(CwOperation):
         """单动作决策循环整体(前身份 = 序列消费 +
         每动作落地后 heavy 重观察的保守口径)。
 
-        形态:入口 heavy 一次观察 → 逐动作『决策(容器=逻辑态)→ F3
+        形态:入口 heavy 一次观察 → 逐动作『决策(状态容器=逻辑态)→ F3
         校验 → 执行 → 逻辑态直写』循环,循环内零读屏(已登记例外 =
         CwActionObs 环内重观察:策略显式发出才触发宿主观察链重跑,
         帧代次标 full 后原地续决策)。已知画面出口
@@ -803,12 +803,12 @@ class CwScreenPrep(CwOperation):
         # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
         #(商店 visit/破墙段)残留的续段 token/结论标志按序号不等自动失效。
         # 状态对象缺席(第三方策略面/桩)= 无缓存载体,跳过置位(决策核
-        # 侧冷建自 0 起,行为 = 恒重推导,保守端安全;缺席退缺省口径)。
+        # 侧每局全新创建自 0 起,行为 = 恒重推导,保守端安全;缺席退缺省口径)。
         _st_seg = strategy_state_of(session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
         while True:
-            # —— 决策(容器 game state 直读;动作后逻辑态 =
+            # —— 决策(状态容器 game state 直读;动作后逻辑态 =
             #      kernel 写口统一直写)
             try:
                 result = match.strategy.decide_prep_screen()
@@ -832,7 +832,7 @@ class CwScreenPrep(CwOperation):
             # 参数守卫 = 各动作 op 内守卫断言(集中式 validate 已退役,
             # flow/action_ops.md §1 决策侧参数现算契约):违法经执行异常
             # 通道(:817 except → round_fail)上抛,拒绝语义同由断言消息
-            # 显影,本环零前置校验分支。
+            # 在日志里暴露,本环零前置校验分支。
             key = action_key(action)
             # —— 执行(机械执行,无成败回执;发出即职责完成)
             #      执行体 = _act_execute_default(现役点击链 / 流程编排分流)。
@@ -890,7 +890,7 @@ class CwScreenPrep(CwOperation):
 
     # ===== 已锁语义的现役载体位置:bench 空集守卫/合成特效窗门在
     # _observe 识别链内,免战牌次数递减在出战上报路径(start_battle
-    # 上报时 consume_use),同节点去重在 cw_loop 备战分支挂点 =====
+    # 上报时 consume_use),同节点去重在 cw_loop 备战分支插入位置 =====
 
     def _terminal_exit(self, action: CwAction, key: str,
                        op_cls: type[SrOperation],
@@ -981,15 +981,15 @@ class CwScreenPrep(CwOperation):
 
     def _delegate_plane_intel_if_needed(self, session: StrategySession
                                         ) -> OperationRoundResult | None:
-        """接管补采委派(挂点 = op 观察 node;编排单一源 =
-        CwEntryPlaneIntel:门/开关详情屏/委派实采/真值落容器写门全在编排侧)。
+        """接管补采委派(插入位置 = op 观察 node;编排单一源 =
+        CwEntryPlaneIntel:门/开关详情屏/委派实采/真值落状态容器写门全在编排侧)。
 
-        触发谓词(两支取或;设计 = T-45 设计稿 §2.2 接线 1,迭代
+        触发谓词(两支取或;设计 = T-45 设计稿 §2.2 接入调用 1,迭代
         2026-09-23-invest-effects-calc):①``gs.plane_bosses`` 空(本局
         尚无位面序真值,接管局 boss 面;不引入显式失效标记——重复委派由
         编排的真值跳过门兜住,委派失败交外循环失败链,无自带计数/放弃
         分支);②``enemy_affixes ∈ gs.logic_rand_fields()``(词缀随机态:
-        敌后破坏删除分支猜测名单/开局种子未验证底座——策略器消费前必须
+        敌后破坏删除分支猜测名单/开局种子未验证初始值——策略器消费前必须
         先去位面详情补观察转正,write_logic_rand 消费门纪律)。
         「节点条可读」守卫 = 半开帧(过场/overlay):第一支命中维持现役
         return None(等下轮免费重判、不烧失败链,boss 面行为零变更;
@@ -1011,7 +1011,7 @@ class CwScreenPrep(CwOperation):
         if _tk_slots is None:
             if _boss_missing:
                 return None   # 第一支(接管局 boss 面)半开帧:现役等下轮免费重判
-            # 仅词缀随机态支命中 ∧ 半开帧 → 封死(设计接线 1 默认案):
+            # 仅词缀随机态支命中 ∧ 半开帧 → 封死(设计接入调用 1 默认案):
             # 决策延后一拍,等待后本 node 免费重判(转正前零决策消费)
             log.info('[cw][director] 敌人词缀随机态 ∧ 半开帧(节点条不可读)'
                      '→ 封死决策延后一拍')
@@ -1035,7 +1035,7 @@ class CwScreenPrep(CwOperation):
         """环入口清场前置段(规范入口序列「先清场、再识别、后动作」):
         环入口先逐屏探可一键关闭的 overlay(注册表 = ``ENTRY_OVERLAY_CLOSE``,
         单一源 = ``cw_overlay_registry.derive_clearable()`` 派生桥接;
-        锚判定走现有 screen 体系),命中即点其关闭按钮,拿干净备战画面再进
+        识别标志判定走现有 screen 体系),命中即点其关闭按钮,拿干净备战画面再进
         全量识别——识别与 overlay 状态交织是死读与冲突噪声的共同根。只收
         「无决策语义的弹窗/面板」;投资环境/策略等交互 overlay 有专属
         handler,关闭即丢决策内容,不进注册表、仍走既有 event_overlay
@@ -1114,7 +1114,7 @@ class CwScreenPrep(CwOperation):
             return False, '无 cw_match(对局未初始化)'
         # 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)(用户裁定 2026-09-10:调用方不问成败):
         # open_shop 的验关型失败回执消费删除——发出即职责完成,店实际开没开
-        # 由下一帧观察侧对账自然闭环(0n 三锚/备战帧读互斥)。
+        # 由下一帧观察侧对账自然闭环(0n 三个识别标志/备战帧读互斥)。
         _ = open_shop(self)
         return self.visit_open_shop()
 
@@ -1122,7 +1122,7 @@ class CwScreenPrep(CwOperation):
     # 临时捕获类;用户 2026-09-10 指令:候逐条确定的特殊投资策略在场时,
     # 进入商店画面处理即停机。2026-09-16 裁定:直接停机人工采集,不再
     # 代码落截图/转储/flag。删除面 = 本整段(名单常量+防重集合+方法)
-    # + visit_open_shop 首部挂点两行,不留开关/flag/配置)=====
+    # + visit_open_shop 首部插入位置两行,不留开关/flag/配置)=====
 
     #: 候逐条确定的特殊投资策略名单(硬编码,不建配置;名字 = 注册表规范名,
     #: 同 cw_investments.STRATEGY_EFFECTS 键空间。名单可先于注册表建模面——
@@ -1146,7 +1146,7 @@ class CwScreenPrep(CwOperation):
         2026-09-16 用户裁定:直接停机,采集改手动——不代码落盘。
         停机后画面原样保持(店开着):人工看画面 / MCP 截图补帧,对照
         效果注册表逐条确定该组合下商店改写/计数/经验行为,结论回填效果
-        规格 verdict/notes;采够后删本整段(含 visit_open_shop 挂点两行),
+        规格 verdict/notes;采够后删本整段(含 visit_open_shop 插入位置两行),
         不留开关。框架截图([stop] 行)即现场帧。
         """
         match = self._match()
@@ -1179,11 +1179,11 @@ class CwScreenPrep(CwOperation):
         入口观察现读当前牌面重建期望态 → 策略器逐动作决策(买/卖/升/刷)
         → CwActionCloseShopParam 终结收店返回主循环(收店点击由商店画面 op
         执行体承担)。**不调 open_shop**——店已开由外循环
-        0n 三 id_mark 锚判定确认,直接跳过开店动作(比依赖 open_shop
+        0n 三 id_mark 识别标志判定确认,直接跳过开店动作(比依赖 open_shop
         幂等性更进一步:已开连点都不发);「收不收」由策略器基于期望态
         决定(CwActionCloseShopParam = 商店画面 op 的一等终结动作),路由层不硬编码收起。
 
-        (访问内 hp 决策消费统一经 decision_hp 容器读口,显式开店路径与
+        (访问内 hp 决策消费统一经 decision_hp 状态容器读口,显式开店路径与
         0n 路径同源。)
 
         编排单一源归属:本方法 = 商店画面 op 驱动的唯一编排点,显式开店
@@ -1196,7 +1196,7 @@ class CwScreenPrep(CwOperation):
         观察域(详设 §2.8,本备战环 heavy 观察消费),访问返回主循环,零额外动作。
         失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
         """
-        # [临时钩子挂点] 特殊投资策略商店采集停机(采够删:整段 = 上方
+        # [临时钩子插入位置] 特殊投资策略商店采集停机(采够删:整段 = 上方
         # _spec_invest_shop_stop_hook 临时段 + 本两行);触发即已停机保留证据,
         # 返回失败回执不进买牌循环——零 click,画面原样保持待 AI 接管。
         if (_spec_stop := self._spec_invest_shop_stop_hook()) is not None:
@@ -1310,11 +1310,11 @@ def _capture_unrecognized_node_icons(screen: MatLike, slots: list,
 def _write_prep_node_chain(session: object, slots: list | None,
                            sig: ChannelSig,
                            screen: MatLike | None = None) -> None:
-    """备战帧现行链写端 + 节点行观察消费位(链语义正本 =
+    """备战帧现行链写端 + 节点行观察消费位(链语义权威版本 =
     game_state/chain-observation.md §3,quality=prep_row)。
 
-    挂点 = 备战入口 heavy 观察的节点行读(``observe_full`` 现役
-    ``read_node_sequence`` 调用回传 slots——识别零新增;director 侧写容器,
+    插入位置 = 备战入口 heavy 观察的节点行读(``observe_full`` 现役
+    ``read_node_sequence`` 调用回传 slots——识别零新增;director 侧写状态容器,
     组装层单写者原则只回传 slots)。节点行观察已自商店域归位本消费位
     (迭代 2026-09-21-shop-refresh-terminal 详设 §2.8:原宿主 = 商店访问
     尾探针 ``cw_screen_shop.probe_node_type``,随其停用整体迁入,
@@ -1360,7 +1360,7 @@ def _write_prep_node_chain(session: object, slots: list | None,
         except Exception:   # noqa: BLE001  采集 best-effort,不阻塞观察链
             pass
     # 槽序表写点(按位面首帧;write-once-per-plane 守卫在函数内,无对齐门
-    # ——随迁原语义)。位面锚 = 容器节点读口(节点未观察 = None,首帧
+    # ——随迁原语义)。位面基准 = 状态容器节点读口(节点未观察 = None,首帧
     # 写入退开局语义不变)。
     try:
         _nd_now = game_state_of(session).node.value

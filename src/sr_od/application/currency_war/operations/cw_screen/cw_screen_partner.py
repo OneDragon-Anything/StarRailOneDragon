@@ -16,7 +16,7 @@
 直继承 SrOperation。观察 node = 入口门(标识-选择伙伴,miss = round_fail 交
 回外循环重判)+ 候选观察一次读(OCR + SIFT 立绘识别真身,失败回落 label 名;
 入口帧一次读,与现役决策体读同帧等价)→ ``report_screen_partner_obs`` 落
-容器 ``partner_opts``(空候选不写,闸在 report 内)→ obs 挂实例属性进决策
+状态容器 ``partner_opts``(空候选不写,闸在 report 内)→ obs 挂实例属性进决策
 node。决策动作 node = 落地复查顶部(确认已发 → 标识不在 = overlay 已关
 → success 返回主循环)→ 确认被拒守卫(未选中提示在场 × 脉冲上限 = 显式 fail)
 + 决策出口守卫(输入:候选空 fail / 返回契约 / 值域,op-layer.md §1.1
@@ -173,12 +173,12 @@ class CwScreenPartner(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口门 + 候选观察一次读 → report 落容器。
+        """入口门 + 候选观察一次读 → report 落状态容器。
 
         门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
         门后候选一次读(OCR + SIFT 真身识别,失败回落 label 名)→
         ``report_screen_partner_obs``(空候选不写,闸在 report 内);
-        match/gs 缺席的局外兜底路径跳过 report(report 跳写 = 容器写闸,
+        match/gs 缺席的局外兜底路径跳过 report(report 跳写 = 状态容器写闸,
         与决策无关;无 match 局外不设早退支,用户裁决 全族
         删门)。"""
         screen = self.last_screenshot
@@ -210,7 +210,7 @@ class CwScreenPartner(CwOperation):
         每轮脉冲(机制出处 = 模块头更正注):
         1. 未选中提示在场(置灰已实测确认)∧ 脉冲已达上限 → 显式 fail(确认被拒
            形态有界重试,禁原样无限重试);
-        2. 首轮决策一次(零参 decide,写槽已由 report 落容器;chosen 留在原位
+        2. 首轮决策一次(零参 decide,写槽已由 report 落状态容器;chosen 留在原位
            选择点)定同一点位;守卫①②③(候选空 = 具名 fail;返回
            None·词表外 = 具名 fail 含原值;越界 = AssertionError)先于决策
            与写端,零点击;无 match 局外不设早退支(用户裁决
@@ -244,7 +244,7 @@ class CwScreenPartner(CwOperation):
             # §1.1;用户裁决 全族删门):单跑缺上下文沿正常链路
             # 在此失败即预期,禁回填此类单跑防御分支。
             # 守卫②(返回契约,op-layer §1.3):None/词表外 = 策略器 bug 具名
-            # fail 留存证据(原 AttributeError 异常出口子径并入,消息含原值)。
+            # fail 留存证据(原 AttributeError 异常出口分支并入,消息含原值)。
             pick = match.strategy.decide_partner()
             if not isinstance(pick, CwActionPickPartnerParam):
                 return self.round_fail(
@@ -260,7 +260,7 @@ class CwScreenPartner(CwOperation):
             self._pick_idx = pick.idx
             log.info('[cw-partner] candidates=%s pick=idx%s %s',
                      [o.char_id for o in options], pick.idx, pick.reason)
-            # 伙伴选择落容器 chosen_partner(gs 单一源,session 域无此写端;守卫
+            # 伙伴选择落状态容器 chosen_partner(gs 单一源,session 域无此写端;守卫
             # ①③已保证 options 非空且 idx 在界;点选前写 = 选择点,单次逻辑写入
             # 豁免面,与巨星 chosen_megastar 派发前写同款;fields.md §3.4 导语
             # 判定点已登记)。

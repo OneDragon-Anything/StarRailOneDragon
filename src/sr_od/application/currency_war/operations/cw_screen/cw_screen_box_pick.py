@@ -14,7 +14,7 @@
 实现)与 kernel 机器 ``pick_equipment``(``kernel/cw_equip_value.py``)
 是仅有的两处决策面,本 op 禁第二打分实现;``decide_box_card`` 异常留存证据
 (完整栈)后显式上抛、返回越界索引同 fail-closed 上抛——两者都禁无声
-回落内联打分(策略 bug 禁遮蔽;正本 = ``flow/README.md`` §1 决策控制
+回落内联打分(策略 bug 禁遮蔽;权威版本 = ``flow/README.md`` §1 决策控制
 分层铁律 + ``screens/op-layer.md`` §1.1 出口三语义)。无 match 局外
 不设早退支(op-layer.md §1.1「画面 op 不支持局外单独调用」;用户裁决
  全族删门),本 op 不设任何兜底决策路径;
@@ -25,7 +25,7 @@
 点卡名带下方一点(y=290,避「查看详情」按钮)。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
-观察 node = 入口锚复验(「标识-请选择」,分发即门,op 内机械复验防误派;
+观察 node = 入口识别标志复验(「标识-请选择」,分发即门,op 内机械复验防误派;
 miss 未发 = round_fail 返回主循环按画面重分发)+ OCR 卡名行读数(读数闸
 下限 2 字,上限 = 装备注册表最长名派生 ``_CARD_NAME_LEN_MAX``——9 字
 特权名如「战场进化手册·特权」可达,旧 8 字手抄上限先于归一化确定性
@@ -38,14 +38,14 @@ miss 未发 = round_fail 返回主循环按画面重分发)+ OCR 卡名行读数
 零上报返回主循环重新识别画面,名字与坐标同进退;重复名合法逐候选独立归一——屏契约 =
 ``screens/box_pick.md`` §3)+ 坐标解点(候选 x + CARD_Y 避让几何,观察
 期一次解出)→ ``CwScreenBoxPickObs`` → ``report_screen_box_pick_obs``
-写槽 ``box_card_names`` / ``box_card_names_xy`` 落容器(「写槽以本访问
+写槽 ``box_card_names`` / ``box_card_names_xy`` 落状态容器(「写槽以本访问
 将决策为前提」由门 + 非空闸保证,桩无 gs(有 match)→ 跳过写、决策
 照走)。obs 读数(名 + x)与坐标
-一并上报入容器(同门双写,坐标单一真相源 = 观察上报,op-layer.md
+一并上报入状态容器(同门双写,坐标单一真相源 = 观察上报,op-layer.md
 §1.1 :35);决策动作 node 零坐标现算。决策动作 node = 选卡决策
 (``_decide_card_index`` 局内专用,fail-closed 契约)→ 选卡链经 ``CwActionPickBoxCardOp`` 派发(点卡选中即确认 +
 动画等待 + 自上报住动作 op,机械链契约 = ``flow/action_exec.md`` §2;
-点击坐标 = 容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
+点击坐标 = 状态容器 ``box_card_names_xy[idx]`` 动作 op 自取)→ 选卡即终结
 结束本次访问(单选族例外,判据 = ``screens/README.md`` §3;选卡落地由下一帧
 观察覆盖,无落地复查旗标)。
 """
@@ -114,29 +114,29 @@ class CwScreenBoxPick(CwOperation):
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenBoxPickObs | None = None
         # 标准化读数 [(标准注册名,卡 x 中心), ...](x 升序;卡名与坐标
-        # 一并上报入容器 ``box_card_names`` / ``box_card_names_xy``
+        # 一并上报入状态容器 ``box_card_names`` / ``box_card_names_xy``
         # (op-layer.md §1.1 :35 坐标单一真相源 = 观察上报),本 op 零
         # 坐标现算,读数 x 仅供观察侧解点)。
         self._cards: list[tuple[str, int]] = []
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口锚复验 + OCR 卡名 → 标准化门/解点 → report 落容器。
+        """入口识别标志复验 + OCR 卡名 → 标准化门/解点 → report 落状态容器。
 
-        两道闸(入口锚/读数,均在观察 node):锚 miss = 非本画面;
+        两道闸(入口识别标志/读数,均在观察 node):识别标志 miss = 非本画面;
         卡名空 = 未发出通道(变体字型/动画帧)——都 失败结束本次访问,返回主循环重派
-        (重观察语境禁猜,禁盲点首卡),report 不调(容器不进盲值)。
+        (重观察语境禁猜,禁盲点首卡),report 不调(状态容器不进盲值)。
         标准化门任一候选转换失败同 fail 早退(零写零上报,与「读空」闸
         同型并列;名字与坐标同进退)。"""
         screen = self.last_screenshot
-        # 入口锚复验(分发即门,op 内机械复验防误派;锚 miss = 非本画面
+        # 入口识别标志复验(分发即门,op 内机械复验防误派;识别标志 miss = 非本画面
         # → 失败结束本次访问,返回主循环按画面重分发)
         if not self.round_by_find_area(
                 screen, CwScreenBoxPick.SCREEN_NAME, '标识-请选择',
                 crop_first=False).is_success:
             return self.round_fail('非武装箱选择画面(标识-请选择 miss)')
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
-        #(经同名 report 落容器);否则原读链。live 读链早退形态(读空闸/
+        #(经同名 report 落状态容器);否则原读链。live 读链早退形态(读空闸/
         # 标准化门 round_fail)原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenBoxPick.SCREEN_NAME, self._observe_live)
@@ -154,7 +154,7 @@ class CwScreenBoxPick(CwOperation):
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
         OCR 卡名行 → 两道闸(读空/标准化,失败 = round_fail 早退零写零
-        上报返回主循环重派)→ 坐标解点 → report 落容器。"""
+        上报返回主循环重派)→ 坐标解点 → report 落状态容器。"""
         screen = self.last_screenshot
         cards = self._read_card_names(screen)
         if not cards:
@@ -178,7 +178,7 @@ class CwScreenBoxPick(CwOperation):
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         if _gs is not None:
-            # 写槽调用(report 落容器:同访问覆盖写,写点前提「本访问将
+            # 写槽调用(report 落状态容器:同访问覆盖写,写点前提「本访问将
             # 决策」由两道闸保证;桩无 gs(有 match)→ 跳过写,决策照走;
             # 名字与坐标同门双写)。
             report_screen_box_pick_obs(_gs, obs)
@@ -190,7 +190,7 @@ class CwScreenBoxPick(CwOperation):
         """选卡决策 → 选卡链经工厂派发 → 选卡即终结,返回主循环。
 
         点卡选中即确认 + 动画等待 + 自上报住 ``CwActionPickBoxCardOp``
-        (机械链契约 = flow/action_exec.md §2;点击坐标 = 容器
+        (机械链契约 = flow/action_exec.md §2;点击坐标 = 状态容器
         ``box_card_names_xy[idx]`` 动作 op 自取,选卡落地归下一帧观察
         覆盖);本 op 只决策(局内;fail-closed 契约)与返回主循环;无 match
         局外不设早退支(op-layer.md §1.1;用户裁决 全族删门)。
@@ -242,7 +242,7 @@ class CwScreenBoxPick(CwOperation):
 
         四卡可能同名(同装备多张)= 重复名合法观察面:逐候选独立归一,
         不适用「多候选命中同一注册名 = 转换失败」互斥判(该判覆盖选项
-        互斥屏);容器 ``box_card_names`` 值域自此 = 标准注册名。"""
+        互斥屏);状态容器 ``box_card_names`` 值域自此 = 标准注册名。"""
         resolved: list[tuple[str, int]] = []
         for name, x in cards:
             canon = normalize_registry_equip_name(name)
@@ -257,7 +257,7 @@ class CwScreenBoxPick(CwOperation):
         return resolved
 
     def _decide_card_index(self, names: list[str]) -> int:
-        """选卡决策(局内专用;容器写归观察 node 的
+        """选卡决策(局内专用;状态容器写归观察 node 的
         ``report_screen_box_pick_obs`` 调用,本方法只决策):策略契约
         ``decide_box_card``(fail-closed:异常留存证据上抛/越界上抛,禁
         无声回落)。无 match 局外不设早退支(op-layer.md §1.1;用户

@@ -15,7 +15,7 @@ UI 弹窗卡死。签名「消耗品」(类型 label) AND 「拖动到」(拖动
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
 入口门(双 OCR 条件,与外循环 0f' 分发判定同源同参:双 lcs 0.9 精确
 签名;miss 未发 = round_fail 返回主循环重新判定,「下一帧重判」是外循环
-职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器
+职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:本屏零状态容器
 写点,obs 类住 kernel/cw_screen_report/consumable_overlay.py,import
 构造即可)。决策动作 node = 落地复查顶部(点 × 已发 → 双签名 miss =
 已离开本画面 → success 结束本次访问——出口 = 入口观察的合法重判,非动作层
@@ -23,7 +23,7 @@ UI 弹窗卡死。签名「消耗品」(类型 label) AND 「拖动到」(拖动
 (同 CwScreenItemDetailPopup,同族 modal 的防吞点击保留)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实结束本次访问)。本类入口信号 = 自有
-双 OCR 判定(覆写形态),落地复查有观察信号可用,无「免锚发出即
+双 OCR 判定(覆写形态),落地复查有观察信号可用,无「免识别标志发出即
 success」出口。
 """
 from cv2.typing import MatLike

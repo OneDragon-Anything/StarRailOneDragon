@@ -1,18 +1,18 @@
 """货币战争 简报 op(开局序列第一步)。
 
 简报观察(敌人词缀/位面序 boss/敌人难度)+ 词缀效果采集(best-effort)
-+ 点「下一步」,完成承诺 = 固定时长(BRIEFING_SETTLE_S,锚后 ~1s)。
++ 点「下一步」,完成承诺 = 固定时长(BRIEFING_SETTLE_S,识别标志命中后 ~1s)。
 
-下游链路(不变):容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table
+下游链路(不变):状态容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table
 吃怕表,统一阵容评分迭代起);
-``plane_bosses``(位面序真值,字段正本 =
+``plane_bosses``(位面序真值,字段权威版本 =
 ``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.1.3)→ 线分 boss 分量。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation):
 观察 node = 画面身份门(id_mark「标识-本场对局首领」,miss = round_fail
-返回主循环重新判定)+ 三读数一次读 → ``report_screen_briefing_obs`` 落容器
+返回主循环重新判定)+ 三读数一次读 → ``report_screen_briefing_obs`` 落状态容器
 (统一写语义:读到非空恒覆写 / 读空跳过写——读缺=跳过写项目口径;
-简报三读数一局内恒定,重读自愈首次误读,跨局残留由每局容器冷建/丢弃
+简报三读数一局内恒定,重读自愈首次误读,跨局残留由每局状态容器每局全新创建/丢弃
 挡死;match/gs 缺席跳过)→ obs 挂实例属性进决策 node。**词缀效果
 点采与效果账本登记留在观察侧**(依赖 OCR 逐词缀点采,摸帧逻辑不进
 kernel):每次进简报屏都重读重采,点采对注册表比对自身幂等(一致即
@@ -57,7 +57,7 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenBriefing(CwOperation):
-    """简报:识别简报 → 读词缀/boss/难度(report 落容器)+ 词缀效果采集 → 点下一步(落地复查后返回主循环)。"""
+    """简报:识别简报 → 读词缀/boss/难度(report 落状态容器)+ 词缀效果采集 → 点下一步(落地复查后返回主循环)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领
     #: + 按钮-下一步 + 区域-词缀行 + 区域-首领行。
@@ -75,11 +75,11 @@ class CwScreenBriefing(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """画面身份门 + 三读数一次读 → report 落容器(读到必写/读空跳过)+ 词缀效果采集。
+        """画面身份门 + 三读数一次读 → report 落状态容器(读到必写/读空跳过)+ 词缀效果采集。
 
         门 miss = round_fail 早退交编排壳按步分流(现役首闸同 status)。
         门 hit → 三读数一次读(同帧同源)→ ``report_screen_briefing_obs``
-        落容器 → obs 挂实例属性。三读数每次进简报屏都重读(无已读跳过
+        落状态容器 → obs 挂实例属性。三读数每次进简报屏都重读(无已读跳过
         守卫——一局内恒定,重读成本 = 区域 OCR,自愈首次误读);词缀
         效果点采对注册表比对自身幂等(一致即跳过,无重复收集);点采
         失败不阻塞推进(best-effort;write_affix_effects 本轮内存不生效,
@@ -90,7 +90,7 @@ class CwScreenBriefing(CwOperation):
                 crop_first=False).is_success:
             return self.round_fail('非简报屏')
         # 读屏点改道(sim 统一金路径生成器):装了后端 → 生成器产物
-        #(经同名 report 落容器);否则执行原读链。live 读链早退形态(boss
+        #(经同名 report 落状态容器);否则执行原读链。live 读链早退形态(boss
         # 两段归一失败 round_fail)原样返回主循环。
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenBriefing.SCREEN_NAME, self._observe_live)
@@ -102,7 +102,7 @@ class CwScreenBriefing(CwOperation):
     def _observe_live(self) -> 'CwScreenBriefingObs | OperationRoundResult':
         """live 观察读链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
-        三读数一次读 + 词缀效果点采 + report 落容器;boss 读数两段归一
+        三读数一次读 + 词缀效果点采 + report 落状态容器;boss 读数两段归一
         失败 = round_fail 早退(零写零上报返回主循环重新观察),由调用 node 原样
         返回主循环。"""
         screen = self.last_screenshot
@@ -118,7 +118,7 @@ class CwScreenBriefing(CwOperation):
                 _updates = self._collect_affix_effects(dict(_affixes_pos))
                 if _updates:
                     write_affix_effects(_updates)
-            # 词缀运行时登记挂点(效果账本 source='affix';登记体自身按
+            # 词缀运行时登记插入位置(效果账本 source='affix';登记体自身按
             # 已登记条目幂等兜底)。命中结构化注册(cw_affix_effects
             # .AFFIX_EFFECT_SPECS)才入账本;best-effort 失败不阻塞点
             # 「下一步」(登记面纪律 = effect-domain.md §7.3)。
@@ -192,7 +192,7 @@ class CwScreenBriefing(CwOperation):
             return self.round_retry('未找到「下一步」按钮')
         # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):不读屏判「是否已转移」——已离开与否由下一轮
         # 重入的标识观察裁决,裁决 success 的返回等待 = BRIEFING_SETTLE_S,
-        # 锚后动画完结口径不变)。
+        # 识别标志命中后动画完结口径不变)。
         self._click_pending = True
         return self.round_wait('点「下一步」已发,重入观察裁决')
 

@@ -1,15 +1,15 @@
 """货币战争 等待 1-1 备战 op。
 
 投资环境确认后进 1-1:开局补给动画长且无结束标志(用户裁定特殊等待)。
-主判据 = 轮询「备战阶段」文本出现(备战屏建档锚 ``标识-备战阶段``——该文本
+主判据 = 轮询「备战阶段」文本出现(备战屏建档识别标志 ``标识-备战阶段``——该文本
 两档同址无画面判别力,但此处只判「备战面板就绪」非画面分支,用途正当);
-固定 ~10s(ONE_ONE_MAX_WAIT_S,待校准)仅作超时兜底:锚一直不现 = 异常,
+固定 ~10s(ONE_ONE_MAX_WAIT_S,待校准)仅作超时兜底:识别标志一直不现 = 异常,
 保留证据(存图)交循环。不给备战循环加「现在是 1-1」特殊状态参数。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
-纯等待型映射,现役 handle 逐位):观察 node = 锚命中/超时两早退判定——
-锚「标识-备战阶段」命中 → obs 装载(on_screen)→ 占位
-``report_screen_wait_one_one_obs`` 接线(统一形态;本屏现役零容器写点,
+纯等待型映射,现役 handle 逐位):观察 node = 识别标志命中/超时两早退判定——
+识别标志「标识-备战阶段」命中 → obs 装载(on_screen)→ 占位
+``report_screen_wait_one_one_obs`` 接入调用(统一形态;本屏现役零状态容器写点,
 接口为占位,match/gs 缺席跳过)→ round_success 进决策动作 node;超时
 (``_first_seen_ts`` 起 ≥ ``ONE_ONE_MAX_WAIT_S``)→ 存图保留证据 + round_fail
 交循环(现役出口);未出现且未超时 → round_wait
@@ -44,7 +44,7 @@ def _monotonic() -> float:
 
 
 class CwScreenWaitOneOne(CwOperation):
-    """等待 1-1 备战就绪:轮询「备战阶段」锚;超上界保留证据 fail 交循环。"""
+    """等待 1-1 备战就绪:轮询「备战阶段」识别标志;超上界保留证据 fail 交循环。"""
 
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
     PREP_ANCHOR: ClassVar[str] = '标识-备战阶段'
@@ -52,17 +52,17 @@ class CwScreenWaitOneOne(CwOperation):
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-等待1-1备战')
         self._first_seen_ts: float | None = None   # 首见非就绪帧的时钟起点(超时兜底基)
-        # 观察结果(观察 node 产物;锚命中轮装载)。
+        # 观察结果(观察 node 产物;识别标志命中轮装载)。
         self._obs: CwScreenWaitOneOneObs | None = None
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """锚命中/超时两早退判定 + 锚命中轮 obs 装载 → 占位 report 接线。
+        """识别标志命中/超时两早退判定 + 识别标志命中轮 obs 装载 → 占位 report 接入调用。
 
-        映射(现役 handle 逐位):锚命中 → obs 装载 + 占位 report(match/gs
+        映射(现役 handle 逐位):识别标志命中 → obs 装载 + 占位 report(match/gs
         缺席跳过)→ round_success 进决策动作 node;超时 → 存图保留证据 +
         round_fail(现役出口);未出现且未超时 → round_wait 轮询(不吃
-        重试预算)。轮询轮与超时轮不装载 obs(迁移不增加读屏,锚判定外
+        重试预算)。轮询轮与超时轮不装载 obs(迁移不增加读屏,识别标志判定外
         零读屏)。"""
         screen = self.last_screenshot
         if self.round_by_find_area(

@@ -5,14 +5,14 @@
 直继承 SrOperation。观察 node = 节点完成门(``_in_node``,miss = round_success
 返回主循环,选中标记复位副作用在门内)+ 候选观察(懒读保真:仅「本访问将
 选择」即未选中时读候选;确认访问不重读,迁移不增加读屏)→
-``report_screen_megastar_obs`` 落容器 ``megastar_opts`` → obs 挂实例属性进
+``report_screen_megastar_obs`` 落状态容器 ``megastar_opts`` → obs 挂实例属性进
 决策 node。决策动作 node = 节点完成复检(每轮新帧,overlay 消失 = 完成)→
-决策从容器零参读 → 「选中 → 确认」链经 ``CwActionPickMegastarOp`` 派发
+决策从状态容器零参读 → 「选中 → 确认」链经 ``CwActionPickMegastarOp`` 派发
 (pick-op-unify 批:候选选中半迁入动作 op,``env.need_select`` 驱动)→
 round_wait 循环推进(不烧节点重试预算;不收敛 = 策略 bug 响亮暴露,无防御
 上限)。``chosen_megastar`` = 选择点单次逻辑写入留在决策面(动作事实边界,
 不进 report);选中旗标宿主 = 策略器 StrategyState(经 kernel strategy_state_of
-None-safe 通道,执行层不冷建)。本屏 sim 分支 = 不适用(sim 无对应画面段,
+None-safe 通道,执行层不每局全新创建)。本屏 sim 分支 = 不适用(sim 无对应画面段,
 事件浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试。
 
 出口语义(选中半访问):候选空 = 具名 round_fail 零盲发,返回词表外/
@@ -29,8 +29,8 @@ dispatch 是画面身份反应式(阶段一身份分发命中「盛会之星」�
 本节点 = 「选巨星候选 → 确认」,确认 = 纯机械单发(用户裁定):
 确认未落地归下一帧落地复查,节点循环单确认自愈;「请选择强化角色」
 文本 = 确认钮旁伴随文案,禁据它判步。候选点击坐标 = 观察上报随选项
-一并落容器 ``megastar_opts[idx].xy``(选择坐标观察上报,规范 =
-op-layer.md §1.1;动作 op 按下标自容器取点,本 op 零坐标现算;候选
+一并落状态容器 ``megastar_opts[idx].xy``(选择坐标观察上报,规范 =
+op-layer.md §1.1;动作 op 按下标自状态容器取点,本 op 零坐标现算;候选
 兜底常量宿主 = ``obs/cw_megastar_obs.py``)。确认钮 = 建档
 ``currency_war_megastar.按钮-确认选择``(动作 op 执行体
 ``round_by_find_and_click_area`` 查找点击,全族统一)。
@@ -86,7 +86,7 @@ class CwScreenMegastar(CwOperation):
         still_in = self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success
         # megastar 一局可能多次(每次持有盛会之星角色触发,见类 docstring),flag 不能跨节点保持 True。
         # 节点完成即复位:经 kernel strategy_state_of None-safe 通道,状态
-        # 对象缺席跳过写(禁执行层触发 impl state_of 的 None 冷建装配语义)。
+        # 对象缺席跳过写(禁执行层触发 impl state_of 的 None 每局全新创建装配语义)。
         if not still_in:
             _match = self.ctx.cw_match
             if _match is not None:
@@ -100,7 +100,7 @@ class CwScreenMegastar(CwOperation):
         """选中标记读侧防御(局级旗标,跨 re-dispatch 持久;原实例态在重派时
         重置 → re-click toggle 反选 → confirm 无候选卡死)。读侧 getattr:
         状态对象缺席(None)或异型缺字段退 False(经 kernel strategy_state_of
-        通道,禁 getattr session 猜宿主/禁 impl state_of 冷建)。"""
+        通道,禁 getattr session 猜宿主/禁 impl state_of 每局全新创建)。"""
         return (getattr(strategy_state_of(match.session),
                         'megastar_clicked', False)
                 if match else False)
@@ -122,7 +122,7 @@ class CwScreenMegastar(CwOperation):
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
-        #(经同名 report 落容器);否则原读链(懒读 + 标准化门 + 上报)。
+        #(经同名 report 落状态容器);否则原读链(懒读 + 标准化门 + 上报)。
         # live 读链早退形态(候选名标准化失败 round_fail)原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             '货币战争-盛会之星', self._observe_live)
@@ -142,7 +142,7 @@ class CwScreenMegastar(CwOperation):
         clicked = self._clicked_of(_match)
         options = [] if clicked else read_megastar_options(self.ctx, screen)
         if not clicked:
-            # 观察标准化门:候选名零转换禁入容器(op-layer.md §1.1);转换
+            # 观察标准化门:候选名零转换禁入状态容器(op-layer.md §1.1);转换
             # 失败 = 观察失败,零写零上报返回主循环重新观察重读(禁带病上报)。
             standardized = standardize_megastar_options(options, _gs)
             if standardized is None:
@@ -195,7 +195,7 @@ class CwScreenMegastar(CwOperation):
             if not options:
                 return self.round_fail(
                     '[cw-megastar] 决策无有效输出零盲发(候选空 options=0)')
-            # 零参决策(写槽已由 report 落容器 megastar_opts;决策调用形态不变)。
+            # 零参决策(写槽已由 report 落状态容器 megastar_opts;决策调用形态不变)。
             # 守卫② 返回契约:词表外/None = 具名 fail 含原值留存证据(注解的运行期执行)。
             pick = _match.strategy.decide_megastar()
             if not isinstance(pick, CwActionPickMegastarParam):
@@ -209,13 +209,13 @@ class CwScreenMegastar(CwOperation):
             self._pick_idx = pick.idx
             log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{pick.idx} {pick.reason}')
             if _match is not None:
-                # 置位经 kernel strategy_state_of(None-safe 不冷建):状态
+                # 置位经 kernel strategy_state_of(None-safe 不每局全新创建):状态
                 # 对象缺席跳过写(局级:跨 re-dispatch 持久,session.md
                 # §2.4 B1 定案的宿主级语义)。
                 _st = strategy_state_of(_match.session)
                 if _st is not None:
                     _st.megastar_clicked = True
-                # 巨星选择落容器 chosen_megastar(gs 单一源,session 域无此
+                # 巨星选择落状态容器 chosen_megastar(gs 单一源,session 域无此
                 # 写端;桩无 gs = 跳过写)。chosen_* = 动作事实边界:留在
                 # 选择点,不进 report。
                 if getattr(_match, 'gs', None) is not None:
@@ -230,7 +230,7 @@ class CwScreenMegastar(CwOperation):
                                        actor='CwScreenMegastar',
                                        mode='compute'))
         # 「选中(need_select)→ 确认」链经工厂(选中半迁入动作 op;
-        # 候选点击坐标 = 动作 op 内自容器 megastar_opts[param.idx].xy 取,
+        # 候选点击坐标 = 动作 op 内自状态容器 megastar_opts[param.idx].xy 取,
         # 选择坐标观察上报收敛;确认钮 = 动作 op 执行体 round_by_find_and_click_area
         # 查找点击,全族统一)。
         # 派发:上报 param 携真实选中下标(取点/取名键单一源);env 零机械

@@ -12,15 +12,15 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 多候选命中同一注册名 = 观察失败 round_fail 零写零上报返回主循环重读,
 op-layer.md §1.1 观察标准化门)+
 候选点解算(点 = OCR x 中心 + x 近邻「星徽卡-N」建档中心 y;任一建档缺失
-= 观察失败 round_fail 双域零写)→ ``report_screen_bookcard_obs`` 落容器
+= 观察失败 round_fail 双域零写)→ ``report_screen_bookcard_obs`` 落状态容器
 ``star_tome_opts`` / ``star_tome_opts_xy``(空候选不写,闸在 report 内,
 双域一体,同门同写,op-layer.md §1.1 :35)→ obs 挂实例属性进决策 node。
 决策动作 node = 落地复查顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻
 才写 chosen_tome + 到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走
 重选)→ 决策出口守卫(无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门;候选空/返回 None/词表外 = 具名 fail 零盲发[出口③];idx 越界
-= 守卫断言[§1.3])→ 决策从容器零参读 → 点卡
-(坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
+= 守卫断言[§1.3])→ 决策从状态容器零参读 → 点卡
+(坐标 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按 idx 取,op-layer.md §1.1
 :35)→ round_wait 循环(不烧节点重试预算,无防御上限)。chosen_tome 与
 ConfirmTome 到账登记 = 落地复查点留在原位(动作事实边界,不进 report;
 ConfirmTome 逻辑推进 = owned 本体直推);本屏 sim 分支 = 不适用(sim 无对应
@@ -80,7 +80,7 @@ class CwScreenBookcard(CwOperation):
     源 = ``strategies/impl/flow.py::decide_star_tome``),本 op 零选卡倾向
     判断——决策出口守卫:无 match 局外不设早退支(用户裁决 2026-09-22
     全族删门);候选空/返回 None/词表外 = 具名 fail 零盲发(出口③);
-    pick idx 越界 = 守卫断言(§1.3)。选卡坐标 = 动作 op 自容器 ``star_tome_opts_xy`` 按 idx
+    pick idx 越界 = 守卫断言(§1.3)。选卡坐标 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按 idx
     取(坐标单一真相源 = 观察上报,op-layer.md §1.1 :35)。
     """
 
@@ -95,8 +95,8 @@ class CwScreenBookcard(CwOperation):
         # + 到账登记;弹窗仍在 = 点击未落地 → 重走重选(不留幻影登记)。
         self._pick_pending: str | None = None
         # 观察结果(观察 node 产物,决策动作 node 消费)与候选名读数
-        # (坐标生产输入 x 近邻锚留观察侧;坐标经 obs ``option_points``
-        # 入容器 ``star_tome_opts_xy``,op-layer.md §1.1 :35)。
+        # (坐标生产输入 x 近邻识别标志留观察侧;坐标经 obs ``option_points``
+        # 入状态容器 ``star_tome_opts_xy``,op-layer.md §1.1 :35)。
         self._obs: CwScreenBookcardObs | None = None
         self._cards: list[tuple[str, int]] = []
 
@@ -125,7 +125,7 @@ class CwScreenBookcard(CwOperation):
         (调用方 round_fail 整函数早退,零写零上报返回主循环重读,禁带病上报)。
 
         星徽四选一为选项互斥屏:多候选命中同一注册名 = 识别质量不足以
-        区分,同判转换失败(op-layer.md §1.1 已登记互斥判);容器
+        区分,同判转换失败(op-layer.md §1.1 已登记互斥判);状态容器
         ``star_tome_opts`` 值域自此 = FACTIONS 标准注册名(标准化后决策
         消费标准名,动作上报只携 idx)。"""
         resolved: list[tuple[str, int]] = []
@@ -146,8 +146,8 @@ class CwScreenBookcard(CwOperation):
     def _resolve_option_points(
             self, cards: list[tuple[str, int]]) -> list[tuple[int, int]] | None:
         """候选点观察期一次解算(坐标生产半,op-layer.md §1.1 :35):每候选
-        点 = (OCR x 中心,x 近邻「星徽卡-N」建档中心 y)——x 近邻锚防 area
-        序与画面序错位(锚半自决策半迁观察侧);任一「星徽卡-N」area 缺失
+        点 = (OCR x 中心,x 近邻「星徽卡-N」建档中心 y)——x 近邻识别标志防 area
+        序与画面序错位(识别标志半自决策半迁观察侧);任一「星徽卡-N」area 缺失
         (``area_center`` 返 None)= 观察失败,返回 None(调用方 round_fail
         早退、``star_tome_opts`` / ``star_tome_opts_xy`` 双域零写、返回主循环
         (与转换失败同格,名字与坐标同进退)。值形状 = 1080p 平铺
@@ -164,13 +164,13 @@ class CwScreenBookcard(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口门 + 卡阵营名一次读(标准化门 + 解点)→ report 落容器。
+        """入口门 + 卡阵营名一次读(标准化门 + 解点)→ report 落状态容器。
 
         门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
         门后卡名 OCR 一次读 → 观察标准化门(任一候选转换失败/多候选同名
         = 观察失败 round_fail 早退、零写零上报返回主循环重读)→ 候选点解算
         (任一「星徽卡-N」建档缺失 = 观察失败 round_fail 早退、双域零写)
-        → ``report_screen_bookcard_obs`` 同门双写容器 ``star_tome_opts`` /
+        → ``report_screen_bookcard_obs`` 同门双写状态容器 ``star_tome_opts`` /
         ``star_tome_opts_xy``(空候选不写,闸在 report 内,双域一体);
         match/gs 缺席的局外兜底路径跳过 report(候选空 = 具名 fail 零
         盲发;report 局外豁免面与决策出口互不覆盖;无 match 局外不设早退
@@ -255,7 +255,7 @@ class CwScreenBookcard(CwOperation):
         # round_wait 推进循环(不烧节点重试预算,无防御上限)。
         self._pick_pending = pick_name
         # 选卡链经工厂(点卡即选机械链在 ``CwActionPickStarTomeOp`` 内,
-        # 本 op 只决策;定位点 = 动作 op 自容器 ``star_tome_opts_xy`` 按
+        # 本 op 只决策;定位点 = 动作 op 自状态容器 ``star_tome_opts_xy`` 按
         # idx 取,op-layer.md §1.1 :35)。派发 = 直发策略产实例(idx 即
         # 策略产值;守卫①②③派发前置)。
         from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (

@@ -23,7 +23,7 @@
   本 op 不开屏不关屏)。node1 内置门:非位面详情屏 = round_fail +
   存证截图(调用时机错误,不进重试空转);
 - 出口:留在位面详情屏(关闭归编排 op);上报经
-  :func:`report_screen_plane_intel_obs` 写门落容器(唯一一份写门住
+  :func:`report_screen_plane_intel_obs` 写门落状态容器(唯一一份写门住
   kernel 屏文件),台账/难度/词缀登记走 session 通道(node6 簇,
   best-effort 不阻塞上报主链)。
 
@@ -76,7 +76,7 @@ class CwScreenPlaneIntel(CwOperation):
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-位面情报采集')
         # 三位面 boss 身份(3 槽保位;识别 node 只落非 None 值,失败即 op
-        # 级响亮失败——到上报节点时三槽恒全有值,容器侧 None 槽语义 =
+        # 级响亮失败——到上报节点时三槽恒全有值,状态容器侧 None 槽语义 =
         # 简报源未读得,不由本 op 产生)。
         self._plane_bosses: list[str | None] = [None, None, None]
         self._affixes: list[str] = []     # 词缀横条(位面1 同帧读一次)
@@ -295,7 +295,7 @@ class CwScreenPlaneIntel(CwOperation):
     @node_from(from_name='识别位面3')
     @operation_node(name='上报')
     def report(self) -> OperationRoundResult:
-        """整理观察数据上报:写门落容器(gs 通道)+ 台账/难度/词缀登记
+        """整理观察数据上报:写门落状态容器(gs 通道)+ 台账/难度/词缀登记
         (session 通道,与写门同居本簇但分通道;异常口径 = best-effort,
         台账/登记异常不阻塞上报主链)。
 
@@ -337,7 +337,7 @@ class CwScreenPlaneIntel(CwOperation):
                     _ledger.difficulty_ref[_p] = _dv
                     _log.info('[cw-plane-intel] 位面%d 敌人难度参考=%d', _p, _dv)
         # 词缀效果账本登记(上报后登记;中断恢复的对局这是词缀登记唯一活源——
-        # 简报侧登记挂点在中断恢复的对局不运行)。命中结构化注册才入账本,登记
+        # 简报侧登记插入位置在中断恢复的对局不运行)。命中结构化注册才入账本,登记
         # 体按已登记条目幂等(补采重跑不双登记;登记面纪律 =
         # effect-domain.md §7.6 词缀源节)。
         if self._affixes:

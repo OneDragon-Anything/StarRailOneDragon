@@ -7,16 +7,16 @@ X 是弹窗内坐标永远安全。背景: M53 停机建档。
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口门(双锚其一:「标识-流派星徽」area 锚 ∨「标识-套组标题」——op 门 =
+入口门(双识别标志其一:「标识-流派星徽」area 识别标志 ∨「标识-套组标题」——op 门 =
 OR,分发面 = 建档双 id_mark 组合 AND,本门比分发宽;miss 未发 = round_fail 返回主循环重新判定,「下一帧
 重判」是外循环职责)+ obs{on_screen} 挂实例属性(空决策形态无 report:
-本屏零容器写点,obs 类住 kernel/cw_screen_report/emblem_detail_popup.py,
-import 构造即可)。决策动作 node = 落地复查顶部(点 X 已发 → 双锚 miss
+本屏零状态容器写点,obs 类住 kernel/cw_screen_report/emblem_detail_popup.py,
+import 构造即可)。决策动作 node = 落地复查顶部(点 X 已发 → 双识别标志 miss
 = 已离开本画面 → success 结束本次访问——出口 = 入口观察的合法重判,非动作层
 判效;在 = 再推进)→ 点「按钮-关闭」单次推进(success_wait=1 同原分支
 内联值)→ round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮
 暴露,无防御上限;「推进动作未落地」= round_fail 如实结束本次访问)。本类入口
-信号 = 自有双锚判定(覆写形态),落地复查有观察信号可用,无「免锚发出
+信号 = 自有双识别标志判定(覆写形态),落地复查有观察信号可用,无「免识别标志发出
 即 success」出口。
 """
 from cv2.typing import MatLike
@@ -32,21 +32,21 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenEmblemDetailPopup(CwOperation):
-    """星徽详情弹窗:双锚入口其一,点「按钮-关闭」(不用 ESC,见模块头)。"""
+    """星徽详情弹窗:双识别标志入口其一,点「按钮-关闭」(不用 ESC,见模块头)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-星徽详情')
-        # 画面档名/主锚(实例属性)
+        # 画面档名/主识别标志(实例属性)
         self._screen_name: str = '货币战争-星徽详情'
         self._entry_area: str = '标识-流派星徽'
-        # 推进已发标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):区分「首发锚 miss = 误分发 失败结束本次访问」
-        # 与「重入锚 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
+        # 推进已发标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):区分「首发识别标志 miss = 误分发 失败结束本次访问」
+        # 与「重入识别标志 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;空决策形态无 report)。
         self._obs: CwScreenEmblemDetailPopupObs | None = None
 
     def entry_ok(self, screen: MatLike | None) -> bool:
-        """入口观察:双锚其一即接管(OR;分发 = 建档组合 AND,本门更宽
+        """入口观察:双识别标志其一即接管(OR;分发 = 建档组合 AND,本门更宽
         ——变体帧经兜底重判后的自愈面)。"""
         if self.round_by_find_area(screen, self._screen_name,
                                    self._entry_area,
@@ -74,7 +74,7 @@ class CwScreenEmblemDetailPopup(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 落地复查(零验证形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(零验证形态):重入识别标志 miss = 已离开本画面 → success
             # 结束本次访问;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(

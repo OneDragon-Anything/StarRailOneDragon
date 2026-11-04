@@ -15,12 +15,12 @@ exogenous popup 行随 op 迁移(测量链:误触弹窗是外生事件
 
 形态(画面 op 两段式:观察 node → 决策动作 node,直继承 SrOperation;
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
-入口锚门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = flow/outer_loop.md §2.2;miss 未发 =
+入口识别标志门(「标识-中断挑战」,与阶段一身份分发判定同源同参,分发判定单一源 = flow/outer_loop.md §2.2;miss 未发 =
 round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+ obs{on_screen}
-挂实例属性(空决策形态无 report:本屏零容器写点,obs 类住
+挂实例属性(空决策形态无 report:本屏零状态容器写点,obs 类住
 kernel/cw_screen_report/interrupt_dialog.py,import 构造即可)。决策动作
-node = 落地复查顶部(点 X 已发 → 锚 miss = 已离开本画面 → success 结束本次访问
-——出口 = 入口观察的合法重判,非动作层判效;锚在 = 再推进)→ 点
+node = 落地复查顶部(点 X 已发 → 识别标志 miss = 已离开本画面 → success 结束本次访问
+——出口 = 入口观察的合法重判,非动作层判效;识别标志在场 = 再推进)→ 点
 「按钮-关闭」单次推进(单尝试合同,见模块头)→ round_wait 循环(不烧
 节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御上限;「推进动作未
 落地」= round_fail 如实结束本次访问)。
@@ -42,26 +42,26 @@ class CwScreenInterruptDialog(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')
-        # 画面档名/入口锚(与阶段一身份分发判定同源同参;实例属性)
+        # 画面档名/入口识别标志(与阶段一身份分发判定同源同参;实例属性)
         self._screen_name: str = '货币战争-中断挑战弹窗'
         self._entry_area: str = '标识-中断挑战'
-        # 推进已发标志(零验证形态):区分「首发锚 miss = 误分发 失败结束本次访问」
-        # 与「重入锚 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
+        # 推进已发标志(零验证形态):区分「首发识别标志 miss = 误分发 失败结束本次访问」
+        # 与「重入识别标志 miss = 已离开本画面 success 结束本次访问」(实例级,单 op 生命周期)。
         self._advanced_once: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费;空决策形态无 report)。
         self._obs: CwScreenInterruptDialogObs | None = None
 
     def entry_ok(self, screen: MatLike | None) -> bool:
-        """入口观察:本画面锚校验(area 键原语,与分发判定同源同参)。"""
+        """入口观察:本画面识别标志校验(area 键原语,与分发判定同源同参)。"""
         return self.round_by_find_area(
             screen, self._screen_name, self._entry_area,
             crop_first=False).is_success
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口锚门 + obs{on_screen} 装载(空决策形态无 report)。
+        """入口识别标志门 + obs{on_screen} 装载(空决策形态无 report)。
 
-        门 miss = 首发误分发(分发判定帧命中 ∧ op 新帧锚 miss 的过渡帧):
+        门 miss = 首发误分发(分发判定帧命中 ∧ op 新帧识别标志 miss 的过渡帧):
         失败结束本次访问,返回主循环重新判定,不在 op 内等待重探。"""
         screen = self.last_screenshot
         if not self.entry_ok(screen):
@@ -75,7 +75,7 @@ class CwScreenInterruptDialog(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 单次推进 → round_wait(预算 = 现役值 2 保留)。"""
         if self._advanced_once and not self.entry_ok(self.last_screenshot):
-            # 落地复查(零验证形态):重入锚 miss = 已离开本画面 → success
+            # 落地复查(零验证形态):重入识别标志 miss = 已离开本画面 → success
             # 结束本次访问;旗标清(实例级,单 op 生命周期语义)。
             self._advanced_once = False
             return self.round_success(
@@ -83,8 +83,8 @@ class CwScreenInterruptDialog(CwOperation):
         if not self.progress_once():
             return self.round_fail(f'{self.op_name}推进动作未落地')
         self._advanced_once = True
-        # 空锚 = 免锚出口(无「已离开」观察信号,发出即 success);本屏锚
-        # 非空,分支结构性不可达,逐位保留空锚语义(参数化屏 = 备战暗色
+        # 空识别标志 = 免识别标志出口(无「已离开」观察信号,发出即 success);本屏识别标志
+        # 非空,分支结构性不可达,逐位保留空识别标志语义(参数化屏 = 备战暗色
         # 锁定为可达形态)。否则循环推进 = round_wait(不烧节点重试预算;
         # 不收敛 = 动作 bug 响亮暴露,无防御上限)。
         if not self._entry_area:

@@ -10,15 +10,15 @@
 形态:观察 node + 决策动作 node 两段
 直继承 SrOperation。观察 node = 入口门(标识-祈愿试炼,miss = round_fail 返回主循环
 重新判定)+ objective 一次读(OCR 桶 join,入口帧一次读,与现役决策体读
-同帧等价)→ ``report_screen_wish_trial_obs`` 落容器 ``wish_trial_opts`` /
+同帧等价)→ ``report_screen_wish_trial_obs`` 落状态容器 ``wish_trial_opts`` /
 ``wish_trial_opts_xy``(无空门,空桶照写,同门双写,op-layer.md §1.1 :35)
 → obs 挂实例属性进决策 node。决策动作 node = 落地复查顶部(确认已发 →
 标识不在 = overlay 已关 → 此刻才写 chosen_wish + success 返回主循环;在 = 确认未
 落地 → 清标志重走)→ 决策出口守卫:无 match 局外不设早退支(用户裁决
 2026-09-22 全族删门);返回 None/词表外 = 具名 round_fail 零盲发;idx 越界 = 守卫断言
-AssertionError;策略异常自然传播——守卫均在派发前、零点击 → 决策从容器
+AssertionError;策略异常自然传播——守卫均在派发前、零点击 → 决策从状态容器
 零参读 → 选卡+确认链经 ``CwActionPickWishTrialOp`` 派发(pick-op-unify 批
-机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自容器
+机械链迁入动作 op,env 仅携 op;点击坐标 = 动作 op 自状态容器
 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35)→ round_wait 循环
 (不烧节点重试预算,无防御上限)。chosen_wish = 落地复查点单次逻辑写入
 留在原位(动作事实边界,不进 report);本屏 sim 分支 = 不适用(sim 无对应画面
@@ -46,9 +46,9 @@ class CwScreenWishTrial(CwOperation):
     """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认。"""
 
     # 卡位不建 screen_info area(op-layer.md §1.1 :35 适用范围判据:选项点击
-    # 坐标属观察上报的选项集构成数据,入坐标域;确认钮等静态控件锚维持
+    # 坐标属观察上报的选项集构成数据,入坐标域;确认钮等静态控件识别标志维持
     # screen_info area 现取,确认按钮已 area 化)。以下卡位 = 观察侧解点
-    # 锚(x = 桶锚、y = 卡身,观察期一次解析随 obs 上报
+    # 识别标志(x = 桶识别标志、y = 卡身,观察期一次解析随 obs 上报
     # ``wish_trial_opts_xy``)兼决策守卫槽数界来源,决策段零坐标消费。
     CARD_Y: ClassVar[int] = 340
     # 卡 x 中心(实测左卡 660 命中;多卡间距 ~300;读 objective 后近邻分流)
@@ -83,20 +83,20 @@ class CwScreenWishTrial(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """入口门 + objective 一次读 → report 落容器。
+        """入口门 + objective 一次读 → report 落状态容器。
 
         门 miss = round_fail 早退(与现役首闸同 status,返回主循环重新判定)。
-        门后 objective OCR 桶一次读 + 槽位坐标观察期一次解析(x = 桶锚
+        门后 objective OCR 桶一次读 + 槽位坐标观察期一次解析(x = 桶识别标志
         ``CARD_XS``、y = 卡身 ``CARD_Y``)→ ``report_screen_wish_trial_obs``
-        同门双写容器 ``wish_trial_opts`` / ``wish_trial_opts_xy``
+        同门双写状态容器 ``wish_trial_opts`` / ``wish_trial_opts_xy``
         (op-layer.md §1.1 :35 坐标单一真相源 = 观察上报;无空门,空桶照写);
-        match/gs 缺席的局外路径跳过 report(report 跳写 = 容器写闸;
+        match/gs 缺席的局外路径跳过 report(report 跳写 = 状态容器写闸;
         无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼').is_success:
             return self.round_fail('非祈愿试炼屏')
-        # 槽位坐标观察期一次解出(x = CARD_XS 桶锚,y = CARD_Y 卡身;
-        # 与 options 同序等长,随 obs 一并上报入容器)。
+        # 槽位坐标观察期一次解出(x = CARD_XS 桶识别标志,y = CARD_Y 卡身;
+        # 与 options 同序等长,随 obs 一并上报入状态容器)。
         option_points = [(x, CwScreenWishTrial.CARD_Y) for x in self.CARD_XS]
         obs = CwScreenWishTrialObs(on_screen=True,
                                    options=self._read_objectives(screen),
@@ -124,7 +124,7 @@ class CwScreenWishTrial(CwOperation):
         round_fail 零盲发(出口③);idx 越界 =
         守卫断言 AssertionError;策略异常自然传播(离屏失约 ValueError 不
         再被吞)——守卫均在派发前、零点击。派发 = 策略产实例直发,env 仅
-        携 op(点击坐标 = 动作 op 自容器 ``wish_trial_opts_xy`` 按 idx 取,
+        携 op(点击坐标 = 动作 op 自状态容器 ``wish_trial_opts_xy`` 按 idx 取,
         坐标单一真相源 = 观察上报,op-layer.md §1.1 :35)。"""
         if self._confirm_pending is not None:
             _objs, _pick_idx = self._confirm_pending
@@ -157,7 +157,7 @@ class CwScreenWishTrial(CwOperation):
         log.info('[cw-wish] 祈愿决策: %s → idx=%d', pick_desc, pick.idx)
         # 选卡+确认链经工厂直发(pick-op-unify 批:机械链迁入
         # ``CwActionPickWishTrialOp``,本 op 只决策;点击坐标 = 动作 op 自
-        # 容器 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35,env
+        # 状态容器 ``wish_trial_opts_xy`` 按 idx 取,op-layer.md §1.1 :35,env
         # 仅携 op 零坐标)。派发实例 = 策略产 CwActionPickWishTrialParam
         # (直发零重建,上报 param = 策略产值原值)。
         # 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察),用户裁定 2026-09-14 删确认后同轮「标识消失」

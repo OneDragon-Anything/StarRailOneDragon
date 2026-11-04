@@ -21,7 +21,7 @@
 形态:观察 node + 决策动作 node 两
 段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环阶段一身份分发,
 分发即门)→ 观察 node = 左右两卡 OCR 桶一次读(入口帧一次读,与现役决策
-体读同帧等价)→ ``report_screen_planner_obs`` 落容器 ``planner_opts``
+体读同帧等价)→ ``report_screen_planner_obs`` 落状态容器 ``planner_opts``
 (恒写两卡,空桶照写)→ obs 挂实例属性进决策 node。决策动作 node =
 零参决策 → ``classify_planner_branch``
 分支类型 → 组装 env → 选卡确认链派发即 ``round_success`` 终结返回主循环
@@ -30,7 +30,7 @@
 代码 bug,overlay 残留由外循环按当前画面重识别重派)。本屏无 chosen_* 写端(选择存证行已停用);
 本屏 sim 分支 = 不适用(sim 无对应画面段,事件
 浮层族即时落定),等价判据主要支撑 = 实机已登记行为测试
-(test_screen_two_node_family 两 node 形态测试;接线/基建测试补档 =
+(test_screen_two_node_family 两 node 形态测试;接入调用/基建测试补档 =
 开放设计注,见 screens/planner.md §9)。
 """
 from typing import ClassVar
@@ -110,11 +110,11 @@ class CwScreenYinLang(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """左右两卡 OCR 桶一次读 → report 落容器(恒写两卡,空桶照写;
+        """左右两卡 OCR 桶一次读 → report 落状态容器(恒写两卡,空桶照写;
         match/gs 缺席的局外兜底路径跳过 report)。
 
         读屏点改道(sim 统一金路径生成器):装了后端 → 生成器产物
-        (经同名 report 落容器);否则原读链。live 读链早退形态(卡位 area
+        (经同名 report 落状态容器);否则原读链。live 读链早退形态(卡位 area
         缺失 round_fail)原样返回主循环。"""
         obs = cw_sim_ports.sim_or_live_observation(
             '货币战争-银狼升星', self._observe_live)
@@ -173,13 +173,13 @@ class CwScreenYinLang(CwOperation):
         """零参决策 → 分支类型判定 → 组装 env → 派发即 ``round_success`` 终结。
 
         动作 op ``CwActionPickPlannerOp`` 确认点击后立即上报完整效果分支
-        (单相即时上报,正本 = ``flow/action_ops.md`` §1  与
+        (单相即时上报,权威版本 = ``flow/action_ops.md`` §1  与
         §4.5 PickPlanner 行)——本 op 派发即终结返回主循环重新观察,零重入
         裁决轮、零证据标志(确认未生效 = 代码 bug,overlay 残留由外循环按
         当前画面重识别重派)。"""
         options = self._obs.options if self._obs is not None else []
         # 策略层决策(唯一入口 = 策略对象,handler 禁 kernel 直调——决策
-        # 控制分层铁律,flow/README.md §1;写槽已由 report 落容器 → 零参
+        # 控制分层铁律,flow/README.md §1;写槽已由 report 落状态容器 → 零参
         # 决策)。无 match 局外兜底决策支已删(用户裁决 全族
         # 删门,op-layer.md §1.1「画面 op 不支持局外单独调用」):单跑缺
         # 上下文沿正常链路失败即预期,禁回填此类兜底分支。
@@ -201,7 +201,7 @@ class CwScreenYinLang(CwOperation):
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24], branch_type, norm_item or '-')
         # 点卡选中 → 确认链经注册表工厂 ``action_op_for`` 派发
-        # ``CwActionPickPlannerOp``(替身缝 = 工厂派发调用点,测试经
+        # ``CwActionPickPlannerOp``(替身函数的接缝(stub seam)= 工厂派发调用点,测试经
         # monkeypatch ``action_op_for`` 承接);
         # 决策半(策略选卡/分支类型判定)见上方,派发实例 = 策略 pick 本体,
         # 机械参数 target 经 env 传递。派发即 round_success 终结返回主循环

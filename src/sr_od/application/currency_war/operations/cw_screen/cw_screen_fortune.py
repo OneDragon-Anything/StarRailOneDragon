@@ -18,15 +18,15 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 段直继承 SrOperation。本屏无 op 内入口门(入口判定归主循环阶段一身份分发,
 分发即门)→ 观察 node = 三卡位 OCR 一次读 + 三卡点击坐标(入口帧一次读,
 与现役决策体读同帧等价;坐标 = area 主源 + 兜底)→
-``report_screen_fortune_obs`` 双写容器 ``fortune_opts``/``fortune_opts_xy``
+``report_screen_fortune_obs`` 双写状态容器 ``fortune_opts``/``fortune_opts_xy``
 (无空门,空表照写)→ obs 挂实例属性进决策 node。决策动作 node = 落地复查
-顶部(入口词「命运卜者」不在 = overlay 已关 → success 结束本次访问)→ 决策从容器
+顶部(入口词「命运卜者」不在 = overlay 已关 → success 结束本次访问)→ 决策从状态容器
 零参读;无 match 局外不设早退支(用户裁决 全族删门)→ 两守卫
 (返回词表外/None = 具名 round_fail 零盲发;idx 越界 = 守卫断言
 AssertionError;策略异常自然传播)→ 选卡+确认链经
 ``CwActionPickFortuneOp`` 派发(pick-op-unify 批机械链迁入动作 op)→
 round_wait 循环(不烧节点重试预算,无防御上限;确认未落地轮重走)。
-本屏无 chosen_* 写端(fields.md §4「事件选择」已登记:写端未接线 = 先补档;
+本屏无 chosen_* 写端(fields.md §4「事件选择」已登记:写端未接通调用 = 先补档;
 选择后果走下一帧观察覆盖);本屏 sim 分支
 = 不适用(sim 无对应画面段,事件浮层族即时落定),等价判据主要支撑 = 实机
 已登记行为测试。
@@ -94,9 +94,9 @@ class CwScreenFortune(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """三卡位 OCR 一次读 + 三卡点击坐标 → report 双写容器
+        """三卡位 OCR 一次读 + 三卡点击坐标 → report 双写状态容器
         ``fortune_opts``/``fortune_opts_xy``(无空门,空表照写;match/gs
-        缺席的局外路径跳过 report——report 跳写 = 容器写闸,与决策无关;
+        缺席的局外路径跳过 report——report 跳写 = 状态容器写闸,与决策无关;
         无 match 局外不设早退支,用户裁决 全族删门)。"""
         screen = self.last_screenshot
         options = self._read_cards(screen)
@@ -128,7 +128,7 @@ class CwScreenFortune(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 零参决策 → 选卡+确认步机械完成即结束本次访问 → round_wait。
 
-        落地复查(观察驱动;形态正本 = screens/op-layer.md §1.1「落地复查
+        落地复查(观察驱动;形态权威版本 = screens/op-layer.md §1.1「落地复查
         留在决策动作 node 顶部」):本屏分发即门(无 op 内入口守卫),
         round_wait 重入不经外循环分发 → 顶部出口门补位:入口词不在 =
         overlay 已关(上轮确认已落地)→ success 返回主循环;在 = 重走
@@ -138,7 +138,7 @@ class CwScreenFortune(CwOperation):
         删门);决策返回词表外/None = 具名 round_fail 零盲发;idx 越界 =
         守卫断言 AssertionError;策略
         异常自然传播(离屏失约 ValueError 不再被吞)——守卫均在派发前、
-        零点击;派发 env 仅携 op,点击坐标 = 动作 op 自容器读(坐标随报
+        零点击;派发 env 仅携 op,点击坐标 = 动作 op 自状态容器读(坐标随报
         条款)。"""
         if self._confirm_pending:
             self._confirm_pending = False
@@ -168,7 +168,7 @@ class CwScreenFortune(CwOperation):
                  [t[:12] for t in texts], pick.idx + 1, _card_text[:20] or 'OCR空')
         # 选卡+确认链经工厂直发(派发实例 = 策略产 CwActionPickFortuneParam,
         # 守卫后直发;上报 param 即真实选择)。env 仅携 op——点击坐标 =
-        # 动作 op 按下标自容器 fortune_opts_xy 读(坐标随报条款),env.idx/
+        # 动作 op 按下标自状态容器 fortune_opts_xy 读(坐标随报条款),env.idx/
         # target 停喂。round_wait 推进循环(不烧节点重试预算;确认未落地轮
         # 重走,无防御上限)。
         self._confirm_pending = True

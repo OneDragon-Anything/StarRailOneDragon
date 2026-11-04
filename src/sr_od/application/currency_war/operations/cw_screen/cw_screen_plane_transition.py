@@ -53,7 +53,7 @@ def _build_transition_chain(gs: GameState | None,
     过渡屏底部行 = **刚离开位面**的全亮完整节点行(无暗格无 current 态,
     fixture plane_1to2 实证),逐格:upcoming→hu/超阈 none;boss 末槽→
     sift,SIFT miss→none/None 禁回落 Hu(槽 Hu 距离系统性不可靠,
-    cw_node_reader 在案)。行归属位面:开局判别 = 容器节点镜像与 hist 双缺
+    cw_node_reader 在案)。行归属位面:开局判别 = 状态容器节点镜像与 hist 双缺
     = P1 入口;非开局 = 节点镜像 plane,
     镜像缺失返回 None(行归属不可知,禁猜;report 内同门兜底);镜像在
     位面切换窗的滞后语义恰与「刚离开位面」同向。
@@ -98,7 +98,7 @@ class CwScreenPlaneTransition(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """提示门 + 过渡链观察一次读 → report 落容器。
+        """提示门 + 过渡链观察一次读 → report 落状态容器。
 
         门 miss = round_fail 早退交编排壳按步分流(现役首闸同 status;门
         早退不进读链)。门 hit → 底部全亮行读数构造链值 →
@@ -112,7 +112,7 @@ class CwScreenPlaneTransition(CwOperation):
                 CwScreenPlaneTransition.PROMPT_AREA, crop_first=False).is_success:
             return self.round_fail('位面过渡提示未出现')
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
-        #(链值诚实缺位,经同名 report 落容器);否则原读链(底部全亮行
+        #(链值诚实缺位,经同名 report 落状态容器);否则原读链(底部全亮行
         # 读数构造链值)。
         obs = cw_sim_ports.sim_or_live_observation(
             CwScreenPlaneTransition.SCREEN_NAME, self._observe_live)
@@ -163,9 +163,9 @@ class CwScreenPlaneTransition(CwOperation):
             self.ctx.controller.click(blank)
         else:
             # sim:本点击是后端点击源(空白点击 → 节点窗口收尾推进),
-            # 必须过 click_answer 端口——直连旁路静默跳过 = 世界零反应,
+            # 必须过 click_answer 端口——直连旁路静默跳过 = 状态副本零反应,
             # 过渡屏永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
-            # port 检查;动作 op 族「世界反应由自上报承接」形态不适用
+            # port 检查;动作 op 族「状态副本反应由自上报承接」形态不适用
             # 本屏,推进通道只有点击源)。
             cw_sim_ports.click_answer(
                 self, CwScreenPlaneTransition.SCREEN_NAME,

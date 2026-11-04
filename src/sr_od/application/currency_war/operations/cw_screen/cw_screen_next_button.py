@@ -1,4 +1,4 @@
-"""货币战争 前进按钮 op(空决策形态;合同正本 = docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
+"""货币战争 前进按钮 op(空决策形态;合同权威版本 = docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 简报等画面的「下一步」前进按钮(分支 5)的处理迁移:OCR 找到即点,
 无验效,序位近外循环尾(兜底点击)。
@@ -7,7 +7,7 @@
 推进型空决策骨架逐屏内联,无共享基类——模式一致即重复):观察 node =
 入口门(OCR「下一步」,与外循环分支 5 判定同源同参、默认 lcs 0.5;
 miss 未发 = round_fail 返回主循环重新判定,「下一帧重判」是外循环职责)+
-obs{on_screen} 挂实例属性(空决策形态无 report:本屏零容器写点,obs 类
+obs{on_screen} 挂实例属性(空决策形态无 report:本屏零状态容器写点,obs 类
 住 kernel/cw_screen_report/next_button.py,import 构造即可)。决策动作
 node = 落地复查顶部(点击已发 → OCR miss = 已离开本画面 → success 结束本次访问
 ——出口 = 入口观察的合法重判,非动作层判效;在 = 再推进)→
@@ -15,7 +15,7 @@ node = 落地复查顶部(点击已发 → OCR miss = 已离开本画面 → suc
 该帧型每局出现次数少,成本可接受;success_wait=2 同原分支内联值)→
 round_wait 循环(不烧节点重试预算,不收敛 = 动作 bug 响亮暴露,无防御
 上限;「推进动作未落地」= round_fail 如实结束本次访问)。本类入口信号 = 自有
-OCR 判定(覆写形态),落地复查有观察信号可用,无「免锚发出即 success」
+OCR 判定(覆写形态),落地复查有观察信号可用,无「免识别标志发出即 success」
 出口。
 """
 from cv2.typing import MatLike

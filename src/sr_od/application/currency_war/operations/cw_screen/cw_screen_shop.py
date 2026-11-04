@@ -6,7 +6,7 @@
   → obs 镜像 → 段首簿记(segment serial / 帧代次 full / 预算披露 /
   状态行日志 / shop_entry 决策帧)。
 - 决策动作 node(round_wait 单动作循环,循环内零读屏零拦截零闸):
-  决策(容器零参读)→ 守卫 → 注册表派发 execute(全动作统一路径,
+  决策(状态容器零参读)→ 守卫 → 注册表派发 execute(全动作统一路径,
   含 CloseShop 真点击)→ 簿记 → 终结读注册表:非终结 round_wait,
   终结(RefreshShop/CloseShop)round_success 返回主循环。
 
@@ -85,7 +85,7 @@ def _shop_entry_read(op: SrOperation, match: 'CurrencyWarMatch',
     """商店入口观察读半部(唯一读屏点的读+停机闸两段;
     生产读屏路径与观察 node 共用单一实现,零第二转录)。
 
-    - read_game_state 直连(漏斗容器直写 + 原生回执);
+    - read_game_state 直连(漏斗状态容器直写 + 原生回执);
     - 单次读零防抖(用户裁定:店开防抖没必要——开店转场帧读缺交决策
       前置门响亮失败,禁重读等待);
     - 商店未识别卡停机(迁移+框架化,用户裁定「识别不到就是
@@ -120,7 +120,7 @@ def _form_progress(comp: 'Comp', session) -> float:
     """fp 遥测 helper(代码审查要求:fp 轨迹可观测;调用方保证阵容非 None)。
 
     输入域 = 段顶入口观察帧(非 simulate 推演态):该帧在 visit 段顶
-    已合成进 session 容器单例,本读直取单例(board 同帧同源),
+    已合成进 session 状态容器单例,本读直取单例(board 同帧同源),
     state 侧过渡桥的消费随之清零。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -163,13 +163,13 @@ def apply_action_outcome(
 
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
     不入「已买」集(防检出帧名污染 prefer_names/churn/P60,应修-2)。
-    容器逻辑态直写已随动作 op 重组并入各 op 自上报(op 内直调
+    状态容器逻辑态直写已随动作 op 重组并入各 op 自上报(op 内直调
     自己的上报函数,op-layer.md §1.2)——原非终结直写块(apply_shop_action_
     logic + 合成升星分支)删除 = 双记防线;终结跳写判断随 op 自覆盖不再需要。
     本门保留面:卖出 route-tag 泄漏暴露。(效果账本 BUY 计数已迁买牌
     上报函数获取计算完时点的 ``gs.effects.on_buy`` 回调单点——live/sim
     同源,消除落地门计数分叉;刷新侧计数与免费分支扣减 = 刷新 op 自上报
-    经上报函数单口,见 cw_action_report/refresh_shop。)
+    经上报函数唯一入口,见 cw_action_report/refresh_shop。)
 
     ``_cur`` = 入口观察回执(defects 留存证据行 plane/round 基准;载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
@@ -192,8 +192,8 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     混入会虚高——扩口径挂 待裁)。刷新单通道前提:R1 = 今日
     唯一刷新发出点(kernel/cw_state.CwActionRefreshShopParam.reason 值域契约)。
     记账位语义 = 动作执行成功回执(本函数在 apply_action_outcome 之后
-    调用),轮键 = 容器读口现读(迁移:原入口帧 plane/round 形参
-    随黑板帧停用删除;visit 内轮键恒定,容器同值)。
+    调用),轮键 = 状态容器读口现读(迁移:原入口帧 plane/round 形参
+    随黑板帧停用删除;visit 内轮键恒定,状态容器同值)。
 
     F4 栈守卫:仅当披露面轮键戳 == 当前 (plane, round)(即 mandate_v1
     本轮 prep 装配已跑)才累计——非 mandate_v1 栈(异型策略状态对象无
@@ -234,7 +234,7 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     best-effort 不阻塞循环。
 
     ``include_payload``:True = 回执行附带 ``action`` 键(serialize_action
-    同 schema)。缺省 True = 发出行(execute 后落点);受阻挂点(动作未
+    同 schema)。缺省 True = 发出行(execute 后落点);受阻插入位置(动作未
     发出)传 False,载荷不入行。
     """
     try:
@@ -355,7 +355,7 @@ class CwScreenShop(CwOperation):
       (每访问一帧)。入口观察漏斗自带刷新次数观察锚定(观察写端在
       read_game_state 漏斗 shop-open 段,本 op 零额外调用)。
     - 决策动作 node(round_wait 单动作循环,与单选族节点循环同形)=
-      决策(``decide_shop_action`` 终态零参口,容器零参读;异常留存证据后
+      决策(``decide_shop_action`` 终态零参口,状态容器零参读;异常留存证据后
       上抛)→(CloseShop 且 tracked 未观察 → 留痕/熔断,留痕后照常执行)
       → proposal 守卫 → 注册表类级解析 + ``ShopExecEnv`` 组装 + execute
       (全动作统一路径,零特例拦截零闸;CloseShop = 真点击)→ 簿记
@@ -395,12 +395,12 @@ class CwScreenShop(CwOperation):
         match = getattr(self.ctx, 'cw_match', None)
         if match is None:
             # 防御:无对局态(独立 run_operation 调本 op)→ 兜底建核,直调
-            # 引导漏斗同款序(establish_new_match = 生产唯一容器建立漏斗)。
+            # 引导漏斗同款序(establish_new_match = 生产唯一状态容器建立漏斗)。
             # 此前裸构造 CurrencyWarMatch 与漏斗实差三处行为——rng 种子(漏斗
             # 按 config.strategy_seed 播 session.rng)/布局未知态计数复位
             # (reset_layout_unknown_state 新局起点)/遥测 run_id_provider
-            # (局容器建立点注入 journal 装配)。「局外不复用」语义保持:
-            # 先弃置残留容器再建(每次独立 run_operation 新建;与入口链
+            # (局状态容器建立点注入 journal 装配)。「局外不复用」语义保持:
+            # 先弃置残留状态容器再建(每次独立 run_operation 新建;与入口链
             # CwEntryStart 的 discard+establish 同款衔接),漏斗幂等分支经
             # 前一步清场必走新建。
             from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -444,7 +444,7 @@ class CwScreenShop(CwOperation):
         self.park_cursor(after_wait=0.1)
         # ---- 入口观察(唯一读屏点,即对账)----
         # 读屏点改道(sim 统一 3.3 金路径生成器批):装了后端 → 生成器产物
-        #(CwScreenShopObs = 入口回执同面镜像,经同名 report 落容器);
+        #(CwScreenShopObs = 入口回执同面镜像,经同名 report 落状态容器);
         # 否则原入口读链(读漏斗 + 停机闸)。live 停机闸早退形态原样结束本次访问。
         obs = cw_sim_ports.sim_or_live_observation(
             SHOP_SCREEN_NAME, lambda: self._entry_read_live(match))
@@ -454,7 +454,7 @@ class CwScreenShop(CwOperation):
         # 回执位承载 = obs 本体(CwScreenShopObs 与入口回执逐字段同源镜像;
         # 后段簿记/日志/落地门只读该值域面,两模式同径)。
         self._entry = obs
-        # (免费刷新的事实可见性宿主 = 容器字段 free_refresh_left 的观察
+        # (免费刷新的事实可见性宿主 = 状态容器字段 free_refresh_left 的观察
         #  锚定失配失配告警 + 效果账本计数:入口锚定写端 = 观察漏斗 shop-open
         #  段刷新钮三态(漏斗自带,本 op 零额外调用);本文件无金/牌面
         #  快照比对对账件。)
@@ -462,7 +462,7 @@ class CwScreenShop(CwOperation):
         # 不变性段,入口 +1 使上一 visit/上一域(备战)残留的续段 token/
         # 结论标志按序号不等自动失效(跨 visit/跨战斗伪命中封死)。状态对象
         # 缺席(第三方策略面/桩)= 无缓存载体,跳过置位(缺席退缺省口径,
-        # 决策核侧冷建自 0 起 = 恒重推导,保守端安全)。
+        # 决策核侧每局全新创建自 0 起 = 恒重推导,保守端安全)。
         _st_seg = strategy_state_of(match.session)
         if _st_seg is not None:
             _st_seg.cw4_segment_serial += 1
@@ -482,7 +482,7 @@ class CwScreenShop(CwOperation):
         # (economy_cycle.disclose_budget)覆写三预算字段
         # (overflow/budget=帧现值;键戳同轮不清 spent,
         # 轮界清零由键戳承载)。遥测 best-effort:失败降级保留 prep 帧值
-        # 不阻塞动作循环,warning 留痕(防无声退化 no-op,锚⑤缺陷无声
+        # 不阻塞动作循环,warning 留痕(防无声退化 no-op,识别标志⑤缺陷无声
         # 复发)。
         try:
             from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
@@ -518,7 +518,7 @@ class CwScreenShop(CwOperation):
                  f'bench={len(bench_entries_of(game_state_of(match.session)))}')
         self._visit_actions = []
         # 未观察态的锚定 = 「策略关店 → 备战环 heavy 观察」链,店内零
-        # 重建,观察态 = 容器字段 GameState.tracked_account_observed,出口
+        # 重建,观察态 = 状态容器字段 GameState.tracked_account_observed,出口
         # 跳过留痕/熔断见 :func:`_note_shop_skip_unobserved`;连续跳过计数
         # 复位在访问终结出口。
         return self.round_success()
@@ -527,7 +527,7 @@ class CwScreenShop(CwOperation):
                          match) -> 'CwScreenShopObs | OperationRoundResult':
         """live 入口观察链(读屏点改道原样迁移;sim 生成器产物不走本链)。
 
-        读漏斗(read_game_state 容器直写)+ 停机闸(未识别卡 stop_running +
+        读漏斗(read_game_state 状态容器直写)+ 停机闸(未识别卡 stop_running +
         round_fail,stop 形态原样结束本次访问调用 node)→ obs 镜像 + 原始帧留存证据。
         返回的 CwScreenShopObs 与入口回执逐字段同源(shop.py 模块头
         「同面镜像」),调用 node 以之同时承载 ``self._entry`` 回执位。"""
@@ -584,7 +584,7 @@ class CwScreenShop(CwOperation):
             _stop = _note_shop_skip_unobserved(self, match)
             if _stop is not None:
                 return _stop
-        # 守卫/env 读点 = 容器单例(提案动作的对象在期望态中存在且未被
+        # 守卫/env 读点 = 状态容器单例(提案动作的对象在期望态中存在且未被
         # 消费,炸出 = 策略器 bug)。
         _cur_gs = game_state_of(match.session)
         guard_proposal_vs_expected(action, _cur_gs)
@@ -593,7 +593,7 @@ class CwScreenShop(CwOperation):
         # op 基类停用删除:直调节点函数 = 唯一路径;重试/停机查归包络与
         # 结束本次访问面,动作层零重试;节点异常原样上抛 = 执行异常通道不变。)
         _op_cls = action_op_class_for(action)
-        # 执行器端口(商店执行链端口接线):备战域共用词表动作
+        # 执行器端口(商店执行链端口接入调用):备战域共用词表动作
         # (SellBench/LevelUp 族 op 经 env.executor 消费 _ctx/_op + 域
         # 坐标权威画面)在商店域的适配注入;商店原生动作(买/刷/关)
         # 不经此端口,行为零影响。

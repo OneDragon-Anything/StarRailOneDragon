@@ -31,12 +31,12 @@ prep 实体面卡片分支(原备战环入口清场段代发撤销)——本 op 
 round_fail 返回主循环重新识别)+ 弹窗载体一次读(四卡区羁绊解析 + 四卡区
 中心与现金为王点解算 + 羁绊面板现读计数,入口帧一次读,与现役决策体读
 同帧等价)→
-``report_screen_expert_invite_obs`` 落容器 ``expert_invite``(payload 打包:
+``report_screen_expert_invite_obs`` 落状态容器 ``expert_invite``(payload 打包:
 card_bonds/board/card_points/cash_point 四字段同门一并上报,op-layer.md
 §1.1 选择坐标观察上报)→ obs 挂实例属性进决策 node。决策动作 node = 重入
 裁决顶部(选卡点击已发 → 弹窗不在 = 选卡落地 → 此刻才写 chosen_expert +
 现金为王到账登记 + success 返回主循环;在 = 点击未落地 → 清标志重走)→ 决策从
-容器零参读(两守卫:返回词表外/None = 具名 fail 零盲发;idx 域外 = 守卫
+状态容器零参读(两守卫:返回词表外/None = 具名 fail 零盲发;idx 域外 = 守卫
 断言;策略异常自然传播;无 match 局外不设早退支,用户裁决 2026-09-22
 全族删门)→ 点选 → round_wait 循环(不烧节点
 重试预算,无防御上限)。chosen_expert 与
@@ -44,7 +44,7 @@ ConfirmExpertCash 到账登记 = 落地复查点留在原位(动作事实边界,
 ConfirmExpertCash 逻辑推进 = gold +4 直推);本屏 sim 分支 = 不适用(sim 无
 对应画面段,事件浮层族即时落定),等价判据主支撑 = 实机已登记行为测试
 (test_game_state chosen_record_face chosen_expert 测试 +
-test_screen_two_node_family 形态测试;接线测试补档 = 开放设计注,
+test_screen_two_node_family 形态测试;接入调用测试补档 = 开放设计注,
 见 screens/expert_invite.md §9)。
 """
 from one_dragon.base.operation.operation_edge import node_from
@@ -130,7 +130,7 @@ class CwScreenExpertInvite(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """弹窗在场门 + 弹窗载体一次读 → report 落容器。
+        """弹窗在场门 + 弹窗载体一次读 → report 落状态容器。
 
         门 miss = round_fail 早退(与现役首闸同 status:弹窗不在(已被处理 /
         门外帧弹窗已消失)→ 返回主循环重新识别,外循环按下一帧画面重分发自愈;
@@ -207,9 +207,9 @@ class CwScreenExpertInvite(CwOperation):
         obs = self._obs
         board = obs.board if obs is not None else {}
         card_bonds = (list(obs.card_bonds) if obs is not None else [])
-        # 选卡判据(单一源 = kernel choose_expert_index,经策略器消费容器
+        # 选卡判据(单一源 = kernel choose_expert_index,经策略器消费状态容器
         # expert_invite 槽;唯一入口 = 策略对象,handler 零自拟判据)。
-        # 写槽已由 report 落容器 → 零参决策。
+        # 写槽已由 report 落状态容器 → 零参决策。
         _match = getattr(self.ctx, 'cw_match', None)
         # 无 match 局外不设早退支(画面 op 不支持局外单独调用,op-layer.md
         # §1.1;用户裁决 2026-09-22 全族删门):单跑缺上下文沿正常链路
@@ -234,13 +234,13 @@ class CwScreenExpertInvite(CwOperation):
         pick_desc = ('现金为王(经济兜底)' if idx == -1
                      else f'卡{idx + 1}(羁绊={card_bonds[idx]})')
         # 坐标不在此取(op-layer.md §1.1 :35,坐标单一真相源 = 观察上报,
-        # 禁决策段现算):动作 op 自容器 expert_invite.card_points[idx] ∨
+        # 禁决策段现算):动作 op 自状态容器 expert_invite.card_points[idx] ∨
         # cash_point(idx=-1)取点执行(``cw_pick_expert_invite_action.py``)。
         log.info('[cw-bookcard] 邀请函选卡: board=%s 卡羁绊=%s → %s',
                  board, card_bonds, pick_desc)
         # 选卡链经工厂(pick-op-unify 批:点卡即选 + 弹窗关闭动画等待迁入
         # ``CwActionPickExpertInviteOp``,本 op 只决策;定位点 = 动作 op 自
-        # 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``(idx=-1)
+        # 状态容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``(idx=-1)
         # 取,op-layer.md §1.1 :35,本 op 零坐标现算)。派发 = 直发策略产
         # 实例(上报 param 即真实选择,含 -1 现金为王语义)。
         # 机械部分完成即结束本次访问(零验证:用户裁定——动作层不做效果验证,判效归下一帧观察):弹窗关没关由下一轮落地复查(本方法顶部

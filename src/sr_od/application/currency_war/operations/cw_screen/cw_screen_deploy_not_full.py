@@ -9,9 +9,9 @@
 形态(画面 op 两段式:观察 node → 决策动作 node,继承 CwOperation,
 轻屏统一形态):观察 node = 标识门(id_mark「标识-未达上限警告」,miss
 未发 = round_fail 交编排壳按步分流)+ 门内 obs{on_screen} → 调占位
-``report_screen_deploy_not_full_obs``(统一形态;本屏现役零容器写点,
+``report_screen_deploy_not_full_obs``(统一形态;本屏现役零状态容器写点,
 接口为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作
-node = 落地复查顶部(确认已发 → 锚不在 = 弹窗已关 → success 返回主循环;锚在
+node = 落地复查顶部(确认已发 → 识别标志不在 = 弹窗已关 → success 返回主循环;识别标志在场
 = 确认未落地 → 重做勾选确认)→ 勾「勾选-本局不再提示」safe_click+0.3s
 → 确认 emit_overlay_confirm → 置位 → round_wait 循环推进(不烧节点重试
 预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 分支 = 不适用
@@ -48,8 +48,8 @@ class CwScreenDeployNotFull(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-未达上限确认')
-        # 确认已发待落地复查标志(单 op 生命周期):区分「首发锚 miss = 误分发
-        # fail 返回主循环」与「重入锚 miss = 弹窗已关 success 返回主循环」(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态:
+        # 确认已发待落地复查标志(单 op 生命周期):区分「首发识别标志 miss = 误分发
+        # fail 返回主循环」与「重入识别标志 miss = 弹窗已关 success 返回主循环」(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态:
         # 用户裁定 2026-09-10 动作 op 禁验证,落地由下一轮重入入口观察裁决)。
         self._confirm_pending: bool = False
         # 观察结果(观察 node 产物;门早退轮不装载)。
@@ -57,7 +57,7 @@ class CwScreenDeployNotFull(CwOperation):
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """标识门 + obs{on_screen} → 占位 report 接线。
+        """标识门 + obs{on_screen} → 占位 report 接入调用。
 
         门 miss = round_fail 早退交编排壳按步分流(现役首闸同 status);
         门 hit → obs 装载 + 占位 report(match/gs 缺席跳过)。"""
@@ -81,9 +81,9 @@ class CwScreenDeployNotFull(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 勾选 + 确认 → round_wait。
 
-        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮确认已发 → 锚不在 = 弹窗
+        落地复查(观察驱动,零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)形态):上轮确认已发 → 识别标志不在 = 弹窗
         已关(落地与否归下一帧观察侧重分发;此处只认「本画面处理完结」)
-        → success 返回主循环;锚在 = 确认未落地 → 重做勾选确认。循环推进 =
+        → success 返回主循环;识别标志在场 = 确认未落地 → 重做勾选确认。循环推进 =
         round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,无防御
         上限)。"""
         if self._confirm_pending:
@@ -103,7 +103,7 @@ class CwScreenDeployNotFull(CwOperation):
         safe_click(self, _check, tag='cw-deploywarn')
         time.sleep(0.3)
         # 确认 + 机械部分完成即结束本次访问(零验证(用户裁定:动作层不做效果验证,判效归下一帧观察):不读屏判「弹窗关没关」,落地由下一轮重入
-        # 入口观察裁决;锚仍在 = 重做一次)。勾选未生效的弹窗滞留 flat-loop
+        # 入口观察裁决;识别标志仍在 = 重做一次)。勾选未生效的弹窗滞留 flat-loop
         # 防线 = 落地复查。
         self._confirm_pending = True
         emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='未达上限',

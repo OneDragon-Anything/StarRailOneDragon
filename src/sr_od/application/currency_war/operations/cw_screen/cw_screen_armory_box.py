@@ -12,12 +12,12 @@
 
 形态(迭代-screen-op-flat-report):观察 node + 决策动作 node 两段
 直继承 SrOperation(轻屏统一形态)。观察 node = 标识门(id_mark「标识-武装箱」
-族名锚,单档泛化覆盖简易/特权弹窗族;miss 未发 = round_fail 交编排壳按步
+族名识别标志,单档泛化覆盖简易/特权弹窗族;miss 未发 = round_fail 交编排壳按步
 分流)+ obs{on_screen} → 调
-占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零容器写点,接口
+占位 ``report_screen_armory_box_obs``(统一形态;本屏现役零状态容器写点,接口
 为占位,match/gs 缺席跳过)→ obs 挂实例属性进决策 node。决策动作 node =
-落地复查顶部(点 × 已发 → 锚不在 = 弹窗已关(道具进背包)→ success 结束本次访问;
-锚在 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
+落地复查顶部(点 × 已发 → 识别标志不在 = 弹窗已关(道具进背包)→ success 结束本次访问;
+识别标志在场 = 点击未落地 → 重点)→ 点 × 关闭 → ``round_wait`` 循环推进(不烧节点
 重试预算;不收敛 = 动作 bug 响亮暴露,无防御上限)。本屏 sim 分支 = 不适用(sim 无对应画面段),
 等价判据主要支撑 = 实机已登记行为测试。
 """
@@ -44,19 +44,19 @@ class CwScreenArmoryBox(CwOperation):
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-武装箱弹窗')
-        # 点 × 已发待落地复查标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):锚不在 + 已发 = 弹窗已关
-        #(道具进背包)→ success 结束本次访问;锚在 = 点击未落地 → 重点。
+        # 点 × 已发待落地复查标志(零验证形态(用户裁定:动作层不做效果验证,判效归下一帧观察)):识别标志不在 + 已发 = 弹窗已关
+        #(道具进背包)→ success 结束本次访问;识别标志在场 = 点击未落地 → 重点。
         self._click_pending: bool = False
         # 观察结果(观察 node 产物,决策动作 node 消费)。
         self._obs: CwScreenArmoryBoxObs | None = None
 
     @operation_node(name='观察', is_start_node=True)
     def observe(self) -> OperationRoundResult:
-        """标识门 + obs{on_screen} → 占位 report 接线。
+        """标识门 + obs{on_screen} → 占位 report 接入调用。
 
         门 miss = round_fail 早退交编排壳按步分流(现役首闸同 status)。
         门 hit → obs 装载 + ``report_screen_armory_box_obs`` 占位调用(本屏
-        现役零容器写点,接口为统一形态占位;match/gs 缺席跳过)。"""
+        现役零状态容器写点,接口为统一形态占位;match/gs 缺席跳过)。"""
         screen = self.last_screenshot
         _hit = self.round_by_find_area(
             screen, CwScreenArmoryBox.DIALOG_SCREEN, '标识-武装箱', crop_first=False).is_success
@@ -75,8 +75,8 @@ class CwScreenArmoryBox(CwOperation):
     def act(self) -> OperationRoundResult:
         """落地复查(顶部)→ 点 × 关闭 → round_wait。
 
-        落地复查(观察驱动,零验证形态):上轮点 × 已发 → 锚不在 = 弹窗
-        已关(底层屏交还 loop)→ success;锚在 = 点击未落地 → 清标志重点。
+        落地复查(观察驱动,零验证形态):上轮点 × 已发 → 识别标志不在 = 弹窗
+        已关(底层屏交还 loop)→ success;识别标志在场 = 点击未落地 → 清标志重点。
         循环推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮
         暴露,无防御上限)。"""
         if self._click_pending:
