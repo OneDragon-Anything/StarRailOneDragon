@@ -5,19 +5,19 @@
 ## 1. 分发判定
 
 - 外循环分发(阶段一身份行):id_mark「货币战争-投资策略.标识-请选择投资策略」命中即派发。历史「双信号+复探」判据与 OCR 全短语读法已停用(screen_flow_timing #30 裁定:横幅中间态不处理,帧落阶段二守卫等待)。
-- 分发 = 阶段一身份行(标题锚);判定不复制分发表,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
+- 分发 = 阶段一身份行(标题识别标志);判定不复制分发表,单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2。
 
 ## 2. 画面形态声明
 
-**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss,现行分发判据与该裁定一致)。
+**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**无任何可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],识别标志判定天然 miss,现行分发判据与该裁定一致)。
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志复探窗(有界自愈)→ **一次读全**(候选 + 逐卡刷新剩余,无稳定帧等待——用户裁定 2026-09-21)→ `report_screen_invest_strategy_obs` 落状态容器(GameState) `invest_strategy_opts` + `strategy_refresh_left` 槽 → obs 挂实例属性。决策动作 node = 零参决策 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest_strategy`(候选自状态容器槽;**空候选/无有效输出 = round_fail 显式失败,不发出无依据的动作**;判据本体 = `strategies/impl/mandate_v1/invest_strategy.py`,权威版本 = [../strategy-docs/29_invest_strategy_screen.md](../strategy-docs/29_invest_strategy_screen.md);接口规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1)→ 逐卡刷新结束本次访问 ∨ 选卡确认链经 `CwActionPickInvestOp` 派发(动作类型 = `CwActionPickInvestStrategyParam`;**动作 op 点完确认立即上报完整结果**——选择事实经获得链 `gain_invest_strategy` 记:无效载荷拒绝/active_strategies 按名字去重追加/效果账本登记分支/`on_strategy_gained` 效果分派,权威版本 = [../game_state/gain-chain.md](../game_state/gain-chain.md))→ **round_success 终结返回主循环**(选完即结束本次访问,用户裁定 2026-09-21;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性)。刷新 = 终结动作,无 pending 裁决:点钮后本访问即 round_success 结束本次访问,外循环重进 = 入口重建重观察重决策。
 
 ## 3. 观察面
 
 入口单次观察(观察 node;决策环零识别)——`_observe_frame` 序:
 
-1. 入口锚复探窗(语义):首帧探测「标识-请选择投资策略」,miss → 可中断睡眠 0.8s × 4 次复探;超窗仍 miss = `entry_ok=False` → 观察 node round_retry 有界自愈(观察 node `node_max_retry_times=10` 预算内,不炸 op);
+1. 入口识别标志复探窗(语义):首帧探测「标识-请选择投资策略」,miss → 可中断睡眠 0.8s × 4 次复探;超窗仍 miss = `entry_ok=False` → 观察 node round_retry 有界自愈(观察 node `node_max_retry_times=10` 预算内,不炸 op);
 2. **一次读全**(无稳定帧等待,用户裁定 2026-09-21):同一帧读卡名(`_read_options`:全图 OCR,按卡名行 y 带 465-505 + 文本长 2-8 字 + 排除表过滤,按 center-x 左→右排序)+ 逐卡刷新剩余计数(`read_invest_refresh_counts`,x 就近配对到槽,读缺 = None);首帧全图 OCR 存底随 payload。
 
 (旧 1s 稳定帧已删,读缺自愈 = 复探窗 + 外循环重派;空候选 → 决策动作 node round_fail 显式失败,见 §2/§5。)
@@ -80,7 +80,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 | 选卡确认链派发 | **访问终结** | round_success 返回主循环重新分发(结果已即时上报写入;确认未生效 = 代码 bug,overlay 残留由外循环重识别重派,修法 = 点击链可靠性) |
 | 三闸全败重调仍返回刷新 | 显式失败 | round_fail(「决策无有效输出」同出口;策略器同帧去重未实现的 bug 面响亮暴露,零二次重调) |
 | 空候选/决策无有效输出 | 显式失败 | round_fail 交外循环(不发出无依据的动作,bug 面响亮暴露) |
-| 入口锚复探超窗 | 有界重试 | 观察 node round_retry 消耗其 `node_max_retry_times=10` 预算,超限 op FAIL 交外循环 |
+| 入口识别标志复探超窗 | 有界重试 | 观察 node round_retry 消耗其 `node_max_retry_times=10` 预算,超限 op FAIL 交外循环 |
 
 单选族「确认离开 = 画面终结」语义 = [README.md](README.md) §6;本屏刷新同商店刷新的「唯一引入新事实动作」终结原则([op-layer.md](op-layer.md) §1.4),落点 = 重入访问重建观察。
 
@@ -98,7 +98,7 @@ act = match.strategy.decide_invest_strategy()(零参,候选读状态容器 inves
 ## 8. 守卫与防线
 
 - 入口复探窗(语义):过渡帧单探测误 fail 防线;超窗 round_retry 不炸 op(节点预算兜底)。
-- 刷新偏移错(文本锚漂移)→ 刷新未命中:重读 = 原卡名集、重决策结果天然等价(能力退化非事故);obs 余量权威闸防超刷。
+- 刷新偏移错(文本识别标志漂移)→ 刷新未命中:重读 = 原卡名集、重决策结果天然等价(能力退化非事故);obs 余量权威闸防超刷。
 - 零验证(用户裁定:动作层不做效果验证,判效归下一帧观察)(不做效果验证):访问内刷后不比对、确认后零判效;确认未生效 = 代码 bug(点击链治理),overlay 残留由外循环重识别重派(数据面零回滚零判重,action_ops.md §1「用户裁定(点完即写)」)。
 - 空候选/决策无有效输出 = round_fail 显式失败(不发出无依据的动作,fallback 路径已废)。
 - 同帧去重契约(三闸全败重调):重调仍返回刷新 = 策略器未实现去重的 bug 面 →「决策无有效选卡输出」round_fail 显式失败;去重单一源 = 策略器(flow.py::_decide_invest scratch 键),画面 op 只重调一次、重调仍刷新即弃,不成环。

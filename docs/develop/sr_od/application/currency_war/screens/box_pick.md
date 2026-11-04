@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口锚复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 返回主循环重派(重观察语境禁猜,禁盲点首卡;report 不调,状态容器(GameState)不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 选卡决策(无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→ 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报状态容器 `box_card_names_xy`(op-layer.md §1.1「选择坐标观察上报」,动作 op 按下标自取))→ round_success 结束本次访问(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 在用值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自状态容器槽;局内 fail-closed:异常保留证据完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态锚 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
+**单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;选卡即终结,单步无确认)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 两道闸(入口识别标志复验,分发即门 op 内机械复验防误派;OCR 卡名空 = 未发出通道)→ 任一 miss = round_fail 返回主循环重派(重观察语境禁猜,禁盲点首卡;report 不调,状态容器(GameState)不进盲值)→ 观察标准化门 + 坐标解点 → `report_screen_box_pick_obs` 同门双写 `box_card_names` / `box_card_names_xy` 槽 → obs + 标准化读数挂实例属性。决策动作 node = 选卡决策(无 match 局外不设早退支,用户裁决 2026-09-22 全族删门)→ 选卡链经 `CwActionPickBoxCardOp` 派发(点卡选中即确认 + 动画等待 + 自上报住动作 op,契约 = [../flow/action_exec.md](../flow/action_exec.md) §2;点击坐标 = 观察上报状态容器 `box_card_names_xy`(op-layer.md §1.1「选择坐标观察上报」,动作 op 按下标自取))→ round_success 结束本次访问(选卡落地由下一帧观察覆盖;op 内零重试轮,重试预算归外循环重分发;`node_max_retry_times=5` 在用值仅框架异常路径消费)。零参决策 `match.strategy.decide_box_card()`(候选自状态容器槽;局内 fail-closed:异常保留证据完整栈后显式上抛 / 返回越界索引同上抛——两者都禁无声回落内联打分,策略 bug 禁永久遮蔽;薄壳语义:locked_comp 两态识别标志 + 三本库存账 → 共享机器 `kernel/cw_equip_value.py::pick_equipment` 序数分档,key 直击 > 近兑现 > 材料 > 通用,base = 通用输出先验;规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E18)。
 
 ## 3. 观察面
 
-单次观察(观察 node):入口锚复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → 失败结束本次访问,返回主循环重新分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。观察 payload = `CwScreenBoxPickObs`(`on_screen`/`card_names`/`points`/`screen`,住 `kernel/cw_screen_report/box_pick.py`);report = `report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写;桩无 gs(有 match)跳过写、决策照走)。卡名读数经装备注册表两段转换后上报(转换失败 = 观察失败,round_fail 不写不上报返回主循环重新识别画面);重复名合法(四卡可能同名,同装备多张),逐候选独立归一,不适用「多候选命中同一注册名 = 转换失败」互斥判。坐标与标准名一并入状态容器 `box_card_names_xy`(观察期解点:候选 x + 卡身 y 常量避让几何、同门双写),转换失败名字坐标同进退(op-layer.md §1.1「选择坐标观察上报」)。
+单次观察(观察 node):入口识别标志复验(分发即门,op 内机械复验防误派;「标识-请选择」miss = 非本画面 → 失败结束本次访问,返回主循环重新分发)→ 卡名读取 `_read_card_names`:「区域-卡名行」建档 rect 约束 OCR,2-8 字过滤,按 x 升序 → [(卡名, 卡 x 中心)]。观察 payload = `CwScreenBoxPickObs`(`on_screen`/`card_names`/`points`/`screen`,住 `kernel/cw_screen_report/box_pick.py`);report = `report_screen_box_pick_obs` 同门双写状态容器 `box_card_names` / `box_card_names_xy` 槽(两道闸过才写;桩无 gs(有 match)跳过写、决策照走)。卡名读数经装备注册表两段转换后上报(转换失败 = 观察失败,round_fail 不写不上报返回主循环重新识别画面);重复名合法(四卡可能同名,同装备多张),逐候选独立归一,不适用「多候选命中同一注册名 = 转换失败」互斥判。坐标与标准名一并入状态容器 `box_card_names_xy`(观察期解点:候选 x + 卡身 y 常量避让几何、同门双写),转换失败名字坐标同进退(op-layer.md §1.1「选择坐标观察上报」)。
 
 ## 4. 动作面
 
@@ -52,7 +52,7 @@ idx = _decide_card_index(决策动作 node):
 | 条件 | 级别 | 交回落点 |
 |---|---|---|
 | 点卡成功 | **选卡即终结** | round_success 返回主循环(选卡落地由下一帧观察覆盖;与 `OpenBox` 终结化结束本次访问等待同源) |
-| 入口锚 miss / OCR 未读卡名 / 卡名标准化失败 | op FAIL | 返回主循环按当前画面重分发(重派重观察) |
+| 入口识别标志 miss / OCR 未读卡名 / 卡名标准化失败 | op FAIL | 返回主循环按当前画面重分发(重派重观察) |
 | 决策契约违约 | 异常上抛 | fail-closed(保留证据后上抛,禁回落) |
 
 「确认离开 = 画面终结」= [README.md](README.md) §6(本屏确认 = 点卡本身);`node_max_retry_times=5` 在用值仅框架异常路径消费。

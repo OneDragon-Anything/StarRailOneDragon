@@ -1,21 +1,21 @@
 # 战斗等待(battle_wait · 战斗/结算窗族)
 
 > 代码 = `operations/cw_screen/cw_screen_battle_wait.py::CwScreenBattleWait`(驻留状态机,单 node `wait`;用户裁定豁免两 node 形态)+ `::SettlementState`(战斗/结算链跨迭代状态机;`cw_loop.py::CwLoop.handle_init` 随 RunLoop 实例化注入,`__init__(ctx, st, config)`)。职责:出战结束后的战斗/结算窗驻留——等结算 → 结算处理(遥测读点 → 点「继续挑战」)→ 完成白名单/团灭终局分叉返回主循环。战斗自动进行(auto-battler),玩家无操作面。路径根 = `src/sr_od/application/currency_war/`。
-> 驻留状态机豁免(用户裁定):本 op 单 node `wait()`(「战斗等待」,`node_max_retry_times=400`)——出口判定(大厅终局锚/完成白名单)与分支链在单 node 内逐轮重判,拆观察/决策动作两 node 会把出口判定与分支序的轮次耦合切开;内部结算链(`_write_settlement_observation`/`apply_settlement_cover`/SettlementState)逐位零改动。report = `kernel/cw_screen_report/battle_wait.py` 占位(结算覆盖写端在结算域,非画面观察记账,op 层零调用)。
+> 驻留状态机豁免(用户裁定):本 op 单 node `wait()`(「战斗等待」,`node_max_retry_times=400`)——出口判定(大厅终局识别标志/完成白名单)与分支链在单 node 内逐轮重判,拆观察/决策动作两 node 会把出口判定与分支序的轮次耦合切开;内部结算链(`_write_settlement_observation`/`apply_settlement_cover`/SettlementState)逐位零改动。report = `kernel/cw_screen_report/battle_wait.py` 占位(结算覆盖写端在结算域,非画面观察记账,op 层零调用)。
 
 ## 1. 分发判定
 
 - 外循环战斗窗分支,**双入口**(`cw_loop.py::CwLoop.loop` 战斗窗分支):①出战驻留标志 `_battle_wait_active`(备战分支出战成功置位);②帧判定 `_frame_in_battle_window`(中断恢复的对局/残留结算屏;判定集 = 继续挑战按钮/败局页模板/数据统计/点击空白加速/总伤害/前往结算·返回货币战争——简报「下一步」刻意不列,与终局链共享词形宁缺勿造)。分发时注入宽限计时起点 `self._settle.battle_ts = self._battle_ts`。
 - 位置:阶段二默认分支之后、大厅收尾分支之前(分发结构 = [../flow/outer_loop.md](../flow/outer_loop.md) §2.2「战斗窗」行)。外循环只回答「在不在战斗窗口」,单元内部分类(等待/结算页/败局链/过场屏)归本 op 分支链,不进外循环。
-- 完成白名单与外循环分支共用画面锚,判定双源分工:`_hit_completion_anchor` 用备战**单个 id_mark** 宽到达判定(「货币战争-备战.备战标识-购买经验」),「按钮-出战」双 id_mark 精判是循环备战分支职责——op 内重复双 id_mark 即双源。白名单含 boss 简报 id_mark + 片段判别与位面过渡 OCR(共享文案「点击空白处继续」不作跨画面判据,排他单一源 = [boss_briefing.md](boss_briefing.md) §1);位面简报不在切换链上,不列。
+- 完成白名单与外循环分支共用画面识别标志,判定双源分工:`_hit_completion_anchor` 用备战**单个 id_mark** 宽到达判定(「货币战争-备战.备战标识-购买经验」),「按钮-出战」双 id_mark 精判是循环备战分支职责——op 内重复双 id_mark 即双源。白名单含 boss 简报 id_mark + 片段判别与位面过渡 OCR(共享文案「点击空白处继续」不作跨画面判据,排他单一源 = [boss_briefing.md](boss_briefing.md) §1);位面简报不在切换链上,不列。
 
 ## 2. 画面形态声明
 
-**空决策形态**(无选择面 ∧ 无逻辑态账;推进为流程义务)。本 op 为结算链并入的既有 op:轮询等待/长按兜底/宽限等重试语义为 as-built 保留,不在「新 op 单尝试」适用范围内([README.md](README.md) §3 形态判据的既有 op 豁免);无策略器问询。结构判据 = 逻辑单元生命周期 owner:战斗+结算是一个单元(开始 = 出战,结束 = 白名单锚/团灭终局),单元内多阶段由分支链分类。sim 侧对应项 = 不适用(sim 事实来源为 coarse 结算产出非画面段)。节点 = `wait`(`@operation_node(name='战斗等待', node_max_retry_times=400)`)。
+**空决策形态**(无选择面 ∧ 无逻辑态账;推进为流程义务)。本 op 为结算链并入的既有 op:轮询等待/长按兜底/宽限等重试语义为 as-built 保留,不在「新 op 单尝试」适用范围内([README.md](README.md) §3 形态判据的既有 op 豁免);无策略器问询。结构判据 = 逻辑单元生命周期 owner:战斗+结算是一个单元(开始 = 出战,结束 = 白名单识别标志/团灭终局),单元内多阶段由分支链分类。sim 侧对应项 = 不适用(sim 事实来源为 coarse 结算产出非画面段)。节点 = `wait`(`@operation_node(name='战斗等待', node_max_retry_times=400)`)。
 
 ## 3. 观察面
 
-驻留型轻观察(每轮 `round_wait` 后重截重判 = 等待型轮询观察;终局锚/完成白名单出口判定含早退轮次语义,归 `wait` node 内)。分支链消费 obs 解析工具箱(`obs/cw_settlement_obs.py`):`read_round_outcome`(结算读数 → `RoundOutcome`)/`parse_settlement_round`(头部「X-Y」)/`parse_settlement_progress`/`parse_progress_fill_ratio`/`read_settle_damage_breakdown`/`settle_page1_progress_sign`/`parse_settlement_assets`/`read_settle_gold_opt`;`obs/cw_observation.py::read_phase_round`(last-known 兜底源)。结算金读链:`parse_settlement_assets` token 解析失败(当前版本结算布局无『存量 <N>』token)→ `read_settle_gold_opt` 右上角货币计数定点读 + 稳定门(首读失败补采一帧;帧间不一致取末帧 + 冲突保留证据,补采上限 = `SETTLE_GOLD_MAX_POLLS`);token 与定点读双失败且胜局 = 落全帧 token 保留证据行供解析器加固对账;败局页无面板,读失败为预期形态。结算读数即对账边界:结算写点见 §6(时序红线 = 「结算即写」,禁惰性化)。
+驻留型轻观察(每轮 `round_wait` 后重截重判 = 等待型轮询观察;终局识别标志/完成白名单出口判定含早退轮次语义,归 `wait` node 内)。分支链消费 obs 解析工具箱(`obs/cw_settlement_obs.py`):`read_round_outcome`(结算读数 → `RoundOutcome`)/`parse_settlement_round`(头部「X-Y」)/`parse_settlement_progress`/`parse_progress_fill_ratio`/`read_settle_damage_breakdown`/`settle_page1_progress_sign`/`parse_settlement_assets`/`read_settle_gold_opt`;`obs/cw_observation.py::read_phase_round`(last-known 兜底源)。结算金读链:`parse_settlement_assets` token 解析失败(当前版本结算布局无『存量 <N>』token)→ `read_settle_gold_opt` 右上角货币计数定点读 + 稳定门(首读失败补采一帧;帧间不一致取末帧 + 冲突保留证据,补采上限 = `SETTLE_GOLD_MAX_POLLS`);token 与定点读双失败且胜局 = 落全帧 token 保留证据行供解析器加固对账;败局页无面板,读失败为预期形态。结算读数即对账边界:结算写点见 §6(时序红线 = 「结算即写」,禁惰性化)。
 
 ## 4. 动作面
 
@@ -32,7 +32,7 @@
 
 分支链 `_dispatch_frame` 自上而下(OCR 检测命中即点命中位置,检测/点击同源;`pre_delay=0` 保持检测即点):
 
-| 分支 | 判定锚 | 动作与等待语义 |
+| 分支 | 判定识别标志 | 动作与等待语义 |
 |---|---|---|
 | 挑战成功结算 | 「货币战争-结算.按钮-继续挑战」 | 采集钩子 → 读点前等 1.5s + 重截(结算数据后于按钮渲染,screen_flow_timing #6/#25)→ `_record_round_outcome` → 新帧指纹计数(`last_settle_fp` 同屏指纹,点击不生效不虚增 `rounds_done`)→ 委托 `CwOpSettleConfirm`(点击/长按兜底/兑现回调/settle_confirm 推进上报随 op);op 失败 → bail 交外循环兜底链 |
 | 失败结算页 | 「货币战争-结算-失败.标识-挑战进度」∧「标识-挑战结束」∧ 无继续挑战 | 进度符号(`settle_page1_progress_sign`):neg → 置败局标志;面板延迟门(`SETTLE_PANEL_WAIT_S`:伤害说明面板 visible 或超时才放行推进,超时兜底覆盖胜轮面板整块不现);页1 三项暂存(`settle_page1_progress`/`settle_page1_settle`,消费时同窗校验 `settle_p1_battle_ts == battle_ts`);`_record_loss_page`(telemetry-only 补录,同屏指纹防重)→ 按钮族 OCR(`前往结算/下一页/下一步/返回货币战争`)命中即点,全 miss 点空白 `BLANK` |
@@ -49,7 +49,7 @@
 | 出口 | 判定 | 语义 |
 |---|---|---|
 | `terminal_lobby` | 「货币战争-大厅.标识-创业指南」 | 团灭终局链终点(「返回货币战争」落点)→ round_success 交外循环大厅收尾分支(运行收尾/分配器/存档装配写端在彼处,不随 op 化迁移;对局循环终止) |
-| `back_to_loop` | 完成白名单 `cw_screen_battle_wait.py::SETTLE_COMPLETION_ANCHORS` 任一(判定本体 = 同文件 `hit_settle_completion_anchor`;备战单 id_mark/补给/遭遇节点/投资策略/BOSS简报锚)+ boss 简报片段判别 + 位面过渡 OCR(带 boss 排他) | 「已回备战系画面」宽到达判定 → 返回主循环全分支重判;白名单后的面板就位判定由循环判定序承接,不在本 op 承诺内 |
+| `back_to_loop` | 完成白名单 `cw_screen_battle_wait.py::SETTLE_COMPLETION_ANCHORS` 任一(判定本体 = 同文件 `hit_settle_completion_anchor`;备战单 id_mark/补给/遭遇节点/投资策略/BOSS简报识别标志)+ boss 简报片段判别 + 位面过渡 OCR(带 boss 排他) | 「已回备战系画面」宽到达判定 → 返回主循环全分支重判;白名单后的面板就位判定由循环判定序承接,不在本 op 承诺内 |
 | bail | 未知帧超 `UNKNOWN_BAIL_N` | round_fail 交兜底链(超时兜底语义) |
 
 外循环 `on_result` 回调 = 战斗宽限守卫域(留外循环):`_settle.saw_settlement` → `_battle_ts=None`(窗口关,watch 恢复);`_battle_wait_active=False` 标志清除出口归一(白名单/终局/bail 都清)。
@@ -60,7 +60,7 @@
 
 - **观察半直写**(「结算即写」时序红线,禁惰性化):`_write_settlement_observation` = `session.performance.record(obs)`(`RoundOutcome` 入 history 存档;last_streak/last_hp 等 session 防御缓存已随终态契约 §A/§B 停用——streak/hp/gold/level 真值链由结算覆盖写端直入状态容器(GameState) gs,失读 None 化跳过语义由覆盖写端承载);同点过 `hp_confidence ≥ 0.9` 门更新 `SettlementState.last_outcome_hp`(summary final_hp 真值源)。
 - **状态容器半覆盖写**:`kernel/cw_game_state.py::apply_settlement_cover`(GameState settlement 域:hp_after/streak_after/killed/progress_delta/gold/level/xp——金/等级/经验仅胜局,缺席不写;note=`battle_done:<节点类型>`;best-effort 失败不阻塞)。金读链在用形态见 §3;读失败 = gold 缺席不写(本局无金真值覆盖)。结算域字段规格 = [../game_state/fields.md](../game_state/fields.md) §3.5。
-- **利息累计计数刻(T-27 公司契约条件分支,来源 A/B)**:结算覆盖窗内金真值落账后,胜局结算屏「获得金币总览」面板息行直读(区域裁剪放大 OCR;息行缺席 = 0、锚不在/值失读 = None 该刻不计数)→ `record_interest_earned` + `check_env_interest_grants`(条件发放两笔写,sig = logic_hook 族 group `battle-wait:env-grant` 同 streak 形态);败局侧唯一计数刻 = 1f 失败页败局行写点(telemetry 分支 killed is False 门内)推算入账(息 = interest(备战帧金, resolved cap)+ flat;`estimate_node_interest` 单一源),「前往结算」补录路径零计数防双计;同节点结算重处理由 `SettlementState.interest_counted_pos` 节点一次性标志位拦零双加。计数/条件矩阵域规格 = fields.md §3.5.5 interest_threshold 通道。
+- **利息累计计数刻(T-27 公司契约条件分支,来源 A/B)**:结算覆盖窗内金真值落账后,胜局结算屏「获得金币总览」面板息行直读(区域裁剪放大 OCR;息行缺席 = 0、识别标志不在/值失读 = None 该刻不计数)→ `record_interest_earned` + `check_env_interest_grants`(条件发放两笔写,sig = logic_hook 族 group `battle-wait:env-grant` 同 streak 形态);败局侧唯一计数刻 = 1f 失败页败局行写点(telemetry 分支 killed is False 门内)推算入账(息 = interest(备战帧金, resolved cap)+ flat;`estimate_node_interest` 单一源),「前往结算」补录路径零计数防双计;同节点结算重处理由 `SettlementState.interest_counted_pos` 节点一次性标志位拦零双加。计数/条件矩阵域规格 = fields.md §3.5.5 interest_threshold 通道。
 - **plane/round 真值覆盖**:结算屏头部「X-Y」对 last-known 走单调门覆盖;双读不等 → `defects.record_defect('phase_round','perception_conflict')` 保留证据;残留屏(`_mark_relaunch_residual`)豁免并按屏面真值校正。
 - **节点类型**:首领识别 id_mark(『货币战争-结算.标识-首领』画面位)> gs 推导(`kernel/cw_game_state.py::node_kind_of`;session 识别源已停用,单一源 = 状态容器)> 探针表兜底(`_node_type_from_table`,宿主 = `gs.node_books.plane_node_table`)> 缺省『普通战斗』;节点类型名统一 = `_normalize_node_type`。
 - **killed 判定两路**:进度符号(`progress_delta > 0`)+ killed 文本双置信度(读链 `read_round_outcome` 内)——均须在结算画面识别出来(胜负判定必须在结算画面识别,用户裁定);两主路径同失 = `killed=None` 观察收尾(诚实缺位,禁 HP 推断)。
@@ -87,4 +87,4 @@
 
 ## 开放设计注
 
-① 结算写点 = 「结算即写」时序红线:驻留状态机豁免两 node 拆分,结算写点不迁不拆(拆入独立对账段必改执行时序,零变更红线优先;用户裁定)。② 结算锚 boundary 触发口([op-layer.md](op-layer.md) §6,转点锚 boundary 触发口待裁决)不接入调用——结算登记 = 观察写端非动作发出登记,动作锚注册表无登记件。
+① 结算写点 = 「结算即写」时序红线:驻留状态机豁免两 node 拆分,结算写点不迁不拆(拆入独立对账段必改执行时序,零变更红线优先;用户裁定)。② 结算识别标志 boundary 触发口([op-layer.md](op-layer.md) §6,转点识别标志 boundary 触发口待裁决)不接入调用——结算登记 = 观察写端非动作发出登记,动作识别标志注册表无登记件。

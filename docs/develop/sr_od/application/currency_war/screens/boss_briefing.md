@@ -5,7 +5,7 @@
 
 ## 1. 分发判定
 
-- 阶段一身份分发(BOSS简报):**徽记模板 id_mark「货币战争-BOSS简报.标识-阵营徽记」∨ 共享判别** `is_boss_briefing_texts`(全帧 OCR 含「强敌」片段;判别词双形态 = 简体「强敌」+ 繁首「強敌」,OCR 渲染波动已登记)。id_mark = 横幅左侧红旗标上的**阵营徽记模板**(`cw_boss_brief_emblem`,二值化模板匹配)——徽记是固定资产(简报三家不同阵营卡与横幅旗标同资产,matchTemplate 0.97+ 实证;2026-09-16 从标题 OCR 锚「标识-强敌来袭」换装,旧 id_mark 被「强敌来袭」→「强敌米」误读击穿)。片段判别是 id_mark miss 的兜底纵深,不是第二判据。
+- 阶段一身份分发(BOSS简报):**徽记模板 id_mark「货币战争-BOSS简报.标识-阵营徽记」∨ 共享判别** `is_boss_briefing_texts`(全帧 OCR 含「强敌」片段;判别词双形态 = 简体「强敌」+ 繁首「強敌」,OCR 渲染波动已登记)。id_mark = 横幅左侧红旗标上的**阵营徽记模板**(`cw_boss_brief_emblem`,二值化模板匹配)——徽记是固定资产(简报三家不同阵营卡与横幅旗标同资产,matchTemplate 0.97+ 实证;2026-09-16 从标题 OCR 识别标志「标识-强敌来袭」换装,旧 id_mark 被「强敌来袭」→「强敌米」误读击穿)。片段判别是 id_mark miss 的兜底纵深,不是第二判据。
 - 阶段一身份行:横幅遮挡下备战两个 id_mark 仍透出命中(穿透形态)——备战不在分发清单,历史「帧误落备战分支空转 598s」事故见 [../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。
 - **与位面过渡的两画面排他**:两画面共享交互文案「点击空白处继续」但**位置不同**(本屏 y≈770 波段 / 位面过渡 y≈930 波段,各在自身画面档 area)——共享文案不作跨画面判据。误派链(标题误读 → 全帧裸文本兜底被 boss 帧共享文案击穿 → 误派过渡 op 空 fail 循环,第五局 1-9 实证)已根治:本屏 id_mark 换装徽记模板(标题不再承重)+ 外循环阶段一位面过渡身份分支 boss 判别排他(第三消费点);原位面过渡误分发的兜底分支随「未建档实证不作兜底」裁定停用(2026-09-16,见 outer_loop §2.3)。
 - **阶段一位面过渡身份分支排他(第三消费点)**:boss 帧标题被误读击穿阶段一本屏身份、而底图位面节点 id_mark 可读时,阶段一会命中位面过渡——该分支先查 boss 判别片段,命中即接管派发本屏 op 正面推进(不发过渡 op)。
@@ -49,9 +49,9 @@
 ## 9. 遥测与测试面
 
 - journal op 名 = 「BOSS简报」;日志前缀 `[cw-flow-boss]`。
-- 测试:两 node 行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(BOSS 简报真类装配与观察门 miss 早退);锚排他测试 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
+- 测试:两 node 行为测试 = `sr-od-test/test/sr_od/application/currency_war/test_obs_arch_phase_screens.py`(BOSS 简报真类装配与观察门 miss 早退);识别标志排他测试 = 代码注引用 `test_cw_anchor_exclusion.py`,该文件现状不在测试仓(开放设计注②)。
 - game 侧知识:[../../../../game/currency_war/research/screen_flow_timing.md](../../../../../game/currency_war/research/screen_flow_timing.md) #26(「点击空白处继续」出现即可点);画面档 = `assets/game_data/screen_info/currency_war_boss_briefing.yml`。
 
 ## 开放设计注
 
-① 点掉后去向:本 op as-built 语义 = 点空白即返回主循环重新判定、去向归外循环;游戏行为 = 点掉后回备战并自动弹商店(`screen_flow_timing.md` #14/#27,用户口述 2026-10-29 确认)。第七/八局接管实录中商店锚超时系恢复局商店锁死态(战斗中崩溃重进的局,economy.md「恢复局商店锁死」条),非 boss 节点特殊行为。② 锚排他测试:`test_cw_anchor_exclusion.py` 在 sr-od-test 现状无对应文件,测试面重建归属待测试仓清理批。③ game 侧时序 #26 校准对象列「bot 处理」句(旧外循环位面过渡分支 OCR「点击空白处继续」命中即点)描述的是已停用的旧接入调用;在用 = 阶段一画面身份分发专用本 op(观察门 = 徽记模板 id_mark ∨「强敌」片段判别兜底,不 OCR 提示文案,见 §1/§3)。#26 口述时序列本体(「点击空白处继续」出现即稳定、可点)仍有效且被 README §5.1 正确引用,不在修正面。修正归 game 侧文档批。
+① 点掉后去向:本 op as-built 语义 = 点空白即返回主循环重新判定、去向归外循环;游戏行为 = 点掉后回备战并自动弹商店(`screen_flow_timing.md` #14/#27,用户口述 2026-10-29 确认)。第七/八局接管实录中商店识别标志超时系恢复局商店锁死态(战斗中崩溃重进的局,economy.md「恢复局商店锁死」条),非 boss 节点特殊行为。② 识别标志排他测试:`test_cw_anchor_exclusion.py` 在 sr-od-test 现状无对应文件,测试面重建归属待测试仓清理批。③ game 侧时序 #26 校准对象列「bot 处理」句(旧外循环位面过渡分支 OCR「点击空白处继续」命中即点)描述的是已停用的旧接入调用;在用 = 阶段一画面身份分发专用本 op(观察门 = 徽记模板 id_mark ∨「强敌」片段判别兜底,不 OCR 提示文案,见 §1/§3)。#26 口述时序列本体(「点击空白处继续」出现即稳定、可点)仍有效且被 README §5.1 正确引用,不在修正面。修正归 game 侧文档批。
