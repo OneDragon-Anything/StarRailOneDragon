@@ -4,8 +4,8 @@
 strategy-terminal-contract)识别防御基准停用后,本层收敛为 **gs.hp 直读**:
 「上一真值」职责由结算覆盖写端(``cw_screen_battle_wait`` §3.5.1)+
 carried 语义(fields.md §2.1)承载;旧结算新鲜度门
-(``apply_hp_freshness_gate``,session.last_hp/last_hp_t 锚 + gap 窗)
-随锚停用删除——失读窗不再有基准补,实机识别失准走识别优化批
+(``apply_hp_freshness_gate``,session.last_hp/last_hp_t 基准 + gap 窗)
+随基准停用删除——失读窗不再有基准补,实机识别失准走识别优化批
 (design §1.3 用户裁定,行为变化登记)。
 
 **依赖方向**:本模块只 import kernel 内类型(类型注解经 TYPE_CHECKING),

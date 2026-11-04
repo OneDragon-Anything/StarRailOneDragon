@@ -176,12 +176,12 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     """穿装备上报(穿戴原子,发出即记账):owned −1 + worn 集穿着即合成
     + 目标单位所在域整表重建单写(equips 随对象)。row/slot = 画面
     物理槽位(词表定义;计划步恒戳,机械拖拽落点),目标定位 =
-    ``_locate_unit`` 槽位锚先行 + 无槽位调用面名匹配回退
+    ``_locate_unit`` 槽位定位先行 + 无槽位调用面名匹配回退
     (3.2 起 tracked 第二账停用,主域单点)。
 
     拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不已登记 /
     合成后超上限。``board_changed`` 事实事件仅 applied 出口广播
-    (拒绝 = 零写 = 无世界变化)。
+    (拒绝 = 零写 = 无状态副本变化)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace

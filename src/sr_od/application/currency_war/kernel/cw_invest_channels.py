@@ -116,7 +116,7 @@ _ENV_CATEGORY_TIER: dict[str, int] = {
 #: = 送人+入池+提率三件套(强档 +300);顾问卡 = 入池单条效果条目(顾问不免费
 #: 入席、需付费购买、不提率)——供给改写幅度弱一档,取**中档 +150**
 #: (「使其加入商店」= 该角色可购性 0→1 的定向供给,0 分漏掉;强档
-#: 高估——概念股的提率腿不存在)。
+#: 高估——概念股的提率条目不存在)。
 #: 目标线 = 顾问角色羁绊(factions∪flows)∩ 线核心键羁绊命中
 #: (:func:`_faction_hit_bonus` 同一降档规则——flex 弱关联仍归 0)。
 ENV_ADVISOR_CHARS: dict[str, str] = {
@@ -245,7 +245,7 @@ def strategy_line_bonus(strategy_name: str, comp) -> int:
 
 
 def env_line_bonuses(env_name: str) -> dict[str, int]:
-    """环境名 → {线名: 加分}(全库扫描;flow 遥测/锚点诊断查询面)。"""
+    """环境名 → {线名: 加分}(全库扫描;flow 遥测/观测诊断查询面)。"""
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     norm = normalize_invest_name(env_name)
     return {c.name: v for c in COMP_LIBRARY

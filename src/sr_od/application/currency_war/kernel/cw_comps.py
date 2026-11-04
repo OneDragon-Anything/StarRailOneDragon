@@ -9,7 +9,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 - ``COMP_LIBRARY``:起步 roster(21 套,姬子列车 A/B 拆分后;plaza 784 篇高难帖校准)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(深入游戏理解逐个敲定,统计只给候选)—— ``plaza_carry`` 字段
-  是两层交叉核对锚点。覆盖易/中/难成型 + 各机制(含 debuff=buff 的燃血、augment 定义型的黑塔纪元)。
+  是两层交叉核对基准。覆盖易/中/难成型 + 各机制(含 debuff=buff 的燃血、augment 定义型的黑塔纪元)。
 (旧 comp_score 多维评分器已随 select_comp 入口整族移除;锁定 = 候选-锁定制。)。
 
 **核心原则(用户 2026-08-03,贯彻全程)**:
@@ -70,7 +70,7 @@ class Comp:
     ``factions`` = 核心羁绊键集(faction_reqs 档 0 派生,成型判定只看它);
     ``flex_factions`` = 弹性次要羁绊(不进 faction_reqs,但板面朝它铺不被
     board_alignment 罚、env/策略绑定照常亲和)。
-    ``plaza_carry`` = cw_plaza_comps 聚类 carry 名(交叉核对锚点;空 = 无 n≥5 聚类对应)。
+    ``plaza_carry`` = cw_plaza_comps 聚类 carry 名(交叉核对基准;空 = 无 n≥5 聚类对应)。
     """
     name: str                    # "追击飞霄"/"昼神阿雅"/"万敌单C"(roster 单一源 = 本注册表)
     core_chars: list[str]        # 核心角色(名)["飞霄","知更鸟"]
@@ -97,7 +97,7 @@ class Comp:
     # 三月七@4-6 后排中段(护盾相邻覆盖最大化)。空 = 全按注册表默认。
     char_positions: dict[str, str] = field(default_factory=dict)
     flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 faction_reqs)
-    plaza_carry: str = ""        # plaza 实战聚类 carry 名(交叉核对锚,查 cw_plaza_comps.cluster_by_carry)
+    plaza_carry: str = ""        # plaza 实战聚类 carry 名(交叉核对基准,查 cw_plaza_comps.cluster_by_carry)
 
     # ===== 字段扩(C4 契约冻结语义;leader 裁决)=====
     # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(禁忌/铁三角/替班不卖)
@@ -491,7 +491,7 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区
         char_positions={"爻光": "back", "绯英": "front@0"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排1号位(攻略 Final 标准式@0,25 帖归纳,2026-11-04 Common 全量审查登记)
         transition_chars=["花火"],   # 交叉核对注:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
-        # ===== 欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====   # ②类信号:绯英/银狼两档共用主体
+        # ===== 欢愉族家族·绯英档(资源基准 6 级;无信号时的默认落点)=====   # ②类信号:绯英/银狼两档共用主体
         # content_id=7333;「欢愉 4-6 档」系连续区间误写);上限 5 = 4-5 主流带
         # (final_feiying「不到 7 也成型」,7 特权化属银狼档语义)。
         equip_assign={"绯英": ["火力风暴潮", "永动机"], "爻光": ["冷笑话引擎"], "瓦尔特": ["高周波电锯"]},
@@ -500,7 +500,7 @@ COMP_LIBRARY: list[Comp] = [
         plaza_carry="绯英",
         # ===== 知识卡字段(数据源=final_comps/final_feiying_joy.md)=====
         need_star={
-            # 绯英 3★=节奏锚点「6级 D 三星绯英+爻光」(19/25 帖)+A4 高饥渴线 89%;
+            # 绯英 3★=节奏基准「6级 D 三星绯英+爻光」(19/25 帖)+A4 高饥渴线 89%;
             # star_goals 2★=底稿降级语录口径(#12「两星即可稳定上分」)——交叉核对冲突
             # 以攻略重述为准取 3;爻光 2★=姊妹线明文(银狼篇 #7「开局追爻光2星」,
             # 共享引擎件);其余辅助普适档 1★
@@ -589,8 +589,8 @@ COMP_LIBRARY: list[Comp] = [
         name="巡海击破", core_chars=["不死途", "波提欧", "乱破", "忘归人", "大丽花", "灵砂", "阮·梅"],
         faction_reqs={0: {"击破": 6, "巡海游侠": 4}},
         # ↺ 推翻「击破流萤」(plaza 784 篇):V4.4 击破代表已换代 —— 流萤任一阶段在场仅 29 篇
-        # (carry 聚类 n=8,7/8 击破形)。**锚=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
-        # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
+        # (carry 聚类 n=8,7/8 击破形)。**基准=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
+        # 主体是减益板[减益13/巡海12/击破11 混合],不当击破基准)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         shared_chars=["黄泉", "流萤", "忘归人"],   # 成型羁绊队:击破6 档乘区
         key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴", "光速螺旋桨·特权"],   # 交叉核对注:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
@@ -790,7 +790,7 @@ COMP_LIBRARY: list[Comp] = [
         # ↑ 教义:银狼=风暴潮+
         #   **速度件**(升费链要行动),皮靴是速度载体;爻光本就是皮靴(攻略:爻光双鞋)
         shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"],
-        # ===== 欢愉族家族·银狼档(资源锚 9 级;与绯英档互含单向:银狼局含绯英 76%)=====   # ②类信号:绯英/银狼两档共用主体
+        # ===== 欢愉族家族·银狼档(资源基准 9 级;与绯英档互含单向:银狼局含绯英 76%)=====   # ②类信号:绯英/银狼两档共用主体
         # 星核 2=笑点泵(银狼每攻 7 次放 40 笑点欢愉技)——本套已列档 0(星核猎手2),不入档 1(不重复);绯英 76% 在场沉淀
         equip_assign={"银狼LV.999": ["火力风暴潮", "反重力皮靴"], "爻光": ["反重力皮靴"], "开拓者·欢愉": ["光速螺旋桨"]},
         # ↑ v2:银狼=风暴潮+速度件(升费链要
@@ -837,7 +837,7 @@ COMP_LIBRARY: list[Comp] = [
         faction_reqs={0: {"追击": 3}},
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
         # 飞霄双风暴潮+鸟(3追击关键)+缇宝/不死途/刃;2星飞霄上9(3星锁血反降);追击转→5追击60%真伤
-        # 交叉核对注(锚点交叉核对):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
+        # 交叉核对注(基准交叉核对):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
         key_equips=["火力风暴潮", "火力风暴潮", "永动机", "电磁弹射器"],   # 成型羁绊队:追击档乘区(≥3追击=300%倍率)
@@ -971,17 +971,102 @@ COMP_LIBRARY: list[Comp] = [
 ]
 
 
-# ===== CARRY 锚派生(12 号篇 §1.1「plaza_carry ∪ core_chars 合流」)=====
+# ===== TRANSITION_LIBRARY(P1 过渡阵容库;comp-structure-unification)=====
+# 用户裁定(2026-11-04):过渡层与终局层两套阵容库独立、各自候选与锁定;
+# 过渡条目复用 Comp 结构,羁绊要求只填 faction_reqs 档 0(无更高档)。
+# 设计依据 = changes/2026-11-04-comp-structure-unification/details/
+# transition-library.md §1 条目表。
+#
+# 条目分三型(型决定计分基准与见即买集的羁绊半边是否计入——知识级口径,
+# Comp 结构上不可推导,随库登记在 TRANSITION_ENTRY_KIND):
+# - 点名型:计分与见即买 = 点名集(core_chars);适用「引擎不可拆」
+#   (仙舟铁三角)与「线定义件引导」(列车骨架);
+# - 羁绊型(core_chars 空):计分与见即买 = 档 0 键羁绊的全体注册成员
+#   (不论是谁,低费件自然先刷到,符合「廉价」本义);
+# - 混合型(core_chars 点名引擎件,放大器走羁绊半边):计分与见即买 =
+#   点名集 ∪ 档 0 键羁绊全体注册成员(按角色去重——一名角色跨点名与
+#   多羁绊阵营只计 1 分)。
+#
+# faction_reqs 数值口径 = 体系卡判据档(cw_system_cards.SYSTEM_CARDS 判据,
+# 即 FACTIONS[...].tiers[0]:仙舟 3/持续伤害 2/列车同行 2),非配方完全体档
+# (旧 cw_recipe 的列车 4 归终局线 faction_reqs 自己承载,不进过渡条目)。
+#
+# 费档已核 CHARACTERS.cost,点名件费段须位面 1 商店可刷(费段解锁真值 =
+# cw_shop_odds 的 REFRESH_PROB:等级 1-3 仅 1 费/4 级起解锁 1-3 费/5 级起
+# 4 费/7 级起 5 费;位面 1 的等级覆盖区间真值 = cw_economy 位面-等级骨架):
+# 爻光/藿藿/三月七 1 费、丹恒·饮月 2 费全程可刷;姬子·启行/希儿 3 费自
+# 4 级起可刷。违反即降型或换件(黑天鹅 5 费因此出局)。
+TRANSITION_LIBRARY: list[Comp] = [
+    Comp(
+        # 点名型:引擎不可拆(功能链缺一=空壳,成型须三人全在板)。
+        # 名单知识源 = cw_line_facts._CORE_TRIO 注册表真值(就地复制非
+        # 引用迁移——体系卡数据层保留,条目自带值)
+        name='仙舟铁三角',
+        core_chars=['爻光', '藿藿', '丹恒·饮月'],
+        faction_reqs={0: {'仙舟': 3}},
+        # 数值取自体系卡 star_goal(cw_system_cards 的 xianzhou3 行),
+        # 就地复制非引用迁移(体系卡数据层保留,条目自带值)
+        need_star={'爻光': 2, '藿藿': 2, '丹恒·饮月': 2},
+    ),
+    Comp(
+        # 羁绊型:无引擎、凑出就能用(用户 2026-11-04 裁定「DOT 不限定人」)
+        name='廉价DOT',
+        core_chars=[],
+        faction_reqs={0: {'持续伤害': 2}},
+    ),
+    Comp(
+        # 点名型:线定义件引导(姬子·启行在场才值得朝列车走)
+        name='列车骨架',
+        core_chars=['姬子·启行', '三月七'],
+        faction_reqs={0: {'列车同行': 2}},
+    ),
+    Comp(
+        # 混合型:引擎单卡(伤害全在希儿技能层),放大器不限定人(用户
+        # 2026-11-04 裁定「希儿+任意一名量子/贝即可」——量子同频/贝洛伯格
+        # 成员经羁绊半边自然覆盖)。or_reqs 值与档 0 同键值一致(两键均被
+        # OR 组承接,必齐账恒空),成型判据 = 希儿在板 ∧ 量2∨贝2,与体系
+        # 卡判据逐字一致
+        name='希儿引擎',
+        core_chars=['希儿'],
+        faction_reqs={0: {'量子同频': 2, '贝洛伯格': 2}},
+        or_reqs=list(SEELE_OR_REQS),
+        # 数值取自体系卡 star_goal(seele 行,希儿追 3★),就地复制
+        need_star={'希儿': 3},
+    ),
+]
+
+#: 过渡条目型标记('named'=点名型/'bond'=羁绊型/'hybrid'=混合型;
+#: 型 → 计分基准/见即买集的展开单一源 = cw_intention.transition_member_set,
+#: 禁消费点自算)。
+TRANSITION_ENTRY_KIND: dict[str, str] = {
+    '仙舟铁三角': 'named',
+    '廉价DOT': 'bond',
+    '列车骨架': 'named',
+    '希儿引擎': 'hybrid',
+}
+
+# 建库自动填:点名型/混合型条目 required_deployed = core_chars(点名件
+# 全部在板才算成型)——用现有机制承载「引擎不可拆」语义,杜绝「持 1
+# 点名件 + 凑数板面即锁出缺引擎过渡」;锁定判据 form_progress 含
+# required 逐名折条,天然生效。羁绊型 core 空,required_deployed 恒空。
+# (档 0 空而 required_deployed 非空为合法形态——form_progress 的
+# required 逐名折条独立于羁绊账;现库 4 条无此形态。)
+for _entry in TRANSITION_LIBRARY:
+    if _entry.core_chars and not _entry.required_deployed:
+        _entry.required_deployed = tuple(_entry.core_chars)
+
+
+# ===== CARRY 基准派生(12 号篇 §1.1「plaza_carry ∪ core_chars 合流」)=====
 # CARRY 档口径分两层:**合流全集** = ``carry_set``(单名基准 ∪ core_chars 全员,
 # 3.7 持有证据 CARRY 档按「持有任一档内成员」判定)——「无单一直接字段,
-# 派生申报」的完整实现;**单名基准** = plaza_carry(聚类注册表锚,层间交叉核对面),
+# 派生申报」的完整实现;**单名基准** = plaza_carry(聚类注册表基准,层间交叉核对面),
 # 3 条空值线(「空 = 无 n≥5 聚类对应」本身是聚类覆盖度信息)按攻略明文逐线
-# 补全如下——不改 plaza_carry 字段值,覆写即破坏两层交叉核对锚语义:
+# 补全如下——不改 plaza_carry 字段值,覆写即破坏两层交叉核对基准语义:
 CARRY_ANCHOR_FALLBACK: dict[str, str] = {
     # 银枝:攻略明文「必须3星银枝」(77006068 直读;银枝 carry 聚类 n<5 置空)
     '银枝群攻': '银枝',
     # 飞霄:V4.4 合集 76807134「追击 B 级 = 飞霄-led(纯追击)」+76883466 飞霄天赋
-    # 追击主C;plaza 追击族真代表=那刻夏为簇注分歧,锚按攻略重述取飞霄
+    # 追击主C;plaza 追击族真代表=那刻夏为簇注分歧,基准按攻略重述取飞霄
     '追击飞霄': '飞霄',
     # 桑博:33k use 帖「专家老桑博」低费引爆器主C(桑博 carry 聚类 n<5 置空)
     '专家桑博DOT': '桑博',
@@ -989,13 +1074,13 @@ CARRY_ANCHOR_FALLBACK: dict[str, str] = {
 
 
 def carry_anchor(comp: Comp) -> str:
-    """线 CARRY 单名基准(聚类交叉核对锚;CARRY 档全集见 ``carry_set``——本函数只供
-    锚名消费面:聚类交叉核对/空值线补全/基准分歧登记;持有证据分档勿单用本名)。
+    """线 CARRY 单名基准(聚类交叉核对基准;CARRY 档全集见 ``carry_set``——本函数只供
+    基准名消费面:聚类交叉核对/空值线补全/基准分歧登记;持有证据分档勿单用本名)。
 
-    plaza_carry 非空 → 直接用(聚类交叉核对锚);空值线查 ``CARRY_ANCHOR_FALLBACK``
-    (攻略明文补全,依据就地注释);两者皆缺 → ''(基准缺失申报态,消费侧按无锚处理)。
-    ⚠️ 锚与攻略核心输出位存在个别分歧(火花星间旅人:plaza_carry='火花' vs
-    攻略明文花火主C)——分歧登记在 知识卡建表交叉核对记录,锚字段保持聚类真值不覆写。
+    plaza_carry 非空 → 直接用(聚类交叉核对基准);空值线查 ``CARRY_ANCHOR_FALLBACK``
+    (攻略明文补全,依据就地注释);两者皆缺 → ''(基准缺失申报态,消费侧按无基准处理)。
+    ⚠️ 基准与攻略核心输出位存在个别分歧(火花星间旅人:plaza_carry='火花' vs
+    攻略明文花火主C)——分歧登记在 知识卡建表交叉核对记录,基准字段保持聚类真值不覆写。
     """
     if comp.plaza_carry:
         return comp.plaza_carry
@@ -1006,7 +1091,7 @@ def carry_set(comp: Comp) -> set[str]:
     """线 CARRY 档成员全集(持有证据分 CARRY 档口径;12 号篇 §1.1
     「plaza_carry ∪ core_chars 合流」的派生落地;3.7 消费)。
 
-    = {``carry_anchor`` 单名基准} ∪ ``core_chars`` 全员——锚是聚类交叉核对锚(层间
+    = {``carry_anchor`` 单名基准} ∪ ``core_chars`` 全员——基准是聚类交叉核对基准(层间
     校准面),core_chars 是核心角色另册;合流后**任一成员在手都计入 CARRY 档**
     (大头档,与 key_items 骨架档/插件档三分,§1.2)。空值 3 线经 fallback
     补全后同样并入。core 至少 1 人 → 返回恒非空;消费侧禁自拼合流集(判据双源)。

@@ -437,7 +437,7 @@ Action = (CwActionBuyCardParam | CwActionSellBenchParam | CwActionLevelUpParam |
 # 通用坐标系声明(装备域两类目标,全族共用):
 # - 装备源件 = owned 装备网格内 icon,按 ``item_name`` 机械现读定位
 #   (执行坐标边合法现读;坐标不入动作——网格 reflow 会使坐标失真,
-#   名字定位是唯一稳锚)。
+#   名字定位是唯一稳定依据)。
 # - 角色目标槽位 ``row``/``slot``:row ∈ 'front'|'back'(画面物理排);
 #   slot = 画面物理槽位 1 基(前排 1-4 / 后排 1-选档 N;非列表下标)。
 #   取值时机 = 生成期快照(动作发出点从备战观察/状态容器槽位表现读;同一 visit

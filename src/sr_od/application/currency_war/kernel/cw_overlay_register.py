@@ -11,7 +11,7 @@
 「存处」节裁定):单局生命周期随状态容器建亡、实机/sim 字面同一份存储、
 判据点全在 kernel 手里有 gs;先例 = 非 Field 簿记组(node_books 族)。
 
-kind 词表(九项,锚 = 现役选卡动作/画面名,禁新造同物异名;
+kind 词表(九项,识别标志 = 现役选卡动作/画面名,禁新造同物异名;
 overlay 生命周期契约 kind 表):partner / megastar / planner / wish_trial /
 fortune / star_tome / box_card / expert_invite / aha。sim 现役旧名
 ('fate'/'expert'/'hack')随 3.4 消费面切换正名,本模块不提供别名。
@@ -37,11 +37,11 @@ SCREEN_CHANGE_KINDS: frozenset[str] = frozenset({
     'star_tome',      # 星徽秘典四选一(pick_star_tome)
     'box_card',       # 武装箱四选一(pick_box_card)
     'expert_invite',  # 专家邀请函五选一(pick_expert_invite)
-    'aha',            # 阿哈简易装备选择(无上报动作;锚 = 备战.标识-简易装备)
+    'aha',            # 阿哈简易装备选择(无上报动作;识别标志 = 备战.标识-简易装备)
 })
 
 #: kind → 分发档名单一源(检测提示标志 = 画面档;aha 无独立画面档,
-#: 锚 = 备战屏上的标识区,档名取底层备战屏)。
+#: 识别标志 = 备战屏上的标识区,档名取底层备战屏)。
 KIND_SCREEN_NAMES: dict[str, str] = {
     'partner': '货币战争-列车同行',
     'megastar': '货币战争-盛会之星',

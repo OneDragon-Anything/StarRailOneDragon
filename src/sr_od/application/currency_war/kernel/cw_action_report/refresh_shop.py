@@ -35,7 +35,7 @@
   同口,单点覆盖实机和模拟器两边。
 
 - **策略出对条件金分支**(策略源 ON_REFRESH 经济发放首接入调用):随机态
-  腿之后、仅 sim 装配态执行(``apply_on_refresh_pair_gold_grant``,
+  条目之后、仅 sim 装配态执行(``apply_on_refresh_pair_gold_grant``,
   登记面 = ``cw_investments.STRATEGY_EFFECTS`` ON_REFRESH∧ECONOMY 条目
   双过滤,判定 = 本次采样 payload 出同名对;发放 = 观察通道发金)——
   sim 采样即状态副本真值,判定输入可直接消费;live 采样是猜测,金面禁

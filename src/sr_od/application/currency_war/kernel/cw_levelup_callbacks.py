@@ -111,7 +111,7 @@ def on_level_up_change(gs: GameState, old_level: int | None,
             apply_level_up_char_gift(
                 gs, levels=list(range(old_l + 1, new_l + 1)),
                 sig=_levelup_gift_sig(gs))
-    # 连锁③锚:升级窗口达成位(结算时点记锚 = 跨级当拍生效位;xp-only
+    # 连锁③记位:升级窗口达成位(结算时点记位 = 跨级当拍生效位;xp-only
     # 帧无升格不进本调度器,迟到达纠偏仍由买经验上报尾与发放桥每拍复检
     # 两既有插入位置承载)。
     _record_lv8_window_start(gs)

@@ -24,11 +24,11 @@ from __future__ import annotations
 #: 追不上(design §1 用户裁定链第 2 条「排除=极大减分」)。
 RESTART_PENALTY: int = -100_000
 
-#: carry·anchor(线锚核心,每名):锚核心单卡即战力(攻略「希儿到手即开线」);
-#: 单 anchor 压过一切环境正和。锚判定表 = line_select.LINE_ANCHOR。
+#: carry·anchor(线基准核心,每名):基准核心单卡即战力(攻略「希儿到手即开线」);
+#: 单 anchor 压过一切环境正和。基准判定表 = line_select.LINE_ANCHOR。
 CARRY_ANCHOR: int = 8_000
 
-#: carry·其余 core(每名):非锚 core 减半(攻略主次语义——锚与辅助分档)。
+#: carry·其余 core(每名):非基准 core 减半(攻略主次语义——基准与辅助分档)。
 CARRY_CORE: int = 4_000
 
 #: 骨架件(每名):4 骨架 = 1 anchor 相平(层间支配点)。

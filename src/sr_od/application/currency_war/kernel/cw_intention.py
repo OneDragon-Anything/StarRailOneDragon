@@ -247,7 +247,7 @@ class HoardTarget:
 def intention_core(comp: Comp) -> str:
     """一条线的「意向核心」(撤销计数③口径的具名核心)。
 
-    取 ``plaza_carry``(实战聚类 carry,交叉核对锚)且在 core_chars 内者;否则
+    取 ``plaza_carry``(实战聚类 carry,交叉核对基准)且在 core_chars 内者;否则
     core_chars 首位。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
     在多线间产生噪声信号)。
     """
@@ -429,7 +429,7 @@ def _seele_system_support(owned: set[str]) -> float:
       (玩家确认同门),确认前维持去重口径(零行为变更);
     - 希儿缺席恒 0:量/贝放大器不能独立当过渡(含希儿 28 帖无一缺希儿
       独立成线,transition_combos.md:27);
-    - 希儿单卡(任意星级)= 0.5 不是人为定为值:注册表锚 = 希儿自身双标签
+    - 希儿单卡(任意星级)= 0.5 不是人为定为值:注册表基准 = 希儿自身双标签
       (CHARACTERS['希儿'].factions=('贝洛伯格'), flows=('量子同频'),
       data/cw_chars.py「希儿」行),她同时计入两池各 1,在文档档位结构
       下直接导出 max(1/2,1/2)=0.5——单卡 0.5 是推导后果。
@@ -1348,7 +1348,7 @@ def locked_buy_membership(ist: IntentionState | None,
     触发条件 = ``locked_comp`` 非空(终局阵容锁定状态已建立)。未锁帧(P1 配方
     锁帧 locked_comp 恒空;空窗/weak/降格)→ 返回 None,
     消费方维持既有 ``line_members(target_comp)`` 口径——P1 无锁态行为
-    零变化的边界锚。
+    零变化的边界基准。
     """
     if ist is None or not getattr(ist, 'locked_comp', ''):
         return None

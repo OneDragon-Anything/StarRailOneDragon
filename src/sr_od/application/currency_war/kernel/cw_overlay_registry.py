@@ -59,12 +59,12 @@ class OverlaySpec:
     # ── 识别 ──
     # 键;必须已建档于 assets/game_data/screen_info(与 screen_info 同键空间)
     screen_name: str
-    # 识别标志 area 名(五消费面统一走此锚,禁各自再写锚)
+    # 识别标志 area 名(五消费面统一走此识别标志,禁各自再写)
     anchor_area: str
     # ── 语义 ──
     # 'decision' | 'display' | 'system'(SEMANTIC_* 常量)
     semantic: str
-    # 第二锚(可选;双重依据防误派;非空 = 同帧双命中才派发)
+    # 第二识别标志(可选;双重依据防误派;非空 = 同帧双命中才派发)
     anchor_area_alt: str = ''
     # 专属 handler 类名;decision 恒非空;'' = 无(清场/兜底消化)
     handler_id: str = ''
@@ -222,9 +222,9 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 环入口清它 = 现行生产行为;语义归 system(非 decision)保两维现状:
     # bail 扫描集(= decision 条目)不加成员、清场派生集不减成员。
     # 「关闭即丢一次开箱选择」的取舍与补给同型,见补给条注释。
-    # 锚 = 族名「武装箱」(非品名):单档泛化覆盖 简易/特权(进阶同锚
+    # 识别标志 = 族名「武装箱」(非品名):单档泛化覆盖 简易/特权(进阶同款
     # 直达)弹窗族——LCS 判定分母 = 登记文本长度,text='武装箱' 对「简易武装箱」
-    # 与「特权武装箱」标题均满配命中;品名锚对异品名标题只余巧合命中,禁回退。
+    # 与「特权武装箱」标题均满配命中;品名识别标志对异品名标题只余巧合命中,禁回退。
     OverlaySpec(
         screen_name='货币战争-武装箱弹窗',
         anchor_area='标识-武装箱',
@@ -253,7 +253,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
     # 星徽详情浮窗:纯展示(点星徽弹详情)。对局内消费 = 阶段一身份分发
     # (判据 = 建档双 id_mark 组合 AND 全命中;cw_loop 星徽详情分支)——
-    # 本条 OverlaySpec 是分类/清场表成员(单锚=变体帧同样漏,如实申报);
+    # 本条 OverlaySpec 是分类/清场表成员(单识别标志=变体帧同样漏,如实申报);
     # 入口链守卫 = AND(防御面);op 内 entry_ok = 双重依据其一(OR,接管面
     # 比分发宽,变体帧经兜底重判后的自愈面)。原「分发 OR/守卫 AND 有意
     # 分叉」的调和前提在分发并入建档组合 AND 后失效(以本注为准)。
@@ -337,7 +337,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # ── 未激活条目(active=False,待实机建档)──
     # 道具详情弹窗(聘用书类 modal):现 cw_loop 0e3 裸 OCR 分支;建档后
     # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩
-    # 为单 area 锚。派发序必须在祈愿试炼(11)之后(祈愿选项名含「聘用书」)。
+    # 为单 area 识别标志。派发序必须在祈愿试炼(11)之后(祈愿选项名含「聘用书」)。
     OverlaySpec(
         screen_name='货币战争-道具详情弹窗',
         anchor_area='',
@@ -350,7 +350,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         active=False,
     ),
     # 消耗品详情浮层:「拖动到」只出现在消耗品详情 modal(天然独有
-    # id_mark 候选),建档后单锚并入。
+    # id_mark 候选),建档后单识别标志并入。
     # ⚠️ 待办(ESC 清零批元数据):下方 esc 双声明描述的旧消耗品 ESC 分支
     # 已删除——现关层行为 = 分发 CwScreenConsumableOverlay 点同族「道具详情
     # 弹窗/按钮-关闭」×(× 同位 (1862,65))。条目未建档保持 inactive;

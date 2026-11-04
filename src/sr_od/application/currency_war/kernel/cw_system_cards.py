@@ -7,7 +7,7 @@
 - tier 阈值单一源 = ``cw_factions.FACTIONS``(仙舟 3 档/持续伤害 2 档/列车同行 2 档/
   量子同频 2 档/贝洛伯格 2 档均取 ``tiers[0]``,不在本文件重复硬编码);
 - 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
-  测试锚;本文件只 import 不复制)。
+  测试基准;本文件只 import 不复制)。
 
 **契约偏差声明(相对 C2 伪码)**:
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
@@ -132,7 +132,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
         judge='希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2);引擎=希儿单卡',
         engine_required=[_SEELE],
         star_goal={_SEELE: 3},                   # 希儿追 3★(高饥渴线,从 P1 就可开始)
-        judge_factions=('量子同频', '贝洛伯格'),   # 双分支(顺序=演进目标锚取首位)
+        judge_factions=('量子同频', '贝洛伯格'),   # 双分支(顺序=演进目标基准取首位)
         affix_likes=[],
         affix_fears=['量子熄火'],                # 量子属性伤害限 1(重开级 counter)
     ),

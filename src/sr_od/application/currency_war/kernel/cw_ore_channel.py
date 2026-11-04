@@ -11,7 +11,7 @@ details/ore-reward-channel.md §4-§5)。
 (live 3.4 / sim 3.3 接入调用)spheres 写一律经 :func:`report_spheres_observed`,
 禁第二写径。
 (范围注记:「一律经此」辖**观察写径**——动作/获得侧直写 spheres 为
-策略晶矿授予矿新立形(采晶矿上报触发条目 + 策略卡获得链立刻腿),授予矿
+策略晶矿授予矿新立形(采晶矿上报触发条目 + 策略卡获得链立刻条目),授予矿
 身份若与后续观察真值不配对由步序 5 消失清洗自清,零观察写径污染。)
 
 通道分工(硬约束,依据 = ``cw_game_state.write_logic_rand`` docstring:

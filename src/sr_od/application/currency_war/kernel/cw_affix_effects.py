@@ -317,7 +317,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 #:                             直接写状态容器(宿主 = kernel/cw_action_report/
 #:                             tool_use,tool-gain-report 迭代;确定面
 #:                             write_logic、随机面 write_logic_rand 采样链);
-#: - ``op:<锚>``              op 域既有写端(本次零新增);
+#: - ``op:<观测定义>``        op 域既有写端(本次零新增);
 #: - ``observation``           负写端——随机面/真值同拍送达面/字段缺位面。
 EQUIP_WRITE_SIDES: dict[str, str] = {
     '财富宝钻': 'contribution:equip_diamond_phase_gold',
@@ -355,7 +355,7 @@ def _validate_equip_write_sides() -> None:
     ② 值词表封闭:bridge:/contribution: 目标函数必须在 cw_effect_inventory
        可解析且可调用(改名/删除即炸);report: 目标函数必须在
        cw_action_report.tool_use 已登记(动作上报写端单一宿主,改名/删除
-       即炸);op: 锚非空;observation 无载荷;
+       即炸);op: 观测定义非空;observation 无载荷;
     ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
        observation 形必含「观察收尾」——登记与归属申报互证,防单边漂移
        (report: 随机面 write_logic_rand 属逻辑族随机写,同覆盖「逻辑写」)。

@@ -23,7 +23,7 @@ from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.kernel import cw_telemetry_exit
 
 _log = log_utils.log
-# 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
+# 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬基准)
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
 # ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定)=====
@@ -51,7 +51,7 @@ DEFAULT_REPLAY_DIR: Path = LIVE_DIR
 
 # ===== 停用旧根(布局裁定前的落点;写端守卫拒写面)=====
 # 为什么升为常量:2026-09-07 22:20:52 实证——write_batch_ledger 的禁写
-# 守卫只锚当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
+# 守卫只认当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
 # (事故对账与守卫裁决
 # 及其 2026-09-07 22:20:52 空批截断记载)。停用根必须与生产根同级受守卫覆盖,直到旧根目录物理清除为止。
 #: 字面量按路径分段拼装(不写成可被停用声明扫描命中的连续串):本声明是
@@ -211,7 +211,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
                verdict=verdict, shot=shot)
         # gold_delta 分级消费(审计建议,用户裁决落地):|gap|>10 升级为
-        # warning 告警行(检索锚 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
+        # warning 告警行(检索标记 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
         # 即接;≤10 维持留存证据)。账面期望 vs 实读的大额错位意味着金模型已系统性
         # 漂移,等局后统计才发现会喂错整局的利息线/花金判断。
         if field == 'gold_delta':

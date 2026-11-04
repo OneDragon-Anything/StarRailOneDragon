@@ -91,7 +91,7 @@ class PrepObservation:
     恒空字段)已停用——去向表见迭代详设 obs-retirement §阶段 3.5。
     """
     substate: dict = field(default_factory=dict)   # observe_full 可读性(对账/日志)
-    shop_open: bool = False             # 锚点「按钮-收起」可见(观察链门参数)
+    shop_open: bool = False             # 识别标志「按钮-收起」可见(观察链门参数)
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即
     # 返回主循环分支 handler;已实测确认:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None

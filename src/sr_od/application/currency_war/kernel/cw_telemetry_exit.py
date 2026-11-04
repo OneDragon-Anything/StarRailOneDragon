@@ -93,7 +93,7 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
                      choice: dict[str, Any] | None = None) -> None:
     """旧 exogenous 流出口(已停用 no-op 桩)。
 
-    保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接入调用,本文件
+    保留原因:观测登记机制(kernel/cw_anchor.py,已入库惰性未接入调用,本文件
     此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿待裁决
     (retirement.md §2 exogenous 行 §5-7 挂起)——待裁决落地前本桩恒
     no-op,既不断在飞调用方,也零旧流产出。待裁决裁「路由停用」时随其
@@ -131,17 +131,17 @@ def obs_event_board() -> Any:
 
 
 def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
-    """缺陷台账 refs 的 journal ``(run_id,v)`` 锚构造(保留流 refs 迁移单一源)。
+    """缺陷台账 refs 的 journal ``(run_id,v)`` 版本定位构造(保留流 refs 迁移单一源)。
 
     依据 = retirement.md §2 defect_ledger 行「裁保留时 refs 改指 journal
     ``(run_id,v)`` 键」(待裁决 4 定案保留专用流后的消费面迁移):旧流
     (decisions/outcomes/obs_conflicts)写面已停用,refs 指旧流行
     = 下钻扑空;journal 行行自足(每行内嵌当时完整 state 快照),
-    ``(run_id, v)`` 唯一定位一行。锚取缺陷记录时刻现版 ``current_version()``
+    ``(run_id, v)`` 唯一定位一行。定位取缺陷记录时刻现版 ``current_version()``
     (读口不占版本)= 最近一行,其内嵌 state 供下钻对账;bypass 场景该值
     恰为刚写入的 obs_event 证据行版本。
 
-    锚缺媒体(无 GameState 供给/局外/零版本)时省略,refs 允许空(诚实
+    定位缺媒体(无 GameState 供给/局外/零版本)时省略,refs 允许空(诚实
     缺失);extra = 调用方语义键(arbitration 族 provenance 标签等),None 项
     过滤。本函数在 kernel 出口模块 = 四域(obs/kernel/operations/telemetry)
     调用点共一形态,禁散写第二套键格式。
@@ -183,7 +183,7 @@ def record_back_layout_divergence(formula_n: int, cv_n: int,
 
 def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
     """布局未知态分键行(best-effort;run_id 缺省 no-op,恒 L2
-    auto_resolved——未知态按读写分级+冻结止损处置,频度=验收锚点)。"""
+    auto_resolved——未知态按读写分级+冻结止损处置,频度=验收基准点)。"""
     if not current_run_id():
         return
     record_defect(

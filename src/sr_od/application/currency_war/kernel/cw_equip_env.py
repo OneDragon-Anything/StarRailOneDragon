@@ -81,7 +81,7 @@ def build_equip_env_signals(state) -> EquipEnvSignals:
         return EquipEnvSignals(enemy_affixes=frozenset(),
                                plane=None, round_num=None)
     _aff = getattr(state, 'enemy_affixes', None)
-    _aff_val = getattr(_aff, 'value', _aff)   # 容器 Field→.value;帧 list→自身
+    _aff_val = getattr(_aff, 'value', _aff)   # Field 包装→.value;帧 list→自身
     affixes = list(_aff_val or [])
     node = getattr(state, 'node', None)
     node = getattr(node, 'value', None) if node is not None else None
@@ -310,7 +310,7 @@ def opening_hold_active(round_num: int | None, node_type: str | None,
       registry.opening_hold_battle_nodes);r≤2 战斗类节点释放 =
       18 号稿 §2.1 row3(释放帧走 M7 既有分配序全量穿)。
     - 降级路径:``round_num`` 缺失 → False;``node_type`` 缺失 → 维持
-      hold(观察缺失不改变既有行为);开关关 → 逐位旧行为(零漂移锚)。
+      hold(观察缺失不改变既有行为);开关关 → 逐位旧行为(零漂移基准)。
     """
     if round_num is None or round_num > 2:
         return False

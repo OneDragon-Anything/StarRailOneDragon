@@ -100,7 +100,7 @@ class StrategySession:
     # (last_state 槽已停用:三写点(备战观察×2/
     #  买牌融合段)与全部遗留读者已切状态容器单例(game_state_of);备战
     #  快照的现役宿主 = 状态容器,观察喂入 = read_game_state 漏斗。)
-    # (终态契约 §A 防御缓存已删:结算 hp 锚 last_hp/last_hp_t、对账基准
+    # (终态契约 §A 防御缓存已删:结算 hp 基准 last_hp/last_hp_t、对账基准
     #  last_hp_real/last_hp_real_node、hp 下行拒信通道 hp_suspect、左移
     #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
     #  识别值 node_type_current——真值职责归 gs(覆盖写端 + carried +
@@ -116,7 +116,7 @@ class StrategySession:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # (briefing_affixes/briefing_bosses session 份已停用:
     #  单一源 = gs.enemy_affixes/gs.plane_bosses,写端 = 简报/位面详情采集/
-    #  prep 补采直写/获得链删除分支〔敌后破坏失效删除 + 退化策略腿取尾
+    #  prep 补采直写/获得链删除分支〔敌后破坏失效删除 + 退化策略条目取尾
     #  删除,随机态写 + 位面详情补观察转正,T-45/退化批〕;affixes 幂等
     #  覆盖读+采、bosses 恒覆写含读空清、保位 None 不滤语义全部上移状态容器
     #  写端。)

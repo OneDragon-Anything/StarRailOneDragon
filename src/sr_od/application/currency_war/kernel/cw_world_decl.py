@@ -3,7 +3,7 @@
 声明化动机(一句话):「动作落地 → 状态副本后果」的知识原散落在动作注册表
 ``terminal`` 属性、转移事件封闭集、SimBackend 分派表三处,新增转移动作
 须同步三处、漏一即漂移;本件把后果收敛为上报函数自产的数据——动作 op
-经 ``cw_sim_ports.declare_world`` 喂入 sim 后端驱动世界推进,实机侧
+经 ``cw_sim_ports.declare_world`` 喂入 sim 后端驱动状态副本推进,实机侧
 (端口未装 = no-op)作 journal 预期画面记账料,禁作判效断言。
 
 设计依据 = 动作后果声明化迭代总纲 ``design.md`` §1/§2.2 与详设
@@ -27,7 +27,7 @@ class WorldDecl:
     trigger: str
     #: 动作参数槽位载荷(缺省空 = 无载荷)。坐标系 = 动作参数类 slots 同源
     #: (投资逐卡刷新 = 投资界面卡槽物理排位 0 基,CwActionRefreshInvestCardsParam
-    #: 同款);取值时机 = 生成期快照(上报函数自 param 透传,世界消费端现读)。
+    #: 同款);取值时机 = 生成期快照(上报函数自 param 透传,状态副本消费端现读)。
     #: 写入端 = 上报函数(报告 param.slots 原样)。仅参数化动作携带,
     #: 转移类动作缺省空(消费端按 trigger 判载荷必要性)。
     slots: tuple[int, ...] = ()

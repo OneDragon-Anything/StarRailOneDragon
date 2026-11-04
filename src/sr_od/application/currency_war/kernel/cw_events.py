@@ -258,7 +258,7 @@ PLANNER_LEG_UPGRADE: str = 'upgrade'
 PLANNER_BRANCH_EQUIP: str = 'equip'
 PLANNER_LEG_UNKNOWN: str = 'unknown'
 
-#: 装备域锚名单单一源 = 银狼专属 10 件穿戴门键集(data/cw_equipment_wear_
+#: 装备域基准名单单一源 = 银狼专属 10 件穿戴门键集(data/cw_equipment_wear_
 #: rules_data.ITEM_WEAR_GATES——同一名单的第二个消费面,名单收窄/扩圈自动
 #: 跟随;禁复制名单成第二源)。longest-first 排序 = 构建期定序,「分身墨镜
 #: Max」先于「分身墨镜」受检(防短名截胡归一)。
@@ -349,10 +349,10 @@ def classify_planner_branch(text: str) -> tuple[str, str]:
     """银狼策划选项分支类型判定单源(记账分类器;全序)。
 
     判定序(装备域优先):
-    1. **锚匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
-       longest-first)件名 containment 命中 → equip,归一件名 = 命中锚
+    1. **基准匹配**:银狼专属 10 件名单(:data:`_PLANNER_EQUIP_ANCHORS`,
+       longest-first)件名 containment 命中 → equip,归一件名 = 命中基准
        (破解芯片卡文含「弱化」的碰撞在此消解——基线先于关键词);
-    2. **相似归一**:锚未中 → :func:`_similar_equip_hits`——唯一命中 →
+    2. **相似归一**:基准未中 → :func:`_similar_equip_hits`——唯一命中 →
        equip(OCR 形变救援);**多命中 → equip 且件名未解析**(norm_item
        ='':多件注册表名同时高相似 = 装备信号成立而件名不可辨,禁猜——
        记账侧走值不变翻来源留存证据);零命中 = 无装备信号;

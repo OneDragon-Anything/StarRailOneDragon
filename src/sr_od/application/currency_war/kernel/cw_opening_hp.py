@@ -115,7 +115,7 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
       已过开局窗,当期 hp 由真读/沿用/效果支付承载——开局先验重算对该态
       只有「静默踩踏」一个效果(策略卡退化可中途获得,其词缀删除写会
       触发本回调;词缀失效不追溯已结战斗的 HP,游戏语义同向),一律
-      跳写 = 开局先验通道 mid-run 停用。开局窗(node 未锚)照旧重算:
+      跳写 = 开局先验通道 mid-run 停用。开局窗(node 未锚定)照旧重算:
       敌后破坏/退化开局选卡时 hp = 种子或先验,无真值可踩;
     - 消失词缀不命中 :data:`_AFFIX_HP_DELTA`(空 diff 同此):HP 与该词缀
       集零耦合,零 HP 写;
