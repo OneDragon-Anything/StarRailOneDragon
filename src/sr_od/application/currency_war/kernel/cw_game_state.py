@@ -2569,25 +2569,57 @@ def prep_anchored_of(session: object) -> bool:
     return bool(game_state_of(session).prep_anchored)
 
 
+#: 信号代次戳的未观察防御形态(生产不可达:置位前必有节点观察——经验
+#: 源全部发生在节点窗内;取序列全序最小值 = 首个节点边界即按过期代次清,
+#: 保守沿「无代次即旧牌面」的旧语义)。测试直构域盖真戳,禁依赖本形态。
+_SHOP_SIGNAL_GEN_UNOBSERVED: NodePos = (0, 0)
+
+
 def shop_randomized_pending_of(target: object) -> bool:
     """商店随机态重开信号读口(缺省 False;读端 = 备战第 1 步随机态
     重开位,策略只读;槽语义与写端/清位纪律见 GameState 槽注)。
     经 :func:`game_state_of` 解析(局外一次性容器每调新建恒 False)。"""
-    return bool(game_state_of(target).shop_randomized_pending)
+    return game_state_of(target).shop_randomized_pending is not None
 
 
 def mark_shop_randomized_pending(gs: GameState) -> None:
     """商店随机态重开信号置位(写端唯一 = 升级值变更回调 spy 分支,源 =
     任意经验来源升级,经调度器 cw_levelup_callbacks.on_level_up_change;
-    清位纪律 = 重开位消费后 + 节点边界清扫两出口,槽注申报)。"""
-    gs.shop_randomized_pending = True
+    置位同时盖来源代次戳 = 置位时点生效节点序位(:func:`effective_node_pos`,
+    未观察防御形态 = :data:`_SHOP_SIGNAL_GEN_UNOBSERVED`)——节点边界清扫
+    据此只清过期代次,节点推进时点源(经 T-432 advance 尾排空置位)的新
+    信号不被当旧牌面清掉;清位纪律 = 重开位消费后 + 节点边界清扫两出口,
+    槽注申报)。"""
+    stamp = effective_node_pos(gs)
+    gs.shop_randomized_pending = (stamp if stamp is not None
+                                  else _SHOP_SIGNAL_GEN_UNOBSERVED)
 
 
 def clear_shop_randomized_pending(gs: GameState) -> None:
-    """商店随机态重开信号清位(重开位消费后;清位纪律 = 重开位消费后 +
-    节点边界清扫两出口,槽注申报;写端唯一 = 升级值变更回调,经调度器
-    spy 分支)。"""
-    gs.shop_randomized_pending = False
+    """商店随机态重开信号清位(重开位消费后;代次戳随信号一并归 None;
+    清位纪律 = 重开位消费后 + 节点边界清扫两出口,槽注申报;写端唯一 =
+    升级值变更回调,经调度器 spy 分支)。"""
+    gs.shop_randomized_pending = None
+
+
+def refresh_shop_randomized_pending_stamp(gs: GameState) -> None:
+    """商店随机态重开信号代次戳刷新(信号在册才动作;唯一调用点 = 模拟器
+    间谍商店分支执行尾,sim/cw_sim_backend._apply_spy_shop_refresh——
+    分支执行 = 信号所指牌面的最终写,戳刷新为该牌面所属节点窗的生效
+    序位,使「戳 = 信号所指牌面所属窗」对全部经验源路径恒成立)。
+
+    为什么置位盖戳之外还要刷新(免战跳过路径):``_skip_battle`` 的经验
+    入账发生在模拟器**本地**推进序位之前(被离开节点序位在册,advance
+    内随后直进下一节点窗)——置位盖到被离开节点戳,仅靠置位盖戳会把该
+    新源信号在下一备战帧当过期代次清掉(守恒式重开腿再破);分支执行
+    时点世界已进最终节点窗,刷新后戳 = 牌面所属窗。live 零调用(实机
+    无模拟器分支,置位戳即牌面所属窗:买经验在节点内置位、环境窗口发放
+    在内核序位推进后 tick)。"""
+    if gs.shop_randomized_pending is None:
+        return
+    stamp = effective_node_pos(gs)
+    gs.shop_randomized_pending = (stamp if stamp is not None
+                                  else _SHOP_SIGNAL_GEN_UNOBSERVED)
 
 
 def enqueue_levelup_world_decl(gs: GameState, decl: WorldDecl) -> None:
@@ -3317,23 +3349,34 @@ class GameState:
     prep_anchored: bool = False
 
     # —— 商店随机态重开信号(非 Field 簿记;工程结构组单列申报;
-    # 2026-10-17-levelup-shop-transition design §2.4)——
-    # True = 商店有未处理的随机态新牌面(商业间谍升级连锁刷新商店并偷取
-    # 最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面——重开读真牌面而非
-    # 重新发牌);False = 无(缺省)。写端唯一 = 升级值变更回调(源 =
-    # 任意经验来源升级,经调度器 spy 分支 cw_levelup_callbacks,宿主挂
-    # _write_logic_frame level 分支尾);读端 = 备战
+    # 2026-10-17-levelup-shop-transition design §2.4;来源代次戳 = 迭代
+    # 2026-09-23-invest-effects-calc T-434)——
+    # None = 无信号(缺省);非 None = 商店有未处理的随机态新牌面(商业间谍
+    # 升级连锁刷新商店并偷取最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面
+    # ——重开读真牌面而非重新发牌),值 = 来源代次戳(置位时点的生效节点
+    # 序位,:func:`effective_node_pos`;未观察防御形态 =
+    # :data:`_SHOP_SIGNAL_GEN_UNOBSERVED`,生产不可达)。代次语义(为什么):
+    # 节点推进 = 旧节点商店牌面语义死亡,但节点推进时点源(经 T-432 advance
+    # 尾排空置位)的信号恰在进入新节点的同一次 advance 内置位——按「节点号
+    # 变化即清」一刀切的边界清扫会把该新源当旧牌面清掉(守恒式
+    # spy_deals == reopens 破,seed 20261012 实测,T-432 验收偏差 A);盖戳
+    # 后清扫只清真旧源(戳 ≠ 当前生效序位)。值写端唯一 = 升级值变更回调
+    # (源 = 任意经验来源升级,经调度器 spy 分支 cw_levelup_callbacks,宿主
+    # 挂 _write_logic_frame level 分支尾,经
+    # :func:`mark_shop_randomized_pending` 盖戳);代次戳刷新写端唯一 =
+    # 模拟器间谍分支执行尾(:func:`refresh_shop_randomized_pending_stamp`,
+    # 免战跳过路径置位序位滞后于牌面所属窗,见该函数注);读端 = 备战
     # 第 1 步随机态重开位(entry,
     # 策略只读,经 :func:`shop_randomized_pending_of`);清位 = 重开位
-    # 消费后(:func:`clear_shop_randomized_pending`)+ 节点边界清扫
-    # (session_scope.handle_node_boundary——节点推进 = 旧牌面语义死亡,
-    # 与重置表 shop_handled 清值同机制依据)。宿主选型 = kernel 可写、
-    # 策略可读(策略层状态键依赖方向不可达,design §2.4);非 Field 理由
-    # = 纯过程信号(回调直写、决策读,无以实际观察为准仲裁、无 journal
-    # 面语义),同 frame_class/prep_anchored 先例;容器每局新建 = 天然
-    # 清零。禁用商店容器 unknown 形态承载随机态(unknown = 识别失败必携
-    # 缺陷记录且触发停机闸,语义与守卫均不兼容,design §2.4)。
-    shop_randomized_pending: bool = False
+    # 消费后(:func:`clear_shop_randomized_pending`,戳随信号一并归
+    # None)+ 节点边界清扫(session_scope.handle_node_boundary,只清过期
+    # 代次)。宿主选型 = kernel 可写、策略可读(策略层状态键依赖方向不可
+    # 达,design §2.4);非 Field 理由 = 纯过程信号(回调直写、决策读,无
+    # 以实际观察为准仲裁、无 journal 面语义),同 frame_class/prep_anchored
+    # 先例;容器每局新建 = 天然清零。禁用商店容器 unknown 形态承载随机态
+    # (unknown = 识别失败必携缺陷记录且触发停机闸,语义与守卫均不兼容,
+    # design §2.4)。
+    shop_randomized_pending: NodePos | None = None
 
     # —— 升级连锁世界声明簿记队列(非 Field 簿记;工程结构组单列申报,
     # 迭代 2026-09-23-invest-effects-calc T-432)——

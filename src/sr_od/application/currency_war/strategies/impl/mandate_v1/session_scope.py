@@ -129,9 +129,18 @@ def handle_node_boundary(gs: GameState) -> None:
         setattr(st, attr, reset_value)
     # 商店随机态重开信号节点边界清扫(2026-10-17 迭代 design §2.4:信号
     # 宿主 = GameState 簿记槽 shop_randomized_pending,不在 StrategyState
-    # 重置表——节点推进 = 旧节点商店牌面语义死亡,信号随之失效,与重置表
-    # shop_handled 清值同机制依据)。
-    gs.shop_randomized_pending = False
+    # 重置表——节点推进 = 旧节点商店牌面语义死亡,过期代次随之失效,与
+    # 重置表 shop_handled 清值同机制依据)。代次判据(迭代
+    # 2026-09-23-invest-effects-calc T-434):只清真旧源 = 戳 ≠ 当前生效
+    # 序位(cur,与 :func:`effective_node_pos` 判定基准同源);戳 = cur =
+    # 节点推进时点置位的新源(经 T-432 advance 尾排空置位,恰在进入新
+    # 节点的同一次 advance 内盖新节点戳),保留交本帧重开位消费——无差别
+    # 一刀切会把该新源当旧牌面清掉(守恒式 spy_deals == reopens 破,
+    # seed 20261012 实测,T-432 验收偏差 A;置位端盖戳 =
+    # kernel mark_shop_randomized_pending)。
+    sig_gen = gs.shop_randomized_pending
+    if sig_gen is not None and sig_gen != cur:
+        gs.shop_randomized_pending = None
     log.info('[cw][node-boundary] 节点切换 %s → %s,节点作用域键按清单复位',
              prev, cur)
 

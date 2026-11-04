@@ -61,8 +61,10 @@ def on_level_up_change(gs: GameState, old_level: int | None,
     显式调(模拟器观察笔经验结算——观察口本身零回调,连锁挂在「结算」
     上,非挂在观察写上)。
 
-    三块连锁序(见模块头):信号置位(幂等布尔)→ spy 世界分支声明
-    入簿记队列(模拟器门)→ 节节高升 2★ 发放(持有判定 + 模拟器门,
+    三块连锁序(见模块头):信号置位(幂等,带来源代次戳 = 置位时点生效
+    节点序位,节点边界清扫只清过期代次——节点推进时点源的新信号不被当
+    旧牌面清掉,迭代 2026-09-23-invest-effects-calc T-434)→ spy 世界分支
+    声明入簿记队列(模拟器门)→ 节节高升 2★ 发放(持有判定 + 模拟器门,
     连跳按中间等级序列逐级,费用随各自等级)→ 升级窗口达成位记录
     (内部自判条目已登记 ∧ 未记录 ∧ 等级达标,零旁路条件安全)。
     """
@@ -84,9 +86,12 @@ def on_level_up_change(gs: GameState, old_level: int | None,
         level_up_gift_active,
         spy_on_level_up_active,
     )
-    # 连锁①spy:信号置位无条件(实机真刷店,信号供重开位读真牌面);
-    # 声明只进簿记队列(队列消费面 = 上报尾读取 + 模拟器 advance 尾排空,
-    # 双消费点取走即清;槽注申报写端唯一)。
+    # 连锁①spy:信号置位无条件(实机真刷店,信号供重开位读真牌面;置位
+    # 同时盖来源代次戳 = mark 内取生效节点序位——节点推进时点源在推进
+    # advance 内置位,戳 = 新节点序位,下一备战帧的节点边界清扫按代次
+    # 判据保留新源,只清过期代次,T-434);声明只进簿记队列(队列消费面
+    # = 上报尾读取 + 模拟器 advance 尾排空,双消费点取走即清;槽注申报
+    # 写端唯一)。
     if spy_on_level_up_active(gs) > 0:
         mark_shop_randomized_pending(gs)
         from sr_od.application.currency_war.sim.cw_sim_ports import (

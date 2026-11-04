@@ -139,6 +139,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     effective_node_pos,
     node_kind_of,
     observe_node_anchor,
+    refresh_shop_randomized_pending_stamp,
     seed_opening_state,
     settle_xp_observe,
 )
@@ -2050,8 +2051,8 @@ class SimBackend:
         溢出张数累计;判读面计数键(cw4_counters.spy_steal_placed_frames /
         spy_steal_overflow_frames)= 帧级增量,经容器挂接的策略器状态
         鸭子读回写(未挂接帧静默跳过 = 无判读面,合法)。持有判定不在
-        本层(上报回调已闸;本层被声明即执行,声明构造点零副作用无持卡
-        不构造)。"""
+        本层(升级值变更回调调度器已闸;本层被声明即执行,声明构造点零
+        副作用无持卡不构造)。"""
         from sr_od.application.currency_war.kernel.cw_game_state import (
             BenchSlot,
             BenchView,
@@ -2136,6 +2137,13 @@ class SimBackend:
                                     refresh_probs=drawn.refresh_probs),
                         evidence=sim_evidence('shop:spy_refresh'),
                         sig=obs_sig(group_id='sim:shop:spy'))
+        # 步⑤信号代次戳刷新(T-434;kernel 单一口
+        # refresh_shop_randomized_pending_stamp):分支执行 = 信号所指牌面
+        # 的最终写,戳刷新为牌面所属节点窗的生效序位——免战跳过路径
+        # (_skip_battle 经验入账在本地推进序位之前)置位戳滞后一节点,
+        # 不刷新则该源信号下一备战帧被节点边界当过期代次清掉。信号不在册
+        # = 零动作(声明直调形态,上报尾喂入与 advance 尾排空同过此处)。
+        refresh_shop_randomized_pending_stamp(self.gs)
 
     # (事实事件订阅入口已停用删除:
     #  懒呈现位 = screen_identity 问询时点检查;板面真值观察 =
