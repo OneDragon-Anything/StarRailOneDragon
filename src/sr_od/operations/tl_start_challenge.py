@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -91,7 +92,12 @@ class TlStartChallengeOp(SrOperation):
 
         # 2. 弹窗(全屏暗化,遮蔽三锚)→ 关闭
         if self._popup_visible(screen):
-            self.round_by_click_area(screen, _NODE_SCREEN, 'NODE_FIRST_CLICK_EMPTY')
+            # 不走 round_by_click_area:框架点击 press_time=0(短按),锁光标场景
+            # 需非零按压才生效(实机 0.1s+ 有效,0s 落空);坐标从建档 area 中心取
+            rect = self._node_area_rect('NODE_FIRST_CLICK_EMPTY')
+            if rect is not None:
+                center = Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
+                self.ctx.controller.click(center, press_time=0.15, pc_alt=True)
             return self.round_wait('关闭记忆紊流说明', wait=1)
 
         # 3. 波次待命态 → 波次流程(前进→秘技→开战)
@@ -118,10 +124,26 @@ class TlStartChallengeOp(SrOperation):
     @node_from(from_name='波次循环', status=STATUS_SUCCESS)
     @operation_node(name='点击返回忘却之庭', node_max_retry_times=12)
     def _click_back(self) -> OperationRoundResult:
-        """结算画面点返回(3.x 文案「返回忘却之庭」,旧文案「返回逐光捡金」兜底)。"""
+        """结算画面点返回(3.x 文案「返回忘却之庭」,旧文案「返回逐光捡金」兜底)。
+
+        首次 3 星通关最高解锁关会先弹「快速通关」补发列表(视同 3 星通关所有前置,
+        前置奖励自动领取)→ 点确认 → 获得物品页(点击空白关闭)→ 之后才是结算返回。
+        (2026-11-04 其十首通实机:弹窗盖住返回按钮,op 需依次处理。)
+        """
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_TITLE').is_success:
             return self.round_success()
+        # 快速通关补发列表 → 点确认
+        if self.round_by_find_area(screen, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_TITLE').is_success:
+            click = self.round_by_find_and_click_area(
+                screen, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_CONFIRM', success_wait=2)
+            if click.is_success:
+                return self.round_wait('确认快速通关补发', wait=1.5)
+            return self.round_retry('快速通关弹窗未找到确认按钮', wait=1)
+        # 获得物品页(点击空白关闭)→ 点页面空白区
+        if self.round_by_find_area(screen, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_EMPTY').is_success:
+            self.ctx.controller.click(Point(960, 400), press_time=0.15)
+            return self.round_wait('关闭获得物品页', wait=1.5)
         for btn_area in ('FH_AFTER_BATTLE_BACK_BTN_2', 'FH_AFTER_BATTLE_BACK_BTN_1'):
             click = self.round_by_find_and_click_area(
                 screen, _SELECT_SCREEN, btn_area, success_wait=2)
@@ -137,6 +159,14 @@ class TlStartChallengeOp(SrOperation):
         return (self.round_by_find_area(screen, _NODE_SCREEN, '标识-剩余轮行').is_success
                 and self.round_by_find_area(screen, _NODE_SCREEN, '面板-状态效果').is_success
                 and self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success)
+
+    def _node_area_rect(self, area_name: str):
+        """节点画面某 area 的 pc_rect(点击坐标来源;屏/area 缺失 None)。"""
+        si = self.ctx.screen_loader.get_screen(_NODE_SCREEN)
+        if si is None:
+            return None
+        area = next((a for a in si.area_list if a.area_name == area_name), None)
+        return area.pc_rect if (area is not None and area.pc_rect is not None) else None
 
     def _popup_visible(self, screen) -> bool:
         """记忆紊流说明弹窗是否可见(首波进入时)。"""
