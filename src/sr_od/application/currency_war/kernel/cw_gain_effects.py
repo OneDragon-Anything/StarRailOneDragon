@@ -1845,6 +1845,10 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # STRATEGY_EFFECTS 登记型条目(另一注册面,零执行端观察收口);腿3
     # 追伤/减伤 = 战力类零建模)
     '分解万物': _make_named_equip_grant_effect('物质分解液', 1),
+    # 完美进化 = 双条目工厂直书登记行(人才激励同形:即时 1 手册+延时
+    # 入队 4 节拍;「4个节点后，获得一个【战场进化手册】」延时腿;rand=
+    # False 确定发放)。
+    '完美进化': _make_delayed_grant_effect('完美进化'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自

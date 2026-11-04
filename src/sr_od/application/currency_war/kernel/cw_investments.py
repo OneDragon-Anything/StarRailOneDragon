@@ -2453,6 +2453,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '注册行 props;装备本体 effect 真伤系装备描述域正本游戏侧自'
               '算,与卡面叠加面分野),判读两维并列申报禁当定谳:源绑定'
               '(卡源限定/任意源)×生效域(穿戴者/全体小队)'),
+    # 完美进化(id 331901):官方「进入战斗时，穿戴【战场进化手册】的1星角色
+    # 会变为2星。」战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,
+    # bot 零响应;pending=False = 变形持续性在册用户裁定 2026-11-01 直接
+    # 消解(临时+策略默认不选,T-180 节;星变/读博深造两姊妹同判落码
+    # pending=False 现值),REVIEW-T267「战斗开始变形族后继持续性轴届时
+    # 直接承在册用户裁定(临时),无二义残留」宣示兑现)。
+    '完美进化': EffectSpec(
+    id='331901', name='完美进化', trigger=TriggerKind.PLANE_START,
+    payload=UnitBuffRef(
+        effect_text=next(a.effect for a in PLAZA_AUGMENTS
+                         if a.id == '331901')),
+    duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+    pending=False,
+    notes='战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,bot 零响'
+          '应;任务书战力类在册硬裁定);变形持续性 = 用户裁定 2026-11-01'
+          '定谳(临时+策略默认不选),星变/读博深造同判现值 pending=False;'
+          '触发语义 = 进入战斗时(战斗开始族格,PLANE_START 占位);零新字'
+          '段零披露键零写端。'),
 }
 
 
@@ -6217,6 +6235,11 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
     '好运令牌·彩': StrategyDelayedGrant(id='331601', delay_nodes=4,
                                         item='好运令牌', repeat=True),
+    # 完美进化(id 331901 原文直读,cw_invest_data.py:325;卡文「4个节点
+    # 后，获得一个【战场进化手册】。」延时腿;与即时腿双条目工厂分治,
+    # 人才激励同形;计数起点 = 拿卡节点后继窗家族口径)。
+    '完美进化': StrategyDelayedGrant(id='331901', delay_nodes=4,
+    item='战场进化手册'),
     # 是钻石总会发光(id 131101 原文直读,cw_invest_data.py:96;卡文
     # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句零即时条目,登记条目
     # 载体 = cw_gain_effects 延时-only 单条目工厂;发放物 = 红钻/蓝钻具名
