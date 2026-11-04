@@ -2617,7 +2617,7 @@ class SimBackend:
             self._strategy_pick_diamond_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
-            if (('这么大的钻石' in picked or '控制规模' in picked)
+            if (('这么大的钻石' in picked or '控制规模' in picked or '财富就是力量' in picked)
                     and self.gs.equips.value is not None):
                 on_diamond_acquired(self.gs, '财富宝钻')
         # 选卡落地拍随机策略发放效果条目(远见效果条目②「获得一个随机黄金投资策略」,

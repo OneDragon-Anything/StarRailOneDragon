@@ -1453,6 +1453,13 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '优势火力论': _compose_grant_legs(
         _make_named_equip_grant_effect('特权赋予卡', 1),
         _make_box_grant_effect(('简易武装箱',))),
+    # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
+    # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
+    # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」
+    # 零建模 = 战力类裁定在册先例[T-242 全武行同族落码现值形],判读申报
+    # 制承载非定谳;STRATEGY_GRANTS 零登记 = 控制规模同物同形[装备腿唯
+    # 一出现点])。
+    '财富就是力量': _make_named_equip_grant_effect('财富宝钻', 1),
 
     # 天降救兵 = 随机星档角色×箱条目组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;条目1 = 随机星档角色(cost=1/star=3
