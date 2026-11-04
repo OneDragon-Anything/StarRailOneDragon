@@ -639,7 +639,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 #### 大裁员(202101)
 
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict(清场+6 刷改变商店决策
-  上下文,买牌/读牌对账须预知);counter **不建**(一次性 burst 无剩余期);双腿
+  上下文,买牌/读牌对账须预知);counter **不建**(一次性 burst 无剩余期);两分支
   登记型单条目双载:出售面 = 素出售语义(`board_rewrite='sell_all_deal'`,确定性清场
   退款;×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);
   刷新分支 = `free_refresh_burst=6` 挂战场载体(burst 桥登记拍单次发放,

@@ -1022,8 +1022,8 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   fail-closed / 金面值),零链上分支。
   **延迟道具支线**(`cw_investments.ENV_DELAYED_ITEM_GRANTS` 命中,状态副本
   发放域登记表白名单,环境道 §3 on_env_gained 延迟道具支线同构镜像;
-  策略卡「获得【角色】+倒计时件」两分支分表——角色分支住 STRATEGY_GRANTS
-  具名送卡通道、礼盒分支住本队列,两表发放通道互斥非双发放):获得当刻
+  策略卡「获得【角色】+倒计时件」两分支分表——角色分支位于 STRATEGY_GRANTS
+  具名送卡通道、礼盒分支位于本队列,两表发放通道互斥非双发放):获得当刻
   **纯队列登记零席位写**——件 = 棋盘右上战利品区浮动件非占席(禁
   `_place_bench_item` 调用、禁 bench/overflow 任何字段),队列 =
   `pending_item_opens`(fields.md §3.2.25)追加 `(件名, 解锁序位)`

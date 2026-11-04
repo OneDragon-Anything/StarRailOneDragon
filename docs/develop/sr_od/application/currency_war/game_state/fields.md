@@ -1047,12 +1047,12 @@ NodePos)`;解锁序位坐标系 = NodePos(位面,轮)字典序、1 基(§2.2 节
 当时日程定格);到期判定 = 当前生效序位 ≥ 解锁位(字典序,到了及以后都算,
 错过不悬空)。
 
-**写入方**:唯一逻辑写入方 = 三口——①登记入队 = `on_env_gained`(环境道)/
+**写入方**:唯一逻辑写入方 = 三个登记入口——①登记入队 = `on_env_gained`(环境道)/
 `on_strategy_gained`(策略道)延迟道具支线
 (**纯队列登记零席位写**:件 = 棋盘右上战利品区浮动件非占席,实机板件实证 =
 与晶矿球同区,禁入 bench/overflow/消耗品库存任何域,BENCH_ITEM_NAMES 词表
-零扩;策略卡「获得【角色】+倒计时件」两分支分表——角色分支住 STRATEGY_GRANTS
-具名送卡通道、礼盒分支住本队列,首例 = 偶像经济);②到点弹除 = `discharge_due_item_opens`(sim 进节点收尾插入位置,实机局
+零扩;策略卡「获得【角色】+倒计时件」两分支分表——角色分支位于 STRATEGY_GRANTS
+具名送卡通道、礼盒分支位于本队列,首例 = 偶像经济);②到点弹除 = `discharge_due_item_opens`(sim 进节点收尾插入位置,实机局
 不接——实机开盒由游戏自己执行,板件消失/奖励落席归现役观察覆盖,不对称申报
 同 pending_item_grants;开盒零产出写入,开盒内容卡面无载放弃建模);③完胜
 回退 = `check_env_item_open_perfect`(settle_confirm 分支插入位置,结算环判据同
@@ -1114,7 +1114,7 @@ id 101101 首例,「5个节点后,进行一次不能刷新的黄金投资策略�
 (卡规范名 → 条目元组 id/倒计时/候选品质/刷新授权,白名单制;倒计时 0 =
 拿卡拍立即分支;构建校验只留漂移哨——孤儿键 + id 双匹配,逐条检)。
 
-**写入方**:唯一逻辑写入方 = 三口——①登记入队 = 获得链登记腿
+**写入方**:唯一逻辑写入方 = 三个登记入口——①登记入队 = 获得链登记腿
 `queue_delayed_invest_offer`(`PICK_INVEST_EFFECTS` 由登记表派生,拿卡
 即入队,效果串 `strategy_offer_scheduled:<品质>@<节拍>` 每条一枚;
 确定事件零采样,rand=False 走 `_select_write` 单一收束);②递减 = 节点
@@ -1207,7 +1207,7 @@ env_grants_done——不并入任何域版本 bump,他域本体未变)。
 id/倒计时/发放物,白名单制;构建校验只留漂移哨——孤儿键 + id 双匹配
 + 发放物名 ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES)。
 
-**写入方**:唯一逻辑写入方 = 三口——①登记入队 = 获得链登记腿
+**写入方**:唯一逻辑写入方 = 三个登记入口——①登记入队 = 获得链登记腿
 `queue_delayed_strategy_grant`(`PICK_INVEST_EFFECTS` 由登记表派生,
 拿卡即入队,效果串 `strategy_grant_scheduled:<发放物>@<节拍>`;确定
 事件零采样,rand=False 走 `_select_write` 单一收束);②递减 = 节点
@@ -2061,7 +2061,7 @@ fail-open(模型放行、实机游戏仍拒,披露键
 `is_expert` 角色(入池 = 解锁授予,非注册表默认)。
 
 **写入端**:获得链 advisor 道统一原语 `_unlock_experts`(cw_gain_chain,
-单一落点)三口——`on_env_gained`(`ENV_GIFTS` advisor=True,特邀专家族
+单一落点)三个登记入口——`on_env_gained`(`ENV_GIFTS` advisor=True,特邀专家族
 4 条)/`on_strategy_gained`(`STRATEGY_GRANTS` advisor=True,顾问入商店族
 11 条)/`on_equipment_gained`(分身墨镜族,解锁 + 送单位双分支)。两缺口
 已登记:①专家邀请函通道选卡候选名不可观察(`pick_expert_name_unobserved`
