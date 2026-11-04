@@ -9,8 +9,8 @@
 | 面 | 语义 | 单一源 |
 |---|---|---|
 | λ_death 表血带维 | P51 标定工件（启动必载查表基础设施，数据工件保留血带维键结构）；现役无决策消费，新增概率侧消费须先过 00 §6 λ 表使用纪律审查 | `statefn/lambda_death.py` + P51（01 §5 状态函数行） |
-| 首达生存概率函数库（`kernel/cw_first_passage.py`） | **概率侧候选地基（归档位,现役收缩为 `hp_floor` 出口）**：原 `first_passage_win`/`plane_hp_ratio`/`p_win_lambda`/`risk_posture` 纯函数族（掉血分布卷积下的生存概率与三区律）已随死代码清偿移除(零生产消费面;分布卷积底座保留为留位);现役 = `hp_floor`（hp 地板反解,sim 消费）。本库为 hp 的**概率侧**消费形态候选（裁定二同族：概率侧非价值侧），若未来接入决策面须先过 hp 使用边界审查（00 §3）与 00 §6 纪律。原函数族的 hp 姿态语义（risk_posture 的卖血/保血/赌右尾动作映射、「保血阈值」叙述）系立项期设计描述，非现行消费口径——申报即口径声明 | `kernel/cw_first_passage.py`（模块头） |
-| P15 掉血公式数据源 | 结算屏三项读取中的 hp 分量（判读与 λ 画质输入） | 观测仲裁正本 = [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md)；读取链 = `obs/cw_settlement_obs.py` |
+| 首达生存概率函数库（`kernel/cw_first_passage.py`） | **概率侧候选地基（归档位,现役收缩为 `hp_floor` 出口）**：原 `first_passage_win`/`plane_hp_ratio`/`p_win_lambda`/`risk_posture` 纯函数族（掉血分布卷积下的生存概率与三区律）已随死代码清偿移除(零生产消费面;分布卷积基础数据保留为留位);现役 = `hp_floor`（hp 地板反解,sim 消费）。本库为 hp 的**概率侧**消费形态候选（裁定二同族：概率侧非价值侧），若未来接入决策面须先过 hp 使用边界审查（00 §3）与 00 §6 纪律。原函数族的 hp 姿态语义（risk_posture 的卖血/保血/赌右尾动作映射、「保血阈值」叙述）系立项期设计描述，非现行消费口径——申报即口径声明 | `kernel/cw_first_passage.py`（模块头） |
+| P15 掉血公式数据源 | 结算屏三项读取中的 hp 分量（判读与 λ 画质输入） | 观测仲裁权威版本 = [15_observation_multisource_arbitration.md](15_observation_multisource_arbitration.md)；读取链 = `obs/cw_settlement_obs.py` |
 | 遭遇选档结算观测（裁定 6） | 结算屏现成读数作遭遇决策输入 + 结算观测数据入 GameState 持久化（结算观测环深度 10）——v1 判据适用范围 = 敌方通道（killed/进度填充率），掉血分量 B/P 为已授权量暂不消费（2026-09-12 用户逐项确认） | 判据权威定义 = `strategies/impl/mandate_v1/encounter_pick.py`；持久化基建留 kernel |
 
 ## 2. 伤害锚注册表孤儿申报
