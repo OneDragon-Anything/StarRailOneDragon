@@ -1,6 +1,6 @@
 # 开秘密典籍(OpenTome)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -29,7 +29,7 @@
 
 无典籍 / 槽不匹配 = 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);过渡帧不开(`is_prep_like_frame` 不命中)= 不发,交完整观察;validate 参数非法(slot 越界)= 发出前输入契约拒绝。状态容器腾位写入守卫(槽不存在/类型不符)= 静默零写等观察覆盖。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionOpenTomeParam`;`operations/cw_op/cw_open_tome_action.py::CwActionOpenTomeOp`;`kernel/cw_action_report/open_tome.py::report_action_open_tome_param`(腾位函数)/ `obs/cw_identity_obs.py::read_bench_view`(kind 识别期细分读链);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmTome 分支);`operations/cw_screen/cw_screen_bookcard.py`(`chosen_tome` 写入位置 / ConfirmTome 登记);`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`。
 

@@ -1,6 +1,6 @@
 # 开补给箱(OpenBox)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -27,7 +27,7 @@
 
 无箱 / 指定槽无箱 = 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。状态容器零写语义下无 `applied=False` 拒绝形态。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionOpenBoxParam`;`operations/cw_op/cw_open_box_action.py::CwActionOpenBoxOp`(`terminal`/`terminal_wait` 类属性,消费点经注册表 `action_op_class_for` 读);`kernel/cw_action_report/zero_writes.py::report_action_open_box_param`(零写族申报)/ `obs/cw_identity_obs.py::read_bench_view`(kind 识别期细分读链);`kernel/cw_exec_state.py::apply_confirm_effect`(dict ConfirmBox 分支);`operations/cw_screen/cw_screen_box_pick.py`(`box_card_names` 写入位置 / `decide_box_card`);终结判定总表 = [screens/README](../../screens/README.md) §4。
 

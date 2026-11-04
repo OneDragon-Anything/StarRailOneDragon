@@ -1,6 +1,6 @@
 # 开店(OpenShop)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -12,7 +12,7 @@
 
 ## 3. 确定面转移规则(逐条)
 
-1. **显式开店**:`_open_shop_phase` → open_shop(规范动作形态:单段机械执行 + 发出即记账恒 True,2026-10-16 open-shop-action-spec;幂等归流程层——店已开由外循环 0n 三锚/`visit_open_shop` 入口观察判定)→ `visit_open_shop`(商店画面 op `cw_screen_shop.py::CwScreenShop` 节点直驱:入口观察 → `decide_shop_action` 单动作 round_wait 循环 + 逻辑态直写,终结动作=发出后即结束本次访问,收店并入画面 op);
+1. **显式开店**:`_open_shop_phase` → open_shop(规范动作形态:单段机械执行 + 发出即记账恒 True,2026-10-16 open-shop-action-spec;幂等归流程层——店已开由外循环 0n 三识别标志/`visit_open_shop` 入口观察判定)→ `visit_open_shop`(商店画面 op `cw_screen_shop.py::CwScreenShop` 节点直驱:入口观察 → `decide_shop_action` 单动作 round_wait 循环 + 逻辑态直写,终结动作=发出后即结束本次访问,收店并入画面 op);
 2. **0n 转交**:店已开态由外循环三个 id_mark 识别标志确认,直接构造商店画面 op 访问(同口 `visit_open_shop`,零开店动作);
 3. **发出即职责完成**:open_shop 的验关型失败回执消费已拆除——店实际开没开由下一帧观察侧对账自然闭环(备战帧读互斥;访问失败路径不开收,店留着交上层/外环重新识别)。
 
@@ -24,7 +24,7 @@
 
 状态容器零写语义下无 `applied=False` 拒绝形态;开店失败 = 流程层编排轮次语义,归画面 op 层,不在本篇。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionOpenShopParam`;`operations/cw_op/cw_open_shop_action.py::CwActionOpenShopOp`(`terminal`/`terminal_wait` 类属性;execute 抛);`operations/cw_screen/cw_screen_prep.py::_act_execute_default`(OpenShop 截流)/ `_open_shop_phase` / `visit_open_shop`;`kernel/cw_action_report/zero_writes.py::report_action_open_shop_param`(零写申报)。
 
