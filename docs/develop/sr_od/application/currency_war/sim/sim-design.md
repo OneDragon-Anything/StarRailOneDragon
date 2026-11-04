@@ -140,7 +140,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 判据 → 状态容器登记 → 呈现，三段均与实机同源：
 
 - **判据**：kernel 值回调（`kernel/cw_faction_callbacks.py`，挂 `GameState._write_logic_frame` deployed 写尾）按阵营资格集/星级事件在**逻辑写时**判定，命中即登记——sim 与实机同一份判据代码，观察写零回调（观察通道不触发）。
-- **登记**：`kernel/cw_overlay_register.py` 三口（`register_screen_change` / `consume_screen_change` / `clear_screen_changes`）+ 九类登记目录（封闭集,新增类型必须登记）+ 屏档名映射（`KIND_SCREEN_NAMES`）；登记簿 = `gs.screen_changes.pending`（ScreenChanges sidecar，含逐档簿记 `wish_tiers_fired` / `planner_tiers_fired` / `fortune_battles`，生命周期 = 局）。
+- **登记**：`kernel/cw_overlay_register.py` 三个登记入口（`register_screen_change` / `consume_screen_change` / `clear_screen_changes`）+ 九类登记目录（封闭集,新增类型必须登记）+ 屏档名映射（`KIND_SCREEN_NAMES`）；登记簿 = `gs.screen_changes.pending`（ScreenChanges sidecar，含逐档簿记 `wish_tiers_fired` / `planner_tiers_fired` / `fortune_battles`，生命周期 = 局）。
 - **呈现**：`SimBackend._present_pending_overlay`——数据源 = 状态容器登记 pending；呈现位三处 = `screen_identity` 问询时点懒呈现（动作上报内登记的条目在宿主结束后的首次身份问询压上模态，等价实机「动作落地即弹」）、`advance` 纯转移尾、节点窗起点（fortune 呈现门判目标底层）。
 
 ### 4.2 目录
