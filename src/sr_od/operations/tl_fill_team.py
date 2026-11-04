@@ -23,6 +23,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     SCREEN_NAME,
     GridCell,
@@ -154,9 +155,11 @@ class TlFillTeamsOp(SrOperation):
                 self._last_page_sig = ''
                 return self.round_wait('已回到列表顶部', wait=0.3)
             self._last_page_sig = sig
-            self.ctx.controller.drag_to(
-                Point(300, 760), start=Point(300, 430), duration=0.5)
-            return self.round_wait('滚回列表顶部', wait=0.7)
+            # 每轮连拖 3 次(单拖 330px 只移 ~2 行,全列表 ~25 页,单拖回顶太慢)
+            for _ in range(3):
+                self.ctx.controller.drag_to(
+                    Point(300, 760), start=Point(300, 430), duration=0.4)
+            return self.round_wait('滚回列表顶部', wait=1)
 
         # 顶部起逐页向下找目标(只点置信命中;歧义格可能点错人,跳过继续)
         cells = read_character_grid(self.ctx, image)
@@ -175,13 +178,16 @@ class TlFillTeamsOp(SrOperation):
 
         # 未命中 → 向下翻页;连续停滞 = 到底
         sig = TlFillTeamsOp._page_sig(cells)
+        log.info(f'填充诊断: 找 {target} stagnation={self._down_stagnation} '
+                 f'页签名={sig[:80]}')
         if sig == self._last_page_sig:
             self._down_stagnation += 1
         else:
             self._down_stagnation = 0
         self._last_page_sig = sig
         if self._down_stagnation >= 2:
-            return self.round_fail(f'列表到底未找到 {target}(不点歧义格)')
+            return self.round_fail(
+                f'列表到底未找到 {target}(不点歧义格);已扫页签名尾={sig[:120]}')
         self.ctx.controller.drag_to(
             TlFillTeamsOp._SCROLL_TO, start=TlFillTeamsOp._SCROLL_FROM, duration=0.6)
         return self.round_wait('向下翻页', wait=0.8)

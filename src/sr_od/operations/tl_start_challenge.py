@@ -1,17 +1,21 @@
-"""忘却之庭(混沌回忆)挑战节点:从编队屏发起挑战 → 进入节点画面 → 前进 → 秘技 → 开战 → 等待结果。
+"""忘却之庭(混沌回忆)波次战斗:编队屏点「混沌回忆」按钮后调用,全自动跑完两波。
 
-⚠️ 适用范围:仅忘却之庭(按钮文案「混沌回忆」、NODE_FIRST_CLICK_EMPTY 弹窗、
-两波连续战斗流程均按混沌回忆实测标定)。虚构叙事/末日幻影的发起按钮文案、
-弹窗与波次结构不同,不可直接套用(需另行建档)。
-⚠️ 已知边界(2026-11-04 实机):两波连续自动衔接、波间无结算弹窗,本 op 的
-「等待战斗结束」在第一波打完进入第二波待命时会持续等待,需人工/上层补跑第二波
-(全自动循环见 .debug/temp/TODO.md 挂账条)。
+⚠️ 适用范围:仅忘却之庭(按钮文案/记忆紊流弹窗/两波连续流程均按混沌回忆实测标定);
+虚构叙事/末日幻影的发起与波次结构不同,不可套用,需另行建档。
 
-前置:编队屏(``GotoTreasuresLightward`` → 点关卡水晶 → ``TlFillTeamsOp`` 填好编队)。
-流程参照旧实现(``application/treasures_lightward/op/tl_battle.py`` + ``tl_wait.py``,
-迁移时 ``sr.*`` 包已删):首波进入会弹 buff 说明(点击空白处关闭),等待可移动后
-向前移动,用 ``StartFightForElite`` 施放秘技并开战,轮询挑战成功/战斗失败浮层,
-成功后点「返回忘却之庭」(3.x 前文案为「返回逐光捡金」,两个 area 均保留兜底)回选关界面。
+流程契约(人类老莫 2026-11-04 定义):
+- 调用方在编队屏点击「混沌回忆」按钮后调用本 op(本 op 不点按钮);
+- 先判断是否已进入节点画面(锁光标大世界场景,屏级 pc_alt=true);
+- 有弹窗(记忆紊流说明)就关弹窗;
+- 前进 → 秘技 → 发起战斗;
+- 判断战斗结束 → 下个波次循环;
+- 出现「挑战成功」→ 点「返回忘却之庭」收尾。
+
+实现要点(2026-11-04 实机):两波连续自动衔接、波间无结算弹窗——单节点状态机
+每轮按画面特征分流:结算浮层 → 收尾;波次待命态(节点画面三锚齐:剩余轮/状态效果/
+查看详情,战斗中左栏被战斗 UI 替换故三锚不齐)→ 波次流程;其余 → 等待。
+波次队伍按 ``wave_teams`` 顺序消费(第 N 次待命态 = 第 N 波),StartFightForElite
+按各波角色 technique_type 决策秘技顺序。
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 _SELECT_SCREEN: str = '逐光捡金'
 _TEAM_SCREEN: str = '忘却之庭-编队'
+_NODE_SCREEN: str = '忘却之庭-节点画面'
 
 
 class TlStartChallengeOp(SrOperation):
@@ -35,92 +40,104 @@ class TlStartChallengeOp(SrOperation):
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
     STATUS_FAIL: ClassVar[str] = '战斗失败'
 
-    def __init__(self, ctx: SrContext, team_names: list[str],
-                 first_node: bool = True, skip_click_start: bool = False):
+    def __init__(self, ctx: SrContext, wave_teams: list[list[str]]):
         """
         Args:
-            team_names: 本波编队角色中文名列表(与填充一致;秘技顺序按角色 technique_type 决策)。
-            first_node: 是否第一个波次(进入时弹 buff 说明,需点空白关闭)。
-            skip_click_start: 跳过点最终开始(用于已在节点画面内的恢复续跑,
-                如上次 op 在点击后中途失败的现场)。
+            wave_teams: 每波编队的角色中文名列表(外层=波次顺序,内层 4 人按槽位序;
+                与 TlFillTeamsOp 填充一致,秘技顺序按角色 technique_type 决策)。
         """
-        SrOperation.__init__(self, ctx, op_name='逐光捡金 开始挑战')
-        self.first_node: bool = first_node
-        self.skip_click_start: bool = skip_click_start
-        self.team: list[Character] = []
-        for name in team_names:
-            char = next((c for c in CHARACTER_LIST if c.cn == name), None)
-            if char is None:
-                # 构造期参数错误直接 raise(调用方/run_operation 捕获后干净报错);
-                # 不能用 round_fail —— 其返回值在 __init__ 里会被丢弃,op 会带着缺员队伍继续跑
-                raise ValueError(f'未知角色名: {name}')
-            self.team.append(char)
+        SrOperation.__init__(self, ctx, op_name='逐光捡金 波次战斗')
+        self.teams: list[list[Character]] = []
+        for names in wave_teams:
+            team: list[Character] = []
+            for name in names:
+                char = next((c for c in CHARACTER_LIST if c.cn == name), None)
+                if char is None:
+                    # 构造期参数错误直接 raise(run_operation 捕获后干净上报);
+                    # 不能用 round_fail —— 其返回值在 __init__ 里会被丢弃
+                    raise ValueError(f'未知角色名: {name}')
+                team.append(char)
+            self.teams.append(team)
+        self._wave_idx: int = 0            #: 当前待填充的波次(0 基,按待命态出现顺序消费)
 
-    @operation_node(name='点击最终开始', is_start_node=True)
-    def _click_start(self) -> OperationRoundResult:
-        """点击发起挑战。点击成功即进入下一节点(后续节点负责确认画面转移)——
-        此处不能用 round_wait:节点重跑时按钮已随画面切换消失,会误判失败
-        (2026-11-04 实测踩坑:点成功但 op 报「未找到最终开始按钮」)。"""
-        click = self.round_by_find_and_click_area(
-            self.last_screenshot, _TEAM_SCREEN, '按钮-最终开始', success_wait=2)
-        if click.is_success:
-            return self.round_success(wait=1)
-        if self.skip_click_start:
+    @operation_node(name='等待进入节点画面', is_start_node=True, node_max_retry_times=30)
+    def _wait_enter(self) -> OperationRoundResult:
+        """确认已离开编队屏并进入节点画面(或其首波弹窗);加载过渡则等待。"""
+        screen = self.last_screenshot
+        if self._is_node_standby(screen) or self._popup_visible(screen):
             return self.round_success()
-        return self.round_fail('未找到最终开始按钮')
-
-    @node_from(from_name='点击最终开始')
-    @operation_node(name='处理进入弹窗', node_max_retry_times=12)
-    def _handle_popups(self) -> OperationRoundResult:
-        """首波进入的 buff 说明弹窗点空白关闭;确认已离开编队屏(节点画面加载)。"""
-        screen = self.last_screenshot
-        if self.round_by_find_area(screen, _SELECT_SCREEN, 'NODE_FIRST_CLICK_EMPTY').is_success:
-            self.round_by_click_area(screen, _SELECT_SCREEN, 'NODE_FIRST_CLICK_EMPTY')
-            return self.round_wait('关闭首波 buff 说明', wait=1)
         if self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success:
-            return self.round_retry('仍在编队屏,等待跳转', wait=1)
-        return self.round_success()
+            return self.round_retry('仍在编队屏(按钮未生效或调用方未点击)', wait=1)
+        return self.round_wait('节点画面加载中', wait=1)
 
-    @node_from(from_name='处理进入弹窗')
-    @operation_node(name='向前移动')
-    def _move_forward(self) -> OperationRoundResult:
-        """敌人通常在入口正前方,先向前走一段(秘技施放与开战都在移动后)。"""
-        self.ctx.controller.move('w', press_time=2)
-        return self.round_success(wait=0.5)
+    @node_from(from_name='等待进入节点画面')
+    # 循环由 round_wait/round_retry 机制自动重跑本节点,不声明自环(自环出边会吞成功结果)
+    @operation_node(name='波次循环', node_max_retry_times=240)
+    def _wave_loop(self) -> OperationRoundResult:
+        """按画面特征分流的波次状态机(结算 → 收尾;弹窗 → 关闭;待命 → 开战;其余 → 等待)。
 
-    @node_from(from_name='向前移动')
-    @operation_node(name='秘技与开战')
-    def _start_fight(self) -> OperationRoundResult:
-        op = StartFightForElite(
-            self.ctx,
-            character_list=self.team,
-            skip_point_check=True,       # 逐光捡金秘技点固定,跳过识别
-            skip_resurrection_check=True,
-        )
-        return self.round_by_op_result(op.execute())
-
-    @node_from(from_name='秘技与开战')
-    @operation_node(name='等待战斗结束', node_max_retry_times=200)
-    def _wait_battle_end(self) -> OperationRoundResult:
-        """轮询战斗结果浮层(WAIT 不计 retry;长战斗靠本节点循环等待)。"""
+        弹窗检查独立于待命态判定且必须前置:记忆紊流说明弹窗全屏暗化会遮蔽
+        待命态三锚(剩余轮/状态效果/查看详情),埋进待命态分支内将永远不可达
+        (2026-11-04 实机踩坑)。
+        """
         screen = self.last_screenshot
+
+        # 1. 结算浮层优先
         if (self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_SUCCESS_1').is_success
                 or self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_SUCCESS_2').is_success):
             return self.round_success(TlStartChallengeOp.STATUS_SUCCESS)
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_FAIL').is_success:
             return self.round_fail(TlStartChallengeOp.STATUS_FAIL)
-        return self.round_wait('战斗中', wait=3)
 
-    @node_from(from_name='等待战斗结束')
-    @operation_node(name='点击返回逐光捡金', node_max_retry_times=12)
+        # 2. 弹窗(全屏暗化,遮蔽三锚)→ 关闭
+        if self._popup_visible(screen):
+            self.round_by_click_area(screen, _NODE_SCREEN, 'NODE_FIRST_CLICK_EMPTY')
+            return self.round_wait('关闭记忆紊流说明', wait=1)
+
+        # 3. 波次待命态 → 波次流程(前进→秘技→开战)
+        if self._is_node_standby(screen):
+            if self._wave_idx >= len(self.teams):
+                return self.round_fail(f'波次待命但队伍预算用尽(共 {len(self.teams)} 波)')
+            team = self.teams[self._wave_idx]
+            self.ctx.controller.move('w', press_time=2)
+            op = StartFightForElite(
+                self.ctx,
+                character_list=team,
+                skip_point_check=True,       # 逐光捡金秘技点固定,跳过识别
+                skip_resurrection_check=True,
+            )
+            op_result = op.execute()
+            if not op_result.success:
+                return self.round_fail(f'波 {self._wave_idx + 1} 开战失败: {op_result.status}')
+            self._wave_idx += 1
+            return self.round_wait(f'波 {self._wave_idx} 开战指令完成', wait=3)
+
+        # 4. 战斗进行中 / 加载过渡
+        return self.round_wait('战斗进行中', wait=3)
+
+    @node_from(from_name='波次循环', status=STATUS_SUCCESS)
+    @operation_node(name='点击返回忘却之庭', node_max_retry_times=12)
     def _click_back(self) -> OperationRoundResult:
-        """结算画面点「返回逐光捡金」回选关(快速通关弹窗等中间态由后续观察补)。"""
+        """结算画面点返回(3.x 文案「返回忘却之庭」,旧文案「返回逐光捡金」兜底)。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_TITLE').is_success:
             return self.round_success()
-        for btn_area in ('FH_AFTER_BATTLE_BACK_BTN_1', 'FH_AFTER_BATTLE_BACK_BTN_2'):
+        for btn_area in ('FH_AFTER_BATTLE_BACK_BTN_2', 'FH_AFTER_BATTLE_BACK_BTN_1'):
             click = self.round_by_find_and_click_area(
                 screen, _SELECT_SCREEN, btn_area, success_wait=2)
             if click.is_success:
-                return self.round_wait('返回逐光捡金中', wait=1)
+                return self.round_wait('返回忘却之庭中', wait=1)
         return self.round_retry('未找到返回按钮', wait=1)
+
+    def _is_node_standby(self, screen) -> bool:
+        """波次待命态判定:节点画面三锚齐(剩余轮+状态效果+查看详情)。
+
+        战斗中左栏被战斗 UI 替换,三锚不齐故不会误判;加载过渡亦不齐。
+        """
+        return (self.round_by_find_area(screen, _NODE_SCREEN, '标识-剩余轮行').is_success
+                and self.round_by_find_area(screen, _NODE_SCREEN, '面板-状态效果').is_success
+                and self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success)
+
+    def _popup_visible(self, screen) -> bool:
+        """记忆紊流说明弹窗是否可见(首波进入时)。"""
+        return self.round_by_find_area(screen, _NODE_SCREEN, 'NODE_FIRST_CLICK_EMPTY').is_success

@@ -299,10 +299,10 @@ area_list:
 - area_name: NODE_FIRST_CLICK_EMPTY
   id_mark: false
   pc_rect:
-  - 856
-  - 851
-  - 1071
-  - 885
+  - 700
+  - 845
+  - 1220
+  - 890
   text: 点击空白处关闭
   lcs_percent: 0.5
   template_sub_dir: ''
