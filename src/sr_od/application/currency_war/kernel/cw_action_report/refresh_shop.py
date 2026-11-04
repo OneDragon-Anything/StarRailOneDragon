@@ -1,6 +1,7 @@
 """货币战争动作上报:刷新商店(report_action_refresh_shop_param)。
 
-刷新动作上报三条分支(2026-09-21 商店刷新迭代 design §2-6/§2-9):
+刷新动作上报分支(2026-09-21 商店刷新迭代 design §2-6/§2-9 立骨架,后续
+分支随各效果建模批增补;条目序 = 建模序,执行序见函数 docstring):
 
 - **计数分支**:付费/全量两计数经 ``gs.effects.record_refresh`` 单口触发
   (2026-09-18 裁定;免费余额在容器字段,账本只留 paid/total
@@ -10,6 +11,14 @@
   (Field 化:观察锚定/动作扣减/发放登记三写端同格),免费帧经
   ``write_logic`` 扣减。free 判定 = Field 值 > 0;None(未观察)= 保守
   按 paid(不扣 Field——次数是记账面非决策闸,商店刷新允许性归策略面)。
+- **付费刷新 XP 分支**(策略源 xp_per_refresh;仅付费帧):效果账本
+  条目经鸭子类型读取(duck typing)聚合 ``payload.xp_per_refresh``
+  (零卡名硬编码,后继同字段卡自动覆盖)→ ``grant_effect_refresh_xp``
+  字段写操作写入经验推进对(evidence ``effect_refresh_xp``;世界腿 =
+  把结果写进状态副本的实现分支)——淘金客卡面「你每次消耗金币刷新商店,
+  都会获得2经验值。」。插入位置 = 免费扣减分支后、随机态分支前:
+  同帧跨级后本帧发牌采样即用升级后 level(店决策按 level 读数,刷新得
+  XP 立即可见);免费帧零 XP(「消耗金币」文本排免费刷)。
 - **随机态分支**:计数后经 kernel 发牌采样器(:mod:`cw_shop_deal`,与 sim
   ``deal_shop`` 同源,纯采样不写容器)采 5 槽 payload,经
   ``write_logic_rand`` 随机态专用通道写商店载荷——实机上采样是猜测,
@@ -70,6 +79,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     LogicOutcome,
     ShopActionExecuted,
     _validate_sig,
+    grant_effect_refresh_xp,
     mark_gold_spent,
 )
 from sr_od.application.currency_war.kernel.cw_shop_deal import (
@@ -95,6 +105,13 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
       的剩余次数;None = 未观察 → 保守按 paid,不扣 Field)。
     - 免费分支扣减 = ``write_logic(gs.free_refresh_left, max(0, left−1))``
       (produced_by/evidence 留存证据;下限 0,禁负值漂移)。
+    - 付费刷新 XP 分支 = ``grant_effect_refresh_xp(gs, 组签名)``(仅付费帧,
+      执行序在免费扣减后、随机态分支前):效果账本条目鸭子类型读取
+      ``payload.xp_per_refresh`` 聚合经 ``grant_xp`` 字段写推进对
+      (evidence 'effect_refresh_xp';世界腿 = 把结果写进状态副本的实现
+      分支,淘金客卡面「每次消耗金币刷新商店,都会获得2经验值」;None 门/
+      满级跳写在原语内;免费帧零 XP,同帧跨级后本帧发牌采样即用升级后
+      level)。
     - 随机态分支 = kernel 采样器采 payload → ``write_logic_rand(gs.shop, …)``
       (evidence='refresh_random_sample';观察覆盖差异 = logic_rand_outcome
       台账,非失配);策略出对条件金腿在同一分支块内、采样之后(见模块头,
@@ -131,6 +148,17 @@ def report_action_refresh_shop_param(gs: GameState, param: Any, sig: ChannelSig,
                        max(0, (0 if _left is None else int(_left)) - 1),
                        produced_by=_PRODUCER, evidence='proj_refresh_free_left',
                        sig=_grp_sig)
+
+    if not free_determined:
+        # 付费刷新 XP 分支(策略源 xp_per_refresh,世界腿 = 把结果写进
+        # 状态副本的实现分支;淘金客卡面「你每次消耗金币刷新商店,都会
+        # 获得2经验值。」):效果账本条目鸭子类型读取 xp_per_refresh 聚合
+        # 经 grant_effect_refresh_xp 字段写(零卡名硬编码,None 门/满级
+        # 跳写在 grant_xp 原语内;免费帧零 XP——「消耗金币」文本排免费刷,
+        # 与计数分支 refresh_paid 同付费域口径)。插入位置在随机态分支前:
+        # 同帧跨级后本帧发牌采样即用升级后 level(店决策按 level 读数,
+        # 刷新得 XP 立即可见)。
+        grant_effect_refresh_xp(gs, _grp_sig)
 
     # 随机态分支:计数后采样商店牌 5 槽 payload(与 sim 发牌同源),经
     # write_logic_rand 写随机态。level 缺读跳写(概率表按级索引)。

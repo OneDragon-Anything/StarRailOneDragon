@@ -1721,14 +1721,16 @@ def roll_prev_node_spent(gs: GameState, *, frame: str = '') -> None:
 
 
 def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
-             evidence: str) -> None:
+             evidence: str,
+             produced_by: str = 'EffectLedgerBridge:成功经验') -> None:
     """白送经验发放原语(环境 XP 窗口通道首例;与购买经验上报同构的
     推进对直写,amount 非正零动作):
     推进算子 = xp_apply_amount(cw_economy 单一源,函数内 import——cw_economy
     模块头反向 import 本模块读口,模块级 import 成环,惰性纪律同文末诸桥);
-    写端 = gs.xp 推进对 + gs.level 跨级直写(write_logic,produced_by
-    ='EffectLedgerBridge:成功经验',与 grant_effect_node_refresh_balance
-    同 produced_by 词根),满级门 = 算子自带(帽形参经 ``level_cap_of``
+    写端 = gs.xp 推进对 + gs.level 跨级直写(write_logic,produced_by 缺省
+    'EffectLedgerBridge:成功经验',与 grant_effect_node_refresh_balance
+    同 produced_by 词根;窗口外调用点经 produced_by 传来源署名,如刷新 XP
+    分支按在场条目名拼接),满级门 = 算子自带(帽形参经 ``level_cap_of``
     随链——无卡 = MAX_PLAYER_LEVEL 既有语义,持等级帽卡时等级轴随注册表
     覆写收窄;level >= 帽零推进,语义与 xp_apply_clicks 封顶支等价;
     **算子返回零变化 → 跳写**,
@@ -1738,7 +1740,8 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
       无基座不虚构推进对);
     - 不做 gold/streak 联动(「经验就是财富」改道未建模,披露键
       env_xp_window_xp_to_gold_pending;改道落地批的单点改道位 = 本函数);
-    - 消费方 = 发放桥 grant_effect_node_xp(唯一挂点,原语不自带挂点);
+    - 消费方 = 节点窗桥 grant_effect_node_xp + 刷新 XP 分支
+      grant_effect_refresh_xp 两个调用点(原语不自带调用点);
     - 跨级连锁经 level 写尾回调自动生效(on_level_up_change,任意经验
       来源——本函数写 level 即触发,无需自带连锁面)。
     """
@@ -1757,12 +1760,43 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
                                    level_cap=level_cap_of(gs))
     if new_lvl == int(lv_v) and cur == int(xp_v[0]):
         return   # 算子零变化(满级封顶支)→ 跳写:level/xp 值不变,零写行
-    pd = 'EffectLedgerBridge:成功经验'
     gs.write_logic(gs.xp, (cur, XP_TO_NEXT_LEVEL.get(new_lvl, cur)),
-                   produced_by=pd, evidence=evidence, sig=sig)
+                   produced_by=produced_by, evidence=evidence, sig=sig)
     if new_lvl != int(lv_v):
-        gs.write_logic(gs.level, new_lvl, produced_by=pd,
+        gs.write_logic(gs.level, new_lvl, produced_by=produced_by,
                        evidence=evidence, sig=sig)
+
+
+def grant_effect_refresh_xp(gs: GameState, sig: ChannelSig) -> None:
+    """桥·付费刷新 XP 形态(每次付费刷新事件一次;唯一调用点 = 刷新上报
+    函数付费分支,免费扣减后、随机态分支前):
+    把全部在场条目声明的每次刷新经验累加,经发放原语 ``grant_xp`` 写经验
+    推进对(淘金客卡面「你每次消耗金币刷新商店,都会获得2经验值。」
+    首例;载体 = payload.xp_per_refresh,鸭子类型读取(duck typing)缺省 0,
+    零卡名硬编码——后继同字段卡自动覆盖,_record_lv8_window_start 同句式)。
+    额度 0(无持卡条目)= no-op(零写行)。evidence = ``effect_refresh_xp``
+    (常量,无 @frame 后缀——刷新动作窗无帧上下文,不虚构);
+    produced_by = 'EffectLedgerBridge:' + 在场条目名拼接
+    (grant_effect_node_refresh_balance 同款拼接惯语,现值 =
+    'EffectLedgerBridge:淘金客')。sig = 上报函数动作窗组签名
+    (logic_action 族,与同窗计数/扣费/发放各分支同 group;None 门/满级
+    跳写/推进算子三面由 grant_xp 单一源继承)。插入位置在随机态分支前 =
+    同帧跨级后本帧发牌采样即用升级后 level(店决策按 level 读数,刷新得
+    XP 立即可见);免费帧零 XP——卡文「消耗金币」排免费刷,与计数分支
+    refresh_paid 同付费域口径。
+    """
+    total = 0
+    srcs: list[str] = []
+    for e in gs.effects.entries:
+        n = int(getattr(e.spec.payload, 'xp_per_refresh', 0) or 0)
+        if n > 0:
+            total += n
+            srcs.append(e.spec.name)
+    if total <= 0:
+        return
+    grant_xp(gs, total, sig=sig, evidence='effect_refresh_xp',
+             produced_by=('EffectLedgerBridge:' + '+'.join(srcs))
+             if srcs else 'EffectLedgerBridge')
 
 
 def settle_xp_observe(gs: GameState, amount: int, *, sig: ChannelSig,

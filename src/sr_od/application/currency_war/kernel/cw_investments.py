@@ -2274,7 +2274,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 官方原文无「付费」限定,二义未实采 → pending 如实标注)。
     # 世界写入面 = §6.3 随机分支:概率写免费刷新余额不建逻辑写入方,
     # 交由观察收尾;live 真值 = 商店观察漏斗直达容器,零新增写端;
-    # sim 产出腿零建模(家族先例 = 淘金客 +2XP 零建模面)。
+    # sim 产出面零建模(同族淘金客 +2XP 世界腿〔把结果写进状态副本的
+    # 实现分支〕已接入调用 = 刷新上报写端 grant_effect_refresh_xp,
+    # 本卡世界写入面为该族现役剩余零建模缺口,pending 已如实标注)。
     '概率事件': EffectSpec(
         id='300401', name='概率事件', trigger=TriggerKind.ON_REFRESH,
         duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
