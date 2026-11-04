@@ -216,7 +216,7 @@ def resolve_property_cn(pt: int, property_info: Mapping[int, PropertyNameInfo] |
     snapshot_name = PROPERTY_INFO_SNAPSHOT.get(pt)
     if snapshot_name:
         return snapshot_name
-    log.warning(f'hsr_codes: property_type={pt} 响应词典与快照均查无干净名，按未知属性兜底')
+    log.warning(f'sr_codes: property_type={pt} 响应词典与快照均查无干净名，按未知属性兜底')
     return f'未知属性(pt={pt})'
 
 
@@ -228,7 +228,7 @@ def resolve_base_type_cn(bt: int) -> str:
     name = BASE_TYPE_CN.get(bt)
     if name is not None:
         return name
-    log.warning(f'hsr_codes: base_type={bt} 查表 miss，按未知命途兜底')
+    log.warning(f'sr_codes: base_type={bt} 查表 miss，按未知命途兜底')
     return f'未知命途(bt={bt})'
 
 
@@ -237,7 +237,7 @@ def resolve_element_cn(el: str) -> str:
     name = ELEMENT_CN.get(el)
     if name is not None:
         return name
-    log.warning(f'hsr_codes: element={el} 查表 miss，按未知元素兜底')
+    log.warning(f'sr_codes: element={el} 查表 miss，按未知元素兜底')
     return f'未知元素({el})'
 
 
@@ -249,7 +249,7 @@ def resolve_relic_pos_cn(pos: int) -> str:
     name = RELIC_POS_CN.get(pos)
     if name is not None:
         return name
-    log.warning(f'hsr_codes: relic pos={pos} 查表 miss，按未知部位兜底')
+    log.warning(f'sr_codes: relic pos={pos} 查表 miss，按未知部位兜底')
     return f'未知部位(pos={pos})'
 
 

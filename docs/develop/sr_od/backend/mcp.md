@@ -37,8 +37,8 @@
 | `get_mcp_usage_guide(name, app_id=None)` | `mcp/prompts.py` | 指定操作指南正文，相当于任务级 `--help` |
 | `mys_login(username, password)` | `mys_tools.py` `MysAccessController` | 统一信封 `{status, message, data}`：`success` / `already_logged_in` / `verification_required`（含本地验证页 URL，人工过验后台自动续跑）/ `error`（-3208/-3235 即停）。⚠️ 知情声明（tool 描述含）：密码会作为工具参数传入大模型上下文，由使用者自行决定；成功仅落盘 cookie 会话（config/当前实例/mys/），密码不落盘 |
 | `mys_logout()` | `mys_tools.py` | `{status: success}`（幂等；清 session.json 与 role.json、保留 device.json） |
-| `mys_get_characters()` | `mys_tools.py` → `HsrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集，含 element_cn/base_type_cn 中文名）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
-| `mys_get_roster_detail()` | `mys_tools.py` → `HsrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
+| `mys_get_characters()` | `mys_tools.py` → `SrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集，含 element_cn/base_type_cn 中文名）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
+| `mys_get_roster_detail()` | `mys_tools.py` → `SrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
 
 要点：
 

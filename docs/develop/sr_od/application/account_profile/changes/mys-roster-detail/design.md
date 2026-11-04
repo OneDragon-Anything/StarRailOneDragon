@@ -2,7 +2,7 @@
 
 ## 0. 元信息
 
-- 目标：①`HsrCharacter` 增中文字段（`element_cn`/`base_type_cn`）——**接口层直接出中文，消费方零查表**（用户裁定 2026-11-04）；②接入 `avatar/info` 全量明细（遗器/位面饰品/星魂/行迹/属性面板）；③新 MCP 工具 `mys_get_roster_detail`。
+- 目标：①`SrCharacter` 增中文字段（`element_cn`/`base_type_cn`）—— **接口层直接出中文，消费方零查表**（用户裁定 2026-11-04）；②接入 `avatar/info` 全量明细（遗器/位面饰品/星魂/行迹/属性面板）；③新 MCP 工具 `mys_get_roster_detail`。
 - 状态：草案（轻量迭代：结构沿用 mys-account-mcp 已验收的分层与契约，仅增量）
 - 实测依据：`.debug/account/api/avatar_info_planner.json`（2026-11-03 avatar/info 实测快照，64 角色——**结构要点已固化进本设计与测试 fixture，摆脱易失件依赖**）；码表权威来源侦察报告：`.debug/temp/mys-roster-detail/codes-draft.md`
 
@@ -26,14 +26,14 @@
    - ③终兜底：「未知属性(pt=N)」+ warning（不抛异常，官方有预占码位习惯）；
    - **撞域纪律**：`ranks[].pos` 是星魂序号（1-6），与遗器部位码撞值域——两处**禁共用枚举**；
    - 同响应的 `relic_properties[]`（词条→面板修饰关系）随明细透传与否按消费需要定，本迭代不透传（记录在案）。
-2. **`HsrCharacter` v2**（契约 5 修订）：v1 八字段 + `element_cn: str` + `base_type_cn: str`
+2. **`SrCharacter` v2**（契约 5 修订）：v1 八字段 + `element_cn: str` + `base_type_cn: str`
 3. **`CharacterDetail` 冻结字段集**：`id, name, level, rarity, rank, element, element_cn, base_type, base_type_cn, equip: ConeSummary | None, relics: list[HsrRelic], ornaments: list[HsrRelic], ranks: list[HsrRank], skills: list[HsrSkill], properties: list[HsrPanelProperty]`
 4. **子结构冻结**：
-   - `HsrRelic`：`name, pos, pos_cn, rarity, level, main: HsrPropertyEntry, subs: list[HsrPropertyEntry]`（不透传 desc/lore、icon、id、is_preview——**只透传带等数值的 preview 条目照常映射**）
-   - `HsrPropertyEntry`：`name_cn, value, times`（times=0 的主词条照常给 0）
-   - `HsrRank`：`pos, name, desc, is_unlocked`（不透传 icon/id）
-   - `HsrSkill`：`name(remake), level, is_activated, stages: list[HsrSkillStage]`；`HsrSkillStage` = `name, desc, level`（不透传 icon/URL/内部 id）
-   - `HsrPanelProperty`：`name_cn, base, add, final`
+   - `SrRelic`：`name, pos, pos_cn, rarity, level, main: HsrPropertyEntry, subs: list[HsrPropertyEntry]`（不透传 desc/lore、icon、id、is_preview—— **只透传带等数值的 preview 条目照常映射**）
+   - `SrPropertyEntry`：`name_cn, value, times`（times=0 的主词条照常给 0）
+   - `SrRank`：`pos, name, desc, is_unlocked`（不透传 icon/id）
+   - `SrSkill`：`name(remake), level, is_activated, stages: list[HsrSkillStage]`；`SrSkillStage` = `name, desc, level`（不透传 icon/URL/内部 id）
+   - `SrPanelProperty`：`name_cn, base, add, final`
 5. **新 MCP 工具** `mys_get_roster_detail()`：`avatar/info` 一次调用 → `success` + `list[CharacterDetail]`；`session_expired`/`error(1034)`/`awaiting_ticket` 语义与 `mys_get_characters` 完全一致（信封复用）；`mys_get_characters` 保持 v1 轻口径不变（低开销快查）
 6. 明确不解决：icon/figure 等 URL 字段不透传；遗器 lore desc 不透传；servant_detail/special_skills/cur_enhanced_id 等罕见字段不透传
 

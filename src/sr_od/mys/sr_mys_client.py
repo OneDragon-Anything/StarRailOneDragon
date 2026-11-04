@@ -11,10 +11,10 @@ changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细�
    ``role_id`` 一律字符串化——依据 miyoushe-api-flow.md §4.3），缓存被
    登出与换绑登录清除后自动重发现；
 2. 角色列表映射：``hkrpg/api/index`` 的 ``data.avatar_list`` 到
-   ``HsrCharacter`` 冻结字段集——v1 八字段以 2026-11-03 实测响应为准
+   ``SrCharacter`` 冻结字段集——v1 八字段以 2026-11-03 实测响应为准
    （结构快照固化于测试仓 fixture，见 mys-account-mcp landing §3.4）；
    v2 增 ``element_cn``/``base_type_cn`` 两中文字段（码表经
-   ``sr_od.mys.hsr_codes`` 解析，接口层直接出中文，消费方零查表）。
+   ``sr_od.mys.sr_codes`` 解析，接口层直接出中文，消费方零查表）。
    icon 等大体积字段不透传（本封装的消费方是练度盘点，不是资源下载）。
 3. 角色明细映射（``get_characters_detail``）：打全量明细端点
    ``hkrpg/api/avatar/info``（``need_wiki=true`` 是五词典与明细数组的来源
@@ -22,7 +22,7 @@ changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细�
    行迹/面板——design.md §1 端点勘误，实机验收实证），对响应做富映射——
    遗器/位面饰品/星魂/行迹/属性面板到
    ``CharacterDetail`` 冻结字段集（契约 3/4）；词条显示名走
-   ``hsr_codes`` 三层查表，响应原生 ``data.property_info`` 键归一 int
+   ``sr_codes`` 三层查表，响应原生 ``data.property_info`` 键归一 int
    后作动态词典透传；遗器 lore desc/icon/figure/内部 id 等不透传。
 
 会话失效透传（design.md §2.3）：``MysSessionExpired`` 原样上抛给上层
@@ -35,7 +35,7 @@ from one_dragon.mys.mys_client import MysClient
 from one_dragon.mys.mys_const import ROLE_LIST_URL
 from one_dragon.mys.mys_session import MysApiError, MysSessionExpired, SessionStore
 from one_dragon.utils.log_utils import log
-from sr_od.mys.hsr_codes import (
+from sr_od.mys.sr_codes import (
     PropertyNameInfo,
     resolve_base_type_cn,
     resolve_element_cn,
@@ -74,7 +74,7 @@ class ConeSummary:
 
 
 @dataclass(frozen=True)
-class HsrCharacter:
+class SrCharacter:
     """崩铁角色（v1 八字段 + v2 中文字段，冻结字段集——字段增删即契约失败）。
 
     字段集契约：changes/mys-roster-detail/design.md §2 契约 2（= v1 八字段
@@ -109,11 +109,11 @@ class HsrCharacter:
 
 
 @dataclass(frozen=True)
-class HsrPropertyEntry:
+class SrPropertyEntry:
     """遗器词条（主/副同构，冻结字段集契约 4）。
 
     Attributes:
-        name_cn: 属性显示中文名（hsr_codes 三层查表：响应原生词典 → 快照 →
+        name_cn: 属性显示中文名（sr_codes 三层查表：响应原生词典 → 快照 →
             「未知属性(pt=N)」终兜底，miss 不抛异常）。
         value: 词条数值字符串（原样透传，如 ``705`` / ``43.2%``）。
         times: 强化次数；主词条无强化恒为 0（照常透传 0）。
@@ -125,7 +125,7 @@ class HsrPropertyEntry:
 
 
 @dataclass(frozen=True)
-class HsrRelic:
+class SrRelic:
     """遗器/位面饰品单件（两数组同构，冻结字段集契约 4）。
 
     Attributes:
@@ -145,12 +145,12 @@ class HsrRelic:
     pos_cn: str
     rarity: int
     level: int
-    main: HsrPropertyEntry
-    subs: list[HsrPropertyEntry]
+    main: SrPropertyEntry
+    subs: list[SrPropertyEntry]
 
 
 @dataclass(frozen=True)
-class HsrRank:
+class SrRank:
     """星魂（冻结字段集契约 4）。
 
     Attributes:
@@ -170,7 +170,7 @@ class HsrRank:
 
 
 @dataclass(frozen=True)
-class HsrSkillStage:
+class SrSkillStage:
     """行迹分段文案（冻结字段集契约 4）。
 
     Attributes:
@@ -185,7 +185,7 @@ class HsrSkillStage:
 
 
 @dataclass(frozen=True)
-class HsrSkill:
+class SrSkill:
     """行迹（冻结字段集契约 4）。
 
     Attributes:
@@ -200,15 +200,15 @@ class HsrSkill:
     name: str
     level: int
     is_activated: bool
-    stages: list[HsrSkillStage]
+    stages: list[SrSkillStage]
 
 
 @dataclass(frozen=True)
-class HsrPanelProperty:
+class SrPanelProperty:
     """角色面板属性行（冻结字段集契约 4）。
 
     Attributes:
-        name_cn: 属性显示中文名（hsr_codes 三层查表，同 HsrPropertyEntry）。
+        name_cn: 属性显示中文名（sr_codes 三层查表，同 SrPropertyEntry）。
         base: 基础值字符串（面板码 base/add/final 实测均为字符串，整数不带
             ``%``、百分比带 ``%``，展示层直接用；数值解析是消费方职责）。
         add: 词条加成值字符串。
@@ -258,14 +258,14 @@ class CharacterDetail:
     base_type: int
     base_type_cn: str
     equip: ConeSummary | None
-    relics: list[HsrRelic]
-    ornaments: list[HsrRelic]
-    ranks: list[HsrRank]
-    skills: list[HsrSkill]
-    properties: list[HsrPanelProperty]
+    relics: list[SrRelic]
+    ornaments: list[SrRelic]
+    ranks: list[SrRank]
+    skills: list[SrSkill]
+    properties: list[SrPanelProperty]
 
 
-class HsrMysClient:
+class SrMysClient:
     """崩铁专属米游社客户端：组合通用 client，提供角色列表获取。"""
 
     def __init__(self, client: MysClient, store: SessionStore) -> None:
@@ -274,7 +274,7 @@ class HsrMysClient:
         self._client: MysClient = client
         self._store: SessionStore = store
 
-    def get_characters(self) -> list[HsrCharacter]:
+    def get_characters(self) -> list[SrCharacter]:
         """获取崩铁角色列表（过期短路 → 角色定位 → index → 冻结字段映射）。
 
         1. 过期短路：本地会话已标记过期时直接抛 ``MysSessionExpired``，
@@ -282,7 +282,7 @@ class HsrMysClient:
         2. 角色定位：读 ``role.json`` 缓存（server 取缓存值，不硬编码）；
            无缓存则走角色自动发现并写回缓存；
         3. 请求 ``hkrpg/api/index`` 取 ``data.avatar_list``；
-        4. 逐条映射 ``HsrCharacter``（缺失 avatar_list 按协议错误上抛，
+        4. 逐条映射 ``SrCharacter``（缺失 avatar_list 按协议错误上抛，
            不静默返回空列表掩盖响应形态漂移）。
 
         Raises:
@@ -305,7 +305,7 @@ class HsrMysClient:
         需带 ``need_wiki=true`` 才回 ``property_info`` 等五词典与全量明细数组
         （design.md §1 端点勘误），一次调用只打一次接口；响应原生
         ``data.property_info``（键为字符串）归一 int 后作动态词典透传给词条/
-        面板中文名查表（hsr_codes 三层查表契约）。``avatar_list`` 逐条富映射
+        面板中文名查表（sr_codes 三层查表契约）。``avatar_list`` 逐条富映射
         ``CharacterDetail``（契约 3）；缺失 avatar_list 按协议错误上抛，不
         静默返回空列表掩盖响应形态漂移。
 
@@ -369,9 +369,9 @@ class HsrMysClient:
 
 
 def _normalize_property_info(raw: object) -> dict[int, PropertyNameInfo]:
-    """响应 ``data.property_info`` → 键归一 int 的动态词典（hsr_codes 层 1 入参）。
+    """响应 ``data.property_info`` → 键归一 int 的动态词典（sr_codes 层 1 入参）。
 
-    实测响应键是字符串（如 ``"1"``），hsr_codes 契约要求调用侧归一；只投影
+    实测响应键是字符串（如 ``"1"``），sr_codes 契约要求调用侧归一；只投影
     显示名两字段（icon 等 URL 字段不进契约）；非 dict 词条与非整型键跳过而
     非抛错——词典局部异常不该中断整份角色明细映射（缺词典时查表自动退快照）。
     """
@@ -406,12 +406,12 @@ def _map_equip(equip_raw: object) -> ConeSummary | None:
     )
 
 
-def _map_character(avatar: dict) -> HsrCharacter:
+def _map_character(avatar: dict) -> SrCharacter:
     """单条 avatar_list 条目 → 冻结字段集映射（icon 等大字段不透传）。
 
     v2 中文字段在映射时经码表助手解析（miss 不抛异常，落兜底文案）。
     """
-    return HsrCharacter(
+    return SrCharacter(
         id=avatar.get('id'),
         name=avatar.get('name'),
         level=avatar.get('level'),
@@ -425,12 +425,12 @@ def _map_character(avatar: dict) -> HsrCharacter:
     )
 
 
-def _map_property_entry(item: dict, property_info: dict[int, PropertyNameInfo]) -> HsrPropertyEntry:
+def _map_property_entry(item: dict, property_info: dict[int, PropertyNameInfo]) -> SrPropertyEntry:
     """单条词条（relic ``main_property`` 与 ``properties[]`` 条目同构）→
-    HsrPropertyEntry。``times=0``（主词条无强化）照常透传 0；
+    SrPropertyEntry。``times=0``（主词条无强化）照常透传 0；
     ``is_preview`` 为内部形态字段不透传。
     """
-    return HsrPropertyEntry(
+    return SrPropertyEntry(
         name_cn=resolve_property_cn(item.get('property_type'), property_info),
         value=item.get('value'),
         times=item.get('times'),
@@ -439,16 +439,16 @@ def _map_property_entry(item: dict, property_info: dict[int, PropertyNameInfo]) 
 
 def _map_property_entry_list(
     raw: object, property_info: dict[int, PropertyNameInfo]
-) -> list[HsrPropertyEntry]:
-    """词条数组 → HsrPropertyEntry 列表（非 dict 条目跳过；字段缺失/形态漂移
+) -> list[SrPropertyEntry]:
+    """词条数组 → SrPropertyEntry 列表（非 dict 条目跳过；字段缺失/形态漂移
     退空列表而非抛错——词条层异常不应中断整份角色明细）。"""
     if not isinstance(raw, list):
         return []
     return [_map_property_entry(item, property_info) for item in raw if isinstance(item, dict)]
 
 
-def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> HsrRelic:
-    """单件遗器/饰品 → HsrRelic（relics/ornaments 两数组同构，共用本映射）。
+def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> SrRelic:
+    """单件遗器/饰品 → SrRelic（relics/ornaments 两数组同构，共用本映射）。
 
     主词条先过 ``validate_relic_main_affix`` 轻校验：False = 部位与词条码
     组合超出配置封闭集（数据异常哨兵），打 warning 但**不中断映射**——
@@ -461,10 +461,10 @@ def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> HsrRel
     main = _map_property_entry(main_raw if isinstance(main_raw, dict) else {}, property_info)
     if not validate_relic_main_affix(pos, main_pt):
         log.warning(
-            f'hsr_mys_client: 遗器主词条校验未通过（数据异常哨兵，映射继续）: '
+            f'sr_mys_client: 遗器主词条校验未通过（数据异常哨兵，映射继续）: '
             f'pos={pos} pt={main_pt}'
         )
-    return HsrRelic(
+    return SrRelic(
         name=item.get('name'),
         pos=pos,
         pos_cn=resolve_relic_pos_cn(pos),
@@ -477,19 +477,19 @@ def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> HsrRel
 
 def _map_relic_list(
     raw: object, property_info: dict[int, PropertyNameInfo]
-) -> list[HsrRelic]:
-    """遗器/饰品数组 → HsrRelic 列表（字段缺失/形态漂移退空列表）。"""
+) -> list[SrRelic]:
+    """遗器/饰品数组 → SrRelic 列表（字段缺失/形态漂移退空列表）。"""
     if not isinstance(raw, list):
         return []
     return [_map_relic(item, property_info) for item in raw if isinstance(item, dict)]
 
 
-def _map_rank(item: dict) -> HsrRank:
-    """单条星魂 → HsrRank（全量透传解锁状态不过滤；icon/id 不透传）。
+def _map_rank(item: dict) -> SrRank:
+    """单条星魂 → SrRank（全量透传解锁状态不过滤；icon/id 不透传）。
 
     ⚠️ pos 是星魂序号（1-6），禁查 RELIC_POS_CN（撞域纪律）。
     """
-    return HsrRank(
+    return SrRank(
         pos=item.get('pos'),
         name=item.get('name'),
         desc=item.get('desc'),
@@ -497,19 +497,19 @@ def _map_rank(item: dict) -> HsrRank:
     )
 
 
-def _map_rank_list(raw: object) -> list[HsrRank]:
-    """星魂数组 → HsrRank 列表（字段缺失/形态漂移退空列表）。"""
+def _map_rank_list(raw: object) -> list[SrRank]:
+    """星魂数组 → SrRank 列表（字段缺失/形态漂移退空列表）。"""
     if not isinstance(raw, list):
         return []
     return [_map_rank(item) for item in raw if isinstance(item, dict)]
 
 
-def _map_skill(item: dict) -> HsrSkill:
-    """单条行迹 → HsrSkill（name 取 ``remake`` 技能类型标签；point_id/
+def _map_skill(item: dict) -> SrSkill:
+    """单条行迹 → SrSkill（name 取 ``remake`` 技能类型标签；point_id/
     item_url/anchor 等内部形态字段不透传）。"""
     stages_raw = item.get('skill_stages')
     stages = [
-        HsrSkillStage(
+        SrSkillStage(
             name=stage.get('name'),
             desc=stage.get('desc'),
             level=stage.get('level'),
@@ -517,7 +517,7 @@ def _map_skill(item: dict) -> HsrSkill:
         for stage in (stages_raw if isinstance(stages_raw, list) else [])
         if isinstance(stage, dict)
     ]
-    return HsrSkill(
+    return SrSkill(
         name=item.get('remake'),
         level=item.get('level'),
         is_activated=item.get('is_activated'),
@@ -525,8 +525,8 @@ def _map_skill(item: dict) -> HsrSkill:
     )
 
 
-def _map_skill_list(raw: object) -> list[HsrSkill]:
-    """行迹数组 → HsrSkill 列表（字段缺失/形态漂移退空列表）。"""
+def _map_skill_list(raw: object) -> list[SrSkill]:
+    """行迹数组 → SrSkill 列表（字段缺失/形态漂移退空列表）。"""
     if not isinstance(raw, list):
         return []
     return [_map_skill(item) for item in raw if isinstance(item, dict)]
@@ -534,9 +534,9 @@ def _map_skill_list(raw: object) -> list[HsrSkill]:
 
 def _map_panel_property(
     item: dict, property_info: dict[int, PropertyNameInfo]
-) -> HsrPanelProperty:
-    """单条面板属性行 → HsrPanelProperty（base/add/final 字符串数值透传）。"""
-    return HsrPanelProperty(
+) -> SrPanelProperty:
+    """单条面板属性行 → SrPanelProperty（base/add/final 字符串数值透传）。"""
+    return SrPanelProperty(
         name_cn=resolve_property_cn(item.get('property_type'), property_info),
         base=item.get('base'),
         add=item.get('add'),
@@ -546,8 +546,8 @@ def _map_panel_property(
 
 def _map_panel_property_list(
     raw: object, property_info: dict[int, PropertyNameInfo]
-) -> list[HsrPanelProperty]:
-    """面板属性行数组 → HsrPanelProperty 列表（遍历渲染，不按固定行数假设；
+) -> list[SrPanelProperty]:
+    """面板属性行数组 → SrPanelProperty 列表（遍历渲染，不按固定行数假设；
     字段缺失/形态漂移退空列表）。"""
     if not isinstance(raw, list):
         return []
@@ -583,7 +583,7 @@ def _map_character_detail(
     )
 
 
-def character_to_dict(character: HsrCharacter | CharacterDetail) -> dict:
+def character_to_dict(character: SrCharacter | CharacterDetail) -> dict:
     """角色/角色明细转 JSON 可序列化 dict（MCP 信封 data 载荷用；嵌套
-    ConeSummary/HsrRelic 等冻结结构一并展开）。"""
+    ConeSummary/SrRelic 等冻结结构一并展开）。"""
     return asdict(character)

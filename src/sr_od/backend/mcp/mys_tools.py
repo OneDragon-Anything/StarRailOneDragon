@@ -59,7 +59,7 @@ from one_dragon.mys.mys_http import HttpSend, RequestsHttpSend
 from one_dragon.mys.mys_session import MysApiError, MysSessionExpired, SessionStore
 from one_dragon.utils import os_utils
 from sr_od.backend.backend_context import SrBackendContext
-from sr_od.mys.hsr_mys_client import HsrMysClient, character_to_dict
+from sr_od.mys.sr_mys_client import SrMysClient, character_to_dict
 
 #: 控制器状态（design.md §2.4：idle / awaiting_ticket 两态）
 STATE_IDLE: str = 'idle'
@@ -117,7 +117,7 @@ class MysAccessController:
         self._store: SessionStore = SessionStore(session_dir, threading.Lock())
         self._device: DeviceIdentity = DeviceIdentity(self._store, http_send)
         self._client: MysClient = MysClient(self._store, self._device, http_send)
-        self._hsr_client: HsrMysClient = HsrMysClient(self._client, self._store)
+        self._sr_client: SrMysClient = SrMysClient(self._client, self._store)
         self._verifier_factory: Callable[[], AigisVerifier] = verifier_factory
         # 控制器锁：三工具入口与票据回传回调全部经它串行化（design.md §2.4）；
         # SessionStore 内部另有同实例锁，两层锁保护对象不同（状态机 / 落盘）
@@ -207,7 +207,7 @@ class MysAccessController:
                     'verification_required', VERIFICATION_REQUIRED_MESSAGE, {'url': self._verify_url}
                 )
             try:
-                characters = self._hsr_client.get_characters()
+                characters = self._sr_client.get_characters()
             except MysSessionExpired:
                 # 过期处置（design.md §2.4/§2.6）：只打标记不清任何文件
                 self._store.mark_expired()
@@ -240,7 +240,7 @@ class MysAccessController:
                     'verification_required', VERIFICATION_REQUIRED_MESSAGE, {'url': self._verify_url}
                 )
             try:
-                details = self._hsr_client.get_characters_detail()
+                details = self._sr_client.get_characters_detail()
             except MysSessionExpired:
                 # 过期处置（design.md §2.4/§2.6）：只打标记不清任何文件
                 self._store.mark_expired()
