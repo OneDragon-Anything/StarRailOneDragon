@@ -480,7 +480,7 @@ class ActiveEffectInventory:
         return e.remaining_uses
 
     def consume_uses_up_to(self, spec_id: str, n: int) -> int:
-"""次数类余量批量递减(免费购买条目「接下来 N 次购买免费」;插入位置 =
+        """次数类余量批量递减(免费购买条目「接下来 N 次购买免费」;插入位置 =
         买牌上报单点,免战牌出战上报递减同族)。逐张语义的批量扣减:至
         n 张扣完或余量耗尽,返回实际覆盖张数 = min(n, 递减前余量)——
         k 张购买按张计(k 张 = k 次),部分免费 = 免余量张、余张照付。
@@ -527,7 +527,7 @@ class ActiveEffectInventory:
 
     def set_xp_window_anchor(self, spec_id: str,
                              pos: tuple[int, int]) -> bool:
-"""条件窗口达成位伴生基准写入(一次性:已设置拒绝重写;载体申报 =
+        """条件窗口达成位伴生基准写入(一次性:已设置拒绝重写;载体申报 =
         ``ActiveEffect.anchor_pos`` 字段注)。
 
         条目在场且 anchor_pos 为 None → 写入返回 True;条目不在场或已设置
