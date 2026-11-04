@@ -132,6 +132,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_MERGE_GRANTS,
     STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_ORE_OPEN_EFFECTS,
+    STRATEGY_PLANE_START_GRANTS,
     STRATEGY_RANDOM_GRANTS,
     STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
@@ -2839,6 +2840,44 @@ _NODE_REWRITE_WORD_IMPLS: dict[
 ] = {
     'remaining_non_boss_to_reward': _remaining_non_boss_to_reward,
 }
+
+
+def check_strategy_plane_start_grants(gs: GameState, *,
+                                      node_pos: NodePos,
+                                      sig: ChannelSig,
+                                      ) -> list[str]:
+    """策略卡位面开始发放检查(「每个位面开始时,获得1个【星徽秘典】」
+    触发器单一源,终身学习 id 330901 首例;唯一调用点 = sim 位面开局
+    插入位置(discharge_due_item_opens 后邻位,窗幂等守卫内)——live
+    零写观察覆盖:实机发放由游戏自算自演,bot 经既有道具观察链承接,
+    偏离留证不自动补写)。
+
+    窗谓词 = 位面首节点窗(node_pos.r == 1,NodePos.r = 位面内序位
+    1 基);持卡谓词 = ``active_strategies`` ∩ STRATEGY_PLANE_START_GRANTS
+    键集(表外卡一律无条目,禁从效果原文自动猜装)。两谓词合成后按
+    count 逐件 ``gain_bench_item(rand=False)`` 入席(占席道具通用溢出
+    卡,席满溢出 overflow 语义由落席原语承载);零采样零新域,效果串
+    ``plane_start_grant:<item>(placed=<bool>)`` 逐件枚。
+    """
+    held = [n for n in gs.active_strategies.value or ()
+            if n in STRATEGY_PLANE_START_GRANTS]
+    if not held:
+        return []
+    if node_pos[1] != 1:
+        return []
+    from sr_od.application.currency_war.kernel.cw_gain_chain import (
+        gain_bench_item,
+    )
+    steps: list[str] = []
+    for name in held:
+        grant = STRATEGY_PLANE_START_GRANTS[name]
+        for _ in range(grant.count):
+            placed = gain_bench_item(gs, grant.item, rand=False, sig=sig,
+                                     evidence='plane_start_grant',
+                                     producer=GAIN_CHAIN_PRODUCER)
+            steps.append(
+                f'plane_start_grant:{grant.item}(placed={placed})')
+    return steps
 
 
 def check_strategy_node_rewrite(gs: GameState, *, pos: NodePos,

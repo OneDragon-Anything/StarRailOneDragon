@@ -115,6 +115,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_level_grants,
     check_strategy_node_char_grants,
     check_strategy_node_rewrite,
+    check_strategy_plane_start_grants,
     check_strategy_reward_ore_grants,
     check_strategy_win_gold_grants,
     consume_strategy_interest_topup,
@@ -122,6 +123,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     discharge_due_item_opens,
     discharge_due_strategy_grants,
     discharge_strategy_bond_battle_grants,
+    gain_bench_item,
     gain_character,
     gain_equipment,
     gain_invest_env,
@@ -170,6 +172,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
     STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION,
     STRATEGY_NODE_REWRITE_TRIGGERS,
+    STRATEGY_PLANE_START_GRANTS,
     STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0,
     STRATEGY_RANDOM_GRANTS,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
@@ -685,6 +688,47 @@ def apply_strategy_plane_refire_gold(gs: GameState,
                    sig=obs_sig(group_id='sim:strategy'))
         applied += 1
     return applied
+
+
+def apply_strategy_plane_refire_item(gs: GameState,
+                                     picked: Sequence[str]) -> int:
+    """策略选卡落地拍位面段补发占席道具入席(通用通道,辖域 = 注册表
+    STRATEGY_PLANE_START_GRANTS 全体,字段分派非单卡特判;用户裁定
+    2026-11-01 族级确定的「每个位面开始时」族中途拿卡补发·当前位面
+    全额,裁定注释点名终身学习共享,与 XP 支
+    :func:`apply_strategy_plane_refire_xp` / 金支
+    :func:`apply_strategy_plane_refire_gold` 同判同形)。
+
+    为什么:位面段发放(状态副本落席实现分支)挂 sim 位面首节点窗
+    (check_strategy_plane_start_grants 位面开局挂点),只对登记后到达
+    的 (plane,1) 窗发放,拿卡晚于位面开始时当前位面段对持卡局系统性
+    缺失——live 同拍零写(游戏自发,道具入栏 = 观察覆盖),sim 不补即
+    持卡局备战席轨线失真。已开始判据与 XP/金支同口径:策略卡登记恒
+    发生于节点窗内,进窗推进已在 (plane,1) 消费过位面开始边界 →
+    ``gs.node`` 在场即已开始,None = 保守零补发(禁猜)。发放 = 逐卡
+    直读 STRATEGY_PLANE_START_GRANTS 现值按 count 逐件
+    gain_bench_item(rand=False),evidence 按
+    ``bench:strategy_plane_refire:<卡名>`` 与常规位面开始笔分账,sig
+    同组。返回本批实际入席件数。
+    """
+    if gs.node.value is None:
+        return 0
+    placed = 0
+    for name in picked:
+        canon = normalize_invest_name(str(name or ''))
+        grant = STRATEGY_PLANE_START_GRANTS.get(canon)
+        if grant is None:
+            continue
+        for _ in range(grant.count):
+            ok = gain_bench_item(gs, grant.item, rand=False,
+                                 sig=logic_sig(group_id='sim:strategy'),
+                                 evidence=sim_evidence(
+                                     f'bench:strategy_plane_refire:{canon}'))
+            if ok:
+                placed += 1
+    return placed
+
+
 
 
 def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
@@ -2832,6 +2876,11 @@ class SimBackend:
                 self._apply_strategy_shop_rewrite_gain(new_picked)
                 if self.gs.node.value is not None:
                     apply_strategy_plane_refire_gold(self.gs, new_picked)
+                    # 位面段占席道具补发(终身学习首例;用户裁定 2026-11-01 族级
+                    # 「位面段补发·当前位面全额」裁定注释点名终身学习共享,与
+                    # XP/金支同判同形;gs.node 在场判据,None 保守零补发;item 域
+                    # 走 gain_bench_item(rand=False),evidence 沿族形分账禁静默合并)
+                    apply_strategy_plane_refire_item(self.gs, new_picked)
                     self._apply_strategy_shop_rewrite_refire(new_picked)
         # 拿卡拍立即效果条目(delay_nodes=0 承载,白银投资首例):队列存在
         # 本拍刚拿卡的 delay-0 条目(拿卡同拍登记,remaining 恒 0 未递减;
@@ -3364,6 +3413,12 @@ class SimBackend:
         # sig 组名沿 sim:env 与定时道具发放同窗。
         discharge_due_item_opens(self.gs, rand=False,
                                  sig=logic_sig('sim:env'))
+        # 策略位面开始发放检查(终身学习首例:「每个位面开始时,获得1个
+        # 【星徽秘典】」族;位面段发放 = 状态副本落席,同收尾点继承窗口
+        # 幂等守卫重放不双发;窗谓词 r==1 + 持卡谓词合成,kernel 侧零新
+        # 域;确定发放 rand=False 沿族)
+        check_strategy_plane_start_grants(self.gs, node_pos=(plane, r),
+                                          sig=logic_sig('sim:strategy'))
         # 策略延时发放到点入栏(策略卡「N个节点后获得发放物」族,人才
         # 激励首例;与 offer 呈现效果条目并列独立域——本效果条目产出 = 状态副本发放写):
         # 同一收尾点继承窗口幂等守卫(重放不双发);递减点 = kernel 节点

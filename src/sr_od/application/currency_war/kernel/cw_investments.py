@@ -784,8 +784,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '固定理财+': EconomyEffect(xp_instant=6, xp_per_plane=6,
                               free_refresh_burst=3, free_refresh_per_plane=3),
     # 复印件(330301):「获得一个已经拥有的星徽的复制，获得24点经验」
-    # 即时段——XP 腿骑 T-87 通道(apply_strategy_pick_xp 字段分派);复制
-    # 装备腿不入本表(效果体微工厂 = 已持有星徽子集池采样,归 PICK 效果
+    # 即时段——XP 效果条目走 T-87 通道(apply_strategy_pick_xp 字段分派);复制
+    # 装备效果条目不入本表(效果体微工厂 = 已持有星徽子集池采样,归 PICK 效果
     # 体注册,条目参数唯一出现点)。
     '复印件': EconomyEffect(xp_instant=24),
     # ↑ 「现在以及每个位面开始时,获得6经验值和3次免费刷新」两条效果条目分段
@@ -2946,7 +2946,8 @@ def env_faction_scope(env_name: str) -> frozenset[str]:
       契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);
     - 通道派生分支(统一阵容评分迭代起替换旧亲和分支):
       ``cw_invest_channels.env_strong_lines`` 全档命中线(羁绊 ∈ 目标线
-      form_tiers/or_reqs;flex 降档弱关联线不入——护栏问「为谁服务」,
+      羁绊要求档 0 键/or_reqs;加分层(档 ≥1)与 flex 降档弱关联线不入
+      ——护栏问「为谁服务」,
       弱关联不构成服务面)取各线 Comp.factions **全集**入集——副阵营随线
       带入(命运圣杯邀请命中双王圣杯 → 指向集 = {命运圣杯, 能量}:能量
       组件卡可服务双王线的能量副羁绊,判兼容是语义本意;概念股/邀请/
@@ -4032,8 +4033,8 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 非运行时发放,零实现义务);30 本金/取款/存款/位面首领取款分支
     # PENDING 维持待实机证实;尾句彩蛋零建模。
     '狸财经狸': GiftGrant(chars_immediate=('狸职狸狸',)),
-    # 优势火力论:箱腿直读「获得1个【简易武装箱】」(对账 id 330101;特权
-    # 赋予卡使用面七锚在册零改动;装备腿归 PICK 组合行承载,条目参数唯一
+    # 优势火力论:箱效果条目直读「获得1个【简易武装箱】」(对账 id 330101;特权
+    # 赋予卡使用面七处引用已登记零改动;装备效果条目归 PICK 组合行承载,条目参数唯一
     # 出现点纪律)。
     '优势火力论': GiftGrant(items_immediate=('简易武装箱',)),
     # 大变活狸:箱条目直读「获得2个【星徽秘典】」(对账 id 304301;句①「最
@@ -4041,6 +4042,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 用户裁定 2026-10-15+随机资产面 §6.3/§6.4+触发词缺失判读申报制;
     # sim 结构不可达],知识域判读零行为分叉)。
     '大变活狸': GiftGrant(items_immediate=('星徽秘典', '星徽秘典')),
+    # 终身学习(330901):箱腿直读「获得1个【星徽秘典】」(即时腿;延时
+    # 腿归 STRATEGY_PLANE_START_GRANTS 位面开始专表,双表分治;条目参数
+    # 唯一出现点纪律,装备腿/延时腿均不在本条目重复登记)。
+    '终身学习': GiftGrant(items_immediate=('星徽秘典',)),
 }
 
 # ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
@@ -4051,12 +4056,11 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
 # 2026-10-24:全量显式制,静默落错身份的治理劣于响亮缺登记)。「全量」
 # 口径 = 授予通道占席道具(键集闭合 = 两张授予表 items_* 通道道具名并集;
 # 2026-10-28 治理后闭合校验移除,键集一致性归数据性质测试与评审,漏登
-# 后果 = 落席直查 KeyError 响亮);观察专属来源(星徽秘典,tome)不经授予
-# 通道,不入本表不入词表(豁免,名字一致性由识别双渲染注册表承载)。
+# 后果 = 落席直查 KeyError 响亮)。
 # 词表 BENCH_ITEM_NAMES 只答「是不是占席道具」;本表答「是哪种」并兼任
 # BenchSlot 身份轴(item)与类别轴(kind)的一致性权威:授予通道道具类槽
 # 构造一律 item=<名> 且 kind=BENCH_ITEM_KINDS[<名>]。kind 合法值 =
-# 'supply_box' | 'bookcard'。消费方:
+# 'supply_box' | 'bookcard' | 'tome'。消费方:
 # - cw_gain_chain._place_bench_item 落席本体/_build_pool 溢出占位:道具
 #   身份禁造 Unit 假身份进合成素材组,槽件带名;
 # - cw_action_report.sell_bench 溢出分支:卖牌腾槽入位按映射落带名槽件。
@@ -4540,8 +4544,8 @@ STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION: str = \
 
 # ===== 策略卡死亡救援触发发放注册表(藏一手;白名单制)=====
 # 「触发点各不相同,各建各表」纪律的承接表:与 STRATEGY_HP_LOSS_GRANTS
-# 损血档位**周期型**触发器分表——本表 = 致死干预**一次性**触发器(救援
-# 闩 = cw_game_state.strategy_death_save_used,每局首次致死触发后恒置),
+# 损血档位**周期型**触发器分表——本表 = 致死干预**一次性**触发器(一次性
+# 标志位 = cw_game_state.strategy_death_save_used,每局首次致死触发后恒置),
 # 触发时点/状态形状/载荷三重不同构,禁并入。键 = 策略规范名,值 =
 # (救援后生命值, 经验, 金币)——载荷全 desc 明写,数值单一源在本表,
 # STRATEGY_ECONOMY 注册行禁复活即时双腿(防双源,见构建校验②)。
@@ -6083,11 +6087,74 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 两腿分治:即时 1 箱由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励
     # 同形),延时腿 = 逐节点错峰 5 节拍元组形首例(delay_nodes 元组,
     # 逐节点开始时各获 1 箱——「接下来…个节点开始时」逐节点语义沿
-    # 分期金判例 + 「节点开始时」同形 4 张卡面;count 不并用防拍内重复)。
+    # 分期金先例 + 「节点开始时」同形 4 张卡面;count 不并用防拍内重复)。
     '军备供应链': StrategyDelayedGrant(id='330501',
     delay_nodes=(1, 2, 3, 4, 5),
     item='简易武装箱'),
 }
+
+
+@dataclass(frozen=True)
+class StrategyPlaneStartGrant:
+    """策略卡「每个位面开始时,获得发放物」登记结构(位面开始发放
+    通道专属登记表;字段语义 = 卡面效果原文直读):
+
+    - item: 发放物名(∈ BENCH_ITEM_NAMES 占席道具域,消费原语逐次查
+    词表分道);
+    - count: 单次入队条目数(default 1,先亏后盈 count 字段同族口径)。
+
+    立专表辨析:GiftGrant items_scheduled = 绝对节点键域不符;SDG 表
+    = 相对节拍(拿卡后 N 节点)不符——位面开始 = 周期性时点(每个位面
+    首节点窗),新维度(位面开始 + 具名发放物)专属专表。
+    """
+    id: str
+    item: str
+    count: int = 1
+
+
+STRATEGY_PLANE_START_GRANTS: dict[str, StrategyPlaneStartGrant] = {
+    # 终身学习(效果原文「获得1个【星徽秘典】。每个位面开始时,获得1个
+    # 【星徽秘典】。」直读;效果原文对账 id = cw_invest_data
+    # .PLAZA_AUGMENTS 同 id 行;即时条目「获得1个【星徽秘典】」由
+    # STRATEGY_GRANTS 工厂同批注册,不入本表;位面段发放 = 用户裁定
+    # 2026-11-01 位面段补发·当前位面全额族级口径(裁定注释点名终身
+    # 学习共享):中途拿卡所在位面(已开始)位面段登记拍全额补发——
+    # 承载 = sim 选卡拍补发腿(gs.node 在场判据);常规面 = 每位面首
+    # 节点窗(check_strategy_plane_start_grants,r==1 窗谓词);席满
+    # 溢出走占席道具通用溢出卡)
+    '终身学习': StrategyPlaneStartGrant(id='330901', item='星徽秘典'),
+}
+
+
+def _validate_strategy_plane_start_grants() -> None:
+    """STRATEGY_PLANE_START_GRANTS 构建校验(import 即炸;治理口径
+    = 2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本
+    变更独立触发的漂移哨留」——本表落三哨:①孤儿键 ②id 双匹配
+    ③item 词表漂移;count 值域哨删(笔误类),对账归表域测试):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除
+    后静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id;③
+    发放物名漂移:item ∈ EQUIPMENTS ∪ BENCH_ITEM_NAMES(两词表均
+    游戏数据派生,版本改名/移除可独立触发)。
+    """
+    orphans = [n for n in STRATEGY_PLANE_START_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_PLANE_START_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _grant in STRATEGY_PLANE_START_GRANTS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_grant.id}':
+            raise ValueError(
+                f"STRATEGY_PLANE_START_GRANTS id 漂移:{_name!r} 登记 id="
+                f"{_grant.id} base={_base.source}")
+        if _grant.item not in EQUIPMENTS \
+                and _grant.item not in BENCH_ITEM_NAMES:
+            raise ValueError(
+                f"STRATEGY_PLANE_START_GRANTS[{_name!r}] 发放物名漂移: {_grant.item!r} ∉ EQUIPMENTS ∪ BENCH_ITEM_NAMES")
+
+
+_validate_strategy_plane_start_grants()
 
 
 def _validate_strategy_delayed_grants() -> None:
