@@ -109,7 +109,7 @@ class DecisionV2Registry:
 
     # ===== S5 统一卖件弱序(迁移审计)=====
     #: [22]③ 再遇窗口表(费级→再遇期望轮数)。实测基准两个:1费 11
-    #: (7-15 中值)/ 5费 120(60-180 中值,7-8 级窗口);2-4费为锚点
+    #: (7-15 中值)/ 5费 120(60-180 中值,7-8 级窗口);2-4费为基准点
     #: 间的**拟合经验值**——5费基准跨度 60-180 使中段既无实测也无可信
     #: 参数化形式(非线性),标定接口=sim 校准域。消费方
     #: sell_priority_key。
@@ -161,7 +161,7 @@ class DecisionV2Registry:
     #: P1-a 末窗支出降格总开关(True=承接门定向投资授权在预算不足局
     #: 降格为减损保板;依据=`w516_p2_conversion/` 排除证据 HG5/IF30——β 弱通道下战力
     #: 投资换不回 15-25 血/败,方向性结论不依赖 β 量级,非「待验证」
-    #: 悬置开关;False=A/B 对照分支/回退锚,两态注入面)。
+    #: 悬置开关;False=A/B 对照分支/回退基准,两态注入面)。
     p1_exit_downgrade_enabled: bool = True
 
     # ===== 概率校准的刷新预算(提案面=.debug/temp/currency_war/
@@ -187,12 +187,12 @@ class DecisionV2Registry:
     refresh_find_quantile: float = 0.8
 
     # ===== 血预算停手·终止分支(P1「止损转支出」;设计  v2 §0/§2)=====
-    #: 总开关:True=数学已定案恒接入调用口径(金零值引理+EV 对比式:守钱世界
+    #: 总开关:True=数学已定案恒接入调用口径(金零值引理+EV 对比式:守钱局面
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
-    #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照分支/回退锚,
+    #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照分支/回退基准,
     #: 两态注入面)。
     terminal_release_enabled: bool = True
-    #: 守钱世界存活概率上界释放阈 ε(S0=Π 单发穿透场条件胜率 ≤ ε →
+    #: 守钱局面存活概率上界释放阈 ε(S0=Π 单发穿透场条件胜率 ≤ ε →
     #: 终止分支触发)。默认 0.03 = 设计  v2 §2.2 EV 对比式反解的
     #: 最悲观角 ε*=ΔS·V_live/(g+ΔG)≈0.02×300/212≈0.0283 的诚实带
     #: 下沿档(诚实带 [0.03,0.10],超保底部分≈0.36 金当量/帧,显式
@@ -273,7 +273,7 @@ class DecisionV2Registry:
     #: 单列)——与胜率相乘不双计(math_proofs P15 口径命题);误用
     #: 无条件均值拟合(胜态混在均值里)会系统性低估。来源=`w324_coarse_battle/` 冻结
     #: 语料 417 条拟合产物 two_state_model(粗模型定稿、语料快照复现
-    #: 锚与对抗审计记录);encounter=截距 24.32 +
+    #: 基准与对抗审计记录);encounter=截距 24.32 +
     #: 斜率(−4.53)×成型档(斜率 SE 2.41 显著);boss 斜率 CI 含 0 →
     #: 退常数 26.71(背测 sim −22.61 vs obs −25.82)。
     streak_floor_loss_damage: dict[str, tuple[float, float]] = field(
@@ -521,7 +521,7 @@ class DecisionV2Registry:
     # 已定案清理)。设计规格与 A/B 兑现裁决(v3 规格节与其谱系
     # 记录见该 ADR;A/B 兑换统一裁决表(V-B4;锚定义=规格 §5.3,冲突处以本表为准):
     # | R1 | star≥2 升≥MDE ∧ 进场金/出口质量/经济卫生副基准均不劣 → 实现+ADR+三同步 |
-    # | R2 | star≥2 持平(<MDE)∧ seg 真拦残留≤0.15 ∧ 其余锚不劣 → 实现
+    # | R2 | star≥2 持平(<MDE)∧ seg 真拦残留≤0.15 ∧ 其余基准不劣 → 实现
     #      (「有效收敛」;P4 张力=收益主体在 sim 不可观测的期权/对手面,
     #      ADR Considered Options 必含张力节+向用户呈报观测极限) |
     # | R3 | star≥2 降超噪声带 ∨ seg 真拦残留>0.15 → 不合入,回炉
@@ -647,7 +647,7 @@ class DecisionV2Registry:
     #: 15.50,标定叙述见 p2_node_loss_table 段头):reward 零损档同上表(奖励/补给零损照走)。
     p2_cond_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 12.77, 'encounter': 13.33, 'boss': 15.50, 'reward': 0.0})
-    #: P2 损血标定家族版本披露锚(第三维,与 cw_economy 收入口径版本
+    #: P2 损血标定家族版本披露基准(第三维,与 cw_economy 收入口径版本
     #: 相互独立):任一 P2 损血
     #: 标定值/消费口径变动(p2_node_loss_table / p2_cond_loss_table /
     #: p_win_p2_by_rung / 两态递推形态)必须递增并随批重锁。sim 台账
@@ -763,12 +763,12 @@ class DecisionV2Registry:
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
     #: 误判的观察期)。简报词缀在位面切换即读得(cw_loop 位面简报分支),
     #: 无窗口误判实证,默认 1=判据全程在管辖内;如实机判读发现位面首帧词缀滞后,
-    #: 经判读锚点标定后上调(标定通道,非拍死值)。
+    #: 经判读基准标定后上调(标定通道,非人为定死值)。
     line_env_lock_min_round: int = 1
     #: H2②:库藏生锈在场(cw_comps.RUST_AFFIX_NAME ∈ enemy_affixes)时豁免
     #: opening/过渡 hold——每件 owned 滞留=敌 +3%伤/-4%减伤(competitors.md:45),
     #: 滞留的边际代价随件数单调上升,压倒「攒给成型核心」的机会成本。
-    #: 行为无条件化(恒 True);单帧测试已闭环、实机锚点预注册
+    #: 行为无条件化(恒 True);单帧测试已闭环、实机基准点预注册
     #: (w607_affix_consumption/AB_REPORT.md 开分支建议节)。
     rust_wear_release_enabled: bool = True
     #: H3:opening hold(P1 r≤2)收窄——仅「当前节点非战斗类」才 hold

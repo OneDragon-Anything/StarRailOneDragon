@@ -135,7 +135,7 @@ STAR_GRANT_KEY_PREFIX: str = 'star_grant#'
 #: (env, 键) 形状不变)。
 BOSS_NODE_KEY_PREFIX: str = 'boss#'
 
-#: 持续伤害契约条件分支的注册环境名(条件门与锚键分支共用注册名;字面量
+#: 持续伤害契约条件分支的注册环境名(条件门与契约键分支共用注册名;字面量
 #: 先例 = _RICH_DIAMOND 同款引用)。本卡**不入五张条件发放登记表**——
 #: 建模形状不同(计数源无状态副本真值生产点 → 猜测写+证实,非条件检查型;
 #: 反向锁测试钉住防误登记)。
@@ -150,7 +150,7 @@ _DOT_CHAR: str = '黑天鹅'
 #: sim 证实 = 进度键计数达阈值)。
 DOT_CONFIRM_KEY: str = 'dot_confirm'
 
-#: done 域锚键前缀:'dot_anchor#<位面>-<轮>'(纯登记件**非门控**,写入端
+#: done 域契约键前缀:'dot_anchor#<位面>-<轮>'(纯登记件**非门控**,写入端
 #: = cw_gain_chain.on_env_gained 获得刻;开局三选一获取时 sim 节点尚未
 #: 进窗不写 = 预期形态,缺记不影响猜测写/计数/证实任何一步——键形态
 #: 先例 = boss#<位面>-<轮>,载荷键登记先例 = star_grant#)。
@@ -195,7 +195,7 @@ DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 BOND_TIER_KEY_PREFIX: str = 'bond_tier_'
 
 #: sim 条件分支证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
-#: 追加证实;出处 = 用户用户决定值 2026-10-17〔单位 = 战斗结算次数,轮锚
+#: 追加证实;出处 = 用户决定值 2026-10-17〔单位 = 战斗结算次数,轮基准
 #: 弃用〕,**非机制推导**——180 计数在 sim 无状态副本真值生产点,8 是该阈值
 #: 的代理口径;边界 = 样本积累后重估常量/单位均须用户用户决定,计数单一源
 #: = done 域 dot_battle# 键数)。
@@ -311,11 +311,11 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
        - 金:``gs.write_logic(gs.gold, 现值 + 金)``;
        - 装备(仅装备入账分支非 None):``gs.write_logic_rand(gs.equips,
          现值尾部追加装备名)``——装备库存顺序是游戏侧决定,模型无
-         顺序观察锚 → 随机态通道(宝钻同族先例);
+         顺序观察确认 → 随机态通道(宝钻同族先例);
        - done:``gs.write_logic(gs.env_grants_done,现值 +
          ((env, REFRESH_THRESHOLD_KEY)))``;
        返回被发装备名(装备入账分支 None 的金-only 发放也返回 None——返回值
-       仅日志面消费,员工投影仪无宝钻式世界数值回调,无行为分支)。
+       仅日志面消费,员工投影仪无宝钻式状态副本数值回调,无行为分支)。
 
     - ``sig`` = 三笔共用的渠道签名,必须 logic_action 族(obs 族进
       write_logic_rand 即炸渠道族校验)。唯一调用方传入上报函数内部的
@@ -1046,7 +1046,7 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
     覆盖契约无声抹除,下次结算重写 = 自愈循环)。live 无定时保底
     (v2-2 裁定:证实只认备战观察,猜测写无时间/次数上限)。
 
-    锚键 ``dot_anchor#<位面>-<轮>`` 纯登记件**非门控**,写入端 =
+    契约键 ``dot_anchor#<位面>-<轮>`` 纯登记件**非门控**,写入端 =
     cw_gain_chain.on_env_gained 获得刻(开局三选一获取时 node 未进窗
     不写 = 预期形态,缺记不影响本函数任何一步)。
 
@@ -1103,7 +1103,7 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
     """宝钻获得回调(状态副本数值面联动;调用点 = sim 状态副本发放路径族——
     深井连胜发放(sim 结算段接入调用)、策略卡到级装备发放(sim advance 双点
-    接入调用 + 跳过记账段镜像共三点)、及策略卡拿卡发放(选卡落地拍拿卡腿,
+    接入调用 + 跳过记账段镜像共三点)、及策略卡拿卡发放(选卡落地拍拿卡条目,
     这么大的钻石 = 用户裁定 2026-11-02 读法 B、控制规模 = 帽改写卡随批
     归一同支),各路共用本回调零改动;
     **supply 补给宝钻不采纳**——钻类型未建模,归连胜路径覆盖;
@@ -1112,7 +1112,7 @@ def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
     - ``equip_name != '财富宝钻'`` → 直接返回(cap 加成语义只属财富
       宝钻;红/蓝钻是补给视觉族同框,无 cap 语义——依据 cw_obs_core
       ``DIAMOND_EQUIP_NAMES`` 仅视觉判定族);
-    - 三写全部 :meth:`GameState.observe`(sim 世界事实 = 观察通道,
+    - 三写全部 :meth:`GameState.observe`(sim 状态副本事实 = 观察通道,
       禁 logic 写——与晶矿 done 台账的直写不同,那是登记事实,这是
       状态副本数值面),sig 由本函数内部自构 obs 族(入参不传 sig——
       observe 渠道校验只收 obs 族,复用调用方 logic 族入参首笔即炸;
@@ -1158,7 +1158,7 @@ def grant_env_bond_tier(gs: GameState, env: str, bond: str,
     - 零 rng:追加位置(库存尾部)确定;
     - 递归安全:发放两笔写(equips/env_grants_done)均非 deployed 行域,
       不触发 deployed 分支回调,无再入;
-    - 返回 None、无返回值消费面(以太钻头非财富宝钻,无世界数值回调,
+    - 返回 None、无返回值消费面(以太钻头非财富宝钻,无状态副本数值回调,
       零联动——投影仪先例 = 发放返回值仅日志面消费)。
     """
     base = gs.equips.value
