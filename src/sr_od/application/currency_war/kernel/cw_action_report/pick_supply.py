@@ -39,11 +39,12 @@
 广播随本动作单轨切换摘除。
 
 **选卡时点检查插入位置(R-choice)**:三个 applied 出口前统一调
-``cw_effect_inventory.check_strategy_take_all_supply``(全都要族
-「下 N 个补给阶段选择后」发放条目,银配额 1/金配额 2)——选择确认动作的
-kernel 唯一入口,live 真选/兜底两态均经此;选择事件即耗 1 格配额(事件消耗制,
-含内容全未知兜底轮),发放源 = 场字段 ``unchosen_supply``(检查函数内读,
-真选分支确认窗已同窗写入本阶段快照)。未持卡局该检查零写零一次性标志位,全链零变化。
+``cw_effect_inventory.check_strategy_take_all_supply``(全都要族发放
+条目:银配额 1/金配额 2/彩 recurring 无配额)——选择确认动作的
+kernel 唯一入口,live 真选/兜底两态均经此;选择事件即耗 1 格配额(int
+配额卡,事件消耗制,含内容全未知兜底轮;彩恒放行零闩格),发放源 = 场
+字段 ``unchosen_supply``(检查函数内读,真选分支确认窗已同窗写入本阶段
+快照)。未持卡局该检查零写零一次性标志位,全链零变化。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
 __init__`` docstring)。本包 → 状态容器单向依赖。

@@ -1178,7 +1178,7 @@ env_grants_done——本队列不并入任何域版本 bump,他域本体未变)�
 计 1)。复合键两形:``first_buy_xp#<费用>``(首购经验分支费用粒度一次性标志位,一卡
 五费用桶各一发)与 ``take_all#<卡名>#<已耗事件序>``(全都要族配额一次性标志位,
 每耗 1 格追加一键,判定 = 前缀计数 < 配额 map `_TAKE_ALL_SUPPLY_QUOTA`
-银 1/金 2——布尔形会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
+(int 卡:银 1/金 2;彩 = None = recurring 无配额域恒放行零闩格)——布尔形会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
 统一计数形;域单调追加契约保持,判定不依赖序号取值)。与 env 通道的条件
 一次性标志位 `env_grants_done`(元素 (env, 条件键) 键对域,§3.5.5)**通道分立**:
 env 按环境名键、策略卡按持卡集语义,键形与语义两异,混载 = 语义污染。
@@ -2583,11 +2583,11 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 `STRATEGY_EFFECTS` 条目 id 101901,payload `capacity_limit=3` + 到期装备件数
 `expiry_simple_equips=3`,容量窗经 `project_effect_capacity` 桥,到期发放经
 `apply_effect_expiry_grants` 分支,2026-10-30 首批条目入册);补给屏列数修饰:
-全都要·银/金(`BattlefieldEffect.supply_option_delta=-2` 声明载体——live 读链
+全都要·银/金/彩(`BattlefieldEffect.supply_option_delta=-2` 声明载体——live 读链
 按实屏识别列数跟随禁写死,字段零消费插入位置,sim 列数面零建模 = M18 简化域
 上游缺口;`STRATEGY_EFFECTS` 每卡双条目异键登记〔canon 键 = 发放分支 +
 申报键 `'<规范名>#supply_delta'` = 本分支〕,银 2026-10-31 首条入册、金
-2026-11-02 第二实例);具名装备授予:
+2026-11-02 第二实例、彩 2026-11-05 第三实例〔族收官〕);具名装备授予:
 全员晋升(获得 2 个【拆装扳手】——装备库存精确增量,PICK_INVEST_EFFECTS
 效果体分支 = 具名装备授予工厂经 `gain_equipment(rand=False)` 直写 gs.equips,
 精密金面前置 fail-closed 申报在工厂,§3.2.15 获得链写入方段/§5.3 全员晋升行);

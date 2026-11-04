@@ -2027,7 +2027,9 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # 族卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS,姊妹卡同构唯配额差异):
 # 银(id 131001)「本局游戏中，补给阶段的可选项减少2个。下1个补给阶段选择
 # 后，额外获得所有未选择的角色及装备。」/ 金(id 203501)「……下2个补给
-# 阶段选择后……」——「下 N 个」N = 配额格数(银 1/金 2,单一源 =
+# 阶段选择后……」/ 彩(id 331701)「……补给阶段选择后……」——「下 N 个」
+# N = 配额格数(银 1/金 2;彩卡面无限定词 = recurring 每次选择后无配额
+# 域),单一源 =
 # :data:`_TAKE_ALL_SUPPLY_QUOTA`)。各卡两句两条效果条目分治,登记载体 = 每卡两条
 # EffectSpec(cw_investments.STRATEGY_EFFECTS:canon 键归发放条目,申报键
 # ``'<规范名>#supply_delta'`` 归列数修饰条目,申报键约定权威版本 = 该表全都要·银
@@ -2052,8 +2054,9 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # first_buy_xp#<费用> 费用桶复合键,域单调追加契约保持——判定只数前缀,
 # 不依赖序号取值)。**禁布尔形(键存在 = 已耗)与计数形并存同域**:配额 >1
 # 时布尔判定把部分耗尽(已耗 1 格、尚剩格)误判耗尽 = 静默漏发,族内统一
-# 计数形;全都要·彩(id 331701,recurring 每次选择后)后继 = 配额取无界
-# 语义随其批对表。双持(银+金)= 同一选择事件两卡各耗各的 1 格、各发各的
+# 计数形;全都要·彩(id 331701,recurring 每次选择后)= None 配额卡——
+# recurring 无配额域,恒放行零闩格零 done 键(封账制只对 int 配额卡存在)。
+# 双持(银+金)= 同一选择事件两卡各耗各的 1 格、各发各的
 # 未选列(发放域内容同源,重复发放 = 卡面叠加语义零判重闸,姊妹双持族先例)。
 # 与打捞人才库族共存边界(共享场字段 ``unchosen_supply`` 双消费者):本族
 # R-choice 先消费清空 → 打捞条目下一补给进入 R-entry 后到早退零写——两卡同持
@@ -2066,13 +2069,18 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 _TAKE_ALL_LATCH_PREFIX: str = 'take_all#'
 
 #: 持卡判定与配额单一源(值形 map 泛化,先例 = 打捞族名单集 tuple 同位):
-#: 键 = 卡规范名,值 = 卡面「下 N 个补给阶段选择后」的配额格数——全都要·银
-#:(id 131001)= 1、全都要·金(id 203501)= 2。判定与配额读取合一防两抄本
+#: 键 = 卡规范名,值两形——int = 卡面「下 N 个补给阶段选择后」的配额格数
+#:(全都要·银 id 131001 = 1、全都要·金 id 203501 = 2),None = 无界(卡面
+#: 无「下 N 个」限定词 = recurring 每次选择后,无配额域,恒放行零闩格;
+#: 防「未配置」误读——None 是显式无界非缺省)。全都要·彩(id 331701)=
+#: None。判定与配额读取合一防两抄本
 #: 漂移;不并入打捞集——发放语义异构(全列逐事件 vs 随机单列 recurring),
 #: 合并 = 名单集语义耦合(独立双函数)。map 键集与 STRATEGY_EFFECTS name
 #: 集的一致性锁 = 测试仓表域锁(防写表人笔误形,不入 import 校验——治理
 #: 口径先例 = 打捞族)。
-_TAKE_ALL_SUPPLY_QUOTA: dict[str, int] = {'全都要·银': 1, '全都要·金': 2}
+_TAKE_ALL_SUPPLY_QUOTA: dict[str, int | None] = {
+    '全都要·银': 1, '全都要·金': 2, '全都要·彩': None,
+}
 
 #: 发放列角色入席星级先验(获取面单位恒 1★,升星仅经合成;与
 #: :data:`_SALVAGE_GRANT_STAR` 同款先验。发放条目整体 rand=True 随机态,
@@ -2086,7 +2094,8 @@ _TAKE_ALL_GRANT_STAR: int = 1
 #:   无对应机制文)→ 零建模,列内装备随列发放;实采判据 = 持卡局让钻列
 #:   留选,对照 diamond_count 轨迹。
 #: - sim_failclosed_decision_leg:sim 局决策条目未接 → 未选集恒 None →
-#:   发放侧恒零发放(事件消耗一次性标志位照设 = 一笔无害簿记写;承打捞族同族语义,
+#:   发放侧恒零发放(事件消耗一次性标志位 int 配额卡照设 = 一笔无害簿记写,
+#:   彩 None 配额卡零闩格;承打捞族同族语义,
 #:   独立键因函数/名单集分立)。
 STRATEGY_TAKE_ALL_ASSUMPTION_KEYS: tuple[str, ...] = (
     'strategy_take_all_unchosen_diamond_pending',
@@ -2104,11 +2113,13 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
        局全链零变化;直查状态容器不消费效果账本条目,登记与消费分离现役形态);
     2. **配额计数一次性标志位门**:逐持卡数域内 ``take_all#<卡名>#`` 前缀键数 =
        已耗格数,全部 ≥ 各自配额 → 零写早退(配额耗尽后同窗重复出口/
-       后续补给选择全静默;耗尽残迹 = done 键簿记留域,审计可考);
+       后续补给选择全静默;耗尽残迹 = done 键簿记留域,审计可考);None
+       配额卡(recurring 无配额域)无此门——恒放行无耗尽态;
     3. **事件消耗一次性标志位**:逐未耗尽卡追加 ``take_all#<卡名>#<已耗+1>`` 键
        (write_logic)——事件消耗制在此统一处理:不论源可否记录,每个
        applied 选择事件即耗 1 格(插入位置三个 applied 出口都会到达本函数,
-       兜底轮亦然);
+       兜底轮亦然);None 配额卡跳过写入(零闩格零 done 键,recurring 无
+       封账面,发放分支照常走);
     4. **源检查**:``gs.unchosen_supply.value`` 空/None → 零发放早退(None =
        无未选定案:未记录/兜底轮;sim 局恒此形态 = fail-closed 零发放);
     5. **全未选列逐卡逐列发放**(每未耗尽卡各发一遍,双持重复发放 = 卡面
@@ -2141,17 +2152,23 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     done = tuple(gs.strategy_conditional_done.value or ())
     # 计数形配额一次性标志位门(门 2):前缀键数 = 已耗格数,< 配额放行。布尔形
     # (键存在 = 已耗)会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
-    # 统一计数形禁两形并存。
+    # 统一计数形禁两形并存。None 配额卡(recurring 无配额域)不入 spent——
+    # due 判定恒真恒放行,无耗尽态。
     spent = {n: sum(1 for k in done
                     if k.startswith(f'{_TAKE_ALL_LATCH_PREFIX}{n}#'))
-             for n in held}
-    due = tuple(n for n in held if spent[n] < _TAKE_ALL_SUPPLY_QUOTA[n])
+             for n in held if _TAKE_ALL_SUPPLY_QUOTA[n] is not None}
+    due = tuple(n for n in held
+                if _TAKE_ALL_SUPPLY_QUOTA[n] is None
+                or spent[n] < _TAKE_ALL_SUPPLY_QUOTA[n])
     if not due:
         return
     # 事件消耗一次性标志位(门 3):逐未耗尽卡追加一键,先于发放分支——兜底轮(源不可
     # 记录)也在此封账;序号 = 写入时点「已耗+1」快照(审计可读,判定只数
     # 前缀不依赖序号);evidence 与 char 条目同族前缀(账面归组一致)。
+    # None 配额卡跳过(零闩格零 done 键——recurring 无封账面,发放照常)。
     for name in due:
+        if _TAKE_ALL_SUPPLY_QUOTA[name] is None:
+            continue
         latch = f'{_TAKE_ALL_LATCH_PREFIX}{name}#{spent[name] + 1}'
         gs.write_logic(gs.strategy_conditional_done, done + (latch,),
                        produced_by='CwScreenSupplyNode',
@@ -2167,7 +2184,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     from sr_od.application.currency_war.kernel.cw_game_state import (
         _emit_defect,
     )
-    # 门 5 逐卡逐列发放:双持(银+金)各发各的,内容同源重复 = 卡面叠加语义。
+    # 门 5 逐卡逐列发放:多卡同持各发各的(银+金+彩),内容同源重复 = 卡面叠加语义。
     for _name in due:
         for col in unchosen:
             if col.char:
