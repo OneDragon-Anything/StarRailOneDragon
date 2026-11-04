@@ -1,7 +1,7 @@
 # P39 买经验升级的期望值(EV)决策规则(口述 [3]/[7]/[12]/[33] 的数学化与交叉核对)
 
 > 状态:**已证(P39 修复批 2026-09-01 修订:分支二 (c) 改视界条件门 floor_eff、分支一谓词补操作性定义、XP 表状态勘误[±20% 带已撤]、Ī 消参改收入日程现算;结构推导 + 真实概率表数值自检)**
-> 数据源(单一源代码,数值不抄):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 / `expected_refreshes` 超几何精确 刷新找牌期望 / `POOL_COPIES_PER_CARD` / `DISTINCT_CARDS_PER_COST`)、`cw_economy`(`XP_PER_BUY`=4 / `XP_TO_NEXT_LEVEL`={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / `XP_CLICK_COST_FALLBACK`=4 flat / `REFRESH_COST_BASE`=2 / `SHOP_REFRESH_COST`=2 / `schedule_upgrade` 现行接线);机制面 `economy.md`(利息 gold//10 封顶 5、升级不触发商店刷新 §2.1、刷新找牌期望模型 §2)
+> 数据源(单一源代码,数值不抄):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 / `expected_refreshes` 超几何精确 刷新找牌期望 / `POOL_COPIES_PER_CARD` / `DISTINCT_CARDS_PER_COST`)、`cw_economy`(`XP_PER_BUY`=4 / `XP_TO_NEXT_LEVEL`={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / `XP_CLICK_COST_FALLBACK`=4 flat / `REFRESH_COST_BASE`=2 / `SHOP_REFRESH_COST`=2 / `schedule_upgrade` 现行接入调用);机制面 `economy.md`(利息 gold//10 封顶 5、升级不触发商店刷新 §2.1、刷新找牌期望模型 §2)
 > 数值自检脚本:`tools/cw/proofs/p39_levelup_ev_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p39_levelup_ev_check.py`)
 > 提出:CW 策略重构·数学证明工程批(p39);证明=本批
 > 前置:p47 利息损失规范 L 递推(**L 联动批已执行**:A4 的 C_int 已换 p47 规范口径;旧树过渡口径 t×min(R,3) 已停用——原 P13 单篇已删,git 可溯);口述 [3]/[7]/[12]/[33](`user_playstyle.md`)
@@ -73,7 +73,7 @@ C_int   = L(g, U_L, R_全局, Ī)                       (利息损失,A4;p47 双
         分支一饿死(P39_VALIDATION 门④C,实现已随 cw3 归档)——证明侧以操作性定义
         补上规格缺口,域宽窄已由玩家裁定(2026-09-01:阵营相关单位不限星级,[33] 原话执行)。
         ⚠️ [39] 收尾(2026-08-31 用户裁定):HP 不作决策输入——
-        〔**收口注(2026-10-28 hp 判据族删除批)**:本条所引「现行代码 cw_economy._xp_gold_floor 仍含两个 HP 分支(hp<30 / hp<effective_hp_threshold→10;消费点 cw_deploy_seat)属淘汰名单待删」系命题成文时点的代码事实,按成文时点读——**`_xp_gold_floor`/`effective_hp_threshold`/`cw_deploy_seat` 现已全仓零命中(函数与消费点均已删)**,[39] 收尾待办已随 hp 判据族删除终结(判定权威 = math_proofs 索引行 + 策略正本 00_framework §3);现行升级资格门链 = `upgrade_gate_verdict` 六道门序(经验批支付门/资金线门,11_shop_decisions §2),分支一谓词只按板面/备战席状态、不消费 hp 的声明照旧成立。〕
+        〔**收尾注(2026-10-28 hp 判据族删除批)**:本条所引「现行代码 cw_economy._xp_gold_floor 仍含两个 HP 分支(hp<30 / hp<effective_hp_threshold→10;消费点 cw_deploy_seat)属淘汰名单待删」系命题成文时点的代码事实,按成文时点读——**`_xp_gold_floor`/`effective_hp_threshold`/`cw_deploy_seat` 现已全仓零命中(函数与消费点均已删)**,[39] 收尾待办已随 hp 判据族删除终结(判定权威 = math_proofs 索引行 + 策略权威版本 00_framework §3);现行升级资格门链 = `upgrade_gate_verdict` 六道门序(经验批支付门/资金线门,11_shop_decisions §2),分支一谓词只按板面/备战席状态、不消费 hp 的声明照旧成立。〕
         新层的分支一谓词只按板面/备战席状态,不消费 HP。
         此分支不依赖 w 精确值,只依赖其非负性;**分支一只计人口位当轮兑现、不计段带负项(人口位
         价值独立于搜牌窗口——取舍声明);升级后的搜牌启动判据走 p40 的 R1 完成门(刷新三层门 R0/R1/R2 之一,定义见 p40),本证明不重复
