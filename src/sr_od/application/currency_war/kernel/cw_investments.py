@@ -5947,6 +5947,94 @@ def _validate_strategy_delayed_grants() -> None:
 _validate_strategy_delayed_grants()
 
 
+# ===== 策略卡获得时点随机策略发放登记表(白名单制;「获得一个随机N品质
+# ===== 投资策略」直接发放形状首例,全池唯一——期货/白银投资族系「三选一」
+# ===== offer 形状归 STRATEGY_DELAYED_OFFERS,不进来)=====
+# 判定单一源;世界掷骰消费端 = sim 后端(获得链调用后就地判命中即掷,拾取
+# 落地拍与环境直发分支两挂点共用一门——直发系非拾取路径,门单挂拾取拍会把
+# 发放迟滞到下一拾取拍,违「获得时点」语义),live 端只产申报行
+# (gain_invest_strategy 名单分支,行为 fail-closed——active_strategies 无
+# 观察覆盖通道,自掷 = 永久捏造门控输入;ENV_REROLL_NAMES 同构语义)。
+# 表外卡一律无条目,禁从效果原文自动猜装(世界发放域登记表同款纪律)。
+# granted 卡 overlay 注册面缺口申报:发放经 kernel 原语 session=None(效果
+# 账本登记腿跳过、容器写照常),金池 135 名中 40 名有 STRATEGY_EFFECTS
+# 条目(2026-11-04 现值探针,含免费午餐 burst=11/固定理财族/加油站等重载荷
+# 实例),其 burst/板面载荷在 sim 局缺席——在 sim 侧就地补登面会造成同局
+# granted 卡登记而拾取获得同卡不登记的双标(拾取同走 session=None),归效果
+# 账本登记面引擎批统一治理,本表按现值如实申报不补。
+STRATEGY_RANDOM_GRANTS: dict[str, str] = {
+    # 远见:官方「获得一个随机黄金投资策略和15金币。后续的投资策略节点改为
+    # 获得随机1个棱彩投资策略（无法刷新），并且不增加敌人难度。」(id 303601
+    # 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行)。值 = 发放品质词
+    # 「金」= 卡面「黄金投资策略」直读;掷骰分布 desc 未写明,按目标品质池
+    # 去已出选项均匀 v0 采样 = 披露键申报。同卡其余两腿不入本表:金腿 +15
+    # 与难度豁免腿归 STRATEGY_ECONOMY['远见'] 三字段在册通道(即时金写端
+    # 缺口 = instant_gold 族级既有申报;难度豁免消费 = sim difficulty_of
+    # 守卫),腿③节点改写 = sim 呈现分支(membership 触发,非发放域)。
+    '远见': '金',
+}
+
+#: 腿②掷骰分布建模假设披露键(desc 未写明分布/排除语义,目标品质池去
+#: 已出选项均匀 v0 采样申报;ENV_REROLL_ASSUMPTION_POOL 同形先例)。
+#: granted 卡 overlay 注册面缺口量级随键申报:金池 135 ∩ STRATEGY_EFFECTS
+#: = 40 例(2026-11-04 现值),session=None 登记腿跳过 = 该 40 例的
+#: burst/板面载荷 sim 局缺席(上文表头注释申报正本)。
+STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0: str = (
+    'strategy_random_grant_pool_uniform_pending')
+
+#: 腿③实机呈现形状披露键(单候选屏 vs 无屏直授未采证,sim 建模 = 单候选
+#: 屏——fields.md「另有远见改写=0」刷新计数席位佐证;实机首遇校)。两源
+#: 并提:T-46 策略大师直发无屏形先例辖「额外加节点」语义,本卡腿③系
+#: 「改写既有节点」语义,卡文位次不同,形状由首遇证据裁决,任一先例
+#: 均不构成定谳。
+FORESIGHT_REWRITE_SCREEN_SHAPE: str = 'foresight_rewrite_screen_shape_unverified'
+
+#: 难度豁免读法披露键(读法 A 自身豁免 = 实现惯例链申报:registry 字段挂
+#: 远见自身 + P51 diff_formula 同式代码化 + 知识文档转抄单源链;读法 B
+#: 授予豁免 = 卡文子句位次依据,需发放源追踪机制在册无载体)。773 轮聚合
+#: 对账对豁免分支系空载背书(语料期仅 2/67 局 exercised 且 settled 微分
+#: 两式均非零残差不可判读),不构成实证;证伪通道 = 远见局 settled 备战
+#: 帧敌方难度读数逐轮微分,归遥测批。
+FORESIGHT_EXEMPTION_READING: str = 'foresight_difficulty_exempt_self_reading'
+
+#: 远见×环境品质改写冲突优先级披露键(远见胜 = 改写对象层级论证:获得
+#: 行为本体「三选一→随机单发」> 槽位品质「改写所附着的形态已移除」;
+#: 卡文「改为」绝对时语)。实机远见×时代族同持局可证伪,归首遇/遥测。
+FORESIGHT_ENV_REWRITE_PRIORITY: str = 'foresight_env_rewrite_priority_foresight_wins'
+
+
+def _validate_strategy_random_grants() -> None:
+    """STRATEGY_RANDOM_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更独立触发的
+    漂移哨留」,本表三哨全为漂移哨零删减):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联——失联形态 = sim 掷骰永不中、live 永不申报,无响亮信号);
+    ② 品质词漂移:值必须在注册表品质词表(写表笔误与品质词表扩员双源;
+    掷骰腿按值过滤注册表,词表外值 = 恒空池静默失联);
+    ③ 目标品质池空拒:该品质在注册表无卡(品质分布改版清空可独立触发
+    ——池空 = 发放腿结构性无产出,失联同①)。
+    """
+    orphans = [n for n in STRATEGY_RANDOM_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_RANDOM_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name, _quality in STRATEGY_RANDOM_GRANTS.items():
+        if _quality not in ('银', '金', '棱彩'):
+            raise ValueError(
+                f"STRATEGY_RANDOM_GRANTS 品质词漂移({_name!r} 非注册表品质词):"
+                f"{_quality!r}")
+        if not any(s.rarity == _quality
+                   for s in INVESTMENT_STRATEGIES.values()):
+            raise ValueError(
+                f"STRATEGY_RANDOM_GRANTS 品质池空({_name!r} 目标品质 "
+                f"{_quality!r} 注册表无卡):发放腿结构性无产出")
+
+
+_validate_strategy_random_grants()
+
+
 # ===== 策略卡购买翻星登记表(白名单制;购买触发翻星族「购买的下1个
 # ===== X费角色立刻升到N星」首例)=====
 # 翻转判定单一源;消费端 = kernel/cw_gain_chain.check_strategy_buy_star_

@@ -150,6 +150,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_ASSUMPTION_POOL,
     ENV_REROLL_NAMES,
     ENV_SUPPLY_EQUIP_COUNT,
+    FORESIGHT_ENV_REWRITE_PRIORITY,
+    FORESIGHT_EXEMPTION_READING,
+    FORESIGHT_REWRITE_SCREEN_SHAPE,
     HYPEREMIT_SPEC_ID,
     HYPEREMIT_SPEC_NAME,
     INVESTMENT_ENVS,
@@ -165,6 +168,8 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
     STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION,
     STRATEGY_NODE_REWRITE_TRIGGERS,
+    STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0,
+    STRATEGY_RANDOM_GRANTS,
     STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
     StrategyDelayedOffer,
     aggregate_economy,
@@ -1615,6 +1620,16 @@ class SimBackend:
     _offer_refreshable: bool = field(init=False, default=False)
     _offer_forced_slots: tuple[str, ...] = field(init=False, default=())
     _offer_refresh_seq: int = field(init=False, default=0)
+    #: 获得时点随机策略发放已掷源名集合(远见腿②一次性门;记名集合非单
+    #: 布尔 = 多张 grant 卡各自身 exactly-once,且两挂点共用同一门)。
+    #: 消费面 = :meth:`_fire_strategy_random_grants`(拾取落地拍 + 环境
+    #: 直发分支两挂点);exactly-once 由集合记名构造保证(源卡按名字去重
+    #: 只入列一次,获得一次 → 恰发一次);零假发由 membership 判定保证
+    #(呈现未选 → 不入列 → 零发放)。私有暂态不入容器/不入快照恢复
+    #: (闩族同形先例);resume 安全 = sim 全局重放模型(RunConfig 无
+    #: active_strategies 输入面,源卡在册 ⇒ 其获得拍已在本后端跑内
+    #: 重放,集合在该拍置位)。
+    _strategy_grant_fired: set[str] = field(init=False, default_factory=set)
     #: 商店牌面节点级记录(牌面 = 节点级持久事实,发牌时定;2026-10-17
     #: 用户裁定):值 = 商店在屏期间 ``gs.shop`` 的最后非空观测(跟随
     #: 发牌/刷新/买卡一切写点,驱动入口懒同步
@@ -2410,6 +2425,63 @@ class SimBackend:
         落 ``chosen_encounter``,本层零效果)。"""
         self._dismiss_and_settle_prep()
 
+    def _fire_strategy_random_grants(self, *, plane: int, r: int) -> None:
+        """获得链调用后就地判随机策略发放命中即掷(远见腿②「获得一个
+        随机黄金投资策略」世界掷骰;登记表单一源 =
+        ``cw_investments.STRATEGY_RANDOM_GRANTS``,现役唯一 = 远见)。
+
+        - 触发载体 = 两挂点共用本助手:①拾取落地拍
+          (:meth:`_on_invest_picked` 各落地腿后、难度旗牌更新前)
+          ②环境直发分支(T-46 策略大师数量腿 ``gain_invest_strategy``
+          调用后)。原设计闩挂拾取拍单点,被 T-46 直发分支落码(用户裁定
+          2026-10-26「直接发一张随机投资策略不开 offer 无选卡屏」)推翻:
+          直发 = 非拾取路径,远见(棱彩 ∈ 直发全池)可经直发入列
+          active_strategies,门单挂拾取拍会把腿②迟滞到下一拾取拍,违
+          「获得〔远见〕时」语义——改「获得链调用后就地判」后直发拍即掷。
+        - 门 = 源名 ∉ ``_strategy_grant_fired`` ∧ 源名 ∈
+          active_strategies:exactly-once 由集合记名构造保证(源卡按名字
+          去重只入列一次);零假发 = membership 判定(呈现候选含源卡但
+          未选 → 不入列 → 零发放);granted 名经 kernel 原语直接入列
+          (非 pick 声明,零 ``_on_invest_picked`` 分派扰门)。重放安全:
+          重复 advance 的同拍重放门已闭(集合记名),沿全局重放模型。
+        - 池 = 目标品质池 − ``excluded_invest``(已出选项全集;掷中名
+          **不加入** excluded——desc 无排除语义,与「游戏重复发放同名
+          策略」行为对齐的保守形;且腿③生效期 offer 恒单棱彩候选,金名
+          重现于 offer 结构性不可达,残余暴露面仅远见末槽拾取局无后继
+          offer,零暴露)。掷中已持名照常可掷(注册腿去重跳写、效果腿
+          照常,禁掷前排除持卡面)。池空(排除集吃光,金池 135 对排除集
+          ~12 名上界,正常局不可达)静默跳发零置门——不迟滞不空手入链。
+        - session=None:效果账本登记腿跳过(容器写照常,蓝海同构语义;
+          granted 卡 overlay 注册面缺口按 40/135 现值随披露键申报);
+          rng 显式流键 ``M11/grant/...`` 独立新流(缺省自掷 = 同 seed
+          不重放,蓝海同款纪律),掷骰与二次入链分键(-gift 后缀)。
+        """
+        held = set(self.gs.active_strategies.value or [])
+        for _src, _quality in STRATEGY_RANDOM_GRANTS.items():
+            if _src in self._strategy_grant_fired or _src not in held:
+                continue
+            pool = [n for n, s in INVESTMENT_STRATEGIES.items()
+                    if s.rarity == _quality
+                    and n not in self.excluded_invest]
+            if not pool:
+                continue
+            # 门先置防重放(闩族「闩消费先于发放判定」同向);发放异常 =
+            # 保守丢失,重放不双发。
+            self._strategy_grant_fired.add(_src)
+            self.disclosures.setdefault(
+                STRATEGY_RANDOM_GRANT_ASSUMPTION_UNIFORM_V0, 'uniform_v0')
+            rolled = pool[stream_rng(
+                self.seed, f'M11/grant/p{plane}/r{r}').randrange(len(pool))]
+            gain_invest_strategy(self.gs, None, rolled, rand=False,
+                                 sig=logic_sig(
+                                     group_id='act:sim@strategy-grant'),
+                                 producer='SimBackend',
+                                 rng=stream_rng(self.seed,
+                                                f'M11/grant/p{plane}'
+                                                f'/r{r}-gift'))
+            log.info('[cw-sim] 随机策略发放腿:%s 获得 → 发放 %s(%s)',
+                     _src, rolled, _quality)
+
     def _on_invest_picked(self, *, opening: bool) -> None:
         """投资选卡落地(效果 = kernel 获得链,经 report_action_pick_*
         已写容器;本层返回 + 去重集累计,排除集读容器 opts 现值)。"""
@@ -2514,6 +2586,15 @@ class SimBackend:
             if (('这么大的钻石' in picked or '控制规模' in picked)
                     and self.gs.equips.value is not None):
                 on_diamond_acquired(self.gs, '财富宝钻')
+        # 选卡落地拍随机策略发放腿(远见腿②「获得一个随机黄金投资策略」,
+        # 登记表 = cw_investments.STRATEGY_RANDOM_GRANTS):位置 = 各已落
+        # 锚腿之后、难度旗牌更新之前——先落先占位、后落顺延插队(禁跨越
+        # 已落锚重排);难度同拍时序 = granted 金(+3)与远见自身(豁免
+        # 后 0)在下一拍 _update_difficulty_flag 同帧反映,与「选择后难度
+        # 即时反映」裁定(2026-10-14)一致。直发路径的另一挂点见 T-46
+        # 直发分支(获得链调用后就地判,两挂点共用一门,R1 修订形态)。
+        _grant_plane, _grant_r = self._node_pos()
+        self._fire_strategy_random_grants(plane=_grant_plane, r=_grant_r)
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
@@ -3345,6 +3426,12 @@ class SimBackend:
                 gain_invest_strategy(self.gs, None, _name, rand=False,
                                      sig=logic_sig('sim:env'),
                                      rng=_pick_rng)
+                # 直发到手即判随机策略发放(远见腿②挂点 2;获得链调用后
+                # 就地判命中即掷——直发 = 非拾取路径,门单挂拾取拍会把
+                # 腿②迟滞到下一拾取拍,违「获得时点」语义;与拾取落地
+                # 拍共用 _fire_strategy_random_grants 一门,exactly-once
+                # 由已掷源名集合保证)。
+                self._fire_strategy_random_grants(plane=plane, r=r)
         # 策略卡每节点绑定角色复制发放腿(「每次进入新节点时,获得1星的
         # 该角色,补给后额外获得2个」族,价值投资·金首例):进窗事实点在
         # 窗口幂等守卫内(重放不双发),kernel 检查函数单一源
@@ -3688,6 +3775,70 @@ class SimBackend:
             return
         if offer_slots(plane, r, active_env):
             self._invest_pick_ordinal += 1
+            # 远见改写分支(腿③「后续的投资策略节点改为获得随机1个棱彩
+            # 投资策略（无法刷新）」;判定名 = 注册面唯一挂值锚——
+            # STRATEGY_ECONOMY['远见'].future_quality_upgrade 全注册表
+            # 唯一挂值,枚举即收敛硬编码沿 ENV_AFFIX_DISABLE_ENV 先例,
+            # 单卡零复用面不入登记表):触发 = membership 容器现值,无需
+            # ordinal 追踪——远见只能于 offer 槽被拾取,自身槽呈现先于
+            # 入列天然不命中,后继槽 membership 已真(联席额外槽同判,
+            # 其效果原文自称「投资策略三选一」= 投资策略节点,offer_slots
+            # 单口自动覆盖零特判)。单棱彩候选 = 单卡采样器单一源复用
+            #(排除集 = 已出选项全集,棱彩池 123 名对排除集 ~12 名上界,
+            # 池空结构性不可达);'' 防御分支 = 落回常规三选一路径(正常
+            # 局不可达)。位置 = env 改写向量计算之前、命中即短路:改写
+            # 对象层级 = 获得行为本体(三选一 → 随机单发)> 槽位品质
+            #(env 改写所附着的「三选一」形态已被移除),卡文「改为」
+            # 绝对时语;冲突证伪通道 = FORESIGHT_ENV_REWRITE_PRIORITY。
+            # pick_ordinal 已照常 +1(env 侧 rewrite_picks/槽位向量型的
+            # 全局序语义保持连续,改写槽占用序位的事实如实申报——时代族
+            # rewrite_picks 命中判据 = 序位非内容,不受远见存在影响)。
+            if '远见' in (self.gs.active_strategies.value or []):
+                rolled = sample_strategy_card(
+                    stream_rng(self.seed,
+                               f'M11/offer/p{plane}/r{r}/foresight'),
+                    self.excluded_invest, forced_quality='棱彩')
+                if rolled:
+                    if rewrite_slot_qualities_for_pick(
+                            str(active_env or ''),
+                            self._invest_pick_ordinal) is not None:
+                        self.disclosures.setdefault(
+                            FORESIGHT_ENV_REWRITE_PRIORITY,
+                            'foresight_wins')
+                    self.disclosures.setdefault(
+                        FORESIGHT_REWRITE_SCREEN_SHAPE,
+                        'single_candidate_screen_sim_v0')
+                    self._window_resume = 'node'
+                    self._announce_screen(SCREEN_INVEST_STRATEGY)
+                    self._screen = SCREEN_INVEST_STRATEGY
+                    self._sub = ''
+                    # 十腿呈现闩全量照置(呈现即置闩口径 = 固定日程分支
+                    # 同款;改写槽拾取走常规 pick 链,落地拍各腿消费依赖
+                    # 闩已置位,防重放窗同界)。
+                    self._strategy_pick_xp_latch = True
+                    self._strategy_pick_streak_latch = True
+                    self._strategy_pick_sell_deal_latch = True
+                    self._strategy_pick_hp_latch = True
+                    self._strategy_pick_gold_next_nodes_latch = True
+                    self._strategy_pick_plane_refire_latch = True
+                    self._strategy_pick_hyperemit_drain_latch = True
+                    self._strategy_pick_recruit_drain_latch = True
+                    self._strategy_pick_diamond_latch = True
+                    self._strategy_pick_hp_loss_gold_latch = True
+                    # 刷新授权簿记:「无法刷新」卡面直读——固定日程槽由
+                    # 本分支压 False(fields.md「另有远见改写=0」落码),
+                    # 联席槽本就 False;槽向量簿记同步清零(刷新重掷腿已被
+                    # _offer_refreshable 闸死,向量无消费位)。
+                    self._offer_refreshable = False
+                    self._offer_forced_slots = ()
+                    self._offer_refresh_seq = 0
+                    report_screen_invest_strategy_obs(
+                        self.gs,
+                        CwScreenInvestStrategyObs(
+                            entry_ok=True,
+                            options=[(rolled, 10, 10)],
+                            refresh_slots=[]))
+                    return
             fixed_schedule = (plane, r) in INVEST_OFFER_SCHEDULE
             forced = rewrite_slot_qualities_for_pick(str(active_env or ''),
                                                      self._invest_pick_ordinal)
@@ -4276,6 +4427,13 @@ class SimBackend:
             node_kind=node.kind,
             streak=abs(int(self.gs.streak.value or 0)),
             encounter_tier=None)
+        # 难度豁免读法申报(远见在列时):现值读数 = 读法 A 自身豁免
+        #(quality 分量不计远见棱彩 +6),读法依据与证伪通道随披露键
+        #(宿主 = cw_investments;773 轮聚合对账对本分支系空载背书,
+        # 对账对象 = 本局 settled 备战帧读数逐轮微分,归遥测批)。
+        if '远见' in (self.gs.active_strategies.value or []):
+            self.disclosures.setdefault(FORESIGHT_EXEMPTION_READING,
+                                        'self_exempt_v0')
         self.gs.observe(
             self.gs.enemy_difficulty,
             int(base + breakdown.quality_bonus + breakdown.special_bonus

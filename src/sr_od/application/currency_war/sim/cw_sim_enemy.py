@@ -143,6 +143,17 @@ def difficulty_of(strategy_names: list[str], *, node_kind: str,
     for raw in strategy_names:
         s = get_strategy(normalize_invest_name(raw))
         if s is not None:
+            # 难度豁免守卫(注册面 = cw_investments
+            # .difficulty_inflation_exempt,全注册表唯一挂值 = 远见;
+            # P51 diff_formula 同式跳过整条目):读法 A 自身豁免——远见
+            # 自身 rarity 不计品质通胀。依据链 = 实现惯例链(registry
+            # 字段落位 + P51 代码化 + 知识文档转抄),773 轮聚合对账对本
+            # 分支系空载背书不构成实证;证伪通道 = sim 随局披露键
+            # FORESIGHT_EXEMPTION_READING(远见局 settled 备战帧敌方
+            # 难度读数逐轮微分,归遥测批)。
+            if (s.economy is not None
+                    and s.economy.difficulty_inflation_exempt):
+                continue
             quality += QUALITY_DIFFICULTY_BONUS.get(s.rarity, 0)
     tier_bonus = (ENCOUNTER_TIER_BONUS[encounter_tier - 1]
                   if encounter_tier is not None

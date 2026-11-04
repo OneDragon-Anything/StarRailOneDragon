@@ -129,6 +129,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_MERGE_GRANTS,
     STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_ORE_OPEN_EFFECTS,
+    STRATEGY_RANDOM_GRANTS,
     STRATEGY_REWARD_NODE_GRANTS,
     STRATEGY_WIN_GOLD_GRANTS,
     equips_by_category,
@@ -204,6 +205,15 @@ STRATEGY_AFFIX_DISABLE_STRATEGY: str = '退化'
 #: 语义申报非缺陷告警;设计 = 迭代 2026-09-23-invest-effects-calc
 #: designs/REVIEW-T291.md §3,机制单一源 = 敌后破坏已落三腿机制)。
 STRATEGY_AFFIX_DISABLE_EMPTY_DECL: str = 'strategy_affix_disable_empty_container'
+
+#: 获得时点随机策略发放申报行 kind(独立小块,非 DEFECT_ 词表成员,沿
+#: ENV_REROLL_DECL 先例:语义 = 申报非缺陷,不入「缺陷留存证据 kind 词表」
+#: 块以免破块内前缀分组)。随机发放真值 live 不可观察(active_strategies
+#: 无观察覆盖通道)→ 申报留证一行,行为 fail-closed(容器写序列与普通
+#: 卡逐位一致);世界掷骰 = sim 后端获得链调用后就地判命中即掷(登记表
+#: 单一源 = cw_investments.STRATEGY_RANDOM_GRANTS),双端各产一行如实
+#: 记录「选择时点真值未知」。
+STRATEGY_GRANT_DECL: str = 'gain_chain_strategy_grant_decl'
 
 
 @dataclass(frozen=True)
@@ -2962,6 +2972,21 @@ def gain_invest_strategy(gs: GameState, session: object,
     if canon not in cur:
         write(gs.active_strategies, cur + [canon], produced_by=producer,
               evidence=f'gain_invest_strategy:{canon}', sig=sig)
+    # 随机策略发放申报行(获得时点随机策略发放族,登记表单一源 =
+    # cw_investments.STRATEGY_RANDOM_GRANTS):名单卡的获得本身含一次
+    # live 不可观察的随机掷骰(active_strategies 无观察覆盖通道,选择
+    # 事实与真值不可分辨)→ 申报留证一行,行为 fail-closed;世界掷骰 =
+    # sim 后端获得链调用后就地判命中即掷(拾取落地拍与环境直发分支两
+    # 挂点共用),本申报行双端各产一行如实记录(ENV_REROLL_DECL 双端
+    # 分道同构)。挂位 = ①注册腿后:申报对象是「获得机制本身」的留证
+    # 非「获得时点效果」,与 ②效果账本登记(best-effort 分支)/③效果
+    # 触发分域;rand 两形同产(申报与写通道无关)。
+    if canon in STRATEGY_RANDOM_GRANTS:
+        _emit_defect(field_name='active_strategies',
+                     expected='随机发放卷中策略名(游戏侧事实)',
+                     actual=f'{canon}(获得事实;真值不可观察)',
+                     evidence=f'gain_invest_strategy:{canon}', sig=sig,
+                     kind=STRATEGY_GRANT_DECL)
     # ② 效果账本登记(best-effort 分支)
     if session is not None:
         try:
