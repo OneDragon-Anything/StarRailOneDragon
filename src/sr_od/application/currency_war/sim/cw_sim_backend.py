@@ -1,23 +1,23 @@
-"""sim 游戏后端 SimBackend(驱动反转;世界本体 + 画面状态机 + overlay 触发层)。
+"""sim 游戏后端 SimBackend(驱动反转;状态副本本体 + 画面状态机 + overlay 触发层)。
 
-真流程(外层循环 + 画面 op + 动作 op + 策略器)当驱动者,本后端 = sim 世界:
+真流程(外层循环 + 画面 op + 动作 op + 策略器)当驱动者,本后端 = sim 状态副本:
 组合持有 :class:`GameState`(禁子类——Field 通道与裸属性两套状态纪律
 不得混于一体,决策输入形状不随运行模式漂移),自持实机不可观察的簿记
 (采样去重集/overlay 队列/一次性标志/局结果面)。一实例一局。
 
-**字段收敛判据**(容器一份,禁第三形态):实机可观察/影响玩法的世界事实
-→ 容器 Field;生成器采样簿记 → 本后端私有。旧引擎 ``_Eng`` 三处双账
+**字段收敛判据**(状态容器一份,禁第三形态):实机可观察/影响玩法的状态副本事实
+→ 状态容器 Field;生成器采样簿记 → 本后端私有。旧引擎 ``_Eng`` 三处双账
 全部消灭:``plane``/``round_num`` → ``gs.node``;相位载荷(options/
-supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report``
+supply/encounter/box/晶矿面板)→ 状态容器各 opts 槽(经 ``cw_screen_report``
 同名上报函数送达,与实机观察同一条写通道,本后端不私持副本);
-``streak_unsigned`` → 容器带符号连胜派生读 ``max(signed, 0)``。
+``streak_unsigned`` → 状态容器带符号连胜派生读 ``max(signed, 0)``。
 
 **画面状态机**:状态 = (screen_info 档名,子态载荷)。转移源两类:
 1. **动作后果声明**(声明化迭代主通道):动作 op 经
    ``cw_sim_ports.declare_world`` 喂入 :meth:`advance`,按
    ``decl.trigger`` 分派(键集单一源 = :data:`ADVANCE_TRIGGER_KINDS`,
    3.3 起 18 转移动作全量在表)——node_advance → 节点推进、
-   battle_resolve → 战斗结算、选卡族/箱 → 各世界过程、``''`` → 纯
+   battle_resolve → 战斗结算、选卡族/箱 → 各状态过程、``''`` → 纯
    画面转移;推进后按 ``decl.next_screen`` 等值对账画面档
    (:meth:`_reconcile_next_screen`)。
 2. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
@@ -25,7 +25,7 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
    开店。经端口 ``click_answer`` 感知。
 
 **节点推进序列**(模块号流键坐标系):写 ``gs.node`` → 轮首收入
-(kernel ``round_start_income`` 三分支,U04 败补消费容器 ``pending_loss``)
+(kernel ``round_start_income`` 三分支,U04 败补消费状态容器 ``pending_loss``)
 → 位面开局环境发放分道(声明矿环境 → 声明入队 + 过期清理,其余 →
 直发金)→ 商店自动全刷(整店锁跳过)→ overlay 队列检查 → offer
 日程检查(U07 固定轮次 + 联席决策)→ 按节点类型呈现对应屏
@@ -36,13 +36,13 @@ supply/encounter/box/晶矿面板)→ 容器各 opts 槽(经 ``cw_screen_report`
 (NODE_XP_BY_TYPE 表原样);连胜转移在战斗结算后。
 
 **overlay 触发层**(终态):判据 = kernel 值回调
-(cw_faction_callbacks,deployed 逻辑写尾)→ 容器登记
+(cw_faction_callbacks,deployed 逻辑写尾)→ 状态容器登记
 (gs.screen_changes.pending)→ 呈现(问询时点懒呈现 + advance 纯转移
 尾 + 节点窗起点,压住底层画面,选完返回)。一期目录:巨星/planner
-(容器值回调判据)、开箱/专家/星徽(open_* 上报直登)、占卜屋/伙伴/
+(状态容器值回调判据)、开箱/专家/星徽(open_* 上报直登)、占卜屋/伙伴/
 祈愿/阿哈(判据/选卡上报)。无 sim 观察分支族(partner/fortune/
 wish_trial/star_tome/aha)呈现即卡 observe → 消费 + 逐 kind 披露,
-候观察分支接线再呈现。
+等观察分支接通调用后再呈现。
 
 **确定性**:后端自有采样全部由 seed 派生(:func:`stream_rng` 流键,
 键形沿用旧引擎模块号坐标系);动作分支采样(炉/骇客改件/晶矿/刷新)
@@ -280,7 +280,7 @@ SCREEN_PLANNER: str = '货币战争-银狼升星'
 #: 战斗窗口呈现屏(sim 结算瞬时完成;战斗等待动画窗属实机时间维)。
 #: 档名取流程消费面 = 「货币战争-结算」(currency_war_settlement.yml,
 #: 「按钮-继续挑战」宿主屏):结算后流程经 CwScreenBattleWait 结算分支
-#: + CwOpSettleConfirm 点击推进(档名 = 流程消费锚;错位则
+#: + CwOpSettleConfirm 点击推进(档名 = 流程消费识别标志;错位则
 #: 推进链不可达)。
 SCREEN_SETTLE: str = '货币战争-结算'
 #: 局终呈现屏(done 后终态;胜利/死亡两源共用)。呈现即可达
@@ -307,7 +307,7 @@ INCOME_BRANCH_NODE_TYPES: frozenset[str] = frozenset({'supply', 'reward'})
 
 #: 免战跳过按钮替换/跳过消费的节点辖域(免战牌;卡面「进入战斗节点时」
 #: 词义类型读法 = 仅普通战斗——「战斗 ↔ 遭遇」「首领」「奖励」卡词汇分立
-#: 先例在册,词义依据同战争边疆 T-18 类型读法)。实机按钮出现面失配
+#: 先例已登记,词义依据同战争边疆 T-18 类型读法)。实机按钮出现面失配
 #: (遭遇/首领/奖励备战帧也替换按钮)的校准挂披露键
 #: :data:`CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION`,失配 = 本常量单点改值
 #: 跟随,禁按 ``COMBAT_NODE_TYPES`` 顺延扩域。
@@ -344,11 +344,11 @@ def strategy_xp_per_node_of(gs: GameState) -> int:
 def strategy_boss_gold_of(gs: GameState) -> int:
     """持卡策略聚合的进 boss 节点金(特战资金系,进 boss 节点每窗一笔)。
 
-    单一源 = ``aggregate_economy``(多卡求和);返回 0 = 无该金腿,
-    调用方(节点窗收口)零值零写。live 侧无此写端:金有整字段观察
+    单一源 = ``aggregate_economy``(多卡求和);返回 0 = 无该金效果条目,
+    调用方(节点窗收尾)零值零写。live 侧无此写端:金有整字段观察
     覆盖,实机真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防
-    双计(裁定正本 = ``cw_effect_inventory.advance_node`` docstring
-    「尾款金面走观察覆盖兜底」行),sim 世界自持账无观察可兜,不发即
+    双计(权威裁定 = ``cw_effect_inventory.advance_node`` docstring
+    「尾款金面走观察覆盖兜底」行),sim 状态副本自持账无观察可兜,不发即
     持卡局金系统性偏低,故唯 sim 侧补写。
     """
     return aggregate_economy(
@@ -356,16 +356,16 @@ def strategy_boss_gold_of(gs: GameState) -> int:
 
 
 def strategy_final_supply_gold_of(gs: GameState) -> int:
-    """持卡策略聚合的「最后一个补给阶段」金(尾款交付系,进锚点窗一笔)。
+    """持卡策略聚合的「最后一个补给阶段」金(尾款交付系,进基准点窗一笔)。
 
-    单一源 = ``aggregate_economy``(多卡求和);锚 = 展平全序列最末
+    单一源 = ``aggregate_economy``(多卡求和);基准 = 展平全序列最末
     supply 位(:func:`final_supply_pos`),整局一次——辖域与「后」字时点
     两假设见披露键 ``DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE`` /
-    ``DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING``。返回 0 = 无该金腿,调用方
-    (节点窗收口)零值零写。live 侧无此写端:金有整字段观察覆盖,实机
-    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(裁定正本
+    ``DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING``。返回 0 = 无该金效果条目,调用方
+    (节点窗收尾)零值零写。live 侧无此写端:金有整字段观察覆盖,实机
+    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(权威裁定
     = ``cw_effect_inventory.advance_node`` docstring「尾款金面走观察
-    覆盖兜底」行),sim 世界自持账无观察可兜,不发即持卡局金系统性偏低,
+    覆盖兜底」行),sim 状态副本自持账无观察可兜,不发即持卡局金系统性偏低,
     故唯 sim 侧补写。
     """
     return aggregate_economy(
@@ -377,25 +377,25 @@ def strategy_invest_node_gold_of(gs: GameState) -> int:
 
     单一源 = ``aggregate_economy``(多卡求和);注册族姊妹剩余价值/按劳
     分配的注册值系战斗表现条件金的每节点期望近似(条件与上限未注册,
-    双端零建模),腿骑聚合自动跟随、无双计。返回 0 = 无该金腿,调用方
+    实机和模拟器两边零建模),效果条目经聚合通道自动跟随、无双计。返回 0 = 无该金效果条目,调用方
     (节点窗收入段)零值零写。live 侧无此写端:金有整字段观察覆盖,实机
-    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(裁定正本
+    真发由下一备战帧金观察覆盖兜底——金面禁 logic 直写防双计(权威裁定
     = ``cw_effect_inventory.advance_node`` docstring「尾款金面走观察
-    覆盖兜底」行),sim 世界自持账无观察可兜,不发即持卡局金系统性偏低,
+    覆盖兜底」行),sim 状态副本自持账无观察可兜,不发即持卡局金系统性偏低,
     故唯 sim 侧补写。
     """
     return aggregate_economy(
         list(gs.active_strategies.value or [])).gold_per_node
 
 
-#: 分期金现在腿实存性披露键(建模假设档,静态常量在册,无运行时
+#: 分期金「现在」效果条目实存性披露键(建模假设档,静态常量已登记,无运行时
 #: setdefault 动作;家族先例 = cw_effect_inventory.
 #: STRATEGY_ON_MERGE_LIVE_UNVERIFIED 同形)。登记一件实机未证事实:
 #: 用户裁决(strategy-env-impacts.md 用户裁决段,2026-09-10)把长期主义
 #: 系按「拿卡当场 +7 + 接下来 3 次进节点各 +7」4 次处理,并明示
-#: 「不确定是不是4次」——「现在」腿在拿卡拍是否真发、与节点腿是否
+#: 「不确定是不是4次」——「现在」效果条目在拿卡拍是否真发、与「节点」效果条目是否
 #: 分离,持卡局档案金轨迹核对(当场段有无即判 4/3)。sim 现役只建模
-#: 节点腿(现在腿世界写端 = T-112 族级待办维持不建);live 由游戏
+#: 「节点」效果条目(「现在」效果条目的状态副本写端 = T-112 族级待办维持不建);live 由游戏
 #: 自算自显,本假设零误真值。退役条件 = 实机局采得拿卡帧金轨迹定案。
 STRATEGY_GOLD_NEXT_NODES_NOW_LEG_UNVERIFIED: str = (
     'strategy_gold_next_nodes_now_leg_unverified')
@@ -403,29 +403,29 @@ STRATEGY_GOLD_NEXT_NODES_NOW_LEG_UNVERIFIED: str = (
 
 def apply_invest_installment_gold(gs: GameState, *, plane: int,
                                   round_num: int) -> int:
-    """持卡分期金节点窗腿(长期主义系「接下来 count 次」,进任意节点
+    """持卡分期金节点窗效果条目(长期主义系「接下来 count 次」,进任意节点
     窗每卡每窗一笔)。
 
-    递减容器 = ``gs.strategy_gold_next_nodes_left``(键 = 卡规范名,值
-    = 剩余腿数):逐卡判剩余 >0 → 按 :data:`STRATEGY_ECONOMY` 注册值
+    递减状态容器字段 = ``gs.strategy_gold_next_nodes_left``(键 = 卡规范名,值
+    = 剩余效果条数):逐卡判剩余 >0 → 按 :data:`STRATEGY_ECONOMY` 注册值
     ``gold_next_nodes_amount`` 支付该卡独立金笔 → 剩余递减;耗尽短路
-    零写(条目留置 0),游戏终局剩余腿自然蒸发不补发。支付源 = 各条目
+    零写(条目留置 0),游戏终局剩余效果条目自然蒸发不补发。支付源 = 各条目
     注册值按卡名直读,**禁 aggregate_economy**:聚合 amount 求和/count
     取 max = 策略侧选卡估值口径,对分期双持 = 畸形(count 取 max 丢一
-    卡窗口、amount 求和错额);世界真值 = desc 逐卡字面「每次获得7/9
-    金币」。与在码 gold_per_node 腿(定期福利系)同窗并存 = 同段两笔
+    卡窗口、amount 求和错额);状态副本里的值 = desc 逐卡字面「每次获得7/9
+    金币」。与在码 gold_per_node 效果条目(定期福利系)同窗并存 = 同段两笔
     独立写、互不聚合。evidence 前缀钉死
     ``strategy:installment:<卡名>:p{plane}r{r}``(完整卡名段+分隔符:
     「长期主义」系「长期主义+」真前缀,消费侧过滤禁裸前缀匹配);
-    容器递减 = 单笔 write_logic 簿记(非金 Field 登记事实直写先形)。
-    注册表缺行/零额 = 条目悬空跳过不递减(下次窗重试自愈,拒落域不闩
+    状态容器递减 = 单笔 write_logic 簿记(非金 Field 登记事实直写先形)。
+    注册表缺行/零额 = 条目悬空跳过不递减(下次窗重试自愈,拒落域不置一次性标志位
     同向)。幂等性住调用方窗口守卫(:meth:`SimBackend._begin_node_
     window`),本函数无内建幂等——窗口路径外直调会双发。live 侧无此
     写端:金有整字段观察覆盖,实机真发由下一备战帧金观察覆盖兜底
-    (金面禁 logic 直写防双计,裁定正本 = ``cw_effect_inventory
-    .advance_node`` docstring);sim 世界自持账无观察可兜,不发即持卡
+    (金面禁 logic 直写防双计,权威裁定 = ``cw_effect_inventory
+    .advance_node`` docstring);sim 状态副本自持账无观察可兜,不发即持卡
     局分期段系统性偏低,故唯 sim 侧补写。全节点型计数:凡进窗即一期
-    (supply/reward/battle/boss/修饰局插入节点照算,纯节点事件判例
+    (supply/reward/battle/boss/修饰局插入节点照算,纯节点事件先例
     T-106 稿承 T-98 §1.1)。返回本窗发金笔数(审计/测试消费)。
     """
     remaining = dict(gs.strategy_gold_next_nodes_left.value or {})
@@ -460,9 +460,9 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
                              ) -> IncomeApplied:
     """轮首收入结算并 obs 写金(节点推进序列调用一次)。
 
-    - ``streak`` = 收入侧无符号连胜计数(进轮连胜;派生读 = 容器带符号
+    - ``streak`` = 收入侧无符号连胜计数(进轮连胜;派生读 = 状态容器带符号
       取 ``max(signed, 0)``,禁第二账);
-    - ``pending_loss`` = 上一败掉的战斗类节点引用(单条登记的待办,容器
+    - ``pending_loss`` = 上一败掉的战斗类节点引用(单条登记的待办,状态容器
       ``gs.pending_loss``):非 supply/reward 节点传入触发 kernel 败补支
       (U04 口径);supply/reward 轮不传(败态跨轮保留,仅下一战斗轮
       消费——与 kernel 分支序一致);消费后清回 None 由调用方负责。
@@ -482,14 +482,14 @@ def apply_round_start_income(gs: GameState, *, plane: int, round_num: int,
     gs.observe(gs.gold, gold_after, evidence=sim_evidence(tag),
                sig=obs_sig(group_id=f'sim:{tag}'))
     # 利息累计账入账 + 条件发放检查(T-27 公司契约条件分支;收入应用
-    # 单一收口,四分支 supply/reward/败补/常规全含 interest 分量,在此
-    # 一处收口即全分支随计)。record 先于 check 同组相邻;check 在金
+    # 单一收尾点,四分支 supply/reward/败补/常规全含 interest 分量,在此
+    # 一处收尾即全分支随计)。record 先于 check 同组相邻;check 在金
     # 落账后(发放与收入同窗,金真值先行)。幂等性住调用方窗口守卫
     # (_begin_node_window),本函数无内建幂等——窗口路径外直调会双加,
     # 调用面纪律见函数 docstring。sig = logic_sig('sim:env')(触发函数
-    # 两写均 logic 渠道,streak 接线同款单形态)。返回值忽略 = sim 无
-    # 世界数值回调(托帕&账账无宝钻式联动;本模块零日志面,判读走
-    # 容器/台账)。
+    # 两写均 logic 渠道,streak 接入调用同款单形态)。返回值忽略 = sim 无
+    # 状态副本数值回调(托帕&账账无宝钻式联动;本模块零日志面,判读走
+    # 状态容器/台账)。
     gs.effects.record_interest_earned(row.interest)
     check_env_interest_grants(gs, logic_sig('sim:env'))
     return IncomeApplied(row=row, gold_before=gold_before,
@@ -506,7 +506,7 @@ def streak_income_after(streak: int, *, node_type: str,
     'reward' 恒原样返回,扑满帧维持语义不在本口辖域(断言归
     :func:`streak_signed_after` 面)。维持的是计数,败局收入恒无连胜
     成分(收入公式战败无),与金账无关。保留口 = 纯函数判读/测试对账;
-    后端运行面用容器带符号派生,不再持第二账。缺省 False = 现行为
+    后端运行面用状态容器带符号派生,不再持第二账。缺省 False = 现行为
     逐位不变。"""
     if node_type not in COMBAT_NODE_TYPES:
         return streak
@@ -518,7 +518,7 @@ def streak_income_after(streak: int, *, node_type: str,
 def streak_signed_after(streak_signed: int, *, node_type: str,
                         won: bool, piggy: bool = False,
                         keep_on_loss: bool = False) -> int:
-    """容器带符号连胜转移(连胜 +/连败 −;战斗类胜 +1/败取负向计数;
+    """状态容器带符号连胜转移(连胜 +/连败 −;战斗类胜 +1/败取负向计数;
     奖励/补给轮不动;与旧引擎逐位同式)。
 
     扑满帧例外(piggy=True,2026-10-10 用户裁定):胜 +1/败清零——
@@ -526,7 +526,7 @@ def streak_signed_after(streak_signed: int, *, node_type: str,
 
     keep_on_loss = 败局连胜维持(嘴硬族):读法边界 = 仅带符号正值维持
     ——「原来的连胜数」字面辖域 = 连胜计数,零/连败无连胜数可维持,
-    desc 未写负值分支 = 判读申报制(后继族稿禁当定谳转引);辖域 =
+    desc 未写负值分支 = 判读申报制(后继族稿禁当已定案结论转引);辖域 =
     战斗类与扑满帧两败局分支(signed>0 → 原值保留,非正值照常转移),
     胜局/奖励/补给分支形参不参与。缺省 False = 现行为逐位不变。"""
     if piggy:
@@ -563,8 +563,8 @@ NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
 def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     """节点结算基础经验入账(补给 +0 = 表内显式档)。
 
-    世界写 = 结算原语 ``settle_xp_observe`` 一行调用(推进 + 观察
-    双笔 + 跨级连锁统一收口,模拟器各经验腿同一入口;帽形参经
+    把结果写进状态副本 = 结算原语 ``settle_xp_observe`` 一行调用(推进 + 观察
+    双笔 + 跨级连锁统一收尾,模拟器各经验效果条目同一入口;帽形参经
     ``level_cap_of`` 随链在原语内)。集外节点型 = 0 经验不入账
     (词表漂移在调用方暴露)。返回本节点实际入账经验量。
     """
@@ -580,14 +580,14 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     """策略选卡落地拍即时经验入账(通用通道,辖域 = 注册表
     xp_instant>0 全体,字段分派非单卡特判)。
 
-    为什么:sim 世界无观察、经验只有自持账,选卡当场即时型不在 kernel
+    为什么:sim 状态副本无观察、经验只有自持账,选卡当场即时型不在 kernel
     获得链发放(链内加经验写会连带 live——live 同拍 = 观察覆盖零写,
     经验面板画面可读,伟大征服口径),sim 不发即持卡局等级进度系统性
     失真,下游商店发牌分布/上阵上限/升级决策全链读等级现值。数额 =
     逐卡直读 :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**:
     其聚合字段集不含 xp_instant,误走 = 静默零发放;且聚合语义 = 周期型
     重评,与「选卡单事件一次性发放」不匹配,逐卡各发各的(同持多卡笔笔
-    独立)。世界写 = 结算原语 ``settle_xp_observe`` 一行调用(帽经
+    独立)。把结果写进状态副本 = 结算原语 ``settle_xp_observe`` 一行调用(帽经
     ``level_cap_of`` 随链在原语内),evidence 按 ``xp:strategy_pick:<卡名>``
     与节点经验 ``xp:node`` 笔分账,sig 同组(同域字段同组,笔间靠
     evidence 区分)。返回本批实际入账经验总量。
@@ -608,17 +608,17 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
 def apply_strategy_plane_refire_xp(gs: GameState,
                                    picked: Sequence[str]) -> int:
     """策略选卡落地拍位面段补发经验入账(通用通道,辖域 = 注册表
-    xp_per_plane>0 全体,字段分派非单卡特判;用户裁定 2026-11-01 拍定:
+    xp_per_plane>0 全体,字段分派非单卡特判;用户裁定 2026-11-01 确定:
     「现在以及每个位面开始时」族中途拿卡时,当前已开始的位面其位面段
-    登记拍全额补发,后续位面开始事件照常走位面首节点窗腿)。
+    登记拍全额补发,后续位面开始事件照常走位面首节点窗效果条目)。
 
-    为什么:位面段 XP 世界腿挂 sim 位面首节点窗(:meth:`SimBackend
+    为什么:位面段 XP(把结果写进状态副本的实现分支)挂 sim 位面首节点窗(:meth:`SimBackend
     ._apply_strategy_plane_start_xp`),只对登记后到达的 (plane,1) 窗
     发放,拿卡晚于位面开始时该位面段对持卡局系统性缺失(sim 无观察,
-    不补即持卡局等级进度失真,即时经验腿同缺口来源)。已开始判据与
+    不补即持卡局等级进度失真,即时经验效果条目同缺口来源)。已开始判据与
     kernel 登记拍补发桥(apply_effect_plane_refire_grant)同口径:策略卡
     登记恒发生于节点窗内(策略选卡全日程非 round-1,开场 1-1 前弹的是
-    投资环境——live 正本 screen_flow_timing.md「第一次投资策略 overlay」
+    投资环境——live 权威版本 screen_flow_timing.md「第一次投资策略 overlay」
     节),进窗推进已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场
     即已开始,None = 保守零补发(禁猜)。数额 = 逐卡直读
     :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
@@ -648,22 +648,22 @@ def apply_strategy_plane_refire_gold(gs: GameState,
                                      picked: Sequence[str]) -> int:
     """策略选卡落地拍位面段补发金入账(通用通道,辖域 = 注册表
     gold_per_plane>0 全体,字段分派非单卡特判;用户裁定 2026-11-01 族级
-    拍定的「现在及每个位面开始时」族中途拿卡补发,与 XP 支
+    确定的「现在及每个位面开始时」族中途拿卡补发,与 XP 支
     :func:`apply_strategy_plane_refire_xp` 同判同形)。
 
-    为什么:位面段金世界腿挂 sim 位面首节点窗(:meth:`SimBackend
+    为什么:位面段金(把结果写进状态副本的实现分支)挂 sim 位面首节点窗(:meth:`SimBackend
     ._apply_strategy_plane_start_gold`),只对登记后到达的 (plane,1) 窗
     发放,拿卡晚于位面开始时该位面段对持卡局系统性缺失——live 同拍零写
-    (游戏自加,金整字段观察覆盖收口,金面禁直写),sim 不补即持卡局金
+    (游戏自加,金整字段由观察覆盖收尾定值,金面禁直写),sim 不补即持卡局金
     轨线失真,下游利息/购买力全链读金现值。已开始判据与 XP 支同口径:
     策略卡登记恒发生于节点窗内(策略选卡全日程非 round-1),进窗推进
     已在 (plane,1) 消费过位面开始边界 → ``gs.node`` 在场即已开始,
     None = 保守零补发(禁猜)。数额 = 逐卡直读 :data:`STRATEGY_ECONOMY`
     现值,**禁 aggregate_economy**(聚合字段集不含 gold_per_plane,误走 =
     静默零发放);逐卡各一笔独立 observe(evidence 按
-    ``strategy:plane_gold_refire:<卡名>`` 与位面窗金腿
+    ``strategy:plane_gold_refire:<卡名>`` 与位面窗金效果条目
     ``strategy:plane_gold:p<位面>`` 分账,sig 同组 sim:strategy 同域
-    字段,笔间靠 evidence 区分)。容器金缺读(None)= 本拍零写留待观察
+    字段,笔间靠 evidence 区分)。状态容器金缺读(None)= 本拍零写留待观察
     覆盖,禁猜(env 形 None 视 0 照写会伪造金绝对值假真值,不取)。
     返回本批实际入账卡数。"""
     if gs.node.value is None:
@@ -690,10 +690,10 @@ def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
     """策略选卡落地拍即时生命入账(通用通道,辖域 = 注册表
     hp_instant≠0 全体,正加负损双向,字段分派非单卡特判)。
 
-    为什么:sim 世界无观察、hp 只有自持账(开局查表种 + 战斗结算写),
+    为什么:sim 状态副本无观察、hp 只有自持账(开局查表种 + 战斗结算写),
     选卡当场即时型不在 kernel 获得链发放——链内写 hp 会在 live 侧引入
     hp 逻辑写端,违 fields.md hp 写入闸「无逻辑写入方」结构(live 同拍
-    零写,游戏自算 + 血量条观察覆盖收口),sim 不发即持卡局血线系统性
+    零写,游戏自算 + 血量条观察覆盖收尾),sim 不发即持卡局血线系统性
     失真,败局余量/保底触发概率/局终时点全链读现值。数额 = 逐卡直读
     :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**(聚合字段集
     不含 hp_instant,误走 = 静默零发放);hp 无结转语义(xp_apply_amount
@@ -708,15 +708,15 @@ def apply_strategy_pick_hp(gs: GameState, picked: Sequence[str],
     ``opening``/战斗 ``battle:hp`` 笔分账可归因,sig 同组(同域字段同
     组,笔间靠 evidence 区分)。
 
-    负值支扩挂点(损血档位触发族第二挂点):hp 写后同拍调
+    负值支新增插入位置(损血档位触发族第二个插入位置):hp 写后同拍调
     :func:`cw_gain_chain.check_strategy_hp_loss_grants`,负 delta 取正
     损失量入累计器(**非减负**——累计器单调增取模发放,「−20」换算
-    +20 损失计入),持保险局选卡损血同拍触发档位;logic_sig 与结算腿
+    +20 损失计入),持保险局选卡损血同拍触发档位;logic_sig 与结算效果条目
     同组,rng = 调用方显式传流键(装备采样专用,禁缺省回退自掷——
-    出售发牌腿同款纪律),触发函数零二次守卫防重 = 本腿呈现闩(闩消费
+    出售发牌效果条目同款纪律),触发函数零二次守卫防重 = 本效果条目呈现一次性标志位(标志位消费
     先于发放判定,重放零触发)。
     返回本批实际入账笔数(调用方轨迹追加按写行粒度对齐,一笔一追加;
-    挂点写面 = 累计器/金/装备,不产 hp 写行,零扰轨迹同构)。"""
+    插入位置写入面 = 累计器/金/装备,不产 hp 写行,零扰轨迹同构)。"""
     applied = 0
     for name in picked:
         canon = normalize_invest_name(str(name or ''))
@@ -742,7 +742,7 @@ def apply_strategy_pick_streak(gs: GameState, picked: Sequence[str]) -> int:
     """策略选卡落地拍连胜置位入账(通用通道,辖域 = 注册表
     streak_set≠0 全体,字段分派非单卡特判)。
 
-    为什么:sim 世界真值必须显式写——置位发生在选卡刻,到下一结算屏
+    为什么:sim 状态副本真值必须显式写——置位发生在选卡刻,到下一结算屏
     带符号读数观察覆盖之间存在盲窗,观察无法承接(sim 不写即持卡局
     连胜系统性失真,下游结算转移/轮收入连胜分量/深井角斗场触发/
     伟大征服难度项全链读现值自动跟随)。与伟大征服「消费侧改写归
@@ -771,13 +771,13 @@ def apply_strategy_pick_streak(gs: GameState, picked: Sequence[str]) -> int:
     return applied
 
 
-#: 出售发牌腿判据集(派生,禁硬编码名单):板面重写族出售支中**卡文携带
-#: 发牌腿**的卡——判据 = :data:`STRATEGY_EFFECTS` 过滤
-#: ``payload.board_rewrite == BOARD_REWRITE_SELL_ALL_DEAL``。发牌腿是人力
+#: 出售发牌效果条目判据集(派生,禁硬编码名单):板面重写族出售支中**卡文携带
+#: 发牌效果条目**的卡——判据 = :data:`STRATEGY_EFFECTS` 过滤
+#: ``payload.board_rewrite == BOARD_REWRITE_SELL_ALL_DEAL``。发牌效果条目是人力
 #: 重组卡文附加面、非出售语义固有:素出售卡(大裁员/降本增效/现金为王,
 #: 'sell_all' 值)无发牌面,不入列——不细分则素出售卡注册即自动入列,
-#: sim 局将向无发牌卡注入假 2★(世界假单位污染)。按语义值细分后,后继
-#: 具发牌腿卡以 _DEAL 值注册自动入列,素出售卡注册零扰动。
+#: sim 局将向无发牌卡注入假 2★(状态副本假单位污染)。按语义值细分后,后继
+#: 具发牌效果条目卡以 _DEAL 值注册自动入列,素出售卡注册零扰动。
 SELL_ALL_REWRITE_STRATEGIES: frozenset[str] = frozenset(
     name for name, spec in STRATEGY_EFFECTS.items()
     if str(getattr(getattr(spec, 'payload', None), 'board_rewrite', '')
@@ -791,15 +791,15 @@ SELL_ALL_DEAL_TIERS: tuple[tuple[int, int], ...] = ((3, 1), (2, 2), (1, 2))
 
 def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
                                       rng: random.Random) -> int:
-    """策略选卡落地拍出售发牌腿(板面重写族出售支,通用通道,辖域 =
+    """策略选卡落地拍出售发牌效果条目(板面重写族出售支,通用通道,辖域 =
     :data:`SELL_ALL_REWRITE_STRATEGIES` 全体,判据分派非单卡特判)。
 
-    为什么:sim 世界自持无观察,live 发牌面 = 游戏侧发放、下一备战帧
-    观察覆盖收口(板面重写桥「本桥禁替发牌面造单位」裁定,三正本在册
+    为什么:sim 状态副本自持无观察,live 发牌面 = 游戏侧发放、下一备战帧
+    观察覆盖收尾(板面重写桥「本桥禁替发牌面造单位」裁定,三处权威版本已登记
     零改动);sim 不发即持卡局 5 只 2★ 凭空缺失,合成素材池/held 派生/
-    部署决策下游全链失真。本腿 = sim 世界真值直写,live 局不经过 sim
-    后端,零假发牌。先卖后抽时序 = 挂点天然保证:kernel 获得链(含桥
-    出售面清空+退款)已在本腿执行前写完容器,held 归零 → 各档剩余池 =
+    部署决策下游全链失真。本效果条目 = sim 状态副本真值直写,live 局不经过 sim
+    后端,零假发牌。先卖后抽时序 = 插入位置天然保证:kernel 获得链(含桥
+    出售面清空+退款)已在本效果条目执行前写完状态容器,held 归零 → 各档剩余池 =
     固定牌库全集,桶出口「先回归后重抽」调用时序契约
     (:func:`cw_pool.grant_bucket_names`)天然满足。
 
@@ -814,7 +814,7 @@ def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
     在码申报)。空桶 = 注册表漂移态防御:零写 + log 警告不炸链(
     on_env_gained 随机支同款);桶出口守恒破(剩余负值 raise)= cw_pool
     显式炸错语义照抄不兜。rng 必须显式传参:缺省回退自掷破 sim 确定性
-    (蓝海腿同款纪律);三档共用同一实例按卡文语序推进(掷序契约:改序
+    (蓝海效果条目同款纪律);三档共用同一实例按卡文语序推进(掷序契约:改序
     = 掷序漂移)。返回发放单位数。
     """
     dealt = 0
@@ -827,7 +827,7 @@ def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
             if not bucket:
                 # 运行期空 = 注册表漂移(出售刚清场,该费用档剩余池不应
                 # 为空);零写留 log 防御分支(随机赠卡池空支同款,
-                # 不改容器不炸链)
+                # 不改状态容器不炸链)
                 log.warning(f'[cw-sim] 出售发牌腿空桶(注册表漂移?):'
                             f'cost={cost} card={canon}')
                 continue
@@ -842,18 +842,18 @@ def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
 
 def apply_strategy_pick_gold_next_nodes_init(
         gs: GameState, picked: Sequence[str]) -> int:
-    """策略选卡落地拍分期金剩余腿数初始化(通用通道,辖域 = 注册表
+    """策略选卡落地拍分期金剩余效果条数初始化(通用通道,辖域 = 注册表
     ``gold_next_nodes_count`` > 0 全体,字段分派非单卡特判)。
 
     为什么:「接下来 count 次进节点每次 amount 金」的递减状态必须在
-    拿卡刻定格——节点窗腿(:func:`apply_invest_installment_gold`)按
-    剩余腿数发放,无初始化写点则递减容器永空 = 持卡局分期段整段静默
+    拿卡刻定格——节点窗效果条目(:func:`apply_invest_installment_gold`)按
+    剩余效果条数发放,无初始化写点则递减状态容器字段永空 = 持卡局分期段整段静默
     零发。数额 = 注册值 ``gold_next_nodes_count`` 直读(键 = 卡规范名
     每卡独立条目,双持姊妹卡各键并存各窗各付各额,禁聚合槽);直接
     赋值 = 同卡重拿重置语义(现役 ``excluded_invest`` 采样排除闸下
     同卡重拿不可达,重置 = 防御性默认,族申报「重派逐次授予、现役
     不设防」同向)。live 零写:live 分期发放由游戏自算自显,金整字段
-    观察覆盖收口,假计数入容器无纠偏通道故禁。evidence
+    观察覆盖收尾,假计数入状态容器无纠偏通道故禁。evidence
     ``strategy:gold_next_nodes_init:<卡名>``。返回初始化条数。
     """
     applied = 0
@@ -898,11 +898,11 @@ def effective_deal_probs(level: int, rng: random.Random, *,
 def deal_shop(gs: GameState, rng: random.Random, *, level: int,
               probs: dict[int, float] | None = None,
               tag: str = 'shop:deal') -> None:
-    """整店发牌并写容器商店载荷(obs 渠道;节点切换自动全刷写点)。
+    """整店发牌并写状态容器商店载荷(obs 渠道;节点切换自动全刷写点)。
 
     发牌算法本体 = kernel ``cw_shop_deal.sample_shop_deal``(两执行面
-    同源单一实现;sim 侧采样即世界真值)。名集空 → 槽留空(定长 5 槽
-    三态模型的 empty 槽)。专家顾问入池 = 容器 ``gs.unlocked_experts``
+    同源单一实现;sim 侧采样即状态副本里的值)。名集空 → 槽留空(定长 5 槽
+    三态模型的 empty 槽)。专家顾问入池 = 状态容器 ``gs.unlocked_experts``
     派生(获得链解锁写入,drawable_names 消费),本层零透传。
     """
     payload = sample_shop_deal(gs, rng, level=level, probs=probs)
@@ -966,15 +966,15 @@ OFFER_OUTLIER_DISCLOSURE: str = 'invest_offer_outlier_triggers_unmodeled'
 STRATEGY_DELAYED_OFFER_FIRED: str = 'strategy_delayed_offer_fired'
 
 #: 拿卡拍立即 offer 呈现留证披露键(值 = 触发卡@frame;对账面 = 实机局
-#: 拿卡后第二选卡屏出现时点)。与到期腿呈现留证键分立,流标签判别面 =
+#: 拿卡后第二选卡屏出现时点)。与到期效果条目呈现留证键分立,流标签判别面 =
 #: 拿卡拍 ``M11/offer-extra/pick/...`` vs 窗首 ``M11/offer-extra/...``
-#(两挂点分键,防族批部署态同键跨挂点统计耦合)。
+#(两个插入位置分键,防族批部署态同键跨插入位置统计耦合)。
 STRATEGY_IMMEDIATE_OFFER_FIRED: str = 'strategy_immediate_offer_fired'
 
 #: 策略延时 offer 顺延留证披露键(值 = 原因 scheduled_slot_occupied/
 #: window_cap + 悬置余量):同窗固定日程/联席槽在场,或本窗已呈现一次
 #: 时,到点条目悬置顺延下一窗(到点判定「到了及以后都算」天然承载,
-#: 不悬空不丢失)。白银投资延时腿入队后冲突交集非空:联席路径拿卡
+#: 不悬空不丢失)。白银投资延时效果条目入队后冲突交集非空:联席路径拿卡
 #(2,6)→ 3 后继窗 = (3,2) 撞固定日程槽 = scheduled_slot_occupied 顺延
 #: (3,3)——自然可达冲突首例,披露键由守卫转真值留证,实机对账见此键
 #: = 核算吻合预期非异常。
@@ -990,7 +990,7 @@ def offer_slots(plane: int, round_num: int,
                 active_env: str | None) -> bool:
     """该 (plane, round_num) 是否存在策略 offer 槽。
 
-    固定日程(U07①)∨ 联席决策额外槽(id122 挂 2-6;环境按容器
+    固定日程(U07①)∨ 联席决策额外槽(id122 挂 2-6;环境按状态容器
     ``active_env`` 现值判定)。环境名不可辨(None/空)→ 仅按固定日程。
     """
     key = (int(plane), int(round_num))
@@ -1016,7 +1016,7 @@ def sample_strategy_offer(rng: random.Random, excluded: set[str],
     ``forced_slots`` = 三槽品质覆盖向量(坐标系 = 投资界面卡槽物理排位
     0..2,与 ``ENV_POOL_REWRITE.slot_qualities`` 同坐标系;长度不足处按
     默认掷点):非空元素 = 该槽跳过品质掷点直取目标品质池;'' 元素 =
-    默认掷点。改写命中次(时代族/头彩/尾彩(settled 定谳)环境 = 三槽
+    默认掷点。改写命中次(时代族/头彩/尾彩(settled 已定案)环境 = 三槽
     同向量;银·金·彩 = 卡面三槽品质按位,判据 =
     :func:`rewrite_slot_qualities_for_pick`)。2026-10-14 用户裁定:固定
     品质后照常抽样,可观察面 = 候选全目标品质;目标品质池被排除集吃光 →
@@ -1084,9 +1084,9 @@ def rewrite_slot_qualities_for_pick(active_env: str | None,
     原型语义等价——单品质 = 三槽同向量的特例,历史裁定零漂移):
     - 全改写型(时代 ×3,``rewrite_picks == (1, 2, 3)`` 结构特征,建表
       校验保证该形状无 pending 歧义):命中次返回 (q, q, q);
-    - 部分改写型经 ``rewrite_settled`` 定谳后同判据接入——头彩已经用户
-      裁定 2026-10-16 定谳 = offer 级覆盖面(第 1 次取卡机会 3 张候选全
-      目标品质),尾彩同裁定 = 第 3 次;未定谳部分型必填 pending_notes
+    - 部分改写型经 ``rewrite_settled`` 定案后同判据接入——头彩已经用户
+      裁定 2026-10-16 已定案 = offer 级覆盖面(第 1 次取卡机会 3 张候选全
+      目标品质),尾彩同裁定 = 第 3 次;未定案部分型必填 pending_notes
       的建表闸保持(判据 settled 分支保留为未来新增部分型的守卫);
     - 槽位向量型(银·金·彩,``slot_qualities`` = 卡面三槽品质按位,
       用户裁定 2026-10-19 卡面直读即真值):固定日程取卡恒返回登记向量
@@ -1124,7 +1124,7 @@ def _offer_extra_refreshes(active_env: str) -> int:
 ENCOUNTER_TIER_COUNT: int = 4
 
 #: sim 节点 kind → 结算环行 node_type 词表(T-33 结算环帧补写用;词表
-#: 正本 = live 结算行归一 cw_screen_battle_wait._normalize_node_type,
+#: 权威版本 = live 结算行归一 cw_screen_battle_wait._normalize_node_type,
 #: kernel→operations 反向 import 禁止故同形内联;战斗类四键在表,
 #: supply 不经结算分支恒不入环)。
 _SIM_KIND_TO_RING_LABEL: dict[str, str] = {
@@ -1138,7 +1138,7 @@ ENCOUNTER_REWARD_GOLD_PLACEHOLDER: int = 20
 #: 遭遇占位参数披露键(U22)。
 ENCOUNTER_PARAMS_PENDING_U22: str = 'encounter_tier_params_pending_u22'
 
-#: 晶矿面板单例锚(U23:实测 1-8 清关样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿)。
+#: 晶矿面板单例基准点(U23:实测 1-8 清关样本 1 大金晶矿+5 蓝晶矿+2 灰晶矿)。
 REWARD_ORE_PANEL_ANCHOR: tuple[tuple[str, int], ...] = (
     ('金', 1), ('蓝', 5), ('灰', 2),
 )
@@ -1169,21 +1169,21 @@ SUPPLY_DIAMOND_SLOT_PENDING: str = 'supply_diamond_slot_pending_u24'
 PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
 
 #: 扑满面板矿占位增量披露键(「掉落(超)多战利品」desc 无数值,sim
-#: 面板矿增量 = 用户占位拍定 2026-10-15,非核实游戏事实,待实机采证
+#: 面板矿增量 = 用户占位确定 2026-10-15,非核实游戏事实,待实机采证
 #: 校准)。值串 = 纯声明串不携数值:携值即与注册表双源,量级单一源 =
 #: kernel :data:`ENV_ORE_PANEL_BONUS`。不进 kernel ORE_ASSUMPTION_KEYS
-#: 汇总 tuple——该 tuple 辖 sphere 内容分布假设且现无发射接线,本键
-#: 沿 :data:`ORE_PLANE_START_PENDING` 先例住本模块、接线
+#: 汇总 tuple——该 tuple 辖 sphere 内容分布假设且现无发射接入调用,本键
+#: 沿 :data:`ORE_PLANE_START_PENDING` 先例住本模块、接入
 #: :data:`_BASE_DISCLOSURES`、测试直断发射(设计 designs/T-20-
 #: jingji-yanzhong-guore.md §6.1)。
 PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
 
 #: 商店 2★ 直出概率占位披露键(人才下沉 id 121:「商店中有概率出现2星
-#: 角色」desc 无数值,sim 发牌翻星概率 = 用户占位拍定 2026-10-16,非
+#: 角色」desc 无数值,sim 发牌翻星概率 = 用户占位确定 2026-10-16,非
 #: desc 真值,待实机采证校准)。值串 = 纯声明串不携数值:携值即与注册
 #: 表双源,量级单一源 = kernel :data:`ENV_SHOP_TWO_STAR_DEAL_PROB`(翻
 #: 星分支 = kernel/cw_shop_deal,sim/live 两执行面共用)。沿
-#: :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER` 先例住本模块、接线
+#: :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER` 先例住本模块、接入
 #: :data:`_BASE_DISCLOSURES`、测试直断发射(设计 designs/T-22-rencai-
 #: xiachen.md §8)。
 SHOP_TWO_STAR_DEAL_PLACEHOLDER: str = 'shop_two_star_deal_prob_user_placeholder'
@@ -1211,7 +1211,7 @@ def encounter_options_for(strategy_names: list[str]) -> tuple[EncounterOption, .
     ``cw_sim_enemy._strategy_delta_of`` 同款单一形状(get_strategy ×
     normalize_invest_name,禁新立读法)。端点 = :func:`encounter_options`
     首/尾派生,零新数值(档数单一源 = ``ENCOUNTER_TIER_COUNT``,U22 校准
-    自动跟随);idx 重建 = 呈现集 0 基位次——三消费方同域承重(策略器
+    自动跟随);idx 重建 = 呈现集 0 基位次——三消费方同域起决定作用(策略器
     输出 ``o.idx`` / 上报 ``options[param.idx]`` 取载荷 / 机械链两卡位),
     不重排则策略器输出原档位下标越界,守卫 AssertionError。零 rng:确定
     性收窄,种子流无漂移;无命中返回全集原样(现行为零变化)。
@@ -1228,19 +1228,19 @@ def encounter_options_for(strategy_names: list[str]) -> tuple[EncounterOption, .
 
 def is_piggy_node(gs: GameState) -> bool:
     """当前奖励节点是否被扑满环境替换(单一源 = ``PIGGY_ENV_NAMES`` ×
-    容器 ``active_env``;非奖励节点恒 False)。"""
+    状态容器 ``active_env``;非奖励节点恒 False)。"""
     return (str(node_kind_of(gs) or '') == 'reward'
             and str(gs.active_env.value or '') in PIGGY_ENV_NAMES)
 
 
 def reward_ore_points() -> tuple[tuple[str, int, int, int], ...]:
-    """晶矿面板点集(U23 单例锚展开;晶矿序 = 色档序内先大后小)。
+    """晶矿面板点集(U23 单例基准点展开;晶矿序 = 色档序内先大后小)。
 
     [索引定义] 元素 = ``(色档, x, y, r)``(OreSight.points 元素同形);
-    (x, y) = sim 世界合成坐标,无画面语义,仅作晶矿身份键(点晶矿
-    上报按坐标求交,容器 spheres 点集即真值)。内容不再由本面板携带
+    (x, y) = sim 状态副本合成坐标,无画面语义,仅作晶矿身份键(点晶矿
+    上报按坐标求交,状态容器 spheres 点集即真值)。内容不再由本面板携带
     ——spheres 写经挂接入口 ``cw_ore_channel.report_spheres_observed``
-    生成附着(声明金先占席、其余逐矿采样,sim 采样即世界真值),点击
+    生成附着(声明金先占席、其余逐矿采样,sim 采样即状态副本里的值),点击
     按附着值兑现。
     """
     points: list[tuple[str, int, int, int]] = []
@@ -1254,17 +1254,17 @@ def reward_ore_points() -> tuple[tuple[str, int, int, int], ...]:
 
 def reward_ore_panel_points(
         env_name: str) -> tuple[tuple[str, int, int, int], ...]:
-    """奖励面板点集 = 锚 8 矿 + 扑满环境占位增量扩尾(奖励节点装配
+    """奖励面板点集 = 基准 8 矿 + 扑满环境占位增量扩尾(奖励节点装配
     单点消费;纯函数,零采样零簿记)。
 
     [索引定义] 元素 = ``(色档, x, y, r)``,与 :func:`reward_ore_points`
-    同形同坐标系(x/y = sim 世界合成坐标,身份键无画面语义)。增量矿
+    同形同坐标系(x/y = sim 状态副本合成坐标,身份键无画面语义)。增量矿
     查表 :data:`ENV_ORE_PANEL_BONUS`(量级单一源;表外环境零增量),
     色档 = '灰'(占位呈现身份:色档无内容语义,实采校准时连色带数
     一起校,披露键 :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER`)。
 
-    **坐标续接面板序,禁独立从 1 起号**:增量点 x 自锚点序顺延
-    ((锚点数+序)*10),与锚矿同列延伸——同批 spheres 写按 (x, y)
+    **坐标续接面板序,禁独立从 1 起号**:增量点 x 自基准点序顺延
+    ((基准点数+序)*10),与基准矿同列延伸——同批 spheres 写按 (x, y)
     身份求交,独立起号会撞键吞点;位面开局声明矿消费方传本函数结果
     长度续接(:meth:`SimBackend._plane_start_declared_points`),
     扩尾加长后声明矿坐标自动跟随,联动零改码。
@@ -1352,36 +1352,36 @@ FURNACE_CHAR_MODE_PENDING: str = 'furnace_char_mode_pending_m10'
 DISCLOSURE_AFFIX_SAMPLE: str = 'reset_affixes_sample_placeholder'
 
 #: 羁绊档位触发语义披露键(T-41 特邀专家:加拉赫,裁决点 3 电平语义为
-#: 建模选择非实采——卡面「激活…时」的边沿细节未定谳,「电平 + 每档
+#: 建模选择非实采——卡面「激活…时」的边沿细节未定案,「电平 + 每档
 #: 一次性 done 封账」为用户裁定建模口径;语义单一源 = kernel/
 #: cw_faction_callbacks.check_env_bond_tier_grants docstring。纯声明,
 #: 不进任何判定分支)。
 DISCLOSURE_BOND_TIER_SEMANTICS: str = 'env_bond_tier_semantics_level'
 
 #: 策略 boss 金通道披露键(特战资金系;纯声明,不进任何判定分支)。
-#: 载义:①sim 侧策略 boss 金腿 = 「调用方聚合单列」过渡形态
-#(:meth:`strategy_boss_gold_of` + 节点窗收口独立观察笔),承载方式随
+#: 载义:①sim 侧策略 boss 金效果条目 = 「调用方聚合单列」过渡形态
+#(:meth:`strategy_boss_gold_of` + 节点窗收尾独立观察笔),承载方式随
 #: T1b 定夺迁移(round_start_income docstring 预留两承载方式,选分量
-#: 扩参则本腿合并进收入签名);②轮首收入口径常量(BASE_INCOME/
+#: 扩参则本效果条目合并进收入签名);②轮首收入口径常量(BASE_INCOME/
 #: LOSS_GOLD_BY_NODE/REWARD_BASE_GOLD_BY_ROUND,按实机逐轮金轨迹
-#: 整定)的校准样本域与本腿的叠加交互未实证(校准局是否含持卡局
+#: 整定)的校准样本域与本效果条目的叠加交互未实证(校准局是否含持卡局
 #: 不可考)——首次实机持卡局金轨迹对照时核,异常表现 = 持卡局金轨迹
 #: 系统性偏离。
 DISCLOSURE_STRATEGY_BOSS_GOLD: str = 'strategy_boss_gold_sim_channel'
 
-#: 策略选卡即时腿披露键(纯声明,不进任何判定分支)。载义:①策略选卡
-#: 「选牌当场即时型」世界腿现值 = xp_instant 已建(辖域 = 注册表字段>0
+#: 策略选卡即时效果条目披露键(纯声明,不进任何判定分支)。载义:①策略选卡
+#: 「选牌当场即时型」把结果写进状态副本的实现分支现值 = xp_instant 已建(辖域 = 注册表字段>0
 #: 全体,字段分派非单卡特判)/ hp_instant 已建含负成员(正加负损双向,
 #: 辖域 = 字段≠0 全体;负值 = 损失直加不 clip,先亏后盈 −20 为首例,
 #: 负 delta 同拍入损血档位累计器非「减负」)/ 真即时金 instant_gold
-#: 未建(族批另议)——三形状均在册申报,防「通道存在 = 族全覆盖」误读;
-#: ②腿数额 = 单卡直读注册表现值,条目修订腿值随单一源自动跟随,无卡别
+#: 未建(族批另议)——三形状均已登记申报,防「通道存在 = 族全覆盖」误读;
+#: ②效果条目数额 = 单卡直读注册表现值,条目修订效果条目值随单一源自动跟随,无卡别
 #: 硬编码。
 DISCLOSURE_STRATEGY_PICK_INSTANT: str = 'strategy_pick_instant_legs'
 
 #: 免战跳过辖域假设披露键(免战牌;纯声明,不进任何判定分支):跳过辖域
 #: = :data:`CW_SKIP_NODE_KINDS`(仅普通战斗)系卡词汇类型读法假设,
-#: 实机按钮出现面(遭遇/首领/奖励备战帧是否同样替换为跳过)校准挂点;
+#: 实机按钮出现面(遭遇/首领/奖励备战帧是否同样替换为跳过)校准插入位置;
 #: 失配可观测路径 = live 跳过声明(battle_skip)到达而本辖域不含该节点
 #: 类型 → 分派落空响亮(ValueError 守卫族)或对账漂移告警。发射点 =
 #: 跳过消费拍(假设兑现时点)。
@@ -1395,12 +1395,12 @@ CW_SKIP_SCOPE_BATTLE_ONLY_ASSUMPTION: str = 'cw_skip_scope_battle_only_assumptio
 #: 对应支。发射点 = 跳过消费拍。
 CW_SKIP_SETTLEMENT_SEMANTICS_PENDING: str = 'cw_skip_settlement_semantics_pending'
 
-#: 策略尾款金·锚点辖域假设披露键(尾款交付;纯声明,不进任何判定分支)。
-#: 载义:①「最后一个补给阶段」按**全局一次**建模(锚 = 展平全序列最末
+#: 策略尾款金·基准点辖域假设披露键(尾款交付;纯声明,不进任何判定分支)。
+#: 载义:①「最后一个补给阶段」按**全局一次**建模(基准 = 展平全序列最末
 #: supply 位,单一源 = ``cw_node_schedule.final_supply_pos``;措辞依据 =
-#: 卡文「最后一个」全局限定词,证伪路径 = 实机持卡局非锚 supply 节点窗
+#: 卡文「最后一个」全局限定词,证伪路径 = 实机持卡局非基准 supply 节点窗
 #: 金轨迹 +30 即证伪为每位面各一次,改判定 = helper 换位面域扫描);②
-#: 修饰局锚点随场字段现值(继承 T-8 披露的场字段缺位回退默认表链路——
+#: 修饰局基准位随场字段现值(继承 T-8 披露的场字段缺位回退默认表链路——
 #: 本卡 live 零写金,该链路零行为影响)。
 DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: str = 'final_supply_gold_scope_assumption'
 
@@ -1408,19 +1408,19 @@ DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: str = 'final_supply_gold_scope_assumption'
 #: 分支)。载义:①「进入…后」按节点进窗拍建模(与特战资金「时」字同
 #: 拍假设;若实机证伪为补给确认拍,live 观察覆盖兜底行为面无差,sim 发
 #: 放时点差一个窗内位置);②拿卡当节点不发放(选卡确认恒晚于窗口前段
-#: 聚合读,锚点错过即无——「尾款」语义自洽)。
+#: 聚合读,基准点错过即无——「尾款」语义自洽)。
 DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: str = 'final_supply_gold_timing_assumption'
 
-#: 策略卡到级条件·触发语义披露键(成长基金金腿 + 钻石商人装备腿两腿
+#: 策略卡到级条件·触发语义披露键(成长基金金效果条目 + 钻石商人装备效果条目两条效果条目
 #: 共用;纯声明,不进任何判定分支)。载义:「拿卡时已 ≥ 目标级也发放」
-#: 状态检查型语义未经实机采证(等级 = 容器现值非事件流,拿卡时点无从
-#: 回溯历史跨越,策略条件腿容器现值求值同款;若实机证伪为严格跨越事件
+#: 状态检查型语义未经实机采证(等级 = 状态容器现值非事件流,拿卡时点无从
+#: 回溯历史跨越,策略条件效果条目状态容器现值求值同款;若实机证伪为严格跨越事件
 #: 型,两检查函数同批改读升级事件标记并随批退役本键)。
 DISCLOSURE_STRATEGY_LEVEL_SEMANTICS: str = 'strategy_level_grant_state_semantics'
 
-#: 策略卡到级条件·sim 休眠披露键(成长基金金腿 + 钻石商人装备腿两腿
+#: 策略卡到级条件·sim 休眠披露键(成长基金金效果条目 + 钻石商人装备效果条目两条效果条目
 #: 共用;纯声明,不进任何判定分支)。载义:现役 sim 经验写源(节点经验
-#: 表 × 选卡即时腿)下全程等级上界低于 3→9 级累计门槛 194,到级两腿
+#: 表 × 选卡即时效果条目)下全程等级上界低于 3→9 级累计门槛 194,到级两条效果条目
 #: 休眠恒短路(上界封顶 7 级);经验源扩网(买经验建模/经验常量修订)
 #: 使上界 ≥ 194 时休眠锁先红触发边界重申报,本键随激活批复评退役。
 DISCLOSURE_STRATEGY_LEVEL_DORMANT: str = 'strategy_level_grant_dormant_in_sim'
@@ -1456,15 +1456,15 @@ _BASE_DISCLOSURES: dict[str, object] = {
     # 策略 boss 金通道申报(载义见键常量注:过渡形态随 T1b 迁移 +
     # 收入口径常量校准交互未实证待持卡局对照)
     DISCLOSURE_STRATEGY_BOSS_GOLD: 'caller_side_aggregate_pending_t1b_carrier',
-    # 策略选卡即时腿申报(载义见键常量注:xp/hp_instant 腿已建与真即时金
-    # 未建三形状在册)
+    # 策略选卡即时效果条目申报(载义见键常量注:xp/hp_instant 效果条目已建与真即时金
+    # 未建三形状已登记)
     DISCLOSURE_STRATEGY_PICK_INSTANT: 'xp_hp_instant_legs_built_pick_gold_instant_pending',
-    # 策略尾款金两键(尾款交付;载义见键常量注:锚点辖域全局一次假设 +
+    # 策略尾款金两键(尾款交付;载义见键常量注:基准点辖域全局一次假设 +
     # 「后」字时点进窗拍假设)
     DISCLOSURE_FINAL_SUPPLY_GOLD_SCOPE: 'final_supply_global_once_seq_pos_anchor',
     DISCLOSURE_FINAL_SUPPLY_GOLD_TIMING: 'node_window_entry_beat_pick_miss_is_gone',
     # 策略卡到级金两键(成长基金;载义见键常量注:状态检查型语义未经
-    # 实机采证 + 现役经验常量下 9 级不可达到级腿休眠)
+    # 实机采证 + 现役经验常量下 9 级不可达到级效果条目休眠)
     DISCLOSURE_STRATEGY_LEVEL_SEMANTICS: 'pick_already_at_level_also_grants_unverified',
     DISCLOSURE_STRATEGY_LEVEL_DORMANT: 'bound_96_lt_threshold_194_cap_level7',
     ORE_PLANE_START_PENDING: 'face_gold_color_auto_open_unverified',
@@ -1485,10 +1485,10 @@ _MODAL_SCREENS: frozenset[str] = frozenset({
     SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP,
 })
 
-#: sim 不可呈现浮层的「在场锚」(画面档 → 锚 area 集;3.4 联调 visible
-#: area 级细化)。这些锚门控同屏上的分支分派(如备战帧的阿哈装备选择
+#: sim 不可呈现浮层的「在场识别标志」(画面档 → 识别标志 area 集;3.4 联调 visible
+#: area 级细化)。这些识别标志门控同屏上的分支分派(如备战帧的阿哈装备选择
 #: 浮层检测):画面档匹配语义会把它们误答真 → 备战帧被浮层分支抢走。
-#: sim 不建模该浮层 → 锚恒不可见 = 世界真值(呈现态查询语义)。
+#: sim 不建模该浮层 → 识别标志恒不可见 = 状态副本里的值(呈现态查询语义)。
 _UNPRESENTED_OVERLAY_ANCHORS: dict[str, frozenset[str]] = {
     SCREEN_PREP: frozenset({'标识-简易装备'}),
 }
@@ -1497,7 +1497,7 @@ _UNPRESENTED_OVERLAY_ANCHORS: dict[str, frozenset[str]] = {
 @dataclass(frozen=True)
 class SimRunResult:
     """局结果面(消费方 = 运行器断言;纯结果无评判;
-    位面/轮次读容器节点键)。"""
+    位面/轮次读状态容器节点键)。"""
 
     final_hp: int
     plane_reached: int
@@ -1516,11 +1516,11 @@ class SimRunResult:
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
 #: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
-#: T-3 增 ``spy_shop_refresh``(商业间谍升级值变更回调世界分支:上报
+#: T-3 增 ``spy_shop_refresh``(商业间谍升级值变更回调状态副本侧分支:上报
 #: 声明触发 + advance 尾统一排空段消费,非转移动作——next_screen 恒
 #: 备战档,零画面转移);2026-10-19 用户
 #: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
-#: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
+#: 两屏刷新状态副本侧分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
 #: 模型对齐批:``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
 #: 回备战并自动弹店,遭遇战改由出战触发——旧「选档落地即结算」随呈现
 #: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明);免战牌建模批
@@ -1549,24 +1549,24 @@ DECL_SCREEN_DRIFT: str = 'decl_screen_drift'
 
 @dataclass
 class SimBackend:
-    """sim 游戏后端(一实例一局;端口协议实现 + 画面状态机 + 世界规则件)。
+    """sim 游戏后端(一实例一局;端口协议实现 + 画面状态机 + 状态规则件)。
 
-    构造即 reset(开局序列:词缀/boss 名单采样并写容器 → 简报屏 →
+    构造即 reset(开局序列:词缀/boss 名单采样并写状态容器 → 简报屏 →
     (env_present)投资环境屏 → wait_one_one → P1r1 对应屏);运行面 =
-    端口六口 + kernel 事实事件 sink 订阅,世界推进全部由流程驱动
+    端口六口 + kernel 事实事件 sink 订阅,状态副本推进全部由流程驱动
     (动作分支 = op → 上报函数族,本后端零私有动作语义)。
     """
 
-    #: 局级输入(确定性锚;词缀入 seed 后此字段语义 = override 见下)。
+    #: 局级输入(确定性基准;词缀入 seed 后此字段语义 = override 见下)。
     seed: int
     cfg: RunConfig
-    #: 世界容器(组合,唯一一份)。
+    #: 状态容器(组合,唯一一份)。
     gs: GameState = field(init=False)
     # —— 画面状态机(私有;状态 = 档名 + 子态) ——
     _screen: str = field(init=False, default='')
     _sub: str = field(init=False, default='')
     #: 上次广播画面值(:meth:`_announce_screen` prev_screen 行来源;初值 =
-    #: 容器 prev_screen 冷建空串。值级豁免点(SETTLE/LOBBY)不经过本字段
+    #: 状态容器 prev_screen 每局全新创建空串。值级豁免点(SETTLE/LOBBY)不经过本字段
     #: ——prev 语义 = 上次广播值,非上次状态机赋值)。
     _announced_screen: str = field(init=False, default='')
     #: 模态返回目标(呈现模态时的底层屏;None = 无挂起返回)。
@@ -1590,22 +1590,22 @@ class SimBackend:
     #: 投资策略 offer 刷新授权簿记(当前窗口;2026-10-19 用户裁定「sim 与
     #: 实机一致提供刷新次数」批):_offer_refreshable = 当前呈现的 offer
     #: 是否可刷新(固定日程槽 True / 联席额外槽 False——联席 desc 未写明
-    #: 刷新语义,保守不呈现,随实机首遇或裁定收口);_offer_forced_slots =
+    #: 刷新语义,保守不呈现,随实机首遇或裁定收尾);_offer_forced_slots =
     #: 本窗口品质改写槽位向量(空元组 = 无改写;刷新重掷沿用同向量 =
     #: 槽位品质承诺跨刷新保持,卡面语义直读);_offer_refresh_seq = 本
     #: 窗口刷新流水号(rng 流键分量,呈现时点归零)。观察真值(计数/候选)
-    #: 一律走容器(report 观察写端),本组只承载「呈现授权」簿记。
+    #: 一律走状态容器(report 观察写端),本组只承载「呈现授权」簿记。
     _offer_refreshable: bool = field(init=False, default=False)
     _offer_forced_slots: tuple[str, ...] = field(init=False, default=())
     _offer_refresh_seq: int = field(init=False, default=0)
-    #: 获得时点随机策略发放已掷源名集合(远见腿②一次性门;记名集合非单
-    #: 布尔 = 多张 grant 卡各自身 exactly-once,且两挂点共用同一门)。
+    #: 获得时点随机策略发放已掷源名集合(远见效果条目②一次性门;记名集合非单
+    #: 布尔 = 多张 grant 卡各自身 exactly-once,且两个插入位置共用同一门)。
     #: 消费面 = :meth:`_fire_strategy_random_grants`(拾取落地拍 + 环境
-    #: 直发分支两挂点);exactly-once 由集合记名构造保证(源卡按名字去重
+    #: 直发分支两个插入位置);exactly-once 由集合记名构造保证(源卡按名字去重
     #: 只入列一次,获得一次 → 恰发一次);零假发由 membership 判定保证
-    #(呈现未选 → 不入列 → 零发放)。私有暂态不入容器/不入快照恢复
-    #: (闩族同形先例);resume 安全 = sim 全局重放模型(RunConfig 无
-    #: active_strategies 输入面,源卡在册 ⇒ 其获得拍已在本后端跑内
+    #(呈现未选 → 不入列 → 零发放)。私有暂态不入状态容器/不入快照恢复
+    #: (一次性标志位族同形先例);resume 安全 = sim 全局重放模型(RunConfig 无
+    #: active_strategies 输入面,源卡已登记 ⇒ 其获得拍已在本后端跑内
     #: 重放,集合在该拍置位)。
     _strategy_grant_fired: set[str] = field(init=False, default_factory=set)
     #: 商店牌面节点级记录(牌面 = 节点级持久事实,发牌时定;2026-10-17
@@ -1617,83 +1617,83 @@ class SimBackend:
     _shop_record: ShopPayload | None = field(init=False, default=None)
     # (私有 overlay 队列与评估器簿记三件[队列/一次性标志/银狼星基线/
     #  巨星水位]已停用:sim 呈现数据源 =
-    #  容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
+    #  状态容器登记 gs.screen_changes.pending,判据簿记 = ScreenChanges
     #  sidecar,呈现检查 = 问询时点[screen_identity] + advance 尾。)
     #: 武装箱待授予候选下标(装备卡点击源记录;pick_box_card 落地消费)。
     _box_pick_pending: int | None = field(init=False, default=None)
-    #: 策略选卡即时经验腿呈现闩(offer 呈现置 True、落地拍消费置 None;
-    #: 无闩的重复 advance = 零写防重放)。私有暂态不入容器/不入快照恢复
+    #: 策略选卡即时经验效果条目呈现一次性标志位(offer 呈现置 True、落地拍消费置 None;
+    #: 无一次性标志位的重复 advance = 零写防重放)。私有暂态不入状态容器/不入快照恢复
     #: (:data:`_box_pick_pending` 同形先例)。
     _strategy_pick_xp_latch: bool | None = field(init=False, default=None)
-    #: 策略选卡连胜置位腿呈现闩(与 xp 闩同点置位同拍消费,独立不共享:
-    #: 两腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量收益)。
+    #: 策略选卡连胜置位效果条目呈现一次性标志位(与 xp 标志位同点置位同拍消费,独立不共享:
+    #: 两条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读互相牵连且无状态量收益)。
     #: 防重放实害 = 置位后战斗推进再重放会把已转移真值回写成置位值。
-    #: 私有暂态不入容器/不入快照恢复(同形先例同上)。
+    #: 私有暂态不入状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_streak_latch: bool | None = field(init=False, default=None)
-    #: 策略选卡出售发牌腿呈现闩(板面重写族出售支;与 xp/streak 闩同点
-    #: 置位同拍消费,独立不共享——三腿语义独立,共享闩会让单腿测试直读
-    #: 互相牵连且无状态量收益)。防重放实害 = 无闩的重放 advance 会把
-    #: 5 只 2★ 二次发放(发放非幂等,与置位腿同害级)。私有暂态不入
-    #: 容器/不入快照恢复(同形先例同上)。
+    #: 策略选卡出售发牌效果条目呈现一次性标志位(板面重写族出售支;与 xp/streak 标志位同点
+    #: 置位同拍消费,独立不共享——三条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读
+    #: 互相牵连且无状态量收益)。防重放实害 = 无一次性标志位的重放 advance 会把
+    #: 5 只 2★ 二次发放(发放非幂等,与置位效果条目同害级)。私有暂态不入
+    #: 状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_sell_deal_latch: bool | None = field(init=False,
                                                         default=None)
-    #: 策略选卡即时生命腿呈现闩(hp 通道;与 xp/streak/sell-deal 闩同点
-    #: 置位同拍消费,独立不共享——四腿语义独立,共享闩会让单腿测试直读
-    #: 互相牵连且无状态量收益)。防重放实害 = 无闩的重放 advance 会把
-    #: +N hp 二次发放(直加非幂等,与置位/发牌腿同害级)。私有暂态不入
-    #: 容器/不入快照恢复(同形先例同上)。
+    #: 策略选卡即时生命效果条目呈现一次性标志位(hp 通道;与 xp/streak/sell-deal 标志位同点
+    #: 置位同拍消费,独立不共享——四条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读
+    #: 互相牵连且无状态量收益)。防重放实害 = 无一次性标志位的重放 advance 会把
+    #: +N hp 二次发放(直加非幂等,与置位/发牌效果条目同害级)。私有暂态不入
+    #: 状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_hp_latch: bool | None = field(init=False, default=None)
-    #: 策略选卡分期金初始化腿呈现闩(gold-next-nodes 通道;与 xp/streak/
-    #: sell-deal/hp 闩同点置位同拍消费,独立不共享——五腿语义独立,共享
-    #: 闩会让单腿测试直读互相牵连且无状态量收益)。防重放实害 = 无闩的
-    #: 重放 advance 会把已递减的剩余腿数重置回初值(窗腿已消费的期数
-    #: 凭空回补,分期多发)。私有暂态不入容器/不入快照恢复(同形先例
+    #: 策略选卡分期金初始化效果条目呈现一次性标志位(gold-next-nodes 通道;与 xp/streak/
+    #: sell-deal/hp 标志位同点置位同拍消费,独立不共享——五条效果条目语义独立,共享
+    #: 一次性标志位会让单条效果条目测试直读互相牵连且无状态量收益)。防重放实害 = 无一次性标志位的
+    #: 重放 advance 会把已递减的剩余效果条数重置回初值(窗效果条目已消费的期数
+    #: 凭空回补,分期多发)。私有暂态不入状态容器/不入快照恢复(同形先例
     #: 同上)。
     _strategy_pick_gold_next_nodes_latch: bool | None = field(
         init=False, default=None)
-    #: 策略选卡位面段补发腿呈现闩(xp_per_plane 通道;与前置五闩同点置位
-    #: 同拍消费,独立不共享——六腿语义独立,共享闩会让单腿测试直读互相
-    #: 牵连且无状态量收益)。防重放实害 = 无闩的重放 advance 会把 +4 XP
-    #: 二次发放(直加非幂等)。私有暂态不入容器/不入快照恢复(同形先例
+    #: 策略选卡位面段补发效果条目呈现一次性标志位(xp_per_plane 通道;与前置五个一次性标志位同点置位
+    #: 同拍消费,独立不共享——六条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读互相
+    #: 牵连且无状态量收益)。防重放实害 = 无一次性标志位的重放 advance 会把 +4 XP
+    #: 二次发放(直加非幂等)。私有暂态不入状态容器/不入快照恢复(同形先例
     #: 同上)。
     _strategy_pick_plane_refire_latch: bool | None = field(init=False,
                                                            default=None)
-    #: 策略选卡超发货币负债腿呈现闩(与前置六闩同点置位同拍消费,独立
-    #: 不共享——七腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 策略选卡超发货币负债效果条目呈现一次性标志位(与前置六个一次性标志位同点置位同拍消费,独立
+    #: 不共享——七条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读互相牵连且无状态量
     #: 收益)。防重放实害 = 窗内重放会把金清零笔二次申报(负债清零本身
-    #: −0 幂等,但金已为 0 短路下重放连证据笔都不应再出——闩使重放零
-    #: 动作零噪声)。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    #: −0 幂等,但金已为 0 短路下重放连证据笔都不应再出——一次性标志位使重放零
+    #: 动作零噪声)。私有暂态不入状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_hyperemit_drain_latch: bool | None = field(
         init=False, default=None)
-    #: 策略选卡大扩招扣金负腿呈现闩(与前置七闩同点置位同拍消费,独立
-    #: 不共享——八腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 策略选卡大扩招扣金负效果条目呈现一次性标志位(与前置七个一次性标志位同点置位同拍消费,独立
+    #: 不共享——八条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读互相牵连且无状态量
     #: 收益)。防重放实害 = 窗内重放会把扣金二次申报(扣金非幂等,重放
-    #: 多扣一笔金)。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    #: 多扣一笔金)。私有暂态不入状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_recruit_drain_latch: bool | None = field(
         init=False, default=None)
-    #: 策略选卡宝钻世界联动腿呈现闩(与前置八闩同点置位同拍消费,独立
-    #: 不共享——九腿语义独立,共享闩会让单腿测试直读互相牵连且无状态量
+    #: 策略选卡宝钻状态副本联动效果条目呈现一次性标志位(与前置八个一次性标志位同点置位同拍消费,独立
+    #: 不共享——九条效果条目语义独立,共享一次性标志位会让单条效果条目测试直读互相牵连且无状态量
     #: 收益)。防重放实害 = 宝钻回调三写非幂等(diamond_count +1 /
-    #: back_layout +1,窗内重放会伪 +1)。私有暂态不入容器/不入快照恢复
+    #: back_layout +1,窗内重放会伪 +1)。私有暂态不入状态容器/不入快照恢复
     #: (同形先例同上)。
     _strategy_pick_diamond_latch: bool | None = field(init=False, default=None)
-    #: 策略选卡已损血衍生金腿呈现闩(星际和平保险 id 303001 首例;与前置
-    #: 九闩同点置位同拍消费,独立不共享——十腿语义独立,共享闩会让单腿
+    #: 策略选卡已损血衍生金效果条目呈现一次性标志位(星际和平保险 id 303001 首例;与前置
+    #: 九个一次性标志位同点置位同拍消费,独立不共享——十条效果条目语义独立,共享一次性标志位会让单条效果条目
     #: 测试直读互相牵连且无状态量收益)。防重放实害 = 衍生金非幂等,窗内
-    #: 重放会把金笔二次申报(多加一笔金)。私有暂态不入容器/不入快照恢复
+    #: 重放会把金笔二次申报(多加一笔金)。私有暂态不入状态容器/不入快照恢复
     #: (同形先例同上)。
     _strategy_pick_hp_loss_gold_latch: bool | None = field(init=False,
                                                            default=None)
-    #: 策略选卡获得链交换腿呈现闩(不等价交换 hp⇄gold 互换轨迹成对;
-    #: 与前置十闩同点置位同拍消费,独立不共享——十一腿语义独立,共享闩
-    #: 会让单腿测试直读互相牵连且无状态量收益)。防重放实害 = kernel 交
+    #: 策略选卡获得链交换效果条目呈现一次性标志位(不等价交换 hp⇄gold 互换轨迹成对;
+    #: 与前置十个一次性标志位同点置位同拍消费,独立不共享——十一条效果条目语义独立,共享一次性标志位
+    #: 会让单条效果条目测试直读互相牵连且无状态量收益)。防重放实害 = kernel 交
     #: 换写行恰一而轨迹追加非幂等,窗内重放会凭空多配一行破写流↔轨迹
-    #: 全序同构。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    #: 全序同构。私有暂态不入状态容器/不入快照恢复(同形先例同上)。
     _strategy_pick_swap_latch: bool | None = field(init=False, default=None)
-    #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
+    #: 超发货币回流效果条目挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
     #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
-    #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
-    #: 声明见 :meth:`_enter_node_window` 回流腿注释。
+    #: 私有暂态不入状态容器/不入快照恢复(呈现一次性标志位同形);机制根因与单载体
+    #: 声明见 :meth:`_enter_node_window` 回流效果条目注释。
     _hyperemit_payoff_pending: tuple[str, int] | None = field(
         init=False, default=None)
     # —— 局结果面(消费方 = 运行器断言) ——
@@ -1712,11 +1712,11 @@ class SimBackend:
     #: 已收尾节点窗口的节点序位(None = 尚无;窗口前段幂等守卫,
     #: :meth:`_begin_node_window`)。
     _window_begun_pos: NodePos | None = field(init=False, default=None)
-    #: 窗口起点持有策略快照(选卡拍改写/补发双腿的「本拍新获得」限定
+    #: 窗口起点持有策略快照(选卡拍改写/补发双效果条目的「本拍新获得」限定
     #: 判据):记录时刻 = 节点窗幂等守卫同拍(重放不重拍),消费 =
     #: _on_invest_picked 尾段取差分后**前滚并入现值**(链式选卡同窗二次
     #: 落地时差分 = 本拍新获得,旧卡不重燃;重放落地差分恒空 = 零写)。
-    #: 私有暂态不入容器/不入快照恢复(呈现闩同形先例)。
+    #: 私有暂态不入状态容器/不入快照恢复(呈现一次性标志位同形先例)。
     _strategies_at_window_start: tuple[str, ...] = field(init=False,
                                                          default=())
     #: 扑满节点递延收入快照(None = 非扑满窗或已落账):统一公式
@@ -1736,7 +1736,7 @@ class SimBackend:
         init=False, default_factory=list)
     #: 间谍抽牌流键执行序计数器(按节点位;键 = (位面,轮) 1 基,值 = 该
     #: 位已执行次数,取值时机 = 执行期现读先取后增)。坐标系 = 本后端
-    #: 采样簿记私有(不入容器/不入快照恢复,呈现闩族同形先例)。
+    #: 采样簿记私有(不入状态容器/不入快照恢复,呈现一次性标志位族同形先例)。
     _spy_stream_seq: dict[tuple[int, int], int] = field(
         init=False, default_factory=dict)
     _steps: int = field(init=False, default=0)
@@ -1753,8 +1753,8 @@ class SimBackend:
             or self._sample_affixes(self.seed)
         cfg = replace(self.cfg, enemy_affixes=affixes)
         self.gs = GameState(schema_version=GAME_STATE_SCHEMA_VERSION)
-        # 开局种子底座(与实机局容器冷建即种同契约:获得链/上报函数族的
-        # 拒落档门以底座在场为前提;seed 值 = 常量基线,apply_opening 随后
+        # 开局初始值(与实机局状态容器每局全新创建即种同契约:获得链/上报函数族的
+        # 拒落档门以初始值在场为前提;seed 值 = 常量基线,apply_opening 随后
         # 以 obs 真值覆盖,确定性不受影响)。
         seed_opening_state(self.gs)
         apply_opening(self.gs, cfg, stream_rng(self.seed, 'M01/opening_hand'))
@@ -1770,7 +1770,7 @@ class SimBackend:
                         evidence=sim_evidence('diamond:opening'),
                         sig=obs_sig(group_id='sim:diamond'))
         self._hp_trail_append()
-        # 初始序列:简报屏(词缀 + boss 载荷已写容器;env 屏在简报下一步
+        # 初始序列:简报屏(词缀 + boss 载荷已写状态容器;env 屏在简报下一步
         # 之后呈现,权威源 = screens/briefing.md 进入链)。
         self._announce_screen(SCREEN_BRIEFING)
         self._screen = SCREEN_BRIEFING
@@ -1790,7 +1790,7 @@ class SimBackend:
         """当前画面 screen_info 档名(状态机唯一答口)。
 
         问询时点呈现检查(事实事件槽停用后的
-        sim 懒呈现位):答身份前先查容器登记 pending——动作上报内已
+        sim 懒呈现位):答身份前先查状态容器登记 pending——动作上报内已
         register 的条目在此压上模态(等价实机「动作落地即弹」,时点 =
         宿主返回后的首次身份问询)。呈现门/消费披露族语义同
         :meth:`_present_pending_overlay`(fortune 门判当前底层)。
@@ -1806,7 +1806,7 @@ class SimBackend:
 
         注册表 = ``sim/cw_sim_obs_gen``(键 = screen_info 档名;金路径 13
         档,同档名子态由该档名生成器按状态机子态内部分派)。产物经同名
-        ``report_screen_*`` 落容器(写通道铁律,单一源在 report 消费端)。
+        ``report_screen_*`` 落状态容器(写通道铁律,单一源在 report 消费端)。
         未注册屏呈现 = :class:`LookupError` 具名响错(防静默失真,
         flow-seam §3 锁)。惰性导入注册表:注册表反向引用本模块档名
         常量,模块级互引成环。"""
@@ -1820,19 +1820,19 @@ class SimBackend:
         """until / 门可见性问询。
 
         3.2 语义 = 画面档匹配(问询屏 == 当前呈现屏;模态屏族在场时
-        底层屏区域不可见)。3.4 联调细化 = 不可呈现浮层的在场锚恒
+        底层屏区域不可见)。3.4 联调细化 = 不可呈现浮层的在场识别标志恒
         False(:data:`_UNPRESENTED_OVERLAY_ANCHORS`,呈现态查询语义)。
         免战牌按钮替换子态(免战牌建模批):备战/开商店两屏上持卡且
         余量 > 0 且节点在跳过辖域 → 出战按钮替换为跳过(与出战 op
         「查不到出战 fallback 查跳过」的双屏查找同构;独立于静态排除表,
         后者零改动)。等待变体(wait_one_one)在问询时立即完成(sim
-        世界瞬时呈现,动画无时间维)。
+        状态副本瞬时呈现,动画无时间维)。
 
-        跳过锚真值域边界:「按钮-跳过」在出辖域节点不走替换分支 → 落
+        跳过识别标志真值域边界:「按钮-跳过」在出辖域节点不走替换分支 → 落
         默认「不在排除表即 True」(呈现态查询语义),与实机真值(出辖域
         右下恒出战)不符——消费面必须以「出战 miss」为前置条件再探跳过
-        (现役唯一消费 = 出战 op 双查找序 + 备战双锚第二锚 or 短路,均
-        满足);禁把跳过锚单独当出战按钮在场判据。"""
+        (现役唯一消费 = 出战 op 双查找序 + 备战两识别标志同帧命中时的第二识别标志 or 短路,均
+        满足);禁把跳过识别标志单独当出战按钮在场判据。"""
         self._maybe_finish_wait()
         self._sync_shop_record()
         if screen_name != self._screen:
@@ -1906,7 +1906,7 @@ class SimBackend:
                 self._present_modal(SCREEN_INVEST_ENV)
                 # 环境整组刷新呈现(2026-10-19 用户裁定批):基准 1 次
                 #(单全局钮整组重掷;advantage_layouts「环境刷新」行),
-                # 计数经 report 观察写端落 env_refresh_left,重掷世界分支
+                # 计数经 report 观察写端落 env_refresh_left,重掷状态副本侧分支
                 # = _refresh_invest_env。
                 report_screen_invest_env_obs(self.gs, CwScreenInvestEnvObs(
                     hit=True,
@@ -1964,7 +1964,7 @@ class SimBackend:
         payload,sim 无识别面,以发牌期记录承载同一观察语义;在屏态
         (节点窗起刚发牌)保持现值零写。
 
-        刷价呈现写回(改价分支 sim 载体):每次开店以 kernel 渲染的世界
+        刷价呈现写回(改价分支 sim 载体):每次开店以 kernel 渲染的状态副本
         真值(:func:`cw_economy.world_shop_refresh_cost`,付费计数达注册
         改价阈值即新价)现算写 ``gs.shop_refresh_cost``——对偶实机每次
         进店 live 漏斗重读刷价;不走 write_logic,观察域字段只收观察
@@ -2026,7 +2026,7 @@ class SimBackend:
             self._shop_record = payload
 
     def _apply_spy_shop_refresh(self) -> None:
-        """商业间谍升级连锁世界分支(2026-10-17-levelup-shop-transition
+        """商业间谍升级连锁状态副本侧分支(2026-10-17-levelup-shop-transition
         design §2.3 步①-③;触发 = spy_shop_refresh 声明,来源双消费口 =
         买经验上报尾单项喂入 + advance 尾统一排空段逐项直调;步④置信号
         = kernel 升级值变更回调(任意经验来源升级),写端唯一,不经本层)。
@@ -2036,21 +2036,21 @@ class SimBackend:
           发牌口径 + 执行序后缀(M22/spy-deal#k|M22/spy-rotation#k,k =
           :attr:`_spy_stream_seq` 按节点位先取后增,同键同序列语义下
           同窗双执行不重牌;模块号沿 M21 续);发牌算法本体 = kernel
-          ``sample_shop_deal`` 单一源,采样即世界真值;
+          ``sample_shop_deal`` 单一源,采样即状态副本里的值;
         - ②偷最贵 3 张 → 备战席真实入席(席满溢出 = 不入席 + 计数披露,
           design §2.3 申报的 sim 先行形态;最贵序 = 费用降序 → 星级降序
-          → 槽位升序确定性破并列);入席 = 容器 bench 观察直写(sim 世界
+          → 槽位升序确定性破并列);入席 = 状态容器 bench 观察直写(sim 状态副本
           真值通道,与 deal_shop 写 shop 同款;不级联合成——design 未
           申报偷取合成语义,保守不猜);
-        - ③剩余 2 张 = 商店新牌面:容器 shop 观察直写(被偷槽位置空,
+        - ③剩余 2 张 = 商店新牌面:状态容器 shop 观察直写(被偷槽位置空,
           剩余槽位原位保留)+ 经 :meth:`_sync_shop_record` 入节点级记录
           → 下次开店呈现之(不重新发牌——刷新已在本回调发生)。
 
         计数披露(sim 私有簿记,键域:spy_deal_count / spy_steal_placed_
         count / spy_steal_overflow_count)= 抽牌次数 / 入席张数累计 /
         溢出张数累计;判读面计数键(cw4_counters.spy_steal_placed_frames /
-        spy_steal_overflow_frames)= 帧级增量,经容器挂接的策略器状态
-        鸭子读回写(未挂接帧静默跳过 = 无判读面,合法)。持有判定不在
+        spy_steal_overflow_frames)= 帧级增量,经状态容器挂接的策略器状态
+        鸭子类型读取(duck typing)回写(未挂接帧静默跳过 = 无判读面,合法)。持有判定不在
         本层(升级值变更回调调度器已闸;本层被声明即执行,声明构造点零
         副作用无持卡不构造)。"""
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2137,11 +2137,11 @@ class SimBackend:
                                     refresh_probs=drawn.refresh_probs),
                         evidence=sim_evidence('shop:spy_refresh'),
                         sig=obs_sig(group_id='sim:shop:spy'))
-        # 步⑤信号代次戳刷新(T-434;kernel 单一口
+        # 步⑤信号代次戳刷新(T-434;kernel 唯一入口
         # refresh_shop_randomized_pending_stamp):分支执行 = 信号所指牌面
         # 的最终写,戳刷新为牌面所属节点窗的生效序位——免战跳过路径
         # (_skip_battle 经验入账在本地推进序位之前)置位戳滞后一节点,
-        # 不刷新则该源信号下一备战帧被节点边界当过期代次清掉。信号不在册
+        # 不刷新则该源信号下一备战帧被节点边界当过期代次清掉。信号未登记
         # = 零动作(声明直调形态,上报尾喂入与 advance 尾排空同过此处)。
         refresh_shop_randomized_pending_stamp(self.gs)
 
@@ -2152,13 +2152,13 @@ class SimBackend:
     # ------------------------------------------------------ 声明驱动推进
 
     def advance(self, decl: WorldDecl) -> None:
-        """按声明推进世界(声明化主入口;动作后果声明化迭代总纲
+        """按声明推进状态副本(声明化主入口;动作后果声明化迭代总纲
         design.md §2.2 契约 5 + 详设 world-decl.md §3)。
 
         按 ``decl.trigger`` 分派推进(键集单一源 =
         :data:`ADVANCE_TRIGGER_KINDS`,集外值 ValueError 响亮——
-        构造点漂移 = 接线 bug 禁静默),完成后
-        :meth:`_reconcile_next_screen` 等值对账画面档。世界推进唯一
+        构造点漂移 = 调用点接错禁静默),完成后
+        :meth:`_reconcile_next_screen` 等值对账画面档。状态副本推进唯一
         驱动 = 本方法(单动作单轨;18 转移动作全量在表);
         ``trigger=''`` = 纯画面转移,
         零专属过程——专家邀请函档 = ``_present_modal`` 呈现(open_bookcard
@@ -2180,7 +2180,7 @@ class SimBackend:
             if decl.next_screen == '':
                 # 局终声明消费分支(键表示切换批 design §2.6):kernel 终局
                 # 事件式(sequence_next = None → applied=True match_end,
-                # 声明 next_screen='')的世界消费;kernel 声明权威、sim
+                # 声明 next_screen='')的状态副本侧消费;kernel 声明权威、sim
                 # 对账的分工不变。
                 self._on_node_advance_terminal()
             else:
@@ -2191,7 +2191,7 @@ class SimBackend:
             if decl.next_screen == '':
                 # 局终防御臂(声明构造面 _skip_next_screen 空串臂同源:
                 # 后继 None/表外位面;默认辖域战斗节点非位面末,现规则集
-                # 不可达):终局消费腿,对齐 node_advance 终局事件式形态。
+                # 不可达):终局消费效果条目,对齐 node_advance 终局事件式形态。
                 self._on_node_advance_terminal()
             else:
                 self._skip_battle()
@@ -2212,16 +2212,16 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == 'spy_shop_refresh':
-            # 商业间谍升级连锁世界分支(2026-10-17 迭代 design §2.3
+            # 商业间谍升级连锁状态副本侧分支(2026-10-17 迭代 design §2.3
             # 步①-③;声明来源 = 上报尾喂入或 advance 尾排空段,
             # 步④置信号 = kernel 升级值变更回调,不经本层)。
             self._apply_spy_shop_refresh()
         elif decl.trigger == 'refresh_invest_strategy':
-            # 投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定批;上报声明
+            # 投资策略屏逐卡刷新状态副本侧分支(2026-10-19 用户裁定批;上报声明
             # 触发,同屏重呈现零转移)。
             self._refresh_invest_strategy(decl.slots)
         elif decl.trigger == 'refresh_invest_env':
-            # 投资环境屏整组刷新世界分支(同上批;环境刷新 = 整组重掷一次)。
+            # 投资环境屏整组刷新状态副本侧分支(同上批;环境刷新 = 整组重掷一次)。
             self._refresh_invest_env()
         elif decl.trigger == '':
             # 纯转移(详设 §3 '' 行):统一幂等返回
@@ -2269,7 +2269,7 @@ class SimBackend:
     def _reconcile_exempt_reason(self) -> str:
         """当前对账豁免场景(:data:`RECONCILE_EXEMPT_KINDS`;命中 =
         最上层呈现屏 ≠ 底层稳态画面属建模内合法形态,断言延后至稳态;
-        ''= 稳态可判)。overlay_trigger 3.4:overlay_pending 检查改读容器
+        ''= 稳态可判)。overlay_trigger 3.4:overlay_pending 检查改读状态容器
         登记 ``gs.screen_changes.pending``(呈现数据源已迁,旧私有队列
         呈现面已停用)。"""
         if self.gs.screen_changes.pending:
@@ -2283,7 +2283,7 @@ class SimBackend:
     def _drain_pending_reconciles(self) -> None:
         """消费延后对账队列(advance 入口;已入稳态 = 逐声明补验等值,
         失配保留证据后一并清空——每声明对账一次,不重复告警)。仍在豁免
-        场景 = 继续延后;**世界已推进过下一节点窗**(进窗序位 ≠ 延后
+        场景 = 继续延后;**状态副本已推进过下一节点窗**(进窗序位 ≠ 延后
         时点)= 断言时机已过,静默丢弃(预测的落点屏已被后续窗口替代,
         保留证据只会误报——sim 流程结算驻留快进形态常见)。"""
         if not self._pending_reconcile or self._reconcile_exempt_reason():
@@ -2309,9 +2309,9 @@ class SimBackend:
         断言对象 = 状态机**底层稳态画面**(让路恢复位消费完、overlay
         队列弹完后的落点屏),对 ``next_screen`` 非空串声明等值断言;
         豁免场景(:data:`RECONCILE_EXEMPT_KINDS`)入延后队列,稳态达成时
-        :meth:`_drain_pending_reconciles` 补验。局终双载体:``done`` 世界
+        :meth:`_drain_pending_reconciles` 补验。局终双载体:``done`` 状态副本
         呈现恒 = 大厅(:meth:`_game_over`,声明预测已失效只锁载体);
-        ``next_screen=''`` 预测局终而世界未终局 = 漂移。断言不等且不在
+        ``next_screen=''`` 预测局终而状态副本未终局 = 漂移。断言不等且不在
         豁免集 = 缺陷保留证据(:data:`DECL_SCREEN_DRIFT`)不停机——声明与
         状态机漂移的早期警报。
         """
@@ -2345,20 +2345,20 @@ class SimBackend:
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
-        # —— 策略卡到级金腿(成长基金 id 101701 首例;条件单一源 =
+        # —— 策略卡到级金效果条目(成长基金 id 101701 首例;条件单一源 =
         # kernel check_strategy_level_grants 纯决策零写):挂经验入账后 =
         # 跨级事件拍,先于新节点窗轮首收入(达标金计入本窗息算基数;
         # 实机跨级金与节点金口径对位未逐帧采证,若实机为「跨级金落上
-        # 节点末口径」则本接线零偏差,否则一次性息差 ≤ min(40//10, 5)
+        # 节点末口径」则本接入调用零偏差,否则一次性息差 ≤ min(40//10, 5)
         # = 4 金,证伪路径 = 实机局跨级前后两窗利息差分)。双通道:sim
         # 金写全 observe 现役形态(金面禁直写辖效果账本到期接入点,本笔
-        # = 世界合成非 logic 直写),闩 = write_logic(非金 Field 登记事
+        # = 状态副本合成非 logic 直写),一次性标志位 = write_logic(非金 Field 登记事
         # 实直写,discharge_due_item_grants 先形);组名沿 sim:strategy
-        #(策略战后发放腿首落在役组)。现役 sim 经验常量下 9 级不可达
-        #(节点 70 + 选卡即时腿 64 = 上界 134 < 3→9 级门槛 194;即时腿
+        #(策略战后发放效果条目首落在役组)。现役 sim 经验常量下 9 级不可达
+        #(节点 70 + 选卡即时效果条目 64 = 上界 134 < 3→9 级门槛 194;即时效果条目
         # 键集显式扩集制,免战牌 +30 入注册面随批重申报)= 休眠
         # 正确路径恒短路零写,经验源扩网零改激活;幂等 = 决策函数 done
-        # 闩短路 + 本层序位守卫双保险。
+        # 一次性标志位短路 + 本层序位守卫双保险。
         _grant = check_strategy_level_grants(self.gs)
         if _grant is not None:
             _name, _amount = _grant
@@ -2373,14 +2373,14 @@ class SimBackend:
                 produced_by=LEVEL_GRANT_PRODUCER,
                 evidence=f'strategy:level_gold:{_name}',
                 sig=logic_sig('sim:strategy'))
-        # —— 策略卡到级装备腿(钻石商人;条件单一源 = kernel
-        # check_strategy_level_equip_grants 直写形态:发放 + 落闩两笔均
+        # —— 策略卡到级装备效果条目(钻石商人;条件单一源 = kernel
+        # check_strategy_level_equip_grants 直写形态:发放 + 落一次性标志位两笔均
         # 在 kernel 函数内,logic 渠道,组名沿 sim:strategy 在役组)。
-        # 接线点 = 经验入账后、新节点窗前(宝钻的 deploy_cap +1/后排格数
-        # 自本窗生效 = 世界真值序);返回非 None → 宝钻回调(入参只传
+        # 接入调用点 = 经验入账后、新节点窗前(宝钻的 deploy_cap +1/后排格数
+        # 自本窗生效 = 状态副本真值序);返回非 None → 宝钻回调(入参只传
         # 装备名,sig 由回调内构 obs 族,深井发放路径同分工)。live 结算
         # 位同函数零回调。现役经验常量下 9 级不可达 = 休眠正确路径恒
-        # 短路零写;幂等 = kernel 函数 done 闩短路 + 本层序位守卫双保险。
+        # 短路零写;幂等 = kernel 函数 done 一次性标志位短路 + 本层序位守卫双保险。
         _equip_grant = check_strategy_level_equip_grants(
             self.gs, logic_sig('sim:strategy'))
         if _equip_grant is not None:
@@ -2391,7 +2391,7 @@ class SimBackend:
     def _on_node_advance_terminal(self) -> None:
         """胜利终局声明消费分支(trigger=node_advance ∧ next_screen=''):
         kernel 终局事件式声明(推进超出序列表末位面,现役 = 位面 3 末
-        boss 结算存活)的世界消费——XP 入账(被离开节点类型,与现行
+        boss 结算存活)的状态副本侧消费——XP 入账(被离开节点类型,与现行
         局终前入账同序)+ 胜局披露 + 终局。hp 归零败局走结算死亡分支
         (:meth:`_resolve_battle` → :meth:`_game_over`,不经本分支)——
         披露集含 :data:`DISCLOSURE_RUN_COMPLETE` 与否 = 胜负判别单一源。
@@ -2400,9 +2400,9 @@ class SimBackend:
         prev = self.gs.node.value
         if prev is not None:
             apply_node_xp(self.gs, node_type=prev.kind)
-        # —— 策略卡到级金腿局终点(与推进点同段决策/双通道写,挂经验
+        # —— 策略卡到级金效果条目局终点(与推进点同段决策/双通道写,挂经验
         # 入账后、局终声明前 = 末节点跨级发放先于局终;双点为经验源扩网
-        # 后前瞻一致——现世界不可达下与单点行为全等,单点则「局终跨级
+        # 后前瞻一致——现状态下不可达下与单点行为全等,单点则「局终跨级
         # 一次性缺口」永久缺失。通道/组名/休眠依据同推进点注释,不赘)。
         _grant = check_strategy_level_grants(self.gs)
         if _grant is not None:
@@ -2418,9 +2418,9 @@ class SimBackend:
                 produced_by=LEVEL_GRANT_PRODUCER,
                 evidence=f'strategy:level_gold:{_name}',
                 sig=logic_sig('sim:strategy'))
-        # —— 策略卡到级装备腿局终点(与推进点同段直写形态/组名,挂经验
+        # —— 策略卡到级装备效果条目局终点(与推进点同段直写形态/组名,挂经验
         # 入账后、胜局披露前 = 末节点跨级也发放;双点为经验源扩网后前瞻
-        # 一致——现世界不可达下与单点行为全等。宝钻回调分工与休眠依据
+        # 一致——现状态下不可达下与单点行为全等。宝钻回调分工与休眠依据
         # 同推进点注释,不赘)。
         _equip_grant = check_strategy_level_equip_grants(
             self.gs, logic_sig('sim:strategy'))
@@ -2430,8 +2430,8 @@ class SimBackend:
         self._game_over()
 
     def _on_supply_picked(self) -> None:
-        """补给选定落地:带钻选项给宝钻(世界事实写容器 diamond_count;
-        钻信息 = 容器 chosen_supply 现值 2 元组 (角色,装备名列表) 按
+        """补给选定落地:带钻选项给宝钻(状态副本事实写状态容器 diamond_count;
+        钻信息 = 状态容器 chosen_supply 现值 2 元组 (角色,装备名列表) 按
         :data:`DIAMOND_EQUIP_NAMES` 名单派生(列表任一件名命中即钻;
         写端 = 补给画面 op 确认即写)。派生失败边 = 钻名 OCR 误读 →
         列表名不匹配 → 宝钻发放分支漏发;装备观察(整表)与钻数观察下一帧
@@ -2455,22 +2455,22 @@ class SimBackend:
         """遭遇选定落地(2026-10-29 流程模型对齐):关闭遭遇模态回备战
         并自动弹店(#14 触发源「遭遇选择完后」);遭遇战由出战动作触发
         (battle_resolve 消费 ``chosen_encounter`` 现值,时点后移不改
-        消费语义——确认时已写容器)。效果面零写入(选档已由 kernel 上报
+        消费语义——确认时已写状态容器)。效果面零写入(选档已由 kernel 上报
         落 ``chosen_encounter``,本层零效果)。"""
         self._dismiss_and_settle_prep()
 
     def _fire_strategy_random_grants(self, *, plane: int, r: int) -> None:
-        """获得链调用后就地判随机策略发放命中即掷(远见腿②「获得一个
-        随机黄金投资策略」世界掷骰;登记表单一源 =
+        """获得链调用后就地判随机策略发放命中即掷(远见效果条目②「获得一个
+        随机黄金投资策略」状态副本侧掷骰;登记表单一源 =
         ``cw_investments.STRATEGY_RANDOM_GRANTS``,现役唯一 = 远见)。
 
-        - 触发载体 = 两挂点共用本助手:①拾取落地拍
-          (:meth:`_on_invest_picked` 各落地腿后、难度旗牌更新前)
-          ②环境直发分支(T-46 策略大师数量腿 ``gain_invest_strategy``
-          调用后)。原设计闩挂拾取拍单点,被 T-46 直发分支落码(用户裁定
+        - 触发载体 = 两个插入位置共用本助手:①拾取落地拍
+          (:meth:`_on_invest_picked` 各落地效果条目后、难度旗牌更新前)
+          ②环境直发分支(T-46 策略大师数量效果条目 ``gain_invest_strategy``
+          调用后)。原设计一次性标志位挂拾取拍单点,被 T-46 直发分支实现(用户裁定
           2026-10-26「直接发一张随机投资策略不开 offer 无选卡屏」)推翻:
           直发 = 非拾取路径,远见(棱彩 ∈ 直发全池)可经直发入列
-          active_strategies,门单挂拾取拍会把腿②迟滞到下一拾取拍,违
+          active_strategies,门单挂拾取拍会把效果条目②迟滞到下一拾取拍,违
           「获得〔远见〕时」语义——改「获得链调用后就地判」后直发拍即掷。
         - 门 = 源名 ∉ ``_strategy_grant_fired`` ∧ 源名 ∈
           active_strategies:exactly-once 由集合记名构造保证(源卡按名字
@@ -2480,12 +2480,12 @@ class SimBackend:
           重复 advance 的同拍重放门已闭(集合记名),沿全局重放模型。
         - 池 = 目标品质池 − ``excluded_invest``(已出选项全集;掷中名
           **不加入** excluded——desc 无排除语义,与「游戏重复发放同名
-          策略」行为对齐的保守形;且腿③生效期 offer 恒单棱彩候选,金名
+          策略」行为对齐的保守形;且效果条目③生效期 offer 恒单棱彩候选,金名
           重现于 offer 结构性不可达,残余暴露面仅远见末槽拾取局无后继
-          offer,零暴露)。掷中已持名照常可掷(注册腿去重跳写、效果腿
+          offer,零暴露)。掷中已持名照常可掷(注册效果条目去重跳写、效果条目
           照常,禁掷前排除持卡面)。池空(排除集吃光,金池 135 对排除集
           ~12 名上界,正常局不可达)静默跳发零置门——不迟滞不空手入链。
-        - session=None:效果账本登记腿跳过(容器写照常,蓝海同构语义;
+        - session=None:效果账本登记效果条目跳过(状态容器写照常,蓝海同构语义;
           granted 卡 overlay 注册面缺口按 40/135 现值随披露键申报);
           rng 显式流键 ``M11/grant/...`` 独立新流(缺省自掷 = 同 seed
           不重放,蓝海同款纪律),掷骰与二次入链分键(-gift 后缀)。
@@ -2499,7 +2499,7 @@ class SimBackend:
                     and n not in self.excluded_invest]
             if not pool:
                 continue
-            # 门先置防重放(闩族「闩消费先于发放判定」同向);发放异常 =
+            # 门先置防重放(一次性标志位族「标志位消费先于发放判定」同向);发放异常 =
             # 保守丢失,重放不双发。
             self._strategy_grant_fired.add(_src)
             self.disclosures.setdefault(
@@ -2518,23 +2518,23 @@ class SimBackend:
 
     def _on_invest_picked(self, *, opening: bool) -> None:
         """投资选卡落地(效果 = kernel 获得链,经 report_action_pick_*
-        已写容器;本层返回 + 去重集累计,排除集读容器 opts 现值)。"""
+        已写状态容器;本层返回 + 去重集累计,排除集读状态容器 opts 现值)。"""
         opts = (self.gs.invest_env_opts.value if opening
                 else self.gs.invest_strategy_opts.value) or []
         (self.excluded_env if opening else self.excluded_invest).update(opts)
-        # 选卡落地拍大扩招扣金负腿(卡文「每损失4金币…最多扣除40金币」
-        # 现算扣金,世界真值补全):live 同拍零写(游戏自扣,金整字段观察
-        # 覆盖收口,金面禁直写)。判别沿兄弟腿「呈现候选 ∩ 持有列表」交集
-        # 形态(裸读呈现候选会把同框未选候选误燃);呈现闩防重放(扣金非
+        # 选卡落地拍大扩招扣金负效果条目(卡文「每损失4金币…最多扣除40金币」
+        # 现算扣金,状态副本真值补全):live 同拍零写(游戏自扣,金整字段观察
+        # 覆盖收尾,金面禁直写)。判别沿兄弟效果条目「呈现候选 ∩ 持有列表」交集
+        # 形态(裸读呈现候选会把同框未选候选误燃);呈现一次性标志位防重放(扣金非
         # 幂等,重放多扣一笔)。扣金计划单一源 = dakuozhao_deduction_plan
-        # (与获得链随机角色腿的发放只数同函数,两端数量口径天然一致);
-        # 只扣 4 的整数倍、余金保留(取整读法,正本 = invest_effects.md
-        # B 类裁定行);判别名 = PICK_INVEST_EFFECTS 登记键(注册面与负腿
-        # 两字面量由键集闭集锁 + 本腿 evidence 锁兜漂移)。不置花费位:
+        # (与获得链随机角色效果条目的发放只数同函数,两端数量口径天然一致);
+        # 只扣 4 的整数倍、余金保留(取整读法,权威版本 = invest_effects.md
+        # B 类裁定行);判别名 = PICK_INVEST_EFFECTS 登记键(注册面与负效果条目
+        # 两字面量由键集闭集锁 + 本效果条目 evidence 锁兜漂移)。不置花费位:
         # 强制扣金非玩家操作支出,与买卡/升级/刷新花费通道分立。n=0
         #(持金 <4)零写零笔;扣后金自然参与下窗计息(先于下窗窗开,无
-        # 基数序新语义)。位置 = 排除集累计后独立笔:本腿非环境无门控
-        # 读面、非注册表字段分派,与后续各腿零交互;位置不变式(须在
+        # 基数序新语义)。位置 = 排除集累计后独立笔:本效果条目非环境无门控
+        # 读面、非注册表字段分派,与后续各效果条目零交互;位置不变式(须在
         # _after_modal_pick 前)随函数整体满足。
         if not opening and self._strategy_pick_recruit_drain_latch:
             self._strategy_pick_recruit_drain_latch = None
@@ -2552,14 +2552,14 @@ class SimBackend:
                     log.info('[cw-sim] 大扩招扣金腿:持金 %s 扣 %s'
                              '(发 %s 只 4 费随机角色)',
                              gold_now, deduct, cnt)
-        # 追加随机环境型(在册名 = cw_investments.ENV_REROLL_NAMES,现役
+        # 追加随机环境型(已登记名 = cw_investments.ENV_REROLL_NAMES,现役
         # 唯一 = 蓝海 id113):选卡首链(上报函数)已完成「获得本环境」全部
-        # 写分支(active_env + 即时金 + 申报行);本分支紧接世界掷骰出卷中名,
+        # 写分支(active_env + 即时金 + 申报行);本分支紧接状态副本侧掷骰出卷中名,
         # 原语二次入链「获得卷中环境」(gain_invest_env 一次调用完成
         # active_env 改写 + 节点序列场改写 + 登记分支 + on_env_gained 全族
         # 效果,零新发放实现;两次获得语义,追加非替换)。无重复发金:池
-        # 排除在册名后无任何 gold_instant 条目。session=None:本层字段面
-        # 无会话可取,登记分支跳过、容器写照常(gain_invest_env None 语义)。
+        # 排除已登记名后无任何 gold_instant 条目。session=None:本层字段面
+        # 无会话可取,登记分支跳过、状态容器写照常(gain_invest_env None 语义)。
         # rng 必须显式传参:gain_invest_env/on_env_gained 的 rng
         # 形参缺省回退自掷(random.Random()),池含随机支环境(人才引进),
         # 不传则同 seed 不重放——双流键解耦,不走动作分支注入槽(该槽服务
@@ -2580,14 +2580,14 @@ class SimBackend:
                             producer='SimBackend',
                             rng=stream_rng(self.seed,
                                            'M02/env-reroll-gift'))
-        # 选卡落地拍连胜置位腿(通用通道,辖域 = 注册表 streak_set≠0
+        # 选卡落地拍连胜置位效果条目(通用通道,辖域 = 注册表 streak_set≠0
         # 全体)。必须在难度旗牌更新之前:旗牌读 gs.streak 现值写备战
         # 难度,先置位旗牌才随新值(伟大征服难度+连胜项同拍反映置位后
         # 真值,实机对齐)。带符号绝对置位语义与禁聚合依据见
         # :func:`apply_strategy_pick_streak`;live 同拍零写(置位到结算
         # 之间 gs.streak 持旧值,真值经下一结算屏带符号读数观察覆盖
-        # 收口,fields.md streak 写入方两分不动)。拿卡名推导与呈现闩
-        # 防重放 = xp 腿同款:闩消费先于判定(交集空亦消费——每呈现窗
+        # 收尾,fields.md streak 写入方两分不动)。拿卡名推导与呈现一次性标志位
+        # 防重放 = xp 效果条目同款:标志位消费先于判定(交集空亦消费——每呈现窗
         # 至多一次落地消费,无效载荷的重放同样不得再触发)。
         if not opening and self._strategy_pick_streak_latch:
             self._strategy_pick_streak_latch = None
@@ -2595,23 +2595,23 @@ class SimBackend:
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_streak(self.gs, picked)
-        # 选卡落地拍宝钻世界联动腿(拿卡即发宝钻的策略卡族共用:这么大的
+        # 选卡落地拍宝钻状态副本联动效果条目(拿卡即发宝钻的策略卡族共用:这么大的
         # 钻石 = 首例(用户裁定 2026-11-02 拍读法 B)、控制规模 = 帽改写卡
         # 随批归一同支(两卡各发宝钻×1,同名同物回调零差);卡级点名判别 =
-        # 设计默认案最小推导,选卡通道批落地时归一为共享推导腿,先落方
-        # 定形):sim 世界自持账补全
+        # 设计默认案最小推导,选卡通道批落地时归一为共享推导效果条目,先落方
+        # 定形):sim 状态副本自持账补全
         # ——live 同拍零写(diamond_count/deploy_cap/back_layout 三域
         # live 归观察识别器跟踪,逻辑侧禁写,投影审计契约)。拿卡名推导
-        # 与呈现闩防重放 = 前置各腿同款(闩消费先于判定,交集空亦消费;
+        # 与呈现一次性标志位防重放 = 前置各效果条目同款(标志位消费先于判定,交集空亦消费;
         # 回调三写非幂等,重放伪 +1)。发放落地门 = equips 现值非 None:
-        # 宝钻装备腿(kernel 效果体)在拒落档(equips 未观察)下不入栏,
+        # 宝钻装备效果条目(kernel 效果体)在拒落档(equips 未观察)下不入栏,
         # 此时回调会伪写 diamond_count/back_layout +1(equips_unobserved
-        # 同判据,T-141 到级腿 placed 门同构);sim 种子底座 equips=[] 下
-        # 门恒开,门系形态级卫生面(直构/测试形态防御)。执行时序 = 腿1
-        # 效果体入栏写之后(获得链首链先于本落地腿),deploy_cap 派生读
+        # 同判据,T-141 到级效果条目 placed 门同构);sim 初始值 equips=[] 下
+        # 门恒开,门系形态级卫生面(直构/测试形态防御)。执行时序 = 效果条目1
+        # 效果体入栏写之后(获得链首链先于本落地效果条目),deploy_cap 派生读
         # 现值天然含新宝钻。回调入参只传装备名,三写 observe 通道 sig
         # 由回调内构(on_diamond_acquired 零改动复用);位置 = 难度旗更
-        # 新之前(家族惯例:选卡落地拍效果腿先于同拍难度读数;deploy_cap
+        # 新之前(家族惯例:选卡落地拍效果条目先于同拍难度读数;deploy_cap
         # 与难度无耦合,位置纯为家族一致性)。
         if not opening and self._strategy_pick_diamond_latch:
             self._strategy_pick_diamond_latch = None
@@ -2620,54 +2620,54 @@ class SimBackend:
             if (('这么大的钻石' in picked or '控制规模' in picked)
                     and self.gs.equips.value is not None):
                 on_diamond_acquired(self.gs, '财富宝钻')
-        # 选卡落地拍随机策略发放腿(远见腿②「获得一个随机黄金投资策略」,
+        # 选卡落地拍随机策略发放效果条目(远见效果条目②「获得一个随机黄金投资策略」,
         # 登记表 = cw_investments.STRATEGY_RANDOM_GRANTS):位置 = 各已落
-        # 锚腿之后、难度旗牌更新之前——先落先占位、后落顺延插队(禁跨越
-        # 已落锚重排);难度同拍时序 = granted 金(+3)与远见自身(豁免
+        # 基准效果条目之后、难度旗牌更新之前——先落先占位、后落顺延插队(禁跨越
+        # 已落基准效果条目重排);难度同拍时序 = granted 金(+3)与远见自身(豁免
         # 后 0)在下一拍 _update_difficulty_flag 同帧反映,与「选择后难度
-        # 即时反映」裁定(2026-10-14)一致。直发路径的另一挂点见 T-46
-        # 直发分支(获得链调用后就地判,两挂点共用一门,R1 修订形态)。
+        # 即时反映」裁定(2026-10-14)一致。直发路径的另一插入位置见 T-46
+        # 直发分支(获得链调用后就地判,两个插入位置共用一门,R1 修订形态)。
         _grant_plane, _grant_r = self._node_pos()
         self._fire_strategy_random_grants(plane=_grant_plane, r=_grant_r)
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
         # 节点未进窗(node None),写点内早退。
         self._update_difficulty_flag()
-        # 选卡落地拍即时经验腿(通用通道):sim 世界自持账补全——live 同拍
+        # 选卡落地拍即时经验效果条目(通用通道):sim 状态副本自持账补全——live 同拍
         # 零写(经验面板画面可读 = 观察覆盖),sim 无观察,不发即持卡局
         # 等级进度失真。拿卡名 = 呈现候选 ∩ 持有列表(offer 候选排除已持,
-        # 落地交集 = 刚拿入的卡;无效载荷获得链零容器写 → 交集空 → 零写)。
-        # 呈现闩防重放:闩消费先于发放判定,无闩的重复 advance 零写。
+        # 落地交集 = 刚拿入的卡;无效载荷获得链零状态容器写 → 交集空 → 零写)。
+        # 呈现一次性标志位防重放:标志位消费先于发放判定,无一次性标志位的重复 advance 零写。
         if not opening and self._strategy_pick_xp_latch:
             self._strategy_pick_xp_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_xp(self.gs, picked)
-        # 选卡落地拍位面段补发经验腿(「现在以及每个位面开始时」族中途拿
-        # 卡补发,用户裁定 2026-11-01 拍定:当前已开始的位面其位面段登记
+        # 选卡落地拍位面段补发经验效果条目(「现在以及每个位面开始时」族中途拿
+        # 卡补发,用户裁定 2026-11-01 确定:当前已开始的位面其位面段登记
         # 拍全额补发,后续位面照常;通用通道辖域 = 注册表 xp_per_plane>0
-        # 全体):sim 世界自持账补全——live 同拍零写(经验面板画面可读 =
-        # 观察覆盖),sim 不补即持卡局等级进度失真。拿卡名推导与呈现闩防
-        # 重放 = 即时经验腿同款(闩消费先于判定,交集空亦消费);已开始
+        # 全体):sim 状态副本自持账补全——live 同拍零写(经验面板画面可读 =
+        # 观察覆盖),sim 不补即持卡局等级进度失真。拿卡名推导与呈现一次性标志位防
+        # 重放 = 即时经验效果条目同款(标志位消费先于判定,交集空亦消费);已开始
         # 判据/禁聚合/写入形态见 :func:`apply_strategy_plane_refire_xp`。
-        # 位置 = 即时经验腿后独立笔:同域 XP 字段分派(xp_instant /
-        # xp_per_plane 互斥读),与其余各腿零交互。
+        # 位置 = 即时经验效果条目后独立笔:同域 XP 字段分派(xp_instant /
+        # xp_per_plane 互斥读),与其余各效果条目零交互。
         if not opening and self._strategy_pick_plane_refire_latch:
             self._strategy_pick_plane_refire_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_plane_refire_xp(self.gs, picked)
-        # 选卡落地拍出售发牌腿(板面重写族出售支):sim 世界自持账补全——
-        # live 同拍零写(游戏侧发 5 只 2★,下一备战帧观察覆盖收口,三正本
+        # 选卡落地拍出售发牌效果条目(板面重写族出售支):sim 状态副本自持账补全——
+        # live 同拍零写(游戏侧发 5 只 2★,下一备战帧观察覆盖收尾,三权威版本
         # 裁定零改动),sim 无观察,不发即持卡局资产面失真。先卖后抽时序
-        # = 挂点天然保证:kernel 获得链(含桥出售面)已在选卡首链写完,
-        # 本腿落桶出口时 held 已归零(出口时序契约前提)。拿卡名推导与
-        # 呈现闩防重放 = xp 腿同款(闩消费先于判定,交集空亦消费);
+        # = 插入位置天然保证:kernel 获得链(含桥出售面)已在选卡首链写完,
+        # 本效果条目落桶出口时 held 已归零(出口时序契约前提)。拿卡名推导与
+        # 呈现一次性标志位防重放 = xp 效果条目同款(标志位消费先于判定,交集空亦消费);
         # 发牌资格归判据集分派非单卡特判;rng 显式流键构造(缺省回退自掷
         # 破 sim 确定性;段位沿 M21/M22/M23 编号续,与商店发牌 M05/环境
-        # 族 M02 分域)。位置 = 链尾独立笔:本腿非环境无门控读面、非注册
-        # 表字段分派,与前置各腿零交互。
+        # 族 M02 分域)。位置 = 链尾独立笔:本效果条目非环境无门控读面、非注册
+        # 表字段分派,与前置各效果条目零交互。
         if not opening and self._strategy_pick_sell_deal_latch:
             self._strategy_pick_sell_deal_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
@@ -2676,20 +2676,20 @@ class SimBackend:
                 apply_strategy_pick_sell_all_deal(
                     self.gs, picked, stream_rng(self.seed,
                                                 'M24/sell-all-deal'))
-        # 选卡落地拍获得链交换腿轨迹成对腿(不等价交换 hp⇄gold 互换;
+        # 选卡落地拍获得链交换效果条目的轨迹成对效果条目(不等价交换 hp⇄gold 互换;
         # 通用通道辖域 = 注册表 hp_gold_swap=True 全体):kernel 交换写端
         # 在选卡首链(report_action_pick_* → gain_invest_strategy →
-        # on_strategy_gained)已落容器,本腿只做 hp_trail 成对追加(写流
-        # ↔轨迹全序同构不变式,first_run 容器不变式②——交换写行 journal
-        # 在案而轨迹缺行即红)。配对形态 = 呈现闩族形(与前置各腿一致)
+        # on_strategy_gained)已落状态容器,本效果条目只做 hp_trail 成对追加(写流
+        # ↔轨迹全序同构不变式,first_run 状态容器不变式②——交换写行 journal
+        # 在案而轨迹缺行即红)。配对形态 = 呈现一次性标志位族形(与前置各效果条目一致)
         # 非尾值检测式:检测式「trail 尾值 ≠ hp 现值」在等值交换(交换前
         # hp 已 == min(gold,100))下漏配——等值写行照落(先例 =
-        # apply_hp_outcome 胜局支),尾值判据看不见该行,同构锁红;闩 +
-        # 判别按「交换腿每发恰一写行」配对,等值形态天然覆盖。拿卡名
-        # 推导与呈现闩防重放 = 前置各腿同款(闩消费先于判别,交集空亦
-        # 消费;防重放窗同界 = 呈现→落地)。位置 = 即时生命腿之前:kernel
-        # 写行先于本函数各腿落容器,轨迹追加序须与写行序同构对齐(未来
-        # 同拍双 hp 腿一旦成立,追加序错位即红,前置卡位保序)。
+        # apply_hp_outcome 胜局支),尾值判据看不见该行,同构锁红;一次性标志位 +
+        # 判别按「交换效果条目每发恰一写行」配对,等值形态天然覆盖。拿卡名
+        # 推导与呈现一次性标志位防重放 = 前置各效果条目同款(标志位消费先于判别,交集空亦
+        # 消费;防重放窗同界 = 呈现→落地)。位置 = 即时生命效果条目之前:kernel
+        # 写行先于本函数各效果条目落状态容器,轨迹追加序须与写行序同构对齐(未来
+        # 同拍双 hp 效果条目一旦成立,追加序错位即红,前置卡位保序)。
         if not opening and self._strategy_pick_swap_latch:
             self._strategy_pick_swap_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
@@ -2698,20 +2698,20 @@ class SimBackend:
                 _eff = STRATEGY_ECONOMY.get(_n)
                 if _eff is not None and _eff.hp_gold_swap is True:
                     self._hp_trail_append()
-        # 选卡落地拍即时生命腿(hp 通道模式卡「健康充值」首落;通用通道,
+        # 选卡落地拍即时生命效果条目(hp 通道模式卡「健康充值」首落;通用通道,
         # 辖域 = 注册表 hp_instant≠0 全体,正加负损双向——负值支先亏后盈
-        # −20 随批扩面):sim 世界自持账补全——live 同拍零写(游戏自算,
-        # 血量条观察覆盖收口,fields.md hp 写入闸无逻辑写入方)。拿卡名
-        # 推导与呈现闩防重放 = 前置三腿同款(闩消费先于判定,交集空亦
+        # −20 随批扩面):sim 状态副本自持账补全——live 同拍零写(游戏自算,
+        # 血量条观察覆盖收尾,fields.md hp 写入闸无逻辑写入方)。拿卡名
+        # 推导与呈现一次性标志位防重放 = 前置三条效果条目同款(标志位消费先于判定,交集空亦
         # 消费);不 clip/禁聚合依据见 :func:`apply_strategy_pick_hp`。
         # 负值支写后同拍扩挂损血档位触发器(持保险局选卡损血入累计器,
         # 非「减负」——−20 换算 +20 损失计入,披露键 ③ 触发源域随批扩
-        # 两挂点);rng 显式流键构造(缺省回退自掷破 sim 确定性,出售发牌
-        # 腿同款纪律;独立子流与 M13 结算保险流分域,同 seed 其他流零
-        # 扰动)。位置 = 链尾独立笔:与前置各腿零交互(字段分派互斥:
+        # 两个插入位置);rng 显式流键构造(缺省回退自掷破 sim 确定性,出售发牌
+        # 效果条目同款纪律;独立子流与 M13 结算保险流分域,同 seed 其他流零
+        # 扰动)。位置 = 链尾独立笔:与前置各效果条目零交互(字段分派互斥:
         # xp_instant / streak_set / 发牌判据集 / hp_instant)。轨迹追加 =
         # observe 同笔语义(hp 写流 ↔ hp_trail 全序同构不变式按写行粒度
-        # 对齐——腿返回笔数即写行数,逐笔追加)。
+        # 对齐——效果条目返回笔数即写行数,逐笔追加)。
         if not opening and self._strategy_pick_hp_latch:
             self._strategy_pick_hp_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
@@ -2720,33 +2720,33 @@ class SimBackend:
                     self.gs, picked,
                     stream_rng(self.seed, 'M25/pick-hp-loss'))):
                 self._hp_trail_append()
-        # 选卡落地拍分期金剩余腿数初始化腿(「接下来 count 次」递减容器
+        # 选卡落地拍分期金剩余效果条数初始化效果条目(「接下来 count 次」递减状态容器字段
         # 状态;通用通道辖域 = 注册表 gold_next_nodes_count>0 全体):
-        # sim 世界自持账补全——live 同拍零写(游戏自算自显,金整字段观察
-        # 覆盖收口),sim 无初始化则节点窗分期腿永空 = 持卡局分期段静默
-        # 零发。拿卡名推导与呈现闩防重放 = 前置各腿同款(闩消费先于
+        # sim 状态副本自持账补全——live 同拍零写(游戏自算自显,金整字段观察
+        # 覆盖收尾),sim 无初始化则节点窗分期效果条目永空 = 持卡局分期段静默
+        # 零发。拿卡名推导与呈现一次性标志位防重放 = 前置各效果条目同款(标志位消费先于
         # 判定,交集空亦消费);初始化 = 直接赋值(键 = 卡名每卡独立条目,
         # 同卡重拿重置 = 排除闸下防御性默认)。位置 = 链尾独立笔:与
-        # 前置各腿零交互(字段分派互斥:gold_next_nodes_count)。
+        # 前置各效果条目零交互(字段分派互斥:gold_next_nodes_count)。
         if not opening and self._strategy_pick_gold_next_nodes_latch:
             self._strategy_pick_gold_next_nodes_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
                       if n in (self.gs.active_strategies.value or [])]
             if picked:
                 apply_strategy_pick_gold_next_nodes_init(self.gs, picked)
-        # 选卡落地拍超发货币负债腿(金面播值负债卡清零支,世界真值补全):
-        # live 同拍零写(游戏自扣,金整字段观察覆盖收口,金面禁直写三锚
-        # T-85 定形)。判别三重:呈现闩防重放(前腿同形)→ 本拍拿卡名判别
-        #(呈现候选 ∩ 持有列表,前置各腿同款推导;条目在册不能单独作本拍
-        # 信号——条目生命跨 6 个节点入口,窗内后继拿卡事件「在册」仍真,
-        # 只按条目判会误清后继窗累积收入)→ 条目在册校验(单载体制:条目
+        # 选卡落地拍超发货币负债效果条目(金面播值负债卡清零支,状态副本真值补全):
+        # live 同拍零写(游戏自扣,金整字段观察覆盖收尾,金面禁直写三基准
+        # T-85 定形)。判别三重:呈现一次性标志位防重放(前效果条目同形)→ 本拍拿卡名判别
+        #(呈现候选 ∩ 持有列表,前置各效果条目同款推导;条目已登记不能单独作本拍
+        # 信号——条目生命跨 6 个节点入口,窗内后继拿卡事件「已登记」仍真,
+        # 只按条目判会误清后继窗累积收入)→ 条目已登记校验(单载体制:条目
         # = 获得链登记产物,兼负债额快照载体;条目缺 = bypass 路径未经
         # 获得链,保守零动作 + disclosures 留证——零新增披露键,内联运行
         # 时键承载保守形态)。动作:负债额读 counters[LOST](缺播防御 =
         # 以扣减前金现值兜底同值);金清零写独立证据笔
         # strategy:hyperemit_drain:<卡名>(−G 增量 = 写前金 − 0,金轨迹
         # 对账可导);金已为 0 短路零写(重放 −0 幂等,T-177 同写点同形
-        # 防御取舍)。位置 = 链尾独立笔:与前置各腿零交互(非注册表字段
+        # 防御取舍)。位置 = 链尾独立笔:与前置各效果条目零交互(非注册表字段
         # 分派,条目判别);扣后下一窗利息按扣后金算,自然跟随。
         if not opening and self._strategy_pick_hyperemit_drain_latch:
             self._strategy_pick_hyperemit_drain_latch = None
@@ -2770,21 +2770,21 @@ class SimBackend:
                         log.info('[cw-sim] 超发货币负债腿:%s 清零 '
                                  '(快照 %s,现持 %s,增量 −%s)',
                                  _em.spec.name, _lost, gold_now, gold_now)
-        # 选卡落地拍已损血衍生金腿(「获得等同于你已损失生命数量的金币」,
+        # 选卡落地拍已损血衍生金效果条目(「获得等同于你已损失生命数量的金币」,
         # 星际和平保险 id 303001 首例;通用通道辖域 = 注册表
-        # gold_per_hp_lost_now 全体,世界派生计算形非静态字段):sim 世界
-        # 自持账补全——live 同拍零写(游戏自算自发,金余额观察覆盖收口,
-        # 金面禁直写三锚 T-85 定形)。已损失口径与开局基线来源见
+        # gold_per_hp_lost_now 全体,状态副本派生计算形非静态字段):sim 状态副本
+        # 自持账补全——live 同拍零写(游戏自算自发,金余额观察覆盖收尾,
+        # 金面禁直写三基准 T-85 定形)。已损失口径与开局基线来源见
         # :func:`check_strategy_hp_loss_gold`(基线 = hp_trail[0] 开局
         # 真值,reset 序尾已记录,pick 时点恒在场);条件单一源 = kernel
         # 检查函数(卡直读注册行禁聚合)。建模假设经
         # STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION 随局申报(判读申报
-        # 制)。拿卡名推导与呈现闩防重放 = 前置各腿同款(闩消费先于判定,
+        # 制)。拿卡名推导与呈现一次性标志位防重放 = 前置各效果条目同款(标志位消费先于判定,
         # 交集空亦消费——每呈现窗至多一次落地消费,无效载荷的重放同样
         # 不得再触发);零损失选卡(开局即选)检查函数返回 0 = 零笔零
         # 申报(与游戏「已损失 0 → 金 0」自算同形)。位置 = 链尾独立笔:
-        # 与前置各腿零交互(金域加笔,扣金负腿为减向分账,evidence 分账
-        # 可归因);先于立即腿呈现体(其 return 早退会吞本拍落地语义)。
+        # 与前置各效果条目零交互(金域加笔,扣金负效果条目为减向分账,evidence 分账
+        # 可归因);先于立即效果条目呈现体(其 return 早退会吞本拍落地语义)。
         if not opening and self._strategy_pick_hp_loss_gold_latch:
             self._strategy_pick_hp_loss_gold_latch = None
             picked = [n for n in (self.gs.invest_strategy_opts.value or [])
@@ -2804,22 +2804,22 @@ class SimBackend:
                     log.info('[cw-sim] 已损血衍生金腿:开局 %s 现值 %s '
                              '衍生金 +%s', self.hp_trail[0],
                              int(self.gs.hp.value or 0), gold_gain)
-        # 选卡拍商店改写腿 + 位面段补发双腿(「现在及每个位面开始时」族,
+        # 选卡拍商店改写效果条目 + 位面段补发双效果条目(「现在及每个位面开始时」族,
         # 公司严选 301401 首条目;通用通道辖域 = 注册表 shop_rewrite_
         # forced_cost>0 / gold_per_plane>0 全体,字段分派非单卡特判)。
         # 触发面 = 窗口起点快照差分限定「本拍新获得」——本方法是环境/
         # 策略双支统一口,扫描式遍历持有表会在后续拿他卡时反复触发(卡面
         # 「现在」= 获得时点,无此语义);快照在节点窗守卫同拍记录,差分
         # 消费后前滚并入现值(链式选卡〔delay-0 呈现〕同窗二次落地时差分
-        # = 本拍新获得,旧卡不重燃;重放落地差分恒空 = 零写,无闩自防)。
-        # 改写腿 = kernel 强制采样器单源直写(live 同拍零写观察覆盖);
-        # 位面段补发 = 用户裁定 2026-11-01 族级拍定(中途拿卡判当前位面
-        # 已开始 → 登记拍全额补发·非按比例,后续位面照常):金腿沿
+        # = 本拍新获得,旧卡不重燃;重放落地差分恒空 = 零写,无一次性标志位自防)。
+        # 改写效果条目 = kernel 强制采样器单源直写(live 同拍零写观察覆盖);
+        # 位面段补发 = 用户裁定 2026-11-01 族级确定(中途拿卡判当前位面
+        # 已开始 → 登记拍全额补发·非按比例,后续位面照常):金效果条目沿
         # apply_strategy_plane_refire_xp 同判形(node 在场即已开始,
-        # None = 保守零补发禁猜),补发改写腿同拍独立流键/evidence——
-        # 同拍「选卡改写 × 补发改写」双触发两腿都发(固定理财族「两腿
+        # None = 保守零补发禁猜),补发改写效果条目同拍独立流键/evidence——
+        # 同拍「选卡改写 × 补发改写」双触发两条效果条目都发(固定理财族「两条效果条目
         # 都发」同判,journal 双行如实登记禁静默合并)。位置 = 链尾、
-        # 拿卡拍立即腿呈现之前:重入选卡须先于模态返回(呈现体 return
+        # 拿卡拍立即效果条目呈现之前:重入选卡须先于模态返回(呈现体 return
         # 早退会吞本拍),先于呈现 = 改写属本拍落地语义非呈现副作用。
         if not opening:
             now_held = tuple(self.gs.active_strategies.value or ())
@@ -2831,16 +2831,16 @@ class SimBackend:
                 if self.gs.node.value is not None:
                     apply_strategy_plane_refire_gold(self.gs, new_picked)
                     self._apply_strategy_shop_rewrite_refire(new_picked)
-        # 拿卡拍立即腿(delay_nodes=0 承载,白银投资首例):队列存在
+        # 拿卡拍立即效果条目(delay_nodes=0 承载,白银投资首例):队列存在
         # 本拍刚拿卡的 delay-0 条目(拿卡同拍登记,remaining 恒 0 未递减;
-        # delayed 腿到点条目非本拍入队,不入本挂点辖域——顺延语义归
-        # 窗首到期腿,拿卡拍不抢,防同窗二次呈现吞掉「下一空闲窗必呈现」
+        # delayed 效果条目到点条目非本拍入队,不入本插入位置辖域——顺延语义归
+        # 窗首到期效果条目,拿卡拍不抢,防同窗二次呈现吞掉「下一空闲窗必呈现」
         # 契约)→ 弹除 + 呈现 + resume='node',不进 _after_modal_pick——
         # 第二选卡经同一 report 通道重入落地(链式语义同机制;每拍至多
         # 呈现 1 次 = delay-0 条目每卡至多一条的结构性承载,排除集下
-        # 同卡不可重拿)。呈现体与窗首到期腿共用(品质改写不作用、弹除
+        # 同卡不可重拿)。呈现体与窗首到期效果条目共用(品质改写不作用、弹除
         # = 呈现时),rng 流键分键(pick 段),呈现留证分键
-        # (strategy_immediate_offer_fired)。拿卡名推导 = 各腿同款
+        # (strategy_immediate_offer_fired)。拿卡名推导 = 各效果条目同款
         # 「呈现候选 ∩ 持有列表」;命中即本拍新登记(delay-0 条目只在
         # 本拍产生,旧条目 remaining 已递减或属他卡)。位置不变式:
         # 尾段、_after_modal_pick 之前(重入选卡须先于模态返回)。
@@ -2880,7 +2880,7 @@ class SimBackend:
 
     def _on_box_picked(self) -> None:
         """武装箱选定落地:选中装备走获得链入栏(kernel 单一时序,含
-        获得后果回调);候选点击缺记录 = 世界不可辨,披露不猜。"""
+        获得后果回调);候选点击缺记录 = 状态副本不可辨,披露不猜。"""
         idx = self._box_pick_pending
         self._box_pick_pending = None
         if idx is not None:
@@ -2902,7 +2902,7 @@ class SimBackend:
         """overlay 选定落地(模态返回 + 呈现检查):效果分支归各自上报/
         效果批,本层零效果。原私有队列出队分支
         停用——呈现数据源 = ``gs.screen_changes.pending``,消费 = 选卡
-        上报内 ``consume_screen_change``(两世界同一行代码,register-
+        上报内 ``consume_screen_change``(两侧同一行代码,register-
         consume.md「sim 消费」),本层不重复出队。
         """
         if kind == 'planner':
@@ -2913,13 +2913,13 @@ class SimBackend:
     # ---------------------------------------------------------- 状态机
 
     def _announce_screen(self, value: str) -> None:
-        """画面广播(内部状态机 → 容器画面域,渲染复盘的画面章证据面)。
+        """画面广播(内部状态机 → 状态容器画面域,渲染复盘的画面章证据面)。
 
         - 值级豁免:``SCREEN_SETTLE``/``SCREEN_LOBBY`` 不广播——结算事实
-          已由战斗章 settlement 写入行 + 局头终局行承载,大厅收口事实在
+          已由战斗章 settlement 写入行 + 局头终局行承载,大厅收尾事实在
           局头;广播只各造一个未注册空壳章。豁免按值不按赋值点(模态
           返回位可为结算屏,点位豁免会泄漏「货币战争-结算」空壳章);
-        - 两行一对:``prev_screen`` = 上次广播值(初值 = 容器冷建空串)→
+        - 两行一对:``prev_screen`` = 上次广播值(初值 = 状态容器每局全新创建空串)→
           ``current_screen`` = value;渠道 = obs 族合成签名(mode=
           'synthesized' 为 obs_sig 内建的渠道级如实标记——引擎声明非
           真读数),evidence 前缀 ``screen:`` 为辅助标记;
@@ -2982,7 +2982,7 @@ class SimBackend:
         self._dismiss_modal()
 
     def _present_pending_overlay(self, fortune_base: str | None = None) -> None:
-        """overlay 呈现检查(数据源 = 容器登记
+        """overlay 呈现检查(数据源 = 状态容器登记
         ``gs.screen_changes.pending``,旧私有队列呈现面已停用——
         队列本体随评估器归 3.5 清扫;呈现时机不变 = advance/步界检查)。
 
@@ -2992,18 +2992,18 @@ class SimBackend:
 
         逐 kind 呈现门(overlay 生命周期契约(sim 消费)):
 
-        - megastar:模态 + 候选写容器(场上盛会之星资格成员,含持徽
+        - megastar:模态 + 候选写状态容器(场上盛会之星资格成员,含持徽
           贡献——候选语义 = 判据资格集同源);
-        - planner:模态(选项桶实机 OCR 写点,sim 生成器批接线);
+        - planner:模态(选项桶实机 OCR 写点,sim 生成器批接入);
         - box_card/expert_invite:open_box/open_bookcard 的 advance 分派
           已呈现对应模态(候选写入在各自过程),本检查幂等守卫;
         - fortune:**逐 kind 呈现门**——仅底层 = 备战时收尾消费
           (用户确认:下一节点非备战时推迟,选完进备战
           先弹,不压补给/遭遇屏);底层非备战 = 条目存活等待;
         - aha/partner/fortune(备战底层时)/wish_trial/star_tome:无
-          sim 呈现面族(aha 无独立画面档,实机 = 备战锚特殊规则点
+          sim 呈现面族(aha 无独立画面档,实机 = 备战识别标志特殊规则点
           首件;其余画面 op 无 sim 观察分支,呈现即卡 observe 重试;
-          partner 候选可自资格集算,候观察分支接线再呈现)→ 消费 +
+          partner 候选可自资格集算,候观察分支接通调用后再呈现)→ 消费 +
           **逐 kind 披露**(披露键含 kind,多 kind 同帧各自留痕)。
 
         模态叠模态守卫(原语义):当前已在模态屏 = 推迟(返回后再查)。
@@ -3018,10 +3018,10 @@ class SimBackend:
                 continue   # 呈现门:底层非备战,条目存活等待()
             if kind in ('aha', 'partner', 'fortune', 'wish_trial',
                         'star_tome'):
-                # 无 sim 呈现面族:aha 无独立画面档(实机 = 备战锚特殊
+                # 无 sim 呈现面族:aha 无独立画面档(实机 = 备战识别标志特殊
                 # 规则点首件);partner/fortune/wish_trial/star_tome 选项
                 # 注册表缺位且画面 op 无 sim 观察分支(呈现即卡 observe
-                # 重试;partner 候选可自资格集算,候 sim 观察分支接线再呈现)
+                # 重试;partner 候选可自资格集算,候 sim 观察分支接通调用后再呈现)
                 # → 消费 + 披露(fortune 呈现门语义保留:底层非备战时
                 # 上方 continue 使条目存活)。
                 consume_screen_change(self.gs, kind)
@@ -3049,7 +3049,7 @@ class SimBackend:
                 'unpresentable_kind'
 
     def _present_megastar_options(self) -> None:
-        """巨星候选写容器(候选 = 场上盛会之星角色,含持星徽贡献;选项
+        """巨星候选写状态容器(候选 = 场上盛会之星角色,含持星徽贡献;选项
         坐标 = sim 合成坐标,身份键无画面语义)。"""
         cands: list[MegastarOption] = []
         _view = self.gs.deployed.value
@@ -3081,9 +3081,9 @@ class SimBackend:
                         NodeKey(plane=pos[0], round_num=pos[1], kind=kind),
                         evidence=sim_evidence(f'node:p{pos[0]}r{pos[1]}'),
                         sig=obs_sig(group_id='sim:node'))
-        # 节点序位锚定(sim 写端 = 世界呈现节点,与实机「备战帧顶栏/补给屏
+        # 节点序位锚定(sim 写端 = 状态副本呈现节点,与实机「备战帧顶栏/补给屏
         # 节点条」观察锚定同口;终结动作推进的观察态门以此为前提)。
-        # 超发货币回流腿(金面播值负债卡回流支,前读两拍跨窗挂起形):
+        # 超发货币回流效果条目(金面播值负债卡回流支,前读两拍跨窗挂起形):
         # 拍① = 窗内现读条目——remaining_nodes == 1 即「下一入口 = 第 6 次
         # 入口」(remaining ≡ N − counter 等价式;第 6 次节点入口 = 注册行
         # offset+1,impacts 用户裁定 2026-09-10),快照回流额 = counters[LOST]
@@ -3093,15 +3093,15 @@ class SimBackend:
         #(kernel advance_node_effective 尾段,settle_confirm/supply_finish
         # 上报内)先于本方法——窗口内现读恒为 tick 后状态,条目归零移除
         # 已随第 6 入口的转换 tick 发生,本方法内无 pre-tick 可读位;挂起
-        # 值 = 设计稿「前读值」概念的跨窗承载(设计稿锚前提 = 推进锚执行
+        # 值 = 设计稿「前读值」概念的跨窗承载(设计稿基准前提 = 推进基准执行
         # 递减,经引擎链实测在 sim 动作流不成立,批次报告随批申报)。持久
-        # 状态仍只有条目一份:挂起值 = 一次性消费单窗暂态(呈现闩同形
-        # 私有暂态,不入容器/不入快照恢复),一次性消费即自防重;局终未
+        # 状态仍只有条目一份:挂起值 = 一次性消费单窗暂态(呈现一次性标志位同形
+        # 私有暂态,不入状态容器/不入快照恢复),一次性消费即自防重;局终未
         # 消费挂起随局蒸发不补发。发放点先于 _begin_node_window 收入段
         # = 支付入本窗利息基数(与定期福利 T-162 落账入基数序同向,禁
-        # 静默分叉);位面过渡早退分支在本腿之后 → 位面首入口照常回流
+        # 静默分叉);位面过渡早退分支在本效果条目之后 → 位面首入口照常回流
         #(计数域 = 节点入口事件全型,supply/reward/battle/boss/修饰局
-        # 插入节点照计数,T-106 判例)。live 零写(游戏自发,金整字段
+        # 插入节点照计数,T-106 先例)。live 零写(游戏自发,金整字段
         # 观察覆盖兜底)。
         # 拍② 先行:上一窗挂起的回流额在本窗开窗先付(本窗 = 第 6 次入口;
         # 支付先于本窗收入段 = 入息基数,T-162 同向)。
@@ -3126,23 +3126,23 @@ class SimBackend:
         observe_node_anchor(self.gs, pos,
                             trigger_screen=self._screen_for_node(kind),
                             actor='SimBackend')
-        # 策略卡条件节点序列改写腿(决议:娱乐星球 id 302301 策略侧首例;
+        # 策略卡条件节点序列改写效果条目(决议:娱乐星球 id 302301 策略侧首例;
         # 「进入战斗时，若拥有180枚金币，将本局游戏剩余的非首领节点替换
         # 为奖励节点」触发器单一源 = kernel check_strategy_node_rewrite,
         # 白名单表 STRATEGY_NODE_REWRITE_TRIGGERS 驱动,注册表 = 策略卡域
         # cw_investments,cw_investments.py 表头辖域互斥申报在卷:env 名
         # 键域归 ENV_NODE_REWRITE_RULES 注册刻无条件应用,策略卡名键域归
-        # 本腿条件触发,两表键域互斥)。挂点 = 窗开拍非防漏——位面过渡
+        # 本效果条目条件触发,两表键域互斥)。插入位置 = 窗开拍非防漏——位面过渡
         # 分支提前 return 后过渡屏点击照常收尾本窗(_begin_node_window),
-        # 挂收尾只会迟不会漏;取窗开的真实优点 = 触发时点贴「进入战斗」
+        # 钉在收尾只会迟不会漏;取窗开的真实优点 = 触发时点贴「进入战斗」
         # 窗开语义(过渡屏呈现即评估,不待点击)+ 当前位已按旧 kind
         # observe 零失真(改写不含当前位,本窗收尾重读现值零失真)。
         # gold 口径 = 轮首收入前(apply_round_start_income 在窗收尾收入段
-        # 晚于本挂点;同段前序 = 超发回流腿先付,其金入判定口径,判读
+        # 晚于本插入位置;同段前序 = 超发回流效果条目先付,其金入判定口径,判读
         # 申报制)。kernel 纯决策零写,命中才本侧一拍两写:场字段改写值
         # (evidence='node_seq:strategy',与 env 注册写 'node_seq:env'
-        # 分键双写端)+ 闩追加(strategy_conditional_done 纯卡名键共域,
-        # 键集 = 持卡∩表未闩成员——改写后剩余槽位无 battle 位,后续
+        # 分键双写端)+ 一次性标志位追加(strategy_conditional_done 纯卡名键共域,
+        # 键集 = 持卡∩表未置一次性标志位成员——改写后剩余槽位无 battle 位,后续
         # 不再有可达评估点,同拍全量封账不可能跳过会发的后续触发;
         # 证伪前提随 env 覆盖边申报)。相对序申报:策略改写后同局再选
         # 节点改写环境 → env 注册写整表覆盖策略改写(后写赢),双改写
@@ -3198,7 +3198,7 @@ class SimBackend:
         if self._window_begun_pos == pos_key:
             return
         self._window_begun_pos = pos_key
-        # 窗口起点持有策略快照(守卫同拍):选卡拍改写/补发双腿的差分
+        # 窗口起点持有策略快照(守卫同拍):选卡拍改写/补发双效果条目的差分
         # 基线(重放同窗守卫早退不重拍,差分语义跨重放稳定)。
         self._strategies_at_window_start = tuple(
             self.gs.active_strategies.value or ())
@@ -3207,12 +3207,12 @@ class SimBackend:
         # 上窗以来状态变动(连胜/选卡)在此反映;本窗内选卡的即时反映
         # 由 _on_invest_picked 写点承担。
         self._update_difficulty_flag()
-        # 策略卡备战席条件离场金腿(「进入新节点时，备战席的1星【花火】/
+        # 策略卡备战席条件离场金效果条目(「进入新节点时，备战席的1星【花火】/
         # 【火花】会留下2/4金币并去别处找乐子」族,愚者恶作剧 id 260701
         # 首例):进窗事实点在窗口幂等守卫内(重放不双发),kernel 检查函数
         # 单一源 check_strategy_bench_leave_gold(纯读零写,未持卡/无匹配
-        # 单位零写,零 done 闩——卡面无「首次」限定,每节点窗条件成立即
-        # 触发)。挂点钉在收入段最前(与定期福利金腿同段邻位、扑满递延
+        # 单位零写,零 done 一次性标志位——卡面无「首次」限定,每节点窗条件成立即
+        # 触发)。插入位置钉在收入段最前(与定期福利金效果条目同段邻位、扑满递延
         # 快照与轮首收入之前——离场金入本节点利息基数,与 live 轮初口径
         # 「利息计算基数 = 结算前金现值」同向,T-162 定形;离场腾槽在任何
         # 后续读数前生效)。计划非空两笔写:①金写 = observe Σ计划金币
@@ -3221,13 +3221,13 @@ class SimBackend:
         # ②离场写 = BenchView 整视图结构性写(匹配槽置空槽,卖备战席角色
         # 置 empty 同形,capacity 不动;两笔互不读对方字段,先后无行为差,
         # 序 = 卡文语序「留下金币并去别处找乐子」先金后离场)。
-        # **相对序现位申报**(沿人才空洞计数腿先例治理模式):本腿位于同窗
+        # **相对序现位申报**(沿人才空洞计数效果条目先例治理模式):本效果条目位于同窗
         # 全部 bench 谓词消费之前——移出 1星花火/火花会改变后续 bench 谓词
-        # 输入域:人才空洞计数 XP 腿(≤4/≥8 门槛计数,如 6→4 触发 ≤4 多发
-        # 3XP)/空仓 XP 腿与装备计数 XP 腿(离场单位身上装备随移出,装备域
-        # 输入收窄)/node_char 复制腿(落席空槽候选增多;谓词本体零交互——
+        # 输入域:人才空洞计数 XP 效果条目(≤4/≥8 门槛计数,如 6→4 触发 ≤4 多发
+        # 3XP)/空仓 XP 效果条目与装备计数 XP 效果条目(离场单位身上装备随移出,装备域
+        # 输入收窄)/node_char 复制效果条目(落席空槽候选增多;谓词本体零交互——
         # 价值投资族绑定 = 随机 1 费角色,花火 2 费/火花 4 费永不被绑定)。
-        # 相对序官方无定谳 = 判读申报制辖域,现位 = 收入段最前(证伪路径 =
+        # 相对序官方无定论 = 判读申报制辖域,现位 = 收入段最前(证伪路径 =
         # 实机持卡局节点窗内离场与 XP/复制发放的先后观察,证伪则改序重
         # 申报)。live 零写观察覆盖(实机离场与离场金由游戏自算自显,备战
         # 席整表观察 + 金观察链覆盖);零 rng 确定结算。
@@ -3262,8 +3262,8 @@ class SimBackend:
                                 and s.unit.char_id == name):
                             slots[slot_idx] = BenchSlot(kind='empty')
                         else:
-                            # 判定与写刻间槽内容漂移(同窗内前置腿写席
-                            # 才可达;当前段序收入段最前,无前置写席腿
+                            # 判定与写刻间槽内容漂移(同窗内前置效果条目写席
+                            # 才可达;当前段序收入段最前,无前置写席效果条目
                             # = 现网不可达防御):留证跳写不误清他人槽。
                             log.warning(
                                 '[cw-sim] bench_leave_gold 槽内容与'
@@ -3274,17 +3274,17 @@ class SimBackend:
                     BenchView(slots=slots, capacity=view.capacity),
                     evidence=sim_evidence(leave_tag),
                     sig=obs_sig(group_id='sim:strategy'))
-        # 投资策略每节点金腿(定期福利系):进任意节点窗发持卡聚合值,
+        # 投资策略每节点金效果条目(定期福利系):进任意节点窗发持卡聚合值,
         # 独立观察笔(evidence/sig 与收入笔分键)——轮首收入三分量账
         #(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
-        # 收入写。挂点钉在收入段最前(扑满递延快照与轮首收入之前):
+        # 收入写。插入位置钉在收入段最前(扑满递延快照与轮首收入之前):
         # 卡面「每次进入新节点时」= 最早时点,窗开先落账后,扑满快照与
-        # 轮首收入的利息基数(均读金现值)自然含本腿,与 live 口径「利息
-        # 计算基数 = 结算前金现值」(cw_effect_inventory)同向。boss 金腿
-        # /尾款金腿挂收口段、不入同节点利息基数——两卡 desc 时点语义不
+        # 轮首收入的利息基数(均读金现值)自然含本效果条目,与 live 口径「利息
+        # 计算基数 = 结算前金现值」(cw_effect_inventory)同向。boss 金效果条目
+        # /尾款金效果条目挂收尾段、不入同节点利息基数——两卡 desc 时点语义不
         # 同(「进入首领节点时」/「最后一个补给阶段后」 vs 无条件每节点
-        # 息账前给金),各自挂点均有在册支撑,基数序分叉为显式申报非静默
-        #(统一收口提案归 round_start_income 承载方式定夺批)。零值零写
+        # 息账前给金),各自插入位置均有已登记支撑,基数序分叉为显式申报非静默
+        #(统一收尾提案归 round_start_income 承载方式定夺批)。零值零写
         #(未持卡零新增观察行);幂等复用窗口守卫(同节点窗重放整段跳过),
         # 零新增守卫。
         invest_gold = strategy_invest_node_gold_of(self.gs)
@@ -3294,13 +3294,13 @@ class SimBackend:
             self.gs.observe(self.gs.gold, gold_before + invest_gold,
                             evidence=sim_evidence(tag),
                             sig=obs_sig(group_id=f'sim:{tag}'))
-        # 分期金腿(长期主义系「接下来 count 次」):递减容器逐卡判剩余,
+        # 分期金效果条目(长期主义系「接下来 count 次」):递减状态容器字段逐卡判剩余,
         # 窗开先落账 + 入同节点利息基数(裁决点 5 默认案,与上方 gold_per_
-        # node 聚合腿无条件同挂点序——本写点仍在扑满递延快照与轮首收入
-        # 之前);与聚合腿同段两笔独立写、互不聚合(每卡独立 evidence 笔,
+        # node 聚合效果条目无条件同插入位置序——本写点仍在扑满递延快照与轮首收入
+        # 之前);与聚合效果条目同段两笔独立写、互不聚合(每卡独立 evidence 笔,
         # 支付源 = 各条目注册值按卡名直读,禁聚合 payload)。全节点型
         # 计数:凡进窗即一期(supply/reward/battle/boss/修饰局插入节点
-        # 照算,纯节点事件判例 T-106 稿承 T-98 §1.1);游戏终局剩余腿
+        # 照算,纯节点事件先例 T-106 稿承 T-98 §1.1);游戏终局剩余效果条目
         # 自然蒸发不补发。零值零写(未持分期卡零新增观察行);幂等复用
         # 窗口守卫,零新增守卫。
         apply_invest_installment_gold(self.gs, plane=plane, round_num=r)
@@ -3311,7 +3311,7 @@ class SimBackend:
         # 快照随行禁现读。
         interest_floor = consume_strategy_interest_topup(self.gs)
         # 轮首收入(M04;败局补偿登记待办按 kernel 分支序消费——supply/reward
-        # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 容器带符号派生读)
+        # 轮不消费,败态跨轮保留至下一战斗轮;连胜 = 状态容器带符号派生读)
         pending = self.gs.pending_loss.value
         if is_piggy_node(self.gs):
             # 扑满节点收入递延:统一公式败局形需胜负,窗口开时未知 →
@@ -3339,12 +3339,12 @@ class SimBackend:
         # 入账),其余环境保留直发通道(通道留置)。
         self._apply_env_plane_start(plane)
         if r == 1:
-            # 位面首节点窗:策略域位面开始 XP 腿(固定理财首例;增发货币
+            # 位面首节点窗:策略域位面开始 XP 效果条目(固定理财首例;增发货币
             # 环境分道同窗先形,窗口幂等守卫承接重放不双发)。刷新支不在此
-            # ——kernel 推进边界拍位面开始桥(双挂点分工,拍点差申报 =
+            # ——kernel 推进边界拍位面开始桥(双插入位置分工,拍点差申报 =
             # 先推进后开窗,XP 支略后)
             self._apply_strategy_plane_start_xp(plane)
-            # 策略域位面开始金腿(公司严选首例,「现在及每个位面开始时」
+            # 策略域位面开始金效果条目(公司严选首例,「现在及每个位面开始时」
             # 族位面段金支):XP 支同窗邻位独立笔,注册表直读禁聚合;窗口
             # 幂等守卫承接重放不双发。
             self._apply_strategy_plane_start_gold(plane)
@@ -3357,21 +3357,21 @@ class SimBackend:
         discharge_due_item_grants(self.gs, plane=plane, round_num=r,
                                   rand=False, sig=logic_sig('sim:env'))
         # 环境倒计时件到点开盒(T-34 命运礼物;设计 = T-34 设计稿 §2.4,
-        # 迭代 2026-09-23-invest-effects-calc):同一收口继承窗口幂等守卫
+        # 迭代 2026-09-23-invest-effects-calc):同一收尾点继承窗口幂等守卫
         #(窗口重放不双发);开盒 = 确定事件非采样 → rand=False,
         # sig 组名沿 sim:env 与定时道具发放同窗。
         discharge_due_item_opens(self.gs, rand=False,
                                  sig=logic_sig('sim:env'))
         # 策略延时发放到点入栏(策略卡「N个节点后获得发放物」族,人才
-        # 激励首例;与 offer 呈现腿并列独立域——本腿产出 = 世界发放写):
-        # 同一收口继承窗口幂等守卫(重放不双发);递减点 = kernel 节点
+        # 激励首例;与 offer 呈现效果条目并列独立域——本效果条目产出 = 状态副本发放写):
+        # 同一收尾点继承窗口幂等守卫(重放不双发);递减点 = kernel 节点
         # 边界 tick(advance 尾段),动作上报/锚定补推两路径均先于本窗
         # 开——本 advance 递减到 0 的条目本窗发放 = 「第 N 个后继节点
         # 窗」读法落点。确定发放行 → rand=False(gain-chain.md §5);
-        # 随机 choice-set 行(是钻石总会发光首例)发放腿内部采样并覆盖
+        # 随机 choice-set 行(是钻石总会发光首例)发放效果条目内部采样并覆盖
         # rand=True,rng = 独立命名流 M26(采样消耗不与他流共享 → 同局
-        # 其余随机事件流零移位,固定 seed 面只受世界值变化影响)。
-        # 独立 sig 组名与环境 'sim:env' 区分(世界发放写非环境域,审计
+        # 其余随机事件流零移位,固定 seed 面只受状态副本值变化影响)。
+        # 独立 sig 组名与环境 'sim:env' 区分(状态副本发放写非环境域,审计
         # 可分)。到点留证披露键按「先读后发」取到期卡名与选中物(发放
         # 原语效果串只载发放物不载卡名,采样行掷点结果只回传在效果串
         # 内);注册表查行失败的防御条目由原语保留不弹除,披露值以
@@ -3404,7 +3404,7 @@ class SimBackend:
         # 首领节点条件发放(劳务派遣合同分支2;条件单一源 = kernel
         # check_env_boss_grants):进窗事实点在窗口幂等守卫内(重放不双发),
         # done boss 键短路兜第二层。流键 M21 沿 M05/M18/M20 编号续,
-        # 采样即世界真值;sig 与环境金/定时道具发放同组同窗。kind =
+        # 采样即状态副本里的值;sig 与环境金/定时道具发放同组同窗。kind =
         # node_sequence_of(plane, seqs)[r-1](上窗已算),坐标 (plane, r) =
         # 窗口幂等守卫键现值,直传入参零转换。
         if kind == 'boss':
@@ -3412,15 +3412,15 @@ class SimBackend:
                                   rng=stream_rng(self.seed,
                                                  f'M21/env-boss/p{plane}/r{r}'),
                                   sig=logic_sig('sim:env'))
-        # 策略 boss 金腿(特战资金系):进 boss 节点窗发持卡聚合值,独立
+        # 策略 boss 金效果条目(特战资金系):进 boss 节点窗发持卡聚合值,独立
         # 观察笔(evidence/sig 与收入笔分键)——轮首收入三分量账
         #(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
-        # 收入写。缺口来源:实机进 boss 节点真发聚合值,sim 世界自持账
+        # 收入写。缺口来源:实机进 boss 节点真发聚合值,sim 状态副本自持账
         # 无观察可兜,不发即持卡局金系统性偏低。与劳务派遣合同的角色
-        # 发放腿同段收口(定时道具后、商店全刷前;两腿互不读对方字段,
-        # 先后无行为差,同段为收口序单一)。承载方式 = 「调用方聚合
+        # 发放效果条目同段收尾(定时道具后、商店全刷前;两条效果条目互不读对方字段,
+        # 先后无行为差,同段为收尾序单一)。承载方式 = 「调用方聚合
         # 单列」过渡形态(round_start_income docstring 预留的两承载方式
-        # 之一),T1b 定夺后若选分量扩参,本腿随迁移合并进收入签名。
+        # 之一),T1b 定夺后若选分量扩参,本效果条目随迁移合并进收入签名。
         # 零值零写(未持卡零新增观察行);幂等复用窗口守卫(同节点窗
         # 重放整段跳过),零新增守卫。
         if kind == 'boss':
@@ -3431,16 +3431,16 @@ class SimBackend:
                 self.gs.observe(self.gs.gold, gold_before + boss_gold,
                                 evidence=sim_evidence(tag),
                                 sig=obs_sig(group_id=f'sim:{tag}'))
-        # 策略尾款金腿(尾款交付):进入「最后一个补给阶段」节点窗发持卡
-        # 聚合值——触发器 = **序列位置锚**((位面,轮) == 展平全序列最末
+        # 策略尾款金效果条目(尾款交付):进入「最后一个补给阶段」节点窗发持卡
+        # 聚合值——触发器 = **序列位置基准**((位面,轮) == 展平全序列最末
         # supply 位,整局一次;单一源 = final_supply_pos 场字段现值派生,
-        # 修饰局零特判),与 boss 腿的节点类型触发器不同形态,不套其判定
+        # 修饰局零特判),与 boss 效果条目的节点类型触发器不同形态,不套其判定
         # 代码。独立观察笔(evidence/sig 与收入笔分键)——轮首收入三分量
         # 账(IncomeApplied.total = 该笔金增量)对账关系保持纯净,禁并入
         # 收入写;supply 支收入 = base+息照发,与本卡金平行分账。缺口来
-        # 源与 live 零写金裁定同 boss 金腿(sim 世界自持账无观察可兜)。
-        # 同段邻位收口(boss 金腿之后、商店全刷前;两腿互不读对方字段,
-        # 先后无行为差,同段为收口序单一)。零值零写;幂等复用窗口守卫
+        # 源与 live 零写金裁定同 boss 金效果条目(sim 状态副本自持账无观察可兜)。
+        # 同段邻位收尾(boss 金效果条目之后、商店全刷前;两条效果条目互不读对方字段,
+        # 先后无行为差,同段为收尾序单一)。零值零写;幂等复用窗口守卫
         # (同节点窗重放整段跳过),零新增守卫。拿卡当节点不发放:聚合读
         # 在窗口前段,选卡确认(offer 呈现后)恒晚于本读,同窗拿卡天然零
         # 发放(现行建模域 offer 槽域与 supply 零重合,场景不可达,机制
@@ -3453,11 +3453,11 @@ class SimBackend:
                 self.gs.observe(self.gs.gold, gold_before + supply_gold,
                                 evidence=sim_evidence(tag),
                                 sig=obs_sig(group_id=f'sim:{tag}'))
-        # 环境直发策略取卡挂点(T-46 策略大师数量分支;设计 = T-46 定稿
+        # 环境直发策略取卡插入位置(T-46 策略大师数量分支;设计 = T-46 定稿
         # §2.2(e)):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
         # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
         # 与 _present_offer_or_node_screen(幂等守卫区段外,resume 复走
-        # 双发面)。direct 挂点查询 = kernel ENV_POOL_REWRITE 单一源
+        # 双发面)。direct 插入位置查询 = kernel ENV_POOL_REWRITE 单一源
         #(表外环境 get None = 无直发的合法语义,登记残缺归评审把关,
         # 空条目闸已随 2026-10-28 校验治理移除);当前节点 ==
         # extra_strategy_grant_node → 直接经获得链
@@ -3466,9 +3466,9 @@ class SimBackend:
         # 「本局已出过全部选项名」累计去重契约,漏并入 = 已拥有策略可再入
         # 未来 offer 池,同名跳写 + 同卡二次发放面被直发分支重开)。直发到手
         # 即触发金币分支(同链自动,含本张口径下首张直发即 2 金)。调用形态沿
-        # 现役直调先例 _on_invest_picked:session=None(登记分支跳过、容器写
+        # 现役直调先例 _on_invest_picked:session=None(登记分支跳过、状态容器写
         # 照常)/rand=False(确定发放)/sig 与环境金/定时道具发放同组
-        # sim:env;流键 M23 沿 M21/M22 编号续,采样即世界真值;样本 '' =
+        # sim:env;流键 M23 沿 M21/M22 编号续,采样即状态副本里的值;样本 '' =
         # 全池被排除集吃光(防御性,正常局不可达)→ 静默跳发不空手入链。
         _rewrite = ENV_POOL_REWRITE.get(str(self.gs.active_env.value or ''))
         _grant_node = (_rewrite.extra_strategy_grant_node
@@ -3482,27 +3482,27 @@ class SimBackend:
                 gain_invest_strategy(self.gs, None, _name, rand=False,
                                      sig=logic_sig('sim:env'),
                                      rng=_pick_rng)
-                # 直发到手即判随机策略发放(远见腿②挂点 2;获得链调用后
+                # 直发到手即判随机策略发放(远见效果条目②插入位置 2;获得链调用后
                 # 就地判命中即掷——直发 = 非拾取路径,门单挂拾取拍会把
-                # 腿②迟滞到下一拾取拍,违「获得时点」语义;与拾取落地
+                # 效果条目②迟滞到下一拾取拍,违「获得时点」语义;与拾取落地
                 # 拍共用 _fire_strategy_random_grants 一门,exactly-once
                 # 由已掷源名集合保证)。
                 self._fire_strategy_random_grants(plane=plane, r=r)
-        # 策略卡每节点绑定角色复制发放腿(「每次进入新节点时,获得1星的
+        # 策略卡每节点绑定角色复制发放效果条目(「每次进入新节点时,获得1星的
         # 该角色,补给后额外获得2个」族,价值投资·金首例):进窗事实点在
         # 窗口幂等守卫内(重放不双发),kernel 检查函数单一源
         # check_strategy_node_char_grants(持卡 ∩ 绑定域驱动,未持卡零
-        # 写)。与同段多腿邻位收口(定时道具/开盒/boss 发放/boss 金/尾款
-        # 金/直发取卡;互不读对方字段,先后无行为差,同段为收口序单一)
-        # ——挂点在商店全刷前:「每次进入新节点时」= 本窗内最早段,复制
+        # 写)。与同段多条效果条目邻位收尾(定时道具/开盒/boss 发放/boss 金/尾款
+        # 金/直发取卡;互不读对方字段,先后无行为差,同段为收尾序单一)
+        # ——插入位置在商店全刷前:「每次进入新节点时」= 本窗内最早段,复制
         # 单位先于本窗商店发牌落席。prev_kind 现值推导(调用方现算,不
         # 新增存储):同位面取前序位;r=1 跨位面取前位面序列末位(现役
         # 日程三位面末位恒 boss → 「补给后」跨位面不可达,分支为防御
         # 代码,节点改写环境扩册自动正确);P1r1 无前节点 = None(基础
-        # 1 名照发)。零 rng 确定发放 → rand=False 语义由检查腿内定;
+        # 1 名照发)。零 rng 确定发放 → rand=False 语义由检查效果条目内定;
         # live 零写观察覆盖(实机复制单位由游戏自发入席,下一备战帧
-        # bench 整表观察覆盖);sig 组名 'sim:strategy'(策略世界发放
-        # 家族,与延时发放 'sim:strategy_grant' 分组,本腿零采样)。
+        # bench 整表观察覆盖);sig 组名 'sim:strategy'(策略状态副本发放
+        # 家族,与延时发放 'sim:strategy_grant' 分组,本效果条目零采样)。
         _seqs = self.gs.node_seq_by_plane.value
         _cur_seq = node_sequence_of(plane, _seqs)
         if r >= 2:
@@ -3514,16 +3514,16 @@ class SimBackend:
         check_strategy_node_char_grants(self.gs, prev_kind=_prev_kind,
                                         sig=logic_sig('sim:strategy'))
         # 策略卡羁绊条件节点窗交付拍(不要小看我们的羁绊 id 200901 首例;
-        # 触发-发放两拍制的发放拍,武装拍 = 结算腿 check_strategy_bond_
+        # 触发-发放两拍制的发放拍,武装拍 = 结算效果条目 check_strategy_bond_
         # battle_grants):进窗事实点在窗口幂等守卫内(重放不双发),武装
         # 在场即采样交付——desc「进入节点时获得」= 本窗内最早段,发放物
         # 先于本窗商店发牌落位。kernel 检查函数单一源 discharge_strategy_
         # bond_battle_grants(armed 非 True 短路,未武装局零写);不按
         # kind 分叉(任意节点窗开都查武装——武装事实已由结算拍锚定,窗
-        # 拍零条件);与同段多腿邻位收口(定时道具/开盒/boss 发放/boss 金/
+        # 拍零条件);与同段多条效果条目邻位收尾(定时道具/开盒/boss 发放/boss 金/
         # 尾款金/直发取卡/node_char;互不读对方字段,先后无行为差,同段
-        # 为收口序单一);sig = logic_sig('sim:strategy') 沿策略战后发放
-        # 腿同组;rng = 独立子流键 M13/{p}/{r}/strategy-bond(策略战后
+        # 为收尾序单一);sig = logic_sig('sim:strategy') 沿策略战后发放
+        # 效果条目同组;rng = 独立子流键 M13/{p}/{r}/strategy-bond(策略战后
         # 发放族子键式沿 'ins'/'boss-grant' 先例,装备采样专用禁复用 M13
         # 主流实例——独立子流 = 同 seed 其他流零扰动);幂等零新增守卫 =
         # 窗口幂等守卫,零新增;返回值忽略(无回调面);live 零写观察覆盖
@@ -3533,29 +3533,29 @@ class SimBackend:
                                     f'M13/{plane}/{r}/strategy-bond'),
             sig=logic_sig('sim:strategy'),
             producer=GAIN_CHAIN_PRODUCER)
-        # 策略卡空仓经验腿(「进入新节点时，如果物品栏和备战席没有任何装备
+        # 策略卡空仓经验效果条目(「进入新节点时，如果物品栏和备战席没有任何装备
         # (消耗品除外)，则获得2经验值」族,空仓首例):进窗事实点在窗口幂等
         # 守卫内(重放不双发),kernel 检查函数单一源
         # check_strategy_empty_equip_xp(纯读零写,未持卡/非空仓零写,零 done
-        # 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位收口
+        # 一次性标志位——卡面无「首次」限定,每节点窗可重复)。与同段多条效果条目邻位收尾
         #(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
-        # node_char/羁绊交付;同段为收口序单一——邻位 ≠ 互不影响,对账见下)。
-        # 前置腿装备域写端对账(本判定读 gs.equips,前置写端产出是否计入
+        # node_char/羁绊交付;同段为收尾序单一——邻位 ≠ 互不影响,对账见下)。
+        # 前置效果条目装备域写端对账(本判定读 gs.equips,前置写端产出是否计入
         # 本窗谓词输入由相对序决定):①延时发放两行(「好运令牌·银」工具
         # 类/「是钻石总会发光」红钻蓝钻特殊类)发放物恰全落消耗品判据词表
-        # {工具, 特殊} → 对谓词透明;②羁绊交付腿交付的随机星徽(非消耗品
-        # 装备)与③直发取卡腿经获得链可发的新卡随机装备腿(环境改写条件
-        # 触发)均为装备域写端且位于本挂点前——现序下其产出计入本窗谓词
+        # {工具, 特殊} → 对谓词透明;②羁绊交付效果条目交付的随机星徽(非消耗品
+        # 装备)与③直发取卡效果条目经获得链可发的新卡随机装备效果条目(环境改写条件
+        # 触发)均为装备域写端且位于本插入位置前——现序下其产出计入本窗谓词
         # 输入(双持武装局每窗星徽先入栏,空仓恒判 0)。与②③的相对序
-        # 官方无定谳 = 判读申报制辖域,现位申报:羁绊交付后、商店全刷前
+        # 官方无定论 = 判读申报制辖域,现位申报:羁绊交付后、商店全刷前
         #(证伪路径 = 实机双持武装局 XP 发放观察,证伪则改序重申报)。
-        # 挂点钉在商店全刷前:
+        # 插入位置钉在商店全刷前:
         # XP 输出与同窗发牌有真实耦合(全刷直读 gs.level 取发牌概率),
         # 先写 = 本窗发牌分布按升级后等级,与卡面「进入新节点时…获得」的
         # 即时到账语义一致(顺序非无关,禁以后写形态表述)。live 零写观察
         # 覆盖(实机 XP 由游戏自算自显,经验条观察链 read_xp_progress 覆盖;
         # live 不评估条件——备战席单位穿戴无观察通道,结构性边界非缺口)。
-        # XP 世界写与节点经验/即时经验同域同组(sig 'sim:xp'),evidence
+        # XP 状态副本写与节点经验/即时经验同域同组(sig 'sim:xp'),evidence
         # 独立笔 'xp:empty_slot' 分账;零 rng 确定发放;level/xp 未观察 =
         # 零写留待观察覆盖,禁猜(apply_node_xp 同形态)。
         empty_xp = check_strategy_empty_equip_xp(self.gs)
@@ -3563,28 +3563,28 @@ class SimBackend:
             settle_xp_observe(self.gs, empty_xp,
                               sig=obs_sig(group_id='sim:xp'),
                               evidence=sim_evidence('xp:empty_slot'))
-        # 策略卡备战席计数经验腿(「节点开始时，如果备战席角色小于等于4名，
+        # 策略卡备战席计数经验效果条目(「节点开始时，如果备战席角色小于等于4名，
         # 则获得3经验」族,人才空洞 id 202601 首例):进窗事实点在窗口幂等
         # 守卫内(重放不双发),kernel 检查函数单一源
         # check_strategy_bench_count_xp(纯读零写,未持卡/条件不满足零写,
-        # 零 done 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位
-        # 收口(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
-        # node_char/羁绊交付/空仓;同段为收口序单一——邻位 ≠ 互不影响,
-        # 对账见下)。前置腿本卡谓词输入域(bench 单位数)写端对账:计数
+        # 零 done 一次性标志位——卡面无「首次」限定,每节点窗可重复)。与同段多条效果条目邻位
+        # 收尾(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
+        # node_char/羁绊交付/空仓;同段为收尾序单一——邻位 ≠ 互不影响,
+        # 对账见下)。前置效果条目本卡谓词输入域(bench 单位数)写端对账:计数
         # 口径 = bench_units_of 仅单位槽(占位件/空槽不计,desc「角色」
-        # 文义直读,判读申报制非定谳);**node_char 复制腿写 bench 单位且
-        # 位于本挂点前——现序下其复制单位计入本窗 ≤4 判定**(与空仓腿
+        # 文义直读,判读申报制非定论);**node_char 复制效果条目写 bench 单位且
+        # 位于本插入位置前——现序下其复制单位计入本窗 ≤4 判定**(与空仓效果条目
         # 「互不读对方字段、互序无关」不同:本卡谓词输入域恰是 node_char
-        # 的写入域,相对序敏感面)。与 node_char 的相对序官方无定谳 =
+        # 的写入域,相对序敏感面)。与 node_char 的相对序官方无定论 =
         # 判读申报制辖域,现位申报:node_char 之后、商店全刷前(证伪路径
         # = 实机双持价值投资族 + 席内单位 ≤4 局 XP 发放观察,证伪则改序
-        # 重申报)。挂点钉在商店全刷前:XP 输出与同窗发牌有真实耦合(全刷
+        # 重申报)。插入位置钉在商店全刷前:XP 输出与同窗发牌有真实耦合(全刷
         # 直读 gs.level 取发牌概率),先写 = 本窗发牌分布按升级后等级,
         # 与卡面「节点开始时…获得」的即时到账语义一致(顺序非无关,禁以
         # 后写形态表述)。live 零写观察覆盖(实机 XP 由游戏自算自显,经验
         # 条观察链 read_xp_progress 覆盖;live 不评估条件——备战席单位计数
-        # live 观察通道在册〔read_bench_view〕可对账,对账义务归采集批,
-        # 零写义务不变)。XP 世界写与节点经验/即时经验同域同组
+        # live 观察通道已登记〔read_bench_view〕可对账,对账义务归采集批,
+        # 零写义务不变)。XP 状态副本写与节点经验/即时经验同域同组
         # (sig 'sim:xp'),evidence 独立笔 'xp:bench_count' 分账;零 rng
         # 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
         # (apply_node_xp 同形态)。
@@ -3593,26 +3593,26 @@ class SimBackend:
             settle_xp_observe(self.gs, bench_xp,
                               sig=obs_sig(group_id='sim:xp'),
                               evidence=sim_evidence('xp:bench_count'))
-        # 策略卡装备计数经验腿(「每拥有一件【白昼装备】以及其原型装备，
+        # 策略卡装备计数经验效果条目(「每拥有一件【白昼装备】以及其原型装备，
         # 在进入新节点时就获得1点经验」族,赞美太阳 id 252401 首例):进窗
         # 事实点在窗口幂等守卫内(重放不双发),kernel 检查函数单一源
         # check_strategy_equip_count_xp(纯读零写,未持卡/零持有零写,零
-        # done 闩——卡面无「首次」限定,每节点窗可重复)。与同段多腿邻位
-        # 收口(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
-        # node_char/羁绊交付/空仓/备战席计数;同段为收口序单一——邻位 ≠
-        # 互不影响,对账见下)。前置腿本卡谓词输入域(装备库存与穿戴)写端
-        # 对账:空仓腿零装备域写(空仓守卫恰要求物品栏无非消耗品);羁绊
-        # 交付腿/直发取卡腿/延时发放腿位于本挂点前且可写装备域(随机星徽/
+        # done 一次性标志位——卡面无「首次」限定,每节点窗可重复)。与同段多条效果条目邻位
+        # 收尾(定时道具/开盒/延时发放/boss 发放/boss 金/尾款金/直发取卡/
+        # node_char/羁绊交付/空仓/备战席计数;同段为收尾序单一——邻位 ≠
+        # 互不影响,对账见下)。前置效果条目本卡谓词输入域(装备库存与穿戴)写端
+        # 对账:空仓效果条目零装备域写(空仓守卫恰要求物品栏无非消耗品);羁绊
+        # 交付效果条目/直发取卡效果条目/延时发放效果条目位于本插入位置前且可写装备域(随机星徽/
         # 新卡随机装备/延时具名装备)——现序下其产出计入本窗件数(先入栏
-        # 后计数 = 「拥有」进窗快照口径)。相对序官方无定谳 = 判读申报制
-        # 辖域,现位申报:备战席计数腿后、商店全刷前(证伪路径 = 实机持卡
-        # 局同窗装备入栏 XP 发放观察,证伪则改序重申报)。挂点钉在商店全刷
+        # 后计数 = 「拥有」进窗快照口径)。相对序官方无定论 = 判读申报制
+        # 辖域,现位申报:备战席计数效果条目后、商店全刷前(证伪路径 = 实机持卡
+        # 局同窗装备入栏 XP 发放观察,证伪则改序重申报)。插入位置钉在商店全刷
         # 前:XP 输出与同窗发牌有真实耦合(全刷直读 gs.level 取发牌概率),
         # 先写 = 本窗发牌分布按升级后等级,与卡面「进入新节点时…获得」的
         # 即时到账语义一致(顺序非无关,禁以后写形态表述)。live 零写观察
         # 覆盖(实机 XP 由游戏自算自显,经验条观察链 read_xp_progress 覆盖;
-        # live 不评估条件——四源持有观察通道在册〔库存/穿戴〕可对账,对账
-        # 义务归采集批,零写义务不变)。XP 世界写与节点经验/即时经验同域
+        # live 不评估条件——四源持有观察通道已登记〔库存/穿戴〕可对账,对账
+        # 义务归采集批,零写义务不变)。XP 状态副本写与节点经验/即时经验同域
         # 同组(sig 'sim:xp'),evidence 独立笔 'xp:equip_count' 分账;零 rng
         # 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
         # (apply_node_xp 同形态)。
@@ -3621,34 +3621,34 @@ class SimBackend:
             settle_xp_observe(self.gs, equip_xp,
                               sig=obs_sig(group_id='sim:xp'),
                               evidence=sim_evidence('xp:equip_count'))
-        # 策略卡赠礼条件双腿(迷之旅人 id 253601 首例;「激活4【巡海游侠】
-        # 时…获得…2星【黄泉】(携【星间旅人星徽】)」= 羁绊人数条件腿,
+        # 策略卡赠礼条件双效果条目(迷之旅人 id 253601 首例;「激活4【巡海游侠】
+        # 时…获得…2星【黄泉】(携【星间旅人星徽】)」= 羁绊人数条件效果条目,
         # 任意节点入窗评估;「进入下一个奖励节点时，获得【波提欧】」=
-        # 节点类型条件腿):进窗事实点在窗口幂等守卫内(重放不双发),kernel
+        # 节点类型条件效果条目):进窗事实点在窗口幂等守卫内(重放不双发),kernel
         # 检查函数单一源 check_strategy_gift_grants(持卡 ∩ 双登记表驱动,
-        # 未持卡零写;一次性封账 = strategy_grants_done 逐腿复合键,落位才
-        # 闩拒落自愈)。与同段多腿邻位收口(定时道具/开盒/延时发放/boss
+        # 未持卡零写;一次性封账 = strategy_grants_done 逐效果条目复合键,落位才
+        # 一次性标志位拒落自愈)。与同段多条效果条目邻位收尾(定时道具/开盒/延时发放/boss
         # 发放/boss 金/尾款金/直发取卡/node_char/羁绊交付/空仓/备战席计数
-        # /装备计数;同段为收口序单一——邻位 ≠ 互不影响,对账见下)。前置腿
-        # 本卡腿1 谓词输入域(deployed)写端对账:直发取卡腿位于本挂点前且
+        # /装备计数;同段为收尾序单一——邻位 ≠ 互不影响,对账见下)。前置效果条目
+        # 本卡效果条目1 谓词输入域(deployed)写端对账:直发取卡效果条目位于本插入位置前且
         # 经获得链效果体可写板面(板面重写族),现序下其产出计入本窗羁绊
-        # 计数(先变板面后计数 = 进窗快照口径);相对序官方无定谳 = 判读
-        # 申报制辖域,现位申报:装备计数 XP 腿后、商店全刷前(证伪路径 =
+        # 计数(先变板面后计数 = 进窗快照口径);相对序官方无定论 = 判读
+        # 申报制辖域,现位申报:装备计数 XP 效果条目后、商店全刷前(证伪路径 =
         # 实机持卡局直发取卡改板面同窗计数观察,证伪则改序重申报);其余
-        # 前置腿写域(金/XP/bench/equips)与本卡计数零交集零敏感。腿2 发放
+        # 前置效果条目写域(金/XP/bench/equips)与本卡计数零交集零敏感。效果条目2 发放
         # 物先于本窗商店发牌落席(「进入下一个奖励节点时」= 本窗内最早段,
-        # 与 node_char 复制腿同向)。kind = 窗内已算变量直传零转换(节点序列
-        # 真值,修饰局天然跟随)。零 rng 采样(角色具名确定发放;徽腿
+        # 与 node_char 复制效果条目同向)。kind = 窗内已算变量直传零转换(节点序列
+        # 真值,修饰局天然跟随)。零 rng 采样(角色具名确定发放;徽效果条目
         # rand=True 系随机态认知通道非采样,无掷序消费);live 零写观察覆盖
         #(角色落席/装备入栏有画面真值可读,实机局不接本通道);sig 组名
-        # 'sim:strategy' 沿策略战后发放腿同组;幂等零新增守卫 = 窗口幂等
-        # 守卫 + done 闩双层;返回值忽略(无回调面)。
+        # 'sim:strategy' 沿策略战后发放效果条目同组;幂等零新增守卫 = 窗口幂等
+        # 守卫 + done 一次性标志位双层;返回值忽略(无回调面)。
         check_strategy_gift_grants(self.gs, node_kind=kind,
                                    sig=logic_sig('sim:strategy'))
         # 条件 XP 族第 4 形(被动收入 id 300601;备战席左一角色基础费用
-        # 动态量,量形 = 单角色属性直读族内首例)。现位申报:gift 双腿后、
+        # 动态量,量形 = 单角色属性直读族内首例)。现位申报:gift 双效果条目后、
         # 商店全刷前(证伪路径 = 实机持卡局左一角色与本窗商店发牌费用档
-        # 耦合观察,证伪则改序重申报);XP 世界写与节点经验/即时经验同域
+        # 耦合观察,证伪则改序重申报);XP 状态副本写与节点经验/即时经验同域
         # 同组(sig 'sim:xp'),evidence 独立笔 'xp:bench_left_cost' 分账;
         # 零 rng 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
         # (apply_node_xp 同形态;cost=0/无单位零发放门在判定端)。
@@ -3659,9 +3659,9 @@ class SimBackend:
                               evidence=sim_evidence('xp:bench_left_cost'))
         # 条件 XP 族外唯一静态量通道(买断制 id 300901 xp_per_node=4;
         # 聚合薄读 strategy_xp_per_node_of 单一源,静态量禁动态计数挂此
-        # ——条件 XP 族走各自 check_* 纯判定)。现位申报:被动收入腿后、
+        # ——条件 XP 族走各自 check_* 纯判定)。现位申报:被动收入效果条目后、
         # 商店全刷前(证伪路径 = 实机持卡局同窗发牌等级耦合观察,证伪则
-        # 改序重申报)。XP 世界写与节点经验/即时经验同域同组
+        # 改序重申报)。XP 状态副本写与节点经验/即时经验同域同组
         # (sig 'sim:xp'),evidence 独立笔 'xp:strategy_per_node' 分账;
         # 零 rng 确定发放;level/xp 未观察 = 零写留待观察覆盖,禁猜
         # (apply_node_xp 同形态)。
@@ -3673,19 +3673,19 @@ class SimBackend:
         # 节点条件晶矿发放(彩虹矿 id 301201 首例;「进入新的奖励节点时，
         # 获得1个晶矿」触发器单一源 = kernel check_strategy_reward_ore_grants,
         # 白名单表 STRATEGY_REWARD_ORE_GRANTS 驱动)。现位申报:买断制静态
-        # XP 腿后、商店全刷前(证伪路径 = 实机持卡局晶矿呈现时点与本窗发牌
+        # XP 效果条目后、商店全刷前(证伪路径 = 实机持卡局晶矿呈现时点与本窗发牌
         # 耦合观察,证伪则改序重申报)。窗内 transient 承载(镜像
         # _piggy_income_snap 先例),呈现段由 _present_node_screen 补点;
         # 返回值忽略(无回调面);live 零写观察覆盖。
         self._strategy_reward_ore_pending = \
             check_strategy_reward_ore_grants(self.gs, node_kind=kind,
                                              sig=logic_sig('sim:strategy'))
-        # 装备到期消失(临时工合约 id 301901 腿2;「进入下个节点时，所有
+        # 装备到期消失(临时工合约 id 301901 效果条目2;「进入下个节点时，所有
         # 未使用的【员工投影仪】都会消失」触发器单一源 = kernel
-        # check_strategy_equip_expiry,白名单表驱动)。现位申报:晶矿腿后、
+        # check_strategy_equip_expiry,白名单表驱动)。现位申报:晶矿效果条目后、
         # 商店全刷前(证伪路径 = 实机持卡局装备消失时点与本窗发牌耦合观察,
         # 证伪则改序重申报)。移除写 = write_logic 独立笔(evidence
-        # strategy_equip_expiry:带卡名段);闩与移除同拍(kernel 函数内落闩,
+        # strategy_equip_expiry:带卡名段);一次性标志位与移除同拍(kernel 函数内落一次性标志位,
         # 本侧消费返回集执行移除写);移除集空 = 零写留待观察。
         expired = check_strategy_equip_expiry(self.gs,
                                               sig=logic_sig('sim:strategy'))
@@ -3707,11 +3707,11 @@ class SimBackend:
                 rotation_on=rotation_on)
             deal_shop(self.gs, rng, level=int(self.gs.level.value or 3),
                       probs=probs, tag=f'shop:deal:p{plane}r{r}')
-        # 位面首节点窗策略域强制店改写腿(M05 全刷之后后置覆盖;公司严选
+        # 位面首节点窗策略域强制店改写效果条目(M05 全刷之后后置覆盖;公司严选
         # 首例。「每个位面开始时…开启商店」)。后置覆盖与「替换 M05」观察
         # 等价(玩家所见最终店面同为强制面),差异仅 rng 消耗与 journal
         # 行数——取改动面最小形(基线 M05 块内不加特判分支)。锁交互沿
-        # 间谍效果腿形(无锁守卫;效果触发的商店写不入 M05 自动全刷的锁
+        # 间谍效果条目形(无锁守卫;效果触发的商店写不入 M05 自动全刷的锁
         # 豁免域,真值待实采与间谍卡共享同一实采裁决,零新增键)。
         # journal 形态:位面首节点窗 shop 域恰两行 = M05 deal 行 + 本覆盖行
         #(evidence 可辨 shop:deal / shop:rewrite:plane)——复盘/对账工具
@@ -3779,15 +3779,15 @@ class SimBackend:
             return
         if offer_slots(plane, r, active_env):
             self._invest_pick_ordinal += 1
-            # 远见改写分支(腿③「后续的投资策略节点改为获得随机1个棱彩
-            # 投资策略（无法刷新）」;判定名 = 注册面唯一挂值锚——
+            # 远见改写分支(效果条目③「后续的投资策略节点改为获得随机1个棱彩
+            # 投资策略（无法刷新）」;判定名 = 注册面唯一挂值基准——
             # STRATEGY_ECONOMY['远见'].future_quality_upgrade 全注册表
             # 唯一挂值,枚举即收敛硬编码沿 ENV_AFFIX_DISABLE_ENV 先例,
-            # 单卡零复用面不入登记表):触发 = membership 容器现值,无需
+            # 单卡零复用面不入登记表):触发 = membership 状态容器现值,无需
             # ordinal 追踪——远见只能于 offer 槽被拾取,自身槽呈现先于
             # 入列天然不命中,后继槽 membership 已真(联席额外槽同判,
             # 其效果原文自称「投资策略三选一」= 投资策略节点,offer_slots
-            # 单口自动覆盖零特判)。单棱彩候选 = 单卡采样器单一源复用
+            # 唯一入口自动覆盖零特判)。单棱彩候选 = 单卡采样器单一源复用
             #(排除集 = 已出选项全集,棱彩池 123 名对排除集 ~12 名上界,
             # 池空结构性不可达);'' 防御分支 = 落回常规三选一路径(正常
             # 局不可达)。位置 = env 改写向量计算之前、命中即短路:改写
@@ -3816,9 +3816,9 @@ class SimBackend:
                     self._announce_screen(SCREEN_INVEST_STRATEGY)
                     self._screen = SCREEN_INVEST_STRATEGY
                     self._sub = ''
-                    # 十一腿呈现闩全量照置(呈现即置闩口径 = 固定日程分支
-                    # 同款;改写槽拾取走常规 pick 链,落地拍各腿消费依赖
-                    # 闩已置位,防重放窗同界)。
+                    # 十一条效果条目的呈现一次性标志位全量照置(呈现即置一次性标志位口径 = 固定日程分支
+                    # 同款;改写槽拾取走常规 pick 链,落地拍各效果条目消费依赖
+                    # 一次性标志位已置位,防重放窗同界)。
                     self._strategy_pick_xp_latch = True
                     self._strategy_pick_streak_latch = True
                     self._strategy_pick_sell_deal_latch = True
@@ -3831,8 +3831,8 @@ class SimBackend:
                     self._strategy_pick_hp_loss_gold_latch = True
                     self._strategy_pick_swap_latch = True
                     # 刷新授权簿记:「无法刷新」卡面直读——固定日程槽由
-                    # 本分支压 False(fields.md「另有远见改写=0」落码),
-                    # 联席槽本就 False;槽向量簿记同步清零(刷新重掷腿已被
+                    # 本分支压 False(fields.md「另有远见改写=0」已写进代码),
+                    # 联席槽本就 False;槽向量簿记同步清零(刷新重掷效果条目已被
                     # _offer_refreshable 闸死,向量无消费位)。
                     self._offer_refreshable = False
                     self._offer_forced_slots = ()
@@ -3854,29 +3854,29 @@ class SimBackend:
             self._announce_screen(SCREEN_INVEST_STRATEGY)
             self._screen = SCREEN_INVEST_STRATEGY
             self._sub = ''
-            # 策略 offer 呈现即置即时经验腿闩(落地拍消费,防重放)。
+            # 策略 offer 呈现即置即时经验效果条目一次性标志位(落地拍消费,防重放)。
             self._strategy_pick_xp_latch = True
-            # 连胜置位腿闩同点置位(独立闩;复呈现再置位 = xp 腿既有
+            # 连胜置位效果条目一次性标志位同点置位(独立一次性标志位;复呈现再置位 = xp 效果条目既有
             # 形状,重放防护窗以「呈现→落地」为界,复呈现后到达的重放
             # 属上游重试 bug 面)。
             self._strategy_pick_streak_latch = True
-            # 出售发牌腿闩同点置位(三腿独立闩同形;防重放窗同界)。
+            # 出售发牌效果条目一次性标志位同点置位(三条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_sell_deal_latch = True
-            # 即时生命腿闩同点置位(四腿独立闩同形;防重放窗同界)。
+            # 即时生命效果条目一次性标志位同点置位(四条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_hp_latch = True
-            # 分期金初始化腿闩同点置位(五腿独立闩同形;防重放窗同界)。
+            # 分期金初始化效果条目一次性标志位同点置位(五条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_gold_next_nodes_latch = True
-            # 位面段补发腿闩同点置位(六腿独立闩同形;防重放窗同界)。
+            # 位面段补发效果条目一次性标志位同点置位(六条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_plane_refire_latch = True
-            # 超发货币负债腿闩同点置位(七腿独立闩同形;防重放窗同界)。
+            # 超发货币负债效果条目一次性标志位同点置位(七条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_hyperemit_drain_latch = True
-            # 大扩招扣金负腿闩同点置位(八腿独立闩同形;防重放窗同界)。
+            # 大扩招扣金负效果条目一次性标志位同点置位(八条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_recruit_drain_latch = True
-            # 宝钻世界联动腿闩同点置位(九腿独立闩同形;防重放窗同界)。
+            # 宝钻状态副本联动效果条目一次性标志位同点置位(九条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_diamond_latch = True
-            # 已损血衍生金腿闩同点置位(十腿独立闩同形;防重放窗同界)。
+            # 已损血衍生金效果条目一次性标志位同点置位(十条效果条目独立一次性标志位同形;防重放窗同界)。
             self._strategy_pick_hp_loss_gold_latch = True
-            # 获得链交换腿闩同点置位(十一腿独立闩同形;防重放窗同界,
+            # 获得链交换效果条目一次性标志位同点置位(十一条效果条目独立一次性标志位同形;防重放窗同界,
             # 重放会凭空多配一行轨迹破写流↔轨迹全序同构)。
             self._strategy_pick_swap_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
@@ -3905,24 +3905,24 @@ class SimBackend:
         self._present_node_screen()
 
     def _present_due_extra_offer(self) -> bool:
-        """策略延时 offer 窗首到期呈现(呈现腿双挂点之一,sim 专用;
+        """策略延时 offer 窗首到期呈现(呈现效果条目双插入位置之一,sim 专用;
         策略卡「N个节点后一次定品质三选一」通道的窗首消费端,kernel
         不 import 本模块 = live 不对称的模块边界):读
         ``pending_strategy_offers`` 取首个 remaining <= 0 条目(登记序
-        = 确定性)。delay_nodes=0 立即腿不辖本挂点——拿卡拍已由
-        ``_on_invest_picked`` 尾段立即腿消费(双挂点分立,弹除即互斥)。
+        = 确定性)。delay_nodes=0 立即效果条目不辖本插入位置——拿卡拍已由
+        ``_on_invest_picked`` 尾段立即效果条目消费(双插入位置分立,弹除即互斥)。
 
         优先序 = 固定日程/联席槽 > 队列:槽在场 = 本窗让路,到点
         条目悬置顺延(deferred 披露;顺延不悬空——到点判定「到了及以后
         都算」,下一空闲窗必呈现);本窗已呈现一次的余者同式顺延
         (window_cap 披露)。呈现即消费(队列弹除与呈现同拍原子,呈现后
         选卡经既有落地通道,防重入双呈现;呈现后选卡失败 = 动作域异常,
-        队列不回滚,世界偏穷一份 offer,有界一次一张)。呈现侧副作用 =
+        队列不回滚,状态副本偏穷一份 offer,有界一次一张)。呈现侧副作用 =
         现役固定日程分支全量同款延伸(呈现体 :meth:
-        `_present_extra_offer_screen` 两挂点共用)。定品质 = 槽向量直取
+        `_present_extra_offer_screen` 两个插入位置共用)。定品质 = 槽向量直取
         登记品质池(观察面 = 候选全目标品质;环境品质改写不作用于本
         通道——改写判据只挂固定日程分支,品质恒 = 登记值)。rng 流键
-        独立分域(窗首键无 pick 段,与拿卡拍立即腿分键),重放稳定。
+        独立分域(窗首键无 pick 段,与拿卡拍立即效果条目分键),重放稳定。
         返回是否呈现。"""
         plane, r = self._node_pos()
         active_env = str(self.gs.active_env.value or '')
@@ -3938,9 +3938,9 @@ class SimBackend:
         due = [(i, entry) for i, entry in enumerate(queue)
                if int(entry[1]) <= 0]
         _idx, (name, _remaining) = due[0]
-        # 窗首通道辖延时腿:呈现腿 = 登记元组内最大节拍腿(delay_nodes=0
-        # 立即腿由拿卡拍挂点消费;到点条目 remaining 随 tick 递减,不可
-        # 反推原节拍;同卡多腿品质+授权同值时腿序无歧义,单腿卡即唯一腿)。
+        # 窗首通道辖延时效果条目:呈现效果条目 = 登记元组内最大节拍效果条目(delay_nodes=0
+        # 立即效果条目由拿卡拍插入位置消费;到点条目 remaining 随 tick 递减,不可
+        # 反推原节拍;同卡多效果条目品质+授权同值时条目序无歧义,单条效果条目卡即唯一效果条目)。
         spec = max(STRATEGY_DELAYED_OFFERS[name],
                    key=lambda leg: leg.delay_nodes)
         if due[1:]:
@@ -3959,11 +3959,11 @@ class SimBackend:
                                     queue: tuple, idx: int,
                                     rng_key: str, evidence: str,
                                     disclosure_key: str) -> None:
-        """extra offer 呈现体(窗首到期腿与拿卡拍立即腿两挂点共用;
+        """extra offer 呈现体(窗首到期效果条目与拿卡拍立即效果条目两个插入位置共用;
         白银投资批自固定日程呈现分支抽形):
 
         - 序位计数照增(「一切策略三选一呈现都计数」口径,联席额外槽
-          先例)、八腿呈现闩全量照置(固定日程分支同款「呈现即置闩」
+          先例)、八条效果条目呈现一次性标志位全量照置(固定日程分支同款「呈现即置一次性标志位」
           口径,落地拍消费防重放);
         - 刷新授权逐卡按登记 refresh_count 呈现(卡面「选择有3次刷新
           机会」直读,sim 与实机「计数印在卡上」同形;0 = 不可刷 =
@@ -3975,7 +3975,7 @@ class SimBackend:
         - 弹除时机 = 呈现时(呈现即消费,防重入双呈现;呈现后选卡失败
           不回滚);env 品质改写不作用于本通道(品质恒 = 登记值)。
 
-        [索引定义] idx = queue 容器下标(调用方进拍快照内的弹出位,
+        [索引定义] idx = queue 队列下标(调用方进拍快照内的弹出位,
         恒稳快照值非执行期现读——呈现与弹除同拍原子);queue = 同拍
         快照(弹除取 keep = 快照去 idx 位)。"""
         plane, r = self._node_pos()
@@ -3993,11 +3993,11 @@ class SimBackend:
         self._announce_screen(SCREEN_INVEST_STRATEGY)
         self._screen = SCREEN_INVEST_STRATEGY
         self._sub = ''
-        # 呈现即置即时经验腿闩 + 连胜置位腿闩(固定日程分支同款「呈现即
-        # 置闩」口径,落地拍消费防重放);出售发牌腿闩同形照置;即时生命
-        # 腿闩同形照置;分期金初始化腿闩同形照置;位面段补发腿闩同形照置;
-        # 超发货币负债腿闩同形照置;大扩招扣金负腿闩同形照置;宝钻世界
-        # 联动腿闩同形照置;已损血衍生金腿闩同形照置;获得链交换腿闩同形
+        # 呈现即置即时经验效果条目一次性标志位 + 连胜置位效果条目一次性标志位(固定日程分支同款「呈现即
+        # 置一次性标志位」口径,落地拍消费防重放);出售发牌效果条目一次性标志位同形照置;即时生命
+        # 效果条目一次性标志位同形照置;分期金初始化效果条目一次性标志位同形照置;位面段补发效果条目一次性标志位同形照置;
+        # 超发货币负债效果条目一次性标志位同形照置;大扩招扣金负效果条目一次性标志位同形照置;宝钻状态副本
+        # 联动效果条目一次性标志位同形照置;已损血衍生金效果条目一次性标志位同形照置;获得链交换效果条目一次性标志位同形
         # 照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
@@ -4030,10 +4030,10 @@ class SimBackend:
         self.disclosures[disclosure_key] = f'{name}@{plane}-{r}'
 
     def _refresh_invest_strategy(self, slots: tuple[int, ...]) -> None:
-        """投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定「sim 与实机一致
+        """投资策略屏逐卡刷新状态副本侧分支(2026-10-19 用户裁定「sim 与实机一致
         提供刷新次数」批;上报声明触发,同屏重呈现零转移)。
 
-        逐槽:容器剩余口径闸(≤0 = 尽,防御性——op 侧 obs/容器双闸在前,
+        逐槽:状态容器剩余口径闸(≤0 = 尽,防御性——op 侧 obs/状态容器双闸在前,
         本分支是声明直喂的最后防线)→ 按本窗口改写向量取槽品质重掷单卡
         (:func:`sample_strategy_card`;槽位品质承诺跨刷新保持)→ 刷新
         流水号推进(rng 流键,同窗口多次刷新互不同流)→ 整屏重呈现
@@ -4082,10 +4082,10 @@ class SimBackend:
                            for i, c in enumerate(counts)]))
 
     def _refresh_invest_env(self) -> None:
-        """投资环境屏整组刷新世界分支(环境刷新 = 单全局钮整组重掷一次;
+        """投资环境屏整组刷新状态副本侧分支(环境刷新 = 单全局钮整组重掷一次;
         上报声明触发,同屏重呈现零转移)。
 
-        容器剩余闸(≤0/None = 尽,防御性——op 侧 obs+容器双闸在前)→
+        状态容器剩余闸(≤0/None = 尽,防御性——op 侧 obs+状态容器双闸在前)→
         候选整组重掷(排除累计集 ∪ 当前候选,保证组内全换)→ 整屏重呈现
         (report 观察写端:候选覆盖 + ``env_refresh_left`` 写 0)。空候选
         = 静默无操作(防御性,正常局不可达)。"""
@@ -4145,7 +4145,7 @@ class SimBackend:
         # 后续呈现自然无声明矿。备战档呈现均检查 pending 当前 plane 条目
         # (含普通 battle 备战:有条目 → 声明矿点单独呈现,子态同为
         # PREP_SUB_ORE——面板在场语义与奖励节点一致)。
-        # 面板矿 = 锚 8 矿 + 扑满环境占位增量(活跃环境查表扩尾,见
+        # 面板矿 = 基准 8 矿 + 扑满环境占位增量(活跃环境查表扩尾,见
         # reward_ore_panel_points);len(panel) 入参使位面开局声明矿
         # 续接坐标随扩尾自动跟随。
         panel = (reward_ore_panel_points(
@@ -4200,8 +4200,8 @@ class SimBackend:
           电平规则函数 :func:`check_ore_declared_level`(入队幂等守卫 =
           pending/done 双查,``_window_begun_pos`` 窗口幂等降为冗余
           保险;顺手清位面过渡过期条目,evidence
-          ``ore_declared_expired#p{old}`` 留痕)——**金不再直发**,世界
-          面的金在点击声明矿兑现时入账(策略面估值消费
+          ``ore_declared_expired#p{old}`` 留痕)——**金不再直发**,状态副本
+          这一侧的金在点击声明矿兑现时入账(策略面估值消费
           ``ENV_ECONOMY`` 数值不变,两侧一致性归测试与评审把关);sig =
           ``logic_sig('sim:env')``(与 ``discharge_due_item_grants``
           同组同窗,kernel 确定效果直写 write_logic 先例);
@@ -4215,17 +4215,17 @@ class SimBackend:
         self._apply_env_plane_gold(plane)
 
     def _apply_strategy_plane_start_xp(self, plane: int) -> None:
-        """策略域位面开始 XP 腿(「现在以及每个位面开始时」族位面段 XP
+        """策略域位面开始 XP 效果条目(「现在以及每个位面开始时」族位面段 XP
         支;载体 = STRATEGY_ECONOMY.xp_per_plane,固定理财 4 首条目,
         字段分派非单卡特判;效果登记账本迭代辖域与 kernel 位面开始刷新
         桥 apply_effect_plane_start_grant 同域——刷新支 = kernel 推进边界
-        拍、XP 支 = 本窗腿,双挂点分工与即时经验腿 live 观察覆盖口径
+        拍、XP 支 = 本窗效果条目,双插入位置分工与即时经验效果条目 live 观察覆盖口径
         一致)。触发 = _begin_node_window 内 r==1(位面首节点窗;
         ``_window_begun_pos`` 窗口幂等守卫承接重放不双发,与
-        _apply_env_plane_start 同窗同守卫)。数额 = 迭代账本鸭子读合计
-        (同持多卡求和单笔;XP 写入 = observe 世界笔,无 produced_by)。
-        live 无本腿(本函数住 sim)——kernel 零 sim import,XP 世界真值
-        live 归观察覆盖。容器缺读(None)= 本拍零写留待观察覆盖,禁猜;
+        _apply_env_plane_start 同窗同守卫)。数额 = 迭代账本鸭子类型读取(duck typing)合计
+        (同持多卡求和单笔;XP 写入 = observe 状态副本笔,无 produced_by)。
+        live 无本效果条目(本函数住 sim)——kernel 零 sim import,XP 状态副本真值
+        live 归观察覆盖。状态容器缺读(None)= 本拍零写留待观察覆盖,禁猜;
         零值零写(未持卡零新增观察行)。"""
         total = 0
         for e in self.gs.effects.entries:
@@ -4238,15 +4238,15 @@ class SimBackend:
                           evidence=sim_evidence(f'xp:strategy_plane:p{plane}'))
 
     def _apply_strategy_plane_start_gold(self, plane: int) -> None:
-        """策略域位面开始金腿(「现在及每个位面开始时」族位面段金支,
+        """策略域位面开始金效果条目(「现在及每个位面开始时」族位面段金支,
         公司严选 3 首条目,策略域位面周期金首例;载体 =
         EconomyEffect.gold_per_plane,注册表直读禁聚合——聚合字段集不含
         本字段,误走 = 静默零发放)。触发 = _begin_node_window 内 r==1,
         XP 支同窗邻位(位面首节点窗;``_window_begun_pos`` 窗口幂等守卫
-        承接重放不双发)。写形 = 合计单笔 observe(同持多卡求和;金 = 世界
-        真值,live 同拍零写观察覆盖,金面禁直写硬裁定在 live 侧)。容器
+        承接重放不双发)。写形 = 合计单笔 observe(同持多卡求和;金 = 状态副本
+        真值,live 同拍零写观察覆盖,金面禁直写硬裁定在 live 侧)。状态容器
         金缺读(None)= 本拍零写留待观察覆盖,禁猜(env 直发形 None 视 0
-        照写会伪造金绝对值假真值,不取——缺口面 = 观察覆盖前金腿静默,
+        照写会伪造金绝对值假真值,不取——缺口面 = 观察覆盖前金效果条目静默,
         有意分道取 xp 形)。零值零写(未持卡零新增观察行)。"""
         total = 0
         for name in (self.gs.active_strategies.value or ()):
@@ -4265,7 +4265,7 @@ class SimBackend:
 
     def _apply_strategy_plane_start_shop_rewrite(self, plane: int,
                                                  r: int) -> None:
-        """策略域位面开始强制店改写腿(M05 全刷后后置覆盖;「现在及每个
+        """策略域位面开始强制店改写效果条目(M05 全刷后后置覆盖;「现在及每个
         位面开始时」族位面段改写支,公司严选 4 首条目)。辖域 = 持有表中
         命中 ``shop_rewrite_forced_cost>0`` 的卡(现役至多一张,逐卡独立
         笔;流键携卡名防同窗多卡撞流)。采样与写经共享助手
@@ -4285,16 +4285,16 @@ class SimBackend:
     def _write_forced_shop_rewrite(self, eff, canon: str, *,
                                    stream_key: str, tag: str,
                                    counter_key: str) -> None:
-        """强制店改写采样与容器写(三触发拍共享助手:选卡 gain /
+        """强制店改写采样与状态容器写(三触发拍共享助手:选卡 gain /
         位面 plane / 补发 refire;差异只在流键/evidence/计数键)。
 
         kernel 强制采样器单源(:func:`sample_shop_deal_forced`,费用档
-        定死 + unique 去重);写 = gs.observe 直写(sim 世界真值,live
+        定死 + unique 去重);写 = gs.observe 直写(sim 状态副本真值,live
         同拍零写观察覆盖)。披露三计数(sim 私有簿记,键域:
         shop_rewrite_gain_count / shop_rewrite_plane_count /
         shop_rewrite_shortfall_count)= 两拍改写触发累计 / 桶不足 5 事件
         累计(事件口径,非缺槽数)。商店记录镜像 = 端口懒同步自动覆盖,
-        零显式 sync(M22 间谍腿同形)。对账注记:位面首节点窗 shop 域
+        零显式 sync(M22 间谍效果条目同形)。对账注记:位面首节点窗 shop 域
         恰两行(M05 deal + rewrite:plane),按「每节点窗一行 deal」假设
         的复盘/对账工具会误报。"""
         rng = stream_rng(self.seed, stream_key)
@@ -4319,7 +4319,7 @@ class SimBackend:
 
     def _apply_strategy_shop_rewrite_gain(self,
                                           new_names: Sequence[str]) -> None:
-        """选卡拍强制店改写腿(「现在…开启一个由5个独特4费角色组成的
+        """选卡拍强制店改写效果条目(「现在…开启一个由5个独特4费角色组成的
         商店」,公司严选 4 首条目)。辖域 = 本拍新获得表中命中
         ``shop_rewrite_forced_cost>0`` 的卡(现役至多一张,逐卡独立笔;
         流键携卡名防链式选卡同窗撞流)。「本拍新获得」限定 = 窗口起点
@@ -4339,14 +4339,14 @@ class SimBackend:
 
     def _apply_strategy_shop_rewrite_refire(self,
                                             new_names: Sequence[str]) -> None:
-        """选卡拍位面段补发改写腿(用户裁定 2026-11-01 族级拍定:中途拿
+        """选卡拍位面段补发改写效果条目(用户裁定 2026-11-01 族级确定:中途拿
         卡判当前位面已开始 → 位面段〔+金 + 强制店改写〕登记拍全额补发,
-        后续位面照常;公司严选位面段两腿的补发改写支)。辖域 = 本拍新
+        后续位面照常;公司严选位面段两条效果条目的补发改写支)。辖域 = 本拍新
         获得表中命中 ``shop_rewrite_forced_cost>0`` 的卡;独立流键与
-        evidence(refire)——同拍「选卡改写 × 补发改写」双触发两腿都发
-        (固定理财族「两腿都发」同判,journal 双行如实登记禁静默合并),
-        共流键会使双腿采出同一序列假同貌。node 缺席保守零补发(禁猜,
-        金腿 :func:`apply_strategy_plane_refire_gold` 同判)。"""
+        evidence(refire)——同拍「选卡改写 × 补发改写」双触发两条效果条目都发
+        (固定理财族「两条效果条目都发」同判,journal 双行如实登记禁静默合并),
+        共流键会使两条效果条目采出同一序列假同貌。node 缺席保守零补发(禁猜,
+        金效果条目 :func:`apply_strategy_plane_refire_gold` 同判)。"""
         for name in new_names:
             canon = normalize_invest_name(str(name or ''))
             eff = STRATEGY_ECONOMY.get(canon)
@@ -4416,7 +4416,7 @@ class SimBackend:
         不在 sim 面(披露键 ``DIFFICULTY_BASE_PENDING_U25`` 已登记)。
         遭遇档恒不入(敌方难度读数住备战帧,遭遇档是遭遇节点内选项维度)。
         写点 = 节点窗开(状态变动后的下一次敌方难度读数可见)+ 投资选卡落地
-        (「选择后」即时);obs 渠道直写(与 live 敌方难度读数 OCR 同一容器域,
+        (「选择后」即时);obs 渠道直写(与 live 敌方难度读数 OCR 同一状态容器域,
         同值重写幂等)。局级输入缺省(None)不写——无基线禁出数。
         """
         base = self.cfg.enemy_difficulty
@@ -4470,32 +4470,32 @@ class SimBackend:
         if is_piggy_node(self.gs) and outcome.hp_delta < 0:
             # 扑满不掉血豁免(M17:扑满关有战力要求、不掉血)
             outcome = replace(outcome, hp_delta=0)
-        # —— 败局修饰 hp 腿(嘴硬族首例;接线点 = 扑满豁免之后、损血实值
-        # 锚/apply_hp_outcome 之前:hp_before 锚、结算环帧行与损血档位
-        # 容器差分全部按修饰后损血记账,修饰腿插入序与各消费腿无关)。
+        # —— 败局修饰 hp 效果条目(嘴硬族首例;接入调用点 = 扑满豁免之后、损血实值
+        # 基准/apply_hp_outcome 之前:hp_before 基准、结算环帧行与损血档位
+        # 状态容器差分全部按修饰后损血记账,修饰效果条目插入序与各消费效果条目无关)。
         # 聚合单一源 = kernel strategy_loss_battle_modifier(卡直读禁
         # aggregate_economy)。三重门 = 败局 ∧ 存在基础伤害 ∧ 修饰非零:
         # 扑满帧豁免后 hp_delta=0 零基础不产生伤害(豁免优先,「扑满不掉
         # 血」同向);死局连带(追加扣血可推过 0)经 apply_hp_outcome
         # 既有保底/死亡语义如实结算。零 rng(同 seed 其他节点随机序列
-        # 不漂移);live 零写观察覆盖(游戏自算,结算屏读数入容器)。
+        # 不漂移);live 零写观察覆盖(游戏自算,结算屏读数入状态容器)。
         hp_extra, keep = strategy_loss_battle_modifier(
             list(self.gs.active_strategies.value or []))
         if (not outcome.won) and outcome.hp_delta < 0 and hp_extra:
             outcome = replace(outcome, hp_delta=outcome.hp_delta - hp_extra)
-        # 损血档位触发的损血实值锚(保险;hp_before = apply 前现值,
+        # 损血档位触发的损血实值基准(保险;hp_before = apply 前现值,
         # 「规定取法」= 设计内唯一——保底截断局写后值恒 1,不可由
         # (outcome.hp_delta, 写后现值) 反推面值前真值;真值差口径 =
         # 「损失」不超持有量)。None 防御 = hp 从未观察(直构域)时
-        # 触发腿按零损血跳过,apply_hp_outcome 未观察零写同款防御。
+        # 触发效果条目按零损血跳过,apply_hp_outcome 未观察零写同款防御。
         hp_before = int(self.gs.hp.value or 0)
         _floor, dead = apply_hp_outcome(self.gs, outcome)
         self._hp_trail_append()
         # —— 结算环帧补写(T-33 完胜判定数据面,设计 §2.4):与 live 同一
         # ring 读口——killed = won(killed 单一语义 = 「挑战成功」胜利标志,
-        # cw_settlement_obs.py 注释正本),hp_after = apply 后 gs.hp 现值
+        # cw_settlement_obs.py 权威注释),hp_after = apply 后 gs.hp 现值
         #(apply_hp_outcome 已写,与 live 结算屏读数同语义位)。node_type =
-        # sim kind → 结算行词表映射(词表正本 = live 结算行归一
+        # sim kind → 结算行词表映射(词表权威版本 = live 结算行归一
         # cw_screen_battle_wait._normalize_node_type;kernel→operations
         # 反向 import 禁止,sim 侧同形内联)。写端走环单一写端口
         # record_settlement_row(遭遇行随入经验表,encounter_tier=None
@@ -4518,7 +4518,7 @@ class SimBackend:
         if dead:
             self._game_over()
             return
-        # 连胜转移(M15:容器带符号;败局待办登记 M04,消费归下一战斗轮轮首)
+        # 连胜转移(M15:状态容器带符号;败局待办登记 M04,消费归下一战斗轮轮首)
         won = outcome.won
         piggy = is_piggy_node(self.gs)
         if self._piggy_income_snap is not None:
@@ -4553,30 +4553,30 @@ class SimBackend:
                             f'streak:p{node.plane}r{node.round_num}'),
                         sig=obs_sig(group_id='sim:streak'))
         # —— 环境条件发放触发(迭代 2026-10-10-env-conditional-grants
-        # landing 3.3;接线点 = streak observe 之后,连胜真值已落账,
+        # landing 3.3;接入调用点 = streak observe 之后,连胜真值已落账,
         # 条件单一源 = kernel check_env_streak_grants)。sig 写死单形态
         # = logic_sig('sim:env'):触发函数两写均为 logic 渠道,obs 族进
         # write_logic_rand 即炸渠道族校验(禁 obs_sig,详设
         # env-conditional-grant.md §5)。返回非 None → 宝钻回调(入参
         # 只传装备名,sig 由回调内构 obs 族;宝钻裁决只认财富宝钻 =
-        # 回调内早退,接线不预判)。带钻补给不采纳回调:钻类型未建模,
+        # 回调内早退,接入调用不预判)。带钻补给不采纳回调:钻类型未建模,
         # _on_supply_picked 零改动(详设 §5「补给宝钻不采纳回调」)。
         granted = check_env_streak_grants(self.gs, signed,
                                           logic_sig('sim:env'))
         if granted is not None:
             on_diamond_acquired(self.gs, granted)
         # —— 持续伤害契约条件分支(T-28 设计稿 §2.3;猜测写 + 进度累计 +
-        # 证实同点,接线点 = streak 检查同点):active_env 门真后每次结算
-        # 分支发火,「假设获得黑天鹅」猜测态写入(sim 世界写即真值,sim 无
+        # 证实同点,接入调用点 = streak 检查同点):active_env 门真后每次结算
+        # 分支发火,「假设获得黑天鹅」猜测态写入(sim 状态副本写即真值,sim 无
         # 观察覆盖 → 认知猜测态写即存续)+ 进度键 dot_battle#<k> 追加,
-        # 第 ENV_DOT_CONFIRM_BATTLES 笔同窗证实。计数代理口径(用户拍板
+        # 第 ENV_DOT_CONFIRM_BATTLES 笔同窗证实。计数代理口径(用户决定
         # 值,非机制推导)单一源 = kernel 常量;非战斗轮(商店/事件)不经
         # 结算分支 = 不计数(结构性);_settled_key 重入幂等 = 单点每战斗
         # 恰发火一次。条件单一源 = kernel check_env_dot_grants,sig 同
         # streak 通道 logic_sig('sim:env'),返回值忽略(无回调面)。
         check_env_dot_grants(self.gs, logic_sig('sim:env'), count_battle=True)
-        # —— 策略卡战后触发发放(策略卡战后触发发放首例;接线点 = 既有
-        # 环境触发腿同段:dot 检查后、败局待办登记前,胜败两态共同路径
+        # —— 策略卡战后触发发放(策略卡战后触发发放首例;接入调用点 = 既有
+        # 环境触发效果条目同段:dot 检查后、败局待办登记前,胜败两态共同路径
         # ——卡文无「胜利」限定 = 败局存活也发;死亡局在本函数提前
         # return 处已出局,不发放)。条件单一源 = kernel
         # check_strategy_battle_grants(登记表 STRATEGY_ENCOUNTER_BATTLE_
@@ -4587,18 +4587,18 @@ class SimBackend:
         # 返回值忽略(无回调面)。
         check_strategy_battle_grants(self.gs, kind,
                                      logic_sig('sim:strategy'))
-        # —— 策略卡胜利结算条件金(招财狗 id 103501 首例;接线点 =
+        # —— 策略卡胜利结算条件金(招财狗 id 103501 首例;接入调用点 =
         # 策略卡战后触发发放之后、败局待办登记之前,胜败两态共同路径。
-        # 触发域 = 全部结算节点,本接线不设节点类型守卫——卡面「战斗
+        # 触发域 = 全部结算节点,本接入调用不设节点类型守卫——卡面「战斗
         # 胜利」未限定节点类型,desc 无载面按字面全节点建模,假设经
         # STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION 披露键随局申报,实机差额
         # 归披露键校准面)。条件单一源 = kernel
         # check_strategy_win_gold_grants(纯读零写:胜 ∧ 未损血 ∧ 佩佩
         # 数三条件函数内短路,扑满败局 won=False ∧ hp_delta=0 形态
         # 自然零发;死亡局已在本函数提前 return 处出局);写面 =
-        # observe 金独立笔(世界数值面写端通道分工,扑满收入 observe
+        # observe 金独立笔(状态副本数值面写端通道分工,扑满收入 observe
         # 金同款;obs 族,组名 'sim:strategy' 沿在役惯例 obs/logic
-        # 共用——同名 logic 组 = 策略战后发放腿);幂等零新增守卫 =
+        # 共用——同名 logic 组 = 策略战后发放效果条目);幂等零新增守卫 =
         # 本函数 _settled_key(同节点重放整段跳过)。
         gold_gain = check_strategy_win_gold_grants(
             self.gs, won=won, hp_delta=outcome.hp_delta)
@@ -4613,21 +4613,21 @@ class SimBackend:
                 STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
                 'all_settlement_nodes_v0')
         # —— 策略卡损血档位触发发放(保险 id 130501 首例,损血触发族
-        # 首例;接线点 = 策略卡胜利金腿之后、败局待办登记之前,胜败两态
+        # 首例;接入调用点 = 策略卡胜利金效果条目之后、败局待办登记之前,胜败两态
         # 共同路径——触发判据 = 实际损血非胜利,胜局零损血/扑满豁免形态
         # 在触发函数首序自然零通过;死亡局在本函数提前 return 处已出局,
         # 不发放)。损血实值 = hp_before 与写后现值差(保底截断后真值,
         # 「损失」不超持有量;hp 从未观察 → 前后均 0 → 零损血天然跳过,
         # apply_hp_outcome 未观察零写同款防御)。条件单一源 = kernel
         # check_strategy_hp_loss_grants(周期型:累积器全程累计 + 发放刻
-        # 取模,无 done 闩;防重零新增守卫 = 本函数 _settled_key,同节点
+        # 取模,无 done 一次性标志位;防重零新增守卫 = 本函数 _settled_key,同节点
         # 重放整段跳过);sig = logic_sig('sim:strategy') 沿策略战后发放
-        # 腿同组(金写 obs 族签名由函数内构);rng = 独立子流键
+        # 效果条目同组(金写 obs 族签名由函数内构);rng = 独立子流键
         # M13/{p}/{r}/ins(装备采样专用,禁复用 M13 主流实例——其消耗序
         # = 文档化契约「胜负+扣血/进度依序」,续用即延展耦合;独立子流 =
         # 同 seed 其他流零扰动);发放非空 → 建模假设披露键随局申报
         #(三假设:桶结转/真值差/触发源域仅战斗结算,后继非战斗损血源
-        # 落地批须扩挂点,过渡由本键承载)。
+        # 落地批须扩插入位置,过渡由本键承载)。
         hp_lost = hp_before - int(self.gs.hp.value or 0)
         gold_gain, _hp_loss_equips = check_strategy_hp_loss_grants(
             self.gs, hp_lost,
@@ -4638,13 +4638,13 @@ class SimBackend:
             self.disclosures.setdefault(
                 STRATEGY_HP_LOSS_BUCKET_ASSUMPTION,
                 'bucket_carry_truth_diff_battle_only_v0')
-        # —— 策略卡首领战后随机装备发放(枪在手 id 200501 首例;接线点 =
-        # 策略卡损血腿之后、败局待办登记之前,胜败两态共同路径——卡面无
+        # —— 策略卡首领战后随机装备发放(枪在手 id 200501 首例;接入调用点 =
+        # 策略卡损血效果条目之后、败局待办登记之前,胜败两态共同路径——卡面无
         # 「胜利」限定 = 败局存活也发;死亡局在本函数提前 return 处已出局,
         # 不发放)。条件单一源 = kernel check_strategy_boss_battle_grants
         # (登记表 STRATEGY_BOSS_BATTLE_GRANTS,node_kind 传本函数结算点
         # 现值 kind,修饰局场字段改写天然跟随零特判);sig =
-        # logic_sig('sim:strategy') 沿策略战后发放腿同组;rng = 独立子流
+        # logic_sig('sim:strategy') 沿策略战后发放效果条目同组;rng = 独立子流
         # 键 M13/{p}/{r}/boss-grant(装备采样专用,禁复用 M13 主流实例——
         # 独立子流 = 同 seed 其他流零扰动,'ins' 键同构先例);幂等零新增
         # 守卫 = 本函数 _settled_key(同节点重放整段跳过);返回值忽略
@@ -4655,36 +4655,36 @@ class SimBackend:
             rng=stream_rng(self.seed,
                            f'M13/{node.plane}/{node.round_num}/boss-grant'))
         # —— 策略卡羁绊条件战后武装拍(不要小看我们的羁绊 id 200901
-        # 首例;触发-发放两拍制的武装拍,接线点 = 策略卡首领战后腿之后、
+        # 首例;触发-发放两拍制的武装拍,接入调用点 = 策略卡首领战后效果条目之后、
         # 败局待办登记之前,胜败两态共同路径——卡面无「胜利」限定 =
         # 败局存活也武装;死亡局在本函数提前 return 处已出局,不武装)。
         # 条件单一源 = kernel check_strategy_bond_battle_grants(持卡 ∩
         # 登记表 STRATEGY_BOND_BATTLE_GRANTS,激活羁绊数板面真值评估,
         # 达标写武装标记;采样与发放归下一节点窗开拍——desc「进入节点时
         # 获得」= 发放时点在节点窗非结算拍);sig = logic_sig('sim:strategy')
-        # 沿策略战后发放腿同组;零 rng(武装拍零采样);幂等零新增守卫 =
+        # 沿策略战后发放效果条目同组;零 rng(武装拍零采样);幂等零新增守卫 =
         # 本函数 _settled_key(同节点重放整段跳过);返回值忽略(无回调
         # 面);live 零写观察覆盖(武装标记无 live 观察通道,装备入栏有
         # 画面真值可读)。
         check_strategy_bond_battle_grants(
             self.gs, sig=logic_sig('sim:strategy'),
             producer=GAIN_CHAIN_PRODUCER)
-        # —— 策略卡羁绊档位条件发放(梦境大舞台 id 252301 首例;接线点 =
+        # —— 策略卡羁绊档位条件发放(梦境大舞台 id 252301 首例;接入调用点 =
         # 羁绊条件战后武装拍之后、败局待办登记之前,胜败两态共同路径——
         # 卡面无「胜利」限定 = 败局存活也评;死亡局在本函数提前 return 处
-        # 已出局,不发放)。触发-发放单拍制(区别于上一腿两拍制:本卡
+        # 已出局,不发放)。触发-发放单拍制(区别于上一效果条目两拍制:本卡
         # 「战斗中…后获得」发放时点 = 结算拍本拍,无节点窗载体句),条件
         # 单一源 = kernel check_strategy_bond_tier_grants(gate + 激活非
-        # 独立羁绊档位评估 + 逐档首达闩,具名确定发放);sig =
-        # logic_sig('sim:strategy') 沿策略战后发放腿同组;零 rng(具名
+        # 独立羁绊档位评估 + 逐档首达一次性标志位,具名确定发放);sig =
+        # logic_sig('sim:strategy') 沿策略战后发放效果条目同组;零 rng(具名
         # 确定发放零采样);幂等零新增守卫 = 本函数 _settled_key(同节点
         # 重放整段跳过);返回值忽略(无回调面);live 零写观察覆盖
         #(星徽入栏有画面真值可读)。
         check_strategy_bond_tier_grants(self.gs, logic_sig('sim:strategy'))
-        # —— 策略卡首领战结束回血(奋斗协议 id 301801 首例;接线点 =
-        # 策略腿区尾段:羁绊档位腿之后、败局待办登记之前,胜败两态共同
+        # —— 策略卡首领战结束回血(奋斗协议 id 301801 首例;接入调用点 =
+        # 策略效果条目区尾段:羁绊档位效果条目之后、败局待办登记之前,胜败两态共同
         # 路径——卡面无「胜利」限定 = 败局存活也回;死亡局在本函数提前
-        # return 处已出局,不回血)。挂点序位三重依据:①在结算环行之后
+        # return 处已出局,不回血)。插入位置序位三重依据:①在结算环行之后
         # ——回血笔不进本场环行,本场完胜差分零污染(ring 前置则 boss
         # 战自身环行差分直接被 +50 污染);②在损血差分(hp_lost 取值)
         # 之后——+50 不污染损血档位判据;③回血笔落在本场环行与次战斗
@@ -4692,17 +4692,17 @@ class SimBackend:
         # 方向单一偏严 = 该判据既有偏差面条款辖内新事件源,经披露键随局
         # 申报。条件单一源 = kernel check_strategy_boss_end_heal(Σ 持卡
         # boss_end_heal_hp,纯读零写);写面 = observe hp 独立笔 +
-        # _hp_trail_append 成对(first_run 容器不变式②——写流与轨迹
+        # _hp_trail_append 成对(first_run 状态容器不变式②——写流与轨迹
         # 全序同构,写一笔追一笔)。**直加不 clip**(正部 HP 加法在码
-        # 家族形:选卡即时腿 apply_strategy_pick_hp/获得时点回血
+        # 家族形:选卡即时效果条目 apply_strategy_pick_hp/获得时点回血
         # apply_equip_acquire_hp 同判——hp_max 字段缺位零上限消费,
         # clip 属无消费端语义;live 真实小队生命上限未采证,经披露键随局
         # 申报,实采证伪 → 常量改值零迁移)。hp 未观察(None)= 无基座
         # 零写零追加(禁造假基座,apply_hp_outcome 未观察零写同款)。
-        # sig = obs 族 'sim:strategy' 组(世界数值面 observe 分工,
-        # 策略胜利金腿同组;evidence 与选卡即时腿 hp:strategy_pick 分账)。
+        # sig = obs 族 'sim:strategy' 组(状态副本数值面 observe 分工,
+        # 策略胜利金效果条目同组;evidence 与选卡即时效果条目 hp:strategy_pick 分账)。
         # 幂等零新增守卫 = 本函数 _settled_key(同节点重放整段跳过);
-        # live 零写观察覆盖(回血后血量条真值入容器自动收口)。
+        # live 零写观察覆盖(回血后血量条真值入状态容器自动收尾)。
         boss_heal = check_strategy_boss_end_heal(self.gs)
         if kind == 'boss' and boss_heal > 0:
             hp_now = self.gs.hp.value
@@ -4721,27 +4721,27 @@ class SimBackend:
                     STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
                     'next_node_perfect_missed_strict_v0')
         # —— 策略卡战斗结束回血(星际和平保险 id 303001 首例;战斗结束
-        # 回血族第二成员,全战斗域扩 = T-313 首领战限定域的族级邻腿;接线
-        # 点 = 策略腿区尾段 boss 回血腿之后、败局待办登记之前,胜败两态
+        # 回血族第二成员,全战斗域扩 = T-313 首领战限定域的族级邻效果条目;接入调用
+        # 点 = 策略效果条目区尾段 boss 回血效果条目之后、败局待办登记之前,胜败两态
         # 共同路径——卡面「战斗后」无「胜利」限定 = 败局存活也回;死亡局
-        # 在本函数提前 return 处已出局,不回血)。挂点序位依据同 boss 腿
+        # 在本函数提前 return 处已出局,不回血)。插入位置序位依据同 boss 效果条目
         # 三重(结算环行后零污染/损血差分后/环行间插入 → 完胜判据结构性
         # 漏判,同族事件源经 STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS 键随局
         # 申报,频次 ×N 扩)。条件单一源 = kernel
         # check_strategy_battle_end_heal(Σ 持卡 battle_end_heal_hp,纯读
-        # 零写,与 boss 腿函数独立不相串);节点门 = kind ∈
+        # 零写,与 boss 效果条目函数独立不相串);节点门 = kind ∈
         # COMBAT_NODE_TYPES 三型现役单一源词表——扑满 ∈ reward 零回血系
         # 语义收窄(扑满具战斗实体而词表不含 reward),奖励关/补给排除,
         # 经 STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION 随局申报(判读申报
         # 制)。写面 = observe hp 独立笔 + _hp_trail_append 成对(不变式
         # ②写流↔轨迹同构)。**直加不 clip**(正部 HP 加法家族形:
-        # apply_strategy_pick_hp/apply_equip_acquire_hp/boss 回血腿同判
+        # apply_strategy_pick_hp/apply_equip_acquire_hp/boss 回血效果条目同判
         # ——hp_max 字段缺位零上限消费,clip 属无消费端语义;cap 假设面
         # = STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION 家族键,值同
         # direct_add_no_clip_v0 零双源)。hp 未观察(None)= 无基座零写
         # 零追加(禁造假基座,apply_hp_outcome 未观察零写同款)。sig =
-        # obs 族 'sim:strategy' 组(世界数值面 observe 分工;evidence 与
-        # boss 腿 strategy:boss_heal 分账)。幂等零新增守卫 = 本函数
+        # obs 族 'sim:strategy' 组(状态副本数值面 observe 分工;evidence 与
+        # boss 效果条目 strategy:boss_heal 分账)。幂等零新增守卫 = 本函数
         # _settled_key(同节点重放整段跳过);live 零写观察覆盖。
         battle_heal = check_strategy_battle_end_heal(self.gs)
         if kind in COMBAT_NODE_TYPES and battle_heal > 0:
@@ -4764,36 +4764,36 @@ class SimBackend:
                     STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
                     'next_node_perfect_missed_strict_v0')
         # —— 策略卡首领节点完成固定集发放(武器批发商 id 303501 首例;
-        # 接线点 = 策略腿区链尾顺延:战斗结束回血腿之后、败局待办登记
+        # 接入调用点 = 策略效果条目区链尾顺延:战斗结束回血效果条目之后、败局待办登记
         # 之前,胜败两态共同路径——卡面「下个首领节点后」无「胜利」限定
         # = 败局存活也发;死亡局在本函数提前 return 处已出局,不发放)。
         # 条件单一源 = kernel check_strategy_boss_completion_grants
         # (登记表 STRATEGY_BOSS_COMPLETION_GRANTS,node_kind 传本函数
         # 结算点现值 kind,修饰局场字段改写天然跟随零特判);一次性 =
-        # strategy_conditional_done 纯卡名闩(函数内自管,「下个」恰一次,
+        # strategy_conditional_done 纯卡名一次性标志位(函数内自管,「下个」恰一次,
         # 后续首领零重复);sig = logic_sig('sim:strategy') 沿策略战后
-        # 发放腿同组;零 rng(固定全集确定发放零采样,无流键面);幂等零
+        # 发放效果条目同组;零 rng(固定全集确定发放零采样,无流键面);幂等零
         # 新增守卫 = 本函数 _settled_key(同节点重放整段跳过);返回值
         # 忽略(无回调面);live 零写观察覆盖(装备入栏有画面真值可读)。
         check_strategy_boss_completion_grants(self.gs, kind,
                                               logic_sig('sim:strategy'))
-        # —— 策略卡首领通关价值金(搜打撤 id 303701 首例;接线点 =
-        # 策略腿区链尾顺延:首领完成固定集腿之后、败局待办登记之前,
+        # —— 策略卡首领通关价值金(搜打撤 id 303701 首例;接入调用点 =
+        # 策略效果条目区链尾顺延:首领完成固定集效果条目之后、败局待办登记之前,
         # 胜败两态共同路径——「通关」= 胜利限定,零发放由触发函数
         # won 门内短路承载;死亡局在本函数提前 return 处已出局,不
         # 发放)。条件单一源 = kernel check_strategy_boss_clear_gold
         #(登记表 STRATEGY_BOSS_CLEAR_GOLD_GRANTS 白名单标记形;金量 =
         # board_bench_char_value_sum 场上+备战席全体角色价值,
         # sell_refund 卖出回金口径;一次性 = strategy_conditional_done
-        # 纯卡名闩,闩后同局后续首领零重复);金写 = observe 金独立笔
-        #(世界数值面写端通道分工,招财狗胜利金腿同形;obs 族
+        # 纯卡名一次性标志位,置一次性标志位后同局后续首领零重复);金写 = observe 金独立笔
+        #(状态副本数值面写端通道分工,招财狗胜利金效果条目同形;obs 族
         # 'sim:strategy' 组沿结算段在役惯例,evidence = sim_evidence
         # 前缀形 sim:engine:strategy:boss_clear_value:p<r>〔函数内惰性
         # import,star_merge/hp_loss 金笔同款;前缀承载失配抑制消费面〕
-        # 与其他策略金腿分账),闩笔
+        # 与其他策略金效果条目分账),一次性标志位笔
         # logic 族签名由函数内构(observe/write_logic 渠道族互斥,
-        # 详见常量注释);0 值金笔照发且闩照落(空场空席结构可达,
-        # 闩与金笔同窗 = 「下一个」恰一次的载体);零 rng(条件全真值
+        # 详见常量注释);0 值金笔照发且一次性标志位照落(空场空席结构可达,
+        # 一次性标志位与金笔同窗 = 「下一个」恰一次的载体);零 rng(条件全真值
         # + 板面现读);幂等零新增守卫 = 本函数 _settled_key(同节点
         # 重放整段跳过);live 零写观察覆盖(金由游戏自发入账,结算
         # 屏真值覆盖收束)。
@@ -4815,13 +4815,13 @@ class SimBackend:
         被跳节点战斗不发生——零战斗面(不掷 U01、不掉血、无结算收入
         落账、无连胜转移、无环境/策略战后发放、无难度记录、无结算环帧行、
         无败局待办登记,清单面 = :meth:`_resolve_battle` 全战斗结算的
-        补集),被跳节点经验照常入账 + 世界直进下一节点窗。
+        补集),被跳节点经验照常入账 + 状态副本直进下一节点窗。
 
-        入账段镜像 :meth:`_on_node_advance` 现值记账段(含策略卡到级金腿
-        与到级装备腿):跳过拍 = 跨级事件拍,漏镜像则跳过跨级不触发到级
+        入账段镜像 :meth:`_on_node_advance` 现值记账段(含策略卡到级金效果条目
+        与到级装备效果条目):跳过拍 = 跨级事件拍,漏镜像则跳过跨级不触发到级
         发放 = 与常规推进分叉;通道/写形态/组名逐字同构,休眠依据与幂等
-        说明同推进点注释,不赘。uses 递减不在本腿(单一写端 = 上报腿
-        start_battle consume_use,本腿零递减防双写)。重入幂等守卫 =
+        说明同推进点注释,不赘。uses 递减不在本效果条目(单一写端 = 上报效果条目
+        start_battle consume_use,本效果条目零递减防双写)。重入幂等守卫 =
         已结算节点键(:attr:`_settled_key`;skip 后又到的 battle_resolve
         /重复 battle_skip 同键空转,零双账);后到的 kernel node_advance
         声明经 :meth:`_on_node_advance` 序位守卫自然空转。"""
@@ -4839,7 +4839,7 @@ class SimBackend:
         # 被跳节点经验照常入账(被离开节点的类型;与 _on_node_advance 对
         # 被离开节点的入账同段——跳过 = 节点完成,裁决点 7 默认案)。
         apply_node_xp(self.gs, node_type=node.kind)
-        # —— 策略卡到级金腿(记账段镜像,挂经验入账后 = 跨级事件拍,
+        # —— 策略卡到级金效果条目(记账段镜像,挂经验入账后 = 跨级事件拍,
         # 先于新节点窗轮首收入:达标金计入本窗息算基数)。
         _grant = check_strategy_level_grants(self.gs)
         if _grant is not None:
@@ -4855,40 +4855,40 @@ class SimBackend:
                 produced_by=LEVEL_GRANT_PRODUCER,
                 evidence=f'strategy:level_gold:{_name}',
                 sig=logic_sig('sim:strategy'))
-        # —— 策略卡到级装备腿(记账段镜像;返回非 None → 宝钻回调,
+        # —— 策略卡到级装备效果条目(记账段镜像;返回非 None → 宝钻回调,
         # 入参分工同推进点)。
         _equip_grant = check_strategy_level_equip_grants(
             self.gs, logic_sig('sim:strategy'))
         if _equip_grant is not None:
             on_diamond_acquired(self.gs, _equip_grant)
-        # 世界直进下一节点窗(位面首过渡/常规窗由 _enter_node_window 内部
-        # 分支呈现,新窗全部腿经 _begin_node_window 窗口幂等守卫自动继承)。
+        # 状态副本直进下一节点窗(位面首过渡/常规窗由 _enter_node_window 内部
+        # 分支呈现,新窗全部效果条目经 _begin_node_window 窗口幂等守卫自动继承)。
         eff = effective_node_pos(self.gs)
         nxt = (sequence_next(eff, self.gs.node_seq_by_plane.value)
                if eff is not None else None)
         if nxt is None:
             # 防御臂(与 advance 分派 battle_skip+'' 同臂语义;声明面预测
-            # 非空而世界后继为 None = 声明与状态机漂移,对账面自然留证)。
+            # 非空而状态副本后继为 None = 声明与状态机漂移,对账面自然留证)。
             self._on_node_advance_terminal()
             return
         self._entered_pos = nxt
         self._enter_node_window(nxt)
 
-    # (巨星/planner 触发评估器与银狼全域星基线已停用:判据 = 容器值回调[cw_faction_callbacks],簿记 =
+    # (巨星/planner 触发评估器与银狼全域星基线已停用:判据 = 状态容器值回调[cw_faction_callbacks],簿记 =
     #  ScreenChanges sidecar,呈现 = pending 检查。)
 
     # ---------------------------------------------------------- 板面真值观察
 
     def _observe_board_truth(self) -> None:
         """板面真值观察(与实机「每备战帧面板观察」同契约;标签单一源
-        = kernel ``_row_unit_tags``,容器行全量重算)。
+        = kernel ``_row_unit_tags``,状态容器行全量重算)。
 
         sim 是板面真值唯一持有者,kernel board 为派生量且基座未读时
         派生挂钩跳过——步界全量重算真值观察 board(等值零写):承担
         派生基座首读;sim 备战观察只写 node_path 无板面 obs 通道行写,
         全域写路径现均经 write_logic(装备穿戴分支含)使派生挂钩常态
         覆盖,本观察的漂移覆盖职责当前为防御性(基座首读为主要现役
-        职能)。失配经容器吸收面(``_absorb_board_derived``,sim 证据
+        职能)。失配经状态容器吸收面(``_absorb_board_derived``,sim 证据
         前缀命中抑制面)以实际观察为准采新。触发点 = advance 步界(等值零写
         幂等,sim 板面观察的唯一步界)。
 
@@ -4923,14 +4923,14 @@ class SimBackend:
     def _game_over(self) -> None:
         """局终(胜利:超位面 3 末节点存活,经 :meth:`_on_node_advance_terminal`
         披露 run_complete / 死亡:hp 归零且保底已用,经结算死亡分支;
-        重入安全)。终态呈现 = 大厅屏:流程经 CwScreenBattleWait 终局锚
+        重入安全)。终态呈现 = 大厅屏:流程经 CwScreenBattleWait 终局识别标志
         (③B terminal_lobby)→ 主循环 3c 收尾,与实机「终局结算 → 返回
         货币战争 → 大厅」的消费链同形(sim 结算瞬时,直达终点)。
 
         局终清 pending:终局结算帧前的板面写(如部署拖动跨档)仍可
         登记弹窗;实机局终 = 全部弹窗作废,sim 若保留登记,局终后的
         身份问询懒呈现(:meth:`screen_identity`)会把模态压上大厅,
-        而 :meth:`advance` 对 done 世界早退不消费——选卡 op 无限重派
+        而 :meth:`advance` 对 done 状态副本早退不消费——选卡 op 无限重派
         (驱动步上限 5000 烧穿后的失败截图风暴把整局拖到测试超时;
         2026-10-31 统一部署批戊批后 DP 轨迹首次触达该态,定位实录)。
         簿记(fired 集/计数)不清——其生命周期 = 局,与 pending 队列
@@ -4972,7 +4972,7 @@ def install_backend(backend: SimBackend) -> None:
     调用方(运行器/测试)负责 teardown 必卸(:func:`uninstall_backend`);
     端口槽单装配纪律由 ``cw_sim_ports`` 锁(重复安装 raise)。
 
-    动作分支 rng 注入(3.4 联调接线;偏差申报的归属点):流程侧动作
+    动作分支 rng 注入(3.4 联调接入;偏差申报的归属点):流程侧动作
     op → 上报函数族的采样分支(rng=None 回退)经
     ``cw_action_report.set_action_rng_provider`` 拿流键 rng——键形
     ``action/<tool>/<序号>``,序号 = 本装配内调用序(动作序列确定性
