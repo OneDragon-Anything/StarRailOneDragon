@@ -227,6 +227,12 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
     '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',
+    # 藏一手:死亡救援触发卡(R1 用户裁定 2026-11-04 = 奖励随救援触发当场
+    # 发放,注册行由 instant_gold=80 反向改判全默认);奖励载荷单一源 =
+    # cw_investments.STRATEGY_DEATH_SAVE_GRANTS 世界腿已建(sim 结算折算点
+    # 救援发放),救援价值不进经济分(归策略立场域,后继批立项)
+    '藏一手': '救援奖励腿已建世界通道 STRATEGY_DEATH_SAVE_GRANTS(随救援触发);'
+              '估值零登记维持(救援价值归策略立场域,后继批立项)',
     # 空仓:节点条件 XP 效果条目(物品栏+备战席无装备〔消耗品除外〕每节点 +2)
     # 已建状态副本侧通道 = cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS + kernel
     # 纯判定 + sim 节点窗插入位置;即时效果条目 1 件随机简易 = cw_gain_effects 随机

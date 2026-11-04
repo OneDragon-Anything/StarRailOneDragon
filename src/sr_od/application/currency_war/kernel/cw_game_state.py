@@ -299,6 +299,15 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 先例)。独立键版本 1,同 env_grants_
                                 # done 先例不并入他域 bump——他域
                                 # 本体未变
+    'strategy_death_save_used': 1,  # 死亡救援一次性闩(藏一手;每局首次
+                                # 致死触发救援发放刻置位,局内恒存,
+                                # 三态 None=未判定/False=已判定未触发/
+                                # True=已用,None 系设计语义不种开局
+                                # 初始值(同 strategy_bond_battle_armed
+                                # 先例);bool 保型直通免 rebuild 登记,
+                                # 同 env_grant_uid_seq 先例)。独立键
+                                # 版本 1,同 env_grants_done 先例不并入
+                                # 他域 bump——他域本体未变
     'strategy_gold_next_nodes_left': 1,
                                 # 分期金剩余发放条数状态容器(长期主义系「现在及
                                 # 接下来 count 次进节点每次 amount 金」的
@@ -3501,6 +3510,14 @@ class GameState:
     # —— 结算(战斗后真值覆盖的数据源)——
     settlement: Field[Settlement | None] = field(default_factory=Field)
     hp_floor_triggered: Field[bool] = field(default_factory=Field)   # hp 保底触发事件位(§3.5.3;纯观察登记,无判据载体)
+    # 死亡救援一次性闩(藏一手;坐标系 = 当前局全程,取值时机 = 救援发放刻
+    # 由 kernel take_strategy_death_save 置位,恒稳跨节点;写点唯一 =
+    # take_strategy_death_save;None = 未判定(开局不种,gs-opening-seed
+    # B 类判据同 hp_floor_triggered 先例:种子 False 会把「未判定」伪装成
+    # 「已判定未触发」);消费读端 = take_strategy_death_save 门,None/False
+    # 两值均放行、True 拒绝;live 恒 None(闩 live 零写零消费,双端不对称
+    # 申报见 fields.md §3.5.3a))
+    strategy_death_save_used: Field[bool] = field(default_factory=Field)
 
     # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;gs_schema 域 'derivation')——
     # 写点准入:上下文对与顶栏原文唯一写点 = ①观察汇聚

@@ -588,6 +588,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'hp_floor_triggered': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='hp 保底事件位(§3.5.3,纯观察登记无判据载体)'),
+    'strategy_death_save_used': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='死亡救援一次性闩(藏一手;救援发放刻置位局内恒存,一次性'
+              '触发器「首次」簿记,None/False 均放行),无观察读端——救援'
+              '事件 live 由游戏自算自显(闩 live 零写零消费,双端不对称'
+              '申报同族先例),唯一逻辑写端 = cw_gain_chain.'
+              'take_strategy_death_save,唯一调用点 = sim 结算折算点'),
     # —— 派生域与画面上下文 ——
     'prev_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,

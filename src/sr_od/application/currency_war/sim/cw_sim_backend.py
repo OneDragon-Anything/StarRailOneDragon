@@ -126,6 +126,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     gain_equipment,
     gain_invest_env,
     gain_invest_strategy,
+    take_strategy_death_save,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ENV_XP_WINDOW_DISCLOSURES,
@@ -161,6 +162,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
     STRATEGY_BOSS_HEAL_HP_CAP_ASSUMPTION,
     STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
+    STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
@@ -4489,7 +4491,39 @@ class SimBackend:
         # 「损失」不超持有量)。None 防御 = hp 从未观察(直构域)时
         # 触发效果条目按零损血跳过,apply_hp_outcome 未观察零写同款防御。
         hp_before = int(self.gs.hp.value or 0)
-        _floor, dead = apply_hp_outcome(self.gs, outcome)
+        # —— 策略卡死亡救援(藏一手 id 302801 首例,死亡救援族首例;接入调用点
+        # = apply_hp_outcome 折算点前置分支)。致死预判 = 「生命值将降低至0」
+        # 直译(伤害后值 ≤0),与 apply_hp_outcome 内部判据同形,重复面仅单行
+        # 不等式,漂移面由 sr-od-test 致死矩阵锁钉死;禁止改写 outcome.hp_delta
+        # 实现救援(正 delta 违反 BattleOutcome.hp_delta 恒 ≤0 契约)。救援局
+        # 不触 apply_hp_outcome:hp_floor_triggered 零翻转(用户裁定 2026-11-04
+        # M-B 独立叠加 = 卡救先消耗、全局保底留给后续致死,序列 卡救→保底 1→
+        # 局终)、dead 恒 False → 后段结算环帧/扑满/连胜/败局待办按正常败局
+        # 走完(救援只改 hp 落点 + 奖励两笔,不改变败局属性);保底已用(或救援
+        # 已用)再归零 → take 返回 None 走 apply_hp_outcome 原路死亡早退,其后
+        # 挂点天然不触。hp None 基座门(None 局禁救援,apply_hp_outcome 未观察
+        # 零写同款防御;现役开局种子底座下不可达)。条件单一源 = kernel
+        # take_strategy_death_save(一次性闩 strategy_death_save_used 承载
+        # 防复发,奖励两笔同函数内发放);sig = logic_sig('sim:strategy') 沿
+        # 策略战后发放族同组;幂等 = 本函数 _settled_key + 闩双保险;live 零写
+        # 观察覆盖(救援由游戏自算,实机局不接本通道)。
+        lethal = (outcome.hp_delta < 0 and self.gs.hp.value is not None
+                  and hp_before + outcome.hp_delta <= 0)
+        save = (take_strategy_death_save(self.gs,
+                                         logic_sig=logic_sig('sim:strategy'))
+                if lethal else None)
+        if save is not None:
+            _floor, dead = False, False
+            # 救援发放刻建模假设随局申报(desc 无载面两假设各一键:一次性
+            # + 与全局保底独立叠加;键名单一源 = kernel 注册表模块
+            # STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS 随家族遍历,值 = 在役
+            # 标记纯声明不携数值——变体语义在键名,STRATEGY_WIN_GOLD_
+            # SCOPE_ASSUMPTION 同款判读申报制;奖励时点 R1 = 定读非假设
+            # 不设键)。
+            for _assume in STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS:
+                self.disclosures.setdefault(_assume, 'assumed_v0')
+        else:
+            _floor, dead = apply_hp_outcome(self.gs, outcome)
         self._hp_trail_append()
         # —— 结算环帧补写(T-33 完胜判定数据面,设计 §2.4):与 live 同一
         # ring 读口——killed = won(killed 单一语义 = 「挑战成功」胜利标志,

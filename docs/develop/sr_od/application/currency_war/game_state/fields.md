@@ -664,6 +664,16 @@ live 同为观察覆盖维持两写入方结构。
 bot 均已知零猜测面),推算失配经既有金/血 mismatch 对账通道显示出来,下一备战帧
 真读重新引用。模拟器局内成对义务 = hp_trail 逐笔追加(sim 落地分支按呈现一次性
 标志位配对,写流↔轨迹全序同构;等值交换写行照落,轨迹同拍追加)。
+sim 先验写端(死亡救援分支):sim 局战斗结算折算点(`_resolve_battle` 的
+`apply_hp_outcome` 调用前置)策略救援分支按死亡救援触发注册表写 40 状态副本真值
+(evidence `sim:engine:strategy_death_save:hp:p{位面}r{轮}`;载荷单一源 =
+`cw_investments.py::STRATEGY_DEATH_SAVE_GRANTS`,藏一手 40/30/80 首例)——致死
+预判成立(hp_before + hp_delta ≤ 0,与 `apply_hp_outcome` 内部判据同形)才触发;
+救援局**不触** `apply_hp_outcome`:保底位零翻转(用户裁定 2026-11-04 M-B 独立
+叠加 = 卡救先消耗、全局保底留给后续致死)且 dead 恒 False(败局属性不变,后段
+结算链照常);条件单一源 = `cw_gain_chain.take_strategy_death_save`(一次性闩
+strategy_death_save_used,§3.5.3a);live 零写观察覆盖(救援由游戏自算,hp 面
+结算页观察链现值覆盖)。
 **边界**:不可信帧不写。状态容器存**门前真值**、消费视图施门在消费侧(hp_readable/
 hp_trusted 语义 = §8.7 旧 hp 消费视图并入口径,单一源 = cw_gs_view);「备战帧仅 shop 关闭态」
 的字面全局禁写与结算覆盖不冲突——结算是独立写入方。
@@ -1746,6 +1756,24 @@ streak 带方向真值(§3.2.12)/ 金币仅胜局覆盖(§3.2.9)——写入规�
 **判据状态**:伤害分解面板=实际扣血语义下,旧判据恒假已撤回——本事件位**降级=纯
 观察登记、无判据载体**;待实机实证的问题=保底局结算分解面板显示原始伤害还是实际
 扣血;消费端一律按不确定降级。
+
+#### 3.5.3a 死亡救援一次性闩 strategy_death_save_used
+
+**语义**:bool | None 逻辑态域——死亡救援触发器(藏一手 302801,死亡救援族首例;
+载荷单一源 = `cw_investments.py::STRATEGY_DEATH_SAVE_GRANTS`,救援后生命值/经验/
+金币三值卡面明写)的「每局仅首次」簿记(用户裁定 2026-11-04 一次性):救援发放刻
+由 kernel `take_strategy_death_save` 置位,局内恒存(恒稳跨节点);None = 未判定
+(开局不种,gs-opening-seed B 类判据同 hp_floor_triggered 先例——种子 False 会把
+「未判定」伪装成「已判定未触发」);消费读端 = take_strategy_death_save 门,
+None/False 两值均放行、True 拒绝。
+**写入方**:唯一 = `cw_gain_chain.take_strategy_death_save`(唯一调用点 = sim 结算
+折算点 `_resolve_battle` 前置分支,幂等 = 调用点 `_settled_key` + 闩双保险);
+live 恒 None——救援事件 live 由游戏自算自显(救援局 = 败局,结算页有 hp 面入
+观察链,奖励两笔走下一备战帧 gold/xp 现读兜底),闩 live 零写零消费,双端不对称
+(sim 闩真值/live 闩盲)与星核猎手锁域 live 不对称同型,零行为风险(live 无
+消费读端)。
+**边界**:接管局/恢复局:闩 = sim 写端事实域,接管局 None → 可再救一次(与
+hp_floor_triggered 接管形态同款申报);快照 bool 保型直通(rebuild 免登记)。
 
 #### 3.5.4 败态登记 pending_loss
 
