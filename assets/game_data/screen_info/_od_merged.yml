@@ -12319,6 +12319,21 @@
     color_range: null
     goto_list:
     - 忘却之庭-编队
+  - area_name: 纸鹤-关卡01
+    id_mark: false
+    pc_rect:
+    - 800
+    - 560
+    - 980
+    - 700
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 虚构叙事-编队
 - screen_id: version_announcement_carousel
   screen_name: 版本公告轮播
   pc_alt: false
@@ -15444,6 +15459,413 @@
     - 1220
     - 890
     text: 点击空白处关闭
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: treasures_light_pf_intro
+  screen_name: 虚构叙事-开场
+  pc_alt: false
+  area_list:
+  - area_name: 标题-虚构叙事行
+    id_mark: true
+    pc_rect:
+    - 140
+    - 50
+    - 280
+    - 105
+    text: 虚构叙事
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-开启故事
+    id_mark: true
+    pc_rect:
+    - 1290
+    - 855
+    - 1675
+    - 925
+    text: 开启故事
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 逐光捡金
+  - area_name: 标签-已更新
+    id_mark: true
+    pc_rect:
+    - 1400
+    - 355
+    - 1570
+    - 410
+    text: 已更新
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: treasures_light_as_select
+  screen_name: 末日幻影-选关
+  pc_alt: false
+  area_list:
+  - area_name: 标题-末日幻影行
+    id_mark: true
+    pc_rect:
+    - 75
+    - 38
+    - 240
+    - 100
+    text: 末日幻影
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 难度-01
+    id_mark: true
+    pc_rect:
+    - 400
+    - 940
+    - 545
+    - 1000
+    text: '01'
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-前往挑战
+    id_mark: false
+    pc_rect:
+    - 740
+    - 800
+    - 1180
+    - 885
+    text: 前往挑战
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 末日幻影-首领信息
+  - area_name: 按钮-关闭X
+    id_mark: false
+    pc_rect:
+    - 1830
+    - 30
+    - 1885
+    - 100
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 大世界
+- screen_id: treasures_light_as_intro
+  screen_name: 末日幻影-开场
+  pc_alt: false
+  area_list:
+  - area_name: 标题-末日幻影行
+    id_mark: true
+    pc_rect:
+    - 40
+    - 35
+    - 240
+    - 100
+    text: 末日幻影
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-前往挑战
+    id_mark: true
+    pc_rect:
+    - 1290
+    - 830
+    - 1790
+    - 930
+    text: 前往挑战
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 末日幻影-选关
+  - area_name: 标签-已更新
+    id_mark: true
+    pc_rect:
+    - 1450
+    - 395
+    - 1620
+    - 450
+    text: 已更新
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: treasures_light_as_boss_briefing
+  screen_name: 末日幻影-首领信息
+  pc_alt: false
+  area_list:
+  - area_name: 标题-首领信息行
+    id_mark: true
+    pc_rect:
+    - 75
+    - 60
+    - 240
+    - 105
+    text: 首领信息
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-下一步
+    id_mark: false
+    pc_rect:
+    - 1430
+    - 950
+    - 1800
+    - 1012
+    text: 下一步
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-前往编队
+    id_mark: false
+    pc_rect:
+    - 1430
+    - 950
+    - 1800
+    - 1012
+    text: 前往编队
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 末日幻影-编队
+- screen_id: treasures_light_pf_team
+  screen_name: 虚构叙事-编队
+  pc_alt: false
+  area_list:
+  - area_name: 标题-虚构叙事行
+    id_mark: true
+    pc_rect:
+    - 40
+    - 38
+    - 200
+    - 68
+    text: 虚构叙事
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标题-编队行
+    id_mark: true
+    pc_rect:
+    - 80
+    - 60
+    - 170
+    - 108
+    text: 编队
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-进入故事
+    id_mark: false
+    pc_rect:
+    - 1500
+    - 958
+    - 1885
+    - 1012
+    text: 进入故事
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行1-槽位1
+    id_mark: false
+    pc_rect:
+    - 1290
+    - 745
+    - 1345
+    - 800
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行2-槽位1
+    id_mark: false
+    pc_rect:
+    - 1290
+    - 853
+    - 1345
+    - 908
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行1-装配加号
+    id_mark: false
+    pc_rect:
+    - 1790
+    - 745
+    - 1870
+    - 815
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行2-装配加号
+    id_mark: false
+    pc_rect:
+    - 1790
+    - 853
+    - 1870
+    - 923
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: treasures_light_as_team
+  screen_name: 末日幻影-编队
+  pc_alt: false
+  area_list:
+  - area_name: 标题-末日幻影行
+    id_mark: true
+    pc_rect:
+    - 40
+    - 38
+    - 200
+    - 68
+    text: 末日幻影
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标题-编队行
+    id_mark: true
+    pc_rect:
+    - 80
+    - 60
+    - 170
+    - 108
+    text: 编队
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-前往挑战
+    id_mark: false
+    pc_rect:
+    - 1500
+    - 958
+    - 1885
+    - 1012
+    text: 前往挑战
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行1-槽位1
+    id_mark: false
+    pc_rect:
+    - 1030
+    - 370
+    - 1090
+    - 430
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行2-槽位1
+    id_mark: false
+    pc_rect:
+    - 1030
+    - 655
+    - 1090
+    - 715
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行1-装配加号
+    id_mark: false
+    pc_rect:
+    - 1695
+    - 365
+    - 1768
+    - 435
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 行2-装配加号
+    id_mark: false
+    pc_rect:
+    - 1695
+    - 650
+    - 1768
+    - 720
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''

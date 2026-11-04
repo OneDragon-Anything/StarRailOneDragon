@@ -6,7 +6,10 @@
 - 分类页节点按 mode 显式点左侧目标分类(默认选中项两次实测不同,勿依赖默认态),
   之后按 mode 分叉到各自的「点入口按钮→到达验证」节点。
 - 到达验证锚:忘却之庭=选关混沌回忆视图双锚(FH_TITLE+标题-混沌回忆行)+紊流弹窗处理;
-  虚构叙事=PF_TITLE(+新期「开启故事」分支,待实测);末日幻影/异相仲裁=目标画面未建档,点击入口按钮后显式失败挂账。
+  虚构叙事=新期开场页(点开启故事)→选关(PF_TITLE);末日幻影=新期开场页(点前往挑战)
+  →选关(标题+难度条双锚);异相仲裁=目标画面未建档,点击入口按钮后显式失败挂账。
+- 起点已在选关/编队屏且目标非忘却之庭时,经右上关闭X 退回大世界,再走手机菜单链
+  (左上菜单图标→菜单屏指南图标)进指南——不走右上指南快捷按钮(车厢场景无此按钮)。
 
 画面证据:docs/game/screens/{指南-逐光捡金,逐光捡金,忘却之庭-编队}.md(2026-11-04 实机建档)。
 英文名依据国际服官方译名:逐光捡金=Treasures Lightward,忘却之庭=Forgotten Hall,
@@ -84,19 +87,27 @@ class GotoTreasuresLightward(SrOperation):
 
         判序:紊流弹窗(模态盖底,先于底屏锚)→ 编队屏 → 选关 → 分类页 → 指南 → 大世界。
         逐光捡金用 FH_TITLE 判(三视图共用标题行,回忆视图也算在链上,由收尾节点切回)。
+        AT_TREASURES 按模式分叉:FORGOTTEN_HALL 直接选关收尾;其余模式选关不是终点,
+        需先关闭选关回大世界再走 指南→分类页 重入(2026-11-05 实测:选关界面无到分类
+        页的直达出口,右上关闭X 是唯一出口,落点=进入前的场景,可能为列车车厢)。
         """
         screen = self.last_screenshot
 
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'NODE_FIRST_CLICK_EMPTY').is_success:
-            return self.round_success(status='AT_TREASURES')
+            status = 'AT_TREASURES' if self.mode == TLMode.FORGOTTEN_HALL else 'AT_TREASURES_OTHER'
+            return self.round_success(status=status)
         if self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success:
-            return self.round_success(status='AT_TEAM')
+            status = 'AT_TEAM' if self.mode == TLMode.FORGOTTEN_HALL else 'AT_TEAM_OTHER'
+            return self.round_success(status=status)
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_TITLE').is_success:
-            return self.round_success(status='AT_TREASURES')
+            status = 'AT_TREASURES' if self.mode == TLMode.FORGOTTEN_HALL else 'AT_TREASURES_OTHER'
+            return self.round_success(status=status)
         if self.round_by_find_area(screen, _CATEGORY_SCREEN, '标识-标题-逐光捡金').is_success:
             return self.round_success(status='AT_CATEGORY')
         if self.round_by_find_area(screen, _GUIDE_SCREEN, 'TAB-逐光捡金').is_success:
             return self.round_success(status='AT_GUIDE')
+        if self.round_by_find_area(screen, '菜单', '开拓等级').is_success:
+            return self.round_success(status='AT_MENU')
         if self.round_by_find_area(screen, '大世界', '角色图标').is_success:
             return self.round_success(status='AT_WORLD')
         return self.round_success(status='OFF_PATH')
@@ -119,26 +130,81 @@ class GotoTreasuresLightward(SrOperation):
     @node_from(from_name='识别当前画面', status='AT_TEAM')
     @operation_node(name='编队返回选关', node_max_retry_times=6)
     def team_back(self) -> OperationRoundResult:
-        """编队屏 → 返回箭头 → 选关(此跳无紊流弹窗,双锚 until 直接验证转移)。"""
+        """编队屏 → 返回箭头 → 选关(此跳无紊流弹窗,FH_TITLE 单锚验证转移——
+        三视图共用,回忆视图帧也命中,不要求混沌回忆行)。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _TEAM_SCREEN, '按钮-返回箭头',
-            until_find_all=[(_SELECT_SCREEN, 'FH_TITLE'), (_SELECT_SCREEN, '标题-混沌回忆行')],
+            until_find_all=[(_SELECT_SCREEN, 'FH_TITLE')],
             pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
         )
+
+    @node_from(from_name='识别当前画面', status='AT_TREASURES_OTHER')
+    @node_from(from_name='识别当前画面', status='AT_TEAM_OTHER')
+    @operation_node(name='非忘却之庭回大世界', node_max_retry_times=6)
+    def leave_for_world(self) -> OperationRoundResult:
+        """非 FH 模式:从选关/编队屏经右上关闭X 退出到大世界(2026-11-05 实测
+        关闭X 是选关唯一出口;编队屏先点返回箭头到选关再由本节点处理选关出口)。"""
+        screen = self.last_screenshot
+        if self.round_by_find_area(screen, _TEAM_SCREEN, '按钮-返回箭头').is_success:
+            self.round_by_find_and_click_area(
+                screen, _TEAM_SCREEN, '按钮-返回箭头', success_wait=1.5)
+            return self.round_retry('编队先回选关', wait=1.5)
+        result = self.round_by_find_and_click_area(
+            screen, _SELECT_SCREEN, '按钮-关闭X',
+            until_find_all=[('大世界', '角色图标')],
+            pre_delay=0.5, success_wait=2, retry_wait=2,
+        )
+        if result.is_success:
+            return self.round_success(status='AT_WORLD')
+        return result
 
     @node_from(from_name='识别当前画面', status='AT_WORLD')
     @node_from(from_name='回大世界')
-    @operation_node(name='大世界打开指南', node_max_retry_times=6)
-    def goto_guide(self) -> OperationRoundResult:
+    @node_from(from_name='非忘却之庭回大世界')
+    @operation_node(name='大世界打开菜单', node_max_retry_times=6)
+    def open_phone_menu(self) -> OperationRoundResult:
+        """大世界(含列车车厢)经左上手机图标打开电话菜单。
+
+        不走右上指南快捷按钮:2026-11-05 实测退出选关的落点可能是列车车厢,
+        车厢右上无指南按钮(且车厢与开阔大世界在 screen_info 里同为
+        「大世界-普通」无法区分),手机菜单链在任何大世界场景都可用。
+        大世界为锁光标场景,点击需按住 Alt(锁光标场景点击规范)。
+        先判后点:重试轮菜单可能已被上轮点击打开,再点手机图标会点中
+        菜单内同位置的「狸狸通信」图标(2026-11-05 实机踩坑)。"""
+        from one_dragon.base.geometry.point import Point
+
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(
-            screen, '大世界-普通', '按钮-指南',
-            until_find_all=[(_GUIDE_SCREEN, 'TAB-逐光捡金')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+        if self.round_by_find_area(screen, '菜单', '开拓等级').is_success:
+            return self.round_success(wait=0.5)
+
+        si = self.ctx.screen_loader.get_screen('大世界-普通')
+        rect = None
+        if si is not None:
+            area = next((a for a in si.area_list if a.area_name == '左上图标-菜单'), None)
+            rect = area.pc_rect if area is not None else None
+        if rect is None:
+            return self.round_fail('大世界-普通 缺少 左上图标-菜单 area')
+        center = Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
+        self.ctx.controller.click(center, press_time=0.15, pc_alt=True)
+        return self.round_wait('等待菜单打开', wait=1.5)
+
+    @node_from(from_name='大世界打开菜单')
+    @node_from(from_name='识别当前画面', status='AT_MENU')
+    @operation_node(name='菜单进指南', node_max_retry_times=6)
+    def menu_to_guide(self) -> OperationRoundResult:
+        """菜单屏点指南图标 → 星际和平指南。
+
+        用全屏 OCR 找「指南」而非固定坐标:2026-11-05 实测菜单会因「玩法更新」
+        等新增条目动态重排(固定 rect 被挤位点中相邻图标)。菜单屏内「指南」
+        文字仅此一处,lcs 0.9 无误匹配风险。"""
+        screen = self.last_screenshot
+        return self.round_by_ocr_and_click(
+            screen, '指南', lcs_percent=0.9,
+            success_wait=1.5, retry_wait=1.5,
         )
 
-    @node_from(from_name='大世界打开指南')
+    @node_from(from_name='菜单进指南')
     @node_from(from_name='识别当前画面', status='AT_GUIDE')
     @operation_node(name='指南切逐光捡金tab', node_max_retry_times=6)
     def guide_to_category(self) -> OperationRoundResult:
@@ -218,7 +284,16 @@ class GotoTreasuresLightward(SrOperation):
     @node_from(from_name='虚构叙事进入')
     @operation_node(name='虚构叙事收尾', node_max_retry_times=12)
     def pf_settle(self) -> OperationRoundResult:
+        """到达验证:新期先落「虚构叙事-开场」介绍页(点开启故事)→ 选关(PF_TITLE)。
+
+        2026-11-05 实测:新期(取象为文)传送后先进开场页,右下「开启故事」。
+        开场页判定必须双锚(标题+已更新标签):开场页与选关的标题文本同文同位
+        (虚构叙事),单标题锚在选关帧也命中 → 会把选关误判成开场页无限点空按钮。"""
         screen = self.last_screenshot
+        if (self.round_by_find_area(screen, '虚构叙事-开场', '标题-虚构叙事行').is_success
+                and self.round_by_find_area(screen, '虚构叙事-开场', '标签-已更新').is_success):
+            self.round_by_find_and_click_area(screen, '虚构叙事-开场', '按钮-开启故事')
+            return self.round_retry('虚构叙事-开场页点开启故事', wait=2.5)
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'PF_NEW_START').is_success:
             self.round_by_find_and_click_area(screen, _SELECT_SCREEN, 'PF_NEW_START')
             return self.round_retry('虚构叙事-开启故事', wait=2)
@@ -227,17 +302,33 @@ class GotoTreasuresLightward(SrOperation):
         return self.round_retry('虚构叙事-等待画面', wait=1.5)
 
     @node_from(from_name='分类页选目标', status='ENTER_APOCALYPTIC_SHADOW')
-    @operation_node(name='末日幻影进入', node_max_retry_times=4)
+    @operation_node(name='末日幻影进入', node_max_retry_times=8)
     def as_enter(self) -> OperationRoundResult:
-        """末日幻影目标画面未建档(挂账):点击入口按钮后显式失败,到达验证待建档后补。"""
+        """卡片式传送,落点为「末日幻影-开场」介绍页(2026-11-05 实测),由收尾节点处理。"""
         screen = self.last_screenshot
         result = self.round_by_find_and_click_area(
             screen, _CATEGORY_SCREEN, '按钮-传送-卡片式',
             pre_delay=0.5, retry_wait=2,
         )
         if result.is_success:
-            return self.round_fail('末日幻影目标画面未建档,到达验证待建档后补')
+            return self.round_success(wait=2.5)
         return result
+
+    @node_from(from_name='末日幻影进入')
+    @operation_node(name='末日幻影收尾', node_max_retry_times=12)
+    def as_settle(self) -> OperationRoundResult:
+        """到达验证:开场介绍页(点前往挑战)→ 选关(标题+难度条双锚)。
+
+        开场页判定双锚(标题+已更新):开场页与选关标题同文同位,同 pf_settle。"""
+        screen = self.last_screenshot
+        if (self.round_by_find_area(screen, '末日幻影-开场', '标题-末日幻影行').is_success
+                and self.round_by_find_area(screen, '末日幻影-开场', '标签-已更新').is_success):
+            self.round_by_find_and_click_area(screen, '末日幻影-开场', '按钮-前往挑战')
+            return self.round_retry('末日幻影-开场页点前往挑战', wait=2.5)
+        if (self.round_by_find_area(screen, '末日幻影-选关', '标题-末日幻影行').is_success
+                and self.round_by_find_area(screen, '末日幻影-选关', '难度-01').is_success):
+            return self.round_success()
+        return self.round_retry('末日幻影-等待画面', wait=1.5)
 
     @node_from(from_name='分类页选目标', status='ENTER_ANOMALY_ARBITRATION')
     @operation_node(name='异相仲裁进入', node_max_retry_times=4)

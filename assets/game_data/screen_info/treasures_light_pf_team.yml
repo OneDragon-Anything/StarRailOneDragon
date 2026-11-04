@@ -1,0 +1,102 @@
+screen_id: treasures_light_pf_team
+screen_name: 虚构叙事-编队
+pc_alt: false
+area_list:
+- area_name: 标题-虚构叙事行
+  id_mark: true
+  pc_rect:
+  - 40
+  - 38
+  - 200
+  - 68
+  text: 虚构叙事
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标题-编队行
+  id_mark: true
+  pc_rect:
+  - 80
+  - 60
+  - 170
+  - 108
+  text: 编队
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-进入故事
+  id_mark: false
+  pc_rect:
+  - 1500
+  - 958
+  - 1885
+  - 1012
+  text: 进入故事
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 行1-槽位1
+  id_mark: false
+  pc_rect:
+  - 1290
+  - 745
+  - 1345
+  - 800
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 行2-槽位1
+  id_mark: false
+  pc_rect:
+  - 1290
+  - 853
+  - 1345
+  - 908
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 行1-装配加号
+  id_mark: false
+  pc_rect:
+  - 1790
+  - 745
+  - 1870
+  - 815
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 行2-装配加号
+  id_mark: false
+  pc_rect:
+  - 1790
+  - 853
+  - 1870
+  - 923
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

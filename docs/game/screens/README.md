@@ -31,6 +31,12 @@ StarRailOneDragon 各 screen 画面建档 doc 索引。代表截图归档测试�
 | 逐光捡金 | [逐光捡金.md](逐光捡金.md) | `treasures_light`,忘却之庭**选关界面**(三视图:混沌回忆/回忆·天艟求仙迷航录/回忆·永屹之城遗秘)+紊流弹窗/规则弹窗/馈赠弹窗/战斗结算 in-mode;2026-11-04 维护 |
 | 忘却之庭-编队 | [忘却之庭-编队.md](忘却之庭-编队.md) | `treasures_light_team`,逐光捡金**挑战编队画面**(角色列表/预设编队/通关阵容弹窗/敌方信息入口);2026-11-04 建(自逐光捡金大屏拆出) |
 | 指南-逐光捡金 | [指南-逐光捡金.md](指南-逐光捡金.md) | `guide_treasures`,逐光捡金**分类选择页**(五分类:异相仲裁/最近更新/忘却之庭/虚构叙事/末日幻影;入口唯一通道);2026-11-04 建 |
+| 虚构叙事-开场 | [虚构叙事-开场.md](虚构叙事-开场.md) | `treasures_light_pf_intro`,虚构叙事**新期介绍页**(分类页传送后先落此页,点开启故事进选关);⚠️ 与选关标题同文同位,双锚(标题+已更新)区分;2026-11-05 建 |
+| 虚构叙事-编队 | [虚构叙事-编队.md](虚构叙事-编队.md) | `treasures_light_pf_team`,虚构叙事**挑战编队画面**(两行×4槽+荒腔走板装配+战意效果面板;点卡入行/点已入队角色=移除);2026-11-05 建 |
+| 末日幻影-开场 | [末日幻影-开场.md](末日幻影-开场.md) | `treasures_light_as_intro`,末日幻影**新期介绍页**(按钮文案「前往挑战」);2026-11-05 建 |
+| 末日幻影-选关 | [末日幻影-选关.md](末日幻影-选关.md) | `treasures_light_as_select`,末日幻影**难度选择页**(4 难度分层+中央前往挑战+Boss 立绘);2026-11-05 建 |
+| 末日幻影-首领信息 | [末日幻影-首领信息.md](末日幻影-首领信息.md) | `treasures_light_as_boss_briefing`,末日幻影**两节点首领说明页**(下一步→前往编队);2026-11-05 建 |
+| 末日幻影-编队 | [末日幻影-编队.md](末日幻影-编队.md) | `treasures_light_as_team`,末日幻影**挑战编队画面**(两行×4槽+终焉公理装配;⚠️ 垃圾桶只清当前选中行非全清);2026-11-05 建 |
 | 货币战争 | [currency_war_lobby.md](currency_war_lobby.md) | `currency_war`,auto-chess 肉鸽,建档进行中(2026-08)。子屏 doc:大厅·模式选择·难度确认·简报·[BOSS简报](currency_war_boss_briefing.md)(强敌来袭横幅,徽记模板锚)·投资环境·备战·商店·[遭遇节点](currency_war_encounter.md)·战斗·补给·投资策略·[未达上限警告](currency_war_deploy_warning.md)·[结算](currency_war_settlement.md)·[挑战失败](currency_war_challenge_failed.md)·[选择伙伴](currency_war_choose_partner.md)·[盛会之星](currency_war_megastar.md)(羁绊触发的选巨星 overlay);**攻略面板**([列表](currency_war_guide_list.md)·[详情](currency_war_guide_detail.md)·[图例](currency_war_guide_legend.md)·[攻略码输入](currency_war_guide_code_input.md)·[保存阵容](currency_war_guide_save_modal.md)·[装备追踪](currency_war_guide_equip_track.md)·[阵容编辑](currency_war_guide_editor.md),2026-08-15 建档);备战子态屏:[角色详情](currency_war_char_detail.md)(点角色)+ 开商店(无独立 doc);独立装备详情(备战右侧装备,待建档);**情报画面族**(2026-08-26):[位面详情](货币战争-位面详情.md)(备战点节点图标直开,三位面卡+节点详情条+常驻词缀横条)+[敌人信息浮层](货币战争-敌人信息浮层.md)(备战点难度框开,敌方波次+详情卡)——中断恢复的对局补采词缀/难度/环境的入口;**数据银行族**(2026-08-26):[数据银行](货币战争-数据银行.md)(五图鉴入口卡主页)+[竞争对手图鉴列表](货币战争-竞争对手图鉴列表.md)(底部 boss 页签行)+[竞争对手图鉴详情](货币战争-竞争对手图鉴详情.md)(boss 立绘+精英/普通敌人+技能两阶段;顶部头像导航条=boss_avatar 模板库来源)——canonical 数据采集入口,bot 不自动化 |
 
 > 玩法机制 doc 见 [gameplay/](../gameplay/);app 编排 develop doc 见 [develop/sr_od/application/](../../develop/sr_od/application/)。
