@@ -33,12 +33,11 @@ class TlTeamRecognizer(ScreenRecognizer):
         'environment_text': '环境效果全文(本期记忆紊流文本,与选关画面紊流弹窗同文)',
         'star_targets': '挑战目标行 list(满星条件,通常 3 行)',
         'left_tab': '左侧激活 tab(角色列表|预设编队);判不出 None',
-        'slot1': '队伍1 槽位 list[MemberGuess](4 元素按槽位序;元素 {char,confident,candidates,empty},'
-                 'char=中文名仅置信时给,歧义时看 candidates(降序前3),empty=空槽)',
-        'slot2': '队伍2 槽位 list[MemberGuess](同 slot1)',
-        'weaknesses1': '队伍1 行「建议属性」弱点属性名 list(该波敌人弱点,左右序;'
-                       '元素图标模板匹配主判+色相仲裁,解不出的图标不进列表)',
-        'weaknesses2': '队伍2 行弱点属性名 list(同 weaknesses1)',
+        'waves': '波次列表 list[WaveInfo](每元素 {wave_idx,weaknesses,members};每锚行=一波,'
+                 '数量实读——混忆常规 2 波,其他模式可能不同)。weaknesses=该波敌人弱点属性名'
+                 'list(左右序;元素图标模板匹配主判+色相仲裁,解不出的图标不进列表);'
+                 'members=该波当前编队(4 元素按槽位序,MemberGuess 同老字段语义;槽位 area '
+                 '未建档的行=[]);waves=[] = 锚未读到(降级)',
         'character_grid': '角色列表 tab:可见网格 list[GridCell](元素 {row,col,guess};row/col 0 基,'
                           '4 列×可见 4 行,滚动后需多帧);非该 tab 为 null',
         'preset_teams': '预设编队 tab:队伍组 list[PresetTeam](元素 {team_idx,members};team_idx 1 基从上到下,'

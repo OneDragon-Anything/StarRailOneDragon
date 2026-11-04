@@ -69,6 +69,7 @@ _ELEMENT_TEMPLATE_DIR: str = 'element_weakness'
 _WEAKNESS_BLOB_MIN: int = 16         #: 图标色块外接框下限(px,膨胀后)
 _WEAKNESS_BLOB_MAX: int = 64         #: 图标色块外接框上限
 _WEAKNESS_TM_MIN: float = 0.45       #: TM 置信下限(低于 = 走色相域回退)
+_WEAKNESS_MAX_ROWS: int = 4          #: 波次锚行上限(防 OCR 误检炸量;当前模式最多 2-3)
 
 # --------------------------------------------------------------------------
 # 左侧角色网格几何(相对「区域-角色网格」rect 原点;2026-11-04 实机帧标定)
@@ -141,6 +142,23 @@ class GridCell:
 
 
 @dataclass
+class WaveInfo:
+    """单波次(旧代码称节点)识别结果:该波敌人弱点 + 该波当前编队成员。
+
+    Attributes:
+        wave_idx: 波次序号,1 基,画面从上到下(每波一行队伍槽;数量按「建议属性」
+            锚行实读,混忆常规 2 波,其他模式/回忆章节可能不同)。
+        weaknesses: 该波敌人弱点属性名(「建议属性」图标带,左右序)。
+        members: 该波当前编队成员(4 元素按槽位序 0 基;该行槽位 area 未建档时 = [],
+            不返回不完整列表,不编造)。
+    """
+
+    wave_idx: int
+    weaknesses: list[str]
+    members: list[MemberGuess]
+
+
+@dataclass
 class TlTeamView:
     """编队画面单帧结构化事实。
 
@@ -149,10 +167,7 @@ class TlTeamView:
         environment_text: 环境效果全文(关卡名下方描述区,本期记忆紊流文本)。
         star_targets: 挑战目标行(满星条件,通常 3 行)。
         left_tab: 左侧当前激活 tab('角色列表' | '预设编队');识别失败 None。
-        slot1: 队伍 1 槽位识别(4 元素,下标 = 槽位序 0 基)。
-        slot2: 队伍 2 槽位识别(同上)。
-        weaknesses1: 队伍 1 行「建议属性」弱点属性名(该波敌人弱点;左右序)。
-        weaknesses2: 队伍 2 行弱点属性名(同上)。
+        waves: 波次列表(每波绑定 弱点 + 当前编队;锚行实读,锚未读到 = 空列表降级)。
         character_grid: 角色列表 tab 的可见网格;非该 tab 为 None。
         preset_teams: 预设编队 tab 的队伍组;非该 tab 为 None。
     """
@@ -161,10 +176,7 @@ class TlTeamView:
     environment_text: str | None
     star_targets: list[str]
     left_tab: str | None
-    slot1: list[MemberGuess]
-    slot2: list[MemberGuess]
-    weaknesses1: list[str]
-    weaknesses2: list[str]
+    waves: list[WaveInfo]
     character_grid: list[GridCell] | None
     preset_teams: list[PresetTeam] | None
 
@@ -286,23 +298,6 @@ def read_left_tab(ctx: SrContext, image: MatLike) -> str | None:
     return result[1]
 
 
-def read_team_slots(ctx: SrContext, image: MatLike) -> tuple[list[MemberGuess], list[MemberGuess]]:
-    """右侧两队伍槽(各 4 位,下标 0 基 = 画面槽位序)。area 缺失的槽位记无结论。"""
-    templates = ensure_avatar_templates(ctx)
-    slots: list[list[MemberGuess]] = []
-    for row_name in ('槽位1头像', '槽位2头像'):
-        row: list[MemberGuess] = []
-        for i in range(1, 5):
-            rect = _get_area_rect(ctx, f'{row_name}-{i}')
-            if rect is None:
-                row.append(MemberGuess(char=None, confident=False, candidates=[], empty=False))
-                continue
-            crop = image[rect.y1:rect.y2, rect.x1:rect.x2]
-            row.append(_identify_crop(crop, templates))
-        slots.append(row)
-    return slots[0], slots[1]
-
-
 def ensure_element_templates(ctx: SrContext) -> dict[str, TemplateInfo]:
     """元素弱点模板(元素名→TemplateInfo;assets/template/element_weakness/<元素>/raw.png)。
 
@@ -404,34 +399,43 @@ def _detect_weakness_blobs(zone: MatLike) -> list[tuple[int, int, int, int]]:
     return boxes
 
 
-def read_team_weaknesses(ctx: SrContext, image: MatLike) -> tuple[list[str], list[str]]:
-    """两队伍行「建议属性」弱点属性名(该波敌人弱点,左右序)。
+def read_team_waves(ctx: SrContext, image: MatLike) -> list[WaveInfo]:
+    """按「建议属性」锚行装配波次列表(每锚 = 一波,数量实读)。
 
-    OCR 锚「建议属性」定位图块带(布局平移不敏感);空列表 = 锚未读到或无色块
-    (降级不编造)。行序按锚 y 排序(上行=队伍1,下行=队伍2)。
+    每波绑定:该波弱点属性(锚下方图块带)+ 该波当前编队成员(槽位 area 按行号取,
+    area 未建档的行 members = [])。锚未读到 = 空列表(降级不编造)。
     """
-    templates = ensure_element_templates(ctx)
+    templates = ensure_avatar_templates(ctx)
     results = ctx.ocr_service.get_ocr_result_list(image=image)
     anchors = sorted(
         (r for r in results if _WEAKNESS_ANCHOR_TEXT in (r.data or '')),
         key=lambda r: r.y,
     )
-    rows: list[list[str]] = []
-    for a in anchors[:2]:
+    waves: list[WaveInfo] = []
+    for idx, a in enumerate(anchors[:_WEAKNESS_MAX_ROWS], start=1):
         x1 = max(0, a.x - 15)
         y1 = a.y + a.h + 2
         zone = image[y1:y1 + _WEAKNESS_ZONE_H, x1:x1 + _WEAKNESS_ZONE_W]
-        names: list[str] = []
+        weaknesses: list[str] = []
         for (bx, by, bw, bh) in _detect_weakness_blobs(zone):
             pad = 4
             crop = zone[max(0, by - pad):by + bh + pad, max(0, bx - pad):bx + bw + pad]
-            name = _classify_weakness_blob(crop, templates)
+            name = _classify_weakness_blob(crop, ensure_element_templates(ctx))
             if name:
-                names.append(name)
-        rows.append(names)
-    if len(rows) >= 2:
-        return rows[0], rows[1]
-    return [], []
+                weaknesses.append(name)
+        members: list[MemberGuess] = []
+        area_missing = False
+        for i in range(1, 5):
+            rect = _get_area_rect(ctx, f'槽位{idx}头像-{i}')
+            if rect is None:
+                area_missing = True
+                continue
+            crop = image[rect.y1:rect.y2, rect.x1:rect.x2]
+            members.append(_identify_crop(crop, templates))
+        if area_missing:
+            members = []   # 该行槽位未建档 → 不返回不完整列表
+        waves.append(WaveInfo(wave_idx=idx, weaknesses=weaknesses, members=members))
+    return waves
 
 
 def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
@@ -477,17 +481,12 @@ def collect_tl_team_info(ctx: SrContext, image: MatLike) -> TlTeamView:
         character_grid = read_character_grid(ctx, image)
     elif tab == '预设编队':
         preset_teams = read_preset_teams(ctx, image)
-    slot1, slot2 = read_team_slots(ctx, image)
-    weaknesses1, weaknesses2 = read_team_weaknesses(ctx, image)
     return TlTeamView(
         stage_name=read_stage_name(ctx, image),
         environment_text=read_environment(ctx, image),
         star_targets=read_star_targets(ctx, image),
         left_tab=tab,
-        slot1=slot1,
-        slot2=slot2,
-        weaknesses1=weaknesses1,
-        weaknesses2=weaknesses2,
+        waves=read_team_waves(ctx, image),
         character_grid=character_grid,
         preset_teams=preset_teams,
     )
