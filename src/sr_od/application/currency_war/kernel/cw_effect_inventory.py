@@ -114,7 +114,7 @@ class BattlefieldEffect:
     first_merge_equip_junk: float = 0.0     # 每位面首次合成进阶装备变垃圾袋概率(变宝为废=0.5;
                                             # 随机面→不建逻辑写,观察收尾)
     salvage_unchosen_supply: bool = False   # 进入补给阶段时发放上一补给阶段未选列(打捞人才库:
-                                            # 发放物 = 世界既有列 SupplyOption 结构,非注册表池;
+                                            # 发放物 = 状态副本既有列 SupplyOption 结构,非注册表池;
                                             # 不入 EconomyEffect——避开经济三分类闭集义务)
     capacity_limit: int = 0                 # 激活期备战席容量(效果账本容量逻辑态桥
                                             # project_effect_capacity 的声明契约字段,字段名
@@ -189,8 +189,8 @@ class CounterKey:
     REFRESH_TOTAL = 'refresh_total'   # 刷新全量累计(免费+付费;二手市场阈值评估)
     REFRESH_PAID = 'refresh_paid'     # 付费刷新累计(长线利好「花费金币进行30次刷新」)
     XP_GRANTED = 'xp_granted'   # 升级窗口已发放节点数(成功经验;写端唯一 = 发放桥 grant_effect_node_xp,窗口耗尽判定读本键)
-    LOST = 'lost'   # 超发货币负债额快照(拿卡拍持有金;写端唯一 = 获得链登记腿播值 kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数,禁猜测写;消费端 = sim 清零/回流两腿世界真值)
-    SHIELD_BANK = 'shield_bank'   # 现金为王护盾记忆量快照(出售退款合计×1000;写端唯一 = 板面重写桥出售支 apply_board_rewrite,与退款权威写入同闸,空场/出售域未全读零记账;伴生数值型世界真值记账,现役零代码消费面)
+    LOST = 'lost'   # 超发货币负债额快照(拿卡拍持有金;写端唯一 = 获得链登记分支播值 kernel/cw_gain_chain.gain_invest_strategy,登记帧金读数,禁猜测写;消费端 = sim 清零/回流两条实现状态副本真值)
+    SHIELD_BANK = 'shield_bank'   # 现金为王护盾记忆量快照(出售退款合计×1000;写端唯一 = 板面重写桥出售支 apply_board_rewrite,与退款权威写入同闸,空场/出售域未全读零记账;伴生数值型状态副本真值记账,现役零代码消费面)
     INTEREST_TOPUP = 'interest_topup'   # 开源节流条件息顶满待消费额(resolved 帽;写端唯一 = cw_gain_chain 捕获函数置数,消费 = sim 节点窗读后清零——置数语义禁累加,窗口异常未消费时累加会放大错发)
 
 
@@ -214,11 +214,11 @@ BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全
 # 出售支按「卡文是否携带发牌条目」两值细分:出售 = 语义本体(清场退款),
 # 发牌条目 = 人力重组卡文附加面、非出售语义固有——素出售卡(大裁员/降本增效/
 # 现金为王)复用 SELL_ALL 值,具发牌条目卡(人力重组)用 _DEAL 值声明;sim 发牌
-# 腿判据集 = 过滤 _DEAL 值派生(cw_sim_backend.SELL_ALL_REWRITE_STRATEGIES),
+# 条目判据集 = 过滤 _DEAL 值派生(cw_sim_backend.SELL_ALL_REWRITE_STRATEGIES),
 # 素出售卡注册不入集,sim 局零假发牌。
 BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售(素语义):清场退款,
                                                         # 无发牌面
-BOARD_REWRITE_SELL_ALL_DEAL: str = 'sell_all_deal'      # 全场出售+发牌腿:清场退款后
+BOARD_REWRITE_SELL_ALL_DEAL: str = 'sell_all_deal'      # 全场出售+发牌条目:清场退款后
                                                         # 再按卡文档发 2★ 随机角色进席
                                                         # (人力重组:2★3费×1+2★2费×2
                                                         # +2★1费×2)
@@ -242,7 +242,7 @@ BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
 # §6.3/§6.4 与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
 # furnace_mutate_pool 已登记先例,tool_use 域),未证零消费。银/金/彩三卡
-# 变异腿同文共用本常量(金 230601/彩 330601 未建条目,差异全在发放条目)。
+# 变异条目同文共用本常量(金 230601/彩 330601 未建条目,差异全在发放条目)。
 EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备变为
                                                        # 同品质的其他装备
 
@@ -268,10 +268,10 @@ class ActiveEffect:
                                  # 插入位置(tick_node)现读递减
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);插入位置现读递减
     anchor_pos: tuple[int, int] | None = None
-    # 条件窗口达成位伴生锚(成功经验「升到8级后,进入接下来3个节点」首例;
+    # 条件窗口达成位伴生基准(成功经验「升到8级后,进入接下来3个节点」首例;
     # 首例 = T-38 设计稿 §2.5,载体辨析权威版本):坐标系 = (位面,轮) 节点序位
     # 元组(cw_node_schedule.NodePos 同形,与 acquired_key 同键);写入端唯一
-    # = 伴生锚方法 :meth:`ActiveEffectInventory.set_xp_window_anchor`(发放桥
+    # = 伴生基准方法 :meth:`ActiveEffectInventory.set_xp_window_anchor`(发放桥
     # grant_effect_node_xp / 主插入位置 _record_lv8_window_start 经它写,零旁路直改
     # ——effect-domain.md「写端全部经 inventory 方法」纪律);一次性语义:
     # 已设置拒绝重写(达成位单调不可改);None = 未达成/未记录。窗口剩余 =
@@ -480,7 +480,7 @@ class ActiveEffectInventory:
         return e.remaining_uses
 
     def consume_uses_up_to(self, spec_id: str, n: int) -> int:
-        """次数类余量批量递减(免费购买腿「接下来 N 次购买免费」;插入位置 =
+"""次数类余量批量递减(免费购买条目「接下来 N 次购买免费」;插入位置 =
         买牌上报单点,免战牌出战上报递减同族)。逐张语义的批量扣减:至
         n 张扣完或余量耗尽,返回实际覆盖张数 = min(n, 递减前余量)——
         k 张购买按张计(k 张 = k 次),部分免费 = 免余量张、余张照付。
@@ -527,7 +527,7 @@ class ActiveEffectInventory:
 
     def set_xp_window_anchor(self, spec_id: str,
                              pos: tuple[int, int]) -> bool:
-        """条件窗口达成位伴生锚写入(一次性:已设置拒绝重写;载体申报 =
+"""条件窗口达成位伴生基准写入(一次性:已设置拒绝重写;载体申报 =
         ``ActiveEffect.anchor_pos`` 字段注)。
 
         条目在场且 anchor_pos 为 None → 写入返回 True;条目不在场或已设置
@@ -634,7 +634,7 @@ class ActiveEffectInventory:
         """装备效果进度推进(单调计数器,§3 模型:事件发生就 +1、永不递减
         永不重置)。返回推进后的累计值;n 非正数 = 调用错显式炸错(单调
         计数器无递减语义)。同 (装备名,装备者) 键天然隔离,不串账;
-        同名装备多件同主合并计数(实例区分无观察锚,合并 = 少发不多发,
+        同名装备多件同主合并计数(实例区分无观察基准,合并 = 少发不多发,
         保守向——见 :func:`settle_copy_machine_participation` 申报)。"""
         if n <= 0:
             raise ValueError(f'n 须为正数(单调计数器只增),得 {n}')
@@ -696,7 +696,7 @@ def env_portal_effects() -> dict[str, EffectSpec]:
         # 升 8 级后 3 节点 +12XP/节点(id 138):条件窗口型 → CONDITIONAL
         # (成长基金到级同族先例)。**不走 N_NODES 余期通道**:登记时点
         #(开局选环境)≠条件达成时点(lv8),余期从登记起递减会提前耗尽——
-        # 窗口状态 = 条目 anchor_pos 达成锚 + XP_GRANTED 单调计数(载体与
+# 窗口状态 = 条目 anchor_pos 达成位 + XP_GRANTED 单调计数(载体与
         # 发放单一源 = kernel/cw_game_state 发放桥 grant_effect_node_xp),
         # duration=PERMANENT 保占位(环境 = 选定后整局在场)。
         '成功经验': EffectSpec(
@@ -704,7 +704,7 @@ def env_portal_effects() -> dict[str, EffectSpec]:
             duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
             payload=ENV_ECONOMY['成功经验'],
             notes='条件窗口:升8级后3节点每节点+12XP;期限排程已落地(载体 = 本条目'
-                  'anchor_pos 达成锚 + XP_GRANTED 单调计数,剩余计算侧导出;发放 = '
+                  'anchor_pos 达成位 + XP_GRANTED 单调计数,剩余计算侧导出;发放 = '
                   'kernel 发放桥 grant_effect_node_xp 节点边界每拍检查,达成当拍不计、'
                   '后继 3 节点各计;主挂点 = 购买经验上报尾段记达成位)'),
         # 每取一张策略 +2×已持有数(id 147):触发面 = 每次取投资策略,TriggerKind
@@ -929,7 +929,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     - 全员晋升(BOARD_REWRITE_UPGRADE_ALL):替换面 = 随机(全场升为高 1 费
       随机角色),不可准确算 → **零逻辑写端,观察收尾**(§5.3 归属判据随机
       分支)——本桥对它零写入,报告作负写端留存证据;附带「获得 2 个拆装扳手」
-      = 装备库存精确增量,已结构化出列(策略卡获得效果腿 =
+      = 装备库存精确增量,已结构化出列(策略卡获得效果条目 =
       cw_gain_effects.PICK_INVEST_EFFECTS['全员晋升'],具名装备授予工厂经
       gain_equipment 直写 gs.equips,精密金面前置 fail-closed 申报在工厂
       docstring),不在本桥建模——本桥只辖板面重写句,装备句经获得链
@@ -961,7 +961,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量逻辑态
     直写桥适用范围,两桥互不越界)。
 
-    **sim 语义申报(适用性/对齐)**:本桥本体不接 sim——sim 世界事实由
+    **sim 语义申报(适用性/对齐)**:本桥本体不接 sim——sim 状态副本事实由
     后端状态副本写入分支真值直写(evidence `sim:` 族,
     `cw_sim_base.SIM_EVIDENCE_PREFIX`)。板面重写族五注册卡按面分述:
     人力重组/大裁员/降本增效/现金为王出售面 = **实机和模拟器两边同链已通**(本桥经获得链在 sim 局真实
@@ -1583,7 +1583,7 @@ def settle_copy_machine_participation(gs: GameState, *,
       备战席单位未上场不计;行字段从未观察(None)= 该排无参战读数,
       跳过不猜;
     - 进度键 = (装备名,装备者 char_id):跨排移动计数随键延续(单调,
-      §3 永不重置);同名装备多件同主合并计数(实例区分无观察锚,合并
+      §3 永不重置);同名装备多件同主合并计数(实例区分无观察基准,合并
       = 成熟放慢的少发向,不多发——多发会造 phantom 单位刷缺陷台账);
     - 成熟落位失败(席满/席未观察)不回退计数——该次成熟已消费,落位
       真值由下一观察帧给出(报告 placed=False 留存证据);
@@ -1627,7 +1627,7 @@ def settle_copy_machine_participation(gs: GameState, *,
 # 分身墨镜→1星银狼 / 分身墨镜Max→2星银狼 / 数据拷贝仪Max→1星银狼LV.999。)
 
 #: 获得后果表(件名 → (送出单位名,星级);表外件 = 无获得后果声明,
-#: 后果函数零写零行为——好运令牌等非专属渠道同锚零差)。
+#: 后果函数零写零行为——好运令牌等非专属渠道同基准零差)。
 #: 协作注(tool-gain-report):冶金炉变异面不走获得链,但采样命中本表
 #: 键集 → 上报侧落 ``furnace_mutate_consequence_candidate`` 留存证据行,
 #: 供实机局判读比对「变异产物是否触发后果」——推翻「变异不触发」即把
@@ -1839,7 +1839,7 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
 
     件名查 :data:`EQUIP_ACQUIRE_CONSEQUENCES`:命中 → 送出单位经
     :func:`grant_bench_unit_cascade` 入席+级联(正常推演);表外件 →
-    零写零行为(非专属渠道同锚零差,含好运令牌
+    零写零行为(非专属渠道同基准零差,含好运令牌
     grant_equip_item 渠道)。
 
     - ``rand`` = 调用通道:False = 确定性入栏通道(write_logic,同源);
@@ -1866,7 +1866,7 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
 # ===== 打捞人才库族:进入补给阶段时点检查(策略域状态副本发放首例)=====
 # 卡面(id 100701,官方原文 cw_invest_data.PLAZA_AUGMENTS):「每次进入
 # 补给阶段后，随机获得一个未被选择的角色及其携带的装备。」——发放域 =
-# 补给未选列(世界既有列,SupplyOption 具名结构,非注册表池)。触发语义
+# 补给未选列(状态副本既有列,SupplyOption 具名结构,非注册表池)。触发语义
 # 按 R-entry 读法建模(披露键 strategy_salvage_trigger_entry_reading):
 # 进入补给阶段 N+1 后的首个成功观察帧消费阶段 N 选定时刻的未选列快照;
 # 局内首个补给阶段无源零发。通道构型 = 检查函数 + 单点接入调用覆盖实机和模拟器两边
@@ -1881,7 +1881,7 @@ def apply_equip_acquire_consequence(gs: GameState, item: str, *,
 
 #: 持卡判定名单集(集合任一成员 ∈ active_strategies 即持卡,精确名单
 #: 匹配):基础卡「打捞人才库」(id 100701)+ 展开卡「打捞人才库+」
-#:(id 100702,主腿同模式,+卡成员 = T-95 批接入调用)。集合语义天然防同持
+#:(id 100702,主条目同模式,+卡成员 = T-95 批接入调用)。集合语义天然防同持
 #: 双发(命中即发放一次,非逐名发放)。
 _SALVAGE_STRATEGY_NAMES: tuple[str, ...] = ('打捞人才库', '打捞人才库+')
 
@@ -1943,14 +1943,14 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
        rand=True);归一失败('')件逐件禁猜 → equips 值不变翻来源 +
        缺陷留证 fail-closed(错名不入账,观察覆盖自愈),已解析件照常
        入账;char-only 列(char 非空 ∧ 装备名全空)= 合法形态,仅角色
-       腿零装备写零缺陷(补给选定上报零装备名分支同构——件名全失读
+       条目零装备写零缺陷(补给选定上报零装备名分支同构——件名全失读
        子况的失配仍由 equips 观察整表覆盖暴露);
     5. **消费即清**:``gs.unchosen_supply`` 写回 None(逻辑态)——同
        阶段观察上报多次(刷新重进重读)第 2 次起字段已清零发,重入幂等。
 
     ``sig`` = 全部写共用渠道签名,必须 logic_action / logic_hook 族
     (唯一插入位置传入观察上报内部的 logic_action 签名,天然满足)。
-    效果串落点 = 随机写 evidence 串本身(char 腿
+    效果串落点 = 随机写 evidence 串本身(char 条目
     ``strategy_salvage:<名>@<star>star`` / 装备条目
     ``strategy_salvage_equip:<件>``)——本函数不在获得链、无
     GainOutcome.effects 载体,logic_rand_outcome 行归组键 = 原随机写
@@ -2030,7 +2030,7 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # 阶段选择后……」——「下 N 个」N = 配额格数(银 1/金 2,单一源 =
 # :data:`_TAKE_ALL_SUPPLY_QUOTA`)。各卡两句两条效果条目分治,登记载体 = 每卡两条
 # EffectSpec(cw_investments.STRATEGY_EFFECTS:canon 键归发放条目,申报键
-# ``'<规范名>#supply_delta'`` 归列数修饰腿,申报键约定权威版本 = 该表全都要·银
+# ``'<规范名>#supply_delta'`` 归列数修饰条目,申报键约定权威版本 = 该表全都要·银
 # 条目注释):
 # - 条目1(列数修饰 -2)= :attr:`BattlefieldEffect.supply_option_delta` 声明
 #   载体,live 读链按实屏识别列数跟随(补给 op 模块头「列数以
@@ -2039,7 +2039,7 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # - 条目2(配额 N 逐事件全捞)= 本检查函数。插入位置 = 补给选定上报
 #   report_action_pick_supply_param 三个 applied 出口前(R-choice 时点——
 #   卡面「下 N 个……选择后」字面自证;与打捞人才库 R-entry 插入位置分立,两卡
-#   触发面读法各有字面锚互不冲突:打捞 = 进入时点,本族 = 选定后时点,官方
+#   触发面读法各有字面依据互不冲突:打捞 = 进入时点,本族 = 选定后时点,官方
 #   文本对照已在打捞条目注册注释背书)。
 # 配额消耗制 = **事件消耗制**:每个 applied 选择事件耗 1 格(含内容全未知
 # 兜底轮——兜底轮是游戏侧真实选择,配额随之消耗;模型无源零发放,漏记列由
@@ -2085,7 +2085,7 @@ _TAKE_ALL_GRANT_STAR: int = 1
 #:   装备」无「钻」字;选定列的钻走 sim ``_on_supply_picked`` 派生,未选列
 #:   无对应机制文)→ 零建模,列内装备随列发放;实采判据 = 持卡局让钻列
 #:   留选,对照 diamond_count 轨迹。
-#: - sim_failclosed_decision_leg:sim 局决策腿未接 → 未选集恒 None →
+#: - sim_failclosed_decision_leg:sim 局决策条目未接 → 未选集恒 None →
 #:   发放侧恒零发放(事件消耗一次性标志位照设 = 一笔无害簿记写;承打捞族同族语义,
 #:   独立键因函数/名单集分立)。
 STRATEGY_TAKE_ALL_ASSUMPTION_KEYS: tuple[str, ...] = (
@@ -2128,7 +2128,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
        列 = 合法形态,零装备写零缺陷);
     6. **消费即清**:``gs.unchosen_supply`` 写回 None(逻辑态)——重入幂等。
 
-    效果串落点 = 随机写 evidence 串本身(char 腿
+    效果串落点 = 随机写 evidence 串本身(char 条目
     ``strategy_take_all:<名>@<star>star`` / 装备条目
     ``strategy_take_all_equip:<件>``;logic_rand_outcome 行归组键 = 原随机写
     evidence,状态容器 logic_evidence 携带)。``sig`` = 全部写共用渠道签名
@@ -2150,7 +2150,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
         return
     # 事件消耗一次性标志位(门 3):逐未耗尽卡追加一键,先于发放分支——兜底轮(源不可
     # 记录)也在此封账;序号 = 写入时点「已耗+1」快照(审计可读,判定只数
-    # 前缀不依赖序号);evidence 与 char 腿同族前缀(账面归组一致)。
+    # 前缀不依赖序号);evidence 与 char 条目同族前缀(账面归组一致)。
     for name in due:
         latch = f'{_TAKE_ALL_LATCH_PREFIX}{name}#{spent[name] + 1}'
         gs.write_logic(gs.strategy_conditional_done, done + (latch,),
@@ -2289,7 +2289,7 @@ def apply_on_merge_refresh_grant(gs: GameState, *, merges: int,
 # 卡面(官方原文 cw_invest_data.PLAZA_AUGMENTS,id 102901):「刷新商店时，
 # 若刷新的角色中出现2个相同的角色，获得1金币。获得4次免费刷新。」——金条目 =
 # 刷新事件条件金(插入位置 = 刷新上报函数随机态实现后,手动动作唯一生产点;burst
-# 腿归获得链登记分支,本函数零辖)。「刷新商店时」辖域 = 仅手动刷新(刷新触发
+# 条目归获得链登记分支,本函数零辖)。「刷新商店时」辖域 = 仅手动刷新(刷新触发
 # 闭集 = 节点切换 + 手动,docs/game/currency_war/research/economy.md;节点窗
 # 自动全刷 = sim deal_shop 另口,不经刷新上报),残余不确定性走披露键实采。
 # 仅 sim 装配态执行:sim 采样即状态副本真值、判定成立经观察通道发金;live 采样是
@@ -2299,7 +2299,7 @@ def apply_on_merge_refresh_grant(gs: GameState, *, merges: int,
 #: sim 后端状态副本写入分支外部事件写,本条目是 kernel 条件发放非后端事件,形态先例 =
 #: cw_env_grants._DIAMOND_EVIDENCE 同款申报)。正规流程下金位在每次刷新动作前
 #: 经商店入口观察锚定(source=observation),本笔覆盖不触失配对账;若未来出现
-#: 无观察衔接的连续刷新链,本笔与扣费腿 logic 写的窗口内差异会照真走失配
+#: 无观察衔接的连续刷新链,本笔与扣费条目 logic 写的窗口内差异会照真走失配
 #: 三分流(信号正确:流程跳过了入口观察)。
 _REFRESH_PAIR_GOLD_EVIDENCE: str = 'strategy_refresh_pair_gold'
 
@@ -2415,7 +2415,7 @@ def apply_effect_expiry_grants(gs: GameState, expired: list[ActiveEffect], *,
                                rng: random.Random | None = None) -> None:
     """到期发放条目(策略源 N_NODES 到期面首个消费客户端;插入位置 = 节点边界
     tick 到期段 ``_tick_effect_boundary_impl``,整段在 tick_effect_boundary
-    的 try/except best-effort 内,腿内异常不毒化派生链)。
+    的 try/except best-effort 内,条目内异常不毒化派生链)。
 
     逐到期条目读 ``payload.expiry_simple_equips``(鸭子缺省 0 = 无到期发放,
     同窗异 payload 条目天然零发放),>0 逐件自简易池
@@ -2430,12 +2430,12 @@ def apply_effect_expiry_grants(gs: GameState, expired: list[ActiveEffect], *,
     变化时重派逐次授予、现役不设防。
 
     ``rng`` 注入形参(缺省 None = 函数内缺省 ``random.Random()``):kernel
-    tick 无流键注入点,sim 批量该腿不可按 seed 复现(非战斗/非收入面,统计
+    tick 无流键注入点,sim 批量该条目不可按 seed 复现(非战斗/非收入面,统计
     影响限装备库存面;披露键 strategy_expiry_grant_simple_pool_uniform);
     注入槽供测试钉样与后续接流键留口。
     """
     # kernel 反向模块级零 import 契约:cw_gain_chain 模块级依赖 cw_game_state
-    #(后者 import 本模块),反向模块级即环——函数内惰性取(合成事件腿
+    #(后者 import 本模块),反向模块级即环——函数内惰性取(合成事件条目
     # action_sampling_rng 同款先例)。
     from sr_od.application.currency_war.kernel.cw_gain_chain import (
         gain_equipment,
