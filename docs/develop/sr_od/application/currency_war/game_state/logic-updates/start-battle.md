@@ -47,7 +47,7 @@ StartBattle 不在 `cw_vocab.py::Action` 联合内——纯转移动作(只切�
 
 ## 9. 依据
 
-[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`operations/cw_op/cw_start_battle_action.py` 模块头(执行序与旧发出后验证机制整删申报;身身缝 = `prep_actions.py::PrepActionExecutor._start_battle` 薄委托);[flow/action_exec.md](../../flow/action_exec.md) §7(动作发出重发/连败停机流程防线)。
+[../action-logic-state.md](../action-logic-state.md) §5(转场类动作逻辑态 = 空 + 免战牌态);[fields.md](../fields.md) §3.2.19(免战牌激活态与剩余跳过次数)/§4.2 出战行(免战分支与 G9 暂定表述)/§4.2 结算覆盖行;`operations/cw_op/cw_start_battle_action.py` 模块头(执行序与旧发出后验证机制整删申报;替身函数接缝 = `prep_actions.py::PrepActionExecutor._start_battle` 薄委托);[flow/action_exec.md](../../flow/action_exec.md) §7(动作发出重发/连败停机流程防线)。
 
 ## 10. 同族:OpenShop(开店)
 
