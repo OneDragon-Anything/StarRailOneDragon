@@ -1,7 +1,7 @@
 # 02 骨架行为层
 
 > 数字来源标注：【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值（详见图例 = README 术语表）。
-> 本篇整合来源：`archive/design/DESIGN_MANDATE_LAYER.md`（骨架行为层根设计件；已删除，git 历史可溯）——本篇编其现行语义（含与用户打法研究同步后的 M3/M4/§3.3/§3.4 口径），设计期迁移路径与批注史不搬。实现载体 = `src/sr_od/application/currency_war/strategies/impl/mandate_v1/`（证明/骨架/判据/状态函数分层），单一核 **mandate_v1**（生产注册壳 = `strategies/mandate_v1_strategy.py`；设计期旧址 `decision/cw4/` 已随 decision/ 整包删除终结，b94e9cfb——现行唯一策略载体即 mandate_v1）。
+> 本篇整合来源：`archive/design/DESIGN_MANDATE_LAYER.md`（骨架行为层根设计件；已删除，git 历史可溯）——本篇收其现行语义（含与用户打法研究同步后的 M3/M4/§3.3/§3.4 口径），设计期迁移路径与批注史不搬。实现载体 = `src/sr_od/application/currency_war/strategies/impl/mandate_v1/`（证明/骨架/判据/状态函数分层），单一核 **mandate_v1**（生产注册壳 = `strategies/mandate_v1_strategy.py`；设计期旧址 `decision/cw4/` 已随 decision/ 整包删除终结，b94e9cfb——现行唯一策略载体即 mandate_v1）。
 > 前置阅读：[00_framework.md](00_framework.md)、[01_math_framework.md](01_math_framework.md)。
 > 术语：**骨架义务** = 不做会输的动作（无条件执行）；**EV** = 做了更赚的优化动作（只增不减）；**证明层** = 决定为谁做（终局阵容选择）。
 
@@ -64,30 +64,30 @@
 | 缺失输入 | 骨架行为 | 禁止行为 |
 |---|---|---|
 | 池参数/期望刷新数未标定 | M2 照买（买本身无损，[11]） | 拒买 |
-| 板面编敛度/结构可达计数异常 | 退化为「与任一 TRANSITION_SYSTEMS 成员重叠即终局阵容内」（executor 内置缺省表明文编录） | 判序 6 停买 |
+| 板面收敛度/结构可达计数异常 | 退化为「与任一 TRANSITION_SYSTEMS 成员重叠即终局阵容内」（executor 内置缺省表明文收录） | 判序 6 停买 |
 | M3 触发输入（存在性分支结构谓词读数）缺失 | 退「等级落后于上阵人数需求」朴素判据 | 整局 defer（XP 支出不可逆，缺输入默认不触发 ≠ 默认触发，退可观测朴素判据） |
 | 终局阵容内/外分类不确定 | 该件**不卖**（可逆方向取保守）+ 记待判 | 卖出 |
-| sell_refund 注册表读数缺失（运行时损坏态） | 分面：买侧风险界消费位缺 ⇒ 拒买；卖面消费位缺 ⇒ 拒绝评估、不新增卖出 + 报警（槽位 None + 强制停，与 λ 表损坏态同款守卫；「1★ 全额退」假设的合法适用范围编窄为买面/EV 下界场景） | 按「1★ 全额退」假设放行卖出评估 |
+| sell_refund 注册表读数缺失（运行时损坏态） | 分面：买侧风险界消费位缺 ⇒ 拒买；卖面消费位缺 ⇒ 拒绝评估、不新增卖出 + 报警（槽位 None + 强制停，与 λ 表损坏态同款守卫；「1★ 全额退」假设的合法适用范围收窄为买面/EV 下界场景） | 按「1★ 全额退」假设放行卖出评估 |
 
 **原则：可逆动作（买/部署）缺输入 → 默认做；不可逆动作（卖/刷）缺输入 → 默认不做。** fail-closed 从「全局默认」改为「按动作可逆性定向配置」。数学侧镜像（01 §6）：未标定参数在 EV 层一律 fail-closed（不产生追加动作），**绝不向骨架层渗漏为一个否决**。
 
 ## 6. fail-closed 的正确落点（保留清单）
 
 1. **卖出终局阵容内件/骨架件/通用插件**：P41 ②（不卖 fail-closed 分类表；01 §3.2 同条引法）、form 破坏卖出拦截（破坏成型体系形态的卖出一律拦截）；卖出 2★/3★ 有手续费且不可逆。**例外（自救扩展面）**：溢出告警自救场景对 P78 资格仲裁族（同 visit 线内禁卖/核心与转线件/种子）全通道豁免——线内件按价值序整体置末层后仍可卖（告警解除的零停机出口优先于硬资格;仅辖自救场景,其余卖出场景不豁免;[22_prep_screen.md](22_prep_screen.md) §1 第 0 步）。
-2. **无合格集刷新**：P40（战斗向刷新编益在无目标时为负）、[1]；刷新是纯成本，无「活期资产」属性（三段式刷新判据 = [11_shop_decisions.md](11_shop_decisions.md) §3）。
+2. **无合格集刷新**：P40（战斗向刷新收益在无目标时为负）、[1]；刷新是纯成本，无「活期资产」属性（三段式刷新判据 = [11_shop_decisions.md](11_shop_decisions.md) §3）。
 3. **升级支出拦截（现行态）**：拦截层（调度利息保全门/λ 顾问/全段式预算闸/血线地板解锁/hp 维拦截门族）已删除,升级触发 = 最优概率带单判据三分派（无停留门外硬触发,[11_shop_decisions.md](11_shop_decisions.md) §2）;保留拦截 = 资格门链六道门序（奖励帧抑制/等级帽/击数/经验批支付门〔币种通式〕/升级资金线门——现金口径花后守 saturation_line,唯一出辖 = 终局域 ALL IN + 买断制下界 0）——单一源 = [11_shop_decisions.md](11_shop_decisions.md) §2 资格门链行与拦截层处置行。
 4. **序 6 纯冗余停买**：[13] 三分法第三类（适用范围 = 边际贡献 0 的纯冗余）。
 
 ## 7. 与决策机器的关系（权限划界）
 
-落地方式（现行态）= **mandate_v1 单核直接替换**：设计期「decision/cw4 与 decision_v2 入存跑三形态 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。装配形态 = **单动作画面 op 架构**（规格定案 + 已写入代码，as-built）：骨架/EV 动作不做整波发出，由策略器逐动作提案——商店域策略器 = 全函数（f(期望态) → 动作，恒可用 CloseShop 表达「无动作可做」）；备战域策略器返回恰一个动作，**本帧无动作 = 发出重观察动作 `CwActionObsParam(scope='outer_loop')` 返回主循环重新识别画面**（零动作同样以显式动作表达;`CwAction | None` 返回契约已停用,现行口径 = `kernel/cw_vocab.py::CwActionObsParam` 的 scope 语义——`in_place` = 当前画面重新观察上报/环内续跑,`outer_loop` = 返回主循环）。**只读期望态**（入口观察生成、逐动作纯计算逻辑态更新，循环内零读屏）；**优先级序 = 单动作选择序**（备战域 = 十段全扫工序序,[22_prep_screen.md](22_prep_screen.md) §1;商店域 = 会话循环买入序,[11_shop_decisions.md](11_shop_decisions.md) §1 六序,逐帧恰取一个动作）。权限划界（原八台机器的处置语义，仍是权威）：
+落地方式（现行态）= **mandate_v1 单核直接替换**：设计期「decision/cw4 与 decision_v2 并存跑三形态 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。装配形态 = **单动作画面 op 架构**（规格定案 + 已写入代码，as-built）：骨架/EV 动作不做整波发出，由策略器逐动作提案——商店域策略器 = 全函数（f(期望态) → 动作，恒可用 CloseShop 表达「无动作可做」）；备战域策略器返回恰一个动作，**本帧无动作 = 发出重观察动作 `CwActionObsParam(scope='outer_loop')` 返回主循环重新识别画面**（零动作同样以显式动作表达;`CwAction | None` 返回契约已停用,现行口径 = `kernel/cw_vocab.py::CwActionObsParam` 的 scope 语义——`in_place` = 当前画面重新观察上报/环内续跑,`outer_loop` = 返回主循环）。**只读期望态**（入口观察生成、逐动作纯计算逻辑态更新，循环内零读屏）；**优先级序 = 单动作选择序**（备战域 = 十段全扫工序序,[22_prep_screen.md](22_prep_screen.md) §1;商店域 = 会话循环买入序,[11_shop_decisions.md](11_shop_decisions.md) §1 六序,逐帧恰取一个动作）。权限划界（原八台机器的处置语义，仍是权威）：
 
-> 术语注（首次出现）：**逻辑态** = 动作执行后不经观察、按游戏规则推算入直写状态容器(GameState)的预期状态（例：买牌后按规则推金币 −40、备战席 +1）；真值以下一帧实际观察为准（观察与推算不符时，以实际观察为准）。
+> 术语注（首次出现）：**逻辑态** = 动作执行后不经观察、按游戏规则推算并直写状态容器(GameState)的预期状态（例：买牌后按规则推金币 −40、备战席 +1）；真值以下一帧实际观察为准（观察与推算不符时，以实际观察为准）。
 
 | 机器 | 处置 |
 |---|---|
 | buy | 升格骨架（EV 剥离）：序 1/序 2 走 M2 义务通道；序 3-5 留 EV；利息规则域只对 EV 买生效 |
-| sell | 升格骨架（单向）：M4 腾位方向义务化；终局阵容内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed）。**原姊妹出口（第二个卖出出口；登记源 = [14_p1_consume_arms.md](14_p1_consume_arms.md) §9.3）已随部署统一批整链编编退役**——部署换人不再借用卖出：换人 = 统一部署搜索定型 + 统一拖动交换，被换下者回备战席后按统一让位序参与卖出评估（评估器场景 deployed 支，[11_shop_decisions.md](11_shop_decisions.md) §4.0；判据 = [24_deploy_segment.md](24_deploy_segment.md) §1）；M4 之外不再有第二个独立卖出义务出口 |
+| sell | 升格骨架（单向）：M4 腾位方向义务化；终局阵容内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed）。**原姊妹出口（第二个卖出出口；登记源 = [14_p1_consume_arms.md](14_p1_consume_arms.md) §9.3）已随部署统一批整链并入统一结构后退役**——部署换人不再借用卖出：换人 = 统一部署搜索定型 + 统一拖动交换，被换下者回备战席后按统一让位序参与卖出评估（评估器场景 deployed 支，[11_shop_decisions.md](11_shop_decisions.md) §4.0；判据 = [24_deploy_segment.md](24_deploy_segment.md) §1）；M4 之外不再有第二个独立卖出义务出口 |
 | levelup | 升格骨架：M3 判据 = 最优概率带单判据三分派（`stay_gate`/`natural`,11 §2 单一源）；cap 感知；单帧原子整批发射一次买齐；资金线门现金口径守 saturation_line |
 | opening / deploy | 升格骨架：M5 / M1（deploy 为核心修复位） |
 | refresh / streak_money | 保持 EV |
@@ -96,14 +96,14 @@
 
 ## 8. 可测命题（判据骨架）
 
-**命题 A（骨架-only，EV 全关进 sim）**：n=40 同 seed 配对，基线 = sim 对照分支（mandate_v1 现行全核形态的代码版本对照；设计期 legacy_v2/decision_v2 基线已随 decision/ 整包删除终结，b94e9cfb）。判前锁预期：零动作轮 <5%、花费率 ≥0.6、bench 满拒买 <100 笔、SellBench ≥200 笔、位面 1 升级投入金 ≥5000、CompTransaction ≥700、成型率（≥2 体系）≥80% 局。位面 1 生存质量验编尺 = sim 四指标（位面 1 出口金/过渡凑齐率/终局金/终局阵容完成率，基线带随批预注册，现行读数 = [11_shop_decisions.md](11_shop_decisions.md) §5 新基线行；hp 读数不作验编判据——hp 是结果读数非质量闸，00 §3）。目标②（过渡阵容稳定过位面 1）：位面 2 入口率 100% + 位面 1 零死亡 + 位面 1 结束时双体系 ≥80% + 哨兵不越线。未达 = 假设证伪，回 §1 重新归因，禁调参续跑。
+**命题 A（骨架-only，EV 全关进 sim）**：n=40 同 seed 配对，基线 = sim 对照分支（mandate_v1 现行全核形态的代码版本对照；设计期 legacy_v2/decision_v2 基线已随 decision/ 整包删除终结，b94e9cfb）。判前锁预期：零动作轮 <5%、花费率 ≥0.6、bench 满拒买 <100 笔、SellBench ≥200 笔、位面 1 升级投入金 ≥5000、CompTransaction ≥700、成型率（≥2 体系）≥80% 局。位面 1 生存质量验收尺 = sim 四指标（位面 1 出口金/过渡凑齐率/终局金/终局阵容完成率，基线带随批预注册，现行读数 = [11_shop_decisions.md](11_shop_decisions.md) §5 新基线行；hp 读数不作验收判据——hp 是结果读数非质量闸，00 §3）。目标②（过渡阵容稳定过位面 1）：位面 2 入口率 100% + 位面 1 零死亡 + 位面 1 结束时双体系 ≥80% + 哨兵不越线。未达 = 假设证伪，回 §1 重新归因，禁调参续跑。
 
 **命题 B（骨架+EV 增量对照）**：两形态同 seed（骨架-only / 骨架+EV）经 sim 代码版本对照（设计期三形态对照含 legacy_v2 基线，已随 decision/ 整包删除终结）。EV 层存在的合法性检验：骨架+EV 相对骨架-only 无任何主指标增量 ⇒ EV 层降权为可选（优化器必须证明自己值钱）。**A/B 对照结论只作披露与假设检验，不作删除/换核触发**——验证权归证明与预注册判据（01 §3.4 同口径）。
 
-> 注：判前锁版本与判据集的现行态以实现批预注册件为准；本节编设计期判据骨架。
+> 注：判前锁版本与判据集的现行态以实现批预注册件为准；本节收设计期判据骨架。
 
 ## 9. 与其他篇的接缝
 
 - 危机响应架构层（死亡风险承接裁决记录）= 00 §4；升级拦截层与 M3 的接缝见本篇 §3 M3 行与 [11_shop_decisions.md](11_shop_decisions.md) §2；hp 使用边界（合法消费面闭集）= 00 §3。
 - M2 序 1/序 2 的「序」定义 = [11_shop_decisions.md](11_shop_decisions.md) §1；证据门 = [12_line_and_intention.md](12_line_and_intention.md) §1。
-- 骨架动作的发出载体（单动作选择序、动作类型清单、结束本次访问的 op 集（终结 op））= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（已写入代码，as-built：整波发出与截断器已停用，截断点语义由终结 op 吸编；执行载体 = `cw_shop_action_ops.py` 单动作循环,动作 op = `CwActionXxxOp`(`SrOperation` 子类)op 内直调自己的上报函数；期望态推进 = op 自上报单点 `kernel/cw_action_report/report_action_<snake>_param`（快照与升星分支内聚于买牌函数）;execute+project 逻辑态推算契约(前身)已删除,策略域零 simulate 前瞻消费——用户裁定 2026-09-12 纯规则路线）。
+- 骨架动作的发出载体（单动作选择序、动作类型清单、结束本次访问的 op 集（终结 op））= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（已写入代码，as-built：整波发出与截断器已停用，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 单动作循环,动作 op = `CwActionXxxOp`(`SrOperation` 子类)op 内直调自己的上报函数；期望态推进 = op 自上报单点 `kernel/cw_action_report/report_action_<snake>_param`（快照与升星分支内聚于买牌函数）;execute+project 逻辑态推算契约(前身)已删除,策略域零 simulate 前瞻消费——用户裁定 2026-09-12 纯规则路线）。
