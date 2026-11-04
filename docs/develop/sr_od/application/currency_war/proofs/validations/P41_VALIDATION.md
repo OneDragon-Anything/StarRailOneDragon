@@ -6,7 +6,7 @@
 
 ## 0. 阅读门覆盖声明
 
-已读:p41 全文、`math_proofs.md` P41 索引行、注册表直调(`cw_shop_odds.py` 全文关键面:REFRESH_PROB/SHOP_SLOTS/POOL_COPIES_PER_CARD/DISTINCT_CARDS_PER_COST/`_refresh_dist`/`expected_refreshes`/ROTATION_CHANCE;`cw_state.sell_refund` + `_SELL_MULT`;`cw_economy.SHOP_REFRESH_COST=2`)、economy.md §1/§2/§2.1/§3(卖出退金/免费操纵/卖回还池不变量)、user_playstyle [22]/[31]/[32]/[34](囤积判据/梯队/腾席/购买序)、06_input_model §3(注册表地图)、merge_mechanics §2.5(经 p41 引证口径)、`MATH_REVALIDATION_PLAN.md`(公理与⑤门)、`MATH_EMPIRICAL_ATTACK.md`(V_power 攻击)、`TUNING_INVENTORY.md` 条 1/2/24、`P47_VALIDATION.md`/p47 单篇联动行(L 重锚)、`AB_R2/R3_ATTRIBUTION.md`/`AB_FAIL_ATTRIBUTION.md`/`DESIGN_MANDATE_LAYER.md`(43 vs 287 账本)、(fail-closed 缝)、cw3 归档 `calibration.py`/`input_contract.py`(u_by_cost/h_horizon 注入链)、`p41_check.py` 亲跑(ALL ASSERTIONS PASSED)。
+已读:p41 全文、`math_proofs.md` P41 索引行、注册表直调(`cw_shop_odds.py` 全文关键面:REFRESH_PROB/SHOP_SLOTS/POOL_COPIES_PER_CARD/DISTINCT_CARDS_PER_COST/`_refresh_dist`/`expected_refreshes`/ROTATION_CHANCE;`cw_state.sell_refund` + `_SELL_MULT`;`cw_economy.SHOP_REFRESH_COST=2`)、economy.md §1/§2/§2.1/§3(卖出退金/免费操纵/卖回还池不变量)、user_playstyle [22]/[31]/[32]/[34](囤积判据/梯队/腾席/购买序)、06_input_model §3(注册表地图)、merge_mechanics §2.5(经 p41 引证口径)、`MATH_REVALIDATION_PLAN.md`(公理与⑤门)、`MATH_EMPIRICAL_ATTACK.md`(V_power 攻击)、`TUNING_INVENTORY.md` 条 1/2/24、`P47_VALIDATION.md`/p47 单篇联动行(L 重新引用)、`AB_R2/R3_ATTRIBUTION.md`/`AB_FAIL_ATTRIBUTION.md`/`DESIGN_MANDATE_LAYER.md`(43 vs 287 账本)、(fail-closed 缝)、cw3 归档 `calibration.py`/`input_contract.py`(u_by_cost/h_horizon 注入链)、`p41_check.py` 亲跑(ALL ASSERTIONS PASSED)。
 **无交集跳过声明**:`data/characters/` 72 篇卡面、`final_comps/` 全集、`sources/` 外部攻略、combat/board_structure——与「卡池再遇/退金/槽定价」无数值交集(卡面属性不进 q/P_shop/refund 式,已由注册表直调替代),特此声明。
 
 ## 1. 门① 内部推导(卖出主式 + V_opt 结构)
@@ -19,12 +19,12 @@
 - **残余张力 A(已声明)**:L7 5费 C_rescue=360.8 超常态金位 6 倍——按证明自己的金可行性截断规则该通道应被剔除、V_opt 塌缩到 A7 下界,但表值 51.2 仍按该通道计并被 p46 消费。A4 双侧声明覆盖了方向(囤侧保守/经 E_rev 传导的经济侧不保守),但「表值依赖不可执行通道」这一点应在消费处显式带截断提示,列为修正建议 3。
 - **残余张力 B(已声明)**:带序仅 L7-L8 成立、独立档间 u 扰动 12/32 翻序——证明诚实锁定且给了相邻带间隔(2.28/1.15/9.13/1.61),我方亲跑官方脚本复核翻序数精确一致(12/32、45/243)。
 
-## 2. 门② 锚点直调(注册表数值复核)
+## 2. 门② 引用点直调(注册表数值复核)
 
 **判定:过。**
 
 - `DISTINCT_CARDS_PER_COST` 直调 = {1:20, 2:15, 3:14, 4:14, 5:9}、`POOL_COPIES_PER_CARD` = 27/27/9/9/9、`SHOP_SLOTS`=5、`SHOP_REFRESH_COST`=2——与 p41 数据源声明逐项一致。
-- `REFRESH_PROB` L7-L10 各档 p 值直调后重算 P_shop/1/P/C_rescue/P_miss/V_opt:20 格全命中(誊录无漂移)。口述锚点 [22]③ 四组独立复算:1费@L5 = 9.3 轮 ∈[7,15] ✓;5费@L8 60.4/@L7 180.4 轮 ✓;C_rescue 120.8/360.8 金(口述 120-360 的圆整源)✓;5费@L9 18.4 ∈[8,18] 邻域 ✓、@L10 7.6 轮出带(证明已诚实声明 4.9% 按区间带 [6,10] 命中——带命中非逐字命中,口径合规)。
+- `REFRESH_PROB` L7-L10 各档 p 值直调后重算 P_shop/1/P/C_rescue/P_miss/V_opt:20 格全命中(誊录无漂移)。口述引用点 [22]③ 四组独立复算:1费@L5 = 9.3 轮 ∈[7,15] ✓;5费@L8 60.4/@L7 180.4 轮 ✓;C_rescue 120.8/360.8 金(口述 120-360 的圆整源)✓;5费@L9 18.4 ∈[8,18] 邻域 ✓、@L10 7.6 轮出带(证明已诚实声明 4.9% 按区间带 [6,10] 命中——带命中非逐字命中,口径合规)。
 - `expected_refreshes(k=1, c=0)` vs 独立近似 1/P_shop:全 20 格相对差 ≤0.6%(A2 声明 <2% 成立且有余量)。注:验证首跑曾得 6% 差,系我方误把 `expected_refreshes` 第 4 参 `c`(同费非目标已拿走数)传成 cost——签名语义易混,但证明与官方脚本口径正确,非证明之罪。
 - `sell_refund` 直调:1★ = [1,2,3,4,5](全额)✓;2★ = [3,5,8,11,14](1费 +3 无费、cost≥2 −1)✓ 与经济 §3/live 实测(2★1费=+3)一致;3★=cost×9−1 系用户记忆口径 🟡,证明的 fee 消费(p46 差额 1)同源——继承注册表证据等级,非 p41 新增风险。
 
@@ -42,7 +42,7 @@
 
 **判定:半过——判据的数学侧无反例,但「判据→行为」的落差已在 AB 账本坐实,证明侧有可归因的辖域缺口。**
 
-- **账本事实**(AB_R3_ATTRIBUTION / DESIGN_MANDATE_LAYER):SellBench r2=0 → r3=43 笔 vs 旧侧 287;bench 满拒买 1163 笔/3114 金 vs 旧侧 13/44;拒买峰值轮与战斗败损失峰值轮逐轮重合。**归因链**:①r2 的 0 笔 = u=None fail-closed(判据侧,数学侧是「未标定不可定价」纪律的代价);②r3 的 43 笔 = 分类判据要求「与锁定线零重叠才卖」,发散板面上锁定线不存在/不收敛 → 判据过严——**这是 p41 ② 分类判据表的辖域缺口**:其骨架/贯穿定义以「当前目标 comp K」为锚,未给未定型期(K 未锁定)与危局轮的卖出条款;后续 DESIGN_MANDATE_LAYER M4(「危局无条件卖最弱垫件」+ 线外零重叠硬出口)是对该缺口的补全,其纪律依据([32] bench 满→先卖杂件)在 p41 引证面内但未进 ② 的判据表。**落差主体是「没做/没接通」(实现通道),判据数学式本身无被证伪的实例**——43 笔已卖出的每一笔与不等式方向一致,无「该卖没判卖由公式错导致」的证据。
+- **账本事实**(AB_R3_ATTRIBUTION / DESIGN_MANDATE_LAYER):SellBench r2=0 → r3=43 笔 vs 旧侧 287;bench 满拒买 1163 笔/3114 金 vs 旧侧 13/44;拒买峰值轮与战斗败损失峰值轮逐轮重合。**归因链**:①r2 的 0 笔 = u=None fail-closed(判据侧,数学侧是「未标定不可定价」纪律的代价);②r3 的 43 笔 = 分类判据要求「与锁定线零重叠才卖」,发散板面上锁定线不存在/不收敛 → 判据过严——**这是 p41 ② 分类判据表的辖域缺口**:其骨架/贯穿定义以「当前目标 comp K」为引用,未给未定型期(K 未锁定)与危局轮的卖出条款;后续 DESIGN_MANDATE_LAYER M4(「危局无条件卖最弱垫件」+ 线外零重叠硬出口)是对该缺口的补全,其纪律依据([32] bench 满→先卖杂件)在 p41 引证面内但未进 ② 的判据表。**落差主体是「没做/没接通」(实现通道),判据数学式本身无被证伪的实例**——43 笔已卖出的每一笔与不等式方向一致,无「该卖没判卖由公式错导致」的证据。
 - **sim 对拍登记成待办**:p41 自检清单 1-6(V_opt 分档 A/B、卖出 on/off、槽定价 vs 固定阈值、u/H 敏感性、截止项、银狼分支)均未跑——门④ 的 sim 侧证据缺口已登记,如实登记。
 - **V_power=0 的攻击方向与观测行为相反**(攻击预测「卖多了」,观测是「卖少了」):说明 43 vs 287 的根因不在 V_power 计价,而在 u/H 闸门与分类辖域——两问题独立,均需修,不可互相顶替。
 
@@ -52,7 +52,7 @@
 
 - **u_x / H_x(🔴)**:首版带(0.05/0.4/1.0/0.8/0.15;H=10)在证明中如实挂「待标定最大项」并锁进 fail-closed 缺省(u=None→持有)——证明姿态合规。违规在注入链:calib_v1 把首版带按**点值无 CI** 注入 `decide_sell` 的 V_opt 定价(TUNING_INVENTORY 条 1/2 已判违规,本验证复核同意):u 无 CI 点值进卖出闸门 = 公理「拟合常数当闸门一律禁止」的明令形态;H 的语料度量被「买入即上场」删失属结构性不可识别,带 [6,14] 全域决策翻转分析缺失(H 翻序容差仅 1-2 倍,p41 自检④自证敏感)。缓解事实:cw3 为归档代码,生产未消费;fail-closed 缺省路径保留。
 - **V_power 按 0 计价(🔴,点名攻击项)**:与 p46-O/p39-w 同型「声明≥0 不货币化 = 按 0 计价」(MATH_EMPIRICAL_ATTACK 判漏项实锤,P51 实测等待代价 ~3 金/轮直接损失 + 死亡截断清零)。p41 的披露与护栏合规,但公理下这是**必须补账的缺省项**,不是可长期悬置的符号项。**消费边界核验**:p41 [39]/[40] 合规检查无任何 HP 输入、无 hp_to_gold 换算——当前不违纯金流公理;后续若货币化,**禁走 hp_to_gold(P15v2/P51 裁定),唯一合法通道 = λ_death 概率侧(P51 W_floor 形态:带 CI、作比较项不作闸门)**。
-- **平面带(1-2/3-8/≥30)**:已被 L 联动批降级为「L7 锚点展示序,不作消费接口」,消费规范改为二维表取格 vs L(g,c,R,Ī) 现算——公理要求的闸门降级**在证明文本内已完成**,本验证确认索引行与正文一致。Ī 的实证分布无 CI 属 p47 侧已登记待办(P47_VALIDATION 已判),不记 p41。
+- **平面带(1-2/3-8/≥30)**:已被 L 联动批降级为「L7 引用点展示序,不作消费接口」,消费规范改为二维表取格 vs L(g,c,R,Ī) 现算——公理要求的闸门降级**在证明文本内已完成**,本验证确认索引行与正文一致。Ī 的实证分布无 CI 属 p47 侧已登记待办(P47_VALIDATION 已判),不记 p41。
 - **i_bar/刷价/池参数**:全部【注】注册表溯源,合规。
 
 ## 最终判决
