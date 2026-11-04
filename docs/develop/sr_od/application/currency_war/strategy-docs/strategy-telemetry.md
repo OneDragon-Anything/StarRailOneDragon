@@ -13,7 +13,7 @@
 | `strategy_id` | str | 策略器唯一 id(`CwStrategy.STRATEGY_ID`;文件名与渲染发现键同源) | wrapper |
 | `schema_version` | int | 行格式版本(常量 `DECISION_RECORD_SCHEMA_VERSION = 1`,声明位 `strategies/impl/cw_strategy.py`;信封键闭集演进时递增) | wrapper |
 | `dseq` | int | 本局决策序号,自 1 起按实例自增(实例不跨局 → 按局天然清零) | wrapper |
-| `dtag` | str | 决策关联锚,格式 `<strategy_id>:<dseq>`;与同帧动作回执行 `receipt['dtag']` 同值(回执侧 = kernel 决策上下文槽,`kernel/cw_decision_ctx.py`) | wrapper |
+| `dtag` | str | 决策关联引用,格式 `<strategy_id>:<dseq>`;与同帧动作回执行 `receipt['dtag']` 同值(回执侧 = kernel 决策上下文槽,`kernel/cw_decision_ctx.py`) | wrapper |
 | `entry` | str | 决策入口方法名(14 入口闭集,渲染章级挂载映射表的键) | wrapper |
 | `node` | `{plane, round_num, kind}` \| null | `gs.node` 现读三元组;节点未观察 = null(null 帧不入章级挂载,计数并入局头「未归属」) | wrapper |
 | `ts` | str | 写入时刻 ISO8601(秒级) | wrapper |
