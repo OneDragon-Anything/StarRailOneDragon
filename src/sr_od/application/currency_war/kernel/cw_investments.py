@@ -2366,6 +2366,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'grant_effect_node_refresh_balance docstring 点名卡);'
               '拿卡当节点不发放(per_node_pick_node_grant.md §3.2);'
               'boss 价值金腿另表 STRATEGY_BOSS_CLEAR_GOLD_GRANTS'),
+    # 入职礼包(id 331301):官方「进入战斗时:携带了2件装备的至多4个角色
+    # 会获得一件处在推荐列表中的随机进阶装备。」条件发放卡,UNIT_BUFF
+    # 零响应登记(发放后果 = 环境随机装备经既有观察链自动吸收,live 零
+    # 新增代码;sim 结构性零感:单位穿戴零写端;pending=True 二义冻结,
+    # notes 保守支待采双列,verdict 回填通道留实采——在册表纪律「定案
+    # 后回填 verdict 单一语义以实采为准」在码直承,7 条 pending 同形
+    # 先例均未上交用户)。
+    '入职礼包': EffectSpec(
+    id='331301', name='入职礼包',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+    payload=UnitBuffRef(
+        effect_text=next(a.effect for a in PLAZA_AUGMENTS
+                         if a.id == '331301')),
+    pending=True,
+    notes='条件发放卡:触发面(「进入战斗时」=战斗触发族格)/条件轴(「携带'
+          '了2件装备」= 恰 2 件 vs ≥2 件读法)/超额选择(「至多4个」超 4 持卡'
+          '角色的挑选规则)三轴待实采(保守支双列待采,禁猜);发放池 = 推荐'
+          '列表 rc_missing 现状维持(cw_equip_env 推荐表未采集,失败即空);'
+          '零写端下任何读法 bot 行为零分叉(登记有无与发放后果解耦,观察链'
+'自动吸收)。'),
 }
 
 
