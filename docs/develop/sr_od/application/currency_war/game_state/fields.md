@@ -710,7 +710,7 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   全集)、空仓(id 202401)/空仓+(id 202402,姊妹行同泛化表)选卡落地采样简易装备入栏,同简易池,均为随机态直写,
   好运来(id 231601)分支2「获得2件随机简易装备」同支(泛化表 ('简易', 2) 行,
   count=2 放回 v0 两独立抽;掷得简易件不入本卡进阶转换谓词照常入栏),
-  校准归组键 = 效果串前缀 `strategy_random_equip:`,
+  + 复印件(id 330301)已持有星徽子集池采样支(`cw_gain_effects._make_owned_emblem_copy_effect` 效果体,池 = gs.equips 按 category='星徽' 过滤派生、条目均匀;空池/未观察 fail-closed 零写,校准归组键 = 效果串前缀 `pick_invest_owned_emblem_copy:`),骇客专家:银狼随机改件支(`pick_invest_hacker_mod`,随机改件采样入栏——存量写入方两处未登记,随本行一并清偿)——on_strategy_gained 效果体腿覆盖申报随本行并入;校准归组键 = 效果串前缀 `strategy_random_equip:`,
   分布披露键 = `strategy_random_equip_uniform`(家族单键,类别无关 uniform v0)。
   **rand 两通道分野注记**(具名装备获得族级,新增同形分支按通道归属取值、禁跨通道
   「对齐」):同为「选卡时点获得具名装备」,env 侧即时装备支 = rand=True 恒随机态

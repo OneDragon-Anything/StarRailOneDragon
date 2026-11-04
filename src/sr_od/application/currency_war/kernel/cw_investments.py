@@ -192,7 +192,7 @@ class EconomyEffect:
                                           # 戏自算观察覆盖零写;卡文无
                                           # 「首次」限定 = 每战斗结算都发,
                                           # 无 done 一次性标志位)
-    xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4)
+    xp_instant: int = 0                   # 即时经验(伟大征服 12/气氛组+ 8/成长的快乐 4/复印件 24)
     hp_instant: int = 0                   # 即时生命(健康充值 +30;负值 = 损失,
                                           # 先亏后盈 −20):选卡当场 hp 直加,
                                           # 不 clip(上下界同此——sim 扣血绝对值制
@@ -668,9 +668,15 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # min(MAX_PLAYER_LEVEL, 覆写),消费接入调用 = 各级等级推进写入状态副本的实现);
     # 宝钻条目 = cw_gain_effects.PICK_INVEST_EFFECTS 具名装备登记行(确定发放)
     # + sim 检查实现匹配名归一;40 金条目 = instant_gold=40 已登记估值零漂
-    # (选卡金发放写端缺口 = instant_gold 族级既有申报,与藏一手同通道)。
+    # (选卡金发放写端缺口 = instant_gold 族级既有申报)。
     '控制规模': EconomyEffect(instant_gold=40, level_cap_override=7),
-    '藏一手': EconomyEffect(instant_gold=80),
+    # 藏一手:「我方小队生命值将降低至0时，免疫这次伤害并将生命值变为40点，
+    # 并获得30点经验和80金币。」(卡面原文,cw_invest_data PlazaAugment
+    # id 302801,棱彩)。奖励子句在「……时」触发辖域内(「并」字并列且无
+    # 独立时点状语;用户裁定 2026-11-04 R1 = 救援时发,非选牌当场)——
+    # 载荷单一源 = STRATEGY_DEATH_SAVE_GRANTS 死亡救援触发注册表;本行
+    # 全默认 = 估值面无经济通道(救援价值归策略立场域,后继批立项)。
+    '藏一手': EconomyEffect(),
     '及时雨': EconomyEffect(free_refresh_burst=4),
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
     '公司严选': EconomyEffect(instant_gold=3, gold_per_plane=3,
@@ -777,6 +783,11 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   本卡条目 notes)
     '固定理财+': EconomyEffect(xp_instant=6, xp_per_plane=6,
                               free_refresh_burst=3, free_refresh_per_plane=3),
+    # 复印件(330301):「获得一个已经拥有的星徽的复制，获得24点经验」
+    # 即时段——XP 腿骑 T-87 通道(apply_strategy_pick_xp 字段分派);复制
+    # 装备腿不入本表(效果体微工厂 = 已持有星徽子集池采样,归 PICK 效果
+    # 体注册,条目参数唯一出现点)。
+    '复印件': EconomyEffect(xp_instant=24),
     # ↑ 「现在以及每个位面开始时,获得6经验值和3次免费刷新」两条效果条目分段
     #   (姊妹行同构):即时段(xp_instant/burst,登记期发放)+ 位面段
     #   (xp_per_plane/free_refresh_per_plane)——位面段刷新支经效果推进
@@ -4513,6 +4524,67 @@ STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION: str = \
     'strategy_hp_loss_gold_baseline_opening_minus_current_sim_model'
 STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION: str = \
     'strategy_battle_heal_scope_combat_node_types_piggy_excluded'
+
+
+# ===== 策略卡死亡救援触发发放注册表(藏一手;白名单制)=====
+# 「触发点各不相同,各建各表」纪律的承接表:与 STRATEGY_HP_LOSS_GRANTS
+# 损血档位**周期型**触发器分表——本表 = 致死干预**一次性**触发器(救援
+# 闩 = cw_game_state.strategy_death_save_used,每局首次致死触发后恒置),
+# 触发时点/状态形状/载荷三重不同构,禁并入。键 = 策略规范名,值 =
+# (救援后生命值, 经验, 金币)——载荷全 desc 明写,数值单一源在本表,
+# STRATEGY_ECONOMY 注册行禁复活即时双腿(防双源,见构建校验②)。
+# 消费面 = kernel/cw_gain_chain.take_strategy_death_save(触发检查
+# 单一源,唯一调用点 = sim 结算折算点 apply_hp_outcome 调用前置分支;
+# live 零写观察覆盖——救援由游戏自算,hp 面结算页观察链现值覆盖,
+# 奖励两笔走下一备战帧 gold/xp 现读,实机局不接本通道)。
+STRATEGY_DEATH_SAVE_GRANTS: dict[str, tuple[int, int, int]] = {
+    # 藏一手(id 302801 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行):
+    # 救援后生命值 40 / 经验 30 / 金币 80(卡面三值明写)。
+    '藏一手': (40, 30, 80),
+}
+
+
+def _validate_strategy_death_save_grants() -> None:
+    """STRATEGY_DEATH_SAVE_GRANTS 构建校验(import 即炸;治理口径 = 用户
+    裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更独立
+    触发的漂移哨留」,同 _validate_strategy_hp_loss_grants docstring——
+    三元组值形属手抄常量纯笔误类,不加,对账归评审与本表域测试把关;留两哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 注册面双源哨:键对应 STRATEGY_ECONOMY 注册行即时双腿必须
+    全默认——奖励载荷已迁本表(单一源),注册行复活 instant_gold/xp_instant
+    = 同一奖励双源双发(救援拍 + 选卡拍),哨前移 import 期。"""
+    orphans = [n for n in STRATEGY_DEATH_SAVE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_DEATH_SAVE_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
+    for _name in STRATEGY_DEATH_SAVE_GRANTS:
+        _eff = STRATEGY_ECONOMY.get(_name)
+        if _eff is not None and (_eff.instant_gold != 0 or _eff.xp_instant != 0):
+            raise ValueError(
+                f"STRATEGY_DEATH_SAVE_GRANTS 注册面双源({_name!r} "
+                f"STRATEGY_ECONOMY 行即时双腿非默认 instant_gold="
+                f"{_eff.instant_gold}/xp_instant={_eff.xp_instant},"
+                f"奖励载荷单一源在本表,禁复活)")
+
+
+_validate_strategy_death_save_grants()
+
+
+#: 死亡救援触发建模假设披露键(desc 无载面的申报,消费 = sim 随局
+#: 披露面 disclosures setdefault;键随家族不随卡,形态沿
+#: ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 先例(kernel 注册表模块)。
+#: 奖励时点 R1 = 定读非假设(2026-11-04 用户裁定,卡面文法判据在卷),
+#: 不设键——两键各承载一项建模假设):
+#: - death_save_once_assumption:救援一次性假设(证伪 = 实机持卡局
+#:   第二次致死仍救);
+#: - death_save_independent_floor_assumption:救援与全局保底独立叠加
+#:   假设(证伪 = 实机持卡局致死序列血量读数 40→1→终 vs 40→终)。
+STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS: tuple[str, ...] = (
+    'death_save_once_assumption',
+    'death_save_independent_floor_assumption',
+)
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====

@@ -74,6 +74,41 @@ def roll_hacker_mod(rng: random.Random) -> str:
     return rng.choice(HACKER_MOD_POOL_V0)
 
 
+def _make_owned_emblem_copy_effect() -> Callable[..., list[str]]:
+    """复印件复制腿效果体工厂(已持有星徽子集池采样;骇客采样族另支
+    形——池语义 = 已持有子集,禁误并入 _STRATEGY_RANDOM_EQUIP_GRANTS
+    全集类别池泛化表[两族池语义不同];单域腿零增益,标记循环不继承)。
+
+    池 = gs.equips 按 category==星徽 过滤(经 get_equip 词表双验);
+    空池/未观察 fail-closed 零写,效果串记录;XP 腿( EconomyEffect
+    xp_instant=24 注册行)独立照常,不因复制腿空池短路灯。
+    """
+
+    def _effect(gs, *, sig, rng) -> list[str]:
+        # 惰性 import 链原语(运行时解析破环;骇客腿同款)
+        from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            gain_equipment,
+        )
+        from sr_od.application.currency_war.data.cw_equipment_data import (
+            get_equip,
+        )
+        equips_val = gs.equips.value
+        if equips_val is None:
+            return ['emblem_copy:skipped(equips_unobserved)']
+        pool = [n for n in equips_val
+                if get_equip(n) is not None
+                and get_equip(n).category == '星徽']
+        if not pool:
+            return ['emblem_copy:none(空池)']
+        picked = rng.choice(pool)
+        eq = gain_equipment(gs, picked, rand=True, sig=sig,
+                            evidence='pick_invest_owned_emblem_copy',
+                            producer=_PRODUCER)
+        return [f'emblem_copy:{picked}(placed={eq.placed})']
+
+    return _effect
+
+
 # ===== 效果函数(策略卡获得时分派 = 字段写分支;键 = 注册表规范名)=====
 # 注册纪律:效果函数只覆盖「获得该卡后的字段写分支」(bench/装备/采样链),
 # 与 cw_investments.STRATEGY_EFFECTS(持卡经济效果聚合,aggregate_economy
@@ -1453,6 +1488,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '优势火力论': _compose_grant_legs(
         _make_named_equip_grant_effect('特权赋予卡', 1),
         _make_box_grant_effect(('简易武装箱',))),
+    # 复印件 = 采样效果体直书登记行(星徽复制腿;微工厂 _make_owned_
+    # emblem_copy_effect = 已持有星徽子集池采样[rand=True 采样族,骇客腿
+    # 同支;XP 腿 24 = STRATEGY_ECONOMY EconomyEffect(xp_instant=24) 注
+    # 册行骑 T-87 通道,双腿分表;空池/未观察 fail-closed 零写;标记循环
+    # 不继承单域腿零增益)。
+    '复印件': _make_owned_emblem_copy_effect(),
     # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
     # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
     # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」
