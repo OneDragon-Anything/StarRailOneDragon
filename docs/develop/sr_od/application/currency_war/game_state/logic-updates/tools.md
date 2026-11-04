@@ -1,6 +1,6 @@
 # 工具原子七类(CwActionToolUseOp)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖七注册行**:七类共用一个 op 类(族文件先例,`cw_tool_use_action.py` 单类七行),机械执行部分同构,逐类差异在写入方申报与判据准入——以代码结构自然边界为准,本篇内逐类小节。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖七注册行**:七类共用一个 op 类(族文件先例,`cw_tool_use_action.py` 单类七行),机械执行部分同构,逐类差异在写入方申报与判据准入——以代码结构自然边界为准,本篇内逐类小节。
 
 ## 1. 动作是什么
 
@@ -53,7 +53,7 @@
 - 投影仪拒落(超费用门/席满/目标未识别)= 视觉域帧面零写——席满不是部分成功,是无落位;桥面 `spawn_equip_bench_unit` 零写分支同形(cost_gate/席满/bench 未观察 → False 拒落);
 - 特权赋予卡库存替换:库存未观察/无此件 → 桥返 None 零写;非进阶成品 = 调用错零写留观察。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py` 七个动作类型类(`CwAction<Tool>UseParam`);`kernel/cw_action_report/tool_use.py`(七具名上报函数 + `_REPORT_BY_CLASS`,写入方权威版本;员工投影仪费用门值 3 = `report_action_staff_projector_use_param` 调用位);`kernel/cw_affix_effects.py::EQUIP_WRITE_SIDES` / `EQUIP_REWRITE_DECLARATIONS`(原 `_TOOL_SPAWN_COST_GATE`/`cw_effect_inventory.STAFF_PROJECTOR_COST_GATE` 门表常量已随死代码清偿移除);`kernel/cw_effect_inventory.py::privilege_counterpart` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege` / `spawn_equip_bench_unit` / `grant_equip_item` / `settle_wrench_duplicate_gold`;`kernel/cw_equip_env.py::evaluate_tool_actions` / `admitted_tool_actions`;`prep_actions.py::_owned_grid_locate`(机械原语);`operations/cw_op/cw_tool_use_action.py::CwActionToolUseOp`(`_TOOL_NAME_BY_CLASS`)。
 

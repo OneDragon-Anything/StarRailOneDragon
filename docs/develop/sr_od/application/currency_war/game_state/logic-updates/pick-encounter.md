@@ -1,6 +1,6 @@
 # 遭遇选择(PickEncounter)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族分篇之一(同族共通面见各篇 §2 开头,机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族分篇之一(同族共通面见各篇 §2 开头,机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
 
 ## 1. 动作是什么
 
@@ -31,7 +31,7 @@
 
 零验证确认链(确认后不读屏验证是否生效):确认未落地(overlay 残留)不重试不判效——点击发出后即结束本次访问(结束本次访问),overlay 残留由外循环按当前画面重识别重派(op-layer.md §1.1,修法 = 点击链可靠性);卡位 area 缺失 = 显式 round_fail 零点击(禁兜底坐标,坐标单一真相源 = 建档)。发出动作时立即写入 = 意图记录,暂态假值窗由重派覆盖自愈 + 兑现后清单次消费双防线(fields.md §3.4.1);report 层拒绝面 = payload 离屏/越界保留证据不写(`pick_encounter.py::report_action_pick_encounter_param` docstring)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionPickEncounterParam`;`operations/cw_op/cw_pick_encounter_action.py::CwActionPickEncounterOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`;`kernel/cw_encounter_selection.py::claim_encounter_reward`;`operations/cw_screen/_overlay_confirm.py::safe_click`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_encounter` / `encounter_reward_claimed`;`operations/cw_screen/cw_screen_encounter.py::CwScreenEncounter`。
 

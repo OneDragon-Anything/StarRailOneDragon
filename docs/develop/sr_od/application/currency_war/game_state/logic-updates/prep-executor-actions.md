@@ -1,6 +1,6 @@
 # 备战执行器机制(备战域动作族总述)
 
-> 归属:[logic-updates/](README.md) 索引下**执行器机制总述**——只写执行器机制/编排与族共通面;逐动作逻辑态全在专篇(索引见 §4 边界),总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 索引下**执行器机制总述**——只写执行器机制/编排与族共通面;逐动作逻辑态全在专篇(索引见 §4 边界),总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 执行器与动作发出形态
 
@@ -18,7 +18,7 @@
 
 ## 3. 动作类型完备性注:SwapDeploy(上阵↔备战对调;非注册行)
 
-动作类型 + 状态容器逻辑态直写 + sim 消费在用,**生产执行器未接入调用**(备战域部署换位 = DeployMove 原子序,部署机画面 op 已停用);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则已登记,供接入调用/sim 消费):deployed 下标 `d_idx` 与 bench 下标 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一,归一核 = `cw_exec_state.trailblazer_row_identity` 与 deploy/swap 上报同源),;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,禁止在本分支手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 符号锚 = `kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param`、上报函数 SwapDeploy 分支(代际校验 + 同名唯一性)。
+动作类型 + 状态容器逻辑态直写 + sim 消费在用,**生产执行器未接入调用**(备战域部署换位 = DeployMove 原子序,部署机画面 op 已停用);**不经注册表分发**,不在 [README.md](README.md) 注册行映射内。逻辑态规则(规则已登记,供接入调用/sim 消费):deployed 下标 `d_idx` 与 bench 下标 `b_idx` **原槽对调**(置空不移位坐标系);上场者继承下场者的排(含开拓者形态归一,归一核 = `cw_exec_state.trailblazer_row_identity` 与 deploy/swap 上报同源),;board 派生随写(front/back rows 行写挂钩 `_resync_board_delta`,禁止在本分支手写);拒绝 = 同名同星已在场其余位(`duplicate_on_board`)/ expect 双侧失配(陈旧提案)/槽空越界。装备随人走(对象迁移)。kernel 符号名引用 = `kernel/cw_action_report/swap_deploy.py::report_action_swap_deploy_param`、上报函数 SwapDeploy 分支(代际校验 + 同名唯一性)。
 
 ## 4. 边界(逐动作逻辑态专篇索引)
 

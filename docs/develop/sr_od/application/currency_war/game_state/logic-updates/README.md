@@ -1,6 +1,6 @@
 # 逻辑态更新(logic-updates)
 
-> 定位:**每个注册表动作 op 一篇**专篇,说明该动作的**逻辑态**应如何计算——逻辑态 = 动作发生后按游戏规则推算出来的游戏状态(例:买一张牌后金币 −40、备战席 +1;若下一帧实际观察与推算不符,以实际观察为准)。每篇覆盖:涉及的数据域、转移规则、确定面/随机面、拒绝语义、kernel 符号锚(实现所在的代码符号)。总述两篇只承载机制:执行器机制 = [prep-executor-actions.md](prep-executor-actions.md),效果账机制 = [op-effects.md](op-effects.md);总则与原则在 [../action-logic-state.md](../action-logic-state.md)(本目录的纪律母篇)。
+> 定位:**每个注册表动作 op 一篇**专篇,说明该动作的**逻辑态**应如何计算——逻辑态 = 动作发生后按游戏规则推算出来的游戏状态(例:买一张牌后金币 −40、备战席 +1;若下一帧实际观察与推算不符,以实际观察为准)。每篇覆盖:涉及的数据域、转移规则、确定面/随机面、拒绝语义、kernel 符号名引用(实现所在的代码符号)。总述两篇只承载机制:执行器机制 = [prep-executor-actions.md](prep-executor-actions.md),效果账机制 = [op-effects.md](op-effects.md);总则与原则在 [../action-logic-state.md](../action-logic-state.md)(本目录的纪律母篇)。
 
 ## 总则(必读)
 
