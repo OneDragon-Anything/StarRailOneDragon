@@ -3,7 +3,7 @@
 宪法六「共用判据显式抽离」(strategy-docs/00_framework.md §1 第 6 条):
 投资环境屏(invest_env.py)与投资策略屏(invest_strategy.py)共用的用户
 转向轴常数与选卡克制减分判据在此单一源;画面文件 → 共用模块单向依赖,
-禁画面文件互相 import。设计正本 = 28 号稿 §3(环境屏)与 29 号稿
+禁画面文件互相 import。设计权威版本 = 28 号稿 §3(环境屏)与 29 号稿
 §2.4/§3(策略屏);共用语义文档单一源 = strategy-docs/13_pick_family.md §4
 (共用判据节,本模块是其代码承载面)。
 
@@ -12,7 +12,7 @@
   系数——「用户点名是偏好不是支配」;forbid 罚值不在此——策略屏 forbid
   改集合排除,分值化禁选停用,罚值禁搬进共用件);
 - 选卡克制减分:选项名含 ``AFFIX_COUNTERS_FACTIONS`` 词缀关键词 ∧
-  该词缀克制名单与选卡锚点线(``line_select.anchor_line_of``,P1/P2
+  该词缀克制名单与选卡基准线(``line_select.anchor_line_of``,P1/P2
   同式)档 0 羁绊键集有交集 → 选卡分 ``COUNTER_PICK_PENALTY``(克制档,
   纯加权非排除;无方向线帧不触发,保守缺省)。
 """
