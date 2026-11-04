@@ -58,13 +58,13 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # episode ×3 全部「连续 2 帧」形态),「回退即采新」让单帧抖动直进
 # 主账 → 3★ 合成判断与 buy_expect 对账被污染(3★ 合成线整局
 # 未落地实证)。修法两层正交:
-# 1. **槽位锚定**:星级差逐槽判定,锚 = (域,物理槽号) + 规范名同名——
-#    bench 锚 = 槽位表下标+1;deployed 锚 = (排,排内槽号),排与槽号
+# 1. **槽位锚定**:星级差逐槽判定,对位基准 = (域,物理槽号) + 规范名同名——
+#    bench 基准 = 槽位表下标+1;deployed 基准 = (排,排内槽号),排与槽号
 #    由视图子表下标派生(比较基线 = 主域席位视图)。
-#    锚上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
-# 2. **两帧一致才采新**:锚上星读 ≠ 主域现值 = 候选(保旧写账 + 抖动
+#    基准上身份变换(空槽落新单元/换人)= 单元更替事实,星级随身份直采。
+# 2. **两帧一致才采新**:基准上星读 ≠ 主域现值 = 候选(保旧写账 + 抖动
 #    台账行 surface='star');连续两帧候选同值才采新(升/降同门,银狼
-#    升费形态无豁免)。「连续」以锚每帧在-read 为前提:候选锚在本帧
+#    升费形态无豁免)。「连续」以基准每帧在-read 为前提:候选基准在本帧
 #    读侧未出现(部分缺读)或整帧双空读(守卫早退)即清除其候选——
 #    缺读 = 证据中断,两帧重计;候选跨缺读帧存活会把门击穿成「隔缺读
 #    帧两读一致即采新」的同值单帧假确认。合成特效窗内读数物理不可信:
@@ -106,7 +106,7 @@ def _star_gate_pending(session) -> dict:
 def _bench_read_entries(view: BenchView | None) -> list[tuple]:
     """观察视图 → 门/签名用的读条目 ``[(anchor, char_id, star, unit|None)]``。
 
-    [索引定义] anchor = ('bench',物理槽号 1 基)(星级门锚 = 物理槽,
+    [索引定义] anchor = ('bench',物理槽号 1 基)(星级门基准 = 物理槽,
     权威槽位 = 表下标、信息位为派生,下标+1 即槽号);占用槽按视图序
     (下标升序)排列;占位件槽(kind ≠ unit/empty)char_id=''
     (门内走「无身份 → 清候选」分支)。"""
@@ -177,9 +177,9 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     改写 star —— 保旧写账改经 **replace 副本** 承载(返回门后副本),语义
     与旧「就地改写读对象 star」等价:单帧抖动不进 drift 判定与写回,同帧
     状态容器席位视图观察写端(director 消费门后副本)同得保旧值。候选态
-    按局身份旁表存(键 = (域,槽号,规范名))。锚上身份未锚定
-    (空槽/换人/占位件)与读失败侧(None)不覆盖,候选随锚作废防陈旧假确认;
-    读侧已取得但锚未出现(部分缺读)= 证据中断,该锚候选清除重计
+    按局身份旁表存(键 = (域,槽号,规范名))。基准上身份未锚定
+    (空槽/换人/占位件)与读失败侧(None)不覆盖,候选随基准作废防陈旧假确认;
+    读侧已取得但基准未出现(部分缺读)= 证据中断,该基准候选清除重计
     (整帧双空读的候选清除在对账守卫分支,本函数不可达)。
 
     Returns:
@@ -190,7 +190,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     frozen = is_merge_effect_window(screen)
     out: dict[str, object] = {}
     # 比较基线 = 主域席位视图现读(tracked 第二账
-    # 停用,基线从 tracked 表改主域派生视图,锚 = (子表,下标);对账时点
+    # 停用,基线从 tracked 表改主域派生视图,基准 = (子表,下标);对账时点
     # 在 director 观察写之前,主域现值即上一帧账面,与旧 tracked 基线
     # 同源同时点)。
     for domain, reads, account in (
@@ -206,7 +206,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
             e[0]: e[3] for e in
             (_bench_read_entries(account) if domain == 'bench'
              else _deployed_read_entries(account))}
-        # 缺读 = 证据中断:本帧读侧未出现的锚清除其星级候选(两帧重计)。
+        # 缺读 = 证据中断:本帧读侧未出现的基准清除其星级候选(两帧重计)。
         # 候选键首元分域(bench = 'bench';deployed = 排名 front/back),
         # 只清本域候选——他域可能本帧整体读失败(None,照旧不覆盖)。
         # 缺读帧不清会让候选原样存活,同值复现帧单帧假确认(击穿
@@ -220,11 +220,11 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
         holds: dict[int, int] = {}   # id(读 Unit) → 保旧星
         for anchor, cid, star, unit in entries:
             # 基线条目即 Unit(两域读条目构造同构:bench 占位件 = unit None
-            # / deployed 空槽跳过——锚上无身份走下方更替分支,无解包层)。
+            # / deployed 空槽跳过——基准上无身份走下方更替分支,无解包层)。
             _acct_unit = tracked_at.get(anchor)
             if _acct_unit is None or not cid \
                     or cid != str(getattr(_acct_unit, 'char_id', '') or ''):
-                # 锚上身份未锚定 = 单元更替,星级随身份直采;该锚旧候选
+                # 基准上身份未锚定 = 单元更替,星级随身份直采;该基准旧候选
                 # 作废(防陈旧候选对后续同名单元假确认)。
                 for k in [k for k in pending
                           if k[0] == anchor[0] and k[1] == anchor[1]]:
@@ -401,7 +401,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         _star_gate_pending(session).clear()
         return False, bench, deployed
     # 星级抖动门(槽位锚定 + 两帧一致才采新):门后副本供纠漂判定与
-    # 同帧状态容器观察写端 —— 保旧锚读账一致,不产「对账纠漂」噪声行
+    # 同帧状态容器观察写端 —— 保旧基准读账一致,不产「对账纠漂」噪声行
     #(出处见 _gate_star_jitter 上方门注释块)。
     bench, deployed = _gate_star_jitter(session, bench, deployed, screen,
                                         source=source)
@@ -458,8 +458,8 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     职责由 gs.hp 结算覆盖写端 + carried 语义承载(该三层 hp
     三层设计「读不到保旧沿用 last_hp_real」;ADR 档案目录已删,原文 =
     git 历史 docs/develop/currency_war/decisions/0282-hp-three-layers.md。
-    定案:结算观测 hp_after 与沿用锚的先后语义随停用消解——结算覆盖是
-    hp 唯一真值入口,本读侧无锚可遮蔽之;行为变化登记 design §1.3:
+    定案:结算观测 hp_after 与沿用基准的先后语义随停用消解——结算覆盖是
+    hp 唯一真值入口,本读侧无基准可遮蔽之;行为变化登记 design §1.3:
     失读窗不再有基准补,实机识别失准走识别优化批)。
 
     保留两支:

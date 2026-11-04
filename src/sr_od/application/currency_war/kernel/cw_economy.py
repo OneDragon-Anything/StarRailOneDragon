@@ -67,7 +67,7 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
     xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
     写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
     [帽形参] ``level_cap`` 缺省 = MAX_PLAYER_LEVEL(无卡既有语义,全部
-    存量调用面零破);持等级帽卡的状态副本真值腿由调用方传
+    存量调用面零破);持等级帽卡的状态副本真值写入实现由调用方传
     ``level_cap_of(gs)`` resolved 值(禁内联字面量)。
     """
     if clicks <= 0 or level >= level_cap:
@@ -95,7 +95,7 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int,
     经验结算原语 ``settle_xp_observe``(均在 kernel/cw_game_state;
     两函数经本单一实现共享升级结转式,禁第二份)+ 单击版
     ``xp_apply_clicks``(本模块,同式自足供买经验上报直用)。模拟器各
-    世界经验条目(节点/窗口条件族/选卡/位面段/首购)已统一收敛进
+    状态副本经验条目(节点/窗口条件族/选卡/位面段/首购)已统一收敛进
     ``settle_xp_observe``,不再散点直调本函数。
 
     全部消费经 ``level_cap_of`` 随链传帽(持等级帽卡时等级轴整体收窄,
@@ -272,7 +272,7 @@ def level_cap_resolved(level_cap_override: int | None = None) -> int:
     min(MAX_PLAYER_LEVEL, max(1, 覆写)):覆写系**合法收窄**(「变为」
     系绝对覆写非提升),上界收尾防未来「提升至 N」形卡越 10,下界
     收 1 防等级轴冻结(现役无此形,防御性归一);禁在判据侧内联 cap
-    字面量——全部等级推进状态副本真值腿经 :func:`level_cap_of` 随链取帽。
+    字面量——全部等级推进状态副本真值写入实现经 :func:`level_cap_of` 随链取帽。
     """
     if level_cap_override is None:
         return MAX_PLAYER_LEVEL
@@ -281,16 +281,16 @@ def level_cap_resolved(level_cap_override: int | None = None) -> int:
 
 def level_cap_of(gs: GameState) -> int:
     """持卡等级帽现读(active_strategies 聚合链 → resolved;等级推进
-    状态副本真值腿的取帽单一入口)。
+    状态副本真值写入实现的取帽单一入口)。
 
     覆写单一源 = ``aggregate_economy(gs.active_strategies).
     level_cap_override``(注册表派生、零新参数):持等级帽卡(控制
     规模 7)→ 聚合取严(并持双帽卡更严上限赢)→ resolved 归一层;
     未持帽卡 → None → MAX_PLAYER_LEVEL(行为零差)。
 
-    消费位 = 全部等级推进状态副本真值腿:live 买经验上报满级门
+    消费位 = 全部等级推进状态副本真值写入实现:live 买经验上报满级门
     (cw_action_report/level_up)+ sim 节点经验/即时经验/位面段/
-    条件 XP 族各窗腿(各分支经结算函数 settle_xp_observe 统一)+
+    条件 XP 族各窗条目(各分支经结算函数 settle_xp_observe 统一)+
     kernel 白送经验原语(grant_xp)。边界:策略侧等级判据(lv9_stop 等)读注册表
     level_max,系「实机无卡真值」另一把尺——状态副本这一侧拒发与策略侧规划的
     失配 = 决策质量议题,禁为对齐改注册表常量。
@@ -314,7 +314,7 @@ def strategy_interest_floor(gs: GameState) -> int:
     = 顶满恒发错发形态,时序约束由 tick 闸调用位承载)。
     命名区分:cw_registry.RegView.interest_floor() 是策略侧收入纪律视图
     的预算面地板(interest_floor_override 覆写/ALL IN 清零),与本函数
-    (世界条件金条目的息分量下限)同名异义,两域零数据耦合。"""
+    (状态副本条件金条目的息分量下限)同名异义,两域零数据耦合。"""
     if '开源节流' not in (gs.active_strategies.value or []):
         return 0
     if gs.prev_node_spent.value is not False:   # True=已花费不授;None=不可评估禁猜
@@ -705,7 +705,7 @@ def refresh_cost_effective(refresh_count: int = 0,
 
 
 def world_shop_refresh_cost(gs: GameState) -> int:
-    """当前环境改价规则下商店刷新的世界刷价(改价分支渲染单一源)。
+    """当前环境改价规则下商店刷新的状态副本刷价(改价分支渲染单一源)。
 
     环境在 ENV_ECONOMY 已登记且注册了改价字段 ``refresh_cost_after``
     (语义 = (刷新阈值, 新成本),如长线利好 (30, 1))且付费刷新累计
@@ -935,7 +935,7 @@ class NodeGoal:
 
 # ⚖️(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
 # 历史:V4.4 先验表 → 用 11 局 bot live「校准」(P1末7/P2早8)→ 0126 被三重降级
-# (0127 H4 疑幽灵锚点/0129 等级观测污染/2026-08-18 单局相关≠基准)。DP 影子接缝
+# (0127 H4 疑幽灵基准点/0129 等级观测污染/2026-08-18 单局相关≠基准)。DP 影子接缝
 # 切流后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(删除前评审)仅剩
 # MemoryError + 开发期注册表手误(运行时游戏数据不进台账链;未注册策略名静默跳过)→
 # **保留脏表回退比停机更危险**(静默掉回 0126 节奏 = 看着在跑实际在错)。删除;
@@ -1104,8 +1104,8 @@ def _schedule_target_core(session: StrategySession) -> str:
     调用方缺省 3 费档,供给不断)。
 
     P86 权威版本申报(p86-no-target-period-fund-allocation.md §4.1-1 选项
-    「维持缺省 3 费」):未锁帧阵容核心锚(FALLBACK_COMP_NAME
-    单线硬编码)已停用——峰值级锚只进概率校准分量,
+    「维持缺省 3 费」):未锁帧阵容核心基准(FALLBACK_COMP_NAME
+    单线硬编码)已停用——峰值级基准只进概率校准分量,
     方向语义中性,未锁帧峰值档统一回落 3 费缺省。
     ⚠️ 边界申报:淘汰计划文档本体已不在仓(docs/develop/currency_war/archive/
     目录不存在,漂移登记见 P86 权威版本 §4.1-2),码内注释是原唯一在档裁决
