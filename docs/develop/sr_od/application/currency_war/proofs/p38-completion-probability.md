@@ -1,5 +1,6 @@
 # P38 K 缺口集齐概率:五层模型与闭式近似(证据门 score 的概率因子)
 
+> **符号改名指针(comp-structure-unification 3.1)**:本文所引 `COMP_LIBRARY` 的 `form_tiers` 字段已并入 `faction_reqs`(档 0 = 核心羁绊层,统一读口 `core_faction_reqs`),键值与语义不变——缺口件来源的口径恒等,数学本体不受影响。
 > 状态:**已证(精确 DP;独立性近似=无衰减子模型的严格上界+衰减情形数值实证;闭式误差带经数值交叉核对;预算含升级成本与利息爬坡期口径)**
 > 数据源(全部真实表值,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9)、`cw_chars`(`CHARACTERS` 注册表:每卡费用与阵营/流派标签——合格集的来源)、`cw_comps`(`COMP_LIBRARY`:`form_tiers`/`core_chars`——缺口件的来源;等级日程不由注册表供给,见 A4)、`cw_economy`(`SHOP_REFRESH_COST`=2)、economy.md §10.1(收入公式:基础奖励分段 3/4/5 + 连胜四档 1/2/3/4 + 利息 min(g//10, 5))
 > 数值自检脚本:`tools/cw/proofs/p38_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p38_check.py`)

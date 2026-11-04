@@ -76,7 +76,7 @@
 | **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = strategy-docs/29_invest_strategy_screen.md §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(strategy-docs/29_invest_strategy_screen.md 与 28_invest_env_screen.md),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
 | **角色**(`cw_chars`) | char_type/f 流派阵营两分/independent/开拓者形态映射(按排归一) | 部署站位/羁绊计数/压缩牌库 |
 | **羁绊**(`cw_factions`) | category 四分类(combat/economy/support/independent)/tiers/note 人判注记 | 评分/成型判定/骨架派生 |
-| **comp**(`cw_comps`) | 核心/弹性二分/form_tiers/key_equips(可重复)/countered_by_bosses/mechanic_attributes(词缀双向)/shared_chars(转型成本)/char_positions(comp 级站位覆盖)/LevelGoal 曲线(等级→动作+星目标) | select_comp/maybe_pivot/装备分配/mechanics_fit/boss_fit |
+| **comp**(`cw_comps`) | core/shared 名单二分/faction_reqs(羁绊要求优先级结构:档 0 核心、档 ≥1 加分层;原 form_tiers/sub_tiers 已合并)/flex_factions(弹性)/key_equips(可重复)/equip_assign(到人配方)/char_positions(comp 级站位覆盖)/need_star(星级目标;mechanic_attributes/countered_by_bosses 与 level_plan 曲线等评估字段已先后退役,git 可溯) | 线分/候选与锁定/成型判定/部署搜索/装备分配 |
 | **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |
 | **plaza 派生**(`cw_plaza_comps`) | star3_by_cost(费用档 3 星率,**客观频次仅校准交叉核对用**——费用档星目标启发式已废弃,星目标只认成型档显式要求;语义单一源 = `cw_plaza_comps` 模块注释)/labels 节奏/craft_first/transition_pool | 星级目标/等级节奏/合成优先 |
 

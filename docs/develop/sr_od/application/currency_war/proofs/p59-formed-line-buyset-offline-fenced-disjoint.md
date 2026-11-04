@@ -44,6 +44,8 @@ core_chars ∪ shared_chars ∪ 替班者(substitute_plan)
             ∪ {(factions|flows) ∩ (form_tiers ∪ sub_tiers 键) ≠ ∅ 的注册表成员}
 ```
 
+(符号改名指针:上式的 `form_tiers ∪ sub_tiers 键` 已随 comp-structure-unification 3.1 并入 `faction_reqs`——现读法 = `core_faction_reqs ∪ bonus_faction_reqs` 键,键集恒等,判定域不变。)
+
 卖面保护域(`offtarget_sell_allowed` L221-224 + `_protect` L463-465)的
 不可卖全集 = `target_cores ∪ protect_names` = core∪shared,外加
 `bonds ∩ all_factions ≠ ∅` 的 target 单位豁免

@@ -19,7 +19,7 @@
 - **D(1★ 卖出净金 0)**:1★ 全档退货净 0(P76 甲,cw_state.sell_refund 亲读;卖回还池)。
 - **E(意图载体闭集)**:「存在会买第三张的登记载体」的载体闭集 = ①义务面成员资格(base/B′,与线账同寿)②囤积分支/枢纽持有登记(hub_acquired、line_hoard 分支,账闭合事件前恒活;装配 A 身份段承载)③当轮买入窗(fresh/press,登记轮==当前轮,τ=同轮)④种子年龄窗(获取轮 ≤ r ≤ 获取轮+2,`SEED_WINDOW_ROUNDS=2`,全通道硬禁,P78-7)。①②在退出目标类上被适用范围排除(判据 (b) + 装配身份段),③④为瞬态窗。
 - **F(种子窗已登记值)**:`SEED_WINDOW_ROUNDS = 2`(已登记裁定值非拟合:判据表「种子 ≥2 轮不回卖 0 容忍」与 L3 D5 机械窗同值,禁调)。
-- **G(非定向分支与买侧防线)**:dominance 买分支资格门 `dominance_buy_eligible` = 金 > g* ∧ **bench_free > 1**(席位外部性收紧,落点 = 函数本体);买侧死库存防线 `dead_stock_pair_buy_reject_reason`:拒 ⟺ star=1 ∧ name∉K ∧ 全场同名同 1★ 计数==1(切断 C:1→2 新生对)。
+- **G(非定向分支与买侧防线)**:dominance 买分支资格门 `dominance_buy_eligible` = 金 > g* ∧ **bench_free > 1**(席位外部性收紧,落点 = 函数本体;**退役指针**:该资格门已随富余买入通道退役删除——comp-structure-unification 3.4 场景并入 M6 一星兜底带,本前提的历史形态见 git 历史);买侧死库存防线 `dead_stock_pair_buy_reject_reason`:拒 ⟺ star=1 ∧ name∉K ∧ 全场同名同 1★ 计数==1(切断 C:1→2 新生对;**现役消费位 = M6 一星兜底带**,防线本体保留)。
 
 ## 3. 证明
 
