@@ -29,7 +29,7 @@
 | 估值面 | 位置 | 输入 | 现货/再遇项 |
 |---|---|---|---|
 | 终局阵容锁定 score | 12 §1 | P_complete(缺口/剩余回合/金日程/等级场景)×w(line) | 无 |
-| 序数证据门 | `proof.py::evidence_gate`(未接线,P76 修正 5) | p_complete>0 序数 | 无 |
+| 序数证据门 | `proof.py::evidence_gate`(未接入调用,P76 修正 5) | p_complete>0 序数 | 无 |
 | 可行性门/配方对支撑门 | `cw_intention` | q 池模型 × 窗口 H / 计数 ≥1.0 | 无 |
 | 切换终局阵容 E_rounds | P16/kernel | 超几何搜索成本 | 无 |
 | R1 刷新账 E(D\|L) | `shop.py::_r1_ledger_terms` | `expected_refreshes_for_card(L,cost,2,j)`——纯前瞻期望 | 无 |
