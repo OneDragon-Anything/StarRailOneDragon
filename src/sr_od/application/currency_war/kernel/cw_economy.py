@@ -91,15 +91,15 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int,
 
     通用量版理由:节点基础经验含非单击倍数(+2/+12),无法折成
     「购买经验击数」走既有算子。
-    消费方清单:节点基础经验入账 ``apply_node_xp``(sim/cw_sim_backend)
-    + 白送经验发放原语 ``grant_xp``(kernel/cw_game_state,环境 XP
-    窗口通道;两消费方经本单一实现共享升级结转式,禁第二份)。
+    消费方清单(收敛后三项):白送经验发放原语 ``grant_xp`` 与模拟器
+    经验结算原语 ``settle_xp_observe``(均在 kernel/cw_game_state;
+    两函数经本单一实现共享升级结转式,禁第二份)+ 单击版
+    ``xp_apply_clicks``(本模块,同式自足供买经验上报直用)。模拟器各
+    世界经验腿(节点/窗口条件族/选卡/位面段/首购)已统一收敛进
+    ``settle_xp_observe``,不再散点直调本函数。
 
-    消费方第三项起 = sim 节点窗静态量与条件 XP 族(xp:strategy_per_node
-    买断制 xp_per_node=4 / xp_instant 即时经验 / xp_per_plane 位面段 /
-    空·席计数·装备计数·首购等条件 XP 世界腿)——全部世界真值腿统一
-    经 ``level_cap_of`` 随链传帽(持等级帽卡时等级轴整体收窄,任一腿
-    漏传 = 越帽高估);无卡缺省语义零变。
+    全部消费经 ``level_cap_of`` 随链传帽(持等级帽卡时等级轴整体收窄,
+    任一处漏传 = 越帽高估);无卡缺省语义零变。
 """
     if amount <= 0 or level >= level_cap:
         return level, xp_cur
@@ -290,8 +290,8 @@ def level_cap_of(gs: GameState) -> int:
 
     消费位 = 全部等级推进世界真值腿:live 买经验上报满级门
     (cw_action_report/level_up)+ sim 节点经验/即时经验/位面段/
-    条件 XP 族各窗腿 + kernel 白送经验原语(grant_xp)与首购经验世界写
-    (cw_gain_chain)。边界:策略侧等级判据(lv9_stop 等)读注册表
+    条件 XP 族各窗腿(各分支经结算函数 settle_xp_observe 统一)+
+    kernel 白送经验原语(grant_xp)。边界:策略侧等级判据(lv9_stop 等)读注册表
     level_max,系「实机无卡真值」另一把尺——世界面拒发与策略侧规划的
     失配 = 决策质量议题,禁为对齐改注册表常量。
     """

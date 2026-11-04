@@ -1738,7 +1738,9 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
       无基座不虚构推进对);
     - 不做 gold/streak 联动(「经验就是财富」改道未建模,披露键
       env_xp_window_xp_to_gold_pending;改道落地批的单点改道位 = 本函数);
-    - 消费方 = 发放桥 grant_effect_node_xp(唯一挂点,原语不自带挂点)。
+    - 消费方 = 发放桥 grant_effect_node_xp(唯一挂点,原语不自带挂点);
+    - 跨级连锁经 level 写尾回调自动生效(on_level_up_change,任意经验
+      来源——本函数写 level 即触发,无需自带连锁面)。
     """
     if amount <= 0:
         return
@@ -1761,6 +1763,55 @@ def grant_xp(gs: GameState, amount: int, *, sig: ChannelSig,
     if new_lvl != int(lv_v):
         gs.write_logic(gs.level, new_lvl, produced_by=pd,
                        evidence=evidence, sig=sig)
+
+
+def settle_xp_observe(gs: GameState, amount: int, *, sig: ChannelSig,
+                      evidence: str) -> None:
+    """模拟器世界经验结算原语(grant_xp 的观察笔镜像;模拟器域 xp/level
+    观察写唯一合法入口,直写 ``gs.observe`` = 连锁漏触发缺陷——九处
+    窗口/结算观察写块 + 内核首购观察写的收敛体,单一来源与本函数):
+    推进算子 = xp_apply_amount(升级结转 + 帽封顶单一源,函数内 import,
+    惰性纪律同 grant_xp)→ observe level/xp 双笔 → 跨级则显式调
+    on_level_up_change(升级连锁调度器)。契约论证:观察写零回调逐字
+    保持为真——连锁不是挂在「观察写」上,是挂在「结算」上:模拟器
+    结算不是重锚(后端自己就是发生事实的那一方,后果还没人发),由
+    结算代码调原语、原语调调度器,链条每一环都是显式调用,与 C-回调
+    的自动化挂钩不同层、不冲突;实机(live)观察摄取链完全不经过本
+    原语 = 零回调维持(「观察覆盖后重算世界后果」形态不合法,先例 =
+    cw_opening_hp N1 改判)。
+
+    - amount 非正零动作;level/xp 任一未观察(None)→ 零动作留待观察
+      覆盖,禁猜(grant_xp None 门同款);
+    - 满级门 = 算子自带(帽形参经 ``level_cap_of`` 随链)→ 零变化跳写:
+      零观察行零连锁(level/xp 值不变,与 grant_xp 跳写同语义);
+    - evidence 逐源透传(``xp:node``/``xp:first_buy:<费用>`` 等各自词面,
+      禁合并)——遥测独立笔分账面零扰动;
+    - sig = 观察写渠道签名(模拟器域现役组 = obs 族 ``sim:xp`` 组)。
+    """
+    if amount <= 0:
+        return
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_TO_NEXT_LEVEL,
+        level_cap_of,
+        xp_apply_amount,
+    )
+    lv_v = gs.level.value
+    xp_v = gs.xp.value
+    if lv_v is None or xp_v is None:
+        return
+    old_lvl = int(lv_v)
+    new_lvl, cur = xp_apply_amount(old_lvl, int(xp_v[0]), int(amount),
+                                   level_cap=level_cap_of(gs))
+    if new_lvl == old_lvl and cur == int(xp_v[0]):
+        return   # 算子零变化(满级封顶分支)→ 跳写:level/xp 值不变,零观察行
+    gs.observe(gs.level, new_lvl, evidence=evidence, sig=sig)
+    gs.observe(gs.xp, (cur, XP_TO_NEXT_LEVEL.get(new_lvl, cur)),
+               evidence=evidence, sig=sig)
+    if new_lvl != old_lvl:
+        from sr_od.application.currency_war.kernel.cw_levelup_callbacks import (
+            on_level_up_change,
+        )
+        on_level_up_change(gs, old_lvl, new_lvl, evidence)
 
 
 def _record_lv8_window_start(gs: GameState) -> None:
@@ -1829,8 +1880,9 @@ def grant_effect_node_xp(gs: GameState, *, frame: str = '') -> None:
 
 #: 环境 XP 窗口通道披露键族(T-38 成功经验落地批,键名照设计稿 §6;单一源
 #: = 本表,sim 披露集 _BASE_DISCLOSURES 合并消费,值 = 申报短语):
-#: - late_detect: 兜底路径晚一拍(sim 基础经验推 8 / 结算页纠偏发现 8,
-#:   检出恒晚不早;主路径买经验精确对齐;窗口跨局终时末笔不发生);
+#: - late_detect: live 观察路径晚一拍(观察吸收序/未建模源发现序两路径
+#:   留白申报,模拟器侧连锁经结算函数 = 结算时点即记、主路径买经验精确
+#:   对齐;窗口跨局终时末笔不发生);
 #: - level_truth: 世界面按 level_of 真值判定,不继承估值「升 8 必然发生」
 #:   假设(两域语义分立);
 #: - takeover_lost: 效果账本不落快照,接管局条目与窗口状态双缺 → 零驱动
@@ -2491,16 +2543,26 @@ def shop_randomized_pending_of(target: object) -> bool:
 
 
 def mark_shop_randomized_pending(gs: GameState) -> None:
-    """商店随机态重开信号置位(写端唯一 = 商业间谍升级回调第 4 步,
-    kernel/cw_action_report/level_up.py 升级生效时点;清位纪律 = 重开位
-    消费后 + 节点边界清扫两出口,槽注申报)。"""
+    """商店随机态重开信号置位(写端唯一 = 升级值变更回调 spy 分支,源 =
+    任意经验来源升级,经调度器 cw_levelup_callbacks.on_level_up_change;
+    清位纪律 = 重开位消费后 + 节点边界清扫两出口,槽注申报)。"""
     gs.shop_randomized_pending = True
 
 
 def clear_shop_randomized_pending(gs: GameState) -> None:
     """商店随机态重开信号清位(重开位消费后;清位纪律 = 重开位消费后 +
-    节点边界清扫两出口,槽注申报;写端唯一 = 商业间谍升级回调,T-3 接线)。"""
+    节点边界清扫两出口,槽注申报;写端唯一 = 升级值变更回调,经调度器
+    spy 分支)。"""
     gs.shop_randomized_pending = False
+
+
+def enqueue_levelup_world_decl(gs: GameState, decl: WorldDecl) -> None:
+    """升级连锁世界声明入簿记队列(写端唯一 = 调度器 spy 分支,且只在
+    模拟器装配时写入——live 不构造,live 端口未装配 = no-op,杜绝 live
+    队列陈积被后续上报误读出的脏声明)。消费面双处取走即清:买经验
+    上报尾读头部(动作执行点当拍喂入)+ 模拟器 advance 尾统一排空;
+    槽语义与不变式见 GameState 槽注 pending_levelup_world_decls。"""
+    gs.pending_levelup_world_decls.append(decl)
 
 
 def anchor_aware_write(gs: GameState, rand: bool) -> Callable[..., None]:
@@ -3222,11 +3284,11 @@ class GameState:
 
     # —— 商店随机态重开信号(非 Field 簿记;工程结构组单列申报;
     # 2026-10-17-levelup-shop-transition design §2.4)——
-    # True = 商店有未处理的随机态新牌面(商业间谍升级回调刷新商店并偷取
+    # True = 商店有未处理的随机态新牌面(商业间谍升级连锁刷新商店并偷取
     # 最贵 3 张后,剩余牌面 = 下次开店应呈现的牌面——重开读真牌面而非
-    # 重新发牌);False = 无(缺省)。写端唯一 = 商业间谍升级回调
-    # (kernel/cw_action_report/level_up.py 升级生效时点,经
-    # :func:`mark_shop_randomized_pending`,T-3 已接线);读端 = 备战
+    # 重新发牌);False = 无(缺省)。写端唯一 = 升级值变更回调(源 =
+    # 任意经验来源升级,经调度器 spy 分支 cw_levelup_callbacks,宿主挂
+    # _write_logic_frame level 分支尾);读端 = 备战
     # 第 1 步随机态重开位(entry,
     # 策略只读,经 :func:`shop_randomized_pending_of`);清位 = 重开位
     # 消费后(:func:`clear_shop_randomized_pending`)+ 节点边界清扫
@@ -3238,6 +3300,26 @@ class GameState:
     # 清零。禁用商店容器 unknown 形态承载随机态(unknown = 识别失败必携
     # 缺陷记录且触发停机闸,语义与守卫均不兼容,design §2.4)。
     shop_randomized_pending: bool = False
+
+    # —— 升级连锁世界声明簿记队列(非 Field 簿记;工程结构组单列申报,
+    # 迭代 2026-09-23-invest-effects-calc T-432)——
+    # 值 = 商业间谍 spy_shop_refresh 世界分支声明(WorldDecl)的待消费
+    # 队列,由升级值变更回调的 spy 分支写入。写端唯一 = 调度器 spy 分支
+    # (cw_levelup_callbacks.on_level_up_change,经
+    # :func:`enqueue_levelup_world_decl`),且只在模拟器装配时写入
+    #(live 不构造:live 端口未装配 = no-op,杜绝 live 队列陈积被后续
+    # 上报误读出的脏声明)。消费点双处、取走即清:①买经验上报尾读头部
+    #(kernel/cw_action_report/level_up.py,经
+    # cw_levelup_callbacks.take_levelup_world_decl,动作执行点当拍喂入
+    # declare_world);②模拟器 advance 尾统一排空段(覆盖节点经验/
+    # 窗口分支/选卡/首购等全部非买经验源,逐项直调间谍商店分支)。队列
+    # 形态(非单值槽)的结构依据 = 同一推进栈内双跨级(先 kernel tick
+    # 环境窗口发放、后模拟器节点经验)各产一笔声明,单值槽覆盖丢笔;
+    # 不变式 = 动作间隙队列恒空(每次 advance 尾排空保证动作上报发生时
+    # 队列至多含本动作自己刚写入的声明)。非 Field 理由 = 纯过程簿记
+    #(回调直写、模拟器读,无观察仲裁语义),同 shop_randomized_pending
+    # 先例;容器每局新建 = 天然清零。
+    pending_levelup_world_decls: list[WorldDecl] = field(default_factory=list)
 
     # —— 局级节点序列台账(非 Field 簿记,非域字段,工程结构组单列申报)——
     # [索引定义] 值 = :class:`PlaneNodeLedger`(本模块;seq_by_plane 键为
@@ -3969,10 +4051,19 @@ class GameState:
         - enemy_affixes 逻辑写尾挂 HP 先验跟随回调(T-45 敌后破坏删除分支,
           单一源 = cw_opening_hp.on_enemy_affixes_logic_write;同款契约:
           观察写零回调,logic/logic_rand 两通道同经——「观察覆盖词缀后
-          HP 重算」是被对抗改判否决的形态,勿接回)。"""
+          HP 重算」是被对抗改判否决的形态,勿接回);
+        - level 逻辑写尾挂升级连锁回调(契约同款:观察写零回调;
+          logic/logic_rand 两通道同经;调度器单一源 =
+          cw_levelup_callbacks.on_level_up_change——升级三块连锁对任意
+          经验来源的跨级生效,不只买经验动作;观察写经验的连锁归
+          settle_xp_observe 结算函数显式调,不经本宿主)。xp 字段分支 =
+          预留扩展位:现役零回调(已登记的连锁效果全部是「升级」的后果,
+          无「经验增加但不升级也要做事」的效果);后继经验非升级类效果
+          登记时再建,形态 = 同分支尾同构回调,零结构改动。"""
         name = self._field_name(target)
         old_row_value = target.value if name == 'deployed' else None
         old_affixes = target.value if name == 'enemy_affixes' else None
+        old_level = target.value if name == 'level' else None
         self._swap(name, Field(value=value, source=source, evidence=evidence),
                    sig=sig, note=note)
         if name == 'deployed':
@@ -3992,6 +4083,13 @@ class GameState:
             )
             on_enemy_affixes_logic_write(self, old_affixes, value,
                                          source=produced_by)
+        elif name == 'level':
+            # kernel 反向模块级零 import 契约:回调宿主模块级依赖本模块
+            # (ChannelSig),函数内惰性取(enemy_affixes 分支同款注释)。
+            from sr_od.application.currency_war.kernel.cw_levelup_callbacks import (
+                on_level_up_change,
+            )
+            on_level_up_change(self, old_level, value, produced_by)
 
     def relay(self, target: Field, value: Any,
               sig: ChannelSig) -> bool:

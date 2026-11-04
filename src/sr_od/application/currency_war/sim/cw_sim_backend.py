@@ -70,13 +70,10 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     roll_rotation_per_stage,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
-    XP_TO_NEXT_LEVEL,
     LostNodeRef,
     RoundStartIncome,
-    level_cap_of,
     round_start_income,
     world_shop_refresh_cost,
-    xp_apply_amount,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BOARD_REWRITE_SELL_ALL_DEAL,
@@ -143,6 +140,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     node_kind_of,
     observe_node_anchor,
     seed_opening_state,
+    settle_xp_observe,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_ORE_GRANTS,
@@ -178,6 +176,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     get_strategy,
     normalize_invest_name,
     strategy_loss_battle_modifier,
+)
+from sr_od.application.currency_war.kernel.cw_levelup_callbacks import (
+    take_levelup_world_decl,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
@@ -561,24 +562,16 @@ NODE_XP_PENDING_U17: str = 'node_xp_pending_u17'
 def apply_node_xp(gs: GameState, *, node_type: str) -> int:
     """节点结算基础经验入账(补给 +0 = 表内显式档)。
 
-    写容器 xp = (当前级已攒,升下一级所需);集外节点型 = 0 经验不入账
+    世界写 = 结算原语 ``settle_xp_observe`` 一行调用(推进 + 观察
+    双笔 + 跨级连锁统一收口,模拟器各经验腿同一入口;帽形参经
+    ``level_cap_of`` 随链在原语内)。集外节点型 = 0 经验不入账
     (词表漂移在调用方暴露)。返回本节点实际入账经验量。
-    帽形参经 ``level_cap_of`` 随链(持等级帽卡时节点经验同样受帽——
-    等级轴世界真值单一收窄,与购买经验门同链;无卡缺省语义零变)。
     """
     amount = NODE_XP_BY_TYPE.get(node_type, 0)
     if amount <= 0:
         return 0
-    xp_field = gs.xp.value
-    level_field = gs.level.value
-    if xp_field is None or level_field is None:
-        return 0
-    level, cur = xp_apply_amount(int(level_field), int(xp_field[0]), amount,
-                                 level_cap=level_cap_of(gs))
-    need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-    sig = obs_sig(group_id='sim:xp')
-    gs.observe(gs.level, level, evidence=sim_evidence('xp:node'), sig=sig)
-    gs.observe(gs.xp, (cur, need), evidence=sim_evidence('xp:node'), sig=sig)
+    settle_xp_observe(gs, amount, sig=obs_sig(group_id='sim:xp'),
+                      evidence=sim_evidence('xp:node'))
     return amount
 
 
@@ -593,9 +586,8 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
     逐卡直读 :data:`STRATEGY_ECONOMY` 现值,**禁 aggregate_economy**:
     其聚合字段集不含 xp_instant,误走 = 静默零发放;且聚合语义 = 周期型
     重评,与「选卡单事件一次性发放」不匹配,逐卡各发各的(同持多卡笔笔
-    独立)。升级结转/满级零推进复用 :func:`xp_apply_amount`(帽经
-    ``level_cap_of`` 随链,与节点经验腿同链收窄);写入形态与
-    :func:`apply_node_xp` 同款,evidence 按 ``xp:strategy_pick:<卡名>``
+    独立)。世界写 = 结算原语 ``settle_xp_observe`` 一行调用(帽经
+    ``level_cap_of`` 随链在原语内),evidence 按 ``xp:strategy_pick:<卡名>``
     与节点经验 ``xp:node`` 笔分账,sig 同组(同域字段同组,笔间靠
     evidence 区分)。返回本批实际入账经验总量。
     """
@@ -606,17 +598,8 @@ def apply_strategy_pick_xp(gs: GameState, picked: Sequence[str]) -> int:
         amount = eff.xp_instant if eff is not None else 0
         if amount <= 0:
             continue
-        xp_field = gs.xp.value
-        level_field = gs.level.value
-        if xp_field is None or level_field is None:
-            continue
-        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     amount, level_cap=level_cap_of(gs))
-        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-        sig = obs_sig(group_id='sim:xp')
-        evidence = sim_evidence(f'xp:strategy_pick:{canon}')
-        gs.observe(gs.level, level, evidence=evidence, sig=sig)
-        gs.observe(gs.xp, (cur, need), evidence=evidence, sig=sig)
+        settle_xp_observe(gs, amount, sig=obs_sig(group_id='sim:xp'),
+                          evidence=sim_evidence(f'xp:strategy_pick:{canon}'))
         total += amount
     return total
 
@@ -653,17 +636,9 @@ def apply_strategy_plane_refire_xp(gs: GameState,
         amount = eff.xp_per_plane if eff is not None else 0
         if amount <= 0:
             continue
-        xp_field = gs.xp.value
-        level_field = gs.level.value
-        if xp_field is None or level_field is None:
-            continue
-        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     amount, level_cap=level_cap_of(gs))
-        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-        sig = obs_sig(group_id='sim:xp')
-        evidence = sim_evidence(f'xp:strategy_plane_refire:{canon}')
-        gs.observe(gs.level, level, evidence=evidence, sig=sig)
-        gs.observe(gs.xp, (cur, need), evidence=evidence, sig=sig)
+        settle_xp_observe(gs, amount, sig=obs_sig(group_id='sim:xp'),
+                          evidence=sim_evidence(
+                              f'xp:strategy_plane_refire:{canon}'))
         total += amount
     return total
 
@@ -1540,8 +1515,9 @@ class SimRunResult:
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
 #: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
-#: T-3 增 ``spy_shop_refresh``(商业间谍升级回调世界分支:上报声明触发,
-#: 非转移动作——next_screen 恒备战档,零画面转移);2026-10-19 用户
+#: T-3 增 ``spy_shop_refresh``(商业间谍升级值变更回调世界分支:上报
+#: 声明触发 + advance 尾统一排空段消费,非转移动作——next_screen 恒
+#: 备战档,零画面转移);2026-10-19 用户
 #: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
 #: 两屏刷新世界分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
 #: 模型对齐批:``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
@@ -1757,6 +1733,11 @@ class SimBackend:
     #: 每次 advance 入口消费)。
     _pending_reconcile: list[tuple[NodePos | None, WorldDecl]] = field(
         init=False, default_factory=list)
+    #: 间谍抽牌流键执行序计数器(按节点位;键 = (位面,轮) 1 基,值 = 该
+    #: 位已执行次数,取值时机 = 执行期现读先取后增)。坐标系 = 本后端
+    #: 采样簿记私有(不入容器/不入快照恢复,呈现闩族同形先例)。
+    _spy_stream_seq: dict[tuple[int, int], int] = field(
+        init=False, default_factory=dict)
     _steps: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
@@ -2044,15 +2025,17 @@ class SimBackend:
             self._shop_record = payload
 
     def _apply_spy_shop_refresh(self) -> None:
-        """商业间谍升级回调世界分支(2026-10-17-levelup-shop-transition
-        design §2.3 步①-③;触发 = 升级上报 world_decl
-        ``spy_shop_refresh``,动作 op 经 cw_sim_ports.declare_world 喂入;
-        步④置信号 = kernel 上报回调,写端唯一,不经本层)。
+        """商业间谍升级连锁世界分支(2026-10-17-levelup-shop-transition
+        design §2.3 步①-③;触发 = spy_shop_refresh 声明,来源双消费口 =
+        买经验上报尾单项喂入 + advance 尾统一排空段逐项直调;步④置信号
+        = kernel 升级值变更回调(任意经验来源升级),写端唯一,不经本层)。
 
         - ①抽 5 张:费用档按升级后等级概率表(单一源 =
-          :func:`effective_deal_probs`,轮岗在场同款重掷);流键沿用发牌
-          口径(M22/spy-deal|M22/spy-rotation,模块号沿 M21 续);发牌
-          算法本体 = kernel ``sample_shop_deal`` 单一源,采样即世界真值;
+          :func:`effective_deal_probs`,轮岗在场同款重掷);流键 =
+          发牌口径 + 执行序后缀(M22/spy-deal#k|M22/spy-rotation#k,k =
+          :attr:`_spy_stream_seq` 按节点位先取后增,同键同序列语义下
+          同窗双执行不重牌;模块号沿 M21 续);发牌算法本体 = kernel
+          ``sample_shop_deal`` 单一源,采样即世界真值;
         - ②偷最贵 3 张 → 备战席真实入席(席满溢出 = 不入席 + 计数披露,
           design §2.3 申报的 sim 先行形态;最贵序 = 费用降序 → 星级降序
           → 槽位升序确定性破并列);入席 = 容器 bench 观察直写(sim 世界
@@ -2077,12 +2060,21 @@ class SimBackend:
         )
         new_level = int(self.gs.level.value or 3)
         plane, r = self._node_pos()
+        # 流键执行序后缀(同键同序列语义下双执行的唯一修法):结算排空
+        # 接入后「窗开跨级排空抽牌 + 同窗后继买经验跨级抽牌」消费同一
+        # (位面,轮) 流键会抽到完全相同的 5 张,实机两次独立刷新语义破;
+        # 后端私有按节点位计数器,每次分支执行先取后增,k 从 0 起——
+        # 键位移半径最小(仅同位第二次执行起变键),重放判据相容(首执行
+        # = '#0',测试重放构造同式追加)。独立计数器非复用披露计数 =
+        # 遥测计数与随机确定性解耦。
+        seq = self._spy_stream_seq.get((plane, r), 0)
+        self._spy_stream_seq[(plane, r)] = seq + 1
         rotation_on = (str(self.gs.active_env.value or '')
                        == ROTATION_ENV_NAME)
-        deal_rng = stream_rng(self.seed, f'M22/spy-deal/p{plane}/r{r}')
+        deal_rng = stream_rng(self.seed, f'M22/spy-deal/p{plane}/r{r}#{seq}')
         probs = effective_deal_probs(
             new_level,
-            stream_rng(self.seed, f'M22/spy-rotation/p{plane}/r{r}'),
+            stream_rng(self.seed, f'M22/spy-rotation/p{plane}/r{r}#{seq}'),
             rotation_on=rotation_on)
         drawn = sample_shop_deal(self.gs, deal_rng, level=new_level,
                                  probs=probs)
@@ -2212,8 +2204,9 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == 'spy_shop_refresh':
-            # 商业间谍升级回调世界分支(2026-10-17 迭代 design §2.3 步①-③;
-            # 步④置信号 = kernel 上报回调,不经本层)。
+            # 商业间谍升级连锁世界分支(2026-10-17 迭代 design §2.3
+            # 步①-③;声明来源 = 上报尾喂入或 advance 尾排空段,
+            # 步④置信号 = kernel 升级值变更回调,不经本层)。
             self._apply_spy_shop_refresh()
         elif decl.trigger == 'refresh_invest_strategy':
             # 投资策略屏逐卡刷新世界分支(2026-10-19 用户裁定批;上报声明
@@ -2231,6 +2224,9 @@ class SimBackend:
             self._dismiss_modal()
         self._reconcile_next_screen(decl)
         self._observe_board_truth()   # 步界板面真值观察(等值零写)
+        # 升级连锁声明统一排空段(本 advance 的最终商店写,覆盖节点经验/
+        # 窗口分支/选卡/首购等全部非买经验源跨级产生的 spy 声明)。
+        self._drain_pending_levelup_decls()
         # overlay 呈现检查(3.4):**仅纯转移分支**——声明改底层屏后
         # open_bookcard/open_tome 的弹窗呈现入口(battle_resolve/
         # node_advance 等其余分派保留原呈现时机 = 各自过程内/节点窗
@@ -2238,6 +2234,29 @@ class SimBackend:
         # 先于 offer」是旧引擎收尾检查序的锁定语义)。
         if decl.trigger == '':
             self._present_pending_overlay()
+
+    def _drain_pending_levelup_decls(self) -> None:
+        """升级连锁声明统一排空段(advance 尾第三消费点;前两口 = 买经验
+        上报尾读取 + 本段,取走即清)。
+
+        队列非空则逐项直调 :meth:`_apply_spy_shop_refresh`(不走
+        declare_world 再入 = 零状态机重入),单项失败上抛使后续项滞留 =
+        下一 advance 重试(语义自洽,零内吞)。次序 = 本 advance 的最终
+        商店写:间谍分支晚于 M05 全刷与位面强制店改写分支,被覆盖的中间
+        牌面无观察者(模拟器不呈现中间态),玩家所见最终店面 = 间谍分支
+        结果。锁交互:无整店锁守卫,沿位面强制店改写分支在卷先例(效果
+        触发的商店写不入 M05 自动全刷的锁豁免域,真值待实采与间谍卡共享
+        同一实采裁决)。重放安全 = 排空即清空不变式(重复 advance 到达时
+        队列已空,零双消费)。done(局终)守卫跳过:终局升级不刷店,队列内
+        声明随局终止不消费(与「局终无商店」语义自洽,零处理)。
+        """
+        if self.done:
+            return
+        while True:
+            decl = take_levelup_world_decl(self.gs)
+            if decl is None:
+                return
+            self._apply_spy_shop_refresh()
 
     def _reconcile_exempt_reason(self) -> str:
         """当前对账豁免场景(:data:`RECONCILE_EXEMPT_KINDS`;命中 =
@@ -3533,19 +3552,9 @@ class SimBackend:
         # 零写留待观察覆盖,禁猜(apply_node_xp 同形态)。
         empty_xp = check_strategy_empty_equip_xp(self.gs)
         if empty_xp > 0:
-            xp_field = self.gs.xp.value
-            level_field = self.gs.level.value
-            if xp_field is not None and level_field is not None:
-                level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), empty_xp,
-                                             level_cap=level_cap_of(self.gs))
-                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-                xp_sig = obs_sig(group_id='sim:xp')
-                xp_ev = sim_evidence('xp:empty_slot')
-                self.gs.observe(self.gs.level, level, evidence=xp_ev,
-                                sig=xp_sig)
-                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
-                                sig=xp_sig)
+            settle_xp_observe(self.gs, empty_xp,
+                              sig=obs_sig(group_id='sim:xp'),
+                              evidence=sim_evidence('xp:empty_slot'))
         # 策略卡备战席计数经验腿(「节点开始时，如果备战席角色小于等于4名，
         # 则获得3经验」族,人才空洞 id 202601 首例):进窗事实点在窗口幂等
         # 守卫内(重放不双发),kernel 检查函数单一源
@@ -3573,19 +3582,9 @@ class SimBackend:
         # (apply_node_xp 同形态)。
         bench_xp = check_strategy_bench_count_xp(self.gs)
         if bench_xp > 0:
-            xp_field = self.gs.xp.value
-            level_field = self.gs.level.value
-            if xp_field is not None and level_field is not None:
-                level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), bench_xp,
-                                             level_cap=level_cap_of(self.gs))
-                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-                xp_sig = obs_sig(group_id='sim:xp')
-                xp_ev = sim_evidence('xp:bench_count')
-                self.gs.observe(self.gs.level, level, evidence=xp_ev,
-                                sig=xp_sig)
-                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
-                                sig=xp_sig)
+            settle_xp_observe(self.gs, bench_xp,
+                              sig=obs_sig(group_id='sim:xp'),
+                              evidence=sim_evidence('xp:bench_count'))
         # 策略卡装备计数经验腿(「每拥有一件【白昼装备】以及其原型装备，
         # 在进入新节点时就获得1点经验」族,赞美太阳 id 252401 首例):进窗
         # 事实点在窗口幂等守卫内(重放不双发),kernel 检查函数单一源
@@ -3611,19 +3610,9 @@ class SimBackend:
         # (apply_node_xp 同形态)。
         equip_xp = check_strategy_equip_count_xp(self.gs)
         if equip_xp > 0:
-            xp_field = self.gs.xp.value
-            level_field = self.gs.level.value
-            if xp_field is not None and level_field is not None:
-                level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]), equip_xp,
-                                             level_cap=level_cap_of(self.gs))
-                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-                xp_sig = obs_sig(group_id='sim:xp')
-                xp_ev = sim_evidence('xp:equip_count')
-                self.gs.observe(self.gs.level, level, evidence=xp_ev,
-                                sig=xp_sig)
-                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
-                                sig=xp_sig)
+            settle_xp_observe(self.gs, equip_xp,
+                              sig=obs_sig(group_id='sim:xp'),
+                              evidence=sim_evidence('xp:equip_count'))
         # 策略卡赠礼条件双腿(迷之旅人 id 253601 首例;「激活4【巡海游侠】
         # 时…获得…2星【黄泉】(携【星间旅人星徽】)」= 羁绊人数条件腿,
         # 任意节点入窗评估;「进入下一个奖励节点时，获得【波提欧】」=
@@ -3657,20 +3646,9 @@ class SimBackend:
         # (apply_node_xp 同形态;cost=0/无单位零发放门在判定端)。
         left_cost_xp = check_strategy_bench_left_cost_xp(self.gs)
         if left_cost_xp > 0:
-            xp_field = self.gs.xp.value
-            level_field = self.gs.level.value
-            if xp_field is not None and level_field is not None:
-                level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]),
-                                             left_cost_xp,
-                                             level_cap=level_cap_of(self.gs))
-                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-                xp_sig = obs_sig(group_id='sim:xp')
-                xp_ev = sim_evidence('xp:bench_left_cost')
-                self.gs.observe(self.gs.level, level, evidence=xp_ev,
-                                sig=xp_sig)
-                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
-                                sig=xp_sig)
+            settle_xp_observe(self.gs, left_cost_xp,
+                              sig=obs_sig(group_id='sim:xp'),
+                              evidence=sim_evidence('xp:bench_left_cost'))
         # 条件 XP 族外唯一静态量通道(买断制 id 300901 xp_per_node=4;
         # 聚合薄读 strategy_xp_per_node_of 单一源,静态量禁动态计数挂此
         # ——条件 XP 族走各自 check_* 纯判定)。现位申报:被动收入腿后、
@@ -3681,20 +3659,9 @@ class SimBackend:
         # (apply_node_xp 同形态)。
         strategy_xp = strategy_xp_per_node_of(self.gs)
         if strategy_xp > 0:
-            xp_field = self.gs.xp.value
-            level_field = self.gs.level.value
-            if xp_field is not None and level_field is not None:
-                level, cur = xp_apply_amount(int(level_field),
-                                             int(xp_field[0]),
-                                             strategy_xp,
-                                             level_cap=level_cap_of(self.gs))
-                need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-                xp_sig = obs_sig(group_id='sim:xp')
-                xp_ev = sim_evidence('xp:strategy_per_node')
-                self.gs.observe(self.gs.level, level, evidence=xp_ev,
-                                sig=xp_sig)
-                self.gs.observe(self.gs.xp, (cur, need), evidence=xp_ev,
-                                sig=xp_sig)
+            settle_xp_observe(self.gs, strategy_xp,
+                              sig=obs_sig(group_id='sim:xp'),
+                              evidence=sim_evidence('xp:strategy_per_node'))
         # 节点条件晶矿发放(彩虹矿 id 301201 首例;「进入新的奖励节点时，
         # 获得1个晶矿」触发器单一源 = kernel check_strategy_reward_ore_grants,
         # 白名单表 STRATEGY_REWARD_ORE_GRANTS 驱动)。现位申报:买断制静态
@@ -4259,17 +4226,8 @@ class SimBackend:
                 total += n
         if total <= 0:
             return
-        xp_field = self.gs.xp.value
-        level_field = self.gs.level.value
-        if xp_field is None or level_field is None:
-            return
-        level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                     total, level_cap=level_cap_of(self.gs))
-        need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-        sig = obs_sig(group_id='sim:xp')
-        evidence = sim_evidence(f'xp:strategy_plane:p{plane}')
-        self.gs.observe(self.gs.level, level, evidence=evidence, sig=sig)
-        self.gs.observe(self.gs.xp, (cur, need), evidence=evidence, sig=sig)
+        settle_xp_observe(self.gs, total, sig=obs_sig(group_id='sim:xp'),
+                          evidence=sim_evidence(f'xp:strategy_plane:p{plane}'))
 
     def _apply_strategy_plane_start_gold(self, plane: int) -> None:
         """策略域位面开始金腿(「现在及每个位面开始时」族位面段金支,

@@ -24,6 +24,9 @@
 持徽,贡献单一源 cw_bond_equips.unit_bond_tags,开拓者按排形态);
 board = 多集口径(卡带系多计,策略消费口)——两者非视图关系。
 
+level 域同款值回调见 ``cw_levelup_callbacks``(升级连锁调度器,
+宿主挂 ``_write_logic_frame`` level 分支尾)。
+
 判据簿记(住 cw_overlay_register.ScreenChanges sidecar):
 巨星跨档无簿记(每次上穿即弹,降档再升也弹——用户裁定);祈愿首达档
 一次;planner 每费用档一次;伙伴无上限;占卜屋住 S4 上报点(本模块外)。
