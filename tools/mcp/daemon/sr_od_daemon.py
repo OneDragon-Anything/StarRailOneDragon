@@ -13,6 +13,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 
 import psutil
@@ -109,6 +110,23 @@ def is_port_in_use(port: int) -> bool:
     return False
 
 
+def _log_evidence_note(log_path: Path, started_at: datetime) -> str:
+    """失败/未就绪报告的日志证据说明:附最后写入时间并标新旧。
+
+    为什么必须带时间:server 的 stdout 日志为追加模式且健康启动零写入,
+    尾部内容可能来自历史启动(2026-11-04 实损:排障者把数日前的旧 traceback
+    当作当次失败现场,误构造出整套不存在的依赖竞态叙事)。
+    """
+    try:
+        mtime = datetime.fromtimestamp(log_path.stat().st_mtime)
+    except OSError:
+        return f'stdout/traceback: {log_path}(文件不存在)'
+    stale_tag = (' ⚠️尾部早于本次启动,属历史现场,非本次输出'
+                 if mtime < started_at else '')
+    return (f'stdout/traceback: {log_path}'
+            f'(最后写入 {mtime.strftime("%Y-%m-%d %H:%M:%S")}{stale_tag})')
+
+
 @mcp.tool()
 def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
     """启动主 MCP server(游戏操作),在 Session 1 拉起。
@@ -158,6 +176,8 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
             from one_dragon.utils.log_utils import rotate_large_stdout_log
             rotate_large_stdout_log(log_path)
             # with 关闭父进程的日志句柄;子进程已继承 fd 继续写日志,避免失败/异常路径泄漏 fd
+            # 本次启动时刻:失败/未就绪报告用它判别日志尾部的新旧(见 _log_evidence_note)
+            _started_at = datetime.now()
             with open(log_path, 'a', encoding='utf-8') as log_file:
                 process = subprocess.Popen(
                     cmd,
@@ -190,12 +210,22 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
                         f"端口: {port}\n"
                         f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}(op/框架日志唯一信道,判读看这里)\n"
                         f"stdout 兜底: {log_path}(仅收 print/未捕获 traceback,静默属常态)")
-            _hint = ('' if _listen_ok else
-                     f'\n[提示] 端口 {port} 未监听——若被旧进程占用,先 taskkill /PID <旧pid> /T /F 清理再 start')
-            return (f"[ERROR] 启动失败(返回码 {process.returncode},"
-                    f"端口监听={_listen_ok}){_hint}\n"
-                    f"stdout/traceback: {log_path}(启动失败先看这里)\n"
-                    f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}")
+            if process.poll() is not None:
+                # 进程已退出=真失败(import 崩/绑定崩):退出码 + 日志现场。
+                return (f"[ERROR] 启动失败(进程已退出,退出码 {process.returncode},"
+                        f"端口监听={_listen_ok})\n"
+                        f"{_log_evidence_note(log_path, _started_at)}\n"
+                        f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}")
+
+            # 进程存活但窗口内未监听:冷启动(uv 解析+大模块初始化)可能远超轮询窗口,
+            # 进程仍在后台初始化并最终完成监听——非失败,不得判死(2026-11-04 误报实证:
+            # 两次判「启动失败」后进程自行完成监听,op 照常跑通)。此处报「启动中」,
+            # 调用方稍后重试 start 确认(对已运行幂等,会报已在运行)。
+            return (f"[启动中] 进程存活 (PID: {process.pid}),端口 {port} 在轮询窗口"
+                    f"(~12s)内未监听——冷启动可能超过窗口,进程仍在后台初始化\n"
+                    f"确认手段:稍等数十秒后重试 start(幂等);或自行查端口监听状态\n"
+                    f"{_log_evidence_note(log_path, _started_at)}\n"
+                    f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}(op/框架日志唯一信道)")
 
         except Exception as e:
             return f"[ERROR] 启动异常: {e}"
