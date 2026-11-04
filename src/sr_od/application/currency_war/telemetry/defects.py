@@ -18,7 +18,7 @@ from sr_od.application.currency_war.telemetry.state import (
 # 把散在观察冲突/执行失败的缺陷口径归一:台账每行经 evidence.refs 指回证据行
 # ——审计先查台账,下钻再回证据行。refs 迁移(retirement.md §2
 # defect_ledger 行,已定案):旧流(decisions/outcomes/obs_conflicts)
-# 写面已停用,refs 统一改指 journal ``(run_id,v)`` 锚(构造
+# 写面已停用,refs 统一改指 journal ``(run_id,v)`` 登记条目(构造
 # 单一源 = kernel.cw_telemetry_exit.journal_refs;无账本媒体时诚实省略)。
 # 证据行现役归宿 = journal obs_event arbitrate 行(field 对账);exec 失败
 # 旁路已随 exec_events 流停用而消失(见文件尾注)。obs_conflicts 历史行内
@@ -242,14 +242,14 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 
 
 def install_exit_hooks() -> None:
-    """出口钩子注入(生产武装点=CurrencyWarApp.__init__;幂等):
+    """出口钩子注入(生产装配接入点=CurrencyWarApp.__init__;幂等):
     把本模块真实现写进 kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/
     decision 三桶的 telemetry 上行出口(落账/run_id 归属键)零直依本模块。
 
     同点扩装:journal 段淘汰的 defect_ledger 联动跟随清理
     (kernel/cw_state_journal.set_retirement_follower 槽)——台账段随
     journal run 段生命周期同窗清理/同暴露,禁另起独立清理周期(双源漂移
-    禁令);缺省关,本函数即生产武装点(装配序在本 app 内先于
+    禁令);缺省关,本函数即生产装配接入点(装配序在本 app 内先于
     install_state_telemetry,清理趟触发时槽已就位)。本函数只武装槽位,
     清理本体在 journal 装配趟执行(recorder.follow_journal_retirement)。
 
@@ -303,8 +303,8 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         gap=gap, plane=int(rec.get('plane') or 0),
         round_num=int(rec.get('round_num') or 0),
         verdict=str(rec.get('verdict') or ''), shot=rec.get('shot'),
-        # refs = journal (run_id,v) 锚(refs 迁移,retirement.md §2
-        # defect_ledger 行):锚恰为上方汇点刚写入的 obs_event 证据行版本
+        # refs = journal (run_id,v) 登记条目(refs 迁移,retirement.md §2
+        # defect_ledger 行):该条目恰为上方汇点刚写入的 obs_event 证据行版本
         #(obs_conflict 先 note_obs_event 后旁路,同栈无间写);旧
         # obs_conflicts 流指针已停用,新行按其下钻扑空。
         refs=journal_refs(),

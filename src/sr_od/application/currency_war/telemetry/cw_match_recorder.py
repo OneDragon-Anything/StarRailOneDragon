@@ -8,7 +8,7 @@
 - 离线重放:对任意历史截图目录重跑提取。
 
 设计:
-- **关键帧门控**:OCR 关键词(备战阶段/结算/商店/补给/失败/简报锚)命中才采集;内容哈希
+- **关键帧门控**:OCR 关键词(备战阶段/结算/商店/补给/失败/简报识别标志)命中才采集;内容哈希
   去重(与上一帧相同则跳过)。战斗过场/动画帧不采(无法结构化提取)。
 - **结构化提取**:命中帧立即调 ``read_game_state`` + SIFT 身份(``read_deployed_rows`` /
   ``read_bench_view``)→ 一条 JSONL(帧文件名 + 全部字段);离线分析不用再跑识别。
@@ -44,7 +44,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_phase_round,
 )
 
-#: 关键帧门控关键词(命中任一才采集;全部是「可结构化提取」的画面锚)
+#: 关键帧门控关键词(命中任一才采集;全部是「可结构化提取」的画面识别标志)
 KEY_ANCHORS: tuple[str, ...] = (
     '备战阶段',      # 备战屏(板面/商店/bench 全量可读)
     '挑战结束',      # 结算屏(HP/金币/连胜)
@@ -64,7 +64,7 @@ def _ocr_texts(ctx, img) -> str:
 
 
 def match_anchor(texts: str) -> str | None:
-    """OCR 全文 → 命中的第一个关键锚(无则 None = 非关键帧)。"""
+    """OCR 全文 → 命中的第一个关键识别标志(无则 None = 非关键帧)。"""
     for k in KEY_ANCHORS:
         if k in texts:
             return k
@@ -75,7 +75,7 @@ def extract_frame(ctx, img, templates) -> dict:
     """关键帧 → 结构化记录(识别全量;失败字段安全默认,不抛)。"""
     rec: dict = {'ts': datetime.now().isoformat(timespec='seconds')}
     try:
-        # round_caps = 场字段现值(§2.5 实时态语料接线:修饰局 r10/r8
+        # round_caps = 场字段现值(§2.5 实时态语料接入调用:修饰局 r10/r8
         # 帧记 (1,10)/(2,8);局外/--replay 态无 session → None 回退默认
         # 口径,披露 10②)。
         _caps_gs = game_state_from_ctx(ctx)
@@ -95,7 +95,7 @@ def extract_frame(ctx, img, templates) -> dict:
             # (已 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
             # gold 同款带保真位。
             # (迁移:输入 = read_game_state 轻量回执,逐字段语义与旧
-            # 帧逐位同;bench_full 改容器派生读口——旧帧 bench 恒空表,该
+            # 帧逐位同;bench_full 改状态容器派生读口——旧帧 bench 恒空表,该
             # 值此前结构性恒 False,现取真值,判读按新语义。)
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 bench_is_full,
@@ -129,7 +129,7 @@ def extract_frame(ctx, img, templates) -> dict:
              for i, s in enumerate(view.slots)
              if s.kind == 'unit' and s.unit is not None]
             # 道具槽 name 取槽件钉名(item 身份轴;识别三模板命中即钉名,
-            # 恒 '' 名字盲降级消除;旧容器 item=None 缺省保底空串)
+            # 恒 '' 名字盲降级消除;旧状态容器 item=None 缺省保底空串)
             + [{'name': s.item or '', 'star': 1, 'slot': i + 1}
                for i, s in enumerate(view.slots)
                if s.kind in ('supply_box', 'tome', 'bookcard')])

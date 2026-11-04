@@ -4,7 +4,7 @@
 产物),字段名/形态写错全部静默——实证:dp_posture 写端把 dict 收窄成 str 后,
 读端 ``isinstance(dp, dict)`` 恒 False 结构性漏报;actions
 元素只有 ``__type__`` 键、读 ``get('type')`` 恒 None;hp_trusted 位在 state
-子字典顶层不存在(历史行 = 旧帧序列化嵌在 state 内;容器期行 state =
+子字典顶层不存在(历史行 = 旧帧序列化嵌在 state 内;状态容器(GameState)期行 state =
 serialize_state 产物,hp_trusted 位已停用——两代形状并存,
 裸读必错)。
 

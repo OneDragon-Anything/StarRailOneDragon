@@ -40,9 +40,9 @@ _CURRENT_RUN_ID: str = ""
 
 _CURRENT_DIFFICULTY: str = ""
 
-#铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
+#铸造时点的 match 状态容器(GameState)引用 token。ensure_run_started 用「is 比较」
 # 判当前 open run 是否属于这个物理对局(不用 id——规避对象复活后 id 复用;
-# 强引用滞留一个死容器,内存代价可忽略)。None = 尚未铸造或铸造时无容器
+# 强引用滞留一个失效状态容器,内存代价可忽略)。None = 尚未铸造或铸造时无状态容器
 # (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
 _RUN_MATCH: object | None = None
 
@@ -126,8 +126,8 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     - ``_RUN_CLOSED``:上局已收尾,正常开新局(跨 loop 执行必然已收尾,
       after_operation_done 全路径必达写 summary);
     - ``_RUN_MATCH is not match``:悬空 open run 防护——入口铸造后入口链
-      FAIL 的 run 不收尾;新局确凿信号处容器被弃置重建(cw_entry_start
-      ``_discard_stale_once`` + establish),新容器 ≠ 铸造时容器 → 强制
+      FAIL 的 run 不收尾;新局确凿信号处状态容器被弃置重建(cw_entry_start
+      ``_discard_stale_once`` + establish),新状态容器 ≠ 铸造时状态容器 → 强制
       重铸,防新局开局行盖进上次失败会话的悬空 run。
 
     「继续进度」恢复路径:入口不走铸造分支 → loop 侧 ensure 见 _RUN_CLOSED
@@ -138,9 +138,9 @@ def ensure_run_started(match: object, difficulty: str) -> str:
 
     职责边界(用户裁定):本函数只覆盖 run 领取(铸造/认领);
     遥测数据的保存 = game state 职责,state 流水装配入口 =
-    kernel/cw_game_state :func:`game_state_of` 局容器单例建立路径(触发只钉
+    kernel/cw_game_state :func:`game_state_of` 局状态容器单例建立路径(触发只钉
     该建立点;生产注入漏斗 =
-    ``establish_new_match`` 容器建立点),run 领取层不覆盖装配。
+    ``establish_new_match`` 状态容器建立点),run 领取层不覆盖装配。
     """
     global _RUN_MATCH
     if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
@@ -205,7 +205,7 @@ def close_run(result: str = "", plane_reached: int = 0,
     start_run 前 ensure_run_started 铸新段(journal 行归属新 run_id)。
     旧局终 summary 写行已停用;形参保留
     (调用点传值面不变),值只进日志不进任何流。局终元数据的 journal
-    归宿 = 局终域 match_final 行(在线接线,写点 = kernel
+    归宿 = 局终域 match_final 行(在线接入调用,写点 = kernel
     write_match_final,收尾点 = cw_loop 3c 回大厅 / 停机兜底)。
     收尾时点先落盘流水缓冲(func:`kernel.cw_state_journal.flush_pending`):
     批量 flush 阈值之间收尾时局终行与段尾行还在内存,紧随的档案装配

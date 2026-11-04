@@ -72,7 +72,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 # ===== F7 / D_ε 判读面观察键(判前锁 v6 登记的待办行 7/11/13;键语义单一源=
 # 本文件键声明;清单与登记键节原文已删档)=====
 # 本段是**判读面键名声明**(v6 text 行判据=键名在本文件可检索),
-# 非记录端接线:三键的行为面/计数端载体分别在 decision 层计数器与
+# 非记录端接入调用:三键的行为面/计数端载体分别在 decision 层计数器与
 # audit/provisional.py 槽位(判读批只产建议事件,编排器/人工单点注入),
 # 判读器与本文件只消费键名与语义,禁自造第二语义。
 
@@ -90,7 +90,7 @@ ab_core_swap._v6_row_specs 已随自驱动引擎退役,考古归 git)。
 """
 
 DEPSILON_ADVISOR_VIOLATION: str = 'depsilon_advisor_violation'
-"""D_ε 顾问违例键 = 实现漂移哨兵(判前锁 v6 行 11;R56-2 定谳)。
+"""D_ε 顾问违例键 = 实现漂移哨兵(判前锁 v6 行 11;R56-2 已定案)。
 
 - 语义:键 >0 ⇔ 门/检测两路实现漂移(检测侧=对遥测快照独立重评检测域
   的瞬时谓词重算,非共享单条谓词函数)。合法态下非豁免族顾问动作发射
@@ -116,7 +116,7 @@ F7_EXEMPT_EMISSION: str = 'f7_exempt_emission'
   `f7_uncovered_interest_sell`/`f7_contingency_armed`——三者分别系
   恒 0 实现漂移哨兵/默认姿态未覆盖帧凑息卖出计数/应急中间姿态开关,
   均非豁免发射计数(R59-1 分键纪律)。
-- 行为锚:豁免发射帧 `depsilon_advisor_violation` 不计而本键 +1
+- 行为识别标志:豁免发射帧 `depsilon_advisor_violation` 不计而本键 +1
   (原设计件测试位⑱(e),原文已删档,考古走 git 历史);授权账追认判读报告含其频度/量级字段。
 """
 
@@ -125,7 +125,7 @@ F7_DEPSILON_OBS_KEYS: tuple[str, ...] = (
     DEPSILON_ADVISOR_VIOLATION,
     F7_EXEMPT_EMISSION,
 )
-"""F7/D_ε 判读面观察键域(v6 挂账行 7/11/13 的 text 锚对象)。"""
+"""F7/D_ε 判读面观察键域(v6 登记成待办的行 7/11/13 的 text 识别标志对象)。"""
 
 F7_CONTINGENCY_ARMED_EVENT_FIELDS: tuple[str, ...] = (
     'gate_red_event_id',
@@ -178,7 +178,7 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   (gold_short 分支唯一行为)——分支随 gold_short 臂整删停产。
 # - session_funding_sell 取用键族(session_funding_sell/_tier_<1..8>/
 #   _rng_tail_hit)与 session_funding_exhausted:会话内筹资键族——
-#   随统一获取让位评估收编退役(roster-plane1-union design §2.2
+#   随统一获取让位评估并入统一结构退役(roster-plane1-union design §2.2
 #   第 4 项 + 用户裁定 2026-10-30:金不足与席满同一评估,session_
 #   funding 场景行/funding 通道/专属计数整链删除),取用计数并入
 #   acquire_swap_sell 键族。
@@ -292,7 +292,7 @@ def serialize_action(action: Action) -> dict[str, Any]:
 
     行级归一 ``reason`` 键(提取键序单一源 =
     ``ACTION_REASON_SOURCE_KEYS``):动作行统一附归因串,消费面
-    (复盘骨架/归因下钻)不必逐动作类各认各的键。接线位 = 本函数
+    (复盘骨架/归因下钻)不必逐动作类各认各的键。接入调用点 = 本函数
     (动作序列化唯一单点,decisions 行与执行回执载荷同源同键);
     只加键,提取是纯读,零行为面。
     """
@@ -319,7 +319,7 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
     'reason', 'route_tag', 'auth_basis', 'convert_reason',
 )
 """动作项理由溯源提取键序单一源(提取语义见下;原过程件测试已随
-09-13 清理删除,定谳不恢复)。
+09-13 清理删除,已定案不恢复)。
 
 - 语义:序列化动作项统一附 ``reason`` 键(判据命中 id 持久索引),取值 =
   按本键序从**现役决策构建链已有字段**提取首个非空值——纯提取禁新算
@@ -352,7 +352,7 @@ def action_reason_of(item: dict[str, Any]) -> str:
 def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
     """给序列化动作项归一附 ``reason`` 键(只加键不改既有键;原地返回)。
 
-    接线点 = ``serialize_action``(动作序列化唯一单点;decisions 行与
+    接入调用点 = ``serialize_action``(动作序列化唯一单点;decisions 行与
     执行回执的 action 载荷同经此序列化,归一键随行同源)。"""
     item['reason'] = action_reason_of(item)
     return item
@@ -378,7 +378,7 @@ class DecisionTrace:
     difficulty: str = ""                          # A1..A8(调用方传)
     round_num: int = 0                            # 位面内轮次
     plane: int = 0
-    state: dict[str, Any] = field(default_factory=dict)        # 决策时点 state 快照(容器期 = serialize_state 产物,full_state_snapshot 形状;状态收敛批前的历史行 = 旧帧序列化形状,读端按 dict 宽容分型)
+    state: dict[str, Any] = field(default_factory=dict)        # 决策时点 state 快照(状态容器(GameState)期 = serialize_state 产物,full_state_snapshot 形状;状态收敛批前的历史行 = 旧帧序列化形状,读端按 dict 宽容分型)
     target_comp: str = ""                         # 选中的 target 阵容名
     candidate_scores: dict[str, float] = field(default_factory=dict)  # {comp_name: comp_score}
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target 阵容的特征分解
@@ -434,7 +434,7 @@ class DecisionTrace:
     # cw_deploy_logic.board_target_line_weight 单一源,禁第二实现)。
     # 纯遥测观测面,不进判据(纯遥测口径延续);旧记录缺省 0。
     b_t: int = 0
-    # 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
+    # 成型停手态(层2 写;检查器豁免/判读基准点)——补挂
     # DecisionTrace 字段:shop/cw_screen_prep 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
     # (recorder 映射缺口已补;旧记录缺省 False)
@@ -507,7 +507,7 @@ class DecisionTrace:
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     # (判读注:本注释原文枚举的「危机帧兑换」消费面已随 hp 判据族删除删除——
     #  危机释放通道不在产,字段现役消费面 = 富余段刷新实花披露;存量数据按
-    #  写端口径读,注释仅作历史判读锚。)
+    #  写端口径读,注释仅作历史判读依据。)
     sess_release_spent: int | None = None
     # (位面 2 支出授权历史字段 sess_p2_auth_intercept/sess_p2_auth_water
     #  已删(已定案清理链收尾:写端早已停用,全域零读端);
@@ -537,7 +537,7 @@ class DecisionTrace:
     # {char, equip, has_diamond, refresh_left, options:[{char,equip,has_diamond}...],
     # n_options}(迭代 2026-09-21-event-refresh-unify-supply-pick:布尔键
     # refreshed 随计数闸停用——历史行该键按只读口径保留,判读端 .get
-    # 容忍;新行携 refresh_left = 容器 supply_refresh_left 现值快照,
+    # 容忍;新行携 refresh_left = 状态容器 supply_refresh_left 现值快照,
     # 可 None=未观察,供读端按剩余分型;无「本局初始授予数」基线,布尔
     # 不可由 left 等价导出,故改携带而非推导)。None=非补给帧/兜底点卡
     # 路径(决策帧照写,读端按 None 分型)。此前决策行只有空壳快照,
@@ -640,7 +640,7 @@ class OutcomeRecord:
     # —— 迁移审计补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
     # 确认时的 {char, equip, has_diamond, refresh_left, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
-    # refresh_left=该次确认时点容器 supply_refresh_left 现值快照(可 None=未观察;
+    # refresh_left=该次确认时点状态容器 supply_refresh_left 现值快照(可 None=未观察;
     # 迭代 2026-09-21-event-refresh-unify-supply-pick 起布尔键 refreshed 停用,
     # 历史行 refreshed 按只读口径保留,读端 .get 容忍);
     # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。

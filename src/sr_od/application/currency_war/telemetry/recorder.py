@@ -282,7 +282,7 @@ def enforce_defect_ledger_retention(
 def follow_journal_retirement(telemetry_root: Path,
                               summary: dict[str, Any]) -> None:
     """journal 段淘汰的台账联动跟随者(kernel ``set_retirement_follower``
-    槽的注入实现;生产武装点 = ``telemetry.defects.install_exit_hooks``,
+    槽的注入实现;生产装配接入点 = ``telemetry.defects.install_exit_hooks``,
     与出口钩子/失配告警同点显式接通,缺省关)。
 
     telemetry_root = journal 所在 state 目录的父目录(kernel 只识根,文件

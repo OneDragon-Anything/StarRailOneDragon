@@ -23,7 +23,7 @@ from sr_od.application.currency_war.telemetry.state import (
 
 # 追加句柄缓存:键 = (recorder 根, strategy_id, run_id)。根变更 = 键变 =
 # 旧句柄自然弃用(不主动关闭:进程生命周期内换根次数个位数、残留句柄
-# 量级可忽略;主动收口走下方测试复位口)。
+# 量级可忽略;主动清理走下方测试复位口)。
 _HANDLES: dict[tuple[Path, str, str], TextIO] = {}
 
 
@@ -57,7 +57,7 @@ def strategy_telemetry_sink(record: dict) -> None:
 
 def close_strategy_telemetry_handles() -> None:
     """关闭并清空句柄缓存(测试 teardown 复位口;生产零调用申报——
-    生产句柄随进程生命周期,无需中途收口)。"""
+    生产句柄随进程生命周期,无需中途关闭)。"""
     for handle in _HANDLES.values():
         with contextlib.suppress(Exception):   # 复位口 best-effort
             handle.close()

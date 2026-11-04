@@ -135,8 +135,8 @@ log = log_utils.log
 #: v9(遥测数据病统一件):hp 真值链的「事件模型」落地,
 #: 四机制一次到位——①事件步进链:结算步进链扩为 hp 变化步进链,可信结算
 #: 行 ∪ hp_pay 事件行按 ts 全局交织走行,事件只推进游标不出条目;②段界
-#: 重锚:换段取该段恢复帧 hp 重锚两链游标,续段首槽 hp_delta 从「跨段净额」
-#: 变「段内变化」(读端可见口径变化),重锚差落 resume_reconciliation 扩展
+#: 重新校准:换段取该段恢复帧 hp 重新校准两链游标,续段首槽 hp_delta 从「跨段净额」
+#: 变「段内变化」(读端可见口径变化),重新校准差落 resume_reconciliation 扩展
 #: 字段(unexplained_delta/consumed_by_chain)不进 loss_nodes;③合成行
 #: (synthetic_supply)一律退出步进链(先验「陈旧直到证伪」,v8 的 0 值
 #: 防御升格;rounds 槽/query_hp 显示行为不变);④终局分支:result='loss' 且
@@ -157,7 +157,7 @@ log = log_utils.log
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v11(零结算段自标识批):+段条目 ``settlement_gap``(装配端纯读
 #: 派生;见 ``_settlement_gap``),并修 assign_games 决策独有段时序插位(见其
-#: docstring)。锚点病灶:段摘要 rounds_survived 取自收尾时点 state.round_num
+#: docstring)。取值基准病灶:段摘要 rounds_survived 取自收尾时点 state.round_num
 #: (备战停滞段可带非零冻结值),「rounds_survived=N 且本段零 outcome 行」
 #: 曾被判读成「结算遥测断流」(实证:g_20260908_165445 续段 run_20260908_
 #: 210431,79 决策帧全冻结 p2-r6、零 CwActionStartBattleParam 发出、rounds_survived=6;
@@ -181,7 +181,7 @@ SCHEMA_VERSION: int = 12
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
 MATCHES_DIRNAME: str = 'matches'
 
-#: 水位线文件名(旧数据不回填的记账锚)
+#: 水位线文件名(旧数据不回填的记账基准)
 _WATERMARK_NAME: str = '.watermark.json'
 
 # 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
@@ -361,7 +361,7 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     时序插位(v11 修):旧法把决策独有段排序后整体**补尾**,
     续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于它的最后
     一局名下(实证:run_20260908_210431 曾被组到比其段末帧晚 8.5 小时的
-    g_20260909_053235 名下,锚点档案 g_20260908_165445 静默丢段)。按段首
+    g_20260909_053235 名下,归组基准档案 g_20260908_165445 静默丢段)。按段首
     ts(跨源最小行 ts)插回时序位后,后继带 outcome 新局入流不再夺走前局
     的续段。边界:段首 ts 缺失(空串)的段无法比较,保持补尾退化(旧行为);
     同 ts 平手按 run_id 字典序保确定性。
@@ -637,7 +637,7 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
 
 
 def _settlement_hp_usable(row: dict[str, Any]) -> bool:
-    """结算行 hp 可否作步进链锚(v8 可信门;v9 合成行一律退出)。
+    """结算行 hp 可否作步进链基准行(v8 可信门;v9 合成行一律退出)。
 
     - 可信门 = query._outcome_hp_trusted 单一源:OCR miss 兜底行
       (hp_confidence<0.9,hp_after 落 0)不入链不推游标——伪值入链会伪造
@@ -682,8 +682,8 @@ def _segment_resume_frame(dec: list[dict[str, Any]],
     """段恢复帧单一源:该段最早 ts 决策迹帧;零决策帧段(采集缺口)→ 最早
     结算行兜底(hp_after/hp_confidence 归一为帧 hp/hp_readable 口径)。
 
-    两处消费必须同源(v9):_resume_reconciliation 的对账对象与段界重锚的
-    锚值——否则「重锚用的恢复帧」与「对账列暴露的恢复帧」分叉,判读对不上。
+    两处消费必须同源(v9):_resume_reconciliation 的对账对象与段界重新校准的
+    基准值——否则「重新校准用的恢复帧」与「对账列暴露的恢复帧」分叉,判读对不上。
     """
     rows = [d for d in dec if d.get('run_id') == rid]
     resume = min(rows, key=_row_ts) if rows else None
@@ -702,9 +702,9 @@ def _segment_resume_frame(dec: list[dict[str, Any]],
 
 
 def _resume_hp_anchorable(resume: dict[str, Any] | None) -> int | None:
-    """恢复帧 hp 可否作重锚值:帧在 ∧ hp 非 None ∧ hp_readable 非 False
+    """恢复帧 hp 可否作重新校准的基准值:帧在 ∧ hp 非 None ∧ hp_readable 非 False
     (与 _resume_reconciliation 的 readable 守卫同判——恢复帧该字段不可信
-    即不判不锚)。可锚 → 返回 int hp;不可锚 → None(诚实退化:游标维持
+    即不判不校准)。可校准 → 返回 int hp;不可校准 → None(诚实退化:游标维持
     跨段携带,与 v8 行为一致)。"""
     if resume is None:
         return None
@@ -883,12 +883,12 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       hp_pay 事件行(写点产物)按 **ts 全局交织**各成一步:结算步出
       掉血条目,事件步只推进游标不出条目(保 「一条目=掉血结算
       行」口径纯度,新增加法来源 hp_source='endgame_final' 除外)。
-    - 段界重锚(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
+    - 段界重新校准(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
       rounds 链到达续段首 key)取该段恢复帧 hp(_segment_resume_frame
-      单一源,与 resume_reconciliation 同一帧)重锚;重锚差 |游标−resume|≠0
+      单一源,与 resume_reconciliation 同一帧)重新校准;重新校准差 |游标−resume|≠0
       → 边界差落 boundaries(进 resume_reconciliation 扩展字段
-      unexplained_delta/consumed_by_chain,不进 loss_nodes)。恢复帧不可锚
-      (缺帧/hp None/readable False)→ 不锚维持跨段携带(诚实退化)。
+      unexplained_delta/consumed_by_chain,不进 loss_nodes)。恢复帧不可校准
+      (缺帧/hp None/readable False)→ 不校准维持跨段携带(诚实退化)。
       续段首槽 hp_delta 语义从「跨段净额」变「段内变化」(读端可见口径
       变化,跨局对照跨段槽位数字会变,申报)。
     - 真值对账(v9,hp_pay 建模账):事件只作期望账;下一**可信结算行**
@@ -900,12 +900,12 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       升序、key 内 ts 稳定)= 单段局逐字节退化的技术前提;②缺 ts 行:
       排序键回空串会错位到全局最前 → 守卫为不进步进链(该行步进资格让位
       回落,hp_events 列仍暴露);③时钟回拨/NTP 步进:走行序失真,诚实
-      退化(错位条目)与恢复帧不可锚退化并列申报。
+      退化(错位条目)与恢复帧不可校准退化并列申报。
     - 终局分支(v9,C-主,加法零新运行时写入):链走完后 result='loss' 且
       步进游标≠0 → 追加 {hp:0, delta:−游标, hp_source:'endgame_final',
       outcome_source:'runs.final_hp'}(runs 行结构保证死亡真值);游标已
       到 0(含回落路径到达)守卫不重复,win/abandoned 局零终局分支,游标
-      None(全程无可锚行)→ 无 delta 可算诚实跳过。
+      None(全程无可校准行)→ 无 delta 可算诚实跳过。
     - 单步回落(v8 语义保留):该轮无(入链的)可信结算行 → 用轮槽 hp_e
       成一步(hp_source 沿用轮槽口径,游标推进同 rounds 链 prev_hp,凡非
       None 即推进),保住「无结算行轮备帧掉血也入 loss_nodes」的既有行为。
@@ -919,7 +919,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
       纪律,方向正确非回归);净额≥0 的轮因战斗分支<0 仍必有条目。判读侧
       勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(§边界申报)。
     返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
-    {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差暴露)。
+    {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重新校准差暴露)。
     """
     dec = slice_rows.get('decisions.jsonl') or []
     outs = slice_rows.get('outcomes.jsonl') or []
@@ -950,7 +950,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             continue
     # 每轮决策迹帧计数(复盘「零决策行」缺口一眼可见,免翻原始 jsonl;
     # 已知形态:补给轮只有首补给 detour 一次性快照,后续补给轮 = 0,
-    # 写入端接线归 operations 面——返修 REPORT 判定节)
+    # 写入端接入调用归 operations 面——返修 REPORT 判定节)
     dec_count: dict[tuple[int, int], int] = {}
     for d in dec:
         try:
@@ -958,8 +958,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         except (TypeError, ValueError):
             continue
         dec_count[k] = dec_count.get(k, 0) + 1
-    # —— v9 段界重锚准备:续局段首 key(该段最早 ts 行的 (plane, round))——
-    # rounds 链锚点判据:per-key 循环到达该 key 即换锚(此时前段全部行已
+    # —— v9 段界重新校准准备:续局段首 key(该段最早 ts 行的 (plane, round))——
+    # rounds 链基准点判据:per-key 循环到达该 key 即切换基准(此时前段全部行已
     # 处理完;本局 (2,1) 槽两段行共存时,槽 hp_e 取 ts 末行,前段行天然让位)。
     anchor_seg_by_key: dict[tuple[int, int], str] = {}
     if segments and len(segments) > 1:
@@ -1001,10 +1001,10 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         outcome = outs_k[-1] if outs_k else None
         st = (frame or {}).get('state') or {}
         hp_e = _hp_entry(frame, outcome)
-        # —— v9 段界重锚(rounds 链):到达续局段首 key → 取该段恢复帧 hp
-        # 重锚轮级游标(prev_hp 从「前段末值」换锚「本段恢复读数」)。重锚差
+        # —— v9 段界重新校准(rounds 链):到达续局段首 key → 取该段恢复帧 hp
+        # 重新校准轮级游标(prev_hp 从「前段末值」换为「本段恢复读数」基准)。重新校准差
         # 暴露归走行段界处统一落(见走行注释:步进链游标含事件推进,是
-        # 「事件已解释边界差」的唯一知情者);恢复帧不可锚 → 不锚维持携带。
+        # 「事件已解释边界差」的唯一知情者);恢复帧不可校准 → 不校准维持携带。
         _aid = anchor_seg_by_key.get(key)
         if _aid is not None:
             if _aid not in resume_cache:
@@ -1146,7 +1146,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     # —— v9 全局 ts 事件走行:结算/回落物料 ∪ hp_pay 事件物料 ——
     # 事件物料前置拼接 + 稳定排序 ⇒ 同秒并列时事件先于结算(备战先于战斗
     # 的物理先序,F5① tiebreaker);结算/回落保持 v8 遍历序 = 单段局(无
-    # 事件/无重锚形态)逐字节退化的技术前提。
+    # 事件/无重新校准形态)逐字节退化的技术前提。
     event_items: list[dict[str, Any]] = []
     for r in slice_rows.get('exogenous.jsonl') or []:
         if (r.get('kind') or '') != 'hp_pay':
@@ -1163,7 +1163,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
                             'run_id': r.get('run_id') or '',
                             'row_ts': _row_ts(r)})
     step_prev: int | None = None
-    # 步进链当前段(v9 段界重锚判据;None = 走行首行,不重锚)
+    # 步进链当前段(v9 段界重新校准判据;None = 走行首行,不重新校准)
     walk_seg: str | None = None
     pending_pay = 0        # 上一可信结算以来 modeled 支付累计(hp_delta 和)
     pending_pay_n = 0      # 未决事件笔数(0 = 无待对账)
@@ -1173,10 +1173,10 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
         if walk_seg is None:
             walk_seg = rid
         elif rid and rid != walk_seg:
-            # 段界重锚(步进链):换段 → 该段恢复帧 hp 重锚游标。重锚差
+            # 段界重新校准(步进链):换段 → 该段恢复帧 hp 重新校准游标。重新校准差
             # ≠0 → 边界差暴露(本处单一落点:步进链游标含 hp_pay 事件推进,
-            # 是「事件已解释边界差 → 重锚 no-op」的唯一知情者,§2.3 形态②;
-            # rounds 链锚点静默换锚)。跨段未决对账随重锚落账不追溯。
+            # 是「事件已解释边界差 → 重新校准零差」的唯一知情者,§2.3 形态②;
+            # rounds 链基准点静默切换)。跨段未决对账随重新校准落账不追溯。
             walk_seg = rid
             if rid not in resume_cache:
                 resume_cache[rid] = _segment_resume_frame(dec, outs, rid)
@@ -1189,7 +1189,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
                 pending_pay, pending_pay_n = 0, 0
         if it['_kind'] == 'event':
             # 事件步:只推进游标不出条目(「一条目=掉血结算行」
-            # 纯度);游标未锚(None)时事件无基準不可推进也不进对账。
+            # 纯度);游标未校准(None)时事件无基准不可推进也不进对账。
             if step_prev is not None:
                 step_prev += it['hp_delta']
                 pending_pay += it['hp_delta']
@@ -1236,7 +1236,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     # —— v9 终局分支(C-主,加法零新运行时写入):result='loss' 且步进游标
     # 未到 0 → runs.final_hp=0 结构保证真值兜底出死亡条目;游标已到 0(含
     # 回落路径到达)守卫不重复,win/abandoned 局零终局分支,游标 None(全程
-    # 无可锚行)无 delta 可算诚实跳过。
+    # 无可校准行)无 delta 可算诚实跳过。
     if (endgame_result == 'loss' and step_prev is not None
             and step_prev != 0 and keys):
         lk = max(keys)
@@ -1283,7 +1283,7 @@ def _resume_reconciliation(segments: list[str],
     for i, rid in enumerate(segments):
         if i == 0:
             continue
-        # 恢复帧 = _segment_resume_frame 单一源(v9:与段界重锚同帧定义,
+        # 恢复帧 = _segment_resume_frame 单一源(v9:与段界重新校准同帧定义,
         # 防两处「恢复帧」分叉;零决策帧段的结算行兜底语义原样内聚其中)
         resume = _segment_resume_frame(dec, outs, rid)
         prev_rows = [r for seg in segments[:i] for r in by_seg.get(seg, [])]
@@ -1324,9 +1324,9 @@ def _resume_reconciliation(segments: list[str],
 def _merge_boundary_records(
         recon: list[dict[str, Any]],
         boundaries: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    """段界重锚差并入恢复态对账行(v9):unexplained_delta =
-    resume − 重锚前游标(负 = 停机间隙真掉血),consumed_by_chain=True =
-    该差已被重锚消费、不进 loss_nodes。无重锚差的续段行零新增键。"""
+    """段界重新校准差并入恢复态对账行(v9):unexplained_delta =
+    resume − 重新校准前游标(负 = 停机间隙真掉血),consumed_by_chain=True =
+    该差已被重新校准消费、不进 loss_nodes。无重新校准差的续段行零新增键。"""
     for row in recon:
         b = boundaries.get(row.get('run_id'))
         if b is not None:
@@ -1401,9 +1401,9 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'end_ts': game.get('end_ts') or '',
         'archived_at': datetime.now().isoformat(timespec='seconds'),
         'continuity_note': continuity_note,
-        # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9):
+        # 恢复态对账列(v6)+ 段界重新校准差扩展字段(v9):
         # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
-        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」暴露非战斗分支。
+        # by_chain),不进 loss_nodes——重新校准差是「段界间隙变化」暴露非战斗分支。
         'resume_reconciliation': _merge_boundary_records(
             _resume_reconciliation(segments, derived_rows), boundaries),
         'rounds': rounds,
@@ -1771,7 +1771,7 @@ def _write_watermark(replay_dir: Path, through_ts: str) -> None:
 
 
 def _latest_end_ts(games: list[dict[str, Any]]) -> str:
-    """全量局的最晚 ``end_ts``(水位线推进的唯一锚)。
+    """全量局的最晚 ``end_ts``(水位线推进的唯一依据)。
 
     不能取 ``games[-1]``:``assign_games`` 把「无 outcomes 出现序的孤立
     段」追加在列表尾部,列表末元素不是时间序最晚局——曾致水位线冻结在
@@ -1795,7 +1795,7 @@ def _archive_covers_segments(archive: dict[str, Any],
 
 
 #: 落后水位线且未入档的局的告警窗(小时):水位线 = 历史最大 end_ts 单调
-#: 锚,时钟回拨/DST 回拨段结束的局 end_ts < wm 会被 ``<=`` 判定永久跳过
+#: 基准,时钟回拨/DST 回拨段结束的局 end_ts < wm 会被 ``<=`` 判定永久跳过
 #: (漏装);该形态的局必然落在 wm 附近,而「旧数据不回填」的存量局落后
 #: wm 几天/几周属设计态——用时间窗区分两者,防告警被存量局永久刷屏。
 _BEHIND_WARN_WINDOW_HOURS: float = 48.0
@@ -1821,7 +1821,7 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     重装 = 从源流全量重派生后原子覆盖,续段并入即唯一变化。返回本次
     装配的 game_id 列表。收尾走跨档归属收敛守卫与核验(含水位线以下的
     存量档案——双计档案的收敛不问水位线,见模块 docstring 归局骨架节)。
-    观测面:水位线是历史最大值锚——end_ts < wm 的局被静默跳过且永不
+    观测面:水位线是历史最大值基准——end_ts < wm 的局被静默跳过且永不
     自动装配(时钟回拨/DST 回拨段的真实形态)。此类局若未入档且落后
     wm 在告警窗内(``_BEHIND_WARN_WINDOW_HOURS``),落 WARNING 带溯源
     (game_id/end_ts/wm),防「回拨期间新局连续漏装」无感。

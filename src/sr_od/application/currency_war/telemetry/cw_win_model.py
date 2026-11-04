@@ -59,7 +59,7 @@ PLAZA_BASE_WEIGHT: float = 1.0
 #: 「先验不主导」与旧粗模型的单元封顶口径(PLAZA_SHARE_MAX=0.25,
 #: 模块已停用,git 历史可考)同精神——粗模型按单元
 #: 封顶,影子模型按全集配平,都是防 784 篇生存者语料淹没带负样本的
-#: 实机校准锚)。
+#: 实机校准基准数据)。
 PLAZA_PRIOR_FACE_N: float = 1.0
 
 
@@ -69,7 +69,7 @@ def plaza_sample_weight(use: int) -> float:
     口径与边界:
     - ``use>0 → PLAZA_BASE_WEIGHT + ln(1+use)``——头部帖(万人使用)话语权
       高但被对数压扁:原值 use 可达数千,直接作权重会令先验面权重和
-      超遥测集 4 个数量级,校准锚失效;ln(1+3000)≈8,压缩后头部/尾部
+      超遥测集 4 个数量级,校准基准失效;ln(1+3000)≈8,压缩后头部/尾部
       权重比 ~8:1,保留「头部帖更可信」的排序而不淹没;
     - ``use<=0(无计数帖)→ PLAZA_BASE_WEIGHT``——仍是一条赢家结构样本,
       只取基础话语权。
@@ -155,7 +155,7 @@ def plaza_prior_weights(feats_rows: list[dict[str, Any]],
 
 
 #: 概率再校准(Platt scaling)的 clip 下/上界:logit 变换前夹住概率,
-#: 防 p=0/1 的 ±inf(遥测锚里均衡 LR 输出极端值的行会被 clip 而非爆掉)。
+#: 防 p=0/1 的 ±inf(遥测基准数据里均衡 LR 输出极端值的行会被 clip 而非爆掉)。
 _PLATT_PROB_EPS: float = 1e-6
 
 
@@ -169,11 +169,11 @@ class PlattCalibrator:
     Platt 双参数严格包含温度缩放为特例(a=1/T, b=0),故选 Platt。
 
     拟合纪律(硬边界):参数只允许由 ``fit_platt_scaling`` 在**带负样本的
-    遥测锚**上拟合;plaza 先验面是恒胜标签的生存者语料,禁参与拟合
+    遥测基准数据**上拟合;plaza 先验面是恒胜标签的生存者语料,禁参与拟合
     (否则校准学到的只是先验面的分布,不是实机校准)。
 
     默认参数 ``a=1, b=0`` = 恒等映射,``apply`` 对任意 p 逐位不变——
-    校准层关闭态的零漂移锚。
+    校准层关闭态的零漂移基准。
     """
 
     a: float = 1.0
@@ -193,7 +193,7 @@ class PlattCalibrator:
 
 
 def fit_platt_scaling(y_true: list[int], probs: list[float]) -> PlattCalibrator:
-    """在遥测锚上拟合 Platt 校准参数(纯函数:只读入参,零 IO,零随机)。
+    """在遥测基准数据上拟合 Platt 校准参数(纯函数:只读入参,零 IO,零随机)。
 
     模型:一维 logistic 回归 ``P(y=1) = σ(a·logit(p) + b)``,拟合器 =
     sklearn LogisticRegression(近无正则 C=1e6,lbfgs 确定性求解,
@@ -203,9 +203,9 @@ def fit_platt_scaling(y_true: list[int], probs: list[float]) -> PlattCalibrator:
     - ``probs`` 越界/非有限行直接剔除后再拟合(与 ``apply`` 的防御同口径)。
 
     返回的校准器默认可直接过 ``PlattCalibrator.apply``;调用方负责保证
-    probs 来自**带负样本的遥测锚**(survivorship 面禁入,见类 docstring)。
+    probs 来自**带负样本的遥测基准数据**(survivorship 面禁入,见类 docstring)。
     """
-    # strict=True:锚行数不齐是调用方错误,宁可炸不可静默截断负样本
+    # strict=True:基准数据行数不齐是调用方错误,宁可炸不可静默截断负样本
     pairs = [(float(p), int(y)) for p, y in zip(probs, y_true, strict=True)
              if 0.0 <= float(p) <= 1.0 and math.isfinite(float(p))
              and int(y) in (0, 1)]
@@ -297,7 +297,7 @@ class ShadowKilledModel:
         供漂移监控交叉核对,无模型时返回 None。
 
         ``calibrator``:可选 Platt 校准层(func:`fit_platt_scaling` 的产物,
-        只许遥测锚拟合);默认 None = 不校准,与未引入校准层前的行为
+        只许遥测基准数据拟合);默认 None = 不校准,与未引入校准层前的行为
         逐一相同(概率/阈值/日志全零漂移)。传入恒等参数
         ``PlattCalibrator()`` 同样零漂移。
         """

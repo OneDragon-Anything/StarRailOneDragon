@@ -38,8 +38,8 @@ def record_drought_buy_no_reset(*, member: str, system: str,
         expected=f'{system} 买入重置干旱计数',
         observed=(f'买 {member} 后 pair_drought[{system}]={drought} '
                   '未重置(重置单一源=商店可见性)'),
-        # 干旱计数现役载体 = 策略 state 容器(值已在本行 expected/
-        # observed 内联),refs 指 journal (run_id,v) 锚。
+        # 干旱计数现役载体 = 策略 state 状态容器(GameState)(值已在本行 expected/
+        # observed 内联),refs 指 journal (run_id,v) 登记条目。
         refs=journal_refs(),
         note='撤销操作证据留存:买入不重置,干旱解锁流程审计面',
         gap_large=False, severity=defects.SEVERITY_L2_RECORD)

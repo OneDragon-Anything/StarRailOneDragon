@@ -29,7 +29,7 @@ from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 def _find_repo_root() -> Path:
     """仓库根稳健定位(相对本模块向上搜索,不依赖 cwd)。
 
-    锚点 = 含 ``pyproject.toml`` 的最近祖先(src-layout 单一锚点);找到即用,
+    定位基准 = 含 ``pyproject.toml`` 的最近祖先(src-layout 唯一定位基准);找到即用,
     布局变化(目录加深/整体搬迁)自动跟随。找不到(非标准 checkout,如
     单独拷出 src)退回 src 层 parents[4] —— 此退路下 git 命令大概率失败,
     code_commit 按 best-effort 契约返回 '',不会串仓版本(退路只损可用性,

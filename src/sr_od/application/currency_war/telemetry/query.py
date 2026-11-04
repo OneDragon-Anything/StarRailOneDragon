@@ -1,6 +1,6 @@
 """判读查询纯函数层(自 cw_telemetry 拆出;收缩为单一源保留面)。
 
-(单源直迁,正本 = docs/develop/sr_od/application/currency_war/game_state/
+(单源直迁,权威版本 = docs/develop/sr_od/application/currency_war/game_state/
 r5-migration-plan.md §2):旧 12 流视图族(query_rounds/supply/anomalies/
 hp/economy/gold_flow/tiers/plan_vs_exec/spend_ledger/exogenous/exec_events/
 invest_cards/obs_conflicts 及其 join/helper)随流写入端停用一并

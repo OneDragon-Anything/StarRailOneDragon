@@ -106,7 +106,7 @@ class HarvestEquipCodex(SrOperation):
             ctrl.click(Point(self.tab_x, 170), press_time=0.1, pc_alt=False)
             time.sleep(1.2)
         # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位。
-        # 修正声明(显式行为变化):本文件在包内 tools/ 子包,旧的文件相对层级硬锚
+        # 修正声明(显式行为变化):本文件在包内 tools/ 子包,旧的文件相对层级硬编码定位
         # 实指 src/sr_od 而非仓库根,模板与截图曾被误写进 src/sr_od/assets/ 与
         # src/sr_od/.debug/——误写产物已迁移回仓根对应位置(迁移证据见
         # .debug/temp/currency_war/w680_exec_0a/REPORT.md)。

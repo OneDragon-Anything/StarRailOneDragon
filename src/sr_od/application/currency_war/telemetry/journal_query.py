@@ -1,11 +1,11 @@
 """统一 state 账本判读读面(R3-1 消费方迁移第一批:离线工具族读新账)。
 
-设计裁定正本(
+设计裁定权威版本(
 0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
-正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
-工作稿存 .debug/temp 为临时档,禁作正本指针):判读/装配/策略回溯 = 按行
+权威版本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
+工作稿存 .debug/temp 为临时档,禁作权威版本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
-本模块 = 统一 state 新账的**唯一**判读读面(正本 =
+本模块 = 统一 state 新账的**唯一**判读读面(权威版本 =
 r5-migration-plan.md §2:journal 为唯一被读账本;旧 12 流视图族已随
 写入端停用,拆除);判读 CLI query 命令唯一走本读面。
 
