@@ -1,6 +1,6 @@
 # 刷新商店(RefreshShop)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
 
 ## 1. 动作是什么
 
@@ -33,7 +33,7 @@
 
 无拒绝形态(刷新恒可发):上报函数 `applied` 恒 True——计数即职责完成,调用方仅在动作实际发出后进本口(未落地不计数)。决策侧刷新允许性(利息线门槛等策略判据,详见 strategy-docs/23_shop_screen.md)归策略面,不在本篇。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/refresh_shop.py::report_action_refresh_shop_param`(计数 + Field 免费次数扣减 + 随机态写入单一入口);`kernel/cw_shop_deal.py::sample_shop_deal`(发牌采样器);`kernel/cw_effect_inventory.py::record_refresh`(计数入账);`kernel/cw_economy.py::REFRESH_COST_BASE`(刷价缺读回退常量);`operations/cw_op/cw_refresh_shop_action.py::CwActionRefreshShopOp`。
 

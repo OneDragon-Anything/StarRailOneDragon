@@ -1,6 +1,6 @@
 # 补给选择(PickSupply)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一;本动作契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一;本动作契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)。
 
 ## 1. 动作是什么
 
@@ -31,7 +31,7 @@
 
 零验证确认链(确认后不读屏验证是否生效):确认未落地(overlay 残留)不重试不判效——下一轮外循环重识别重派;定位点缺失由决策部分现算面处置(执行面不兜底坐标);归一件名多/零命中与内容全未知(三载荷全空)= 非拒绝面,按载荷形态分型处置(上报 applied=True 受理):内容全未知 = 受影响域值不变、来源标记翻转并保留证据;写入集合含未解析件 = 该件来源标记翻转并保留证据、已解析件照常入账;char 非空 ∧ 写入集合全空 = 零装备名分支装备域零写零缺陷(§2),非「未解析」归因。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionPickSupplyParam`;`operations/cw_op/cw_pick_supply_action.py::CwActionPickSupplyOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`(写语义单点);`kernel/cw_effect_inventory.py::grant_bench_unit_cascade` / `apply_equip_acquire_consequence`;`kernel/cw_events.py::normalize_registry_equip_name`(归一件名现算);`kernel/cw_game_state.py::chosen_supply` / `report_node_advance`;`operations/cw_screen/cw_screen_supply_node.py::CwScreenSupplyNode`(确认即写的写入位置/动作发出点)。
 

@@ -1,6 +1,6 @@
 # 骇入策划选择(PickPlanner)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。**即时单相上报**(用户裁定 2026-09-21:动作 op 确认点击后一口写完整效果逻辑态;「先发出、后落地核对」的两相形态与证据标志已全域停用;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。**即时单相上报**(用户裁定 2026-09-21:动作 op 确认点击后一口写完整效果逻辑态;「先发出、后落地核对」的两相形态与证据标志已全域停用;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
 
 ## 1. 动作是什么
 
@@ -33,7 +33,7 @@
 
 零验证确认链(确认后不读屏验证是否生效):确认未落地不重试不判效——确认未生效 = 代码 bug,overlay 残留由外循环按当前画面重识别重派(发出即终结,本访问零落地复查;详情面板弹出同走外循环重分发);确认 area 读缺 = round_retry 显式交框架轮次,禁兜底坐标静默点击(全族统一失败语义)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionPickPlannerParam` / `PickOption`;`operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`(选卡定位面);`kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`(即时单相:条件单位 rider 先行 + 分支分派一口写);`kernel/cw_economy.py::effective_cost`(现档读口);`kernel/cw_game_state.py::lv999_cost_tier`(档字段,写入方 = 本分支 + deploy_move 上阵变费分支)。
 

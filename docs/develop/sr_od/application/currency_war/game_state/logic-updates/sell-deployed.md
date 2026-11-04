@@ -1,6 +1,6 @@
 # 卖上阵(SellDeployed)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
 
 ## 1. 动作是什么
 
@@ -38,7 +38,7 @@
 - **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False`(expect 经 降级为遥测观测字段,名不符仍是跨代际提案的拒绝信号);
 - 执行器零判效(发出动作后不读屏验证是否生效):拖拽发出即职责完成,落地归观察 reconcile。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/sell_deployed.py::report_action_sell_deployed_param`(两个域写入统一为一份代码)/ `GameState._resync_board_delta`(board 派生挂钩单一源)/ `_row_unit_tags`;`kernel/cw_economy.py::sell_refund` / `bench_char_cost`;`kernel/cw_exec_state.py` 排内槽号内联换算(工作表桥 = `cw_exec_state.deployed_indexed_of_view`/`deployed_view_of_indexed`);`operations/cw_op/cw_sell_deployed_action.py::CwActionSellDeployedOp`(换人卖出 = m1p 发出分支逐件产原子,资格单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`)。
 

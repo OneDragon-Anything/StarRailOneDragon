@@ -1,6 +1,6 @@
 # 卖备战(SellBench)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名。
 
 ## 1. 动作是什么
 
@@ -40,7 +40,7 @@
 - **期望失配 stale_proposal**:expect 非空且与槽内 `char_id` 不符 = `applied=False, reason='stale_proposal:<expect>!=<实际>'`,零写(live 提案 expect 恒空不校验,校验适用于非空 expect 提案);
 - 执行器零判效(发出动作后不读屏验证是否生效):拖拽发出即职责完成,落地事实归观察侧 reconcile;「拒买语义」在本动作不存在(卖出恒可用)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/sell_bench.py::report_action_sell_bench_param`(两个域写入统一为一份代码,原生 `BenchView.slots` 直操);`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `_SELL_MULT`;op 载体 `operations/cw_op/cw_prep_sell_bench_action.py::CwActionSellBenchOp`(上报直写主域;原执行器薄委托 `prep_actions.py::PrepActionExecutor._sell_bench` 与其 `_executed_gold_delta` 金差回执读口已随死代码清偿移除);`prep_actions.py::drag_bench_to_sell`。
 

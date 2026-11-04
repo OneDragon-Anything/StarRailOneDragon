@@ -1,6 +1,6 @@
 # 开战(StartBattle)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -33,7 +33,7 @@
 - 停机刹车:运行中被停 → `StopBrakeShortCircuit` 异常拒绝执行任何动作(停机非动作,不五回执行);
 - 状态容器零写语义下无 applied=False 拒绝形态(上报函数恒零字段写操作,`applied=True` 受理)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionStartBattleParam`;`operations/cw_op/cw_start_battle_action.py::CwActionStartBattleOp`(点击+弹窗确认零判效);`kernel/cw_action_report/start_battle.py::report_action_start_battle_param`(免战递减内聚);
 
