@@ -1,6 +1,6 @@
 # P16:切换终局阵容判据 E_rounds 的超几何口径、滞回稳定性与截断误差界
 
-> 状态:**已证**(口径+稳定性+误差界命题;2026-09 修复:p̄ 跨档改精确式、已见牌措辞勘误、registry 行号勘误。**实证面注**:数学命题不需实机背书,但判据 `should_switch_e` 在 `src/` 零生产调用点、三轮 AB 账本切换终局阵容/门事件 0 起、sim 参数门(检验点 4)从未执行——切换终局阵容行为实证=无数据,结构性休眠;新设计需接线或显式放弃);落地=cw_line_switch.py,registry.line_switch_*
+> 状态:**已证**(口径+稳定性+误差界命题;2026-09 修复:p̄ 跨档改精确式、已见牌措辞勘误、registry 行号勘误。**实证面注**:数学命题不需实机背书,但判据 `should_switch_e` 在 `src/` 零生产调用点、三轮 AB 账本切换终局阵容/门事件 0 起、sim 参数门(检验点 4)从未执行——切换终局阵容行为实证=无数据,结构性休眠;新设计需接入调用或显式放弃);落地=cw_line_switch.py,registry.line_switch_*
 > 数据源(单一源代码,数值不抄):`cw_shop_odds`(`SHOP_SLOTS=5` L28、`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}` L33、`DISTINCT_CARDS_PER_COST` L37、`REFRESH_PROB` 表 L44-52,即 P5 实值表)、`cw_chars.CHARACTERS`(标签集)、`cw_state`(`BENCH_CAPACITY`/`bench_occupied`)、decision_v2 registry(`line_switch_theta=1.0`/`line_switch_debias_delta=0.15`/`line_switch_min_dwell=2`,**L943-948**;原稿引用 L791-796/L812 系行号漂移,已勘误)
 > 实现:`src/sr_od/application/currency_war/kernel/cw_line_switch.py`(`p_bar_faction`/`line_distance`/`e_rounds`/`should_switch_e`)
 > 设计:未成型姿态设计稿 §③(设计裁决承载于设计稿本体;实现:`posture_release.py`/`cw_line_switch.py`)
