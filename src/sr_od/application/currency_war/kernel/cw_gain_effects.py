@@ -1366,6 +1366,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('群攻星徽', 1),
         _make_char_grant_effect('翡翠'),
         _make_named_equip_grant_effect('反卫星狙击枪', 1)),
+    # 能量星徽套组 = 三腿组合登记行(套组族第 13 张;卡文「获得1个【能量
+    # 星徽】，和1个【星期日】，以及1个【胜利之旗】」语序直读:
+    # 徽→人→旗;rand=False 确定发放[fields.md 分野即终态在册口径];星级
+    # 1★ = 在码家族先例;条目 chars-only 零触碰[equips 腿归本行承载,条目
+    # 参数唯一出现点纪律];不入单族镜像表防同名键覆盖丢腿,沿组合行家族
+    # 纪律)。
+    '能量星徽套组': _compose_grant_legs(
+        _make_named_equip_grant_effect('能量星徽', 1),
+        _make_char_grant_effect('星期日'),
+        _make_named_equip_grant_effect('胜利之旗', 1)),
 
     # 天降救兵 = 随机星档角色×箱条目组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;条目1 = 随机星档角色(cost=1/star=3
