@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.base.screen.template_loader import TemplateLoader
 from one_dragon.utils import cv2_utils
@@ -452,6 +453,28 @@ def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
             crop = image[y1:y1 + _GRID_CELL_H, x1:x1 + _GRID_CELL_W]
             cells.append(GridCell(row=row, col=col, guess=_identify_crop(crop, templates)))
     return cells
+
+
+def grid_cell_center(ctx: SrContext, row: int, col: int) -> Point | None:
+    """角色网格单元格点击中心(1080p 全图坐标;区域缺失 None)。"""
+    area_rect = _get_area_rect(ctx, '区域-角色网格')
+    if area_rect is None:
+        return None
+    x = area_rect.x1 + _GRID_CELL_X_OFF + col * _GRID_CELL_DX + _GRID_CELL_W // 2
+    y = area_rect.y1 + _GRID_CELL_Y_OFF + row * _GRID_CELL_DY + _GRID_CELL_H // 2
+    return Point(x, y)
+
+
+def wave_row_select_point(ctx: SrContext, wave_idx: int) -> Point | None:
+    """波次行选中点击点(该行敌人预览区中心,非交互控件;1 基 wave_idx;缺失 None)。
+
+    点击该行任意非控件区即选中该行(白框态),后续点角色卡填入本行 —— 交互实测
+    2026-11-04(点预设套用前点行选中生效)。
+    """
+    rect = _get_area_rect(ctx, f'槽位{wave_idx}头像-1')
+    if rect is None:
+        return None
+    return Point(rect.x1 - 180, rect.y1 + 46)
 
 
 def read_preset_teams(ctx: SrContext, image: MatLike) -> list[PresetTeam]:

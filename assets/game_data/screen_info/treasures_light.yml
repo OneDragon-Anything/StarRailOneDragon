@@ -89,11 +89,11 @@ area_list:
 - area_name: FH_AFTER_BATTLE_BACK_BTN_2
   id_mark: false
   pc_rect:
-  - 790
-  - 920
-  - 1140
+  - 770
+  - 925
+  - 1150
   - 975
-  text: 返回逐光捡金
+  text: 返回忘却之庭
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
