@@ -18,7 +18,7 @@
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。
 - 处置：每轮 1s 重试（`UNKNOWN_RETRY_WAIT_S=1`，恒定），连续 `UNKNOWN_FAIL_THRESHOLD=15` 轮耗尽 → round_fail 交框架失败（运行 FAILED 收尾），日志 `[cw!]` 行 + 失败结果即信号。
 - 前置 bail = 战斗等待 op 自己的节点级预算（`cw_screen_battle_wait`，`UNKNOWN_BAIL_N=10` 轮未知 → op 截图保留证据 + round_fail bail 失败结束本次访问,由本兜底链接手；不停机，兜底链裁决权留外循环）。
-- 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 阶段一身份分发接线(处理器臂 + CW_DISPATCH_SCREENS 登记,三处缺一不可) → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
+- 处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + cw_loop 阶段一身份分发接入调用(处理器臂 + CW_DISPATCH_SCREENS 登记,三处缺一不可) → 重跑；战斗特效帧（OCR 乱码）**先确认非新画面**（analyze_screen 为准）才可调大阈值或加等待。画面被任何分支接走 → 计数自然复位。
 
 ## 3. 商店未识别卡停机
 
@@ -32,7 +32,7 @@
 
 ## 5. 特殊投资策略停机（临时捕获；`cw_screen_prep.py`）
 
-触发 = 效果清单含需逐条确定的名单效果（`_SPEC_INVEST_WATCH_NAMES`，挂点 = visit_open_shop 入口）→ 直接停机（`stop_running(save_screenshot=True)`），**人工采集**——停机后画面原样保持（店开着）：人工看画面 / MCP 截图补帧，对照效果注册表逐条确定该组合下商店改写/计数/经验行为，结论回填效果规格 verdict/notes。同组合进程内只停一次（重启清零 = 允许重停）。采够后删整段（常量+方法+挂点两行），不留开关。
+触发 = 效果清单含需逐条确定的名单效果（`_SPEC_INVEST_WATCH_NAMES`，插入位置 = visit_open_shop 入口）→ 直接停机（`stop_running(save_screenshot=True)`），**人工采集**——停机后画面原样保持（店开着）：人工看画面 / MCP 截图补帧，对照效果注册表逐条确定该组合下商店改写/计数/经验行为，结论回填效果规格 verdict/notes。同组合进程内只停一次（重启清零 = 允许重停）。采够后删整段（常量+方法+插入位置两行），不留开关。
 
 ## 6. 观察对账失配告警（发现失配即报警并停机；kernel；`cw_mismatch_policy.py` 槽 + `currency_war_app.py` 闭包）
 
