@@ -6,7 +6,7 @@
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/sr_od/application/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
-容器 ``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
+状态容器 ``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
@@ -14,7 +14,7 @@
   abstract 14,无工厂成员;零策略专属
   语义——方向重估节拍/意向 target 机器是具体策略实现的私事,不在基类契约面上)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
-- ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
+- ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻量载体对象,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。
 """
 from __future__ import annotations
@@ -66,7 +66,7 @@ if TYPE_CHECKING:
 # 期 0b kernel/cw_strategy_session 的 SrContext 处理)。
 CurrencyWarConfig = 'CurrencyWarConfig'
 
-#: 策略器私有状态的泛型参数(设计正本 §1/§8.5/§8.6-6「下沉
+#: 策略器私有状态的泛型参数(设计权威版本 §1/§8.5/§8.6-6「下沉
 #: 策略实现层」):StrategyState 归**策略实现层私有**,框架策略器基类仅以
 #: 泛型参数携带(本 ABC = 设计所称「策略器基类」,``BaseStrategy[TState]``
 #: 形态的落位),框架(kernel/one_dragon)不感知具体类型、零 import 具体
@@ -94,7 +94,7 @@ DECISION_RECORD_SCHEMA_VERSION: int = 1
 
 def _node_envelope(gs: GameState | None) -> dict[str, Any] | None:
     """gs.node 现读 → 信封 node 键值 ``{plane, round_num, kind}``;
-    缺(未观察/无容器)= None(null 帧,渲染侧不入章级挂载)。"""
+    缺(未观察/无状态容器)= None(null 帧,渲染侧不入章级挂载)。"""
     node = getattr(gs, 'node', None)
     value = getattr(node, 'value', None)
     if value is None:
@@ -175,13 +175,13 @@ class CwStrategy(ABC, Generic[_TState]):
     """一整套货币战争局内打法(可替换的决策大脑;终态契约:构造注入 + 零参入口)。
 
     **终态契约**(2026-09-16-strategy-terminal-contract;用户裁定干净断不留壳):
-    - **构造注入**:每局冷建 ``Strategy(gs, config)``——``self.gs`` 当局容器
+    - **构造注入**:每局全新创建 ``Strategy(gs, config)``——``self.gs`` 当局状态容器
       单例只读引用、``self.config`` 按参注入、``self.state`` 策略器私有状态
       实例(缺省 None,子类覆写 :meth:`_create_state` 定制)、``self.rng``
       (``config.strategy_seed`` None → 0 固定种子,禁静默翻转为熵种子)。
-      构造即唯一冷建口;``create_session``/``create_state`` 工厂停用。
-    - **实例不跨局**:局容器弃置 = 实例连带回收(引导漏斗每局 instantiate);
-      异常路径残留容器弃置守卫(:func:`discard_stale_match_container`)保留。
+      构造即唯一的每局全新创建入口;``create_session``/``create_state`` 工厂停用。
+    - **实例不跨局**:match 对象弃置 = 实例连带回收(引导漏斗每局 instantiate);
+      异常路径残留 match 对象的弃置守卫(:func:`discard_stale_match_container`)保留。
     - **零参入口 14**:备战/商店/invest 双相/pick 族八屏 + 契约扩员两屏
       (命运卜者强化/专家邀请函;三 overlay 选卡判据扩员,原选择装备口
       已删除(随该屏误判修正))——决策输入一律
@@ -222,18 +222,18 @@ class CwStrategy(ABC, Generic[_TState]):
                 continue
             setattr(cls, name, _wrap_decision_entry(fn))
 
-    # ===== 构造注入(唯一冷建口;终态契约 §2.1)=====
+    # ===== 构造注入(唯一每局全新创建入口;终态契约 §2.1)=====
 
     def __init__(self, gs: GameState, config: CurrencyWarConfig) -> None:
-        """每局冷建(引导漏斗 ``cls(gs, config)`` 调用;实例不跨局)。
+        """每局全新创建(引导漏斗 ``cls(gs, config)`` 调用;实例不跨局)。
 
-        ``self.state`` 经 :meth:`_create_state` 工厂冷建(缺省 None;子类
+        ``self.state`` 经 :meth:`_create_state` 工厂每局全新创建(缺省 None;子类
         覆写定制私有状态类型)。rng:``strategy_seed`` None → 0 固定种子
         (None→0 语义保持现状,禁静默翻转为熵种子)。
         """
         self.gs = gs
         self.config = config
-        self.state = self._create_state()   # 经下方 setter 同源接线 gs 宿主
+        self.state = self._create_state()   # 经下方 setter 与 gs 宿主同源挂接
         seed = getattr(config, 'strategy_seed', None)
         self.rng = random.Random(seed if seed is not None else 0)
         # 捕获缝实例态(capture-store §1):dseq = 决策序号(信封 dtag 基数,
@@ -245,9 +245,9 @@ class CwStrategy(ABC, Generic[_TState]):
     def state(self) -> _TState | None:
         """策略器私有状态(实例属性;终态契约 §2.4「strategy_state → 实例」)。
 
-        setter 同步 ``gs.strategy_state`` 宿主接线:零参 decide 管线
+        setter 同步 ``gs.strategy_state`` 宿主挂接:零参 decide 管线
         (mandate 三遍编排)以 self.gs 为宿主传递,``state_of(gs)`` 经本
-        接线解析到**同一**状态对象、``game_state_of(gs)`` 本体直通——
+        挂接解析到**同一**状态对象、``game_state_of(gs)`` 本体直通——
         单一来源两处引用,禁第二状态对象(构造/事后重赋值两路径都过
         setter,不变量恒成立)。
         """
@@ -257,7 +257,7 @@ class CwStrategy(ABC, Generic[_TState]):
     def state(self, value: _TState | None) -> None:
         self._state = value
         with contextlib.suppress(AttributeError):
-            # 容器为桩面(不可附着)→ 跳过;legacy session 形态仍可用。
+            # 状态容器为桩面(不可附着)→ 跳过;legacy session 形态仍可用。
             self.gs.strategy_state = value
 
     def _create_state(self) -> _TState | None:
@@ -272,7 +272,7 @@ class CwStrategy(ABC, Generic[_TState]):
         动作字段透传载荷的通道载体;带缺省参 = 非破坏扩展——旧签名
         覆写收到多余实参 TypeError 走 wrapper 既有异常降级 {} 通道,
         不静默毒化决策返回值),钩子异常降级 {}(capture-store §3)。
-        载荷两类来源(语义正本 = strategy-docs/strategy-telemetry.md):
+        载荷两类来源(语义权威版本 = strategy-docs/strategy-telemetry.md):
         **现读键**(出口后 gs/state 现读)与**产物透传键**(词表动作
         字段与私有槽,均为决策帧出口时点快照)——禁依赖未入决策产物
         与既许槽位的内部局部量(更细域内量由策略经私有 state 槽自存、
@@ -363,19 +363,19 @@ class CwStrategy(ABC, Generic[_TState]):
 
 @dataclass
 class CurrencyWarMatch:
-    """运行时持有 strategy + session 的轻容器,挂 ``ctx.cw_match``(子 op 都拿得到 ``self.ctx``)。
+    """运行时持有 strategy + session 的轻量结构,挂 ``ctx.cw_match``(子 op 都拿得到 ``self.ctx``)。
 
     生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个契约调用点收到的 session 就是它 →
     局终置 ``ctx.cw_match = None``(防跨局污染)。
 
-    ``gs``/``performance`` = 终态契约前置落位(landing §3.1):容器正身挂
-    Match(策略器终态改持只读引用,ops 取容器 = 「取当局事实」语义)、
-    观测统计归框架侧。本批 additive 填充——消费接线归终态切换批,
+    ``gs``/``performance`` = 终态契约前置落位(landing §3.1):状态容器正身挂
+    Match(策略器终态改持只读引用,ops 取状态容器 = 「取当局事实」语义)、
+    观测统计归框架侧。本批 additive 填充——消费接入调用归终态切换批,
     现役读面仍走 session 旁口。
     """
     strategy: CwStrategy
     session: StrategySession
-    gs: GameState | None = None   # 终态契约:当局容器正身(3.1 additive 缺省
+    gs: GameState | None = None   # 终态契约:当局状态容器正身(3.1 additive 缺省
                                   # None=迁移期测试/防御路径旧构造容忍;
                                   # 3.5 终态切换收紧必填,生产漏斗已填充)
     performance: object | None = None
@@ -394,7 +394,7 @@ class CurrencyWarMatch:
 #: obs 读口注入槽(缺省关):清 obs 模块级 last-known-good 缓存的回调。
 #: 分包依赖矩阵禁 decision→obs 直依,生产装配点 = app/decision_assembly
 #: ``install_obs_ports()``(CurrencyWarApp.__init__ 接通);未注入 = 跳过
-#: 缓存清理(容器弃置语义不受影响,session 全量重建承担状态隔离)。
+#: 缓存清理(match 对象弃置语义不受影响,session 全量重建承担状态隔离)。
 _RESET_PHASE_ROUND_CACHE: Callable[[], None] | None = None
 
 
@@ -419,19 +419,19 @@ def set_decision_sink(fn: Callable[[dict], None] | None) -> None:
 
 
 def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
-    """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计)。
+    """上一局残留的 match 对象在**新局开始信号**处丢弃(迁移审计)。
 
     背景(迁移审计抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(cw_loop
     分支 3c),下一局 ``RunLoop.handle_init`` 见 None 新建 session —— 状态天然全新。但
-    **异常路径**(run 被停机/崩溃在上局对局中、进程未重启)残留非 None 的旧容器;此时
+    **异常路径**(run 被停机/崩溃在上局对局中、进程未重启)残留非 None 的旧 match 对象;此时
     下一次入口链 ``CwEntryStart`` 开的是一局**新对局**,而
     ``handle_init`` 的续跑判定(``ctx.cw_match is None``)会把旧 session 整体延用:
     level 单调守卫拿上局 ``last_level_obs=5`` 打新局 plane1 的真读(迁移审计cap_vs_level
-    抽样 4/4 实证)、tracked 角色/streak/hp 对账锚全部跨局带毒——obs_conflict 三层
+    抽样 4/4 实证)、tracked 角色/streak/hp 的对账基准值全部跨局带毒——obs_conflict 三层
     (level/cap_vs_level/phase_round)329 张的残留源。
 
     本函数只在「确凿是新一局」的调用点用(难度确认/模式选择/简报三屏只在无保存局的
-    新局路径出现;「继续进度」恢复同一物理局不触发)→ 把容器置 None,随后的
+    新局路径出现;「继续进度」恢复同一物理局不触发)→ 把该对象置 None,随后的
     handle_init 走新建分支实现**全量重置 by construction**(StrategySession 每字段
     回默认值,不存在漏清字段面);模块级观测缓存(plane/round last-known-good)由
     handle_init 既有的 ``reset_phase_round_cache()`` 清。
@@ -451,5 +451,5 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
 
 # gated_hp(结算 HP 新鲜度门薄委托)已删除;现役消费点 =
 # kernel/cw_hp_policy.decision_hp(gs 直读);
-# prep 环入口/终饰写侧预施门已删除(该文件残留注释为历史锚)。
+# prep 环入口/终饰写侧预施门已删除(该文件残留注释为历史结论的引用)。
 

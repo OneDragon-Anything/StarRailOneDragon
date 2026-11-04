@@ -44,26 +44,26 @@ if TYPE_CHECKING:
 
 
 def establish_new_match(ctx: SrContext, config) -> bool:
-    """进对局时建立 match 容器(「match 生命周期前置」纪律;返回 True=本次新建)。
+    """进对局时建立 match 对象(「match 生命周期前置」纪律;返回 True=本次新建)。
 
     为什么前移:原建立点 = CwLoop.handle_init(run 首帧)——
     简报观察(CwScreenBriefing,P3)要**直写 session**,而简报屏先于 run loop 出现;
     session 不存在 = 观察无写目标。现把建立时机前移到入口链的新局确凿信号处
     (难度确认/模式选择/简报屏,``CwEntryStart`` 调用),与本模块
     ``discard_stale_match_container``(残留弃置)同址衔接:先弃置
-    残留容器,再建立本局容器。
+    残留 match 对象,再建立本局 match 对象。
 
-    - 已有容器(续跑/已建立)→ False 幂等直过(不覆盖,保手动逐轮延续语义);
-    - 容器建立即初始化局容器单例 GameState 并注入 run 归属读取函数
+    - 已有 match 对象(续跑/已建立)→ False 幂等直过(不覆盖,保手动逐轮延续语义);
+    - match 对象建立即初始化局状态容器单例 GameState 并注入 run 归属读取函数
       (用户裁定 2026-09-15:遥测装配 = game state 初始化职责;
       本函数 = CwEntryStart 前移点与 CwLoop handle_init 兜底两生产调用方
       的公共注入漏斗);
     - 职级(ctx.cw_selected_difficulty,难度确认屏先读)就地拷入 session
-      (观察事实,容器 gs.selected_difficulty 写入源,遥测/对账消费);
+      (观察事实,状态容器 gs.selected_difficulty 写入源,遥测/对账消费);
     - run loop handle_init 的建立分支保留作兜底(绕过入口链直跑 loop 的
       场景,如 run_operation 单跑),同一 helper 无逻辑分叉。
 
-    Returns: True = 本次新建容器;False = 已存在(幂等直过)。
+    Returns: True = 本次新建 match 对象;False = 已存在(幂等直过)。
     """
     if getattr(ctx, 'cw_match', None) is not None:
         return False
@@ -71,7 +71,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         CurrencyWarMatch,
     )
-    # 终态契约 §2.1:每局冷建 = session(旁表键位/兼容位)+ 容器单例 +
+    # 终态契约 §2.1:每局全新创建 = session(旁表键位/兼容位)+ 状态容器单例 +
     # 策略器构造注入 cls(gs, config)。布局未知态计数复位 = 漏斗职责
     # (新局起点顺带复位)。
     _session = StrategySession()
@@ -82,13 +82,13 @@ def establish_new_match(ctx: SrContext, config) -> bool:
             reset_layout_unknown_state,
         )
         reset_layout_unknown_state()
-    except Exception:   # noqa: BLE001  复位 best-effort,不阻容器建立
+    except Exception:   # noqa: BLE001  复位 best-effort,不阻 match 对象建立
         pass
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
-    # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
-    # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
-    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
+    # game_state_of 局状态容器建立点,GameState 构造器零装配逻辑)。match 对象建立即
+    # 惰性新建局状态容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
+    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化状态容器首写前
     # 装配已发生」,覆盖本函数两个生产调用方(CwEntryStart 进对局前移点 /
     # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
     # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),
@@ -100,20 +100,20 @@ def establish_new_match(ctx: SrContext, config) -> bool:
     _strategy = StrategyManager(
         ctx, ctx.currency_war_strategy_plugin_dirs).instantiate(
         config.strategy_id, _gs, config)
-    # 状态同源接线(终态契约 §2.6 过渡桥):session 键位状态 = 策略器
+    # 状态同源挂接(终态契约 §2.6 过渡桥):session 键位状态 = 策略器
     # 实例状态同一对象——旧读法 state_of(session) 与新读法 self.state
     # 等价,实现/夹具可渐进迁移(session 兼容位删除时旧读法随之消亡)。
     _session.strategy_state = _strategy.state
-    # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂 gs.strategy_state。)
+    # (gs 宿主挂接 = CwStrategy.state setter 内建,构造即挂 gs.strategy_state。)
     # Match 终形(§2.1):{gs, strategy, performance} + session 兼容位
     #(session 兼容类移除时随删)。
     ctx.cw_match = CurrencyWarMatch(_strategy, _session, _gs,
                                     performance=getattr(_session, 'performance', None))
     # GameState 初始化即遥测装配(用户裁定 2026-09-15:遥测数据的保存
     # = game state 职责;精化令:触发只钉正主单例建立路径 = kernel
-    # game_state_of 局容器建立点,GameState 构造器零装配逻辑)。容器建立即
-    # 惰性新建局容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
-    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化容器首写前
+    # game_state_of 局状态容器建立点,GameState 构造器零装配逻辑)。match 对象建立即
+    # 惰性新建局状态容器单例并注入 run 归属读取函数(kernel 禁依 telemetry,
+    # 依赖倒置 = 建立点参数;幂等已装配零成本直过)——「未初始化状态容器首写前
     # 装配已发生」,覆盖本函数两个生产调用方(CwEntryStart 进对局前移点 /
     # CwLoop handle_init 兜底);注入收拢本生产专用漏斗 = CwLoop 调用面在
     # 迭代在飞冻结期不可改注入,且 sim/测试不经本函数(直建 session),

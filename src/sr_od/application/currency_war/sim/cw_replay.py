@@ -1,12 +1,12 @@
 """决策回放 harness(journal 新账源,判读走新账)。
 
-用途:策略改动后,对**历史局的容器真值帧**重放商店决策
+用途:策略改动后,对**历史局的状态容器(GameState)真值帧**重放商店决策
 (decide_shop_screen 黑板接口),秒级看到「这个改动动了哪些决策、
 方向对不对」——验证成本从实跑 20-40min 压到秒级。
 
 数据源:state/journal.jsonl(统一 state 状态流水,行行自足)——按
 (run, plane, round) 取每轮最后一次写入的行内 state 快照,经
-:func:`restore_state_snapshot` 恢复进容器后决策。旧 decisions.jsonl
+:func:`restore_state_snapshot` 恢复进状态容器后决策。旧 decisions.jsonl
 源与其整帧重建/会话恢复面已停用(该流写入端已停写,读死数据;停用面 =
 _rebuild_state/_restore_session/--diff 分歧对比/意向 latch 回读/执行态可信位回读)。
 
@@ -17,10 +17,10 @@ _rebuild_state/_restore_session/--diff 分歧对比/意向 latch 回读/执行�
 
 ⚠️ 结论边界(判读语义,切源后如实申报):
 - **意向/终局阵容锁定的冷启动**:策略态(意向 latch/锁定配方对/经验期望账本)
-  不入状态流水,journal 源回放每轮冷建 session——方向层按容器帧键
+  不入状态流水,journal 源回放每轮全新创建 session——方向层按状态容器帧键
   自驱,终局阵容锁定的延续性语义与实跑不可比;分支级(终局阵容锁定相关)决策对比需
   旧格式语料 + 冻结快照 worktree(历史档案)。
-- 轮真值 = 该轮最后一次容器写入的快照(备战决策帧语境;战斗/结算
+- 轮真值 = 该轮最后一次状态容器写入的快照(备战决策帧语境;战斗/结算
   中间态不构成独立轮)。
 """
 from __future__ import annotations
@@ -53,7 +53,7 @@ def _fmt(actions: list) -> str:
         if t == 'CwActionBuyCardParam':
             parts.append(f"Buy({a.card.name})")
         elif t in ('CwActionLevelUpParam', 'CwActionLevelUpShopParam'):
-            # 按动作名字符串分发(历史 journal 重放不依赖词表类型在册;
+            # 按动作名字符串分发(历史 journal 重放不依赖词表类型已登记;
             # LevelUpShop 双类型已退役,旧名仅历史数据兼容面)
             parts.append('LvUp')
         elif t == 'CwActionRefreshShopParam':
@@ -102,15 +102,15 @@ def main() -> None:
         if rounds and n_done >= rounds:
             break
         rid, plane, rnd = key
-        # 每轮冷建 session(策略态不入流水;判读边界见模块 docstring),
-        # 快照恢复进该 session 的容器后走生产同路决策。
-        # 终态契约 §2.1:策略器构造注入 cls(gs, config),每轮冷建。
+        # 每轮全新创建 session(策略态不入流水;判读边界见模块 docstring),
+        # 快照恢复进该 session 的状态容器后走生产同路决策。
+        # 终态契约 §2.1:策略器构造注入 cls(gs, config),每轮全新创建。
         sess = StrategySession()
         _cfg = _Cfg()
         gs: GameState = game_state_of(sess)
         strat = MandateV1Strategy(gs, _cfg)
-        sess.strategy_state = strat.state   # 状态同源接线(§2.6 过渡桥)
-        # (gs 宿主接线 = CwStrategy.state setter 内建,构造即挂。)
+        sess.strategy_state = strat.state   # 状态同源接入(§2.6 过渡桥)
+        # (gs 宿主接入调用 = CwStrategy.state setter 内建,构造即挂。)
         restore_state_snapshot(gs, snaps[key])
         try:
             actions = strat.decide_shop_screen(sess, _cfg)

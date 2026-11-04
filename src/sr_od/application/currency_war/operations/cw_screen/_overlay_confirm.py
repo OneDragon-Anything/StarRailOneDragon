@@ -52,10 +52,10 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     语义按 op 分道:
     - ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态现
       apply_confirm_effect):owned += item / 现金为王 gold +4(推进宿主 =
-      容器单例金账,写通道单一源在 cw_exec_state;补给确认不在本族——
+      状态容器(GameState)单例金账,写通道单一源在 cw_exec_state;补给确认不在本族——
       其入栏/后果分支由 ``report_action_pick_supply_param`` 即时单相一口写);
     - ConfirmStrategy:本函数零写——投资策略选择事实经动作落地获得链写
-      (动作 op 即时上报 → gain_invest_strategy,正本 = game_state/
+      (动作 op 即时上报 → gain_invest_strategy,权威版本 = game_state/
       gain-chain.md;原 handler 确认写点已停用);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
       handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
@@ -86,7 +86,7 @@ def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> Non
     """
     log.info(f'[{tag}] safe_click {point}')
     if not mechanical_io_allowed():
-        # sim:机械执行分支静默成功,世界反应由调用方紧随的上报承接
+        # sim:机械执行分支静默成功,状态副本变化由调用方紧随的上报承接
         #(直连旁路 port 检查,flow-seam §2)
         return
     op.ctx.controller.mouse_move(point)
