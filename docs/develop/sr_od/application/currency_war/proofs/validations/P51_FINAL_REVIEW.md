@@ -33,7 +33,7 @@
 
 ### 4. J3 注册表锚(必修 4)—— **到位**
 
-- **income.streak 全文禁用**:✓。全文该字段仅出现于 §1-#16、§8-J3、B1、T5 四处,均为「噪声性错位已坐实、弃用定谳」的陈述性内容,无任何消费点;标定脚本的 flow_diff 用 `decisions.state.streak`(决策前相状态字段,与 income.streak 是不同字段)+注册表 `streak_gold()/LOSS_GOLD_BY_NODE` 合成,亲跑首行注册表锚打印 `(1,1,2,2,2,3,4)`/`{battle:2,encounter:4,boss:4}` 与文档头声明一致。
+- **income.streak 全文禁用**:✓。全文该字段仅出现于 §1-#16、§8-J3、B1、T5 四处,均为「噪声性错位已坐实、弃用定案」的陈述性内容,无任何消费点;标定脚本的 flow_diff 用 `decisions.state.streak`(决策前相状态字段,与 income.streak 是不同字段)+注册表 `streak_gold()/LOSS_GOLD_BY_NODE` 合成,亲跑首行注册表锚打印 `(1,1,2,2,2,3,4)`/`{battle:2,encounter:4,boss:4}` 与文档头声明一致。
 - **胜负旗合成口径可检验**:✓。J3 测度 = `win ? streak_gold(决策前相 streak) : LOSS_GOLD_BY_NODE[节点]`,全部输入(decisions.state.streak、outcomes.sim.killed、node_type)均为落盘字段,可由 §8 方向性预言同源数据复算;锚时相残余不确定度(±1-2 金/战)已在 B1 以专句声明并被 ≤1 金/轮界覆盖(复验 T5 建议项亦已落实)。
 
 ### 5. 附带 T3 口径定稿 + 死亡中位列 —— **表与列到位;「存活局=首领胜出」叙述与数据不符(残项 R-3)**
