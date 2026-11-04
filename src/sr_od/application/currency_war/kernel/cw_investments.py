@@ -3921,7 +3921,8 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '飞光·传剑': GiftGrant(chars_immediate=('彦卿', '景元')),
     '飞光·映月': GiftGrant(chars_immediate=('镜流', '景元')),
     # —— 反扫补网 4 条(无角色绑定的「获得…」直读发放)——
-    '龙虎兄弟狸': GiftGrant(chars_immediate=('狸小龙', '狸小虎')),
+    '龙虎兄弟狸': GiftGrant(chars_immediate=('狸小龙', '狸小虎'),
+                        items_immediate=('简易武装箱', '简易武装箱')),
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
     '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),

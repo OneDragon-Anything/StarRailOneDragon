@@ -1245,6 +1245,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 全部未使用的员工投影仪消失],两腿异构不入同表;rng 零消费;不入
     # 泛化表防撞键)。
     '临时工合约': _make_named_equip_grant_effect('员工投影仪', 8),
+    # 龙虎兄弟狸 = 三腿组合登记行(卡文「获得【狸小龙】和【狸小虎】和2个
+    # 【简易武装箱】」语序直读;char_grant 双具名两腿 + box_grant 双箱腿;
+    # 双具名不可入单角色镜像表/入箱表同名键顺序覆盖丢腿,沿欢愉星徽组合
+    # 行先例;穿戴腿/条件金腿零建模 = STRATEGY_DESC_UNMODELED_KEYS 家族
+    # 键在册,live 游戏自算零写观察覆盖)。
+    '龙虎兄弟狸': _compose_grant_legs(
+        _make_char_grant_effect('狸小龙'),
+        _make_char_grant_effect('狸小虎'),
+        _make_box_grant_effect(('简易武装箱', '简易武装箱'))),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
@@ -1530,9 +1539,10 @@ cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句�
 # ===== id 301101「在你每次升级时获得1个2星角色和1金币。这个角色的费用是
 # ===== 你的等级减4(最小值：1费)」;金腿 = 记账层伴生协议①现值零改动
 # ===== (ECONOMY 注册行 + shop_session.LEVELUP_COMPANION_GOLD 伴生,双端
-# ===== 同链),本节只辖角色腿:升级上报回调跨级分支 sim 门内调用,live
-# ===== 零写 = 观察承接定谳维持(实机该角色由游戏引擎发放,bench 备战
-# ===== heavy 观察自然吸收))=====
+# ===== 同链),本节只辖角色腿:升级值变更回调 gift 分支 sim 门内调用
+# ===== (调度器 = cw_levelup_callbacks.on_level_up_change,源 = 任意
+# ===== 经验来源升级),live 零写 = 观察承接定谳维持(实机该角色由游戏
+# ===== 引擎发放,bench 备战 heavy 观察自然吸收))=====
 
 #: 升级发放腿采样分支具名流键(注入槽解析 = sim 世界真值,流键形
 #: ``action/level_up_gift/<序>``;先例 = ENV_MERGE_GRANT_RNG_TOOL 同形态)。
@@ -1552,7 +1562,8 @@ LEVEL_UP_GIFT_ASSUMPTION_KEYS: tuple[str, ...] = (
 def apply_level_up_char_gift(gs: GameState, *, levels: list[int],
                              sig: ChannelSig) -> list[str]:
     """节节高升升级发放腿(逐跨级等级各发 1 名 2★ 角色;消费位唯一 =
-    升级上报回调跨级分支 sim 门内,live 不调用不采样)。
+    升级值变更回调 gift 分支 sim 门内〔调度器 =
+    cw_levelup_callbacks.on_level_up_change〕,live 不调用不采样)。
 
     链序(逐级):费用档 = ``max(1, min(5, lv - 4))``(卡面「等级减4
     最小值：1费」直读 + 满级段上钳 5 = 费用轴池域,披露键
