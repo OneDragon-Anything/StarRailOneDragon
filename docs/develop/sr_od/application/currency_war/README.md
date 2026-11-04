@@ -1,4 +1,5 @@
 # 货币战争(currency_war)自动化设计
+> 术语:本目录所用货币战争域术语(逻辑态/对账/真值/口径等)的统一定义见 [terminology.md](terminology.md)。
 
 > 玩法本身(机制 / 数据 / 画面 / 攻略)见 [docs/game/currency_war/](../../../../game/currency_war/)(游戏知识,游戏版本改才变;经我们提炼核实的知识在其 `research/`)。
 > **本目录 = 自动化实现设计**(bot 流程 / 策略 / 决策 / why,代码改才变)。

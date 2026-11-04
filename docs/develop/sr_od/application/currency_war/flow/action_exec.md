@@ -1,4 +1,5 @@
 # 动作执行(action_exec)
+> 术语:本篇所用货币战争域术语的统一定义见 [../terminology.md](../terminology.md)。
 
 > 从代码反推,来源 = `kernel/cw_vocab.py`(统一动作类型清单)+ `operations/cw_op/`(动作 op 群与注册表)+ `prep_actions.py`(PrepActionExecutor 执行器)。职责:动作怎么落地、怎么上报、失败怎么治理。路径根 = `src/sr_od/application/currency_war/`。
 
@@ -6,7 +7,7 @@
 
 - **动作类型清单单一源** = `kernel/cw_vocab.py::CW_ACTION_TYPES`(统一动作类型清单,封闭——新增动作必须同步登记;漏登记 = 执行面拒「未知动作类型」,动作从未真正执行)。
 - **注册表单一源** = `operations/cw_op/cw_action_registry.py`(动作类型清单条目类 → 动作 op 类一张表;`action_op_for`/`action_op_class_for` 全动作唯一注册点;行序 isinstance 首中即返,is-a 链父类行兜底规则见模块头)。清单外类型 = AssertionError 显式报错(非法返回 = 策略器 bug,禁静默跳过)。
-- **备战域动作全集**:`CollectOre(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(deployed_idx)`(坐标域 = §1 下行)/`MoveUnit(src_domain, src_slot, dst_domain, dst_slot)`(统一拖动,部署统一批:front/back/bench 任意源 → 任意目标四元组,单坐标系——front 槽 1-4 基 1 / back 槽 1-N 动态基 1(N=`back_capacity_of`)/ bench 槽 0-8 基 0,越界 fail-closed;字段写操作推演矩阵 = `kernel/cw_action_report/move_unit.py`「源域 × 目标域 × 目标槽占用态」六分支——锁校验辖新单位入场上全形态、银狼变换窗只 bench→上场触发、开拓者按目标排定形态)/`LevelUp`/`OpenShop`/`StartBattle`/`Obs(scope)`(重观察动作,in_place = 环内重观察零点击零拖拽——宿主画面 op heavy 观察链重跑上报;outer_loop = 返回主循环重观察,分支拦截型;现役接入调用域 = 备战决策环)。(组合壳 RunDeploy/RunEquip/RunTools 已随统一动作类型清单停用:部署 = 拖动原子序列由动作发出点逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已停用删除——部署无画面 op 载体;旧 `DeployMove`/`SwapDeploy` 双动作类已随统一拖动收编退役,全部移动经 `MoveUnit` 单一载体。)
+- **备战域动作全集**:`CollectOre(max_k)`/`OpenBox(slot)`/`OpenTome(slot)`/`SellBench(slot, reason)`/`SellDeployed(deployed_idx)`(坐标域 = §1 下行)/`MoveUnit(src_domain, src_slot, dst_domain, dst_slot)`(统一拖动,部署统一批:front/back/bench 任意源 → 任意目标四元组,单坐标系——front 槽 1-4 基 1 / back 槽 1-N 动态基 1(N=`back_capacity_of`)/ bench 槽 0-8 基 0,越界 fail-closed;字段写操作推演矩阵 = `kernel/cw_action_report/move_unit.py`「源域 × 目标域 × 目标槽占用态」六分支——锁校验辖新单位入场上全形态、银狼变换窗只 bench→上场触发、开拓者按目标排定形态)/`LevelUp`/`OpenShop`/`StartBattle`/`Obs(scope)`(重观察动作,in_place = 环内重观察零点击零拖拽——宿主画面 op heavy 观察链重跑上报;outer_loop = 返回主循环重观察,分支拦截型;现役接入调用域 = 备战决策环)。(组合壳 RunDeploy/RunEquip/RunTools 已随统一动作类型清单停用:部署 = 拖动原子序列由动作发出点逐帧现算,穿戴 = WearEquip 原子,工具 = 工具原子类经 `CwActionToolUseOp`;部署机画面 op `CwScreenDeploy` 已停用删除——部署无画面 op 载体;旧 `DeployMove`/`SwapDeploy` 双动作类已随统一拖动并入统一结构后退役,全部移动经 `MoveUnit` 单一载体。)
 - **`CwActionSellDeployedParam.deployed_idx` 坐标域扩展**(部署统一批):值域 = 前排 0-3 / 后排 4+(排内 1 基槽号),随 `back_capacity_of` 动态 6-9——扩格帧后排 7-9 可直卖,旧「定长 10 截断/后排 7-9 不可寻址」边界退役;三落点 = 上报侧直读动态视图(`cw_action_report/sell_deployed.py`)/ 执行侧动态点位(`cw_sell_deployed_action.py` 断言 + 画面点位表)/ schema docstring(本节即登记);`deployed_indexed_of_view` 截断桥本体与其余消费方零改动。
 - `SellBench.reason` = 卖出原因备注字段,仅供日志归因、执行代码不读(**记录非指令**;'' = 未标缺省);发出侧取值封闭集 = `cw_prep_actions.SELL_BENCH_REASONS`,目前唯一有效取值 `line_switch_collapse` = 「切换终局阵容后清理不再需要的角色」;reason 不入幂等键。
 - 动作实例键 `action_key(action)` = 类型+行为参数(SellBench(3) 与 SellBench(5) 各自计数;归因字段经字段 metadata 不入键)——屏蔽/失败计数的幂等粒度。

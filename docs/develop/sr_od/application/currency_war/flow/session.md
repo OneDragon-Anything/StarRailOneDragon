@@ -1,4 +1,5 @@
 # Session 职责分离(session 三类状态分离,as-designed)
+> 术语:本篇所用货币战争域术语的统一定义见 [../terminology.md](../terminology.md)。
 
 > **状态声明**:本篇是 **设计件 (as-designed)**,非现状描述。目标态与现状在正文内显式区分 (双态标注先例 = `sim/sim-design.md`);现状描述从 `kernel/cw_strategy_session.py` 反推(路径根 = `src/sr_od/application/currency_war/`,下称 session 文件)与各消费点 (grep 直调行号见清册)。迁移方案按用户 2026-09-06 裁定为 **一次性原子切换**(流水-20260906.jsonl 18:47 行)——原任务书的「分期迁移+双轨并存」框架被该裁定取代,§6 如实记录被取代的框架以保留推理链。
 > **与 GameState 的分工边界**:本篇管 **StrategySession**(局身份 + 观察数据 + `strategy_state` 策略状态黑盒 + 框架设施);局内已知事实快照状态容器(GameState) = **GameState**(`kernel/cw_game_state.py`,单例宿主 = session 旁表 `game_state_of`——session 对象即局身份,两者共存非替代)。GameState 设计权威版本 = `game_state/README.md`(总纲)+ `fields.md`(字段级规格)。
