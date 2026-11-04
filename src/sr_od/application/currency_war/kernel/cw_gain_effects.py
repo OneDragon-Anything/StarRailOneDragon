@@ -1330,6 +1330,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('昼之半神星徽', 1),
         _make_char_grant_effect('风堇'),
         _make_named_equip_grant_effect('生命之环', 1)),
+    # 夜之半神星徽套组 = 三腿组合登记行(套组族第 9 张;卡文「获得1个【夜
+    # 之半神星徽】，和1个【万敌】，以及1个【杀红眼】」语序直读:
+    # 徽→人→眼;rand=False 确定发放[fields.md 分野即终态在册口径];星级
+    # 1★ = 在码 22 处家族先例(含万敌自身);不入单族镜像表防同名键覆盖
+    # 丢腿,沿组合行家族纪律)。
+    '夜之半神星徽套组': _compose_grant_legs(
+        _make_named_equip_grant_effect('夜之半神星徽', 1),
+        _make_char_grant_effect('万敌'),
+        _make_named_equip_grant_effect('杀红眼', 1)),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
