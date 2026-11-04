@@ -9,11 +9,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进 + 链观察;不问策略器,只做固定的观察与推进动作)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 提示门(「提示-点击空白继续」,miss = round_fail 返回主循环重新判定)→ 底部全亮行读数构造链值 → `report_screen_plane_transition_obs` 落容器(容器 = GameState,游戏状态对象,下同;node_path 离场快照双写,见 §6)→ obs 挂实例属性。决策动作 node = 顶部落地复查(落地复查 = 动作发出后下一轮检查上一动作是否已生效——画面标志消失;下同。点空白已发 → 提示不在 = 过渡完成 → success;提示在 = 点击未落地 → 再点)→ 点空白推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
+**空决策形态**(纯推进 + 链观察;不问策略器,只做固定的观察与推进动作)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 提示门(「提示-点击空白继续」,miss = round_fail 返回主循环重新判定)→ 底部全亮行读数构造链值 → `report_screen_plane_transition_obs` 落状态容器(GameState)(状态容器 = GameState,游戏状态对象,下同;node_path 离场快照双写,见 §6)→ obs 挂实例属性。决策动作 node = 顶部落地复查(落地复查 = 动作发出后下一轮检查上一动作是否已生效——画面标志消失;下同。点空白已发 → 提示不在 = 过渡完成 → success;提示在 = 点击未落地 → 再点)→ 点空白推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=8` 在用值仅框架异常路径消费)。
 
 ## 3. 观察面
 
-提示门 = 「货币战争-位面过渡.提示-点击空白继续」(**本档 area 名无「处」字**;与 BOSS 简报档「提示-点击空白处继续」为两张画面档各自的 area,不相通用)。门 hit → 链观察一次读(`obs/cw_node_reader.py::read_node_sequence` 行读数 → TokenCell 构造,行空/读缺 = chain None 诚实缺位),读+写整体 best-effort(异常抑制,不阻塞点击推进)。观察 payload = `CwScreenPlaneTransitionObs`(`on_screen`/`chain`/`screen`,位于 `kernel/cw_screen_report/plane_transition.py`);report = `report_screen_plane_transition_obs` 链写容器(见 §6)。提示未现 = 未到位(上位面未结束)或已过去 → fail 交重新分流。
+提示门 = 「货币战争-位面过渡.提示-点击空白继续」(**本档 area 名无「处」字**;与 BOSS 简报档「提示-点击空白处继续」为两张画面档各自的 area,不相通用)。门 hit → 链观察一次读(`obs/cw_node_reader.py::read_node_sequence` 行读数 → TokenCell 构造,行空/读缺 = chain None 诚实缺位),读+写整体 best-effort(异常抑制,不阻塞点击推进)。观察 payload = `CwScreenPlaneTransitionObs`(`on_screen`/`chain`/`screen`,位于 `kernel/cw_screen_report/plane_transition.py`);report = `report_screen_plane_transition_obs` 链写状态容器(见 §6)。提示未现 = 未到位(上位面未结束)或已过去 → fail 交重新分流。
 
 ## 4. 动作面
 
@@ -21,7 +21,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| 无动作 op——单步推进由画面 op 内置动作完成 | 画面 op 内置动作(内置动作 = 画面 op 内部代码直接执行的固定动作,不经动作注册表派发;决策动作 node `act`:`area_center` 读「货币战争-位面过渡.区域-空白点击」center → mouse_move + click) | 无自上报(观察上报 = `report_screen_plane_transition_obs` 链写容器,观察 node 承载) | 是(点空白即终结):`round_wait` 机械部分完成即结束本次访问循环推进,落地复查提示不在 = `round_success`(wait=1.0)返回主循环重新判定 |
+| 无动作 op——单步推进由画面 op 内置动作完成 | 画面 op 内置动作(内置动作 = 画面 op 内部代码直接执行的固定动作,不经动作注册表派发;决策动作 node `act`:`area_center` 读「货币战争-位面过渡.区域-空白点击」center → mouse_move + click) | 无自上报(观察上报 = `report_screen_plane_transition_obs` 链写状态容器,观察 node 承载) | 是(点空白即终结):`round_wait` 机械部分完成即结束本次访问循环推进,落地复查提示不在 = `round_success`(wait=1.0)返回主循环重新判定 |
 
 单动作 = 点空白:`kernel/cw_obs_core.py::area_center('区域-空白点击', '货币战争-位面过渡')` → mouse_move 先行 + click(overlay 族同款点击时序)→ 固定短等(点击异步落地 + 过渡翻页动画)→ 置位。建档缺失 → `round_fail` 保留证据。
 
@@ -31,7 +31,7 @@
 
 ## 6. 状态上报面
 
-链观察写(`report_screen_plane_transition_obs`,纯观测写点,调用方的 best-effort 抑制由观察侧保留):`gs.observe(node_path, chain, evidence='transition_snapshot')` 双写——`node_path_baseline` 开局幂等回填(已有值不覆写);防御逐位:chain 缺 = 行空/读缺不写(诚实缺位),非开局且节点镜像缺 = 行归属位面不可知禁猜跳写;离场快照链 diff 触发(`maybe_emit_chain_diff`,snapshot=True 豁免两帧门)随写点同迁。字段节 = [../game_state/fields.md](../game_state/fields.md);链正本 = [../game_state/chain-observation.md](../game_state/chain-observation.md)。
+链观察写(`report_screen_plane_transition_obs`,纯观测写点,调用方的 best-effort 抑制由观察侧保留):`gs.observe(node_path, chain, evidence='transition_snapshot')` 双写——`node_path_baseline` 开局幂等回填(已有值不覆写);防御逐位:chain 缺 = 行空/读缺不写(诚实缺位),非开局且节点镜像缺 = 行归属位面不可知禁猜跳写;离场快照链 diff 触发(`maybe_emit_chain_diff`,snapshot=True 豁免两帧门)随写点同迁。字段节 = [../game_state/fields.md](../game_state/fields.md);链权威版本 = [../game_state/chain-observation.md](../game_state/chain-observation.md)。
 
 ## 7. 子态与 overlay
 

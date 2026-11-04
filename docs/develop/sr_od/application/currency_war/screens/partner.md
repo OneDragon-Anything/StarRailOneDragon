@@ -9,7 +9,7 @@
 
 ## 2. 画面形态声明
 
-**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 返回主循环重新判定)→ 候选一次读 → `report_screen_partner_obs` 落容器(容器 = GameState,游戏状态对象,下同)`partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部落地复查(落地复查 = 动作发出后下一轮检查上一动作是否已生效——画面标志消失;下同。确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6;E 系编号 = 事件面编号,目录见该篇);决策出口守卫:候选空 = 具名 round_fail、不发出无依据的动作(「伙伴屏无候选」已登记文案上移至决策前)、返回 None/动作类型清单外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(出口③/§1.3;均在派发前零点击);无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门)→ 「点选候选 → 确认」脉冲链经 `CwActionPickPartnerOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批;确认点读缺旁路不上报)→ `round_wait` 循环(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。`chosen_partner` 写点留在决策半(选择点由画面 op 侧承担),不进 report。
+**单选族例外**(有选择面但零逻辑态账——逻辑态 = 动作执行后不经观察、按游戏规则推算并直写状态容器(GameState)的预期状态,例:买牌后金币 −40、备战席 +1;下一帧观察与推算不符时以实际观察为准,下同;本屏选择不产生逻辑态账,判据 = [README.md](README.md) §3)。两 node 直继承 `SrOperation`(观察 node + 决策动作 node 两个运行节点,合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口门(「标识-选择伙伴」,miss = round_fail 返回主循环重新判定)→ 候选一次读 → `report_screen_partner_obs` 落状态容器(状态容器 = GameState,游戏状态对象,下同)`partner_opts` 槽 → obs + 候选坐标挂实例属性。决策动作 node = 顶部落地复查(落地复查 = 动作发出后下一轮检查上一动作是否已生效——画面标志消失;下同。确认 pending:标识不在 = overlay 关 = 链完结 → success;标识在 = 重走脉冲)→ 零参决策 `match.strategy.decide_partner()`(候选自状态容器槽;缺省实现优先 `config.character_build_around`/`target.core_chars` 命中,否则 idx=0,规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1 E6;E 系编号 = 事件面编号,目录见该篇);决策出口守卫:候选空 = 具名 round_fail、不发出无依据的动作(「伙伴屏无候选」已登记文案上移至决策前)、返回 None/动作类型清单外 = 具名 round_fail(含原值)、idx 越界 = 守卫断言 AssertionError 禁钳位(出口③/§1.3;均在派发前零点击);无对局上下文(无 match)不设早退支(用户裁决 2026-09-22 全族删门)→ 「点选候选 → 确认」脉冲链经 `CwActionPickPartnerOp` 派发(机械链+自上报在动作 op 内,选卡动作统一迁移批;确认点读缺旁路不上报)→ `round_wait` 循环(无防御上限;`node_max_retry_times=10` 在用值仅框架异常路径消费,有界防线 = CONFIRM_REJECT_MAX,见 §8)。`chosen_partner` 写点留在决策半(选择点由画面 op 侧承担),不进 report。
 
 ## 3. 观察面
 
@@ -20,7 +20,7 @@
 - 转换成功性边界(op-layer.md §1.1「观察标准化门」条款的屏契约登记义务):`char_id` = SIFT 真身识别产物,**识别失败回落 label 流派名/空 = 已登记的待修偏差形态**(该条款要求任一候选转换失败 = 观察失败 round_fail 早退、零写零上报;现回落为既有语义,无新增未标准化直报面),收敛方向 = 观察失败 round_fail 零写零上报;多候选命中同一注册名(选项互斥屏)= 同判转换失败;
 - 未选中态正判定 `_unselected_hint_present`:建档「提示-请选择强化角色」区域命中(确认钮置灰态伴随文案,区域约束 OCR 无全屏 LCS 误匹配面)。选中态呈现零实拍,**选中与否不作读数判定**(推进语义由脉冲 + 完成门承载)。
 
-观察 payload = `CwScreenPartnerObs`(`on_screen`/`options`(PartnerOption idx+char_id)/`screen`,位于 `kernel/cw_screen_report/partner.py`);report = `report_screen_partner_obs` 候选写容器 `partner_opts` 槽(空候选不写,闸在 report 内;无对局上下文(match/gs 缺席)的路径跳过 report——report 跳写 = 容器写闸,与决策无关;无对局上下文不设早退支,用户裁决 2026-09-22 全族删门,见 §2)。
+观察 payload = `CwScreenPartnerObs`(`on_screen`/`options`(PartnerOption idx+char_id)/`screen`,位于 `kernel/cw_screen_report/partner.py`);report = `report_screen_partner_obs` 候选写状态容器 `partner_opts` 槽(空候选不写,闸在 report 内;无对局上下文(match/gs 缺席)的路径跳过 report——report 跳写 = 字段写操作闸,与决策无关;无对局上下文不设早退支,用户裁决 2026-09-22 全族删门,见 §2)。
 
 ## 4. 动作面
 
@@ -28,7 +28,7 @@
 
 | 动作 op(动作类型清单参数) | 发出方式 | 上报 | 触发返回外循环 |
 |---|---|---|---|
-| `CwActionPickPartnerOp`(`CwActionPickPartnerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:未选中实证 `unselected`;点卡点/确认点经 `env.op` 消费决策半缓存,点选脉冲与确认脉冲均在动作 op 内,确认点 op 类体内经「货币战争-列车同行.按钮-确认选择」rect 约束 OCR 现读) | 自上报 `report_action_pick_partner_param`(零写族单相:确认点击发出后即按完整结果上报回执,容器零写、真值归观察覆盖;确认点读缺 retry 旁路未发确认点击,不上报) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「标识-选择伙伴」不在 = overlay 关 = `round_success` 返回主循环(见 §5) |
+| `CwActionPickPartnerOp`(`CwActionPickPartnerParam`) | 注册表工厂 `action_op_for`(决策半组装 `OverlayPickExecEnv`:未选中实证 `unselected`;点卡点/确认点经 `env.op` 消费决策半缓存,点选脉冲与确认脉冲均在动作 op 内,确认点 op 类体内经「货币战争-列车同行.按钮-确认选择」rect 约束 OCR 现读) | 自上报 `report_action_pick_partner_param`(零写族单相:确认点击发出后即按完整结果上报回执,状态容器零写、真值归观察覆盖;确认点读缺 retry 旁路未发确认点击,不上报) | 否(非终结):发出后 `round_wait` 循环推进;是否生效由落地复查判——「标识-选择伙伴」不在 = overlay 关 = `round_success` 返回主循环(见 §5) |
 
 脉冲链(每轮一脉冲;确认被拒守卫/零参决策/chosen 写端留在决策动作 node(画面 op 侧),「点选候选 → 确认」脉冲 + 自上报零写整体经动作工厂 `cw_pick_partner_action.py::CwActionPickPartnerOp`,派发 param 携真实选中 idx):
 
@@ -40,7 +40,7 @@
    AssertionError——均先于决策与写端零点击;无对局上下文不设早退支,
    用户裁决 2026-09-22 全族删门)→ 首轮决策一次
    (缓存同一点位防跨轮决策抖动换候选):
-   candidates → SIFT char_ids → decide_partner()(零参,候选读容器
+   candidates → SIFT char_ids → decide_partner()(零参,候选读状态容器
    partner_opts 槽)→ _pick_point(x = 候选 label 中心,y = 「候选-卡区」
    建档带中心)→ GameState chosen_partner write_logic(选择点直写)
 3. 建档缺失(候选-卡区不在)= round_fail(坐标单一真相源,禁裸坐标兜底)
@@ -67,7 +67,7 @@
 
 ## 6. 状态上报面
 
-- 候选观察:`report_screen_partner_obs` 候选写容器 `partner_opts` 槽(空候选不写)。
+- 候选观察:`report_screen_partner_obs` 候选写状态容器 `partner_opts` 槽(空候选不写)。
 - `chosen_partner` write_logic(**选择点**直写、确认前 = 判定点二元之选择点(fields.md §3.4 导语已登记);写点 → 点选→确认窗口内无流程读者,确认未落地 = 落地复查不写成功 + CONFIRM_REJECT_MAX 显式失败出口 + 外循环重派重写,无幻影成功消费面;gs 单一源,session 域无此写端;单次逻辑写入豁免;值 = 选中候选 `char_id`,值语义随 §3 观察面 char_id——识别失败回落流派名/空 = §3 已登记的待修偏差形态)。
 - 字段节 = [../game_state/fields.md](../game_state/fields.md) §3.4.5 / §4「事件选择」。
 
@@ -87,5 +87,5 @@
 ## 9. 遥测与测试面
 
 - journal op 名 =「选择伙伴」;op 内日志 tag = `[cw-partner]`(candidates/pick/点选点/确认被拒)。
-- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报容器/入口门 miss fail/容器零参决策 + round_wait;决策出口守卫两个测试——伙伴分支输入守卫测试:候选空 fail / 无对局上下文无早退支自然失败两分支分开断言,返回契约+值域测试)、test_cw_partner_select_confirm_flow.py(选选流序 + 确认被拒有界重试测试;桩面 = cw_match 桩,decide_partner 恒 idx=0——守卫面测试归 two_node_family 伙伴分支,选选流序断言面不变)。
+- 测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_two_node_family.py`(节点循环族两 node 形态测试:观察上报状态容器/入口门 miss fail/状态容器零参决策 + round_wait;决策出口守卫两个测试——伙伴分支输入守卫测试:候选空 fail / 无对局上下文无早退支自然失败两分支分开断言,返回契约+值域测试)、test_cw_partner_select_confirm_flow.py(选选流序 + 确认被拒有界重试测试;桩面 = cw_match 桩,decide_partner 恒 idx=0——守卫面测试归 two_node_family 伙伴分支,选选流序断言面不变)。
 - game 侧知识:画面与交互更正 = [../../../../game/screens/currency_war_choose_partner.md](../../../../../game/screens/currency_war_choose_partner.md)。

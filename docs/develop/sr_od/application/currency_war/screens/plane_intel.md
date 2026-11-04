@@ -1,12 +1,12 @@
 # 位面情报采集(plane_intel · 货币战争-位面详情)
 
-> 代码 = 采集 `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(位面详情屏纯识别,6 node 管线)+ 编排 `operations/cw_entry/cw_entry_plane_intel.py::CwEntryPlaneIntel`(四 node,独立可调起入口),均直继承 `SrOperation`。职责:中断恢复场景(对局进行中但容器(GameState,游戏状态对象,下同)无位面序真值——MCP 重启丢内存 / bot 未走过简报链 / 人工要补)下补采三位面情报——三位面 boss(大图标 SIFT)/ 敌人词缀横条 / 位面节点带与敌人难度参考值。路径根 = `src/sr_od/application/currency_war/`。
+> 代码 = 采集 `operations/cw_screen/cw_screen_plane_intel.py::CwScreenPlaneIntel`(位面详情屏纯识别,6 node 管线)+ 编排 `operations/cw_entry/cw_entry_plane_intel.py::CwEntryPlaneIntel`(四 node,独立可调起入口),均直继承 `SrOperation`。职责:中断恢复场景(对局进行中但状态容器(GameState)(GameState,游戏状态对象,下同)无位面序真值——MCP 重启丢内存 / bot 未走过简报链 / 人工要补)下补采三位面情报——三位面 boss(大图标 SIFT)/ 敌人词缀横条 / 位面节点带与敌人难度参考值。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 分发判定
 
 非外循环分支直管画面 op;两条调用路共用同一份编排(编排单一源 = `CwEntryPlaneIntel`):
 
-- **备战委派** = `cw_screen_prep.py::CwScreenPrep._delegate_plane_intel_if_needed`(挂点 = 观察 node;触发谓词两支取或〔T-45 扩面〕= 容器无位面真值 `not gs.plane_bosses.value` ∨ 词缀随机态 `enemy_affixes ∈ gs.logic_rand_fields()`〔敌后破坏删除分支猜测名单/开局种子未验证底座——策略器消费前必须先补观察转正〕;「节点条可读」守卫——半开帧:第一支〔boss 面〕维持现役 return None、等下轮免费重判、不烧失败链,双支同真按第一支现役处理,仅词缀随机态支命中时**封死**为 round_wait 等待态不放行决策〔决策延后一拍零随机态消费,T-45 接线 1 默认案;非重试等待态不烧 node 重试预算〕;委派结果透传,失败走外循环既有失败链);
+- **备战委派** = `cw_screen_prep.py::CwScreenPrep._delegate_plane_intel_if_needed`(插入位置 = 观察 node;触发谓词两支取或〔T-45 扩面〕= 状态容器无位面真值 `not gs.plane_bosses.value` ∨ 词缀随机态 `enemy_affixes ∈ gs.logic_rand_fields()`〔敌后破坏删除分支猜测名单/开局种子未验证基础数据——策略器消费前必须先补观察转正〕;「节点条可读」守卫——半开帧:第一支〔boss 面〕维持现役 return None、等下轮免费重判、不烧失败链,双支同真按第一支现役处理,仅词缀随机态支命中时**封死**为 round_wait 等待态不放行决策〔决策延后一拍零随机态消费,T-45 接入调用 1 默认案;非重试等待态不烧 node 重试预算〕;委派结果透传,失败走外循环既有失败链);
 - **手动调起** = MCP `run_operation` 独立入口(`CwEntryPlaneIntel`;位面真值已有 ∧ 词缀非随机态时门节点零点击直通,不白开白关详情屏)。
 
 ## 2. 画面形态声明
@@ -29,7 +29,7 @@
 
 ## 3. 观察面
 
-观察载体 = `CwScreenPlaneIntelObs`(`on_screen`/`screen`/`plane_bosses`/`enemy_affixes`,位于 `kernel/cw_screen_report/plane_intel.py`),由「上报」node 组装;report = `report_screen_plane_intel_obs` 写门落容器(写门语义见 §6)。
+观察载体 = `CwScreenPlaneIntelObs`(`on_screen`/`screen`/`plane_bosses`/`enemy_affixes`,位于 `kernel/cw_screen_report/plane_intel.py`),由「上报」node 组装;report = `report_screen_plane_intel_obs` 写门落状态容器(写门语义见 §6)。
 
 **恒全采位面1→2→3**:
 
@@ -71,11 +71,11 @@
 
 ## 6. 状态上报面
 
-- **容器写门(唯一一份)** = `kernel/cw_screen_report/plane_intel.py::report_screen_plane_intel_obs`(挂采集 op「上报」node,gs 通道):`plane_bosses` 3 槽保位全量写 + **已有真值不覆写**(简报源先落 = 真值已在,实采内容再新也只是重复或残留,不覆写);`enemy_affixes` 写门三分支〔T-45 扩面,分支序即短路序〕:①读数 None = 本轮无此面/失读,非语义读数不进写门(维持现态);②容器随机态(logic_rand,删除分支猜测名单/开局种子)→ **observe 通道覆盖转正**,读数非空或空列表均可——被覆盖对象是猜测不是真值,「空表覆写抹掉已有真值」的幂等门理由在本分支不适用,删尽态(单词缀局删后 = [])读数 [] 是 obs 契约有效语义读数,经 observe 写空表转正、补观察谓词解除闭环收敛(差异落 `logic_rand_outcome` 台账、等值零台账);③容器非随机态:空容器 + 非空读数 → 现役 logic 直写(幂等门原语义),非空容器 → 不写(防真值互踩)。写门签名按分支定死:logic 直写分支 = `ChannelSig(family='logic_action', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='compute')`,随机态覆盖分支 = obs 族新签名 `ChannelSig(family='obs', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='read')`(两签名并存各分支各语义),evidence = `plane_intel_row` / `plane_intel_affixes`(screen = 实际采集画面)。
+- **字段写操作门(唯一一份)** = `kernel/cw_screen_report/plane_intel.py::report_screen_plane_intel_obs`(挂采集 op「上报」node,gs 通道):`plane_bosses` 3 槽保位全量写 + **已有真值不覆写**(简报源先落 = 真值已在,实采内容再新也只是重复或残留,不覆写);`enemy_affixes` 写门三分支〔T-45 扩面,分支序即短路序〕:①读数 None = 本轮无此面/失读,非语义读数不进写门(维持现态);②状态容器随机态(logic_rand,删除分支猜测名单/开局种子)→ **observe 通道覆盖转正**,读数非空或空列表均可——被覆盖对象是猜测不是真值,「空表覆写抹掉已有真值」的幂等门理由在本分支不适用,删尽态(单词缀局删后 = [])读数 [] 是 obs 契约有效语义读数,经 observe 写空表转正、补观察谓词解除闭环收敛(差异落 `logic_rand_outcome` 台账、等值零台账);③状态容器非随机态:空状态容器 + 非空读数 → 现役 logic 直写(幂等门原语义),非空状态容器 → 不写(防真值互踩)。写门签名按分支定死:logic 直写分支 = `ChannelSig(family='logic_action', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='compute')`,随机态覆盖分支 = obs 族新签名 `ChannelSig(family='obs', actor='CwScreenPlaneIntel', screen='货币战争-位面详情', mode='read')`(两签名并存各分支各语义),evidence = `plane_intel_row` / `plane_intel_affixes`(screen = 实际采集画面)。
 - **附属机制**(与写门同居「上报」node 簇,session 通道;异常口径 best-effort,不阻塞上报主链):
-  - 节点类型台账:`kernel/cw_exec_state.py::ledger_update_plane` plane_detail 源(详情条整面覆盖,None 位保旧)+ boss 位按「首领 = 位面最后节点」位置先验回填(`fill_boss_by_position`,回填依据 = 本 op 标签验证语义)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,容器非 Field 簿记)。
+  - 节点类型台账:`kernel/cw_exec_state.py::ledger_update_plane` plane_detail 源(详情条整面覆盖,None 位保旧)+ boss 位按「首领 = 位面最后节点」位置先验回填(`fill_boss_by_position`,回填依据 = 本 op 标签验证语义)。台账值载体宿主 = `GameState.plane_node_sequences`(`PlaneNodeLedger`,状态容器非 Field 簿记)。
   - 敌人难度参考值:`get_node_ledger().difficulty_ref` 逐位面落账。
-  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记挂点在中断恢复的对局不运行;命中结构化注册才入账本,登记体按已登记条目幂等,补采重跑不双登记;登记面纪律 = [../game_state/effect-domain.md](../game_state/effect-domain.md) 词缀源节)。
+  - 词缀效果账本登记:`kernel/cw_affix_effects.py::register_affixes_from_names`(上报后登记;中断恢复的对局这是词缀登记唯一活源——简报侧登记插入位置在中断恢复的对局不运行;命中结构化注册才入账本,登记体按已登记条目幂等,补采重跑不双登记;登记面纪律 = [../game_state/effect-domain.md](../game_state/effect-domain.md) 词缀源节)。
 
 ## 7. 子态与 overlay
 
@@ -89,4 +89,4 @@
 
 - journal op 名 = 「货币战争-位面情报采集」(采集子 op,随宿主编排访问的 `[cw-op]` 行承载)与「货币战争-接管补采位面情报」(编排);日志前缀 `[cw-plane-intel]` / `[cw-takeover]`。
 - 测试 = `sr-od-test/test/sr_od/application/currency_war/test_plane_intel_pipeline.py`(6 node 流程 / 识别失败响亮失败 / entry 编排真值跳过 / prep 委派透传行为测试)。
-- game 侧知识:画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md);位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md)(台账容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面建档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。
+- game 侧知识:画面档 = [../../../../game/screens/货币战争-位面详情.md](../../../../game/screens/货币战争-位面详情.md);位面结构/节点链 = [../../../../game/currency_war/research/README.md](../../../../../game/currency_war/research/README.md)(台账状态容器侧对接 = [../game_state/chain-observation.md](../game_state/chain-observation.md));画面建档 = `assets/game_data/screen_info/currency_war_plane_detail.yml`(+ 备战档节点条 area)。
