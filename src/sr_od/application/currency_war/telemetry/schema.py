@@ -53,8 +53,8 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
     - 成员判定 = ``knowledge.cw_line_facts.bond_members``(阵营∪流派全成员;
       多标签件在各命中体系各计 1,Σ systems 可超 n_shop——与
       OutcomeRecord.board_before 人次口径同判据)。
-    - ``pair`` = 当前方向标签(p1_pair 优先次 transition_pair;''=空窗),
-      读端 join decisions 行 sess_p1_pair 对齐方向与供给。
+    - ``pair`` = 当前方向标签(过渡锁定条目名优先,次过渡候选首位;
+      ''=空窗),读端 join decisions 行 sess_p1_pair 对齐方向与供给。
     - 纯函数契约:只读 shop 元素 name;未识别卡不属任何体系(只进 n_shop)。
     """
     names = [str(getattr(c, 'name', None)
@@ -403,7 +403,6 @@ class DecisionTrace:
     # —— r101 session 态快照(redesign/102 前提改造:回放 harness/快照回归库需要完整
     # 决策输入;缺这些,单帧重放 plan 会系统性偏差——session 态决定 decision_target
     # 走哪条路线/攒利息门/定型判定)。全可选,旧记录缺省 None 不破坏 schema。
-    sess_framework: str = ""                      # transition_framework(配方路线)
     sess_dual_track: bool | None = None           # 双轨期(定型与否)
     sess_drought: int | None = None               # (原 target_drought 断供计数;写端已停用,恒缺键,旧语料兼容读)
     # (sess_pivot_cooldown 已停用;旧语料该键经
@@ -457,13 +456,14 @@ class DecisionTrace:
     # decide_prep 入口算一次的七维向量+派生档位,decision_v2.handoff.
     # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
     handoff: dict[str, Any] | None = None
-    # —— P1 配方对平铺观测(cw_intention 配方锁产物;判读上游)——
-    # 取值 = 本 record 调用时点的 strategy_state_of(session).v3_intention 配方对(非空
-    # IntentionState.p1_pair,次选 transition_pair),体系键以 '+' 连接
-    # (同 cw_intention last_event 'p1_pair:' 标签风格);''=未锁/空窗/
-    # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
-    # 嵌套 v3_intention 即可读锁定产物。可选,旧记录缺省 '' 不破坏 schema。
+    # —— 过渡方向平铺观测(判读上游;键名 sess_p1_pair 沿用历史遥测面)——
+    # 取值 = 本 record 调用时点的过渡层方向(过渡锁定条目名,次选候选首位
+    # 条目名),与 cw_intention transition_locked/transition_candidates 同源;
+    # ''=空窗/未锁/无意向状态机。平铺目的是 P1 备战步进行(decisions 行)
+    # 不用解析嵌套 v3_intention 即可读方向产物。可选,旧记录缺省 '' 不破坏
+    # schema。(旧配方对/体系键 '+' 拼接写源已随配方决策层退役。)
     sess_p1_pair: str = ""
+
     # —— `w603_telemetry_wiring/` 披露键序列化(末窗降格触发面/经验账本)——
     # session 披露键此前「有写点、无遥测落盘」(decisions.jsonl 全文检索
     # 零命中,判读盲区)。接出点=recorder 统一自 _CTX_MATCH_REF 的 session 取

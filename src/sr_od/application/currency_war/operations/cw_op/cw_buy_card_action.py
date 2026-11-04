@@ -10,7 +10,6 @@ reconcile 对账):点击后零像素验证零读屏,发出即记账。点击静�
 """
 from __future__ import annotations
 
-import contextlib
 import time
 
 from one_dragon.base.operation.operation_node import operation_node
@@ -33,9 +32,6 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     SHOP_SCREEN_NAME,
-)
-from sr_od.application.currency_war.kernel.cw_strategy_session import (
-    strategy_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     CwActionBuyCardParam,
@@ -73,7 +69,7 @@ class CwActionBuyCardOp(CwOperation):
     def run(self) -> OperationRoundResult:
         action: CwActionBuyCardParam = self.param
         env = self.env
-        op, match, ledger, state = env.op, env.match, env.ledger, env.state
+        op, ledger, state = env.op, env.ledger, env.state
         # 点击定位解析恰两档 = 契约(action_exec.md §4 / action_ops.md
         # §4.1 同口径):①payload 定长槽阵列身份同一性(action 由决策核自
         # payload 产出,`is` 匹配)②(name, star) 退化。槽号主源 = payload
@@ -129,25 +125,9 @@ class CwActionBuyCardOp(CwOperation):
         ledger.spend_executed += action.card.cost
         if action.card.name:
             ledger.bought_names.append(action.card.name)
-            # 撤销操作证据留存(纯观测,零行为变更):体系成员买入不重置
-            # 干旱计数(重置单一源 = 商店可见性 _update_pair_drought),
-            # 解锁流程审计面落台账。复用 defect_ledger,异常不阻断买入。
-            with contextlib.suppress(Exception):
-                _ist_e = getattr(strategy_state_of(match.session), 'v3_intention', None)
-                _pd = getattr(_ist_e, 'pair_drought', None)
-                if isinstance(_pd, dict):
-                    from sr_od.application.currency_war.kernel.cw_intention import (
-                        members_in_shop,
-                    )
-                    from sr_od.application.currency_war.telemetry.undo_evidence import (
-                        record_drought_buy_no_reset,
-                    )
-                    for _sys, _d in _pd.items():
-                        if _d and _sys and members_in_shop(
-                                _sys, {action.card.name}):
-                            record_drought_buy_no_reset(
-                                member=action.card.name,
-                                system=_sys, drought=_d)
+            # (干旱计数器买入不重置证据面已随配方决策层退役删除——
+            #  判据对象 pair_drought/members_in_shop 无存活写端,考古走
+            #  git 历史。)
         # (tracking 随动同步分支已随tracked 第二账
         #  停用删除:状态容器逻辑态由下方 report_action_buy_card_param 单点
         #  落账——满栏合成买在报文侧同走 _apply_full_bench_merge_buy,

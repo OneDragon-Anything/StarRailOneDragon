@@ -7,8 +7,8 @@ line_switch_enabled/theta/debias_delta/min_dwell 为零消费死字段,
 清理归后续批。本模块保留项(在产消费面):
 
 - ``tier_progress``/``line_distance``/``e_rounds``:线距与期望轮数
-  估计——P1 配方链三姊妹门(门槛/易手可行性/超窗出口)与
-  cw_recipe 双轨派生消费;
+  估计——P1 配方链三姊妹门(门槛/易手可行性/超窗出口)历史消费
+  (已随配方决策层退役);现行消费面 = 迁移恒等快照测试。
 - ``shop_supply``/``_P2_NODE_TEMPLATE``/``node_loss_kind``:供给门与
   节点型归一——cw_first_passage 掉血分布消费。
 

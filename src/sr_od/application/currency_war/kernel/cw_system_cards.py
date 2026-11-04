@@ -9,22 +9,26 @@
 - 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
   测试基准;本文件只 import 不复制)。
 
-**契约偏差声明(相对 C2 伪码)**:
+**契约偏差声明(相对 C2 伪码;保留面)**:
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
    身份口径改读
    ``cw_board_by_row.board_by_row_of(gs)`` 全板合计视图(全仓按排聚合单一源;
    C6 契约,P4 起状态容器行域直读);判据语义零变化(仍取 max(board OCR,身份计数));
 2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
-   ``engine_missing``;EngineState 包装留给 decision_v2 接入调用面);
-3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本模块
-   直接收状态容器 ``GameState``(CardState 在函数内组装后参与打分,类型已建)。
+   ``engine_missing``;EngineState 包装留给 decision_v2 接入调用面)。
 
-消费方:decision_v2/candidates 层1 目标集换源、体系判定(board_rung
-口径重接)、空窗期买门。
+(组合决策层——CardState/CombinationDecision/BlankWindowDecision 三元
+数据类与 pick_card_combination/blank_window_policy/_INTENT_CARD_MAP/权重
+常量——已随 comp-structure-unification 3.3 配方决策层退役删除:组合选卡
+与空窗买门的消费面由过渡候选机器与商店冷启动臂承接,考古走 git 历史。)
+
+消费方(数据层保留面):体系判定(board_rung 口径)/引擎完备度
+(cw_engine_facts/ab_judge 判据工具链)。
 
 词条吃怕表(数据字段 ``affix_likes``/``affix_fears``):词缀名与
 ``affix_effects_data``/竞品 data 对齐(DOT 吃敌方频动=忍无可忍/同步行动/应激反应,
-怕净化身心;希儿警惕量子熄火;仙舟/列车泛用)。
+怕净化身心;希儿警惕量子熄火;仙舟/列车泛用);消费面 = 过渡候选
+机器的词缀软排除判据(cw_intention.TRANSIT_AFFIX_PENALTY 的数据参照)。
 """
 from __future__ import annotations
 
@@ -37,7 +41,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_units_of,
     deployed_rows_of,
-    shop_payload_content_cards,
 )
 
 # 符号解耦:铁三角权威副本在 knowledge/cw_line_facts,
@@ -51,30 +54,6 @@ _TRAIN_TIER: int = FACTIONS['列车同行'].tiers[0]             # 2(列车同�
 
 _SEELE: str = '希儿'   # 卡4 引擎单卡(伤害全在她技能层,量子/贝是放大器)
 
-# ===== 组合规则权重(草案级,C2 明示「判据内部权重草案级,步 4 调优」)=====
-_WEIGHT_PIECE: float = 1.0        # 来牌主判据:每件 +1(主权重)
-_WEIGHT_INTENT_ALIGNED: float = 0.5   # 意向同向 tie-break(非一票否决;量级刻意 < 1 件
-#   来牌——tie-break 只裁同分,不得翻越「来牌主判据」)
-_WEIGHT_AFFIX_LIKE: float = 1.5       # 词条吃:每条命中
-_WEIGHT_AFFIX_FEAR: float = -3.0      # 词条怕:每条命中(怕>吃,counter 警惕优先)
-# 激活所需件数(readiness 分母;统一维度:「门槛低」=容易被先凑出,
-# 不是优先级特权——对所有卡统一生效,新羁绊加入零改动)
-_ACTIVATION_PIECES: dict[str, int] = {
-    'xianzhou3': _XIANZHOU_TIER,      # 3
-    'dot2': _DOT_TIER,                # 2
-    'train2': _TRAIN_TIER,            # 2
-    'seele': 3,                       # 希儿+2 放大器≈3(判据折算,草案级)
-}
-_WEIGHT_READINESS: float = 1.0        # readiness=pieces/激活所需件数(统一维度,全卡生效)
-
-# 意向→体系同向映射(草案级;家族键 = cw_comps.V2_FAMILIES 子集,未知键→无加成)
-_INTENT_CARD_MAP: dict[str, str] = {
-    'DOT卡芙卡': 'dot2',
-    '希儿量子': 'seele',
-    '姬子列车': 'train2',
-}
-
-
 @dataclass(frozen=True)
 class SystemCard:
     """一张 P1 体系卡(乐高块;p1_definition 一·体系卡)。
@@ -86,8 +65,8 @@ class SystemCard:
     - ``judge_factions``:判据阵营元组(希儿系双元组=('量子同频','贝洛伯格');
       其余单元组)——**卡→阵营映射的单一数据源**(字段化防多处手抄漂移,
       加卡零改动);
-    - ``affix_likes``/``affix_fears``:词条吃怕表(数据字段;输入=
-      ``pick_card_combination(affixes=...)`` 的敌方词缀名,逐条命中计数)。
+    - ``affix_likes``/``affix_fears``:词条吃怕表(数据字段;消费面 =
+      过渡候选机器词缀软排除判据的表参照)。
     """
     card_id: str
     display_name: str
@@ -139,53 +118,9 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
 }
 
 
-@dataclass(frozen=True)
-class CardState:
-    """一张体系卡的当前状态(C2 支撑类型:件数/引擎完备度)。
-
-    - ``pieces``:该体系当前件数(在场+bench 的该系件数,来牌主判据的输入);
-    - ``active``:体系判定(``card_active``);
-    - ``engine_complete``:引擎完备度(``card_engine_complete``,owned=在场∪bench)。
-    """
-    card_id: str
-    pieces: int
-    active: bool
-    engine_complete: bool
-
-
-@dataclass(frozen=True)
-class CombinationDecision:
-    """``pick_card_combination`` 的组合建议(C2:返回选中的 1-2 张卡+裁决记录)。
-
-    - ``chosen``:选中的 card_id 列表(1-2 个,序=主→副);
-    - ``blank_window``:True = 四体系一个都没凑成(空窗期,走 ``blank_window_policy``);
-    - ``scores``:各卡打分明细(审计);
-    - ``ruling``:裁决记录(同分 tie-break 必非空,C2 冻结要求「可审计」)。
-    """
-    chosen: list[str]
-    blank_window: bool
-    scores: dict[str, float]
-    ruling: list[str]
-
-
-@dataclass(frozen=True)
-class BlankWindowDecision:
-    """``blank_window_policy`` 的空窗期行为建议(p1_definition 组合规则4)。
-
-    - ``is_blank``:是否空窗(四体系一个都没凑成);
-    - ``target_char_ids``:买侧目标件(引擎件见即买:铁三角+希儿);
-    - ``target_factions``:来牌方向的目标阵营(已有件的体系——「目标件出现只买它」);
-    - ``buy_idx``:当前商店里可买的目标件索引(char 命中 target 集合的槽位);
-    - ``cost_band``:压牌库目标费用带(无目标件时按此带压牌库;草案级=目标件费用众数);
-    - ``ruling``:裁决记录。
-    """
-    is_blank: bool
-    target_char_ids: list[str]
-    target_factions: list[str]
-    buy_idx: list[int]
-    cost_band: int
-    ruling: list[str]
-
+# (组合决策层三元数据类 CardState/CombinationDecision/BlankWindowDecision
+#  已随 comp-structure-unification 3.3 配方决策层退役删除——组合选卡/空窗
+#  买门消费面已由过渡候选机器与商店冷启动臂承接,考古走 git 历史。)
 
 # ===== 体系判定(冻结的判据语义;p1_definition 一)=====
 
@@ -310,128 +245,7 @@ def card_pieces(card: SystemCard, gs: GameState) -> int:
     return n
 
 
-def card_state_of(card: SystemCard, gs: GameState) -> CardState:
-    """组装单张卡的 CardState(件数/激活/引擎完备度)。"""
-    return CardState(
-        card_id=card.card_id,
-        pieces=card_pieces(card, gs),
-        active=card_active(card, gs),
-        engine_complete=card_engine_complete(card, _owned_names(gs)),
-    )
-
-
-def _affix_weight(card: SystemCard, affixes: list[str]) -> float:
-    """词条吃怕权重:敌方词缀命中 likes/fears 逐条计(词条前置输入,组合规则2)。"""
-    w = 0.0
-    for a in affixes or ():
-        if a in card.affix_likes:
-            w += _WEIGHT_AFFIX_LIKE
-        if a in card.affix_fears:
-            w += _WEIGHT_AFFIX_FEAR
-    return w
-
-
-def pick_card_combination(gs: GameState, intent: str | None = None,
-                           affixes: list[str] | None = None) -> CombinationDecision:
-    """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级)。
-
-    - 主判据=来牌(``card_pieces``,哪系件先到)+ readiness 统一维度
-      (``pieces / 激活所需件数``,对所有卡统一生效——门槛低的体系(DOT2=2 件)
-      天然容易被先凑出,不是优先级特权;新羁绊加入零改动);
-    - 次=意向同向 tie-break(intent=家族键,非一票否决,同分裁决);
-    - 词条输入(affixes=敌方词缀名;频动旺→DOT 权重升,净化身心→DOT 权重降);
-    - 三人全在手时仙舟3 的 pieces/readiness 自然最高,无需例外条款;
-    - 空窗(四系件数为 0 且无可达)→ blank_window=True,chosen=[]。
-    """
-    affixes = list(affixes or [])
-    states = {cid: card_state_of(card, gs) for cid, card in SYSTEM_CARDS.items()}
-    scores: dict[str, float] = {}
-    for cid, cs in states.items():
-        card = SYSTEM_CARDS[cid]
-        readiness = cs.pieces / _ACTIVATION_PIECES[cid]
-        w = cs.pieces * _WEIGHT_PIECE + readiness * _WEIGHT_READINESS
-        w += _affix_weight(card, affixes)
-        if intent is not None and _INTENT_CARD_MAP.get(intent) == cid:
-            w += _WEIGHT_INTENT_ALIGNED
-        scores[cid] = w
-    ruling: list[str] = []
-    ranked = sorted(scores, key=lambda cid: (-scores[cid], cid))
-    top = ranked[0]
-    if scores[top] <= 0.0:
-        # 空窗:无来牌迹象且无词条/意向推动 → 不选卡
-        return CombinationDecision(
-            chosen=[], blank_window=True, scores=scores,
-            ruling=['四体系一件未到→空窗期(blank_window_policy 接管)'],
-        )
-    chosen = [top]
-    second = ranked[1]
-    if states[second].pieces >= 1 and scores[second] > 0.0:
-        chosen.append(second)   # 两两组合过 P1(组合规则1):副卡=次优且有来牌
-    # 同分 tie-break 审计(C2 冻结:裁决记录可审计;同分构造下非空)
-    if len(ranked) > 1 and abs(scores[ranked[0]] - scores[ranked[1]]) < 1e-9:
-        ruling.append(f'同分 tie-break:{ranked[0]} vs {ranked[1]} 平分,'
-                      f'按稳定序(card_id 字典序)取 {top}')
-    if intent is not None:
-        ruling.append(f'意向={intent}'
-                      + (f'→同向 {top}' if _INTENT_CARD_MAP.get(intent) == top
-                         else '(非同向,仅 tie-break 加成不否决)'))
-    if affixes:
-        ruling.append(f'词条输入={affixes}')
-    ruling.append('打分明细:' + ', '.join(f'{cid}={scores[cid]:g}'
-                                         for cid in ranked))
-    return CombinationDecision(chosen=chosen, blank_window=False,
-                               scores=scores, ruling=ruling)
-
-
-# ===== 空窗期规则(组合规则4;p1_definition 二.4)=====
-
-def blank_window_policy(gs: GameState) -> BlankWindowDecision:
-    """空窗期规则入口(四体系一个都没凑成,通常仅前 1-2 轮)。
-
-    - 买侧 = 目标件出现只买它,否则压当前目标费用带([30] 压牌库模型:买同费件,
-      目标出货概率随池空升高;费用带=目标件费用众数,草案级);
-    - 上场侧 = 现有牌最优羁绊组合(归部署围栏/decision_v2,本入口只管买侧);
-    - **绝不为凑羁绊填充而刷新商店**([31]):off-target 件一律不进 buy_idx。
-    """
-    active_any = any(card_active(card, gs) for card in SYSTEM_CARDS.values())
-    if active_any:
-        return BlankWindowDecision(
-            is_blank=False, target_char_ids=[], target_factions=[],
-            buy_idx=[], cost_band=0,
-            ruling=['已有体系激活,非空窗(走 pick_card_combination)'],
-        )
-    # 目标件:引擎件见即买(铁三角+希儿;点3)+ 来牌方向(已有 ≥1 件的体系阵营)
-    engine_chars = sorted(set(SYSTEM_CARDS['xianzhou3'].engine_required)
-                          | set(SYSTEM_CARDS['seele'].engine_required))
-    target_factions: list[str] = []
-    for cid, card in SYSTEM_CARDS.items():
-        if cid == 'seele':
-            continue   # 希儿系放大器不独立当方向(无希儿时量子/贝不能独立当过渡)
-        if card_pieces(card, gs) >= 1:
-            target_factions.append(_card_factions(card)[0])
-    target_chars = list(engine_chars)
-    # buy_idx:店内目标件(具名引擎件,或来牌方向阵营的件)
-    buy_idx: list[int] = []
-    _payload = gs.shop.value
-    for i, card in enumerate(shop_payload_content_cards(_payload)):
-        if card.name and card.name in engine_chars:
-            buy_idx.append(i)
-            continue
-        if card.faction and card.faction in target_factions:
-            buy_idx.append(i)
-    # 费用带(草案级):目标件费用众数;无目标件时兜底 1(前 1-2 轮低费带);
-    # 同频取低费(前 1-2 轮压牌库偏保守)
-    costs = [CHARACTERS[n].cost for n in engine_chars if n in CHARACTERS]
-    cost_band = (sorted(costs, key=lambda c: (-costs.count(c), c))[0]
-                 if costs else 1)
-    ruling = ['空窗期:目标件出现只买它,否则压费用带;'
-              '绝不为凑数 D 牌([31])']
-    if target_factions:
-        ruling.append(f'来牌方向={target_factions}(只买该方向件+引擎件)')
-    else:
-        ruling.append('无来牌方向:仅引擎件(铁三角+希儿)见即买')
-    return BlankWindowDecision(
-        is_blank=True, target_char_ids=target_chars,
-        target_factions=target_factions, buy_idx=buy_idx,
-        cost_band=cost_band, ruling=ruling,
-    )
+# (card_state_of/_affix_weight/pick_card_combination/blank_window_policy
+#  四函数已随配方决策层退役删除,考古走 git 历史;件数/激活/引擎完备度
+#  数据层判据(card_pieces/card_active/card_engine_complete)保留——结算键
+#  rung 与 A/B 判据工具链〔cw_engine_facts/ab_judge〕的消费面。)

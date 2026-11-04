@@ -1,21 +1,21 @@
-"""货币战争 · 方向载体模块(P1 配方对链 + 囤货/回退接口;纯逻辑,不碰游戏)。
+"""货币战争 · 方向载体模块(过渡候选机器 + 囤货/回退接口;纯逻辑,不碰游戏)。
 
 终局线选择归策略层候选-锁定制(mandate_v1.session_scope/line_select:
 硬规则查表 + 时点兜底,锁定后不换线,防摇摆由结构承载非滞回参数,
 12 号篇 §1);原阵容锁定状态机(信号分层终局阵容锁定/撤销出口①②③/P2 移交
 强锁/P3 强锁/降格终局)不存于本模块。本模块保留三族:
 
-- **P1 配方对链**(:func:`update_p1_recipe`/``p1_pair`` 族):过渡
-  体系对候选机器(候选重算/门控候选首位/双体系对 form_ok 冻结域/
-  超窗/退场)——配方物化链保留项(M5 开局面数据源),位面适用范围由
-  调用侧(flow)以窗口谓词承载;
+- **过渡候选机器**(:func:`update_transition_candidates`/
+  ``transition_locked``/条目集族):过渡层方向机器(计分三面/候选
+  top3/候选内成型锁定)——comp-structure-unification 3.3 落地,旧 P1
+  配方对链(update_p1_recipe/``p1_pair`` 族)已随配方决策层退役删除,
+  过渡层生命周期挂钩终局锁定事件(锁定写入即退役清空);
 - **囤货与回退接口**(:func:`hoard_target_set`/``k_empty_window_fallback``/
   ``locked_buy_*`` 族):买侧与部署侧的现行读面;``locked_comp``/``phase``
   改为锁定线槽派生缓存(写端 = mandate_v1.session_scope,锁定 ⟺
   target_comp 非空)。P86 无目标期三分支判据的甲/乙臂已随统一让位
   优先级迭代 3.4 退役(K 目标未锁期源切换 = 策略层候选快照三线并集
-  ∪ 配方成员;丙分支保利息缺省保留),``no_target_arms`` 判据件
-  整删——退役依据见本模块「无目标期囤货缺省」节注;
+  ∪ 过渡层贡献名单;丙分支保利息缺省保留);
 - **定型权威**(:func:`committed_authority`/:func:`committed_from`):
   规则④「位面 ≥ 2 恒定型」支已停用(P2 时点兜底锁定替代;§1.6 行为
   差申报:P2 入口至兜底锁帧的短窗 = 双轨期口径)。
@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 import contextlib
-import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -37,18 +36,12 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
-    COMP_LIBRARY,
-    SEELE_CARRY_CHAR,
-    SEELE_OR_REQS,
     TRANSITION_ENTRY_KIND,
     TRANSITION_LIBRARY,
     Comp,
     derive_key_equips,
     form_progress,
     get_comp,
-)
-from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    TRANSITION_TRAITS,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -66,17 +59,11 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 from sr_od.application.currency_war.kernel.cw_line_scales import (
     FEAR_PENALTY,
 )
-from sr_od.application.currency_war.kernel.cw_line_switch import (
-    e_rounds,
-)
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     PLANE_NODE_TABLES,
 )
 from sr_od.application.currency_war.kernel.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
-)
-from sr_od.application.currency_war.kernel.cw_registry import (
-    DEFAULT_REGISTRY,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_of,
@@ -111,108 +98,30 @@ CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
 @dataclass
 class IntentionState:
-    """方向状态载体(P1 配方对链 + kernel 派生缓存;意向层机器
+    """方向状态载体(过渡候选机器 + kernel 派生缓存;意向层机器
     本体停用后的保留形态——阵容锁定状态机〔信号终局阵容锁定/撤销出口/P2 移交/
     P3 强锁/降格终局〕已删除,终局线锁定归策略层候选-锁定制:
     ``locked_comp``/``phase`` 改为锁定线槽派生缓存,写端 =
-    mandate_v1.session_scope〔同步于 refresh/锁定动作〕;``p1_pair`` 族
-    = 配方对物化链产物〔保留项〕。机器时代字段(``weak_comp``/
-    ``lock_layer``/``evicted``/``demoted_endgame`` 等)无写端恒缺省,
+    mandate_v1.session_scope〔同步于 refresh/锁定动作〕;``transition_
+    locked`` = 过渡层锁定态〔写端 = ``update_transition_candidates``,
+    comp-structure-unification 3.3;旧 P1 配方对链字段族已随配方决策层
+    退役删除〕。机器时代字段(``weak_comp``/``lock_layer``/``evicted``/
+    ``demoted_endgame`` 等)无写端恒缺省,
     读端按保守缺省语义消费〔evicted=∅ 恒空集/demoted=False〕)。"""
 
     phase: str = 'unlocked'            # 'unlocked' | 'locked'(weak 随机器停用不可达;派生缓存,写端 = session_scope)
     locked_comp: str = ''              # 锁定线(COMP_LIBRARY 套名)
-    p1_pair: tuple[str, ...] = ()      # P1 配方锁:体系对(过渡体系键;P2+ 恒空)
-    """**P1 锁定目标数据形态(显式可读,约束基准契约)**:
-
-    - 读口 = ``strategy_state_of(session).v3_intention.p1_pair``——
-      **门控候选首位**(12 号篇 §3:候选首位对级
-      支持度 ≥ ``P1_PAIR_LOCK_MIN_SUPPORT`` 才写,否则空对;冻结帧钉
-      frozen_pair)的派生态:四体系键的一或二元组(1 元对 = 门控首位
-      恰为单体系对的帧——单席满/超满而第二体系未达门槛;渐进第二席
-      职能由候选并集承载,不再产渐进 2 元对),按
-      ``_P1_PAIR_PREF`` 序规整,非空即「P1 锁定帧目标=该体系对」;
-      空元组=空窗期(未锁);P2+ 恒空(P2+ 锁定目标=``locked_comp``)。
-    - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
-      (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
-      (与 ``cw_battle_calib._engines_count`` 同口径)。
-    - 遥测:``serialize_intention`` 字段全量序列化自动
-      携带(不隐式——单帧测试断言 p1_pair 落 decisions 行)。
-    - **后续「通道约束批」(迁移期补充判读:决策通道两面孔按锁定目标约束/
-      末轮禁用)以本字段为约束基准**——opportunistic/bond_fallback 通道
-      的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp
-      (scope 族口径 = 过渡候选并集,见 ``locked_buy_scope``;本字段
-      的 committed 判定语义见 ``committed_authority`` 序②等价论证)。
-    """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
-    transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向
-    """**①资格锁定局的过渡对保护副方向(约束基准契约)**:
-
-    - **无写端恒空**(①资格锁定的状态机写点随意向层机器本体停用
-      消亡;读端 ``locked_buy_scope``/``locked_faction_scope``/
-      ``_update_pair_drought`` 按防御缺省 () 消费);字段保留为
-      序列化兼容与历史契约描述。
-    - 历史契约(写点在位时的语义,git 历史可溯):非空 ⟺
-      plane==1 ∧ phase=='locked';派生口径与 ``p1_pair`` 同族
-      (体系对,``_P1_PAIR_PREF`` 序规整)——``p1_pair`` 是配方锁局
-      的**锁定产物**,本字段是①锁局的**受保护副方向**;对件享二级
-      囤货([22]④)与成型优先([13] P1 验收仍是体系对)。
-    - 遥测:``serialize_intention`` 字段全量序列化自动携带。
-    """
     forced: bool = False               # 强制终局阵容锁定产生(P3 入口)
     weak_comp: str = ''                # 降级来源线(遥测;弱意向不指向具体线)
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
-    pair_evicted: set[str] = field(default_factory=set)
-    """R3 断供驱逐集(配方对域;**已退役恒空**:断供驱逐分支
-    随未证阈值退役,本字段仅留序列化兼容与派生 exclude 参数占位)。"""
-    pair_drought: dict[str, int] = field(default_factory=dict)
-    """体系级断供计数器(体系键 → 连续无新件在店轮数;成员在店即清零,
-    无商店语境轮冻结)。仅遥测,不再触发驱逐。"""
-    shop_supply_streak: dict[str, int] = field(default_factory=dict)
-    """体系级在店供给计数器(体系键 → 连续在店轮数;不在店清零,无商店
-    语境轮冻结)。仅遥测。
-    serialize_intention 全量序列化自动携带。"""
-    p1_pair_frozen_obs: tuple[str, ...] = ()
-    """P1 配方对观测快照(锁线断头 P2 定向通道设计稿 §2.1/§6,纯观测件):
-    plane==1 且派生 pair 非空时随帧覆写为最新非空值——P2 退场后仍可读
-    「退场前的冻结副本」,作 ``promote_candidates``(G8 观测载体)的输入。
-
-    - **坐标系/取值时机**:值域 = ``p1_pair`` 同域四体系键一或二元组;
-      生成期快照(最近一个非空 P1 派生帧),不随 P2 资产变化刷新;
-      跨局随 IntentionState 新建自然清零。
-    - **只承归因不作行为**:任何判定/发射逻辑禁消费本字段(行为交付面
-      = P65 直证批另行立项,届时按设计稿改 ``p1_pair`` 退场语义,不改
-      本快照);grep 守卫钉住唯一写入端与本函数族唯一读端。"""
-
-    p1_pair_frozen: bool = False
-    """命题 1b 冻结闩 F:True=方向
-    冻结,重算被抑制(冻结的是方向不是板面,买入/部署继续服务
-    ``p1_pair_frozen_pair``)。置位 = 事件闩:F=False ∧ 非封印帧 ∧
-    **冻结评估域**(全候选空间中对级支持度 ≥1.0 的**双体系对**,扫描序
-    = 候选排序键((支持度, 声明序) 降序)不截断——超满对先于恰满对;
-    12 号篇 §3 冻结语义)中首个 ``form_progress >= 1.0``
-    (板面成型);**单体系对不进冻结域**(「单体系锁停」死锁结构性
-    免疫——旧超窗冻结单对形态消亡);空域/空对永不置位;
-    fp 回落不自动清位。解冻闭集(p1_pair 域恰两项)= {面③超窗出口,
-    位面末(exit_p1)}——闭集之外零解冻事件。与
-    ``p1_pair_frozen_obs``(上方,纯观测快照)零行为交互,两字段独立。"""
-    p1_pair_frozen_pair: tuple[str, ...] = ()
-    """冻结方向身份(F=True 时的在任对;值域 = ``p1_pair`` 同域四体系键
-    **二元组**——冻结域 = 双体系对,新制下恒 2 元)。不变式
-    **F=True ⟹ 本字段非空**:置位需冻结域 form_ok 首个存在 +
-    「外部清除⟹F 同帧归 0」二选一裁决(拒绝为空对新造
-    比较语义)⟹ 超窗出口永不对空对求值,「comp 锁后方向真空直到位面末」
-    的孤儿态从构造上不可达。"""
-    p1_pair_refreeze_hold: tuple[str, ...] = ()
-    """超窗解冻后的再闩封印(空 = 无封印)。出口解冻的对在「**门控候选
-    首位** == 封印对 ∧ fp 未见回落(<1.0)」期间禁止再闩——防超窗在任对
-    陷入「出口→解冻→保持→复位→再触发」逐帧空转环(清除后
-    段)。解封两路:门控首位置出不同对(合法换向,新方向自由闩)/
-    fp 回落(方向丢失,此后再达成 = 新 form_ok 事件,允许再闩)。"""
-
+    # (体系对域字段族——p1_pair/transition_pair/pair_evicted/pair_drought/
+    #  shop_supply_streak/p1_pair_frozen_obs/p1_pair_frozen/p1_pair_frozen_
+    #  pair/p1_pair_refreeze_hold——已随配方决策层退役删除,考古走 git
+    #  历史;驱动端 _update_pair_drought 无存活调用。)
     transition_locked: str = ''
     """过渡锁定条目名(空 = 未锁;非空 = 锁定条目名;写端单一 =
     ``update_transition_candidates``)。
@@ -246,9 +155,10 @@ class HoardTarget:
 
     - ``char_targets``:角色件集合(意向线骨架采购集 / 跨线骨架 / 兜底线);
     - ``equip_targets``:装备材料件(意向线 equip_assign 派生,剔除 equip_taboos);
-    - ``mode``:'locked' | 'forced' | 'weak' | 'fallback' | 'demoted_endgame'
-      | 'p1_pair' | 'p1_transition'(买侧按 mode 区分囤货语义:意向件照囤/
-      插件台阶/兜底方向/降格满配骨架/配方方向)。
+    - ``mode``:'locked' | 'forced' | 'p1_pair' | 'p1_transition'
+      (锁定线采购集/强制锁定/过渡层方向采购集〔两层候选并集或锁定
+      条目〕/空窗回退见即买并集;token 名沿用历史键面——遥测判读
+      兼容,weak/fallback/demoted_endgame 分带已随各自判据退役)。
     """
 
     char_targets: frozenset[str]
@@ -355,63 +265,6 @@ def _core_reachable(comp: Comp, gs: GameState,
     return encounter_window_rounds(core, level_of(gs)) <= total_remaining_nodes(gs)
 
 
-# ===== P1 终局阵容锁定资格门=====
-# 三门行为无条件化(后治理蓝图):P1 终局线资格门/配方锁/过渡对
-# 三门的 sim A/B 已终裁,无开关;A/B 基线分支由 git
-# 冻结快照构造(回退 = git revert)。
-
-_ENGINE_BOND_KEYS: frozenset[str] = frozenset(b for b, _t in TRANSITION_TRAITS)
-"""三羁绊体系键(仙舟/列车同行/持续伤害;派生自 cw_deploy_logic.TRANSITION_TRAITS
-单一源,与 scoring/cw_sim/deploy_logic 的体系判定同源)。希儿系=单卡二元判定
-不占羁绊键(与 scoring '希儿系' 哨兵同口径)。"""
-
-
-#: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
-#: 的希儿系哨兵同口径)。
-# ⚠️ 权威副本 = knowledge/cw_line_facts.SEELE_SYSTEM;本副本仅为 sim/旧判据
-# 未迁消费点保留(迁移完成后随文件删除);勿新增消费。
-SEELE_SYSTEM: str = '希儿系'
-
-#: P1 配方对平手序 = 注册表声明序(TRANSITION_TRAITS 声明序 + 希儿系垫底
-#: 单卡系)。旧「激活占比降序(列车 .360 > DOT .329 > 仙舟 .292,transition_
-#: combos 数据附录)」社区统计平手序已停用 2026-09-04(「未证即停用」裁定;
-#: 平手 tiebreak 仅定确定性,不载经验排序)。
-_P1_PAIR_PREF: tuple[str, ...] = tuple(
-    b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
-
-# ===== 希儿系形态端口(OR 分支 + carry)=====
-# 适用范围切分(与支持度端口 ``_seele_system_support`` 机械可检验,
-# 禁互相渗透成双源):形态端口读**板面羁绊计数**(gs.board,经
-# form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
-# 本文件 form 链禁出现 _seele_system_support 消费。
-# 常量真源 = cw_comps.SEELE_OR_REQS/SEELE_CARRY_CHAR(
-# 0621-seele-static-form-or-fold 单一源归位:注册表数据层——静态套
-# 条目 import 期消费,留本文件会反向 import 成环;本模块经顶部
-# cw_comps 导入消费,禁再写本地第二份)。档位出处
-# (transition_combos.md:27/103 + combo_methodology.md:133/143)与
-# 量2/量3 挂确认注记随真源常量注释,此处不复制。
-
-P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
-"""配方对锁定门槛(门槛值不变):最高体系支持度 ≥ 此值才锁。
-
-【注】游戏定义激活当量:三羁绊系支持度 = 该体系羁绊计数 / 体系档
-(TRANSITION_TRAITS),1.0 = 体系羁绊满员;希儿系支持度 = 分级公式
-(``_seele_system_support`` 单一源):希儿 + 任 1 去重放大器 = 1.0
-(锁线证据 = 文档「引擎达成那一刻切希儿直通模式」的开线点),希儿
-单卡 = 0.5(开线候选,不再即锁——文档「希儿到手 ≠ 希儿线成型」,
-docs/game/currency_war/research/combo_methodology.md:138)。旧 0.5
-门槛与希儿系 0.6+0.2+0.2 放大器权重的退役裁定不变;
-被支持度降档取代的仅是其 post-state「希儿系 = 在手二元
-1.0/0.0」条款——分级公式属重新推导(每一项来自文档档位结构
-transition_combos.md:27 与注册表计数),非旧手定权重复活。保守方向:锁线门槛
-更严 → P1 空窗期(囤跨线骨架件)更长,方向承诺不提前。"""
-
-
-# ===== ①锁局过渡对保护副方向=====
-# 诊断来源:判读节——inject on 口径 strict_mal 0.20 vs off 0.05 的
-# 差值 15 局全部来自①资格通道:注入信号 r1 锁终局阵容,其采购集把囤货
-# 方向从过渡引擎引开(engines2_by_r6 0.27→0.15)+ evolve 按阵容线换档
-# 拆过渡体系(S2 挤出 19/20 mal 局)=主灶在①通道的残留。
 
 
 def _owned_chars(gs: GameState) -> set[str]:
@@ -420,417 +273,6 @@ def _owned_chars(gs: GameState) -> set[str]:
     front, back = deployed_rows_of(gs)
     return {u.char_id for u in (*front, *back, *bench_units_of(gs))
             if u is not None and u.char_id}
-
-
-def _seele_system_support(owned: set[str]) -> float:
-    """希儿系支持度分级公式(单一源;三消费面经 ``_p1_system_support`` 共用)。
-
-        support = 0                               若 希儿 ∉ 手上
-                = min(1, max(c_量/2, c_贝/2))     若 希儿 ∈ 手上
-
-    【注】每一项均为文档/注册表定义量,零拟合常数(F5 裁决=去重成员计数):
-    - c_量 / c_贝 = ``owned``(bench∪deployed 成员名去重集)中带
-      量子同频 / 贝洛伯格标签的成员数——**去重成员计数**(同名多副本
-      计 1)= 羁绊激活语义,与 form 分支(羁绊按去重成员激活)同语义,
-      对合成零扰动(2★ = 3 副本合并产物,去重前后成员数不变);
-    - ÷2 = 文档 OR 分支档位(量≥2 ∨ 贝≥2,docs/game/currency_war/
-      research/transition_combos.md:27);max = 文档 OR 结构(凑到任一
-      分支即满,取最好分支非均值);
-    - 登记的待办指针(C1,前批遗留):量分支档位存在文档内部张力——本式 ÷2 取
-      量≥2 主口径(定义表行),combo_methodology.md:133/170 写量 3;
-      张力挂玩家确认(挂确认指针),确认改档落
-      ``SEELE_OR_REQS``(形态端口单一源)并同步回改本式分母,
-      禁两端口各自为政;
-    - 登记的待办指针(C1,P86 攻击 r1 中低1 并入):去重计数的未覆盖形态 =
-      同名同 1★ 副本对(实证:绯英×2/花火×2 同场合法态,合成进度
-      2/3)——去重前后成员数不变,支持度读数零扰动,但「副本进度是否
-      应计支持度」属口径确认项,并入 放大器计数口径登记的待办
-      (玩家确认同门),确认前维持去重口径(零行为变更);
-    - 希儿缺席恒 0:量/贝放大器不能独立当过渡(含希儿 28 帖无一缺希儿
-      独立成线,transition_combos.md:27);
-    - 希儿单卡(任意星级)= 0.5 不是人为定为值:注册表基准 = 希儿自身双标签
-      (CHARACTERS['希儿'].factions=('贝洛伯格'), flows=('量子同频'),
-      data/cw_chars.py「希儿」行),她同时计入两池各 1,在文档档位结构
-      下直接导出 max(1/2,1/2)=0.5——单卡 0.5 是推导后果。
-
-    坐标系声明(同文件两套计数口径并存,禁默默统一;F5 显式登记,
-    分歧裁决权在对表裁定):本公式用**去重成员
-    计数**(羁绊激活证据);同文件 ``_asset_thickness`` 及配修甲
-    后续同族落点用**星级当量**原语(每副本按 star 计,Σ3^(star−1) 族,
-    治「合成被记为倒退」的通用排序面)。两者适用范围不同——支持度回答
-    「羁绊激活了几成」,星级当量回答「投入叠了多少」;任一侧禁私自换用
-    另一原语。同函数内三羁绊系分支沿用逐副本羁绊计数(与 cw_battle_calib
-    ._engines_count 同式)而希儿系两条分支用去重计数,是设计决定非疏漏。
-    """
-    if '希儿' not in owned:
-        return 0.0
-    c_quantum = 0
-    c_belobog = 0
-    for name in owned:
-        ch = CHARACTERS.get(name)
-        if ch is None:
-            continue
-        if '量子同频' in ch.flows:
-            c_quantum += 1
-        if '贝洛伯格' in ch.factions:
-            c_belobog += 1
-    return min(1.0, max(c_quantum / 2, c_belobog / 2))
-
-
-def _p1_system_support(gs: GameState) -> dict[str, float]:
-    """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
-    与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
-
-    三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
-    单一源;逐副本计数,与希儿系分支的去重口径分立,坐标系声明见
-    ``_seele_system_support``);希儿系 = 分级公式
-    (``_seele_system_support`` 单一源,去重成员计数:希儿单卡 0.5
-    开线候选、希儿+任 1 去重放大器满支持,推导链见其 docstring)。
-    旧「希儿在手二元 1.0」post-state 条款被支持度降档取代
-    (0.6+0.2+0.2 手定权重已停用,本式为文档口径
-    重推非旧值复活)。
-    """
-    counts: dict[str, int] = {}
-    front, back = deployed_rows_of(gs)
-    for u in (*front, *back, *bench_units_of(gs)):
-        cid = getattr(u, 'char_id', '') or ''
-        if not cid:
-            continue   # 未识别/占位件:无注册表身份可判,不计(未知名 '?' 口径)
-        ch = CHARACTERS.get(cid)
-        if ch is None:
-            continue
-        for f in set(ch.factions) | set(ch.flows):
-            counts[f] = counts.get(f, 0) + 1
-    sup = {b: counts.get(b, 0) / t for b, t in TRANSITION_TRAITS}
-    # 去重成员集(_owned_chars 已是名字集)直喂分级公式;禁在此换回
-    # 逐副本计数(坐标系声明见 _seele_system_support docstring)。
-    sup[SEELE_SYSTEM] = _seele_system_support(_owned_chars(gs))
-    return sup
-
-
-def p1_gap_window(gs: GameState) -> bool:
-    """P1 空窗期判定(只读):bench∪deployed 四体系最高支持度 <
-    ``P1_PAIR_LOCK_MIN_SUPPORT``。
-
-    消费位=cw4 商店线方向 pass 的 K 空窗回退门(2026-09-03 第三病灶
-    裁定,SEEDS_EMPTY_LEDGER_DIAG §4 第一案):``target_comp`` 值域
-    全集含 None,空窗期 K 投影回退 ``hoard_target_set``(本模块,
-    单一源)。判定数学与 ``update_p1_recipe`` 的门控同源(同一
-    ``_p1_system_support`` + 同一门槛常数,禁另造支持度算式)。
-    边界:空板面恒 True(0<0.5);P2+ 调用面约定不覆盖(空窗系 P1 概念)。
-    """
-    sup = _p1_system_support(gs)
-    return max(sup.values(), default=0.0) < P1_PAIR_LOCK_MIN_SUPPORT
-
-
-#: 过渡候选数(【拍】2026-11-01 用户裁定:与终局候选数同值复用——值单一源 =
-#: strategies/impl/mandate_v1/
-#: line_select.CANDIDATE_TOP_N;kernel 禁 import impl(依赖矩阵),
-#: 两处值禁单侧漂移,改值须两处同改)。
-_P1_PAIR_CANDIDATE_TOP_N: int = 3
-
-
-def _p1_pair_support(pair: tuple[str, ...],
-                     sup: dict[str, float]) -> float:
-    """对级支持度 = min(各席席级支持度)(木桶语义);单体系对 = 该席席级。
-
-    席级表 = ``_p1_system_support`` 现行值(零口径改动,12 号篇 §3
-    席级函数);min 聚合依据 = 「先凑齐」——和/均值使
-    单席满的对虚高(木桶语义)。"""
-    return min(sup.get(f, 0.0) for f in pair)
-
-
-def _p1_pair_decl_key(pair: tuple[str, ...]) -> tuple[float, ...]:
-    """对级声明序键 = 各席体系在 ``_P1_PAIR_PREF`` 的索引组成的元组;
-    短元组(单体系对)同席补 ∞——同首席的双体系对排在单体系对前
-    (更完整方向优先),零新常数(PREF 声明序零改动)。"""
-    idx = tuple(_P1_PAIR_PREF.index(f) for f in pair)
-    return idx + (math.inf,) * (2 - len(idx))
-
-
-def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
-    """体系对 → COMP_LIBRARY 线名映射(统一阵容评分 design §6 配方锁
-    联动):线**主派**羁绊(档 0 首键)∈ 体系对
-    羁绊键集(:func:`_pair_bond_keys`,希儿系展开 = 量子同频+贝洛伯格)。
-
-    例:持续伤害对 → (DOT队, 专家桑博DOT)(两线主派键均为
-    持续伤害);希儿系对 → (希儿量子,)(专家桑博DOT 的贝洛伯格 2 是
-    次档非主派,不入——主派判定防次档键把 DOT 线错挂进希儿系对)。
-    """
-    bonds = _pair_bond_keys(pair)
-    out: list[str] = []
-    for c in COMP_LIBRARY:
-        # 主羁绊 = 档 0 首键(过渡期读法:结构上档内无次序,此处依赖
-        # 迁移规则 {0: form_tiers} 保持插入序保证行为恒等;随配方决策层
-        # 退役(3.3);黄泉键序对齐)
-        main = next(iter(c.core_faction_reqs), '')
-        if main in bonds:
-            out.append(c.name)
-    return tuple(out)
-
-
-def _pair_restart_dead(pair: tuple[str, ...], gs: GameState) -> bool:
-    """体系对全线重开级判定(design §6:线分含 −100000 的体系对不入
-    p1_pair_space 候选):映射线集非空 ∧ 每条线词缀面或 boss 面重开级
-    命中(kernel 侧原语 :func:`cw_affinity_table.affix_restart_hit` /
-    ``boss_restart_hit``——cw_intention 禁 import 策略层线分引擎,重开级
-    命中 = 吃怕/boss 表可判子集;证据/投资分量恒非负不影响判定)。
-
-    线集空(防御,当前四体系全有映射)→ False(fail-open 配方锁照常)。
-    扑满强敌(怕档 −150 非重开级)不参与本判定——排除档只认重开级。"""
-    from sr_od.application.currency_war.kernel.cw_affinity_table import (
-        affix_restart_hit,
-        boss_restart_hit,
-    )
-    lines = _p1_pair_lines(pair)
-    if not lines:
-        return False
-    affixes = tuple(gs.enemy_affixes.value or ())
-    bosses = tuple(b for b in (gs.plane_bosses.value or ()) if b)
-    return all(affix_restart_hit(ln, affixes)
-               or boss_restart_hit(ln, bosses, affixes)
-               for ln in lines)
-
-
-def _p1_pair_space(sup: dict[str, float],
-                   gs: GameState | None = None) -> list[tuple[str, ...]]:
-    """全候选空间排序序列(不截断):体系对 = 单体系对(4)+ 双体系
-    组合(6),按(对级支持度降序, 对级声明序)排序;对内体系按
-    ``_P1_PAIR_PREF`` 序规整(与 ``p1_pair`` 值形态同口径)。
-
-    候选 top3 与冻结评估域共用的**单一枚举载体**(§2.3-4「枚举载体
-    = 候选机器同源排序函数不截断」);超满对(支持度 >1.0)排在恰满
-    对前——冻结扫描序申报(§2.3-4)。排序键确定(支持度 = 羁绊计数/
-    档,事件驱动变化,帧间稳定;声明序键两两不同)——防摇摆语义 =
-    支持度不变则序不变,替代旧「在任粘滞」(§2.6-6)。
-
-    ``gs`` 非空时启用配方锁联动过滤(design §6 统一阵容评分):全线
-    重开级的体系对不入序列(:func:`_pair_restart_dead`——重开级数值排他,
-    P1 不往该方向囤牌);过滤后为空(全体系对极低分)→ 回退未过滤序列
-    ——配方锁照常运行,不过渡干预终局分(锁定/P2 线分路径零关联)。"""
-    pairs: list[tuple[str, ...]] = []
-    for i, a in enumerate(_P1_PAIR_PREF):
-        pairs.append((a,))
-        for b in _P1_PAIR_PREF[i + 1:]:
-            pairs.append((a, b))
-    ranked = sorted(pairs, key=lambda p: (-_p1_pair_support(p, sup),
-                                          _p1_pair_decl_key(p)))
-    if gs is None:
-        return ranked
-    alive = [p for p in ranked if not _pair_restart_dead(p, gs)]
-    return alive or ranked
-
-
-def p1_pair_candidates_of(gs: GameState) -> tuple[tuple[str, ...], ...]:
-    """体系对候选机器(只读,不落字段):支持度 > 0 的体系对按
-    (对级支持度降序, 对级声明序)取 top ``_P1_PAIR_CANDIDATE_TOP_N``。
-
-    - **希儿系对入候选门槛 = 席级支持度 = 1.0**(与 Q 门槛同值:单卡
-      希儿 0.5 不驱动方向,§2.3-2/§2.6-10)——含希儿系的一切对在希儿
-      席级未满前全部不入候选;
-    - 无羁绊开局(四体系支持度全 0)候选空(§2.3-2),冷启动兜底归
-      商店臂(§2.3-8,不在本模块);
-    - 消费面 = 配方链重算(:func:`update_p1_recipe` 写槽)与
-      ``k_empty_window_fallback`` p1_lock_band 支(同源现算,禁第二
-      推导)。
-    """
-    sup = _p1_system_support(gs)
-    seele_ok = sup.get(SEELE_SYSTEM, 0.0) >= P1_PAIR_LOCK_MIN_SUPPORT
-    out: list[tuple[str, ...]] = []
-    for p in _p1_pair_space(sup, gs):
-        if SEELE_SYSTEM in p and not seele_ok:
-            continue
-        if _p1_pair_support(p, sup) <= 0.0:
-            continue
-        out.append(p)
-        if len(out) >= _P1_PAIR_CANDIDATE_TOP_N:
-            break
-    return tuple(out)
-
-
-def _p1_pair_overwindow(pair: tuple[str, ...],
-                        gs: GameState,
-                        session: StrategySession | None = None,
-                        registry: DecisionV2Registry | None = None,
-                        ) -> tuple[bool, float, int]:
-    """命题 1b 解冻闭集出口①「面③超窗出口」判定(/§2.4)。E(frozen_pair) > R_rem ⟹ 超窗。
-
-    - E = kernel ``e_rounds`` **逐字直调**(零第二估计器,三姊妹门共享
-      测量单一源;消费对象 = ``pair_target_comp`` 现行物化产物,与本门
-      E(inc)/E(alt) 同物化器同源,超窗判定不失真);
-    - R_rem = 场字段求和就地自算(裁决点 9:框架不供视界量;封顶
-      modeled planes,位面 ∉ 序列表键集(≥4)= 表外防御 → 0,与
-      策略门面 horizon 契约同款;同式双落点 = 策略门面
-      statefn/horizon.r_remaining——kernel 禁 import strategies,
-      两处禁单侧改式);
-    - 零新常量:比较即判据,出口与超窗同一比较单一源。
-
-    **单点兜底充分性(支撑项)**:健康域(E≤R_rem)无需
-    出口;超窗/字面零域出口按构造触发——E 有限 ∧ R_rem 随节点推进单调
-    不增 ⟹ R_rem 收缩到 E 之下必然发生(末段必越窗),出口是断供盲区的
-    唯一合法出口(早退通道 = 空集,诚实申报 §2.4)。返回
-    (是否超窗, E, R_rem);目标物化失败(None)按 E=inf 处理 = 超窗
-    (不可评估方向不冻结,诚实保守)。E/R_rem 供调用方写遥测分键。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    target = pair_target_comp(pair)
-    e_f = (e_rounds(target, gs, reg, session=session)
-           if target is not None else math.inf)
-    # R_rem 就地自算(裁决点 9:框架不供视界量,场字段求和,封顶
-    # modeled planes;同式双落点 = 策略门面 statefn/horizon.r_remaining
-    # ——kernel 禁 import strategies,两处禁单侧改式)。位面 ∉ 序列表
-    # 键集(≥4)= 表外防御 → 0。
-    _tb = gs.node_seq_by_plane.value or PLANE_NODE_TABLES
-    r_rem = (sum(len(t) for k, t in _tb.items() if k >= plane_of(gs))
-             - round_num_of(gs) + 1) if plane_of(gs) in _tb else 0
-    return (not (math.isfinite(e_f) and e_f <= r_rem)), e_f, r_rem
-
-
-#: R3 断供驱逐已停用(2026-09-04,「未证即停用」裁定):旧
-#: PAIR_DROUGHT_EVICT_ROUNDS=5 为「保守先验」,探针批标定登记的待办未兑现,
-#: 任何实证引用无效——驱逐(换向动作)不再由未证阈值触发。断供/供给
-#: 计数器保留作遥测与撤销证据输入,不再写 pair_evicted;缺口披露:
-#: 断供死方向不再被计数驱逐,逃逸改由撤销出口①/③(证据机器)承载。
-#: (经济冻结病灶①的根是单向驱逐,本停用连同 un-evict 语义一并失去
-#: 载体;pair_evicted 字段保留为空集兼容序列化。)
-
-
-def _update_pair_drought(gs: GameState, ist: IntentionState,
-                         visible: set[str]) -> None:
-    """R3 断供供给计数器(每 game-round 恰一次,由 update_intention 驱动)。
-
-    断供驱逐停用后仅计数不驱逐:对四体系全集维护 ``shop_supply_streak``
-    (在店供给连续轮)与现任 pair 方向的 ``pair_drought``(断供连续轮),
-    供遥测与撤销证据链消费;写 ``pair_evicted`` 的驱逐分支已随未证阈值
-    停用(见上方常量注)。
-    """
-    if plane_of(gs) != 1:
-        return
-    _shop = gs.shop.value   # payload 域:非当前画面 None(波3 切换)
-    shop_names = {getattr(c, 'name', '') or ''
-                  for c in shop_payload_content_cards(_shop)}
-    all_systems = set(_ENGINE_BOND_KEYS) | {SEELE_SYSTEM}
-    for sys in all_systems:
-        if not shop_names:
-            continue    # 无商店语境轮:冻结(不 +1 不清零)
-        if members_in_shop(sys, shop_names):
-            ist.shop_supply_streak[sys] = \
-                ist.shop_supply_streak.get(sys, 0) + 1
-        else:
-            ist.shop_supply_streak[sys] = 0
-    systems = set(ist.p1_pair) | set(ist.transition_pair)
-    if not systems:
-        return
-    for sys in systems:
-        if members_in_shop(sys, shop_names):
-            ist.pair_drought[sys] = 0
-        else:
-            ist.pair_drought[sys] = ist.pair_drought.get(sys, 0) + 1
-
-
-def members_in_shop(sys: str, shop_names: set[str]) -> bool:
-    """体系成员与在店名集是否相交(``_pair_members`` 口径的供给判定;
-    提为模块级函数供断供计数与单测共用,禁在消费点另写成员展开)。"""
-    return bool(_pair_members((sys,)) & shop_names)
-
-
-def _pair_members(pair: tuple[str, ...]) -> set[str]:
-    """体系对的囤货成员集:各体系羁绊(阵营∪流派)下的注册表成员;
-    希儿系 = 希儿 ∪ 量子同频 ∪ 贝洛伯格 成员(放大器池)。"""
-    bonds: set[str] = set()
-    for sys in pair:
-        if sys == SEELE_SYSTEM:
-            bonds |= {'量子同频', '贝洛伯格'}
-        else:
-            bonds.add(sys)
-    out: set[str] = set()
-    for name, c in CHARACTERS.items():
-        if (set(c.factions) | set(c.flows)) & bonds:
-            out.add(name)
-    if SEELE_SYSTEM in pair:
-        out.add('希儿')
-    return out
-
-
-def _pair_bond_keys(pair: tuple[str, ...]) -> set[str]:
-    """体系对 → 板面羁绊键集(希儿系展开=量子同频+贝洛伯格;与
-    ``_pair_members``/``locked_faction_scope`` 同口径的键侧版本)。"""
-    bonds: set[str] = set()
-    for sys in pair:
-        if sys == SEELE_SYSTEM:
-            bonds |= {'量子同频', '贝洛伯格'}
-        else:
-            bonds.add(sys)
-    return bonds
-
-
-def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
-    """体系对 → 配方伪阵容(P1 配方锁帧的 target 载体物化)。
-
-    语义:把 P1 意向锁定产物定为体系对(p1_pair)后,
-    ``strategy_state_of(session).target_comp`` 在配方锁帧恒 None——部署选人/评分管线/
-    投资装备钩子等既有 target 消费者从此全盲(断线症状:引擎件
-    躺 bench、散脸占板,decisions.target_comp 全程空串)。
-    本函数把已锁方向物化为伪阵容,写端单点 =
-    策略器方向刷新(flow.CwFlowStrategy._refresh_direction,
-    内化;locked_comp 空且 P1 配方锁时调用);方向选择不动(删除的 transition_focus 是
-    「从零选收敛方向」,与本物化不同层,非其变体复活)。
-
-    单一口径:
-    - factions = ``_pair_bond_keys`` 板面羁绊键;core_chars =
-      ``_pair_members`` 全成员(均序化,构造确定);
-    - 档 0 分辨序:① ``cw_bridge_pool.BRIDGE_POOL`` 精确匹配
-      (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
-      单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
-      组合)→ 档 0 只放**他体系档**(逐体系取桥池任一条的档);
-      放大器两条分支挂 ``or_reqs``(``SEELE_OR_REQS``:量≥2 ∨ 贝≥2 任一即
-      成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
-      取代 ②的「桥池档+量子配方档」AND 全档口径
-      (借 cw_recipe 完全体档把「凑到任一=成型」塌成「量3∧贝2 全档」,
-      且缺 carry 合取支;取代先例 = 对未证 post-state 条款的取代)。
-      跨体系 AND 保留:他体系档仍是 AND 分支,OR 只覆盖放大器组(防半对
-      冒充)。⚠️ 既有双源分歧申报:列车同行档桥池=2(train_dot)、
-      cw_recipe _RECIPES=4(框架单独成型档,语义不同层)——本函数取
-      桥池;cw_recipe 量子配方档自此无 pair 物化消费(注册表保留,
-      其「框架单独成型档」适用范围不变)。
-      注:桥线对平局无平滑性偏好;若 v2 需要
-      同等偏好需另行设计。
-      """
-    if not pair:
-        return None
-    from sr_od.application.currency_war.kernel.cw_bridge_pool import BRIDGE_POOL
-
-    bonds = _pair_bond_keys(pair)
-    tiers: dict[str, int] = {}
-    or_reqs: list[tuple[str, int]] = []
-    required: tuple[str, ...] = ()
-    for combo in BRIDGE_POOL:
-        if set(combo.engine_bonds) == bonds:
-            tiers = dict(combo.engine_bonds)
-            break
-    else:
-        # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表),
-        # 只保留本对键(防兜底混入对外体系);希儿系对再剥掉放大器键
-        # (放大器档位归 or_reqs,不进档 0 的 AND 账——)。
-        for combo in BRIDGE_POOL:
-            for bond, tier in combo.engine_bonds.items():
-                tiers.setdefault(bond, tier)
-        tiers = {bond: tier for bond, tier in tiers.items() if bond in bonds}
-        if SEELE_SYSTEM in pair:
-            amp_keys = {bond for bond, _tier in SEELE_OR_REQS}
-            tiers = {bond: tier for bond, tier in tiers.items()
-                     if bond not in amp_keys}
-            or_reqs = list(SEELE_OR_REQS)
-            required = (SEELE_CARRY_CHAR,)
-    if not tiers:
-        return None
-    return Comp(
-        name='过渡配方·' + '+'.join(pair),
-        core_chars=sorted(_pair_members(pair)),
-        faction_reqs={0: dict(sorted(tiers.items()))},
-        or_reqs=or_reqs,
-        required_deployed=required,
-    )
 
 
 def _asset_thickness(comp: Comp, gs: GameState) -> float:
@@ -944,151 +386,6 @@ def line_completion_feasibility(gs: GameState,
 # 语义存档 = math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
 
 
-def update_p1_recipe(gs: GameState, ist: IntentionState,
-                     registry: DecisionV2Registry | None = None,
-                     st: object = None,
-                     ) -> IntentionState:
-    """P1 过渡配方链驱动(体系对候选机器;每 game-round 恰一次,就地改
-    ist 并返回;12 号篇 §3)。
-
-    候选制形态(旧四层谓词族已退役——退役登记 = math_proofs P-T166
-    行,考古走 git 历史;现行判据 = 候选排序键纯函数((对级支持度,
-    声明序))确定性):
-
-    - **候选重算**:全候选空间排序 → 支持度 > 0 的体系对(希儿系对
-      门槛 = 席级 1.0)取 top3 写 ``transition_candidates`` 槽
-      (``st`` 策略器状态鸭子参数;写端单一 = 本函数,缺席不写);
-    - **p1_pair = 门控候选首位**:首位对级支持度 ≥
-      ``P1_PAIR_LOCK_MIN_SUPPORT`` 才写,否则空对(保持旧 gate_first
-      语义;与旧派生**含支持度回落帧逐帧等价**——等价性论证见
-      ``committed_authority`` 序②注释);渐进第二席职能由候选并集
-      承载(§2.6-4),不再产渐进 2 元对;
-    - **冻结状态机**:置位评估域收窄为**双体系对全扫描**(排序键同源
-      不截断,超满对先于恰满对;取 form_ok 板面成型首个;单体系对
-      不进冻结域——「单体系锁停」死锁结构性免疫,§2.6-9)→ 冻结后
-      槽写单元素(冻结对,读端零特判);超窗解冻闭集与再一次性标志位封印对双对
-      零改动(封印判定的「重派生对」= 门控候选首位);
-    - 观测快照(p1_pair_frozen_obs)照旧。位面适用范围由调用侧
-      (flow 层)以窗口谓词承载——本函数只在 P1 活动窗被调。
-    """
-    visible = _visible_chars(gs)
-    # 体系级在店供给计数(纯遥测;断供驱逐分支已停用,不触发行为)。
-    _update_pair_drought(gs, ist, visible)
-    # ── 命题 1b form_ok 冻结状态机(帧序:超窗出口 → 门控首位/冻结
-    # 钉向 → 置位评估[双对全扫描];解冻闭集原三项目阵容锁定取代支随
-    # 机器停用消亡)──
-    _unfroze_this_frame = False
-    if ist.p1_pair_frozen and ist.p1_pair_frozen_pair:
-        over, e_f, r_rem = _p1_pair_overwindow(
-            ist.p1_pair_frozen_pair, gs, None, registry)
-        if over:
-            # 出口①触发:解冻 + 封印该对(防逐帧空转环);本帧重算
-            # 按候选语义执行,在任保持帧对保持且 F=False,直至新
-            # form_ok 帧再标志。
-            _unfroze_this_frame = True
-            ist.p1_pair_refreeze_hold = ist.p1_pair_frozen_pair
-            ist.p1_pair_frozen = False
-            ist.p1_pair_frozen_pair = ()
-            ist.last_event = (
-                f'p1_pair:unfreeze_overwindow(E={e_f:.2f},R_rem={r_rem})')
-    slot_value: tuple[tuple[str, ...], ...] = ()
-    if ist.p1_pair_frozen:
-        # 冻结的是方向不是板面:买入/部署继续服务 frozen_pair,
-        # 重算被抑制(p1_pair 钉在 frozen_pair 上)。
-        pair = ist.p1_pair_frozen_pair
-        if pair != ist.p1_pair:
-            ist.p1_pair = pair
-            ist.last_event = 'p1_pair:' + '+'.join(pair)
-        # 冻结收敛:槽写单元素(冻结对,design §2.3-4)。
-        slot_value = (pair,)
-    else:
-        sup = _p1_system_support(gs)
-        ranked = _p1_pair_space(sup, gs)
-        seele_ok = (sup.get(SEELE_SYSTEM, 0.0)
-                    >= P1_PAIR_LOCK_MIN_SUPPORT)
-        candidates = [p for p in ranked
-                      if (SEELE_SYSTEM not in p or seele_ok)
-                      and _p1_pair_support(p, sup) > 0.0
-                      ][:_P1_PAIR_CANDIDATE_TOP_N]
-        # 门控候选首位:支持度满才有在任对(旧 gate_first 语义);
-        # (0,1) 支持度带 p1_pair 恒空(committed 等价性见序②注释)。
-        gated = (candidates[0]
-                 if candidates and _p1_pair_support(candidates[0], sup)
-                 >= P1_PAIR_LOCK_MIN_SUPPORT else ())
-        # 超窗再一次性标志位封印(现行状态机零改动):封印对在「门控首位 ==
-        # 封印对 ∧ fp 未见回落(<1.0)」期间禁止再一次性标志位;解封两路 =
-        # 换向(门控首位 ≠ 封印对)/ fp 回落(方向丢失,此后再达成
-        # 才是新 form_ok 事件)。
-        if ist.p1_pair_refreeze_hold:
-            if gated != ist.p1_pair_refreeze_hold:
-                ist.p1_pair_refreeze_hold = ()   # 换向解封
-            else:
-                _t = pair_target_comp(ist.p1_pair_refreeze_hold)
-                fp_v = (form_progress(_t, gs)
-                        if _t is not None else 0.0)
-                if fp_v < 1.0:
-                    ist.p1_pair_refreeze_hold = ()   # fp 回落解封
-                elif not _unfroze_this_frame:
-                    ist.last_event = ('pair_gate:hold('
-                                      + '+'.join(gated) + ')')
-        if gated != ist.p1_pair:
-            ist.p1_pair = gated
-            ist.last_event = ('p1_pair:' + '+'.join(gated)) \
-                if gated else 'p1_pair:wait'
-        # 置位评估(事件标志):冻结域 = 双体系对全扫描(单体系对不进
-        # 域;扫描序 = 候选排序键应用于全空间,超满对先于恰满对),
-        # 取 form_ok 首个;封印期内不标志;空域/空对永不置位。
-        if not ist.p1_pair_refreeze_hold:
-            for p in ranked:
-                if len(p) != 2:
-                    continue
-                if _p1_pair_support(p, sup) < P1_PAIR_LOCK_MIN_SUPPORT:
-                    break   # 排序按支持度降序:首见 <门槛 双对即域尽
-                _t = pair_target_comp(p)
-                if _t is not None and form_progress(_t, gs) >= 1.0:
-                    ist.p1_pair_frozen = True
-                    ist.p1_pair_frozen_pair = p
-                    ist.p1_pair = p   # 置位帧即钉向(与冻结帧同值)
-                    ist.last_event = 'p1_pair:freeze:' + '+'.join(p)
-                    candidates = [p]   # 冻结收敛同帧生效
-                    break
-        slot_value = tuple(candidates)
-    # 槽写端单一(配方链重算帧覆写;冻结帧单元素/未冻结帧 top3):
-    # st 鸭子参数缺席(裸 kernel 调用/异型状态对象)不写,禁双源。
-    if st is not None:
-        with contextlib.suppress(Exception):
-            st.transition_candidates = slot_value
-    # 观测快照(唯一写入端):最新非空派生对冻结留档。
-    if ist.p1_pair and ist.p1_pair != ist.p1_pair_frozen_obs:
-        ist.p1_pair_frozen_obs = ist.p1_pair
-    return ist
-
-
-def clear_p1_recipe(ist: IntentionState, st: object = None) -> None:
-    """进 P2:配方锁退场(解冻闭集出口②「位面末」;清除 ⟹ F 同帧归 0)。
-
-    位面适用范围由调用侧窗口谓词判定后调用一次(幂等:空对帧 no-op)。
-    ``st``(可选,策略器状态鸭子参数)非空时**同点清空
-    ``opening_recipe_comp`` 与 ``transition_candidates``**——配方物化
-    链/候选槽写端被 P1 窗口守卫覆盖,进 P2 后永不再写,不清则 P2
-    未锁窗读口消费过期 P1 配方(读口守卫:direction 读口「两键都空」
-    契约与 K 空窗回退 p2plus 带可达性)。
-    """
-    if ist.p1_pair:
-        ist.p1_pair = ()
-        ist.p1_pair_frozen = False
-        ist.p1_pair_frozen_pair = ()
-        ist.p1_pair_refreeze_hold = ()
-        ist.last_event = 'p1_pair:exit_p1'
-    if st is not None:
-        # 开局面键/过渡候选槽同点清空(写端单一出口;读侧 plane2 守卫
-        # = 防御双保险)。异型状态对象(第三方策略面)缺属性 = 无键
-        # 可清,吞异常。
-        with contextlib.suppress(Exception):
-            st.opening_recipe_comp = None
-            st.transition_candidates = ()
-
-
 # ===== 过渡阵容库候选机器(comp-structure-unification 3.3 新机器)=====
 # 用户裁定(2026-11-04):过渡层与终局层两套阵容库独立,各自候选与锁定;
 # 计分一维(成员持有)先行 + 词缀/boss 统一减分制(纯减分、不设排除特殊
@@ -1119,8 +416,8 @@ TRANSIT_AFFIX_PENALTY: dict[str, list[str]] = {
 #: 终局线分的词缀/boss 面不动(线级登记更细,与本表数据同源、粒度分工)。
 TRANSIT_AFFIX_PENALTY_SCORE: float = float(FEAR_PENALTY)
 
-#: 过渡候选数(与终局候选数同值复用,同 ``_P1_PAIR_CANDIDATE_TOP_N``
-#: 注:kernel 禁 import 策略层实现,两处值禁单侧漂移,改值须两处同改)。
+#: 过渡候选数(与终局候选数 CANDIDATE_TOP_N 同值复用;kernel 禁
+#: import 策略层实现,两处值禁单侧漂移,改值须两处同改)。
 _TRANSITION_CANDIDATE_TOP_N: int = 3
 
 
@@ -1413,7 +710,7 @@ def committed_authority(state: GameState | None,
 def committed_from(session: StrategySession,
                    state: GameState | None = None) -> bool:
     """committed(已定型/非双轨期)唯一合法读端(R1,蓝图 §4.3;
-    cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
+    装备环境/穿戴计划等 kernel 消费面经它取值(体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
 
     - 有现读 state(状态容器单例)→ 直取权威派生;

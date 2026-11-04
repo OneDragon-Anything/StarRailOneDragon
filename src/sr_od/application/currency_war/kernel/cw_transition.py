@@ -42,8 +42,8 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 
 # (信号定型门已停用 2026-09-04,「未证即停用」裁定:旧
 # COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
-# 「不能更低」),且 ready() 全库零生产消费(定型权威 = cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
-# p1_pair 非空)。连同停用:t_of 全局轮序换算(唯一消费 = 已删 ready 的
+# 「不能更低」),且 ready() 全库零生产消费(定型权威 =
+# cw_intention.committed_authority)。连同停用:t_of 全局轮序换算(唯一消费 = 已删 ready 的
 # 轮门,P2=7 节点按 9 计的量纲失真一并消失)。CommitSignals 保留为
 # 遥测累积器,SIGNAL_WEIGHTS 见上注。)
 
@@ -54,8 +54,8 @@ class CommitSignals:
 
     各信号源到达时调 ``add``(源名 + 该源的阵容分贡献),累积到每条线,
     累积分仅作遥测判读(原当前倾向读口已随死代码清偿移除)。定型权威 =
-    ``cw_intention.committed_authority``(plane≥2 / 意向状态机 locked /
-    p1_pair 非空),本类不参与定型判定(旧信号定型门已停用,见模块注)。
+    ``cw_intention.committed_authority``,本类不参与定型判定(旧信号
+    定型门已停用,见模块注)。
     """
 
     def __init__(self) -> None:

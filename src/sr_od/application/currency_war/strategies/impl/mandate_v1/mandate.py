@@ -1229,7 +1229,7 @@ def run_mandate(frame: MandateFrame,
 class PrepContext:
     """部署定型上下文装配(:func:`select_deployment` 的只读输入面)。
 
-    阶段 5/6 丁:旧选人读口字段(target_comp/transition_framework/board_
+    阶段 5/6 丁:旧选人读口字段(target_comp 等历史字段/board_
     counts/deploy_cap/locked_factions/recipe_floor_lock_exempt/window_
     blocked_names)随七桶选人族纳入统一管理时删除——统一部署搜索的消费面 = 状态容器
     现读(session_ref/gs_ref 两引用),窗口谓词/上场锁过滤在搜索段 0

@@ -313,12 +313,8 @@ class DecisionV2Registry:
     #: 富余金流动性影子价 ρ(P11:纯富余段 C_dec 下界=0 后的期权项上界;
     #: P10① 携带溢价利息分量背书,`w151_p2/` 四局实证实现值≈0 → 起步 0)
     vd_p2_liquidity_rho: float = 0.0
-    #: P1 体系对缺件找牌通道总开关(`w170_p1_vd/`/):False=回 `w166_pair_guard/` 前行为
-    #: (P1 找牌只有 core 通道,level_plan 窗互斥逐位旧语义)——A/B 基线分支。
-    #: True=P1 锁定帧(配方锁 p1_pair/①锁 transition_pair)缺件 ∧ 金≥
-    #: interest_floor+刷价+买价([3] 单次预算前提)时,pair 缺件账参与
-    #: V_D(scoring._vd_p1_pair;core 通道不受本开关覆盖)
-    vd_p1_pair_enabled: bool = True
+    # (P1 体系对缺件找牌开关 vd_p1_pair_enabled 已随配方决策层退役删除
+    #  ——评分消费点 _vd_p1_pair 先已消亡,零读端。)
     #: 板深单位值(板深=可上阵件数,板面形态维之一,非单卡拆分;方向
     #: 原引数据源已清退禁引,现未锚定;数值骨架占位未标定)
     depth_unit_value: float = 2.0
@@ -435,17 +431,8 @@ class DecisionV2Registry:
     #: (迁移审计§1:r_loss 90% 落 r8-9)。
     evolve_final_freeze_enabled: bool = True
     # ===== `w174_deploy/`/引擎补完守卫(own-gap 修法)=====
-    #: 总开关:False=回 `w170_p1_vd/` 后行为(A/B 基线分支)。True 时
-    #: cw_evolution.evolution_step 在常规演进提案**之前**发补完事务:
-    #: pair 体系(p1_pair ∪ transition_pair,含希儿系单卡判据)
-    #: owned(bench∪deployed,全羁绊口径)≥ tier ∧ on-board
-    #: (board_factions 口径)< tier → bench 该体系成员上场,room 不足
-    #: 换下最弱非保护件(保护=pair 成员/引擎件/锁定目标件/种子窗)。
-    #: 修「拥有≥门槛却从未同时上场」(`w173_supply/`:8/11 never-2 局,件躺备战
-    #: 席到局终;[20] 件上场才算配方,[13] 过渡成型≈过 P1)。末窗冻结
-    #: 豁免复核 = 净效果 pair on-board 与引擎数不减(
-    #: 防丢语义同向:补上不是拆)。
-    evolve_engine_completion_enabled: bool = True
+    # (体系补完守卫开关 evolve_engine_completion_enabled 已随配方决策层
+    #  退役删除——补完事务消费的 pair 体系键随体系对域消亡,零读端。)
     # ===== `w201_strand/`/补完缺口 owned 口径(distinct;修②)=====
     #: 补完事务缺口判定的 owned 计数口径:True=distinct 名单数——
     #: 同名副本是 3合1 升星素材非配方件([20] 配方=不同成员;board

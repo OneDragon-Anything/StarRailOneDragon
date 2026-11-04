@@ -11,8 +11,8 @@ one_dragon 零 import 本类。
 清单,本类 = 默认策略实现的全量 realization):
 
 - **K 方向**(配方方向)→ ``target_comp``(锁定线槽,键面
-  归一后 = 候选-锁定制终态单写者键)/``bridge_id``/
-  ``transition_framework`` 意向面族(原 ``locked_line``/
+  归一后 = 候选-锁定制终态单写者键)/``bridge_id`` 意向面键(原 ``locked_line``/``transition_framework`` 等
+  死槽字段已随各自迭代删除,
   ``pending_deploys`` 死槽字段已随死代码清偿移除);
 - **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发出登记簿,五出口
   生命周期)+ 义务披露面(``v3_release_spent``/``v3_release_budget``/
@@ -179,8 +179,8 @@ class StrategyState:
     派生缓存续读(session_scope 同步)。"""
     # 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target。
     # (现役无写端、消费面按 '' 缺省只读——历史保留键,读端见
-    # cw_recipe/cw_deploy_logic。)
-    transition_framework: str = ''
+    # (休眠键 transition_framework 已随配方决策层退役删除——
+    #  无写端恒空,框架阵营消费面已换过渡层条目。)
 
     # ===== 定型面(定型信号推导;局)=====
     # CommitSignals(定型信号累积器,评估数据表——§1.6 机器本体停用的

@@ -114,13 +114,14 @@ DECISION_TRACE_RETIREMENT_MANIFEST_NAME: str = 'decision_trace.retirement.jsonl'
 #: (消费方出现时扩动作发出契约),本常量 = 动作发出契约的机器面单一源。
 EMITTED_FIELDS: tuple[str, ...] = ('cw4_counters',)
 
-#: sess_* 策略披露族成员封闭清单(定案 C4/§2.4;11 个 sess_ 前缀透传字段
-#: + 1 个非前缀披露字段 p1_downgrade_active,共 12;sess_p1_pair 不属本族
-#: ——归行结构「决策记录」段)。**首批发出不含**,按消费需求逐批接入调用;
-#: 成员增删 = 改本清单 + 设计终版 §2.4 同步(封闭清单禁散落第二登记)。
+#: sess_* 策略披露族成员封闭清单(定案 C4/§2.4;10 个 sess_ 前缀透传字段
+#: + 1 个非前缀披露字段 p1_downgrade_active,共 11;sess_p1_pair 不属本族
+#: ——归行结构「决策记录」段;sess_framework 已随 transition_framework
+#: 字段消亡删键〔comp-structure-unification 3.3〕)。**首批发出不含**,
+#: 按消费需求逐批接入调用;成员增删 = 改本清单 + 设计终版 §2.4 同步
+#: (封闭清单禁散落第二登记)。
 DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
-    # 行结构 §2.1 已具名 5 个
-    'sess_framework',
+    # 行结构 §2.1 已具名 4 个
     'sess_dual_track',
     'sess_drought',
     'sess_commit_scores',

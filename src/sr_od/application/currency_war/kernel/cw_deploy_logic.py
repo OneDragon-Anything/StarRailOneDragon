@@ -196,7 +196,8 @@ def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
                              board_full: bool) -> bool:
     """转型域判别子(原始字段形态;单一源;design §2.0 三合取)。
 
-    = 分支①(终局阵容锁定,显式排除 p1_pair 分支②)∧ fp < 1.00 ∧ 板满。
+    = 终局阵容锁定 ∧ fp < 1.00 ∧ 板满(原配方对分支②已随配方决策层
+    退役消亡)。
     消费面 = mandate_v1 ``swap_transition_narrow_frame``(P88 买侧收窄
     谓词源)——判定只此一份,禁各消费位自写第二份合取;域语义与分支
     继承的完整论证见 git 历史(swap 机器纳入统一管理批前 docstring)。

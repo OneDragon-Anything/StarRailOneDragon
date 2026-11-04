@@ -109,8 +109,8 @@ class Comp:
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
 
-    # ===== 形态端口:OR 分支 + carry 在场条件 =====
-    # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
+    # 两字段缺省空 = 行为不变。静态注册表(希儿量子/过渡条目)
+    # 与建库自动填(TRANSITION_LIBRARY 点名件)为现行写方。
     # 希儿系对分支(P1 配方锁伪阵容)+ COMP_LIBRARY 静态套「希儿量子」
     # (P2+ 锁定路径经 get_comp 消费静态条目;档位单一源 =
     # SEELE_OR_REQS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
@@ -196,6 +196,16 @@ class Comp:
                     raise ValueError(
                         f'{self.name}: faction_reqs[{prio}][{bond!r}] '
                         f'= {need!r} 须为正整数(几人激活算达标)')
+        # ③ OR 承接键 ⊆ 档 0 键集(承接组 = 档 0 成型判据的「任一支
+        # 即达」形态,键必须在成型层有账——comp-structure-unification
+        # 3.3 落地;冲突源 pair_target_comp〔构造或键不在档 0 的伪阵容〕
+        # 已随配方决策层退役)
+        _or_keys = {k for k, _t in self.or_reqs}
+        _stray = _or_keys - set(self.faction_reqs.get(0, {}))
+        if _stray:
+            raise ValueError(
+                f'{self.name}: or_reqs 键 {sorted(_stray)} 不在档 0 '
+                '键集(承接键必须在成型层有账)')
 
     @property
     def core_faction_reqs(self) -> dict[str, int]:
@@ -350,15 +360,15 @@ V2_FAMILIES: tuple[str, ...] = (
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
 )
 
-# ===== 希儿系成型判据常量(注册表数据层;静态套与 pair 物化共用判据)=====
+# ===== 希儿系成型判据常量(注册表数据层;静态套与过渡条目共用判据)=====
 # 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
 # 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
 # :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
 # methodology.md:133/170 写量 3)挂玩家确认(同一待办口径,不由
-# 实现批裁决),确认后改档动本常量(配对消费位随 import 自动跟随),
-# **另须同步第三表面** `_seele_system_support` 的 ÷2 分母(待办指针 =
-# cw_intention._seele_system_support docstring「同步回改本式分母」节;
-# 公式体用字面量 2 不消费本常量,接入调用守卫钉不住,漏改=两端口档位漂移)。
+# 实现批裁决),确认后改档动本常量(消费位随 import 自动跟随)。
+# (原「另须同步 _seele_system_support ÷2 分母」第三表面已随配方决策层
+#  退役删除——支持度端口消亡,分母同步面不复存在;comp-structure-
+#  unification 3.3。)
 # carry = 同表行第一合取支「希儿在场」。
 # ⚠️ 单一源归属声明:真源归位本文件(注册表数据层——静态套
 # 条目在 import 期消费,常量若留 cw_intention 会反向 import 成环)。

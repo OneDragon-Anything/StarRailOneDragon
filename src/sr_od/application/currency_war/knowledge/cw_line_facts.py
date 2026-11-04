@@ -47,8 +47,8 @@ SEELE_SYSTEM: str = '希儿系'
 
 
 def bond_members(bond: str) -> set[str]:
-    """单羁绊成员名集(阵营∪流派全成员口径,与 cw_intention._pair_members
-    同式;希儿系=希儿∪两放大器阵营成员)。遥测 ρ 实测的在店判据单一源。
+    """单羁绊成员名集(阵营∪流派全成员口径;希儿系=希儿∪两放大器阵营
+    成员)。遥测 ρ 实测与过渡条目成员展开的在店/计分判据单一源。
 
     公开化(统一保护集迭代 changes/2026-10-15-unified-protection-set
     design.md §2.1):跨层成员枚举消费本公开口,禁各消费层同式复写第
