@@ -5,7 +5,7 @@
 > 三面拆分后,买面 buy_members = 锁定采购集(`locked_buy_membership`,
 > 含阵营∪流派全集)而卖免面 k_members 保持 core∪shared 口径,由此产生的
 > 「missing 恒非空 ⇒ M4 每帧卖 1 买 1、净金≈0、drought 被买动作重置」循环。
-> 代码锚:`shop.py:487`(missing 定义,按名记持)/`:509-520`(M4 腾位)/
+> 代码引用:`shop.py:487`(missing 定义,按名记持)/`:509-520`(M4 腾位)/
 > `:522-538`(M2 义务买)/`:496-506`(`_on_target_buy` 买即重置 drought);
 > `mandate.py:156-195`(`check_irreversible`/`fuel_sell_candidates`,
 > 燃料集 = 1★ ∧ zero_overlap(k_members) ∧ 无后台效果);

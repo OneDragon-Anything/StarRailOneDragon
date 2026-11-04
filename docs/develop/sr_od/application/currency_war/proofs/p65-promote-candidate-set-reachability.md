@@ -9,12 +9,12 @@
 > 裁决:**R2 结论「pair 恒含列车同行/持续伤害活载体键」在生产展开语义下
 > 恢复成立,本单篇 v1 的适用域收窄声明撤回**(§4.1,v1 误按字面键口径
 > 复算所致;复核批判定 + 生产函数直跑实证)。
-> 代码锚(符号锚;v1 行号锚已漂移作废,M1):
+> 代码引用(符号名引用;v1 行号引用已漂移作废,M1):
 > - `cw_intention.promote_candidates`——**晋升候选集生产实装**(设计稿
 >   §2.1 公式实现,G8 观测载体在用,零行为变更);体系键交集消费
 >   `_pair_bond_keys`(键侧展开:希儿系→量子同频+贝洛伯格,与
 >   `_pair_members`/`locked_faction_scope` 同口径,不另造键展开);
-> - `cw_intention.update_intention` 位面 2 移交候选段(符号锚 = `_p2_handoff`
+> - `cw_intention.update_intention` 位面 2 移交候选段(符号名引用 = `_p2_handoff`
 >   支的 `cands` 列表推导)——移交候选判据集;
 > - `_core_reachable`(可达判据)/ `line_completion_feasibility`(G 判据,
 >   阈值 = `cw_registry.revoke_miss_tolerance_eps` 既有单一源)/

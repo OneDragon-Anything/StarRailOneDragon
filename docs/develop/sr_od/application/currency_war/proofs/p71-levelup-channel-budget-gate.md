@@ -2,7 +2,7 @@
 
 > 状态:**已证(结构命题三件:a=分域边际直证、b=判据式构造、c=个案定性;零新自由参数;数值面=注册表/XP 表直调,禁止凭空填值;2026-09-06 正式化)**
 > 立项材料指针:sim62③ + sim72③(升级通道无预算约束,两批同族;判定报告=`未入库临时档案(git 外)currency_war/20260906-131356-simfind/report.md` §问题3,个案=局 73002 p2r3)
-> 代码锚:`kernel/cw_state.py`(`XP_TO_NEXT_LEVEL`/`XP_PER_BUY`,2026-08-31 用户已最终确认的表值)、`data/cw_shop_odds.py`(`REFRESH_PROB` V4.4 权威表+超几何 E)、`strategies/impl/mandate_v1/criteria/levelup.py`(`spend_unified` P48 整买 / `lv9_stop` / `level_spend_blocked` 血预算停付〔已随 hp 判据族删除删除,锚按命题成文时点读〕——**无富余段预算闸的适用范围缺口所在**)、`mandate.py` M3 批动作发出点(可负担性检查 = 唯一金量约束)
+> 代码引用:`kernel/cw_state.py`(`XP_TO_NEXT_LEVEL`/`XP_PER_BUY`,2026-08-31 用户已最终确认的表值)、`data/cw_shop_odds.py`(`REFRESH_PROB` V4.4 权威表+超几何 E)、`strategies/impl/mandate_v1/criteria/levelup.py`(`spend_unified` P48 整买 / `lv9_stop` / `level_spend_blocked` 血预算停付〔已随 hp 判据族删除删除,引用按命题成文时点读〕——**无富余段预算闸的适用范围缺口所在**)、`mandate.py` M3 批动作发出点(可负担性检查 = 唯一金量约束)
 > 数值自检脚本:`tools/cw/proofs/p71_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p71_check.py`,全部断言通过)
 > 编号已定案:math_proofs 索引顺延至 P71(索引末位 P70,编号核对批规则下本号成立)。
 
@@ -90,7 +90,7 @@ EV(批) = ΔV_band + ΔV_pop − s − L(g, s, R, Ī)
 5. **峰值级随版本变**:REFRESH_PROB 表为 V4.4 权威采集,游戏改概率表即失效须重验(P10 教训:禁字面量第二份,脚本直调注册表);
 6. **域标志位交互未裁**:域内豁免与本闸 (3) 的优先序——本命题数学面只证 (3) 的必要性;域内帧是否豁免 (3) 是设计裁决(sim A/B 同批定),数学上域内豁免 = 接受 L>0 入账,不得免账。
 
-## 数字(脚本复算锚)
+## 数字(脚本复算引用)
 
 | 项 | 值 | 出处 |
 |---|---|---|

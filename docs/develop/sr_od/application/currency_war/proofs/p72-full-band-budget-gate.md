@@ -3,7 +3,7 @@
 > 状态:**已证(结构命题;零新自由参数;数值面=注册表/XP 表/利息规则直调,禁止凭空填值)**
 > 立项材料:g_20260906_182456 §B3(病灶帧定量:2r2 决策帧 HP=45>危机带线 41、账面 g=45→花 43=买卡 11+LevelUpShop×8=32 整批买齐 lv7→8、花后 g=5——中间段「血还行、钱不多不少」无人管账;**收益兑现链实证:升级后至 2r6 局终 4 轮 deployed 恒=7,第 8 位空置,纯升级收益=0**);
 > 上位证明:docs/develop/sr_od/application/currency_war/proofs/p71-levelup-channel-budget-gate.md(P71-b 富余段预算闸)。**本命题是 P71-b 适用范围的推广,不是推翻**:富余段判据式逐字退化回 P71-b (3)。
-> 代码锚〔**按命题成文时点读**——现行态收尾注（2026-10-28 hp 判据族删除批）:`levelup_budget_gate`/`blood_budget_levelup_blocked`/`p2_crisis_band`/`cw_state` XP 表锚均已删（xp 表迁 `kernel/cw_state.py` 现行键名、血面载体随 hp 判据族删除、量闸随触发统一批删除）,现行资格面 = `upgrade_gate_verdict` 六道门序（`criteria/levelup.py`）;仍服役锚 = `kernel/cw_economy.py`(`interest`/`saturation_line`/`loss_exact`)与 `criteria/refresh.py` `r2_card_reserve`〕:`criteria/levelup.py` `levelup_budget_gate`(P71-b (3) 实现;适用范围限定 g≤g* vacuous 的缺口所在,levelup.py:105-110)、`statefn/interest.py`(利息规则单一源重导出)→ `kernel/cw_economy.py`(`interest` cw_economy.py:78-80、`saturation_line` :112-114、`loss_exact` P47 一般式 :135-154)、`criteria/refresh.py` `r2_card_reserve`(ρ/Σ预留单一源,refresh.py:99-144)、`kernel/cw_discipline_rules.py`(`blood_budget_levelup_blocked` :224-270、`p2_crisis_band` :296-313、`plane_last_battle` :193-198)、`kernel/cw_state.py`(`XP_TO_NEXT_LEVEL` :44、`XP_PER_BUY` :43)。
+> 代码引用〔**按命题成文时点读**——现行态收尾注（2026-10-28 hp 判据族删除批）:`levelup_budget_gate`/`blood_budget_levelup_blocked`/`p2_crisis_band`/`cw_state` XP 表引用均已删（xp 表迁 `kernel/cw_state.py` 现行键名、血面载体随 hp 判据族删除、量闸随触发统一批删除）,现行资格面 = `upgrade_gate_verdict` 六道门序（`criteria/levelup.py`）;仍服役引用 = `kernel/cw_economy.py`(`interest`/`saturation_line`/`loss_exact`)与 `criteria/refresh.py` `r2_card_reserve`〕:`criteria/levelup.py` `levelup_budget_gate`(P71-b (3) 实现;适用范围限定 g≤g* vacuous 的缺口所在,levelup.py:105-110)、`statefn/interest.py`(利息规则单一源重导出)→ `kernel/cw_economy.py`(`interest` cw_economy.py:78-80、`saturation_line` :112-114、`loss_exact` P47 一般式 :135-154)、`criteria/refresh.py` `r2_card_reserve`(ρ/Σ预留单一源,refresh.py:99-144)、`kernel/cw_discipline_rules.py`(`blood_budget_levelup_blocked` :224-270、`p2_crisis_band` :296-313、`plane_last_battle` :193-198)、`kernel/cw_state.py`(`XP_TO_NEXT_LEVEL` :44、`XP_PER_BUY` :43)。
 > 数值自检:本文数字经直调注册表复算并在对抗审返回重做批**全量重跑**(`expected_refreshes_for_card`/`loss_exact`/`refresh_prob`/`net_income`/`r2_card_reserve` 等,勘误与复算声明见 §数字表头)。
 
 ## 0. 病灶帧与适用范围(为什么 P71-b 不够)
@@ -23,7 +23,7 @@ P71-b 闸的推导前提是「富余段内 L≡0」(P70 零利息死仓),故适�
 - `ρ`、`Σ预留` = `r2_card_reserve` 同函数同参双消费(P54 §② / P71-b 口径,refresh.py:99-144);
 - `L(g,s,R,Ī)` = `loss_exact`(P47 双轨迹递推一般式,cw_economy.py:135-154);`R = r_remaining` 视界〔视界=剩余战斗数〕、`Ī = net_income`(R09 收入日程现算,均禁写死);
 - `ΔV_band = c_eff·(E(D|L) − E(D|L+1))`(P39 段带口径;c_eff=刷价现读,E=超几何期望刷次,`expected_refreshes_for_card`);
-- `ΔV_pop = w·C_realize`(P39 修订式的**兑现链化**;C_realize 两支前提定义见 §2.3,w 只消费符号结构、量级不入比较式;同步锚对 = `schedule_upgrade` 分支①/`_upgrade_ul_threshold_ok` :705-710)。
+- `ΔV_pop = w·C_realize`(P39 修订式的**兑现链化**;C_realize 两支前提定义见 §2.3,w 只消费符号结构、量级不入比较式;同步引用对 = `schedule_upgrade` 分支①/`_upgrade_ul_threshold_ok` :705-710)。
 
 ### P72(全段升级支出闸判据式)
 
@@ -80,7 +80,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
 - 支出 A:花后 g−s,首轮利息 = ⌊(g−s)/10⌋ 档;
 - 首轮利息损失 `t₀ = τ(g) − ⌊(g−s)/10⌋ ≥ 0`;后续轮两轨迹同收 Ī,利息差随 A 轨金位回补而衰减、随 B 轨触顶而放大,精确值由 `loss_exact` 逐轮递推(P47 命题 2),**无闭式必要、禁在判据侧复写递推**(单一源纪律)。
 
-界(用于量级论证,非判据消费):`t₀ ≤ L ≤ R·cap`。直调复算锚(§数字表):L(34,32,15,5)=23(帧 B 口径)、L(8,4,8,7)=4、L(24,20,7,7)=**13**。中间段 L 严格依赖 (g,s,R,Ī) 四元组——这就是「非富余段利息项不是常数」的精确含义,与富余段 L≡0(P70)形成分域。
+界(用于量级论证,非判据消费):`t₀ ≤ L ≤ R·cap`。直调复算引用(§数字表):L(34,32,15,5)=23(帧 B 口径)、L(8,4,8,7)=4、L(24,20,7,7)=**13**。中间段 L 严格依赖 (g,s,R,Ī) 四元组——这就是「非富余段利息项不是常数」的精确含义,与富余段 L≡0(P70)形成分域。
 
 **购买力下界**:ρ+Σ预留 的全段同一性由 P54 floor 语义直接继承——「满利息档上至少一张命中卡可买」的资格在中间段同样存在(命中卡不挑你的金位在哪个段),且 P71-b 必要性子情形②(升级挤占买卡分支可行域)在中间段逐字成立:花后 < ρ+Σ预留 ⟹ 同轮买卡分支失去执行资格。故购买力下界进入 (3a) 与 (3b) 尖括号项,全段无豁免。
 
@@ -96,7 +96,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
   C_realize   := 1[板满] · ( C_realize_① ∨ C_realize_② )
   ```
 
-  两支都是**决策帧可构造判定的谓词**(≥ 非 >:g−s 恰等于最低候选价时②支取真),不是概率估计:①P39 分支①谓词,同步锚对=`schedule_upgrade` 分支①/`_upgrade_ul_threshold_ok` :705-710;②**裁决位=`deploy_eligible`,真单一源=`kernel/cw_deploy_logic.has_deployable`(cw_deploy_logic.py:207-237,动作发出×执行单一源)**——部署面合格判据本尊。⚠ 单一源锚勘误:早稿锚 `pop_slot` 的 `buyable_candidate` 放宽支(criteria/levelup.py:216-217)是错的——该支实为「备战席在场 ∨ 买得起」的 OR,真实计算在 shop.py:853-857=「阵容内∧affordable」,**不含部署合格判据**;按它写码会把「阵容内∧买得起」当部署合格,恰好复活兑现链化要杀的虚记收益。pop_slot 放宽支降级为**融资分支**叙述:只保「买得起」(与 ρ 预留同侧的融资前提),不保「合格可部署」。②支金条件只是融资前提,裁决在 `has_deployable`;实现批应接 `has_deployable` 作闸与部署分支的**共用谓词**(该接入调用现不存在,见 §5 边界 3——两处说法由此统一:谓词真源已在,接入调用未落)。两支全断 ⟹ C_realize=0 构造性精确零。②支的融资由 (3a) 的 ρ 预留**结构性保障**:ρ 恰是「一张命中卡」的预留,保住 (3a) 即保住兑现链融资——预算闸与收益侧在这一点上是同一枚硬币。
+  两支都是**决策帧可构造判定的谓词**(≥ 非 >:g−s 恰等于最低候选价时②支取真),不是概率估计:①P39 分支①谓词,同步引用对=`schedule_upgrade` 分支①/`_upgrade_ul_threshold_ok` :705-710;②**裁决位=`deploy_eligible`,真单一源=`kernel/cw_deploy_logic.has_deployable`(cw_deploy_logic.py:207-237,动作发出×执行单一源)**——部署面合格判据本尊。⚠ 单一源引用勘误:早稿引用 `pop_slot` 的 `buyable_candidate` 放宽支(criteria/levelup.py:216-217)是错的——该支实为「备战席在场 ∨ 买得起」的 OR,真实计算在 shop.py:853-857=「阵容内∧affordable」,**不含部署合格判据**;按它写码会把「阵容内∧买得起」当部署合格,恰好复活兑现链化要杀的虚记收益。pop_slot 放宽支降级为**融资分支**叙述:只保「买得起」(与 ρ 预留同侧的融资前提),不保「合格可部署」。②支金条件只是融资前提,裁决在 `has_deployable`;实现批应接 `has_deployable` 作闸与部署分支的**共用谓词**(该接入调用现不存在,见 §5 边界 3——两处说法由此统一:谓词真源已在,接入调用未落)。两支全断 ⟹ C_realize=0 构造性精确零。②支的融资由 (3a) 的 ρ 预留**结构性保障**:ρ 恰是「一张命中卡」的预留,保住 (3a) 即保住兑现链融资——预算闸与收益侧在这一点上是同一枚硬币。
 - **ΔV_band(概率移位)**:升级对锁定线缺件费档的期望刷次移位,金计价 `c_eff·ΔE`(E 表直调,§数字)。**零标定**:c_eff=刷价真值(游戏定义 2 金)、E=池参数超几何精确。
 - **到账延迟与血面口径〔(2) 血面判据已随 hp 判据族删除删除——本条按命题成文时点读;口径勘误与掉血读数 forensic 部分留档〕**(期望掉血 vs 本局掉血分布):升级收益兑现 ≥1 战之后——血面原由 (2) P21 判据 h > d·L_c 独立管辖;时面由 R=r_remaining 视界进入 L 与 (4) 比较承担。**已证边界(g_20260906_182456 实证)**:L_c = vd_p2_loss=20.05 是**全场期望**条件败局伤害,危机带线 41=ceil(2×L_c) 的分母是期望;词缀局单轮实际掉血远超期望——HP=45 帧血线门全过,但一场实际败战即跌穿 21 停升级线。数据源口径注(F11):本局 2-4 掉血有两个读数——对局档案 `loss_nodes` 直读 delta=**−19**(31→12 跨节点差),复盘文档 B2 的 **−33** 是「同轮补给 +14 与战斗净掉血并入同轮」口径(45 为补给后值),两者都对、口径不同,引用须注明,禁按 loss_nodes 复核 −33 判为伪造数。(v9 勘误指针,:档案 schema v9 起合成行退出步进链,loss_nodes 直读即战斗分量真值 −19,v8 时代直读 −33 为合成行的假值,已消除,净额 rounds.hp_delta 与直读在 v9 下一致;存量档案经任一读取自动重装配为 v9,历史文档引用的 −33 以重装配后 −19 为准——本注双读数说明仅对 v8 及以前档案成立。)即「血线门未拦」≠「兑现无险」,P72 的血面合取在词缀局存在**系统性低估兑现风险**的口径缺口。本命题的处置:①判据式形态不变(换 L_c 口径需要「本局条件掉血分布」模型,是标定/建模项,不是判据结构项);②**合规修复路径(按 04_survival_budget §7 裁定分层)**:数据面——每战斗节点实测净掉血序列(结算屏 hp 分量)有 §7#2 授权,可作标定输入;判定面——「实测掉血 fail-closed 升档血线」属掉血趋势信号,掉血三分支判定(`BloodAlarmTracker.alarm_active`,≥20/≥30)已按 §7#8 **裁定停用**(阈值硬编码、源自已作废公式 11.32−0.37·rung,非注册表常数——本证明早稿「注册表常数单一源」声称有误,勘误),**禁止搭车复用**,须按 §7#8 走 λ_death 概率侧硬闸门**新立项**;③正式登记待办:词缀局 L_c 修正(条件掉血分布标定)进 sim 标定流程(登记形态见 §5 边界 8 指针),标定前 (2) 的口径边界如实声明。
 
@@ -116,7 +116,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
 
 ### 2.5 与 P21/危机带/ALL IN 豁免的合取关系(收尾注)
 
-血面合取支（原表四行中的「血面·到账」/「血面·危机带」/「血面·口径」与「死亡线地板」）已随 hp 判据族删除删除（2026-10-28 用户裁定：hp 是对局结果不是策略决策输入，策略权威版本 00_framework §3）——原合取表按命题成文时点读，内容归 git 历史。现行合取面 = 升级资格门六道门序（经验批支付门〔币种通式:血本位局「买不买得起」的支付能力检查〕/资金线门,判定单一源 = `criteria/levelup.upgrade_gate_verdict`,11_shop_decisions §2）。ALL IN 豁免语义存活于资金线门出辖（终局域花光 + 买断制下界 0）。伤害锚 vd_p2_loss 现为注册表孤儿标定数据（04_survival_budget §2 孤儿申报）。
+血面合取支（原表四行中的「血面·到账」/「血面·危机带」/「血面·口径」与「死亡线地板」）已随 hp 判据族删除删除（2026-10-28 用户裁定：hp 是对局结果不是策略决策输入，策略权威版本 00_framework §3）——原合取表按命题成文时点读，内容归 git 历史。现行合取面 = 升级资格门六道门序（经验批支付门〔币种通式:血本位局「买不买得起」的支付能力检查〕/资金线门,判定单一源 = `criteria/levelup.upgrade_gate_verdict`,11_shop_decisions §2）。ALL IN 豁免语义存活于资金线门出辖（终局域花光 + 买断制下界 0）。伤害引用 vd_p2_loss 现为注册表孤儿标定数据（04_survival_budget §2 孤儿申报）。
 
 ## 3. 防恒拒论证(开局追级帧必须可过)
 
@@ -140,7 +140,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
 
 **帧 C|ALL IN 末战:位面 2 第 7 轮 boss,g=60,hp=1,lv8→9 部分击 s=20** —— plane_last_battle 判真 ⟹ (2) 豁免、(3) 全支让位(§2.5:R=0 机会成本恒零)⟹ 放行花光。✓ 与 [18] 先例一致。
 
-**帧 D|P71-c 回归锚(富余段)**:g=82,15 连 60 金(P71-c 个案):τ(82)=5 ⟹ (3a):82−60=22 ≥ 50+4=54? ✗ 拒,与 P71-b 同判。✓ 退化一致性实证。
+**帧 D|P71-c 回归引用(富余段)**:g=82,15 连 60 金(P71-c 个案):τ(82)=5 ⟹ (3a):82−60=22 ≥ 50+4=54? ✗ 拒,与 P71-b 同判。✓ 退化一致性实证。
 
 **帧 E|危机带内:位面 2,hp=38,g=45,lv7→8 s=52 不可负担;s=20 折算帧** —— (2):hp=38 ≤ 41(crisis d=2)⟹ 让位停付,四合取在 (2) 支即闭,(3) 不再评估。✓ 分工不重叠。
 
@@ -153,7 +153,7 @@ P72 的做法:把「完备机会成本」显式写成两支:
 5. **τ(g) 保档语义:强读 vs 弱读(强一档读法)的分岔如实声明**。弱读变体 `(3a-weak): g−s ≥ 10·max(τ(g)−1,0)+ρ+Σ预留` 允许蚀一档。**强读的约束性理由(硬论证)**:弱读在富余段退化为 `g−s ≥ g*−10+ρ+Σ预留`,**破坏本命题自己的「(3a) 富余段逐字退化回 P71-b (3)」**(P71-b floor 是满档 g* 非 g*−10)——退化一致性约束唯一选定强读。分岔实例(直调):g=42,s=8,ρ+Σ预留=4:强读 34≥44 拒 / 弱读 34≥34 过。但强读相对弱读多拒的中间段帧(EV 可能仍正)是**保守姿态选择**(定理沉默带内拒付=姿态,04 §7 的方针条款),非数学背书;裁决通道 = **sim A/B(强读分支 vs 弱读+完备账分支)**,玩法文档不裁决此分岔;
 6. **sim/live 帽分歧与概率表版本**:同 P71 边界 2/5(LEVEL_CAP、REFRESH_PROB V4.4 权威表),数值面随游戏版本变须重验;
 7. **推迟语义的节奏代价未计价**:闸拒=推迟,推迟本身损失等级收益的时间价值——本命题与 P71-b 同样不建「推迟成本」模型(它需要等级-胜率的因果账,超出判据式适用范围),系统性推迟伤害若出现,归 sim 交叉核对分诊。推迟目标的收敛性见 §1(存在不动点,无移动靶发散);
-8. **词缀局血面口径缺口(登记待办——已随 hp 判据族删除终结,留档读)**:危机带/停升级线〔均已删〕的分母是全场期望掉血,词缀局实际掉血分布右偏(本局实测 §2.3 口径注),血面合取在该类局系统性偏松。原修复路径按 04_survival_budget §7 分层(该表已重造)——判定面的掉血趋势信号属 hp 判据族,已随裁定消失;若未来经 λ_death 概率侧硬闸门**新立项**,标定输入(每战斗节点实测净掉血序列,结算屏 hp 分量)可按 00_framework §3 观测面取数。标定项(条件掉血分布→L_c 修正)随判据族删除失去消费对象,登记终结;伤害锚数据现为孤儿标定候选(04 §2)。
+8. **词缀局血面口径缺口(登记待办——已随 hp 判据族删除终结,留档读)**:危机带/停升级线〔均已删〕的分母是全场期望掉血,词缀局实际掉血分布右偏(本局实测 §2.3 口径注),血面合取在该类局系统性偏松。原修复路径按 04_survival_budget §7 分层(该表已重造)——判定面的掉血趋势信号属 hp 判据族,已随裁定消失;若未来经 λ_death 概率侧硬闸门**新立项**,标定输入(每战斗节点实测净掉血序列,结算屏 hp 分量)可按 00_framework §3 观测面取数。标定项(条件掉血分布→L_c 修正)随判据族删除失去消费对象,登记终结;伤害引用数据现为孤儿标定候选(04 §2)。
 
 ## 6. 零新自由参数核对表
 
@@ -162,18 +162,18 @@ P72 的做法:把「完备机会成本」显式写成两支:
 | τ(g)=min(⌊g/10⌋,cap) | `kernel/cw_economy.py:78-80`(`interest` 同式拆档,禁第二实现) | 游戏定义量(利息量化) |
 | 10·τ(g) | 上项×10(利息档粒度=10金,同 `saturation_line` :112-114 的机制) | 游戏定义量派生 |
 | g*=10·cap | `kernel/cw_economy.py:112-114`(`saturation_line`;cap 经 `cap_resolved_of_session` :96-109) | 游戏定义量 |
-| ρ、Σ预留 | `criteria/refresh.py:99-144`(`r2_card_reserve`,锚 CHARACTERS cost+refresh_prob) | 游戏定义量(P54 §②) |
+| ρ、Σ预留 | `criteria/refresh.py:99-144`(`r2_card_reserve`,引用 CHARACTERS cost+refresh_prob) | 游戏定义量(P54 §②) |
 | L(g,s,R,Ī) | `kernel/cw_economy.py:135-154`(`loss_exact`,P47);R=`cw_plane_table.r_remaining`;Ī=`net_income` :163-176 | 已证单一源 |
 | s=U_L | `XP_TO_NEXT_LEVEL`/`XP_PER_BUY`(`cw_state.py:43-44`)+`clicks_to_next_level`/`xp_click_cost`(`cw_economy.py:267-283`) | 游戏定义量(2026-08-31 用户已最终确认表) |
 | ΔV_band=c_eff·ΔE | `expected_refreshes_for_card`(超几何,`cw_shop_odds`)+刷价真值 2 金(`SHOP_REFRESH_COST` :376) | 注册表直调,零标定 |
-| ΔV_pop=w·C_realize | ①支谓词:P39 修订式,同步锚对 = `schedule_upgrade` 分支①(`cw_economy.py:794-797`)/`_upgrade_ul_threshold_ok` :705-710;②支谓词:`kernel/cw_deploy_logic.has_deployable`(:207-237,动作发出×执行单一源,勘误锚——早稿 pop_slot 放宽支系融资分支非合格判据,见 §2.3) | 已证符号结构,w 不计值 |
+| ΔV_pop=w·C_realize | ①支谓词:P39 修订式,同步引用对 = `schedule_upgrade` 分支①(`cw_economy.py:794-797`)/`_upgrade_ul_threshold_ok` :705-710;②支谓词:`kernel/cw_deploy_logic.has_deployable`(:207-237,动作发出×执行单一源,勘误引用——早稿 pop_slot 放宽支系融资分支非合格判据,见 §2.3) | 已证符号结构,w 不计值 |
 | (2) 血面 h>d·L_c | P21〔已删,档案 = p23 附录〕;`blood_budget_levelup_blocked`、`p2_crisis_band`(均已随 hp 判据族删除删除,符号归 git 历史) | 已证单一源〔判据面已删〕 |
 | ALL IN 豁免谓词 | `plane_last_battle`(`cw_discipline_rules.py:193-198`) | 既有单一源 |
 | [·]⁺ 尖括号 | 纯代数(欠款计价),无常数 | 结构 |
 
 **无任何新数字进入决策位。** w 的处置见 §2.3 标定论证(支配性消参,非登记的待办)。
 
-## 7. 数字(脚本复算锚)
+## 7. 数字(脚本复算引用)
 
 > **数值自检声明(勘误入册)**:本文全部引用数值已于对抗审返回重做批经单一命令直调重跑(`refresh_prob`/`expected_refreshes_for_card`/`interest`/`saturation_line`/`loss_exact`/`net_income`/`XP_TO_NEXT_LEVEL`/`r2_card_reserve`,PYTHONPATH=src)。勘误两笔:①L(24,20,7,7) 早稿 **4 系手算未跑,直调=13**(已同步 §2.2/§3/本表,自省:首批仅利息规则网格与 E 表真跑,构造帧 L 值部分手算——现全量重跑,手算值零残留);②帧 B ρ 早稿按「最低费 2 金」推得,直调 `r2_card_reserve`(帧内成员集全 1★)=1(三月七 1 费),已同步 §4。早稿曾出现的三口径 81/79/76 已统一为 82(见下,L/Ī/ρ 三处口径修正后的终值)。
 
@@ -202,4 +202,4 @@ P72 的做法:把「完备机会成本」显式写成两支:
 
 - **P71**(上位命题:富余段预算闸,本命题推广其适用范围;(1)(2)(4) 逐字共享)、**P39/P40**(ΔV 分解与通道比较)、**P48**(整买与 Leontief 批不可拆)、**P47**(L 一般式单一源)、**P54**(ρ/Σ预留 floor 语义)、**P70**(富余段 L≡0)、**P21**(血面到账框架)、**[18]/plane_last_battle**(ALL IN 豁免);
 - g_20260906_182456 §B3(立项病灶帧;复盘文档 `未入库临时档案(git 外)currency_war/replay/matches/reviews/g_20260906_182456.md`,候选修复项 C2 的数学化);
-- 实现提示(非本批):`levelup_budget_gate` 的 `gold <= g_star: return True` 分支按本命题 (3) 替换;ALL IN 豁免支新增;同步锚对谓词消费 `schedule_upgrade` 分支①同款。
+- 实现提示(非本批):`levelup_budget_gate` 的 `gold <= g_star: return True` 分支按本命题 (3) 替换;ALL IN 豁免支新增;同步引用对谓词消费 `schedule_upgrade` 分支①同款。
