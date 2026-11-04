@@ -8,9 +8,9 @@
 
 ## 2. 逻辑态域集
 
-容器(GameState,游戏状态对象,下同)**零写**(零写族申报):上报函数 = `zero_writes.py::report_action_open_box_param`(**零写族**集中申报,函数体恒零容器写)——终结化改造,结束判定先行返回主循环(返回主循环),不经逻辑态写;腾位/到账事实由结束后的下一入口完整观察覆盖(零窗口:终结 = 发出即本次访问结束,同一访问内无后续帧消费)。箱不消失,消耗在选卡确认(申报 = 函数 docstring)。
+状态容器(GameState)(GameState,游戏状态对象,下同)**零写**(零写族申报):上报函数 = `zero_writes.py::report_action_open_box_param`(**零写族**集中申报,函数体恒零字段写操作)——终结化改造,结束判定先行返回主循环(返回主循环),不经逻辑态写;腾位/到账事实由结束后的下一入口完整观察覆盖(零窗口:终结 = 发出即本次访问结束,同一访问内无后续帧消费)。箱不消失,消耗在选卡确认(申报 = 函数 docstring)。
 
-**触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进容器(观察读链 `read_bench_view` 识别期定 kind;决策分支 = mandate_v1 entry 开箱分支读容器 bench 首个 supply_box 槽,分支顺序 box 优先于典籍)。
+**触发物识别**(备战观察链):补给箱占席事实经 bench 槽位 `kind='supply_box'` 进状态容器(观察读链 `read_bench_view` 识别期定 kind;决策分支 = mandate_v1 entry 开箱分支读状态容器 bench 首个 supply_box 槽,分支顺序 box 优先于典籍)。
 
 ## 3. 确定面转移规则(逐条)
 
@@ -25,7 +25,7 @@
 
 ## 5. 拒绝语义
 
-无箱 / 指定槽无箱 = 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。容器零写语义下无 `applied=False` 拒绝形态。
+无箱 / 指定槽无箱 = 未发出(round 结果失败态,观察-执行竞态),返回主循环重新观察重派;`action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);validate 参数非法(slot 越界)= 发出前输入契约拒绝。状态容器零写语义下无 `applied=False` 拒绝形态。
 
 ## 6. kernel 符号锚
 
@@ -33,9 +33,9 @@
 
 ## 7. 语义验证
 
-OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即返回主循环,下一入口完整观察覆盖腾位/到账真值)。触发物识别 = 容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
+OpenBox = **零写族成员**(登记面申报 = `zero_writes.py`,行为测试 = `test_cw_unified_action_2a` 动作类型覆盖测试零写集断言:write_seq 不变);终结化语义由注册表 `terminal=True` 承载(执行即返回主循环,下一入口完整观察覆盖腾位/到账真值)。触发物识别 = 状态容器 bench 槽 kind 细分(mandate_v1 决策面 bench kind 分派用例)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 备战期(占席道具只在备战画面可见可点);开箱是腾位类动作之一(占席道具三件 = 补给箱/秘密典籍/书册卡,腾位义务先于部署/上阵发出)。
 

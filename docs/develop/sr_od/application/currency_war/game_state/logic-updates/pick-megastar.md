@@ -1,6 +1,6 @@
 # 盛会之星选择(PickMegastar)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
 
 ## 1. 动作是什么
 
@@ -8,9 +8,9 @@
 
 ## 2. 逻辑态域集
 
-**容器(GameState,游戏状态对象,下同)零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
+**状态容器(GameState)(GameState,游戏状态对象,下同)零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **候选选中部分留在画面 op**:候选选中点击与 `chosen_megastar` 的写入在原体内交错(点击 → 写入 → 动画等待),该写入属单次逻辑写入豁免面——确认机械部分先收拢进本 op,候选选择部分随写入留在画面 op;`chosen_megastar`(容器 Field,值 = 强化角色名)由 `CwScreenMegastar` 在候选选中时点写入;
+- **候选选中部分留在画面 op**:候选选中点击与 `chosen_megastar` 的写入在原体内交错(点击 → 写入 → 动画等待),该写入属单次逻辑写入豁免面——确认机械部分先收拢进本 op,候选选择部分随写入留在画面 op;`chosen_megastar`(状态容器 Field,值 = 强化角色名)由 `CwScreenMegastar` 在候选选中时点写入;
 - **确认到账 grant**:无——原「到账登记」ConfirmMegastar 块已随两态制废除(`chosen_megastar` 的写入没有登记待办的环节);`ConfirmMegastar` 在 `register_confirm_arrival` 零写(`_overlay_confirm.py` 分道申报);
 - 候选选中建议不经本动作确认链外的第二载体;本 op = 确认钮单发。
 
@@ -34,9 +34,9 @@
 
 ## 7. 语义验证
 
-容器零写语义 = 「事件线选择非逻辑态通道」契约;`chosen_megastar` 真值 = 候选选中时点的写入 + 下一帧重入观察。无 M1 投影测试对象。
+状态容器零写语义 = 「事件线选择非逻辑态通道」契约;`chosen_megastar` 真值 = 候选选中时点的写入 + 下一帧重入观察。无 M1 投影测试对象。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 盛会之星 overlay 画面期;动作发出点 = 画面 op act 段经注册表工厂分派。
 

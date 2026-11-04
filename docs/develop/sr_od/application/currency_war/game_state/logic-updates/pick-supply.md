@@ -1,6 +1,6 @@
 # 补给选择(PickSupply)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一;本动作契约正本 = [flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一;本动作契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §4.5(PickSupply 行)。
 
 ## 1. 动作是什么
 
@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-**即时单相一口写**(用户裁定 2026-09-21;契约正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5;上报函数 = `kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,确认点击后一次调用写全部效果逻辑态,无「先发出、后落地核对」两相、无到账登记、无证据标志):
+**即时单相一口写**(用户裁定 2026-09-21;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5;上报函数 = `kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,确认点击后一次调用写全部效果逻辑态,无「先发出、后落地核对」两相、无到账登记、无证据标志):
 
 - **装备写入(确定面,0..n 件)**:写入集合 = `norm_item` + `extra_norm_items`(选中列首件 + 附加件,主件 → 附加件画面 y 序):非空件逐件 owned += 归一规范名(`gs.equips` write_logic,账面恒标准名)+ 获得后果链 `kernel/cw_effect_inventory.py::apply_equip_acquire_consequence`(命中后果表送角色入席 → bench + 级联);'' 件(归一未解析)逐件禁猜,equips 值不变、来源标记翻转 + `pick_supply_name_unresolved` 保留证据(fail-closed:错名不入账,已解析件照常入账,观察覆盖自愈);`char_name` 非空 ∧ 写入集合全空 = **零装备名分支**:该列零装备名读数(char-only 列 / 件名全失读,读链层面不可分),装备域零写 + 保留证据(日志行 `[cw-pick-supply]` + 返回 reason=`no_equip_column` 载体)、零缺陷——治理旧「主件空 = 未解析」对 char-only 列的伪缺陷归因;失配由 equips 整表观察下一帧暴露(结构性 evidence 记录行待 kernel evidence-only 通道,已登记为待办);
 - **角色入席(确定面)**:`char_name` 在场 → `kernel/cw_effect_inventory.py::grant_bench_unit_cascade`(入席 1★ + 合成级联,与商店购买同语义);
@@ -37,9 +37,9 @@
 
 ## 7. 语义验证
 
-行为测试 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接线)/ `test_obs_arch_event_screens.py`(chosen 确认即写),已登记路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
+行为测试 = `test_cw_supply_pick_immediate_report.py`(即时单相写序)/ `test_supply.py`(分层归一)/ `test_cw_supply_advance_wiring.py`(推进接入调用)/ `test_obs_arch_event_screens.py`(chosen 确认即写),已登记路径 = `sr-od-test/test/sr_od/application/currency_war/`;owned 真值 = 下一帧装备区读数观察覆盖。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 补给节点画面期;动作发出点 = 画面 op act 段经注册表工厂分派。
 

@@ -1,6 +1,6 @@
 # 投资选择两行(PickInvestStrategy / PickInvestEnv)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖两注册行**:两行同指一个 op 类 `CwActionPickInvestOp`(族文件先例 = [tools.md](tools.md)),机械执行部分同构,屏别差异在动作类型类与上报函数分派。语义单一源声明:策略支 = [../gain-chain.md](../gain-chain.md) §2.4、环境支 = 同篇 §2.1;字段级正本 = [../fields.md](../fields.md) §3.4.4(active_strategies)/ §3.4.3(active_env);本篇为接线面摘要,冲突以正本为准。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖两注册行**:两行同指一个 op 类 `CwActionPickInvestOp`(族文件先例 = [tools.md](tools.md)),机械执行部分同构,屏别差异在动作类型类与上报函数分派。语义单一源声明:策略支 = [../gain-chain.md](../gain-chain.md) §2.4、环境支 = 同篇 §2.1;字段级权威版本 = [../fields.md](../fields.md) §3.4.4(active_strategies)/ §3.4.3(active_env);本篇为接入调用面摘要,冲突以权威版本为准。
 
 ## 1. 动作是什么
 
@@ -21,18 +21,18 @@
 
 - `active_strategies`(名单+品质,fields.md §3.4.4)/ `active_env`(§3.4.3);
 - effect_inventory 登记写入(fields.md §5.1)/ chars、equips 赠卡写入(gain-chain.md §2.2/§2.3,经效果分派)。
-- 写入口 = 两上报函数(`kernel/cw_action_report/pick_invest_strategy.py::report_action_pick_invest_strategy_param` / `pick_invest_env.py::report_action_pick_invest_env_param`),即时单相:确认点击后一次调用写全部效果(用户裁定 2026-09-21;契约正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
+- 写入口 = 两上报函数(`kernel/cw_action_report/pick_invest_strategy.py::report_action_pick_invest_strategy_param` / `pick_invest_env.py::report_action_pick_invest_env_param`),即时单相:确认点击后一次调用写全部效果(用户裁定 2026-09-21;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
 
 ## 3. 确定面转移规则
 
-**策略支**(`gain_invest_strategy`,逐条一句,正本 = gain-chain.md §2.4):
+**策略支**(`gain_invest_strategy`,逐条一句,权威版本 = gain-chain.md §2.4):
 
 1. 无效载荷拒绝:归一后空/`'?'` = 零写 + 保留缺陷证据(`pick_invest_invalid_payload`);
 2. `active_strategies` 按名字去重追加(跳写后登记/效果分支照常,零幂等闸);
 3. 效果账本登记 best-effort(`register_strategy` + burst 桥 + 板面重写桥;`session=None` 跳过;失败 `gain_chain_strategy_register_failed` 不阻塞);
 4. `on_strategy_gained` 效果分派(赠卡入席:银狼 `gain_character` 链式时序 + 改件 `gain_equipment(rand=True)` 采样子链 + `on_equipment_gained` 回调)。
 
-**环境支**(`gain_invest_env`,正本 = gain-chain.md §2.1):`active_env` 注册 → portal 登记 best-effort(`register_portal_from_env`;`session=None` 跳过,失败保留证据不阻塞)→ `on_env_gained` 效果枚举。
+**环境支**(`gain_invest_env`,权威版本 = gain-chain.md §2.1):`active_env` 注册 → portal 登记 best-effort(`register_portal_from_env`;`session=None` 跳过,失败保留证据不阻塞)→ `on_env_gained` 效果枚举。
 
 ## 4. 随机面
 

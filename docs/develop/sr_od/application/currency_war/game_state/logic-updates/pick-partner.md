@@ -1,6 +1,6 @@
 # 列车伙伴选择(PickPartner)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
 
 ## 1. 动作是什么
 
@@ -8,9 +8,9 @@
 
 ## 2. 逻辑态域集
 
-**容器(GameState,游戏状态对象,下同)零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
+**状态容器(GameState)(GameState,游戏状态对象,下同)零写**——事件线选择非逻辑态通道([../action-logic-state.md](../action-logic-state.md) §6):
 
-- **选择落地观察写入**:`chosen_partner`(容器 Field,值 = 候选阵营名)= 画面 op `CwScreenPartner` 的观察写入边;
+- **选择落地观察写入**:`chosen_partner`(状态容器 Field,值 = 候选阵营名)= 画面 op `CwScreenPartner` 的观察写入边;
 - **确认到账 grant**:无——`ConfirmPartner` 在 `register_confirm_arrival` 零写(handler 既有写入位置承担,`_overlay_confirm.py` 分道申报);
 - **状态宿主在画面 op**:选中态标记(`op._pick_point`)与脉冲计数(`op._confirm_pulses`/`op._confirm_pending`)宿主 = 画面 op,本 op 经 `env.op` 消费——计数生命周期 = 节点级,画面 op 单一归属不变。
 
@@ -34,9 +34,9 @@
 
 ## 7. 语义验证
 
-容器零写语义 = 「事件线选择非逻辑态通道」契约;`chosen_partner` 真值 = 画面 op 的观察写入 + 下一帧重入观察。无 M1 投影测试对象。
+状态容器零写语义 = 「事件线选择非逻辑态通道」契约;`chosen_partner` 真值 = 画面 op 的观察写入 + 下一帧重入观察。无 M1 投影测试对象。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 伙伴选择 overlay 画面期;动作发出点 = 画面 op act 段经注册表工厂分派。
 

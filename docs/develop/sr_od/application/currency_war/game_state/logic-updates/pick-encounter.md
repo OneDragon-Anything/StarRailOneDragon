@@ -1,6 +1,6 @@
 # 遭遇选择(PickEncounter)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族分篇之一(同族共通面见各篇 §2 开头,机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族分篇之一(同族共通面见各篇 §2 开头,机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
 
 ## 1. 动作是什么
 
@@ -10,8 +10,8 @@
 
 写边(动作侧发出动作时立即写入,依据 = [../../screens/op-layer.md](../../screens/op-layer.md) §2.2 动作事实边界例外②):
 
-- **`chosen_encounter` = 动作侧发出动作时立即写入**:负责写入的代码 = `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`(确认点击后立即写),值组装 = 容器(GameState,游戏状态对象,下同)`encounter` payload 槽 `options[param.idx]`;payload 离屏/越界 = `_emit_defect` 保留证据不写(fail-closed——读不到数据/条件不满足时默认走保守分支不动作;`LogicOutcome(applied=False, reason='chosen_unresolved')`);兑现后清 = `kernel/cw_encounter_selection.py::claim_encounter_reward` 达标兑现写 `encounter_reward_claimed` 并清 chosen(单次消费)。字段规格单一源 = [../fields.md](../fields.md) §3.4.1。
-- 画面 op 零容器写:容器唯一触点 = 观察侧 `report_screen_encounter_obs` 调用(`CwScreenEncounter.observe`)。
+- **`chosen_encounter` = 动作侧发出动作时立即写入**:负责写入的代码 = `kernel/cw_action_report/pick_encounter.py::report_action_pick_encounter_param`(确认点击后立即写),值组装 = 状态容器(GameState)(GameState,游戏状态对象,下同)`encounter` payload 槽 `options[param.idx]`;payload 离屏/越界 = `_emit_defect` 保留证据不写(fail-closed——读不到数据/条件不满足时默认走保守分支不动作;`LogicOutcome(applied=False, reason='chosen_unresolved')`);兑现后清 = `kernel/cw_encounter_selection.py::claim_encounter_reward` 达标兑现写 `encounter_reward_claimed` 并清 chosen(单次消费)。字段规格单一源 = [../fields.md](../fields.md) §3.4.1。
+- 画面 op 零字段写操作:状态容器唯一触点 = 观察侧 `report_screen_encounter_obs` 调用(`CwScreenEncounter.observe`)。
 - 刷新不经本动作:刷新 = 终结动作返回主循环(op-layer.md §1.4),重进 = 入口重建,新选项由入口观察现读;原「同访问重决策、发出前覆盖写槽」形态已停用。
 
 ## 3. 确定面转移规则(逐条)
@@ -37,9 +37,9 @@
 
 ## 7. 语义验证
 
-写语义单一源 = 具名上报函数(发出动作时立即写入契约,上报函数族独占容器写,logic-updates/README.md 总则 1);验证测试 = `sr-od-test/test/sr_od/application/currency_war/test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,测试清单 = [../../screens/encounter.md](../../screens/encounter.md) §9)。
+写语义单一源 = 具名上报函数(发出动作时立即写入契约,上报函数族独占字段写操作,logic-updates/README.md 总则 1);验证测试 = `sr-od-test/test/sr_od/application/currency_war/test_cw_game_state_consume.py`(chosen 记录面:真选/离屏/越界,测试清单 = [../../screens/encounter.md](../../screens/encounter.md) §9)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 遭遇节点画面期;动作发出点 = 画面 op act 段经注册表工厂分派(`cw_action_registry.py` 事件线 pick 族行)。
 

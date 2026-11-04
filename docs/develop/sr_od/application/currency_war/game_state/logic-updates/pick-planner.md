@@ -1,6 +1,6 @@
 # 骇入策划选择(PickPlanner)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。**即时单相上报**(用户裁定 2026-09-21:动作 op 确认点击后一口写完整效果逻辑态;「先发出、后落地核对」的两相形态与证据标志已全域停用;契约正本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。**即时单相上报**(用户裁定 2026-09-21:动作 op 确认点击后一口写完整效果逻辑态;「先发出、后落地核对」的两相形态与证据标志已全域停用;契约权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.5)。
 
 ## 1. 动作是什么
 
@@ -11,9 +11,9 @@
 **单相**(上报宿主 = `kernel/cw_action_report/pick_planner.py::report_action_pick_planner_param`,与 pick_invest 同构;`CwActionPickPlannerOp` 确认点击后调用,`branch_type`/`norm_item` 经 `OverlayPickExecEnv` 随派发透传):
 
 - **条件单位(rider)先行**(上报内、效果分支分派之前):欢愉契约已登记时采样授予一枚条件单位(获得链 `gain_character`,evidence = `joy_conditional:<单位名>`;授予失败不阻塞分支分派,调用点级 best-effort);
-- 按效果分支分派的容器(GameState,游戏状态对象,下同)写域:
+- 按效果分支分派的状态容器(GameState)(GameState,游戏状态对象,下同)写域:
   - **装备分支**:`equips` 入栏(`write_logic`)+ 获得后果链(`cw_effect_inventory.apply_equip_acquire_consequence`,命中后果表则送角色 → bench + 合成级联);未解析件名 → `equips` 值不变、来源标记翻转 + 保留证据的行(禁猜);
-  - **升费分支**:`bench`/`front_row`/`back_row` 变换窗三态(恰一枚 2★银狼LV.999 → 变 1★ + `lv999_cost_tier` 档行(现档+1,牌库改变的容器表达;档行时序 = 变换落行后、级联前)/ 多枚 → 值不变、来源标记翻转并保留证据 / 零枚未观察 → fail-closed(读不到数据/条件不满足时默认走保守分支不动作)保留证据并触发告警停机)+ `merge_cascade_write` 级联;
+  - **升费分支**:`bench`/`front_row`/`back_row` 变换窗三态(恰一枚 2★银狼LV.999 → 变 1★ + `lv999_cost_tier` 档行(现档+1,牌库改变的状态容器表达;档行时序 = 变换落行后、级联前)/ 多枚 → 值不变、来源标记翻转并保留证据 / 零枚未观察 → fail-closed(读不到数据/条件不满足时默认走保守分支不动作)保留证据并触发告警停机)+ `merge_cascade_write` 级联;
   - **unknown**:零记账 + 保留证据的行(含弱化词且装备名识别未命中的卡文落此——弱化兜底档已按原文二分法停用,由静默零记账改为显式申报报错);
 - **未路由分支** = 终态兜底零写(reason = `unrouted_leg_zero_write`);
 - **选中点几何**(避开卡内「详情」按钮区)归决策部分 `_card_point` 单一源现算,经 `env.target` 传入。(决策部分现算经 env = 已登记的「选择坐标观察上报」待办,收敛归族级迭代处理)
@@ -27,7 +27,7 @@
 
 ## 4. 随机面
 
-策划候选内容 = 随机面归观察;选择存证(chosen_hack)无写入方 = 申报不变,选择效果 = §2 即时单相一口写。升费分支为确定面(档 +1 与变换窗输入均容器现算)。
+策划候选内容 = 随机面归观察;选择存证(chosen_hack)无写入方 = 申报不变,选择效果 = §2 即时单相一口写。升费分支为确定面(档 +1 与变换窗输入均状态容器现算)。
 
 ## 5. 拒绝语义
 
@@ -41,7 +41,7 @@
 
 单相语义 = 确认点击后一口写分支分派效果(§2):装备分支/升费分支逐步落行,unknown 零记账并保留证据。M1 投影测试对象无(选择族形态测试 = test_cw_yinlang_phase32 三态/单相即时上报/档行断言族)。
 
-## 8. 判例注记(动作发出阶段)
+## 8. 先例注记(动作发出阶段)
 
 骇入策划 overlay 画面期;动作发出点 = 画面 op act 段经注册表工厂分派,点击发出后即结束本次访问并返回主循环。
 
