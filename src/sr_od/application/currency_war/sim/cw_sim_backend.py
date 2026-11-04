@@ -105,6 +105,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_bond_battle_grants,
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
+    check_strategy_boss_completion_grants,
     check_strategy_boss_end_heal,
     check_strategy_empty_equip_xp,
     check_strategy_equip_count_xp,
@@ -4603,6 +4604,20 @@ class SimBackend:
                 self.disclosures.setdefault(
                     STRATEGY_BOSS_HEAL_PERFECT_WIN_BIAS,
                     'next_node_perfect_missed_strict_v0')
+        # —— 策略卡首领节点完成固定集发放(武器批发商 id 303501 首例;
+        # 接线点 = 策略腿区链尾顺延:战斗结束回血腿之后、败局待办登记
+        # 之前,胜败两态共同路径——卡面「下个首领节点后」无「胜利」限定
+        # = 败局存活也发;死亡局在本函数提前 return 处已出局,不发放)。
+        # 条件单一源 = kernel check_strategy_boss_completion_grants
+        # (登记表 STRATEGY_BOSS_COMPLETION_GRANTS,node_kind 传本函数
+        # 结算点现值 kind,修饰局场字段改写天然跟随零特判);一次性 =
+        # strategy_conditional_done 纯卡名闩(函数内自管,「下个」恰一次,
+        # 后续首领零重复);sig = logic_sig('sim:strategy') 沿策略战后
+        # 发放腿同组;零 rng(固定全集确定发放零采样,无流键面);幂等零
+        # 新增守卫 = 本函数 _settled_key(同节点重放整段跳过);返回值
+        # 忽略(无回调面);live 零写观察覆盖(装备入栏有画面真值可读)。
+        check_strategy_boss_completion_grants(self.gs, kind,
+                                              logic_sig('sim:strategy'))
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,

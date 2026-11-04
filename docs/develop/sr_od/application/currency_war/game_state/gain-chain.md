@@ -598,6 +598,36 @@ blood_xp_mode 同法)取 `economy.boss_end_heal_hp` 求和,表外卡/无经济
   持平,cw_env_grants.check_env_deploy_lock_perfect)结构性漏判 =
   其偏差面条款(方向单一偏严)辖内新事件源,披露键随局申报。
 
+### 2.20 策略卡首领节点完成固定集发放检查腿 check_strategy_boss_completion_grants(结算位)
+
+`check_strategy_boss_completion_grants(gs, node_kind, sig,
+producer=_BOSS_COMPLETION_GRANT_PRODUCER) -> None`——策略卡「下个首领
+节点后，获得所有类型的简易装备各1个」通道(首例武器批发商 id 303501,
+登记表 = `cw_investments.STRATEGY_BOSS_COMPLETION_GRANTS` 白名单:键 =
+策略规范名,值 = (id, 装备名元组) 结构;表值引用 `SIMPLE_EQUIP_ALL` =
+`equips_by_category('简易')` 注册表派生冻结快照,禁手写名单第二源)的
+唯一检查本体,策略卡战后触发族第七形状:**固定全集逐件确定发放 + 一次
+性闩**(与 §2.15 随机池单件采样无闩形值形/闩语义双异构故各建各表;
+零 rng = 确定事件无流键面)。条件矩阵(序即短路序):①`node_kind !=
+'boss'` → 零写(节点类型条件内嵌于触发函数,表不设节点键;修饰局 boss
+位 kind 不变天然跟随);②逐持卡查登记表,表外卡零条目跳过;卡名 ∈
+`strategy_conditional_done` → 跳过(一次性闩);③逐件
+`gain_equipment(rand=False)` 确定发放(items 注册表序,evidence
+`strategy_boss_completion#<卡名>`,8 件共享同证据基),全部 placed 才
+落闩(`write_logic` 纯卡名追加),拒落不闩自愈(sim 域 equips 恒种子
+观察拒落不可达 = 边界申报,直构拒落窗等观察后重试)。
+
+- **挂点 = sim 结算腿**(现役唯一调用点 = `cw_sim_backend._resolve_battle`
+  策略腿区链尾:战斗结束回血腿之后、败局待办登记之前,胜败两态共同路径
+  ——卡面无「胜利」限定 = 败局存活也发;死亡局在 `_game_over` 提前
+  return 处已出局不发放。幂等零新增守卫 = `_settled_key` 节点键防同
+  战斗重放,闩防跨 boss 重复,两层各司其职);**live 零写观察覆盖**(装备
+  入栏有画面真值可读,实机局不接本通道);
+- **一次性 = strategy_conditional_done 共域纯卡名闩**:卡面「下个」=
+  恰一次,闩后后续位面首领不再发——与 §2.15「首领战后」每战发的无闩
+  形对形分化(卡面限定词差异,非形状分歧);闩域语义 = §2.10 同域
+  (fields.md §3.2.26a)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

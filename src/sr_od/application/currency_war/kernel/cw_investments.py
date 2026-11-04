@@ -5564,6 +5564,85 @@ def _validate_strategy_boss_battle_grants() -> None:
 _validate_strategy_boss_battle_grants()
 
 
+# ===== 策略卡首领节点完成固定集发放注册表(武器批发商;白名单制)=====
+# 「下个首领节点完成后,世界发放装备固定全集」策略域:键 = 策略规范名,
+# 值 = (id, 装备名元组) 结构。触发面 = boss 节点战斗结算(「…后」措辞
+# 与劳务派遣「进入…时」官方对立互证,挂 _resolve_battle 结算腿不挂节点
+# 窗收口——扩形状各建各表,与 STRATEGY_BOSS_BATTLE_GRANTS(随机池单件
+# 采样无闩)值形/闩语义双异构故不共表);发放物 = 固定全集逐件 1 个
+# (「所有类型的简易装备各1个」判读 = 简易池全集,判读申报制,证伪路径 =
+# 实机发放清单对照)。一次性语义 = strategy_conditional_done 共域纯卡名
+# 闩(「下个」恰一次,与枪在手「首领战后」每战发的无闩形对形分化)。
+# live 零写观察覆盖(装备入栏有画面真值可读,实机局不接本通道)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_boss_completion_grants
+# (触发检查单一源,唯一调用点 = sim 结算腿)。
+@dataclass(frozen=True)
+class StrategyBossCompletionGrant:
+    """策略卡「下个首领节点完成后发放装备固定集」登记结构(策略卡首领
+    完成发放通道专属登记表,首例武器批发商;字段语义 = id 303501
+    原文直读):
+    - items: 发放装备名元组(「所有类型的简易装备各1个」直读;
+      值 = SIMPLE_EQUIP_ALL 注册表派生冻结快照,禁手写名单第二源;
+      值域 = 装备注册表名闭集,构建期校验防漂移)。"""
+    id: str
+    items: tuple[str, ...]
+
+
+SIMPLE_EQUIP_ALL: tuple[str, ...] = equips_by_category('简易')
+"""简易装备全集(模块级冻结快照,构建期一次派生;「所有类型的简易
+装备」单一源,版本池漂移经注册表重生成自动跟随,池派生双源同值锁
+护航 = cw_investments 表域测试)。"""
+
+STRATEGY_BOSS_COMPLETION_GRANTS: dict[str, StrategyBossCompletionGrant] = {
+    # 「下个首领节点后，获得所有类型的简易装备各1个」(武器批发商
+    # id 303501 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行)
+    '武器批发商': StrategyBossCompletionGrant(id='303501',
+                                              items=SIMPLE_EQUIP_ALL),
+}
+
+
+def _validate_strategy_boss_completion_grants() -> None:
+    """STRATEGY_BOSS_COMPLETION_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」逐哨分诊五哨全留):
+
+    孤儿键(①漂移哨):键必须在 INVESTMENT_STRATEGIES(版本更新改名/
+    移除后静默失联)。id 双匹配(②幸存面,沿 id 字段表家族在册形
+    STRATEGY_DELAYED_OFFERS 同款):id 改写或数据 source 改任一独立
+    触发。items 非空(③漂移哨):表值 = equips_by_category('简易')
+    派生表达式,注册表改版清空简易类别可独立触发。逐件 ∈ 装备注册表
+    名闭集(④漂移哨)与类别断言(⑤漂移哨,锁「全集 = 简易」语义——
+    防表达式误改后静默发放非简易件):派生值随注册表变。"""
+    orphans = [n for n in STRATEGY_BOSS_COMPLETION_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BOSS_COMPLETION_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for name, spec in STRATEGY_BOSS_COMPLETION_GRANTS.items():
+        expected = INVESTMENT_STRATEGIES[name].source
+        if expected != f"plaza:{spec.id}":
+            raise ValueError(
+                f"STRATEGY_BOSS_COMPLETION_GRANTS id 双匹配失配:"
+                f"{name} id={spec.id} 但 source={expected!r}")
+        if not spec.items:
+            raise ValueError(
+                f"STRATEGY_BOSS_COMPLETION_GRANTS items 空:{name}")
+        for item in spec.items:
+            if item not in EQUIPMENTS:
+                raise ValueError(
+                    f"STRATEGY_BOSS_COMPLETION_GRANTS 非装备名:"
+                    f"{name} item={item!r}")
+            if EQUIPMENTS[item].category != '简易':
+                raise ValueError(
+                    f"STRATEGY_BOSS_COMPLETION_GRANTS 非简易件:"
+                    f"{name} item={item!r} category="
+                    f"{EQUIPMENTS[item].category!r}")
+
+
+_validate_strategy_boss_completion_grants()
+
+
 # ===== 策略卡羁绊条件战后发放注册表(不要小看我们的羁绊;白名单制)=====
 # 「激活 N 个羁绊并完成一场战斗后,进入节点时获得 M 个随机 X 装备」策略域
 # 首例:键 = 策略规范名,值 = (羁绊激活数阈值, 装备类别词, 件数) 扁平三元

@@ -110,6 +110,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOND_TIER_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
+    STRATEGY_BOSS_COMPLETION_GRANTS,
     STRATEGY_BUY_STAR_FLIP_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
     STRATEGY_DELAYED_GRANTS,
@@ -1939,6 +1940,59 @@ def check_strategy_boss_battle_grants(gs: GameState, node_kind: str,
                            producer=_BOSS_BATTLE_GRANT_PRODUCER)
             granted.append(equip)
     return tuple(granted)
+
+
+#: 策略卡首领完成固定集发放写端署名(家族单一标识,_BOSS_BATTLE_GRANT_
+#: PRODUCER 同款家族纪律;写端 = 本模块 check_strategy_boss_completion_
+#: grants,sim 结算位发放刻,新写端新名不沿用链缺省伪装连续)。
+_BOSS_COMPLETION_GRANT_PRODUCER: str = 'strategy_boss_completion_grant'
+
+
+def check_strategy_boss_completion_grants(gs: GameState, node_kind: str,
+                                          sig: ChannelSig,
+                                          producer: str =
+                                          _BOSS_COMPLETION_GRANT_PRODUCER,
+                                          ) -> None:
+    """策略卡首领节点完成固定集发放检查(「下个首领节点后，获得所有类型
+    的简易装备各1个」触发器单一源,武器批发商 id 303501 首例;唯一调用点
+    = sim 结算腿——live 零写观察覆盖:装备入栏有画面真值可读,实机局不接
+    本通道)。
+
+    条件矩阵(顺序即短路序;逐序零写返回):
+
+    1. ``node_kind != 'boss'`` →(节点类型条件;kind = 调用方传结算点
+       现值,修饰局场字段改写天然跟随零特判——人身意外险 boss 位后移/
+       战争边疆 P3 boss 位保留,两类修饰均不改 boss 位 kind);
+    2. 逐持卡(active_strategies 容器直读)∩ STRATEGY_BOSS_COMPLETION_
+       GRANTS,表外卡零条目跳过;卡名 ∈ strategy_conditional_done →
+       跳过(一次性闩:卡面「下个」= 恰一次,闩后后续首领不再发——
+       与枪在手「首领战后」每战发的无闩形对形分化,幂等守卫只防同战斗
+       重放,不防下一场 boss,闩面必须函数内自管);
+    3. 逐件 ``gain_equipment(rand=False)`` 确定发放(items 注册表序,
+       零 rng = logic 渠道无流键面;evidence ``strategy_boss_completion#
+       <卡名>``,原语内追加 ``#equip`` 后缀,8 件共享同证据基——单卡
+       单事件分组,逐件账号在写笔序);全部 placed 才落闩(write_logic
+       纯卡名追加,登记事实直写同 check_strategy_conditional_grants 形),
+       拒落(equips 未观察)不闩自愈——sim 域 equips 恒种子观察拒落
+       不可达(边界申报),直构域拒落窗等观察后重试。"""
+    if node_kind != 'boss':
+        return
+    done = tuple(gs.strategy_conditional_done.value or ())
+    for name in gs.active_strategies.value or ():
+        spec = STRATEGY_BOSS_COMPLETION_GRANTS.get(name)
+        if spec is None or name in done:
+            continue
+        evidence = f'strategy_boss_completion#{name}'
+        all_placed = True
+        for item in spec.items:
+            out = gain_equipment(gs, item, rand=False, sig=sig,
+                                 evidence=evidence, producer=producer)
+            if not out.placed:
+                all_placed = False
+        if all_placed:
+            gs.write_logic(gs.strategy_conditional_done, done + (name,),
+                           produced_by=producer, evidence=evidence, sig=sig)
+            done = done + (name,)
 
 
 def check_strategy_boss_end_heal(gs: GameState) -> int:
