@@ -1,4 +1,4 @@
-"""sim 战斗结算战力模型子包(设计正本 = sim-power-model.md;首期落地
+"""sim 战斗结算战力模型子包(设计权威版本 = sim-power-model.md;首期落地
 迭代 = changes/2026-10-19-sim-power-model-v1)。
 
 本包子面(按迭代阶段渐次落位):语料抽取器(3.1,本包现有)/ 训练与
@@ -9,5 +9,5 @@
   守卫 + run 级隔离(corpus_extract 模块);
 - 铁律 3:HP 量只进幅度样本表,不入胜负特征(features 模块)。
 
-产物落 .debug(gitignored),data/ 桶禁落任何模型产物(正本 §6.2-2)。
+产物落 .debug(gitignored),data/ 桶禁落任何模型产物(权威版本 §6.2-2)。
 """

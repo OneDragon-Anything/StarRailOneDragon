@@ -1,9 +1,9 @@
 """金路径观察生成器 + 档名注册表(sim 统一迭代 flow-seam 详设 §3)。
 
-生成器 = 「sim 世界 → 屏契约观察产物」的直译:从世界真值(容器
+生成器 = 「sim 状态副本 → 屏契约观察产物」的直译:从状态副本真值(状态容器
 ``GameState`` + 后端画面状态机运行时)填 ``CwScreenXxxObs`` 结构体,
 零截图零识别。**写通道铁律**:产物必须经 ``kernel/cw_screen_report/``
-同名上报函数落容器(与实机观察上报同一条写通道);观察口径(字段
+同名上报函数落状态容器(与实机观察上报同一条写通道);观察口径(字段
 映射/归一化/缺省语义)单一源在 report 消费端,生成器只产数据。
 
 **注册表键 = screen_info 档名(唯一)**;子态不设独立键——同档名子态
@@ -13,10 +13,10 @@
 battle_wait(战斗结算窗)、补给、投资环境、投资策略、简报、boss 简报、
 位面过渡、遭遇、开箱、巨星、planner。**非金路径屏不出注册表**:
 后端状态机呈现未注册屏时 ``observe`` = :class:`LookupError` 具名响错
-(防静默失真——sim 不会走到的屏出现观察请求 = 接线 bug 或适用范围外屏,
+(防静默失真——sim 不会走到的屏出现观察请求 = 调用点接错或适用范围外屏,
 响亮暴露而非产空产物)。
 
-合成坐标约定:实机观察产物里的点击坐标(x/y 中心等)在 sim 世界无
+合成坐标约定:实机观察产物里的点击坐标(x/y 中心等)在 sim 状态副本无
 画面语义,生成器以「下标派生的合成值」填充(身份键用途,同后端呈现
 写点 ``(i+1)*10`` 形);决策面只消费名字/选项载荷,不消费坐标。
 """
@@ -127,12 +127,12 @@ GOLDEN_PATH_SCREEN_NAMES: tuple[str, ...] = (
 
 
 # ============================================================ 生成器群
-# (逐屏一函数:世界真值 → CwScreenXxxObs;screen 识别域载体恒 None
+# (逐屏一函数:状态副本真值 → CwScreenXxxObs;screen 识别域载体恒 None
 #  ——sim 无帧,消费面禁读该域。)
 
 
 def _node_pos_or_default(backend: SimBackend) -> tuple[int, int, str]:
-    """节点 (位面,轮,类型) 读口(容器 gs.node 单一源;未进窗 = (1,1,'')。"""
+    """节点 (位面,轮,类型) 读口(状态容器 gs.node 单一源;未进窗 = (1,1,'')。"""
     node = backend.gs.node.value
     if node is None:
         return 1, 1, ''
@@ -150,7 +150,7 @@ def gen_prep(backend: SimBackend) -> CwScreenPrepObs:
     - ``front_occupied``/``back_occupied`` = live 观察链的识别交叉核对轻
       字段(方法内即弃消费),sim 产物不挂(零识别面)。
     - ``node_path_chain`` = None 诚实缺位:节点行读 = 实机画面识别域,
-      sim 世界无此识别面(链 diff 治理消费面随联调批申报)。
+      sim 状态副本无此识别面(链 diff 治理消费面随联调批申报)。
     """
     sub = backend._sub
     if sub == PREP_SUB_WAIT_ONE_ONE:
@@ -168,12 +168,12 @@ def gen_prep(backend: SimBackend) -> CwScreenPrepObs:
 
 
 def gen_shop(backend: SimBackend) -> CwScreenShopObs:
-    """商店档生成器(入口回执镜像域,容器真值直填)。
+    """商店档生成器(入口回执镜像域,状态容器真值直填)。
 
-    gold/hp/level/board 全部容器现值;``shop`` = 容器 ShopPayload.cards
+    gold/hp/level/board 全部状态容器现值;``shop`` = 状态容器 ShopPayload.cards
     (遗留读牌列表形态的 sim 承载,kind 三态槽直透);``*_readable``/
-    ``hp_trusted`` = True(sim 容器即世界真值,无 OCR 失读维度);plane/
-    round/node_type 自容器节点键。
+    ``hp_trusted`` = True(sim 状态容器即状态副本真值,无 OCR 失读维度);plane/
+    round/node_type 自状态容器节点键。
     """
     gs = backend.gs
     plane, round_num, node_kind = _node_pos_or_default(backend)
@@ -202,7 +202,7 @@ def gen_battle_wait(backend: SimBackend) -> CwScreenBattleWaitObs:
 
 
 def gen_supply(backend: SimBackend) -> CwScreenSupplyNodeObs:
-    """补给档生成器(选项载荷 + 刷新剩余自容器呈现写点回读)。"""
+    """补给档生成器(选项载荷 + 刷新剩余自状态容器呈现写点回读)。"""
     gs = backend.gs
     payload = gs.supply.value
     left = gs.supply_refresh_left.value
@@ -214,8 +214,8 @@ def gen_supply(backend: SimBackend) -> CwScreenSupplyNodeObs:
 
 
 def gen_invest_env(backend: SimBackend) -> CwScreenInvestEnvObs:
-    """投资环境档生成器(候选名自容器 opts 槽;x = 下标派生合成值;整组
-    刷新剩余自容器现读——环境屏呈现写点落 1,重掷世界分支落 0;未呈现态
+    """投资环境档生成器(候选名自状态容器 opts 槽;x = 下标派生合成值;整组
+    刷新剩余自状态容器现读——环境屏呈现写点落 1,重掷状态副本侧分支落 0;未呈现态
     None = report 跳写,2026-10-19 用户裁定批接入呈现)。"""
     names = list(backend.gs.invest_env_opts.value or [])
     left = backend.gs.env_refresh_left.value
@@ -227,7 +227,7 @@ def gen_invest_env(backend: SimBackend) -> CwScreenInvestEnvObs:
 
 
 def gen_invest_strategy(backend: SimBackend) -> CwScreenInvestStrategyObs:
-    """投资策略档生成器(候选名自容器 opts 槽;逐卡刷新剩余自容器按槽名
+    """投资策略档生成器(候选名自状态容器 opts 槽;逐卡刷新剩余自状态容器按槽名
     现读——可刷新窗由后端授权簿记判定,联席额外槽等不可刷新窗 = 空
     refresh_slots(report 逐槽跳写);键缺 = None 元素 = op 闸无授权失败
     安全。2026-10-19 用户裁定批接入呈现)。"""
@@ -245,7 +245,7 @@ def gen_invest_strategy(backend: SimBackend) -> CwScreenInvestStrategyObs:
 
 
 def gen_briefing(backend: SimBackend) -> CwScreenBriefingObs:
-    """简报档生成器(三读数自容器:词缀/位面序 boss/敌人难度;开局
+    """简报档生成器(三读数自状态容器:词缀/位面序 boss/敌人难度;开局
     采样写点 = 后端 reset,report 恒覆写语义对同值幂等)。"""
     gs = backend.gs
     bosses = gs.plane_bosses.value
@@ -270,7 +270,7 @@ def gen_plane_transition(backend: SimBackend) -> CwScreenPlaneTransitionObs:
 
 
 def gen_encounter(backend: SimBackend) -> CwScreenEncounterObs:
-    """遭遇档生成器(档位候选自容器呈现写点回读;刷新剩余 = sim 未
+    """遭遇档生成器(档位候选自状态容器呈现写点回读;刷新剩余 = sim 未
     建模呈现面,诚实缺位)。"""
     gs = backend.gs
     payload = gs.encounter.value
@@ -282,7 +282,7 @@ def gen_encounter(backend: SimBackend) -> CwScreenEncounterObs:
 
 
 def gen_box(backend: SimBackend) -> CwScreenBoxPickObs:
-    """武装箱档生成器(候选名 + 点击点自容器呈现写点回读;同序等长
+    """武装箱档生成器(候选名 + 点击点自状态容器呈现写点回读;同序等长
     守卫在 report 写端,sim 产物同受约束)。"""
     gs = backend.gs
     names = list(gs.box_card_names.value or [])
@@ -291,7 +291,7 @@ def gen_box(backend: SimBackend) -> CwScreenBoxPickObs:
 
 
 def gen_megastar(backend: SimBackend) -> CwScreenMegastarObs:
-    """巨星档生成器(候选自容器呈现写点回读;含 sim 合成坐标 xy)。"""
+    """巨星档生成器(候选自状态容器呈现写点回读;含 sim 合成坐标 xy)。"""
     return CwScreenMegastarObs(
         in_node=True,
         options=list(backend.gs.megastar_opts.value or []),
@@ -299,7 +299,7 @@ def gen_megastar(backend: SimBackend) -> CwScreenMegastarObs:
 
 
 def gen_planner(backend: SimBackend) -> CwScreenPlannerObs:
-    """planner 档生成器(两卡选项自容器;呈现写点缺位 = 空桶照写,
+    """planner 档生成器(两卡选项自状态容器;呈现写点缺位 = 空桶照写,
     与实机「恒写两卡 OCR 桶」空桶语义同形)。"""
     return CwScreenPlannerObs(
         on_screen=True,
@@ -309,7 +309,7 @@ def gen_planner(backend: SimBackend) -> CwScreenPlannerObs:
 
 # ============================================================ 注册表
 
-#: 档名 → (生成器,同名上报函数)。(生成器只产数据,落容器 =
+#: 档名 → (生成器,同名上报函数)。(生成器只产数据,落状态容器 =
 #: 上报函数单一源;两者成对注册 = 写通道铁律的注册表形态。)
 _REGISTRY: dict[str, tuple[Callable[[SimBackend], object],
                            Callable[[object, object], None]]] = {
@@ -338,10 +338,10 @@ def registered_screens() -> tuple[str, ...]:
 
 
 def observe_screen(backend: SimBackend, screen_name: str) -> object:
-    """注册表分派:档名 → 生成器产物经同名上报函数落容器并返回。
+    """注册表分派:档名 → 生成器产物经同名上报函数落状态容器并返回。
 
     未注册档名 = :class:`LookupError` 具名响错(状态机呈现未注册屏 =
-    sim 适用范围外/接线 bug,防静默失真;flow-seam §3 锁)。判定基准 =
+    sim 适用范围外/调用点接错,防静默失真;flow-seam §3 锁)。判定基准 =
     注册表键集,非「当前呈现屏匹配」——观察请求与呈现屏错位由流程侧
     visible 门承接(且 wait_one_one 惰性完成会在问询间隙合法翻屏,
     身份断言会误伤)。

@@ -1,6 +1,6 @@
 """sim 重做·战斗结算模型(M12/M13/M14,第一期:随机胜负 + 随机扣血)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§2.2 战斗结算/§8.2 未建模申报)第一期口径:
 
 - **U01 第一期定案**:战斗输出 = 纯随机面,不消费任何板面/战力/敌人
@@ -17,7 +17,7 @@
 - **M14 结构规则**:HP 只在节点战斗失败时扣;**普通奖励关例外恒胜
   白拿**(奖励关不需要战力,不存在败局;后端结算分支承载改写,输出面
   ``SIM_REWARD_FREE_WIN_FACE``);扑满奖励关不掉血(M17);首次 hp≤0
-  保底剩 1(保底位 = 容器 ``hp_floor_triggered``,全局机制);再次归零
+  保底剩 1(保底位 = 状态容器 ``hp_floor_triggered``,全局机制);再次归零
   → 局终;HP 跨位面继承不重置。
 
 随机流键(后端侧装配):``M13/{plane}/{round}``(胜负掷点 + 扣血/进度
@@ -31,11 +31,11 @@ from dataclasses import dataclass
 from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.sim.cw_sim_base import obs_sig, sim_evidence
 
-#: 败局扣血均匀区间下界(实测单次败局总扣血散点域 min;锚 P2r1 −23,
+#: 败局扣血均匀区间下界(实测单次败局总扣血散点域 min;基准样本 P2r1 −23,
 #: M13 锚定规则;新样本并入按同规则重估)。
 SIM_HP_LOSS_MIN: int = 23
 
-#: 败局扣血均匀区间上界(散点域 max;锚 P3 遭遇 −70,同上)。
+#: 败局扣血均匀区间上界(散点域 max;基准样本 P3 遭遇 −70,同上)。
 SIM_HP_LOSS_MAX: int = 70
 
 #: 胜负均匀伯努利概率(U01 定案 P=0.5,非战力映射)。
@@ -85,18 +85,18 @@ def settle_battle(rng: random.Random, *, plane: int, round_num: int) -> BattleOu
 
 
 def apply_hp_outcome(gs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]:
-    """M14 折算:败局扣血写容器 + 0hp 保底/局终判定。
+    """M14 折算:败局扣血写状态容器 + 0hp 保底/局终判定。
 
     Returns:
-        ``(floor_triggered_now, dead)``:本次是否触发首次保底(容器
+        ``(floor_triggered_now, dead)``:本次是否触发首次保底(状态容器
         ``hp_floor_triggered`` 事件位同时翻真);``dead`` = 保底已用过
         再次归零 → 整局结束(引擎据此进 game_over)。
     """
     if outcome.won or outcome.hp_delta == 0:
         # 胜局/零扣血也落一行等值 hp 写:hp 写流 = 「每战斗结算恰一条 +
-        # 选卡落地即时腿逐笔 + 持卡首领战回血腿逐笔 + 持卡战斗结束回血
-        # 腿逐笔 + 获得链交换腿逐笔(kernel 写端,sim 落地腿呈现闩配对)」
-        # 的测试面(first_run 容器不变式②——写流与 hp_trail 全序
+        # 选卡落地即时效果条目逐笔 + 持卡首领战回血效果条目逐笔 + 持卡战斗结束回血
+        # 效果条目逐笔 + 获得链交换效果条目逐笔(kernel 写端,sim 落地效果条目呈现一次性标志位配对)」
+        # 的测试面(first_run 状态容器不变式②——写流与 hp_trail 全序
         # 同构,每写恰一条轨迹),
         # 等值跳写会破坏同构——实机
         # 对偶 = 结算屏恒显 hp,无「胜利就不读 hp」的形态。hp 未观察

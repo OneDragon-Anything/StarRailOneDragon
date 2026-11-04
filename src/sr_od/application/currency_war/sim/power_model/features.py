@@ -2,7 +2,7 @@
 
 **单侧算术 + 双侧适配**:特征核心 :func:`compute_features` 只写一次,
 输入收敛为「板面计数 dict + 上阵槽位视图 + 等级」三要素——sim 侧由
-:meth:`features_from_game_state` 从 GameState 容器取,实机侧由
+:meth:`features_from_game_state` 从 GameState 状态容器取,实机侧由
 :meth:`features_from_decision_row` 从 decisions 行 dict 取;任何一侧都
 不另写第二份特征算术(design 2026-10-19-sim-power-model-v1 §2.2
 「取大定义」;对齐测试 = 同一板面输入 → 两侧同一特征向量)。
@@ -12,7 +12,7 @@
 === 定义与单一源(值域/出处)===
 - rung_1/rung_2/rung_3:过渡达成度分档 one-hot 三位(参考档 rung0 并入
   截距),单一源 = ``kernel/cw_battle_calib._settle_rung``(四体系达成数,
-  0-4);分档域钉四档(0-3,正本 §2「rung 四档(0-3)」+ 前代
+  0-4);分档域钉四档(0-3,权威版本 §2「rung 四档(0-3)」+ 前代
   cw_coarse_battle ``_win_cell`` 的 ``min(max(rung,0),3)`` 钳位先例),
   实现为 ``min(_settle_rung, RUNG_MAX)``——rung4(四体系全达成)并入
   rung3 位,与「r>=3 置位」逐位等价,无行为歧义。
@@ -29,7 +29,7 @@
 - plane_not_first:位面二值(P1 vs 非P1;P3 语料并入非P1,低置信披露)。
 - node_encounter / node_boss:node_type one-hot 两位,参考档 = 普通战斗
   (并入截距;one-hot 参考档选择只是重参数化,不改变模型表达族)。
-  node_type 判定以 outcomes 为准(正本 §5.1-2),由调用方传入,本模块
+  node_type 判定以 outcomes 为准(权威版本 §5.1-2),由调用方传入,本模块
   不读帧的 node_type(快照不问帧类型规则)。
 - round_num:节点在位面内的轮次序位(原值)。
 - deployed_minus_level:上场数 − 人口等级;上场数 = 上阵条目中
@@ -38,7 +38,7 @@
 
 === 板面双源口径(如实声明)===
 rung 经 ``_settle_rung`` 从上阵行**重算**板面(其内部走
-``_recount_board`` 单一源);form_progress 读板面容器现值(实机行 =
+``_recount_board`` 单一源);form_progress 读板面状态容器现值(实机行 =
 观测的 ``state.board`` 左面板真值,sim = GameState.board)。两特征各随
 其单一源的既定输入,不互相改写。
 
@@ -46,7 +46,7 @@ rung 经 ``_settle_rung`` 从上阵行**重算**板面(其内部走
 decisions 行 ``state.deployed`` 条目可带 char_id=''(识别失败件,约占
 deployed 条目 7.8%)。特征核心的行侧适配**不携带**条目的 faction 字段
 ——``_recount_board`` 的 faction 兜底仅 faction 载体鸭子输入可达,
-sim 的 ``Unit`` 无 faction 位(容器「阵营不存」红线),不携带才使两侧
+sim 的 ``Unit`` 无 faction 位(状态容器「阵营不存」红线),不携带才使两侧
 结构同形;依据 = sim-power-model §4.1 组 A「char_id 为空的槽位条目不
 计入任何单位计数」。观测板面(state.board)不受此影响(它记录左面板
 所见,含未识别件的阵营贡献)。
@@ -87,7 +87,7 @@ BATTLE_NODE_TYPES: frozenset[str] = frozenset({'battle', 'encounter', 'boss'})
 #: node_type one-hot 的参考档(并入截距,不出现在向量位中)。
 NODE_TYPE_REFERENCE: str = 'battle'
 
-#: outcomes node_type 中文 → 英文规范名映射(正本 §5.1-2:映射常量
+#: outcomes node_type 中文 → 英文规范名映射(权威版本 §5.1-2:映射常量
 #: 单一源落代码;中文→英文 + ASCII 恒等——查不到的键原样返回)。
 NODE_TYPE_CN_TO_EN: dict[str, str] = {
     '普通战斗': 'battle',
@@ -146,8 +146,8 @@ class _FeatureView:
     """特征核心的 duck GameState 视图(三要素:板面/上阵/等级)。
 
     kernel 特征函数(``_settle_rung``/``deployed_star_depth``/
-    ``form_progress``)按容器鸭子读取(``gs.board.value`` 等),本视图
-    以真实容器类型(Field/DeployedView)承载,两侧适配产物同构。
+    ``form_progress``)按状态容器鸭子类型读取(``gs.board.value`` 等),本视图
+    以真实状态容器类型(Field/DeployedView)承载,两侧适配产物同构。
     """
 
     board: Any = field(default=None)   # Field 形(.value = dict)
@@ -163,7 +163,7 @@ def row_deployed_view(entries: list[dict[str, Any]] | None) -> DeployedView:
       以 position_pref 为准,排内按 slot 升序落位;
     - 条目 → duck Unit 适配(char_id/star/equips/position_pref 透传;
       **不携带 faction**,依据见模块 docstring「实机行未识别单位的入账
-      口径」)——kernel 特征函数按属性鸭子读取,与 sim Unit 同形;
+      口径」)——kernel 特征函数按属性鸭子类型读取,与 sim Unit 同形;
     - 空槽(None)显式保留位置语义;非 dict 条目(历史行容忍)跳过。
     """
     front: list[Any] = []
@@ -188,7 +188,7 @@ def row_deployed_view(entries: list[dict[str, Any]] | None) -> DeployedView:
 
 
 class SimpleUnit:
-    """decisions 行条目的 duck Unit 适配(属性面与容器 Unit 对齐)。
+    """decisions 行条目的 duck Unit 适配(属性面与状态容器 Unit 对齐)。
 
     只带 kernel 特征链读取的属性(char_id/star/equips/position_pref);
     故意**无 faction 位**——``_recount_board`` 的 faction 兜底不触发,
@@ -208,7 +208,7 @@ def best_line(board_value: dict[str, int] | None,
     ``best_line(B) = argmax_{comp ∈ COMP_LIBRARY} form_progress(comp, B)``,
     平局破缺 = COMP_LIBRARY 注册序首个最大值(确定性,两侧一致)。
 
-    返回 (阵容, 达成度);板面容器值为 None/缺键按空板计(form_progress
+    返回 (阵容, 达成度);板面状态容器值为 None/缺键按空板计(form_progress
     内部 ``or {}`` 同口径)。
     """
     view = _FeatureView(
@@ -228,7 +228,7 @@ def best_line(board_value: dict[str, int] | None,
 
 
 class SimpleNamespaceValue:
-    """``.value`` 载体(特征链鸭子读取的最小面)。"""
+    """``.value`` 载体(特征链鸭子类型读取的最小面)。"""
 
     def __init__(self, value: Any) -> None:
         self.value = value
@@ -244,7 +244,7 @@ def compute_features(board_value: dict[str, int] | None,
                      enemy_difficulty: float | int | None) -> FeatureVector:
     """特征核心(双侧唯一算术;定义与单一源见模块 docstring)。
 
-    :param board_value: 板面计数容器值(sim = GameState.board.value /
+    :param board_value: 板面计数状态容器值(sim = GameState.board.value /
         实机行 = state.board 观测左面板真值)。
     :param deployed: 上阵槽位视图(sim = GameState.deployed.value /
         实机行 = :func:`row_deployed_view` 产物)。
@@ -311,7 +311,7 @@ def features_from_game_state(gs: GameState, *,
                              node_type: str,
                              enemy_difficulty: float | int | None,
                              ) -> FeatureVector:
-    """sim 侧适配:GameState 容器 → 特征向量(读容器三要素后进核心)。"""
+    """sim 侧适配:GameState 状态容器 → 特征向量(读状态容器三要素后进核心)。"""
     return compute_features(
         getattr(gs.board, 'value', None) or {},
         getattr(gs.deployed, 'value', None),

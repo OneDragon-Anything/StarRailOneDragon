@@ -1,11 +1,11 @@
-"""sim 基座:容器写入签名/证据标签的共用面。
+"""sim 基座:状态容器写入签名/证据标签的共用面。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
-(§1.3 与 live 的同一性:sim 真值写 obs 渠道——与 live 同一容器、同一渠道
+设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+(§1.3 与 live 的同一性:sim 真值写 obs 渠道——与 live 同一状态容器、同一渠道
 架构;动作效果经动作 op 上报函数族走 logic_action 渠道)。本模块只承载
 「sim 侧怎么署名写入」,不含任何游戏规则。
 
-evidence 前缀 = ``sim:engine:``:与旧引擎同前缀契约——该前缀在容器
+evidence 前缀 = ``sim:engine:``:与旧引擎同前缀契约——该前缀在状态容器
 ``_MISMATCH_SUPPRESS_PREFIXES`` 登记为失配抑制面,内核零改动即可复用
 (契约平移)。
 """
@@ -29,7 +29,7 @@ def sim_evidence(tag: str) -> str:
 
 def obs_sig(group_id: str | None = None) -> ChannelSig:
     """sim 真值合成签名(obs 族,mode=synthesized;环境事件以 obs 渠道写
-    容器的署名形态,正本 = sim-design.md §1.3)。"""
+    状态容器的署名形态,权威版本 = sim-design.md §1.3)。"""
     return ChannelSig(family='obs', actor=SIM_ENGINE_ACTOR,
                       mode='synthesized', group_id=group_id)
 

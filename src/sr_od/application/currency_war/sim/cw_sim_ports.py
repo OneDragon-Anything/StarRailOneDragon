@@ -1,4 +1,4 @@
-"""sim 接缝端口模块(驱动反转;接口契约唯一载体,正本 = sim-design.md §6.2)。
+"""sim 接缝端口模块(驱动反转;接口契约唯一载体,权威版本 = sim-design.md §6.2)。
 
 sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换面收敛在
 本模块:模块级装配槽 + 端口函数。**缺省 ``None` = 纯实机**,零行为变化;
@@ -11,9 +11,9 @@ sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换
 - ``screen_identity()`` —— 后端画面状态机答当前 screen_info 档名;
 - ``observe(screen_name)`` —— 生成器直出该屏 ``CwScreenXxxObs`` 形状产物
   (消费方 = 画面 op 读屏点,产物必须经 ``cw_screen_report`` 同名上报函数
-  落容器,写通道铁律见 flow-seam 详设 §3);
+  落状态容器,写通道铁律见 flow-seam 详设 §3);
 - ``sim_or_live_observation(screen_name, live_read)`` —— 读屏点改道 helper:
-  装了后端 → ``observe``,否则原读链(逐屏显式读屏点一行机械接线);
+  装了后端 → ``observe``,否则原读链(逐屏显式读屏点一行机械接入);
 - ``click_answer(op, screen_name, area_name, until_find_all, until_not_find_all)``
   —— sim 点击应答:后端先按点击处理画面状态机转移,再出实机同形 round
   结果(机械镜 = :func:`mirror_click_answer`);
@@ -69,7 +69,7 @@ class SimBackendProtocol(Protocol):
         ...
 
     def advance(self, decl: WorldDecl) -> None:
-        """声明驱动推进(按 ``decl.trigger`` 分派世界过程/画面呈现,完成后
+        """声明驱动推进(按 ``decl.trigger`` 分派状态过程/画面呈现,完成后
         按 ``decl.next_screen`` 等值对账;动作后果声明化迭代总纲
         design.md §2.2 契约 5)。"""
         ...
@@ -112,7 +112,7 @@ def sim_backend_installed() -> bool:
 
 def _require_backend() -> SimBackendProtocol:
     """取装配槽;未装配 = AssertionError 响亮(端口六口只在 sim 分支可达,
-    未装配即触达 = 接线 bug,禁静默回落实机)。"""
+    未装配即触达 = 调用点接错,禁静默回落实机)。"""
     if _BACKEND is None:
         raise AssertionError(
             'sim 后端未装配(端口调用只在 install_sim_backend 之后合法;'
@@ -126,7 +126,7 @@ def screen_identity() -> str:
 
 
 def observe(screen_name: str) -> Any:
-    """生成器直出该屏观察产物(消费方必须经同名上报函数落容器)。"""
+    """生成器直出该屏观察产物(消费方必须经同名上报函数落状态容器)。"""
     return _require_backend().observe(screen_name)
 
 
@@ -137,7 +137,7 @@ def visible(screen_name: str, area_name: str) -> bool:
 
 def sim_or_live_observation(screen_name: str,
                             live_read: Callable[[], Any]) -> Any:
-    """读屏点改道 helper(观察分支唯一 op 触点的接线原语)。
+    """读屏点改道 helper(观察分支唯一 op 触点的接入原语)。
 
     装了后端 → ``observe(screen_name)``(生成器直出);否则执行
     ``live_read()`` 原读链。逐屏显式读屏点一行机械改:
@@ -150,13 +150,13 @@ def sim_or_live_observation(screen_name: str,
 
 def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
                          live_read: Callable[[], str | None]) -> str | None:
-    """画面身份读点改道 helper(外循环阶段一身份分发的接线原语)。
+    """画面身份读点改道 helper(外循环阶段一身份分发的接入原语)。
 
     语义与 :func:`sim_or_live_observation` 同族:装了后端 →
     ``screen_identity()``(画面状态机唯一答口,flow-seam 附录 A.2
     「sim 画面身份归 screen_identity」),且仅当档名 ∈ 调用方清单时返回
     (清单外 = None,结束本次访问调用方默认分支——与实机 ``get_match_screen_name``
-    的清单过滤语义同形,备战双锚默认分支因此不受影响);未装配 → 执行
+    的清单过滤语义同形,备战两识别标志同帧命中的默认分支因此不受影响);未装配 → 执行
     ``live_read()`` 原识别链,实机路径零行为变化。
     """
     if _BACKEND is not None:
@@ -169,7 +169,7 @@ def mechanical_io_allowed() -> bool:
     """机械 IO 分支(直连 controller 点击/拖拽)当前是否可达。
 
     实机(未装配)True;sim 装配后 False——机械执行分支静默跳过,动作的
-    世界反应由紧随的自上报(上报函数族)承接(flow-seam 详设 §2
+    状态副本反应由紧随的自上报(上报函数族)承接(flow-seam 详设 §2
     直连旁路 port 检查口,与各旁路文件逐点守卫同用;漏改路径仍由
     运行器 controller 桩兜底触碰即炸)。
     """
@@ -219,7 +219,7 @@ def mirror_click_answer(
     - **屏门**(实机「按钮在本帧上找到才点得着」的 sim 对偶):问询屏
       非后端当前呈现屏(经 :func:`visible` 判定)→ round_retry(实机
       OCR_CLICK_NOT_FOUND 同形,调用方按 is_success 分流)。无此门 =
-      任意屏上点击恒成功,驻留型动作 op 在世界已切走后仍每轮「点击 +
+      任意屏上点击恒成功,驻留型动作 op 在状态副本已切走后仍每轮「点击 +
       上报」越屏偷跑推进——冒烟批阻断二实证(结算确认把后续 16 节点
       的推进全部冒领,流程层节点处理零执行,5000 步风暴假通过);
     - until 问询 = :func:`visible`(``until_not_find_all`` = 取反,目标区域

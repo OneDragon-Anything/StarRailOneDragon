@@ -1,6 +1,6 @@
 """sim 重做·对局开局(M01)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§1.2 局级输入/§3.4 初始序列)现役口径:
 
 - 开局 HP = ``kernel/cw_opening_hp.opening_hp_prior`` 查表(唯一单一
@@ -13,7 +13,7 @@
   费用档从 M06 固定牌库该费档名集内均匀抽名(开局时 held 为空,等价
   于全池均匀;开局补给通道真实名单分布候实机数据,U28 候实机数据行);
 - 开局备战席写入 = M06 派生池不变量(剩余 = 固定 − held)的**首个写端**,
-  先于任何商店发牌(held 由容器 bench/deployed 星级派生,M06);
+  先于任何商店发牌(held 由状态容器 bench/deployed 星级派生,M06);
 - 不属本模块:环境 offer(RunConfig.env_present 为真时由 sim 后端采样)。
 """
 from __future__ import annotations
@@ -102,8 +102,8 @@ def _uniform_char_of_cost(rng: random.Random, cost: int) -> Character:
 def opening_bench_chars(rng: random.Random) -> list[BenchSlot]:
     """开局手牌 → 备战席件表(U28:4 张全 1★;卡名按 M01 占位口径均匀抽)。
 
-    返回 1 基槽位已定位的件表(P1 容器原生 BenchSlot,席恒 9 槽,pad
-    语义由容器视图承载)。"""
+    返回 1 基槽位已定位的件表(P1 状态容器原生 BenchSlot,席恒 9 槽,pad
+    语义由状态容器视图承载)。"""
     shape = sample_opening_shape(rng)
     chars: list[BenchSlot] = []
     for cost in shape:
@@ -118,7 +118,7 @@ def opening_bench_chars(rng: random.Random) -> list[BenchSlot]:
 
 def apply_opening(gs: GameState, cfg: RunConfig,
                   rng: random.Random) -> None:
-    """开局态写入容器(obs 渠道;引擎在 reset 时调用一次)。
+    """开局态写入状态容器(obs 渠道;引擎在 reset 时调用一次)。
 
     写入集 = M01 开局状态域:职级/数值难度/词缀/对局类型(局级输入
     申报)+ HP 查表 + 金 3 / 等级 3 / deploy_cap 3 / xp 清零 / streak 0

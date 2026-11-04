@@ -1,6 +1,6 @@
 """sim 重做·单局运行配置(局级输入,M01 正典字段清单)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§1.2 局级输入):开局参数是**局级输入**,由调用方给定,sim 内不猜开局
 条件分布;本 dataclass = 全稿唯一的字段清单汇总面(各域模块一律引用
 此处,不再各自加字段)。
@@ -23,7 +23,7 @@ from dataclasses import dataclass
 class RunConfig:
     """单局开局参数(调用方给定;值域与缺省语义见类注释)。"""
 
-    #: 职级(开局确认屏所选档,'A1'..'A8' 及 A8 子档;容器
+    #: 职级(开局确认屏所选档,'A1'..'A8' 及 A8 子档;状态容器
     #: selected_difficulty 同名同义)。开局 HP 查表唯一实证档 = 'A8',
     #: 其余档报错索样本(U15 定稿口径,不外推)。
     selected_difficulty: str

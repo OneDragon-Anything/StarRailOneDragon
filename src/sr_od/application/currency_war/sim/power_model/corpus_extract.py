@@ -11,7 +11,7 @@ extraction/``(gitignored 区),零主流程副作用;本模块仅在显式运行
   sim 批根下,先例 = 已停用 Δ池生成器 ``_assert_guards``);②具名
   文件白名单(许可集恰为各源目录的 ``decisions.jsonl``/``
   outcomes.jsonl`` 两个解析后绝对路径,禁目录级 glob——同目录旁路
-  .jsonl 众多,glob 会双计/卷脏数据,正本 §8-1);③run 级隔离
+  .jsonl 众多,glob 会双计/卷脏数据,权威版本 §8-1);③run 级隔离
   (``fake_``/``sim_`` 前缀规则 + 显式事故名单,run 粒度拦「进错目录
   的 run」,先例同 Δ池生成器)。
 - 铁律 3(HP 不入胜负模型)= 训练样本行零 HP 字段;HP 量只进幅度
@@ -61,7 +61,7 @@ DEFAULT_OUT_DIR: Path = (get_project_root() / '.debug' / 'currency_war'
 #: sim 后不进许可集,裁定记录随产物)。
 DEFAULT_LICENSE_DIRS: tuple[Path, ...] = (LIVE_DIR,)
 
-#: 具名文件白名单(许可集恰为各源目录下这两个文件;正本 §8-1)。
+#: 具名文件白名单(许可集恰为各源目录下这两个文件;权威版本 §8-1)。
 LICENSED_BASENAMES: frozenset[str] = frozenset(
     {'decisions.jsonl', 'outcomes.jsonl'})
 
@@ -88,7 +88,7 @@ QUARANTINED_RUNS: dict[str, str] = {
     'run_20260822_191028': '双进程写竞争事故局(局56/57 重启交错)',
 }
 
-#: outcomes source 档次(正本 §5.1-4:带标签行内按 source 档次,
+#: outcomes source 档次(权威版本 §5.1-4:带标签行内按 source 档次,
 #: 小值优先):'' 与缺失(旧 schema 真值)> loss_page(败页回填)>
 #: 其余回填族。
 _SOURCE_TIER: dict[str, int] = {'': 0, 'loss_page': 1}
@@ -110,7 +110,7 @@ def run_quarantine_reason(run_id: object) -> str | None:
     return QUARANTINED_RUNS.get(rid)
 
 
-# ===== 输入守卫(解析后路径精确相等断言;先例 = 正本 §8-1)=====
+# ===== 输入守卫(解析后路径精确相等断言;先例 = 权威版本 §8-1)=====
 
 def assert_input_guards(license_dirs: list[Path] | tuple[Path, ...],
                         sim_root: Path | None = None) -> dict[Path, dict[str, Path]]:
@@ -198,7 +198,7 @@ def source_fingerprint(inputs: list[CorpusInput]) -> dict[str, Any]:
     """产物头部源指纹:抽取器版本 + 逐文件哈希/行数 + 组合哈希。
 
     组合哈希 = 按「路径:哈希」行排序后拼接再 sha256(输入文件集哈希;
-    防同目录旁路文件/映射漂移两类静默污染,正本 §5.1 末条)。"""
+    防同目录旁路文件/映射漂移两类静默污染,权威版本 §5.1 末条)。"""
     entries = [
         {'dir': str(inp.dir_path), 'file': name,
          'sha256': inp.file_sha256.get(name, ''),
@@ -216,11 +216,11 @@ def source_fingerprint(inputs: list[CorpusInput]) -> dict[str, Any]:
     }
 
 
-# ===== canonical 对齐(正本 §5.1)=====
+# ===== canonical 对齐(权威版本 §5.1)=====
 
 def _join_key(row: dict[str, Any]) -> tuple[str, int, int]:
     """三元 join 键 (run_id, plane, round_num)(round_num 按位面重置,
-    两段键会跨位面撞——正本 §5.1-1)。"""
+    两段键会跨位面撞——权威版本 §5.1-1)。"""
     return (str(row.get('run_id') or ''), int(row.get('plane') or 0),
             int(row.get('round_num') or 0))
 
@@ -243,7 +243,7 @@ class CanonicalAlignment:
 
 def canonical_align(outcome_rows: list[dict[str, Any]],
                     quarantine_counts: dict[str, int]) -> CanonicalAlignment:
-    """outcomes 行 → 逐键权威 outcome(正本 §5.1-4 去重与降级)。
+    """outcomes 行 → 逐键权威 outcome(权威版本 §5.1-4 去重与降级)。
 
     规则(逐键):
     1. 剔除 recovered 行(schema 注释明言「训练侧可剔」);
@@ -303,7 +303,7 @@ def canonical_align(outcome_rows: list[dict[str, Any]],
 def align_decisions_snapshots(
     decision_rows: list[dict[str, Any]],
 ) -> tuple[dict[tuple[str, int, int], dict[str, Any]], int]:
-    """decisions 行 → (逐键末帧快照, 隔离行数)(正本 §5.1-3:快照 = 该键
+    """decisions 行 → (逐键末帧快照, 隔离行数)(权威版本 §5.1-3:快照 = 该键
     最后一帧,不问帧的 node_type——持卡改节点局恰是最会改节点的局,
     按帧类型过滤 = 选择偏差)。"""
     by_key: dict[tuple[str, int, int], tuple[int, dict[str, Any]]] = {}
@@ -395,7 +395,7 @@ def extract_training_corpus(
             keys_no_label += 1
             drop(outcome, 'no_label_key')
             # MNAR 缺失率只计「标签缺失」键(无帧丢弃是另一类丢弃,
-            # 不混入缺失率分母语义;正本 §5.1 敏感性表口径)。
+            # 不混入缺失率分母语义;权威版本 §5.1 敏感性表口径)。
             mnar[src_family]['missing'] += 1
             continue
 
