@@ -33,10 +33,11 @@ description: 需要查询崩坏:星穹铁道账号的米游社数据（角色列
 - 返回 `success` + 角色数组：`id` / `name` / `level` / `rarity` / `rank`(星魂数) / `element` / `element_cn`(属性中文) / `base_type`(命途码) / `base_type_cn`(命途中文) / `equip`(光锥摘要 name/level/rank/rarity)
 - 秒级返回；会话过期时返回 `session_expired`（**不清除任何本机数据**，只提示重新登录）
 
-### 3. `mys_get_roster_detail()` —— 全角色名册明细（遗器/星魂/行迹/面板）
+### 3. `mys_get_roster_detail()` —— 全角色名册明细（遗器/星魂/行迹/面板/套装效果）
 
 - 返回 `success` + 每名角色的完整明细（数据量大，64 角色全量一次返回）：
-  - `relics[]`(隧洞遗器) / `ornaments[]`(位面饰品)：`name` / `pos_cn`(部位中文) / `rarity` / `level` / `main`(主词条 name_cn+value+times 强化次数) / `subs[]`(副词条同构)
+  - `relics[]`(隧洞遗器) / `ornaments[]`(位面饰品)：`name` / `set_name`(套装名) / `pos_cn`(部位中文) / `rarity` / `level` / `main`(主词条 name_cn+value+times 强化次数) / `subs[]`(副词条同构)
+  - `set_effects[]` 已激活套装效果：`set_name` / `piece_count` / `pieces[]`(已佩戴件名) / `activated[]`(count 件数 + desc 效果原文——隧洞套 2/4 件档、位面饰品 2 件档，只列已激活)
   - `ranks[]` 星魂：`pos` / `name` / `desc` / `is_unlocked`
   - `skills[]` 行迹：`name`(普攻/战技/…/欢愉技) / `level` / `is_activated` / `stages[]`(name/desc/level)
   - `properties[]` 属性面板：`name_cn` / `base` / `add` / `final`
