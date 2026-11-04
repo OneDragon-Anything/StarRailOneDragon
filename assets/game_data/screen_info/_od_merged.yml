@@ -9263,21 +9263,6 @@
     color_range: null
     goto_list:
     - 逐光捡金
-  - area_name: 按钮-传送-总览混沌回忆卡
-    id_mark: false
-    pc_rect:
-    - 1488
-    - 645
-    - 1620
-    - 692
-    text: 传送
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list:
-    - 逐光捡金
   - area_name: 按钮-前往挑战-异相仲裁
     id_mark: false
     pc_rect:
@@ -9335,6 +9320,21 @@
     color_range: null
     goto_list:
     - 大世界-普通
+  - area_name: 按钮-传送-卡片式
+    id_mark: false
+    pc_rect:
+    - 1485
+    - 640
+    - 1632
+    - 715
+    text: 传送
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 逐光捡金
 - screen_id: large_map
   screen_name: 大地图
   pc_alt: false
