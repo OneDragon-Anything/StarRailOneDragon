@@ -90,7 +90,7 @@ def delta_interest_flow(refund: int, cap_sup: int = INTEREST_CAP_SUP,
     ``min(⌈r/10⌉, cap_sup) + cap_sup × max(0, R_截−1)``
 
     方向保证:生产式 ≥ 轨迹真值 Σ_t Δ息_t 且 ≤ 复合安全界 cap_sup×R_截
-    (交叉核对锚 §5.3「Δ利息流交叉核对」行,升帽注入反例锚 R63-1 在测试侧构造)。
+    (交叉核对基准 §5.3「Δ利息流交叉核对」行,升帽注入反例基准 R63-1 在测试侧构造)。
     卖出抬高 g 使后续利息流严格增加(R5-1);第二项按现值 cap 组装即红。
     """
     if trunc is None:

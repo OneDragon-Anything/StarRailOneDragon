@@ -1,6 +1,6 @@
 """投资策略画面策略(mandate_v1;宪法六「一画面一策略文件」)。
 
-设计正本 = strategy-docs/29_invest_strategy_screen.md(下称「29 号稿」,
+设计权威版本 = strategy-docs/29_invest_strategy_screen.md(下称「29 号稿」,
 节号即该篇节号);评分模型 = 「统一加法标尺」——单位 = 分,
 **1 分 := 1 金等价**(归一化约定,沿 28 号稿 §1;XP 折算沿
 env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
@@ -14,10 +14,10 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
   fail-closed 恒 0);
 - 方向分(2026-11-03-unified-line-scoring 选卡侧统一,design §3.2)=
   卡 × **候选 top1 线**的线分引擎加分(:func:`strategy_line_bonus`
-  通道派生;锚 = :func:`line_select.anchor_line_of`,P1/P2 同式,
+  通道派生;基准 = :func:`line_select.anchor_line_of`,P1/P2 同式,
   锁定帧 = 锁定线)——量纲申报:方向分/克制减分携线分数量级
   (:mod:`kernel.cw_line_scales`),与现金/赠分的金等价标尺合并是统一
-  评分设计的拍板形态(纯加权和一个公式),定义卡支配由 +500 压过现金
+  评分设计的用户决定形态(纯加权和一个公式),定义卡支配由 +500 压过现金
   满档实现(旧定义型分区退役);
 - 赠卡分 = STRATEGY_GRANTS + gift_value.grant_gift_value(29 号稿 §2.3);
 - 立场分 = :data:`STANCE_SCORE`(【拍】形态,现行无非零行;表外卡恒 0);
@@ -102,8 +102,8 @@ if TYPE_CHECKING:
 
 #: 定义卡强档阈值(design §3.2:「顶级不刷」=「给 top1 线加分 ≥ 本值的
 #: 卡不刷新换掉」,一处常数):实证升档(+750)/定义卡(+500)过阈;
-#: 概念股/契约档(+300)不入。锚 = :func:`anchor_line_of`(P1/P2 同式,
-#: 锁定帧 = 锁定线;空候选帧锚缺失 → 方向分 0 → 不过阈,保守缺省)。
+#: 概念股/契约档(+300)不入。基准 = :func:`anchor_line_of`(P1/P2 同式,
+#: 锁定帧 = 锁定线;空候选帧基准缺失 → 方向分 0 → 不过阈,保守缺省)。
 DEFINING_BONUS_MIN: int = INVEST_DEFINING
 
 
@@ -113,7 +113,7 @@ DEFINING_BONUS_MIN: int = INVEST_DEFINING
 class InvestStrategyDecision:
     """选卡决策。
 
-    idx = options 容器下标(0 基;候选序 = 调用方传入序,取值时机 =
+    idx = options 列表下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与六组件分解,仅观测);
     total = 组件总分(统一标尺,分 = 金等价;方向/克制携线分数量级,
     见模块 docstring 量纲申报);components = 六组件分解
@@ -135,7 +135,7 @@ class StrategyRefreshSuggestion:
     ——两屏刷新语义不同构:env = 整帧重掷单钮、无槽语义;策略 = 逐槽
     刷新,同名歧义以屏别前缀消解,29 号稿 §4X)。
 
-    slots = 可刷槽位元组(元素 = options 容器下标,0 基;坐标系与取值
+    slots = 可刷槽位元组(元素 = options 列表下标,0 基;坐标系与取值
     时机同 idx——本帧决策期快照,handler 槽序循环消费)。
     """
     reason: str
@@ -257,14 +257,14 @@ def _components(canonical: str | None, opt: str, gs: GameState,
     未解析名(垃圾名)→ 全 0。
 
     - 现金分走 canonical(resolved ∧ > 0 才计,fail-closed 恒 0);
-    - 方向分 = 卡 × 选卡锚点线的通道派生加分(design §3.2 选卡侧统一;
-      ``anchor`` = :func:`anchor_line_of` 产物,None〔锚缺失帧〕→ 恒 0);
+    - 方向分 = 卡 × 选卡基准线的通道派生加分(design §3.2 选卡侧统一;
+      ``anchor`` = :func:`anchor_line_of` 产物,None〔基准缺失帧〕→ 恒 0);
     - 赠卡分:STRATEGY_GRANTS + grant_gift_value(无条目自然 0);
     - 立场分:空表恒 0(表外卡默认 0);
     - 转向轴:strategy_priority 子串命中(OCR 容错,与白名单一致)加
       STEERING_PRIORITY_BONUS(软偏好);
-    - 克制减分:选项克制锚点线主派 → COUNTER_PICK_PENALTY(counters_dot
-      硬排除迁移,design §3.2;锚缺失帧不减)。
+    - 克制减分:选项克制基准线主派 → COUNTER_PICK_PENALTY(counters_dot
+      硬排除迁移,design §3.2;基准缺失帧不减)。
     """
     if canonical is None:
         return (0.0,) * 7
@@ -290,11 +290,11 @@ def _components(canonical: str | None, opt: str, gs: GameState,
 class _Cand:
     """单候选评分存档。
 
-    idx = options 容器下标(0 基,取值时机 = 本帧决策期快照);
+    idx = options 列表下标(0 基,取值时机 = 本帧决策期快照);
     exact = 归一后精确命中注册表(get_strategy;LCS 兜底不入刷新分类,
     fail-closed——评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严);
-    defining = 派生顶级位(design §3.2:给锚点线加分 ≥
-    ``DEFINING_BONUS_MIN``——旧 augment_affinity 查表布尔退役;锚缺失帧
+    defining = 派生顶级位(design §3.2:给基准线加分 ≥
+    ``DEFINING_BONUS_MIN``——旧 augment_affinity 查表布尔退役;基准缺失帧
     方向分 0 → 恒 False);
     align_n = 终局阵容锁定帧绑定元素命中数(未锁定帧恒 0,N 无语义);
     off_direction = 阵容冲突护栏出域标记(基准非空 ∧ 指向集非空 ∧ 与基准
@@ -320,20 +320,20 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  strategy_priority: list[str],
                  strategy_forbid: list[str],
                  basis: frozenset[str]) -> list[_Cand]:
-    """帧评分一次(选卡/刷新两入口共享;锚点线/受克属性集循环外单帧单读,
+    """帧评分一次(选卡/刷新两入口共享;基准线/受克属性集循环外单帧单读,
     沿旧机器纪律)。
 
     env 名防御(29 号稿 §3):get_env(o) 命中的候选 = 注册表交叉
     演化形态,跳过解析、0 分垫底(canonical=None 路径)。LCS 兜底命中即
-    告警(观测锚,申报 5 义务实现)——精确 miss 而解析成功 = LCS 互撞
+    告警(观测基准,申报 5 义务实现)——精确 miss 而解析成功 = LCS 互撞
     形态,误中会把错卡的大额现金分赋给形变名,须可见。
 
     basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):仅对 canonical
     非 None 的候选算指向集并标出域——评分帧保留全量候选(不前置过滤,
     帧级门「候选恰 3」与刷新分类全量可见),排除在 :func:`_pick_domain`。"""
     locked_frame = bool(locked_comp) and not demoted_endgame
-    # 选卡锚点线(design §3.2 r4/R4-4:锁定帧 = 锁定线;未锁帧 = 候选首名,
-    # P1/P2 同式)——顶级保护/方向分/克制减分三消费同锚,单帧单读。
+    # 选卡基准线(design §3.2 r4/R4-4:锁定帧 = 锁定线;未锁帧 = 候选首名,
+    # P1/P2 同式)——顶级保护/方向分/克制减分三消费同基准,单帧单读。
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
     punished = punished_mechs_of(anchor)
     cands: list[_Cand] = []
@@ -509,7 +509,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
            ) -> InvestStrategyDecision | StrategyRefreshSuggestion:
     """投资策略 3 选 1 决策(纯值出口;flow 包装动作词表,29 号稿 §4X)。
 
-    - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
+    - options = 屏上候选名列表(状态容器序);locked_comp/demoted_endgame/
       evicted 与现役 kernel 调用的三参同源(flow 意向状态直通);
     - 选卡 = 结构分区 + 组件总分 argmax(见 :func:`decide_pick`;冲突基准
       在本入口算好,护栏设计 §2.2);
@@ -518,10 +518,10 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
       (含未锁定帧)→ 整帧不刷,槽级不评;帧级门过 → 槽级动作集 = 非槽级
       顶级可刷/被禁与出域恒入/唯一 L1 守卫,动作集非空 → 建议(输出槽序
       元组;刷新余量三闸留 op 层,结构零改动);
-    - **帧级顶级类 = 派生顶级(给锚点线加分 ≥ ``DEFINING_BONUS_MIN``,
+    - **帧级顶级类 = 派生顶级(给基准线加分 ≥ ``DEFINING_BONUS_MIN``,
       design §3.2)∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
       判定、不计 max_N);**槽级顶级类 = 帧级顶级类 ∨ 对齐保护**(终局
-      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——锚缺失
+      阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——基准缺失
       帧方向分 0,保守向不保护)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
@@ -574,7 +574,7 @@ def _refresh_slots(cands: list[_Cand],
     # 槽级动作集:非槽级顶级可刷;被禁/出域槽恒入(被禁∧顶级/出域槽:
     # 永不被选,保护无对象 → 不保护;出域占槽应刷掉换本线卡机会,护栏
     # 设计 §2.3)。槽级顶级 = 帧级顶级 ∨ 对齐保护(终局阵容锁定帧 =
-    # 非血 ∧ N≥2;未锁定帧 = 恒 False——锚缺失帧方向分 0,保守向不保护;
+    # 非血 ∧ N≥2;未锁定帧 = 恒 False——基准缺失帧方向分 0,保守向不保护;
     # 血卡保护语义由血本位三态序覆盖,注册表演化出「血卡+绑定」时按已
     # 登记 J7 申报裁:保护无对象 → 不保护)
     action = [c.idx for c in cands

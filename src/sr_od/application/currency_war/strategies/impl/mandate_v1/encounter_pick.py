@@ -11,7 +11,7 @@ docs/develop/sr_od/application/currency_war/changes/
 
 本文件 = 遭遇判据线载体(宪法五:换一套策略实现会要不同的值/序,故判据
 值/序随本体驻策略层):立场常量区(【拍】登记)、fill 双定案槽、
-reward_tier 档序、三态表均在本文件。生产接线 = flow.decide_encounter
+reward_tier 档序、三态表均在本文件。生产接入调用 = flow.decide_encounter
 直调本文件 :func:`decide`(kernel 侧判据面已同批迁出删除;迁移批
 2026-09-24-encounter-screen-strategy-migration 原子切换)。
 
@@ -172,7 +172,7 @@ def reward_tier(text: str) -> int:
 class EncounterPickDecision:
     """选档决策。
 
-    [索引定义] idx = options 容器下标(0 基;坐标系 = 调用方传入候选序
+    [索引定义] idx = options 列表下标(0 基;坐标系 = 调用方传入候选序
                 左→右 = 画面卡列序,与选项 ``EncounterOption.idx`` 同一
                 坐标系;取值时机 = 本帧决策期快照,恒稳);reason = 归因串
                 (design §2.2 格式与因词封闭枚举,仅观测)。
@@ -225,7 +225,7 @@ def decide(options: list[EncounterOption], gs: GameState,
     - 空候选帧 → idx=0 no-options(纯函数定义完备;现役观察层守卫——
       读不到标题返空列表零点击——下不可达);
     - 签名最小:无阵容意向参(词缀轴是死输入,难度轴按能力态);
-      无 refresh_used 参(刷新次数闸内嵌读容器剩余语义)。
+      无 refresh_used 参(刷新次数闸内嵌读状态容器剩余语义)。
     """
     if not options:
         return EncounterPickDecision(idx=0, reason='no-options')
@@ -246,7 +246,7 @@ def decide(options: list[EncounterOption], gs: GameState,
     if kappa == '不足':
         return _empty_reachable_frame(options, gs, 'kappa-不足')
     # 可及集:cap 过滤在前(边缘态下 t ≥ 3 全排除,含其五/六;足量态
-    # cap = 6 = 档位值域上界,与判据正本逐位同构,不简化为无判定)
+    # cap = 6 = 档位值域上界,与判据权威版本逐位同构,不简化为无判定)
     cap = EDGE_CAP if kappa == '边缘' else 6
     reachable: list[EncounterOption] = []
     for opt in options:

@@ -1,8 +1,8 @@
 """criteria/levelup——升级面判据(最优概率带单判据 + 单帧原子发射)。
 
 判据体系 = 升级触发统一与资金门重定义批(用户裁定 2026-10-18 四条;
-触发/资金门/删除面正本锚 = strategy-docs/11_shop_decisions.md §2)+
-2026-10-17-levelup-shop-transition 迭代收口(资格门全链判定单一源
+触发/资金门/删除面权威基准 = strategy-docs/11_shop_decisions.md §2)+
+2026-10-17-levelup-shop-transition 迭代收尾(资格门全链判定单一源
 :func:`upgrade_gate_verdict`,支出形态单帧原子,跨画面键退役):
 
 - **触发单判据三分派**(11 号稿 §2 停留门「可达最优等级」模型承接):
@@ -63,7 +63,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
     上限)毫无数值或语义关联,禁接错源。
 
     ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
-    **必填**:消费位(备战第 4 步升级检查/商店会话升级意图出口两屏同参)已全量接线,
+    **必填**:消费位(备战第 4 步升级检查/商店会话升级意图出口两屏同参)已全量接入调用,
     过渡缺省通道已拆除;禁新消费位依赖缺省。
     """
     return level >= level_max
@@ -72,7 +72,7 @@ def lv9_stop(level: int, level_max: int) -> bool:
 def xp_ledger_stop(xp_progress: tuple[int, int] | None,
                    level_max: int) -> bool:
     """XP 期望账本升级停判据(lv9_stop 的轮内盲区补位,与 lv9_stop
-    同位合取消费;语义锚 = 推进算子单一源 ``kernel/cw_economy.
+    同位合取消费;语义基准 = 推进算子单一源 ``kernel/cw_economy.
     xp_apply_clicks``)。
 
     为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
@@ -94,7 +94,7 @@ def xp_ledger_stop(xp_progress: tuple[int, int] | None,
     不存在第二把尺);门槛表键域 3-9 无表项 ⇒ 判据两域恒不覆盖,停止语义
     两域同由 lv9_stop 承载。
 
-    ``xp_progress`` = 容器 ``gs.xp.value`` 原样透传(缺读 None 不覆盖,
+    ``xp_progress`` = 状态容器 ``gs.xp.value`` 原样透传(缺读 None 不覆盖,
     与 clicks_to_next_level 的缺省兜底方向一致——停判据缺读宁可放行
     交 lv9_stop/量闸管辖,不制造静默拒)。单一源 = kernel
     ``cw_economy.XP_TO_NEXT_LEVEL``,禁第二份表。
@@ -123,7 +123,7 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
 
 
 def _plane_round_of(state: GameState) -> tuple[int, int]:
-    """(plane, round_num) 容器读(读口单一源,prep 链容器化段 2 起
+    """(plane, round_num) 状态容器读(读口单一源,prep 链结构化段 2 起
     gs 单形态)。"""
     return plane_of(state), round_num_of(state)
 
@@ -403,7 +403,7 @@ def _plane_last_battle(gs: GameState,
     """位面末最后一战判定(cw4 消费面;单一源 =
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
     模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
-    容器签名,容器 gs 直读。"""
+    状态容器签名,状态容器 gs 直读。"""
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         plane_last_battle as _plb,
     )

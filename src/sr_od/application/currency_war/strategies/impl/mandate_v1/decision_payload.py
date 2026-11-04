@@ -1,18 +1,18 @@
 """mandate_v1 决策载荷(decision_payload 钩子的 v1 实现;纯读投影)。
 
-职责 = 决策帧出口后组装七个键(语义正本 =
+职责 = 决策帧出口后组装七个键(语义权威版本 =
 strategy-docs/strategy-telemetry.md;判据载体出处 =
 strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
 方向状态),两类来源:
 
 - 现读键 5(direction/k_members/k_fallback/transition_
-  candidates/member_rank):容器 game state + 策略器状态**现读**
-  (语义正本 = strategy-telemetry.md 键表;window 键已随 entry_signals
+  candidates/member_rank):状态容器 game state + 策略器状态**现读**
+  (语义权威版本 = strategy-telemetry.md 键表;window 键已随 entry_signals
   整体退役);
 - 产物透传键 2(pick_margin/deploy_margin):词表动作字段与私有槽,
   均为**决策帧出口时点快照**(pick-margin-telemetry design §2.2)。
 
-纯读纪律:本模块零写(不碰 cw4_counters/容器域/意向缓存/私有槽——
+纯读纪律:本模块零写(不碰 cw4_counters/状态容器域/意向缓存/私有槽——
 deploy_margin 读槽后清挂 bridge 覆写,读后清不入本模块);K 空窗
 回退分支重推导 = 与备战帧(:func:`entry.emit` 顶段)同函数同参再算一遍
 ——:func:`cw_intention.k_empty_window_fallback` 及其派生链只读

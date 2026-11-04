@@ -4,12 +4,12 @@
 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve` 供给,调用方
 装配)→ 发射。
 
-预测门退役(统一让位优先级迭代 3.4,dismantle §1):旧「目标可买三腿
+预测门退役(统一让位优先级迭代 3.4,dismantle §1):旧「目标可买三效果条目
 并集」(:func:`target_buyable`,判据与免费刷新分支的合取门)整门删除
 ——刷新时点信息不足、精确不可算,用信息最少的时点否决决策是
 g_20261029_084447 刷新卡死的直接机制(总纲 §1.2);判据收敛为三段式
-分派,免费腿改无条件刷(design §2.2)。该门符号已退役,禁按旧枚举
-语义复活接线。
+分派,免费效果条目改无条件刷(design §2.2)。该门符号已退役,禁按旧枚举
+语义复活接入调用。
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def refresh_warranted(state: GameState,
     星级目标直接驱动」;原 R1 期望启动门已由本查表判据取代)。目标
     可买合取已随预测门整门删除(统一让位优先级迭代 3.4,dismantle §1:
     刷新时点预测不可算,判据收敛本三分派;该门符号已退役,禁按旧枚举
-    语义复活接线)。金前提(R2 预算门,预留 =
+    语义复活接入调用)。金前提(R2 预算门,预留 =
     saturation_line + 停留目标实费档)= 调用方装配,不在本函数。
     返回 (是否值得刷,拒因键——判读归因)。
     """
@@ -101,7 +101,7 @@ def refresh_warranted(state: GameState,
         # ①带下界 > 当前等级 → 升级优先(升到带内去刷,停留门覆盖),
         # 本判据不刷([3] 语义)。资金序声明(升级推迟期):本支维持
         # 拒绝、不设解锁支——解锁支会在凑金在途帧放行刷,而刷新预留
-        # 无整级预留腿(升级触发态与刷新放行态带互斥),刷新烧凑金 →
+        # 无整级预留效果条目(升级触发态与刷新放行态带互斥),刷新烧凑金 →
         # 「金被刷到下界、升级永久 defer」饿死环;资金线推迟态 = 攒金
         # 收敛态(每轮节点收入,金上涨吃息;凑金域唯一出辖 = 终局域
         # ALL IN),非死锁。
@@ -147,7 +147,7 @@ def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
 
 def _entry_cid(x: object) -> str:
     """占席条目 → 身份名(bench 占席条目 = BenchSlot 解包,deployed 行域
-    单位直读;P4 容器形统一读点)。"""
+    单位直读;P4 状态容器形统一读点)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )
@@ -173,7 +173,7 @@ def qualified_member_costs(buy_members: tuple[str, ...],
                            level: int) -> list[int]:
     """合格集成员费带 = 未 2★ 成型 ∧ 该级可刷出(refresh_prob>0)成员的
     注册表 cost 列表(P91 压牌库同轴带偏好单一消费源)。R2 预留 ρ 已改
-    锚停留目标实费档(:func:`r2_card_reserve`),不再经本过滤——两判定
+    基准停留目标实费档(:func:`r2_card_reserve`),不再经本过滤——两判定
     源解耦(旧「同源消费」声明随 ρ 重定义废止)。
 
     过滤序 = 成型先序(2★ 出域先于可追性判定);注册表缺项/无 cost
@@ -215,7 +215,7 @@ def r2_card_reserve(state: GameState) -> int:
       单一目标价,如实声明;兜底值不进任何可达比较(该帧 ρ 分量恒零
       是口径而非缺省)。
 
-    ⚠ 同名异义锚:本 ρ 与 ``statefn/s_line.py`` 的
+    ⚠ 同名异义基准:本 ρ 与 ``statefn/s_line.py`` 的
     ``rho(delta_v_band, delta_v_pop, rounds)``(P48 整买价值率)毫无
     关系,两 ρ 共存于同一模块树,消费禁接错源。
     """

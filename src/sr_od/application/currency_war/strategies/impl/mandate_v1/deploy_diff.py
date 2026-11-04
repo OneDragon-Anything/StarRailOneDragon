@@ -41,7 +41,7 @@ def deploy_diff_actions(
         fresh: frozenset[str] = frozenset(),
         ) -> list:
     """现板面 → target 的统一拖动/换星直卖动作序列(§3;幂等——每帧
-    重算取序,执行进度由容器逻辑态自上报推进)。
+    重算取序,执行进度由状态容器逻辑态自上报推进)。
 
     target 值 = (排, 星, 槽位或 None);槽位级(char_positions 槽位
     登记,board_index 转排内 1 基)**只在落位时机生效**——上场

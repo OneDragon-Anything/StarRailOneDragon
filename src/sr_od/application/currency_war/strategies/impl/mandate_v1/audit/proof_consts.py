@@ -32,7 +32,7 @@ ADV_SCAN_BAND: tuple[float, float] = (0.40, 0.65)
 
 #: ⑤金→轮折算率下界 5.8——**停用存档态**(R44-1:折算率归宿改
 #: provisional 槽位 CONV_GOLD_PER_ROUND【拟·语料拟合】,依附 λ 表版本带
-#: 版本锚;落地前槽位 None=窗口帧 C_stay/χ 项 fail-closed)。
+#: 版本基准;落地前槽位 None=窗口帧 C_stay/χ 项 fail-closed)。
 CONV_GOLD_PER_ROUND_LB: float = 5.8
 
 #: 停用存档态条目集(消费位全灭 ⇒ 转存档;import 检测的测试断言消费)。

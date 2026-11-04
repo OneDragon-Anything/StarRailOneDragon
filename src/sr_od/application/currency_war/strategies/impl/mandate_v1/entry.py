@@ -1,6 +1,6 @@
 """cw4 备战决策入口(十段全扫工序)。
 
-工序结构(判据正本 = strategy-docs/22_prep_screen.md §1;2026-10-17
+工序结构(判据权威版本 = strategy-docs/22_prep_screen.md §1;2026-10-17
 迭代 design §2.2 重排——新增第 1 步商店随机态重开,其后顺延):每次回
 到备战画面从第 0 步向下扫描,执行第一个满足条件的步骤并返回其动作,
 下一帧重新扫描(单动作循环不变;回跳语义——腾位后回头点晶矿、买完牌
@@ -17,12 +17,12 @@
 凑息分支)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
 卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
 升级判据本体与发射资格门全链 = ``criteria/levelup``(11 号篇 §2 +
-design §2.1 七道成员集单一源),本模块只做工序接线与发出组装。
+design §2.1 七道成员集单一源),本模块只做工序接入调用与发出组装。
 部署/装备/工具判据单一源 = deploy_plan / cw_equip_wear_plan /
 cw_equip_env(第 6/7 步只承载调用时机)。
 
 ``mandate.run_mandate`` 为测试面已登记函数(生产调用走本模块 emit)。
-``truncate_frame_stable``(帧稳定截断动作发出器,词表正本 =
+``truncate_frame_stable``(帧稳定截断动作发出器,词表权威版本 =
 flow/action_exec.md §1)与 ``_ore_bench_free`` 等公共骨架——
 bridge 与测试面在产消费。
 
@@ -111,19 +111,19 @@ log = logging.getLogger(__name__)
 
 #: ev_arm 值域(R1-1 实验因子;**商店域 shop.py 消费中**——备战 emit 的
 #: 本常量为商店域校验的兼容单一源(备战域 EV pass 不在十段工序内),
-#: 随商店会话正本维护(23 号篇)。
+#: 随商店会话权威版本维护(23 号篇)。
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
 
 
 def _deployed_units_of(gs: GameState) -> list:
-    """上场单位域紧缩序(deployed 视图两子表的容器 Unit,前排在前;
-    本模块单一读点,benchchar-retirement P4 容器形)。"""
+    """上场单位域紧缩序(deployed 视图两子表的状态容器 Unit,前排在前;
+    本模块单一读点,benchchar-retirement P4 状态容器形)。"""
     front, back = deployed_rows_of(gs)
     return [d for d in (*front, *back) if d is not None]
 
 
 def _ore_bench_free(gs: GameState) -> int:
-    """席自由槽读数(晶矿第 2 步「席位未满」判据输入;容器派生读口
+    """席自由槽读数(晶矿第 2 步「席位未满」判据输入;状态容器派生读口
     ``bench_free_slots`` 单一源)。缺省方向 = adapter.py 在库裁决对齐:
     free None(bench 未观察,不确定)→ BENCH_CAPACITY,宁多收晶矿不误卖,
     非 0 值按物理现读。"""
@@ -160,7 +160,7 @@ _CONTINUABLE: tuple[type, ...] = (
     # 「可续」语义;现役发出面 = 备战决策环无动作可发帧(计划前置步
     # 无进展帧/空序列兜底)——单一动作级发出,序列续发面为零。登记
     # 义务(动作发出器增补条目须回契约改版,flow/action_exec.md §1)
-    # 由此声明;分类表契约改版随部署统一批(D5-1)统一回正本。
+    # 由此声明;分类表契约改版随部署统一批(D5-1)统一回权威版本。
     CwActionObsParam,
 )
 #: 条件续(bench 索引结构恒稳 + 名-槽一致性复检;board 空位/星级合成按
@@ -205,7 +205,7 @@ def truncate_frame_stable(actions: list[CwAction],
     终点(其后必须截断);unknown(词表外/无分类)→ fail-closed 截断
     + 计数披露(``emitter_unknown_action_truncated``)。
 
-    conditional 类的复检(键 = 容器槽位表下标,动作发出器生产路径经 bridge
+    conditional 类的复检(键 = 状态容器槽位表下标,动作发出器生产路径经 bridge
     供给生成期占用集):
 
     - ``CwActionSellBenchParam``:bench 槽位
@@ -293,13 +293,13 @@ def truncate_frame_stable(actions: list[CwAction],
 #  _ENDGAME_LIBRARY_MEMBERS/_bench_char_at〕已整体退役——2026-11 用户终裁
 #  「可退役」:万敌 1 条/白厄 3 条知识真空接受损失,不回流策略层,上场时机
 #  由 deploy_search 骨架/L1 完成度自适应承载,sim 观测退化明显再议;退役
-#  时点的行为面登记 = 测试仓 6 场景单帧锚。)
+#  时点的行为面登记 = 测试仓 6 场景单帧基准。)
 
 
 def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               session: StrategySession, state: GameState,
                               tag: str) -> None:
-    """告警帧态 1 上阵安置动作发出点(部署统一批丁收编后的专用执行路径,
+    """告警帧态 1 上阵安置动作发出点(部署统一批丁纳入统一管理后的专用执行路径,
     unified-deploy-order §4 entry 备战工序部署面行 D3-4:告警帧常规搜索
     跳过,态 1 上阵腾槽 = 专用路径——bench 真单位直落场上空槽(腾 bench
     席),载体 = 统一拖动(上阵纯为腾槽保命,告警解除后
@@ -307,7 +307,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
     选人 = bench 扫描序(占位件/板上同名剔除;cap 有空位即态 1 前提)
     ——告警帧的救援语义只求确定性腾槽,排序质量无诉求(旧七桶序随选人
-    族收编退役);落位 = ``deploy_plan.deploy_slot_plans`` 单一源(排
+    族纳入统一管理时退役);落位 = ``deploy_plan.deploy_slot_plans`` 单一源(排
     路由 + 前排保证 + 空槽选择)。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -340,7 +340,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
 
 
 # (select_swap_plan 的 select_up 注入包装 _make_windowed_select_up(第 6 步
-#  换人替补的上阵窗口适用范围)已随部署统一批丁收编删除:第 6 步切差分
+#  换人替补的上阵窗口适用范围)已随部署统一批丁纳入统一管理时删除:第 6 步切差分
 #  执行器;窗口谓词过滤亦随 entry_signals 整体退役拆除——上场时机 =
 #  部署搜索骨架/L1 完成度自适应。)
 
@@ -354,7 +354,7 @@ def emit(session: StrategySession,
     """备战决策入口十段全扫(22 号篇 §1 工序 + 2026-10-17 迭代 §2.2
     重排;返回 Emitted 列表交桥截断)。
 
-    决策输入 = 容器 game state 直读(黑板帧停用契约照旧)。每帧从第 0
+    决策输入 = 状态容器 game state 直读(黑板帧停用契约照旧)。每帧从第 0
     步向下扫描,首中段返回其动作序列(单动作循环取首项执行);全部不中
     ⇒ 第 9 步出战。步间调用:3.1 边界/标记/清单存储(session_scope)、
     3.2 卖出评估器(evaluate_sell_candidates,契约 D 场景参数化)。
@@ -370,7 +370,7 @@ def emit(session: StrategySession,
     if getattr(st, 'cw4_counters', None) is None:
         st.cw4_counters = {}
 
-    # 决策判据载体一次置顶(同帧同视图纪律,禁函数内二次取容器)。
+    # 决策判据载体一次置顶(同帧同视图纪律,禁函数内二次取状态容器)。
     gs = game_state_of(session)
     _round_num = round_num_of(gs)
 
@@ -531,7 +531,7 @@ def emit(session: StrategySession,
 def _consumable_open_action(gs: GameState) -> Emitted | None:
     """备战席消耗品点开动作(第 1 步主体;第 0 步态 2 复用)。
 
-    触发 = bench 槽位 kind ∈ bookcard/supply_box/tome(现行容器
+    触发 = bench 槽位 kind ∈ bookcard/supply_box/tome(现行状态容器
     BenchSlot.kind 判定);点开顺序 = 书册卡 → 补给箱 → 星徽秘典
     (现行实体面分支序,入口清场旧全局序在案)。星徽秘典占席 = 待实机
     证实项(点开出路对其防御性纳入,22 号篇 第 2 步)。动作参数
@@ -804,8 +804,8 @@ def _emit_sell_candidate(session: StrategySession, gs: GameState,
                          counter: str) -> list[Emitted]:
     """卖出候选动作发出点(第 0/2/7 步共用;评估器候选 → 动作)。
 
-    坐标换算:评估器候选 idx = 紧缩占席序下标(bench 支)→ 容器槽位表
-    下标(动作参数坐标系);deployed 支 = 上场紧缩行序 → 容器行序
+    坐标换算:评估器候选 idx = 紧缩占席序下标(bench 支)→ 状态容器槽位表
+    下标(动作参数坐标系);deployed 支 = 上场紧缩行序 → 状态容器行序
     (CwActionSellDeployedParam 坐标系)。失配 = 陈旧帧 fail-closed
     零动作返回主循环。卖出登记(record_round_sold) = 轮内新鲜度排除
     账本写端(资格面账本,非试错计数),与现行卖出位同口径。
@@ -879,7 +879,7 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
     if not targets:
         return []
     if _ore_bench_free(gs) > 0:
-        # 晶矿族失效触发(读数协议②;挂点 = 第 2 步动作发出点——随机金
+        # 晶矿族失效触发(读数协议②;插入位置 = 第 2 步动作发出点——随机金
         # 不可精确记账,失效交下次实读锚定收敛)。
         shop_sess.note_ore_click(gs)
         return [Emitted(CwActionCollectOreParam(
@@ -917,7 +917,7 @@ def _levelup_fund_line_ok(gs: GameState, session: StrategySession,
     :func:`criteria.levelup.levelup_fund_gate` 体内自判(终局域末战
     ALL IN / 买断制 cap=0 ⇒ 下界 0 恒过)。
 
-    契约核验(前提恒真行,纪律接线;失败 = 保守拒)。
+    契约核验(前提恒真行,纪律接入调用;失败 = 保守拒)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         cap_resolved_of_session,
@@ -976,7 +976,7 @@ def _step3_level_up(session: StrategySession, gs: GameState,
 
     # 金位读数门(23 号篇金位读数形态:备战域金位唯一供给 = 账面;
     # 失效帧无法评估资金线/触发面 → 读数开店锚定,标记不动;账面宿主 =
-    # 容器态(state_of(gs),与会话标记/清单同宿主)。
+    # 状态容器态(state_of(gs),与会话标记/清单同宿主)。
     if state_of(gs).gold_ledger is None:
         return _open_shop_for_gold_read(session, gs)
 
@@ -1031,7 +1031,7 @@ def _open_shop_for_gold_read(session: StrategySession,
 
 def _step4_shop_unblock_recheck(session: StrategySession,
                                 gs: GameState):
-    """解拦复核判定接线位(判定函数本体 = criteria/shop_session.
+    """解拦复核判定接入调用位(判定函数本体 = criteria/shop_session.
     shop_unblock_recheck,23 号篇读数协议;宪法第 6 条:备战第 4 步与
     商店入口两画面消费同一函数)。
 
@@ -1084,7 +1084,7 @@ def _step5_deploy(session: StrategySession, gs: GameState,
     全跳过(emit 溢出门早退承载);上场锁过滤在搜索段 0(枚举硬约束)。
 
     动作 = 统一拖动/换星直卖序列(帧稳定 conditional 续发,同序列
-    bench 槽位复检);每帧重算幂等,执行进度由容器逻辑态自上报推进。
+    bench 槽位复检);每帧重算幂等,执行进度由状态容器逻辑态自上报推进。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
         deploy_diff,

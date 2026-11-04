@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 def _slot_of(b: object, idx: int | None = None) -> int:
     """占席条目 → 卖出候选位键(紧缩序下标;Unit.slot 仅作信息位,
     候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
-    发出侧经容器槽位表枚举对位还原;``idx`` 显式传位,P4 容器形解包
+    发出侧经状态容器槽位表枚举对位还原;``idx`` 显式传位,P4 状态容器形解包
     单一读点,本模块三通道共用)。"""
     return int(idx if idx is not None else 0)
 
@@ -141,7 +141,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     """
     # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
-    # deployed 读 = 容器行域单一源(守卫与资格循环两处共用同一次
+    # deployed 读 = 状态容器行域单一源(守卫与资格循环两处共用同一次
     # 解析,禁双形态各读半份)。
     _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
@@ -182,7 +182,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
             continue
         # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
         # 3.4:bench_effect_qualified 四消费位的凑息档序处拆除,该维度
-        # 由统一序列档 9 判定承载,判定表正本 =
+        # 由统一序列档 9 判定承载,判定表权威版本 =
         # strategy-docs/32_unified_sell_priority.md §3。)
         qualified.append((i, b))
     # 序:刚买件优先(R2-N1),其余 (star,紧缩位) 升序(确定性;紧缩序
@@ -226,7 +226,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两分支同开)。
 
-    载体 = 容器 gs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
+    载体 = 状态容器 gs 单形态(prep 链结构化段 2;prep 位/商店线消费恒直传
     gs)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
@@ -263,7 +263,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
     # 空板止损守卫(单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
     # 只钉卖出分支;恢复正路 = 部署与买面,不在卖出通道)。
-    # deployed 读 = 容器行域单一源。
+    # deployed 读 = 状态容器行域单一源。
     _deployed = _deployed_units_of(state)
     if empty_board_sell_blocked(_deployed,
                                 counters=counters):
@@ -295,7 +295,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchSlot],
             continue
         # (挂后台效果资格门已随旧评估器退役删除——统一让位优先级迭代
         # 3.4:bench_effect_qualified 四消费位的危局阀桶处拆除,该维度
-        # 由统一序列档 9 判定承载,判定表正本 =
+        # 由统一序列档 9 判定承载,判定表权威版本 =
         # strategy-docs/32_unified_sell_priority.md §3。)
         out.append(_slot_of(b, i))
         # 1★ 卖回净额 = sell_refund(1,注册表 cost) 派生(R196 症6:

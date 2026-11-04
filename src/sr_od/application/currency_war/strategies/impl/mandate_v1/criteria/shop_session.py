@@ -14,7 +14,7 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
   由执行链上报函数写 ``gs.gold``(动作 op 自上报,期望态投影),账面
   经 :func:`sync_gold_ledger` 每决策帧入口再同步吸收(有效时账面 ==
   ``gs.gold`` 不变量;发出点不重复挂 delta 钩子防双记);付费刷新费由
-  上报链直读容器刷价扣金(2026-10-16 用户裁决,与买牌同款双端逻辑态
+  上报链直读状态容器刷价扣金(2026-10-16 用户裁决,与买牌同款实机和模拟器两边逻辑态
   ——推翻旧「终结跳写、真值 = 下一入口观察」口径),账面同经再同步
   吸收;**单卡「X 动作时 +Y 金」型伴生入金**(返利/返利+〔每购买 3
   个 5 费角色 +3〕/节节高升〔任意升级 +1〕)上报链不覆盖,经伴生函数
@@ -22,7 +22,7 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
   对 +1)与经验财富×淘金客类组合态由③的重进锚定吸收(组合空间不可
   枚举,归兜底不重复记账);
 - **② 失效触发层(按事件/族组织,事件帧置 None)**:选卡族(任何三选一/
-  二选一选卡帧,选中即失效实读——集中挂点 = flow._require_slot_options)
+  二选一选卡帧,选中即失效实读——集中插入位置 = flow._require_slot_options)
   / 合成族(任何 3★ 合成结果帧不分源,持有 3★ 集合帧差检测)/ 晶矿族
   (点晶矿随机金)/ 升级 9 级(成长基金 +40,独立失效)/ 计数达阈族
   (二手市场总刷 20 次 +30 / 长线利好第 30 次付费刷 +20——计数达阈帧
@@ -96,7 +96,7 @@ def sync_gold_ledger(gs: GameState) -> None:
 
 
 def session_gold(gs: GameState) -> int:
-    """会话内金位读口:账面优先,失效帧回退容器逻辑值(防御——会话入口
+    """会话内金位读口:账面优先,失效帧回退状态容器逻辑值(防御——会话入口
     必锚定,失效帧到达此处的唯一形态 = 锚定前的首帧内务序)。"""
     led = state_of(gs).gold_ledger
     return gold_of(gs) if led is None else int(led)
@@ -130,7 +130,7 @@ def anchor_gold_ledger_if_new_visit(gs: GameState) -> bool:
     return True
 
 
-#: 记账层伴生写容器的信号源标记(审计可辨:伴生入金非观察写)。
+#: 记账层伴生写状态容器的信号源标记(审计可辨:伴生入金非观察写)。
 _COMPANION_SIG = ChannelSig(family='logic_action',
                             actor='shop_session.companion_gold',
                             mode='compute')
@@ -140,7 +140,7 @@ def apply_gold_delta(gs: GameState, delta: int, *,
                      also_container: bool = False) -> None:
     """记账层同步(协议①):已知 delta 写账面;``also_container=True``
     同时调 ``gs.gold``(伴生入金——上报链不覆盖的部分,期望态投影扩展;
-    买/卖/刷/经验的 delta 由上报链写容器,本函数只同步账面防双记)。"""
+    买/卖/刷/经验的 delta 由上报链写状态容器,本函数只同步账面防双记)。"""
     if delta == 0:
         return
     st = state_of(gs)
@@ -174,12 +174,12 @@ def invalidate_gold_ledger(gs: GameState, family: str) -> None:
 
 
 def _augment_held(gs: GameState, name: str) -> bool:
-    """投资策略持有判定(注册表名单 vs active_strategies 容器现读)。
+    """投资策略持有判定(注册表名单 vs active_strategies 状态容器现读)。
 
     族登记制载体:新卡入 ``data/cw_invest_data`` 注册表时按效果文本三分
     归类——「X 动作时 +Y 金」单卡型入伴生(本模块)/选卡帧入选卡族/
     其余归兜底(再锚定收敛 + 偏差侦测暴露);归类触发的登记面归
-    research/invest_effects 增补节(正本更新清单行)。"""
+    research/invest_effects 增补节(权威版本更新清单行)。"""
     return name in (gs.active_strategies.value or ())
 
 
@@ -239,7 +239,7 @@ def note_pick_frame(gs: GameState) -> None:
     """选卡族失效(协议②):任何三选一/二选一选卡决策帧——选中即失效
     实读,不枚举单项效果(发金/清金/hp 改写/存款语义)。
 
-    集中挂点 = flow._require_slot_options(全部 pick 决策入口共用的候选
+    集中插入位置 = flow._require_slot_options(全部 pick 决策入口共用的候选
     槽读口;prep/shop 决策不经此口)。"""
     invalidate_gold_ledger(gs, 'pick')
 
@@ -251,7 +251,7 @@ def note_ore_click(gs: GameState) -> None:
 
 
 def note_levelup_emission(gs: GameState, new_level: int) -> None:
-    """升级动作发出的失效/入账挂点:升级 9 级(成长基金 +40,独立失效)+
+    """升级动作发出的失效/入账插入位置:升级 9 级(成长基金 +40,独立失效)+
     节节高升伴生(任意升级 +1,记账层)。
 
     消费位 = 备战第 4 步升级执行帧与商店会话升级意图出口(整批动作发出/转场帧);``new_level``
@@ -264,7 +264,7 @@ def note_levelup_emission(gs: GameState, new_level: int) -> None:
 #: 计数达阈族阈值(卡面文本:二手市场「商店刷新 20 次后获得 30 金币」/
 #: 长线利好「花费金币进行 30 次刷新后,获得 20 金币」)。计数单一源 =
 #: ``gs.effects.refresh_total/refresh_paid``(EffectsInventory,刷新上报
-#: ``record_refresh`` 单口直加——本协议不自建第二计数器;二手市场 +30 /
+#: ``record_refresh`` 唯一入口直加——本协议不自建第二计数器;二手市场 +30 /
 #: 长线利好 +20 金均由上报尾部 ``check_env_refresh_grants`` 写 gs.gold
 #: (T-21 后长线利好同有上报写点),失效语义降为阈值帧兜底)。
 SECONDHAND_MARKET_TOTAL: int = 20
@@ -272,7 +272,7 @@ LONG_TERM_PAID_REFRESH: int = 30
 
 
 def note_refresh_counters(gs: GameState, cost: int) -> None:
-    """刷新计数达阈族失效(协议②;店内域挂点 = 刷新动作发出点)。
+    """刷新计数达阈族失效(协议②;店内域插入位置 = 刷新动作发出点)。
 
     达阈帧失效(阈值帧兜底):计数含本笔后恰达阈值 ⇒ 置 None。计数读
     ``gs.effects`` 现值 +1(动作发出点先于上报,上报后计数已含本笔——两
@@ -287,7 +287,7 @@ def note_refresh_counters(gs: GameState, cost: int) -> None:
 
 
 def detect_merge_result_frame(gs: GameState) -> bool:
-    """合成族失效检测(协议②;备战全扫级 + 店内会话循环级挂点)。
+    """合成族失效检测(协议②;备战全扫级 + 店内会话循环级插入位置)。
 
     任何 3★ 合成结果帧不分源(买入/消耗品/补给选卡/策略直发——持有凑
     三即合,检测点 = 合成结果帧非源动作帧):持有 3★ 名集帧差出现新增名
@@ -391,7 +391,7 @@ def shop_recheck_face_signature(gs: GameState) -> int:
     签名 ≠ 记录签名 → 记录销项〔新货架必重评,买入臂照常自评——货架/
     金位现况即最新,撞闸按现行闸处理〕;签名相同 → 记录保持有效)。
 
-    挂点 = 商店会话 visit 入口内务段(与 :func:`shop_recheck_drop_off_
+    插入位置 = 商店会话 visit 入口内务段(与 :func:`shop_recheck_drop_off_
     face` 同点,decide_shop_action 两路入口同源)。返回销项数。
     """
     records = session_scope.shop_opportunities_of(gs)

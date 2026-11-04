@@ -63,7 +63,7 @@ LINE_HEAT: dict[str, int] = {
     '列车同行·反震': 165,    # 姬子列车 A 反震(底稿 ~60%×274;批 3 拆分)
     '列车同行·直伤': 70,     # 姬子列车 B 输出(底稿 ~25%×274;批 3 拆分)
     # 特化 ~15%(≈39 篇,final_jizi C 节八变体)不拆挂——按特化形态主输出
-    # 结算方向归入声明(示意归属,版本重跑校准锚,不进 A/B 热度值):
+    # 结算方向归入声明(示意归属,版本重跑校准基准,不进 A/B 热度值):
     # 战技点7永动→B(直伤系)/圣杯4→B(姬子保底过渡=输出核心,final_grail
     # 「姬子保底过渡→双核心」)/欢愉5→B(开拓者绑定堆前台强度,final_yinlang
     # 「前台强度轻松5000+」)/追击转→B(追击=附加攻击直伤)/直伤星期日→B
@@ -92,22 +92,22 @@ LINE_HEAT: dict[str, int] = {
     '景元仙舟': 40,
 }
 
-#: 线攻略锚核心表(design §2 carry·anchor 档判定:各线攻略锚核心——
+#: 线攻略基准核心表(design §2 carry·anchor 档判定:各线攻略基准核心——
 #: 「core 首位或攻略明文『到手即开线』者」,从 final_comps 各篇核对;
-#: 不确定线取 core_chars[0] 就地注释)。锚 = 单卡即战力档(:data:`CARRY_ANCHOR`
+#: 不确定线取 core_chars[0] 就地注释)。基准 = 单卡即战力档(:data:`CARRY_ANCHOR`
 #: +8000/名),其余 core 减半(:data:`CARRY_CORE`)——攻略主次语义。
-#: ⚠️ 与 kernel ``carry_anchor``(聚类交叉核对锚)分工:两表绝大多数同值;
-#: 已登记分歧 = 火花星间旅人(聚类锚『火花』vs 攻略明文花火主C——评分锚
+#: ⚠️ 与 kernel ``carry_anchor``(聚类交叉核对基准)分工:两表绝大多数同值;
+#: 已登记分歧 = 火花星间旅人(聚类基准『火花』vs 攻略明文花火主C——评分基准
 #: 按攻略重述取花火,分歧登记在 final_comps 交叉核对记录)。
 LINE_ANCHOR: dict[str, str] = {
-    '列车同行·反震': '姬子·启行',   # S 级真神;A/B 两套锚同卡(攻略「开局
-    '列车同行·直伤': '姬子·启行',   # 刷到即上」锚姬子本体,拆分只分引擎方向)
+    '列车同行·反震': '姬子·启行',   # S 级真神;A/B 两套基准同卡(攻略「开局
+    '列车同行·直伤': '姬子·启行',   # 刷到即上」基准姬子本体,拆分只分引擎方向)
     '命运圣杯红A': 'Archer',      # 高倍率九五核心(任务系统产出,到手即接棒)
     '千冶减益': '千冶·刃',        # plaza 聚类 carry(n=29)
     '绯英欢愉': '绯英',
-    '希儿量子': '希儿',           # 攻略「希儿到手即开线」(design §2 锚档例)
+    '希儿量子': '希儿',           # 攻略「希儿到手即开线」(design §2 基准档例)
     '黄泉减益': '黄泉',
-    '巡海击破': '波提欧',         # 锚=波提欧簇(12 篇全击破形,本条 plaza 校准注)
+    '巡海击破': '波提欧',         # 基准=波提欧簇(12 篇全击破形,本条 plaza 校准注)
     '龙丹战技点': '丹恒·饮月',    # 唯一把点数上限转倍率的卡(龙丹节构造机理)
     '双王圣杯': 'Saber',          # 能量线主C(final_grail_dual B 线)
     '火花星间旅人': '花火',        # 攻略明文花火主C(BV 转录注);core_chars[0] 同值
@@ -203,7 +203,7 @@ class LineScore:
     ≠ 能上人)。
     """
 
-    carry: int      # 证据·carry 层(锚 +8000/名 + 其余 core +4000/名)
+    carry: int      # 证据·carry 层(基准 +8000/名 + 其余 core +4000/名)
     skeleton: int   # 证据·骨架层(key_items − carry,+2000/名)
     plugin: int     # 证据·插件层(线成员 − carry − key_items,+500/名)
     equip: int      # 证据·装备层(key_equips 逐件持有,+500/件=插件档;批 3)
@@ -244,7 +244,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
                          opening_ctx: OpeningCtx) -> LineScore:
     """线分数值分解(§1.1 单值和的分量计算;纯函数,同输入同值)。
 
-    证据层逐名一档(锚 > 其余 core > 骨架 > 插件 > 装备件——同名角色跨层
+    证据层逐名一档(基准 > 其余 core > 骨架 > 插件 > 装备件——同名角色跨层
     不重复计分:骨架 = key_items 命中 − carry,插件 = 线成员命中 − carry −
     key_items;装备 = key_equips 逐件持有);invest = 持有名逐个过环境/策略
     两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
@@ -338,14 +338,14 @@ def evaluate_lock(candidates: tuple[str, ...],
 
 def anchor_line_of(gs: GameState, locked_comp: str,
                    demoted_endgame: bool) -> Comp | None:
-    """选卡锚点线(design §3.2 选卡侧统一:r4/R4-4 拍板——锁定前帧锚点
+    """选卡基准线(design §3.2 选卡侧统一:r4/R4-4 用户决定——锁定前帧基准
     统一 = 候选首名线,P1/P2 同一公式;帧间抖动由签名稳定性钳制)。
 
     锁定帧(非降格)= 锁定线本体(方向已裁定);未锁/降格帧 = 证据门版
     候选首名现算(纯函数,与 session_scope 候选快照同输入同值);空候选
-    (零证据帧)= None——锚缺失帧方向分/克制减分/顶级保护按 0/False
+    (零证据帧)= None——基准缺失帧方向分/克制减分/顶级保护按 0/False
     保守缺省。锁线名不可解析(OCR 漂移)防御位:回落候选首名。三处消费
-    同锚 = 顶级保护/选卡方向分/选卡克制减分(invest_strategy/pick_common)。
+    同基准 = 顶级保护/选卡方向分/选卡克制减分(invest_strategy/pick_common)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     if locked_comp and not demoted_endgame:
@@ -358,8 +358,8 @@ def anchor_line_of(gs: GameState, locked_comp: str,
 
 
 def _validate_line_anchor() -> None:
-    """锚表构建校验(import 即炸):全 21 线覆盖 + 锚 ∈ 角色注册表
-    (手编表写错名 = 锚档静默失效)。"""
+    """基准表构建校验(import 即炸):全 21 线覆盖 + 基准 ∈ 角色注册表
+    (手编表写错名 = 基准档静默失效)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     names = {c.name for c in COMP_LIBRARY}
     if set(LINE_ANCHOR) != names:

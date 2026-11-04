@@ -5,7 +5,7 @@
 核验」类缺陷——r1 EV 输入字面量 ``None`` 绕过前提
 (ZERO_REFRESH_DIAG §4.1 实现缺口)、arm1 拿固定槽表常数当阈值域错位
 (ZERO_REFRESH_DIAG §4.2)。契约化 = 把每个判据的**语境前提**写成谓词级
-契约,接线处(entry.py / shop.py 判据消费位)经 ``ensure_contract``
+契约,接入调用处(entry.py / shop.py 判据消费位)经 ``ensure_contract``
 核验:前提不成立 ⇒ 该判据本帧**弃权**(不发出/不求值)+
 ``criteria_contract_violation:<判据名>`` 计数——禁静默执行;fail-closed
 不抛异常不断局(谓词异常同判弃权)。契约层只加前提核验,**禁改判据
@@ -13,7 +13,7 @@
 
 覆盖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
 已删除(随候选-锁定制整体)(见 proof.py 停用申报;line_and_upgrade §1.6),
-无行为接线遗留。
+无行为接入调用遗留。
 """
 from __future__ import annotations
 
@@ -98,13 +98,13 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
     SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定):
     ``state_of(session).target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
-    把 None 当「已终局阵容锁定世界」直接投影(``line_members(None)→()``)=
+    把 None 当「已终局阵容锁定状态」直接投影(``line_members(None)→()``)=
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
     第三例)——空窗死锁环:K 空→零买入→板面零变化→永不锁。
     **可核验派生形态(防线硬化+R3 扩域)**:值域
     全集声明覆盖三带(P1 空窗带/P1 终局阵容锁定过渡带/P2+ 带),前提不再采信
     消费位硬编码声明,而是核验实解析结果——``k_target`` 非 None
-    (终局阵容锁定世界)= 无回退义务,恒过;``k_target`` None 且供给缺帧
+    (终局阵容锁定状态)= 无回退义务,恒过;``k_target`` None 且供给缺帧
     (``k_fallback_available`` False)= 保守侧不回退,合法 fail 方向
     (与 committed_authority 缺供给同款);供给在场而
     ``k_fallback_resolved`` 为空 = 「回退字面量空元组但保留声明」
@@ -130,7 +130,7 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
 
 @dataclass(frozen=True)
 class Contract:
-    """单判据契约:前提谓词(None=无条件)+ 适用范围声明 + 规格锚。
+    """单判据契约:前提谓词(None=无条件)+ 适用范围声明 + 规格基准。
 
     前提谓词签名统一 ``ContractCtx -> bool``;None=前提恒真(仍需
     显式登记适用范围声明,防「未审计」与「无条件」混淆)。
@@ -138,7 +138,7 @@ class Contract:
 
     precondition: Callable[[ContractCtx], bool] | None
     scope: str     # 适用范围声明一句(该判据语境前提的适用面)
-    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射见 git 历史)
+    anchor: str    # 规格基准(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重定基准,映射见 git 历史)
 
 
 #: (模块,函数) → Contract。键集与 criteria 全公开函数交叉核对(静态
@@ -261,7 +261,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
 
 def ensure_contract(fn_key: tuple[str, str], ctx: ContractCtx,
                     counters: dict | None = None) -> bool:
-    """判据契约核验(接线消费位入口;纪律单一源=本模块 CONTRACTS)。
+    """判据契约核验(接入调用消费位入口;纪律单一源=本模块 CONTRACTS)。
 
     返回 True=前提成立,判据照常求值/发出;False=前提不成立,该判据
     本帧**弃权** + ``criteria_contract_violation:<模块>.<函数>`` 计数

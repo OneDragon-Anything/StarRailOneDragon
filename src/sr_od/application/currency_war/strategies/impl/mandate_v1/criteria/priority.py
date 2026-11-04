@@ -69,8 +69,8 @@ PriorityKey = tuple[int | float | tuple[int, int], ...]
 #: 成员档序数键;复用候选数常数,零新数值)。
 RANK_TRANSITION_BOTTOM: tuple[int, int] = (1, CANDIDATE_TOP_N)
 
-#: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户拍板,
-#: 判定表正本 = 32 号稿 §3 档 9 行;
+#: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户决定,
+#: 判定表权威版本 = 32 号稿 §3 档 9 行;
 #: 巨星独特加成/敌人受伤提高+同频/护盾强度+伤害增幅/敌人挂离火)。
 #: 成员判定 = 角色自报 factions/flows 与本名单求交(单一真相源 =
 #: data/cw_factions.py FACTIONS 键 × cw_chars 自报,成员关系派生)。
@@ -121,7 +121,7 @@ class PriorityContext:
     锁定线名单视图/候选快照/过渡候选成员/当前升星目标/必要星级表/
     当前等级/随机流,另含档 2/3/4/5/7 档内序数键的装配产物
     ``member_rank``(知识卡 ``member_priority`` 字段直读合成;迁移期
-    形态 = core 0/其余 1,逐角色精调归下一迭代外溢))。字段容器按装配
+    形态 = core 0/其余 1,逐角色精调归下一迭代外溢))。字段结构按装配
     后只读约定使用。
 
     聚合谓词口径:档 2/3/4/5/7/8/9 的「持有最高星/总星级数/名下有无副本」
@@ -212,7 +212,7 @@ def _transition_member_ranks(
     降序,对级声明序)下的序——位次小 = 候选强)。``setdefault`` 写入:
     跨多候选对成员取最小位次(槽序升序迭代,首见即最小)。参数缺省
     () = 无候选供给(与 kernel ``locked_buy_scope`` 的槽透传参数化
-    同形态——候选不经装配内现算,接线方传 ``transition_candidates``
+    同形态——候选不经装配内现算,接入调用方传 ``transition_candidates``
     槽值,禁第二源);返回表键集 = 各对成员并集(过渡半边名单源,
     与买面 ``shop._transition_candidate_members`` 同集)。
     """
@@ -234,7 +234,7 @@ def assemble_priority_context(
 
     ``deployed_names`` = 部署接口输出(消费位先经
     ``mandate.select_deployment`` 求目标态);``held_copies`` 缺省 =
-    容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
+    状态容器现读快照,虚拟重算(获取角色流程)传入升星模拟后的虚拟快照;
     ``rng`` 缺省 = session.rng(策略随机语义单一源)。
 
     两态名单装配(成员档 2/3/4/5/7 名单源;双层 = 32 号稿 §2):
@@ -264,7 +264,7 @@ def assemble_priority_context(
     )
     view = line_members_view(gs)
     # 方向状态宿主 = gs.strategy_state(与 line_members_view 同宿主;
-    # 生产由 cw_strategy 状态 setter 同源接线,session/gs 同一对象——
+    # 生产由 cw_strategy 状态 setter 同源接入调用,session/gs 同一对象——
     # 装配面统一读 gs 侧,禁两宿主混读出同帧两份方向态)。
     st = state_of(gs)
     members: set[str] = set()
@@ -350,7 +350,7 @@ def assemble_priority_context(
 
 
 #: 随机流派生流的策略器 scratch 挂载键(键名 = 本模块前缀,mandate_state
-#: scratch 命名纪律;生命周期 = 局级,状态对象每局冷建自然隔离)。
+#: scratch 命名纪律;生命周期 = 局级,状态对象每局全新创建自然隔离)。
 _PRIORITY_RNG_SCRATCH_KEY: str = 'priority.tier_rng'
 
 
@@ -382,7 +382,7 @@ def assemble_candidate_eval(
       ``target`` 本体剔除(虚拟定型仍含候选参与板面构成,存量件的
       档 1 排除面不因减名变化):候选 = 「假设性入场者」,其去留
       正是评估要回答的问题,进档 1 保护会经虚拟定型自我保护、
-      「末位 = 候选」分支在收编形态不可达;
+      「末位 = 候选」分支在纳入统一结构形态不可达;
     - 返回 ``(ctx, units)``:``units`` 末位恒为候选 ShopUnit(将获取
       旗标);存量件以 HeldUnit(在手旗标)承载,部署定型内件(档 1
       按名命中)与系统召唤件(不可卖物理门;席位占用仍由虚拟局面
@@ -450,7 +450,7 @@ def priority_rng_of(session: object,
 
     - session 宿主自带 rng 槽(StrategySession 形态——kernel 旁表键位/
       sim 直构)直用,策略随机语义单一源,不新增派生设施;
-    - 终态契约过渡形态(session 宿主 = gs 容器,零参 decide 管线传容器
+    - 终态契约过渡形态(session 宿主 = gs 状态容器,零参 decide 管线传状态容器
       本体,无 rng 槽):按 ``config.strategy_seed`` 播种局级流并挂策略
       器状态 scratch(键见 :data:`_PRIORITY_RNG_SCRATCH_KEY`)——同
       seed 同局同序满足复现契约;config 缺席帧 None→0,与策略器构造
@@ -516,7 +516,7 @@ def _refund_loss(unit: HeldUnit | ShopUnit) -> int:
 
 def _tier7_bond_member(name: str) -> bool:
     """档 9 成员判定(原档 7,名单与判定规则不变、仅档号位移;
-    角色自报 factions/flows 与拍板名单求交;
+    角色自报 factions/flows 与用户决定名单求交;
     注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
     ch = CHARACTERS.get(name)
     if ch is None:
@@ -578,7 +578,7 @@ def sort_key(unit: HeldUnit | ShopUnit,
              ctx: PriorityContext) -> PriorityKey:
     """统一优先级排序键(十档判定按序命中即出 + 档内键 + 在手旗标 +
     随机尾键;档内序数键与随机流契约 = 32 号稿 §2/§7,判定表
-    正本 = 32 号稿 §3,本函数体为实现、逐档注释为行内定位)。
+    权威版本 = 32 号稿 §3,本函数体为实现、逐档注释为行内定位)。
 
     让路方向 = key 大者先卖:「后卖」类属性(总星级数多/单卡星级高/
     core 成员/退金损失大)取小键,「先卖」类属性(档 10 概率高/低费)

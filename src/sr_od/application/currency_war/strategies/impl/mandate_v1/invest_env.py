@@ -1,6 +1,6 @@
 """投资环境画面策略(mandate_v1;宪法六「一画面一策略文件」首批兑现)。
 
-设计正本 = strategy-docs/28_invest_env_screen.md(本文件是其代码承载面,
+设计权威版本 = strategy-docs/28_invest_env_screen.md(本文件是其代码承载面,
 「下称 28 号稿」,节号即该篇节号);评分模型 = 「统一加法标尺」——单位 =
 分,**1 分 := 1 金等价**(归一化约定,非语义拍值;XP 折算沿
 env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸分/
@@ -25,7 +25,7 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
 
 argmax 取最高,平分取先。禁选(env_forbid 命中)与阵容冲突出域 =
 排除出候选(28 号稿 §3);选卡克制(counters_dot 硬排除迁移,
-2026-11-03-unified-line-scoring design §3.2/§7)= 克制锚点线主派的
+2026-11-03-unified-line-scoring design §3.2/§7)= 克制基准线主派的
 候选减 :data:`cw_line_scales.COUNTER_PICK_PENALTY`(纯加权;环境名
 不含词缀注册名族,该分量现行恒 0——机制与策略屏同源,判据不双源)。
 
@@ -93,7 +93,7 @@ if TYPE_CHECKING:
 class InvestEnvDecision:
     """选卡决策。
 
-    idx = options 容器下标(0 基;候选序 = 调用方传入序,取值时机 =
+    idx = options 列表下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与四组件分解,仅观测)。
     margin = 次名分量遥测(pick-margin-telemetry design §2.2-1 键形
     ``{runner_up, runner_up_total, margin}``,值源 = 决策评分帧 scores
@@ -108,7 +108,7 @@ class InvestEnvDecision:
 @dataclass(frozen=True)
 class RefreshSuggestion:
     """刷新建议(动作包装 CwActionRefreshInvestCardsParam 留 flow;
-    handler 的 obs.refresh 现读闸 + 容器 env_refresh_left 对照闸原样,
+    handler 的 obs.refresh 现读闸 + 状态容器 env_refresh_left 对照闸原样,
     op 层零改动,28 号稿 §4 输出契约)。"""
     reason: str
 
@@ -138,9 +138,9 @@ class StanceRow:
 #: 价值不含任何可推导成分,纯立场)+ 表 3 点名的零值机械环境(经济过热/
 #: 经济严重过热,C 类通道零有效估计时现金分 fail-closed=0,补参后自动进
 #: 现金分,立场行仅登记 0)。**机械环境保留立场行合法**(校验单方向强制:
-#: 无机械成分必须在表,机械成员入表不拦)——在册先例:火药味/特权阶级
-#: (承重 10.0)与三星佩佩/粗星佩佩(0.0,用户裁定 2026-10-15);防按「机械成员
-#: 不入表」旧口径误删承重行。表外环境立场恒 0(有机械成分的环境立场本就
+#: 无机械成分必须在表,机械成员入表不拦)——已登记先例:火药味/特权阶级
+#: (权重 10.0,起决定作用)与三星佩佩/粗星佩佩(0.0,用户裁定 2026-10-15);防按「机械成员
+#: 不入表」旧口径误删起决定作用的行。表外环境立场恒 0(有机械成分的环境立场本就
 #: 不入表);覆盖由 :func:`_validate_stance_coverage` 构建期兜底:无机械
 #: 成分条目必须在表,缺失 import 即炸。
 STANCE_SCORE: dict[str, StanceRow] = {
@@ -323,7 +323,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  basis: frozenset[str]) -> tuple[list[float], list[float],
                                                  list[tuple[float, ...]],
                                                  list[bool]]:
-    """帧评分一次(选卡/刷新两入口共享,禁二次评分;选卡锚点线/受克
+    """帧评分一次(选卡/刷新两入口共享,禁二次评分;选卡基准线/受克
     属性集循环外单帧单读,沿旧机器纪律):
     返回 (总分含转向轴,转向加分,五组件,排除标记)。
 
@@ -332,7 +332,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     同通道,禁选槽触发建议刷与全排除回退两条既有路径原样复用,
     零新出口形态。克制减分(counters_dot 硬排除迁移,design §3.2/§7)
     = 组件分量:环境名不含词缀注册名族,该分量现行恒 0——机制与策略屏
-    同源(锚点线 = :func:`line_select.anchor_line_of`),判据不双源。"""
+    同源(基准线 = :func:`line_select.anchor_line_of`),判据不双源。"""
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
     punished = punished_mechs_of(anchor)
     scores: list[float] = []
@@ -427,7 +427,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
            config: CurrencyWarConfig) -> InvestEnvDecision | RefreshSuggestion:
     """投资环境 3 选 1 决策(纯值出口;flow 包装动作词表,28 号稿 §4)。
 
-    - options = 屏上候选名列表(容器序);locked_comp/demoted_endgame/
+    - options = 屏上候选名列表(状态容器序);locked_comp/demoted_endgame/
       evicted = 意向状态三参同源直通(flow 解析后传入,28 号稿 §2.9
       「意向解析留 flow」);
     - 禁选(env_forbid 命中,子串匹配与白名单一致)与阵容冲突出域槽
@@ -456,7 +456,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
         # 次数闸 = gs.env_refresh_left ≥ 1(28 号稿 §4)。Field 读数 None
         # = 观察写端读缺跳写(未观察到剩余次数),次数 ≥ 1 无法确证 →
         # 不建议刷(保守向:漏一次建议优于虚发动作;handler 侧 obs.refresh
-        # 现读闸 + 容器对照闸原样,建议刷最终仍由 handler 双闸裁定)。
+        # 现读闸 + 状态容器对照闸原样,建议刷最终仍由 handler 双闸裁定)。
         refresh_left = gs.env_refresh_left.value
         if refresh_left is not None and refresh_left >= 1:
             if forbidden_slot:

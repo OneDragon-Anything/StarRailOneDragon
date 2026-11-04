@@ -5,7 +5,7 @@
 折成金等价期望。kernel 侧只留游戏原始真值 ``cw_investments.ENV_ECONOMY``
 (通道结构 = 游戏效果原文的结构化,【注】);``ENV_ECONOMY_PENDING_
 MODELING`` 亦驻本模块(下方「待建模」已登记段)——「留 kernel 不迁」系
-早期过时表述,以代码体为准。语义正本 = strategy-docs/28_invest_env_
+早期过时表述,以代码体为准。语义权威版本 = strategy-docs/28_invest_env_
 screen.md §2 现金分行;迁移批的删除面对照
 
 迁入改造(迁移迭代 3.1):
@@ -56,7 +56,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
-# XP↔金兑换率(用户裁定 2026-09-08 暂定 1:1;28 号稿 §1 统一标尺锚——
+# XP↔金兑换率(用户裁定 2026-09-08 暂定 1:1;28 号稿 §1 统一标尺基准——
 # 「1 分 := 1 金等价」的 XP 侧承载。定案推翻改这一处,按「未证即停用」
 # 处置该折算)
 XP_GOLD_RATE: float = 1.0
@@ -89,7 +89,7 @@ _REWARD_SLOTS: tuple[tuple[int, int], ...] = ((1, 1), (1, 2), (1, 8), (2, 6))
 # (screen_flow_timing #11:1-3 节点完成后)、k3 = P2 前段(63 局
 # decisions.jsonl 观测拼版主位 (2,2);旧 sim 注入日程
 # SIM_STRATEGY_PICK_SCHEDULE 同源观察——该日程已删除(随sim 重做)面停用,
-# 取卡时点 = 投资策略 offer 固定轮次日程,正本 = sim-design.md §2.2)。
+# 取卡时点 = 投资策略 offer 固定轮次日程,权威版本 = sim-design.md §2.2)。
 # 基线取卡基数 = 本表长度【推·效果原文序数】(效果原文:
 # 头彩点名「第一个投资策略」/尾彩点名「第三个投资策略」→ 固定取卡集
 # 基数 3;策略大师/联席的 3-5 节点「额外」取卡不计——策略域价值非经济
@@ -108,7 +108,7 @@ _STRATEGY_PICK_PLANES: tuple[int, ...] = (1, 1, 2)
 # 语义的接受面,P97 §7)。改拍值先重跑 P97 脚本
 # (tools/cw/proofs/p97_refresh_budget_check.py,P97 §7 消费契约)。
 #: 二手市场 = 30:阈值 20 次总刷新,P97 实证 20/20 阵容可达 → 全局兑现,
-#: 价值 = 返金 30(用户拍定);
+#: 价值 = 返金 30(用户确定);
 #: 长线利好 = 50:阈值 30 次付费刷新,P97 均值 60.5 次/19-20 阵容可达 →
 #: 价值 ≈ 返金 20 + 过阈值节省 ×(均值 60.5−30)≈ 50(裁决窗确认的建议值)。
 _GOLD_AFTER_REFRESHES_FIXED: dict[str, float] = {
@@ -163,7 +163,7 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
 ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 刷新概率结构翻倍:概率面已在 cw_shop_odds 已登记,金等价参数化缺失
     '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
-    # 估值按 0 定案:2★ 商店价结构已定谳(merge_mechanics §2.6 ×3 实付),
+    # 估值按 0 定案:2★ 商店价结构已定案(merge_mechanics §2.6 ×3 实付),
     # sim 直出分支已建(kernel ENV_SHOP_TWO_STAR_DEAL_PROB,占位概率禁入估值)
     '人才下沉': '估值按 0 处理(2026-10-16 用户裁定:2★ 直出收益不计入现金分;'
                 'sim 占位概率 ENV_SHOP_TWO_STAR_DEAL_PROB 禁入估值)——系定案,非待建模',
@@ -248,8 +248,8 @@ def env_economy_value(name: str, gs: GameState) -> tuple[float, bool]:
     :func:`_pool_rewrite_value`(层 E ΔV 公式,读
     STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参 fail-closed,v1
     恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);纯数量
-    事实条目(仅挂点/刷新/难度豁免字段,如联席决策数量通道、T-46 策略
-    大师 direct 挂点)不属层 E,落穿下方 A/B/拍值/C 通道公式——分派判据
+    事实条目(仅插入位置/刷新/难度豁免字段,如联席决策数量通道、T-46 策略
+    大师 direct 插入位置)不属层 E,落穿下方 A/B/立场登记值/C 通道公式——分派判据
     与「估值语义字段非空才算估值结构」豁免口径同源
     (用户裁定 2026-10-26;互斥校验已随 2026-10-28 治理移除,豁免形态由
     本分派判据现值承载),防策略大师

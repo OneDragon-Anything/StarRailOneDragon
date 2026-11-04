@@ -4,11 +4,11 @@
 一个评估函数服务全部卖出触发场景(溢出紧急处理/采晶矿前空位/节末凑息;
 升级凑金场景已随凑金链整删——用户裁定 2026-10-30:不存在升级卖牌
 凑金,保持最大压牌库,钱够了再升;会话内筹资场景已随统一获取让位评估
-收编退役——roster-plane1-union design §2.2 第 4 项:获取受阻〔席满 ∨
+纳入统一管理时退役——roster-plane1-union design §2.2 第 4 项:获取受阻〔席满 ∨
 金不足〕走买入臂内联统一评估,禁经本注册表),输入 =
-(场景,容器状态),输出 = 按让位序排序的卖出候选或空。三触发卖出判据件
+(场景,状态容器状态),输出 = 按让位序排序的卖出候选或空。三触发卖出判据件
 规格单一源 = strategy-docs/11_shop_decisions.md §4.0;统一序列判定与
-卖出取用形态规格正本 = strategy-docs/32_unified_sell_priority.md(§3/§8):
+卖出取用形态规格权威版本 = strategy-docs/32_unified_sell_priority.md(§3/§8):
 
 - **统一序列消费**:各场景排序单一源 = ``criteria/priority.sell_order``
   (禁第二排序实现,总纲 §2.9 接口契约 1)——部署重排
@@ -16,7 +16,7 @@
 - **无场景专属池子**【拍,总纲 §2.7】:部署定型内的牌 = 档 1 天然
   永不先卖,场景不再各自设池;
 - **身份过滤退役**:填充牌过滤/凑息仅一星过滤/筹资仅一星过滤删除
-  (序列天然排序;「不设仅一星代理过滤」= 总纲 §2.4 拍板);
+  (序列天然排序;「不设仅一星代理过滤」= 总纲 §2.4 用户决定);
 - **循环防线保留**(与优先级正交,防操作空转,总纲 §2.4):窗口段/
   L1 同轮禁卖/种子年龄豁免(常规面经 ``sell_exclusions`` 装配)+
   合成素材拒入守卫含释放集旁路 + 空板止损守卫;溢出场景全资格豁免
@@ -35,7 +35,7 @@ C1 恒买席满腾位场景(``c1_make_room``,随 C1 支退役)整批删除——
 排序与资格统一由档位结构承载,概率表/退金表保留为兜底档分档与凑钱
 目标算术数据源(非排序键)。
 
-**边界**:本模块 = 评估器本体;各动作发出点接线分属备战工序/商店
+**边界**:本模块 = 评估器本体;各动作发出点接入调用分属备战工序/商店
 会话各消费位,``sell_gate``/``criteria/sell`` 通道现行保留。
 """
 from __future__ import annotations
@@ -140,12 +140,12 @@ class SellSceneSpec:
 #:   场景死行);
 #: - ``deploy_swap`` 冻结遗留行已随旧价值函数退役删除(3.4;kernel
 #:   swap 机器(swap_sell_exclusion_reason 含)亦已随部署统一批丁整链
-#:   收编——unified-deploy-order §2.7/§4,被换下者回 bench 由统一让位序
+#:   纳入统一管理——unified-deploy-order §2.7/§4,被换下者回 bench 由统一让位序
 #:   处置,部署换人域无独立卖出资格面);
 #: - ``levelup_liquidate_prep`` 行已随升级凑金链整删退役(用户裁定
 #:   2026-10-30:不存在升级卖牌凑金——保持最大压牌库,钱够了再升;
 #:   金不足帧恒 defer 等钱,零卖出动作);
-#: - ``session_funding`` 行已随统一获取让位评估收编退役(roster-
+#: - ``session_funding`` 行已随统一获取让位评估纳入统一管理时退役(roster-
 #:   plane1-union design §2.2 第 4 项 + 用户裁定 2026-10-30:统一
 #:   优先级——金不足与席满同一评估,禁再立筹资/凑金/腾位类场景;
 #:   `funding` 通道随场景退役无消费者,SELL_CHANNELS 同批删除)。
@@ -159,7 +159,7 @@ SCENE_SPECS: dict[str, SellSceneSpec] = {
         cross_tier_only=True, exempt_unmet_members=True),
 }
 
-#: 场景闭集(新场景必须先在此登记再接线——枚举外值抛错,与 sell_gate
+#: 场景闭集(新场景必须先在此登记再接入调用——枚举外值抛错,与 sell_gate
 #: SELL_CHANNELS 同款单一入口防线)。
 SELL_SCENARIOS: frozenset[str] = frozenset(SCENE_SPECS)
 
@@ -183,7 +183,7 @@ INTEREST_EXEMPT_DEPLETED_KEY: str = 'node_end_interest_exempt_depleted'
 
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
-    """卖出侧线内身份集(双层名单口径 = 32 号稿 §2):
+    """卖出侧线内身份集(双层名单与口径 = 32 号稿 §2):
     锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
     **∪ 过渡候选成员**;未锁定 = 实候选(证据门版快照)三线成员并集
     **∪ 过渡候选成员**。过渡支两态共用同一读口 =
@@ -196,7 +196,7 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
     消费面:常规面 sell_exclusions 装配 k_members 入参、备战帧
     k_members 装配(entry.emit / mandate.snapshot_frame)、买面投影位
     (shop)、预算投影的 1★ 活期口径(序 3-5 投影——entry
-    攒批位已随凑金链整删)。同一集禁各消费点自建第二份名单口径。候选名注册表解析
+    攒批位已随凑金链整删)。同一集禁各消费点自建第二份名单与口径。候选名注册表解析
     失败(漂移)跳过并告警——该线贡献空集,保守方向申报:少排除 =
     多可卖 = 让位面不受阻。
     """
@@ -230,14 +230,14 @@ class SellCandidate:
     """一个卖出候选(评估器输出行;frozen 值对象)。
 
     [索引定义] ``idx`` 坐标系随 ``zone`` 分域:``zone='bench'`` = 备战席
-    紧缩占席序(``bench_entries_of`` 列表 0 基下标,发出侧经容器槽位表
+    紧缩占席序(``bench_entries_of`` 列表 0 基下标,发出侧经状态容器槽位表
     枚举对位还原);``zone='deployed'`` = 上场紧缩行序(``deployed_rows_of``
     两行拼接〔前排在前〕的 0 基下标)。取值时机 = 评估帧现读(候选构造
     时快照)。
     """
 
     zone: str            # 'bench' | 'deployed'
-    idx: int             # 容器内定位键(坐标系见类 docstring)
+    idx: int             # 状态容器内定位键(坐标系见类 docstring)
     unit: Unit           # 候选单位本体(frozen 值对象)
     char_id: str
     star: int
@@ -283,7 +283,7 @@ def evaluate_sell_candidates(
 ) -> tuple[tuple[SellCandidate, ...], str]:
     """统一卖出候选评估器(三触发单一入口;acquisition §3)。
 
-    输入 =(场景,容器状态);输出 =(按让位序排序的候选元组,拒因键
+    输入 =(场景,状态容器状态);输出 =(按让位序排序的候选元组,拒因键
     ——候选非空恒 '',空候选暴露拒因)。让位序 = 先卖到后卖:统一
     序列(末位 = 最先让路)整体反转,消费位取首位 = 序列末位。
     候选行随键携带观测载荷(``tier`` 档位 / ``rng_tail_hit`` 随机尾键
@@ -315,7 +315,7 @@ def evaluate_sell_candidates(
        的帧落 :data:`INTEREST_EXEMPT_DEPLETED_KEY` 观测键;池空 →
        零卖出(现行「序列真空零动作」语义)。被迫类场景不走本步。
 
-    ``counters`` = 遥测分键容器(缺省 None = 守卫纯判读形态,豁免
+    ``counters`` = 遥测分键表(缺省 None = 守卫纯判读形态,豁免
     过滤照常、观测键不落)。
     """
     spec = SCENE_SPECS.get(scenario)
@@ -362,7 +362,7 @@ def evaluate_sell_candidates(
     units: list[crit_priority.HeldUnit] = []
     cands: dict[tuple[str, int], SellCandidate] = {}
     # 档 1(部署定型内,按角色名命中)不进让位输出——「部署定型内的
-    # 牌永不先卖」的字面保证(卖出取用形态正本 =
+    # 牌永不先卖」的字面保证(卖出取用形态权威版本 =
     # strategy-docs/32_unified_sell_priority.md §8);备战位上的同名牌
     # 同受保护(档 1 按名命中 = 在手优先不换手形态,3.1 判据件语义)。
     # 板空边界保守侧:部署外候选真空帧 = 空输出,不向部署需要面借牌。

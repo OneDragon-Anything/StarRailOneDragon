@@ -1,6 +1,6 @@
 """策略卡经济通道金等价折算(mandate_v1 共用模块;投资策略屏现金分承载面)。
 
-设计正本 = strategy-docs/29_invest_strategy_screen.md §2.1(下称
+设计权威版本 = strategy-docs/29_invest_strategy_screen.md §2.1(下称
 「29 号稿」);复用契约形态与折算约定沿 env 批
 env_economy.py——``(值, resolved)`` 返回、fail-closed 门、
 :data:`XP_GOLD_RATE` 语义同源,但**通道公式分立**:
@@ -146,15 +146,15 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
     'streak_set',
     'keep_streak_on_loss',
     # 位面开始周期族(xp_per_plane/free_refresh_per_plane,固定理财位面
-    # 段):世界发放腿已建模(kernel 位面开始桥/补发桥 + sim 位面窗腿/
-    # 选卡拍补发腿);估值通道未建——剩余位面数视界口现网无现成成员
+    # 段):状态副本发放效果条目已建模(kernel 位面开始桥/补发桥 + sim 位面窗效果条目/
+    # 选卡拍补发效果条目);估值通道未建——剩余位面数视界口现网无现成成员
     #(xp_per_node 通道折算基数 = 剩余节点数,位面粒度须自建视界口),
     # 激活归估值批,先按待建模塌 0
     'xp_per_plane', 'free_refresh_per_plane',
     # 位面周期金/强制店改写对(公司严选):gold_per_plane 与上两字段同判
-    # (位面粒度视界口缺,塌 0;世界发放腿已建 = sim 位面首节点窗金腿 +
-    # 选卡拍补发金腿);shop_rewrite_forced_cost/unique = 强制店改写呈现
-    # 面腿(触发拍店面内容改写,非现金流通道),估值范围外申报
+    # (位面粒度视界口缺,塌 0;状态副本发放效果条目已建 = sim 位面首节点窗金效果条目 +
+    # 选卡拍补发金效果条目);shop_rewrite_forced_cost/unique = 强制店改写呈现
+    # 面效果条目(触发拍店面内容改写,非现金流通道),估值范围外申报
     'gold_per_plane',
     'shop_rewrite_forced_cost', 'shop_rewrite_forced_unique',
 })
@@ -162,10 +162,10 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #: 不计分通道字段(结构登记、永不为分):
 #: - 血本位分区覆盖:xp_buy_hp_cost/hp_gold_swap(invest_strategy 血本位
 #:   三态序以 is_blood_economy 集合排除覆盖,价值面不入现金账);
-#:   boss_end_heal_hp(奋斗协议首领战回血腿)/battle_end_heal_hp(星际
-#:   和平保险战斗结束回血腿,全战斗域)= HP 世界面发放同 hp_instant
-#:   归定价出域族(hp 定价通道作废,hp 永不折金;世界腿 = sim 结算段
-#:   策略腿区独立笔);
+#:   boss_end_heal_hp(奋斗协议首领战回血效果条目)/battle_end_heal_hp(星际
+#:   和平保险战斗结束回血效果条目,全战斗域)= HP 状态副本侧发放同 hp_instant
+#:   归定价出域族(hp 定价通道作废,hp 永不折金;状态副本实现分支 = sim 结算段
+#:   策略效果条目区独立笔);
 #: - 难度族:difficulty_delta/difficulty_per_streak/difficulty_node_types
 #:   (难度→价值需战力建模,宪法一禁域);encounter_tier_extremes_only
 #:   (二极管遭遇收窄结构旗标,端点 sim 呈现面派生无数值,同禁域);
@@ -173,12 +173,12 @@ _PENDING_MODELING_FIELDS: frozenset[str] = frozenset({
 #:   (远见品质改写 = 期权待建模,均匀分布假设未证);
 #: - 负向结构登记:xp_click_surcharge_from_level/_at、hp_max_loss_pct_of_
 #:   loss/hp_max_loss_cap_pct、loss_hp_extra(败局额外扣血,纯负向成本
-#:   无正账可折,首例 嘴硬;消费 = sim 结算 hp 腿);
+#:   无正账可折,首例 嘴硬;消费 = sim 结算 hp 效果条目);
 #: - 定价出域族:hp_instant(健康充值 +30 生命直给)——hp 定价通道作废
-#:   正本(invest_effects.md 血金互兑裁定)支撑「永不为分」,非「待建模」
-#:   (无未来进分语义);世界面发放 = sim 选卡落地拍独立笔。
+#:   权威版本(invest_effects.md 血金互兑裁定)支撑「永不为分」,非「待建模」
+#:   (无未来进分语义);状态副本侧发放 = sim 选卡落地拍独立笔。
 #: - 进度轴结构改写族:level_cap_override(等级帽覆写,首例 控制规模
-#:   「最大等级变为7级」= 7)——世界面消费走 kernel 解析 helper
+#:   「最大等级变为7级」= 7)——状态副本侧消费走 kernel 解析 helper
 #:   (cw_economy.level_cap_of,聚合取严 + min(MAX_PLAYER_LEVEL, 覆写)
 #:   收窄),零金流非现金流通道,结构登记永不为分(与引擎排除桶同桶
 #:   划界轴「是否持续通道」);策略侧等级判据仍读注册表 level_max,
@@ -201,15 +201,15 @@ _NOT_SCORED_FIELDS: frozenset[str] = frozenset({
 # 「有字段分支」适用范围):字段分类校验只扫 EconomyEffect 已挂值条目,扫不到
 # 「字段已登记但条目未挂值」与「无字段分支」(效果结构在注册表无对应字段),
 # 唯卡级登记覆盖得住(「字段已登记未挂值」先例 = 固定理财系 xp_instant,
-# 2026-11-01 起两卡全字段挂值,该形态在册代表余 孪生素数/狸财经狸 类无字段分支)。
+# 2026-11-01 起两卡全字段挂值,该形态已登记代表余 孪生素数/狸财经狸 类无字段分支)。
 # 已登记行覆盖未建模分支的**可见性**(治理账,非运行时闸——已建模分支照常计分,
 # 见 strategy_economy_value docstring);建模落地后改写对应行描述。
 STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 固定理财系:官方「现在以及每个位面开始时,获得4/6经验值和2/3次免费
     # 刷新」——即时段(「现在」段 XP/刷新)已挂值发放(固定理财 xp_instant=4/
-    # burst=2,固定理财+ xp_instant=6/burst=3);位面段字段已挂值、发放腿
-    # 已建(kernel 位面开始桥/登记拍补发桥 + sim 位面首节点窗腿/选卡拍
-    # 补发腿,用户裁定 2026-11-01 拍定中途拿卡所在位面补发,两卡同判);
+    # burst=2,固定理财+ xp_instant=6/burst=3);位面段字段已挂值、发放效果条目
+    # 已建(kernel 位面开始桥/登记拍补发桥 + sim 位面首节点窗效果条目/选卡拍
+    # 补发效果条目,用户裁定 2026-11-01 确定中途拿卡所在位面补发,两卡同判);
     # 策略侧估值通道未建(两字段归 _PENDING_MODELING_FIELDS 待建模分类
     # 塌 0,激活归估值批)
     '固定理财': '位面段估值通道未建(xp_per_plane/free_refresh_per_plane'
@@ -218,8 +218,8 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
                 '待建模分类塌 0);即时段与位面段世界发放腿均已建',
     # 公司严选:官方「现在及每个位面开始时，开启一个由5个独特4费角色组成
     # 的商店，并获得3金币」——即时段 instant_gold 面值已计分(现金通道);
-    # 位面段金与商店改写对已挂值、世界发放腿已建(sim 位面首节点窗金腿/
-    # 改写腿 + 选卡拍改写腿/补发双腿,改写 = 呈现面腿非现金流);估值通道
+    # 位面段金与商店改写对已挂值、状态副本发放效果条目已建(sim 位面首节点窗金效果条目/
+    # 改写效果条目 + 选卡拍改写效果条目/补发双效果条目,改写 = 呈现面效果条目非现金流);估值通道
     # 未建(三字段待建模分类塌 0,激活归估值批)
     '公司严选': '位面段估值通道未建(gold_per_plane/shop_rewrite_forced_'
                'cost/unique 待建模分类塌 0);即时段面值已计分,位面段世界'
@@ -227,35 +227,35 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
     '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',
-    # 空仓:节点条件 XP 腿(物品栏+备战席无装备〔消耗品除外〕每节点 +2)
-    # 已建世界通道 = cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS + kernel
-    # 纯判定 + sim 节点窗挂点;即时腿 1 件随机简易 = cw_gain_effects 随机
+    # 空仓:节点条件 XP 效果条目(物品栏+备战席无装备〔消耗品除外〕每节点 +2)
+    # 已建状态副本侧通道 = cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS + kernel
+    # 纯判定 + sim 节点窗插入位置;即时效果条目 1 件随机简易 = cw_gain_effects 随机
     # 装备族泛化表(零估值面,无具名 gift);条件流挂 xp_per_node 无条件
     # 通道 = 系统性失真(孪生素数同判),STRATEGY_ECONOMY 零条目维持
     '空仓': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
-    # 空仓+:即时 10XP 走 xp_instant 通道(现金分自动激活),窗腿 2XP 同空仓
-    # 谓词,装备腿 1 件简易同泛化表;估值零登记维持(随机装备不可具名)
+    # 空仓+:即时 10XP 走 xp_instant 通道(现金分自动激活),窗效果条目 2XP 同空仓
+    # 谓词,装备效果条目 1 件简易同泛化表;估值零登记维持(随机装备不可具名)
     '空仓+': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
-    # 人才空洞:节点条件 XP 腿(备战席角色 ≤4 名每节点 +3)已建世界通道 =
+    # 人才空洞:节点条件 XP 效果条目(备战席角色 ≤4 名每节点 +3)已建状态副本侧通道 =
     # cw_investments.STRATEGY_BENCH_COUNT_XP_GRANTS + kernel 纯判定 +
-    # sim 节点窗挂点;条件流挂 xp_per_node 无条件通道 = 系统性失真
+    # sim 节点窗插入位置;条件流挂 xp_per_node 无条件通道 = 系统性失真
     # (空仓同判),STRATEGY_ECONOMY 零条目维持
     '人才空洞': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
 
     '人才济济': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
-    # 愚者恶作剧:双腿分治——离场金腿(备战席 1星花火/火花进节点留 2/4 金
-    # 离场)已建世界通道 = cw_investments.STRATEGY_BENCH_LEAVE_GOLD_GRANTS
-    # + kernel 纯判定 + sim 节点窗挂点;商店变形腿(2/4 费 20% 变花火/火花)
+    # 愚者恶作剧:双效果条目分治——离场金效果条目(备战席 1星花火/火花进节点留 2/4 金
+    # 离场)已建状态副本侧通道 = cw_investments.STRATEGY_BENCH_LEAVE_GOLD_GRANTS
+    # + kernel 纯判定 + sim 节点窗插入位置;商店变形效果条目(2/4 费 20% 变花火/火花)
     # = 随机资产面零建模申报(effect-domain §6.4 用户裁定直辖,市场活力
     # 同型,live 观察覆盖,sim 收益面低估);估值零登记维持
     '愚者恶作剧': '离场金腿已建世界通道 STRATEGY_BENCH_LEAVE_GOLD_GRANTS;'
               '商店变形腿随机资产面零建模申报(观察覆盖);估值零登记维持',
-    # 赞美太阳:节点条件 XP 腿(每拥有一件【白昼装备】以及其原型装备,
-    # 进入新节点每件 +1)已建世界通道 = cw_investments
+    # 赞美太阳:节点条件 XP 效果条目(每拥有一件【白昼装备】以及其原型装备,
+    # 进入新节点每件 +1)已建状态副本侧通道 = cw_investments
     # .STRATEGY_EQUIP_COUNT_XP_GRANTS(计数域 = DAYLIGHT_EQUIP_XP_NAME_SET
-    # 白昼系名集)+ kernel 纯判定 + sim 节点窗挂点;动态计数挂 xp_per_node
+    # 白昼系名集)+ kernel 纯判定 + sim 节点窗插入位置;动态计数挂 xp_per_node
     # 无条件通道 = 系统性失真(零拥有局虚计/多件局漏计,空仓/人才空洞
     # 同判),STRATEGY_ECONOMY 零条目维持
     '赞美太阳': '装备计数经验腿已建世界通道 STRATEGY_EQUIP_COUNT_XP_GRANTS;'
@@ -284,20 +284,20 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     '免战牌': '跳过机制分支无经济字段载体(省一场战斗的价值面不折现,'
              '世界面已建 = sim battle_skip 消费通道);即时 XP 腿已挂 '
              'xp_instant=30(现金计分)',
-    # 合并同类项:金腿 = 刷新出对条件金(gold_per_refresh_pair,登记形态
-    # 等值迁移自 instant_gold);burst 4 刷腿已建模(获得链登记腿发放),
+    # 合并同类项:金效果条目 = 刷新出对条件金(gold_per_refresh_pair,登记形态
+    # 等值迁移自 instant_gold);burst 4 刷效果条目已建模(获得链登记效果条目发放),
     # 不列缺口。估值 fail-closed 申报句形态照现役值句。
     '合并同类项': '刷新出对条件金腿(gold_per_refresh_pair)频次分布未采,'
                  '估值 fail-closed=0',
-    # 大裁员:卖全场退款腿 = 无字段载体(退款额依赖场上构成,非估值常量;
-    # 出售面世界通道已建 = STRATEGY_EFFECTS 条目登记腿双桥);×2 卖价修饰
+    # 大裁员:卖全场退款效果条目 = 无字段载体(退款额依赖场上构成,非估值常量;
+    # 出售面状态副本侧通道已建 = STRATEGY_EFFECTS 条目登记效果条目双桥);×2 卖价修饰
     # 挂 sell_price_mult(待建模字段分类塌 0),施于净额/基础价口径待实采
-    # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前世界面退款按
+    # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前状态副本侧退款按
     # 基础公式记(sim 低估申报制)。
     '大裁员': '卖全场退款腿无字段载体(依赖场上构成,非估值常量);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
-    # 降本增效:免费购买腿已建(uses 载体 duration_uses=6,世界通道 =
+    # 降本增效:免费购买效果条目已建(uses 载体 duration_uses=6,状态副本侧通道 =
     # STRATEGY_EFFECTS 条目 + 买牌上报免费闸);估值未入现金通道(免
     # 费省下的购牌金依赖后续购买行为,轨迹依赖族);×2 卖价修饰同大裁员
     # (sell_price_mult 轨迹依赖族待建模,施径口径待实采)。

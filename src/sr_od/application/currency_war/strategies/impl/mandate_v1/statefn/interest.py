@@ -7,7 +7,7 @@ import 重定向保留调用面,消费方零改;单一源在 kernel。
 唯一实现语义不变:双轨迹递推(基线守 g* 富余即花 vs 花后守 g*),cap 按
 resolved 参数化(默认 5 / 息律投资 10 / 开源节流 9 / 买断制 0——覆写
 单一源 = aggregate_economy(session.active_strategies),解析口 =
-kernel cw_economy.cap_resolved_of_session)。交叉核对锚 =
+kernel cw_economy.cap_resolved_of_session)。交叉核对基准 =
 ``tools/cw/proofs/p47_check.py`` 的 ``loss_exact``;税基单一源纪律 =
 P47 息账与 P51 存量清零账互不包含(01_math_framework §6 第 4 条)。
 """

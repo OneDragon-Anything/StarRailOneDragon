@@ -10,7 +10,7 @@ P51_V3_REBUILD v3.3+本模块为单一源):
   与空格回退处置)。**启动必载**(R2-4):import 时即加载;加载失败或格值
   None = 运行时损坏守卫 + 报警,不作合法缺省姿态。
 - **现行消费面 = 查表基础设施**(difficulty_band 派生审计登记/
-  HP_BAND_NEAR_DEATH 血带结构锚 predicates 观测件消费):λ 表本体
+  HP_BAND_NEAR_DEATH 血带结构基准 predicates 观测件消费):λ 表本体
   保留为 P51 标定工件;原决策消费族(λ 顾问/exposure 比较/差分复合项/
   升档器排序键/floor_eff 保利息门)已随血线地板/λ 顾问/升档器删除链与
   拦截层删除链停用,键构造维(四维键串与血带映射)已随 hp 判据删除面
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 #: 表工件路径(与本模块同目录 data/ 下;启动必载,R2-4)
 _TABLE_PATH: Path = Path(__file__).parent / 'data' / 'lambda_death_pl_v33.json'
 
-#: 濒死带边界(血带结构锚单一源;消费 = statefn/predicates p1/p2_blood_floor
+#: 濒死带边界(血带结构基准单一源;消费 = statefn/predicates p1/p2_blood_floor
 #: 濒死带观测谓词阈值,R-7 保留面。血带维其余键结构已随 hp 判据删除面
 #: 撤除,R-6 孤儿化申报)
 HP_BAND_NEAR_DEATH: int = 15

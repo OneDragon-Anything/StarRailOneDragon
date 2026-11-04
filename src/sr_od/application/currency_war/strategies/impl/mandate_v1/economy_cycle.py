@@ -26,7 +26,7 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
   经披露面(``disclose_budget``)与卖出闸/商店决策侧消费(原
   posture_release 独立模块已随死代码清偿移除)。
 - **利息计算基数守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
-  富余段激活;I-1 锚)。
+  富余段激活;I-1 基准)。
 
 分包期 0b(§3.3-①a/①b):接缝(refresh_ev_budget)
 与其依赖族(reserve_cap/_registry_of/_vd_core_of/REFRESH_ROLL_CAP)
@@ -165,7 +165,7 @@ def bench_fill_account(gs: GameState, registry: DecisionV2Registry) -> int:
     数学依据=设计 §1.3:富余段买 1★ 退全款+利息不减(利息帽截断),
     已实现成本 0、收益≥0(压牌库+bench 期权),弱占优、参数无关。
     买入放行面([31] 限域质量序)在 candidates/scoring,随 `w607_affix_consumption/` 二波
-    后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
+    后接入调用;本分量先接通 flip/义务预算的容量判定与存息准入门。
     """
     return sum(_scan_shop_buy_accounts(gs, registry)[1])
 
@@ -217,8 +217,8 @@ def disclose_budget(state: Any, session: StrategySession,
 
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
     旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
-    决策输入——决策输入 = obs(黑板)+ session 容器直读,披露面字段
-    禁决策消费(语义锚 = mandate_state.py 披露字段注释与守卫测试
+    决策输入——决策输入 = obs(黑板)+ session 状态容器直读,披露面字段
+    禁决策消费(语义基准 = mandate_state.py 披露字段注释与守卫测试
     test_economy 预算遥测披露节;禁令防线 = review 与代码规范:禁读约束
     已申报于本包模块 docstring)。写端只有本函数与商店执行回执位
     (operations/cw_screen/cw_screen_shop.accrue_release_spent,
@@ -226,8 +226,8 @@ def disclose_budget(state: Any, session: StrategySession,
     sess_reserve_cap 族)+ cw_decision_trace 披露族封闭清单
     (kernel/cw_decision_trace.py)。
 
-    逐字段语义(合并验收锚):
-    - ``state``:session 容器单例(帧轴 plane/round 与金读的单一来源;
+    逐字段语义(合并验收基准):
+    - ``state``:session 状态容器单例(帧轴 plane/round 与金读的单一来源;
       None = 缺省取 ``game_state_of(session)``,店开帧调用通道);
     - reserve_cap/obligation:现算值幂等覆写(同帧同值,重入无副作用);
     - overflow:``max(0, gold − reserve_cap)`` 纯派生直算——禁二次调
@@ -275,7 +275,7 @@ def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
     备战决策入口披露帧处于关店态,F2 门(cw_screen_prep:gold 仅店开态
     可信,关店读空)使披露态 gold 不可得(缺省 0)⇒ overflow/obligation
     在 prep 帧恒 0——「金未采」已知语义,非真 0(实机首局
-    g_20260907_025608 锚⑤定案)。本写点在商店入口观察帧(店开,gold
+    g_20260907_025608 基准⑤定案)。本写点在商店入口观察帧(店开,gold
     过 F2 门为真值)走同一现算链重算并覆写三预算字段:
     overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零由键戳
     承载,本写点只比较不盖戳)。豁免面与「禁决策消费」禁令同

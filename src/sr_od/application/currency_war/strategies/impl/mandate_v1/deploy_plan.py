@@ -5,7 +5,7 @@
 在落位上零决定**——选人/排路由/槽位选择的本模块单一源见下。
 
 - 选人 = 统一部署搜索(``deploy_search.search_deploy_target``,阶段
-  5/6 乙起;旧七桶选人族已随部署统一批丁丁批收编删除——unified-
+  5/6 乙起;旧七桶选人族已随部署统一批丁丁批纳入统一管理时删除——unified-
   deploy-order §2/§4):target_board = 角色名 → (排, 选定星);
 - 排路由(:func:`deploy_row_pref`,三级):阵容站位覆盖(``Comp.char_
   positions`` 字段契约「阵容特定站位要求,覆盖注册表站位真值默认」)> 注册表
@@ -14,7 +14,7 @@
   在此落地;
 - 前排保证(随迁 kernel 规则):pref=back ∧ 前排全空(出战硬要求前排有
   角色)时队列后方真 front 候选先提,无 front 候选才强转当前件;
-- 槽位选择(:func:`deploy_slot_plans`):策略遍历容器行列现值自定,后排
+- 槽位选择(:func:`deploy_slot_plans`):策略遍历状态容器行列现值自定,后排
   上限 = ``back_layout`` 现值(:func:`back_capacity_of` 单一源)——消除
   「动作发出侧空槽可指扩展槽而执行面按基线 6 槽」的静默分歧(P2 遗留);
 - 出战链计划单一源(:func:`battle_chain_deploy_params`):恢复局同步步/
@@ -48,16 +48,16 @@ if TYPE_CHECKING:
 # (七桶选人族(_deploy_plan_inputs/select_deployments/
 #  select_deployments_reasoned/has_deployable/has_deployable_reasoned/
 #  can_deploy_single)与部署计划装配 deploy_plan_moves/
-#  DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY 已随部署统一批丁丁批收编删除:
+#  DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY 已随部署统一批丁丁批纳入统一管理时删除:
 #  围栏/成对/点火序/核心桶/必需件首桶/cap/同名去重/配方底线门/板空保底 =
 #  旧线性序补丁史,选人 = 统一部署搜索定型单属(unified-deploy-order
-#  §2/§4);紧缩占席序 × 容器槽位表对位防线由差分执行器的容器直读
+#  §2/§4);紧缩占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读
 #  坐标系承载。)
 
 
 def _slot_cid(b) -> str:
     """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件/None = '';
-    P4 容器形,解包单一源 = kernel ``bench_slot_unit``)。"""
+    P4 状态容器形,解包单一源 = kernel ``bench_slot_unit``)。"""
     u = bench_slot_unit(b)
     return (getattr(u, 'char_id', '') or '') if u is not None else ''
 
@@ -97,7 +97,7 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
     - **前排保证**(kernel 规则随迁,2026-08-16 修正口径):pref=back
       ∧ 前排全空(出战硬要求前排有角色)时队列后方真 front 候选提到
       当前位,无 front 候选才强转当前 back 件;
-    - 槽位 = 策略遍历容器视图现值自定:deployed 视图子表下标(排内 1 基
+    - 槽位 = 策略遍历状态容器视图现值自定:deployed 视图子表下标(排内 1 基
       派生)取占用集,首选排取最低空槽、首选排满 fallback
       另一排,两排全满截断(调用侧 cap 门先行,防御停);
     - 后排上限 = ``back_layout`` 现值(back_capacity_of 单一源,值域 6-9)
@@ -164,10 +164,10 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
         oi += 1
     return out
 
-# (部署计划装配 deploy_plan_moves(选人 × 落位 × 容器对位)已随七桶
-#  选人族收编删除:三路定型(卖出评估器/获取让位/出战链)消费统一
+# (部署计划装配 deploy_plan_moves(选人 × 落位 × 状态容器对位)已随七桶
+#  选人族纳入统一管理时删除:三路定型(卖出评估器/获取让位/出战链)消费统一
 #  部署搜索 target_board,装配链退役——unified-deploy-order §4;紧缩
-#  占席序 × 容器槽位表对位防线由差分执行器的容器直读坐标系承载。)
+#  占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读坐标系承载。)
 
 
 def battle_chain_deploy_params(session: StrategySession) -> list:
@@ -181,7 +181,7 @@ def battle_chain_deploy_params(session: StrategySession) -> list:
     场景按统一让位序处置——§2.7 职责边界)。差分动作序与第 6 步/计划游标
     共用 :func:`deploy_diff.deploy_diff_target_actions` 语义(fresh 拦截同源)。
 
-    frame 装配 = 容器现读(原 cw_loop._battle_chain_deploy_moves 内联段
+    frame 装配 = 状态容器现读(原 cw_loop._battle_chain_deploy_moves 内联段
     迁入;design §2.2「出战链不再装配选人输入」——出战链只调策略层计划
     入口)。空板面/定型收敛 = 空 move 序(CwActionStartBattleParam 照发)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -205,7 +205,7 @@ def battle_chain_deploy_params(session: StrategySession) -> list:
 def _diff_pending_of_panel(session: StrategySession, gs: GameState,
                            panel, diff_gs: GameState) -> bool:
     """面板 → 定型 → diff 非空判定(发射准入部署在途谓词核;搜索与差分
-    两段共享,生产/虚拟两路径仅面板与 diff 容器来源不同)。"""
+    两段共享,生产/虚拟两路径仅面板与 diff 状态容器来源不同)。"""
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
         deploy_diff,
         deploy_search,
@@ -241,7 +241,7 @@ def launch_deploy_pending_virtual(session: StrategySession, gs: GameState,
 
     ``bench_slots``/``field_units`` 语义与 :func:`mandate.select_deployment`
     的 ``virtual_bench``/``virtual_field`` 同(升星连锁模拟产物 SimAcquisition
-    两半);diff 判定容器 = 虚拟 deployed/bench 视图 duck 面板。"""
+    两半);diff 判定载体 = 虚拟 deployed/bench 视图 duck 面板。"""
     from types import SimpleNamespace
 
     from sr_od.application.currency_war.kernel.cw_exec_state import (

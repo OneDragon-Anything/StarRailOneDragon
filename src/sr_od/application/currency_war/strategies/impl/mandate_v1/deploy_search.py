@@ -35,7 +35,7 @@ L3 普通(计数制,buff/debuff ×3 > 万金油 ×2 > 其他 ×1;过渡档
 上下文最高层。金币维零交互(CW 部署免费——用户裁定 2026-10-30
 三,核查过非漏项)。
 
-rng = 局面哈希播种(§1 D3-7:同一容器状态 → 同一 rng 序,跨帧稳定
+rng = 局面哈希播种(§1 D3-7:同一状态容器状态 → 同一 rng 序,跨帧稳定
 防并列板帧间翻转;同帧多次搜索共享同序 rng → 同帧判定确定)。
 """
 from __future__ import annotations
@@ -113,7 +113,7 @@ class SearchUnit:
 
 @dataclass(frozen=True)
 class DeploySearchPanel:
-    """搜索输入面板(容器读口全列的鸭子面板,§1 虚拟面板字段域)。
+    """搜索输入面板(状态容器读口全列的鸭子类型(duck typing)面板,§1 虚拟面板字段域)。
 
     生产装配 = :func:`build_deploy_panel`;虚拟重算(获取让位评估 /
     can_deploy_single 快照+X)= 调用方替换 ``units``/``current_board``
@@ -415,7 +415,7 @@ def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
         -> list[int]:
     """骨架前缀截断点集合(档位形态集合:每键的各档激活人数 +
     全取——t=0 与 t=可达档各一套形态,§2 段 1 D-15;**空键集
-    (空羁绊线)时全前缀**——无档位锚点,required/core 逐件渐进
+    (空羁绊线)时全前缀**——无档位基准点,required/core 逐件渐进
     形态 = 池序前缀全枚举)。"""
     cuts: set[int] = {0, len(pool)}
     if not keys:
@@ -522,7 +522,7 @@ def _position_score(members: list[SearchUnit], rows: dict[str, str],
 
 
 def _situation_seed(panel: DeploySearchPanel) -> int:
-    """局面哈希播种(§1 D3-7:同一容器状态 → 同一 rng 序,跨帧稳定;
+    """局面哈希播种(§1 D3-7:同一状态容器状态 → 同一 rng 序,跨帧稳定;
     同帧多次搜索〔含 can_deploy_single 逐牌〕共享同序 rng)。
 
     哈希 = 稳定摘要(zlib.crc32)——禁裸 ``hash()``:Python 字符串哈希按
@@ -942,7 +942,7 @@ def _transition_pairs(panel: DeploySearchPanel) -> list[tuple[str, ...]]:
 def build_deploy_panel(session: StrategySession, gs: GameState,
                        frame: MandateFrame | None = None,
                        ) -> DeploySearchPanel:
-    """搜索面板生产装配(容器读口全列一次现取;§1 虚拟面板字段域)。
+    """搜索面板生产装配(状态容器读口全列一次现取;§1 虚拟面板字段域)。
 
     段 0 过滤在此执行:上场锁(uid 命中记录;虚拟件 uid=None 名
     命中锁名单即视为锁,fail-closed)/召唤物系统件(cost=0,固定后台
@@ -977,8 +977,8 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
 
     st = state_of(session)
     # 锁定窗直读调用方 session 的策略状态(line_members_view 的
-    # state_of(gs) 依赖 gs.strategy_state 接线,虚拟路径调用方
-    # (shop 评估/sell_candidates 传 gs 当 session)不保证接线——
+    # state_of(gs) 依赖 gs.strategy_state 接入调用,虚拟路径调用方
+    # (shop 评估/sell_candidates 传 gs 当 session)不保证接入调用——
     # 统一走 session 槽,判据 = target_comp 非空即锁定,与
     # line_members_view 同判不同宿主)。
     locked = getattr(st, 'target_comp', None) is not None
@@ -1112,7 +1112,7 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
                        bench_slots: list, field_units: list,
                        ) -> DeploySearchPanel:
     """虚拟路径面板(获取让位评估步 3 / can_deploy_single 快照+X:
-    生产面板容器读口 + 虚拟 bench/场上单位替换,§1 接口契约③)。
+    生产面板状态容器读口 + 虚拟 bench/场上单位替换,§1 接口契约③)。
 
     ``bench_slots`` = 虚拟 bench 槽位条目列表(升星连锁模拟产物,
     SimAcquisition.bench 的 BenchSlot 半);``field_units`` = 虚拟场

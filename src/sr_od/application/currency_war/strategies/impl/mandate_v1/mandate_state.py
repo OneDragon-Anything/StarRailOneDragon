@@ -1,5 +1,5 @@
 """货币战争 mandate_v1 策略器状态对象(StrategyState;session.md as-designed
-§3.1 裁决 1 与设计正本 §8.5/§8.6-6 的落地载体)。
+§3.1 裁决 1 与设计权威版本 §8.5/§8.6-6 的落地载体)。
 
 **命名归位**(§8.6-6):本类即设计所称 StrategyState,消费面一律
 import StrategyState(历史名 MandateState 已无兼容别名)。**归属判据**(设计 §1):换一个
@@ -29,7 +29,7 @@ one_dragon 零 import 本类。
 
 职责来源裁定(用户 2026-09-06,session.md 头注):session 只承载「从游戏
 画面观察到的数据」;策略推导产生的中间状态(目标意向/定型信号/回退集/
-纪律计数/遥测分键容器/推导缓存)是**策略器的内容**,由实现包私有定义、
+纪律计数/遥测分键表/推导缓存)是**策略器的内容**,由实现包私有定义、
 一局内存活、自己持有。框架经 ``CwStrategy.create_state`` 工厂钩子按局
 创建实例、写入 ``session.strategy_state``,此后**框架只搬运引用,不读
 不写其内部**(黑盒契约);类型定义、字段、更新语义全部在本实现包。
@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 class ShopOpportunity:
     """未消费机会清单记录(shop_session §4.2:判据通过但被资源拦下的牌)。
 
-    写入端 = 商店会话正常收工位(已接线);消费端 = 备战第 4
+    写入端 = 商店会话正常收工位(已接通调用);消费端 = 备战第 4
     步入口的解拦复核(判定函数 3.6 建造)。字段集 = 解拦判定所需最小面
     (金位解除线 = 注册表价 `price` 比对、`order_class` = 解拦后重评的
     归属序)。
@@ -80,7 +80,7 @@ class ShopOpportunity:
     gold'(优先级不足·金不足语境含叠加态;解拦轴 = 金位增量 ≥ 缺口
     绝对值 ∨ 重开店帧首评货架签名对比,shop_session 解拦分轴)。"""
     price: int        # 注册表价(金的解除线比对基准)
-    order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接线枚举)
+    order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接入调用枚举)
     gold_snapshot: int | None = None
     """[索引定义] 记录时点金快照(priority_insufficient_gold 金位增量轴
     的基值;取值时机 = 让位评估帧现读会话金;写端 = shop 统一获取让位
@@ -155,15 +155,15 @@ class YieldPlan:
 
 @dataclass
 class StrategyState:
-    """mandate_v1 策略器一局状态(局首由工厂冷建,局终随 session 销毁)。
+    """mandate_v1 策略器一局状态(局首由工厂每局全新创建,局终随 session 销毁)。
 
-    即设计正本 §8.5 的 StrategyState(改名归位见模块 docstring;§8.5 五
+    即设计权威版本 §8.5 的 StrategyState(改名归位见模块 docstring;§8.5 五
     语义槽映射亦在彼)。生命周期契约(session.md §3.1 条款 2):每局新建
     即天然清零,禁跨局复用实例;意向状态机段级重入守卫
     (``v3_intention_key``)语义自原 session 字段原样平移,不变。字段
     分组与产生者/消费者/生命周期注释平移自原 ``kernel/cw_strategy_
     session.py`` 对应字段(语义零变更,值域与缺省一致——含
-    on_match_start 原逐项初始化值,改由缺省值承载:状态对象每局冷建 =
+    on_match_start 原逐项初始化值,改由缺省值承载:状态对象每局全新创建 =
     天然初值,清零段整体消失)。
     """
 
@@ -195,20 +195,20 @@ class StrategyState:
     # ===== 意向(v3 决策框架载体;局/轮)=====
     v3_intention: object = None      # cw_intention.IntentionState(终局阵容锁定/撤销状态机)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集
-    v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
+    v3_last_intention_event: str = ''    # 意向事件去重(判读日志基准)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
 
-    # ===== 策略行为观测分键(单一容器;策略 state=决策行 strategy-state
+    # ===== 策略行为观测分键(单一分键表;策略 state=决策行 strategy-state
     # 载体,retirement.md §3 键归属已定案:全部键=策略行为键零效果域键,
     # 键全集登记底稿 = 逐键审计 256 字面+16 闭族+9 开放族)=====
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
-    # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本容器,不经流。
+    # 收尾点现读快照);sim 轮差分账本/A/B 披露照旧读本表,不经流。
     cw4_counters: dict = field(default_factory=dict)
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
     # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session
-    # 唯一冷建口写入——生命周期并入;
-    # sim 直构 session 不经冷建口 → 恒 '',两条路径的旧读数各自保真)。
+    # 唯一每局全新创建口写入——生命周期并入;
+    # sim 直构 session 不经每局全新创建口 → 恒 '',两条路径的旧读数各自保真)。
     v3_phase: str = ''
     v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 动作发出帧)
     v3_b_t: int = 0                  # 板面目标线支撑计数(每轮重算)
@@ -243,7 +243,7 @@ class StrategyState:
     v3_release_reason: str = ''
     # 披露面轮键戳(轮界清零承载):坐标系=(plane, round) 二元组
     #(位面号/位面内轮次,均 1 基);取值时机=披露帧现读
-    #(容器读口 plane_of/round_num_of);写入端=economy_cycle.
+    #(状态容器读口 plane_of/round_num_of);写入端=economy_cycle.
     # disclose_budget 单一写点(商店执行回执位只比较不写)。键戳 ≠
     # 当前 (plane, round) ⇒ v3_release_spent/v3_release_reason 清零并
     # 盖新戳。
@@ -278,7 +278,7 @@ class StrategyState:
     # 调用方申报:备战期开店循环
     #(cw_screen_prep 开店分支逐动作调 decide_shop_action)无 token 写入
     # 无段序号置位 ⇒ 域内缓存恒不命中(保守端=现行为,读清单点覆盖
-    # 无伪命中),收益面窄化,不接线。读清协议 = decide_shop_action 入口
+    # 无伪命中),收益面窄化,不接入调用。读清协议 = decide_shop_action 入口
     # 读取后立即清除(防重复消费);任何调用方首帧(槽空/型外/序号不等)
     # 默认全量重推导。
     cw4_frame_action_record: tuple[str, int] | None = None
@@ -287,7 +287,7 @@ class StrategyState:
     # ===== 账外补充·第二波(实施收尾扫描时按 §6.1 并入的策略侧动态
     # 属性;写入端均在 mandate_v1,消费面含执行侧经访问函数只读)=====
     # (M1″ pending 载体 cw4_m1p_arm_pending/cw4_m1p_plan_pending 与 seam
-    #  门旗 cw4_m1p_seam_verified 已随部署统一批丁丁收编删除——
+    #  门旗 cw4_m1p_seam_verified 已随部署统一批丁丁纳入统一管理时删除——
     #  emit_swap_redeploy 发射缝随 kernel swap 机器退役,载体失去判读
     #  对象;unified-deploy-order §2.7/§4。)
     # 素材滞留首见轮账(名 → 首见帧轮次)。
@@ -298,7 +298,7 @@ class StrategyState:
     # 名 → (买因,登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
     # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压牌库簿
     # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
-    # 属性读本名(部署销/held 暴露,属性契约级接线禁 import 策略模块),
+    # 属性读本名(部署销/held 暴露,属性契约级接入调用禁 import 策略模块),
     # 改名 = 供给静默断裂,语义升级由本注释承载。
     # 写端单一源 = sell_gate.register_launch(shop 动作发出点 _emit_buy +
     # mandate.stall_buys_register 兼容 shim);读端单一源 =
@@ -323,12 +323,12 @@ class StrategyState:
     # True = 本巨星节点内已点过候选(下一步 = 确认),防 re-dispatch 重入
     # 再点候选 → toggle 反选 → 确认无候选卡死。必须跨 re-dispatch 持久:
     # 落 op 实例 = 每次新建实例清零,即原始事故形态(session.md §2.4 B1
-    # 定案);本类局级冷建天然承载该生命周期。复位时机 = 节点完成即复位
+    # 定案);本类局级每局全新创建天然承载该生命周期。复位时机 = 节点完成即复位
     # (observe 门 miss 巨星 overlay 时;巨星一局可多次触发,标记不跨节点
     # 保持)。访问通道契约:框架执行层读写经 kernel
-    # ``cw_strategy_session.strategy_state_of``(None-safe 不冷建——状态
+    # ``cw_strategy_session.strategy_state_of``(None-safe 不每局全新创建——状态
     # 对象缺席时读退 False/写跳过);**禁 impl 侧 ``state_of`` 从执行层
-    # 调用**(其 None 冷建覆写属策略器装配语义,执行层不得触发)。写读点
+    # 调用**(其 None 每局全新创建覆写属策略器装配语义,执行层不得触发)。写读点
     # = operations/cw_screen/cw_screen_megastar.py(复位/读/置位三点)。
     megastar_clicked: bool = False
 
@@ -429,7 +429,7 @@ class StrategyState:
     p2_strategy_pick_done: bool = False
 
     # ===== 过渡锁定状态槽(统一保护集迭代 changes/2026-10-15-unified-
-    #       protection-set design.md §2.1 新增;买/卖消费点归后续批接线,
+    #       protection-set design.md §2.1 新增;买/卖消费点归后续批接入调用,
     #       本槽现役零行为消费面)=====
     # [索引定义] transition_locked_systems = 过渡域已点亮体系的键集
     # (frozenset[str]):键坐标系 = 四体系键闭集——cw_engine_facts.
@@ -525,7 +525,7 @@ def state_of(session: StrategySession) -> StrategyState:
 
     终态契约 §2.6 过渡桥:入参即 StrategyState 本体 → 直返(零参 decide
     以 self.state 作宿主参传 mandate 链的通道)。None/异型(裸构造
-    session、第三方策略未覆写 create_state)→ 惰性冷建并写回(与原
+    session、第三方策略未覆写 create_state)→ 惰性每局全新创建并写回(与原
     cw_intention 惰性建同构;设计 §5.1 B4 兼容条款的实现面)。
     mandate_v1 链内统一经本函数消费状态对象。
     """

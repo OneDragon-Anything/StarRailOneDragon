@@ -40,7 +40,7 @@ def effect_pick_bias(session: StrategySession, option_name: str) -> float:
     """EffectSpec → 拍值偏置通道(方向层消费接入;R5 消费面)。
 
     - 输入 = GameState.effects 在场效果条目(game_state_of(session).effects,
-      单一实例正本);按条目 spec 的
+      单一实例权威版本);按条目 spec 的
       ``notes`` 声明偏置选项名(平表外挂,数值随实采/sim 标定批填,
       **缺省 0 = 无偏置**,不猜值——strategy-work「决策规则数学先行」门);
     - 战场族(BATTLEFIELD category)推迟:战场改写类偏置语义待执行预判批

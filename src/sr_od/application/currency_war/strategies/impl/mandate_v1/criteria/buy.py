@@ -4,8 +4,8 @@
 与否决门不可拆开旁路。**商店线适用范围申报**:EV 买候选的对象(店面牌)在
 prep 黑板 ``shop_cards`` 恒 None(PrepObservation 契约,仅买牌阶段刷新)
 ——本面生产消费点在商店线(``decide_shop_screen``);本批 mandate_v1
-商店线=冻结基线透传(见 bridge.py 解释性裁量),EV 买面的商店线接线
-随判读批(步6)前的接线批落位,本模块提供判据本体与 fail-closed 语义。
+商店线=冻结基线透传(见 bridge.py 解释性裁量),EV 买面的商店线接入调用
+随判读批(步6)前的接入调用批落位,本模块提供判据本体与 fail-closed 语义。
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
     候选第三类(R8-6 收窄):活跃窗口档内 ∧ 1★(refund_full)——
     2★+ 档内单无 EV 背书不发出。**单卡消费位窗口**(IMPL_ADV_R200 症5①:
     硬编码 {1,2,3} 占位删除)= 确定性查表(
-    ``statefn/odds.card_search_window`` 整合带锚)。T_SEARCH_A
+    ``statefn/odds.card_search_window`` 整合带基准)。T_SEARCH_A
     布尔门已停用出本消费位(T1 短路径):
     生产消费位传帧级现算 ``window``(空集=真无窗口帧,非门控);
     ``window=None`` 保留旧调用面(V_MS 门缺读空集——T_SEARCH_A 注入态

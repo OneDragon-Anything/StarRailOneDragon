@@ -18,7 +18,7 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
     可退);席位:free≥2 直过,free=1 过 V_slot 净门
     (V_slot🔴 ⇒ 保守端 0 代入,R12-5)。金约束:cost+S 预留(检查点③)。
     T_SEARCH_A 布尔门已停用出本消费位(T1 短路径):
-    ``t_search`` 窗口由消费位帧级现算传入(整合带锚),空集=真无窗口帧(非门控),判 'not_in_tier' 不买(富余滞留遥测归
+    ``t_search`` 窗口由消费位帧级现算传入(整合带基准),空集=真无窗口帧(非门控),判 'not_in_tier' 不买(富余滞留遥测归
     mandate M6 侧)。
     """
     if not tier_match(card_cost, t_search):

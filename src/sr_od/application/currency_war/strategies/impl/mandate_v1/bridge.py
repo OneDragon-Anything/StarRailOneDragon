@@ -4,15 +4,15 @@
 (config 切 strategy_id 即换核)。实现体分两层:
 
 - 本模块(decision 桶,纯函数):``decide_prep_frame`` = 三遍编排 + 帧
-  稳定截断(决策输入 = obs(黑板)+ session 容器直读;依赖矩阵:
+  稳定截断(决策输入 = obs(黑板)+ session 状态容器直读;依赖矩阵:
   decision 只可依 data/kernel);
 - 注册桥壳 ``strategies/mandate_v1_strategy.py``(app 层):零逻辑复制的
   纯注册壳(``__module__`` 守卫要求壳类定义于本模块;生产路径职责分界 =
-  画面 op 只做观察 + 调一个决策入口,**不加生产接线步**,R191 裁决)。
+  画面 op 只做观察 + 调一个决策入口,**不加生产接入调用步**,R191 裁决)。
 
 商店线口径:
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
-单动作核,输入 = 容器单例
+单动作核,输入 = 状态容器单例
 ``game_state_of(session)``;生产执行侧入口 =
 ``decide_shop_action``,由商店画面 op 单动作循环消费)。
 该驱动器自 起降格出 ABC(基类缺省实现 = flow 层通用循环;
@@ -89,8 +89,8 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     - 出战就绪 ∧ 未命中 → CwActionStartBattleParam 终点意图(词表现成);
     - 非出战就绪 → 段旗复位,返回 None = 原三遍编排接管(非出战就绪帧零变化)。
 
-    终态契约 §2.1:gs/config 构造注入——入参即容器;策略器状态读口 =
-    ``state_of(gs)``(gs.strategy_state 同源接线,漏斗/构造点单一写入)。
+    终态契约 §2.1:gs/config 构造注入——入参即状态容器;策略器状态读口 =
+    ``state_of(gs)``(gs.strategy_state 同源接入调用,漏斗/构造点单一写入)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         gold_of,
@@ -194,7 +194,7 @@ class MandateV1Strategy(CwFlowStrategy):
     """新核(mandate_v1):三遍化决策序(证明→骨架→EV)+ 单动作循环发出。
 
     继承 ``CwFlowStrategy``(主流程驱动核,impl/flow.py)复用生命周期
-    冷建口、方向节拍内化刷新与 pick 族缺省实现(基线
+    每局全新创建口、方向节拍内化刷新与 pick 族缺省实现(基线
     零改动);备战线决策与商店线驱动器被本类覆写为 cw4 形态
     (entry 三遍编排 / shop 商店波记账)。
     """
@@ -223,14 +223,14 @@ class MandateV1Strategy(CwFlowStrategy):
         scope='outer_loop' 返回主循环重新观察——原 HoldFrame 通道并入,
         用户裁定 2026-09-20)。
 
-        输入 = **容器 game state 直读**(黑板帧已删除:黑板 gs.prep_obs 读点与缺失抛错防线
+        输入 = **状态容器 game state 直读**(黑板帧已删除:黑板 gs.prep_obs 读点与缺失抛错防线
         随之删除——「观察先于决策」前提由画面 op 编排保证,op 入口
         heavy 先于决策调用)。输出 = 决策核发出序列的**首个动作**;
         空序列(含截断截空)→ 空动作发出 obs(scope='outer_loop')= 本帧无
         动作返回主循环重新观察(None 路径已停用,终态契约 §2.2)。帧稳定截断为
         决策核内动作发出组织,非流程侧契约。入口内务 = 备战帧代次消费
         (方向刷新先于三遍编排)。管线宿主 = self.gs(state_of(gs) 经同源
-        接线解析策略器状态;game_state_of(gs) 本体直通)。
+        接入调用解析策略器状态;game_state_of(gs) 本体直通)。
         """
         # 节点边界处理 + 方向签名前置(契约 B/C:两入口调同一对函数,
         # 时序 = 边界 → 签名 → 决策;line_and_upgrade §3 执行时序节)。
@@ -254,14 +254,14 @@ class MandateV1Strategy(CwFlowStrategy):
             return _launch_action
         # 预算遥测披露(唯一写点 = economy_cycle.disclose_budget;落点 =
         # 原装配缝调用位——前置动作发出点判定之后,非出战就绪帧才到达,
-        # 出战就绪短路帧维持不披露,零行为变化)。披露面禁决策消费(语义锚 =
+        # 出战就绪短路帧维持不披露,零行为变化)。披露面禁决策消费(语义基准 =
         # mandate_state.py 披露字段注释与守卫测试 test_economy 预算遥测
         # 披露节)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
             disclose_budget,
         )
-        # 宿主双槽 = gs(state 槽给容器现值,session 槽给 state_of(gs) 同源
-        # 解析——经 self.state 传递会让下游 game_state_of 解析一次性空容器)。
+        # 宿主双槽 = gs(state 槽给状态容器现值,session 槽给 state_of(gs) 同源
+        # 解析——经 self.state 传递会让下游 game_state_of 解析一次性空状态)。
         disclose_budget(self.gs, self.gs, self.registry)
         actions = decide_prep_frame(self.gs, self.config,
                                     registry=self.registry)
@@ -273,7 +273,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
         节点边界处理与方向签名前置(契约 B/C)与备战入口调同一对
         函数——商店决策入口的统一行为(shop_session §1:入口首查节点
-        边界检测与标记检查,标记检查位归 3.6 会话重排接线),时序 =
+        边界检测与标记检查,标记检查位归 3.6 会话重排接入调用),时序 =
         边界 → 签名 → 决策(line_and_upgrade §3 执行时序节)。生产
         单动作循环与 :meth:`decide_shop_screen` 驱动器都经本口,两面
         同源;过渡锁定槽刷新挂本前置段(与 refresh_line_if_needed
@@ -291,7 +291,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
         商店画面 op 决策动作 node);本驱动器保留给回放/既有序列测试——
-        驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
+        驱动 = 逐帧调单动作核 + 状态容器逻辑态直写推进期望态
         (逐动作直调上报函数族),终结动作(CwActionRefreshShopParam)截停
         序列、CwActionCloseShopParam 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
@@ -316,9 +316,9 @@ class MandateV1Strategy(CwFlowStrategy):
             ChannelSig,
             ShopActionExecuted,
         )
-        # 驱动器同路:决策读容器单例 + 期望态
+        # 驱动器同路:决策读状态容器单例 + 期望态
         # 推进 = 逐动作直调上报函数(快照三件组内聚,无双抄写段)。在屏前置 = gs.shop.value is not None,离屏 =
-        # 观察层失约抛错(黑板契约容器化等价物)。
+        # 观察层失约抛错(黑板契约结构化等价物)。
         gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
@@ -377,7 +377,7 @@ class MandateV1Strategy(CwFlowStrategy):
         """决策载荷钩子覆写(策略遥测 mandate_v1 v1 八键 = 现读 6 +
         产物透传 2)。
 
-        语义与键表正本 = strategy-docs/strategy-telemetry.md;实现 =
+        语义与键表权威版本 = strategy-docs/strategy-telemetry.md;实现 =
         :func:`decision_payload.build_decision_payload` 纯读投影
         (现读键 = 出口后 gs/state 现读,零写、不改决策行为;产物
         透传键 = 动作字段/私有槽出口快照,``result`` = wrapper 传入
@@ -401,10 +401,10 @@ def decide_prep_frame(session: StrategySession, config: object,
                       *, registry: DecisionV2Registry | None = None,
                       ) -> list[CwAction]:
     """备战决策帧(十段全扫 + 帧稳定截断;纯函数;决策输入 =
-    容器 game state 直读)。
+    状态容器 game state 直读)。
 
     截断语境供给:conditional 类名-槽一致性复检消费的 bench 占用槽位集,
-    容器 kind 口现读派生。
+    状态容器 kind 口现读派生。
     """
     emitted = entry.emit(session, config, registry=registry)
     # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,并入):
@@ -421,7 +421,7 @@ def decide_prep_frame(session: StrategySession, config: object,
     # 不移位)。取法 = bench_view_slots_of 全槽表逐位 + slot_occupies
     # kind 谓词——禁用 bench_entries_of(紧缩序)枚举下标代替:备战席
     # 前部有洞时紧缩枚举下标 ≠ 槽位表下标,复检错杀合法引用(占用槽
-    # 被判空),发出被截空后世界不变 → 备战环「本帧无动作」活锁(sim
+    # 被判空),发出被截空后状态副本不变 → 备战环「本帧无动作」活锁(sim
     # 多种子实证:非验收 seed 首局 P1r1 凑息分支卖后部槽被错杀至看门狗;
     # 实机同链路同受害)。语义与 P4 翻形前一致({全槽表枚举 | 槽非空})。
     from sr_od.application.currency_war.kernel.cw_game_state import (

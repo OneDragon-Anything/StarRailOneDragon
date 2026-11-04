@@ -43,7 +43,7 @@ None = 未观察 → 不建议刷(fail-closed);left 缺/尽 → 直接落第 3 �
 
 虚拟重算载体纪律(acquisition-and-sell §1 定案):局面快照纯计算
 (``mandate.snapshot_frame`` 构造 + ``simulate_acquired_units`` 轻量
-升星连锁),禁容器深拷贝;副本零遥测——journal/策略遥测/决策帧三通道
+升星连锁),禁状态容器深拷贝;副本零遥测——journal/策略遥测/决策帧三通道
 零写入(本模块判据为纯值出口,动作包装留 flow)。
 
 输出契约:纯值 dataclass(:class:`SupplyDecision` /
@@ -80,7 +80,7 @@ if TYPE_CHECKING:
 class SupplyDecision:
     """选卡决策。
 
-    [索引定义] idx = options 容器下标(0 基;坐标系 = 调用方传入候选序
+    [索引定义] idx = options 列表下标(0 基;坐标系 = 调用方传入候选序
                 左→右 = 画面列序,与选项 ``SupplyOption.idx`` 同一坐标系;
                 取值时机 = 本帧决策期快照,恒稳);reason = 归因串
                 (命中级与 tiebreak 路径,仅观测)。
@@ -154,7 +154,7 @@ def _rank_char_candidates(
     置入后备战位仍有空位(含合成净释放) = 无让路对象,候选不经淘汰
     (与获取角色流程「不再满位 → 无需让路直接买」同构,总纲 §2.3 步骤
     2)。幸存者按新牌虚拟排序键赋值,返回按键升序(键小 = 优先级高,
-    取首位)。判定全程快照纯计算零遥测(禁容器深拷贝,
+    取首位)。判定全程快照纯计算零遥测(禁状态容器深拷贝,
     acquisition-and-sell §1)。
 
     装配 = 统一入口 :func:`priority.assemble_candidate_eval`(候选评估
@@ -187,7 +187,7 @@ def _rank_char_candidates(
         displacement = BENCH_CAPACITY - _n_items - len(sim.bench) <= 0
         # 部署定型:virtual 两半传升星连锁模拟产物,虚拟定型真实消费
         # 候选置入的虚拟局面(升星连锁合成/换人定型均被感知;原「构造
-        # v_frame 传第一参」形态 = 定型读真实容器、候选从未进定型,
+        # v_frame 传第一参」形态 = 定型读真实状态容器、候选从未进定型,
         # 已随统一装配修复——第一参本就是生产路径形参,virtual 分派
         # 不消费它)。
         prep = mandate.assemble_prep_context(gs, gs, frame)

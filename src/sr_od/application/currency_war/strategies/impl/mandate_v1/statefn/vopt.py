@@ -82,7 +82,7 @@ def v_slot(bench_free: int, blocked_net_evs: list[float]) -> float:
 def v_comp_marginal(cost: int, level: int, taken: int = 0,
                     scen: tuple[int, int] | None = None,
                     refresh_cost: int = 2) -> float:
-    """第 taken+1 张同费杂牌的边际压缩价值 Δ金(P49 ①②;R2-11 交叉核对锚)。
+    """第 taken+1 张同费杂牌的边际压缩价值 Δ金(P49 ①②;R2-11 交叉核对基准)。
 
     = (E[refreshes](taken) − E[refreshes](taken+1)) × c_eff(条件值:窗口
     全程付费刷);E 走 expected_refreshes 精确超几何 DP(命题 1 硬要求)。
@@ -102,7 +102,7 @@ def v_comp_table(levels: tuple[int, ...] = (4, 5, 6, 7, 8, 9, 10),
                  refresh_cost: int = 2) -> dict[int, dict[int, float]]:
     """V_comp 边际压缩价值二维表(费用档×等级;P49 (2) 文档表=誊录,
     本生成器=单一源)。resolved 池突变(v_c/a_c 变)下整体重生成
-    (01_math_framework §3.4 #1 池构成族接线)。"""
+    (01_math_framework §3.4 #1 池构成族接入调用)。"""
     table: dict[int, dict[int, float]] = {}
     for cost in (1, 2, 3, 4, 5):
         row: dict[int, float] = {}

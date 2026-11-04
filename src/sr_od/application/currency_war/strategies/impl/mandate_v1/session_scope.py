@@ -111,7 +111,7 @@ def handle_node_boundary(gs: GameState) -> None:
       ``node_boundary_last_pos`` 存储):生效序位 ``effective_node_pos``
       变化才执行,相同节点号不重复执行(重置操作全部幂等,重复执行
       无害——判重为避免冗余执行与日志噪声,prep_pipeline §3);
-    - 首次调用(上次记录 None)同样执行:状态对象局首冷建天然初值,
+    - 首次调用(上次记录 None)同样执行:状态对象局首每局全新创建天然初值,
       重置冗余但无害,统一「变化即执行」语义免特判;
     - 节点号未观察(None)不执行:未观察不当真。
     - 窗口谓词标志维护(:func:`_update_plane2_started`)随本函数同点
@@ -180,7 +180,7 @@ class LineMembersView:
     """方向状态读接口的返回视图(契约 B;line_and_upgrade §3)。
 
     消费方(备战部署/凑息/自救与商店买入序/置换账)消费同一视图,
-    禁各自维护第二份名单口径(design 契约 B)。
+    禁各自维护第二份名单与口径(design 契约 B)。
     """
 
     locked: bool               # 锁定旗标(锁定线槽非空)
@@ -238,9 +238,9 @@ def _sync_derived_lock_cache(st: StrategyState) -> None:
     实现形态:kernel 消费面(cw_economy/cw_deploy_logic/shop/flow 装配
     面等已登记读点)读端零改。锁定 ⟺ ``st.target_comp`` 非 None;
     ``phase`` 仅剩 ``locked``/``unlocked`` 两态(weak/demoted 随状态机
-    停用不可达)。ist 缺席时**冷建**(与 flow._ensure_intention 同构)——
+    停用不可达)。ist 缺席时**每局全新创建**(与 flow._ensure_intention 同构)——
     前置序时序上 refresh 先于 flow 方向内务,首帧锁定时 ist 可能尚未
-    惰性就位,不冷建则派生缓存存在失同步窗。
+    惰性就位,不每局全新创建则派生缓存存在失同步窗。
     """
     ist = getattr(st, 'v3_intention', None)
     if not isinstance(ist, IntentionState):
@@ -429,7 +429,7 @@ def mark_shop_handled(gs: GameState) -> None:
 
     值 = 当前生效节点号二元组(位面,轮;取值时机 = 正常收工帧现读
     ``effective_node_pos``)。异常退出/失读停机不写 = 调用方纪律(收工
-    位接线归 3.6);节点号未观察(None)时 no-op——「本节点已处理」必
+    位接入调用归 3.6);节点号未观察(None)时 no-op——「本节点已处理」必
     须有可回比的节点号,未观察不当真。
     """
     st = state_of(gs)
@@ -459,7 +459,7 @@ def shop_handled_for_current_node(gs: GameState) -> bool:
 
 def record_shop_opportunity(gs: GameState, record: ShopOpportunity) -> None:
     """未消费机会清单追加记录(shop_session §4.2;写入端 = 商店会话
-    正常收工位,3.6 接线)。追加序保留(同牌多次记录为独立行,消费
+    正常收工位,3.6 接入调用)。追加序保留(同牌多次记录为独立行,消费
     端按牌名自取最近态)。"""
     st = state_of(gs)
     st.shop_opportunities = tuple(st.shop_opportunities) + (record,)

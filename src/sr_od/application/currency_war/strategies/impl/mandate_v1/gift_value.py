@@ -1,4 +1,4 @@
-"""赠卡价值(mandate_v1 共用模块;设计正本 = strategy-docs/
+"""赠卡价值(mandate_v1 共用模块;设计权威版本 = strategy-docs/
 28_invest_env_screen.md §2 赠卡分行)。
 
 两个口径:

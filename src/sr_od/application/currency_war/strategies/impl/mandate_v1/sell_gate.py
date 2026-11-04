@@ -32,7 +32,7 @@ criteria/priority.sell_order 承载「谁后卖」,总纲 §2.5;本模块保留�
    不变量的载体化恢复):kernel ``GameState.round_fresh_buys`` 轮键事实集
    (``fresh_buys_sell_face`` 读端自治,全因类完备——每笔买入无条件
    写入且先于合成捷径分支)并入排除集;读端不消费
-   ``current_round`` 形参(None 漏接线帧不再构成硬面放行 = 对 V2-09
+   ``current_round`` 形参(None 漏接入调用帧不再构成硬面放行 = 对 V2-09
    在本面的显式翻转,v1 缺口 C 结构性闭合)。carve-out:垫保类
    登记名集从硬面剔除(继续走 defer 通道,硬排除杀转化类放行 =
    P78-5′ 破面);换线孤儿清算卖 = 账闭合豁免语境
@@ -49,7 +49,7 @@ criteria/priority.sell_order 承载「谁后卖」,总纲 §2.5;本模块保留�
 两买臂退役删除——3.4;登记闭集外值拒收),买入分支逐一映射
 (``LAUNCH_CAUSE_BY_ARM``,定稿载体);T3 垫保簿与 ②(b) 压牌库簿
 完全合一为单载体双视图(载体属性沿用 T3 簿名——执行侧 cw_op_deploy
-鸭子读契约在先,禁改名破契约)。生命周期四出口:卖出销 / 部署销 /
+鸭子类型读取(duck typing)契约在先,禁改名破契约)。生命周期四出口:卖出销 / 部署销 /
 合成销(V2-05 新增)/ 轮界销;账闭合按五键分键承载(close_on_sell/
 deploy/merge/round/switch)供矩阵断言可观测。
 """
@@ -83,14 +83,14 @@ if TYPE_CHECKING:
     )
 
 #: 卖出通道闭集(方案 v3 §3.1 + 迭代 2026-10-12 P78 五通道重映射)。
-#: 新通道必须先在此登记再接线——枚举外值拒收(单一入口防线,防「新通道
+#: 新通道必须先在此登记再接入调用——枚举外值拒收(单一入口防线,防「新通道
 #: 绕 A 手搓排除」的第五通道复发形态)。通道族谱(shop_session §5 承继
 #: 清单 P78 行):interest = 节末凑息;m4_fuel = 备战域晶矿腾位/告警
 #: 自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景承载;
 #: line_switch 换线整合通道已随候选-锁定制停用撤档(line_and_upgrade
 #: §1.6);shop_swap = 店内置换账通道已随六步流程整段替换退役(3.4,
 #: SCENE_SPECS 同步);funding = 会话内筹资通道已随统一获取让位评估
-#: 收编退役(roster-plane1-union design §2.2 第 4 项:金不足与席满
+#: 纳入统一管理时退役(roster-plane1-union design §2.2 第 4 项:金不足与席满
 #: 同一评估,场景行与通道同批删除——阶段 2 偏差⑤预留点的兑现);
 #: projection = 投影视图读端(P78-6 读端同源)。
 SELL_CHANNELS: frozenset[str] = frozenset({
@@ -115,7 +115,7 @@ WINDOW_LAUNCH_CAUSES: frozenset[str] = frozenset({'press', 'stall_protect'})
 #: 按 prio 两分显式传因;obligation 类的 M2 族产物由卖出/部署/合成/换线
 #: 出口闭合(写点不覆盖行为),写点随矩阵批按需落——本表钉全映射防
 #: 第 5 分支复发。hold 类行(core_single_card_buy 族/protection_hoard)
-#: 已随两买臂退役删除(3.4);hub_option 期权行已随乙分支收编删除(P86)。
+#: 已随两买臂退役删除(3.4);hub_option 期权行已随乙分支纳入统一管理时删除(P86)。
 LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'm2_line_member': 'obligation',
     'm2_locked_member': 'obligation',
@@ -156,14 +156,14 @@ def launch_cause_of(reason: str) -> str | None:
 
 #: 统一动作发出登记簿载体属性(StrategyState 字段名)。沿用 T3 垫保簿旧名:
 #: 执行侧 cw_op_deploy.prune_fuel_filler_deployed /
-#: record_fuel_filler_held_postbuy 按鸭子属性读本名(属性契约级接线,
+#: record_fuel_filler_held_postbuy 按鸭子属性读本名(属性契约级接入调用,
 #: 禁 import 策略模块),改名 = 静默断供给(读 None → 部署销恒 0);
 #: 语义已从 T3 专用簿升级为四因类登记簿,见 StrategyState 字段注释。
 LAUNCH_REGISTRY_ATTR: str = 'cw4_fuel_filler_stall_buys'
 
 
 def _counters_of(session: StrategySession) -> dict | None:
-    """分键容器读口(缺容器 = 不计数,不静默造桶——计数面自带载体)。"""
+    """分键状态容器读口(缺状态容器 = 不计数,不静默造桶——计数面自带载体)。"""
     ct = getattr(state_of(session), 'cw4_counters', None)
     return ct if isinstance(ct, dict) else None
 
@@ -262,7 +262,7 @@ def prune_on_deploy(session: StrategySession, deployed_names: object) -> int:
 def consume_on_merge(session: StrategySession, name: str) -> int:
     """出口②′合成销(V2-05 新增;件离场闭合):同名 1★ 三张买入应用
     即合成 2★,登记的 1★ 副本离场——不销则同名再买 1★ 被过禁(≤1 轮
-    有界)。分键 close_on_merge。返回销账数(测试断言用)。未接线
+    有界)。分键 close_on_merge。返回销账数(测试断言用)。未接入调用
     窗口有界性:滞留 ≤1 轮,轮界销兜底(方案 v3 §3.1 申报)。"""
     if not name:
         return 0
@@ -316,8 +316,8 @@ def _expire_and_read(session: StrategySession, current_round: int | None, *,
     旧裸 set 载体(轮戳缺失)= 轮界硬兜底整集失效并升级 dict(T3 先例
     mandate.py 既有语义平移)。obligation/hold 类登记不轮界过期
     (τ=∞,P78-2a),由卖出/部署/合成/换线出口闭合。
-    ``counters=None`` = 读会话容器(state_of(session).cw4_counters;
-    缺容器 = 不计数,窗口段诊断键经 sell_exclusions 读端照常暴露)。
+    ``counters=None`` = 读会话状态容器(state_of(session).cw4_counters;
+    缺状态容器 = 不计数,窗口段诊断键经 sell_exclusions 读端照常暴露)。
     """
     if counters is None:
         counters = _counters_of(session)
@@ -410,8 +410,8 @@ def line_switch_orphans_of(session: StrategySession, base: set[str],
 
 
 def _autonomous_round(session: StrategySession) -> int | None:
-    """读端自治轮号(黑板容器化:原 last_state 优先/
-    shop_state_frame 兜底的双槽解析改容器 node 读口——与登记相位写端
+    """读端自治轮号(黑板结构化:原 last_state 优先/
+    shop_state_frame 兜底的双槽解析改状态容器 node 读口——与登记相位写端
     同源,设计件《商店黑板容器化方案》§2.4-2)。NodeKey 未定 = None
     (调用方按 fail-closed 方向处置:硬面不 carve)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -493,15 +493,15 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
         int | None, int | None, frozenset[str]]:
     """种子读端轴 (位面,轮号, bench 名集)。
 
-    轴源 = session 容器(黑板容器化改道,设计件 §2.4-2):
+    轴源 = session 状态容器(黑板结构化改道,设计件 §2.4-2):
     - **plane/round 轴 = gs.node**(NodeKey;权威写端 = 派生规则四条分支,
       段入口粒度对轮/位面恒安全);
     - **bench 轴 = gs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
-      「双帧并集」的活性闭合语义由容器活值天然承载:逐动作逻辑态直写
+      「双帧并集」的活性闭合语义由状态容器活值天然承载:逐动作逻辑态直写
       (卖出自上报 bench 域)使店内新鲜买入即时在席,
       last_state 段入口滞后窗与逻辑态帧 prep 语境滞留窗一并消亡——
       对抗审查发现 1(新鲜种子账被活性闭合在获取 visit 内就地销毁)的
-      防线由容器活值续承。
+      防线由状态容器活值续承。
     NodeKey 未定帧 plane/round = None;bench 未观察 = 空集,消费侧
     fail-closed。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -672,7 +672,7 @@ def dead_pair_exit_release(session: StrategySession,
     遥测 = 事件口径 C1:**名×轮去重**(去重载体 = session 相位簿
     ``cw4_dead_pair_exit_frame``,同轮多通道重复评估/腾位环重试不重复
     计数;轮推进自动失效)——同轮商店/备战两域重复评估同名视为同一
-    释放事件,判读按「名×轮」频次读。``counters`` None = 读会话容器。
+    释放事件,判读按「名×轮」频次读。``counters`` None = 读会话状态容器。
     """
     st = state_of(session)
     ct = counters if counters is not None else _counters_of(session)
@@ -907,9 +907,9 @@ def empty_board_sell_blocked(deployed: object, *,
     「从有板逐个卖穿到空」路径每次卖出瞬间恒假,最后一卖照常放行,
     守卫目标(不进空板态)失守;后态判定自然覆盖「板已空连卖 bench」
     与「卖掉仅存部署位」两类路径。现行策略面唯一卖类 = CwActionSellBenchParam(不
-    改变 deployed)⇒ 后态占用数 = 现占用数(容器占用判定,
+    改变 deployed)⇒ 后态占用数 = 现占用数(状态容器占用判定,
     占用数,禁 len);取后态形态是为覆盖未来卖 deployed 类通道
-    的接线对账——消费位传「占用数减待卖件」即可,谓词本体零改。
+    的接入调用对账——消费位传「占用数减待卖件」即可,谓词本体零改。
 
     **数学地基(支配性结构判据,零自由参数)**:空板帧任意 bench 卖出
     相对不卖弱劣——1★ 全额退净金 0(P76 甲)+ 部署/合成期权损失 ≥0;
@@ -921,10 +921,10 @@ def empty_board_sell_blocked(deployed: object, *,
     恢复正路 = 部署(P24 零支出)与买面,守卫零覆盖。若观测证明腾位抑制
     代价超界,回 ADR 对表加显式豁免(闭集增项),禁消费位手搓绕行。
 
-    ``deployed`` = 上场域(容器行域单位或任意可迭代表;None
+    ``deployed`` = 上场域(状态容器行域单位或任意可迭代表;None
     或占用数 0 均判拒——None = 缺读 fail-closed 拒,资格判据禁缺读
-    放行)。占用数 = 容器占用判定(元素非 None 计 1;行域本身即紧凑
-    占用序,benchchar-retirement P4 容器形)。``counters`` None = 不计数
+    放行)。占用数 = 状态容器占用判定(元素非 None 计 1;行域本身即紧凑
+    占用序,benchchar-retirement P4 状态容器形)。``counters`` None = 不计数
     (谓词纯判读形态,测试用)。
     """
     occupied = sum(1 for d in (deployed or ()) if d is not None)

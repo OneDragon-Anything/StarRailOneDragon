@@ -5,7 +5,7 @@
 包直白化后的标准称呼):
 - 终局阵容锁定:把最终阵容(目标线)确定下来、此后围绕它买牌的阶段与状态。玩法
   先例 = ``docs/game/currency_war/research/final_comps/README.md``
-  「见核心即锁定终局阵容、围绕它买」(玩法文档原文);系统语义正本 =
+  「见核心即锁定终局阵容、围绕它买」(玩法文档原文);系统语义权威版本 =
   ``docs/develop/sr_od/application/currency_war/strategy-docs/
   12_line_and_intention.md``(代码对应 ``locked_comp`` 等符号)。
 - 腾位:腾出备战席位——bench 满先卖最弱杂件(卖出判据 = 本包 ``sell_gate``
@@ -31,8 +31,8 @@ cw_plane_table/cw_state/cw_comps)与同层 statefn 模块,禁回调 op 层与判
 
 装配副作用(本包被导入即生效):向 kernel 的策略状态工厂注入槽注册
 ``StrategyState`` 工厂(kernel 依赖矩阵禁 kernel→impl 边,写路径的惰性
-冷建经槽反转;先例 = obs 缓存清理/合成特效帧门注入槽)。类名 = 设计
-正本 §8.5/§8.6-6 的用名(历史名兼容别名已清理)。
+每局全新创建经槽反转;先例 = obs 缓存清理/合成特效帧门注入槽)。类名 = 设计
+权威版本 §8.5/§8.6-6 的用名(历史名兼容别名已清理)。
 """
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     install_strategy_state_factory,

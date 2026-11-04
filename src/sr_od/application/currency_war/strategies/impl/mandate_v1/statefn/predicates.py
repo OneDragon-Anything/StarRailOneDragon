@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 def line_members(comp: Comp | None) -> tuple[str, ...]:
     """目标线 K = 阵容 的 core/shared/flex 名单(COMP_LIBRARY 运行时可判定;
-    线内/线外分类的锚,01_math_framework §2「目标线 K」行)。阵容 缺 → 空元组(零重叠全开,
+    线内/线外分类的基准,01_math_framework §2「目标线 K」行)。阵容 缺 → 空元组(零重叠全开,
     fail 方向=可逆面默认做,01_math_framework §5.3)。"""
     if comp is None:
         return ()
@@ -54,10 +54,10 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
     """占位件物理门(腾席卖出资格跨通道共享谓词;三通道资格循环首门)。
 
     真值 = 备战席槽位 kind ∈ ('tome','bookcard','supply_box')
-    (观察写端按容器观察 kind 落位)——备战槽非角色占席物品(补给箱/星徽秘典/典籍书册等)
+    (观察写端按状态容器观察 kind 落位)——备战槽非角色占席物品(补给箱/星徽秘典/典籍书册等)
     无卖出交互且无金币现值——实机采证:同参数拖拽出售,角色 9 连全卖、
     箱零效果;宝箱面 = 4 选 1 装备面板,无金币现值、无出售项。任何星级
-    不可变现 ⇒ 恒不入腾席卖出资格集。知识锚 =
+    不可变现 ⇒ 恒不入腾席卖出资格集。知识基准 =
     docs/game/currency_war/research/board_structure.md §备战栏
     「备战槽可被非角色物品占据」。
 
@@ -78,7 +78,7 @@ def is_unsellable_system_unit(name: str) -> bool:
     """系统召唤单位物理门(cost=0 注册表单位,卖出资格跨通道共享谓词)。
 
     真值 = 注册表登记 cost=0(现行 = 狸小虎/狸小龙/佩佩/狸职狸狸——
-    投资策略召唤单位,恒占后排、不可拖/不可卖,数据锚 = cw_chars.py
+    投资策略召唤单位,恒占后排、不可拖/不可卖,数据基准 = cw_chars.py
     特殊召唤单位段)。真卖出系统单位是游戏无效交互;同时 cost=0 在
     实费档缺失时会按中费 3 估(priority 档 10 概率分档),让位排序对它
     产生无意义键值——本门 = 场景判据件池构建面唯一的系统单位防线,
@@ -103,7 +103,7 @@ def p1_blood_floor(state: GameState) -> bool:
     判定:信任门 = ``hp_decision_trusted``(kernel 单一源;不可信帧/
     hp 无值帧 fail 向不判线);位面域 = 仅 plane 1(P2+ 半边 =
     :func:`p2_blood_floor`,两域互补且不交);阈值常量单一源 =
-    ``lambda_death.HP_BAND_NEAR_DEATH``(血带结构锚,禁本处字面量
+    ``lambda_death.HP_BAND_NEAR_DEATH``(血带结构基准,禁本处字面量
     第二份)。
     """
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
@@ -136,7 +136,7 @@ def p2_blood_floor(state: GameState) -> bool:
     - 信任门 = ``hp_decision_trusted``(kernel 单一源,同 p1);
     - 位面域 = plane ≥ 2(与 p1 的 plane==1 互补且不交);
     - 阈值常量单一源 = ``lambda_death.HP_BAND_NEAR_DEATH``(血带结构
-      锚,禁本处字面量第二份)。
+      基准,禁本处字面量第二份)。
     """
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         hp_decision_trusted,
@@ -175,7 +175,7 @@ def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 
 
-# ===== 前窗/零成型谓词族(P90 面①;设计正本 =
+# ===== 前窗/零成型谓词族(P90 面①;设计权威版本 =
 # .debug/temp/currency_war/attacks/t175_exit_margin/设计方案.md §4.1,
 # 命题 = math_proofs P90-P94 行)=====
 
@@ -204,14 +204,14 @@ def front_window_frame(state: GameState) -> bool:
     表下 = 第 3 轮)。节点表单一源 = ``gs.node_books.plane_node_table``
     (开局帧实读槽序;唯一写端 = cw_screen_prep.store_plane_table 每
     位面首帧写,读端同源先例 = cw_plane_table.nodes_of_plane);位面
-    锚 = ``node_books.plane_node_table_plane``(防旧表滞留跨位面误
+    基准 = ``node_books.plane_node_table_plane``(防旧表滞留跨位面误
     读);战斗性判定 = 槽词不在 ``_FRONT_NONCOMBAT_NODES`` 零战斗词集
     (中英并集,出处见常量注)。
 
-    fail-closed 边界:表缺/锚不符 ⇒ False(前窗行为不发生 = 现行为),
+    fail-closed 边界:表缺/基准不符 ⇒ False(前窗行为不发生 = 现行为),
     调用方分键 ``p90_front_table_missing`` 暴露;表全为零战斗词(脏表,
     每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(审查
-    H4 修:暴露主张收窄至表缺/锚不符两支)。
+    H4 修:暴露主张收窄至表缺/基准不符两支)。
     """
     plane = plane_of(state)
     round_num = round_num_of(state)

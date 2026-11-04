@@ -52,7 +52,7 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
     §2「P_shop」行声明形态即独立式(闭式带的近似门,q 单槽量级 ≤~0.05
     时二阶差量 ~C(5,2)·q² 相对偏差 ≤1e-3 量级);消费位影响:a7_lower_
     bound=c/P_shop 高估(保守端)、v_opt 的 c/P_shop 分量高估(fail-open
-    端)——与 p_miss 消费面同申报,接线日交叉核对复核(精确式可经注册表
+    端)——与 p_miss 消费面同申报,接入调用日交叉核对复核(精确式可经注册表
     ``1 − _refresh_dist(p, v, a, taken_c, 1, j)[0]`` 直算,不另建模型)。
     """
     q = slot_q(level, cost, j, taken_c)
@@ -61,7 +61,7 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
 
 def _collapse_window_threshold(omega: float | None) -> float:
     """塌缩带比值线 ω 解析(缺省 = DEFAULT_REGISTRY.omega_collapse_ratio,
-    同源单一值;窗口判据 = 塌缩带比值锚)。
+    同源单一值;窗口判据 = 塌缩带比值基准)。
 
     ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为
     refresh_ev_budget 归零分支的复用值(未独立标定),登记待证形态、不扩
@@ -79,7 +79,7 @@ def _collapse_window_threshold(omega: float | None) -> float:
 def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
     """档级搜索窗口(档级消费位:压牌库/凑息/M6;P49 档匹配)。
 
-    判据(塌缩带重锚,承 塌缩带归零线):费档 c 在搜索窗内
+    判据(塌缩带重定基准,承 塌缩带归零线):费档 c 在搜索窗内
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
     REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
     ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表
@@ -102,10 +102,10 @@ def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]
 def card_search_window(level: int, omega: float | None = None) -> frozenset[int]:
     """单卡搜索窗口(单卡消费位:ev_buy 追件;p40/p41 追特定卡)。
 
-    判据同 ``tier_search_window`` 的塌缩带锚,概率口径换
+    判据同 ``tier_search_window`` 的塌缩带基准,概率口径换
     单店命中 ``p_shop``(满池 j=0/taken_c=0,经本模块同一实现——单一源):
     费档 c 在窗内 ⟺ p_shop(level,c) ≥ ω×p_shop(峰值级(c),c)。
-    空集语义与作废交叉核对锚声明同 ``tier_search_window``。
+    空集语义与作废交叉核对基准声明同 ``tier_search_window``。
     """
     thr = _collapse_window_threshold(omega)
     out: set[int] = set()
@@ -140,7 +140,7 @@ def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
 
 
 def p_bar_exact(tag: str, level: int) -> float:
-    """p̄(换线命中率)精确式 = 多项×超几何(P16 修复批口径,R2-11 交叉核对锚)。
+    """p̄(换线命中率)精确式 = 多项×超几何(P16 修复批口径,R2-11 交叉核对基准)。
 
     ``P(全空) = Σ_{m_c} [5!/Πm_c!·Πp_c^{m_c}] · Π_c C(T_c−A_c, m_c)/C(T_c, m_c)``
 
@@ -148,7 +148,7 @@ def p_bar_exact(tag: str, level: int) -> float:
     禁再产上界口径。分母恒用满池 T=v·a(P16 ①「分子修正+分母满池」)。
     resolved 池突变语境(黑塔纪元 216 池等)下 v_c/a_c 变化 ⇒ 本式参数化
     自动正确(DIRECT_LINE_MATH_CHECK 补注①:公式是参数化的,不用重推;
-    池参数 resolved 接线随判据层步 4 落)。
+    池参数 resolved 接入调用随判据层步 4 落)。
     """
     tiers = sorted(REFRESH_PROB.get(level, {}).items())
     tiers = [(c, p) for c, p in tiers if p > 0]
