@@ -1,5 +1,20 @@
 """P65 晋升候选集可达性·直证自检脚本 v2(集合包含 + 12 线枚举快照锁)。
 
+.. frozen::
+   本脚本已冻结(comp-structure-unification 3.3,2026-11-04):P65 的
+   命题对象——配方决策层(体系对域全族/伪阵容物化/promote_candidates
+   消费链)——已随该迭代整批退役,**命题对象已退役不重立**;脚本保留 =
+   在册命题的历史验证载体(考古走 git 历史),不再维护可跑。
+
+   - SNAPSHOT_12 = **12 线时代历史快照锁**:现行注册表 21 线,冻结前
+     重跑断言 1(枚举快照锁)即已显式红——属预期,不按「锁的存在性
+     纪律」重推改锁;family 列同此(``Comp.family`` 字段已消亡,
+     断言消费的家族口径随 v2 候选机制一并成为历史);
+   - 脚本依赖的体系对域符号(``_pair_bond_keys``/
+     ``p1_pair_candidates_of``)已删,重跑 = 导入期守卫打印冻结横幅后
+     退出;需复算历史公式时 checkout 本迭代前的提交(上方 promote_
+     candidates 冻结副本先例即该形态,本批不再扩大移植面)。
+
 命题(math_proofs P65,设计=.debug/temp/currency_war/lock_path_p2_channel_design/
 DESIGN.md §2.1/§3):
 - 集合包含:晋升候选集 promote_candidates ⊆ 既有移交候选判据集
@@ -37,16 +52,25 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
-from sr_od.application.currency_war.kernel.cw_intention import (
-    _asset_thickness,
-    _core_reachable,
-    _pair_bond_keys,
-    _visible_chars,
-    encounter_window_rounds,
-    intention_core,
-    line_completion_feasibility,
-    p1_pair_candidates_of,
-)
+
+try:
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        _asset_thickness,
+        _core_reachable,
+        _pair_bond_keys,
+        _visible_chars,
+        encounter_window_rounds,
+        intention_core,
+        line_completion_feasibility,
+        p1_pair_candidates_of,
+    )
+except ImportError as _frozen_exc:   # 冻结载体:退役符号已删(见模块头 frozen 注)
+    print('[冻结] p65_check:P65 命题对象已随 comp-structure-unification 3.3'
+          ' 退役(配方决策层整批删除),命题不重立;')
+    print(f'[冻结] 导入面已断:{_frozen_exc}')
+    print('[冻结] 复算历史公式请 checkout 本迭代前的提交;'
+          'SNAPSHOT_12 = 12 线时代历史快照锁,21 线注册表下断言显式红属预期。')
+    sys.exit(0)
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
