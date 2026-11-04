@@ -2297,6 +2297,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='声明性条目(payload 同实例单一源首例);'
               '静态分量 interest_cap_override=10 注册行承载;'
               'instant_gold=25 族级缺口维持'),
+    # 搜打撤:官方「每当你进入新节点时，获得1次免费刷新。通关下一个首领
+    # 节点后，获得等同于场上和备战席所有角色价值的金币。」
+    # (cw_invest_data.py:280,id 303701)。补条使句①生效:per-node 载体
+    # free_refresh_per_node=1 注册行本就在册(STRATEGY_ECONOMY),此前缺
+    # EffectSpec = payload 永不入 gs.effects,节点边界桥对其恒零
+    #(per_node_pick_node_grant.md §6 登记缺口待办,本条履约);拿卡当
+    # 节点不发放(句①无「现在/立刻」立即措辞,per_node_pick_node_grant.md
+    # §3.2 b 组,burst=0 与游戏真值一致);句② boss 价值金腿不落本条目
+    #(条件金非静态注册数值,载体 = STRATEGY_BOSS_CLEAR_GOLD_GRANTS
+    # 白名单表 + cw_gain_chain.check_strategy_boss_clear_gold)。
+    '搜打撤': EffectSpec(
+        id='303701', name='搜打撤', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['搜打撤'], duties=DutyFlags(),
+        notes='每节点 +1 刷经节点边界桥发放(cw_game_state.py '
+              'grant_effect_node_refresh_balance docstring 点名卡);'
+              '拿卡当节点不发放(per_node_pick_node_grant.md §3.2);'
+              'boss 价值金腿另表 STRATEGY_BOSS_CLEAR_GOLD_GRANTS'),
 }
 
 
@@ -5724,6 +5742,45 @@ def _validate_strategy_win_gold_grants() -> None:
 
 
 _validate_strategy_win_gold_grants()
+
+
+# ===== 策略卡首领通关价值金注册表(搜打撤;白名单制)=====
+# 「通关下一个首领节点后，获得等同于场上和备战席所有角色价值的金币。」
+# (id 303701)策略域首例:键 = 策略规范名,值 = None(单成员标记形——
+# 金量非静态注册数值,世界派生 = 场上+备战席全体角色价值,求和单一源 =
+# cw_gain_chain.board_bench_char_value_sum,sell_refund 现星卖出回金
+# 口径,与 SELL_ALL 板面重写桥退款表达式同式;派生量字段化进
+# EconomyEffect 会失真为静态数值,故白名单标记制)。「通关」= 战斗
+# 胜利(won 门归调用方结算点守卫);「下一个」一次性 =
+# strategy_conditional_done 纯卡名闩(触发函数内自管,与武器批发商
+# 「下个首领」同语义腿同域)。表外策略一律无条目,禁从效果原文自动
+# 猜装(STRATEGY_WIN_GOLD_GRANTS 同款纪律)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_boss_clear_gold(触发
+# 检查单一源,唯一调用点 = sim 结算腿 won boss;live 零写观察覆盖——
+# 金由游戏侧自发入账,结算屏金真值覆盖自动吸收,实机局不接本通道)。
+STRATEGY_BOSS_CLEAR_GOLD_GRANTS: dict[str, None] = {
+    '搜打撤': None,
+}
+
+
+def _validate_strategy_boss_clear_gold_grants() -> None:
+    """STRATEGY_BOSS_CLEAR_GOLD_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_win_gold_grants
+    docstring——本表只落孤儿键一哨):
+
+    孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联)。表体唯一性由 dict 字面量结构天然保证,非哨;值恒 None
+    (标记形)无值域面。"""
+    orphans = [n for n in STRATEGY_BOSS_CLEAR_GOLD_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_BOSS_CLEAR_GOLD_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_boss_clear_gold_grants()
 
 
 #: 胜利结算条件金触发域假设披露键(desc 未写明处的申报,消费 = sim

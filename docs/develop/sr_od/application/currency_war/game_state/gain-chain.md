@@ -628,6 +628,50 @@ producer=_BOSS_COMPLETION_GRANT_PRODUCER) -> None`——策略卡「下个首领
   形对形分化(卡面限定词差异,非形状分歧);闩域语义 = §2.10 同域
   (fields.md §3.2.26a)。
 
+### 2.21 策略卡首领通关价值金检查腿 check_strategy_boss_clear_gold(结算位)
+
+`check_strategy_boss_clear_gold(gs, sig) -> None`——策略卡「通关下一个
+首领节点后，获得等同于场上和备战席所有角色价值的金币」通道(首例搜打撤
+id 303701,登记表 = `cw_investments.STRATEGY_BOSS_CLEAR_GOLD_GRANTS`
+白名单标记形:键 = 策略规范名,值 = None——金量非静态注册数值,白名单
+只标记准入,与 §2.13 每佩佩金数、§2.20 装备全集两类「静态值表」值形
+异构)的唯一检查本体,策略卡战后触发族第八形状:**世界派生金量 +
+一次性闩**。金量派生单一源 =
+`board_bench_char_value_sum(gs) -> int`(同模块 helper,零 rng 纯读):
+域 = `deployed_rows_of` 前/后排 + `bench_units_of` unit 槽(占位件
+tome/bookcard/supply_box 天然排除 = 「角色」域文义),逐单位
+`sell_refund(int(u.star), bench_char_cost(u, gs))` 求和——价值口径 =
+现星卖出回金(economy.md §3 退金单一源;详情面板三点实测
+1★2费 +2 / 2★2费 +5 / 3★2费 +17 定案),与 SELL_ALL 板面重写桥退款
+表达式同式互指零第二份公式;口径分野申报:桥侧有「出售域全读才入金」
+partial_read 判据(出售是写动作),本 helper 系纯读派生(未读子域按
+空行/空席零计,现读面如实求和),仅挂 sim 结算点禁误用 live 读链;
+银狼LV.999 经 `bench_char_cost(gs)` 现档参与求和,档位变更在结算刻
+现值如实记账零特判。条件矩阵(序即短路序):①逐持卡查登记表,表外卡
+零条目跳过;胜负/kind 门归调用方(「通关」= won ∧ kind=='boss',
+与 §2.20 无胜利限定形对形分化);②卡名 ∈ `strategy_conditional_done`
+→ 跳过(一次性闩:「下一个」= 拿卡后首个 won boss 恰一次,与 §2.20
+同域同语义);③金量派生,**0 值照发**(空场空席 = 「所有角色价值」
+为 0 的结构可达态——闩与金笔同窗是「恰一次」的载体,0 值短路不闩
+会让后继 boss 重触发);④两笔同窗相邻:金 `gs.observe`(世界数值面
+观察通道,evidence `strategy:boss_clear_value:p<位面>r<轮>`,node
+缺席的直构窗退化无时点段;sig = 调用方传入 sim 结算段 obs 族签名,
+组 'sim:strategy')+ 闩 `write_logic` 纯卡名追加(sig =
+`_BOSS_CLEAR_GOLD_LATCH_SIG` kernel 内构 logic_action 族——金笔
+observe 与闩 write_logic 渠道族互斥,调用方 obs 族签名复用进闩写
+首笔即炸渠道族校验,内构先例 = cw_env_grants._GRANT_SIG/
+_DIAMOND_SIG,group_id 与金笔同组对齐)。
+
+- **挂点 = sim 结算腿**(现役唯一调用点 =
+  `cw_sim_backend._resolve_battle` 策略腿区链尾顺延:首领完成固定集
+  腿〔§2.20〕之后、败局待办登记之前;`won ∧ kind=='boss'` 门在接线
+  块——败局存活/死亡局〔提前 return 出局〕零发放零闩。幂等零新增
+  守卫 = `_settled_key` 节点键防同战斗重放,闩防跨 boss 重复,两层
+  各司其职);**live 零写观察覆盖**(金由游戏侧自发入账,结算屏金
+  真值覆盖收束,实机局不接本通道);
+- **策略估值 fail-closed**:金量非静态注册数值,`STRATEGY_ECONOMY`
+  无金字段 = 策略估值天然不可见(不涉估值三表零登记义务)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

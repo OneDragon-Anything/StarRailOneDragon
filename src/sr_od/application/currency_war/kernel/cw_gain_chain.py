@@ -56,7 +56,9 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
+    bench_char_cost,
     level_cap_of,
+    sell_refund,
     strategy_interest_floor,
     xp_apply_amount,
 )
@@ -110,6 +112,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_BOND_BATTLE_GRANTS,
     STRATEGY_BOND_TIER_GRANTS,
     STRATEGY_BOSS_BATTLE_GRANTS,
+    STRATEGY_BOSS_CLEAR_GOLD_GRANTS,
     STRATEGY_BOSS_COMPLETION_GRANTS,
     STRATEGY_BUY_STAR_FLIP_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
@@ -2003,6 +2006,93 @@ def check_strategy_boss_completion_grants(gs: GameState, node_kind: str,
             gs.write_logic(gs.strategy_conditional_done, done + (name,),
                            produced_by=producer, evidence=evidence, sig=sig)
             done = done + (name,)
+
+
+_BOSS_CLEAR_GOLD_LATCH_SIG: ChannelSig = ChannelSig(
+    family='logic_action', actor='StrategyBossClearGold', mode='compute',
+    group_id='sim:strategy')
+"""搜打撤 boss 通关价值金腿闩笔的渠道签名(kernel 内构 logic_action
+族):金笔走 observe(obs 族)与闩笔走 write_logic(logic 族)渠道族
+互斥,调用方传入的 sim 结算段 obs 族签名复用进闩写首笔即炸渠道族
+校验,故闩笔内构(内构先例 = cw_env_grants._GRANT_SIG/_DIAMOND_SIG;
+group_id 与金笔同 'sim:strategy' 组——obs/logic 共用组名 = 结算段
+在役惯例,同窗两笔组对齐)。"""
+
+
+def board_bench_char_value_sum(gs: GameState) -> int:
+    """场上+备战席全体角色价值合计(搜打撤「所有角色价值」卡文求和
+    单一源;唯一消费点 = :func:`check_strategy_boss_clear_gold`)。
+
+    - **价值口径 = sell_refund 现星卖出回金**(cw_economy.sell_refund,
+      economy.md §3 退金单一源定稿;2026-09-15 详情面板三点实测定案:
+      1★2费 +2 / 2★2费 +5 / 3★2费 +17——游戏对「角色价值」的呈现位 =
+      详情面板「+N 出售」直读,卖价即金币口径;费用合计读法与之在
+      2★/3★ 分叉,被实测定案消解);1★ 无合成无手续费全额退(cost=1
+      豁免同式内置);
+    - **域 = deployed 前/后排 + bench unit 槽**(deployed_rows_of 前
+      排在前空槽跳过 + bench_units_of kind='unit' 槽)——占位件
+      (tome/bookcard/supply_box)与空槽天然排除 = 「角色」域正确;
+      穿戴装备不计入(价值主体 = 角色);银狼LV.999 经
+      bench_char_cost(gs) 现档参与求和(档位变更在结算刻现值如实
+      记账,零特判);
+    - 与现役 SELL_ALL 板面重写桥退款表达式同源(cw_effect_inventory
+      卖全场支 ``sell_refund(int(u.star), bench_char_cost(u, gs))``,
+      同式互指零第二份公式);**口径分野申报**:桥侧有「出售域全读
+      才入金」partial_read 判据(出售是写动作,未读容器退款禁入金
+      等观察收口),本函数系纯读派生——未读子域按空行/空席零计,
+      现读面如实求和;本腿仅挂 sim 结算点(板面真值唯一持有者常读,
+      容器恒观察),禁误用进 live 读链;
+    - 零 rng 纯读零写。"""
+    front, back = deployed_rows_of(gs)
+    units = front + back + bench_units_of(gs)
+    return sum(sell_refund(int(u.star), bench_char_cost(u, gs))
+               for u in units)
+
+
+def check_strategy_boss_clear_gold(gs: GameState, sig: ChannelSig) -> None:
+    """策略卡首领通关价值金腿触发检查(「通关下一个首领节点后，获得
+    等同于场上和备战席所有角色价值的金币」触发器单一源,搜打撤
+    id 303701 首例;登记表 = cw_investments.STRATEGY_BOSS_CLEAR_GOLD_
+    GRANTS 白名单标记形;唯一调用点 = sim 结算腿 won boss——live 零写
+    观察覆盖:金由游戏侧自发入账,结算屏金真值覆盖收束,实机局不接
+    本通道)。
+
+    条件矩阵(顺序即短路序;逐序零写返回):
+
+    1. 逐持卡(active_strategies 容器直读)∩ 登记表,表外卡零条目
+       跳过(胜负/kind 门归调用方守卫——「通关」= won 且 kind=='boss',
+       死亡局在 sim 提前 return 处已出局);
+    2. 卡名 ∈ strategy_conditional_done → 跳过(一次性闩:卡面
+       「下一个」= 拿卡后首个 won boss 恰一次,闩后同局后续首领不再
+       发——防重两层各司其职:调用方节点键幂等守卫防同战斗重放,
+       本闩防跨 boss 重复,函数内自管);
+    3. 金量 = :func:`board_bench_char_value_sum`;**0 值照发**
+       (空场空席 = 「所有角色价值」为 0 的结构可达态,金笔 +0 与闩
+       置位照写——闩与金笔同窗是「恰一次」的载体,0 值短路不闩会让
+       后继 boss 重触发);
+    4. 两笔同窗相邻:金 ``gs.observe``(obs 族,sig = 调用方传入的
+       sim 结算段签名;evidence ``strategy:boss_clear_value:p<位面>
+       r<轮>``,node 缺席的直构窗退化无时点段)+ 闩
+       ``gs.write_logic`` 纯卡名追加(sig = _BOSS_CLEAR_GOLD_LATCH_
+       SIG 内构,渠道族分工见常量注释)。
+
+    零 rng(条件全真值 + 板面现读,无采样面);金量非静态注册数值 =
+    策略估值天然不可见(fail-closed,不涉估值三表)。"""
+    done = tuple(gs.strategy_conditional_done.value or ())
+    node = gs.node.value
+    evidence = (f'strategy:boss_clear_value:p{node.plane}'
+                f'r{node.round_num}' if node is not None
+                else 'strategy:boss_clear_value')
+    for name in gs.active_strategies.value or ():
+        if name not in STRATEGY_BOSS_CLEAR_GOLD_GRANTS or name in done:
+            continue
+        value = board_bench_char_value_sum(gs)
+        gold_now = int(gs.gold.value or 0)
+        gs.observe(gs.gold, gold_now + value, evidence=evidence, sig=sig)
+        gs.write_logic(gs.strategy_conditional_done, done + (name,),
+                       produced_by='strategy_boss_clear_gold',
+                       evidence=evidence, sig=_BOSS_CLEAR_GOLD_LATCH_SIG)
+        done = done + (name,)
 
 
 def check_strategy_boss_end_heal(gs: GameState) -> int:

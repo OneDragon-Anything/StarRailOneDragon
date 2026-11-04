@@ -105,6 +105,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_bond_battle_grants,
     check_strategy_bond_tier_grants,
     check_strategy_boss_battle_grants,
+    check_strategy_boss_clear_gold,
     check_strategy_boss_completion_grants,
     check_strategy_boss_end_heal,
     check_strategy_empty_equip_xp,
@@ -4776,6 +4777,27 @@ class SimBackend:
         # 忽略(无回调面);live 零写观察覆盖(装备入栏有画面真值可读)。
         check_strategy_boss_completion_grants(self.gs, kind,
                                               logic_sig('sim:strategy'))
+        # —— 策略卡首领通关价值金(搜打撤 id 303701 首例;接线点 =
+        # 策略腿区链尾顺延:首领完成固定集腿之后、败局待办登记之前,
+        # 胜败两态共同路径——「通关」= 胜利限定,零发放由触发函数
+        # won 门内短路承载;死亡局在本函数提前 return 处已出局,不
+        # 发放)。条件单一源 = kernel check_strategy_boss_clear_gold
+        #(登记表 STRATEGY_BOSS_CLEAR_GOLD_GRANTS 白名单标记形;金量 =
+        # board_bench_char_value_sum 场上+备战席全体角色价值,
+        # sell_refund 卖出回金口径;一次性 = strategy_conditional_done
+        # 纯卡名闩,闩后同局后续首领零重复);金写 = observe 金独立笔
+        #(世界数值面写端通道分工,招财狗胜利金腿同形;obs 族
+        # 'sim:strategy' 组沿结算段在役惯例,evidence
+        # strategy:boss_clear_value:p<r> 与其他策略金腿分账),闩笔
+        # logic 族签名由函数内构(observe/write_logic 渠道族互斥,
+        # 详见常量注释);0 值金笔照发且闩照落(空场空席结构可达,
+        # 闩与金笔同窗 = 「下一个」恰一次的载体);零 rng(条件全真值
+        # + 板面现读);幂等零新增守卫 = 本函数 _settled_key(同节点
+        # 重放整段跳过);live 零写观察覆盖(金由游戏自发入账,结算
+        # 屏真值覆盖收束)。
+        if won and kind == 'boss':
+            check_strategy_boss_clear_gold(self.gs,
+                                           obs_sig(group_id='sim:strategy'))
         if not won and kind in COMBAT_NODE_TYPES:
             self.gs.observe(self.gs.pending_loss,
                             LostNodeRef(plane=node.plane,
