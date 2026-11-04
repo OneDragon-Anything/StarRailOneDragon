@@ -24,6 +24,12 @@ changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细�
    ``CharacterDetail`` 冻结字段集（契约 3/4）；词条显示名走
    ``sr_codes`` 三层查表，响应原生 ``data.property_info`` 键归一 int
    后作动态词典透传；遗器 lore desc/icon/figure/内部 id 等不透传。
+4. 套装映射（changes/mys-relic-sets/design.md §2 契约 1/2）：遗器/饰品
+   单件经 ``sr_relic_sets.resolve_set_name`` 件名反查套装名（miss 落
+   「未知套装」字面量，告警由 resolve 层负责、本层不重复告警）；角色级
+   收集 relic/ornament 件名经 ``build_set_effects`` 产出已激活套装效果
+   条目 ``SrSetEffect``（未入常量的件名不产出条目）。v1 ``get_characters``
+   轻口径不加套装字段（契约 4，外部行为零改动）。
 
 会话失效透传（design.md §2.3）：``MysSessionExpired`` 原样上抛给上层
 （MCP 工具层翻译成「请重新登录」并打过期标记），本模块不做任何处置。
@@ -43,6 +49,7 @@ from sr_od.mys.sr_codes import (
     resolve_relic_pos_cn,
     validate_relic_main_affix,
 )
+from sr_od.mys.sr_relic_sets import build_set_effects, resolve_set_name
 
 #: 角色定位缓存文件内容（design.md §2.2 mys_session：``{"role_id","server"}``，
 #: role_id 恒为字符串）
@@ -54,6 +61,10 @@ HSR_GAME_BIZ: str = 'hkrpg_cn'
 #: 本地过期短路用的失效码（MysSessionExpired 需要继承 MysApiError 的 code；
 #: 取会话失效码常量集中「Please login」语义的 10001，未发起请求故仅作标记用）
 LOCAL_EXPIRED_CODE: int = 10001
+
+#: 件名查无套装时的兜底套装名（resolve_set_name miss 落此字面量；告警由
+#: resolve 层负责，映射层不重复告警——mys-relic-sets design.md §2 契约 1）
+UNKNOWN_SET_NAME: str = '未知套装'
 
 
 @dataclass(frozen=True)
@@ -126,7 +137,7 @@ class SrPropertyEntry:
 
 @dataclass(frozen=True)
 class SrRelic:
-    """遗器/位面饰品单件（两数组同构，冻结字段集契约 4）。
+    """遗器/位面饰品单件（两数组同构，冻结字段集契约 4 + mys-relic-sets 契约 1）。
 
     Attributes:
         name: 件名（官方中文，如「翔鹰的长喙头盔」）。
@@ -138,6 +149,8 @@ class SrRelic:
         level: 强化等级（0-15）。
         main: 主词条。
         subs: 副词条列表（未出副词条为空列表）。
+        set_name: 所属套装官方全名（resolve_set_name 件名反查；miss 落
+            「未知套装」，告警在 resolve 层）。
     """
 
     name: str
@@ -147,6 +160,7 @@ class SrRelic:
     level: int
     main: SrPropertyEntry
     subs: list[SrPropertyEntry]
+    set_name: str
 
 
 @dataclass(frozen=True)
@@ -222,12 +236,50 @@ class SrPanelProperty:
 
 
 @dataclass(frozen=True)
+class SrSetEffectEntry:
+    """已激活套装效果单档（冻结字段集，mys-relic-sets design.md §2 契约 2）。
+
+    Attributes:
+        count: 激活档位件数（2 或 4；只列已激活档，未激活档不出现在列表）。
+        desc: 该档效果文案（官方 wiki 原文透传，不清洗富文本——契约 5）。
+    """
+
+    count: int
+    desc: str
+
+
+@dataclass(frozen=True)
+class SrSetEffect:
+    """角色已激活套装效果条目（冻结字段集，mys-relic-sets design.md §2 契约 2）。
+
+    由佩戴件名按套装分组统计产出（build_set_effects，映射层
+    ``_build_set_effects`` 做字段投影）；未入套装常量的件名不产出条目。
+    列表排序：piece_count 降序、同级按 set_name 升序（稳定输出语义）。
+
+    Attributes:
+        set_name: 官方套装全名。
+        kind: 套装类别——``'cavern'``=隧洞遗器、``'ornament'``=位面饰品。
+        piece_count: 该套实际佩戴件数。
+        pieces: 该套实际佩戴件名列表（佩戴顺序 = 响应数组顺序）。
+        activated: 已激活档列表（隧洞套 2 件档 + piece_count=4 时的 4 件档；
+            饰品套 2 件档）。
+    """
+
+    set_name: str
+    kind: str
+    piece_count: int
+    pieces: list[str]
+    activated: list[SrSetEffectEntry]
+
+
+@dataclass(frozen=True)
 class CharacterDetail:
     """角色全量明细（冻结字段集契约 3——字段增删即契约失败）。
 
     全量明细端点 ``hkrpg/api/avatar/info`` 富映射（``hkrpg/api/index`` 只有
     轻口径字段、不含明细——design.md §1 端点勘误）：轻口径 10 字段
-    语义不变，追加遗器/饰品/星魂/行迹/面板五组明细。desc(遗器 lore)/icon/
+    语义不变，追加遗器/饰品/星魂/行迹/面板/已激活套装效果六组明细
+    （套装效果组为 mys-relic-sets 契约 2）。desc(遗器 lore)/icon/
     figure/URL/point_id 等大体积与内部形态字段一律不透传（契约 4 清单）。
 
     Attributes:
@@ -246,6 +298,8 @@ class CharacterDetail:
         ranks: 星魂列表（恒 6 条，解锁状态全量透传）。
         skills: 行迹列表。
         properties: 面板属性行列表（遍历渲染，不按固定行数假设）。
+        set_effects: 已激活套装效果条目列表（build_set_effects 分组统计；
+            无任何激活档〔如全未佩戴〕为空列表）。
     """
 
     id: int
@@ -263,6 +317,7 @@ class CharacterDetail:
     ranks: list[SrRank]
     skills: list[SrSkill]
     properties: list[SrPanelProperty]
+    set_effects: list[SrSetEffect]
 
 
 class SrMysClient:
@@ -447,13 +502,28 @@ def _map_property_entry_list(
     return [_map_property_entry(item, property_info) for item in raw if isinstance(item, dict)]
 
 
+def _resolve_set_name_or_unknown(piece_name: object) -> str:
+    """件名 → 套装名（resolve 反查；miss 或件名缺失落「未知套装」兜底）。
+
+    告警责任在 resolve 层（``resolve_set_name`` miss 时 warning 恰一次），
+    本层不重复告警（mys-relic-sets design.md §2 契约 1）；件名非字符串
+    （实测正常数据恒为字符串，此处为形态漂移兜底）不进 resolve、静默落
+    兜底——单件异常不中断整份角色明细映射（与 _map_relic_list 容错纪律一致）。
+    """
+    if not isinstance(piece_name, str):
+        return UNKNOWN_SET_NAME
+    resolved = resolve_set_name(piece_name)
+    return resolved if resolved is not None else UNKNOWN_SET_NAME
+
+
 def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> SrRelic:
     """单件遗器/饰品 → SrRelic（relics/ornaments 两数组同构，共用本映射）。
 
     主词条先过 ``validate_relic_main_affix`` 轻校验：False = 部位与词条码
     组合超出配置封闭集（数据异常哨兵），打 warning 但**不中断映射**——
-    单件异常数据仍应随整份明细返回（显示名照常三层查表）。lore desc/icon/
-    id/is_preview 不透传。
+    单件异常数据仍应随整份明细返回（显示名照常三层查表）。套装名经
+    ``resolve_set_name`` 件名反查（miss 落「未知套装」，告警在 resolve
+    层）。lore desc/icon/id/is_preview 不透传。
     """
     pos = item.get('pos')
     main_raw = item.get('main_property')
@@ -472,6 +542,7 @@ def _map_relic(item: dict, property_info: dict[int, PropertyNameInfo]) -> SrReli
         level=item.get('level'),
         main=main,
         subs=_map_property_entry_list(item.get('properties'), property_info),
+        set_name=_resolve_set_name_or_unknown(item.get('name')),
     )
 
 
@@ -554,16 +625,46 @@ def _map_panel_property_list(
     return [_map_panel_property(item, property_info) for item in raw if isinstance(item, dict)]
 
 
+def _build_set_effects(relics: list[SrRelic], ornaments: list[SrRelic]) -> list[SrSetEffect]:
+    """佩戴件名收集 → ``build_set_effects`` → SrSetEffect 冻结结构列表（契约 2）。
+
+    分桶由本映射层负责（relics/ornaments 两数组即分桶，对齐 build_set_effects
+    的入参约定）；dict 条目到冻结结构的字段投影在此收口。未知件名已在逐件
+    映射时经 ``resolve_set_name`` 告警，此处按 build 层契约静默跳过不产出
+    条目（不重复告警）。
+    """
+    entries = build_set_effects(
+        [relic.name for relic in relics],
+        [ornament.name for ornament in ornaments],
+    )
+    return [
+        SrSetEffect(
+            set_name=entry['set_name'],
+            kind=entry['kind'],
+            piece_count=entry['piece_count'],
+            pieces=entry['pieces'],
+            activated=[
+                SrSetEffectEntry(count=act['count'], desc=act['desc'])
+                for act in entry['activated']
+            ],
+        )
+        for entry in entries
+    ]
+
+
 def _map_character_detail(
     avatar: dict, property_info: dict[int, PropertyNameInfo]
 ) -> CharacterDetail:
     """单条 avatar_list 条目 → CharacterDetail 冻结字段集富映射（契约 3/4）。
 
-    轻口径字段语义与 ``_map_character`` 一致；明细五组：遗器/饰品同构映射、
-    星魂全量透传（is_unlocked 不过滤）、行迹取 remake/skill_stages、面板
-    遍历渲染。desc/icon/figure_path/element_id/point_id/servant_detail/
+    轻口径字段语义与 ``_map_character`` 一致；明细六组：遗器/饰品同构映射
+    （逐件反查套装名）、已激活套装效果（build_set_effects 按佩戴件名分组
+    统计）、星魂全量透传（is_unlocked 不过滤）、行迹取 remake/skill_stages、
+    面板遍历渲染。desc/icon/figure_path/element_id/point_id/servant_detail/
     special_skills/cur_enhanced_id 等实测在场字段一律不透传（契约 4 清单）。
     """
+    relics = _map_relic_list(avatar.get('relics'), property_info)
+    ornaments = _map_relic_list(avatar.get('ornaments'), property_info)
     return CharacterDetail(
         id=avatar.get('id'),
         name=avatar.get('name'),
@@ -575,11 +676,12 @@ def _map_character_detail(
         base_type=avatar.get('base_type'),
         base_type_cn=resolve_base_type_cn(avatar.get('base_type')),
         equip=_map_equip(avatar.get('equip')),
-        relics=_map_relic_list(avatar.get('relics'), property_info),
-        ornaments=_map_relic_list(avatar.get('ornaments'), property_info),
+        relics=relics,
+        ornaments=ornaments,
         ranks=_map_rank_list(avatar.get('ranks')),
         skills=_map_skill_list(avatar.get('skills')),
         properties=_map_panel_property_list(avatar.get('properties'), property_info),
+        set_effects=_build_set_effects(relics, ornaments),
     )
 
 

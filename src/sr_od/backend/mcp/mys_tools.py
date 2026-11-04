@@ -441,7 +441,7 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="获取角色名册明细"))
     def mys_get_roster_detail() -> dict:
-        """获取崩坏:星穹铁道全角色名册明细（每名角色的遗器六件套词条明细/位面饰品/星魂/行迹/属性面板，词条与面板属性均为中文名）。数据量较大（64 角色全量）。会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
+        """获取崩坏:星穹铁道全角色名册明细（每名角色的遗器六件套词条明细/位面饰品/星魂/行迹/属性面板，词条与面板属性均为中文名，含套装名与已激活套装效果）。数据量较大（64 角色全量）。会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
 
         Returns:
             统一信封 ``{"status","message","data"}``：
