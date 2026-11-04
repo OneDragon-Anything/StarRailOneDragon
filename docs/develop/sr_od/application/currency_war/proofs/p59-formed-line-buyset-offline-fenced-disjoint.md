@@ -6,7 +6,7 @@
 > `fenced_swap_arm_of`(L247-254)、喂入单一源(唯一事实来源,下同)
 > `swap_arm_deployed_count`
 > (L231-244;该执行侧真读读口已随部署机执行侧停用与死代码清偿移除——
-> 现役板满前提按决策帧容器计数);买面单一源 `cw_intention.locked_buy_membership`
+> 现役板满前提按决策帧状态容器(GameState)计数);买面单一源 `cw_intention.locked_buy_membership`
 > (`cw_intention.py:1572-1608`)与 `_line_hoard`(L1375-1399)。
 > 依据:(含 2026-09-05 原裁定文档修订「P18 型结构命题」立项登记待办)、
 > 原裁定文档修订节(已停用)、`flow.py:224-264`(target_comp = get_comp(locked_comp)
@@ -18,7 +18,7 @@
 设帧 F 满足**门的适用前提**(即落入该门的管辖范围):换阵卖出义务分支激活,即
 
 - `form_progress(target_comp, state) ≥ 1.00`(阵容成型,单一源 cw_comps);
-- `swap_arm_deployed_count ≥ front_n + back_n`(上阵区已满,部署数原由画面模板匹配实读——该读口已随部署机执行侧停用与死代码清偿移除,现役前提按决策帧容器板面计数);
+- `swap_arm_deployed_count ≥ front_n + back_n`(上阵区已满,部署数原由画面模板匹配实读——该读口已随部署机执行侧停用与死代码清偿移除,现役前提按决策帧状态容器板面计数);
 - 备战席有目标阵容单位(D-3 守卫,`cw_op_deploy.py:441`)。
 
 记:
