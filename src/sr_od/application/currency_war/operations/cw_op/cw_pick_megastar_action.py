@@ -2,10 +2,10 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:``env.need_select`` 驱动的选中半(点候选——点击坐标 = 容器
+机械语义:``env.need_select`` 驱动的选中半(点候选——点击坐标 = 状态容器
 ``megastar_opts[idx].xy``,观察上报,按下标取;选择坐标观察上报规范 =
 op-layer.md §1.1 + action_ops.md §1)→ 确认钮单发;机械链发出后
-直调自上报单口 ``report_action_pick_megastar_param``。
+直调自上报唯一入口 ``report_action_pick_megastar_param``。
 """
 from __future__ import annotations
 
@@ -55,8 +55,8 @@ class CwActionPickMegastarOp(CwOperation):
         """机械执行(选中半[need_select] → 确认钮单发 + 固定等待;零判效)。
 
         选中半(pick-op-unify 批自画面 op 迁入;选择坐标观察上报收敛批
-        改容器取点):``env.need_select`` → 点候选选中 + 固定等待(原选
-        中后 0.6s 动画窗,时序逐位保留)。点击坐标 = 容器
+        改状态容器取点):``env.need_select`` → 点候选选中 + 固定等待(原选
+        中后 0.6s 动画窗,时序逐位保留)。点击坐标 = 状态容器
         ``megastar_opts[param.idx].xy``(观察上报,按下标取;坐标单一真相
         源 = 观察上报,本 op 零坐标现算、零 screen_info 二次取点)。
         ``chosen_megastar`` 写端与选中旗标留在画面 op(单次逻辑写入豁免
@@ -65,7 +65,7 @@ class CwActionPickMegastarOp(CwOperation):
         env = self.env
         op = env.op
         if env.need_select:
-            # 选中半取点守卫(防 bug 路栏,非控制流):容器缺席/下标越界/
+            # 选中半取点守卫(防 bug 路栏,非控制流):状态容器缺席/下标越界/
             # 元素缺坐标 = 观察上报链或策略器 bug,AssertionError 响亮
             # 暴露——禁静默跳过选中(旧 target None 消极分支停用)、禁坐标
             # 现算回退(action_ops.md §1;op-layer.md §1.3)。
@@ -98,7 +98,7 @@ class CwActionPickMegastarOp(CwOperation):
         # 确认 = 纯机械单发(用户裁定):「请选择强化角色」
         # 文本 = 确认钮旁伴随文案,禁据它判步。
         # 确认未落地 overlay 残留 =
-        # 下一帧落地复查自愈:节点循环读「仍在巨星 overlay?」(标识锚仍
+        # 下一帧落地复查自愈:节点循环读「仍在巨星 overlay?」(识别标志仍
         # 命中)→ 重走本方法 → 候选已选 → 机械单发确认再推进
         # (宿主 round_wait 循环推进,不烧节点重试预算)。
         # chosen_megastar 写端留在画面 op(动作事实边界,派发前写 =

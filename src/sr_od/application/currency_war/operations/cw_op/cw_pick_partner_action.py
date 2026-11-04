@@ -4,7 +4,7 @@
 
 机械语义:「点选候选 → 确认」脉冲链(未选中实证下重点选);确认点
 读缺的 retry 旁路分支未发确认点击,不上报;机械链发出后直调自上报
-单口 ``report_action_pick_partner_param``。
+唯一入口 ``report_action_pick_partner_param``。
 """
 from __future__ import annotations
 

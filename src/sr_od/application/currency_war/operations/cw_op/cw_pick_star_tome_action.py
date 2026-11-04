@@ -3,7 +3,7 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点卡即选(safe_click 防吞点击)+ 选中动画固定等待,零确认
-步;机械链发出后直调自上报单口
+步;机械链发出后直调自上报唯一入口
 ``report_action_pick_star_tome_param``。
 """
 from __future__ import annotations
@@ -37,11 +37,11 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickStarTomeOp(CwOperation):
     """星徽秘典四选一选卡链(统一 pick-op 分发并入;点卡即选,弹窗自关)。
 
-    点卡(safe_click 防吞点击;点击点 = 容器 ``star_tome_opts_xy[idx]``——
+    点卡(safe_click 防吞点击;点击点 = 状态容器 ``star_tome_opts_xy[idx]``——
     观察期解出上报,op-layer.md §1.1 :35 坐标单一真相源 = 观察上报,
     动作 op 自取,缺席/越界 = 守卫断言)→ 选中动画固定等待。
     ``chosen_tome``/ConfirmTome 到账登记留在画面 op 落地复查出口(动作
-    事实边界),本 op 容器写零。"""
+    事实边界),本 op 零状态容器写。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -60,7 +60,7 @@ class CwActionPickStarTomeOp(CwOperation):
         action = self.param
         env = self.env
         op = env.op
-        # 点击点 = 观察上报容器(op-layer.md §1.1 :35 坐标单一真相源);
+        # 点击点 = 观察上报状态容器(op-layer.md §1.1 :35 坐标单一真相源);
         # 禁回退 env.target、禁坐标现组装(均 = 第二坐标源)。缺席/越界 =
         # 守卫断言响亮暴露零点击(防 bug 路栏,非控制流;直构动作 op 的
         # 测试语境 = 显式注入坐标域,缺席即炸 = 防线非缺陷)。

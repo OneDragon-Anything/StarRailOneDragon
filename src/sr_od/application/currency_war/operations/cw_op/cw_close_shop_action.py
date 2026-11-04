@@ -104,7 +104,7 @@ class CwActionCloseShopOp(CwOperation):
 
     def _report_leave_screen(self) -> WorldDecl | None:
         """清场上报(``report_action_close_shop_param`` = leave_screen 结构
-        离屏写):两出口同调,已关残留同样陈旧故同清;容器缺席/已离屏在
+        离屏写):两出口同调,已关残留同样陈旧故同清;状态容器缺席/已离屏在
         上报函数内静默跳过,失败不阻塞动作链。返回声明并经端口喂入
         (上报后一行喂入,动作后果声明化喂入契约)。"""
         try:

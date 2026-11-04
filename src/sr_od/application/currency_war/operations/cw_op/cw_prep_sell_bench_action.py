@@ -5,7 +5,7 @@ op-layer.md §1.2 动作 op 契约)。非终结。
 
 命名申报:词表类 ``CwActionSellBenchParam`` 的注册行唯一指向本 op
 (商店/备战双域共用:备战域经 PrepExecEnv、商店域经 ShopExecEnv
-执行器端口——商店执行链端口接线批;原商店域独立 op 类已停用,
+执行器端口——商店执行链端口接入调用批;原商店域独立 op 类已停用,
 单 op 双 env 即全执行路径)。
 """
 from __future__ import annotations
@@ -37,12 +37,12 @@ class CwActionSellBenchOp(CwOperation):
     """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
     机械执行,源槽像素验重试拆除)。非终结。
 
-    双域执行(商店执行链端口接线):备战域经 ``PrepExecEnv.executor``
+    双域执行(商店执行链端口接入调用):备战域经 ``PrepExecEnv.executor``
     (PrepActionExecutor)、商店域经 ``ShopExecEnv.executor``
     (ShopActionExecutor)——拖拽两端坐标按执行器端口的域坐标权威画面
     解析(备战 runner 无 ``screen_name`` 属性,缺省回落备战画面档)。
 
-    自上报(op-layer.md §1.2):机械发出后直调上报函数(容器逻辑态
+    自上报(op-layer.md §1.2):机械发出后直调上报函数(状态容器逻辑态
     单点)。
     """
 
@@ -62,7 +62,7 @@ class CwActionSellBenchOp(CwOperation):
         """卖备战槽角色:drag 槽中心 → 出售区。
 
         emitted 语义 = 动作已机械发出(拖拽原语零判效,落地事实归观察侧
-        reconcile 对账)。bench_idx = 容器槽位表下标,拖点直取(执行坐标
+        reconcile 对账)。bench_idx = 状态容器槽位表下标,拖点直取(执行坐标
         边:备战栏-N area 序 = 下标序,零换算)。
         """
         action: CwActionSellBenchParam = self.param
@@ -71,7 +71,7 @@ class CwActionSellBenchOp(CwOperation):
         _bench_pts = getattr(ex, '_bench_pts', None)
         if _bench_pts is not None and not (0 <= action.bench_idx < len(_bench_pts)):
             # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
-            # 契约):bench_idx = 容器槽位表下标 0 基,越界 = 决策逻辑 bug,
+            # 契约):bench_idx = 状态容器槽位表下标 0 基,越界 = 决策逻辑 bug,
             # 守卫断言响亮暴露零拖拽。商店域执行端口无槽位表(getattr
             # 容缺跳过)——其对象存在性由 visit 环 proposal 守卫语义级承接。
             raise AssertionError(

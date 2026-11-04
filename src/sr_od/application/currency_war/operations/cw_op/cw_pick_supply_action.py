@@ -104,7 +104,7 @@ class CwActionPickSupplyOp(CwOperation):
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)。点击即上报推进
         # (去证据门,用户裁定:动作 op 不做任何确认——点了
-        # 就是上报,观察态门为唯一门;原「下一节点备战锚单探作上报时点门」
+        # 就是上报,观察态门为唯一门;原「下一节点备战识别标志单探作上报时点门」
         # 随转移证据机制整体停用)。
         confirm_result = op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)

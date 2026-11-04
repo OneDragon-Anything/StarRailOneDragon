@@ -11,19 +11,19 @@
 (秒级)对齐还原归属(行写入已停用;帧留存证据钩子保留——
 识别仲裁基准与账本形态无关)。
 
-挂点(2 类,均为识别完成点的原始帧):
+插入位置(2 类,均为识别完成点的原始帧):
 1. 商店入口观察帧(商店画面 op 观察 node 入口观察刚完成时,每访问
-   一帧;牌面解析的仲裁基准)——刷新完成后的重观察与挂点 1 同点自然
+   一帧;牌面解析的仲裁基准)——刷新完成后的重观察与插入位置 1 同点自然
    覆盖(刷新终结 = 访问结束本次访问 → 下一次入口观察);
 2. 事件 overlay 命中帧(cw_loop 浮层分发分支命中时一帧)。
 
-(原挂点「部署执行帧」随部署机画面 op 停用消失;原装配槽
+(原插入位置「部署执行帧」随部署机画面 op 停用消失;原装配槽
 ``set_decision_frame_dir`` 零消费已停用——写根恒生产公式。)
 
 预算与治理(留存证据钩子形态:无条件触发,不留开关/参数):
-- 每帧成本 = 一次内存截图落盘(挂点已有帧直接复用,不截新图),<100ms;
-  挂点均为决策帧(段级/分支命中级,非每轮全图 OCR 级高频);
-- 体积治理:每挂点(tag 维度)滚动保留最近 _KEEP_PER_TAG 帧,写入后删旧,
+- 每帧成本 = 一次内存截图落盘(插入位置已有帧直接复用,不截新图),<100ms;
+  插入位置均为决策帧(段级/分支命中级,非每轮全图 OCR 级高频);
+- 体积治理:每插入位置(tag 维度)滚动保留最近 _KEEP_PER_TAG 帧,写入后删旧,
   防长局商店段循环多帧刷爆磁盘;
 - 异常/冲突帧走既有 obs_conflict 通道不变,本钩子不替代;
 - best-effort:钩子任何异常不阻塞对局推进。
@@ -43,7 +43,7 @@ from one_dragon.utils.log_utils import log
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation import Operation
 
-# 每挂点保留最近帧数(滚动删除旧文件;40 帧 × ~1-2MB ≈ 80MB/挂点上限)
+# 每插入位置保留最近帧数(滚动删除旧文件;40 帧 × ~1-2MB ≈ 80MB/插入位置上限)
 _KEEP_PER_TAG = 40
 
 
@@ -67,8 +67,8 @@ def save_decision_frame(op: Operation, tag: str,
     """识别完成点原始帧留存证据(常驻留存证据钩子,无条件触发;仲裁兜底,见模块头层次定位)。
 
     :param op: 宿主 op(取 telemetry run_id 做目录 run 标记;screen 缺省时
-        用 op.screenshot() 截新帧——挂点已有帧时显式传入,避免二次截图错帧)
-    :param tag: 挂点名(如 shop_entry/deploy/overlay_partner),同 tag 滚动治理
+        用 op.screenshot() 截新帧——插入位置已有帧时显式传入,避免二次截图错帧)
+    :param tag: 插入位置名(如 shop_entry/deploy/overlay_partner),同 tag 滚动治理
     :param screen: 当前游戏截图(RGB);None 时 op.screenshot() 现截
     :return: 落盘 PNG 文件名(ts 秒级命名);None=跳过/失败
     """

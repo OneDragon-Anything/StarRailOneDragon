@@ -1,4 +1,4 @@
-"""开书册卡动作 op(CwActionOpenBookcardOp)——容器槽位直点形态:op 对
+"""开书册卡动作 op(CwActionOpenBookcardOp)——状态容器槽位直点形态:op 对
 画面零识别(动作 op 无论执行前还是执行后都不做观察识别,规范 =
 flow/action_ops.md 用户裁定),机械链 = 参数校验 → 槽号解析 → 建档坐标
 直查 → mouse_move+click → 自上报 → round_success。机械执行后 **op 内
@@ -34,10 +34,10 @@ from sr_od.context.sr_context import SrContext
 if TYPE_CHECKING:
     from sr_od.application.currency_war.prep_actions import PrepExecEnv
 
-#: slot=None 现算消费的容器占席 kind(坐标系 = 容器 BenchSlot.kind,
-#: kind 细分批起书册卡独立 kind)。现算规则 = 容器 bench 首个该 kind 槽
+#: slot=None 现算消费的状态容器占席 kind(坐标系 = 状态容器 BenchSlot.kind,
+#: kind 细分批起书册卡独立 kind)。现算规则 = 状态容器 bench 首个该 kind 槽
 #: (下标 + 1);决策层(mandate_v1/entry.py 消耗品臂)与上报层(本动作
-#: 上报函数内)各有一份同型现算,三处语义必须一致(同容器同规则),
+#: 上报函数内)各有一份同型现算,三处语义必须一致(同状态容器同规则),
 #: 提取公共函数归另批。
 _BOOKCARD_BENCH_KIND = 'bookcard'
 
@@ -46,7 +46,7 @@ class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:槽号解析 → 点槽中心(建档坐标)→ 固定动画等待
     (纯机械执行)。终结动作(动作发出点 = 策略器 entry ① prep 实体面卡片
     分支,screens/README §5.5;弹专家邀请函 = 新事实 → 结束本次访问,与
-    OpenBox 终结化同构,规范锚 = op-layer.md §1.4)。"""
+    OpenBox 终结化同构,规范基准 = op-layer.md §1.4)。"""
 
     #: 终结动作(专家邀请函弹窗在场 = 新事实,返回主循环重新分发选卡)。
     terminal = True
@@ -76,16 +76,16 @@ class CwActionOpenBookcardOp(CwOperation):
         ex = env.executor
         if action.slot is not None and not (1 <= action.slot <= len(ex._bench_pts)):
             # 参数违法由 op 自判(flow/action_ops.md §1 决策侧参数现算
-            # 契约):slot = 画面物理槽 1 基(可选参数,None = 容器现算
+            # 契约):slot = 画面物理槽 1 基(可选参数,None = 状态容器现算
             # 首件槽),越界响亮暴露零点击。
             raise AssertionError(
                 f'CwActionOpenBookcardParam slot={action.slot} 越界'
                 f'(1-{len(ex._bench_pts)})')
         gs = None
         if action.slot is None:
-            # slot=None 缺省语义 = game state 容器现算首件槽号(消费决策
+            # slot=None 缺省语义 = game state 状态容器现算首件槽号(消费决策
             # 数据,与决策层同源,非画面识别);双出口守卫断言(gs 缺席 /
-            # 容器无该 kind 首槽)与越界同款响亮暴露零点击。
+            # 状态容器无该 kind 首槽)与越界同款响亮暴露零点击。
             gs = game_state_from_ctx(self.ctx)
             if gs is None:
                 raise AssertionError(
@@ -102,7 +102,7 @@ class CwActionOpenBookcardOp(CwOperation):
                     f'bench 无 kind={_BOOKCARD_BENCH_KIND} 首件槽,零点击')
             slot = idx + 1
             # 落地机制 = 以现算 resolved slot 重建 param(不改写入参对象):
-            # 上报/journal/round 摘要显影显式槽号。
+            # 上报/journal/round 摘要显示显式槽号。
             action = replace(action, slot=slot)
         else:
             slot = action.slot

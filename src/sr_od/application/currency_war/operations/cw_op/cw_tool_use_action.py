@@ -2,9 +2,9 @@
 ``ToolUseOp``,ActionOp ABC → 框架 SrOperation,op-layer.md §1.2 动作
 op 契约)。
 机械执行后 **op 内直调自己的上报函数**(七工具参数共用机械半,上报 =
-各自容器写函数,按 param 类型一行解析;零分派语义 = op-layer.md §1.2;
+各自状态容器写函数,按 param 类型一行解析;零分派语义 = op-layer.md §1.2;
 tool-gain-report
-迭代起上报 = 机械执行直接上报写容器,容器写正本 =
+迭代起上报 = 机械执行直接上报写状态容器,状态容器写权威版本 =
 ``kernel/cw_action_report/tool_use``)。非终结。
 
 一个 op 类覆盖工具原子七类(R8 按消耗品各立词表类,机械半同构:owned
@@ -59,7 +59,7 @@ class CwActionToolUseOp(CwOperation):
     terminal = False
     terminal_wait = 0.0
 
-    #: 工具词表类 → 注册名(icon 定位锚,与装备注册表同名)。
+    #: 工具词表类 → 注册名(icon 定位识别标志,与装备注册表同名)。
     _TOOL_NAME_BY_CLASS: ClassVar[dict[type, str]] = {
         CwActionFurnaceUseParam: '冶金炉',
         CwActionPrivilegeCardUseParam: '特权赋予卡',
@@ -96,7 +96,7 @@ class CwActionToolUseOp(CwOperation):
         源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
         icon / char 模式角色槽位中心。零消耗确认交叉核对(裁决 3)——拖后固定
         等待,消费真值 = 下一帧装备区读数;机械链发出后直调上报 =
-        机械执行直接上报写容器(tool_use 确定面 write_logic / 随机面
+        机械执行直接上报写状态容器(tool_use 确定面 write_logic / 随机面
         write_logic_rand 采样链,上报无条件不判成败)。
         """
         action: CwAction = self.param
@@ -173,7 +173,7 @@ class CwActionToolUseOp(CwOperation):
                 tgt_desc = f'{action.row}-{action.slot}'
         ex._op.park_cursor(after_wait=0.1)
         # —— 自上报(机械发出后;按 param 类型直调自己的上报函数,
-        # 机械执行直接上报写容器)——
+        # 机械执行直接上报写状态容器)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             self._REPORT_BY_CLASS[type(action)](

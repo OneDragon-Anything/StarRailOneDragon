@@ -12,7 +12,7 @@
 **自上报统一**:pick 族每类 run 体在机械链(选中点击 → 确认点击)发出
 后直调自己的上报函数 ``report_action_pick_<snake>_param``
 (``kernel/cw_action_report``,零写族落 zero_writes)——与 buy_card 等
-其它动作 op 同一执行契约,容器写语义单点 = 各上报函数,零证据标志零重入
+其它动作 op 同一执行契约,状态容器写语义单点 = 各上报函数,零证据标志零重入
 裁决补写面。partner 确认点读缺的 retry 旁路分支未发确认点击,不上报。
 
 体迁契约(零行为):各 op 类 run 体 = 现役 overlay act 确认链逐字迁移,
@@ -42,7 +42,7 @@ class OverlayPickExecEnv:
     已收敛屏停喂;全族收敛后删字段)、``picked`` = 选定快照(到账登记
     输入)、``unselected`` = 未选中提示在场实证。
     ``need_select`` = 选中半开关
-    (True = 先点候选选中再确认,点击坐标各 op 自取——巨星 = 容器
+    (True = 先点候选选中再确认,点击坐标各 op 自取——巨星 = 状态容器
     ``megastar_opts[param.idx].xy``(选择坐标观察上报收敛),其余过渡期屏 =
     ``target``;False = 跳过选中直发确认)。
     ``round_result`` = 旁路回传(确认链末步 ``round_*`` 产物;op 自身

@@ -4,7 +4,7 @@
 
 机械语义:点卡选中 → 确认(建档「按钮-确认选择」查找点击,确认钮查找
 全族统一 = ``round_by_find_and_click_area``);机械链发出后直调
-自上报单口 ``report_action_pick_fortune_param``。
+自上报唯一入口 ``report_action_pick_fortune_param``。
 """
 from __future__ import annotations
 
@@ -40,11 +40,11 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickFortuneOp(CwOperation):
     """命运卜者强化三选一确认链(统一 pick-op 分发并入)。
 
-    点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自容器
+    点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自状态容器
     ``fortune_opts_xy`` 读〔坐标随报条款,缺/越界 = 守卫断言;选中几何
     避「详情」按钮带归观察侧建档〕)→ 选中动画固定等待 → 确认
     (建档「按钮-确认选择」查找点击,全族统一;不带 until = 动作 op
-    禁验证)。本屏零 chosen 写端(选择存证已停用),容器写零。"""
+    禁验证)。本屏零 chosen 写端(选择存证已停用),零状态容器写。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False

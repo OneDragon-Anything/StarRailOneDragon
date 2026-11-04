@@ -1,5 +1,5 @@
 """环内重观察动作 op(CwActionObsOp):策略发出 :class:`CwActionObsParam`
-→ 宿主画面 op 观察链重跑 + 漏斗直写容器(= 重新观察上报),决策环原地
+→ 宿主画面 op 观察链重跑 + 漏斗直写状态容器(= 重新观察上报),决策环原地
 续跑(不返回主循环)。
 
 与观察 node 的分界:观察 node = 访问入口全段(清场/开商店收起/中断恢复补采/
@@ -53,7 +53,7 @@ class CwObsOverlayBail(RuntimeError):
 
 
 class CwActionObsOp(CwOperation):
-    """环内重观察:宿主 heavy 观察链重跑(漏斗直写容器 = 上报),
+    """环内重观察:宿主 heavy 观察链重跑(漏斗直写状态容器 = 上报),
     零点击零拖拽;落地/对账语义 = 观察边界本体(以实际观察为准)。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
@@ -69,11 +69,11 @@ class CwActionObsOp(CwOperation):
 
     @operation_node(name='reobserve', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """重观察执行体:宿主重观察(漏斗直写容器)→ 自上报(零写占位,
+        """重观察执行体:宿主重观察(漏斗直写状态容器)→ 自上报(零写占位,
         动作回执统一形态)→ overlay 在场 = bail 返回主循环。
 
         宿主能力解析:``env.op`` 必须提供 ``reobserve_in_visit``(现役唯一
-        宿主 = 备战画面 op CwScreenPrep);缺席 = 决策域未接线重观察通道
+        宿主 = 备战画面 op CwScreenPrep);缺席 = 决策域未接入调用重观察通道
         (策略器在无能力域发出 CwActionObs = 策略器 bug)响亮暴露。
         """
         if self.param.scope not in OBS_SCOPES:
@@ -93,7 +93,7 @@ class CwActionObsOp(CwOperation):
                 '(CwActionObs 现役只在备战决策环可用;非法发射 = 策略器 '
                 'bug,响亮暴露)')
         obs = reobserve()
-        # —— 自上报(机械执行后;零写族:容器更新通道 = 观察漏斗本体)——
+        # —— 自上报(机械执行后;零写族:状态容器更新通道 = 观察漏斗本体)——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:
             report_action_obs_param(

@@ -3,7 +3,7 @@
 ``cw_overlay_pick_env``)。
 
 投资环境/投资策略两屏共用 op(注册表两行同指):机械链同构,屏间差异
-全部经 env 显式传入;机械链发出后按 param 类型机械分派自上报单口
+全部经 env 显式传入;机械链发出后按 param 类型机械分派自上报唯一入口
 (``report_action_pick_invest_strategy_param`` /
 ``report_action_pick_invest_env_param``)。
 """

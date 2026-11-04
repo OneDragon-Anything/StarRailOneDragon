@@ -149,7 +149,7 @@ class CwActionBuyCardOp(CwOperation):
                                 member=action.card.name,
                                 system=_sys, drought=_d)
         # (tracking 随动同步分支已随tracked 第二账
-        #  停用删除:容器逻辑态由下方 report_action_buy_card_param 单点
+        #  停用删除:状态容器逻辑态由下方 report_action_buy_card_param 单点
         #  落账——满栏合成买在报文侧同走 _apply_full_bench_merge_buy,
         #  原执行侧 mutate 镜像是第二账时代形状 双响事故的
         #  防御语义由「单账即同步」结构性承载。)
@@ -157,7 +157,7 @@ class CwActionBuyCardOp(CwOperation):
                           if state.shop.value is not None else [])
         if action.card.name:
             _cnt = 1
-            # 满栏判定(容器原生读):席占用 = BenchView 槽 kind ≠ empty
+            # 满栏判定(状态容器原生读):席占用 = BenchView 槽 kind ≠ empty
             # (unit+占位件均占席)。
             _view = state.bench.value
             _bench_occ = (sum(1 for s in _view.slots if s.kind != 'empty')

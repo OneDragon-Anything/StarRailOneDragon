@@ -9,7 +9,7 @@
 
 生命周期(SR 约定,无开关无参数):
 - 采集清单完成(结论写入 redesign/REAL_MACHINE_COLLECTION_1.md)后:删本文件
-  整段 + 删 cw_loop 分支 3 内一行接线 + 删产物
+  整段 + 删 cw_loop 分支 3 内一行接入调用 + 删产物
   fixtures/settle_ocr/window_batch/h_*.png,不留任何开关位;
 - best-effort:钩子任何异常不阻塞对局推进;帧总数封顶防磁盘刷爆。
 """

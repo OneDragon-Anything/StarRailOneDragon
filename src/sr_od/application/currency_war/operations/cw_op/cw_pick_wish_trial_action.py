@@ -3,7 +3,7 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点试炼卡身选中 → 「按钮-确认选择」area 确认;机械链发出后
-直调自上报单口 ``report_action_pick_wish_trial_param``。
+直调自上报唯一入口 ``report_action_pick_wish_trial_param``。
 """
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickWishTrialOp(CwOperation):
     """祈愿试炼确认链(统一 pick-op 分发并入)。
 
-    点试炼卡身选中(防吞点击,选中点 = 动作 op 自容器
+    点试炼卡身选中(防吞点击,选中点 = 动作 op 自状态容器
     ``wish_trial_opts_xy`` 按 ``param.idx`` 取——op-layer.md §1.1 :35,
-    坐标单一真相源 = 观察上报;观察上报与名字域同门一并入容器,等长
+    坐标单一真相源 = 观察上报;观察上报与名字域同门一并入状态容器,等长
     同进退)→ 选中动画固定等待 → 确认(「按钮-确认选择」area 位置点击,
     success_wait=1.5,现役形态逐位迁移;本屏独有检测在前,不与伙伴/
     巨星的「确认选择」撞)。``chosen_wish`` = 落地复查出口写,留在画面 op。"""
@@ -53,12 +53,12 @@ class CwActionPickWishTrialOp(CwOperation):
 
     @operation_node(name='pick_wish_trial', is_start_node=True)
     def run(self) -> OperationRoundResult:
-        """机械执行(自容器取点 → 点卡选中 → 动画等待 → area 确认;轮次
+        """机械执行(自状态容器取点 → 点卡选中 → 动画等待 → area 确认;轮次
         结果经旁路回传)。"""
         action = self.param
         env = self.env
         op = env.op
-        # 点击点 = 观察上报容器(op-layer.md §1.1 :35 坐标单一真相源);
+        # 点击点 = 观察上报状态容器(op-layer.md §1.1 :35 坐标单一真相源);
         # 禁回退 env.target、禁坐标现组装(均 = 第二坐标源)。缺席/越界 =
         # 守卫断言响亮暴露零点击(防 bug 路栏,非控制流;直构动作 op 的
         # 测试语境 = 显式注入坐标域,缺席即炸 = 防线非缺陷)。

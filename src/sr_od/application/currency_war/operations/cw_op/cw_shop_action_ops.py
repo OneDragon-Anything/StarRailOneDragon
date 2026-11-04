@@ -2,7 +2,7 @@
 
 动作基类单方法(execute;原 execute+project 两方法契约
 的 project 半已删—— 纯规则路线裁定(用户):策略与实机
-操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
+操作链零 simulate 前瞻消费,期望态推进改走状态容器逻辑态直写
 (上报函数族单点,kernel/cw_action_report;
 kernel 规则单一源,与序列驱动器同形;写语义由投影测试钉
 (测试 M1,test_shop_projection_logic)):
@@ -80,7 +80,7 @@ class ShopExecEnv:
 
     ``executor`` = 备战域共用词表动作 op(``CwActionSellBenchOp``/
     ``CwActionLevelUpOp`` 等,体内经 ``env.executor`` 消费 ``_ctx``/``_op``)
-    在商店域的执行器端口适配(商店执行链端口接线;None = 端口未注入,
+    在商店域的执行器端口适配(商店执行链端口接入调用;None = 端口未注入,
     该族动作发出即 AttributeError 响亮暴露)。
     """
 
@@ -91,14 +91,14 @@ class ShopExecEnv:
     level_btn: Point
     refresh_btn: Point
     ledger: ShopVisitLedger
-    # 当前期望态(波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
+    # 当前期望态(波 4 结构化,设计件 §2.4-2:执行侧读点改状态容器单例
     # game_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
     state: GameState
     executor: ShopActionExecutor | None = None
 
 
 class ShopActionExecutor:
-    """商店域动作执行器端口适配(商店执行链端口接线)。
+    """商店域动作执行器端口适配(商店执行链端口接入调用)。
 
     备战域动作 op 经 ``env.executor`` 消费的最小端口面 = ``_ctx``
     (SrContext)/``_op``(宿主画面 op:拖拽原语/光标 parking 经其取
@@ -140,12 +140,12 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     满栏 merge 买的「一击多张」豁免属 expected-vs-主域双源豁免,
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
-    # 容器读口在函数顶导入:函数体内任何位置的 import 语句都会
+    # 状态容器读口在函数顶导入:函数体内任何位置的 import 语句都会
     # 把名字绑定为全函数局部变量——曾放 CwActionBuyCardParam 分支内,CwActionSellBenchParam 分支
     # 未执行该 import 即引用,UnboundLocalError(实机案例:
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
-    # P4 容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
-    # 解包读口取(动作 bench_idx = 容器下标,统一词表坐标系)。
+    # P4 状态容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
+    # 解包读口取(动作 bench_idx = 状态容器下标,统一词表坐标系)。
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )

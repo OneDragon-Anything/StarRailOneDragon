@@ -4,7 +4,7 @@
 发出去 + 如实上报动作事实,禁验证、禁重试、禁判断。生产路径 =
 ``cw_screen_prep._open_shop_phase`` 直调 :func:`open_shop`(宿主 op
 复用其 round_by_* 判定与测试替身桩;返回值弃置,调用方不问成败)。
-幂等已开判定归流程层(``visit_open_shop`` 入口观察 + 外循环 0n 三锚),
+幂等已开判定归流程层(``visit_open_shop`` 入口观察 + 外循环 0n 三个识别标志),
 本函数零观察、零幂等分支。
 """
 import time
@@ -29,7 +29,7 @@ def _note_receipt(op: SrOperation, reason: str) -> None:
     `'CwOpOpenShop'`(journal 词表稳定;渲染器词表与类删除解耦)。
     回执 screen = 动作**发出**画面(备战;全回执域统一语义——转移类
     动作也记发出屏,目标画面由 current_screen 域承载;复盘渲染器的
-    动作节章归属锚 = 此字段,契约单一源 = game_state/fields.md 回执
+    动作节章归属基准 = 此字段,契约单一源 = game_state/fields.md 回执
     契约节)。
     """
     try:
@@ -54,7 +54,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     ``op`` = 宿主 op(``CwScreenPrep``;复用其 round_by_* 判定与测试替身桩)。
     唯一受阻出口 = 实机定位缺失(「按钮-商店」未命中 = 动作没发出,
     回执 reason=定位缺失(按钮-商店));
-    sim 下点击经端口 click_answer 受理即已发出(世界推进通道,见分支内注),
+    sim 下点击经端口 click_answer 受理即已发出(状态副本推进通道,见分支内注),
     恒按已发出簿记(reason='')。
     """
     # 动作 op 规范(action_ops.md 裁定原文):机械执行 + 发出即记账,禁验证/重试。
@@ -69,7 +69,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
         op.park_cursor()
         time.sleep(SHOP_OPEN_ANIM_S)
     else:
-        # sim:点击经端口 click_answer 感知 = 世界推进通道(sim-design §3.2
+        # sim:点击经端口 click_answer 感知 = 状态副本推进通道(sim-design §3.2
         # 转移源 2:_handle_click_source → _open_shop 呈现 + 离屏牌面补写 +
         # 刷价写回);屏门按点击前档名问询的 retry 是转移后可见性语义,不作
         # 发出判读——点击已受理即已发出,按已发出簿记名副其实。

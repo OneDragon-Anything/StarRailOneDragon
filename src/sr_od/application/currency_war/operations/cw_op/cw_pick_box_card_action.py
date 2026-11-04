@@ -3,7 +3,7 @@
 ``cw_overlay_pick_env``)。
 
 机械语义:点卡选中即确认(单步,无确认钮)+ overlay 动画固定等待;
-机械链发出后直调自上报单口 ``report_action_pick_box_card_param``。
+机械链发出后直调自上报唯一入口 ``report_action_pick_box_card_param``。
 """
 from __future__ import annotations
 
@@ -33,12 +33,12 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickBoxCardOp(CwOperation):
     """武装箱四选一选卡链(统一 pick-op 分发并入;点卡选中即确认,单步)。
 
-    点卡(mouse_move+click;点击点 = 容器 ``box_card_names_xy[idx]``——
+    点卡(mouse_move+click;点击点 = 状态容器 ``box_card_names_xy[idx]``——
     观察期按避让几何(卡名带下方 y,避「查看详情」按钮)解出上报,
     op-layer.md §1.1 :35,动作 op 自取,缺席/越界 = 守卫断言)→ overlay
     动画固定等待(``_OVERLAY_ANIM_WAIT_S``,与开箱结束本次访问等待同源)。
     选卡即终结 = 画面 op 派发后 round_success 结束本次访问(落地归下一帧观察);
-    本 op 零 chosen 写端,容器写零。"""
+    本 op 零 chosen 写端,零状态容器写。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -60,7 +60,7 @@ class CwActionPickBoxCardOp(CwOperation):
         action = self.param
         env = self.env
         op = env.op
-        # 点击点 = 观察上报容器(op-layer.md §1.1 :35 坐标单一真相源);
+        # 点击点 = 观察上报状态容器(op-layer.md §1.1 :35 坐标单一真相源);
         # 禁回退 env.target、禁坐标现组装(均 = 第二坐标源)。缺席/越界 =
         # 守卫断言响亮暴露零点击(防 bug 路栏,非控制流;直构动作 op 的
         # 测试语境 = 显式注入坐标域,缺席即炸 = 防线非缺陷)。

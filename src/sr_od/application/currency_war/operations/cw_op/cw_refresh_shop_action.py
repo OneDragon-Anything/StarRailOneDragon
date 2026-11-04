@@ -1,14 +1,14 @@
 """刷新商店动作 op(CwActionRefreshShopOp)——动作 op 重组换壳
 (ActionOp ABC → 框架 SrOperation;op-layer.md §1.2 动作 op 契约)。一 op 一文件。
 
-**终结跳写申报**:金账扣费 = 上报函数容器直读当次刷价(费用单一源 =
-``gs.shop_refresh_cost`` 容器;2026-10-16 用户裁决:刷新与买牌/升级/
-卖牌同款,上报即按当次价扣金,双端逻辑态——推翻 2026-09-21「金仍不写」
+**终结跳写申报**:金账扣费 = 上报函数状态容器直读当次刷价(费用单一源 =
+``gs.shop_refresh_cost`` 状态容器;2026-10-16 用户裁决:刷新与买牌/升级/
+卖牌同款,上报即按当次价扣金,实机和模拟器两边逻辑态——推翻 2026-09-21「金仍不写」
 旧裁定;环境刷新触发器的发放金 = 环境通道,见 kernel/cw_env_grants);
 刷后牌面 = ``write_logic_rand`` 随机态
 (用户裁定,以实际观察为准;真值 = 下一入口观察)。**刷新计数由本
 op 自上报统一触发**(``report_action_refresh_shop_param``:付费/全量
-计数经 ``gs.effects.record_refresh`` 单口;免费分支 = 容器字段
+计数经 ``gs.effects.record_refresh`` 唯一入口;免费分支 = 状态容器字段
 ``gs.free_refresh_left`` Field 值判定与扣减,未观察保守按付费——次数
 是记账面非决策闸,判定职能收尾观察边界,本 op 零读屏)。sim 与生产
 同一段 op 代码同口自上报同一上报函数(驱动器不执行刷新——终结动作
@@ -41,10 +41,10 @@ class CwActionRefreshShopOp(CwOperation):
     ——终结后返回主循环,下一段入口重观察)。
 
     体内零读屏零比对零验证(action_ops §1 动作 op 无论执行前后
-    不做观察识别,点击链之外零截图零识别):免费刷新判定 = 容器 Field
+    不做观察识别,点击链之外零截图零识别):免费刷新判定 = 状态容器 Field
     值(上报函数承载,见模块头);「刷新是否生效」的判效权归下一入口
     观察对账。计数自上报 = 效果账本统一触发(见模块头);金账扣费与
-    payload 随机态采样均由上报函数承载(金 = 容器直读当次刷价,
+    payload 随机态采样均由上报函数承载(金 = 状态容器直读当次刷价,
     2026-10-16 用户裁决,见模块头)。
     """
 
@@ -71,11 +71,11 @@ class CwActionRefreshShopOp(CwOperation):
                  f'{env.refresh_btn.y})')
         time.sleep(REFRESH_CLICK_SETTLE_WAIT_S)
         # 当次刷价进花销账(免费帧累加 0——修复免费帧虚记既有缺陷:
-        # 免费刷真路径实扣 0,旧形态无条件记容器价;谓词与上报函数同源
+        # 免费刷真路径实扣 0,旧形态无条件记状态容器价;谓词与上报函数同源
         # 同式 = free_refresh_left 值判定,镜像漂移由测试等值断言看住)。
-        # 非免费帧容器刷价在场用现值,未观察/0 = 回基价。读数必须走
+        # 非免费帧状态容器刷价在场用现值,未观察/0 = 回基价。读数必须走
         # .value 读口——Field 直接进算术 = TypeError(实机 04:37 刷新
-        # 首击即崩实证,店 env 容器化后此读点漏迁移)。
+        # 首击即崩实证,店 env 结构化后此读点漏迁移)。
         _left = state.free_refresh_left.value
         _free_frame = _left is not None and int(_left) > 0
         _refresh_fee = 0 if _free_frame else (

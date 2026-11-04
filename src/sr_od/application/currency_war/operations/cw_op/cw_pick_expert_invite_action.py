@@ -2,10 +2,10 @@
 文件,一 op 一文件 = op-layer.md :48;族契约与共享 env 见
 ``cw_overlay_pick_env``)。
 
-机械语义:点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨
+机械语义:点选(点击点 = 状态容器 ``expert_invite.card_points[idx]`` ∨
 ``cash_point``(idx=-1;词表特形显式分支),op-layer.md §1.1 :35 坐标
 单一真相源 = 观察上报)+ 弹窗关闭动画固定等待,无确认钮;机械链发出后
-直调自上报单口 ``report_action_pick_expert_invite_param``。
+直调自上报唯一入口 ``report_action_pick_expert_invite_param``。
 """
 from __future__ import annotations
 
@@ -35,11 +35,11 @@ from sr_od.context.sr_context import SrContext
 class CwActionPickExpertInviteOp(CwOperation):
     """专家邀请函选卡链(统一 pick-op 分发并入;点卡即选,无确认钮)。
 
-    点选(点击点 = 容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
+    点选(点击点 = 状态容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
     (idx=-1;观察上报写入,op-layer.md §1.1 :35),动作 op 按下标自取,
     缺席/越界 = 守卫断言)→ 弹窗关闭动画固定等待。``chosen_expert``/
     ConfirmExpertCash 到账登记留在画面 op 落地复查出口(动作事实边界),
-    本 op 容器写零。"""
+    本 op 零状态容器写。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False
@@ -58,7 +58,7 @@ class CwActionPickExpertInviteOp(CwOperation):
         action = self.param
         env = self.env
         op = env.op
-        # 点击点 = 观察上报容器(op-layer.md §1.1 :35 坐标单一真相源);
+        # 点击点 = 观察上报状态容器(op-layer.md §1.1 :35 坐标单一真相源);
         # 禁回退 env.target、禁 area_center 二次现取(均 = 第二坐标源)。
         # 缺席/越界 = 守卫断言 AssertionError 响亮暴露零点击(防 bug 路栏,
         # 非控制流;直构动作 op 的测试语境 = 显式注入坐标域,缺席即炸 =

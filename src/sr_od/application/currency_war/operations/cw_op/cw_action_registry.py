@@ -21,7 +21,7 @@ op-layer.md §1.2)。
 **同名动作双域行更替申报**:词表归一后 ``CwActionSellBenchParam``/
 ``CwActionLevelUpParam`` 两类为商店/备战共用词表,单一表一键一行——两行
 指向备战域 op(``CwActionSellBenchOp``/``CwActionLevelUpOp``)。依据:发出
-面策略收缩至备战期后(flow/screens-actions-capability §5 判例),两类的
+面策略收缩至备战期后(flow/screens-actions-capability §5 先例),两类的
 生产发出只在备战域,备战 op 即唯一活执行路径;原商店域 op 类随文件
 删除(cw_sell_bench_action.py / cw_level_up_action.py,生产不可达),本
 注记 = 其注销登记。商店域升级双类型已随 2026-10-17
@@ -168,7 +168,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionSellBenchParam: CwActionSellBenchOp,
     CwActionLevelUpParam: CwActionLevelUpOp,
     # (CwActionDeployMoveParam/CwActionSwapDeployParam 注册行已随部署统一
-    #  批戊批收编删除:零发出点,词表类同批退役——unified-deploy-order
+    #  批戊批纳入统一管理时删除:零发出点,词表类同批退役——unified-deploy-order
     #  §2.7/§4;统一拖动 = 唯一拖动承载。)
     CwActionSellDeployedParam: CwActionSellDeployedOp,
     # 统一拖动(部署统一批:全域移动四元组;旧 DeployMove/SwapDeploy
@@ -190,7 +190,7 @@ _REGISTRY: dict[type, type[SrOperation]] = {
     CwActionStartBattleParam: CwActionStartBattleOp,   # 终结(返回主循环战斗分支)
     CwActionOpenShopParam: CwActionOpenShopOp,         # terminal 承载行(执行抛,正常路径不可达)
     # 观察族(策略发出 CwActionObs = 环内重观察上报,不返回主循环;
-    # 现役接线域 = 备战决策环,重观察执行半 = 宿主 CwScreenPrep
+    # 现役接入调用域 = 备战决策环,重观察执行半 = 宿主 CwScreenPrep
     # .reobserve_in_visit;其他域发出 = 宿主能力缺失 AssertionError 响亮暴露)
     CwActionObsParam: CwActionObsOp,
     # 事件线 pick 族(overlay act 段经工厂,机械体 = 各 overlay 画面
@@ -232,7 +232,7 @@ def action_op_class_for(action: Action) -> type[SrOperation]:
 
     消费面 = 终结判定与 ``terminal``/``terminal_wait`` 类属性读取
     (消费点经注册表读类属性,禁消费点私表)与执行器/商店落地门的
-    (ctx, param, env) 组装构造(op 形态正本 = action_ops.md §1);
+    (ctx, param, env) 组装构造(op 形态权威版本 = action_ops.md §1);
     行序语义同构造 helper。
     词表外类型 AssertionError 响亮暴露(语义:非法返回
     = 策略器 bug,禁静默跳过;文案中性,注册表现跨域共用)。"""
@@ -249,7 +249,7 @@ def action_op_for(action: Action, ctx: SrContext, env: object) -> SrOperation:
     (ctx, param, env) 组装,新壳构造签名)。
 
     消费面 = overlay act 段(经工厂分派保持「意图类型 → 点击链」单一
-    映射);执行器/商店落地门按 op 形态正本(action_ops.md §1)直接走
+    映射);执行器/商店落地门按 op 形态权威版本(action_ops.md §1)直接走
     ``action_op_class_for(action)(ctx, action, env=...)``。env 形参 =
     域执行环境结构化包(运行时不检查,项目既有风格)。词表外类型
     AssertionError 响亮暴露(语义同上)。"""

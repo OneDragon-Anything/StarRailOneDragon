@@ -22,7 +22,7 @@ CW operations 树全部操作类的唯一父类(实机路径行为零变化):继
 flow-seam 详设附录 A);直连 controller 旁路不在本类覆写(逐点 port 检查
 归各旁路文件,运行器 controller 桩兜底触碰即炸)。
 
-sim 分支的等待语义:等待参数透传丢弃(sim 世界瞬时呈现,测试侧
+sim 分支的等待语义:等待参数透传丢弃(sim 状态副本瞬时呈现,测试侧
 ``fast_sleep`` 旁路真实等待;sim 运行不该睡实机时长的等待)。
 """
 from __future__ import annotations

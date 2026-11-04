@@ -45,7 +45,7 @@ class CwActionMoveUnitOp(CwOperation):
     def run(self) -> OperationRoundResult:
         """统一拖动:源点位 → 目标点位机械拖拽。
 
-        执行坐标边:域内点位表直取——bench = 备战栏 area 序(容器下标 =
+        执行坐标边:域内点位表直取——bench = 备战栏 area 序(状态容器下标 =
         area 序,0 基)/ front/back = 排 area 序(排内 1 基画面槽号 - 1)。
         静态合法域(front 1-4 / back 1-画面后排槽数 / bench 0-8;域枚举
         外)守卫断言 AssertionError 响亮暴露零拖拽(详设 D2-11 越界

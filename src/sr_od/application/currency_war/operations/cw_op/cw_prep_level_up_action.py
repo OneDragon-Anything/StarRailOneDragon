@@ -48,7 +48,7 @@ class CwActionLevelUpOp(CwOperation):
     """买经验(整批连点形态:找钮 → 连点授权击数 → 等待;授权批击数
     由决策侧预授权携带,执行零重闸)。非终结。
 
-    双域执行(商店执行链端口接线):备战域经 ``PrepExecEnv.executor``
+    双域执行(商店执行链端口接入调用):备战域经 ``PrepExecEnv.executor``
     (PrepActionExecutor)、商店域经 ``ShopExecEnv.executor``
     (ShopActionExecutor);按钮坐标在商店域优先取 env 已锚定的
     ``level_btn``(商店画面 op 观察 node 的 area 锚定产物),回落自读
@@ -97,7 +97,7 @@ class CwActionLevelUpOp(CwOperation):
                 ex._ctx, '备战标识-购买经验',
                 screen_name=str(getattr(ex, 'screen_name', SCREEN_NAME)))
         clicks = max(1, int(getattr(action, 'clicks', 1) or 1))
-        # 单击价容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
+        # 单击价状态容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
         _price = XP_CLICK_COST_FALLBACK
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -117,7 +117,7 @@ class CwActionLevelUpOp(CwOperation):
         # 光标 parking(审计 P0 = M38 level 毒化注入点):按钮距等级显示区 18px,
         # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
         ex._op.park_cursor(before_wait=0.3, after_wait=0.15)
-        #  挂点A(升级事件;发出即登记,观测 best-effort,零决策语义)。
+        #  插入位置A(升级事件;发出即登记,观测 best-effort,零决策语义)。
         try:
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -135,7 +135,7 @@ class CwActionLevelUpOp(CwOperation):
                            actor=type(self).__name__, mode='compute'),
                 executed=ShopActionExecuted(levelup_clicks=clicks))
             # 动作后果声明喂入(声明化单轨,op「上报后一行喂入」同形;
-            # 商业间谍升级回调世界分支 = spy_shop_refresh 触发,实机端口
+            # 商业间谍升级回调状态副本侧分支 = spy_shop_refresh 触发,实机端口
             # 未装 = no-op)。其余触发面无声明(world_decl None 本层直返)。
             cw_sim_ports.declare_world(out.world_decl)
         detail = (f'买经验整批 {clicks} 击花金{_price * clicks}'
