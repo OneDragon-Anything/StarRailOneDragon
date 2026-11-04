@@ -95,7 +95,8 @@ def apply_hp_outcome(gs: GameState, outcome: BattleOutcome) -> tuple[bool, bool]
     if outcome.won or outcome.hp_delta == 0:
         # 胜局/零扣血也落一行等值 hp 写:hp 写流 = 「每战斗结算恰一条 +
         # 选卡落地即时腿逐笔 + 持卡首领战回血腿逐笔 + 持卡战斗结束回血
-        # 腿逐笔」的测试面(first_run 容器不变式②——写流与 hp_trail 全序
+        # 腿逐笔 + 获得链交换腿逐笔(kernel 写端,sim 落地腿呈现闩配对)」
+        # 的测试面(first_run 容器不变式②——写流与 hp_trail 全序
         # 同构,每写恰一条轨迹),
         # 等值跳写会破坏同构——实机
         # 对偶 = 结算屏恒显 hp,无「胜利就不读 hp」的形态。hp 未观察

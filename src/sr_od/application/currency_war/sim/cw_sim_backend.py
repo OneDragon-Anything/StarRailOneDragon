@@ -1707,6 +1707,12 @@ class SimBackend:
     #: (同形先例同上)。
     _strategy_pick_hp_loss_gold_latch: bool | None = field(init=False,
                                                            default=None)
+    #: 策略选卡获得链交换腿呈现闩(不等价交换 hp⇄gold 互换轨迹成对;
+    #: 与前置十闩同点置位同拍消费,独立不共享——十一腿语义独立,共享闩
+    #: 会让单腿测试直读互相牵连且无状态量收益)。防重放实害 = kernel 交
+    #: 换写行恰一而轨迹追加非幂等,窗内重放会凭空多配一行破写流↔轨迹
+    #: 全序同构。私有暂态不入容器/不入快照恢复(同形先例同上)。
+    _strategy_pick_swap_latch: bool | None = field(init=False, default=None)
     #: 超发货币回流腿挂起额(前读快照跨窗承载:remaining==1 的窗口快照,
     #: 下一入口 = 第 6 次入口开窗先付;一次性消费,None = 无挂起)。
     #: 私有暂态不入容器/不入快照恢复(呈现闩同形);机制根因与单载体
@@ -2643,6 +2649,28 @@ class SimBackend:
                 apply_strategy_pick_sell_all_deal(
                     self.gs, picked, stream_rng(self.seed,
                                                 'M24/sell-all-deal'))
+        # 选卡落地拍获得链交换腿轨迹成对腿(不等价交换 hp⇄gold 互换;
+        # 通用通道辖域 = 注册表 hp_gold_swap=True 全体):kernel 交换写端
+        # 在选卡首链(report_action_pick_* → gain_invest_strategy →
+        # on_strategy_gained)已落容器,本腿只做 hp_trail 成对追加(写流
+        # ↔轨迹全序同构不变式,first_run 容器不变式②——交换写行 journal
+        # 在案而轨迹缺行即红)。配对形态 = 呈现闩族形(与前置各腿一致)
+        # 非尾值检测式:检测式「trail 尾值 ≠ hp 现值」在等值交换(交换前
+        # hp 已 == min(gold,100))下漏配——等值写行照落(先例 =
+        # apply_hp_outcome 胜局支),尾值判据看不见该行,同构锁红;闩 +
+        # 判别按「交换腿每发恰一写行」配对,等值形态天然覆盖。拿卡名
+        # 推导与呈现闩防重放 = 前置各腿同款(闩消费先于判别,交集空亦
+        # 消费;防重放窗同界 = 呈现→落地)。位置 = 即时生命腿之前:kernel
+        # 写行先于本函数各腿落容器,轨迹追加序须与写行序同构对齐(未来
+        # 同拍双 hp 腿一旦成立,追加序错位即红,前置卡位保序)。
+        if not opening and self._strategy_pick_swap_latch:
+            self._strategy_pick_swap_latch = None
+            picked = [n for n in (self.gs.invest_strategy_opts.value or [])
+                      if n in (self.gs.active_strategies.value or [])]
+            for _n in picked:
+                _eff = STRATEGY_ECONOMY.get(_n)
+                if _eff is not None and _eff.hp_gold_swap is True:
+                    self._hp_trail_append()
         # 选卡落地拍即时生命腿(hp 通道模式卡「健康充值」首落;通用通道,
         # 辖域 = 注册表 hp_instant≠0 全体,正加负损双向——负值支先亏后盈
         # −20 随批扩面):sim 世界自持账补全——live 同拍零写(游戏自算,
@@ -3813,7 +3841,7 @@ class SimBackend:
                     self._announce_screen(SCREEN_INVEST_STRATEGY)
                     self._screen = SCREEN_INVEST_STRATEGY
                     self._sub = ''
-                    # 十腿呈现闩全量照置(呈现即置闩口径 = 固定日程分支
+                    # 十一腿呈现闩全量照置(呈现即置闩口径 = 固定日程分支
                     # 同款;改写槽拾取走常规 pick 链,落地拍各腿消费依赖
                     # 闩已置位,防重放窗同界)。
                     self._strategy_pick_xp_latch = True
@@ -3826,6 +3854,7 @@ class SimBackend:
                     self._strategy_pick_recruit_drain_latch = True
                     self._strategy_pick_diamond_latch = True
                     self._strategy_pick_hp_loss_gold_latch = True
+                    self._strategy_pick_swap_latch = True
                     # 刷新授权簿记:「无法刷新」卡面直读——固定日程槽由
                     # 本分支压 False(fields.md「另有远见改写=0」落码),
                     # 联席槽本就 False;槽向量簿记同步清零(刷新重掷腿已被
@@ -3872,6 +3901,9 @@ class SimBackend:
             self._strategy_pick_diamond_latch = True
             # 已损血衍生金腿闩同点置位(十腿独立闩同形;防重放窗同界)。
             self._strategy_pick_hp_loss_gold_latch = True
+            # 获得链交换腿闩同点置位(十一腿独立闩同形;防重放窗同界,
+            # 重放会凭空多配一行轨迹破写流↔轨迹全序同构)。
+            self._strategy_pick_swap_latch = True
             # 刷新授权簿记(2026-10-19 用户裁定「sim 与实机一致提供刷新
             # 次数」批):固定日程槽呈现逐卡计数(基准 1 + 环境
             # extra_pick_refreshes 增量);联席额外槽 desc 未写明刷新语义,
@@ -3990,7 +4022,8 @@ class SimBackend:
         # 置闩」口径,落地拍消费防重放);出售发牌腿闩同形照置;即时生命
         # 腿闩同形照置;分期金初始化腿闩同形照置;位面段补发腿闩同形照置;
         # 超发货币负债腿闩同形照置;大扩招扣金负腿闩同形照置;宝钻世界
-        # 联动腿闩同形照置;已损血衍生金腿闩同形照置。
+        # 联动腿闩同形照置;已损血衍生金腿闩同形照置;获得链交换腿闩同形
+        # 照置。
         self._strategy_pick_xp_latch = True
         self._strategy_pick_streak_latch = True
         self._strategy_pick_sell_deal_latch = True
@@ -4001,6 +4034,7 @@ class SimBackend:
         self._strategy_pick_recruit_drain_latch = True
         self._strategy_pick_diamond_latch = True
         self._strategy_pick_hp_loss_gold_latch = True
+        self._strategy_pick_swap_latch = True
         # 刷新授权簿记(逐卡按登记 refresh_count;0 = 不可刷 = 空授权,
         # 槽向量簿记同步清零 = 无刷新窗语义)。
         refreshable = spec.refresh_count > 0

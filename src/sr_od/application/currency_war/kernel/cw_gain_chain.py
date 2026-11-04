@@ -107,6 +107,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_REROLL_NAMES,
     HYPEREMIT_SPEC_ID,
     INVESTMENT_ENVS,
+    SQUAD_HP_CAP,
     STRATEGY_BENCH_COUNT_XP_GRANTS,
     STRATEGY_BENCH_LEAVE_GOLD_GRANTS,
     STRATEGY_BOND_BATTLE_GRANTS,
@@ -4020,7 +4021,7 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        sig: ChannelSig,
                        rng: random.Random | None = None) -> tuple[str, ...]:
     """「获得投资策略」触发型效果枚举(gain-chain.md §3;枚举即收敛
-    无注册表):四条分支依次消费——
+    无注册表):五条分支依次消费——
 
     1. **advisor 解锁分支**:查 ``STRATEGY_GRANTS``(顾问入商店族登记,
        advisor=True 11 条)→ :func:`_unlock_experts` 写解锁状态(官方
@@ -4057,7 +4058,10 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
        check_env_item_open_perfect,按键查表卡名无关)。效果串
        ``item_open_scheduled:<件名>@<位>-<轮>``;零 rng(到手确定件名、
        解锁位确定推算);
-    4. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
+    4. **economy 交换腿**(注册行 ``hp_gold_swap is True``,双字段
+       hp⇄gold 互换逻辑写,零 rng 零采样,须在效果体分支早退之前——
+       效果体查表失败即提前 return 会吞掉本腿;详见腿内注释);
+    5. **效果体分支**:查 ``PICK_INVEST_EFFECTS``(效果内容住
        ``cw_gain_effects.py``,本模块模块级查表)分派效果函数;未收录卡 =
        查无效果安静不写,真值归观察覆盖。``rng`` = 采样注入(缺省
        ``random.Random()`` 在本函数体内生成;效果体含采样 → 对其子链传
@@ -4149,6 +4153,43 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                                          f'#accel_scope'), sig=sig)
         effects.append(f'item_open_scheduled:{_delayed.item}'
                        f'@{unlock[0]}-{unlock[1]}')
+    # economy 交换腿(不等价交换,卡面「交换你的小队生命值和金币。」,
+    # 棱彩):归属 = 逻辑写(fields.md 效果改写源归属节本卡裁定行),
+    # kernel 获得链首个 hp 逻辑写端——与即时生命通道「链内写 hp 会在
+    # live 侧引入 hp 逻辑写端」立场(apply_strategy_pick_hp docstring)
+    # 并置不冲突:彼立场系该通道「选卡当场即时型」腿自身的实现选择,
+    # fields.md 归属节按卡分行各卡各归各行,非 hp 写入闸全局禁令;本写 =
+    # 确定性推算的账面真值锚(live 游戏自算自发,交换双值 bot 均已知
+    # 零猜测面,失配经既有金/血 mismatch 对账通道显形,下一备战帧真读
+    # 重锚)。触发 = 卡直读 get_strategy(canon).economy.hp_gold_swap
+    # is True(禁聚合;查无安静零写);先双读后双写(两字段不相交,
+    # 次序无关),任一 None 双零写(宁缺勿造,apply_equip_acquire_hp
+    # 同闸;gold 种子后恒有值故 sim 结构性不触发,None 闸 = live 防御
+    # 面)。hp := min(gold_old, SQUAD_HP_CAP) = invest_effects.md §5
+    # 「按字面 swap,保守 clip」裁定行操作化(上界系建模边界值非实证
+    # 游戏上限;clip 后等值仍落写,先例 = apply_hp_outcome 胜局支;下界
+    # 字面 0 不设 floor:首次归零保底触发写端唯一在战斗结算链
+    # apply_hp_outcome,扩辖选卡拍无卡面 desc 据);gold := hp_old(gold
+    # 侧无截断:域非负无上界,旧 hp ∈ [0, SQUAD_HP_CAP] 天然合法)。
+    # hp=0 后果域 = 字面落 0,死亡判定维持现役结算链零改(hp=0 后下一
+    # 败局结算经 apply_hp_outcome 首次归零保底写 1 非死,胜局等值写
+    # 维持 0;sim 引擎无战斗外死亡判定,live 真实死亡规则未采证)。
+    # 零 rng;无 done 闩——重入非幂等(双发经 clip 不对称:gold 150→100
+    # 永久损失),sim 防重 = offer 层 excluded_invest 结构性承载,live
+    # 重入未证面申报制(后果有界 + 金位账面选卡帧事件级失效 +
+    # mismatch 对账兜底)。
+    _swap_eff = get_strategy(canon)
+    if (_swap_eff is not None and _swap_eff.economy is not None
+            and _swap_eff.economy.hp_gold_swap is True):
+        _hp_old = gs.hp.value
+        _gold_old = gs.gold.value
+        if _hp_old is not None and _gold_old is not None:
+            gs.write_logic(gs.hp, min(int(_gold_old), SQUAD_HP_CAP),
+                           produced_by=GAIN_CHAIN_PRODUCER,
+                           evidence='strategy:hp_gold_swap', sig=sig)
+            gs.write_logic(gs.gold, int(_hp_old),
+                           produced_by=GAIN_CHAIN_PRODUCER,
+                           evidence='strategy:hp_gold_swap', sig=sig)
     fn = PICK_INVEST_EFFECTS.get(canon)
     if fn is None:
         return tuple(effects)

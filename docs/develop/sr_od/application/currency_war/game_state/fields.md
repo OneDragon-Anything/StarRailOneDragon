@@ -594,6 +594,11 @@ env 直发形 None 视 0 照写会伪造金绝对值假真值不取)。
 sim 开局模型值 hp_trail[0];「已损失」口径与基线来源系判读申报制,披露键
 `STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION` 随局申报,条件单一源 =
 `cw_gain_chain.check_strategy_hp_loss_gold`)。
+获得链交换分支(不等价交换 hp⇄gold 互换)实机(live)同样由游戏自算——bot 侧
+kernel 获得链交换分支按 §5.3 本卡归属裁定行逻辑写一条(`strategy:hp_gold_swap`,
+gold := 旧 hp,无截断:gold 值域非负无上界,旧 hp ∈ [0, SQUAD_HP_CAP] 天然合法;
+选卡时点金位账面事件级失效协议照常吸收,invest_effects.md §7),推算失配经既有
+金 mismatch 对账通道显示出来;模拟器局内同写分支已落容器,金无轨迹配对义务。
 **边界**:None=不可读,不可信不写。
 
 #### 3.2.10 经验等级 level / xp
@@ -645,6 +650,16 @@ p{位面}r{轮}`)与全战斗域支(battle_end_heal_hp,星际和平保险,eviden
 (hp_max 字段缺位),hp_trail 成对追加(写流↔轨迹同构);条件单一源 =
 `cw_gain_chain.check_strategy_boss_end_heal` / `check_strategy_battle_end_heal`;
 live 同为观察覆盖维持两写入方结构。
+获得链交换分支写状态的实现分支(不等价交换 hp⇄gold 互换):kernel 获得链按本卡
+效果改写源归属裁定行(§5.3「不等价交换」行「归属=逻辑写」)双字段 `write_logic`
+各一条(evidence `strategy:hp_gold_swap`),hp := min(gold, SQUAD_HP_CAP) 保守
+截断、gold := 旧 hp——这是 hp 首个 kernel 侧逻辑写入方,与上文两个模拟器写分支
+的「实机(live)侧零逻辑写」立场并存不冲突:彼立场是即时型/回血型两通道自身
+「实机由游戏自算」的实现选择,归属裁定按卡分行、各卡各归各行,不是 hp 写入闸门
+的全局禁写令;本写 = 确定性推算的账面真值锚(实机(live)游戏自算自发,交换双值
+bot 均已知零猜测面),推算失配经既有金/血 mismatch 对账通道显示出来,下一备战帧
+真读重锚。模拟器局内成对义务 = hp_trail 逐笔追加(sim 落地分支按呈现一次性
+标志位配对,写流↔轨迹全序同构;等值交换写行照落,轨迹同拍追加)。
 **边界**:不可信帧不写。容器存**门前真值**、消费视图施门在消费侧(hp_readable/
 hp_trusted 语义 = §8.7 旧 hp 消费视图并入口径,单一源 = cw_gs_view);「备战帧仅 shop 关闭态」
 的字面全局禁写与结算覆盖不冲突——结算是独立写入方。
@@ -2678,8 +2693,14 @@ cw_opening_hp,,禁第二份数值源)。实例登记端=`register_affix`(播种�
 
 #### 不等价交换(hp⇄gold 双字段互换)
 
-**归属=逻辑写**:选卡时 hp:=gold、gold:=hp,双字段各 `write_logic` 直写一条(先例=
-奋斗协议币种切换)。
+**归属=逻辑写**:获得时点 hp := min(gold, SQUAD_HP_CAP)(保守截断,权威版本 =
+invest_effects.md §5「按字面 swap,保守 clip」裁定行)、gold := hp,双字段各
+`write_logic` 直写一条(evidence `strategy:hp_gold_swap`)。hp 侧写分支先例 =
+`apply_equip_acquire_hp`(hp 逻辑写 + None 基座闸门),gold 侧先例群 =
+cw_env_grants 世界发放金写分支;字段写行枚举与实机/模拟器两边语义见 §3.2.13 /
+§3.2.9 交换分支两行(本节系归属裁定单一源,写分支细节不重复)。hp=0 后果域 =
+字面落 0,死亡判定维持现役战斗结算链零改(hp=0 后下一败局结算经
+`apply_hp_outcome` 首次归零保底写 1 非死,胜局等值写维持 0)。
 
 #### 保险族(损血返金 + 装备效果 + 回血)
 

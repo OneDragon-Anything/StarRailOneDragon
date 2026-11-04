@@ -175,7 +175,11 @@ class EconomyEffect:
     gold_at_node: int = 0                 # 时点大额(超发货币 +70;负债部分由消费端按持有金算)
     gold_at_node_offset: int = 0          # 何时(t+5)
     interest_flat_per_node: int = 0       # 狸财经狸:每节点固定息(与 interest_cap 无关)
-    hp_gold_swap: bool = False            # 不等价交换:交换 hp/gold(33 号 λ_hp 消费)
+    # 不等价交换:获得拍 hp⇄gold 互换(kernel 获得链交换腿逻辑写,
+    # fields.md 效果改写源归属节本卡裁定行「归属 = 逻辑写」;hp 侧
+    # min(gold, SQUAD_HP_CAP) 保守 clip,evidence strategy:hp_gold_swap;
+    # 血本位族判据消费 = is_blood_economy)
+    hp_gold_swap: bool = False
     gold_per_hp_lost_now: bool = False    # 星际和平保险:选卡时=已损血数金
     battle_end_heal_hp: int = 0           # 星际和平保险(棱彩):战斗结束回复
                                           # 10 血(战斗结算型 HP 世界腿:条件
@@ -882,6 +886,19 @@ def dakuozhao_deduction_plan(gold: int) -> tuple[int, int]:
     n = min(gold // RECRUIT_STEP_GOLD,
             RECRUIT_MAX_DEDUCT // RECRUIT_STEP_GOLD)
     return n * RECRUIT_STEP_GOLD, n
+
+
+# ===== 小队生命值上界(kernel 侧 hp 值域建模边界)=====
+# hp 交换腿(kernel 获得链「不等价交换」hp := min(gold, 本值) 写端)的
+# 保守 clip 上界:交换 = 赋值语义,须截断至 hp 值域上界(正本 =
+# docs/game/currency_war/research/invest_effects.md §5「按字面 swap,
+# 保守 clip」裁定行)。放 kernel:消费端含 kernel 获得链写端,import 方向
+# 只允许 sim→kernel(kernel 模块级禁 import sim),sim/测试侧值域消费
+# 经本单一源复用禁双源。值系建模边界值非实证游戏上限(证据锚 =
+# hp_trail 值域锁参数化界与策略侧生存数学 hp_cap 默认档);直加不 clip
+# 族(即时生命/回血两族)不消费本常量——直加无消费端语义,hp_max 字段
+# 缺位缺口申报单一源 = fields.md hp 主条目。
+SQUAD_HP_CAP: int = 100
 
 
 STRATEGY_EFFECTS: dict[str, EffectSpec] = {
