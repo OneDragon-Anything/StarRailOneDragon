@@ -5,7 +5,7 @@
 
 ## 1. 分发判定
 
-- 外循环「商店开画面」分支(店已开态):开商店画面档 = 建档 `货币战争-备战-开商店`(screen_info `currency_war_battle_prep_shop_open.yml`)**三 id_mark** 同帧——「备战标识-购买经验」∧「按钮-收起」∧「标识-备战阶段」(屏名路由命中;原穿透锚函数 `_shop_open_anchors_hit` 已随死代码清偿移除;三锚与干净备战的「按钮-出战」天然互斥)。分发 = 阶段一身份行(三 id_mark;历史穿透命中曾把部署/出战点击打在浮层上,§2.2)。
+- 外循环「商店开画面」分支(店已开态):开商店画面档 = 建档 `货币战争-备战-开商店`(screen_info `currency_war_battle_prep_shop_open.yml`)**三 id_mark** 同帧——「备战标识-购买经验」∧「按钮-收起」∧「标识-备战阶段」(屏名路由命中;原穿透识别标志函数 `_shop_open_anchors_hit` 已随死代码清偿移除;三识别标志与干净备战的「按钮-出战」天然互斥)。分发 = 阶段一身份行(三 id_mark;历史穿透命中曾把部署/出战点击打在浮层上,§2.2)。
 - 显式开店:备战访问内 `OpenShop` 动作 → `visit_open_shop`(本篇 §2 编排单一源,与「商店开画面」分支转交同口构造 `CwScreenShop`)。OpenShop 为单一形态,无受限变体。
 - 受限消费(策略侧自限,零流程闸——受限是策略自己遵守的纪律,框架不加流程强制):策略器每帧现算一个标记,表示本帧处于「决战前的受限花钱阶段」(出战就绪 ∧ 金币已达利息线;派生标记 = `mandate_v1/bridge.py::launch_restricted_session_active`,每帧现算、不跨帧记忆)。处于该阶段时,决策链最先检查的发出点(`mandate_v1/bridge.py::_launch_front_check`)产出的商店访问意图 = 普通开店/普通访问路径。该阶段商店只做一次受限购买:`decide_shop_action` 给出唯一提案,经 kernel 校验谓词 `kernel/cw_launch_arbitrage.py::launch_arbitration_gate` 检查,拒绝则改发 CloseShop 关店、结束本次访问(直接放弃,不换第二方案);每个出战就绪段最多触发一次(阶段标志位 `cw4_launch_spend_visited`,离开出战就绪状态后复位)。
 - 建档 = `assets/game_data/screen_info/currency_war_battle_prep_shop_open.yml`(商店牌-1..5 / 按钮-刷新 / 备战标识-购买经验 / 按钮-收起 等 area)。

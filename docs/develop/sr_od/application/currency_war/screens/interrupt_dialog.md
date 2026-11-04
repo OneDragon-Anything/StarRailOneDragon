@@ -8,11 +8,11 @@
 
 ## 2. 画面形态声明
 
-**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-中断挑战弹窗.标识-中断挑战」,与分发判定同源同参;miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → id_mark 不在 = 已离开本画面 → success 结束本次访问)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
+**空决策形态**(纯推进;弹窗带选项面但选择被语义红线钉死为唯一出口——关 X,放弃/离开永不候选)。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志门(「货币战争-中断挑战弹窗.标识-中断挑战」,与分发判定同源同参;miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → id_mark 不在 = 已离开本画面 → success 结束本次访问)→ 点 X 单次推进 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口。
 
 ## 3. 观察面
 
-轻观察:观察 node = `entry_ok` area 锚原语 → obs = `CwScreenInterruptDialogObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/interrupt_dialog.py`;无 report 接口)。零 GameState 写端——弹窗内「小队生命值」为 HP 真值快照,对账备用、暂不消费。
+轻观察:观察 node = `entry_ok` area 识别标志原语 → obs = `CwScreenInterruptDialogObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/interrupt_dialog.py`;无 report 接口)。零 GameState 写端——弹窗内「小队生命值」为 HP 真值快照,对账备用、暂不消费。
 
 ## 4. 动作面
 
