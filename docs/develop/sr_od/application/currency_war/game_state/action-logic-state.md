@@ -1,11 +1,11 @@
 # 动作逻辑态（action-logic-state）
 
-> **逐动作计算规则分篇见 [logic-updates/](logic-updates/README.md)**（每动作 op 一篇：域集/转移规则/随机面/拒绝语义/符号锚/语义验证（投影测试）/先例）；本篇保留总则与原则。
+> **逐动作计算规则分篇见 [logic-updates/](logic-updates/README.md)**（每动作 op 一篇：域集/转移规则/随机面/拒绝语义/符号名引用/语义验证（投影测试）/先例）；本篇保留总则与原则。
 > 术语与图例:保留词(两态制/逻辑随机态/对账/帧/帧代次等)与数字来源标注四形态【注】【推】【拟】【拍】见
 > [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 > 定位：货币战争主链**每个动作 op 的逻辑态计算规则全集**（地基文档）。动作 op 机械发出后，不经任何画面观察，按游戏规则从动作前状态推算出预期状态并直写状态容器(GameState)——这份推算规则的确定性全集就是本篇。真值永远以下一帧画面观察为准。
 > 用户裁定：不许以「逻辑态未建模」为由把动作返回主循环——在用动作全集逐个有逻辑态；除 §5 两类转移动作显式声明「逻辑态=空」、§6 声明的事件选择边界外，本篇不存在「无逻辑态」的动作。
-> 机制事实依据 = `docs/game/currency_war/research/`（merge_mechanics / xp-rules / economy / equipment_mechanics / screen_flow_timing）+ `docs/game/currency_war/data/gameplay.md`（官方原文）+ `../proofs/`（数学证明）。kernel 现位依据 = 符号锚 `文件::符号名`（路径根 = `src/sr_od/application/currency_war/`，行号不写，随代码漂移）。
+> 机制事实依据 = `docs/game/currency_war/research/`（merge_mechanics / xp-rules / economy / equipment_mechanics / screen_flow_timing）+ `docs/game/currency_war/data/gameplay.md`（官方原文）+ `../proofs/`（数学证明）。kernel 现位依据 = 符号名引用 `文件::符号名`（路径根 = `src/sr_od/application/currency_war/`，行号不写，随代码漂移）。
 > 读者 = 无会话历史的工程师/智能体。职责分界：「一次访问内怎么编排动作」= [action_exec.md](../flow/action_exec.md) / [prep.md](../screens/prep.md) / [shop.md](../screens/shop.md)；「每个字段怎么记」= [fields.md](fields.md)。与 fields.md 的分工：fields.md 按**字段**记写入面，本篇按**动作**记计算规则，同源互指。
 
 ## 1. 总则
@@ -40,7 +40,7 @@
 
 ### 1.4 kernel 单一源指针纪律
 
-- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号锚）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数 = 效果账本 `record_refresh` 单口，经刷新上报函数触发，`kernel/cw_effect_inventory.py`）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；上报写入方 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（工具七类状态容器直写；登记表 `EQUIP_WRITE_SIDES` 保留）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
+- **规则已实现**：本篇只写语义 + 指向 kernel 函数（符号名引用）；数值只写常量名，不复制数值（值的单一源在代码）。本篇被指对象：`kernel/cw_merge_simulate.py::merge_buy_k` / `merge_buy_completes` / `_merge_bench` / `_apply_full_bench_merge_buy` / `same_star_count`；`kernel/cw_economy.py::sell_refund` / `bench_char_cost` / `xp_apply_clicks` / `xp_click_cost` / `clicks_to_next_level` / `blood_xp_full_clicks`；`kernel/cw_action_report/` 上报函数族（每动作一文件 `report_action_<snake>_param`，零写族 `zero_writes.py`；刷新计数 = 效果账本 `record_refresh` 单口，经刷新上报函数触发，`kernel/cw_effect_inventory.py`）与 `kernel/cw_game_state.py::detect_merge_upgrade`；`kernel/cw_exec_state.py::apply_confirm_effect`（dict 确认族）；上报写入方 = `kernel/cw_action_report/tool_use.py` 七具名上报函数（工具七类状态容器直写；登记表 `EQUIP_WRITE_SIDES` 保留）；`kernel/cw_effect_inventory.py::spawn_equip_bench_unit` / `grant_equip_item` / `transform_equip_to_privilege` / `transform_worn_equip_to_privilege`。
 - **规则未实现**（无 kernel 代码写入口）：**本篇该节即实现规格**——实现时按本节规则写入代码，不另立规格文档。
 - 同一规则多载体若漂移，以 kernel 单一源为准修齐（`kernel/cw_merge_simulate.py` 模块头注）。
 
@@ -48,7 +48,7 @@
 
 同一套规则按宿主分落点写入代码；本篇按动作写规则一次，在用落点同规则消费：
 
-| 落点 | 宿主 | 写入口（符号锚） | 消费方 |
+| 落点 | 宿主 | 写入口（符号名引用） | 消费方 |
 |---|---|---|---|
 | 状态容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | 上报函数族 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数、商店/备战两域统一；快照与升星分支内聚于买牌函数单点；备战金账与库存分支内聚于各函数 `session` 形参面；零写族 = `zero_writes.py`；dict 确认族 = `apply_confirm_effect`） | 动作 op 机械执行后直调自己的上报函数（sim 与实机同一段 op 代码同口直调——驱动反转后无独立引擎委托入口，旧 `cw_sim_actions.apply_player_action` 委托串已随自驱动引擎停用）；商店序列驱动器（`bridge.py::decide_shop_screen`，回放/既有序列测试消费面）逐动作直调；以实际观察为准修正 |
 | （席位平行账已停用） | — | — | 席位真值单账 = 主域字段（bench/deployed）,动作落地由上报函数直写主域;平行账与执行器同步分支已停用,对账唯一发生点 = 观察边界（见 screen_op §2.3/§4） |
@@ -302,7 +302,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 
 ### 4.3 拆装扳手（角色目标·档 2 未接）
 
-**逻辑态规则（本节即实现规格）**：目标角色的全部已穿装备移出穿戴域、**全量回装备区**（owned 库存 += 全部件名）；工具消耗品 −1（用后消失）。装备转移不可角色间直拖（拖拽无响应），转移两途径 = 卖角色或扳手（`research/equipment_mechanics.md`「装备转移机制」节）。写入方登记 = `EQUIP_WRITE_SIDES['拆装扳手']`（op 域既有装备转移链流向锚）。**依据**：equipment_mechanics §5 拆装扳手行、fields.md §4.2 RunTools。
+**逻辑态规则（本节即实现规格）**：目标角色的全部已穿装备移出穿戴域、**全量回装备区**（owned 库存 += 全部件名）；工具消耗品 −1（用后消失）。装备转移不可角色间直拖（拖拽无响应），转移两途径 = 卖角色或扳手（`research/equipment_mechanics.md`「装备转移机制」节）。写入方登记 = `EQUIP_WRITE_SIDES['拆装扳手']`（op 域既有装备转移链流向识别标志）。**依据**：equipment_mechanics §5 拆装扳手行、fields.md §4.2 RunTools。
 
 ### 4.4 精密拆装扳手（角色目标·档 2 未接）
 
@@ -350,6 +350,6 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 | 好运令牌定向池结构（「四件」vs「3+3」）与判据面（R(c) 推荐表未采集） | 好运令牌（§4.7/§3A.2） | 判据面 fail-closed 永不进准入；`LuckyTokenUse` 类随族立档 + 动作发出点禁无判据发出，逻辑态 = 工具 −1 + 获得面按选定后确定直写 | 拖一次令牌数选项实机采集（proofs/p14 Q5）+ 判据面建模批补档 |
 | 商业间谍「升级时刷新商店并偷最贵 3 张」副作用 | LevelUp（两形态）+ 任意经验来源升级（值变更回调辖域） | 升级分支只写经验/金；连锁写端 = 升级值变更回调（`cw_levelup_callbacks`）；牌面偷取后果归下一帧观察 | 持商业间谍局升级时刻前后商店牌面比对 |
 | 晋升名额「买经验时随机一槽变高 1 费」副作用 | LevelUp（两形态） | 同商业间谍行（随机面归观察） | 持晋升名额局买经验前后牌面费用比对 |
-| 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对。sim 侧已按暂定表述建模（`_skip_battle` 零战斗面,披露键 `cw_skip_settlement_semantics_pending`）,证伪即改 sim 消费腿对应支 | 免战局跳过前后三字段比对 |
+| 免战牌跳过后 hp/streak/收入「不动」（暂定表述） | StartBattle（跳过子态） | 跳过无结算帧；下一备战帧观察覆盖时三字段必核对。sim 侧已按暂定表述建模（`_skip_battle` 零战斗面,披露键 `cw_skip_settlement_semantics_pending`）,证伪即改 sim 消费分支对应部分 | 免战局跳过前后三字段比对 |
 
 （随机面类目——刷新新牌、冶金炉产物、晶矿内容、掉落金额——**不在本表**：它们受 §1.2 确定性原则约束，是原则性的观察收尾，不是待补档缺口。）

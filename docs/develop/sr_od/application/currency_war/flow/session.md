@@ -38,8 +38,8 @@
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 备注 |
 |---|---|---|---|---|
-| ~~`last_hp` / `last_hp_t` / `last_hp_real` / `last_hp_real_node` / `hp_suspect`~~ | —— | —— | —— | **已停用删除**(终态契约 §A 防御缓存删除,`cw_strategy_session.py` 注释权威版本):结算 hp 锚/对账锚/hp 下行拒信通道整组删除——「上一真值」语义由结算覆盖写端 + carried 语义承载(`../game_state/fields.md` §2.1),hp 读数消费 = 状态容器单读(`decision_hp`,观测与支付币读数面) |
-| `last_node_type` / `node_type_current` / `upcoming_types` | 节点行读取(read_node_sequence) | on_round_end 遥测、策略器(旧日志标签 director)判节点 | 帧/节点 | 节点锚同族模式 |
+| ~~`last_hp` / `last_hp_t` / `last_hp_real` / `last_hp_real_node` / `hp_suspect`~~ | —— | —— | —— | **已停用删除**(终态契约 §A 防御缓存删除,`cw_strategy_session.py` 注释权威版本):结算 hp 识别标志/对账识别标志/hp 下行拒信通道整组删除——「上一真值」语义由结算覆盖写端 + carried 语义承载(`../game_state/fields.md` §2.1),hp 读数消费 = 状态容器单读(`decision_hp`,观测与支付币读数面) |
+| `last_node_type` / `node_type_current` / `upcoming_types` | 节点行读取(read_node_sequence) | on_round_end 遥测、策略器(旧日志标签 director)判节点 | 帧/节点 | 节点识别标志同族模式 |
 | `nodeseq_probe_anchor` | 节点行读取(框架侧) | 节点行读取防重 | 节点 | 左移推断轮次用 |
 | `last_streak` | 结算屏「连胜×N」 | economy C 杠杆 | 节点 | 方向语义在符号 |
 | `last_level_obs` | read_level + 单调守卫 | 等级读数消误 | 局 | 识别层守卫状态 |
@@ -222,7 +222,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 | 原改造点 | 现役形态 |
 |---|---|
-| 裸构造 ×3(旧 engine_p1/engine_p2 锚) | 消亡——`create_session` 唯一的每局新建入口 live/sim 同链(§3.4) |
+| 裸构造 ×3(旧 engine_p1/engine_p2 识别标志) | 消亡——`create_session` 唯一的每局新建入口 live/sim 同链(§3.4) |
 | 策略字段直写 ×3(`v2_state`/`v3_form_ok`) | 消亡——状态迁 MandateState 后无引擎直写面;初始相位经状态构造,镜像写经共享镜像函数 |
 | 广域只读点(`v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap`) | 消亡——读写同口 = 访问函数,live/sim 同一读链 |
 | cw4_counters 轮差分 | 消亡——原引擎轮差分账本随停用拆除;计数同源累计,消费 = 局终聚合 `MatchFinal.cw4_counters`(§5.4 as-built 注) |
