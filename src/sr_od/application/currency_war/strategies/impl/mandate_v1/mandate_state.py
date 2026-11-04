@@ -168,16 +168,15 @@ class StrategyState:
     """
 
     # ===== 方向键面(键面归一:锁定线槽 = target_comp 终态单写者
-    #       = session_scope.write_line_lock;配方物化链写端 =
-    #       opening_recipe_comp;写读单一源 = session_scope 方向函数族)=====
+    #       = session_scope.write_line_lock;方向读口 =
+    #       session_scope.direction_comp_of 四层优先现读)=====
     target_comp: Comp | None = None
     """锁定线槽(候选-锁定制的锁定产物,Comp 对象;None = 未锁定)。
 
     终态单写者 = ``session_scope.write_line_lock``(硬规则命中帧或时点
-    兜底帧一次性写入,锁后只读——候选-锁定制无换目标);物化链
-    (flow 层 P1 配方)写端已切 ``opening_recipe_comp``,两键互不覆写
-    (P1 锁定局并集消费见 shop 序 1,line_and_upgrade §1.3)。kernel
-    消费面经 ist.locked_comp 派生缓存续读(session_scope 同步)。"""
+    兜底帧一次性写入,锁后只读——候选-锁定制无换目标;旧配方物化键
+    已随配方决策层退役,无第二写者)。kernel 消费面经 ist.locked_comp
+    派生缓存续读(session_scope 同步)。"""
     # 过渡框架(仙舟/列车,''=未定):双轨期买/上/卖三侧的统一临时 target。
     # (现役无写端、消费面按 '' 缺省只读——历史保留键,读端见
     # cw_recipe/cw_deploy_logic。)
@@ -379,36 +378,25 @@ class StrategyState:
 
     # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;
     #       键面归一:锁定线槽 = target_comp〔意向面段,终态单写者 =
-    #       session_scope.write_line_lock〕+ 候选快照 + opening_recipe_comp
-    #       三键;line_locked_comp 过渡键已删除)=====
+    #       session_scope.write_line_lock〕+ 候选快照 + 过渡候选槽;
+    #       line_locked_comp 过渡键与配方物化键 opening_recipe_comp
+    #       已随配方决策层退役)=====
     # 候选 top3 快照(线名元组,分数降序——line_select 字典序:环境分级
     # → 持有证据级 → 攻略热度,注册序终局):每帧派生快照非持久状态,
     # 随方向证据签名重算自然更新;锁定写入时**清空**并停算(连带动作
     #③——锁定后读本键恒 = 空集,消费端无需另查锁定旗标)。
     line_candidates: tuple[str, ...] = ()
-    # 过渡配方开局面键(契约 B 第三键):部署开局面数据源(P1 过渡
-    # 配方,M5/P1),与锁定线槽互不覆写;键面归一后 = 配方物化链
-    # 唯一写端(flow 层 P1 物化写此键,session_scope 不搬运;物化源
-    # = 过渡候选槽首位〔无门控,空窗期恒有最强方向〕——12 号篇
-    # §3 配方物化,冻结后 = 冻结对)。方向节拍贵段随
-    # 候选重算自写,非节点作用域键(节点边界不重置);P2 起物化链停写
-    # (窗口谓词覆盖 + clear_p1_recipe 同点清空),残留值不消费——
-    # 名单类读口(priority 装配/sell_line_membership)判窗在直读之前,
-    # direction 读口的 P2 守卫等价(锁定态名单读口也读本键,均 P2 后
-    # 恒空)。
-    opening_recipe_comp: Comp | None = None
-    # [索引定义] transition_candidates = 过渡候选槽(kernel 体系对候选
-    # 机器的输出快照):值 = 体系对元组的有序元组,元素坐标系 = 四体系键
-    # 闭集(cw_intention._P1_PAIR_PREF:仙舟/持续伤害/列车同行/希儿系)
-    # 的一或二元组、对内按声明序规整;序 = 候选排序键((对级支持度降序,
-    # 对级声明序),对级支持度 = min 席级,希儿系对入候选门槛 = 席级
-    # 1.0)下的前 3 位(12 号篇 §3 候选空间与评估);
-    # 冻结后 = 单元素(冻结对,恒二元组)。取值时机 = 每 game-round 配方
-    # 链重算帧现算覆写(写入端单一源 = cw_intention.update_p1_recipe 的
-    # st 鸭子参数,flow 贵段传入本对象);进 P2 由 clear_p1_recipe 同点
-    # 清空。非节点作用域键(候选随支持度事件重排,节点边界不重置);
-    # 无羁绊开局合法空(冷启动兜底归商店臂,design §2.3-8)。
-    transition_candidates: tuple[tuple[str, ...], ...] = ()
+    # [索引定义] transition_candidates = 过渡候选槽(kernel 过渡候选
+    # 机器的输出快照):值 = 过渡条目名的有序元组(坐标系 =
+    # cw_comps.TRANSITION_LIBRARY 条目名闭集),序 = 候选排序键
+    # ((持有分降序,注册序))下的前 3 位(与终局候选数同值复用)。
+    # 取值时机 = 每 game-round 过渡候选机器重算帧现算覆写(写入端
+    # 单一源 = cw_intention.update_transition_candidates 的 st 鸭子
+    # 类型参数,flow 贵段传入本对象;窗口守卫 = 未终局锁定帧);
+    # 终局锁定由 session_scope.write_line_lock 过渡层退役清空同点
+    # 清空。非节点作用域键(候选随持有/词缀事件重排,节点边界不重置);
+    # 开局零持有合法空(冷启动兜底归商店臂,见即买并集键域)。
+    transition_candidates: tuple[str, ...] = ()
     # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
@@ -428,24 +416,11 @@ class StrategyState:
     # 传入)。
     p2_strategy_pick_done: bool = False
 
-    # ===== 过渡锁定状态槽(统一保护集迭代 changes/2026-10-15-unified-
-    #       protection-set design.md §2.1 新增;买/卖消费点归后续批接入调用,
-    #       本槽现役零行为消费面)=====
-    # [索引定义] transition_locked_systems = 过渡域已点亮体系的键集
-    # (frozenset[str]):键坐标系 = 四体系键闭集——cw_engine_facts.
-    # TRANSITION_TRAITS 三羁绊键(仙舟/列车同行/持续伤害)∪
-    # cw_line_facts.SEELE_SYSTEM('希儿系');取值时机 = 策略层决策
-    # 入口前置段逐帧现算(写入端单一源 =
-    # protection.refresh_transition_locked_systems,bridge.py 两决策
-    # 入口在 refresh_line_if_needed 同点调用)。语义 = **幂等只增不减**
-    # (design §2.7 取舍:达成过的体系不因掉档失去锁定,防「掉档 →
-    # 保护收缩 → 连锁卖」恶性循环,与终局侧「锁后不换」同构);清空点
-    # 唯一 = 进位面 2(flow._refresh_direction 配方退场同点)。注意
-    # 本槽 ≠ 买面锁定态消费(买面锁 = 终局锁定态
-    # line_members_view.locked);点亮判定域 = 持有域(bench ∪
-    # deployed),与板面域 seele_system_formed 在「bench 满持未上阵」
-    # 帧异判为本设计选定行为。
-    transition_locked_systems: frozenset[str] = frozenset()
+    # (过渡锁定状态槽 transition_locked_systems 已随 comp-structure-
+    #  unification 3.3 合并裁定删除:职责(锁定后的保护对象载体)由
+    #  v3_intention.transition_locked 承接——写端 = 过渡候选机器,
+    #  清空点 = 终局锁定写入;旧「幂等只增」点亮语义随候选内成型
+    #  锁定替代,不并存两套锁定态。)
 
     # ===== 商店会话读数协议与会话循环键(读写单一源 =
     #       criteria/shop_session 协议函数族与会话循环动作发出点——新键在

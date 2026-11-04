@@ -28,7 +28,10 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
-from sr_od.application.currency_war.kernel.cw_intention import _pair_members
+from sr_od.application.currency_war.kernel.cw_intention import (
+    transition_active_entries,
+    transition_member_union,
+)
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     star_base_copies,
 )
@@ -44,7 +47,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.protection import
 from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
     LineMembersView,
     line_members_view,
-    plane2_started_of,
 )
 
 if TYPE_CHECKING:
@@ -146,13 +148,12 @@ class PriorityContext:
     证据线间排序;未锁定帧成员档名单的终局半边。锁定帧候选快照恒空集,
     锁定写入时已清空停算)。"""
     recipe_members: frozenset[str]
-    """⑤过渡候选成员并集(读口 = ``StrategyState.transition_candidates``
-    槽各对经 ``cw_intention._pair_members`` 展开 + **读前判窗**——准入
-    唯一判据 = ``plane2_started_of`` 窗口谓词,进位面 2 即退出,锁定不是
-    退出条件;锁定帧照收 = P1 锁定局名单为锁定线 ∪ 过渡候选并集。进 P2
-    后装配侧本支恒空集,槽位残留不消费〔判窗在直读之前〕;槽清空写点 =
-    cw_intention.clear_p1_recipe。未锁定帧成员档名单的过渡半边
-    (32 号稿 §2 双层名单)。"""
+    """⑤过渡层贡献名单(读口 = ``cw_intention.transition_active_entries``
+    活跃条目经 ``transition_member_set`` 展开〔锁定 = 锁定条目成员,
+    未锁 = 候选条目并集〕+ **读前判据 = 终局锁定态**——终局锁定即恒空,
+    候选槽/锁定态在锁定写入点同点清空;未终局锁定帧照常贡献,含位面 2
+    未终局锁定帧〔换轴:过渡机制生命周期挂钩终局锁定事件〕)。未锁定帧
+    成员档名单的过渡半边(32 号稿 §2 双层名单)。"""
     stay_target: tuple[str, int, int] | None
     """⑥当前升星目标 (角色名, 必要星级, 当前实费档)(读口 =
     criteria/levelup.stay_target_of,resolved 实费口径变费卡随档;
@@ -161,9 +162,11 @@ class PriorityContext:
     """⑦必要星级表(读口 = 锁定帧锁定线知识卡 need_star 字段全量
     照录——达标成员不缺省,完成品保护档 2/4 的锁定帧判定输入;
     未锁定帧 = 实候选三线知识卡 need_star 字段 COMP_LIBRARY 直查、命中
-    各线取最大值)。**过渡候选成员不入表**(统一缺省 1——§2.3-5
-    过渡成员星级要求统一 need=1);表外成员 = 1(无升星要求;判定端
-    缺省,含过渡候选成员等不经 COMP_LIBRARY 查询面的名字)。"""
+    各线取最大值 + 过渡条目点名成员按条目 need_star 值入表〔命中多条
+    目取最大值,保守方向〕)。**未点名过渡成员不入表**(统一缺省 1
+    ——§2.3-5 过渡成员星级要求统一 need=1);表外成员 = 1(无升星
+    要求;判定端缺省,含羁绊半边放大器/凑数件等不经 COMP_LIBRARY
+    查询面的名字)。"""
     member_rank: dict[str, tuple[int, int]]
     """档内优先级序数表(档 2/3/4/5/7 ①键,取值规则 = 32 号稿 §2):
     成员名 → (层, 位次) 二元组,
@@ -202,24 +205,24 @@ def held_copies_of(gs: GameState) -> dict[str, list[int]]:
     return copies
 
 
-def _transition_member_ranks(
-        transition_candidates: tuple[tuple[str, ...], ...] = (),
-        ) -> dict[str, tuple[int, int]]:
-    """过渡候选槽 → 成员位次表((1, 候选位次);32 号稿 §2)。
+def _transition_member_ranks(entries) -> dict[str, tuple[int, int]]:
+    """过渡层活跃条目 → 成员位次表((1, 线内两档位次);32 号稿 §2)。
 
-    成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
-    另写展开);位次 = 槽内 1 基索引,槽序 = 候选排序键((对级支持度
-    降序,对级声明序)下的序——位次小 = 候选强)。``setdefault`` 写入:
-    跨多候选对成员取最小位次(槽序升序迭代,首见即最小)。参数缺省
-    () = 无候选供给(与 kernel ``locked_buy_scope`` 的槽透传参数化
-    同形态——候选不经装配内现算,接入调用方传 ``transition_candidates``
-    槽值,禁第二源);返回表键集 = 各对成员并集(过渡半边名单源,
-    与买面 ``shop._transition_candidate_members`` 同集)。
+    位次 = ``cw_comps.member_rank_of`` 的线内两档(core=0/其余=1——
+    过渡条目 shared 空,点名成员位次 0、羁绊半边放大器/凑数件表外
+    落判定端缺省 RANK_TRANSITION_BOTTOM);层值恒 1 = 过渡层。
+    多条目同名成员跨条目取最小位次(与终局侧「跨线取最小序数」同构)。
+    条目域单一源 = ``cw_intention.transition_active_entries``(锁定
+    条目在前;成员展开单一源 = transition_member_set,禁消费点另写)。
     """
+    from sr_od.application.currency_war.kernel.cw_comps import member_rank_of
     out: dict[str, tuple[int, int]] = {}
-    for idx, pair in enumerate(transition_candidates, start=1):
-        for n in _pair_members(tuple(pair)):
-            out.setdefault(n, (1, idx))
+    for entry in entries:
+        for n, p in member_rank_of(entry).items():
+            r = (1, p)
+            cur = out.get(n)
+            if cur is None or r < cur:
+                out[n] = r
     return out
 
 
@@ -322,18 +325,27 @@ def assemble_priority_context(
     # 表外成员判定端缺省 RANK_TRANSITION_BOTTOM 不变。
     for n in members:
         rank.setdefault(n, (0, 1))
-    # 过渡支(两态共用,32 号稿 §2 双层名单):
-    # transition_candidates 槽展开 + 读前判窗——过渡成员进不进名单唯一
-    # 判据 = plane2_started_of,锁定不是退出条件——P1 锁定局照收;禁经
-    # direction_comp_of 反推名单(方向读口回答「现行方向是谁」,其锁定
-    # 不回落的语义 ≠ 名单退出条件)。装配序在终局半边 + 补缺之后:
-    # setdefault 承载重叠归终元(rank 取终局值,零特判)与跨对最小位次。
+    # 过渡支(换轴:过渡成员进不进名单唯一判据 = 终局锁定态——未终局
+    # 锁定即照常贡献,终局锁定即恒空〔候选槽/锁定态在锁定写入点同点
+    # 清空〕;原位面判窗 plane2_started_of 随生命周期挂钩终局锁定事件
+    # 废除,位面 2 未终局锁定帧过渡层照常活跃)。禁经 direction_comp_of
+    # 反推名单(方向读口回答「现行方向是谁」,其锁定不回落的语义 ≠
+    # 名单退出条件)。装配序在终局半边 + 补缺之后:setdefault 承载
+    # 重叠归终局(rank 取终局值,零特判)与跨条目最小位次。
     transition_members: frozenset[str] = frozenset()
-    if not plane2_started_of(gs):
-        transition_ranks = _transition_member_ranks(st.transition_candidates)
-        transition_members = frozenset(transition_ranks)
+    if not view.locked:
+        entries = transition_active_entries(st)
+        transition_ranks = _transition_member_ranks(entries)
+        transition_members = transition_member_union(st)
         for n, r in transition_ranks.items():
             rank.setdefault(n, r)
+        # need_star 申报(行为变化):过渡条目点名成员按条目 need_star
+        # 值入表(命中多条目/与终局候选同名取最大值,保守方向),未点名
+        # 过渡成员仍缺省 1(§2.3-5)——铁三角 2★ 达标受完成品保护、
+        # 希儿 3★ 进升星主线。
+        for entry in entries:
+            for n, need in (getattr(entry, 'need_star', None) or {}).items():
+                need_star[n] = max(need_star.get(n, 1), int(need))
     return PriorityContext(
         held_copies=held_copies if held_copies is not None
         else held_copies_of(gs),
@@ -474,9 +486,9 @@ def priority_rng_of(session: object,
 def _member_names(ctx: PriorityContext) -> frozenset[str]:
     """成员档(2/3/4/5/7)阵容成员名单(双层;32 号稿 §2 名单源)。
 
-    锁定帧 = 锁定线名单 ∪ 过渡候选成员(P1 锁定局并集——锁定不是
-    过渡支退出条件;进 P2 后装配侧过渡支恒空集,判定端无需重复判窗);
-    未锁定帧 = 实候选(证据门版)三线成员并集 ∪ 过渡候选成员。"""
+    终局锁定帧 = 锁定线名单(过渡层已退役清空,装配侧恒空——判定端
+    无需重复判据);未锁定帧 = 实候选(证据门版)三线成员并集 ∪
+    过渡层贡献名单。"""
     if ctx.line_view.locked:
         return frozenset(ctx.line_view.members) | frozenset(ctx.recipe_members)
     return frozenset(ctx.candidate_members) | frozenset(ctx.recipe_members)

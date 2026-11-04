@@ -97,11 +97,11 @@ def _k_members_key(gs: GameState,
     return k_members, fallback
 
 
-def _transition_candidates_key(gs: GameState) -> list[list[str]]:
-    """transition_candidates 键:过渡候选槽现值(体系对元组照录为
-    嵌套 list,JSON 行行自足;冻结后 = 单元素冻结对,进 P2 清空——
-    槽语义单一源 = mandate_state.StrategyState.transition_candidates)。"""
-    return [list(pair) for pair in state_of(gs).transition_candidates]
+def _transition_candidates_key(gs: GameState) -> list[str]:
+    """transition_candidates 键:过渡候选槽现值(过渡条目名照录为
+    list,JSON 行行自足;过渡锁定后槽随锁定条目域收窄,终局锁定清空
+    ——槽语义单一源 = mandate_state.StrategyState.transition_candidates)。"""
+    return list(state_of(gs).transition_candidates)
 
 
 def _member_rank_key(gs: GameState) -> dict[str, tuple[int, int]]:

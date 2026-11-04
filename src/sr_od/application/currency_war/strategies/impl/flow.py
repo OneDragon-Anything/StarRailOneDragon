@@ -40,9 +40,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
-    clear_p1_recipe,
-    pair_target_comp,
-    update_p1_recipe,
+    update_transition_candidates,
 )
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
@@ -204,67 +202,46 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            _ms: StrategyState) -> None:
         """方向节拍贵段(每 game-round 恰一次;键守卫)。
 
-        意向层机器停用后,贵段 = **P1 过渡配方链驱动**
-        (``update_p1_recipe``——体系对候选重算/门控候选首位/双对
-        form_ok 冻结状态机;``st=_ms`` 传参使过渡候选槽随贵段写入,
-        12 号篇 §3);位面适用范围以窗口谓词
-        承载(``plane2_started_of``
-        布尔标志,宪法第 2 条合规——P1 配方物化触发的整改形态,非
-        ``_plane_v == 1`` 位面字面量;P2 起停驱并清配方锁
-        ``clear_p1_recipe``)。终局线选择不经本段——候选-锁定制在
-        session_scope 前置段(``refresh_line_if_needed``,两入口先于
-        本段执行)。便宜段 = 派生视图刷新
-        (:meth:`_refresh_direction_views`),每次 full 帧入口一次。
+        贵段 = **过渡候选机器驱动**(``update_transition_candidates``
+        ——计分/候选 top3/候选内成型锁定;``st=_ms`` 传参使过渡候选槽
+        随贵段写入,写端单一)。窗口守卫换轴(用户裁定 2026-11-04):
+        过渡机制开闭读**终局锁定态**(锁定线槽非空即停驱)——原位面
+        谓词(plane2_started)随过渡层生命周期挂钩终局锁定事件废除;
+        位面 2 未终局锁定的帧过渡层照常活跃,终局锁定写入点
+        (session_scope.write_line_lock)同点清空候选槽与过渡锁定态。
+        终局线选择不经本段——候选-锁定制在 session_scope 前置段
+        (``refresh_line_if_needed``,两入口先于本段执行)。便宜段 =
+        派生视图刷新(:meth:`_refresh_direction_views`),每次 full
+        帧入口一次。
         """
         ist = self._ensure_intention(_ms)
         key = (plane_of(state), round_num_of(state))
         if _ms.v3_intention_key != key:
             _ms.v3_intention_key = key
-            if not session_scope.plane2_started_of(state):
-                update_p1_recipe(state, ist, self.registry, st=_ms)
-            else:
-                # 进 P2:配方锁退场 + 开局面键同点清空(写端单一出口,
-                # review-37 P1——P2 未锁窗禁消费过期 P1 配方;幂等,
-                # 空对/已清帧 no-op)。
-                clear_p1_recipe(ist, _ms)
-                # 过渡锁定槽同点清空(清空点 = 进位面 2,统一保护集
-                # design §2.1):位面 2 起过渡域关闭,槽只服务过渡域
-                # 语义,与配方锁退场同帧出清无跨域残留;幂等(空槽 no-op)。
-                _ms.transition_locked_systems = frozenset()
+            if getattr(_ms, 'target_comp', None) is None:
+                update_transition_candidates(state, ist, st=_ms)
         self._refresh_direction_views(state, _ms)
 
     def _refresh_direction_views(self, state: GameState,
                                  _ms: StrategyState) -> None:
         """派生视图刷新(便宜段;view 类帧入口只走本段)。
 
-        键面归一后的写位分布:
+        键面归一后的写位分布(物化链退役:``opening_recipe_comp`` 键
+        不再写——部署开局面方向改由 ``session_scope.direction_comp_of``
+        四层优先现读,无状态物化):
 
         - ``target_comp``(锁定线槽)**本段零写**——终态单写者 =
-          ``session_scope.write_line_lock``(硬规则/时点兜底命中帧,
-          P1 锁定局「互不覆写」的落地);
-        - P1 未锁帧 = 过渡配方物化链写 ``opening_recipe_comp``
-          (配方对伪阵容;窗口谓词覆盖——P2 起停写;物化源 = 过渡候选
-          槽**无门控候选首位**(
-          12 号篇 §3 配方物化——「空窗期同样有方向」
-          职能承接,部署开局面恒有最强方向、不随 p1_pair 门控变 None;
-          稳定性申报 §2.6-7:未冻结期每轮随支持度事件可换,冻结后 =
-          冻结对(槽单元素)));
-        - ``v3_core_names`` = 现行方向(锁定线优先,未锁 = 配方)核心名。
+          ``session_scope.write_line_lock``;
+        - ``v3_core_names`` = 现行方向核心名(经 direction_comp_of
+          组合读口,锁定线 > 终局候选首位 > 过渡锁定条目 > 过渡候选
+          首位)。
         """
         ist = self._ensure_intention(_ms)
-        comp = getattr(_ms, 'target_comp', None)
-        if comp is None and not session_scope.plane2_started_of(state):
-            candidates = tuple(
-                getattr(_ms, 'transition_candidates', ()) or ())
-            pair = candidates[0] if candidates else ()
-            _ms.opening_recipe_comp = pair_target_comp(pair) \
-                if pair else None
-        direction = comp if comp is not None \
-            else getattr(_ms, 'opening_recipe_comp', None)
+        direction = session_scope.direction_comp_of(state)
         _ms.v3_core_names = set(direction.core_chars) if direction else set()
         if ist.last_event and ist.last_event not in (
                 _ms.v3_last_intention_event,):
-            log.info('[cw][d2] 意向 %s mode=p1_recipe(%s)',
+            log.info('[cw][d2] 意向 %s mode=transition(%s)',
                      ist.phase, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
@@ -607,13 +584,14 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame()   # 入口内务
         if not options:
             return CwActionPickStarTomeParam(idx=0)
-        fw = getattr(self.state, 'transition_framework', '')
+        # 过渡层方向阵营(换源:原读休眠键 transition_framework 的框架
+        # 阵营;现读过渡层活跃条目〔锁定条目/候选〕的档 0 键集)
         _fw_facs: set[str] = set()
-        if fw:
-            from sr_od.application.currency_war.knowledge.cw_line_facts import (
-                FRAMEWORK_FACTIONS,
-            )
-            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            transition_active_entries,
+        )
+        for _e in transition_active_entries(self.state):
+            _fw_facs |= set(_e.core_faction_reqs)
         _dir_c = session_scope.direction_comp_of(self.gs)
         _tgt_facs: set[str] = set(
             _dir_c.all_factions or []) if _dir_c is not None else set()
@@ -648,13 +626,14 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _dir_c = session_scope.direction_comp_of(self.gs)
         _tgt_facs: set[str] = set(
             _dir_c.all_factions or []) if _dir_c is not None else set()
-        fw = getattr(self.state, 'transition_framework', '')
+        # 过渡层方向阵营(换源:原读休眠键 transition_framework 的框架
+        # 阵营;现读过渡层活跃条目〔锁定条目/候选〕的档 0 键集)
         _fw_facs: set[str] = set()
-        if fw:
-            from sr_od.application.currency_war.knowledge.cw_line_facts import (
-                FRAMEWORK_FACTIONS,
-            )
-            _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            transition_active_entries,
+        )
+        for _e in transition_active_entries(self.state):
+            _fw_facs |= set(_e.core_faction_reqs)
         best_i, best_s = 0, -1.0
         for i, obj in enumerate(options):
             s = effect_pick_bias(self.gs, obj)

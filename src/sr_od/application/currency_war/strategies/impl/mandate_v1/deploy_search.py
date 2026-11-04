@@ -50,9 +50,11 @@ from sr_od.application.currency_war.kernel.cw_bond_equips import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import parse_char_position
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    TRANSITION_TRAITS,
     _bonds_named,
     board_unique_key,
+)
+from sr_od.application.currency_war.kernel.cw_intention import (
+    transition_active_entries,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.priority import (
     CROSS_LINE_KEEP_NAMES,
@@ -132,9 +134,11 @@ class DeploySearchPanel:
     占格(段 3 排分配扣减,§2 段 3 D2-8/D9-2)。"""
     locked: bool                       # 锁定窗(line_members_view.locked)
     locked_comp: Comp | None           # 锁定线(target_comp;锁定窗非空)
-    candidate_comps: tuple[Comp, ...]  # 未锁窗 P2+ 候选族(候选三线)
-    p1_pair: tuple[str, ...]           # P1 配方对(体系键;P2+ 恒空)
-    plane1: bool                        # P1 窗(未进位面 2)
+    candidate_comps: tuple[Comp, ...]  # 未终局锁定帧终局候选族(候选三线)
+    transition_comps: tuple[Comp, ...]
+    """未终局锁定帧过渡层条目族(锁定条目在前,候选序跟随;
+    cw_intention.transition_active_entries 单一源——终局锁定帧
+    过渡层退役恒空元组)。"""
     current_board: dict[str, str]
     """现板面(名 → 现排;稳定键输入 = 与现板面一致数,名+排粒度)。"""
 
@@ -278,7 +282,9 @@ def selection_score(panel: DeploySearchPanel,
         if comp is not None:
             groups = _line_form_tier_groups(comp)
         else:
-            groups = tuple((k,) for k in line_keys)   # 过渡体系单键组
+            # 裸键组(无 Comp 上下文;希儿系二元判定面保留——过渡条目
+            # 与终局线均以 Comp 入枚举,生产不再产裸键)。
+            groups = tuple((k,) for k in line_keys)
     if comp is not None or groups:
         required = tuple(comp.required_deployed or ()) \
             if comp is not None else ()
@@ -301,6 +307,8 @@ def selection_score(panel: DeploySearchPanel,
                     elif comp is not None and (
                             k in comp.core_faction_reqs
                             or k in _or_keys_of(comp)):
+                        # Comp 条目键(终局候选/终局锁定/过渡条目同构:
+                        # 档位完成度经注册表档序;OR 承接组取组目标)。
                         head = _or_group_target(comp, group) \
                             if k in _or_keys_of(comp) \
                             else int(comp.core_faction_reqs.get(k, 1))
@@ -309,17 +317,6 @@ def selection_score(panel: DeploySearchPanel,
                         ach = _achieved_tiers(k, counts.get(k, 0))
                         tier_done = ach / max(tier_target, 1)
                         char_done = min(counts.get(k, 0) / max(head, 1), 1.0)
-                        f = char_done * tier_done
-                    else:
-                        # 过渡体系(未锁窗 / P1 锁定窗过渡家族):档位
-                        # 完成度 = 二元退化(体系激活 = 1.0/0,注册表
-                        # 无「成型档」字段,§1 分族计分分支)。
-                        threshold = dict(TRANSITION_TRAITS).get(k, 1)
-                        head = max(threshold, 1)
-                        w = head
-                        tier_done = 1.0 if counts.get(k, 0) >= threshold \
-                            else 0.0
-                        char_done = min(counts.get(k, 0) / head, 1.0)
                         f = char_done * tier_done
                     if f * w > best_f * best_w:
                         best_f, best_w = f, w
@@ -360,7 +357,6 @@ def selection_score(panel: DeploySearchPanel,
         panel.locked_comp.bonus_faction_reqs if locked
         and panel.locked_comp is not None else ())
     board_l1_zero = l1 <= 0.0
-    transition_keys = {k for k, _t in TRANSITION_TRAITS} | {_SEELE_SYSTEM_KEY}
     l3 = 0
     for bond, cnt in counts.items():
         if bond in l1_key_set or bond in l2_key_set:
@@ -368,19 +364,10 @@ def selection_score(panel: DeploySearchPanel,
         ach = _achieved_tiers(bond, cnt)
         if ach <= 0:
             continue
-        if bond in transition_keys:
-            # 过渡羁绊档条件两态:锁定窗保板相位(锁定线 L1=0)×4 /
-            # 成档回落 ×1;未锁窗按 TIER7 归属(不归零——注册表
-            # 「参与完成度」语义辖锁定评估,未锁窗它就是普通羁绊)。
-            if locked:
-                coef = _L3_TRANSITION_KEEP if board_l1_zero else _L3_OTHER
-            else:
-                coef = (_L3_BUFF_DEBUFF if bond in TIER7_BOND_NAMES
-                        else _L3_OTHER)
-        elif bond in TIER7_BOND_NAMES:
-            coef = _L3_BUFF_DEBUFF
-        else:
-            coef = _L3_OTHER
+        # (过渡羁绊档条件两态系数随 TRANSITION_TRAITS 消费分支删除
+        # —— 过渡羁绊按普通羁绊归属;希儿系二元 L3 分支保留见下。)
+        coef = (_L3_BUFF_DEBUFF if bond in TIER7_BOND_NAMES
+                else _L3_OTHER)
         l3 += ach * coef
     # 万金油按件计(DF-2:万金油组无档结构,按件 ×2)。
     for u in units:
@@ -599,25 +586,12 @@ def search_deploy_target(panel: DeploySearchPanel,
         return frozenset(set(comp.core_chars)
                          | set(comp.shared_chars or ()))
 
-    #: 过渡体系成员名(标签命中三羁绊键;希儿系键 = 希儿 + 放大器
-    #: 阵营成员,is_seele_system_member 单卡体系判据,§2 段 1)。
-    def _transition_names(keys: tuple[str, ...]) -> frozenset[str]:
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            is_seele_system_member,
-        )
-        bond_keys = set(keys) - {_SEELE_SYSTEM_KEY}
-        names: set[str] = set()
-        for u in panel.units:
-            bonds = _bonds_named(u.char_id)
-            if (bond_keys & bonds) or (
-                    _SEELE_SYSTEM_KEY in keys
-                    and is_seele_system_member(u.char_id, bonds)):
-                names.add(u.char_id)
-        return frozenset(names)
 
     skeletons: list[tuple[tuple[SearchUnit, ...], Comp | None,
                           tuple[str, ...]]] = []
     if panel.locked and panel.locked_comp is not None:
+        # 终局锁定窗(换轴:旧 P1 锁定窗过渡家族骨架枚举随过渡层
+        # 「终局锁定即退役」删除——锁定帧过渡层恒空)。
         comp = panel.locked_comp
         line_keys = _line_keys_of(comp)
         core_hand = {u.char_id for u in panel.units
@@ -626,22 +600,15 @@ def search_deploy_target(panel: DeploySearchPanel,
             pool = _pool_of(line_keys, _member_names_of(comp))
             for cut in _prefix_cuts(pool, line_keys):
                 skeletons.append((tuple(pool[:cut]), comp, line_keys))
-        if panel.plane1:
-            # P1 锁定窗:过渡家族骨架照常枚举(按 L3 条件档计分——
-            # 保证 L1=0 保板相位过渡板在候选空间内,五轮用户裁定)。
-            for pair in _transition_pairs(panel):
-                pool = _pool_of(pair, _transition_names(pair))
-                for cut in _prefix_cuts(pool, pair):
-                    skeletons.append((tuple(pool[:cut]), None, pair))
-    elif panel.plane1:
-        # P1 未锁:四体系两两组合 + 单体系对(候选空间同款对域;
-        # 部署骨架全枚举零截断,形态与阶段分域声明一致)。
-        for pair in _transition_pairs(panel):
-            pool = _pool_of(pair, _transition_names(pair))
-            for cut in _prefix_cuts(pool, pair):
-                skeletons.append((tuple(pool[:cut]), None, pair))
     else:
-        # P2+ 未锁:候选三线。
+        # 未终局锁定:过渡层条目骨架(与终局锁定窗同构——条目 Comp
+        # 喂 comp 半边,档位完成度经注册表档序;锁定条目在前)∪
+        # 终局候选三线(换轴:原 P2+ 位面门废除,未终局锁定帧同枚举)。
+        for comp in panel.transition_comps:
+            keys = _line_keys_of(comp)
+            pool = _pool_of(keys, _member_names_of(comp))
+            for cut in _prefix_cuts(pool, keys):
+                skeletons.append((tuple(pool[:cut]), comp, keys))
         for comp in panel.candidate_comps:
             line_keys = _line_keys_of(comp)
             pool = _pool_of(line_keys, _member_names_of(comp))
@@ -761,16 +728,14 @@ def search_deploy_target(panel: DeploySearchPanel,
             bonds = _bonds_named(u.char_id)
             if bonds:
                 groups.setdefault(sorted(bonds)[0], []).append(u)
-        transition_keys = {k for k, _t in TRANSITION_TRAITS} \
-            | {_SEELE_SYSTEM_KEY}
 
-        def _l3_coef(bond: str, trans_keep: bool) -> int:
-            if bond in transition_keys:
-                return _L3_TRANSITION_KEEP if trans_keep else _L3_OTHER
+        # (过渡羁绊组值系数 facet 随 TRANSITION_TRAITS 消费分支删除:
+        #  过渡条目骨架已进段 1 枚举,组值按普通羁绊归属。)
+        def _l3_coef(bond: str) -> int:
             return (_L3_BUFF_DEBUFF if bond in TIER7_BOND_NAMES
                     else _L3_OTHER)
 
-        def _group_values(trans_keep: bool) -> dict[str, list[int]]:
+        def _group_values() -> dict[str, list[int]]:
             """每组各取件数 0..len 的组值(增量口径)。"""
             vals: dict[str, list[int]] = {}
             for g, grp in groups.items():
@@ -784,7 +749,7 @@ def search_deploy_target(panel: DeploySearchPanel,
                         k_eff = sum(_contrib_of(u) for u in grp[:k])
                         delta = (_achieved_tiers(g, base + k_eff)
                                  - _achieved_tiers(g, base))
-                        vs.append(delta * _l3_coef(g, trans_keep))
+                        vs.append(delta * _l3_coef(g))
                 vals[g] = vs
             return vals
 
@@ -817,12 +782,11 @@ def search_deploy_target(panel: DeploySearchPanel,
             return dp[rem_budget][1]
 
         out_boards: list[list[SearchUnit]] = []
-        # 相位枚举(D7-3):锁定窗过渡组 ×4/×1 两相位各一套候选,段 3
-        # 终评按板面实测 L1 定相位。
-        phases = [True, False] if panel.locked else [False]
+        # (相位枚举〔锁定窗过渡组 ×4/×1 两相位〕随过渡组系数 facet
+        #  删除收敛为单相位——两相位组值恒同。)
         seen_mix: set[tuple] = set()
-        for trans_keep in phases:
-            take = _knapsack(_group_values(trans_keep))
+        for _phase in (False,):
+            take = _knapsack(_group_values())
             chosen = [*inline]
             for g in sorted(take):
                 for u in groups[g][:take[g]]:
@@ -920,21 +884,6 @@ def search_deploy_target(panel: DeploySearchPanel,
                         _slots.get(u.char_id)) for u in members}
 
 
-def _transition_pairs(panel: DeploySearchPanel) -> list[tuple[str, ...]]:
-    """P1 过渡体系组合键(两两组合 + 单体系;在任配方对优先枚举——
-    p1_pair = 当前配方锁,组合空间含其在任形态)。"""
-    systems = (*tuple(k for k, _t in TRANSITION_TRAITS), _SEELE_SYSTEM_KEY)
-    pairs: list[tuple[str, ...]] = []
-    if panel.p1_pair:
-        pairs.append(tuple(panel.p1_pair))
-    for i in range(len(systems)):
-        pairs.append((systems[i],))
-        for j in range(i + 1, len(systems)):
-            pair = (systems[i], systems[j])
-            if pair not in pairs:
-                pairs.append(pair)
-    return pairs
-
 
 # ============================================================ 生产装配(段 0)
 
@@ -964,9 +913,6 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
         deployed_rows_of,
         max_units_of,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-        session_scope,
-    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select import (
         compute_candidates,
         opening_ctx_of,
@@ -983,11 +929,11 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
     # line_members_view 同判不同宿主)。
     locked = getattr(st, 'target_comp', None) is not None
     locked_comp = getattr(st, 'target_comp', None) if locked else None
-    plane1 = not session_scope.plane2_started_of(gs)
-    _ist = getattr(st, 'v3_intention', None)
-    p1_pair = tuple(getattr(_ist, 'p1_pair', ()) or ()) if plane1 else ()
+    # 过渡层条目族(换轴:窗口 = 未终局锁定,任意位面;终局锁定帧
+    # 过渡层退役恒空——条目域单一源 = transition_active_entries)。
+    transition_comps = () if locked else transition_active_entries(st)
     candidate_comps: tuple = ()
-    if not locked and not plane1:
+    if not locked:
         held: set[str] = set()
         for u in _all_units(gs):
             if u.char_id:
@@ -1084,8 +1030,7 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
         locked=locked,
         locked_comp=locked_comp,
         candidate_comps=candidate_comps,
-        p1_pair=p1_pair,
-        plane1=plane1,
+        transition_comps=transition_comps,
         current_board=current_board,
     )
 
@@ -1174,8 +1119,8 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
         k_budget=panel.k_budget, front_capacity=panel.front_capacity,
         back_capacity=panel.back_capacity, locked=panel.locked,
         locked_comp=panel.locked_comp,
-        candidate_comps=panel.candidate_comps, p1_pair=panel.p1_pair,
-        plane1=panel.plane1,
+        candidate_comps=panel.candidate_comps,
+        transition_comps=panel.transition_comps,
         current_board={
             str(u.char_id): panel.current_board.get(str(u.char_id), 'back')
             for u in field_units if u is not None and u.char_id})

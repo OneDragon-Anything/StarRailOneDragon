@@ -22,9 +22,10 @@
   判定函数归迭代建造,本模块只建存储。
 
 现行键面:``target_comp`` 双写者冲突
-已消——写者收为锁定动作(:func:`write_line_lock` 终态单写者),配方
-物化链写端切 ``opening_recipe_comp``(flow 层);``line_locked_comp``
-过渡键已删除。kernel 消费面经 ``ist.locked_comp``/``ist.phase``
+已消——写者收为锁定动作(:func:`write_line_lock` 终态单写者);旧配方
+物化链键 ``opening_recipe_comp`` 已随配方决策层退役(方向读口
+direction_comp_of 四层优先现读);``line_locked_comp`` 过渡键已删除。
+kernel 消费面经 ``ist.locked_comp``/``ist.phase``
 派生缓存续读(重建写端 = 本模块刷新/锁定动作同步,§1.6「line_
 members_view 刷新时重写 locked_comp」的实现形态)。
 """
@@ -77,11 +78,11 @@ if TYPE_CHECKING:
 #    shop_session_processing/shop_plugin_budget)→ 复位(会话不跨节点;
 #    边界帧残留旗标防泄入下一节点会话,卫生性复位);
 # ⑥ 方向状态本身(target_comp / line_candidates /
-#    opening_recipe_comp / transition_candidates)不重置——锁定为一次性
-#    决策跨节点持续保留(契约 C;候选快照随签名重算自然更新、配方物化链
-#    与过渡候选槽随方向节拍贵段重算自写〔update_p1_recipe,
-#    12 号篇 §3 写端单一〕,均非节点作用域键,清空点 =
-#    进 P2〔clear_p1_recipe〕)。plane2_started 同不重置(单调历史事实);
+#    transition_candidates)不重置——锁定为一次性决策跨节点持续保留
+#    (契约 C;候选快照随签名重算自然更新、过渡候选槽随方向节拍贵段
+#    重算自写〔update_transition_candidates,写端单一〕,均非节点
+#    作用域键,清空点 = 终局锁定写入〔write_line_lock 过渡层退役
+#    清空〕)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
 #    分支为单调事实,且锁定后无消费面);
 # ⑦ 获取让位跨画面计划槽 yield_plan → 清空 + X 路径失败标记
@@ -340,8 +341,7 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
     """锁定写入(一次性决策;**连带动作三件的唯一所有者 = 本函数**,
     line_and_upgrade §3 载体落位节——§1.4/契约 B 对连带动作的引用均
     指向此处)。键面归一后本函数兼任 ``target_comp`` 的**终态
-    单写者**(锁定线槽 = target_comp;物化链写端已切 opening_recipe_
-    阵容,P1 锁定局互不覆写):
+    单写者**(锁定线槽 = target_comp;旧物化链键已退役,无第二写者):
 
     - 锁定线槽一次性写入,锁后只读:已锁定时本函数 no-op(候选-锁定
       制无换目标,重复触发不改变锁定线);注册表解析失败(锁定名不在
@@ -358,10 +358,11 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       ③ kernel 派生缓存同步(见下行)。
       (旧升级预授权连带清键已随 2026-10-17 迭代 T-4 键退役删除——
       判据同帧重评,无跨帧授权可清。)
-      **P1 过渡层维持核对(12 号篇 §1.2 P1 锁定局采购通道)**:锁定
-      不辖配方链——过渡候选槽/配方物化链/opening_recipe_comp 键不在
-      本函数连带面(P1 锁定局配方链照常每 game-round 重算,退场清空
-      只在进 P2 = clear_p1_recipe),现行语义零改动。
+      **过渡层退役清空(换轴,用户裁定 2026-11-04)**:终局锁定写入点
+      = 过渡层退役清空出口——候选槽(``transition_candidates`` 清空)
+      与过渡锁定态(``v3_intention.transition_locked`` 归空)在本函数
+      同点清空;位面切换不触发退役(生命周期挂钩终局锁定事件,将来
+      终局锁定时点变化时过渡层自动跟随)。
     - kernel 派生缓存(``ist.locked_comp``/``ist.phase``)同帧同步
       (:func:`_sync_derived_lock_cache`)——kernel 消费面锁定当帧生效。
     """
@@ -376,8 +377,14 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
     st.target_comp = comp
     st.shop_handled = None
     st.line_candidates = ()
+    # 过渡层退役清空(终局锁定写入点 = 唯一清空出口;幂等)
+    st.transition_candidates = ()
+    ist = getattr(st, 'v3_intention', None)
+    if isinstance(ist, IntentionState):
+        ist.transition_locked = ''
     _sync_derived_lock_cache(st)
-    log.info('[cw][line-lock] 方向锁定 → %s(连带:清商店标记/快照清空停算)',
+    log.info('[cw][line-lock] 方向锁定 → %s(连带:清商店标记/快照清空停算/'
+             '过渡层退役清空)',
              comp_name)
 
 
@@ -398,27 +405,31 @@ def line_members_view(gs: GameState) -> LineMembersView:
 
 
 def direction_comp_of(gs: GameState) -> Comp | None:
-    """现行方向阵容读口(§1.6 消费面分派的组合读形态)。
+    """现行方向阵容读口(§1.6 消费面分派的组合读形态;四层优先现读,
+    无状态物化——物化链键 opening_recipe_comp 已随配方决策层退役)。
 
-    = 锁定线(``target_comp``,终局面)优先;**P1 未锁帧**回落过渡
-    配方开局面(``opening_recipe_comp``,配方物化链产物——窗口谓词
-    覆盖,P2 起配方面明确不在设计范围内、进 P2 时由 ``clear_p1_recipe`` 同点清空)。
-    两键都空(P1 空窗 / P2+ 未锁窗口)= None——无方向帧由 K 空窗回退
+    四层优先序(comp-structure-unification 第四侧):
+    ① 锁定线(``target_comp``,终局面);
+    ② 终局候选首位(``line_candidates`` 首名,证据门版快照);
+    ③ 过渡锁定条目(``transition_locked``,锁后不换);
+    ④ 过渡候选首位(``transition_candidates`` 首名)。
+    四层皆空(开局双空窗)= None——无方向帧由 K 空窗回退
     (``cw_intention.k_empty_window_fallback``)承接。「现行方向」类
     消费位(flow pick 族/部署围栏 k_members/工具面/商店序 1 名单)
-    统一经本读口,禁消费点自拼两键优先级(第二读口径)。
-
-    防御双保险(review-37 P1):``plane2_started`` 帧**禁回落配方键**
-    ——即使清空写端因时序未及(如 P2 首帧先于 flow 贵段),读口也
-    不消费过期 P1 配方(P2 未锁窗恒走「无方向 → K 空窗回退 p2plus
-    带」)。
+    统一经本读口,禁消费点自拼四层优先级(第二读口径)。
     """
     st = state_of(gs)
     if st.target_comp is not None:
         return st.target_comp
-    if st.plane2_started:
-        return None
-    return st.opening_recipe_comp
+    if st.line_candidates:
+        comp = get_comp(st.line_candidates[0])
+        if comp is not None:
+            return comp
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        transition_active_entries,
+    )
+    entries = transition_active_entries(st)
+    return entries[0] if entries else None
 
 
 # ============================================================ 商店会话标记与机会清单存储(契约 A)

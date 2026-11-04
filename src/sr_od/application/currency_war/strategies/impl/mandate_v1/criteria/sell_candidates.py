@@ -60,8 +60,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
-    _pair_members,
     locked_buy_cap_hold,
+    transition_member_union,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_reject_reason,
@@ -77,7 +77,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import 
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (
     line_members_view,
-    plane2_started_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
@@ -184,14 +183,12 @@ INTEREST_EXEMPT_DEPLETED_KEY: str = 'node_end_interest_exempt_depleted'
 
 def sell_line_membership(gs: GameState) -> frozenset[str]:
     """卖出侧线内身份集(双层名单与口径 = 32 号稿 §2):
-    锁定 = 锁定线名单(``line_members_view``,core ∪ shared)
-    **∪ 过渡候选成员**;未锁定 = 实候选(证据门版快照)三线成员并集
-    **∪ 过渡候选成员**。过渡支两态共用同一读口 =
-    ``transition_candidates`` 槽各对 ``_pair_members`` 展开 + 读前判窗
-    (``plane2_started_of``——进位面 2 即退出,锁定不是退出条件,
-    P1 锁定局照收;**与买面同源**——同一槽展开,成员展开单一源 =
-    kernel ``_pair_members``,与 ``shop._transition_candidate_members``
-    同集)。
+    终局锁定 = 锁定线名单(``line_members_view``,core ∪ shared;过渡层
+    已在锁定写入点退役清空,恒不再并);未终局锁定 = 实候选(证据门版
+    快照)三线成员并集 **∪ 过渡层贡献名单**。过渡支读口单一源 =
+    ``cw_intention.transition_member_union``(锁定 = 锁定条目成员,
+    未锁 = 候选条目并集;**与买面同源**——同一并集,条目展开单一源在
+    kernel,禁各消费点自建第二份名单)。
 
     消费面:常规面 sell_exclusions 装配 k_members 入参、备战帧
     k_members 装配(entry.emit / mandate.snapshot_frame)、买面投影位
@@ -213,12 +210,10 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
                 continue
             names |= set(comp.core_chars)
             names |= set(getattr(comp, 'shared_chars', None) or ())
-    # 过渡支(两态共用):槽展开 + 读前判窗——与 priority 装配/买面
-    # 同口径(禁经 direction_comp_of 拼名单;进 P2 后本支恒空集,
-    # clear_p1_recipe 同点清空 + 判窗双保险)。
-    if not plane2_started_of(gs):
-        for pair in (state_of(gs).transition_candidates or ()):
-            names |= _pair_members(tuple(pair))
+        # 过渡支(未终局锁定帧照常贡献,含位面 2 未终局锁定帧——换轴:
+        # 原位面判窗随生命周期挂钩终局锁定事件废除;禁经
+        # direction_comp_of 拼名单)。
+        names |= transition_member_union(state_of(gs))
     return frozenset(names)
 
 

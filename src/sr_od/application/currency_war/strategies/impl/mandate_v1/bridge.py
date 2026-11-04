@@ -43,7 +43,6 @@ from sr_od.application.currency_war.strategies.impl.flow import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     decision_payload,
     entry,
-    protection,
     session_scope,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
@@ -240,11 +239,6 @@ class MandateV1Strategy(CwFlowStrategy):
         # 双保险之一:防跨帧陈旧——上一 prep 帧写槽后 emit 段/truncate
         # 抛异常的残留槽在此兜底清空,非部署帧读到恒空的结构保证)。
         state_of(self.gs).deploy_margin = None
-        # 过渡锁定槽刷新(写点 = 决策入口前置段,与 refresh_line_if_needed
-        # 同点;写入端单一源 = protection.refresh_transition_locked_systems。
-        # 幂等只增,槽现役零行为消费面 → 现行决策零影响;统一保护集
-        # design §2.1)
-        protection.refresh_transition_locked_systems(self.gs, self.state)
         # 方向重估先于决策(触发 = 帧代次标注)
         self._consume_prep_direction_frame()
         # —— 前置动作发出点(达标分支的动作发出决策驻策略层)。出战就绪帧短路
@@ -276,12 +270,10 @@ class MandateV1Strategy(CwFlowStrategy):
         边界检测与标记检查,标记检查位归 3.6 会话重排接入调用),时序 =
         边界 → 签名 → 决策(line_and_upgrade §3 执行时序节)。生产
         单动作循环与 :meth:`decide_shop_screen` 驱动器都经本口,两面
-        同源;过渡锁定槽刷新挂本前置段(与 refresh_line_if_needed
-        同点,统一保护集 design §2.1),现行商店决策零影响。
+        同源。
         """
         session_scope.handle_node_boundary(self.gs)
         session_scope.refresh_line_if_needed(self.gs)
-        protection.refresh_transition_locked_systems(self.gs, self.state)
         return super().decide_shop_action()
 
     def decide_shop_screen(self, session: StrategySession | None = None,

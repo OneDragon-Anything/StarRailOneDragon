@@ -85,7 +85,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     get_comp,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    TRANSITION_TRAITS,
     deployed_bond_counts,
     record_fresh_buy,
 )
@@ -218,37 +217,15 @@ def _r2_card_reserve(gs: GameState) -> int:
     return crit_refresh.r2_card_reserve(gs)
 
 
-def _transition_candidate_members(st) -> set[str]:
-    """过渡候选槽 → 体系对成员并集(序 1 义务面配方半边单一源;
-    12 号篇 §1.2/§4)。
-
-    成员展开 = ``cw_intention._pair_members``(kernel 单一源,禁消费点
-    另写展开);槽空(P1 无羁绊开局/进 P2 清空)返回空集。**买面不读
-    ``opening_recipe_comp``**——物化单对 = 候选首位(⊆ 候选并集),
-    其角色 = 部署开局面(§2.3-6「买面不读它」定版)。"""
-    out: set[str] = set()
-    for pair in (getattr(st, 'transition_candidates', None) or ()):
-        out |= cw_intention._pair_members(pair)
-    return out
-
-
-#: 冷启动臂的三羁绊体系键集(仙舟/列车同行/持续伤害;11 号稿 §1
-#: 冷启动臂条款 as-built 申报:与 kernel ``ENGINE_FACTIONS``
-#: 当前同集、不含护盾——冷启动限定三羁绊,派生自 ``TRANSITION_TRAITS``
-#: 键(策略层现算成员域,**禁改 ENGINE_FACTIONS 派生源**;前瞻防御桥池
-#: 未来演进引入护盾,P78-7 种子判定面零变化)。
-_COLD_BOND_KEYS: frozenset[str] = frozenset(
-    bond for bond, _tier in TRANSITION_TRAITS)
+#: 冷启动臂成员域 = 过渡库全体条目见即买并集(键域改读单一源派生,
+#: 不再手抄三羁绊体系键——希儿引擎条目的量子/贝放大器与铁三角点名件
+#: 自然入域;§3 死循环防线:见即买 → 持有 → 计分 > 0 → 候选形成)。
+_COLD_START_NAMES: frozenset[str] = cw_intention.transition_library_buy_now_union()
 
 
 def _cold_start_member(name: str) -> bool:
-    """冷启动成员域判定(§2.3-8):标签(阵营 ∪ 流派)命中三羁绊键——
-    希儿系贡献件(量子同频/贝洛伯格)不在域内(希儿系点亮不构成冷启动
-    退出,也不构成触发;三羁绊限定)。"""
-    ch = CHARACTERS.get(name)
-    if ch is None:
-        return False
-    return bool((set(ch.factions) | set(ch.flows)) & _COLD_BOND_KEYS)
+    """冷启动成员域判定(§2.3-8 键域改造):成员 ∈ 过渡库见即买并集。"""
+    return name in _COLD_START_NAMES
 
 
 def _merge_pair_names(bench: list[BenchSlot],
@@ -844,7 +821,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     g_star = saturation_line(cap_resolved)
     _cap_hold_now = cw_intention.locked_buy_cap_hold(gs)
     _ist = getattr(_st, 'v3_intention', None)
-    _p2_started = session_scope.plane2_started_of(gs)
+
     _line_view = session_scope.line_members_view(gs)
     _cap_now = max_units_of(gs)
     _lvl_readable = bool(level_of(gs) is not None)
@@ -862,7 +839,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 回退保留(在役,防「K 空→零买入→支持度永不涨」死锁环)。
     k = session_scope.direction_comp_of(session)
     k_members = predicates.line_members(k)
-    if k is None and _ist is not None and _p2_started:
+    # K 空窗回退(换轴:原「P2 起未锁」位面门废除——方向读口四层优先
+    # 现读后,k=None ⟺ 两层候选与过渡候选全空,任意位面同判)
+    if k is None and _ist is not None:
         _kfb, _band = cw_intention.k_empty_window_fallback(
             gs, _ist, session=session, registry=_reg)
         if _kfb:
@@ -872,30 +851,25 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             # (退役/保留面登记 = 模块头键表与 telemetry/schema.py 键表节)。
             _count(f'shop_k_fallback_{_band}')
     if _line_view.locked:
-        # 锁定态(锁定线槽非空):P1 锁定局 = 锁定线 ∪ 过渡候选成员并集
-        #(配方支 = 过渡候选并集,12 号篇 §1.2 P1 锁定局采购通道
-        #「买面不读 opening_recipe_comp」——物化单对角色 = 部署开局面,
-        # 买面配方半边由候选并集承载,保「义务面与成员档族名单同源」
-        # 不变式);P2 起 = 锁定线名单单源(退出条件载体 = plane2_started
-        # 窗口谓词,line_and_upgrade §1.3 分域)。
+        # 终局锁定(换轴:原 P1 锁定局「锁定线 ∪ 过渡候选并集」形态随
+        # 终局锁定写入点过渡层退役清空而收敛为锁定线名单单源——位面
+        # 判据退出条件废除,锁定后买面名单 = 锁定线 ∪ 档位键阵营成员
+        # (_line_hoard 口径经 M2/locked_buy_membership 链承载))。
         # 锁定态买面不动:义务面 = 买面名单(保护集并集形态已随囤货臂
         # 退役废止——design §2.5 买面行)。
-        if _p2_started:
-            buy_members = tuple(sorted(set(_line_view.members)))
-        else:
-            _recipe_names = _transition_candidate_members(_st)
-            buy_members = tuple(sorted(
-                set(_line_view.members) | _recipe_names))
+        buy_members = tuple(sorted(set(_line_view.members)))
         obligation_members = buy_members
     else:
-        # 未锁定 = 候选态(双层候选;12 号篇 §4):
-        # - 义务面 = **实候选(证据门版快照)∪ 过渡候选(槽值成员并集)**
-        #   (§2.2-6 逐面定版:零信号期买面收窄——实候选经证据门点亮、
-        #   过渡候选承载配方半边,opening_recipe_comp 物化单对不进买面;
-        #   开局双空窗 = 空买面合法形态,冷启动臂/货架资格臂兜底,§2.3-8);
+        # 未终局锁定 = 候选态(双层候选;12 号篇 §4):
+        # - 义务面 = **实候选(证据门版快照)∪ 过渡层贡献名单**
+        #   (过渡半边单一源 = cw_intention.transition_member_union,
+        #   锁定条目成员或候选条目并集;§2.2-6 逐面定版:零信号期买面
+        #   收窄——实候选经证据门点亮、过渡候选承载过渡半边;开局双
+        #   空窗 = 空买面合法形态,冷启动臂/货架资格臂兜底,§2.3-8);
         # - 买面名单 = 义务面(宽集收窄:原「义务面 ∪ 保护集」的宽集
         #   前提 = 保护集囤货语义,囤货臂退役后前提消亡,总纲 §2.5)。
-        _cand_names: set[str] = _transition_candidate_members(_st)
+        _cand_names: set[str] = set(
+            cw_intention.transition_member_union(_st))
         for _cn in _st.line_candidates:
             _comp_c = get_comp(_cn) if _cn else None
             if _comp_c is None:
@@ -1615,19 +1589,16 @@ def decide_shop_action(gs: GameState, session: StrategySession,
 
     # —— 冷启动臂(双空窗完备性;11 号稿 §1;
     #    序位 = 序 1 层内 missing 循环之后、资格臂之前)——
-    # 触发 = 未锁定 ∧ 实候选空(证据门版快照——锁定态快照被连带清空,
-    # 未锁守卫防锁定局误触)∧ 过渡候选空(无羁绊开局)∧ 三羁绊支持度
-    # 会话内现算全 0(退出判据 = 同一现算:任一三羁绊 >0 即停,希儿系
-    # 点亮不算——防希儿开局帧误判退出/触发)。买面 = 货架三羁绊派生
-    # 成员域的 **1 费 1★ 件见即买**(义务类;1 费档收窄保守向,1★ 全额
-    # 退 ⇒ 义务可逆;防「K 空 → 零买入 → 支持度永不涨」死锁环,12 号稿
-    # §4:89 死锁防线承接)。门链 = m2 义务臂同款(无金线闸;金不足/
-    # 席满走统一获取让位评估,席位检查走买入管线自带)。
+    # 触发 = 未终局锁定 ∧ 实候选空(证据门版快照)∧ 过渡候选空
+    # (开局零持有)——退出判据与新计分同源:候选槽形成即退出
+    # (换轴:旧「三羁绊支持度现算全 0」退出判据随体系对机器退役)。
+    # 买面 = 货架 ∩ 过渡库见即买并集的 **1 费 1★ 件见即买**(义务类;
+    # 1 费档收窄保守向,1★ 全额退 ⇒ 义务可逆;防「K 空 → 零买入 →
+    # 计分来源永不涨」死锁环,§3 承接)。门链 = m2 义务臂同款(无金线
+    # 闸;金不足/席满走统一获取让位评估,席位检查走买入管线自带)。
     if not _line_view.locked and not _st.line_candidates \
             and not (getattr(_st, 'transition_candidates', None) or ()):
-        _sup3 = cw_intention._p1_system_support(gs)
-        if not any(_sup3[bond] > 0.0 for bond, _t in TRANSITION_TRAITS):
-            for card in _buy_view('cold_start_buy'):
+        for card in _buy_view('cold_start_buy'):
                 _cs_name = card.name or ''
                 _cs_ch = CHARACTERS.get(_cs_name) if _cs_name else None
                 if _cs_ch is None or int(_cs_ch.cost or 0) != 1 \

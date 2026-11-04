@@ -1167,6 +1167,39 @@ def transition_library_buy_now_union() -> frozenset[str]:
     return frozenset(out)
 
 
+def transition_active_entries(st: object) -> tuple[Comp, ...]:
+    """过渡层活跃条目序(保护/囤货/部署圈人/名单消费的条目域单一源)。
+
+    - 过渡锁定(``transition_locked`` 非空)= (锁定条目,)——其他过渡
+      候选配件失去成员档,让位序低位逐步舍弃(锁后不换);
+    - 未过渡锁定 = 候选槽条目序(槽存条目名;未注册名跳过);
+    - 终局锁定帧由调用方判窗(候选槽/过渡锁定态在终局锁定写入点同点
+      清空,本函数对空输入自然返回空元组)。
+    ``st`` = 策略器状态鸭子类型参数(读 ``transition_candidates`` 槽与
+    ``v3_intention.transition_locked``)。
+    """
+    ist = getattr(st, 'v3_intention', None)
+    tl = getattr(ist, 'transition_locked', '') if ist is not None else ''
+    if tl:
+        e = transition_entry_of(str(tl))
+        return (e,) if e is not None else ()
+    out: list[Comp] = []
+    for name in (getattr(st, 'transition_candidates', None) or ()):
+        e = transition_entry_of(str(name))
+        if e is not None:
+            out.append(e)
+    return tuple(out)
+
+
+def transition_member_union(st: object) -> frozenset[str]:
+    """过渡层贡献成员并集(保护名单/买面名单口径单一源):
+    活跃条目见即买集的并集。"""
+    out: set[str] = set()
+    for e in transition_active_entries(st):
+        out |= transition_member_set(e)
+    return frozenset(out)
+
+
 def update_transition_candidates(gs: GameState, ist: IntentionState,
                                  st: object = None,
                                  ) -> IntentionState:
@@ -1281,18 +1314,18 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
                      visible: set[str] | None = None) -> HoardTarget:
     """锁后效果接口:输出「囤货目标集合」供买侧消费([21]:只改囤货方向,不改板上)。
 
-    - locked/forced:意向线采购集;
-    - P1:非阵容锁定局 → 配方方向——体系对成员集
-      (p1_pair)/四体系引擎件全集(p1_transition,空窗);
-    - unlocked 无信号(P2+):**丙分支保利息缺省**(空集,不囤)——
-      P86 三分支判据的甲臂(方向化囤货)与乙臂(枢纽期权)已随统一
-      让位优先级迭代 3.4 退役(总纲 §2.7【拍】):未锁无目标帧的囤货
-      方向不再取机器判活方向(K 目标未锁期源切换 = 策略层候选快照
-      三线成员并集 ∪ 配方成员,由 mandate_v1/shop.py 序 1 义务面承载;
-      行为申报 = 弱势局未锁无目标帧从「按机器方向囤」变「保利息缺省」)。
-      (weak/demoted_endgame 分带随分支退役移除——phase 值域注释
-      IntentionState.phase:weak 随机器停用不可达,demoted_endgame 全
-      不可达,分带为不可达死分支非在役判据。)
+    - 终局锁定(locked_comp 非空):终局线采购集(现行);
+    - **未终局锁定 = 过渡层活跃帧**(换轴:原「位面 1 配方带/位面 2 起
+      恒空」位面分带废除,过渡机制生命周期挂钩终局锁定事件)——
+      过渡锁定 → 锁定条目采购集(见即买集);未过渡锁定 → **两层候选
+      并集**(过渡候选条目并集 ∪ 终局候选三线成员并集,候选快照槽);
+    - 两层候选皆空的帧 → 过渡库全体条目见即买并集(§3 死循环防线:
+      见即买 → 持有 → 计分 > 0 → 候选形成,闭环)。
+    过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
+    key_equips 判定)——过渡支 equip_targets 恒空。
+    (weak/demoted_endgame 分带随分支退役移除——phase 值域注释
+    IntentionState.phase:weak 随机器停用不可达,demoted_endgame 全
+    不可达,分带为不可达死分支非在役判据。)
     """
     if ist.phase == 'locked' and ist.locked_comp:
         comp = get_comp(ist.locked_comp)
@@ -1300,17 +1333,21 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
             chars, equips = _line_hoard(comp)
             return HoardTarget(frozenset(chars), frozenset(equips),
                                'forced' if ist.forced else 'locked')
-    if plane_of(gs) == 1:
-        # P1 配方方向:体系对成员集;空窗=四体系全集。
-        # 过渡装备随意([20] 装备语义:简易装备随便给,合成件归 final
-        # key_equips 判定)——equip_targets 恒空。
-        pair = ist.p1_pair or ()
-        members = _pair_members(pair) if pair else _pair_members(_P1_PAIR_PREF)
-        return HoardTarget(frozenset(members), frozenset(),
-                           'p1_pair' if pair else 'p1_transition')
-    # p2plus 无目标带:丙分支保利息缺省(空集;甲/乙臂退役后唯一形态)。
-    # session/registry/visible 形参保留 = 旧签名兼容(退役后无判据消费)。
-    return HoardTarget(frozenset(), frozenset(), 'fallback_hold')
+    st = strategy_state_of(session) if session is not None else None
+    chars: set[str] = set(transition_member_union(st)) if st is not None \
+        else set()
+    if st is not None:
+        # 终局候选三线成员并集(core ∪ shared,与 k_members 名单同口径)
+        for name in (getattr(st, 'line_candidates', None) or ()):
+            c = get_comp(str(name))
+            if c is not None:
+                chars |= set(c.core_chars)
+                chars |= set(getattr(c, 'shared_chars', None) or ())
+    if chars:
+        return HoardTarget(frozenset(chars), frozenset(), 'p1_pair')
+    # 候选槽为空的回退:过渡库见即买并集(§3)
+    return HoardTarget(transition_library_buy_now_union(), frozenset(),
+                       'p1_transition')
 
 
 def k_empty_window_fallback(gs: GameState,
@@ -1319,40 +1356,29 @@ def k_empty_window_fallback(gs: GameState,
                             registry: DecisionV2Registry | None = None,
                             visible: set[str] | None = None,
                             ) -> tuple[frozenset[str], str]:
-    """K 空窗回退单一源(经济冻结批病灶①):target_comp=None 时目标成员
-    集的分带派生,商店域(shop.py)与准备域(cw4/entry.py)共用本函数——
-    禁在任一消费域复制四体系全集/兜底逻辑(第二源)。
+    """K 空窗回退单一源(经济冻结批病灶①):现行方向读口
+    (``session_scope.direction_comp_of``)为 None 的帧的目标成员集
+    分带派生,商店域(shop.py)与准备域(entry.py/decision_payload)
+    共用本函数——禁在任一消费域复制兜底逻辑(第二源)。
 
     返回 (成员集,分带 token):分带 token 供消费域拼遥测计数键
     (shop 侧键名契约 'shop_k_fallback_<token>' 维持历史键名不变)。
-    分带语义:
-    - p1_gap:P1 空窗带(支持度 < 锁门槛)→ hoard 四体系引擎件全集
-      (消「K 空→零买入→支持度永不涨」死锁环);
-    - p1_lock_band:P1 终局阵容锁定过渡带 → 过渡候选首位方向成员
-      (候选机器同源现算,12 号篇 §2 K 空窗行——
-      「空窗期同样有方向」职能由候选首位承载,禁双源),派生空 ⇒
-      链 hoard 全集兜底;
-    - p2plus:P2+ → **保利息缺省**(空集,不囤——统一让位优先级迭代
-      3.4:K 目标未锁期源切换 = 策略层候选快照三线成员并集 ∪ 配方
-      成员,由 mandate_v1/shop.py 序 1 义务面承载;kernel 甲臂判活路径
-      退役后本带恒合法空,丙分支语义,contracts 带维度契约同步修订)。
-      session/registry/visible 形参保留 = 旧签名兼容(甲臂退役后无
-      判据消费)。
-    (weak/demoted_endgame 分带已随甲/乙臂退役移除——phase 值域注释
-    IntentionState.phase:weak 随机器停用不可达,demoted_endgame 全
-    不可达,原分带为不可达死分支非在役判据。)"""
-    if plane_of(gs) == 1:
-        if p1_gap_window(gs):
-            return hoard_target_set(gs, ist).char_targets, 'p1_gap'
-        # p1_lock_band 支 = 候选首位成员(候选机器同源现算,只读;
-        # 非空 p1_gap_window=False ⟹ 候选恒非空,or 兜底为防御形态)。
-        cands = p1_pair_candidates_of(gs)
-        members = (frozenset(_pair_members(cands[0]))
-                   if cands else frozenset())
-        return (members
-                or hoard_target_set(gs, ist).char_targets), 'p1_lock_band'
-    # p2plus 无目标带:丙分支保利息缺省(合法空集;带即证据)。
-    return frozenset(), 'p2plus'
+    分带语义(换轴改造:旧 p2plus 位面带随「未终局锁定帧过渡层照常
+    活跃」废除——终局锁定帧恒有方向〔锁定线〕,本函数不可达):
+    - p1_gap:两层候选与过渡候选全空(方向真空)→ hoard 回退
+      (过渡库见即买并集;消「K 空→零买入→计分来源永不涨」死锁环);
+    - p1_lock_band:过渡候选首位条目见即买集(候选机器同源现读,
+      禁双源),派生空 ⇒ 链 hoard 回退兜底。
+    session/registry/visible 形参保留 = 旧签名兼容。"""
+    st = strategy_state_of(session) if session is not None else None
+    entries = transition_active_entries(st) if st is not None else ()
+    if entries:
+        members = frozenset(transition_member_set(entries[0]))
+        return (members or hoard_target_set(
+            gs, ist, session=session, registry=registry).char_targets), \
+            'p1_lock_band'
+    return hoard_target_set(gs, ist, session=session,
+                            registry=registry).char_targets, 'p1_gap'
 
 
 def committed_authority(state: GameState | None,
@@ -1365,20 +1391,10 @@ def committed_authority(state: GameState | None,
       P2 时点兜底统一承载。原「位面 ≥ 2 恒定型」支已停用——P2 时点
       兜底锁定替代原 P2 恒定型,行为差申报:P2 入口至兜底锁帧之间的
       短窗 committed=False〔双轨期口径〕,锁定时点与原接近);
-      ② ``ist.p1_pair`` 非空——P1 配方锁已立(**门控候选首位**,派生
-      态产物)。
-      **序②门控等价性(行为无变化论证,12 号篇
-      §2 committed 行)**:p1_pair = 门控候选首位(对级支持度 ≥1.0 才写)。
-      非空 ⟺ 首位支持度 ≥1.0;排序降序 ⟹ 首位 ≥1.0 ⟺ 候选中存在
-      支持度 ≥1.0 的对 ⟺ 存在单体系对(席级 ≥1.0,希儿系对此时席级
-      也 ≥1.0 过门槛)⟺ 席级最高支持度 ≥1.0 = 旧 gate_first 合格集
-      Q 非空——含**支持度回落帧**逐帧等价(回落帧两侧同产空对:
-      旧 |Q|=0 → (),新门控首位 <1.0 → ());冻结帧两侧同钉
-      frozen_pair(现行钉向语义零改动)。故 committed ⟺ p1_pair 非空
-      判定零变化,序②与 ``committed_from`` 消费面(攒息/装备环境/
-      穿戴计划)零变化;(0,1) 支持度带的 scope 族翻转另申报
-      (§2.6-5,非 committed 面)。
-    - **缺供给帧 = 保守侧 False**(=双轨=攒息):策略状态/ist 不可得或
+      ② ``ist.transition_locked`` 非空——过渡锁定已立(锁定条目名,
+      序②替代口径:原读配方对 p1_pair,语义连续 = P1 方向已定型,
+      committed 全部消费面零改动)。
+      **缺供给帧 = 保守侧 False**(=双轨=攒息):策略状态/ist 不可得或
       字段缺失时**禁止**缺省 True——True=已定型=激进侧,攒息门/双轨
       买门全开(供给点清单 D2:拔掉供给探针下必须落保守侧,变异测试钉住)。
     - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
@@ -1390,7 +1406,8 @@ def committed_authority(state: GameState | None,
     if st is not None and getattr(st, 'target_comp', None) is not None:
         return True
     ist = getattr(st, 'v3_intention', None) if st is not None else None
-    return bool(getattr(ist, 'p1_pair', ()) or ()) if ist is not None else False
+    return bool(getattr(ist, 'transition_locked', '') or '') \
+        if ist is not None else False
 
 
 def committed_from(session: StrategySession,
@@ -1418,41 +1435,37 @@ def committed_from(session: StrategySession,
 
 
 def locked_buy_scope(ist: IntentionState | None,
-                     transition_candidates: tuple[tuple[str, ...], ...] = (),
+                     transition_candidates: tuple[str, ...] = (),
                      ) -> frozenset[str] | None:
     """锁定帧买侧目标约束基准。
 
     opportunistic/bond_fallback 买通道「目标/非目标」判定输入 =
-    过渡候选并集(``transition_candidates`` 槽透传;非空时)∪
-    ``locked_comp`` 采购集(``IntentionState.p1_pair`` 的约束基准契约,
-    本函数是该契约的单一实现);三者皆空(空窗/弱意向/降格终局)→
-    None(无锁定帧,不约束——[31]① 空窗期四体系全集是方向,
-    不存在「非目标件」)。
+    过渡层成员并集(槽语义改造:``transition_candidates`` 槽存过渡
+    条目名,经 :func:`transition_member_set` 展开;过渡锁定 = 锁定
+    条目成员,未过渡锁定 = 候选条目并集)∪ ``locked_comp`` 采购集;
+    两者皆空(空窗/降格终局)→ None(无锁定帧,不约束——[31]① 空窗期
+    见即买并集是方向,不存在「非目标件」)。
 
-    - P1 配方支 = **过渡候选并集**(各候选对 ``_pair_members`` 成员
-      并集;12 号篇 §4 locked_buy_scope 行定版:非空边界从「p1_pair
-      非空(≥1.0)」移到「候选非空(任一体系 >0)」——(0,1) 支持度带
-      从 None 不约束翻转为并集约束,方向纪律提前〔有倾向即约束
-      机会买〕,显式申报;冻结后槽单元素 = 冻结对成员,与现行语义
-      一致)。``transition_candidates`` 参数缺省 () = 无候选供给
-      (调用方未接入调用的过渡形态,配方支空);候选不经 ist 传递(槽在
-      策略器状态,写端 = 配方链重算),接入调用消费方传槽值,禁现算
-      第二源;
-    - 阵容锁定帧(P1①资格通道 / P2+)= ``_line_hoard(comp)`` 角色采购集;
-      **①锁局(P1)∪ 过渡候选并集**——二级囤货语义
-      ([22]④):对件免 demote/免 final_fence,但不进 hoard 目标件集
-      (阵容主序对副序,主方向与核心件优先级不动);
+    - 过渡支 = **候选并集**(候选非空即约束——有倾向即约束机会买,
+      显式申报;``transition_candidates`` 参数缺省 () = 无候选供给,
+      过渡锁定态经 ist 读,候选不经 ist 传递〔槽在策略器状态,写端 =
+      候选机器重算〕,接入调用消费方传槽值,禁现算第二源);
+    - 终局锁定帧 = ``_line_hoard(comp)`` 角色采购集(终局锁定时过渡层
+      已退役清空,过渡支恒空——防御双保险);
     - weak(撤销后去向=跨线骨架)/demoted_endgame 不覆盖:方向已撤或已
       降格,约束基准不存在(弱意向期的跨线骨架囤货本身不受本约束覆盖)。
     """
     if ist is None:
         return None
     scope: set[str] = set()
-    if transition_candidates:
-        for p in transition_candidates:
-            scope |= _pair_members(tuple(p))
-    if getattr(ist, 'transition_pair', ()):
-        scope |= _pair_members(tuple(ist.transition_pair))
+    if getattr(ist, 'transition_locked', ''):
+        e = transition_entry_of(str(ist.transition_locked))
+        if e is not None:
+            scope |= transition_member_set(e)
+    for name in (transition_candidates or ()):
+        e = transition_entry_of(str(name))
+        if e is not None:
+            scope |= transition_member_set(e)
     if ist.phase == 'locked' and ist.locked_comp:
         comp = get_comp(ist.locked_comp)
         if comp is not None:
@@ -1478,21 +1491,17 @@ def locked_buy_membership(ist: IntentionState | None,
     断裂非设计缺口)。修复 = 锁定帧买入判定统一消费本函数,购买侧与
     锁定侧同源。
 
-    集合构成 = ``p1_pair`` 成员(若设)+ ``locked_comp`` 采购集;**刻意
-    不含 ``transition_pair``**(与 ``locked_buy_scope`` 的唯一差异):
-    对件在 分层里是二级囤货——免 demote/fence 的机会性囤货
-    (受息律/预算覆盖),不是 M2 骨架义务(无条件照买),升格即越分层,
-    故本函数不复用 ``locked_buy_scope`` 直取。需要完整约束基准(对件
-    免 demote/fence 面)的消费方仍用 ``locked_buy_scope``。
-    **维持 p1_pair 直读申报(12 号篇 §4)**:配方支
-    不随 scope 族切候选并集——M2 义务面 = 锁局承诺面,与 scope(机会
-    买约束面)刻意分层;新 p1_pair 值形态(单满 1 元对 vs 旧渐进
-    2 元对)使 P1 ①锁局 M2 义务集收窄(第二体系件移出 M2 义务面、
-    仍在买面候选并集),显式申报。
+    集合构成 = 过渡锁定条目成员(若设;终局锁定帧过渡层已退役,恒空
+    ——防御位)+ ``locked_comp`` 采购集(槽语义改造:原 ``p1_pair``
+    直读 + ``_pair_members`` 展开改为读过渡层状态——锁定条目,与
+    scope 族同源);故本函数与 ``locked_buy_scope`` 的差异随终局锁定
+    帧过渡支恒空而收敛(保留两函数形态,消费域分层语义不变)。
+    **M2 义务面 = 锁局承诺面**(12 号篇 §4):与 scope(机会买约束面)
+    刻意分层。
 
     **容量可行截断**:``cap_hold`` 非 None 且
-    |B| > cap_hold 时返回截断义务集 B'——序 = core∪shared ≻ (p1_pair ∪
-    其余 hoard) 同级,级内 cost 升序、注册表声明序 tie-break
+    |B| > cap_hold 时返回截断义务集 B'——序 = core∪shared ≻ (过渡层
+    成员 ∪ 其余 hoard) 同级,级内 cost 升序、注册表声明序 tie-break
     (``_obligation_rank``)。结构依据 = 义务完成金流成本:低费义务先
     闭合(P41②/P76 甲 1★ 全额退净金 0 的可逆性不变量,低费成员往返
     动作成本最低),零自由参数。缺员面 missing(B') 可清空 ⇒ M2 终止
@@ -1501,16 +1510,18 @@ def locked_buy_membership(ist: IntentionState | None,
     ``cap_hold=None`` = 宽集(兼容缺省,零漂移;容量不可得帧的
     fail-closed 方向 = 保宽,截断是收紧面不盲收)。
 
-    触发条件 = ``locked_comp`` 非空(终局阵容锁定状态已建立)。未锁帧(P1 配方
-    锁帧 locked_comp 恒空;空窗/weak/降格)→ 返回 None,
-    消费方维持既有 ``line_members(target_comp)`` 口径——P1 无锁态行为
-    零变化的边界基准。
+    触发条件 = ``locked_comp`` 非空(终局阵容锁定状态已建立)。未锁帧
+    (过渡层活跃帧 locked_comp 恒空;空窗/weak/降格)→ 返回 None,
+    消费方维持既有 ``line_members(target_comp)`` 口径——无终局锁态
+    行为零变化的边界基准。
     """
     if ist is None or not getattr(ist, 'locked_comp', ''):
         return None
     scope: set[str] = set()
-    if getattr(ist, 'p1_pair', ()):
-        scope |= _pair_members(tuple(ist.p1_pair))
+    if getattr(ist, 'transition_locked', ''):
+        e = transition_entry_of(str(ist.transition_locked))
+        if e is not None:
+            scope |= transition_member_set(e)
     comp = get_comp(ist.locked_comp)
     core_shared: set[str] = set()
     if comp is not None:
@@ -1584,7 +1595,7 @@ def locked_buy_cap_hold(state: GameState | None) -> int | None:
 
 
 def locked_faction_scope(ist: IntentionState | None,
-                         transition_candidates: tuple[tuple[str, ...], ...] = (),
+                         transition_candidates: tuple[str, ...] = (),
                          ) -> frozenset[str] | None:
     """锁定帧的体系(羁绊键)集(evolve 提案/部署围栏消费)。
 
@@ -1593,34 +1604,27 @@ def locked_faction_scope(ist: IntentionState | None,
     execute_replacement 划进 old_line 整档解除——约束需要的是体系键不是
     件名):
 
-    - P1 配方支 = **过渡候选并集的体系键**(``transition_candidates``
-      槽透传,与 ``locked_buy_scope`` 同式扩位,§2.6-5;希儿系展开
-      =量子同频+贝洛伯格,与 ``_pair_members`` 同口径;冻结后槽单
-      元素 = 冻结对体系键,现行语义一致;参数缺省 () = 无候选供给);
-    - 阵容锁定帧(P1①资格通道 / P2+)= ``locked_comp`` 主/副档键
-      (``core_faction_reqs`` ∪ ``bonus_faction_reqs``,与 ``_line_hoard`` 档位键同式);
-      **①锁局(P1)∪ 过渡候选体系键(与 ``locked_buy_scope``
-      同式扩位)**——对体系提案不再按 off-lock 降级/解除,protect 基准
-      (cw_evolution 围栏/保留序)同步扩覆盖(R2:换人可以拆引擎不行);
-    - 两者皆空(空窗/弱意向/降格终局)→ None(无锁定帧,不约束——[31]①
-      空窗期四体系全集是方向,不存在「off-lock 提案」)。
+    - 过渡支 = **过渡层条目的羁绊键**(槽语义改造:``transition_candidates``
+      槽存过渡条目名,取条目 ``core_faction_reqs`` 键集;希儿引擎的
+      量/贝双键天然在档 0,与旧希儿系展开同集;过渡锁定 = 锁定条目键,
+      未过渡锁定 = 候选条目并集;参数缺省 () = 无候选供给);
+    - 终局锁定帧 = ``locked_comp`` 主/副档键
+      (``core_faction_reqs`` ∪ ``bonus_faction_reqs``,与 ``_line_hoard`` 档位键同式;
+      终局锁定时过渡层已退役清空,过渡支恒空——防御双保险);
+    - 两者皆空(空窗/降格终局)→ None(无锁定帧,不约束——[31]①
+      空窗期见即买并集是方向,不存在「off-lock 提案」)。
     """
     if ist is None:
         return None
     keys: set[str] = set()
-    if transition_candidates:
-        for p in transition_candidates:
-            for sys in p:
-                if sys == SEELE_SYSTEM:
-                    keys |= {'量子同频', '贝洛伯格'}
-                else:
-                    keys.add(sys)
-    if getattr(ist, 'transition_pair', ()):
-        for sys in ist.transition_pair:
-            if sys == SEELE_SYSTEM:
-                keys |= {'量子同频', '贝洛伯格'}
-            else:
-                keys.add(sys)
+    if getattr(ist, 'transition_locked', ''):
+        e = transition_entry_of(str(ist.transition_locked))
+        if e is not None:
+            keys |= set(e.core_faction_reqs)
+    for name in (transition_candidates or ()):
+        e = transition_entry_of(str(name))
+        if e is not None:
+            keys |= set(e.core_faction_reqs)
     if ist.phase == 'locked' and ist.locked_comp:
         comp = get_comp(ist.locked_comp)
         if comp is not None:

@@ -38,14 +38,12 @@ class ContractCtx:
       v3_intention 在场性派生;缺供给帧=保守侧不回退,合法)。
     - k_fallback_resolved:消费位**实解析**的回退成员集(单一源
       cw_intention 调用的返回物;供给在场而解析为空 = 「回退字面量
-      空元组」复发形态,违例——p1 带恒违例;p2plus 带合法空 =
-      丙分支保利息缺省,统一让位优先级迭代 3.4 后 p2plus 带按带放行,
-      见 _k_projection_domain_full)。
+      空元组」复发形态,违例——两带均构造性非空,恒违例)。
     - k_fallback_band:分带 token(cw_intention.k_empty_window_fallback
-      第二返回值直传,零第二派生)。空窗期待按带非对称:p1 带
-      (p1_gap/p1_lock_band)回退集注册表派生构造性非空;p2plus 带
-      = 保利息缺省(合法空集)。None = 带未知,按 p1 带
-      保守期待处置(空 = 违例)。
+      第二返回值直传,零第二派生)。值域 = p1_gap/p1_lock_band 两带
+      (换轴:旧 p2plus 位面带废除——未终局锁定帧过渡层照常活跃,
+      回退 = 见即买并集构造性非空)。None = 带未知,按保守期待
+      处置(空 = 违例)。
     """
 
     k_members: tuple[str, ...] | None = None
@@ -66,19 +64,11 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
 
-    **带维度非对称期待(P86 实现批,证明批 §4.6;统一让位优先级迭代
-    3.4 修订——甲/乙臂退役)**:p1 带
-    (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
-    (检测力保留);p2plus 带空集合法 = 丙分支保利息缺省帧(K 目标
-    未锁期源已切换为策略层候选快照三线并集 ∪ 配方成员,kernel 甲臂
-    兜底退役——原「来源证据 token」要件随判据分支退役删除,带本身即
-    合法空证据);供给缺帧(k_fallback_available False)维持旧违例
-    语义(无评估证据的空 = 复发形态)。"""
-    if ctx.k_members:
-        return True
-    return (ctx.k_target is None and ctx.k_fallback_available
-            and not ctx.k_fallback_resolved
-            and ctx.k_fallback_band == 'p2plus')
+    **带维度非对称期待(修订——换轴后 p2plus 位面带废除)**:两带
+    (p1_gap/p1_lock_band)回退集均构造性非空(见即买并集/条目集),
+    空 = 复发违例(检测力保留);供给缺帧(k_fallback_available
+    False)维持旧违例语义(无评估证据的空 = 复发形态)。"""
+    return bool(ctx.k_members)
 
 
 def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
@@ -102,30 +92,25 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
     第三例)——空窗死锁环:K 空→零买入→板面零变化→永不锁。
     **可核验派生形态(防线硬化+R3 扩域)**:值域
-    全集声明覆盖三带(P1 空窗带/P1 终局阵容锁定过渡带/P2+ 带),前提不再采信
-    消费位硬编码声明,而是核验实解析结果——``k_target`` 非 None
-    (终局阵容锁定状态)= 无回退义务,恒过;``k_target`` None 且供给缺帧
-    (``k_fallback_available`` False)= 保守侧不回退,合法 fail 方向
-    (与 committed_authority 缺供给同款);供给在场而
+    全集声明覆盖两带(空窗带/候选首位带——换轴后值域,任意位面同判),
+    前提不再采信消费位硬编码声明,而是核验实解析结果——``k_target``
+    非 None(终局锁定状态)= 无回退义务,恒过;``k_target`` None 且
+    供给缺帧(``k_fallback_available`` False)= 保守侧不回退,合法
+    fail 方向(与 committed_authority 缺供给同款);供给在场而
     ``k_fallback_resolved`` 为空 = 「回退字面量空元组但保留声明」
     复发形态,违例弃权。回退单一源=cw_intention.k_empty_window_fallback
-    (p1_gap 带 hoard_target_set / p1_lock_band 带候选首位成员派生,
-    禁复制四体系全集逻辑)。
+    (p1_gap 带 hoard 回退 / p1_lock_band 带候选首位条目见即买集,
+    禁复制见即买并集逻辑)。
 
-    **带维度非对称期待(P86 实现批,证明批 §4.6;统一让位优先级迭代
-    3.4 修订——甲/乙臂退役)**:p1 带
-    (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
-    (检测力保留);p2plus 带空集合法 = 丙分支保利息缺省帧(甲臂判活
-    路径已随 K 源切换退役——原「来源证据 token」要件随判据分支退役
-    删除,带本身即合法空证据);供给缺帧(k_fallback_available False)
-    维持旧违例语义(无评估证据的空 = 复发形态)。"""
+    **带维度非对称期待(修订——换轴后 p2plus 位面带废除)**:两带
+    (p1_gap/p1_lock_band)回退集均构造性非空(见即买并集/条目集),
+    空 = 复发违例(检测力保留);供给缺帧(k_fallback_available
+    False)维持旧违例语义(无评估证据的空 = 复发形态)。"""
     if ctx.k_target is not None:
         return True
     if not ctx.k_fallback_available:
         return True
-    if ctx.k_fallback_resolved:
-        return True
-    return ctx.k_fallback_band == 'p2plus'
+    return bool(ctx.k_fallback_resolved)
 
 
 @dataclass(frozen=True)
@@ -246,16 +231,15 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
         '商店线方向 pass K 投影:前提=战略层产物 target_comp 值域全集'
-        '含 None——回退辖三带(P1 空窗带=hoard_target_set 四体系全集 / '
-        'P1 锁线过渡带=过渡候选首位方向成员 / P2+ 带=保利息缺省'
-        '[丙分支合法空集;甲臂判活路径与乙臂枢纽已随统一让位优先级'
-        '迭代 3.4 退役,K 目标未锁期源切换为策略层候选快照三线并集'
-        ' ∪ 配方成员]),单一源=cw_intention(禁复制);'
-        '供给在场而回退解析空集即违例(p1 带恒违例;p2plus 带合法空)',
+        '含 None——回退辖两带(空窗带=hoard 回退见即买并集 / '
+        '候选首位带=过渡候选首位条目见即买集;换轴后任意位面同判,'
+        '旧 P2+ 位面带已废),单一源=cw_intention(禁复制);'
+        '供给在场而回退解析空集即违例(两带均构造性非空)',
         'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
         '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3'
         '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标)'
-        '+P86 证明批 §4.6(带维度非对称期待;3.4 甲/乙臂退役修订)'),
+        '+P86 证明批 §4.6(带维度非对称期待;3.4 甲/乙臂退役修订;'
+        'comp-structure-unification 3.3 换轴再修订)'),
 }
 
 
