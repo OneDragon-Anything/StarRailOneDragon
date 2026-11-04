@@ -2071,18 +2071,27 @@ def check_strategy_boss_clear_gold(gs: GameState, sig: ChannelSig) -> None:
        置位照写——闩与金笔同窗是「恰一次」的载体,0 值短路不闩会让
        后继 boss 重触发);
     4. 两笔同窗相邻:金 ``gs.observe``(obs 族,sig = 调用方传入的
-       sim 结算段签名;evidence ``strategy:boss_clear_value:p<位面>
-       r<轮>``,node 缺席的直构窗退化无时点段)+ 闩
-       ``gs.write_logic`` 纯卡名追加(sig = _BOSS_CLEAR_GOLD_LATCH_
-       SIG 内构,渠道族分工见常量注释)。
+       sim 结算段签名;evidence = ``sim_evidence`` 前缀形
+       ``sim:engine:strategy:boss_clear_value:p<位面>r<轮>``,node
+       缺席的直构窗退化无时点段)+ 闩 ``gs.write_logic`` 纯卡名追加
+       (sig = _BOSS_CLEAR_GOLD_LATCH_SIG 内构,渠道族分工见常量
+       注释)。
 
     零 rng(条件全真值 + 板面现读,无采样面);金量非静态注册数值 =
     策略估值天然不可见(fail-closed,不涉估值三表)。"""
     done = tuple(gs.strategy_conditional_done.value or ())
     node = gs.node.value
-    evidence = (f'strategy:boss_clear_value:p{node.plane}'
-                f'r{node.round_num}' if node is not None
-                else 'strategy:boss_clear_value')
+    # sim_evidence 前缀形:kernel → sim 惰性 import 先例(函数内取,
+    # 模块级反向即环;check_env_star_merge_gold/check_strategy_hp_loss_
+    # grants 金笔同款)。前缀承载真实消费面 = _MISMATCH_SUPPRESS_
+    # PREFIXES 失配抑制按 evidence 前缀判定——本腿金 observe 覆盖
+    # logic 写金的结构可达态(战斗前购买经动作上报 logic 写金 → boss
+    # 胜局无其他收入腿 → 本腿 observe 差值)无前缀即以未抑制形态落
+    # 生产缺陷台账,恰是该抑制面所要防的 sim 链自对账噪声。
+    from sr_od.application.currency_war.sim.cw_sim_base import sim_evidence
+    evidence = (sim_evidence(f'strategy:boss_clear_value:p{node.plane}'
+                             f'r{node.round_num}') if node is not None
+                else sim_evidence('strategy:boss_clear_value'))
     for name in gs.active_strategies.value or ():
         if name not in STRATEGY_BOSS_CLEAR_GOLD_GRANTS or name in done:
             continue
@@ -2972,8 +2981,9 @@ def check_strategy_equip_expiry(gs: GameState, *,
     条件矩阵:持卡∩表 → 未持卡空集;闩 fire 即封(与移除写是否非空
     解耦——「下个节点」到期一次性语义,重放零重发);移除集 = ∪表值
     ∩ gs.equips 按名过滤(全名域「所有」直读,波及他源在栏件如实
-    申报;闩封后到货件不受任何影响)。形态 A 纯读零写零 rng——闩写由
-    调用方与移除写同拍承载(strategy_conditional_done 共域)。
+    申报;闩封后到货件不受任何影响)。闩写在本函数内(fired 非空即
+    封,strategy_conditional_done 共域,_select_write rand=False 承载);
+    移除写归调用方与返回集同拍。零 rng。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         STRATEGY_EQUIP_EXPIRY_GRANTS,

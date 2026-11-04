@@ -74,7 +74,7 @@
   1. `STRATEGY_ECONOMY['加油站']`(cw_investments.py)增 `free_refresh_burst=1`——「现在」部分按 §4 burst 惯例载体登记;
   2. `STRATEGY_EFFECTS` 增「加油站」EffectSpec 条目——现有选卡登记挂点(CwScreenInvestStrategy 确认落地:register_strategy + apply_effect_burst_grant 同点)即可直通,burst 一次性发放按 payload 发 +1,账本登记同时使已声明的 `free_refresh_per_node=1` 经节点边界发放真实生效(此前该卡无 EffectSpec,两个部分在账本面均为死建模)。
 
-  **搜打撤同型现值注(登记缺口消账,2026-11-05)**:搜打撤的 EffectSpec overlay 条目已随 T-332 批补齐(同「条目落地使 per-node 载体真实生效」形态——`free_refresh_per_node=1` 注册行自此经节点边界桥真实发放,登记期零发放与 §3.2 结论一致),§1 表处置列同步更新;其卡面句② boss 价值金腿不属本篇刷新域,另表建模(见 invest_effects.md §1 批 4 本卡行),§6 所述「注册表全量收录推广批次」族级登记待办对其余成员仍然在册。
+  **搜打撤同型现值注(登记缺口消账,2026-11-04)**:搜打撤的 EffectSpec overlay 条目已随 T-332 批补齐(同「条目落地使 per-node 载体真实生效」形态——`free_refresh_per_node=1` 注册行自此经节点边界桥真实发放,登记期零发放与 §3.2 结论一致),§1 表处置列同步更新;其卡面句② boss 价值金腿不属本篇刷新域,另表建模(见 invest_effects.md §1 批 4 本卡行),§6 所述「注册表全量收录推广批次」族级登记待办对其余成员仍然在册。
 - **去重语义**:登记期发放「每效果×节点至多一次」由结构保证,不设去重状态——①发放挂点唯一(选卡确认落地,单调用点);②每次拿卡事件由落地复查一次性消费(`_confirm_pending` 单发即清),一次拿卡只可能落在一个节点;③同卡跨节点重复拿取(游戏允许)每次拿卡各发一次「现在」部分 = 游戏真值,非重复发放。
 
 ## 6. 策略数学依赖核查

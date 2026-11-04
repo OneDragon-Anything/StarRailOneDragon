@@ -243,11 +243,12 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名'
               '或复合键 first_buy_xp#<费用>,局内恒存随快照存续),无观察'
               '读端——发放登记事实非观察投影(同族行先例 = '
-              'env_grants_done);逻辑写端九处 = '
+              'env_grants_done);逻辑写端十处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
               '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
               '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
-              '双点接线段写,producer strategy_level_grant)+ 策略卡到级'
+              '双点接线段 + _skip_battle 记账段镜像共三点写,producer '
+              'strategy_level_grant)+ 策略卡到级'
               '装备腿(check_strategy_level_equip_grants 直写形态,live '
               '结算位 + sim advance 双点同链,producer '
               'strategy_level_equip_grant)+ 全都要族选卡事件消耗闩'
@@ -269,10 +270,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '首领完成固定集闩(check_strategy_boss_completion_grants '
               '结算位链尾,纯卡名键,「下个首领」恰一次,evidence '
               'strategy_boss_completion#<卡名>,全部 placed 才落闩拒落'
-              '不闩自愈)+ 策略卡首领通关价值金闩(check_strategy_boss_'
-              'clear_gold 结算位链尾,纯卡名键,「下一个首领」恰一次,'
-              'evidence strategy:boss_clear_value:p<位面>r<轮>,金笔 '
-              'observe 与闩 write_logic 同窗两笔)'),
+              '不闩自愈)+ 策略卡装备到期消失闩(check_strategy_equip_'
+              'expiry 节点窗收口,fired 非空即封与移除集是否为空解耦,'
+              'evidence strategy_equip_expiry:<卡名>,_select_write '
+              'rand=False 承载)+ 策略卡首领通关价值金闩(check_strategy_'
+              'boss_clear_gold 结算位链尾,纯卡名键,「下一个首领」恰一次,'
+              'evidence sim:engine:strategy:boss_clear_value:p<位面>r<轮>'
+              ',金笔 observe 与闩 write_logic 同窗两笔)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'

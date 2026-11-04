@@ -2797,15 +2797,18 @@ class GameState:
     # 首例,对「元素 = 规范卡名」条款的显式扩展);写入时机 = 各检查腿
     # 发放/发放决定成立后单点追加。写端 = cw_gain_chain.check_strategy_
     # conditional_grants(tick 位;拒落域不闩——池现值维持达标时后续
-    # tick 重试自愈,placed 才封账)+ sim 到级金腿接线段 + check_strategy_
-    # level_equip_grants + check_strategy_take_all_supply(选卡事件消耗)
+    # tick 重试自愈,placed 才封账)+ sim 到级金腿接线段(advance 双点 +
+    # _skip_battle 记账段镜像共三点)+ check_strategy_level_equip_grants
+    # + check_strategy_take_all_supply(选卡事件消耗)
     # + check_strategy_first_buy_xp_grants(买牌上报尾段,先闩后世界写
     # at-most-once)+ 策略卡购买翻星消耗闩(check_strategy_buy_star_flip
     # 挂买牌上报 applied 后尾段,纯卡名键)+ 策略卡节点序列改写闩
     #(sim 节点窗开挂点,纯卡名键,evidence 'node_seq:strategy',条件
     # 全过才闩)+ check_strategy_boss_completion_grants(结算位链尾,
-    # 首领完成固定集闩,「下个首领」恰一次)+ check_strategy_boss_clear_
-    # gold(结算位链尾,首领通关价值金闩,「下一个首领」恰一次)——
+    # 首领完成固定集闩,「下个首领」恰一次)+ check_strategy_equip_expiry
+    #(节点窗收口,装备到期消失闩,fired 非空即封)+ check_strategy_boss_
+    # clear_gold(结算位链尾,首领通关价值金闩,「下一个首领」恰一次,
+    # evidence sim:engine:strategy:boss_clear_value:p<r>)——
     # 写端清单单一源 = cw_projection_audit 审计行;
     # 消费 = 各检查腿跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
     # 无删除;「首次」语义——卖出/合成使同名计数回落不回滚已发放,

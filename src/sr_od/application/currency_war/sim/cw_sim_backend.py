@@ -4787,8 +4787,10 @@ class SimBackend:
         # sell_refund 卖出回金口径;一次性 = strategy_conditional_done
         # 纯卡名闩,闩后同局后续首领零重复);金写 = observe 金独立笔
         #(世界数值面写端通道分工,招财狗胜利金腿同形;obs 族
-        # 'sim:strategy' 组沿结算段在役惯例,evidence
-        # strategy:boss_clear_value:p<r> 与其他策略金腿分账),闩笔
+        # 'sim:strategy' 组沿结算段在役惯例,evidence = sim_evidence
+        # 前缀形 sim:engine:strategy:boss_clear_value:p<r>〔函数内惰性
+        # import,star_merge/hp_loss 金笔同款;前缀承载失配抑制消费面〕
+        # 与其他策略金腿分账),闩笔
         # logic 族签名由函数内构(observe/write_logic 渠道族互斥,
         # 详见常量注释);0 值金笔照发且闩照落(空场空席结构可达,
         # 闩与金笔同窗 = 「下一个」恰一次的载体);零 rng(条件全真值

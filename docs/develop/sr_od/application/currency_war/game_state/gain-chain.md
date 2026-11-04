@@ -654,11 +654,15 @@ partial_read 判据(出售是写动作),本 helper 系纯读派生(未读子域�
 同域同语义);③金量派生,**0 值照发**(空场空席 = 「所有角色价值」
 为 0 的结构可达态——闩与金笔同窗是「恰一次」的载体,0 值短路不闩
 会让后继 boss 重触发);④两笔同窗相邻:金 `gs.observe`(世界数值面
-观察通道,evidence `strategy:boss_clear_value:p<位面>r<轮>`,node
-缺席的直构窗退化无时点段;sig = 调用方传入 sim 结算段 obs 族签名,
-组 'sim:strategy')+ 闩 `write_logic` 纯卡名追加(sig =
-`_BOSS_CLEAR_GOLD_LATCH_SIG` kernel 内构 logic_action 族——金笔
-observe 与闩 write_logic 渠道族互斥,调用方 obs 族签名复用进闩写
+观察通道,evidence = `sim_evidence` 前缀形
+`sim:engine:strategy:boss_clear_value:p<位面>r<轮>`——kernel 函数内
+惰性 import sim_evidence(check_env_star_merge_gold/check_strategy_
+hp_loss_grants 金笔同款惰性先例;前缀承载 `_MISMATCH_SUPPRESS_PREFIXES`
+失配抑制消费面,防本腿 observe 覆盖 logic 写金的可达态以未抑制形态
+落缺陷台账),node 缺席的直构窗退化无时点段;sig = 调用方传入 sim
+结算段 obs 族签名,组 'sim:strategy')+ 闩 `write_logic` 纯卡名追加
+(sig = `_BOSS_CLEAR_GOLD_LATCH_SIG` kernel 内构 logic_action 族——
+金笔 observe 与闩 write_logic 渠道族互斥,调用方 obs 族签名复用进闩写
 首笔即炸渠道族校验,内构先例 = cw_env_grants._GRANT_SIG/
 _DIAMOND_SIG,group_id 与金笔同组对齐)。
 
