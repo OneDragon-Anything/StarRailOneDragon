@@ -1641,6 +1641,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '和平手枪祝福': _make_named_equip_grant_effect('和平手枪', 1),
     '生命之花祝福': _make_named_equip_grant_effect('生命之花', 1),
     '量产型装甲祝福': _make_named_equip_grant_effect('量产型装甲', 1),
+    # 独家代言 = 具名装备授予族后继(331401 腿1 获取面:「从3件进阶装备中
+    # 选择一件获取」):直书登记行直呼工厂,发放物 = 占位选定件
+    # sorted(进阶名单) 首件以牙还牙甲(候选池构成 desc 无载禁猜,披露键 =
+    # cw_investments.STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER);rand=False
+    # 具名确定发放(T-119 工厂语义,卡文无随机词),以牙还牙甲 = 进阶类
+    # (cw_equipment_data)归 equips 装备库存域,不在精密金面判据映射内
+    # (gate 恒 None)走纯发放循环。转换腿(获得配方组件改获选定进阶)归
+    # STRATEGY_EQUIP_GAIN_CONVERSIONS 专表,本行只辖获取面;与登记表行
+    # equips_immediate 的镜像一致性 = cw_gain_chain 拆目录镜像锁承载。
+    '独家代言': _make_named_equip_grant_effect('以牙还牙甲', 1),
     # 星星相印 = 具名装备授予族后继(卡文「立刻获得1个【员工投影仪】」):
     # 直书登记行直呼工厂;员工投影仪 = 工具类装备(cw_equipment_data
     # category='工具'),归 equips 装备库存域禁入占席道具通道,不在精密

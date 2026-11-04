@@ -728,33 +728,50 @@ def _equip_gain_conversion_hit(gs: GameState,
                                item: str) -> tuple[str, str] | None:
     """装备获得转换命中判定(:data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 消费
     端判定件):持卡(active_strategies 状态容器直读,check_strategy_conditional_
-    grants 同先例)∩ 转换登记表 ∧ item 属该卡登记源类别 → ``(目标名,
-    卡名)``;不持卡/未持转换卡/非登记类别 = None(零副作用零写零 rng)。
+    grants 同先例)∩ 转换登记表 ∧ item 属该卡登记源 → ``(目标名,
+    卡名)``;不持卡/未持转换卡/非登记源 = None(零副作用零写零 rng)。
 
-    - 类别判 = EQUIPMENTS 查类别(.get 形):未知名不转换——保持原语既有
-      「盲追加幻影」行为边零改写(错名防线 = 登记面漂移哨,非本判定件);
+    - 源形两态(登记值形状):类别词 str = EQUIPMENTS 查类别(.get 形)
+      相等判;名单集 tuple = 成员判(item ∈ 名单集)。未知名一律不转换
+      (EQUIPMENTS 早退)——保持原语既有「盲追加幻影」行为边零改写(错名
+      防线 = 登记面漂移哨,非本判定件);
+    - 分派序 = 名单定向 > 类别词:同一获得事件双命中(如持自由市场 +
+      独家代言,获幸运星 = ∈ 名单集 ∧ 类别简易)时名单集行胜出,类别词
+      行零动作;同优先级内持卡序首中(确定可复现)。desc 字面支持 = 名单集
+      行卡文指名道姓(「获得组成该装备的简易装备」),specific-over-broad;
+      既有持卡序语义仅对同优先级行延伸,禁静默跨级;
     - 转换 = 确定事件(「改为获得」无分布面),零采样零 rng 消费——持卡
       局掷序不变,状态副本差异仅在写入内容;
     - 目标域分支选型不在本判定件(纯判定):目标 ∈ BENCH_ITEM_NAMES →
       占席道具分支(消费端转发占席道具原语),∉ → 装备分支(消费端名字
       替换落原插入路径),两分支语义住 :func:`gain_equipment` 顶段;
     - 单事件单转换(不重入):占席道具分支转发落位经占席道具原语,其
-      路径不再进入装备原语;装备分支消费端直落写入段不再重查本判定。
-      结构性佐证 = 登记目标不属任何已登记源类别(简易武装箱 = 占席道具
-      不入装备注册表;好运令牌 = 工具类 ∉ 源类别集),误重入亦零再
-      转换,无需递归护栏。"""
+      路径不再进入装备原语;装备分支消费端直落写入段不再重查本判定,
+      不重入由此代码语义承载(独家代言产物以牙还牙甲属'进阶' = 好运来
+      行源类别,「登记目标不属任何已登记源类别」的结构性佐证对该卡不
+      成立,勿据其推断免递归)。"""
     held = gs.active_strategies.value
     if not held:
         return None
     eq = EQUIPMENTS.get(item)
     if eq is None:
         return None
+    broad_hit: tuple[str, str] | None = None
     for card in held:
         spec = STRATEGY_EQUIP_GAIN_CONVERSIONS.get(card)
-        if spec is None or eq.category != spec[0]:
+        if spec is None:
             continue
-        return spec[1], card
-    return None
+        src = spec[0]
+        if isinstance(src, tuple):
+            # 名单集源形:成员判,定向优先——首中即返回,胜过任何已见的
+            # 类别词行(含持卡序在前者)。
+            if item in src:
+                return spec[1], card
+        elif eq.category == src and broad_hit is None:
+            # 类别词源形:记持卡序首中继续扫,后位名单集行仍可胜出;全
+            # 持卡无名单集命中时才消费本行。
+            broad_hit = (spec[1], card)
+    return broad_hit
 
 
 def equip_gain_conversion_target(gs: GameState, item: str) -> str | None:
@@ -779,7 +796,8 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
 
     装备获得转换拦截(顶段,在栏未观察早退之前——直构域持卡也转换,与
     生产语义一致):持 :data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 已登记卡 ∧
-    item 属登记源类别(:func:`_equip_gain_conversion_hit`)→ 被转换装备
+    item 命中登记源(源形两态判定 = :func:`_equip_gain_conversion_hit`)
+    → 被转换装备
     不入栏、按目标域两分支发放(rand=False 确定事件,转换零 rng),出参
     detail = ``converted:<卡名>``(调用方零改),转发/写入 evidence
     前缀 ``equip_gain_converted:``(后缀保留原获得事件串留证):
@@ -788,8 +806,10 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
       结果, landing='skipped', …)``,箱席满走溢出落位既有语义;
     - 目标 ∉ BENCH_ITEM_NAMES(装备分支,好运来族):名字替换后落原
       插入路径(写入 + :func:`on_equipment_gained` 以替换名分派)——
-      直落不再重查守卫 = 单事件单转换;转换产物类别不属任何已登记源类别
-      (好运令牌 = 工具类),误重入亦零再转换。栏未观察 = 拒落零写,
+      直落不再重查守卫 = 单事件单转换(独家代言产物以牙还牙甲属'进阶'
+      = 好运来行源类别,「转换产物类别不属任何已登记源类别」的结构性
+      佐证对该卡不成立,不重入由直落不重查承载,勿据佐证推断免递归)。
+      栏未观察 = 拒落零写,
       detail = 'equips_unobserved'(与原插入路径同语义档)。
     live 零写(实机转换由游戏自算,两侧状态容器观察自然对账)。"""
     conv = _equip_gain_conversion_hit(gs, item)

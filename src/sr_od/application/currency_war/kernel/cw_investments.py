@@ -4067,6 +4067,19 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 腿归 STRATEGY_PLANE_START_GRANTS 位面开始专表,双表分治;条目参数
     # 唯一出现点纪律,装备腿/延时腿均不在本条目重复登记)。
     '终身学习': GiftGrant(items_immediate=('星徽秘典',)),
+    # 独家代言(331401):「从3件进阶装备中选择一件获取」的 sim 占位选定
+    # 建模——候选池构成与选择规则 desc 无载禁猜(硬裁定:desc 没写明的
+    # 数值放弃建模),发放物 = 固定占位件 sorted(进阶名单) 首件以牙还牙甲
+    # (确定性可复现,在码先例 = sim/cw_sim_backend.box_options 排序前缀
+    # 占位),占位件 ≠ live 玩家真选由披露键
+    # STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER 申报观察纠偏。注记:
+    # 策略侧具名腿发放 = PICK 效果体工厂 rand=False(cw_gain_effects,卡文
+    # 无随机词);equips_immediate 字段 docstring「随机态 rand=True」辖
+    # env 消费支(2026-10-17 用户裁定),两通道分野 = fields.md §3.2.15,
+    # 防按字段 docstring 误判本行矛盾。转换腿另登记
+    # STRATEGY_EQUIP_GAIN_CONVERSIONS 专表(名单集源形首例),本行只辖
+    # 获取面。
+    '独家代言': GiftGrant(equips_immediate=('以牙还牙甲',)),
 }
 
 # ===== 占席道具「名字→类别」映射桥 + 词表(BenchSlot 身份轴/类别轴一致性权威)=====
@@ -4168,6 +4181,38 @@ def _validate_strategy_grants() -> None:
 
 
 _validate_strategy_grants()
+
+
+# ===== 独家代言(331401)选择面建模假设披露键(T-205/T-218 键形先例)=====
+#: 卡面「从3件进阶装备中选择一件获取」desc 未载候选池构成与选择规则,
+#: 硬裁定 = desc 没写明的数值放弃建模;sim 建模 = 开箱候选同形固定占位
+#: 选定(sorted(进阶名单) 首件 = 以牙还牙甲,确定性可复现,在码先例 =
+#: sim/cw_sim_backend.box_options 排序前缀占位),发放物 = 占位件非 live
+#: 玩家真选(非等价申报:sim 自洽,live 零写观察覆盖,观察纠偏路径 =
+#: 实机持卡局选件对照;判读申报制,禁当定谳转引)。
+STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER: str = \
+    'strategy_endorse_advance_choice_placeholder'
+
+#: 上键辖卡元组(后继同形占位选定卡随批扩;与登记行的一致性由下方
+#: import 断言 + 测试镜像锁双向承载,防披露键与登记行脱钩漂移)
+STRATEGY_ENDORSE_ADVANCE_CHOICE_CARDS: tuple[str, ...] = ('独家代言',)
+
+
+def _validate_endorse_choice_disclosure() -> None:
+    """选择面披露键辖卡断言(import 即炸):辖卡元组每员须在
+    STRATEGY_GRANTS 有占位选定登记行(equips_immediate 非空)——披露键
+    声明了建模假设而登记行缺失/被改空 = 建模面静默缺失,反扫闭集哨只辖
+    「获得…roster 名」直读不辖本形态,本断言唯一响亮面。"""
+    missing = [n for n in STRATEGY_ENDORSE_ADVANCE_CHOICE_CARDS
+               if n not in STRATEGY_GRANTS
+               or not STRATEGY_GRANTS[n].equips_immediate]
+    if missing:
+        raise ValueError(
+            f"独家代言选择面披露键辖卡断言失败(STRATEGY_GRANTS 无占位"
+            f"选定登记行):{sorted(missing)}")
+
+
+_validate_endorse_choice_disclosure()
 
 
 # 占席道具映射桥的双向闭合/值域校验已随 2026-10-28 校验治理移除(键集
@@ -5579,19 +5624,24 @@ def _validate_strategy_first_buy_xp_grants() -> None:
 _validate_strategy_first_buy_xp_grants()
 
 
-# ===== 策略卡装备获得转换登记表(自由市场/好运来;白名单制)=====
+# ===== 策略卡装备获得转换登记表(自由市场/好运来/独家代言;白名单制)=====
 # 「每当你将要获得一件X装备时,改为获得Y」族登记面(装备获得转换族:
-# 模式卡自由市场 = 占席道具目标分支;姊妹卡独家代言 331401 目标为装备,
-# 独立批领取禁顺手代登记)。拦截点 = 获得原语 gain_equipment 顶段单一
+# 模式卡自由市场 = 占席道具目标分支;独家代言 331401 = 名单集源形首例,
+# 目标 = 腿1 占位选定进阶;族卡登记随各自实现批领取,禁顺手代登记)。
+# 拦截点 = 获得原语 gain_equipment 顶段单一
 # 咽喉(消费端 = cw_gain_chain.gain_equipment 守卫;获路全集不可枚举,
 # T-102-attack F1 教训同源——原语内拦截对一切经原语的获得事件自动全域
 # 覆盖,含持卡自身卡条目与开箱链;live 零写观察覆盖,实机转换由游戏自算,
 # 两侧状态容器观察自然对账)。表外卡一律无条目,禁从效果原文自动猜装
-# (STRATEGY_CONDITIONAL_GRANTS 同款纪律);键 = 卡规范名,值 = (源装备
-# 类别, 目标名);目标域判别 = 目标名 ∈ BENCH_ITEM_NAMES → 占席道具
+# (STRATEGY_CONDITIONAL_GRANTS 同款纪律);键 = 卡规范名,值 = (源,
+# 目标名);源两形 = 类别词 str(equips_by_category 池判,自由市场/好运来)
+# 或名单集 tuple[str, ...](成员判,独家代言首例);同事件双命中时名单集
+# 行胜类别词行(名单定向 > 类别词,分派序住守卫)。目标域判别 = 目标名
+# ∈ BENCH_ITEM_NAMES → 占席道具
 # 分支(消费端转发占席道具原语),∉ → 装备分支(消费端名字替换落原
 # 插入路径,两分支语义住 cw_gain_chain.gain_equipment 顶段)。
-STRATEGY_EQUIP_GAIN_CONVERSIONS: dict[str, tuple[str, str]] = {
+STRATEGY_EQUIP_GAIN_CONVERSIONS: dict[
+    str, tuple[str, str] | tuple[tuple[str, ...], str]] = {
     # 自由市场(id 130601 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id
     # 行;「将要获得一件简易装备」→ 源类别简易,「改为获得1个【简易武装
     # 箱】」→ 目标占席道具,转换确定事件零采样)
@@ -5603,6 +5653,15 @@ STRATEGY_EQUIP_GAIN_CONVERSIONS: dict[str, tuple[str, str]] = {
     # 覆盖零建模;sim 现役进阶获得通道为零 = 转换休眠正确路径,任一进阶
     # 通道(如回收计划双卡随机进阶组合条目)落地即被原语顶段自动覆盖。
     '好运来': ('进阶', '好运令牌'),
+    # 独家代言(id 331401 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行)
+    # 的获得条目:「你获得组成该装备的简易装备时，改为获得该进阶装备」→
+    # 源 = 名单集形态首例(选定进阶的配方组件,字面量直读;派生式须「配方
+    # 组件名去重集」语义且 cross_components 只辖交叉半域、自配件返 None,
+    # 两读现值同值,字面量为简),目标 = 腿1 占位选定件以牙还牙甲(占位
+    # 选定 = sorted(进阶名单) 首件,披露键
+    # STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER 申报,占位 ≠ live 玩家
+    # 真选);名单成员判语义 = item ∈ 名单集即命中,本行类别词零参与。
+    '独家代言': (('量产型装甲', '幸运星'), '以牙还牙甲'),
 }
 
 
@@ -5614,10 +5673,14 @@ def _validate_strategy_equip_gain_conversions() -> None:
     测试〔设计稿 §2.2 四查按治理收敛〕;只留三漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
-    失联);② 源类别漂移:类别池 equips_by_category 非空——类别名漂移
-    的运行期实况 = 拦截谓词永不命中、转换静默失效(无异常无台账),
-    import 期哨是唯一响亮拦截面(STRATEGY_HP_LOSS_GRANTS 装备类别漂移哨
-    同形);③ 目标名漂移:目标名 ∈ BENCH_ITEM_NAMES ∪ EQUIPMENTS——
+    失联);② 源漂移(按源形分派):类别词 str 形 → 类别池 equips_by_category
+    非空——类别名漂移的运行期实况 = 拦截谓词永不命中、转换静默失效(无异常
+    无台账),import 期哨是唯一响亮拦截面(STRATEGY_HP_LOSS_GRANTS 装备
+    类别漂移哨同形);名单集 tuple 形 → 成员全 ∈ EQUIPMENTS(词表漂移
+    成员永不命中静默失效同上)+ 成员类别全 = '简易'(名单集源形的语义
+    前提 = 卡文「获得组成该装备的简易装备」,类别改版后成员不再是 desc
+    辖域的简易装备,名单行成过名单须随批修表);③ 目标名漂移:目标名 ∈
+    BENCH_ITEM_NAMES ∪ EQUIPMENTS(两形共用)——
     错名运行期实况 = 占席道具域落席直查 KeyError 炸原语(BENCH_ITEM_
     KINDS 全量显式制)或装备域盲追加幻影,import 期哨是唯一响亮拦截
     面(_validate_strategy_conditional_grants 装备名漂移哨同理由)。"""
@@ -5627,11 +5690,24 @@ def _validate_strategy_equip_gain_conversions() -> None:
         raise ValueError(
             f"STRATEGY_EQUIP_GAIN_CONVERSIONS 孤儿键(base 无此卡?):"
             f"{sorted(orphans)}")
-    for _name, (_cat, _target) in STRATEGY_EQUIP_GAIN_CONVERSIONS.items():
-        if not equips_by_category(_cat):
-            raise ValueError(
-                f"STRATEGY_EQUIP_GAIN_CONVERSIONS 源类别漂移({_name!r} 类别"
-                f"注册表无装备,版本改名?):{_cat!r}")
+    for _name, (_src, _target) in STRATEGY_EQUIP_GAIN_CONVERSIONS.items():
+        if isinstance(_src, str):
+            if not equips_by_category(_src):
+                raise ValueError(
+                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 源类别漂移({_name!r} 类别"
+                    f"注册表无装备,版本改名?):{_src!r}")
+        else:
+            _drift_names = [w for w in _src if w not in EQUIPMENTS]
+            if _drift_names:
+                raise ValueError(
+                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单成员漂移({_name!r} "
+                    f"装备注册表无此名,版本改名?):{_drift_names}")
+            _drift_cat = [w for w in _src
+                          if EQUIPMENTS[w].category != '简易']
+            if _drift_cat:
+                raise ValueError(
+                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单类别漂移({_name!r} "
+                    f"名单须全为简易组件,版本改类别?):{_drift_cat}")
         if _target not in BENCH_ITEM_NAMES and _target not in EQUIPMENTS:
             raise ValueError(
                 f"STRATEGY_EQUIP_GAIN_CONVERSIONS 目标名漂移({_name!r} 词表"
