@@ -1,6 +1,6 @@
 # 画面 op 层(screens/ · 一画面一文档)
 
-> 本目录 = 画面 op 层设计权威版本:**每个画面 op 一篇**,写「这个画面做什么观察、能发哪些动作 op、哪些动作结束本次访问并返回主循环」。代码根 = `src/sr_od/application/currency_war/operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱)+ `kernel/cw_screen_report/`(每画面观察上报:obs 类 + report 函数一文件);符号锚 = `文件::符号名`(行号随代码漂移,不作定位依据)。
+> 本目录 = 画面 op 层设计权威版本:**每个画面 op 一篇**,写「这个画面做什么观察、能发哪些动作 op、哪些动作结束本次访问并返回主循环」。代码根 = `src/sr_od/application/currency_war/operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱)+ `kernel/cw_screen_report/`(每画面观察上报:obs 类 + report 函数一文件);符号名引用 = `文件::符号名`(行号随代码漂移,不作定位依据)。
 > 分工分界:分发判定(两阶段身份分发)的单一源 = [../flow/outer_loop.md](../flow/outer_loop.md) §2(本目录各篇只写画面特有的排他/穿透形态与身份 id_mark 说明);画面 op 统一规范(两 node 形态/round_wait 循环/终结 op/期望态生命周期/对账边界/report 上报接口)= [op-layer.md](op-layer.md);逐屏形态分类总表(35 屏)= [op-layer.md](op-layer.md) §3;动作执行契约 = [../flow/action_exec.md](../flow/action_exec.md)。
 > 术语:见下方「术语表」节;路径缩写约定:本文反引号短路径 `research/X.md`/`data/X.md` 等 = `docs/game/currency_war/` 下对应文件(非 src 树);game 侧文档同理指向本仓 docs/。
 
@@ -167,7 +167,7 @@
 - **先例(2026-09-14 收缩先例已废止)**:卖备战/买经验是商店开画面**可用且在产**的动作(执行链已接入调用,§5.4)——店内可卖备战席(候选池仅备战席)与店内购买经验(整批连点)为现行策略面动作(置换账/筹资/会话内升级,策略归属 = [../strategy-docs/23_shop_screen.md](../strategy-docs/23_shop_screen.md));备战期接收面 = [../strategy-docs/22_prep_screen.md](../strategy-docs/22_prep_screen.md)(节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。
 - **商店锁**:游戏机制存在(整店级),建档已有按钮坐标,生产链路未建模——能力面登记为「存在但未接入调用」。
 - **SwapDeploy**:动作类型清单/状态容器逻辑态直写/sim 消费在用,生产执行器未接入调用——能力面按动作类型清单完备性保留。
-- **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。
+- **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为识别标志(`research/economy.md` §2.1)。
 
 ## 8. 文档索引(34 篇)
 
