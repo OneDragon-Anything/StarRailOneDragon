@@ -44,4 +44,4 @@ V_D 收益式的因子分解是 `Δwin_rate × L`:它度量的「成型跳变带
 
 ## 检验点(测试仓测试)
 
-- `test_cw_w336_p1_vd_benefit_calibration.py`:①loss 阶梯与钳制+registry 注入;②位面 1 槽序表逐轮推导+缺省回退;③④表推导进 vd_refresh_score/engine_jump_gold 分值逐位;⑤授权带方向锚(r2 升/r5、r8 降)。
+- `test_cw_w336_p1_vd_benefit_calibration.py`:①loss 阶梯与钳制+registry 注入;②位面 1 槽序表逐轮推导+缺省回退;③④表推导进 vd_refresh_score/engine_jump_gold 分值逐位;⑤授权带方向引用(r2 升/r5、r8 降)。
