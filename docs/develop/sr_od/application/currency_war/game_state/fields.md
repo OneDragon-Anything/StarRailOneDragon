@@ -2723,7 +2723,7 @@ cw_env_grants 世界发放金写分支;字段写行枚举与实机/模拟器两�
 2★ 角色入备战席、费用=等级−4 最小 1 费。归属按腿分治:**升级瞬间金=记账层
 伴生**(live 升级发射帧账面+容器双写,sim 同链;伴生常量与 ECONOMY 注册行
 一致锁在册,双字面量漂移唯一暴露面);**2★ 发牌面=sim 门内世界写**(升级
-上报回调跨级分支 → `cw_gain_effects.apply_level_up_char_gift`:采样池=
+值变更回调 gift 分支 → `cw_gain_effects.apply_level_up_char_gift`:采样池=
 `grant_char_pool` 规格域∩当时牌库〔未解锁专家剔除〕,进席身份随机走随机组;
 费用档=max(1, min(5, 等级−4)),满级段上钳 5=费用轴池域,披露键
 `level_up_gift_cost_clamp_pool_domain` 申报);live 零写=观察承接(实机角色
