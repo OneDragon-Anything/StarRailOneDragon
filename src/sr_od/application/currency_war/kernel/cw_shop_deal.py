@@ -1,17 +1,17 @@
-"""货币战争 商店发牌采样器(kernel 侧纯采样,零容器写)。
+"""货币战争 商店发牌采样器(kernel 侧纯采样,零字段写)。
 
 本模块 = 发牌算法单一源,sim ``deal_shop``(sim/cw_sim_backend)与实机
 刷新上报随机态分支(kernel/cw_action_report/refresh_shop)共用同一发牌
 代码(2026-09-21 商店刷新 design §2-9/详设 §2.9「上报回调分支·刷新随机
 态」):实机上采样是猜测(上报函数经 ``write_logic_rand`` 写随机态,观察
-覆盖差异 = 预期内),sim 里采样即世界真值(sim ``deal_shop`` 经
+覆盖差异 = 预期内),sim 里采样即状态副本真值(sim ``deal_shop`` 经
 ``gs.observe`` 真值直写)。「两执行面同源」= 期望态两执行面同源原则
 (flow/projection_contract.md §3.6)在商店 payload 上的落地。
 
-纯度边界:**只采样返回 payload,零容器写**——写通道各执行面自理(实机 =
+纯度边界:**只采样返回 payload,零字段写**——写通道各执行面自理(实机 =
 刷新上报函数 ``report_action_refresh_shop_param`` 的 ``write_logic_rand``
 分支 / sim = ``deal_shop`` 内 ``gs.observe``);``gs`` 仅作只读输入(剩余
-牌库派生 + active_env 直出概率查表),禁在本模块写容器——把容器写搬进
+牌库派生 + active_env 直出概率查表),禁在本模块写状态容器——把字段写搬进
 本函数会用随机态替换 sim 真值路径,干旱/供给族消费门口径在 sim 全局跳拍
 (attack R6f 定案)。
 
@@ -27,7 +27,7 @@
 口径维持,仅明确效果触发的变费/升星机制建模)。
 强制费用档整店发牌(:func:`sample_shop_deal_forced`)= 卡面「开启一个
 由N个独特M费角色组成的商店」的显式例外通道(费用档定死 + unique 去
-重均为卡面明文,不占基线 U13 判例)。
+重均为卡面明文,不占基线 U13 先例)。
 """
 from __future__ import annotations
 
@@ -53,13 +53,13 @@ from sr_od.application.currency_war.kernel.cw_pool import drawable_names
 
 def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
                      probs: dict[int, float] | None = None) -> ShopPayload:
-    """整店 5 槽发牌采样(纯函数;返回 payload,零容器写——纯度边界见
+    """整店 5 槽发牌采样(纯函数;返回 payload,零字段写——纯度边界见
     模块头)。
 
     逐槽独立:费用档按 ``probs``(缺省基线表 ``REFRESH_PROB[level]``)
     加权掷点 → M06 可进店名集(:func:`drawable_names`)内均匀抽名;名集
     空(该档池被清空/低等级无该档)→ 槽留空(定长 5 槽三态模型的 empty
-    槽,买后留空同款语义)。专家顾问入池由 ``drawable_names`` 从容器
+    槽,买后留空同款语义)。专家顾问入池由 ``drawable_names`` 从状态容器
     ``gs.unlocked_experts`` 派生(获得链解锁写入),本层零透传。
 
     2★ 直出分支:``ENV_SHOP_TWO_STAR_DEAL_PROB`` 命中当前 ``active_env``
@@ -109,11 +109,11 @@ def state_deal_probs(gs: GameState, level: int) -> dict[int, float]:
 
 def sample_shop_deal_forced(gs: GameState, rng: random.Random, *, cost: int,
                             unique: bool, level: int) -> ShopPayload:
-    """强制费用档整店发牌采样(纯函数;零容器写,纯度边界同模块头)。
+    """强制费用档整店发牌采样(纯函数;零字段写,纯度边界同模块头)。
 
     卡面语 =「开启一个由5个独特N费角色组成的商店」(首条目 公司严选
     301401,EconomyEffect.shop_rewrite_forced_cost/unique 承载)。与
-    基线 :func:`sample_shop_deal` 的两处分叉均为卡面明文直读,非判例
+    基线 :func:`sample_shop_deal` 的两处分叉均为卡面明文直读,非先例
     例外:①费用档定死不掷点;②``unique=True`` 同帧去重(基线 U13
     「无去重记载不加规则」辖基线;卡面「5个独特4费角色」为 desc 自载
     的显式例外)。

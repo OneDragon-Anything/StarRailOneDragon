@@ -1,9 +1,9 @@
 """货币战争动作上报:购买经验(单击/多击)(report_action_level_up_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 """
 
 from __future__ import annotations
@@ -34,19 +34,19 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     现役触发面 = 备战域(商店域发射已随 2026-10-17 迭代 T-1 退役,
     商店域双类型词表随 T-4 退役删除)。
 
-    **升级连锁(商业间谍/节节高升/窗口锚)**:三块连锁已统一迁入升级
+    **升级连锁(商业间谍/节节高升/窗口记位)**:三块连锁已统一迁入升级
     值变更回调(调度器单一源 = ``cw_levelup_callbacks.on_level_up_change``,
     宿主 = ``GameState._write_logic_frame`` level 分支尾;源 = 任意经验
     来源升级,不只买经验动作)——本上报函数的跨级 level 直写在写尾自动
-    触发全套连锁,本函数零连锁代码。连锁的 spy 世界分支声明经容器簿记
+    触发全套连锁,本函数零连锁代码。连锁的 spy 状态副本写入分支声明经状态容器簿记
     队列 ``pending_levelup_world_decls`` 流转(写端唯一 = 调度器 spy
     分支,只在模拟器装配时写入):本上报尾取走队列头部装入 LogicOutcome
     (见函数尾),动作执行点立即喂入 ``cw_sim_ports.declare_world``,商店
     分支当拍执行;live 未装配 = 队列恒空 = world_decl None(端口 no-op,
-    世界后果归游戏引擎)。
+    状态副本后果归游戏引擎)。
 
     **升级窗口达成位记录**(尾段):上报收敛即调
-    ``_record_lv8_window_start``(环境「成功经验」通道主挂点;跨级事件
+    ``_record_lv8_window_start``(环境「成功经验」通道主插入位置;跨级事件
     级检测已归值回调,本位 = xp-only 迟到达扫描——等级从 ≥8 才买经验的
     漏记纠偏与 xp-only 帧扫描;未持条目/未达标/生效位未锚定 = 零动作)。
     """
@@ -71,7 +71,7 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
         return LogicOutcome(applied=False, reason='levelup_clicks_not_fed')
     clicks = max(0, int(clicks))
     # 满级门取帽单一源 = level_cap_of(无卡 = MAX_PLAYER_LEVEL 既有语义;
-    # 持等级帽卡时门随帽提前——live 侧与游戏自算拒发同向,世界写分歧由
+    # 持等级帽卡时门随帽提前——live 侧与游戏自算拒发同向,状态副本写分歧由
     # 下一帧观察 reconcile 兜底,现役观察覆盖语义不变)。
     _cap = level_cap_of(gs)
     if level_of(gs) >= _cap:
@@ -90,14 +90,14 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
         if _new_lvl != int(_lv_v):
             # 跨级直写:写尾触发升级值变更回调(三块连锁,见模块头)。
             _w(gs.level, _new_lvl, 'proj_levelup_level')
-    # 升级窗口达成位记录(成功经验通道主挂点;内部自判条目在场 ∧ 未记录 ∧
+    # 升级窗口达成位记录(成功经验通道主插入位置;内部自判条目在场 ∧ 未记录 ∧
     # level_of >= 阈值,零旁路条件安全——xp-only 帧也扫,迟到达纠偏承载位)。
     _record_lv8_window_start(gs)
     # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):零费击
     # (cost×clicks=0)= 无金离手不计花费;cost 缺省 0 视同零费。
     if int(getattr(param, 'cost', 0) or 0) * clicks > 0:
         mark_gold_spent(gs, produced_by='CwActionLevelUpParam', sig=_grp_sig)
-    # 升级连锁世界声明出队(上报尾消费口,取走即清):买经验单次 level 写
+    # 升级连锁状态副本声明出队(上报尾消费口,取走即清):买经验单次 level 写
     # = 单值变迁 = 队列至多含本动作自己刚写入的声明;余项(防御形态)留待
     # 模拟器 advance 尾统一排空,留证 log 不静默。
     from sr_od.application.currency_war.kernel.cw_levelup_callbacks import (

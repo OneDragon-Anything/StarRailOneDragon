@@ -3,7 +3,7 @@
 观察面 = 重型屏薄包装:入口观察回执同面镜像(现役
 ``obs/cw_observation.GameStateReadReceipt`` 逐位镜像——kernel 禁依
 obs/ 包,同面自持;装配点 = cw_screen_shop 观察段读链,语义与
-回执同源)。容器写端在 read_game_state 漏斗,本函数不重复承接,
+回执同源)。字段写端在 read_game_state 漏斗,本函数不重复承接,
 report 保持占位。
 
 op 层观察写点勘察结论:唯一候选 =
@@ -26,7 +26,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 @dataclass
 class CwScreenShopObs:
     """商店屏观察结果(重型屏薄包装;摄入口 = :func:`report_screen_shop_obs`
-    占位——容器写端在 read_game_state 漏斗)。
+    占位——字段写端在 read_game_state 漏斗)。
 
     字段面 = 入口观察回执 ``obs/cw_observation.GameStateReadReceipt``
     逐位镜像(kernel 禁依 obs/ 包,同面自持;语义与回执同源:gold 失读
@@ -52,6 +52,6 @@ class CwScreenShopObs:
 
 def report_screen_shop_obs(gs: GameState, obs: CwScreenShopObs, *,
                            sig: ChannelSig | None = None) -> None:
-    """商店屏观察上报:容器写端在 read_game_state 漏斗,本函数不重复
+    """商店屏观察上报:字段写端在 read_game_state 漏斗,本函数不重复
     承接;op 层观察写点勘察结论见模块头(gold 救援补写不并入,交后续批
     裁决)。接口为统一形态占位(占位不构造不校验 sig——无写即无渠道面)。"""

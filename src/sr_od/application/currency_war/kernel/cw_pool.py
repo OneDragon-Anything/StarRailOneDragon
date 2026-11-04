@@ -6,12 +6,12 @@
   升费换档只换桶归属、副本数不变;
 - **专家顾问不入基础牌库**(economy.md §1:专家初始不参与普通商店招募,
   名单权威 = 注册表 ``Character.is_expert``):基础牌库 = 非专家角色 ×
-  副本数;解锁入池 = 容器 ``gs.unlocked_experts`` 按名并入
+  副本数;解锁入池 = 状态容器 ``gs.unlocked_experts`` 按名并入
   ``EXPERT_COPIES_ASSUMED`` 副本(待实机核)——解锁写端 = 获得链 advisor
   道(环境/策略)+ 装备通道(cw_gain_chain),本模块只消费;
-- **池量按不变量派生**:剩余牌库 = 固定牌库 − 持有副本总数(held 由容器
+- **池量按不变量派生**:剩余牌库 = 固定牌库 − 持有副本总数(held 由状态容器
   bench/deployed 星级派生,Σ 3^(star−1);合成不销毁,2★ 计 3 张/3★ 计
-  9 张)。买/卖/合成只改容器持有态,无「卖出回池」可变计数事件;
+  9 张)。买/卖/合成只改状态容器持有态,无「卖出回池」可变计数事件;
 - **双出口 + 规格授予池**(档过滤与商店过滤解耦,出口共用一次派生无第二实现):
   商店发牌出口 :func:`drawable_names` = 档匹配 ∧ 剩余 >0 ∧ 持有 <9
   (持有某牌 ≥9 张 → 该牌不再进店 = 商店通道定案口径;试用与自有同池
@@ -32,7 +32,7 @@
 
 守恒破显式炸错语义申报:剩余出现负值即 raise(文案 = 「池派生与持有
 约束不一致」),跨层后果 = 沿消费链直达运行层、run 停(效果链登记分支
-best-effort 不兜容器写)。实机侧 held 为观察容器派生,观测噪声(单位
+best-effort 不兜字段写)。实机侧 held 为观察状态容器派生,观测噪声(单位
 身份/星级误读)同样可触发;响停修因优于静默夹零(夹零掩盖病灶),语义
 按显式暴露接受。豁免:held 中的名不在(基础池 ∪ 解锁专家)时不参与
 守恒检查(摸个鱼吧 II/III 等直接赠卡通道给到的单位,其名未解锁入池——
@@ -93,7 +93,7 @@ def fixed_pool() -> dict[str, int]:
 def unlocked_expert_copies(gs: GameState) -> dict[str, int]:
     """已解锁专家的入池副本账(名 → ``EXPERT_COPIES_ASSUMED``)。
 
-    数据源 = 容器 ``gs.unlocked_experts``(获得链 advisor 道/装备通道
+    数据源 = 状态容器 ``gs.unlocked_experts``(获得链 advisor 道/装备通道
     写入);成员闭集闸(:func:`assert_expert_names`)在读取口再落一道,
     防越界名静默混池。
     """
@@ -103,7 +103,7 @@ def unlocked_expert_copies(gs: GameState) -> dict[str, int]:
 
 
 def held_copies(gs: GameState) -> dict[str, int]:
-    """持有副本账(名 → Σ 3^(star−1);容器 bench/deployed 星级派生)。
+    """持有副本账(名 → Σ 3^(star−1);状态容器 bench/deployed 星级派生)。
 
     单一派生口:开局手牌写入 bench 后本函数即有定义,无需可变账本;
     试用与自有角色同池同计数。同名即同档(全场同名角色费用档唯一,
@@ -128,7 +128,7 @@ def _remaining_and_held(gs: GameState, *,
     """(剩余池, held) 一次派生(剩余 = 固定 − held;守恒破显式炸错)。
 
     ``include_experts`` = 是否并入解锁专家(商店发牌出口与效果随机授予
-    出口均 True——专家入池时机随容器解锁态,用户裁定 2026-10-28「授予
+    出口均 True——专家入池时机随状态容器解锁态,用户裁定 2026-10-28「授予
     候选 = 当时牌库里存在的角色」,见 :func:`grant_char_pool`)。held 中
     不在派生池的名(未解锁直接赠卡单位、cost=0 系统单位)跳过守恒检查。
     """
@@ -161,7 +161,7 @@ def drawable_names(gs: GameState, cost: int) -> list[str]:
     """某费用档当前可进店名集(商店发牌出口,sim 发牌消费)。
 
     三条件:费用档匹配(经 :func:`effective_cost` 档感知——银狼LV.999
-    升费后当前档 = 容器 ``gs.lv999_cost_tier``,归入新费用档桶;其余角色
+    升费后当前档 = 状态容器 ``gs.lv999_cost_tier``,归入新费用档桶;其余角色
     恒等注册表值)∧ 剩余 > 0 ∧ held < 9(持有 ≥9 清空 = 商店发牌过滤
     定案口径;1/2 费 27 副本下 held ≥9 时仍有剩余,两条件不可互替)。
 
@@ -193,9 +193,9 @@ def grant_bucket_names(gs: GameState, cost: int) -> list[str]:
     2026-10-28:授予候选 = 当时牌库里存在的角色,与商店出口同一牌库
     时点口径;规格型授予采样见 :func:`grant_char_pool`)。
 
-    调用时序契约(消费者侧):本函数为纯查询、held 仅容器派生——
+    调用时序契约(消费者侧):本函数为纯查询、held 仅状态容器派生——
     「先回归后重抽」定案(2026-09-21)⇒ 消费方必须先把回归/摘除写落
-    容器再采样;无工作副本派生入口,工作副本合并范式不适用于本出口。
+    状态容器再采样;无工作副本派生入口,工作副本合并范式不适用于本出口。
     """
     remaining, _held = _remaining_and_held(gs, include_experts=True)
     return sorted(
@@ -212,7 +212,7 @@ def grant_char_pool(gs: GameState, spec: RandomCharSpec) -> list[str]:
     (economy.md §1 解锁入池),解锁后即入授予候选。环境注册时点解锁
     恒空(解锁通道 = 特邀专家卡/装备分身墨镜族/条件触发,全部晚于环境
     选择)→ 概念股族/人才系候选不含专家;中局通道(boss 分支2/晶矿随机
-    羁绊支)随容器现值——已解锁专家可被授予 = 一般原则推论,非实机直接
+    羁绊支)随状态容器现值——已解锁专家可被授予 = 一般原则推论,非实机直接
     证词(logic_rand_outcome ``env_gift_random:`` 行候校准兜底)。
 
     按名均匀掷骰由消费方承担(消费点 = cw_gain_chain 随机支/deploy-lock

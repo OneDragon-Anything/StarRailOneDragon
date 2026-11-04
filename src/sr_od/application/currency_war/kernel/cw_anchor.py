@@ -4,11 +4,11 @@
 §12:在流程确定性转点上触发的一次结构化观测(锚),三要素 = 确定性触发
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
 (ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体
-接线(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
+接入调用(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
 **载体停用声明(后现状)**:ExogenousEvent 流出口已停用为恒 no-op
 桩(cw_telemetry_exit.record_exogenous),出战就绪与否都不落行;登记表各
 行 host 所指原宿主写点已同步停用——载体与宿主归宿待裁决,登记起(retirement.md
-§2 exogenous 行),接线批落地前本模块在役面 = 登记/校验/幂等,零落行。
+§2 exogenous 行),接入调用批落地前本模块在役面 = 登记/校验/幂等,零落行。
 
 **观测-only 边界(§12.0,用户裁定)**:本模块只做数据采集与计数登记,
 状态改写/效果施加明确出栈(效果施加语义归 §8.2 效果结构化词表线)——
@@ -17,18 +17,18 @@ emit_anchor),消费侧守卫(决策代码禁读锚行)= 测试仓 grep 守卫,�
 边界不是纸面声明。本模块 API 面不收 ctx/session/op 宿主对象(结构性
 写向隔离:拿不到就写不了),零 run 状态触碰(§12.5-3 停机钩子分流)。
 
-**封闭集纪律(§12.2,登记式先例 = SELL_CHANNELS)**:新锚先入登记表再接线,集外锚 = 红;触发
+**封闭集纪律(§12.2,登记式先例 = SELL_CHANNELS)**:新锚先入登记表再接入调用,集外锚 = 红;触发
 时点型逐锚显式申报(landed/emitted/boundary,§6.4 轴三型),禁静默选型。
 **H1 裁决(实现批钉死,2026-09-10)**:boundary 型锚的申报面 = 本登记表
 行的触发时点型列(设计 §12.3 末段已定锚登记行必带该字段),不另立
 BOUNDARY_TRIGGERED_DECLARED 独立表、不改既有 EMIT 表——第二申报面即双源。
 
 **模块状态申报(惰性纯机制面)**:当前零生产
-调用点、不被任何生产模块 import,确定性测试直接对其编程——触发口接线
+调用点、不被任何生产模块 import,确定性测试直接对其编程——触发口接入调用
 未落地(buy/refresh 触发口随 §6.4 执行器并入方案成立,R-J 待办在案,
 禁绕过并入私接触发;boundary 触发口与注册表触达机制待 H6 终裁,禁静默
-选型),接线落地时同步扩测试仓零消费守卫白名单。sim 侧零动
-(sim 桶零 import 有锁;「实机先行」= sim 域锚行落盘面待接线,接线前
+选型),接入调用落地时同步扩测试仓零消费守卫白名单。sim 侧零动
+(sim 桶零 import 有锁;「实机先行」= sim 域锚行落盘面待接入调用,接入调用前
 sim 域只验事实来源存在性,§12.4-A)。
 
 闭集内 = §12.2 以「实机先行」标记的 8 锚;实机-only(box_opened/
@@ -131,7 +131,7 @@ class AnchorEvent:
         }
 
 
-# ===== 登记表(封闭集;新锚 = 先改本表再接线,集外锚 = 红)=====
+# ===== 登记表(封闭集;新锚 = 先改本表再接入调用,集外锚 = 红)=====
 
 ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'buy_landed': AnchorSpec(
@@ -243,7 +243,7 @@ _ARMED_DOMAIN_VALUES: dict[str, frozenset[str]] = {}
 
 
 def register_payload_domain_values(ref: str, values: frozenset[str]) -> None:
-    """装配点显式注入值域闭集(生产武装点 = 触发口接线批的装配段;
+    """装配点显式注入值域闭集(生产装配接入点 = 触发口接入调用批的装配段;
     未申报的引用串拒收——防绕申报面私注值域)。"""
     declared = {r for fields in PAYLOAD_DOMAIN_REFS.values() for r in
                 fields.values()}
@@ -291,7 +291,7 @@ def reset_anchor_dedupe() -> None:
     _EMITTED_KEYS.clear()
 
 
-# ===== 载体接线(事件行 = ExogenousEvent kind 词表,结构化载荷住 choice)=====
+# ===== 载体接入调用(事件行 = ExogenousEvent kind 词表,结构化载荷住 choice)=====
 
 def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
                 payload: dict[str, Any], scope: str,

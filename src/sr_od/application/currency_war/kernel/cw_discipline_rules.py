@@ -4,7 +4,7 @@
 ALL IN 判定共用的轮维单一源)+ 决策 hp 可信位委托
 (``hp_decision_trusted``;现存消费 = 经验批支付门 fail-closed 读数
 〔R-1 币种通式保留面〕与濒死带观测谓词〔R-7 观测保留面〕)。旧卖侧
-下界判据族(``sole_engine_sell_floor_plan`` 批量逐笔下界 、计数底座
+下界判据族(``sole_engine_sell_floor_plan`` 批量逐笔下界 、计数基础
 ``_sell_floor_counts/_eval/_decrement``、星级加权计数
 ``star_weighted_copies``)已停用
 ——全仓零调用核实(2026-09-20;其 decision_v2 消费面先期停用),
@@ -35,7 +35,7 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
 
 
 def hp_decision_trusted(frame: GameState) -> bool:
-    """hp 决策可信位(单一源;容器一等形态):
+    """hp 决策可信位(单一源;状态容器一等形态):
 
     - 委托 ``cw_hp_policy.hp_decision_trusted_of``(定案二单一源:
       ``gs.hp.source in ('observation', 'carried')``,语义见该函数
@@ -44,7 +44,7 @@ def hp_decision_trusted(frame: GameState) -> bool:
     同模块(及跨模块引用点)禁再手写双位判定( A1.1 单一源纪律):
     语义=对账层「沿用真值帧放行 vs 兜底假值帧拒」(
     收紧口径)——prior/logic 支两位皆 False 不评估,carried 沿用帧放行。
-    新增 hp 守卫消费点一律走容器形态本 helper 或政策层读口。
+    新增 hp 守卫消费点一律走状态容器形态本 helper 或政策层读口。
     """
     return hp_decision_trusted_of(frame)
 
@@ -57,7 +57,7 @@ def plane_last_battle(gs: GameState,
                       session: StrategySession | None) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
-    口径断层修复)。签名切容器:节点类型/轮次经容器读口
+    口径断层修复)。签名切状态容器:节点类型/轮次经状态容器读口
     (node_kind_of/round_num_of 镜像,桥视图 kind 空串 = 未识别忠实镜像
     同旧 `or ''`)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -65,7 +65,7 @@ def plane_last_battle(gs: GameState,
         round_num_of,
     )
     # node 单一源 = gs 推导(终态契约 §A′:session.node_type_current 识别
-    # 优先源停用,与 flow/entry 等已直读消费点对齐;重锚非删除——值同源)。
+    # 优先源停用,与 flow/entry 等已直读消费点对齐;重新确认非删除——值同源)。
     node = node_kind_of(gs) or ''
     return node in ('boss',) and round_num_of(gs) >= nodes_of_plane(session)
 

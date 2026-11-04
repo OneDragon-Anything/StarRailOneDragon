@@ -21,7 +21,7 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 成对修正使 P1 出口金约 +6.6 金/局(无反馈静态重放量化)——凡以 sim
 经济轨迹为输入的历史门结论(典型:粗模型 vs Δ池的 P2 进场率差恰在
 门界、零余量的门 1a)在新口径下须 regate(修正口径重跑基线分支)后才能
-引用;regate 与基线重锚一并登记的待办待执行。
+引用;regate 与基线重新确认一并登记的待办待执行。
 """
 from __future__ import annotations
 
@@ -187,7 +187,7 @@ class DecisionV2Registry:
     refresh_find_quantile: float = 0.8
 
     # ===== 血预算停手·终止分支(P1「止损转支出」;设计  v2 §0/§2)=====
-    #: 总开关:True=数学已定案恒接线口径(金零值引理+EV 对比式:守钱世界
+    #: 总开关:True=数学已定案恒接入调用口径(金零值引理+EV 对比式:守钱世界
     #: 存活概率上界 S0≤ε 时一切守钱资产期望被压没,释放当轮转化路径
     #: 严格占优——不是「待验证」的悬置开关;False=A/B 对照分支/回退锚,
     #: 两态注入面)。
@@ -204,7 +204,7 @@ class DecisionV2Registry:
     terminal_survival_eps: float = 0.03
 
     # ===== 成型停手纪律([13] 停手线;迁移审计并入)=====
-    #: 停手语义恒接线。
+    #: 停手语义恒接入调用。
     #: 停手覆盖轮**全局下界**(迁移审计迁移审计晚买证据窗=r7-r9);实际覆盖轮=
     #: max(锁定线 typical_form_round,此值)——阵容派生(迁移审计-B1,
     #: 固定 r≥7 会固化「早成型阵容多买两轮」偏差)
@@ -474,7 +474,7 @@ class DecisionV2Registry:
     p1_early_gate_enabled: bool = True
     #: 窗的缺件密度门槛:配方对方向未持有 distinct 对成员数 ≥ 此值
     #: 才开窗(历史窗语义,现行无行为消费点——读端已随旧决策栈退役,
-    #: 考古走 git 历史;配置项保留在册)。标定(`w179_gate/`,
+    #: 考古走 git 历史;配置项保留已登记)。标定(`w179_gate/`,
     #: n=100 池 861fc9f6):全体 P1 轮 unheld 分布 [8,16](r1 p10=14 /
     #: r9 p10=8),pass_buy 病灶轮 unheld 11-15——k 在 [1,8] 带内对本
     #: 分布**无区分度**(诚实记档:operative 约束=利息档口径+单轮上限+
@@ -608,13 +608,13 @@ class DecisionV2Registry:
     #  决策无换线判据对象(12 号篇 §1.4);零消费死字段,
     #  清理归后续批。)
     # (release 帧活栈消费门开关已随 第 4 态清理:开分支
-    # A/B 结案,消费门恒接线;判据单一源 = economy_cycle 义务核算
+    # A/B 结案,消费门恒接入调用;判据单一源 = economy_cycle 义务核算
     # (``overflow``/``obligation``)+ 预算披露面(``disclose_budget``),
     # 原 session.v3_release 泄息指令字段已随死代码清偿移除,
     # 旧开关/字段名见该 ADR。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
-    #: 设计决策(C3/C4 重设计裁决+C4 接线):
+    #: 设计决策(C3/C4 重设计裁决+C4 接入调用):
     #: C4 剩余节点序列逐节点投影/双源标定。
     #: 标定=双源重标定(死亡真源=实机对局台账局终行,
     #: hp≤1 不删失、hp_after=0 死亡行按 hp_before 全额入桶、不按置信度
@@ -658,7 +658,7 @@ class DecisionV2Registry:
     #: 只覆盖刷新存在性名集;消费点=filters._refreshable_names)。来源=
     #: 对抗审计 A1-β 反例画像「4 费通用强件是最高 Δp/g 选项」(记录=
     #: 登记的待办 2)+ sim 分
-    #: rung 胜占比 0.34→0.65 单调(`w346_gate_validation/` 报告 §3.2 实证底座)=高费高星
+    #: rung 胜占比 0.34→0.65 单调(`w346_gate_validation/` 报告 §3.2 实证基础)=高费高星
     #: 战力优势。原批名 dying_band_high_cost_floor(C3 濒死带首用),
     #: C3 已定案清理(节)后随批改中性名,取值与消费
     #: 语义不变。
@@ -668,7 +668,7 @@ class DecisionV2Registry:
     #  (encounter_heal_est/line_switch_boss_ci_halfwidth)已随旧方案清退批
     #  删除:双开关默认关+开分支判据登记的待办未跑即整体出局,清查报告
     #  OLD_MIX_AUDIT §1.3;门机械(cw_line_switch.survival_gate 族)与
-    #  cw_intention._switch_gate_open 接线同批删。损血表与两态 p_win 表
+    #  cw_intention._switch_gate_open 接入调用同批删。损血表与两态 p_win 表
     #  保留——阈值层(cw_first_passage._loss_dist / cw_plane_table.
     #  p_win_p2)仍消费,math_proofs P12/P15v2 方向级引用。)
     #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗条件胜率)。
@@ -725,7 +725,7 @@ class DecisionV2Registry:
     revoke_evidence_min_thickness: float = 5.0
 
     # ===== DirectorV2 备战循环(蓝图 §7/§8;迁移(守卫分区)已完成升正)=====
-    #: DirectorV2 接线 = 唯一生产路径——无开关 directive(蓝图 §8);
+    #: DirectorV2 接入调用 = 唯一生产路径——无开关 directive(蓝图 §8);
     #: 回退 = git revert。
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受约束)=====

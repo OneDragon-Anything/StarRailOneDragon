@@ -6,14 +6,14 @@
 「从游戏画面观察到的数据」**(框架读屏与识别层守卫产生;策略器只读)
 + 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
-(mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局冷建)。
+(mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局每局全新创建)。
 执行层不设独立状态载体(执行层状态类目已停用,git 历史可溯):
-op/流程侧产生的状态按其语义各自归位——局内事实写 GameState 容器
+op/流程侧产生的状态按其语义各自归位——局内事实写 GameState 状态容器
 (Field 组与非 Field 簿记组,宿主 ``kernel/cw_game_state.py``),
-防重入由决策面读容器计数自行裁决。
+防重入由决策面读状态容器计数自行裁决。
 
 驻 kernel 理由:kernel 判据层以本类为观察数据载体消费(经
-``strategy_state_of`` 访问函数取策略状态——None-safe 不冷建;kernel
+``strategy_state_of`` 访问函数取策略状态——None-safe 不每局全新创建;kernel
 不持有策略内部结构的字段注解,运行时零 impl 包 import,
 TYPE_CHECKING 承载)。类体逐字段无 app 引用。
 """
@@ -44,9 +44,9 @@ def install_strategy_state_factory(factory: Callable[[], object]) -> None:
 
 
 def ensure_strategy_state_attached(session) -> object:
-    """读+惰性附着:无状态对象且工厂已注册 → 冷建并写回 session。
+    """读+惰性附着:无状态对象且工厂已注册 → 每局全新创建并写回 session。
 
-    装配点 = ``CurrencyWarMatch.__post_init__``(局容器建立即保证当局
+    装配点 = ``CurrencyWarMatch.__post_init__``(局状态容器建立即保证当局
     状态对象在位)+ kernel 写路径。工厂未注册 → None(不代建)。"""
     st = strategy_state_of(session)
     if st is not None:
@@ -68,8 +68,8 @@ def strategy_state_of(session: StrategySession) -> object:
 
     None 契约与调用方前提**(B4 收缩申报,「落位裁量」):
     None = 策略器状态未装配(裸构造 session 且工厂未注册 / 第三方策略
-    未覆写 ``create_state``)。内置策略路径由 create_session 接线 +
-    局容器 ``__post_init__`` 附着 + kernel 写路径
+    未覆写 ``create_state``)。内置策略路径由 create_session 接入调用 +
+    局状态容器 ``__post_init__`` 附着 + kernel 写路径
     惰性兜底保证在位。两类读面形态:
 
     - **判据/披露面**(kernel 判据、遥测披露键):字段在异型状态对象上
@@ -95,11 +95,11 @@ class StrategySession:
     性由构造保证,真实随机面由消费方显式注入);``performance`` 是观测
     反馈(掉血/胜负)。``strategy_state`` 是策略器状态黑盒引用(框架只
     搬运引用,不识内部;所有权归策略器)。``eq=False``:session 是身份
-    对象(局容器/执行侧旁表按键引用),值相等语义无消费面。
+    对象(局状态容器/执行侧旁表按键引用),值相等语义无消费面。
     """
     # (last_state 槽已停用:三写点(备战观察×2/
-    #  买牌融合段)与全部遗留读者已切容器单例(game_state_of);备战
-    #  快照的现役宿主 = 容器,观察喂入 = read_game_state 漏斗。)
+    #  买牌融合段)与全部遗留读者已切状态容器单例(game_state_of);备战
+    #  快照的现役宿主 = 状态容器,观察喂入 = read_game_state 漏斗。)
     # (终态契约 §A 防御缓存已删:结算 hp 锚 last_hp/last_hp_t、对账锚
     #  last_hp_real/last_hp_real_node、hp 下行拒信通道 hp_suspect、左移
     #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
@@ -109,16 +109,16 @@ class StrategySession:
     #  plane_lengths_seen session 份停用——单一源 = gs.node_books
     #  (NodeBooks,写端 = prep 采集,读端 = cw_plane_table 经桥)。)
     # (终态契约 §B:last_streak session 份停用——结算带符号真值由结算
-    #  覆盖写端直入 gs.streak,economy/观察消费读容器。)
+    #  覆盖写端直入 gs.streak,economy/观察消费读状态容器。)
     # (终态契约 §B 重复账停用:active_strategies/active_env/last_owned_equips
-    #  session 份已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读容器。)
+    #  session 份已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读状态容器。)
     # (chosen_megastar/chosen_partner session 份已停用:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # (briefing_affixes/briefing_bosses session 份已停用:
     #  单一源 = gs.enemy_affixes/gs.plane_bosses,写端 = 简报/位面详情采集/
     #  prep 补采直写/获得链删除分支〔敌后破坏失效删除 + 退化策略腿取尾
     #  删除,随机态写 + 位面详情补观察转正,T-45/退化批〕;affixes 幂等
-    #  覆盖读+采、bosses 恒覆写含读空清、保位 None 不滤语义全部上移容器
+    #  覆盖读+采、bosses 恒覆写含读空清、保位 None 不滤语义全部上移状态容器
     #  写端。)
     # (selected_difficulty/enemy_difficulty session 份已停用:
     #  单一源 = gs.selected_difficulty/gs.enemy_difficulty,写端 = 入口链
@@ -131,8 +131,8 @@ class StrategySession:
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # (prep_obs_frame 黑板帧槽已停用——迭代
-    #  黑板帧停用 阶段 3.5:名单/装备/占用/晶矿全部容器
-    #  域承载,策略器唯读容器契约归位;观察控制信号降级为备战环 op 局部
+    #  黑板帧停用 阶段 3.5:名单/装备/占用/晶矿全部状态容器
+    #  域承载,策略器唯读状态容器契约归位;观察控制信号降级为备战环 op 局部
     #  对象,不经 session。)
     # (终态契约 §B:黑板帧刷新代次标注 prep_frame_class/shop_frame_class
     #  session 槽已停用——迁 gs 非 Field 双槽 frame_class_prep/
@@ -144,7 +144,7 @@ class StrategySession:
     # 归宿 = gs 结算覆盖写端(apply_settlement_cover)+ performance.history。
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
-    # 框架经 create_state 工厂按局冷建、只搬运引用不识内部(所有权归策略器;
+    # 框架经 create_state 工厂按局每局全新创建、只搬运引用不识内部(所有权归策略器;
     # 生命周期 = 一局,局终随 session 销毁)。第三方策略未覆写 create_state
     # → None(其策略器沿用惰性建模式;B4 兼容承诺的收缩口径 = 「缺省 None
     # 不炸构造与 create_session」,不承诺框架行为面读点容忍 None 态——

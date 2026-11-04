@@ -4,8 +4,8 @@
 点完立即上报把结果写进 game state):动作 op 机械链(点选中 → 点确认)
 发出后调用本函数,一次调用 = 完整结果写入——整支走获得链
 ``gain_invest_strategy``(无效载荷拒绝 → active_strategies 按名字去重
-追加 → 效果账本登记分支 → ``on_strategy_gained`` 效果分派,正本 =
-game_state/gain-chain.md)。本包 → 容器单向依赖。
+追加 → 效果账本登记分支 → ``on_strategy_gained`` 效果分派,权威版本 =
+game_state/gain-chain.md)。本包 → 状态容器单向依赖。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #8):applied 出口
 构造 ``WorldDecl``(trigger = ``pick_invest_strategy``;``next_screen`` =
@@ -52,7 +52,7 @@ def report_action_pick_invest_strategy_param(
     - ``param.norm_name`` = 选中卡归一规范名(handler 持有 OCR 原始名);
       归一后空/'?' = 无效载荷,链内零写 + 缺陷留存证据;
     - ``session`` = 策略会话(效果账本登记分支消费;kernel 禁自取上下文,
-      由动作 op 显式传入;``None`` = 登记分支跳过[局外/测试形态],容器写
+      由动作 op 显式传入;``None`` = 登记分支跳过[局外/测试形态],字段写
       照常);
     - ``rng`` = 采样注入(sim 可播种;缺省链内生成);
     - 出参 applied=True = 受理;reason = ``gain_chain_applied``(获得链
@@ -61,7 +61,7 @@ def report_action_pick_invest_strategy_param(
       窗稳态预测——2026-10-29 流程模型对齐:offer 选完 overlay 关闭回
       备战,游戏自动弹出商店(#14 触发源「投资策略选完后」);offer 槽
       节点多为 battle 型(稳态 = 商店档),改节点序列环境(战争边疆
-      P3 战斗→遭遇)下为遭遇模态屏,推导单一源收口),旧「返回当前
+      P3 战斗→遭遇)下为遭遇模态屏,推导单一源收尾),旧「返回当前
       节点屏(node_screen_now)」随 sim 呈现改造废止——reconcile 断言
       对象 = 顶层屏,备战档声明对弹店后商店态必失配)。
     """

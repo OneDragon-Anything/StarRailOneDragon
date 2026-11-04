@@ -1,4 +1,4 @@
-"""BOSS 简报屏观察契约与上报(kernel 纯数据;正本 =
+"""BOSS 简报屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口裁决:门判定 + 稳定帧引用。report 写点 = **BOSS 类型直定**

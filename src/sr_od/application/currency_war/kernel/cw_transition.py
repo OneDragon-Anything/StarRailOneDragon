@@ -49,7 +49,7 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 
 
 class CommitSignals:
-    """选卡信号累积器(局级,挂 StrategySession;接线残留的
+    """选卡信号累积器(局级,挂 StrategySession;接入调用残留的
     遥测载体,定型门停用后**无决策消费**)。
 
     各信号源到达时调 ``add``(源名 + 该源的阵容分贡献),累积到每条线,

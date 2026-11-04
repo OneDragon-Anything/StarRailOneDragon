@@ -1,14 +1,14 @@
-"""零写动作族上报集中件(容器零写,等观察覆盖)。
+"""零写动作族上报集中件(状态容器零写,等观察覆盖)。
 
-族策略:视觉域/转场/选择类动作的容器写语义 = 零(逐类函数体 =
+族策略:视觉域/转场/选择类动作的字段写语义 = 零(逐类函数体 =
 三行委托 :func:`_report_zero_write`),集中一文件不逐类开文件
 (无逐类专覆盖内容);命名规约完备测试照样逐类点验收束 = 包级
-``__getattr__`` 未命中落本模块。语义正本 = 各函数 docstring
+``__getattr__`` 未命中落本模块。语义权威版本 = 各函数 docstring
 (自 cw_game_state 逐字迁移)。
 
 工具原子七类(冶金炉/特权赋予卡/拆装扳手/精密拆装扳手/员工投影仪/
-完美投影仪/好运令牌)不在零写族:上报升格为容器写(机械执行直接
-上报写容器),分步实现正本 = 同包 ``tool_use``;包级 ``__getattr__``
+完美投影仪/好运令牌)不在零写族:上报升格为字段写(机械执行直接
+上报写状态容器),分步实现权威版本 = 同包 ``tool_use``;包级 ``__getattr__``
 命名规约解析具名模块先于本模块。
 """
 
@@ -30,7 +30,7 @@ from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
 #: 专家邀请函选卡·解锁名不可观察申报 kind(语义申报非缺陷;沿
 #: cw_gain_chain.ENV_REROLL_DECL 先例不入 DEFECT_ 词表——解锁状态缺登记
-#: 是观察数据缺口非运行缺陷,真值归观察覆盖,候选名观察建档批接线后
+#: 是观察数据缺口非运行缺陷,真值归观察覆盖,候选名观察建档批接入调用后
 #: 本 kind 退役)。
 EXPERT_UNLOCK_NAME_UNOBSERVED: str = 'pick_expert_name_unobserved'
 
@@ -53,8 +53,8 @@ def _decl_bottom(gs: GameState, trigger: str) -> WorldDecl:
     推导单一源 = ``node_screen_now``)。"""
     return WorldDecl(next_screen=node_screen_now(gs), trigger=trigger)
 
-# —— 零写动作族(视觉域/转场/选择族:容器零写,消费真值归观察——
-#    action-logic-state.md 正本申报;函数在场 = 命名规约完备测试对象,
+# —— 零写动作族(视觉域/转场/选择族:状态容器零写,消费真值归观察——
+#    action-logic-state.md 权威版本申报;函数在场 = 命名规约完备测试对象,
 #    调用方统一入口不必分型)——
 
 
@@ -62,7 +62,7 @@ def _decl_bottom(gs: GameState, trigger: str) -> WorldDecl:
 def _report_zero_write(gs: GameState, param: Any, sig: ChannelSig,
                        note: str,
                        decl: WorldDecl | None = None) -> LogicOutcome:
-    """零写动作统一实现(容器零写,等观察覆盖;applied=True = 动作受理,
+    """零写动作统一实现(状态容器零写,等观察覆盖;applied=True = 动作受理,
     非拒绝)。转移类动作随附后果声明(构造义务 = 动作后果声明化迭代
     总纲 design.md §2.2 契约 2;非转移类 decl 缺省 None = 无声明可喂)。"""
     _validate_sig(sig, ('logic_action',))
@@ -73,7 +73,7 @@ def _report_zero_write(gs: GameState, param: Any, sig: ChannelSig,
 
 def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开补给箱上报:开箱即腾席但占席事实归下一入口 heavy 实读(R7
-    终结化零窗口),容器零写。applied 出口构造后果声明(open_box;
+    终结化零窗口),状态容器零写。applied 出口构造后果声明(open_box;
     武装箱选择画面出现;喂入与消费面 = ``cw_sim_ports.declare_world`` /
     sim 后端 advance)。点击直弹登记(
      §1.7:点备战栏箱位「开启」直接弹四选一——
@@ -93,7 +93,7 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
 # 工具族七上报(report_action_furnace_use_param / report_action_privilege_card_
 # use_param / report_action_wrench_use_param / report_action_precision_wrench_
 # use_param / report_action_staff_projector_use_param / report_action_perfect_
-# projector_use_param / report_action_lucky_token_use_param)= 容器写形态,
+# projector_use_param / report_action_lucky_token_use_param)= 字段写形态,
 # 单一源 = 同包 tool_use(冶金炉采样池 sim 同源 + 投影仪走获得链);包级
 # ``__getattr__`` 命名规约解析具名模块先于本模块,直接 import 零写委托
 # 的旧消费面已改直取具名模块。
@@ -102,14 +102,14 @@ def report_action_open_box_param(gs: GameState, param: Any, sig: ChannelSig) -> 
 
 def report_action_open_shop_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开商店上报:画面态周转(开店事实由 shop payload 观察
-    写入),容器零写。"""
+    写入),状态容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(open_shop)')
 
 
 
 def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """选事件选项上报(CwActionPickEventParam 参数载体 + sim 脚本动作;
-    策略器不发出),容器零写。"""
+    策略器不发出),状态容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(pick_event)')
 
 
@@ -128,10 +128,10 @@ def report_action_pick_event_param(gs: GameState, param: Any, sig: ChannelSig) -
 
 
 def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """盛会之星选择上报:容器零写。applied 出口构造后果声明(pick_megastar;
+    """盛会之星选择上报:状态容器零写。applied 出口构造后果声明(pick_megastar;
     返回当前节点屏,详设 world-decl.md §2 表 #10)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'megastar')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_megastar)',
                               decl=_decl_bottom(gs, 'pick_megastar'))
@@ -139,10 +139,10 @@ def report_action_pick_megastar_param(gs: GameState, param: Any, sig: ChannelSig
 
 
 def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """列车同行伙伴选择上报:容器零写。applied 出口构造后果声明
+    """列车同行伙伴选择上报:状态容器零写。applied 出口构造后果声明
     (纯转移返回当前节点屏,详设 world-decl.md §2 表 #13)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'partner')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_partner)',
                               decl=_decl_bottom(gs, ''))
@@ -150,10 +150,10 @@ def report_action_pick_partner_param(gs: GameState, param: Any, sig: ChannelSig)
 
 
 def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """星徽秘典选择上报:容器零写。applied 出口构造后果声明(纯转移
+    """星徽秘典选择上报:状态容器零写。applied 出口构造后果声明(纯转移
     返回当前节点屏,详设 world-decl.md §2 表 #16)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'star_tome')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_star_tome)',
                               decl=_decl_bottom(gs, ''))
@@ -161,10 +161,10 @@ def report_action_pick_star_tome_param(gs: GameState, param: Any, sig: ChannelSi
 
 
 def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """祈愿试炼选择上报:容器零写。applied 出口构造后果声明(纯转移
+    """祈愿试炼选择上报:状态容器零写。applied 出口构造后果声明(纯转移
     返回当前节点屏,详设 world-decl.md §2 表 #15)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'wish_trial')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_wish_trial)',
                               decl=_decl_bottom(gs, ''))
@@ -172,10 +172,10 @@ def report_action_pick_wish_trial_param(gs: GameState, param: Any, sig: ChannelS
 
 
 def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """武装箱选择上报:容器零写。applied 出口构造后果声明(pick_box_card;
+    """武装箱选择上报:状态容器零写。applied 出口构造后果声明(pick_box_card;
     选卡即终结返回当前节点屏,详设 world-decl.md §2 表 #9;装备入栏归 backend)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'box_card')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_box_card)',
                               decl=_decl_bottom(gs, 'pick_box_card'))
@@ -183,10 +183,10 @@ def report_action_pick_box_card_param(gs: GameState, param: Any, sig: ChannelSig
 
 
 def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """命运卜者强化三选一上报:容器零写。applied 出口构造后果声明
+    """命运卜者强化三选一上报:状态容器零写。applied 出口构造后果声明
     (纯转移返回当前节点屏,详设 world-decl.md §2 表 #14)。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'fortune')
     return _report_zero_write(gs, param, sig, 'zero_write(pick_fortune)',
                               decl=_decl_bottom(gs, ''))
@@ -194,7 +194,7 @@ def report_action_pick_fortune_param(gs: GameState, param: Any, sig: ChannelSig)
 
 
 def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """专家邀请函选卡上报:容器零写(现金为王回金 = dict 确认族通道)。
+    """专家邀请函选卡上报:状态容器零写(现金为王回金 = dict 确认族通道)。
     applied 出口构造后果声明(纯转移返回当前节点屏,详设 world-decl.md
     §2 表 #17)。
 
@@ -202,12 +202,12 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
     (``expert_invite`` payload 只有羁绊解析无候选名;羁绊 → 名非唯一
     映射,如停云/青雀同仙舟)→ 只落 ``_emit_defect`` 语义申报一行
     (kind = :data:`EXPERT_UNLOCK_NAME_UNOBSERVED`,留存证据不停机),
-    ``gs.unlocked_experts`` 解锁写端待候选名观察建档批接线;真值归观察
+    ``gs.unlocked_experts`` 解锁写端待候选名观察建档批接入调用;真值归观察
     覆盖(实机商店采样猜测分支在该通道解锁后仍按无专家猜,采样偏差由
     ``logic_rand_outcome`` 台账收束)。idx=-1(现金为王)= 无专家解锁,
     零申报。"""
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     consume_screen_change(gs, 'expert_invite')
     idx = getattr(param, 'idx', None)
     if isinstance(idx, int) and idx >= 0:
@@ -225,7 +225,7 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 # —— 刷新建议三动作(遭遇/补给/投资):参数类已登记(CW_ACTION_TYPES)。
-#    投资刷新已接线生产面(2026-10-19 用户裁定「sim 与实机一致提供刷新
+#    投资刷新已接入调用生产面(2026-10-19 用户裁定「sim 与实机一致提供刷新
 #    次数」批):生产动作发出面 = 画面 op 刷新链自上报本函数取声明喂入
 #    (``cw_sim_ports.declare_world``);遭遇/补给两函数仍零生产调用方
 #    (在场 = 命名规约完备测试对象,禁当死代码删除)。——
@@ -233,20 +233,20 @@ def report_action_pick_expert_invite_param(gs: GameState, param: Any, sig: Chann
 
 
 def report_action_refresh_node_options_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """遭遇刷新建议上报:刷新链 = 同访问重决策,容器零写。"""
+    """遭遇刷新建议上报:刷新链 = 同访问重决策,状态容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(refresh_node_options)')
 
 
 
 def report_action_refresh_supply_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """补给刷新建议上报:容器零写。"""
+    """补给刷新建议上报:状态容器零写。"""
     return _report_zero_write(gs, param, sig, 'zero_write(refresh_supply)')
 
 
 
 def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """投资逐卡刷新建议上报:容器零写(刷新真值归观察覆盖——刷后计数与
-    候选由重入观察 report 落容器);applied 出口构造刷新世界声明(喂入与
+    """投资逐卡刷新建议上报:状态容器零写(刷新真值归观察覆盖——刷后计数与
+    候选由重入观察 report 落状态容器);applied 出口构造刷新状态副本声明(喂入与
     消费面 = ``cw_sim_ports.declare_world`` / sim 后端 advance 分派)。
 
     trigger 推导(依据 = ``gs.active_env`` ∨ ``gs.env_refresh_left`` 现值,
@@ -275,7 +275,7 @@ def report_action_refresh_invest_cards_param(gs: GameState, param: Any, sig: Cha
 
 
 def report_action_obs_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
-    """重观察上报(CwActionObsParam):本动作的容器更新通道 = 观察
+    """重观察上报(CwActionObsParam):本动作的状态容器更新通道 = 观察
     漏斗本体(宿主 heavy 观察链直写,观察边界对账),动作上报面零写;
     函数在场 = 命名规约完备测试对象 + op 自上报回执统一形态。"""
     return _report_zero_write(gs, param, sig, 'zero_write(obs)')

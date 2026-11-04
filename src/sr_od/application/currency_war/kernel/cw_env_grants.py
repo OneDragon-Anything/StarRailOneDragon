@@ -3,26 +3,26 @@
 迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
 docs/develop/sr_od/application/currency_war/changes/
 2026-10-10-env-conditional-grants/details/env-conditional-grant.md §1–§4;
-接线归该迭代 landing 3.2(live)/3.3(sim),本模块零接线)。
+接入调用归该迭代 landing 3.2(live)/3.3(sim),本模块零接入调用)。
 
 为什么 kernel 单一函数(live 与 sim 都调它):结算 streak 真值链两端
 同构(live = 结算覆盖写端 apply_settlement_cover 落账,sim = 结算分支
 observe 落账),条件判定散落两处各写一份 = 漂移(同 ``roll_ore_reward``
 live/sim 共用的单一正确性来源理由,非「通用复用」)。首领节点触发
 (check_env_boss_grants)两端不同构(「进入首领节点」真值生产点分居
-live 简报屏观察 / sim 节点窗收口,两段代码不同口)——仍归单一函数,
-条件判定/done 语义不漂移,接线形态归两端调用点。
+live 简报屏观察 / sim 节点窗收尾,两段代码不同口)——仍归单一函数,
+条件判定/done 语义不漂移,接入调用形态归两端调用点。
 
 通道分工(硬约束,依据 = ``cw_game_state.write_logic_rand`` docstring:
 
 - 装备发放:财富宝钻到达的**库存落位不可观察**(装备进哪个穿戴位是
-  游戏侧决定)→ :meth:`GameState.write_logic_rand` 可能世界快照;
+  游戏侧决定)→ :meth:`GameState.write_logic_rand` 可能局面快照;
   ``equips`` 是观察域(owned_equips 识别器整表覆盖),下一备战帧差异
   = 随机效果落地(logic_rand_outcome 台账行)自动纠偏,零持续污染;
 - done 追加:登记事实,:meth:`GameState.write_logic` 直写(直写先例 =
   cw_exec_state 金收入分支 / cw_effect_inventory 退款分支,不属 anchor_aware
   族——本域无观察写端,登记恒真);两笔同 sig 相邻 = 同窗原子语义面;
-- 回调三写(diamond_count/deploy_cap/back_layout):sim 世界数值面,
+- 回调三写(diamond_count/deploy_cap/back_layout):sim 状态副本数值面,
   全部 :meth:`GameState.observe`(先例 = ``_on_supply_picked`` 的
   diamond_count observe 写);**live 不调回调**——三域 live 写端 =
   观察识别器,逻辑侧禁写(投影审计已登记);
@@ -36,7 +36,7 @@ live 简报屏观察 / sim 节点窗收口,两段代码不同口)——仍归单
 的 ``sig`` 入参必须是 logic_action / logic_hook 族(obs 族进
 write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 'battle-wait:env-grant',sim = ``logic_sig('sim:env')``——形态归两端
-接线(3.2/3.3),本模块不指定。回调 sig 由 :func:`on_diamond_acquired`
+接入调用(3.2/3.3),本模块不指定。回调 sig 由 :func:`on_diamond_acquired`
 内部自构 obs 族(observe 渠道校验只收 obs 族,复用调用方 logic 族
 入参首笔即炸),入参不传 sig。
 
@@ -48,13 +48,13 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
 采样,缺省回退自掷 = 采样是猜测口径,live 观察校准;sim 传流键 =
-世界真值);
+状态副本真值);
 :func:`check_env_merge_grants` 含采样(注入槽:函数内
 ``action_sampling_rng('env_merge_grant', None)`` 解析——四发火点跨
 上报函数/效果族/链原语三类调用方,集中函数内解析单点最少;注入槽 =
-sim 世界真值,回退自掷 = live 猜测口径);
+sim 状态副本真值,回退自掷 = live 猜测口径);
 :func:`check_env_ore_open_grants` 含采样(注入槽:函数内
-``action_sampling_rng('env_ore_open_grant', None)`` 解析——接线点虽
+``action_sampling_rng('env_ore_open_grant', None)`` 解析——接入调用点虽
 在 rng 在场的采晶矿上报函数内,采样分支独立具名键使两条分支流键分离,
 重放归因更净;具名分支零 rng 消耗,掷名仅随机分支一笔)。
 
@@ -125,7 +125,7 @@ INTEREST_THRESHOLD_KEY: str = 'interest_threshold'
 
 #: done 域条件键:随机星徽授予分支(键值携带发放装备名,格式
 #: 'star_grant#<装备名>'——分支2 绑定解析的唯一源;# 后载荷是条件键的
-#: 本卡新立扩展形态(fields.md §3.5.5 在册仅纯具名值,随本卡登记)),
+#: 本卡新立扩展形态(fields.md §3.5.5 已登记仅纯具名值,随本卡登记)),
 #: 写端 = cw_gain_chain.on_env_gained 随机装备绑定分支(两模块分工见
 #: cw_game_state.env_grants_done 字段注释)。
 STAR_GRANT_KEY_PREFIX: str = 'star_grant#'
@@ -137,7 +137,7 @@ BOSS_NODE_KEY_PREFIX: str = 'boss#'
 
 #: 持续伤害契约条件分支的注册环境名(条件门与锚键分支共用注册名;字面量
 #: 先例 = _RICH_DIAMOND 同款引用)。本卡**不入五张条件发放登记表**——
-#: 建模形状不同(计数源无世界真值生产点 → 猜测写+证实,非条件检查型;
+#: 建模形状不同(计数源无状态副本真值生产点 → 猜测写+证实,非条件检查型;
 #: 反向锁测试钉住防误登记)。
 DOT_CONTRACT_ENV: str = '持续伤害契约'
 
@@ -152,7 +152,7 @@ DOT_CONFIRM_KEY: str = 'dot_confirm'
 
 #: done 域锚键前缀:'dot_anchor#<位面>-<轮>'(纯登记件**非门控**,写入端
 #: = cw_gain_chain.on_env_gained 获得刻;开局三选一获取时 sim 节点尚未
-#: 进窗不写 = 预期形态,缺锚不影响猜测写/计数/证实任何一步——键形态
+#: 进窗不写 = 预期形态,缺记不影响猜测写/计数/证实任何一步——键形态
 #: 先例 = boss#<位面>-<轮>,载荷键登记先例 = star_grant#)。
 DOT_ANCHOR_KEY_PREFIX: str = 'dot_anchor#'
 
@@ -179,7 +179,7 @@ BATTLE_CO_PRESENCE_KEY: str = 'battle_co_presence'
 #: 加速(卡面「将其」= 本卡赠卡)。键形态登记单一源 = fields.md §3.5.5。
 DEPLOY_LOCK_UID_KEY_PREFIX: str = 'deploy_lock_uid#'
 
-#: done 域条件键:世界发放域(环境 ∪ 策略)倒计时件完胜加速(首例 =
+#: done 域条件键:状态副本发放域(环境 ∪ 策略)倒计时件完胜加速(首例 =
 #: T-34 命运礼物;每卡至多一个,(卡名, 本键) 天然唯一 + 获得刻幂等不
 #: 重写)。写入端双道 = cw_gain_chain.on_env_gained(环境道)/
 #: on_strategy_gained(策略道,首例 = 偶像经济)延迟道具支线
@@ -195,14 +195,14 @@ DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 BOND_TIER_KEY_PREFIX: str = 'bond_tier_'
 
 #: sim 条件分支证实的战斗结算数(结论 = active_env 门真后第 8 个战斗结算
-#: 追加证实;出处 = 用户拍板值 2026-10-17〔单位 = 战斗结算次数,轮锚
-#: 弃用〕,**非机制推导**——180 计数在 sim 无世界真值生产点,8 是该阈值
-#: 的代理口径;边界 = 样本积累后重估常量/单位均须用户拍板,计数单一源
+#: 追加证实;出处 = 用户用户决定值 2026-10-17〔单位 = 战斗结算次数,轮锚
+#: 弃用〕,**非机制推导**——180 计数在 sim 无状态副本真值生产点,8 是该阈值
+#: 的代理口径;边界 = 样本积累后重估常量/单位均须用户用户决定,计数单一源
 #: = done 域 dot_battle# 键数)。
 ENV_DOT_CONFIRM_BATTLES: int = 8
 
 #: 回调三写证据串(判读可辨;刻意不带 ``sim:engine`` 前缀——该前缀是
-#: 失配抑制登记面,语义 = sim 后端世界分支外部事件写,回调写不属该族)。
+#: 失配抑制登记面,语义 = sim 后端状态副本写入分支外部事件写,回调写不属该族)。
 _DIAMOND_EVIDENCE: str = 'env_diamond'
 
 #: 财富宝钻注册名(回调 cap 加成语义唯一适用装备;官方条目「拥有宝钻
@@ -237,7 +237,7 @@ def check_env_streak_grants(gs: GameState, streak_after: int,
                             sig: ChannelSig) -> str | None:
     """结算连胜条件发放触发检查(单一源;调用点 = streak 落账之后,
     live = ``apply_settlement_cover`` 结算覆盖调用点后 / sim = 结算分支
-    streak observe 后,接线归 3.2/3.3)。
+    streak observe 后,接入调用归 3.2/3.3)。
 
     条件矩阵(顺序即短路序,详设 §3):逐序返回 None = 未发放:
 
@@ -320,7 +320,7 @@ def check_env_refresh_grants(gs: GameState, sig: ChannelSig) -> str | None:
     - ``sig`` = 三笔共用的渠道签名,必须 logic_action 族(obs 族进
       write_logic_rand 即炸渠道族校验)。唯一调用方传入上报函数内部的
       ``_grp_sig``(logic_action 族,上报入口已把族锁死),天然满足;
-      logic_hook 分支本案不可达,不写分支( live 结算接线形态,
+      logic_hook 分支本案不可达,不写分支( live 结算接入调用形态,
       本案收敛点唯一);
     - 本函数零 rng:随机态指认知通道,追加位置(尾部)与金增量均确定,
       不消耗随机数。
@@ -377,7 +377,7 @@ def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
     4. ``gs.effects.interest_earned < 阈值`` → None(计数单一源 =
        ActiveEffectInventory.record_interest_earned,本函数不复制口径);
     5. ``gs.bench.value`` None → None 且不标 done(宁缺勿造族;bench 为
-       开局种子底座字段,冷建即 9 空槽空视图,生产域 live/sim 恒非
+       开局初始值字段,每局全新创建即 9 空槽空视图,生产域 live/sim 恒非
        None,本分支 = 直构测试域防御,且 gain_character 本体另有拒落
        防线);
     6. 达标 → **发放两笔相邻写,同 evidence、同 sig、同 produced_by**
@@ -390,7 +390,7 @@ def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
        返回发放角色名(日志面消费,无行为分支)。
 
     - ``sig`` = 两写共用的渠道签名,必须 logic_action / logic_hook 族
-      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线:
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接入调用:
       sim = ``logic_sig('sim:env')``,live = logic_hook 族随宿主 op);
     - 本函数零 rng:具名单名确定发放,随机态指认知通道(落位未知、
       观察校准),不消耗随机数。
@@ -409,7 +409,7 @@ def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
         return None
     if gs.bench.value is None:
         # 席面从未观察:发放角色写出不完整席 = 丢人,宁缺勿造不标 done
-        # (生产不可达,开局种子底座;下个收入刻自动重查,done 只在
+        # (生产不可达,开局初始值;下个收入刻自动重查,done 只在
         # 发放同窗登记)
         return None
     evidence = f'env_grant#{env}#interest{threshold}'
@@ -424,8 +424,8 @@ def check_env_interest_grants(gs: GameState, sig: ChannelSig) -> str | None:
 def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
                           rng: random.Random | None,
                           sig: ChannelSig) -> str | None:
-    """首领节点条件发放触发检查(单一源;「进入首领节点」的双端真值
-    生产点分居两端 → 两点接线:live = ``CwScreenBossBriefing.
+    """首领节点条件发放触发检查(单一源;「进入首领节点」的实机和模拟器两边真值
+    生产点分居两端 → 两点接入调用:live = ``CwScreenBossBriefing.
     _observe_live`` 观察上报后 best-effort 调用(hist = settle_confirm
     推进后的 boss 坐标),sim = ``cw_sim_backend._begin_node_window``
     的 boss 分支(窗口幂等守卫内)——两支天然互斥,done 短路兜第二层)。
@@ -448,7 +448,7 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
        形态防御;本 boss 窗一次性无自动重试 = 该节点漏发);
     8. 达标 → 发放:绑定星徽名 = 前缀键解出 → 羁绊名 = 星徽名去「星徽」
        后缀 → 池 = ``grant_char_pool(羁绊名 spec)``(牌库时点池 = 规格
-       域 ∩ 当时牌库,cw_pool 单一源;开拓者双形态合并随池基底收口,
+       域 ∩ 当时牌库,cw_pool 单一源;开拓者双形态合并随池基底收尾,
        未解锁专家随裁定剔除)→
        ``rng.choice`` 采样 →
        ``gain_character(gs, 名, 1, rand=True, sig, evidence, producer)``
@@ -459,11 +459,11 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
        再空 → None 短路留 log,不标 done。
 
     - ``sig`` = 两写共用的渠道签名,必须 logic_action / logic_hook 族
-      (obs 族即炸渠道族校验——禁 obs_sig;形态归两端接线:live =
+      (obs 族即炸渠道族校验——禁 obs_sig;形态归两端接入调用:live =
       logic_hook 族 group 'boss-briefing:env-grant',sim =
       logic_sig('sim:env'),与环境金/定时道具发放同组同窗);
     - 本函数含采样(本模块唯一消费 rng 的触发函数):``rng`` 缺省回退
-      自掷(采样是猜测口径,live 观察校准;sim 传流键 = 世界真值)。
+      自掷(采样是猜测口径,live 观察校准;sim 传流键 = 状态副本真值)。
     """
     env = gs.active_env.value
     if not env:
@@ -484,13 +484,13 @@ def check_env_boss_grants(gs: GameState, *, node_pos: tuple[int, int] | None,
         return None
     if gs.bench.value is None:
         # 席面从未观察:发放角色写出不完整席 = 丢人,宁缺勿造不标 done
-        # (生产不可达,开局种子底座;本 boss 窗一次性,无自动重试)
+        # (生产不可达,开局初始值;本 boss 窗一次性,无自动重试)
         return None
     star_name = bind_keys[0][len(STAR_GRANT_KEY_PREFIX):]
     faction = (star_name[:-len('星徽')] if star_name.endswith('星徽')
                else '')
     # 池派生经 grant_char_pool 单一源(规格域 ∩ 当时牌库,与随机赠卡家族
-    # 同采样域;开拓者双形态合并随池基底收口,未解锁专家随裁定剔除;
+    # 同采样域;开拓者双形态合并随池基底收尾,未解锁专家随裁定剔除;
     # faction 空 = 星徽名无后缀畸形,spec 双空 → chars_by_cost(None) 恒
     # 空池,照旧走下方守卫零写)
     pool = grant_char_pool(gs, RandomCharSpec(faction=faction, star=1))
@@ -523,7 +523,7 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
     ——每次升星事件恰好经过发火点一次,与 streak/refresh/boss 的
     「观察点重入」done 幂等场景不同型)。调用点 = 四发火点收尾(买牌
     上报/补给单位入账分支 grant_bench_unit_cascade/晶矿角色入账分支/获得链顶层
-    gain_character,均在各自全部容器写毕后调用;move_unit/pick_planner
+    gain_character,均在各自全部字段写毕后调用;move_unit/pick_planner
     级联不可达不设,拷贝臂 spawn_equip_bench_unit 无级联不设——
     cw_investments.ENV_MERGE_GRANTS 区块注释)。
 
@@ -538,14 +538,14 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
        恒采样,rand 固定 True 不设形参)→ 效果串一条
        ``env_merge_grant:<名>``(与落位成败解耦,on_env_gained
        item_gift 通道同阶口径);同窗多条 facts 逐条发(级联两级 =
-       两次发放,逐级触发判例)。
+       两次发放,逐级触发先例)。
 
     - ``sig`` = 链写共用渠道签名,必须 logic_action / logic_hook 族
       (obs 族进写通道即炸渠道族校验——禁 obs_sig);
     - 本函数含采样:rng = ``action_sampling_rng('env_merge_grant', None)``
       函数内解析(注入槽优先,缺省回退自掷)。选注入槽而非显式 rng 形参
       (check_env_boss_grants 风格)的理由 = 四发火点跨上报函数/效果族/
-      链原语三类调用方,集中函数内解析单点最少;sim 注入槽即世界真值,
+      链原语三类调用方,集中函数内解析单点最少;sim 注入槽即状态副本真值,
       live 回退自掷 = 采样是猜测口径(bench 首观察静默覆盖);
     - bench 未观察/席满溢出位占 = :func:`gain_character` 链内既有
       拒落/留证语义,本函数不另设闸;
@@ -590,7 +590,7 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
     ``report_action_collect_ore_param`` 尾部,批内计数入账后、同动作窗
     内,live/sim 同一段 op 代码同口覆盖)。触发注册表 =
     ``cw_investments.ENV_ORE_OPEN_GRANTS``,计数载体 =
-    ``gs.effects.ore_open_total``(record_ore_open 单口)。
+    ``gs.effects.ore_open_total``(record_ore_open 唯一入口)。
     返回本次发放角色名列表(仅日志面消费,调用方不分支)。
 
     条件矩阵(顺序即短路序,逐序返回空 = 零发放):
@@ -611,7 +611,7 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
     6. **先守卫后发放**(守卫先于该阈值的任何一条分支,禁半发放):随机分支
        池现查 = ``grant_char_pool(随机羁绊名 spec)`` 非空(牌库时点池 =
        规格域 ∩ 当时牌库,与随机赠卡家族同采样源;开拓者双形态合并随池
-       基底收口,未解锁专家随裁定剔除)——空 = 注册表漂移或全专家域未
+       基底收尾,未解锁专家随裁定剔除)——空 = 注册表漂移或全专家域未
        解锁(import 期校验后生产不可达,纯防御分支),整体缓发返回空
        不标 done——「具名分支已发、done 未封」的半发放态会在下批重触发
        同一阈值时重复发放具名分支,重复发放比漏发更劣;
@@ -639,7 +639,7 @@ def check_env_ore_open_grants(gs: GameState, sig: ChannelSig
     - 本函数含采样:rng = ``action_sampling_rng(ORE_OPEN_GRANT_RNG_TOOL,
       None)`` 函数体内惰性解析(kernel 反向模块级零 import 契约),
       首个未封账达标阈值确认后才取(无命中不消耗采样流键,保持 sim
-      动作序列逐位不变);注入槽 = sim 世界真值,回退自掷 = live 猜测
+      动作序列逐位不变);注入槽 = sim 状态副本真值,回退自掷 = live 猜测
       口径(采样猜测态下掷名 ≠ 实机真名 → bench 首观察静默覆盖)。
     """
     env = gs.active_env.value
@@ -736,8 +736,8 @@ def check_env_battle_grants(gs: GameState, sig: ChannelSig) -> str | None:
        返回发放角色名(日志面消费,无行为分支)。
 
     - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
-      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线 =
-      report_node_advance 内构 sig 直传,单点覆盖双端);
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接入调用 =
+      report_node_advance 内构 sig 直传,单点覆盖实机和模拟器两边);
     - 本函数零 rng:随机态指认知通道(落位未知/观察校准),发放位置
       (链内落位)确定、解锁序位步进确定,不消耗随机数。
     """
@@ -751,7 +751,7 @@ def check_env_battle_grants(gs: GameState, sig: ChannelSig) -> str | None:
     if (env, BATTLE_CO_PRESENCE_KEY) in done:
         return None
     if gs.deployed.value is None:
-        # 参与真值无承载:宁缺勿造不标 done(生产不可达,开局种子底座;
+        # 参与真值无承载:宁缺勿造不标 done(生产不可达,开局初始值;
         # 结算刻 deployed 已读后自动重查)
         return None
     if gs.bench.value is None:
@@ -804,7 +804,7 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
     设计 = T-33 设计稿 §2.4,迭代 2026-09-23-invest-effects-calc)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**。字段语义:killed 单一语义 = 「挑战成功」胜利标志
-    (cw_settlement_obs.py 注释正本,killed=True 才是胜局);hp 基准 =
+    (cw_settlement_obs.py 注释权威版本,killed=True 才是胜局);hp 基准 =
     相邻两结算帧差分——hp 只在结算与卡面效果处变化,相邻两结算帧间
     hp 差 = 本场损血(环写端在宿主结算读点位、先于结算确认 op 派发,
     settle_confirm 时点尾行 = 本场帧、前一行 = 上一结算帧)。宁缺勿造:
@@ -881,7 +881,7 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
 
 def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
                                 ) -> tuple[str, ...]:
-    """完胜回退检查(世界发放域〔环境 ∪ 策略〕倒计时件家族,登记表 =
+    """完胜回退检查(状态副本发放域〔环境 ∪ 策略〕倒计时件家族,登记表 =
     ``cw_investments.ENV_DELAYED_ITEM_GRANTS``;唯一调用点 =
     report_node_advance settle_confirm 分支,check_env_deploy_lock_perfect
     调用邻位,惰性 import 同款;分支在 advance_node_effective 真推进
@@ -891,7 +891,7 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     设计 = T-34 设计稿 §2.5,迭代 2026-09-23-invest-effects-calc)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
-    在册;killed 语义/hp 差分基准的推导正本见彼处 docstring,宁缺勿造:
+    已登记;killed 语义/hp 差分基准的推导权威版本见彼处 docstring,宁缺勿造:
     环不足两行或任一侧 hp_after None 不判定)。判据判定行内联同式非共享
     谓词:check_env_deploy_lock_perfect 本体属零混改面(T-34 设计稿
     §3 零改动清单),本函数与 T-33 完胜分支零代码耦合(域不同:
@@ -1008,11 +1008,11 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
                          count_battle: bool = False,
                          bench_observation: BenchView | None = None,
                          ) -> str | None:
-    """持续伤害契约条件分支触发检查(猜测写 + 证实单一源;三个接线点共用
+    """持续伤害契约条件分支触发检查(猜测写 + 证实单一源;三个接入调用点共用
     本函数,条件判定不漂移):live 结算覆盖窗猜测写 / live 备战屏观察证实
     / sim 结算分支猜测写+进度累计+证实(设计 = T-28 设计稿 §2.2/§2.3,
     迭代 2026-09-23-invest-effects-calc)。建模动机:计数源(敌方 DoT
-    状态)双端皆盲无世界真值生产点 → 不可数但可假设、可证实——每次结算
+    状态)实机和模拟器两边皆盲无状态副本真值生产点 → 不可数但可假设、可证实——每次结算
     「假设获得黑天鹅」随机态垫入,live 由备战观察收敛、sim 由固定战斗数
     收敛。
 
@@ -1028,17 +1028,17 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
        猜测态通道——认知通道随机态非采样身份,首观察静默覆盖是
        write_logic_rand 通道自有契约;evidence ``env_dot_speculate#<帧>``
        可辨;拒落/溢出/席满语义全继承链内防线,bench 未观察拒落零写);
-    5. ``count_battle=True``(sim 接线专用,进度分支 live 不追加):进度键
+    5. ``count_battle=True``(sim 接入调用专用,进度分支 live 不追加):进度键
        ``dot_battle#<k>`` 追加 done(k = 已有 dot_battle# 键数 + 1,
        append-only 对账可数);``k == ENV_DOT_CONFIRM_BATTLES`` 的那笔
        同窗相邻追加证实 done ``(env, dot_confirm)``,evidence
        ``env_dot_confirm#sim``。非战斗轮(商店/事件)不经结算分支 = 不
-       计数(结构性,接线点在结算分支内)。进度键**按环境连续累计,不随
+       计数(结构性,接入调用点在结算分支内)。进度键**按环境连续累计,不随
        同局内重获得重置**(蓝海卷随机再入同卡的极低概率形态:k 跨获得
        期续计,合计 8 个战斗结算证实 = 「总拥有 8 战斗」口径,对账时
        勿当漂移查)。
 
-    **观察证实分支**(live 独有;``bench_observation`` 非 None 时,挂点 =
+    **观察证实分支**(live 独有;``bench_observation`` 非 None 时,插入位置 =
     备战屏 bench 整表观察同步点,观察写之后同帧):观察值含黑天鹅 &&
     env active && 未证实 → done 追加 ``(env, dot_confirm)``,evidence
     ``env_dot_confirm#obs``。证实来源不区分(v2-5 裁定:观察到即证,
@@ -1048,10 +1048,10 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
 
     锚键 ``dot_anchor#<位面>-<轮>`` 纯登记件**非门控**,写入端 =
     cw_gain_chain.on_env_gained 获得刻(开局三选一获取时 node 未进窗
-    不写 = 预期形态,缺锚不影响本函数任何一步)。
+    不写 = 预期形态,缺记不影响本函数任何一步)。
 
     - ``sig`` = 全部写共用的渠道签名,必须 logic_action / logic_hook 族
-      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接线);
+      (obs 族进写通道即炸渠道族校验——禁 obs_sig;形态归两端接入调用);
     - 本函数零 rng:身份具名单名、进度计数比较确定,随机态指认知通道
       (落位未知、观察校准),不消耗随机数;
     - 返回 ``_DOT_CHAR`` 当本调用发生过写(猜测/进度/证实任一),None
@@ -1101,9 +1101,9 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
 
 
 def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
-    """宝钻获得回调(世界数值面联动;调用点 = sim 世界发放路径族——
-    深井连胜发放(sim 结算段接线)、策略卡到级装备发放(sim advance 双点
-    接线 + 跳过记账段镜像共三点)、及策略卡拿卡发放(选卡落地拍拿卡腿,
+    """宝钻获得回调(状态副本数值面联动;调用点 = sim 状态副本发放路径族——
+    深井连胜发放(sim 结算段接入调用)、策略卡到级装备发放(sim advance 双点
+    接入调用 + 跳过记账段镜像共三点)、及策略卡拿卡发放(选卡落地拍拿卡腿,
     这么大的钻石 = 用户裁定 2026-11-02 读法 B、控制规模 = 帽改写卡随批
     归一同支),各路共用本回调零改动;
     **supply 补给宝钻不采纳**——钻类型未建模,归连胜路径覆盖;
@@ -1114,7 +1114,7 @@ def on_diamond_acquired(gs: GameState, equip_name: str) -> None:
       ``DIAMOND_EQUIP_NAMES`` 仅视觉判定族);
     - 三写全部 :meth:`GameState.observe`(sim 世界事实 = 观察通道,
       禁 logic 写——与晶矿 done 台账的直写不同,那是登记事实,这是
-      世界数值面),sig 由本函数内部自构 obs 族(入参不传 sig——
+      状态副本数值面),sig 由本函数内部自构 obs 族(入参不传 sig——
       observe 渠道校验只收 obs 族,复用调用方 logic 族入参首笔即炸;
       内构先例 = ``_on_supply_picked`` 内构 ``obs_sig('sim:diamond')``):
       1. ``diamond_count`` 现值 + 1(宝钻族均计数);

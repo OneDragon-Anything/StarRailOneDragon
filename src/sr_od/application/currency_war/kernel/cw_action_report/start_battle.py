@@ -1,9 +1,9 @@
 """货币战争动作上报:出战(report_action_start_battle_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
 **后果声明**(动作后果声明化迭代,详设 world-decl.md §2 表 #3):applied
 出口构造 ``WorldDecl``——常规出口 trigger = ``battle_resolve``、
@@ -100,7 +100,7 @@ def report_action_start_battle_param(gs: GameState, param: Any, sig: ChannelSig,
     后端 advance:常规出口 = (结算屏, battle_resolve);免战跳过出口 =
     (下一节点窗稳态屏, battle_skip)——跳过事实走声明通道(裁决点 1
     默认案 A),声明按 op 点击事实分支、不随递减簿记成败回改(递减缺席
-    = 世界照跳、簿记缺失,回改会让 sim 照打战斗与实机分叉)。
+    = 状态副本照跳、簿记缺失,回改会让 sim 照打战斗与实机分叉)。
 
     **补给节点分支**(2026-10-29 流程模型对齐):supply 节点出战 =
     完成节点(无战斗无结算屏,流程模型单一源 =

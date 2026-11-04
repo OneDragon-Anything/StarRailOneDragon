@@ -73,8 +73,8 @@ class EquipEnvSignals:
 def build_equip_env_signals(state) -> EquipEnvSignals:
     """state → 信号包(唯一读取点;state 缺失/字段未观察 = 安全默认,不抛错)。
 
-    ``state`` = session 容器单例(game_state_of;装配源换源,旧
-    ``session.last_state`` 帧链停用);容器/None 两态宽容读(鸭子 getattr
+    ``state`` = session 状态容器单例(game_state_of;装配源换源,旧
+    ``session.last_state`` 帧链停用);状态容器/None 两态宽容读(鸭子 getattr
     + Field .value 取值),词缀未观察/节点未观察 = 空集 / None。
     """
     if state is None:
@@ -487,7 +487,7 @@ def resolve_affix_priority_order(comp, view,
 #:   无新画面 → 建档前置以既有 owned 网格建档满足;
 #: ②工具拖曳 op 实现 = 工具原子动作 op(CwActionToolUseOp,判据→G1 准入
 #:   →逐件原子发出;消耗确认交叉核对随组合壳停用,上报 = 机械执行直接上报写
-#:   容器,容器写正本 = cw_action_report/tool_use)。
+#:   状态容器,字段写权威版本 = cw_action_report/tool_use)。
 #: 开分支后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
 #: (对照测试 sr-od-test test_cw_tools_exec_channel.py)。
 TOOL_EXEC_CHANNEL_READY: bool = True

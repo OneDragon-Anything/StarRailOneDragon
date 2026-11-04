@@ -4,8 +4,8 @@
 白厄前排法则 / C3 演进引擎)不得自算按排聚合(契约冻结条款;验收 = grep 全仓
 无第二处按排聚合实现)。
 
-口径(契约 C6;benchchar-retirement P4 容器行输入重写,design §2.1/§2.4):
-- 输入 = 容器行域 ``(front_row, back_row)``,元素 = 容器 ``Unit``(§2.1
+口径(契约 C6;benchchar-retirement P4 状态容器行输入重写,design §2.1/§2.4):
+- 输入 = 状态容器行域 ``(front_row, back_row)``,元素 = 状态容器 ``Unit``(§2.1
   deployed 计算形状),纯逻辑组装,无识别;排归属由行入参原生承载
   (§2.1「排归属由下标派生」的行域形态,不再读 position_pref 信息位);
 - 标签 = 角色羁绊全集(阵营 factions + 流派 flows,多羁绊角色每系都计——与
@@ -23,7 +23,7 @@
 
 契约签名(冻结的是单一源语义):
 ``board_by_row(front_row, back_row) -> BoardByRow``,另给
-``board_by_row_of(state)`` 便捷入口(消费方持容器 GameState)。
+``board_by_row_of(state)`` 便捷入口(消费方持状态容器 GameState)。
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ class BoardByRow:
 
 def board_by_row(front_row: list[Unit] | None,
                  back_row: list[Unit] | None) -> BoardByRow:
-    """按排羁绊聚合(C6 契约 1 冻结语义;容器行域输入,排归属 = 行入参)。
+    """按排羁绊聚合(C6 契约 1 冻结语义;状态容器行域输入,排归属 = 行入参)。
 
     选边型双羁绊角色(布洛妮娅)经 _trait_tags peers 透传单边计入:
     选边不分排(图鉴「小队中」= 全队),peers = 全板其余单位。"""
@@ -123,7 +123,7 @@ def board_by_row(front_row: list[Unit] | None,
 
 
 def board_by_row_of(gs: GameState) -> BoardByRow:
-    """便捷入口(消费方持容器 GameState):行域经容器读口
+    """便捷入口(消费方持状态容器 GameState):行域经状态容器读口
     :func:`cw_game_state.deployed_rows_of` 现读后聚合。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_rows_of,

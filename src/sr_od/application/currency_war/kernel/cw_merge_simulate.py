@@ -24,8 +24,8 @@ mechanics 为准修齐(单一语义源,双载体是 tracked 原地推进 vs 期�
 载体形状(benchchar-retirement P1 定形、P5 单形收窄):bench =
 ``list[BenchSlot | None]`` / deployed = ``list[Unit | None]``(§2.3);
 元素 frozen → 推进 = replace 新构造 + 定位符索引,素材摘除 = 置 None
-(保洞)。条目身份读协议(:func:`_entry_identity`)容器单形状,引擎
-全链容器单形状。
+(保洞)。条目身份读协议(:func:`_entry_identity`)状态容器单形状,引擎
+全链状态容器单形状。
 """
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 
 if TYPE_CHECKING:
-    # 仅类型注解引用(旧 ShopCard = cw_state 动作域词汇,运行时鸭子读
+    # 仅类型注解引用(旧 ShopCard = cw_state 动作域词汇,运行时鸭子类型读取
     # name/star,零运行时依赖)。
     from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
 
@@ -72,7 +72,7 @@ class MergeStep:
 @dataclass
 class MergeSimResult:
     """merge_simulate 出参:终态 + 合成链 + 实际购入张数(benchchar-
-    retirement P1 起容器原生形状:bench = BenchSlot | None 槽表 /
+    retirement P1 起状态容器原生形状:bench = BenchSlot | None 槽表 /
     deployed = Unit | None 下标槽表,§2.3)。"""
     bench_after: list[BenchSlot | None]
     deployed_after: list[Unit | None]
@@ -85,15 +85,15 @@ class MergeSimResult:
 
 
 def _identity_of(x: Unit) -> tuple[str, int]:
-    """条目身份(容器 ``Unit``;分组键只读 char_id/star 两语义位)。"""
+    """条目身份(状态容器 ``Unit``;分组键只读 char_id/star 两语义位)。"""
     return ((str(getattr(x, 'char_id', '') or '')),
             int(getattr(x, 'star', 1) or 1))
 
 
 def _entry_identity(x: object) -> tuple[str, int] | None:
-    """计数族条目身份读协议(容器单形状):
+    """计数族条目身份读协议(状态容器单形状):
     bench 侧 ``BenchSlot``(kind='unit' → 内嵌 Unit 身份;占位/empty →
-    None)/deployed 侧 ``Unit``;非容器形状 = None
+    None)/deployed 侧 ``Unit``;非状态容器形状 = None
     (fail-closed 跳过,禁猜身份)。"""
     if x is None:
         return None
@@ -153,7 +153,7 @@ def merge_simulate(bench: list[BenchSlot | None],
                    name: str, star: int, k: int = 1,
                    in_shop_count: int | None = None) -> MergeSimResult:
     """买牌 (name, star,请求张数 k) 的合成终态推演(纯函数;不改入参;
-    P1 起容器原生形状 §2.3)。
+    P1 起状态容器原生形状 §2.3)。
 
     - 常态:逐张落入备战空槽(§1 最左空位)→ 不动点合并;
     - 满栏:仅当本次购买能触发合成(``merge_buy_completes``)才放行,
@@ -181,7 +181,7 @@ def merge_simulate(bench: list[BenchSlot | None],
     if k > 0:
         # 满栏例外(§2.5):自动多买张数取 min(店内张数, 3−已有 mod 3),复用
         # merge_buy_k/merge_buy_completes 单一源(禁消费方手搓同式)。
-        # 假牌构造 = 容器类型 + 映射函数边界转换(双 ShopCard 归一,§2.5:
+        # 假牌构造 = 状态容器类型 + 映射函数边界转换(双 ShopCard 归一,§2.5:
         # 转换只许在映射函数发生;helper 只消费 name/star,转换体 x 置 0
         # 不消费)。
         eff_k = k
@@ -293,7 +293,7 @@ def merge_simulate(bench: list[BenchSlot | None],
 def _bump_carrier(carrier: object, new_star: int,
                   new_equips: list[str]) -> object:
     """合成载体升星 + 装备继承的 frozen 新构造(bench 侧 BenchSlot 包
-    Unit / 场上裸 Unit 双载体;容器原生形状之外禁入)。
+    Unit / 场上裸 Unit 双载体;状态容器原生形状之外禁入)。
 
     产物**显式置 uid=None**(合成产物 = 新实体,cw_gain_chain._bump_carrier
     同款纪律——漏置则环境上场锁的被锁 uid 随 replace 随行进产物)。"""
@@ -332,7 +332,7 @@ def _merge_bench(bench: list[BenchSlot | None],
     语义源。合成载体:场上同名卡升星优先(触发处常见态),无场上卡则
     bench 首张升星。
 
-    P1 起容器原生形状(§2.3):bench = ``list[BenchSlot | None]`` /
+    P1 起状态容器原生形状(§2.3):bench = ``list[BenchSlot | None]`` /
     deployed = ``list[Unit | None]`` 下标槽表;素材摘除 = 置 None 腾槽
     (保洞语义,合成载体留在原槽位);载体升星 = frozen
     replace 新构造(装备继承随之写回载体)。
@@ -341,7 +341,7 @@ def _merge_bench(bench: list[BenchSlot | None],
 
     on_step(可选步回调,逻辑随机态采样链用):**每完成一级合并**(升星/
     置 None/装备继承全部落定后)调用一次,调用侧经回调把工作列表当前
-    状态落容器(逐步写遥测);回调内看到的列表 = 该级合并完成后的状态。
+    状态落状态容器(逐步写遥测);回调内看到的列表 = 该级合并完成后的状态。
     None = 现行为(逐级回调缺省,既有消费者零改动)。注意:一级合并可
     同时变更 bench 与行域(deployed 侧载体),调用侧按受影响域各落一行。
 
@@ -424,7 +424,7 @@ def same_star_count(name: str, star: int,
                     bench: list[BenchSlot | None],
                     deployed: list[Unit | None] | None = None) -> int:
     """全场域同名同星计数(bench∪deployed;``_merge_bench`` 分组键同口径;
-    条目身份读协议 = :func:`_entry_identity`,容器单形状)。"""
+    条目身份读协议 = :func:`_entry_identity`,状态容器单形状)。"""
     n = 0
     for _x, ident in _slots_iter(bench, deployed):
         if ident == (name, star):
@@ -456,7 +456,7 @@ def merge_material_reject_reason(name: str, star: int,
     (含自身全场域计数再扣 victim 自己)``≥ 1`` ⇒ 拒入资格集,拒因键
     ``merge_material_guard``——历史对偶位 = 部署侧 ``cw_deploy_logic.
     swap_sell_exclusion_reason`` 的同名拒因键(kernel swap 机器已随部署
-    统一批丁收编删除,该键现役唯一源 = 本函数;计数单一源 =
+    统一批丁纳入统一管理删除,该键现役唯一源 = 本函数;计数单一源 =
     ``same_star_count``,禁消费方手搓同式)。适用范围 = bench 四卖出
     通道(M4 燃料/凑利息卖/支付变现/换线归零),各通道原有资格谓词
     不动,只追加本子谓词。

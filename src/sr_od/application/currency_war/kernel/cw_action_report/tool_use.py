@@ -1,10 +1,10 @@
-"""货币战争动作上报:工具原子七类容器写(report_action_*_use_param 七函数)。
+"""货币战争动作上报:工具原子七类字段写(report_action_*_use_param 七函数)。
 
-**机械执行直接上报**(用户裁定 2026-09-21,正本 =
+**机械执行直接上报**(用户裁定 2026-09-21,权威版本 =
 flow/action_ops.md §1 增补 2):动作 op = 机械执行
-不判成败,上报**无条件按成功写容器**——确定面
+不判成败,上报**无条件按成功写状态容器**——确定面
 :meth:`GameState.write_logic`、随机面(效果含采样):
-:meth:`GameState.write_logic_rand` 采样链。「失败」不是本层概念,容器与
+:meth:`GameState.write_logic_rand` 采样链。「失败」不是本层概念,状态容器与
 实机出入归观察对账机制按其契约处置。本模块自 ``zero_writes`` 零写占位升格
 (七函数自零写族移至本模块,包级 ``__getattr__`` 命名规约解析具名模块先于零写族,
 op 侧调用形态不变)。
@@ -33,7 +33,7 @@ op 侧调用形态不变)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包
 ``cw_action_report.__init__`` docstring;工具七类机械半同构,同住一文件
-= pick_equip 族先例「一族一文件」)。本包 → 容器单向依赖。
+= pick_equip 族先例「一族一文件」)。本包 → 状态容器单向依赖。
 """
 from __future__ import annotations
 
@@ -187,7 +187,7 @@ def _equips_inv(gs: GameState) -> list[str] | None:
 def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
                                     *, rng: random.Random | None = None
                                     ) -> LogicOutcome:
-    """冶金炉上报(变异面,双模式;容器写形态):
+    """冶金炉上报(变异面,双模式;字段写形态):
     - ``target_kind='equip'``(拖装备):**单笔 write_logic_rand 合并写**
       equips = 移除工具 ∧ 目标件 → 同类别采样替换;
     - ``target_kind='char'``(拖角色):①equips 单笔 write_logic_rand
@@ -198,7 +198,7 @@ def report_action_furnace_use_param(gs: GameState, param: Any, sig: ChannelSig,
     (kind=``furnace_mutate_consequence_candidate``,变异产物是否触发后果
     的实机采证钩子)。
     ``rng`` = 采样注入(pick_invest 先例关键字带缺省;None = 模块级缺省
-    rng,实机缺省未播种 = 采样是猜测,sim 传流键 = 采样即世界真值)。
+    rng,实机缺省未播种 = 采样是猜测,sim 传流键 = 采样即状态副本真值)。
     """
     _validate_sig(sig, ('logic_action',))
     from sr_od.application.currency_war.kernel.cw_action_report import (

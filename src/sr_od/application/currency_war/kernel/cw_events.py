@@ -6,9 +6,9 @@
 ``EncounterOption``/``SupplyOption``)。
 
 投资两屏选卡评序不在本模块(宪法五:衍生估值/评序归策略层):投资环境轴
-= ``strategies/impl/mandate_v1/invest_env.py``(判据正本 = strategy-docs
+= ``strategies/impl/mandate_v1/invest_env.py``(判据权威版本 = strategy-docs
 28 号稿),投资策略轴 = ``strategies/impl/mandate_v1/invest_strategy.py``
-(判据正本 = strategy-docs 29 号稿),flow 按 kind 分派。
+(判据权威版本 = strategy-docs 29 号稿),flow 按 kind 分派。
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 # ===== 遭遇节点观察载荷契约(选档决策本体已迁策略层
 # ``strategies/impl/mandate_v1/encounter_pick.py``,宪法五;本段仅留观察
-# 载荷契约,消费方 = obs 写端 ``read_encounter_options``/容器
+# 载荷契约,消费方 = obs 写端 ``read_encounter_options``/状态容器
 # ``gs.encounter``/观察上报/sim 占位/策略层)=====
 
 @dataclass
@@ -64,7 +64,7 @@ class EncounterOption:
 
 # ===== 补给节点(决策本体已迁策略层 ``strategies/impl/mandate_v1/supply.py``
 # (宪法五);本段仅留观察载荷契约 ``SupplyOption``,消费方 = obs 写端
-# ``read_supply_options``/容器 ``gs.supply``/观察上报/sim 占位/策略层)=====
+# ``read_supply_options``/状态容器 ``gs.supply``/观察上报/sim 占位/策略层)=====
 
 @dataclass
 
@@ -109,7 +109,7 @@ class MegastarOption:
     观察期快照 = 进访问入口观察帧识别产物,动作执行期恒稳;None = 未观察)。
     坐标单一真相源 = 观察上报(规范 = screens/op-layer.md §1.1「选择坐标
     观察上报」+ game_state/fields.md §3.4.5a B 类):动作 op 按 ``idx``
-    自容器 ``megastar_opts[idx].xy`` 取点执行,动作/上报层零坐标现算。
+    自状态容器 ``megastar_opts[idx].xy`` 取点执行,动作/上报层零坐标现算。
     """
     idx: int
     char_id: str = ""
@@ -139,7 +139,7 @@ class PartnerOption:
     生产读端 = 画面 op 观察 node 一次读,cw_screen_partner.py::observe)。
 
     [索引定义] idx:坐标系 = 画面物理候选位序(左→右)0 基,与
-    ``CwScreenPartnerObs.options``/容器 ``partner_opts`` 槽同一候选列表;
+    ``CwScreenPartnerObs.options``/状态容器 ``partner_opts`` 槽同一候选列表;
     取值时机 = 观察 node 入口帧一次读快照,访问内恒稳。
     char_id:候选角色名(空 = 识别未命中回落失败/读缺;识别失败回落
     流派名/空 = op-layer.md §1.1 :34 转换失败待修项形态,收敛方向 = 观察
@@ -213,7 +213,7 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     _tgt_factions = set(target_comp.factions) if target_comp is not None else set()
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
         _tgt_factions & {'欢愉', '量子同频'})
-    # 在场判定:bench+deployed 的 char_id(容器单位域现读;信息缺失=空→不降权,保守)
+    # 在场判定:bench+deployed 的 char_id(状态容器单位域现读;信息缺失=空→不降权,保守)
     front, back = deployed_rows_of(gs)
     _owned = {u.char_id for u in (*front, *back, *bench_units_of(gs))
               if getattr(u, 'char_id', '')}
@@ -252,7 +252,7 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
 # 具体碰撞例 = 破解芯片卡文含「弱化」而实为装备卡,装备域优先判定消解)。
 
 #: 分支类型词表(封闭集):upgrade=升费分支 / equip=装备入账分支 / unknown=未识别
-#: (零记账留存证据;含弱化词且装备锚未命中的卡文落 unknown——弱化兜底档
+#: (零记账留存证据;含弱化词且装备识别标志未命中的卡文落 unknown——弱化兜底档
 #: 已按原文二分法停用,静默零记账变响亮申报)。
 PLANNER_LEG_UPGRADE: str = 'upgrade'
 PLANNER_BRANCH_EQUIP: str = 'equip'
@@ -358,7 +358,7 @@ def classify_planner_branch(text: str) -> tuple[str, str]:
        记账侧走值不变翻来源留存证据);零命中 = 无装备信号;
     3. **升费关键词**:「提升费用」→ upgrade(记账分类词表 = 本函数内联
        面,非 decide_planner 决策词表;弱化兜底档已停用——含弱化词且
-       装备锚未命中的卡文落步 4 unknown,静默零记账变响亮留存证据);
+       装备识别标志未命中的卡文落步 4 unknown,静默零记账变响亮留存证据);
     4. 空/未识别 → unknown(零记账,台账行证未识别事实)。
 
     返回 ``(branch_type, norm_item)``:norm_item 仅 equip 分支携带归一件名,

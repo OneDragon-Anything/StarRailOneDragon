@@ -3,10 +3,10 @@
 即时上报形态(action_ops.md §1 用户裁定增补 2):动作 op 机械链发出后
 调用本函数,一次调用 = 完整结果写入——整支走获得链 ``gain_invest_env``
 (active_env 注册 + portal 登记 + ``on_env_gained`` 环境赠卡效果枚举,
-正本 = game_state/gain-chain.md)。
+权威版本 = game_state/gain-chain.md)。
 
-本包 → 容器单向依赖:名字标准化契约 = 观察层(op-layer.md §1.1「观察
-标准化门」),容器 ``invest_env_opts`` 值域 = 标准注册名,本包零名字
+本包 → 状态容器单向依赖:名字标准化契约 = 观察层(op-layer.md §1.1「观察
+标准化门」),状态容器 ``invest_env_opts`` 值域 = 标准注册名,本包零名字
 转换、按选择序号取标准名直传链。随机支采样 rng(环境登记随机角色支
 chars_random_immediate、随机装备支 equips_random_immediate 或随机赠卡
 锁分支 ENV_DEPLOY_LOCK_GRANTS 任一时)经 ``action_sampling_rng`` 条件解析
@@ -50,13 +50,13 @@ def report_action_pick_invest_env_param(
     """投资环境选择上报(即时形态):按成功应用完整结果。
 
     - 名字标准化契约 = 观察层(op-layer.md §1.1「观察标准化门」),本函数
-      零名字转换:按 ``param.idx`` 从容器 ``invest_env_opts`` 取标准名
-      直传链([索引定义] 坐标系 = 容器 opts 列表下标(0 基),与观察帧
+      零名字转换:按 ``param.idx`` 从状态容器 ``invest_env_opts`` 取标准名
+      直传链([索引定义] 坐标系 = 状态容器 opts 列表下标(0 基),与观察帧
       ``obs.options`` 同序,槽位表恒稳);
-    - 容器缺读(None)/idx 越界 = 响亮失败(异常上抛,容器写分支零吞错
+    - 状态容器缺读(None)/idx 越界 = 响亮失败(异常上抛,字段写分支零吞错
       同款——选卡链发生时观察必然已完成,此态 = 代码 bug);
     - ``session`` = 策略会话(portal 登记分支消费;``None`` = 登记分支跳过
-      [局外/测试形态],容器写照常);
+      [局外/测试形态],字段写照常);
     - ``rng`` = 环境随机支(随机角色支 chars_random_immediate / 随机装备支
       equips_random_immediate / 随机赠卡锁分支 ENV_DEPLOY_LOCK_GRANTS,
       三支同判)采样注入,**条件解析**:仅选中环境登记了任一随机支才经
@@ -79,7 +79,7 @@ def report_action_pick_invest_env_param(
             f'invest_env_opts={opts!r}(选卡链发生时观察必然已完成)')
     _name = opts[param.idx]
     # 条件解析(见 docstring):随机支判定(角色/装备/赠卡锁分支任一)在
-    # 场才解析采样 rng——容器值域 = 标准注册名(观察标准化门),零转换
+    # 场才解析采样 rng——状态容器值域 = 标准注册名(观察标准化门),零转换
     # 直查。⚠️ 括号必带:and 优先级高于 or,写成 `A and B or C` 会在
     # _grant 为 None(一切非 ENV_GIFTS 环境——经济环境选卡必经)时对
     # None 取属性炸选卡链;赠卡锁分支独立判 ENV_DEPLOY_LOCK_GRANTS

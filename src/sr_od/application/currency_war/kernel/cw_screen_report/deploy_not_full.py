@@ -1,8 +1,8 @@
-"""未达上限确认屏观察契约与上报(kernel 纯数据;正本 =
+"""未达上限确认屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口裁决:门判定 + 稳定帧引用。
-report 写点转录来源 = 无——本屏现役零 op 层观察容器写点,接口为统一
+report 写点转录来源 = 无——本屏现役零 op 层观察字段写点,接口为统一
 形态占位,摄入面出现时落此处。
 """
 from __future__ import annotations
@@ -27,5 +27,5 @@ class CwScreenDeployNotFullObs:
 def report_screen_deploy_not_full_obs(gs: GameState,
                                       obs: CwScreenDeployNotFullObs, *,
                                       sig: ChannelSig | None = None) -> None:
-    """未达上限确认屏观察上报:本屏观察无容器摄入面,接口为统一形态
+    """未达上限确认屏观察上报:本屏观察无状态容器摄入面,接口为统一形态
     占位;摄入面出现时落此处(占位不构造不校验 sig——无写即无渠道面)。"""

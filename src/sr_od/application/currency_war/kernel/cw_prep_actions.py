@@ -32,7 +32,7 @@ ORE_CLICK_HARD_CAP: int = 12
 
 
 def ore_click_targets_of(gs) -> list[tuple[str, Point, int]]:
-    """晶矿点击目标读口(容器 spheres 域 → select_ore_clicks 消费
+    """晶矿点击目标读口(状态容器 spheres 域 → select_ore_clicks 消费
     形态;黑板帧停用 立口)。
 
     OreSight.points((color, x, y, r) 平铺元组)还原为
@@ -78,7 +78,7 @@ class PrepObservation:
     """备战决策环观察载体(阶段 3.5 瘦身版,黑板帧停用)。
 
     **宿主降级申报**:本类已不再是策略器输入——名单/装备/占用/晶矿全部
-    容器域承载,策略器唯读容器契约归位;本帧仅承载**控制信号与识别
+    状态容器域承载,策略器唯读状态容器契约归位;本帧仅承载**控制信号与识别
     元信息**(观察链/op 内部消费,不进 gs、不进 session;另挂观察链内部
     存续交叉核对轻字段 ``front_occupied``/``back_occupied``:``deployed_count``
     双源交叉核对消费,方法内即弃,不进 gs/session/report):

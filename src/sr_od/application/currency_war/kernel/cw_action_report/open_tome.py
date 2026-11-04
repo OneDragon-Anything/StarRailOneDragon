@@ -1,9 +1,9 @@
 """货币战争动作上报:开秘密典籍(report_action_open_tome_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开秘密典籍上报:bench 槽位 kind → empty(开件即腾位,占席事实
-    进容器)。槽不存在/类型不符 = applied=False 零写(陈旧提案)。"""
+    进状态容器)。槽不存在/类型不符 = applied=False 零写(陈旧提案)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
 
@@ -37,7 +37,7 @@ def report_action_open_tome_param(gs: GameState, param: Any, sig: ChannelSig) ->
     view = gs.bench.value
     if view is None:
         # bench_unobserved 早退不登记:登记与开件动作同生——本分支生产
-        # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
+        # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子初值),
         # 仅测试直构/极端离线形态可达;该形态开件本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved')
     slots = list(view.slots)

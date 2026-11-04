@@ -1,4 +1,4 @@
-"""专家邀请函屏观察契约与上报(kernel 纯数据;正本 =
+"""专家邀请函屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 弹窗门判定 + 四卡区羁绊解析 + 羁绊面板现读计数(弹窗帧一次
@@ -62,10 +62,10 @@ def report_screen_expert_invite_obs(gs: GameState,
                                     sig: ChannelSig | None = None) -> None:
     """专家邀请函屏观察上报:弹窗载体写 ``expert_invite``。
 
-    写点锚 = cw_screen_expert_invite.py::``CwScreenExpertInvite.observe``
+    写点定位 = cw_screen_expert_invite.py::``CwScreenExpertInvite.observe``
     (观察 node;``ExpertInvitePayload`` 四字段同门一并写——card_bonds/
     board/card_points/cash_point,op-layer.md §1.1 :35 坐标随观察一并入
-    容器;board 读数失败 = {} 的现金为王兜底语义由观察侧原样携带);
+    状态容器;board 读数失败 = {} 的现金为王兜底语义由观察侧原样携带);
     ``chosen_expert`` 留在落地复查点(动作事实边界)。
     """
     if sig is None:
@@ -73,7 +73,7 @@ def report_screen_expert_invite_obs(gs: GameState,
                          actor='CwScreenExpertInvite', mode='compute')
     _validate_sig(sig, ('logic_action',))
     # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
-    # 一并落容器,不等长 = 观察 bug,响亮暴露禁错位双写(四卡区定长 4,
+    # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写(四卡区定长 4,
     # 卡 i ↔ card_points[i] 同序;读端不做长度调和)。
     if obs.card_points is not None \
             and len(obs.card_points) != len(obs.card_bonds):

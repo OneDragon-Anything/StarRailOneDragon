@@ -8,12 +8,12 @@
 - 结算行入环单一写端 :func:`record_settlement_row`(守卫抑制与残留排除
   两分支汇合后唯一入口;生产写端 = ``cw_screen_battle_wait``
   ``_cw_selection_write`` 环写位);
-- 遭遇奖励兑现回调 :func:`claim_encounter_reward`(结算确认链挂点;
+- 遭遇奖励兑现回调 :func:`claim_encounter_reward`(结算确认链插入位置;
   记账语义,非选档策略)。
 
 遭遇**选档判据本体**已迁策略层
 ``strategies/impl/mandate_v1/encounter_pick.py``(能力态直通形;宪法五:
-判据值/序随策略本体驻策略层;判据语义正本 = strategy-docs/31 号稿)——
+判据值/序随策略本体驻策略层;判据语义权威版本 = strategy-docs/31 号稿)——
 本模块不再含任何选档打分与标定判据面。窗口读口
 ``SettlementRing.last_normal_battles`` 与经验读口
 ``EncounterLog.tier_cleared`` 原样保留(迁移后消费方 = 策略层画面文件)。
@@ -23,7 +23,7 @@
 ``_cw_selection_write`` 直依此槽——裁定 9 持久化面自身的依赖):None =
 未定案(普战行 observation 直装、遭遇行恒 None,保守前置形态);'i' =
 装遭遇自身备战帧敌方难度读数;'ii' = 装前一普战写入值(carry 自证态;简报值无
-容器入口,relay 白名单不含 enemy_difficulty,毒化四通道封闭)。定案批/
+状态容器入口,relay 白名单不含 enemy_difficulty,毒化四通道封闭)。定案批/
 测试经 :func:`apply_calibration` 注入(只填 None 槽,幂等)。
 """
 from __future__ import annotations
@@ -206,7 +206,7 @@ def game_start_reset(gs: GameState) -> None:
 
     孤儿态申报(迭代 2026-09-24-encounter-screen-strategy-migration
     design §2.1):全仓零调用——环/经验表的局生命周期实际由 GameState
-    平级字段 default_factory 冷建承担(每局新容器,开局即空);本钩子 =
+    平级字段 default_factory 每局全新创建承担(每局新状态容器,开局即空);本钩子 =
     生命周期设计意图的已登记保留面(显式复位口),不随判据迁移删除。
     """
     gs.settlement_ring.reset()
@@ -246,11 +246,11 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
     return verdict
 
 
-# ===== 遭遇奖励兑现回调(结算确认链挂点;迭代 2026-09-21-event-refresh-
+# ===== 遭遇奖励兑现回调(结算确认链插入位置;迭代 2026-09-21-event-refresh-
 # unify-supply-pick §2.4,attack3 X4/X7 + R1 复攻定案后形态, r2)=====
 
 def claim_encounter_reward(gs: GameState) -> str:
-    """遭遇奖励兑现(纯容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
+    """遭遇奖励兑现(纯状态容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
     推进上报前调——语义顺序 = 先记账后推进,并防御下一备战帧观察早到
     覆写 node 镜像;``report_node_advance`` 只推进 node_pos 不写镜像,
     推进前后调对读值无差别)。
@@ -262,11 +262,11 @@ def claim_encounter_reward(gs: GameState) -> str:
       结算行入环真值;环写端 ``record_settlement_row`` 在宿主
       ``_record_round_outcome`` 环写位,先于确认 op 派发且在结算覆盖
       best-effort try 块之外。原「结算行 note」载体不可实现——note
-      仅落 journal 行非容器域,attack3 R1 定案,落地取 ring 尾行);
+      仅落 journal 行非状态容器域,attack3 R1 定案,落地取 ring 尾行);
       **假阴性申报(attack3 R4)**:双证存在同源面,镜像缺失遭遇局
       ring 行落 ``'普通战斗'`` → fail-closed 漏兑现(漏记非误记,
       方向安全,归观察可靠性治理);
-    - 达标 = 容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
+    - 达标 = 状态容器结算域 ``progress_delta > 0`` **单判**(机制依据 =
       combat.md §3「遭遇奖励 = 伤害进度达标制,非清场制」;killed 不入
       判据:结算链 killed 为 progress 符号派生值——HP 对比兜底分支已删除,
        胜负判定必须在结算画面识别出来);``None`` = 删失不兑现;

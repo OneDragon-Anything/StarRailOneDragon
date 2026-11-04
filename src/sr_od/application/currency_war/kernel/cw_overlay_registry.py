@@ -30,7 +30,7 @@ from dataclasses import dataclass
 SEMANTIC_DECISION: str = 'decision'
 #: 语义类:display = 展示型弹窗(无决策内容,关闭即走)
 SEMANTIC_DISPLAY: str = 'display'
-#: 语义类:system = 流程性弹窗(确认/提示/节点容器)
+#: 语义类:system = 流程性弹窗(确认/提示/节点状态容器)
 SEMANTIC_SYSTEM: str = 'system'
 
 #: 退场动作:点 close_area 按钮(清场/退局链共用载荷)
@@ -64,7 +64,7 @@ class OverlaySpec:
     # ── 语义 ──
     # 'decision' | 'display' | 'system'(SEMANTIC_* 常量)
     semantic: str
-    # 第二锚(可选;双锚防误派;非空 = 同帧双命中才派发)
+    # 第二锚(可选;双重依据防误派;非空 = 同帧双命中才派发)
     anchor_area_alt: str = ''
     # 专属 handler 类名;decision 恒非空;'' = 无(清场/兜底消化)
     handler_id: str = ''
@@ -254,7 +254,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 星徽详情浮窗:纯展示(点星徽弹详情)。对局内消费 = 阶段一身份分发
     # (判据 = 建档双 id_mark 组合 AND 全命中;cw_loop 星徽详情分支)——
     # 本条 OverlaySpec 是分类/清场表成员(单锚=变体帧同样漏,如实申报);
-    # 入口链守卫 = AND(防御面);op 内 entry_ok = 双锚其一(OR,接管面
+    # 入口链守卫 = AND(防御面);op 内 entry_ok = 双重依据其一(OR,接管面
     # 比分发宽,变体帧经兜底重判后的自愈面)。原「分发 OR/守卫 AND 有意
     # 分叉」的调和前提在分发并入建档组合 AND 后失效(以本注为准)。
     OverlaySpec(
@@ -323,7 +323,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 派生集(弹窗有主 = 阶段一身份行「货币战争-商店卡牌详情」分发
     # CwScreenShopCardDetailPopup,点 X 关闭返回主循环重新判定,落地判定 = op 内
     # 落地复查与观察侧对账,非动作层验效——零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察);禁清场旁路双owner)。
-    # 双锚表达本屏分发判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
+    # 双重依据表达本屏分发判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
     # close_area 按钮-关闭 = cw_lobby_close 同族模板。
     OverlaySpec(
         screen_name='货币战争-商店卡牌详情',

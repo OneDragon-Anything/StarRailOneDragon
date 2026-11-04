@@ -3,7 +3,7 @@
 **问题域**:统一观察对账失配告警(2026-09-16-unified-obs-reconcile)把「游戏侧
 状态变更未投影进逻辑态」逐帧暴露为停局——逐例打补丁不可收敛(2026-09-18
 五连停局实证,``.debug/temp/incidents/20260918-reconcile/``),本注册面把
-**全部 GameState 容器字段**对「游戏侧变更是否会造成 observe 失配」做
+**全部 GameState 状态容器字段**对「游戏侧变更是否会造成 observe 失配」做
 一次性三分类申报,并锁「无写端无规则」集合清零:
 
 1. ``write_end``:游戏侧该域的合法变更都有动作/结算/派生**投影写端**
@@ -22,7 +22,7 @@
 后**恒空**(由测试仓 test_board_derived_and_reorder.py 完备性测试);
 observation_only / process_only 是「结构上不可失配」的声明性收束,非缺口。
 
-**维护纪律**:新增 GameState 容器字段必须在 :data:`PROJECTION_AUDIT`
+**维护纪律**:新增 GameState 状态容器字段必须在 :data:`PROJECTION_AUDIT`
 登记行(登记缺失 = 完备性测试红);行内容变更走 review 可见,禁运行时
 改写。人读镜像 = 迭代目录 ``projection-audit.md``(生成自本表,改表须
 同步改镜像)。
@@ -43,7 +43,7 @@ AUDIT_STATUSES: tuple[str, ...] = (
 
 @dataclass(frozen=True)
 class ProjectionAuditRow:
-    """一个容器字段的投影完备性申报行。
+    """一个状态容器字段的投影完备性申报行。
 
     - ``status``:四态之一(:data:`AUDIT_STATUSES`);
     - ``basis``:一行持久依据(写端 evidence 名 / 吸收规则符号名 /
@@ -55,7 +55,7 @@ class ProjectionAuditRow:
     basis: str
 
 
-#: 全字段审计表(键 = GameState 容器字段名;完备性测试:GameState 全部
+#: 全字段审计表(键 = GameState 状态容器字段名;完备性测试:GameState 全部
 #: Field 域 ⊆ 本表,本表键 ⊆ Field 域,双向对齐)。分组注释与表行同序。
 PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 节点族(观察覆盖,派生规则写端)——
@@ -73,7 +73,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='位面入口写定恒稳(链正本 §2),局中不被链读覆盖'),
     # —— 单位域(可失配面核心;吸收规则族)——
-    # 星级读数 = 席位单元属性(非独立容器字段),其识别层单帧抖动的吸收
+    # 星级读数 = 席位单元属性(非独立状态容器字段),其识别层单帧抖动的吸收
     # 规则 = star_two_frame_gate(kernel/cw_reconcile 槽位锚定 + 两帧一致
     # 才采新),随席位三域写路径一并申报(出处 run_20260915_054718 §5)。
     'deployed': ProjectionAuditRow(
@@ -175,7 +175,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_OBSERVATION_ONLY,
         basis='刷新费现场 OCR(live)+ sim 开店呈现写回(观察通道,'
               'kernel 渲染 world_shop_refresh_cost 现算;零逻辑写端)'),
-    # (刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格容器
+    # (刷新计数组口径(2026-09-21 Field 化):免费刷新剩余次数升格状态容器
     #  字段 free_refresh_left(审计行见下方家族块);付费/全量两计数留
     #  效果账本 ActiveEffectInventory,审计面 = 账本自身测试面。)
     'prev_node_spent': ProjectionAuditRow(

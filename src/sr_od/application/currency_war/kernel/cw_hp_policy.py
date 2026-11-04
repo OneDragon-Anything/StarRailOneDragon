@@ -43,18 +43,18 @@ def decision_hp(gs: GameState, session: StrategySession) -> int | None:
 
 
 def hp_decision_trusted_of(gs: GameState) -> bool:
-    """hp 决策可信位容器版单一实现(定案二):
+    """hp 决策可信位状态容器版单一实现(定案二):
     ``(gs.hp.source in ('observation', 'carried'))``。
 
-    映射保序(旧口径 ``hp_readable or hp_trusted`` 在容器来源二分下恒等):
+    映射保序(旧口径 ``hp_readable or hp_trusted`` 在状态容器来源二分下恒等):
     observation ⊆ 两支并集;carried 支 = 沿用真值帧放行语义(
-    同节点帧龄门并入后的容器形态);prior(开局先验)/
+    同节点帧龄门并入后的状态容器形态);prior(开局先验)/
     logic(推算值)支两位皆 False = fail-closed(血线谓词唯一
     收束 / None 保守)。``sig.quality['hp']`` 词表
     (real_read/prior/same_node_carried)保留为判读证据,不参与决策位。
-    语义只在生产容器单例上成立——过渡桥/合成口产出的视图 hp source 恒
+    语义只在生产状态容器单例上成立——过渡桥/合成口产出的视图 hp source 恒
     observation(可信位恒 True,失真申报面在桥 docstring 与迁移方案)。
-    新增可信位消费点一律走本函数(容器消费形态)或
+    新增可信位消费点一律走本函数(状态容器消费形态)或
     ``cw_discipline_rules.hp_decision_trusted``,禁手写双位判定
     ( A1.1 单一源纪律)。
     """

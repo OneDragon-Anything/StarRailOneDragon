@@ -108,7 +108,7 @@ def unit_bond_tags(bc, row: str | None = None,
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
       开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_deployed
-      同口径);排源 = ``row`` 显式形参(容器下标派生,§2.1——
+      同口径);排源 = ``row`` 显式形参(状态容器下标派生,§2.1——
       tracked deployed 为 Unit 行域/下标表,行归属由行参或下标传入,
       缺省回落 'back');
     - **选边型双羁绊角色单边化(peers 非 None 时)**:SIDE_PICK_DUAL_
@@ -126,7 +126,7 @@ def unit_bond_tags(bc, row: str | None = None,
         **选边后**标签集(装备贡献叠加独立于选边,用户裁定 2026-10-28);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
       board_from_deployed 整体 bail;_recount_board 回退 faction 字段;
-      容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
+      状态容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
       位,漂移由 board 观察覆盖采新收敛(board_derived_adopt))。
 
     duck-typed:凡带 char_id/equips 属性(Unit 或

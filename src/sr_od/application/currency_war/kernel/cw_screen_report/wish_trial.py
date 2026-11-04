@@ -1,4 +1,4 @@
-"""祈愿试炼屏观察契约与上报(kernel 纯数据;正本 =
+"""祈愿试炼屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 各卡 objective 文本 OCR 桶 join + 各卡槽位
@@ -49,7 +49,7 @@ def report_screen_wish_trial_obs(gs: GameState, obs: CwScreenWishTrialObs, *,
     """祈愿试炼屏观察上报:objective 与槽位坐标一并写 ``wish_trial_opts``
     / ``wish_trial_opts_xy``(同门同写,op-layer.md §1.1 :35)。
 
-    写点锚 = cw_screen_wish_trial.py::``CwScreenWishTrial.observe``(观察
+    写点定位 = cw_screen_wish_trial.py::``CwScreenWishTrial.observe``(观察
     node 摄入;段内直写,无空门——OCR 空桶照写,决策侧无兜底:决策无
     有效输出 = 守卫 fail 零盲发(申报见 screens/wish_trial.md §8),防线
     逐位平移);``chosen_wish`` 留在落地复查点(动作事实边界)。
@@ -59,7 +59,7 @@ def report_screen_wish_trial_obs(gs: GameState, obs: CwScreenWishTrialObs, *,
                          actor='CwScreenWishTrial', mode='compute')
     _validate_sig(sig, ('logic_action',))
     # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
-    # 一并落容器,不等长 = 观察 bug,响亮暴露禁错位双写。
+    # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写。
     if len(obs.option_points) != len(obs.options):
         raise AssertionError(
             '[cw][wish] 坐标域与名字域不同序等长(观察 bug): '

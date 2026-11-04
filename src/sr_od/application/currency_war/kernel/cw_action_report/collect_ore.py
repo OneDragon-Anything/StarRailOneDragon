@@ -1,6 +1,6 @@
 """货币战争动作上报:点晶矿(report_action_collect_ore_param)。
 
-**逻辑随机态首个落地动作**(容器随机写语义单一源 =
+**逻辑随机态首个落地动作**(状态容器随机写语义单一源 =
 :meth:`GameState.write_logic_rand`):
 
 - **逐点顺序推演**:载荷为批式坐标列表,逐点独立守卫/独立采样/独立
@@ -8,7 +8,7 @@
 - **席满即该点无效**:该点时备战席无空位(含前点角色奖励耗席后的
   累计判)→ 晶矿留在 spheres 字段现值中(不摘除、不采样),等下轮
   重派(screen_flow_timing #16 已登记裁定同源);
-- **全部容器写均为随机态**(rand = :meth:`GameState.write_logic_rand`):
+- **全部字段写均为随机态**(rand = :meth:`GameState.write_logic_rand`):
   spheres 终值同样依随机链而变(后续晶矿开否取决于采样奖励是否耗席),
   本动作不存在确定面写;观察覆盖差异 = 随机效果落地预期内
   (``logic_rand_outcome`` 台账行),策略消费前必须重观察;
@@ -21,22 +21,22 @@
   (reason ``ore_reward_attach_missing_level``,矿留 spheres 下帧补
   生成);开成即随 spheres 摘除同点随机态写移除附着键(evidence
   ``ore_reward_detach#ore{k}``)。rng 解析口不变——实机缺省未播种
-  (兜底采样是猜测),sim 传流键 rng(采样即世界真值,零自算)。
+  (兜底采样是猜测),sim 传流键 rng(采样即状态副本真值,零自算)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
-__init__`` docstring)。本包 → 容器单向依赖。
+__init__`` docstring)。本包 → 状态容器单向依赖。
 
 动作分支清单:①**计数分支** = 批内开成点数经 ``gs.effects.record_ore_open``
-单口入账(「点开才计数」:席满/缺项∧level 缺读跳点不入账;计数载体 =
+唯一入口入账(「点开才计数」:席满/缺项∧level 缺读跳点不入账;计数载体 =
 ``cw_effect_inventory.ore_open_total``,消费方 = 战技点契约触发器);
-②**环境条件发放分支**(``cw_investments.ENV_ORE_OPEN_GRANTS`` 在册环境:
+②**环境条件发放分支**(``cw_investments.ENV_ORE_OPEN_GRANTS`` 已登记环境:
 战技点契约) = 计数入账后尾部触发检查(``check_env_ore_open_grants``,
 与 refresh_shop 环境条件发放分支同构);③**策略卡晶矿开启发放分支**
-(``cw_investments.STRATEGY_ORE_OPEN_EFFECTS`` 在册策略卡:黄晶矿工首例)
-= 契约腿后独立触发检查(``check_strategy_ore_open_effects``,逐开掷
-低一档腿 + 授予矿世界写;开成点色档列按载荷序收集,跳点不入列)——
-世界发放域,不属计数/采样语义;sim 与生产同段 op 代码同口,单点覆盖
-双端。窗序确定:晶矿自身奖励写(含合并升星触发分支)→ 晶矿开启计数
+(``cw_investments.STRATEGY_ORE_OPEN_EFFECTS`` 已登记策略卡:黄晶矿工首例)
+= 契约条目后独立触发检查(``check_strategy_ore_open_effects``,逐开掷
+低一档条目 + 授予矿状态副本写;开成点色档列按载荷序收集,跳点不入列)——
+状态副本发放域,不属计数/采样语义;sim 与生产同段 op 代码同口,单点覆盖
+实机和模拟器两边。窗序确定:晶矿自身奖励写(含合并升星触发分支)→ 晶矿开启计数
 入账 → 战技点契约触发分支 → 策略卡晶矿开启触发分支。
 """
 from __future__ import annotations
@@ -110,18 +110,18 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
       'ore_reward_attach_missing_level'(优先于前两条表达具体原因——
       批内含非席满跳点即非「全部席满跳过」,全跳批亦报此 reason)。
 
-    P1 容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
+    P1 状态容器原生(§3.2):bench 工作副本 = BenchView 槽序、deployed =
     行域下标派生表;整表写 = bench_view_of_working 直构(原
     ``_bench_view_keep_items`` 占位件保留补丁随换形口停用自然消失——
-    工作表元素即容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
+    工作表元素即状态容器 BenchSlot,占位件 kind 原样保留,零降级路径)。
     合并升星触发发放:角色奖励分支级联采集升星事实,整批全部写毕后收尾
     发火(引擎 A 内嵌发火会被后续点整表写覆盖;触发分支 best-effort 不
     阻塞上报主链)。
     晶矿开启计数与战技点契约触发发放:整批奖励写毕后 ``opened`` 经
-    ``record_ore_open`` 单口入账,再尾部触发检查(check_env_ore_open_
+    ``record_ore_open`` 唯一入口入账,再尾部触发检查(check_env_ore_open_
     grants;计数先入账后检查,窗序 = 矿奖励 → 计数 → 触发分支;
     opened == 0 早退路径零计数零触发——分支清单详见模块头)。策略卡晶矿
-    开启触发发放腿同尾部独立调用块(契约腿后;开成点色档列消费,持卡
+    开启触发发放条目同尾部独立调用块(契约条目后;开成点色档列消费,持卡
     掷点授予矿,check_strategy_ore_open_effects,窗序 = 契约分支后)。
     """
     _validate_sig(sig, ('logic_action',))
@@ -160,7 +160,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         gs.write_logic_rand(target, value, produced_by=_PRODUCER,
                             evidence=evidence, sig=_grp_sig)
 
-    # 工作态(元素 frozen,浅拷贝列表即与容器帧断开写入别名;写回 =
+    # 工作态(元素 frozen,浅拷贝列表即与状态容器帧断开写入别名;写回 =
     # replace 新构造,零就地变异)
     remaining = list(view.points)
     work_bench = list(orig_bench.slots)
@@ -171,7 +171,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     skipped = 0
     missing_level = 0
     merge_facts: list[tuple[str, int]] = []
-    # 开成点色档列(载荷序;策略卡晶矿开启触发腿消费——席满/缺级跳点
+    # 开成点色档列(载荷序;策略卡晶矿开启触发条目消费——席满/缺级跳点
     # 不入列,「点开才触发」与计数分支同口径)
     opened_tiers: list[str] = []
 
@@ -311,11 +311,11 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             log.warning(f'[cw-ore] 合并升星触发发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
-        # —— 策略卡合成触发发放腿(「合成2星2费角色时获得砂金」族,
+        # —— 策略卡合成触发发放条目(「合成2星2费角色时获得砂金」族,
         #    注册表 = STRATEGY_MERGE_GRANTS):事件源 = 本函数既有
         #    merge_facts 采集复用,判据 = 产物星级+费用双匹配。函数内
-        #    自门 sim 装配(live 零写);与上方腿独立 try 互不短路。
-        #    best-effort:发放分支异常不阻塞上报主链(上方腿同纪律)。——
+        #    自门 sim 装配(live 零写);与上方条目独立 try 互不短路。
+        #    best-effort:发放分支异常不阻塞上报主链(上方条目同纪律)。——
         try:
             from sr_od.application.currency_war.kernel.cw_gain_chain import (
                 check_strategy_merge_grants,
@@ -333,11 +333,11 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
     if opened:
         gs.effects.record_ore_open(opened)
         check_env_ore_open_grants(gs, _grp_sig)
-        # —— 策略卡晶矿开启触发发放腿(「开启晶矿时」族,黄晶矿工 id
+        # —— 策略卡晶矿开启触发发放条目(「开启晶矿时」族,黄晶矿工 id
         #    302101 首例,注册表 = STRATEGY_ORE_OPEN_EFFECTS):逐开掷
-        #    低一档腿 + 授予矿世界写;live 同口掷 = 预测写(观察覆盖自愈),
-        #    sim = 世界真值。函数内自门持卡交集(未持卡零写零流键消耗);
-        #    与契约腿独立 try 互不短路。best-effort:发放分支异常不阻塞
+        #    低一档条目 + 授予矿状态副本写;live 同口掷 = 预测写(观察覆盖自愈),
+        #    sim = 状态副本真值。函数内自门持卡交集(未持卡零写零流键消耗);
+        #    与契约条目独立 try 互不短路。best-effort:发放分支异常不阻塞
         #    上报主链(合并升星触发分支同纪律)。kernel 反向模块级零
         #    import 契约:函数内惰性取。——
         try:

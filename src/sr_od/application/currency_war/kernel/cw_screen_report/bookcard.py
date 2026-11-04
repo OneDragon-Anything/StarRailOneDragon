@@ -1,4 +1,4 @@
-"""星徽秘典屏观察契约与上报(kernel 纯数据;正本 =
+"""星徽秘典屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口门判定 + 卡阵营名 OCR(「X星徽」去后缀,x 升序;标准化
@@ -49,7 +49,7 @@ def report_screen_bookcard_obs(gs: GameState, obs: CwScreenBookcardObs, *,
     """星徽秘典屏观察上报:卡阵营名与候选点一并写 ``star_tome_opts`` /
     ``star_tome_opts_xy``(同门同写,op-layer.md §1.1 :35)。
 
-    写点锚 = cw_screen_bookcard.py::``CwScreenBookcard.observe``(观察
+    写点定位 = cw_screen_bookcard.py::``CwScreenBookcard.observe``(观察
     node 摄入);options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位
     平移,双域一体);``chosen_tome`` 留在落地复查点(动作事实边界)。
     """
@@ -60,7 +60,7 @@ def report_screen_bookcard_obs(gs: GameState, obs: CwScreenBookcardObs, *,
     if not obs.options:
         return
     # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
-    # 一并落容器,不等长 = 观察 bug,响亮暴露禁错位双写。
+    # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写。
     if len(obs.option_points) != len(obs.options):
         raise AssertionError(
             '[cw][bookcard] 坐标域与名字域不同序等长(观察 bug): '

@@ -1,4 +1,4 @@
-"""伙伴选择屏观察契约与上报(kernel 纯数据;正本 =
+"""伙伴选择屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 候选(立绘识别真身,失败回落 label 名)。
@@ -38,7 +38,7 @@ def report_screen_partner_obs(gs: GameState, obs: CwScreenPartnerObs, *,
                               sig: ChannelSig | None = None) -> None:
     """伙伴选择屏观察上报:候选写 ``partner_opts``。
 
-    写点锚 = cw_screen_partner.py::``CwScreenPartner.observe``(观察 node
+    写点定位 = cw_screen_partner.py::``CwScreenPartner.observe``(观察 node
     摄入);options 空 = OCR 未读得,不写(原写点「读得才写」闸逐位平移);
     ``chosen_partner`` 留在选择点(动作事实边界)。
     """

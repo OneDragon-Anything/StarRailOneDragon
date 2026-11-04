@@ -1,4 +1,4 @@
-"""遭遇节点屏观察契约与上报(kernel 纯数据;正本 =
+"""遭遇节点屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 分支候选卡 + 「剩余次数」入口稳定帧读数(同一稳定帧一次读)。
@@ -33,7 +33,7 @@ class CwScreenEncounterObs:
 
     [索引定义] ``refresh_left``:「剩余次数:N」入口稳定帧读数(取值
     时机 = 入口观察帧一次读,与候选同帧同源;None = 读缺,report
-    跳写——容器留旧值由逐访问覆盖语义承接)。
+    跳写——状态容器留旧值由逐访问覆盖语义承接)。
 
     - ``screen``:稳定帧引用(实机识别域载体,与现役观察类一致)。
     """
@@ -49,7 +49,7 @@ def report_screen_encounter_obs(gs: GameState, obs: CwScreenEncounterObs, *,
     ``encounter_refresh_left``(观察写端;读缺跳写——屏上数字即真值,
     用户裁定 2026-09-21)。
 
-    写点锚 = cw_screen_encounter.py::``CwScreenEncounter.observe``(观察
+    写点定位 = cw_screen_encounter.py::``CwScreenEncounter.observe``(观察
     node 摄入;刷新链终结化后本函数零二次覆盖写调用点)。options 空 =
     读缺,整函数早退不写(含 left,invest_env names 空先 return 同构);
     ``chosen_encounter`` 留在(动作事实边界)。

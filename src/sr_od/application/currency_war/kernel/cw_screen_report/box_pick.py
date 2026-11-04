@@ -1,4 +1,4 @@
-"""武装箱选择屏观察契约与上报(kernel 纯数据;正本 =
+"""武装箱选择屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口锚复验(标识-请选择)+ OCR 卡名行(2-8 字过滤,x 升序;
@@ -50,7 +50,7 @@ def report_screen_box_pick_obs(gs: GameState, obs: CwScreenBoxPickObs, *,
     ``box_card_names_xy``(同一调用同一写门一并写;坐标单一真相源 =
     观察上报,op-layer.md §1.1 :35)。
 
-    写点锚 = cw_screen_box_pick.py::``CwScreenBoxPick.observe``(观察 node;
+    写点定位 = cw_screen_box_pick.py::``CwScreenBoxPick.observe``(观察 node;
     调用方「卡名空 = round_fail 返回主循环重派」闸已保证非空到达,原写点无
     空门——防线逐位平移不加强不减弱)。
     """
@@ -59,7 +59,7 @@ def report_screen_box_pick_obs(gs: GameState, obs: CwScreenBoxPickObs, *,
                          actor='CwScreenBoxPick', mode='compute')
     _validate_sig(sig, ('logic_action',))
     # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
-    # 一并落容器,不等长 = 观察 bug,响亮暴露禁错位双写。
+    # 一并落状态容器,不等长 = 观察 bug,响亮暴露禁错位双写。
     if len(obs.points) != len(obs.card_names):
         raise AssertionError(
             '[cw][boxpick] 坐标域与名字域不同序等长(观察 bug): '

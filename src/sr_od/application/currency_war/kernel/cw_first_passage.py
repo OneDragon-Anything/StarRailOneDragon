@@ -11,7 +11,7 @@
 - ``hp_floor(board_tier, nodes_left, target_pwin, plane)``:hp 地板反解——最小 hp 使
   P(win) ≥ target_pwin(「手写门变模型定理」的出口;消费位 = sim ``cw_sim_battle``)。
   原 ``first_passage_win``/``risk_posture``/``p_win_lambda`` 三函数已随死代码
-  清偿移除(零生产消费面),分布卷积底座(``_survive_cdf``)保留为其留位。
+  清偿移除(零生产消费面),分布卷积基础(``_survive_cdf``)保留为其留位。
 
 升级路径(并轨 V2):换桶分布转移矩阵、刷新商店 Bernoulli 赌局化、hp 残值补丁为
 后续扩展方向(K1-K3 判据)。

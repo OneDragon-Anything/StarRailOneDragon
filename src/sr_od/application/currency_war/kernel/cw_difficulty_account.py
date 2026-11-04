@@ -94,7 +94,7 @@ def marginal_value(d_now: float, d_delta: float, gap: float, *,
     bell = max(0.0, 1.0 - abs(gap) / 30.0) ** 2
     v = -d_delta * bell       # 降难度(d_delta<0)在边际局正价值
     # (旧 P1 尖峰 ×1.5 放大已停用 2026-09-04,「未证即停用」裁定:
-    # 「一层最凶」定性有实证但系数 1.5 拍定,保守缺省 = 不放大。)
+    # 「一层最凶」定性有实证但系数 1.5 人为定为,保守缺省 = 不放大。)
     # 地板:压到 0 以下无增益
     if d_delta < 0 and d_now + d_delta < DIFFICULTY_FLOOR:
         over = DIFFICULTY_FLOOR - (d_now + d_delta)

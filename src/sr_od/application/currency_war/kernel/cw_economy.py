@@ -67,7 +67,7 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
     xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
     写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
     [帽形参] ``level_cap`` 缺省 = MAX_PLAYER_LEVEL(无卡既有语义,全部
-    存量调用面零破);持等级帽卡的世界真值腿由调用方传
+    存量调用面零破);持等级帽卡的状态副本真值腿由调用方传
     ``level_cap_of(gs)`` resolved 值(禁内联字面量)。
     """
     if clicks <= 0 or level >= level_cap:
@@ -95,7 +95,7 @@ def xp_apply_amount(level: int, xp_cur: int, amount: int,
     经验结算原语 ``settle_xp_observe``(均在 kernel/cw_game_state;
     两函数经本单一实现共享升级结转式,禁第二份)+ 单击版
     ``xp_apply_clicks``(本模块,同式自足供买经验上报直用)。模拟器各
-    世界经验腿(节点/窗口条件族/选卡/位面段/首购)已统一收敛进
+    世界经验条目(节点/窗口条件族/选卡/位面段/首购)已统一收敛进
     ``settle_xp_observe``,不再散点直调本函数。
 
     全部消费经 ``level_cap_of`` 随链传帽(持等级帽卡时等级轴整体收窄,
@@ -136,9 +136,9 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 # 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
 # (数值 = min(gold//10,5) = 利息公式,非刷价;三流交叉核对定案)——
 # 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
-# 消费点语义:容器 ``shop_refresh_cost`` 缺读帧 ``or`` 回退本常量(刷新上报
+# 消费点语义:状态容器 ``shop_refresh_cost`` 缺读帧 ``or`` 回退本常量(刷新上报
 # 扣费/op 花销账/渲染 helper world_shop_refresh_cost 三读口同式);非缺读帧
-# 读容器现值——长线利好改价后为 1(live 改价观察/sim 开店呈现写回,
+# 读状态容器现值——长线利好改价后为 1(live 改价观察/sim 开店呈现写回,
 # fields.md §3.3.4),兜底分支在缺读帧照常触发。
 REFRESH_COST_BASE: int = 2
 
@@ -174,8 +174,8 @@ def bench_char_cost(bc, gs: GameState | None = None) -> int:
     :func:`effective_cost` 取当前档;gs 缺省 = 注册表起始费(保底兼容存量
     调用面——静态画像族与部分估值注记;卖价/退款账实链经 gs 形参传入)。
 
-    入参 = 容器单位(行域/bench unit 槽的 ``Unit``,duck 读 char_id;
-    benchchar-retirement P4 容器形)。
+    入参 = 状态容器单位(行域/bench unit 槽的 ``Unit``,duck 读 char_id;
+    benchchar-retirement P4 状态容器形)。
     公共名(跨模块私有符号收敛:跨模块消费统一走本名;
     下划线旧名保留为别名,存量消费点不破)。"""
     c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
@@ -192,7 +192,7 @@ _LV999_ID: str = '银狼LV.999'   # 规范名(单一源 = cw_chars 注册名;现
 def effective_cost(gs: GameState, char_id: str) -> int:
     """角色**当前费用档**唯一读口(观察除数/账实结算/随机授予采样空间)。
 
-    - 银狼LV.999 → 容器档 ``gs.lv999_cost_tier.value``(纯逻辑态,写端 =
+    - 银狼LV.999 → 状态容器档 ``gs.lv999_cost_tier.value``(纯逻辑态,写端 =
       pick_planner 升费分支 / move_unit 上场变费分支);未观察(None = 未触发
       任何变换)归约 3(开局档语义默认);
     - 其余角色 → 注册表 ``CHARACTERS[char_id].cost``(静态);**未注册名 → 0**
@@ -270,9 +270,9 @@ def level_cap_resolved(level_cap_override: int | None = None) -> int:
     override=None(默认局/未持等级帽卡)→ MAX_PLAYER_LEVEL;注册表
     覆写值(控制规模 7)由调用方经聚合链传入。归一层 =
     min(MAX_PLAYER_LEVEL, max(1, 覆写)):覆写系**合法收窄**(「变为」
-    系绝对覆写非提升),上界收口防未来「提升至 N」形卡越 10,下界
+    系绝对覆写非提升),上界收尾防未来「提升至 N」形卡越 10,下界
     收 1 防等级轴冻结(现役无此形,防御性归一);禁在判据侧内联 cap
-    字面量——全部等级推进世界真值腿经 :func:`level_cap_of` 随链取帽。
+    字面量——全部等级推进状态副本真值腿经 :func:`level_cap_of` 随链取帽。
     """
     if level_cap_override is None:
         return MAX_PLAYER_LEVEL
@@ -281,18 +281,18 @@ def level_cap_resolved(level_cap_override: int | None = None) -> int:
 
 def level_cap_of(gs: GameState) -> int:
     """持卡等级帽现读(active_strategies 聚合链 → resolved;等级推进
-    世界真值腿的取帽单一入口)。
+    状态副本真值腿的取帽单一入口)。
 
     覆写单一源 = ``aggregate_economy(gs.active_strategies).
     level_cap_override``(注册表派生、零新参数):持等级帽卡(控制
     规模 7)→ 聚合取严(并持双帽卡更严上限赢)→ resolved 归一层;
     未持帽卡 → None → MAX_PLAYER_LEVEL(行为零差)。
 
-    消费位 = 全部等级推进世界真值腿:live 买经验上报满级门
+    消费位 = 全部等级推进状态副本真值腿:live 买经验上报满级门
     (cw_action_report/level_up)+ sim 节点经验/即时经验/位面段/
     条件 XP 族各窗腿(各分支经结算函数 settle_xp_observe 统一)+
     kernel 白送经验原语(grant_xp)。边界:策略侧等级判据(lv9_stop 等)读注册表
-    level_max,系「实机无卡真值」另一把尺——世界面拒发与策略侧规划的
+    level_max,系「实机无卡真值」另一把尺——状态副本这一侧拒发与策略侧规划的
     失配 = 决策质量议题,禁为对齐改注册表常量。
     """
     strategies = list(gs.active_strategies.value or [])
@@ -302,19 +302,19 @@ def level_cap_of(gs: GameState) -> int:
 
 
 def strategy_interest_floor(gs: GameState) -> int:
-    """开源节流条件息顶满额(条件金腿「进入新节点时,如果上个节点你没有
+    """开源节流条件息顶满额(条件金条目「进入新节点时,如果上个节点你没有
     花费金币,则可获得最大利息的金币数」;fields.md §3.3.9 条件输入族
     第二消费卡):持卡(按 active_strategies 名单)∧ 上节点未花费
     (prev_node_spent is False)→ resolved 利息帽(聚合链取宽,含本卡
     自身 9/并持利息上调 10);未持卡/已花费(True)/条件不可评估(None)
     → 0 保守零顶满(本金充裕金 None 同款禁猜口径)。条件输入的置位与
     滚位机制单一源 = mark_gold_spent 四花费通道 + roll_prev_node_spent
-    (cw_game_state),本函数只读不写;捕获挂点 = kernel tick 闸滚位前
+    (cw_game_state),本函数只读不写;捕获插入位置 = kernel tick 闸滚位前
     (cw_gain_chain.capture_strategy_interest_topup,晚于滚位读恒 False
     = 顶满恒发错发形态,时序约束由 tick 闸调用位承载)。
     命名区分:cw_registry.RegView.interest_floor() 是策略侧收入纪律视图
     的预算面地板(interest_floor_override 覆写/ALL IN 清零),与本函数
-    (世界条件金腿的息分量下限)同名异义,两域零数据耦合。"""
+    (世界条件金条目的息分量下限)同名异义,两域零数据耦合。"""
     if '开源节流' not in (gs.active_strategies.value or []):
         return 0
     if gs.prev_node_spent.value is not False:   # True=已花费不授;None=不可评估禁猜
@@ -385,7 +385,7 @@ def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
     不适用恒 False(§2.1,该语境金出口归一般判据)。适用范围 = 有动作决策点帧
     (shop/备战决策入口调用点;§3.4)。
 
-    消费点(接线位):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 富余段
+    消费点(接入调用位):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 富余段
     升级/R1 域内残形切分线/EV 域内降排序——四点共用本判定,禁再内联
     ``gold > 10 * cap`` 字面量式。
     """
@@ -482,14 +482,14 @@ def net_income(round_num: int, streak_pre: int,
 
 
 # ===== T1a 轮首收入三支·kernel 单一源函数族(统一观察架构 §7-T1/T2 搬迁任务的 =====
-# ===== kernel 半部;正本语义=GameState 设计 §4.2 轮首收入行。实机写端与 =====
+# ===== kernel 半部;权威版本语义=GameState 设计 §4.2 轮首收入行。实机写端与 =====
 # ===== sim 后端包装(cw_sim_backend.apply_round_start_income)均调本函数族)=====
 
 
 def reward_base_gold(plane: int, round_num: int) -> int:
     """基础奖励金·平面感知键(奖励轮/常规轮共用的 base 分量单一源)。
 
-    键(正本=GameState 设计 §4.2 奖励轮行;真值=economy.md §10.1):
+    键(权威版本=GameState 设计 §4.2 奖励轮行;真值=economy.md §10.1):
     P1 r1=3 / P1 r2=4(:data:`REWARD_BASE_GOLD_BY_ROUND`,弹窗 VLM 直读
     85/85 零散布);P2r1=5(结构化直读两批独立一致);P3r1 按 5 近似
     (无直读样本,维持待办);其余轮恒 5。
@@ -570,7 +570,7 @@ def _streak_component(streak: int, win_reward_mult: float) -> int:
     不叠乘,cw_investments.aggregate_economy);已登记唯一非 1 值=伟大征服
     3.0。**含奖励轮**(GameState 设计 §4.1:win_reward_mult 施于连胜
     分量含奖励轮,消持卡局奖励轮系统性少计;sim 侧消费 =
-    cw_sim_backend.apply_round_start_income 包装,生产双端同源)。
+    cw_sim_backend.apply_round_start_income 包装,生产实机和模拟器两边同源)。
     """
     return int(round(streak_gold(streak) * win_reward_mult))
 
@@ -600,11 +600,11 @@ def round_start_income(
       聚合单一源=EconomyEffect.interest_flat_per_node)。
     - ``interest_cap``:resolved 利息帽(None→DEFAULT_INTEREST_CAP;归一口
       =:func:`interest_cap_resolved`,禁调用方内联 cap 字面量)。
-    - ``interest_floor``:息分量下限(开源节流条件金腿「上节点未花费 →
+    - ``interest_floor``:息分量下限(开源节流条件金条目「上节点未花费 →
       息顶满至帽」的消费形;帽界分量内顶满 = ``max(息, floor)``,flat
       修饰层照加其后——flat 与帽两修饰层分立,interest_flat_per_node
       字段注释「与 interest_cap 无关」同口径)。缺省 0 = 现状零漂移;
-      传值唯一来源 = tick 闸捕获载体(sim 节点窗消费/live 接线批同契约),
+      传值唯一来源 = tick 闸捕获载体(sim 节点窗消费/live 接入调用批同契约),
       禁调用方现读 :func:`strategy_interest_floor` 顶替——现读时点若在
       滚位后条件恒 False,顶满恒不发的错发形态由载体契约杜绝。
     - 值域注:奖励/常规轮的 base 经 :func:`reward_base_gold` 平面感知
@@ -613,7 +613,7 @@ def round_start_income(
       调用方单列)。**适用范围排除**:gold_per_node/
       gold_per_boss_node/战斗表现条件类三轮首真实金分量(引擎 'invest'
       键单列)签名无槽位,承载方式(分量扩参 or 调用方聚合单列)随 T1b
-      定;supply 支 base 取平面感知键=实现选择(正本只写「基础」;现节点
+      定;supply 支 base 取平面感知键=实现选择(权威版本只写「基础」;现节点
       序 supply 不落 r1/r2 与引擎恒 5 无数值差,节点序变异时两域分叉,
       键语义随 T1b 复核)。
     """
@@ -668,13 +668,13 @@ _REWARD_BASE_DEFAULT: int = BASE_INCOME
 
 # streak 带符号(连胜 + / 连败 −);真值归宿 = gs.streak 结算覆盖写端
 # (kernel/cw_game_state.py::apply_settlement_cover 的 streak_after,
-# 写点 = battle_wait 结算观测),经济/观察消费读容器。
+# 写点 = battle_wait 结算观测),经济/观察消费读状态容器。
 # 无「连胜 ≥2 跌破利息档」阈值常量(未核经验值,与已证跌破利息档-保利息判据
 # 冲突;连胜经济语义由利息线判据默认承载,激活分支 Δp 通道
 # 封锁——登记 = math_proofs P43)。
 
 # —— 购买经验决策 helper(机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_economy 单一源)——
-# ⚠️ 本接缝族签名已切 GameState。字段读统一经容器读口单一源
+# ⚠️ 本接缝族签名已切 GameState。字段读统一经状态容器读口单一源
 # (kernel/cw_game_state 决策面公共读口),禁各消费点自写兜底。
 
 def _strategy_economy(gs: GameState) -> EconomyEffect:
@@ -707,10 +707,10 @@ def refresh_cost_effective(refresh_count: int = 0,
 def world_shop_refresh_cost(gs: GameState) -> int:
     """当前环境改价规则下商店刷新的世界刷价(改价分支渲染单一源)。
 
-    环境在 ENV_ECONOMY 在册且注册了改价字段 ``refresh_cost_after``
+    环境在 ENV_ECONOMY 已登记且注册了改价字段 ``refresh_cost_after``
     (语义 = (刷新阈值, 新成本),如长线利好 (30, 1))且付费刷新累计
     ``gs.effects.refresh_paid`` 已达阈值 → 返回新成本;否则返回基价
-    ``REFRESH_COST_BASE``(环境不在册/改价字段 None 同基价)。付费域
+    ``REFRESH_COST_BASE``(环境不已登记/改价字段 None 同基价)。付费域
     计数与 ENV_REFRESH_GRANTS 登记计数同口同语义;阈值与新成本全出
     注册表、基价出常量,本函数零新增数值。
 
@@ -730,7 +730,7 @@ def world_shop_refresh_cost(gs: GameState) -> int:
 
 def xp_click_cost(gs: GameState) -> int:
     """一次「购买经验」单击花金(观察优先兜底逻辑,strategy-env-impacts §2
-    通用模式 1;折扣语义修复正本=行内申报)。
+    通用模式 1;折扣语义修复权威版本=行内申报)。
 
     两支语义(来源凭 ``gs.level_up_cost`` 是否有值判别):
     - **显示价支**(OCR 实读):传入值为最近备战帧观察价,游戏侧已算好
@@ -787,7 +787,7 @@ def clicks_to_next_level(gs: GameState) -> int:
 
 def blood_xp_full_clicks(level: int) -> int:
     """下一级**全量击数** = ⌈XP_TO_NEXT_LEVEL[level]/XP_PER_BUY⌉([40]② 裁定字面
-    「下一级血成本(⌈need/4⌉×6)」的击数项;N1 拍板全量口径)。
+    「下一级血成本(⌈need/4⌉×6)」的击数项;N1 用户决定全量口径)。
 
     - 全量口径先例 = 原平面表 ``clicks_to_level``(同式,xp 结转忽略;载体已随
       死代码清偿移除);本函数与剩余口径的差异 = 权威表逐字(无 1/2 级先验补全)。
@@ -846,7 +846,7 @@ def xp_batch_payment_gate(balance: int | None, balance_readable: bool,
 
 def xp_batch_payment_gate_for(gs: GameState | None,
                               session: StrategySession) -> bool:
-    """经验批支付门消费面适配(mode 解析 + 容器帧输入接线;prep 批入口
+    """经验批支付门消费面适配(mode 解析 + 状态容器帧输入接入调用;prep 批入口
     与 cw4 消费位共用)。
 
     - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode``
@@ -854,9 +854,9 @@ def xp_batch_payment_gate_for(gs: GameState | None,
       发射门序资金线门承担,本门不辖)。
     - gs 缺席 → False fail-closed(与门本体 None 支同论证)。
     - 支付币读数 = 政策层读口 ``decision_hp`` 门后值 +
-      ``hp_decision_trusted`` 可信位(容器单一读口,消费同门):
-      店开态读数结构性不可见时容器沿用最近备战帧可信值(同帧正常
-      工作,复盘 15 帧实证);level 取容器读口。
+      ``hp_decision_trusted`` 可信位(状态容器单一读口,消费同门):
+      店开态读数结构性不可见时状态容器沿用最近备战帧可信值(同帧正常
+      工作,复盘 15 帧实证);level 取状态容器读口。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         blood_xp_mode,
@@ -877,10 +877,10 @@ def xp_batch_payment_gate_for(gs: GameState | None,
 
 
 
-#: 刷新基价【注】= 赋值别名,非第二源:正本 = ``cw_state.REFRESH_COST_BASE``
+#: 刷新基价【注】= 赋值别名,非第二源:权威版本 = ``cw_state.REFRESH_COST_BASE``
 #: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,三流对账
 #: 定案,出处注在彼处)。本名保留 = 存量消费面(proof/budget/本模块)零迁移;
-#: 改值只改 cw_state 正本,禁在此另写数值。
+#: 改值只改 cw_state 权威版本,禁在此另写数值。
 SHOP_REFRESH_COST: int = REFRESH_COST_BASE
 
 
@@ -971,12 +971,12 @@ def get_node_goal(plane: int, round_num: int, *,
         log.debug('[cw-seam] get_node_goal 部分传参(%s)→ 走先验 fallback;迁移漏点排查',
                   ('g' if gold is not None else '-') + ('l' if level is not None else '-'))
     if None not in (gold, level):
-        # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
-        # 字段;无 session、无现成容器)。字段契约单一源 =
+        # 标量投影状态容器:直接按入参构造最小决策状态容器(供给核只读经济/板面
+        # 字段;无 session、无现成状态容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state。
         # session=None:nodes_of_plane 走缺表回退(节点序列默认表 P1 长,
         # 一次性告警即记档)
-        # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
+        # → h=9−r 常 >0,R* 窗口分量在投影状态容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
         # ⚠️ 结构性边界(申报,不扩修):下行接缝核以
         # session=None 调用 → 利息帽 resolved 链恒 DEFAULT(base cap),
@@ -1103,12 +1103,12 @@ def _schedule_target_core(session: StrategySession) -> str:
     """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧返回 '' →
     调用方缺省 3 费档,供给不断)。
 
-    P86 正本申报(p86-no-target-period-fund-allocation.md §4.1-1 选项
+    P86 权威版本申报(p86-no-target-period-fund-allocation.md §4.1-1 选项
     「维持缺省 3 费」):未锁帧阵容核心锚(FALLBACK_COMP_NAME
     单线硬编码)已停用——峰值级锚只进概率校准分量,
     方向语义中性,未锁帧峰值档统一回落 3 费缺省。
     ⚠️ 边界申报:淘汰计划文档本体已不在仓(docs/develop/currency_war/archive/
-    目录不存在,漂移登记见 P86 正本 §4.1-2),码内注释是原唯一在档裁决
+    目录不存在,漂移登记见 P86 权威版本 §4.1-2),码内注释是原唯一在档裁决
     记录,本注即其承接。"""
     return _vd_core_of(session)
 
@@ -1219,8 +1219,8 @@ def refresh_ev_budget(gs: GameState, session: StrategySession,
       不缩供给」契约优先)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
     1 次/轮),与本预算不相交、不合并;按该车道对归零判据
-    **同判据覆盖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点待办:
-    接线落地后补(判据单一址=本函数的 ``_omega_collapse_zeroed``,
+    **同判据覆盖**(含空帧豁免,两车道逐帧一致)——arbiter 接入调用点待办:
+    接入调用落地后补(判据单一址=本函数的 ``_omega_collapse_zeroed``,
     届时零新概率口径)。
     """
     reg = registry or _registry_of(session)

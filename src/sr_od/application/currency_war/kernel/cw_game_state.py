@@ -2804,7 +2804,7 @@ class GameState:
     # True = kernel reconcile_tracking 的 bench 侧对账成功点
     #(唯一锚定写端;bench 读失败/双空读守卫均不写 = 保持
     # 未观察)。消费面:策略商店门(flow.decide_shop_action,未观察 →
-    # CwActionCloseShopParam 返回主循环走备战重锚定;判定单一源 = 本模块
+    # CwActionCloseShopParam 返回主循环走备战重新确认定;判定单一源 = 本模块
     # tracked_unobserved)。锚定语义重定义(tracked
     # 第二账停用)——锚定 = 主域(bench/deployed 席位视图)已按屏幕真值
     # 对账;观察边界对账唯一发生点不变、两态制不变(prep.md §3/§6)。

@@ -10,9 +10,9 @@
   :func:`_roll_rotation` 旧树 replay 交叉核对口径保留面)。
 
 历史面(规则表结算层 node_delta 族 / P2 参数化存活层 p2_* 族 /
-Δ池采样键 _deployable_depth)随 sim 结算收口删除——消费方
+Δ池采样键 _deployable_depth)随 sim 结算收尾删除——消费方
 (Δ池采样 / 规则表回退)已随 sim 重做批次退场,src/测试仓零调用;
-数据表正本 data/cw_battle_tables.py 同批删除(git 历史可溯)。
+数据表权威版本 data/cw_battle_tables.py 同批删除(git 历史可溯)。
 
 桩点契约:消费方函数内懒 import 本模块符号(属性动态解析),
 monkeypatch 钉本模块符号(锁改判裁决=N7,禁 shim)。
@@ -123,7 +123,7 @@ def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
     ⚠️ 语义已勘误(01_strategy_layer.md §4.10 概率表族):「20%」是
     replay 观测在场频率,非机制概率——运行时被测体已改用
     ``roll_rotation_per_stage``。本函数保留作旧树 replay 交叉核对口径,
-    勿在新消费点接线。
+    勿在新消费点接入调用。
     """
     if rng.random() >= ROTATION_CHANCE:
         return None

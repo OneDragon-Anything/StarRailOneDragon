@@ -1,14 +1,14 @@
 """货币战争 overlay 登记簿记(design.md 契约 C-登记/C-簿记;详设 overlay 生命周期契约)。
 
-三口(固定位置参数,用户裁定):
+三个登记入口(固定位置参数,用户裁定):
 - ``register_screen_change(gs, kind, screen_name, source)``:登记一条
   待处理弹窗(pending FIFO,同 kind 已登记去重);
 - ``consume_screen_change(gs, kind)``:按 kind 匹配移除(与顺序无关——
   弹出顺序不可枚举,用户裁定不强断言);
 - ``clear_screen_changes(gs)``:整列清空(识别回备战底屏的兜底清)。
 
-存处 = ``GameState.screen_changes`` 容器簿记 sidecar(overlay 生命周期契约
-「存处」节裁定):单局生命周期随容器建亡、实机/sim 字面同一份存储、
+存处 = ``GameState.screen_changes`` 状态容器簿记 sidecar(overlay 生命周期契约
+「存处」节裁定):单局生命周期随状态容器建亡、实机/sim 字面同一份存储、
 判据点全在 kernel 手里有 gs;先例 = 非 Field 簿记组(node_books 族)。
 
 kind 词表(九项,锚 = 现役选卡动作/画面名,禁新造同物异名;

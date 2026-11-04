@@ -1,6 +1,6 @@
 """货币战争动作上报:银狼策划「我来当策划」选择(report_action_pick_planner_param)。
 
-**即时单相上报**(行为正本 = `flow/action_ops.md` §4.5 PickPlanner 行;
+**即时单相上报**(行为权威版本 = `flow/action_ops.md` §4.5 PickPlanner 行;
 用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
 点完就立即上报,按成功把结果写进 game state):``CwActionPickPlannerOp``
 确认点击后一口写完整效果逻辑态,无发出/落地两相、无证据标志。写序:
@@ -11,7 +11,7 @@
   (apply_equip_acquire_consequence);未解析 → 禁猜,equips 值不变翻
   来源 + 留存证据行;
 - **upgrade**:变换窗三态 + 档行(见 :func:`_apply_upgrade_transform`);
-- **unknown**:零记账 + 留存证据行(含弱化词且装备锚未命中的卡文落此——
+- **unknown**:零记账 + 留存证据行(含弱化词且装备识别标志未命中的卡文落此——
   弱化兜底档已按原文二分法停用,静默零记账变响亮申报)。
 
 其余未路由分支类型 = 终态兜底零写(reason = ``unrouted_leg_zero_write``)。
@@ -27,7 +27,7 @@
 摘除;applied=False 出口(升费前置硬校验拒)= 声明 None。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
-__init__`` docstring)。本包 → 容器单向依赖。
+__init__`` docstring)。本包 → 状态容器单向依赖。
 """
 from __future__ import annotations
 
@@ -94,12 +94,12 @@ def report_action_pick_planner_param(gs: GameState, param: Any, sig: ChannelSig,
     - ``branch_type``/``norm_item`` = 决策半分支类型载荷(classify_planner_branch
       产物,经 OverlayPickExecEnv 随派发透传);
     - ``rng`` = 条件分支采样注入点(缺省 None = 实机未播种猜测语义,与
-      骇客改件采样同约定;sim 传流键 = 世界真值);
+      骇客改件采样同约定;sim 传流键 = 状态副本真值);
     - 出参 applied=True = 动作受理(拒分支走该分支的域守卫,不整批拒)。
     """
     _validate_sig(sig, ('logic_action',))
     #(精确消费):选卡动作消费同 kind 登记
-    # (两世界同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
+    # (实机和模拟器两边同一行代码;overlay 生命周期契约「实机消费·生命周期」)。
     from sr_od.application.currency_war.kernel.cw_overlay_register import (
         consume_screen_change,
     )
@@ -192,8 +192,8 @@ def _apply_equip_branch(gs: GameState, norm_item: str,
 def _apply_upgrade_transform(gs: GameState,
                              sig: ChannelSig) -> LogicOutcome:
     """升费分支 = 变换窗三态 + 档行:前置硬校验对上报
-    时容器观察态(bench ∪ deployed 多重集)的 (银狼LV.999, 2★)
-    计数(单相时序等价论证:确认点击到本调用之间容器零
+    时状态容器观察态(bench ∪ deployed 多重集)的 (银狼LV.999, 2★)
+    计数(单相时序等价论证:确认点击到本调用之间状态容器零
     写入,观察态与原落地补写机制(已废除)时点等值):
 
     - **现档 ≥ 5**(误走本分支:5 费升 2 星两选项皆装备,upgrade 不应出现;
@@ -201,7 +201,7 @@ def _apply_upgrade_transform(gs: GameState,
       (kind=``planner_upgrade_tier_ceiling``);
     - **恰一枚** → 工作副本变换(−2★ +1★,槽位无关,落点不建模观察为
       真值)→ **档行**(变换落行后、级联前;现档 = :func:`effective_cost`,
-      档 +1 = 牌库改变的容器表达——升费后池桶归属迁到新费用档)→ 级联
+      档 +1 = 牌库改变的状态容器表达——升费后池桶归属迁到新费用档)→ 级联
       (merge_cascade_write 正常推演——费用档不同时存在[口述·权威
       2026-09-18],分组键无跨档歧义)→ 受影响域各落一行(write_logic);
     - **多枚**(二次升费现实可发)→ 触发单位不可辨(禁猜)→ 受影响域
@@ -209,7 +209,7 @@ def _apply_upgrade_transform(gs: GameState,
     - **零枚/未观察** → 不写 + 留存证据行(真异常,照真失配响停,fail-closed
       禁猜),档不动。
 
-    费用档不建模于单位(档 = 容器 match 级字段 lv999_cost_tier,本分支即其
+    费用档不建模于单位(档 = 状态容器 match 级字段 lv999_cost_tier,本分支即其
     写端);「新费档银狼刷进商店」连带分支 = 档行兼任(池桶归属随档迁移),
     不另造申报行。
     """
@@ -236,7 +236,7 @@ def _apply_upgrade_transform(gs: GameState,
                      actual=f'现档={tier}', evidence='planner_landing',
                      sig=sig, kind='planner_upgrade_tier_ceiling')
         return LogicOutcome(applied=False, reason='upgrade_tier_ceiling')
-    # P1 容器原生工作副本:bench = BenchView 槽序、deployed = 定长 10
+    # P1 状态容器原生工作副本:bench = BenchView 槽序、deployed = 定长 10
     # 下标表(3.1 窗口期桥,视图同源派生);元素 frozen,浅拷贝列表即快照
     #(变换 = replace 新构造,零别名)。
     work_bench = list(view.slots) if view is not None else []

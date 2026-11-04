@@ -1,6 +1,6 @@
 """货币战争节点日程真值表(kernel 纯数据件;零依赖)。
 
-设计正本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
+设计权威版本 = ``docs/develop/sr_od/application/currency_war/sim/sim-design.md``
 (§3.3 位面过渡/节点序列)现役口径:
 
 - 节点身份唯一表示 = ``(位面, 轮)`` 序位元组(:data:`NodePos`,1 基,
@@ -25,7 +25,7 @@
 ``next_screen`` 推导权威源 = 本表 + ``effective_node_pos``,推导在
 ``report_node_advance``(kernel),kernel 模块级禁 import sim
 (``cw_deploy_logic`` 已登记);kernel 触发/判定函数对 ``cw_sim_ports``
-的**函数内惰性判据消费**(sim 装配门控等)沿在册先例放行
+的**函数内惰性判据消费**(sim 装配门控等)沿已登记先例放行
 (cw_gain_chain/cw_gain_effects/refresh_shop 各惰性块同形),模块级
 import 仍禁;sim 后端同源 import 本表。
 """
@@ -37,7 +37,7 @@ from typing import TypeAlias
 #: 字典序 = 有效节点序列按位面拼接展平的全序(位面主序下前缀和单调恒等)。
 NodePos: TypeAlias = tuple[int, int]
 
-#: 节点类型词表(NodeKey.kind 合法值;与容器/日程表同域)。
+#: 节点类型词表(NodeKey.kind 合法值;与状态容器/日程表同域)。
 NODE_KINDS: frozenset[str] = frozenset({
     'reward', 'battle', 'supply', 'encounter', 'boss',
 })
@@ -102,7 +102,7 @@ def resolve_plane_node_seqs(env_name: str) -> dict[int, tuple[str, ...]]:
     场字段时执行一次——运行时消费面读 GameState 场字段
     ``node_seq_by_plane``,不逐点重推;设计 §2.1 用户裁定:修饰结果
     落逻辑态,插入/替换的节点是备战画面可观察的真实节点,场字段为
-    观察对账正本)。
+    观察对账权威版本)。
 
     统一规则解释器:注册表(:data:`ENV_NODE_REWRITE_RULES`)命中环境 →
     逐位面按序应用其规则元组;未命中 → 原样返回默认表(默认表 =

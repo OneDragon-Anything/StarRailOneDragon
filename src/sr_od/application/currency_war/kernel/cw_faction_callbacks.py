@@ -2,7 +2,7 @@
 
 回调挂 **deployed 值变更**(非动作)——部署/卖出/替换/合成落场/穿戴,
 凡改场上名单或装备,同一套回调;判据只看「值从什么变成什么」。观察写
-零回调(观察 = 重锚已发生的事实与纠偏,reactive 兜底);挂点单一 =
+零回调(观察 = 重新确认已发生的事实与纠偏,reactive 兜底);插入位置单一 =
 ``GameState._write_logic_frame`` 的 deployed 分支尾(logic/logic_rand
 两逻辑通道同经,获得链递归每步语义完整)。
 
@@ -146,7 +146,7 @@ def _diff_by_name(old_view, new_view
 
 def on_units_changed(gs, added_units, removed_units, source: str) -> None:
     """角色变动回调(事件通知层:喂资格集——资格集在派生维护入口
-    按视图总量对算,本层 = 契约 seam,未来成员类消费面挂点)。"""
+    按视图总量对算,本层 = 契约 seam,未来成员类消费面插入位置)。"""
     # 通知层无独立判据(回调表口径:overlay 判据不住此)。
     return
 
@@ -234,7 +234,7 @@ def check_env_bond_tier_grants(gs, new_sets, source: str) -> None:
     """羁绊档位条件发放判据(ENV_BOND_TIER_GRANTS 注册表驱动;调用点 =
     ``on_deployed_logic_write`` 尾部**门外**——on_qualification_changed
     的 sets-changed 门辖不到「不改任何 watched 资格集的板面写」(卖非
-    在册阵营场上件/穿非羁绊装备/换位等),电平重试性要求任意板面写后
+    已登记阵营场上件/穿非羁绊装备/换位等),电平重试性要求任意板面写后
     必查,done 封账保幂等;new_sets 复用入口无条件现算值,零额外派生
     成本)。
 
@@ -279,7 +279,7 @@ def check_env_bond_tier_grants(gs, new_sets, source: str) -> None:
 
 
 def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
-    """deployed 逻辑写尾的派生维护单一入口(挂点 = cw_game_state
+    """deployed 逻辑写尾的派生维护单一入口(插入位置 = cw_game_state
     ``_write_logic_frame`` deployed 分支;观察写不经此)。
 
     数据流(「资格集语义」):按名分解 diff →
@@ -309,7 +309,7 @@ def on_deployed_logic_write(gs, old_view, new_view, source: str) -> None:
     if old_star != new_star:
         on_star_changed(gs, old_star, new_star, source)
     # —— 羁绊档位条件发放(ENV_BOND_TIER_GRANTS):sets-changed 门外的
-    #    必查分支——不改任何 watched 资格集的板面写(卖非在册阵营场上件/
+    #    必查分支——不改任何 watched 资格集的板面写(卖非已登记阵营场上件/
     #    穿非羁绊装备等)也要重查悬置补发;new_sets 复用入口现算值零额外
     #    成本,done 封账保幂等(判定语义单一源 = check_env_bond_tier_grants)。
     check_env_bond_tier_grants(gs, new_sets, source)

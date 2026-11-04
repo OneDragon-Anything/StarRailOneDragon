@@ -5,7 +5,7 @@
 ``strategies/impl/mandate_v1/deploy_plan.py``(``select_deployments``/
 ``select_deployments_reasoned``/``has_deployable``/``can_deploy_single``/
 落位策略 ``deploy_row_pref``/``deploy_slot_plans``/出战链计划入口)。
-换阵计划链(select_swap_plan 族)已随部署统一批丁收编删除——场上去留 =
+换阵计划链(select_swap_plan 族)已随部署统一批丁纳入统一管理删除——场上去留 =
 统一部署搜索定型单属(unified-deploy-order §2.7);本模块现役面 =
 其历史消费的判定 helper(围栏集/点火增益/配方底线门/供给谓词,随七桶
 选人退役批次处置)、fresh 账本族(差分执行器新鲜度守卫 + L1 卖侧排除)、
@@ -13,9 +13,9 @@ board_unique_key(统一搜索枚举基本单位)、engines_count 族(过渡体�
 机制事实)、deployed_bond_counts/board_target_line_weight(支撑观测)与
 swap_bond_gate_domain_of(P88 买侧收窄谓词源)。
 
-这里只收**纯决策**。输入 = 容器形状(bench = 占席条目 ``BenchSlot``
+这里只收**纯决策**。输入 = 状态容器形状(bench = 占席条目 ``BenchSlot``
 紧缩序,身份经 ``bench_slot_unit`` 解包;deployed = 行域 ``Unit``,
-benchchar-retirement P4 容器形),身份可判(char_id 空串=未识别,
+benchchar-retirement P4 状态容器形),身份可判(char_id 空串=未识别,
 围栏语义「照旧上」保留)。
 """
 from __future__ import annotations
@@ -56,7 +56,7 @@ TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
 
 #: 希儿系放大器阵营(量子/贝——伤害在希儿技能层,放大器非独立伤害源,
 #: transition_combos.md 四体系表;桑博=贝+DOT 双籍是常态不是边界)
-#: (希儿系体系键 SEELE_SYSTEM_KEY 已随 kernel swap 机器收编删除:历史
+#: (希儿系体系键 SEELE_SYSTEM_KEY 已随 kernel swap 机器纳入统一管理删除:历史
 #: 消费 = 让渡序度量域/守恒门,现役单卡体系键 = deploy_search 私有
 #: 副本,统一搜索计分面自足。)
 SEELE_AMP_FACTIONS: frozenset[str] = frozenset({'量子同频', '贝洛伯格'})
@@ -155,7 +155,7 @@ def _bonds_named(char_id: str) -> set[str]:
 # (点火增益/配方底线门/仙舟供给谓词/围栏集(DEPLOY_FENCE)与七桶选人
 #  消费面(cap_roomy_of/tier_completes/ignition_gain/recipe_floor_holds/
 #  xianzhou_supply_exists/RECIPE_FLOOR_*/deploy_target_sets/residual_
-#  fill_plan)已随部署统一批丁丁批收编删除——unified-deploy-order §2/§4:
+#  fill_plan)已随部署统一批丁丁批纳入统一管理删除——unified-deploy-order §2/§4:
 #  选人 = 统一部署搜索定型,围栏/底线门/点火序 = 旧线性序补丁史;
 #  deployed_bond_counts/board_target_line_weight 支撑观测面保留。)
 
@@ -164,7 +164,7 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     """场上羁绊计数(件级;board 域标签单一源)。
 
     消费面 = 卖出评估器支撑判定与推判重放板面重推导(原七桶选人/
-    swap 计划消费点已随部署统一批丁收编删除;未注册名不计——无名可判
+    swap 计划消费点已随部署统一批丁纳入统一管理删除;未注册名不计——无名可判
     即无阵营信号,件本身的去重/fail-open 由消费面管)。
     选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)按
     ``cw_chars.side_pick_bond`` 选边单边计入(贡献 = [side] 替代双边
@@ -187,7 +187,7 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     return out
 
 # (换阵卖出义务分支 fenced_swap_arm_of 与转型域双门件(SWAP_GUARD_SYSTEMS/
-#  _swap_guard_achieved)已随部署统一批丁收编删除——unified-deploy-order
+#  _swap_guard_achieved)已随部署统一批丁纳入统一管理删除——unified-deploy-order
 #  §2.7/§4 kernel swap 机器行;判别子 swap_bond_gate_domain_of 保留 =
 #  P88 买侧收窄谓词源(mandate_v1.swap_transition_narrow_frame 消费)。)
 
@@ -199,24 +199,24 @@ def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
     = 分支①(终局阵容锁定,显式排除 p1_pair 分支②)∧ fp < 1.00 ∧ 板满。
     消费面 = mandate_v1 ``swap_transition_narrow_frame``(P88 买侧收窄
     谓词源)——判定只此一份,禁各消费位自写第二份合取;域语义与分支
-    继承的完整论证见 git 历史(swap 机器收编批前 docstring)。
+    继承的完整论证见 git 历史(swap 机器纳入统一管理批前 docstring)。
     """
     return bool(locked_core) and fp is not None and fp < 1.00 and board_full
 
 
 # (ctx 形态判别子 swap_bond_gate_domain / fenced_swap_gate_open / 让渡序
 #  度量对(_swap_yield_union_achieved/swap_yield_contribution,P79-4)已随部署
-#  统一批丁收编删除:换谁下 = 统一部署搜索定型单属,独立让渡度量退役。)
+#  统一批丁纳入统一管理删除:换谁下 = 统一部署搜索定型单属,独立让渡度量退役。)
 
 
 # (板满换阵补部署计划头注(M1″ 动作发出面谓词,assemble_swap_plan_inputs
-#  装配契约与拒因键闭集)已随 kernel swap 机器收编删除;下方 fresh 账本族
+#  装配契约与拒因键闭集)已随 kernel swap 机器纳入统一管理删除;下方 fresh 账本族
 #  保留——消费面 = 差分执行器新鲜度守卫(D2-17)与 L1 卖侧排除,拒因
 #  fresh_buy 随 swap 机器退役,账本防抖语义由统一拖动链继续消费。)
 
 # 轮内新鲜度排除载体(宿主 = ``GameState.round_fresh_buys``,字段
 # 定义注 = kernel/cw_game_state.py;渠道②动作上报,经本模块
-# record_fresh_buy 单口):动作发出点买入时逐名写入的名集,键式 =
+# record_fresh_buy 唯一入口):动作发出点买入时逐名写入的名集,键式 =
 # {'phase': (plane, round_num), 'names': list[str]}——位面/轮次推进自动
 # 失效(M7 标志键式同构)。写点 = 生产 shop.py 全部 CwActionBuyCardParam 动作发出点
 # 经 ``_emit_buy`` 收束调用(5edcf324)。
@@ -227,7 +227,7 @@ def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
 
 
 def _fresh_phase(state: GameState | None) -> tuple:
-    """相位键读法(容器读口;None = 缺读缺省 (None, 1))。"""
+    """相位键读法(状态容器读口;None = 缺读缺省 (None, 1))。"""
     if state is None:
         return (None, 1)
     return (plane_of(state), round_num_of(state))
@@ -240,7 +240,7 @@ def record_fresh_buy(session: object, gs: GameState | None,
     同一发出批的多个买入意图**逐名**入集(防批量买入漏记——漏记 =
     卖出环切不断,防抖失效静默)。键式见 ``GameState.round_fresh_buys``
     (kernel/cw_game_state.py 字段注)。宿主解析与旧载体同构:gs 在场 =
-    写 gs 字段(调用方契约 = 容器单例);gs 缺席 = session 容器读口兜底
+    写 gs 字段(调用方契约 = 状态容器单例);gs 缺席 = session 状态容器读口兜底
     (None session 一次性空载体,与旧载体「一次性宿主」形态一致)。
     """
     if not name:
@@ -282,10 +282,10 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     读面此前仅 deploy 侧换出守卫)。
 
     读端自治(fail-closed 语义):相位 (plane, round_num) 自
-    session 容器 node 读口解析(黑板槽停用后容器直读——登记相位
-    写端 ``record_fresh_buy._fresh_phase`` 本就取容器读口,读端同源消
-    过渡期双源窗),不消费消费位显式传轮——``current_round`` 漏接线帧
-    不再静默放行(对 V2-09 在 L1 硬面的显式翻转;v1 缺口 C:漏接线
+    session 状态容器 node 读口解析(黑板槽停用后状态容器直读——登记相位
+    写端 ``record_fresh_buy._fresh_phase`` 本就取状态容器读口,读端同源消
+    过渡期双源窗),不消费消费位显式传轮——``current_round`` 漏接入调用帧
+    不再静默放行(对 V2-09 在 L1 硬面的显式翻转;v1 缺口 C:漏接入调用
     静默裸奔,纪律覆盖改结构保证)。
 
     - 黑板帧可得:常规键对读(相位失配 = 空集,与 ``fresh_buys_of``
@@ -317,7 +317,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 #  swap_sell_exclusion_reason / SwapPlanContext / target 与 support 视图 / SwapPlan /
 #  swap_plan_up_names / evolution_swap_arm_trigger / assemble_swap_plan_inputs /
 #  bond_gate 门族 / SwapGroupOrder / _select_swap_group_plan / select_swap_plan)
-#  已随部署统一批丁收编删除:要不要换/换谁下 = 统一部署搜索定型,
+#  已随部署统一批丁纳入统一管理删除:要不要换/换谁下 = 统一部署搜索定型,
 #  kernel swap 资格链与让渡序的独立度量退役——unified-deploy-order §2.7/§4;
 #  被换下者回 bench 由卖出场景按统一让位序处置,让渡序消费面同批改接。
 #  保留:swap_bond_gate_domain_of(P88 买侧收窄谓词源,mandate.swap_
@@ -331,7 +331,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 
 
 def board_unique_key(bc: Unit) -> str | None:
-    """板上同名唯一性判据键(设计裁定:场上同角色仅 1;P4 容器形重写:
+    """板上同名唯一性判据键(设计裁定:场上同角色仅 1;P4 状态容器形重写:
     入参 = 行域/工作表 ``Unit``,唯一消费域;§2.4)。
 
     - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);

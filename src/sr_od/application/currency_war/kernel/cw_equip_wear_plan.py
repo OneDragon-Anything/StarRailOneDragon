@@ -69,7 +69,7 @@ class EquipWearStep:
     """单件穿戴计划步(计划随指令下发的契约载体;C1)。
 
     产出位 = 分发段 ``_build_equip_wear_plan``(读备战入口观察产物
-    PrepObservation,P4 观察接线后零读屏,由 kernel 判据单一源
+    PrepObservation,P4 观察接入调用后零读屏,由 kernel 判据单一源
     求值),动作发出点逐步产 ``CwActionWearEquipParam``;op 对计划
     只做机械执行(定位/拖拽/报告),禁二次求值。2a 原子通路:本步同时
     是 ``CwActionWearEquipParam`` 动作的构造源(动作发出点逐步产原子动作)。
@@ -116,8 +116,8 @@ def _build_equip_wear_plan(session: Any,
                            registry: Any = None) -> EquipPlanBuild:
     """装备穿戴计划产出位(分发段;C1 计划随指令下发)。
 
-    事实源 = **容器 game state 读口**(黑板帧停用
-    阶段 3.2 换源):owned ← ``gs.equips``、deployed ← 容器上阵视图
+    事实源 = **状态容器 game state 读口**(黑板帧停用
+    阶段 3.2 换源):owned ← ``gs.equips``、deployed ← 状态容器上阵视图
     ``gs.deployed``、后排选档 ← ``gs.back_layout`` Field 原值;写者单一源
     = cw_screen_prep 观察装配点(装备域采集单一源 =
     ``obs.cw_observe_full.observe_full`` heavy)。已穿槽位(occupied)自
@@ -165,11 +165,11 @@ def _build_equip_wear_plan(session: Any,
         resolve_wear_release,
     )
 
-    # ===== 事实源前置(容器现读,零读屏;fail_reason 通道)=====
-    # 全面换源(黑板帧停用):owned/back_layout/deployed 输入改容器
+    # ===== 事实源前置(状态容器现读,零读屏;fail_reason 通道)=====
+    # 全面换源(黑板帧停用):owned/back_layout/deployed 输入改状态容器
     # 读口,黑板帧(gs.prep_obs)消费清零;occupied 起初同批读
     # gs.occupied_equips 观察面,后随零读屏决策环换逻辑推导(见下注)。
-    # None 语义映射 = 容器 Field 未观察(None)= 识别域未就绪,
+    # None 语义映射 = 状态容器 Field 未观察(None)= 识别域未就绪,
     # fail 门保守关方向与旧黑板 None 逐位同。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
@@ -195,7 +195,7 @@ def _build_equip_wear_plan(session: Any,
     # 逻辑账由入口对账纠偏语义照旧。键坐标系与观察面同构
     # ((row,物理槽位 1-based));空装槽位不入表(与采集层
     # read_row_equipped「空槽不在 dict」同形,front-only 空槽检测语义
-    # 不变);防御拷贝(计划求值全程本地态,禁反向污染容器)。
+    # 不变);防御拷贝(计划求值全程本地态,禁反向污染状态容器)。
     occupied_all: dict = {}
     if deployed_view is not None:
         for _rn, _sub in (('front', deployed_view.front_slots),
@@ -217,8 +217,8 @@ def _build_equip_wear_plan(session: Any,
     # ——key_equips 命中件照穿,非 key 散件穿给当前板面高战力者(carry 优先);
     # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
     # 装配源换源(核销):执行侧装配源 =
-    # session 容器单例(备战帧观察写端同链刷新);容器与帧同帧同源
-    # (同一备战观察),读口 = 容器公共读口单一源。
+    # session 状态容器单例(备战帧观察写端同链刷新);状态容器与帧同帧同源
+    # (同一备战观察),读口 = 状态容器公共读口单一源。
     _form = 0.0
     if _tgt_comp is not None and _has_deployed:
         from sr_od.application.currency_war.kernel.cw_comps import (
@@ -324,7 +324,7 @@ def _build_equip_wear_plan(session: Any,
         # λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
         # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = 每次派发至多
         # 调本函数一次)——离线 diff 相邻轮快照 = 各节点发放件数。
-        # (换源:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
+        # (换源:plane/round 取状态容器 node;未观察显 '?' 同旧缺帧形态)
         _ref_node = (_gs_c.node.value
                      if _gs_c is not None else None)
         _own_ct: dict[str, int] = {}

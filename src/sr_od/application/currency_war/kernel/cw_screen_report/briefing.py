@@ -1,4 +1,4 @@
-"""简报屏观察契约与上报(kernel 纯数据;正本 =
+"""简报屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口门判定 + 三读数(敌人词缀/位面序 boss/敌人难度;读数
@@ -7,7 +7,7 @@ operations/cw_screen/cw_screen_briefing.py::``CwScreenBriefing.observe``
 (观察 node 三写点)。写语义 = 三字段统一「读到非空恒覆写 / 读空跳过
 写」:简报三读数一局内恒定,覆写无信息损失,重读自愈首次误读;瞬时
 OCR 失手不擦同局已读真值(读缺 = 跳过写项目口径);跨局残留由每局
-容器冷建/丢弃挡死,不靠本写点清场。
+状态容器每局全新创建/丢弃挡死,不靠本写点清场。
 """
 from __future__ import annotations
 
@@ -39,13 +39,13 @@ class CwScreenBriefingObs:
 
 def report_screen_briefing_obs(gs: GameState, obs: CwScreenBriefingObs, *,
                                sig: ChannelSig | None = None) -> None:
-    """简报屏观察上报:三字段统一写语义落容器(写点锚 =
+    """简报屏观察上报:三字段统一写语义落状态容器(写点定位 =
     cw_screen_briefing.py::``CwScreenBriefing.observe``(观察 node 三写点))。
 
     - 读到非空恒覆写:三读数一局内恒定,覆写无信息损失,重读自愈
       首次误读;
     - 读空跳过写(读缺 = 跳过写项目口径):瞬时 OCR 失手不擦同局
-      已读真值;跨局残留由每局容器冷建/丢弃挡死,不靠本写点清场。
+      已读真值;跨局残留由每局状态容器每局全新创建/丢弃挡死,不靠本写点清场。
 
     转换失败 = 观察侧 round_fail,不进本写点(标准化留口,屏契约登记见 screens/briefing.md)。
     """

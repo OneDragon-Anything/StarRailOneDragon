@@ -1,9 +1,9 @@
 """货币战争动作上报:开书册卡(report_action_open_bookcard_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #6):applied 出口
 构造 ``WorldDecl``(trigger = ''——腾位写端 = 本上报「开卡即腾位」,
@@ -40,7 +40,7 @@ def _decl(gs: GameState) -> WorldDecl:
 
 def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig) -> LogicOutcome:
     """开书册卡上报:bench 槽位 kind → empty(开卡即腾位)。槽 kind 门 =
-    ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,容器
+    ``'bookcard'``(kind 细分批:书册卡槽不再统一降级 supply_box,状态容器
     bench kind 细分 = 'bookcard' 单一口径);槽不存在/类型不符 =
     applied=False 零写零声明。applied 出口构造后果声明(:func:`_decl`,
     纯转移)。"""
@@ -57,7 +57,7 @@ def report_action_open_bookcard_param(gs: GameState, param: Any, sig: ChannelSig
     view = gs.bench.value
     if view is None:
         # bench_unobserved 早退不登记:登记与开卡动作同生——本分支生产
-        # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子底座),
+        # 不可达(bench 恒有开局种子 9 空槽视图,cw_game_state 种子初值),
         # 仅测试直构/极端离线形态可达;该形态开卡本身未落地,登记即假阳。
         return LogicOutcome(applied=True, reason='bench_unobserved',
                             world_decl=_decl(gs))

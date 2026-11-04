@@ -6,11 +6,11 @@ GameState(kernel/cw_game_state.py)。现覆盖三类领域函数:
 - 确认族到账推进:``apply_confirm_effect``(两态制标准语义;
   原 apply_op_effect 动作类分支已并入各 op 自上报后瘦身);
 - 槽位表领域模型:bench/deployed 槽位语义 helpers(benchchar-retirement
-  P1 起容器原生:bench = ``BenchSlot | None`` 槽表;
+  P1 起状态容器原生:bench = ``BenchSlot | None`` 槽表;
   deployed 主域 = DeployedView 完整槽位表,3.2 随 tracked 第二账停用删除
   换算五函数——残余的下标→(排,排内槽号)固定双射由消费点内联算术承载,
   工作表桥 = cw_game_state.deployed_indexed_of_view/deployed_view_of_indexed);
-  观察读链直产容器形状(obs/cw_identity_obs),本模块无换形适配层;
+  观察读链直产状态容器形状(obs/cw_identity_obs),本模块无换形适配层;
 - 位面节点序列台账访问:get_node_ledger / ledger_node_type /
   ledger_update_plane 与 fill_boss_by_position(台账值载体
   ``PlaneNodeLedger`` 住 kernel/cw_game_state.py,本模块运行时转发,
@@ -19,7 +19,7 @@ GameState(kernel/cw_game_state.py)。现覆盖三类领域函数:
 from __future__ import annotations
 
 # 台账值载体(运行时转发,非仅注解):类本体住 kernel/cw_game_state.py
-# (宿主 = 容器非 Field 簿记 GameState.plane_node_sequences 所在模块),本模块
+# (宿主 = 状态容器非 Field 簿记 GameState.plane_node_sequences 所在模块),本模块
 # 转发保持 cw_vocab 转出口与既有 import 路径不断链(消费面零改动的成立前提)。
 # cw_game_state 模块级依赖不反向触达本模块
 # (惰性 import 面),此模块级引入不成环。
@@ -54,7 +54,7 @@ def _session_seats(session) -> tuple[list, list]:
 
 def _advance_gold(session, delta: int, *,
                   produced_by: str = 'PrepActionExecutor') -> None:
-    """op 逻辑效果的金账直推(last_state 链停用后宿主 = 容器单例):
+    """op 逻辑效果的金账直推(last_state 链停用后宿主 = 状态容器单例):
     ``game_state_of(session).gold`` 经 logic_action 通道 write_logic
     (可为负;现值 None 视 0 基线——金账由商店波顶/结算屏可信读覆盖
     修正,以实际观察为准)。渠道面 = family='logic_action' + actor
@@ -181,7 +181,7 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
              'gold')
         # 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):付费帧
         # 才置位(免费帧零金变动不属花费事件,与买牌上报单点同豁免)。
-        # dict 形买牌同属花费事件(回放/离线世界真值一致性;现役生产零
+        # dict 形买牌同属花费事件(回放/离线状态副本真值一致性;现役生产零
         # 调用)。sig 自构(actor='PrepActionExecutor' + mode='compute',
         # 对齐 _advance_gold 既有构形——本作用域无动作窗 _grp_sig)。
         mark_gold_spent(game_state_of(session),
@@ -227,7 +227,7 @@ def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
 def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
     """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
 
-    容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
+    状态容器原生形状(§2.1):元素 = ``BenchSlot | None``——None 洞(卖出/上阵
     置 None 不移位)与 ``kind='empty'`` 同为空槽。槽位信息位已停用(Unit.slot
     不再承载):权威槽位 = 表下标,落位归一分支为恒等
     (保留函数形状供调用方零改动;非 unit kind 原样落槽)。
@@ -252,7 +252,7 @@ def trailblazer_row_identity(char_id: str, to_row: str,
     切目标排形态,faction 跟随首阵营)。返回 ``(新 char_id,首阵营或
     None)``;非开拓者/空名 → None(调用方保持原身份)。
 
-    消费面 = :func:`trailblazer_row_unit`(Unit 容器原生唯一载体),
+    消费面 = :func:`trailblazer_row_unit`(Unit 状态容器原生唯一载体),
     归一口唯一(design §3 不变量 5;swap 与 deploy_move 两上报均经
     :func:`trailblazer_row_unit` 同源,哨兵 =
     test_faction_derivation_locks 开拓者形态归一节)。"""
@@ -271,7 +271,7 @@ def trailblazer_row_identity(char_id: str, to_row: str,
 
 
 def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
-    """开拓者换排形态归一(Unit 容器原生版):char_id 切目标排形态;
+    """开拓者换排形态归一(Unit 状态容器原生版):char_id 切目标排形态;
     非开拓者原样返回(frozen replace 新构造)。"""
     from dataclasses import replace
     ident = trailblazer_row_identity(str(unit.char_id or ''), to_row)
@@ -285,7 +285,7 @@ def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
 # 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
 #
 # 台账值载体 :class:`PlaneNodeLedger` 住 kernel/cw_game_state.py(宿主 =
-# 容器非 Field 簿记 ``GameState.plane_node_sequences``);
+# 状态容器非 Field 簿记 ``GameState.plane_node_sequences``);
 # 本模块保留三访问函数(get_node_ledger / ledger_node_type /
 # ledger_update_plane)与 fill_boss_by_position——签名不变,消费面
 # (cw_vocab 转出口 / cw_equip_wear_plan 直 import / obs 与各画面 op)
@@ -293,10 +293,10 @@ def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
 
 
 def get_node_ledger(session: object) -> PlaneNodeLedger | None:
-    """取容器节点台账(session None → None,调用方跳过)。
+    """取状态容器节点台账(session None → None,调用方跳过)。
 
     宿主 = ``GameState.plane_node_sequences``(kernel/cw_game_state.py;
-    非 Field 簿记,产生者 = 画面 op 采集/重读写入端)。容器每局新建 =
+    非 Field 簿记,产生者 = 画面 op 采集/重读写入端)。状态容器每局新建 =
     台账天然清零,无惰性建面(缺省即空账)。读写全经本函数与
     :func:`ledger_node_type`,消费点禁直摸载体字段。
     """

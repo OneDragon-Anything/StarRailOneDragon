@@ -1,10 +1,10 @@
 """货币战争动作上报:穿装备(report_action_wear_equip_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
 
-**穿着即合成分支**(世界规则,语义正本 =
+**穿着即合成分支**(游戏规则,语义权威版本 =
 ``docs/game/currency_war/research/equipment_mechanics.md``「穿着即合成」:
 穿戴后该角色 worn 集内可合成的两件立即合成为进阶件,循环至无可合成,
 两两配方 = ``cw_synthesis.synthesize_target`` K8 闭合):穿戴落位与
@@ -20,7 +20,7 @@
 拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
 - owned 无该件 → ``wear_item_not_owned``(合法穿戴前置,漏 = 计划失效);
 - 目标槽位解析失败(越界/空槽/在位者与 char_name 不符 = 陈旧提案;
-  计划步恒戳物理槽位锚,定位序见 :func:`_locate_unit`)→
+  计划步恒戳物理槽位定位,定位序见 :func:`_locate_unit`)→
   ``wear_target_unit_missing``(front-only 回退步拖空槽 avatar = 游戏
   侧静默拒,上报如实拒);
 - 合成后仍超 ``WEAR_LIMIT`` → ``wear_over_cap_rejected``(上限按合成后
@@ -99,7 +99,7 @@ def _synthesis_convert(gs: GameState) -> Callable[[str], str] | None:
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     """定位穿戴目标单位。
 
-    定位序 = **物理槽位锚先行**:计划步恒戳 (row, slot)
+    定位序 = **物理槽位定位先行**:计划步恒戳 (row, slot)
     (``cw_equip_wear_plan`` M7 分配自 deployed 视图派生 / front-only
     回退步空槽序),且机械拖拽的真实落点 = 该槽位 avatar——账随拖点走。
     同名角色跨域在场(deployed + bench 各一份)时,名匹配 bench 先序会
@@ -150,7 +150,7 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
 
 def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                           unit: Unit, sig: ChannelSig) -> None:
-    """目标域整表重建写(容器视图 frozen 链,穿戴写 = 域整表重建;
+    """目标域整表重建写(状态容器视图 frozen 链,穿戴写 = 域整表重建;
     deployed 域 = 单字段视图整值替换)。"""
     if domain == 'bench':
         view = gs.bench.value
@@ -217,11 +217,11 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
-    # (tracked 第二账已停用:容器侧本函数
+    # (tracked 第二账已停用:状态容器侧本函数
     #  _write_mutated_domain 整值替换写已是单点,原「tracked deployed
     #  穿戴随动分支」无可同步;session 形参兼容保留。)
     # (事实事件广播已停用。)
-    # 合成事件发放腿(「合成装备时获得2次刷新」卡效果):穿着即合成的
+    # 合成事件发放条目(「合成装备时获得2次刷新」卡效果):穿着即合成的
     # 合成次数 = 输入件数 − 输出件数,>0 才查账——三拒绝分支在上方早退
     # (applied=False)不达此处,零合成零发放天然成立。惰性 import:效果
     # 账本模块头零包内 import 契约同族纪律,防反向拉起成环。

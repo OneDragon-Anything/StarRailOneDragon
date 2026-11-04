@@ -1,4 +1,4 @@
-"""骇入策划屏观察契约与上报(kernel 纯数据;正本 =
+"""骇入策划屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 左右两卡 OCR 桶 join(入口帧一次读)。
@@ -38,7 +38,7 @@ def report_screen_planner_obs(gs: GameState, obs: CwScreenPlannerObs, *,
                               sig: ChannelSig | None = None) -> None:
     """骇入策划屏观察上报:两卡选项写 ``planner_opts``。
 
-    写点锚 = cw_screen_yinlang.py::``CwScreenYinLang.observe``(观察 node;
+    写点定位 = cw_screen_yinlang.py::``CwScreenYinLang.observe``(观察 node;
     原写点恒写两卡 OCR 桶,无空门直写——空桶照写,防线逐位平移)。
     """
     if sig is None:

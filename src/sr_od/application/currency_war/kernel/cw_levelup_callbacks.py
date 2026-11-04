@@ -36,7 +36,7 @@ if TYPE_CHECKING:
         GameState,
     )
 
-#: spy 世界分支声明的下一画面档(备战;与旧上报口构造值同源,零变化)。
+#: spy 状态副本写入分支声明的下一画面档(备战;与旧上报口构造值同源,零变化)。
 _SPY_DECL_NEXT_SCREEN: str = '货币战争-备战'
 
 
@@ -63,7 +63,7 @@ def on_level_up_change(gs: GameState, old_level: int | None,
 
     三块连锁序(见模块头):信号置位(幂等,带来源代次戳 = 置位时点生效
     节点序位,节点边界清扫只清过期代次——节点推进时点源的新信号不被当
-    旧牌面清掉,迭代 2026-09-23-invest-effects-calc T-434)→ spy 世界分支
+    旧牌面清掉,迭代 2026-09-23-invest-effects-calc T-434)→ spy 状态副本写入分支
     声明入簿记队列(模拟器门)→ 节节高升 2★ 发放(持有判定 + 模拟器门,
     连跳按中间等级序列逐级,费用随各自等级)→ 升级窗口达成位记录
     (内部自判条目已登记 ∧ 未记录 ∧ 等级达标,零旁路条件安全)。
@@ -102,7 +102,7 @@ def on_level_up_change(gs: GameState, old_level: int | None,
                 next_screen=_SPY_DECL_NEXT_SCREEN,
                 trigger='spy_shop_refresh'))
     # 连锁②gift:连跳逐级(费用档随各自达成等级);live 未装配 = 零采样
-    # 零写,实机该角色由游戏引擎发放,bench 重观察自然吸收(在卷定谳)。
+    # 零写,实机该角色由游戏引擎发放,bench 重观察自然吸收(在卷已定案)。
     if level_up_gift_active(gs):
         from sr_od.application.currency_war.sim.cw_sim_ports import (
             sim_backend_installed,
@@ -113,14 +113,14 @@ def on_level_up_change(gs: GameState, old_level: int | None,
                 sig=_levelup_gift_sig(gs))
     # 连锁③锚:升级窗口达成位(结算时点记锚 = 跨级当拍生效位;xp-only
     # 帧无升格不进本调度器,迟到达纠偏仍由买经验上报尾与发放桥每拍复检
-    # 两既有挂点承载)。
+    # 两既有插入位置承载)。
     _record_lv8_window_start(gs)
 
 
 def take_levelup_world_decl(gs: GameState) -> WorldDecl | None:
     """声明簿记队列取走头部(消费口一:买经验上报尾读取;取走即清,
     None = 空)。余项(防御形态:同栈多跨级双声明时上报只取走本动作
-    自己的那笔)留待模拟器 advance 尾统一排空,消费点纪律见容器槽注。"""
+    自己的那笔)留待模拟器 advance 尾统一排空,消费点纪律见状态容器槽注。"""
     queue = gs.pending_levelup_world_decls
     if not queue:
         return None

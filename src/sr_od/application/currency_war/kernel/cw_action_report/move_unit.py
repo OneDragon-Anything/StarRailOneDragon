@@ -1,12 +1,12 @@
 """货币战争动作上报:统一拖动(report_action_move_unit_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察写
-端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察写
+端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring。
 
 统一拖动(部署统一批,用户指令 2026-10-30):四元组全域移动,
-容器写侧按「源域 × 目标域 × 目标槽占用态」写分支(推演矩阵 =
+字段写侧按「源域 × 目标域 × 目标槽占用态」写分支(推演矩阵 =
 unified-deploy-order 详设 §4 动作词表行):
 - bench→场上空槽 = 直落(锁校验 + 银狼变换窗 + 开拓者形态);
 - bench→场上被占槽 = 交换(被占者回 bench 源槽;锁校验辖上场者);
@@ -34,7 +34,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 #: 变换窗触发单位(银狼LV.999,3★):拖上场变下一费用档 1★
 #: (design §2.1A;名单与星级 = 定案口径,机制单一源 =
 #: docs/game/gameplay/currency_war.md「银狼LV.999 升星升费」条;
-#: 常量宿主原 = deploy_move 上报模块,随其戊批收编删除迁入——
+#: 常量宿主原 = deploy_move 上报模块,随其戊批纳入统一管理删除迁入——
 #: 现役唯一消费者 = 本模块上场分支)。
 _TRANSFORM_CHAR_ID: str = '银狼LV.999'
 _TRANSFORM_STAR: int = 3
@@ -45,7 +45,7 @@ def _slot_of(bench_slots: list, front_slots: list, back_slots: list,
              domain: str, slot: int) -> tuple[list, int] | None:
     """域/槽(基随域)→ (工作列表, 0 基下标) 换算;非法域/越界 → None。
 
-    front/back 基 1(排内画面槽号),bench 基 0(容器槽位表下标)——
+    front/back 基 1(排内画面槽号),bench 基 0(状态容器槽位表下标)——
     单坐标系声明见 ``CwActionMoveUnitParam``。"""
     if domain == 'bench':
         if not 0 <= slot < len(bench_slots):
@@ -64,16 +64,16 @@ def _slot_of(bench_slots: list, front_slots: list, back_slots: list,
 
 def report_action_move_unit_param(gs: GameState, param: Any,
                                   sig: ChannelSig) -> LogicOutcome:
-    """统一拖动上报:四元组载荷按推演矩阵写 bench/deployed 两容器
+    """统一拖动上报:四元组载荷按推演矩阵写 bench/deployed 两状态容器
     (一次写 = 一次完整语义变更,两域各单字段整值替换)。
 
     拖拽语义 = 游戏规则:目标槽空 = 放置,有角色 = 交换——执行层
-    零判效,本函数按同一规则推演容器写;源槽空/域外/槽越界/expect
+    零判效,本函数按同一规则推演字段写;源槽空/域外/槽越界/expect
     失配 = applied=False 零写(陈旧提案)。上场分支(scr=bench ∧
     dst=场上,含交换挤出形态)带三守卫:唯一性键(上场者与场上现存
     无同名,``board_unique_key``)/ 上场锁(``deploy_lock_block_
     reason``)/ 银狼变换窗(落场写下一费用档 1★ + 档行 + 级联,与
-    旧 deploy_move 上报同核,随其戊批收编并入本核)。场上→场上纯换位与
+    旧 deploy_move 上报同核,随其戊批纳入统一管理并入本核)。场上→场上纯换位与
     下场/席内挪位无锁无变换(开拓者形态归一除外)。
 
     bench/deployed 写后 board 羁绊计数随行写端挂钩重算(禁手写)。
@@ -210,7 +210,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
         if _lock_reason is not None:
             return LogicOutcome(applied=False, reason=_lock_reason)
 
-    # —— 容器写推演(按源域 × 目标域全分支)——
+    # —— 字段写推演(按源域 × 目标域全分支)——
     transform = False
     _tier_before = 0
     if src_domain == 'bench' and dst_domain in ('front', 'back'):

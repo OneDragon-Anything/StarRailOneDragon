@@ -5,17 +5,17 @@
 ``CwActionPickEncounterOp`` 确认点击后立即写 ``chosen_encounter``——
 写端位置 = op-layer §2.2 动作事实边界(遭遇例外改判,
 先例 = 投资域 chosen 迁获得链的显式收窄条款;zero_writes 零写族语义
-不容容器写函数留在,照 pick_supply 升格先例迁具名模块)。
+不容字段写函数留在,照 pick_supply 升格先例迁具名模块)。
 
-值组装 = 容器 ``encounter`` payload 槽 ``options[param.idx]``(与策略
+值组装 = 状态容器 ``encounter`` payload 槽 ``options[param.idx]``(与策略
 决策同源,param 零扩字段);payload 离屏 / idx 越界 = 观察层失约形态,
 留存证据不写(None 保持「无记录」,防盲选固化假值——原画面 op 守卫口径
-平移)。**暂态假值窗申报**:确认未生效时容器已持发出意图值,由外循环
+平移)。**暂态假值窗申报**:确认未生效时状态容器已持发出意图值,由外循环
 重派覆盖自愈;奖励兑现回调对该窗的消费防线 = 兑现后清 chosen(单次
 消费,见 ``cw_encounter_selection.claim_encounter_reward``)。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
-__init__`` docstring)。本包 → 容器单向依赖。
+__init__`` docstring)。本包 → 状态容器单向依赖。
 
 **后果声明**(动作后果声明化迭代,详设 world-decl.md §2 表 #4):applied
 出口构造 ``WorldDecl``(trigger = ``pick_encounter``;``next_screen`` =
@@ -23,7 +23,7 @@ __init__`` docstring)。本包 → 容器单向依赖。
 弹出商店,遭遇战由出战动作开打(流程模型单一源 =
 ``docs/game/currency_war/research/screen_flow_timing.md`` 口述流程模型
 节,#14);旧「选档落地即该遭遇战结算」语义(battle_resolve 直达)随
-sim 世界模型呈现改造废止),
+sim 状态副本模型呈现改造废止),
 转移事件广播随本动作单轨切换摘除。
 """
 from __future__ import annotations

@@ -12,7 +12,7 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
 
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
 
-- 生产武装点 = ``CurrencyWarApp.__init__`` 调 ``telemetry.install_exit_hooks()``
+- 生产装配接入点 = ``CurrencyWarApp.__init__`` 调 ``telemetry.install_exit_hooks()``
   (幂等)——telemetry 侧把真实现写进本模块槽位;
 - 缺省(未注入)= run_id 返空串、落账 no-op;
   测试需要真实落账时显式调 ``install_exit_hooks``(或 monkeypatch 本模块槽位)。
@@ -93,7 +93,7 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
                      choice: dict[str, Any] | None = None) -> None:
     """旧 exogenous 流出口(已停用 no-op 桩)。
 
-    保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接线,本文件
+    保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接入调用,本文件
     此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿待裁决
     (retirement.md §2 exogenous 行 §5-7 挂起)——待裁决落地前本桩恒
     no-op,既不断在飞调用方,也零旧流产出。待裁决裁「路由停用」时随其

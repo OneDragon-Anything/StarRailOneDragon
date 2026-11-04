@@ -17,7 +17,7 @@ settlement 源 hp_confidence=1.0)**。
 由 hp 下行拒信/复现确认通道既有防线兜住,本表不碰判读。
 
 词缀域写尾 HP 先验跟随回调(:func:`on_enemy_affixes_logic_write`)住本
-模块 = 档表与现算函数的域归属(挂点 = ``cw_game_state._write_logic_frame``
+模块 = 档表与现算函数的域归属(插入位置 = ``cw_game_state._write_logic_frame``
 enemy_affixes 分支,logic/logic_rand 两通道同经;观察写不经该宿主 =
 零回调,deployed 写尾回调级联同契约)。T-45 敌后破坏删除分支的 HP 跟随
 载体;姊妹卡退化(策略卡)同宿主复用,其 mid-run 获得态由回调内
@@ -96,10 +96,10 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
     迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.3 裁决点 a,2026-10-18
     用户方案「词缀更新回调」+ 对抗轮 2 N1/N2 修法甲落定形态)。
 
-    挂点 = ``cw_game_state._write_logic_frame`` enemy_affixes 分支尾
+    插入位置 = ``cw_game_state._write_logic_frame`` enemy_affixes 分支尾
     (logic/logic_rand 两逻辑通道同经;**observe 覆盖不经该宿主 = 零回调**
     ——回归 deployed 写尾「观察写零回调」契约,对抗轮 2 N1 改判:live
-    先验每读失败帧从当前名单懒算落储 + 首备战帧 hp 真读先于委派挂点,
+    先验每读失败帧从当前名单懒算落储 + 首备战帧 hp 真读先于委派插入位置,
     observe 触发反而把开局先验覆写到新鲜真值上)。数据流 = deployed
     写尾级联同构:按名单 diff 出消失词缀 → 命中 :data:`_AFFIX_HP_DELTA`
     → 以删除后词缀表经 :func:`opening_hp_prior` 现算 → 经
@@ -128,7 +128,7 @@ def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
     按「词缀失效局开局双值」判读。
 
     Args:
-        gs: 局容器(写目标 = ``gs.hp``,先验输入 = 职级/数值难度现值)。
+        gs: 局状态容器(写目标 = ``gs.hp``,先验输入 = 职级/数值难度现值)。
         old_names: 写前词缀名单(种子态 None)。
         new_names: 写后词缀名单(删除分支 = 剩余列表)。
         source: 宿主写 produced_by(契约对称形参,归因走写台账 evidence,

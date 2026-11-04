@@ -1,4 +1,4 @@
-"""盛会之星屏观察契约与上报(kernel 纯数据;正本 =
+"""盛会之星屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 巨星 overlay 门判定 + 候选(懒读语义,字段注写明)。
@@ -38,12 +38,12 @@ def report_screen_megastar_obs(gs: GameState, obs: CwScreenMegastarObs, *,
                                sig: ChannelSig | None = None) -> None:
     """盛会之星屏观察上报:候选写 ``megastar_opts``。
 
-    写点锚 = cw_screen_megastar.py::``CwScreenMegastar.observe``(观察
+    写点定位 = cw_screen_megastar.py::``CwScreenMegastar.observe``(观察
     node 摄入)。懒读保真:obs.options 仅「本访问将选择」时由观察
     侧填充,空 = 本访问未读候选,不写(原写点「读得才写」闸逐位平移);
     ``chosen_megastar`` 留在选择点(动作事实边界)。
     选项含 ``xy``(观察期快照,点击坐标 1080p 游戏空间;选择坐标观察
-    上报 = op-layer.md §1.1,同一次观察与名字一并入容器)——本上报整
+    上报 = op-layer.md §1.1,同一次观察与名字一并入状态容器)——本上报整
     载荷直写零字段剥离,动作 op 按 idx 取 ``megastar_opts[idx].xy`` 用。
     """
     if sig is None:

@@ -1,9 +1,9 @@
 """货币战争动作上报:买牌(report_action_buy_card_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在原位 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在原位 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     ((name, star) 计数)+ 免费购买闸(降本增效 uses 余量,按张计免
     min(k, 余量) 张,全免帧零金写)+ 购买翻星(策略卡购买翻星注册表落位星级判定,
     翻转只改 Unit 构造星,payload 匹配与 on_buy 持购买原星;applied 后
-    置闩 best-effort)+ 升星分支整表覆盖(买前快照三件组基点,快照在
+    置一次性标志位 best-effort)+ 升星分支整表覆盖(买前快照三件组基点,快照在
     本函数内第一时间取——原落地门/两驱动器三处抄写并入单点)+ 合并
     升星触发发放收尾(级联采集的升星事实交触发检查,升星分支写毕后
     best-effort 发火,触发分支异常 log 不阻塞上报主链)。
@@ -47,9 +47,9 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     理想执行自算(简单分支 1,满栏从应用机器出)。语义由
     test_gain_chain(卖/换上报 v2 族契约节)/ 测试 M1 钉住。
 
-    P1 容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
-    槽序(元素即容器 BenchSlot)、deployed 工作副本 = 行域下标派生表
-    (Unit,§2.1);合成引擎容器原生直写,零中间形。元素
+    P1 状态容器原生(benchchar-retirement §3.2):bench 工作副本 = BenchView
+    槽序(元素即状态容器 BenchSlot)、deployed 工作副本 = 行域下标派生表
+    (Unit,§2.1);合成引擎状态容器原生直写,零中间形。元素
     frozen → 浅拷贝列表即快照(推演以 replace 新构造,零别名风险)。"""
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -77,7 +77,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     )
 
     # 买前快照两件组(升星分支比较基点;必须在简单分支写之前取——基点
-    # 误取买后容器会重复落位,shop 视图缺失会漏满栏合成)。bench 未观察
+    # 误取买后状态容器会重复落位,shop 视图缺失会漏满栏合成)。bench 未观察
     # = 缺省形态 [None]×9(全空可落位,非满栏拒)。
     _pre_view = gs.bench.value
     pre_bench = (list(_pre_view.slots) if _pre_view is not None
@@ -92,7 +92,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                        evidence=evidence, sig=_grp_sig)
 
     def _legacy_card(c: Any) -> _LegacyShopCard:
-        """容器牌 → 平移机器入参 Legacy 牌(仅 (name, star) 语义位消费)。"""
+        """状态容器牌 → 平移机器入参 Legacy 牌(仅 (name, star) 语义位消费)。"""
         return _LegacyShopCard(
             x=0,
             faction=str(getattr(c, 'faction', '') or '?'),
@@ -107,7 +107,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     # —— 购买翻星落位判定(「购买的下1个X费角色立刻升到N星」族,注册表
     #    = STRATEGY_BUY_STAR_FLIP_GRANTS,首例四费晋升):落位星级在 Unit
     #    构造前判定一次——「立刻」= 翻星先于合成级联,翻转件以目标星级
-    #    身份参与合成判定(家族判读申报制非定谳,登记表区块注释同句申
+    #    身份参与合成判定(家族判读申报制非已定案,登记表区块注释同句申
     #    报)。翻转只改本处落位星:payload 移除匹配与 on_buy 回调持购买
     #    原星(交易对象与效果账本按购买面计,错位 = 商店按目标星匹配
     #    移除 0 张)。目标星级现役恒 2 = 表值镜像(表域 {2, 3} 预留族扩
@@ -155,7 +155,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     # —— 免费购买闸(降本增效「接下来6次购买角色是免费的」):名字直查
     #    同形(函数内惰性取,守 kernel 反向模块级零 import 契约;免费购买
     #    族现役单成员)。购前查在场条目余量 → 免 min(k, 余量) 张、余张照
-    #    付(按张计:k 张 = k 次,on_buy 购买计数判例同判据);上报时递减
+    #    付(按张计:k 张 = k 次,on_buy 购买计数先例同判据);上报时递减
     #    (非验证落地后,免战牌先例),拒买早退不触本段(序位在上方拒买
     #    return 之后 = 零虚耗余量)。全免帧零金写(扣 0 不落行);金未读帧
     #    递减照常(游戏侧余量消耗与账面观察无关),金写照跳。——
@@ -228,10 +228,10 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             _log.warning(f'[cw-buy] 合并升星触发发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
-        # —— 星星相印合成金腿(角色 3 星合成事件条件金):事件源 = 本函数
+        # —— 星星相印合成金条目(角色 3 星合成事件条件金):事件源 = 本函数
         #    既有 merge_facts 采集复用,过滤 3 星产物计数——满栏分支
         #    on_merge 出口已通(T-26),与 pre/after 星级差分形行为等价,
-        #    采集形免二次推演、与 env 腿共用单一事件源。函数内自门 sim
+        #    采集形免二次推演、与 env 条目共用单一事件源。函数内自门 sim
         #    装配(live 零写);sim 局金位刚经 proj_buy_gold logic 写,
         #    发放 observe 相邻异通道覆盖落 sim:engine 抑制分支 = 记账路径
         #    (T-108 同拍相邻写先例,发放函数 docstring 申报)。best-effort:
@@ -243,10 +243,10 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
             _log.warning(f'[cw-buy] 合成金腿发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
-        # —— 策略卡合成触发发放腿(「合成2星2费角色时获得砂金」族,
+        # —— 策略卡合成触发发放条目(「合成2星2费角色时获得砂金」族,
         #    注册表 = STRATEGY_MERGE_GRANTS):事件源 = 本函数既有
         #    merge_facts 采集复用,判据 = 产物星级+费用双匹配。函数内
-        #    自门 sim 装配(live 零写);与上方两腿独立 try 互不短路。
+        #    自门 sim 装配(live 零写);与上方两条效果条目独立 try 互不短路。
         #    best-effort:发放分支异常不阻塞上报主链。——
         try:
             from sr_od.application.currency_war.kernel.cw_gain_chain import (
@@ -266,14 +266,14 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     except Exception as e:  # noqa: BLE001  记录面失败不阻塞
         _log.warning(f'[cw-buy] 效果账本 on_buy 回调失败(不阻塞): {e}')
 
-    # —— 首购经验腿(「获得本投资策略后，首次购买X费角色时，获得Y经验」
+    # —— 首购经验条目(「获得本投资策略后，首次购买X费角色时，获得Y经验」
     #    族,首例 = 孪生素数):购买事实全毕后判据一次(持卡 ∧ 费用桶域
-    #    ∧ 一次性闩),费用取数 = card_cost 与本函数扣价同源零新增链。
-    #    函数内自门 sim 装配(live 零写,经验条观察链覆盖);闩先于世界写
+    #    ∧ 一次性一次性标志位),费用取数 = card_cost 与本函数扣价同源零新增链。
+    #    函数内自门 sim 装配(live 零写,经验条观察链覆盖);一次性标志位先于状态副本写
     #    (at-most-once,失败语义见触发函数 docstring)。一击多买 k>1 同
     #    费用桶恒单发(卡面「首次」语义,与上方 on_buy 计 k 次刻意分叉,
     #    勿照抄 k)。best-effort:发放分支异常不阻塞上报主链(上方 on_buy
-    #    回调分支同纪律;下方专家触发腿为零吞错状态写,分层不同勿混)。
+    #    回调分支同纪律;下方专家触发条目为零吞错状态写,分层不同勿混)。
     #    拒买(applied=False 早退)不可达本段。kernel 反向模块级零 import
     #    契约:函数内惰性取(上方惰性块同款)。——
     try:
@@ -285,19 +285,19 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
         _log.warning(f'[cw-buy] 首购经验腿发放分支失败(不阻塞): {e}')
 
-    # —— 购买翻星消费闩置位(注册表 = STRATEGY_BUY_STAR_FLIP_GRANTS):
+    # —— 购买翻星消费一次性标志位置位(注册表 = STRATEGY_BUY_STAR_FLIP_GRANTS):
     #    翻转事实在上方落位分支确立,此处封账「下1个」消耗(applied 后
-    #    尾段,消耗 = 未闩 ∧ 购买费用匹配,无星级轴——已达标星级购买
-    #    翻转 no-op 照常消耗,置闩函数 docstring 申报分轴)。满栏合成买
-    #    路径翻转面不建模(落位分支不翻转)而闩照置 = 购买事件消耗语义
-    #    一致面,低频边界留证。best-effort:置闩分支异常不阻塞上报主链
-    #    (上方触发腿同纪律;at-most-once 失败语义见置闩函数 docstring)。
+    #    尾段,消耗 = 未落一次性标志位 ∧ 购买费用匹配,无星级轴——已达标星级购买
+    #    翻转 no-op 照常消耗,置一次性标志位函数 docstring 申报分轴)。满栏合成买
+    #    路径翻转面不建模(落位分支不翻转)而一次性标志位照置 = 购买事件消耗语义
+    #    一致面,低频边界留证。best-effort:置一次性标志位分支异常不阻塞上报主链
+    #    (上方触发条目同纪律;at-most-once 失败语义见置一次性标志位函数 docstring)。
     #    拒买(applied=False 早退)不可达本段。kernel 反向模块级零 import
     #    契约:函数内惰性取(顶部惰性块同款)。——
     try:
         mark_strategy_buy_star_flip_consumed(gs, cost=card_cost(card),
                                              sig=_grp_sig)
-    except Exception as e:  # noqa: BLE001  置闩分支失败不阻塞(留 log)
+    except Exception as e:  # noqa: BLE001  置一次性标志位分支失败不阻塞(留 log)
         _log.warning(f'[cw-buy] 购买翻星置闩分支失败(不阻塞): {e}')
 
     # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
@@ -311,7 +311,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
     #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
     #    §2.3):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
-    #    获得渠道(3 费档基础池恒可刷),挂点与 on_buy 回调分支同位
+    #    获得渠道(3 费档基础池恒可刷),插入位置与 on_buy 回调分支同位
     #    (简单分支 + 合成连锁 + 升星分支全毕后,拒买 applied=False 早退
     #    不可达本段);rand=False = 购买全链确定面。状态写沿主链零吞错
     #    (判据内含条件写,与上方 on_buy 记录面 best-effort 分层——记录
@@ -320,5 +320,5 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
     expert_conditional_trigger(gs, name, rand=False, sig=_grp_sig,
                                evidence='buy_card:expert_trigger')
     # (事实事件广播已停用:sim
-    #  呈现/登记经容器值回调与问询时点呈现检查承载。)
+    #  呈现/登记经状态容器值回调与问询时点呈现检查承载。)
     return LogicOutcome(applied=True, bought_count=k)

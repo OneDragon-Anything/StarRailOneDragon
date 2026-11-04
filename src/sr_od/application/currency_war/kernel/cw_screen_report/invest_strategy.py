@@ -1,11 +1,11 @@
-"""投资策略屏观察契约与上报(kernel 纯数据;正本 =
+"""投资策略屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口锚命中与稳定窗 + 一次读全(逐卡读数 (卡名, x, y) + 逐卡
 刷新剩余次数配对)。report 摄入点 = operations/cw_screen/
 cw_screen_invest_strategy.py::``CwScreenInvestStrategy.observe``(观察
 node);适用范围边界:选择事实(active_strategies)经动作落地链写(动作 op
-立即自上报 → gain_invest_strategy,正本 = gain-chain.md);``strategy_
+立即自上报 → gain_invest_strategy,权威版本 = gain-chain.md);``strategy_
 refresh_left`` 观察写端在本 report(读缺键跳写)。
 """
 from __future__ import annotations
@@ -55,10 +55,10 @@ def report_screen_invest_strategy_obs(gs: GameState,
     剩余次数合并写 ``strategy_refresh_left``(观察写端;读缺键跳写、
     已观察键覆盖——屏上数字即真值,用户裁定 2026-09-21)。
 
-    写点锚 = cw_screen_invest_strategy.py::``CwScreenInvestStrategy.
+    写点定位 = cw_screen_invest_strategy.py::``CwScreenInvestStrategy.
     observe``(观察 node 摄入)。names 空 = OCR 未读得,不写(原写点
     「读得才写」闸逐位平移)。刷新键 = ``normalize_invest_name`` 归一
-    (容器字段键口径申报,免双坐标系换算)。
+    (状态容器字段键口径申报,免双坐标系换算)。
     """
     if sig is None:
         sig = ChannelSig(family='logic_action',

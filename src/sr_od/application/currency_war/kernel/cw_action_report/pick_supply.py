@@ -1,6 +1,6 @@
 """货币战争动作上报:补给节点选择(report_action_pick_supply_param)。
 
-**即时单相上报**(行为正本 = `flow/action_ops.md` §4.5 PickSupply 行;
+**即时单相上报**(行为权威版本 = `flow/action_ops.md` §4.5 PickSupply 行;
 用户裁定 2026-09-21 = action_ops.md §1 增补 2:动作 op
 点完立即上报完整结果):``CwActionPickSupplyOp`` 确认点击后一口写全部
 效果逻辑态,无发出/落地两相、无证据标志。写序:
@@ -38,15 +38,15 @@
 语义随「确认即推节点」废止),转移事件
 广播随本动作单轨切换摘除。
 
-**选卡时点检查挂点(R-choice)**:三个 applied 出口前统一调
+**选卡时点检查插入位置(R-choice)**:三个 applied 出口前统一调
 ``cw_effect_inventory.check_strategy_take_all_supply``(全都要族
-「下 N 个补给阶段选择后」发放腿,银配额 1/金配额 2)——选择确认动作的
-kernel 单口,live 真选/兜底两态均经此;选择事件即耗 1 格配额(事件消耗制,
+「下 N 个补给阶段选择后」发放条目,银配额 1/金配额 2)——选择确认动作的
+kernel 唯一入口,live 真选/兜底两态均经此;选择事件即耗 1 格配额(事件消耗制,
 含内容全未知兜底轮),发放源 = 场字段 ``unchosen_supply``(检查函数内读,
-真选分支确认窗已同窗写入本阶段快照)。未持卡局该检查零写零闩,全链零变化。
+真选分支确认窗已同窗写入本阶段快照)。未持卡局该检查零写零一次性标志位,全链零变化。
 
 动作上报函数族拆分件(每动作一文件;族规约 = 包 ``cw_action_report.
-__init__`` docstring)。本包 → 容器单向依赖。
+__init__`` docstring)。本包 → 状态容器单向依赖。
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ _SUPPLY_GRANT_STAR: int = 1
 #: advance 分派表键集,值零新词沿用现役动作名)。
 _DECL_TRIGGER: str = 'pick_supply'
 
-#: 补给声明(宝钻写归 backend ``_on_supply_picked`` 读容器现值,本上报
+#: 补给声明(宝钻写归 backend ``_on_supply_picked`` 读状态容器现值,本上报
 #: 零写;next_screen 权威 = 流程模型 #14——选完关闭 overlay 回备战并
 #: 自动弹店,稳态 = 商店档)。
 _DECL: WorldDecl = WorldDecl(next_screen=SCREEN_SHOP_PANEL,
@@ -114,7 +114,7 @@ def report_action_pick_supply_param(gs: GameState, param: Any,
                      actual='unresolved', evidence='pick_supply_landing',
                      sig=sig, kind='pick_supply_content_unresolved')
         log.info('[cw-pick-supply] 上报(内容未知): %s', '; '.join(steps))
-        # 全都要族 R-choice 挂点(三出口统一,选择事件即耗 1 格——本兜底
+        # 全都要族 R-choice 插入位置(三出口统一,选择事件即耗 1 格——本兜底
         # 出口亦然,源不可记录时零发放仅耗格)。
         check_strategy_take_all_supply(gs, sig)
         return LogicOutcome(applied=True, reason='content_unresolved',

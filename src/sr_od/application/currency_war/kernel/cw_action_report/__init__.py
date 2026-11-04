@@ -1,18 +1,18 @@
-"""货币战争动作上报函数族包(每动作一个文件,专覆盖该动作的容器
+"""货币战争动作上报函数族包(每动作一个文件,专覆盖该动作的状态容器
 上报语义;2026-09-18 用户裁定自 cw_game_state 拆出)。
 
 规约:词表类 ``CwActionXxxParam`` 恰有一个具名上报函数
 ``report_action_<snake>_param``(snake = 去前缀/后缀转下划线,
 机械可推导;完备测试 = sr-od-test test_action_report,
 经包级属性解析)。文件布局:
-- 有容器写语义的动作 = 一动作一文件(文件名 = snake);
-- 工具原子七类 = ``tool_use``(机械半同构一族一文件,容器写形态);
+- 有字段写语义的动作 = 一动作一文件(文件名 = snake);
+- 工具原子七类 = ``tool_use``(机械半同构一族一文件,字段写形态);
 - 零写动作族 = ``zero_writes``(策略统一,不逐类开文件);
 - 刷新上报 = refresh_shop(计数分支:付费/全量两计数经效果账本
-  ``record_refresh`` 单口,免费分支 = 容器字段 free_refresh_left 判定扣减,
+  ``record_refresh`` 唯一入口,免费分支 = 状态容器字段 free_refresh_left 判定扣减,
   payload 随机态 = kernel 采样器 write_logic_rand)。
 
-依赖方向:本包 → cw_game_state(容器/渠道签名/值类型/读口),
+依赖方向:本包 → cw_game_state(状态容器/渠道签名/值类型/读口),
 反向模块级零 import(懒加载惯例同 kernel 既有纪律)。
 ``__getattr__`` = 命名规约 lazy 解析(模块名 = snake;未命中依次落
 ``tool_use`` / ``zero_writes`` 族模块),包级直取合法;生产 op 直调面
@@ -25,18 +25,18 @@
 # 转 snake,机械可推导(完备测试遍历 CW_ACTION_TYPES 逐类断言函数在场)。
 # 消费面 = 实机动作 op(组装时已知自身类型,直调本函数)与商店序列驱动器
 # (回放/既有序列测试消费面)直调。**禁新增按类型聚合的转移函数**——语义
-# 全部住本函数族,现无任何聚合分派点(正本口径 =
+# 全部住本函数族,现无任何聚合分派点(权威版本口径 =
 # game_state/logic-updates/README.md 总则 1)。
 #
 # 双域分支统一申报(摊平批):原商店分支(apply_shop_action_logic 分支)与备战分支
 # (apply_prep_action_logic 分支)为同一动作语义的历史两份,本函数族合一:
-# - 容器写统一**原生 BenchSlot 形态**(legacy roundtrip 丢 box/tome kind 细分,
+# - 字段写统一**原生 BenchSlot 形态**(legacy roundtrip 丢 box/tome kind 细分,
 #   原 prep 分支注释在案);cleared 槽 = kind 'empty';
-# - 溢出入位分支 = 容器状态条件(overflow_warning 在场),域无关携带;
+# - 溢出入位分支 = 状态容器状态条件(overflow_warning 在场),域无关携带;
 # - 装备回收(C6 装备守恒)统一携带——原备战域缺口(原由执行侧
 #   apply_op_effect SellDeployed 分支单边承担),op 自上报后单点化;
 # - expect 代际校验统一携带(live 提案 expect 恒 '' = 零行为);
-# - 出参统一 LogicOutcome(拒绝 = applied=False + reason + 零容器写;
+# - 出参统一 LogicOutcome(拒绝 = applied=False + reason + 零字段写;
 #   live 调用方可忽略出参,零行为)。
 # 域级跳写纪律不变:gold/xp/level 未读(None)该域跳写,值留观察覆盖。
 
@@ -52,7 +52,7 @@ _TOOL_USE_MODULE = 'tool_use'
 # (sim 统一迭代 3.4 运行器装配缝;偏差申报的注入点归属。
 #  实机缺省 None = 采样未播种口径零变化——上报函数 ``rng=None`` 回退
 #  自掷随机(采样是猜测);sim 装配后由运行器经本槽注入流键 rng
-#  (采样即世界真值,全程确定性)。先例 = 事实事件槽同款
+#  (采样即状态副本真值,全程确定性)。先例 = 事实事件槽同款
 #「模块级槽 + 缺省关 + 装配点显式接通」。)
 
 _ACTION_RNG_PROVIDER: Callable[[str], random.Random] | None = None

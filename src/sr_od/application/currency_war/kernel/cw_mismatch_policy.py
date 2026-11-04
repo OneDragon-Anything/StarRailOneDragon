@@ -1,6 +1,6 @@
 """统一观察对账·失配处置策略(豁免注册表 + 失配告警钩子槽)。
 
-**正本指针** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``
+**权威版本指针** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``
 (观察对账与失配告警节)。
 
 失配 = ``GameState.observe()`` 观察覆盖 logic 值不一致(逻辑态被实读证伪
@@ -41,7 +41,7 @@ class ExemptEntry:
       建档名,通配按画面走注册表 ``('*' , field)`` 键,条目内不写 '*'
       ——按画面治理的粒度由键结构保证,条目内通配会把「买了没扣钱」类
       真失败一并吞掉;
-    - ``field`` = 容器字段名(GameState dataclass 字段,如 'gold');
+    - ``field`` = 状态容器字段名(GameState dataclass 字段,如 'gold');
     - ``logic_evidence`` = 逻辑侧写端 evidence **前缀**(:data:`EXEMPT_ANY`
       = 不限写端)。同字段内分流失配成因——例「刷新执行写下的金值与实读
       不合」按写端前缀豁免,不波及同字段购买写端(真点击落空照停);
@@ -106,7 +106,7 @@ def lookup_mismatch_exempt(screen: str | None, field_name: str,
       对 None 恒不中,禁把「无注记」当任意前缀)。
 
     :param screen: 观察侧 sig.screen(可为 None);
-    :param field_name: 容器字段名;
+    :param field_name: 状态容器字段名;
     :param logic_evidence: 逻辑侧 ``Field.evidence``(可为 None)。
     """
     buckets: tuple[tuple[str, str], ...] = (

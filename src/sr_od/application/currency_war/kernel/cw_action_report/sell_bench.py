@@ -1,9 +1,9 @@
 """货币战争动作上报:卖备战席角色(report_action_sell_bench_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 """
 
 from __future__ import annotations
@@ -27,15 +27,15 @@ def report_action_sell_bench_param(gs: GameState, param: Any,
                                    sig: ChannelSig) -> LogicOutcome:
     """卖备战席上报:bench 该槽置 empty + gold +退款 + 装备回收
     (C6 守恒)+ 溢出分支(overflow_warning 在场时腾出槽当帧记溢出件入位,
-    容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入带名
+    状态容器状态条件域无关;身份两分 = 角色入 unit 槽件 / 占席道具入带名
     槽件——``BenchSlot(kind=BENCH_ITEM_KINDS[名], item=名)`` 查映射编译
     类别,判据 = ``cw_investments.BENCH_ITEM_NAMES`` 词表守卫 +
     ``BENCH_ITEM_KINDS`` 映射单一源;
-    3.2 单账化后容器 bench 即唯一账,原 tracked 对称吸收分支停用)。
+    3.2 单账化后状态容器 bench 即唯一账,原 tracked 对称吸收分支停用)。
 
     槽位空/占位件非 unit/越界 = 陈旧提案,applied=False 零写(等观察
     覆盖);expect 非空且名不符 = stale_proposal 拒绝(live 提案恒 ''
-    零行为)。退款锚 = sell_refund(star, bench_char_cost),与 simulate
+    零行为)。退款基准 = sell_refund(star, bench_char_cost),与 simulate
     卖出分支同式单一源。
     """
     _validate_sig(sig, ('logic_action',))

@@ -12,7 +12,7 @@
 
 部署差分在途谓词(``deploy_pending_fn`` 注入;部署统一批丁换语义,原
 ``has_deployable`` 七桶判空退役——unified-deploy-order §4 发射抑制谓词
-行):语义 = 统一部署搜索定型 + 差分执行器对当前容器 **diff 非空**
+行):语义 = 统一部署搜索定型 + 差分执行器对当前状态容器 **diff 非空**
 (还有部署动作在途 → 质量推迟帧让部署收敛);注入实现在策略层
 deploy_plan(``launch_deploy_pending`` 族,含推判重放的虚拟面板路径,
 kernel 层禁 strategies 直引的依赖倒置契约同 line_members)。
@@ -71,7 +71,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
       的件数——阵容视图 = 核心∪弹性羁绊(cw_comps.all_factions,
       口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
       未注册/未识别名按线外计(fail-closed:支撑不认)。
-    - ``occupied`` = 容器占用数(占用判定 = 元素非 None 计 1;P4 容器形,
+    - ``occupied`` = 状态容器占用数(占用判定 = 元素非 None 计 1;P4 状态容器形,
       行域本身即紧凑占用序,含未识别占位单位)。支撑计数 ≤ 占用数恒成立,
       判据下限取该平凡上界 ⇒
       ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。
@@ -176,7 +176,7 @@ def readiness_launch_decision(gs: GameState, comp: Comp | None,
 # (G1 准入预估 launch_admission_report(victim 三元:board_full/bench_
 #  core_waiting/victim_missing)与 victim 资格单一源 offtarget_sell_allowed/
 #  protect_names_of、部署围栏 DEPLOY_FENCE(振荡熔断份)已随部署统一批
-#  丁收编删除:统一部署搜索下板满帧 bench core 经交换交互上场,「无合格
+#  丁纳入统一管理删除:统一部署搜索下板满帧 bench core 经交换交互上场,「无合格
 #  victim → 出战无腾位」形态结构性不存在,消费位(cw_loop 达标臂 G1
 #  预估块)同批删除——unified-deploy-order §2.7/§4;部署在途观测改由
 #  质量维 deploy_pending 承载。)

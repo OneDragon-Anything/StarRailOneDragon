@@ -1,4 +1,4 @@
-"""位面过渡屏观察契约与上报(kernel 纯数据;正本 =
+"""位面过渡屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 提示门判定 + 底部全亮行读数构造的链值(行读数与 TokenCell
@@ -40,7 +40,7 @@ def report_screen_plane_transition_obs(gs: GameState,
                                        sig: ChannelSig | None = None) -> None:
     """位面过渡屏观察上报:链观察写 ``node_path``/``node_path_baseline``。
 
-    写点锚 = cw_screen_plane_transition.py::``CwScreenPlaneTransition.observe``
+    写点定位 = cw_screen_plane_transition.py::``CwScreenPlaneTransition.observe``
     (观察 node;行读数与 TokenCell 构造归观察侧,obs.chain 进即写)。
     防御逐位平移:chain 缺 = 行空/读缺不写(诚实缺位);非开局且
     节点镜像缺 = 行归属位面不可知禁猜跳写;基线幂等门(基线已有不覆写)。
@@ -64,6 +64,6 @@ def report_screen_plane_transition_obs(gs: GameState,
     if opening and gs.node_path_baseline.value is None:
         gs.observe(gs.node_path_baseline, obs.chain,
                    evidence='transition_row', sig=sig)
-    # 链 diff 触发:离场快照豁免两帧门(单帧即终审,链正本 §4)
+    # 链 diff 触发:离场快照豁免两帧门(单帧即终审,链权威版本 §4)
     maybe_emit_chain_diff(gs, snapshot=True, in_mutation_window=False,
                           sig=sig)

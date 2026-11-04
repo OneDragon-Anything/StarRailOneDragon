@@ -1,9 +1,9 @@
 """货币战争动作上报:关店(report_action_close_shop_param)。
 
 动作上报函数族拆分件(每动作一文件;族规约与解析入口 = 包
-``cw_action_report.__init__`` docstring)。容器、写入口与观察
-写端留在 ``kernel/cw_game_state``,本包 → 容器单向依赖。
-语义正本 = 函数 docstring(自 cw_game_state 逐字迁移)。
+``cw_action_report.__init__`` docstring)。状态容器、写入口与观察
+写端留在 ``kernel/cw_game_state``,本包 → 状态容器单向依赖。
+语义权威版本 = 函数 docstring(自 cw_game_state 逐字迁移)。
 
 **后果声明**(动作后果声明化详设 world-decl.md §2 表 #18):applied 出口
 构造 ``WorldDecl``(trigger = ''——离屏写端 = 本上报,backend 活仅结束本次访问

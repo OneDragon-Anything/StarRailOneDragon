@@ -12,8 +12,8 @@
   实现写端(桥/贡献算术/动作上报/负写端四形,分形判据见其行注);桥与
   贡献算术宿主 = kernel/cw_effect_inventory.py 文末「装备改写写端」段
   (免模块级成环,与板面重写桥同宿主纪律);动作上报宿主 =
-  kernel/cw_action_report/tool_use(工具动作机械执行直接上报写容器)。
-- **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
+  kernel/cw_action_report/tool_use(工具动作机械执行直接上报写状态容器)。
+- **词缀运行时登记插入位置共用体** ``register_affixes_from_names``:简报/位面详情
   两读链的产出点经它入效果账本(生产调用方 =
   ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing.observe``
   词缀读链登记段,开局首读 / ``operations/cw_screen/cw_screen_plane_intel.py``
@@ -23,8 +23,8 @@
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);
   环境源('portal')登记端未建,ActiveEffect.source 词表预留。
 - 改写面写端:装备申报面已按归属判据实现(EQUIP_WRITE_SIDES 四形登记;
-  写端桥为账本→字段桥,生产挂点接线归节点结算/获得回执各覆盖批,接线前
-  一律观察覆盖兜底;动作上报形 = 工具动作上报函数已接线 live,工具七行
+  写端桥为账本→字段桥,生产插入位置接入调用归节点结算/获得回执各覆盖批,接入调用前
+  一律观察覆盖兜底;动作上报形 = 工具动作上报函数已接入调用 live,工具七行
   归 kernel/cw_action_report/tool_use);词缀面写端(CwActionLevelUpParam
   金/装备库存/hp_max)不在本模块,归属单一源 = 各 spec 的 notes,仍观察
   覆盖兜底。
@@ -61,7 +61,7 @@ from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范允许);GameState/Unit 真类在 cw_game_state,
     # 其模块头 import 本模块的兄弟模块(cw_effect_inventory),模块级 import
-    # 有成环风险,与登记挂点共用体的运行期惰性 import 纪律同型。
+    # 有成环风险,与登记插入位置共用体的运行期惰性 import 纪律同型。
     pass
 
 # ===== 词缀源效果规格(键 = affix_effects_data 词缀名;spec.id 同键)=====
@@ -69,7 +69,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
     # 成长的烦恼:官方「在你达到8级后，每次购买经验会损失1金币。」(affix_effects_data
     # 同键原文;competitors.md 玩法知识面)。改写面 = CwActionLevelUpParam 经验金面:等级窗开窗后
     # 每次购经验 +1 金,确定性 → 归属 = 逻辑写(效果写入归属判据:结果可准确计算);
-    # 写端未接线,现走观察覆盖兜底。duties.predict = 买经验成本对账须预知;
+    # 写端未接入调用,现走观察覆盖兜底。duties.predict = 买经验成本对账须预知;
     # 写端取词缀修饰走 by_source('affix')/payload 字段直读(原 ``predict_for``
     # action→trigger 预知通道已随死代码清偿移除)。
     # 字段镜像策略卡「成长的快乐」xp_click_discount_from_level 对(8 级起降价,
@@ -82,7 +82,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='CwActionLevelUpParam 金面改写源:8级起每次购经验+1金;归属=逻辑写(确定性),写端未接线走观察覆盖'),
     # 变宝为废:官方「每个位面开始时，首次合成的进阶装备会有50%的概率变成垃圾袋。」
-    # 改写面 = 装备库存:随机 50% → 不建逻辑写端,观察收口(归属判据:含概率/随机
+    # 改写面 = 装备库存:随机 50% → 不建逻辑写端,观察收尾(归属判据:含概率/随机
     # 结果不可预知)。trigger=ON_MERGE(装备合成事件,与武力刷新同触发面;每位面
     # 首次性由 payload 字段语义承载)。duties.predict = 随机改写面在案
     # (装备合成对账类消费方须预知垃圾袋分支,防合法随机态刷缺陷台账)。
@@ -94,7 +94,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         notes='装备库存改写源:每位面首次合成进阶装备50%变垃圾袋;随机面不建逻辑写,观察收口'),
     # 永久创伤:官方「我方小队生命值降低时，会减少等同于生命值降低值20%的生命上限，
     # 最多降低生命上限的60%。」hp_max 字段在 GameState 缺位(健康充值/成本控制/
-    # 二极管/本词缀=来源四源,一并缺口申报)→ 观察收口;数值仅建档不进经济分
+    # 二极管/本词缀=来源四源,一并缺口申报)→ 观察收尾;数值仅建档不进经济分
     # (gold_per_20hp_lost 同先例)。零响应登记(游戏侧自算,bot 无待办)。
     '永久创伤': EffectSpec(
         id='永久创伤', name='永久创伤', trigger=TriggerKind.CONDITIONAL,
@@ -219,11 +219,11 @@ def scan_rewrite_equipments() -> dict[str, str]:
 
 
 # ===== 装备改写成员写入归属申报表(键集必须恰等于 scan_rewrite_equipments 命中集)=====
-#: 归属判据(效果写入归属判据正本 = docs/develop/sr_od/application/currency_war/game_state/
+#: 归属判据(效果写入归属判据权威版本 = docs/develop/sr_od/application/currency_war/game_state/
 #: effect-domain.md §6.3;详设 = GameState 数据结构设计 §5.3):结果可准确
 #: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
-#: 收束。「现观察覆盖兜底」= 生产挂点接线归各覆盖批(工具执行/节点结算/获得
-#: 回执),接线前记录面维持观察覆盖。
+#: 收束。「现观察覆盖兜底」= 生产插入位置接入调用归各覆盖批(工具执行/节点结算/获得
+#: 回执),接入调用前记录面维持观察覆盖。
 EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '财富宝钻': '金面:装备者每3备战阶段+1金(确定性→逻辑写;写端=贡献算术'
               'equip_diamond_phase_gold,组合写归节点边界金结算载体 settle_node_'
@@ -314,7 +314,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 #:                             (settle_node_boundary_gold/settle_wrench_
 #:                             duplicate_gold,cw_effect_inventory 文末);
 #: - ``report:<函数名>``      动作上报写端——工具动作机械执行后上报函数
-#:                             直接写容器(宿主 = kernel/cw_action_report/
+#:                             直接写状态容器(宿主 = kernel/cw_action_report/
 #:                             tool_use,tool-gain-report 迭代;确定面
 #:                             write_logic、随机面 write_logic_rand 采样链);
 #: - ``op:<锚>``              op 域既有写端(本次零新增);
@@ -357,7 +357,7 @@ def _validate_equip_write_sides() -> None:
        cw_action_report.tool_use 已登记(动作上报写端单一宿主,改名/删除
        即炸);op: 锚非空;observation 无载荷;
     ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
-       observation 形必含「观察收口」——登记与归属申报互证,防单边漂移
+       observation 形必含「观察收尾」——登记与归属申报互证,防单边漂移
        (report: 随机面 write_logic_rand 属逻辑族随机写,同覆盖「逻辑写」)。
     覆盖完备性(扫描命中集 vs 申报表键集)归测试(模块 docstring「防漂移测试」)。
     """
@@ -381,7 +381,7 @@ def _validate_equip_write_sides() -> None:
         elif side.startswith('report:'):
             # 动作上报写端单一宿主 = cw_action_report.tool_use(函数内惰性
             # import:tool_use 依赖链经 cw_gain_chain/cw_game_state,与本
-            # 模块无环,登记挂点共用体同型纪律)。
+            # 模块无环,登记插入位置共用体同型纪律)。
             from sr_od.application.currency_war.kernel.cw_action_report import (
                 tool_use as _tool_use,
             )
@@ -403,12 +403,12 @@ def _validate_equip_write_sides() -> None:
                 '(合法形 = bridge:/contribution:/report:/op:/observation)')
 
 
-# ===== 词缀运行时登记挂点·共用体(简报/位面详情两读链同一登记体)=====
+# ===== 词缀运行时登记插入位置·共用体(简报/位面详情两读链同一登记体)=====
 # 登记判据 = 词缀名命中结构化注册(AFFIX_EFFECT_SPECS;效果清单实例以词缀名
 # 为 spec.id 键)。注册表外词缀(纯数值/无改写面)零动作,照旧观察覆盖兜底;
 # 开局不利走 AFFIX_SPEC_EXEMPT 豁免(专用写端载体,禁第二份数值源)。
 # 登记面 best-effort:调用方以 try/except 包裹、失败不阻塞读链主链(与策略源
-# 选卡登记挂点同纪律,effect-domain.md §7.3「登记挂点纪律」)。
+# 选卡登记插入位置同纪律,effect-domain.md §7.3「登记插入位置纪律」)。
 def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     """词缀 OCR 名集 → 命中结构化注册的词缀入效果账本(source='affix')。
 
@@ -416,18 +416,18 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
       位面详情补采重跑同词缀集不得双登记(实例按 spec_key 唯一,
       effect-domain.md §9.1 销案「同卡叠加语义」同源)。
     - **注册表命中才登记**:AFFIX_EFFECT_SPECS 之外的词缀无结构化规格 →
-      零动作;改写面写端不归登记挂点(归属单一源 = 各 spec.notes 与
-      EQUIP_REWRITE_DECLARATIONS,接线前观察覆盖兜底)。
+      零动作;改写面写端不归登记插入位置(归属单一源 = 各 spec.notes 与
+      EQUIP_REWRITE_DECLARATIONS,接入调用前观察覆盖兜底)。
     - acquired_key = 登记时点节点序位快照((位面,轮) 元组键,
       cw_node_schedule.NodePos 同形——GameState 节点单例直取,零坐标
       换算(编号正解已停用);节点未观察(引导窗)= None 缺位,
       登记面不炸,last_state 帧回退已停用);余期播种/推进/到期
-      与策略源共用同一套挂点逻辑(声明式驱动:节点 tick/计数 bump 按
-      duties 与 duration 语义自动覆盖及词缀条目,挂点代码零来源特判)。
+      与策略源共用同一套插入位置逻辑(声明式驱动:节点 tick/计数 bump 按
+      duties 与 duration 语义自动覆盖及词缀条目,插入位置代码零来源特判)。
     - 返回本次实际登记的词缀名列表(调用方留存证据日志;零命中返回空表)。
 
     game_state_of 运行期函数内 import:board_state 所在模块头 import 本模块
-    的兄弟模块(cw_effect_inventory),保持本模块零运行期容器依赖、可离线
+    的兄弟模块(cw_effect_inventory),保持本模块零运行期状态容器依赖、可离线
     单测(与 cw_effect_inventory 的惰性 import 纪律同型)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (

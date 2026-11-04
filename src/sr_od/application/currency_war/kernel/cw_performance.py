@@ -87,5 +87,5 @@ class PerformanceTracker:
 
 
 #: OCR 置信度门槛(结算覆盖写端 cw_screen_battle_wait 消费:低于此值的
-#: hp_after 不落容器真值,防 OCR 抖动污染 hp 结算覆盖)。
+#: hp_after 不落状态容器真值,防 OCR 抖动污染 hp 结算覆盖)。
 HP_CONFIDENCE_THRESHOLD: float = 0.7

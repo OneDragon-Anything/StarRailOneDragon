@@ -1,4 +1,4 @@
-"""命运卜者强化屏观察契约与上报(kernel 纯数据;正本 =
+"""命运卜者强化屏观察契约与上报(kernel 纯数据;权威版本 =
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = overlay 门判定 + 三卡位 OCR 卡名 + 三卡点击坐标(入口帧一次读;
@@ -43,7 +43,7 @@ def report_screen_fortune_obs(gs: GameState, obs: CwScreenFortuneObs, *,
     """命运卜者强化屏观察上报:三卡 OCR 写 ``fortune_opts``、三卡点击
     坐标写 ``fortune_opts_xy``(同门双写,同序等长守卫已登记)。
 
-    写点锚 = cw_screen_fortune.py::``CwScreenFortune.observe``(观察 node;
+    写点定位 = cw_screen_fortune.py::``CwScreenFortune.observe``(观察 node;
     原写点无空门,直写——空表照写,防线逐位平移)。
     """
     if sig is None:
@@ -51,7 +51,7 @@ def report_screen_fortune_obs(gs: GameState, obs: CwScreenFortuneObs, *,
                          actor='CwScreenFortune', mode='compute')
     _validate_sig(sig, ('logic_action',))
     # 同序等长写端构造守卫(fields.md §3.4.5a):坐标域与名字域同一写门
-    # 一并落容器,不同序等长 = 观察 bug,响亮暴露禁错位双写。
+    # 一并落状态容器,不同序等长 = 观察 bug,响亮暴露禁错位双写。
     if len(obs.option_points) != len(obs.options):
         raise AssertionError(
             '[cw][fortune] 坐标域与名字域不同序等长(观察 bug): '

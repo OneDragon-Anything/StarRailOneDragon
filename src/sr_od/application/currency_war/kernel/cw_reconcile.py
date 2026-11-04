@@ -32,7 +32,7 @@ _IS_MERGE_EFFECT_FRAME = None
 
 
 def set_merge_effect_gate(fn) -> None:
-    """注入合成特效帧态门实现(obs 层 ``is_merge_effect_frame``;生产武装点接通)。"""
+    """注入合成特效帧态门实现(obs 层 ``is_merge_effect_frame``;生产装配接入点接通)。"""
     global _IS_MERGE_EFFECT_FRAME
     _IS_MERGE_EFFECT_FRAME = fn
 
@@ -40,7 +40,7 @@ def set_merge_effect_gate(fn) -> None:
 def is_merge_effect_window(screen: MatLike | None) -> bool:
     """合成特效窗判定读口(P3-10 批次二复审):观察消费前的窗内统一判别口。
 
-    复用 ``_IS_MERGE_EFFECT_FRAME`` 注入槽(生产武装点 =
+    复用 ``_IS_MERGE_EFFECT_FRAME`` 注入槽(生产装配接入点 =
     decision_assembly.install_obs_ports 注入 obs 层 ``is_merge_effect_frame``——
     与 star 回退帧态门是同一特效窗物理事实的两个消费口)。``screen=None`` 或
     槽缺省关(未装配)恒 False = 核对放行,与既有门 best-effort 语义同向,
@@ -74,9 +74,9 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
 # game_state_of 模式;新局新 session = 天然清零,无跨局串染面。GameState
 # 本体是 eq-dataclass 不可哈希,故不以其为键;不可弱引用桩面回退 id 键
 # 旁表,超限清空只保已登记——同 _DEPLOYED_2SRC_RUN_COUNTS 纪律)。
-# 保旧经门后副本承载(frozen 容器形状不可就地改写,P6 直产载体:replace
+# 保旧经门后副本承载(frozen 状态容器形状不可就地改写,P6 直产载体:replace
 # 新构造),其后的纠漂快照与写回消费门后副本——单帧抖动不进 drift 判定
-# (不产「对账纠漂」噪声行),同帧容器席位视图观察写端(备战帧 director
+# (不产「对账纠漂」噪声行),同帧状态容器席位视图观察写端(备战帧 director
 # 消费门后副本)同得保旧值。
 _STAR_GATES: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 #: 桩面兜底第二级:不可弱引用 session 的 id 键旁表(驻留上限见下)。
@@ -147,7 +147,7 @@ def _deployed_read_entries(view) -> list[tuple]:
 
 
 def _apply_star_holds(reads, holds: dict[int, int]):
-    """星级保旧副本(frozen 容器形状不可就地改写 → replace 新构造)。
+    """星级保旧副本(frozen 状态容器形状不可就地改写 → replace 新构造)。
 
     ``holds`` 键 = id(Unit 读对象),值 = 保旧星;命中读对象逐一换星,
     其余槽/行原样(同引用)。无保旧项原样返回(零拷贝快路径)。"""
@@ -173,10 +173,10 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
                       source: str) -> tuple:
     """星级抖动门本体(语义与出处见上方门注释块)。
 
-    P6 载体适配:读对象为 frozen 容器形状(BenchView/Unit 行),不可就地
+    P6 载体适配:读对象为 frozen 状态容器形状(BenchView/Unit 行),不可就地
     改写 star —— 保旧写账改经 **replace 副本** 承载(返回门后副本),语义
     与旧「就地改写读对象 star」等价:单帧抖动不进 drift 判定与写回,同帧
-    容器席位视图观察写端(director 消费门后副本)同得保旧值。候选态
+    状态容器席位视图观察写端(director 消费门后副本)同得保旧值。候选态
     按局身份旁表存(键 = (域,槽号,规范名))。锚上身份未锚定
     (空槽/换人/占位件)与读失败侧(None)不覆盖,候选随锚作废防陈旧假确认;
     读侧已取得但锚未出现(部分缺读)= 证据中断,该锚候选清除重计
@@ -292,7 +292,7 @@ def _continue_equips_bench(account_view, view: BenchView | None) -> BenchView | 
     到新读视图的 unit 槽(frozen 形状 → replace 新构造)。
 
     新读自带的非空 equips(画面真值)优先保留不覆盖;旧有新无(角色离场)
-    自然丢弃。装备续接结果随门后副本返回 —— 同帧容器观察写端消费同一副本,
+    自然丢弃。装备续接结果随门后副本返回 —— 同帧状态容器观察写端消费同一副本,
     与旧「就地改写读对象 equips」的同帧共享语义等价。"""
     if view is None:
         return None
@@ -341,7 +341,7 @@ def reconcile_tracking(session, bench: BenchView | None,
                        ) -> tuple[bool, BenchView | None, object]:
     """tracking 对账统一入口:新 SIFT 读 vs 旧 session tracking,守卫后写回。
 
-    P6 观察链直产:入参即容器形状 —— bench = :class:`BenchView`(占位件
+    P6 观察链直产:入参即状态容器形状 —— bench = :class:`BenchView`(占位件
     kind 识别期细分,写回不再经 orig_view 回查/降级);deployed =
     :class:`DeployedView`(读侧分排读屏、对账载体 =
     合一视图,位置 = 子表下标派生)。None = 该侧失读(不写该侧、星级门
@@ -359,7 +359,7 @@ def reconcile_tracking(session, bench: BenchView | None,
 
     Args:
         session: StrategySession(主域 bench/deployed 由调用方 director 观察)
-        bench/deployed: 新读容器形状(None = 该侧失读,不写)
+        bench/deployed: 新读状态容器形状(None = 该侧失读,不写)
         screen: 冲突帧(传则 obs_conflict 存去重截图)
         source: 证据行来源标记(deploy_bench/director)
         ctx: SrContext(兼容形参;star 回退停机钩子已停用,不再消费)
@@ -372,7 +372,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         ``(是否写回, 门后 bench 视图, 门后 deployed 视图)``。门后副本 =
         星级抖动门保旧写账 + 装备续接后的读副本(frozen 形状以 replace
         承载与旧「就地改写读对象」等价的同帧共享语义),director 同帧
-        容器观察写端消费门后值。是否写回:False 仅双空读守卫与 session
+        状态容器观察写端消费门后值。是否写回:False 仅双空读守卫与 session
         为 None 两处早退产生(门保旧仍属写回,计数 True)。
     """
     if session is None:
@@ -401,7 +401,7 @@ def reconcile_tracking(session, bench: BenchView | None,
         _star_gate_pending(session).clear()
         return False, bench, deployed
     # 星级抖动门(槽位锚定 + 两帧一致才采新):门后副本供纠漂判定与
-    # 同帧容器观察写端 —— 保旧锚读账一致,不产「对账纠漂」噪声行
+    # 同帧状态容器观察写端 —— 保旧锚读账一致,不产「对账纠漂」噪声行
     #(出处见 _gate_star_jitter 上方门注释块)。
     bench, deployed = _gate_star_jitter(session, bench, deployed, screen,
                                         source=source)
@@ -416,9 +416,9 @@ def reconcile_tracking(session, bench: BenchView | None,
         bench = _continue_equips_bench(_gs.bench.value, bench)
         try:
             # 锚定写点 = 观察态退出点:屏幕真值对账成功(守卫全过 + bench
-            # 侧有读)即「已观察」——容器观察态字段置 True(策略商店门
+            # 侧有读)即「已观察」——状态容器观察态字段置 True(策略商店门
             # 放行;bench 读失败/双空读守卫不走此处 = 保持未观察)。
-            # best-effort:容器缺席/写失败不阻断对账主链。
+            # best-effort:状态容器缺席/写失败不阻断对账主链。
             game_state_of(session).write_logic(
                 game_state_of(session).tracked_account_observed, True,
                 produced_by=f'reconcile_tracking:{source}',
@@ -426,7 +426,7 @@ def reconcile_tracking(session, bench: BenchView | None,
                 sig=ChannelSig(family='logic_action',
                                actor='CwReconcile', mode='compute'))
             # 锚定标志同点置位(两标志同一成功条件,不新增判断分支):对账成功
-            # = 本局首次成功的备战 heavy 锚定已完成,未锚定期「容器逻辑写
+            # = 本局首次成功的备战 heavy 锚定已完成,未锚定期「状态容器逻辑写
             # 走随机态」通道规则自此解除;失败走 except = 两标志同不置位。
             # 测试/直构域置标志 = 直赋专口,生产唯一置位写点 = 此处。
             game_state_of(session).prep_anchored = True
@@ -464,7 +464,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     保留两支:
     - 开局初值表先验:读不到 → 实证档先验(readable=False,
-      真值帧到达即被覆盖);先验输入 briefing_*/enemy_difficulty 换源 gs 正本;
+      真值帧到达即被覆盖);先验输入 briefing_*/enemy_difficulty 换源 gs 权威版本;
     - 真值帧直传(真值帧是物理读数,判读侧消费证据)。
 
     Args:
@@ -480,7 +480,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         # 开局全无真值 → 遥测实证的初值表先验(实证档 A8/108:
         # 基础 82、「开局不利」62;无实证档 → None 诚实未知)。
         # 先验非真读,readable=False;真值帧到达即被观察覆盖。
-        # (终态契约 §B:三先验输入全读容器——briefing 写端直入
+        # (终态契约 §B:三先验输入全读状态容器——briefing 写端直入
         #  gs.enemy_affixes/selected_difficulty/enemy_difficulty。)
         prior = (opening_hp_prior(
             game_state_of(session).enemy_affixes.value,
