@@ -1,6 +1,6 @@
 """货币战争 商店开态刷新钮标价/按钮态的现场 OCR 读取。
 
-字段级规格正本 =
+字段级规格权威版本 =
 ``docs/develop/sr_od/application/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
 历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(旁证 reader 在
@@ -8,11 +8,11 @@
 cost=徽标(cw_observation,旁证)。
 
 刷新钮**按钮态**读数(func:`read_shop_refresh_button`,建档接入):单帧三态
-=免费态(「免费刷新」锚+剩余次数)/付费耗尽态(「刷新」+金币图标+标价,白亮钮)/
+=免费态(「免费刷新」识别标志+剩余次数)/付费耗尽态(「刷新」+金币图标+标价,白亮钮)/
 不可用灰态(同付费渲染,按钮变暗,金<标价)。免费态次数 = §3.3.6
 效果账本免费余额的 UI 观察通道(实机取证:免费帧按钮渲染「免费刷新」+
 次数数字,次数与「文本-刷新价格」rect 同位——推翻该节「画面无计数控件」旧交叉核对
-申报,正本更新归设计批)。三态渲染规格与行为已实测确认出处 =
+申报,权威版本更新归设计批)。三态渲染规格与行为已实测确认出处 =
 ``.debug/currency_war/evidence/20260912_t15_t13_t18/``(免费帧
 t13_free_refresh_available_2left_hist_w591t / 耗尽帧 t13_shop_open_refresh_
 exhausted_2gold_gold61 / 灰态帧 t13_refresh_disabled_gold1_dark_button)。
@@ -81,7 +81,7 @@ def read_shop_refresh_price(ctx: SrContext, screen: MatLike) -> int | None:
     ⚠️ **免费帧会产出数字**(实机取证:免费态按钮在同 rect 渲染剩余
     次数,推翻「免费帧渲染无数字」旧假设)——免费帧调用本 reader 会把次数
     误读作标价。因此「免费帧不写」(§3.3.4)的免费判定输入 =
-    :func:`read_shop_refresh_button` 的按钮态锚,**调用方必须先过按钮态闸**
+    :func:`read_shop_refresh_button` 的按钮态识别标志,**调用方必须先过按钮态闸**
     再消费本读数(现役唯一消费点 = cw_observation 商店开态喂入口,已接)。
 
     管线两级(与 ``cw_observation.read_level_up_cost`` 同形):标价为小字目标,
@@ -101,7 +101,7 @@ def read_shop_refresh_price(ctx: SrContext, screen: MatLike) -> int | None:
 # 刷新钮按钮态读数(免费刷新按钮/机制建档接入)
 # ---------------------------------------------------------------------------
 
-#: 免费态文本锚(screen_info「货币战争-备战-开商店」「标识-免费刷新」;
+#: 免费态文本识别标志(screen_info「货币战争-备战-开商店」「标识-免费刷新」;
 #: text=免费刷新,lcs_percent=0.7——付费帧「刷新」两字 LCS 2/4=0.5 不中,
 #: 三帧离线对账实证:免费帧命中 conf 0.999,付费/灰态帧均不命中)。
 _FREE_ANCHOR_AREA: str = '标识-免费刷新'
@@ -131,10 +131,10 @@ def _parse_free_count(texts: list[str]) -> int | None:
 
 
 def _free_anchor_hit(ctx: SrContext, screen: MatLike) -> bool | None:
-    """「免费刷新」文本锚在场判定(框架 find_area,与建档对账同源同参)。
+    """「免费刷新」文本识别标志在场判定(框架 find_area,与建档对账同源同参)。
 
     - True = 免费态渲染在场(免费余额>0 的 UI 事实);
-    - False = 锚未命中(付费帧/灰态帧渲染「刷新」,lcs 0.7 不中);
+    - False = 识别标志未命中(付费帧/灰态帧渲染「刷新」,lcs 0.7 不中);
     - None = area 缺失/识别层异常(失读,消费方须回退逻辑账,**禁当 False**
       ——免费帧 OCR 漏检被误判付费会把免费刷混进付费计数,§3.3.7 毒化)。
 
@@ -170,7 +170,7 @@ class ShopRefreshButton:
       t13_refresh_disabled_gold1_dark_button.png``)可随时启用。
 
     字段语义:
-    - ``free``:True=免费态(锚命中);False=付费域(锚未中∧标价读出,
+    - ``free``:True=免费态(识别标志命中);False=付费域(识别标志未中∧标价读出,
       含耗尽与灰态两形);None=判不出(area 缺失/OCR 双空),消费方按失读
       回退逻辑账,禁当 False。
     - ``free_remaining``:免费态钮内剩余次数(效果账本免费余额
@@ -200,11 +200,11 @@ def read_shop_refresh_button(ctx: SrContext, screen: MatLike,
       本帧 state.gold(失读保真 None,禁 0 假值)。
     :return: :class:`ShopRefreshButton`(判不出 = ``free``=None,**禁兜底**)。
 
-    判定序:锚命中 → 免费态(次数从「文本-刷新价格」rect 同位读——免费帧
-    该区渲染次数非标价,实证);锚未中∧标价读出 → 付费域;其余(锚
-    失读/锚未中∧标价也读不出)→ 判不出。锚未中∧标价 None 不判 False:
+    判定序:识别标志命中 → 免费态(次数从「文本-刷新价格」rect 同位读——免费帧
+    该区渲染次数非标价,实证);识别标志未中∧标价读出 → 付费域;其余(识别标志
+    失读/识别标志未中∧标价也读不出)→ 判不出。识别标志未中∧标价 None 不判 False:
     真免费帧双 OCR 双漏时误判付费会毒化付费计数(§3.3.7),回退逻辑账
-    是接线前保守形态,行为不变。
+    是接入调用前保守形态,行为不变。
     """
     hit = _free_anchor_hit(ctx, screen)
     price_rect = _area_rect(ctx, _PRICE_AREA_NAME, SHOP_SCREEN_NAME)

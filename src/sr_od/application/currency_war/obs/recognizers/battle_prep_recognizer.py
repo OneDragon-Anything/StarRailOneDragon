@@ -14,8 +14,8 @@ HTTP 消费方直接读用,不必自己 OCR / 看图。
 - **不复用 ``read_game_state``**(它读写 ``cw_match.session.last_level_obs`` / ``tracked_deployed``,是 session 状态)。
 
 **角色身份 + 星级 + 装备(前后台 / 备战席)**:用 ``cw_identity_obs.read_deployed_rows`` / ``read_bench_view``
-(纯 CV SIFT,**纯读** —— 只裁槽位 + SIFT + 直产容器形状,不写 session / 全局,可安全并发)产
-``front_line`` / ``back_line``(前排/后排 Unit 行)与 ``bench``(class:`BenchView` 备战席容器
+(纯 CV SIFT,**纯读** —— 只裁槽位 + SIFT + 直产状态容器形状,不写 session / 全局,可安全并发)产
+``front_line`` / ``back_line``(前排/后排 Unit 行)与 ``bench``(class:`BenchView` 备战席状态容器
 视图,占槽物品 kind 识别期细分)。立绘库经
 ``ensure_portrait_templates`` **幂等加载缓存**(只读资源,并发安全,同 ``ensure_equip_tm_templates``);
 库缺失→三字段 None。装备经 ``read_row_equipped`` 读 below-avatar icon,按 slot 注入 Unit.equips
@@ -104,7 +104,7 @@ class _BattlePrepState:
     """备战画面领域事实(组装后 ``asdict()`` 转 dict 回传;类型化单一真相源)。
 
     字段类型对齐各 reader 的返回类型(gold/hp 有安全默认故非 Optional;phase/deploy/streak 读不到为 None)。
-    角色槽位复用容器形状(P6 直产:front_line/back_line = Unit 行,bench = BenchView),不另建模型;
+    角色槽位复用状态容器形状(P6 直产:front_line/back_line = Unit 行,bench = BenchView),不另建模型;
     阵营不入形状(消费点经注册表按 char_id 派生)。
     """
 
@@ -118,7 +118,7 @@ class _BattlePrepState:
     board: dict[str, int]           # {阵营名: 在场人数}(read_board)
     front_line: list[Unit] | None  # 前排 Unit 行(SIFT 身份 + read_star 星级 + read_row_equipped 装备按 slot 注入 equips;templates 未加载→None)
     back_line: list[Unit] | None   # 后排 Unit 行(同上)
-    bench: BenchView | None        # 备战席容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
+    bench: BenchView | None        # 备战席状态容器视图(read_bench_view SIFT 直产;slots=9 槽 BenchSlot,占位物品 kind 细分;备战席无 below icon→unit equips 恒 [];空读→None)
     owned_equips: list[dict] | None      # 右侧 owned 装备栏(read_equips SIFT;元素 {name,category,cx,cy,inliers};category 工具/特殊=消耗品,其余简易/进阶/...=装备;空→None;templates 未加载→None)
     armory_boxes: list[dict] | None      # 备战栏简易武装箱槽位(read_armory_boxes TM;元素 {slot,cx,cy};晶矿开箱掉箱占席,点「开启」腾槽;空→None;首见机制)
     reward_ores: list[dict] | None    # 奖励面板晶矿(read_ore_sights HoughCircles;元素 {color,cx,cy,r};color gold/blue/gray;采晶矿开启入账,角色/箱占席;空→None;首见机制)
@@ -190,7 +190,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         # equips 空 dict(纯读面,跳过即正确;JSONL 保留证据在 resolve 侧)。
         back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
                        if (equip_grays is not None and _back_n) else {})
-        # 角色直产容器形状(read_deployed_rows 已按排分域);只补 equips
+        # 角色直产状态容器形状(read_deployed_rows 已按排分域);只补 equips
         #(按 slot 对齐注入;Unit frozen → replace 新构造)。
         front_line: list[Unit] | None = None
         back_line: list[Unit] | None = None

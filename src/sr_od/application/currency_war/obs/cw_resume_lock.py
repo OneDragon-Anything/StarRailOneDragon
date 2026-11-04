@@ -6,7 +6,7 @@
 策略发开商店 → 点击落空 → 重试链耗尽 → run 失败(根因=流程层缺状态判定)。
 
 本模块把 cw_loop 备战分支的**判定/探针裁决/锁定解除**抽成纯函数(单帧
-可测),运行时只做薄接线(见 operations/cw_loop.py 备战分支稳定门后)。
+可测),运行时只做薄接入(见 operations/cw_loop.py 备战分支稳定门后)。
 """
 from __future__ import annotations
 

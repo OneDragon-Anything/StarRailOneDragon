@@ -4,12 +4,12 @@
 立绘 → 规范名(``read_deployed_rows`` / ``read_bench_view``),用 ``currency_war_char_id`` 的
 SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
-**与容器跟踪的关系**(设计):备战席/上场位默认由 bot 跟踪(动作推演 + 观察对账写容器,
+**与状态容器跟踪的关系**(设计):备战席/上场位默认由 bot 跟踪(动作推演 + 观察对账写状态容器,
 见 kernel/cw_game_state)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
-**独立旁路**,用途:① 离线从截图重建容器形状(测试 / replay,无需跑 bot);② 跟踪漂移时
+**独立旁路**,用途:① 离线从截图重建状态容器形状(测试 / replay,无需跑 bot);② 跟踪漂移时
 从画面恢复 / 校验。故**不**接进 ``read_game_state``(避免每帧 SIFT + 双写冲突)。
 
-**产形(P6 观察链直产)**:读链直接产容器形状,无中间形 ——
+**产形(P6 观察链直产)**:读链直接产状态容器形状,无中间形 ——
 备战席 = ``read_bench_view`` → :class:`BenchView`(占槽物品 kind 识别期按模板细分
 supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_deployed_rows``
 → (前排,后排) Unit 行(排归属由读链行参承载)。
@@ -20,7 +20,7 @@ supply_box/tome/bookcard,不经「事后拼 kind 映射」);上场位 = ``read_d
 
 **架构:纯 CV 核心 + ctx 薄包装** —— ``identify_slots`` 只吃 (screen, templates, slots, row),
 可离线硬编码 rect 测;``read_deployed_rows`` / ``read_bench_view`` 从 ctx screen_info 取 rect
-再调核心。与 ``currency_war_char_id`` 同样的「纯 CV + 外部接线」分层。
+再调核心。与 ``currency_war_char_id`` 同样的「纯 CV + 外部接入」分层。
 
 **可靠性:实测初步可用(D-22)**:r1-8 备战截图 SIFT 立绘库 **6/6 有角色槽命中**(inliers
 29-48)+ 空槽不误 → 立绘库可用,推翻脸库旧结论。待补:共脸变体样本 + 角色名 ground truth(见
@@ -156,7 +156,7 @@ def read_star(crop: MatLike) -> int:
     放宽到 0.25(立绘库仍 0/71 + 全 fixture 无新 FP),备战-9 读回 2。
 
     :return: 星级(≥1);空图/无匹配/模板缺 → 1(角色必有星,fallback)。
-    ⚠️ **offline 旁路**(live 走 bot tracking 容器 Unit.star,非 read_star):comp_viability 离线
+    ⚠️ **offline 旁路**(live 走 bot tracking 状态容器 Unit.star,非 read_star):comp_viability 离线
     校验用(cw_performance:185),不影响 live star_achievement。3星待 live 样本(逻辑同,数金星)。
     """
     if crop is None or crop.size == 0:
@@ -321,7 +321,7 @@ def identify_slots(
 
     :param slots: ``[(slot_idx, rect), ...]``;rect = 1080p 槽位矩形(来自 screen_info 或硬编码)。
     :param row: ``"front"`` / ``"back"``(已上阵排,开拓者形态归一依据);``""``(备战栏,
-        无形态归一)。排归属不入命中形状(容器 Unit 无排位,由调用方行参/行域承载)。
+        无形态归一)。排归属不入命中形状(状态容器 Unit 无排位,由调用方行参/行域承载)。
     :param min_inliers: 识别门槛(identify_character 透传)。部署排(有场景背景)传更高
         (``_DEPLOYED_MIN_INLIERS``);备战栏卡槽背景干净,保持默认。
     :param live_only: 部署排专用(定策):
@@ -531,14 +531,14 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
 
 
 def _session_level(ctx: SrContext) -> int | None:
-    """容器 level 读口(终态契约 §A:last_level_obs 单调链停用,单一源 =
+    """状态容器 level 读口(终态契约 §A:last_level_obs 单调链停用,单一源 =
     gs.level 覆盖/carried)→ 无 session/无值 → None。
 
     布局选档的 level 源(后排槽数由 level 驱动)。离线/无
     session 场景返 None(调用方退 6 槽基线)。**单一源可信门**(15 号稿
-    §2.3/§6):启发式兜底帧的 level 值不参与——容器侧该门由喂入结构性
+    §2.3/§6):启发式兜底帧的 level 值不参与——状态容器侧该门由喂入结构性
     满足(``read_game_state`` 仅 authoritative 帧观察写 level,兜底帧走
-    carry 沿用),取容器值直取即可信域。
+    carry 沿用),取状态容器值直取即可信域。
     """
     try:
         m = ctx.cw_match
@@ -556,11 +556,11 @@ def _session_level(ctx: SrContext) -> int | None:
 def _level_trusted(ctx: SrContext) -> bool | None:
     """level authoritative 位单一读口(15 号稿 §2.3/§3.2①)→ 三态:
 
-    ``True`` = 容器 level 当前值来自真读观察(Field.source='observation');
-    ``False`` = 沿用态(source='carried',启发式兜底帧不写容器,沿用值非
+    ``True`` = 状态容器 level 当前值来自真读观察(Field.source='observation');
+    ``False`` = 沿用态(source='carried',启发式兜底帧不写状态容器,沿用值非
     新证);无 session / level 从未观察 → ``None`` = 未声明(布局公式通道
     维持现行为,零行为变更)。last_state 链停用换源:旧帧显式位
-    ``level_readable`` 的 observed/兜底两态由容器 source 镜像(喂入口
+    ``level_readable`` 的 observed/兜底两态由状态容器 source 镜像(喂入口
     ``read_game_state`` 观察写=真读/carry=兜底帧),布局公式与 14 号稿
     level 消费门共用本定义,不得各写一份「什么算可信 level」。"""
     try:
@@ -583,7 +583,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
                        ) -> tuple[list[tuple[int, Unit]], list[tuple[int, Unit]]]:
     """舞台已上阵角色(前排 4 + 后排 N)→ (前排命中对,后排命中对)
     (P6 直产;命中对 = ``(排内 1 基槽号, Unit)``——
-    Unit 无槽位信息位,位置随读链槽位对承载,容器写端经
+    Unit 无槽位信息位,位置随读链槽位对承载,状态容器写端经
     ``cw_game_state.deployed_view_of_hits`` 合一落视图)。
 
     空槽 / 未识别 → 不进该排命中列表(双行全空 = 失读,调用方走 carried,
@@ -594,7 +594,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
     **布局未知态**(15 号稿 §3.2④):单帧未知 → 只返前排(跳过后排读,
     后排命中恒空表);冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧
-    JSONL 保留证据在 resolve 侧。level_trusted 接线:未显式传 level 时取容器
+    JSONL 保留证据在 resolve 侧。level_trusted 接入调用:未显式传 level 时取状态容器
     level authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
     """
     from sr_od.application.currency_war.obs.cw_back_layout import (
@@ -602,8 +602,8 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
         fallback_back_slots,
         resolve_back_slots,
     )
-    # 消费接线(15 号稿 §3.2①):显式传 level = 调用方自declare的读数,可信位
-    # 不越权代判(None=现行为);未传 = 走 session 等级链 → 接容器 level
+    # 消费接入调用(15 号稿 §3.2①):显式传 level = 调用方自declare的读数,可信位
+    # 不越权代判(None=现行为);未传 = 走 session 等级链 → 接状态容器 level
     # authoritative 位可信门(derived/启发式帧公式通道弃权)。
     _lt = None if level is not None else _level_trusted(ctx)
     _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
@@ -630,7 +630,7 @@ def read_deployed_rows(ctx: SrContext, screen: MatLike, templates: AvatarTemplat
     # 降级依据(run 27 停机事故实证):货币战争备战阶段是**实时倒计时**,
     # 战斗自动开打——停 bot ≠ 停游戏,run 27 hook 停机后画面自行推进到
     # 首领战败结算(14:09 停 → 14:16 结算,截图 20260826_141613),「停机
-    # 保画面待采集」对实时制游戏是虚假承诺;误停代价(烧一局 + 世界状态
+    # 保画面待采集」对实时制游戏是虚假承诺;误停代价(烧一局 + 实机状态
     # 不可控)>> 采集收益。7 格坐标经 MCP 交互已实测确认采集完成
     # (后排7槽-1..7 upsert + _LAYOUT_PREFIX 登记),本钩子自然静默。
     # 帧态门(is_prep_like_frame)覆盖**保留证据**触发(过渡/动画帧不保留证据,
@@ -780,7 +780,7 @@ def check_system_unit_layout(
 
 
 def read_bench_view(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> BenchView | None:
-    """备战栏 SIFT 读链直产容器视图(P6)→ :class:`BenchView` | None。
+    """备战栏 SIFT 读链直产状态容器视图(P6)→ :class:`BenchView` | None。
 
     SIFT 命中(角色槽)与已建档占槽物品(箱/秘典/书册卡,kind 识别期细分)
     合成为槽位视图,表长 = 活跃备战席容量(容量时限效果激活期随 kernel
@@ -815,7 +815,7 @@ def _validate_pinned_names_match_bridge() -> None:
     """观察端钉名对照 ↔ 映射桥 import 期互检(T-39 设计 §2.7 一致性防线;
     沿 kernel _validate_* 先例):银灰箱/邀请函两组 (kind, 品名) 对照须与
     ``cw_investments.BENCH_ITEM_KINDS`` 逐位一致——两表独立维护,漂移启动
-    即炸(tome 豁免不在检域)。本模块 → kernel 依赖方向在册,无环。"""
+    即炸(tome 豁免不在检域)。本模块 → kernel 依赖方向已登记,无环。"""
     for _pinned in (_PINNED_SUPPLY_BOX, _PINNED_BOOKCARD):
         if BENCH_ITEM_KINDS.get(_pinned[1]) != _pinned[0]:
             raise ValueError(
@@ -863,7 +863,7 @@ def _bench_item_kind_by_slot(
 def _bench_view_of(hits: list[tuple[int, Unit]],
                    kind_by_slot: dict[int, tuple[str, str]],
                    capacity: int = BENCH_CAPACITY_DEFAULT) -> BenchView | None:
-    """SIFT 命中 + 占槽物品 (kind, 品名) → 备战席容器视图(观察写端值构造
+    """SIFT 命中 + 占槽物品 (kind, 品名) → 备战席状态容器视图(观察写端值构造
     单一源,道具槽带名构造 = BenchSlot.item 身份轴)。
 
     - hits = ``(物理槽号, Unit)`` 命中对(Unit 无槽位信息位,位置随读链
@@ -918,7 +918,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
     # ⚠️ r78 新误触模式守卫:**角色详情面板开着时跳过** —— 详情面板(x1400+)盖住 bench
     # 右端(slot7-9),被遮槽 SIFT 看到的是面板 UI(已实测确认:summon_unknown__e1fb06c8 帧
     # slot9 裁出的是搜索图标,详情面板上还明晃晃写着「藿藿」本尊)→ 假「占用未识别」
-    # 反复停机。详情面板 OCR 锚(装备推荐/出售按钮区)在场 → 本帧不判。
+    # 反复停机。详情面板 OCR 识别标志(装备推荐/出售按钮区)在场 → 本帧不判。
     # ⚠️ 防抖(r17-r31 教训):同内容哈希只停一次(cw_shot_unique 返 None = 已采过 → 不再停),
     # 防同一单位整局反复停机;哨兵文件自描述。
     try:
@@ -942,10 +942,10 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
         # 书册卡开启语义已确认(实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子停用,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
-        # (开卡动作发出点 = 策略器 entry ① 卡片分支 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接线)。
+        # (开卡动作发出点 = 策略器 entry ① 卡片分支 + 外循环阶段一身份行「货币战争-备战-专家邀请函」弹窗分发接入调用)。
         # 排除集单一源(部署伪槽修复):原内联段(find_* 族 ∪ 泛 TM 低阈
         # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
-        # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/锚
+        # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/识别标志
         # 排除/防抖)是停机判定语义,不进该函数、留在钩子内。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots = bench_item_slots(ctx, screen, fuzzy=True)
@@ -966,12 +966,12 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                     _lg0.info('[cw-hook][summon] slot%s 占用未识别但帧非备战态'
                               '→ 跳过(过渡帧防误触)', _slot)
                     break
-                # Revision 第三段(金币说明锚):右侧奖励/金币说明
+                # Revision 第三段(金币说明识别标志):右侧奖励/金币说明
                 # overlay 是 C 类无档案 overlay(无独立 screen 档案,进不了
-                # is_prep_like_frame 两段式的 UPPER_SCREENS)→ 停机前以锚 OCR
+                # is_prep_like_frame 两段式的 UPPER_SCREENS)→ 停机前以识别标志 OCR
                 # 判定补充排除:overlay 开着时盖住备战栏右端,固定 slot rect
                 # 裁到 overlay 内容 → SIFT 零匹配 → 假「占用未识别」停机
-                # (局69 实证)。锚命中 → 本帧跳过识别判定(不 flag 不停机),
+                # (局69 实证)。识别标志命中 → 本帧跳过识别判定(不 flag 不停机),
                 # 等下一帧 overlay 关了再判。其余 overlay(阿哈大悦等全屏类)
                 # 由两段式第一段天然覆盖:全屏 UI 盖 id_mark → 备战屏不命中。
                 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -1039,7 +1039,7 @@ _FUNNEL_SUBSET_MIN_INLIERS_FACTOR: int = 2
 
 
 def _funnel_state(session) -> tuple[dict, set]:
-    """读漏斗状态(缺容器惰性建);返回 (last 映射, seen 集合)。"""
+    """读漏斗状态(缺状态容器惰性建);返回 (last 映射, seen 集合)。"""
     last = getattr(session, _FUNNEL_LAST, None)
     if last is None:
         last = {}

@@ -4,9 +4,9 @@
 + 词缀效果采集落盘(``affix_effects_data.py`` 运行时自写,写端 = ``write_affix_effects``,
 生产调用方 = ``operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing._collect_affix_effects``
 简报词缀点采链)。
-下游:容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table 吃怕表+泛化层)
+下游:状态容器 ``enemy_affixes`` → 线分词缀分量(cw_affinity_table 吃怕表+泛化层)
 ;``plane_bosses`` → 线分 boss 分量(``cw_affinity_table.BOSS_AFFINITY``;统一
-阵容评分迭代批 2 起;字段正本 = ``game_state/fields.md`` §3.1.3)。
+阵容评分迭代批 2 起;字段权威版本 = ``game_state/fields.md`` §3.1.3)。
 
 共享 helper(``_area_rect``/``_ocr``/``BRIEFING_SCREEN``)在 ``cw_obs_core``。
 """
@@ -42,9 +42,9 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
     读简报「区域-词缀行」area OCR → 词缀文字(滤数字/符号/短噪声)+ 其 center。
     下游 = 线分词缀分量(``cw_affinity_table`` 吃怕表:注册名查表 + 未注册名
     含独立强敌键「红绿灯」经强敌表消费);未知词缀透传(未登记线走兜底泛化)。
-    读不到 / area 缺 → [](不覆盖容器 ``enemy_affixes``)。
+    读不到 / area 缺 → [](不覆盖状态容器 ``enemy_affixes``)。
 
-    返回序 = **位置域序**(center.x 升序 = 词缀横条画面左→右):容器
+    返回序 = **位置域序**(center.x 升序 = 词缀横条画面左→右):状态容器
     ``enemy_affixes`` 序即画面位置域的确定性前提——获得链「最右侧」取尾
     删除消费尾元素(退化策略卡;敌后破坏均匀随机与序无关)。OCR 引擎
     返回序无排序保证,不排序则「列表尾 ≠ 画面右端」;等值 x 稳定排序
@@ -84,8 +84,8 @@ def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     位面详情屏「区域-词缀横条」(y965-1015,含「敌人难度108」前缀段)。
     ``CwScreenPlaneIntel`` 开位面详情采集时同帧调用(零额外交互)。
     滤噪同 ``read_affixes_with_pos``(中文 2-7 字滤数字;难度段含数字自然滤)。
-    返回序 = **位置域序**(center.x 升序,与简报读链同一排序锚——两写径
-    落同一容器,序语义必须一致:「最右侧」取尾删除消费横条画面右端;
+    返回序 = **位置域序**(center.x 升序,与简报读链同一排序基准——两写径
+    落同一状态容器,序语义必须一致:「最右侧」取尾删除消费横条画面右端;
     等值 x 稳定排序保持 OCR 序)。
     OCR 名 vs 数据名映射差异透传(同简报口径,AFFIX_MECHANIC_MAP 处理)。
     读不到 / area 缺 → []。
@@ -106,7 +106,7 @@ def parse_enemy_difficulty(texts: list[str]) -> int | None:
     """简报「敌人难度N」OCR → int(N;如 ``敌人难度108`` → 108;纯函数可单测)。
 
     整局基础敌人难度(影响 boss 血量 base×1.052^难度;docs/game/gameplay/currency_war.md §难度)。正则 ``敌人难度\\s*(\\d+)``
-    过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(容器 ``enemy_difficulty`` 回退 None;3.5.2)。
+    过滤词缀/首领等同屏文字。越界(>300)/无匹配 → None(状态容器 ``enemy_difficulty`` 回退 None;3.5.2)。
     """
     for t in texts:
         m = re.search(r'敌人难度\s*(\d+)', t)
@@ -120,7 +120,7 @@ def parse_enemy_difficulty(texts: list[str]) -> int | None:
 def read_briefing_enemy_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     """简报「标识-敌人难度」area OCR → parse_enemy_difficulty → int(3.5.2)。
 
-    读不到 / area 缺 → None(容器 ``enemy_difficulty`` 读缺跳写,保持现值)。
+    读不到 / area 缺 → None(状态容器 ``enemy_difficulty`` 读缺跳写,保持现值)。
     """
     rect = _area_rect(ctx, '标识-敌人难度', BRIEFING_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]
@@ -135,8 +135,8 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
 
     简报屏 3 boss 横排卡片(立绘 + 阵营标签 + 名字);读「区域-首领行」area OCR → boss 名
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序真值**(「排列≠位面序」
-    系单条日志孤证误判,勿据此改排列语义;裁定语义正本 = ``game_state/fields.md``
-    §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写容器
+    系单条日志孤证误判,勿据此改排列语义;裁定语义权威版本 = ``game_state/fields.md``
+    §3.1.3;简报读数经 LCS 清洗后按序经 ``report_screen_briefing_obs`` 写状态容器
     ``plane_bosses``,消费链 = 线分 boss 分量 ``cw_affinity_table.BOSS_AFFINITY``,
     统一阵容评分批 2 起)。``CwScreenPlaneIntel`` 位面详情实采保留为
     **中断恢复场景重采**通道(对局中内存丢失时补采)+ 对账真值源。

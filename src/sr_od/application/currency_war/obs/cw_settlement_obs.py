@@ -206,7 +206,7 @@ def _read_settle_gold_once(ctx: SrContext, screen: MatLike) -> int | None:
 def read_settle_gold_opt(ctx: SrContext, screen: MatLike) -> int | None:
     """结算屏右上角金币存量(稳定门版;None = 读不到)。
 
-    为什么存在:``parse_settlement_assets`` 的「存量 <N>」锚属旧版结算布局,
+    为什么存在:``parse_settlement_assets`` 的「存量 <N>」识别标志属旧版结算布局,
     当前版本 token 流无该词 → 胜局金解析全失败(已实测确认 run_20260918_084010 结算
     帧 .debug/temp/currency_war/redesign/fixtures/settle_ocr/window_batch/
     h_004_084253.png 亲读 + 当日 6/6 胜局读失败警告),战后金真值入口全灭。
@@ -277,7 +277,7 @@ def _read_settle_gold_gated(ctx: SrContext, screen: MatLike) -> int | None:
 #: 「获得金币总览」面板读数带 area(screen「货币战争-结算」;坐标
 #: 单一真相源)。读数走本带裁剪 + 放大 OCR——全帧 det 对金币列小数值
 #: 系统性漏检(定标两帧全帧 token 流币值全缺/仅剩 1 枚,与
-#: read_settle_gold_once 同款 det 天花板),裁剪放大后锚/息值/三分量
+#: read_settle_gold_once 同款 det 天花板),裁剪放大后识别标志/息值/三分量
 #: 全可读(暖读 ~0.1s)。
 A_SETTLE_COIN_PANEL: str = '结算-金币总览面板带'
 
@@ -318,7 +318,7 @@ def read_settle_interest_panel(ctx: SrContext, screen: MatLike | None) -> list:
 def _panel_row_value(items: list, label: str,
                      allow_glued: bool) -> tuple[bool, int | None]:
     """面板 token 流指定标签行的数值双出(标签在场?, 数值或 None;
-    纯函数)。数值两形态(实拍定标):①标签 token 粘连数值(「利息5」
+    纯函数)。数值两形态(实测定标):①标签 token 粘连数值(「利息5」
     形;allow_glued 门——仅息行开放,连胜行带「×N」次数修饰,粘连式
     会把修饰数误当金额);②标签 + 独立数值 token(定标两帧实态):同行
     (y 中心差 ≤30px,2x 帧行距 ~100px)标签右侧最近纯 1-2 位数字 token
@@ -355,7 +355,7 @@ def parse_settle_interest(items: list) -> int | None:
     :func:`read_settle_interest_panel` 产物)。三态语义(T-27 迭代设计
     §2.5 来源 A 计数判据,消费端按 None 不计数/0 与 N 入账):
 
-    - ``None`` = 面板锚不在(异常形态,该刻不计数,宁缺勿造,不猜)
+    - ``None`` = 面板识别标志不在(异常形态,该刻不计数,宁缺勿造,不猜)
       ∨ 息行在而数值失读(0 是合法读数,失读非零值,不冒认);
     - ``0`` = 面板在而息行整行缺席(息 0 零值形态,1-1 帧实证);
     - ``N > 0`` = 息行读数。
@@ -386,7 +386,7 @@ def parse_settle_coin_overview(items: list) -> dict[str, int | None]:
 
 def estimate_node_interest(gs: GameState, base_gold: int | None) -> int | None:
     """败局/补给轮息推算(T-27 来源 B/C 计数单一源;纯读 kernel 公式,
-    零容器写):息 = ``interest(基座金, resolved cap) + interest_flat``
+    零状态容器写):息 = ``interest(基座金, resolved cap) + interest_flat``
     (kernel round_start_income 息分量同式,economy.md §10.1 收入口径;
     cap/flat 聚合链 = aggregate_economy ← gs.active_strategies,live/sim
     同一单一源,cap None 经 interest_cap_resolved 归一,0 = 有效覆写不
@@ -394,7 +394,7 @@ def estimate_node_interest(gs: GameState, base_gold: int | None) -> int | None:
 
     - ``base_gold`` = 推算基座金(来源 B = 出战前最后备战帧金观察,战斗
       期间金库不变故计数刻现读 gs.gold 即该值;来源 C = 同口径备战帧
-      gs.gold 观察——常规形态备战帧已锚本节点,「获取补给之后」定谳下
+      gs.gold 观察——常规形态备战帧已锚定本节点,「获取补给之后」已定案下
       即领取前真值;「自动弹」形态无备战帧 → 宿主形态门宁缺不传);
       ``None`` = 基座从未观察/形态门关 → 返回 None,该刻宁缺不计数
       (接管局基座污染/读缺同此);
@@ -552,7 +552,7 @@ def parse_settle_damage_breakdown(items: list) -> dict:
     'damage_unfinished_progress': int|None, 'heal_longline': int|None}``。
 
     - 行定位 = 标签词(「基础伤害」「未完成进度伤害」「长线作战」;长词抗噪,
-      「未完成进度伤害」允许 OCR 断词,按「未完成」+「伤害」双锚匹配);
+      「未完成进度伤害」允许 OCR 断词,按「未完成」+「伤害」两个识别标志匹配);
     - 值 = 同行右侧最近带符号数字 token(行判据 y 中心差 ≤ 20px,帧实测行距 ~33px)
       或同 token 粘连(「基础伤害-10」);
     - 值域先验:基础伤害/未完成进度伤害恒 ≤ 0(负=扣血)——无符号正值 = OCR
@@ -679,7 +679,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     购买单元内关店通道零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
-    ✅ 已接线:CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
+    ✅ 已接通调用:CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
     结算观察半直写(_write_settlement_observation)→ performance.record
     (outcomes 流行写入已停用,观察半不受影响)。
     """

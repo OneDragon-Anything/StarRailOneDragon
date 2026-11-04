@@ -226,7 +226,7 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
     circles = detect_node_circles(gray)
     slots: list[NodeSlot] = []
     # 定位当前槽:取**全场饱和峰**(S 最大且满足 current 门)而非首个命中 —— review P2:光标
-    # 悬停会把 past 提亮成伪 current,首中即锚会锚左移(左侧变暗图标被划成 upcoming 污染 Hu)。
+    # 悬停会把 past 提亮成伪 current,首个命中的识别标志会左移(左侧变暗图标被划成 upcoming 污染 Hu)。
     # 真当前槽 = 高饱和高亮(节点的彩色描边),全场唯一显著峰;取 S 峰值更稳。
     cur_idx = -1
     _best_s = -1.0
@@ -242,7 +242,7 @@ def classify_node_row(row_rgb: np.ndarray, templates: dict[str, HuLike],
         if cur_idx >= 0:
             state = 'current' if i == cur_idx else ('past' if i < cur_idx else 'upcoming')
         else:
-            state = _circle_state(row_rgb, cx, cy)   # 无当前锚(罕见)→ 旧单特征兜底
+            state = _circle_state(row_rgb, cx, cy)   # 无当前识别标志(罕见)→ 旧单特征兜底
         node_type: str | None = None
         hu_dist: float | None = None
         if state == 'upcoming' and templates:

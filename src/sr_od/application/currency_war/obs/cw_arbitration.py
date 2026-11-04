@@ -90,10 +90,10 @@ def combine_board_frame_gated(badge_ocr: dict[str, int],
                               board_honest: bool) -> tuple[dict[str, int], list[tuple[str, str, bool]]]:
     """board 阵营计数帧态门仲裁内核(标称类②画面事实优先 + 帧态门,§1 行 8)。
 
-    - computed(tracked 身份全集)= 底座;badge_ocr(可视区徽标 OCR)= 画面
+    - computed(tracked 身份全集)= 基础数据;badge_ocr(可视区徽标 OCR)= 画面
       事实,分歧时备战帧覆写(裁决翻转);
     - 非备战帧/动画帧(``prep_like``/``board_honest`` 任一为假):双源皆不
-      可信 → 不裁不覆保底座(overlay 干扰 2/6 实证防新错);
+      可信 → 不裁不覆保基础数据(overlay 干扰 2/6 实证防新错);
     - badge 有 computed 无 = tracked 漏阵营(强信号),备战帧同样覆入。
 
     :return: ``(merged, decisions)``;decisions = ``[(faction, kind, take_badge)]``

@@ -52,7 +52,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
 
 
 def _bench_occ_n(view) -> int:
-    """日志计数:容器视图占用槽数(与旧 len(bench_chars) 同口径:占用条目数)。"""
+    """日志计数:状态容器视图占用槽数(与旧 len(bench_chars) 同口径:占用条目数)。"""
     if view is None:
         return 0
     return sum(1 for s in view.slots if s.kind != 'empty')
@@ -71,10 +71,10 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
-    - bench_view/deployed_rows:备战席容器视图(BenchView,空读/未加载模板
+    - bench_view/deployed_rows:备战席状态容器视图(BenchView,空读/未加载模板
       → None)+ 上场位 (前排命中对,后排命中对)(P6 观察链直产,元素 =
       ``(排内 1 基槽号, Unit)``;读侧仍分排读屏,
-      容器写端合一落 DeployedView;调用方按 None/空读走 carried);
+      状态容器写端合一落 DeployedView;调用方按 None/空读走 carried);
     - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
       回执;逐帧读数消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读
@@ -82,7 +82,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
       op 可传则用 op.screenshot,不可传(离线)跳过重读);
     - substate:dict 标注各模块可读性(node_seq/shop_cards);
     - owned_equips/occupied_equips/back_layout_slots:装备域三路
-      采集(P4 观察接线;None = 识别域资源未就绪,语义见
+      采集(P4 观察接入调用;None = 识别域资源未就绪,语义见
       kernel/cw_prep_actions.PrepObservation 装备域字段块)。
 
     本函数纯组装:session 写/缓存回填由 director 做(单写者
@@ -148,13 +148,13 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         out['read_receipt'] = _st
         _node_slots = read_node_sequence(ctx, frame)
         # 链观察落地批:slots 回传 director 写现行链(原读完即弃;组装层
-        # 单写者原则,写容器归 director 侧)。
+        # 单写者原则,写状态容器归 director 侧)。
         out['node_slots'] = _node_slots
         out['substate'] = {
             'node_seq': _node_slots is not None,
             'shop_cards': read_shop_cards(ctx, frame) is not None,
         }
-        # ===== 装备域 owned/occupied 采集(P4 观察接线)=====
+        # ===== 装备域 owned/occupied 采集(P4 观察接入调用)=====
         # 归位备战画面 op 入口观察链(heavy = 唯一读屏点):原分发段
         # prep_actions._build_equip_wear_plan 现读三路停用,识别函数本体
         # (read_equips/read_row_equipped)复用,迁移的是调用位置;deployed
@@ -205,6 +205,6 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  len(out['occupied_equips'] or {}))
     else:
         out['read_receipt'] = read_game_state(
-            ctx, frame, screen_name=SCREEN_NAME)   # 容器直写即产物
+            ctx, frame, screen_name=SCREEN_NAME)   # 状态容器直写即产物
         out['substate'] = {}
     return out

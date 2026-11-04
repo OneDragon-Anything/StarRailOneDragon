@@ -1,9 +1,9 @@
 """货币战争 **节点选项观测**:遭遇/补给/伙伴 overlay 截图 → ``EncounterOption`` 等
-(候选经画面 op report 落容器 payload;决策消费 = 策略层 ``mandate_v1``
+(候选经画面 op report 落状态容器 payload;决策消费 = 策略层 ``mandate_v1``
 各画面 ``decide`` 与 kernel ``decide_planner`` 等剩余钩子)。
 
 与 ``cw_observation``(备战屏 reads)分模块:本模块只管**节点 overlay 的选项读取**(decide_* 的输入)。
-决策接线 audit(``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
+决策接入调用 audit(``.debug/temp/currency_war/decision_wiring_audit.md``):这些 decide_*
 策略钩子早已就绪,缺的是 **reader** —— 本模块补 reader,handler 才能调 decide_* 用真数据(非硬编码默认)。
 
 每 reader 纯函数(可单测,喂 fixture OCR);坐标/带状过滤来自实机建档
@@ -44,7 +44,7 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
     遭遇**选项 UI 不显词缀**(词缀战后才显;design 08 的 affix 分支对此屏 N/A)→ ``affixes=[]``。
     按 title center-x 左→右排序 → ``idx``。决策消费 = 策略层
     ``mandate_v1/encounter_pick.decide``(能力态直通形:κ_S 三态 + 经验
-    档层 + 奖励 tiebreak;不消费阵容成型度——判据语义正本 =
+    档层 + 奖励 tiebreak;不消费阵容成型度——判据语义权威版本 =
     strategy-docs/31 号稿)。读不到 title(OCR 漏/非遭遇屏)→ 返 []
     (画面 op act 空候选零点击 round_success
     终结返回主循环重新识别画面,禁盲选派发——选卡确认不可逆消耗本节点;screens/encounter.md §4/§8)。
@@ -175,8 +175,8 @@ def read_invest_refresh_counts(
     return out
 
 
-# x 就近配对容差(执行层几何常量,非策略数值):三卡槽锚 x ≈{460,960,1460}
-# (槽距 ~500px),计数文本实测距槽锚 ≤ ~20px(归档帧 V7)——取半槽距 250 为
+# x 就近配对容差(执行层几何常量,非策略数值):三卡槽识别标志 x ≈{460,960,1460}
+# (槽距 ~500px),计数文本实测距槽识别标志 ≤ ~20px(归档帧 V7)——取半槽距 250 为
 # 「这条计数属于这槽」的布局推导上界;超界 = 读缺形态(如中槽文本漏读时其右
 # 邻文本相距 514px)→ 落 None,防邻槽计数被误配颠覆「计数>0 才点」的权威闸
 # (fail-closed 方向:误配最坏多试一次点击)。
@@ -222,9 +222,9 @@ _SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(实机卡身选中行实测�
 # 文本中心 x 漂移 ≤~60(图标 x 列内稳定、名 x 因名长漂移),200 双侧余量在案;
 # 超阈值 = 邻列装备(裂簇防线)。
 _SUPPLY_COL_GAP: int = 200
-_SUPPLY_COL_X_TOL: int = 150      # 簇心归锚/孤儿判差与 SIFT 命中归簇共用容差
+_SUPPLY_COL_X_TOL: int = 150      # 簇心归识别标志/孤儿判差与 SIFT 命中归簇共用容差
 # (实证:簇心 = 装备名 OCR 文本中心均值,非图标中心——名长右移显著;
-#  簇心-自身锚点最差 ~112(5 字件名 × 2 字角色名,单排帧)、-邻锚点 ≥~240,
+#  簇心-自身识别标志最差 ~112(5 字件名 × 2 字角色名,单排帧)、-邻识别标志 ≥~240,
 #  150 容差双侧余量 ~38/~90;样本属弱证据,超宽卡面理论形态可破,实机首遇补帧)
 # 钻装备名检测集单一源 = kernel/cw_obs_core.DIAMOND_EQUIP_NAMES(游戏装备
 # 真值,读数域共用)。本模块消费 = SIFT 模板筛(_sift_detect_diamonds)+
@@ -268,7 +268,7 @@ def _group_supply_columns(
         equips: list[tuple[int, int, str]],
         sift_hits: list[tuple[int, int]] | None = None,
 ) -> list[tuple[SupplyOption, int]]:
-    """补给选项归并纯函数(角色锚点定列骨架 + 装备簇归锚 + 孤儿簇/
+    """补给选项归并纯函数(角色识别标志定列骨架 + 装备簇归识别标志 + 孤儿簇/
     char-only 优雅降级;离线单测入口,OCR 读链只喂坐标与文本)。
 
     [输入坐标系] ``chars`` = (角色名文本中心 x, roster 校验后角色名);
@@ -278,19 +278,19 @@ def _group_supply_columns(
     [输出] 列序(左→右 = 画面物理列序,与 ``SupplyOption.idx`` 及观察
     上报契约「列表序 = 画面物理列序」精确一致)的 (SupplyOption,点击 x)
     列表;点击 x = 有装备列簇首件(y 序)文本中心 x(单排布局与旧逐装备
-    点击点逐值一致)/ char-only 列角色锚 x(卡身点击 y 恒
+    点击点逐值一致)/ char-only 列角色识别标志 x(卡身点击 y 恒
     ``_SUPPLY_CARD_CLICK_Y``,由调用方补 Point)。
 
     归并规则(设计 §2.2,归档帧几何依据见常量注):
     1. 装备按 x 链式聚簇(x 序相邻互距 ≤ ``_SUPPLY_COL_GAP``);
-    2. 列骨架 = 角色锚点(x 序)——每列恰一角色卡是画面稳定结构,列数
-       由此确定;零锚点(角色名极端 OCR 全失读)兜底 = 装备 x 簇作骨架,
+    2. 列骨架 = 角色识别标志(x 序)——每列恰一角色卡是画面稳定结构,列数
+       由此确定;零识别标志(角色名极端 OCR 全失读)兜底 = 装备 x 簇作骨架,
        各簇自成 char='' 列;
-    3. 簇按簇心 x 归入最近锚点,容差 ``_SUPPLY_COL_X_TOL``;超差(该列
-       角色名失读不并入邻列)或锚点已被先到簇占用 = 孤儿簇自成列;
-    4. 无簇锚点 = char-only 列(equip=''、extra_equips=——人才储备类
+    3. 簇按簇心 x 归入最近识别标志,容差 ``_SUPPLY_COL_X_TOL``;超差(该列
+       角色名失读不并入邻列)或识别标志已被先到簇占用 = 孤儿簇自成列;
+    4. 无簇识别标志 = char-only 列(equip=''、extra_equips=——人才储备类
        变体天然承接);
-    5. 列序 = 锚点列(按锚 x)与孤儿簇(按簇首件 x)按 x 合并排序;
+    5. 列序 = 识别标志列(按识别标志 x)与孤儿簇(按簇首件 x)按 x 合并排序;
     6. 簇内按 y 排序 → ``equip`` 首件 + ``extra_equips`` 其余;
     7. ``has_diamond`` = SIFT 命中归簇(最近簇心 ≤ 容差)+ 文本兜底
        any(名 ∈ DIAMOND_EQUIP_NAMES)双通道任一(兜底遍历全列件名,
@@ -307,9 +307,9 @@ def _group_supply_columns(
             clusters.append([(ex, ey, ename)])
     # 簇心 = 簇内装备名 OCR 文本中心 x 均值(非图标中心)
     centers = [sum(e[0] for e in c) // len(c) for c in clusters]
-    # 2) 列骨架 = 角色锚点
+    # 2) 列骨架 = 角色识别标志
     anchors = sorted(chars, key=lambda c: c[0])
-    # 3) 簇归锚:每簇取最近锚点,≤容差且未被占 → 归入;否则孤儿簇
+    # 3) 簇归识别标志:每簇取最近识别标志,≤容差且未被占 → 归入;否则孤儿簇
     cluster_to_anchor: dict[int, int] = {}
     taken: set[int] = set()
     if anchors:
@@ -320,8 +320,8 @@ def _group_supply_columns(
                     and ai not in taken:
                 cluster_to_anchor[ci] = ai
                 taken.add(ai)
-    # 4/5) 列装配:锚点列(有簇 = 装备列,无簇 = char-only 列)+ 孤儿簇
-    # 列;排序 x 键 = 锚点列取锚 x、孤儿簇取簇首件 x(列距 >> 簇心-锚点
+    # 4/5) 列装配:识别标志列(有簇 = 装备列,无簇 = char-only 列)+ 孤儿簇
+    # 列;排序 x 键 = 识别标志列取识别标志 x、孤儿簇取簇首件 x(列距 >> 簇心-识别标志
     # 最差距离,两键混排不翻转相邻列序)。
     anchor_to_cluster = {ai: ci for ci, ai in cluster_to_anchor.items()}
     # 元素 = (排序 x,角色名,簇成员(y 序)|[],簇下标|None)
@@ -360,24 +360,24 @@ def _group_supply_columns(
 
 
 def read_supply_options(ctx: SrContext, screen: MatLike) -> list[tuple[SupplyOption, Point]]:
-    """OCR 补给选项(角色锚点定列,列 = 选项 = 角色 + 装备组,非穿戴语义)
+    """OCR 补给选项(角色识别标志定列,列 = 选项 = 角色 + 装备组,非穿戴语义)
     → ``[(SupplyOption, 卡身点击点)]``,按列 x 左→右。
 
     布局:**列数动态探测**(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」
     类加补给阶段可增列、「过剩经费」类每列装备 1→2 件,augment 改写下实测见
     3-5 不等——历史 docstring 的「3 选 1」「实测 5」均为特例表述,勿写死),
     每列 = 角色名(y≈545)+ 装备名(y≈680 单排 / 648+748 双排),点卡身
-    (y≈550)选中 + 右下「确认」。**刷新圆钮实存**(「剩余次数」文本锚左侧
+    (y≈550)选中 + 右下「确认」。**刷新圆钮实存**(「剩余次数」文本识别标志左侧
     固定偏移点击,宿主 = 画面 op 内置分支 ``cw_screen_supply_node.py``;本读链
-    只读选项,不读刷新剩余——剩余读数闸 = 容器 ``supply_refresh_left`` 剩余
+    只读选项,不读刷新剩余——剩余读数闸 = 状态容器 ``supply_refresh_left`` 剩余
     语义观察真值,由画面 op 观察 node 同帧读经 report 摄入,全域规范 =
     ``screens/op-layer.md`` §1.4)。
     钻识别双通道 ✅:主 = SIFT(装备 icon 区扫三钻模板 → 命中点,
     装备图已采集);兜底 = 装备名精确匹配(遍历全列件名)。
 
-    归并 = :func:`_group_supply_columns` 纯函数(角色锚点定列骨架 + 装备
-    簇归锚;孤儿簇自成列不并入邻列,char-only 列一等成立)——本读链只喂
-    OCR 坐标与文本 + SIFT 命中点。读不到(零锚点零装备簇)→ []
+    归并 = :func:`_group_supply_columns` 纯函数(角色识别标志定列骨架 + 装备
+    簇归识别标志;孤儿簇自成列不并入邻列,char-only 列一等成立)——本读链只喂
+    OCR 坐标与文本 + SIFT 命中点。读不到(零识别标志零装备簇)→ []
     (画面 op 空候选分支 = 零点击终结交回重读,禁盲选派发)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char

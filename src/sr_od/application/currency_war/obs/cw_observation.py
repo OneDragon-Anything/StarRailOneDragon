@@ -1,4 +1,4 @@
-"""货币战争 **备战屏**观测:备战截图 → 容器直写 + 轻量回执(``read_game_state``)。
+"""货币战争 **备战屏**观测:备战截图 → 状态容器直写 + 轻量回执(``read_game_state``)。
 
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
@@ -206,7 +206,7 @@ def read_gold_settled(ctx: SrContext, screen: MatLike) -> int | None:
 
 
 def read_refresh_probs(ctx: SrContext, screen: MatLike) -> dict[int, float] | None:
-    """商店开态的概率条 → {费用档 1-5: 概率}(r77 轮岗接线;读不到 → None 退基线)。
+    """商店开态的概率条 → {费用档 1-5: 概率}(r77 轮岗接入调用;读不到 → None 退基线)。
 
     **为什么读屏**(用户点题「轮岗」):投资环境轮岗每备战阶段随机翻倍
     一个费用档(基线 lv6 30/40/25/5 → 1费翻倍变 60/22/15/3,实测吻合)——概率条
@@ -429,7 +429,7 @@ def gate_node_type(node_type: str | None, round_num: int | None,
     两道门,任一不过 → None(不覆盖):
     1. **boss 轮次门**:node_type=='boss' 且 round_num < ``_BOSS_MIN_ROUND`` → 即将到来
        的 boss 节点标签(2-7 实证),非当前节点 → None。
-    2. **标签位置门**(给了锚点时):|label_x - current_cx| > ``_NODE_LABEL_X_TOL`` →
+    2. **标签位置门**(给了识别标志时):|label_x - current_cx| > ``_NODE_LABEL_X_TOL`` →
        标签在别的节点下方(张冠李戴)→ None。
     """
     if node_type is None:
@@ -524,7 +524,7 @@ def read_node_sequence(ctx: SrContext, screen: MatLike) -> list | None:
     if _t:
         _cur_slot = next((s for s in _slots if s.state == 'current'), None)
         if _cur_slot is None:
-            pass   # 无当前锚(罕见)→ 不覆盖
+            pass   # 无当前识别标志(罕见)→ 不覆盖
         elif gate_node_type(_t, None, label_x=_lx,
                             current_cx=_cur_slot.cx + _x0) is None:
             log.info('[cw!][nodeseq] 标签x错位不覆盖:type=%s 标签x=%d vs 当前槽cx=%d'
@@ -712,8 +712,8 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                          '复现由台账行复现计数显影'),
                 reader_source='node_ledger_three_vote',
                 gap_large=False,
-                # refs 旧挂点清理(refs 迁移):decisions 流已停用,
-                # 改指 journal (run_id,v) 锚(plane/round 已在行参内联)。
+                # refs 旧插入位置清理(refs 迁移):decisions 流已停用,
+                # 改指 journal (run_id,v) 基准(plane/round 已在行参内联)。
                 refs=journal_refs(),
                 note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点,'
                      '证据=journal 行内嵌 state),'
@@ -731,7 +731,7 @@ def read_plane_detail_difficulty(ctx: SrContext, screen: MatLike) -> int | None:
     生产难度主源 = 备战画面敌方难度读数两级管线(``read_enemy_difficulty``)
     不变;本读法服务位面详情采集时的参考值落账(离线交叉核对/缺口排查)。
     明文正读(非艺术字)→ 全屏 OCR 按「敌人难度」前缀正则提取,不依赖
-    固定坐标(位面详情布局随内容变,正则锚文本比锚坐标稳)。
+    固定坐标(位面详情布局随内容变,正则识别标志文本比识别标志坐标稳)。
     """
     try:
         results = ctx.ocr_service.get_ocr_result_list(
@@ -796,7 +796,7 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
 def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     """位面详情屏 详情条「文本-节点类型名」OCR → 类型名(如 首领节点/奖励节点)| None。
 
-    boss 定位验证锚:boss 节点有**两种渲染态**——头像态(run29 型,大图标
+    boss 定位验证识别标志:boss 节点有**两种渲染态**——头像态(run29 型,大图标
     SIFT 可认)与纹章风头像渲染变体(run30 型:最右节点=金色纹章图案,
     图案即该 boss 的纹章风头像;大图标 SIFT 未命中系模板库缺该风格所致,
     属识别能力缺口,**非「本屏无身份信息」**——证据帧 = sr-od-test/screens/
@@ -953,7 +953,7 @@ def parse_selected_difficulty(texts: list[str]) -> str:
     """难度确认屏 OCR 文字 → 本局职级(``A\\d+(-\\d+)?``,如 A8 / A5 / A8-1..A8-50)。
 
     正则 + 全匹配过滤非职级文字(财富造物主 / 当前职级难度效果 等)。纯函数可单测。
-    无匹配 → ""(观察面如实缺省,容器域不写)。
+    无匹配 → ""(观察面如实缺省,状态容器域不写)。
     """
     for t in texts:
         m = re.fullmatch(r'A(\d+)(?:-(\d+))?', t.strip())
@@ -966,8 +966,8 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
     """难度确认屏 → 本局职级(``标识-当前难度职级`` area OCR → parse)。
 
     AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。职级读数 =
-    观察事实(容器 gs.selected_difficulty 写入源,遥测/对账消费);
-    读不到 → ""。接线已通(3.5.1,d841d1a1):CwEntryStart 难度确认段
+    观察事实(状态容器 gs.selected_difficulty 写入源,遥测/对账消费);
+    读不到 → ""。接入调用已通(3.5.1,d841d1a1):CwEntryStart 难度确认段
     调本函数 → ctx.cw_selected_difficulty → cw_loop copy session →
     策略层填 state。
     """
@@ -1049,7 +1049,7 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
 
     :param round_caps: 位面 round 读数上限源(= gs.node_seq_by_plane 现值;
       None = 未注册/局外读回退默认长度,三态见
-      :func:`node_round_cap`)。live 调用方恒传容器现值,修饰局两位数
+      :func:`node_round_cap`)。live 调用方恒传状态容器现值,修饰局两位数
       round(如 P1 r10)随场字段放行。
     :return: (plane, round_num)。读不到 → 返回上次成功值(过渡帧兜底);无历史 → (1, 1)。
 
@@ -1451,7 +1451,7 @@ def arbitrate_deployed_count(paddle_n: int | None,
        合法化 no-op → 零推进死锁(实证:备战环 CV 幻影占用合法化 no-op 的
        实机停机局,``deployed_count_2src`` 保留证据三连);计数偏低 →
        多试一次拖拽被游戏拒(源槽弹回,廉价可观测)。取 min 恒落在廉价侧,
-       单调规则不依赖任何拍定分界。
+       单调规则不依赖任何人为定的分界。
     2. 分歧告警带沿用既有保留证据判据 |paddle−cv|>1(spread≤1 属两源合法
        读数差:CV 采样边沿/动画残影,单帧 ±1 不行动);>1 = 结构性分歧,
        调用方须保留证据 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
@@ -1553,7 +1553,7 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
     ② "X/Y" 正则的 X(斜杠读全时);
     ③ 斜杠丢失容错还原(``_board_rescue_xy``);
     ④ 徽标小格放大重读(``_read_badge_cell``,仅兜底行触发);
-    ⑤ expected(身份 computed 底座;档位链阵营徽标整体失读时 OCR 侧证据穷尽,
+    ⑤ expected(身份 computed 基础数据;档位链阵营徽标整体失读时 OCR 侧证据穷尽,
        恒 1 兜底是低估最后一环——此时无画面事实反证,身份推算即最优估计;
        证据帧 86ce9fd1:持续伤害/护盾 徽标失读真值 2,旧链恒 1)。
     ①-④ 全 miss 且无 expected → count=1 兜底(动画期只显档位链,至少 1 人在场)。
@@ -1889,9 +1889,9 @@ def resolve_cost_star(badge_cost: int | None, base_cost: int) -> tuple[int, int,
 
 
 def _anchor_hit_full_ocr(full_ocr, area) -> bool:
-    """全帧 OCR 位匹配锚判定(token 文本 LCS≥0.5 且 bbox 中心落在
+    """全帧 OCR 位匹配识别标志判定(token 文本 LCS≥0.5 且 bbox 中心落在
     area.rect 内;识别层同源全帧路径——裁剪路径对买光态暗钮确定性
-    拒识,实机三败已定案;实测 token 位 (1598,967,47×27) ⊆ 锚 rect)。"""
+    拒识,实机三败已定案;实测 token 位 (1598,967,47×27) ⊆ 识别标志 rect)。"""
     from one_dragon.utils import str_utils
     if not full_ocr or area is None:
         return False
@@ -1924,7 +1924,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
                     ) -> list[ShopSlot] | None:
     """SIFT 商店牌行 → 定长 5 槽三态数组(ShopSlot;用户三态裁定)。
 
-    返回 None = 店未开(收起锚 miss;调用方漏斗不写 payload)——旧紧缩
+    返回 None = 店未开(收起识别标志 miss;调用方漏斗不写 payload)——旧紧缩
     ``[]`` 混载「店未开/买空/失读」三事实的问题在此根治:买光 =
     ``[empty×5]`` 是合法真值;unknown = 应为内容但识别失败(缺陷台账
     保留证据,决策一律跳过)。
@@ -1946,17 +1946,17 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     无阵营(白厄类)。立绘库经 ``ensure_portrait_templates`` 按需加载。
     """
     templates = ensure_portrait_templates(ctx)
-    # 商店开态前置门(M37/M38 误停机根因):收起锚不命中 =
+    # 商店开态前置门(M37/M38 误停机根因):收起识别标志不命中 =
     # 店未开,返 None(「不在商店」≠「没牌」≠「未识别」;r7 review P0-A
     # 修过恒真比较,枚举等值比较保留)。
     _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
     _collapse_area = next((a for a in _si.area_list if a.area_name == '按钮-收起'), None) if _si else None
     if _collapse_area is None:
-        # 锚缺失 fail-open 告警(改名/删 area 的回归可见性,r9 review)。
+        # 识别标志缺失 fail-open 告警(改名/删 area 的回归可见性,r9 review)。
         from one_dragon.utils import log_utils
         log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None and full_ocr is not None:
-        # 全帧 OCR 位匹配锚判定(实机五败已定案:裁剪路径对买光态暗钮
+        # 全帧 OCR 位匹配识别标志判定(实机五败已定案:裁剪路径对买光态暗钮
         # 确定性拒识——det 模型对低对比小图不可检,二值化亦不救;全帧
         # 路径活,识别层同源。漏斗既有全帧结果下传,零额外成本)。
         # 判定确定 → 无重试(同数据重判同结果)。
@@ -2234,7 +2234,7 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
 
 @dataclass(frozen=True)
 class GameStateReadReceipt:
-    """read_game_state 轻量回执(帧表示停用;容器直写已在读取过程内完成,
+    """read_game_state 轻量回执(帧表示停用;状态容器直写已在读取过程内完成,
     本结构只携带「本帧逐面读数 + 保真位」)。
 
     消费面 = 无单例也能用的逐帧值:遥测 recorder(画面真值交叉核对语料,
@@ -2245,8 +2245,8 @@ class GameStateReadReceipt:
     值(hp_readable/hp_trusted 位不变)、level 三源解析值(level_readable
     阶段跳过帧按旧帧缺省 True)、board = 徽标裁决后计数、shop = 原始
     读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。读数域 None
-    (离屏/店未开,三态契约)在本回执域归并为空容器——回执只携带
-    旧帧形态,三态区分归容器域 gs.shop.value。
+    (离屏/店未开,三态契约)在本回执域归并为空载荷——回执只携带
+    旧帧形态,三态区分归状态容器域 gs.shop.value。
     """
 
     gold: int = 0
@@ -2275,7 +2275,7 @@ _last_gold_reconcile_key: tuple[str, int, int] | None = None
 
 def _reconcile_gold_against_container(gs, gold_read: int,
                                       frame: str, screen) -> None:
-    """账实金对账生产者:备战帧金实读 vs 容器账面(gold 域统一对账)。
+    """账实金对账生产者:备战帧金实读 vs 状态容器账面(gold 域统一对账)。
 
     gap = |实读(稳定门采信值) − ``gs.gold`` 现值(账面)|;gap>0 落
     ``obs_conflict('gold_delta', old=账面, new=实读)`` 证据行,分级由
@@ -2284,8 +2284,8 @@ def _reconcile_gold_against_container(gs, gold_read: int,
     gap=0 = 账实一致,静默(零差异不是冲突,不产证)。
 
     ⚠️ 时点约束(防静默中和):调用必须挂在本帧
-    ``gs.observe(gs.gold, …)`` 写**之前**的容器现值上——插在写后则
-    容器已被本帧读数覆盖,gap 恒 0,告警静默死亡且无报错。
+    ``gs.observe(gs.gold, …)`` 写**之前**的状态容器现值上——插在写后则
+    状态容器已被本帧读数覆盖,gap 恒 0,告警静默死亡且无报错。
 
     账面 None(本局尚无金读数,如恢复局首战前)= 无对账基线,静默
     跳过(诚实缺位,非零 gap 语义)。
@@ -2310,13 +2310,13 @@ def _reconcile_gold_against_container(gs, gold_read: int,
 def read_game_state(ctx: SrContext, screen: MatLike,
                     phase: str | None = None,
                     screen_name: str | None = None) -> GameStateReadReceipt:
-    """备战屏截图 → 容器直写(obs 族 sig)+ 轻量回执(逐字段 gate 单一源
+    """备战屏截图 → 状态容器直写(obs 族 sig)+ 轻量回执(逐字段 gate 单一源
     = PHASE_FIELD_SPEC)。
 
     观察 reader 直接产
-    容器写(gs.observe/carry/write_prior/relay,写语义与原
+    状态容器写(gs.observe/carry/write_prior/relay,写语义与原
     _feed_board_state 逐位同),漏斗不再构造整帧——返回值降为
-    :class:`GameStateReadReceipt`(本帧逐面读数 + 保真位;容器单例
+    :class:`GameStateReadReceipt`(本帧逐面读数 + 保真位;状态容器单例
     game_state_of(session) 才是决策真值源)。
 
     :param phase: 规范入口序列阶段键(先清场、再识别、后动作)——
@@ -2337,7 +2337,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     None 诚实未知;的沿用 last_hp_real/兜底 100 两层均已停用,
     结算覆盖 = hp 唯一真值入口)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
     部署 = DeployMove 原子序(备战决策环动作));席位域观察写端 = 备战装配环(通道声明见下
-    容器直写块注),本漏斗不写。
+    状态容器直写块注),本漏斗不写。
     """
     from sr_od.application.currency_war.kernel import cw_observe as _obs_mod
     _spec = PHASE_FIELD_SPEC.get(phase) if phase is not None else None
@@ -2363,8 +2363,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     _gold_opt = read_gold_settled(ctx, screen) if _w('gold') else None
     gold_val = 0 if _gold_opt is None else _gold_opt
     gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
-    # 位面/轮次提前读(round_caps = 场字段现值,live 漏斗接线:修饰局
-    # 两位数 round 随场字段放行;局外无容器 = None 回退默认长度)。
+    # 位面/轮次提前读(round_caps = 场字段现值,live 漏斗接入调用:修饰局
+    # 两位数 round 随场字段放行;局外无状态容器 = None 回退默认长度)。
     _caps_gs = game_state_from_ctx(ctx)
     plane, round_num = (
         read_phase_round(
@@ -2447,7 +2447,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                          plane=plane, round_num=round_num)
         # (毒化防线与 last_level_obs 写回已停用(见终态契约 §A 守卫)——
         #  等级真值归宿 = gs.level 覆盖/carried,误读窗不再有单调守卫打回。)
-    # (迁移审计批 F1):cap 真值接线——防抖后采信(决策层 max_units
+    # (迁移审计批 F1):cap 真值接入调用——防抖后采信(决策层 max_units
     # 优先读真值、level 兜底;读不到/域外拒信 → None 保持兜底语义,与旧恒
     # level 行为兼容)。生产 cap = level + 宝钻数(D-53)。
     # 阶段 gate 路径 cap 与 deployed_count 合并单读(resolve_paddle_pair);
@@ -2473,7 +2473,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     #  直入 gs(logic 源),敌方难度读数真读(observation)覆盖,失读帧走 carry 沿用。)
     # 判读纪律:live=False 帧的值不落新证,别当「难度 vs 轮次」曲线样本。
     # spec 无此字段的阶段(prep_shop_open 以 P1 基线为准;battle 帧无敌方难度读数)
-    # 跳过逐帧读(与「真读 None 回退」同语义,沿用容器值)。
+    # 跳过逐帧读(与「真读 None 回退」同语义,沿用状态容器值)。
     enemy_difficulty: int | None
     enemy_difficulty_live = False
     if _w('enemy_difficulty'):
@@ -2487,7 +2487,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         enemy_difficulty = None
     level_up_cost: int | None = (
         read_level_up_cost(ctx, screen) if _w('level_up_cost') else None)
-    # streak:gs.streak(结算覆盖写端带符号直入容器,方向可靠;fixture 核实
+    # streak:gs.streak(结算覆盖写端带符号直入状态容器,方向可靠;fixture 核实
     #;终态契约 §B:session.last_streak 停用)。
     # 无值(离线/测试/开局未结算)→ read_streak 备战 magnitude fallback。
     # 双源保留证据(观察冲突审计 #8 P2):结算真值(带符号)与备战
@@ -2519,12 +2519,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     else:
         streak_val = (read_streak(ctx, screen) or 0) if _w('streak') else 0
     # board 双源(用户定:羁绊多时左面板一页显示不全要滚动 → OCR 只读可视区,
-    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集底座**,不受滚动/遮挡影响;
-    # 迁移审计裁决翻转):computed(tracked 全已知身份)仍是全集底座(滚出屏的阵营只有它
+    # 滚出屏的静默漏;游戏数据(角色注册表)已全量 → computed 做**全集基础数据**,不受滚动/遮挡影响;
+    # 迁移审计裁决翻转):computed(tracked 全已知身份)仍是全集基础数据(滚出屏的阵营只有它
     # 知道);但**可视区徽标行(左栏 OCR)是画面事实 —— 可视行计数与 computed 不等时以徽标为准
     # 覆写**(迁移审计抽样 board 3/6 采 computed 错、徽标才是真值实证)。例外(防新错):非备战帧
     # (overlay 遮挡/动画过渡,迁移审计overlay 干扰 2/6 实证)徽标与 computed **均不可靠** →
-    # 不裁不覆,保 computed 底座 + 保留证据(等下一帧备战帧再裁)。
+    # 不裁不覆,保 computed 基础数据 + 保留证据(等下一帧备战帧再裁)。
     # - OCR 可见但 computed 无 = tracked 漏该阵营角色(强信号):备战帧同样采徽标覆入;
     #   非备战帧保留证据不覆。
     # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
@@ -2537,13 +2537,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     )
     _gs_session = getattr(_match, 'session', None) if _match is not None \
         else None
-    # computed 底座 = 主域 deployed 派生工作表(
-    # tracked 第二账停用,底座改主域派生;排归属由下标派生)。
+    # computed 基础数据 = 主域 deployed 派生工作表(
+    # tracked 第二账停用,基础数据改主域派生;排归属由下标派生)。
     _dep_work = (deployed_indexed_of_view(_gso_board(_gs_session).deployed.value)
                  if _gs_session is not None else None)
     _computed = board_from_deployed(_dep_work)
     # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
-    # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。
+    # → 有 tracked 时保 computed 基础数据、无 tracked 时空板(与「OCR 全 miss」同语义)。
     _bp, _board_honest = (
         _board_pairs(ctx, screen, level, expected=_computed)
         if _w('board') else ({}, False))
@@ -2594,7 +2594,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         board_val = _merged
     else:
         board_val = _ocr_board
-    # active 双字段单一源 = gs(终态契约 §B:选择写点直写容器,session 份停用)。
+    # active 双字段单一源 = gs(终态契约 §B:选择写点直写状态容器,session 份停用)。
     active_strategies_val: list[str] = []
     active_env_val = ''
     plane_bosses_val: list[str | None] = []
@@ -2635,7 +2635,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     note='投资选择事件 vs 持卡终态不一致(写链断/选择落空)')
         except Exception:   # noqa: BLE001  观测 best-effort
             pass
-        # r358d(遥测全面性审计接线,缺口清单):观察了但
+        # r358d(遥测全面性审计接入调用,缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
         # 词缀/巨星/伙伴/连胜)与决策(线分词缀/boss 分量/
         # 连胜门)同源(线分敌情分量消费面 =
@@ -2643,17 +2643,17 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 注入点单一(此处),策略器的
         # 方向刷新注入保留(两处都幂等:非空才覆)。
         # (终态契约 §B:active 双字段与 briefing 双字段中继全部停用——
-        #  写端(选择 handler/简报/位面详情采集/prep 补采)直入容器,
+        #  写端(选择 handler/简报/位面详情采集/prep 补采)直入状态容器,
         #  session 中转面死亡。)
     # shop_cards:spec 无的阶段(prep_clean 面板未开;battle 帧同)直置
-    # None(三态语义 None=离屏,不与「买光=[empty×5]」混载),连锚判定都省。
-    # 全帧 OCR 一次(锚位匹配 + 牌面判定同源;买光态暗钮裁剪路径
+    # None(三态语义 None=离屏,不与「买光=[empty×5]」混载),连识别标志判定都省。
+    # 全帧 OCR 一次(识别标志位匹配 + 牌面判定同源;买光态暗钮裁剪路径
     # 确定性拒识的根治,实机五败已定案)
     _full_ocr = (ctx.ocr_service.get_ocr_result_list(image=screen)
                  if _w('shop_cards') else None)
     shop_val = (read_shop_cards(ctx, screen, full_ocr=_full_ocr)
                 if _w('shop_cards') else None)
-    # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
+    # r77(轮岗接入调用):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
     # 消费方(_sample_cost)自动退基线表;成功时 刷新找牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     refresh_probs_val = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
@@ -2663,8 +2663,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
 
-    # ===== 容器直写(原 _feed_board_state 喂入口与本函数合并,
-    # 写语义逐位同;GameState 观察流接线,字段级规格正本 =
+    # ===== 状态容器直写(原 _feed_board_state 喂入口与本函数合并,
+    # 写语义逐位同;GameState 观察流接入调用,字段级规格权威版本 =
     # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
     # §8.7)。best-effort:任何异常不阻塞返回(记录层故障不毒化决策链;
     # 诊断走 [cw!][gs-feed] 日志)。
@@ -2694,7 +2694,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             # 「禁拿兜底默认值当观察」同义)——kind 从 gs.node 现值继承合成新键
             # (plane/round 真读更新),evidence 标继承;无现值且未读 → 不写
             # (禁猜)。kind 的权威写端 = 结算屏三源仲裁(§3.5.2/§3.2.1),批次二
-            # 接线;继承窗口内 kind=「上一已知节点类型」,备战帧真读即覆盖。
+            # 接入调用;继承窗口内 kind=「上一已知节点类型」,备战帧真读即覆盖。
             if node_type is not None:
                 gs.observe(gs.node, NodeKey(plane=int(plane),
                                             round_num=int(round_num),
@@ -2712,7 +2712,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             if _w('gold'):
                 if gold_readable:
                     # 账实金对账生产者(⚠️ 必须在本帧 observe 写之前的
-                    # 容器现值上对账——写后容器已被本帧读数覆盖,gap 恒 0,
+                    # 状态容器现值上对账——写后状态容器已被本帧读数覆盖,gap 恒 0,
                     # 告警静默死亡;时点约束见 _reconcile_gold_against_container)。
                     _reconcile_gold_against_container(gs, int(_gold_opt),
                                                       frame, screen)
@@ -2760,7 +2760,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 gs.observe(gs.level_up_cost, int(level_up_cost),
                            sig=_sig_read)
             if _w('deploy_cap'):
-                # deploy_cap 观察写端(入容器,§2.3;spec 键已已登记,容器喂入
+                # deploy_cap 观察写端(入状态容器,§2.3;spec 键已登记,状态容器喂入
                 # 沿用既有键门):采信门输出才 observe——防抖核
                 # (read_deploy_cap_debounced/_debounce_cap,双帧一致)
                 # 已在读取半部,None = 拒信/失读帧 → carry 沿用(§2.2 处置①;
@@ -2789,7 +2789,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     gs.observe(gs.shop, ShopPayload(cards=shop_val,
                                                     refresh_probs=probs),
                                sig=_sig_read)
-                # 锚门 miss(shop_val=None)→ 沿用现值不写(flow.py 决策入口
+                # 识别标志门 miss(shop_val=None)→ 沿用现值不写(flow.py 决策入口
                 # 契约原文:「开店态失读窗=喂入口失读不写,沿用上一开店牌面,
                 # 照旧决策、执行侧核对兜底」);真离屏结构事实由下方 elif 承载。
             elif gs.shop.value is not None:
@@ -2799,10 +2799,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 # 刷新费现场识别通道(§3.3.4 识别失败=None 禁兜底)。
                 # 写入口经按钮态 composite(读链接入):免费态按钮渲染的
                 # 剩余次数与标价**同 rect**——免费帧次数数字会被标价解析误读,
-                # 「免费帧不写」的免费判定输入 = 按钮态锚命中(结构性满足),
+                # 「免费帧不写」的免费判定输入 = 按钮态识别标志命中(结构性满足),
                 # 不再依赖「免费帧渲染无数字」旧假设(实机取证推翻:
                 # 免费帧 = 「免费刷新」+次数)。非免费帧 price 语义与旧直读
-                # 逐位一致(锚失读/未中分支 composite 内部同源 read_shop_
+                # 逐位一致(识别标志失读/未中分支 composite 内部同源 read_shop_
                 # refresh_price);免费帧 → carry 沿旧值(§3.3.4 None≠0 同门)。
                 from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
                     read_shop_refresh_button,
@@ -2817,8 +2817,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     gold=(int(gold_val) if gold_readable else None))
                 # 免费刷新次数观察锚定(Field 化,三写端之观察
                 # 写端):复用本现役调用产物,零新增读屏。双态口径:免费态
-                # 锚次数;付费域(锚未中∧标价读出,含耗尽/灰态,游戏规则
-                # ⇒ 免费余量恒 0)锚 0;整帧判不出(free=None)跳写,免费
+                # 识别标志次数;付费域(识别标志未中∧标价读出,含耗尽/灰态,游戏规则
+                # ⇒ 免费余量恒 0)识别标志计数 0;整帧判不出(free=None)跳写,免费
                 # 态次数失读同跳写(宁缺勿造,读缺值留观察覆盖)。失配对账
                 # = Field 机制白送:observe 覆盖 logic(动作扣减/发放登记)
                 # 失配走既有 cw_mismatch_policy 失配告警,零手写台账。
@@ -2851,11 +2851,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             gs.relay(gs.enemy_affixes, list(enemy_affixes_val), sig=_relay_sig)
             # equips 装备库存(申报面,方案 §2.2):观察写端 = 备战入口
             # 观察链装备区采集(采集点 = observe_full heavy,写点 =
-            # cw_screen_prep._observe heavy 装配点;P4 观察接线前 =
+            # cw_screen_prep._observe heavy 装配点;P4 观察接入调用前 =
             # prep_actions._build_equip_wear_plan 派发位现读,已停用)。
             # (终态契约 §B:last_owned_equips 中继兜底与 selected_difficulty
             #  中继行均已停用——写端(备战观察全量重写 + 穿戴/选卡/卖返
-            #  logic 增量 + 入口链漏斗)直入容器,session 镜像面死亡;
+            #  logic 增量 + 入口链漏斗)直入状态容器,session 镜像面死亡;
             #  商店线权重与 flow 打分读 gs.equips/gs.selected_difficulty。)
             # —— 画面上下文(R1 §3.1.4/§3.4;常开)——
             # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一
@@ -2879,13 +2879,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 回执构造 None 容缺:口径 = 「空表与 None 同判=离屏」(合成口先例,
     # 见 kernel/cw_game_state.py 合成链 st.shop 判空写端)。shop_val=None
     # 是设计态,来源二:①spec 无 shop_cards 的阶段(prep_clean/battle 店
-    # 面板物理不可见)直置 None;②read_shop_cards 三态契约(收起锚 miss =
+    # 面板物理不可见)直置 None;②read_shop_cards 三态契约(收起识别标志 miss =
     # 店未开,「不在商店」≠「没牌」)。三态区分(店未开/买光 [empty×5]/
-    # 失读 unknown)的权威承载 = 容器域 gs.shop.value(上方 observe/carry/
+    # 失读 unknown)的权威承载 = 状态容器域 gs.shop.value(上方 observe/carry/
     # leave_screen 写端已按三态适配);回执 = 旧帧形态逐字段镜像,
     # shop 域遗留形态本就是紧缩 [](空表 = 不在商店真值),消费方全为列表
     # 真值/迭代语义,整合不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
-    # 底座),or 同判 = 同口径防御。
+    # 基础数据),or 同判 = 同口径防御。
     return GameStateReadReceipt(
         gold=gold_val, gold_readable=gold_readable,
         hp=hp_val, hp_readable=hp_readable, hp_trusted=hp_trusted,
@@ -2961,7 +2961,7 @@ def runs_result_to_final_type(result: str) -> str | None:
 @dataclass(frozen=True)
 class MatchFinalDraft:
     """局终判定产出(段级;喂 :func:`kernel.cw_game_state.write_match_final`
-    的判据半)。``ts`` = 判定锚行时间戳(回放对账用);``evidence`` = 命中的
+    的判据半)。``ts`` = 判定基准行时间戳(回放对账用);``evidence`` = 命中的
     证据通道名(runs_summary/terminal_closure/no_close_evidence——本函数三
     通道;在线判定面 :func:`resolve_final_type` 不经本通道词表)。
     """

@@ -4,22 +4,22 @@
 (``cw_observation.board_from_deployed``),左侧面板显示只作**对账票**
 ——显示不全(列表可滚动+底部截断)与灰字档位梯难读是当初选逻辑计算
 为源的原因,故本识别器**不读灰色档位梯**,只读每条目的:
-- 羁绊名(大幅白字,清晰)→ 名称锚点;
+- 羁绊名(大幅白字,清晰)→ 名称识别标志;
 - 圆形徽章数字(图标左下,白字黑底单数字 = 该羁绊当前单位数)→ 当前数。
 
 条目结构(16 帧 fixture 亲读实测,坐标系 1080p):
 每条目 = 菱形图标(x≈40-108)+ 图标左下徽章数字(x≈75-110,与灰梯同行)+
 羁绊名(x≥112 大白字)+ 名下灰色档位梯(含 ``/``,不读)。条目行距不固定
-(特殊态领航员更高、列表可滚动)→ 逐条 y 不写死,用名称锚点 + 徽章数字
+(特殊态领航员更高、列表可滚动)→ 逐条 y 不写死,用名称识别标志 + 徽章数字
 的相对 y 配对定位。
 
 **截断口径**:只列 ≥1 的羁绊;面板视口(约到 y≈772)会裁掉最后一条的
-徽章(名字仍可见)→ 最后一条名称锚点无徽章 = truncated,如实标记,
+徽章(名字仍可见)→ 最后一条名称识别标志无徽章 = truncated,如实标记,
 该条目不进对账(防「显示侧没有 = 计算侧多」的截断嫌疑误报放大)。
 
 对账纯函数 :func:`compare_factions`:逐名三态(一致/不一致/显示侧不可判);
 OCR 失读条目跳过并计数(不算不一致);computed 有而显示没有 = 截断嫌疑,
-单独计数不判错。接线:cw_screen_prep 主环 heavy 帧调 ``compare_factions``
+单独计数不判错。接入调用:cw_screen_prep 主环 heavy 帧调 ``compare_factions``
 并经 :func:`report_faction_reconcile` 落台账(对账网家族羁绊子网)。
 """
 from __future__ import annotations
@@ -51,14 +51,14 @@ _NAME_RECT_X1: int = 100
 # 徽章圆中心(全帧实测 cx≈88-91;特殊态领航员徽章右移到 cx≈120)。
 _BADGE_CX: int = 91
 _BADGE_CX_SPECIAL: int = 120
-#: 徽章相对名称锚点 cy 的候选偏移(实测 +29~+38,逐档重试取首个纯数字读)。
+#: 徽章相对名称识别标志 cy 的候选偏移(实测 +29~+38,逐档重试取首个纯数字读)。
 _BADGE_DY_CANDS: tuple[int, ...] = (35, 29, 32, 38)
 #: 徽章内字框半宽/半高(数字 ~11x14 居中于圆;框避开圆环——环被 rec 读成 '0')。
 _BADGE_BOX_DX: int = 8
 _BADGE_BOX_DY: int = 8
 #: 徽章小图 OCR 放大倍数(6x 三次插值 + 白边填充,原生 det 读不出小字)。
 _BADGE_UPSCALE: int = 6
-# 徽章相对名称锚点的 y 配对窗(实测徽章中心 ≈ 名中心 +22~+37)。
+# 徽章相对名称识别标志的 y 配对窗(实测徽章中心 ≈ 名中心 +22~+37)。
 _BADGE_DY_MIN: int = 8
 _BADGE_DY_MAX: int = 65
 # 徽章数字合法域:单羁绊单位数 ≤ 前后台总部署上界 13;越界 = OCR 误读。
@@ -78,7 +78,7 @@ class FactionPanelReading:
     ``unreadable``:名可对上注册表但徽章数字失读的条目名(不评口径,只计数)。
     ``unmatched``:OCR 出的名称文本对不上注册表的条目(截断残名/艺术字形变),
     存 OCR 原文(不评口径,只计数)。
-    ``truncated``:最后一条名称锚点无徽章 = 视口截断形态在场(底部还有条目
+    ``truncated``:最后一条名称识别标志无徽章 = 视口截断形态在场(底部还有条目
     被面板裁掉,截断条目本身已按上述两类计数)。
     """
     entries: list[tuple[str, int]] = field(default_factory=list)
@@ -137,9 +137,9 @@ def _match_faction(raw: str) -> str | None:
 
 def _extract_anchors(name_tokens: list[tuple[str, int, int, int, int]]
                      ) -> list[tuple[int, int, str | None, str]]:
-    """名称带 token → 条目锚点 [(cy, y2,规范名|None,原文)],按显示序。
+    """名称带 token → 条目识别标志 [(cy, y2,规范名|None,原文)],按显示序。
 
-    锚点 = 含中文且无斜杠的 token(名 x≈105 起;徽章数字/灰梯无中文,
+    识别标志 = 含中文且无斜杠的 token(名 x≈105 起;徽章数字/灰梯无中文,
     灰梯含 ``/``,均被滤除——不依赖 x 硬切)。
     """
     anchors: list[tuple[int, int, str | None, str]] = []
@@ -257,9 +257,9 @@ def _read_badge_digit(ctx: SrContext, screen: MatLike,
 def _badge_tokens(ctx: SrContext, screen: MatLike,
                   name_toks: list[tuple[str, int, int, int, int]]
                   ) -> list[tuple[str, int, int, int, int]]:
-    """逐锚点定位读徽章数字(常规 cx=91;特殊态回退 cx=120)。
+    """逐识别标志定位读徽章数字(常规 cx=91;特殊态回退 cx=120)。
 
-    特殊态守卫:仅当锚点窗口内**无灰梯 token**(含 ``/`` 的名称带 token,
+    特殊态守卫:仅当识别标志窗口内**无灰梯 token**(含 ``/`` 的名称带 token,
     如 '3/5/7/10')时才试 cx=120——常规条目必有灰梯且其首数字恰落在
     cx=120 窗内,无守卫会把灰梯数字误当徽章;无灰梯 = 独立羁绊条目
     (如领航员,徽章右移、无梯)。
@@ -312,7 +312,7 @@ def compare_factions(computed: dict[str, int],
 def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     """把 mismatch 行落缺陷台账(kind=``faction_display_mismatch``)。
 
-    已接线:生产调用方 = cw_screen_prep 羁绊对账段(与 ``compare_factions``
+    已接通调用:生产调用方 = cw_screen_prep 羁绊对账段(与 ``compare_factions``
     串同一链路;行为测试见测试仓 faction_reconcile/faction_wire 两个测试文件)。
     函数本身保持纯转发:
     逐 mismatch 调 ``record_defect``(kernel/cw_telemetry_exit 出口钩子位,

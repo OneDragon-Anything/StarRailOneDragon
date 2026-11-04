@@ -1,6 +1,6 @@
 """货币战争 盛会之星观察域单一文件 = reader + 标准化门(二次裁决门):
 
-- ``read_megastar_options`` = 巨星候选检测(检测模型正本 =
+- ``read_megastar_options`` = 巨星候选检测(检测模型权威版本 =
   ``screens/megastar.md`` §3):弹窗标签带限定 OCR 定卡(命中数 = 候选
   数 1..N,各得位置 + 原始名)→ 逐卡立绘 SIFT 交叉验证身份 → 裁决产
   ``MegastarOption(idx, char_id=规范名, xy)``;
@@ -17,7 +17,7 @@ node 选中半读链)。失败语义:reader 任一候选观察失败(SIFT 与 OC
 
 候选点击坐标随本读链一并观察上报(规范 = op-layer.md §1.1「选择坐标
 观察上报」):xy = (该卡标签中心 x,已登记卡身线 y),每卡自带,动作 op
-按 ``idx`` 自容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。旧
+按 ``idx`` 自状态容器 ``megastar_opts[idx].xy`` 取点,零坐标现算。旧
 「候选-左/右」两槽左右映射模型(idx 枚举序 → 固定槽位常量)已停用
 ——单候选/部分读时名字与点击位错位(两槽模型把 idx0 恒映射左槽,
 候选只出现在右槽时点错卡),坐标随卡自带后该缺陷类整体灭绝。
@@ -117,7 +117,7 @@ def read_megastar_options(
 ) -> list[MegastarOption]:
     """巨星候选检测 → ``MegastarOption`` 列表(char_id = 规范名)。
 
-    检测模型(正本 = screens/megastar.md §3,逐条落):
+    检测模型(权威版本 = screens/megastar.md §3,逐条落):
     ① **弹窗标签带限定 OCR 定卡**:标签带 area「候选标签带」rect 限定
        OCR → 正则「盛会之星一X先生/女士」逐命中 → N = 命中数,每 hit
        得(标签中心 x,原始名 X)。全屏扫已停用(全屏扫会把屏上其它
@@ -313,7 +313,7 @@ def standardize_megastar_options(
     域内精确命中,幂等透传(防御性二次门语义不变)。
 
     判失败 → 返回 None:调用方 observe node round_fail 整函数早退,零写
-    容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮新
+    状态容器零上报零点击,交外循环重观察重读(禁带病上报;瞬时误读下轮新
     帧自愈,持续误读 = 连续 fail 至外环重派网响亮停,逼修数据;fail 消
     息迭代候选列表,原值/哨兵自然保留证据)。成功返回新 ``MegastarOption``
     列表(char_id = 规范名,``idx``/``xy`` 原值保留——动作参数纯序号 +
