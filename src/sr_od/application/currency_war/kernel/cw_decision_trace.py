@@ -19,9 +19,9 @@
 写点(部署 held、仲裁、耗尽分支等)归入其发生后的下一行窗口。发出频率 =
 调用频率,一收束一行,无内部节流(量级论证 §5.3:~40-80 行/局)。
 
-**窗口与基线**(§5.1):写口持有锚(上一行收束时点的状态容器内容快照,按局段
+**窗口与基线**(§5.1):写口持有基线(上一行收束时点的状态容器内容快照,按局段
 重置,与状态容器同界);本行收束时点现读策略计数状态容器 → 与基线逐键求差 → 发出 →
-更新标记点。行首窗口起点 = 局段起点(状态容器每局全新创建,空 dict)。消失键按「缺席 = 0」
+更新基线。行首窗口起点 = 局段起点(状态容器每局全新创建,空 dict)。消失键按「缺席 = 0」
 入账(状态容器重建形态),保证望远镜恒等式(§5.2)在前缀和重建口径下精确成立。
 
 **数学契约与降格主张**(§5.2,定案 C1):窗口增量满足望远镜恒等式——
@@ -170,7 +170,7 @@ ROW_KEY_ORDER: tuple[str, ...] = (
 
 # ============================================================ 注入槽(缺省关)
 
-#: 决策行外送钩子(进程内单槽;缺省 None = 无落盘实例——写口差分与锚
+#: 决策行外送钩子(进程内单槽;缺省 None = 无落盘实例——写口差分与基线
 #: 推进照常,仅行不外送,记录被动)。槽契约:接收一行完整行 dict,
 #: 自担序列化/缓冲/落盘(生产 = :class:`StateJournal.append`)。
 _DECISION_TRACE_SINK: Callable[[dict], None] | None = None
@@ -190,11 +190,11 @@ def decision_trace_instance() -> StateJournal | None:
     return _ACTIVE_DECISION_TRACE
 
 
-# ============================================================ 锚(窗口差分状态)
+# ============================================================ 基线(窗口差分状态)
 
 #: 基线旁表(session 旁表模式,同 ``game_state_of`` 弱引用表 + 裸对象属性 +
-#: id 表三级兜底先例):键 = 局身份 session,新 session = 新局段 = 锚每局全新创建
-#: (§5.1 局段边界:锚、行序、前缀和全部以局段为界;恢复局跨段 = 多行多段
+#: id 表三级兜底先例):键 = 局身份 session,新 session = 新局段 = 基线每局全新创建
+#: (§5.1 局段边界:基线、行序、前缀和全部以局段为界;恢复局跨段 = 多行多段
 #: 各自自洽,状态容器每局每局全新创建天然保证,无跨段账务耦合)。
 _ANCHOR_BY_SESSION: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 _ANCHOR_ATTR: str = '_cw_decision_trace_anchor'
@@ -202,7 +202,7 @@ _ANCHOR_BY_ID: dict[int, dict[str, int]] = {}
 
 
 def _anchor_get(session: object) -> dict[str, int] | None:
-    """取基线(三级兜底读;无锚 = None = 首行窗口起点为局段起点)。"""
+    """取基线(三级兜底读;无基线 = None = 首行窗口起点为局段起点)。"""
     try:
         return _ANCHOR_BY_SESSION.get(session)
     except TypeError:   # 不可弱引用对象(测试桩)
@@ -226,9 +226,9 @@ def _anchor_set(session: object, anchor: dict[str, int]) -> None:
 
 
 def reset_decision_trace_anchor(session: object) -> None:
-    """复位某局段的锚(下一行窗口起点回到局段起点;测试与残局修复用)。
+    """复位某局段的基线(下一行窗口起点回到局段起点;测试与残局修复用)。
 
-    生产路径无需调用:新 session = 新局段 = 新标记点;本函数仅服务于测试
+    生产路径无需调用:新 session = 新局段 = 新基线;本函数仅服务于测试
     隔离与「同 session 复用重跑」的诊断场景。"""
     with contextlib.suppress(TypeError):
         _ANCHOR_BY_SESSION.pop(session, None)
@@ -247,7 +247,7 @@ def reset_decision_trace_all_anchors() -> None:
 def _window_diff(counters: dict, anchor: dict) -> dict[str, int]:
     """窗口差分(§5.1):键 → 本行收束窗口内的内容变化量(带符号)。
 
-    键域 = 锚与现读的并集:消失键按「缺席 = 0」入账(状态容器重建形态),
+    键域 = 基线与现读的并集:消失键按「缺席 = 0」入账(状态容器重建形态),
     保证望远镜恒等式在前缀和重建口径下精确成立;零差键省略(§4「零差
     省略,未触键缺席」)。"""
     out: dict[str, int] = {}
