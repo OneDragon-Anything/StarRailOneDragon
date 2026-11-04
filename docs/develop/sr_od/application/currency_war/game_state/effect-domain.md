@@ -185,7 +185,9 @@ unit_buff);词缀源
 用户裁定(2026-09-10;先例 = impacts §3 伟大征服/淘金客条目):
 
 - **XP 分支零建模**:经验面板画面可读 = 观察层直接读;overlay 的 `xp_instant`/`xp_per_node`
-  等字段值为预测面,非 state 存储。
+  等字段值为预测面,非 state 存储。例外:sim 侧世界经验统一经结算原语
+  `settle_xp_observe` 把结果写进状态副本(升级连锁对任意经验来源生效,
+  fields.md §3.2.10)。
 - **HP/生命上限/难度/词缀/战力/强度/节点型改写分支零建模**:画面可读或纯游戏内部事。
 - **随机资产面**(发牌/装备/开箱/商店改写内容)交由观察收尾:标准观察流天然覆盖,不建
   逻辑写入方(§6.3 判据的随机分支)。
@@ -582,7 +584,9 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 - **论断**:LEVEL_UP / while_held / BATTLEFIELD;duties = predict+respond;counter **不建**。
   被动分支(购买经验花费 −1)= 惰性读取入口(§6.2),不入存储;触发分支(升级时刷新商店 +
-  偷最贵 3 张)= 升级事件驱动,偷取哪 3 张 = 随机面交由观察收尾。
+  偷最贵 3 张)= 升级值变更回调驱动(写端 = `cw_levelup_callbacks.on_level_up_change`
+  spy 分支,源 = 任意经验来源升级;sim 世界分支消费经声明簿记队列,advance 尾
+  统一排空),偷取哪 3 张 = 随机面交由观察收尾。
 - **证据**:规格 `STRATEGY_EFFECTS['商业间谍']`(`BattlefieldEffect(steal_on_level_up=3)`);官方
   原文 cw_invest_data.py:244「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个
   角色。」
