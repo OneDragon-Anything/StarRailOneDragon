@@ -6081,6 +6081,15 @@ class StrategyDelayedGrant:
       三选一登记(防登记笔误类同治理口径不入 import 校验,三方恰一对账
       归表域测试)。
 
+    - repeat: 周期重排语义(周期型首例,好运令牌·彩携带;repeat=True 行
+      delay_nodes 恒标量——元组形 = 逐节拍一次性多发,与周期自续互斥,
+      对账归表域测试)。False = 族既有单发语义零变(到点弹除即止);
+      True = 到点发放后(无论落位成败,拒落亦重排)以同参 (卡名,
+      delay_nodes) 重排队,队列长度恒 1 自续至局终(拿卡后每 N 节点窗
+      各 1 件;终止 = 局终,sim 局节点数有限自然终止,live 队列 = 推算
+      知识无写端)。与 count>1 互斥(防登记笔误类,同 2026-10-28 治理
+      口径不入 import 校验,对账归表域测试)。
+
     立专表辨析:GiftGrant items_scheduled = 绝对节点键域('位-轮')且
     会把发放物错收进占席词表;效果账本 EffectSpec payload 闭集(经济/
     战场/单位增益)不容「延时状态副本发放」维度;与 STRATEGY_DELAYED_OFFERS
@@ -6092,6 +6101,7 @@ class StrategyDelayedGrant:
     count: int = 1
     item_choices: tuple[str, ...] = ()
     item_category: str = ''
+    repeat: bool = False
 
 
 STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
@@ -6129,6 +6139,18 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
     '好运令牌·银': StrategyDelayedGrant(id='130901', delay_nodes=3,
                                         item='好运令牌'),
+    # 好运令牌·彩(id 331601 原文直读,cw_invest_data.py:322;卡文「获得1个
+    # 【好运令牌】。每累计进入4个节点后，获得1个【好运令牌】。」两腿分治:
+    # 即时 1 令牌由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励同形),
+    # 延时腿 = 周期型首例(repeat=True:到点弹除后同参重排队至局终,拒落
+    # 亦重排;计数起点 = 拿卡节点后继窗,家族口径)。repeat=True 行禁
+    # count>1、禁元组形 delay_nodes(防登记笔误类,2026-10-28 治理口径
+    # 不入 import 校验,对账归表域测试);发放物「好运令牌」与卡名异名,
+    # = EQUIPMENTS 注册表工具类装备(cw_equipment_data.py:202),非占席
+    # 道具(BENCH_ITEM_NAMES 负成员,禁入占席通道),到点走装备分道
+    # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
+    '好运令牌·彩': StrategyDelayedGrant(id='331601', delay_nodes=4,
+                                        item='好运令牌', repeat=True),
     # 是钻石总会发光(id 131101 原文直读,cw_invest_data.py:96;卡文
     # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句零即时条目,登记条目
     # 载体 = cw_gain_effects 延时-only 单条目工厂;发放物 = 红钻/蓝钻具名

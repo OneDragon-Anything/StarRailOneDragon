@@ -1809,6 +1809,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # rng 仅条目2 消费)。
     '好运令牌·金': _compose_grant_legs(_make_named_equip_grant_effect('好运令牌', 1),
                                      _make_random_equip_effect('简易', 1)),
+    # 好运令牌·彩 = 双条目工厂直书登记行(人才激励同形:即时 1 令牌+延时
+    # 入队;延时腿周期型首例,repeat 语义 = 到点弹除后同参重排队至局终,
+    # 计数起点 = 拿卡节点后继窗(家族口径);登记值单源住 STRATEGY_DELAYED_
+    # GRANTS 行(词面源 = cw_invest_data.py:322),效果体零字面量;rand=False
+    # 确定发放,效果串恒 2 枚 equip_grant + strategy_grant_scheduled@4)。
+    '好运令牌·彩': _make_delayed_grant_effect('好运令牌·彩'),
 
     # 升级锅炉 = 具名装备授予族后继(卡文「对简易装备使用冶金炉会使其变为
     # 随机进阶装备，获得2个【冶金炉】。」):句②发放条目 = 选卡即得(用户裁定

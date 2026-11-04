@@ -3969,7 +3969,10 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
     ∈ BENCH_ITEM_NAMES → gain_bench_item(占席道具条目);队列条目只存
     卡名不存发放物(随机值同样不入队)= 改名安全单一源。到期即弹除不
     回队(发放即消费;发放拒落零写 = 该件状态副本中丢失,留存证据于队列
-    回写行,环境定时通道弹除语义同构)。保留队列与现值判等非空才一次
+    回写行,环境定时通道弹除语义同构)。例外 = repeat 行(周期型首例,
+    好运令牌·彩):到点发放后(无论落位成败,拒落亦重排)以同参 (卡名,
+    delay_nodes) 重排队入保留队列,倒计时自续至局终——弹除语义对
+    repeat=False 既有行零变。保留队列与现值判等非空才一次
     write 回写。返回效果串(每条 ``delayed_grant:<发放物>(placed=
     <bool>)``,与落位成败解耦)。
 
@@ -4050,6 +4053,11 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
             keep.append((name, int(remaining)))
             continue
         effects.append(f'delayed_grant:{chosen}(placed={placed})')
+        # repeat 行周期重排(周期型首例):到点发放后无论落位成败以同参
+        # 重排队入保留队列(拒落亦重排,倒计时自续至局终),单发行弹除即止
+        # 零变;repeat=True 禁元组形(表域测试对账),标量 int 直读。
+        if grant.repeat:
+            keep.append((name, int(grant.delay_nodes)))
     if tuple(keep) != queue:
         write = _select_write(gs, rand)
         write(gs.pending_strategy_grants, tuple(keep),

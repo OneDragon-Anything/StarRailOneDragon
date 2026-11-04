@@ -979,7 +979,8 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   入队原语,登记 = 确定事件零采样):追加 `(卡名, 倒计时)` 到
   `pending_strategy_grants` 一次 write 回写,效果串
   `strategy_grant_scheduled:<发放物>@<节拍>`;到点发放归 sim 专用分支
-  `discharge_due_strategy_grants`(到期即弹除,发放物按注册表行归属
+  `discharge_due_strategy_grants`(到期即弹除,repeat 行例外 = 到点发放后
+  同参重排队至局终〔周期型首例 = 好运令牌·彩,见下〕,发放物按注册表行归属
   分道,不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26b)。
   卡文句式分流:带即时短句的卡(人才激励系)走上述两分支效果体;纯延时
   单句卡(许诺特权/先亏后盈)显式单行登记延时-only 载体(直用两分支工厂
@@ -1001,7 +1002,15 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   效果串池标记形 `strategy_grant_scheduled:随机简易(类别池)@5`(池
   标记字面 ∉ EQUIPMENTS,构造点同一住入队原语);掷骰时点/队列形态/
   发放子链 rand=True 与 choice-set 行同构,池空 = 注册表漂移 → log
-  防御 + 条目保留(查行失败同形)。组合登记行(随机分支×延时入队分支双族
+  防御 + 条目保留(查行失败同形)。周期 repeat 行(好运令牌·彩 id 331601,
+  周期型首例,两腿卡:即时「获得1个【好运令牌】」= 双条目工厂即时分支 +
+  周期腿「每累计进入4个节点后，获得1个【好运令牌】」repeat=True):到点
+  发放后(无论落位成败,拒落亦重排)以同参 (卡名, delay_nodes) 重排队,
+  队列长度恒 1 自续至局终(拿卡后每 4 后继节点窗各 1 件;计数起点 =
+  拿卡节点后继窗,家族口径)——登记效果体与既有双条目工厂同形,repeat
+  语义全在到点原语;repeat=True 行禁 count>1/禁元组形 delay_nodes(防
+  登记笔误类按 2026-10-28 治理口径不入 import 校验,对账归表域测试)。
+  组合登记行(随机分支×延时入队分支双族
   交叉,回收计划):两分支同属选卡获得时点经 `_compose_grant_legs` 组合
   注册,不入泛化表/延时表(表行生成的单分支效果体与组合体同名键 dict
   字面量顺序覆盖静默丢分支,买彩票+ 同判)。
