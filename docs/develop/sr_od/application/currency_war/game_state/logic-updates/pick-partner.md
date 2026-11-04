@@ -1,6 +1,6 @@
 # 列车伙伴选择(PickPartner)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
 
 ## 1. 动作是什么
 
@@ -28,7 +28,7 @@
 
 零验证确认链(确认后不读屏验证是否生效):「确认选择」文本缺失 → round_retry 返回轮次结果(非判效,落地复查);确认未落地(overlay 残留)不重试不判效——下一轮重入入口观察裁决。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionPickPartnerParam` / `PickOption`;`operations/cw_op/cw_pick_partner_action.py::CwActionPickPartnerOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_game_state.py::chosen_partner`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmPartner 零写分道);`operations/cw_screen/cw_screen_partner.py::CwScreenPartner`(状态宿主/写入方/替身缝)。
 

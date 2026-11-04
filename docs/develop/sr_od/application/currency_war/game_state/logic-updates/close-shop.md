@@ -1,6 +1,6 @@
 # 关商店(CloseShop)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -29,7 +29,7 @@
 
 无拒绝形态(恒可用终结)。定位缺失出口的回执(`reason=定位缺失(按钮-收起)`)是「本次访问无动作落地」的簿记事实,不是失败——零观察执行体辨不出「已关/未开/环境故障」,码报机械事实,业务态判读归观察侧 reconcile。执行侧零判效(发出动作后不读屏验证是否生效;点没点上由落地复查)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_action_report/close_shop.py::report_action_close_shop_param`(`leave_screen`)/ `note_action_receipt`;`operations/cw_op/cw_close_shop_action.py::CwActionCloseShopOp`(执行体;原编排壳 `cw_op_close_shop.py::CwOpCloseShop` 已随执行位并入而停用删除);终结语义总表 = [screens/README](../../screens/README.md) §4。
 

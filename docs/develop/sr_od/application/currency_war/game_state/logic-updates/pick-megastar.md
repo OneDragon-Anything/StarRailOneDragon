@@ -1,6 +1,6 @@
 # 盛会之星选择(PickMegastar)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。事件线 pick 族五篇之一(机械确认链纪律权威版本 = [flow/action_ops.md](../../flow/action_ops.md) §2.3/§4.4)。
 
 ## 1. 动作是什么
 
@@ -28,7 +28,7 @@
 
 零验证确认链(确认后不读屏验证是否生效):确认未落地不重试不判效——下一轮重入入口观察裁决(§3 第 3 条自愈环)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionPickMegastarParam` / `PickOption`;`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_megastar`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmMegastar 零写分道);`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(候选选择部分/写入方/替身缝)。
 

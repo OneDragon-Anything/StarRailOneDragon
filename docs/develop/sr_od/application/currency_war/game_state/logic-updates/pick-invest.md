@@ -1,6 +1,6 @@
 # 投资选择两行(PickInvestStrategy / PickInvestEnv)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖两注册行**:两行同指一个 op 类 `CwActionPickInvestOp`(族文件先例 = [tools.md](tools.md)),机械执行部分同构,屏别差异在动作类型类与上报函数分派。语义单一源声明:策略支 = [../gain-chain.md](../gain-chain.md) §2.4、环境支 = 同篇 §2.1;字段级权威版本 = [../fields.md](../fields.md) §3.4.4(active_strategies)/ §3.4.3(active_env);本篇为接入调用面摘要,冲突以权威版本为准。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。数值只写常量名,单一源在代码。**一篇覆盖两注册行**:两行同指一个 op 类 `CwActionPickInvestOp`(族文件先例 = [tools.md](tools.md)),机械执行部分同构,屏别差异在动作类型类与上报函数分派。语义单一源声明:策略支 = [../gain-chain.md](../gain-chain.md) §2.4、环境支 = 同篇 §2.1;字段级权威版本 = [../fields.md](../fields.md) §3.4.4(active_strategies)/ §3.4.3(active_env);本篇为接入调用面摘要,冲突以权威版本为准。
 
 ## 1. 动作是什么
 
@@ -43,7 +43,7 @@
 - 无效载荷 = 零写:策略支链内拒绝 + 保留证据(输入拒绝,非防重复保护,gain-chain.md §2.4 第 0 条);环境支缺名 = 零写 noop(`landing_noop`,选择事实缺名禁写);
 - 重复上报 = 零幂等闸,跳写去重仅为数据卫生,bug 面按 bug 治理(gain-chain.md §2.4 第 1 条)。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 - 动作类型:`kernel/cw_vocab.py::CwActionPickInvestStrategyParam` / `CwActionPickInvestEnvParam`;
 - 注册行:`operations/cw_op/cw_action_registry.py`(两行同指 `CwActionPickInvestOp`);

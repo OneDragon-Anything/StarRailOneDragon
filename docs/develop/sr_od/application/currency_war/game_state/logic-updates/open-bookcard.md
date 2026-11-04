@@ -1,6 +1,6 @@
 # 书册(OpenBookcard)逐动作逻辑态
 
-> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号锚路径根 = `src/sr_od/application/currency_war/`。
+> 归属:[logic-updates/](README.md) 逐动作分篇;总则见 [../action-logic-state.md](../action-logic-state.md)。符号名引用路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作是什么
 
@@ -16,7 +16,7 @@
 
 1. 书册卡道具占备战席 1 槽(与补给箱/秘密典籍并列第三件占席道具);点槽「开启」→ 道具离席腾槽(状态容器 bench 槽 kind → `empty`,`bench_free_slots` 派生 +1);
 2. 专家邀请函五选一弹窗弹出;选卡决策 = 弹窗画面 op `operations/cw_screen/cw_screen_expert_invite.py::CwScreenExpertInvite`(默认策略单一源 = `choose_expert_index` 原位),由外循环按画面分发(分发判定单一源 = flow/outer_loop.md §2 阶段一身份分发);本动作不选卡;
-3. **动作发出形态**(开卡时机归策略实现管):动作发出点 = 策略器 entry ① prep 实体面卡片分支(状态容器 bench kind `'bookcard'` 触发)→ 本动作**终结**(= 发出后结束本次访问;op 类 `terminal=True`,与 OpenBox 终结化同构,规范锚 = op-layer.md §1.4)→ 备战环返回主循环,弹窗帧不进完整观察;每次访问恰发一张,其余张由下一访问观察后自然续清;
+3. **动作发出形态**(开卡时机归策略实现管):动作发出点 = 策略器 entry ① prep 实体面卡片分支(状态容器 bench kind `'bookcard'` 触发)→ 本动作**终结**(= 发出后结束本次访问;op 类 `terminal=True`,与 OpenBox 终结化同构,规范识别标志 = op-layer.md §1.4)→ 备战环返回主循环,弹窗帧不进完整观察;每次访问恰发一张,其余张由下一访问观察后自然续清;
 4. 动画等待 = `_OVERLAY_ANIM_WAIT_S` 固定等待(等待归产生动画的操作;弹窗就位与否交下一帧观察)。
 
 ## 4. 随机面 / 观察面
@@ -29,7 +29,7 @@
 - `action.slot` 对位无匹配 = 未发出(detail 载实读槽位表);
 - validate 参数非法(slot 越界)= Director 拒绝执行 + 结束本次访问并保留证据。
 
-## 6. kernel 符号锚
+## 6. kernel 符号名引用
 
 `kernel/cw_vocab.py::CwActionOpenBookcardParam`;`prep_actions.py::PrepActionExecutor._open_bookcard` / `validate`;`kernel/cw_action_report/open_bookcard.py::report_action_open_bookcard_param`(腾位函数);`strategies/impl/mandate_v1/entry.py` ① 卡片分支(动作发出点);`kernel/cw_events.py::choose_expert_index`(选卡决策单一源;`cw_screen_expert_invite.py` 仅函数体内 import)。
 
