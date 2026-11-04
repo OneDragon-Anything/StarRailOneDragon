@@ -369,7 +369,7 @@ def _apply_effect_recruit_drain(gs: GameState, *, sig: ChannelSig,
     发放只数按拿卡拍持金现算(:func:`dakuozhao_deduction_plan` 角色数
     分量,单一源住 cw_investments)——卡文「每损失4金币,获得一个随机
     4费角色」= 扣金与发放同判据,数量随持金线性变化(0..10)。本函数
-    **只取 n 零扣金**:扣金归 sim 选卡落地拍负腿状态副本真值(sim 专用,
+    **只取 n 零扣金**:扣金归 sim 选卡落地拍的扣金写入实现(状态副本真值,sim 专用,
     live 游戏自扣观察覆盖,金面禁逻辑直写),效果体写金会让 live 误写
     实机自扣的金面;实机和模拟器两边发放量无差(公式读同一持金基数,本函数零写金)。
     持金读数缺(None)= 按 0 现算 → n=0 零发放(fail-closed 缺播防御,
@@ -432,7 +432,7 @@ STRATEGY_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #: 绑定承载域 = GameState.strategy_char_grant_bindings。
 _STRATEGY_CHAR_GRANT_BINDINGS: dict[str, tuple[int, int, int]] = {
     '价值投资·金': (1, 1, 2),
-    # 价值投资·彩:展开卡[id 302601,T-165 机制件五件已已写进代码自动跟随;卡文
+    # 价值投资·彩:展开卡[id 302601,T-165 机制件五件已写进代码自动跟随;卡文
     # 「获得1个随机的2星2费角色。每次进入新节点时，获得1星的该角色，补给
     # 后额外获得2个」= (cost, count, star) = (2, 1, 2) 直读]。
     '价值投资·彩': (2, 1, 2),
@@ -458,10 +458,10 @@ def _make_bound_char_grant_effect(
     ``strategy_gift_random:<名>@<star>star``(前缀 + @ 后缀一体登记:
     @ 后缀 = 随机态校准数据归组键,只断前缀会漏校准分组)。
 
-    **采样后 sim 门控写绑定**(本族独有腿,每节点复制发放条目的唯一发放
+    **采样后 sim 门控写绑定**(本族独有条目,每节点复制发放条目的唯一发放
     判据):kernel→sim.ports 函数内惰性 import(在码先例 =
     cw_gain_chain.check_strategy_star_merge_gold/check_strategy_first_
-    buy_xp_grants)——``sim_backend_installed()`` True → 绑定即世界
+    buy_xp_grants)——``sim_backend_installed()`` True → 绑定即状态副本
     真值,``gs.write_logic`` 直写 ``gs.strategy_char_grant_bindings``
     合并 ``{卡名: 名}``(多卡同局双持各键并存;evidence
     ``value_invest_bind:<卡名>:<名>``);False(live)→ 零写绑定:live
@@ -471,7 +471,7 @@ def _make_bound_char_grant_effect(
     分支无条件实机和模拟器两边写,其域有 done 键随写可对账,本域刻意更严)。
 
     **拿卡当节点不发**(申报为读法非缺陷):选卡发生在该节点窗 offer
-    段,窗已开、本窗复制发放条目已走完,绑定写入晚于本窗腿 = 自然从下一
+    段,窗已开、本窗复制发放条目已走完,绑定写入晚于本窗条目 = 自然从下一
     节点起发放,「每次进入新节点时」文义自洽。
     """
 
@@ -563,10 +563,10 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     '公司军火更新·银': ('简易', 1),
     '公司军火更新·金': ('简易', 2),
     # 自由市场(id 130601)条目2「获得1个随机的简易装备」直读行;条目1 转换
-    # 腿不辖本表(「改为获得」条件改写另表
+    # 条目不辖本表(「改为获得」条件改写另表
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段拦截),
     # 两条效果条目分治。自我交互属卡面字面:选卡先注册后跑本效果,掷得的采样名
-    # 经原语时被转换腿拦截消费——净得 1 箱,rng 消耗序不变(先掷后转),
+    # 经原语时被转换条目拦截消费——净得 1 箱,rng 消耗序不变(先掷后转),
     # 非特例豁免(设计 designs/T-143-ziyou-shichang.md §2.1)。
     '自由市场': ('简易', 1),
     # 枪在手(id 200501)「立刻获得1件随机简易装备」即时条目直读行(cw_
@@ -589,7 +589,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 好运来(id 231601)条目2「获得2件随机简易装备」即时条目直读行(cw_
     # invest_data.PLAZA_AUGMENTS 同 id 行);count=2 放回语义实成员
     # (两次独立掷可重复同件,卡面无「不同」限定,放回即 v0 直读,
-    # 枪在手+ 先例同口径)。条目1 转换腿(「合成与获得进阶装备时，改为
+    # 枪在手+ 先例同口径)。条目1 转换条目(「合成与获得进阶装备时，改为
     # 获得一个【好运令牌】」)不辖本表——「改为获得」条件改写另表
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段
     # 拦截,两条效果条目分治(自由市场同构);自我交互属卡面字面:选卡先注册后
@@ -699,8 +699,8 @@ def _make_named_equip_grant_effect(
     strategy_random_equip=随机装备 分域,审计可独立过滤)。
 
     **幂等不设防申报**:同局重复获得同卡(策略去重后注册段跳写、效果
-    腿照常分派)= 每次获得各发 count 件,现役不设判重闸——与全部注册
-    效果腿同规,不另立闸。
+    条目照常分派)= 每次获得各发 count 件,现役不设判重闸——与全部注册
+    效果条目同规,不另立闸。
 
     **精密金面前置(fail-closed)**:发放物命中
     :data:`_NAMED_EQUIP_PRECISE_GATES` 且判据物在场
@@ -763,7 +763,7 @@ def _make_delayed_offer_effect(name: str) -> Callable[..., list[str]]:
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——登记分支零采样,
     倒计时按登记值确定推算。入队即写(唯一登记写端,含两条效果条目的卡一次调用
-    两条件目入队,登记序 = 条目序),到期呈现归 sim 呈现腿(不对称申报,
+    两条件目入队,登记序 = 条目序),到期呈现归 sim 呈现条目(不对称申报,
     live 队列恒悬置)。效果串 = ``strategy_offer_scheduled:<品质>@<节拍>``
     每条目一枚(@ 形态沿定时道具 ``item_scheduled`` 家族先例)。"""
 
@@ -781,7 +781,7 @@ def _make_delayed_offer_effect(name: str) -> Callable[..., list[str]]:
 
 
 # ===== 策略延时发放族效果(策略卡获得时点两条效果条目:即时装备条目 + 延时入队
-# ===== 腿;到点发放归 sim 专用条目,本模块零采样面)=====
+# ===== 条目;到点发放归 sim 专用条目,本模块零采样面)=====
 
 def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
     """延时发放登记分支效果体工厂(闭包销 = 规范卡名,登记值单源取自
@@ -826,7 +826,7 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
     直用两条效果条目工厂会把即时装备条目错发给无即时句的卡——拿卡当场多发一件即时
     发放物,行为级错误,故姊妹工厂并列、按卡文句式分流;另作组合登记行的
     延时入队条目载体,回收计划 = 随机条目×入队条目组合首例——组合上下文的即时
-    腿由随机条目承载,本工厂只贡献入队条目)。闭包销 = 规范卡名,
+    条目由随机条目承载,本工厂只贡献入队条目)。闭包销 = 规范卡名,
     登记值单源取自 cw_investments.STRATEGY_DELAYED_GRANTS;形态镜像
     _make_delayed_offer_effect 的「惰性 import 链原语 + 薄壳」分工。
 
@@ -861,11 +861,11 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
 
 def _compose_grant_legs(
         *legs: Callable[..., list[str]]) -> Callable[..., list[str]]:
-    """多条效果条目组合效果体工厂(闭包销 = 腿效果体序列,依组合登记行形参序)。
+    """多条效果条目组合效果体工厂(闭包销 = 条目效果体序列,依组合登记行形参序)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained)。按形参序逐条目调用,各条目共享同一
-    ``(gs, sig, rng)``——同 rng 实例跨腿顺序推进不重置(掷序契约:
+    ``(gs, sig, rng)``——同 rng 实例跨条目顺序推进不重置(掷序契约:
     改序 = 掷序漂移,晶矿同口径);条目序 = 卡文语序(表内对序「禁隐式
     重排」纪律同源),效果串按条目序拼接。"""
 
@@ -898,7 +898,7 @@ _STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int]] = {
     '溜佩佩+': ('佩佩', 1),
     '招财狗': ('佩佩', 1),
     # 艾丝妲的猛犬!(卡文「获得一个穿戴【穿刺死棘之枪】的【佩佩】」):
-    # 发放对象 = 佩佩(佩戴腿零建模 = 用户裁定 2026-10-15 环境侧同判,
+    # 发放对象 = 佩佩(佩戴条目零建模 = 用户裁定 2026-10-15 环境侧同判,
     # 披露键 strategy_worn_equip_unmodeled 申报;枪战斗数值归装备注册表
     # 已登记单一源)。
     '艾丝妲的猛犬！': ('佩佩', 1),
@@ -960,21 +960,21 @@ _STRATEGY_DELAYED_TWO_LEG_GRANTS: tuple[str, ...] = ('人才激励', '人才激�
 
 
 def _make_ore_open_pick_effect(count: int) -> Callable[..., list[str]]:
-    """晶矿立刻腿效果体工厂(黄晶矿工 id 302101 首例;卡文「立刻获得一个
+    """晶矿立刻条目效果体工厂(黄晶矿工 id 302101 首例;卡文「立刻获得一个
     黄金晶矿」获得时点状态副本写,闭包销 = 发放金矿数,取值自
     ``cw_investments.STRATEGY_ORE_OPEN_EFFECTS`` 表值位 1——工厂自表生成
     禁另写字面量,箱条目 A4 教训:效果体闭包常量与登记表两处独立字面量的
     漂移在备战断言不可见;触发条目与获得链共用同一注册表单源)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``;**rng 消费** = 矿内容采样
-    (:func:`roll_ore_reward` 必耗随机,骇客腿 roll_hacker_mod 先例——
+    (:func:`roll_ore_reward` 必耗随机,骇客条目 roll_hacker_mod 先例——
     「金矿确定发放」仅对发放物数量成立,矿内容是采样面;箱条目「rng 不
     消费」类比不适用;流键 = pick_invest_strategy 既有注入,零新流键)。
     状态副本写 = ``cw_gain_chain._grant_ores_to_world``(与晶矿开启触发条目
     同一授予写函数两调用点复用,禁两实现:合成形序空间 max+1 续接 +
-    ore_rewards 授予时点 roll;level 缺读 = 矿仍入世界无附着,点击走既有
+    ore_rewards 授予时点 roll;level 缺读 = 矿仍入状态副本无附着,点击走既有
     缺项兜底;``gs.spheres.value`` None 直构 OreSight 起底)。live 该写 =
-    随机态预测(实机给矿位置未采),下一备战轻段现读覆盖自愈;sim = 世界
+    随机态预测(实机给矿位置未采),下一备战轻段现读覆盖自愈;sim = 状态副本
     真值。效果串 = 金矿 grant 串一条。"""
 
     def _effect(gs: GameState, *, sig: ChannelSig,
@@ -999,7 +999,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
        for name, item in _STRATEGY_BOX_GRANTS.items()},
-    # 晶矿立刻腿(黄晶矿工 id 302101 首例;卡文「立刻获得一个黄金晶矿」
+    # 晶矿立刻条目(黄晶矿工 id 302101 首例;卡文「立刻获得一个黄金晶矿」
     # 获得时点状态副本写):工厂自 STRATEGY_ORE_OPEN_EFFECTS 表生成(单源,
     # 触发条目同表 = cw_gain_chain.check_strategy_ore_open_effects,零双
     # 字面量;表扩员自动跟随)。
@@ -1154,7 +1154,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 
     # 护盾星徽 = 具名装备×具名角色两条效果条目组合登记行(卡文语序徽→人;
     # 条目1 rand=False 策略卡侧具名条目通道归属;条目2 砂金 1★ 先验家族
-    # 口径;登记条目 chars_immediate=('砂金',) 与本卡人腿同源,零触碰)。
+    # 口径;登记条目 chars_immediate=('砂金',) 与本卡角色条目同源,零触碰)。
     '护盾星徽': _compose_grant_legs(_make_named_equip_grant_effect('护盾星徽', 1),
                                     _make_char_grant_effect('砂金')),
 
@@ -1213,16 +1213,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '量子力学': _compose_grant_legs(_make_char_grant_effect('希儿')),
 
     # 加拉赫顾问 = 具名装备授予单行(卡文「获得【生命之花】和4金币」;
-    # 条目1 顾问解锁/条目2 金4 已已登记零动作[GRANTS advisor 面+ECONOMY
-    # instant_gold=4];本行 = 生命之花具名授予腿,同物同形先例 = 无伤通关
+    # 条目1 顾问解锁/条目2 金4 已登记零动作[GRANTS advisor 面+ECONOMY
+    # instant_gold=4];本行 = 生命之花具名授予条目,同物同形先例 = 无伤通关
     # :1198;生命之花 = 简易类装备,不在精密金面判据映射 gate 恒 None 走
     # 纯发放;rand=False 卡文无随机词工厂 docstring 已定案;条目参数唯一出现
     # 点,不入泛化表防撞键;rng 零消费)。
     '加拉赫顾问': _make_named_equip_grant_effect('生命之花', 1),
 
     # 停云顾问 = 具名装备授予单行(卡文「获得【光能电池】和4金币」;
-    # 条目1 顾问解锁/条目2 金4 已已登记零动作[GRANTS advisor 面+ECONOMY
-    # instant_gold=4];本行 = 光能电池具名授予腿,同形模板 = 加拉赫顾问
+    # 条目1 顾问解锁/条目2 金4 已登记零动作[GRANTS advisor 面+ECONOMY
+    # instant_gold=4];本行 = 光能电池具名授予条目,同形模板 = 加拉赫顾问
     # 前行;rand=False 卡文无随机词工厂 docstring 已定案;条目参数唯一出现
     # 点,不入泛化表防撞键;rng 零消费)。
     '停云顾问': _make_named_equip_grant_effect('光能电池', 1),
@@ -1239,12 +1239,12 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
 
     # 临时工合约 = 具名装备授予单行(卡文「获得8个【员工投影仪】」;
     # 武装突入 = 双箱组合登记行(卡文「遭遇节点的奖励变为2倍。获得2个
-    # 【简易武装箱】」;条目2 数量 = 双元素元组[奖励×2 腿实机和模拟器两边盲零建模第三
+    # 【简易武装箱】」;条目2 数量 = 双元素元组[奖励×2 条目实机和模拟器两边盲零建模第三
     # 例,两截口径];镜像表泛化后工厂循环保留逐件三态语义)。
     '武装突入': _make_box_grant_effect(('简易武装箱',
                                              '简易武装箱')),
     # count=8 逐件八条 rand=False,效果串 ×8 named_equip_grant;
-    # 伴生消失腿 = STRATEGY_EQUIP_EXPIRY_GRANTS 白名单表承载[下个节点
+    # 伴生消失条目 = STRATEGY_EQUIP_EXPIRY_GRANTS 白名单表承载[下个节点
     # 全部未使用的员工投影仪消失],两条效果条目异构不入同表;rng 零消费;不入
     # 泛化表防撞键)。
     '临时工合约': _make_named_equip_grant_effect('员工投影仪', 8),
@@ -1348,19 +1348,19 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('追击星徽', 1),
         _make_char_grant_effect('飞霄'),
         _make_named_equip_grant_effect('永动机', 1)),
-    # 击破星徽套组 = 三腿组合登记行(套组族第 11 张;卡文「获得1个【击破
+    # 击破星徽套组 = 三条效果条目组合登记行(套组族第 11 张;卡文「获得1个【击破
     # 星徽】，和1个【阮·梅】，以及1个【流星飞翼】」语序直读:
-    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态在册口径];星级
-    # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢腿,沿组合行家族
+    # 徽→人→装备;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
     '击破星徽套组': _compose_grant_legs(
         _make_named_equip_grant_effect('击破星徽', 1),
         _make_char_grant_effect('阮·梅'),
         _make_named_equip_grant_effect('流星飞翼', 1)),
-    # 群攻星徽套组 = 三腿组合登记行(套组族第 12 张;卡文「获得1个【群攻
+    # 群攻星徽套组 = 三条效果条目组合登记行(套组族第 12 张;卡文「获得1个【群攻
     # 星徽】，和1个【翡翠】，以及1个【反卫星狙击枪】」语序直读:
-    # 徽→人→枪;rand=False 确定发放[fields.md 分野即终态在册口径];星级
-    # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢腿,沿组合行家族
+    # 徽→人→枪;rand=False 确定发放[fields.md 分野即终态已登记口径];星级
+    # 1★ = 在码家族先例;不入单族镜像表防同名键覆盖丢条目,沿组合行家族
     # 纪律)。
     '群攻星徽套组': _compose_grant_legs(
         _make_named_equip_grant_effect('群攻星徽', 1),
@@ -1424,7 +1424,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 直书登记行(非表生成——援军族表载常量名数,本卡发放只数按拿卡拍
     # 持金现算,表形 (费用档, 名数) 装不下变量计数,专用效果体直书);
     # 条目序 = 卡文语序随机角色条目先/具名条目后,条目参数在此单次出现(单一源)。
-    # 扣金条目不入本效果体:金面禁逻辑直写,扣金归 sim 选卡落地拍负腿
+    # 扣金条目不入本效果体:金面禁逻辑直写,扣金归 sim 选卡落地拍的扣金写入实现
     # 状态副本真值(live 游戏自扣观察覆盖);+16 金条目 = STRATEGY_ECONOMY 注册
     # 行 instant_gold=16 已登记承载,发放写端缺口维持族级待办。
     '大扩招': _compose_grant_legs(_apply_effect_recruit_drain,
@@ -1435,7 +1435,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 前置按物判内嵌工厂、卡级分支零遗传)。拆装扳手 = 工具类装备
     # (cw_equipment_data category='工具'),归 equips 装备库存域——禁入
     # 占席道具通道(BENCH_ITEM_KINDS 全量显式映射无此物,错入 items 会
-    # 伪造占席身份);板面重写腿(同卡另一句)零改动已登记,STRATEGY_
+    # 伪造占席身份);板面重写条目(同卡另一句)零改动已登记,STRATEGY_
     # EFFECTS 注册行 board_rewrite 分派承载,本条目只辖装备句。
     '全员晋升': _make_named_equip_grant_effect('拆装扳手', 2),
     '全武行': _make_named_equip_grant_effect('武器大师', 1),
@@ -1500,16 +1500,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '钻石恒永久': _make_named_equip_grant_effect('红钻', 1),
     # 这么大的钻石 = 具名角色×具名装备两条效果条目组合登记行(卡文「佩佩携带
     # 【财富宝钻】出现，这么大的钻石，送给你！」,用户裁定 2026-11-02
-    # 拍读法 B:佩佩真实入后台 + 宝钻入装备栏;条目序 = 卡文语序佩佩腿先/
-    # 宝钻腿后):直书组合行不入具名角色发放族泛化表——入表 = spread
+    # 拍读法 B:佩佩真实入后台 + 宝钻入装备栏;条目序 = 卡文语序佩佩条目先/
+    # 宝钻条目后):直书组合行不入具名角色发放族泛化表——入表 = spread
     # 生成的单条效果条目效果体与本组合体同名键顺序覆盖丢条目,组合登记行 = 条目参数
-    # 唯一出现点(单一源,欢愉星徽同形先例)。佩佩腿 = 具名角色确定发放
+    # 唯一出现点(单一源,欢愉星徽同形先例)。佩佩条目 = 具名角色确定发放
     # (rand=False,星级 1 占位非先验,佩佩无星级环境侧同判;佩佩恒后台
-    # 建模已登记 = 单位入队现役链承载,后台空间变化归宝钻世界联动非佩佩
-    # 腿特判);宝钻腿 = 具名装备确定发放(rand=False,特殊类普通可穿件,
+    # 建模已登记 = 单位入队现役链承载,后台空间变化归宝钻状态联动非佩佩
+    # 条目特判);宝钻条目 = 具名装备确定发放(rand=False,特殊类普通可穿件,
     # ∉ 精密金面判据映射 gate 恒 None 走纯发放循环,获得零级联
-    # ∉ EQUIP_ACQUIRE_CONSEQUENCES);宝钻世界数值联动(diamond_count/
-    # deploy_cap/back_layout)= sim 选卡落地拍拿卡腿直调 on_diamond_
+    # ∉ EQUIP_ACQUIRE_CONSEQUENCES);宝钻状态数值联动(diamond_count/
+    # deploy_cap/back_layout)= sim 选卡落地拍拿卡条目直调 on_diamond_
     # acquired(效果体零涉,三域 live 归观察识别器);宝钻「携带」句
     # (穿戴形态)零建模 = cw_investments.STRATEGY_DESC_UNMODELED_KEYS
     # 披露键 strategy_worn_equip_unmodeled 申报(消费方非立键方,用户
@@ -1523,8 +1523,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
     # 2星1费角色。每次进入新节点时,获得1星的该角色,补给后额外获得2个」):
     # 生成式注册条由工厂自 _STRATEGY_CHAR_GRANT_BINDINGS 生成(表与效果体
-    # 禁两处字面量,援军族同纪律);获得时点腿 = 采样发放 + sim 门控写
-    # 绑定域,每节点复制腿归 sim 节点窗收尾(check_strategy_node_char_
+    # 禁两处字面量,援军族同纪律);获得时点条目 = 采样发放 + sim 门控写
+    # 绑定域,每节点复制条目归 sim 节点窗收尾(check_strategy_node_char_
     # grants),两条效果条目分治。
     **{name: _make_bound_char_grant_effect(name, *spec)
        for name, spec in _STRATEGY_CHAR_GRANT_BINDINGS.items()},
@@ -1566,7 +1566,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 表(表行生成的是单条效果条目效果体,双族交叉唯组合子承载,买彩票+ 同判);
     # 条目序 = 卡文语序即时随机条目先/延时入队条目后;随机条目参数(进阶,1)在此
     # 单次出现(单一源),入队条目登记值单源取自 STRATEGY_DELAYED_GRANTS 行
-    # (延时-only 工厂作腿只贡献入队);rng 恰消费 1 次(仅即时条目采样,
+    # (延时-only 工厂作条目只贡献入队);rng 恰消费 1 次(仅即时条目采样,
     # 入队条目零采样面);「获得1件进阶装备」缺「随机」词判读申报制 = 随机
     # 类别池均匀 v0(STRATEGY_RANDOM_EQUIP_ASSUMPTION_KEYS 家族键类别
     # 无关承载,零新增键;回收计划表行注释引设计稿判读节)。
@@ -1619,9 +1619,9 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 宝钻】和40金币。」):句②发放条目 = 拿卡即发具名装备宝钻×1(rand=False
     # 确定发放,T-141→T-243 已定案链承裁——策略通道确定入口纪律;宝钻 = 特殊
     # 类普通可穿件,∉ 精密金面判据映射 gate 恒 None 走纯发放循环,获得零
-    # 级联 ∉ EQUIP_ACQUIRE_CONSEQUENCES);帽改写腿走 STRATEGY_ECONOMY
+    # 级联 ∉ EQUIP_ACQUIRE_CONSEQUENCES);帽改写条目走 STRATEGY_ECONOMY
     # level_cap_override 字段(不入本表,进度轴覆写非发放效果体);40 金条目
-    # = instant_gold 已登记承载,金面禁直写不进效果体;宝钻世界数值联动 =
+    # = instant_gold 已登记承载,金面禁直写不进效果体;宝钻状态数值联动 =
     # sim 选卡落地拍检查实现匹配名直调 on_diamond_acquired(效果体零涉,
     # 三域 live 归观察识别器);rng 零消费(具名确定发放零采样面)。
     '控制规模': _make_named_equip_grant_effect('财富宝钻', 1),
@@ -1632,16 +1632,16 @@ _STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/
 精密拆装·银/大扩招/回收计划/这么大的钻石)直书登记行
-由组合子组合双腿(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
+由组合子组合两条效果条目(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾/黄金垃圾/钻石恒永久/升级锅炉/控制规模)
 直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗/艾丝妲的猛犬!/狸职手续,名单值形 (发放角色, 发放只数))由工厂自
 _STRATEGY_CHAR_GRANTS 生成,策略延时 offer 族由工厂自
 cw_investments.STRATEGY_DELAYED_OFFERS 派生,策略延时发放族按卡文句式
-分流:带即时短句的成员经两腿成员集走两腿工厂派生,纯延时单句卡显式单行
-登记延时-only 载体(直用两腿工厂 = 拿卡错发即时腿),随机腿×入队腿组合
-(回收计划)由组合子组合双腿——新展开卡注册随批
+分流:带即时短句的成员经双条目成员集走双条目工厂派生,纯延时单句卡显式单行
+登记延时-only 载体(直用双条目工厂 = 拿卡错发即时条目),随机条目×入队条目组合
+(回收计划)由组合子组合两条效果条目——新展开卡注册随批
 二选一显式登记,键集封闭断言守住两表面零漂移)。未收录名 = 零效果分派
 (查无效果安静不写,真值归观察覆盖)。与 STRATEGY_EFFECTS(经济聚合面)
 职责分离声明见各表模块头。"""
@@ -1689,7 +1689,7 @@ def apply_level_up_char_gift(gs: GameState, *, levels: list[int],
     ``levelup_gift_char:<名>@2star``(前缀独立分域,@ 后缀一体登记)。
 
     零金写申报:金条目「每次升级时获得……1金币」= 记账层伴生现值
-    (升级发射帧字段写已覆盖 sim 世界金),本函数再写金即双记——架构性
+    (升级发射帧字段写已覆盖 sim 状态副本金),本函数再写金即双记——架构性
     排除。运行期空池 = 注册表漂移(费用轴恒非专家域,现库不可达),零写
     留 log 防御分支(环境随机赠卡支同款)。
     """
