@@ -1,20 +1,19 @@
 """cw4 骨架义务执行器(M1-M7)——换核后落地;执行序规格=02_mandate_layer §3。
 
 单一 executor(每备战期骨架 pass),执行序(02_mandate_layer §3):
-M5(开局板)→ dominance_buy
-(M2 前置支配买入,mandate 邻位)→ M2(线成员买入)→ M4(腾席卖出)
+M5(开局板)→ M2(线成员买入)→ M4(腾席卖出)
 → M1(同帧部署)→ M3(升级整批)→ M1′(新人口位补部署)→ M6
 (富余转压牌库)→ M7(装备转移)。
 
 四硬约束检查点(02_mandate_layer §4 唯一合法拦截集,封闭于①-④):①可负担(金域
 g≥c,整批合计)/②席位(board/bench 槽位、等级 cap、同名同星≤1)/
-③S 预留(整买目标预留金不被非 S 组成动作吃掉;覆盖 EV 买入面+M6+
-dominance_buy)/④不可逆护栏(卖出线内/骨架/插件件不在骨架动作集)。
+③S 预留(整买目标预留金不被非 S 组成动作吃掉;覆盖 EV 买入面+M6)
+/④不可逆护栏(卖出线内/骨架/插件件不在骨架动作集)。
 HP 不进任何检查点([39])。
 
 M2→M4 重试环(R8-8/R11-5):买入遇 bench 满触发 M4 腾席,单帧闭环,
 重试上限 ≤B=9(bench 容量注册表直读);M4 本次 0 发出 ⇒ 立即放弃
-+遥测(不再重调)。dominance_buy/M6 席位失败=单帧单评不入环
++遥测(不再重调)。M6 席位失败=单帧单评不入环
 (R12-2/R21-4)。
 
 动作标记:骨架动作 mandate=True(遥测可分离统计;R14-4:mandate=
@@ -31,10 +30,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_comps import form_progress
-from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-    swap_bond_gate_domain_of,
-)
 from sr_od.application.currency_war.kernel.cw_economy import (
     REFRESH_COST_BASE,
 )
@@ -222,7 +217,7 @@ def check_seats(bench_free: int, deploy_vacancy: int, needs_bench: bool,
                 needs_board: bool, name: str, deployed_names: list[str],
                 ) -> tuple[bool, str]:
     """②席位:board/bench 槽位、等级 cap、同名同星≤1(穷举对象列:
-    M1/M2/M3/M5/M6/dominance_buy,R21-4/R32-3)。"""
+    M1/M2/M3/M5/M6,R21-4/R32-3)。"""
     if needs_bench and bench_free <= 0:
         return False, 'bench_full'
     if needs_board and deploy_vacancy <= 0:
@@ -235,7 +230,7 @@ def check_seats(bench_free: int, deploy_vacancy: int, needs_bench: bool,
 def check_s_reserve(gold: int, cost: int, s_reserve: int,
                     ) -> tuple[bool, str]:
     """③S 预留:待执行整买目标的预留金不被非 S 组成动作吃掉
-    (覆盖 EV 买入面序 3-5+M6+dominance_buy;M2 序 1/2 义务不受限,[41])。"""
+    (覆盖 EV 买入面序 3-5+M6;M2 序 1/2 义务不受限,[41])。"""
     if gold - cost < s_reserve:
         return False, 's_reserve'
     return True, ''
@@ -554,59 +549,11 @@ def sold_this_round(session, state: GameState, name: str) -> bool:
     return bool(name) and name in round_sold_names(session, state)
 
 
-def dominance_buy_eligible(gold: int, bench_free: int,
-                           cap_resolved: int,
-                           ) -> bool:
-    """dominance_buy 资格门(零参数结构;M2 前置支配买入,mandate=true):
-    1★ 燃料/可退件 ∧ 档内 ∧ 金>g*。
-    金位阈值 g*=10×cap_resolved 参数化(R70-1;字面 50 实现即红)。
-
-    stop_flag(线成型旗)已摘除(泄金阶梯档 0,对抗审查
-    落点):富余段转化期帧(线未齐)被本旗关死
-    是「刷新成唯一出口」病灶的三合取之一(三处消费位=M6 shop 位/
-    M6 prep 位/本函数, shop+prep 两域同步摘)。支配性优先序本体不动
-    = 1★ 全额退净成本 0 的严格支配——论证基准(换基准重写):
-    口述 [41](死金禁囤消费侧口径/资产形态二次精确化)+
-    P76 甲(退货表二值可逆:1★ 往返净损 0、锁时点期权,math_proofs.md
-    P76 行)+ P78-1(同 visit 卖出定义性抵消买入),先于一切带参数
-    值比较(01_math_framework.md §3.8),线未齐帧同样适用。P24 = 残余补
-    部署支配定理(p24-residual-fill-dominance.md),覆盖零支出部署行为,
-    无买入/持有期权命题——前版本体注 P24 系基准错位误注,已正。
-
-    适用范围注(双引注;P88 实现纪律——缺本注则上文支配性论述
-    构成收窄回滚的合法依据):上段「无条件放行」是**金维**论证,成立
-    前提 = 席位免费;席位维的两处适用范围修正在本函数**之外、消费位侧**
-    实现的只有 ②(P88),① 经本函数本体收紧实现,禁据上文支配性论述
-    回滚——
-    ① (§2.5):V_slot>0 带(bench_free ≤ 1)席位外部性
-    否决,落点 = 本函数本体单点收紧(bench_free > 0 → > 1)。账目形态
-    = 补账非推翻:P41② 支配论证前提集 = {金轴,持有期权},不含席位
-    占用后果;仅剩最后空槽的帧,非定向买入对该槽的占用对更高优先级
-    方向动作(P24 补部署/M2 线成员)构成席位阻断外部性,该带成本已由
-    P41③ 定价(V_slot = 被阻断动作 EV 上界,既有已证量)——带内买入
-    失去 P41② 自动性、须过正账比较而未证 ⟹ fail-closed 否决;
-    bench_free ≥ 2 域支配论证原样有效(零干涉)。非定向买分支闭集:
-    dominance_buy 覆盖;EV 买(EV 账已含 V_slot 定价,再否决 = 重复计价)/
-    M6 富余转压牌库(既有 bench_free>0 前置+P49 线性律覆盖垫库席位成本)/
-    ②(b) 死金压牌库(同左)不覆盖——三分支不经本函数,既有前置各自管辖;
-    m2_merge_completion = 义务通道且 P41③ 阻断集不含合成完备购
-    (免席门),零误伤。
-    ② P88 调和引理(docs/develop/sr_od/application/currency_war/proofs/p88.md):终局阵容锁定
-    转型域 D 帧(出战就绪 ∧ locked ∧ fp<1.00 ∧ 板满)席位最贵态——线外
-    1★ 候选占位成本 = 被阻线内义务净 EV>0(P41③/P76 丙),金维
-    「净成本≈0」前提在 D 域席位维失效,支配性放行适用范围不含 D 帧。
-    域语义声明:收窄实现 = 店侧两 S_spec 动作发出点(dominance_buy/
-    hub_option_buy)的适用范围前置(``swap_transition_narrow_frame``,
-    域谓词单一源 = kernel ``swap_bond_gate_domain_of`` 转型域判别子全合取,
-    design §2.3.1 谓词源迁移);豁免 ⇔
-    reason ∈ LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_ARMS(闭集单一源 =
-    sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+席物理维资格门,
-    后者已按命题 4 收紧为 bench_free > 1)不覆盖 D 域判定——两域修正
-    叠加合取,互不替代。
-    [13] 停手线纪律语义
-    由候选集判据承载(零重叠 1★ 全额退),不随本旗消失(迁移完备性申报)。
-    """
-    return gold > saturation_line(cap_resolved) and bench_free > 1
+# (dominance_buy_eligible 资格门已随 dominance_buy 通道整删——富余买入
+#  并入 M6 一星兜底带(shop.py),金位面 = M6 富余判定(gold > g*)、
+#  席位面 = M6 现行席位维承载,comp-structure-unification 3.4,
+#  press-stockpile §1;金维支配论证与 P76 甲/P78-1 基准随通道归档,
+#  原文考古走 git 历史。)
 
 
 # ===== 买入死库存防线(G-S1 买侧对偶)=====
@@ -649,7 +596,7 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
     九轮,缺口件(仙舟#3)无兑付通道致 form_ok 九连 False。
 
     边界:覆盖 1★ 买入(2★ 直出不成对恒放行);覆盖「非定向」分支(候选
-    资格维,消费位 = dominance_buy / ②(b) 死金压牌库燃料类 prio 的
+    资格维,消费位 = M6 一星兜底带 / ②(b) 死金压牌库燃料类 prio 的
     候选过滤),义务通道(M2/m2_merge_completion/prio0 缺口/prio1
     持有档)零消费;``bench`` 含 ``None`` 槽形态与 ``same_star_count``
     签名对齐。
@@ -663,71 +610,16 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
     return ''
 
 
-# ===== 终局阵容锁定转型域收窄适用范围(P88)=====
-
-#: 收窄集 S_spec(P88 §0;键域 = 买因闭集 ``sell_gate.LAUNCH_CAUSE_
-#: BY_ARM``,收窄集必须 ⊆ 闭集——闭集对账测试 = 测试仓
-#: test_sell_window_launch.py::test_launch_cause_closed_set,收窄域
-#: 行为测试 = test_front_window_predicates.py,新买入分支先入映射表归
-#: 因果类才可发出[A4 硬闸],越出闭集的收窄键 = 测试红面)。
-#: 豁免 ⇔ reason ∈ 闭集 ∖ S_spec,由「仅两 S_spec 动作发出点挂适用范围前置、
-#: 他分支零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,
-#: 对账 = 闭集测试按符号差集断言)。
-PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
-    'dominance_buy',
-    # hub_option_buy 随 P86 乙分支并入移除(动作发出点并入序 1,
-    # m2 买因族走义务豁免,不受 D 域收窄覆盖)。
-})
-
-
-def swap_transition_narrow_frame(state: GameState,
-                                  session: StrategySession) -> bool:
-    """终局阵容锁定转型域 D 帧判定(店侧 S_spec 收窄适用范围;P88)。
-
-    = kernel ``cw_deploy_logic.swap_bond_gate_domain_of`` **同一谓词**
-    (分支①终局阵容锁定 ∧ fp<1.00 ∧ 板满;design §2.3.1 谓词源迁移钉死:
-    改挂转型域判别子**全合取**——入参同现行三条分支,禁只挂分支①丢 fp/板满
-    分支;旧谓词的回滚常量分支已随转型分支机器退役,缺省开语义下逐帧等价,
-    真值表等价断言 = 测试仓 narrow_frame 迁移测试)——适用范围判定单一源,
-    本函数只做店侧输入装配,禁第二份合取(第二源 = 与部署域换人域分裂)。
-    装配对齐 ``assemble_swap_plan_inputs`` 发出侧同字段链:分支① 单源
-    = ``ist.locked_comp`` 非空(终局阵容锁定,pair 分支②不进本域——
-    配方对锁帧恒 False = P1 买侧旧行为,P88 登记域不倒转);fp 单一源
-    = ``cw_comps.form_progress``,终局阵容锁定帧 committed_from=True ⇒
-    装配点 tgt 退 ``target_comp`` 同读法(flow._refresh_direction_views
-    终局阵容锁定帧恒置 target_comp = locked 阵容 解析,两读法终局阵容
-    锁定帧同值);板满 = 占用数 ≥ ``max_units_of``(占用数口径 = 状态容器占用
-    判定单点,禁裸 len)。
-
-    用途 = P88 收窄:仅两 S_spec 动作发出点(press_narrowed_* 分键)消费
-    本旗作适用范围前置(消费位 shop.py/mandate.py 保留,design §2.3.1);
-    豁免分支零消费。fail 方向 = 域外/缺读帧恒 False(不收窄 = 旧行为,
-    保守可逆);未锁帧短路返回——语义同谓词(D⊆locked,p88_check 断言 1)
-    且免 fp/板满推导成本。
-
-    适用范围分界(design §2.3.1):kernel 部署换人域判别子显式排除
-    pair 帧,本函数同样只挂分支①——终局锁定帧两域(买侧收窄/部署换人)
-    同挂转型域判别子,配方对锁帧两域均不进转型域(pair 帧走双轨现行
-    机器),禁任一侧静默跟随另一侧。
-    """
-    _ms = state_of(session)
-    ist = getattr(_ms, 'v3_intention', None)
-    locked = bool(getattr(ist, 'locked_comp', None))
-    if not locked:
-        return False
-    tgt = getattr(_ms, 'target_comp', None)
-    fp: float | None = None
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        deployed_count_of,
-        max_units_of,
-    )
-    if tgt is not None:
-        try:
-            fp = float(form_progress(tgt, state))
-        except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
-            fp = None
-    board_full = deployed_count_of(state) >= max_units_of(state)
-    return swap_bond_gate_domain_of(locked, fp, board_full)
+# (P88 买侧收窄全套已退役整删——comp-structure-unification 3.4,
+#  press-stockpile §3:富余金占位买入通道(dominance_buy)并入 M6 一星
+#  兜底带后,原特殊帧(终局锁定 ∧ 未成型 ∧ 上场满员)从「禁买」变
+#  「兜底带可买、席位紧张让位序列末位让路」;1★ 全额退 + 让位序末位档
+#  = 占位件可无成本即时让出,所防「席位阻断」在现行防线栈中无剩余真实
+#  形态(死库存对真凶另由本模块 dead_stock_pair_buy_reject_reason 断
+#  新生防线根治,兜底带内同拦截)。退役符号 = PRESS_NARROWED_ARMS /
+#  swap_transition_narrow_frame / kernel swap_bond_gate_domain_of /
+#  tools/cw/proofs/p88_check.py;命题留档 = proofs/p88.md 文首退役标注。
+#  原文考古走 git 历史。)
 
 
 # (core_single_card_buy_eligible 已随 C1 支退役整删——统一让位优先级
@@ -764,7 +656,7 @@ def run_mandate(frame: MandateFrame,
 
     计数键(state_of(session).cw4_counters;键登记单一源=下述各键写点注释,
     原 design_telemetry 键节已删档):
-    m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
+    m2_retry_exhausted / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
     环终止计数分键——前者量事件帧,后者量重试环耗竭;两键按
@@ -955,32 +847,9 @@ def run_mandate(frame: MandateFrame,
                                    'interest_prep'))
             _count('t1_interest_prep_emit')
 
-    # dominance_buy(M2 前置,mandate 邻位;席位失败=单帧单评不入 M2 重试环 R12-2)
-    # (stop_flag 已摘,见 dominance_buy_eligible docstring——泄金阶梯档 0,
-    # 三处消费位同步;发出序申报:dominance(支配性)先于下方 M6 压牌库
-    # (带参 P49 档匹配+V_slot 席位闸),防修复态支配性优先序倒挂。)
-    if dominance_buy_eligible(frame.gold, frame.bench_free,
-                              cap_resolved=_cap_of(session)):
-        ok, why = check_seats(frame.bench_free, frame.deploy_vacancy,
-                              needs_bench=True, needs_board=False,
-                              name='', deployed_names=frame.deployed_names)
-        if ok:
-            ok3, _ = check_s_reserve(frame.gold, 0,
-                                     _s_reserve(frame, session))
-            if ok3:
-                # 终局阵容锁定转型域对称观测(设计修订 3):
-                # 仅登记不挂行为收窄——prep emit 只是开店载体,真实收窄面
-                # = 店侧谓词(shop 两 S_spec 动作发出点);本键 = prep CwActionOpenShopParam
-                # 位触达 D 帧的对称性读数,行为近无操作如实申报。
-                if swap_transition_narrow_frame(state, session):
-                    _count('press_narrowed_transition_domain_prep_seen')
-                # 支配买对象(店面 1★ 燃料/可退件)在商店域:prep 帧载体 =
-                # CwActionOpenShopParam 意图(截断点,序列在此收尾,商店线执行候选评估)
-                _emit_open_shop('dominance_buy')
-            else:
-                _count('dominance_bench_wait')
-        else:
-            _count('dominance_bench_wait')
+    # (dominance_buy 前置开店段已随通道整删——富余买入并入 M6 一星
+    #  兜底带,comp-structure-unification 3.4,press-stockpile §1;
+    #  富余帧开店意图由下方 M6 段承载,原文考古走 git 历史。)
 
     # M2 线成员买入(+M2→M4 重试环 R8-8)
     missing = [m for m in k

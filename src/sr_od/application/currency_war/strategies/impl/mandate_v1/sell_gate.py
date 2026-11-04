@@ -128,10 +128,10 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     # 自带。
     'shelf_qualify_buy': 'obligation',
     'cold_start_buy': 'obligation',
-    'dominance_buy': 'press',
     'm6_stockpile': 'press',
-    # 泄金阶梯档 1(可上场非定向买;富余金 discretionary 面,同 M6/dominance
-    # 因果类。档 1)。
+    # 泄金阶梯档 1(可上场非定向买;富余金 discretionary 面,同 M6 因果
+    # 类。档 1)。dominance_buy 行已随通道退役删除(富余买入并入 M6 一星
+    # 兜底带,comp-structure-unification 3.4,press-stockpile §1)。
     'press_buy_deployable': 'press',
     'ev_buy': 'press',
     # 序 2 场况插件买(迭代 2026-10-12-prep-shop-workflow-redesign 批

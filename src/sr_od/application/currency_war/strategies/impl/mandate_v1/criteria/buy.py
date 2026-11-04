@@ -1,4 +1,5 @@
-"""criteria/buy——EV 买面(§2.1;支配族 dominance_buy 已移 mandate 邻位)。
+"""criteria/buy——EV 买面(§2.1;支配族 dominance_buy 已随通道退役删除
+——富余买入并入 M6 一星兜底带,comp-structure-unification 3.4)。
 
 动作发出面 = ``ev_buy_candidates`` + ``ev_buy_veto`` 一体(R7-1):候选生成
 与否决门不可拆开旁路。**商店线适用范围申报**:EV 买候选的对象(店面牌)在

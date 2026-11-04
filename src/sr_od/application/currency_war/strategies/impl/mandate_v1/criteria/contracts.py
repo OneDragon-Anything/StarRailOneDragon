@@ -59,8 +59,10 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     """先例①前提:S 预留只在对目标线成型的语境下预留(禁恒预留)。
 
     规格适用范围裁决(ZERO_REFRESH_DIAG §3 第 3 条,原文):硬约束③ S 预留
-    拦截对象列=「EV 买入面(序 3-5 追加支出,stockpile 等)+ M6 +
-    dominance_buy(R32-3)」——前提=目标线 K 已成型(k_members 非空):
+    拦截对象列=「EV 买入面(序 3-5 追加支出,stockpile 等)+ M6」
+    (dominance_buy 行已随通道退役删除——富余买入并入 M6 一星兜底带,
+    comp-structure-unification 3.4;前提=目标线 K 已成型(k_members
+    非空)):
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
 
@@ -218,13 +220,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, '停买谓词(分类,非发射;输入=K/持有名单)',
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
     # —— 三先例的非 criteria 消费位 ——
-    ('mandate', 'dominance_buy'): Contract(
-        _s_reserve_line_formed,
-        'M2 前置支配买入(前提=目标线成型):R32-3 规格拦截对象列虽含 '
-        'dominance_buy,其金位面实接线为结算线地板(shop.check_settlement_'
-        'line,截断口径),与 s_reserve 可变现口径不同源不同面,'
-        '非 mandate.check_s_reserve 消费位(T-193)',
-        'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
+    # (契约键 ('mandate','dominance_buy') 已随 dominance_buy 通道退役
+    #  整删——富余买入并入 M6 一星兜底带,comp-structure-unification
+    #  3.4,press-stockpile §1;S 预留语境前提由 M6 侧
+    #  ('stockpile','stockpile_buy') 键继续承载。)
     # (契约键 ('mandate','core_single_card_buy_eligible') 已随 C1 支
     #  退役整删——统一让位优先级迭代 3.4,dismantle §2 跨文件死件。)
     # —— 第三病灶(K 空窗回退)消费位 ——

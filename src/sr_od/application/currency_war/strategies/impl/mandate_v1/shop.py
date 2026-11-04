@@ -615,12 +615,11 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
 # ============================================================ 会话循环重写(迭代)
 
 
-#: 机会清单的序类值域(shop_session §4.2:解拦后重评归属;六序 +
-#: dominance 邻位通道。C1 邻位类 c1_neighbor 随 C1 支退役删除,
-#: 统一让位优先级迭代 3.4)。
+#: 机会清单的序类值域(shop_session §4.2:解拦后重评归属;六序)。
+#: c1_neighbor 随 C1 支、dominance_neighbor 随 dominance_buy 通道退役删除
+#: (统一让位优先级迭代 3.4 / comp-structure-unification 3.4)。
 ORDER_CLASSES: frozenset[str] = frozenset({
     'order_1', 'order_2', 'order_3', 'order_4', 'order_5',
-    'dominance_neighbor',
 })
 
 #: 会话内累积的机会清单暂存 scratch 键(收工时按收工时牌面过滤后落库;
@@ -827,9 +826,9 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     _lvl_readable = bool(level_of(gs) is not None)
 
     # —— 序 1 名单解析(三态;契约 E)——
-    # k = 现行方向阵容(锁定线优先,未锁 = 过渡配方开局面;§1.6 消费面
-    # 分派的组合读形态——键面归一:target_comp = 锁定线槽单写者,
-    # 未锁帧配方面走 opening_recipe_comp,读口单一源 = direction_comp_of)。
+    # k = 现行方向阵容(四层优先现读:锁定线→终局候选首位→过渡锁定
+    # 条目→过渡候选首位;读口单一源 = direction_comp_of,禁消费点
+    # 自拼优先级)。
     # K 空窗回退源切换(R5-01 用户裁定方向②,统一让位优先级迭代 3.4):
     # 未锁 P2+ 无目标帧的 K 名单不再取 kernel 甲臂机器判活方向——
     # cw_intention 三分支判据的甲/乙臂路径已退役(丙分支保利息缺省,
@@ -953,7 +952,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         if mandate._slot_star(b) == 1)
     s_reserve = g_star - liquid_refund
     tier_w, card_w = _frame_search_windows(session, gs, _reg, counters)
-    _narrow_frame = mandate.swap_transition_narrow_frame(gs, session)
     _front_window = predicates.front_window_frame(gs)
     if (gs.node.value.plane if gs.node.value is not None else None) == 1 \
             and not predicates.front_window_table_ready(gs):
@@ -1848,6 +1846,39 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # 反锁刷新)。求值时点 = 本帧 M6 触发判定点即时求值(与刷新提案段
     # 同帧同参,禁第二推导;判定轴复用总纲接口契约;非帧首快照)。免费
     # 刷不耗金不受影响(窗口内免费刷仍可用);非窗口 M6 照常。
+
+    def _m6_fallback_band(stock_ok: bool) -> Action | None:
+        """M6 一星兜底带(富余买入并入压牌库;comp-structure-unification
+        3.4,press-stockpile §2):升星目标实费带内无货或无升星目标帧启用
+        ——候选 = 与线内成员零重叠的 1★(zero_overlap 同规则),买入走
+        本通道 m6_stockpile(买因闭集不变);断新生对防线同拦截(s77091
+        锁席形态防线,兜底带内同口径);席位维 = M6 现行(本分支已过
+        check_seats,席满让路 = 上方六步流程承载,兜底带零新席位逻辑)。
+        ``stock_ok`` = 压牌库 S 预留契约现值(目标线未成型 ⇒ s_reserve
+        语境前提不成立,兜底带同弃权——调用方传入,防同帧双计违例键)。"""
+        if not stock_ok:
+            return None
+        _count('m6_fallback_band_frame')
+        for card in _buy_view('m6_fallback'):
+            name = card.name or ''
+            if not name or (card.star or 1) != 1:
+                continue
+            if name in obligation_members \
+                    or not predicates.zero_overlap(name, k_members):
+                continue
+            cost = card_cost(card)
+            if not refund_full_star_ok(1, cost):
+                continue
+            if mandate.dead_stock_pair_buy_reject_reason(
+                    name, 1, bench, deployed, k_members):
+                _count('m6_fallback_dead_stock_pair_blocked')
+                continue
+            if gold - cost < s_reserve:
+                continue
+            _count('m6_fallback_band_buy')
+            return _emit_buy(card, 'm6_stockpile')
+        return None
+
     _m6_exhausted = gold <= g_star   # 无富余 ⇒ 压牌库候选结构性耗尽(空转)
     _m6_arms = gold > g_star
     if _m6_arms:
@@ -1876,6 +1907,15 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _count('m6_bench_full')
         elif not tier_w:
             _count('m6_overflow_strand')
+            # 无升星目标 ⇒ 一星兜底带启用(press-stockpile §2;原
+            # dominance_buy 富余买入通道并入位——特殊帧买入手数变化经
+            # 实机首局观察记录承担,不做 A/B 模拟对照)。
+            _fb = _m6_fallback_band(contracts.ensure_contract(
+                ('stockpile', 'stockpile_buy'),
+                contracts.ContractCtx(k_members=k_members, k_target=k),
+                counters))
+            if _fb is not None:
+                return _fb
             _m6_exhausted = True
         else:
             _stock_ok = contracts.ensure_contract(
@@ -1925,6 +1965,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 _m6_hit = True
                 return _emit_buy(card, 'm6_stockpile')
             if not _m6_hit:
+                # 带内无货 ⇒ 一星兜底带启用(press-stockpile §2,同上)。
+                _fb = _m6_fallback_band(_stock_ok)
+                if _fb is not None:
+                    return _fb
                 _m6_exhausted = True
 
     # —— 垫件补位支(并入 = 17 号稿出口③/20 号稿 L2/T5;触发域改写:
@@ -2087,50 +2131,10 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             else:
                 _count('shop_ev_no_candidate')
 
-    # ===== 序 6:纯冗余停买(反向门——不命中任何序即停;邻位通道不受约束)=====
-
-    # ===== dominance_buy(结算线口径;邻位通道。C1 支已随单卡核心囤积
-    # 规则退役删除——统一让位优先级迭代 3.4,dismantle §2)=====
-    _dom_narrow_counted = False
-    _dom_ok = contracts.ensure_contract(
-        ('mandate', 'dominance_buy'),
-        contracts.ContractCtx(k_members=k_members, k_target=k), counters)
-    if _dom_ok and mandate.dominance_buy_eligible(gold, bench_free,
-                                                  cap_resolved):
-        for card in _buy_view('dominance_buy'):
-            name = card.name or ''
-            cost = card_cost(card)
-            star = card.star or 1
-            if not name:
-                continue
-            if not predicates.zero_overlap(name, k_members):
-                continue
-            if mandate.dead_stock_pair_buy_reject_reason(
-                    name, star, bench, deployed, k_members):
-                _count('dominance_dead_stock_pair_blocked')
-                continue
-            if not refund_full_star_ok(star, cost):
-                continue
-            ok2, _ = mandate.check_seats(
-                bench_free, 0, needs_bench=True, needs_board=False,
-                name='', deployed_names=deployed_names)
-            if not ok2:
-                _count('dominance_bench_wait')
-                break
-            if gold < cost:
-                continue
-            _sl_ok, _ = check_settlement_line(gold, cost, g_star)
-            if not _sl_ok:
-                _count('dominance_settlement_floor_reject')
-                continue
-            if _narrow_frame:
-                if not _dom_narrow_counted:
-                    _count('press_narrowed_transition_domain')
-                    _dom_narrow_counted = True
-                continue
-            return _emit_buy(card, 'dominance_buy')
-    elif _dom_ok and gold > g_star and bench_free <= 1:
-        _count('dominance_band_wait')
+    # ===== 序 6:纯冗余停买(反向门——不命中任何序即停)=====
+    # (dominance_buy 邻位通道已随富余买入并入压牌库整删——M6 一星兜底带
+    #  承接其富余金 1★ 占位语义,comp-structure-unification 3.4,
+    #  press-stockpile §1;P88 特殊帧收窄同步退役,见 mandate.py 墓注。)
 
     # ===== 刷新链三组件:判据 → 金线闸 → 发射(shop_session §2.4;
     # 金线闸算式 = 2026-10-28 用户裁定刷新链定型;目标可买合取拆除 =

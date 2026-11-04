@@ -10,8 +10,7 @@
 其历史消费的判定 helper(围栏集/点火增益/配方底线门/供给谓词,随七桶
 选人退役批次处置)、fresh 账本族(差分执行器新鲜度守卫 + L1 卖侧排除)、
 board_unique_key(统一搜索枚举基本单位)、engines_count 族(过渡体系
-机制事实)、deployed_bond_counts/board_target_line_weight(支撑观测)与
-swap_bond_gate_domain_of(P88 买侧收窄谓词源)。
+机制事实)、deployed_bond_counts/board_target_line_weight(支撑观测)。
 
 这里只收**纯决策**。输入 = 状态容器形状(bench = 占席条目 ``BenchSlot``
 紧缩序,身份经 ``bench_slot_unit`` 解包;deployed = 行域 ``Unit``,
@@ -188,21 +187,9 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
 
 # (换阵卖出义务分支 fenced_swap_arm_of 与转型域双门件(SWAP_GUARD_SYSTEMS/
 #  _swap_guard_achieved)已随部署统一批丁纳入统一管理删除——unified-deploy-order
-#  §2.7/§4 kernel swap 机器行;判别子 swap_bond_gate_domain_of 保留 =
-#  P88 买侧收窄谓词源(mandate_v1.swap_transition_narrow_frame 消费)。)
-
-
-def swap_bond_gate_domain_of(locked_core: bool, fp: float | None,
-                             board_full: bool) -> bool:
-    """转型域判别子(原始字段形态;单一源;design §2.0 三合取)。
-
-    = 终局阵容锁定 ∧ fp < 1.00 ∧ 板满(原配方对分支②已随配方决策层
-    退役消亡)。
-    消费面 = mandate_v1 ``swap_transition_narrow_frame``(P88 买侧收窄
-    谓词源)——判定只此一份,禁各消费位自写第二份合取;域语义与分支
-    继承的完整论证见 git 历史(swap 机器纳入统一管理批前 docstring)。
-    """
-    return bool(locked_core) and fp is not None and fp < 1.00 and board_full
+#  §2.7/§4 kernel swap 机器行;判别子 swap_bond_gate_domain_of 已随 P88
+#  买侧收窄全套退役整删——comp-structure-unification 3.4,press-stockpile
+#  §3,唯一消费 mandate_v1.swap_transition_narrow_frame 同批删除。)
 
 
 # (ctx 形态判别子 swap_bond_gate_domain / fenced_swap_gate_open / 让渡序
@@ -321,8 +308,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
 #  已随部署统一批丁纳入统一管理删除:要不要换/换谁下 = 统一部署搜索定型,
 #  kernel swap 资格链与让渡序的独立度量退役——unified-deploy-order §2.7/§4;
 #  被换下者回 bench 由卖出场景按统一让位序处置,让渡序消费面同批改接。
-#  保留:swap_bond_gate_domain_of(P88 买侧收窄谓词源,mandate.swap_
-#  transition_narrow_frame 消费)/ fresh 账本族 / board_unique_key /
+#  保留:fresh 账本族 / board_unique_key /
 #  engines_count 族 / deployed_bond_counts / board_target_line_weight。)
 # ============================================================
 # 板上唯一性守卫

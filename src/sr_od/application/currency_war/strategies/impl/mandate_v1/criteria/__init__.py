@@ -22,7 +22,9 @@ from __future__ import annotations
 # (模块,函数) → (类别,分支①形态,依据标签)
 # 类别与分支①形态的合法配对以本表逐行为单一源;谓词/状态函数恒「不旁路」。
 BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
-    # —— criteria/buy(01_math_framework §3.1;支配族 dominance_buy 已移 mandate 邻位,本域无)——
+    # —— criteria/buy(01_math_framework §3.1;支配族 dominance_buy 已随
+    #    通道退役删除——富余买入并入 M6 一星兜底带,comp-structure-
+    #    unification 3.4,本域无)——
     ('buy', 'ev_buy_candidates'): (
         '发射面', '旁路', 'R2-2+R7-1(候选生成+否决门一体,整体不发射)'),
     ('buy', 'ev_buy_veto'): (

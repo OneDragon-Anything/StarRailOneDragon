@@ -77,9 +77,10 @@ def _k_members_key(gs: GameState,
     走 :func:`cw_intention.k_empty_window_fallback` 回退分支取成员集;
     ``k_fallback`` 记回退分支是否产出成员(hit)与分带名(band):
     band 非空 ⟺ 回退分支已运行(带值 = cw_intention 分带 token,
-    'p1_gap'/'p1_lock_band'/'p2plus'),band 空串 ⟺ 分支未运行(名单
+    'p1_gap'/'p1_lock_band';旧 p2plus 位面带已随 comp-structure-
+    unification 3.3 换轴废除),band 空串 ⟺ 分支未运行(名单
     非空或意向缺帧);hit=False 且 band 非空 = 分支运行但派生空集
-    (合法空形态)。payload 重推导不写备战帧的
+    (p1 两带构造性非空,恒违例形态)。payload 重推导不写备战帧的
     ``prep_k_fallback_<band>`` 计数(纯读纪律,计数唯一写端在
     entry.emit)。
     """
