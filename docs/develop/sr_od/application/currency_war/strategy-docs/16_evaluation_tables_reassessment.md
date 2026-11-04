@@ -3,7 +3,7 @@
 > 体例：按原经验分停用裁定（原裁定文件已删档，评估表处置范围由本篇承接）的处置三分类（保留/改形/停用）+ 逐项依据 + 影响面 + 重新推导登记待办格式书写。
 > 本篇状态：**重测定稿（规格层）——零代码改动**。数值项执行规格（A_min 重测等）见 §4 与任务书草稿 `.debug/temp/currency_war/eval_table_reassess/PHASE2_TASK_DRAFT.md`（未入库临时文件）；执行编排（时点/派批）归进度账本与编排者（负责排期与裁决的开发协调角色），不在正文。
 > 判据权威出处：00_framework §1 宪法四条 / §6 数字来源标注（四种：【注】游戏定义值 /【推】已证推导 /【拟】观测估计 /【拍】用户立场登记值；01_math_framework §6）；01 §4 无数学待立项面（事件决策行）；13_pick_family（pick 族知识判据定位 + §3「事件判据禁自带数值」纪律）；14_p1_consume_arms v4.2.2（消费通道新架构对照基准，基线 commit 635a6235）；原经验分停用裁定维持项节（评估表体系划归本批）。
-> 术语（首现定义）：**评估表体系** = 选卡/选项决策面上以「分数」形态存在的常量族总称；**知识判据** = 来自玩法研究/阵容知识/机制原文的非数学判据（13_pick_family.md §1 判据状态列的「有规格（知识判据）」）；**定序形态** = 分数只用于同族选项间排大小、不承载跨族基数语义的改形目标形态；**消费点** = 消费该表的在产代码位置；**单一源** = 某语义在全仓只有一个权威定义处，其余一律引用不复制；**正本** = 该设计语义的权威文档；**评分域 S1-S4** = 旧评分体系的分值域档位编号（本篇 §1.9 的评分域编号，与意向状态机生命周期 S0-S3 撞名，读到 S2/S3 时先看上下文区分）。
+> 术语（首现定义）：**评估表体系** = 选卡/选项决策面上以「分数」形态存在的常量族总称；**知识判据** = 来自玩法研究/阵容知识/机制原文的非数学判据（13_pick_family.md §1 判据状态列的「有规格（知识判据）」）；**定序形态** = 分数只用于同族选项间排大小、不承载跨族基数语义的改形目标形态；**消费点** = 消费该表的在产代码位置；**单一源** = 某语义在全仓只有一个权威定义处，其余一律引用不复制；**权威版本** = 该设计语义的权威文档；**评分域 S1-S4** = 旧评分体系的分值域档位编号（本篇 §1.9 的评分域编号，与意向状态机生命周期 S0-S3 撞名，读到 S2/S3 时先看上下文区分）。
 
 ## 0. 重估通则（先立尺，再逐表过堂）
 
@@ -21,7 +21,7 @@
 ### 1.1 PICK_VALUE（选卡价值基准分，335 条，`cw_investments.py:798`）
 
 - **判定：保留·改形（知识判据定序器 + 立项登记待办）。**
-- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接线面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。（括注 2026-09-23 迁移 3.2:env 接线面两处已失效——投资环境屏消费迁策略层 invest_env，不读 PICK_VALUE；策略轴锚亦随投资策略屏迁移停用，全链已死——现行承载见 §6 版本变更记录。）
+- 消费点（活）：`pick_value_of`（:1127，含 LCS 形变兜底）→ `decide_event`（cw_events.py:108/125-135）→ 接入调用面 `cw_screen_invest_strategy.py:105` / `cw_screen_invest_env.py:112` / `strategies/impl/flow.py:286`（sim 栈同源消费）。全链在产。（括注 2026-09-23 迁移 3.2:env 接入调用面两处已失效——投资环境屏消费迁策略层 invest_env，不读 PICK_VALUE；策略轴锚亦随投资策略屏迁移停用，全链已死——现行承载见 §6 版本变更记录。）
 - 依据：①必选面（投资策略 3 选 1，UI 强制），停用无替代判据承接——品质先验回落（1.6 表）幅值本身已被经验分停用裁定判为「序到分映射无推导」（品质难度惩罚与奖励阶梯两项结论），退到品质先验是退化不是了结；②分值结构 = 读 effect 原文逐条人工判定的阵容知识结晶（评估口径 value_class 七分类 + pick_priority），属 13_pick_family.md 知识判据面，与宪法第一条「经验拟合不得作决策依据」的张力以**显式降格**消解：分数声明为知识判据的定序载体，非数学判据的基数输入；③消费通道 v4.2.2 不适用于本面（§0.3），无取代关系。
 - 改形内容（规格，写入代码归执行批）：①表头注释补数字来源标注（四种）声明——「知识判据定序分：仅在同表（335 条策略）内选项间定序有效；禁作为基数与其它分值族做加减语义扩展」；②跨族交互仅保留现行 `max()` 覆盖结构（comp-hit/augment/steering），禁新增「叠加进其它面判据」的消费点；③立项登记待办 = 08 E1/E2「台账价值挂 P38 ⑤层参数化」待立项推导行补 owner（事件面命题批）+ 期限（一个对局周期，01 §6 三要素 3）。
 - 孤儿键校验（:1115-1119）与 LCS 守卫（防跨表污染缺陷 0144b 复发、|Δlen|≤3）为防错结构，随表保留。
@@ -29,14 +29,14 @@
 ### 1.2 ENV_PICK_VALUE（环境选卡基准分，83 条，原 `cw_investments.py:1148`）
 
 - **判定：停用（2026-09-23 invest-env 策略层迁移迭代 3.2 删除面；原「保留·改形」裁定作废归档）。**
-- 依据：①宪法五所有权迁移——环境选卡评序 = 衍生打分，整体迁策略层统一加法标尺（`strategies/impl/mandate_v1/invest_env.py`，正本 = [28_invest_env_screen.md](28_invest_env_screen.md)）；②价值替代 = 阈值刷新环境（长线利好/二手市场）按 P97 预算口径【拍】值注册（策略层 `env_economy._GOLD_AFTER_REFRESHES_FIXED`，锚 = `../proofs/p97-refresh-budget.md` §7），知识评估分裸分承载面停用；③消费点已死：`decide_event` env 分支随轴删除（cw_events 现只适用于投资策略轴）。原必选面前提由新标尺承接（三选一仍必选，判据 = 28 篇四组件），属有承接停用，非裸退。
+- 依据：①宪法五所有权迁移——环境选卡评序 = 衍生打分，整体迁策略层统一加法标尺（`strategies/impl/mandate_v1/invest_env.py`，权威版本 = [28_invest_env_screen.md](28_invest_env_screen.md)）；②价值替代 = 阈值刷新环境（长线利好/二手市场）按 P97 预算口径【拍】值注册（策略层 `env_economy._GOLD_AFTER_REFRESHES_FIXED`，锚 = `../proofs/p97-refresh-budget.md` §7），知识评估分裸分承载面停用；③消费点已死：`decide_event` env 分支随轴删除（cw_events 现只适用于投资策略轴）。原必选面前提由新标尺承接（三选一仍必选，判据 = 28 篇四组件），属有承接停用，非裸退。
 - 同批删除面：ENV_FACTION_MATCH_FLOOR（§1.3）、GIFT_FLOOR_CORE/SHARED/ADVISOR_CORE（送卡档 floor；档→分映射现役 = 策略层 `gift_value.GIFT_TIER_SCORE` + `ADVISOR_DISCOUNT`，档位机器 `cw_comps.gift_hit_tier` 留 kernel 在产）。
 - 原「经济效果建模缺口」登记待办的现役承接 = 策略层 `env_economy`（ENV_ECONOMY_PENDING_MODELING + 估算注册表，fail-closed）。
 
 ### 1.3 ENV_FACTION_MATCH_FLOOR（阵营匹配条件分下限 {概念股 78, 邀请 70, 契约 72}，原 `cw_investments.py:1241`）
 
 - **判定：停用（2026-09-23 invest-env 策略层迁移迭代 3.2 删除面；原「改形」裁定作废归档）。**
-- 依据：消费点已死（`decide_event` env floor 支随轴迁移删除）。「阵营定向环境对目标阵营价值更高」的结构方向由策略层方向分承载（`line_value`：环境阵营 ∩ 候选阵容集 → 线强度档分 `LINE_STRENGTH_SCORE`，正本 = 28 篇 §2），category 间定序档位常数不再需要。
+- 依据：消费点已死（`decide_event` env floor 支随轴迁移删除）。「阵营定向环境对目标阵营价值更高」的结构方向由策略层方向分承载（`line_value`：环境阵营 ∩ 候选阵容集 → 线强度档分 `LINE_STRENGTH_SCORE`，权威版本 = 28 篇 §2），category 间定序档位常数不再需要。
 
 ### 1.4 augment 定义型 120（`decide_event` 中 `score = max(score, 120.0)`，cw_events.py:113-115）
 
@@ -71,17 +71,17 @@
 | 件 | 归属声明 |
 |---|---|
 | 机制克制惩罚 −100（MECHANIC_COUNTERS，机制注册表唯一权威源） | 同型改形候选（克制方向 = 机制注册表有据、−100 属【拍】值 → 降档语义）；因消费面跨事件/遭遇且该表为独立唯一权威源（原裁定文件已删档），登记归事件面命题批一并处置，本批不动 |
-| 补给通用装备价值（原 `_EQUIP_VALUE`（decide_supply 通用装备价值，V4.4 版经验先验，原出处 cw_events.py:293）+ key_equip +10 经验拟合形态；该内联形态原址 = cw_events.py:616-647，已随 2026-09-24 补给屏策略层迁移删除） | **登记待办已关闭（改形已实现，2026-09-24 补给屏策略层迁移执行；正本 = [30_supply_screen.md](30_supply_screen.md)，决策本体 = `strategies/impl/mandate_v1/supply.py`）**：新结构映射——「带钻支配（零参数已就位）」= 选卡第一级（定序最高档定性，与 30 篇对齐；完整支配论证留 E4 数学批）；角色轴 = 第二级（原登记待办没有的新增细则，只为终局）；「key_equip 命中」= 装备轴 tier 3（需求未满足直击，`equip_tier` 需求计数）；「功能定序」= 同 tier 通用值定序（`EQUIP_GENERIC_VALUE` 表本体现址 = `cw_equip_value.py:42-80`，降格为 tier 内定序常数，表值零变化）。原行所引 `check_equip_value_*` 相干性检查锁（sim/checks/ledger.py:970/1035）全仓 src+测试仓零命中，引用清理 |
+| 补给通用装备价值（原 `_EQUIP_VALUE`（decide_supply 通用装备价值，V4.4 版经验先验，原出处 cw_events.py:293）+ key_equip +10 经验拟合形态；该内联形态原址 = cw_events.py:616-647，已随 2026-09-24 补给屏策略层迁移删除） | **登记待办已关闭（改形已实现，2026-09-24 补给屏策略层迁移执行；权威版本 = [30_supply_screen.md](30_supply_screen.md)，决策本体 = `strategies/impl/mandate_v1/supply.py`）**：新结构映射——「带钻支配（零参数已就位）」= 选卡第一级（定序最高档定性，与 30 篇对齐；完整支配论证留 E4 数学批）；角色轴 = 第二级（原登记待办没有的新增细则，只为终局）；「key_equip 命中」= 装备轴 tier 3（需求未满足直击，`equip_tier` 需求计数）；「功能定序」= 同 tier 通用值定序（`EQUIP_GENERIC_VALUE` 表本体现址 = `cw_equip_value.py:42-80`，降格为 tier 内定序常数，表值零变化）。原行所引 `check_equip_value_*` 相干性检查锁（sim/checks/ledger.py:970/1035）全仓 src+测试仓零命中，引用清理 |
 | decide_encounter 难度定价（P9 gap 公式、encounter_tier_score） | 损伤锚族，形态③纪律适用（带 CI/出处声明+登记重新校验），P15v2 重校专批处置（经验分停用裁定划界），本批不动 |
 | PICK_BIAS 平表（E17 星徽秘典/E5 圣杯试炼，strategies/impl/pick_bias.py；E18 武装箱面已迁共享机器 `cw_equip_value` 序数分档——box 两常数随 armory-box-value 停用） | 数值原样迁移的【拍】值平表，消费点活 → 同型改形登记待办（三层/三项定序声明），登记归事件面命题批与 pick 族知识判据对账（13_pick_family.md §0 已声明值在代码） |
 | STEERING ±30/−10000（用户转向轴） | 经验分停用裁定已判维持（用户偏好轴，分值是用户语义载体非策略经验量），不动 |
 
 ### 1.9 评分域 S2 经济引擎档 + 评分域 S3 对齐源换 D*（增量补录；评分域编号 S2/S3 与生命周期 S0-S3 撞名，此处均指评分域）
 
-- **定位**:此前定序框架（t155_invest_redesign 方案，见本节末方案正本指针）的**增量**（新分值族评分域 S2 + 评分域 S3 换源），非新交互形态；max() 覆盖结构不变、禁加减叠加纪律照旧。
+- **定位**:此前定序框架（t155_invest_redesign 方案，见本节末方案权威版本指针）的**增量**（新分值族评分域 S2 + 评分域 S3 换源），非新交互形态；max() 覆盖结构不变、禁加减叠加纪律照旧。
 - **评分域 S2 经济引擎档**:持续通道字段闭集存在性谓词(`is_economy_engine`,`kernel/cw_events.py`),域带 111-119(整带压本篇 1.5 comp-hit 上界 110、低于 1.4 augment 120);档内序复用 1.1 PICK_VALUE 定序器线性归一带内。一次性金/期权/难度/血本位族不入(F3 结构界:时点触发一律不入);直算命中 38 条与方案申报数对账。
 - **评分域 S3 对齐源换 D**（用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,不为过渡阵容服务」）:D* = **预期终局阵容方向**——由「终局阵容锁定单判 + detect_signals 资产信号级联」的五门过滤裁决产出（含反自证①层排除），下称「预期终局方向」。1.3 ENV_FACTION_MATCH_FLOOR 与 1.5 comp-hit 45×N+20 的定序语义(category 档位/N 单调序数)不变，**交集对象**由过渡对 target_comp 换成预期终局方向（D*；本篇上文 1.3/1.5 行文按当时现状留档，现行以 29 篇为准）。
-- 写入代码与验证 = 投资策略屏策略层迁移（现行态见 §6 版本变更记录与 29 篇）；方案正本 = `.debug/temp/currency_war/attacks/t155_invest_redesign/方案.md`(v2.2,未入库临时文件)。
+- 写入代码与验证 = 投资策略屏策略层迁移（现行态见 §6 版本变更记录与 29 篇）；方案权威版本 = `.debug/temp/currency_war/attacks/t155_invest_redesign/方案.md`(v2.2,未入库临时文件)。
 
 ## 2. 消费点 grep 对账汇总（判定依据的出处清单）
 
@@ -122,6 +122,6 @@
 
 ## 6. 版本变更记录
 
-- **v2（投资策略屏策略层迁移收尾）**：策略轴项 **§1.1（PICK_VALUE）/§1.4（augment 定义型 120）/§1.5（comp-hit 45×N+20）/§1.6（品质先验回落 50/30/10 + economy +20）/§1.9（评分域 S2 经济引擎档 + 评分域 S3 对齐源换 D*）与 §1.8 表「STEERING ±30/−10000（用户转向轴）」行**的评序承载面被投资策略屏迁移取代——kernel `decide_event` 策略轴与 `PICK_VALUE` 表停用，现行承载 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`（统一加法标尺 + 结构分区 + 平分裁决键），正本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)；转向轴常数现役唯一权威源 = 策略层 `pick_common.STEERING_PRIORITY_BONUS`，forbid 改集合排除出候选（分值化禁选停用，`STEERING_FORBID_PENALTY` 不复存在）；§1.4 支配性优先/§1.5 N 单调序/§1.6 品质序字典序的定序语义由新标尺的结构分区与平分裁决键承接，原 kernel 形态「保留·改形」裁定作废归档。§1.2/§1.3（env 轴项）已由投资环境屏迁移批收尾标停用（§1 正文照录）。
+- **v2（投资策略屏策略层迁移收尾）**：策略轴项 **§1.1（PICK_VALUE）/§1.4（augment 定义型 120）/§1.5（comp-hit 45×N+20）/§1.6（品质先验回落 50/30/10 + economy +20）/§1.9（评分域 S2 经济引擎档 + 评分域 S3 对齐源换 D*）与 §1.8 表「STEERING ±30/−10000（用户转向轴）」行**的评序承载面被投资策略屏迁移取代——kernel `decide_event` 策略轴与 `PICK_VALUE` 表停用，现行承载 = 策略层 `strategies/impl/mandate_v1/invest_strategy.py`（统一加法标尺 + 结构分区 + 平分裁决键），权威版本 = [29_invest_strategy_screen.md](29_invest_strategy_screen.md)；转向轴常数现役唯一权威源 = 策略层 `pick_common.STEERING_PRIORITY_BONUS`，forbid 改集合排除出候选（分值化禁选停用，`STEERING_FORBID_PENALTY` 不复存在）；§1.4 支配性优先/§1.5 N 单调序/§1.6 品质序字典序的定序语义由新标尺的结构分区与平分裁决键承接，原 kernel 形态「保留·改形」裁定作废归档。§1.2/§1.3（env 轴项）已由投资环境屏迁移批收尾标停用（§1 正文照录）。
 
   **声明（历史节读法）**：§1 各节的判定与改形内容是当年规格层的历史记录，正文保留不改写；现行有效状态以本节（§6 版本变更记录）与 [29_invest_strategy_screen.md](29_invest_strategy_screen.md) 为准。
