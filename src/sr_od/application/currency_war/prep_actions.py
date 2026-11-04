@@ -82,7 +82,7 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 #: 必须同步登记本表**——漏登走 :func:`_prep_receipt_block_code` 原文
 #: 兜底(受阻事实不静默,复盘以原样 status 在日志里暴露促登记)。特定前缀先于
 #: 泛化前缀(表序 = 匹配序,首中即返)。
-#: (terminal-fail-status 迭代收缩:参数违法类三口(BuyCard 槽解析/槽号
+#: (terminal-fail-status 迭代收缩:参数违法类三个登记入口(BuyCard 槽解析/槽号
 #: 越界、DeployMove 落位越界)改 op 内守卫断言、建档缺失类检查段
 #: (LevelUp/StartBattle 主口与弹窗/WearEquip 槽位坐标)删除 = 自然
 #: 异常报错——上述形态零 round_fail 供给,对应映射行随批退役;

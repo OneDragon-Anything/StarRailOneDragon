@@ -354,7 +354,7 @@ _ENGINE_CHANNEL_EXCLUDED_FIELDS: frozenset[str] = frozenset({
     # 一次性金族(当场/时点大额,无持续语义)
     'instant_gold', 'gold_at_node', 'gold_at_node_offset',
     'gold_at_level', 'gold_at_level_target',
-    # 时点金·序列位置定点(尾款交付):整局一次的必经节点条件金,写入状态副本的实现 =
+    # 时点金·触发时点取序列最末 supply 位(尾款交付):整局一次的必经节点条件金,写入状态副本的实现 =
     # sim 节点窗独立笔(时点载体 final_supply_pos),非持续通道
     'gold_at_final_supply',
     # 条件刷新三元组(本金充裕系):条件窗口内逐节点补刷,旧闭集裁决
