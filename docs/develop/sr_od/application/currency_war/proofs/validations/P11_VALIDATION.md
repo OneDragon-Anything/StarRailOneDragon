@@ -3,7 +3,7 @@
 > 验证对象(以索引定位,**实际文件报告**):`docs/game/currency_war/research/math_proofs.md` L23 索引行 →
 > `docs/game/currency_war/research/proofs/p11-overflow-gold-opportunity-cost.md`(**P11 = 溢余金机会成本命题**,全文 69 行)。
 > **重要定位澄清(先行)**:任务标题「P11 零息损购买」中的「零息损判据:购买后仍在同一息档 / 跨档损 1 金上界 / 1★ 全额退=活期资产 / 动态卖回恢复通道」**不在 P11 证明文件内**——它们是口述 `[11]`(user_playstyle 经济簇)的内容,其数学承载分布在 **P47 命题三(+动态修正)/P13③/P46 [11] 行**。P11 本体只含「溢余段(g−s≥50)Δinterest=0 ⇒ C_dec 下界=0」这一条零息损命题(它是同档判据在息帽段的特例)。本报告五门以 P11 文件为主对象,同时对「[11] 零息损口径族」做一致性核(任务已知背景③④点名要求),不越件下结论。
-> 阅读门覆盖:math_proofs 索引行 + P11 全文 + P47 全文 + user_playstyle §经济与利息([11]/[17]/[28]/[41])+ economy.md §2/§10.1(卖回还池/息律投资)+ 06_input_model §3(注册表地图)+ DESIGN_MANDATE_LAYER(M2/修正三)。`data/characters/*` 等 60+ 角色图鉴文件与本件无交集,声明跳过(理由:P11 不消费角色数值,仅消费息律/退金/收入锚点)。
+> 阅读门覆盖:math_proofs 索引行 + P11 全文 + P47 全文 + user_playstyle §经济与利息([11]/[17]/[28]/[41])+ economy.md §2/§10.1(卖回还池/息律投资)+ 06_input_model §3(注册表地图)+ DESIGN_MANDATE_LAYER(M2/修正三)。`data/characters/*` 等 60+ 角色图鉴文件与本件无交集,声明跳过(理由:P11 不消费角色数值,仅消费息律/退金/收入引用点)。
 > 公理栈:零调参(判据查表不拟合)/参数溯源(常量归注册表单一源)/超额收益隔离(息账与战力账分门)/纯金流(息损=金位轨迹差,不含卡牌效用)。全部按此口径执行。
 
 ---
@@ -37,19 +37,19 @@
 
 ---
 
-## 门二:锚点直调(注册表逐项)
+## 门二:引用点直调(注册表逐项)
 
-| P11 引用锚点 | 直调结果 | 判定 |
+| P11 引用引用点 | 直调结果 | 判定 |
 |---|---|---|
 | `cw_horizon.interest` = min(g//10,5) | **模块已不存在**(全仓 grep `cw_horizon` 在 src 下零命中;现单一源 = `kernel/cw_plane_table.interest`,L144 `min(gold//10, GOLD_CAP_INTEREST//10)`,数学同式);P11 复算脚本 `tools/cw/proofs/w153_p11_p12_p2_refresh.py` L19 import 该已删模块,**实跑 ModuleNotFoundError,「可重跑复核」承诺失效**(亲测复现) | ❌ 引用漂移 |
 | `decision_v2.registry`(hp_to_gold=0.5) | 值对(`kernel/cw_registry.py` L322 `hp_to_gold: float = 0.5`),模块路径漂移(registry 在 kernel 不在 decision_v2) | ⚠ 路径漂移,值对 |
-| 息律常量 | 原锚 = `cw_factions.INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`、`cw_plane_table.GOLD_CAP_INTEREST=50`、`cw_economy.INTEREST_WEIGHT=4.0`——其中 factions 两锚与 `INTEREST_WEIGHT` 已随死代码清偿移除;现单一源 = `cw_plane_table.GOLD_CAP_INTEREST=50` + `cw_economy.interest`(`DEFAULT_INTEREST_CAP=GOLD_CAP_INTEREST//10`,override = `cw_registry.interest_cap`) | ✓(锚名随死代码清偿更替,值口径不变) |
+| 息律常量 | 原引用 = `cw_factions.INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`、`cw_plane_table.GOLD_CAP_INTEREST=50`、`cw_economy.INTEREST_WEIGHT=4.0`——其中 factions 两引用与 `INTEREST_WEIGHT` 已随死代码清偿移除;现单一源 = `cw_plane_table.GOLD_CAP_INTEREST=50` + `cw_economy.interest`(`DEFAULT_INTEREST_CAP=GOLD_CAP_INTEREST//10`,override = `cw_registry.interest_cap`) | ✓(引用名随死代码清偿更替,值口径不变) |
 | `sell_refund` 手续费 | `cw_state.sell_refund`(L877-890):1★=cost 全额退、无手续费;star≥2 且 cost≥2 再 −1;cost=1 exempt(live 实测 2★1费=+3)——与 [11]「1★ 全额退=活期资产」的前提逐字吻合 | ✓ |
 | 溢余金影子价 ρ | `cw_registry` L409 显式条目(P11 出处注明) | ✓ |
 | 计算脚本 | 存在但 import 断(见上) | ❌ |
-| W151/W152 实测锚(收入 13-19/轮、金 85-160、spend 42-135) | 回放账声明,非注册表;本验证未重放四局原始数据(超一件辖域),按「数据边界=4 局 87 条中 14 帧」的声明采信 | ⚠ 未复核(声明透明) |
+| W151/W152 实测引用(收入 13-19/轮、金 85-160、spend 42-135) | 回放账声明,非注册表;本验证未重放四局原始数据(超一件辖域),按「数据边界=4 局 87 条中 14 帧」的声明采信 | ⚠ 未复核(声明透明) |
 
-**门二判定:值锚全部核实,但文件锚(cw_horizon/decision_v2.registry 两处模块路径)已漂移,复算脚本断裂——证明的数值可信(同式手算对拍通过),可复现性不可信。**
+**门二判定:值引用全部核实,但文件引用(cw_horizon/decision_v2.registry 两处模块路径)已漂移,复算脚本断裂——证明的数值可信(同式手算对拍通过),可复现性不可信。**
 
 ---
 
@@ -68,7 +68,7 @@
 
 - **静态同档判据:三层可达** ✓——①决策放行:`arbiter.interest_rule` L319-320(同息档 `after//10 >= gold//10` 放行)、L317-318(1 费净 0 放行)、L617+ 三相位共用前置臂(reason 串「[11] 同档/1费零息损放行」);②预算截断:原 `economy_cycle.tier_truncated_spend`(min(want, gold%10),零标定参数)已随死代码清偿移除(零生产调用方;预算截断语义现役 = economy_cycle 义务核算 + 商店决策侧自限);③sim 账本检查器:`sim/checks/segments.seg_check_lossless_buy_missed`(判据逐字对齐口述精确口径 `(g//10)==((g−cost)//10)`,副本形态四分类豁免诚实)。遥测有卖回格(recorder sell_income)+ 金轨迹视图。**预测→行为→账本闭环成立**。
 - **动态卖回通道:数学层成立、实现层部分可达** ⚠——「凑息向卖候选」(candidates for_gold/_release_sell_gate)存在,但 P46 登记的「买入意图定期/活期标记」**未写进代码**(P46 明言「实现面登记项,不改代码」)⇒ 「有卖回计划 ⇒ 不进否决域」的分支在实现层靠 posture/候选结构间接近似,无显式标记可审计;P47 待标定①(卖回时点 vs 息结算先后,±5 金深花格)未消。**动态零损的可证性是「数学已备、实证缺口两处」**。
-- **息律投资对「同一息档」判据的扰动(任务点名)**:注册表直调证实四类中第三类修改利息通道——`cw_investments`:开源节流 cap=9 / 利息上调 cap=10 / 买断制 cap=0(L≡0)+ 狸财经 +2;息律闭式聚合 = `cw_economy.interest`(原 `cw_effect_ledger.interest_with` 锚已随死代码清偿移除)。扰动核对:
+- **息律投资对「同一息档」判据的扰动(任务点名)**:注册表直调证实四类中第三类修改利息通道——`cw_investments`:开源节流 cap=9 / 利息上调 cap=10 / 买断制 cap=0(L≡0)+ 狸财经 +2;息律闭式聚合 = `cw_economy.interest`(原 `cw_effect_ledger.interest_with` 引用已随死代码清偿移除)。扰动核对:
   - **P11 的「g−s≥50 ⇒ Δ=0」在 cap≠5 局整体失效**(cap=10 时档线延至 100,g=160,s=90 → Δ=3≠0)——P11 全文 cap=5 隐含前提,**未做 P47 A1 式的 resolved 参数化声明**;
   - 同档谓词实现(`after//10` 比较、`gold%10` 截断)按 10 金步长计数,对 cap=9/10 **仍方向正确**(能捕到 50 上方新增档线的真实息损,偏保守侧);对买断制(cap=0)**过度保守**(无息局仍拦跨 10 线支出、`ev.interest_cost` 仍按裸 ⌊g/10⌋ 差计档=收不存在的息成本);
   - `ev.interest_cost` 本体**未夹 cap、未接 ledger override**:基线局 g>50 段也按裸 floor 差高估(例 interest_cost(75,30)=3 档,真实 Δ=1)——arbiter 侧靠「只在穿 50 时辖权+上界口径声明」兜住语义,但息律投资局(cap 9/10/0)下该式与真实息机制的偏差**无任何声明**。
@@ -89,7 +89,7 @@
 
 ## 最终判决
 
-**P11 站得住(有条件通过)。** 命题本体(溢余段 Δinterest=0 ⇒ C_dec 下界=0;穿 50 段 ≤7 金量级上界;ρ≈0)数学正确、锚点值全部直调核实、建模对象([17])无错位、消费面无超范围引用。四项需处置的发现(均不翻案):
+**P11 站得住(有条件通过)。** 命题本体(溢余段 Δinterest=0 ⇒ C_dec 下界=0;穿 50 段 ≤7 金量级上界;ρ≈0)数学正确、引用点值全部直调核实、建模对象([17])无错位、消费面无超范围引用。四项需处置的发现(均不翻案):
 
 1. 🔴 **可复现性断裂**:`cw_horizon` 模块已被重构删除,P11 复算脚本 `w153_p11_p12_p2_refresh.py` import 失败(亲测)——「零随机纯表值可重跑」的承诺当前不成立。修法:脚本 import 改 `cw_plane_table.interest`(一行),P11 数据源行同步勘误。
 2. 🟡 **cap 参数化缺位**:P11 未像 P47 A1 那样声明「cap=5 基线、息律投资局按 resolved 重算」——cap=10 局「g−s≥50 ⇒ Δ=0」整体失效。修法:P11 加一行 resolved-cap 前置声明(数值不重算,判据条件改为 `g−s ≥ 10×cap_resolved`)。

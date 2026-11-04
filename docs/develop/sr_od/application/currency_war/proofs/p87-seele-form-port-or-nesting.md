@@ -7,7 +7,7 @@
 > 98078c0a);正式化动机 = 策略审查 20260909 项 1(批序 1 命题只存于临时
 > 目录,math_proofs 无索引行,P24「内容已齐后补正式化」先例同法;
 > 不补则配方对/意向重评批 §12.13 联审只能引临时路径)。
-> 代码锚:`pair_target_comp`(kernel/cw_intention.py,伪 comp 物化单一
+> 代码引用:`pair_target_comp`(kernel/cw_intention.py,伪 comp 物化单一
 > 写端;希儿系对 form_tiers 只含他体系档 + `SEELE_OR_REQS` or_reqs +
 > `required_deployed=('希儿',)`)/ `form_progress`(kernel/cw_comps.py,
 > 成型判据唯一折法,fp=1.0 ⟺ 成型谓词);行为测试 =
