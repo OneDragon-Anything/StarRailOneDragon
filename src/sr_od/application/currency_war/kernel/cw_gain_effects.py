@@ -1536,6 +1536,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('光速螺旋桨', 1),
         _make_named_equip_grant_effect('反重力皮靴', 1),
         _make_named_equip_grant_effect('折叠小刀', 1)),
+    # 装备方案B = 三腿组合登记行(T-369 装备方案A 同形姊妹,模式卡直承;
+    # 卡文「获得【冷笑话引擎】、【永动机】和【和平手枪】」语序直读:
+    # 引擎→永动机→枪,每件 1 个[T-367 零数量词先例];rand=False 确定
+    # 发放[fields.md 分野即终态在册口径];不入单族镜像表沿组合行家族
+    # 纪律)。
+    '装备方案B': _compose_grant_legs(
+        _make_named_equip_grant_effect('冷笑话引擎', 1),
+        _make_named_equip_grant_effect('永动机', 1),
+        _make_named_equip_grant_effect('和平手枪', 1)),
     # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
     # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
     # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」
