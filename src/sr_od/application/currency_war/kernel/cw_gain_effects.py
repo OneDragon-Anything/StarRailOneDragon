@@ -1257,6 +1257,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_char_grant_effect('狸小龙'),
         _make_char_grant_effect('狸小虎'),
         _make_box_grant_effect(('简易武装箱', '简易武装箱'))),
+    # 列车同行星徽套组 = 三腿组合登记行(套组族首张;卡文「获得1个【列车
+    # 同行星徽】，和1个【丹恒·饮月】，以及1个【高周波电锯】」语序直读:
+    # 徽→人→锯;rand=False 确定发放[fields.md 分野即终态在册口径,超越
+    # 稿默认 rand=True];具名装备×2 经 _make_named_equip_grant_effect,
+    # 角色腿经 _make_char_grant_effect;星级 1★ = T-209 同 char 在码先例;
+    # 不入单族镜像表,沿组合行家族纪律)。
+    '列车同行星徽套组': _compose_grant_legs(
+        _make_named_equip_grant_effect('列车同行星徽', 1),
+        _make_char_grant_effect('丹恒·饮月'),
+        _make_named_equip_grant_effect('高周波电锯', 1)),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
