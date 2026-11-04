@@ -2832,7 +2832,8 @@ def spy_on_level_up_active(session) -> int:
     并偷取其中最贵的3个角色」);持有判定 = 现役 held 判据
     (active_strategies 容器字段,先例 = :func:`blood_xp_mode`)。
     返回 = 偷牌张数(0 = 未持有/注册表漂移保守侧;张数只经本单一源,
-    消费位 = 升级上报回调 + sim 世界分支,禁第二处内联)。
+    消费位 = 升级值变更回调 spy 分支〔调度器 cw_levelup_callbacks〕
+    + sim 世界分支,禁第二处内联)。
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
@@ -2857,10 +2858,11 @@ def level_up_gift_active(gs: GameState) -> bool:
     本卡不立 EffectSpec,经济注册行 = 唯一登记面——注册表漂移保守侧
     缺失即效果退役零行为);持有判定 = 现役 held 判据(active_strategies
     容器字段,形状镜像 :func:`spy_on_level_up_active`)。入参 = 直取
-    GameState(消费位 = 升级上报回调,体内 gs 现成;spy 的 session 形
-    须先 game_state_of 归一,两形不通用禁照抄)。返回 bool 非张数:本腿
-    每级恒发 1 名,张数语义只属间谍。消费位唯一 = level_up 上报回调
-    节节高升块,禁第二处内联(spy 同纪律)。
+    GameState(消费位 = 升级值变更回调 gift 分支,体内 gs 现成;spy 的
+    session 形须先 game_state_of 归一,两形不通用禁照抄)。返回 bool
+    非张数:本腿每级恒发 1 名,张数语义只属间谍。消费位唯一 = 升级值
+    变更回调(调度器 cw_levelup_callbacks)节节高升块,禁第二处内联
+    (spy 同纪律)。
     """
     econ = STRATEGY_ECONOMY.get('节节高升')
     if econ is None or econ.gold_per_level_up <= 0:
@@ -6123,12 +6125,18 @@ _validate_strategy_random_grants()
 # 2★ 直出同构先例;家族判读申报制承载非定谳——后继族稿引用须现值重核,
 # 实机采证路径 = 持同名高星件购买观察落席星级)。
 
-STRATEGY_BUY_STAR_FLIP_GRANTS: dict[str, tuple[int, int]] = {
+STRATEGY_BUY_STAR_FLIP_GRANTS: dict[str, tuple[tuple[int, ...], int]] = {
     # 四费晋升:官方「你购买的下1个4费角色将立刻升到2星。获得12金币。」
     # (id 202201 原文直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行;费用
     # 过滤档 4/目标星级 2 两维全卡面明写,零披露键;同卡金腿「获得12金
     # 币」归 STRATEGY_ECONOMY instant_gold 在册,不进本表)
-    '四费晋升': (4, 2),
+    '四费晋升': ((4,), 2),
+    # 着眼当下:官方「你购买的下1个1、2、3、4或5费角色将立刻升到2星。
+    # 获得5金币。」(id 303901 原文直读;全档枚举 {1,2,3,4,5} 一行 = 费用
+    # 过滤维度元组成员判定承载;家族共表泛化后首个两键成员,键序 = 原始
+    # 卡序 202201 前于 303901;同卡金腿「获得5金币」归 STRATEGY_ECONOMY
+    # instant_gold 在册,不进本表)。
+    '着眼当下': ((1, 2, 3, 4, 5), 2),
 }
 
 

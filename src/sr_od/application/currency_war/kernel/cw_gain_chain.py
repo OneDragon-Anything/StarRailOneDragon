@@ -55,12 +55,9 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     deployed_bond_counts,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
-    XP_TO_NEXT_LEVEL,
     bench_char_cost,
-    level_cap_of,
     sell_refund,
     strategy_interest_floor,
-    xp_apply_amount,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     EQUIP_ACQUIRE_CONSEQUENCES,
@@ -1269,9 +1266,9 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
        ``first_buy_xp#<cost>``,「首次」封账);
     5. sim 门控世界写(函数内惰性 ``sim_backend_installed``,kernel→
        sim.ports 判据消费先例 = 本模块 check_strategy_star_merge_gold):
-       True → :func:`xp_apply_amount` 推进 + gs.level/gs.xp observe
-       独立笔(evidence ``xp:first_buy:<cost>``,sig ``obs_sig('sim:xp')``
-       ——apply_node_xp 同域口径,只推进 level/xp 零附加动作);False
+       True → 结算原语 settle_xp_observe 一行调用(evidence
+       ``xp:first_buy:<cost>``,sig ``obs_sig('sim:xp')``——推进 + 观察
+       双笔 + 跨级连锁统一收口,与模拟器各经验腿同一入口);False
        (live)→ 零写;
     6. 返回 XP 量(断言面;生产调用零回调面,返回值忽略)。
 
@@ -1309,22 +1306,15 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
         sim_backend_installed,
     )
     if sim_backend_installed():
-        xp_field = gs.xp.value
-        level_field = gs.level.value
-        if xp_field is not None and level_field is not None:
-            level, cur = xp_apply_amount(int(level_field), int(xp_field[0]),
-                                         amount, level_cap=level_cap_of(gs))
-            need = XP_TO_NEXT_LEVEL.get(level, int(xp_field[1]))
-            from sr_od.application.currency_war.sim.cw_sim_base import (
-                obs_sig,
-                sim_evidence,
-            )
-            gs.observe(gs.level, level,
-                       evidence=sim_evidence(f'xp:first_buy:{cost}'),
-                       sig=obs_sig(group_id='sim:xp'))
-            gs.observe(gs.xp, (cur, need),
-                       evidence=sim_evidence(f'xp:first_buy:{cost}'),
-                       sig=obs_sig(group_id='sim:xp'))
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            settle_xp_observe,
+        )
+        from sr_od.application.currency_war.sim.cw_sim_base import (
+            obs_sig,
+            sim_evidence,
+        )
+        settle_xp_observe(gs, amount, sig=obs_sig(group_id='sim:xp'),
+                          evidence=sim_evidence(f'xp:first_buy:{cost}'))
     return amount
 
 
@@ -1583,8 +1573,8 @@ def _buy_star_flip_armed(gs: GameState, *, star: int,
     for card in held:
         if card in done:
             continue
-        want_cost, want_star = STRATEGY_BUY_STAR_FLIP_GRANTS[card]
-        if int(cost) != want_cost or int(star) >= want_star:
+        want_costs, want_star = STRATEGY_BUY_STAR_FLIP_GRANTS[card]
+        if int(cost) not in want_costs or int(star) >= want_star:
             continue
         armed.append(card)
     return tuple(armed)
@@ -1640,7 +1630,7 @@ def mark_strategy_buy_star_flip_consumed(gs: GameState, *, cost: int,
     consumable = tuple(
         n for n in held
         if n not in done_pre
-        and int(cost) == STRATEGY_BUY_STAR_FLIP_GRANTS[n][0])
+        and int(cost) in STRATEGY_BUY_STAR_FLIP_GRANTS[n][0])
     if not consumable:
         return ()
     gs.write_logic(gs.strategy_conditional_done, done_pre + consumable,
