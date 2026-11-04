@@ -184,10 +184,16 @@ unit_buff);词缀源
 
 用户裁定(2026-09-10;先例 = impacts §3 伟大征服/淘金客条目):
 
-- **XP 分支零建模**:经验面板画面可读 = 观察层直接读;overlay 的 `xp_instant`/`xp_per_node`
-  等字段值为预测面,非 state 存储。例外:sim 侧世界经验统一经结算原语
-  `settle_xp_observe` 把结果写进状态副本(升级连锁对任意经验来源生效,
-  fields.md §3.2.10)。
+- **XP 分支零建模(辖域收窄,2026-11-04 用户裁定)**:xp_per_refresh 重复经验族
+  已从本条移出——其世界腿(把结果写进状态副本的实现分支)已接入调用:
+  刷新上报写端付费帧经 `grant_effect_refresh_xp` 鸭子类型读取聚合 →
+  `grant_xp` 逻辑写通道字段写(fields.md §3.2.10);残余辖域 = live 观察覆盖
+  足用之未结构化面——经验面板画面可读 = 观察层直接读;overlay 的
+  `xp_instant` 等字段值为预测面,非 state 存储(选牌当场族现值零写入方,
+  观察覆盖)。例外:sim 侧世界经验观察写统一经结算原语 `settle_xp_observe`
+  把结果写进状态副本(升级连锁对任意经验来源生效,fields.md §3.2.10);
+  `grant_xp` 逻辑写发放通道与之并存(level/xp 域现役双通道,channel_mix
+  披露键,环境窗口桥与刷新 XP 分支两个调用点)。
 - **HP/生命上限/难度/词缀/战力/强度/节点型改写分支零建模**:画面可读或纯游戏内部事。
 - **随机资产面**(发牌/装备/开箱/商店改写内容)交由观察收尾:标准观察流天然覆盖,不建
   逻辑写入方(§6.3 判据的随机分支)。
@@ -540,14 +546,20 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 #### 淘金客(301601)
 
-- **论断**:ON_REFRESH / while_held / STATE;duties = respond;counter **不建**——付费刷新
-  事件的产出(+2XP)是零建模面(§6.4),无剩余/门槛语义,无动态需求;实例仅为在场
-  标记。
-- **证据**:规格 cw_investments.py:298-302(payload=`STRATEGY_ECONOMY['淘金客']`,
-  xp_per_refresh=2,:174);官方原文 cw_invest_data.py:259「你每次消耗金币刷新商店,都会
+- **论断**:ON_REFRESH / while_held / STATE;duties = respond;counter **不建**——产出
+  (+2XP)无剩余/门槛语义,无动态需求,单调账 refresh_paid 既有承载;产出分支 =
+  世界腿(把结果写进状态副本的实现分支)已接入调用:刷新上报写端付费帧经
+  `grant_effect_refresh_xp` 鸭子类型读取 `xp_per_refresh` 聚合 → `grant_xp`
+  字段写,evidence `effect_refresh_xp`,fields.md §3.2.10(2026-11-04 用户裁定
+  采真实写入方案,原零建模面随裁定闭合,§6.4 辖域同步收窄)。
+- **证据**:规格 cw_investments.py:905-911(payload=`STRATEGY_ECONOMY['淘金客']`
+  :633,xp_per_refresh=2,:152);发放 = cw_game_state.grant_effect_refresh_xp
+  (调用点 = 刷新上报 `report_action_refresh_shop_param` 付费分支,免费扣减后/
+  随机态分支前);官方原文 cw_invest_data.py:259「你每次消耗金币刷新商店,都会
   获得2经验值。」
-- **推理链**:驱动 = 付费刷新(「消耗金币」文本排免费刷);产出分支零建模 → 无落账量 →
-  counter 空;respond 姿态(刷新期望价值 +2XP)归策略层消费。
+- **推理链**:驱动 = 付费刷新(「消耗金币」文本排免费刷,与计数分支 refresh_paid
+  同付费域);产出 = 每付费刷新事件写状态副本 +2XP(无窗口无上限 → counter 空);
+  respond 姿态(刷新期望价值 +2XP)归策略层消费。
 
 #### 采购专员·金(201201)/ 采购专员·彩(303101)
 

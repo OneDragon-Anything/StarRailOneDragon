@@ -2261,8 +2261,10 @@ win_reward_mult 施于连胜分量含奖励轮。单一源=STRATEGY_ECONOMY(经 
 发牌采样器采样后走 `write_logic_rand` 通道写(observe 覆盖差异 = 预期内,
 落 `logic_rand_outcome` 记录不触发失配告警;真值 = 下一入口观察,以实际观察为准)。
 **边界**:免费来源按 §3.3.5–§3.3.9 分族口径引用;免费帧刷费不写。**修饰**:按刷产
-经验——淘金客 xp_per_refresh=2(效果声明已登记,刷新侧经验逻辑写分支未接线,
-零写入方,经验真值归观察)。
+经验——淘金客 xp_per_refresh=2(刷新上报写端付费帧世界腿已接入调用〔世界腿 =
+把结果写进状态副本的实现分支〕:效果账本鸭子类型读取 `xp_per_refresh` 聚合 →
+`grant_effect_refresh_xp` → `grant_xp` 字段写推进对,evidence `effect_refresh_xp`;
+免费帧零 XP,同帧跨级后本帧发牌即用升级后 level)。
 **刷新执行事实组行为口径**(计数 = 效果账本统一计算
 (`ActiveEffectInventory.record_refresh`;写入方 = 刷新上报函数
 `report_action_refresh_shop_param` 单口,生产 = 刷新 op 自上报)——refresh_total
