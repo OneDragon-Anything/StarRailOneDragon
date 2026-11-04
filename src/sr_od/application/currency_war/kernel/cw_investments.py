@@ -1663,6 +1663,18 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '发放腿=泛化随机装备表行(简易 2 件,放回抽 T-167 判例,'
               '随机性由家族单键 strategy_random_equip_uniform 承载);'
               '族模式卡:银 130101/彩 330601 同源词表'),
+    '公司军火更新·彩': EffectSpec(
+    id='330601', name='公司军火更新·彩', trigger=TriggerKind.NODE_ENTER,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+    payload=BattlefieldEffect(equips_reroll=EQUIPS_REROLL_SAME_QUALITY),
+    duties=DutyFlags(track=True),
+    notes='物品栏装备同品质变异面零逻辑写、观察收口(银/金卡同词表值,'
+    'payload 复用族常量同一对象);发放腿=泛化随机装备表行(特权 1 件,'
+    '随机性由家族单键 strategy_random_equip_uniform 承载);'
+    '「同品质」=同 category 先验(冶金炉 same_category 先例,未证);'
+    '变异辖域=全部装备类别/排除自身/工具特殊类可变性未采证;'
+    '拿卡当节点不变异(C 级推定);零执行端声明;'
+    '族条目收官:银 130101/金 230601/彩 330601 三卡条目全建,族无后继'),
     # 市场干预:官方「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」。
     # payload 引 STRATEGY_ECONOMY 同一实例(单一源):free_refresh_burst=5 经
     # 获得链登记分支 burst 桥一次性发放(live/sim 同链,免费午餐 T-88 同形);

@@ -242,7 +242,7 @@ BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
 # §6.3/§6.4 与 §8 同名条。「同品质」语义先验 = 同 category(冶金炉
 # furnace_mutate_pool 已登记先例,tool_use 域),未证零消费。银/金/彩三卡
-# 变异条目同文共用本常量(金 230601/彩 330601 未建条目,差异全在发放条目)。
+# 变异条目同文共用本常量(银/金/彩三卡 SE 条目全建,差异全在发放条目)。
 EQUIPS_REROLL_SAME_QUALITY: str = 'same_quality_all'   # 物品栏全部装备变为
                                                        # 同品质的其他装备
 
