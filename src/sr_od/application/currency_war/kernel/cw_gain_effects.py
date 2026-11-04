@@ -1528,6 +1528,14 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # A/B 行为等价判读申报制承载;STRATEGY_GRANTS 零登记 = 控制规模同
     # 物同形[装备腿唯一出现点])。
     '多元化团队': _make_named_equip_grant_effect('财富宝钻', 2),
+    # 装备方案A = 三腿组合登记行(T-246 精密拆装·金判例直承;卡文「获得
+    # 【光速螺旋桨】、【反重力皮靴】和【折叠小刀】」语序直读:桨→靴→刀,
+    # 每件 1 个[T-367 零数量词先例];rand=False 确定发放[fields.md 分野
+    # 即终态在册口径];不入单族镜像表沿组合行家族纪律)。
+    '装备方案A': _compose_grant_legs(
+        _make_named_equip_grant_effect('光速螺旋桨', 1),
+        _make_named_equip_grant_effect('反重力皮靴', 1),
+        _make_named_equip_grant_effect('折叠小刀', 1)),
     # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
     # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
     # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」
