@@ -1,4 +1,4 @@
-# 已 live 验(整局跑通多场 D-74~D-79 + 2026-08-12:EnterCW→StartMatch→RunLoop→结算→lobby 全 lifecycle 自主;_in_match resume 多锚含战斗/挑战成功/挑战结束,中间态接手不卡 entry)
+# 已 live 验(整局跑通多场 D-74~D-79 + 2026-08-12:EnterCW→StartMatch→RunLoop→结算→lobby 全 lifecycle 自主;_in_match resume 多识别标志含战斗/挑战成功/挑战结束,中间态接手不卡 entry)
 
 from collections.abc import Callable
 from typing import ClassVar
@@ -70,7 +70,7 @@ class CurrencyWarApp(SrApplication):
 
     STATUS_AT_LOBBY: ClassVar[str] = CwEntryEnter.STATUS_AT_LOBBY
 
-    # 对局中态 OCR 锚点(备战 / 事件 overlay / 战斗 / 结算)—— 命中任一 = 已在对局里,跳过 enter+start
+    # 对局中态 OCR 识别标志(备战 / 事件 overlay / 战斗 / 结算)—— 命中任一 = 已在对局里,跳过 enter+start
     _IN_MATCH_KEYWORDS: ClassVar[tuple[str, ...]] = (
         '购买经验', '备战阶段', '投资策略', '投资环境', '补给阶段',
         '遭遇其一', '盛会之星', '出战', '挑战结束', '挑战成功', '请选择投资',
@@ -87,9 +87,9 @@ class CurrencyWarApp(SrApplication):
     # 对局中画面判定单一源已平移至 cw_screen_state(前缀 + 白名单 + 过滤逻辑),
     # 本类方法仅委托——供既有测试(经类方法调用)与内部消费保持同一入口。
 
-    # 启动恢复态预检锚(局10/11 实证):上局中途停机后客户端可能停在「战斗暂停/
+    # 启动恢复态预检识别标志(局10/11 实证):上局中途停机后客户端可能停在「战斗暂停/
     # 关卡信息」面板(进度保留态,含 撤退/重新挑战/继续战斗)。识别用「战斗暂停」
-    # 独有文本锚 —— 同屏的「关卡信息」与 敌人信息浮层 的标识文本撞车(2026-08-30
+    # 独有文本识别标志 —— 同屏的「关卡信息」与 敌人信息浮层 的标识文本撞车(2026-08-30
     # 离线 analyze 实证:暂停面板帧被精准匹配为 货币战争-敌人信息浮层),不能作判据。
     PAUSE_SCREEN: ClassVar[str] = '货币战争-战斗暂停'
     PAUSE_MARK: ClassVar[str] = '标识-战斗暂停'
@@ -108,7 +108,7 @@ class CurrencyWarApp(SrApplication):
         # 转发,缺省关;生产在此接通。
         defects.install_exit_hooks()
         # obs 读口注入(幂等):decision/kernel 层禁直依 obs,新局弃置
-        # 残留容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
+        # 残留状态容器时的 obs last-known-good 缓存清理与对账合成特效帧态门
         # (kernel/cw_reconcile)经 decision_assembly 装配点接通
         # (缺省关=跳过缓存清理/门放行;session 全量重建承担状态隔离)。
         from sr_od.application.currency_war.decision_assembly import install_obs_ports
@@ -146,7 +146,7 @@ class CurrencyWarApp(SrApplication):
         )
 
     def _at_lobby(self, screen: MatLike) -> bool:
-        """已在货币战争大厅(「创业指南」大厅独有锚点,lobby screen_info area)。"""
+        """已在货币战争大厅(「创业指南」大厅独有识别标志,lobby screen_info area)。"""
         return self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success
 
     def _in_match(self, screen) -> bool:
@@ -169,15 +169,15 @@ class CurrencyWarApp(SrApplication):
                     return True
             except Exception:  # noqa: BLE001  画面匹配失败退关键词层,不阻塞启动
                 pass
-        # ② 关键词 fallback(历史行为保留):真在对局时这些锚点 OCR 干净 4/4 命中。
+        # ② 关键词 fallback(历史行为保留):真在对局时这些识别标志 OCR 干净 4/4 命中。
         return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
     def _recover_if_paused(self, screen) -> OperationRoundResult | None:
         """启动恢复态预检:命中「战斗暂停」面板 → 走退局链回大厅再正常起跑。
 
         恢复链委托 CwEntryExit(撤退 → 中断挑战弹窗「放弃并结算」→
-        失败结算页「下一步」→ 大厅锚确认;编排者手动实机验证过的范式,op 内
-        r279/r302 实测同链)。该 op 的成功出口唯一 = 大厅锚命中,回大厅确认由
+        失败结算页「下一步」→ 大厅识别标志确认;编排者手动实机验证过的范式,op 内
+        r279/r302 实测同链)。该 op 的成功出口唯一 = 大厅识别标志命中,回大厅确认由
         它承担;成功后回到调用节点的常规判定继续启动流。未命中返回 None(零
         额外动作,正常启动只多一次小区域 OCR 查找)。
         """

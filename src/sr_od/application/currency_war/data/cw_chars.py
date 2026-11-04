@@ -34,7 +34,7 @@ class Character:
     # 三通道解锁后本局加入商店。名单权威 = plaza is_expert 字段(economy.md
     # 「V4.4 专家名单以 plaza is_expert 字段为准」);交叉核对 = 重跑
     # tools/cw/gen_plaza_chars.py(扩展 is_expert 逐条 diff)。解锁写端 =
-    # gain_chain(env/strategy advisor 道 + 装备通道),容器状态 =
+    # gain_chain(env/strategy advisor 道 + 装备通道),状态容器状态 =
     # GameState.unlocked_experts,池消费 = cw_pool。
     is_expert: bool = False
     # 「挂后台效果」单位级载体(游戏数据字段):该单位坐备战席
@@ -243,7 +243,7 @@ def get_char(name: str) -> Character | None:
 
 
 def char_first_faction(char_id: str) -> str:
-    """主阵营注册表派生单一源(faction 不入容器形状,benchchar-retirement
+    """主阵营注册表派生单一源(faction 不入状态容器形状,benchchar-retirement
     design §2.1 三类消费口径共用):注册表命中 → ``factions[0]``
     (命中但无阵营登记 = '');未注册名/空名 = '?'。"""
     if not char_id:
@@ -283,7 +283,7 @@ SIDE_PICK_DUAL_BONDS: dict[str, tuple[str, str]] = {'布洛妮娅': ('贝洛伯�
 
 #: 选边平局默认乙羁绊的假设申报键(图鉴只写「人数更多」,平局无依据;
 #: 校准源 = 实机对局布洛妮娅在场且两边等数时的羁绊等级面板读数,
-#: 随机态观察收口,不响停)。
+#: 随机态观察只靠画面读数,不响停)。
 BRONYA_SIDE_PICK_TIE_BLOOD: str = 'bronya_side_pick_tie_blood'
 
 

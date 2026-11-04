@@ -5,7 +5,7 @@
 
 784 篇 V4.4 高难帖逐篇明细(v4.4 + 非KOL沙盒 + 未过期过滤,帖 id 去重)。
 
-**生存者偏差声明**:本语料全部为赢家发帖,只可作胜率模型的先验面/特征域覆盖面,不可作无偏胜率训练集——校准锚=自家实机遥测(含负样本)。
+**生存者偏差声明**:本语料全部为赢家发帖,只可作胜率模型的先验面/特征域覆盖面,不可作无偏胜率训练集——校准基准=自家实机遥测(含负样本)。
 样本权重口径单一源 = ``cw_win_model.plaza_sample_weight``(use 计数对数压缩 + 先验面份额归一);特征化单一源 = ``cw_win_model.plaza_post_features``。
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class PlazaPost:
     """单篇 plaza 高难发帖明细(逐篇胜利样本,胜率模型先验面)。"""
-    post_id: str                        # 官方帖 id(溯源锚,生成器去重保证唯一)
+    post_id: str                        # 官方帖 id(溯源基准,生成器去重保证唯一)
     use: int                            # 被使用计数(0=官方未展示计数)
     carries: tuple[str, ...]            # Final 阶段 carry 名(通常 1 个)
     # (角色名,星级,费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择

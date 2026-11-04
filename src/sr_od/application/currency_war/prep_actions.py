@@ -13,9 +13,9 @@ reconcile 对账;执行回执 ``(progressed, detail)`` 已停用,
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
 slot 语义(unified-action-factory 统一后):席位域动作(CwActionSellBenchParam/
-CwActionSellDeployedParam/CwActionMoveUnitParam)携**容器槽位表下标**(0 基,词表单一源 =
+CwActionSellDeployedParam/CwActionMoveUnitParam)携**状态容器槽位表下标**(0 基,词表单一源 =
 kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
-容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
+状态容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
 直取;deployed 侧 = 下标→(排,排内槽号)固定双射内联算术,0-3=前排
 1-4 / 4-9=后排 1-6;tracked 第二账停用后旧换算族已删)。坐标参数化
 机械动作(CwActionWearEquipParam/工具原子类/CwActionOpenBoxParam/CwActionOpenTomeParam/CwActionOpenBookcardParam)的
@@ -24,7 +24,7 @@ row/slot 字段 = 画面物理排槽位 1 基(动作参数定义,拖点直取 ar
 统一动作工厂并入:动作级
 机械执行体已逐字迁入 ``operations/cw_op/`` 备战 op 类(一 op 一文件),
 分派改查单一注册表 ``action_op_for``(_dispatch_action);本模块保留
-runner 包络(刹车/回执登记与机械原语)与薄委托族(替身缝:八桩零调用
+runner 包络(刹车/回执登记与机械原语)与薄委托族(替身函数的接缝(stub seam):八桩零调用
 已删,``_open_bookcard`` 因单帧测试直调面保留)。
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ _OVERLAY_ANIM_WAIT_S: float = 1.8
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
 #: 商店打开动画时长(固定时长自等;用户口述定值 2026-09-02「干净的备战
-#: 里打开商店,只要等 1 秒就够了」。开态判定由下一帧观察侧 0n 三锚承载。
+#: 里打开商店,只要等 1 秒就够了」。开态判定由下一帧观察侧 0n 三个识别标志承载。
 #: 自动开店场景不经此处——cw_loop 备战分支按「备战阶段」识别)。
 SHOP_OPEN_ANIM_S: float = 1.0
 #: 穿戴拖前固定等待(等备战面板/上件 reflow 动画收尾,非判效)。取值 =
@@ -74,22 +74,22 @@ PREP_DRAG_SETTLE_WAIT_S: float = 0.5
 
 # ============================================================ 回执受阻码(统一口 round_fail status 闭集映射)
 
-#: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,正本家 =
+#: round_fail status 前缀 → 回执受阻码(闭集映射;词表暂住本表,权威版本家 =
 #: game_state/fields.md 回执契约节)。表项 = (status 前缀, 受阻码):
 #: 受阻码自带族前缀——``未执行:`` = 点击前失败(定位缺失/无对象/
 #: 输入契约拒绝,动作没发出)。映射键 = 各动作 op round_fail status 的
 #: 首段字面前缀(status 由 op 固定字面量产出);**新 round_fail status
 #: 必须同步登记本表**——漏登走 :func:`_prep_receipt_block_code` 原文
-#: 兜底(受阻事实不静默,复盘以原样 status 显影促登记)。特定前缀先于
+#: 兜底(受阻事实不静默,复盘以原样 status 在日志里暴露促登记)。特定前缀先于
 #: 泛化前缀(表序 = 匹配序,首中即返)。
 #: (terminal-fail-status 迭代收缩:参数违法类三口(BuyCard 槽解析/槽号
 #: 越界、DeployMove 落位越界)改 op 内守卫断言、建档缺失类检查段
 #: (LevelUp/StartBattle 主口与弹窗/WearEquip 槽位坐标)删除 = 自然
 #: 异常报错——上述形态零 round_fail 供给,对应映射行随批退役;
 #: ``未生效:*`` 族(StartBattle 弹窗收尾)随之零供给退役。开件三动作
-#: (箱/典籍/书册卡)执行前识别读门随容器槽位直点形态拆除:判空 fail
+#: (箱/典籍/书册卡)执行前识别读门随状态容器槽位直点形态拆除:判空 fail
 #: (无简易武装箱/无秘密典籍/无书册卡)零 round_fail 供给,映射行退役
-#: ——容器陈旧「件不在」的治理归观察对账域,非动作 op 失败分支。)
+#: ——状态容器陈旧「件不在」的治理归观察对账域,非动作 op 失败分支。)
 _PREP_RECEIPT_BLOCK_CODES: tuple[tuple[str, str], ...] = (
     # —— 出战(点击前):按钮定位失败 = 动作没发出 ——
     ('未执行:找不到按钮', '未执行:定位缺失(按钮-出战)'),
@@ -174,7 +174,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
                        screen_name: str = SCREEN_NAME) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,设计章 2.10)。
 
-    d2 卖通道生产接线(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
+    d2 卖通道生产接入调用(shop.py prefix 循环 CwActionSellBenchParam 分支)与 prep_actions
     ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(拆源槽
     像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
     tracking 同步由调用方各自做。失焦守卫同 ``PrepActionExecutor._drag``
@@ -193,7 +193,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
     )
     if sim_backend_installed():
         # sim 模式:机械执行分支(焦点守卫+真实拖拽)静默成功,自上报照走
-        # (直连 controller 旁路 port 检查;落位事实由后端世界承接)
+        # (直连 controller 旁路 port 检查;落位事实由后端状态副本承接)
         return
     pts = row_area_centers(ctx, '备战栏', screen_name=screen_name)
     if not (0 <= bench_idx < len(pts)):
@@ -219,7 +219,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int,
 #  动作发出点(mandate M7)直接消费同一构造函数,无第二源。)
 # (tracked 写点槽号健康暴露 _expose_unhealthy_tracked_slots 已随
 #  tracked 第二账停用而删除:其两个调用点均为 tracked 摘除分支,分支删则
-#  helper 无消费面;容器形槽号 = 下标权威结构性健康。)
+#  helper 无消费面;状态容器形槽号 = 下标权威结构性健康。)
 
 
 @dataclass
@@ -367,7 +367,7 @@ class PrepActionExecutor:
     def _dispatch_action(self, action: CwAction) -> tuple[str, bool]:
         """动作分派(经注册表类级解析 + (ctx, param,
         env) 组装新壳 op ``CwActionXxxOp(SrOperation)``,执行取 round
-        结果;op 形态正本 = flow/action_ops.md §1)。
+        结果;op 形态权威版本 = flow/action_ops.md §1)。
 
         返回 ``(机械执行摘要, 是否实际发出)``。op_success = round 结果成功态
         (``round_success`` = 已发出;``round_fail`` = 定位失败等未发出
@@ -398,7 +398,7 @@ class PrepActionExecutor:
 
     def _open_bookcard(self, action: CwActionOpenBookcardParam) -> tuple[str, bool]:
         """薄委托(体已迁 ``cw_open_bookcard_action.CwActionOpenBookcardOp``;
-        替身缝保留——真实保留理由 = 单帧测试直调面:
+        替身函数的接缝(stub seam)保留——真实保留理由 = 单帧测试直调面:
         ``sr-od-test/test/sr_od/application/currency_war/operations/cw_op/
         test_prep_action_ops.py::test_open_bookcard_executor_mechanical``
         以本方法为入口驱动 op 机械行为;src 生产面零调用,分派单一形态
@@ -444,7 +444,7 @@ class PrepActionExecutor:
     def _owned_grid_locate(self, item_name: str) -> Point | None:
         """owned 装备网格内按名定位 icon 中心(机械现读;执行坐标边合法读)。
 
-        名字定位是唯一稳锚(网格 reflow 使快照坐标失真);miss → None
+        名字定位是唯一稳定识别标志(网格 reflow 使快照坐标失真);miss → None
         (调用方按「计划失效」未发出通道处理,下帧重派重算)。"""
         from sr_od.application.currency_war.obs.cw_equipment import (
             ensure_equip_sift_templates,
@@ -474,7 +474,7 @@ class PrepActionExecutor:
         )
         if sim_backend_installed():
             # sim 模式:机械执行分支静默成功,自上报照走(直连 controller 旁路
-            # port 检查;部署/卖上阵落位事实由后端世界承接)
+            # port 检查;部署/卖上阵落位事实由后端状态副本承接)
             return
         from sr_od.application.currency_war.operations.dev.drag_cw_char import (
             DragCwChar,
@@ -497,7 +497,7 @@ class PrepActionExecutor:
     # ===== 商店域 =====
 
     def _level_up(self, action: CwActionLevelUpParam | None = None) -> tuple[str, bool]:
-        """薄委托(体已迁 ``cw_prep_level_up_action.CwActionLevelUpOp``;替身缝保留)。
+        """薄委托(体已迁 ``cw_prep_level_up_action.CwActionLevelUpOp``;替身函数的接缝(stub seam)保留)。
 
         ``action`` 形参 = 注册表分派载体(原签名无参——单击体不读动作
         字段;缺省补零价占位实例仅作类型解析,行为零变化)。"""
@@ -506,10 +506,10 @@ class PrepActionExecutor:
 
     # ===== 战斗域 =====
     # StartBattleOp 现体 = 点击出战和弹窗(零判效,点击序列已执行语义);
-    # 本入口保留薄委托替身缝,返回序 (ok, detail)。
+    # 本入口保留薄委托替身函数的接缝(stub seam),返回序 (ok, detail)。
 
     def _start_battle(self) -> tuple[bool, str]:
-        """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;替身缝保留)。"""
+        """薄委托(体已迁 ``cw_start_battle_action.CwActionStartBattleOp``;替身函数的接缝(stub seam)保留)。"""
         detail, op_success = self._dispatch_action(CwActionStartBattleParam())
         return op_success, detail
 

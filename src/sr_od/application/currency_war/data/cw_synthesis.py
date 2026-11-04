@@ -153,7 +153,7 @@ def expand_worn_products(worn: list[str]) -> list[str]:
 
 # ===== 装备策略接入(P14 期望模型的生产化)=====
 # P14(docs/develop/sr_od/application/currency_war/proofs/p14-equipment-acquisition-ev.md)
-# 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读锚点消费;
+# 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读基准点消费;
 # 证明脚本与本文档共享图谱单一源(本模块),数值改动自动传导。
 
 
@@ -298,7 +298,7 @@ def recycle_qualified(key_equips: list[str] | None) -> frozenset[str]:
 
 
 def hoard_gaps(key_equips: list[str], owned: list[str]) -> dict[str, int]:
-    """「缺什么囤什么」差集(P14 结论的判读锚点):基础件需求 − 库存。
+    """「缺什么囤什么」差集(P14 结论的判读基准点):基础件需求 − 库存。
 
     抵扣序:owned 已持有的**进阶件** 1:1 抵 K 同名需求(持有成品不再
     需要组件);剩余需求展开组件向量后减 owned 基础件库存,取正差。

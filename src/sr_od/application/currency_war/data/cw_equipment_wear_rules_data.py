@@ -4,8 +4,8 @@
 affix_wear_semantics_data.py ↔ affix_effects_data.py):``EQUIPMENTS`` = 真值源
 (生成器产物,勿手改);本文件 = 独立结构化条目,手工维护、非散文解析、非生成器
 产物——结构化字段混入生成器文件会被下次重写冲掉,故独立承载。
-``name``/``prose_ref`` = 装备规范名锚,指向 ``EQUIPMENTS`` 同名键(行号随生成器
-重写下移不稳定,名锚稳定)。
+``name``/``prose_ref`` = 装备规范名基准,指向 ``EQUIPMENTS`` 同名键(行号随生成器
+重写下移不稳定,名基准稳定)。
 
 **交叉核对义务**:注册表 effect 散文 = 前置措辞真值;本文件结构值 = 带交叉核对义务的派生
 建模。游戏改前置措辞 → ``check_equipment_wear_rule_coverage`` 显警 + 测试仓交叉核对锁

@@ -1,6 +1,6 @@
-"""货币战争 决策装配边界·生产武装点(app 层)。
+"""货币战争 决策装配边界·生产装配接入点(app 层)。
 
-生产武装点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
+生产装配接入点 = ``install_obs_ports``(CurrencyWarApp.__init__ 接通):
 decision 层 obs 读口注入、kernel 侧合成特效帧态门注入、GameState
 缺陷台账 sink 的落盘实现(实现住本模块,
 kernel 零像素触达;缺省关 = 不落盘),以及策略遥测 sink 接通
@@ -17,11 +17,11 @@ from pathlib import Path
 # ------------------------------------------------------- obs 读口注入
 
 def install_obs_ports() -> None:
-    """装配点接通 decision 层的 obs 读口(生产武装点 = CurrencyWarApp.__init__)。
+    """装配点接通 decision 层的 obs 读口(生产装配接入点 = CurrencyWarApp.__init__)。
 
     分包依赖矩阵禁 decision→obs 直依:决策核只持注入槽
     (``cw_strategy._RESET_PHASE_ROUND_CACHE``),本函数从 obs 层取实现注入。
-    未接通(缺省关)= 新局弃置残留容器时跳过 obs 模块级缓存清理——
+    未接通(缺省关)= 新局弃置残留状态容器时跳过 obs 模块级缓存清理——
     session 全量重建承担状态隔离,仅 last-known-good 观测缓存延用旧值。
 
     同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
@@ -46,7 +46,7 @@ def install_obs_ports() -> None:
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
 
-    # 策略遥测生产武装点(obs 读口同位接通,capture-store §4):决策信封
+    # 策略遥测生产装配接入点(obs 读口同位接通,capture-store §4):决策信封
     # 经 wrapper 装配槽落 recorder 根 strategy/ 目录(run_id 补齐与局外
     # 零写判断都在 sink);缺省未装配 = 零写,本点缺接即纯单测零副作用。
     from sr_od.application.currency_war.telemetry.strategy_telemetry import (
@@ -54,7 +54,7 @@ def install_obs_ports() -> None:
     )
     set_decision_sink(strategy_telemetry_sink)
 
-    # 缺陷台账生产武装点:GameState 观察覆盖
+    # 缺陷台账生产装配接入点:GameState 观察覆盖
     # logic 值失配行(kernel/cw_game_state._emit_defect,槽缺省关)
     # 经 sink 落 gs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
     # 形态);缺省关 = 只缓冲不落盘,测试零真实 IO。
