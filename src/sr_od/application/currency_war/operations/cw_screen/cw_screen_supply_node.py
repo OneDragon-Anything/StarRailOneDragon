@@ -42,7 +42,7 @@ pick 族「状态容器槽零参读」+ 同族 9 决策面 op 既成约定):候�
 全域规范 = ``op-layer.md`` §1.4):闸条件全式 = 状态容器 ``supply_refresh_left``
 读数 ≥1(读缺跳写、状态容器留残值由逐访问覆盖语义承接)∧ 识别标志分量(实机 =
 ``_refresh_point`` 在位,识别标志缺并入拒绝面防机械点击 None;sim = 无识别标志条件,
-恒过)。两态执行:实机 = 文本锚定点 + ``_REFRESH_BTN_DX`` 机械点击 + 2s 固定
+恒过)。两态执行:实机 = 文本识别标志位 + ``_REFRESH_BTN_DX`` 机械点击 + 2s 固定
 等待(screen_flow_timing.md #19);sim = 「文本-剩余次数」area 点击(基类
 sim 改道 ``click_answer`` → 后端 ``_handle_click_source`` →
 ``_supply_refresh``:剩余闸内嵌再验 + left−1 + 选项重掷经同名 report 落
@@ -64,7 +64,7 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 直继承 SrOperation。观察 node 另承载节点条锚定(顶部「备战阶段 X-Y」→
 ``observe_node_anchor``;锚定写端已登记 = `screens/op-layer.md` §2.1;
 节点条锚定四分支处置规则表权威版本 = `game_state/node-derivation.md`
-(E10 行)——补给「自动弹」形态的唯一锚定点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
+(E10 行)——补给「自动弹」形态的唯一识别标志点)。观察 node = 节点完成门(``_in_node``,miss = overlay 消失 /
 进了下一节点 = 节点完成,success 结束本次访问外层)+ 选项一次读(每访问恰一次,与
 现役决策体读同帧等价,迁移不增加读屏)→ ``report_screen_supply_node_obs``
 落状态容器 ``supply``(空 = 读缺零点击终结路径,闸在 report 内)→ obs 挂
@@ -270,7 +270,7 @@ class CwScreenSupplyNode(CwOperation):
         _match = getattr(self.ctx, 'cw_match', None)
         _gs = getattr(_match, 'gs', None) if _match is not None else None
         # 节点条锚定(补给「自动弹」形态——结算确认直接弹补给屏,无备战帧
-        # 可锚定——的唯一锚定点;divert 形态 = 备战帧已锚定,本读数走处置规则表
+        # 可锚定——的唯一识别标志点;divert 形态 = 备战帧已锚定,本读数走处置规则表
         # reanchor/stale_dropped 分支承接,处置规则表权威版本 = `game_state/node-derivation.md`(E10 行))。
         # 读不得/局外 gs 缺席 = 跳过(禁猜;best-effort)。
         # 来源 C 形态门随本锚定判(T-27 利息条件分支,中途审查复裁):
