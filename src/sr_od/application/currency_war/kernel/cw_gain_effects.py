@@ -1267,6 +1267,15 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_named_equip_grant_effect('列车同行星徽', 1),
         _make_char_grant_effect('丹恒·饮月'),
         _make_named_equip_grant_effect('高周波电锯', 1)),
+    # 银河学者星徽套组 = 三腿组合登记行(套组族第 2 张;卡文「获得1个【银
+    # 河学者星徽】，和1个【艾丝妲】，以及1个【胜利之旗】」语序直读:
+    # 徽→人→旗;rand=False 确定发放[fields.md 分野即终态在册口径];星级
+    # 1★ = T-209 同 char 在码先例;不入单族镜像表防同名键覆盖丢腿,沿
+    # 组合行家族纪律)。
+    '银河学者星徽套组': _compose_grant_legs(
+        _make_named_equip_grant_effect('银河学者星徽', 1),
+        _make_char_grant_effect('艾丝妲'),
+        _make_named_equip_grant_effect('胜利之旗', 1)),
 
     # 天降救兵 = 随机星档角色×箱腿组合登记行(卡文「获得一个随机3星1费
     # 角色，获得1个【简易武装箱】」;腿1 = 随机星档角色(cost=1/star=3
