@@ -78,7 +78,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select impor
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
     STEERING_PRIORITY_BONUS,
     counter_pick_penalty,
-    punished_mechs_of,
 )
 
 if TYPE_CHECKING:
@@ -323,8 +322,8 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
                  basis: frozenset[str]) -> tuple[list[float], list[float],
                                                  list[tuple[float, ...]],
                                                  list[bool]]:
-    """帧评分一次(选卡/刷新两入口共享,禁二次评分;选卡基准线/受克
-    属性集循环外单帧单读,沿旧机器纪律):
+    """帧评分一次(选卡/刷新两入口共享,禁二次评分;选卡基准线与受克
+    判定输入键集循环外单帧单读,沿旧机器纪律):
     返回 (总分含转向轴,转向加分,五组件,排除标记)。
 
     basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):出域槽
@@ -334,7 +333,10 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     = 组件分量:环境名不含词缀注册名族,该分量现行恒 0——机制与策略屏
     同源(基准线 = :func:`line_select.anchor_line_of`),判据不双源。"""
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
-    punished = punished_mechs_of(anchor)
+    # 选卡基准线档 0 羁绊键集(受克判定输入,契约 A;基准缺失帧
+    # 空集 = 减分不触发,保守缺省)
+    core_factions = frozenset(anchor.core_faction_reqs) \
+        if anchor is not None else frozenset()
     scores: list[float] = []
     steers: list[float] = []
     components: list[tuple[float, ...]] = []
@@ -344,7 +346,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
             _opt, gs, locked_comp, demoted_endgame, evicted)
         _steer = STEERING_PRIORITY_BONUS if any(
             _p in _opt for _p in env_priority) else 0.0
-        _counter = float(counter_pick_penalty(_opt, punished))
+        _counter = float(counter_pick_penalty(_opt, core_factions))
         # 出域标记(护栏设计 §2.3 规则表):基准非空 ∧ 候选有指向 ∧ 与
         # 基准零交;通用环境(指向集空)与基准空帧恒不标记
         _scope = env_faction_scope(_opt)

@@ -51,7 +51,8 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
     保持 OCR 序(横条同排 y 恒同,等值 x 为同位次读数拆分的次序申报面)。
 
     OCR 名 vs competitors 数据名可能差(如 OCR「后台熄火」= competitors「前后台熄火」),
-    透传原名,匹配在 AFFIX_MECHANIC_MAP(待实机校准补全,见 competitors.md 待确定)。
+    透传原名,匹配在下游注册表(线分吃怕表 cw_affinity_table / 选卡克制表
+    pick_common.AFFIX_COUNTERS_FACTIONS;待实机校准补全,见 competitors.md 待确定)。
     """
     rect = _area_rect(ctx, '区域-词缀行', BRIEFING_SCREEN)
     if rect is None:
@@ -87,7 +88,7 @@ def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     返回序 = **位置域序**(center.x 升序,与简报读链同一排序基准——两写径
     落同一状态容器,序语义必须一致:「最右侧」取尾删除消费横条画面右端;
     等值 x 稳定排序保持 OCR 序)。
-    OCR 名 vs 数据名映射差异透传(同简报口径,AFFIX_MECHANIC_MAP 处理)。
+    OCR 名 vs 数据名映射差异透传(同简报口径,下游注册表处理)。
     读不到 / area 缺 → []。
     """
     DETAIL_SCREEN = '货币战争-位面详情'
@@ -354,7 +355,7 @@ def write_affix_effects(updates: dict[str, str]) -> bool:
         '\n'
         '格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。\n'
         '词缀×线克/利方向单一源 = ``kernel/cw_affinity_table`` 吃怕表(本文件名空间 = 其键空间);\n'
-        '选卡克制减分 = cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS(策略层 pick_common)。\n'
+        '选卡克制减分 = 策略层 pick_common.AFFIX_COUNTERS_FACTIONS(词缀→克制羁绊名直写表)。\n'
         '本文件只采 effect 原文(ground truth,不参策略)。\n'
         '"""\n'
         'from __future__ import annotations\n\n'

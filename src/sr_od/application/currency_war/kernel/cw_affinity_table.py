@@ -94,7 +94,7 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
             score=AFFIX_STRONG_FUEL,
             note='敌方行动增益=受击频率增益=燃血燃料(design §4 万敌行直入清单)'),
         # 重开级:掉血削上限对燃血是双损(掉血→减上限),机制反例 counter
-        # (kernel MECHANIC_COUNTERS「掉血削上限→克燃血」同源)。
+        # (选卡克制表 pick_common.AFFIX_COUNTERS_FACTIONS「永久创伤→克燃血」同源)。
         '永久创伤': AffixStance(
             score=RESTART_PENALTY,
             note='final_wandi_burn「重开级:永久创伤」;design §2 重开级(排除=极大减分)'),

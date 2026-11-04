@@ -89,7 +89,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.line_select impor
 from sr_od.application.currency_war.strategies.impl.mandate_v1.pick_common import (
     STEERING_PRIORITY_BONUS,
     counter_pick_penalty,
-    punished_mechs_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.strategy_economy import (
     strategy_economy_value,
@@ -251,7 +250,8 @@ def _conflict_basis(gs: GameState, locked_comp: str,
 def _components(canonical: str | None, opt: str, gs: GameState,
                 locked_comp: str, demoted_endgame: bool,
                 evicted: frozenset[str],
-                strategy_priority: list[str], anchor, punished: frozenset[str],
+                strategy_priority: list[str], anchor,
+                core_factions: frozenset[str],
                 ) -> tuple[float, float, float, float, float, float, float]:
     """单候选六组件 (现金,方向,赠卡,立场,转向轴,克制减分) + 总分;
     未解析名(垃圾名)→ 全 0。
@@ -263,8 +263,9 @@ def _components(canonical: str | None, opt: str, gs: GameState,
     - 立场分:空表恒 0(表外卡默认 0);
     - 转向轴:strategy_priority 子串命中(OCR 容错,与白名单一致)加
       STEERING_PRIORITY_BONUS(软偏好);
-    - 克制减分:选项克制基准线主派 → COUNTER_PICK_PENALTY(counters_dot
-      硬排除迁移,design §3.2;基准缺失帧不减)。
+    - 克制减分:选项名含词缀关键词 ∧ 词缀克制名单(``AFFIX_COUNTERS_FACTIONS``,
+      pick_common 单一源)与基准线档 0 羁绊键集 ``core_factions`` 有交集 →
+      COUNTER_PICK_PENALTY(counters_dot 硬排除迁移,design §3.2;基准缺失帧不减)。
     """
     if canonical is None:
         return (0.0,) * 7
@@ -278,7 +279,7 @@ def _components(canonical: str | None, opt: str, gs: GameState,
         else _STANCE_ZERO
     steer = STEERING_PRIORITY_BONUS if any(p in opt for p in strategy_priority) \
         else 0.0
-    counter = float(counter_pick_penalty(opt, punished))
+    counter = float(counter_pick_penalty(opt, core_factions))
     total = cash_v + direction + gift + stance + steer + counter
     return (cash_v, direction, gift, stance, steer, counter, total)
 
@@ -335,7 +336,10 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     # 选卡基准线(design §3.2 r4/R4-4:锁定帧 = 锁定线;未锁帧 = 候选首名,
     # P1/P2 同式)——顶级保护/方向分/克制减分三消费同基准,单帧单读。
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
-    punished = punished_mechs_of(anchor)
+    # 选卡基准线档 0 羁绊键集(受克判定输入,契约 A;基准缺失帧
+    # 空集 = 减分不触发,保守缺省)
+    core_factions = frozenset(anchor.core_faction_reqs) \
+        if anchor is not None else frozenset()
     cands: list[_Cand] = []
     for i, opt in enumerate(options):
         forbidden = any(p in opt for p in strategy_forbid)
@@ -365,7 +369,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
         off_direction = bool(basis) and bool(scope) and not (scope & basis)
         cash, direction, gift, stance, steer, counter, total = _components(
             canonical, opt, gs, locked_comp, demoted_endgame, evicted,
-            strategy_priority, anchor, punished)
+            strategy_priority, anchor, core_factions)
         cands.append(_Cand(
             idx=i, opt=opt, canonical=canonical, total=total,
             components=(cash, direction, gift, stance, steer, counter),

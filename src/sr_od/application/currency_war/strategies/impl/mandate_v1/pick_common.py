@@ -11,67 +11,35 @@
 - 转向轴:``STEERING_PRIORITY_BONUS``(user-priority 软偏好,立场
   系数——「用户点名是偏好不是支配」;forbid 罚值不在此——策略屏 forbid
   改集合排除,分值化禁选停用,罚值禁搬进共用件);
-- 选卡克制减分(2026-11-03-unified-line-scoring 迭代:counters_dot
-  硬排除退役 → 纯加权减分,design §3.2/§7):克制 top1 线主派的卡给
-  选卡分 ``COUNTER_PICK_PENALTY``(克制档)。锚 = 选卡锚点线
-  (``line_select.anchor_line_of``,P1/P2 同式);触发时序差异申报 =
-  现行〔旧 counters_dot〕读板面 持续伤害+减益 计数 ≥2(成型后触发)
-  → 新 = top1 线主派含受克属性即触发(P1 即触发,更早更广)——行为
-  变更入 sim(design r4/Y4-5)。
+- 选卡克制减分:选项名含 ``AFFIX_COUNTERS_FACTIONS`` 词缀关键词 ∧
+  该词缀克制名单与选卡锚点线(``line_select.anchor_line_of``,P1/P2
+  同式)档 0 羁绊键集有交集 → 选卡分 ``COUNTER_PICK_PENALTY``(克制档,
+  纯加权非排除;无方向线帧不触发,保守缺省)。
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from sr_od.application.currency_war.kernel.cw_comps import merged_mechanic_tables
 from sr_od.application.currency_war.kernel.cw_line_scales import (
     COUNTER_PICK_PENALTY,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 #: user-priority 软偏好分(固定偏好分,立场系数;两屏同值——软偏好,
 #: 「用户点名是偏好不是支配」)。
 STEERING_PRIORITY_BONUS: float = 30.0
 
-#: 主派羁绊名 → 机制属性名映射(MECHANIC_COUNTERS 值域对齐):批 1 只收
-#: 直接同名对(持续伤害→DoT / 减益→减益 / 燃血→燃血);其余主派
-#: (治疗→治疗护盾、战技点→战技点依赖 等)语义对应但命名不同,归批 2
-#: 词缀面扩展时逐对核实登记,禁凭音近推定(design §3.2 边界:批 1 数据
-#: = 投资面 + 万敌行)。
-LINE_FACTION_TO_MECH: dict[str, str] = {
-    '持续伤害': 'DoT',
-    '减益': '减益',
-    '燃血': '燃血',
+#: 词缀 → 它克制的羁绊名(直写,无中间层;活链路 2 条的如实迁移)
+AFFIX_COUNTERS_FACTIONS: dict[str, list[str]] = {
+    '净化身心': ['持续伤害', '减益'],   # 克 DOT队/专家桑博DOT/黄泉减益/千冶减益
+    '永久创伤': ['燃血'],              # 克 万敌单C
 }
 
 
-def punished_mechs_of(comp: Comp | None) -> frozenset[str]:
-    """选卡锚点线(anchor_line_of)的受克机制属性集(top1/锁定线主派 →
-    MECHANIC_COUNTERS 值域投影;comp = None〔锚点线缺失帧〕→ 空集 =
-    减分不触发,保守缺省)。
+def counter_pick_penalty(opt: str, core_factions: frozenset[str]) -> int:
+    """选项名含词缀关键词 ∧ 该词缀克制名单与阵容档 0 羁绊键有交集 → -750。
 
-    读法 = 档 0 ∪ or_reqs 键(选卡受克判定的 3.1 中间态:键集与旧
-    form_tiers 读法恒等 → 行为恒等;3.2 克制表直写时判定整体改写)。"""
-    if comp is None:
-        return frozenset()
-    core_keys = set(comp.core_faction_reqs) \
-        | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
-    return frozenset(
-        mech for faction, mech in LINE_FACTION_TO_MECH.items()
-        if faction in core_keys)
-
-
-def counter_pick_penalty(opt: str, punished: frozenset[str]) -> int:
-    """选项名对给定受克属性集的克制减分(−750 克制档;0 = 不克制)。
-
-    事实判定沿旧 ``counters_dot`` 通道:选项名 → ``AFFIX_MECHANIC_MAP``
-    机制 tag(子串包含匹配保留 OCR 容错语义)→ ``MECHANIC_COUNTERS``
-    克制属性与受克集求交;未知名不命中 = 不减分。
+    core_factions = core_faction_reqs 键集(契约 A;候选首位线/锁定线现读,
+    无方向线帧传空集 = 减分不触发,保守缺省同现行)。
     """
-    affix_map, counters = merged_mechanic_tables()
-    for affix, tag in affix_map.items():
-        if affix in opt and not punished.isdisjoint(counters.get(tag, ())):
+    for affix, countered in AFFIX_COUNTERS_FACTIONS.items():
+        if affix in opt and not core_factions.isdisjoint(countered):
             return COUNTER_PICK_PENALTY
     return 0

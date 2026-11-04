@@ -8,7 +8,7 @@
 
 格式 = ``AFFIX_EFFECTS: dict[str, str] = {...}``(json 兼容,双引号)。词缀分类见 competitors.md。
 词缀×线克/利方向单一源 = ``kernel/cw_affinity_table`` 吃怕表(本文件名空间 = 其键空间);
-选卡克制减分 = cw_comps.AFFIX_MECHANIC_MAP + MECHANIC_COUNTERS(策略层 pick_common)。
+选卡克制减分 = 策略层 pick_common.AFFIX_COUNTERS_FACTIONS(词缀→克制羁绊名直写表)。
 本文件只采 effect 原文(ground truth,不参策略)。
 """
 from __future__ import annotations
