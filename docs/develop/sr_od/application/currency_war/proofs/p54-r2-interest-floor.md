@@ -1,6 +1,6 @@
 # P54 R2 预算门的利息线 floor 规范口径写入代码(修 R2 批)
 
-> 状态:**已推导(等价性代数恒等 + floor 存在性锚推导 + 健康带预注册;确认性 sim 交叉核对=本批 r2_floor_ab 同池同 seed before/after,n=30)**
+> 状态:**已推导(等价性代数恒等 + floor 存在性引用推导 + 健康带预注册;确认性 sim 交叉核对=本批 r2_floor_ab 同池同 seed before/after,n=30)**
 > 数据源(单一源代码,数值不抄):`cw_plane_table.GOLD_CAP_INTEREST`(利息封顶 50)、`cw_economy`(利息规则 gold//10 上限 5)、`CHARACTERS`(成员卡价注册表)、`cw_shop_odds.refresh_prob`(合格集可追性)、`cw_state.REFRESH_COST_BASE`(刷价基价 2);机制面 = economy.md §2/§10.1(利息=gold//10 上限 5)、§7(阶段经济共识:snowball 到 50 金)、user_playstyle [3](刷新后还能保证 50 金)
 > 依据(本批的实证出处):REFRESH_CFO_REPORT(存于未入库临时档案 `.debug/temp/currency_war/ab_run_20260903_r2/`,git 外)§6 明令「不要动 R2 预算门」的本批解除条件 + P53 §④ 申报 1(R2 预留下界缺位与刷新超调的交互,已登记待办、待裁决项 = 本批)+ horizon_vgap_b1_after.json(修 A 后刷新 77.83 次/局、金刷穿 0-4、2★ 0/30)
 > 提出:利息线 floor 独立修复批(2026-09);证明 = 本篇
@@ -35,9 +35,9 @@ r2_budget(g, g*+ρ, c_eff) ⟺ g − (g*+ρ) ≥ c_eff ⟺ ⌊(g − g* − ρ)/
 
 三步均为整数序关系恒等式(末步:非负整数 m,`m ≥ c_eff ⟺ ⌊m/c_eff⌋ ≥ 1`)。P40 R2 富余段刷窗的完整语义 `n_max = 本期可刷次数`,在 A1 波粒度下退化为判「本期还能不能刷第 1 次」——`n_max ≥ 1` 即完整判据。故修 R2 的写入代码面 = **消费位预留组装**(`reserve: b_target(0,0,0)=0 → g* + ρ`),`criteria/refresh.r2_budget` 本体与契约(`_gold_minus_reserve_ctx` 先例②)零改动。
 
-### ② floor 存在性与逐分量锚(零新自由参数)
+### ② floor 存在性与逐分量引用(零新自由参数)
 
-| 分量 | 值 | 出处(锚) |
+| 分量 | 值 | 出处(引用) |
 |---|---|---|
 | `g*`(利息线) | `10 × cap_resolved` | `saturation_line(cap_resolved)`(statefn/interest 单一源;cap_resolved 经 `interest_cap_resolved`,默认局 = `GOLD_CAP_INTEREST=50`,cw_plane_table 表值) |
 | `ρ`(Σ预留卡价) | 合格集(可追成员)最低费卡价 | `CHARACTERS.cost` 注册表 min;可追性 = `refresh_prob(level, cost) > 0 ∧ 无 2★`(与 R1 装配侧 `_r1_member_accounts` 同一过滤,单一源不复制) |
@@ -56,7 +56,7 @@ r2_budget(g, g*+ρ, c_eff) ⟺ g − (g*+ρ) ≥ c_eff ⟺ ⌊(g − g* − ρ)/
 
 修前基线(同池同 seed,n=30,修 A 后无 floor,落盘 `r2_floor_ab_before.json`):刷新 78.23 次/局、买 14.3/局、全局最小金 **0**、刷新波波末金最小 **0**、破利息线(<50)波 445 个、2★ 局 0/30。
 
-健康带推导(判据从锚导出,预注册后交叉核对):
+健康带推导(判据从引用导出,预注册后交叉核对):
 
 - **结构带(硬门,验收②)**:刷新波(该波 actions 含 RefreshShop)的波末账本金 ≥ `g*`。由 §③ 这是代码结构性保证,交叉核对验「违例波 = 0」;全局破线波(含买入让渡,A3)只作观测量不作门。
 - **统计带(验收①)**:`refreshes/局 ∈ (0, 30]`。上界推导:守线稳态下每波可花富余 ≈ 净收入 Ī(线的收入全部积累在线上方,花富余不破线);Ī 中位 7(P47 口径)、c_eff=2 ⟹ 刷次/波 ≤ ⌊Ī/c_eff⌋ = 3(极限「富余全刷不买」非健康形态);健康形态要求买刷共摊富余——REFRESH_CFO §7 健康参照基线 22.9 刷 : 27.9 买 ≈ 1:1.2,给买入留富余份额 ≥ 1/3 ⟹ 刷带上界 = 48 × (2/3) ≈ 32,取 30(向下整,保守)。下界 > 0:修 A 开门帧(P53 §③ r≥14 全开、j=1 占 87%)在健康金位下应有可刷帧,恒 0 = floor 过紧错误。
@@ -66,13 +66,13 @@ r2_budget(g, g*+ρ, c_eff) ⟺ g − (g*+ρ) ≥ c_eff ⟺ ⌊(g − g* − ρ)/
 ## 结论
 
 1. 修 R2 = 消费位预留组装补位:`reserve = g* + ρ`(利息线 + 合格集最低费卡价),`r2_budget` 判据本体与契约零改动,与 P40 R2 规范口径逐位等价;
-2. 零新自由参数:全部锚 = `cw_plane_table.GOLD_CAP_INTEREST` / `CHARACTERS.cost` / `REFRESH_COST_BASE` 注册表现读;
+2. 零新自由参数:全部引用 = `cw_plane_table.GOLD_CAP_INTEREST` / `CHARACTERS.cost` / `REFRESH_COST_BASE` 注册表现读;
 3. floor 语义:刷新通道永不掉满利息档 + 至少一张命中卡可买不破线;跨档破线刷无旁路通道(L 只在 R1 效率面计价,金位生存面由本 floor 硬保证);
 4. 预注册健康带:刷新波破线波 = 0(硬)、refreshes/局 ∈ (0,30]、buys/局 > 14.3、2★ = 适用范围外(预期 0,结构性不可达归买入批)。
 
 ## 对实现的检验点
 
-1. 单测锚:门过帧刷后逻辑态金 ≥ g* + ρ(行为测试,帧级);金贴线帧(g* < g < g*+ρ+c_eff)拒刷 + 分键计数;门过帧发出 RefreshShop(账本级);`ρ` = 注册表派生(非字面量)。逻辑态金 = 状态容器(GameState)逻辑态金值(动作执行后不经观察按游戏规则推算直写的预期状态,真值以下一帧观察为准)。
+1. 单测引用:门过帧刷后逻辑态金 ≥ g* + ρ(行为测试,帧级);金贴线帧(g* < g < g*+ρ+c_eff)拒刷 + 分键计数;门过帧发出 RefreshShop(账本级);`ρ` = 注册表派生(非字面量)。逻辑态金 = 状态容器(GameState)逻辑态金值(动作执行后不经观察按游戏规则推算直写的预期状态,真值以下一帧观察为准)。
 2. sim 交叉核对:同池同 seed before/after n=30,预注册判据 §④ 三件(数字三件套口径,逐 seed 全量)。
 3. 旧行为测试对账:`test_injected_value_opens_r1_into_r2`(gold=60,lv3)在新 floor 下 60 − (50+1) = 9 ≥ 2 仍开门——语义未变,测试不红;`test_injected_value_r2_budget_still_gates`(gold=1)仍关——防线分层保持。
 

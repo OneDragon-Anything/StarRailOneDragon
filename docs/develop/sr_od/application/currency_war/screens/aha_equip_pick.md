@@ -4,15 +4,15 @@
 
 ## 1. 分发判定
 
-- 外循环阶段三特殊规则(无独立画面档):锚 = `货币战争-备战.标识-简易装备`(overlay 叠备战,锚挂备战画面档;[../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不选 → overlay 持续卡备战,推进是流程义务。
+- 外循环阶段三特殊规则(无独立画面档):识别标志 = `货币战争-备战.标识-简易装备`(overlay 叠备战,识别标志挂备战画面档;[../flow/outer_loop.md](../flow/outer_loop.md) §2.2)。不选 → overlay 持续卡备战,推进是流程义务。
 
 ## 2. 画面形态声明
 
-**空决策形态 + 固定策略申报**:选择面存在(四件选一)但零逻辑态账,本 op 按**固定单发**消费(点首件,不问策略器);按 key_equips 择优属策略面候选——为它设 decide 接口 = 给无选择面画面造空选择,违契约收缩方向。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口锚门(「货币战争-备战.标识-简易装备」,miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 画面标志不在 = 已离开本画面 → success 结束本次访问)→ 点首件单发 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口(obs 类只记入口裁决)。
+**空决策形态 + 固定策略申报**:选择面存在(四件选一)但零逻辑态账,本 op 按**固定单发**消费(点首件,不问策略器);按 key_equips 择优属策略面候选——为它设 decide 接口 = 给无选择面画面造空选择,违契约收缩方向。两 node 直继承 `SrOperation`(合同 = [op-layer.md](op-layer.md) §1.1):观察 node = 入口识别标志门(「货币战争-备战.标识-简易装备」,miss = round_fail 返回主循环重新判定)+ obs{on_screen} 挂实例属性;决策动作 node = 顶部落地复查(推进已发 → 画面标志不在 = 已离开本画面 → success 结束本次访问)→ 点首件单发 → `round_wait` 循环推进(无防御上限;`node_max_retry_times=2` 在用值仅框架异常路径消费)。空决策形态无 report 接口(obs 类只记入口裁决)。
 
 ## 3. 观察面
 
-轻观察:观察 node = `entry_ok` area 锚原语(与分发判定同源同参)→ obs = `CwScreenAhaEquipPickObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/aha_equip_pick.py`;空决策形态无 report 接口)。零 GameState 写端。
+轻观察:观察 node = `entry_ok` area 识别标志原语(与分发判定同源同参)→ obs = `CwScreenAhaEquipPickObs`(`on_screen`/`screen`,住 `kernel/cw_screen_report/aha_equip_pick.py`;空决策形态无 report 接口)。零 GameState 写端。
 
 ## 4. 动作面
 
@@ -30,7 +30,7 @@
 
 ## 6. 状态上报面
 
-无:零逻辑态直写、零落地登记件;获得装备的真值由下一备战入口观察重锚(装备域 owned 读面)。
+无:零逻辑态直写、零落地登记件;获得装备的真值由下一备战入口观察重新引用(装备域 owned 读面)。
 
 ## 7. 子态与 overlay
 
@@ -42,7 +42,7 @@
 
 ## 9. 遥测与测试面
 
-- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,aha_equip_pick 已登记);锚挂备战建档 `currency_war_battle_prep.yml`。
+- journal op 名 = 「阿哈装备选择」;frame_tag = `overlay_aha_equip`(dispatch 包装)。测试:`sr-od-test/test/sr_od/application/currency_war/test_screen_progression_inline.py`(推进型骨架内联形态测试,aha_equip_pick 已登记);识别标志挂备战建档 `currency_war_battle_prep.yml`。
 
 ## 开放设计注
 

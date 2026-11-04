@@ -31,13 +31,13 @@
 
 **④ 临界 X**:买牌付息 ⇔ 购买使金跨过 10 的倍数向下——与 `ev.interest_cost` 实现(tiers = 花前档 − 花后档)严格一致 ✓;「统一 EV 自动覆盖」成立。
 
-### 门② 锚点直调(逐项回注册表)——**通过(脚本口径陈旧 1 处,亲跑可重跑)**
+### 门② 引用点直调(逐项回注册表)——**通过(脚本口径陈旧 1 处,亲跑可重跑)**
 
-| 证明引用 | 实际锚点(直调核实) | 判定 |
+| 证明引用 | 实际引用点(直调核实) | 判定 |
 |---|---|---|
 | `STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)` | `kernel/cw_economy.py` L43-46 逐值一致(49/49 样本,economy §10.1) | ✓ |
 | 息=min(5,gold//10) | `cw_economy`/`engine_p1` L752 `min(_icap, st.gold//10)`(含投资覆写) | ✓ |
-| `BASE_REWARD_GOLD`=5 | 现行锚已分段:`REWARD_BASE_GOLD_BY_ROUND={1:3, 2:4}`(实测 VLM 85/85)+ 非奖励节点 `BASE_INCOME=5`(cw_economy L63/L76) | 值口径**陈旧**(5→3/4);方向对 P6 是强化(轨迹更低) |
+| `BASE_REWARD_GOLD`=5 | 现行引用已分段:`REWARD_BASE_GOLD_BY_ROUND={1:3, 2:4}`(实测 VLM 85/85)+ 非奖励节点 `BASE_INCOME=5`(cw_economy L63/L76) | 值口径**陈旧**(5→3/4);方向对 P6 是强化(轨迹更低) |
 | `sell_refund` cost=1 无手续费全额退 | `cw_state.sell_refund` L877-890:1星=cost、1费各星无手续费(2★1费=+3 live 实测) | ✓ |
 | 开局金 5 | sim 初始化 `engine_p1` L589 `st.gold=5`(硬编码初值);非独立注册表常量,金差分实证(108 局/767 轮)间接闭环 | ✓(同源假设,注记) |
 | r1/r2=奖励节点 | economy §10.2 P1 节点表(r1/r2 = reward,25 开局帧众数) | ✓ |

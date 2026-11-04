@@ -1,13 +1,13 @@
 # P37 逐件证明验证报告(升级滞后与 XP 转化成本)
 
 > 验证对象:`docs/game/currency_war/research/proofs/p37-late-xp-conversion-cost.md` 单篇 + `math_proofs.md` P37 索引行。只读禁改,本报告为唯一产出。
-> 验证人:P37 数学验证批(2026-09-01);方法=五门逐门(内部推导/锚点直调/建模对象 vs 玩法文档/实证 vs 账本/参数溯源)。
+> 验证人:P37 数学验证批(2026-09-01);方法=五门逐门(内部推导/引用点直调/建模对象 vs 玩法文档/实证 vs 账本/参数溯源)。
 > 治理前提:math_proofs.md 索引头「P1-P37 属旧树——命题可参考,推导与前提不作数(重推队列 redesign/01 §6)」;本件位于重验波次 2(MATH_REVALIDATION_PLAN §8)。本报告同时回答「旧树判定是否需收紧/本件可否作新树引用源」。
 
 ## 阅读门执行记录
 
 - **玩法文档全量(docs/game/currency_war/)**:economy.md 全文精读(§1 牌池/§2+§2.1 刷新与升级不刷新/§6 保血保经济/§7 阶段共识/§9 未决数值表[XP 表 2026-08-31 ✅ 定案]/§10.1 收入与息律投资 cap 修正);gameplay.md(「金币购买经验提升等级,等级对应可上阵角色数量」);user_playstyle [16]/[32]/[41] 相关条;invest_effects(买断制息关换每节点4XP 等 XP 流族)。**声明跳过**:data/characters/ 72 件角色档、final_comps 十类——本件命题(升级时点机会成本)与单卡数值/阵容知识无交集,无消费点。
-- **注册表直调(值逐一亲核,不用被审方转述)**:验证时点 `cw_state.py`(XP_TO_NEXT_LEVEL={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4;现载体 = `cw_economy.py` XP 表)、原 `cw_factions.py`(INTEREST_THRESHOLD=50 / INTEREST_RATE=0.1)、原 `cw_effect_ledger.interest_with(default_cap=5)`(两锚均**已随死代码清偿移除**;息律现单一源 = `cw_economy.interest` + `cw_plane_table.GOLD_CAP_INTEREST`/`DEFAULT_INTEREST_CAP`)、`cw_economy.py` L411(interest_cap_override 回退 50//10=5)。
+- **注册表直调(值逐一亲核,不用被审方转述)**:验证时点 `cw_state.py`(XP_TO_NEXT_LEVEL={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / XP_PER_BUY=4 / XP_CLICK_COST_FALLBACK=4;现载体 = `cw_economy.py` XP 表)、原 `cw_factions.py`(INTEREST_THRESHOLD=50 / INTEREST_RATE=0.1)、原 `cw_effect_ledger.interest_with(default_cap=5)`(两引用均**已随死代码清偿移除**;息律现单一源 = `cw_economy.interest` + `cw_plane_table.GOLD_CAP_INTEREST`/`DEFAULT_INTEREST_CAP`)、`cw_economy.py` L411(interest_cap_override 回退 50//10=5)。
 - **06_input_model §3**:注册表地图与「工具值估算地方以常量注释标明」边界,已读。
 - **公理栈(调参最小化公理,MATH_REVALIDATION_PLAN v3)**:支配性论证/参数带 CI+稳健性/拟合常数禁当闸门;超额收益隔离与纯金流经 P15v2 §0 口径复核。
 
@@ -29,11 +29,11 @@
 
 **判定:门① 需修**——结构骨架(存在性+定性对比)保留;主不等式按公理标准未闭合,「方向已证」标签过强,应降格为「方向结构成立,符号闭合待期望口径重推或 A/B 因果裁决」。
 
-## 门② 锚点直调(逐项)
+## 门② 引用点直调(逐项)
 
-| 锚 | 单篇值 | 直调复核 | 判定 |
+| 引用 | 单篇值 | 直调复核 | 判定 |
 |---|---|---|---|
-| I_max=5 金/轮 | interest_with default_cap=5;INTEREST_THRESHOLD=50×INTEREST_RATE=0.1 | 直调时点:`cw_effect_ledger.py:141` default_cap=5、`cw_factions.py:134-135` 一致(**两锚已随死代码清偿移除**;现锚 = `cw_economy.interest` 的 `DEFAULT_INTEREST_CAP` = `cw_plane_table.GOLD_CAP_INTEREST//10` = 5,值口径不变) | ✓ |
+| I_max=5 金/轮 | interest_with default_cap=5;INTEREST_THRESHOLD=50×INTEREST_RATE=0.1 | 直调时点:`cw_effect_ledger.py:141` default_cap=5、`cw_factions.py:134-135` 一致(**两引用已随死代码清偿移除**;现引用 = `cw_economy.interest` 的 `DEFAULT_INTEREST_CAP` = `cw_plane_table.GOLD_CAP_INTEREST//10` = 5,值口径不变) | ✓ |
 | I_max 例外域 | 单篇称「零参数上界」「registry interest_cap 单一派生源」 | ⚠️ `interest_cap_override` 存在(息律投资 cap→9/10,economy §10.1「⚠️ p47 的 cap=5 非恒定」);单篇未声明例外域 | **缺口** |
 | C_up 升级价表 | 「逐级价表,代码注册表单一源;本命题不授权数值」 | XP 表 {3:4..9:84}/XP_PER_BUY=4/单击价兜底 4 亲调一致;单篇不数值消费 | ✓ |
 | XP 表状态标注 | 单篇未引 ±20% | economy §9 已于 2026-08-31 ✅ 定案(「文档里提供的升级所需经验表就是对的」)——**本件无 P39/P48 那类 ±20% 陈旧残留**(不消费 XP 数值,天然免疫) | ✓ 干净 |
@@ -49,7 +49,7 @@
 2. **level→上阵人数上限**:gameplay.md「等级对应可上阵角色数量」+ user_playstyle **[32] 人口 cap 提升当场生效**(经 P51_VALIDATION 转引)——**即时**,无滞后。
 3. **上限→实际板深**:需买入/部署填充——**滞后**,除非备战席已有等待件(P39 臂一谓词「当轮有等待单位可上」正是 d=0 形态)。
 
-**判定:门③ 需精确化**。P37(i)「升级当轮不兑现,滞后 1+ 轮才落板面」把第 3 层的**典型观测**(金/备战位约束下板深填充通常跨轮)写成**机制必然**;d=0 形态机制可达。P48_VALIDATION 修正③-4 已给出正确口径(「P37 滞后是**战力兑现**滞后,非升级事件滞后」)——但只在验证报告里,P37 单篇未回写。另:W959 同局配对 −15 作「时滞实证」支持弱——配对含 boss/敌难爬升混杂(REPORT 自注「r8 后一场多即 boss」),与滞后一致但不能隔离滞后。佐证面:economy §7 阶段共识「中期稳定 ≥50,**用利息升人口为主**」与 P37 方向同向(社区共识侧锚),单篇未引,建议补。
+**判定:门③ 需精确化**。P37(i)「升级当轮不兑现,滞后 1+ 轮才落板面」把第 3 层的**典型观测**(金/备战位约束下板深填充通常跨轮)写成**机制必然**;d=0 形态机制可达。P48_VALIDATION 修正③-4 已给出正确口径(「P37 滞后是**战力兑现**滞后,非升级事件滞后」)——但只在验证报告里,P37 单篇未回写。另:W959 同局配对 −15 作「时滞实证」支持弱——配对含 boss/敌难爬升混杂(REPORT 自注「r8 后一场多即 boss」),与滞后一致但不能隔离滞后。佐证面:economy §7 阶段共识「中期稳定 ≥50,**用利息升人口为主**」与 P37 方向同向(社区共识侧引用),单篇未引,建议补。
 
 ## 门④ 实证 vs 账本(转录一致性 + AB 可达性)
 
@@ -58,7 +58,7 @@
 - upgrade_events.csv 1759 行 ✓;`unbought_affordable>0` = **1631 行 = 92.7%** 逐位复现 ✓;按轮分布(r1-r9:133/84/113/191/244/280/262/271/181)与账本一致 ✓。
 - big 分组(≥20 金)中位 −12:亲算近似口径(r≥6∧≥16 金,next_delta)得 n=918 中位 −11、改善占比 16.7%,与账本 −12(n=1111)同口径带内一致(滤界差异所致,非矛盾)。
 - 同局配对 n=738/中位 −15/改善 23.2%、首达 lv7 三桶 41/33/30(n=92/174/34)、满息轮占比 17-25%、达帽轮 r8-r9=74/120、利息 7.4%/每局中位 18:与归档 `upgrade_interest_metrics.txt` **逐字一致** ✓(配对 n=738 系全时间线前后场 delta 对,与 CSV next_delta 列是两个量,单篇引用未混淆 ✓)。
-- 批规格锚(HEAD 8c07c415/seeds 959100-959399/池指纹 6400d5d8+eqg1/确定性 10/10)与 REPORT 一致 ✓。
+- 批规格引用(HEAD 8c07c415/seeds 959100-959399/池指纹 6400d5d8+eqg1/确定性 10/10)与 REPORT 一致 ✓。
 
 **滞后预测在 AB_* 的可达性**:现有 AB_cw3/AB_legacy_v2(r0/r2/r3,n=40)是**决策引擎对照臂**,非升级时点臂——不能裁决「早升 vs 现状」;P37 §4-1 预注册的早升臂 A/B **未建 prereg、未运行**。故 d≥1/量级 L_defer 的因果检验当前**不可达**,与单篇「因果裁决挂 A/B」的自我声明一致(不算违规,但封死了「已证」的上限)。
 
@@ -95,7 +95,7 @@
    - **P51 B6 / P39 修正 7**:「XP 升级 d≥1(P37(i) 实测)」措辞改为「**保守折价假设**(实证支持=关联级,含 boss 混杂)」——按 d≥1 折价方向保守(低估 XP 即时收益),消费安全性不受影响,但不得再以「实测」引用 W959 配对。
    - **P48**:其验证已持正确口径,无需改;P37 单篇回写后两件闭环。
    - **P15v2**:勘误——**P15v2_REPROOF 实际不消费 P37**(其上游=P51 的 λ/幅度带;全文无 P37 引用),任务书的消费关系描述与实际不符,本报告按实际消费面(P51/P39/P48 三件)收尾。
-5. **L(τ) 补 CI**(自助/泊松,批规格复跑锚已在检验点 1);顺带补引 economy §7 阶段共识作社区侧锚。
+5. **L(τ) 补 CI**(自助/泊松,批规格复跑引用已在检验点 1);顺带补引 economy §7 阶段共识作社区侧引用。
 
 ## 验证过程产物
 
