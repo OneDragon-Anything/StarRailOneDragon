@@ -48,7 +48,11 @@ dev = [
 package = false
 cache-dir = "./.install/uv_cache"
 environments = ["sys_platform == 'win32'"]
-default-groups = []
+# dev 必须默认启用:sync 是精确对齐语义,default-groups 为空时任何一次裸 `uv sync`
+# 都会把整个 dev 组(MCP server 运行依赖 mcp/pydantic/uvicorn 也在其中)剥掉,
+# 且常驻 server 进程锁着已加载的 .pyd,卸载半途失败=venv 残缺(2026-11-04 实损)。
+# 确需精简环境时显式 `uv sync --no-default-groups`。
+default-groups = ["dev"]
 
 # Ruff configuration
 [tool.ruff]
