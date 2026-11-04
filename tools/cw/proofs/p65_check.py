@@ -41,7 +41,6 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     _asset_thickness,
     _core_reachable,
     _pair_bond_keys,
-    _v2_comps,
     _visible_chars,
     encounter_window_rounds,
     intention_core,
@@ -78,7 +77,7 @@ def promote_candidates(gs: GameState,
     """晋升候选集纯派生(设计稿 §2.1 公式;本批为 G8 观测载体,零行为)。
 
     公式(与 P2 移交候选 :1345 同判据形状,输入换 p1_pair 冻结快照):
-    ``{ c ∈ v2 comps : c ∉ evicted ∧ (form_tiers ∪ sub_tiers) ∩
+    ``{ c ∈ v2 comps : c ∉ evicted ∧ (core_faction_reqs ∪ bonus_faction_reqs) ∩
     pair 体系键 ≠ ∅ ∧ plane ∉ weak_planes ∧ _core_reachable ∧
     (plane != 2 或 G > ε) }``。输入 = ``p1_pair_frozen_obs``(退场前
     冻结副本,空 = P1 无配方方向,候选恒空)。
@@ -97,7 +96,8 @@ def promote_candidates(gs: GameState,
     for c in _v2_comps():
         if c.name in ist.evicted:
             continue
-        if not (set(c.form_tiers) | set(c.sub_tiers)) & bonds:
+        if not (set(c.core_faction_reqs)
+                | set(c.bonus_faction_reqs)) & bonds:
             continue
         if gs.plane in (c.weak_planes or ()):
             continue
@@ -111,7 +111,7 @@ def promote_candidates(gs: GameState,
 
 
 # ===== 12 线枚举快照锁(设计稿验收要求:防 COMP_LIBRARY 漂移)=====
-# 每行: (name, family, 字面体系键交集(form_tiers∪sub_tiers ∩
+# 每行: (name, family, 字面体系键交集(core_faction_reqs∪bonus_faction_reqs ∩
 # TRANSITION_TRAITS 三羁绊键,注册表快照口径), weak_planes)。
 # 注(M2):此列是**字面三羁绊键域**的注册表快照——生产晋升判据消费的是
 # _pair_bond_keys 展开键(希儿系→量子同频+贝洛伯格),见断言 3 的逐 pair
@@ -130,6 +130,23 @@ SNAPSHOT_12: tuple[tuple[str, str, tuple[str, ...], tuple[int, ...]], ...] = (
     ('DOT队', 'DOT卡芙卡', ('持续伤害',), (2,)),
     ('专家桑博DOT', 'DOT卡芙卡', ('持续伤害',), ()),
 )
+
+#: 12 线枚举域与家族列(快照锁自足:生产 ``_v2_comps``/``Comp.family``
+#: 已随 v2 候选机制退役——脚本 = 历史公式复核载体,枚举域取冻结快照
+#: 名单,注册表名字漂移即 KeyError = 快照锁红的等价形态)。
+_V2_NAMES: tuple[str, ...] = tuple(n for n, *_r in SNAPSHOT_12)
+_FAMILY_OF: dict[str, str] = {n: f for n, f, _i, _w in SNAPSHOT_12}
+
+
+def _v2_comps() -> list[Comp]:
+    """快照锁 12 线 → Comp 对象(get_comp 单一源;缺名即炸)。"""
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    out: list[Comp] = []
+    for name in _V2_NAMES:
+        c = get_comp(name)
+        assert c is not None, f'快照锁线名在注册表缺失(枚举域漂移): {name}'
+        out.append(c)
+    return out
 
 ENGINE_KEYS: tuple[str, ...] = tuple(b for b, _t in TRANSITION_TRAITS)
 PAIR_KEYS: tuple[str, ...] = ENGINE_KEYS + ('希儿系',)
@@ -151,8 +168,8 @@ def check_snapshot() -> None:
     assert len(v2) == 12, f'v2 线数漂移: {len(v2)} ≠ 12'
     got = []
     for c in v2:
-        tiers = set(c.form_tiers or {}) | set(c.sub_tiers or {})
-        got.append((c.name, c.family,
+        tiers = set(c.core_faction_reqs) | set(c.bonus_faction_reqs)
+        got.append((c.name, _FAMILY_OF[c.name],
                     tuple(sorted(tiers & set(ENGINE_KEYS))),
                     tuple(c.weak_planes or ())))
     assert tuple(got) == SNAPSHOT_12, (
@@ -160,7 +177,7 @@ def check_snapshot() -> None:
     # 活载体映射派生复核(展开语义,_pair_bond_keys 单一源;禁手抄对账)
     derived: dict[str, list[str]] = {k: [] for k in PAIR_KEYS}
     for c in v2:
-        tiers = set(c.form_tiers or {}) | set(c.sub_tiers or {})
+        tiers = set(c.core_faction_reqs) | set(c.bonus_faction_reqs)
         if 2 in (c.weak_planes or ()):
             continue
         for k in PAIR_KEYS:
@@ -259,7 +276,7 @@ def _line_tiers(name: str) -> set[str]:
     """线档键(注册表现取;快照表不载档键全集,禁第二份)。"""
     for c in _v2_comps():
         if c.name == name:
-            return set(c.form_tiers or {}) | set(c.sub_tiers or {})
+            return set(c.core_faction_reqs) | set(c.bonus_faction_reqs)
     raise KeyError(name)
 
 

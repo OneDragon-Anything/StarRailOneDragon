@@ -4,7 +4,7 @@
 调研的 fixed/core 三档;本文件把调研结论结构化)。
 本文件仅存数据表;score_bridge/pick_bridge 等选桥函数簇已停用,
 决策路径由 cw_intention/line_defs 的
-form_tiers 机制承载。
+羁绊要求结构(faction_reqs)机制承载。
 
 设计要点(redesign §4.2):
   - 桥线=线库的短线子集(无终局形态,只有位面内配方);

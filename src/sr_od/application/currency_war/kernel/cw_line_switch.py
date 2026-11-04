@@ -99,7 +99,7 @@ def tier_progress(comp: Comp, gs: GameState) -> dict[str, tuple[int, int, int]]:
     计数);shelf_t = 本回合 shop 中该档阵营可见件数,仅当板面档计数
     仍低于需求时计(买走即 held,不计入刷出期望)。
     """
-    tiers = getattr(comp, 'form_tiers', None) or {}
+    tiers = comp.core_faction_reqs
     board = gs.board.value or {}
     out: dict[str, tuple[int, int, int]] = {}
     for f, t in tiers.items():
@@ -142,7 +142,7 @@ def e_rounds(comp: Comp, gs: GameState,
 
     可负担窗的保利息线 = session resolved 链单一源
     (``saturation_line(cap_resolved_of_session(session))``
-    随批接线:旧 ``reg.interest_floor()`` 不随持卡语境动——买断制局
+    随批接入调用:旧 ``reg.interest_floor()`` 不随持卡语境动——买断制局
     刷新可负担窗被 50 金地板压死,囤金经本车道部分存活);
     ``session=None``(无 session 调用形态/旧测试桩)退注册表派生值,
     与既有调用形状零漂移。
@@ -155,7 +155,7 @@ def e_rounds(comp: Comp, gs: GameState,
         BENCH_CAPACITY,
     )
     p = 0.0
-    for f in (getattr(comp, 'form_tiers', None) or {}):
+    for f in comp.core_faction_reqs:
         # 标签独立并集:1−∏(1−p_f)(联合概率高估为设计内承认近似,见模块注释)
         p_f = p_bar_faction(f, level_of(gs))
         p = p_f if p <= 0 else 1 - (1 - p) * (1 - p_f)
@@ -167,7 +167,7 @@ def e_rounds(comp: Comp, gs: GameState,
         saturation_line,
     )
     # 刷价单一源消费 = refresh_cost_effective(现值→None 退建模基价;
-    # economy 接缝注「字段读统一经容器读口单一源,禁各消费点自写兜底」
+    # economy 接缝注「字段读统一经状态容器读口单一源,禁各消费点自写兜底」
     # ——禁在本判据内联第二份读式/裸魔数兜底)。
     cost = refresh_cost_effective(gs=gs)
     if session is not None:
@@ -215,7 +215,7 @@ def node_loss_kind(node_type: str) -> str:
 #  line_switch_survival_gate_enabled / rounds_two_state_enabled 出局,
 #  清查报告 OLD_MIX_AUDIT §1.3;连同删除 rounds_alive / gate_need /
 #  gate_counterfactual / survival_gate / register_gate_block 与
-#  cw_intention._switch_gate_open 接线、v3_line_gate_* 决策位/标志、
+#  cw_intention._switch_gate_open 接入调用、v3_line_gate_* 决策位/标志、
 #  line_gate_blocked/line_gate_cf_blocked 遥测键。损血档归一
 #  node_loss_kind 与 p2_cond_loss_table 保留——阈值层
 #  cw_first_passage._loss_dist 仍消费;两态 p_win 表 p_win_p2_by_rung

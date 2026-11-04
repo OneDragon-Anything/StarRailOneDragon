@@ -14,8 +14,8 @@
 **互补不重叠(唯一硬规则)**:插件身份是「在当前这套阵容里不是骨架」——同一张卡在
 A 套是插件、在 B 套是正料,完全正常。``majority_lines`` 字段承载线内身份标注
 (已是骨架的家族/套——插件身份不在这些线成立,非踢出);过半线刷新走**单一写入口**
-(流派统计刷新动作同时改本表 majority_lines 与对应 ``Comp.sub_tiers``,不做两处
-可独立编辑的开关——防双源)。
+(流派统计刷新动作同时改本表 majority_lines 与对应阵容的 ``faction_reqs``
+加分层,不做两处可独立编辑的开关——防双源)。
 
 消费方:decision_v2 层1 插件买门、C3 fill_gap 空位规则
 (能开新档 > 单卡效果 > 散件)、禁用表查表(买门拒绝 reason 带 matrix 键)。
@@ -112,10 +112,10 @@ _SMALL_FACTION_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("学者2", "small_faction", "T3", "member", source="三C T3:混合型(首档带 30% 全体强度,顺手收门槛降低,仍不主动凑)"),
     PluginEntry("公司2", "small_faction", "T3", "member", source="三C T3:混合型(同上)"),
     PluginEntry("击破2", "small_faction", "T3", "member", frozenset({"黄泉减益"}),
-                source="三C T3;黄泉线 58% 升格候选(sub_tiers 对拍锚)"),
+                source="三C T3;黄泉线 58% 升格候选(加分层登记)"),
     # 圣杯2(三C T3 定稿成员):效果=命运圣杯 2 档开祈愿试炼任务链
     # (产出 Archer;comp_elements 三·4 圣杯任务系统)。
-    # majority_lines 不标:圣杯双C 两线它是主档骨架(form_tiers 命运圣杯 3),插件身份不在该线成立。
+    # majority_lines 不标:圣杯双C 两线它是主档骨架(档 0 命运圣杯 3),插件身份不在该线成立。
     PluginEntry("圣杯2", "small_faction", "T3", "member",
                 source="三C T3 定稿(15 件全落);命运圣杯 2 档开祈愿试炼任务链,队员口径对症才碰"),
     # --- 角色特定型(按交集逻辑用;三C)---

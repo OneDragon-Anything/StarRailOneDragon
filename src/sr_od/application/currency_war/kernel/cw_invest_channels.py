@@ -19,9 +19,12 @@
 在场时另走证据分量,与通道分无冲突)。
 
 **加分目标线**(design §3.1):通道②③④⑤按羁绊命中——羁绊 ∈ 目标线
-``form_tiers``/``or_reqs`` 键 = 全档;仅 ∈ ``flex_factions`` = 降档
-(强→+30 软档/中→0);未命中 0。``EVIDENCE_UPGRADE``/``DEFINING_CARDS``
+档 0/``or_reqs`` 键 = 全档;仅 ∈ 档 ≥1(加分层)或 ``flex_factions``
+= 降档(强→+30 软档/中→0);未命中 0。``EVIDENCE_UPGRADE``/``DEFINING_CARDS``
 为点名登记(线名直指,不走羁绊命中,不降档)。
+(加分层键降档 = 副档语义修正①——comp-structure-unification 3.1:
+旧读法副档键命中 0 分,属消费面未接副档字段的历史遗留,按优先级
+本义修正为同 flex 降档规则,副档强档命中 0 → +30。)
 
 查询防线:入口一律先 ``normalize_invest_name``(OCR 间隔号形变不静默
 miss,run_20260826_004527 缺陷链先例;沿 augment_affinity 查表口径)。
@@ -94,7 +97,7 @@ ENGINE_SYNERGY_FACTIONS: dict[str, tuple[str, ...]] = {
     '离火燎原': ('减益',),
 }
 # 姬子拆分(批 3)通道命中声明:通道②③④(类目派生)与⑤引擎表按羁绊键
-# 命中——列车系两套 form_tiers 同键(列车同行 4)→ 加分相同(语义正确:
+# 命中——列车系两套档 0 同键(列车同行 4)→ 加分相同(语义正确:
 # 环境通道服务羁绊供给,不分引擎结算方向)。A/B 差异面归线分装备证据
 # 分量与词缀吃怕表(A 受击流不吃速度类增益/B 大招流吃充能类增益——
 # 未来引擎表新增列车条目时按 cw_affinity_table.LINE_ENGINE_KIND 轴挂)。
@@ -110,7 +113,7 @@ _ENV_CATEGORY_TIER: dict[str, int] = {
 #: 特邀专家顾问入商店卡 → 顾问角色名(统一阵容评分批 2;效果原文
 #: 「获得专家顾问【X】,并使其在本局游戏中加入商店」直读)。
 #: 通道语义判(批 2 任务「按 §3.1 商店结构语义判」):§3.1 通道②概念股
-#: = 送人+入池+提率三件套(强档 +300);顾问卡 = 入池单腿(顾问不免费
+#: = 送人+入池+提率三件套(强档 +300);顾问卡 = 入池单条效果条目(顾问不免费
 #: 入席、需付费购买、不提率)——供给改写幅度弱一档,取**中档 +150**
 #: (「使其加入商店」= 该角色可购性 0→1 的定向供给,0 分漏掉;强档
 #: 高估——概念股的提率腿不存在)。
@@ -125,7 +128,7 @@ ENV_ADVISOR_CHARS: dict[str, str] = {
     # 击破羁绊联动(「激活2/4/6/9击破羁绊时获得以太钻头」;ENV_FACTION
     # 例外行 '击破' 的线分消费位即此)。
     '特邀专家:停云': '停云',
-    # 特邀专家:银狼**不入**:条件腿「当你首次获得【银狼LV.999】时」才
+    # 特邀专家:银狼**不入**:条件条目「当你首次获得【银狼LV.999】时」才
     # 获得顾问——env 持有 ≠ 顾问已解锁,持有期给分虚高;狼尊线证据由
     # 银狼LV.999 本体持有走证据分承载。
 }
@@ -159,17 +162,19 @@ _EMBLEM_PATTERN = re.compile(r'【(.{1,8}?)星徽】')
 def _faction_hit_bonus(faction: str, tier: int, comp) -> int:
     """羁绊命中档判定(design §3.1「加分目标」):
 
-    - ``faction`` ∈ 目标线 ``form_tiers``/``or_reqs`` 键 → 全档值;
-    - 仅 ∈ ``flex_factions`` → 降档(强档 → 软档 +30/中档 → 0);
+    - ``faction`` ∈ 目标线档 0/``or_reqs`` 键 → 全档值;
+    - 仅 ∈ 档 ≥1(加分层)或 ``flex_factions`` → 降档
+      (强档 → 软档 +30/中档 → 0);
     - 未命中 → 0(通用卡)。
     """
     if not faction:
         return 0
-    core_keys = set(comp.form_tiers) \
+    core_keys = set(comp.core_faction_reqs) \
         | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
     if faction in core_keys:
         return tier
-    if faction in (comp.flex_factions or ()):
+    if faction in comp.bonus_faction_reqs \
+            or faction in (comp.flex_factions or ()):
         return INVEST_SOFT if tier >= INVEST_STRONG else 0
     return 0
 
@@ -248,8 +253,8 @@ def env_line_bonuses(env_name: str) -> dict[str, int]:
 
 
 def env_strong_lines(env_name: str) -> tuple[str, ...]:
-    """环境名 → **全档命中**线名元组(羁绊 ∈ 线 form_tiers/or_reqs;flex
-    降档线不入——flex = 弱关联,不构成「为谁服务」面)。
+    """环境名 → **全档命中**线名元组(羁绊 ∈ 线档 0/or_reqs;降档
+    弱关联线不入——加分层与 flex 同为弱关联,不构成「为谁服务」面)。
 
     消费 = 阵容冲突护栏指向集(``cw_investments.env_faction_scope`` 通道
     派生分支):护栏问强方向冲突,弱关联线(线分里 +30/0 降档)不该制造
@@ -263,7 +268,7 @@ def env_strong_lines(env_name: str) -> tuple[str, ...]:
         return ()
     out: list[str] = []
     for comp in COMP_LIBRARY:
-        core_keys = set(comp.form_tiers) \
+        core_keys = set(comp.core_faction_reqs) \
             | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
         if e.faction in core_keys:
             out.append(comp.name)

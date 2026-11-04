@@ -48,11 +48,15 @@ LINE_FACTION_TO_MECH: dict[str, str] = {
 
 
 def punished_mechs_of(comp: Comp | None) -> frozenset[str]:
-    """选卡锚点线的受克机制属性集(top1/锁定线主派 → MECHANIC_COUNTERS
-    值域投影;comp = None〔锚缺失帧〕→ 空集 = 减分不触发,保守缺省)。"""
+    """选卡锚点线(anchor_line_of)的受克机制属性集(top1/锁定线主派 →
+    MECHANIC_COUNTERS 值域投影;comp = None〔锚点线缺失帧〕→ 空集 =
+    减分不触发,保守缺省)。
+
+    读法 = 档 0 ∪ or_reqs 键(选卡受克判定的 3.1 中间态:键集与旧
+    form_tiers 读法恒等 → 行为恒等;3.2 克制表直写时判定整体改写)。"""
     if comp is None:
         return frozenset()
-    core_keys = set(comp.form_tiers) \
+    core_keys = set(comp.core_faction_reqs) \
         | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
     return frozenset(
         mech for faction, mech in LINE_FACTION_TO_MECH.items()

@@ -8,7 +8,7 @@
   (仙舟/量子/列车;休眠字段,现行无写端)
 - ``strategy_state_of(session).target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
 - 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪阵容**
-  (RecipeComp:以框架羁绊为 form_tiers,框架注册表成员为 core——
+  (RecipeComp:以框架羁绊为 faction_reqs 档 0,框架注册表成员为 core——
   ``cw_line_facts.framework_members`` 现算)——
   消费方零改动,评分自动转向配方完成度(缺什么买什么)。
 
@@ -26,15 +26,15 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.knowledge.cw_line_facts import framework_members
 
 # 配方伪阵容注册表(框架 → Comp;core = 该框架注册表成员现算,
-# ``framework_members`` = bond_members 派生;form_tiers = 配方目标档)。
+# ``framework_members`` = bond_members 派生;faction_reqs 档 0 = 配方目标档)。
 # core 面随统一保护集迭代(changes/2026-10-15-unified-protection-set
 # design.md §2.4 ①)从策展档位过滤扩为注册表现算——桑博等合法拼图
 # 自然入列,策展收录纪律由概率结构与经济闸门承载(design §2.7)。
-# form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
-#             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
+# 档 0:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
+#       列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
 _RECIPES: dict[str, Comp] = {
     # 仙舟 factions 补「持续伤害」(deploy 围栏视图定案 B2 修正条件,依据 =
-    # .debug/progress/2026-09-11-cw-clear-run/定谳记录-deploy围栏.md 攻击线 B2):
+    # .debug/progress/2026-09-11-cw-clear-run/已定案记录-deploy围栏.md 攻击线 B2):
     # 框架成员卡芙卡(星核猎手)/椒丘(狼狩)注册表均无仙舟阵营,其围栏
     # tgt 身份只系于 FRAMEWORK_FACTIONS['仙舟'] 的持续伤害键;配方键面不完备时,
     # 以配方为围栏视图的路径(装配单一源)会把自家 drop 件挤出 tgt 桶(r70
@@ -43,7 +43,7 @@ _RECIPES: dict[str, Comp] = {
     '仙舟': Comp(
         name='过渡·仙舟配方',
         core_chars=framework_members('仙舟'),
-        form_tiers={'仙舟': 3},
+        faction_reqs={0: {'仙舟': 3}},
         # 过渡期站位(爻光必后台,站位规则住在终局阵容,
         # 配方伪阵容需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
@@ -51,14 +51,14 @@ _RECIPES: dict[str, Comp] = {
     '列车': Comp(
         name='过渡·列车配方',
         core_chars=framework_members('列车'),
-        form_tiers={'列车同行': 4},
+        faction_reqs={0: {'列车同行': 4}},
     ),
     # 量子框架(量子=第三过渡配方;
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
     '量子': Comp(
         name='过渡·量子配方',
         core_chars=framework_members('量子'),
-        form_tiers={'量子同频': 3, '贝洛伯格': 2},
+        faction_reqs={0: {'量子同频': 3, '贝洛伯格': 2}},
     ),
 }
 
@@ -94,11 +94,11 @@ def decision_target(session, gs: GameState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (C 方案对抗报告 攻击面 3 实证)。
 
-    state 形态 = 容器直传(committed_from 签名切 GameState,
+    state 形态 = 状态容器直传(committed_from 签名切 GameState,
     hp施门下沉kernel政策层设计 §2.4 shim 并入申报②):``_PlaneShim``
-    单字段鸭子桥同波消亡——committed_authority 仅读 plane,真容器
+    单字段鸭子桥同波消亡——committed_authority 仅读 plane,真状态容器
     ``plane_of`` 读口喂入恰等价,禁再新增同型鸭子桥(新消费点一律
-    直接按容器形态调用)。
+    直接按状态容器形态调用)。
     """
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from,

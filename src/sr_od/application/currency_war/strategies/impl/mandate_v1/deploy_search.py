@@ -29,7 +29,7 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
   最高分组内排分配 → (站位分, 稳定键, 随机尾键) 定序取一。
 
 评分层结构(§1,数值制):L1 主目标羁绊(10⁹ 域,f = 角色完成度 ×
-档位完成度乘法合成)> L2 锁定非核心 sub_tiers(10⁶ 域,仅锁定窗)>
+档位完成度乘法合成)> L2 锁定非核心加分层(bonus_faction_reqs,10⁶ 域,仅锁定窗)>
 L3 普通(计数制,buff/debuff ×3 > 万金油 ×2 > 其他 ×1;过渡档
 保板相位 ×4,锁定线第一档成型回落 ×1)。一键单归属、取当前评估
 上下文最高层。金币维零交互(CW 部署免费——用户裁定 2026-10-30
@@ -145,7 +145,7 @@ class DeploySearchPanel:
 def _fallback_tier_index(bond: str, head_count: int) -> int:
     """人数阈值 → 档序(FACTIONS.tiers 中 ≥ 人数的最小档序;1 基)。
 
-    Comp.form_tiers/sub_tiers 值 = 人数阈值(字段契约「几人激活算
+    Comp.faction_reqs 各档值 = 人数阈值(字段契约「几人激活算
     成型」);档位完成度分母 = 该人数对应档序(D-3 显式选端:经注册
     表档序换算,禁读梯末)。"""
     tiers = FACTIONS[bond].tiers if bond in FACTIONS else ()
@@ -199,7 +199,7 @@ def _tag_counts(units: list[SearchUnit],
 
 
 def _line_form_tier_groups(comp: Comp | None) -> tuple[tuple[str, ...], ...]:
-    """线的 L1 键组:form_tiers 键 + OR 承接组(or_reqs = **单组**
+    """线的 L1 键组:档 0 键 + OR 承接组(or_reqs = **单组**
     [(键, 档)] 对列表——组内任一支达成即满,整组折一条虚拟羁绊族键,
     不逐支重复圈,§2 段 1)。"""
     if comp is None:
@@ -210,7 +210,7 @@ def _line_form_tier_groups(comp: Comp | None) -> tuple[tuple[str, ...], ...]:
         keys = tuple(dict.fromkeys(k for k, _t in comp.or_reqs))
         groups.append(keys)
         or_keys.update(keys)
-    for k in (comp.form_tiers or {}):
+    for k in comp.core_faction_reqs:
         if k not in or_keys:
             groups.append((k,))
     return tuple(groups)
@@ -224,7 +224,7 @@ def _or_group_target(comp: Comp, group: tuple[str, ...]) -> int:
     for k in group:
         if k in or_map:
             best = max(best, int(or_map[k]))
-        best = max(best, int((comp.form_tiers or {}).get(k, 0)))
+        best = max(best, int(comp.core_faction_reqs.get(k, 0)))
     return best
 
 
@@ -257,8 +257,8 @@ def selection_score(panel: DeploySearchPanel,
     - L1 = 加权平均 of f(角色完成度 × 档位完成度)× 10⁹,权重 = 目标
       档激活人数;分族分支(单卡希儿系二元/过渡二元退化/空羁绊线
       core∪shared 口径/required 逐名折条)见函数体;
-    - L2 = sub_tiers 档位完成度加权平均 × 10⁶(仅锁定窗;键集 = 仅
-      ``Comp.sub_tiers``——flex_factions 恒 L3,D3-1);
+    - L2 = 加分层档位完成度加权平均 × 10⁶(仅锁定窗;键集 = 仅
+      ``bonus_faction_reqs``——flex_factions 恒 L3,D3-1);
     - L3 = 计数制单位序(羁绊键按已达档、万金油/希儿系按件/二元)。
     """
     counts = _tag_counts(units, tag_cache)
@@ -299,11 +299,11 @@ def selection_score(panel: DeploySearchPanel,
                             if '希儿' in names else 0.0
                         f = formed * char_done
                     elif comp is not None and (
-                            k in (comp.form_tiers or {})
+                            k in comp.core_faction_reqs
                             or k in _or_keys_of(comp)):
                         head = _or_group_target(comp, group) \
                             if k in _or_keys_of(comp) \
-                            else int((comp.form_tiers or {}).get(k, 1))
+                            else int(comp.core_faction_reqs.get(k, 1))
                         w = max(head, 1)
                         tier_target = _fallback_tier_index(k, head)
                         ach = _achieved_tiers(k, counts.get(k, 0))
@@ -326,7 +326,7 @@ def selection_score(panel: DeploySearchPanel,
                 l1_num += best_f * best_w
                 l1_den += best_w
         elif locked and comp is not None:
-            # 空羁绊线(反甲流 form_tiers={} ∧ factions=[]):L1 由角色
+            # 空羁绊线(反甲流档 0 空 ∧ factions=[]):L1 由角色
             # 完成度单独承载(b≡1),分母 = core∪shared 总数、分子 =
             # 其在场数(D2-3 修订——羁绊族口径对该线无源,改阵容成员
             # 口径)。
@@ -335,15 +335,16 @@ def selection_score(panel: DeploySearchPanel,
             l1_num = float(len(members & names))
     l1 = (l1_num / l1_den) * _L1_SCALE if l1_den else 0.0
 
-    # ---- L2(锁定线非核心羁绊层;键集 = 仅 Comp.sub_tiers,D3-1)----
+    # ---- L2(锁定线非核心羁绊层;键集 = 仅 faction_reqs 档 ≥1 合并
+    # ---- (bonus_faction_reqs),D3-1)----
     l2 = 0.0
     if locked and panel.locked_comp is not None:
-        sub = dict(panel.locked_comp.sub_tiers or {})
+        sub = panel.locked_comp.bonus_faction_reqs
         if sub:
             num = 0.0
             den = 0
             for k, v in sub.items():
-                head = int(v[0]) if isinstance(v, tuple) else int(v)
+                head = int(v)   # 建库校验⑤钉死正整数
                 tier_target = _fallback_tier_index(k, head)
                 ach = _achieved_tiers(k, counts.get(k, 0))
                 w = max(head, 1)
@@ -356,7 +357,7 @@ def selection_score(panel: DeploySearchPanel,
     for g in groups:
         l1_key_set.update(g)
     l2_key_set: set[str] = set(
-        (panel.locked_comp.sub_tiers or {}) if locked
+        panel.locked_comp.bonus_faction_reqs if locked
         and panel.locked_comp is not None else ())
     board_l1_zero = l1 <= 0.0
     transition_keys = {k for k, _t in TRANSITION_TRAITS} | {_SEELE_SYSTEM_KEY}
@@ -653,7 +654,7 @@ def search_deploy_target(panel: DeploySearchPanel,
     if panel.locked and panel.locked_comp is not None:
         l1_keys_all.update(_line_keys_of(panel.locked_comp))
     l2_keys_all: set[str] = set(
-        (panel.locked_comp.sub_tiers or {}) if panel.locked
+        panel.locked_comp.bonus_faction_reqs if panel.locked
         and panel.locked_comp is not None else ())
 
     def _greedy_fill(skel: tuple[SearchUnit, ...],

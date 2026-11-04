@@ -429,7 +429,7 @@ def _seele_system_support(owned: set[str]) -> float:
       (玩家确认同门),确认前维持去重口径(零行为变更);
     - 希儿缺席恒 0:量/贝放大器不能独立当过渡(含希儿 28 帖无一缺希儿
       独立成线,transition_combos.md:27);
-    - 希儿单卡(任意星级)= 0.5 不是拍定值:注册表锚 = 希儿自身双标签
+    - 希儿单卡(任意星级)= 0.5 不是人为定为值:注册表锚 = 希儿自身双标签
       (CHARACTERS['希儿'].factions=('贝洛伯格'), flows=('量子同频'),
       data/cw_chars.py「希儿」行),她同时计入两池各 1,在文档档位结构
       下直接导出 max(1/2,1/2)=0.5——单卡 0.5 是推导后果。
@@ -531,17 +531,20 @@ def _p1_pair_decl_key(pair: tuple[str, ...]) -> tuple[float, ...]:
 
 def _p1_pair_lines(pair: tuple[str, ...]) -> tuple[str, ...]:
     """体系对 → COMP_LIBRARY 线名映射(统一阵容评分 design §6 配方锁
-    联动):线**主派**羁绊(``bond_signal`` ∨ form_tiers 首键)∈ 体系对
+    联动):线**主派**羁绊(档 0 首键)∈ 体系对
     羁绊键集(:func:`_pair_bond_keys`,希儿系展开 = 量子同频+贝洛伯格)。
 
-    例:持续伤害对 → (DOT队, 专家桑博DOT)(两线 bond_signal 均为
+    例:持续伤害对 → (DOT队, 专家桑博DOT)(两线主派键均为
     持续伤害);希儿系对 → (希儿量子,)(专家桑博DOT 的贝洛伯格 2 是
     次档非主派,不入——主派判定防次档键把 DOT 线错挂进希儿系对)。
     """
     bonds = _pair_bond_keys(pair)
     out: list[str] = []
     for c in COMP_LIBRARY:
-        main = next(iter(c.form_tiers), '')   # 主羁绊=form_tiers 首键(bond_signal 已退役,黄泉键序对齐)
+        # 主羁绊 = 档 0 首键(过渡期读法:结构上档内无次序,此处依赖
+        # 迁移规则 {0: form_tiers} 保持插入序保证行为恒等;随配方决策层
+        # 退役(3.3);黄泉键序对齐)
+        main = next(iter(c.core_faction_reqs), '')
         if main in bonds:
             out.append(c.name)
     return tuple(out)
@@ -757,10 +760,10 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     单一口径:
     - factions = ``_pair_bond_keys`` 板面羁绊键;core_chars =
       ``_pair_members`` 全成员(均序化,构造确定);
-    - form_tiers 分辨序:① ``cw_bridge_pool.BRIDGE_POOL`` 精确匹配
+    - 档 0 分辨序:① ``cw_bridge_pool.BRIDGE_POOL`` 精确匹配
       (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
       单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
-      组合)→ form_tiers 只放**他体系档**(逐体系取桥池任一条的档);
+      组合)→ 档 0 只放**他体系档**(逐体系取桥池任一条的档);
       放大器两条分支挂 ``or_reqs``(``SEELE_OR_REQS``:量≥2 ∨ 贝≥2 任一即
       成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
       取代 ②的「桥池档+量子配方档」AND 全档口径
@@ -789,7 +792,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     else:
         # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表),
         # 只保留本对键(防兜底混入对外体系);希儿系对再剥掉放大器键
-        # (放大器档位归 or_reqs,不进 form_tiers 的 AND 账——)。
+        # (放大器档位归 or_reqs,不进档 0 的 AND 账——)。
         for combo in BRIDGE_POOL:
             for bond, tier in combo.engine_bonds.items():
                 tiers.setdefault(bond, tier)
@@ -805,7 +808,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     return Comp(
         name='过渡配方·' + '+'.join(pair),
         core_chars=sorted(_pair_members(pair)),
-        form_tiers=dict(sorted(tiers.items())),
+        faction_reqs={0: dict(sorted(tiers.items()))},
         or_reqs=or_reqs,
         required_deployed=required,
     )
@@ -916,7 +919,7 @@ def line_completion_feasibility(gs: GameState,
 
 
 # ===== 终局阵容锁定断点观测分键(纯观测件;原分键前缀登记
-# LOCK_PATH_OBS_KEY_PREFIXES 随观测写端未接线删除——声明的前缀键
+# LOCK_PATH_OBS_KEY_PREFIXES 随观测写端未接入调用删除——声明的前缀键
 # (weakplane_exempt_eval/p2_handoff_/promote_candidate_/intention_frame_ 等)
 # 全仓零写点,宣称的守卫测试 test_cw_lock_path_obs_keys 已不存在;
 # 语义存档 = math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
@@ -944,7 +947,7 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
     - **冻结状态机**:置位评估域收窄为**双体系对全扫描**(排序键同源
       不截断,超满对先于恰满对;取 form_ok 板面成型首个;单体系对
       不进冻结域——「单体系锁停」死锁结构性免疫,§2.6-9)→ 冻结后
-      槽写单元素(冻结对,读端零特判);超窗解冻闭集与再闩封印对双对
+      槽写单元素(冻结对,读端零特判);超窗解冻闭集与再一次性标志位封印对双对
       零改动(封印判定的「重派生对」= 门控候选首位);
     - 观测快照(p1_pair_frozen_obs)照旧。位面适用范围由调用侧
       (flow 层)以窗口谓词承载——本函数只在 P1 活动窗被调。
@@ -993,8 +996,8 @@ def update_p1_recipe(gs: GameState, ist: IntentionState,
         gated = (candidates[0]
                  if candidates and _p1_pair_support(candidates[0], sup)
                  >= P1_PAIR_LOCK_MIN_SUPPORT else ())
-        # 超窗再闩封印(现行状态机零改动):封印对在「门控首位 ==
-        # 封印对 ∧ fp 未见回落(<1.0)」期间禁止再闩;解封两路 =
+        # 超窗再一次性标志位封印(现行状态机零改动):封印对在「门控首位 ==
+        # 封印对 ∧ fp 未见回落(<1.0)」期间禁止再一次性标志位;解封两路 =
         # 换向(门控首位 ≠ 封印对)/ fp 回落(方向丢失,此后再达成
         # 才是新 form_ok 事件)。
         if ist.p1_pair_refreeze_hold:
@@ -1071,17 +1074,18 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     """意向线囤货采购集(目标件定义节 class2 口径的落地):
 
     角色件 = core_chars ∪ shared_chars(替班者已并入成员名单承载)
-    ∪ 羁绊成员(form_tiers/sub_tiers
-    键阵营下的注册表成员);装备件 = derive_key_equips(到人配方投影)− equip_taboos
+    ∪ 羁绊成员(档 0 ∪ 档 ≥1
+    键阵营下的注册表成员——统一读口 core/bonus_faction_reqs);装备件 =
+    derive_key_equips(到人配方投影)− equip_taboos
     (具名禁忌;类级禁忌如「护盾件(类)」由买侧/装备层消费,本层不展开)。
     """
     chars = set(comp.core_chars) | set(comp.shared_chars)
-    factions = set(comp.form_tiers) | set(comp.sub_tiers)
+    factions = set(comp.core_faction_reqs) | set(comp.bonus_faction_reqs)
     if factions:
         for name, c in CHARACTERS.items():
             #  修法2:目标集判定用「阵营 ∪ 流派」全集与档位键
             # 作交集——旧版只查 c.factions,而档位键常含**流派系羁绊**
-            # (万敌单C form_tiers 燃血=flows、DOT 持续伤害、黄泉减益、击破等),
+            # (万敌单C 档 0 燃血=flows、DOT 持续伤害、黄泉减益、击破等),
             # flows 成员(刃/镜流/布洛妮娅 等)被目标集排除 → 终局阵容锁定采购面残
             # ( Ring1:燃血 8 成员 3 名缺位)。泛化修正,非万敌特判
             # (candidates 的 _char_factions 同式全集口径)。
@@ -1223,7 +1227,7 @@ def committed_authority(state: GameState | None,
       买门全开(供给点清单 D2:拔掉供给探针下必须落保守侧,变异测试钉住)。
     - 消费契约:全部消费点经本函数或 ``decision_v2.prep_brain
       .committed_from``(唯一读端,内部委托本函数)取值。
-    - **state 形态 = 容器单例**(波3 切换;禁新消费点再喂旧帧或手造
+    - **state 形态 = 状态容器单例**(波3 切换;禁新消费点再喂旧帧或手造
       鸭子镜像)。
     """
     st = strategy_state_of(session) if session is not None else None
@@ -1239,8 +1243,8 @@ def committed_from(session: StrategySession,
     cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
 
-    - 有现读 state(容器单例)→ 直取权威派生;
-    - 无现读 state 的调用面:plane 取 session 容器单例(game_state_of),
+    - 有现读 state(状态容器单例)→ 直取权威派生;
+    - 无现读 state 的调用面:plane 取 session 状态容器单例(game_state_of),
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
     grep 守卫「session 侧双轨字段直读点归零(本函数之外)」;
@@ -1275,8 +1279,8 @@ def locked_buy_scope(ist: IntentionState | None,
       从 None 不约束翻转为并集约束,方向纪律提前〔有倾向即约束
       机会买〕,显式申报;冻结后槽单元素 = 冻结对成员,与现行语义
       一致)。``transition_candidates`` 参数缺省 () = 无候选供给
-      (调用方未接线的过渡形态,配方支空);候选不经 ist 传递(槽在
-      策略器状态,写端 = 配方链重算),接线消费方传槽值,禁现算
+      (调用方未接入调用的过渡形态,配方支空);候选不经 ist 传递(槽在
+      策略器状态,写端 = 配方链重算),接入调用消费方传槽值,禁现算
       第二源;
     - 阵容锁定帧(P1①资格通道 / P2+)= ``_line_hoard(comp)`` 角色采购集;
       **①锁局(P1)∪ 过渡候选并集**——二级囤货语义
@@ -1310,7 +1314,7 @@ def locked_buy_membership(ist: IntentionState | None,
 
     双源断裂机制:锁定帧的买入 membership 旧按
     ``predicates.line_members(target_comp)``(comp core∪shared)判,而
-    终局阵容锁定语义的采购集权威 = ``_line_hoard``(含 form_tiers∪sub_tiers
+    终局阵容锁定语义的采购集权威 = ``_line_hoard``(含档 0∪档 ≥1
     档位键的阵营∪流派全集成员,修法2 同口径)——实机对局
     g_20260905_035710 锁「列车同行」后,同阵营成员(开拓者·欢愉/
     丹恒·饮月,非该 comp core∪shared)被判 ``non_line``、M2 骨架义务
@@ -1400,7 +1404,7 @@ def locked_buy_cap_hold(state: GameState | None) -> int | None:
     已不可达而不告警)。缺读 fail-closed 方向 = 返回 None ⇒ 消费方保宽
     (现行为,零漂移端)——容量不可得帧不做截断收紧。
 
-    state 形态 = 容器单型(读口 = level_of/max_units_of;None = 缺读,
+    state 形态 = 状态容器单型(读口 = level_of/max_units_of;None = 缺读,
     谓词弃权路径)。
     """
     if state is None:
@@ -1418,7 +1422,7 @@ def locked_buy_cap_hold(state: GameState | None) -> int | None:
 
 
 # (锁定线配方底线门豁免 locked_line_recipe_floor_conflict 已随部署统一批
-#  丁丁批收编删除:配方底线门(recipe_floor_holds/RECIPE_FLOOR_*)随七桶
+#  丁丁批纳入统一管理删除:配方底线门(recipe_floor_holds/RECIPE_FLOOR_*)随七桶
 #  选人族退役——选人 = 统一部署搜索定型,「列车 core 不被补部署绕回上板」
 #  的底线语义由搜索评分承载,unified-deploy-order §2/§4。)
 
@@ -1438,7 +1442,7 @@ def locked_faction_scope(ist: IntentionState | None,
       =量子同频+贝洛伯格,与 ``_pair_members`` 同口径;冻结后槽单
       元素 = 冻结对体系键,现行语义一致;参数缺省 () = 无候选供给);
     - 阵容锁定帧(P1①资格通道 / P2+)= ``locked_comp`` 主/副档键
-      (``form_tiers`` ∪ ``sub_tiers``,与 ``_line_hoard`` 档位键同式);
+      (``core_faction_reqs`` ∪ ``bonus_faction_reqs``,与 ``_line_hoard`` 档位键同式);
       **①锁局(P1)∪ 过渡候选体系键(与 ``locked_buy_scope``
       同式扩位)**——对体系提案不再按 off-lock 降级/解除,protect 基准
       (cw_evolution 围栏/保留序)同步扩覆盖(R2:换人可以拆引擎不行);
@@ -1464,7 +1468,7 @@ def locked_faction_scope(ist: IntentionState | None,
     if ist.phase == 'locked' and ist.locked_comp:
         comp = get_comp(ist.locked_comp)
         if comp is not None:
-            keys |= set(comp.form_tiers) | set(comp.sub_tiers)
+            keys |= set(comp.core_faction_reqs) | set(comp.bonus_faction_reqs)
     return frozenset(keys) if keys else None
 
 
