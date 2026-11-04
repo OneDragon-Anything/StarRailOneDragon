@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-银狼「我来当策划」二选一(画面 货币战争-银狼升星)点卡选中并确认。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp`(域 env = `OverlayPickExecEnv`);动作发出点 = `operations/cw_screen/cw_screen_yinlang.py::CwScreenYinLang.act` 决策动作 node 经注册表工厂 `action_op_for` 派发(替身缝 = 工厂派发调用点,测试经 monkeypatch `action_op_for` 承接,校验 = `test_screen_two_node_family`)。
+银狼「我来当策划」二选一(画面 货币战争-银狼升星)点卡选中并确认。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickPlannerParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_planner_action.py::CwActionPickPlannerOp`(域 env = `OverlayPickExecEnv`);动作发出点 = `operations/cw_screen/cw_screen_yinlang.py::CwScreenYinLang.act` 决策动作 node 经注册表工厂 `action_op_for` 派发(身身缝 = 工厂派发调用点,测试经 monkeypatch `action_op_for` 承接,校验 = `test_screen_two_node_family`)。
 
 ## 2. 逻辑态域集
 

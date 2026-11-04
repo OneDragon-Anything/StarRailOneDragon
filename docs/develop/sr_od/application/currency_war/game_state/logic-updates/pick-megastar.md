@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-盛会之星 overlay 点「确认选择」确认已选强化角色。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickMegastarParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp`(体迁自 `cw_screen_megastar.py::CwScreenMegastar._do_action` 确认部分,替身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
+盛会之星 overlay 点「确认选择」确认已选强化角色。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickMegastarParam`(`PickOption` 子类:字段 `idx` = 候选下标 0 起、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp`(体迁自 `cw_screen_megastar.py::CwScreenMegastar._do_action` 确认部分,身身缝 = 方法级桩保留;域 env = `OverlayPickExecEnv`)。
 
 ## 2. 逻辑态域集
 
@@ -30,7 +30,7 @@
 
 ## 6. kernel 符号名引用
 
-`kernel/cw_vocab.py::CwActionPickMegastarParam` / `PickOption`;`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_megastar`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmMegastar 零写分道);`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(候选选择部分/写入方/替身缝)。
+`kernel/cw_vocab.py::CwActionPickMegastarParam` / `PickOption`;`operations/cw_op/cw_pick_megastar_action.py::CwActionPickMegastarOp` / `cw_overlay_pick_env.py::OverlayPickExecEnv`;`kernel/cw_obs_core.py::area_center`;`kernel/cw_game_state.py::chosen_megastar`;`operations/cw_screen/_overlay_confirm.py::register_confirm_arrival`(ConfirmMegastar 零写分道);`operations/cw_screen/cw_screen_megastar.py::CwScreenMegastar`(候选选择部分/写入方/身身缝)。
 
 ## 7. 语义验证
 

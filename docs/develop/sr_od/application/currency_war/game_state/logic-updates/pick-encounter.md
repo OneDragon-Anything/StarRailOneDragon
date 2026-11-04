@@ -4,7 +4,7 @@
 
 ## 1. 动作是什么
 
-遭遇节点弹窗点选一张遭遇卡并确认。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickEncounterParam`(摊平后叶子类,原 `PickOption` 基类契约逐类重声明:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_encounter_action.py::CwActionPickEncounterOp`,由画面 op `CwScreenEncounter.act` 经注册表工厂分派,无替身缝;域 env = `OverlayPickExecEnv`。
+遭遇节点弹窗点选一张遭遇卡并确认。动作类型(`kernel/cw_vocab.py` 清单中的类)= `CwActionPickEncounterParam`(摊平后叶子类,原 `PickOption` 基类契约逐类重声明:字段 `idx` = 画面候选卡位下标 0 起(左→右)、`reason` = 归因记录字段)。op 载体 = `operations/cw_op/cw_pick_encounter_action.py::CwActionPickEncounterOp`,由画面 op `CwScreenEncounter.act` 经注册表工厂分派,替替身函数的接缝(stub seam);域 env = `OverlayPickExecEnv`。
 
 ## 2. 逻辑态域集
 
