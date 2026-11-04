@@ -2,7 +2,7 @@
 
 > 本文档所属 = game_state 设计目录,总纲见 [README](README.md)(含 GameState/BoardState
 > 命名对应注)。本文 = 统一 state 流水的记录机制面(原流程侧遥测设计件已删,git 可溯);设计裁定与 why 的持久锚 = 本目录权威版本各区 + git 历史。
-> 术语与图例:保留词(对账/帧/帧代次/两态制/逻辑随机态/单一源/正本/fail-closed 等)与数字来源标注四形态【注】【推】【拟】【拍】的定义见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
+> 术语与图例:保留词(对账/帧/帧代次/两态制/逻辑随机态/单一源/权威版本/fail-closed 等)与数字来源标注四形态【注】【推】【拟】【拍】的定义见 [README](README.md) §6 术语表;对账 = 推算状态与下一帧实读逐项比对,对不上即 bug;帧 = 一次拍画面+做决策的时点,帧代次 = 帧的版本标记。
 
 ## 1. 账本:state/journal.jsonl
 
@@ -68,7 +68,7 @@ carried/prior/synthesized 是 obs 族内子模,**非第四源**。
 段界三个特殊窗口,各一句白话:①**局间旧 id 驻留窗**——一局收尾后、下一局的
 run_id 还没铸造出来时,写入口上游有**写缓冲**垫着,新段铸造后按原顺序补写,补写行
 带原始 ts(原 `buffered` 行注记读口已随死代码清偿移除);②**历史段补写窗**——给历史段补行走专用装配通道,
-不经运行时写入口;③**恢复局跨段容器重基线窗**——恢复局每段容器重新基线化,这是
+不经运行时写入口;③**恢复局跨段状态容器(GameState)重基线窗**——恢复局每段状态容器重新基线化,这是
 「v 自 1」的前提。
 
 ## 4. 自足快照行
@@ -145,7 +145,7 @@ API 面(宿主=GameState 写入 API,符号=kernel/cw_game_state.py):
 ```
 
 `write_logic` 仅限设计显式申报豁免的写入方(事件屏 chosen 族〔事件屏选择结果字段族
-`chosen_*`,定义见容器字段规格 §3.4〕/局级事实写入方〔局终域域键 `match_final`,唯一写入入口
+`chosen_*`,定义见状态容器字段规格 §3.4〕/局级事实写入方〔局终域域键 `match_final`,唯一写入入口
 `write_match_final`,渠道③ actor=MatchClose:一段一行,载荷 = 终局类型封闭集 + 时点
 版本 id + code_commit/registry_fingerprint 版本戳 + 终局快照 + 段级时长,abnormal 补写行
 note=recovered 注记;适用范围 = 段内补写与在线收尾,启动扫描**历史段**补写走专用装配通道,
@@ -161,11 +161,11 @@ note=recovered 注记;适用范围 = 段内补写与在线收尾,启动扫描**�
 [retirement.md](retirement.md)(单一源,本文不复写);排期与裁决口径的原排期件
 (单源直迁八波)已随过程件清理删除,考古走 git 历史。
 **常开语义(影子双写方案已被推翻)**:journal 无条件常开——无开关、
-无装配条件分支。生产装配走两条路:①app 装配段显式接通;②**局容器单例建立点兜底**
+无装配条件分支。生产装配走两条路:①app 装配段显式接通;②**局状态容器单例建立点兜底**
 (`game_state_of` 建立路径注入 run 归属读取函数并触发 kernel
 `ensure_journal_assembly`,幂等;GameState 构造器零装配逻辑——画面解析草稿
-容器直构路径结构性不可能触发遥测)。两路汇合的注入聚合入口 = `establish_new_match`
-容器建立点——它是「CwEntryStart 进对局前移」与「CwLoop handle_init 兜底」
+状态容器直构路径结构性不可能触发遥测)。两路汇合的注入聚合入口 = `establish_new_match`
+状态容器建立点——它是「CwEntryStart 进对局前移」与「CwLoop handle_init 兜底」
 两个生产调用方的公共入口。装配归属已裁定:遥测数据的保存是 game state 职责,
 run 领取层 telemetry `ensure_run_started` 不负责装配(用户裁定 2026-09-15)。
 另有一条旁路也被本口径覆盖:run_operation 直调 CwLoop 的接管/续跑不经 app 装配段,

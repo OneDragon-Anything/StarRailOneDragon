@@ -78,7 +78,7 @@ quality 源标已定案:现行链写入方 quality 固化 = `prep_row`(链观察
   baseline/current 两链序列与来源、逐格 channels/hu_dist、rewrites/channel_limited/
   length_changed/first_diff_pos/baseline_coverage、confirm_frames;verdict 留空——
   改写效果的身份归因 = 消费侧对 active_env/active_strategies 同帧快照的 join 结论,
-  观察层不猜。event 词 = 登记清单项(登记与接线均见
+  观察层不猜。event 词 = 登记清单项(登记与接入调用均见
   [retirement.md](retirement.md) §5)。
 - 对账口径:链 diff 行 vs 改写源登记([fields.md](fields.md) §3.2.2 改写源清单:人身意外险/战争
   边疆/决议:娱乐星球)的对照;指标面与统一观察对账的「识别锚 vs 帧」口径同型。
@@ -103,7 +103,7 @@ chain_rewritten(view, plane) -> set[int]                # 已证伪改写位集:
 
 ## 7. 边界
 
-- **防双源**:判读侧记录表 `PlaneNodeLedger`(容器 `plane_node_sequences` 合并视图)与 session 三载体
+- **防双源**:判读侧记录表 `PlaneNodeLedger`(状态容器(GameState) `plane_node_sequences` 合并视图)与 session 三载体
   现状不动、不新增职责;链查询不读它们——node_path 存帧事实、记录表存合并视图,
   语义分格,禁互相代读。
 - **入口前跨位面改写**(如战争边疆改第三位面)体现为「基线本身已改」,不产 diff;

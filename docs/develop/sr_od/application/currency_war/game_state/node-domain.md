@@ -13,7 +13,7 @@
 节点域回答「bot 现在打到第几个节点、是什么类型」。节点身份唯一表示 = 节点
 序位键 `(位面, 轮)`(`NodePos`,二元素整数元组,1 基,单一源住
 `cw_node_schedule`;对外标识统一「位面-轮」标签形态如 `2-1`,元组只是标签的
-容器内表示)。序列真值**按局修饰变长**:默认环境 = 默认序列表;投资环境改
+状态容器(GameState)内表示)。序列真值**按局修饰变长**:默认环境 = 默认序列表;投资环境改
 节点序列时(「人身意外险」每个 boss 位前插补给)序列真值随场字段
 `node_seq_by_plane` 调整——凡持 gs 的生成方同读场字段(None = 未注册态回退
 默认表),与效果账本 `advance_node` 同源。「推进 +1」= `sequence_next`
@@ -25,8 +25,8 @@
 序列的**第二修饰腿** = 策略卡条件改写(mid-run,与 env 注册刻写构成场字段
 双写端):策略卡「进入战斗时条件满足 → 本局剩余非首领节点替换为奖励节点」
 类(登记表 = `cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS`,决议:娱乐
-星球 id 302301 首例)由 sim 节点窗开挂点条件触发整表覆盖写(evidence
-`node_seq:strategy`,一局至多一次,闩 = `strategy_conditional_done` 纯卡名
+星球 id 302301 首例)由 sim 节点窗开插入位置条件触发整表覆盖写(evidence
+`node_seq:strategy`,一局至多一次,一次性标志位 = `strategy_conditional_done` 纯卡名
 键共域)。与 env 注册写(上段,`node_seq:env`)的相对序 = 后写赢:先策略
 改写后选改写环境 → env 注册值覆盖策略值,双改写叠加零特判(判读申报制)。
 字段契约单一源 = [fields.md](fields.md) §3.2.2b。
@@ -49,9 +49,9 @@ value 在场 ∧ source=observation 双条件)与推进生效原语 `advance_nod
 |---|---|---|
 | `top_bar_raw: Field[str]` | 备战帧顶栏原文(观察层),唯一写入位置 = 观察汇聚;原文缺读不写禁猜 | 同上 |
 | `node_pos: Field[tuple[int, int]]` | 节点序位(`NodePos` 元组),**两态字段**:id_mark 确认态 observation(确认 helper 解析读数直写,节点域专用口不经通用 observe())/ 推进态 logic(终结动作上报经原语写入,推进未确认态) | 同上 |
-| `node_hist_pos` | run 内单调水位 + 去重第二道防线;run 段随容器重基线 | 同上 |
+| `node_hist_pos` | run 内单调水位 + 去重第二道防线;run 段随状态容器重基线 | 同上 |
 | `node: Field[NodeKey]` | plane/round/kind 观察镜像(聚合入口写入方保留,决策层坐标消费) | 同上 |
-| `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写入位置 = 双写端(env 注册刻 `gain_invest_env` 尾段 + 策略卡触发刻 sim 节点窗开挂点,一局至多一次),注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.2b |
+| `node_seq_by_plane: Field[dict[int, tuple[str, ...]] \| None]` | 逐位面节点序列场字段(逻辑态):键 = 位面 1 基,值 = 节点类型序;写入位置 = 双写端(env 注册刻 `gain_invest_env` 尾段 + 策略卡触发刻 sim 节点窗开插入位置,一局至多一次),注册后恒全量;None = 未注册态,消费方回退默认表 | [fields.md](fields.md) §3.2.2b |
 
 画面上下文域 `prev_screen`/`current_screen` = 两个独立事实的原始读数(观察域,
 写入位置 = 观察聚合入口;开局链分支写入位置已随触发模型换代停用,开局链段不再写上下文对),

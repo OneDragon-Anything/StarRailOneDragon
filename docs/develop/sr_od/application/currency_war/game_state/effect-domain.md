@@ -18,7 +18,7 @@
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
 5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 76 条的在域形态。
 
-> 邻位申报(临时工合约批):新白名单表 STRATEGY_EQUIP_EXPIRY_GRANTS(装备到期消失)非 STRATEGY_EFFECTS 条目,§7 生命周期不适用;判定函数 check_strategy_equip_expiry 纯读零写零 rng,闩写 strategy_conditional_done 共域。
+> 邻位申报(临时工合约批):新白名单表 STRATEGY_EQUIP_EXPIRY_GRANTS(装备到期消失)非 STRATEGY_EFFECTS 条目,§7 生命周期不适用;判定函数 check_strategy_equip_expiry 纯读零写零 rng,一次性标志位写 strategy_conditional_done 共域。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -60,14 +60,14 @@
 |---|---|---|
 | 效果规格键 | `EffectSpec.id`(plaza 稳定 id,cw_invest_data 主键;构建层校验 id+name 双匹配,`_validate_strategy_effects`,cw_investments.py:396-420) | **效果域**(本文)——实例以 spec_key 登记 |
 | 效果计数键 | `CounterKey.REFRESH`/`CounterKey.BUY`(kernel/cw_effect_inventory.py `CounterKey` 类 :117-120),按 `(spec_id, key)` 定点隔离读(:192-195) | **效果域** |
-| 策略行为观测键 | `StrategyState.cw4_counters` 容器各键(mandate_v1 决策/执行链自观测计数,strategies/impl/mandate_v1/mandate_state.py) | 决策行/局终聚合(策略侧载体),**禁入效果域** |
+| 策略行为观测键 | `StrategyState.cw4_counters` 状态容器(GameState)各键(mandate_v1 决策/执行链自观测计数,strategies/impl/mandate_v1/mandate_state.py) | 决策行/局终聚合(策略侧载体),**禁入效果域** |
 
 - 策略行为观测键与效果域键**零交集**:键级审计已定案「游戏效果键 0 键」(效果域键的
   载体独立 = `cw_effect_inventory.py`,CounterKey 写入位置经 `effects.bump_key`,与
   cw4_counters 无共同键);机器测试 = sr-od-test `test_cw4_key_closure.py::test_effect_
   domain_zero_keys_d1_idle_declaration`(:809)。**键并入写入代码后无迁入效果域之键**。
 - 未来新游戏效果键(新卡/词缀/环境源建模批产出)一律按本文语义入域:规格入注册表
-  (`STRATEGY_EFFECTS` 或对应源注册表)+ 实例经登记接入点入清单,禁旁落行为观测容器。
+  (`STRATEGY_EFFECTS` 或对应源注册表)+ 实例经登记接入点入清单,禁旁落行为观测状态容器。
 
 ## 3. 计数器模型(统一单调计数器)
 
@@ -96,7 +96,7 @@
 
 - **伴生数值空间**:效果需随实例携带的数值(超发货币的负债额/狸财经狸的存款余额/
   现金为王的护盾余量)= 实例内 counters 键值承载,**不设独立 state 字段、不扩
-  payload**。在册先例 = 超发货币负债额(impacts §3 超发货币条目)与现金为王护盾
+  payload**。已登记先例 = 超发货币负债额(impacts §3 超发货币条目)与现金为王护盾
   记忆量(`counters['shield_bank']` = 板面重写桥出售支退款×1000 同闸记账,写端
   唯一 = 桥);其余随逐条确定流程落 impacts 条目后即为已登记先例。
 - **与现行载体的等价申报**:现行 `ActiveEffect`(kernel/cw_effect_inventory.py:
@@ -140,10 +140,10 @@ unit_buff);词缀源
 | 静态修改器 | 持有期常数覆写/倍率,无时点事件 | counter 空(声明即生效,消费点计算侧直读,§6.2) | 无 | 开源节流 interest_cap_override(cw_investments.py:171)、简单模式 difficulty_delta(:267) |
 | 每节点发放 | 每进节点给金/刷 | counter 空(节点事件判等发放,无剩余/门槛)或按节点 +1(有限期时转限时段形态) | 节点推进 | 按劳分配 gold_per_node(cw_investments.py:205)、双手狸开键盘！(§8) |
 | 限时段 | 持续 N 节点后失效 | counter 按节点 +1;剩余 = N − counter(计算侧),counter 达 N = 过期 | 节点推进 | 躺平 duration_nodes=3(§8) |
-| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:681)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 容器落位 = `strategy_gold_next_nodes_left` 递减形〔fields.md §3.2.26e〕,counter 口径正本 = strategy-env-impacts.md 用户裁决段) |
+| 延迟时点 | 登记后第 t 个时点一次性触发 | counter 按节点 +1;counter 达 t 触发(计算侧判等) | 节点推进 | 超发货币 gold_at_node_offset=5(cw_investments.py:681)、长期主义系 gold_next_nodes_*(:261——**分期形对表**:3 窗各一发非一次性触发,sim 状态容器落位 = `strategy_gold_next_nodes_left` 递减形〔fields.md §3.2.26e〕,counter 口径权威版本 = strategy-env-impacts.md 用户裁决段) |
 | 计数门槛 | 每 N 次驱动事件触发一次 | counter 按驱动事件 +1;counter ÷ N 整除触发(计算侧) | 动作次数(刷新/购买/合成/出售) | 采购专员·金/彩 counter_every=7/5(§8)、星星相印 gold_per_3star_merge(§7.4,N=1 事件直结退化形) |
 | 等级门槛 | 到达指定等级触发/开窗 | counter 空(等级本身是 state,无独立累计)或按升级事件 +1 | 升级动作 | 成长基金 gold_at_level_target=9(`STRATEGY_ECONOMY['成长基金']`)、成长的快乐 xp_click_discount_from_level_at=8(`STRATEGY_ECONOMY['成长的快乐']`) |
-| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链在册——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
+| 连胜联动 | 随连胜数变化(倍率/动态难度) | counter 空(连胜流为既有观察面)或按连胜事件 +1——**两案待裁决**(§10-6) | 连胜变化(观察侧供给) | 伟大征服 win_reward_mult/difficulty_per_streak(`STRATEGY_ECONOMY['伟大征服']`;注册行+消费链已登记——倍率经 aggregate_economy 聚合+轮首收入统一公式,难度经 M19 `cw_sim_enemy.difficulty_of` 注册表直读,两字段消费均不经效果清单) |
 
 ## 6. 派生值归位与读数权威
 
@@ -185,12 +185,12 @@ unit_buff);词缀源
 用户裁定(2026-09-10;先例 = impacts §3 伟大征服/淘金客条目):
 
 - **XP 分支零建模(辖域收窄,2026-11-04 用户裁定)**:xp_per_refresh 重复经验族
-  已从本条移出——其世界腿(把结果写进状态副本的实现分支)已接入调用:
+  已从本条移出——其状态副本(GameState)腿(把结果写进状态副本的实现分支)已接入调用:
   刷新上报写端付费帧经 `grant_effect_refresh_xp` 鸭子类型读取聚合 →
   `grant_xp` 逻辑写通道字段写(fields.md §3.2.10);残余辖域 = live 观察覆盖
   足用之未结构化面——经验面板画面可读 = 观察层直接读;overlay 的
   `xp_instant` 等字段值为预测面,非 state 存储(选牌当场族现值零写入方,
-  观察覆盖)。例外:sim 侧世界经验观察写统一经结算原语 `settle_xp_observe`
+  观察覆盖)。例外:sim 侧状态副本经验观察写统一经结算原语 `settle_xp_observe`
   把结果写进状态副本(升级连锁对任意经验来源生效,fields.md §3.2.10);
   `grant_xp` 逻辑写发放通道与之并存(level/xp 域现役双通道,channel_mix
   披露键,环境窗口桥与刷新 XP 分支两个调用点)。
@@ -241,31 +241,31 @@ unit_buff);词缀源
   `grant_effect_node_refresh_balance`(每节点余额累加,闸门 = 推进有效位;两桥出口 = `grant_free_refreshes`,余额住账本——2026-09-18 迁入裁决;**条件判定
   族已同桥 wire**——按金现值逐条目评估:金 > 阈值每额外步长金 +1 次、至多封顶,金未读
   None 保守零授予)/`grant_effect_node_xp`(升级窗口发放,闸门 = 推进有效位:
-  对 payload 带 `xp_after_level` 的在册条目,达成锚未记录 → 达成检测记位
+  对 payload 带 `xp_after_level` 的已登记条目,达成锚未记录 → 达成检测记位
   (`ActiveEffect.anchor_pos`,伴生锚方法一次性写入;当拍不发放)、有锚且当前生效位
   > 达成位(元组字典序)且剩余 > 0 → `grant_xp` 每节点 +XP×1 并
   `bump(CounterKey.XP_GRANTED)` 单调 +1,剩余 = 窗口节点数 − 已发放计算侧导出;
-  耗尽条目留置不删。达成位记录主挂点 = 购买经验上报尾段
+  耗尽条目留置不删。达成位记录主插入位置 = 购买经验上报尾段
   `_record_lv8_window_start`(精确对齐),桥内检测 = 兜底(晚一拍保守);
-  首例 = 成功经验 id 138,披露键族 `ENV_XP_WINDOW_DISCLOSURES`)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(以实际观察为准))/`apply_board_rewrite`
+  首例 = 成功经验 id 138,披露键族 `ENV_XP_WINDOW_DISCLOSURES`)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写状态容器的预期状态,真值以下一帧观察为准(以实际观察为准))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
 - **策略源到级金腿**(成长基金 id 101701 首例):kernel 纯决策函数
   `check_strategy_level_grants`(kernel/cw_gain_chain.py,零写零 rng,
   返回待发放 `(规范卡名, 金额)` 或 None;数据单一源 =
   `STRATEGY_ECONOMY` 级数配对字段,registry 驱动非专表)/闸门 = 短路矩阵
-  六序(持卡 ∩ 到级条目 → done 闩 → level/gold 现值宁缺勿造不封账 →
-  级数比较)/挂点 = sim advance 双点(`_on_node_advance` 推进点 +
-  `_on_node_advance_terminal` 局终点,节点经验入账拍后各一段内联接线:
-  金 = observe 独立笔,sim 金写全 observe 现役形态;闩 = write_logic 直写
+  六序(持卡 ∩ 到级条目 → done 一次性标志位 → level/gold 现值宁缺勿造不封账 →
+  级数比较)/插入位置 = sim advance 双点(`_on_node_advance` 推进点 +
+  `_on_node_advance_terminal` 局终点,节点经验入账拍后各一段内联接入调用:
+  金 = observe 独立笔,sim 金写全 observe 现役形态;一次性标志位 = write_logic 直写
   `strategy_conditional_done`,producer `strategy_level_grant`);
-  live 零接线(金面禁直写,观察覆盖兜底)/披露键 =
+  live 零接入调用(金面禁直写,观察覆盖兜底)/披露键 =
   `strategy_level_grant_state_semantics`(状态检查型语义未经实机采证)+
   `strategy_level_grant_dormant_in_sim`(现役 sim 经验常量下 9 级不可达,
   到级腿休眠)。链式契约权威版本 = [gain-chain.md](gain-chain.md) §2.12。
 - **条件族采样金窗**:`grant_effect_node_refresh_balance` 的条件判定族(本金充裕
   系)按效果推进段执行时点的 `gs.gold` 现值评估——推进挂节点边界终结动作上报
   (settle_confirm/supply_confirm),动作帧的金 = 结算真值(结算观察链
-  `apply_settlement_cover` 先于「继续挑战」点击落容器)或补给屏现读,无旧观察推断
+  `apply_settlement_cover` 先于「继续挑战」点击落状态容器)或补给屏现读,无旧观察推断
   模型「推进帧不读金、沿用缺胜金旧值」的采样漂移面;静态每节点族(加油站/搜打撤/
   双手狸等固定授予族)不涉金采样;金未读该帧零授予不补发(语义见桥本体)。
 - **每节点发放接入点与登记期建模**:每节点余额发放挂节点边界终结动作上报(经推进
@@ -279,13 +279,13 @@ unit_buff);词缀源
 - **到期与尾款**:到期条目移除 = 尾款触发面;尾款金面走**观察覆盖兜底**,禁到期接入点
   logic 直写金币防双计(`advance_node` 契约,`cw_effect_inventory.advance_node`
   docstring 尾款行);确需单列逻辑写的建模者
-  (如超发货币回流分支)按 impacts 条目申报接线。超发货币接线现状(2026-11 实现批):
-  live 零写(游戏自扣自发,金整字段观察覆盖兜底),回流 = sim 节点窗世界腿。
+  (如超发货币回流分支)按 impacts 条目申报接入调用。超发货币接入调用现状(2026-11 实现批):
+  live 零写(游戏自扣自发,金整字段观察覆盖兜底),回流 = sim 节点窗状态副本腿。
   **t=5/6 对表**:注册行 `gold_at_node_offset=5`(cw_investments.py:681)的 offset
   语义 =「须完整过去的节点数」,发放入口序 = offset+1 = 拿卡后第 6 次节点入口
   (单一源 = strategy-env-impacts.md 超发货币条目用户裁定 2026-09-10
   「5个节点后=第6个节点才获取」;载体表达 = STRATEGY_EFFECTS 条目 duration_nodes=6)。
-- **登记接入点纪律**:登记面 best-effort,失败不阻塞选卡主链(登记挂点 = 获得链
+- **登记接入点纪律**:登记面 best-effort,失败不阻塞选卡主链(登记插入位置 = 获得链
   `kernel/cw_gain_chain.py::gain_invest_strategy` ②,选卡上报函数族驱动;唯一生产
   调用方 = 动作 op `operations/cw_op/cw_pick_invest_action.py`——原画面 op 写点
   cw_screen_invest_strategy.py:424-454 已停用退役);递减/消耗接入点与登记接入点解耦
@@ -296,12 +296,12 @@ unit_buff);词缀源
   gain_invest_env` → `cw_effect_inventory.py::register_portal_from_env`(链内
   best-effort 分支:登记/遥测面失败 log + 缺陷保留证据、不阻塞;`session=None` = 局外/
   测试形态登记分支跳过)。
-- **结算接入点现状**:`on_battle_end` **已接线**(kernel/cw_effect_inventory.py 定义;
+- **结算接入点现状**:`on_battle_end` **已接入调用**(kernel/cw_effect_inventory.py 定义;
   生产宿主 = CwScreenBattleWait 结算覆盖带 `_record_round_outcome` 非 telemetry_only
   分支,apply_settlement_cover 同分支同时序,独立 best-effort try 不与结算覆盖写入方
   共享异常域)。注册表在用零战斗结算触发条目(§7.4)→ 行为面 = 结算事件标记
   (`_EVENT_BATTLE_END`);条目计数/余量推进随建模批立战斗结算触发条目后经同一接入点
-  自动生效,无需再改接线。
+  自动生效,无需再改接入调用。
 
 ### 7.4 战斗结算/出售/补给触发(零注册申报)
 
@@ -310,7 +310,7 @@ unit_buff);词缀源
 枚举成员随启用批按需新增),不建事件。`ON_MERGE` 已有词缀源条目(**变宝
 为废**,`AFFIX_EFFECT_SPECS`,§7.6);投资策略侧 ON_MERGE 首条已启用 =
 **武力刷新**(合成装备,官方限定「合成装备时」;spec 条目入 `STRATEGY_EFFECTS`,
-世界发放腿 = §7.3 合成事件行——穿戴上报 applied 出口检查 `apply_on_merge_
+状态副本发放腿 = §7.3 合成事件行——穿戴上报 applied 出口检查 `apply_on_merge_
 refresh_grant`,名单集匹配 + `refresh_per_compose × 合成次数` 发放进
 `free_refresh_left`;实机到账时点/垃圾化交互两件未证事实挂披露键
 `STRATEGY_ON_MERGE_LIVE_UNVERIFIED`);后继条目 = **星星相印**(角色 3 星合成
@@ -354,7 +354,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   是效果面完备性判据(fields.md §7)源 c/源 e 的代码化——新词缀/装备改写成员入册
   时同批入申报表,防「没被点名就无人看管」。
 - **改写面写入方归属**:按 fields.md §5.3 归属判据逐条成文于各 spec notes——成长的
-  烦恼=确定性逻辑写(predict 开,写入方接线归消费批,接线前观察覆盖兜底)/变宝为废=
+  烦恼=确定性逻辑写(predict 开,写入方接入调用归消费批,接入调用前观察覆盖兜底)/变宝为废=
   随机面交由观察收尾/永久创伤=hp_max 缺位交由观察收尾。**词缀源不经 `aggregate_economy`
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
@@ -386,15 +386,15 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 - **论断**:PLANE_START / permanent / STATE;counter **不建**(permanent 无到期,无剩余
   语义);发放分支双腿分段——即时段(「现在」)= xp_instant 4 + burst 2,登记期
   发放(burst 桥 + 登记拍补发桥);位面段 = xp_per_plane 4 + free_refresh_per_plane
-  2,位面开始发放,**双挂点分工**:刷新支 = 位面开始桥 `apply_effect_plane_start_
+  2,位面开始发放,**两处插入位置分工**:刷新支 = 位面开始桥 `apply_effect_plane_start_
   grant`(kernel 推进 tick 位面 1 号节点,per-node 桥同形幂等:advanced ∧ 位面
-  首节点,不另设 done 闩)、XP 支 = sim 位面首节点窗腿(kernel 零 sim import,
-  XP = 世界真值 live 观察覆盖)——同一位面开始两拍:先推进边界(kernel 刷新支)
+  首节点,不另设 done 一次性标志位)、XP 支 = sim 位面首节点窗腿(kernel 零 sim import,
+  XP = 状态副本里的值 live 观察覆盖)——同一位面开始两拍:先推进边界(kernel 刷新支)
   后开窗(sim XP 支),账户面等价、evidence 时序可辨,拍点差显式申报非对齐改造。
   **中途拿卡**:当前已开始的位面其位面段登记拍全额补发(刷新支 = 补发桥
   `apply_effect_plane_refire_grant`、XP 支 = sim 选卡拍补发腿;已开始判据 = 登记
   恒在节点窗内 → gs.node 在场即已开始,node 缺席保守零补发)——用户裁定
-  2026-11-01 拍定,原保守支(不补发)随裁定消解,pending 撤除。
+  2026-11-01 人为定为,原保守支(不补发)随裁定消解,pending 撤除。
 - **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
   ECONOMY 同一实例;注册行四字段 4/4/2/2);官方原文 cw_invest_data.py:130
   「现在以及每个位面开始时,获得4经验值和2次免费刷新。」
@@ -407,27 +407,27 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 - **论断**:与姊妹固定理财(201801)同构全量同判——PLANE_START / permanent /
   STATE;counter 不建;双腿分段发放,数值异(即时段 xp_instant 6 + burst 3,
-  位面段 xp_per_plane 6 + free_refresh_per_plane 3),载体/双挂点分工/中途
+  位面段 xp_per_plane 6 + free_refresh_per_plane 3),载体/两处插入位置分工/中途
   拿卡登记拍全额补发读法全部共享姊妹条目语义(用户裁定 2026-11-01 对两卡
-  一次拍定,裁决联动禁两态),零新增机制件(桥/腿按 payload 字段鸭子读,
+  一次人为定为,裁决联动禁两态),零新增机制件(桥/腿按 payload 字段鸭子读,
   本卡条目入账本即自动覆盖)。
 - **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
   ECONOMY 同一实例;注册行四字段 6/6/3/3);官方原文 cw_invest_data.py:131
   「现在以及每个位面开始时，获得6经验值和3次免费刷新。」
-- **推理链**:卡文逐字同构仅数值异 → 同 posture 判例(T-178 先例:裁决联动
+- **推理链**:卡文逐字同构仅数值异 → 同 posture 先例(T-178 先例:裁决联动
   禁两态);pending 与姊妹同批撤除(notes 记同判裁定),verdict 维持 None。
 
 #### 公司严选(301401)
 
 - **论断**:PLANE_START / permanent / STATE;duties = track+respond(对表姊妹
-  固定理财落码形);counter **不建**;payload = STRATEGY_ECONOMY 同一实例。
-  三腿分段:即时段(「现在」)= instant_gold 3 在册估值面(金面禁直写——发放
+  固定理财写进代码形);counter **不建**;payload = STRATEGY_ECONOMY 同一实例。
+  三腿分段:即时段(「现在」)= instant_gold 3 已登记估值面(金面禁直写——发放
   写端缺口族级 T-112 口径,零 kernel 桥);选卡改写腿 = sim 选卡尾段,窗口起点
   快照差分限定「本拍新获得」(消费后快照前滚,链式选卡不重燃旧卡、重放差分
   恒空);位面段 = gold_per_plane 3(**策略域位面周期金首例**)+ 位面开始改写腿
   (M05 全刷后后置覆盖),双支 = sim 位面首节点窗独立笔(金 `strategy:plane_
   gold:p{位面}` 求和单笔,XP 位面腿同窗邻位;窗口幂等守卫防重放)。**中途
-  拿卡**:位面段〔金 + 改写〕登记拍全额补发(用户裁定 2026-11-01 族级拍定,
+  拿卡**:位面段〔金 + 改写〕登记拍全额补发(用户裁定 2026-11-01 族级人为定案,
   与固定理财族同判;已开始判据 = gs.node 在场即已开始,None 保守零补发)——
   同拍「选卡改写 × 补发改写」双触发两腿都发(journal 双行如实登记禁静默合并)。
 - **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
@@ -435,11 +435,11 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   forced_unique True);官方原文 cw_invest_data.py:257「现在及每个位面开始时,
   开启一个由5个独特4费角色组成的商店,并获得3金币。」
 - **推理链**:触发词族「现在及(以)每个位面开始时」第 3 员,补发读法 = 族级
-  用户裁定直接适用(REVIEW-T309 §1-5 免裁,T-183 同判先例)。「独特」= 同帧
+  用户裁定直接适用(REVIEW-T309 §1-5 无需用户决定,T-183 同判先例)。「独特」= 同帧
   去重(desc 自载显式例外,基线 U13 允许重复辖基线);强制费用档 = kernel
   `sample_shop_deal_forced` 单源(商店发牌出口 drawable_names,翻星腿与基线
   共享——人才下沉局合成);锁交互沿间谍效果腿形(无锁守卫,真值待实采与间谍
-  卡共享,零新增键);pending 定谳形态入册即 False(裁定记录住 notes),verdict
+  卡共享,零新增键);pending 定案形态入册即 False(裁定记录住 notes),verdict
   维持 None。
 
 #### 双手狸开键盘！(204101)
@@ -471,13 +471,13 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 - **论断**:NODE_ENTER / while_held / STATE(payload 引 `STRATEGY_ECONOMY['免战牌']`
   同一实例 = `EconomyEffect(xp_instant=30)`,单一源);duties = track;次数余量载体
   `duration_uses=2 → remaining_uses`(播种/递减/归零移除走 effect_inventory
-  次数类通道);递减挂点 = 跳过型出战上报(出战 op 跳过子态 →
+  次数类通道);递减插入位置 = 跳过型出战上报(出战 op 跳过子态 →
   `report_action_start_battle_param` 内 `consume_use`,上报时递减,用尽移除)。
   sim 消费面 = `battle_skip` 声明分支(跳过过程:战斗不发生——hp/连胜/收入
-  落账/难度记录/结算环帧行全零写,被跳节点经验照常入账 + 世界直进下一节点窗,
+  落账/难度记录/结算环帧行全零写,被跳节点经验照常入账 + 状态副本直进下一节点窗,
   与 `_on_node_advance` 入账同构,含策略卡到级金/装备腿记账段镜像);+30 经验 =
-  选牌当场即时(§4 投资选择通用通道 `xp_instant`:选卡落地拍世界腿 + 估值
-  现金计分;登记时代「零建模(§6.4)」口径随通用通道落码改判入册)。跳过辖域 =
+  选牌当场即时(§4 投资选择通用通道 `xp_instant`:选卡落地拍状态副本腿 + 估值
+  现金计分;登记时代「零建模(§6.4)」口径随通用通道写进代码改判入册)。跳过辖域 =
   仅 kind='battle'(卡词汇类型读法;披露键 `cw_skip_scope_battle_only_assumption`
   挂实机按钮出现面校准,失配常量单点改值跟随)。
 - **证据**:规格 cw_investments.py `STRATEGY_EFFECTS['免战牌']` 条目 +
@@ -505,10 +505,10 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 #### 公司人才流动(102101)
 
 - **论断**:NODE_ENTER / while_held / BATTLEFIELD;duties = track;counter **不建**
-  (每节点重掷无累计/剩余语义);重掷面 = 随机分支零逻辑写、观察收口(§6.3/§6.4),
+  (每节点重掷无累计/剩余语义);重掷面 = 随机分支零逻辑写、靠画面读数收尾(§6.3/§6.4),
   bot 零执行端代码,真值由下一备战帧 bench 观察(现役观察链)覆盖;区间 = 现役
   capacity 尾 3 槽(默认案,实采可校正);辖域仅 kind='unit' 槽;+2 金 = 选卡当场
-  即时(`instant_gold=2` 在册,非每节点)。
+  即时(`instant_gold=2` 已登记,非每节点)。
 - **证据**:规格 cw_investments.py(`BattlefieldEffect(bench_reroll=
   BENCH_REROLL_RIGHT3)`,bench_reroll 族效果面首个登记条目 = 族模式卡);官方原文
   cw_invest_data.py:60「每次进入新节点时，处在备战席最右侧3个位置的角色变为随机的
@@ -525,9 +525,9 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 #### 公司军火更新·银(130101)
 
 - **论断**:NODE_ENTER / while_held / BATTLEFIELD;duties = track;counter **不建**
-  (每节点变异无累计/剩余语义);变异面 = 随机分支零逻辑写、观察收口(§6.3/§6.4),
+  (每节点变异无累计/剩余语义);变异面 = 随机分支零逻辑写、靠画面读数收尾(§6.3/§6.4),
   bot 零执行端代码,真值由下一备战帧 equips 整表观察(现役观察链)覆盖;「同品质」
-  = 同 category 先验(冶金炉 same_category 在册先例,未证);发放腿「获得1件随机
+  = 同 category 先验(冶金炉 same_category 已登记先例,未证);发放腿「获得1件随机
   简易装备」= 泛化随机装备表行(简易 1 件),登记面分离。
 - **证据**:规格 cw_investments.py(`BattlefieldEffect(equips_reroll=
   EQUIPS_REROLL_SAME_QUALITY)`,物品栏装备变异效果面首个登记条目 = 族模式卡);
@@ -548,7 +548,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 
 - **论断**:ON_REFRESH / while_held / STATE;duties = respond;counter **不建**——产出
   (+2XP)无剩余/门槛语义,无动态需求,单调账 refresh_paid 既有承载;产出分支 =
-  世界腿(把结果写进状态副本的实现分支)已接入调用:刷新上报写端付费帧经
+  状态副本腿(把结果写进状态副本的实现分支)已接入调用:刷新上报写端付费帧经
   `grant_effect_refresh_xp` 鸭子类型读取 `xp_per_refresh` 聚合 → `grant_xp`
   字段写,evidence `effect_refresh_xp`,fields.md §3.2.10(2026-11-04 用户裁定
   采真实写入方案,原零建模面随裁定闭合,§6.4 辖域同步收窄)。
@@ -587,9 +587,9 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   覆盖兜底);官方原文 cw_invest_data.py「刷新商店时，若刷新的角色中出现2个相同的
   角色，获得1金币。获得4次免费刷新。」
 - **推理链**:逐刷独立条件 → counter 空;「刷新商店时」= 手动刷新动作(刷新触发
-  闭集 = 节点切换 + 手动,economy.md;挂点 = 手动动作唯一生产点,节点窗自动全刷
+  闭集 = 节点切换 + 手动,economy.md;插入位置 = 手动动作唯一生产点,节点窗自动全刷
   另口不经此),节点切换侧待实采,披露键 STRATEGY_REFRESH_PAIR_SCOPE_UNVERIFIED
-  在册;sim 判定输入 = 采样 = 世界真值,live 采样是猜测金面禁直写(零写);
+  已登记;sim 判定输入 = 采样 = 状态副本里的值,live 采样是猜测金面禁直写(零写);
   live 补账 = 游戏侧真实加金 → 下次商店入口金位实读观察锚定(感知滞后窗同披露键)。
 
 #### 商业间谍(300201)
@@ -597,7 +597,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 - **论断**:LEVEL_UP / while_held / BATTLEFIELD;duties = predict+respond;counter **不建**。
   被动分支(购买经验花费 −1)= 惰性读取入口(§6.2),不入存储;触发分支(升级时刷新商店 +
   偷最贵 3 张)= 升级值变更回调驱动(写端 = `cw_levelup_callbacks.on_level_up_change`
-  spy 分支,源 = 任意经验来源升级;sim 世界分支消费经声明簿记队列,advance 尾
+  spy 分支,源 = 任意经验来源升级;sim 状态副本分支消费经声明簿记队列,advance 尾
   统一排空),偷取哪 3 张 = 随机面交由观察收尾。
 - **证据**:规格 `STRATEGY_EFFECTS['商业间谍']`(`BattlefieldEffect(steal_on_level_up=3)`);官方
   原文 cw_invest_data.py:244「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个
@@ -626,8 +626,8 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
 - **论断**:INSTANT / once / BATTLEFIELD;duties = predict;counter **不建**;清场出售 =
   确定性逻辑写面(出售金按卖价公式,归属判据 §6.3 确定性分支),发牌面随机交由观察收尾;
   出售金分支无 STRATEGY_ECONOMY 条目(spec 注释自注缺口,cw_investments.py:686-689);
-  sim 发牌面由后端发牌腿承接世界真值直写(`cw_sim_backend
-  .apply_strategy_pick_sell_all_deal`,挂 `_on_invest_picked` 选卡落地拍、呈现闩防重放,
+  sim 发牌面由后端发牌腿承接状态副本里的值直写(`cw_sim_backend
+  .apply_strategy_pick_sell_all_deal`,挂 `_on_invest_picked` 选卡落地拍、呈现一次性标志位防重放,
   授予出口 `grant_bucket_names` 逐档派生桶,判据 = `STRATEGY_EFFECTS` 过滤
   `board_rewrite='sell_all_deal'` 派生禁硬编码),live 维持观察覆盖零改动。
 - **证据**:规格 cw_investments.py:690-696(board_rewrite='sell_all_deal');官方原文
@@ -644,7 +644,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   退款;×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);
   刷腿 = `free_refresh_burst=6` 挂战场载体(burst 桥登记拍单次发放,
   **BattlefieldEffect 载体携 burst 首例**,与 free_refresh_on_node_enter 同值域、
-  发放挂点不同:登记拍单次 vs 节点边界);发牌腿非本卡卡文面——sim 发牌判据按
+  发放插入位置不同:登记拍单次 vs 节点边界);发牌腿非本卡卡文面——sim 发牌判据按
   「卡文是否携带发牌腿」语义值细分(`'sell_all_deal'` vs 素 `'sell_all'`),素出售
   卡不入集,sim 局零假发牌。
 - **证据**:规格 `cw_investments.STRATEGY_EFFECTS['大裁员']`(payload=
@@ -654,7 +654,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   获得双倍价格的金币。获得6次免费刷新。」
 - **推理链**:双腿同拍各司其职(burst 桥写 free_refresh_left / 板面重写桥清场
   退款,写域不相交,序间零依赖);退款 = 场上构成依赖无字段载体(卡级 PENDING
-  登记在册,估值 fail-closed=0);卖价 ×2 净额/基础价口径 desc 未写明,禁猜维持
+  登记已登记,估值 fail-closed=0);卖价 ×2 净额/基础价口径 desc 未写明,禁猜维持
   缺口(fields.md §4 SellBench 修饰行单一源)。
 
 #### 降本增效(202301)
@@ -664,7 +664,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   ×2 卖价修饰施于净额/基础价 = 缺口 G4 待实采,闭合前退款按基础公式);免费
   购买腿 = **uses 有界窗口与 INSTANT/ONCE 并装**(`duration_uses=6` →
   `remaining_uses` 播种,uses 维度与 duration 类别独立)——「接下来6次购买角色
-  是免费的」= 获得时点起按张计的有界余量(k 张 = k 次),递减挂点 = 买牌上报
+  是免费的」= 获得时点起按张计的有界余量(k 张 = k 次),递减插入位置 = 买牌上报
   单点(`report_action_buy_card_param` 免费闸:免 min(k, 余量) 张、余张照付,
   全免帧零金写,拒买早退零递减),用尽移除(第 6 张买毕条目离场,后续买牌恢复
   扣金);免费帧不计花销(买牌两通道 mark_gold_spent 置位豁免,同函数刷新通道
@@ -675,11 +675,11 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   批量递减 helper = `ActiveEffectInventory.consume_uses_up_to`;官方原文
   cw_invest_data.py:136「出售场上和备战席的所有角色，获得双倍价格的金币。你
   接下来6次购买角色是免费的。」
-- **推理链**:出售面构同大裁员素出售(登记腿桥双端同链,姊妹卡同构);免费
+- **推理链**:出售面构同大裁员素出售(登记腿桥实机(live)和模拟器(sim)两边同链,姊妹卡同构);免费
   购买腿 = 免战牌 uses 载体复用(次数类首例机制),ONCE 注记只辖出售腿一次性
   语义(机译无 ONCE 移除逻辑,uses 独立播种);predict = 买牌对账须预知免费
   价,track = 次数余量剩余期量(免战牌 track=True 同形);×2 施径缺口与免费
-  购买呈现面(商店牌面价格显示形态)均归实采域(停机钩子名单在册,人工采集)。
+  购买呈现面(商店牌面价格显示形态)均归实采域(停机钩子名单已登记,人工采集)。
 
 #### 现金为王(250301)
 
@@ -687,12 +687,12 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   空,部署/买牌对账须预知);counter **建**(伴生数值型,先例 = 超发货币
   LOST):`counters['shield_bank']` = 出售退款合计×1000(卡文明写系数,常量
   承载),写端唯一 = 板面重写桥出售支(与退款权威写入同闸:空场退款零/出售域
-  未全读 → 零记账等观察收口,禁部分记账),登记拍单写、无推进维度
+  未全读 → 零记账等靠画面读数收尾,禁部分记账),登记拍单写、无推进维度
   (while_held 实例随局存活,余量读数成立)。出售面 = 素出售语义确定性逻辑写
   (大裁员/降本增效同构;卡文无「双倍」句,无卖价修饰,退款 = 标准卖价);
   护盾授予面(「每场进入战斗时前台获盾」持久被动)= 游戏侧自算,bot 零响应
   (UNIT_BUFF 族零响应教义同判;U01 sim 战斗纯随机零消费 = 结构性边界),
-  counter 为世界真值记账,现役零代码消费。
+  counter 为状态副本里的值记账,现役零代码消费。
 - **证据**:规格 `cw_investments.STRATEGY_EFFECTS['现金为王']`(payload=
   BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL));记账段 =
   cw_effect_inventory.apply_board_rewrite 出售支尾(CASH_KING_SHIELD_PER_GOLD
@@ -700,7 +700,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   「出售场上和备战席的所有角色，之后每场进入战斗时，为我方前台提供护盾，护盾量
   等同于该次出售角色所获得总金币数*1000。」
 - **推理链**:护盾量 = 出售面退款合计的一次性函数(先出售、后按量供盾)→
-  记账点与退款同一权威判据(桥内 spec-id 门控单一源,live/sim 双端同链自动
+  记账点与退款同一权威判据(桥内 spec-id 门控单一源,live/sim 两边同链自动
   一致,登记腿每局至多一次无重入闸);量值 desc 明写(×1000)可建模,刷新/
   叠层/受盾位次 desc 未写 = 全部放弃(禁猜,游戏侧自算);触发面「每场进入
   战斗」零新增词表值零响应登记(§7.4 教义,候选驱动启用前提不满足)。
@@ -746,7 +746,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   单一源);bot 零响应——本族首张**条件卡**:条件(进入战斗时上阵后排 ≥4 角色)
   与数值(15% 速度增幅)均由游戏侧自算评估施加。「后排」= 上阵后排编队非备战栏
   (drag_cw_char.py:39 `_ROWS` 三键分立;后排容量 6-9),kernel `back_capacity_of`
-  观察读口零接线(无消费端:sim 战斗 U01 不消费 buff、live 游戏自算自显、策略侧
+  观察读口零接入调用(无消费端:sim 战斗 U01 不消费 buff、live 游戏自算自显、策略侧
   选卡估值范围外)。不绑阵营(泛用全队数值,`STRATEGY_BINDINGS` 零触碰,表外默认
   空绑定);现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
 - **证据**:规格 `STRATEGY_EFFECTS['应援团']`(cw_investments.py 战力类零响应族条目);
@@ -782,8 +782,8 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
   单一源);bot 零响应——本族首张**战中条件窗口卡**(desc 明文「战斗中」窗口,
   区别于应援团的入场拍):条件(关卡进度<40%)与数值(前/后台强度提高40%)均由
-  游戏侧自算;「关卡进度」读数定义游戏侧,判读申报制不在读法间拍死(最相邻在册
-  机制 = combat.md「遭遇奖励=伤害进度达标制」战斗内进度条条,bot 零消费不接线)。
+  游戏侧自算;「关卡进度」读数定义游戏侧,判读申报制不在读法间拍死(最相邻已登记
+  机制 = combat.md「遭遇奖励=伤害进度达标制」战斗内进度条条,bot 零消费不接入调用)。
   「前/后台」与代码词表「前排/后排」(drag_cw_char.py:39 `_ROWS`)字面不同字,
   对应系判读非直译(全队两排泛用增幅,无位置限定,零行为后果)。不绑阵营(泛用
   数值,`STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 = 已注册名无
@@ -825,7 +825,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   评估施加(计数粒度/并列细则游戏侧定义,bot 零消费)。「场上」= 上阵编队
   front+back,与备战栏分立(`drag_cw_char.py` `_ROWS` 三键);kernel cost 读口群
   (card_cost/bench_char_cost/effective_cost/sell_refund)系经济域观察读口,非
-  效果建模件,零接线(伤害减免在 kernel/sim 零数值建模,速度同域)。不绑阵营
+  效果建模件,零接入调用(伤害减免在 kernel/sim 零数值建模,速度同域)。不绑阵营
   (泛用计数 buff,「1费角色/3星」系费用与星级通用属性非阵营语义,
   `STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 = 已注册名无 economy →
   (0.0, False)(战力类不进经济模型)。
@@ -890,9 +890,9 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
   单一源);bot 零响应——本族首张**幸运一击伤害域卡**:「幸运一击伤害提高25%」
   = 战斗内独立乘区的伤害增幅(幸运一击与暴击独立计算、互不影响,幸运一击暴伤
-  基础 100%),**非泛用强度、非双端盲区形态**——机制正本 = combat.md 伤害公式
+  基础 100%),**非泛用强度、非两边盲区形态**——机制权威版本 = combat.md 伤害公式
   三乘区节(幸运一击伤害征服乘区),零建模理由 = 游戏侧战斗真值 bot 零消费
-  (后继族卡禁转引「盲区」口径;装备域同属性档在册,desc「幸运一击伤害提高」
+  (后继族卡禁转引「盲区」口径;装备域同属性档已登记,desc「幸运一击伤害提高」
   系官方既有属性词)。desc 未写触发时点 = 持有期间生效,数值(25%)与对象
   (我方小队全队)全 desc 明文,零选择语义零条件分支。「幸运一击」系战斗机制名
   非召唤单位注册名(kernel 命中仅敌侧词缀克制映射/机制属性映射/敌侧依赖面,
@@ -913,12 +913,12 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS` 数据面表达式
   单一源);bot 零响应——本族首张**行动值时点触发卡**:「战斗开始100行动值后我方
   小队伤害增幅提高40%」= 时点型条件(达阈值后增益激活并维持)。「行动值」读数
-  定义正本无机制条目(combat.md 在册内容系出装攻略语境非机制定义条目,行动值在
+  定义权威版本无机制条目(combat.md 已登记内容系出装攻略语境非机制定义条目,行动值在
   kernel/sim 全域零建模),读法 A(战斗内全局行动值轴经过 100 后激活)/读法 B
   (其他游戏侧口径)并列按判读申报制留痕不在读法间拍死——两读法下条件均为游戏
   侧自算、bot 行为语义完全相同,不构成二义冻结面(pending=False:触发时点/作用
   对象/数值全 desc 明文,无缺失数值面);行动值读数 bot 零消费端(sim 战斗 U01
-  不消费、live 游戏自算自显、策略侧选卡估值范围外),不接线、不实机查。
+  不消费、live 游戏自算自显、策略侧选卡估值范围外),不接入调用、不实机查。
   「我方小队」系作用对象全域非阵营语义,不绑阵营(`STRATEGY_BINDINGS` 零触碰,
   表外默认空绑定);现金分支 = 已注册名无 economy → (0.0, False)(战力类不进
   经济模型)。
@@ -940,11 +940,11 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   于原伤害20%的真实伤害」),双 clause 由 effect_text 全文承载(同构先例 = 当头
   一棒伤害+易伤单条)。clause 2 触发(逐攻击命中后比较攻击者与目标敌人星级)系
   游戏侧战斗内逐攻击评估拍:敌方星级无 repo 读口(cw_sim_enemy 系难度记录非战斗
-  单位,敌人信息浮层屏档在册读数 = 等级),sim 战斗 U01 无逐攻击事件流,live 无
+  单位,敌人信息浮层屏档已登记读数 = 等级),sim 战斗 U01 无逐攻击事件流,live 无
   逐攻击观察锚——星级读法 A(逐攻击命中后攻击者星级高于目标敌人星级时追加)/
   读法 B(其他游戏侧口径)并列按判读申报制留痕不在读法间拍死(pending=False:
   作用对象/数值/触发条件/效果形态/伤害性质全 desc 明文,无缺失数值面);bot 零
-  消费端、不接线、不实机查。「我方小队」系作用对象全域非阵营语义,「星级」系
+  消费端、不接入调用、不实机查。「我方小队」系作用对象全域非阵营语义,「星级」系
   单位养成通用轴非阵营语义,不绑阵营(`STRATEGY_BINDINGS` 零触碰,表外默认空
   绑定);现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
 - **证据**:规格 `STRATEGY_EFFECTS['星级压制']`(cw_investments.py 战力类零响应族
@@ -964,19 +964,19 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
   变为3星,星级结构变形非数值增益,载体取最邻近零响应桶 UNIT_BUFF(词面张力
   显式申报,先例 = 当头一棒对敌效果入本桶同型)。变形持续性 desc 未明文(同
   语体「永久」与「在这场战斗中」两方向标记词均缺席,同构姊妹读博深造同缺席),
-  经用户裁定(2026-11-01)拍定**临时**:变形仅当次战斗内生效,战斗结束复原,
+  经用户裁定(2026-11-01)人为定为**临时**:变形仅当次战斗内生效,战斗结束复原,
   板面零净变化——卖价(`sell_refund`)/合成池账/星级读点不受影响,每场战斗
-  开始重新随机变形一次(pending=False:裁定已定谳;变形世界写端未建模,板面
+  开始重新随机变形一次(pending=False:裁定已定案;变形状态副本写端未建模,板面
   临时态零读写口,临时性仅申报)。触发拍(「战斗开始时」系游戏侧战斗内评估拍:
   TriggerKind 无对应成员,sim 战斗 = U01 瞬时结算随机面无开始分相,机制轴三层
   零命中)/对象选取(「随机1费角色」判读申报默认上阵参战,零响应下无消费面
-  只留痕)与战斗数值全程游戏侧自算,bot 零消费端、不接线、不实机查;无板面/
+  只留痕)与战斗数值全程游戏侧自算,bot 零消费端、不接入调用、不实机查;无板面/
   备战席写入面,不入 board_rewrite 词表(板面重写桥系选卡时点一次性,触发时机
   不同型)。「星级」系单位养成通用轴非阵营语义,不绑阵营(`STRATEGY_BINDINGS`
   零触碰,表外默认空绑定);现金分支 = 已注册名无 economy → (0.0, False)
   (战力类不进经济模型)。策略默认不选(用户附带指令):变形随机改写羁绊构成
   破坏策略预判,随机目标效果不入具名打分(「随机发放不可具名,不入具名打分,
-  恒 off」在册先例口径,invest_effects.md 人才引进条),选卡估值零承载恒
+  恒 off」已登记先例口径,invest_effects.md 人才引进条),选卡估值零承载恒
   off——不入 `STRATEGY_ECONOMY`/`STRATEGY_GRANTS`/立场表,现金/方向/赠卡/
   立场四组件恒 0。
 - **证据**:规格 `STRATEGY_EFFECTS['星变']`(cw_investments.py 战力类零响应族
@@ -1014,7 +1014,7 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
    (node-derivation.md) 场景走查)。
 6. **连胜联动类 counter 有无**:记录形态两案(§5 表)——counter 空(连胜流为既有
    观察面)或按连胜事件 +1;该类在用无规格条目(关联字段 win_reward_mult/
-   difficulty_per_streak 注册行在册 `STRATEGY_ECONOMY['伟大征服']`,消费直读注册表不经
+   difficulty_per_streak 注册行已登记 `STRATEGY_ECONOMY['伟大征服']`,消费直读注册表不经
    效果清单——倍率走聚合+统一公式、难度走 M19 直读,规格条目无消费面),
    建模批到达时先裁后建。
 7. **免费刷新余额上限**:设计按无上限处理(不建封顶逻辑);实采观察核对大额授予时
@@ -1027,8 +1027,8 @@ payload 字段判别零交叉:角色合成域发放腿 = `check_strategy_star_me
    97 卡/官方全集 334 条(§5 基数申报);精确对应关系候核对。不阻塞:逐条确定目录
    以注册表全集为准(impacts §4)。
 10. **注册表 verdict 回填**:固定理财已回填——位面段建模随批落地、中途拿卡
-    所在位面补发经用户裁定(2026-11-01)拍定,pending 撤除、保守支消解
+    所在位面补发经用户裁定(2026-11-01)人为定为,pending 撤除、保守支消解
     (§8 固定理财条目);姊妹固定理财+ 随同判展开批同态回填(pending 撤除,
     notes 记同判,§8 固定理财+ 条目);同触发词族公司严选随族级裁定同判入册
-    (pending 定谳撤除,notes 记族级裁定,§8 公司严选条目);经验就是财富
+    (pending 定案撤除,notes 记族级裁定,§8 公司严选条目);经验就是财富
     verdict 回填待实采定案。剩余回填动作归各卡建模批随批执行。

@@ -68,7 +68,7 @@ id_mark 确认 helper,两写入位置共用:CwScreenPrep 备战顶栏 / CwScreen
 
 **身份键 = 节点序位 `(位面, 轮)`(`NodePos`,二元素整数元组,1 基,单一源住
 `cw_node_schedule`;对外标识统一「位面-轮」标签形态如 `2-1`——元组只是标签的
-容器内表示,journal 数值列 plane/round_num 是列不是标签)**。序列真值**按局
+状态容器(GameState)内表示,journal 数值列 plane/round_num 是列不是标签)**。序列真值**按局
 修饰变长**:默认环境 = 默认序列表(P1+P2+P3 全真值在表);改节点序列的环境
 (「人身意外险」插入型/「战争边疆」替换型,统一注册表 = `cw_node_schedule.
 ENV_NODE_REWRITE_RULES`)经场字段
@@ -92,7 +92,7 @@ ENV_NODE_REWRITE_RULES`)经场字段
    **id_mark 确认态 observation** = `observe_node_anchor` 解析读数直写——节点域专用写入口,
    不经通用 observe(),先例 = `settle_truth` 的结算金币专用口;**推进态 logic**
    = 终结动作上报经 `advance_node_effective` 写入,未确认态);`node_hist_pos`
-   = 单调水位 + 去重第二道防线(工程结构位,run 段随容器重基线);**生效序读取入口
+   = 单调水位 + 去重第二道防线(工程结构位,run 段随状态容器重基线);**生效序读取入口
    = `effective_node_pos` = max(node_pos 现值, node_hist_pos)(元组字典序取大,
    派生计算,非存储
    字段;kernel cw_game_state.py)**——本方案的判定与比较域统一在该读取入口。观察
@@ -125,7 +125,7 @@ ENV_NODE_REWRITE_RULES`)经场字段
 - **观察态门(双条件)**:`node_pos.value is not None ∧ node_pos.source ==
   'observation'` 才放行——只有已被观察确认的节点值才允许被动作推进;门挡 →
   obs_event arbitrate 保留证据零推进,重复上报/重试/任何第二条动作推进路径在结构上
-  不可能。**value 守卫不可省**:Field 缺省 source='observation',新容器 =
+  不可能。**value 守卫不可省**:Field 缺省 source='observation',新状态容器 =
   (None, 'observation'),只查 source 会在开局/恢复局首次确认前误放行,且
   candidate 在生效序位 None 时无定义。恢复局锁定臂(直出战)首次
   结算确认被 value 守卫挡,由战后备战帧确认补齐(绝对值坐标,无 skew)。
@@ -269,5 +269,5 @@ per_node_pick_node_grant.md,效果域细则 = [effect-domain.md](effect-domain.m
 ## ④ 未决与信息项
 
 - **坐标系漂移(信息项,维持)**:投资环境加节点的坐标系漂移(`cw_node_reader.py` 模块头申报;值域守卫 round≤9,`cw_observation.py`)——既有坐标系多方同键的漂移面,非本方案引入;id_mark 确认分支的序位处理在漂移形态下仍自洽(序位线性),直读走缓存。待实机观察。
-- **sim 侧**:sim 域的节点进入触发点 = 引擎节点段边界申报,待落盘面接线批,本设计不覆盖。
+- **sim 侧**:sim 域的节点进入触发点 = 引擎节点段边界申报,待落盘面接入调用批,本设计不覆盖。
 - **效果账本回执面**:「递减未到期」清单在用不产出(`tick_expired` 只含到期移除),扩清单待后续批。
