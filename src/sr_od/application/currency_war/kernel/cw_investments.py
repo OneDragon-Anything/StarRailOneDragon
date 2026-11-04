@@ -5933,6 +5933,9 @@ class StrategyDelayedGrant:
     - delay_nodes: 延时节拍(「4个节点后」直读);到点窗 = 拿卡节点的
       第 N 个后继节点窗(计数起点语义与效果账本「后继 N 节点」口径、
       StrategyDelayedOffer 计数读法同族,desc 未写明计数起点处不实机查);
+      元组形(int | tuple[int, ...],军备供应链首例)= 逐节点错峰多节拍
+      「接下来5个节点开始时,获得1个…」直读——逐元组元素各入队一条
+      (登记序 = 节拍序),标量形既有行纸面与行为零变;
     - item: 发放物名。分道判据:∈ EQUIPMENTS → 装备条目 gain_equipment;
       ∈ BENCH_ITEM_NAMES → 占席道具条目 gain_bench_item(消费原语内逐次
       查两词表,零新词表)。员工投影仪不入 BENCH_ITEM_NAMES:该词表
@@ -6063,6 +6066,15 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 分道 gain_bench_item(rand=False)×2。
     '快请专家·金': StrategyDelayedGrant(id='260401', delay_nodes=4,
                                       item='员工投影仪', count=2),
+    # 军备供应链(id 330501 原文直读,cw_invest_data.py:311;卡文「获得1个
+    # 【简易武装箱】，接下来5个节点开始时，获得1个【简易武装箱】。」
+    # 两腿分治:即时 1 箱由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励
+    # 同形),延时腿 = 逐节点错峰 5 节拍元组形首例(delay_nodes 元组,
+    # 逐节点开始时各获 1 箱——「接下来…个节点开始时」逐节点语义沿
+    # 分期金判例 + 「节点开始时」同形 4 张卡面;count 不并用防拍内重复)。
+    '军备供应链': StrategyDelayedGrant(id='330501',
+    delay_nodes=(1, 2, 3, 4, 5),
+    item='简易武装箱'),
 }
 
 

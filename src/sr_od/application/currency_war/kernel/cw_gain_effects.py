@@ -851,7 +851,7 @@ def _make_delayed_grant_effect(name: str) -> Callable[..., list[str]]:
                                  evidence='strategy_grant_instant',
                                  producer=_PRODUCER)
         return [f'equip_grant:{spec.item}(placed={outcome.placed})',
-                queue_delayed_strategy_grant(gs, name, sig=sig)]
+                *queue_delayed_strategy_grant(gs, name, sig=sig)]
 
     return _effect
 
@@ -883,8 +883,9 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
         )
         _ = rng   # 登记分支零采样,倒计时推算确定(rng 形参沿分派契约保留)
         spec = STRATEGY_DELAYED_GRANTS[name]
-        return [queue_delayed_strategy_grant(gs, name, sig=sig)
-                for _entry in range(spec.count)]
+        return [q
+                for _entry in range(spec.count)
+                for q in queue_delayed_strategy_grant(gs, name, sig=sig)]
 
     return _effect
 
@@ -1501,6 +1502,11 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 行为零差异:随机填充观察收口在码+推荐表 rc_missing 在码];零 SE 条
     # 目[卡面零增幅句,祝福族 SE 系增幅半句非授予句]零 GRANTS 条目)。
     '客制化服务': _make_named_equip_grant_effect('幸运星', 3),
+    # 军备供应链 = 双条目工厂直书登记行(人才激励同形:即时 1 箱+延时入
+    # 队;延时腿 = delay_nodes 元组(1,2,3,4,5) 逐节点错峰 5 节拍首例,
+    # 链原语逐节拍入队单次 write 整批;「接下来…个节点开始时」逐节点
+    # 语义沿分期金判例;rand=False 确定发放)。
+    '军备供应链': _make_delayed_grant_effect('军备供应链'),
     # 财富就是力量 = 宝钻策略发放族后继(T-243 读法 B 已落账落码解锁):
     # 直书登记行「获得1个【财富宝钻】」(rand=False 确定发放,骑 T-243
     # 检查腿+回调零改动;增幅腿「额外提供30%前/后台强度和20%速度增幅」

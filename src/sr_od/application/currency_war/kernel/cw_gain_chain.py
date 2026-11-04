@@ -94,6 +94,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_indexed_of_view,
     deployed_rows_of,
     deployed_view_of_indexed,
+    grant_xp,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     BENCH_ITEM_KINDS,
@@ -114,6 +115,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_BOSS_COMPLETION_GRANTS,
     STRATEGY_BUY_STAR_FLIP_GRANTS,
     STRATEGY_CONDITIONAL_GRANTS,
+    STRATEGY_DEATH_SAVE_GRANTS,
     STRATEGY_DELAYED_GRANTS,
     STRATEGY_DELAYED_OFFERS,
     STRATEGY_ECONOMY,
@@ -885,12 +887,12 @@ def queue_delayed_invest_offer(gs: GameState, name: str, *,
 
 def queue_delayed_strategy_grant(gs: GameState, name: str, *,
                                  sig: ChannelSig,
-                                 producer: str = GAIN_CHAIN_PRODUCER) -> str:
+                                 producer: str = GAIN_CHAIN_PRODUCER) -> list[str]:
     """策略延时发放入队原语(策略卡「N个节点后获得发放物」通道唯一
     登记写端;与 queue_delayed_invest_offer 并列独立域——offer 族到点
     产出 = 选卡屏事件,本族到点产出 = 状态副本发放写入,消费原语不同不合并):
     查 ``STRATEGY_DELAYED_GRANTS`` 登记行,追加 ``(卡名, delay_nodes)``
-    到 ``gs.pending_strategy_grants`` 一次 write 回写,返回效果串
+    到 ``gs.pending_strategy_grants`` 一次 write 回写,返回效果串列表
     ``strategy_grant_scheduled:<发放物段>@<节拍>``(发放物段单一构造点
     在本原语:确定行 = 登记物名;随机 choice-set 行 = 封闭集竖线连接
     如 ``红钻|蓝钻``;随机类别池行 = ``随机<类别>(类别池)`` 池标记形——
@@ -909,8 +911,14 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     查行 + 本原语调用(queue_delayed_invest_offer 同款薄壳分工,写通道
     单一收束在链模块)。"""
     grant = STRATEGY_DELAYED_GRANTS[name]
+    # delay_nodes 标量/元组双形(元组形 = 军备供应链首例,逐节点错峰
+    # 多节拍;标量形既有行零变)。逐节拍各入队一条(登记序 = 节拍序,
+    # 单次 write 回写整批)。
+    delay = grant.delay_nodes
+    beats: tuple[int, ...] = delay if isinstance(delay, tuple) \
+        else (int(delay),)
     queued = tuple(gs.pending_strategy_grants.value or ()) \
-        + ((name, int(grant.delay_nodes)),)
+        + tuple((name, int(b)) for b in beats)
     write = _select_write(gs, rand=False)
     write(gs.pending_strategy_grants, queued, produced_by=producer,
           evidence=f'strategy_grant_queue:{name}', sig=sig)
@@ -920,8 +928,8 @@ def queue_delayed_strategy_grant(gs: GameState, name: str, *,
     item_seg = (grant.item
                 or '|'.join(grant.item_choices)
                 or f'随机{grant.item_category}(类别池)')
-    return (f'strategy_grant_scheduled:{item_seg}'
-            f'@{grant.delay_nodes}')
+    return [f'strategy_grant_scheduled:{item_seg}'
+            f'@{b}' for b in beats]
 
 
 #: 策略卡条件发放写端署名(家族单一标识,cw_env_grants._PRODUCER 同款
@@ -1870,6 +1878,91 @@ def check_strategy_hp_loss_grants(gs: GameState, hp_lost: int, *,
                        producer=producer)
         granted.append(name)
     return gold, granted
+
+
+#: 策略卡死亡救援触发写端署名(家族单一标识,_HP_LOSS_GRANT_PRODUCER/
+#: _BOSS_BATTLE_GRANT_PRODUCER 同款家族纪律;写端 = 本模块
+#: take_strategy_death_save(闩笔 + 经 grant_xp 的经验推进对两处),sim
+#: 结算位发放刻,新写端新名不沿用链缺省伪装连续——grant_xp 缺省词根
+#: 'EffectLedgerBridge:成功经验' 系节点窗桥语义,救援 XP 非桥产物)。
+_DEATH_SAVE_PRODUCER: str = 'strategy_death_save'
+
+
+def take_strategy_death_save(gs: GameState, *,
+                             logic_sig: ChannelSig,
+                             ) -> tuple[int, int, int] | None:
+    """策略卡死亡救援触发检查(「我方小队生命值将降低至0时，免疫这次伤害
+    并将生命值变为40点，并获得30点经验和80金币」触发器单一源,藏一手
+    id 302801 首例,死亡救援族首例;唯一调用点 = sim 结算折算点
+    cw_sim_backend._resolve_battle 的 apply_hp_outcome 调用前置分支——
+    致死预判成立才进本函数;live 零写观察覆盖:救援由游戏自算,hp 面结算页
+    观察链现值覆盖、奖励两笔走下一备战帧 gold/xp 现读,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序):
+
+    1. 未持卡('藏一手' not in active_strategies)→ None 零写;
+    2. 闩已置位(strategy_death_save_used 为 True)→ None 零写——救援
+       一次性(每局仅首次致死触发,后续致死正常死亡;用户裁定 2026-11-04);
+    3. hp 基座未观察(None)→ None 零写(禁造假基座,apply_hp_outcome
+       未观察零写同款防御;现役开局种子底座下不可达,纯防御面);
+    4. 命中:闩置位 write_logic(evidence ``strategy_death_save:latch:<帧>``)
+       → hp 写 40(observe 独立笔,载荷取表载值禁字面双写)→ 经验
+       (grant_xp,produced_by 词根如实署名本写端)→ 金(observe 现值 +
+       表载值,扑满收入 observe 金同款)→ 返回载荷三元组(调用方日志/
+       披露申报消费)。
+
+    与全局保底(hp_floor_triggered)的关系 = 独立叠加(用户裁定
+    2026-11-04 M-B):本函数不触 apply_hp_outcome → 保底位零翻转,全局
+    保底保留给后续致死(序列 致死①→卡救→致死②→保底 1→致死③→局终;
+    已过保底后拿卡仍可被救)。
+
+    纪律标注:
+
+    - **零 rng**(载荷全确定,无采样面;随机流零新键,M13 主流消耗序
+      零扰动);
+    - **sig 单形态**:logic 族签名 = 入参 ``logic_sig``(闩笔 + 经验
+      grant_xp 两笔 logic 写共用);obs 族签名(hp/金两笔)由函数内构——
+      两族来源不同禁混用,入参 obs 族传 write_logic 即炸渠道族校验
+      (check_strategy_hp_loss_grants 同款);
+    - evidence 前缀 ``strategy_death_save:`` 与 ``battle:hp``/``income:``
+      族分列可过滤审计;
+    - 幂等 = 闩 + 调用点 _settled_key 双保险;
+    - **单成员机制域中间态**:函数体点名 '藏一手'(表 dict 形支持后继
+      救援卡 +1 行;第二救援卡入表时升级 per-card 键形 + 函数去点名
+      遍历,禁表已通用化误判——check_strategy_hp_loss_grants 同款申报);
+    - 与 T-142 损血档位累积器的组合态(落码现值核验):救援局 hp 落点 40,
+      调用方损血差分 = hp_before − 40(真值差口径);净回血(差 ≤0)被
+      check_strategy_hp_loss_grants 首序 ``hp_lost <= 0`` 短路零入桶,
+      净损血(差 >0,如 hp_before=45 救后 40 记 5)按真值差入桶——与
+      保底截断局真值差记账同构,累积器零改零特判。
+    """
+    spec = STRATEGY_DEATH_SAVE_GRANTS.get('藏一手')
+    if spec is None \
+            or '藏一手' not in (gs.active_strategies.value or ()) \
+            or bool(gs.strategy_death_save_used.value) \
+            or gs.hp.value is None:
+        return None
+    _hp, xp, gold = spec
+    nd = gs.node.value
+    frame = f'p{nd.plane}r{nd.round_num}' if nd is not None else ''
+    gs.write_logic(gs.strategy_death_save_used, True,
+                   produced_by=_DEATH_SAVE_PRODUCER,
+                   evidence=f'strategy_death_save:latch:{frame}',
+                   sig=logic_sig)
+    from sr_od.application.currency_war.sim.cw_sim_base import (
+        obs_sig,
+        sim_evidence,
+    )
+    gs.observe(gs.hp, _hp,
+               evidence=sim_evidence(f'strategy_death_save:hp:{frame}'),
+               sig=obs_sig(group_id='sim:strategy'))
+    grant_xp(gs, xp, sig=logic_sig,
+             evidence=f'strategy_death_save:xp:{frame}',
+             produced_by=_DEATH_SAVE_PRODUCER)
+    gs.observe(gs.gold, int(gs.gold.value or 0) + gold,
+               evidence=sim_evidence(f'strategy_death_save:gold:{frame}'),
+               sig=obs_sig(group_id='sim:strategy'))
+    return spec
 
 
 #: 策略卡首领战后发放写端署名(家族单一标识,_BATTLE_GRANT_PRODUCER/
