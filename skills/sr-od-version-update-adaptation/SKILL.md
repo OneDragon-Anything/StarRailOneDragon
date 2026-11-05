@@ -20,7 +20,7 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 | 适配项 | 状态 | 方法 |
 |---|---|---|
 | 新角色数据录入 | 已建档 | `references/character-data-entry.md` |
-| 遗器套装数据(新套装实装/效果改动) | 已建档(归私有 skill) | `sr-od-dev-relic-unpack` skill 的「版本更新工序」节(wiki 重抓 diff/set_id 顺序律续排/图标解包归档/测试锚点同步) |
+| 遗器/光锥套装数据(新实装/效果改动) | 已建档(归私有 skill) | `sr-od-dev-relic-unpack` skill 的「版本更新工序」/「光锥数据管道」节(wiki 重抓 diff/ID 顺序律或 SIFT 对照/图标解包归档/测试锚点同步) |
 | 货币战争(CW)玩法适配 | 已建档(归 CW skill) | `sr-od-dev-currency-war` skill 的 `references/version-update.md`(数据重采/阵容重跑/万金油名单复核/版本敏感注册表核对) |
 
 **未建档适配项**(新地图、新玩法、新系统、机制改动等任何不在表里的项)按此流程补档,禁凭猜直接改:
