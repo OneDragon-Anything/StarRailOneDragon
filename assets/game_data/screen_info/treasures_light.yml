@@ -229,12 +229,12 @@ area_list:
 - area_name: PF_AFTER_BATTLE_SUCCESS_1
   id_mark: false
   pc_rect:
-  - 820
-  - 200
-  - 1100
-  - 270
+  - 800
+  - 120
+  - 1110
+  - 230
   text: 挑战成功
-  lcs_percent: 0.3
+  lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
@@ -243,12 +243,12 @@ area_list:
 - area_name: PF_AFTER_BATTLE_SUCCESS_2
   id_mark: false
   pc_rect:
-  - 820
-  - 245
-  - 1100
-  - 307
+  - 800
+  - 120
+  - 1110
+  - 230
   text: 挑战成功
-  lcs_percent: 0.3
+  lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7

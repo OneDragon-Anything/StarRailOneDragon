@@ -1,19 +1,25 @@
-"""虚构叙事完整挑战:编队填充 → 荒腔走板装配 → 进入故事 → 节点战斗循环 → 结算返回。
+"""虚构叙事完整挑战:编队填充 → 增益效果装配 → 进入故事 → 节点战斗循环 → 结算返回。
 
 前置:``GotoTreasuresLightward(TLMode.PURE_FICTION)`` 到虚构叙事选关 → 点目标关卡
 纸鹤进编队屏后调用本 op(本 op 不做选关→编队的跳转)。
 
-交互模型(2026-11-05 实机,取象为文期):
-- 编队屏(虚构叙事-编队)两行×4 槽;点槽位 = 展开左栏角色列表 + 选中该行(白框);
-  点角色卡 = 加入当前选中行的下一个空槽;**点击已在编队中的角色 = 将其移除**(填充
-  搜索时必须跳过已落位目标,否则会把已填角色点掉);
-- 行右端「+」= 荒腔走板装配(三选一:触技/笑韵/赋格),每行独立装配;弹窗结构
-  (效果列表/装配效果按钮)复用 逐光捡金 屏 PF_CACOPHONY_* 旧 area(弹窗帧实测命中);
-- 「进入故事」点击生效后会弹关卡简报横幅(本期战意机制说明,「点击空白处关闭」),
+交互模型(2026-11-05 实机,当期虚构叙事——游戏内期名「取象为文」):
+- 编队屏(虚构叙事-编队)两行×4 槽,每行对应战斗的一个节点;点槽位 = 展开左栏
+  角色列表 + 选中该行(白框);点角色卡 = 加入当前选中行的下一个空槽;
+  **点击已在编队中的角色 = 将其移除**(填充搜索时必须跳过已落位目标,否则会把
+  已填角色点掉);
+- 行右端「+」= 增益效果装配——游戏内系统名「荒腔走板」,每行从三个增益效果
+  (触技/笑韵/赋格)中选一个装配;弹窗结构(效果列表/装配效果按钮)复用 逐光捡金
+  屏 PF_CACOPHONY_* 旧 area(弹窗帧实测命中);
+- 「进入故事」点击生效后会弹关卡简报横幅(本期战斗机制说明,「点击空白处关闭」),
   需点画面下部空白关闭后才进节点画面;
-- 节点画面为锁光标大世界:前进 → 点击画面正中心发起攻击(不带 Alt,Alt+点击是
-  解锁光标的 UI 操作,不会开战)→ 键盘 V 开自动战斗(V 键实测有效,右上自动图标
-  点击不可靠;键盘使用原因:自动战斗开关无可靠点击替代);
+- 节点画面为锁光标大世界:前进接近敌人 → ``controller.initiate_attack()`` 发起
+  战斗(框架标准开战手法,准星对准敌人后点击画面中心;Alt+点击是解锁光标的
+  UI 操作,不会开战);
+- 自动战斗不主动开启:游戏设置会继承上一次的自动战斗状态(玩家上次开着,
+  本次战斗自动生效)——op 不接管;若未来需要兜底,参考
+  ``cw_screen_battle_wait`` 的自愈模式(识别战斗待操作帧连续 5s → 点击画面
+  自动战斗开关),待 PF 战斗画面待操作标志建档后补;
 - 每关 2 节点 × 3 波,节点间自动衔接(自动切队伍到下一节点出生点),无需操作;
 - 结算「挑战成功」→「返回虚构叙事」→ 虚构叙事选关。
 """
@@ -28,9 +34,9 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
-    GridCell,
-    grid_cell_center,
-    read_character_grid,
+    AnchorCell,
+    read_character_cells_by_level,
+    read_team_waves,
 )
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.context.sr_context import SrContext
@@ -44,10 +50,11 @@ _NODE_SCREEN: str = '忘却之庭-节点画面'  # 节点画面左栏锚(查看�
 _SCROLL_FROM: Point = Point(300, 760)
 _SCROLL_TO: Point = Point(300, 430)
 
-#: 编队行槽位 1 点击点(展开列表 + 选中该行;来自 screen_info 虚构叙事-编队 行槽位 area)
+#: 编队行槽位 1 点击点(展开列表 + 选中该行;霍夫圆检测实测槽位圆心——
+#: 空槽与已填头像同位同尺寸圆框,中心行 1 (1296,774) / 行 2 (1296,886))
 _ROW_SLOT_POINTS: dict[int, Point] = {
-    1: Point(1315, 770),
-    2: Point(1315, 885),
+    1: Point(1296, 774),
+    2: Point(1296, 886),
 }
 
 #: 装配加号点击点(行右端 +;screen_info 虚构叙事-编队 行装配加号 area 中心)
@@ -56,7 +63,8 @@ _EQUIP_POINTS: dict[int, Point] = {
     2: Point(1830, 886),
 }
 
-#: 荒腔走板弹窗:第一个效果条目与装配按钮(逐光捡金屏 PF_CACOPHONY_OPT_1/CONFIRM)
+#: 增益装配弹窗(游戏内系统名「荒腔走板」):第一个效果条目与装配按钮
+#: (逐光捡金屏 PF_CACOPHONY_OPT_1/CONFIRM)
 _EFFECT_1_POINT: Point = Point(720, 240)
 _EQUIP_CONFIRM_POINT: Point = Point(1690, 985)
 
@@ -97,7 +105,8 @@ class TlPureFictionChallengeOp(SrOperation):
         #:   底部翻页会在最后两页弹跳,页签交替出现,单比上一页无法累计停滞)
         self._last_page_sig: str = ''     #: 上一页签名(回顶判定用)
         self._equip_row: int = 0          #: 当前装配的行(0 基)
-        self._effect_picked: bool = False #: 荒腔走板弹窗效果已选中待装配
+        self._effect_picked: bool = False #: 增益装配弹窗效果已选中待装配
+        self._need_row_select: bool = True #: 点卡前需先点目标行槽位选中(守卫)
 
     @operation_node(name='清空编队', is_start_node=True, node_max_retry_times=8)
     def _clear_teams(self) -> OperationRoundResult:
@@ -118,10 +127,17 @@ class TlPureFictionChallengeOp(SrOperation):
     @node_from(from_name='清空编队')
     @operation_node(name='填充循环', node_max_retry_times=160)
     def _fill_loop(self) -> OperationRoundResult:
-        """逐行逐角色填充:列表未展开先点该行槽位 → 滚回顶部 → 逐页找目标 → 点卡即推进。
+        """逐行逐角色填充:行选中守卫 → 读行成员回验落位 → 回顶 → 逐页找目标 → 点卡。
 
-        推进模型 = 实测「点卡即落入当前行下一空槽」;8 人互不相同(构造期校验),
-        故无「点卡误移除」风险;落位复核依赖「进入故事」按钮的可点态兜底。"""
+        落位回验是推进的唯一依据(点卡可能被游戏吞掉不落位——2026-11-05 实机
+        「点希儿后列表里她仍在」静默失败):目标出现在行成员里才推进游标,否则
+        重找重点同一目标。匹配两级:guess.char 精确/变体优先;该格置信不足时
+        guess.char 为空但候选表第一名仍可命中(2026-11-05 「布洛妮娅在页签里
+        却匹配不到」踩坑——页签名取 guess.char or candidates[0],匹配循环此前
+        只看 guess.char)。
+        行选中守卫(2026-11-05 实机踩坑):清空节点四连击末尾会留下「行 2 选中」
+        状态,列表已展开时直接点卡会把角色落进错误的选中行(希儿进了行 2)——
+        点卡前必须显式点目标行槽位确保选中。"""
         image = self.last_screenshot
         if self._row_idx >= len(self.teams):
             # 全部落位:收起左栏列表,交装配节点
@@ -131,15 +147,46 @@ class TlPureFictionChallengeOp(SrOperation):
         row_no = self._row_idx + 1
         target = self.teams[self._row_idx][self._char_idx]
 
-        # 列表未展开 → 点该行槽位 1(展开 + 选中该行)。
-        # 判据 = 页签无任何识别名:未展开时网格 area 也能裁到格子(编队屏背景/
-        # 敌人预览),但识别不出角色名,故不能用 len(cells)==0 判展开态。
-        cells = read_character_grid(self.ctx, image)
-        if not self._page_sig(cells):
-            point = _ROW_SLOT_POINTS[row_no]
-            self.ctx.controller.click(point, press_time=0.15)
+        # 行选中守卫:点卡前目标行必须处于选中态(白框),否则角色会落进
+        # 上一次选中的行。可靠操作序列 = 收起列表 → 点目标行槽位(一步展开+选中);
+        # ⚠️ 列表展开态下直接点另一行槽位的选中切换不可靠(2026-11-05 实机:
+        # 守卫点行 1 槽位未切换选中,点希儿落进了行 2)。收起态点槽位多次实测可靠。
+        if self._need_row_select:
+            cells = read_character_cells_by_level(self.ctx, image)
+            if self._page_sig(cells):  # 列表展开 → 先收起
+                self.ctx.controller.click(_COLLAPSE_POINT, press_time=0.15)
+                return self.round_wait('收起列表以便重选目标行', wait=1)
+            self.ctx.controller.click(_ROW_SLOT_POINTS[row_no], press_time=0.15)
+            self._need_row_select = False
             self._need_top = True
-            return self.round_wait(f'选中行 {row_no} 并展开列表', wait=1.5)
+            return self.round_wait(f'选中行 {row_no}', wait=1.5)
+
+        # 落位回验:目标已在行成员里 → 推进游标(点卡可能被游戏吞掉不落位,
+        # 这是推进的唯一依据;行槽位头像 74px 圆裁识别命中率高,成员名含候选表)
+        waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
+        row_members = waves[row_no - 1].members if len(waves) >= row_no else []
+        if not waves:
+            log.warning('PF填充: read_team_waves 未读到任何行(PF 屏锚/area 失效?)')
+        members_dbg = [f'{m.char or "?"}[{"|".join(n for n, _ in m.candidates)}]'
+                       for m in row_members]
+        log.info('PF填充回验: 行%d 成员=%s 目标=%s', row_no, members_dbg, target)
+        if self._member_has(row_members, target):
+            log.info('PF填充: 行%d %s 已落位', row_no, target)
+            self._char_idx += 1
+            self._need_top = True
+            if self._char_idx >= 4:
+                self._char_idx = 0
+                self._row_idx += 1
+                self._need_row_select = True  # 跨行:切换选中目标行
+                return self.round_wait(f'行 {row_no} 填充完成', wait=1)
+            return self.round_wait(f'{target} 已落位', wait=0.5)
+
+        # 列表展开态判定已由 行选中守卫 取代:守卫保证点卡前目标行必被选中
+        # (列表未展开时点槽位 = 展开+选中,已展开时点槽位 = 仅切换选中行,
+        # 两种状态点槽位都安全收敛到「展开 + 目标行选中」)。
+        # 识别用 等级文本锚驱动(滚动停驻位置无关;固定网格几何在半格停驻时
+        # 行列偏移裁错位——2026-11-05 实机翻页识别随机失败的根因之一)。
+        cells = read_character_cells_by_level(self.ctx, image)
 
         # 每个角色搜索前先回列表顶部(页签连续两次相同 = 到顶)
         if self._need_top:
@@ -154,55 +201,55 @@ class TlPureFictionChallengeOp(SrOperation):
             for _ in range(3):
                 self.ctx.controller.drag_to(
                     Point(300, 760), start=Point(300, 430), duration=0.4)
-            return self.round_wait('滚回列表顶部', wait=1.2)
+            return self.round_wait('滚回列表顶部', wait=3)
 
-        # 顶部起逐页向下找目标;点卡即推进(游戏落入当前行下一空槽)。
-        # 匹配两级:精确名优先;否则取目标名开头的变体名(命途变体形态,脸库名
-        # 带后缀如「姬子•启行」;OCR 分隔符在 •/· 间抖动,故只按前缀判,2026-11-05
-        # 实测)。精确名同页存在时必优先,变体兜底不会抢精确命中。
-        hit: GridCell | None = None
-        variant: GridCell | None = None
+        # 顶部起逐页向下找目标;点卡后下一轮以落位回验推进(点卡落空自然重试)。
+        # 名字匹配:guess.char(置信名)与 candidates[0](候选第一名)都参与,
+        # 精确相等优先于前缀变体(命途变体形态如「姬子•启行」,OCR 分隔符在
+        # •/· 间抖动)。同帧仅候选命中 = 置信差一口气,同样可信(候选第一名
+        # 即脸库最近似判定),点——2026-11-05「布洛妮娅在页签里却匹配不到」
+        # 踩坑的修复(页签名含候选,匹配循环此前只看置信名)。
+        exact: AnchorCell | None = None
+        fuzzy: AnchorCell | None = None
         for cell in cells:
-            name = cell.guess.char
-            if name == target:
-                hit = cell
+            names = self._cell_names(cell)
+            if target in names:
+                exact = cell
                 break
-            if name is not None and len(name) > len(target) and name.startswith(target):
-                variant = variant or cell
-        if hit is None:
-            hit = variant
+            if fuzzy is None and any(
+                    len(n) > len(target) and n.startswith(target) for n in names):
+                fuzzy = cell
+        hit = exact or fuzzy
         if hit is not None:
-            center = grid_cell_center(self.ctx, hit.row, hit.col)
-            if center is None:
-                return self.round_fail('区域-角色网格缺失')
-            self.ctx.controller.click(center, press_time=0.1)
+            self.ctx.controller.click(hit.center, press_time=0.15)
             log.info('PF填充: 行%d 点 %s', row_no, target)
-            self._char_idx += 1
-            self._need_top = True  # 下一个角色重新回顶
-            if self._char_idx >= 4:
-                self._char_idx = 0
-                self._row_idx += 1
-                return self.round_wait(f'行 {row_no - 1} 填充完成', wait=1)
             return self.round_wait(f'点击 {target}', wait=1)
 
         sig = self._page_sig(cells)
         log.info('PF填充诊断: 找 %s 行%d stagnation=%d 页签=%s',
                  target, row_no, self._down_stagnation, sig[:80])
-        # 到底判定用「已见页签集合」:底部翻页在最后两页弹跳,页签交替出现,
-        # 单比上一页永远不相等(2026-11-05 实测);页签复现即视为停滞。
+        # 到底判定用「已见页签集合」+ 弹跳 4 次容错:底部翻页在最后两页弹跳,
+        # 且格子识别名跨帧随机缺失(某页经过时目标格识别失败即错过,复读大概率
+        # 成功——2026-11-05 实机:希儿/杰帕德/瓦尔特均出现整轮缺失后复现),故
+        # 底部多弹跳几轮给识别补救机会,2 次就放弃会误杀。
         if sig in self._seen_sigs:
             self._down_stagnation += 1
         else:
             self._down_stagnation = 0
             self._seen_sigs.add(sig)
-        if self._down_stagnation >= 2:
+        if self._down_stagnation >= 4:
             return self.round_fail(f'列表到底未找到 {target}')
+        # 翻页后等滚动动画完全停止再识别:拖动 0.6s + 惯性滚动,等太短截到
+        # 滚动中间帧会让脸库识别随机失败(2026-11-05 实机:静止页识别稳,
+        # 翻页 1s 等待时目标「忽隐忽现」全源于此——静止后重读即恢复)。
         self.ctx.controller.drag_to(_SCROLL_TO, start=_SCROLL_FROM, duration=0.6)
-        return self.round_wait('向下翻页', wait=1)
+        return self.round_wait('向下翻页', wait=3)
 
     @staticmethod
-    def _page_sig(cells: list[GridCell]) -> str:
-        """当前页签名(可见格识别名集合,用于翻页/到顶判定)。"""
+    def _page_sig(cells: list) -> str:
+        """当前页签名(可见格识别名集合,用于翻页/到顶判定)。
+
+        cells 元素为带 .guess 的识别单元(GridCell/AnchorCell 鸭子兼容)。"""
         return '|'.join(sorted(
             filter(None, (
                 c.guess.char or (c.guess.candidates[0][0] if c.guess.candidates else '')
@@ -210,11 +257,36 @@ class TlPureFictionChallengeOp(SrOperation):
             ))
         ))
 
+    @staticmethod
+    def _cell_names(cell) -> list[str]:
+        """格子可判名字列表:置信名在前,候选第一名在后(2026-11-05 补——
+        置信不足帧 guess.char 为空但候选第一名仍可信)。"""
+        names: list[str] = []
+        if cell.guess.char:
+            names.append(cell.guess.char)
+        if cell.guess.candidates:
+            names.append(cell.guess.candidates[0][0])
+        return names
+
+    @staticmethod
+    def _member_has(members, target: str) -> bool:
+        """行成员里是否已有目标(置信名/候选全表任一命中,前缀变体也算)。"""
+        for m in members:
+            names: list[str] = []
+            if m.char:
+                names.append(m.char)
+            names.extend(n for n, _ in m.candidates)
+            if target in names:
+                return True
+            if any(len(n) > len(target) and n.startswith(target) for n in names):
+                return True
+        return False
+
     @node_from(from_name='填充循环')
     @node_from(from_name='填充循环')
     @operation_node(name='装配循环', node_max_retry_times=24)
     def _equip_loop(self) -> OperationRoundResult:
-        """两行各装配第一个荒腔走板效果(三选一,自动化默认取首项触技)。
+        """两行各装配第一个增益效果(三选一,自动化默认取第一项「触技」)。
 
         选效果与点装配拆成两轮:同轮连点时选中动画未完成,装配点击落空、
         弹窗滞留(2026-11-05 实机踩坑);弹窗滞留时兜底再点装配。"""
@@ -254,7 +326,7 @@ class TlPureFictionChallengeOp(SrOperation):
     @node_from(from_name='进入故事')
     @operation_node(name='关卡简报处理', node_max_retry_times=8)
     def _brief(self) -> OperationRoundResult:
-        """关卡简报横幅(本期战意机制说明)→ 点空白关闭;节点画面 → 进入战斗循环。"""
+        """关卡简报横幅(本期战斗机制说明页)→ 点空白关闭;节点画面 → 进入战斗循环。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'NODE_FIRST_CLICK_EMPTY').is_success:
             self.ctx.controller.click(_BRIEF_CLOSE_POINT, press_time=0.15)
@@ -279,12 +351,14 @@ class TlPureFictionChallengeOp(SrOperation):
             return self.round_fail('战斗失败')
 
         if self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success:
-            # 节点待命:前进接近敌人 → 点画面中心开战(不带 Alt) → V 开自动战斗
+            # 节点待命:前进接近敌人 → 框架标准开战(initiate_attack = 准星对准
+            # 敌人后点击画面中心发起攻击,与 start_fight_for_elite 等生产调用一致)。
             # (round_retry 计数:开战点击若落空,下轮仍待命会重试;持续失败超限退出)
             self.ctx.controller.move('w', press_time=2)
-            self.ctx.controller.click(Point(960, 540), press_time=0.05)
-            self.ctx.controller.btn_tap('v')  # V=自动战斗开关;右上图标点击不可靠,确需键盘
-            return self.round_retry('发起战斗并开自动', wait=5)
+            self.ctx.controller.initiate_attack()
+            # 自动战斗不主动开启:游戏设置继承上一次的自动战斗状态;兜底待
+            # PF 战斗画面待操作标志建档后参考 cw_screen_battle_wait 自愈模式补
+            return self.round_retry('发起战斗', wait=5)
 
         # 战斗中等待用 round_retry 计数(每 5s 一轮;一局 2 节点 6 波正常 ~60 轮内,
         # 360 轮 = 30 分钟兜底退出,防战斗异常卡死时 round_wait 永不超限)

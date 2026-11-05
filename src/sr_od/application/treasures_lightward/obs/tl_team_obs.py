@@ -91,6 +91,19 @@ _GRID_CELL_W: int = 88
 _GRID_CELL_H: int = 94
 
 # --------------------------------------------------------------------------
+# 等级文本锚驱动识别(角色列表,滚动停驻位置无关;2026-11-05 设计):
+# 每张卡下方有「等级NN」文本条,OCR 找锚 → 锚上方裁头像区 → 脸库匹配。
+# 固定网格几何(read_character_grid)在滚动停半格时行列偏移裁错位——锚跟随
+# 卡片实际位置,任意停驻都可识别。裁片几何按 2026-11-05 实机帧标定:
+# 锚(x)=卡左缘+5,锚(y)=等级条文本顶;头像区 = 锚上方 95px 高、卡宽 90px。
+# --------------------------------------------------------------------------
+_LEVEL_ANCHOR_TEXT: str = '等级'
+_LEVEL_ANCHOR_AVATAR_W: int = 90
+_LEVEL_ANCHOR_AVATAR_H: int = 95
+_LEVEL_ANCHOR_DX: int = -5            #: 头像区 x1 相对锚 x 偏移
+_LEVEL_ANCHOR_DY: int = -97           #: 头像区 y1 相对锚 y 偏移
+
+# --------------------------------------------------------------------------
 # 预设卡内小头像几何(相对「预设卡-N」rect 原点;2026-11-04 实机帧标定)
 # 卡内 4 个头像 art 子区(避开卡框与底部「队伍N/等级」标签带),x 起点 4 个。
 # --------------------------------------------------------------------------
@@ -147,6 +160,19 @@ class GridCell:
 
 
 @dataclass
+class AnchorCell:
+    """角色列表锚点识别单元(等级文本锚驱动,滚动停驻位置无关)。
+
+    Attributes:
+        center: 头像点击中心(全图坐标)。
+        guess: 该卡头像识别结果。
+    """
+
+    center: Point
+    guess: MemberGuess
+
+
+@dataclass
 class WaveInfo:
     """单波次(旧代码称节点)识别结果:该波敌人弱点 + 该波当前编队成员。
 
@@ -186,9 +212,14 @@ class TlTeamView:
     preset_teams: list[PresetTeam] | None
 
 
-def _get_area_rect(ctx: SrContext, area_name: str) -> Rect | None:
-    """取本画面某 area 的 pc_rect;画面/area 缺失返 None(调用方按缺读处理)。"""
-    si = ctx.screen_loader.get_screen(SCREEN_NAME)
+def _get_area_rect(ctx: SrContext, area_name: str,
+                   screen_name: str = SCREEN_NAME) -> Rect | None:
+    """取指定画面某 area 的 pc_rect;画面/area 缺失返 None(调用方按缺读处理)。
+
+    screen_name 可指定其他逐光捡金编队屏(如虚构叙事-编队)——行结构同构、
+    槽位 area 按各屏独立建档(2026-11-05:跨屏复用 FH 的槽位 rect 会在 PF 屏
+    裁错位置,脸库识别全空)。"""
+    si = ctx.screen_loader.get_screen(screen_name)
     if si is None:
         return None
     area = next((a for a in si.area_list if a.area_name == area_name), None)
@@ -404,12 +435,14 @@ def _detect_weakness_blobs(zone: MatLike) -> list[tuple[int, int, int, int]]:
     return boxes
 
 
-def read_team_waves(ctx: SrContext, image: MatLike) -> list[WaveInfo]:
+def read_team_waves(ctx: SrContext, image: MatLike,
+                    screen_name: str = SCREEN_NAME) -> list[WaveInfo]:
     """按「建议属性」锚行装配波次列表(每锚 = 一波,数量实读)。
 
     每波绑定:该波弱点属性(锚下方图块带)+ 该波当前编队成员(槽位 area 按行号取,
     area 未建档的行 members = [])。锚未读到 = 空列表(降级不编造)。
-    """
+    screen_name:槽位 area 的归属屏——逐光捡金各编队屏行结构同构但槽位坐标
+    逐屏独立建档(FH=忘却之庭-编队 / PF=虚构叙事-编队,槽间距 90px vs 65px)。"""
     templates = ensure_avatar_templates(ctx)
     results = ctx.ocr_service.get_ocr_result_list(image=image)
     anchors = sorted(
@@ -431,7 +464,7 @@ def read_team_waves(ctx: SrContext, image: MatLike) -> list[WaveInfo]:
         members: list[MemberGuess] = []
         area_missing = False
         for i in range(1, 5):
-            rect = _get_area_rect(ctx, f'槽位{idx}头像-{i}')
+            rect = _get_area_rect(ctx, f'槽位{idx}头像-{i}', screen_name)
             if rect is None:
                 area_missing = True
                 continue
@@ -444,7 +477,10 @@ def read_team_waves(ctx: SrContext, image: MatLike) -> list[WaveInfo]:
 
 
 def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
-    """角色列表 tab 的可见网格(4 列 × 可见 4 行;几何标定见模块 docstring)。"""
+    """角色列表 tab 的可见网格(4 列 × 可见 4 行;几何标定见模块 docstring)。
+
+    ⚠️ 仅列表停驻位置与标定帧一致时可靠;滚动任意停驻(半格)用
+    ``read_character_cells_by_level``(锚点驱动,位置无关)。"""
     area_rect = _get_area_rect(ctx, '区域-角色网格')
     templates = ensure_avatar_templates(ctx)
     cells: list[GridCell] = []
@@ -456,6 +492,36 @@ def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
             y1 = area_rect.y1 + _GRID_CELL_Y_OFF + row * _GRID_CELL_DY
             crop = image[y1:y1 + _GRID_CELL_H, x1:x1 + _GRID_CELL_W]
             cells.append(GridCell(row=row, col=col, guess=_identify_crop(crop, templates)))
+    return cells
+
+
+def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[AnchorCell]:
+    """等级文本锚驱动的角色列表识别(滚动停驻位置无关)。
+
+    OCR 找列表区全部「等级」文本锚(每张卡下方一条「等级NN」),每锚上方裁
+    头像区做脸库匹配,取匹配结果。返回按 (y, x) 排序(自上而下、自左而右)。"""
+    area_rect = _get_area_rect(ctx, '区域-角色网格')
+    templates = ensure_avatar_templates(ctx)
+    cells: list[AnchorCell] = []
+    if area_rect is None:
+        return cells
+    results = ctx.ocr_service.get_ocr_result_list(image=image, rect=area_rect)
+    for r in results:
+        if _LEVEL_ANCHOR_TEXT not in (r.data or ''):
+            continue
+        ax = r.x + _LEVEL_ANCHOR_DX
+        ay = r.y + _LEVEL_ANCHOR_DY
+        if (ax < 0 or ay < 0
+                or ay + _LEVEL_ANCHOR_AVATAR_H > image.shape[0]
+                or ax + _LEVEL_ANCHOR_AVATAR_W > image.shape[1]):
+            continue  # 裁片出界跳过
+        crop = image[ay:ay + _LEVEL_ANCHOR_AVATAR_H, ax:ax + _LEVEL_ANCHOR_AVATAR_W]
+        guess = _identify_crop(crop, templates)
+        cells.append(AnchorCell(
+            center=Point(ax + _LEVEL_ANCHOR_AVATAR_W // 2,
+                         ay + _LEVEL_ANCHOR_AVATAR_H // 2),
+            guess=guess))
+    cells.sort(key=lambda c: (c.center.y, c.center.x))
     return cells
 
 
