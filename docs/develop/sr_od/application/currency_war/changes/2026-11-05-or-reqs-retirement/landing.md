@@ -57,11 +57,11 @@
 
 **范围**：shop.py 过渡资格臂接入（虚拟计分 top3 组合计分域成员 = 资格名单；触发窗 = 过渡未锁定 ∧ 未终局锁定；金不足/备战满复用 `_acquire_yield` 骨架）。**不含**：终局资格臂改动、候选槽写虚拟结果（即算即用零持久化）。
 **设计依据**：details/virtual-eval-arm.md 全文；总纲契约 B。
-**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`；`sr-od-test/` 镜像。
+**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`（主体）；`sell_gate.py`（LAUNCH_CAUSE_BY_ARM 买因注册——A4 硬闸必需接线）；`telemetry/schema.py`（键表注释同步，遥测零新增键）；`sr-od-test/` 镜像。
 **依赖**：3.2（transition_scores 纯函数）。
 **优先级建议**：7。
 **完成判据**：
-- 资格判定对照 virtual-eval-arm.md §1：手握铁三角二人 + 货架藿藿 → 藿藿资格买入（测试场景）；
+- 资格判定对照 virtual-eval-arm.md §1——独立生效域例：持爻光 + 货架佩拉（佩拉 ∈ 希儿贝2 块计分域 ∧ ∉ 实候选成员并集 ∧ ∉ 终局资格域）→ 过渡资格买入（买因 transition_shelf_qualify_buy）；双资格路由例：持铁三角二人 + 货架丹恒·饮月 → 终局资格臂先消费（买因 shelf_qualify_buy）。（原钦点例「铁三角二人+货架藿藿」经落地批实证不构成本臂独立验证场景——藿藿同在实候选并集与终局资格域内、被前置臂消费；详设 §4-① 例已同步修正）；
 - 触发窗两锁定态零行为变化；
 - 实机首局观察记录（行为验证沿 comp-structure-unification 口径：不做 A/B 模拟对照，退化发现通道 = 实机对局遥测判读）；
 - 完成前常规检查。
@@ -85,3 +85,4 @@
 - `skills/sr-od-dev-currency-war/references/comp-definition.md`（schema 分层语义：形态端口段改写——OR 分支退役声明、过渡组合制指针）← 3.1/3.2/3.3
 - `docs/game/currency_war/research/transition_combos.md`（策略消费指引段：组合候选域从「≤10 对」描述改为已落地组合条目制指针）← 3.2
 - `docs/game/currency_war/research/final_comps/final_seele_quantum.md`（无义务——改 COMP_LIBRARY 不触发文档同步，协议见 compo-knowledge；仅当措辞引用 or_reqs 时随批清理）← 3.3
+- 代码注释中的 changes/ 详设指针迁移：本迭代在代码/测试注释里留下的 `changes/2026-11-05-or-reqs-retirement/...` 指针，随正本更新一并改指权威版本对应节（changes/ 目录日后删减会使指针悬空）← 3.2/3.3/3.4
