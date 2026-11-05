@@ -25,6 +25,7 @@ description: 需要崩坏:星穹铁道配队决策、角色机制理解、有效
 
 | 任务 | 先读 | 再读 |
 |---|---|---|
+| 「这期打什么 / 某玩法用什么队」 | `references/modes/玩法层总览.md` | 对应 `references/modes/<玩法>.md`（适配体系节 → 体系/阵容档）；小众玩法已标注，不必为其优化配队 |
 | 配队 / 选人 / 换人 | `references/INDEX.md` | `references/teams/<体系>.md`（为什么这么组）→ `references/lineups/<阵容>.md`（这四人怎么打）→ `references/characters/<角色>.md` |
 | 某角色机制 / 词条堆什么 | `references/INDEX.md` | `references/characters/<角色>.md`（三段式：技能说明/推荐遗器/推荐配队）；伤害模型概念不清读 `references/mechanics/damage-and-affix.md` |
 | 具体阵容的操作轴 / 配速 / 技能点分配 | `references/lineups/<阵容>.md` | 攻略参考轴为参考向非强制，按实际练度调整 |
