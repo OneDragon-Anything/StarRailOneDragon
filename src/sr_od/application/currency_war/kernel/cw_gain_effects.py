@@ -970,6 +970,13 @@ _STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int]] = {
     # LEAVE_GRANTS,离场倒计时队列 pending_kechuan_leaves 在本工厂发放刻
     # 登记——发号纪律见工厂 docstring)。
     '佩佩客串': ('佩佩', 1),
+    # 佩佩驾到(id 350601):卡文「获得1个携带着3个永久附着星徽的【佩佩】。
+    # 获得8金币。」登场发放「获得」直读入表(T-128 族模式卡先例,_make_char
+    # _grant_effect 骑厂推导);佩戴腿「永久附着星徽」零建模 = 用户裁定
+    # 2026-10-15 佩戴件不建模在册纪律(STRATEGY_DESC_UNMODELED_KEYS 键已
+    # 在码申报,后继引用本键不重立);金腿「获得8金币」 = PICK 工厂组合
+    # 行二腿(grant_gold_leg)零新代码路径。
+    '佩佩驾到': ('佩佩', 1),
 }
 
 
