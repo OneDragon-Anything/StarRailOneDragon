@@ -181,6 +181,9 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
 #: 名字漂移在备战断言不可见[BenchSlot kind 与道具名解耦],唯本测试 +
 #: 席满溢出落位真值可暴露)。注册表条目由下方工厂从本表生成,禁另写字面量。
 _STRATEGY_BOX_GRANTS: dict[str, tuple[str, ...]] = {
+    # 战术义眼+:箱条目直读「获得1个【简易武装箱】」(对账 id 350402;
+    # 能量恢复战斗被动 = STRATEGY_EFFECTS UNIT_BUFF 零响应登记分治)。
+    '战术义眼+': ('简易武装箱',),
     '战术义眼++': ('进阶武装箱',),
     '保守派': ('进阶武装箱',),
     '快请专家·彩': ('进阶武装箱',),
@@ -1903,7 +1906,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '完美进化': _make_delayed_grant_effect('完美进化'),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
-开箱分支五条由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
+开箱分支条目由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
 _STRATEGY_REINFORCEMENT_GRANTS 生成,随机装备族由工厂自
 _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 装备注册表按类别派生),组合卡(买彩票+/武装支援/武装支援+/

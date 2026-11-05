@@ -1006,13 +1006,14 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   守两表面零漂移,枚举此处不逐卡复制〕)→ 命中 → 效果体执行。骇客卡链序 =
   银狼分支 `gain_character` +
   商店池遥测申报行 + 改件 `gain_equipment(rand=True)` 采样入栏(改件后果经
-  `on_equipment_gained` 回调)。箱授予分支三卡 = 获得时点占席道具发放:效果体消费
+  `on_equipment_gained` 回调)。箱授予分支卡族 = 获得时点占席道具发放:效果体消费
   `gain_bench_item`(§2.8;确定发放 → rand=False,效果串
   `box_grant:<道具名>(placed=<是否落位>)`),发放名单单一源 =
   cw_gain_effects `_STRATEGY_BOX_GRANTS`(卡规范名 → 道具名;与登记面镜像
-  `cw_investments.STRATEGY_GRANTS` 三卡 `items_immediate` 逐对相等,
-  一致性测试)。三卡的战斗被动效果(能量恢复/伤害减免)非「获得时点」效果,
-  不在效果体(获得时点字段写操作分支适用范围外);快请专家·彩的好运令牌分支(非占席
+  `cw_investments.STRATEGY_GRANTS` 同名卡 `items_immediate` 逐对相等,
+  一致性测试)。箱腿卡的战斗被动效果(战术义眼+/战术义眼++/快请专家·彩
+  能量恢复、保守派伤害减免)非「获得时点」效果,不在效果体(获得时点
+  字段写操作分支适用范围外);快请专家·彩的好运令牌分支(非占席
   道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。
   **具名角色支首例**(溜佩佩/溜佩佩+/招财狗,佩佩召唤族世界腿;溜佩佩系
   登记面 = 非直读人工转正,招财狗 = 「获得」直读登记):效果体消费

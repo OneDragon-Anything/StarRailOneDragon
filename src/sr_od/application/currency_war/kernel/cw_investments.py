@@ -2508,6 +2508,32 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           'pending=False 系族常态回归:desc「在这场战斗中」全 src 唯一临时'
           '标记词 + 在册用户裁定「变形持续性=临时」定谳;无离散触发事件,'
           'trigger 占位形。'),
+    # 战术义眼+(id 350402):官方「我方小队消灭普通/精英及首领敌人时，恢复
+    # 25%/75%能量。获得1个【简易武装箱】。」(cw_invest_data PlazaAugment
+    # 350402,再生件不挂行号——版本更新重跑 gen_plaza_invest.py 行号必漂)。
+    # 双腿分治:本条目 = 能量恢复腿 UNIT_BUFF 零响应登记;「获得1个【简易
+    # 武装箱】」= 获得时点效果另登 STRATEGY_GRANTS 开箱分支条目(镜像
+    # cw_gain_effects._STRATEGY_BOX_GRANTS),不入本表辖域。
+    # 触发面 = 逐击杀(消灭普通/精英及首领敌人):TriggerKind 无击杀成员,
+    # sim 战斗 = 瞬时结算无逐击杀事件流,live 无逐击杀观察依据,触发轴
+    # 三重皆盲零建模;「消灭」判定与敌型分级全游戏侧定义,bot 零消费端、
+    # 不接入调用、不实机查。恢复分档读法 25%/75%(普通/精英→25%、首领
+    # →75% 首选)desc 未写明分档边界,判读申报制留痕不在读法间拍死。
+    '战术义眼+': EffectSpec(
+        id='350402', name='战术义眼+',
+        trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.WHILE_HELD,
+        category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=next(
+            a.effect for a in PLAZA_AUGMENTS if a.id == '350402')),
+        duties=DutyFlags(),
+        notes='战力类 UNIT_BUFF 零响应登记(能量恢复游戏侧自算,bot 仅登'
+              '记;无离散触发事件,trigger 占位形);触发面 = 逐击杀(消灭普'
+              '通/精英及首领敌人)三重皆盲,能量轴 sim/obs/combat 全域零读'
+              '写面;恢复分档读法 25%/75%(普通/精英→25%、首领→75% 首选)'
+              '判读申报制留痕,零响应下两读法 bot 行为恒同,禁当定谳转引;'
+              '箱腿 = 获得时点效果另登 STRATEGY_GRANTS(镜像 _STRATEGY_BOX'
+              '_GRANTS),不属本条目辖域。'),
 }
 
 
@@ -4108,12 +4134,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
     # 360201/军火贸易 101401/军火贸易+ 101402,箱腿卡随批扩员;「获得1个/
     # 一件【箱】」直读,箱名 = items 元素,数量 = 元素重复次数)——
-    # 另三卡的战斗被动分支(战术义眼++能量恢复/保守派伤害减免/快请专家·彩
-    # 能量恢复)非「获得时点」效果,不属 GiftGrant 登记适用范围(归策略效果
-    # 建模批);
+    # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++/快请专家·彩能量恢复、
+    # 保守派伤害减免)非「获得时点」效果,不属 GiftGrant 登记适用范围
+    #(战术义眼+能量恢复已登记 STRATEGY_EFFECTS UNIT_BUFF 零响应条目,
+    # 其余三卡仍归策略效果建模批);
     # 快请专家·彩只登记开箱分支:好运令牌非占席道具(入 items 会错进
     # BENCH_ITEM_NAMES 被当占席道具,归消耗品域)、「获得2个【】」空括号分支
     # 数据源缺口禁猜——两条分支查无登记即安静不写,真值归实机/数据源勘误。
+    '战术义眼+': GiftGrant(items_immediate=('简易武装箱',)),
     '战术义眼++': GiftGrant(items_immediate=('进阶武装箱',)),
     '保守派': GiftGrant(items_immediate=('进阶武装箱',)),
     '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
