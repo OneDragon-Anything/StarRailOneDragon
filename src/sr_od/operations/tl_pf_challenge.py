@@ -443,10 +443,17 @@ class TlPfBattleOp(SrOperation):
     @node_from(from_name='节点战斗循环', status=STATUS_DONE)
     @operation_node(name='返回虚构叙事', node_max_retry_times=12)
     def _click_back(self) -> OperationRoundResult:
-        """结算画面点「返回虚构叙事」→ 虚构叙事选关。"""
+        """结算画面点「返回虚构叙事」→ 虚构叙事选关。
+
+        首次 3 星通关会弹「快速通关」确认(视同通关所有前置关卡,点确认领取),
+        先处理再判定到达选关。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'PF_TITLE').is_success:
             return self.round_success()
+        if self.round_by_find_area(
+                screen, _SELECT_SCREEN, '按钮-快速通关确认').is_success:
+            self.ctx.controller.click(Point(960, 611), press_time=0.15)
+            return self.round_wait('领取快速通关奖励', wait=2)
         click = self.round_by_find_and_click_area(
             screen, _SELECT_SCREEN, 'PF_AFTER_BATTLE_BACK_BTN', success_wait=2)
         if click.is_success:
