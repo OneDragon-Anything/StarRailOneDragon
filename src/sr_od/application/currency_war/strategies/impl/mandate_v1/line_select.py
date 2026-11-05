@@ -6,7 +6,7 @@
 
 - **线分数值化**(§1.1 单值和;数量级常数单一源 =
   :mod:`kernel/cw_line_scales`,本模块零裸数字)+ top3 候选;
-- **候选入选证据门**(§1.2:线分量 env ∨ carry ∨ 骨架 ∨ 插件 > 0——
+- **候选入选证据门**(§1.2:线分量 env ∨ carry ∨ 插件 > 0——
   **不含热度**,热度只作有证据线间的排序,不是入选理由);
 - **锁定 = P2 时点兜底唯一路径**(§1.3/design §6:硬规则查表/角色硬锁/
   策略即时锁全退役——拿到什么都不直接锁,分数说话;锁定 =
@@ -46,7 +46,6 @@ from sr_od.application.currency_war.kernel.cw_line_scales import (
     CARRY_CORE,
     HEAT_PER_POINT,
     PLUGIN_BONUS,
-    SKELETON_BONUS,
 )
 
 if TYPE_CHECKING:
@@ -182,15 +181,14 @@ def held_invest_names_of(gs: GameState) -> frozenset[str]:
 class LineScore:
     """线分数值分解(design §2 单值和的命名分量;``total`` = 各分量和)。
 
-    分量即证据门判据面(:attr:`gate_positive` = env ∨ carry ∨ 骨架 ∨
+    分量即证据门判据面(:attr:`gate_positive` = env ∨ carry ∨
     插件 > 0,**不含热度/装备**——12 号篇 §1.2「热度不是入选理由」保持;
     装备证据只排序不点亮:纯装备零角色帧「线未点亮」语义保持,买到装备
     ≠ 能上人)。
     """
 
     carry: int      # 证据·carry 层(基准 +8000/名 + 其余 core +4000/名)
-    skeleton: int   # 证据·骨架层(key_items − carry,+2000/名)
-    plugin: int     # 证据·插件层(线成员 − carry − key_items,+500/名)
+    plugin: int     # 证据·插件层(线成员 − carry,+500/名)
     equip: int      # 证据·装备层(key_equips 逐件持有,+500/件=插件档;批 3)
     heat: int       # 攻略热度(LINE_HEAT × +1/点)
     invest: int     # 投资环境分 + 投资策略分(通道派生,§3.1/§3.2)
@@ -199,14 +197,14 @@ class LineScore:
 
     @property
     def total(self) -> int:
-        return (self.carry + self.skeleton + self.plugin + self.equip
+        return (self.carry + self.plugin + self.equip
                 + self.heat + self.invest + self.affix + self.boss)
 
     @property
     def gate_positive(self) -> bool:
         """候选入选证据门(§1.2;命名访问,禁切片——分量集显式定义)。"""
         return (self.invest > 0 or self.carry > 0
-                or self.skeleton > 0 or self.plugin > 0)
+                or self.plugin > 0)
 
 
 def equip_evidence_bonus(comp: Comp,
@@ -229,26 +227,22 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
                          opening_ctx: OpeningCtx) -> LineScore:
     """线分数值分解(§1.1 单值和的分量计算;纯函数,同输入同值)。
 
-    证据层逐名一档(基准 > 其余 core > 骨架 > 插件 > 装备件——同名角色跨层
-    不重复计分:骨架 = key_items 命中 − carry,插件 = 线成员命中 − carry −
-    key_items;装备 = key_equips 逐件持有);invest = 持有名逐个过环境/策略
+    证据层逐名一档(基准 > 其余 core > 插件 > 装备件——同名角色跨层
+    不重复计分:插件 = 线成员命中 − carry;装备 = key_equips 逐件持有);invest = 持有名逐个过环境/策略
     两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
     boss 强敌(§3.4——红绿灯经词缀行通道/扑满经投资持有通道)。
     """
     anchor = rating_anchor(comp)
     carry = carry_set(comp)
     core_hits = (carry & held_chars) - {anchor}
-    skeleton_hits = (set(comp.key_items or ()) & held_chars) - carry
     members = set(comp.members)
-    plugin_hits = ((members & held_chars) - carry
-                   - set(comp.key_items or ()))
+    plugin_hits = (members & held_chars) - carry
     invest = sum(env_line_bonus(name, comp)
                  + strategy_line_bonus(name, comp)
                  for name in opening_ctx.held_invest)
     return LineScore(
         carry=(CARRY_ANCHOR if anchor in held_chars else 0)
               + CARRY_CORE * len(core_hits),
-        skeleton=SKELETON_BONUS * len(skeleton_hits),
         plugin=PLUGIN_BONUS * len(plugin_hits),
         equip=equip_evidence_bonus(comp, opening_ctx.held_equips),
         heat=HEAT_PER_POINT * LINE_HEAT.get(comp.name, 0),

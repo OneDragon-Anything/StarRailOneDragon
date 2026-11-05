@@ -1634,7 +1634,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
     # —— 货架资格臂(单张买入估值;11 号稿 §1;
     #    序 1 层内殿后,同帧多资格件按货架槽序)——
     # 资格判据(窄门,过门即义务):X ∈ 货架可见 ∧ X ∈ 某虚拟 top3 线的
-    # CARRY/骨架级(carry_set ∪ key_items;插件级不触发)∧ 该线 ∈ 虚拟
+    # CARRY 级(carry_set;插件级不触发)∧ 该线 ∈ 虚拟
     # top3。虚拟评估 = ``compute_candidates(在手 ∪ 货架)``**不开证据门**
     # (照全量排序,资格器消费排位)——零持久化:生命周期 = 本商店
     # 决策帧,消费位唯一 = 单张买入资格(§2.7 不变式);投资面(通道派生)
@@ -1658,7 +1658,6 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 if _vc is None:
                     continue
                 _qual_names |= carry_set(_vc)
-                _qual_names |= set(_vc.key_items or ())
             if _qual_names:
                 for card in _buy_view('shelf_qualify_buy'):
                     _sq_name = card.name or ''

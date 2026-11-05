@@ -31,9 +31,6 @@ CARRY_ANCHOR: int = 8_000
 #: carry·其余 core(每名):非基准 core 减半(攻略主次语义——基准与辅助分档)。
 CARRY_CORE: int = 4_000
 
-#: 骨架件(每名):4 骨架 = 1 anchor 相平(层间支配点)。
-SKELETON_BONUS: int = 2_000
-
 #: 插件(每名)。
 PLUGIN_BONUS: int = 500
 
