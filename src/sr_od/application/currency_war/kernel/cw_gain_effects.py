@@ -2034,6 +2034,19 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 零消费。
     '都是这家伙的错！': _compose_grant_legs(
         _make_named_equip_grant_effect('命运圣杯星徽', 1)),
+    # 摸个鱼吧III = 摸个鱼吧族收官卡双腿分治登记行(卡文「摸到了！获得18个
+    # 【青雀】和2个【好运令牌】！」,「和」连接两腿、「获得」句首辖青雀腿):
+    # 本行只辖令牌腿——好运令牌 = 工具类装备(cw_equipment_data
+    # category='工具'),归 equips 装备库存域禁入占席道具通道(快请专家·彩
+    # 在码裁定:入 items 会错进 BENCH_ITEM_NAMES 被当占席道具),不在精密
+    # 金面判据映射内(gate 恒 None)走纯发放循环,获得零级联(∉ EQUIP_ACQUIRE_
+    # CONSEQUENCES);count=2 = 卡面明写,循环逐件一条确定发放(rand=False
+    # 卡文无随机词,零 rng 消费),即时具名令牌腿族内首例 ×2(先例好运令牌·
+    # 金/·彩均 ×1);送卡腿不入本行:登记面镜像 = cw_investments.STRATEGY_
+    # GRANTS 同卡行(已在册 chars_immediate 单元素——「18个」数量失真族
+    # 判例申报,估值档机器只读 chars 集合零影响;非 advisor 无运行时消费道,
+    # 送卡世界缺口族级维持);条目参数唯一出现点,不入泛化表防撞键。
+    '摸个鱼吧III': _make_named_equip_grant_effect('好运令牌', 2),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支条目由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
@@ -2043,7 +2056,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 精密拆装·银/大扩招/回收计划/这么大的钻石)直书登记行
 由组合子组合两条效果条目(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾/黄金垃圾/钻石恒永久/升级锅炉/控制规模/
-分解万物/鲜血阶梯)
+分解万物/鲜血阶梯/摸个鱼吧III)
 直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗/艾丝妲的猛犬!/狸职手续,名单值形 (发放角色, 发放只数))由工厂自
