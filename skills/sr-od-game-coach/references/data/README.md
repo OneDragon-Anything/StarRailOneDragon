@@ -1,30 +1,15 @@
-# 米游社百科数据快照（references/data）
+# 角色页推荐表（references/data）
 
-> skill 官方数据底座。生成：2026-11-05（V4.7 期）。**skill 自包含**——使用者的 agent 无需本项目其他文件。
+> 本目录现仅存**角色页推荐表**（攻略知识，MCP 不提供）：光锥推荐 / 遗器推荐 / 配队推荐。生成：2026-11-05（V4.7 期）。**skill 自包含**。
 
-## 定位（MCP 时代，2026-11-05 起）
+| 文件 | 内容 | 条数 |
+|---|---|---|
+| `char_cones.json` | 角色页「光锥推荐」表 | 96 |
+| `char_relics.json` | 角色页「遗器推荐」表 | 97 |
+| `char_teams.json` | 角色页「配队推荐」表 | 96 |
 
-项目 MCP 的三个查询工具（`character_lookup` / `cone_lookup` / `relic_lookup`）已承载**角色/光锥/遗器的基础信息查询**（数据固化自官方 wiki 快照，随项目版本更新）——agent 查询优先走 MCP，本目录 JSON 退居三线：
+## 数据源现状（2026-11-05 起）
 
-1. **版本更新管道输入**（不可删）：`relic_set_list.json`（遗器抓取 content_id 清单）、`cone_full_list.json`（光锥抓取与图标下载输入）、`character_full_list.json`（角色详情抓取输入）
-2. **攻略向知识**（MCP 没有）：`char_cones.json` / `char_relics.json` / `char_teams.json`（角色页推荐表）
-3. **MCP 不可用时兜底**：其余文件（`cone_details.json` 的光锥故事字段 MCP 未覆盖）
-
-| 文件 | 内容 | 条数 | 定位 |
-|---|---|---|---|
-| `character_full_list.json` | 国内 wiki 角色词条列表（name+content_id） | 101 | 管道输入 |
-| `cone_full_list.json` | 光锥词条列表（ch19） | 170 | 管道输入 |
-| `cone_details.json` | 光锥全量详情（命途/星级/特效含叠影梯度/获取方式/故事） | 170 | 管道输入 + 故事兜底 |
-| `char_cones.json` | 角色页「光锥推荐」表 | 96 | 攻略知识 |
-| `char_skills.json` | 角色行迹满级数值表 | 96 | 已被 MCP `character_lookup` traces 覆盖（兜底） |
-| `char_teams.json` | 角色页「配队推荐」表 | 96 | 攻略知识 |
-| `char_relics.json` | 角色页「遗器推荐」表 | 97 | 攻略知识 |
-| `relic_set_list.json` | 遗器套装列表（ch30） | 62 | 管道输入 |
-
-## 版本更新流程
-
-抓取管道脚本与解析坑见本 skill `maintenance/methodology.md`（v9/v10）与 `research-status.md`。新版本后重跑管道 → 覆盖本目录 → git diff 看官方数据变化 → 按 `maintenance/templates.md` 更新知识档；**遗器/光锥/角色详情的固化更新走项目侧管道**（私有 skill `sr-od-dev-relic-unpack` / avatar-extract 的版本更新工序，更新项目常量与 MCP 数据源）。research-status 记录新快照日期。
-
-注意：部分字段为空=该词条模板差异或前瞻占位（百科页面三种模板形态见 methodology v10-41）。
-
-**数据质量边界（2026-11-05 扫描）**：格式级问题（排版/空字段/名集漂移）已扫描为零；残留风险是**语义级错字**（wiki 词条本身的笔误，格式正常内容有误，扫描不可判）——遗器效果文案已经项目常量人工审阅拦错（8 处），光锥特效与角色行迹/星魂文本与常量同源未做独立校验。兜底使用本目录数据时，与 MCP 常量查询（遗器侧已审阅）交叉验证；发现语义错误 → 修项目常量（权威）并回溯本快照。
+- **基础信息查询走 MCP**：角色（定义/行迹满级/星魂）→ `character_lookup`；光锥（星级/命途/特效/获取）→ `cone_lookup`；遗器（套装效果/单件）→ `relic_lookup`。原基础信息 JSON 快照（清单/详情/行迹数值表）已删除——MCP 常量为权威且随项目版本更新。
+- **兜底 = 官方 wiki API 直查**（`sr-od-dev-official-api` skill 的 REST 接口，channel 18/19/30），任何环境可用，注意词条存在错字风险、解析有三类模板形态（见 `maintenance/methodology.md`）。
+- **版本更新**：攻略推荐表重跑刷新（脚本在维护机 `.debug/temp/`，见 `research-status.md`）；遗器/光锥/角色详情的常量固化走项目侧管道（私有 skill `sr-od-dev-relic-unpack` / avatar-extract 的版本更新工序）。
