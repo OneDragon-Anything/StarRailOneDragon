@@ -2701,6 +2701,23 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '跨轴联动读法[同源快照 vs 全额镜像]判读申报制[零响应下 bot '
           '行为恒同];两段增幅游戏侧自算,bot 仅登记;'
           '无离散触发事件,trigger 占位形。'),
+    # 幸运闪避EX(id 351701):官方「我方小队获得25%幸运一击率，受到敌人
+    # 攻击时，有等同于30%幸运一击率的概率使受到的伤害变为1。」战力类
+    # UNIT_BUFF 零响应登记(幸运一击域;全队幸运一击率直增与受击概率伤害
+    # 变换均战斗内游戏侧自算,bot 仅登记;「等同于30%幸运一击率的概率」
+    # 读法与伤害变换边界判读申报制,零响应下两读法 bot 行为恒同;无离散
+    # 触发事件,trigger 占位形)。
+    '幸运闪避EX': EffectSpec(
+    id='351701', name='幸运闪避EX',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351701')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(幸运一击域);'
+          '全队幸运一击率直增与受击概率伤害变换游戏侧自算,bot 仅登记;'
+          '「等同于30%幸运一击率的概率」读法/变换边界判读申报制,零响应'
+          '下两读法 bot 行为恒同;无离散触发事件,trigger 占位形。'),
 }
 
 
