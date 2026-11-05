@@ -344,6 +344,17 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
                                 # 同 env_grants_done 先例不并入他域 bump
                                 # ——他域本体未变)
+    'forge_privilege_charges_left': 1,  # 刃锻特权化剩余生效次数(锻冶
+                                # 专家:刃次数账正本;穿报刃锻支消耗/
+                                # 获得链计数钩子充能,Field 缺省承载
+                                # 开局 1 零置位腿)。独立键版本 1,同
+                                # env_grants_done 先例不并入他域 bump
+                                # ——他域本体未变
+    'forge_privilege_gained_count': 1,  # 刃锻特权化装备获得计数器(锻冶
+                                # 专家:刃「每获得10件」扩次账;获得链
+                                # 原语尾段 +1,Field 缺省承载开局 0)。
+                                # 独立键版本 1,同 env_grants_done 先例
+                                # 不并入他域 bump——他域本体未变
     'giftbox_sight': 1,         # 战利品区惊喜盒板件 ⏳N 读数观察域(迭代
                                 # 2026-10-19-giftbox-piece-obs;元素 = 最近
                                 # 一次上报帧的可读读数集 tuple[int, ...])。
@@ -3309,6 +3320,39 @@ class GameState:
     # 第二张损血触发卡入表时升级 per-card 键形,随其批裁。开局初始值
     # = 0(A 类;0 = 无累积语义中性)。
     strategy_hp_loss_accum: Field[int] = field(default_factory=Field)
+
+    # [索引定义] forge_privilege_charges_left = 刃锻特权化剩余生效次数
+    # (锻冶专家:刃次数账正本,卡面「合成进阶装备变为特权装备,该效果
+    # 可生效1次;每获得10件任意装备,额外可生效一次」。策略卡次数账
+    # GameState 域 in-code 首例:「耗尽后可充能」与免战牌
+    # effect_inventory.remaining_uses「用尽即效果离场」契约分野,不骑
+    # 效果账本载体)。坐标系 = 本局剩余特权化生效次数自然数;取值时机 =
+    # 穿报刃锻特权化支消耗(每变换 1 件 −1)与获得链计数钩子达扩次阈值
+    # 充能(+1),局内恒存,恢复局随快照存续(int 保型直通免 rebuild
+    # 登记,env_grant_uid_seq 先例)。写入端 = 穿报刃锻支扣减笔
+    # (cw_action_report.wear_equip,evidence forge_privilege_consume)+
+    # cw_effect_inventory.record_forge_privilege_gain 充能笔(evidence
+    # forge_privilege_recharge);无观察写端(次数 = 卡文推算知识,游戏
+    # UI 无读面,实机消费归穿报与获得链门序)。开局初始值 = Field 缺省
+    # 承载 1(声明即真值,零置位写入腿——直构与 seed_opening_state 两域
+    # 同值,无卡局门序不消费零行为差)。
+    forge_privilege_charges_left: Field[int] = field(
+        default_factory=lambda: Field(1))
+    # [索引定义] forge_privilege_gained_count = 刃锻特权化装备获得计数器
+    # (锻冶专家:刃扩次账计数载体,达 cw_effect_inventory
+    # .FORGE_PRIVILEGE_GAINS_PER_CHARGE 整倍数触发充能)。坐标系 = 本局
+    # 经获得原语 gain_equipment 净新增入栏件数累计;取值时机 = 获得事件
+    # 刻 +1(计数写通道随获得写通道——获得为猜测写时计数同语义),局内
+    # 恒存随快照存续(int 保型直通免 rebuild 登记)。写入端 = 唯一逻辑
+    # 写端 = 获得链原语尾段(cw_effect_inventory
+    # .record_forge_privilege_gain,evidence forge_privilege_gain;刃
+    # 在场门控 = 计数时点 deployed∪bench 现值判定,离场期获得不计数不
+    # 补计;合成产物/变异产物/特权化替换件不经原语天然不计;好运令牌
+    # 回执桥 grant_equip_item 直写不经原语 = 漏计差集申报制);无观察
+    # 写端(计数过程量)。开局初始值 = Field 缺省承载 0(声明即真值,
+    # 零置位写入腿)。
+    forge_privilege_gained_count: Field[int] = field(
+        default_factory=lambda: Field(0))
 
     # [索引定义] node_seq_by_plane = 逐位面节点序列场字段(逻辑态;
     # 节点改写环境建模(统一注册表 = cw_node_schedule.ENV_NODE_REWRITE_

@@ -23,9 +23,20 @@ cw_effect_inventory,门③键域校验在边判定内非前置闸)。转换卡�
 转换改写。特权档合成同属「合成装备时」事件:计入
 ``apply_on_merge_refresh_grant`` 的 merged 计数(持武力刷新局每次
 特权档合成 +2 刷新,卡文字面直读)。
+**刃锻特权化支**(锻冶专家:刃卡面「在【刃】的装备栏中合成进阶装备
+时，将其变为特权装备，该效果可生效1次。【刃】在场上或备战席时，每获
+得10件任意装备，额外可生效一次」,规则住本上报):门①持卡门②刃栏辖
+域在穿报 applied 路径调用侧前置,门③产物判定 = 名字计数差分(Counter
+正增量项,禁名字集差分——重名产物场景名字集不变而计数差非零)∧ 产物
+进阶类别门,门④次数账(:data:`cw_game_state.forge_privilege_charges_left`
+现值 > 0);命中产物按 ``privilege_counterpart`` 映射替换(单一源 =
+cw_effect_inventory),变换折叠进 worn 单笔(变换与合成写同一字段,
+二笔 = 中间态),次数扣减系不同字段独立笔;次数账充能腿 = 获得链
+gain_equipment 尾段计数钩子(cw_effect_inventory
+.record_forge_privilege_gain,与本支成对)。
 规则住本上报
 = kernel 单一源(sim 与实机动作分支同构消费,禁第二份实现);合成改变
-板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
+板面装备贡献,落地写 = 目标域整表重建单写(事实事件广播已停用)。
 
 拒绝语义(布尔契约,统一回声;拒绝 = 零写 + 留存证据,禁半写):
 - owned 无该件 → ``wear_item_not_owned``(合法穿戴前置,漏 = 计划失效);
@@ -39,6 +50,7 @@ cw_effect_inventory,门③键域校验在边判定内非前置闸)。转换卡�
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
@@ -154,6 +166,65 @@ def _synthesis_fuse_privilege(
     return _fuse
 
 
+def _apply_forge_privilege(gs: GameState, unit: Unit, worn: list[str],
+                           inputs: list[str], sig: ChannelSig) -> bool:
+    """刃锻特权化支(锻冶专家:刃腿2 机制件;融合召唤特权档边的姊妹卡
+    闸形,异构成员 = 基础档合成产物特权化 + 刃栏辖域 + 次数账限次)。
+    原位变换 ``worn`` 并独立扣减次数笔,返回是否发生特权化(evidence
+    后缀段判定输入)。门序全在穿报 applied 路径内求值:
+
+    - 门①持卡 ∧ 门②刃栏辖域(char_id 判定):调用侧前置(融合召唤
+      门① 同位形);
+    - 门③产物判定 = **名字计数差分**(Counter 正增量项,计数控各取
+      穿戴输入前/收敛后的多重集;禁名字集差分——重名产物场景刃栏已有
+      同名进阶件时名字集差恒空而计数差非零,名单集读法漏检全部该形
+      合成)。门③ 与合成次数(输入件数−输出件数)系两个独立量,禁
+      同源混写。逐产物过进阶类别门(钻+简易 → 星徽产物等非进阶产物
+      零变换;特权产物 category='特权' 天然不在门③ 键域,融合召唤
+      同进阶对产物系净减件亦非基础档正增量——两卡分支零重入零双
+      变换)+ 特权件在册校验(映射为后缀拼接非查表,盲拼接产物不入
+      账,融合召唤门③ 同判);
+    - 门④次数:charges_left 现值 > 0 才逐件变换(缺省 1 = 基础次数);
+      多产物 × 次数不足按 worn 序最左优先,确定性。
+
+    次数扣减 = 独立 evidence 笔(``forge_privilege_consume``,与变换
+    写不同字段不构成中间态);惰性 import:常量与映射单一源 =
+    cw_effect_inventory,不持卡连该模块 import 都不发生。"""
+    from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+        FORGE_PRIVILEGE_CARD,
+        FORGE_PRIVILEGE_CHAR,
+        privilege_counterpart,
+    )
+    if unit.char_id != FORGE_PRIVILEGE_CHAR:
+        return False
+    if FORGE_PRIVILEGE_CARD not in (gs.active_strategies.value or []):
+        return False
+    charges = int(gs.forge_privilege_charges_left.value or 0)
+    in_count = Counter(inputs)
+    budget = {n: c - in_count[n]
+              for n, c in Counter(worn).items() if c - in_count[n] > 0}
+    converted = False
+    out: list[str] = []
+    for name in worn:
+        eq = EQUIPMENTS.get(name)
+        if (charges > 0 and budget.get(name, 0) > 0 and eq is not None
+                and eq.category == '进阶'
+                and privilege_counterpart(name) in EQUIPMENTS):
+            out.append(privilege_counterpart(name))
+            budget[name] -= 1
+            charges -= 1
+            converted = True
+        else:
+            out.append(name)
+    if not converted:
+        return False
+    worn[:] = out
+    gs.write_logic(gs.forge_privilege_charges_left, charges,
+                   produced_by=_PRODUCER,
+                   evidence='forge_privilege_consume', sig=sig)
+    return True
+
+
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
     """定位穿戴目标单位。
 
@@ -241,8 +312,8 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     (3.2 起 tracked 第二账停用,主域单点)。
 
     拒绝分支(零写 + 留存证据,布尔契约见模块头):owned 无件 / 目标不已登记 /
-    合成后超上限。``board_changed`` 事实事件仅 applied 出口广播
-    (拒绝 = 零写 = 无状态副本变化)。
+    合成后超上限。applied 出口 = 目标域整表重建单写 + owned 摘件 +
+    合成事件发放条目(事实事件广播已停用,落地写 = 域整表重建单写)。
     """
     _validate_sig(sig, ('logic_action',))
     from dataclasses import replace as _dc_replace
@@ -275,10 +346,19 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
         return _reject('wear_over_cap_rejected',
                        f'合成后 ≤{WEAR_LIMIT} 件',
                        f'合成后 {len(worn)} 件:{worn}')
+    # 刃锻特权化支(锻冶专家:刃):门①②在支内前置,门③④变换折叠进
+    # worn 单笔(变换与合成写同一字段,禁二笔;次数扣减系不同字段已在
+    # 支内独立成笔)。
+    forge_converted = _apply_forge_privilege(
+        gs, unit, worn, list(unit.equips) + [param.item_name], _grp_sig)
     new_unit = replace(unit, equips=worn)
+    evidence = 'wear_worn'
+    if fused_privilege:
+        evidence += '|fuse_privilege'
+    if forge_converted:
+        evidence += '|forge_privilege'
     _write_mutated_domain(gs, domain, idx, new_unit, _grp_sig,
-                          evidence=('wear_worn|fuse_privilege'
-                                    if fused_privilege else 'wear_worn'))
+                          evidence=evidence)
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)

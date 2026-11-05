@@ -27,6 +27,7 @@ EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -1336,6 +1337,75 @@ def grant_equip_item(gs: GameState, name: str, *, frame: str = '') -> bool:
                    produced_by='EffectLedgerBridge', evidence=ev,
                    sig=_equip_bridge_sig(gs))
     return True
+
+
+#: 锻冶专家:刃卡规范名(刃锻特权化次数账门①持卡判定键;登记面 =
+#: STRATEGY_GRANTS/STRATEGY_BINDINGS 同名条目在册零改动,卡文 =
+#: data/cw_invest_data.py id 360601)。
+FORGE_PRIVILEGE_CARD: str = '锻冶专家:刃'
+#: 该卡辖域角色(卡面「【刃】的装备栏」/「【刃】在场上或备战席」;
+#: 与 STRATEGY_GRANTS 同卡条目 chars_immediate 单成员一致,快照锁钉死)。
+FORGE_PRIVILEGE_CHAR: str = '刃'
+#: 扩次阈值(卡面「每获得10件任意装备,额外可生效一次」)。
+FORGE_PRIVILEGE_GAINS_PER_CHARGE: int = 10
+
+
+def record_forge_privilege_gain(gs: GameState, *, write: Callable[..., None],
+                                sig: ChannelSig, producer: str) -> None:
+    """刃锻特权化装备获得计数(锻冶专家:刃腿3 机制件;唯一调用点 =
+    获得链 ``gain_equipment`` 原语尾段,本函数 = 装备域行为面单一宿主,
+    与特权化桥同文件)。门①持卡 ∧ 刃在场门控,双门全过才计数:
+
+    - 门①持卡:active_strategies 现值含 :data:`FORGE_PRIVILEGE_CARD`
+      (穿报刃锻支同键,单一源);无卡局零行为差;
+    - 在场门控:计数时点刃 ∈ deployed(front_slots/back_slots)∪bench
+      容器现值判定——离场期间获得不计数不补计(卡文字面直辖);容器
+      未观察(None)= 无真值基座按不在场计;bench 侧经
+      ``cw_exec_state.bench_slot_unit`` 解包读口(消费端唯一合法入口,
+      禁内联 kind 判断),deployed 侧 = 子表列表成员现值。
+
+    计数口径 = 经原语的获得即 1 件(「获得」= 净新增字面直辖):合成
+    产物(穿报内联不经原语)/冶金炉变异产物(变异面不走获得链)/特权化
+    替换件(原位变换非获得)天然不计;装备获得转换拦截的装备分支目标
+    经原语净新增入栏照计,占席道具分支不入装备栏不计;好运令牌选定
+    回执桥 ``grant_equip_item`` 直写不经原语 = 在码漏计差集(申报制,
+    不在本钩覆盖)。计数写通道随获得写通道(``write`` = 该次获得已择道
+    的写分支,获得为猜测写(logic_rand)时计数同语义),达
+    :data:`FORGE_PRIVILEGE_GAINS_PER_CHARGE` 整倍数 → 充能笔
+    (charges_left +1)。零 rng:门序与计数全确定。
+    """
+    if FORGE_PRIVILEGE_CARD not in (gs.active_strategies.value or []):
+        return
+    present = False
+    view = gs.deployed.value
+    if view is not None:
+        for unit in list(view.front_slots or []) + list(view.back_slots
+                                                        or []):
+            if unit is not None and unit.char_id == FORGE_PRIVILEGE_CHAR:
+                present = True
+                break
+    if not present:
+        bench_view = gs.bench.value
+        if bench_view is not None:
+            # 运行期惰性取(模块头零包内 import 契约,解包读口单一源)。
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                bench_slot_unit,
+            )
+            for slot in bench_view.slots:
+                unit = bench_slot_unit(slot)
+                if unit is not None and unit.char_id == FORGE_PRIVILEGE_CHAR:
+                    present = True
+                    break
+    if not present:
+        return
+    count = int(gs.forge_privilege_gained_count.value or 0) + 1
+    write(gs.forge_privilege_gained_count, count, produced_by=producer,
+          evidence='forge_privilege_gain', sig=sig)
+    if count % FORGE_PRIVILEGE_GAINS_PER_CHARGE == 0:
+        charges = int(gs.forge_privilege_charges_left.value or 0) + 1
+        write(gs.forge_privilege_charges_left, charges,
+              produced_by=producer, evidence='forge_privilege_recharge',
+              sig=sig)
 
 
 def privilege_counterpart(name: str) -> str:

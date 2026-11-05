@@ -66,6 +66,7 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     TriggerKind,
     _portal_acquired_key,
     apply_board_rewrite,
+    record_forge_privilege_gain,
     register_portal_from_env,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -837,8 +838,11 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
                    producer: str) -> GainOutcome:
     """获得装备(gain-chain.md §2):equips 追加入栏(栏未观察 = 直构域
     拒落零写)→
-    on_equipment_gained 回调(装备获得→送单位数据表分派)。装备无升星
-    判断;子链合成级数留存证据在子链遥测行,本出参 merge_levels 恒 0。
+    on_equipment_gained 回调(装备获得→送单位数据表分派)→ 尾段刃锻
+    特权化获得计数钩子(:func:`cw_effect_inventory
+    .record_forge_privilege_gain`,持卡 ∧ 刃在场门控,两 applied 路径
+    尾段各一调用)。装备无升星判断;子链合成级数留存证据在子链遥测行,
+    本出参 merge_levels 恒 0。
 
     装备获得转换拦截(顶段,在栏未观察早退之前——直构域持卡也转换,与
     生产语义一致):持 :data:`STRATEGY_EQUIP_GAIN_CONVERSIONS` 已登记卡 ∧
@@ -879,6 +883,12 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
         write(gs.equips, list(inv) + [target], produced_by=producer,
               evidence=f'equip_gain_converted:{evidence}#equip', sig=sig)
         effects = on_equipment_gained(gs, target, rand=False, sig=sig)
+        # 刃锻特权化获得计数(锻冶专家:刃,尾段钩子):转换装备分支的
+        # 目标经原语净新增入栏 = 「获得」1 件,计数随本分支已择道的写
+        # 通道(rand=False 确定面);占席道具分支转发落席不入装备栏,
+        # 不达本尾段天然不计。
+        record_forge_privilege_gain(gs, write=write, sig=sig,
+                                    producer=producer)
         return GainOutcome(placed=True, landing='skipped', merge_levels=0,
                            effects=effects, detail=f'converted:{card}')
     inv = gs.equips.value
@@ -892,6 +902,13 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
     write(gs.equips, list(inv) + [item], produced_by=producer,
           evidence=f'{evidence}#equip', sig=sig)
     effects = on_equipment_gained(gs, item, rand=rand, sig=sig)
+    # 刃锻特权化获得计数(锻冶专家:刃,尾段钩子;on_equipment_gained
+    # 回调之后):每经原语净新增入栏 1 件计数 +1,达整 10 倍数充能
+    # (机制单一源 = cw_effect_inventory.record_forge_privilege_gain,
+    # 计数写通道随获得写通道;两 applied 路径尾段各一调用 = 转换拦截
+    # 落码后原语的双出口对表形)。拒落早退分支(equips 未观察)不达
+    # 本尾段,零写零计数。
+    record_forge_privilege_gain(gs, write=write, sig=sig, producer=producer)
     return GainOutcome(placed=True, landing='skipped', merge_levels=0,
                        effects=effects, detail='')
 

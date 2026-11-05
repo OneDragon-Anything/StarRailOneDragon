@@ -295,6 +295,20 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '读端——发放记账过程量(同族行先例 = env_grants_done/'
               'ore_declared_done);唯一逻辑写端 = cw_gain_chain.'
               'check_strategy_hp_loss_grants'),
+    'forge_privilege_charges_left': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='刃锻特权化剩余生效次数(锻冶专家:刃次数账正本,Field 缺省'
+              '承载开局 1 零置位腿;消费 = 穿报刃锻支 forge_privilege_'
+              'consume 笔,充能 = 获得链计数钩子 forge_privilege_recharge'
+              ' 笔),无观察读端——次数 = 卡文推算知识(同族行先例 = '
+              'strategy_hp_loss_accum)'),
+    'forge_privilege_gained_count': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='刃锻特权化装备获得计数器(锻冶专家:刃「每获得10件」扩次'
+              '账,Field 缺省承载开局 0;唯一逻辑写端 = cw_gain_chain.'
+              'gain_equipment 尾段 → cw_effect_inventory.'
+              'record_forge_privilege_gain,计数写通道随获得写通道),'
+              '无观察读端——计数过程量(strategy_hp_loss_accum 行同构)'),
     'strategy_char_grant_bindings': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='绑定型随机角色授予名字绑定域(键 = 卡规范名,值 = 获得时点'
