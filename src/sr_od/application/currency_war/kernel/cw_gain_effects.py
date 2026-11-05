@@ -563,6 +563,28 @@ def _make_bound_char_grant_effect(
     return _effect
 
 
+# ===== 策略域具名角色每节点发放表(「每次进入新节点时,获得【具名角色】」
+# ===== 节点周期通道具名固定子形;随机绑定形(「获得1星的该角色」指代采样
+# ===== 名)走 _STRATEGY_CHAR_GRANT_BINDINGS,两表同函数分支消费 =
+# ===== cw_gain_chain.check_strategy_node_char_grants;族首卡 = 本姑娘
+# ===== 就是罗刹(卡面 cw_invest_data.PLAZA_AUGMENTS id 352501 句 2),
+# ===== 后继具名固定形卡 +1 行复用本表)=====
+
+#: 具名固定子形每节点发放表单一源(卡规范名 → (具名角色规范名, 每节点
+#: 名数)):具名 = 固定名在表行为单一源,无绑定需求(禁为具名形建绑定
+#: dict 条目);名数 = 卡面「获得【X】」单数直读,缺省语义 1(表行显式)。
+#: 复制星级 = 1★ 先验(检查函数分支常量;desc 未载星级,星级占位判——
+#: 对照价值投资系 desc 明写「1星的该角色」系明写非占位;首个 desc 明写
+#: ≠1 卡届时本表值第 3 元扩展,缺省 1 保族兼容)。消费端 = 检查函数第二
+#: 分支,计数恒名数常量(与绑定分支「补给后」计数式分道,禁共用公式);
+#: 与获得时点具名发放 _STRATEGY_CHAR_GRANTS 分表分治(两时点两表,轮回
+#: 不止同卡两表先例同构)。表域一致性对账归测试(镜像登记表 + 行值直测
+#: 锁,绑定表同层纪律,零 import 期校验)。
+_STRATEGY_NODE_CHAR_GRANTS: dict[str, tuple[str, int]] = {
+    '本姑娘就是罗刹': ('三月七', 1),
+}
+
+
 # ===== 随机装备族效果(策略卡获得时点随机装备发放:类别池均匀 v0 掷骰
 # ===== count 件 → 逐件 gain_equipment(rand=True) 入栏,骇客
 # ===== roll_hacker_mod + gain_equipment 现役同构;首例 = 打捞人才库+
@@ -936,47 +958,51 @@ def _compose_grant_legs(
 
 # ===== 具名角色发放族效果(策略卡获得时点具名角色确定发放:gain_character
 # ===== (rand=False) 入席,落位/回调/升星/席满溢出全沿链现役;名单值形 =
-# ===== (发放角色, 发放只数),只数 = 卡面明写结构值缺省 1,工厂逐次发放;
+# ===== (发放角色, 发放只数, 发放星级),只数 = 卡面明写结构值缺省 1,星级 =
+# ===== 占位/先验/desc 直读三态(见表注),工厂逐次发放;
 # ===== 现役成员 = 溜佩佩/溜佩佩+(族首落)/招财狗/艾丝妲的猛犬!(佩佩族)/
 # ===== 狸职手续(狸职狸狸×3,召唤临时工),后继单条效果条目的卡 +1 行复用本表;
 # ===== 佩佩×装备等两条效果条目组合卡不入本表——条目参数落 PICK_INVEST_EFFECTS
 # ===== 组合登记行,入表 = 同名键顺序覆盖丢条目)=====
 
-#: 具名角色发放名单单一源(卡规范名 → (发放角色, 发放只数);登记面镜像 =
-#: cw_investments.STRATEGY_GRANTS 对应卡 chars_immediate——只数不进登记,
-#: 估值档位按「角色是否被候选终局阵容使用」判档与只数无关——一致性测试
-#: 逐对相等,箱条目 _STRATEGY_BOX_GRANTS 同构)。注册表条目由下方工厂从
-#: 本表生成,禁另写字面量(表与效果体两处独立字面量的漂移在备战断言
-#: 不可见,箱条目 A4 教训同纪律)。
-_STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int]] = {
-    '溜佩佩': ('佩佩', 1),
-    '溜佩佩+': ('佩佩', 1),
-    '招财狗': ('佩佩', 1),
+#: 具名角色发放名单单一源(卡规范名 → (发放角色, 发放只数, 发放星级);
+#: 登记面镜像 = cw_investments.STRATEGY_GRANTS 对应卡 chars_immediate——
+#: 只数/星级不进登记,估值档位按「角色是否被候选终局阵容使用」判档与
+#: 两参无关——一致性测试逐对相等,箱条目 _STRATEGY_BOX_GRANTS 同构)。
+#: 星级语义三态:cost0 召唤单位 = 占位(无星级概念,链签名必填星参落 1,
+#: 环境侧佩佩发放同判)/roster 单位 desc 未标星 = 1★ 先验(轮回不止白厄)/
+#: desc 明写 = 结构值直读(本姑娘就是罗刹「获得2星【三月七】」2★,家族
+#: 首个非 1 行)。注册表条目由下方工厂从本表生成,禁另写字面量(表与
+#: 效果体两处独立字面量的漂移在备战断言不可见,箱条目 A4 教训同纪律)。
+_STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int, int]] = {
+    '溜佩佩': ('佩佩', 1, 1),
+    '溜佩佩+': ('佩佩', 1, 1),
+    '招财狗': ('佩佩', 1, 1),
     # 艾丝妲的猛犬!(卡文「获得一个穿戴【穿刺死棘之枪】的【佩佩】」):
     # 发放对象 = 佩佩(佩戴条目零建模 = 用户裁定 2026-10-15 环境侧同判,
     # 披露键 strategy_worn_equip_unmodeled 申报;枪战斗数值归装备注册表
     # 已登记单一源)。
-    '艾丝妲的猛犬！': ('佩佩', 1),
+    '艾丝妲的猛犬！': ('佩佩', 1, 1),
     # 狸职手续(卡文「获得3个穿着1件简易装备的【狸狸】」):发放对象按
     # 实机录名归一 = 狸职狸狸(cw_chars 该员 source 注记逐字辖本卡,卡面
     # 用名「狸狸」∉ CHARACTER_ROSTER),只数 3 = 卡面明写;穿戴句与周期
     # 离场句零建模 = cw_investments.STRATEGY_DESC_UNMODELED_KEYS 两键
     # 申报;同名三连发触发链现役合成级联如实记账(见工厂 docstring)。
-    '狸职手续': ('狸职狸狸', 3),
+    '狸职手续': ('狸职狸狸', 3, 1),
     # 佩佩客串(id 331001):卡文「佩佩闪亮登场！」登场发放非「获得」
     # 直读,用户裁定 2026-11-05 拍 B 转正人工登记入册(佩佩真实入后台);
     # 穿戴/离场两条效果条目 = 周期事件异轴不入本表(登记轴 =
     # cw_investments.STRATEGY_KECHUAN_WEAR_GRANTS / STRATEGY_KECHUAN_
     # LEAVE_GRANTS,离场倒计时队列 pending_kechuan_leaves 在本工厂发放刻
     # 登记——发号纪律见工厂 docstring)。
-    '佩佩客串': ('佩佩', 1),
+    '佩佩客串': ('佩佩', 1, 1),
     # 佩佩驾到(id 350601):卡文「获得1个携带着3个永久附着星徽的【佩佩】。
     # 获得8金币。」登场发放「获得」直读入表(T-128 族模式卡先例,_make_char
     # _grant_effect 骑厂推导);佩戴腿「永久附着星徽」零建模 = 用户裁定
     # 2026-10-15 佩戴件不建模在册纪律(STRATEGY_DESC_UNMODELED_KEYS 键已
     # 在码申报,后继引用本键不重立);金腿「获得8金币」 = PICK 工厂组合
     # 行二腿(grant_gold_leg)零新代码路径。
-    '佩佩驾到': ('佩佩', 1),
+    '佩佩驾到': ('佩佩', 1, 1),
     # 轮回不止(id 332201):卡文「获得【白厄】和一件【轮回者】装备」腿1
     # 直读行——「获得…角色名」具名直读判据,白厄 ∈ CHARACTER_ROSTER
     # (cw_chars 注册,3 费独立单位);「一件【轮回者】装备」腿零建模 +
@@ -985,12 +1011,22 @@ _STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int]] = {
     # 另表 = cw_investments.STRATEGY_PLANE_START_CHAR_GRANTS 位面开始
     # 角色子形专表分治(同卡两表,获得时点/位面开始两时点分域);
     # 白厄星级 1 = 星级先验家族口径( roster 单位,异于佩佩族 cost0 占位)。
-    '轮回不止': ('白厄', 1),
+    '轮回不止': ('白厄', 1, 1),
+    # 本姑娘就是罗刹(id 352501)首句「获得2星【三月七】」即时直读行:
+    # 「获得…角色名」具名直读判据,三月七 ∈ CHARACTER_ROSTER(1 费池);
+    # 2★ = desc 明写结构值直读非先验(家族首个非 1 星级行,与本表既有
+    # 占位/先验两态分域见表注);「化身【罗刹】」系变身机制非发放不入册
+    # (登记面注释在码 cw_investments.STRATEGY_GRANTS 同卡行);「每次进入
+    # 新节点时,获得【三月七】」重复腿不入本表——节点周期具名固定子形走
+    # _STRATEGY_NODE_CHAR_GRANTS 姊妹专表分治(同卡两表,获得时点/每节点
+    # 两时点分域,轮回不止两表先例同构)。
+    '本姑娘就是罗刹': ('三月七', 1, 2),
 }
 
 
 def _make_char_grant_effect(char: str, count: int = 1, *,
-                            card: str | None = None) -> Callable[..., list[str]]:
+                            card: str | None = None,
+                            star: int = 1) -> Callable[..., list[str]]:
     """具名角色发放效果体工厂(闭包销 = 发放角色名 + 发放只数 + 所属卡名,
     单源取自 :data:`_STRATEGY_CHAR_GRANTS`;形态镜像 _make_box_grant_effect,
     差异 = 发放对象是角色,走 gain_character)。
@@ -1004,9 +1040,14 @@ def _make_char_grant_effect(char: str, count: int = 1, *,
     (rand=False,gain-chain.md §5:卡文无随机词、选卡确认 = 确定性入口)。
     发放只数 = count(卡面明写结构值,如「获得3个」),循环逐次发放,
     每发独立过一遍落位/回调/升星判断/席满溢出链语义。
-    星级实参恒 1 = 占位非先验:佩佩/狸职狸狸系 cost0 系统召唤单位无星级
-    概念(cw_chars 已登记),链签名必填星参落占位值,环境侧佩佩发放已立同判。
-    落位/回调/升星/席满溢出语义全部沿 gain_character 现役,零新增链为。
+    ``star`` = 发放星级(生成段自表行第 3 元透传,缺省 1):佩佩/狸职狸狸
+    系 cost0 系统召唤单位无星级概念(cw_chars 已登记),链签名必填星参落
+    占位值,环境侧佩佩发放已立同判;roster 单位 desc 未标星 = 1★ 先验
+    家族口径(轮回不止白厄同);desc 明写星级 = 结构值直读非先验
+    (本姑娘就是罗刹 2★,语义三态分域见 :data:`_STRATEGY_CHAR_GRANTS`
+    表注)。2★ 直授不与 1★ 存量合并(合并判据 = 同名同星,星级不同不
+    触发,链现役语义);落位/回调/升星/席满溢出语义全部沿 gain_character
+    现役,零新增链为。
     **发放刻赋实例号**(个体归属承载,T-368 佩佩客串批扩现役环境发放链
     发号纪律至本名单全部键非本卡特例):每发先 ``uid = env_grant_uid_seq
     现值 + 1`` 写回(check_env_battle_grants 同款),``gain_character(uid=
@@ -1054,7 +1095,7 @@ def _make_char_grant_effect(char: str, count: int = 1, *,
                       queue + ((uid, int(leave_nodes)),),
                       produced_by=_PRODUCER,
                       evidence='pick_invest_char_grant#leave_queue', sig=sig)
-            r = gain_character(gs, char, 1, rand=False, sig=sig,
+            r = gain_character(gs, char, star, rand=False, sig=sig,
                                evidence='pick_invest_char_grant',
                                producer=_PRODUCER, uid=uid)
             steps.append(
@@ -1795,8 +1836,8 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '这么大的钻石': _compose_grant_legs(_make_char_grant_effect('佩佩'),
                                      _make_named_equip_grant_effect(
                                          '财富宝钻', 1)),
-    **{name: _make_char_grant_effect(char, count, card=name)
-       for name, (char, count) in _STRATEGY_CHAR_GRANTS.items()},
+    **{name: _make_char_grant_effect(char, count, star=star, card=name)
+       for name, (char, count, star) in _STRATEGY_CHAR_GRANTS.items()},
     # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
     # 2星1费角色。每次进入新节点时,获得1星的该角色,补给后额外获得2个」):
     # 生成式注册条由工厂自 _STRATEGY_CHAR_GRANT_BINDINGS 生成(表与效果体

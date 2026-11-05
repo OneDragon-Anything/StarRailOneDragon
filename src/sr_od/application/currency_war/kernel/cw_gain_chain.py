@@ -74,6 +74,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 )
 from sr_od.application.currency_war.kernel.cw_gain_effects import (
     _STRATEGY_CHAR_GRANT_BINDINGS,
+    _STRATEGY_NODE_CHAR_GRANTS,
     PICK_INVEST_EFFECTS,
     roll_random_equip,
 )
@@ -2753,44 +2754,54 @@ DEFECT_STRATEGY_CHAR_BIND_MISSING: str = 'gain_chain_strategy_char_bind_missing'
 def check_strategy_node_char_grants(gs: GameState, *,
                                     prev_kind: str | None,
                                     sig: ChannelSig) -> int:
-    """策略卡每节点绑定角色复制发放检查(「每次进入新节点时,获得1星的
-    该角色,补给后额外获得2个,持续至本局游戏结束」触发器单一源,价值
-    投资·金首例;唯一调用点 = sim 节点窗收尾——live 零写观察覆盖:实机
-    复制单位由游戏自发入席,下一备战帧 bench 整表观察覆盖,实机局不接
-    本通道)。
+    """策略卡每节点角色复制发放检查(「每次进入新节点时…持续至本局游戏
+    结束」触发器单一源,两子形分治——绑定随机形「获得1星的该角色,补给
+    后额外获得2个」(价值投资·金首例,发放名 = 获得效果体采样后写入绑定
+    域)与具名固定形「获得【具名角色】」(本姑娘就是罗刹首例,卡文无
+    「补给后」分句,发放名 = 表行固定名);唯一调用点 = sim 节点窗收尾
+    ——live 零写观察覆盖:实机复制单位由游戏自发入席,下一备战帧 bench
+    整表观察覆盖,实机局不接本通道)。
 
     条件矩阵(顺序即短路序,check_strategy_battle_grants 形态):
 
-    1. 持卡 ∩ 绑定发放表(cw_gain_effects._STRATEGY_CHAR_GRANT_BINDINGS)
-       为空(未持卡/表外卡同路,表外卡禁从效果原文自动猜装)→ 0;
-    2. 逐卡查绑定域 ``gs.strategy_char_grant_bindings``:键缺 = 持卡未
-       绑定 → :data:`DEFECT_STRATEGY_CHAR_BIND_MISSING` 留存证据 +
-       fail-closed 零发放(状态机缺口,禁猜);
-    3. 逐卡计数 ``n = 1 + (2 if prev_kind == 'supply' else 0)``——
+    1. 持卡 ∩ 两表(cw_gain_effects._STRATEGY_CHAR_GRANT_BINDINGS 绑定形
+       / cw_gain_effects._STRATEGY_NODE_CHAR_GRANTS 具名形)为空(未持卡
+       /表外卡同路,表外卡禁从效果原文自动猜装)→ 0;
+    2. ①绑定形:逐卡查绑定域 ``gs.strategy_char_grant_bindings``:键缺
+       = 持卡未绑定 → :data:`DEFECT_STRATEGY_CHAR_BIND_MISSING` 留存
+       证据 + fail-closed 零发放(状态机缺口,禁猜);
+    3. ①续:逐卡计数 ``n = 1 + (2 if prev_kind == 'supply' else 0)``——
        「补给后」= **前一进入节点为补给 → 本次进入 1+2=3 名**(「补给
        **后**」文义直读;补给节点自身的进入仍发基础 1 名。prev_kind =
        调用方按节点序列现值推导传入:同位面取前序位、跨位面取前位面
        末位——现役日程三位面末位恒 boss,跨位面「补给后」不可达,该
        分支为防御代码,节点改写环境扩册时自动正确);
-    4. 循环 n 次 ``gain_character(绑定名, 1, rand=False)`` 确定发放
+    4. ①续:循环 n 次 ``gain_character(绑定名, 1, rand=False)`` 确定发放
        (复制星级 1★ = desc 明写「获得1星的该角色」;rand=False 确定
        发放语义,gain-chain.md §5;**写通道随状态容器锚定态**——直构/sim
        gs 恒未锚定走 write_logic_rand 通道,与 discharge_due_item_grants
        rand=False 现役形态同形;升星级联/席满溢出/拒落全部沿原语现役,
        批内同名 1★ 凑三经链自然升星;evidence
        ``strategy_node_char:<卡名>``);
-    5. 返回合计发放名数(断言面;生产调用零回调面,返回值忽略)。
+    5. ②具名形:遍历具名固定表 ∩ 持卡,逐卡 ``n = 行值名数``(常量,与
+       prev_kind 无关——本子形卡文无「补给后」分句,禁共用①计数式,
+       共用即补给后继窗误发 3 名 = 行为级错误;复制星级 1★ = desc 未载
+       星级的占位判);循环 n 次 ``gain_character(具名, 1, rand=False)``
+       确定发放,链语义与 evidence 前缀同①(与绑定分支共用
+       ``strategy_node_char:<卡名>`` 前缀,两子形卡名空间不交,断言按
+       卡名可分);
+    6. 返回合计发放名数(断言面;生产调用零回调面,返回值忽略)。
 
-    - **零 rng**:计数与发放全确定,无采样面——本条目不扰动局内掷序,
-      同 seed 双跑重放仅受状态副本值变化影响;
+    - **零 rng**:两子形计数与发放全确定,无采样面——本条目不扰动局内
+      掷序,同 seed 双跑重放仅受状态副本值变化影响;
     - **无 done 一次性标志位**(周期型):每节点窗重查,防重归调用方节点键幂等
       守卫(sim _begin_node_window 窗口守卫覆盖,重放不双发),本函数
       零二次守卫;
-    - **绑定 = 名字身份**:绑定域记采样掷得的角色名,出售/再合成原单位
-      不影响复制发放(desc 无「在场」条件);复制单位与本卡绑定独立
-      存续至局终;
-    - 数据驱动形态:迭代绑定表 ∩ 持卡,姊妹同构卡注册其获得效果后同
-      函数自动跟随,零改本函数。
+    - **绑定 = 名字身份**(仅①绑定形):绑定域记采样掷得的角色名,出售/
+      再合成原单位不影响复制发放(desc 无「在场」条件);②具名形发放名
+      = 表行固定名,零绑定域消费;复制单位与本卡独立存续至局终;
+    - 数据驱动形态:迭代两表 ∩ 持卡,姊妹同构卡注册其表行后同函数自动
+      跟随,零改本函数。
     """
     bindings = dict(gs.strategy_char_grant_bindings.value or {})
     granted = 0
@@ -2810,6 +2821,19 @@ def check_strategy_node_char_grants(gs: GameState, *,
         n = 1 + (2 if prev_kind == 'supply' else 0)
         for _ in range(n):
             gain_character(gs, bound_name, 1, rand=False, sig=sig,
+                           evidence=f'strategy_node_char:{name}',
+                           producer=_NODE_CHAR_GRANT_PRODUCER)
+        granted += n
+    # ②具名固定子形分支:计数恒表行名数常量,与 prev_kind 零消费——本
+    # 子形卡文无「补给后」分句,与①绑定形计数式分道是表形差异的必然
+    # (共用公式 = 补给后继窗误发 3 名的行为级错误)
+    for name in gs.active_strategies.value or ():
+        spec = _STRATEGY_NODE_CHAR_GRANTS.get(name)
+        if spec is None:
+            continue
+        char, n = spec
+        for _ in range(n):
+            gain_character(gs, char, 1, rand=False, sig=sig,
                            evidence=f'strategy_node_char:{name}',
                            producer=_NODE_CHAR_GRANT_PRODUCER)
         granted += n
