@@ -2489,6 +2489,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '(对齐 _portal_placeholder_spec 先例);'
           '门槛 100%/基点判读 = 判读申报制家族口径,零响应下两读法 bot '
           '行为恒同。'),
+    # 超光速提拔(id 350301):官方「战斗开始时:1个随机的1费角色在这场
+    # 战斗中升为4星，并获得5%前/后台强度。」战力类 UNIT_BUFF 零响应登记
+    # (升星+增幅游戏侧自算,bot 仅登记;pending=False 系族常态回归 = 定谳
+    # 依据 desc「在这场战斗中」全 src 唯一临时标记词 + 在册用户裁定
+    # 「变形持续性=临时」+现码 UNIT_BUFF 全 pending=False 值;⚠️ 稿 §2.1
+    # 注释草稿「姊妹条目 pending=True」系写作窗陈旧命题禁照抄);随机 1 费
+    # 选中面零响应下两读法 bot 行为恒同(判读申报制)。
+    '超光速提拔': EffectSpec(
+    id='350301', name='超光速提拔',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350301')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(升星+增幅游戏侧自算,bot 仅登'
+          '记;随机 1 费选中面零响应下两读法 bot 行为恒同 = 判读申报制);'
+          'pending=False 系族常态回归:desc「在这场战斗中」全 src 唯一临时'
+          '标记词 + 在册用户裁定「变形持续性=临时」定谳;无离散触发事件,'
+          'trigger 占位形。'),
 }
 
 
