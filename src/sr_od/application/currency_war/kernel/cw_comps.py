@@ -103,7 +103,6 @@ class Comp:
     """第二档终局成员(进终局成员集/采购面/送卡 shared 档;
     身份行为包——装备 key 件绑定/不卖保护/优先级 0 档——
     只挂 core,这是与 core 的语义边界)。"""
-    transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
     # 阵容特定站位要求(角色→排级或槽位级),覆盖注册表 position_pref 默认
     # (CW 玩法每角色的可选站位真值,cw_chars.position:技能效果绑定站位)——
     # 值域:'front'/'back'(排级,自适应选槽)| 'front@0'-'front@3'/
@@ -246,8 +245,7 @@ class Comp:
 
     @property
     def members(self) -> tuple[str, ...]:
-        """终局成员集：core ∪ shared，注册表声明序去重（core 位在前）；
-        transition_chars 不计（打工后卖，不构成终局成员）。
+        """终局成员集 = core ∪ shared 两名单，注册表声明序去重（core 位在前）。
         消费语义锚 = strategy-docs/12_line_and_intention.md §2（line_members_view
         读口/禁第二读口径）与 strategy-telemetry `k_members` 行（锁定帧语义）。
         集合消费写 ``set(comp.members)``；序 = 注册表声明序（截断/排序 tie-break 消费）。"""
@@ -415,7 +413,7 @@ COMP_LIBRARY: list[Comp] = [
         # 机制:反震吃「受击」,吸仇恨件互斥(攻略:「不要杰帕德,分受击概率」)。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(攻略 @4-6,星3「低血+相邻目标也获得护盾」→中段=相邻覆盖最大化,final_jizi_train 关键站位节;取中值@5)
         # 双列回声清理:三月七/花火/瓦尔特 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=[], transition_chars=["符玄", "艾丝妲"],
+        shared_chars=[],
         # ===== 姬子列车家族·A 反震 =====   # ②类信号:四人 100% 固定(A/B 共用)
         equip_assign={"姬子·启行": ["以牙还牙甲", "以牙还牙甲"], "三月七": ["自适应外骨骼"]},
         # ===== 知识卡字段(A/B 共享;数据源=final_comps/final_jizi_train.md)=====
@@ -439,7 +437,7 @@ COMP_LIBRARY: list[Comp] = [
         # ×2+电锯;三月七外骨骼归 A 铁三角不随 B。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(同 A;领航员载体共享)
         # 双列回声清理:三月七/花火/瓦尔特 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=[], transition_chars=["符玄", "艾丝妲"],
+        shared_chars=[],
         # ===== 姬子列车家族·B 直伤 =====
         equip_assign={"姬子·启行": ["火力风暴潮", "火力风暴潮", "高周波电锯"],
                       "花火": ["蓄能帆"]},
@@ -464,7 +462,7 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
         # 双列回声清理:远坂凛 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["瓦尔特", "Saber"], transition_chars=["符玄", "知更鸟", "花火"],   # Saber = 替班者转成员(「Archer 不来 Saber 一直 C,不卖转副C」,替班叙事见 final_grail_dual)
+        shared_chars=["瓦尔特", "Saber"],   # Saber = 替班者转成员(「Archer 不来 Saber 一直 C,不卖转副C」,替班叙事见 final_grail_dual)
         # ===== 圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====   # ②类信号:2 档开任务=燃料线入口
         equip_assign={"Archer": ["火力风暴潮", "高周波电锯", "动能激发剑"],
                       "远坂凛": ["火力风暴潮", "动能激发剑"],
@@ -491,7 +489,6 @@ COMP_LIBRARY: list[Comp] = [
         # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
         # 成型羁绊队:减益4 档乘区为战力主体
         shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
-        transition_chars=["椒丘", "风堇", "开拓者·记忆"],
         flex_factions=["燃血", "量子同频", "列车同行", "治疗", "持续伤害"],
         plaza_carry="千冶·刃",
         equip_assign={"千冶·刃": ["反重力皮靴"]},
@@ -515,9 +512,8 @@ COMP_LIBRARY: list[Comp] = [
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         # 成型羁绊队:欢愉 4-6 档乘区
         # 双列回声清理:瓦尔特/爻光 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["火花"],
+        shared_chars=["火花"],   # 交叉核对注:常驻是火花(16/25,4费)非花火;爻光 25/25 常驻(core 列在册)
         char_positions={"爻光": "back", "绯英": "front@0"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排1号位(攻略 Final 标准式@0,25 帖归纳,2026-11-04 Common 全量审查登记)
-        transition_chars=["花火"],   # 交叉核对注:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # ===== 欢愉族家族·绯英档(资源基准 6 级;无信号时的默认落点)=====   # ②类信号:绯英/银狼两档共用主体
         # content_id=7333;「欢愉 4-6 档」系连续区间误写);上限 5 = 4-5 主流带
         # (final_feiying「不到 7 也成型」,7 特权化属银狼档语义)。
@@ -573,7 +569,6 @@ COMP_LIBRARY: list[Comp] = [
 # 知更鸟/瓦尔特= P3 补位件(n=67 非核心组);插件层五人(千冶·刃/布洛妮娅/
         # 杰帕德/娜塔莎/佩拉)为终局插件购买件,不入 core/shared
         shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
-        transition_chars=["刃"],
         # ===== 希儿量子家族(五线最收敛,无流派)=====
         equip_assign={"希儿": ["火力风暴潮", "高周波电锯", "火力风暴潮·特权"]},
         # ↑ 到人出处 = final_seele_quantum 装备公式「希儿: 火力风暴潮×2-3(64 次!)+
@@ -611,7 +606,6 @@ COMP_LIBRARY: list[Comp] = [
 # 攻略:单体 boss 黄泉输出乏力(无公司名指向,待实机核)
         # 双列回声清理:乱破 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["刃", "符玄", "卡芙卡"],   # 成型羁绊队:巡海4+减益4 档乘区;卡芙卡 = 替班者转成员(黄泉缺席时顶 C,不卖转副C;DOT 队核心亦常驻此线)
-        transition_chars=["刃", "椒丘", "桑博"],
         # ===== 黄泉减益家族(无流派;第四件=装备池)=====   # ②类信号:4-6 档主体,到前 DOT 班底共享牌桌
         equip_assign={"黄泉": ["高周波电锯", EquipChoice("pool", ("永动机", "光速螺旋桨", "火力风暴潮"))],
                       "不死途": ["反重力皮靴", "反重力皮靴", "反重力皮靴"]},
@@ -637,7 +631,6 @@ COMP_LIBRARY: list[Comp] = [
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         # 双列回声清理:忘归人 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["黄泉", "流萤"],   # 成型羁绊队:击破6 档乘区
-        transition_chars=["赛飞儿", "灵砂", "忘归人"],
         flex_factions=["减益", "盛会之星"],
         plaza_carry="波提欧",
         equip_assign={"波提欧": ["虫洞掘进钻头", "光速螺旋桨"], "不死途": ["反重力皮靴"]},
@@ -659,7 +652,7 @@ COMP_LIBRARY: list[Comp] = [
         # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
         # 成型羁绊队:战技点4+列车4 档乘区
         # 双列回声清理:远坂凛/瓦尔特/花火 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=[], transition_chars=["花火", "风堇", "姬子·启行"],
+        shared_chars=[],
         flex_factions=["量子同频", "盛会之星"],
         plaza_carry="丹恒·饮月",
         equip_assign={"丹恒·饮月": ["高周波电锯", "高周波电锯", "火力风暴潮"]},
@@ -685,7 +678,8 @@ COMP_LIBRARY: list[Comp] = [
         #   锁轴速度载体;final_grail_dual.md 圣杯A)
         # 双列回声清理:吉尔伽美什/Saber/瓦尔特/符玄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区
-        transition_chars=["花火", "刃"],   # 远坂凛是 core(1 星即够)
+        # 远坂凛是 core(1 星即够,攻略口径)——不在本套 core_chars(名单 = 双王
+        # 主体),星级知识经 need_star「攻略明文星级成员」通道入册
         # ===== 圣杯双C家族·B Saber 能量线(~25%)=====   # ②类信号:2 档开任务=燃料线入口
         equip_assign={"Saber": ["火力风暴潮", "永动机", "冷笑话引擎"], "吉尔伽美什": ["反重力皮靴"]},
         # ↑ 教义:Saber=充能件(永动机/冷笑话引擎/电光履,主C 满能自拉条伪永动)
@@ -717,7 +711,7 @@ COMP_LIBRARY: list[Comp] = [
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
         # 成型羁绊队:欢愉档乘区(星间降 flex);教义为准重写:旧手编清单未到人
         # 且与「爻光三鞋」教义矛盾,以装备公式节到人行为准(详设 equip-projection §1)。
-        shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
+        shared_chars=["银狼", "符玄", "丹恒·饮月"],
         flex_factions=["星间旅人", "战技点", "列车同行", "量子同频", "星核猎手"],   # 星间=顺手增益源
         plaza_carry="火花",
         equip_assign={"花火": ["火力风暴潮"], "爻光": ["反重力皮靴", "反重力皮靴", "反重力皮靴"]},
@@ -745,7 +739,6 @@ COMP_LIBRARY: list[Comp] = [
         # ↑ 战场进化手册=小黑塔星级装备(星级→强度),归本条(教义)。
         # 双列回声清理:黑塔/缇宝/翡翠 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],   # 成型羁绊队:学者档=星级总量成长乘区
-        transition_chars=["艾丝妲", "丹恒·腾荒"],   # 黑塔(小黑塔)是 core/替班C
         # ===== 大黑塔群攻家族(档位=连续深度谱,非流派)=====   # ②类信号:星级总量成长
         equip_assign={"大黑塔": ["高周波电锯", "永动机", "电光履", "蓄能帆"],
                       "黑塔": ["战场进化手册", "高周波电锯"]},
@@ -780,7 +773,6 @@ COMP_LIBRARY: list[Comp] = [
 # (银枝×单体长战类非公司名,不登 boss 吃怕表——同黄泉条目处置,待实机核)
         # 双列回声清理:翡翠/知更鸟 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
-        transition_chars=["椒丘", "星期日", "刃"],
         flex_factions=["星间旅人", "公司", "盛会之星", "列车同行"],
         plaza_carry="",   # 银枝 carry 聚类 n<5(24 篇在场,长尾)
         equip_assign={"银枝": ["火力风暴潮", "冷笑话引擎"]},
@@ -809,7 +801,6 @@ COMP_LIBRARY: list[Comp] = [
         # 两半互补)。羁绊维判非成型羁绊队:factions/档 0 皆空,装备流例外。
         # 双列回声清理:白厄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
-        transition_chars=["符玄"],   # 白厄 core/三月七 P2 直留终局
         # ===== 白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
         # ↑ 档 1 只收了 B 流 {护盾2};A 流前排法则=标签数量×星级优先,A 巡海流(~64%)
         #   核心副羁绊=「巡海 3+」——A/B 未拆下巡海 3 属 A 流、现仅在 flex_factions
@@ -843,7 +834,7 @@ COMP_LIBRARY: list[Comp] = [
         # 交叉核对注(狼尊簇 68 篇交叉核对):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
         # 成型羁绊队:欢愉 5-7 档乘区
         # 双列回声清理:爻光 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["花火"], transition_chars=["花火", "符玄"],
+        shared_chars=["花火"],
         # ===== 欢愉族家族·银狼档(资源基准 9 级;与绯英档互含单向:银狼局含绯英 76%)=====   # ②类信号:绯英/银狼两档共用主体
         # 星核 2=笑点泵(银狼每攻 7 次放 40 笑点欢愉技)——本套已列档 0(星核猎手2),不入档 1(不重复);绯英 76% 在场沉淀
         equip_assign={"银狼LV.999": ["火力风暴潮", "火力风暴潮", "高周波电锯"],
@@ -874,7 +865,7 @@ COMP_LIBRARY: list[Comp] = [
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(交叉核对注:升 A 依据不足,勿按万敌标准拔高)。
         # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(裁注)
         # 双列回声清理:风堇/昔涟 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["银狼"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"],
+        shared_chars=["银狼"],
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         plaza_carry="阿格莱雅",
         equip_assign={"阿格莱雅": ["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨"]},
@@ -903,7 +894,7 @@ COMP_LIBRARY: list[Comp] = [
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
         # 成型羁绊队:追击档乘区(≥3追击=300%倍率)
         # 双列回声清理:知更鸟/不死途/那刻夏 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["缇宝"], transition_chars=["赛飞儿", "风堇", "刃"],
+        shared_chars=["缇宝"],
         flex_factions=["公司", "群攻", "昼之半神"],
         plaza_carry="",   # 飞霄 carry 3 篇悬空;那刻夏(追击真代表,n=6 恰在聚类边缘)未单列阵容
         equip_assign={"飞霄": ["火力风暴潮", "火力风暴潮"],
@@ -937,7 +928,7 @@ COMP_LIBRARY: list[Comp] = [
         char_positions={"万敌": "front@0"},   # 站位:万敌永远前排1号位(攻略硬约束,final_wandi_burn「万敌@0 独占前排」;燃血吃受击)
 # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         # 双列回声清理:长夜月 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["风堇", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # 长夜月是 core(夜半记录)
+        shared_chars=["风堇", "遐蝶"],
         # ===== 万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====   # ②类信号:夜半 2(96% 必配,主档)
         equip_assign={"万敌": ["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"]},
         # ↑ 到人出处 = final_wandi_burn 装备公式(40 篇统计):A 套①三件 = 绝对热量
@@ -973,7 +964,6 @@ COMP_LIBRARY: list[Comp] = [
 
         # 双列回声清理:千冶·刃/黑天鹅 core 列在册;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["桑博"],
-        transition_chars=["桑博", "艾丝妲"],
         # ===== DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分落位)=====   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"卡芙卡": ["火力风暴潮", "火力风暴潮"],
                       "海瑟音": ["蓄能帆", "碎星斩舰刀"],
@@ -1005,7 +995,7 @@ COMP_LIBRARY: list[Comp] = [
         # plaza:景元 3星率 0.69(5费);7级搜牌 7/16;装备 电锯13/风暴潮12/皮靴6;常驻 符玄13/爻光11/藿藿11
         # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊);成型羁绊队:仙舟5 召唤计数档乘区
         # 双列回声清理:符玄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["忘归人", "藿藿"], transition_chars=["藿藿", "丹恒·饮月", "符玄"],
+        shared_chars=["忘归人", "藿藿"],
         flex_factions=["治疗", "减益", "量子同频", "列车同行", "燃血", "狼狩"],
         plaza_carry="景元",
         equip_assign={"景元": ["火力风暴潮", "高周波电锯"], "镜流": ["反重力皮靴"]},
@@ -1030,7 +1020,7 @@ COMP_LIBRARY: list[Comp] = [
         # 成型羁绊队:持续伤害档乘区。
 
         # 双列回声清理:卡芙卡/千冶·刃 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["海瑟音"], transition_chars=["卡芙卡", "艾丝妲"],
+        shared_chars=["海瑟音"],
         # ===== DOT卡芙卡家族·桑博专家变体(文档明言:策略入口变体,不独立成套)=====   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"桑博": ["反重力皮靴", "反重力皮靴", "物质分解液"]},
         # ↑ 桑博行按 final_dot_kafka 教义登记:装备公式「桑博: 靴×2+物质分解液(速度
@@ -1289,27 +1279,26 @@ def get_comp(name: str) -> Comp | None:
 
 
 # ===== 送卡型档位阶梯(定序机器,零数值;详设原文已删,git 历史可溯)=====
-# 档 = 角色在候选套中的身份,高→低 core/shared/transition/off;_GIFT_TIER_DOWN =
+# 档 = 角色在候选套中的身份,高→低 core/shared/off;_GIFT_TIER_DOWN =
 # 条件降档链(规则 3:兑现概率 <1 且行为依赖,定序上只给弱一档的确定性)。
-_GIFT_TIER_RANK: dict[str, int] = {'off': 0, 'transition': 1, 'shared': 2, 'core': 3}
+_GIFT_TIER_RANK: dict[str, int] = {'off': 0, 'shared': 1, 'core': 2}
 _GIFT_TIER_DOWN: dict[str, str] = {
-    'core': 'shared', 'shared': 'transition', 'transition': 'off', 'off': 'off',
+    'core': 'shared', 'shared': 'off', 'off': 'off',
 }
 
 
 def _char_gift_tier(char: str, evicted: frozenset[str] | set[str]) -> str:
-    """单张赠卡在候选套中的最高身份档('off' = 三名单皆不在)。
+    """单张赠卡在候选套中的最高身份档('off' = 两名单皆不在)。
 
-    同名角色跨套身份取最高(卡芙卡 = 千冶减益/DOT队/专家桑博DOT core ×3,
-    专家桑博DOT 亦列其 shared/transition——core 恒压过,与详设分档表口径一致)。
+    同名角色跨套身份取最高(卡芙卡 = 千冶减益/DOT队/专家桑博DOT core ×3
+    ——core 恒压过,与详设分档表口径一致)。
     """
     best, rank = 'off', 0
     for comp in COMP_LIBRARY:
         if comp.name in evicted:
             continue
         for names, tier in ((comp.core_chars, 'core'),
-                            (comp.shared_chars, 'shared'),
-                            (comp.transition_chars, 'transition')):
+                            (comp.shared_chars, 'shared')):
             if char in names and _GIFT_TIER_RANK[tier] > rank:
                 best, rank = tier, _GIFT_TIER_RANK[tier]
                 if rank == _GIFT_TIER_RANK['core']:
@@ -1319,19 +1308,19 @@ def _char_gift_tier(char: str, evicted: frozenset[str] | set[str]) -> str:
 
 def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozenset(),
                   ) -> str:
-    """送卡型环境 GiftGrant 的命中档('core'|'shared'|'transition'|'off')。
+    """送卡型环境 GiftGrant 的命中档('core'|'shared'|'off')。
 
     实现三规则(全部定序,零数值;详设原文已删,git 历史可溯):
     ① 即时优先——即时集非空取其最优档,不看条件集(确定性赠卡是估值支撑面);
-    ② 条件降档——即时集为空取条件集最优档降一档(core→shared→transition→off);
+    ② 条件降档——即时集为空取条件集最优档降一档(core→shared→off);
     ③ advisor 族切换由调用方做(同一套档位判定;本函数不读 advisor)。
 
     消费位(2026-09-23 迁移迭代 3.2 起)= 策略层
     ``strategies/impl/mandate_v1/gift_value.py``(档→分映射 GIFT_TIER_SCORE
     与 advisor 折减在彼处;本函数只产档,禁消费侧二次推导档位)。
     evicted 传导免费获得:候选套收窄 → 档随之下调或失格(详设 §2.1.4-5
-    直调例:持续伤害契约排除三 DOT 套 → 椒丘落 transition;宿主套再被
-    排除才整条 'off')。
+    直调例:持续伤害契约排除三 DOT 套 → 椒丘即时档落 shared(千冶减益),
+    条件降档落 'off';千冶减益再被排除 → 即时档亦整条 'off')。
     """
     if grant.chars_immediate:
         return max((_char_gift_tier(ch, evicted) for ch in grant.chars_immediate),

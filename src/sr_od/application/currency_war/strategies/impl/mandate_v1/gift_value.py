@@ -13,7 +13,7 @@
   ``env-gift-off-universe`` 整体失格规则随迁移删除,环境其余成分照常计分)。
 - **随机阵营赠卡**(概念股「获得【某阵营】角色」):该阵营注册成员
   (``cw_chars.chars_by_faction``)在未排除候选阵容名单
-  (core∪shared∪transition)中出现者的档位分**算术平均**(随机发放取无偏
+  (core∪shared)中出现者的档位分**算术平均**(随机发放取无偏
   期望;具名发放取最高档的口径差异 = 确定性赠卡支撑面,沿旧机器规则①,
   非双重标准);无成员已登记 → 0。
 
@@ -34,14 +34,12 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 #: 赠卡档分(28 号稿 §2;【拍】形态,初值经用户裁定窗过目):
 #: - core = 50:白得一条 A 线核心 ≈ 半条 A 线方向分量级;
 #: - shared = 20:常用成员;
-#: - transition = 5:打工件;
 #: - off = 0:无消费方。
-#: 键 = ``cw_comps.gift_hit_tier`` 返回档('core'|'shared'|'transition'|'off'),
-#: 键完备由 invest_env 构建期校验兜底(四档任一缺键 → import 即炸)。
+#: 键 = ``cw_comps.gift_hit_tier`` 返回档('core'|'shared'|'off'),
+#: 键完备由 invest_env 构建期校验兜底(三档任一缺键 → import 即炸)。
 GIFT_TIER_SCORE: dict[str, float] = {
     'core': 50.0,
     'shared': 20.0,
-    'transition': 5.0,
     'off': 0.0,
 }
 
@@ -83,7 +81,7 @@ def random_faction_gift_value(faction: str,
     成员档位判定 = 对单角色合成 ``GiftGrant(chars_immediate=(名,))`` 调
     kernel ``gift_hit_tier``——单角色即时发放的命中档即该角色的最高身份档,
     与 ``cw_comps._char_gift_tier`` 同义,借此复用 kernel 档位机器(禁二次
-    推导,契约同其 docstring)。三名单(core∪shared∪transition)皆不在
+    推导,契约同其 docstring)。两名单(core∪shared)皆不在
     (tier='off')的成员不入平均分母;全员集外 → 0(除零防 = 无成员已登记)。
     """
     if not faction:

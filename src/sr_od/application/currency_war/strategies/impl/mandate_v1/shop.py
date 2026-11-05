@@ -326,7 +326,7 @@ def shop_unbought_reasons(gs: GameState,
                           ) -> dict[str, str]:
     """商店波未买牌拒因串(决策帧遥测字段 ``shop_rejects`` 的生产端)。
 
-    为什么:复盘 g_20260904_031925 把在售 transition 件「花火」误读成
+    为什么:复盘 g_20260904_031925 把在售的「花火」误读成
     线内核心件「火花」(花火≠火花:花火=2费盛会之星辅助,cw_chars 注册
     表 source=6401;火花=4费星间旅人、绯英欢愉 shared 成员,source=7001
 )——当时决策帧只有 fp 值、无任何 per-card 分类,判读者只能猜「哪道
@@ -339,16 +339,14 @@ def shop_unbought_reasons(gs: GameState,
     - 义务面已持有:``owned``;锁定后星级目标已满足成员(need_star 口径
       缺口 = 0,W5 追星改革)细分 ``star_goal_met``(显式停买拒因,
       同名副本零推进——优先于下方持有形态细分);
-    - transition_chars(打工后卖、刻意不入线——单一源 = cw_comps 注册表
-      + ``predicates.line_members`` 只取 core∪shared;键保留,判定源
-      与策展无代码耦合):``transition_char``——打工件照旧落本键或
-      ``non_line`` 桶(可辨性申报);
-    - 其余:``non_line``。
+    - 其余(线外件):``non_line``。
 
     退役标签申报(统一让位优先级迭代 3.4,身份保护判据随买卖两侧
     退役):``protection_member_rejected``(囤货面归属标签,囤货臂退役
     后无归属语义)、``hub_option``(乙分支枢纽标签,hub 死链拆除)、
-    ``core_candidate_rejected``(C1 拒因拆键,C1 支退役)——三键历史
+    ``core_candidate_rejected``(C1 拒因拆键,C1 支退役)、
+    ``transition_char``(打工件标签,随打工名单整字段退役停写,
+    transition-chars-retirement 迭代)——四键历史
     已停写不另清理,成员统一落 ``non_line``/``owned``。
 
     口径 = 帧首静态快照 + 逐动作累积投影:金按已发出 CwActionBuyCardParam 总价扣减、\r
@@ -356,7 +354,7 @@ def shop_unbought_reasons(gs: GameState,
     金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
     会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
     拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
-    阵容为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
+    阵容为 None(K 空窗回退带)时成员分类不可得,统一 ``non_line``。
 
     语境声明:本函数的拒因语义(「金席俱足仍未发出
     =异常态」)以 cw4 M2 义务通道为参照系——M2 对义务面缺件是义务买入,
@@ -381,8 +379,6 @@ def shop_unbought_reasons(gs: GameState,
             income = getattr(a, 'income', None)
             if income:
                 gold += income
-    trans = (set(getattr(comp, 'transition_chars', []) or [])
-             if comp is not None else set())
     bought_names = {a.card.name or '' for a in actions
                     if isinstance(a, CwActionBuyCardParam)}
     out: dict[str, str] = {}
@@ -448,8 +444,6 @@ def shop_unbought_reasons(gs: GameState,
                 out[name] = 'missing_unaffordable'
             else:
                 out[name] = 'missing_no_path'
-        elif name in trans:
-            out[name] = 'transition_char'
         else:
             out[name] = 'non_line'
     return out

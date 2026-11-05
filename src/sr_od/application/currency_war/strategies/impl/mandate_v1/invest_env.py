@@ -214,10 +214,10 @@ def _validate_stance_coverage() -> None:
 
 
 def _validate_coefficient_tables() -> None:
-    """系数表键完备校验:赠卡档分覆盖档位机器全部四档(28 号稿 §2 赠卡分行;
+    """系数表键完备校验:赠卡档分覆盖档位机器全部三档(28 号稿 §2 赠卡分行;
     缺键 = 对应卡静默零分 → import 即炸)。线强度档分已随 strength 字段/
     LINE_STRENGTH_SCORE 整链下线移除(方向分组件归零)。"""
-    _gift_tiers = {'core', 'shared', 'transition', 'off'}
+    _gift_tiers = {'core', 'shared', 'off'}
     _missing_gift = _gift_tiers - set(GIFT_TIER_SCORE)
     if _missing_gift:
         raise ValueError(
