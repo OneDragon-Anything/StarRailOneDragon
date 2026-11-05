@@ -12,8 +12,11 @@
   移除该角色;展开态点**非选中行**槽位 = 不改编队、仅收起列表;
 - 清空编队不靠垃圾桶(顶部垃圾桶在此屏无清空功能),按上述语义用
   「点已入队槽位」逐个移除,由落位回验(行成员实读)驱动收敛;
-- 行右端三个增益效果按钮 = 游戏内系统名「终焉公理」(每行三选一,默认已选
-  第一项);点击 = 选中该效果(幂等)并收起已展开的列表;
+- 行 boss 卡内的「坚防守备/阵地转移」等按钮 = **敌方特性条款查看入口**,
+  点击仅弹说明、不改变任何装配(实机验证);真正的增益装配入口 = 行右端
+  圆形按钮(编入角色后出现)→「终焉公理」弹窗(增益三选一,名称随期轮换,
+  按位置选择后点「装配效果」,弹窗自动关闭);敌方特性首条「坚防守备」
+  与弹窗内的增益装配是两回事;
 - 「通关阵容」按钮弹出推荐阵容弹窗,「一键上阵」+ 确认可整体套用推荐队伍
   (成员不可控,自动化用指定队伍填充时不用此路径);
 - 「前往挑战」在校验不通过(编队不满 / 含不可用角色)时点击无反应,不做
@@ -49,6 +52,7 @@ _SELECT_SCREEN: str = '末日幻影-选关'
 _TEAM_SCREEN: str = '末日幻影-编队'
 _BANNER_SCREEN: str = '末日幻影-首领简报'
 _RESULT_SCREEN: str = '末日幻影-节点结算'
+_AXIOM_SCREEN: str = '末日幻影-终焉公理'
 _NODE_SCREEN: str = '忘却之庭-节点画面'  # 节点画面左栏锚(查看详情)与 FH 同构,复用其 area
 
 #: 角色列表滚动拖动(向下翻页;与忘却之庭编队屏同款列表,一次约移 2 行)
@@ -73,19 +77,25 @@ class TlApocalypticShadowChallengeOp(SrOperation):
 
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
 
-    def __init__(self, ctx: SrContext, team_names: list[str]):
+    def __init__(self, ctx: SrContext, team_names: list[str],
+                 buff_slots: tuple[int, int] = (1, 1)):
         """
         Args:
             team_names: 按行(节点)顺序拼接的角色中文名列表,8 人(2 行×4);
                 与脸库识别名一致,行 1 = 节点一队伍,行 2 = 节点二队伍。
                 队伍须避开带警告标记的角色(命途/养成警告,如当期试用角色)——
                 此类角色可落位,但「前往挑战」校验不通过(点击无反应)。
+            buff_slots: 每行装配的终焉公理增益序号(1 基,每行三选一;
+                增益名称随期轮换不可锚定,按卡片位置选择)。
+                默认 (1, 1) = 各装第一项(游戏默认项,保守)。
         """
         SrOperation.__init__(self, ctx, op_name='末日幻影 挑战')
         if len(team_names) != 8:
             raise ValueError(f'末日幻影需 8 名角色(2 行×4): {len(team_names)}')
         if len(set(team_names)) != 8:
             raise ValueError(f'末日幻影 8 名角色须互不相同: {team_names}')
+        if any(not 1 <= s <= 3 for s in buff_slots):
+            raise ValueError(f'buff_slots 须为 1-3: {buff_slots}')
         self.teams: list[list[str]] = [
             team_names[i:i + 4] for i in range(0, 8, 4)
         ]
@@ -93,11 +103,14 @@ class TlApocalypticShadowChallengeOp(SrOperation):
             for name in names:
                 if next((c for c in CHARACTER_LIST if c.cn == name), None) is None:
                     raise ValueError(f'未知角色名: {name}')
+        self._buff_slots: tuple[int, int] = buff_slots
         self._row_idx: int = 0            #: 当前填充的行(0 基)
         self._char_idx: int = 0           #: 当前行填到第几个(0 基)
         self._row_selected: bool = False  #: 目标行已选中(点卡前置守卫)
         self._awaiting_expand: bool = False  #: 已点槽位等待列表展开复验
-        self._equip_row2_done: bool = False  #: 行 2 效果确认点击已做(装配顺序游标)
+        self._equip_row2_done: bool = False  #: 行 2 装配未做(装配顺序游标)
+        self._equip_phase: str = 'open'   #: 装配子步:open 点圆圈 / select 点卡片 /
+                                          # confirm 点装配效果 / closed 等弹窗关
         self._need_top: bool = True       #: 下一步需先滚回列表顶部
         self._down_stagnation: int = 0    #: 向下翻页停滞计数
         self._seen_sigs: set[str] = set() #: 本次搜索已见页签集合(到底判定)
@@ -307,19 +320,65 @@ class TlApocalypticShadowChallengeOp(SrOperation):
         return self.round_wait('向下翻页', wait=3)
 
     @node_from(from_name='填充循环')
-    @operation_node(name='终焉公理装配', node_max_retry_times=4)
+    @operation_node(name='终焉公理装配', node_max_retry_times=16)
     def _equip_loop(self) -> OperationRoundResult:
-        """两行各确认装配第一个增益效果(终焉公理三选一,自动化默认取第一项)。
+        """两行各装配指定增益进终焉公理(行右端圆圈 → 弹窗选卡 → 装配效果)。
 
-        默认已选中第一项,点击幂等;点击会收起已展开的列表,不影响后续。
-        顺序点击两行效果按钮,不做命中前置判定(效果按钮文本随每期变化,
-        OCR 锚不可用;是否生效由下一节点「前往挑战」的编队屏判定兜底)。"""
-        if not self._equip_row2_done:
-            self.ctx.controller.click(Point(1100, 593), press_time=0.15)
-            self._equip_row2_done = True
-            return self.round_wait('行 2 效果确认点击', wait=1.5)
-        self.ctx.controller.click(Point(1100, 308), press_time=0.15)
-        return self.round_success('装配完成', wait=1.5)
+        行内「敌方特性」条款按钮(坚防守备/阵地转移等)是机制查看入口,点击
+        不改变装配(实机验证),真正的增益选择在行右端圆圈弹窗内;增益名称
+        随期轮换不可锚定,按位置 ``buff_slots``(1 基)选卡。装配生效后弹窗
+        自动关闭回编队屏,以「装配效果」按钮消失为到达证据。"""
+        row = 2 if self._equip_row2_done else 1
+        screen = self.last_screenshot
+        in_axiom = self.round_by_find_area(screen, _AXIOM_SCREEN, '文本-选择增益行').is_success
+        in_team = (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-末日幻影行').is_success
+                   and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success)
+
+        if self._equip_phase == 'open':
+            if in_axiom:
+                self._equip_phase = 'select'
+                return self.round_wait('公理弹窗已开', wait=0.5)
+            if in_team:
+                self._click_area_center(_TEAM_SCREEN, f'按钮-公理圆圈{row}')
+                self._equip_phase = 'select'
+                return self.round_wait(f'打开行{row}公理弹窗', wait=1.5)
+            return self.round_retry('不在编队屏也非公理弹窗', wait=1.5)
+
+        if self._equip_phase == 'select':
+            if not in_axiom:
+                self._equip_phase = 'open'
+                return self.round_retry('公理弹窗未开,重开', wait=1.2)
+            slot = self._buff_slots[row - 1]
+            self._click_area_center(_AXIOM_SCREEN, f'卡片-增益{slot}')
+            self._equip_phase = 'confirm'
+            return self.round_wait(f'行{row}选增益{slot}', wait=0.8)
+
+        if self._equip_phase == 'confirm':
+            click = self.round_by_find_and_click_area(
+                screen, _AXIOM_SCREEN, '按钮-装配效果', success_wait=1.2)
+            if click.is_success:
+                self._equip_phase = 'closed'
+                return self.round_wait(f'行{row}装配确认', wait=1.5)
+            return self.round_retry('装配效果按钮未命中', wait=1)
+
+        # closed:弹窗应已自动关闭,到达编队屏 = 装配生效
+        if in_team:
+            if row == 1:
+                self._equip_row2_done = True
+                self._equip_phase = 'open'
+                return self.round_wait('行1装配完成', wait=1)
+            return self.round_success('装配完成', wait=1)
+        if in_axiom:
+            self._equip_phase = 'confirm'
+            return self.round_retry('弹窗未关,重按装配', wait=1.2)
+        return self.round_retry('画面异常(既非编队屏也非公理弹窗)', wait=1.5)
+
+    def _click_area_center(self, screen_name: str, area_name: str) -> None:
+        """按建档 rect 中心点击(纯定位区;坐标单一真相源在 screen_info)。"""
+        area = self.ctx.screen_loader.get_area(screen_name, area_name)
+        x1, y1, x2, y2 = area.pc_rect
+        self.ctx.controller.click(
+            Point((x1 + x2) // 2, (y1 + y2) // 2), press_time=0.15)
 
     @node_from(from_name='终焉公理装配')
     @operation_node(name='前往挑战', node_max_retry_times=10)
