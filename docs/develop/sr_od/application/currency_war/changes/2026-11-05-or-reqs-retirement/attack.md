@@ -18,12 +18,12 @@
 - 定位：details/transition-combos.md §3 词缀减分段（「命中含量子/贝键的 9 条组合（希儿量2×4 + 希儿贝2×4 + 双修 1）」）；landing.md 3.2 完成判据第 4 条（「量子熄火局含量子/贝键 9 条组合各减分、其余 3 条组合上位——排序测试」）。
 - 问题：10 条组合中含量子/贝键的条目数算错。含希儿量2 块的组合 4 条、含希儿贝2 块的组合 4 条，双修条（希儿量2+希儿贝2）同属两者——「×4 + ×4 + 双修 1」把双修条计了 3 次。真实命中条数 = |含 Q 块 ∪ 含 B 块| = 4 + 4 − 1 = **7 条**。判据「9 条各减分 + 其余 3 条上位」合计 12 条，超过库容 10 条，自相矛盾；排序测试照 9 条写必红，实现者必须自行纠正数字 = 违反「实现者无需再设计」硬规则（iteration-design.md §5-2），且该判据是账本 criteria 的预注册来源（§3.1「阶段小节 = 账本唯一源」），照抄即埋不可验收判据。
 - 证据：十條组合名单见 transition-combos.md §2（生成条目名清单）；重算式如上；现行减分语义 = cw_intention.py:539-542（`if hit and keys & set(hit)` 布尔判定，每源每条目至多减一次，双修条两键命中仍只减一次——设计「各减一次」的语义本身正确，错在条数）。
-- 建议修法：两处「9 条」改「7 条」，括号算式改「希儿量2×4 ∪ 希儿贝2×4（双修条去重计入一次）」；landing 判据同步改「7 条组合各减分、其余 3 条组合上位」（7+3=10 收口）。
+- 建议修法：两处「9 条」改「7 条」，括号算式改「希儿量2×4 ∪ 希儿贝2×4（双修条去重计入一次）」；landing 判据同步改「7 条组合各减分、其余 3 条组合上位」（7+3=10 恰闭合）。
 
 **重要 2｜详设三 #7 的现状预期与代码事实相反：SEELE_SYSTEM 存在独立观测消费（非零）**
 
 - 定位：details/or-reqs-cleanup.md 退役符号清单 #7（「落地批 grep 全库消费定位：若消费仅剩 deploy_search 伪键（随 #6 死）则删；有独立观测消费则保留并注释声明（**预期为零**——3.3 已删体系对域消费）」）；landing.md 3.3 完成判据第 1 条（「退役符号 grep 清零（清单符号级）」）。
-- 问题：`SEELE_SYSTEM` 的全库消费不止 deploy_search 伪键——telemetry/schema.py:20,37 直接 import 并列入 `RHO_SYSTEM_KEYS`（ρ 实测观测面的第四体系键），`rho_shop_obs`（schema.py:46-68）每帧按 `bond_members('希儿系')` 计「在店件数」写遥测。这是独立观测消费，不随详设三 #6 删除而消亡。「预期为零」说明设计者写该行时没有实际 grep——现状转述失实。后果两层：①若实现者信预期直接删 SEELE_SYSTEM，telemetry/schema.py import 崩（运行时 ImportError）；②若走「保留」分支（grep 后的正确选择），landing 3.3「清单符号级 grep 清零」判据对 #7 不成立——判据与处置分支互相矛盾，实现者需自行调和 = 再一次「实现者拍板」。
+- 问题：`SEELE_SYSTEM` 的全库消费不止 deploy_search 伪键——telemetry/schema.py:20,37 直接 import 并列入 `RHO_SYSTEM_KEYS`（ρ 实测观测面的第四体系键），`rho_shop_obs`（schema.py:46-68）每帧按 `bond_members('希儿系')` 计「在店件数」写遥测。这是独立观测消费，不随详设三 #6 删除而消亡。「预期为零」说明设计者写该行时没有实际 grep——现状转述失实。后果两层：①若实现者信预期直接删 SEELE_SYSTEM，telemetry/schema.py import 崩（运行时 ImportError）；②若走「保留」分支（grep 后的正确选择），landing 3.3「清单符号级 grep 清零」判据对 #7 不成立——判据与处置分支互相矛盾，实现者需自行调和 = 再一次把人为决定丢给实现者。
 - 证据：`grep SEELE_SYSTEM src/` 共 9 处，其中 telemetry/schema.py:20（import）、:37（RHO_SYSTEM_KEYS 元组成员）为 #6 之外的真实消费；cw_line_facts.py:46（定义）、:56（bond_members 内分支）为 #7 本体。
 - 建议修法：#7 处置直接定死为「保留 + 注释声明 ρ 观测消费（telemetry RHO_SYSTEM_KEYS，与契约 D 观测语言同归）」；landing 3.3 判据把 `SEELE_SYSTEM` 与 `seele_system_formed`/`SEELE_AMP_FACTIONS` 同列移出 grep 清零域。
 
@@ -60,7 +60,7 @@
 **次要 3｜详设四未给过渡资格臂的买因/遥测键名**
 
 - 定位：details/virtual-eval-arm.md §2（接入位置）。
-- 问题：`_emit_buy(card, ?)` 的买因键与相关计数键未命名。终局侧为 `shelf_qualify_buy`（shop.py:1676）；过渡臂键名进历史遥测且判读面消费，命名需一次定稳——实现者需自行起名 = 小拍板点。
+- 问题：`_emit_buy(card, ?)` 的买因键与相关计数键未命名。终局侧为 `shelf_qualify_buy`（shop.py:1676）；过渡臂键名进历史遥测且判读面消费，命名需一次定稳——实现者需自行起名 = 一个须人为定的小决策点。
 - 证据：shop.py:1657/1676（终局侧键名消费形态）。
 - 建议修法：补一句键名（如 `transition_shelf_qualify_buy`）与「键名进 shop 模块头键表注释」的要求。
 

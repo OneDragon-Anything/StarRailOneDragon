@@ -201,7 +201,7 @@
 | COMP_LIBRARY | 增 | 原规划 star_targets 由知识卡 `need_star` 承载（[12_line_and_intention.md](12_line_and_intention.md) §1.4）;entry_signals 曾建后整体退役（2026-11 用户终裁「可退役」——万敌 1 条/白厄 3 条知识真空接受损失,上场时机 = 部署搜索骨架/L1 完成度自适应）;slot_structure/external_deps/downgrade_paths/segment_tier_tables 未建 |
 | | 删 | 典型轮次/前期强度等十个零消费字段（2026-11-02 清理批：typical_form_round、early_power、weak_planes、form_tiers_max、branch_key、branch_of、free_slots、special_systems、equip_synergy、global_accumulators——消费实证单一源 = git 该批 commit；档位谱真值载体 = `FACTIONS.tiers`）。评估参数四字段与评分器族（2026-11-03 批：strength、form_difficulty、mechanic_attributes、countered_by_bosses + comp_score/六 fit/ScoreContext/W_* 整族——孤儿评分器实证 + strength 唯一活链投资方向分随 `line_value.py` 整链下线，28/29 号稿方向分行废止申报）。原删项 level_plan 已复活为现役（经济统一论） |
 | | 留 | core_chars/faction_reqs(羁绊要求优先级结构:档 0 = 核心羁绊层、档 ≥1 = 加分层;原 form_tiers/sub_tiers 两字段已合并)/family/substitute_plan/equip_assign/equip_taboos/char_positions/flex_factions/shared_chars |
-| 新 TRANSITION_LIBRARY | 建 | 过渡阵容库(开局过渡条目,与 COMP_LIBRARY 两套独立库;三型条目 = 点名/羁绊/混合,[12_line_and_intention.md](12_line_and_intention.md) §3);体系判据数据层 = `cw_system_cards.SYSTEM_CARDS`(组合决策层已退役,数据层保留) |
+| 新 TRANSITION_LIBRARY | 建 | 过渡阵容库(开局过渡组合条目,与 COMP_LIBRARY 两套独立库;构造块表 `TRANSITION_BONDS` 两两组合构造式生成,锁定域 = 组合条目、单羁绊构造块不进库,[12_line_and_intention.md](12_line_and_intention.md) §3);体系判据数据层 = `cw_system_cards.SYSTEM_CARDS`(组合决策层已退役,数据层保留) |
 | 新 PLUGIN_LIBRARY | 建 | 通用插件池（跨阵容骨架+消耗品层），含座位价值注记 |
 | 新 SIGNAL_REGISTRY | 建 | 入场信号分层表（策略驱动/专属/核心到手/资源/兜底） |
 | 新 MECHANIC_SYNERGIES | 建 | 战力族映射载体（[11_shop_decisions.md](11_shop_decisions.md) §机制突变：战力关键词→机制 tag→克制/亲和） |

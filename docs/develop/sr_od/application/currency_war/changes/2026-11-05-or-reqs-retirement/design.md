@@ -36,7 +36,7 @@
 不解决、另行立项（本迭代明确不做）：
 - carry 单名基准五源统一（`LINE_ANCHOR` 21 行手编大表 / cw_intention:185 / equip_allocation / cw_equip_env 的本地实现不查 fallback）——本迭代只同步核对 LINE_ANCHOR 希儿行数值仍正确；
 - `key_equips` ↔ `equip_assign` 迁移收尾（8 套未迁移）；
-- `equip_taboos` 类级条目「护盾件(类)」零消费接线；
+- `equip_taboos` 类级条目「护盾件(类)」零消费调用点；
 - `transition_chars` 消费面萎缩（全库仅送卡估值一处）的处置；
 - `need_star`/`key_items` 键与成员名单关系的白名单校验（本迭代只加「键 ∈ 角色注册表」基本校验，名单关系校验涉数据修正——如双王圣杯·远坂凛该进 core 还是白名单——需游戏知识裁定，外溢）。
 

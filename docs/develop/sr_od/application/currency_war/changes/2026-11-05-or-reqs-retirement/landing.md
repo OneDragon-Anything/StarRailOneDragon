@@ -57,7 +57,7 @@
 
 **范围**：shop.py 过渡资格臂接入（虚拟计分 top3 组合计分域成员 = 资格名单；触发窗 = 过渡未锁定 ∧ 未终局锁定；金不足/备战满复用 `_acquire_yield` 骨架）。**不含**：终局资格臂改动、候选槽写虚拟结果（即算即用零持久化）。
 **设计依据**：details/virtual-eval-arm.md 全文；总纲契约 B。
-**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`（主体）；`sell_gate.py`（LAUNCH_CAUSE_BY_ARM 买因注册——A4 硬闸必需接线）；`telemetry/schema.py`（键表注释同步，遥测零新增键）；`sr-od-test/` 镜像。
+**文件面**：`src/sr_od/application/currency_war/strategies/impl/mandate_v1/shop.py`（主体）；`sell_gate.py`（LAUNCH_CAUSE_BY_ARM 买因注册——A4 硬闸必需接入）；`telemetry/schema.py`（键表注释同步，遥测零新增键）；`sr-od-test/` 镜像。
 **依赖**：3.2（transition_scores 纯函数）。
 **优先级建议**：7。
 **完成判据**：

@@ -960,8 +960,8 @@ COMP_LIBRARY: list[Comp] = [
 # 羁绊构造块的完整组合(C(5,2)=10 条),组合条目 fp ≥ 1.0(两羁绊都凑齐
 # ∧点名件全在板)才锁定;单羁绊构造块不是阵容、不进库、永不锁定(单
 # 羁绊局保持软方向——候选继续活动、买面双向,直到组合凑齐或终局锁定
-# 统一退役)。设计依据 = changes/2026-11-05-or-reqs-retirement/
-# details/transition-combos.md。
+# 统一退役)。语义权威版本 = strategy-docs/12_line_and_intention.md §3
+# (过渡阵容库与条目候选机器)。
 #
 # 组合实证(game/research/transition_combos.md 两两组合实证表,Early
 # 647 帖):三过渡互组 3 种 + 希儿系×三过渡 3 种均有实证;含希儿组合的
