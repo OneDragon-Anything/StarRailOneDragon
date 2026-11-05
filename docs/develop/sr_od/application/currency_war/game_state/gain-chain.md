@@ -1015,6 +1015,14 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   能量恢复、保守派伤害减免)非「获得时点」效果,不在效果体(获得时点
   字段写操作分支适用范围外);快请专家·彩的好运令牌分支(非占席
   道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。
+  **具名装备授予支**(具名装备授予族,全员晋升首例):效果体消费
+  `gain_equipment(rand=False)` 具名确定入栏(卡文无随机词,rand 两通道
+  分野 = fields.md §3.2.15),效果串 `named_equip_grant:<装备名>
+  (placed=<是否落位>)` 逐件一条(前缀与 box_grant/equip_grant/
+  strategy_random_equip 分列可过滤审计;equips 未观察 = 拒落零写
+  placed=False);登记单一源 = cw_gain_effects `PICK_INVEST_EFFECTS`
+  直书登记行(`_make_named_equip_grant_effect` 生成闭包,精密金面前置
+  fail-closed 申报在工厂,按物判不按卡判)。
   **具名角色支首例**(溜佩佩/溜佩佩+/招财狗,佩佩召唤族世界腿;溜佩佩系
   登记面 = 非直读人工转正,招财狗 = 「获得」直读登记):效果体消费
   `gain_character(rand=False)` 具名入席(星级实参 1
