@@ -2619,6 +2619,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     notes='战力类 UNIT_BUFF 零响应登记(同形族);'
           '「携带」系 buff 条件读法申报,条件计数与两段增幅游戏侧自算,'
           'bot 仅登记;无离散触发事件,trigger 占位形。'),
+    # 更快,更幸运(id 351101):官方「进入战斗时，速度最高的角色及其忆灵速
+    # 度增幅提高8%，幸运一击率提高12%。每经过20行动值，在另一名我方角色
+    # 上重复此效果。」战力类 UNIT_BUFF 零响应登记(同形族;「速度最高」选择
+    # 语义/「重复此效果」周期跳转面游戏侧自算,bot 零响应;行动值计数轴 =
+    # 判读申报制[零响应下 bot 行为恒同];无离散触发事件,trigger 占位形)。
+    '更快,更幸运': EffectSpec(
+    id='351101', name='更快,更幸运',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351101')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '选择语义与周期跳转面游戏侧自算,bot 仅登记;'
+          '行动值计数轴判读申报制[零响应下 bot 行为恒同];'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
