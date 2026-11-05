@@ -5,7 +5,7 @@ description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角
 
 # 星穹铁道基础玩法教练（game-coach）
 
-agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法公共知识**（怎么判断），米游社 MCP 提供账号数据（运行时拉取），游戏操作 MCP 执行动作。skill 家族分工：
+agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法公共知识**（怎么判断），项目 MCP 的三个查询工具提供**角色/光锥/遗器静态基础信息**（relic_lookup / cone_lookup / character_lookup），米游社 MCP 提供**账号数据**（运行时拉取），游戏操作 MCP 执行动作。skill 家族分工：
 
 - **本 skill（基础）**：机制规则 / 体系与阵容 / 角色养成 / 玩法框架 / 新手日常——任何场景都成立的知识
 - **专项 skill（特殊变形）**：逐光捡金（`sr-od-treasures-lightward`，期次环境/星启/速报）、货币战争（`sr-od-currency-war-guide`）等——本 skill 玩法层只留框架并**按 skill 名称**指向专项
@@ -23,14 +23,17 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 
 ## 路由表（按问题域，含数据源优先级）
 
-> 数据源优先级：**百科官方表【官】> 视频实证【攻：B站+BV号】> 推导口径【攻】**；数值一律满级；装备推荐是条件式（按阵容选择）。
+> 数据源优先级：**MCP 常量查询【官：固化自官方 wiki 快照，随项目版本更新】≈ 百科官方表【官】> 视频实证【攻：B站+BV号】> 推导口径【攻】**；数值一律满级；装备推荐是条件式（按阵容选择）。
+>
+> **基础信息查询走 MCP（优先）**：角色定义/行迹满级/星魂效果 → `character_lookup`；光锥（星级/命途/特效全文/获取）→ `cone_lookup`；遗器套装（效果/单件/部位）→ `relic_lookup`。均为零 IO 常量查询，不需要登录；模糊多命中返回候选，用官方全名精确查。MCP 不可用时兜底：`references/data/` 快照与 `mechanics/` 速查表。
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
+| **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途 | MCP：`character_lookup`（含行迹满级+星魂全6）/ `cone_lookup`（含特效全文）/ `relic_lookup`（含套装效果+单件）；按中文名/数字id精确查，模糊多命中用全名 |
 | **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/INDEX.md` → `modes/<玩法>.md`（场景）→ `teams/<体系>.md`（为什么这么组）→ `lineups/<阵容>.md`（这四人怎么打）→ `characters/<角色>.md`；小众玩法不必为其优化配队 |
-| **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 数据速查 `mechanics/relic-sets.md` / `mechanics/light-cones.md`（反向查归属与渠道） |
+| **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `mechanics/relic-sets.md` / `mechanics/light-cones.md`） |
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
-| **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
+| **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
 | **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义） |
 | **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；官方数据快照与重跑管道 `references/data（skill 自包含）/README.md` |
 
