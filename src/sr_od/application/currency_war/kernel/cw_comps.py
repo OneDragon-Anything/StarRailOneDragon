@@ -90,7 +90,15 @@ class Comp:
     档内键书写顺序零语义(结构契约:changes/2026-11-04-comp-structure-
     unification details/faction-priority.md §2;唯一过渡期例外 =
     cw_intention 面板主羁绊名首键读法,随配方机器退役)。"""
-    key_equips: list[str] = field(default_factory=list)      # 关键装备(可含重复,如阿雅需 2 反重力皮靴)
+
+    @property
+    def key_equips(self) -> list[str]:
+        """关键装备清单 = equip_assign 投影(汇总+去到人;C4/C5 完成态;
+        可含重复,如阿雅需 2 反重力皮靴)。实现单一源 =
+        :func:`derive_key_equips`,恒等由构造保证(无独立数据字段);
+        消费端读法零改动(字段退役为读口)。"""
+        return derive_key_equips(self)
+
     shared_chars: list[str] = field(default_factory=list)    # 与其他阵容共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
     # 阵容特定站位要求(角色→排级或槽位级),覆盖注册表 position_pref 默认
@@ -110,9 +118,11 @@ class Comp:
     # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(禁忌/铁三角/替班不卖)
     # 逐条对 final_comps 各篇(research/final_comps/)原文,不自创。
     equip_assign: dict[str, list[str | EquipChoice]] = field(default_factory=dict)
-    """装备到人(C4 最大新增):角色名 → 装备序列(str=fixed 首选 / EquipChoice 两档)。
-    键 ⊆ core_chars ∪ shared_chars(替班者并入成员名单承载);**本字段一旦非空,
-    ``key_equips`` 必须恒等于 ``derive_key_equips(comp)``(C5 兼容地基,恒等测试)。"""
+    """装备到人(C4 最大新增;C5 完成态 = 关键装备唯一真源):角色名 → 装备序列
+    (str=fixed 首选 / EquipChoice 两档)。键 ⊆ core_chars ∪ shared_chars(替班者
+    并入成员名单承载,建库期 ``__post_init__`` 校验);``key_equips`` 为本字段的
+    投影读口(委托 :func:`derive_key_equips`,恒等由构造保证——无独立数据字段);
+    终局条目非空由库级建库校验钉住(防新条目开空账)。"""
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
 
@@ -189,6 +199,13 @@ class Comp:
                     raise ValueError(
                         f'{self.name}: faction_reqs[{prio}][{bond!r}] '
                         f'= {need!r} 须为正整数(几人激活算达标)')
+        # 装备到人键域建库期校验(键 ⊆ core ∪ shared——替班者并入成员名单
+        # 承载;非法数据 import 即炸,消费端信任键合法)
+        for _who in self.equip_assign:
+            if _who not in self.core_chars and _who not in self.shared_chars:
+                raise ValueError(
+                    f'{self.name}: equip_assign 键 {_who!r} ∉ '
+                    'core_chars ∪ shared_chars(替班者须并入成员名单承载)')
 
     @property
     def core_faction_reqs(self) -> dict[str, int]:
@@ -263,21 +280,19 @@ def parse_char_position(value: str) -> tuple[str, int | None]:
 
 
 def derive_key_equips(comp: Comp) -> list[str]:
-    """key_equips 派生汇总(C4 降级 + C5 保活;**建库顺序地基:先本函数后动数据**——裁决 2)。
+    """关键装备清单 = equip_assign 投影(汇总 + 去到人;C4/C5 迁移完成态的唯一实现体)。
 
-    语义(C4 冻结):key_equips 不再是独立维护字段,而是 equip_assign(装备到人)的
-    投影——「汇总 + 去到人」:
-    - equip_assign **为空**(长尾/未迁移套)→ 返回旧手编 ``comp.key_equips`` 原值
-      (C5 兼容:旧策略/旧测试读它不炸);
-    - equip_assign **非空** → 按字典序展开:fixed 条目原样,pool 条目贡献**全部候选**
-      (候选池内每件都是关键件,黄泉第四件类), EquipChoice 展开顺序 = choices 优先序。
+    展开规则:按 equip_assign 字典序逐人逐件——fixed 条目原样,pool 条目
+    (:class:`EquipChoice`)贡献**全部候选**(候选池内每件都是关键件,
+    黄泉第四件类),展开顺序 = choices 优先序。equip_assign 为空(过渡组合
+    条目/手构桩)→ 空表;终局条目非空由库级建库校验
+    :func:`_validate_comp_equip_assign` 钉住。
 
-    恒等约束(C5 冻结):``comp.key_equips == derive_key_equips(阵容)`` 对全库成立
-    (多重集口径——合成材料判定消费为多重集语义;顺序仅影响 equip_allocation
-    的 carry 按序取件微差)。恒等测试此不变量,任何一侧单独改动即测试红(防双源漂移)。
+    顺序语义:展开序 = 到人配方序(字典序)即教义序,仅影响
+    ``equip_allocation`` 的 carry 按序取件在容量紧张帧的先后微差(合成材料
+    判定/囤货缺口消费为多重集语义);``Comp.key_equips`` property 委托本函数,
+    恒等由构造保证(独立手编字段已退役,无第二源)。
     """
-    if not comp.equip_assign:
-        return list(comp.key_equips)
     out: list[str] = []
     for _person, items in comp.equip_assign.items():
         for it in items:
@@ -286,6 +301,20 @@ def derive_key_equips(comp: Comp) -> list[str]:
             else:
                 out.append(it)
     return out
+
+
+def _validate_comp_equip_assign(library: list[Comp]) -> None:
+    """终局条目装备到人配方库级建库校验(C5 完成态;非法 raise ValueError)。
+
+    逐条目 equip_assign 非空——空账即回退「清单无到人真源」的双源形态,
+    且 key_equips 已是纯投影,import 期即炸(防新条目开空账)。过渡组合条目
+    (TRANSITION_LIBRARY)不在本库,空配方合法;键 ⊆ core ∪ shared 由
+    ``Comp.__post_init__`` 逐实例校验,本函数不重复。
+    """
+    for comp in library:
+        if not comp.equip_assign:
+            raise ValueError(
+                f'{comp.name}: equip_assign 为空(终局条目必须登记装备到人配方)')
 
 
 def derive_member_priority(comp: Comp) -> dict[str, int]:
@@ -372,12 +401,10 @@ COMP_LIBRARY: list[Comp] = [
         # A 流主体(底稿 A 反震姬子 ~60%):领航员绑三月七=全队 500% 反伤,受击结算。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
-        key_equips=["以牙还牙甲", "以牙还牙甲", "自适应外骨骼"],
         # A 流铁三角(final_jizi A 节):三月七第一件=自适应外骨骼(刚需:前排
         # 减伤25%+受击概率大增=吸仇恨)+姬子以牙还牙甲×2-3(取 ×2 底稿口径;
         # 反甲×3 完全体留给实装校准)+三月七鞋(速度=盾循环)——反重力皮靴=
         # 通用速度件,不入 key_equips 分化面(A/B 均可穿,装备证据按分化件计);
-        # 恒等约束 key_equips=equip_assign 投影。
         # 机制:反震吃「受击」,吸仇恨件互斥(攻略:「不要杰帕德,分受击概率」)。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(攻略 @4-6,星3「低血+相邻目标也获得护盾」→中段=相邻覆盖最大化,final_jizi_train 关键站位节;取中值@5)
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
@@ -401,7 +428,6 @@ COMP_LIBRARY: list[Comp] = [
         # 复制动能剑)/星期日(直伤)——助战技直伤结算方向。
         flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
-        key_equips=["火力风暴潮", "火力风暴潮", "高周波电锯", "冷笑话引擎"],
         # B 流装备公式(final_jizi B 节 L42 明文「火力风暴潮×2+高周波电锯」;
         # B套=冷笑话/动能剑/特权件等变化):姬子风暴潮×2+电锯/花火冷笑话
         # 引擎;三月七外骨骼归 A 铁三角不随 B。
@@ -426,14 +452,12 @@ COMP_LIBRARY: list[Comp] = [
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
         plaza_carry="Archer",
-        key_equips=["火力风暴潮", "动能激发剑", "动能激发剑", "碎星斩舰刀"],   # 交叉核对注:plaza 风暴潮87>电锯45(≈2:1)顺序倒置修正+补动能激发剑22(#3)
-        # ↑ 教义:Archer=**战技点件**(动能激发剑:回合开始+消耗各回 1 战技点,
-        #   战技点燃料层主C 的本命件)。闪闪侧(反重力皮靴)在双王条目同步
-        # 榜样激励克高倍率单核
         shared_chars=["远坂凛", "瓦尔特", "Saber"], transition_chars=["符玄", "知更鸟", "花火"],   # Saber = 替班者转成员(「Archer 不来 Saber 一直 C,不卖转副C」,替班叙事见 final_grail_dual)
         # ===== 圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====   # ②类信号:2 档开任务=燃料线入口
         equip_assign={"Archer": ["火力风暴潮", "动能激发剑"], "远坂凛": ["动能激发剑"], "Saber": ["碎星斩舰刀"]},   # Saber 键经 substitute_plan 容纳(替班者)
-        # ↑ v2:Archer=战技点件(动能激发剑;远坂凛同持第二把,战技点燃料层教义)
+        # ↑ 教义:Archer=战技点件(动能激发剑:回合开始+消耗各回 1 战技点,战技点
+        #   燃料层主C 的本命件;远坂凛同持第二把,战技点燃料层教义);闪闪侧
+        #   (反重力皮靴)在双王条目同步;榜样激励克高倍率单核
         # ===== 知识卡字段(数据源=final_comps/final_grail_dual.md)=====
         need_star={
             # Archer 2★=「红A必须得有二星」出手门槛(#68)+A4 Archer 71% 低饥渴线;
@@ -451,7 +475,7 @@ COMP_LIBRARY: list[Comp] = [
         # (29 篇里最多 5 篇可被既有阵容覆盖,交叉核对注点名)。千冶·刃(2费) carry,瓦尔特 24/29+卡芙卡 16
         # +缇宝 15+符玄 14 常驻减益辅助群;皮靴 30 断层第一(carry 吃鞋)+风暴潮 14+螺旋桨 13;
         # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
-        key_equips=["反重力皮靴"],   # 成型羁绊队:减益4 档乘区为战力主体
+        # 成型羁绊队:减益4 档乘区为战力主体
         shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
         transition_chars=["椒丘", "风堇", "开拓者·记忆"],
         flex_factions=["燃血", "量子同频", "列车同行", "治疗", "持续伤害"],
@@ -477,14 +501,15 @@ COMP_LIBRARY: list[Comp] = [
         # 欢愉下限 4 = 教义「欢愉 4-6 档(≤4 档即主流)」;档位谱真值 = FACTIONS.tiers
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
-        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区
+        # 成型羁绊队:欢愉 4-6 档乘区
+        shared_chars=["瓦尔特", "爻光", "火花"],
         char_positions={"爻光": "back", "绯英": "front@0"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排1号位(攻略 Final 标准式@0,25 帖归纳,2026-11-04 Common 全量审查登记)
         transition_chars=["花火"],   # 交叉核对注:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # ===== 欢愉族家族·绯英档(资源基准 6 级;无信号时的默认落点)=====   # ②类信号:绯英/银狼两档共用主体
         # content_id=7333;「欢愉 4-6 档」系连续区间误写);上限 5 = 4-5 主流带
         # (final_feiying「不到 7 也成型」,7 特权化属银狼档语义)。
         equip_assign={"绯英": ["火力风暴潮", "永动机"], "爻光": ["冷笑话引擎"], "瓦尔特": ["高周波电锯"]},
-        # ↑ 教义:绯英=永动机(天赋装备化)+风暴潮;全队皮靴(恒等约束下未单列,拆分放开)
+        # ↑ 教义:绯英=永动机(天赋装备化)+风暴潮;全队皮靴(速度通用件)未入到人表
         flex_factions=["能量", "仙舟", "治疗", "量子同频", "战技点"],   # 能量降挂件(final_feiying 挂件层),
         plaza_carry="绯英",
         # ===== 知识卡字段(数据源=final_comps/final_feiying_joy.md)=====
@@ -524,7 +549,6 @@ COMP_LIBRARY: list[Comp] = [
         # 装备公式(final_seele_quantum §装备公式/§5,38 篇统计):希儿=风暴潮×2-3+电锯(唯一公式),
         # B 套=特权版风暴潮(plaza 实证 特权风暴潮三件);战场进化手册**不是本套件**
         # (是小黑塔星级装备,归大黑塔条目)。
-        key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权"],
         # boss×线克制单一源 = cw_affinity_table.BOSS_AFFINITY(希儿×蕉研组
         # 登记在彼;出处 = final_seele_quantum counter 节「蕉研组 boss」)
 # 单属性队:量子同频4 属性型羁绊主档 ≥4(final_comps README D3「希儿怕量子熄火」,
@@ -538,7 +562,7 @@ COMP_LIBRARY: list[Comp] = [
         equip_assign={"希儿": ["火力风暴潮", "高周波电锯", "火力风暴潮·特权"]},
         # ↑ 特权三件=希儿 B 套(final_seele_quantum §5「B 套=特权版风暴潮」);
         #   布洛妮娅降插件层后无专属装备条目
-        #   (n=67 插件层定位=贝成员/增益,装备优先级让渡引擎组)。恒等:key_equips=派生投影
+        #   (n=67 插件层定位=贝成员/增益,装备优先级让渡引擎组)。
         # 弹性挂件 = 盛会之星/列车同行(实证 33/67 与 31/67,final_seele_quantum
         # 构造机理——频次低于档 1 两键,免 board_alignment 罚即可,不进加分层)
         flex_factions=["盛会之星", "列车同行"],
@@ -562,7 +586,6 @@ COMP_LIBRARY: list[Comp] = [
         # 改「千冶·刃」(V4.4 实战常驻是千冶·刃,非本体刃);装备 top:电锯56/风暴潮28/光速螺旋桨26/永动机24。
         flex_factions=["击破", "治疗", "追击", "量子同频"],
         plaza_carry="黄泉",
-        key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨", "永动机"],
         # 单体乏力不登 boss 行(「单体boss」是原型描述非公司名;boss 吃怕
         # 单一源 = cw_affinity_table.BOSS_AFFINITY,攻略无黄泉×具体公司名
         # boss 记载,版本重跑补登)。
@@ -572,7 +595,7 @@ COMP_LIBRARY: list[Comp] = [
         # ===== 黄泉减益家族(无流派;第四件=装备池)=====   # ②类信号:4-6 档主体,到前 DOT 班底共享牌桌
         equip_assign={"黄泉": ["高周波电锯", EquipChoice("pool", ("永动机", "光速螺旋桨", "火力风暴潮"))]},
         # ↑ 教义:黄泉=电锯(69% 近必选);第四件=池(永动机38/螺旋桨30/冷笑话26/风暴潮26 平缓分散)——
-        # 恒等约束(与旧 key_equips 多重集相等)下池取频次前三,冷笑话并列 26% 待拆分放开
+        # 池取频次前三,冷笑话并列 26% 待拆分放开
         # ===== 知识卡字段(数据源=final_comps/final_huangquan_debuff.md)=====
         need_star={
             # 黄泉 3★=「7级 D 三星黄泉」节奏共识+A4 黄泉 87%;不死途 3★=「必须要有
@@ -591,7 +614,6 @@ COMP_LIBRARY: list[Comp] = [
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破基准)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
         shared_chars=["黄泉", "流萤", "忘归人"],   # 成型羁绊队:击破6 档乘区
-        key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴"],   # 交叉核对注:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
         transition_chars=["赛飞儿", "灵砂", "忘归人"],
         flex_factions=["减益", "盛会之星"],
         plaza_carry="波提欧",
@@ -617,7 +639,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716 直读纠正):4战技点+4列车(周日开)
         # 凛(远坂凛)V4.4 新:宝石叠99层→第二魔法实验拐198%爆伤(+默认70%=268%);饮月双电锯+风暴潮
         # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
-        key_equips=["高周波电锯", "高周波电锯", "火力风暴潮"],   # 成型羁绊队:战技点4+列车4 档乘区
+        # 成型羁绊队:战技点4+列车4 档乘区
         shared_chars=["远坂凛", "瓦尔特", "花火"], transition_chars=["花火", "风堇", "姬子·启行"],
         flex_factions=["量子同频", "盛会之星"],
         plaza_carry="丹恒·饮月",
@@ -644,7 +666,6 @@ COMP_LIBRARY: list[Comp] = [
         # 非大黑塔+景元(游侠源误)。闪闪+Saber 每8行动连携+回能;圣杯羁绊给经济+改件加速3星。
         # Saber主c(风暴潮+冷笑话+永动机)/闪闪后台带鞋自加速;5能量;杨叔必备;刃+缇宝+符玄(阿瓦隆+绝对热量邪修75%减伤)
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
-        key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 交叉核对注:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
         # ↑ 教义:闪闪=**反重力皮靴**(41%,
         #   锁轴速度载体;final_grail_dual.md 圣杯A)
         shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区
@@ -681,7 +702,6 @@ COMP_LIBRARY: list[Comp] = [
         # 交叉核对注(火花簇 25 篇):旧 factions[星间+量子] 0/25 达标 —— 实战分布 欢愉22/战技点21/
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
-        key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "反重力皮靴"],
         # 成型羁绊队:欢愉档乘区(星间降 flex);教义为准重写:旧手编清单未到人
         # 且与「爻光三鞋」教义矛盾,以装备公式节到人行为准(详设 equip-projection §1)。
         shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
@@ -711,8 +731,7 @@ COMP_LIBRARY: list[Comp] = [
         faction_reqs={0: {"银河学者": 4, "群攻": 3}},
         # plaza:大黑塔 3星率 0.82(4费);5级搜牌 20/38 篇(小黑塔 1费 5级 D 干);装备 电锯29/永动机20/蓄能帆17/电光履16
         # 记忆主必拿(「记忆主一定要拿,后台花火防战技点不足」);后期可上花火补战技点。
-        key_equips=["高周波电锯", "永动机", "蓄能帆", "电光履", "战场进化手册"],
-        # ↑ 战场进化手册=小黑塔星级装备(星级→强度),归本条(教义);恒等约束同步扩入。
+        # ↑ 战场进化手册=小黑塔星级装备(星级→强度),归本条(教义)。
         shared_chars=["黑塔", "缇宝", "翡翠"],   # 成型羁绊队:学者档=星级总量成长乘区
         transition_chars=["艾丝妲", "丹恒·腾荒"],   # 黑塔(小黑塔)是 core/替班C
         # ===== 大黑塔群攻家族(档位=连续深度谱,非流派)=====   # ②类信号:星级总量成长
@@ -740,7 +759,7 @@ COMP_LIBRARY: list[Comp] = [
         # 银枝(风暴潮+冷笑话)+翡翠(3群攻)+鸟(拉条加攻增伤+10%幸运);必须3星银枝;适合对群,对单大降
         # ⚠️ (注册表交叉核对):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
         # —— 核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
-        key_equips=["火力风暴潮", "冷笑话引擎"],   # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型
+        # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型
 # (银枝×单体长战类非公司名,不登 boss 吃怕表——同黄泉条目处置,待实机核)
         shared_chars=["翡翠", "知更鸟"],
         transition_chars=["椒丘", "星期日", "刃"],
@@ -765,7 +784,7 @@ COMP_LIBRARY: list[Comp] = [
         # 反甲流靠白厄单核 + 以牙还牙甲×3 受击反伤,**不靠阵营羁绊成型** → factions/档 0 皆空。
         # 阵容靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
         # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),选靶候选但 progress 低。
-        key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
+        # meta:反甲流需 3 以牙还牙甲
         # boss 克制登记在 cw_affinity_table:史瓦罗(深穹智械科技)=重开级;
         # 「红绿灯」= 小怪非 boss(用户确认 2026-08-17),走非 boss 强敌段
         # (简报词缀行通道)重开级。
@@ -802,7 +821,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # 交叉核对注(狼尊簇 68 篇交叉核对):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
-        key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"],   # 成型羁绊队:欢愉 5-7 档乘区
+        # 成型羁绊队:欢愉 5-7 档乘区
         # ↑ 教义:银狼=风暴潮+
         #   **速度件**(升费链要行动),皮靴是速度载体;爻光本就是皮靴(攻略:爻光双鞋)
         shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"],
@@ -810,7 +829,7 @@ COMP_LIBRARY: list[Comp] = [
         # 星核 2=笑点泵(银狼每攻 7 次放 40 笑点欢愉技)——本套已列档 0(星核猎手2),不入档 1(不重复);绯英 76% 在场沉淀
         equip_assign={"银狼LV.999": ["火力风暴潮", "反重力皮靴"], "爻光": ["反重力皮靴"], "开拓者·欢愉": ["光速螺旋桨"]},
         # ↑ v2:银狼=风暴潮+速度件(升费链要
-        #   行动)。全队永动机群(阿哈装备栏全开后装备=输出)恒等约束下未单列,拆分放开
+        #   行动)。全队永动机群(阿哈装备栏全开后装备=输出)未入到人表
         flex_factions=["星间旅人", "战技点", "列车同行"],
         plaza_carry="银狼LV.999",
         # 但由购买/D 驱动非上场时间,**不适用「有空位就上」部署例外**;仅作类型区分。
@@ -832,7 +851,7 @@ COMP_LIBRARY: list[Comp] = [
         # (plaza 8 篇 carry):装备 反重力皮靴×16 断层第一(「有鞋跟本输不了」);阿格莱雅 3星率
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(交叉核对注:升 A 依据不足,勿按万敌标准拔高)。
-        key_equips=["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨"],   # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(裁注)
+        # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(裁注)
         shared_chars=["风堇", "昔涟", "银狼"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"],
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         plaza_carry="阿格莱雅",
@@ -862,7 +881,7 @@ COMP_LIBRARY: list[Comp] = [
         # 交叉核对注(基准交叉核对):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
-        key_equips=["火力风暴潮", "火力风暴潮", "追击星徽", "白昼·光速螺旋桨", "反重力皮靴", "电磁弹射器", "电磁弹射器"],   # 成型羁绊队:追击档乘区(≥3追击=300%倍率)
+        # 成型羁绊队:追击档乘区(≥3追击=300%倍率)
         shared_chars=["知更鸟", "缇宝", "不死途", "那刻夏"], transition_chars=["赛飞儿", "风堇", "刃"],
         flex_factions=["公司", "群攻", "昼之半神"],
         plaza_carry="",   # 飞霄 carry 3 篇悬空;那刻夏(追击真代表,n=6 恰在聚类边缘)未单列阵容
@@ -897,7 +916,6 @@ COMP_LIBRARY: list[Comp] = [
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
 
         char_positions={"万敌": "front@0"},   # 站位:万敌永远前排1号位(攻略硬约束,final_wandi_burn「万敌@0 独占前排」;燃血吃受击)
-        key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 交叉核对注:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
 # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # 长夜月是 core(夜半记录)
         # ===== 万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====   # ②类信号:夜半 2(96% 必配,主档)
@@ -928,7 +946,6 @@ COMP_LIBRARY: list[Comp] = [
         # ⚠️ 黄泉减益已拆独立(见上);本阵容=DoT 主派(卡芙卡/鹅/刃/桑博),P1强/P2乏力/P3需转,低费过渡保血权威
         # (plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
         # (core 的「刃」改「千冶·刃」+补海瑟音);装备 风暴潮19/反重力皮靴8。
-        key_equips=["火力风暴潮", "反重力皮靴", "蓄能帆", "光速螺旋桨"],
         # 慢速:DOT 叠层×引爆磨血胜利条件(final_dot_kafka),冻结族词条的慢热载体。
         # 成型羁绊队:持续伤害档一路加深(2→4→6)是本线成长乘区。
 
@@ -958,7 +975,7 @@ COMP_LIBRARY: list[Comp] = [
         name="景元仙舟", core_chars=["景元", "镜流", "彦卿", "符玄"],
         faction_reqs={0: {"仙舟": 5}},
         # plaza:景元 3星率 0.69(5费);7级搜牌 7/16;装备 电锯13/风暴潮12/皮靴6;常驻 符玄13/爻光11/藿藿11
-        key_equips=["火力风暴潮", "高周波电锯", "反重力皮靴"],   # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊);成型羁绊队:仙舟5 召唤计数档乘区
+        # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊);成型羁绊队:仙舟5 召唤计数档乘区
         shared_chars=["符玄", "忘归人", "藿藿"], transition_chars=["藿藿", "丹恒·饮月", "符玄"],
         flex_factions=["治疗", "减益", "量子同频", "列车同行", "燃血", "狼狩"],
         plaza_carry="景元",
@@ -983,7 +1000,6 @@ COMP_LIBRARY: list[Comp] = [
         # 节奏:1-6 搜桑博2星 → 2-3 前 3星桑博(装备越早越好)→ 存钱升8 搜海瑟音 → 瓦尔特必上。
         name="专家桑博DOT", core_chars=["桑博", "卡芙卡", "千冶·刃"],
         faction_reqs={0: {"持续伤害": 4, "贝洛伯格": 2}},
-        key_equips=["反重力皮靴", "反重力皮靴", "物质分解液", "冷笑话引擎"],   # 桑博装备越早越好;卡芙卡过渡给随便骰子
         # 慢速:DOT 磨血(桑博 DoT 越早越好,同 final_dot_kafka 磨血胜利条件)。
         # 成型羁绊队:持续伤害档乘区。
 
@@ -1010,6 +1026,10 @@ COMP_LIBRARY: list[Comp] = [
         # 同体」→ 全员 always_on
     ),
 ]
+
+# 终局条目装备到人配方非空建库校验(import 期防线;键域校验在
+# Comp.__post_init__ 逐实例)——判据见 _validate_comp_equip_assign docstring
+_validate_comp_equip_assign(COMP_LIBRARY)
 
 
 # ===== TRANSITION_LIBRARY(P1 过渡组合条目库;or-reqs-retirement 3.2)=====
