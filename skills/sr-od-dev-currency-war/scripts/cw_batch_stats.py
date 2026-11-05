@@ -119,12 +119,14 @@ if _REPO_SRC.is_dir():
     from sr_od.application.currency_war.kernel.cw_game_state import (
         DeployedView,
     )
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        pair_target_comp,
-    )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         readiness_form_ok,
     )
+    # pair_target_comp(配方锁伪阵容物化)已随配方决策层退役删除
+    # (or-reqs-retirement 3.3);p1_pair 路径恒走「判据不可判 → 回退
+    # form_ok 镜像读数」——快照域旧档案行仍可含 p1_pair 键,消费端
+    # 判空跳过,不虚构阵容。
+    pair_target_comp = None
 else:
     get_comp = None                   # type: ignore[assignment]
     DeployedView = None               # type: ignore[assignment]
