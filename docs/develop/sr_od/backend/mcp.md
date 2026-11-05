@@ -40,7 +40,7 @@
 | `mys_get_characters()` | `mys_tools.py` → `SrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集，含 element_cn/base_type_cn 中文名）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
 | `mys_get_roster_detail()` | `mys_tools.py` → `SrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
 | `relic_lookup(query)` | `relic_tools.py` → `lookup_relic()`（直读 `sr_relic_sets` 常量，零 IO） | 统一信封：`success` + 套装静态定义（set_name/kind_cn/set_id/obtain/effects/pieces 含件名/部位/描述/图标相对路径）／`ambiguous`（模糊多命中，`candidates` 候选列表）／`not_found`。查询词按优先级：tid 数字 → 件名精确 → 套装全名 → 子串模糊。查账号穿戴数据走 `mys_get_roster_detail` |
-| `cone_lookup(query, rarity=None, path_id=None, list_all=False)` | `cone_tools.py` → `lookup_light_cone()`（直读 `sr_light_cones` 常量，零 IO） | 统一信封：`success` + 光锥静态定义（tid/name/rarity/path_cn/obtain/icon 相对路径）；`list_all=true` 按 rarity/path_id 过滤列全量；`ambiguous` 候选列表／`not_found`。查询词：tid 数字 → 全名 → 子串模糊。查账号穿戴走 `mys_get_characters` |
+| `cone_lookup(query, rarity=None, path_id=None, list_all=False)` | `cone_tools.py` → `lookup_light_cone()`（直读 `sr_light_cones` 常量，零 IO） | 统一信封：`success` + 光锥静态定义（tid/name/rarity/path_cn/obtain/skill 特效全文/icon 相对路径）；`list_all=true` 按 rarity/path_id 过滤列全量；`ambiguous` 候选列表／`not_found`。查询词：tid 数字 → 全名 → 子串模糊。查账号穿戴走 `mys_get_characters` |
 
 要点：
 

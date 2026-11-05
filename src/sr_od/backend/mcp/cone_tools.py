@@ -34,7 +34,7 @@ _PATH_ID_CN: dict[str, str] = {
 
 
 def _cone_to_data(cone: LightConeDef, match: str) -> dict:
-    """光锥定义 → 工具返回的 data dict（含图标项目相对路径）。"""
+    """光锥定义 → 工具返回的 data dict（含特效文本与图标项目相对路径）。"""
     return {
         'tid': cone.tid,
         'name': cone.name,
@@ -42,6 +42,7 @@ def _cone_to_data(cone: LightConeDef, match: str) -> dict:
         'path_id': cone.path_id,
         'path_cn': _PATH_ID_CN.get(cone.path_id, cone.path_id),
         'obtain': cone.obtain,
+        'skill': cone.skill,
         'icon': icon_webp_rel_path(cone.tid),
         'match': match,
     }
@@ -125,17 +126,17 @@ def register_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类型见
         list_all: Annotated[bool, Field(
             description="true=忽略 query,按 rarity/path_id 过滤返回全量列表(需提供其一);默认 false 按名称查询")] = False,
     ) -> dict:
-        """观察类。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/内部ID/图标路径）。
+        """观察类。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/内部ID/图标路径/特效文本）。
 
         与 ``relic_lookup`` 分工：本工具查**光锥**（武器卡牌）；查**遗器套装**走
         ``relic_lookup``；查**账号实际穿戴**走 ``mys_get_characters`` 的 equip 摘要。
-        不含 skill 特效文本与叠影数值（内容层随版本调整,走 wiki 管道现查）。
+        skill 字段为特效全文（含叠影 S1-S5 梯度数值,【】括号序列自左至右）。
         零 IO 纯常量查询,不需要登录与游戏在线。
 
         Returns:
             统一信封 ``{"status","message","data"}``：
             - ``success``：``data`` 含 tid/name/rarity/path_cn(命途中文)/
-              obtain(获取途径)/icon(图标相对路径)/match(命中方式)；
+              obtain(获取途径)/skill(特效全文)/icon(图标相对路径)/match(命中方式)；
               ``list_all=true`` 时为 ``{'list': [...], 'count': n}``；
             - ``ambiguous``：模糊查询多命中，``data.candidates`` 为候选名称；
             - ``not_found``：查无。
