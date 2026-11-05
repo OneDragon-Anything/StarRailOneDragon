@@ -6710,6 +6710,83 @@ def _validate_strategy_plane_start_grants() -> None:
 _validate_strategy_plane_start_grants()
 
 
+@dataclass(frozen=True)
+class StrategyPlaneStartCharGrant:
+    """策略卡「进入第 N 位面时,再获得一次(角色子形)」登记结构(位面开始
+    发放通道角色子形姊妹专表,与 item 形 :class:`StrategyPlaneStartGrant`
+    同通道分治——发放物词域不同:彼 = 占席道具词表,本 = 角色词表):
+
+    - planes: 触发位面集(位面序位,1 基 = NodePos[0] 同坐标系;卡面
+      「进入第二/三位面时」直读 (2, 3);触发时机 = 该位面第 1 节点窗
+      (r==1),item 形同窗先例。表值 = 登记期快照恒稳,非执行期现读);
+    - char: 发放角色名(∈ CHARACTER_ROSTER;语义 = 「再获得一次」对腿1
+      整组的重复,与同卡 STRATEGY_GRANTS 条目 chars_immediate ∪
+      chars_conditional 角色集一致——一致性对账归表域测试,不设
+      import 哨,箱条目镜像一致性测试同层);
+    - star: 发放星级(卡面未标星 = 1★ 先验家族口径;升星级联由获得链
+      现役承载,表值恒 1 非终态)。
+
+    中途拿卡不补发 = 用户裁定(词形「进入第二/三位面时」系选择性位面
+    子集,不在「每个位面开始时」族补发辖域):登记晚于当前位面开始窗
+    → 该窗不发,只余后续位面窗——结构性成立(取卡窗恒 r∈{2,3},与
+    r==1 位面开始窗零交叠),无补发腿,亦无 done 闩(静态谓词天然单调,
+    窗幂等守卫承担单次)。
+    """
+    id: str
+    planes: tuple[int, ...]
+    char: str
+    star: int
+
+
+STRATEGY_PLANE_START_CHAR_GRANTS: dict[str, StrategyPlaneStartCharGrant] = {
+    # 轮回不止(效果原文「获得【白厄】和一件【轮回者】装备。进入第二/
+    # 三位面时，再获得一次。」直读;效果原文对账 id = cw_invest_data
+    # .PLAZA_AUGMENTS 同 id 行;即时腿「获得【白厄】」由
+    # cw_gain_effects._STRATEGY_CHAR_GRANTS 工厂同批注册,不入本表;
+    # 「再获得一次」= 白厄单角色重复(轮回者装备腿零建模 = 披露键
+    # STRATEGY_REINCARNATOR_UNMODELED 申报,资产面低估随批在案);
+    # 中途拿卡不补发 = 用户裁定,无选卡拍补发腿——与本表同通道的
+    # 「每个位面开始时」族 item 形补发腿(STRATEGY_PLANE_START_GRANTS
+    # 辖域)不因本表扩辖,角色子形只被位面开始窗检查函数消费)
+    '轮回不止': StrategyPlaneStartCharGrant(id='332201', planes=(2, 3),
+                                             char='白厄', star=1),
+}
+
+
+def _validate_strategy_plane_start_char_grants() -> None:
+    """STRATEGY_PLANE_START_CHAR_GRANTS 构建校验(import 即炸;治理口径
+    = 2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本
+    变更独立触发的漂移哨留」——item 形姊妹校验
+    _validate_strategy_plane_start_grants 同款三哨形态;planes 值域/
+    star≥1/拒位面 1 等笔误类哨不建,对账归表域测试;char 与同卡
+    STRATEGY_GRANTS 角色集一致性归表域测试,同层纪律):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除
+    后静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id;③
+    发放角色漂移:char ∈ CHARACTER_ROSTER(游戏角色词表改名/移除
+    可独立触发)。
+    """
+    orphans = [n for n in STRATEGY_PLANE_START_CHAR_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_PLANE_START_CHAR_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, _grant in STRATEGY_PLANE_START_CHAR_GRANTS.items():
+        _base = INVESTMENT_STRATEGIES.get(_name)
+        if _base is not None and _base.source != f'plaza:{_grant.id}':
+            raise ValueError(
+                f"STRATEGY_PLANE_START_CHAR_GRANTS id 漂移:{_name!r} "
+                f"登记 id={_grant.id} base={_base.source}")
+        if _grant.char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"STRATEGY_PLANE_START_CHAR_GRANTS[{_name!r}] "
+                f"发放角色漂移: {_grant.char!r} ∉ CHARACTER_ROSTER")
+
+
+_validate_strategy_plane_start_char_grants()
+
+
 def _validate_strategy_delayed_grants() -> None:
     """STRATEGY_DELAYED_GRANTS 构建校验(import 即炸;治理口径 =
     2026-10-28 裁定「只能由写表人笔误触发的校验删,能被游戏版本变更

@@ -135,6 +135,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_MERGE_GRANTS,
     STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_ORE_OPEN_EFFECTS,
+    STRATEGY_PLANE_START_CHAR_GRANTS,
     STRATEGY_PLANE_START_GRANTS,
     STRATEGY_RANDOM_GRANTS,
     STRATEGY_REWARD_NODE_GRANTS,
@@ -3074,26 +3075,46 @@ def check_strategy_plane_start_grants(gs: GameState, *,
                                       sig: ChannelSig,
                                       ) -> list[str]:
     """策略卡位面开始发放检查(「每个位面开始时,获得1个【星徽秘典】」
-    触发器单一源,终身学习 id 330901 首例;唯一调用点 = sim 位面开局
+    触发器单一源,终身学习 id 330901 首例;角色子形姊妹分支 = 「进入
+    第二/三位面时,再获得一次」,轮回不止 id 332201,登记表
+    STRATEGY_PLANE_START_CHAR_GRANTS;唯一调用点 = sim 位面开局
     插入位置(discharge_due_item_opens 后邻位,窗幂等守卫内)——live
-    零写观察覆盖:实机发放由游戏自算自演,bot 经既有道具观察链承接,
-    偏离留证不自动补写)。
+    零写观察覆盖:实机发放由游戏自算自演,bot 经既有道具/备战观察链
+    承接,偏离留证不自动补写)。
 
     窗谓词 = 位面首节点窗(node_pos.r == 1,NodePos.r = 位面内序位
-    1 基);持卡谓词 = ``active_strategies`` ∩ STRATEGY_PLANE_START_GRANTS
-    键集(表外卡一律无条目,禁从效果原文自动猜装)。两谓词合成后按
-    count 逐件 ``gain_bench_item(rand=False)`` 入席(占席道具通用溢出
-    卡,席满溢出 overflow 语义由落席原语承载);零采样零新域,效果串
-    ``plane_start_grant:<item>(placed=<bool>)`` 逐件枚。
+    1 基),两表共用;持卡谓词 = ``active_strategies`` ∩ 各表键集
+    (表外卡一律无条目,禁从效果原文自动猜装)。item 形按 count 逐件
+    ``gain_bench_item(rand=False)`` 入席(占席道具通用溢出卡,席满
+    溢出 overflow 语义由落席原语承载),效果串
+    ``plane_start_grant:<item>(placed=<bool>)`` 逐件枚;角色子形
+    ``gain_character(rand=False)`` 入席(落位/升星级联/席满溢出全沿链
+    现役),效果串 ``plane_start_grant:<角色>(<星级>★)`` 逐发一条
+    (与 item 形同前缀同括注形,载荷域道具→角色星级,遥测单一前缀;
+    evidence 前缀 ``plane_start_char_grant:p<位面>`` 与效果串分域,
+    子形区分于 item 形写入端)。角色分支零发号:uid 在码消费者 = 上场
+    锁/离场队列两域,白厄两域皆缺(普通 roster 单位现役缺省 None =
+    单位天然无实例号),同函数姊妹分支(item 形)同窗亦无发号。
+
+    两分支零 done 闩零 GameState 新域:谓词 = 持卡 ∧ r==1 ∧ 位面 ∈
+    条目静态值(同一位面开始窗唯一),跨窗天然单调,窗幂等守卫承担
+    单次。中途拿卡不补发 = 用户裁定(角色子形词形辖域为选择性位面
+    子集,显式不在「每个位面开始时」族补发辖域):登记晚于位面开始窗
+    → 该窗零发放,只余后续位面窗(取卡窗恒 r∈{2,3},与 r==1 窗零
+    交叠,结构性成立);sim 选卡拍补发腿(补发族辖域 = item 形表)
+    不读本表,角色子形唯一消费点 = 本函数。
     """
     held = [n for n in gs.active_strategies.value or ()
             if n in STRATEGY_PLANE_START_GRANTS]
-    if not held:
+    held_char = [n for n in gs.active_strategies.value or ()
+                 if n in STRATEGY_PLANE_START_CHAR_GRANTS]
+    if not held and not held_char:
         return []
     if node_pos[1] != 1:
         return []
     from sr_od.application.currency_war.kernel.cw_gain_chain import (
         gain_bench_item,
+        gain_character,
     )
     steps: list[str] = []
     for name in held:
@@ -3104,6 +3125,15 @@ def check_strategy_plane_start_grants(gs: GameState, *,
                                      producer=GAIN_CHAIN_PRODUCER)
             steps.append(
                 f'plane_start_grant:{grant.item}(placed={placed})')
+    plane = node_pos[0]
+    for name in held_char:
+        grant = STRATEGY_PLANE_START_CHAR_GRANTS[name]
+        if plane not in grant.planes:
+            continue
+        gain_character(gs, grant.char, grant.star, rand=False, sig=sig,
+                       evidence=f'plane_start_char_grant:p{plane}',
+                       producer=GAIN_CHAIN_PRODUCER)
+        steps.append(f'plane_start_grant:{grant.char}({grant.star}★)')
     return steps
 
 
