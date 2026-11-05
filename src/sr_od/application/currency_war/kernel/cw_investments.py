@@ -2573,6 +2573,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '小队定义判读申报制[零消费端行为等价];'
           'sim 低估零补偿[不编近似数];'
           '无离散触发事件,trigger 占位形。'),
+    # 后勤超响应(id 350801):官方「角色的后台强度提高，其数值等同于后台
+    # 总星数×12%。」战力类 UNIT_BUFF 零响应登记(全队的希望/中产阶级/幸
+    # 运之子同形族;后台强度轴游戏侧自算,bot 零响应;「后台总星数」基点
+    # 判读 = 判读申报制[零响应下 bot 行为恒同];无离散触发事件,trigger 占
+    # 位形)。
+    '后勤超响应': EffectSpec(
+    id='350801', name='后勤超响应',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350801')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '后台强度轴游戏侧自算,bot 仅登记;'
+          '「后台总星数」基点判读申报制[零响应下 bot 行为恒同];'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
