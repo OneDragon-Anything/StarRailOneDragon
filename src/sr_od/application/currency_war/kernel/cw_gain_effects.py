@@ -1429,6 +1429,18 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
         _make_char_grant_effect('镜流'),
         _make_char_grant_effect('景元')),
 
+    # 飞光·传剑 = char×char 双角色组合登记行(卡文「获得【彦卿】和【景元】，
+    # 他们获得【师徒】羁绊。……」):两条效果条目皆具名角色 rand=False 确定发放
+    # (卡文语序彦卿→景元,与登记面条目元组序一致;星级 1★ 先验家族口径);
+    # 师徒羁绊非注册羁绊(FACTIONS 零条目)零建模,绑定行已承载结构化面;天河泻
+    # 强化与共场叠层两腿系具名单位战斗内技能数值面,repo 无读口/sim 无技能面/
+    # live 面板系结算屏总量,三面皆盲 bot 零响应真值归游戏侧;条目参数唯一
+    # 出现点,不入泛化表防撞键;rng 零消费。登记面镜像 =
+    # cw_investments.STRATEGY_GRANTS 同卡 chars_immediate 行(组合行零触碰)。
+    '飞光·传剑': _compose_grant_legs(
+        _make_char_grant_effect('彦卿'),
+        _make_char_grant_effect('景元')),
+
     # 临时工合约 = 具名装备授予单行(卡文「获得8个【员工投影仪】」;
     # 武装突入 = 双箱组合登记行(卡文「遭遇节点的奖励变为2倍。获得2个
     # 【简易武装箱】」;条目2 数量 = 双元素元组[奖励×2 条目实机和模拟器两边盲零建模第三
