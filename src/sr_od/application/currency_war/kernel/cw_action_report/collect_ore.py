@@ -287,7 +287,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                     _written.add('deployed')
 
             _merge_bench(work_bench, work_dep, on_step=on_step,
-                         on_merge=_collect_merge)
+                         on_merge=_collect_merge, gs=gs)
 
             # 步4 合成未触及的行域标记(真值可能因角色奖励而变)
             if 'deployed' not in written:

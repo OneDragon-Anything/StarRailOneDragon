@@ -960,13 +960,25 @@ _STRATEGY_CHAR_GRANTS: dict[str, tuple[str, int]] = {
     # 离场句零建模 = cw_investments.STRATEGY_DESC_UNMODELED_KEYS 两键
     # 申报;同名三连发触发链现役合成级联如实记账(见工厂 docstring)。
     '狸职手续': ('狸职狸狸', 3),
+    # 佩佩客串(id 331001):卡文「佩佩闪亮登场！」登场发放非「获得」
+    # 直读,用户裁定 2026-11-05 拍 B 转正人工登记入册(佩佩真实入后台);
+    # 穿戴/离场两条效果条目 = 周期事件异轴不入本表(登记轴 =
+    # cw_investments.STRATEGY_KECHUAN_WEAR_GRANTS / STRATEGY_KECHUAN_
+    # LEAVE_GRANTS,离场倒计时队列 pending_kechuan_leaves 在本工厂发放刻
+    # 登记——发号纪律见工厂 docstring)。
+    '佩佩客串': ('佩佩', 1),
 }
 
 
-def _make_char_grant_effect(char: str, count: int = 1) -> Callable[..., list[str]]:
-    """具名角色发放效果体工厂(闭包销 = 发放角色名 + 发放只数,单源取自
-    :data:`_STRATEGY_CHAR_GRANTS`;形态镜像 _make_box_grant_effect,
+def _make_char_grant_effect(char: str, count: int = 1, *,
+                            card: str | None = None) -> Callable[..., list[str]]:
+    """具名角色发放效果体工厂(闭包销 = 发放角色名 + 发放只数 + 所属卡名,
+    单源取自 :data:`_STRATEGY_CHAR_GRANTS`;形态镜像 _make_box_grant_effect,
     差异 = 发放对象是角色,走 gain_character)。
+
+    ``card`` = 所属卡规范名(派生段传,显式直书调用点缺省 None 零波及):
+    消费 = 离场倒计时登记表查询(cw_investments.STRATEGY_KECHUAN_LEAVE_
+    GRANTS,命中才登记 pending_kechuan_leaves,非命中卡零队列写)。
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——具名确定发放
@@ -976,28 +988,59 @@ def _make_char_grant_effect(char: str, count: int = 1) -> Callable[..., list[str
     星级实参恒 1 = 占位非先验:佩佩/狸职狸狸系 cost0 系统召唤单位无星级
     概念(cw_chars 已登记),链签名必填星参落占位值,环境侧佩佩发放已立同判。
     落位/回调/升星/席满溢出语义全部沿 gain_character 现役,零新增链为。
-    效果串 ``char_grant:<名>(placed=<bool>,merge=<int>)`` 逐发一条——
-    前缀独立分域(box_grant=占席道具/named_equip_grant=装备/strategy_gift_
-    random=随机角色群发),审计可独立过滤;merge = 该次获得链上升星级数
-    (单发卡恒 0;count>1 同名连发凑三触发链现役合成级联,触发串
+    **发放刻赋实例号**(个体归属承载,T-368 佩佩客串批扩现役环境发放链
+    发号纪律至本名单全部键非本卡特例):每发先 ``uid = env_grant_uid_seq
+    现值 + 1`` 写回(check_env_battle_grants 同款),``gain_character(uid=
+    uid)`` 实例身份随落位单位;合成产物承继规则见 cw_gain_chain
+    _merge_inherit_uid(素材已发号 uid 最小值)。离场登记表命中卡逐发登记
+    ``(uid, 离场后继节点数)`` 入 gs.pending_kechuan_leaves(倒计时队列,
+    节点窗收尾弹除 = discharge_due_kechuan_leaves)。
+    效果串 ``char_grant:<名>(placed=<bool>,merge=<int>,uid=<int>)`` 逐发
+    一条——前缀独立分域(box_grant=占席道具/named_equip_grant=装备/
+    strategy_gift_random=随机角色群发),审计可独立过滤;merge = 该次获得链
+    上升星级数(单发卡恒 0;count>1 同名连发凑三触发链现役合成级联,触发串
     merge>0 随串留证——链上如实记账,sim 交付态与实拍召唤单位多只共存
-    的分歧由本串留证申报,零特判)。"""
+    的分歧由本串留证申报,零特判);uid = 本次发号实例号(个体可追溯)。"""
 
     def _effect(gs: GameState, *, sig: ChannelSig,
                 rng: random.Random) -> list[str]:
         # 惰性 import 链原语(运行时解析破环;沿骇客/箱条目先例,模块
         # docstring import 方向声明)
         from sr_od.application.currency_war.kernel.cw_gain_chain import (
+            _select_write,
             gain_character,
         )
+        from sr_od.application.currency_war.kernel.cw_investments import (
+            STRATEGY_KECHUAN_LEAVE_GRANTS,
+        )
         _ = rng   # 具名确定发放,无采样面(rng 形参沿注册表分派契约保留)
+        write = _select_write(gs, False)   # 登记全确定事件,零采样
+        leave_nodes: int | None = None
+        if card is not None:
+            leave_nodes = STRATEGY_KECHUAN_LEAVE_GRANTS.get(card)
         steps: list[str] = []
         for _i in range(count):
+            # 发号:uid = (env_grant_uid_seq 现值 or 0) + 1 写回(check_env_
+            # battle_grants 同款,evidence #uid 后缀分域判读)
+            uid = int(gs.env_grant_uid_seq.value or 0) + 1
+            write(gs.env_grant_uid_seq, uid,
+                  produced_by=_PRODUCER,
+                  evidence='pick_invest_char_grant#uid', sig=sig)
+            if leave_nodes:
+                # 离场倒计时入队(登记表命中卡才写;剩余节拍 = 登记值,
+                # 节点推进边界 tick 递减,窗收尾 remaining<=0 弹除——
+                # pending_strategy_grants 同形,拿卡节点不计入后继 N 口径)
+                queue = tuple(gs.pending_kechuan_leaves.value or ())
+                write(gs.pending_kechuan_leaves,
+                      queue + ((uid, int(leave_nodes)),),
+                      produced_by=_PRODUCER,
+                      evidence='pick_invest_char_grant#leave_queue', sig=sig)
             r = gain_character(gs, char, 1, rand=False, sig=sig,
                                evidence='pick_invest_char_grant',
-                               producer=_PRODUCER)
+                               producer=_PRODUCER, uid=uid)
             steps.append(
-                f'char_grant:{char}(placed={r.placed},merge={r.merge_levels})')
+                f'char_grant:{char}(placed={r.placed},merge={r.merge_levels},'
+                f'uid={uid})')
         return steps
 
     return _effect
@@ -1733,7 +1776,7 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '这么大的钻石': _compose_grant_legs(_make_char_grant_effect('佩佩'),
                                      _make_named_equip_grant_effect(
                                          '财富宝钻', 1)),
-    **{name: _make_char_grant_effect(char, count)
+    **{name: _make_char_grant_effect(char, count, card=name)
        for name, (char, count) in _STRATEGY_CHAR_GRANTS.items()},
     # 绑定型随机角色授予族(价值投资·金 = 族首例,卡文「获得1个随机的
     # 2星1费角色。每次进入新节点时,获得1星的该角色,补给后额外获得2个」):

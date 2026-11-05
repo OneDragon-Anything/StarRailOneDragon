@@ -48,6 +48,10 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 if TYPE_CHECKING:
     # 仅类型注解引用(旧 ShopCard = cw_state 动作域词汇,运行时鸭子类型读取
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
+    )
+
     # name/star,零运行时依赖)。
     from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
 
@@ -151,7 +155,8 @@ def _bench_sig(slots) -> list:
 def merge_simulate(bench: list[BenchSlot | None],
                    deployed: list[Unit | None] | None,
                    name: str, star: int, k: int = 1,
-                   in_shop_count: int | None = None) -> MergeSimResult:
+                   in_shop_count: int | None = None,
+                   gs: GameState | None = None) -> MergeSimResult:
     """买牌 (name, star,请求张数 k) 的合成终态推演(纯函数;不改入参;
     P1 起状态容器原生形状 §2.3)。
 
@@ -160,6 +165,10 @@ def merge_simulate(bench: list[BenchSlot | None],
       自动多买 k = ``min(店内张数, 3 − 已有 mod 3)``(§2.5;in_shop_count
       缺省按 3-mod 保守取,调用方有店内真值时显式传);
     - 合成链逐级记录(落点/继承);出参断言「场上同名同星 ≤1」。
+    - 合成产物实例号承继 = _merge_inherit_uid 单一源(链端
+      merge_step_once 同源,交叉核对一致性由共用 helper 保证);``gs``
+      传入时锁域豁免同链端(承继值命中未解锁上场锁 → 弃承继置 None),
+      缺省 None = 纯表形态零豁免。
 
     名称/星级未知(name 空)→ 原样返回零推进(宁缺勿造,与买牌期望态
     通道同口径)。元素 frozen(BenchSlot/Unit)→ 推演以 replace 新构造
@@ -258,7 +267,9 @@ def merge_simulate(bench: list[BenchSlot | None],
                                    landing_kind=landing_kind,
                                    landing_slot=landing_slot,
                                    inherited_equips=inherited))
-            new_carrier = _bump_carrier(carrier, new_star, new_equips)
+            new_carrier = _bump_carrier(carrier, new_star, new_equips,
+                                        merge_uid=_merge_inherit_uid(
+                                            [e[2] for e in take], gs=gs))
             if carrier_entry[0] == 'dep':
                 dep_t[carrier_entry[1]] = new_carrier
             elif carrier_entry[0] == 'bench':
@@ -290,13 +301,43 @@ def merge_simulate(bench: list[BenchSlot | None],
                           overflow=still_overflow)
 
 
+def _merge_inherit_uid(entries: list, gs=None) -> int | None:
+    """合成承继实例号(推演端实现,cw_gain_chain._merge_inherit_uid 同款
+    语义——两模块零 import 独立实现结构,交叉核对测试保证一致,禁只改
+    单端):产物 uid = 素材中已发号 uid 最小值(最老个体承继);素材全
+    未发号 → None。``gs`` 传入时锁域豁免同链端(承继值命中未解锁上场锁
+    记录 env_grant_deploy_locks → 弃承继置 None)。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        effective_node_pos,
+    )
+    units = []
+    for x in entries:
+        u = x.unit if isinstance(x, BenchSlot) else x if isinstance(x, Unit) \
+            else None
+        if u is not None and getattr(u, 'uid', None) is not None:
+            units.append(int(u.uid))
+    if not units:
+        return None
+    inherit = min(units)
+    if gs is not None:
+        eff = effective_node_pos(gs)
+        if eff is not None:
+            for _char, uid, unlock in tuple(
+                    gs.env_grant_deploy_locks.value or ()):
+                if uid == inherit and eff < unlock:
+                    return None
+    return inherit
+
+
 def _bump_carrier(carrier: object, new_star: int,
-                  new_equips: list[str]) -> object:
+                  new_equips: list[str],
+                  merge_uid: int | None = None) -> object:
     """合成载体升星 + 装备继承的 frozen 新构造(bench 侧 BenchSlot 包
     Unit / 场上裸 Unit 双载体;状态容器原生形状之外禁入)。
 
-    产物**显式置 uid=None**(合成产物 = 新实体,cw_gain_chain._bump_carrier
-    同款纪律——漏置则环境上场锁的被锁 uid 随 replace 随行进产物)。"""
+    产物 uid = ``merge_uid``(缺省 None = 新实体,cw_gain_chain._bump_carrier
+    同款纪律——None 时显式置 None,漏置则环境上场锁的被锁 uid 随 replace
+    随行进产物;非 None = 素材承继实例号,_merge_inherit_uid 单一源产出)。"""
     from dataclasses import replace
     if isinstance(carrier, BenchSlot):
         u = carrier.unit
@@ -304,10 +345,10 @@ def _bump_carrier(carrier: object, new_star: int,
             raise TypeError('merge 载体 BenchSlot 无 Unit(占位件不可合成)')
         return replace(carrier, unit=replace(u, star=new_star,
                                              equips=list(new_equips),
-                                             uid=None))
+                                             uid=merge_uid))
     if isinstance(carrier, Unit):
         return replace(carrier, star=new_star, equips=list(new_equips),
-                       uid=None)
+                       uid=merge_uid)
     raise TypeError(
         f'merge 载体形状不支持: {type(carrier).__name__}(容器原生 '
         f'BenchSlot/Unit 之外形状,禁复活非容器推演)')
@@ -324,7 +365,8 @@ def _bump_carrier(carrier: object, new_star: int,
 def _merge_bench(bench: list[BenchSlot | None],
                  deployed: list[Unit | None] | None = None,
                  on_step: Callable[[], None] | None = None, *,
-                 on_merge: Callable[[str, int], None] | None = None) -> None:
+                 on_merge: Callable[[str, int], None] | None = None,
+                 gs=None) -> None:
     """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
 
     游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
@@ -384,7 +426,9 @@ def _merge_bench(bench: list[BenchSlot | None],
                     deployed[e[1]] = None
             carrier = carrier_entry[2]
             new_carrier = _bump_carrier(carrier, cstar + 1,
-                                        _entry_equips(carrier) + inherited)
+                                        _entry_equips(carrier) + inherited,
+                                        merge_uid=_merge_inherit_uid(
+                                            [e[2] for e in take], gs=gs))
             if carrier_entry[0] == 'bench':
                 bench[carrier_entry[1]] = new_carrier
             else:
@@ -570,7 +614,8 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
                                 card: ShopCard,
                                 shop: list[ShopCard] | None, *,
                                 on_merge: Callable[[str, int], None]
-                                | None = None) -> int | None:
+                                | None = None,
+                                gs=None) -> int | None:
     """满栏合成买分支应用(买牌上报工作副本的单一源;原 tracked 同步口
     随第二账停用删除)。
 
@@ -583,7 +628,8 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
     载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
     。返回应用张数 k;前置不满足返回 None(调用方
     据此 no-op)。``on_merge`` = 升星事实采集透传(直通内部
-    ``_merge_bench``,缺省 None 行为不变)。
+    ``_merge_bench``,缺省 None 行为不变);``gs`` = 合成承继实例号锁域
+    豁免上下文(直通内部 ``_merge_bench``,缺省 None = 纯表形态零豁免)。
 
     建模依据(2026-09-09 05:52 运行局双响事故):满栏时游戏对完成合成
     的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上载体升星)
@@ -597,6 +643,6 @@ def _apply_full_bench_merge_buy(bench: list[BenchSlot | None],
     for _ in range(_k):
         bench.append(BenchSlot(kind='unit', unit=Unit(
             char_id=_name, star=_star)))
-    _merge_bench(bench, deployed, on_merge=on_merge)   # 全场域(3合1 是全场)
+    _merge_bench(bench, deployed, on_merge=on_merge, gs=gs)   # 全场域(3合1 是全场)
     del bench[BENCH_CAPACITY:]
     return _k

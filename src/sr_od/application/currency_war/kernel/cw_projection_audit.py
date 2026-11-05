@@ -238,6 +238,13 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '推算知识,无观察读端;实机局发放腿不接(不对称申报,'
               'pending_strategy_offers 同款:发放物以 equips 观察首见'
               '入账)'),
+    'pending_kechuan_leaves': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='佩佩客串离场倒计时队列(唯一逻辑写端 = 具名角色工厂发放刻'
+              '入队 / 节点边界 tick 递减 / sim 节点窗收尾弹除回写),队列'
+              ' = 卡文推算知识,无观察读端;实机局离场腿不接(不对称申报:'
+              '实机离场由游戏自己执行,后台空间变化 = bench 观察覆盖'
+              '吸收)'),
     'strategy_conditional_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='策略卡条件发放已发标记(幂等守卫「首次」,元素 = 规范卡名'

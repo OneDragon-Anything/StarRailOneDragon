@@ -144,11 +144,11 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                                     star=land_star))) is not None
     if placed:
         k = k_exec if k_exec is not None else 1
-        _merge_bench(scratch_b, scratch_d, on_merge=_collect_merge)
+        _merge_bench(scratch_b, scratch_d, on_merge=_collect_merge, gs=gs)
     else:
         k_apply = _apply_full_bench_merge_buy(
             scratch_b, scratch_d, _legacy_card(card), shop_view,
-            on_merge=_collect_merge)
+            on_merge=_collect_merge, gs=gs)
         if k_apply is None:
             return LogicOutcome(applied=False, reason='bench_full')
         k = k_exec if k_exec is not None else max(1, int(k_apply))

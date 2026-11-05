@@ -162,7 +162,8 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
     cost = int(action.get('cost', 0) or 0)
     bench, dep = _session_seats(session)
     res = merge_simulate(bench, dep, name, star, k=k,
-                         in_shop_count=action.get('in_shop_count'))
+                         in_shop_count=action.get('in_shop_count'),
+                         gs=game_state_of(session))
     bought = max(1, res.buy_k or 1)
     # 免费购买闸(降本增效,与买牌上报单点同闸同豁免):免张数源 =
     # 实扣张数(与扣金张数同一来源,超额部分由 helper 钳制;两入口零

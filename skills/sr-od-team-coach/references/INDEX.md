@@ -15,6 +15,8 @@
 | [ult-resources.md](mechanics/ult-resources.md) | 大招资源体系：标准能量 vs 特殊资源（残梦/新蕊/隐藏分/飞黄/火种/充能烧血），充能词条有效性判定 |
 | [path-joy.md](mechanics/path-joy.md) | 欢愉命途：笑点→阿哈时刻→好活当赏、欢愉伤害独立乘区、欢愉度 |
 | [path-remembrance.md](mechanics/path-remembrance.md) | 记忆命途：忆灵系统、忆灵对照表、计数绑定、套装对忆灵生效 |
+| [relic-sets.md](mechanics/relic-sets.md) | 遗器套装速查：62 套官方分类标签+验证效果 |
+| [light-cones.md](mechanics/light-cones.md) | **光锥速查：170 杻全量（米游社百科）**——命途/星级/获取渠道分组（专武池/光锥呈现/黑塔商店/月卡/周本/活动）/特效要点含叠影梯度 |
 
 ## 体系层（一类配队一档，管「为什么这么组」）
 

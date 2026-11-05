@@ -111,6 +111,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_gift_grants,
     check_strategy_hp_loss_gold,
     check_strategy_hp_loss_grants,
+    check_strategy_kechuan_wear_grants,
     check_strategy_level_equip_grants,
     check_strategy_level_grants,
     check_strategy_node_char_grants,
@@ -121,6 +122,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     consume_strategy_interest_topup,
     discharge_due_item_grants,
     discharge_due_item_opens,
+    discharge_due_kechuan_leaves,
     discharge_due_strategy_grants,
     discharge_strategy_bond_battle_grants,
     gain_bench_item,
@@ -3753,6 +3755,17 @@ class SimBackend:
                                 produced_by='SimBackend:equip_expiry',
                                 evidence='strategy_equip_expiry:expiry',
                                 sig=logic_sig('sim:strategy'))
+        # —— 策略卡周期离场(佩佩客串 id 331001 首例;接入调用点 = 装备
+        # 到期效果条目之后、商店全刷前,节点窗收尾序并列——「进入5个
+        # 节点后」= 拿卡后第 5 后继节点窗收尾触发,倒计时 tick 挂节点
+        # 推进边界 advanced 闸)。条件单一源 = kernel
+        # discharge_due_kechuan_leaves(队列弹除 + 本卡佩佩 uid 过滤移除
+        # + 装备走 gain_equipment 原语入栏 + 计数域清账);sig =
+        # logic_sig('sim:strategy') 沿策略战后发放效果条目同组;幂等零
+        # 新增守卫 = 窗口幂等守卫 + 队列弹除即消费(条目移除);返回值
+        # 忽略(无回调面);live 零写观察覆盖(离场为游戏侧自发)。
+        discharge_due_kechuan_leaves(self.gs,
+                                     sig=logic_sig('sim:strategy'))
         # 商店全刷(M05:节点切换自动全刷;整店锁跳过——裁定②)
         if not bool(self.gs.shop_locked.value):
             rotation_on = (str(self.gs.active_env.value or '')
@@ -4701,6 +4714,21 @@ class SimBackend:
             self.disclosures.setdefault(
                 STRATEGY_WIN_GOLD_SCOPE_ASSUMPTION,
                 'all_settlement_nodes_v0')
+        # —— 策略卡完美通关穿戴(佩佩客串 id 331001 首例;接入调用点 =
+        # 胜利结算条件金效果条目之后、败局待办登记之前,胜败两态共同
+        # 路径——判定输入复用 won ∧ hp_delta==0 与 win 金同源,sim 完胜
+        # ≡ 胜利模型差(M12 简化档既有)归对账预期差申报)。条件单一源 =
+        # kernel check_strategy_kechuan_wear_grants(本卡佩佩 uid 过滤,
+        # Unit.equips 直写旁路转换拦截);sig = logic_sig('sim:strategy')
+        # 沿策略战后发放效果条目同组;rng = 独立子流键
+        # M13/{p}/{r}/kechuan-wear(装备采样专用,禁复用 M13 主流实例
+        # ——ins/boss-grant 独立子流同构先例);幂等零新增守卫 = 本函数
+        # _settled_key(同节点重放整段跳过);返回值忽略(无回调面)。
+        check_strategy_kechuan_wear_grants(
+            self.gs, won=won, hp_delta=outcome.hp_delta,
+            sig=logic_sig('sim:strategy'),
+            rng=stream_rng(self.seed,
+                           f'M13/{node.plane}/{node.round_num}/kechuan-wear'))
         # —— 策略卡损血档位触发发放(保险 id 130501 首例,损血触发族
         # 首例;接入调用点 = 策略卡胜利金效果条目之后、败局待办登记之前,胜败两态
         # 共同路径——触发判据 = 实际损血非胜利,胜局零损血/扑满豁免形态

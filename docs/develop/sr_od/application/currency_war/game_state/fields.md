@@ -1422,6 +1422,48 @@ env_grants_done——不并入任何域版本 bump,他域本体未变)。与
 `strategy_conditional_done` 分域:本域键含分支键段(一卡两分支各自置一次性标志位),
 彼域键 = 纯卡名/费用桶形,域语义不同不混用。
 
+#### 3.2.26h 佩佩客串离场倒计时队列 pending_kechuan_leaves
+
+**语义**:策略卡周期离场通道(佩佩客串 id 331001 首例:「进入5个节点后,
+阿兰接走佩佩们并留下所有装备」)的**单位粒度倒计时队列**——元素 =
+`(单位 uid, remaining 剩余节拍)`(自然数计数非索引):uid = 发放刻发号
+实例号(`env_grant_uid_seq` 计数器,具名角色工厂发放刻同口;个体身份键,
+2★ 合成产物承继 uid 后仍命中);remaining 语义与 §3.2.26b
+`pending_strategy_grants` 同构(递减挂节点边界 tick advanced 闸,到点
+判定 = remaining <= 0)。计数口径 = **后继 N**(拿卡节点不计入:登记
+发生在拿卡节点窗内,首个递减 = 拿卡后第 1 个节点推进边界,remaining==0
+于第 N 后继节点边界达成,窗收尾弹除执行——人才激励「N个节点后」/偶像
+经济延迟支线两在码刻度同口径)。登记表单一源 =
+`cw_investments.STRATEGY_KECHUAN_LEAVE_GRANTS`(键 = 卡规范名,值 = 离场
+后继节点数)。
+
+**写入方**:唯一逻辑写入方三处——①发放刻入队 =
+`cw_gain_effects._make_char_grant_effect`(登记表命中卡逐发登记,与发号
+同拍);②节点边界 tick 递减 = `cw_game_state._tick_pending_kechuan_leaves`
+(`_tick_effect_boundary_impl` advanced 闸内,`_tick_pending_strategy_grants`
+同形);③sim 窗收尾弹除回写 = `cw_gain_chain.discharge_due_kechuan_leaves`
+(到期条目移除)。**无观察写入方**——队列 = 卡文推算知识,游戏 UI 无
+「待离场列表」可读;实机局不接弹除条目(不对称申报:实机离场由游戏自己
+执行,后台空间变化 = bench 观察覆盖吸收,live 局队列随 tick 递减至 0
+悬置 = 模型推算知识存续)。
+
+**消费端**:①离场弹除(唯一 = `discharge_due_kechuan_leaves`,sim 节点窗
+收尾 check_strategy_gift_grants 同窗:uid ∈ 到期条目集的佩佩自槽位移除
++ 装备走 gain_equipment 原语入栏 + 条目移除);②穿戴对象过滤
+(`check_strategy_kechuan_wear_grants`:uid ∈ 队列全集 = 本卡在场佩佩
+承载——队列只登记本卡发放个体,他卡佩佩零入队,域天然只含本卡个体);
+快照恢复随域存续(int 对 tuple rebuild)= 中断恢复局倒计时不丢(uid
+单位身份在 bench/deployed 快照同存续,弹除判定可命中)。
+
+**开局预填初值**:()(每局全新创建即持空 tuple,A 类;同
+pending_strategy_grants 种子族先例)。
+
+**域归属**:独立键 `pending_kechuan_leaves`(§3.7.1;独立键先例 =
+env_grants_done——不并入任何域版本 bump,他域本体未变)。与
+`pending_strategy_grants` 同构分域:彼域元素 = (卡名, 节拍)〔卡粒度〕,
+本域元素 = (uid, 节拍)〔单位粒度〕,到点产出异构(状态副本发放 vs
+单位移除+装备转移),不共域。
+
 #### 3.3 商店开态(覆盖在备战画面之上)
 
 > 商店面板弹在备战画面上:牌面区字段在本屏写入;下层备战画面被覆盖/压暗——**本屏
@@ -2081,12 +2123,16 @@ uid,旧档宽容读缺省 None);**审计** = 两行 PROCESS_ONLY(无观察读取
 #### 3.5.6a Unit.uid 实例号尾字段(§3.2.3/§3.2.5 单位域登记)
 
 **语义**:`Unit.uid: int | None = None`(可选尾字段,带默认值 = 既有
-构造点零破坏)——单位实例号,**仅环境发放链发放刻赋号**(`gain_character`
-uid 形参注入点,落位构造唯一;现役注入点两处 = `check_env_battle_grants`
-发放刻与 `cw_gain_chain.on_env_gained` 赠卡锁分支发放刻,均经
-`env_grant_uid_seq` 计数器发号),其余恒 None:商店购入/观察重建
-(`identify_slots` 构造单位)/溢出位身份重建/合成产物
-(`_bump_carrier` 两引擎显式置 None)/快照旧档宽容读。同实体变换族
+构造点零破坏)——单位实例号,**环境发放链与策略链具名角色工厂发放刻
+赋号**(`gain_character` uid 形参注入点,落位构造唯一;现役注入点三处 =
+`check_env_battle_grants` 发放刻、`cw_gain_chain.on_env_gained` 赠卡锁
+分支发放刻、`cw_gain_effects._make_char_grant_effect` 策略链具名角色
+工厂发放刻〔T-368 佩佩客串批扩,辖 `_STRATEGY_CHAR_GRANTS` 名单全部键,
+均经 `env_grant_uid_seq` 计数器发号〕),其余恒 None:商店购入/观察重建
+(`identify_slots` 构造单位)/溢出位身份重建/合成产物未承继发号时
+(承继规则 = `cw_gain_chain._merge_inherit_uid` 单一源,素材已发号 uid
+最小值,素材全未发号产物 None;`_bump_carrier` 两引擎同源消费)/快照旧档
+宽容读。同实体变换族
 (`dataclasses.replace` 未指定字段保留)= uid 自动随行(形态归一/银狼
 升费窗/星级改写/穿戴卸装/装备吸收写/特权赋予卡换装)。坐标语义与消费面 =
 §3.5.6(锁匹配键);sim 状态副本对 bench/deployed 零整表观察写 → uid 全程

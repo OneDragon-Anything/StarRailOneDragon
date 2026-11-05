@@ -81,6 +81,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchSlot,
     BenchView,
     ChannelSig,
+    DeployedView,
     GameState,
     OreSight,
     Unit,
@@ -94,6 +95,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_indexed_of_view,
     deployed_rows_of,
     deployed_view_of_indexed,
+    effective_node_pos,
     grant_xp,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
@@ -128,6 +130,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_FIRST_BUY_XP_GRANTS,
     STRATEGY_GRANTS,
     STRATEGY_HP_LOSS_GRANTS,
+    STRATEGY_KECHUAN_WEAR_GRANTS,
     STRATEGY_LEVEL_GRANTS,
     STRATEGY_MERGE_GRANTS,
     STRATEGY_NODE_REWRITE_TRIGGERS,
@@ -267,28 +270,66 @@ def _entry_equips(x: object) -> list[str]:
     return list(getattr(u, 'equips', None) or [])
 
 
+def _entry_unit(x: object) -> Unit | None:
+    """条目 Unit 读(BenchSlot → 内嵌 Unit,Unit 直读;占位件 None)。"""
+    return x.unit if isinstance(x, BenchSlot) else x if isinstance(x, Unit) \
+        else None
+
+
+def _merge_inherit_uid(entries: list, gs: GameState | None = None) -> int | None:
+    """合成承继实例号单一源(T-368 佩佩客串批立项,个体归属承载的合成
+    级联腿):产物 uid = 素材中已发号 uid 的**最小值**(最老个体承继,
+    确定性可复现);素材全未发号 → None(产物新实体现役语义)。``gs``
+    传入时**锁域豁免**:承继值命中未解锁上场锁记录(env_grant_deploy_locks,
+    生效序位未到)→ 弃承继置 None——升星产物上场不被锁拦的用户裁定口径
+    (「买了之后导致合成升星的,那也可以上场」,_bump_carrier 既有 uid=None
+    立场的语义保留)优先于承继;佩佩族素材恒不在锁域(锁记录只登记 env
+    赠卡),承继零受扰。两端写端(cw_gain_chain.merge_step_once 链端 /
+    cw_merge_simulate.merge_simulate 推演端)同源消费,交叉核对一致性由
+    共用本 helper 保证(推演端 gs 可用时同豁免,缺省 None = 直构/测试
+    纯表形态零豁免)。"""
+    units = [e for e in (_entry_unit(x) for x in entries) if e is not None]
+    uids = sorted(int(u.uid) for u in units if u.uid is not None)
+    if not uids:
+        return None
+    inherit = uids[0]
+    if gs is not None:
+        eff = effective_node_pos(gs)
+        if eff is not None:
+            for _char, uid, unlock in tuple(
+                    gs.env_grant_deploy_locks.value or ()):
+                if uid == inherit and eff < unlock:
+                    return None
+    return inherit
+
+
 def _bump_carrier(carrier: object, new_star: int,
-                  new_equips: list[str]) -> object:
+                  new_equips: list[str],
+                  merge_uid: int | None = None) -> object:
     """合成载体升星 + 装备继承的 frozen 新构造(merge_simulate 同式)。
 
-    产物**显式置 uid=None**(合成产物 = 新实体,实例粒度上场锁的用户
-    裁定口径:「买了之后导致合成升星的,那也可以上场」——漏置则被锁
-    uid 随 replace 随行进产物,下场回 bench 后遭守卫误拦)。"""
+    产物 uid = ``merge_uid``(缺省 None = 现役新实体语义):None 时产物
+    显式置 uid=None(实例粒度上场锁的用户裁定口径:「买了之后导致合成
+    升星的,那也可以上场」——漏置则被锁 uid 随 replace 随行进产物,下场
+    回 bench 后遭守卫误拦);非 None 时承继素材实例号(_merge_inherit_uid
+    单一源产出,个体归属承载——策略链佩佩合成 2★ 仍可被离场/穿戴按 uid
+    命中)。"""
     if isinstance(carrier, BenchSlot):
         if carrier.unit is None:
             raise TypeError('merge 载体 BenchSlot 无 Unit(占位件不可合成)')
         return replace(carrier, unit=replace(carrier.unit, star=new_star,
                                              equips=list(new_equips),
-                                             uid=None))
+                                             uid=merge_uid))
     if isinstance(carrier, Unit):
         return replace(carrier, star=new_star, equips=list(new_equips),
-                       uid=None)
+                       uid=merge_uid)
     raise TypeError(f'merge 载体形状不支持: {type(carrier).__name__}')
 
 
 def merge_step_once(bench: list[BenchSlot | None],
                     deployed: list[Unit | None],
-                    overflow: list[BenchSlot]) -> tuple[str, int] | None:
+                    overflow: list[BenchSlot], *,
+                    gs: GameState | None = None) -> tuple[str, int] | None:
     """单级 3 合 1(gain-chain.md §2.2 升星判断):判一次合成、就地推进三域工作表,返回升星
     产物身份 ``(char_id, star+1)``;无同名同星 3 只 → None(链终止)。
 
@@ -343,7 +384,9 @@ def merge_step_once(bench: list[BenchSlot | None],
         carrier = carrier_entry[2]
         new_star = cstar + 1
         new_carrier = _bump_carrier(carrier, new_star,
-                                    _entry_equips(carrier) + inherited)
+                                    _entry_equips(carrier) + inherited,
+                                    merge_uid=_merge_inherit_uid(
+                                        [e[2] for e in take], gs=gs))
         if carrier_entry[0] == 'dep':
             deployed[carrier_entry[1]] = new_carrier
         elif carrier_entry[0] == 'bench':
@@ -579,7 +622,7 @@ def _gain_character_core(gs: GameState, name: str, star: int, *, rand: bool,
     # 升星判断(单级;回调子链已写 gs,必须重建工作池再判)
     pool = _build_pool(gs, ovf_star)
     if pool is not None:
-        product = merge_step_once(pool.bench, pool.dep, pool.ovf)
+        product = merge_step_once(pool.bench, pool.dep, pool.ovf, gs=gs)
         if product is not None:
             acc.merges += 1
             acc.step += 1
@@ -1118,6 +1161,167 @@ def check_strategy_win_gold_grants(gs: GameState, *, won: bool,
     if str(gs.overflow_card.value or '') == _WIN_GOLD_COUNT_UNIT:
         n += 1
     return n * sum(STRATEGY_WIN_GOLD_GRANTS[name] for name in held)
+
+
+#: 策略卡完美通关穿戴写端署名(家族单一标识,_BOSS_BATTLE_GRANT_PRODUCER
+#: 同款家族纪律;写端 = 本模块 check_strategy_kechuan_wear_grants,sim
+#: 结算位发放刻,新写端新名不沿用链缺省伪装连续)。
+_KECHUAN_WEAR_PRODUCER: str = 'strategy_kechuan_wear_grant'
+
+#: 佩佩客串穿戴/离场对象身份(卡面直读:「佩佩就会穿戴…佩佩们」;与
+#: _WIN_GOLD_COUNT_UNIT 同名单一源对拍归测试锁,禁第二字面量)。
+_KECHUAN_UNIT_IDENTITY: str = _WIN_GOLD_COUNT_UNIT
+
+
+def _kechuan_owned_uids(gs: GameState) -> frozenset[int]:
+    """本卡在场佩佩 uid 集(个体归属承载单一读口):离场倒计时队列
+    pending_kechuan_leaves 的 uid 全集(队列只登记本卡发放个体——登记表
+    STRATEGY_KECHUAN_LEAVE_GRANTS 命中卡才入队,他卡佩佩零入队 = 域天然
+    只含本卡个体;2★ 合成产物承继 uid 后仍命中,「接走佩佩们」卡文不区分
+    星级)。"""
+    return frozenset(int(uid) for uid, _rem in
+                     tuple(gs.pending_kechuan_leaves.value or ()))
+
+
+def _kechuan_wear_picks(u: Unit | None, held: list[str],
+                        owned: frozenset[int],
+                        eq_rng: random.Random) -> list[str] | None:
+    """单只穿戴采样(非目标单位 None;目标 = uid ∈ 本卡集 ∧ 身份 == 佩佩;
+    逐持卡逐档采样——与 check_strategy_boss_battle_grants 逐持卡逐档同构,
+    同形卡叠加时穿戴件数 = 持卡数倍,行为确定可复现,叠加形态归
+    T-368 设计稿 9.5-4 申报)。"""
+    if u is None or u.uid is None or int(u.uid) not in owned \
+            or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
+        return None
+    picks: list[str] = []
+    for name in held:
+        category, count = STRATEGY_KECHUAN_WEAR_GRANTS[name]
+        for _ in range(count):
+            picks.append(roll_random_equip(eq_rng, category))
+    return picks
+
+
+def check_strategy_kechuan_wear_grants(gs: GameState, *, won: bool,
+                                       hp_delta: int, sig: ChannelSig,
+                                       rng: random.Random | None = None,
+                                       ) -> tuple[str, ...]:
+    """策略卡完美通关穿戴检查(「每完美通关一个战斗节点，佩佩就会穿戴
+    一件进阶装备」触发器单一源,佩佩客串 id 331001 首例;唯一调用点 =
+    sim 结算写入实现 check_strategy_win_gold_grants 同窗——live 零写
+    观察覆盖:穿戴为游戏侧自发,实机局不接本通道)。
+
+    条件矩阵(顺序即短路序,check_strategy_win_gold_grants 形态):
+
+    1. 持卡 ∩ STRATEGY_KECHUAN_WEAR_GRANTS 为空(未持卡/表外卡同路,
+       表外卡禁从效果原文自动猜装)→ ();
+    2. ``not won`` 或 ``hp_delta != 0`` →()(完美通关判据 = 胜利 ∧
+       本节点未损失小队生命值,combat.md 在册口径;判定输入与 win 金
+       同源。**sim 完胜 ≡ 胜利模型差**:BattleOutcome 契约胜局 hp_delta
+       恒 0,M12 战斗简化档既有、本卡继承,sim 穿戴频次系统性偏高归
+       对账预期差申报,M12 升级胜局 hp 模型时本判定自动跟随零改);
+    3. ``gs.bench``/``gs.deployed`` 逐域未观察 None → 该域跳写(宁缺
+       勿造,win 金同契约的域级形态——bench 可读时备战域照穿,上阵域
+       未观察不辖,两域互不阻塞);
+    4. 本卡在场佩佩集 = :func:`_kechuan_owned_uids` ∩ 合并池(备战 ∪
+       上阵,与 win 金计数池同口径;**溢出位例外**:身份串域无 uid 载体,
+       结构性不可过滤 = 不辖,如实申报);空集 → 跳写零发(本卡佩佩全部
+       离场后持卡局自然零穿戴,如实申报);
+    5. 逐只采样穿戴:``roll_random_equip``(单一采样源,类别词 = 表载
+       装备注册表类别)1 件 ``Unit.equips`` **直写 append——不走
+       gain_equipment**(穿戴非玩家获得,结构性旁路 STRATEGY_EQUIP_GAIN_
+       CONVERSIONS 转换拦截:持好运来局穿戴件不转换;离场转移走原语
+       入栏时才辖转换,两效果条目对照)→ write_logic_rand 形态
+       (_select_write rand=True,source=logic_rand 采样直写;sig 渠道组
+       名 'sim:strategy')。
+
+    纪律标注:
+
+    - **含 rng**(装备采样):rng 形参缺省回退自掷 = 采样是猜测口径,
+      正式消费 = sim 传独立子流键(M13/{p}/{r}/kechuan-wear,装备采样
+      专用禁复用 M13 主流实例——其消耗序 = 文档化契约,ins/boss-grant
+      独立子流同构先例);
+    - **sig 单形态**:logic 族入参(obs 族进 write_logic_rand 即炸渠道族
+      校验);
+    - **无 done 一次性标志位**(周期型):每完美通关重查,防重归调用方
+      节点键幂等守卫,本函数零二次守卫;卡面无上限词 = 每完美通关可
+      重复(5 节点离场为自然上界);
+    - 先例改写注记:「携带 = 入栏非穿戴,穿戴关系不建模」域级立场
+      (check_strategy_gift_grants docstring 条目1⑤)辖获得链段——本
+      函数首次立「给单位直写穿戴」写端(策略链穿戴通道),两立场并存
+      分域:获得链携带件仍非穿戴,周期穿戴条目以本函数为单一源;
+    - 返回效果串(断言面;sim 调用点忽略返回值,live 无调用点)。
+    """
+    held = [n for n in (gs.active_strategies.value or ())
+            if n in STRATEGY_KECHUAN_WEAR_GRANTS]
+    if not held or not won or hp_delta != 0:
+        return ()
+    owned = _kechuan_owned_uids(gs)
+    if not owned:
+        return ()
+    # 池空防御同源取池(roll_random_equip 纯采样零防御面,池空哨归本
+    # 函数,boss battle 同形):类别池随注册表传导,池空属数据面事故
+    # (log 留证零写,泛化随机装备族既定裁定)。
+    for name in held:
+        if not equips_by_category(STRATEGY_KECHUAN_WEAR_GRANTS[name][0]):
+            log.warning(f'[cw-gain] 随机装备类别池空(注册表漂移?):'
+                        f'{name} category='
+                        f'{STRATEGY_KECHUAN_WEAR_GRANTS[name][0]!r}')
+            return ()
+    eq_rng = rng if rng is not None else random.Random()
+    write = _select_write(gs, True)   # 采样链随机态,单一收束
+    effects: list[str] = []
+    # 备战域:逐槽穿戴,frozen replace 新构造,有变更才写
+    bench_v = gs.bench.value
+    if bench_v is not None:
+        new_slots: list = []
+        bench_dirty = False
+        for slot in bench_v.slots:
+            u = slot.unit if (slot is not None
+                              and slot.kind == 'unit') else None
+            picks = _kechuan_wear_picks(u, held, owned, eq_rng)
+            if picks is None:
+                new_slots.append(slot)
+                continue
+            bench_dirty = True
+            new_slots.append(replace(
+                slot, unit=replace(u, equips=[*u.equips, *picks])))
+            for item in picks:
+                effects.append(f'kechuan_wear:{item}(uid={int(u.uid)})')
+        if bench_dirty:
+            write(gs.bench,
+                  BenchView(slots=new_slots, capacity=bench_v.capacity),
+                  produced_by=_KECHUAN_WEAR_PRODUCER,
+                  evidence='strategy_kechuan_wear#bench', sig=sig)
+    # 上阵域:两排同构(域级未观察 None = 跳过不辖)
+    dep_v = gs.deployed.value
+    if dep_v is not None:
+        new_front: list = []
+        new_back: list = []
+        dep_dirty = False
+        for u in dep_v.front_slots:
+            picks = _kechuan_wear_picks(u, held, owned, eq_rng)
+            if picks is None:
+                new_front.append(u)
+                continue
+            dep_dirty = True
+            new_front.append(replace(u, equips=[*u.equips, *picks]))
+            for item in picks:
+                effects.append(f'kechuan_wear:{item}(uid={int(u.uid)})')
+        for u in dep_v.back_slots:
+            picks = _kechuan_wear_picks(u, held, owned, eq_rng)
+            if picks is None:
+                new_back.append(u)
+                continue
+            dep_dirty = True
+            new_back.append(replace(u, equips=[*u.equips, *picks]))
+            for item in picks:
+                effects.append(f'kechuan_wear:{item}(uid={int(u.uid)})')
+        if dep_dirty:
+            write(gs.deployed,
+                  DeployedView(front_slots=new_front, back_slots=new_back),
+                  produced_by=_KECHUAN_WEAR_PRODUCER,
+                  evidence='strategy_kechuan_wear#deployed', sig=sig)
+    return tuple(effects)
 
 
 def check_strategy_star_merge_gold(
@@ -2659,8 +2863,11 @@ def check_strategy_gift_grants(gs: GameState, *, node_kind: str,
        通道(装备域已登记裁定:红钻贵族 2026-10-17 猜测写+观察纠偏;角色
        确定发放具名非采样,徽面 rand=True 系写通道语义非采样,零 rng
        消费);携带装备 '' = 无装备条目,直接落一次性标志位;
-    5. 角色落位后装备写即同拍完成(携带 = 入栏非穿戴,穿戴关系不建模;
-       获得后果 = EQUIP_ACQUIRE_CONSEQUENCES 表外零夹带)。
+    5. 角色落位后装备写即同拍完成(携带 = 入栏非穿戴——本条目的装备腿
+       是入栏携带非单位穿戴映射,获得链段不建单位-装备穿戴关系;获得
+       后果 = EQUIP_ACQUIRE_CONSEQUENCES 表外零夹带。域级立场的策略链
+       例外 = 佩佩客串周期穿戴条目 check_strategy_kechuan_wear_grants
+       「给单位直写穿戴」写端,T-368 立项,两立场并存分域非同一通道)。
 
     条目2(节点类型条件,kind=='reward' 门控):
 
@@ -4063,6 +4270,152 @@ def discharge_due_strategy_grants(gs: GameState, *, rand: bool,
         write(gs.pending_strategy_grants, tuple(keep),
               produced_by=GAIN_CHAIN_PRODUCER,
               evidence='strategy_grant_due', sig=sig)
+    return tuple(effects)
+
+
+#: 佩佩客串周期离场写端署名(家族单一标识,_KECHUAN_WEAR_PRODUCER 同款
+#: 家族纪律;写端 = 本模块 discharge_due_kechuan_leaves,sim 节点窗收尾
+#: 弹除刻,新写端新名不沿用链缺省伪装连续)。
+_KECHUAN_LEAVE_PRODUCER: str = 'strategy_kechuan_leave'
+
+
+def _remove_kechuan_units(gs: GameState,
+                          target_uids: frozenset[int],
+                          *, sig: ChannelSig,
+                          ) -> tuple[list[int], dict[int, list[str]]]:
+    """离场移除原语(Unit 容器移除语义,T-207 四缺口之「离场原语缺」本批
+    立项收口,T-207 设计稿 §6):扫描备战 ∪ 上阵,uid 命中 ∧ 身份 == 佩佩
+    的单位**自槽位置 None**并收集其装备;两域 frozen replace 新构造,各自
+    有变更才写(write_logic_rand 形态,_select_write rand=True 单一收束
+    ——佩佩个体 = 采样件,移除 = 推算真值,判读 4 单分支)。溢出位身份
+    串域无 uid 载体,结构性不可移除 = 不辖(如实申报:溢出佩佩豁离场,
+    条目照弹,孤悬不再追踪——锁记录孤悬永不匹配同款纪律)。
+
+    返回 (按扫描序移除的 uid 表, uid → 装备名表);对象空集零写早退。
+    """
+    write = _select_write(gs, True)
+    removed: list[int] = []
+    equips_map: dict[int, list[str]] = {}
+    bench_v = gs.bench.value
+    if bench_v is not None:
+        new_slots: list = []
+        dirty = False
+        for slot in bench_v.slots:
+            u = slot.unit if (slot is not None
+                              and slot.kind == 'unit') else None
+            if u is None or u.uid is None \
+                    or int(u.uid) not in target_uids \
+                    or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
+                new_slots.append(slot)
+                continue
+            dirty = True
+            removed.append(int(u.uid))
+            equips_map[int(u.uid)] = list(u.equips or [])
+            new_slots.append(replace(slot, unit=None))
+        if dirty:
+            write(gs.bench,
+                  BenchView(slots=new_slots, capacity=bench_v.capacity),
+                  produced_by=_KECHUAN_LEAVE_PRODUCER,
+                  evidence='strategy_kechuan_leave#bench', sig=sig)
+    dep_v = gs.deployed.value
+    if dep_v is not None:
+        new_front: list = []
+        new_back: list = []
+        dirty = False
+        for u in dep_v.front_slots:
+            if u is None or u.uid is None \
+                    or int(u.uid) not in target_uids \
+                    or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
+                new_front.append(u)
+                continue
+            dirty = True
+            removed.append(int(u.uid))
+            equips_map[int(u.uid)] = list(u.equips or [])
+            new_front.append(None)
+        for u in dep_v.back_slots:
+            if u is None or u.uid is None \
+                    or int(u.uid) not in target_uids \
+                    or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
+                new_back.append(u)
+                continue
+            dirty = True
+            removed.append(int(u.uid))
+            equips_map[int(u.uid)] = list(u.equips or [])
+            new_back.append(None)
+        if dirty:
+            write(gs.deployed,
+                  DeployedView(front_slots=new_front, back_slots=new_back),
+                  produced_by=_KECHUAN_LEAVE_PRODUCER,
+                  evidence='strategy_kechuan_leave#deployed', sig=sig)
+    return removed, equips_map
+
+
+def discharge_due_kechuan_leaves(gs: GameState, *,
+                                 sig: ChannelSig) -> tuple[str, ...]:
+    """佩佩客串周期离场弹除原语(「进入5个节点后，阿兰接走佩佩们并留下
+    所有装备」触发器单一源,佩佩客串 id 331001 首例;唯一调用点 = sim
+    节点窗收尾 check_strategy_gift_grants 同窗——live 零写观察覆盖:离场
+    为游戏侧自发,后台空间/装备栏差分观察吸收,实机局不接本通道)。
+
+    流程(与 discharge_due_strategy_grants 弹除语义同构):
+
+    1. 读 pending_kechuan_leaves 现值,remaining <= 0 条目 = 到期(到了
+       及以后都算,错过不悬空;计数口径 = 后继 N,拿卡节点不计入——
+       tick 挂节点推进边界,登记值 N 于第 N 后继节点边界归 0);无到期
+       条目零写早退;
+    2. 离场对象 = uid ∈ 到期条目集(「接走佩佩们」卡文不区分星级,2★
+       合成产物承继 uid 后仍辖)= :func:`_remove_kechuan_units` 移除并
+       收集装备;
+    3. 逐只逐件:装备全件**走 gain_equipment 原语**转入库存(rand=True
+       ——转移写入确定性跟随佩佩确定性状态,sim 佩佩恒采样个体 = 恒
+       逻辑随机态,判读 4 单分支实际可达;live 侧「观察态 → 逻辑态」
+       分支落观察覆盖语义,无独立写分支):获得后果链 on_equipment_gained
+       /拒落语义/STRATEGY_EQUIP_GAIN_CONVERSIONS 转换拦截自动跟随——
+       「留下所有装备」= 玩家获得判读(证伪路径 = 实机离场帧装备栏
+       差分),持好运来局留下的进阶件按转换表变令牌,与穿戴条目直写
+       不转换形成对照;
+    4. 队列弹除回写(keep = remaining > 0 条目,一次 _select_write
+       确定面——倒计时 = 登记值推算非采样)。
+
+    纪律标注:
+
+    - **sig 单形态**:logic 族入参(移除写 write_logic_rand + 装备转移
+      gain_equipment rand=True 同 logic 渠道随机态);
+    - **无 rng 形参**(装备转移零采样——装备名已挂单位,转移零掷序;
+      穿戴采样归 check_strategy_kechuan_wear_grants 各自消费);
+    - **无 done 一次性标志位**(弹除即消费,队列条目移除 = 幂等承载;
+      同 uid 多条目〔同卡叠加〕首次弹除后对象已离场,余条目对象空集
+      照弹零移除零转移,幂等自洽);
+    - 招财狗金流语义联动:离场后本卡佩佩退出合并池,win 金计数
+      (check_strategy_win_gold_grants)自动跟随在场状态——B 案恒在场
+      高估分叉随本效果条目落地消解;
+    - 返回效果串(断言面;sim 调用点忽略返回值,live 无调用点)。
+    """
+    queue = tuple(gs.pending_kechuan_leaves.value or ())
+    due = frozenset(int(uid) for uid, rem in queue if int(rem) <= 0)
+    if not due:
+        return ()
+    removed, equips_map = _remove_kechuan_units(gs, due, sig=sig)
+    effects: list[str] = []
+    for uid in sorted(due):
+        # 条目弹除面(到期即弹 = 离场计时事实,与对象是否在场解耦——
+        # 对象空集〔已离场/溢出位豁离场〕时条目照弹孤悬不再追踪)
+        effects.append(f'kechuan_left(uid={uid})')
+    for uid in removed:
+        # 动作面(移除单位 + 装备转移走原语)
+        for item in equips_map.get(uid, ()):
+            outcome = gain_equipment(gs, item, rand=True, sig=sig,
+                                     evidence=f'strategy_kechuan_leave'
+                                              f'#uid{uid}',
+                                     producer=_KECHUAN_LEAVE_PRODUCER)
+            effects.append(f'kechuan_leave:{item}'
+                           f'(placed={outcome.placed},uid={uid})')
+    keep = tuple(tuple(e) for e in queue if int(e[1]) > 0)
+    if keep != tuple(tuple(e) for e in queue):
+        write = _select_write(gs, False)   # 倒计时回写 = 推算知识确定面
+        write(gs.pending_kechuan_leaves, keep,
+              produced_by=_KECHUAN_LEAVE_PRODUCER,
+              evidence='strategy_kechuan_leave#latch', sig=sig)
     return tuple(effects)
 
 

@@ -330,6 +330,13 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # cw_gain_chain 检查实现 docstring)。独立
                                 # 键版本 1,同 env_grants_done 先例不
                                 # 并入他域 bump——他域本体未变
+    'pending_kechuan_leaves': 1,  # 佩佩客串离场倒计时队列(元素 =
+                                # (单位 uid, 剩余节拍);发放刻入队 =
+                                # cw_gain_effects 具名角色工厂,节点边界
+                                # tick 递减 / sim 窗收尾弹除回写,拿卡
+                                # 后第 N 后继节点窗收尾离场)。独立键
+                                # 版本 1,同 env_grants_done 先例不
+                                # 并入他域 bump——他域本体未变
     'unlocked_experts': 1,      # 本局已解锁入池专家顾问规范名(获得链
                                 # advisor 道解锁原语 _unlock_experts 追加
                                 # 去重;池派生消费 = cw_pool。独立键版本 1,
@@ -601,10 +608,13 @@ class Unit:
     char_id: str
     star: int                       # 星级 1..3(合成上限;观察期快照)
     equips: list[str] = field(default_factory=list)
-    # 实例号;仅环境发放链发放刻赋号(check_env_battle_grants 经
-    # env_grant_uid_seq 发号 + on_env_gained 赠卡锁分支发放刻同口),
-    # 其余恒 None——商店购入/观察重建/合成产物/
-    # 策略预测单位天然 None。锁匹配键(实例粒度上场锁),实例语义 =
+    # 实例号;环境发放链(check_env_battle_grants 经 env_grant_uid_seq
+    # 发号 + on_env_gained 赠卡锁分支发放刻同口)与策略链具名角色工厂
+    # (cw_gain_effects._make_char_grant_effect 发放刻同计数器发号,T-368
+    # 佩佩客串批扩)发放刻赋号,其余恒 None——商店购入/观察重建/
+    # 合成产物未承继发号时天然 None(合成承继规则 =
+    # cw_gain_chain._merge_inherit_uid,素材已发号 uid 最小值;素材全未
+    # 发号产物 None)。锁匹配键(实例粒度上场锁),实例语义 =
     # env_grant_deploy_locks 字段注释(单一源在彼处)。
     uid: int | None = None
 
@@ -2559,6 +2569,9 @@ def seed_opening_state(gs: GameState) -> None:
     # 种子族先例——域值恒非 None,检查实现 membership 判定零 None 防御;
     # 空 tuple = 无条目已发的正常态)
     _seed(gs.strategy_grants_done, ())
+    # 佩佩客串离场倒计时队列(空初始值,同 pending_strategy_grants 种子族
+    # 先例——域值恒非 None,tick 递减/弹除判定零 None 防御)
+    _seed(gs.pending_kechuan_leaves, ())
     # 损血档位触发累积器(零初始值,同 env_grant_uid_seq 计数器种子族
     # 先例——域值恒非 None,触发函数累加取模零 None 防御;0 = 无累积
     # 语义中性,种 0 不伪装已触发,gs-opening-seed A/B/C 判据 A 类)
@@ -2924,6 +2937,22 @@ class GameState:
     # tick 递减至 0 悬置,实机发放由游戏自己执行,装备入栏 = equips
     # 观察首见,零停机风险)。开局初始值 = ()(A 类)。
     pending_strategy_grants: Field[tuple[tuple[str, int], ...]] = field(
+        default_factory=Field)
+    # [索引定义] pending_kechuan_leaves = 佩佩客串离场倒计时队列(策略卡
+    # 周期离场通道,佩佩客串 id 331001 首例;登记表单一源 =
+    # cw_investments.STRATEGY_KECHUAN_LEAVE_GRANTS)。元素 = (单位 uid,
+    # remaining 剩余节拍自然数):uid = 发放刻发号实例号(env_grant_uid_seq
+    # 计数器,具名角色工厂发放刻同口——个体身份键,合成产物承继后仍可
+    # 命中),remaining 语义与 pending_strategy_grants 同构(递减挂节点
+    # 边界 tick advanced 闸,到点判定 = remaining <= 0)。计数口径 =
+    # 后继 N(拿卡节点不计入:登记发生在拿卡节点窗内,首个递减 = 拿卡后
+    # 第 1 个节点推进边界,remaining==0 于第 N 后继节点边界达成,窗收尾
+    # 弹除执行)。写入端 = 唯一逻辑写端 = 发放刻入队(cw_gain_effects
+    # 具名角色工厂)/ 节点边界 tick 递减 / sim 窗收尾弹除回写,无观察
+    # 写端——队列 = 卡文推算知识,游戏 UI 无「待离场列表」可读;实机局
+    # 不接弹除条目(不对称申报:实机离场由游戏自己执行,后台空间变化 =
+    # bench 观察覆盖吸收,零停机风险)。开局初始值 = ()(A 类)。
+    pending_kechuan_leaves: Field[tuple[tuple[int, int], ...]] = field(
         default_factory=Field)
     # [索引定义] strategy_conditional_done = 已完成发放的策略卡条件条目
     # 键集合(策略卡条件发放通道,规模效应 id 101301 首例)。元素 =
@@ -4447,6 +4476,26 @@ def _tick_pending_strategy_grants(gs: GameState) -> None:
                    sig=_bridge_sig(gs))
 
 
+def _tick_pending_kechuan_leaves(gs: GameState) -> None:
+    """佩佩客串离场倒计时递减(节点边界 tick 内联条目;调用点 =
+    _tick_effect_boundary_impl 的 advanced 闸内,与 pending_strategy_grants
+    同闸同形——同节点重放零递减,补推跨节点跳进一次 tick 只减 1):
+    remaining > 0 才递减,0 悬置待弹除不越减为负;批内一次 write_logic
+    回写,队列空/无变化判等跳写(库内省行惯例 = 调用方早退)。仅逻辑写,
+    无观察写端。"""
+    queue = tuple(gs.pending_kechuan_leaves.value or ())
+    if not queue:
+        return
+    updated = tuple((uid, remaining - 1) if remaining > 0
+                    else (uid, remaining) for uid, remaining in queue)
+    if updated == queue:
+        return
+    gs.write_logic(gs.pending_kechuan_leaves, updated,
+                   produced_by='NodeBoundaryRoll',
+                   evidence='tick_pending_kechuan_leaves',
+                   sig=_bridge_sig(gs))
+
+
 def _tick_strategy_conditional_grants(gs: GameState) -> None:
     """策略卡条件发放检查实现(节点边界 tick 内联条目;调用点 =
     _tick_effect_boundary_impl 的 advanced 闸内,与效果账本 advance_node
@@ -4500,6 +4549,7 @@ def _tick_effect_boundary_impl(gs: GameState) -> None:
         grant_effect_node_xp(gs, frame=frame)
         _tick_strategy_conditional_grants(gs)
         _tick_pending_strategy_grants(gs)
+        _tick_pending_kechuan_leaves(gs)
     project_effect_capacity(gs)
 
 
@@ -5262,6 +5312,12 @@ def restore_state_snapshot(gs: GameState, snap: dict) -> None:
         # 申报)。
         'pending_strategy_grants': lambda d: tuple(
             (str(x[0]), int(x[1])) for x in d),
+        # 佩佩客串离场倒计时队列:tuple 化重建(_json_safe 落快照为
+        # list-of-lists,元素 = (uid, 剩余节拍) int 对);随快照存续 =
+        # 恢复局倒计时不丢(uid 单位身份在 bench/deployed 快照同存续,
+        # 弹除判定可命中)。
+        'pending_kechuan_leaves': lambda d: tuple(
+            (int(x[0]), int(x[1])) for x in d),
         # 策略卡条件发放已发标记:tuple 化重建(_json_safe 落快照为
         # list-of-str,元素 = 规范卡名);随快照存续 = 恢复局不重发
         # (检查实现跳过判定天然闭合)。

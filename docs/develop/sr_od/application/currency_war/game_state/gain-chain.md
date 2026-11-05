@@ -681,6 +681,75 @@ _DIAMOND_SIG,group_id 与金笔同组对齐)。
 - **策略估值 fail-closed**:金量非静态注册数值,`STRATEGY_ECONOMY`
   无金字段 = 策略估值天然不可见(不涉估值三表零登记义务)。
 
+### 2.22 策略卡完美通关穿戴检查分支 check_strategy_kechuan_wear_grants(结算位)
+
+`check_strategy_kechuan_wear_grants(gs, *, won, hp_delta, sig, rng=None)
+-> tuple[str, ...]`——策略卡「每完美通关一个战斗节点,佩佩就会穿戴一件
+进阶装备」通道(首例佩佩客串 id 331001,登记表 =
+`cw_investments.STRATEGY_KECHUAN_WEAR_GRANTS` 白名单:键 = 策略规范名,
+值 = (装备类别词, 件数);⚠️ 类别词 = `roll_random_equip` 采样参数语义,
+与 §2.15 表值同形异义——先例表类别词 = 占席道具箱名前缀语义,两表消费
+动作异构分表)的唯一检查本体。条件矩阵(序即短路序,§2.13 形态):
+①持卡 ∩ 登记表空 → 空;②`not won ∨ hp_delta != 0` → 空(完美通关 =
+胜利 ∧ 未损血,判定输入与 §2.13 win 金同源;sim 完胜 ≡ 胜利模型差 =
+M12 战斗简化档既有,sim 穿戴频次系统性偏高归对账预期差);③bench/
+deployed 未观察 → 空(宁缺勿造);④本卡在场佩佩 = 离场队列
+`pending_kechuan_leaves` uid 集(个体归属承载,队列只登记本卡发放个体)
+∩ 备战 ∪ 上阵合并池(与 win 金计数池同口径;溢出位身份串无 uid 载体
+结构性不可过滤 = 不辖);空集跳写零发。动作 = 逐只采样
+`roll_random_equip` 1 件 `Unit.equips` **直写 append——不走
+gain_equipment**(穿戴非玩家获得,结构性旁路 STRATEGY_EQUIP_GAIN_
+CONVERSIONS 转换拦截;离场转移走原语时才辖转换,两效果条目对照)。
+
+- **插入位置 = sim 结算分支**(现役唯一调用点 =
+  `cw_sim_backend._resolve_battle`,win 金效果条目之后、败局待办登记
+  之前;幂等零新增守卫 = `_settled_key` 节点键);**live 零写观察覆盖**
+  (穿戴为游戏侧自发);无 done 一次性标志位(每完美通关可重复,防重归
+  调用方节点键);
+- **写约定**:sig = `logic_sig('sim:strategy')`;evidence =
+  `strategy_kechuan_wear#bench`/`#deployed`,producer =
+  `strategy_kechuan_wear_grant`(家族单一标识);rng = sim 独立子流键
+  `M13/{位面}/{轮}/kechuan-wear`(§2.15 同款纪律);写通道 =
+  `_select_write(gs, True)`(采样链随机态单一收束,source = logic_rand);
+  效果串 `kechuan_wear:<装备名>(uid=<uid>)` 逐件;先例改写注记:获得链
+  「携带 = 入栏非穿戴,穿戴关系不建模」域级立场(§3 枚举回调
+  check_strategy_gift_grants 条目1⑤)辖获得链段,本通道 = 策略链穿戴
+  单一源,两立场并存分域。
+
+### 2.23 策略卡周期离场弹除原语 discharge_due_kechuan_leaves(节点窗位)
+
+`discharge_due_kechuan_leaves(gs, *, sig) -> tuple[str, ...]`——策略卡
+「进入5个节点后,阿兰接走佩佩们并留下所有装备」通道(首例佩佩客串
+id 331001,登记表 = `cw_investments.STRATEGY_KECHUAN_LEAVE_GRANTS`
+白名单:键 = 策略规范名,值 = 离场后继节点数;计数口径 = 后继 N,拿卡
+节点不计入,与人才激励/偶像经济延迟支线两在码刻度同口径)的唯一弹除
+本体。承载 = 队列域 `pending_kechuan_leaves`(元素 = (单位 uid, 剩余
+节拍)):发放刻入队(`cw_gain_effects` 具名角色工厂,登记表命中卡才写)
+→ 节点推进边界 tick 递减(`cw_game_state._tick_pending_kechuan_leaves`,
+advanced 闸内,§2.10 家族同形)→ 本原语窗收尾弹除。流程(§2.7 弹除语义
+同构):①remaining <= 0 条目到期(到了及以后都算),无到期零写早退;
+②离场对象 = uid ∈ 到期条目集 ∧ 身份 == 佩佩 ∧ 所在域 ∈ 备战 ∪ 上阵
+(溢出位身份串无 uid 载体结构性不可移除 = 不辖,条目照弹孤悬不再追踪)
+——移除走离场原语 `_remove_kechuan_units`(Unit 容器移除语义新机制件,
+frozen 槽位置 None + 装备收集,write_logic_rand 形态);③装备全件走
+`gain_equipment` 原语转入库存(rand=True——转移写入确定性跟随佩佩确定性
+状态,sim 佩佩恒采样个体恒逻辑随机态〔判读 4 单分支实际可达,live 观察态
+分支落观察覆盖语义〕;获得后果链/拒落语义/转换拦截自动跟随:「留下所有
+装备」= 玩家获得判读,证伪路径 = 实机离场帧装备栏差分);④队列弹除回写
+(remaining > 0 保留,确定面——倒计时 = 登记值推算非采样)。
+
+- **插入位置 = sim 节点窗收尾**(现役唯一调用点 =
+  `cw_sim_backend._enter_node_window`,装备到期效果条目之后、商店全刷
+  前;幂等 = 窗口幂等守卫 + 弹除即消费);**live 零写观察覆盖**(离场
+  为游戏侧自发,后台空间/装备栏差分观察吸收);
+- **写约定**:sig = `logic_sig('sim:strategy')`;evidence =
+  `strategy_kechuan_leave#bench`/`#deployed`/`#uid<uid>`/`#latch`,
+  producer = `strategy_kechuan_leave`;无 rng 形参(装备转移零采样);
+  效果串 `kechuan_leave:<装备名>(placed=…,uid=<uid>)` 逐件 +
+  `kechuan_left(uid=<uid>)` 逐只;「阿兰接走」叙事零建模(roster 外
+  叙事角色);招财狗 win 金计数随离场自动回落(佩佩退出合并池,B 案
+  恒在场高估分叉消解)。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

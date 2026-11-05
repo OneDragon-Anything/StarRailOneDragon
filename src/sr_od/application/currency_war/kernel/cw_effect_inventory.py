@@ -1733,7 +1733,8 @@ def merge_cascade_write(gs: GameState, work_bench: list, work_dep: list, *,
         if merge_facts_out is not None:
             merge_facts_out.append((cid, new_star))
 
-    _merge_bench(work_bench, work_dep, on_step=on_step, on_merge=on_merge)
+    _merge_bench(work_bench, work_dep, on_step=on_step, on_merge=on_merge,
+                 gs=gs)
     return rows
 
 
