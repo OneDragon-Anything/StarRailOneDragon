@@ -4073,7 +4073,9 @@ STRATEGY_ALL_CHARS_ASSUMPTION_KEYS: tuple[str, ...] = (
 #   (231101,佩佩携带宝钻句——用户裁定 2026-11-02 拍读法 B 确认消费,佩佩
 #   本体入队另行建模,携钻句零建模语义不变)/狸职手续(204001,穿戴物身份
 #   未指名——哪件/是否随机/是否扣
-#   库存 desc 全无载,放弃纪律叠加),后继引用本键不重立。
+#   库存 desc 全无载,放弃纪律叠加)/盗用身份(352401,「获得一个穿着2个
+#   【动能激发剑】和【列车同行星徽】的【火花】」授予穿戴句,世界发放腿 =
+#   STRATEGY_PLANE_BOSS_GRANTS 通道,穿戴件随发放零建模),后继引用本键不重立。
 # - strategy_periodic_unit_leave_unmodeled: 策略卡召唤单位的**周期离场**
 #   (含离场所留)不建模——四缺口:kernel 单位移除仅卖出/合成摘除/板面
 #   清场三径,「无退款消失」无原语可调;「留下装备」因穿戴未建模无指涉物;
@@ -7420,6 +7422,62 @@ def _validate_strategy_reward_ore_grants() -> None:
         raise ValueError(
             f'STRATEGY_REWARD_ORE_GRANTS 孤儿键(base 无此卡?):'
             f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
+
+
+# ===== 策略位面-节点合取条件世界发放注册表(盗用身份 id 352401 首例;
+# ===== 白名单制,各建各表——节点类型单维表(STRATEGY_REWARD_NODE_GRANTS,
+# ===== 无位面维)≠ 位面-节点合取,合取形状独立建表不回灌改形;注册纪律 =
+# ===== 禁从效果原文自动猜装。估值域登记 STRATEGY_GRANTS 同名条目为注释性
+# ===== 底册,状态副本世界发放唯一通道 = 本表 +
+# ===== cw_gain_chain.check_strategy_plane_boss_grants)=====
+# 值 = (位面, 节点类型, 发放角色, 星级);星级 1 = 卡面未标先验(获得链
+# 规范 gain-chain.md「星级未标 = 1★ 先验」惯例)。卡面穿戴描述「穿着2个
+# 【动能激发剑】和【列车同行星徽】」零建模不入表——穿戴非入栏,穿戴腿
+# 披露 = 家族键 strategy_worn_equip_unmodeled 申报(消费方名单见该键定义,
+# 本卡在其列);「1个【开拓者】」腿 = 裸名 ∉ CHARACTER_ROSTER 登记排除
+# 零建模(获得时点形态不可知禁猜,STRATEGY_GRANTS 条目注释同口径)。
+# 表内零采样零金零装备入栏腿。
+STRATEGY_PLANE_BOSS_GRANTS: dict[str, tuple[int, str, str, int]] = {
+    '盗用身份': (2, 'boss', '火花', 1),
+}
+
+
+def _validate_strategy_plane_boss_grants() -> None:
+    """STRATEGY_PLANE_BOSS_GRANTS 构建校验(import 即炸;治理口径 = 用户裁定
+    2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更独立触发的
+    漂移哨留」,同 _validate_strategy_gift_grants docstring——本域落三漂移哨;
+    值形/星级值域系手抄常量纯笔误类、双源对账系跨表手改类,按治理裁定不加,
+    行值精确断言与双源对账归表域测试把关,防线强于 import 期形查):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默失联);
+    ② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默——错名
+    运行期 = gain_character 对未注册名零落位或幻影,import 期哨是唯一响亮
+    拦截面);③ 合取可达性:(位面, 节点类型) 必须在该位面节点日程真值表
+    (PLANE_NODE_TABLES)序列内至少出现一次——日程真值表随游戏版本变更时,
+    注册进永不触发节点的条目在构建期响亮,不静默永不发放(位面越界/节点
+    类型词集外同哨并查,均表现为合取不在序列内)。
+    """
+    orphans = [n for n in STRATEGY_PLANE_BOSS_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f'STRATEGY_PLANE_BOSS_GRANTS 孤儿键(base 无此卡?):'
+            f'{sorted(orphans)}(规范名漂移/移除后未清;禁静默失联)')
+    for _name, (_plane, _kind, _char, _star) \
+            in STRATEGY_PLANE_BOSS_GRANTS.items():
+        if _char not in CHARACTER_ROSTER:
+            raise ValueError(
+                f'STRATEGY_PLANE_BOSS_GRANTS 角色名漂移({_name!r} '
+                f'注册表无此角色,版本改名?):{_char!r}')
+        seq = PLANE_NODE_TABLES.get(_plane)
+        if seq is None or _kind not in seq:
+            raise ValueError(
+                f'STRATEGY_PLANE_BOSS_GRANTS 触发节点不可达({_name!r}: '
+                f'({_plane}, {_kind!r}) 不在节点日程真值表序列内——位面越界/'
+                f'类型集外/版本改版后该合取永不触发,禁静默失联)')
+
+
+_validate_strategy_plane_boss_grants()
 
 
 

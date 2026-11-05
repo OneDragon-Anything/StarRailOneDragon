@@ -135,6 +135,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_MERGE_GRANTS,
     STRATEGY_NODE_REWRITE_TRIGGERS,
     STRATEGY_ORE_OPEN_EFFECTS,
+    STRATEGY_PLANE_BOSS_GRANTS,
     STRATEGY_PLANE_START_CHAR_GRANTS,
     STRATEGY_PLANE_START_GRANTS,
     STRATEGY_RANDOM_GRANTS,
@@ -2834,6 +2835,12 @@ STRATEGY_GIFT_LEG_NEXT_REWARD_NODE: str = 'next_reward_node'
 #: 发放即一次性标志位,不沿迷之旅人 placed 门)。
 STRATEGY_GIFT_LEG_REWARD_ORE: str = 'reward_ore'
 
+#: 赠礼条目键·位面-节点合取条目(与登记表 STRATEGY_PLANE_BOSS_GRANTS 一一
+#: 对应,判定形状 = 节点窗开时 (位面, 节点类型) 合取命中;盗用身份 id 352401
+#: 首例,P2 boss 窗,骑 strategy_grants_done 复合串一次性标志位形——该节点
+#: 结构唯一,闩 = 跨节点重复条件的防御层,窗口幂等守卫不互代)。
+STRATEGY_GIFT_LEG_P2_BOSS: str = 'p2_boss'
+
 
 
 
@@ -3025,6 +3032,71 @@ def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
               evidence=f'on_strategy_gained:{"+".join(newly)}#reward_ore',
               sig=sig)
     return total
+
+
+def check_strategy_plane_boss_grants(gs: GameState, *, node_pos: NodePos,
+                                     sig: ChannelSig) -> str | None:
+    """策略位面-节点合取条件世界发放检查(盗用身份 id 352401 首例;「进入
+    第二位面的首领节点时，获得一个穿着2个【动能激发剑】和【列车同行星徽】
+    的【火花】和1个【开拓者】」触发器单一源,唯一调用点 = sim 节点窗收尾
+    boss 条件发放段——live 零写观察覆盖:角色落席有画面真值,实机局不接
+    本通道,世界发放经观察对账兜底)。
+
+    条件矩阵(顺序即短路序,逐序返回 None = 未发放):
+
+    1. ``node_pos`` 拆包 (位面, 轮);持卡交集 = ``active_strategies`` 规范名
+       现值 ∩ 登记表键集 → 空 → None;
+    2. ``gs.bench.value`` None → None 不标一次性标志位(席面从未观察,发放
+       角色写出不完整席 = 丢人,宁缺勿造——check_env_boss_grants 同款防御;
+       本节点窗一次性无自动重试);
+    3. 节点类型函数内现读 = ``node_sequence_of(位面, node_seq_by_plane 场
+       字段现值)[轮-1]``(场字段消费,修饰局天然正确;签名只收 node_pos,
+       与 check_env_boss_grants 形态对齐)→ (位面, 节点类型) 与表值合取
+       不符 → None(零坐标猜测,对序列修饰免疫);
+    4. 封账一次性标志位 ``'<卡名>#p2_boss'`` ∈ strategy_grants_done 现值 →
+       None(一次性封账;P2 首领节点在现役修饰封闭集内结构唯一,闩 = 防御
+       层——修饰规则集为可扩展封闭集,未来规则理论可产出第二 P2 boss,且
+       窗口幂等守卫管「同节点重放」不管「跨节点重复条件」,两层守卫职责
+       不同不互代);
+    5. 达标 → ``gain_character(发放角色, 星级, rand=False)`` 确定发放 →
+       done 追加一次性标志位(write_logic,两段写同 evidence 同 sig 同
+       produced_by 同窗原子;boss 节点单局不可复现,拒落域无下窗重试面);
+    6. 返回发放角色名(仅日志面)。
+
+    - 零 rng 形参:具名单名确定发放无采样(环境侧首领节点发放的 rng 形参
+      系其随机池所需,本函数镜像其护栏栈但形状不盲抄);
+    - 穿戴腿/开拓者腿零建模(登记面申报):穿戴 = 家族披露键
+      strategy_worn_equip_unmodeled 申报,开拓者 = 裸名 ∉ CHARACTER_ROSTER
+      登记排除——持卡局资产面缺这两件 = 低估方向显式申报非缺口。
+    """
+    plane, r = int(node_pos[0]), int(node_pos[1])
+    held = gs.active_strategies.value or ()
+    if not (set(held) & set(STRATEGY_PLANE_BOSS_GRANTS)):
+        return None
+    if gs.bench.value is None:
+        return None
+    kind = node_sequence_of(plane, gs.node_seq_by_plane.value)[r - 1]
+    done = tuple(gs.strategy_grants_done.value or ())
+    granted: str | None = None
+    for name in held:
+        spec = STRATEGY_PLANE_BOSS_GRANTS.get(name)
+        if spec is None:
+            continue
+        want_plane, want_kind, char_name, star = spec
+        if plane != want_plane or kind != want_kind:
+            continue
+        latch = f'{name}#{STRATEGY_GIFT_LEG_P2_BOSS}'
+        if latch in done:
+            continue
+        evidence = f'strategy_plane_boss#{name}'
+        gain_character(gs, char_name, star, rand=False, sig=sig,
+                       evidence=evidence, producer=GAIN_CHAIN_PRODUCER)
+        gs.write_logic(gs.strategy_grants_done, done + (latch,),
+                       produced_by=GAIN_CHAIN_PRODUCER,
+                       evidence=evidence, sig=sig)
+        done = done + (latch,)
+        granted = char_name
+    return granted
 
 
 # ===== 策略卡条件节点序列改写域(决议:娱乐星球 id 302301 首例,策略侧

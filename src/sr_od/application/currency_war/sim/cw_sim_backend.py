@@ -116,6 +116,7 @@ from sr_od.application.currency_war.kernel.cw_gain_chain import (
     check_strategy_level_grants,
     check_strategy_node_char_grants,
     check_strategy_node_rewrite,
+    check_strategy_plane_boss_grants,
     check_strategy_plane_start_grants,
     check_strategy_reward_ore_grants,
     check_strategy_win_gold_grants,
@@ -3739,6 +3740,21 @@ class SimBackend:
         self._strategy_reward_ore_pending = \
             check_strategy_reward_ore_grants(self.gs, node_kind=kind,
                                              sig=logic_sig('sim:strategy'))
+        # 策略位面-节点合取条件世界发放(盗用身份 id 352401 首例;「进入第二
+        # 位面的首领节点时…获得…【火花】」触发器单一源 = kernel
+        # check_strategy_plane_boss_grants,白名单表 STRATEGY_PLANE_BOSS_
+        # GRANTS 驱动)。进窗事实点在窗口幂等守卫内(重放不双发),done 复合
+        # 键一次性标志位('<卡名>#p2_boss')兜第二层;位面/kind 合取函数内
+        # 现读(场字段现值,修饰局天然正确,零坐标猜测)。现位申报:晶矿效果
+        # 条目后、商店全刷前——前置效果条目与本效果条目零交互(谓词输入域 =
+        # 持卡/done/日程/bench None 门,不读 bench 内容与金/XP/equips;写入域
+        # = bench 落位 + done,下游至商店全刷无 bench 谓词消费,证伪路径 =
+        # 实机持卡局同窗发放物呈现时点观察,证伪则改序重申报)。零 rng 确定
+        # 发放;sig 组名 'sim:strategy'(策略状态副本发放家族,与 sim:env
+        # 分组);返回值忽略(无回调面);live 零写观察覆盖(角色落席有画面
+        # 真值可读,实机局不接本通道,世界发放经观察对账兜底)。
+        check_strategy_plane_boss_grants(self.gs, node_pos=(plane, r),
+                                         sig=logic_sig('sim:strategy'))
         # 装备到期消失(临时工合约 id 301901 效果条目2;「进入下个节点时，所有
         # 未使用的【员工投影仪】都会消失」触发器单一源 = kernel
         # check_strategy_equip_expiry,白名单表驱动)。现位申报:晶矿效果条目后、

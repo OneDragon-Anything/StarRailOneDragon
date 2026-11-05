@@ -3062,22 +3062,25 @@ class GameState:
     # ()(A 类,同 strategy_conditional_done 种子族先例)。
     strategy_bond_tier_fired: Field[tuple[str, ...]] = field(
         default_factory=Field)
-    # [索引定义] strategy_grants_done = 策略卡赠礼条件双条目已发标记(「首次」
+    # [索引定义] strategy_grants_done = 策略卡条件发放条目已发标记(「首次」
     # 簿记;迷之旅人 id 253601 首例:「激活4【巡海游侠】时…获得…2星【黄泉】
     # (携【星间旅人星徽】)/进入下一个奖励节点时，获得【波提欧】」——两条效果条目
     # 各自落一次性标志位,元素 = '<卡名>#<条目键>' 复合键,strategy_bond_tier_fired 逐档
     # 一次性标志位同款复合键形)。[坐标系] 元素两段:卡名段 = 条件发放注册表键同源
     # (单一源 = cw_investments.STRATEGY_FACTION_COUNT_GRANTS /
-    # STRATEGY_REWARD_NODE_GRANTS);条目键段 = 触发函数模块常量封闭集
-    # ('faction_count'/'next_reward_node',随表扩展新条目新常量)。[取值时机]
+    # STRATEGY_REWARD_NODE_GRANTS / STRATEGY_REWARD_ORE_GRANTS /
+    # STRATEGY_PLANE_BOSS_GRANTS);条目键段 = 触发函数模块常量封闭集
+    # ('faction_count'/'next_reward_node'/'reward_ore'/'p2_boss',随表扩展
+    # 新条目新常量)。[取值时机]
     # = 恒稳(局内单调追加无删除——卖出/换阵使羁绊计数回落不回滚已发放;
-    # 恢复局随快照存续 = 中断恢复不重发)。[写入端] = 唯一逻辑写端 =
-    # cw_gain_chain.check_strategy_gift_grants(发放落位刻逐条目追加,拒落
-    # 域不落一次性标志位重试自愈),无观察写端——条件评估真值(上阵羁绊计数)sim 状态副本
+    # 恢复局随快照存续 = 中断恢复不重发)。[写入端] = 逻辑写端 =
+    # cw_gain_chain 各条件触发函数(check_strategy_gift_grants /
+    # check_strategy_reward_ore_grants / check_strategy_plane_boss_grants,
+    # 发放刻逐条目追加),无观察写端——条件评估真值(各触发函数谓词)sim 状态副本
     # 内部判定 live 无独立观察通道(角色落席/装备入栏 = bench/equips 观察
     # 覆盖,不对称申报同族先例)。消费 = 检查实现跳过判定 + 快照恢复
     # (tuple-str 重建,env_grants_done 先例)。与 strategy_conditional_done
-    # 分域:本域键含条目键段(一卡两条效果条目各自落一次性标志位),彼域键 = 纯卡名/费用桶形,
+    # 分域:本域键含条目键段(一卡多条效果条目各自落一次性标志位),彼域键 = 纯卡名/费用桶形,
     # 域语义不同不混用。开局初始值 = ()(A 类,同
     # strategy_conditional_done 种子族先例)。
     strategy_grants_done: Field[tuple[str, ...]] = field(
