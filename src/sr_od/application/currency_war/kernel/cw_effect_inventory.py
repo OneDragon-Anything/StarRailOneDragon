@@ -106,7 +106,9 @@ class BattlefieldEffect:
     board_rewrite: str = ''                 # 板面重写语义(取值 = 板面重写语义词表
                                             # BOARD_REWRITE_*;写归属桥 =
                                             # apply_board_rewrite)
-    bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;未建条目)
+    bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;已登记
+                                            # 条目 = 乱成一锅粥,词表
+                                            # BENCH_REROLL_*)
     equips_reroll: str = ''                 # 物品栏装备同品质变异(公司军火更新族,
                                             # 取值 = EQUIPS_REROLL_SAME_QUALITY;
                                             # 金/彩未建条目;写归属 = 观察收尾)
@@ -229,14 +231,15 @@ BOARD_REWRITE_SELL_ALL_DEAL: str = 'sell_all_deal'      # 全场出售+发牌条
 
 
 # ===== 备战席区间重掷语义词表(BattlefieldEffect.bench_reroll 取值;防散落字符串)=====
-# 已登记条目 = 公司人才流动(cw_investments.STRATEGY_EFFECTS,官方文
-# cw_invest_data.py:60);重掷面 = 随机分支零逻辑写、观察收尾,写归属单一源 =
+# 已登记条目 = 公司人才流动(右 3)+ 乱成一锅粥(左 6)(cw_investments
+# .STRATEGY_EFFECTS,官方文 cw_invest_data.py:60/:351);重掷面 = 随机分支零逻辑
+# 写、观察收尾,写归属单一源 =
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md
-# §6.3/§6.4 与 §8 同名条。LEFT6 = 族预留(乱成一锅粥/乱成一锅粥+,
-# 352101/352102),未建条目。
+# §6.3/§6.4 与 §8 同名条。姊妹乱成一锅粥+(352102)未建条目(单卡纪律,
+# 族级展开批另落)。
 BENCH_REROLL_RIGHT3: str = 'right3_same_cost'   # 备战席最右 3 位变为随机同费角色
 BENCH_REROLL_LEFT6: str = 'left6_same_cost'     # 备战席最左 6 位变为随机同费角色
-                                                # (未建条目)
+                                                # (已登记:乱成一锅粥)
 
 
 # ===== 物品栏装备同品质变异语义词表(BattlefieldEffect.equips_reroll 取值;

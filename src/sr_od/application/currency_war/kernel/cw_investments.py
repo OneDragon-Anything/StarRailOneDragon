@@ -60,6 +60,7 @@ from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_PORTALS,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    BENCH_REROLL_LEFT6,
     BENCH_REROLL_RIGHT3,
     BOARD_REWRITE_SELL_ALL,
     BOARD_REWRITE_SELL_ALL_DEAL,
@@ -1137,6 +1138,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['加油站'], duties=DutyFlags(),
         notes='「现在」+1 刷=burst 分支登记期发放;每节点 +1=节点边界桥;'
               'instant_gold=8 选卡当场'),
+    # 乱成一锅粥:官方「每次进入新节点时，处在备战席最左侧6个位置的角色变为
+    # 随机的同费用角色。立刻获得5次免费刷新和10金币。」(cw_invest_data.py:351,
+    # id 352101)。bench_reroll 族第二登记条目:重掷腿 = bench_reroll 载体(随机
+    # 面零逻辑写端,观察收口);burst 腿 = free_refresh_burst 载体字段单条目双载
+    # (登记腿 burst 桥发放,同形先例 = 大裁员);金腿 instant_gold 在册零动
+    # (选卡金发放写端缺口维持族级待办)。
+    '乱成一锅粥': EffectSpec(
+        id='352101', name='乱成一锅粥', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(bench_reroll=BENCH_REROLL_LEFT6,
+                                  free_refresh_burst=5),
+        duties=DutyFlags(track=True),
+        notes='bench_reroll=left6:随机重掷面零逻辑写端观察收口(effect-domain'
+              '.md 写入归属判据随机分支);区间=备战席槽序头 6 物理槽,容量<6'
+              ' 时全席(判读申报);辖域仅角色槽;拿卡当节点不重掷(措辞承载差异'
+              '推论 C 级);burst=5 登记期发放(「立刻」,载体惯例同加油站);'
+              'instant_gold=10 选卡当场 live 观察收口、sim 金腿缺口为族级既有'
+              '边界;sim 重掷面零建模(stale 申报,随机改写面既定边界);'
+              '替换星级/装备归属/被替换去向未采证;burst 双源同值对账归注册面'
+              '测试锁'),
     # 免费午餐:官方「获得11次免费刷新。」(cw_invest_data.py:36,id 100301)。
     # 登记期一次性发放的定性 = per_node_pick_node_grant.md §4 惯例表
     # (纯立即型,无持续部分);卡文无「现在/立刻」措辞不触发「拿卡当节点
