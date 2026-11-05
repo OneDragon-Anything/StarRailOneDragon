@@ -39,7 +39,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影测试 M1(`test_shop_projection_logic`:付费刷新扣状态容器价/免费帧金域零扣/免费次数 Field 扣减,均在校验内)。原差异申报「金币分支仅 sim 喂 `executed.refresh_paid`」已随费用单一源 = 状态容器直读(2026-10-16 用户裁决)消除:live/sim 同段代码两边同写,参数通道退役(字段已删)。
+刷新动作转移语义单一源 = 上报函数。原 `simulate` RefreshShop 分支(仅扣金、不模拟牌面)与动作侧真值读取/证据票据已随迭代停用,考古归 git。投影测试 M1(`kernel/cw_action_report/test_refresh_shop.py`:付费刷新扣状态容器价/免费帧金域零扣/免费次数 Field 扣减,均在校验内)。原差异申报「金币分支仅 sim 喂 `executed.refresh_paid`」已随费用单一源 = 状态容器直读(2026-10-16 用户裁决)消除:live/sim 同段代码两边同写,参数通道退役(字段已删)。
 
 ## 8. 先例注记(动作发出阶段)
 

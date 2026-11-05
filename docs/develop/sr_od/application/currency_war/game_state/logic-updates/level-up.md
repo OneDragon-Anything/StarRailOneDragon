@@ -43,7 +43,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(`test_shop_projection_logic`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在校验内;测试载体 = 单类型 `CwActionLevelUpParam`)。
+买经验动作转移语义单一源 = 上报函数 `report_action_level_up_param` 单点(推进算子共用 `xp_apply_clicks`;xp/level 跨档直写,域集见 [../action-logic-state.md](../action-logic-state.md) §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除)。原 `kernel/cw_vocab.py::simulate` LevelUp 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(`kernel/cw_action_report/test_level_up.py`:击数×单击价扣金/xp 跨档结转/level 升档直写/满级零金零经验零写,均在校验内;测试载体 = 单类型 `CwActionLevelUpParam`)。
 
 ## 8. 先例注记(动作发出阶段)
 

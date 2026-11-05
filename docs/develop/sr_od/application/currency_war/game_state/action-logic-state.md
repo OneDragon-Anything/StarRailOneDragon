@@ -53,7 +53,7 @@
 | 状态容器逻辑态直写 | `GameState` 字段（渠道 family='logic_action'） | 上报函数族 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数、商店/备战两域统一；快照与升星分支内聚于买牌函数单点；备战金账与库存分支内聚于各函数 `session` 形参面；零写族 = `zero_writes.py`；dict 确认族 = `apply_confirm_effect`） | 动作 op 机械执行后直调自己的上报函数（sim 与实机同一段 op 代码同口直调——驱动反转后无独立引擎委托入口，旧 `cw_sim_actions.apply_player_action` 委托串已随自驱动引擎停用）；商店序列驱动器（`bridge.py::decide_shop_screen`，回放/既有序列测试消费面）逐动作直调；以实际观察为准修正 |
 | （席位平行账已停用） | — | — | 席位真值单账 = 主域字段（bench/deployed）,动作落地由上报函数直写主域;平行账与执行器同步分支已停用,对账唯一发生点 = 观察边界（见 screen_op §2.3/§4） |
 
-(sim 整帧副本单步应用器 `simulate` 及其宿主推演帧已随 sim 帧通道停用删除——sim 与实机共用状态容器逻辑态直写落点（首行）,考古归 git;语义验证 = 投影测试(`test_shop_projection_logic`)。)
+(sim 整帧副本单步应用器 `simulate` 及其宿主推演帧已随 sim 帧通道停用删除——sim 与实机共用状态容器逻辑态直写落点（首行）,考古归 git;语义验证 = 投影测试(`kernel/cw_action_report/test_<snake>.py` 按被测方法拆分)。)
 
 视觉域动作的状态容器面（黑板帧停用后直写状态容器）：晶矿/箱/典籍
 的状态容器分支已进各自上报函数（CollectOre 精确摘晶矿 = `report_action_collect_ore_param` /
@@ -71,7 +71,7 @@ WearEquip/工具原子/OpenBox 的装备域状态容器分支 = 状态容器零�
 
 ## 2. 商店域动作
 
-商店域动作的字段写操作语义单一源 = 上报函数 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数，逐域 `write_logic`，域覆盖全集 = gold / bench / shop / xp / level / deployed / board / equips——原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除,域集由上报函数族承载）；买牌的买前快照与合成升星分支内聚于 `report_action_buy_card_param` 单点（快照函数内第一时间取），投影测试（`test_shop_projection_logic`）。商店域 op 载体 = `operations/cw_op/cw_<action>_action.py::CwAction<Action>Op`（一 op 一文件，op 内机械执行后直调自己的上报函数）。
+商店域动作的字段写操作语义单一源 = 上报函数 `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`（每动作一函数，逐域 `write_logic`，域覆盖全集 = gold / bench / shop / xp / level / deployed / board / equips——原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除,域集由上报函数族承载）；买牌的买前快照与合成升星分支内聚于 `report_action_buy_card_param` 单点（快照函数内第一时间取），投影测试（`kernel/cw_action_report/test_<snake>.py` 按被测方法拆分）。商店域 op 载体 = `operations/cw_op/cw_<action>_action.py::CwAction<Action>Op`（一 op 一文件，op 内机械执行后直调自己的上报函数）。
 
 ### 2.1 BuyCard（买牌）
 
@@ -144,7 +144,7 @@ op = `operations/cw_op/cw_prep_level_up_action.py::CwActionLevelUpOp`（单击�
 **确定面**：
 
 - 单击 = +`XP_PER_BUY` 经验、−单击价；攒满当前级门槛即升级、溢出结转（推进算子单一源 = `kernel/cw_economy.py::xp_apply_clicks`；门槛表 = `XP_TO_NEXT_LEVEL`）；
-- 满（`MAX_PLAYER_LEVEL`）级点击无效 = 拒（applied=False + reason='level_cap'，零写——零金零经验，行为由投影测试（`test_shop_projection_logic`）钉住）；
+- 满（`MAX_PLAYER_LEVEL`）级点击无效 = 拒（applied=False + reason='level_cap'，零写——零金零经验，行为由投影测试（`kernel/cw_action_report/test_level_up.py`）钉住）；
 - 单击价单一源 = `kernel/cw_economy.py::xp_click_cost` 两支语义：**显示价支**（状态容器 `level_up_cost` 观察价直通——游戏侧已算好全部折扣）/**兜底支**（基价 `XP_CLICK_COST_FALLBACK` 减已登记折扣效果；折扣只降价不减经验，`xp-rules.md` §2）；
 - 金：gold −= 单击价 × 实击数（击数 = 执行回执 `ShopActionExecuted.levelup_clicks`；缺回执 = 本轮不写逻辑态，等观察覆盖）；
 - 经验域写入 = `(当前级已攒, XP_TO_NEXT_LEVEL[新级])`；level 升档直写（2026-09-18 扩域,域覆盖含 level（域集全集见 §2 头注,原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除）；跳写对 (level, xp) 同进退——任一未读则推进对整体跳写）。

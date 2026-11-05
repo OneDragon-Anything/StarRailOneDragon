@@ -44,7 +44,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`test_shop_projection_logic`)钉住,v2 族金样直接校验 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 停用)。
+卖上阵动作转移语义单一源 = 上报函数(`report_action_sell_deployed_param`:空槽/越界拒 + expect 失配拒零推进 + 摘槽 + `sell_refund` 回金 + 装备回收 + front/back rows 整表平移(board 派生挂钩随写),两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellDeployed 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`kernel/cw_action_report/test_sell_deployed.py`)钉住,v2 族金样直接校验 = `test_cw_transfer_golden`(初态本地构造)。C6 装备守恒核对的活机制 = 观察边界 reconcile(原 sim 侧 `EquipsLedger` 快照比对对账入口随 simulate 停用)。
 
 ## 8. 先例注记(动作发出阶段)
 

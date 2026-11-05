@@ -46,7 +46,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-卖出动作转移语义单一源 = 上报函数(`report_action_sell_bench_param`:expect 陈旧提案拒零写 + 置 empty 不移位 + `sell_refund` 回金 + 装备回收 + 溢出卡处理分支,两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellBench 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`test_shop_projection_logic`)钉住。C6 装备守恒核对的活机制 = 观察边界 reconcile(下一入口装备区读数覆盖;原 sim 侧 `EquipsLedger` 快照比对对账入口挂在已删函数内,随 simulate 停用)。
+卖出动作转移语义单一源 = 上报函数(`report_action_sell_bench_param`:expect 陈旧提案拒零写 + 置 empty 不移位 + `sell_refund` 回金 + 装备回收 + 溢出卡处理分支,两个域写入统一为一份代码)。原 `kernel/cw_vocab.py::simulate` SellBench 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。商店域投影语义由 M1 投影测试(`kernel/cw_action_report/test_sell_bench.py`)钉住。C6 装备守恒核对的活机制 = 观察边界 reconcile(下一入口装备区读数覆盖;原 sim 侧 `EquipsLedger` 快照比对对账入口挂在已删函数内,随 simulate 停用)。
 
 ## 8. 先例注记(动作发出阶段)
 

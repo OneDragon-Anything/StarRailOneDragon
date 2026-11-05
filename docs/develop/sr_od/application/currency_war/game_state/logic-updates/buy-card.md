@@ -8,7 +8,7 @@
 
 ## 2. 逻辑态域集
 
-状态容器(GameState)(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `test_shop_projection_logic`)。域集全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注(原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除),本动作涉及的写域:
+状态容器(GameState)(GameState,游戏状态对象,下同)写入语义单一源 = 上报函数 `kernel/cw_action_report/buy_card.py::report_action_buy_card_param`(简单落位与合成升星都写在这一个函数里:买前快照三件组在函数内第一时间取,升星发生才整表覆盖,直接校验 M1 = `kernel/cw_action_report/test_buy_card.py`(投影测试按被测方法拆分))。域集全集见 [../action-logic-state.md](../action-logic-state.md) §2 头注(原 `SHOP_PROJECTION_DOMAINS` 登记常量已随死代码清偿移除),本动作涉及的写域:
 
 | 域 | 写 / 跳写 | 说明 |
 |---|---|---|
@@ -54,7 +54,7 @@
 
 ## 7. 语义验证(M1 测试)
 
-买牌动作转移语义单一源 = 上报函数 `report_action_buy_card_param` 单点(快照数据与合成升星写都内聚在此):常态分支 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏分支 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(测试 `test_shop_projection_logic`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
+买牌动作转移语义单一源 = 上报函数 `report_action_buy_card_param` 单点(快照数据与合成升星写都内聚在此):常态分支 gold 扣减 + 首空落位 + (name, star) 计数置换下架店牌(三态定长 5 槽模型);满栏分支 `_apply_full_bench_merge_buy` + 按 (name, star) 多集移除 k 张。原 `kernel/cw_vocab.py::simulate` BuyCard 分支(整帧副本第二载体)已随零生产消费停用,考古归 git。语义验证 = 投影测试 M1(测试 `kernel/cw_action_report/test_buy_card.py`:常态落位/满栏多买 −k×单价/升档结转/满栏拒买逐域直断言)。
 
 ## 8. 先例注记(动作发出阶段)
 

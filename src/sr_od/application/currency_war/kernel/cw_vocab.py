@@ -21,7 +21,8 @@
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
 推进单一源 = 状态容器逻辑态直写(kernel/cw_action_report 上报函数族
-+ 合成升星分支);动作语义验证 = 投影测试(M1,test_shop_projection_logic):
++ 合成升星分支);动作语义验证 = 投影测试(M1,cw_action_report/
+  test_<动作>.py 按被测方法拆分):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (状态容器读,纯规则分支),期望态推进 = 状态容器逻辑态直写
   (上报函数族,合成升星分支内聚 buy_card 上报)。

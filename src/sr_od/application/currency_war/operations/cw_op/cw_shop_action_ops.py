@@ -5,7 +5,8 @@
 操作链零 simulate 前瞻消费,期望态推进改走状态容器逻辑态直写
 (上报函数族单点,kernel/cw_action_report;
 kernel 规则单一源,与序列驱动器同形;写语义由投影测试钉
-(测试 M1,test_shop_projection_logic)):
+(测试 M1,cw_action_report/test_<动作>.py 按被测方法拆分;守卫
+测试 = 本文件镜像 test_cw_shop_action_ops.py)):
 
 - ``execute(env)``:机械执行(点击/拖拽;op 框架既有的重试/等待语义
   在此层),无判断。
