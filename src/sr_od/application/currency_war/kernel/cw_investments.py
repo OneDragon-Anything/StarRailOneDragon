@@ -2471,6 +2471,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '定谳(临时+策略默认不选),星变/读博深造同判现值 pending=False;'
           '触发语义 = 进入战斗时(战斗开始族格,PLANE_START 占位);零新字'
           '段零披露键零写端。'),
+    # 幸运之子(id 350101):官方「我方小队幸运一击率提高25%。进入战斗时，
+    # 我方小队中幸运一击率达到100%的角色，自身与忆灵幸运一击伤害提高
+    # 40%。」战力类 UNIT_BUFF 零响应登记(幸运一击族同域 5 卡+效率员工奖
+    # +全队的希望全落码族收官形;游戏侧自算,bot 仅登记;门槛/基点判读
+    # =判读申报制家族口径,零响应下两读法 bot 行为恒同;无离散触发事件,
+    # trigger 占位形)。
+    '幸运之子': EffectSpec(
+    id='350101', name='幸运之子',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350101')),
+    duties=DutyFlags(),
+    notes='战力类零响应登记(幸运一击族同域);'
+          '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
+          '(对齐 _portal_placeholder_spec 先例);'
+          '门槛 100%/基点判读 = 判读申报制家族口径,零响应下两读法 bot '
+          '行为恒同。'),
 }
 
 
@@ -4109,9 +4127,9 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 金条目 instant_gold=12 已登记零改动;KINDS 进阶武装箱 supply_box 在码
     # 零改动,姊妹典籍 tome 槽件差分)。
     '秘密典籍+': GiftGrant(items_immediate=('进阶武装箱',)),
-    # —— 非直读人工转正 3 条(佩佩逛街句/佩佩携钻句:「效果实现发放但非
-    # 『获得』直读引导」,人工裁定入册;溜佩佩/+ 反扫白名单两键已随注册
-    # 退役,注册后排除因「未登记」不复存在)——
+    # —— 非直读人工转正 4 条(佩佩逛街句/佩佩携钻句/佩佩客串登场句:
+    # 「效果实现发放但非『获得』直读引导」,人工裁定入册;溜佩佩/+ 反扫
+    # 白名单两键已随注册退役,注册后排除因「未登记」不复存在)——
     '溜佩佩': GiftGrant(chars_immediate=('佩佩',)),
     '溜佩佩+': GiftGrant(chars_immediate=('佩佩',)),
     # 这么大的钻石(231101):卡文「佩佩携带【财富宝钻】出现，这么大
@@ -4123,6 +4141,15 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # STRATEGY_DESC_UNMODELED_KEYS 披露键 strategy_worn_equip_unmodeled
     # 申报。
     '这么大的钻石': GiftGrant(chars_immediate=('佩佩',)),
+    # 佩佩客串(331001):卡文「佩佩闪亮登场！每完美通关一个战斗节点，
+    # 佩佩就会穿戴一件进阶装备，进入5个节点后，阿兰接走佩佩们并留下所有
+    # 装备。」登场句无「获得」引导,用户裁定 2026-11-05 拍 B 转正人工登记
+    # 入册(佩佩真实入后台,占后台空间、计入佩佩计数);穿戴/离场两条效果
+    # 条目 = 周期事件异轴不入本表(穿戴登记 =
+    # STRATEGY_KECHUAN_WEAR_GRANTS,离场 = STRATEGY_KECHUAN_LEAVE_GRANTS,
+    # 倒计时队列 pending_kechuan_leaves 发放刻登记——两表随本卡立项,
+    # 后继同形卡 +1 行复用)。星级实参 1 占位(佩佩无星级在册裁定同判)。
+    '佩佩客串': GiftGrant(chars_immediate=('佩佩',)),
     # —— 非候选直读登记 1 条(「获得3个…【狸狸】」直读,但发放对象为卡面
     # 用名「狸狸」∉ CHARACTER_ROSTER,反扫零命中 = 统一排除口径自动排除
     # 不逐条记因):登记名按实机录名「狸职狸狸」归一,依据 = cw_chars.py
@@ -6064,6 +6091,86 @@ def _validate_strategy_win_gold_grants() -> None:
 
 
 _validate_strategy_win_gold_grants()
+
+
+# ===== 策略卡完美通关穿戴注册表(佩佩客串;白名单制)=====
+# 「每完美通关一个战斗节点，佩佩就会穿戴一件进阶装备」策略域首例:
+# 键 = 策略规范名,值 = (装备类别词, 件数) 扁平二元组。
+# ⚠️ 类别词 = roll_random_equip 采样参数语义(装备注册表类别),与
+# STRATEGY_BOSS_BATTLE_GRANTS 表值同形异义——先例表类别词 = 占席道具箱名
+# 前缀语义(消费端发箱),两表消费动作异构故分表不共载(T-368 设计稿
+# 9.5-1 类别词两义申报,禁复用先例解析器)。触发面 = 战斗结算完胜分支
+# (胜利 ∧ 未损血,判定输入与 STRATEGY_WIN_GOLD_GRANTS 同源);穿戴对象 =
+# 本卡发放佩佩个体(uid 过滤,承载 = pending_kechuan_leaves 域),动作 =
+# Unit.equips 直写 append(**不走 gain_equipment**——穿戴非玩家获得,
+# 结构性旁路 STRATEGY_EQUIP_GAIN_CONVERSIONS 转换拦截,持好运来局穿戴件
+# 不转换;离场转移走原语入栏时才辖转换,两效果条目对照)。卡面无上限词 =
+# 每完美通关可重复,无 done 一次性标志位(防重归调用方节点键幂等守卫);
+# 采样对象取值域 = 备战 ∪ 上阵合并池与 win 金计数池同口径(溢出位身份串
+# 无 uid 载体,结构性不可过滤 = 不辖,如实申报);池内 uid 过滤空集跳写
+# 零发。live 零写观察覆盖(穿戴为游戏侧自发)。
+# 消费面 = kernel/cw_gain_chain.check_strategy_kechuan_wear_grants(触发
+# 检查单一源,唯一调用点 = sim 结算写入实现 check_strategy_win_gold_grants
+# 同窗)。
+STRATEGY_KECHUAN_WEAR_GRANTS: dict[str, tuple[str, int]] = {
+    # 佩佩客串(id 331001):每完美通关 1 件随机进阶装备(卡文直读,
+    # cw_invest_data.PLAZA_AUGMENTS 同 id 行)
+    '佩佩客串': ('进阶', 1),
+}
+
+
+def _validate_strategy_kechuan_wear_grants() -> None:
+    """STRATEGY_KECHUAN_WEAR_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28,同 _validate_strategy_win_gold_grants docstring
+    ——本表只落孤儿键一哨):孤儿键 = 键必须在 INVESTMENT_STRATEGIES
+    (版本更新改名/移除后静默失联)。类别词/件数为手抄常量,纯笔误类
+    按治理裁定不加值形查;类别池随注册表传导,池空运行期走触发函数 log
+    防御分支零写兜底,对账归表域测试。"""
+    orphans = [n for n in STRATEGY_KECHUAN_WEAR_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_KECHUAN_WEAR_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_kechuan_wear_grants()
+
+
+# ===== 策略卡周期离场倒计时注册表(佩佩客串;白名单制)=====
+# 「进入5个节点后，阿兰接走佩佩们并留下所有装备」策略域首例:键 = 策略
+# 规范名,值 = 离场后继节点数(卡文「5个节点」直读)。计数口径 = 后继 N
+# (拿卡节点不计入,拿卡后第 5 个后继节点窗收尾触发;人才激励「N个节点
+# 后」/偶像经济延迟支线两在码刻度同口径,免新判读免披露键)。承载 =
+# 发放刻入队 pending_kechuan_leaves(GameState 独立域,元素 = (单位 uid,
+# 剩余节拍)),节点推进边界 tick 递减(cw_game_state._tick_pending_
+# kechuan_leaves,与 pending_strategy_grants 同闸同形),窗收尾弹除执行
+# = kernel/cw_gain_chain.discharge_due_kechuan_leaves(唯一调用点 = sim
+# 节点窗收尾 check_strategy_gift_grants 同窗;离场动作 = 本卡佩佩(uid
+# 过滤)自槽位移除 + 装备走 gain_equipment 原语转入库存(获得后果链/
+# 拒落/转换自动跟随——「留下所有装备」= 玩家获得判读,持好运来局留下
+# 的进阶件按转换表变令牌,与穿戴条目不转换形成对照)+ 计数域清账)。
+# 「阿兰接走」叙事零建模(roster 外叙事角色,接走行为无建模面)。
+# live 零写观察覆盖(离场为游戏侧自发,后台空间/装备栏差分观察吸收)。
+STRATEGY_KECHUAN_LEAVE_GRANTS: dict[str, int] = {
+    # 佩佩客串(id 331001):拿卡后第 5 个后继节点窗收尾离场(卡文
+    # 「进入5个节点后」直读,cw_invest_data.PLAZA_AUGMENTS 同 id 行)
+    '佩佩客串': 5,
+}
+
+
+def _validate_strategy_kechuan_leave_grants() -> None:
+    """STRATEGY_KECHUAN_LEAVE_GRANTS 构建校验(import 即炸;治理口径同
+    _validate_strategy_kechuan_wear_grants——孤儿键一哨)。"""
+    orphans = [n for n in STRATEGY_KECHUAN_LEAVE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_KECHUAN_LEAVE_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+
+
+_validate_strategy_kechuan_leave_grants()
 
 
 # ===== 策略卡首领通关价值金注册表(搜打撤;白名单制)=====
