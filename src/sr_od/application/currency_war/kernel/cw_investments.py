@@ -1355,6 +1355,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '选择语义与两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
+    # 榜样的力量·彩:官方「战斗中，伤害统计排名第一的队员成为【榜样】，
+    # 前/后台强度提高70%。其他队员施放攻击后，对攻击目标造成等同于
+    # 【榜样】累计伤害1%的真实伤害。」(cw_invest_data.py, id 350501)。
+    # 战力类零响应登记(UNIT_BUFF 族,榜样族收官银/金/彩三卡全建):选择
+    # 语义(伤害统计第一/并列取法/榜样持续期)、两段增幅与追伤链(「累计
+    # 伤害1%」计数与结算面)游戏侧自算,bot 零响应(选择语义零建模 =
+    # T-125 同词面先例+银/金同形已写进代码直证;追伤链零建模 = 同判读
+    # 申报制,游戏侧自算);effect_text 经数据面表达式单一源,版本更新改
+    # 文自动跟随。
+    '榜样的力量·彩': EffectSpec(
+    id='350501', name='榜样的力量·彩',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD,
+    category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350501')),
+    duties=DutyFlags(),
+    notes='战力类零响应登记(UNIT_BUFF 族,榜样族收官);'
+          '选择语义/两段增幅/追伤链游戏侧自算,bot 仅登记;'
+          '无离散触发事件,trigger 占位形'
+          '(对齐 _portal_placeholder_spec 先例)'),
     # OOTD·金:官方「我方小队每穿戴一件不同的装备，获得3%生命提高，6%
     # 前/后台强度。」(cw_invest_data.py, id 251301)。
     # 战力类零响应登记(UNIT_BUFF 族):「不同的装备」/「生命提高」两读法
@@ -3114,7 +3135,7 @@ def env_faction_scope(env_name: str) -> frozenset[str]:
       契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);
     - 通道派生分支(统一阵容评分迭代起替换旧亲和分支):
       ``cw_invest_channels.env_strong_lines`` 全档命中线(羁绊 ∈ 目标线
-      羁绊要求档 0 键/or_reqs;加分层(档 ≥1)与 flex 降档弱关联线不入
+      羁绊要求档 0 键;加分层(档 ≥1)与 flex 降档弱关联线不入
       ——护栏问「为谁服务」,
       弱关联不构成服务面)取各线 Comp.factions **全集**入集——副阵营随线
       带入(命运圣杯邀请命中双王圣杯 → 指向集 = {命运圣杯, 能量}:能量
