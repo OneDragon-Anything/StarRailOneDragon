@@ -25,11 +25,13 @@ description: 需要崩坏:星穹铁道配队决策、角色机制理解、有效
 
 | 任务 | 先读 | 再读 |
 |---|---|---|
-| 配队 / 选人 / 换人 | `references/INDEX.md` | `references/teams/<体系>.md` → `references/characters/<角色>.md` |
-| 某角色机制 / 词条堆什么 | `references/INDEX.md` | `references/characters/<角色>.md`；伤害模型概念不清读 `references/mechanics/damage-and-affix.md` |
-| 练度评价（够不够格进队） | 该角色档「转模行迹与转化上限」节 | `references/mechanics/damage-and-affix.md`（上限语义） |
+| 配队 / 选人 / 换人 | `references/INDEX.md` | `references/teams/<体系>.md`（为什么这么组）→ `references/lineups/<阵容>.md`（这四人怎么打）→ `references/characters/<角色>.md` |
+| 某角色机制 / 词条堆什么 | `references/INDEX.md` | `references/characters/<角色>.md`（三段式：技能说明/推荐遗器/推荐配队）；伤害模型概念不清读 `references/mechanics/damage-and-affix.md` |
+| 具体阵容的操作轴 / 配速 / 技能点分配 | `references/lineups/<阵容>.md` | 攻略参考轴为参考向非强制，按实际练度调整 |
+| 遗器套装选型 | `references/mechanics/relic-sets.md` | 对应角色档「推荐遗器」节 |
+| 练度评价（够不够格进队） | 该角色档「推荐遗器」的转化上限 | `references/mechanics/damage-and-affix.md`（上限语义） |
 | 欢愉 / 记忆命途角色的问题 | `references/mechanics/path-joy.md` / `path-remembrance.md` | 对应角色档 |
-| 大招充不了能 / 充能词条要不要 | `references/mechanics/ult-resources.md` | 对应角色档「大招资源」节 |
+| 大招充不了能 / 充能词条要不要 | `references/mechanics/ult-resources.md` | 对应角色档「技能说明」节 |
 | 战斗基础概念（回合/速度/技能点/弱点击破） | `references/mechanics/combat-basics.md` | — |
 | 未命中（知识库无该角色/体系档） | 如实告知没有，给可核验的替代路径（官方 wiki 文本） | 禁止凭训练记忆编造机制 |
 
