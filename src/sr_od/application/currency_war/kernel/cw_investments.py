@@ -2635,6 +2635,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '选择语义与周期跳转面游戏侧自算,bot 仅登记;'
           '行动值计数轴判读申报制[零响应下 bot 行为恒同];'
           '无离散触发事件,trigger 占位形。'),
+    # 打通上下游·彩:官方「我方小队获得15%前/后台强度，每次进入新节点时，
+    # 该加成提高3%。」(cw_invest_data.py, id 351301)。
+    # 战力类零响应登记(UNIT_BUFF 族,打通上下游·金同构姊妹):两段增幅与
+    # 节点增长句游戏侧自算,bot 零响应(增长句「该加成提高3%」加法叠层读
+    # 法 = 判读申报制,钻石恒永久同语式在册);trigger 占位形
+    # (PLANE_START 与 NODE_ENTER 稿明文零行为差);effect_text 经数据面
+    # 表达式单一源,版本更新改文自动跟随。
+    '打通上下游·彩': EffectSpec(
+    id='351301', name='打通上下游·彩',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD,
+    category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351301')),
+    duties=DutyFlags(),
+    notes='战力类零响应登记(UNIT_BUFF 族);'
+          '两段增幅与节点增长句游戏侧自算,bot 仅登记;'
+          '无离散触发事件,trigger 占位形'
+          '(对齐 _portal_placeholder_spec 先例)'),
 }
 
 
