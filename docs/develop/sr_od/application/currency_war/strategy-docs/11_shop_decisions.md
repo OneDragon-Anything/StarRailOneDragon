@@ -26,7 +26,7 @@
 
 **早期经济纪律（身份分层与拒绝原因键序 as-built）**：
 
-- **拒绝原因键序（D7）**：`shop_unbought_reasons` 分类序 = 义务面成员（按持有形态细分 `star_goal_met`/`merge_*`/`stockpile_*`）→ `transition_char`（打工后卖、刻意不入线）→ else（`non_line`/`owned`）。义务面成员与阵容无关的帧（K 空窗）同样可辨，阵容 None 时 transition 分类不可得统一 `non_line`；打工件刻意不买是常态。已退役拒因标签（历史行归并 `non_line`/`owned`）：`protection_member_rejected`（囤货面归属）、`hub_option`（枢纽标签）、`core_candidate_rejected`（单卡核心拒因）。
+- **拒绝原因键序（D7）**：`shop_unbought_reasons` 分类序 = 义务面成员（按持有形态细分 `star_goal_met`/`merge_*`/`stockpile_*`）→ else（`non_line`/`owned`）。义务面成员与阵容无关的帧（K 空窗）同样可辨，阵容 None 时成员分类不可得统一 `non_line`；线外件刻意不买是常态。已退役拒因标签（历史行归并 `non_line`/`owned`）：`protection_member_rejected`（囤货面归属）、`hub_option`（枢纽标签）、`core_candidate_rejected`（单卡核心拒因）、`transition_char`（按线打工登记件标签，随字段退役停写）。
 - **规则④ 转投候选阵容前瞻放行分支：已退役**（未锁定期过渡件采购现由序 1 义务面〔实候选三线 ∪ 过渡候选成员并集〕承载；购入历史与遥测键考古走 git 历史）。
 - **凑利息卖出资格集排除（Z1，装配单一源 = `mandate.sell_hold_exclusions`）**：排除集 = 循环防线全资格面（窗口段/L1 同轮买入禁卖/种子年龄豁免经 `sell_exclusions(channel='interest')` 装配——原「保护集 ∪ registry 核心」身份面随卖出身份段退役拆除，凑息按统一价值序列取用、无身份排除）；②(b) 动态买入登记经 L1 同轮硬面在装配内承载；prep ②(a) 接入调用与 shop 凑利息消费位两处同步；变现子域函数 `funding_support_sell`（支付支撑通道，criteria 契约表已登记）不在 `SELL_CHANNELS` 通道集内（funding 通道已随会话内筹资并入获取让位评估退役，§4.0 通道重映射行），无排除扩面对象。
 - **奖励帧升级抑制（规则①）与死金压牌库（规则②(b)）**：帧型判据单一源 = `kernel/cw_reward_node.reward_node_suppressed`（token 层 `'reward'` ∧ 非扑满环境 `PIGGY_ENV_NAMES`；None fail-open），消费位（升级资格门门①〔备战第 4 步升级检查/商店会话升级意图出口两屏同参，§2〕/ ②(b) 死金压牌库帧型判据）共用同一谓词，禁第二套帧型判定；②(b) 买入地板 = cost ≤ 死金 `gold − 10×⌊gold/10⌋`（只适用于本分支），位次在 M3 后 M6/EV 前，买因 `dead_gold_press_buy`。

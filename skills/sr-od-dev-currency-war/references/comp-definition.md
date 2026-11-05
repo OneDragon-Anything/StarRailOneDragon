@@ -50,11 +50,11 @@
    `factions` ≡ `faction_reqs` 档 0 键集(`core_faction_reqs`,纯冗余派生读口);
    `member_priority` 整字段不存——恒等于 core/shared 两档派生(全库零手编,
    让位序现算 = `derive_member_priority`)。
-3. **名单多胞胎警惕**:成员名单字段(core/shared/transition/
+3. **名单多胞胎警惕**:成员名单字段(core/shared/
    need_star 键)语义高度重叠——
    新增名单前先问能否挂到既有名单的属性上;名单间关系必须有校验
    (先例:key_items 曾有 5 阵容含 core∪shared 外成员——多表无校验
-   的维护病;lock_rules 键、entry_signals 键、key_items(存续期 88% 数据行被 carry_set 减法遮蔽,过渡体系建成后路径知识未并入统一体系)三度上榜,均已整字段退役)。
+   的维护病;lock_rules 键、entry_signals 键、key_items(存续期 88% 数据行被 carry_set 减法遮蔽,过渡体系建成后路径知识未并入统一体系)、transition_chars(2026-11-05 退役,同族第 4 件——语义 = P1 过渡知识,终局条目不夹带过渡逻辑的裁定收尾)四度上榜,均已整字段退役)。
 4. **目标态快照**:见第一原则——过程性知识(何时/怎么长过来)不进
    schema,归 final_comps「达成路径」叙事 + 策略机制层。
 5. **攻略口径→结构口径的翻译**:攻略说「X 优先/默认」时,分清**门槛**
@@ -67,8 +67,8 @@
 - **身份**:阵容是谁、聚类代表;
 - **成型**:终局形态判据(AND 档 + required 在板;`form_progress` 唯一折法,禁消费位内联判定)。OR 组(`or_reqs`)已整字段退役——判据:口径错位,过渡体系启动判据(「量子或贝都行」)被误用作终局成型判据,两层判据各自归位(启动归过渡、完全体归终局,考古走 git 历史);`required_deployed` 保留(点名件全部在板才算成型——过渡条目「引擎不可拆」语义的承载);
 - **成员**:谁在名单(core/shared 两档终局成员——shared = 第二档终局成员,双列
-  重复登记被建库校验禁止(core∩shared 恒空,import 即炸);transition = 过渡
-  打工档,不进终局成员集,送卡档位与终局成员集的原料);
+  重复登记被建库校验禁止(core∩shared 恒空,import 即炸);终局成员集 =
+  core ∪ shared,送卡档位机器即以这两名单取档);
 - **知识卡**:星级目标(need_star;key_items/lock_rules/entry_signals
   已先后整字段退役——key_items 的 P1 路径知识归过渡体系(TRANSITION_
   BONDS 点名件/羁绊全员),方向证据归各线 core 身份,上线时机归部署搜索
@@ -97,7 +97,7 @@ strategy-docs/12 号篇 §3,本表不镜像。
 
 1. **多消费点概念必须读口化**:一个派生概念出现第 2 个消费点时,必须在
    kernel `cw_comps.py` 立读口;单点消费的一次性表达式不在此列(它不是
-   概念——例:送卡档位机器的三名单扫描是合法内联)。
+   概念——例:送卡档位机器的两名单扫描是合法内联)。
 2. **管辖域 = Comp 派生概念**:凡派生自 Comp 数据字段、被策略层或 kernel
    其他模块消费的概念,读口落 `kernel/cw_comps.py`。豁免两类:**策略层
    立场数据**(LINE_HEAT/COMP_MEGASTAR_PREFERENCE/词缀吃怕表——攻略热度
@@ -165,7 +165,7 @@ compo-knowledge 证据三层):
 
 | 面 | 承载 | 说明 |
 |---|---|---|
-| 角色 | core/shared/transition 三档名单 | 名单来自功能链,非出场率 |
+| 角色 | core/shared 两档名单 | 名单来自功能链,非出场率 |
 | 优先级 | 统一让位序 | **=功能链的序数化投影**(文档层留「为什么」,实现层只要序) |
 | 站位 | 角色层 position 真值 + 阵容层覆盖(排级+槽位级) | **CW 玩法每角色的可选站位定义**(front/back/common,`cw_chars.position`,官方 Common=双排皆可且技能效果不绑定排,游戏真值);common 默认 back 是无知识兜底而非游戏定义,排差异来自阵容机制面(受击方向/前后台强度分配/装备排绑定/巡海后台供增益类)。`char_positions` 值域 = 排级(`front`/`back`)**+ 槽位级**(`front@0-3`/`back@4-9`,@n=board_index 与攻略记号同源;攻略 board_index 知识如三月七@4-6 护盾相邻中段/万敌@0 一号位硬约束);**策略层槽位知识优先、自适应分配兜底**(落位优先占指定槽,被占/超容软回退;不触发已就位件重排)。同角色不同阵容可不同排(不死途黄泉线后排 vs 白厄线前排) |
 | 装备 | equip_assign 到人 + 内在禁忌 | 「装备是角色特定的,到人不是到位置」;禁忌=阵容内在机制冲突(万敌禁盾) |
