@@ -16,5 +16,5 @@
 
 - 迭代设计：**定稿**（两轮对抗收敛：首轮三核+对照、复审无前提；必改项全部落文）
 - 设计对抗：收敛 · 报告=[attack.md](attack.md) / [attack2.md](attack2.md)
-- 落地：阶段 0/4 done（明细见 landing.md）
-- 正本更新：未开始
+- 落地：阶段 4/4 done（含批 C2/C3 追加段；明细见 landing.md 与 commit 链 88ffb2161/80969ddc6/543325f05/b1751631b/519e19ea7/c8ecef224/2cdcc8447）
+- 正本更新：done（清单清零；k_members 行核销零改动、p42 引用修正核销已完成）

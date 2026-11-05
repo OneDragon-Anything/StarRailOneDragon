@@ -48,7 +48,8 @@
    (v2 十字段死 6、level_plan 整死、评分器族 4 字段随评分器整删)。
 2. **派生优先**:能从既有字段或游戏真值派生的不手编。先例:
    `factions` ≡ `faction_reqs` 档 0 键集(`core_faction_reqs`,纯冗余派生读口);
-   `member_priority` 恒等于 core/shared 两档派生(20/20 无手编)。
+   `member_priority` 整字段不存——恒等于 core/shared 两档派生(全库零手编,
+   让位序现算 = `derive_member_priority`)。
 3. **名单多胞胎警惕**:成员名单字段(core/shared/transition/key_items/
    need_star 键)语义高度重叠——
    新增名单前先问能否挂到既有名单的属性上;名单间关系必须有校验
@@ -65,8 +66,9 @@
 
 - **身份**:阵容是谁、聚类代表;
 - **成型**:终局形态判据(AND 档 + required 在板;`form_progress` 唯一折法,禁消费位内联判定)。OR 组(`or_reqs`)已整字段退役——判据:口径错位,过渡体系启动判据(「量子或贝都行」)被误用作终局成型判据,两层判据各自归位(启动归过渡、完全体归终局,考古走 git 历史);`required_deployed` 保留(点名件全部在板才算成型——过渡条目「引擎不可拆」语义的承载);
-- **成员**:谁在名单(core/shared/transition 三档,送卡档位与终局成员
-  集的原料);
+- **成员**:谁在名单(core/shared 两档终局成员——shared = 第二档终局成员,双列
+  重复登记被建库校验禁止(core∩shared 恒空,import 即炸);transition = 过渡
+  打工档,不进终局成员集,送卡档位与终局成员集的原料);
 - **知识卡**:选线证据/星级目标(key_items/need_star;lock_rules 与
   entry_signals 已先后整字段退役——上线时机归部署搜索自适应);
 - **装备**:到人配方(equip_assign 真源 + key_equips 投影 + 禁忌);
@@ -80,6 +82,50 @@ strategy-docs/12 号篇 §3,本表不镜像。
 
 字段族的具体成员随迭代增减,本表只锁语义边界;「现在有哪些字段」查
 `cw_comps.py` 的 Comp dataclass(单一源,不镜像)。
+
+## 读口层(派生概念的消费唯一入口)
+
+**读口** = 从 Comp 数据字段派生、供策略层或 kernel 消费的概念的正式
+函数或 property——该概念的**唯一合法取数入口**。Comp 的数据字段层(人编
+知识登记)与派生读口层(机器消费)两层分立,凡派生概念一律读口化,禁止
+消费点内联拼装字段组合(`set(c.core_chars) | set(c.shared_chars)` 这类
+写法即违例)。
+
+**立法三条**(新增/评审派生概念时逐条过):
+
+1. **多消费点概念必须读口化**:一个派生概念出现第 2 个消费点时,必须在
+   kernel `cw_comps.py` 立读口;单点消费的一次性表达式不在此列(它不是
+   概念——例:送卡档位机器的三名单扫描是合法内联)。
+2. **管辖域 = Comp 派生概念**:凡派生自 Comp 数据字段、被策略层或 kernel
+   其他模块消费的概念,读口落 `kernel/cw_comps.py`。豁免两类:**策略层
+   立场数据**(LINE_HEAT/COMP_MEGASTAR_PREFERENCE/词缀吃怕表——攻略热度
+   统计与策略偏好,按 strategy-docs/12 号篇分层归策略层旁表)与**独立
+   概念**(intention_core——意向核心,∈core 约束是 miss 计数良定义的
+   刻意语义,落 cw_intention)。
+3. **两层 docstring 分责**:字段 docstring 写知识登记语义(「凭什么信」:
+   出处/校准口径);读口 docstring 写消费语义 + 正典文档锚。漂移在两层
+   docstring 对照下可见。
+
+**守卫的诚实声明**:无自动守卫(项目测试纪律禁源码扫描测试)。守卫上限 =
+读口清单(概念 → 读口,读口为可 grep 的代码符号;不设「消费面」列——
+代码结构的第二抄本必漂移)+ 本节 review 关卡。
+
+**读口清单**(概念 → 读口登记表;读口本体与值单一源 = 各落点代码):
+
+| 概念 | 读口 | 落点 |
+|---|---|---|
+| 核心羁绊键集/档位 | `factions` / `core_faction_reqs` | Comp property |
+| 加层羁绊 | `bonus_faction_reqs` | Comp property |
+| 阵容轮廓 | `all_factions` | Comp property |
+| 终局成员集 | `members` | Comp property |
+| 线 carry 单名锚(聚类+补全口径) | `carry_anchor` | cw_comps 函数 |
+| 评分锚(攻略重述口径) | `rating_anchor`(分歧登记 ∘ carry_anchor) | line_select 函数(策略旁表豁免:评分口径取攻略重述是评分决策) |
+| 分配器 arm 键 | `arm_key_of`(= carry_anchor) | cw_run_allocator 函数(cw_loop 仅改调) |
+| CARRY 档全集 | `carry_set` | cw_comps 函数 |
+| 关键装备清单 | `key_equips` | Comp property(委托 derive_key_equips) |
+| 成员优先级 | `member_rank_of` / `derive_member_priority` | cw_comps 函数 |
+| 意向核心(miss 计数) | `intention_core` | cw_intention 函数(独立概念,豁免管辖域) |
+| 攻略热度/巨星偏好/词缀吃怕 | LINE_HEAT / COMP_MEGASTAR_PREFERENCE / affinity 表 | 策略层旁表(策略立场数据,豁免;12 号篇分层) |
 
 ## 角色怎么定义:深入游戏理解逐个敲定(第二条)
 

@@ -142,7 +142,7 @@
 | 族 | 模块 | 一句话职责 |
 |---|---|---|
 | 经济 | `cw_economy`(经济/等级/节奏骨架)、`cw_env_economy`(投资环境估值)、`cw_reward_node`(奖励节点纪律判据)、`cw_difficulty_account`(难度账本) | 金/经验/利息/刷新成本与价值评估的纯函数模型 |
-| 阵容与卡 | `cw_comps`(终局阵容库 COMP_LIBRARY + 过渡阵容库 TRANSITION_LIBRARY + 评分)、`cw_card_identity`(卡身份分层)、`cw_system_cards`(体系卡**数据层**:SYSTEM_CARDS 判据/card_active/card_pieces/engines_count 机制事实;组合决策层〔组合选卡/门控冻结状态机〕已随配方决策层退役)、`cw_line_defs`/`cw_line_switch`/`cw_bridge_pool`/`cw_transition`(线/过渡;原配方机器 `cw_recipe` 模块已删除,考古走 git 历史) | 阵容识别、评分与线管理的判断层数据与纯函数 |
+| 阵容与卡 | `cw_comps`(终局阵容库 COMP_LIBRARY + 过渡阵容库 TRANSITION_LIBRARY + 阵容派生读口单一源层——概念→读口登记见 skill sr-od-dev-currency-war references/comp-definition.md 读口清单)、`cw_card_identity`(卡身份分层)、`cw_system_cards`(体系卡**数据层**:SYSTEM_CARDS 判据/card_active/card_pieces/engines_count 机制事实;组合决策层〔组合选卡/门控冻结状态机〕已随配方决策层退役)、`cw_line_defs`/`cw_line_switch`/`cw_bridge_pool`/`cw_transition`(线/过渡;原配方机器 `cw_recipe` 模块已删除,考古走 git 历史) | 阵容识别与线管理的判断层数据与纯函数 |
 | 意向与事件 | `cw_intention`(终局意向)、`cw_events`(剩余事件画面决策核〔planner/巨星/圣杯/伙伴等〕+ 观察载荷契约 `EncounterOption`)、`cw_encounter_selection`(结算观测基建与兑现回调)、`cw_registry`(决策注册表) | 事件类节点的决策判据;画面选卡判据权威定义 = 策略层 `mandate_v1/`(投资环境/投资策略/补给/遭遇 `encounter_pick.py` 等——选卡判据按模块职责说明(00_framework.md)第五条从 kernel 迁往策略层 mandate_v1) |
 | 装备 | `cw_bond_equips`(装备跟踪/羁绊口径)、`cw_equip_env`(装备环境信号)、`cw_equip_value`(装备价值)、`cw_equip_wear_plan`(穿戴计划)、`cw_affix_effects`(词缀效果注册) | 装备域的跟踪、估值与计划 |
 | 战斗 | `cw_battle_calib`(战斗校准)、`cw_deploy_logic`(deploy 围栏/底线门/换人与补位判定;选人与落位计划单一源 = 策略层 `mandate_v1/deploy_plan.py`,sim 与 op 共用)、`cw_launch_admission`/`cw_launch_arbitrage`(动作发出准入/仲裁)、`cw_hp_policy`(hp 门)、`cw_first_passage`(首达生存概率) | 战斗结果的模拟与动作发出决策 |

@@ -67,7 +67,7 @@
 | `ist.locked_comp` / `ist.phase` | `_sync_derived_lock_cache`(refresh/锁定动作同帧同步) | kernel/跨画面只读消费的派生缓存,非独立状态源 |
 
 - **前置段 `refresh_line_if_needed`**(备战/商店两决策入口各挂同一前置函数):拼证据签名(持有名单 + 装备持有 + 投资效果集 + 投资环境 + 开局词缀/boss + 等级 + 节点号 + 锁定态)→ 签名不变幂等跳过 → 变化则重算候选快照并检查锁定条件(未锁定态;命中经 `write_line_lock` 写入)。节点号变化时签名必变 = 节点边界重算入口(边界重置清单 = [22_prep_screen.md](22_prep_screen.md) §3)。词缀/boss 入签名:两者现进线分(词缀分/boss 分量),简报观察晚于开局首帧,缺签名分量 = 候选消费静默旧值。
-- **读口**:`line_members_view()` = 锁定线名单视图(未锁定返回空名单 + 未锁定旗标,两域据此走件级评估路径);`direction_comp_of()` = 现行方向组合读口(**四层优先现读,无状态物化**:①锁定线 `target_comp` ②终局候选首位(`line_candidates` 首名)③过渡锁定条目(`transition_locked`)④过渡候选首位(`transition_candidates` 首名);四层皆空 = 无方向,K 空窗回退承接)。消费面分派:终局名单消费面 → view;开局面(M5/P1 部署)与「现行方向」类消费位(flow pick 族/部署围栏 k_members/商店序 1 名单)→ `direction_comp_of()` 统一读口,禁消费点自拼四层优先(第二读口径);备战工序与商店会话消费同一视图,禁各自维护第二份名单口径。
+- **读口**:K 名单展开(阵容 → 终局成员集)的成员集单一源 = `Comp.members` property(kernel `cw_comps`:core ∪ shared 注册表声明序去重;transition_chars 打工后卖、不计终局成员),strategies 层入口 = `statefn.predicates.line_members`(薄委托,只承载阵容缺 → 空元组的 fail 方向语义;判读锚 = strategy-telemetry `k_members` 行)。`line_members_view()` = 锁定线名单视图(未锁定返回空名单 + 未锁定旗标,两域据此走件级评估路径);`direction_comp_of()` = 现行方向组合读口(**四层优先现读,无状态物化**:①锁定线 `target_comp` ②终局候选首位(`line_candidates` 首名)③过渡锁定条目(`transition_locked`)④过渡候选首位(`transition_candidates` 首名);四层皆空 = 无方向,K 空窗回退承接)。消费面分派:终局名单消费面 → view;开局面(M5/P1 部署)与「现行方向」类消费位(flow pick 族/部署围栏 k_members/商店序 1 名单)→ `direction_comp_of()` 统一读口,禁消费点自拼四层优先(第二读口径);备战工序与商店会话消费同一视图,禁各自维护第二份名单口径。
 - **锁定写入连带动作(唯一所有者 = `write_line_lock`)**:①清商店会话标记(`shop_handled`——下一轮按锁定线名单重开会话全量评估);②候选快照清空并停算。装备定向属锁定效果非连带件。(旧「清升级授权键」连带件已随 2026-10-17 迭代 T-4 键退役删除——判据同帧重评后无跨帧授权可清。)
 - **committed(已定型/非双轨期)判定** = `cw_intention.committed_authority`(方向层单一派生源):权威序 = ①锁定线槽非空(锁定语义,P2 时点兜底唯一承载)②过渡锁定态非空(`ist.transition_locked` 非空——锁定条目名;序②替代口径:原读配方对 `p1_pair`,语义连续 = P1 方向已定型,全部消费面零改动);缺供给帧保守侧 False;全部消费点经它或唯一读端 `committed_from` 取值。P2 入口至兜底锁帧之间的短窗 committed = False(双轨期口径)。
 - **K 空窗回退**:无方向帧(四层优先全空)的部署围栏目标供给 = `cw_intention.k_empty_window_fallback`(回退单一源,商店域与准备域共用;禁消费位复制兜底逻辑)。分带两带:p1_gap(两层候选与过渡候选全空 → 过渡库全体条目见即买并集,消「K 空 → 零买入 → 计分来源永不涨」死锁环)/p1_lock_band(过渡候选首位条目见即买集,候选机器同源现读,禁双源)。原 p2plus 位面带已随生命周期换轴废除(未终局锁定帧过渡层照常活跃、终局锁定帧恒有方向,该带无到达帧)。
@@ -99,6 +99,7 @@
 
 | 版本 | 日期 | 变更 | 依据 |
 |---|---|---|---|
+| 20 | 2026-11-05 | §2 读口条补 K 名单展开读口链(成员集单一源 = Comp.members property;strategies 层入口 = predicates.line_members 薄委托,只承载 None→空元组语义) | comp-readout-unification 迭代批 A 正本更新 |
 | 19 | 2026-11-05 | or-reqs-retirement 正本更新:§1.1 投资通道目标线删 or_reqs 键措辞;§3 过渡候选域改组合条目制(TRANSITION_BONDS 构造块两两组合生成 10 条静态枚举/计分排序单一源 transition_scores/组合成型才锁、单羁绊不锁)+ 新增买牌虚拟评估臂条目(过渡货架资格,计分共用、零持久化);术语行过渡阵容库定义同步 | or-reqs-retirement 迭代 3.1-3.4(用户 2026-11-05 裁定) |
 | 18 | 2026-11-04 | 结构统一正本更新:§1.1 拆分行/投资通道目标线改 faction_reqs 口径(加分层降档),配方锁联动改过渡候选克制减分;§2 三键面(opening_recipe_comp 退役)、direction_comp_of 四层优先读口、committed 序②改过渡锁定态、K 空窗分带换轴;§3 全节改写为过渡阵容库条目候选机器(TRANSITION_LIBRARY 三型条目/持有分-减分制/成型即锁/生命周期挂钩终局锁定);§4 过渡层贡献口径 + P86 丙分支辖域消亡 | comp-structure-unification 迭代 3.1/3.3(用户 2026-11-04 裁定) |
 | 17 | 2026-11-03 | §1.1 姬子 A/B 拆分落地(COMP_LIBRARY 20→21:列车同行·反震/·直伤;装备证据分量 +`PLUGIN_BONUS`/件进线分、不进证据门;词缀 A/B 拆行/词缀面 A≥B 恒成立;LINE_HEAT 165/70+特化归属;通道 A/B 同键同分;boss/强敌双套同登记);线数 20→21 全篇同步;桑博「专家邀请」语义位申报归顾问通道 | 统一阵容评分迭代批 3(2026-11-03 design §5/§8;§2 上界勘误 36120) |
