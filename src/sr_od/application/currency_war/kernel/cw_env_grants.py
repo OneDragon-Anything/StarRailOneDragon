@@ -43,7 +43,8 @@ write_logic_rand 即炸渠道族校验);live = logic_hook 族 group
 **无 rng**(逐函数标注)::func:`check_env_streak_grants` /
 :func:`check_env_refresh_grants` / :func:`check_env_interest_grants` /
 :func:`check_env_dot_grants` / :func:`check_env_battle_grants` /
-:func:`check_env_deploy_lock_perfect`
+:func:`check_env_deploy_lock_perfect` /
+:func:`check_strategy_perfect_rescue`
 零 rng——随机态指认知通道(落位未知、
 观察校准),追加位置(库存尾部/席面落位)确定,不消耗随机数;
 :func:`check_env_boss_grants` 含采样(rng 形参:角色名 ``rng.choice``
@@ -81,6 +82,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     DEPLOYED_BACK_CAPACITY_MAX,
     BenchView,
     ChannelSig,
+    DeployedView,
     GameState,
     Unit,
     _emit_defect,
@@ -99,6 +101,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_PICK_GRANTS,
     ENV_REFRESH_GRANTS,
     ENV_STREAK_GRANTS,
+    STRATEGY_PERFECT_RESCUE_GRANTS,
     RandomCharSpec,
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
@@ -826,7 +829,9 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
     判据(用户裁定 2026-10-18:结算胜利 ∧ 本节点未损失小队生命值;
     设计 = T-33 设计稿 §2.4,迭代 2026-09-23-invest-effects-calc)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
-    hp_after 持平**。字段语义:killed 单一语义 = 「挑战成功」胜利标志
+    hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
+    ``settlement_perfect_rescue`` True = 损血局亦判完胜,域规格 =
+    fields.md §3.5.3b,写点 = check_strategy_perfect_rescue)。字段语义:killed 单一语义 = 「挑战成功」胜利标志
     (cw_settlement_obs.py 注释权威版本,killed=True 才是胜局);hp 基准 =
     相邻两结算帧差分——hp 只在结算与卡面效果处变化,相邻两结算帧间
     hp 差 = 本场损血(环写端在宿主结算读点位、先于结算确认 op 派发,
@@ -865,7 +870,11 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
         return ()
     if tail.hp_after is None or prev.hp_after is None:
         return ()
-    if int(tail.hp_after) != int(prev.hp_after):
+    # hp 持平判定旁路(完胜判定改写):瞬时位 True = 本场「视为完美通关」
+    # 改写生效(check_strategy_perfect_rescue 同分支先写,改写先于消费)
+    # → 损血局亦判完胜,与游戏救援行为对齐;None/False 维持旧判。
+    if int(tail.hp_after) != int(prev.hp_after) \
+            and not gs.settlement_perfect_rescue.value:
         return ()
     done = tuple(gs.env_grants_done.value or ())
     scope_uids: set[int] = set()
@@ -913,7 +922,9 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     判据(用户裁定 2026-10-18 口径:结算胜利 ∧ 本节点未损失小队生命值;
     设计 = T-34 设计稿 §2.5,迭代 2026-09-23-invest-effects-calc)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
-    hp_after 持平**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
+    hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
+    ``settlement_perfect_rescue`` True = 损血局亦判完胜,与 deploy_lock
+    行同形,域规格 = fields.md §3.5.3b)**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
     已登记;killed 语义/hp 差分基准的推导权威版本见彼处 docstring,宁缺勿造:
     环不足两行或任一侧 hp_after None 不判定)。判据判定行内联同式非共享
     谓词:check_env_deploy_lock_perfect 本体属零混改面(T-34 设计稿
@@ -948,7 +959,11 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
         return ()
     if tail.hp_after is None or prev.hp_after is None:
         return ()
-    if int(tail.hp_after) != int(prev.hp_after):
+    # hp 持平判定旁路(完胜判定改写):瞬时位 True = 本场「视为完美通关」
+    # 改写生效(check_strategy_perfect_rescue 同分支先写,改写先于消费)
+    # → 损血局亦判完胜,与游戏救援行为对齐;None/False 维持旧判。
+    if int(tail.hp_after) != int(prev.hp_after) \
+            and not gs.settlement_perfect_rescue.value:
         return ()
     done = tuple(gs.env_grants_done.value or ())
     scope_items: set[str] = set()
@@ -979,6 +994,170 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
                        produced_by=_PRODUCER,
                        evidence='env_item_open_perfect', sig=sig)
     return tuple(effects)
+
+
+# ===== 策略卡完胜判定改写检查(都是这家伙的错!;完胜改写策略侧首例,
+# ===== 死亡救援三件套同形:白名单表 + 本检查函数 + 瞬时位)=====
+
+#: 完胜判定改写写端署名(家族单一标识;写端 = 本模块
+#: check_strategy_perfect_rescue,结算位改写拍,新写端新名不沿用链缺省
+#: 伪装连续——check_strategy_boss_battle_grants 署名家族同纪律)。
+_PERFECT_RESCUE_PRODUCER: str = 'strategy_perfect_rescue'
+
+#: 完胜判定改写触发卡规范名(单成员机制域中间态:函数体点名,表 dict 形
+#: 支持后继改写卡 +1 行;第二改写卡入表时升级 per-card 遍历 + 函数去点名,
+#: 禁表已通用化误判——take_strategy_death_save 点名申报同款)。
+_PERFECT_RESCUE_CARD: str = '都是这家伙的错！'
+
+#: 配额闩键前缀(strategy_conditional_done 域内本族键空间,与纯卡名键 /
+#: first_buy_xp# / take_all# 键空间互不相交):完整键 =
+#: ``<前缀><卡名>#<已耗序号>``。判定只数前缀不依赖序号取值(全都要族
+#: 计数形同口径);禁布尔形(键存在 = 已耗)与计数形并存同域——配额 >1
+#: 时布尔判定把部分耗尽误判耗尽 = 静默漏发,域内统一计数形。
+_PERFECT_RESCUE_LATCH_PREFIX: str = 'perfect_rescue#'
+
+
+def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
+                                  ) -> tuple[str, ...]:
+    """策略卡完胜判定改写检查(「若未完美通关战斗且有携带【命运圣杯星徽】
+    的角色参与战斗，视为完美通关并出售1名携带【命运圣杯星徽】的上场角色，
+    可生效3次」触发器单一源,都是这家伙的错!id 352801 首例,完胜改写策略
+    侧首例;登记表 = ``cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS``;
+    唯一调用点 = report_node_advance settle_confirm 分支,check_env_battle_
+    grants 调用邻位、先于两完胜判据消费函数——改写先于消费;双端同链)。
+
+    判据(读法 A 默认案 = 救援仅覆盖「胜利∧损血」,与完胜判据机器同构,
+    败局零救援;判据正本 = docs/game/currency_war/research/combat.md §3)
+    = 结算环尾行 killed=True ∧ 相邻两帧 hp_after 差 ≠ 0(胜利但损血,可
+    救援;真完胜 hp 持平 = 无需救援)∧ deployed 视图任一单位携带徽名 ∧
+    配额未耗尽。环读口 = check_env_deploy_lock_perfect 同源
+    (``gs.settlement_ring.last_two_rows()``),宁缺勿造同族:环 <2 行/
+    任一侧 hp_after None/killed≠True → 不判定;deployed 未观察 → 不判定
+    (偏严,禁猜)。偏差面(方向单一偏严):游戏侧救援判定与本判据机器如
+    有出入,bot 模型侧按判据机器口径,live 出售事实由下一帧部署观察覆盖。
+
+    全条件成立 → 三笔:①配额闩追加(strategy_conditional_done 共域计数形
+    键 ``perfect_rescue#<卡名>#<已耗序>``,前缀计数 < 配额放行);②瞬时位
+    ``settlement_perfect_rescue`` 写 True(消费端 = 两完胜判据行的 hp
+    持平判定旁路——「视为完美通关」改写落地,fields.md §3.5.3b);③出售
+    腿(sim 门内 ``sim_backend_installed()``):deployed 序首个携带者
+    (前排子表优先、排内物理槽号序,裁决点默认案 A 确定序)槽置 None +
+    定长视图重建写(动态子表直读,不经定长 10 截断桥——扩格帧后排扩展格
+    携带者可命中,report_action_sell_deployed_param 现行同构)+ 退款金
+    observe 笔(``sell_refund(star, bench_char_cost(u, gs))`` 卖价公式
+    单一源)+ 装备回收第三笔(sold.equips 非空追加回 gs.equips 库存——
+    防 sim 穿戴面激活后徽随救援出售静默消失)。live 出售腿零写(游戏自
+    执行出售,部署视图刷新/金读数观察承接);条件不成立 → 瞬时位写 False
+    (每次判定执行都重写,无陈值泄漏)。
+
+    sim 结构性休眠(设计正确路径,勿接线):sim 部署单位 unit.equips 恒空
+    (gain_equipment 只写库存不穿戴,sim 无穿戴写端)→ 徽携带恒假;双重
+    休眠第二独立理由 = sim 结算帧胜利不掉血 →「胜利∧损血」分支结构性
+    不可达 → sim 恒零救援零闩写、瞬时位恒 False → 两完胜判据行为零变化。
+
+    - ``sig`` = 全部 logic 写共用的渠道签名,必须 logic_action / logic_hook
+      族(obs 族进写通道即炸渠道族校验——禁 obs_sig;退款金 observe 笔的
+      obs 族签名函数内自构,take_strategy_death_save 同款);
+    - 零 rng:判定与出售对象选择全确定,无采样面;
+    - 返回效果串元组(救援成立一条 ``strategy_perfect_rescue:<出售角色名>``;
+      空 = 零救援;调用方仅日志面消费,无行为分支)。"""
+    if _PERFECT_RESCUE_CARD not in (gs.active_strategies.value or []):
+        return ()
+    equip, quota = STRATEGY_PERFECT_RESCUE_GRANTS[_PERFECT_RESCUE_CARD]
+    frame = _node_frame(gs)
+    evidence = f'strategy_perfect_rescue:{_PERFECT_RESCUE_CARD}'
+
+    def _mark(value: bool) -> None:
+        # 瞬时位每次判定执行都重写(True/False),无陈值泄漏;消费端 = 两
+        # 完胜判据行的 hp 持平判定旁路(None/False 两值均维持旧判)。
+        gs.write_logic(gs.settlement_perfect_rescue, value,
+                       produced_by=_PERFECT_RESCUE_PRODUCER,
+                       evidence=f'{evidence}:mark', sig=sig)
+
+    done = tuple(gs.strategy_conditional_done.value or ())
+    spent = sum(1 for k in done
+                if k.startswith(
+                    f'{_PERFECT_RESCUE_LATCH_PREFIX}'
+                    f'{_PERFECT_RESCUE_CARD}#'))
+    if spent >= quota:
+        _mark(False)
+        return ()
+    rows = gs.settlement_ring.last_two_rows()
+    if len(rows) < 2:
+        _mark(False)
+        return ()
+    tail, prev = rows[-1], rows[-2]
+    if tail.killed is not True \
+            or tail.hp_after is None or prev.hp_after is None:
+        _mark(False)
+        return ()
+    if int(tail.hp_after) == int(prev.hp_after):
+        # 真完胜(未损血):改写无效果面,零救援。
+        _mark(False)
+        return ()
+    view = gs.deployed.value
+    if view is None:
+        # 部署视图未观察:携带判定无基准,宁缺勿造零救援(偏严禁猜)。
+        _mark(False)
+        return ()
+    # deployed 序首个携带者(前排子表优先、排内物理槽号序;动态子表直读,
+    # 不经定长 10 截断桥——扩格帧后排扩展格携带者可命中)。
+    front = list(view.front_slots or [])
+    back = list(view.back_slots or [])
+    sold: Unit | None = None
+    for row in (front, back):
+        for i, u in enumerate(row):
+            if u is not None and equip in (u.equips or []):
+                sold = u
+                row[i] = None
+                break
+        if sold is not None:
+            break
+    if sold is None:
+        _mark(False)
+        return ()
+    # ① 配额闩(计数形,序号 = 写入时点「已耗+1」快照,判定只数前缀)。
+    gs.write_logic(gs.strategy_conditional_done,
+                   done + (f'{_PERFECT_RESCUE_LATCH_PREFIX}'
+                           f'{_PERFECT_RESCUE_CARD}#{spent + 1}',),
+                   produced_by=_PERFECT_RESCUE_PRODUCER,
+                   evidence=evidence, sig=sig)
+    # ② 瞬时位置位(消费端两完胜判据行的 hp 持平判定旁路)。
+    _mark(True)
+    # ③ 出售腿(sim 门内状态副本写;live 游戏自执行出售零写观察覆盖)。
+    from sr_od.application.currency_war.sim.cw_sim_ports import (
+        sim_backend_installed,
+    )
+    if sim_backend_installed():
+        # 槽写(定长保持,槽置 None 不移位;禁空列表违定长不变量)
+        gs.write_logic(gs.deployed, DeployedView(front_slots=front,
+                                                 back_slots=back),
+                       produced_by=_PERFECT_RESCUE_PRODUCER,
+                       evidence=f'{evidence}:sell', sig=sig)
+        # 退款金 observe 笔(卖价公式单一源;金面 sim 结算 observe 惯例,
+        # obs 族签名函数内自构——take_strategy_death_save 同款)
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            bench_char_cost,
+            sell_refund,
+        )
+        from sr_od.application.currency_war.sim.cw_sim_base import (
+            obs_sig,
+            sim_evidence,
+        )
+        refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
+                             bench_char_cost(sold, gs))
+        gs.observe(gs.gold, int(gs.gold.value or 0) + refund,
+                   evidence=sim_evidence(
+                       f'strategy_perfect_rescue:gold:{frame}'),
+                   sig=obs_sig(group_id='sim:strategy'))
+        # 装备回收第三笔(sold.equips 非空追加回库存,sell_deployed 上报链
+        # 同构——防 sim 穿戴面激活后徽随救援出售静默消失)
+        if sold.equips:
+            gs.write_logic(gs.equips,
+                           list(gs.equips.value or []) + list(sold.equips),
+                           produced_by=_PERFECT_RESCUE_PRODUCER,
+                           evidence=f'{evidence}:equips:{frame}', sig=sig)
+    return (f'strategy_perfect_rescue:{sold.char_id}',)
 
 
 def deploy_lock_block_reason(gs: GameState, unit: Unit) -> str | None:

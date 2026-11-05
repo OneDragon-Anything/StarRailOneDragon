@@ -750,6 +750,41 @@ frozen 槽位置 None + 装备收集,write_logic_rand 形态);③装备全件走
   叙事角色);招财狗 win 金计数随离场自动回落(佩佩退出合并池,B 案
   恒在场高估分叉消解)。
 
+### 2.24 策略卡完胜判定改写检查分支 check_strategy_perfect_rescue(结算位)
+
+`check_strategy_perfect_rescue(gs, sig) -> tuple[str, ...]`——策略卡
+「视为完美通关」改写通道(首例都是这家伙的错!id 352801,登记表 =
+`cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS` 白名单:键 = 策略规范名,
+值 = (救援徽名, 配额))的单一检查本体。三件套结构(死亡救援同形):
+白名单表 + 本检查函数 + 瞬时位 `settlement_perfect_rescue`(域规格 =
+fields.md §3.5.3b)。挂点序(统一节点推进入口 settle_confirm 分支):
+`check_env_battle_grants` → **本函数(改写)** → `check_env_deploy_lock_
+perfect` → `check_env_item_open_perfect`(消费)——改写先于消费,两完胜
+判据行的 hp 持平判定旁路 consult 瞬时位(True = 损血局亦判完胜,与游戏
+「视为完美通关」对齐,live 主收益;None/False 维持旧判)。
+
+- **判据**(读法 A 默认案 = 救援仅覆盖「胜利∧损血」,与完胜判据机器
+  同构,败局零救援):结算环尾行 killed=True ∧ 相邻两帧 hp_after 差 ≠ 0
+  ∧ deployed 视图任一单位携带徽名 ∧ 配额未耗尽(`strategy_conditional_done`
+  共域计数形键 `perfect_rescue#<卡名>#<已耗序>`,前缀计数 < 配额放行);
+  宁缺勿造同族:环 <2 行/字段 None/killed≠True/deployed 未观察 → 不判定;
+- **成立三笔**:①配额闩追加;②瞬时位写 True(每次判定执行 True/False
+  恒写,无陈值泄漏);③出售腿(sim 门内):deployed 序首个携带者槽置
+  None 定长视图重建写(动态子表直读不经定长 10 截断桥)+ 退款金 observe
+  笔(`sell_refund(star, bench_char_cost(u, gs))` 卖价公式单一源)+
+  装备回收第三笔(sold.equips 非空回库存);**live 出售腿零写**(游戏自
+  执行出售,部署视图刷新/金读数观察承接);
+- **sim 结构性休眠**(设计正确路径勿接线):sim 部署单位 unit.equips 恒空
+  → 徽携带恒假;双重休眠第二独立理由 = sim 结算帧胜利不掉血 →「胜利∧
+  损血」分支结构性不可达 → sim 恒零救援零闩写、瞬时位恒 False → 两完胜
+  判据行为零变化;
+- **写约定**:sig = logic 族(结算分支传入;退款金 observe 笔的 obs 族
+  签名函数内自构,take_strategy_death_save 同款);evidence =
+  `strategy_perfect_rescue:<卡名>`(闩)/`:mark`(瞬时位)/`:sell`(槽写)/
+  `:gold:<帧>`(退款)/`:equips:<帧>`(回收),producer =
+  `strategy_perfect_rescue`;零 rng(判定与出售对象选择全确定);效果串
+  `strategy_perfect_rescue:<出售角色名>` 一条。
+
 ## 3. 枚举回调(在用四枚举;枚举即收敛,无注册表)
 
 回调 = kernel 内枚举函数,**不设注册机构**(用户裁定:函数体内枚举即收敛,新效果

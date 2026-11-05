@@ -2976,7 +2976,10 @@ class GameState:
     # 首领完成固定集一次性标志位,「下个首领」恰一次)+ check_strategy_equip_expiry
     #(节点窗收尾,装备到期消失一次性标志位,fired 非空即封)+ check_strategy_boss_
     # clear_gold(结算位链尾,首领通关价值金一次性标志位,「下一个首领」恰一次,
-    # evidence sim:engine:strategy:boss_clear_value:p<r>)——
+    # evidence sim:engine:strategy:boss_clear_value:p<r>)
+    # + check_strategy_perfect_rescue(结算位 settle_confirm 分支,完胜判定
+    # 改写配额闩,计数形键 perfect_rescue#<卡名>#<已耗序>,前缀计数 <
+    # 配额放行——布尔形会配额>1 部分耗尽误判耗尽,全都要族同禁)——
     # 写端清单单一源 = cw_projection_audit 审计行;
     # 消费 = 各检查实现跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
     # 无删除;「首次」语义——卖出/合成使同名计数回落不回滚已发放,
@@ -3564,6 +3567,29 @@ class GameState:
     # 两值均放行、True 拒绝;live 恒 None(闩 live 零写零消费,双端不对称
     # 申报见 fields.md §3.5.3a))
     strategy_death_save_used: Field[bool] = field(default_factory=Field)
+    # [索引定义] settlement_perfect_rescue = 完胜判定改写瞬时位(策略卡
+    # 「视为完美通关」改写面首例,都是这家伙的错!;载荷单一源 =
+    # cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS)。坐标系 = 当前场
+    # 战斗结算;写频 = 每次 settle_confirm 分支内判定执行各重写一次;
+    # 三态:True = 本场救援改写生效(「胜利∧损血∧徽携带∧配额>0」判据
+    # 成立,判据机器 = 完胜判定正本 combat.md §3 同构读法 A),False =
+    # 判定不成立/不判定(真完胜/败局/环不足两行/字段缺/徽不携带/配额尽),
+    # None = 本局尚无判定执行(开局不种,gs-opening-seed B 类判据同
+    # strategy_death_save_used 先例——种子 False 会把「未判定」伪装成
+    # 「已判定不成立」);写点唯一 = kernel check_strategy_perfect_rescue
+    # (挂 settle_confirm 分支 check_env_battle_grants 调用邻位,先于两
+    # 完胜判据函数——改写先于消费);消费读端 = check_env_deploy_lock_
+    # perfect 与 check_env_item_open_perfect 两完胜判据行的 hp 持平判定
+    # 旁路(True 时损血局亦判完胜 = 模型与游戏「视为完美通关」对齐,live
+    # 主收益;None/False 两值均维持旧判)。双端写:live 判据输入 = 观察面
+    # (结算环 killed/hp_after 结算读链 + deployed unit.equips 备战观察
+    # 填充),判定/配额闩/瞬时位写双端同链;sim 结构性休眠(部署单位
+    # unit.equips 恒空 → 徽携带恒假;双重休眠第二独立理由 = sim 结算帧
+    # 胜利不掉血 →「胜利∧损血」分支结构性不可达)→ sim 恒 False,env
+    # 检查行为零变化。非持久:不落快照(schema/rebuild 零登记——跨节点
+    # 无语义,每次结算重写;恢复局首结算前 None = 旧判同 None 语义)。
+    # 零 rng(判定与出售对象选择全确定,无采样面)。
+    settlement_perfect_rescue: Field[bool] = field(default_factory=Field)
 
     # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;gs_schema 域 'derivation')——
     # 写点准入:上下文对与顶栏原文唯一写点 = ①观察汇聚
@@ -4836,6 +4862,16 @@ def report_node_advance(gs: GameState, *, trigger: str,
             check_env_battle_grants,
         )
         check_env_battle_grants(gs, sig)
+        # 完胜判定改写检查(策略侧首例,都是这家伙的错!):同分支 check_env_
+        # battle_grants 调用邻位——改写先于消费(下方两完胜判据函数 consult
+        # 瞬时位 settlement_perfect_rescue,域规格见该字段注释);判定/配额
+        # 闩/瞬时位写双端同链(判据输入 = 观察面),出售腿 sim 门内 live 零写
+        # (游戏自执行出售,部署视图刷新/金读数观察承接)。惰性 import 同款;
+        # 返回值仅日志面。
+        from sr_od.application.currency_war.kernel.cw_env_grants import (
+            check_strategy_perfect_rescue,
+        )
+        check_strategy_perfect_rescue(gs, sig)
         # 完胜提前检查(T-33 英雄登场):同分支 check_env_battle_grants
         # 调用邻位——完胜属战斗域只挂 settle_confirm 成员(统一节点推进
         # 入口,触发封闭集 = NODE_ADVANCE_TRIGGERS);判据消费结算环帧

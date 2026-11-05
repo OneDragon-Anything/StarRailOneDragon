@@ -166,7 +166,8 @@ class SettlementRing:
         """最近至多两行(时序旧→新,[-1] = 尾行;不足返回实有行)。
         消费面 = 完胜判定相邻帧 hp 差分基准(尾行 killed 判胜、前一行
         hp_after 为本场血量基准;cw_env_grants.check_env_deploy_lock_
-        perfect 单一消费方)。"""
+        perfect / check_env_item_open_perfect 两完胜判据行与 check_
+        strategy_perfect_rescue 完胜改写检查共读口)。"""
         return list(self._rows)[-2:]
 
     def __len__(self) -> int:

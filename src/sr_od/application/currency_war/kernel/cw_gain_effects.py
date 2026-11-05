@@ -2022,6 +2022,18 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 入队 4 节拍;「4个节点后，获得一个【战场进化手册】」延时腿;rand=
     # False 确定发放)。
     '完美进化': _make_delayed_grant_effect('完美进化'),
+    # 都是这家伙的错！ = 获得时点双腿组合登记行(卡文「获得【命运圣杯星徽】
+    # 和10金币」语序直读:徽→金):条目1 徽 = 具名确定发放(rand=False 策略卡
+    # 侧具名条目通道归属,fields.md 分野即终态在册口径;命运圣杯星徽 ∉ 精密
+    # 金面判据映射 gate 恒 None 走纯发放循环);金条目 = STRATEGY_ECONOMY
+    # instant_gold=10 已登记承载,金面禁直写不进效果体;救援腿(「视为完美
+    # 通关」条件改写)系结算时点条件触发非获得时点,另域分治 =
+    # cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS + kernel/cw_env_grants
+    # .check_strategy_perfect_rescue 三件套;登记面 STRATEGY_GRANTS 零登记
+    # (装备腿唯一出现点纪律,控制规模同物同形);不入泛化表防撞键;rng
+    # 零消费。
+    '都是这家伙的错！': _compose_grant_legs(
+        _make_named_equip_grant_effect('命运圣杯星徽', 1)),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支条目由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自

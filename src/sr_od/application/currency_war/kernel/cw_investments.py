@@ -679,6 +679,18 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 载荷单一源 = STRATEGY_DEATH_SAVE_GRANTS 死亡救援触发注册表;本行
     # 全默认 = 估值面无经济通道(救援价值归策略立场域,后继批立项)。
     '藏一手': EconomyEffect(),
+    # 都是这家伙的错!:官方「获得【命运圣杯星徽】和10金币。若未完美通关
+    # 战斗且有携带【命运圣杯星徽】的角色参与战斗，视为完美通关并出售1名
+    # 携带【命运圣杯星徽】的上场角色，可生效3次。」(卡面原文,cw_invest_data
+    # PlazaAugment id 352801,棱彩)。三条效果条目分治:徽腿 = cw_gain_effects
+    # .PICK_INVEST_EFFECTS 组合登记行(具名装备工厂确定发放 rand=False,
+    # 与登记表条目 equips_immediate 的镜像一致性 = 本卡 GRANTS 零登记,
+    # 装备腿唯一出现点纪律,控制规模同物同形);10 金条目 = instant_gold=10
+    # 已登记估值零漂(选卡金发放写端缺口 = instant_gold 族级既有申报);
+    # 救援腿(「视为完美通关」判定改写)载荷单一源 =
+    # STRATEGY_PERFECT_RESCUE_GRANTS 白名单表(结算时点条件改写,消费 =
+    # kernel/cw_env_grants.check_strategy_perfect_rescue)。
+    '都是这家伙的错！': EconomyEffect(instant_gold=10),
     '及时雨': EconomyEffect(free_refresh_burst=4),
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
     '公司严选': EconomyEffect(instant_gold=3, gold_per_plane=3,
@@ -5096,6 +5108,58 @@ STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS: tuple[str, ...] = (
     'death_save_once_assumption',
     'death_save_independent_floor_assumption',
 )
+
+
+# ===== 策略卡完胜判定改写触发注册表(都是这家伙的错！;白名单制)=====
+# 「视为完美通关」改写面策略侧首例,死亡救援三件套同形(白名单表 + kernel
+# 判据族检查函数 + 瞬时位):键 = 策略规范名,值 = (救援徽名, 配额)。
+# 徽名 = 完胜判定改写的携带判据物与出售对象过滤词;配额 = 卡面「可生效3次」
+# 整局次数(每次救援扣 1,拒救/条件不成立不扣,跨位面不重置 = 局级语义,
+# desc 无载按局级直读)。数值单一源在本表;STRATEGY_ECONOMY 注册行只辖
+# 即时金腿,禁复活救援面载荷(防双源,同 STRATEGY_DEATH_SAVE_GRANTS 构建
+# 校验②纪律)。
+# 消费面 = kernel/cw_env_grants.check_strategy_perfect_rescue(触发检查
+# 单一源,唯一调用点 = report_node_advance settle_confirm 分支
+# check_env_battle_grants 调用邻位、先于两完胜判据消费函数——改写先于
+# 消费;出售腿 sim 门内执行,live 零写观察覆盖:出售由游戏自执行,
+# 部署视图刷新/金读数观察承接)。完胜判定机器权威版本 =
+# docs/game/currency_war/research/combat.md §3「完胜 = 胜利 ∧ 本节点未损失
+# 小队生命值」+ fields.md §3.5.3b 瞬时位域规格。
+STRATEGY_PERFECT_RESCUE_GRANTS: dict[str, tuple[str, int]] = {
+    # 都是这家伙的错！(id 352801 原文直读,cw_invest_data.PLAZA_AUGMENTS
+    # 同 id 行):徽名 命运圣杯星徽 / 配额 3(卡面明写)。
+    '都是这家伙的错！': ('命运圣杯星徽', 3),
+}
+
+
+def _validate_strategy_perfect_rescue_grants() -> None:
+    """STRATEGY_PERFECT_RESCUE_GRANTS 构建校验(import 即炸;治理口径 =
+    用户裁定 2026-10-28「只能由写表人笔误触发的校验删,能被游戏版本变更
+    独立触发的漂移哨留」,同 _validate_strategy_death_save_grants docstring
+    ——值形(徽名非空 str/配额 ≥1 int)属手抄常量纯笔误类,不加,对账归
+    评审与本表域测试把关;留两漂移哨):
+
+    ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
+    失联);② 徽名双源:徽名必须在 EQUIPMENTS 且类别 = 星徽族(版本改名/
+    类别调整不静默;零配方非合成件事实不校验,T-219 设计稿 §1.2 已定谳,
+    申报面 = 本 docstring 非运行时哨)。"""
+    orphans = [n for n in STRATEGY_PERFECT_RESCUE_GRANTS
+               if n not in INVESTMENT_STRATEGIES]
+    if orphans:
+        raise ValueError(
+            f"STRATEGY_PERFECT_RESCUE_GRANTS 孤儿键(base 无此卡?):"
+            f"{sorted(orphans)}")
+    for _name, (_equip, _quota) in STRATEGY_PERFECT_RESCUE_GRANTS.items():
+        if _equip not in EQUIPMENTS \
+                or EQUIPMENTS[_equip].category != '星徽':
+            _cat = (EQUIPMENTS[_equip].category if _equip in EQUIPMENTS
+                    else '缺名')
+            raise ValueError(
+                f"STRATEGY_PERFECT_RESCUE_GRANTS 徽名双源({_name!r} "
+                f"徽名 {_equip!r} ∉ EQUIPMENTS 星徽族,现类别 {_cat!r})")
+
+
+_validate_strategy_perfect_rescue_grants()
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====

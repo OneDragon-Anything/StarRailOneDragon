@@ -283,7 +283,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               'rand=False 承载)+ 策略卡首领通关价值金闩(check_strategy_'
               'boss_clear_gold 结算位链尾,纯卡名键,「下一个首领」恰一次,'
               'evidence sim:engine:strategy:boss_clear_value:p<位面>r<轮>'
-              ',金笔 observe 与闩 write_logic 同窗两笔)'),
+              ',金笔 observe 与闩 write_logic 同窗两笔)+ 策略卡完胜判定'
+              '改写配额闩(check_strategy_perfect_rescue 挂 settle_confirm '
+              '分支,计数形键 perfect_rescue#<卡名>#<已耗序>,前缀计数 < '
+              '配额放行(表载配额 3),瞬时位写与闩写同窗相邻,producer '
+              'strategy_perfect_rescue)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'
@@ -608,6 +612,17 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '事件 live 由游戏自算自显(闩 live 零写零消费,双端不对称'
               '申报同族先例),唯一逻辑写端 = cw_gain_chain.'
               'take_strategy_death_save,唯一调用点 = sim 结算折算点'),
+    'settlement_perfect_rescue': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='完胜判定改写瞬时位(都是这家伙的错!;本场结算判定三态 '
+              'True=救援改写生效/False=判定不成立/None=未判定,每次 '
+              'settle_confirm 分支内判定执行各重写,跨节点无语义非持久'
+              '不落快照),无观察读端——判定是模型推算知识(live 判据输入 '
+              '= 结算环与部署观察面);唯一逻辑写端 = cw_env_grants.'
+              'check_strategy_perfect_rescue(挂 settle_confirm 分支'
+              '改写先于消费,双端写;sim 结构性休眠恒 False 零接线申报;'
+              '消费端 = 两完胜判据行 hp 持平判定旁路,域规格 = fields.md '
+              '§3.5.3b)'),
     # —— 派生域与画面上下文 ——
     'prev_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
