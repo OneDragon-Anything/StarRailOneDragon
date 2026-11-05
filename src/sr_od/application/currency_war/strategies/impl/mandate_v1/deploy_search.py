@@ -266,7 +266,7 @@ def selection_score(panel: DeploySearchPanel,
             # 完成度单独承载(b≡1),分母 = core∪shared 总数、分子 =
             # 其在场数(D2-3 修订——羁绊族口径对该线无源,改阵容成员
             # 口径)。
-            members = set(comp.core_chars) | set(comp.shared_chars or ())
+            members = set(comp.members)
             l1_den = max(len(members), 1)
             l1_num = float(len(members & names))
     l1 = (l1_num / l1_den) * _L1_SCALE if l1_den else 0.0
@@ -513,8 +513,7 @@ def search_deploy_target(panel: DeploySearchPanel,
     def _member_names_of(comp: Comp | None) -> frozenset[str]:
         if comp is None:
             return frozenset()
-        return frozenset(set(comp.core_chars)
-                         | set(comp.shared_chars or ()))
+        return frozenset(comp.members)
 
 
     skeletons: list[tuple[tuple[SearchUnit, ...], Comp | None,

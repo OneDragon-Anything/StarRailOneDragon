@@ -399,8 +399,7 @@ def line_members_view(gs: GameState) -> LineMembersView:
     comp = st.target_comp
     if comp is None:
         return LineMembersView(locked=False, comp_name=None, members=())
-    members = tuple(dict.fromkeys(
-        list(comp.core_chars) + list(getattr(comp, 'shared_chars', None) or ())))
+    members = comp.members
     return LineMembersView(locked=True, comp_name=comp.name, members=members)
 
 

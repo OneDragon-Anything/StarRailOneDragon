@@ -1,7 +1,8 @@
 """板面/目标线谓词(目标线 K/零重叠)+ 卖出资格物理谓词。
 
-01_math_framework §2 的在产实现:目标线 K(阵容 的 core/shared/flex
-名单,cw_comps.COMP_LIBRARY 运行时可判定)与零重叠资格。升级触发不落
+目标线 K 的在产实现:终局成员集(core ∪ shared,成员集单一源 =
+cw_comps.Comp.members;口径 = strategy-docs/12_line_and_intention.md
+§2 与 strategy-telemetry `k_members` 行)与零重叠资格。升级触发不落
 本模块——单判据三分派单一源 = criteria/levelup.upgrade_trigger。
 
 (「挂后台效果」资格谓词族 bench_effect_qualified/bench_effect_context
@@ -31,17 +32,12 @@ if TYPE_CHECKING:
 
 
 def line_members(comp: Comp | None) -> tuple[str, ...]:
-    """目标线 K = 阵容 的 core/shared/flex 名单(COMP_LIBRARY 运行时可判定;
-    线内/线外分类的基准,01_math_framework §2「目标线 K」行)。阵容 缺 → 空元组(零重叠全开,
-    fail 方向=可逆面默认做,01_math_framework §5.3)。"""
-    if comp is None:
-        return ()
-    # 线内成员 = core ∪ shared(cw_comps L435:transition_chars 不计——打工后
-    # 卖的,不构成路线;core/shared 是终局成员)。「flex 名单」按 01_math_framework §2 表述
-    # 对应本注册表的 shared+替班语义,不另建第三名单。
-    members: list[str] = list(getattr(comp, 'core_chars', []) or [])
-    members += list(getattr(comp, 'shared_chars', []) or [])
-    return tuple(dict.fromkeys(members))
+    """目标线 K = 阵容 的终局成员集(core ∪ shared,COMP_LIBRARY 运行时
+    可判定;线内/线外分类的基准,strategy-docs/12_line_and_intention.md §2
+    与 strategy-telemetry `k_members` 行)。阵容 缺 → 空元组(零重叠全开,
+    fail 方向=可逆面默认做)。成员集单一源 = Comp.members,本函数只承载
+    None 语义与 strategies 层入口。"""
+    return comp.members if comp is not None else ()
 
 
 def zero_overlap(name: str, k: tuple[str, ...]) -> bool:

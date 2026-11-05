@@ -313,8 +313,7 @@ def assemble_priority_context(
                 log.warning('[cw][priority] 候选线名解析失败(%s),'
                             '跳过该线(档 2/3/4/5/7 名单缺线)', line_name)
                 continue
-            members |= set(c.core_chars)
-            members |= set(getattr(c, 'shared_chars', None) or ())
+            members |= set(c.members)
             # 序数表 = 各线知识卡字段直读,包 (0, 线内序数);跨线成员
             # 取各线最小序数(二元组字典序 min,(0,·) 域内 = 序数最小,
             # core 优先于非 core——与旧「cores 并集命中即 0」等价的

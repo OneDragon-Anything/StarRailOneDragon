@@ -64,7 +64,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     质量判据(零自由参数,两端均机制定义量):
 
     - ``line_weight``(目标线支撑计数)= deployed 非空件中,名字 ∈ 阵容
-      自家核准集(core_chars∪shared_chars——注册表成员名单是结构量:
+      自家核准集(``comp.members``,core∪shared——注册表成员名单是结构量:
       白厄类空羁绊单卡/不死途类视图外 shared 件经此计入支撑,否则
       阵容自家核心被误判线外恒推迟)或全羁绊(CHARACTERS 注册表
       factions∪flows)∩ ``comp.all_factions`` 非空
@@ -92,11 +92,10 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     front, back = deployed_rows_of(gs)
     deployed = [d for d in (*front, *back) if d is not None]
     view = set(getattr(comp, 'all_factions', None) or [])
-    # 自家核准集 = 阵容成员名单(core∪shared),注册表制裁的结构量——
-    # 空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)经此
-    # 计入支撑,防自家核心被误判线外致该线 出战就绪恒推迟。
-    sanctioned = (set(getattr(comp, 'core_chars', None) or [])
-                  | set(getattr(comp, 'shared_chars', None) or []))
+    # 自家核准集 = 阵容成员名单(``comp.members``,core∪shared),注册表
+    # 制裁的结构量——空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)
+    # 经此计入支撑,防自家核心被误判线外致该线 出战就绪恒推迟。
+    sanctioned = set(comp.members)
     line_weight = 0
     for d in deployed:
         name = d.char_id or ''

@@ -254,7 +254,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
     carry = carry_set(comp)
     core_hits = (carry & held_chars) - {anchor}
     skeleton_hits = (set(comp.key_items or ()) & held_chars) - carry
-    members = set(comp.core_chars) | set(comp.shared_chars or ())
+    members = set(comp.members)
     plugin_hits = ((members & held_chars) - carry
                    - set(comp.key_items or ()))
     invest = sum(env_line_bonus(name, comp)

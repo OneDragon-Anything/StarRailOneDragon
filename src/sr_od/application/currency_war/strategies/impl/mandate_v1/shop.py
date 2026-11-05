@@ -885,8 +885,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             _comp_c = get_comp(_cn) if _cn else None
             if _comp_c is None:
                 continue
-            _cand_names |= set(_comp_c.core_chars)
-            _cand_names |= set(getattr(_comp_c, 'shared_chars', None) or ())
+            _cand_names |= set(_comp_c.members)
         obligation_members = tuple(sorted(_cand_names))
         buy_members = obligation_members
     # —— 缺件集口径分域(W5 追星改革;设计 details/shop-buy-reform.md §1)——

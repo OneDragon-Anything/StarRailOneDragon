@@ -80,7 +80,7 @@ def refresh_warranted(state: GameState,
                 held.add(str(u.char_id or ''))
         qualified: list[str] = []
         for comp_name in state_of(state).line_candidates:
-            for m in _candidate_members(comp_name, state):
+            for m in _candidate_members(comp_name):
                 if m in held:
                     continue
                 ch = CHARACTERS.get(m)
@@ -111,32 +111,16 @@ def refresh_warranted(state: GameState,
     return True, ''
 
 
-
-def _comp_members(comp) -> tuple[str, ...]:
-    """线成员(core ∪ shared,注册表序去重——与 line_members_view 同构)。"""
-    return tuple(dict.fromkeys(
-        list(comp.core_chars) + list(getattr(comp, 'shared_chars', None) or ())))
-
-
-def _candidate_members(comp_name: str, state: GameState) -> tuple[str, ...]:
-    """候选线成员解析(未锁窗口消费):注册表线 → core ∪ shared;
-    注册表外线名(过渡内核期的配方对/动态物化产物,get_comp 不可解析)
-    → 回退 ``predicates.line_members(target_comp)`` 现行为等价读——
-    过渡期滞后债同 :func:`session_scope._recompute_line_state` 申报,
-    候选-锁定制内核在产后注册表外名消亡。"""
+def _candidate_members(comp_name: str) -> tuple[str, ...]:
+    """候选线成员解析(未锁窗口消费):注册表线 → 终局成员集
+    (``comp.members``);空名/注册表外线名 → 空元组。注册表外线名
+    回退读 target_comp 分支已删:配方层退役 + 锁定写入口经 get_comp
+    校验后写入(target_comp 恒可解析),回退恒不可达——死代码申报 =
+    comp-readout-unification 批 A。"""
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     comp = get_comp(comp_name) if comp_name else None
     if comp is not None:
-        return _comp_members(comp)
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        state_of,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-        predicates,
-    )
-    target = getattr(state_of(state), 'target_comp', None)
-    if target is not None and target.name == comp_name:
-        return tuple(predicates.line_members(target))
+        return comp.members
     return ()
 
 

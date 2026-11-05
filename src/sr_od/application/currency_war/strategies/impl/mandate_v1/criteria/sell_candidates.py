@@ -208,8 +208,7 @@ def sell_line_membership(gs: GameState) -> frozenset[str]:
                 log.warning('[cw!][sell-cand] 候选线名解析失败(%s),该线成员不入线内集',
                             comp_name)
                 continue
-            names |= set(comp.core_chars)
-            names |= set(getattr(comp, 'shared_chars', None) or ())
+            names |= set(comp.members)
         # 过渡支(未终局锁定帧照常贡献,含位面 2 未终局锁定帧——换轴:
         # 原位面判窗随生命周期挂钩终局锁定事件废除;禁经
         # direction_comp_of 拼名单)。

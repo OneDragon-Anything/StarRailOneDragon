@@ -221,6 +221,16 @@ class Comp:
         return (set(self.factions) | set(self.bonus_faction_reqs)
                 | set(self.flex_factions))
 
+    @property
+    def members(self) -> tuple[str, ...]:
+        """终局成员集：core ∪ shared，注册表声明序去重（core 位在前）；
+        transition_chars 不计（打工后卖，不构成终局成员）。
+        消费语义锚 = strategy-docs/12_line_and_intention.md §2（line_members_view
+        读口/禁第二读口径）与 strategy-telemetry `k_members` 行（锁定帧语义）。
+        集合消费写 ``set(comp.members)``；序 = 注册表声明序（截断/排序 tie-break 消费）。"""
+        return tuple(dict.fromkeys(tuple(self.core_chars)
+                                   + tuple(self.shared_chars)))
+
 
 #: char_positions 合法值域(排级两值 + 槽位级;@n = board_index 全局坐标)
 _VALID_CHAR_POSITIONS: frozenset[str] = frozenset({'front', 'back'}) | {

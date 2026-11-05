@@ -3272,7 +3272,7 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
     - 阵营分支:绑定阵营直接入集;
     - 角色入账分支 ch 两源:① ``CHARACTERS[ch].factions`` **全集**入集(多阵营
       角色全展开,用户裁定「从角色去关联对应的阵容」,如丹恒·饮月 =
-      仙舟/列车同行);② 成员分支:ch ∈ Comp.core_chars ∪ shared_chars 的
+      仙舟/列车同行);② 成员分支:ch ∈ Comp.members(终局成员集)的
       线,该线 factions 全集入集——角色是某线登记成员 = 卡服务该线
       (装备党绑飞霄、飞霄是追击飞霄线 core 首席,该卡必须对锁定追击
       飞霄帧判兼容)。
@@ -3287,12 +3287,15 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     bound_facs, bound_chars = bind
     out: set[str] = set(bound_facs)
+    # members 外提一次:property 无缓存,内联在双层循环里会每角色 ×
+    # 每套重算并集
+    lib_members = [(comp, comp.members) for comp in COMP_LIBRARY]
     for ch in bound_chars:
         chd = CHARACTERS.get(ch)
         if chd is not None:
             out |= set(chd.factions)
-        for comp in COMP_LIBRARY:
-            if ch in comp.core_chars or ch in comp.shared_chars:
+        for comp, members in lib_members:
+            if ch in members:
                 out |= set(comp.factions)
     return frozenset(out)
 

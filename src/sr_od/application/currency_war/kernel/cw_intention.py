@@ -581,13 +581,13 @@ def update_transition_candidates(gs: GameState, ist: IntentionState,
 def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     """意向线囤货采购集(目标件定义节 class2 口径的落地):
 
-    角色件 = core_chars ∪ shared_chars(替班者已并入成员名单承载)
+    角色件 = 终局成员集(``comp.members``;替班者已并入成员名单承载)
     ∪ 羁绊成员(档 0 ∪ 档 ≥1
     键阵营下的注册表成员——统一读口 core/bonus_faction_reqs);装备件 =
     derive_key_equips(到人配方投影)− equip_taboos
     (具名禁忌;类级禁忌如「护盾件(类)」由买侧/装备层消费,本层不展开)。
     """
-    chars = set(comp.core_chars) | set(comp.shared_chars)
+    chars = set(comp.members)
     factions = set(comp.core_faction_reqs) | set(comp.bonus_faction_reqs)
     if factions:
         for name, c in CHARACTERS.items():
@@ -665,8 +665,7 @@ def hoard_target_set(gs: GameState, ist: IntentionState,
         for name in (getattr(st, 'line_candidates', None) or ()):
             c = get_comp(str(name))
             if c is not None:
-                chars |= set(c.core_chars)
-                chars |= set(getattr(c, 'shared_chars', None) or ())
+                chars |= set(c.members)
     if chars:
         return HoardTarget(frozenset(chars), frozenset(), 'p1_pair')
     # 候选槽为空的回退:过渡库见即买并集(§3)
@@ -851,7 +850,7 @@ def locked_buy_membership(ist: IntentionState | None,
     if comp is not None:
         chars, _equips = _line_hoard(comp)
         scope |= chars
-        core_shared = set(comp.core_chars) | set(comp.shared_chars)
+        core_shared = set(comp.members)
     if not scope:
         return None
     if cap_hold is not None and len(scope) > cap_hold:
