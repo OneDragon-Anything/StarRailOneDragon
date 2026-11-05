@@ -42,7 +42,9 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
 
 # —— 体系键与成员集(原 kernel/cw_intention)——
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
-#: 的希儿系哨兵同口径)。
+#: 的希儿系哨兵同口径)。独立观测消费锚点:telemetry/schema.py 经顶部
+#: import 收进 RHO_SYSTEM_KEYS(ρ 实测观测面的第四体系键,rho_shop_obs
+#: 每帧消费)——阵容库侧 OR 折法机器已退役不影响本键,勿按孤儿清理。
 SEELE_SYSTEM: str = '希儿系'
 
 

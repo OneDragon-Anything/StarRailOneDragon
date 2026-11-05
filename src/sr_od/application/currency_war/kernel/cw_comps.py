@@ -116,23 +116,10 @@ class Comp:
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
 
-    # 两字段缺省空 = 行为不变。or_reqs 现行写方已清零(过渡库旧「希儿
-    # 引擎」随 or-reqs-retirement 3.2 组合制退役;字段与 OR 折法机器删除
-    # 归 3.3);required_deployed 写方 = 终局条目直写(希儿量子)与过渡
-    # 组合条目生成期显式填(_build_transition_combos)。判定/进度唯一折法 = ``form_progress``
-    # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
-    # (判据单一源契约)。
-    or_reqs: list[tuple[str, int]] = field(default_factory=list)
-    """OR 分支(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
-    「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
-    行;combo_methodology.md:133)。空 = 无 OR 分支(纯 AND)。进度折法:OR 组
-    折叠为一条虚拟分支,分支值 = 组内各分支进度 max(取最好分支非均值,「任一即成」
-    的进度语义;换最好分支只单调抬升无重置)。**OR 组承接同键档位**:键出现在
-    本字段的 ``faction_reqs`` 档 0 档位不入 AND 账(该键成型语义归 OR 组;档位值
-    保留作线键/完全体账单结构载体——囤货采购集羁绊展开、晋升候选键面交集、
-    换线距离账等结构消费读档 0 键面,清空即残)。禁把 OR 分支当 AND
-    写进档 0 计账(键侧 AND 语义会把 OR 塌回 AND 全档——前置命题
-    病灶本体)。"""
+    # required_deployed 缺省空 = 行为不变。写方 = 终局条目直写(希儿量子)
+    # 与过渡组合条目生成期显式填(_build_transition_combos)。判定/进度
+    # 唯一折法 = ``form_progress``(单一源契约 fp=1.0 ⟺ 成型谓词),禁
+    # 消费位绕过自写内联判定(判据单一源契约)。
     required_deployed: tuple[str, ...] = ()
     """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
     成型判据第一合取支「希儿在场」(transition_combos.md:27)。空 = 无
@@ -202,16 +189,6 @@ class Comp:
                     raise ValueError(
                         f'{self.name}: faction_reqs[{prio}][{bond!r}] '
                         f'= {need!r} 须为正整数(几人激活算达标)')
-        # ③ OR 承接键 ⊆ 档 0 键集(承接组 = 档 0 成型判据的「任一支
-        # 即达」形态,键必须在成型层有账——comp-structure-unification
-        # 3.3 落地;冲突源 pair_target_comp〔构造或键不在档 0 的伪阵容〕
-        # 已随配方决策层退役)
-        _or_keys = {k for k, _t in self.or_reqs}
-        _stray = _or_keys - set(self.faction_reqs.get(0, {}))
-        if _stray:
-            raise ValueError(
-                f'{self.name}: or_reqs 键 {sorted(_stray)} 不在档 0 '
-                '键集(承接键必须在成型层有账)')
 
     @property
     def core_faction_reqs(self) -> dict[str, int]:
@@ -365,26 +342,6 @@ V2_FAMILIES: tuple[str, ...] = (
     "万敌燃血", "希儿量子", "DOT卡芙卡", "姬子列车", "黄泉减益",
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
 )
-
-# ===== 希儿系成型判据常量(注册表数据层;唯一消费点 = 旧过渡条目
-# 「希儿引擎」,已随 or-reqs-retirement 3.2 组合制退役——现行零消费,
-# 常量与 OR 机器删除归 3.3)=====
-# 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
-# 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
-# :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
-# methodology.md:133/170 写量 3)挂玩家确认(同一待办口径,不由
-# 实现批裁决),确认后改档动本常量(消费位随 import 自动跟随)。
-# (原「另须同步 _seele_system_support ÷2 分母」第三表面已随配方决策层
-#  退役删除——支持度端口消亡,分母同步面不复存在;comp-structure-
-#  unification 3.3。)
-# carry = 同表行第一合取支「希儿在场」。
-# ⚠️ 单一源归属声明:真源归位本文件(注册表数据层——过渡
-# 条目在 import 期消费,常量若留 cw_intention 会反向 import 成环)。
-# cw_intention 经顶部 import 消费本常量(re-import 别名,其形态端口注
-# 「禁再写本地第二份」),单一源接入调用由测试仓接入调用守卫钉死(对象身份 `is`,
-# 本地第二份复发即红)。
-SEELE_OR_REQS: tuple[tuple[str, int], ...] = (('量子同频', 2), ('贝洛伯格', 2))
-SEELE_CARRY_CHAR: str = '希儿'
 
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====
@@ -1295,57 +1252,35 @@ def _owned_chars(gs: GameState) -> set[str]:
 
 
 def form_progress(comp: Comp, gs: GameState) -> float:
-    """成型度 0..1:档 0 各核心羁绊进度的均值(min(board,目标)/目标)。
+    """成型度 0..1:档 0 各羁绊进度的均值 + required 逐名 0/1 折条的均值。
 
-    10 的 helper(comp_viability 先验用);纯阵营羁绊,不含角色(避免与 char_quality 三重计分)。
+    comp_viability 先验用的 helper;纯阵营羁绊,不含角色(避免与 char_quality 三重计分)。
     入参 = 状态容器视图(决策面切统一状态容器;假想面板轻量桩只需提供
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
-    OR 分支与 carry 条件折法(OR 组承接键;
-    本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「档 0 未被承接档
-    全档 ∧ or_reqs 组任一满 ∧ required_deployed 全在板」的单一源契约):
-    - ``or_reqs`` 非空 → 折为**一条**虚拟分支,分支值 = 组内各分支进度的 max
-      (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
-      最好分支非均值);
-    - **承接规则**:档 0 中与 OR 分支**同键**的档位
-      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——旧过渡条目
-      「希儿引擎」档 0={量2,贝2} 全被 ``SEELE_OR_REQS`` 承接的形态已随
-      or-reqs-retirement 3.2 组合制退役,现行库零 OR 键承接;规则保留至
-      3.3 机器删除;pair 伪阵容两键集恒不相交,本规则对其逐位
-      零差)。档位值保留的用途见 ``Comp.or_reqs`` 注;
-    - ``required_deployed`` 逐名折一条 0/1 虚拟分支(在板=1;入参无
-      deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
-    两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
-    旧序列化载体两态按「无 OR/carry 条件」解释,与空字段同值,不炸)。
+    单一源契约:fp = 1.0 ⟺ 档 0 全键达标 ∧ required_deployed 全在板。
+    档 1 不进(加分层归部署次层/采购面)。``required_deployed`` 逐名折
+    一条 0/1 虚拟分支(在板=1;入参无 deployed 视图(轻量假想面板)
+    按 0 计 = 保守向,缺读≠满成),并经 ``getattr`` 缺省空读(真实 Comp
+    恒有字段;测试鸭型桩与旧序列化载体按「无 carry 条件」解释,与空
+    字段同值,不炸)。
     档 0 空(非羁绊成型阵容,如反甲白厄)→ fp 恒 0(装备流走轮数兜底)。
     禁消费位绕过本函数自写 min(board,tier)≥tier 内联成型判定
     (判据双源;内联位清单与取代声明)。
     """
     core = comp.core_faction_reqs
-    if (not core
-            and not getattr(comp, 'or_reqs', None)
-            and not getattr(comp, 'required_deployed', None)):
+    required = getattr(comp, 'required_deployed', None) or ()
+    if not core and not required:
         return 0.0
-    or_reqs = getattr(comp, 'or_reqs', None) or []
-    or_owned = {f for f, _t in or_reqs}   # OR 组承接键(同键档位免 AND 账)
     _board = getattr(gs, 'board', None)
     board = getattr(_board, 'value', None) or {}
     total = 0.0
     n = 0
     for f, tier in core.items():
-        if tier <= 0 or f in or_owned:
+        if tier <= 0:
             continue
         total += min(board.get(f, 0), tier) / tier
         n += 1
-    if or_reqs:
-        best = 0.0
-        for f, tier in or_reqs:
-            if tier <= 0:
-                continue
-            best = max(best, min(board.get(f, 0), tier) / tier)
-        total += best
-        n += 1
-    required = getattr(comp, 'required_deployed', None) or ()
     if required:
         # 席位经状态容器视图读(无该属性 = 轻量假想面板,按 0 计保守向;
         # 行域合卷为 deployed 单字段,鸭型位同名)
@@ -1357,7 +1292,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
             for u in (*(u for u in (_front or ()) if u is not None),
                       *(u for u in (_back or ()) if u is not None))
             if getattr(u, 'char_id', None)}
-        for name in comp.required_deployed:
+        for name in required:
             total += 1.0 if name in deployed_names else 0.0
             n += 1
     if n == 0:

@@ -22,16 +22,14 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
   申报——DP 候选生成 + 终评全量评分的正确性结构):线内件优先占席
   (D8-3)+ 分组单位序贪心 + 组取舍变体 + **分组背包 DP 联合分配**
   (跨组增益捕获:多组部分凑档形态贪心序与单组变体覆盖不到,DP 按
-  组值增量背包取优;相位枚举 D7-3——锁定窗过渡组 ×4/×1 两相位
-  各一套候选,段 3 终评按板面实测 L1 定相位);
+  组值增量背包取优);
 - 段 3 评分取优:全候选板按 §1 评分函数**全量终评**(DP 组分只是
   候选生成内部度量,段 3 重算,单归属近似不影响终评正确性)→
   最高分组内排分配 → (站位分, 稳定键, 随机尾键) 定序取一。
 
 评分层结构(§1,数值制):L1 主目标羁绊(10⁹ 域,f = 角色完成度 ×
 档位完成度乘法合成)> L2 锁定非核心加分层(bonus_faction_reqs,10⁶ 域,仅锁定窗)>
-L3 普通(计数制,buff/debuff ×3 > 万金油 ×2 > 其他 ×1;过渡档
-保板相位 ×4,锁定线第一档成型回落 ×1)。一键单归属、取当前评估
+L3 普通(计数制,buff/debuff ×3 > 万金油 ×2 > 其他 ×1)。一键单归属、取当前评估
 上下文最高层。金币维零交互(CW 部署免费——用户裁定 2026-10-30
 三,核查过非漏项)。
 
@@ -84,14 +82,6 @@ _L2_SCALE: float = 1_000_000.0        # L2 锁定非核心满分域(仅锁定窗
 _L3_BUFF_DEBUFF: int = 3
 _L3_UNIVERSAL: int = 2
 _L3_OTHER: int = 1
-#: 保板相位过渡档系数(锁定窗 ∧ 锁定线 L1=0 期间,过渡体系已成档
-#: ×4 临时压过 buff/debuff——锁定线第一档成型即回落 ×1,§1 分值表)
-_L3_TRANSITION_KEEP: int = 4
-
-#: 希儿系激活件数(单卡体系权重 = 激活所需件数:希儿 1 + 放大器 2
-#: = 3,§1 层内聚合补定义)
-_SEELE_ACTIVATION_PIECES: int = 3
-_SEELE_SYSTEM_KEY: str = '希儿系'
 
 
 @dataclass(frozen=True)
@@ -203,49 +193,11 @@ def _tag_counts(units: list[SearchUnit],
 
 
 def _line_form_tier_groups(comp: Comp | None) -> tuple[tuple[str, ...], ...]:
-    """线的 L1 键组:档 0 键 + OR 承接组(or_reqs = **单组**
-    [(键, 档)] 对列表——组内任一支达成即满,整组折一条虚拟羁绊族键,
-    不逐支重复圈,§2 段 1)。"""
+    """线的 L1 键组:档 0 每键一组(终局候选/终局锁定/过渡条目同构,
+    §2 段 1)。"""
     if comp is None:
         return ()
-    groups: list[tuple[str, ...]] = []
-    or_keys: set[str] = set()
-    if comp.or_reqs:
-        keys = tuple(dict.fromkeys(k for k, _t in comp.or_reqs))
-        groups.append(keys)
-        or_keys.update(keys)
-    for k in comp.core_faction_reqs:
-        if k not in or_keys:
-            groups.append((k,))
-    return tuple(groups)
-
-
-def _or_group_target(comp: Comp, group: tuple[str, ...]) -> int:
-    """OR 承接组目标人数(组内支目标 max——「圈人档位形态索引按
-    最优支的档序」同构,§1 层内聚合)。"""
-    or_map = dict(comp.or_reqs or ())
-    best = 0
-    for k in group:
-        if k in or_map:
-            best = max(best, int(or_map[k]))
-        best = max(best, int(comp.core_faction_reqs.get(k, 0)))
-    return best
-
-
-def _or_keys_of(comp: Comp | None) -> frozenset[str]:
-    """线的 OR 承接组键集(or_reqs = 单组 [(键,档)] 对列表)。"""
-    if comp is None or not comp.or_reqs:
-        return frozenset()
-    return frozenset(k for k, _t in comp.or_reqs)
-
-
-def _seele_formed(names: set[str],
-                  counts: dict[str, int]) -> bool:
-    """希儿系二元(希儿在场 ∧ 放大器 ≥2,量子同频 ∨ 贝洛伯格任一
-    ——对齐现役 kernel seele_system_formed 同一判据)。"""
-    return ('希儿' in names
-            and (counts.get('量子同频', 0) >= 2
-                 or counts.get('贝洛伯格', 0) >= 2))
+    return tuple((k,) for k in comp.core_faction_reqs)
 
 
 def selection_score(panel: DeploySearchPanel,
@@ -259,11 +211,11 @@ def selection_score(panel: DeploySearchPanel,
 
     返回 (L1, L2, L3) 三层分数(层间数量级隔离,调用方字典序承载):
     - L1 = 加权平均 of f(角色完成度 × 档位完成度)× 10⁹,权重 = 目标
-      档激活人数;分族分支(单卡希儿系二元/过渡二元退化/空羁绊线
-      core∪shared 口径/required 逐名折条)见函数体;
+      档激活人数;分族分支(空羁绊线 core∪shared 口径/required 逐名
+      折条)见函数体;
     - L2 = 加分层档位完成度加权平均 × 10⁶(仅锁定窗;键集 = 仅
       ``bonus_faction_reqs``——flex_factions 恒 L3,D3-1);
-    - L3 = 计数制单位序(羁绊键按已达档、万金油/希儿系按件/二元)。
+    - L3 = 计数制单位序(羁绊键按已达档、万金油按件)。
     """
     counts = _tag_counts(units, tag_cache)
     names = {u.char_id for u in units}
@@ -282,8 +234,8 @@ def selection_score(panel: DeploySearchPanel,
         if comp is not None:
             groups = _line_form_tier_groups(comp)
         else:
-            # 裸键组(无 Comp 上下文;希儿系二元判定面保留——过渡条目
-            # 与终局线均以 Comp 入枚举,生产不再产裸键)。
+            # 裸键组(无 Comp 上下文;生产不再产裸键——过渡条目
+            # 与终局线均以 Comp 入枚举)。
             groups = tuple((k,) for k in line_keys)
     if comp is not None or groups:
         required = tuple(comp.required_deployed or ()) \
@@ -292,26 +244,13 @@ def selection_score(panel: DeploySearchPanel,
             l1_den = 1   # required 逐名折条:缺名 → 该线 L1 = 0
         elif groups:
             for group in groups:
-                # OR 承接组 = 组内取最优可达支(max)计完成度。
                 best_f = 0.0
                 best_w = 1
                 for k in group:
-                    if k == _SEELE_SYSTEM_KEY:
-                        w = _SEELE_ACTIVATION_PIECES
-                        formed = 1.0 if _seele_formed(names, counts) else 0.0
-                        amp = (counts.get('量子同频', 0)
-                               + counts.get('贝洛伯格', 0))
-                        char_done = min(amp / 2.0, 1.0) \
-                            if '希儿' in names else 0.0
-                        f = formed * char_done
-                    elif comp is not None and (
-                            k in comp.core_faction_reqs
-                            or k in _or_keys_of(comp)):
+                    if comp is not None and k in comp.core_faction_reqs:
                         # Comp 条目键(终局候选/终局锁定/过渡条目同构:
-                        # 档位完成度经注册表档序;OR 承接组取组目标)。
-                        head = _or_group_target(comp, group) \
-                            if k in _or_keys_of(comp) \
-                            else int(comp.core_faction_reqs.get(k, 1))
+                        # 档位完成度经注册表档序)。
+                        head = int(comp.core_faction_reqs.get(k, 1))
                         w = max(head, 1)
                         tier_target = _fallback_tier_index(k, head)
                         ach = _achieved_tiers(k, counts.get(k, 0))
@@ -356,7 +295,6 @@ def selection_score(panel: DeploySearchPanel,
     l2_key_set: set[str] = set(
         panel.locked_comp.bonus_faction_reqs if locked
         and panel.locked_comp is not None else ())
-    board_l1_zero = l1 <= 0.0
     l3 = 0
     for bond, cnt in counts.items():
         if bond in l1_key_set or bond in l2_key_set:
@@ -365,7 +303,7 @@ def selection_score(panel: DeploySearchPanel,
         if ach <= 0:
             continue
         # (过渡羁绊档条件两态系数随 TRANSITION_TRAITS 消费分支删除
-        # —— 过渡羁绊按普通羁绊归属;希儿系二元 L3 分支保留见下。)
+        #  —— 过渡羁绊按普通羁绊归属。)
         coef = (_L3_BUFF_DEBUFF if bond in TIER7_BOND_NAMES
                 else _L3_OTHER)
         l3 += ach * coef
@@ -373,11 +311,6 @@ def selection_score(panel: DeploySearchPanel,
     for u in units:
         if u.char_id in CROSS_LINE_KEEP_NAMES:
             l3 += _L3_UNIVERSAL
-    # 希儿系成型非 L1 键时按 1 档计(DF-2 二元;系数 = 同键态)。
-    if _SEELE_SYSTEM_KEY not in l1_key_set \
-            and _seele_formed(names, counts):
-        l3 += (_L3_TRANSITION_KEEP if locked and board_l1_zero
-               else _L3_OTHER)
     return l1, l2, l3
 
 
@@ -408,9 +341,6 @@ def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
     if not keys:
         cuts.update(range(len(pool) + 1))
     for k in keys:
-        if k == _SEELE_SYSTEM_KEY:
-            cuts.update({1, 2, 3})
-            continue
         tiers = FACTIONS[k].tiers if k in FACTIONS else ()
         for t in tiers:
             if t <= len(pool):
@@ -680,17 +610,14 @@ def search_deploy_target(panel: DeploySearchPanel,
                  line_keys: tuple[str, ...]) -> list[list[SearchUnit]]:
         """分组背包 DP 补人候选(§2 段 2 设计基线的组间联合形态;unified-
         deploy-order §2 段 2——骨架 + 线内件优先占席(D8-3)后,剩余席位
-        按「羁绊分组 + 万金油/希儿系特组」背包联合分配):补贪心序与单组
+        按「羁绊分组 + 万金油特组」背包联合分配):补贪心序与单组
         变体都覆盖不到的**多组部分凑档**形态(跨组增益捕获——两组各差
         1-2 件成档时,贪心全局序可能交错取件致两组成档皆失,单组变体只
         保一组;DP 按组值增量联合取优)。
 
         近似口径(与设计 §2 段 2 近似申报同款,终评兜底):组值 = 组键
         已达档增量 × L3 系数(首标签归属单键计,件次标签贡献不可见——
-        段 3 全量终评兜底);万金油组按件 ×2;希儿系二元不设特组——其
-        成型板由段 1 骨架枚举承载(P1 过渡对含希儿系键),放大器件按
-        阵营组归 DP,值差归段 3;相位枚举 D7-3——锁定窗过渡组 ×4/×1
-        两相位各跑一遍,终评实测 L1 定相位。
+        段 3 全量终评兜底);万金油组按件 ×2。
 
         组内选件序 = _unit_sort_key(贡献量分档 → 排偏好 → 稳定键 →
         名字序,D9-4/D6-6);DP 取优后剩余席位按同序 value-中性垫满
@@ -719,7 +646,7 @@ def search_deploy_target(panel: DeploySearchPanel,
         # 组值只读组键计数,基线计数含骨架+线内件全部标签)。
         base_units = [*skel, *inline]
         base_counts = _tag_counts(base_units, tag_cache)
-        # 分组(首羁绊标签归属;万金油特组按件;希儿系特组二元)。
+        # 分组(首羁绊标签归属;万金油特组按件)。
         groups: dict[str, list[SearchUnit]] = {}
         for u in rest2:
             if u.char_id in CROSS_LINE_KEEP_NAMES:

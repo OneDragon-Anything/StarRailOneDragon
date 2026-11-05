@@ -19,7 +19,7 @@
 在场时另走证据分量,与通道分无冲突)。
 
 **加分目标线**(design §3.1):通道②③④⑤按羁绊命中——羁绊 ∈ 目标线
-档 0/``or_reqs`` 键 = 全档;仅 ∈ 档 ≥1(加分层)或 ``flex_factions``
+档 0 键 = 全档;仅 ∈ 档 ≥1(加分层)或 ``flex_factions``
 = 降档(强→+30 软档/中→0);未命中 0。``EVIDENCE_UPGRADE``/``DEFINING_CARDS``
 为点名登记(线名直指,不走羁绊命中,不降档)。
 (加分层键降档 = 副档语义修正①——comp-structure-unification 3.1:
@@ -162,15 +162,14 @@ _EMBLEM_PATTERN = re.compile(r'【(.{1,8}?)星徽】')
 def _faction_hit_bonus(faction: str, tier: int, comp) -> int:
     """羁绊命中档判定(design §3.1「加分目标」):
 
-    - ``faction`` ∈ 目标线档 0/``or_reqs`` 键 → 全档值;
+    - ``faction`` ∈ 目标线档 0 键 → 全档值;
     - 仅 ∈ 档 ≥1(加分层)或 ``flex_factions`` → 降档
       (强档 → 软档 +30/中档 → 0);
     - 未命中 → 0(通用卡)。
     """
     if not faction:
         return 0
-    core_keys = set(comp.core_faction_reqs) \
-        | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
+    core_keys = set(comp.core_faction_reqs)
     if faction in core_keys:
         return tier
     if faction in comp.bonus_faction_reqs \
@@ -253,7 +252,7 @@ def env_line_bonuses(env_name: str) -> dict[str, int]:
 
 
 def env_strong_lines(env_name: str) -> tuple[str, ...]:
-    """环境名 → **全档命中**线名元组(羁绊 ∈ 线档 0/or_reqs;降档
+    """环境名 → **全档命中**线名元组(羁绊 ∈ 线档 0;降档
     弱关联线不入——加分层与 flex 同为弱关联,不构成「为谁服务」面)。
 
     消费 = 阵容冲突护栏指向集(``cw_investments.env_faction_scope`` 通道
@@ -268,9 +267,7 @@ def env_strong_lines(env_name: str) -> tuple[str, ...]:
         return ()
     out: list[str] = []
     for comp in COMP_LIBRARY:
-        core_keys = set(comp.core_faction_reqs) \
-            | {f for f, _t in (getattr(comp, 'or_reqs', None) or ())}
-        if e.faction in core_keys:
+        if e.faction in set(comp.core_faction_reqs):
             out.append(comp.name)
     return tuple(out)
 
