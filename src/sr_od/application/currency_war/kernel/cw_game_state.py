@@ -201,8 +201,10 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                             # 合卷为 deployed 单字段(状态容器合并,
                             # 空槽 None 显式、位置 = 子表下标派生);版本 1 = 紧凑行域两字段)
     'economy': 1,           # gold/level/xp/streak/hp/level_up_cost(§3.2.9-§3.2.13)
-    'match_facts': 6,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
-                            # (§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 6 = 新增
+    'match_facts': 7,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/定时道具队列/board
+                            # (§3.1/§3.2.6/§3.2.14/§3.2.20;域版本 7 = 新增
+                            # yingyue_cost_tier 飞光·映月策略赋予型景元当前
+                            # 费用档;域版本 6 = 新增
                             # pending_item_grants 定时道具发放队列;域版本 5 =
                             # 恢复局旗标 resumed_match 已停用删除(零逻辑消费,勿复活);
                             # 域版本 4 = 新增 lv999_cost_tier 银狼LV.999 当前费用档;域版本 3 =
@@ -3538,6 +3540,18 @@ class GameState:
     # cw_economy.effective_cost;未观察(None)= 未触发任何变换,语义档 =
     # 起始 3 费。同名即同档——全场同档,无 per-unit 维度。
     lv999_cost_tier: Field[int] = field(default_factory=Field)
+
+    # 飞光·映月策略赋予型景元当前费用档(卡文「【镜流】2星时,【景元】变为
+    # 3费;【镜流】3星时,【景元】变为你认识的5费【景元】」),值域 {1,3,5};
+    # 纯逻辑态:无观察写端;写端 = 策略卡效果体拿卡拍初始写 1(同上组
+    # 特殊规则演化状态域)+ cw_env_grants.check_env_merge_grants 合并升星
+    # 入口升星拍(镜流 2★→3 / 3★→5,只升不降);读口唯一 =
+    # cw_economy.effective_cost;未观察(None)= 未拿卡,景元语义档 =
+    # 注册表起始 5 费。同名即同档——全场同档(含商店在架卡),无 per-unit
+    # 维度。与 lv999_cost_tier 双字段分野:角色互斥(景元 vs 银狼LV.999)、
+    # 值域 {1,3,5} vs {3,4,5}、写端族不同(策略卡效果体/合并升星入口 vs
+    # 动作报告升费/上阵分支),后继读档点禁误并两字段。
+    yingyue_cost_tier: Field[int] = field(default_factory=Field)
 
     # —— 结算(战斗后真值覆盖的数据源)——
     settlement: Field[Settlement | None] = field(default_factory=Field)

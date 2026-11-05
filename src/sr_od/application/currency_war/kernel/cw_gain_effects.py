@@ -1150,6 +1150,29 @@ def _make_ore_open_pick_effect(count: int) -> Callable[..., list[str]]:
     return _effect
 
 
+def _make_yingyue_tier_init_leg() -> Callable[..., list[str]]:
+    """飞光·映月拿卡拍费用档初始写腿(值 1 = 特殊1费景元起始档;档载体 =
+    ``gs.yingyue_cost_tier``,读口唯一 = ``cw_economy.effective_cost``,
+    升星拍挂 = ``cw_env_grants.check_env_merge_grants`` 入口——升星
+    事件全域单一收口,本腿只管拿卡拍,禁另起平行写端)。
+
+    签名沿现役效果体 ``(gs, *, sig, rng)``;``rng`` 不消费(确定写,
+    零采样面)。腿序 = 组合行首位(先于两条发放腿):发放自身可触发
+    合成级联(场上存量镜流凑三经合并升星入口写档),拿卡拍后置会被
+    初始值 1 覆盖升星结果——初始写前置 = 「已拿卡」标记先落,随后
+    升星事件单调推进(档字段 None = 未拿卡的单义化依赖本拍)。
+    效果串 ``pick_invest_yingyue_tier`` 一条(前缀独立分域,审计可过滤)。"""
+
+    def _effect(gs: GameState, *, sig: ChannelSig,
+                rng: random.Random) -> list[str]:
+        _ = rng   # 确定写,零采样面(rng 形参沿注册表分派契约保留)
+        gs.write_logic(gs.yingyue_cost_tier, 1, produced_by=_PRODUCER,
+                       evidence='pick_invest_yingyue_tier', sig=sig)
+        return ['pick_invest_yingyue_tier']
+
+    return _effect
+
+
 PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '骇客专家:银狼': _apply_effect_hacker_wolf,
     **{name: _make_box_grant_effect(item)
@@ -1391,6 +1414,20 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     '及时雨': _compose_grant_legs(
         _make_random_star_char_effect(4, 2, count=3),
         _make_named_equip_grant_effect('完美投影仪', 1)),
+
+    # 飞光·映月 = 三条效果条目组合登记行(卡文「获得【镜流】和特殊的1费
+    # 【景元】，他们获得【师徒】羁绊。【镜流】2星时，【景元】变为3费。
+    # 【镜流】3星时，【景元】变为你认识的5费【景元】」):腿1 = 拿卡拍
+    # 费用档初始写 1(特殊景元起始档,读口唯一 = effective_cost);腿2/3 =
+    # char_grant 双具名确定发放(卡文语序镜流→景元,1★ 先验家族口径;
+    # 特殊景元按名归并 = 全场同名同档模型,无独立身份条目);师徒羁绊腿
+    # 零建模(非注册羁绊无运行时载体,FACTIONS 零条目);腿1 前置于发放腿
+    # 的理由见 _make_yingyue_tier_init_leg docstring。登记面镜像 =
+    # cw_investments.STRATEGY_GRANTS 同卡 chars_immediate 行(组合行零触碰)。
+    '飞光·映月': _compose_grant_legs(
+        _make_yingyue_tier_init_leg(),
+        _make_char_grant_effect('镜流'),
+        _make_char_grant_effect('景元')),
 
     # 临时工合约 = 具名装备授予单行(卡文「获得8个【员工投影仪】」;
     # 武装突入 = 双箱组合登记行(卡文「遭遇节点的奖励变为2倍。获得2个

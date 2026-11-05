@@ -551,7 +551,30 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
       拒落/留证语义,本函数不另设闸;
     - 递归安全:发放物(符玄/希儿)不在触发集,发放角色自身若再合并
       升星,其 facts 过滤后零发放,链天然终止(无环,不设额外闸)。
+
+    **职责扩面申报(飞光·映月费用档升星写端驻入)**:本函数现语义在
+    env 条件发放之外兼挂策略卡费用档写端——挂点 = 本函数入口(条件
+    矩阵之前),依据 = 合并升星事件全域单一收口:现役四发火点(买牌
+    上报/获得链/入席桥/晶矿角色奖励)与后继任何新发火点经此函数即被
+    结构性全覆盖,防逐域内联漏挂(晶矿通道对镜流现役可达,漏挂即
+    静默毒化——商店景元徽章除数按档解读,漏升档读数仍落合法倍数集)。
+    gating = 档字段已观察(非 None = 已持卡):未拿卡时商店购得镜流
+    合成不触变费(卡文机制前提 = 持卡,None 单义化 = 未拿卡);写值
+    只升不降(3★ 写 5 后的 2★ 合成事件不回退——场上存量高星镜流仍在,
+    游戏真值按最高星计,模型同口径)。
     """
+    # 飞光·映月升星拍:镜流合成事件 2★→3 费 / 3★→5 费(3★ = 注册表
+    # 起始费恒等值,显式写保留「已拿卡」事实,与 None = 未拿卡两态可分)。
+    held = getattr(gs.yingyue_cost_tier, 'value', None)
+    if held is not None:
+        for cid, new_star in facts:
+            if cid == '镜流' and new_star >= 2:
+                nxt = 5 if new_star >= 3 else 3
+                if nxt > held:
+                    gs.write_logic(gs.yingyue_cost_tier, nxt,
+                                   produced_by=GAIN_CHAIN_PRODUCER,
+                                   evidence='env_merge_yingyue_tier', sig=sig)
+                    held = nxt
     env = gs.active_env.value
     if not env:
         return ()

@@ -587,6 +587,12 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_PROCESS_ONLY,
         basis='银狼LV.999 当前费用档(动作报告写:升费分支/上阵变费分支;'
               '读口 = cw_economy.effective_cost)'),
+    'yingyue_cost_tier': ProjectionAuditRow(
+        status=AUDIT_PROCESS_ONLY,
+        basis='飞光·映月策略赋予型景元当前费用档(纯逻辑态:拿卡拍初始写 '
+              '= cw_gain_effects 组合行 tier 腿 + 升星拍 = cw_env_grants.'
+              'check_env_merge_grants 合并升星入口;读口唯一 = cw_economy.'
+              'effective_cost,与 lv999_cost_tier 角色互斥禁误并)'),
     # —— 结算 ——
     'settlement': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
