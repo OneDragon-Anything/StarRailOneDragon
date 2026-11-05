@@ -2718,6 +2718,25 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '全队幸运一击率直增与受击概率伤害变换游戏侧自算,bot 仅登记;'
           '「等同于30%幸运一击率的概率」读法/变换边界判读申报制,零响应'
           '下两读法 bot 行为恒同;无离散触发事件,trigger 占位形。'),
+    # 羁绊的力量(id 351801):官方「每有一个已激活的非独立羁绊，小队就会
+    # 获得5%伤害增幅和3%伤害减免。」战力类 UNIT_BUFF 零响应登记(羁绊计数
+    # 条件域;「每有一个」= 已激活非独立羁绊计数线性缩放,双轴为独立定值
+    # 并列非跨轴派生[禁平移「攻防一体」联动读法];计数判定与双轴数值均
+    # 游戏侧自算,bot 仅登记;「已激活」口径 = 游戏侧定义[实机面板为真值],
+    # 「非独立」= 数据层羁绊注册表 independent 类七名单排除;无离散触发
+    # 事件,trigger 占位形)。
+    '羁绊的力量': EffectSpec(
+    id='351801', name='羁绊的力量',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351801')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(羁绊计数条件域);'
+          '每有一个已激活非独立羁绊,小队+5%伤害增幅/+3%伤害减免,计数'
+          '线性缩放且双轴独立定值并列非跨轴派生[禁平移「攻防一体」联动'
+          '读法],计数判定与数值游戏侧自算,bot 仅登记;「已激活」口径 = '
+          '游戏侧定义[实机面板为真值];无离散触发事件,trigger 占位形。'),
 }
 
 
