@@ -2669,6 +2669,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     notes='战力类 UNIT_BUFF 零响应登记(同形族);'
           '随机对象/前后台域界/数值读法/持续性四判读面游戏侧自算,'
           'bot 仅登记;无离散触发事件,trigger 占位形。'),
+    # 保守派(id 351501):官方「我方小队获得8%伤害减免。进入战斗时，生命上
+    # 限最低的角色额外获得12%伤害减免。获得一件【进阶武装箱】。」战力类
+    # UNIT_BUFF 零响应登记(同形族;箱腿三卡族,箱发放分支已在箱腿组注在
+    # 册;伤害减免两段/「生命上限最低」选角谓词四判读面游戏侧自算,bot 零
+    # 响应 = 判读申报制零行为承载;hp_max 读侧谓词不入枚举;无离散触发事
+    # 件,trigger 占位形)。
+    '保守派': EffectSpec(
+    id='351501', name='保守派',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351501')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '伤害减免两段/选角谓词四判读面游戏侧自算,bot 仅登记;'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
@@ -4272,7 +4288,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
     # 360201/军火贸易 101401/军火贸易+ 101402,箱腿卡随批扩员;「获得1个/
     # 一件【箱】」直读,箱名 = items 元素,数量 = 元素重复次数)——
-    # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++/快请专家·彩能量恢复、
+    # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++ 能量恢复、快请专家·彩零战斗腿、
     # 保守派伤害减免)非「获得时点」效果,不属 GiftGrant 登记适用范围
     #(战术义眼+能量恢复已登记 STRATEGY_EFFECTS UNIT_BUFF 零响应条目,
     # 其余三卡仍归策略效果建模批);
