@@ -2654,6 +2654,21 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '两段增幅与节点增长句游戏侧自算,bot 仅登记;'
           '无离散触发事件,trigger 占位形'
           '(对齐 _portal_placeholder_spec 先例)'),
+    # 野蛮成长(id 351401):官方「战斗开始时，随机两名前台角色获得100%前台
+    # 强度提高，随机两名后台角色获得100%后台强度提高。」战力类 UNIT_BUFF
+    # 零响应登记(同形族;「随机两名」对象数/前后台域界/数值读法/持续性四
+    # 判读面游戏侧自算,bot 零响应 = 判读申报制零行为承载;无离散触发事
+    # 件,trigger 占位形)。
+    '野蛮成长': EffectSpec(
+    id='351401', name='野蛮成长',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351401')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '随机对象/前后台域界/数值读法/持续性四判读面游戏侧自算,'
+          'bot 仅登记;无离散触发事件,trigger 占位形。'),
 }
 
 
