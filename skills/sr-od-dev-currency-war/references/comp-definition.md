@@ -50,11 +50,11 @@
    `factions` ≡ `faction_reqs` 档 0 键集(`core_faction_reqs`,纯冗余派生读口);
    `member_priority` 整字段不存——恒等于 core/shared 两档派生(全库零手编,
    让位序现算 = `derive_member_priority`)。
-3. **名单多胞胎警惕**:成员名单字段(core/shared/transition/key_items/
+3. **名单多胞胎警惕**:成员名单字段(core/shared/transition/
    need_star 键)语义高度重叠——
    新增名单前先问能否挂到既有名单的属性上;名单间关系必须有校验
    (先例:key_items 曾有 5 阵容含 core∪shared 外成员——多表无校验
-   的维护病;lock_rules 键与 entry_signals 键两度上榜,均已整字段退役)。
+   的维护病;lock_rules 键、entry_signals 键、key_items(存续期 88% 数据行被 carry_set 减法遮蔽,过渡体系建成后路径知识未并入统一体系)三度上榜,均已整字段退役)。
 4. **目标态快照**:见第一原则——过程性知识(何时/怎么长过来)不进
    schema,归 final_comps「达成路径」叙事 + 策略机制层。
 5. **攻略口径→结构口径的翻译**:攻略说「X 优先/默认」时,分清**门槛**
@@ -69,8 +69,10 @@
 - **成员**:谁在名单(core/shared 两档终局成员——shared = 第二档终局成员,双列
   重复登记被建库校验禁止(core∩shared 恒空,import 即炸);transition = 过渡
   打工档,不进终局成员集,送卡档位与终局成员集的原料);
-- **知识卡**:选线证据/星级目标(key_items/need_star;lock_rules 与
-  entry_signals 已先后整字段退役——上线时机归部署搜索自适应);
+- **知识卡**:星级目标(need_star;key_items/lock_rules/entry_signals
+  已先后整字段退役——key_items 的 P1 路径知识归过渡体系(TRANSITION_
+  BONDS 点名件/羁绊全员),方向证据归各线 core 身份,上线时机归部署搜索
+  自适应;新体系建成后旧载体须同批清算,勿留残余通道);
 - **装备**:到人配方(equip_assign 真源 + key_equips 投影 + 禁忌);
 - **过程性知识不进 schema**(何时/怎么长过来)——归 final_comps 叙事
   与策略机制层。
