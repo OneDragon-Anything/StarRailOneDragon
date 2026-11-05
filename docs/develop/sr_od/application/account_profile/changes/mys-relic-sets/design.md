@@ -5,14 +5,20 @@
 - 目标（用户裁定 2026-11-04）：①`SrRelic` 单件带 **套装名**；②`CharacterDetail` 带 **已激活套装的几件套效果**（几件套+效果文案）
 - 状态：草案（轻量迭代；结构沿用 roster-detail 已验收分层）
 - 数据源事实：`avatar/info` 的 `relic_wiki` 词典为**空**（原始抓包+规划器双证）——官方接口不供套装数据，套装名/效果须自建数据层：官方 wiki 遗器频道快照（侦察产出 `.debug/temp/mys-relic-sets/relic_sets_snapshot.json`）**固化为 Python 常量模块**（用户裁定：禁 JSON 文件），运行时零网络消费
+- 增量目标（用户裁定 2026-11-05）：③套装带**内部 set_id 与获取途径**；④单件带**描述文本**；⑤单件**图标归档**（解包产物转档入 assets，识别模板素材）
 
 ## 1. 数据层
 
-- **常量模块**（用户裁定：禁 JSON 数据文件，数据写代码）：`src/sr_od/mys/sr_relic_sets.py`——四要素齐备的套装常量表：`RELIC_SETS: tuple[RelicSetDef, …]`（`RelicSetDef = {set_name, kind: 'cavern'|'ornament', pieces: list[{name, pos}], effects: {'2': desc, '4': desc|缺失}}`，内容逐条对照侦察快照）+ 纯函数助手：
+- **常量模块**（用户裁定：禁 JSON 数据文件，数据写代码）：`src/sr_od/mys/sr_relic_sets.py`——四要素齐备的套装常量表：`RELIC_SETS: tuple[RelicSetDef, …]`（`RelicSetDef = {set_name, kind: 'cavern'|'ornament', pieces: list[{name, pos, desc}], effects: {'2': desc, '4': desc|缺失}, set_id, obtain}`，内容逐条对照侦察快照）+ 纯函数助手：
   - `resolve_set_name(piece_name: str) -> str | None`：miss 返回 None 并 warning（新版本套装未入常量；不抛异常）
+  - `resolve_set_by_tid(tid: int) -> RelicSetDef | None`：mys 遗器件 id（隧洞 60000 段/位面 50000 段，`base+set_id*10+pos`）反查套装定义；miss None
+  - `icon_webp_rel_path(set_id: int, pos: int) -> str`：单件图标归档的项目相对路径公式（纯寻址不查存在）
   - `build_set_effects(relic_piece_names: list[str], ornament_piece_names: list[str]) -> list[dict]`（dict 由映射层构造 SrSetEffect；**件名字符串列表入参**防循环导入）：按套装分组计数，`piece_count ≥ 2` 即激活对应效果（隧洞套 2 件效果 + piece_count=4 时 4 件效果；位面饰品 2 件效果）；未入常量的套装不产出效果条目（件名兜底见 §2）
-  - 「件名→套装名」反向索引模块加载时构建一次（进程内缓存）
-- **版本刷新工序** = 重跑侦察抓取 → 对照 diff 更新常量（diff 可审），工序写入正本
+  - 索引：件名反查 `PIECE_TO_SET`、套装名 `SET_BY_NAME`（内部）、set_id `_SET_BY_ID`——模块加载时各建一次（进程内缓存）
+- **set_id 双源锚定**（2026-11-05 固化）：①`avatar/info` 遗器件 id 实证（tid 公式拆解，43 套零冲突）；②解包图标文件名 `iconrelic_<set_id>_<pos>.png` ↔ wiki 单件图逐套对照仲裁（其余 19 套全吻合）——两条证据链合拢出**顺序律**：set_id 按实装顺序连续分配，隧洞 101 起、位面 301 起，`RELIC_SETS` 排列序 = 实装序（与列表序严格双射，测试锁定）
+- **wiki 数据脏词条处理**：重抓词条含错字/缺段（实测 8 套 effects/件名与已固化常量不一致，如「最多叠加5次」应为「5层」、件名带前导空格/错字）——effects 与件名**一律以已固化常量为准**，wiki 只作新增字段（set_id/obtain/desc）来源；desc 按部位对齐归属（避开件名错字）
+- **图标归档**：`assets/game_data/relic_icons/iconrelic_<set_id>_<pos>.webp`（192 件全量；客户端解包产物 PNG → webp 转档；识别模板素材，SIFT 口径可用——avatar-extract 实测解包图可作特征匹配模板、matchTemplate 像素比对不可用）
+- **版本刷新工序** = 重跑侦察抓取 → 对照 diff 更新常量（diff 可审）；新套装 set_id 按顺序律续排、图标按容器路径增量解包归档；工序写入正本
 - 消费口径：单件名→套装名映射**独立于 property_info**（套装数据无接口来源，纯常量）
 
 ## 2. 契约（定死）
