@@ -4,7 +4,7 @@
 
 ## 工具
 
-31 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
+32 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
 
 | MCP tool | 委托 | 返回 |
 |---|---|---|
@@ -39,6 +39,7 @@
 | `mys_logout()` | `mys_tools.py` | `{status: success}`（幂等；清 session.json 与 role.json、保留 device.json） |
 | `mys_get_characters()` | `mys_tools.py` → `SrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集，含 element_cn/base_type_cn 中文名）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
 | `mys_get_roster_detail()` | `mys_tools.py` → `SrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
+| `relic_lookup(query)` | `relic_tools.py` → `lookup_relic()`（直读 `sr_relic_sets` 常量，零 IO） | 统一信封：`success` + 套装静态定义（set_name/kind_cn/set_id/obtain/effects/pieces 含件名/部位/描述/图标相对路径）／`ambiguous`（模糊多命中，`candidates` 候选列表）／`not_found`。查询词按优先级：tid 数字 → 件名精确 → 套装全名 → 子串模糊。查账号穿戴数据走 `mys_get_roster_detail` |
 
 要点：
 

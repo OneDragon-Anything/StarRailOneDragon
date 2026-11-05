@@ -12,7 +12,10 @@
    候选列表不猜（社区简称不入表，见 sr_relic_sets 设计裁定）
 """
 
+from typing import Annotated
+
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from sr_od.mys.sr_relic_sets import (
     RELIC_SETS,
@@ -106,11 +109,18 @@ def register_relic_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类型�
     del backend  # 纯常量查询，无 backend 依赖；参数保持装配签名一致
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查询遗器套装"))
-    def relic_lookup(query: str) -> dict:
-        """按名字查询崩坏:星穹铁道遗器套装信息（套装效果/单件列表/单件描述/获取途径/内部ID/图标路径）。
+    def relic_lookup(
+        query: Annotated[str, Field(
+            description="查询词,按优先级匹配:①遗器件id数字(如53076);②单件名精确(如「翁瓦克的诞生之岛」);"
+                        "③套装官方全名精确(如「生命的翁瓦克」);④套装名子串模糊(如「翁瓦克」,多命中返回候选)")],
+    ) -> dict:
+        """观察类。按名字查询崩坏:星穹铁道遗器套装的静态定义（套装效果/单件列表/单件描述/获取途径/内部ID/图标路径）。
 
-        支持三种查询词：套装官方全名（如「生命的翁瓦克」，也支持子串模糊如「翁瓦克」）、
-        单件名（如「翁瓦克的诞生之岛」，返回所属套装）、遗器件 id 数字（如 53076）。
+        与 ``mys_get_roster_detail`` 分工：本工具查**游戏静态数据**（全部套装,
+        不需要登录与游戏在线）；查**账号实际穿戴的遗器词条**走后者。
+
+        查询词匹配策略见参数说明,按优先级命中即返回;模糊多命中返回
+        ``ambiguous`` + 候选列表,不猜测。零 IO 纯常量查询。
 
         Returns:
             统一信封 ``{"status","message","data"}``：
