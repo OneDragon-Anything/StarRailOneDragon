@@ -4292,7 +4292,13 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '潜行专家:貊泽': GiftGrant(chars_immediate=('貊泽',), advisor=True),
     '琼玉专家:青雀': GiftGrant(chars_immediate=('青雀',), advisor=True),
     '调饮专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
-    '贸易专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
+    # 贸易专家:停云(360401):箱条目直读「获得4个【简易武装箱】」(数量 =
+    # 元素重复约定;顾问解锁腿 chars_immediate+advisor 原行零动;扳手×1 =
+    # PICK 组合登记行承载,装备腿零 STRATEGY_GRANTS 登记 = 装备腿唯一出现
+    # 点纪律[T-290 族裁定];金腿「10金币」经 STRATEGY_ECONOMY instant_gold=10
+    # 在册零改动,世界写端缺口维持 strategy-env-impacts.md §4 族级待办)。
+    '贸易专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True,
+                              items_immediate=('简易武装箱',) * 4),
     '锻冶专家:刃': GiftGrant(chars_immediate=('刃',), advisor=True),
     '领航专家:姬子': GiftGrant(chars_immediate=('姬子',), advisor=True),
     '骇客专家:银狼': GiftGrant(chars_immediate=('银狼',), advisor=True),
@@ -4409,7 +4415,8 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
     # —— 开箱分支(占席道具发放;效果原文对账 id = cw_invest_data.
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
-    # 360201/军火贸易 101401/军火贸易+ 101402,箱腿卡随批扩员;「获得1个/
+    # 360201/军火贸易 101401/军火贸易+ 101402,箱腿卡随批扩员;跨组对账:
+    # 贸易专家:停云 360401(条目在顾问型组,顾问+箱×4+扳手混发);「获得1个/
     # 一件【箱】」直读,箱名 = items 元素,数量 = 元素重复次数)——
     # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++ 能量恢复、快请专家·彩零战斗腿、
     # 保守派伤害减免)非「获得时点」效果,不属 GiftGrant 登记适用范围
