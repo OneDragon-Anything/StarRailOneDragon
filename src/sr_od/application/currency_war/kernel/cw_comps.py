@@ -330,13 +330,14 @@ def _validate_comp_equip_assign(library: list[Comp]) -> None:
 
 
 def derive_member_priority(comp: Comp) -> dict[str, int]:
-    """成员优先级两档派生(迁移期默认形态:core 0/其余 1)。
+    """成员优先级两档派生(core 0/第二档终局成员 1;序数小 = 优先级高)。
 
-    数据依据 = 统一让位优先级迭代 design §2.1.1【拍】:本迭代先按
-    core/shared 二元标记映射两档,逐角色线内全序精调外溢下一迭代。
-    同名双列(core_chars 与 shared_chars 交集,列车同行三月七类)
-    core 优先——序数小 = 优先级高,与旧装配「0 if n in cores else 1」
-    的并集口径一致(迁移前后等价的基准式)。"""
+    core 先填 0,shared 再 setdefault 1(先到先得,同名不覆盖)——注册表
+    条目 core∩shared 恒空(``Comp.__post_init__`` 建库校验),setdefault
+    分支在库内条目上不触发,仅为库外构造的 Comp 保持函数稳健。两档序数 =
+    统一让位序的底层档内①键(消费规格 = strategy-docs/
+    32_unified_sell_priority.md;装配读口 :func:`member_rank_of`);
+    逐角色线内全序精调若立项,再升显式字段。"""
     rank: dict[str, int] = dict.fromkeys(comp.core_chars, 0)
     for n in comp.shared_chars:
         rank.setdefault(n, 1)
