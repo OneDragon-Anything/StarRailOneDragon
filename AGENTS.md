@@ -106,7 +106,7 @@ uv run ruff check --fix src/你修改的文件.py
 - **坐标系统一**：框架提供的截图、画面识别、鼠标点击等，均统一至 1920×1080。唯一例外：离线分析外部传入的非 1080p 图片时，返回坐标是该图的像素空间。
 - **坐标单一真相源**：所有识别、点击的坐标区域都要使用 screen_info 保存、获取，避免代码中硬编码。
 - **不能单独修改 screen_info 的 yml 文件**：运行时加载的是合并缓存（`_od_merged.yml`），手改分 yml 不更新缓存 = 改了也白改。
-- **模板资产**：框架 `cv2_utils` 全 RGB，存图走 `save_image`（别 `cv2.imencode`，BGR 假设会存反 R/B）；裁模板用 webp 无损归档。
+- **图片读写一律走框架 `cv2_utils`**（`read_image`/`save_image`：兼容中文路径、统一 RGB 口径）——临时调试脚本与 fixture 归档同样适用；裸 `cv2.imread`/`imwrite` 中文路径静默失败，`imencode` 直存会 R/B 反色。**模板资产**：模板读取优先走框架服务（`TemplateLoader`），裁模板用 webp 无损归档。
 
 ## 6.MCP
 

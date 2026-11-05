@@ -3,14 +3,14 @@ screen_name: 末日幻影-节点结算
 pc_alt: false
 area_list:
 - area_name: 标题-挑战结束
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 805
   - 185
   - 1105
   - 360
   text: 挑战结束
-  lcs_percent: 0.5
+  lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
