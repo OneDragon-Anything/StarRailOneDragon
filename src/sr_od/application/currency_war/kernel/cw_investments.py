@@ -2555,6 +2555,24 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '判读申报制留痕,零响应下两读法 bot 行为恒同,禁当定谳转引;'
               '箱腿 = 获得时点效果另登 STRATEGY_GRANTS(镜像 _STRATEGY_BOX'
               '_GRANTS),不属本条目辖域。'),
+    # 万箭齐发(id 350701):官方「战斗开始时，发射风箭攻击随机敌方目标，箭矢
+    # 数量等同于小队总星数+8，每根风箭造成等同于1600%基础伤害的风属性伤
+    # 害。」战力类 UNIT_BUFF 零响应登记(当头一棒/爆仓/超光速提拔三姊妹同
+    # 形族收官;箭矢分配/风箭伤害游戏侧自算,bot 零响应;小队定义判读 =
+    # 判读申报制[零消费端行为等价];sim 低估零补偿[「不编近似数」在册裁
+    # 定];无离散触发事件,trigger 占位形)。
+    '万箭齐发': EffectSpec(
+    id='350701', name='万箭齐发',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350701')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(三姊妹同形族);'
+          '箭矢分配/风箭伤害游戏侧自算,bot 仅登记;'
+          '小队定义判读申报制[零消费端行为等价];'
+          'sim 低估零补偿[不编近似数];'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
