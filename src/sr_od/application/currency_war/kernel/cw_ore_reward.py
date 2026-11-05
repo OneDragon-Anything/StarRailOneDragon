@@ -45,7 +45,7 @@ CHAR_DROP_STAR: int = 1
 _SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
     name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
 
-#: 建模假设档披露键汇总(design §0.1;已登记落点 = 本常量,随局披露面消费)
+#: 建模假设档披露键纯登记清单(design §0.1;零发射接入调用、不进随局披露输出——登记辖域仅本常量,键按死键备案)
 ORE_ASSUMPTION_KEYS: tuple[str, ...] = (
     'ore_type_uniform',
     'ore_gold_uniform_1_5',
