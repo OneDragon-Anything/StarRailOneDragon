@@ -320,8 +320,10 @@ def _readiness_from_snapshot(state_snapshot: dict | None, *,
     入参适配 = 快照 dict → form_progress 鸭型桩(board.value + deployed
     容器视图,轻量桩契约见 cw_comps.form_progress docstring);阵容解析
     序与决策行锁定语义一致:locked_comp 非空 = 资格锁(cw_comps.get_comp
-    按名,未知名 = None);否则 p1_pair 非空 = P1 配方锁伪阵容
-    (cw_intention.pair_target_comp);两者皆空 = 判据不可判。完备谓词
+    按名,未知名 = None);否则 p1_pair 非空 = 旧 P1 配方锁伪阵容路径
+    (cw_intention.pair_target_comp——该符号已随配方决策层退役删除,
+    import 恒失败,本分支现行恒走「判据不可判 → None → 回退镜像读数」);
+    两者皆空 = 判据不可判。完备谓词
     语义零本地实现,单一源 = cw_launch_admission.readiness_form_ok
     (form_progress ≥1.0)。判据符号不可用(非仓布局)/快照缺
     board_factions(非 dict)/无阵容线索 → None。
@@ -332,7 +334,7 @@ def _readiness_from_snapshot(state_snapshot: dict | None, *,
     if not isinstance(board, dict):
         return None
     comp = get_comp(locked_comp) if locked_comp else None
-    if comp is None and p1_pair:
+    if comp is None and p1_pair and pair_target_comp is not None:
         comp = pair_target_comp(tuple(p1_pair))
     if comp is None:
         return None
