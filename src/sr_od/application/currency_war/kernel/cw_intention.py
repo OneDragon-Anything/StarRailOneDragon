@@ -284,12 +284,11 @@ def _owned_chars(gs: GameState) -> set[str]:
 
 
 def _asset_thickness(comp: Comp, gs: GameState) -> float:
-    """候选线资产厚度(骨架件停用后口径):
+    """候选线资产厚度:
 
     板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)。
-    终件 = core_chars。骨架件折算项已停用(旧 SKELETON_ASSET_WEIGHT=0.5
-    设计推断无标定,「未证即停用」→ 保守缺省不计;跨线骨架件仍是囤货
-    对象,只是不再抬高本线厚度——撤销出口③的替代证据因此更严)。"""
+    终件 = core_chars。非终局件(跨线骨架件等)不抬本线厚度——撤销
+    出口③的替代证据因此更严。"""
     _front, _back = deployed_rows_of(gs)
     pool = [*_front, *_back, *bench_units_of(gs)]
     star_of = {u.char_id: u.star for u in pool

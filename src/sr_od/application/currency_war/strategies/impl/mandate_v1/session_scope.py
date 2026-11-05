@@ -291,7 +291,7 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
       单值和:证据 + 投资通道派生 + 词缀 + boss〔批 2 前恒 0〕+ 热度,
       注册序终局;开局简报上下文 = :func:`line_select.opening_ctx_of`
       现读),top3 写候选快照(``line_candidates``,派生快照非持久状态)
-      ——**证据门开启版**(12 号篇 §1.2:线分量 env ∨ carry ∨ 骨架 ∨
+      ——**证据门开启版**(12 号篇 §1.2:线分量 env ∨ carry ∨
       插件 > 0,不含热度;零证据线不入,开局零信号 = 空候选合法形态);
       随后求值锁定判定(:func:`line_select.evaluate_lock`——P2 时点兜底
       唯一路径:硬规则/即时锁全退役,``plane2_started ∧ P2 投资策略选卡

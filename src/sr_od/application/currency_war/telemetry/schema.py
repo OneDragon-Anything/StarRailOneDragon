@@ -333,7 +333,7 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
   or-reqs-retirement 3.4)与冷启动臂(``cold_start_buy``)各自独立
   成键(因果类均为 obligation,注册闭集 = sell_gate.
   LAUNCH_CAUSE_BY_ARM),禁合并为笼统买入键:三臂触发场景不同
-  (终局资格臂 = CARRY/骨架级货架牌虚拟 top3 资格;过渡资格臂 =
+  (终局资格臂 = CARRY 级货架牌虚拟 top3 资格;过渡资格臂 =
   过渡组合计分域成员的虚拟 top3 资格;冷启动臂 = 双空窗
   三羁绊 1 费件见即买),分键保判读面按臂分账触发频率,合并即丢失
   分臂观测。
