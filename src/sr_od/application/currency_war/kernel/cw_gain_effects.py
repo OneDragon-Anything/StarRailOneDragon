@@ -2047,6 +2047,20 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 判例申报,估值档机器只读 chars 集合零影响;非 advisor 无运行时消费道,
     # 送卡世界缺口族级维持);条目参数唯一出现点,不入泛化表防撞键。
     '摸个鱼吧III': _make_named_equip_grant_effect('好运令牌', 2),
+    # 琼玉专家:青雀 = 顾问入商店族具名装备授予腿登记行(卡文「获得装备着3个
+    # 随机星徽的专家顾问【青雀】，并使其在本局游戏中加入商店。获得2个
+    # 【冶金炉】。」):顾问解锁腿不入本行,登记面镜像 =
+    # cw_investments.STRATEGY_GRANTS 同卡行(advisor=True 已在册,获得链
+    # advisor 腿解锁后青雀入池可刷,停云顾问/加拉赫顾问同形);本行只辖
+    # 冶金炉腿——冶金炉 = 工具类装备(cw_equipment_data category='工具'),
+    # 归 equips 装备库存域禁入占席道具通道,不在精密金面判据映射内(gate 恒
+    # None)走纯发放循环,获得零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES);count=2
+    # = 卡面明写,同物 ×2 循环逐件一条确定发放(rand=False 卡文无随机词,零
+    # rng 消费,升级锅炉同物同形);「装备着3个随机星徽」= 穿戴修饰非授予
+    # 句,穿戴面零建模(披露键 cw_investments.STRATEGY_DESC_UNMODELED_KEYS
+    # strategy_worn_equip_unmodeled 家族申报,消费方非立键方);条目参数唯一
+    # 出现点,不入泛化表防撞键。
+    '琼玉专家:青雀': _make_named_equip_grant_effect('冶金炉', 2),
 }
 """策略卡获得效果注册表(键 = 注册表规范名;骇客单行自 pick_invest.py 迁入,
 开箱分支条目由工厂自 _STRATEGY_BOX_GRANTS 生成,援军族由工厂自
@@ -2056,7 +2070,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS 生成(泛化 (category, count) 行,池 =
 精密拆装·银/大扩招/回收计划/这么大的钻石)直书登记行
 由组合子组合两条效果条目(非表生成),具名装备授予族(全员晋升/无伤通关/星星相印/
 小复制/小复制+/赌神·银/无害垃圾/黄金垃圾/钻石恒永久/升级锅炉/控制规模/
-分解万物/鲜血阶梯/摸个鱼吧III)
+分解万物/鲜血阶梯/摸个鱼吧III/琼玉专家:青雀)
 直书登记行由
 _make_named_equip_grant_effect 生成闭包,具名角色发放族(溜佩佩/溜佩佩+/
 招财狗/艾丝妲的猛犬!/狸职手续,名单值形 (发放角色, 发放只数))由工厂自
