@@ -2791,6 +2791,33 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '线性缩放且双轴独立定值并列非跨轴派生[禁平移「攻防一体」联动'
           '读法],计数判定与数值游戏侧自算,bot 仅登记;「已激活」口径 = '
           '游戏侧定义[实机面板为真值];无离散触发事件,trigger 占位形。'),
+    # 调饮专家:加拉赫(id 360501):官方「获得装备着【绝对热量】的专家顾问
+    # 【加拉赫】,并使其在本局游戏中加入商店。加拉赫行动时,为我方全体恢复
+    # 3点能量并触发【绝对热量】的生命回复效果。」顾问授予族三腿分治:腿1
+    # 顾问解锁+入商店 = GRANTS advisor=True 条目在册零动作(获得链 advisor
+    # 道→_unlock_experts→unlocked_experts→cw_pool 入商店全链在码);腿2
+    # 佩戴绝对热量 = 零建模(披露键 strategy_worn_equip_unmodeled 消费方
+    # 申报,绝对热量/绝对热量·特权 独立注册条目分立防误引);腿3 行动触发
+    # 双效果 = 本条目 UNIT_BUFF 零响应登记(触发面「加拉赫行动时」三盲:
+    # TriggerKind 无行动时成员/sim 无逐行动事件流/live 无逐行动观察锚;
+    # 效果面「恢复3点能量」能量战斗内轴 sim/状态/obs 全盲;联动面「触发
+    # 绝对热量生命回复」依赖佩戴面零建模;全游戏侧自算,bot 仅登记;
+    # 生效前置 = 加拉赫已上阵行动,顾问解锁≠上阵)。
+    '调饮专家:加拉赫': EffectSpec(
+    id='360501', name='调饮专家:加拉赫',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '360501')),
+    duties=DutyFlags(),
+    notes='顾问授予族三腿分治:腿1 顾问解锁+入商店 = GRANTS advisor=True'
+          '条目在册零动作(获得链解锁→入商店全链在码);腿2 佩戴绝对热量'
+          '零建模(strategy_worn_equip_unmodeled 家族键申报,绝对热量/'
+          '绝对热量·特权 独立条目分立防误引);腿3 行动触发双效果触发/'
+          '效果/联动三盲零建模,数值游戏侧自算 bot 仅登记;生效前置 = '
+          '加拉赫已上阵行动(顾问解锁≠上阵);受益粒度 = 我方全体;装备'
+          '联动依赖 = 绝对热量佩戴面零建模;无离散触发事件,trigger/'
+          'duration 为登记占位非真实语义。'),
 }
 
 

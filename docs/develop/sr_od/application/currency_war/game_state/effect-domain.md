@@ -16,7 +16,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类清单**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 76 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 107 条的在域形态。
 
 > 邻位申报(临时工合约批):新白名单表 STRATEGY_EQUIP_EXPIRY_GRANTS(装备到期消失)非 STRATEGY_EFFECTS 条目,§7 生命周期不适用;判定函数 check_strategy_equip_expiry 纯读零写零 rng,一次性标志位写 strategy_conditional_done 共域。
 
@@ -113,7 +113,7 @@
 
 ## 5. 分类清单(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **102 条,实码全量**(构建层校验与数据层
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **107 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
 加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
 ——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项;含
@@ -360,7 +360,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
   聚合,须先过聚合分型登记门)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 88 条)
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 107 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记接入点统一 = 选卡落地(§7.3);
 证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
@@ -1010,6 +1010,32 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   零响应族条目);官方原文 cw_invest_data.py(PlazaAugment 350402)「我方
   小队消灭普通/精英及首领敌人时，恢复25%/75%能量。获得1个【简易武装箱】。」
 - **推理链**:逐击杀系游戏侧战斗内评估拍,无离散触发事件 → trigger 占
+  PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位零响应);
+  无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md
+  §0 战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
+
+#### 调饮专家:加拉赫(360501)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS`
+  数据面表达式单一源);顾问授予族三腿分治,本条目只辖腿3——腿1 顾问授予+
+  加入商店 = `STRATEGY_GRANTS` advisor=True 条目在册零动作(获得链 advisor
+  道 → `_unlock_experts` → `gs.unlocked_experts` → cw_pool 入商店全链在码),
+  不入本条目辖域;腿2 佩戴绝对热量 = 零建模(strategy_worn_equip_unmodeled
+  家族键申报;绝对热量/绝对热量·特权 独立注册条目分立防误引)。bot 零响应
+  ——触发面「加拉赫行动时」三重皆盲(TriggerKind 无行动时成员/sim 无逐
+  行动事件流/live 无逐行动观察锚),效果面「恢复3点能量」能量为战斗内轴
+  (sim/GameState/obs 全盲,恢复型归战斗被动分支桶),联动面「触发绝对热量
+  生命回复」依赖佩戴面一并零建模,全游戏侧自算;生效前置 = 加拉赫已上阵
+  行动(顾问解锁≠上阵,notes 申报制不建模上阵判定);受益粒度 = 我方全体
+  (卡文明写);绑定 = 赠 key 专家顾问,显式绑定行在册 `('加拉赫',)` 零触碰;
+  现金分支 = 已注册名无 economy → (0.0, False)(战力类不进经济模型)。
+- **证据**:规格 `STRATEGY_EFFECTS['调饮专家:加拉赫']`(cw_investments.py
+  战力类零响应族条目);官方原文 cw_invest_data.py(PlazaAugment 360501)
+  「获得装备着【绝对热量】的专家顾问【加拉赫】,并使其在本局游戏中加入
+  商店。加拉赫行动时,为我方全体恢复3点能量并触发【绝对热量】的生命回复
+  效果。」
+- **推理链**:逐行动触发系游戏侧战斗内评估拍,无离散触发事件 → trigger 占
   PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位零响应);
   无累计量 → counter 不建;战力数值不折金不进经济模型(invest_effects.md
   §0 战力类行),登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
