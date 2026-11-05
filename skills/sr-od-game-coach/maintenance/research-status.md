@@ -16,7 +16,7 @@
 
 - **官方（权威）**：米游社百科 `content/info?content_id=`——角色页 15 模块（行迹满级表/光锥推荐/遗器推荐/配队推荐）；光锥库 ch19（170，data-data 富文本）；遗器库 ch30（62）。三种页面模板形态见 methodology v10-41。
 - **社区（实证）**：bili cli（search→summary/desc），ASR 归一表见 methodology v7-29。
-- **数据快照**：`docs/game/wiki_snapshot/`（入库版本；生成脚本在 `.debug/temp/`：fetch_char_cones / fetch_char_skills / fetch_char_teams / fetch_char_relics / fetch_all_cones / fetch_relic_sets）——版本更新后重跑刷新。
+- **数据快照**：`references/data（skill 自包含）/`（入库版本；生成脚本在 `.debug/temp/`：fetch_char_cones / fetch_char_skills / fetch_char_teams / fetch_char_relics / fetch_all_cones / fetch_relic_sets）——版本更新后重跑刷新。
 
 ## 前瞻跟踪（不建档，情报在体系档 R2）
 
