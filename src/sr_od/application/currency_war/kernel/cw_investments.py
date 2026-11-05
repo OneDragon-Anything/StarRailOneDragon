@@ -2605,6 +2605,20 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           'bot 仅登记);'
           '「达到」边界读法判读申报制[零响应下 bot 行为恒同];'
           '无离散触发事件,trigger 占位形。'),
+    # 基本保障(id 351001):官方「至少携带1件装备的角色获得20%生命增幅和
+    # 16%伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「携带」系 buff
+    # 条件读法申报,不涉送卡口径;条件计数与两段增幅游戏侧自算,bot 零响
+    # 应;无离散触发事件,trigger 占位形)。
+    '基本保障': EffectSpec(
+    id='351001', name='基本保障',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351001')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '「携带」系 buff 条件读法申报,条件计数与两段增幅游戏侧自算,'
+          'bot 仅登记;无离散触发事件,trigger 占位形。'),
 }
 
 
