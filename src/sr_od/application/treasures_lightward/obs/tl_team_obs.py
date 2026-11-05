@@ -32,10 +32,11 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
+from one_dragon.base.config.yaml_operator import YamlOperator
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.base.screen.template_loader import TemplateLoader
-from one_dragon.utils import cv2_utils
+from one_dragon.utils import cv2_utils, os_utils
 from sr_od.config.character_const import CHARACTER_LIST, Character
 
 if TYPE_CHECKING:
@@ -55,16 +56,27 @@ _EMPTY_SLOT_MEAN_V: float = 60.0    #: 空槽判定:裁片平均 V 低于此 = �
 _ACTIVE_TAB_MEAN_V: float = 140.0   #: tab 激活判定:标签区平均 V 高于此 = 激活
 
 # --------------------------------------------------------------------------
-# 弱点属性(建议属性)识别:OCR 锚「建议属性」→ 标签下方图块带 → 色块检测 →
+# 弱点属性(建议属性)识别:OCR 锚「建议属性」→ 图块带 → 色块检测 →
 # 元素模板匹配(element_weakness 底板合成模板)主判 + 色相域交叉仲裁。
-# 锚定位使识别对布局平移不敏感(环境描述行数变化会推移下方内容,固定 rect 会错位)。
+# 锚定位使识别对布局平移不敏感(环境描述行数变化会推移内容,固定 rect 会错位)。
+# 图块带相对锚行有两种布局(weakness_layout):
+# - 'below':图块带在锚行正下方(忘却之庭/虚构叙事编队屏);
+# - 'inline':图块带与锚文字同行、紧贴其右(末日幻影编队屏 boss 卡)。
 # 色相域标定:实机帧(物竞天择其一/其十)6 blob 全对 —— 雷 H≈122 /
 # 量子 H≈144 / 冰 H≈95 / 虚数 H≈26 / 火 H≈1 / 物理=白色纹样(S<30,V>150);
 # 风未见样本,按色相域预留(模板已入库,出现样本后回验)。
 # --------------------------------------------------------------------------
 _WEAKNESS_ANCHOR_TEXT: str = '建议属性'
-_WEAKNESS_ZONE_W: int = 200          #: 图块带搜索区宽(锚点左对齐)
-_WEAKNESS_ZONE_H: int = 60           #: 图块带搜索区高(标签底缘起)
+_WEAKNESS_LAYOUT_BELOW: str = 'below'    #: 图块带在锚行正下方
+_WEAKNESS_LAYOUT_INLINE: str = 'inline'  #: 图块带与锚文字同行、紧贴其右
+_WEAKNESS_INLINE_X_OFF: int = 90     #: inline 图标带起点相对锚行左缘偏移
+                                     # (「建议属性」4 字宽+间隙;OCR det 框常把首图标
+                                     #  粘进文本框,框右缘不可用,实机帧标定)
+_WEAKNESS_INLINE_ZONE_W: int = 100   #: inline 图标带搜索区宽(4 图标带+余量,
+                                     #  不及右侧相邻元素防误检,实机帧标定)
+_WEAKNESS_INLINE_BLOB_MAX: int = 40  #: inline 图标外接框上限(两图标粘连拦截)
+_WEAKNESS_ZONE_W: int = 200          #: below 图块带搜索区宽(锚点左对齐)
+_WEAKNESS_ZONE_H: int = 60           #: 图块带搜索区高(below:标签底缘起;inline:锚行框扩)
 _WEAKNESS_HUE_BUCKETS: tuple[tuple[str, int, int], ...] = (
     ('火', 0, 12), ('火', 168, 179), ('虚数', 15, 35), ('风', 40, 80),
     ('冰', 84, 110), ('雷', 112, 132), ('量子', 136, 158),
@@ -75,6 +87,7 @@ _WEAKNESS_BLOB_MIN: int = 16         #: 图标色块外接框下限(px,膨胀后
 _WEAKNESS_BLOB_MAX: int = 64         #: 图标色块外接框上限
 _WEAKNESS_TM_MIN: float = 0.45       #: TM 置信下限(低于 = 走色相域回退)
 _WEAKNESS_MAX_ROWS: int = 4          #: 波次锚行上限(防 OCR 误检炸量;当前模式最多 2-3)
+_BOSS_WEAKNESS_FILE: str = 'tl_boss_weaknesses.yml'  #: boss 弱点表(assets/game_data 下)
 
 # --------------------------------------------------------------------------
 # 左侧角色网格几何(相对「区域-角色网格」rect 原点;实机帧标定)
@@ -354,6 +367,27 @@ def ensure_element_templates(ctx: SrContext) -> dict[str, TemplateInfo]:
     return out
 
 
+def ensure_boss_weakness_map(ctx: SrContext) -> dict[str, list[str]]:
+    """boss 名 → 弱点属性表(全玩法扁平;assets/game_data/tl_boss_weaknesses.yml)。
+
+    弱点主路径:「建议属性」图标过小且 boss 卡底板带 tint,雷紫/量子蓝色相域
+    跨场景渲染重叠,像素颜色识别无法稳定仲裁紫色系;boss 名为大字高置信 OCR,
+    以名查表为弱点唯一来源,颜色识别仅作表未收录 boss 的降级。表未命中 = 空
+    dict(纯降级,不报错)。缓存 ctx(只读资源,幂等,并发安全)。
+    """
+    cached = getattr(ctx, 'tl_boss_weakness_map', None)
+    if cached is not None:
+        return cached
+    path = os_utils.get_path_under_work_dir('assets', 'game_data', _BOSS_WEAKNESS_FILE)
+    data = YamlOperator(path).data or {}
+    out: dict[str, list[str]] = {}
+    for mode_bosses in data.values():
+        if isinstance(mode_bosses, dict):
+            out.update(mode_bosses)
+    ctx.tl_boss_weakness_map = out
+    return out
+
+
 def _weakness_hue(crop: MatLike) -> int:
     """色块裁片彩色纹样像素的中位 H(S>60,V>80;无彩像素返 -1)。"""
     hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
@@ -387,7 +421,7 @@ def _classify_weakness_blob(crop: MatLike, templates: dict[str, TemplateInfo]) -
     hsv = cv2.cvtColor(crop, cv2.COLOR_RGB2HSV)
     s, v = hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
     colored_px = int(((s > 60) & (v > 80)).sum())
-    white_px = int(((s < 30) & (v > 150)).sum())
+    white_px = int(((s < 60) & (v > 130)).sum())
     if white_px >= 30 and white_px >= colored_px * 2:
         return '物理'
     hue = int(np.median(hsv[:, :, 0][(s > 60) & (v > 80)])) if colored_px >= 15 else -1
@@ -411,21 +445,26 @@ def _classify_weakness_blob(crop: MatLike, templates: dict[str, TemplateInfo]) -
     return best_name
 
 
-def _detect_weakness_blobs(zone: MatLike) -> list[tuple[int, int, int, int]]:
-    """图块带 → 图标外接框列表(按 x 序;彩色纹样 + 白色纹样双路,膨胀融臂去重)。"""
+def _detect_weakness_blobs(zone: MatLike,
+                           blob_max: int = _WEAKNESS_BLOB_MAX) -> list[tuple[int, int, int, int]]:
+    """图块带 → 图标外接框列表(按 x 序;彩色纹样 + 白色纹样双路,膨胀融臂去重)。
+
+    白色路放宽到 S<60,V>130:底板带 tint 的画面(如末日幻影 boss 卡)会把
+    物理白色纹样压灰(S 40-60),过严会整图标漏检;彩色图标(S>60)不受影响。
+    """
     hsv = cv2.cvtColor(zone, cv2.COLOR_RGB2HSV)
     s, v = hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
     kernel = np.ones((3, 3), np.uint8)
     boxes: list[tuple[int, int, int, int]] = []
     seen: list[tuple[int, int]] = []
-    for mask_bool in ((s > 60) & (v > 80), (s < 30) & (v > 150)):
+    for mask_bool in ((s > 60) & (v > 80), (s < 60) & (v > 130)):
         mask = mask_bool.astype(np.uint8) * 255
         mask = cv2.dilate(mask, kernel, iterations=1)
         cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
-            if not (_WEAKNESS_BLOB_MIN <= w <= _WEAKNESS_BLOB_MAX
-                    and _WEAKNESS_BLOB_MIN <= h <= _WEAKNESS_BLOB_MAX):
+            if not (_WEAKNESS_BLOB_MIN <= w <= blob_max
+                    and _WEAKNESS_BLOB_MIN <= h <= blob_max):
                 continue
             if any(abs(x - sx) < 12 and abs(y - sy) < 12 for sx, sy in seen):
                 continue
@@ -435,14 +474,54 @@ def _detect_weakness_blobs(zone: MatLike) -> list[tuple[int, int, int, int]]:
     return boxes
 
 
+_WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其波次锚行的最大纵向距离
+                                     # (同 boss 卡内;超出视为跨卡,不覆盖)
+
+
+def _match_boss_weaknesses(ocr_results: list,
+                           anchor_y: int,
+                           mapping: dict[str, list[str]]) -> list[str] | None:
+    """锚行上方的 boss 名 OCR 文本 → 弱点表值;未命中返回 None。
+
+    boss 名行(「节点N | boss名」标题行)在其波次锚行上方同一 boss 卡内;
+    OCR 可能将「节点一」与 boss 名粘为一条,故按「文本含表名」匹配,
+    多命中取距锚最近者(同一卡内唯一,跨卡由距离上限拦截)。
+    """
+    best_name: str | None = None
+    best_dy: int | None = None
+    for r in ocr_results:
+        text = (r.data or '').strip()
+        if not text or r.y >= anchor_y:
+            continue
+        dy = anchor_y - r.y
+        if dy > _WEAKNESS_BOSS_MAX_DY:
+            continue
+        for boss_name in mapping:
+            if boss_name in text and (best_dy is None or dy < best_dy):
+                best_name, best_dy = boss_name, dy
+                break
+    if best_name is None:
+        return None
+    return list(mapping[best_name])
+
+
 def read_team_waves(ctx: SrContext, image: MatLike,
-                    screen_name: str = SCREEN_NAME) -> list[WaveInfo]:
+                    screen_name: str = SCREEN_NAME,
+                    weakness_layout: str = _WEAKNESS_LAYOUT_BELOW,
+                    boss_weakness_map: dict[str, list[str]] | None = None) -> list[WaveInfo]:
     """按「建议属性」锚行装配波次列表(每锚 = 一波,数量实读)。
 
-    每波绑定:该波弱点属性(锚下方图块带)+ 该波当前编队成员(槽位 area 按行号取,
+    每波绑定:该波弱点属性 + 该波当前编队成员(槽位 area 按行号取,
     area 未建档的行 members = [])。锚未读到 = 空列表(降级不编造)。
     screen_name:槽位 area 的归属屏——逐光捡金各编队屏行结构同构但槽位坐标
-    逐屏独立建档(FH=忘却之庭-编队 / PF=虚构叙事-编队,槽间距 90px vs 65px)。"""
+    逐屏独立建档(FH=忘却之庭-编队 / PF=虚构叙事-编队 / AS=末日幻影-编队,
+    槽间距 90px vs 65px)。
+    weakness_layout:弱点图块带相对锚行的布局,'below'=锚行正下方(忘却之庭/
+    虚构叙事), 'inline'=与锚文字同行紧贴其右(末日幻影 boss 卡);
+    布局错配 = 图块带落在搜索区外,弱点恒为空列表(不报错,降级语义)。
+    boss_weakness_map:boss 名 → 弱点表(ensure_boss_weakness_map)。命中时
+    覆盖该波颜色识别结果(主路径);boss 名取锚行上方同卡标题行的 OCR 文本
+    (含即命中,最近优先,距离上限 300px 防跨卡误配)。"""
     templates = ensure_avatar_templates(ctx)
     results = ctx.ocr_service.get_ocr_result_list(image=image)
     anchors = sorted(
@@ -451,16 +530,31 @@ def read_team_waves(ctx: SrContext, image: MatLike,
     )
     waves: list[WaveInfo] = []
     for idx, a in enumerate(anchors[:_WEAKNESS_MAX_ROWS], start=1):
-        x1 = max(0, a.x - 15)
-        y1 = a.y + a.h + 2
-        zone = image[y1:y1 + _WEAKNESS_ZONE_H, x1:x1 + _WEAKNESS_ZONE_W]
+        if weakness_layout == _WEAKNESS_LAYOUT_INLINE:
+            # 同行布局:OCR det 框可能粘进首图标,起点用固定偏移绕开;
+            # 带宽只盖图标带(不及右侧相邻元素防误检)
+            x1 = a.x + _WEAKNESS_INLINE_X_OFF
+            y1 = max(0, a.y - 8)
+            zone_w, zone_h = _WEAKNESS_INLINE_ZONE_W, a.h + 16
+            blobs = _detect_weakness_blobs(image[y1:y1 + zone_h, x1:x1 + zone_w],
+                                           blob_max=_WEAKNESS_INLINE_BLOB_MAX)
+        else:
+            x1 = max(0, a.x - 15)
+            y1 = a.y + a.h + 2
+            zone_w, zone_h = _WEAKNESS_ZONE_W, _WEAKNESS_ZONE_H
+            blobs = _detect_weakness_blobs(image[y1:y1 + zone_h, x1:x1 + zone_w])
         weaknesses: list[str] = []
-        for (bx, by, bw, bh) in _detect_weakness_blobs(zone):
+        for (bx, by, bw, bh) in blobs:
             pad = 4
+            zone = image[y1:y1 + zone_h, x1:x1 + zone_w]
             crop = zone[max(0, by - pad):by + bh + pad, max(0, bx - pad):bx + bw + pad]
             name = _classify_weakness_blob(crop, ensure_element_templates(ctx))
             if name:
                 weaknesses.append(name)
+        if boss_weakness_map:
+            mapped = _match_boss_weaknesses(results, a.y, boss_weakness_map)
+            if mapped is not None:
+                weaknesses = mapped
         members: list[MemberGuess] = []
         area_missing = False
         for i in range(1, 5):
