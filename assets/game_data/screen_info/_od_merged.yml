@@ -15927,6 +15927,34 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+  - area_name: 战意效果-槽1
+    id_mark: false
+    pc_rect:
+    - 40
+    - 300
+    - 600
+    - 345
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 战意效果-槽2
+    id_mark: false
+    pc_rect:
+    - 40
+    - 685
+    - 600
+    - 730
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
 - screen_id: treasures_light_as_team
   screen_name: 末日幻影-编队
   pc_alt: false
@@ -16442,3 +16470,95 @@
     color_range: null
     goto_list:
     - 末日幻影-编队
+- screen_id: treasures_light_pf_cacophony
+  screen_name: 虚构叙事-荒腔走板
+  pc_alt: false
+  area_list:
+  - area_name: 标题-荒腔走板行
+    id_mark: true
+    pc_rect:
+    - 35
+    - 55
+    - 215
+    - 105
+    text: 荒腔走板
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-选择增益行
+    id_mark: true
+    pc_rect:
+    - 675
+    - 115
+    - 1220
+    - 165
+    text: 选择增益效果
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 卡片-增益1
+    id_mark: false
+    pc_rect:
+    - 655
+    - 178
+    - 1878
+    - 389
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 虚构叙事-编队
+  - area_name: 卡片-增益2
+    id_mark: false
+    pc_rect:
+    - 655
+    - 411
+    - 1878
+    - 622
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 虚构叙事-编队
+  - area_name: 卡片-增益3
+    id_mark: false
+    pc_rect:
+    - 655
+    - 644
+    - 1878
+    - 856
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 虚构叙事-编队
+  - area_name: 按钮-装配效果
+    id_mark: false
+    pc_rect:
+    - 1590
+    - 950
+    - 1790
+    - 1010
+    text: 装配效果
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list:
+    - 虚构叙事-编队
