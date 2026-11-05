@@ -117,7 +117,7 @@ class Comp:
     plaza_carry: str = ""        # plaza 实战聚类 carry 名(交叉核对基准,查 cw_plaza_comps.cluster_by_carry)
 
     # ===== 字段扩(C4 契约冻结语义;leader 裁决)=====
-    # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(禁忌/铁三角/替班不卖)
+    # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(铁三角/替班不卖)
     # 逐条对 final_comps 各篇(research/final_comps/)原文,不自创。
     equip_assign: dict[str, list[str | EquipChoice]] = field(default_factory=dict)
     """装备到人(C4 最大新增;C5 完成态 = 关键装备唯一真源):角色名 → 装备序列
@@ -125,8 +125,10 @@ class Comp:
     并入成员名单承载,建库期 ``__post_init__`` 校验);``key_equips`` 为本字段的
     投影读口(委托 :func:`derive_key_equips`,恒等由构造保证——无独立数据字段);
     终局条目非空由库级建库校验钉住(防新条目开空账)。"""
-    equip_taboos: list[str] = field(default_factory=list)
-    """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
+    # (旧 equip_taboos 字段〔本套禁买禁合成装备〕已整字段退役〔2026-11-05:
+    #  唯一消费点囤货投影排除恒空(禁忌件 ∉ 关键件投影,两域天然不相交)+ 类级
+    #  条目无解析器 = 纯零行为字段;万敌禁盾教义归 final_comps 文档层,装备
+    #  禁忌否决门若立项按统一维度另建——判例 = equip-taboos-retirement〕。)
 
     # required_deployed 缺省空 = 行为不变。写方 = 终局条目直写(希儿量子)
     # 与过渡组合条目生成期显式填(_build_transition_combos)。判定/进度
@@ -937,8 +939,6 @@ COMP_LIBRARY: list[Comp] = [
         #   plaza 簇频次(风暴潮54/热血拳40/绝对热量26)非公式优先序(绝对热量
         #   第一),容量紧张帧取件先后按登记序。显式转移时序件 = 生命之环(奶瓶,
         #   攻略「前期给万敌自己,双奶瓶后换给别人」),不在本表。
-        equip_taboos=["护盾件(类)", "以牙还牙甲", "掩体生成枪"],
-        # ↑ 教义(官方原文):燃血队员无法获盾,受盾只转 2%+1000 回血=负资产;连带盾类装备全禁
         # 无替班:文档明言万敌 1 费开局即在(56% 局 P1 板上),无空窗;P2 加深档数
         flex_factions=["群攻", "量子同频", "战技点", "治疗", "命运圣杯", "减益"],
         plaza_carry="万敌",

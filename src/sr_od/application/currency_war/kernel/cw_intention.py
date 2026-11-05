@@ -158,7 +158,7 @@ class HoardTarget:
     """锁后效果的输出契约:囤货目标集合(买侧唯一消费面;不改板上)。
 
     - ``char_targets``:角色件集合(意向线骨架采购集 / 跨线骨架 / 兜底线);
-    - ``equip_targets``:装备材料件(意向线 equip_assign 派生,剔除 equip_taboos);
+    - ``equip_targets``:装备材料件(意向线 equip_assign 投影);
     - ``mode``:'locked' | 'forced' | 'p1_pair' | 'p1_transition'
       (锁定线采购集/强制锁定/过渡层方向采购集〔两层候选并集或锁定
       条目〕/空窗回退见即买并集;token 名沿用历史键面——遥测判读
@@ -587,8 +587,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     角色件 = 终局成员集(``comp.members``;替班者已并入成员名单承载)
     ∪ 羁绊成员(档 0 ∪ 档 ≥1
     键阵营下的注册表成员——统一读口 core/bonus_faction_reqs);装备件 =
-    derive_key_equips(到人配方投影)− equip_taboos
-    (具名禁忌;类级禁忌如「护盾件(类)」由买侧/装备层消费,本层不展开)。
+    derive_key_equips(到人配方投影)。
     """
     chars = set(comp.members)
     factions = set(comp.core_faction_reqs) | set(comp.bonus_faction_reqs)
@@ -602,8 +601,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
             # (candidates 的 _char_factions 同式全集口径)。
             if (set(c.factions) | set(c.flows)) & factions:
                 chars.add(name)
-    taboos = set(comp.equip_taboos)
-    equips = {e for e in derive_key_equips(comp) if e not in taboos}
+    equips = set(derive_key_equips(comp))
     return chars, equips
 
 

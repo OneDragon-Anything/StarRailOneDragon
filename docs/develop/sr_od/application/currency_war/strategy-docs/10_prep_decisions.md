@@ -53,7 +53,7 @@
 ## 2. 装备机器（重排自原 03 §4.6；数学件 P42/P50/P34/P19）
 
 - 组件保留律 [29]（组件保留律条目）：意向未锁定不耗合成组件（RESERVED_COMPONENTS 语义）；意向锁定即留材料。
-- 合成规划：目标阵容 key_equips 反推组件需求向量（hoard_gaps 语义）；唯一件只规划一件；万敌禁盾类（equip_taboos）。
+- 合成规划：目标阵容 key_equips 反推组件需求向量（hoard_gaps 语义）；唯一件只规划一件；万敌禁盾类（教义归 final_comps 文档层，实现层无载体——equip_taboos 字段已退役 2026-11-05）。
 - 分配：equip_assign（角色特定）+ 站位限定过滤 + A/B 双套语义；优先序承 [9]（装备价值条目：输出位优先 → 辅助核心装备 → 盈余）。
 - 虚数件：星徽（add-if-absent）/卡带（+1）按 P19 语义计数（P19② 两遍法已生效：反序/三阶组合测试在位）；穿戴者选择 = 事件决策（E8，见 13）。
 - 回收：recycle_qualified 准入 + 冶金炉流水线（P14 域，P42/P50 重证）；工具 7 件使用判据全量并入 §2.1。
@@ -200,7 +200,7 @@
 |---|---|---|
 | COMP_LIBRARY | 增 | 原规划 star_targets 由知识卡 `need_star` 承载（[12_line_and_intention.md](12_line_and_intention.md) §1.4）;entry_signals 曾建后整体退役（2026-11 用户终裁「可退役」——万敌 1 条/白厄 3 条知识真空接受损失,上场时机 = 部署搜索骨架/L1 完成度自适应）;slot_structure/external_deps/downgrade_paths/segment_tier_tables 未建 |
 | | 删 | 典型轮次/前期强度等十个零消费字段（2026-11-02 清理批：typical_form_round、early_power、weak_planes、form_tiers_max、branch_key、branch_of、free_slots、special_systems、equip_synergy、global_accumulators——消费实证单一源 = git 该批 commit；档位谱真值载体 = `FACTIONS.tiers`）。评估参数四字段与评分器族（2026-11-03 批：strength、form_difficulty、mechanic_attributes、countered_by_bosses + comp_score/六 fit/ScoreContext/W_* 整族——孤儿评分器实证 + strength 唯一活链投资方向分随 `line_value.py` 整链下线，28/29 号稿方向分行废止申报）。原删项 level_plan 已复活为现役（经济统一论） |
-| | 留 | core_chars/faction_reqs(羁绊要求优先级结构:档 0 = 核心羁绊层、档 ≥1 = 加分层;原 form_tiers/sub_tiers 两字段已合并)/family/substitute_plan/equip_assign/equip_taboos/char_positions/flex_factions/shared_chars(第二档终局成员,与 core 交集为空由建库校验钉住——双列重复登记 import 即炸) |
+| | 留 | core_chars/faction_reqs(羁绊要求优先级结构:档 0 = 核心羁绊层、档 ≥1 = 加分层;原 form_tiers/sub_tiers 两字段已合并)/family/substitute_plan/equip_assign/char_positions/flex_factions/shared_chars(第二档终局成员,与 core 交集为空由建库校验钉住——双列重复登记 import 即炸)。equip_taboos 已整字段退役(2026-11-05,纯零行为——判例 = equip-taboos-retirement) |
 | | 派生 | key_equips = Comp property(委托 `derive_key_equips` 投影 equip_assign,无独立数据字段;装备知识登记单一源 = equip_assign) |
 | 新 TRANSITION_LIBRARY | 建 | 过渡阵容库(开局过渡组合条目,与 COMP_LIBRARY 两套独立库;构造块表 `TRANSITION_BONDS` 两两组合构造式生成,锁定域 = 组合条目、单羁绊构造块不进库,[12_line_and_intention.md](12_line_and_intention.md) §3);体系判据数据层 = `cw_system_cards.SYSTEM_CARDS`(组合决策层已退役,数据层保留) |
 | 新 PLUGIN_LIBRARY | 建 | 通用插件池（跨阵容骨架+消耗品层），含座位价值注记 |
