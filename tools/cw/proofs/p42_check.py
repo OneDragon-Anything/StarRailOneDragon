@@ -659,28 +659,26 @@ assert res.get('fill') == ['X'], 'surplus goes to fill only after tier-1 satisfi
 row_ok = {'back_item': 'back'}
 wearer_row = 'front'
 assert row_ok['back_item'] != wearer_row, 'row mismatch must be blocked pre-EV'
-# taboo deletion: no taboo name appears in that comp's key list (consistency with hard filter)
-for comp in COMP_LIBRARY:
-    if comp.equip_taboos:
-        overlap = set(comp.equip_taboos) & set(comp.key_equips)
-        assert not overlap, f'taboo/key overlap in {comp.name}: {overlap}'
-n_taboo = sum(1 for c in COMP_LIBRARY if c.equip_taboos)
-print(f'  [8] lexicographic: tier-1 beats fill under capacity; row hard-block; '
-      f'{n_taboo} comps with taboos, zero taboo/key overlap')
+# taboo deletion: retired 2026-11-05 (equip-taboos-retirement) -- the taboo(C)
+# symbol degenerates to the empty-deletion special case (see P42 header note);
+# the old "no taboo/key overlap" assertion is vacuously true and was removed.
+print('  [8] lexicographic: tier-1 beats fill under capacity; row hard-block; '
+      'taboo domain empty (equip_taboos retired 2026-11-05, empty-deletion degenerate)')
 
 # --- (9) no-HP compliance: decision inputs COMPUTED from what this proof consumes ---
 # The compliance claim must be swept over the ACTUAL runtime inputs of this proof
-# (window/pool/lambda constants, comp names, component names, taboo items) -- the old
+# (window/pool/lambda constants, comp names, component names) -- the old
 # hardcoded symbol list was a circular no-op (adversarial audit note). Every string
 # that feeds a decision in this proof must be free of any HP term (A8, [39]/[40]).
+# (taboo names removed from the sweep set: equip_taboos retired 2026-11-05,
+#  empty-deletion degenerate -- P42 header note.)
 decision_inputs: set = (
     {'window_W', 'pool', 'lam_any_band_lo', 'lam_any_band_hi', 'lam_mid'}
     | set(demands)
-    | {c for dem, _kes in demands.values() for c in dem}
-    | {t for comp in COMP_LIBRARY if comp.equip_taboos for t in comp.equip_taboos})
+    | {c for dem, _kes in demands.values() for c in dem})
 hp_leaks = [i for i in decision_inputs if 'hp' in str(i).lower()]
 assert not hp_leaks, f'HP term leaked into computed decision inputs: {hp_leaks}'
 print(f'  [9] no-HP compliance swept over {len(decision_inputs)} computed decision inputs '
-      '(comp/component/taboo names + W/pool/lam constants; [39]/[40], A8)')
+      '(comp/component names + W/pool/lam constants; [39]/[40], A8; taboo domain empty post-retirement)')
 
 print('ALL ASSERTIONS PASSED')
