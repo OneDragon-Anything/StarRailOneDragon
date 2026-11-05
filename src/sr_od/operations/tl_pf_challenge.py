@@ -3,7 +3,7 @@
 前置:``GotoTreasuresLightward(TLMode.PURE_FICTION)`` 到虚构叙事选关 → 点目标关卡
 纸鹤进编队屏后调用本 op(本 op 不做选关→编队的跳转)。
 
-交互模型(2026-11-05 实机,当期虚构叙事——游戏内期名「取象为文」):
+交互模型(当期虚构叙事,游戏内期名「取象为文」):
 - 编队屏(虚构叙事-编队)两行×4 槽,每行对应战斗的一个节点;点槽位 = 展开左栏
   角色列表 + 选中该行(白框);点角色卡 = 加入当前选中行的下一个空槽;
   **点击已在编队中的角色 = 将其移除**(填充搜索时必须跳过已落位目标,否则会把
@@ -112,9 +112,8 @@ class TlPureFictionChallengeOp(SrOperation):
     def _clear_teams(self) -> OperationRoundResult:
         """确认在编队屏并逐行清空(点行槽位选中 → 点垃圾桶,两行各一次)。
 
-        ⚠️ PF 的垃圾桶只清「当前选中行」,非全清(2026-11-05 实测:仅点一次时
-        行 2 残留成员从列表隐藏,填充找不到目标);与忘却之庭编队屏的全清语义
-        不同。清空幂等,对空行无副作用;点完直接 success 转入填充循环。"""
+        ⚠️ PF 的垃圾桶只清「当前选中行」,非全清——仅点一次时行 2 残留成员从
+        列表隐藏,填充将找不到目标;与忘却之庭编队屏的全清语义不同。清空幂等,对空行无副作用;点完直接 success 转入填充循环。"""
         screen = self.last_screenshot
         if not (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-虚构叙事行').is_success
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
@@ -129,15 +128,11 @@ class TlPureFictionChallengeOp(SrOperation):
     def _fill_loop(self) -> OperationRoundResult:
         """逐行逐角色填充:行选中守卫 → 读行成员回验落位 → 回顶 → 逐页找目标 → 点卡。
 
-        落位回验是推进的唯一依据(点卡可能被游戏吞掉不落位——2026-11-05 实机
-        「点希儿后列表里她仍在」静默失败):目标出现在行成员里才推进游标,否则
-        重找重点同一目标。匹配两级:guess.char 精确/变体优先;该格置信不足时
-        guess.char 为空但候选表第一名仍可命中(2026-11-05 「布洛妮娅在页签里
-        却匹配不到」踩坑——页签名取 guess.char or candidates[0],匹配循环此前
-        只看 guess.char)。
-        行选中守卫(2026-11-05 实机踩坑):清空节点四连击末尾会留下「行 2 选中」
-        状态,列表已展开时直接点卡会把角色落进错误的选中行(希儿进了行 2)——
-        点卡前必须显式点目标行槽位确保选中。"""
+        落位回验是推进的唯一依据(点卡可能不落位):目标出现在行成员里才推进
+        游标,否则重找重点同一目标。名字匹配含置信名与候选表第一名——置信不足
+        帧 guess.char 为空,但候选第一名仍是脸库最近似判定,可信。
+        行选中守卫:点卡落在「当前选中的行」,清空节点末尾留下的选中行不一定是
+        目标行——点卡前必须显式点目标行槽位确保选中。"""
         image = self.last_screenshot
         if self._row_idx >= len(self.teams):
             # 全部落位:收起左栏列表,交装配节点
@@ -149,8 +144,8 @@ class TlPureFictionChallengeOp(SrOperation):
 
         # 行选中守卫:点卡前目标行必须处于选中态(白框),否则角色会落进
         # 上一次选中的行。可靠操作序列 = 收起列表 → 点目标行槽位(一步展开+选中);
-        # ⚠️ 列表展开态下直接点另一行槽位的选中切换不可靠(2026-11-05 实机:
-        # 守卫点行 1 槽位未切换选中,点希儿落进了行 2)。收起态点槽位多次实测可靠。
+        # ⚠️ 列表展开态下直接点另一行槽位的选中切换不可靠(实测行为);
+        # 收起态点槽位 = 展开 + 选中一步到位,实测可靠。
         if self._need_row_select:
             cells = read_character_cells_by_level(self.ctx, image)
             if self._page_sig(cells):  # 列表展开 → 先收起
@@ -185,7 +180,7 @@ class TlPureFictionChallengeOp(SrOperation):
         # (列表未展开时点槽位 = 展开+选中,已展开时点槽位 = 仅切换选中行,
         # 两种状态点槽位都安全收敛到「展开 + 目标行选中」)。
         # 识别用 等级文本锚驱动(滚动停驻位置无关;固定网格几何在半格停驻时
-        # 行列偏移裁错位——2026-11-05 实机翻页识别随机失败的根因之一)。
+        # 行列偏移裁错位——列表滚动任意停驻的常见形态)。
         cells = read_character_cells_by_level(self.ctx, image)
 
         # 每个角色搜索前先回列表顶部(页签连续两次相同 = 到顶)
@@ -207,8 +202,7 @@ class TlPureFictionChallengeOp(SrOperation):
         # 名字匹配:guess.char(置信名)与 candidates[0](候选第一名)都参与,
         # 精确相等优先于前缀变体(命途变体形态如「姬子•启行」,OCR 分隔符在
         # •/· 间抖动)。同帧仅候选命中 = 置信差一口气,同样可信(候选第一名
-        # 即脸库最近似判定),点——2026-11-05「布洛妮娅在页签里却匹配不到」
-        # 踩坑的修复(页签名含候选,匹配循环此前只看置信名)。
+        # 即脸库最近似判定),点(候选第一名与页签名同源,页签可见即可信);
         exact: AnchorCell | None = None
         fuzzy: AnchorCell | None = None
         for cell in cells:
@@ -230,7 +224,7 @@ class TlPureFictionChallengeOp(SrOperation):
                  target, row_no, self._down_stagnation, sig[:80])
         # 到底判定用「已见页签集合」+ 弹跳 4 次容错:底部翻页在最后两页弹跳,
         # 且格子识别名跨帧随机缺失(某页经过时目标格识别失败即错过,复读大概率
-        # 成功——2026-11-05 实机:希儿/杰帕德/瓦尔特均出现整轮缺失后复现),故
+        # 成功——识别名存在帧间缺失,底部复读可补救),故
         # 底部多弹跳几轮给识别补救机会,2 次就放弃会误杀。
         if sig in self._seen_sigs:
             self._down_stagnation += 1
@@ -240,8 +234,8 @@ class TlPureFictionChallengeOp(SrOperation):
         if self._down_stagnation >= 4:
             return self.round_fail(f'列表到底未找到 {target}')
         # 翻页后等滚动动画完全停止再识别:拖动 0.6s + 惯性滚动,等太短截到
-        # 滚动中间帧会让脸库识别随机失败(2026-11-05 实机:静止页识别稳,
-        # 翻页 1s 等待时目标「忽隐忽现」全源于此——静止后重读即恢复)。
+        # 滚动中间帧会让脸库识别随机失败(静止帧识别稳定,滚动未停时
+        # 目标会整页缺名,静止后重读即恢复)。
         self.ctx.controller.drag_to(_SCROLL_TO, start=_SCROLL_FROM, duration=0.6)
         return self.round_wait('向下翻页', wait=3)
 
@@ -259,8 +253,8 @@ class TlPureFictionChallengeOp(SrOperation):
 
     @staticmethod
     def _cell_names(cell) -> list[str]:
-        """格子可判名字列表:置信名在前,候选第一名在后(2026-11-05 补——
-        置信不足帧 guess.char 为空但候选第一名仍可信)。"""
+        """格子可判名字列表:置信名在前,候选第一名在后(置信不足帧
+        guess.char 为空,但候选第一名仍可信)。"""
         names: list[str] = []
         if cell.guess.char:
             names.append(cell.guess.char)
@@ -289,7 +283,7 @@ class TlPureFictionChallengeOp(SrOperation):
         """两行各装配第一个增益效果(三选一,自动化默认取第一项「触技」)。
 
         选效果与点装配拆成两轮:同轮连点时选中动画未完成,装配点击落空、
-        弹窗滞留(2026-11-05 实机踩坑);弹窗滞留时兜底再点装配。"""
+        弹窗滞留(连点时选中动画未完成,装配点击无效);弹窗滞留时兜底再点装配。"""
         screen = self.last_screenshot
         popup = self.round_by_find_area(screen, _SELECT_SCREEN, 'PF_CACOPHONY_CONFIRM').is_success
 
