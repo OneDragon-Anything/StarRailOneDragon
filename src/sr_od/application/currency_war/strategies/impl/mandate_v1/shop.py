@@ -37,6 +37,13 @@ scene_plugin_buy_hit(_no_seat/
 budget_exhausted)/ shop_refresh_*(三段式判据拒因族)/ levelup_*
 (会话升级意图门族:资格门拒因 + levelup_transition_close 转场关店;
 键语义与写点注释见各分支段);
+买臂派生键族 = <arm_key>_round_sold_excluded(本轮已卖名集剔除
+计数;写点 = _buy_view/_shop_candidates 的统一剔除支 + ev 买入分支
+内联同款写点,臂实例 =
+m2/m2_stockpile/m2_merge_completion/cold_start_buy/shelf_qualify_
+buy/transition_shelf_qualify_buy/scene_plugin_buy/dead_gold_press_
+buy/press_buy_deployable/m6/m6_fallback/fuel_filler_stall/ev_buy
+——键名随 arm_key 参数化自动派生,属键族登记面非逐臂登记);
 取用观测键族(统一让位优先级迭代 3.5):卖出取用计数键的观测衍生
 <take>_tier_<1..10>(被取用件统一序列档位分量)/ <take>_rng_tail_hit
 (随机尾键命中——等价牌群内部随机定序实际生效的取用计数);本域
@@ -1674,6 +1681,62 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                         continue
                     _on_target_buy()
                     return _emit_buy(card, 'shelf_qualify_buy')
+
+    # —— 过渡货架资格臂(过渡侧虚拟评估;or-reqs-retirement 3.4 详设;
+    #    序 1 层内殿后〔终局资格臂之后〕,同帧多资格件按货架槽序)——
+    # 触发窗 = 未终局锁定 ∧ 过渡未锁定(ist.transition_locked 空——
+    # 过渡锁定后买面 = 锁定条目成员域,资格臂的方向点亮语义与「锁后
+    # 不换」互斥;终局锁定帧过渡层整体退役照旧)。资格判据(详设 §1,
+    # 与终局侧同构的窄门):X ∈ 货架可见 ∧ X ∈ 虚拟过渡候选
+    # (transition_scores(在手 ∪ 货架, 简报克制源) 前
+    # _TRANSITION_CANDIDATE_TOP_N 条组合)的计分成员域
+    # (transition_member_set 单一读口展开,禁消费点内联)。虚拟候选
+    # 语义 = 「把货架全买了之后的过渡候选」——X 在其 top3 组合计分域
+    # 内 = X 参与点亮某个当下最强的过渡方向;与终局资格臂(在前)并存
+    # 互补不互斥:终局侧不点亮的过渡件(如 1 费羁绊件)经组合计分域
+    # 点亮,同帧终局资格件先消费。**零持久化**(详设关键取舍):虚拟
+    # 结果即算即用,不写候选槽/任何状态——实机候选槽语义 = 实持有
+    # 证据的方向(锁定评估域依赖它防偶然锁定),虚拟结果落状态会污染
+    # 锁定域语义。买入写持有 → 下一帧 update_transition_candidates
+    # 重算 → 候选真实跟随(信号进 → 买入 → 候选点亮闭环,终局侧同款)。
+    # sources 与终局臂同源现读(opening_ctx_of 的 enemy_affixes ∪
+    # plane_bosses):简报未观察帧外部分自然 0,虚拟排位与主链一致。
+    if not _line_view.locked and not (
+            getattr(_ist, 'transition_locked', '') or ''):
+        _t_shelf = _face_names(gs)
+        if _t_shelf:
+            _t_open = line_select.opening_ctx_of(gs)
+            _t_ranked = cw_intention.transition_scores(
+                frozenset(owned | _t_shelf),
+                (*_t_open.enemy_affixes, *_t_open.plane_bosses))
+            _t_qual_names: set[str] = set()
+            for _tn, _s in _t_ranked[
+                    :cw_intention._TRANSITION_CANDIDATE_TOP_N]:
+                _te = cw_intention.transition_entry_of(_tn)
+                if _te is None:
+                    continue
+                _t_qual_names |= cw_intention.transition_member_set(_te)
+            if _t_qual_names:
+                for card in _buy_view('transition_shelf_qualify_buy'):
+                    _tq_name = card.name or ''
+                    if not _tq_name or _tq_name not in _t_qual_names:
+                        continue
+                    cost = card_cost(card)
+                    if gold < cost:
+                        _sw = _acquire_yield(card, 'order_1')
+                        if _sw is not None:
+                            return _sw
+                        continue
+                    if bench_free <= 0:
+                        _sw = _acquire_yield(
+                            card, 'order_1',
+                            lambda card=card: _emit_buy(
+                                card, 'transition_shelf_qualify_buy'))
+                        if _sw is not None:
+                            return _sw
+                        continue
+                    _on_target_buy()
+                    return _emit_buy(card, 'transition_shelf_qualify_buy')
 
     # (新囤货臂已整段退役——统一让位优先级迭代 3.4,总纲 §2.5 买面行:
     # 非候选的四体系成员期权囤货,存在前提〔囤换线期权〕与单卡核心囤积
