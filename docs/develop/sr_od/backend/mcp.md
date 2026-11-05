@@ -4,7 +4,7 @@
 
 ## 工具
 
-33 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
+34 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
 
 | MCP tool | 委托 | 返回 |
 |---|---|---|
@@ -41,6 +41,7 @@
 | `mys_get_roster_detail()` | `mys_tools.py` → `SrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
 | `relic_lookup(query)` | `relic_tools.py` → `lookup_relic()`（直读 `sr_relic_sets` 常量，零 IO） | 统一信封：`success` + 套装静态定义（set_name/kind_cn/set_id/obtain/effects/pieces 含件名/部位/描述/图标相对路径）／`ambiguous`（模糊多命中，`candidates` 候选列表）／`not_found`。查询词按优先级：tid 数字 → 件名精确 → 套装全名 → 子串模糊。查账号穿戴数据走 `mys_get_roster_detail` |
 | `cone_lookup(query, rarity=None, path_id=None, list_all=False)` | `cone_tools.py` → `lookup_light_cone()`（直读 `sr_light_cones` 常量，零 IO） | 统一信封：`success` + 光锥静态定义（tid/name/rarity/path_cn/obtain/skill 特效全文/icon 相对路径）；`list_all=true` 按 rarity/path_id 过滤列全量；`ambiguous` 候选列表／`not_found`。查询词：tid 数字 → 全名 → 子串模糊。查账号穿戴走 `mys_get_characters` |
+| `character_lookup(query, rarity=None, path_cn=None, element_cn=None, list_all=False)` | `character_tools.py` → `lookup_character()`（直读 `character_const`+`sr_character_details` 常量，零 IO） | 统一信封：`success` + 角色静态基础信息（avatar_id/id/cn/path_cn/element_cn/rarity/technique_type/icon 相对路径），精确/模糊单命中另带 `traces`（行迹满级）与 `eidolons`（星魂全 6）；`list_all=true` 按过滤列全量基础列表；`ambiguous` 候选列表／`not_found`。查询词：数字 id → 中文名/英文代号 → 子串模糊。查账号拥有与练度走 `mys_get_characters` |
 
 要点：
 
