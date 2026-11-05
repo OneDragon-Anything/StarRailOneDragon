@@ -2685,6 +2685,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     notes='战力类 UNIT_BUFF 零响应登记(同形族);'
           '伤害减免两段/选角谓词四判读面游戏侧自算,bot 仅登记;'
           '无离散触发事件,trigger 占位形。'),
+    # 攻防一体(id 351601):官方「我方小队获得25%伤害减免，且获得等同于
+    # 伤害减免的伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「等同
+    # 于伤害减免的伤害增幅」跨轴联动读法[同源快照 vs 全额镜像两读]零响
+    # 应下 bot 行为恒同 = 判读申报制[REVIEW-T392 两档叠合同构判例];两段
+    # 增幅游戏侧自算,bot 零响应;无离散触发事件,trigger 占位形)。
+    '攻防一体': EffectSpec(
+    id='351601', name='攻防一体',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '351601')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
+          '跨轴联动读法[同源快照 vs 全额镜像]判读申报制[零响应下 bot '
+          '行为恒同];两段增幅游戏侧自算,bot 仅登记;'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
