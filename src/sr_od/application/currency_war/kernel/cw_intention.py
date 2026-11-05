@@ -425,6 +425,8 @@ TRANSIT_AFFIX_PENALTY_SCORE: float = float(FEAR_PENALTY)
 
 #: 过渡候选数(与终局候选数 CANDIDATE_TOP_N 同值复用;kernel 禁
 #: import 策略层实现,两处值禁单侧漂移,改值须两处同改)。
+#: 策略层消费点 = shop.py 过渡货架资格臂虚拟帧切片(or-reqs-retirement
+#: 3.4:虚拟/实机帧同 N 经本常量单一源,禁调用侧复制字面量)。
 _TRANSITION_CANDIDATE_TOP_N: int = 3
 
 
