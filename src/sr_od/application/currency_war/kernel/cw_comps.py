@@ -113,7 +113,7 @@ class Comp:
     # (燃血吃受击)、知更鸟前台(追击支撑)、万敌/绯英@0 一号位(标准式)、
     # 三月七@4-6 后排中段(护盾相邻覆盖最大化)。空 = 全按注册表默认。
     char_positions: dict[str, str] = field(default_factory=dict)
-    flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 faction_reqs)
+    flex_factions: list[str] = field(default_factory=list)  # 弹性次要羁绊(不进 faction_reqs;与档 ≥1 键互斥——建库校验)
     plaza_carry: str = ""        # plaza 实战聚类 carry 名(交叉核对基准,查 cw_plaza_comps.cluster_by_carry)
 
     # ===== 字段扩(C4 契约冻结语义;leader 裁决)=====
@@ -153,7 +153,11 @@ class Comp:
     """每角色必要星级(锁定后星级目标单一源;12 号篇 §1.4;停留门/
     刷新判据消费)。键 = 角色规范名(线终局成员:核心输出位 + core_chars +
     攻略明文星级成员),值 = 必要星级;定义 3★ 就追到底无降档、定义 2★ 即完成
-    (12 号篇 §1.4)。定值规则:核心输出位按线攻略明文,无明文线按星级饥饿两档表定为
+    (12 号篇 §1.4)。**值 = 1 的条目是活数据不是死行**:``unfinished_star_targets``
+    的「未持有 → 0 < 1 → 入未完成目标集」分支使 1★ 行承载「首张即目标」语义
+    (停留刷牌目标驱动);勿按「消费端缺省 1 等价」误判清理(comp-data-row-cleanup
+    迭代曾误判撤销,窄子集测试 stay_target 断言拦截——判例见该迭代 attack.md)。
+    定值规则:核心输出位按线攻略明文,无明文线按星级饥饿两档表定为
     (final_comps README A4:高饥渴线 Final 3★ 占 80-94% 标 3★/低饥渴线 ≤2★ 过半
     标 2★);辅助 1★(A4 辅助普适档——D 牌预算全落核心,辅助升星只吃自然来牌);
     攻略明文更高者以明文为准。(旧双源 level_plan.star_goals「对拍基准」已随
@@ -213,6 +217,19 @@ class Comp:
                 raise ValueError(
                     f'{self.name}: equip_assign 键 {_who!r} ∉ '
                     'core_chars ∪ shared_chars(替班者须并入成员名单承载)')
+        # flex 与档 ≥1 键域互斥建库校验(faction_reqs 迁移残留防线——同键
+        # 双登记 = 两容器边界渗漏,import 即炸;与 faction_reqs 校验②「同
+        # 羁绊禁跨档」对齐,本条管跨字段面)
+        _flex_echo = set(self.flex_factions) & set(self.bonus_faction_reqs)
+        if _flex_echo:
+            raise ValueError(
+                f'{self.name}: flex_factions 与档 ≥1 键重叠 '
+                f'{sorted(_flex_echo)}(次要羁绊登记单一容器:'
+                '有档位目标进 faction_reqs 档 ≥1,无档位目标才进 flex)')
+        # (need_star 值域校验曾随 comp-data-row-cleanup 落地后撤销——1★ 行
+        #  是活数据:unfinished_star_targets 对未持有成员 0 < 1 入未完成
+        #  目标集(「首张即目标」停留刷牌语义),非缺省等价死行;判例见
+        #  该迭代 attack.md A6 修正。)
 
     @property
     def core_faction_reqs(self) -> dict[str, int]:
@@ -406,7 +423,8 @@ COMP_LIBRARY: list[Comp] = [
         # 成型 8 人口:前台 姬子·启行+花火+瓦尔特+记忆主,后台 三月七+刻律德菈+千冶·刃+符玄/缇宝
         # (plaza 784 篇校准):carry 274/在场 358 篇断层级第一;flex_factions 全收(plaza 羁绊分布)。
         # A 流主体(底稿 A 反震姬子 ~60%):领航员绑三月七=全队 500% 反伤,受击结算。
-        flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
+        # (「护盾」随 flex∩bonus 互斥清理从 flex 列移除——A 流副档在 faction_reqs 档 1 承载)
+        flex_factions=["减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
         # A 流铁三角(final_jizi A 节):三月七第一件=自适应外骨骼(刚需:前排
         # 减伤25%+受击概率大增=吸仇恨)+姬子以牙还牙甲×2-3(取 ×2 底稿口径;
@@ -432,7 +450,8 @@ COMP_LIBRARY: list[Comp] = [
         # B 流(底稿 B 输出姬子 ~25%):装备公式=火力风暴潮×2+高周波电锯
         # (B套=冷笑话/动能剑/特权件等变化);领航员三月(默认)/饮月(战技点
         # 复制动能剑)/星期日(直伤)——助战技直伤结算方向。
-        flex_factions=["护盾", "减益", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
+        # (「减益」随 flex∩bonus 互斥清理从 flex 列移除——B 流副档在 faction_reqs 档 1 承载)
+        flex_factions=["护盾", "战技点", "量子同频", "盛会之星", "能量", "星间旅人"],
         plaza_carry="姬子·启行",
         # B 流装备公式(final_jizi B 节 L42 明文「火力风暴潮×2+高周波电锯」;
         # B套=冷笑话/动能剑/特权件等变化——括号变体件无主,不入册):姬子风暴潮
@@ -600,7 +619,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):黄泉 = A 级;攻略(76826405):3游侠+4减益+3量子,2星乱破+3星不死途→280%增幅
         # (plaza 50 篇校准):常驻 千冶·刃48/瓦尔特45/不死途45/乱破38/椒丘32 —— core 的「刃」
         # 改「千冶·刃」(V4.4 实战常驻是千冶·刃,非本体刃);装备 top:电锯56/风暴潮28/光速螺旋桨26/永动机24。
-        flex_factions=["击破", "治疗", "追击", "量子同频"],
+        flex_factions=["治疗", "追击", "量子同频"],   # (「击破」随 flex∩bonus 互斥清理移除——副档在档 1 承载)
         plaza_carry="黄泉",
         # 单体乏力不登 boss 行(「单体boss」是原型描述非公司名;boss 吃怕
         # 单一源 = cw_affinity_table.BOSS_AFFINITY,攻略无黄泉×具体公司名
@@ -816,7 +835,7 @@ COMP_LIBRARY: list[Comp] = [
         #   留 A/B 拆分
         # (plaza 校准):白厄 38 篇 carry 中 33 篇实际挂在列车同行(以牙还牙甲×93 断层第一,
         # 副三月七/姬子/星期日)—— 纯反甲白厄是小众硬流派;主流是列车护盾流的副 carry 位。
-        flex_factions=["列车同行", "巡海游侠", "减益", "护盾"],
+        flex_factions=["列车同行", "巡海游侠", "减益"],   # (「护盾」随 flex∩bonus 互斥清理移除——副档在档 1 承载)
         plaza_carry="白厄",
         # ===== 知识卡字段(数据源=final_comps/final_baie_reflect.md)=====
         need_star={
@@ -940,7 +959,7 @@ COMP_LIBRARY: list[Comp] = [
         #   第一),容量紧张帧取件先后按登记序。显式转移时序件 = 生命之环(奶瓶,
         #   攻略「前期给万敌自己,双奶瓶后换给别人」),不在本表。
         # 无替班:文档明言万敌 1 费开局即在(56% 局 P1 板上),无空窗;P2 加深档数
-        flex_factions=["群攻", "量子同频", "战技点", "治疗", "命运圣杯", "减益"],
+        flex_factions=["群攻", "量子同频", "治疗", "命运圣杯", "减益"],   # (「战技点」随 flex∩bonus 互斥清理移除——副档在档 1 承载)
         plaza_carry="万敌",
         # 用户定案 [21] 例外)——环境满足(敌方多动/反伤类词条)时适用「有空位就上」。
         # ===== 知识卡字段(数据源=final_comps/final_wandi_burn.md)=====
@@ -975,7 +994,7 @@ COMP_LIBRARY: list[Comp] = [
         #   +反重力皮靴」。机制注脚:卡芙卡星3 携带装备直接提高引爆倍率=全游戏唯一
         #   装备焊进公式的角色;全队铺皮靴(§5 全队层皮靴 53>风暴潮 50,速度→行动
         #   次数→触发引爆,黑天鹅行已含 1 双)。
-        flex_factions=["减益", "量子同频", "盛会之星", "昼之半神"],
+        flex_factions=["量子同频", "盛会之星", "昼之半神"],   # (「减益」随 flex∩bonus 互斥清理移除——副档在档 1 承载)
         plaza_carry="卡芙卡",
         # ===== 知识卡字段(数据源=final_comps/final_dot_kafka.md)=====
         need_star={
