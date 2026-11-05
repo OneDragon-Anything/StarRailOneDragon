@@ -5,7 +5,7 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 
 数据与设计依据(阵容知识源 = ``docs/game/currency_war/research/final_comps/`` 系列 +
 ``docs/game/currency_war/data/plaza_meta.md``;观察设计权威版本 = strategy-docs 15 号篇;
-字段设计方法论 = skill sr-od-currency-war-dev references/comp-definition.md):
+字段设计方法论 = skill sr-od-dev-currency-war references/comp-definition.md):
 - ``COMP_LIBRARY``:起步 roster(21 套,姬子列车 A/B 拆分后;plaza 784 篇高难帖校准)。
   **两层架构**:``cw_plaza_comps.py``(gen_plaza_comps.py 生成)= base 事实层(实战频次/装备/节奏);
   本文件 COMP_LIBRARY = 手判层(深入游戏理解逐个敲定,统计只给候选)—— ``plaza_carry`` 字段
@@ -109,11 +109,10 @@ class Comp:
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
 
-    # 两字段缺省空 = 行为不变。静态注册表(希儿量子/过渡条目)
-    # 与建库自动填(TRANSITION_LIBRARY 点名件)为现行写方。
-    # 希儿系对分支(P1 配方锁伪阵容)+ COMP_LIBRARY 静态套「希儿量子」
-    # (P2+ 锁定路径经 get_comp 消费静态条目;档位单一源 =
-    # SEELE_OR_REQS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
+    # 两字段缺省空 = 行为不变。or_reqs 现行写方 = 过渡条目
+    # (TRANSITION_LIBRARY「希儿引擎」,档位单一源 = SEELE_OR_REQS);
+    # required_deployed 写方 = 终局条目直写(希儿量子)与建库自动填
+    # (TRANSITION_LIBRARY 点名件)。判定/进度唯一折法 = ``form_progress``
     # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
     # (判据单一源契约)。
     or_reqs: list[tuple[str, int]] = field(default_factory=list)
@@ -360,7 +359,7 @@ V2_FAMILIES: tuple[str, ...] = (
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
 )
 
-# ===== 希儿系成型判据常量(注册表数据层;静态套与过渡条目共用判据)=====
+# ===== 希儿系成型判据常量(注册表数据层;过渡条目「希儿引擎」消费)=====
 # 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
 # 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
 # :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
@@ -370,7 +369,7 @@ V2_FAMILIES: tuple[str, ...] = (
 #  退役删除——支持度端口消亡,分母同步面不复存在;comp-structure-
 #  unification 3.3。)
 # carry = 同表行第一合取支「希儿在场」。
-# ⚠️ 单一源归属声明:真源归位本文件(注册表数据层——静态套
+# ⚠️ 单一源归属声明:真源归位本文件(注册表数据层——过渡
 # 条目在 import 期消费,常量若留 cw_intention 会反向 import 成环)。
 # cw_intention 经顶部 import 消费本常量(re-import 别名,其形态端口注
 # 「禁再写本地第二份」),单一源接入调用由测试仓接入调用守卫钉死(对象身份 `is`,
@@ -525,13 +524,20 @@ COMP_LIBRARY: list[Comp] = [
         # n=67 槽位构造):引擎核心组=希儿/花火/符玄/缇宝/刻律德菈;插件层=千冶·刃(掩体生成枪)/
         # 布洛妮娅/杰帕德/娜塔莎/佩拉(贝2 凑数+辅助);知更鸟/瓦尔特移出 core(P3 补位件,留 shared)。
         core_chars=["希儿", "花火", "符玄", "缇宝", "刻律德菈"],
-        faction_reqs={0: {"量子同频": 4, "贝洛伯格": 2}},
-        # 成型判据 = 文档 OR 口径(transition_combos.md:27,与 的
-        # pair 物化路径同构):档 0 双档由 OR 组**承接**
-        # (同键档位不入 AND 账,折法见 form_progress),档位值保留作线键/
-        # 完全体账单结构载体——囤货采购集/晋升候选/换线距离账等消费读其
-        # 键面,清空即残(银狼/佩拉/桑博等放大器成员会掉出采购集)。
-        or_reqs=list(SEELE_OR_REQS), required_deployed=(SEELE_CARRY_CHAR,),
+        faction_reqs={
+            # 档 0 = 终局完全体(纯 AND):类结构「量子4+贝4 双修」36/35 篇几乎
+            # 不分离——量子同频=易伤乘区(四档,过半上 4 档 57/67)× 贝洛伯格=
+            # 造物引擎拉条(伤害最多的贝成员立即行动 → 希儿拉条正循环),两层
+            # 乘法即唯一主流终局形态(出处 = final_seele_quantum.md 构造机理,
+            # n=67);贝取 4 =「2贝起步,至少 2 尽量追 4」的终局值,贝 2 过渡
+            # 判据归过渡层组合条目承载,两层各自单一。
+            0: {"量子同频": 4, "贝洛伯格": 4},
+            # 档 1 = Final 标准式「量子4+贝4+战技点2-3+治疗2」的分层映射:
+            # 战技点2/治疗2 实证 53/67 与 36/67(final_seele_quantum 构造
+            # 机理),不到档 0 成型定义强度(对比量子/贝 96%+)。
+            1: {"战技点": 2, "治疗": 2},
+        },
+        required_deployed=("希儿",),   # 成型判据第一合取支「希儿在场」,到手即开线
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
@@ -553,7 +559,9 @@ COMP_LIBRARY: list[Comp] = [
         # ↑ 特权三件=希儿 B 套(final_seele_quantum §5「B 套=特权版风暴潮」);
         #   布洛妮娅降插件层后无专属装备条目
         #   (n=67 插件层定位=贝成员/增益,装备优先级让渡引擎组)。恒等:key_equips=派生投影
-        flex_factions=["战技点", "治疗", "盛会之星", "列车同行"],
+        # 弹性挂件 = 盛会之星/列车同行(实证 33/67 与 31/67,final_seele_quantum
+        # 构造机理——频次低于档 1 两键,免 board_alignment 罚即可,不进加分层)
+        flex_factions=["盛会之星", "列车同行"],
         plaza_carry="希儿",
         # ===== 知识卡字段(数据源=final_comps/final_seele_quantum.md)=====
         need_star={
@@ -1209,8 +1217,8 @@ def form_progress(comp: Comp, gs: GameState) -> float:
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
       最好分支非均值);
     - **承接规则**:档 0 中与 OR 分支**同键**的档位
-      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——静态套
-      希儿量子档 0={量4,贝2} 全被 ``SEELE_OR_REQS`` 承接,成型
+      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——过渡条目
+      「希儿引擎」档 0={量2,贝2} 全被 ``SEELE_OR_REQS`` 承接,成型
       判据即文档 OR 口径;pair 伪阵容两键集恒不相交,本规则对其逐位
       零差)。档位值保留的用途见 ``Comp.or_reqs`` 注;
     - ``required_deployed`` 逐名折一条 0/1 虚拟分支(在板=1;入参无
