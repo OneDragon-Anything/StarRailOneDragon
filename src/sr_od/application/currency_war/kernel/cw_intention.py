@@ -36,12 +36,14 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
-    TRANSITION_ENTRY_KIND,
+    TRANSITION_COMBO_PARTS,
     TRANSITION_LIBRARY,
     Comp,
+    bond_score_members,
     derive_key_equips,
     form_progress,
     get_comp,
+    transition_bond_of,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -397,18 +399,21 @@ def line_completion_feasibility(gs: GameState,
 #: 过渡词缀/boss 减分表(键 = 词缀注册名或 boss 名;值 = 被克制的羁绊名
 #: 列表)。行集依据 = cw_affinity_table 线级登记的羁绊投影:希儿量子行
 #: (量子熄火/丢失幸运/免死金牌/极速制冷/以人为本 → 克量子同频+贝洛伯格,
-#: 即克希儿引擎方向)、DOT队行(净化身心 → 敌解负面拆 DOT 结算,克持续
-#: 伤害)、万敌行(永久创伤 → 克燃血)、boss 克制登记(深穹智械科技/
-#: 红绿灯 → 克救世主/燃血)。燃血/救世主两键过渡四条目暂无命中(零命中,
-#: 留供登记更新——boss 行克制键随线级登记同源维护)。
+#: 即克含量子/贝洛伯格键的组合条目)、DOT队行(净化身心 → 敌解负面拆
+#: DOT 结算,克持续伤害)、万敌行(永久创伤 → 克燃血)、boss 克制登记
+#: (深穹智械科技/红绿灯 → 克救世主/燃血)。燃血/救世主两键过渡组合
+#: 条目暂无命中(零命中,留供登记更新——boss 行克制键随线级登记同源
+#: 维护)。粒度(or-reqs-retirement 3.2):量子/贝键命中含希儿量2/希儿贝2
+#: 块的 7 条组合各减一次(双修条「希儿量2+希儿贝2」两边都含、按条目
+#: 只计 1 次),其余 3 条组合(仙舟3+DOT2/仙舟3+列车2/DOT2+列车2)上位。
 TRANSIT_AFFIX_PENALTY: dict[str, list[str]] = {
-    '量子熄火': ['量子同频', '贝洛伯格'],  # 克希儿引擎(希儿量子行登记)
+    '量子熄火': ['量子同频', '贝洛伯格'],  # 克量子/贝键组合条目(希儿量子行登记)
     '丢失幸运': ['量子同频', '贝洛伯格'],  # 同上
     '免死金牌': ['量子同频', '贝洛伯格'],  # 同上
     '极速制冷': ['量子同频', '贝洛伯格'],  # 同上
     '以人为本': ['量子同频', '贝洛伯格'],  # 同上
     '净化身心': ['持续伤害'],             # 敌解负面拆 DOT 结算(DOT队行登记)
-    '永久创伤': ['燃血'],                 # 万敌行登记(过渡四条目暂无燃血键)
+    '永久创伤': ['燃血'],                 # 万敌行登记(过渡组合条目暂无燃血键)
     '深穹智械科技': ['救世主'],            # boss 克制登记(同上,暂零命中)
     '红绿灯': ['救世主', '燃血'],          # boss 克制登记(同上,暂零命中)
 }
@@ -432,23 +437,22 @@ def transition_entry_of(name: str) -> Comp | None:
 
 
 def transition_member_set(comp: Comp) -> set[str]:
-    """过渡条目的计分基准集 = 见即买集(单一源,禁消费点自算)。
+    """过渡组合条目的计分基准集 = 见即买集(单一源,禁消费点自算)。
 
-    - 点名型 = 点名集(core_chars);羁绊型 = 档 0 键羁绊的全体注册成员
-      (``bond_members``,阵营 ∪ 流派口径);混合型 = 两者并集;
-    - 混合型按角色去重(一名角色跨点名与多羁绊阵营只计 1 分)由集合
-      语义天然承载;
-    - 型标记 = ``cw_comps.TRANSITION_ENTRY_KIND``(知识级口径,Comp 结构
-      上不可推导)。
+    combo 展开:查 ``TRANSITION_COMBO_PARTS`` → 两块 ``bond_score_members``
+    并集(点名块贡献点名件;羁绊/混合块贡献点名 ∪ 羁绊全体注册成员——
+    ``bond_members`` 阵营∪流派口径);并集按角色去重(一名角色跨点名与
+    多羁绊阵营只计 1 分)由集合语义天然承载。未知名(防御态,含旧库
+    退役条目名)返空集。
     """
-    from sr_od.application.currency_war.knowledge.cw_line_facts import (
-        bond_members,
-    )
-    kind = TRANSITION_ENTRY_KIND.get(comp.name, '')
-    out: set[str] = set(comp.core_chars)
-    if kind in ('bond', 'hybrid'):
-        for bond in comp.core_faction_reqs:
-            out |= bond_members(bond)
+    parts = TRANSITION_COMBO_PARTS.get(comp.name)
+    if parts is None:
+        return set()
+    out: set[str] = set()
+    for part_name in parts:
+        blk = transition_bond_of(part_name)
+        if blk is not None:
+            out |= bond_score_members(blk)
     return out
 
 
@@ -499,6 +503,31 @@ def transition_member_union(st: object) -> frozenset[str]:
     return frozenset(out)
 
 
+def transition_scores(held: frozenset[str] | set[str],
+                      sources: tuple[str, ...]) -> list[tuple[str, float]]:
+    """过渡组合条目计分与排序(纯函数;or-reqs-retirement 3.2 契约 B):
+    持有分(:func:`transition_member_set` 计分成员域 ∩ held 计数)+ 词缀/
+    boss 减分面,过滤总分 > 0,按(分数降序, 注册序)返回有序全序列表。
+
+    实机帧(``update_transition_candidates``)与虚拟帧(货架资格臂,详设四)
+    各自切片取前 N(纯切片);排序键在函数内单一实现——禁调用侧自排
+    (tie-break 分叉 = 虚拟候选序与实机锁定序分叉)。
+    """
+    order = {e.name: i for i, e in enumerate(TRANSITION_LIBRARY)}
+    out: list[tuple[str, float]] = []
+    for entry in TRANSITION_LIBRARY:
+        score = float(len(transition_member_set(entry) & held))
+        keys = set(entry.core_faction_reqs)
+        for src in sources:
+            hit = TRANSIT_AFFIX_PENALTY.get(src)
+            if hit and keys & set(hit):
+                score += TRANSIT_AFFIX_PENALTY_SCORE
+        if score > 0.0:
+            out.append((entry.name, score))
+    out.sort(key=lambda ns: (-ns[1], order[ns[0]]))
+    return out
+
+
 def update_transition_candidates(gs: GameState, ist: IntentionState,
                                  st: object = None,
                                  ) -> IntentionState:
@@ -509,42 +538,31 @@ def update_transition_candidates(gs: GameState, ist: IntentionState,
     三面(用户 2026-11-04 裁定:与终局线分同构的统一评分,纯减分制
     无特殊逻辑):
 
-    - **持有分**:条目计分基准集(:func:`transition_member_set`)∩
-      持有(在场 ∪ 备战席)的成员数——点名型 = 持有点名成员数;
-      羁绊型 = 持有的羁绊成员数;混合型 = |持有点名 ∪ 持有羁绊成员|
+    - **持有分**:条目计分基准集(:func:`transition_member_set` = 两块
+      ``bond_score_members`` 并集)∩ 持有(在场 ∪ 备战席)的成员数
       (集合语义按角色去重);开局全 0;
     - **词缀/boss 减分面**:开局简报已观察的克制源
       (``enemy_affixes`` ∪ ``plane_bosses``)命中条目档 0 键
       (:data:`TRANSIT_AFFIX_PENALTY`)→ 每条命中源固定减
       :data:`TRANSIT_AFFIX_PENALTY_SCORE`;简报未观察帧自然不触发
       (fail-closed = 输入缺失时取「不动作」的保守分支);
-    - **候选**:总分 > 0 的条目按(分数降序, 注册序)取前
-      ``_TRANSITION_CANDIDATE_TOP_N`` 写 ``transition_candidates`` 槽
-      (存过渡条目名;写端单一 = 本函数,``st`` 鸭子类型参数缺席不写,
-      禁双源)。
+    - **候选**:计分与排序 = :func:`transition_scores`(单一实现),
+      取前 ``_TRANSITION_CANDIDATE_TOP_N`` 写 ``transition_candidates``
+      槽(存过渡条目名;写端单一 = 本函数,``st`` 鸭子类型参数缺席
+      不写,禁双源)。
 
     **锁定评估域 = 候选槽内条目**(用户裁定口径「当某个候选的过渡阵容
-    达成后」):候选槽内条目 ``form_progress``(条目, 板面) ≥ 1.0 即锁
-    ``ist.transition_locked``(锁定条目名)——锁后不换、不解、不重评;
-    候选外条目偶然凑齐羁绊(板面羁绊计数达标但零成员持有)不锁,
-    计分门控防偶然锁定。
+    达成后」;3.2 组合制:锁定对象 = 组合条目——两羁绊完整组合,单羁绊
+    凑出时任何组合条目 fp < 1.0 自然不锁):候选槽内条目
+    ``form_progress``(条目, 板面) ≥ 1.0 即锁 ``ist.transition_locked``
+    (锁定条目名)——锁后不换、不解、不重评;候选外条目偶然凑齐羁绊
+    (板面羁绊计数达标但零成员持有)不锁,计分门控防偶然锁定。
     """
     held = _owned_chars(gs)
     sources = (*(gs.enemy_affixes.value or ()),
                 *(b for b in (gs.plane_bosses.value or ()) if b))
-    scores: list[float] = []
-    for entry in TRANSITION_LIBRARY:
-        score = float(len(transition_member_set(entry) & held))
-        keys = set(entry.core_faction_reqs)
-        for src in sources:
-            hit = TRANSIT_AFFIX_PENALTY.get(src)
-            if hit and keys & set(hit):
-                score += TRANSIT_AFFIX_PENALTY_SCORE
-        scores.append(score)
-    ranked = sorted((i for i, s in enumerate(scores) if s > 0.0),
-                    key=lambda i: (-scores[i], i))
-    names = tuple(TRANSITION_LIBRARY[i].name
-                  for i in ranked[:_TRANSITION_CANDIDATE_TOP_N])
+    ranked = transition_scores(held, sources)
+    names = tuple(name for name, _s in ranked[:_TRANSITION_CANDIDATE_TOP_N])
     if st is not None:
         with contextlib.suppress(Exception):
             st.transition_candidates = names
@@ -909,8 +927,8 @@ def locked_faction_scope(ist: IntentionState | None,
     件名):
 
     - 过渡支 = **过渡层条目的羁绊键**(槽语义改造:``transition_candidates``
-      槽存过渡条目名,取条目 ``core_faction_reqs`` 键集;希儿引擎的
-      量/贝双键天然在档 0,与旧希儿系展开同集;过渡锁定 = 锁定条目键,
+      槽存过渡条目名,取条目 ``core_faction_reqs`` 键集;组合条目档 0
+      键 = 两块羁绊键,希儿系组合的量/贝键天然在档;过渡锁定 = 锁定条目键,
       未过渡锁定 = 候选条目并集;参数缺省 () = 无候选供给);
     - 终局锁定帧 = ``locked_comp`` 主/副档键
       (``core_faction_reqs`` ∪ ``bonus_faction_reqs``,与 ``_line_hoard`` 档位键同式;

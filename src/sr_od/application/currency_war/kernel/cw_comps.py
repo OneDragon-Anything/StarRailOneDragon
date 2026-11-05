@@ -29,9 +29,13 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
 """
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTERS,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_units_of,
@@ -39,6 +43,9 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     GiftGrant,
+)
+from sr_od.application.currency_war.knowledge.cw_line_facts import (
+    bond_members,
 )
 
 
@@ -109,10 +116,10 @@ class Comp:
     equip_taboos: list[str] = field(default_factory=list)
     """本套禁买禁合成装备/装备类(教义手编,官方机制原文;如万敌禁一切护盾件)。"""
 
-    # 两字段缺省空 = 行为不变。or_reqs 现行写方 = 过渡条目
-    # (TRANSITION_LIBRARY「希儿引擎」,档位单一源 = SEELE_OR_REQS);
-    # required_deployed 写方 = 终局条目直写(希儿量子)与建库自动填
-    # (TRANSITION_LIBRARY 点名件)。判定/进度唯一折法 = ``form_progress``
+    # 两字段缺省空 = 行为不变。or_reqs 现行写方已清零(过渡库旧「希儿
+    # 引擎」随 or-reqs-retirement 3.2 组合制退役;字段与 OR 折法机器删除
+    # 归 3.3);required_deployed 写方 = 终局条目直写(希儿量子)与过渡
+    # 组合条目生成期显式填(_build_transition_combos)。判定/进度唯一折法 = ``form_progress``
     # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
     # (判据单一源契约)。
     or_reqs: list[tuple[str, int]] = field(default_factory=list)
@@ -359,7 +366,9 @@ V2_FAMILIES: tuple[str, ...] = (
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
 )
 
-# ===== 希儿系成型判据常量(注册表数据层;过渡条目「希儿引擎」消费)=====
+# ===== 希儿系成型判据常量(注册表数据层;唯一消费点 = 旧过渡条目
+# 「希儿引擎」,已随 or-reqs-retirement 3.2 组合制退役——现行零消费,
+# 常量与 OR 机器删除归 3.3)=====
 # 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
 # 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
 # :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
@@ -989,89 +998,171 @@ COMP_LIBRARY: list[Comp] = [
 ]
 
 
-# ===== TRANSITION_LIBRARY(P1 过渡阵容库;comp-structure-unification)=====
-# 用户裁定(2026-11-04):过渡层与终局层两套阵容库独立、各自候选与锁定;
-# 过渡条目复用 Comp 结构,羁绊要求只填 faction_reqs 档 0(无更高档)。
-# 设计依据 = changes/2026-11-04-comp-structure-unification/details/
-# transition-library.md §1 条目表。
+# ===== TRANSITION_LIBRARY(P1 过渡组合条目库;or-reqs-retirement 3.2)=====
+# 用户裁定(2026-11-05):锁定域 = 组合条目——一个过渡阵容 = 两个过渡
+# 羁绊构造块的完整组合(C(5,2)=10 条),组合条目 fp ≥ 1.0(两羁绊都凑齐
+# ∧点名件全在板)才锁定;单羁绊构造块不是阵容、不进库、永不锁定(单
+# 羁绊局保持软方向——候选继续活动、买面双向,直到组合凑齐或终局锁定
+# 统一退役)。设计依据 = changes/2026-11-05-or-reqs-retirement/
+# details/transition-combos.md。
 #
-# 条目分三型(型决定计分基准与见即买集的羁绊半边是否计入——知识级口径,
-# Comp 结构上不可推导,随库登记在 TRANSITION_ENTRY_KIND):
-# - 点名型:计分与见即买 = 点名集(core_chars);适用「引擎不可拆」
-#   (仙舟铁三角)与「线定义件引导」(列车骨架);
-# - 羁绊型(core_chars 空):计分与见即买 = 档 0 键羁绊的全体注册成员
-#   (不论是谁,低费件自然先刷到,符合「廉价」本义);
-# - 混合型(core_chars 点名引擎件,放大器走羁绊半边):计分与见即买 =
-#   点名集 ∪ 档 0 键羁绊全体注册成员(按角色去重——一名角色跨点名与
-#   多羁绊阵营只计 1 分)。
+# 组合实证(game/research/transition_combos.md 两两组合实证表,Early
+# 647 帖):三过渡互组 3 种 + 希儿系×三过渡 3 种均有实证;含希儿组合的
+# 实证粒度只到希儿系级(量/贝归属未分),按希儿系实证整体拆分全枚举
+# C(5,2)=10;「没有希儿时量子/贝不能独立当过渡(28 帖全部含希儿)」
+# ——量子/贝构造块必须点名希儿(混合型),不可做纯羁绊块。
 #
-# faction_reqs 数值口径 = 体系卡判据档(cw_system_cards.SYSTEM_CARDS 判据,
-# 即 FACTIONS[...].tiers[0]:仙舟 3/持续伤害 2/列车同行 2),非配方完全体档
-# (旧 cw_recipe 的列车 4 归终局线 faction_reqs 自己承载,不进过渡条目)。
-#
-# 费档已核 CHARACTERS.cost,点名件费段须位面 1 商店可刷(费段解锁真值 =
-# cw_shop_odds 的 REFRESH_PROB:等级 1-3 仅 1 费/4 级起解锁 1-3 费/5 级起
-# 4 费/7 级起 5 费;位面 1 的等级覆盖区间真值 = cw_economy 位面-等级骨架):
-# 爻光/藿藿/三月七 1 费、丹恒·饮月 2 费全程可刷;姬子·启行/希儿 3 费自
-# 4 级起可刷。违反即降型或换件(黑天鹅 5 费因此出局)。
-TRANSITION_LIBRARY: list[Comp] = [
-    Comp(
-        # 点名型:引擎不可拆(功能链缺一=空壳,成型须三人全在板)。
-        # 名单知识源 = cw_line_facts._CORE_TRIO 注册表真值(就地复制非
-        # 引用迁移——体系卡数据层保留,条目自带值)
-        name='仙舟铁三角',
-        core_chars=['爻光', '藿藿', '丹恒·饮月'],
-        faction_reqs={0: {'仙舟': 3}},
-        # 数值取自体系卡 star_goal(cw_system_cards 的 xianzhou3 行),
-        # 就地复制非引用迁移(体系卡数据层保留,条目自带值)
-        need_star={'爻光': 2, '藿藿': 2, '丹恒·饮月': 2},
+# 旧 4 单体系条目(仙舟铁三角/廉价DOT/列车骨架/希儿引擎)随之退役;
+# 旧条目名在 transition_locked/transition_candidates 槽与遥测
+# sess_p1_pair 的历史数据经 transition_entry_of 返 None、
+# transition_active_entries 跳过自然兼容,勿加兼容层。
+# 三型知识(点名/羁绊/混合)收进构造块字段(named/hybrid),组合条目
+# 恒为 combo 型(TRANSITION_ENTRY_KIND 表删除)。
+
+
+@dataclass(frozen=True)
+class TransitionBond:
+    """过渡羁绊构造块:组合条目的生成原料;不是阵容、不进 TRANSITION_LIBRARY、不可锁定。"""
+    name: str                        # 块短名(组合条目名与 parts 索引的组成部分)
+    bond: str                        # 羁绊规范名(组合条目 faction_reqs 档 0 键)
+    tier: int                        # 达标人数阈值(体系判据档 = FACTIONS[...].tiers[0] 口径)
+    named: tuple[str, ...]           # 点名件(空 = 羁绊型:不限定人)
+    need_star: tuple[tuple[str, int], ...]   # 点名件星级目标(键 ⊆ named;frozen 结构用 tuple 对)
+    hybrid: bool                     # 羁绊半边是否计入持有分(点名型 False / 羁绊型与混合型 True)
+
+
+#: 五块数值表(知识源 = 旧 3.3 条目表 + game/research/transition_combos.md
+#: 四体系表;依据逐块就地标注)。tier 口径 = 体系卡判据档
+#: (FACTIONS[...].tiers[0]:仙舟 3/持续伤害 2/列车同行 2/量子同频 2/
+#: 贝洛伯格 2)。费段已核 CHARACTERS.cost(点名件 1-3 费,位面 1 可刷;
+#: 校验⑤表达——费段解锁真值 = cw_shop_odds 的 REFRESH_PROB:等级 1-3
+#: 仅 1 费/4 级起解锁 1-3 费/5 级起 4 费)。
+TRANSITION_BONDS: tuple[TransitionBond, ...] = (
+    TransitionBond(
+        # 点名型:「仙舟3 = 三人组的同义词,95% 帖含全三人组」;凑数仙舟
+        # 件非证据(hybrid=False → 羁绊半边不计持有分)。名单与星级就地
+        # 复制自体系卡(cw_system_cards 的 xianzhou3 行,数据层保留)
+        name='仙舟3', bond='仙舟', tier=3,
+        named=('爻光', '藿藿', '丹恒·饮月'),
+        need_star=(('爻光', 2), ('藿藿', 2), ('丹恒·饮月', 2)),
+        hybrid=False,
     ),
-    Comp(
+    TransitionBond(
         # 羁绊型:无引擎、凑出就能用(用户 2026-11-04 裁定「DOT 不限定人」)
-        name='廉价DOT',
-        core_chars=[],
-        faction_reqs={0: {'持续伤害': 2}},
+        name='DOT2', bond='持续伤害', tier=2,
+        named=(), need_star=(), hybrid=True,
     ),
-    Comp(
-        # 点名型:线定义件引导(姬子·启行在场才值得朝列车走)
-        name='列车骨架',
-        core_chars=['姬子·启行', '三月七'],
-        faction_reqs={0: {'列车同行': 2}},
+    TransitionBond(
+        # 点名型:「线定义件引导(姬子·启行在场才值得朝列车走)」;
+        # 任意列车成员非证据
+        name='列车2', bond='列车同行', tier=2,
+        named=('姬子·启行', '三月七'), need_star=(), hybrid=False,
     ),
-    Comp(
-        # 混合型:引擎单卡(伤害全在希儿技能层),放大器不限定人(用户
-        # 2026-11-04 裁定「希儿+任意一名量子/贝即可」——量子同频/贝洛伯格
-        # 成员经羁绊半边自然覆盖)。or_reqs 值与档 0 同键值一致(两键均被
-        # OR 组承接,必齐账恒空),成型判据 = 希儿在板 ∧ 量2∨贝2,与体系
-        # 卡判据逐字一致
-        name='希儿引擎',
-        core_chars=['希儿'],
-        faction_reqs={0: {'量子同频': 2, '贝洛伯格': 2}},
-        or_reqs=list(SEELE_OR_REQS),
-        # 数值取自体系卡 star_goal(seele 行,希儿追 3★),就地复制
-        need_star={'希儿': 3},
+    TransitionBond(
+        # 混合型:「没有希儿时量子不能独立当过渡(28 帖全部含希儿)」;
+        # 放大器经羁绊半边覆盖。星级取自体系卡 star_goal(seele 行希儿追 3★)
+        name='希儿量2', bond='量子同频', tier=2,
+        named=('希儿',), need_star=(('希儿', 3),), hybrid=True,
     ),
-]
+    TransitionBond(
+        # 混合型:同上(贝洛伯格侧)
+        name='希儿贝2', bond='贝洛伯格', tier=2,
+        named=('希儿',), need_star=(('希儿', 3),), hybrid=True,
+    ),
+)
 
-#: 过渡条目型标记('named'=点名型/'bond'=羁绊型/'hybrid'=混合型;
-#: 型 → 计分基准/见即买集的展开单一源 = cw_intention.transition_member_set,
-#: 禁消费点自算)。
-TRANSITION_ENTRY_KIND: dict[str, str] = {
-    '仙舟铁三角': 'named',
-    '廉价DOT': 'bond',
-    '列车骨架': 'named',
-    '希儿引擎': 'hybrid',
-}
+#: 组合条目名 → 两块名(transition_member_set 的 combo 展开单一源;
+#: 由 ``_build_transition_combos`` 建库期填入,与 TRANSITION_LIBRARY
+#: 同轮生成——一致性由 ``_validate_transition_combos`` ①钉死)
+TRANSITION_COMBO_PARTS: dict[str, tuple[str, str]] = {}
 
-# 建库自动填:点名型/混合型条目 required_deployed = core_chars(点名件
-# 全部在板才算成型)——用现有机制承载「引擎不可拆」语义,杜绝「持 1
-# 点名件 + 凑数板面即锁出缺引擎过渡」;锁定判据 form_progress 含
-# required 逐名折条,天然生效。羁绊型 core 空,required_deployed 恒空。
-# (档 0 空而 required_deployed 非空为合法形态——form_progress 的
-# required 逐名折条独立于羁绊账;现库 4 条无此形态。)
-for _entry in TRANSITION_LIBRARY:
-    if _entry.core_chars and not _entry.required_deployed:
-        _entry.required_deployed = tuple(_entry.core_chars)
+
+def _build_transition_combos() -> list[Comp]:
+    """建库期组合条目生成器:``TRANSITION_BONDS`` 两两组合 → C(n,2) 条 Comp。
+
+    字段合并规则:core/required = 两块点名件保序去重(希儿双修两块点名
+    合并为一人);档 0 = 两块键 AND(五块 bond 互斥,无键冲突——校验②);
+    need_star = 两块星级目标合批;其余 Comp 字段缺省空(过渡语义 =
+    低门槛快锁,过渡条目只填档 0;档位推进属「成型后的场况插件」,归
+    部署/买牌机器状态驱动,不预枚举)。生成期显式填 required_deployed
+    (点名件全部在板),旧建库自动填循环随之退役。
+    """
+    out: list[Comp] = []
+    for a, b in itertools.combinations(TRANSITION_BONDS, 2):
+        core = list(dict.fromkeys((*a.named, *b.named)))
+        name = f'{a.name}+{b.name}'
+        TRANSITION_COMBO_PARTS[name] = (a.name, b.name)
+        out.append(Comp(
+            name=name,
+            core_chars=core,
+            faction_reqs={0: {a.bond: a.tier, b.bond: b.tier}},
+            required_deployed=tuple(core),
+            need_star={n: s for blk in (a, b) for n, s in blk.need_star},
+        ))
+    return out
+
+
+def _validate_transition_combos(bonds: tuple[TransitionBond, ...],
+                                parts: dict[str, tuple[str, str]],
+                                library: list[Comp]) -> None:
+    """建库校验五条(or-reqs-retirement 3.2 设计 §4;非法 raise ValueError)。
+
+    模块级对真值调用一次 = import 期防线(手改五块表或生成器破坏约定
+    即炸);测试负面用例直接以非法构造调本函数断言 ValueError。校验面:
+    ① 库长 = C(len(bonds),2) 且 parts 键集 = 条目名集;
+    ② 五块 bond 互斥(两两组合无键冲突——生成器结构保证,校验防御手改);
+    ③ named ∪ need_star 键 ∈ CHARACTERS 注册表;
+    ④ need_star 键 ⊆ named;
+    ⑤ 点名件费段位面 1 可刷(cost ≤ 3,费段真值对应关系:
+       lv1-3 仅 1 费/lv4 起解锁 1-3 费/lv5 起 4 费——cw_shop_odds 的
+       REFRESH_PROB;位面 1 等级覆盖区间 = cw_economy 位面-等级骨架)。
+    """
+    if len(library) != len(bonds) * (len(bonds) - 1) // 2:
+        raise ValueError(
+            f'过渡组合库长 {len(library)} != C({len(bonds)},2) = '
+            f'{len(bonds) * (len(bonds) - 1) // 2}')
+    if set(parts) != {e.name for e in library}:
+        raise ValueError('TRANSITION_COMBO_PARTS 键集 != 条目名集')
+    if len({b.bond for b in bonds}) != len(bonds):
+        raise ValueError('五块 bond 键冲突(组合档 0 两键同名将互相覆盖)')
+    for b in bonds:
+        star_keys = {n for n, _s in b.need_star}
+        if not star_keys <= set(b.named):
+            raise ValueError(f'{b.name}: need_star 键 ⊄ named')
+        for n in (*b.named, *star_keys):
+            if n not in CHARACTERS:
+                raise ValueError(f'{b.name}: 点名件 {n} 不在 CHARACTERS 注册表')
+        for n in b.named:
+            if CHARACTERS[n].cost > 3:
+                raise ValueError(
+                    f'{b.name}: 点名件 {n} 费段 {CHARACTERS[n].cost} > 3,'
+                    f'位面 1 商店不可刷')
+
+
+TRANSITION_LIBRARY: list[Comp] = _build_transition_combos()   # 恒 C(5,2)=10 条
+_validate_transition_combos(TRANSITION_BONDS, TRANSITION_COMBO_PARTS,
+                            TRANSITION_LIBRARY)
+
+
+def transition_bond_of(name: str) -> TransitionBond | None:
+    """块名 → ``TRANSITION_BONDS`` 构造块;未知名返 None(combo 展开的块解析口)。"""
+    for b in TRANSITION_BONDS:
+        if b.name == name:
+            return b
+    return None
+
+
+def bond_score_members(block: TransitionBond) -> set[str]:
+    """块的计分成员域:named ∪ (羁绊全体注册成员,若 hybrid 或无名件)。
+
+    点名型(named 非空 ∧ 非 hybrid)= 羁绊半边不计(仙舟凑数件/任意列车
+    成员不是证据);羁绊型(named 空)与混合型 = 羁绊半边计入。成员口径 =
+    :func:`bond_members` 的阵营∪流派全集(过渡条目成员展开同式单一源)。
+    """
+    out: set[str] = set(block.named)
+    if block.hybrid or not block.named:
+        out |= bond_members(block.bond)
+    return out
 
 
 # ===== CARRY 基准派生(12 号篇 §1.1「plaza_carry ∪ core_chars 合流」)=====
@@ -1217,9 +1308,10 @@ def form_progress(comp: Comp, gs: GameState) -> float:
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
       最好分支非均值);
     - **承接规则**:档 0 中与 OR 分支**同键**的档位
-      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——过渡条目
-      「希儿引擎」档 0={量2,贝2} 全被 ``SEELE_OR_REQS`` 承接,成型
-      判据即文档 OR 口径;pair 伪阵容两键集恒不相交,本规则对其逐位
+      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——旧过渡条目
+      「希儿引擎」档 0={量2,贝2} 全被 ``SEELE_OR_REQS`` 承接的形态已随
+      or-reqs-retirement 3.2 组合制退役,现行库零 OR 键承接;规则保留至
+      3.3 机器删除;pair 伪阵容两键集恒不相交,本规则对其逐位
       零差)。档位值保留的用途见 ``Comp.or_reqs`` 注;
     - ``required_deployed`` 逐名折一条 0/1 虚拟分支(在板=1;入参无
       deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。

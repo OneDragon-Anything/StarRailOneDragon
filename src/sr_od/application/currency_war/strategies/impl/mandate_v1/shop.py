@@ -221,7 +221,7 @@ def _r2_card_reserve(gs: GameState) -> int:
 
 
 #: 冷启动臂成员域 = 过渡库全体条目见即买并集(键域改读单一源派生,
-#: 不再手抄三羁绊体系键——希儿引擎条目的量子/贝放大器与铁三角点名件
+#: 不再手抄三羁绊体系键——构造块点名件与量子/贝放大器经各块计分域
 #: 自然入域;§3 死循环防线:见即买 → 持有 → 计分 > 0 → 候选形成)。
 _COLD_START_NAMES: frozenset[str] = cw_intention.transition_library_buy_now_union()
 
