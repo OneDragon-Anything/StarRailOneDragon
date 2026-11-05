@@ -41,6 +41,7 @@ from sr_od.backend.mcp.prompts import (
     register_prompts,
     render_instructions,
 )
+from sr_od.backend.mcp.relic_tools import register_relic_tools
 from sr_od.backend.mcp.service_app import (
     make_describe_operation,
     make_list_applications,
@@ -296,6 +297,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
         area_name 存在则整体更新,不存在则追加。校验:screen 存在、area_name 非空、pc_rect 合法、
         模板引用存在(template_id 非空时)。写回 yml 并 reload,下次 analyze_screen 即生效。无需游戏在线。
+        pc_alt 是 screen 级属性(create_screen 设置),area 不单设。
 
         Returns:
             dict: ``{success, screen_name, area_name, action(inserted/updated), area_count, error}``。
@@ -560,6 +562,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     # 米游社账号三工具（登录/登出/角色列表；控制器单例在首次调用时装配，
     # 注册期不构建——backend 为测试替身时零副作用）
     register_mys_tools(mcp, backend)
+    register_relic_tools(mcp, backend)
     register_prompts(mcp)
     register_prompt_tools(mcp)
 
