@@ -107,7 +107,7 @@ class BattlefieldEffect:
                                             # BOARD_REWRITE_*;写归属桥 =
                                             # apply_board_rewrite)
     bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;已登记
-                                            # 条目 = 乱成一锅粥,词表
+                                            # 条目 = 乱成一锅粥/乱成一锅粥+,词表
                                             # BENCH_REROLL_*)
     equips_reroll: str = ''                 # 物品栏装备同品质变异(公司军火更新族,
                                             # 取值 = EQUIPS_REROLL_SAME_QUALITY;

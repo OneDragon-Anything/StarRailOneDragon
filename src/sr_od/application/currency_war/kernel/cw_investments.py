@@ -1158,6 +1158,27 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '边界;sim 重掷面零建模(stale 申报,随机改写面既定边界);'
               '替换星级/装备归属/被替换去向未采证;burst 双源同值对账归注册面'
               '测试锁'),
+    # 乱成一锅粥+:官方「每次进入新节点时，处在备战席最左侧6个位置的角色变为
+    # 随机的同费用角色。立刻获得7次免费刷新和14金币。」(cw_invest_data.py:352,
+    # id 352102)。bench_reroll 族第三登记条目:重掷腿与姊妹逐字同式 =
+    # bench_reroll 载体同值(随机面零逻辑写端,观察收口);burst 腿 =
+    # free_refresh_burst 载体字段单条目双载(登记腿 burst 桥发放,同形先例 =
+    # 大裁员);金腿 instant_gold 在册零动(选卡金发放写端缺口维持族级待办)。
+    '乱成一锅粥+': EffectSpec(
+        id='352102', name='乱成一锅粥+', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
+        payload=BattlefieldEffect(bench_reroll=BENCH_REROLL_LEFT6,
+                                  free_refresh_burst=7),
+        duties=DutyFlags(track=True),
+        notes='bench_reroll=left6:随机重掷面零逻辑写端观察收口(effect-domain'
+              '.md 写入归属判据随机分支);区间=备战席槽序头 6 物理槽,容量<6'
+              ' 时全席(判读申报);辖域仅角色槽;capacity<6 时系统单位(cost=0)'
+              '是否入重掷域未采证;拿卡当节点不重掷(措辞承载差异推论 C 级);'
+              'burst=7 登记期发放(「立刻」,载体惯例同加油站);'
+              'instant_gold=14 选卡当场 live 观察收口、sim 金腿缺口为族级既有'
+              '边界;sim 重掷面零建模(stale 申报,随机改写面既定边界);'
+              '替换星级/装备归属/被替换去向未采证;burst 双源同值对账归注册面'
+              '测试锁'),
     # 免费午餐:官方「获得11次免费刷新。」(cw_invest_data.py:36,id 100301)。
     # 登记期一次性发放的定性 = per_node_pick_node_grant.md §4 惯例表
     # (纯立即型,无持续部分);卡文无「现在/立刻」措辞不触发「拿卡当节点
@@ -1670,9 +1691,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '无立即措辞,C 级佐证);+2 金=instant_gold=2 选卡当场 live '
               '游戏发放+观察收口,sim 无此金腿(选卡即时金缺口=族级既有'
               '待办,禁按双端生效找/建通道);族模式卡:姊妹乱成一锅粥/+'
-              '换 BENCH_REROLL_LEFT6,双载荷裁决位(bench_reroll 需 '
-              'BattlefieldEffect 载体、爆腿过 burst 桥需 EconomyEffect '
-              '载体,EffectSpec 单 payload 字段不可并存)归族展开批先裁'),
+              '换 BENCH_REROLL_LEFT6,双载条目均已登记(裁决位按根治形收口:'
+              'BattlefieldEffect 扩展 free_refresh_burst 载体字段,重掷腿'
+              '与登记期爆腿单条目同席,免 EconomyEffect 双条目)'),
     # 公司军火更新·银:官方「每次进入新节点时，你物品栏里的装备变为同品质的
     # 其他装备。获得1件随机简易装备。」(cw_invest_data.py:86,id 130101)。
     # 两条效果条目异注册面组合卡:变异条目 = 本条目(NODE_ENTER 持续触发,「物品栏装备
