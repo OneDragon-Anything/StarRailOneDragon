@@ -183,6 +183,10 @@ def intention_core(comp: Comp) -> str:
     取 ``plaza_carry``(实战聚类 carry,交叉核对基准)且在 core_chars 内者;否则
     core_chars 首位。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
     在多线间产生噪声信号)。
+    与 ``cw_comps.carry_anchor`` 分工:本函数 = 意向核心(∈core 约束,
+    miss 计数专用),非 carry 读口冗余副本;火花星间旅人线两者取值不同
+    (本函数取 core 首位花火 vs 聚类锚火花)= 两概念真实语义差(意向核心
+    拒绝不在 core 的聚类锚),非漂移。
     """
     if comp.plaza_carry and comp.plaza_carry in comp.core_chars:
         return comp.plaza_carry

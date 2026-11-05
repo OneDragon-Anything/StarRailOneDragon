@@ -1513,7 +1513,8 @@ def equip_allocation(comp: Comp | None,
     M7 方法论(plaza 648 篇 51% 谈装备):「保证三月有一鞋一风扇,花火和杨叔的回能,姬子的双风暴」
     「那刻夏全套 > 生存装 > 弹射器 > 永动机,一定要按这个顺序」—— 装备是**角色特定的**,不是
     有装备就穿(用户 §7-9 同)。分配纪律:
-    1. **carry 先拿**:comp.plaza_carry(不在场上则 core_chars 中首个场上者)按序拿
+    1. **carry 先拿**:``carry_anchor(comp)``(空值线经攻略明文 fallback 补全,
+       同样有装备优先人;不在场上则 core_chars 中首个场上者)按序拿
        key_equips(multiplicity 消费,不超发);
     2. **其余场上 core** 拿剩余 key_equips(core 顺序);
     3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
@@ -1651,18 +1652,19 @@ def equip_allocation(comp: Comp | None,
     out: list[tuple[str, str]] = []
     if comp is not None and comp.key_equips:
         # 接收者顺序:priority_order(词缀优先层重排序)优先,缺省 = 内部派生序
-        # (plaza_carry 优先,再 core_chars 顺序);只发给场上且容量 >0 者。
+        # (carry_anchor 优先,再 core_chars 顺序);只发给场上且容量 >0 者。
         # key 件绑定裁决(18 号稿 §3.2):谓词层只重排候选序,
         # 不改 key 件绑定——key 接收者在优先层下仍限于 carry∪core
         # (非 core 凑谓词只走通用件吃满)。
+        anchor = carry_anchor(comp)
         if priority_order:
             _core_pref = set(comp.core_chars) | (
-                {comp.plaza_carry} if comp.plaza_carry else set())
+                {anchor} if anchor else set())
             order: list[str] = [c for c in priority_order if c in _core_pref]
         else:
             order = []
-            if comp.plaza_carry:
-                order.append(comp.plaza_carry)
+            if anchor:
+                order.append(anchor)
             for c in comp.core_chars:
                 if c not in order:
                     order.append(c)

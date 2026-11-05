@@ -413,7 +413,7 @@ def resolve_affix_priority_order(comp, view,
     1. 已登记词缀集 = 载体条目 ∧ wear_predicate 非空 ∧ penalty_side=='output';
     2. 谓词涉及角色集合 = **在场角色全集**(不限已终局阵容锁定成员——罚则按角色
        个体结算,不按阵容资格);
-    3. 排序 = [9] 既有优先序(plaza_carry → core_chars → 其余在场按
+    3. 排序 = [9] 既有优先序(carry_anchor → core_chars → 其余在场按
        deployed 序)内重排:谓词未满足者置前(词缀层只重排,不造第二套
        角色评分);
     4. 全员满足 → None(谓词满足后回落基分配序)。
@@ -441,6 +441,7 @@ def resolve_affix_priority_order(comp, view,
         return None
     from sr_od.application.currency_war.kernel.cw_comps import (
         _iter_deployed_rows,
+        carry_anchor,
     )
     _units = _iter_deployed_rows(view)
     present = [getattr(d, 'char_id', '') for _rn, _sn, d in _units
@@ -455,10 +456,11 @@ def resolve_affix_priority_order(comp, view,
             continue
         cnt = len(occ.get((_rn, _sn), []))
         worn[n] = worn.get(n, 0) + cnt
-    # [9] 基序:plaza_carry → core_chars → 其余在场(deployed 序)
+    # [9] 基序:carry_anchor → core_chars → 其余在场(deployed 序)
     base: list[str] = []
-    if comp.plaza_carry and comp.plaza_carry in present:
-        base.append(comp.plaza_carry)
+    _anchor = carry_anchor(comp)
+    if _anchor and _anchor in present:
+        base.append(_anchor)
     for c in comp.core_chars:
         if c in present and c not in base:
             base.append(c)

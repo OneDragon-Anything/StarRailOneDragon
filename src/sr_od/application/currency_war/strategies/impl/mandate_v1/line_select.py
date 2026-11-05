@@ -34,6 +34,7 @@ from sr_od.application.currency_war.kernel.cw_affinity_table import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
+    carry_anchor,
     carry_set,
 )
 from sr_od.application.currency_war.kernel.cw_invest_channels import (
@@ -92,36 +93,20 @@ LINE_HEAT: dict[str, int] = {
     '景元仙舟': 40,
 }
 
-#: 线攻略基准核心表(design §2 carry·anchor 档判定:各线攻略基准核心——
-#: 「core 首位或攻略明文『到手即开线』者」,从 final_comps 各篇核对;
-#: 不确定线取 core_chars[0] 就地注释)。基准 = 单卡即战力档(:data:`CARRY_ANCHOR`
-#: +8000/名),其余 core 减半(:data:`CARRY_CORE`)——攻略主次语义。
-#: ⚠️ 与 kernel ``carry_anchor``(聚类交叉核对基准)分工:两表绝大多数同值;
-#: 已登记分歧 = 火花星间旅人(聚类基准『火花』vs 攻略明文花火主C——评分基准
-#: 按攻略重述取花火,分歧登记在 final_comps 交叉核对记录)。
-LINE_ANCHOR: dict[str, str] = {
-    '列车同行·反震': '姬子·启行',   # S 级真神;A/B 两套基准同卡(攻略「开局
-    '列车同行·直伤': '姬子·启行',   # 刷到即上」基准姬子本体,拆分只分引擎方向)
-    '命运圣杯红A': 'Archer',      # 高倍率九五核心(任务系统产出,到手即接棒)
-    '千冶减益': '千冶·刃',        # plaza 聚类 carry(n=29)
-    '绯英欢愉': '绯英',
-    '希儿量子': '希儿',           # 攻略「希儿到手即开线」(design §2 基准档例)
-    '黄泉减益': '黄泉',
-    '巡海击破': '波提欧',         # 基准=波提欧簇(12 篇全击破形,本条 plaza 校准注)
-    '龙丹战技点': '丹恒·饮月',    # 唯一把点数上限转倍率的卡(龙丹节构造机理)
-    '双王圣杯': 'Saber',          # 能量线主C(final_grail_dual B 线)
-    '火花星间旅人': '花火',        # 攻略明文花火主C(BV 转录注);core_chars[0] 同值
-    '大黑塔银河学者': '大黑塔',   # 52/52 载体C(final_daheita_aoe 构造机理)
-    '银枝群攻': '银枝',           # 「必须3星银枝」(77006068 直读)
-    '反甲白厄': '白厄',           # 78/78 载体(final_baie_reflect)
-    '狼尊欢愉': '银狼LV.999',
-    '昼神阿雅': '阿格莱雅',        # 3星 20/21(本条 plaza 校准注)
-    '追击飞霄': '飞霄',            # 攻略重述(76883466;聚类代表那刻夏分歧已登记)
-    '万敌单C': '万敌',             # 40/40 载体(final_wandi_burn)
-    'DOT队': '卡芙卡',
-    '景元仙舟': '景元',            # 24/24(final_longtail_others 景元节)
-    '专家桑博DOT': '桑博',         # 33k use 帖「专家老桑博」低费引爆器主C
+#: 评分锚与 ``cw_comps.carry_anchor`` 的分歧登记(仅列不同值的线;
+#: 默认读法 = 登记表 → carry_anchor(),20/21 线走默认)。
+#: 火花星间旅人:攻略明文花火主C(BV 转录注)vs 聚类锚火花——评分口径取
+#: 攻略重述(持有花火点亮该线证据的历史行为保真);聚类真值不动(plaza_carry
+#: 字段语义 = 层间交叉核对基准)。
+_LINE_ANCHOR_DIVERGENCE: dict[str, str] = {
+    '火花星间旅人': '花火',
 }
+
+
+def rating_anchor(comp: Comp) -> str:
+    """评分锚(线分 CARRY_ANCHOR 档的具名核心;读法单一源 =
+    分歧登记表 ∘ carry_anchor)。"""
+    return _LINE_ANCHOR_DIVERGENCE.get(comp.name) or carry_anchor(comp)
 
 #: COMP_LIBRARY 注册序索引(全维平分的终局裁定 = 注册序首线;「显式规则
 #: 声明,非遍历序隐式定锁——稳定且可实现」,12 号篇 §1.1)。
@@ -250,7 +235,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
     两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
     boss 强敌(§3.4——红绿灯经词缀行通道/扑满经投资持有通道)。
     """
-    anchor = LINE_ANCHOR[comp.name]
+    anchor = rating_anchor(comp)
     carry = carry_set(comp)
     core_hits = (carry & held_chars) - {anchor}
     skeleton_hits = (set(comp.key_items or ()) & held_chars) - carry
@@ -358,16 +343,17 @@ def anchor_line_of(gs: GameState, locked_comp: str,
 
 
 def _validate_line_anchor() -> None:
-    """基准表构建校验(import 即炸):全 21 线覆盖 + 基准 ∈ 角色注册表
-    (手编表写错名 = 基准档静默失效)。"""
+    """分歧登记表构建校验(import 即炸):登记键 ⊆ COMP_LIBRARY 线名集、
+    登记值 ∈ 角色注册表(手编写错名 = 基准档静默失效,防线保持)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     names = {c.name for c in COMP_LIBRARY}
-    if set(LINE_ANCHOR) != names:
-        raise ValueError('LINE_ANCHOR 必须恰好覆盖 COMP_LIBRARY 全部线')
-    for line, anchor in LINE_ANCHOR.items():
+    for line, anchor in _LINE_ANCHOR_DIVERGENCE.items():
+        if line not in names:
+            raise ValueError(
+                f'_LINE_ANCHOR_DIVERGENCE 键不在 COMP_LIBRARY 线名集:{line!r}')
         if anchor not in CHARACTERS:
             raise ValueError(
-                f'LINE_ANCHOR 锚不在角色注册表:{line!r}×{anchor!r}')
+                f'_LINE_ANCHOR_DIVERGENCE 锚不在角色注册表:{line!r}×{anchor!r}')
 
 
 _validate_line_anchor()

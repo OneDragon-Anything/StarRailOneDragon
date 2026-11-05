@@ -20,6 +20,10 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 PRIOR_CAP: int = 8          # plaza 伪计数封顶(幸存者偏差 → 弱先验,自家 5-8 局翻案)
 GAMMA: float = 0.97         # 指数遗忘(旧版本样本退潮)
@@ -115,6 +119,21 @@ class ThompsonAllocator:
         return {k: {'mean': round(a.mean, 3), 'var': round(a.variance, 4),
                     'n_own': a.n_own, 'adherence': round(a.adherence_sum, 1)}
                 for k, a in self.arms.items()}
+
+
+def arm_key_of(comp: Comp) -> str:
+    """阵容 → 分配器 arm 键的换算单一源(初始化侧与 update 侧共用)。
+
+    arm 键空间 = ``PLAZA_CARRY_CLUSTERS`` 中 ``n_posts >= 15`` 的聚类 carry 名
+    (cw_loop ``_get_or_init_allocator`` 的 share 过滤式)——键空间即 carry 名空间,
+    故换算 = ``cw_comps.carry_anchor``;换算散在两侧各自拼装曾是「update 键与
+    分支表键不配对 → 恒 no-op」缺陷的结构根,读口化一处治本。换算值 ∉
+    ``allocator.arms``(低篇数线/空值线)时由调用侧 ``arm_id not in arms``
+    防线拦截,维持跳过语义。函数内 import 保持本模块运行时零 kernel 依赖
+    (纯函数离线可测)。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import carry_anchor
+    return carry_anchor(comp)
 
 
 # ============================================================

@@ -1775,12 +1775,16 @@ class CwLoop(CwOperation):
             arm_obj = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             comp_name = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
             # 57-A1 修(分支命名空间):分支表键 = plaza carry 角色名,update 侧是阵容名
-            # → 恒 no-op(62 局零累积实证)。阵容→carry 归一映射(comp.plaza_carry)。
+            # → 恒 no-op(62 局零累积实证)。阵容→arm 键换算单一源 =
+            # cw_run_allocator.arm_key_of(初始化/更新两侧共用读口)。
             arm_id = ''
             if comp_name:
                 from sr_od.application.currency_war.kernel.cw_comps import get_comp
+                from sr_od.application.currency_war.kernel.cw_run_allocator import (
+                    arm_key_of,
+                )
                 _c = get_comp(comp_name)
-                arm_id = getattr(_c, 'plaza_carry', '') or ''
+                arm_id = arm_key_of(_c) if _c is not None else ''
             if not arm_id or arm_id not in self._allocator.arms:
                 return
             reward = self._allocator.reward_graded(

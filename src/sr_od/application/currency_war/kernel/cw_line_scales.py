@@ -25,7 +25,7 @@ from __future__ import annotations
 RESTART_PENALTY: int = -100_000
 
 #: carry·anchor(线基准核心,每名):基准核心单卡即战力(攻略「希儿到手即开线」);
-#: 单 anchor 压过一切环境正和。基准判定表 = line_select.LINE_ANCHOR。
+#: 单 anchor 压过一切环境正和。基准判定读口 = line_select.rating_anchor。
 CARRY_ANCHOR: int = 8_000
 
 #: carry·其余 core(每名):非基准 core 减半(攻略主次语义——基准与辅助分档)。

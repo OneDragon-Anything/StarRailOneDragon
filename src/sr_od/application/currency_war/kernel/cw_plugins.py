@@ -157,14 +157,17 @@ def cross_line_skeleton() -> tuple[str, ...]:
     规则(研读报告 A2 口径,数据源 = W16_MAJORITY_LINES):
     - **≥3 线过半**(家族键数 ≥3)→ 骨架件(8 张);
     - **恰 2 家族过半的边界卡**,排除「过半线中以它为 carry 的线级定义件」
-      (``COMP_LIBRARY.plaza_carry``;姬子·启行 = 姬子线 carry,该线采购
-      本就含它,无跨线信息)→ 双身份 2 张(三月七/藿藿;开拓者·欢愉
+      (carry 名读口 = ``cw_comps.carry_anchor``;姬子·启行 = 姬子线 carry,
+      该线采购本就含它,无跨线信息)→ 双身份 2 张(三月七/藿藿;开拓者·欢愉
       两线同族 1 键,天然不进边界)。
 
     派生结果与原手写 10 名快照一致(cw_intention 测试;不等 = 数据错)。
     """
-    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
-    carries = {c.plaza_carry for c in COMP_LIBRARY if getattr(c, 'plaza_carry', '')}
+    from sr_od.application.currency_war.kernel.cw_comps import (
+        COMP_LIBRARY,
+        carry_anchor,
+    )
+    carries = {carry_anchor(c) for c in COMP_LIBRARY if carry_anchor(c)}
     out: set[str] = set()
     for name, fams in W16_MAJORITY_LINES.items():
         if len(fams) >= 3 or len(fams) == 2 and name not in carries:
