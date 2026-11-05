@@ -1188,8 +1188,8 @@ def _kechuan_wear_picks(u: Unit | None, held: list[str],
                         eq_rng: random.Random) -> list[str] | None:
     """单只穿戴采样(非目标单位 None;目标 = uid ∈ 本卡集 ∧ 身份 == 佩佩;
     逐持卡逐档采样——与 check_strategy_boss_battle_grants 逐持卡逐档同构,
-    同形卡叠加时穿戴件数 = 持卡数倍,行为确定可复现,叠加形态归
-    T-368 设计稿 9.5-4 申报)。"""
+    同形卡经 active_strategies 按名去重结构性单实例,叠加持卡不可达;
+    逐持卡形态沿先例,叠加语义申报归 T-368 设计稿 9.5-4)。"""
     if u is None or u.uid is None or int(u.uid) not in owned \
             or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
         return None

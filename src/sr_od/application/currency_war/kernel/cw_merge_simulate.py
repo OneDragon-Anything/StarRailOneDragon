@@ -166,7 +166,8 @@ def merge_simulate(bench: list[BenchSlot | None],
       缺省按 3-mod 保守取,调用方有店内真值时显式传);
     - 合成链逐级记录(落点/继承);出参断言「场上同名同星 ≤1」。
     - 合成产物实例号承继 = _merge_inherit_uid 单一源(链端
-      merge_step_once 同源,交叉核对一致性由共用 helper 保证);``gs``
+      merge_step_once 为零 import 独立副本实现,一致性由交叉核对测试
+      锁定,非共用 helper);``gs``
       传入时锁域豁免同链端(承继值命中未解锁上场锁 → 弃承继置 None),
       缺省 None = 纯表形态零豁免。
 
