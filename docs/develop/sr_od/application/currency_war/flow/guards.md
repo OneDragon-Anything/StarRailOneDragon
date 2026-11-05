@@ -1,7 +1,7 @@
 # 守卫总册（guards）
 > 术语:本篇所用货币战争域术语的统一定义见 [../terminology.md](../terminology.md)。
 
-> 从代码反推,来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/保留证据防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-currency-war-dev/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只保留证据不停机)。路径根 = `src/sr_od/application/currency_war/`。
+> 从代码反推,来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_shop.py` + `obs/cw_identity_obs.py` + `kernel/cw_mismatch_policy.py` 的守卫/停机/降级段。职责：识别域与执行面的停机/保留证据防线。对局状态推进的监测不在框架——停滞判读 = 事件哨兵 `skills/sr-od-dev-currency-war/scripts/cw_sentinel.py`(v5.2:STALL 同特征零推进/LOOP 签名循环/NODE-DWELL 相位滞留/SILENCE 沉默,只保留证据不停机)。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（`stop_running(reason=..., save_screenshot=True)` 一行——框架自动截图 + `[stop]` 日志行即现场事实；钩子不写 flag 文件，处理流程知识归本篇）。
 
 ## 1. 外环连续 fail 重派网（通用网）

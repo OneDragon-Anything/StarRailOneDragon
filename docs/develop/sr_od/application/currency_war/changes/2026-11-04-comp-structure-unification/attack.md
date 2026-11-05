@@ -160,4 +160,4 @@
 
 **低危 5 条（A18-A22）**：表述级，可随高/中危修订顺手改；A22 中「21 线仅 2 线」与「s77091 真凶」两处建议补持久指针，其余可带病定稿。
 
-**另记（不计攻击点）**：正本更新清单含「skill sr-od-currency-war-dev/references/comp-definition.md ← 3.1/3.3」，该 skill 不在本仓 `skills/`（glob 零命中），公共仓预期路径 `D:\code\workspace\OneDragon-Skills\skills\sr-od-currency-war-dev` 亦不存在；且个人本地指令禁止直接改公共仓 skill 本体。执行该清单条目前须先定位 skill 真身与修改权限，建议在清单内加注。
+**另记（不计攻击点）**：正本更新清单含「skill sr-od-dev-currency-war/references/comp-definition.md ← 3.1/3.3」，该 skill 不在本仓 `skills/`（glob 零命中），公共仓预期路径 `D:\code\workspace\OneDragon-Skills\skills\sr-od-dev-currency-war` 亦不存在；且个人本地指令禁止直接改公共仓 skill 本体。执行该清单条目前须先定位 skill 真身与修改权限，建议在清单内加注。

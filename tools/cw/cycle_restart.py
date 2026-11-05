@@ -20,7 +20,7 @@ rewatch 杀净哨兵 → daemon 重启 MCP server(加载新代码)→ 重武哨�
 哨兵报警退出 → 本进程打印 [CYCLE-*] 并带码退出 → 编排者的后台 job 结算送达。
 禁 DETACHED 自起本脚本:那等于把整条报警链再度挂空。
 
-用法(项目根;哨兵脚本单一源 = skills/sr-od-currency-war-dev/scripts/
+用法(项目根;哨兵脚本单一源 = skills/sr-od-dev-currency-war/scripts/
 (寻址取自 rewatch.SCRIPTS_DIR,根切换后旧散拷贝目录已退役),
 默认 sentinel+gap 两件):
 
@@ -67,7 +67,7 @@ def _rewatch() -> ModuleType:
     """取同目录 rewatch 模块——哨兵脚本单一源(SCRIPTS_DIR/WATCHERS/SENTINEL_POS)宿主。
 
     2026-09-08 最近改动三审 M1:哨兵单一源已迁
-    skills/sr-od-currency-war-dev/scripts/(根切换随批),本文件
+    skills/sr-od-dev-currency-war/scripts/(根切换随批),本文件
     曾自留一份 WATCHERS 表并按 .debug/temp 散拷贝目录寻址——散拷贝滞留
     旧常量 = 静默武装盯死旧路径的哑哨兵(rewatch 头注同源警告),散拷贝
     清空后则整批「缺脚本」跳过、零武装中止起局。治本 = 删本表,武装/

@@ -31,4 +31,4 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 ## 边界
 
 - 本 skill 只管「版本更新后跟什么、怎么跟」;单个 op / app 的开发与调试纪律归 od-dev-write-operation / od-dev-write-application,画面没建档先走 od-dev-screen-onboarding。
-- 货币战争玩法内的单位(牌桌角色、装备等)不是本体角色,数据维护归 sr-od-currency-war-dev。
+- 货币战争玩法内的单位(牌桌角色、装备等)不是本体角色,数据维护归 sr-od-dev-currency-war。

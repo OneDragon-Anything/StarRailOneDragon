@@ -87,7 +87,7 @@
 - data/(`docs/game/currency_war/data/`,**全部策略相关**):gameplay(官方玩法说明)/ competitors(词缀机制+20 竞争阵营唯一源)/ bosses(boss 克制启示)/ advantage_layouts(跨局 meta 增益)/ plaza_meta(实战 meta)。已建模入代码注册表的数据已删 doc,查值直接看注册表(清单见 data/README)。
 - proofs/ 单篇按命题按需读(math_proofs 是命题状态表)。
 
-消费方(sr-od-currency-war-dev skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。
+消费方(sr-od-dev-currency-war skill、判读/验证工作流)引用「改策略前读什么」时指本节,别在别处另列清单。
 
 ## 关系图
 

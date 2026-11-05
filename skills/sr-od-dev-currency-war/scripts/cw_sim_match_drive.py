@@ -13,8 +13,8 @@ journal / 决策帧 / debug 图 / 窗口运行锁全部重定向到批目录,生
 
 用法(项目根):
 
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed 20261012
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed 7 --out-dir <目录>
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed 20261012
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed 7 --out-dir <目录>
 
 产出(批目录内):``matches/match_<game_id>.json``(对局档案,复盘主数据)、
 ``state/journal.jsonl``(kernel 状态流水,行级溯源)、``decision_frames/``

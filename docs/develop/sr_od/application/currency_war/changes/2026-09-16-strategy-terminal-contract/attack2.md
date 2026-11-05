@@ -1,7 +1,7 @@
 # attack2 —— 策略器终态契约 迭代设计 对抗审查报告（r2，独立干净上下文）
 
 > 审查对象：本目录四份文档（design.md / details/session-dissolution.md / landing.md / README.md）。
-> 判据源：`docs/develop/harness/iteration-design.md`（四硬规则+§7 三核）、`strategy-docs/00_framework.md`/`01_math_framework.md`、`game_state/fields.md`、`flow/README.md`/`flow/session.md`/`flow/outer_loop.md`/`game_state/journal.md`/`flow/action_exec.md`、正本树（strategy-docs/screens/architecture/sim/docs/game）、代码真值（`src/sr_od/application/currency_war/` 逐文件直调）、在飞迭代四目录、AGENTS.md §8-§11、`.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md` §6。
+> 判据源：`docs/develop/harness/iteration-design.md`（四硬规则+§7 三核）、`strategy-docs/00_framework.md`/`01_math_framework.md`、`game_state/fields.md`、`flow/README.md`/`flow/session.md`/`flow/outer_loop.md`/`game_state/journal.md`/`flow/action_exec.md`、正本树（strategy-docs/screens/architecture/sim/docs/game）、代码真值（`src/sr_od/application/currency_war/` 逐文件直调）、在飞迭代四目录、AGENTS.md §8-§11、`.dsh/skills/sr-od-dev-currency-war/references/strategy-work.md` §6。
 > 方法：全部数值/符号/引文直调复核（全仓两仓 grep 普查 + 代码体阅读），禁转述；被取代目录 `strategy-input-unification` 仅用于核「继承并就地重述」声明的真实性，发现均以现行代码为准。未读本迭代 r1 报告（无前提纪律）。
 
 ## 发现总览

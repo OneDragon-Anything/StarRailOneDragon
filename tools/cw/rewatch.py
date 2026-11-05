@@ -48,7 +48,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # 哨兵脚本单一源(skill 版本化目录;runtime-ops「哨兵脚本组」节口径:
 # 武装命令直接从 skill 目录起,不再用 .debug/temp 下的散拷贝——散拷贝
 # 会滞留旧版常量,遥测根迁移后旧拷贝盯死路径 = 哨兵哑掉)
-SCRIPTS_DIR = REPO_ROOT / 'skills' / 'sr-od-currency-war-dev' / 'scripts'
+SCRIPTS_DIR = REPO_ROOT / 'skills' / 'sr-od-dev-currency-war' / 'scripts'
 # 哨兵运行态文件目录(水位/锁/在岗状态;.debug/temp 约定不变)
 WATCH_DIR = REPO_ROOT / '.debug' / 'temp' / 'currency_war'
 # 事件哨兵旧水位文件:不删 = 读旧水位误报(局47 实证)

@@ -38,7 +38,7 @@
 
 ## 3.3 sim 冒烟局端到端验证
 
-**范围**：skill 驱动脚本跑固定 seed sim 局（`uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed <固定值>`），验收 journal 断言清单（下）；零生产文件改动，验收记录落本迭代 README 进度行。**边界：不修代码（发现问题回 3.1/3.2 打回路由）；不做跨批统计对照（行为分界批，§2.5 只申报不对照）。**
+**范围**：skill 驱动脚本跑固定 seed sim 局（`uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed <固定值>`），验收 journal 断言清单（下）；零生产文件改动，验收记录落本迭代 README 进度行。**边界：不修代码（发现问题回 3.1/3.2 打回路由）；不做跨批统计对照（行为分界批，§2.5 只申报不对照）。**
 **设计依据**：design.md §2.5 / §2.6
 **文件面**：无（临时验收产物落 `.debug/`）
 **依赖**：3.1、3.2

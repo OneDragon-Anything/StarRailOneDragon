@@ -1,6 +1,6 @@
 # 设计对抗报告 · 第 9 轮（attack-r9）
 
-> 审查日期 2026-09-24。无前提独立审查：攻击对象 = 本目录 design.md / landing.md / README.md（当前工作区状态，r8 修订后文本）。判据源自取并全部直调复核，未采信任何前轮报告结论。规范源：docs/develop/harness/iteration-design.md（§3 七件套/§5 四硬规则/§7 三核）、.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md（§1 零调参/未证即退役、§4 验证阶梯与可观测性声明、§5 单帧测试、§6 对抗纪律）、strategy-docs/00_framework.md（宪法五/六）、strategy-docs/01_math_framework.md、项目 AGENTS.md。行号锚按任务纪律以符号锚优先，±3 漂移且语义锚成立者不登记。sr-od-test 为 gitignore 独立仓，grep 在该目录显式补扫。
+> 审查日期 2026-09-24。无前提独立审查：攻击对象 = 本目录 design.md / landing.md / README.md（当前工作区状态，r8 修订后文本）。判据源自取并全部直调复核，未采信任何前轮报告结论。规范源：docs/develop/harness/iteration-design.md（§3 七件套/§5 四硬规则/§7 三核）、.dsh/skills/sr-od-dev-currency-war/references/strategy-work.md（§1 零调参/未证即退役、§4 验证阶梯与可观测性声明、§5 单帧测试、§6 对抗纪律）、strategy-docs/00_framework.md（宪法五/六）、strategy-docs/01_math_framework.md、项目 AGENTS.md。行号锚按任务纪律以符号锚优先，±3 漂移且语义锚成立者不登记。sr-od-test 为 gitignore 独立仓，grep 在该目录显式补扫。
 
 ## 发现清单
 

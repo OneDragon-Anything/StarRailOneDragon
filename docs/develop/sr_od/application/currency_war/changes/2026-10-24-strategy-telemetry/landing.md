@@ -56,7 +56,7 @@
 ## 3.5 端到端验证（sim 全链 + 生产装配位核读）
 **范围**：核验 `cw_sim_match_drive.py` 在 recorder 重定向后 sink 落点随根（如需脚本侧显式注入则补一行装配）；跑一局 sim，journal 回执 dtag ↔ strategy jsonl ↔ 渲染报告依据块三方一致抽查；`decision_assembly.py` 生产装配位代码核读。
 **设计依据**：details/capture-store.md §4；details/render-assembly.md §1
-**文件面**：`skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py`（如需）、验证产物落 `.debug/`
+**文件面**：`skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py`（如需）、验证产物落 `.debug/`
 **依赖**：3.1、3.2、3.3、3.4
 **优先级建议**：5
 **完成判据**：
@@ -77,4 +77,4 @@
 - `docs/develop/sr_od/application/currency_war/game_state/fields.md`（回执契约节，~:2157：dtag 键语义；正本家 = 代码注释自指 `cw_game_state.py:1384-1385`） ← 3.2（已完成 3.2）
 - `docs/develop/sr_od/application/currency_war/strategy-docs/strategy-telemetry.md`（新篇：信封键闭集 + mandate_v1 payload 键表；3.3 已建，收尾核对） ← 3.3（已完成 3.3）
 - `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`（分篇入口登记新篇） ← 3.3（已完成 3.3）
-- `skills/sr-od-currency-war-dev/references/match-review.md`（报告结构：动作节「策略依据」小节 + 章级「策略依据」小节 + 章尾注记 + 局头策略遥测行） ← 3.4（已完成 3.4）
+- `skills/sr-od-dev-currency-war/references/match-review.md`（报告结构：动作节「策略依据」小节 + 章级「策略依据」小节 + 章尾注记 + 局头策略遥测行） ← 3.4（已完成 3.4）

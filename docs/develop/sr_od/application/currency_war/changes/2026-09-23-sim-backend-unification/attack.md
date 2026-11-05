@@ -1,7 +1,7 @@
 # sim 统一（SimBackend）设计对抗审报告
 
 > 被审对象：`design.md` + `details/sim-backend.md` + `details/flow-seam.md` + `landing.md` + `README.md`（版本状态：草案，对抗审中）。
-> 审计方法：按 `docs/develop/harness/iteration-design.md` §5/§7 三核执行——设计内每个关键主张的 文件::符号 锚点逐一 grep/打开实证（非转述复核）、以实现者身份按 landing 逐阶段试读、对照领域规范（`.dsh/skills/sr-od-currency-war-dev/`）核冲突；发现按必修/建议/申报分级。
+> 审计方法：按 `docs/develop/harness/iteration-design.md` §5/§7 三核执行——设计内每个关键主张的 文件::符号 锚点逐一 grep/打开实证（非转述复核）、以实现者身份按 landing 逐阶段试读、对照领域规范（`.dsh/skills/sr-od-dev-currency-war/`）核冲突；发现按必修/建议/申报分级。
 
 ---
 
@@ -114,7 +114,7 @@
 ### B3 [申报即可] 旧引擎退役使 A/B 通道从「挂起」升级为「拆除」，skill 同步面未申报
 
 - **位置**：`design.md` §1「明确不解决：批跑/A/B/统计工具」；`landing.md` 正本更新清单（无 skill 行）。
-- **问题**：领域规范现状口径 = 「批跑/重放工具候补期间 A/B **挂起**」（`sim-testing.md`「先知道边界」末条、`strategy-work.md` §4）。本迭代退役 `cw_sim_engine.simulate_run` 后，A/B 的被测对象不复存在——「挂起」事实上升级为「通道拆除」，恢复载体（SimBackend 上的新批跑件）成了后续必备件。范围裁定本身合法（用户已裁定 MVP 不含批跑/A/B），但这一**现状口径变更**没有任何申报面：`.dsh/skills/sr-od-currency-war-dev/references/sim-testing.md`（`cw_sim_engine.simulate_run` 库形态注记、批驱动器 monkeypatch 规约节）与 `strategy-work.md`（A/B 通道表述）在退役后全部过期，正本更新清单不含 skill 行，后续迭代开工读到的将是假现状。
+- **问题**：领域规范现状口径 = 「批跑/重放工具候补期间 A/B **挂起**」（`sim-testing.md`「先知道边界」末条、`strategy-work.md` §4）。本迭代退役 `cw_sim_engine.simulate_run` 后，A/B 的被测对象不复存在——「挂起」事实上升级为「通道拆除」，恢复载体（SimBackend 上的新批跑件）成了后续必备件。范围裁定本身合法（用户已裁定 MVP 不含批跑/A/B），但这一**现状口径变更**没有任何申报面：`.dsh/skills/sr-od-dev-currency-war/references/sim-testing.md`（`cw_sim_engine.simulate_run` 库形态注记、批驱动器 monkeypatch 规约节）与 `strategy-work.md`（A/B 通道表述）在退役后全部过期，正本更新清单不含 skill 行，后续迭代开工读到的将是假现状。
 - **规范出处**：`sim-testing.md`「先知道边界」末条；`strategy-work.md` §4；`iteration-design.md` §1.1（外溢面自成新迭代——批跑恢复件宜显式立项或显式申报无替代）。
 - **建议修法**：design §1「明确不解决」处或 landing 正本更新清单补一行申报：sim-testing/strategy-work 两篇的 A/B 现状注记归宿（改写为「通道已随旧引擎退役拆除；恢复 = SimBackend 批跑件，另批」），或为「SimBackend 批跑恢复件」显式立外溢迭代。
 

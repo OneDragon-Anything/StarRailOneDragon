@@ -245,7 +245,7 @@ DOT2 层确认"随意"(羁绊文本:任意 2 名 DOT 队员触发超激发,无�
 
 ## 证据三层:统计骨架 × 逐篇细节 × 机制解释(2026-08-22 用户定调)
 
-> **方法论单一源已迁 skill**:`skills/sr-od-currency-war-dev/references/compo-knowledge.md`
+> **方法论单一源已迁 skill**:`skills/sr-od-dev-currency-war/references/compo-knowledge.md`
 > (证据三层职能表/从零提炼流程/单套修订/版本更新重跑/防坑)。本节只留先例:
 > (注:此「证据三层」是阵容知识的**方法分层**——怎么读出结论;与
 > equipment_mechanics.md 篇首的「证据四级标签」(代码实证/口述·权威/攻略佐证/推断)

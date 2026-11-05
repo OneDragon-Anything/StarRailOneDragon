@@ -87,11 +87,11 @@ boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 50 金息律簇,P1 验收框架:利息计算基数保住 × P1 形态达标)。
 
 数据源与用法(项目根运行;另机/异目录语料用 --sim-root/--matches-root 显式指路):
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch latest
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_batch_stats.py --sim-batch latest
     (latest 口径 = 批目录名内嵌创建时间戳最新的含账批次,非字典序/非 mtime)
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --batch <批次目录>
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --recent 10
-    uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --match <game_id>
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_batch_stats.py --batch <批次目录>
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_batch_stats.py --recent 10
+    uv run python skills/sr-od-dev-currency-war/scripts/cw_batch_stats.py --match <game_id>
 """
 from __future__ import annotations
 

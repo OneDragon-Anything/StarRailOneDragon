@@ -45,7 +45,7 @@
 失配命中后按序判定，命中即停：
 
 1. **豁免命中**（§2.2 注册表，入参 = 观察侧 sig.screen / 字段名 / 逻辑侧 `Field.evidence`）→ 落 `kind='exempt_mismatch'` 台账行（**行形状与真失配行同构**：含 `ts` 与观察侧 screen/actor/group_id + 逻辑侧 evidence，仅 kind 不同），无告警、无停机。
-2. **sim 证据命中**（`observed_evidence` 前缀 ∈ `_MISMATCH_SUPPRESS_PREFIXES`）→ 不落生产台账（现役抑制语义 = 直接 return，依据 `cw_game_state.py::_MISMATCH_SUPPRESS_PREFIXES` 注释）。本迭代把 `'sim:synthesized'` 与 `'sim:engine'` 并列入表。理由：sim 链对账归 sim 质量面（skill `sr-od-currency-war-dev` sim-testing 域），约 18.6 万行混入生产台账已实证分流必要。
+2. **sim 证据命中**（`observed_evidence` 前缀 ∈ `_MISMATCH_SUPPRESS_PREFIXES`）→ 不落生产台账（现役抑制语义 = 直接 return，依据 `cw_game_state.py::_MISMATCH_SUPPRESS_PREFIXES` 注释）。本迭代把 `'sim:synthesized'` 与 `'sim:engine'` 并列入表。理由：sim 链对账归 sim 质量面（skill `sr-od-dev-currency-war` sim-testing 域），约 18.6 万行混入生产台账已实证分流必要。
 3. **真失配** → 缺陷行（`kind='observe_vs_logic_mismatch'`，**行补 `ts` 字段**，格式 = journal 行同款 `datetime.now().isoformat(timespec='seconds')`；`_emit_defect` 增加 sig 形参，行携带观察侧 screen/actor/group_id 与逻辑侧 `Field.evidence`——现状缺陷行无 sig 信息，为本迭代改造点）+ 现有 `[cw!]` 告警日志 + **安灯钩子**（§2.4）。
 
 行落盘先于钩子触发——证据在场不依赖钩子成败。
@@ -79,7 +79,7 @@
   1. 86 行「逻辑 17 / 实读 19」恒 +2——首位线索 = finalize 对拍注释自认的「收入/连胜金不可观项混入」与免刷 proc（刷新已实证机制，持久锚 = `classify_spend_unit` docstring 的 free_refresh_proc 段；ADR-0456 编号仅存于代码注释引用，decisions/ 无落盘；`free_refresh_balance` 容器字段与 `refresh_free_truth` 真值通道已在）；
   2. 7 行金散失配（+7/−2/±2）；
   3. **write_logic 直写端族时序面清点**：关店金真读以 logic 通道直写、`node_ledger_backfill` 台账权威值直写（旧语义 = 下帧实读观察赢修正）、恢复局 write_logic——武装后这些写端与下帧实读的机制性分歧全部升格停机，逐个定性：确属推算错 = 修；确属「写时点早于游戏落定」的时序差 = 改写端时点或申报豁免。
-- **归因手段**：`state/journal.jsonl` 行行自足快照回溯 + 生产缺陷台账行前后文；判读流程与查询工具 = skill `sr-od-currency-war-dev` `references/telemetry-reading.md`（判读流程节 + 遥测查询工具节）。
+- **归因手段**：`state/journal.jsonl` 行行自足快照回溯 + 生产缺陷台账行前后文；判读流程与查询工具 = skill `sr-od-dev-currency-war` `references/telemetry-reading.md`（判读流程节 + 遥测查询工具节）。
 - **出口三分类**（每条模式必落其一，验收含复现载体复跑）：
   - ①建模补全（逻辑值把该机制算上）——验收 = 复现载体复跑该失配模式零复现（复现载体 = sim 重放该单元序列，或实机局后生产缺陷台账零新增该模式行，按模式可复现性二选一，归因报告钉明选型）；
   - ②结构性申报豁免（确证为游戏机制性差异且建模不可行）——验收 = 豁免条目落地，该模式落 `exempt_mismatch` 行；**豁免条目逐画面申报，禁 `('*', 'gold')` 类字段级通配用于执行敏感字段**（吞「买了没扣钱」类真失败 = §2.2 粒度纪律禁止的后门）；

@@ -63,7 +63,7 @@
 - **拍板点**：仅 G1（test_f9 混合断言）。
 
 ### 末阶段 正本更新 —— 可开工
-- 正本更新清单 12 条目标全部存在（strategy-docs 六篇 + README、sim-power-model 相关、proofs/、skills/sr-od-currency-war-dev/references/comp-definition.md（仓内 skills/ 与挂载 .agents/skills/ 双路径均在）、docs/game/currency_war/）。
+- 正本更新清单 12 条目标全部存在（strategy-docs 六篇 + README、sim-power-model 相关、proofs/、skills/sr-od-dev-currency-war/references/comp-definition.md（仓内 skills/ 与挂载 .agents/skills/ 双路径均在）、docs/game/currency_war/）。
 - 黑话终扫判据可执行：术语表 §1 替换表词在七份文档中零命中（逐词扫描）；「正本」8 处均为模板固定节名（landing 有自觉豁免注）；「sub_tiers 对拍锚」为代码源字符串原文引用，合法。
 
 ## 收敛判定建议

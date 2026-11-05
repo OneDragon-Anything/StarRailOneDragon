@@ -1,7 +1,7 @@
 # turnstate-retirement 迭代设计（总纲）
 
 ## 0. 元信息
-- 迭代目标：TurnState 决策视图层退役物理删除（用户裁定 2026-09-16）。立项依据 = `flow/projection_contract.md` §6 G7（现状申报：TurnState 生产零消费、纪律表述与真实通路不一致）+ 同日用户裁定废除「墓碑注」退役形态（`skills/sr-od-currency-war-dev/references/strategy-work.md` §1 未证即退役通则③ 2026-09-16 改判：退役 = 物理删除，禁原位注记）。
+- 迭代目标：TurnState 决策视图层退役物理删除（用户裁定 2026-09-16）。立项依据 = `flow/projection_contract.md` §6 G7（现状申报：TurnState 生产零消费、纪律表述与真实通路不一致）+ 同日用户裁定废除「墓碑注」退役形态（`skills/sr-od-dev-currency-war/references/strategy-work.md` §1 未证即退役通则③ 2026-09-16 改判：退役 = 物理删除，禁原位注记）。
 - 状态：对抗审中
 - 文档清单：无详设（单文档方案，本篇即完整设计）
 

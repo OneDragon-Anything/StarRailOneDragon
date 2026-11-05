@@ -60,7 +60,7 @@
 - flow.py:墓碑 L422-423/L430、decide_shop_action L695-696/L699、面③四处死指针 L105/L112/L133/L139、`decide_prep_screen` 保持 abstract L33、`_consume_shop_direction_frame` L450 在码。
 - 终结集:OpenBoxOp terminal=True(cw_open_box_action.py L39)、OpenShopOp L31、StartBattleOp L53——主循环头注定稿补 OpenBox 有据。
 - 遥测键族 `emitter_*`/`deploy_emit_*`/`deploy_exec_*`/`t1_interest_prep_emit`/`wanted_leg_*`/`m1p_*`/`sphere_defer_*` 全实存;`prep_box/prep_tome/prep_spheres` 确系 Emitted.reason 路由标签(entry L462/L464/L498/L513),「勿 grep」提示准确;`telemetry/journal_query.py` 实存。
-- 影响面:测试仓 `decide_prep_screen` 仅 test_cw_p2_blood_band.py L213-216 桩子类(`*a, **kw` 形状免疫),空批/取首项/策略输出非/list[CwAction] 零命中;tools/、`replay_to_md.py`(零消费备战契约)、哨兵 4 件(`.dsh/skills/sr-od-currency-war-dev/scripts/` cw_sentinel/cw_batch_stats/cw_early_stop/cw_runs_gap,旧文案零命中)、`legacy_baseline` 全仓零标记——§2.4/§2.5/§2.6 申报全部成立;L1 命令路径实存;ruff select 含 F(F841 必红成立)。
+- 影响面:测试仓 `decide_prep_screen` 仅 test_cw_p2_blood_band.py L213-216 桩子类(`*a, **kw` 形状免疫),空批/取首项/策略输出非/list[CwAction] 零命中;tools/、`replay_to_md.py`(零消费备战契约)、哨兵 4 件(`.dsh/skills/sr-od-dev-currency-war/scripts/` cw_sentinel/cw_batch_stats/cw_early_stop/cw_runs_gap,旧文案零命中)、`legacy_baseline` 全仓零标记——§2.4/§2.5/§2.6 申报全部成立;L1 命令路径实存;ruff select 含 F(F841 必红成立)。
 
 ### C. 审查对象 2:`decide_prep_screen` docstring as-built(工作区改后文本)——逐句属实,零发现
 

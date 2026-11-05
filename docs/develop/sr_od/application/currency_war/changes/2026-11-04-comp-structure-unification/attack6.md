@@ -70,7 +70,7 @@
 
 **3.4（富余买入归并与 P88 退役）**：文件面全部可解析（shop/mandate/sell_gate/contracts/cw_deploy_logic/p88_check.py/proofs/p88.md 实存）。现状证据逐条对码成立：三通道、M6 席位注释原文（shop.py:1893-1894「压牌库判据的席位维由序列末位让路承载」逐字）、s77091 真凶叙事与根治指针（mandate.py:644-649 docstring 逐字，含「R1 死金×2 + R5 dominance 成对锁席九轮」）、PRESS_NARROWED_ARMS 独苗（mandate.py:676-680 恰 {'dominance_buy'}）、swap_transition_narrow_frame 单函数（:683 起）、调用段 :958-979、契约键（contracts.py:236）、sell_gate 映射键（:131）、p88_check.py:34/:87 逐行、test_dead_stock_pair.py:187-195 直调断言、test_sell_window_launch.py:179-185 收窄集对账、zero_overlap 同规则实存（statefn/predicates.py:47）、M6 tier_w 门槛与排除面（shop:1906/:1898）、dominance_buy_eligible 语义（bench_free>1 金门，测试真值表 :187-196 印证）。契约 D 的名单源耦合申报与 3.3→3.4 顺序锁定自洽。**卡点 = F8**（测试删除粒度，低）。
 
-**末阶段（正本更新）**：清单 12 行逐条可解析——strategy-docs 12/10/24/28/32/README/13/16 实存（29 按落地 grep 定位，可执行）；sim/sim-power-model.md 实存；proofs/p88.md 实存；skills/sr-od-currency-war-dev/references/comp-definition.md 实存（本仓 skills/ 路径正确）；docs/game 侧引用恰 4 处（README.md:20 + data/competitors.md:15/:37/:131，「4 处」计数准确）。判据（清单清零 + 黑话终扫 + 证明留档豁免）可执行；终扫含 §2 保留词首次定义抽查（检查位存在）。**卡点 = F6**（终扫范围不含 changes/ 自身文档，「挂点」违例无检查位，低）。
+**末阶段（正本更新）**：清单 12 行逐条可解析——strategy-docs 12/10/24/28/32/README/13/16 实存（29 按落地 grep 定位，可执行）；sim/sim-power-model.md 实存；proofs/p88.md 实存；skills/sr-od-dev-currency-war/references/comp-definition.md 实存（本仓 skills/ 路径正确）；docs/game 侧引用恰 4 处（README.md:20 + data/competitors.md:15/:37/:131，「4 处」计数准确）。判据（清单清零 + 黑话终扫 + 证明留档豁免）可执行；终扫含 §2 保留词首次定义抽查（检查位存在）。**卡点 = F6**（终扫范围不含 changes/ 自身文档，「挂点」违例无检查位，低）。
 
 ## 收敛判定建议
 

@@ -92,5 +92,5 @@
 - `docs/develop/sr_od/application/currency_war/` 的 sim-power-model 相关权威版本文档（form_tiers→core_faction_reqs 映射口径）← 3.1
 - `proofs/` 目录（P65/P88 相关篇随脚本处置同步标注退役指针）← 3.3/3.4
 - strategy-docs 中 dominance_buy 与 P88 口径的篇目（落地时 grep `dominance_buy|swap_bond_gate` 在 strategy-docs 的命中篇，逐篇更新）← 3.4
-- `skills/sr-od-currency-war-dev/references/comp-definition.md`（本仓 skill：schema 分层语义字段族表）← 3.1/3.3
+- `skills/sr-od-dev-currency-war/references/comp-definition.md`（本仓 skill：schema 分层语义字段族表）← 3.1/3.3
 - `docs/game/currency_war/`（克制三张表引用 4 处措辞——数据值不变原则下仅措辞核对）← 3.2

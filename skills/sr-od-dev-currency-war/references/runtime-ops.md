@@ -51,7 +51,7 @@
 - 轮询提示词定期更新:提示词里写死的「当前局 N=某修复首验」会过期,误导后续判读。
 - 用户要用电脑 = 全停实机(哨兵+定时+run),别抢鼠标。
 
-### 哨兵脚本组(版本化,住 skill 的 scripts/ 子目录:`skills/sr-od-currency-war-dev/scripts/`)
+### 哨兵脚本组(版本化,住 skill 的 scripts/ 子目录:`skills/sr-od-dev-currency-war/scripts/`)
 
 | 脚本 | 角色 | 武装时机 |
 |---|---|---|
@@ -60,7 +60,7 @@
 | `cw_runs_gap.py` | journal 收尾对账 v3(旧「runs 断流」的 journal 等价:实机段停更+主日志静默但段无 match_final 收尾行 → 报警;报警词仍为 `[RUNS-GAP]`;数据源=state/journal.jsonl)。**过渡守卫**:match_final 写点属待落地接线,接线落地前账面无任何收尾行→报警抑制自愈退出(武装打印标注);账面出现首个收尾行自动恢复判据,接线验收后守卫可删 | 随局 |
 | `cw_asset_sentinel.py`(**住 `tools/cw/`,非本目录**) | 资产完整性哨兵 v1(运行时资产基线对比,**只报不修**——恢复走框架下载链/git checkout,禁自恢复下载。监控面 4 个:OCR 模型 `onnx_ocr/ppocrv5`[缺省在用档,实测为 junction 指向外部模型库,悬空/目标侧被清可抓]+`ppocrv6`[watch 档,丢不破运行时不即退]+CW 立绘库 `portrait_plaza`+首领头像库 `boss_avatar`。首跑落基线 `asset_baseline.json`,之后每轮对比:目录丢失/junction 悬空/目录清空/关键模型文件缺失(det/rec/cls/dict)= `[ASSET-HIT]` **即退 exit 3**;部分文件缺失/新文件/大小变化/链接形态变化= `[ASSET-HIT-CONT]` 驻留续侦+纪元内同签名去重,证据落 `asset_hit_alert.md`,恢复后 `[ASSET-OK]` 收尾。背景:模型目录在 gitignore 内、被清后 git 恢复不了,历史多次靠事后人工恢复) | **长驻型,不随局武装**:自主推进开启时武装一次即可(资产面不随局变化);重武三步照走(rewatch 查旧/杀净已纳管 `asset` 件,`--asset` 显式列入武装命令);资产恢复/正当变更(版本重采等)完成后 `--rebaseline` 显式收敛基线(**可穿越损坏基线**——损坏态唯一出路就是重建);无 `--rebaseline` 时基线损坏 exit 2 拒静默重建(防把已发生的清空钉成新正常态) |
 
-- **武装命令口径**:随局三件统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-currency-war-dev\scripts\<脚本>.py` 后台起(退出码即警报);资产哨兵例外,命令为 `$env:PYTHONUTF8='1'; uv run python tools\cw\cw_asset_sentinel.py`(脚本住 `tools/cw/`);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 位面 2 投资策略误报经信道送达并处置,实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap|asset_sentinel` 双查;事件哨兵 v5.1 起删 `cw_sentinel.pos` 可选(武装一律锚尾;rewatch 杀净时顺手删,留着也不碍事);job id 记进度账本「工作状态·持续运行」节。
+- **武装命令口径**:随局三件统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-dev-currency-war\scripts\<脚本>.py` 后台起(退出码即警报);资产哨兵例外,命令为 `$env:PYTHONUTF8='1'; uv run python tools\cw\cw_asset_sentinel.py`(脚本住 `tools/cw/`);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 位面 2 投资策略误报经信道送达并处置,实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap|asset_sentinel` 双查;事件哨兵 v5.1 起删 `cw_sentinel.pos` 可选(武装一律锚尾;rewatch 杀净时顺手删,留着也不碍事);job id 记进度账本「工作状态·持续运行」节。
 - **重武三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:随局哨兵实例数应=3(每脚本恰 1,资产哨兵长驻另计、武装期恰 1),多杀少补**。
 - **杀哨兵只许经 rewatch;任何信道停后必复扫**:Stop-Process / 后台 job 等单点杀在 Windows 不级联——pwsh 包装被杀后 uv→venv python→base python 链照样存活(2026-09-08 实证:孤儿占 runs_gap 锁拒新实例武装+报警链断成哑哨兵)。rewatch 杀净已带树终杀(psutil 连带终止链上后代)+杀后复扫断言(复扫非空自动再杀,有界重试后仍非空 exit 2)。停净判据=跑一遍 `tools/cw/rewatch.py` 见到「**复扫零残留 ✅**」或「**无需杀(本来就干净)**」二者之一(他信道已停净时只有后者出现;「[复扫]」前缀行=仍在杀,末轮失败行需人工核查权限)。
 - **试用期纪律**:哨兵/早停脚本前几跳 = 试用期——报警先核时间戳与归属(旧行重放/中途武装无上下文/局后空窗三类误报实证),再信内容;watcher 上线不算完,前几跳逐一复盘。v5.1 起三类误报在 `[SENTINEL-HIT-CONT]` 驻留面同样可能,CONT 报警核读证据时照此甄别(且**核读不重武**,见 autonomous-loop §3)。

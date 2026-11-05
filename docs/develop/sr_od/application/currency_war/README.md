@@ -30,11 +30,11 @@
 - 策略实现 = `src/sr_od/application/currency_war/strategies/`(契约与管理器在 impl/,注册壳在顶层;策略↔流程契约见 [flow/README §2](flow/README.md))
 - 画面 op = `operations/cw_screen/`(一画面一文件)+ `obs/`(观察解析工具箱);动作 op = `operations/cw_op/`(一动作一文件,单一注册表 `cw_action_registry.py`)
 - GameState = `kernel/cw_game_state.py`(状态容器+单一转移函数族);编排 = `operations/cw_loop.py`
-- sim/回放基建(`cw_sim`/`cw_replay`/`cw_match_recorder` 等)→ [sim/](sim/sim-design.md) + `sr-od-currency-war-dev` skill 的 sim-testing
+- sim/回放基建(`cw_sim`/`cw_replay`/`cw_match_recorder` 等)→ [sim/](sim/sim-design.md) + `sr-od-dev-currency-war` skill 的 sim-testing
 - 注册表 = 游戏数据单一源(`data/cw_*`;生成器重跑流程见 [game 侧 README](../../../../game/currency_war/README.md))
 
 ## 关联 skill
 
-- `sr-od-currency-war-dev`(CW 操作手册:分诊表 / 单一源地图 / 验证阶梯)
+- `sr-od-dev-currency-war`(CW 操作手册:分诊表 / 单一源地图 / 验证阶梯)
 - `od-dev-gameplay-automation`(玩法自动化 playbook + 策略设计)
 - `od-dev-write-application`(app 设计文档组织依据)

@@ -4,7 +4,7 @@
 - **审查角色**：设计对抗（无前提；干净上下文）
 - **日期**：2026-09-16
 - **行号声明**：所有行号以本审查亲读时点的工作区为准（同仓多批并行在飞，行号随实现漂移，符号定位优先）。
-- **权威源**：`flow/projection_contract.md` §6 G7（现状申报权威）、`docs/develop/harness/iteration-design.md` §3/§5/§7、`skills/sr-od-currency-war-dev/references/strategy-work.md` §1/§4/§6、项目 AGENTS.md。
+- **权威源**：`flow/projection_contract.md` §6 G7（现状申报权威）、`docs/develop/harness/iteration-design.md` §3/§5/§7、`skills/sr-od-dev-currency-war/references/strategy-work.md` §1/§4/§6、项目 AGENTS.md。
 
 ---
 

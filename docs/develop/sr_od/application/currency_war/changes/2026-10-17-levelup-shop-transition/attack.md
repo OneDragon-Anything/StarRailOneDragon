@@ -2,7 +2,7 @@
 
 > 攻击对象：本目录 `design.md`（草案态，单文档方案）。
 > 攻击规范：`docs/develop/harness/iteration-design.md` §5（写作硬规则四条）/ §7（三核）。
-> 领域判据：`skills/sr-od-currency-war-dev/references/strategy-work.md`、`docs/develop/sr_od/application/currency_war/flow/README.md`（四层结构 + 策略↔流程契约）、`skills/sr-od-currency-war-dev/references/sim-testing.md`「先知道边界」。
+> 领域判据：`skills/sr-od-dev-currency-war/references/strategy-work.md`、`docs/develop/sr_od/application/currency_war/flow/README.md`（四层结构 + 策略↔流程契约）、`skills/sr-od-dev-currency-war/references/sim-testing.md`「先知道边界」。
 > 方法：定稿试读（逐节问「凭这份能开工吗」）+ 全量同步复查（设计引用的每个符号/文件/文档节逐一核存在性）+ 全仓 sweep 自查（升级即收工 / CwActionLevelUpShopParam / levelup_liquidate_shop / shop_upgrade_close_pending / levelup_preauth，docs + src + sr-od-test 三面）。
 > 代码行号随代码漂移，仅作本轮定位；符号定位以 `file::symbol` 为准。
 

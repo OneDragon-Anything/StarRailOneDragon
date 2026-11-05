@@ -14,7 +14,7 @@
 
 ### R5-2 [中] strategy-work §4 必跑项 `cw_replay --diff` 未入本批验证计划,且该工具旗标已随切源退役——双向失真均未申报(核二 + 核三)
 
-- **位置**:design.md §2.6(sim 可观测性申报 :90、验收线保全申报 :92)与 landing.md 全部验收凭据形式(:24、:36、:48)均无改动影响面步骤;规范出处 = .dsh/skills/sr-od-currency-war-dev/references/strategy-work.md:50「改动影响面:改动后必跑 `cw_replay --diff`(秒级)看行为漂移首发点」。
+- **位置**:design.md §2.6(sim 可观测性申报 :90、验收线保全申报 :92)与 landing.md 全部验收凭据形式(:24、:36、:48)均无改动影响面步骤;规范出处 = .dsh/skills/sr-od-dev-currency-war/references/strategy-work.md:50「改动影响面:改动后必跑 `cw_replay --diff`(秒级)看行为漂移首发点」。
 - **发现**:①策略行为改动批(strategy-work §6 对象三档之「实现」档)按 §4 硬门应跑 `cw_replay --diff` 看漂移首发点,本批 design/landing 全无此步骤,亦未声明豁免理由。②直调 src/sr_od/application/currency_war/sim/cw_replay.py:10-12:`--diff 分歧对比` 已在退役面清单(「旧 decisions.jsonl 源与其整帧重建/会话恢复面已随本切源退役……退役面 = _rebuild_state/_restore_session/--diff 分歧对比/意向 latch 回读/执行态可信位回读」),且现役回放面只覆盖商店黑板决策(decide_shop_screen),根本不经过补给决策——§4 的必跑项指向一个已不存在的旗标。规范自身已申报「批跑 CLI 已删、A/B 挂起」(§4 括注),但 --diff 退役未同步,规范处于半更新态。③本批对 sim 读数的盲区申报(sim 恒置一带钻槽 → 新旧读数恰同)是诚实且正确的,但那只覆盖 A/B 面,不覆盖「改动影响面必跑」义务的处置。
 - **修正方向**:①design §2.6 验收线保全申报(或 landing 3.2 验收凭据)补一行申报:「strategy-work §4 改动影响面步骤的现状 = cw_replay --diff 旗标已随切源退役(cw_replay.py 退役面清单在册)、现役回放面不辖补给轴,本批影响面改由单帧测试(3.1)+ sim 盲区申报 + 实机判读锚点①-⑤ 承载」;②规范侧 = 按 skill 反馈流程把 strategy-work §4 的 --diff 必跑行与 cw_replay 现状对齐(根在规范半更新,逐批静默跳过 = 症状漂移)。
 

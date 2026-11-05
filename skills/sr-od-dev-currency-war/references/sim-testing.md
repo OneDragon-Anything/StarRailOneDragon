@@ -35,7 +35,7 @@
 `scripts/cw_sim_match_drive.py`(项目根执行):
 
 ```
-uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed <seed>
+uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed <seed>
 ```
 
 - 产出 = 独立批目录(`telemetry/sim/sim_match_<时刻>/`,不写生产 replay)内的
@@ -56,7 +56,7 @@ uv run python skills/sr-od-currency-war-dev/scripts/cw_sim_match_drive.py --seed
 **主线**:统计指标 → 找出表现不好的指标 → 挑一局复盘归因。
 
 ### 1. 统计指标
-`uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch <批次名|latest>`(生产档案侧 `--recent N` / `--match <game_id>`;脚本零 src 导入,项目根直接跑)。四指标(①位面 1 出口金 ②过渡凑齐率 ③终局金 ④终局阵容完成率)+ 口述登记[28]线(50 金利息线;登记簿已删 2026-10-16,git 历史可溯)与出口生存余量读数,每局每指标都有值;口径边界见脚本头注记(旧多族指标已按用户规格删除,不存在按开局词缀分组)。
+`uv run python skills/sr-od-dev-currency-war/scripts/cw_batch_stats.py --sim-batch <批次名|latest>`(生产档案侧 `--recent N` / `--match <game_id>`;脚本零 src 导入,项目根直接跑)。四指标(①位面 1 出口金 ②过渡凑齐率 ③终局金 ④终局阵容完成率)+ 口述登记[28]线(50 金利息线;登记簿已删 2026-10-16,git 历史可溯)与出口生存余量读数,每局每指标都有值;口径边界见脚本头注记(旧多族指标已按用户规格删除,不存在按开局词缀分组)。
 
 ### 2. 找出表现不好的指标
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。

@@ -1,6 +1,6 @@
 # 遭遇迁移设计 对抗审查报告(第九轮)
 
-> 审查对象 = 本目录 design.md / landing.md / README.md。审查基线 = docs/develop/harness/iteration-design.md(§5 写作硬规则/§7 三核)、.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md、项目 AGENTS.md。判据源全部直调:00_framework.md §1、01_math_framework.md §6、04_survival_budget.md §7 第 9 行、screens/op-layer.md §1.4、proofs/p64-*.md 与 math_proofs.md P15/P26/P85 行;现役代码逐符号直调(src/sr_od/application/currency_war/ 下 25+ 文件)并全仓 grep 删除面符号消费方(src + sr-od-test 双仓);先例两批 design;文档面 25/13/08/04/README 号稿与 screens/encounter.md、docs/game/screens/currency_war_encounter.md。零转述。
+> 审查对象 = 本目录 design.md / landing.md / README.md。审查基线 = docs/develop/harness/iteration-design.md(§5 写作硬规则/§7 三核)、.dsh/skills/sr-od-dev-currency-war/references/strategy-work.md、项目 AGENTS.md。判据源全部直调:00_framework.md §1、01_math_framework.md §6、04_survival_budget.md §7 第 9 行、screens/op-layer.md §1.4、proofs/p64-*.md 与 math_proofs.md P15/P26/P85 行;现役代码逐符号直调(src/sr_od/application/currency_war/ 下 25+ 文件)并全仓 grep 删除面符号消费方(src + sr-od-test 双仓);先例两批 design;文档面 25/13/08/04/README 号稿与 screens/encounter.md、docs/game/screens/currency_war_encounter.md。零转述。
 
 ## 发现清单
 

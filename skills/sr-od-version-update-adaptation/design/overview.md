@@ -7,7 +7,7 @@
 ## 边界
 
 - 管「版本更新后跟什么、怎么跟」的清单与方法;单个 op / app 的开发纪律归 od-dev-write-operation / od-dev-write-application;玩法知识归 docs/game。
-- 货币战争玩法内单位(牌桌角色 / 装备)是另一套注册表体系,归 sr-od-currency-war-dev;本 skill 只管本体角色数据。
+- 货币战争玩法内单位(牌桌角色 / 装备)是另一套注册表体系,归 sr-od-dev-currency-war;本 skill 只管本体角色数据。
 - 客户端更新本身归 od-mihoyo-launcher;本 skill 只要求「能进大世界」这个前置态。
 
 ## 构成

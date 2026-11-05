@@ -334,7 +334,7 @@ def build_index() -> Path:
         '> 深评固定落点:`.debug/currency_war/deep_review/<game_id>.md`'
         '(2026-09-07 布局裁定)。一局一份报告,本册 = 局 id / 日期 / 结论一行 /'
         ' 链接;结论行是索引便利摘要(自动提取首条「结论:」行),权威结论以'
-        '报告全文为准。协议 = sr-od-currency-war-dev skill references/match-review.md。',
+        '报告全文为准。协议 = sr-od-dev-currency-war skill references/match-review.md。',
         '',
         f'更新:{stamp} · 共 {len(rows)} 篇',
         '',

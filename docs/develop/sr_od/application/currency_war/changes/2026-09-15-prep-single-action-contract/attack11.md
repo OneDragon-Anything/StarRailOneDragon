@@ -28,7 +28,7 @@
 ### F4(低)§2.6「哨兵无依赖」申报的证据域不含哨兵脚本实际位置
 
 - **位置**:design.md §2.6(「已核无工具/测试/哨兵依赖旧文案(测试仓与 tools/ 零命中)」)。
-- **攻击过程**:哨兵不住 tools/ 也不住测试仓——实际位置 = `.dsh/skills/sr-od-currency-war-dev/scripts/`(cw_sentinel.py / cw_batch_stats.py / cw_early_stop.py / cw_runs_gap.py 四件)。按申报括号内证据域(测试仓与 tools/)复现核查,覆盖不到「哨兵」半句。本审查代跑:四脚本对 `空批|取首项|list[CwAction]|策略输出非` 全部零命中——**申报结论为真,论据域不全**。
+- **攻击过程**:哨兵不住 tools/ 也不住测试仓——实际位置 = `.dsh/skills/sr-od-dev-currency-war/scripts/`(cw_sentinel.py / cw_batch_stats.py / cw_early_stop.py / cw_runs_gap.py 四件)。按申报括号内证据域(测试仓与 tools/)复现核查,覆盖不到「哨兵」半句。本审查代跑:四脚本对 `空批|取首项|list[CwAction]|策略输出非` 全部零命中——**申报结论为真,论据域不全**。
 - **修正方向**:§2.6 证据域补哨兵实际路径(skill scripts/ 四脚本),或在 landing 3.2 实机烟雾前置核查清单里落一条可执行命令。
 
 ## 二、核为属实、不计发现的面(要点)

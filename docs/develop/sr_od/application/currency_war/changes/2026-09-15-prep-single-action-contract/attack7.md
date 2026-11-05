@@ -25,7 +25,7 @@
 ### F2(中)L1 快速集的「分层命令单一源」指向不存在的路径,验收判据按其声明源不可执行
 
 - 位置:design.md L118(§2.5「分层命令单一源 = CW skill『测试分层』行」);landing.md L13(3.1 完成判据「L1 快速集」)、L26(3.2 完成判据「L1 全量绿」)。
-- 直调事实:CW skill(`.dsh/skills/sr-od-currency-war-dev/SKILL.md` 单一源地图「测试分层」行,`references/strategy-work.md` L62 同)写死命令路径 = `sr-od-test/test/sr_od/app/currency_war`;实际目录 = `sr-od-test/test/sr_od/application/currency_war/`(`sr_od/app/` 下仅 `sim_uni`,无 `currency_war`)。按单一源执行,pytest 直接报「file or directory not found」——3.1/3.2 的 L1 判据按其声明的源**无法执行**(报错虽响亮,但判据源失效属依据失真;landing 3.2 文件面 `sr-od-test/test/sr_od/application/currency_war/` 本身是对的,矛盾在命令单一源)。
+- 直调事实:CW skill(`.dsh/skills/sr-od-dev-currency-war/SKILL.md` 单一源地图「测试分层」行,`references/strategy-work.md` L62 同)写死命令路径 = `sr-od-test/test/sr_od/app/currency_war`;实际目录 = `sr-od-test/test/sr_od/application/currency_war/`(`sr_od/app/` 下仅 `sim_uni`,无 `currency_war`)。按单一源执行,pytest 直接报「file or directory not found」——3.1/3.2 的 L1 判据按其声明的源**无法执行**(报错虽响亮,但判据源失效属依据失真;landing 3.2 文件面 `sr-od-test/test/sr_od/application/currency_war/` 本身是对的,矛盾在命令单一源)。
 - 修正方向:landing 3.1/3.2 判据内联正确路径命令(`uv run pytest sr-od-test/test/sr_od/application/currency_war -m "not slow and not legacy_baseline"`)并注明 skill 行待勘误;skill 本体修正不在本批文件面,另行走 skill 反馈。
 
 ### F3(中)flow.py `decide_shop_action` 第一处定稿替换文本「决策核发射组织序」与商店核实态不符且无依据标注

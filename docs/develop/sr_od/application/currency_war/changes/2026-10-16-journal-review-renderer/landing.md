@@ -34,9 +34,9 @@
 
 ## 3.3 skill references 协同更新
 
-**范围**：`skills/sr-od-currency-war-dev/references/` 更新——①match-review.md：产出形态节改为渲染器新结构（局头/开局/节点×画面×动作；无收尾章；文末「复盘者附加」空节；复盘者逐决策面画面章填策略评价），阶段 2 粒度描述改按画面章口径、op 边界重建规则改写为「边界 = 渲染器画面章/动作节产物，复盘者不重建」（旧重建规则依赖死流）；回灌判据读数条款取数锚改 journal 锚（buys = BuyCard 回执 + gold 写入链，渲染器动作节已算出）；「零条候选红线」等复盘者义务保留，落点改指报告文末「复盘者附加」空节（用户裁定 2026-10-16 = A，design §1）；②sim-testing.md：骨架生成器行改为新渲染器 `--journal` 用法；③telemetry-reading.md：旧流引用清查更新（申报理由见 design §2 变化 4）。**skill 目录在本仓**（`.dsh/skills/sr-od-currency-war-dev` junction → `skills/sr-od-currency-war-dev`，已核实）。
+**范围**：`skills/sr-od-dev-currency-war/references/` 更新——①match-review.md：产出形态节改为渲染器新结构（局头/开局/节点×画面×动作；无收尾章；文末「复盘者附加」空节；复盘者逐决策面画面章填策略评价），阶段 2 粒度描述改按画面章口径、op 边界重建规则改写为「边界 = 渲染器画面章/动作节产物，复盘者不重建」（旧重建规则依赖死流）；回灌判据读数条款取数锚改 journal 锚（buys = BuyCard 回执 + gold 写入链，渲染器动作节已算出）；「零条候选红线」等复盘者义务保留，落点改指报告文末「复盘者附加」空节（用户裁定 2026-10-16 = A，design §1）；②sim-testing.md：骨架生成器行改为新渲染器 `--journal` 用法；③telemetry-reading.md：旧流引用清查更新（申报理由见 design §2 变化 4）。**skill 目录在本仓**（`.dsh/skills/sr-od-dev-currency-war` junction → `skills/sr-od-dev-currency-war`，已核实）。
 **设计依据**：design.md §1 明确不解决（方法论本体不改）+ §2 系统级变化 3/4；attack.md C3/D3。
-**文件面**：`skills/sr-od-currency-war-dev/references/match-review.md`、`sim-testing.md`、`telemetry-reading.md`。
+**文件面**：`skills/sr-od-dev-currency-war/references/match-review.md`、`sim-testing.md`、`telemetry-reading.md`。
 **依赖**：3.1（引用的工具行为必须已存在）。
 **优先级建议**：5
 **完成判据**：三文件更新后与新渲染器行为一致（逐条对照 render-spec 结构描述）；references 内无 review_skeleton 残留引用；完成前常规检查（首节）。
@@ -44,7 +44,7 @@
 
 ## 末阶段：正本更新
 
-**范围**：按「正本更新清单」逐条更新正本；含验收期增补三项（reviewer 裁定，2026-10-16）：①`skills/sr-od-currency-war-dev/SKILL.md` 分诊表 match-review 行载体描述更新（一行）；②match-review.md 阶段 2 对本迭代 changes/ 详设的路径引用改锚正本（渲染器注册表常量或 op-layer 义务锚——长寿命文档禁引过程区）；③回灌读数 refresh_probs 锚表述改「journal `shop` 写入行（内嵌 refresh_probs 键）」。
+**范围**：按「正本更新清单」逐条更新正本；含验收期增补三项（reviewer 裁定，2026-10-16）：①`skills/sr-od-dev-currency-war/SKILL.md` 分诊表 match-review 行载体描述更新（一行）；②match-review.md 阶段 2 对本迭代 changes/ 详设的路径引用改锚正本（渲染器注册表常量或 op-layer 义务锚——长寿命文档禁引过程区）；③回灌读数 refresh_probs 锚表述改「journal `shop` 写入行（内嵌 refresh_probs 键）」。
 **设计依据**：本文件「正本更新清单」节。
 **文件面**：清单所列正本文件。
 **依赖**：全部落地阶段。
@@ -58,7 +58,7 @@
 - `tools/cw/replay_to_md.py` 模块 docstring as-built（新数据源/新结构/新 CLI）← 3.1
 - `docs/develop/sr_od/application/currency_war/game_state/retirement.md` §7 #3 消费面状态推进（replay_to_md 已迁；repair_invest_attribution 处置结论一并登记）← 3.1
 - `docs/develop/sr_od/application/currency_war/screens/op-layer.md`：新增画面 op 须同步渲染器画面注册表的义务锚（判定口径 = actor 带 CwScreen 前缀且未入 ACTOR_REGISTRY；豁免 = 快照章形态 op（CwScreenPrep/CwScreenShop/CwScreenBattleWait）与已知动作类豁免清单 _ACTION_ACTOR_EXEMPT（历史动作命名）；新增画面 op 同步 ACTOR_REGISTRY，新增 CwScreen 前缀动作类同步豁免清单）← 3.1
-- `skills/sr-od-currency-war-dev/references/match-review.md` 产出形态节 ← 3.3
-- `skills/sr-od-currency-war-dev/references/sim-testing.md` 复盘骨架行 ← 3.3
-- `skills/sr-od-currency-war-dev/references/telemetry-reading.md` 旧流引用（若有）← 3.3
-- `skills/sr-od-currency-war-dev/SKILL.md` 分诊表 match-review 行载体描述 ← 验收期增补①
+- `skills/sr-od-dev-currency-war/references/match-review.md` 产出形态节 ← 3.3
+- `skills/sr-od-dev-currency-war/references/sim-testing.md` 复盘骨架行 ← 3.3
+- `skills/sr-od-dev-currency-war/references/telemetry-reading.md` 旧流引用（若有）← 3.3
+- `skills/sr-od-dev-currency-war/SKILL.md` 分诊表 match-review 行载体描述 ← 验收期增补①

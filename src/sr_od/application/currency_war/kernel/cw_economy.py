@@ -158,7 +158,7 @@ def sell_refund(star: int, cost: int) -> int:
       非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
     - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
       (置信度分层处置:卖面 refund 消费按保守端=下界组装(mult×c−fee_hi,fee_hi=1);
-      live 核定通道=单局复盘协议检查项,sr-od-currency-war-dev skill;
+      live 核定通道=单局复盘协议检查项,sr-od-dev-currency-war skill;
       原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档 历史)。
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)

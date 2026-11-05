@@ -101,7 +101,7 @@
 
 **3.4（富余买入归并与 P88 退役）**：行号级对码全部命中——shop.py:1893 注释「压牌库判据的席位维由序列末位让路承载」逐字、M6 排除面 obligation_members（:1898/:1931）与义务装配（:884-906）、k_members 单方向名单（:863-864）、dominance 调用段（mandate:958-979）、`dominance_buy_eligible`（:557）、契约键（contracts:236）、映射键（sell_gate:131）、`swap_transition_narrow_frame`（:683）、`dead_stock_pair_buy_reject_reason` docstring s77091 叙事（:644-649）、`PRESS_NARROWED_ARMS` 独苗（:676-680，hub_option_buy 并入注释在）、p88_check:34/:87、test_dead_stock_pair:187-195、p88.md 实存。M6 兜底带语义（zero_overlap 同规则、让位档 10 承载 1★）可开工。无新增卡点。
 
-**末阶段（正本更新）**：清单 12 行逐条可解析——strategy-docs 12/10/24/28/32/README/13/16 实存（29 号稿按「落地时 grep 定位」可执行）；`sim/sim-power-model.md` 实存；proofs/ 目录与 p88.md 实存；`skills/sr-od-currency-war-dev/references/comp-definition.md` 实存；docs/game 侧 4 处引用实锚核verified（README:20 + data/competitors.md:15/37/131）；10 号稿:209「MECHANIC_COUNTERS/BOSS 表 | 留」行实锚存在，清单申报准确。判据（清单清零 + 黑话终扫 + 证明留档豁免）可执行；豁免口径与术语表留档语义自洽。终扫判据的可执行性缺口见 E12③。
+**末阶段（正本更新）**：清单 12 行逐条可解析——strategy-docs 12/10/24/28/32/README/13/16 实存（29 号稿按「落地时 grep 定位」可执行）；`sim/sim-power-model.md` 实存；proofs/ 目录与 p88.md 实存；`skills/sr-od-dev-currency-war/references/comp-definition.md` 实存；docs/game 侧 4 处引用实锚核verified（README:20 + data/competitors.md:15/37/131）；10 号稿:209「MECHANIC_COUNTERS/BOSS 表 | 留」行实锚存在，清单申报准确。判据（清单清零 + 黑话终扫 + 证明留档豁免）可执行；豁免口径与术语表留档语义自洽。终扫判据的可执行性缺口见 E12③。
 
 ## 收敛判定建议
 

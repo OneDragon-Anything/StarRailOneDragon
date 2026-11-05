@@ -126,7 +126,7 @@ return actions[0] if actions else None
 ### 2.6 验证(行为零变化声明)
 
 - 本批 = 纯形状收口:决策核零改动、bridge 取首项与消费端原取首项同源、空序列→None 逐义映射。行为等价不依赖 sim 分布证据(§2.4 已声明 sim 不可见),依赖**代码等价论证 + 契约测试**。
-- **预期判读面文案变化申报**(非行为变更):空批分支 `round_success` detail 两处「空批(本帧无动作),交回外循环重观察」→「本帧无动作,交回外循环重观察」;F3 形状拒绝 warning/status「策略输出非 list[CwAction](F3)」→「策略输出非 CwAction|None(F3)」。已核无工具/测试/哨兵依赖旧文案(测试仓与 tools/ 零命中;哨兵实态 = `.dsh/skills/sr-od-currency-war-dev/scripts/` 4 件,亦零命中),journal 判读遇新文案形态不记异常。
+- **预期判读面文案变化申报**(非行为变更):空批分支 `round_success` detail 两处「空批(本帧无动作),交回外循环重观察」→「本帧无动作,交回外循环重观察」;F3 形状拒绝 warning/status「策略输出非 list[CwAction](F3)」→「策略输出非 CwAction|None(F3)」。已核无工具/测试/哨兵依赖旧文案(测试仓与 tools/ 零命中;哨兵实态 = `.dsh/skills/sr-od-dev-currency-war/scripts/` 4 件,亦零命中),journal 判读遇新文案形态不记异常。
 - 实机烟雾一局(流程回归哨兵,非策略验收;分工依据 = strategy-work §4 实机/sim 分工)。判读锚点开跑前写死:
   1. 备战节点无新增 stall 兜底触发/执行失败安灯/未知画面兜底;
   2. 备战发射相关分键分布与改前基线同型,无新增异常分键(上款申报的文案变化除外)。键族写死 = `cw4_counters` 真实计数键族:`emitter_*`(截断/丢弃)、`deploy_emit_*`/`deploy_exec_*`、`t1_interest_prep_emit`、`wanted_leg_*`、`m1p_*`、`sphere_defer_*` 等,以基线局 journal 实际出现键为准(`prep_box`/`prep_tome`/`prep_spheres` 系 Emitted.reason 路由标签,非计数键,勿 grep)。基线来源 = 遥测账本查询(`telemetry/journal_query`)改动前最近数局实机局;比对口径 = 分键集合与量级同型,不要求逐键相等;

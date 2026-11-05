@@ -23,7 +23,7 @@ from __future__ import annotations
 #: 「真贯穿层」= Early→Final 全程留用层——E→F 0.66-0.95 与「早期核心」
 #: 一致,出处 = docs/game/currency_war/research/stage_transitions.md Q1 表
 #: 第一档)。名单随攻略数据修订走 research 重跑,复核流程 =
-#: sr-od-currency-war-dev skill 的 references/version-update.md。
+#: sr-od-dev-currency-war skill 的 references/version-update.md。
 #: (万金油角色无自动补货通道——只在恰为候选线/锁定线成员时按序 1
 #: 义务面买入;手里持有的未到两星前受档 8 保护、不轻易卖。本常量
 #: 在役职责 = 档 8 数据源。)

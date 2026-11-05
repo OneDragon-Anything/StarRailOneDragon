@@ -150,5 +150,5 @@
 
 - `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md`:§4.3 首期实装分配表(双轨达成度 14 设计位裁剪序版)+ 现状注记(as-built 化:已实施面/首期范围/deferred 面) ← 3.2/3.3/3.7 全部落地后
 - `docs/develop/sr_od/application/currency_war/sim/sim-design.md`:§8.2 战斗结算行(随机输出面 → 模型胜负面 + 条件化幅度层描述) ← 3.7
-- skill `sr-od-currency-war-dev` references/sim-testing.md:「sim 战斗结算=随机输出面」边界条目改写为模型口径(幅度/校准未验收面仍禁外推) ← 3.7
+- skill `sr-od-dev-currency-war` references/sim-testing.md:「sim 战斗结算=随机输出面」边界条目改写为模型口径(幅度/校准未验收面仍禁外推) ← 3.7
 - `docs/develop/sr_od/application/currency_war/sim/sim-power-model.md` §2 四路径表/§6.1 接线点表:按当期结算形态重钉(原表引用的 cw_coarse_battle/engine_p1 已不存在) ← 3.9

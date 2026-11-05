@@ -1,5 +1,5 @@
 ---
-name: sr-od-currency-war-dev
+name: sr-od-dev-currency-war
 description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、单局深度复盘/复盘模板维护、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-gameplay-automation,通用任务账本/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
 ---
 

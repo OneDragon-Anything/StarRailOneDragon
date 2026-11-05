@@ -111,7 +111,7 @@
 | start-battle.md §3-3 零重试零判效 | ✓ | :19 |
 | start-battle.md §1 执行器语义(重发长按/连败停机) | ✗ | :7 与代码矛盾——cw_start_battle_action.py:20-24 申报整删、prep_actions.py:855-859 薄委托;正本漂移,设计据之立分轨(R2-4) |
 | 14_p1 §9.6 发射位规格/位次/C1;§9.7 恢复局同步步/闩 | ✓ | :371-398、:401-405、§10 :478 |
-| strategy-work.md §1(策略 = 决策函数族) | ✓ | skills/sr-od-currency-war-dev/references/strategy-work.md:10(路径在 skills 仓,索引可寻) |
+| strategy-work.md §1(策略 = 决策函数族) | ✓ | skills/sr-od-dev-currency-war/references/strategy-work.md:10(路径在 skills 仓,索引可寻) |
 | kernel `readiness_launch_decision`(kernel 不动可行) | ✓ | cw_launch_admission.py:215;现消费面唯一 = cw_loop.py:1911 |
 | kernel `launch_arbitration_gate`(帧级判定单一源) | ✗ | 函数存在(cw_launch_arbitrage.py:107)但系逐动作闸;帧级单一源 = `in_launch_spend_zone`(cw_economy.py:306-320),设计钉错对象(R2-6) |
 | cw_economy 禁内联条款 / DESIGN §5 对账表 | ✓ | :315-320(「两面直调本函数,禁各自内联」「新增消费点须回 DESIGN §5 对账表」) |
