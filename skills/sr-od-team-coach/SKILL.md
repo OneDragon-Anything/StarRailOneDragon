@@ -21,20 +21,20 @@ description: 需要崩坏:星穹铁道配队决策、角色机制理解、有效
 4. ☐ **逐成员读角色档并做练度门槛检查**：对照角色档的转化上限与有效词条口径检查练度快照。判据：每个成员给出「够格 / 短板+差多少数值」；角色档「绑定与互斥」节里的硬否决必须拦截（例：护盾生存位进生命烧血体系）。必做。
 5. ☐ **输出编队与缺口报告**：最终每队编成 + 一句核心逻辑 + 练度/配装缺口清单。判据：缺口具体到「谁差什么词条、差多少数值」（例：效果命中 109%、转化上限 140%，差 31%）。必做。
 
-## 路由表
+## 路由表（按问题域，含数据源优先级）
 
-| 任务 | 先读 | 再读 |
+> 数据源优先级：**百科官方表【官】> 视频实证【攻：B站+BV号】> 推导口径【攻】**；数值一律满级；装备推荐是条件式（按阵容选择）。
+
+| 问题域 | 典型问题 | 路由 |
 |---|---|---|
-| 「这期打什么 / 某玩法用什么队」 | `references/modes/玩法层总览.md` | 对应 `references/modes/<玩法>.md`（适配体系节 → 体系/阵容档）；小众玩法已标注，不必为其优化配队 |
-| 配队 / 选人 / 换人 | `references/INDEX.md` | `references/teams/<体系>.md`（为什么这么组）→ `references/lineups/<阵容>.md`（这四人怎么打）→ `references/characters/<角色>.md` |
-| 某角色机制 / 词条堆什么 | `references/INDEX.md` | `references/characters/<角色>.md`（三段式：技能说明/推荐遗器/推荐配队）；伤害模型概念不清读 `references/mechanics/damage-and-affix.md` |
-| 具体阵容的操作轴 / 配速 / 技能点分配 | `references/lineups/<阵容>.md` | 攻略参考轴为参考向非强制，按实际练度调整 |
-| 遗器套装选型 | `references/mechanics/relic-sets.md` | 对应角色档「推荐遗器」节 |
-| 练度评价（够不够格进队） | 该角色档「推荐遗器」的转化上限 | `references/mechanics/damage-and-affix.md`（上限语义） |
-| 欢愉 / 记忆命途角色的问题 | `references/mechanics/path-joy.md` / `path-remembrance.md` | 对应角色档 |
-| 大招充不了能 / 充能词条要不要 | `references/mechanics/ult-resources.md` | 对应角色档「技能说明」节 |
-| 战斗基础概念（回合/速度/技能点/弱点击破） | `references/mechanics/combat-basics.md` | — |
-| 未命中（知识库无该角色/体系档） | 如实告知没有，给可核验的替代路径（官方 wiki 文本） | 禁止凭训练记忆编造机制 |
+| **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/INDEX.md` → `modes/<玩法>.md`（场景）→ `teams/<体系>.md`（为什么这么组）→ `lineups/<阵容>.md`（这四人怎么打）→ `characters/<角色>.md`；小众玩法不必为其优化配队 |
+| **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 数据速查 `mechanics/relic-sets.md` / `mechanics/light-cones.md`（反向查归属与渠道） |
+| **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
+| **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
+| **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义） |
+| **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；官方数据快照与重跑管道 `docs/game/wiki_snapshot/README.md` |
+
+**红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
 
 ## 知识档公共约定（读档时）
 
