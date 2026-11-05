@@ -13,6 +13,16 @@
 前后排 = deployed 单字段视图)。持装备获得转换卡局的合成产物经转换
 预测面替换(判定单源 = cw_gain_chain 转换登记表,合成域与获得域同判,
 禁第二份类别谓词——预测产物与实机游戏自算转换同形,对账不失真)。
+
+**特权档合成边**(融合召唤卡面「给角色穿戴2件相同进阶装备时，它们会
+合成为对应的特权装备」,规则住本上报零登记):持卡局特权档边与基础档
+边同入 ``_wear_synthesis`` 不动点循环逐轮求值(worn 现值同进阶对 →
+``privilege_counterpart`` 对应特权件,净减 1 件;映射单一源 =
+cw_effect_inventory,门③键域校验在边判定内非前置闸)。转换卡改写辖
+「合成/获得进阶装备」事件,特权档产物非进阶件 → 特权档边产物不经
+转换改写。特权档合成同属「合成装备时」事件:计入
+``apply_on_merge_refresh_grant`` 的 merged 计数(持武力刷新局每次
+特权档合成 +2 刷新,卡文字面直读)。
 规则住本上报
 = kernel 单一源(sim 与实机动作分支同构消费,禁第二份实现);合成改变
 板面装备贡献 → 落地写后广播 ``board_changed`` 事实事件。
@@ -33,6 +43,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
+from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.data.cw_synthesis import synthesize_target
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BenchView,
@@ -51,25 +62,45 @@ _PRODUCER = 'CwActionWearEquipParam'
 
 
 def _wear_synthesis(equips: list[str],
-                    convert: Callable[[str], str] | None = None
-                    ) -> list[str]:
+                    convert: Callable[[str], str] | None = None,
+                    fuse_privilege: Callable[[str], str | None] | None = None,
+                    ) -> tuple[list[str], bool]:
     """穿着即合成(worn 集内两两配方,循环至无可合成;K8 闭合保证
     终止:基础件对数有限,每次合成件数 −1)。
 
     convert = 合成产物获得转换注入(持「合成与获得进阶装备时改为获得Y」
     卡局的产物替换,判定单源 = cw_gain_chain 转换登记表预测面;None =
     零转换感知)。转换产物以替换名入 worn 集——登记目标不属配方组件域
-    (recipes 空,如好运令牌工具类),不再参与后续配方,终止性不变。"""
+    (recipes 空,如好运令牌工具类),不再参与后续配方,终止性不变。
+    转换只辖基础档边(进阶产物);特权档产物非进阶件不在改写域。
+
+    fuse_privilege = 融合召唤特权档边注入(持卡局回调:入参名属进阶且
+    对应特权件在册 → 返回特权名,否则 None;None = 零特权感知,逐位
+    等价旧形态)。特权档边与基础档边同入不动点循环逐轮求值——门②
+    「worn 现值同进阶对」门③「映射恰一」都是循环内边判定,非前置闸
+    (前置闸读法下基础档级联合出同进阶对的场景不可达)。特权件 category
+    特权 recipes 空,不属配方组件域,双档闭包天然终止。
+
+    Returns:
+        ``(合成后 worn 集, 是否发生特权档合成)``——第二元 = evidence
+        后缀标记的判定输入(审计面,见 :func:`report_action_wear_equip_param`)。
+    """
     items = list(equips)
+    fused_privilege = False
     changed = True
     while changed:
         changed = False
         for i in range(len(items)):
             merged = False
             for j in range(i + 1, len(items)):
-                target = synthesize_target(items[i], items[j])
+                target: str | None = synthesize_target(items[i], items[j])
+                base_edge = target is not None
+                if target is None and fuse_privilege is not None \
+                        and items[i] == items[j]:
+                    target = fuse_privilege(items[i])
+                    fused_privilege = fused_privilege or target is not None
                 if target is not None:
-                    if convert is not None:
+                    if convert is not None and base_edge:
                         target = convert(target)
                     items = [t for k, t in enumerate(items)
                              if k not in (i, j)]
@@ -79,7 +110,7 @@ def _wear_synthesis(equips: list[str],
                     break
             if merged:
                 break
-    return items
+    return items, fused_privilege
 
 
 def _synthesis_convert(gs: GameState) -> Callable[[str], str] | None:
@@ -94,6 +125,33 @@ def _synthesis_convert(gs: GameState) -> Callable[[str], str] | None:
         equip_gain_conversion_target,
     )
     return lambda item: equip_gain_conversion_target(gs, item) or item
+
+
+_FUSE_CARD: str = '融合召唤'
+
+
+def _synthesis_fuse_privilege(
+        gs: GameState) -> Callable[[str], str | None] | None:
+    """融合召唤特权档边判定构建(持卡局返回同进阶对→对应特权件回调,
+    None = 零特权感知;惰性 import:映射单一源 = cw_effect_inventory
+    .privilege_counterpart,不持卡连该模块 import 都不发生)。门①持卡
+    判定在本构建(调用侧前置);门②同进阶(worn 现值成对判定住
+    ``_wear_synthesis`` 循环)与门③键域校验(进阶类别 + 特权件在册,
+    映射为后缀拼接非查表,盲拼接产物不入账)都在回调内逐轮边判定。"""
+    if _FUSE_CARD not in (gs.active_strategies.value or []):
+        return None
+    from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+        privilege_counterpart,
+    )
+
+    def _fuse(name: str) -> str | None:
+        eq = EQUIPMENTS.get(name)
+        if eq is None or eq.category != '进阶':
+            return None
+        target = privilege_counterpart(name)
+        return target if target in EQUIPMENTS else None
+
+    return _fuse
 
 
 def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
@@ -149,16 +207,19 @@ def _locate_unit(gs: GameState, param: Any) -> tuple[str, int, Unit] | None:
 
 
 def _write_mutated_domain(gs: GameState, domain: str, idx: int,
-                          unit: Unit, sig: ChannelSig) -> None:
+                          unit: Unit, sig: ChannelSig,
+                          evidence: str = 'wear_worn') -> None:
     """目标域整表重建写(状态容器视图 frozen 链,穿戴写 = 域整表重建;
-    deployed 域 = 单字段视图整值替换)。"""
+    deployed 域 = 单字段视图整值替换)。evidence 默认 = 基础档形态;
+    持融合召唤局发生特权档合成时调用侧传 ``wear_worn|fuse_privilege``
+    后缀形(卡闸行为可审计)。"""
     if domain == 'bench':
         view = gs.bench.value
         slots = list(view.slots)
         slots[idx] = replace(slots[idx], unit=unit)
         gs.write_logic(gs.bench,
                        BenchView(slots=slots, capacity=view.capacity),
-                       produced_by=_PRODUCER, evidence='wear_worn', sig=sig)
+                       produced_by=_PRODUCER, evidence=evidence, sig=sig)
         return
     view = gs.deployed.value
     sub = list(view.front_slots if domain == 'front_row'
@@ -168,7 +229,7 @@ def _write_mutated_domain(gs: GameState, domain: str, idx: int,
                 else replace(view, back_slots=sub))
     gs.write_logic(gs.deployed, new_view,
                    produced_by=_PRODUCER,
-                   evidence='wear_worn', sig=sig)
+                   evidence=evidence, sig=sig)
 
 
 def report_action_wear_equip_param(gs: GameState, param: Any,
@@ -206,14 +267,18 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
                        f'row={getattr(param, "row", "")!r} '
                        f'slot={getattr(param, "slot", 0)!r}')
     domain, idx, unit = located
-    worn = _wear_synthesis(list(unit.equips) + [param.item_name],
-                           convert=_synthesis_convert(gs))
+    worn, fused_privilege = _wear_synthesis(
+        list(unit.equips) + [param.item_name],
+        convert=_synthesis_convert(gs),
+        fuse_privilege=_synthesis_fuse_privilege(gs))
     if len(worn) > WEAR_LIMIT:
         return _reject('wear_over_cap_rejected',
                        f'合成后 ≤{WEAR_LIMIT} 件',
                        f'合成后 {len(worn)} 件:{worn}')
     new_unit = replace(unit, equips=worn)
-    _write_mutated_domain(gs, domain, idx, new_unit, _grp_sig)
+    _write_mutated_domain(gs, domain, idx, new_unit, _grp_sig,
+                          evidence=('wear_worn|fuse_privilege'
+                                    if fused_privilege else 'wear_worn'))
     owned.remove(param.item_name)
     gs.write_logic(gs.equips, owned, produced_by=_PRODUCER,
                    evidence=f'owned[{param.item_name}] -1(穿戴)', sig=_grp_sig)
@@ -223,7 +288,10 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     # (事实事件广播已停用。)
     # 合成事件发放条目(「合成装备时获得2次刷新」卡效果):穿着即合成的
     # 合成次数 = 输入件数 − 输出件数,>0 才查账——三拒绝分支在上方早退
-    # (applied=False)不达此处,零合成零发放天然成立。惰性 import:效果
+    # (applied=False)不达此处,零合成零发放天然成立。基础档与特权档
+    # 合成同属「合成装备时」事件,特权档净减 1 件自然计入本计数(持
+    # 武力刷新局每次特权档合成 +2 刷新,卡文字面直读,非缺陷)。
+    # 惰性 import:效果
     # 账本模块头零包内 import 契约同族纪律,防反向拉起成环。
     merged = (len(unit.equips) + 1) - len(worn)
     if merged > 0:

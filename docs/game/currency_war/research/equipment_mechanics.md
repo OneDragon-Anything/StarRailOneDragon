@@ -29,7 +29,7 @@
 - 配方数据层:`cw_equipment_data.Equipment.recipes`(`cw_equipment_data.py:30`,官方 API compose_list 采集生成)——每件进阶恰好一条组件名组配方(自配 `a×2` 或交叉 `a+b`);
 - 图谱派生层:`cw_synthesis.py:41-44` `_ADVANCE_RECIPES` 按 `category=='进阶' and recipes` 全量派生;闭合结构事实(`cw_synthesis.py:25-26` docstring):8 件基础件(7 标准简易+光能电池)C(8,2)=28 交叉 + 8 自配 = 36 件进阶全量;
 - 合成判定纯函数:`cw_synthesis.synthesize_target()`(`cw_synthesis.py:101-110`,交叉配对反查)、`self_advance()`(`cw_synthesis.py:113-122`,×2 自配);
-- ⚠️ 游戏内「穿着自动合成」的**触发本身没有代码建模**(执行链不拦截、不模拟)——bot 侧后果由对账策略消化(对账 = bot 推算的期望状态 vs 画面实读逐项比对核验,下同):`equips 对账须认「账面 2 组件 == 画面 1 进阶」合法态`(`cw_synthesis.py:19-23` docstring 明文)。
+- ⚠️ 游戏内「穿着自动合成」的**触发本身没有代码建模**(执行链不拦截、不模拟)——bot 账面侧已由穿报建模账面预测(`kernel/cw_action_report/wear_equip.py` `_wear_synthesis`:穿戴落位与合成同写序,基础档交叉配对循环至无可合成;持融合召唤局含特权档边「2件相同进阶 → 对应特权件」),残余差异(继承过账腿不自跑合成、自配对账面缺口等)由对账策略消化(对账 = bot 推算的期望状态 vs 画面实读逐项比对核验,下同):`equips 对账须认「账面 2 组件 == 画面 1 进阶」合法态`(`cw_synthesis.py:19-23` docstring 明文)。
 
 **光能电池系勘误存档**(2026-08-26,防复发):曾把光能电池系 7 件误记为「合成不可达独占件」——错误读解「0 交叉≠不可合成」。真相(注册表实证):8 件进阶以光能电池为基础件——电光履(`cw_equipment_data.py:71`)、战场进化手册(:78)、蓄能帆(:84)、冷笑话引擎(:89)、绝对热量(:93)、光能盾牌(:96)、行星钻地弹(:98)、永动机(:99,自配 光能电池×2),完整配方在各自 `recipes` 字段。
 

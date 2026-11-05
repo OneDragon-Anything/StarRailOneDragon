@@ -176,7 +176,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
 # ===== 2026-09-24-advanced-armory-box design §2.3)=====
 
 #: 开箱分支卡发放名单单一源(卡规范名 → 发放道具名;登记面镜像 =
-#: cw_investments.STRATEGY_GRANTS 五卡 items_immediate,一致性测试逐对
+#: cw_investments.STRATEGY_GRANTS 同名卡 items_immediate,一致性测试逐对
 #: 相等——attack.md A4 阻断修订:禁效果体闭包常量与登记表两处独立字面量,
 #: 名字漂移在备战断言不可见[BenchSlot kind 与道具名解耦],唯本测试 +
 #: 席满溢出落位真值可暴露)。注册表条目由下方工厂从本表生成,禁另写字面量。
@@ -200,6 +200,10 @@ _STRATEGY_BOX_GRANTS: dict[str, tuple[str, ...]] = {
     # 终身学习:箱条目直读「获得1个【星徽秘典】」(即时腿,位面段腿另表
     # STRATEGY_PLANE_START_GRANTS 位面开始专表分治)。
     '终身学习': ('星徽秘典',),
+    # 融合召唤:箱条目直读「获得1个【简易武装箱】」(对账 id 332301;腿1
+    # 「穿戴2件相同进阶装备合成为特权装备」= 穿报规则零登记非效果条目,
+    # 本卡 PICK 条目 = 单箱腿一条,无组合键冲突)。
+    '融合召唤': ('简易武装箱',),
 }
 
 

@@ -32,11 +32,11 @@
   (_AFFIX_HP_DELTA),再建 EffectSpec = −20 数值第二份(双源漂移),
   见 AFFIX_SPEC_EXEMPT。
 
-**防漂移测试**(sr-od-test test_cw_affix_spec_registry):谓词扫描命中集必须恰等于
-SPEC ∪ 豁免集(词缀)/申报表(装备)。运行时采集(write_affix_effects)向
-affix_effects_data 追加新词缀后,新改写源若未申报,下一轮测试即红、强制人工评审;
-**不设 import 即炸**——运行时采集路径不能因覆盖缺口中断(与 cw_investments
-孤儿校验「结构自洽炸、覆盖完备靠测试」分层同理)。
+**恰等闸**(import 期即炸,:func:`_validate_rewrite_scan_exactness`):谓词扫描
+命中集必须恰等于 SPEC ∪ 豁免集(词缀)/申报表(装备)——游戏注册表改版
+新增改写源未申报时 import 即拦(漂移哨,强制申报面补行评审;词缀运行时
+采集链同经本模块 import,覆盖缺口不进运行态)。与结构自洽闸(孤儿键/
+键集恰等,构建校验函数族)双层串联,防注册表漂移静默失联。
 """
 from __future__ import annotations
 
@@ -175,8 +175,8 @@ def _match_faces(effect_text: str,
 def scan_rewrite_affixes() -> dict[str, str]:
     """affix_effects_data 全量 × 改写谓词 → {词缀名: 命中面(逗号连)}。
 
-    命中集与申报集(SPEC ∪ EXEMPT)的恰等由测试看管;新增改写词缀未申报
-    时测试红(运行时采集不中断,见模块 docstring)。
+    命中集与申报集(SPEC ∪ EXEMPT)的恰等由 import 期恰等闸钉死(见模块
+    docstring「恰等闸」);新增改写词缀未申报时 import 即炸。
     """
     return {name: ','.join(_match_faces(text, _AFFIX_REWRITE_FACES))
             for name, text in AFFIX_EFFECTS.items()
@@ -210,8 +210,9 @@ _EQUIP_REWRITE_FACES: tuple[tuple[str, tuple[tuple[str, ...], ...]], ...] = (
 def scan_rewrite_equipments() -> dict[str, str]:
     """cw_equipment_data 全量 × 改写谓词 → {装备名: 命中面(逗号连)}。
 
-    命中集与 EQUIP_REWRITE_DECLARATIONS 的恰等由测试看管;装备注册表为
-    生成文件(勿手改),新增改写件后测试红 → 在申报表补行评审。
+    命中集与 EQUIP_REWRITE_DECLARATIONS 的恰等由 import 期恰等闸钉死
+    (见模块 docstring「恰等闸」);装备注册表为生成文件(勿手改),新增
+    改写件未申报时 import 即炸 → 在申报表补行评审后恢复。
     """
     return {name: ','.join(_match_faces(eq.effect, _EQUIP_REWRITE_FACES))
             for name, eq in EQUIPMENTS.items()
@@ -456,5 +457,36 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     return [spec.name for spec in hits]
 
 
+def _validate_rewrite_scan_exactness() -> None:
+    """扫描命中集↔申报表恰等闸(import 即炸,防「新增改写源无人看管」
+    静默失联;模块 docstring「恰等闸」):
+
+    ① 词缀面:scan_rewrite_affixes() 命中集恰等于 AFFIX_EFFECT_SPECS ∪
+       AFFIX_SPEC_EXEMPT(申报 = SPEC 条目或点名豁免,零静默);
+    ② 装备面:scan_rewrite_equipments() 命中集恰等于 EQUIP_REWRITE_
+       DECLARATIONS——与 :func:`_validate_equip_write_sides` 的键集恰等闸
+       同形串联(那对 = 申报表↔写端登记,本闸 = 命中集↔申报表)。
+
+    触发面 = 游戏注册表改版(新增改写词缀/装备)= 漂移哨:预期触发行,
+    处置 = 申报面/SPEC/豁免集补行评审;命中集由谓词扫描派生,申报漏行
+    即命中,无「只能由写表人笔误触发」形态。
+    """
+    affix_hits = set(scan_rewrite_affixes())
+    declared = set(AFFIX_EFFECT_SPECS) | set(AFFIX_SPEC_EXEMPT)
+    if affix_hits != declared:
+        raise ValueError(
+            '词缀改写扫描命中集必须恰等于 SPEC ∪ EXEMPT:'
+            f'多={sorted(affix_hits - declared)} '
+            f'少={sorted(declared - affix_hits)}')
+    equip_hits = set(scan_rewrite_equipments())
+    declared_eq = set(EQUIP_REWRITE_DECLARATIONS)
+    if equip_hits != declared_eq:
+        raise ValueError(
+            '装备改写扫描命中集必须恰等于 EQUIP_REWRITE_DECLARATIONS:'
+            f'多={sorted(equip_hits - declared_eq)} '
+            f'少={sorted(declared_eq - equip_hits)}')
+
+
 _validate_affix_specs()
 _validate_equip_write_sides()
+_validate_rewrite_scan_exactness()
