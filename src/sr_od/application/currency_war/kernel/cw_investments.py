@@ -2589,6 +2589,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '后台强度轴游戏侧自算,bot 仅登记;'
           '「后台总星数」基点判读申报制[零响应下 bot 行为恒同];'
           '无离散触发事件,trigger 占位形。'),
+    # 三五成群(id 350901):官方「后台角色数量达到3名/5名及以上时，你的小队
+    # 获得5%/30%速度增幅和10%/50%前/后台强度。」战力类 UNIT_BUFF 零响应
+    # 登记(应援团同形姊妹;后台角色计数阈值三档增幅游戏侧自算,bot 零响
+    # 应;「达到」vs「超过」边界读法 = 判读申报制[零响应下 bot 行为恒同];
+    # 无离散触发事件,trigger 占位形)。
+    '三五成群': EffectSpec(
+    id='350901', name='三五成群',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '350901')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(后台计数三档阈值,游戏侧自算,'
+          'bot 仅登记);'
+          '「达到」边界读法判读申报制[零响应下 bot 行为恒同];'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
