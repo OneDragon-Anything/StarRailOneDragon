@@ -321,6 +321,6 @@ def anchor_line_of(gs: GameState, locked_comp: str,
     return get_comp(cands[0]) if cands else None
 
 
-# (旧评分锚分歧登记表 _LINE_ANCHOR_DIVERGENCE 与 rating_anchor 读口已随
-#  plaza_carry 退役整段删除:评分锚 = carry_anchor = core_chars[0] 单源
-#  ——火花星间旅人线分歧随主C 裁定收口,沿革见 plaza-carry-retirement。)
+# (旧评分定义件分歧登记表 _LINE_ANCHOR_DIVERGENCE 与 rating_anchor 读口已随
+#  plaza_carry 退役整段删除:评分定义件 = carry_anchor = core_chars[0] 单源
+#  ——火花星间旅人线分歧随主C 裁定收尾,沿革见 plaza-carry-retirement。)

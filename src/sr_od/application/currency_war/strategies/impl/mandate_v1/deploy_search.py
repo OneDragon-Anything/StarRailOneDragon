@@ -221,7 +221,7 @@ def selection_score(panel: DeploySearchPanel,
     DP 组得分只是候选生成内部度量,本函数才是最终板面分,D7 补问 5)。
 
     返回 (L1, L2, L3) 三层分数(层间数量级隔离,调用方字典序承载):
-    - L1 = 两层支配编码:named 层(点名件在场率,统一表达式 = 锚/core,
+    - L1 = 两层支配编码:named 层(点名件在场率,统一表达式 = 定义件/core,
       与 form_progress 同式)× 10⁹ + 档位层(加权平均 of f(角色完成度 ×
       档位完成度),权重 = 目标档激活人数)× 10⁸——层间域差保证任何满
       点名件板恒压任何缺点名件板;分族分支(空羁绊线 core∪shared
@@ -275,7 +275,7 @@ def selection_score(panel: DeploySearchPanel,
         tier_rate = (l1_num / l1_den) if l1_den else 0.0
         # named 层(点名件在场率;独立分子分母,不进档位层加权平均
         # ——named_units 统一表达式单一源(cw_comps,与 form_progress 折条
-        # 共用):终局单锚 = core[0] / 过渡 core 全员;裸键组无 Comp 上下文
+        # 共用):终局单定义件 = core[0] / 过渡 core 全员;裸键组无 Comp 上下文
         # → 无点名件,named_rate = 0)。
         named = named_units(comp)
         named_rate = (sum(1 for n_ in named if n_ in names)
@@ -287,7 +287,7 @@ def selection_score(panel: DeploySearchPanel,
         # 其在场数(D2-3 修订——羁绊族口径对该线无源,改阵容成员
         # 口径)。保持 10⁹ 归一域原样(锁定窗单线无跨线比较面,
         # 免动 margin 遥测/快照域);不挂 named 层——members 分子
-        # 已含锚(锚 ∈ members,建库断言③),挂则双计。
+        # 已含定义件(定义件 ∈ members,建库断言③),挂则双计。
         members = set(comp.members)
         l1_den = max(len(members), 1)
         l1_num = float(len(members & names))
@@ -502,9 +502,9 @@ def search_deploy_target(panel: DeploySearchPanel,
     def _pool_of(keys: tuple[str, ...],
                  member_names: frozenset[str]) -> list[SearchUnit]:
         """体系/线骨架件池:羁绊标签 ∩ 键系 ∪ 线名单成员,骨架内按
-        选件序排序(**锁定线核心优先、逐档**,§2 段 1:锚 >
-        core > shared > 标签件——骨架优先圈锚(engine carry)形态
-        由成员序承载;锚层可达性由建库断言③钉住)。"""
+        选件序排序(**锁定线核心优先、逐档**,§2 段 1:定义件 >
+        core > shared > 标签件——骨架优先圈定义件(engine carry)形态
+        由成员序承载;定义件层可达性由建库断言③钉住)。"""
         comp = panel.locked_comp if panel.locked else None
         anchor = carry_anchor(comp) if comp is not None else ''
         core = set(comp.core_chars) if comp is not None else set()
@@ -513,8 +513,8 @@ def search_deploy_target(panel: DeploySearchPanel,
                     or u.char_id in member_names)]
 
         def _line_rank(u: SearchUnit) -> int:
-            # 圈人分层仅锁定窗生效(未锁定窗恒 2——锚/core 取自
-            # locked_comp,未锁定帧无锁定线承载;锚空不命中——
+            # 圈人分层仅锁定窗生效(未锁定窗恒 2——定义件/core 取自
+            # locked_comp,未锁定帧无锁定线承载;定义件空不命中——
             # 合法 char_id 恒非空串)。
             if not panel.locked:
                 return 2

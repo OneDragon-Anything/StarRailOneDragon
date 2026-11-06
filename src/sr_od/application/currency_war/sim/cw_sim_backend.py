@@ -703,7 +703,7 @@ def apply_strategy_plane_refire_item(gs: GameState,
     :func:`apply_strategy_plane_refire_gold` 同判同形)。
 
     为什么:位面段发放(状态副本落席实现分支)挂 sim 位面首节点窗
-    (check_strategy_plane_start_grants 位面开局挂点),只对登记后到达
+    (check_strategy_plane_start_grants 位面开局插入位置),只对登记后到达
     的 (plane,1) 窗发放,拿卡晚于位面开始时当前位面段对持卡局系统性
     缺失——live 同拍零写(游戏自发,道具入栏 = 观察覆盖),sim 不补即
     持卡局备战席轨线失真。已开始判据与 XP/金支同口径:策略卡登记恒
@@ -1774,7 +1774,7 @@ class SimBackend:
     #: tick 捕获 = 进节点时点,结算刻重评估会读扑满节点自身花费禁),
     #: 结算分支胜负后落账并清回 None。
     _strategy_reward_ore_pending: int = 0
-    """窗内待呈现晶矿数(买断制块后条件发放腿写入,_present_node_screen
+    """窗内待呈现晶矿数(买断制块后条件发放效果条目写入,_present_node_screen
     消费;窗内幂等不置零,设计稿 r1-O2 修后写法)。"""
     _piggy_income_snap: (tuple[int, int, tuple[float, int, int | None], int]
                          | None) = field(init=False, default=None)
@@ -3740,7 +3740,7 @@ class SimBackend:
         self._strategy_reward_ore_pending = \
             check_strategy_reward_ore_grants(self.gs, node_kind=kind,
                                              sig=logic_sig('sim:strategy'))
-        # 策略位面-节点合取条件世界发放(盗用身份 id 352401 首例;「进入第二
+        # 策略位面-节点合取条件写状态副本发放(盗用身份 id 352401 首例;「进入第二
         # 位面的首领节点时…获得…【火花】」触发器单一源 = kernel
         # check_strategy_plane_boss_grants,白名单表 STRATEGY_PLANE_BOSS_
         # GRANTS 驱动)。进窗事实点在窗口幂等守卫内(重放不双发),done 复合
@@ -3752,7 +3752,7 @@ class SimBackend:
         # 实机持卡局同窗发放物呈现时点观察,证伪则改序重申报)。零 rng 确定
         # 发放;sig 组名 'sim:strategy'(策略状态副本发放家族,与 sim:env
         # 分组);返回值忽略(无回调面);live 零写观察覆盖(角色落席有画面
-        # 真值可读,实机局不接本通道,世界发放经观察对账兜底)。
+        # 真值可读,实机局不接本通道,写状态副本的发放经观察对账兜底)。
         check_strategy_plane_boss_grants(self.gs, node_pos=(plane, r),
                                          sig=logic_sig('sim:strategy'))
         # 装备到期消失(临时工合约 id 301901 效果条目2;「进入下个节点时，所有
@@ -4585,11 +4585,11 @@ class SimBackend:
         # 局终)、dead 恒 False → 后段结算环帧/扑满/连胜/败局待办按正常败局
         # 走完(救援只改 hp 落点 + 奖励两笔,不改变败局属性);保底已用(或救援
         # 已用)再归零 → take 返回 None 走 apply_hp_outcome 原路死亡早退,其后
-        # 挂点天然不触。hp None 基座门(None 局禁救援,apply_hp_outcome 未观察
-        # 零写同款防御;现役开局种子底座下不可达)。条件单一源 = kernel
-        # take_strategy_death_save(一次性闩 strategy_death_save_used 承载
+        # 插入位置天然不触。hp None 基座门(None 局禁救援,apply_hp_outcome 未观察
+        # 零写同款防御;现役开局种子初始值下不可达)。条件单一源 = kernel
+        # take_strategy_death_save(一次性标志位 strategy_death_save_used 承载
         # 防复发,奖励两笔同函数内发放);sig = logic_sig('sim:strategy') 沿
-        # 策略战后发放族同组;幂等 = 本函数 _settled_key + 闩双保险;live 零写
+        # 策略战后发放族同组;幂等 = 本函数 _settled_key + 一次性标志位双保险;live 零写
         # 观察覆盖(救援由游戏自算,实机局不接本通道)。
         lethal = (outcome.hp_delta < 0 and self.gs.hp.value is not None
                   and hp_before + outcome.hp_delta <= 0)
