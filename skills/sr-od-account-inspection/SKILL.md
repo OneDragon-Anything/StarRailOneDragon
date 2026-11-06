@@ -59,6 +59,6 @@ description: 需要查询崩坏:星穹铁道账号的米游社数据（角色列
 
 ## 相关文档（实现与协议规格，按需查阅）
 
-- `docs/develop/sr_od/backend/mys.md` —— sr_od 封装与三工具正本
-- `docs/develop/one_dragon/mys/README.md` —— 通用登录客户端正本（会话/验证/红线全量说明）
+- `docs/develop/sr_od/backend/mys.md` —— sr_od 封装与三工具权威版本
+- `docs/develop/one_dragon/mys/README.md` —— 通用登录客户端权威版本（会话/验证/红线全量说明）
 - `docs/develop/sr_od/application/account_profile/miyoushe-api-flow.md` —— 米游社协议规格（端点/签名/验证分支）
