@@ -59,7 +59,7 @@
 ## 规范
 
 - 画面 doc:`docs/game/screens/<screen_id>.md`,结构按 od-dev-screen-onboarding skill(何时出现 / 状态流转 / 识别特征 / 可交互元素 / 识别快照 / 备注)。
-- 玩法 doc:`docs/game/gameplay/<gameplay>.md`,结构按 sr-od-dev-gameplay-onboarding skill。**例外:逐光捡金**玩法 doc 移入 `skills/sr-od-treasures-lightward/references/gameplay.md`(负责人裁决:操作路由 + 玩法知识单一入口,开发与打法都从该 skill 进);双向引用关联键仍是 gameplay_name/screen_name 中文名,appears_in 反查用 grep gameplay_name 即达。
+- 玩法 doc:`docs/game/gameplay/<gameplay>.md`,结构按 sr-od-dev-gameplay-onboarding skill。**分支规则**(AGENTS.md「玩法知识随 skill」):玩法已有指引 skill(skill 的 `references/` 承载该玩法知识、作开发与打法的单一入口,如逐光捡金 → `skills/sr-od-treasures-lightward/references/gameplay.md`)→ 玩法总览 doc 写入 skill `references/`,本目录不重复建,本 README 索引留指针;skill 只是开发方法论或通用知识库、不承载该玩法知识(如货币战争、game-coach)→ 照旧本目录。双向引用关联键仍是 gameplay_name/screen_name 中文名,appears_in 反查用 grep gameplay_name 即达(位置无关)。
 - doc 写**稳定画面事实**,不写建档/排查过程产物(测试状态归 sr-od-test,bug 历史归 commit)。
 - **双向引用**(参照 ZZZ `docs/game/README.md`):
   - 画面 doc frontmatter `appears_in`:本画面出现在哪些玩法(`gameplay_name`)。
