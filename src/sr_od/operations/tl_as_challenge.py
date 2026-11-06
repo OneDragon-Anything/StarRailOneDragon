@@ -376,6 +376,13 @@ class TlAsTeamFillOp(SrOperation):
         rect = self.ctx.screen_loader.get_area(_TEAM_SCREEN, area_name).rect
         return Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
 
+    def _click_area_center(self, screen_name: str, area_name: str) -> None:
+        """按建档 rect 中心点击(纯定位区;坐标单一真相源在 screen_info)。"""
+        area = self.ctx.screen_loader.get_area(screen_name, area_name)
+        rect = area.rect
+        self.ctx.controller.click(
+            Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2), press_time=0.15)
+
     #: 「队伍N」标记匹配:须「队伍」紧跟数字——编队屏顶部横幅「队伍发生变动…」
     #: 同含「队伍」二字,宽松包含匹配会把常驻横幅计入,清空/回验永不收敛(实测翻车)
     _TEAM_TAG_PAT: ClassVar[re.Pattern] = re.compile(r'^队伍\s*\d')
