@@ -682,12 +682,12 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 都是这家伙的错!:官方「获得【命运圣杯星徽】和10金币。若未完美通关
     # 战斗且有携带【命运圣杯星徽】的角色参与战斗，视为完美通关并出售1名
     # 携带【命运圣杯星徽】的上场角色，可生效3次。」(卡面原文,cw_invest_data
-    # PlazaAugment id 352801,棱彩)。三条效果条目分治:徽腿 = cw_gain_effects
+    # PlazaAugment id 352801,棱彩)。三条效果条目分治:徽效果条目 = cw_gain_effects
     # .PICK_INVEST_EFFECTS 组合登记行(具名装备工厂确定发放 rand=False,
     # 与登记表条目 equips_immediate 的镜像一致性 = 本卡 GRANTS 零登记,
-    # 装备腿唯一出现点纪律,控制规模同物同形);10 金条目 = instant_gold=10
+    # 装备效果条目唯一出现点纪律,控制规模同物同形);10 金条目 = instant_gold=10
     # 已登记估值零漂(选卡金发放写端缺口 = instant_gold 族级既有申报);
-    # 救援腿(「视为完美通关」判定改写)载荷单一源 =
+    # 救援效果条目(「视为完美通关」判定改写)载荷单一源 =
     # STRATEGY_PERFECT_RESCUE_GRANTS 白名单表(结算时点条件改写,消费 =
     # kernel/cw_env_grants.check_strategy_perfect_rescue)。
     '都是这家伙的错！': EconomyEffect(instant_gold=10),
@@ -1020,7 +1020,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(free_refresh_on_node_enter=2, auto_buy_owned=True),
         duties=DutyFlags(track=True, predict=True),
-        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(挂时序实证归采集批);效果条目3 自动购买零登记 = bot 实机和模拟器两边零响应(触发面型① eligible 载体未建,scoped 决策禁落放弃表防锚死后继族);召唤单位零建模,实机名待族级实机取证批'),
+        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(挂时序实证归采集批);效果条目3 自动购买零登记 = bot 实机和模拟器两边零响应(触发面型① eligible 载体未建,scoped 决策禁落放弃表防后继族被写死);召唤单位零建模,实机名待族级实机取证批'),
     # 采购专员·金/彩:官方「每7/5次刷新,商店会刷出5张费用相同的角色,费用为你备战席
     # 最左侧角色的费用」。刷新计数器走 inventory counters[CounterKey.REFRESH]。
     '采购专员·金': EffectSpec(
@@ -1152,9 +1152,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               'instant_gold=8 选卡当场'),
     # 乱成一锅粥:官方「每次进入新节点时，处在备战席最左侧6个位置的角色变为
     # 随机的同费用角色。立刻获得5次免费刷新和10金币。」(cw_invest_data.py:351,
-    # id 352101)。bench_reroll 族第二登记条目:重掷腿 = bench_reroll 载体(随机
-    # 面零逻辑写端,观察收口);burst 腿 = free_refresh_burst 载体字段单条目双载
-    # (burst 由只登记不写状态的实现分支经桥发放,同形先例 = 大裁员);金腿 instant_gold 在册零动
+    # id 352101)。bench_reroll 族第二登记条目:重掷效果条目 = bench_reroll 载体(随机
+    # 面零逻辑写端,只靠画面读数);burst 效果条目 = free_refresh_burst 载体字段单条目双载
+    # (burst 由只登记不写状态的实现分支经桥发放,同形先例 = 大裁员);金币效果条目 instant_gold 已登记零动
     # (选卡金发放写端缺口维持族级待办)。
     '乱成一锅粥': EffectSpec(
         id='352101', name='乱成一锅粥', trigger=TriggerKind.NODE_ENTER,
@@ -1172,10 +1172,10 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '测试锁'),
     # 乱成一锅粥+:官方「每次进入新节点时，处在备战席最左侧6个位置的角色变为
     # 随机的同费用角色。立刻获得7次免费刷新和14金币。」(cw_invest_data.py:352,
-    # id 352102)。bench_reroll 族第三登记条目:重掷腿与姊妹逐字同式 =
-    # bench_reroll 载体同值(随机面零逻辑写端,观察收口);burst 腿 =
+    # id 352102)。bench_reroll 族第三登记条目:重掷效果条目与姊妹逐字同式 =
+    # bench_reroll 载体同值(随机面零逻辑写端,只靠画面读数);burst 效果条目 =
     # free_refresh_burst 载体字段单条目双载(burst 由只登记不写状态的实现分支经桥发放,同形先例 =
-    # 大裁员);金腿 instant_gold 在册零动(选卡金发放写端缺口维持族级待办)。
+    # 大裁员);金币效果条目 instant_gold 已登记零动(选卡金发放写端缺口维持族级待办)。
     '乱成一锅粥+': EffectSpec(
         id='352102', name='乱成一锅粥+', trigger=TriggerKind.NODE_ENTER,
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
@@ -1894,10 +1894,10 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 自然读法。条目2(recurring 全捞)占 canon 键:发放实现 =
     # cw_effect_inventory.check_strategy_take_all_supply 族共享引擎(配额
     # 单一源 = 该模块 _TAKE_ALL_SUPPLY_QUOTA map 值形泛化,彩 = None 无界
-    # ——恒放行零闩格零 done 键,插入位置与银/金同三 applied 出口)。
+    # ——恒放行零配额格零 done 键,插入位置与银/金同三 applied 出口)。
     # duration 用 WHILE_HELD:recurring 持有期全程,配额耗尽即停语义不适用
     # (无配额域);pending 保守支沿银/金同形(钻归属零建模披露;兜底轮
-    # 配额消耗制在本卡结构性失效——无格可耗,零发放零副作用零闩格)。
+    # 配额消耗制在本卡结构性失效——无格可耗,零发放零副作用零配额格)。
     '全都要·彩': EffectSpec(
         id='331701', name='全都要·彩', trigger=TriggerKind.SUPPLY_PHASE,
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
@@ -2477,7 +2477,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 会获得一件处在推荐列表中的随机进阶装备。」条件发放卡,UNIT_BUFF
     # 零响应登记(发放后果 = 环境随机装备经既有观察链自动吸收,live 零
     # 新增代码;sim 结构性零感:单位穿戴零写端;pending=True 二义冻结,
-    # notes 保守支待采双列,verdict 回填通道留实采——在册表纪律「定案
+    # notes 保守支待采双列,verdict 回填通道留实采——登记表纪律「定案
     # 后回填 verdict 单一语义以实采为准」在码直承,7 条 pending 同形
     # 先例均未上交用户)。
     '入职礼包': EffectSpec(
@@ -2497,14 +2497,14 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 分解万物(id 331801):官方「获得一个【物质分解液】，本局游戏中，你的
     # 所有进阶装备变成【物质分解液】。它将额外造成3次伤害，对普通/精英及
     # 首领敌人分别造成2%/1%生命上限百分比的真实伤害，并使我方小队获得
-    # 4%伤害减免。」(cw_invest_data.py:324)。三面分治:腿1「获得一个物质
+    # 4%伤害减免。」(cw_invest_data.py:324)。三面分治:效果条目1「获得一个物质
     # 分解液」= 发放条目(cw_gain_effects.PICK_INVEST_EFFECTS 具名工厂
-    # 直呼行,rand=False 确定发放);腿2「本局游戏中所有进阶装备变成物质
+    # 直呼行,rand=False 确定发放);效果条目2「本局游戏中所有进阶装备变成物质
     # 分解液」= 本条目(装备身份改写登记型,物品栏变异族同域先例:
     # PLANE_START 占位触发〔零行为差纯键面惯例,变换面系游戏侧自动改写
     # 非本端动作〕/WHILE_HELD 持有期,变换面零执行端——bot 备战帧 equips
     # 整表观察收真值,登记侧三桥对本 payload 全零动作,no-op 回归哨 =
-    # 测试锁);腿3 追伤/减伤数值面 = 战力类零建模(invest_effects.md
+    # 测试锁);效果条目3 追伤/减伤数值面 = 战力类零建模(invest_effects.md
     # 战力类裁定:不进经济模型)。
     '分解万物': EffectSpec(
         id='331801', name='分解万物', trigger=TriggerKind.PLANE_START,
@@ -2530,10 +2530,10 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '(卡源限定/任意源)×生效域(穿戴者/全体小队)'),
     # 完美进化(id 331901):官方「进入战斗时，穿戴【战场进化手册】的1星角色
     # 会变为2星。」战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,
-    # bot 零响应;pending=False = 变形持续性在册用户裁定 2026-11-01 直接
-    # 消解(临时+策略默认不选,T-180 节;星变/读博深造两姊妹同判落码
+    # bot 零响应;pending=False = 变形持续性已登记用户裁定 2026-11-01 直接
+    # 消解(临时+策略默认不选,T-180 节;星变/读博深造两姊妹同判已实现
     # pending=False 现值),REVIEW-T267「战斗开始变形族后继持续性轴届时
-    # 直接承在册用户裁定(临时),无二义残留」宣示兑现)。
+    # 直接承已登记用户裁定(临时),无二义残留」宣示兑现)。
     '完美进化': EffectSpec(
     id='331901', name='完美进化', trigger=TriggerKind.PLANE_START,
     payload=UnitBuffRef(
@@ -2549,7 +2549,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 幸运之子(id 350101):官方「我方小队幸运一击率提高25%。进入战斗时，
     # 我方小队中幸运一击率达到100%的角色，自身与忆灵幸运一击伤害提高
     # 40%。」战力类 UNIT_BUFF 零响应登记(幸运一击族同域 5 卡+效率员工奖
-    # +全队的希望全落码族收官形;游戏侧自算,bot 仅登记;门槛/基点判读
+    # +全队的希望全已实现族收官形;游戏侧自算,bot 仅登记;门槛/基点判读
     # =判读申报制家族口径,零响应下两读法 bot 行为恒同;无离散触发事件,
     # trigger 占位形)。
     '幸运之子': EffectSpec(
@@ -2566,8 +2566,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '行为恒同。'),
     # 超光速提拔(id 350301):官方「战斗开始时:1个随机的1费角色在这场
     # 战斗中升为4星，并获得5%前/后台强度。」战力类 UNIT_BUFF 零响应登记
-    # (升星+增幅游戏侧自算,bot 仅登记;pending=False 系族常态回归 = 定谳
-    # 依据 desc「在这场战斗中」全 src 唯一临时标记词 + 在册用户裁定
+    # (升星+增幅游戏侧自算,bot 仅登记;pending=False 系族常态回归 = 定案
+    # 依据 desc「在这场战斗中」全 src 唯一临时标记词 + 已登记用户裁定
     # 「变形持续性=临时」+现码 UNIT_BUFF 全 pending=False 值;⚠️ 稿 §2.1
     # 注释草稿「姊妹条目 pending=True」系写作窗陈旧命题禁照抄);随机 1 费
     # 选中面零响应下两读法 bot 行为恒同(判读申报制)。
@@ -2586,7 +2586,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 战术义眼+(id 350402):官方「我方小队消灭普通/精英及首领敌人时，恢复
     # 25%/75%能量。获得1个【简易武装箱】。」(cw_invest_data PlazaAugment
     # 350402,再生件不挂行号——版本更新重跑 gen_plaza_invest.py 行号必漂)。
-    # 双腿分治:本条目 = 能量恢复腿 UNIT_BUFF 零响应登记;「获得1个【简易
+    # 两条效果条目分治:本条目 = 能量恢复效果条目 UNIT_BUFF 零响应登记;「获得1个【简易
     # 武装箱】」= 获得时点效果另登 STRATEGY_GRANTS 开箱分支条目(镜像
     # cw_gain_effects._STRATEGY_BOX_GRANTS),不入本表辖域。
     # 触发面 = 逐击杀(消灭普通/精英及首领敌人):TriggerKind 无击杀成员,
@@ -2613,7 +2613,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 数量等同于小队总星数+8，每根风箭造成等同于1600%基础伤害的风属性伤
     # 害。」战力类 UNIT_BUFF 零响应登记(当头一棒/爆仓/超光速提拔三姊妹同
     # 形族收官;箭矢分配/风箭伤害游戏侧自算,bot 零响应;小队定义判读 =
-    # 判读申报制[零消费端行为等价];sim 低估零补偿[「不编近似数」在册裁
+    # 判读申报制[零消费端行为等价];sim 低估零补偿[「不编近似数」已登记裁
     # 定];无离散触发事件,trigger 占位形)。
     '万箭齐发': EffectSpec(
     id='350701', name='万箭齐发',
@@ -2693,7 +2693,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 该加成提高3%。」(cw_invest_data.py, id 351301)。
     # 战力类零响应登记(UNIT_BUFF 族,打通上下游·金同构姊妹):两段增幅与
     # 节点增长句游戏侧自算,bot 零响应(增长句「该加成提高3%」加法叠层读
-    # 法 = 判读申报制,钻石恒永久同语式在册);trigger 占位形
+    # 法 = 判读申报制,钻石恒永久同语式已登记);trigger 占位形
     # (PLANE_START 与 NODE_ENTER 稿明文零行为差);effect_text 经数据面
     # 表达式单一源,版本更新改文自动跟随。
     '打通上下游·彩': EffectSpec(
@@ -2725,8 +2725,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           'bot 仅登记;无离散触发事件,trigger 占位形。'),
     # 保守派(id 351501):官方「我方小队获得8%伤害减免。进入战斗时，生命上
     # 限最低的角色额外获得12%伤害减免。获得一件【进阶武装箱】。」战力类
-    # UNIT_BUFF 零响应登记(同形族;箱腿三卡族,箱发放分支已在箱腿组注在
-    # 册;伤害减免两段/「生命上限最低」选角谓词四判读面游戏侧自算,bot 零
+    # UNIT_BUFF 零响应登记(同形族;箱效果条目三卡族,箱发放分支已在箱条目组注
+    # 登记;伤害减免两段/「生命上限最低」选角谓词四判读面游戏侧自算,bot 零
     # 响应 = 判读申报制零行为承载;hp_max 读侧谓词不入枚举;无离散触发事
     # 件,trigger 占位形)。
     '保守派': EffectSpec(
@@ -2742,7 +2742,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 攻防一体(id 351601):官方「我方小队获得25%伤害减免，且获得等同于
     # 伤害减免的伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「等同
     # 于伤害减免的伤害增幅」跨轴联动读法[同源快照 vs 全额镜像两读]零响
-    # 应下 bot 行为恒同 = 判读申报制[REVIEW-T392 两档叠合同构判例];两段
+    # 应下 bot 行为恒同 = 判读申报制[REVIEW-T392 两档叠合同构先例];两段
     # 增幅游戏侧自算,bot 零响应;无离散触发事件,trigger 占位形)。
     '攻防一体': EffectSpec(
     id='351601', name='攻防一体',
@@ -2793,13 +2793,13 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '游戏侧定义[实机面板为真值];无离散触发事件,trigger 占位形。'),
     # 调饮专家:加拉赫(id 360501):官方「获得装备着【绝对热量】的专家顾问
     # 【加拉赫】,并使其在本局游戏中加入商店。加拉赫行动时,为我方全体恢复
-    # 3点能量并触发【绝对热量】的生命回复效果。」顾问授予族三腿分治:腿1
-    # 顾问解锁+入商店 = GRANTS advisor=True 条目在册零动作(获得链 advisor
-    # 道→_unlock_experts→unlocked_experts→cw_pool 入商店全链在码);腿2
+    # 3点能量并触发【绝对热量】的生命回复效果。」顾问授予族三条效果条目分治:效果条目1
+    # 顾问解锁+入商店 = GRANTS advisor=True 条目已登记零动作(获得链 advisor
+    # 道→_unlock_experts→unlocked_experts→cw_pool 入商店全链在码);效果条目2
     # 佩戴绝对热量 = 零建模(披露键 strategy_worn_equip_unmodeled 消费方
-    # 申报,绝对热量/绝对热量·特权 独立注册条目分立防误引);腿3 行动触发
+    # 申报,绝对热量/绝对热量·特权 独立注册条目分立防误引);效果条目3 行动触发
     # 双效果 = 本条目 UNIT_BUFF 零响应登记(触发面「加拉赫行动时」三盲:
-    # TriggerKind 无行动时成员/sim 无逐行动事件流/live 无逐行动观察锚;
+    # TriggerKind 无行动时成员/sim 无逐行动事件流/live 无逐行动观察依据;
     # 效果面「恢复3点能量」能量战斗内轴 sim/状态/obs 全盲;联动面「触发
     # 绝对热量生命回复」依赖佩戴面零建模;全游戏侧自算,bot 仅登记;
     # 生效前置 = 加拉赫已上阵行动,顾问解锁≠上阵)。
@@ -2825,7 +2825,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 1总金币价值」动态计量条件,计量与数值全游戏侧自算,bot 零响应;
     # 「总金币价值」计价口径 = 用户裁定按购入原价(2026-11-06,本卡逐卡
     # 裁定,后继『价值』词面卡仍逐卡裁,搜打撤卖价口径不辖本卡),该读法
-    # 仅辖正本文档 invest_effects.md §8 措辞,零建模面;追击转圈效果条目
+    # 仅辖权威版本文档 invest_effects.md §8 措辞,零建模面;追击转圈效果条目
     # = 型③实机和模拟器两边皆盲零登记零建模(词面 src 唯一命中 = 本卡
     # 卡面数据行,零战斗机制实体),不入本条目(effect_text 全文承载,
     # 判读申报制);获得时点/合成触发两效果条目分治 = PICK_INVEST_EFFECTS
@@ -4101,17 +4101,17 @@ STRATEGY_HIRING_LETTER_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     '专家招募+',
 )
 
-#: 策略卡「轮回者」三腿的刻意零建模申报键(策略卡侧假设键常量,现单卡
+#: 策略卡「轮回者」三条效果条目的刻意零建模申报键(策略卡侧假设键常量,现单卡
 #: 单成员形态——与既有假设键「键随家族携带」惯例异形,同族后继卡实机
-#: 取证落数据时升级家族键,形态附注在案;消费面 = 披露清单,防三腿被
-#: 误判为漏报):覆盖域 = 腿1b 装备授予 + 腿3 局终变换 + 腿4 局终回退
-#: 三腿共享缺口——「轮回者」四面零数据(装备注册表 EQUIPMENTS 零命中/
+#: 取证落数据时升级家族键,形态附注在案;消费面 = 披露清单,防三条效果条目被
+#: 误判为漏报):覆盖域 = 效果条目1b 装备授予 + 效果条目3 局终变换 + 效果条目4 局终回退
+#: 三条效果条目共享缺口——「轮回者」四面零数据(装备注册表 EQUIPMENTS 零命中/
 #: 占席道具词表 BENCH_ITEM_KINDS 零命中/识别词面全 src 恰卡面一处/
-#: 测试仓零命中),禁猜禁占位;sim 世界少一件未知装备资产 + 局终变换域
+#: 测试仓零命中),禁猜禁占位;sim 状态副本少一件未知装备资产 + 局终变换域
 #: 空(本局结束变换/回退不建模,恢复生机局终域不建模裁定同判)。首卡 =
 #: 轮回不止(id 332201,卡面「获得【白厄】和一件【轮回者】装备。本局游戏
 #: 结束时…」);实机取证(画面/观察)落数据后按数据缺口判据「真值建立后
-#: = 本原语加发放腿,零迁移」回填,并随批升级家族键。
+#: = 本原语加发放类效果条目,零迁移」回填,并随批升级家族键。
 STRATEGY_REINCARNATOR_UNMODELED: tuple[str, ...] = (
     'strategy_reincarnator_unmodeled',
 )
@@ -4138,7 +4138,7 @@ STRATEGY_ALL_CHARS_ASSUMPTION_KEYS: tuple[str, ...] = (
 #   本体入队另行建模,携钻句零建模语义不变)/狸职手续(204001,穿戴物身份
 #   未指名——哪件/是否随机/是否扣
 #   库存 desc 全无载,放弃纪律叠加)/盗用身份(352401,「获得一个穿着2个
-#   【动能激发剑】和【列车同行星徽】的【火花】」授予穿戴句,世界发放腿 =
+#   【动能激发剑】和【列车同行星徽】的【火花】」授予穿戴句,写状态副本的发放效果条目 =
 #   STRATEGY_PLANE_BOSS_GRANTS 通道,穿戴件随发放零建模),后继引用本键不重立。
 # - strategy_periodic_unit_leave_unmodeled: 策略卡召唤单位的**周期离场**
 #   (含离场所留)不建模——四缺口:kernel 单位移除仅卖出/合成摘除/板面
@@ -4320,7 +4320,7 @@ _validate_env_gifts()
 # 表头);②全表效果文本反扫(「获得…roster 名」)补网(龙虎兄弟狸/佩佩驾到/
 # 艾丝妲的猛犬!/招财狗——无角色绑定的直读发放,佩佩 ∈ CHARACTER_ROSTER);
 # ③开箱分支(「获得…【箱】」占席道具直读,箱名 = items 元素,数量 = 元素
-# 重复次数;迭代 2026-09-24-advanced-armory-box 起,箱腿卡随批扩员);④非直读
+# 重复次数;迭代 2026-09-24-advanced-armory-box 起,箱条目卡随批扩员);④非直读
 # 人工转正(溜佩佩/溜佩佩+,卡面「佩佩逛街」句 = 效果实现发放但非「获得」
 # 直读引导,人工裁定入册,反扫白名单两键同批退役;这么大的钻石 = 用户裁定
 # 2026-11-02 拍读法 B「佩佩真实入后台」,佩佩携钻句同判入册);⑤非候选直读
@@ -4345,10 +4345,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '琼玉专家:青雀': GiftGrant(chars_immediate=('青雀',), advisor=True),
     '调饮专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
     # 贸易专家:停云(360401):箱条目直读「获得4个【简易武装箱】」(数量 =
-    # 元素重复约定;顾问解锁腿 chars_immediate+advisor 原行零动;扳手×1 =
-    # PICK 组合登记行承载,装备腿零 STRATEGY_GRANTS 登记 = 装备腿唯一出现
-    # 点纪律[T-290 族裁定];金腿「10金币」经 STRATEGY_ECONOMY instant_gold=10
-    # 在册零改动,世界写端缺口维持 strategy-env-impacts.md §4 族级待办)。
+    # 元素重复约定;顾问解锁效果条目 chars_immediate+advisor 原行零动;扳手×1 =
+    # PICK 组合登记行承载,装备效果条目零 STRATEGY_GRANTS 登记 = 装备效果条目唯一出现
+    # 点纪律[T-290 族裁定];金币效果条目「10金币」经 STRATEGY_ECONOMY instant_gold=10
+    # 已登记零改动,状态副本写端缺口维持 strategy-env-impacts.md §4 族级待办)。
     '贸易专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True,
                               items_immediate=('简易武装箱',) * 4),
     '锻冶专家:刃': GiftGrant(chars_immediate=('刃',), advisor=True),
@@ -4470,10 +4470,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
     # —— 开箱分支(占席道具发放;效果原文对账 id = cw_invest_data.
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
-    # 360201/军火贸易 101401/军火贸易+ 101402,箱腿卡随批扩员;跨组对账:
+    # 360201/军火贸易 101401/军火贸易+ 101402,含箱条目的卡随批扩员;跨组对账:
     # 贸易专家:停云 360401(条目在顾问型组,顾问+箱×4+扳手混发);「获得1个/
     # 一件【箱】」直读,箱名 = items 元素,数量 = 元素重复次数)——
-    # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++ 能量恢复、快请专家·彩零战斗腿、
+    # 各开箱卡的战斗被动分支(战术义眼+/战术义眼++ 能量恢复、快请专家·彩零战斗效果条目、
     # 保守派伤害减免)非「获得时点」效果,不属 GiftGrant 登记适用范围
     #(战术义眼+能量恢复已登记 STRATEGY_EFFECTS UNIT_BUFF 零响应条目,
     # 其余三卡仍归策略效果建模批);
@@ -4534,7 +4534,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 条目 = 周期事件异轴不入本表(穿戴登记 =
     # STRATEGY_KECHUAN_WEAR_GRANTS,离场 = STRATEGY_KECHUAN_LEAVE_GRANTS,
     # 倒计时队列 pending_kechuan_leaves 发放刻登记——两表随本卡立项,
-    # 后继同形卡 +1 行复用)。星级实参 1 占位(佩佩无星级在册裁定同判)。
+    # 后继同形卡 +1 行复用)。星级实参 1 占位(佩佩无星级已登记裁定同判)。
     '佩佩客串': GiftGrant(chars_immediate=('佩佩',)),
     # —— 非候选直读登记 1 条(「获得3个…【狸狸】」直读,但发放对象为卡面
     # 用名「狸狸」∉ CHARACTER_ROSTER,反扫零命中 = 统一排除口径自动排除
@@ -4561,14 +4561,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 用户裁定 2026-10-15+随机资产面 §6.3/§6.4+触发词缺失判读申报制;
     # sim 结构不可达],知识域判读零行为分叉)。
     '大变活狸': GiftGrant(items_immediate=('星徽秘典', '星徽秘典')),
-    # 终身学习(330901):箱腿直读「获得1个【星徽秘典】」(即时腿;延时
-    # 腿归 STRATEGY_PLANE_START_GRANTS 位面开始专表,双表分治;条目参数
-    # 唯一出现点纪律,装备腿/延时腿均不在本条目重复登记)。
+    # 终身学习(330901):箱条目直读「获得1个【星徽秘典】」(即时效果条目;延时
+    # 效果条目归 STRATEGY_PLANE_START_GRANTS 位面开始专表,双表分治;条目参数
+    # 唯一出现点纪律,装备效果条目/延时效果条目均不在本条目重复登记)。
     '终身学习': GiftGrant(items_immediate=('星徽秘典',)),
-    # 融合召唤(332301):箱腿直读「获得1个【简易武装箱】」;腿1「给角色穿戴
+    # 融合召唤(332301):箱条目直读「获得1个【简易武装箱】」;效果条目1「给角色穿戴
     # 2件相同进阶装备时,它们会合成为对应的特权装备」= 穿报规则面(卡闸
     # 分支住 cw_action_report/wear_equip 穿着即合成循环,零登记),本表唯一
-    # 登记条目 = 单箱腿,镜像单源 = cw_gain_effects._STRATEGY_BOX_GRANTS。
+    # 登记条目 = 单箱条目,镜像单源 = cw_gain_effects._STRATEGY_BOX_GRANTS。
     '融合召唤': GiftGrant(items_immediate=('简易武装箱',)),
     # 独家代言(331401):「从3件进阶装备中选择一件获取」的 sim 占位选定
     # 建模——候选池构成与选择规则 desc 无载禁猜(硬裁定:desc 没写明的
@@ -4576,10 +4576,10 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # (确定性可复现,在码先例 = sim/cw_sim_backend.box_options 排序前缀
     # 占位),占位件 ≠ live 玩家真选由披露键
     # STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER 申报观察纠偏。注记:
-    # 策略侧具名腿发放 = PICK 效果体工厂 rand=False(cw_gain_effects,卡文
+    # 策略侧具名效果条目发放 = PICK 效果体工厂 rand=False(cw_gain_effects,卡文
     # 无随机词);equips_immediate 字段 docstring「随机态 rand=True」辖
     # env 消费支(2026-10-17 用户裁定),两通道分野 = fields.md §3.2.15,
-    # 防按字段 docstring 误判本行矛盾。转换腿另登记
+    # 防按字段 docstring 误判本行矛盾。转换效果条目另登记
     # STRATEGY_EQUIP_GAIN_CONVERSIONS 专表(名单集源形首例),本行只辖
     # 获取面。
     '独家代言': GiftGrant(equips_immediate=('以牙还牙甲',)),
@@ -4692,7 +4692,7 @@ _validate_strategy_grants()
 #: 选定(sorted(进阶名单) 首件 = 以牙还牙甲,确定性可复现,在码先例 =
 #: sim/cw_sim_backend.box_options 排序前缀占位),发放物 = 占位件非 live
 #: 玩家真选(非等价申报:sim 自洽,live 零写观察覆盖,观察纠偏路径 =
-#: 实机持卡局选件对照;判读申报制,禁当定谳转引)。
+#: 实机持卡局选件对照;判读申报制,禁当定案转引)。
 STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER: str = \
     'strategy_endorse_advance_choice_placeholder'
 
@@ -5117,7 +5117,7 @@ STRATEGY_BATTLE_HEAL_SCOPE_ASSUMPTION: str = \
 # 标志位 = cw_game_state.strategy_death_save_used,每局首次致死触发后恒置),
 # 触发时点/状态形状/载荷三重不同构,禁并入。键 = 策略规范名,值 =
 # (救援后生命值, 经验, 金币)——载荷全 desc 明写,数值单一源在本表,
-# STRATEGY_ECONOMY 注册行禁复活即时双腿(防双源,见构建校验②)。
+# STRATEGY_ECONOMY 注册行禁复活即时两条效果条目(防双源,见构建校验②)。
 # 消费面 = kernel/cw_gain_chain.take_strategy_death_save(触发检查
 # 单一源,唯一调用点 = sim 结算折算点 apply_hp_outcome 调用前置分支;
 # live 零写观察覆盖——救援由游戏自算,hp 面结算页观察链现值覆盖,
@@ -5136,7 +5136,7 @@ def _validate_strategy_death_save_grants() -> None:
     三元组值形属手抄常量纯笔误类,不加,对账归评审与本表域测试把关;留两哨):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
-    失联);② 注册面双源哨:键对应 STRATEGY_ECONOMY 注册行即时双腿必须
+    失联);② 注册面双源哨:键对应 STRATEGY_ECONOMY 注册行即时两条效果条目必须
     全默认——奖励载荷已迁本表(单一源),注册行复活 instant_gold/xp_instant
     = 同一奖励双源双发(救援拍 + 选卡拍),哨前移 import 期。"""
     orphans = [n for n in STRATEGY_DEATH_SAVE_GRANTS
@@ -5178,12 +5178,12 @@ STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS: tuple[str, ...] = (
 # 徽名 = 完胜判定改写的携带判据物与出售对象过滤词;配额 = 卡面「可生效3次」
 # 整局次数(每次救援扣 1,拒救/条件不成立不扣,跨位面不重置 = 局级语义,
 # desc 无载按局级直读)。数值单一源在本表;STRATEGY_ECONOMY 注册行只辖
-# 即时金腿,禁复活救援面载荷(防双源,同 STRATEGY_DEATH_SAVE_GRANTS 构建
+# 即时金币效果条目,禁复活救援面载荷(防双源,同 STRATEGY_DEATH_SAVE_GRANTS 构建
 # 校验②纪律)。
 # 消费面 = kernel/cw_env_grants.check_strategy_perfect_rescue(触发检查
 # 单一源,唯一调用点 = report_node_advance settle_confirm 分支
 # check_env_battle_grants 调用邻位、先于两完胜判据消费函数——改写先于
-# 消费;出售腿 sim 门内执行,live 零写观察覆盖:出售由游戏自执行,
+# 消费;出售写状态分支 sim 门内执行,live 零写观察覆盖:出售由游戏自执行,
 # 部署视图刷新/金读数观察承接)。完胜判定机器权威版本 =
 # docs/game/currency_war/research/combat.md §3「完胜 = 胜利 ∧ 本节点未损失
 # 小队生命值」+ fields.md §3.5.3b 瞬时位域规格。
@@ -5203,7 +5203,7 @@ def _validate_strategy_perfect_rescue_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
     失联);② 徽名双源:徽名必须在 EQUIPMENTS 且类别 = 星徽族(版本改名/
-    类别调整不静默;零配方非合成件事实不校验,T-219 设计稿 §1.2 已定谳,
+    类别调整不静默;零配方非合成件事实不校验,T-219 设计稿 §1.2 已定案,
     申报面 = 本 docstring 非运行时哨)。"""
     orphans = [n for n in STRATEGY_PERFECT_RESCUE_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -6206,7 +6206,7 @@ _validate_strategy_first_buy_xp_grants()
 # ===== 策略卡装备获得转换登记表(自由市场/好运来/独家代言;白名单制)=====
 # 「每当你将要获得一件X装备时,改为获得Y」族登记面(装备获得转换族:
 # 模式卡自由市场 = 占席道具目标分支;独家代言 331401 = 名单集源形首例,
-# 目标 = 腿1 占位选定进阶;族卡登记随各自实现批领取,禁顺手代登记)。
+# 目标 = 效果条目1 占位选定进阶;族卡登记随各自实现批领取,禁顺手代登记)。
 # 拦截点 = 获得原语 gain_equipment 顶段单一
 # 咽喉(消费端 = cw_gain_chain.gain_equipment 守卫;获路全集不可枚举,
 # T-102-attack F1 教训同源——原语内拦截对一切经原语的获得事件自动全域
@@ -6236,7 +6236,7 @@ STRATEGY_EQUIP_GAIN_CONVERSIONS: dict[
     # 的获得条目:「你获得组成该装备的简易装备时，改为获得该进阶装备」→
     # 源 = 名单集形态首例(选定进阶的配方组件,字面量直读;派生式须「配方
     # 组件名去重集」语义且 cross_components 只辖交叉半域、自配件返 None,
-    # 两读现值同值,字面量为简),目标 = 腿1 占位选定件以牙还牙甲(占位
+    # 两读现值同值,字面量为简),目标 = 效果条目1 占位选定件以牙还牙甲(占位
     # 选定 = sorted(进阶名单) 首件,披露键
     # STRATEGY_ENDORSE_ADVANCE_CHOICE_PLACEHOLDER 申报,占位 ≠ live 玩家
     # 真选);名单成员判语义 = item ∈ 名单集即命中,本行类别词零参与。
@@ -6799,9 +6799,9 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     '好运令牌·银': StrategyDelayedGrant(id='130901', delay_nodes=3,
                                         item='好运令牌'),
     # 好运令牌·彩(id 331601 原文直读,cw_invest_data.py:322;卡文「获得1个
-    # 【好运令牌】。每累计进入4个节点后，获得1个【好运令牌】。」两腿分治:
+    # 【好运令牌】。每累计进入4个节点后，获得1个【好运令牌】。」两条效果条目分治:
     # 即时 1 令牌由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励同形),
-    # 延时腿 = 周期型首例(repeat=True:到点弹除后同参重排队至局终,拒落
+    # 延时效果条目 = 周期型首例(repeat=True:到点弹除后同参重排队至局终,拒落
     # 亦重排;计数起点 = 拿卡节点后继窗,家族口径)。repeat=True 行禁
     # count>1、禁元组形 delay_nodes(防登记笔误类,2026-10-28 治理口径
     # 不入 import 校验,对账归表域测试);发放物「好运令牌」与卡名异名,
@@ -6811,7 +6811,7 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     '好运令牌·彩': StrategyDelayedGrant(id='331601', delay_nodes=4,
                                         item='好运令牌', repeat=True),
     # 完美进化(id 331901 原文直读,cw_invest_data.py:325;卡文「4个节点
-    # 后，获得一个【战场进化手册】。」延时腿;与即时腿双条目工厂分治,
+    # 后，获得一个【战场进化手册】。」延时效果条目;与即时效果条目双条目工厂分治,
     # 人才激励同形;计数起点 = 拿卡节点后继窗家族口径)。
     '完美进化': StrategyDelayedGrant(id='331901', delay_nodes=4,
     item='战场进化手册'),
@@ -6867,8 +6867,8 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
                                       item='员工投影仪', count=2),
     # 军备供应链(id 330501 原文直读,cw_invest_data.py:311;卡文「获得1个
     # 【简易武装箱】，接下来5个节点开始时，获得1个【简易武装箱】。」
-    # 两腿分治:即时 1 箱由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励
-    # 同形),延时腿 = 逐节点错峰 5 节拍元组形首例(delay_nodes 元组,
+    # 两效果条目分治:即时 1 箱由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励
+    # 同形),延时效果条目 = 逐节点错峰 5 节拍元组形首例(delay_nodes 元组,
     # 逐节点开始时各获 1 箱——「接下来…个节点开始时」逐节点语义沿
     # 分期金先例 + 「节点开始时」同形 4 张卡面;count 不并用防拍内重复)。
     '军备供应链': StrategyDelayedGrant(id='330501',
@@ -6902,7 +6902,7 @@ STRATEGY_PLANE_START_GRANTS: dict[str, StrategyPlaneStartGrant] = {
     # STRATEGY_GRANTS 工厂同批注册,不入本表;位面段发放 = 用户裁定
     # 2026-11-01 位面段补发·当前位面全额族级口径(裁定注释点名终身
     # 学习共享):中途拿卡所在位面(已开始)位面段登记拍全额补发——
-    # 承载 = sim 选卡拍补发腿(gs.node 在场判据);常规面 = 每位面首
+    # 承载 = sim 选卡拍补发效果条目(gs.node 在场判据);常规面 = 每位面首
     # 节点窗(check_strategy_plane_start_grants,r==1 窗谓词);席满
     # 溢出走占席道具通用溢出卡)
     '终身学习': StrategyPlaneStartGrant(id='330901', item='星徽秘典'),
@@ -6949,7 +6949,7 @@ class StrategyPlaneStartCharGrant:
     - planes: 触发位面集(位面序位,1 基 = NodePos[0] 同坐标系;卡面
       「进入第二/三位面时」直读 (2, 3);触发时机 = 该位面第 1 节点窗
       (r==1),item 形同窗先例。表值 = 登记期快照恒稳,非执行期现读);
-    - char: 发放角色名(∈ CHARACTER_ROSTER;语义 = 「再获得一次」对腿1
+    - char: 发放角色名(∈ CHARACTER_ROSTER;语义 = 「再获得一次」对效果条目1
       整组的重复,与同卡 STRATEGY_GRANTS 条目 chars_immediate ∪
       chars_conditional 角色集一致——一致性对账归表域测试,不设
       import 哨,箱条目镜像一致性测试同层);
@@ -6959,7 +6959,7 @@ class StrategyPlaneStartCharGrant:
     中途拿卡不补发 = 用户裁定(词形「进入第二/三位面时」系选择性位面
     子集,不在「每个位面开始时」族补发辖域):登记晚于当前位面开始窗
     → 该窗不发,只余后续位面窗——结构性成立(取卡窗恒 r∈{2,3},与
-    r==1 位面开始窗零交叠),无补发腿,亦无 done 闩(静态谓词天然单调,
+    r==1 位面开始窗零交叠),无补发效果条目,亦无 done 一次性标志位(静态谓词天然单调,
     窗幂等守卫承担单次)。
     """
     id: str
@@ -6971,12 +6971,12 @@ class StrategyPlaneStartCharGrant:
 STRATEGY_PLANE_START_CHAR_GRANTS: dict[str, StrategyPlaneStartCharGrant] = {
     # 轮回不止(效果原文「获得【白厄】和一件【轮回者】装备。进入第二/
     # 三位面时，再获得一次。」直读;效果原文对账 id = cw_invest_data
-    # .PLAZA_AUGMENTS 同 id 行;即时腿「获得【白厄】」由
+    # .PLAZA_AUGMENTS 同 id 行;即时效果条目「获得【白厄】」由
     # cw_gain_effects._STRATEGY_CHAR_GRANTS 工厂同批注册,不入本表;
-    # 「再获得一次」= 白厄单角色重复(轮回者装备腿零建模 = 披露键
+    # 「再获得一次」= 白厄单角色重复(轮回者装备效果条目零建模 = 披露键
     # STRATEGY_REINCARNATOR_UNMODELED 申报,资产面低估随批在案);
-    # 中途拿卡不补发 = 用户裁定,无选卡拍补发腿——与本表同通道的
-    # 「每个位面开始时」族 item 形补发腿(STRATEGY_PLANE_START_GRANTS
+    # 中途拿卡不补发 = 用户裁定,无选卡拍补发效果条目——与本表同通道的
+    # 「每个位面开始时」族 item 形补发效果条目(STRATEGY_PLANE_START_GRANTS
     # 辖域)不因本表扩辖,角色子形只被位面开始窗检查函数消费)
     '轮回不止': StrategyPlaneStartCharGrant(id='332201', planes=(2, 3),
                                              char='白厄', star=1),
@@ -7574,19 +7574,19 @@ def _validate_strategy_reward_ore_grants() -> None:
             f'{orphans}(规范名漂移/移除后未清;禁静默失联)')
 
 
-# ===== 策略位面-节点合取条件世界发放注册表(盗用身份 id 352401 首例;
+# ===== 策略位面-节点合取条件写状态副本发放注册表(盗用身份 id 352401 首例;
 # ===== 白名单制,各建各表——节点类型单维表(STRATEGY_REWARD_NODE_GRANTS,
 # ===== 无位面维)≠ 位面-节点合取,合取形状独立建表不回灌改形;注册纪律 =
 # ===== 禁从效果原文自动猜装。估值域登记 STRATEGY_GRANTS 同名条目为注释性
-# ===== 底册,状态副本世界发放唯一通道 = 本表 +
+# ===== 底册,状态副本发放唯一通道 = 本表 +
 # ===== cw_gain_chain.check_strategy_plane_boss_grants)=====
 # 值 = (位面, 节点类型, 发放角色, 星级);星级 1 = 卡面未标先验(获得链
 # 规范 gain-chain.md「星级未标 = 1★ 先验」惯例)。卡面穿戴描述「穿着2个
-# 【动能激发剑】和【列车同行星徽】」零建模不入表——穿戴非入栏,穿戴腿
+# 【动能激发剑】和【列车同行星徽】」零建模不入表——穿戴非入栏,穿戴效果条目
 # 披露 = 家族键 strategy_worn_equip_unmodeled 申报(消费方名单见该键定义,
-# 本卡在其列);「1个【开拓者】」腿 = 裸名 ∉ CHARACTER_ROSTER 登记排除
+# 本卡在其列);「1个【开拓者】」效果条目 = 裸名 ∉ CHARACTER_ROSTER 登记排除
 # 零建模(获得时点形态不可知禁猜,STRATEGY_GRANTS 条目注释同口径)。
-# 表内零采样零金零装备入栏腿。
+# 表内零采样零金零装备入栏效果条目。
 STRATEGY_PLANE_BOSS_GRANTS: dict[str, tuple[int, str, str, int]] = {
     '盗用身份': (2, 'boss', '火花', 1),
 }
