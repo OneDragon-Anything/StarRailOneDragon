@@ -66,7 +66,7 @@ class OperationExecutor:
                     continue
                 except StopRunInterrupted:
                     # 停机守卫异常为 BaseException(穿透 best-effort 包装):
-                    # 子 op 被停机中断属预期终态,安静收口跳出循环,不按
+                    # 子 op 被停机中断属预期终态,安静收尾跳出循环,不按
                     # 「指令执行出错」记 ERROR,也不打死本执行线程。
                     log.info('指令被停机守卫中断,中止本串指令')
                     break

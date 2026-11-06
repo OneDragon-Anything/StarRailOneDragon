@@ -50,7 +50,7 @@ def _get_path_lock(path_key: str) -> threading.RLock:
 
 
 def _path_handlers(path_key: str) -> list['SafeTimedRotatingFileHandler']:
-    """登记在册的同路径 handler 快照(含任意调用者自身;死引用自动剔除)。"""
+    """已登记的同路径 handler 快照(含任意调用者自身;死引用自动剔除)。"""
     with _PATH_LOCKS_GUARD:
         handlers = _PATH_HANDLERS.get(path_key)
         return [h for h in tuple(handlers) if h is not None] if handlers else []
@@ -180,7 +180,7 @@ class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
     def rotate(self, source: str, dest: str) -> None:
         """占用兜底的轮转落点:rename 被外部句柄挡住时退化为 copytruncate。
 
-        标准库 doRollover 的换名收口就是 ``self.rotate(source, dest)``,覆盖它
+        标准库 doRollover 的换名收尾就是 ``self.rotate(source, dest)``,覆盖它
         即覆盖了全部 rename 失败路径(WinError 32 丢失现场的精确栈帧)。
         copytruncate(复制内容到归档名 + 截断源文件)不要求独占:Windows 的
         rename 需要目标无任何打开句柄,但读写打开(CRT 默认共享读+写)互不

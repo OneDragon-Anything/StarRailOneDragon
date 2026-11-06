@@ -439,14 +439,14 @@ class Operation(OperationBase):
                     self._on_pause()
             except StopRunInterrupted:
                 # 停机守卫(controller 层)拦截了本轮内的游戏输入:
-                # 收口本 op 为「已停止」后继续向上抛——不在本层吞掉,否则父链
+                # 收尾本 op 为「已停止」后继续向上抛——不在本层吞掉,否则父链
                 # (如已实证的 director 环)会继续发下一步动作。
                 _src = getattr(self.ctx.run_context.last_run_result, 'stop_source', '') or 'guard'
                 log.info('%s 停机守卫拦截,中断本轮(来源 %s)', self.display_name, _src)
                 op_result = self.op_fail(f'已停止[guard:{_src}]')
                 try:
                     self.after_operation_done(op_result)
-                except Exception:  # noqa: BLE001 收口异常不得掩盖停止语义
+                except Exception:  # noqa: BLE001 收尾异常不得掩盖停止语义
                     log.error('%s after_operation_done 异常(停机中断路径)', self.display_name, exc_info=True)
                 raise
             except Exception as e:
@@ -865,7 +865,7 @@ class Operation(OperationBase):
 
         等待期间以切片睡眠检查停机信号(2026-09-02 夜间语料批局1实证:
         stop 后剩余 wait 的整段 sleep 是停机延迟的组成段),停机即提前返回,
-        由 execute 循环顶收口。
+        由 execute 循环顶收尾。
         """
         if wait is not None and wait > 0:
             self._interruptible_sleep(wait)
@@ -879,10 +879,10 @@ class Operation(OperationBase):
 
         切片粒度 0.5s = 停机响应上限(轮间等待场景下,长于一次画面轮询周期
         无收益)。暂停不在此处理(暂停语义由 execute 循环顶统一接管)。
-        中断判据用 ``is_stop_interrupted`` 闩而非 ``is_context_stop``:STOP
+        中断判据用 ``is_stop_interrupted`` 标志位而非 ``is_context_stop``:STOP
         也是 idle 初始态(application_run_context 自注),不经 start_running
         的直接 op 调试路径(debug.bat / 未来工具)用后者会把所有 round_wait
-        静默零等待;闩只在「运行中/暂停中被 stop_running 打断」时置位,
+        静默零等待;标志位只在「运行中/暂停中被 stop_running 打断」时置位,
         精确对应「本次运行收到停机信号」。
         用 getattr 容错:测试替身 ctx 可能不带 run_context,此时退化为
         普通切片睡眠(不影响等待语义)。

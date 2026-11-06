@@ -126,11 +126,11 @@ class ApplicationRunContext:
         self._window_mutex_guard: threading.Lock = threading.Lock()
         self._window_mutex_blocker: str | None = None
 
-        # 停机中断闩:True = 本次运行被停止信号中断且尚未被消费。
+        # 停机中断一次性标志位:True = 本次运行被停止信号中断且尚未被消费。
         # 仅 stop_running 在「运行中/暂停中被停」时置位;start_running 清位;
-        # 正常收口(finish_running / run_application 自然完成)不置位——
+        # 正常收尾(finish_running / run_application 自然完成)不置位——
         # 区别于 is_context_stop(STOP 也是 idle 初始态,不能作停机中断判据,
-        # 否则 idle 下的手动操作会被全拦)。controller 停机守卫读本闩拦截输入。
+        # 否则 idle 下的手动操作会被全拦)。controller 停机守卫读本标志位拦截输入。
         self._stop_interrupted: bool = False
 
     def registry_application(
@@ -361,11 +361,11 @@ class ApplicationRunContext:
     def is_stop_interrupted(self) -> bool:
         """本次运行是否已被停止信号中断(停机守卫判据)。
 
-        与 ``is_context_stop`` 的区别:后者 STOP 也是 idle 初始态;本闩只在
+        与 ``is_context_stop`` 的区别:后者 STOP 也是 idle 初始态;本标志位只在
         「运行中/暂停中被 stop_running 打断」后为 True,直到下一次
         ``start_running``。无显式消费入口——手动外部接管走
-        ``stop_guard.stop_guard_exemption`` 本地豁免(不清闩;
-        旧 consume_stop_interrupted 因在 run 收口期全局摘守卫已移除)。
+        ``stop_guard.stop_guard_exemption`` 本地豁免(不清标志位;
+        旧 consume_stop_interrupted 因在 run 收尾期全局摘守卫已移除)。
         """
         return self._stop_interrupted
 
@@ -390,15 +390,15 @@ class ApplicationRunContext:
         dispatch_event: bool = True,
         stop_reason: str = '',
     ) -> ApplicationRunResult:
-        """统一收口运行结束逻辑。
+        """统一收尾运行结束逻辑。
 
         Args:
             result: 运行结果对象。
             dispatch_event: 是否发送停止事件。
             stop_reason: 停止来源(stop_running 传入),仅用于幂等 no-op 日志。
         """
-        # 窗口锁与运行态同生命周期:收口即还锁(幂等,未持锁时 no-op)。
-        # 幂等 no-op 也覆盖「已被停止后再收口」的重复路径——锁已在首次收口释放。
+        # 窗口锁与运行态同生命周期:收尾即还锁(幂等,未持锁时 no-op)。
+        # 幂等 no-op 也覆盖「已被停止后再收口」的重复路径——锁已在首次收尾释放。
         self._release_window_mutex()
         if self.is_context_stop:
             if self.last_run_result is None:
@@ -490,7 +490,7 @@ class ApplicationRunContext:
         try:
             if self.ctx.controller.init_before_context_run():
                 self.last_run_result = None
-                self._stop_interrupted = False  # 新运行开始,清停机中断闩
+                self._stop_interrupted = False  # 新运行开始,清停机中断一次性标志位
                 self._run_state = ApplicationRunContextStateEnum.RUNNING
                 self.event_bus.dispatch_event(
                     ApplicationRunContextStateEventEnum.START, self._run_state
@@ -510,7 +510,7 @@ class ApplicationRunContext:
         停止运行。
 
         将上下文状态设置为停止(RUNNING/PAUSE 均直达 STOP,不再绕道暂停),发送停止事件。
-        已经停止时返回首次收口结果，不重复发送停止事件或覆盖结束原因。
+        已经停止时返回首次收尾结果，不重复发送停止事件或覆盖结束原因。
 
         Args:
             reason: 停止来源标识(开放文本,如 'mcp:stop_run' / 'hook:summon_unknown'
@@ -518,16 +518,16 @@ class ApplicationRunContext:
             save_screenshot: True = 停机现场截图留证并落一行 ``[stop]`` 日志
                 (reason + 截图文件名 = 停机事实载体,值班按日志定位现场)。
                 自动停机钩子传 True;用户主动停机不传(默认 False,行为不变)。
-                仅在「运行中/暂停 → 停止」的收口转态拍一张(幂等重入不重复拍);
+                仅在「运行中/暂停 → 停止」的收尾转态拍一张(幂等重入不重复拍);
                 截图或落盘失败不拦截停机本身。
         """
-        # 「运行中/暂停中被停」才置停机中断闩:idle 态的杂散 stop
-        # 不应把守卫留给后续(如 MCP 手动操作)。先读状态再收口(收口后恒 STOP)。
+        # 「运行中/暂停中被停」才置停机中断一次性标志位:idle 态的杂散 stop
+        # 不应把守卫留给后续(如 MCP 手动操作)。先读状态再收尾(收尾后恒 STOP)。
         was_live = self.is_context_running or self.is_context_pause
         result = self._create_run_result(RunFinishReason.STOPPED)
         result.stop_source = reason
         if save_screenshot and was_live:
-            # 证据先落盘再收口(stop 钩子既有时序);shot 空 = 截图/落盘失败,
+            # 证据先落盘再收尾(stop 钩子既有时序);shot 空 = 截图/落盘失败,
             # 日志照落(失败可见,不静默吞证据——教训见 save_debug_image 契约注)。
             shot = self._save_stop_evidence(reason)
             log.warning('[stop] reason=%s shot=%s', reason, shot or '(落盘失败)')
@@ -563,10 +563,10 @@ class ApplicationRunContext:
             return ''
 
     def finish_running(self) -> ApplicationRunResult:
-        """正常收口(非停止中断):运行自然结束后的清理路径专用。
+        """正常收尾(非停止中断):运行自然结束后的清理路径专用。
 
-        与 ``stop_running`` 的唯一区别:不置 ``stop_interrupted`` 闩——
-        backend op 槽 finally 的收口调用发生在运行自然完成后(执行流已停),
+        与 ``stop_running`` 的唯一区别:不置 ``stop_interrupted`` 标志位——
+        backend op 槽 finally 的收尾调用发生在运行自然完成后(执行流已停),
         不是用户/钩子停止,不应让停机守卫拦截后续显式外部操作
         (如 MCP 手动点击的残局清理)。语义见 `stop_guard` 模块头。
         """
@@ -677,7 +677,7 @@ class ApplicationRunContext:
                 else RunFinishReason.FAILED
             )
         except StopRunInterrupted:
-            # 停机守卫在 controller 层拦截输入后穿透到这:收口为
+            # 停机守卫在 controller 层拦截输入后穿透到这:收尾为
             # 「已停止」而非执行异常;stop_source 来自先到的 stop_running。
             finish_reason = RunFinishReason.STOPPED
             log.info('应用 %s 被停机守卫中断', app_id)

@@ -259,7 +259,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
         if self.running_executor is not None:
             finish = self.running_executor.stop()  # stop之前是否已经完成所有op
             if not finish:
-                # finish=True:_run 已收口,_on_task_done 三路统一 dec 覆盖。
+                # finish=True:_run 已收尾,_on_task_done 三路统一 dec 覆盖。
                 # finish=False:任务仍在收尾,这里**提前** dec 让无触发器场景
                 # 尽早运行(不等回调);与之后到达的 _on_task_done dec 构成
                 # 已知双减(过度调度,安全侧;见 _on_task_done 计数器契约)。
@@ -286,7 +286,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
                 # 防御位:executor._run 内层 future.result 已按名 catch 并
                 # break 转正常返回,异常几乎不会到这;保留是防 _run 在内层
                 # 等待环之前抛出(BaseException 泛型兜底接不住)。
-                log.info('任务被停机守卫中断,收口递减计数器')
+                log.info('任务被停机守卫中断,收尾递减计数器')
                 self.running_executor_cnt.dec()
             except Exception:  # run_async里有callback打印日志
                 self.running_executor_cnt.dec()

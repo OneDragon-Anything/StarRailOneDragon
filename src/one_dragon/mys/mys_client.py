@@ -288,10 +288,10 @@ class MysClient:
             return LoginResult(status='ok', challenge=None)
         raise MysApiError(retcode, _message_of(payload))
 
-    # ---- 人机验证（单轮收口）----
+    # ---- 人机验证（单轮收尾）----
 
     def complete_verification(self, challenge: AigisChallenge, ticket: dict) -> LoginResult:
-        """验证单轮收口：票据组装 → 回传头 → 原样重发 loginByPassword → 分诊。
+        """验证单轮收尾：票据组装 → 回传头 → 原样重发 loginByPassword → 分诊。
 
         单轮语义（design.md §2.2 / §2.5 契约 2，无内部循环）：带票据重发恰一次。
         分诊：retcode==0 → Set-Cookie 全量入罐 + save_session_full 整体覆盖落盘

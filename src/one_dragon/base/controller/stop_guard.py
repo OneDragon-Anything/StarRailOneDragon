@@ -1,7 +1,7 @@
 # 停机守卫:run 26 停机后幽灵活动(run 27「已停止后又出战成功」同型,
 # CW 局部刹车是第一代补丁,本模块是其框架级重写)。
-# 手动端点本地豁免:显式外部接管(MCP 手动输入)不清全局闩,改为
-# 本线程豁免——守卫在 run 收口期(STOP 已置、run 线程仍 unwind)保持活跃,
+# 手动端点本地豁免:显式外部接管(MCP 手动输入)不清全局一次性标志位,改为
+# 本线程豁免——守卫在 run 收尾期(STOP 已置、run 线程仍 unwind)保持活跃,
 # 手动操作在豁免令牌内放行;豁免按线程隔离,run 线程视角守卫永远生效。
 from __future__ import annotations
 
@@ -14,10 +14,10 @@ class StopRunInterrupted(BaseException):
     """运行被停止信号中断。
 
     停机守卫(controller 层)在任何游戏输入动作(click/drag/按键/滚轮/输入/
-    移动光标)前检查「本次运行已被停止信号中断」闩,已中断则抛本异常。
+    移动光标)前检查「本次运行已被停止信号中断」一次性标志位,已中断则抛本异常。
     异常穿透所有嵌套 ``Operation.execute``(不在中间 op 层被吞成普通失败——
     否则父链会像已实证的 director 环一样继续发下一步动作),由顶层
-    (``ApplicationRunContext.run_application`` / backend op 槽)收口为「已停止」。
+    (``ApplicationRunContext.run_application`` / backend op 槽)收尾为「已停止」。
 
     继承 BaseException 而非 Exception(2026-09-02 夜间语料批局1实证:停机
     信号后局仍推进约 3 分钟):玩法运行路径上大量 best-effort 包装
@@ -26,7 +26,7 @@ class StopRunInterrupted(BaseException):
     重试/继续」,守卫在最需要拦截的代码区域失效。改挂 BaseException 后
     泛型 Exception 处理器不再捕获它,语义对齐 KeyboardInterrupt(用户级
     中断不属于可兜底的业务异常);显式 ``except StopRunInterrupted`` 的
-    收口点(operation.execute / run_application / backend op 槽)不受影响。
+    收尾点(operation.execute / run_application / backend op 槽)不受影响。
     """
 
 
@@ -41,9 +41,9 @@ def stop_guard_exemption() -> Iterator[None]:
     """本线程的停机守卫本地豁免上下文。
 
     显式外部接管入口(MCP 手动 click_game/key_tap/drag/input_text 等)用
-    本上下文包裹 controller 调用:动作放行但**不清全局停机闩**——闩仍保护
-    run 收口期(STOP 已置、run 线程仍 unwind)的幽灵输入(
-    取代 consume_stop_interrupted 清闩语义)。可嵌套(内层
+    本上下文包裹 controller 调用:动作放行但**不清全局停机一次性标志位**——标志位仍保护
+    run 收尾期(STOP 已置、run 线程仍 unwind)的幽灵输入(
+    取代 consume_stop_interrupted 清标志位语义)。可嵌套(内层
     退出不解除外层豁免)。
     """
     prev = getattr(_exempt_tls, 'value', False)
@@ -60,14 +60,14 @@ def is_stop_guard_exempted() -> bool:
 
 
 def check_stop_guard(stop_guard: Callable[[], bool] | None) -> None:
-    """检查停机中断闩;已中断则抛 ``StopRunInterrupted``。
+    """检查停机中断一次性标志位;已中断则抛 ``StopRunInterrupted``。
 
     Args:
         stop_guard: 无参谓词,返回 True 表示本次运行已被停止信号中断
-            (``ApplicationRunContext.is_stop_interrupted``)。None = 未接线
+            (``ApplicationRunContext.is_stop_interrupted``)。None = 未接入
             (独立使用 controller 的场景,不拦)。
 
-    本线程持有豁免令牌(手动端点接管)时不拦——闩本身不动,其它线程仍受辖。
+    本线程持有豁免令牌(手动端点接管)时不拦——标志位本身不动,其它线程仍受辖。
     """
     if (not is_stop_guard_exempted()
             and stop_guard is not None and stop_guard()):

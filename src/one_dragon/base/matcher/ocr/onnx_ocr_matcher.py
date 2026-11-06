@@ -436,7 +436,7 @@ class OnnxOcrMatcher(OcrMatcher, ZipDownloader):
         # 仍失败则显式报错带恢复指引。此前 _model=None 直穿 self._model.ocr 会炸出
         # 深处 AttributeError('NoneType' object has no attribute 'ocr'),批量测试
         # 场景下表现为数百条与被测代码无关的环境假红,淹没真实失败集对照
-        # (判例:模型目录被误清后全量跑 275 红,抽样签名全部指向本文件旧 :438 行)。
+        # (先例:模型目录被误清后全量跑 275 红,抽样签名全部指向本文件旧 :438 行)。
         if self._model is None and not self.init_model():
             raise RuntimeError(
                 'OCR 模型未就绪(模型文件缺失且自动下载未成功)。'
