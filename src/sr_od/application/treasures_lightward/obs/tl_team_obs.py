@@ -9,15 +9,17 @@
   「忘却之庭-编队」后把结构化事实塞进 extras,供智能体/HTTP 直读;
 - 自动化 op:配队检查 / 预设应用决策直接调本模块纯函数。
 
-**头像识别**:项目脸库 ``assets/template/character_avatar``(<英文 id>/raw.webp,98 角色,
-选择头像 art)× SIFT —— 经 ``TemplateLoader`` 特征缓存 + ``cv2_utils.feature_match_for_one``,
-生产范式同 ``sr_od/operations/team/check_team_members_in_world.py``。右侧队伍槽头像(74px 圆裁)
-全部命中;**编队卡内小头像是「编队卡图」变体**,与脸库 art 存在变体差异,
-歧义率显著更高(实机帧标定:槽位 8/8 对,卡内 16 格约 5 格歧义)——歧义以候选集诚实返回
-(已验证真值均落候选前二),不硬猜;变体差异由独立皮肤模板库收敛(皮肤变体单独建库),不补通用编队卡变体库。
+**头像识别**:项目脸库 ``assets/template/character_avatar``(统一高分辨率方形头像源,
+160×188;目录名 = 角色 id,皮肤衣装 = ``<角色id>_skin<序号>``;遍历与命名约定见
+``sr_od/config/avatar_templates.py``)。角色列表卡主路径 = **整页多目标模板匹配**
+(列表区特征一次提取 → 全模板 SIFT 定位 → 等级锚归属 → 内点数仲裁;标定见
+``_PAGE_*`` 常量块),模板特征贫乏或无命中的锚回退逐格裁片匹配。右侧队伍槽(74px 圆裁)、
+预设卡、固定网格为裁片范式。**穿皮肤(衣装)的角色渲染皮肤版头像,与默认模板不同源**:
+皮肤模板库已建(``character_avatar/<角色id>_skin<序号>``),整页主扫默认+皮肤统一仲裁,
+同位冲突按内点数取最高;皮肤条目未覆盖的造型识别失败为预期行为,候选诚实返回。
 
 **阈值标定**(实机帧,fixture = sr-od-test/screens/忘却之庭-编队/):
-- 真实头像 confidence ≥0.766,空槽占位图标伪命中 0.588 → 门槛 0.70;
+- 裁片范式:真实头像 confidence ≥0.766,空槽占位图标伪命中 0.588 → 门槛 0.70;
 - 歧义比(top1/top2)<1.25 → 拒绝单一结论,返回候选;
 - 空槽:裁片 HSV 平均 V<60(空槽 34.6 vs 实头像 85-145);
 - tab 激活:标签区平均 V≥140(激活 ~178 vs 非激活 ~95-105)。
@@ -38,7 +40,8 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.base.screen.template_loader import TemplateLoader
 from one_dragon.utils import cv2_utils, os_utils
-from sr_od.config.character_const import CHARACTER_LIST, Character
+from sr_od.config.avatar_templates import AvatarTemplate, iter_avatar_templates
+from sr_od.config.character_const import Character
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -119,6 +122,23 @@ _LEVEL_ANCHOR_DX: int = -10           #: 头像区 x1 相对锚 x 偏移(左缘�
 _LEVEL_ANCHOR_DY: int = -97           #: 头像区 y1 相对锚 y 偏移
 
 # --------------------------------------------------------------------------
+# 整页多目标模板匹配(角色列表主识别路径):
+# 列表区特征提取一次 → 脸库逐模板 knn 比值测试 + RANSAC 单应 → 模板四角投影
+# 定位 → 内点数门槛,命中投影框与锚头像区重叠归属。替代逐格裁片匹配的动机:
+# ①页面特征只算一次、全模板共享;②命中自带全图定位,无裁剪窗口错位类问题;
+# ③RANSAC 内点数是更可信的置信量纲——真身命中内点多且内点率≈1.0,伪命中内点少。
+# 标定(avataricon 库实机帧):整行真身 13-59 内点,半行弱卡与伪命中更低,门槛取间隙。
+# 边界:模板特征贫乏的角色(特征点 <40)在整页比值测试下好匹配不足、RANSAC
+# 不收敛——由空锚裁片兜底覆盖(见 read_character_cells_by_level);
+# 两级比值测试(严格级不足再放宽重筛)经实验否决:放宽不增加贫乏模板的真身
+# 命中,反而引入跨区域假投影框。
+# --------------------------------------------------------------------------
+_PAGE_RATIO_TEST: float = 0.70       #: knn 比值测试阈值(与裁片路径现役口径一致)
+_PAGE_MATCH_MIN_INLIERS: int = 12    #: 命中门槛:RANSAC 内点数(真身 13-59 的下沿)
+_PAGE_AMBIGUITY_RATIO: float = 1.25  #: top1/top2 内点比门槛(低于 = 候选诚实返回不硬猜)
+_PAGE_OVERLAP_MIN_IOU: float = 0.15  #: 投影框与锚头像区重叠判定的 IoU 下限(框中心在头像区内也命中)
+
+# --------------------------------------------------------------------------
 # 预设卡内小头像几何(相对「预设卡-N」rect 原点;实机帧标定)
 # 卡内 4 个头像 art 子区(避开卡框与底部「队伍N/等级」标签带),x 起点 4 个。
 # --------------------------------------------------------------------------
@@ -191,6 +211,25 @@ class AnchorCell:
 
 
 @dataclass
+class PageHit:
+    """整页匹配单模板命中(见 ``_match_page_characters``)。
+
+    Attributes:
+        character: 命中角色(皮肤条目指向本体角色)。
+        template_id: 命中模板目录名(可区分默认/皮肤变体)。
+        inliers: RANSAC 内点数(置信量纲,越大越可信)。
+        inlier_ratio: 内点数 / 比值测试通过数(0-1)。
+        rect: 模板四角经单应矩阵投影到页面的外接框(全图坐标)。
+    """
+
+    character: Character
+    template_id: str
+    inliers: int
+    inlier_ratio: float
+    rect: Rect
+
+
+@dataclass
 class WaveInfo:
     """单波次(旧代码称节点)识别结果:该波敌人弱点 + 该波当前编队成员。
 
@@ -257,24 +296,7 @@ def _ocr_lines(ctx: SrContext, image: MatLike, rect: Rect) -> list[str]:
     return [r.data for r in results if r.data]
 
 
-def ensure_avatar_templates(ctx: SrContext) -> list[tuple[Character, TemplateInfo]]:
-    """确保脸库模板(含 SIFT 特征)就绪;列表缓存在 ctx(只读资源,幂等,并发安全)。
-
-    脸库缺失(目录被删等)返回空列表 —— 识别层按无模板降级(全 MemberGuess 无结论)。
-    """
-    templates: list[tuple[Character, TemplateInfo]] = getattr(ctx, 'tl_avatar_templates', None) or []
-    if templates:
-        return templates
-    loader = TemplateLoader()
-    for ch in CHARACTER_LIST:
-        t = loader.get_template('character_avatar', ch.id)
-        if t is not None:
-            templates.append((ch, t))
-    ctx.tl_avatar_templates = templates
-    return templates
-
-
-def _identify_crop(crop: MatLike, templates: list[tuple[Character, TemplateInfo]]) -> MemberGuess:
+def _identify_crop(crop: MatLike, templates: list[AvatarTemplate]) -> MemberGuess:
     """单头像裁片识别(诚实歧义,阈值标定见模块 docstring)。"""
     if crop is None or crop.size == 0:
         return MemberGuess(char=None, confident=False, candidates=[], empty=True)
@@ -284,12 +306,12 @@ def _identify_crop(crop: MatLike, templates: list[tuple[Character, TemplateInfo]
         return MemberGuess(char=None, confident=False, candidates=[], empty=False)
     skp, sdesc = cv2_utils.feature_detect_and_compute(crop)
     hits: list[tuple[str, float]] = []
-    for ch, t in templates:
-        tkp, tdesc = t.features
+    for entry in templates:
+        tkp, tdesc = entry.info.features
         mr = cv2_utils.feature_match_for_one(
-            skp, sdesc, tkp, tdesc, t.raw.shape[1], t.raw.shape[0])
+            skp, sdesc, tkp, tdesc, entry.info.raw.shape[1], entry.info.raw.shape[0])
         if mr is not None and mr.confidence >= _MIN_CONFIDENCE:
-            hits.append((ch.cn, float(mr.confidence)))
+            hits.append((entry.character.cn, float(mr.confidence)))
     hits.sort(key=lambda x: -x[1])
     if not hits:
         return MemberGuess(char=None, confident=False, candidates=[], empty=False)
@@ -543,7 +565,7 @@ def read_team_waves(ctx: SrContext, image: MatLike,
     boss_weakness_map:boss 名 → 弱点表(ensure_boss_weakness_map)。命中时
     覆盖该波颜色识别结果(主路径);boss 名取锚行上方同卡标题行的 OCR 文本
     (含即命中,最近优先,距离上限 300px 防跨卡误配)。"""
-    templates = ensure_avatar_templates(ctx)
+    templates = iter_avatar_templates(ctx)
     results = ctx.ocr_service.get_ocr_result_list(image=image)
     anchors = sorted(
         (r for r in results if _WEAKNESS_ANCHOR_TEXT in (r.data or '')),
@@ -607,7 +629,7 @@ def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
     ⚠️ 仅列表停驻位置与标定帧一致时可靠;滚动任意停驻(半格)用
     ``read_character_cells_by_level``(锚点驱动,位置无关)。"""
     area_rect = _get_area_rect(ctx, '区域-角色网格')
-    templates = ensure_avatar_templates(ctx)
+    templates = iter_avatar_templates(ctx)
     cells: list[GridCell] = []
     if area_rect is None:
         return cells
@@ -620,17 +642,112 @@ def read_character_grid(ctx: SrContext, image: MatLike) -> list[GridCell]:
     return cells
 
 
+def _match_page_characters(image: MatLike, area_rect: Rect,
+                           templates: list[AvatarTemplate]) -> list[PageHit]:
+    """整页多目标模板匹配(常量块注释的动机与边界)。
+
+    对列表区大图提取一次特征,脸库逐模板做比值测试 + RANSAC 单应估计,
+    模板四角投影得命中框,内点数过门槛才算命中。返回命中集(乱序;
+    锚归属与冲突仲裁是调用方职责——同一卡位可能有多模板命中,按内点数取最高)。
+    """
+    page = image[area_rect.y1:area_rect.y2, area_rect.x1:area_rect.x2]
+    page_kp, page_desc = cv2_utils.feature_detect_and_compute(page)
+    matcher = cv2.BFMatcher()
+    hits: list[PageHit] = []
+    for entry in templates:
+        tkp, tdesc = entry.info.features
+        matches = matcher.knnMatch(tdesc, page_desc, k=2)
+        good = []
+        for pair in matches:
+            if len(pair) < 2:
+                continue
+            m, n = pair
+            if m.distance < _PAGE_RATIO_TEST * n.distance:
+                good.append(m)
+        if len(good) < 4:
+            continue
+        template_points = np.float32(
+            [tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+        source_points = np.float32(
+            [page_kp[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+        homography, mask = cv2.findHomography(
+            template_points, source_points, cv2.RANSAC, 5.0)
+        if homography is None or mask is None:
+            continue
+        inliers = int(mask.sum())
+        if inliers < _PAGE_MATCH_MIN_INLIERS:
+            continue
+        raw_w, raw_h = entry.info.raw.shape[1], entry.info.raw.shape[0]
+        corners = np.float32(
+            [[0, 0], [raw_w, 0], [raw_w, raw_h], [0, raw_h]]).reshape(-1, 1, 2)
+        projected = cv2.perspectiveTransform(corners, homography).reshape(-1, 2)
+        x1, y1 = projected.min(axis=0)
+        x2, y2 = projected.max(axis=0)
+        hits.append(PageHit(
+            character=entry.character,
+            template_id=entry.template_id,
+            inliers=inliers,
+            inlier_ratio=inliers / len(good),
+            rect=Rect(int(area_rect.x1 + x1), int(area_rect.y1 + y1),
+                      int(area_rect.x1 + x2), int(area_rect.y1 + y2))))
+    return hits
+
+
+def _guess_by_page_hits(page_hits: list[PageHit], avatar_rect: Rect) -> MemberGuess | None:
+    """整页命中按头像区归属为单格结论;无重叠命中返回 None(调用方走裁片兜底)。
+
+    归属判定:投影框中心落在头像区内,或与头像区 IoU 过门槛(投影框因模板
+    与游戏渲染的缩放差可能略大于头像区,纯中心判定会漏贴合偏移的命中)。
+    同位多模板按内点数降序取最高;仅一候选或 top1/top2 内点比过歧义门槛才给
+    置信结论,否则候选诚实返回(char=None)。candidates 数值分量为内点率
+    (0-1,与裁片路径的 SIFT 置信量纲不同,仅供排序与展示)。
+    """
+    cands: list[PageHit] = []
+    for hit in page_hits:
+        cx = (hit.rect.x1 + hit.rect.x2) / 2
+        cy = (hit.rect.y1 + hit.rect.y2) / 2
+        center_in = (avatar_rect.x1 <= cx <= avatar_rect.x2
+                     and avatar_rect.y1 <= cy <= avatar_rect.y2)
+        inter_w = min(hit.rect.x2, avatar_rect.x2) - max(hit.rect.x1, avatar_rect.x1)
+        inter_h = min(hit.rect.y2, avatar_rect.y2) - max(hit.rect.y1, avatar_rect.y1)
+        inter = max(0, inter_w) * max(0, inter_h)
+        hit_area = (hit.rect.x2 - hit.rect.x1) * (hit.rect.y2 - hit.rect.y1)
+        union = (hit_area
+                 + (avatar_rect.x2 - avatar_rect.x1) * (avatar_rect.y2 - avatar_rect.y1)
+                 - inter)
+        iou = inter / union if union > 0 else 0.0
+        if center_in or iou > _PAGE_OVERLAP_MIN_IOU:
+            cands.append(hit)
+    if not cands:
+        return None
+    cands.sort(key=lambda h: -h.inliers)
+    if len(cands) >= 2:
+        confident = cands[0].inliers / cands[1].inliers >= _PAGE_AMBIGUITY_RATIO
+    else:
+        confident = True
+    return MemberGuess(
+        char=cands[0].character.cn if confident else None,
+        confident=confident,
+        candidates=[(h.character.cn, round(h.inlier_ratio, 3)) for h in cands[:3]],
+    )
+
+
 def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[AnchorCell]:
     """等级文本锚驱动的角色列表识别(滚动停驻位置无关)。
 
-    OCR 找列表区全部「等级」文本锚(每张卡下方一条「等级NN」),每锚上方裁
-    头像区做脸库匹配,取匹配结果。返回按 (y, x) 排序(自上而下、自左而右)。"""
+    OCR 找列表区全部「等级」文本锚(每张卡下方一条「等级NN」),角色身份
+    主路径 = 整页多目标模板匹配(见 ``_match_page_characters``):命中投影框
+    与锚上方头像区重叠归属,同位多模板按内点数仲裁,歧义比不足则候选诚实
+    返回;整页无命中的锚走锚上方裁片匹配兜底——模板特征贫乏的角色在整页
+    比值测试下好匹配不足,小裁片环境可过 RANSAC。返回按 (y, x) 排序
+    (自上而下、自左而右)。"""
     area_rect = _get_area_rect(ctx, '区域-角色网格')
-    templates = ensure_avatar_templates(ctx)
+    templates = iter_avatar_templates(ctx)
     cells: list[AnchorCell] = []
     if area_rect is None:
         return cells
     results = ctx.ocr_service.get_ocr_result_list(image=image, rect=area_rect)
+    page_hits = _match_page_characters(image, area_rect, templates)
     for r in results:
         if _LEVEL_ANCHOR_TEXT not in (r.data or ''):
             continue
@@ -640,14 +757,16 @@ def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[Anchor
                 or ay + _LEVEL_ANCHOR_AVATAR_H > image.shape[0]
                 or ax + _LEVEL_ANCHOR_AVATAR_W > image.shape[1]):
             continue  # 裁片出界跳过
-        crop = image[ay:ay + _LEVEL_ANCHOR_AVATAR_H, ax:ax + _LEVEL_ANCHOR_AVATAR_W]
-        guess = _identify_crop(crop, templates)
+        avatar_rect = Rect(ax, ay, ax + _LEVEL_ANCHOR_AVATAR_W, ay + _LEVEL_ANCHOR_AVATAR_H)
+        guess = _guess_by_page_hits(page_hits, avatar_rect)
+        if guess is None:
+            crop = image[ay:ay + _LEVEL_ANCHOR_AVATAR_H, ax:ax + _LEVEL_ANCHOR_AVATAR_W]
+            guess = _identify_crop(crop, templates)
         cells.append(AnchorCell(
             center=Point(ax + _LEVEL_ANCHOR_AVATAR_W // 2,
                          ay + _LEVEL_ANCHOR_AVATAR_H // 2),
             guess=guess,
-            rect=Rect(ax, ay,
-                      ax + _LEVEL_ANCHOR_AVATAR_W, ay + _LEVEL_ANCHOR_AVATAR_H)))
+            rect=avatar_rect))
     cells.sort(key=lambda c: (c.center.y, c.center.x))
     return cells
 
@@ -676,7 +795,7 @@ def wave_row_select_point(ctx: SrContext, wave_idx: int) -> Point | None:
 
 def read_preset_teams(ctx: SrContext, image: MatLike) -> list[PresetTeam]:
     """预设编队 tab 的队伍组(每卡 4 成员绑组;卡 rect 来自 screen_info 预设卡-N)。"""
-    templates = ensure_avatar_templates(ctx)
+    templates = iter_avatar_templates(ctx)
     teams: list[PresetTeam] = []
     for team_idx in range(1, 5):
         rect = _get_area_rect(ctx, f'预设卡-{team_idx}')
