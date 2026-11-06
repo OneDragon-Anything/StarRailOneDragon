@@ -559,8 +559,10 @@ class TlAsAxiomEquipOp(SrOperation):
                 self._phase = 'select'
                 return self.round_wait('公理弹窗已开', wait=0.5)
             if in_team:
-                if self._row_idx < len(self._buff_slots) - 2:
-                    # 星启:行尾「+」即终焉公理入口(编入角色前后形态一致,实测)
+                if self._arc_mode:
+                    # 星启:行尾「+」即终焉公理入口(编入角色前后形态一致,实测);
+                    # 分派必须按布局模式——按行号比较会把 04 的行 2/3 错派到
+                    # 01-03 圆圈坐标(该坐标在 04 无效,弹窗开不了死循环)
                     self._click_area_center(_TEAM_SCREEN, _ARC_AXIOM_AREAS[row])
                 else:
                     self._click_area_center(_TEAM_SCREEN, f'按钮-公理圆圈{row}')
