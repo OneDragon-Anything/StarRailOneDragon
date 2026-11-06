@@ -112,11 +112,12 @@ _SLOT_POINTS: list[list[Point]] = [
 # - 行尾「+」按钮 = 该行终焉公理弹窗入口(编入角色前后形态一致);
 # - 顶部垃圾桶一键清空全部三行+增益;右上箭头在 04 = 关闭编队屏(不可当收起);
 # - 槽位像素判空在 04 布局不可用(V/特征数/模板三方案实测无区分度),列表卡
-#   「队伍N」标记的用法 = ①找卡排除已入队卡(标记框中心实测落在本卡头像区
-#   锚推导 90x95 矩形内,与邻卡矩形不重叠;点已入队卡 = 移出)②清空验证;
-#   点卡不做逐人落位回验(2026-11-06 人类老莫定案:点击位置由识别给出,
-#   点对即落位)。标记长在列表卡上,收起或翻页后不可见——按页计数回验会
-#   永远小于全队累计数,曾致点对也判失败的重试死循环,禁用。
+#   「队伍N」标记只用于找卡排除已入队卡(标记框中心实测落在本卡头像区
+#   锚推导 90x95 矩形内,与邻卡矩形不重叠;点已入队卡 = 移出)。清空 =
+#   选人前无条件按一次顶部「清空编队」按钮(2026-11-06 定案),不做标记
+#   计数判定;点卡不做逐人落位回验(点击位置由识别给出,点对即落位)。
+#   标记长在列表卡上,收起或翻页后不可见——按页计数曾致假「已空」与点对
+#   也判失败的重试死循环,禁用。
 # --------------------------------------------------------------------------
 _ARC_ROW_SLOT_AREAS: dict[int, str] = {
     1: '04-行1槽位1',
@@ -159,6 +160,10 @@ class TlAsTeamFillOp(SrOperation):
         self._need_top: bool = True       #: 下一步需先滚回列表顶部
         self._down_stagnation: int = 0    #: 向下翻页停滞计数
         self._seen_sigs: set[str] = set() #: 本次搜索已见页签集合(到底判定)
+        self._last_seek_sig: str = ''     #: 上一轮扫描页签名(新页首帧判定)
+        # 当前页的扫描帧缓存(每页最多留 3 帧;坐标系 = 全图 1080p;
+        # 写入时机 = 每轮扫描入栈,翻页/回顶/换行清空)
+        self._page_frames: list[list[AnchorCell]] = []
         self._clear_slot: tuple[int, int] | None = None  #: 清空游标(行 0 基,槽 0 基)
 
     @operation_node(name='清空编队', is_start_node=True, node_max_retry_times=24)
@@ -172,20 +177,10 @@ class TlAsTeamFillOp(SrOperation):
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
             return self.round_fail('不在末日幻影编队屏(前置:选关点前往挑战)')
         if self._arc_mode:
-            # 星启:垃圾桶一键清空三行+增益(实测有效)。清空验证走标记计数
-            # (槽位像素判空在 04 不可用);标记长在列表卡上,收起态列表不可见
-            # 会恒读 0 误判已空——先保证列表展开再计数(收起态点行槽位 =
-            # 展开+选中,不移除角色)。垃圾桶无效时标记不降,retry 耗尽即
-            # fail 诚实上报。双节点逐槽移除路径不受影响。
-            if not self.round_by_find_area(
-                    screen, _TEAM_SCREEN, '列表-角色列表页签').is_success:
-                self._click_area_center(_TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[1])
-                return self.round_retry('收起态点行1槽位展开列表', wait=1.5)
-            tags = self._count_team_tags(screen)
-            if tags > 0:
-                self._click_area_center(_TEAM_SCREEN, _ARC_TRASH_AREA)
-                return self.round_retry(f'星启垃圾桶清空(残留标记{tags})', wait=2)
-            return self.round_success('星启编队已空', wait=1)
+            # 星启:选人前无条件按一次「清空编队」按钮(一键全清,人类老莫
+            # 2026-11-06 定案:不做标记计数判定,按完即走)
+            self._click_area_center(_TEAM_SCREEN, _ARC_TRASH_AREA)
+            return self.round_success('已按清空编队', wait=2)
         waves = read_team_waves(self.ctx, screen, screen_name=_TEAM_SCREEN)
         if not waves:
             # 锚未读到 = 降级空列表,不等于编队已空(弹窗遮挡锚行会走到这);
@@ -324,6 +319,7 @@ class TlAsTeamFillOp(SrOperation):
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
+        self._last_seek_sig = ''
         return self.round_wait('回列表顶部', wait=2)
 
     def _page_down(self, cells: list[AnchorCell], target: str,
@@ -345,6 +341,7 @@ class TlAsTeamFillOp(SrOperation):
             return self.round_fail(f'列表到底未找到 {target}')
         # 本机标定:慢拖 400px/0.5s = 精准 3 行无过冲(见 _SCROLL_* 常量注释);
         # 落定即识别清晰,wait 2s 留渲染余量
+        self._last_seek_sig = ''
         self.ctx.controller.drag_to(
             _SCROLL_TO, start=_SCROLL_FROM, duration=_SCROLL_DURATION)
         return self.round_wait('向下翻页', wait=2)
@@ -414,14 +411,27 @@ class TlAsTeamFillOp(SrOperation):
             for r in results if self._TEAM_TAG_PAT.match((r.data or '').strip())
         ]
 
-    def _count_team_tags(self, image) -> int:
-        """列表卡区可见「队伍N」标记数(仅清空验证用:可见页清零 = 已清)。"""
-        return len(self._team_tag_boxes(image))
-
     @staticmethod
     def _point_in_rect(p: Point, rect: Rect) -> bool:
         """点是否在矩形内(闭边界)。"""
         return rect.x1 <= p.x <= rect.x2 and rect.y1 <= p.y <= rect.y2
+
+    @staticmethod
+    def _merge_cells(frames: list[list[AnchorCell]]) -> list[AnchorCell]:
+        """同页多帧格子并集:「等级」锚 OCR 单帧随机漏卡(16 格单帧实测可只
+        读出 14),帧间漏的格子不同,并集近似全量。位置近重合(±12px)视为
+        同一格,无结论格被后续有结论帧覆盖。"""
+        merged: list[AnchorCell] = []
+        for frame in frames:
+            for cell in frame:
+                hit = next((m for m in merged
+                            if abs(m.center.x - cell.center.x) <= 12
+                            and abs(m.center.y - cell.center.y) <= 12), None)
+                if hit is None:
+                    merged.append(cell)
+                elif hit.guess.char is None and cell.guess.char is not None:
+                    merged[merged.index(hit)] = cell
+        return merged
 
     def _arc_fill_round(self, image, cells: list[AnchorCell],
                         row_no: int) -> OperationRoundResult:
@@ -481,7 +491,13 @@ class TlAsTeamFillOp(SrOperation):
             log.info('AS星启填充: 行%d 点 %s', row_no, '、'.join(clicked))
             return self.round_wait(f'行{row_no} 点卡{len(batch)}人', wait=0.5)
 
-        # ⑤ 本页无剩余目标前缀 → 翻页
+        # ⑤ 本页无剩余目标前缀:首见页先原页重扫一轮再翻——「等级」锚 OCR
+        # 单帧会漏卡(实机:目标所在页 16 格单帧只读出 14,目标格子不存在
+        # → 前缀断 → 直接翻页会把目标页落在身后),重扫 = 重掷一次识别
+        sig = self._page_sig(cells)
+        if sig != self._last_seek_sig:
+            self._last_seek_sig = sig
+            return self.round_wait('本页重扫(锚漏卡重掷)', wait=1)
         return self._page_down(cells, row_targets[self._char_idx], row_no)
 
     def _advance_row(self, row_no: int) -> OperationRoundResult:
