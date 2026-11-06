@@ -1,6 +1,6 @@
 # AI 编码助手接入
 
-本仓库多人协作开发,各开发者所用 coding agent 不一定相同(DSH、Claude Code 等)。本文档是**通用方法论**(工具无关),各工具的接线(入口文件 / MCP / skills 挂载)在下文按工具并列;Claude Code 专属接线在 [claude-code/](claude-code/)。
+本仓库多人协作开发,各开发者所用 coding agent 不一定相同(DSH、Claude Code 等)。本文档是**通用方法论**(工具无关),各工具的接入配置(入口文件 / MCP / skills 挂载)在下文按工具并列;Claude Code 专属接入配置在 [claude-code/](claude-code/)。
 
 ## 团队源 vs 个人入口
 
@@ -50,5 +50,5 @@ Skill 是 AI 编码工具的可调用能力。要点:**每个工具只读自己�
 ## 相关文档
 
 - [AGENTS.md](../../../AGENTS.md) — 统一 AI 编码协作入口
-- [claude-code/](claude-code/) — Claude Code 专属接线(entry-file / commit-trailer)
+- [claude-code/](claude-code/) — Claude Code 专属接入配置(entry-file / commit-trailer)
 - [快速上手](quickstart.md)

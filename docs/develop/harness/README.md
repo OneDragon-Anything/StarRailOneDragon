@@ -51,7 +51,7 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 
 ## 架构原则
 
-1. **单一信息源**：项目知识集中在 `AGENTS.md` + `docs/`；各工具引入 `AGENTS.md`（DSH 原生加载 + `AGENTS.local.md` 个人补充；Claude Code 经 `.claude/CLAUDE.md` `@import`，接线见 [agent_instruction_files.md](agent_instruction_files.md)）；判据见 [context_layering.md](context_layering.md)。
+1. **单一信息源**：项目知识集中在 `AGENTS.md` + `docs/`；各工具引入 `AGENTS.md`（DSH 原生加载 + `AGENTS.local.md` 个人补充；Claude Code 经 `.claude/CLAUDE.md` `@import`，接入配置见 [agent_instruction_files.md](agent_instruction_files.md)）；判据见 [context_layering.md](context_layering.md)。
 2. **贵重 infra 常驻**：MCP 的价值是让 `SrContext`（OCR / YOLO / 控制器）常驻内存，规避每次冷启动数秒成本。
 3. **共享 Layer 0、单服务器生长**：A→B1 工具在同一 MCP 服务器内按命名空间增长；B2（模型实时当玩家）另起独立 loop，复用 Layer 0，MCP 退为控制面。
 

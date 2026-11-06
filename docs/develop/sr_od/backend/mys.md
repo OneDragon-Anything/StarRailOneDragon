@@ -1,6 +1,6 @@
 # mys（米游社账号接入：sr_od 封装与 MCP 工具）
 
-> 正本文档：与 `src/sr_od/mys/`、`src/sr_od/backend/mcp/mys_tools.py` 实现保持一致。通用层（登录/客户端/会话）见 [one_dragon/mys README](../../../one_dragon/mys/README.md)；协议规格见 [application/account_profile/miyoushe-api-flow.md](../application/account_profile/miyoushe-api-flow.md)。
+> 权威版本文档：与 `src/sr_od/mys/`、`src/sr_od/backend/mcp/mys_tools.py` 实现保持一致。通用层（登录/客户端/会话）见 [one_dragon/mys README](../../../one_dragon/mys/README.md)；协议规格见 [application/account_profile/miyoushe-api-flow.md](../application/account_profile/miyoushe-api-flow.md)。
 
 ## sr_od/mys（崩铁特有封装）
 

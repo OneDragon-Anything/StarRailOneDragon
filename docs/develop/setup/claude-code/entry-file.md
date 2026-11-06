@@ -2,7 +2,7 @@
 
 > 适用于 Claude Code 用户;所用工具不同见 [../ai_coding.md](../ai_coding.md) 按工具并列的接法。
 
-> [ai_coding.md](../ai_coding.md)「团队源 vs 个人入口」在 Claude Code 上的具体接线。
+> [ai_coding.md](../ai_coding.md)「团队源 vs 个人入口」在 Claude Code 上的具体接入配置。
 
 ## 推荐:用 `@` 引入 AGENTS.md
 

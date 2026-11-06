@@ -30,7 +30,7 @@ source_image: screens/货币战争-投资环境/default.webp
 
 ## 关键数据(策略相关)
 
-> bot 行为(系统侧设计权威版本 = `docs/develop/sr_od/application/currency_war/screens/invest_env.md`):观察 node OCR 3 卡名落容器 → 策略契约 `decide_invest_env` 打分(判据 = 策略层 `strategies/impl/mandate_v1/invest_env.py`,权威版本 = `strategy-docs/28_invest_env_screen.md`:统一加法标尺 = 现金+方向+赠卡+立场+转向轴,优先经济后终局阵容)→ 环境帧判据可发**整组刷新**(终结交回重观察)∨ 点最优卡描述区 + 确认(确认链 = `CwActionPickInvestOp`)。环境 overlay 时 board 无新鲜观察,dot 惩罚细化自然失效,定序主判据不依赖 board。
+> bot 行为(系统侧设计权威版本 = `docs/develop/sr_od/application/currency_war/screens/invest_env.md`):观察 node OCR 3 卡名写入状态容器 → 策略契约 `decide_invest_env` 打分(判据 = 策略层 `strategies/impl/mandate_v1/invest_env.py`,权威版本 = `strategy-docs/28_invest_env_screen.md`:统一加法标尺 = 现金+方向+赠卡+立场+转向轴,优先经济后终局阵容)→ 环境帧判据可发**整组刷新**(终结交回重观察)∨ 点最优卡描述区 + 确认(确认链 = `CwActionPickInvestOp`)。环境 overlay 时 board 无新鲜观察,dot 惩罚细化自然失效,定序主判据不依赖 board。
 
 - **3 选项(本场实例)**:
   1. **昼之半神概念股** — 开局得【昼之半神】角色 + 初始简易装备,昼之半神角色刷新率提高。(阵营 buff)

@@ -1,6 +1,6 @@
 # one_dragon/mys（米游社账号通用客户端）
 
-> 正本文档：与 `src/one_dragon/mys/` 实现保持一致。协议权威出处 = [sr_od/application/account_profile/miyoushe-api-flow.md](../sr_od/application/account_profile/miyoushe-api-flow.md)（端点/签名/头集/验证分支逐项规格）；本文件只写「怎么用、怎么存、哪些红线」。
+> 权威版本文档：与 `src/one_dragon/mys/` 实现保持一致。协议权威出处 = [sr_od/application/account_profile/miyoushe-api-flow.md](../sr_od/application/account_profile/miyoushe-api-flow.md)（端点/签名/头集/验证分支逐项规格）；本文件只写「怎么用、怎么存、哪些红线」。
 
 ## 包定位
 

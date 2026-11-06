@@ -1,6 +1,6 @@
-# mys 数据层正本（账号数据映射 + 游戏静态定义）
+# mys 数据层权威版本（账号数据映射 + 游戏静态定义）
 
-> `SrBackendContext` mys 切片的两个数据域：**账号运行时数据**（米游社接口实时拉取）与**游戏静态定义**（官方 wiki 快照固化为 Python 常量）。本文是结构契约正本（as-built）；迭代过程见 `changes/`，数据管道工序归私有 skill `sr-od-dev-relic-data`（junction 挂载，不入本仓）。
+> `SrBackendContext` mys 切片的两个数据域：**账号运行时数据**（米游社接口实时拉取）与**游戏静态定义**（官方 wiki 快照固化为 Python 常量）。本文是结构契约权威版本（as-built）；迭代过程见 `changes/`，数据管道工序归私有 skill `sr-od-dev-relic-data`（junction 挂载，不入本仓）。
 
 ## 1. 游戏静态定义（遗器套装数据层）
 
