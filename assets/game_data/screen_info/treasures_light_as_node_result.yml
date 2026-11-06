@@ -20,9 +20,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 1109
-  - 878
+  - 875
   - 1395
-  - 928
+  - 985
   text: 前往节点二
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -34,9 +34,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 1109
-  - 878
+  - 875
   - 1395
-  - 928
+  - 985
   text: 返回末日幻影
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -48,9 +48,9 @@ area_list:
   id_mark: true
   pc_rect:
   - 765
-  - 878
-  - 1048
-  - 928
+  - 875
+  - 1060
+  - 985
   text: 重新挑战
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -62,9 +62,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 528
-  - 878
-  - 737
-  - 928
+  - 875
+  - 745
+  - 985
   text: 退出
   lcs_percent: 0.5
   template_sub_dir: ''
