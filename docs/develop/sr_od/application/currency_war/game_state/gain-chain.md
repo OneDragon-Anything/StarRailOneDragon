@@ -769,10 +769,10 @@ perfect` → `check_env_item_open_perfect`(消费)——改写先于消费,两�
   共域计数形键 `perfect_rescue#<卡名>#<已耗序>`,前缀计数 < 配额放行);
   宁缺勿造同族:环 <2 行/字段 None/killed≠True/deployed 未观察 → 不判定;
 - **成立三笔**:①配额闩追加;②瞬时位写 True(每次判定执行 True/False
-  恒写,无陈值泄漏);③出售腿(sim 门内):deployed 序首个携带者槽置
+  恒写,无陈值泄漏);③出售写状态的实现分支(sim 门内):deployed 序首个携带者槽置
   None 定长视图重建写(动态子表直读不经定长 10 截断桥)+ 退款金 observe
   笔(`sell_refund(star, bench_char_cost(u, gs))` 卖价公式单一源)+
-  装备回收第三笔(sold.equips 非空回库存);**live 出售腿零写**(游戏自
+  装备回收第三笔(sold.equips 非空回库存);**live 侧出售写状态的实现分支零写**(游戏自
   执行出售,部署视图刷新/金读数观察承接);
 - **sim 结构性休眠**(设计正确路径勿接线):sim 部署单位 unit.equips 恒空
   → 徽携带恒假;双重休眠第二独立理由 = sim 结算帧胜利不掉血 →「胜利∧
@@ -924,7 +924,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
     设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。T-14 蓝海追加
     链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
-    触发,设计披露键 6);姊妹卡退化策略腿已按本机制落地(on_strategy_gained
+    触发,设计披露键 6);姊妹卡退化形态的只供策略算分的实现分支已按本机制落地(on_strategy_gained
     硬编码分支,选择规则换取尾,mid-run 守卫住 HP 回调,见下)。
     设计权威版本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
@@ -1046,10 +1046,10 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
   `box_grant:<道具名>(placed=<是否落位>)`),发放名单单一源 =
   cw_gain_effects `_STRATEGY_BOX_GRANTS`(卡规范名 → 道具名;与登记面镜像
   `cw_investments.STRATEGY_GRANTS` 同名卡 `items_immediate` 逐对相等,
-一致性测试)。箱腿卡的战斗被动效果按卡分述:战术义眼+/战术义眼++
+一致性测试)。含箱效果条目的卡的战斗被动效果按卡分述:战术义眼+/战术义眼++
 能量恢复、保守派伤害减免 = 战斗被动非「获得时点」效果,已登记
 STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
-卡面零战斗腿词面(仅箱分支),非「获得时点」效果,不在效果体(获得时点
+卡面零战斗效果条目词面(仅箱分支),非「获得时点」效果,不在效果体(获得时点
   字段写操作分支适用范围外);快请专家·彩的好运令牌分支(非占席
   道具,消耗品域)与空括号分支(数据源缺口禁猜)同不在。
   **具名装备授予支**(具名装备授予族,全员晋升首例):效果体消费
@@ -1060,7 +1060,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   placed=False);登记单一源 = cw_gain_effects `PICK_INVEST_EFFECTS`
   直书登记行(`_make_named_equip_grant_effect` 生成闭包,精密金面前置
   fail-closed 申报在工厂,按物判不按卡判)。
-  **具名角色支首例**(溜佩佩/溜佩佩+/招财狗,佩佩召唤族世界腿;溜佩佩系
+  **具名角色支首例**(溜佩佩/溜佩佩+/招财狗,佩佩召唤族把结果写进状态副本的实现分支;溜佩佩系
   登记面 = 非直读人工转正,招财狗 = 「获得」直读登记):效果体消费
   `gain_character(rand=False)` 具名入席(星级实参 1
   = 占位非先验,佩佩 = cost0 系统召唤单位无星级),落位/回调/升星/席满
@@ -1069,10 +1069,10 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   发放名单单一源 = cw_gain_effects `_STRATEGY_CHAR_GRANTS`(卡规范名 →
   发放角色;与登记面镜像 `cw_investments.STRATEGY_GRANTS` 三卡
   `chars_immediate` 逐对相等,一致性测试;族后继卡 +1 行复用)。
-  **延时 offer 登记腿**(策略卡延时三选一通道,黄金期货首例):注册表
+  **延时 offer 只登记不写状态的实现分支**(策略卡延时三选一通道,黄金期货首例):注册表
   `cw_investments.STRATEGY_DELAYED_OFFERS`(卡规范名 → 条目元组
   (id/倒计时/候选品质/刷新授权),白名单制;倒计时 0 = 拿卡拍立即分支;
-  白银投资 = 族首张含两条效果条目的卡,两条效果条目 @0+@3)+1 行即自动获得登记腿(效果体由
+  白银投资 = 族首张含两条效果条目的卡,两条效果条目 @0+@3)+1 行即自动获得只登记不写状态的实现分支(效果体由
   该表派生,键集封闭断言守住两表面)。效果体消费
   `queue_delayed_invest_offer`(§2 入队原语,登记 = 确定事件零采样):
   逐条追加 `(卡名, 倒计时)` 到 `pending_strategy_offers` 一次 write
@@ -1081,13 +1081,13 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   专用分支(不对称申报,live 队列恒悬置,域规格 = fields.md §3.2.26)。
   未建模申报归
   [strategy-env-impacts.md](strategy-env-impacts.md) §3;未收录卡安静不写。
-  **延时发放登记腿**(策略卡延时状态副本发放通道,人才激励 id 101601 首例,
+  **延时发放只登记不写状态的实现分支**(策略卡延时状态副本发放通道,人才激励 id 101601 首例,
   与延时 offer 族并列独立域——本族到点产出 = 状态副本发放写,offer 族 =
   选卡屏事件):注册表 `cw_investments.STRATEGY_DELAYED_GRANTS`(卡规范名
   → id/倒计时/发放物,白名单制;构建校验漂移哨 = 孤儿键/id 双匹配/
   发放物名(item 确定行与 item_choices 逐元素)∈ EQUIPMENTS ∪
   BENCH_ITEM_NAMES/类别池(item_category 非空行,equips_by_category
-  派生池非空))+1 行即自动获得登记腿
+  派生池非空))+1 行即自动获得只登记不写状态的实现分支
   (效果体由该表派生)。效果体两步:即时分支 `gain_equipment(rand=False)`
   具名入栏(效果串 `equip_grant:<发放物>(placed=<是否落位>)`;equips
   未观察 = 拒落零写)+ 延时入队分支 `queue_delayed_strategy_grant`(§2
@@ -1104,7 +1104,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   逐条独立倒计时,到点逐条独立发放/独立席满判定;default 1 与单次
   入队逐位一致)。随机 choice-set 行(是钻石总会发光 id 131101,族内
   首个随机发放行):注册行 `item=''` + `item_choices` 封闭集(「获得
-  【红钻】或【蓝钻】」直读,非类别池),登记腿效果串两形并存——单物形
+  【红钻】或【蓝钻】」直读,非类别池),只登记不写状态的实现分支效果串两形并存——单物形
   `strategy_grant_scheduled:好运令牌@3` 与 choice-set 形
   `strategy_grant_scheduled:红钻|蓝钻@2`(封闭集竖线连接,构造点单一
   住入队原语);队列仍只存卡名、随机值不入队,掷骰时点 = 到点发放窗
@@ -1118,8 +1118,8 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   标记字面 ∉ EQUIPMENTS,构造点同一住入队原语);掷骰时点/队列形态/
   发放子链 rand=True 与 choice-set 行同构,池空 = 注册表漂移 → log
   防御 + 条目保留(查行失败同形)。周期 repeat 行(好运令牌·彩 id 331601,
-  周期型首例,两腿卡:即时「获得1个【好运令牌】」= 双条目工厂即时分支 +
-  周期腿「每累计进入4个节点后，获得1个【好运令牌】」repeat=True):到点
+  周期型首例,含两条效果条目的卡:即时「获得1个【好运令牌】」= 双条目工厂即时分支 +
+  周期效果条目「每累计进入4个节点后，获得1个【好运令牌】」repeat=True):到点
   发放后(无论落位成败,拒落亦重排)以同参 (卡名, delay_nodes) 重排队,
   队列长度恒 1 自续至局终(拿卡后每 4 后继节点窗各 1 件;计数起点 =
   拿卡节点后继窗,家族口径)——登记效果体与既有双条目工厂同形,repeat
