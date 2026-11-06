@@ -374,14 +374,20 @@ class TlAsTeamFillOp(SrOperation):
         self.ctx.controller.click(
             Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2), press_time=0.15)
 
-    #: 「队伍N」标记匹配:须「队伍」紧跟数字——编队屏顶部横幅「队伍发生变动…」
-    #: 同含「队伍」二字,宽松包含匹配会把常驻横幅计入,清空/回验永不收敛(实测翻车)
+    #: 「队伍N」标记匹配:须「队伍」紧跟数字(双保险第二道)。
     _TEAM_TAG_PAT: ClassVar[re.Pattern] = re.compile(r'^队伍\s*\d')
 
+    #: 「队伍N」标记计数区 = 列表展开态的角色卡区(x 40-600 / y 190-970)。
+    #: 限定区域是第一道防线:顶部横幅「队伍发生变动…」(右侧节点卡区)与
+    #: boss 卡区文字天然排除在裁片外;数字后缀正则为第二道。
+    _TEAM_TAG_ZONE: ClassVar[tuple[int, int, int, int]] = (40, 190, 600, 970)
+
     def _count_team_tags(self, image) -> int:
-        """全帧 OCR 数「队伍N」标记:每入队一人恰一张列表卡带标记,计数即
-        累计落位数(星启填充回验的唯一推进信号)。"""
-        results = self.ctx.ocr_service.get_ocr_result_list(image=image)
+        """在列表卡区内 OCR 数「队伍N」标记:每入队一人恰一张卡带标记,
+        计数即累计落位数(星启填充回验的唯一推进信号)。"""
+        x1, y1, x2, y2 = self._TEAM_TAG_ZONE
+        results = self.ctx.ocr_service.get_ocr_result_list(
+            image=image[y1:y2, x1:x2])
         return sum(
             1 for r in results if self._TEAM_TAG_PAT.match((r.data or '').strip()))
 
