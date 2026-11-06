@@ -4,7 +4,8 @@
 拆分为多个可独立 ``run_operation`` 的 op(人类老莫 2026-11-06 指示:不同场景
 用不同 op,挑战 op 组合它们):
 
-- :class:`TlAsTeamFillOp` 编队选人:清空两行 + 按目标填 8 人(落位回验驱动);
+- :class:`TlAsTeamFillOp` 编队选人:清空两/三行 + 按目标填 8/12 人
+  (星启整页批量点卡,双节点逐人回验驱动);
   起点 = 末日幻影-编队,终点 = 编队屏(已填满)。
 - :class:`TlAsAxiomEquipOp` 终焉公理装配:两行右端圆圈 → 弹窗选卡 → 装配效果;
   起点 = 编队屏(已填人),终点 = 编队屏(已装配)。
@@ -45,6 +46,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -99,11 +101,12 @@ _SLOT_POINTS: list[list[Point]] = [
 #   反复加/移,找卡与点卡重试都必须避开带标记的卡;
 # - 行尾「+」按钮 = 该行终焉公理弹窗入口(编入角色前后形态一致);
 # - 顶部垃圾桶一键清空全部三行+增益;右上箭头在 04 = 关闭编队屏(不可当收起);
-# - 槽位像素判空在 04 布局不可用(V/特征数/模板三方案实测无区分度),填充
-#   落位回验走列表卡「队伍N」标记:标记框中心实测落在本卡头像区(锚推导
-#   90x95 矩形)内、与邻卡矩形不重叠,按「被点那张卡是否带标记」单卡判定。
-#   标记长在列表卡上,列表收起或翻走后不可见——回验不可按页计数(会漏掉
-#   翻走的已入队卡,计数永远小于全队累计数,点对了也判失败)。
+# - 槽位像素判空在 04 布局不可用(V/特征数/模板三方案实测无区分度),列表卡
+#   「队伍N」标记的用法 = ①找卡排除已入队卡(标记框中心实测落在本卡头像区
+#   锚推导 90x95 矩形内,与邻卡矩形不重叠;点已入队卡 = 移出)②清空验证;
+#   点卡不做逐人落位回验(2026-11-06 人类老莫定案:点击位置由识别给出,
+#   点对即落位)。标记长在列表卡上,收起或翻页后不可见——按页计数回验会
+#   永远小于全队累计数,曾致点对也判失败的重试死循环,禁用。
 # --------------------------------------------------------------------------
 _ARC_ROW_SLOT_AREAS: dict[int, str] = {
     1: '04-行1槽位1',
@@ -146,13 +149,7 @@ class TlAsTeamFillOp(SrOperation):
         self._need_top: bool = True       #: 下一步需先滚回列表顶部
         self._down_stagnation: int = 0    #: 向下翻页停滞计数
         self._seen_sigs: set[str] = set() #: 本次搜索已见页签集合(到底判定)
-        self._last_page_sig: str = ''     #: 上一页签名(回顶判定用)
         self._clear_slot: tuple[int, int] | None = None  #: 清空游标(行 0 基,槽 0 基)
-        # 星启点卡复验态(三者同置同清;坐标系 = 全图 1080p,取值时机 = 点卡
-        # 写入、复验轮读、落位/换行清空)
-        self._pending_center: Point | None = None  #: 已点待复验的列表卡点击中心
-        self._pending_rect: Rect | None = None     #: 已点待复验的列表卡头像区矩形
-        self._click_rounds: int = 0                #: 当前角色点卡后的复验轮数(点卡轮 = 1)
 
     @operation_node(name='清空编队', is_start_node=True, node_max_retry_times=24)
     def _clear_teams(self) -> OperationRoundResult:
@@ -209,12 +206,13 @@ class TlAsTeamFillOp(SrOperation):
     @node_from(from_name='清空编队')
     @operation_node(name='填充循环', node_max_retry_times=160)
     def _fill_loop(self) -> OperationRoundResult:
-        """逐行逐角色填充:行选中守卫 → 落位回验 → 回顶 → 逐页找目标 → 点卡。
+        """逐行填充:行选中守卫 → 星启整页批量点卡 / 双节点逐人找卡。
 
-        落位回验是推进的唯一依据:星启 = 「队伍N」标记单卡判定
-        (_arc_fill_round);双节点 = 行成员名字匹配。名字匹配含置信名与
-        候选表第一名。行选中守卫:收起态点目标行槽位 = 展开+选中,
-        一步到位;跨行切换时点下一行槽位(星启;清空后槽位全空无移除风险)。"""
+        星启 = 每次识别把当前行剩余目标在本页可见的连续前缀段一次点完
+        (0.5s/次),点完回顶继续,不做逐人落位回验(点击位置由识别给出,
+        点对即落位);带标记的卡绝不点。双节点 = 行成员名字匹配回验 +
+        逐人找卡(实机验证过的路径)。行选中守卫:收起态点目标行槽位 =
+        展开+选中;跨行切换点下一行槽位(清空后槽位全空无移除风险)。"""
         image = self.last_screenshot
         if self._row_idx >= len(self.teams):
             return self.round_success('填充完成', wait=1)
@@ -265,11 +263,10 @@ class TlAsTeamFillOp(SrOperation):
             self.ctx.controller.click(row_slot_point, press_time=0.15)
             return self.round_wait('展开列表(回验/找卡前置)', wait=1.5)
 
-        # 落位回验与找卡:星启 = 标记单卡判定(见 _arc_fill_round);双节点 =
-        # 行成员名字匹配(实机验证过的路径)。
+        # 找卡:星启 = 整页批量(见 _arc_fill_round);双节点 = 逐人找卡。
         cells = read_character_cells_by_level(self.ctx, image)
         if self._arc_mode:
-            return self._arc_fill_round(image, cells, target, row_no)
+            return self._arc_fill_round(image, cells, row_no)
 
         waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
         if not waves:
@@ -288,7 +285,7 @@ class TlAsTeamFillOp(SrOperation):
                         row_no: int) -> OperationRoundResult:
         """双节点找卡:回顶守卫 → 当前页找目标 → 点卡 → 无匹配翻页。"""
         if self._need_top:
-            return self._return_to_top(cells)
+            return self._return_to_top()
 
         # 名字精确匹配:变体卡(丹恒•腾荒/姬子•启行)是独立角色,前缀/分隔符
         # 模糊匹配会把不同角色误当目标——队伍名必须给列表卡的全名。
@@ -303,24 +300,17 @@ class TlAsTeamFillOp(SrOperation):
             return self.round_wait(f'点击 {target}', wait=1)
         return self._page_down(cells, target, row_no)
 
-    def _return_to_top(self, cells: list[AnchorCell]) -> OperationRoundResult:
-        """搜索前置:滚回列表顶部(页签连续两次相同 = 到顶)。
-
-        空识别帧(展开动画/OCR 抖动)不参与判定,视为未就绪重试。"""
-        sig = self._page_sig(cells)
-        if not sig:
-            return self.round_wait('列表识别未就绪,重试', wait=1.5)
-        if sig == self._last_page_sig:
-            self._need_top = False
-            self._down_stagnation = 0
-            self._seen_sigs = set()
-            self._last_page_sig = ''
-            return self.round_wait('已回到列表顶部', wait=0.5)
-        self._last_page_sig = sig
-        for _ in range(3):
+    def _return_to_top(self) -> OperationRoundResult:
+        """固定快速大幅上拖回顶,不验证到位(人类老莫 2026-11-06 定案:
+        大幅快速上拖数次 + 停 1 秒即视为到顶——列表天然止于顶部,拖过头
+        无副作用;省掉两帧页签比对的逐轮收敛,每角色省 10-20 秒)。"""
+        for _ in range(5):
             self.ctx.controller.drag_to(
-                Point(300, 760), start=Point(300, 430), duration=0.4)
-        return self.round_wait('滚回列表顶部', wait=3)
+                Point(300, 250), start=Point(300, 850), duration=0.25)
+        self._need_top = False
+        self._down_stagnation = 0
+        self._seen_sigs = set()
+        return self.round_wait('回列表顶部', wait=1)
 
     def _page_down(self, cells: list[AnchorCell], target: str,
                    row_no: int) -> OperationRoundResult:
@@ -335,9 +325,10 @@ class TlAsTeamFillOp(SrOperation):
             self._seen_sigs.add(sig)
         if self._down_stagnation >= 4:
             return self.round_fail(f'列表到底未找到 {target}')
-        # 翻页后等滚动动画完全停止再识别(滚动未停帧识别名随机缺失)
+        # 翻页后等滚动基本停止再识别(1.5s;偶发滚动未停帧的杂音识别页
+        # 不含目标 → 下轮继续翻,自校正)
         self.ctx.controller.drag_to(_SCROLL_TO, start=_SCROLL_FROM, duration=0.6)
-        return self.round_wait('向下翻页', wait=3)
+        return self.round_wait('向下翻页', wait=1.5)
 
     @staticmethod
     def _page_sig(cells: list) -> str:
@@ -352,11 +343,8 @@ class TlAsTeamFillOp(SrOperation):
         ))
 
     def _advance_after_hit(self, target: str, row_no: int) -> OperationRoundResult:
-        """落位推进游标:行内下一角色 → 跨行(星启点目标行槽位收起,双节点点
-        右上收起箭头) → 全部完成。"""
-        self._pending_center = None
-        self._pending_rect = None
-        self._click_rounds = 0
+        """落位推进游标(仅双节点):行内下一角色 → 跨行(点右上收起箭头)
+        → 全部完成。星启走 _arc_fill_round 的批量推进,不经此方法。"""
         self._char_idx += 1
         self._need_top = True
         if self._char_idx >= 4:
@@ -364,13 +352,7 @@ class TlAsTeamFillOp(SrOperation):
             self._row_idx += 1
             self._row_selected = False
             if self._row_idx < len(self.teams):
-                if self._arc_mode:
-                    # 星启:点下一行槽位两连(收起+重展开选中),由守卫复验收敛;
-                    # 清空后槽位全空,点击无移除风险
-                    self._click_area_center(
-                        _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[self._row_idx + 1])
-                else:
-                    self.ctx.controller.click(Point(1862, 68), press_time=0.15)
+                self.ctx.controller.click(Point(1862, 68), press_time=0.15)
                 return self.round_wait(f'行 {row_no} 填充完成,切下一行', wait=1.2)
             return self.round_success('填充完成', wait=1)
         return self.round_wait(f'{target} 已落位', wait=0.8)
@@ -403,11 +385,6 @@ class TlAsTeamFillOp(SrOperation):
     #: boss 卡区文字天然排除在裁片外;数字后缀正则为第二道。
     _TEAM_TAG_ZONE: ClassVar[tuple[int, int, int, int]] = (40, 190, 600, 970)
 
-    #: 星启点卡复验上限(轮,点卡轮 = 1):奇数轮只等、偶数轮才重点一次——
-    #: 若点卡已生效而标记 OCR 偶发漏读,立即重点会把人移出(列表卡点击 =
-    #: 加/移开关);到顶诚实 fail,由上层报警。
-    _ARC_MAX_CLICK_ROUNDS: ClassVar[int] = 5
-
     def _team_tag_boxes(self, image) -> list[Point]:
         """列表卡区内全部「队伍N」标记框中心(全图坐标;裁片结果加区域偏移)。"""
         x1, y1, x2, y2 = self._TEAM_TAG_ZONE
@@ -419,9 +396,7 @@ class TlAsTeamFillOp(SrOperation):
         ]
 
     def _count_team_tags(self, image) -> int:
-        """列表卡区可见「队伍N」标记数(仅清空验证用:可见页清零 = 已清;
-        填充落位回验不走计数——翻页后其他已入队卡的标记不可见,见
-        _arc_fill_round)。"""
+        """列表卡区可见「队伍N」标记数(仅清空验证用:可见页清零 = 已清)。"""
         return len(self._team_tag_boxes(image))
 
     @staticmethod
@@ -429,72 +404,79 @@ class TlAsTeamFillOp(SrOperation):
         """点是否在矩形内(闭边界)。"""
         return rect.x1 <= p.x <= rect.x2 and rect.y1 <= p.y <= rect.y2
 
-    def _arc_fill_round(self, image, cells: list[AnchorCell], target: str,
+    def _arc_fill_round(self, image, cells: list[AnchorCell],
                         row_no: int) -> OperationRoundResult:
-        """星启填人单轮:点卡复验 → 找卡 → 翻页。
+        """星启整页批量填人单轮(人类老莫 2026-11-06 定案:不逐人回验)。
 
-        回验依据 = 「队伍N」标记框中心是否落在**被点那张卡**的头像区矩形内
-        (单卡几何判定,与翻页无关;复验期禁止重找——名字识别在卡片带标记后
-        会抖动,重找可能命中误认卡点进无关角色,实机实证)。任何带标记的卡
-        都绝不点击:列表卡点击是加/移开关,点已入队角色的卡会把人移出队伍;
-        找卡命中不唯一时置信名优先。可见命中全带标记(目标已在队)不判成功
-        ——可能是别的卡被误认成目标,误判会静默编错队伍,交给翻页找真卡、
-        到底由停滞判定诚实失败。"""
+        每次识别把当前行剩余目标中「本页可见的连续前缀段」按队伍顺序一次
+        点完(0.5s/人),点完回顶继续——点击位置由识别给出,点对即落位。
+        顺序必须严格跟随队伍序:列表卡点击落进当前选中行首个空槽,跳名
+        点击会把人落进前面目标的槽位错位。带标记的卡绝不点击:列表卡点击
+        是加/移开关,点已入队角色的卡会把人移出队伍;队首目标只剩带标记
+        命中 = 已入队(重复生效的点击),跳过游标不点。"""
         tag_centers = self._team_tag_boxes(image)
 
         def badged(cell: AnchorCell) -> bool:
             return cell.rect is not None and any(
                 self._point_in_rect(p, cell.rect) for p in tag_centers)
 
-        # ① 点击复验:只验被点那张卡(几何判定,不吃名字识别抖动)
-        if self._pending_rect is not None and self._pending_center is not None:
-            if any(self._point_in_rect(p, self._pending_rect)
-                   for p in tag_centers):
-                log.info('AS星启回验: 标记落回被点卡片,%s 落位', target)
-                return self._advance_after_hit(target, row_no)
-            self._click_rounds += 1
-            if self._click_rounds >= self._ARC_MAX_CLICK_ROUNDS:
-                return self.round_fail(
-                    f'{target} 点卡复验{self._click_rounds}轮未落位')
-            still_there = any(
-                target in self._cell_names(c) and not badged(c)
-                and abs(c.center.x - self._pending_center.x) <= 8
-                and abs(c.center.y - self._pending_center.y) <= 8
-                for c in cells)
-            if self._click_rounds % 2 == 0 and still_there:
-                # 名字仍认得这张卡且无标记 = 点击确实没生效,补点一次;
-                # 奇数轮只等(防「已生效但标记漏读」被重点移出)
-                self.ctx.controller.click(self._pending_center, press_time=0.15)
-                return self.round_wait(
-                    f'点 {target}(复验{self._click_rounds}轮)', wait=1)
-            return self.round_wait(
-                f'等 {target} 标记出现(复验{self._click_rounds}轮)', wait=1)
+        def find_cell(name: str) -> list[AnchorCell]:
+            """该名字在本页的全部命中(置信命中排前)。"""
+            hits = [c for c in cells if name in self._cell_names(c)]
+            hits.sort(key=lambda c: c.guess.char != name)
+            return hits
 
-        # ② 搜索前置:先回列表顶部(翻页序扫描的前提)
+        # ① 搜索前置:回列表顶部(固定快速大幅上拖,见 _return_to_top)
         if self._need_top:
-            return self._return_to_top(cells)
+            return self._return_to_top()
 
-        # ③ 找卡:置信名优先,其次候选名;只点不带标记的卡
-        hit: AnchorCell | None = None
-        for cell in cells:
-            if cell.guess.char == target and not badged(cell):
-                hit = cell
+        # ② 队首目标只剩带标记命中 = 已入队,跳过游标不点(点 = 移出)
+        row_targets = self.teams[self._row_idx]
+        while self._char_idx < len(row_targets):
+            head_hits = find_cell(row_targets[self._char_idx])
+            if not head_hits or not all(badged(c) for c in head_hits):
                 break
-        if hit is None:
-            for cell in cells:
-                if target in self._cell_names(cell) and not badged(cell):
-                    hit = cell
-                    break
-        if hit is not None and hit.rect is not None:
-            self._pending_center = hit.center
-            self._pending_rect = hit.rect
-            self._click_rounds = 1
-            self.ctx.controller.click(hit.center, press_time=0.15)
-            log.info('AS星启填充: 行%d 点 %s', row_no, target)
-            return self.round_wait(f'点击 {target}', wait=1)
+            log.info('AS星启填充: 行%d %s 已带标记,跳过', row_no,
+                     row_targets[self._char_idx])
+            self._char_idx += 1
 
-        # ④ 本页无目标 → 翻页
-        return self._page_down(cells, target, row_no)
+        # ③ 行完成 → 切下一行 / 全部完成
+        if self._char_idx >= len(row_targets):
+            return self._advance_row(row_no)
+
+        # ④ 本页连续前缀段批量点卡(严格按队伍顺序)
+        batch: list[AnchorCell] = []
+        for name in row_targets[self._char_idx:]:
+            hits = [c for c in find_cell(name) if not badged(c)]
+            if not hits:
+                break
+            batch.append(hits[0])
+        if batch:
+            clicked: list[str] = []
+            for cell in batch:
+                self.ctx.controller.click(cell.center, press_time=0.15)
+                clicked.append(row_targets[self._char_idx])
+                self._char_idx += 1
+                time.sleep(0.5)  #: 点击响应垫(选人点击瞬时生效,防连点丢帧)
+            self._need_top = True
+            log.info('AS星启填充: 行%d 点 %s', row_no, '、'.join(clicked))
+            return self.round_wait(f'行{row_no} 点卡{len(batch)}人', wait=0.5)
+
+        # ⑤ 本页无剩余目标前缀 → 翻页
+        return self._page_down(cells, row_targets[self._char_idx], row_no)
+
+    def _advance_row(self, row_no: int) -> OperationRoundResult:
+        """星启行完成推进:游标复位 + 点下一行槽位(收起+重选中,由行守卫
+        复验展开);最后一行 = 填充完成。"""
+        self._char_idx = 0
+        self._row_idx += 1
+        self._row_selected = False
+        self._need_top = True
+        if self._row_idx < len(self.teams):
+            self._click_area_center(
+                _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[self._row_idx + 1])
+            return self.round_wait(f'行 {row_no} 填充完成,切下一行', wait=1.2)
+        return self.round_success('填充完成', wait=1)
 
     @staticmethod
     def _cell_names(cell) -> list[str]:
