@@ -229,12 +229,12 @@ area_list:
 - area_name: 徽章-难度03
   id_mark: false
   pc_rect:
-  - 280
+  - 255
   - 213
-  - 440
+  - 445
   - 252
   text: 难度03
-  lcs_percent: 0.5
+  lcs_percent: 0.85
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
@@ -243,12 +243,12 @@ area_list:
 - area_name: 徽章-难度04
   id_mark: false
   pc_rect:
-  - 280
+  - 255
   - 213
-  - 440
+  - 445
   - 252
   text: 难度04
-  lcs_percent: 0.5
+  lcs_percent: 0.85
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7

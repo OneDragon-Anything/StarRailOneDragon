@@ -477,6 +477,17 @@ def _detect_weakness_blobs(zone: MatLike,
 _WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其波次锚行的最大纵向距离
                                      # (同 boss 卡内;超出视为跨卡,不覆盖)
 
+# --------------------------------------------------------------------------
+# 星启(三节点)布局槽位标定:锚(「建议属性」OCR det 框)相对槽位裁片的偏移。
+# 双节点布局(难度 01-03)槽位用静态 screen_info area;星启(难度 04)行位置
+# 整体上移(行距 282→217),静态 area 仅行1 同位、行2/行3 错位(实测空编队
+# 裁片亮度异常)——锚行数 >2 时全行改按锚偏移计算 rect(行1 实测同位收敛)。
+# --------------------------------------------------------------------------
+_SLOTS_ANCHOR_DY: int = -11          #: 槽位裁片顶相对锚 det 框顶偏移(星启帧标定,
+                                     # 行1 -11 与行3 推算一致)
+_SLOTS_XS: tuple[int, ...] = (988, 1071, 1153, 1236)  #: 4 槽裁片左缘(与静态 area 同 x)
+_SLOT_SIZE: int = 74                 #: 槽位裁片边长(方,与静态 area 同尺寸)
+
 
 def _match_boss_weaknesses(ocr_results: list,
                            anchor_y: int,
@@ -528,6 +539,8 @@ def read_team_waves(ctx: SrContext, image: MatLike,
         (r for r in results if _WEAKNESS_ANCHOR_TEXT in (r.data or '')),
         key=lambda r: r.y,
     )
+    # 锚行数 >2 = 星启三节点布局:槽位 rect 走锚偏移(静态 area 仅双节点标定)
+    multi_row = len(anchors) > 2
     waves: list[WaveInfo] = []
     for idx, a in enumerate(anchors[:_WEAKNESS_MAX_ROWS], start=1):
         if weakness_layout == _WEAKNESS_LAYOUT_INLINE:
@@ -556,16 +569,22 @@ def read_team_waves(ctx: SrContext, image: MatLike,
             if mapped is not None:
                 weaknesses = mapped
         members: list[MemberGuess] = []
-        area_missing = False
-        for i in range(1, 5):
-            rect = _get_area_rect(ctx, f'槽位{idx}头像-{i}', screen_name)
-            if rect is None:
-                area_missing = True
-                continue
-            crop = image[rect.y1:rect.y2, rect.x1:rect.x2]
-            members.append(_identify_crop(crop, templates))
-        if area_missing:
-            members = []   # 该行槽位未建档 → 不返回不完整列表
+        if multi_row:
+            y1 = max(0, a.y + _SLOTS_ANCHOR_DY)
+            for xs in _SLOTS_XS:
+                crop = image[y1:y1 + _SLOT_SIZE, xs:xs + _SLOT_SIZE]
+                members.append(_identify_crop(crop, templates))
+        else:
+            area_missing = False
+            for i in range(1, 5):
+                rect = _get_area_rect(ctx, f'槽位{idx}头像-{i}', screen_name)
+                if rect is None:
+                    area_missing = True
+                    continue
+                crop = image[rect.y1:rect.y2, rect.x1:rect.x2]
+                members.append(_identify_crop(crop, templates))
+            if area_missing:
+                members = []   # 该行槽位未建档 → 不返回不完整列表
         waves.append(WaveInfo(wave_idx=idx, weaknesses=weaknesses, members=members))
     return waves
 

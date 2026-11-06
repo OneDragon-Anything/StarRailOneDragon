@@ -51,8 +51,8 @@ class TlAsTeamRecognizer(ScreenRecognizer):
     screen_name: str = SCREEN_NAME
 
     extras_doc: dict[str, str] = {
-        'difficulty': '难度徽章(难度03|难度04);读不出 None。04 为三节点布局,'
-                      '本玩法自动化当前仅适配 01-03 双节点难度',
+        'difficulty': '难度徽章(难度03|难度04);读不出 None(列表展开会遮住徽章,展开态恒 None)。'
+                      '04 为三节点布局,04 下 waves 恒 3 行且槽位走锚偏移识别',
         'list_open': '左侧角色列表是否展开(「角色列表」页签命中);填充前必须展开',
         'waves': '队伍槽 list[WaveInfo](每元素 {wave_idx,weaknesses,members};每节点行=一波,'
                  '数量按「建议属性」锚行实读)。weaknesses 主路径 = boss 名查静态弱点表'
@@ -60,7 +60,9 @@ class TlAsTeamRecognizer(ScreenRecognizer):
                  '表未收录 boss 降级为图标颜色识别(紫色系雷/量子不可仲裁,可能误判)。'
                  'members=该节点当前编队(4 元素按槽位序,'
                  'MemberGuess 同老字段语义;槽位 art+候选诚实返回,AS 槽位渲染特写个别角色'
-                 '置信不过门槛时 char=None);waves=[] = 锚未读到(降级)',
+                 '置信不过门槛时 char=None);waves=[] = 锚未读到(降级)。'
+                 '槽位 rect 取法:锚行 ≤2 用静态 screen_info area(01-03),'
+                 '>2(星启)全行按锚偏移标定计算',
         'character_cells': '列表可见角色 list[AnchorCell](元素 {center,guess};center=点击中心,'
                            'guess 同 MemberGuess;滚动停驻位置无关,滚动后需多帧合并);列表未展开 = []',
     }
@@ -79,7 +81,9 @@ class TlAsTeamRecognizer(ScreenRecognizer):
             ) is FindAreaResultEnum.TRUE
 
         difficulty: str | None = None
-        for badge in ('难度03', '难度04'):
+        # 04 先判:两徽章同 rect,「难度04」帧对 03 徽章 lcs 0.75,靠 area 阈值
+        # (0.85)拦截;顺序倒转作第二道防(旧帧实测 03 先判误命中)
+        for badge in ('难度04', '难度03'):
             if _hit(f'徽章-{badge}'):
                 difficulty = badge
                 break
