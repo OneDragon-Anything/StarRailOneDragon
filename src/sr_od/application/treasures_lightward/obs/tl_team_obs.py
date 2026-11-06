@@ -478,15 +478,17 @@ _WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其波次锚行的最大�
                                      # (同 boss 卡内;超出视为跨卡,不覆盖)
 
 # --------------------------------------------------------------------------
-# 星启(三节点)布局槽位标定:锚(「建议属性」OCR det 框)相对槽位裁片的偏移。
-# 双节点布局(难度 01-03)槽位用静态 screen_info area;星启(难度 04)行位置
-# 整体上移(行距 282→217),静态 area 仅行1 同位、行2/行3 错位(实测空编队
-# 裁片亮度异常)——锚行数 >2 时全行改按锚偏移计算 rect(行1 实测同位收敛)。
+# 星启(三节点)布局槽位标定:编队屏收起态行内槽位剪影的真实位置(2026-11-06
+# 已填充帧目测 + 脸库匹配验证:56px 裁片 镜流0.79/知更鸟0.78/灵砂0.70 诚实命中,
+# 64px 会引入跨槽假阳性)。双节点布局(难度 01-03)槽位用静态 screen_info area;
+# 星启(难度 04)行位置整体上移(行距 282→~213)且槽位 x 区间不同(x≈1494 起 vs
+# 双节点 x≈988 起),静态 area 与「锚 y+固定 x」均错位——锚行数 >2 时全行按
+# 本组常量计算裁片。裁片以头像中心为基准;置信普遍低于 FH(特写变体差异,
+# 个别角色零命中属已知缺口)。
 # --------------------------------------------------------------------------
-_SLOTS_ANCHOR_DY: int = -11          #: 槽位裁片顶相对锚 det 框顶偏移(星启帧标定,
-                                     # 行1 -11 与行3 推算一致)
-_SLOTS_XS: tuple[int, ...] = (988, 1071, 1153, 1236)  #: 4 槽裁片左缘(与静态 area 同 x)
-_SLOT_SIZE: int = 74                 #: 槽位裁片边长(方,与静态 area 同尺寸)
+_ARC_ROW_SLOT_CYS: tuple[int, ...] = (337, 548, 763)  #: 三行槽位头像中心 y(行序)
+_ARC_SLOT_CXS: tuple[int, ...] = (1494, 1547, 1600, 1653)  #: 4 槽头像中心 x
+_ARC_SLOT_SIZE: int = 56                #: 槽位裁片边长(方)
 
 
 def _match_boss_weaknesses(ocr_results: list,
@@ -570,9 +572,11 @@ def read_team_waves(ctx: SrContext, image: MatLike,
                 weaknesses = mapped
         members: list[MemberGuess] = []
         if multi_row:
-            y1 = max(0, a.y + _SLOTS_ANCHOR_DY)
-            for xs in _SLOTS_XS:
-                crop = image[y1:y1 + _SLOT_SIZE, xs:xs + _SLOT_SIZE]
+            # 锚行序号 ↔ 槽位行 y 一一对应(行循环外初始化会把三行累积进同一列表)
+            cy = _ARC_ROW_SLOT_CYS[idx - 1]
+            half = _ARC_SLOT_SIZE // 2
+            for cx in _ARC_SLOT_CXS:
+                crop = image[cy - half:cy + half, cx - half:cx + half]
                 members.append(_identify_crop(crop, templates))
         else:
             area_missing = False
