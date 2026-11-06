@@ -9,7 +9,7 @@
 mys_get_roster_detail（SrRank/SrSkill），本模块是**全量静态定义**（不随账号变）。
 
 版本刷新：游戏新版本后重跑 wiki 角色详情抓取（脚本在私有 skill
-sr-od-dev-avatar-extract/scripts/）→ 重新生成本模块 → 人工审阅 diff。
+sr-od-dev-character-data/scripts/）→ 重新生成本模块 → 人工审阅 diff。
 
 模块纪律：零外部 IO、零状态——纯常量（同 sr_relic_sets 模块纪律）。
 """

@@ -1,6 +1,6 @@
 """国内米游社 wiki 角色频道拉取:列表 + 逐条详情,落成本地缓存。
 
-产出(运行时缓存,消费方 = sr-od-dev-avatar-extract/scripts/finalize_map.py):
+产出(运行时缓存,消费方 = sr-od-dev-character-data/scripts/finalize_map.py):
   .debug/temp/animestudio/wiki_channel18.json        列表条目数组(content_id/title/ext/...)
   .debug/temp/animestudio/details/<content_id>.json  逐条详情原始响应
 
