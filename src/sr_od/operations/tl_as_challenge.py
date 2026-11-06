@@ -329,10 +329,10 @@ class TlAsTeamFillOp(SrOperation):
             self._seen_sigs.add(sig)
         if self._down_stagnation >= 4:
             return self.round_fail(f'列表到底未找到 {target}')
-        # 翻页后等滚动基本停止再识别(1.5s;偶发滚动未停帧的杂音识别页
-        # 不含目标 → 下轮继续翻,自校正)
+        # 翻页后等滚动完全停止再识别(实测 1.5s 会撞滚动中途帧:识别名缺失
+        # → 目标页被跳过且惯性叠加,5 页全空直达底部误判到底;3s 为实测安全值)
         self.ctx.controller.drag_to(_SCROLL_TO, start=_SCROLL_FROM, duration=0.6)
-        return self.round_wait('向下翻页', wait=1.5)
+        return self.round_wait('向下翻页', wait=3)
 
     @staticmethod
     def _page_sig(cells: list) -> str:
