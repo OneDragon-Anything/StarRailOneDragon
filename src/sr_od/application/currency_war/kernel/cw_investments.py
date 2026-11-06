@@ -2818,6 +2818,31 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '加拉赫已上阵行动(顾问解锁≠上阵);受益粒度 = 我方全体;装备'
           '联动依赖 = 绝对热量佩戴面零建模;无离散触发事件,trigger/'
           'duration 为登记占位非真实语义。'),
+    # 黑塔纪元(id 352601):官方「出战时，你拥有的【黑塔】们每有1总金币价值，
+    # 都使【黑塔】们追击时额外转一圈。你拥有的【黑塔】们每有1总金币价值，
+    # 使【黑塔】/【大黑塔】获得10%前后台强度。」战力类 UNIT_BUFF 零响应
+    # 登记(UNIT_BUFF 族):强度增幅效果条目对象具名(黑塔/大黑塔)+「每有
+    # 1总金币价值」动态计量条件,计量与数值全游戏侧自算,bot 零响应;
+    # 「总金币价值」计价口径 = 用户裁定按购入原价(2026-11-06,本卡逐卡
+    # 裁定,后继『价值』词面卡仍逐卡裁,搜打撤卖价口径不辖本卡),该读法
+    # 仅辖正本文档 invest_effects.md §8 措辞,零建模面;追击转圈效果条目
+    # = 型③实机和模拟器两边皆盲零登记零建模(词面 src 唯一命中 = 本卡
+    # 卡面数据行,零战斗机制实体),不入本条目(effect_text 全文承载,
+    # 判读申报制);获得时点/合成触发两效果条目分治 = PICK_INVEST_EFFECTS
+    # 即时行 + STRATEGY_MERGE_GRANTS 合成触发行(同卡三表三通道,各管各
+    # 效果条目);无离散触发事件,trigger 占位形。
+    '黑塔纪元': EffectSpec(
+    id='352601', name='黑塔纪元',
+    trigger=TriggerKind.PLANE_START,
+    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
+    payload=UnitBuffRef(effect_text=next(
+    a.effect for a in PLAZA_AUGMENTS if a.id == '352601')),
+    duties=DutyFlags(),
+    notes='战力类 UNIT_BUFF 零响应登记(UNIT_BUFF 族);'
+          '「每有1总金币价值」计量与10%前后台强度游戏侧自算,bot 仅登记;'
+          '计价口径 = 用户裁定 2026-11-06 按购入原价[本卡逐卡裁定,后继'
+          '『价值』词面卡仍逐卡裁];追击转圈效果条目型③两边皆盲零登记;'
+          '无离散触发事件,trigger 占位形。'),
 }
 
 
@@ -4393,8 +4418,11 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '超充站': GiftGrant(chars_immediate=('阿格莱雅', '藿藿')),
     '量子力学': GiftGrant(chars_immediate=('希儿',)),
     '钢铁美学': GiftGrant(chars_immediate=('希儿',)),
-    # 兼即时分支与条件分支(条件分支 = 「获得3星【黑塔】时获得【大黑塔】」再得);
-    # 216 张【黑塔】入商店系可购买供给非发放,不入册
+    # 兼即时效果条目与条件效果条目(条件效果条目 = 「获得3星【黑塔】时
+    # 获得【大黑塔】」再得);216 张【黑塔】入商店系可购买供给非发放,不入册;
+    # 运行时通道 = 即时效果条目走 PICK_INVEST_EFFECTS 行、条件效果条目走
+    # STRATEGY_MERGE_GRANTS + cw_gain_chain.check_strategy_merge_grants
+    # (本条目 = 估值域登记,不进运行时判据)
     '黑塔纪元': GiftGrant(
         chars_immediate=('大黑塔',),
         chars_conditional=(('大黑塔', '你获得3星【黑塔】时获得【大黑塔】'),),
@@ -5326,16 +5354,20 @@ def _validate_env_merge_grants() -> None:
 _validate_env_merge_grants()
 
 
-# ===== 策略卡合并升星触发发放注册表(砂里淘金;白名单制)=====
+# ===== 策略卡合并升星触发发放注册表(砂里淘金/黑塔纪元;白名单制)=====
 # **状态副本发放域**(条件发放登记表,ENV_STREAK/REFRESH/BOSS/MERGE/INTEREST/
 # ORE_OPEN/BATTLE/DEPLOY_LOCK_GRANTS 同族;**键域首例 = 投资策略卡**,
 # 先例族键 = 环境规范名):键 = 卡规范名,值 = (判据星级, 判据费用,
-# 发放角色名) 三元组。语义 = 持有该卡期间,每合成出「产物星级 ∧ 产物
-# 费用」双匹配的角色(new_star+cost 双匹配),获得 1 个发放角色
+# 判据角色名, 发放角色名) 四元组。语义 = 持有该卡期间,每合成出「产物
+# 星级 ∧ 产物费用 ∧ 产物角色名」匹配的角色事件,获得 1 个发放角色
 # (1★ 先验:卡面无星级,沿合成发放族用户裁定「发放 1★」先验,实机
 # 取证后可校正);逐级逐事件 = 用户裁定「每完成一级 3 合 1 各发一次」
-# 先例同判(级联逐级各查各发)。表外卡一律无条目,禁从效果原文自动
-# 猜装(白名单制注册纪律,ENV_MERGE_GRANTS 区块同款)。
+# 先例同判(级联逐级各查各发)。判据角色名 = 第三判据维:「获得N星【具名
+# 角色】时获得X」类卡面双具名直读(首例黑塔纪元),空串 = 卡面不限定角色
+# 的通配形(费用/星级双匹配即发,砂里淘金行);具名行的判据费用按该角色
+# 注册费用登记(注册表改费漂移 = 永假判据,构建校验哨兜底)。表外卡一律
+# 无条目,禁从效果原文自动猜装(白名单制注册纪律,ENV_MERGE_GRANTS 区块
+# 同款)。
 # **表间豁免声明**(ENV_MERGE_GRANTS 同款显式声明):本表键与
 # STRATEGY_GRANTS 共存 = 合法形态(两表同键各表各域——STRATEGY_GRANTS
 # 的 chars_conditional 辖估值域档位机器,本表辖状态副本发放);与
@@ -5345,10 +5377,16 @@ _validate_env_merge_grants()
 # kernel/cw_gain_chain.check_strategy_merge_grants(触发检查单一源,
 # 事件携带事实无 done 标记;四发火点 = 买牌上报/晶矿角色入账分支/
 # 补给级联/获得链顶层,与 check_env_merge_grants 同点独立 try 并排)。
-STRATEGY_MERGE_GRANTS: dict[str, tuple[int, int, str]] = {
+STRATEGY_MERGE_GRANTS: dict[str, tuple[int, int, str, str]] = {
     # 砂里淘金(id 201501 原文直读,cw_invest_data.py「合成2星2费角色时，
-    # 获得1张【砂金】。」):判据 2星+2费,发放 1 个砂金(2 费,cw_chars)
-    '砂里淘金': (2, 2, '砂金'),
+    # 获得1张【砂金】。」):判据 2星+2费,卡面不限定角色 → 判据角色名
+    # 空串 = 通配任意,发放 1 个砂金(2 费,cw_chars)
+    '砂里淘金': (2, 2, '', '砂金'),
+    # 黑塔纪元(id 352601 原文直读,cw_invest_data.py「你获得3星【黑塔】时
+    # 获得【大黑塔】」):判据 3星+1费+具名黑塔(黑塔注册 cost=1 与判据费用
+    # 相符),发放 1 个大黑塔(4 费,cw_chars);216 张黑塔入商店系可购买供给
+    # 非发放,不入本表(STRATEGY_GRANTS 同卡条目段注裁定同源)
+    '黑塔纪元': (3, 1, '黑塔', '大黑塔'),
 }
 
 
@@ -5359,20 +5397,34 @@ def _validate_strategy_merge_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
     失联);
-    ② 发放角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默)。
-    判据值域(星级/费用)与三元组非负属防登记笔误类,已移除(值形对账
-    归注册行直测锁承担)。
+    ② 发放角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默);
+    ③ 判据角色名闭集:判据角色名必须为空串(通配形)或 ∈ CHARACTER_ROSTER
+    (游戏改名不静默——具名判据行改名后事件角色名永不匹配 = 永假判据,
+    属游戏数值/词表改版会触发的漂移哨非笔误哨);
+    ④ 判据费用一致性:判据角色名非空时,该角色注册费用必须等于判据费用
+    (游戏改费漂移使具名判据永假;通配行无具名角色可对,费用本身即判据,
+    无一致性面)。判据值域(星级/费用)与非负属防登记笔误类,已移除
+    (值形对账归注册行直测锁承担)。
     """
     orphans = [n for n in STRATEGY_MERGE_GRANTS
                if n not in INVESTMENT_STRATEGIES]
     if orphans:
         raise ValueError(
             f"STRATEGY_MERGE_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
-    for _n, (_star, _cost, _char) in STRATEGY_MERGE_GRANTS.items():
+    for _n, (_star, _cost, _judge, _char) in STRATEGY_MERGE_GRANTS.items():
         if _char not in CHARACTER_ROSTER:
             raise ValueError(
                 f"STRATEGY_MERGE_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                 f"版本改名?):{_char!r}")
+        if _judge != '' and _judge not in CHARACTER_ROSTER:
+            raise ValueError(
+                f"STRATEGY_MERGE_GRANTS 判据角色名漂移({_n!r} 注册表无此人,"
+                f"具名判据永不匹配,版本改名?):{_judge!r}")
+        if _judge != '' and CHARACTERS[_judge].cost != _cost:
+            raise ValueError(
+                f"STRATEGY_MERGE_GRANTS 判据费用失配({_n!r} 判据角色"
+                f"{_judge!r} 注册 cost={CHARACTERS[_judge].cost} ≠ 判据费用"
+                f"{_cost},游戏改费漂移产生永假判据?)")
 
 
 _validate_strategy_merge_grants()

@@ -1396,6 +1396,16 @@ PICK_INVEST_EFFECTS: dict[str, Callable[..., list[str]]] = {
     # 量子同频星徽后];条目参数唯一出现点,不入泛化表防撞键;rng 零消费)。
     '量子力学': _compose_grant_legs(_make_char_grant_effect('希儿')),
 
+    # 黑塔纪元 = 单角色组合登记行(卡文「获得【大黑塔】」即时效果条目,
+    # 大黑塔 1★ 先验家族口径;rand=False 具名确定发放,效果串 1 条;
+    # 条件效果条目「你获得3星【黑塔】时获得【大黑塔】」不入本行——合成
+    # 触发发放走 cw_investments.STRATEGY_MERGE_GRANTS 表 +
+    # cw_gain_chain.check_strategy_merge_grants 触发检查单一源(获得
+    # 时点/合成触发两时点两表分治,轮回不止两表先例同构);「216张【黑塔】
+    # 加入商店」供给面零建模不入册(登记面 STRATEGY_GRANTS 同卡条目段注
+    # 裁定);条目参数唯一出现点,不入泛化表防撞键;rng 零消费)。
+    '黑塔纪元': _compose_grant_legs(_make_char_grant_effect('大黑塔')),
+
     # 加拉赫顾问 = 具名装备授予单行(卡文「获得【生命之花】和4金币」;
     # 条目1 顾问解锁/条目2 金4 已登记零动作[GRANTS advisor 面+ECONOMY
     # instant_gold=4];本行 = 生命之花具名授予条目,同物同形先例 = 无伤通关

@@ -1421,7 +1421,8 @@ def check_strategy_merge_grants(gs: GameState,
                                 facts: tuple[tuple[str, int], ...], *,
                                 sig: ChannelSig) -> tuple[str, ...]:
     """策略卡合并升星触发发放检查(「合成2星2费角色时，获得1张【砂金】」
-    触发器单一源,策略卡合成触发发放首例砂里淘金,注册表 =
+    触发器单一源,策略卡合成触发发放首例砂里淘金〔通配判据形〕+ 具名
+    判据首例黑塔纪元「你获得3星【黑塔】时获得【大黑塔】」,注册表 =
     ``cw_investments.STRATEGY_MERGE_GRANTS``;调用点 = 合成升星四发火点
     并排——买牌上报/晶矿角色入账分支/补给级联/获得链顶层,与
     :func:`check_env_merge_grants` 同点独立 try,事件形状 = ``(角色名,
@@ -1434,9 +1435,11 @@ def check_strategy_merge_grants(gs: GameState,
     1. 持卡交集空(active_strategies ∩ 表键,未持卡/表外卡同路——表外
        卡禁从效果原文自动猜装)→ 零动作;
     2. facts 过滤后零命中(判据 = 产物 ``new_star`` == 表星级 ∧
-       ``CHARACTERS.get(cid)`` 命中且 ``.cost`` == 表费用;.get 为 None
-       = 注册表外名该条视为不匹配跳过——facts 现值恒出自注册表两源,
-       防未来源扩转抛)→ 零动作;
+       ``CHARACTERS.get(cid)`` 命中且 ``.cost`` == 表费用 ∧ 具名判据行
+       事件角色名同名——判据角色名空串 = 通配任意〔砂里淘金形,费用/
+       星级双匹配即发〕,非空 = 「获得N星【具名角色】时获得X」类卡面
+       双具名直读〔黑塔纪元形〕;.get 为 None = 注册表外名该条视为不
+       匹配跳过——facts 现值恒出自注册表两源,防未来源扩转抛)→ 零动作;
     3. sim 门控(函数内惰性 ``sim_backend_installed``,kernel→sim.ports
        判据消费先例形):未装配(live 形态)→ 零写——策略卡发牌族权威版本
        (不建逻辑写、交由观察收尾):实机发放由游戏自发,星级观察 +
@@ -1446,11 +1449,13 @@ def check_strategy_merge_grants(gs: GameState,
        本函数不需要;同窗多条命中逐条发,逐级触发先例 = 用户裁定
        「每完成一级 3 合 1 各发一次」)。
 
-    - 递归有限终止:发放物(砂金 2 费)∈ 触发费用域,发放落席凑齐同名
-      三只会再合成再发火——每轮「合成 2★ → 发回 1 个 1★」净耗 2 个
-      同名 1★(3 合 1 消耗 3、发放回 1),同名 1★ 库存单调递减有下界,
-      获得链「无三连即终止」天然辖;不设深度闸(结构论证替代,env 版
-      同判,本卡发放物在触发域为与 env 版的显式差异);
+    - 递归有限终止:砂里淘金发放物(砂金 2 费)∈ 触发费用域,发放落席
+      凑齐同名三只会再合成再发火——每轮「合成 2★ → 发回 1 个 1★」
+      净耗 2 个同名 1★(3 合 1 消耗 3、发放回 1),同名 1★ 库存单调
+      递减有下界,获得链「无三连即终止」天然辖;黑塔纪元发放物(大黑塔
+      4 费)∉ 触发费用域(判据 1 费具名黑塔),发放不再进判据域,终止
+      平凡。不设深度闸(结构论证替代,env 版同判,砂里淘金发放物在触发
+      域为与 env 版的显式差异,黑塔纪元行两域外发无此面);
     - 拒落语义零新闸:bench 未观察/席满溢出位占 = :func:`gain_character`
       链内既有拒落/留证/溢出落位语义,本函数不另设闸;效果串照返
       (发放事实与落位成败解耦,env 版同阶口径);
@@ -1466,12 +1471,15 @@ def check_strategy_merge_grants(gs: GameState,
     hits: list[str] = []
     for cid, new_star in facts:
         for card in held:
-            want_star, want_cost, _reward = STRATEGY_MERGE_GRANTS[card]
+            (want_star, want_cost,
+             judge_char, _reward) = STRATEGY_MERGE_GRANTS[card]
             if int(new_star) != want_star:
                 continue
             ch = CHARACTERS.get(cid)
             if ch is None or ch.cost != want_cost:
                 continue
+            if judge_char != '' and cid != judge_char:
+                continue   # 具名判据行:事件角色名须同名(空串 = 通配)
             hits.append(card)
             break  # 同一事件同卡只发一次(多卡同持各判各发)
     if not hits:
@@ -1485,7 +1493,7 @@ def check_strategy_merge_grants(gs: GameState,
         return ()
     effects: list[str] = []
     for card in hits:
-        reward = STRATEGY_MERGE_GRANTS[card][2]
+        reward = STRATEGY_MERGE_GRANTS[card][3]
         evidence = f'strategy_merge_grant:{card}'
         gain_character(gs, reward, 1, rand=False, sig=sig,
                        evidence=evidence, producer=GAIN_CHAIN_PRODUCER)
