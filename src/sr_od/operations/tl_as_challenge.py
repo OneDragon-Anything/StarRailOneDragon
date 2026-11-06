@@ -87,32 +87,30 @@ _SLOT_POINTS: list[list[Point]] = [
 ]
 
 # --------------------------------------------------------------------------
-# 星启(难度04,三节点)布局坐标(2026-11-06 实机标定):
-# - 行槽位剪影点击点 x≈1494(行 y 330/548/763),与双节点(x1025)完全不同;
-# - 增益入口 = 行尾「+」按钮(x≈1826,y 与行同轴),双节点的「公理圆圈」area
-#   在 04 布局不适用;弹窗内选卡/装配效果与双节点共用同布局;
-# - 顶部垃圾桶可一键清空全部三行(含增益),双节点无此功能;
-# - 槽位像素判空在星启布局不可用(V/特征数/模板三方案实测无区分度),
-#   填充落位回验改用「角色列表卡『队伍N』标记 OCR 计数」(每入队一人 +1)。
+# 星启(难度04,三节点)布局:交互坐标已建档进 screen_info「末日幻影-编队」
+# (area 名 04- 前缀:04-行N槽位1 / 04-增益入口-行N / 04-垃圾桶 / 04-星启模式
+# 标签 id_mark),坐标单一真相源在 screen_info,op 经 area 中心点击。
+# 交互语义实测结论(写这些分支的依据):
+# - 行槽位剪影点击(收起态) = 展开选人列表 + 选中该行;展开态点当前选中行
+#   已入队槽位 = 移除角色;点他行槽位 = 仅收起列表;
+# - 行尾「+」按钮 = 该行终焉公理弹窗入口(编入角色前后形态一致);
+# - 顶部垃圾桶一键清空全部三行+增益;右上箭头在 04 = 关闭编队屏(不可当收起);
+# - 槽位像素判空在 04 布局不可用(V/特征数/模板三方案实测无区分度),
+#   填充落位回验走「角色列表卡队伍N标记」OCR 计数(每入队一人 +1)。
 # --------------------------------------------------------------------------
-_ARC_ROW_SLOT_POINTS: dict[int, Point] = {
-    1: Point(1494, 330),
-    2: Point(1494, 548),
-    3: Point(1494, 763),
+_ARC_ROW_SLOT_AREAS: dict[int, str] = {
+    1: '04-行1槽位1',
+    2: '04-行2槽位1',
+    3: '04-行3槽位1',
 }
 
-_ARC_SLOT_POINTS: list[list[Point]] = [
-    [Point(1494, 337), Point(1547, 337), Point(1600, 337), Point(1653, 337)],
-    [Point(1494, 548), Point(1547, 548), Point(1600, 548), Point(1653, 548)],
-    [Point(1494, 763), Point(1547, 763), Point(1600, 763), Point(1653, 763)],
-]
-
-_ARC_TRASH_POINT: Point = Point(1616, 66)   #: 星启垃圾桶(一键清空三行+增益)
-_ARC_AXIOM_POINTS: dict[int, Point] = {
-    1: Point(1826, 331),
-    2: Point(1826, 548),
-    3: Point(1826, 763),
+_ARC_AXIOM_AREAS: dict[int, str] = {
+    1: '04-增益入口-行1',
+    2: '04-增益入口-行2',
+    3: '04-增益入口-行3',
 }
+
+_ARC_TRASH_AREA: str = '04-垃圾桶'
 
 
 class TlAsTeamFillOp(SrOperation):
@@ -160,7 +158,7 @@ class TlAsTeamFillOp(SrOperation):
             # fail 诚实上报。双节点逐槽移除路径不受影响。
             tags = self._count_team_tags(screen)
             if tags > 0:
-                self.ctx.controller.click(_ARC_TRASH_POINT, press_time=0.15)
+                self._click_area_center(_TEAM_SCREEN, _ARC_TRASH_AREA)
                 return self.round_retry(f'星启垃圾桶清空(残留标记{tags})', wait=2)
             return self.round_success('星启编队已空', wait=1)
         waves = read_team_waves(self.ctx, screen, screen_name=_TEAM_SCREEN)
@@ -239,9 +237,13 @@ class TlAsTeamFillOp(SrOperation):
                 self.ctx.controller.click(row_slot_point, press_time=0.15)
                 return self.round_wait(f'选中行 {row_no}(重试)', wait=1.5)
             if list_open:
-                self.ctx.controller.click(
-                    _ARC_ROW_SLOT_POINTS[row_no] if self._arc_mode
-                    else Point(1862, 68), press_time=0.15)
+                # 星启收起 = 点目标行槽位(右上箭头在 04 布局 = 关闭编队屏,
+                # 不可用);双节点 = 点右上收起箭头(实测语义)。
+                if self._arc_mode:
+                    self._click_area_center(
+                        _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[row_no])
+                else:
+                    self.ctx.controller.click(Point(1862, 68), press_time=0.15)
                 return self.round_wait('收起遗留展开的列表', wait=1.2)
             self.ctx.controller.click(row_slot_point, press_time=0.15)
             self._awaiting_expand = True
@@ -353,8 +355,8 @@ class TlAsTeamFillOp(SrOperation):
             if self._row_idx < len(self.teams):
                 if self._arc_mode:
                     # 星启:展开态点他行槽位 = 仅收起列表,下轮守卫重新展开目标行
-                    self.ctx.controller.click(
-                        _ARC_ROW_SLOT_POINTS[self._row_idx + 1], press_time=0.15)
+                    self._click_area_center(
+                        _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[self._row_idx + 1])
                 else:
                     self.ctx.controller.click(Point(1862, 68), press_time=0.15)
                 return self.round_wait(f'行 {row_no} 填充完成,切下一行', wait=1.2)
@@ -362,9 +364,17 @@ class TlAsTeamFillOp(SrOperation):
         return self.round_wait(f'{target} 已落位', wait=0.8)
 
     def _row_slot_point(self, row_no: int) -> Point:
-        """行槽位 1 点击点,按布局模式分派(星启 x≈1494 / 双节点 x≈1025)。"""
-        return (_ARC_ROW_SLOT_POINTS if self._arc_mode
-                else _ROW_SLOT_POINTS)[row_no]
+        """行槽位 1 点击点:从 screen_info area 读中心(坐标单一真相源;
+        星启 = 04-行N槽位1,双节点 = 01-03 布局 area「槽位N头像-1」的
+        等效点击位按历史标定暂留常量,偿清归 op 硬编码清理批)。"""
+        if self._arc_mode:
+            return self._arc_area_center(_ARC_ROW_SLOT_AREAS[row_no])
+        return _ROW_SLOT_POINTS[row_no]
+
+    def _arc_area_center(self, area_name: str) -> Point:
+        """星启交互点坐标从 screen_info area 读 rect 中心(单一真相源)。"""
+        rect = self.ctx.screen_loader.get_area(_TEAM_SCREEN, area_name).rect
+        return Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
 
     #: 「队伍N」标记匹配:须「队伍」紧跟数字——编队屏顶部横幅「队伍发生变动…」
     #: 同含「队伍」二字,宽松包含匹配会把常驻横幅计入,清空/回验永不收敛(实测翻车)
@@ -442,7 +452,7 @@ class TlAsAxiomEquipOp(SrOperation):
             if in_team:
                 if self._row_idx < len(self._buff_slots) - 2:
                     # 星启:行尾「+」即终焉公理入口(编入角色前后形态一致,实测)
-                    self.ctx.controller.click(_ARC_AXIOM_POINTS[row], press_time=0.15)
+                    self._click_area_center(_TEAM_SCREEN, _ARC_AXIOM_AREAS[row])
                 else:
                     self._click_area_center(_TEAM_SCREEN, f'按钮-公理圆圈{row}')
                 self._phase = 'select'
