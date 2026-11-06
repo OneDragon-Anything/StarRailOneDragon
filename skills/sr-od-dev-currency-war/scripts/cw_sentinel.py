@@ -31,7 +31,7 @@
   plane=1 round=1 恒定 40min+,跨度判据在 ~22:45(阈值 900s)即可独立报警。
   nodeseq 行(`[cw-director][nodeseq]`)只带位面不带轮次,不作相位源。
   - [SENTINEL-PREP-SPIN](v5.3 新增):备战分发行持续到达 ∧ 零实质推进 ≥
-    SPIN_SEC(默认 600s,env CW_SENTINEL_SPIN_SEC)→ 报警。节奏锚 =
+    SPIN_SEC(默认 600s,env CW_SENTINEL_SPIN_SEC)→ 报警。节奏基准 =
     `[cw-op] op=备战 plane=` 分发行(每备战轮必落);窗自上一实质推进后的首个
     备战行起算,任一实质推进即重置。补观察断流盲区:认知冻结形态无 state 行
     (NODE-DWELL 失明)、备战行让日志不沉默(SILENCE 失明)、无警告(STALL
@@ -287,7 +287,7 @@ SPIN_SEC = int(os.environ.get('CW_SENTINEL_SPIN_SEC', 600))
 SPIN_EVIDENCE = Path(os.environ.get(
     'CW_SENTINEL_SPIN_EVIDENCE',
     r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\cw_sentinel_spin_ev.md'))
-SPIN_ANCHOR = '[cw-op] op=备战 plane='   # 节奏锚:备战分发行(每备战轮必落;含 plane= 防误配「备战暗色锁定」)
+SPIN_ANCHOR = '[cw-op] op=备战 plane='   # 节奏基准:备战分发行(每备战轮必落;含 plane= 防误配「备战暗色锁定」)
 LOOP_TRIAL = os.environ.get('CW_SENTINEL_TRIAL', '1') != '0'
 LOOP_AUTOSTOP = os.environ.get('CW_SENTINEL_AUTOSTOP', '0') == '1'
 LOOP_HTTP = os.environ.get('CW_SENTINEL_HTTP', 'http://127.0.0.1:24001')
@@ -566,9 +566,9 @@ def _dwell_alarm(payload: str, line_end: int | None) -> str:
 
 
 def _spin_feed(line: str, tod: int) -> tuple[str, str] | None:
-    """备战环空转喂行(v5.3):锚 = 备战分发行,窗 = 自上一实质推进的首个锚行起算。
+    """备战环空转喂行(v5.3):基准 = 备战分发行,窗 = 自上一实质推进的首个基准行起算。
 
-    任一实质推进由 process_line 调 _spin_reset 重置;锚行持续到达而推进持续
+    任一实质推进由 process_line 调 _spin_reset 重置;基准行持续到达而推进持续
     缺席 ≥ SPIN_SEC → ('spin', 证据摘录)。返回 None = 未武装/未到期。
     """
     global spin_first, spin_last_line
@@ -1456,7 +1456,7 @@ while True:
             # 局仍活跃 → 维持原双窗逻辑(结算屏/动画段误报防护不弱化)。
             if _run_ended():
                 print(f'[RUN-ENDED-IDLE] 静默{int(time.time()-last_line_wall)}s 且活跃局检查判定'
-                      f'局已终局(journal={JOURNAL_JSONL.name} 尾实机段已收口)'
+                      f'局已终局(journal={JOURNAL_JSONL.name} 尾实机段已收尾)'
                       f'——局后空窗属正常交接,哨兵退出不报警', flush=True)
                 sys.exit(0)
             if _seen_terminal:

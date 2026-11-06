@@ -14,9 +14,9 @@
 ## 渲染结构
 
 局头(meta 逐行)→ 开局段 → 逐节点组(P-R,类型取组内首行 ``node.kind``)
-→ 组内画面章(画面域写入行切分 + 弹层 actor 注册表双轨;切章锚 =
+→ 组内画面章(画面域写入行切分 + 弹层 actor 注册表双轨;切章基准 =
 ``field='current_screen'`` 写入行本体,快照携带 cs 只作归属;动作节
-章归属锚 = 回执 ``screen`` 字段 = **动作发出画面**——转移类动作(如开
+章归属基准 = 回执 ``screen`` 字段 = **动作发出画面**——转移类动作(如开
 商店)的回执在切屏写入行之后落窗,按发出画面回搜本章组已开画面章归位,
 不按位置落到变更后画面(旧数据 screen=目标画面语义 → 位置归属回退);
 章内状态差分因果归属 = ``logic_action`` 家族写入行挂其后最近回执的
@@ -121,7 +121,7 @@ class Action:
     title: str                    # render-spec §4 组装规则
     reason: str = ''
     detail: str = ''
-    screen: str = ''              # 回执 screen = 动作发出画面(动作节章归属锚)
+    screen: str = ''              # 回执 screen = 动作发出画面(动作节章归属基准)
     extra: list[tuple[str, Any]] = field(default_factory=list)
     #: 重试链(pipeline §5:连续回执同 op 且前条 reason 非空 → 合并一节,
     #: 节内逐条列出;首元素 = receipt 本条)
@@ -154,7 +154,7 @@ class Screen:
     _same_skipped: int = 0
     #: 构建期临时:观察尾注去重集(field, 格式化值)——同章重复写同值不刷屏
     _obs_seen: set = field(default_factory=set)
-    #: 构建期临时:本章观察道写入显影(field → 格式化值,首写定帧值)——
+    #: 构建期临时:本章观察道写入显示(field → 格式化值,首写定帧值)——
     #: 0 观察动态段 = 画面 op 观察到什么本章显什么(注册键集之外无观察
     #: 黑洞),渲染时并进 0 观察、渲染前剥离
     _obs_entries: dict[str, str] = field(default_factory=dict)
@@ -206,7 +206,7 @@ class DecisionRecord:
     """一条策略决策记录(strategy jsonl 行内存形态;capture-store §2 信封
     键闭集,run_id 过滤后入 join 索引)。"""
 
-    load_seq: int                 # 全局加载序(0 基;FIFO 分配与去重稳定锚)
+    load_seq: int                 # 全局加载序(0 基;FIFO 分配与去重稳定基准)
     dtag: str                     # <strategy_id>:<dseq>,动作级 join 键
     strategy_id: str
     entry: str                    # 决策入口名(14 闭集,ENTRY_SCREEN_MAP 键)
@@ -226,7 +226,7 @@ class StrategyTelemetry:
     ``by_dtag`` = 动作级索引(回执 dtag → record,重复 dtag 首现优先);
     ``by_chapter`` = 章级索引,键 = (entry, plane, round_num),值按 dseq 序
     (同键多章 FIFO 分配源;render-assembly §3);``unattached`` 由 join 收尾
-    回填 = 未归属记录(node=null/无锚章,局头「未归属 M 条」计数面)。
+    回填 = 未归属记录(node=null/无归属章,局头「未归属 M 条」计数面)。
     """
 
     records: list[DecisionRecord] = field(default_factory=list)
@@ -251,7 +251,7 @@ class ScreenSpec:
 
 
 #: 快照章注册表(current_screen 值 → 规格)。战斗章结算不入 0 观察——
-#: settlement 写入行走 pipeline §5「章内变化」块(键集锚 =
+#: settlement 写入行走 pipeline §5「章内变化」块(键集引用 =
 #: cw_screen_battle_wait.py:125,449-461,550-565)。
 #:
 #: 「货币战争-」前缀 12 键 = sim 引擎画面广播值(cw_sim_backend.py
@@ -353,8 +353,8 @@ ACTOR_REGISTRY: dict[str, ScreenSpec] = {
     'CwScreenArmoryBox': ScreenSpec('画面-军械库', True, ('equips',)),
     'CwScreenAhaEquipPick': ScreenSpec('画面-顿悟装备', True, ('equips',)),
     'CwScreenYinLang': ScreenSpec('画面-银狼策划', True, ('planner_opts',)),
-    'CwOpSettleConfirm': ScreenSpec('画面-对局收口', False, ()),
-    'CwLoop': ScreenSpec('画面-对局收口', False, ()),
+    'CwOpSettleConfirm': ScreenSpec('画面-对局收尾', False, ()),
+    'CwLoop': ScreenSpec('画面-对局收尾', False, ()),
     # —— 交互辅助 op(operations/cw_screen/ 已定义,裁定②同规)——
     'CwScreenItemDetailPopup': ScreenSpec('CwScreenItemDetailPopup'),
     'CwScreenRefreshOddsPopup': ScreenSpec('CwScreenRefreshOddsPopup'),
@@ -389,11 +389,11 @@ _SNAPSHOT_SCREEN_ACTORS: frozenset[str] = frozenset({
 _ACTION_ACTOR_EXEMPT: frozenset[str] = frozenset({'CwScreenBuyCards'})
 
 #: 观察尾注跳过键(内部路由面,对复盘零信息:上一画面/当前画面——当前画面
-#: 已是切章锚,重复显影)。
+#: 已是切章基准,重复显示)。
 _OBS_NOTE_SKIP: frozenset[str] = frozenset({'prev_screen', 'current_screen'})
 
 #: 已注册画面章 0 观察键全集(快照章 + 弹层章注册表并集):观察尾注跳过。
-#: 这些字段必在后续对应画面章的 0 观察显影,观察道回读是重复显影;且回读
+#: 这些字段必在后续对应画面章的 0 观察显示,观察道回读是重复显示;且回读
 #: 与动作无因果(如节点窗发牌的商店牌面回读挂进采集动作),按时间窗归属
 #: 只会制造误归因(sim 广播形态实测:34 条尾注中 30 条为此类)。
 _ALL_ENTRY_KEYS: frozenset[str] = frozenset(
@@ -446,7 +446,7 @@ def _is_unregistered_screen_actor(actor: str) -> bool:
 
     画面 op 类名约定 = CwScreen 前缀(operations/cw_screen/ 实测 33 类全部
     此前缀);命中注册表 / 快照章形态 / 已知动作类豁免外的前缀类 = 未注册,
-    行显影缺口注记(缺口可见性 = 对断供静默病根的正面设计目标)。非画面
+    行显示缺口注记(缺口可见性 = 对断供静默病根的正面设计目标)。非画面
     actor(观察汇聚 cw_observation/对账/恢复/引擎等)不判——设计条款的
     上下文是画面 op 注册表,不是任意写入者。
     """
@@ -573,7 +573,7 @@ def _ts_num(ts: Any) -> float:
 
 
 def _last_receipt(row: dict[str, Any]) -> dict[str, Any] | None:
-    """receipts 锚行的最新动作(after 滚动窗末位;空窗/畸形 → None)。"""
+    """receipts 基准行的最新动作(after 滚动窗末位;空窗/畸形 → None)。"""
     after = row.get('after')
     if isinstance(after, list) and after and isinstance(after[-1], dict):
         return after[-1]
@@ -1052,9 +1052,9 @@ def _join_strategy_telemetry(report: Report, tele: StrategyTelemetry) -> None:
        dtag 失配」注记;
     2. 章级(其余 11 选择族入口):同键多章 FIFO(records dseq 序对章首
        现序分配);
-    3. 适用集入口无回执匹配 → 锚章章尾「策略决策未落地」注记(无锚 →
+    3. 适用集入口无回执匹配 → 归属章章尾「策略决策未落地」注记(无归属章 →
        未归属);
-    4. 余量(node=null/无锚)→ 局头「未归属 M 条」计数面,不逐条展开。"""
+    4. 余量(node=null/无归属)→ 局头「未归属 M 条」计数面,不逐条展开。"""
     consumed: set[int] = set()
     for sec in report.sections:
         for scr in sec.screens:
@@ -1094,7 +1094,7 @@ def _join_strategy_telemetry(report: Report, tele: StrategyTelemetry) -> None:
         chapters = _target_chapters(report, rec.entry, node.get('plane'),
                                     node.get('round_num'))
         if not chapters:
-            continue   # 无锚章 → 未归属计数面
+            continue   # 无归属章 → 未归属计数面
         consumed.add(rec.load_seq)
         chapters[0].annots.append(
             f'策略决策未落地: {rec.dtag}({rec.emitted_op})')
@@ -1200,7 +1200,7 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
     - 弹层行归属只认 actor 映射:命中即在对应弹层画面章(同章续,异章开新);
     - 画面域行(cs)分两形态(切章证据收窄,sim-screen-announce 迭代 §2.2.1):
       广播行(本行 ``field=='current_screen'``,漏斗/sim 广播写入行本体)=
-      唯一切章锚——值 == base(最近快照章)→ 续开 base(弹层结束回底层),
+      唯一切章基准——值 == base(最近快照章)→ 续开 base(弹层结束回底层),
       否则开新快照章(注册表命中;未注册 id 按原样开章 + 缺口);
       非广播行携带的快照 cs 一律只作归属,永不切章——有当前章挂当前章;
       无当前章(组首行)= 组边界基线,按快照 cs 开基线章(pipeline §4
@@ -1231,7 +1231,7 @@ def _locate_screen(row: dict[str, Any], base: Screen | None,
         cs = str((row.get('after') if is_cs_row
                   else vals['current_screen']) or '')
         if is_cs_row:
-            # 广播行本体 = 唯一切章锚:值 == base → 续开 base(同值广播
+            # 广播行本体 = 唯一切章基准:值 == base → 续开 base(同值广播
             # same_value 行同径续开,不重开章)
             if base is not None and cs == base.screen_id:
                 return base, base, base, []
@@ -1281,7 +1281,7 @@ def _action_title(receipt: dict[str, Any]) -> str:
 
 def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
                  prev_of: dict[int, Any], idx: int, sec: Section) -> None:
-    """单行入章:动作锚 / 状态变化 / 尾注(pipeline §5;render-spec §5)。
+    """单行入章:动作基准 / 状态变化 / 尾注(pipeline §5;render-spec §5)。
 
     ``sec`` = 所属章组(动作节章归属回搜与效果差分缓冲的承载面)。
     """
@@ -1328,7 +1328,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         extra = [(k, v) for k, v in rec.items()
                  if k not in ('op', 'applied', 'gold_delta', 'reason', 'detail',
                               'screen')]
-        # 动作节章归属锚 = 回执 screen(动作发出画面,全回执域统一语义):
+        # 动作节章归属基准 = 回执 screen(动作发出画面,全回执域统一语义):
         # 转移类动作(如开商店)的回执在切屏写入行之后落窗,位置归属会把它
         # 记到变更后画面;按发出画面回搜本章组已开画面章归位。搜不到
         # (旧数据 screen=目标画面语义/画面章未开)→ 位置归属(当前章)。
@@ -1357,16 +1357,16 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     actor = str(row_sig(row).get('actor') or '')
     unreg = _is_unregistered_screen_actor(actor)
     if unreg:
-        # 未注册画面 op(pipeline §4):不切分,记缺口待聚合尾注显影;
-        # receipts 锚行是动作节机制不在此列(上文已 return)
+        # 未注册画面 op(pipeline §4):不切分,记缺口待聚合尾注显示;
+        # receipts 基准行是动作节机制不在此列(上文已 return)
         scr._unreg_counts[actor] = scr._unreg_counts.get(actor, 0) + 1
     family = str(row_sig(row).get('family') or '')
     is_hook = family == 'logic_hook'
     if family == 'obs' and f != 'settlement':
-        # 观察道不入变化表(读数不是动作效果)。显影规则 = 画面 op 观察到
+        # 观察道不入变化表(读数不是动作效果)。显示规则 = 画面 op 观察到
         # 什么,本章 0 观察就显什么:
         # - 开章行 = 快照承载,不入账;路由键/空值不入;
-        # - 注册键 = 开章快照已显影,回读是重复显影,整条跳过;
+        # - 注册键 = 开章快照已显示,回读是重复显示,整条跳过;
         # - 非注册键 = 本章 0 观察动态段(首写定帧值);回读异值 → 章尾注记
         #   (对账纠偏/重观察回读的可见性保留)。
         if opened:
@@ -1378,7 +1378,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
             return
         brief = _value_brief(f, after)
         if f in _ALL_ENTRY_KEYS:
-            return  # 注册键 = 开章快照已显影,观察回读是重复显影(§5 修订判据)
+            return  # 注册键 = 开章快照已显示,观察回读是重复显示(§5 修订判据)
         if f not in scr._obs_entries:
             scr._obs_entries[f] = brief
             return
@@ -1396,7 +1396,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
                   note='(效果钩子)' if is_hook else '', is_hook=is_hook)
     # 渲染同值过滤(§5 修订):链档(真实前写入行)前=后 = 零信息,计数进尾注;
     # 开章行豁免(章首写入行是本章证据本体);快照档相等 = 视野内首写,照常
-    # 渲染并注 (前值=累计快照)——首写吞掉会让 overlay 候选/结算不显影
+    # 渲染并注 (前值=累计快照)——首写吞掉会让 overlay 候选/结算不显示
     # (sim 广播形态实测:invest_env_opts 首写曾被过滤)。
     cell_b = (_delta_value_cell(f, delta.before)
               if delta.before is not None else None)
@@ -1413,7 +1413,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
         scr.trailing_changes.append(delta)
         return
     if unreg:
-        # 未注册画面 op 的非 obs 行:一律走尾注显影(pipeline §4「挂当前
+        # 未注册画面 op 的非 obs 行:一律走尾注显示(pipeline §4「挂当前
         # 画面章尾注 + 记缺口」),禁静默混入动作状态变化表
         return
     if family == 'logic_action':
@@ -1427,7 +1427,7 @@ def _consume_row(row: dict[str, Any], scr: Screen, opened: bool,
     if sec._last_action is not None:
         sec._last_action.deltas.append(delta)
     else:
-        scr.trailing_changes.append(delta)  # 章内变化块(无锚前缀写入行)
+        scr.trailing_changes.append(delta)  # 章内变化块(无归属前缀写入行)
 
 
 def _opening_note(row: dict[str, Any]) -> str:
@@ -1436,7 +1436,7 @@ def _opening_note(row: dict[str, Any]) -> str:
     - 仲裁行 / 观察道写入 = 开局基线观察(全局首遍读数,非任何画面内容);
     - 其余写入 = 开局初始化(种子推导/对账/恢复等,写入者非注册画面 actor
       且行无 current_screen——粘进当前章会把对局元数据误记为画面效果);
-    - CwScreen 前缀未注册写入者保留缺口显影(响亮暴露,不因换桶静默)。
+    - CwScreen 前缀未注册写入者保留缺口显示(响亮暴露,不因换桶静默)。
     """
     kind = row_kind(row)
     actor = str(row_sig(row).get('actor') or '—')
@@ -1464,7 +1464,7 @@ def _opening_note(row: dict[str, Any]) -> str:
 
 def _is_opening_unattributed(row: dict[str, Any]) -> bool:
     """开局段行是否无画面归属(归组级桶;判定 = 写入者非注册画面 actor 且
-    行无 current_screen 证据;回执锚行恒走画面章动作节)。"""
+    行无 current_screen 证据;回执基准行恒走画面章动作节)。"""
     kind = row_kind(row)
     if kind == ROW_OBS_EVENT:
         return True
@@ -1720,7 +1720,7 @@ def build_report(rows: list[dict[str, Any]], stats: JournalReadStats, *,
     if not ordered:
         if strategy is not None:
             report.strategy = strategy
-            _join_strategy_telemetry(report, strategy)   # 无章可锚 → 全量未归属
+            _join_strategy_telemetry(report, strategy)   # 无章可归属 → 全量未归属
         return report
     prev_of = _precompute_prevs(ordered)
     first_node_idx = len(ordered)
@@ -1887,7 +1887,7 @@ def _kv_meta_lines(report: Report) -> list[str]:
     tele = report.strategy
     if tele is not None and tele.records:
         # 策略遥测行(render-assembly §4):无文件整行省略;未归属 > 0 时
-        # 行尾追加计数(node=null/无锚记录,完整性申报面,不逐条展开)。
+        # 行尾追加计数(node=null/无归属记录,完整性申报面,不逐条展开)。
         ids = '、'.join(dict.fromkeys(
             r.strategy_id or '?' for r in tele.records))
         line = f'- 策略遥测: {ids} ({len(tele.records)} 条)'
@@ -1960,7 +1960,7 @@ def _render_action(act: Action) -> list[str]:
         out += _basis_block(rec, '- 策略依据: ')
     for rec in act.chain:
         # 受阻判据 = reason 非空(受阻样式挂 reason;新回执无布尔键,旧
-        # journal 的 applied 键由下方排除表吞掉不显影)。
+        # journal 的 applied 键由下方排除表吞掉不显示)。
         reason = str(rec.get('reason') or '')
         warn = '⚠ ' if reason else ''
         bits = []
@@ -1993,7 +1993,7 @@ def _render_screen(prefix: str, scr: Screen) -> list[str]:
     out = [f'### {prefix} {scr.title}', '']
     out += ['#### 0 观察', '']
     obs = _entry_lines(scr.entry, {f for f, _, _ in scr.entry_tables})
-    # 本章观察道写入动态段(首写帧值;注册键已由快照显影不在此列)
+    # 本章观察道写入动态段(首写帧值;注册键已由快照显示不在此列)
     obs += [f'- {field_cn(f)} {_esc(b)}' for f, b in scr._obs_entries.items()]
     if obs:
         out += obs

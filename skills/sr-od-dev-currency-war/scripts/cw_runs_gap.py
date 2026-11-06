@@ -11,7 +11,7 @@
 - baseline 悬挂段:武装尾窗外的历史悬挂段不入状态 → 永不报警。与全账
   baseline 语义(武装时已悬挂段 = 排除集)等价,排除集变小无害;
 - 过渡守卫判据 mf_rows:全账计数降级为**尾窗内**计数。若全账 match_final
-  行都在尾窗外(接线前的陈旧收尾),守卫会误判激活 → 疑似报警被抑制自愈
+  行都在尾窗外(接入前的陈旧收尾),守卫会误判激活 → 疑似报警被抑制自愈
   退出(方向 = 不误报,不吞真故障——守卫期本报警无判据能力,见武装块注);
 - 段状态:段首行在尾窗外的段缺段首,但段状态只按「见到过该段行/有无
   match_final 收尾行」累积,收尾行必在段尾(局终才落),判定不受影响;
@@ -30,12 +30,12 @@
 - 「runs.jsonl 缺行 = 结算流断」→「实机段无 match_final 收尾行」。runs 流
   已消亡,runs 在 journal 中的并入载体 = 局终域 match_final 行(kernel/
   cw_board_state.write_match_final,一段一行,局终收尾时落)。报警词保留
-  [RUNS-GAP](下游消费词汇不破)。**接线状态申报**:
-  match_final 在线收尾写点接线入库前(本脚本交付时点 HEAD 上
+  [RUNS-GAP](下游消费词汇不破)。**接入状态申报**:
+  match_final 在线收尾写点接入入库前(本脚本交付时点 HEAD 上
   write_match_final 无生产调用点,cw_loop 两调用点尚未入库)——彼时生产局终了
   **不会**产行,「段无 match_final」对每局正常终了恒真,不构成故障证据。
   故本版报警路径前置**过渡守卫**(判据=全账实机段 mf 行总数,见武装块注):
-  守卫激活期报警静默,账面出现首个收尾行自动解除;接线验收后守卫可删。
+  守卫激活期报警静默,账面出现首个收尾行自动解除;接入验收后守卫可删。
 - 「decisions mtime 停更」→「实机段行流对哨兵可见的新鲜度」。journal 文件
   mtime 会被 sim 段写入污染,不可用;改记「最后一次见到实机段行的本地时刻」。
 - 「主日志 90s 静默闸」不变(op_journal 保留,server 活跃判据照旧)。
@@ -136,7 +136,7 @@ def _smoke_guard() -> None:
     if 'CW_RUNSGAP_JOURNAL' not in os.environ:
         print('[RUNSGAP-SMOKE-GUARD] 拒绝执行:SMOKE_GAP=1 干跑注入段'
               '(run_20000101_* 形态)恰配实机段正则,缺省 JOURNAL 即现役 '
-              'live journal——假收口行可令哨兵误判已终局(吞报警)。请显式'
+              'live journal——假收尾行可令哨兵误判已终局(吞报警)。请显式'
               "重定向副本:$env:CW_RUNSGAP_JOURNAL='<非现役副本路径>'",
               flush=True)
         sys.exit(2)
@@ -249,28 +249,28 @@ LOG_QUIET_S = float(os.environ.get('CW_RUNSGAP_LOG_AGE', '90'))
 
 jt = JournalTail(JOURNAL)
 baseline = jt.hanging_ids()   # 历史悬挂(如被 stop 截断的旧局)不报;v3.1 起 = 尾窗内历史悬挂(语义等价申报见文件头)
-# 过渡守卫(审查打回后加装;match_final 在线收尾写点,接线入库前
-# 生产局终了不产行——本报警判据「段无 match_final」在接线前对每局正常终了
+# 过渡守卫(审查打回后加装;match_final 在线收尾写点,接入入库前
+# 生产局终了不产行——本报警判据「段无 match_final」在接入前对每局正常终了
 # 恒真,武装即每局必报)。守卫判据 = 实机段 match_final 收尾行计数 jt.mf_rows
 # (v3.1 起 = 尾窗内计数,申报见文件头):
-# 为 0 = 写点在库产出能力从未被观测到,「段缺收尾行」不可归因(未接线 vs
-# 写端异常分不开)→ 疑似报警自愈退出;运行中账面出现首个 mf 行(= 接线落地且
+# 为 0 = 写点在库产出能力从未被观测到,「段缺收尾行」不可归因(未接入 vs
+# 写端异常分不开)→ 疑似报警自愈退出;运行中账面出现首个 mf 行(= 接入落地且
 # 首局实跑收尾)即解除,恢复正常报警。抑制窗口因此收敛于「接线 commit 前
-# 的实机窗」;接线验收后守卫可删,删除前为无害保守。
+# 的实机窗」;接入验收后守卫可删,删除前为无害保守。
 guard_quiet = jt.mf_rows == 0
 print(f'[runsgap] armed v3.1 @ {time.strftime("%H:%M:%S")} '
       f'journal={JOURNAL} tail={TAIL_BYTES // 1048576}MB '
       f'baseline 悬挂段={len(baseline)} '
-      f'已收口段={sum(1 for s in jt.segs.values() if s["mf"])} '
+      f'已收尾段={sum(1 for s in jt.segs.values() if s["mf"])} '
       f'mf行={jt.mf_rows}'
-      f'{" [守卫:写点未观测到产出,收口断流报警抑制中]" if guard_quiet else ""} '
+      f'{" [守卫:写点未观测到产出,收尾断流报警抑制中]" if guard_quiet else ""} '
       f'log={LOG}', flush=True)
 
 # 干跑钩子(手工干跑验证配套,生产不触发):SMOKE=1 武装快照验证即退;
 # SMOKE_GAP=1 时把 NEWSEG 指定段以未收尾行注入 journal 文件(模拟新局出现
 # 后停止更新),缩窗后应走 [RUNS-GAP] 报警路径(守卫未激活时)或「守卫抑制」
 # 说明(武装时账面无任何 mf 行);SMOKE_UNGUARD=1 时再由后台线程延迟注入
-# 一条 match_final 行(模拟接线落地首局收尾),应见「守卫解除」打印且
+# 一条 match_final 行(模拟接入落地首局收尾),应见「守卫解除」打印且
 # 随后未收尾段恢复报警能力。注入写入点受模块入口 _smoke_guard 守卫:
 # 注入段恰配实机段正则,禁写现役 live journal(缺省/指现役在武装前即拒)。
 if os.environ.get('CW_RUNSGAP_SMOKE') == '1':
@@ -311,8 +311,8 @@ while True:
         continue
     if guard_quiet and jt.mf_rows > 0:
         guard_quiet = False
-        print('[runsgap] 过渡守卫解除:账面出现首个 match_final 收口行'
-              '(写点接线已落地,恢复收口断流报警)', flush=True)
+        print('[runsgap] 过渡守卫解除:账面出现首个 match_final 收尾行'
+              '(写点接入已落地,恢复收尾断流报警)', flush=True)
     hanging = jt.hanging_ids() - baseline
     fresh = hanging - seen_new
     if fresh:
@@ -337,16 +337,16 @@ while True:
     if log_age < LOG_QUIET_S:
         continue   # server 还在干活(长过渡),再等
     if guard_quiet:
-        # 过渡守卫命中:写点产出从未被观测(接线前),「段缺收尾行」不可归因。
+        # 过渡守卫命中:写点产出从未被观测(接入前),「段缺收尾行」不可归因。
         # 自愈退出(NO_ACTIVE_RUN 同型):守卫期本报警无能力也不该占单实例锁
-        # 死守(锁会挡住接线落地后的新实例武装);接线后经常规重武三步
+        # 死守(锁会挡住接入落地后的新实例武装);接入后经常规重武三步
         # 起新实例即恢复判据(新实例武装时账面已有 mf 行,守卫不激活)。
-        print(f'[runsgap] 收口断流疑似报警被过渡守卫抑制,自愈退出(写点未观测到'
-              f'产出,疑似 match_final 在线收口接线未落地=W3 批辖域;接线后'
+        print(f'[runsgap] 收尾断流疑似报警被过渡守卫抑制,自愈退出(写点未观测到'
+              f'产出,疑似 match_final 在线收尾接入未落地=W3 批辖域;接入后'
               f'重武即恢复正常判据): {sorted(pending)}', flush=True)
         sys.exit(0)
     pending_list = sorted(pending)
     print(f'[RUNS-GAP] 对局已停(实机段行流 {int(seen_age)}s 无新增+日志静默{int(log_age)}s) '
-          f'但段无 match_final 收口行: {pending_list}'
-          f'(stop 截断收口流转或写端异常,人工判)', flush=True)
+          f'但段无 match_final 收尾行: {pending_list}'
+          f'(stop 截断收尾流转或写端异常,人工判)', flush=True)
     sys.exit(0)

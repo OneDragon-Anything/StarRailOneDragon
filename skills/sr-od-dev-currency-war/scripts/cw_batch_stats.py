@@ -320,7 +320,7 @@ def _readiness_from_snapshot(state_snapshot: dict | None, *,
     判据不可判,消费面回退镜像读数,不虚构 False)。
 
     入参适配 = 快照 dict → form_progress 鸭型桩(board.value + deployed
-    容器视图,轻量桩契约见 cw_comps.form_progress docstring);阵容解析
+    名单视图,轻量桩契约见 cw_comps.form_progress docstring);阵容解析
     序与决策行锁定语义一致:locked_comp 非空 = 资格锁(cw_comps.get_comp
     按名,未知名 = None);否则 p1_pair 非空 = 旧 P1 配方锁伪阵容路径
     (cw_intention.pair_target_comp——该符号已随配方决策层退役删除,

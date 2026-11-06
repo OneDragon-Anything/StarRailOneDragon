@@ -27,7 +27,7 @@ capture-store §4,sink 落点随批根)、终态摘要与复盘入口提示打�
   A8 是开局 HP 唯一实证档,其余档注册表报错索样本,不设参数不外推);
 - 敌方词缀缺省由 seed 采样(RunConfig override 语义);
 - 依赖测试仓 ``sr-od-test/``(harness/conftest 单一源,禁第二份装配复制);
-- 健康局秒级收口;卡死局由看门狗 1200 轮兜底(可能数分钟)。
+- 健康局秒级收尾;卡死局由看门狗 1200 轮兜底(可能数分钟)。
 """
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ framework_log.setLevel(logging.WARNING)
 
 def _print_match_digest(journal_path: Path, run_id: str) -> None:
     """局况摘要(hp 链 / 节点序 / 金轨迹 / 终态):stdout 直接可读,
-    免二次脚本;逐行锚 = journal 写行 v 号(复盘报告引用行锚用)。"""
+    免二次脚本;逐行标记点 = journal 写行 v 号(复盘报告引用行标记点用)。"""
     hp_rows: list[tuple[int, object, dict]] = []
     gold_by_node: dict[tuple[int, int], list] = {}
     node_seq: dict[int, list[tuple[int, str]]] = {}
@@ -97,7 +97,7 @@ def _print_match_digest(journal_path: Path, run_id: str) -> None:
             node_seq.setdefault(n['plane'], []).append((n['round_num'], n['kind']))
         final_state = (r.get('state') or {}).get('values', final_state)
 
-    print('--- hp 链(写行 v 号即行锚) ---')
+    print('--- hp 链(写行 v 号即行标记点) ---')
     for v, a, n in hp_rows:
         print(f'  v={v:>3} hp={a}  P{n.get("plane")}r{n.get("round_num")}({n.get("kind")})')
     print('--- 节点序 ---')
@@ -116,9 +116,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description='跑一局带遥测落盘的 sim 对局(复盘素材采集)')
     ap.add_argument('--seed', type=int, default=None,
-                    help='世界与策略共用种子(缺省 = 当前 HHMMSS,stdout 已印,同 seed 可复现)')
+                    help='状态副本与策略共用种子(缺省 = 当前 HHMMSS,stdout 已印,同 seed 可复现)')
     ap.add_argument('--strategy-seed', type=int, default=None,
-                    help='策略器种子(缺省 = 世界种子;测试冒烟同口径)')
+                    help='策略器种子(缺省 = 状态副本种子;测试冒烟同口径)')
     ap.add_argument('--out-dir', type=str, default=None,
                     help='批目录(缺省 = .debug/currency_war/telemetry/sim/sim_match_<时刻>)')
     args = ap.parse_args()
@@ -294,7 +294,7 @@ def main() -> int:
             uninstall_backend()
         dur = time.perf_counter() - started
         if not (getattr(result, 'success', False) and backend.done):
-            print(f'[drive] 局未正常收口: success={getattr(result, "success", None)} '
+            print(f'[drive] 局未正常收尾: success={getattr(result, "success", None)} '
                   f'done={backend.done}(journal 仍在,可作卡死排查素材)')
 
         # ---- 统计行(冒烟同口径;死亡/进 P3 两源都算跑完) ----
@@ -318,7 +318,7 @@ def main() -> int:
     finally:
         mp.undo()
         set_decision_sink(None)               # sink 槽复位(与装配段对称)
-        close_strategy_telemetry_handles()    # 批根句柄收口(复位口,防残留)
+        close_strategy_telemetry_handles()    # 批根句柄收尾(复位口,防残留)
         reset_state_telemetry()
         tel_state.set_recorder_replay_dir(None)
         tel_state.reset_run_state()
