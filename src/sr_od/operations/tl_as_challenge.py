@@ -318,7 +318,7 @@ class TlAsTeamFillOp(SrOperation):
         反着写会把「回顶」变成「冲向列表尾」(实机实证:回顶后首扫页签
         全是 4 星尾部角色)。单次大幅快拖惯性滚动约 4+ 页(本机实测),
         3 次任何起点都到顶。"""
-        for _ in range(self._TOP_DRAG_COUNT):
+        for _ in range(_TOP_DRAG_COUNT):
             self.ctx.controller.drag_to(
                 self._TOP_TO, start=self._TOP_FROM, duration=self._TOP_DURATION)
         self._need_top = False
