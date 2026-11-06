@@ -40,7 +40,7 @@ class EquipmentWearRule:
     predicate: str
     """穿戴前置类型(现役单一值 = ``WEAR_PREREQ_EMPTY_SLOTS``)。"""
     prose_ref: str
-    """名锚 → ``EQUIPMENTS`` 同名键(effect 原文含前置措辞,对拍义务载体)。"""
+    """名字作对拍键 → ``EQUIPMENTS`` 同名键(effect 原文含前置措辞,对拍义务载体)。"""
 
 
 #: 件专属前置已登记条目(首件锚定 = 注册表 随便骰子/随便骰子·特权 两行 effect
@@ -155,10 +155,10 @@ def check_equipment_wear_rule_coverage() -> list[str]:
             continue
         if _COVERAGE_KEYWORD not in (eq.effect or ''):
             warnings.append(
-                f'结构化前置条目[{name}]的散文锚已失效(effect 不再含'
+                f'结构化前置条目[{name}]的散文参照键已失效(effect 不再含'
                 f'「{_COVERAGE_KEYWORD}」,前置措辞漂移,须对拍后更新)')
         if entry.prose_ref != name:
-            warnings.append(f'结构化前置条目[{name}]名锚错位(prose_ref={entry.prose_ref})')
+            warnings.append(f'结构化前置条目[{name}]名参照键错位(prose_ref={entry.prose_ref})')
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     for name in ITEM_WEAR_GATES:
         if name not in EQUIPMENTS:

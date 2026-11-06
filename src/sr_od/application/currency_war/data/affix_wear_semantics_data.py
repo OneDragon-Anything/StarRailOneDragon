@@ -46,7 +46,7 @@ class AffixWearSemantics:
     """罚值(游戏定义):输出侧 = 罚后伤害乘数(0.8 = 伤害×80%);
     承伤侧 = 单位罚值(0.08 = 每空栏额外 8% 真实伤害)。"""
     prose_ref: str
-    """词缀名锚 → 散文注册表同名词缀键(对拍义务载体;行号不稳故用名锚)。"""
+    """词缀名作对拍键 → 散文注册表同名词缀键(对拍义务载体;行号不稳故用名字匹配)。"""
 
 
 WEAR_AFFIX_SEMANTICS: dict[str, AffixWearSemantics] = {
@@ -102,7 +102,7 @@ def check_wear_semantics_coverage() -> list[str]:
         if any(k in prose for k in _COVERAGE_KEYWORDS):
             warnings.append(
                 f'词缀[{name}]散文命中穿戴/伤害衰减关键词但无结构条目'
-                f'(疑似漏建模,非排除表在册): {prose}')
+                f'(疑似漏建模,未登记进排除表): {prose}')
     for name in WEAR_AFFIX_SEMANTICS:
         if name not in AFFIX_EFFECTS:
             warnings.append(f'结构条目[{name}]在散文注册表无同名行(孤儿缓存)')

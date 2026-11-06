@@ -144,7 +144,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
                       '供智能体交叉验证而非盲信(证据链见 currency_war_char_id);'
                       'templates 未加载→None',
         'back_line': '后排 Unit 行 list(同 front_line 结构;templates 未加载→None)',
-        'bench': '备战席容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
+        'bench': '备战席状态容器视图 dict(BenchView:slots=9 元素 BenchSlot dict'
                  '{kind: unit/supply_box/tome/bookcard/empty, unit: Unit dict 或 null}'
                  '+ capacity=9;unit 槽元素 = char_id/star/equips/slot,备战席无 below icon→equips 恒 [];'
                  '占位物品槽 kind 识别期细分;空读→None)',

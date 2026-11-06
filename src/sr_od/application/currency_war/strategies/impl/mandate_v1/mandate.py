@@ -1111,7 +1111,7 @@ class PrepContext:
     """搜索面板装配引用(统一部署搜索:select_deployment 面板装配的
     session 入参;虚拟重算 = 面板替换承载,本字段仅供生产路径)。"""
     gs_ref: object | None = None
-    """搜索面板装配引用(同上;gs = 决策容器)。"""
+    """搜索面板装配引用(同上;gs = 决策状态容器)。"""
 
 
 def assemble_prep_context(session: StrategySession, gs: GameState,

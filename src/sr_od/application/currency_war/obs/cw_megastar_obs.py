@@ -78,7 +78,7 @@ _PORTRAIT_HALF_W: int = 65
 
 IdentifyFn = Callable[[MatLike], str | None]
 """立绘身份识别注入点:(候选立绘裁片 RGB)→ 货币战争规范名;``None`` =
-未命中(SIFT 通道无产出,OCR 转换名承重)。测试经 ``identify`` 形参注入
+未命中(SIFT 通道无产出,由 OCR 转换名决定)。测试经 ``identify`` 形参注入
 桩,禁 monkeypatch 私有。"""
 
 
@@ -101,7 +101,7 @@ def _default_identify(ctx: SrContext) -> IdentifyFn:
     templates = ensure_portrait_templates(ctx)
     if templates is None:
         log.warning('[cw-megastar] 立绘 SIFT 模板库缺失:识别通道全程未命中,'
-                    '候选身份由 OCR 转换名承重')
+                    '候选身份由 OCR 转换名决定')
         return lambda _crop: None
 
     def _identify(crop: MatLike) -> str | None:

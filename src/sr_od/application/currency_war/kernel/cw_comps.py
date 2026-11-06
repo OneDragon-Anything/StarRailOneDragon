@@ -158,7 +158,7 @@ class Comp:
     (12 号篇 §1.4)。**值 = 1 的条目是活数据不是死行**:``unfinished_star_targets``
     的「未持有 → 0 < 1 → 入未完成目标集」分支使 1★ 行承载「首张即目标」语义
     (停留刷牌目标驱动);勿按「消费端缺省 1 等价」误判清理(comp-data-row-cleanup
-    迭代曾误判撤销,窄子集测试 stay_target 断言拦截——判例见该迭代 attack.md)。
+    迭代曾误判撤销,窄子集测试 stay_target 断言拦截——先例见该迭代 attack.md)。
     定值规则:核心输出位按线攻略明文,无明文线按星级饥饿两档表定为
     (final_comps README A4:高饥渴线 Final 3★ 占 80-94% 标 3★/低饥渴线 ≤2★ 过半
     标 2★);辅助 1★(A4 辅助普适档——D 牌预算全落核心,辅助升星只吃自然来牌);
@@ -226,7 +226,7 @@ class Comp:
         if _flex_echo:
             raise ValueError(
                 f'{self.name}: flex_factions 与档 ≥1 键重叠 '
-                f'{sorted(_flex_echo)}(次要羁绊登记单一容器:'
+                f'{sorted(_flex_echo)}(次要羁绊登记单一状态容器:'
                 '有档位目标进 faction_reqs 档 ≥1,无档位目标才进 flex)')
         # (need_star 值域校验曾随 comp-data-row-cleanup 落地后撤销——1★ 行
         #  是活数据:unfinished_star_targets 对未持有成员 0 < 1 入未完成
@@ -1285,7 +1285,7 @@ def _validate_anchor_invariants() -> None:
     for comp in COMP_LIBRARY:
         if not comp.core_chars:
             raise ValueError(f'{comp.name}: 终局线 core_chars 为空'
-                             '(点名件单锚半边失源)')
+                             '(点名件单识别标志半边失源)')
     if set(TRANSITION_COMBO_PARTS) != {e.name for e in TRANSITION_LIBRARY}:
         raise ValueError('TRANSITION_COMBO_PARTS 键集 != 条目名集'
                          '(键集是过渡判据单一源,双钉失效)')
