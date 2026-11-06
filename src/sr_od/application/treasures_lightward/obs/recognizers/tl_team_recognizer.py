@@ -33,13 +33,14 @@ class TlTeamRecognizer(ScreenRecognizer):
         'environment_text': '环境效果全文(本期记忆紊流文本,与选关画面紊流弹窗同文)',
         'star_targets': '挑战目标行 list(满星条件,通常 3 行)',
         'left_tab': '左侧激活 tab(角色列表|预设编队);判不出 None',
-        'waves': '波次列表 list[WaveInfo](每元素 {wave_idx,weaknesses,members};每队伍行=一波,'
-                 '数量实读——混忆常规 2 波,其他模式可能不同)。⚠️ 命名依据:编队画面本身无'
-                 '「波次」字样,行序↔波次映射证据 = 每行「建议属性」即该波敌人弱点(两波随关'
-                 '互异)+ 每行敌人预览即该波敌人;「波次」文字实锚于敌方信息浮层(第1波/第2波)'
-                 '与战斗内进度。weaknesses=该波敌人弱点属性名list(左右序;元素图标模板匹配'
-                 '主判+色相仲裁,解不出的图标不进列表);members=该波当前编队(4 元素按槽位序,'
-                 'MemberGuess 同老字段语义;槽位 area 未建档的行=[]);waves=[] = 锚未读到(降级)',
+        'nodes': '节点列表 list[NodeInfo](每元素 {node_idx,weaknesses,members};'
+                 '每队伍行=一节点,数量实读——混忆常规 2 节点,星启 3 节点)。术语定案见 skill '
+                 'sr-od-treasures-lightward references/gameplay.md「关卡结构术语」:编队屏一行 = '
+                 '关卡的一段战斗(节点,游戏内行标签/节点结算页显式「节点N」);波(第N波)是节点内'
+                 '一场战斗的敌人批次,两者不同层级。weaknesses=该节点敌人弱点属性名list(左右序;'
+                 '元素图标模板匹配主判+色相仲裁,解不出的图标不进列表);members=该节点当前编队'
+                 '(4 元素按槽位序,MemberGuess 同老字段语义;槽位 area 未建档的行=[]);'
+                 'nodes=[] = 锚未读到(降级)',
         'character_grid': '角色列表 tab:可见网格 list[GridCell](元素 {row,col,guess};row/col 0 基,'
                           '4 列×可见 4 行,滚动后需多帧);非该 tab 为 null',
         'preset_teams': '预设编队 tab:队伍组 list[PresetTeam](元素 {team_idx,members};team_idx 1 基从上到下,'

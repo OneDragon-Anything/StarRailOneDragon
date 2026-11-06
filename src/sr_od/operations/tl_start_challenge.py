@@ -1,20 +1,20 @@
-"""忘却之庭(混沌回忆)波次战斗:编队屏点「混沌回忆」按钮后调用,全自动跑完两波。
+"""忘却之庭(混沌回忆)节点战斗:编队屏点「混沌回忆」按钮后调用,全自动跑完两节点。
 
 ⚠️ 适用范围:仅忘却之庭(按钮文案/记忆紊流弹窗/两波连续流程均按混沌回忆实测标定);
-虚构叙事/末日幻影的发起与波次结构不同,不可套用,需另行建档。
+虚构叙事/末日幻影的发起与节点结构不同,不可套用,需另行建档。
 
 流程契约(人类老莫 2026-11-04 定义):
 - 调用方在编队屏点击「混沌回忆」按钮后调用本 op(本 op 不点按钮);
 - 先判断是否已进入节点画面(锁光标大世界场景,屏级 pc_alt=true);
 - 有弹窗(记忆紊流说明)就关弹窗;
 - 前进 → 秘技 → 发起战斗;
-- 判断战斗结束 → 下个波次循环;
+- 判断战斗结束 → 下个节点循环;
 - 出现「挑战成功」→ 点「返回忘却之庭」收尾。
 
-实现要点(2026-11-04 实机):两波连续自动衔接、波间无结算弹窗——单节点状态机
-每轮按画面特征分流:结算浮层 → 收尾;波次待命态(节点画面三锚齐:剩余轮/状态效果/
-查看详情,战斗中左栏被战斗 UI 替换故三锚不齐)→ 波次流程;其余 → 等待。
-波次队伍按 ``wave_teams`` 顺序消费(第 N 次待命态 = 第 N 波),StartFightForElite
+实现要点(2026-11-04 实机):两节点连续自动衔接、节点间无结算弹窗——单节点状态机
+每轮按画面特征分流:结算浮层 → 收尾;节点待命态(节点画面三锚齐:剩余轮/状态效果/
+查看详情,战斗中左栏被战斗 UI 替换故三锚不齐)→ 节点流程;其余 → 等待。
+节点队伍按 ``node_teams`` 顺序消费(第 N 次待命态 = 第 N 节点),StartFightForElite
 按各波角色 technique_type 决策秘技顺序。
 """
 
@@ -41,15 +41,15 @@ class TlStartChallengeOp(SrOperation):
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
     STATUS_FAIL: ClassVar[str] = '战斗失败'
 
-    def __init__(self, ctx: SrContext, wave_teams: list[list[str]]):
+    def __init__(self, ctx: SrContext, node_teams: list[list[str]]):
         """
         Args:
-            wave_teams: 每波编队的角色中文名列表(外层=波次顺序,内层 4 人按槽位序;
+            node_teams: 每节点编队的角色中文名列表(外层=节点顺序,内层 4 人按槽位序;
                 与 TlFillTeamsOp 填充一致,秘技顺序按角色 technique_type 决策)。
         """
-        SrOperation.__init__(self, ctx, op_name='逐光捡金 波次战斗')
+        SrOperation.__init__(self, ctx, op_name='逐光捡金 节点战斗')
         self.teams: list[list[Character]] = []
-        for names in wave_teams:
+        for names in node_teams:
             team: list[Character] = []
             for name in names:
                 char = next((c for c in CHARACTER_LIST if c.cn == name), None)
@@ -59,7 +59,7 @@ class TlStartChallengeOp(SrOperation):
                     raise ValueError(f'未知角色名: {name}')
                 team.append(char)
             self.teams.append(team)
-        self._wave_idx: int = 0            #: 当前待填充的波次(0 基,按待命态出现顺序消费)
+        self._node_idx: int = 0            #: 当前待填充的节点(0 基,按待命态出现顺序消费)
 
     @operation_node(name='等待进入节点画面', is_start_node=True, node_max_retry_times=30)
     def _wait_enter(self) -> OperationRoundResult:
@@ -73,9 +73,9 @@ class TlStartChallengeOp(SrOperation):
 
     @node_from(from_name='等待进入节点画面')
     # 循环由 round_wait/round_retry 机制自动重跑本节点,不声明自环(自环出边会吞成功结果)
-    @operation_node(name='波次循环', node_max_retry_times=240)
-    def _wave_loop(self) -> OperationRoundResult:
-        """按画面特征分流的波次状态机(结算 → 收尾;弹窗 → 关闭;待命 → 开战;其余 → 等待)。
+    @operation_node(name='节点循环', node_max_retry_times=240)
+    def _node_loop(self) -> OperationRoundResult:
+        """按画面特征分流的节点状态机(结算 → 收尾;弹窗 → 关闭;待命 → 开战;其余 → 等待)。
 
         弹窗检查独立于待命态判定且必须前置:记忆紊流说明弹窗全屏暗化会遮蔽
         待命态三锚(剩余轮/状态效果/查看详情),埋进待命态分支内将永远不可达
@@ -100,11 +100,11 @@ class TlStartChallengeOp(SrOperation):
                 self.ctx.controller.click(center, press_time=0.15, pc_alt=True)
             return self.round_wait('关闭记忆紊流说明', wait=1)
 
-        # 3. 波次待命态 → 波次流程(前进→秘技→开战)
+        # 3. 节点待命态 → 节点流程(前进→秘技→开战)
         if self._is_node_standby(screen):
-            if self._wave_idx >= len(self.teams):
-                return self.round_fail(f'波次待命但队伍预算用尽(共 {len(self.teams)} 波)')
-            team = self.teams[self._wave_idx]
+            if self._node_idx >= len(self.teams):
+                return self.round_fail(f'节点待命但队伍预算用尽(共 {len(self.teams)} 节点)')
+            team = self.teams[self._node_idx]
             self.ctx.controller.move('w', press_time=2)
             op = StartFightForElite(
                 self.ctx,
@@ -114,14 +114,14 @@ class TlStartChallengeOp(SrOperation):
             )
             op_result = op.execute()
             if not op_result.success:
-                return self.round_fail(f'波 {self._wave_idx + 1} 开战失败: {op_result.status}')
-            self._wave_idx += 1
-            return self.round_wait(f'波 {self._wave_idx} 开战指令完成', wait=3)
+                return self.round_fail(f'节点 {self._node_idx + 1} 开战失败: {op_result.status}')
+            self._node_idx += 1
+            return self.round_wait(f'节点 {self._node_idx} 开战指令完成', wait=3)
 
         # 4. 战斗进行中 / 加载过渡
         return self.round_wait('战斗进行中', wait=3)
 
-    @node_from(from_name='波次循环', status=STATUS_SUCCESS)
+    @node_from(from_name='节点循环', status=STATUS_SUCCESS)
     @operation_node(name='点击返回忘却之庭', node_max_retry_times=12)
     def _click_back(self) -> OperationRoundResult:
         """结算画面点返回(3.x 文案「返回忘却之庭」,旧文案「返回逐光捡金」兜底)。
@@ -152,7 +152,7 @@ class TlStartChallengeOp(SrOperation):
         return self.round_retry('未找到返回按钮', wait=1)
 
     def _is_node_standby(self, screen) -> bool:
-        """波次待命态判定:节点画面三锚齐(剩余轮+状态效果+查看详情)。
+        """节点待命态判定:节点画面三锚齐(剩余轮+状态效果+查看详情)。
 
         战斗中左栏被战斗 UI 替换,三锚不齐故不会误判;加载过渡亦不齐。
         """

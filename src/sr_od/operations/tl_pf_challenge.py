@@ -46,7 +46,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     AnchorCell,
     read_character_cells_by_level,
-    read_team_waves,
+    read_team_nodes,
 )
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.context.sr_context import SrContext
@@ -172,10 +172,10 @@ class TlPfTeamFillOp(SrOperation):
 
         # 落位回验:目标已在行成员里 → 推进游标(点卡可能被游戏吞掉不落位,
         # 这是推进的唯一依据;行槽位头像 74px 圆裁识别命中率高,成员名含候选表)
-        waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
-        row_members = waves[row_no - 1].members if len(waves) >= row_no else []
-        if not waves:
-            log.warning('PF填充: read_team_waves 未读到任何行(PF 屏锚/area 失效?)')
+        nodes = read_team_nodes(self.ctx, image, screen_name=_TEAM_SCREEN)
+        row_members = nodes[row_no - 1].members if len(nodes) >= row_no else []
+        if not nodes:
+            log.warning('PF填充: read_team_nodes 未读到任何行(PF 屏锚/area 失效?)')
         members_dbg = [f'{m.char or "?"}[{"|".join(n for n, _ in m.candidates)}]'
                        for m in row_members]
         log.info('PF填充回验: 行%d 成员=%s 目标=%s', row_no, members_dbg, target)

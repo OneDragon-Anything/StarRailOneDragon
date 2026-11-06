@@ -3,7 +3,7 @@
 识别实现按域拆分(同目录):
 - ``tl_team_common``:公共底座(共享阈值 / 区域工具 / 单格头像识别 / 全部识别数据类);
 - ``tl_stage_info_obs``:右上关卡信息(关卡名 / 环境效果 / 挑战目标);
-- ``tl_weakness_obs``:弱点属性(建议属性)+ 波次队伍槽(右侧);
+- ``tl_weakness_obs``:弱点属性(建议属性)+ 节点队伍槽(右侧);
 - ``tl_character_list_obs``:左侧角色列表(等级锚整页主扫 / 固定网格 / 点击中心);
 - ``tl_preset_obs``:预设编队 tab。
 
@@ -61,10 +61,10 @@ from sr_od.application.treasures_lightward.obs.tl_team_common import (
     SCREEN_NAME,
     AnchorCell,
     MemberGuess,
+    NodeInfo,
     PageHit,
     PresetTeam,
     TlTeamView,
-    WaveInfo,
     get_area_rect,
     identify_crop,
     mean_v,
@@ -74,8 +74,8 @@ from sr_od.application.treasures_lightward.obs.tl_team_common import (
 from sr_od.application.treasures_lightward.obs.tl_weakness_obs import (
     ensure_boss_weakness_map,
     ensure_element_templates,
-    read_team_waves,
-    wave_row_select_point,
+    node_row_select_point,
+    read_team_nodes,
 )
 
 if TYPE_CHECKING:
@@ -94,7 +94,7 @@ __all__ = [
     'GridCell',
     'AnchorCell',
     'PageHit',
-    'WaveInfo',
+    'NodeInfo',
     'TlTeamView',
     'get_area_rect',
     'identify_crop',
@@ -104,8 +104,8 @@ __all__ = [
     'read_stage_name',
     'read_environment',
     'read_star_targets',
-    'read_team_waves',
-    'wave_row_select_point',
+    'read_team_nodes',
+    'node_row_select_point',
     'ensure_element_templates',
     'ensure_boss_weakness_map',
     'read_character_grid',
@@ -130,7 +130,7 @@ def collect_tl_team_info(ctx: SrContext, image: MatLike) -> TlTeamView:
         environment_text=read_environment(ctx, image),
         star_targets=read_star_targets(ctx, image),
         left_tab=tab,
-        waves=read_team_waves(ctx, image),
+        nodes=read_team_nodes(ctx, image),
         character_grid=character_grid,
         preset_teams=preset_teams,
     )

@@ -12,7 +12,7 @@ area 均按混沌回忆布局标定)。逐光捡金其余玩法(虚构叙事/末
 - 左列表拖动滚动,每屏 16 格,拖一次约移 2 行。
 
 填充目标按角色中文名给出(与脸库识别名一致);只点置信命中的格子(歧义格可能点错人,
-错过就继续滚动找);每步点击后用波次识别回验成员落位,没落上会自然重试。
+错过就继续滚动找);每步点击后用节点识别回验成员落位,没落上会自然重试。
 """
 
 from __future__ import annotations
@@ -29,10 +29,10 @@ from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     GridCell,
     MemberGuess,
     grid_cell_center,
+    node_row_select_point,
     read_character_grid,
     read_left_tab,
-    read_team_waves,
-    wave_row_select_point,
+    read_team_nodes,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -49,18 +49,18 @@ class TlFillTeamsOp(SrOperation):
     def __init__(self, ctx: SrContext, team_names: list[str]):
         """
         Args:
-            team_names: 按波次顺序拼接的角色中文名列表(与脸库识别名一致),
-                每 4 人切分为一波(当前混忆 2 波 = 8 人)。
+            team_names: 按节点顺序拼接的角色中文名列表(与脸库识别名一致),
+                每 4 人切分为一节点(当前混忆 2 节点 = 8 人)。
         """
         SrOperation.__init__(self, ctx, op_name='逐光捡金 清空并填充编队')
         if len(team_names) % 4 != 0 or not 1 <= len(team_names) // 4 <= 4:
-            raise ValueError(f'角色数须为 4 的倍数且波数 1-4: {len(team_names)}')
+            raise ValueError(f'角色数须为 4 的倍数且节点数 1-4: {len(team_names)}')
         self.teams: list[list[str]] = [
             team_names[i:i + 4] for i in range(0, len(team_names), 4)
         ]
-        self._team_idx: int = 0            #: 当前填充到第几波(0 基)
-        self._char_idx: int = 0            #: 当前波填到第几个(0 基)
-        self._selected_wave: int = -1      #: 已选中行(1 基;-1 = 未选)
+        self._team_idx: int = 0            #: 当前填充到第几节点(0 基)
+        self._char_idx: int = 0            #: 当前节点填到第几个(0 基)
+        self._selected_node: int = -1      #: 已选中行(1 基;-1 = 未选)
         self._need_top: bool = True        #: 下一步需要先滚回列表顶部
         self._down_stagnation: int = 0     #: 向下翻页停滞计数(连续两次同页 = 到底)
         self._last_page_sig: str = ''      #: 上一页签名(翻页/到顶判定)
@@ -85,9 +85,9 @@ class TlFillTeamsOp(SrOperation):
             self.last_screenshot, SCREEN_NAME, '按钮-清空编队', success_wait=1)
         if not click.is_success:
             return self.round_fail('未找到清空按钮')
-        waves = read_team_waves(self.ctx, self.last_screenshot)
-        for wave in waves:
-            for member in wave.members:
+        nodes = read_team_nodes(self.ctx, self.last_screenshot)
+        for node in nodes:
+            for member in node.members:
                 if not member.empty:
                     return self.round_wait('清空确认中', wait=1)
         return self.round_success()
@@ -97,7 +97,7 @@ class TlFillTeamsOp(SrOperation):
     # (自环出边会让成功结果也沿边回到本节点,操作永不结束 —— 2026-11-04 实测)
     @operation_node(name='填充循环', node_max_retry_times=140)
     def _fill_loop(self) -> OperationRoundResult:
-        """逐波逐角色填充主循环:每轮做一个原子动作,用波次识别回验落位。
+        """逐节点逐角色填充主循环:每轮做一个原子动作,用节点识别回验落位。
 
         每个角色的搜索都先滚回列表顶部再逐页向下(人类老莫 2026-11-04 要求):
         滚动中途直接搜会因列表页序漂移丢失目标。
@@ -108,42 +108,42 @@ class TlFillTeamsOp(SrOperation):
             return self.round_by_find_and_click_area(
                 image, SCREEN_NAME, 'tab-角色列表', success_wait=1)
 
-        waves = read_team_waves(self.ctx, image)
-        if len(waves) < len(self.teams):
-            return self.round_fail(f'编队行数不足: {len(waves)} < {len(self.teams)}')
+        nodes = read_team_nodes(self.ctx, image)
+        if len(nodes) < len(self.teams):
+            return self.round_fail(f'编队行数不足: {len(nodes)} < {len(self.teams)}')
         if self._team_idx >= len(self.teams):
             return self.round_success(TlFillTeamsOp.STATUS_ALL_FILLED)
 
-        wave = waves[self._team_idx]
+        node = nodes[self._team_idx]
         team = self.teams[self._team_idx]
 
-        # 本波已全部落位 → 下一波
-        if all(self._member_has(wave.members, name) for name in team):
+        # 本节点已全部落位 → 下一节点
+        if all(self._member_has(node.members, name) for name in team):
             self._team_idx += 1
             self._char_idx = 0
-            self._selected_wave = -1
+            self._selected_node = -1
             self._need_top = True
-            return self.round_wait(f'波 {self._team_idx} 填充完成', wait=0.5)
+            return self.round_wait(f'节点 {self._team_idx} 填充完成', wait=0.5)
 
         if self._char_idx >= len(team):
             self._char_idx = 0
-            return self.round_wait('重扫当前波', wait=0.3)
+            return self.round_wait('重扫当前节点', wait=0.3)
 
         target = team[self._char_idx]
-        if self._member_has(wave.members, target):
+        if self._member_has(node.members, target):
             self._char_idx += 1
             self._need_top = True
             return self.round_wait(f'{target} 已落位', wait=0.3)
 
-        # 行选中:每波开工先点该行敌人预览区(非控件),后续点卡才落本行
-        if self._selected_wave != self._team_idx + 1:
-            point = wave_row_select_point(self.ctx, self._team_idx + 1)
+        # 行选中:每节点开工先点该行敌人预览区(非控件),后续点卡才落本行
+        if self._selected_node != self._team_idx + 1:
+            point = node_row_select_point(self.ctx, self._team_idx + 1)
             if point is None:
-                return self.round_fail(f'波 {self._team_idx + 1} 槽位 area 缺失')
+                return self.round_fail(f'节点 {self._team_idx + 1} 槽位 area 缺失')
             self.ctx.controller.click(point)
-            self._selected_wave = self._team_idx + 1
+            self._selected_node = self._team_idx + 1
             self._need_top = True
-            return self.round_wait(f'选中波 {self._team_idx + 1} 行', wait=0.5)
+            return self.round_wait(f'选中节点 {self._team_idx + 1} 行', wait=0.5)
 
         # 每个角色搜索前先回列表顶部(页签连续两次相同 = 到顶)
         if self._need_top:

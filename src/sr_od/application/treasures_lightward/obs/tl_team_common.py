@@ -186,18 +186,21 @@ class PageHit:
 
 
 @dataclass
-class WaveInfo:
-    """单波次(旧代码称节点)识别结果:该波敌人弱点 + 该波当前编队成员。
+class NodeInfo:
+    """单节点识别结果:该节点敌人弱点 + 该节点当前编队成员。
+
+    节点 = 关卡的一段战斗(编队屏一行队伍槽 = 一支 4 人队;常规关卡 2 节点、
+    星启关卡 3 节点,术语定案见 skill sr-od-treasures-lightward references/gameplay.md)。
 
     Attributes:
-        wave_idx: 波次序号,1 基,画面从上到下(每波一行队伍槽;数量按「建议属性」
-            锚行实读,混忆常规 2 波,其他模式/回忆章节可能不同)。
-        weaknesses: 该波敌人弱点属性名(「建议属性」图标带,左右序)。
-        members: 该波当前编队成员(4 元素按槽位序 0 基;该行槽位 area 未建档时 = [],
+        node_idx: 节点序号,1 基,画面从上到下(每节点一行队伍槽;数量按「建议属性」
+            锚行实读,混忆常规 2 节点,星启 3 节点,其他模式可能不同)。
+        weaknesses: 该节点敌人弱点属性名(「建议属性」图标带,左右序)。
+        members: 该节点当前编队成员(4 元素按槽位序 0 基;该行槽位 area 未建档时 = [],
             不返回不完整列表,不编造)。
     """
 
-    wave_idx: int
+    node_idx: int
     weaknesses: list[str]
     members: list[MemberGuess]
 
@@ -211,7 +214,7 @@ class TlTeamView:
         environment_text: 环境效果全文(关卡名下方描述区,本期记忆紊流文本)。
         star_targets: 挑战目标行(满星条件,通常 3 行)。
         left_tab: 左侧当前激活 tab('角色列表' | '预设编队');识别失败 None。
-        waves: 波次列表(每波绑定 弱点 + 当前编队;锚行实读,锚未读到 = 空列表降级)。
+        nodes: 节点列表(每节点绑定 弱点 + 当前编队;锚行实读,锚未读到 = 空列表降级)。
         character_grid: 角色列表 tab 的可见网格;非该 tab 为 None。
         preset_teams: 预设编队 tab 的队伍组;非该 tab 为 None。
     """
@@ -220,6 +223,6 @@ class TlTeamView:
     environment_text: str | None
     star_targets: list[str]
     left_tab: str | None
-    waves: list[WaveInfo]
+    nodes: list[NodeInfo]
     character_grid: list[GridCell] | None
     preset_teams: list[PresetTeam] | None

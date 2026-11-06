@@ -1,7 +1,7 @@
-"""逐光捡金编队识别:弱点属性(建议属性)+ 波次队伍槽(右侧)。
+"""逐光捡金编队识别:弱点属性(建议属性)+ 节点队伍槽(右侧)。
 
 弱点主路径:OCR 锚「建议属性」→ 图块带 → 色块检测 → 元素模板匹配主判 +
-色相域交叉仲裁;boss 名查静态弱点表覆盖。每波绑定该波弱点 + 该波当前编队
+色相域交叉仲裁;boss 名查静态弱点表覆盖。每节点绑定该节点弱点 + 该节点当前编队
 成员(槽位裁片识别,标定见 ``_ARC_*`` 常量块)。
 """
 from __future__ import annotations
@@ -18,7 +18,7 @@ from one_dragon.base.screen.template_loader import TemplateLoader
 from one_dragon.utils import os_utils
 from sr_od.application.treasures_lightward.obs.tl_team_common import (
     MemberGuess,
-    WaveInfo,
+    NodeInfo,
     get_area_rect,
     identify_crop,
 )
@@ -59,10 +59,10 @@ _ELEMENT_TEMPLATE_DIR: str = 'element_weakness'
 _WEAKNESS_BLOB_MIN: int = 16         #: 图标色块外接框下限(px,膨胀后)
 _WEAKNESS_BLOB_MAX: int = 64         #: 图标色块外接框上限
 _WEAKNESS_TM_MIN: float = 0.45       #: TM 置信下限(低于 = 走色相域回退)
-_WEAKNESS_MAX_ROWS: int = 4          #: 波次锚行上限(防 OCR 误检炸量;当前模式最多 2-3)
+_WEAKNESS_MAX_ROWS: int = 4          #: 节点锚行上限(防 OCR 误检炸量;当前模式最多 2-3)
 _BOSS_WEAKNESS_FILE: str = 'tl_boss_weaknesses.yml'  #: boss 弱点表(assets/game_data 下)
 
-_WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其波次锚行的最大纵向距离
+_WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其节点锚行的最大纵向距离
                                      # (同 boss 卡内;超出视为跨卡,不覆盖)
 
 # --------------------------------------------------------------------------
@@ -213,7 +213,7 @@ def _match_boss_weaknesses(ocr_results: list,
                            mapping: dict[str, list[str]]) -> list[str] | None:
     """锚行上方的 boss 名 OCR 文本 → 弱点表值;未命中返回 None。
 
-    boss 名行(「节点N | boss名」标题行)在其波次锚行上方同一 boss 卡内;
+    boss 名行(「节点N | boss名」标题行)在其节点锚行上方同一 boss 卡内;
     OCR 可能将「节点一」与 boss 名粘为一条,故按「文本含表名」匹配,
     多命中取距锚最近者(同一卡内唯一,跨卡由距离上限拦截)。
     """
@@ -235,13 +235,13 @@ def _match_boss_weaknesses(ocr_results: list,
     return list(mapping[best_name])
 
 
-def read_team_waves(ctx: SrContext, image: MatLike,
+def read_team_nodes(ctx: SrContext, image: MatLike,
                     screen_name: str = '忘却之庭-编队',
                     weakness_layout: str = _WEAKNESS_LAYOUT_BELOW,
-                    boss_weakness_map: dict[str, list[str]] | None = None) -> list[WaveInfo]:
-    """按「建议属性」锚行装配波次列表(每锚 = 一波,数量实读)。
+                    boss_weakness_map: dict[str, list[str]] | None = None) -> list[NodeInfo]:
+    """按「建议属性」锚行装配节点列表(每锚 = 一节点,数量实读)。
 
-    每波绑定:该波弱点属性 + 该波当前编队成员(槽位 area 按行号取,
+    每节点绑定:该节点弱点属性 + 该节点当前编队成员(槽位 area 按行号取,
     area 未建档的行 members = [],不返回不完整列表,不编造)。锚未读到 = 空列表
     (降级不编造)。screen_name:槽位 area 的归属屏——逐光捡金各编队屏行结构
     同构但槽位坐标逐屏独立建档(FH=忘却之庭-编队 / PF=虚构叙事-编队 /
@@ -250,7 +250,7 @@ def read_team_waves(ctx: SrContext, image: MatLike,
     虚构叙事), 'inline'=与锚文字同行紧贴其右(末日幻影 boss 卡);
     布局错配 = 图块带落在搜索区外,弱点恒为空列表(不报错,降级语义)。
     boss_weakness_map:boss 名 → 弱点表(ensure_boss_weakness_map)。命中时
-    覆盖该波颜色识别结果(主路径);boss 名取锚行上方同卡标题行的 OCR 文本
+    覆盖该节点颜色识别结果(主路径);boss 名取锚行上方同卡标题行的 OCR 文本
     (含即命中,最近优先,距离上限 300px 防跨卡误配)。"""
     from sr_od.config.avatar_templates import iter_avatar_templates
 
@@ -262,7 +262,7 @@ def read_team_waves(ctx: SrContext, image: MatLike,
     )
     # 锚行数 >2 = 星启三节点布局:槽位 rect 走锚偏移(静态 area 仅双节点标定)
     multi_row = len(anchors) > 2
-    waves: list[WaveInfo] = []
+    nodes: list[NodeInfo] = []
     for idx, a in enumerate(anchors[:_WEAKNESS_MAX_ROWS], start=1):
         if weakness_layout == _WEAKNESS_LAYOUT_INLINE:
             # 同行布局:OCR det 框可能粘进首图标,起点用固定偏移绕开;
@@ -308,17 +308,17 @@ def read_team_waves(ctx: SrContext, image: MatLike,
                 members.append(identify_crop(crop, templates))
             if area_missing:
                 members = []   # 该行槽位未建档 → 不返回不完整列表
-        waves.append(WaveInfo(wave_idx=idx, weaknesses=weaknesses, members=members))
-    return waves
+        nodes.append(NodeInfo(node_idx=idx, weaknesses=weaknesses, members=members))
+    return nodes
 
 
-def wave_row_select_point(ctx: SrContext, wave_idx: int) -> Point | None:
-    """波次行选中点击点(该行敌人预览区中心,非交互控件;1 基 wave_idx;缺失 None)。
+def node_row_select_point(ctx: SrContext, node_idx: int) -> Point | None:
+    """节点行选中点击点(该行敌人预览区中心,非交互控件;1 基 node_idx;缺失 None)。
 
     点击该行任意非控件区即选中该行(白框态),后续点角色卡填入本行 —— 交互实测
     点预设套用前点行选中生效。
     """
-    rect = get_area_rect(ctx, f'槽位{wave_idx}头像-1')
+    rect = get_area_rect(ctx, f'槽位{node_idx}头像-1')
     if rect is None:
         return None
     return Point(rect.x1 - 180, rect.y1 + 46)

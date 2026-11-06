@@ -58,7 +58,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     AnchorCell,
     read_character_cells_by_level,
-    read_team_waves,
+    read_team_nodes,
 )
 from sr_od.config.character_const import CHARACTER_LIST
 from sr_od.context.sr_context import SrContext
@@ -181,18 +181,18 @@ class TlAsTeamFillOp(SrOperation):
             # 2026-11-06 定案:不做标记计数判定,按完即走)
             self._click_area_center(_TEAM_SCREEN, _ARC_TRASH_AREA)
             return self.round_success('已按清空编队', wait=2)
-        waves = read_team_waves(self.ctx, screen, screen_name=_TEAM_SCREEN)
-        if not waves:
+        nodes = read_team_nodes(self.ctx, screen, screen_name=_TEAM_SCREEN)
+        if not nodes:
             # 锚未读到 = 降级空列表,不等于编队已空(弹窗遮挡锚行会走到这);
             # 误判已空会跳过清队,行满导致填充死循环
-            return self.round_retry('波次锚未读到(画面遮挡?),重读', wait=1.5)
+            return self.round_retry('节点锚未读到(画面遮挡?),重读', wait=1.5)
         list_open = self.round_by_find_area(
             screen, _TEAM_SCREEN, '列表-角色列表页签').is_success
 
         # 找第一个有成员的槽位(行 0 基、槽 0 基)
         target: tuple[int, int] | None = None
-        for r, wave in enumerate(waves):
-            for s, member in enumerate(wave.members):
+        for r, node in enumerate(nodes):
+            for s, member in enumerate(node.members):
                 if member.char or member.candidates:
                     target = (r, s)
                     break
@@ -224,12 +224,12 @@ class TlAsTeamFillOp(SrOperation):
 
         # 难度布局防御:锚行数与队伍数不符 = 编队屏难度与目标不符(01-03 双行 /
         # 星启 04 三行),显式失败提示选对难度。
-        waves_probe = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
-        if not waves_probe:
-            return self.round_retry('波次锚未读到(画面遮挡?),重读', wait=1.5)
-        if len(waves_probe) != len(self.teams):
+        nodes_probe = read_team_nodes(self.ctx, image, screen_name=_TEAM_SCREEN)
+        if not nodes_probe:
+            return self.round_retry('节点锚未读到(画面遮挡?),重读', wait=1.5)
+        if len(nodes_probe) != len(self.teams):
             return self.round_fail(
-                f'编队屏节点数 {len(waves_probe)} 与队伍数 {len(self.teams)} 不符:'
+                f'编队屏节点数 {len(nodes_probe)} 与队伍数 {len(self.teams)} 不符:'
                 f'请让选关屏选中的难度与目标角色数匹配(8 人=01-03,12 人=星启)')
 
         row_no = self._row_idx + 1
@@ -277,11 +277,11 @@ class TlAsTeamFillOp(SrOperation):
         if self._arc_mode:
             return self._arc_fill_round(image, cells, row_no)
 
-        waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
-        if not waves:
+        nodes = read_team_nodes(self.ctx, image, screen_name=_TEAM_SCREEN)
+        if not nodes:
             # 锚未读到的降级空列表不可当「成员为空」用(会误判落位失败死循环点卡)
             return self.round_retry('落位回验锚未读到,重读', wait=1.5)
-        row_members = waves[row_no - 1].members if len(waves) >= row_no else []
+        row_members = nodes[row_no - 1].members if len(nodes) >= row_no else []
         members_dbg = [f'{m.char or "?"}[{"|".join(n for n, _ in m.candidates)}]'
                        for m in row_members]
         log.info('AS填充回验: 行%d 成员=%s 目标=%s', row_no, members_dbg, target)
@@ -779,7 +779,7 @@ class TlApocalypticShadowChallengeOp(SrOperation):
         if (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-末日幻影行').is_success
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
             # 难度与目标人数匹配校验(星启 04 三行/双节点 01-03 两行,由
-            # read_team_waves 锚行数实读)——不匹配在填充防御处显式失败
+            # read_team_nodes 锚行数实读)——不匹配在填充防御处显式失败
             return self.round_success()
         if self.round_by_find_area(screen, _BANNER_SCREEN, '提示-点击空白处关闭').is_success:
             return self.round_success('BANNER_UP')

@@ -19,7 +19,7 @@ from one_dragon.base.screen.screen_utils import (
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     ensure_boss_weakness_map,
     read_character_cells_by_level,
-    read_team_waves,
+    read_team_nodes,
 )
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from one_dragon.base.screen.screen_info import ScreenInfo
     from sr_od.application.treasures_lightward.obs.tl_team_obs import (
         AnchorCell,
-        WaveInfo,
+        NodeInfo,
     )
     from sr_od.context.sr_context import SrContext
 
@@ -41,7 +41,7 @@ class AsTeamView:
 
     difficulty: str | None
     list_open: bool
-    waves: list[WaveInfo] = field(default_factory=list)
+    nodes: list[NodeInfo] = field(default_factory=list)
     character_cells: list[AnchorCell] = field(default_factory=list)
 
 
@@ -52,15 +52,15 @@ class TlAsTeamRecognizer(ScreenRecognizer):
 
     extras_doc: dict[str, str] = {
         'difficulty': '难度徽章(难度03|难度04);读不出 None(列表展开会遮住徽章,展开态恒 None)。'
-                      '04 为三节点布局,04 下 waves 恒 3 行且槽位走锚偏移识别',
+                      '04 为三节点布局,04 下 nodes 恒 3 行且槽位走锚偏移识别',
         'list_open': '左侧角色列表是否展开(「角色列表」页签命中);填充前必须展开',
-        'waves': '队伍槽 list[WaveInfo](每元素 {wave_idx,weaknesses,members};每节点行=一波,'
+        'nodes': '队伍槽 list[NodeInfo](每元素 {node_idx,weaknesses,members};每节点行一支队伍,'
                  '数量按「建议属性」锚行实读)。weaknesses 主路径 = boss 名查静态弱点表'
                  '(assets/game_data/tl_boss_weaknesses.yml,详情页人工仲裁),'
                  '表未收录 boss 降级为图标颜色识别(紫色系雷/量子不可仲裁,可能误判)。'
                  'members=该节点当前编队(4 元素按槽位序,'
                  'MemberGuess 同老字段语义;槽位 art+候选诚实返回,AS 槽位渲染特写个别角色'
-                 '置信不过门槛时 char=None);waves=[] = 锚未读到(降级)。'
+                 '置信不过门槛时 char=None);nodes=[] = 锚未读到(降级)。'
                  '槽位 rect 取法:锚行 ≤2 用静态 screen_info area(01-03),'
                  '>2(星启)全行按锚偏移标定计算',
         'character_cells': '列表可见角色 list[AnchorCell](元素 {center,guess};center=点击中心,'
@@ -96,7 +96,7 @@ class TlAsTeamRecognizer(ScreenRecognizer):
             list_open=list_open,
             # AS boss 卡弱点图标与「建议属性」文字同行(≠忘却之庭的下方布局);
             # 弱点主路径 = boss 名查静态表(小图标+tint 下紫色系颜色不可仲裁)
-            waves=read_team_waves(ctx, image, screen_name=SCREEN_NAME,
+            nodes=read_team_nodes(ctx, image, screen_name=SCREEN_NAME,
                                   weakness_layout='inline',
                                   boss_weakness_map=ensure_boss_weakness_map(ctx)),
         )
