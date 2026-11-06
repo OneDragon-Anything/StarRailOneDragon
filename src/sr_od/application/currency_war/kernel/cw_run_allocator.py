@@ -121,19 +121,36 @@ class ThompsonAllocator:
                 for k, a in self.arms.items()}
 
 
+#: 线名 → 统计簇名(adherence 跨局统计的分组键;plaza-carry-retirement):
+#: 两层名字空间翻译——手判层线名 ↔ plaza 聚类层簇名(聚类层无线名概念,
+#: 翻译关系只能手判层登记)。**非行为判据**:arm 键随簇不随定义件
+#: (adherence 统计连续性),与行为锚(carry_anchor = core[0],随手判演化)
+#: 解耦;版本重跑时与 PLAZA_CARRY_CLUSTERS 核对(gen_plaza_comps 对账报告)。
+#: 值 = 各线聚类簇 carry 名快照(空值线 = 原攻略补全值,同 fast 表退役前口径)。
+LINE_STAT_CLUSTER: dict[str, str] = {
+    '列车同行·反震': '姬子·启行', '列车同行·直伤': '姬子·启行',
+    '命运圣杯红A': 'Archer', '千冶减益': '千冶·刃', '绯英欢愉': '绯英',
+    '希儿量子': '希儿', '黄泉减益': '黄泉', '巡海击破': '波提欧',
+    '龙丹战技点': '丹恒·饮月', '双王圣杯': 'Saber', '火花星间旅人': '火花',
+    '大黑塔银河学者': '大黑塔', '银枝群攻': '银枝', '反甲白厄': '白厄',
+    '狼尊欢愉': '银狼LV.999', '昼神阿雅': '阿格莱雅', '追击飞霄': '飞霄',
+    '万敌单C': '万敌', 'DOT队': '卡芙卡', '景元仙舟': '景元',
+    '专家桑博DOT': '桑博',
+}
+
+
 def arm_key_of(comp: Comp) -> str:
     """阵容 → 分配器 arm 键的换算单一源(初始化侧与 update 侧共用)。
 
-    arm 键空间 = ``PLAZA_CARRY_CLUSTERS`` 中 ``n_posts >= 15`` 的聚类 carry 名
-    (cw_loop ``_get_or_init_allocator`` 的 share 过滤式)——键空间即 carry 名空间,
-    故换算 = ``cw_comps.carry_anchor``;换算散在两侧各自拼装曾是「update 键与
-    分支表键不配对 → 恒 no-op」缺陷的结构根,读口化一处治本。换算值 ∉
-    ``allocator.arms``(低篇数线/空值线)时由调用侧 ``arm_id not in arms``
-    防线拦截,维持跳过语义。函数内 import 保持本模块运行时零 kernel 依赖
-    (纯函数离线可测)。
+    arm 键空间 = ``PLAZA_CARRY_CLUSTERS`` 中 ``n_posts >= 15`` 的聚类簇名
+    (cw_loop ``_get_or_init_allocator`` 的 share 过滤式)——键空间即统计簇名
+    空间,换算 = :data:`LINE_STAT_CLUSTER` 查表(统计分组键,非行为判据;
+    旧「= carry_anchor」换算随 plaza_carry 退役解耦——行为锚已派生 core[0],
+    与统计簇名是两个概念)。换算值 ∉ ``allocator.arms``(低篇数线/无簇线)
+    时由调用侧 ``arm_id not in arms`` 防线拦截,维持跳过语义;未登记线名
+    → 空串(同样被该防线拦截)。本模块运行时零 kernel 依赖(纯函数离线可测)。
     """
-    from sr_od.application.currency_war.kernel.cw_comps import carry_anchor
-    return carry_anchor(comp)
+    return LINE_STAT_CLUSTER.get(comp.name, '')
 
 
 # ============================================================
