@@ -193,7 +193,7 @@ def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
         gap=None, gap_large=False,
         auto_resolved=True,
         verdict=('留证-布局未知态(读类退 6 档基线,写类冻结止损;'
-                 '频度锚点=15号稿 §7 批 B/C 验收)'),
+                 '频度基准=15号稿 §7 批 B/C 验收)'),
         refs=journal_refs({'stream': 'arbitration',
                            'key': f'source={source}'}),
         reader_source=str(source),
