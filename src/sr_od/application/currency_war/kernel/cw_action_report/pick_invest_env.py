@@ -75,7 +75,7 @@ def report_action_pick_invest_env_param(
     opts = gs.invest_env_opts.value
     if not opts or not 0 <= param.idx < len(opts):
         raise ValueError(
-            f'[cw!] 投资环境容器缺读/idx 越界:idx={param.idx},'
+            f'[cw!] 投资环境状态容器缺读/idx 越界:idx={param.idx},'
             f'invest_env_opts={opts!r}(选卡链发生时观察必然已完成)')
     _name = opts[param.idx]
     # 条件解析(见 docstring):随机支判定(角色/装备/赠卡锁分支任一)在

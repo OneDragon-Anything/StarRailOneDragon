@@ -2418,7 +2418,7 @@ def bind_session_container(session: object, gs: GameState) -> None:
     existing = _GS_BY_SESSION.get(session)
     if existing is not None and existing is not gs:
         raise RuntimeError(
-            '局容器单例重复绑定且实例不同(装配错误;禁静默换世界)')
+            '局状态容器单例重复绑定且实例不同(装配错误;禁静默换状态副本)')
     _GS_BY_SESSION[session] = gs
 
 
@@ -4130,7 +4130,7 @@ class GameState:
                          actual=value, evidence=None, sig=sig,
                          logic_evidence=target.evidence,
                          kind='boundary_income_credited')
-            log.info(f'[cw][gs] 结算真值收口:gold 逻辑 {target.value} → '
+            log.info(f'[cw][gs] 结算真值收尾:gold 逻辑 {target.value} → '
                      f'结算屏 {value}(+{int(value) - int(target.value)},'
                      f'边界收入随结算入账,boundary_income_credited 留证)')
         self._swap(name, Field(value=value, source='observation',

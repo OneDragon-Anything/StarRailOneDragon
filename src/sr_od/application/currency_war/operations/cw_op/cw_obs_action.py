@@ -89,7 +89,7 @@ class CwActionObsOp(CwOperation):
         if not callable(reobserve):
             raise AssertionError(
                 f'[cw-action][obs] 发射域无重观察能力:env.op='
-                f'{type(host).__name__} 未接线 reobserve_in_visit'
+                f'{type(host).__name__} 未接入调用 reobserve_in_visit'
                 '(CwActionObs 现役只在备战决策环可用;非法发射 = 策略器 '
                 'bug,响亮暴露)')
         obs = reobserve()
@@ -104,7 +104,7 @@ class CwActionObsOp(CwOperation):
             # 画面路由归外循环:overlay 在场环内不消化,返回主循环重新分发
             #(观察 node 同语义早退;不计数)。
             raise CwObsOverlayBail(obs.event_overlay)
-        detail = ('环内重观察完成(漏斗直写容器;决策环原地续跑,'
+        detail = ('环内重观察完成(漏斗直写状态容器;决策环原地续跑,'
                   f'shop_open={obs.shop_open})')
         log.info(f'[cw][obs] {detail}')
         return self.round_success(detail)

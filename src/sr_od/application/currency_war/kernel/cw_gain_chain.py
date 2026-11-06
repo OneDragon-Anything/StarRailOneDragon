@@ -758,7 +758,7 @@ def gain_character(gs: GameState, name: str, star: int, *, rand: bool,
             check_strategy_star_merge_gold(gs, tuple(acc.facts), sig=sig,
                                            producer=producer)
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
-            log.warning(f'[cw-gain] 合成金腿发放分支失败(不阻塞):'
+            log.warning(f'[cw-gain] 合成金发放分支失败(不阻塞):'
                         f'{acc.facts} {e}')
         # 砂里淘金合成发放条目同区发火(插入位置与上方两条效果条目同区:链递归中途
         # gs 写未收束,顶层发火保一致,与买牌上报发火段同一时序纪律;
@@ -4018,7 +4018,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
             # → 跳过删除,零写 + 申报行留证(实机已失效而模型未删)。
             _emit_defect(field_name='enemy_affixes',
                          expected='词缀名单非空(可执行失效删除)',
-                         actual='空容器(实机已失效而模型未删,偏差申报)',
+                         actual='空状态容器(实机已失效而模型未删,偏差申报)',
                          evidence=f'on_env_gained:{_name}', sig=sig,
                          kind=ENV_AFFIX_DISABLE_EMPTY_DECL)
         else:
@@ -4741,7 +4741,7 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
             # 失读等)→ 跳过删除,零写 + 申报行留证(实机已失效而模型未删)。
             _emit_defect(field_name='enemy_affixes',
                          expected='词缀名单非空(可执行失效删除)',
-                         actual='空容器(实机已失效而模型未删,偏差申报)',
+                         actual='空状态容器(实机已失效而模型未删,偏差申报)',
                          evidence=f'on_strategy_gained:{canon}', sig=sig,
                          kind=STRATEGY_AFFIX_DISABLE_EMPTY_DECL)
         else:

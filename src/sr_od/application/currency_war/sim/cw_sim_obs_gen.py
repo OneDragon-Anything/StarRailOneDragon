@@ -350,7 +350,7 @@ def observe_screen(backend: SimBackend, screen_name: str) -> object:
     if entry is None:
         raise LookupError(
             f'sim 观察生成器未注册: {screen_name!r}'
-            '(金路径 13 档名清单外 = 状态机不应呈现该屏或观察点接线错;'
+            '(金路径 13 档名清单外 = 状态机不应呈现该屏或观察点接入调用错;'
             '防静默失真响错,flow-seam §3)')
     gen, report = entry
     obs = gen(backend)

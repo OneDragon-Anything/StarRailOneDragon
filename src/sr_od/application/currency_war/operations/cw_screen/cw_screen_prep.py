@@ -883,10 +883,10 @@ class CwScreenPrep(CwOperation):
             #    终结动作上方已各自出口,不经此处。
             _pending_n = len(game_state_of(session).screen_changes.pending)
             if _pending_n:
-                log.info('[cw][director] overlay 登记 %d 项在册 → 交回外循环分发',
+                log.info('[cw][director] overlay 已登记 %d 项 → 交回外循环分发',
                          _pending_n)
                 return self.round_success(
-                    f'overlay 登记 {_pending_n} 项在册,交回外循环分发', wait=0.8)
+                    f'overlay 已登记 {_pending_n} 项,交回外循环分发', wait=0.8)
 
     # ===== 已锁语义的现役载体位置:bench 空集守卫/合成特效窗门在
     # _observe 识别链内,免战牌次数递减在出战上报路径(start_battle

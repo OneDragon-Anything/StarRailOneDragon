@@ -241,7 +241,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
                                            sig=_grp_sig,
                                            producer='CwActionBuyCardParam')
         except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
-            _log.warning(f'[cw-buy] 合成金腿发放分支失败(不阻塞):'
+            _log.warning(f'[cw-buy] 合成金发放分支失败(不阻塞):'
                          f'{merge_facts} {e}')
         # —— 策略卡合成触发发放条目(「合成2星2费角色时获得砂金」族,
         #    注册表 = STRATEGY_MERGE_GRANTS):事件源 = 本函数既有
@@ -283,7 +283,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         check_strategy_first_buy_xp_grants(gs, cost=card_cost(card),
                                            sig=_grp_sig)
     except Exception as e:  # noqa: BLE001  触发分支失败不阻塞(留 log)
-        _log.warning(f'[cw-buy] 首购经验腿发放分支失败(不阻塞): {e}')
+        _log.warning(f'[cw-buy] 首购经验发放分支失败(不阻塞): {e}')
 
     # —— 购买翻星消费一次性标志位置位(注册表 = STRATEGY_BUY_STAR_FLIP_GRANTS):
     #    翻转事实在上方落位分支确立,此处封账「下1个」消耗(applied 后
@@ -298,7 +298,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         mark_strategy_buy_star_flip_consumed(gs, cost=card_cost(card),
                                              sig=_grp_sig)
     except Exception as e:  # noqa: BLE001  置一次性标志位分支失败不阻塞(留 log)
-        _log.warning(f'[cw-buy] 购买翻星置闩分支失败(不阻塞): {e}')
+        _log.warning(f'[cw-buy] 购买翻星置一次性标志位分支失败(不阻塞): {e}')
 
     # —— 金币花费事件置位(存款回报条件输入,fields.md §3.3.9):applied=True
     #    主路径尾段(与 on_buy 回调同区),拒买 bench_full 早退不可达本段;

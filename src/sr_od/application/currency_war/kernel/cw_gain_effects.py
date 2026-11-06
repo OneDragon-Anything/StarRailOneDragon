@@ -815,8 +815,8 @@ def _make_named_equip_grant_effect(
                 _emit_defect(field_name='equips',
                              expected=f'{count}件{item}(精密在场,官方改道'
                                       f'+{count}金)',
-                             actual='零容器写(fail-closed,金面未建模,'
-                                    '真值归观察/接线覆盖批)',
+                             actual='零状态容器写(fail-closed,金面未建模,'
+                                    '真值归观察/接入调用覆盖批)',
                              evidence=f'pick_invest_named_equip:{item}',
                              sig=sig, kind=NAMED_EQUIP_PRECISE_DECL)
                 return [f'named_equip_grant:{item}(placed=False)'

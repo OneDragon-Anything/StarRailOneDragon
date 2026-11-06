@@ -171,7 +171,7 @@ def count_settlement_obs_coverage_miss(st: SettlementState,
         expected='战斗窗全程 ≥1 条「结算观测」行(胜负/扣血真值链在案)',
         observed='战窗 exit 零结算观测行(胜负与扣血零观测,伤害链断节'
                  '复盘不可知)',
-        verdict=('留证-结算观测覆盖度缺失(只计数不停机;处理:按窗锚'
+        verdict=('留证-结算观测覆盖度缺失(只计数不停机;处理:按窗识别标志'
                  ' battle_ts 对 journal/op 行定位漏读窗,结算识别失准走'
                  '识别优化批)'),
         refs=journal_refs(),
@@ -179,7 +179,7 @@ def count_settlement_obs_coverage_miss(st: SettlementState,
         gap_large=True,
         severity=SEVERITY_L1_ALERT,
         note='覆盖度检测 = 战窗 exit 守卫面;正常结算/败局补录行恒刷新'
-             '窗锚,本行 = 真缺失(非识别噪声)')
+             '窗识别标志,本行 = 真缺失(非识别噪声)')
     return True
 
 
@@ -712,7 +712,7 @@ class CwScreenBattleWait(CwOperation):
                     )
                     gs_of_ctx(self.ctx, _session).effects.on_battle_end()
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
-                    log.warning('[cw-bwait] effect inventory 结算挂点失败'
+                    log.warning('[cw-bwait] effect inventory 结算插入位置失败'
                                 '(不阻塞): %s', e)
                 # 装备写端·拷贝仪参与计数结算(生产接入调用;载体 =
                 # settle_copy_machine_participation,指定插入位置 = 战斗结算
@@ -735,7 +735,7 @@ class CwScreenBattleWait(CwOperation):
                                  '%s count=%s placed=%s)', _cm.equip,
                                  _cm.wearer, _cm.count, _cm.placed)
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
-                    log.warning('[cw-bwait] 拷贝仪参与结算挂点失败'
+                    log.warning('[cw-bwait] 拷贝仪参与结算插入位置失败'
                                 '(不阻塞): %s', e)
             # 结算观测窗基准刷新(覆盖度守卫的「本窗已观测」凭据;含
             # telemetry-only 败局补录行——行写点即基准,异常中断路径不刷新,
@@ -786,11 +786,11 @@ class CwScreenBattleWait(CwOperation):
         _min_pos = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_POS
         if _neg and _pos is not None and _pos >= _min_pos:
             self._st.saw_defeat_settlement = True
-            log.info('[cw-bwait] 败局闩次级证据:面板负分量 + 序位%s≥%s → 置闩',
+            log.info('[cw-bwait] 败局一次性标志位次级证据:面板负分量 + 序位%s≥%s → 置一次性标志位',
                      _pos, _min_pos)
         else:
-            log.info('[cw-bwait] 败局闩次级证据不足(负分量=%s, 序位=%s, 门限=%s)→ '
-                     '不置闩留证', _neg, _pos, _min_pos)
+            log.info('[cw-bwait] 败局一次性标志位次级证据不足(负分量=%s, 序位=%s, 门限=%s)→ '
+                     '不置一次性标志位留证', _neg, _pos, _min_pos)
 
     def _mark_relaunch_residual(self) -> bool:
         """relaunch 残留结算屏判据(只标记不改行为)。"""
@@ -838,7 +838,7 @@ class CwScreenBattleWait(CwOperation):
         # 遥测连续性红线:收尾点固定于此)。
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南',
                                    crop_first=False).is_success:
-            log.info('[cw-bwait] 终局分叉:已回大厅 → terminal_lobby(交整局退出收口)')
+            log.info('[cw-bwait] 终局分叉:已回大厅 → terminal_lobby(交整局退出收尾)')
             return self.round_success('terminal_lobby')
 
         # ③出口 A:完成判据白名单任一命中 → 结束本次访问循环分发
@@ -855,7 +855,7 @@ class CwScreenBattleWait(CwOperation):
         # 读点前等 1.5s)
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._unknown_streak = 0
-            log.info('[cw-bwait][battle_end] 结算屏首见(战斗结束锚点)')
+            log.info('[cw-bwait][battle_end] 结算屏首见(战斗结束识别标志)')
             from sr_od.application.currency_war.operations.settle_collect_hooks import (
                 settle_frame_collect,
             )

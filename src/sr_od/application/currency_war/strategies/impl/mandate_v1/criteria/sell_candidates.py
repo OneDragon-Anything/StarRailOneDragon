@@ -316,7 +316,7 @@ def evaluate_sell_candidates(
     if spec is None:
         raise ValueError(
             f'未知卖出场景 {scenario!r}:合法闭集 = {sorted(SELL_SCENARIOS)}'
-            ' (acquisition §3;新场景先登记 SCENE_SPECS 再接线)')
+            ' (acquisition §3;新场景先登记 SCENE_SPECS 再接入调用)')
     deployed_indexed = _deployed_rows_indexed(gs)
     deployed = [u for u, _row, _idx in deployed_indexed]
     if empty_board_sell_blocked(deployed, counters=counters):

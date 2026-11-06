@@ -143,7 +143,7 @@ register(ArbitrationRule(
     band=0,
     defect_kind='board_divergence',
     obs_field='board',
-    fail_closed_side=('非备战帧/动画帧双源弃权,保 computed 底座(帧态门;'
+    fail_closed_side=('非备战帧/动画帧双源弃权,保 computed 基础值(帧态门;'
                       'W285 overlay 干扰 2/6 实证);备战帧徽标覆写'
                       '(W287 裁决翻转:徽标=画面事实)'),
 ))

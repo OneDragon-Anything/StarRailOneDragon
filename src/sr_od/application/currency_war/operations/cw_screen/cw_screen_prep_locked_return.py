@@ -71,7 +71,7 @@ class CwScreenPrepLockedReturn(CwOperation):
         screen = self.last_screenshot
         if not self.entry_ok(screen):
             return self.round_fail(
-                f'{self.op_name}入口锚未命中(交回外循环重判)')
+                f'{self.op_name}入口识别标志未命中(交回外循环重判)')
         self._obs = CwScreenPrepLockedReturnObs(on_screen=True, screen=screen)
         return self.round_success()
 
@@ -93,7 +93,7 @@ class CwScreenPrepLockedReturn(CwOperation):
         # 推进 = round_wait(不烧节点重试预算;不收敛 = 动作 bug 响亮暴露,
         # 无防御上限)。
         if not self._entry_area:
-            return self.round_success(f'{self.op_name}推进已发(免锚)')
+            return self.round_success(f'{self.op_name}推进已发(免识别标志)')
         return self.round_wait(f'{self.op_name}推进已发,重入观察裁决', wait=1)
 
     def progress_once(self) -> bool:

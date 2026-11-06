@@ -125,7 +125,7 @@ class CwActionLevelUpOp(CwOperation):
                 )
                 game_state_of(session).effects.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
-            log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
+            log.warning('[cw][levelup] effect inventory 插入位置失败(不阻塞): %s', e)
         # —— 自上报(机械发出后;op-layer.md §1.2):击数 = 本批实际连点数 ——
         gs = game_state_from_ctx(self.ctx)
         if gs is not None:

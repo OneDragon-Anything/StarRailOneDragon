@@ -1729,7 +1729,7 @@ def _converge_cross_archive_ownership(
                          gid, foreign)
                 continue
             log.warning('[cw][archive] 档案 %s 有多余段 %s 且本局在分组'
-                        '但重装配失败——保持原样交核验显影', gid, foreign)
+                        '但重装配失败——保持原样交核验暴露', gid, foreign)
             continue
         pruned = _prune_foreign_segments(p, a, foreign, owner)
         touched.append(gid)
@@ -1848,7 +1848,7 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
                     or behind_hours <= _BEHIND_WARN_WINDOW_HOURS):
                 log.warning(
                     '[cw][archive] 局 %s end_ts=%s 落后水位线 %s 且未入档'
-                    '(时钟回拨/DST/漏装形态)——水位线为历史最大值锚,该局'
+                    '(时钟回拨/DST/漏装形态)——水位线为历史最大值参照,该局'
                     '不会被自动装配,需 CLI assemble --game 点名补装',
                     g['game_id'], g['end_ts'], wm)
             continue

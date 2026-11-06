@@ -222,7 +222,7 @@ def register_launch(session: StrategySession,
     if cause not in LAUNCH_CAUSES:
         raise ValueError(
             f'未知买因 {cause!r}:合法闭集 = {sorted(LAUNCH_CAUSES)}'
-            ' (新买因先登记 LAUNCH_CAUSES 再接线)')
+            ' (新买因先登记 LAUNCH_CAUSES 再接入调用)')
     _registry_of(session)[name] = (cause, int(round_num))
     return True
 
@@ -815,7 +815,7 @@ def sell_exclusions(session: StrategySession,
     if channel not in SELL_CHANNELS:
         raise ValueError(
             f'未知卖出通道 {channel!r}:合法闭集 = {sorted(SELL_CHANNELS)}'
-            ' (方案 v3 §3.1;新通道先登记 SELL_CHANNELS 再接线)')
+            ' (方案 v3 §3.1;新通道先登记 SELL_CHANNELS 再接入调用)')
     # 基座单次解析(换线闭合读点 + L1 换线孤儿证明集两消费共用;
     # 闭合读点原宿主 = identity_exclusions,随其退役迁入本函数)。
     _locked0, _base0 = _resolve_base(session, k_members, cap_hold=cap_hold)

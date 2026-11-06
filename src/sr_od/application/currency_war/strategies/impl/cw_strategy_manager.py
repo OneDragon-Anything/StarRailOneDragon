@@ -130,7 +130,7 @@ def establish_new_match(ctx: SrContext, config) -> bool:
                         sig=ChannelSig(family='logic_action', actor='CwLoop',
                                        screen='', mode='compute'))
         ctx.cw_selected_difficulty = None
-    log.info('[cw-entry] match 容器已建立(进对局前移点,strategy=%s)',
+    log.info('[cw-entry] match 状态容器已建立(进对局前移点,strategy=%s)',
              config.strategy_id)
     return True
 

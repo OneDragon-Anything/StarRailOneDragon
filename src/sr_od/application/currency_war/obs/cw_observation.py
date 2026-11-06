@@ -693,7 +693,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
     if _verdict == 'defect' and _key not in ledger.defect_seen:
         ledger.defect_seen.add(_key)
         log.warning('[cw!][node_votes] 查表=%s vs 三票=%s(past=%d hu_dist=%.2f 未来对表不符=%d)'
-                    ' → 落缺陷台账(识别错误候选,复现计数显影)', table_t, votes,
+                    ' → 落缺陷台账(识别错误候选,由复现计数体现)', table_t, votes,
                     past_n, hu_dist, _future_bad)
         try:
             #落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
@@ -709,7 +709,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                          f' 未来图标对表不符位={_future_bad})',
                 plane=int(plane or 0), round_num=int(round_num or 0),
                 verdict=('留证-≥2 独立票一致反对权威表值(投资环境窗外)=识别错误候选;'
-                         '复现由台账行复现计数显影'),
+                         '复现由台账行复现计数体现'),
                 reader_source='node_ledger_three_vote',
                 gap_large=False,
                 # refs 旧插入位置清理(refs 迁移):decisions 流已停用,
@@ -1954,7 +1954,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
     if _collapse_area is None:
         # 识别标志缺失 fail-open 告警(改名/删 area 的回归可见性,r9 review)。
         from one_dragon.utils import log_utils
-        log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
+        log_utils.log.warning('[cw!] read_shop_cards 商店开态识别标志「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None and full_ocr is not None:
         # 全帧 OCR 位匹配识别标志判定(实机五败已定案:裁剪路径对买光态暗钮
         # 确定性拒识——det 模型对低对比小图不可检,二值化亦不救;全帧
@@ -2302,7 +2302,7 @@ def _reconcile_gold_against_container(gs, gold_read: int,
         return   # 同帧并发重入:已产证,不重复
     _last_gold_reconcile_key = key
     obs_conflict('gold_delta', int(ledger), int(gold_read), screen,
-                 verdict=('备战帧账实金对账(实读 vs 容器账面;'
+                 verdict=('备战帧账实金对账(实读 vs 状态容器账面;'
                           '超阈=告警行,≤阈=留存证据;账面来源见 source 位)'),
                  source=f'gold_ledger_reconcile,ledger_source={gs.gold.source}')
 
@@ -2577,7 +2577,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                  f'OCR有computed无:{_f}',
                                  screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
                                                   '均不采信(W285 overlay 干扰 2/6 实证防新错);'
-                                                  '保 computed 底座,留等备战帧再裁'),
+                                                  '保 computed 基础值,留等备战帧再裁'),
                                  source='computed_vs_ocr')
             elif _take:
                 obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
@@ -2589,7 +2589,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
                              screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
                                               '均不采信(W285 overlay 干扰 2/6 实证防新错);'
-                                              '保 computed 底座,留等备战帧再裁'),
+                                              '保 computed 基础值,留等备战帧再裁'),
                              source='computed_vs_ocr', faction=_f)
         board_val = _merged
     else:

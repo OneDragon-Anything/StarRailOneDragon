@@ -90,7 +90,7 @@ class CwActionOpenBookcardOp(CwOperation):
             if gs is None:
                 raise AssertionError(
                     'CwActionOpenBookcardParam slot=None 现算失败:game '
-                    'state 缺席(无局/容器供给 None),零点击')
+                    'state 缺席(无局/状态容器供给 None),零点击')
             view = gs.bench.value
             slots = list(view.slots) if view is not None else []
             idx = next((i for i, s in enumerate(slots)
@@ -98,7 +98,7 @@ class CwActionOpenBookcardOp(CwOperation):
                         and s.kind == _BOOKCARD_BENCH_KIND), None)
             if idx is None:
                 raise AssertionError(
-                    'CwActionOpenBookcardParam slot=None 现算失败:容器 '
+                    'CwActionOpenBookcardParam slot=None 现算失败:状态容器 '
                     f'bench 无 kind={_BOOKCARD_BENCH_KIND} 首件槽,零点击')
             slot = idx + 1
             # 落地机制 = 以现算 resolved slot 重建 param(不改写入参对象):

@@ -54,7 +54,7 @@ class CwScreenNextButton(CwOperation):
         screen = self.last_screenshot
         if not self.entry_ok(screen):
             return self.round_fail(
-                f'{self.op_name}入口锚未命中(交回外循环重判)')
+                f'{self.op_name}入口识别标志未命中(交回外循环重判)')
         self._obs = CwScreenNextButtonObs(on_screen=True, screen=screen)
         return self.round_success()
 

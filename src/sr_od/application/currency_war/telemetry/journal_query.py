@@ -457,7 +457,7 @@ def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
            f'(局终域 match_final;一段一行,恢复局跨段多行)']
     finals = match_final_rows(rows, run_id)
     if not finals:
-        out.append('  (无局终行——段未收口或旧产物无账本)')
+        out.append('  (无局终行——段未收尾或旧产物无账本)')
         return out
     for r in finals:
         after = r.get('after') if isinstance(r.get('after'), dict) else {}

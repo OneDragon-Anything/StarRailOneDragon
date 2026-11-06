@@ -314,7 +314,7 @@ class MandateV1Strategy(CwFlowStrategy):
         gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
-                'mandate_v1.decide_shop_screen: 容器商店 payload 离屏'
+                'mandate_v1.decide_shop_screen: 状态容器商店 payload 离屏'
                 '(shop=None;黑板契约:商店观察段是唯一写者;'
                 'None=观察层失约,禁静默按空态决策)')
         _sig = ChannelSig(family='logic_action', actor='MandateV1Strategy',

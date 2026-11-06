@@ -86,14 +86,14 @@ class CwActionOpenTomeOp(CwOperation):
             if gs is None:
                 raise AssertionError(
                     'CwActionOpenTomeParam slot=None 现算失败:game state '
-                    '缺席(无局/容器供给 None),零点击')
+                    '缺席(无局/状态容器供给 None),零点击')
             view = gs.bench.value
             slots = list(view.slots) if view is not None else []
             idx = next((i for i, s in enumerate(slots)
                         if s is not None and s.kind == _TOME_BENCH_KIND), None)
             if idx is None:
                 raise AssertionError(
-                    'CwActionOpenTomeParam slot=None 现算失败:容器 bench 无 '
+                    'CwActionOpenTomeParam slot=None 现算失败:状态容器 bench 无 '
                     f'kind={_TOME_BENCH_KIND} 首件槽,零点击')
             slot = idx + 1
             # 落地机制 = 以现算 resolved slot 重建 param(不改写入参对象):

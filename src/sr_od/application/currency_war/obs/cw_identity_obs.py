@@ -980,7 +980,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
                 if gold_info_overlay_open(ctx, screen):
                     from one_dragon.utils.log_utils import log as _lg1
                     _lg1.info('[cw-hook][summon] slot%s 占用未识别但金币说明'
-                              'overlay 开着 → 跳过(rev 锚段)', _slot)
+                              'overlay 开着 → 跳过(rev 识别标志段)', _slot)
                     break
                 _shot = cw_shot_unique(screen, 'summon_unknown')
                 if _shot is not None and ctx.run_context is not None:

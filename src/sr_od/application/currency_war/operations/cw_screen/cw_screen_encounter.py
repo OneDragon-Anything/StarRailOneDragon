@@ -209,7 +209,7 @@ class CwScreenEncounter(CwOperation):
                 # 识别面)→ 零点击结束本次访问;重进后按同选项重判(剩余闸读
                 # encounter_refresh_left = sim 未建模呈现面,刷新建议被闸拒)
                 return self.round_success(
-                    '遭遇刷新(sim 无机械锚)零点击终结交回', wait=1.5)
+                    '遭遇刷新(sim 无机械识别标志)零点击终结交回', wait=1.5)
             # 刷新 = 终结动作(op-layer.md §1.4):文本识别标志位圆钮一次
             # + 2s 固定等待 → round_success 结束本次访问。零重读、零二次
             # 覆盖写、零重决策——新选项由外循环重进后的入口观察现读

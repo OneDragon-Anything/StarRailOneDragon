@@ -67,10 +67,10 @@ class CwActionPickFortuneOp(CwOperation):
         _gs = game_state_from_ctx(self.ctx)
         _pts = (_gs.fortune_opts_xy.value if _gs is not None else None) or []
         assert _pts, (
-            '[cw-pick-fortune] 容器 fortune_opts_xy 缺席/空(观察上报缺失,禁'
+            '[cw-pick-fortune] 状态容器 fortune_opts_xy 缺席/空(观察上报缺失,禁'
             f'坐标现算回退): idx={param.idx}')
         assert 0 <= param.idx < len(_pts), (
-            f'[cw-pick-fortune] param.idx 越界容器坐标槽(策略器 bug): '
+            f'[cw-pick-fortune] param.idx 越界状态容器坐标槽(策略器 bug): '
             f'idx={param.idx} len={len(_pts)}')
         pt = Point(*_pts[param.idx])
         safe_click(op, pt, tag='cw-pick-fortune')

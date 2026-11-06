@@ -532,7 +532,7 @@ class CwLoop(CwOperation):
                 if _si is None:
                     problems.append(f'{_screen_name}: 画面档不存在')
                 elif not any(_a.id_mark for _a in _si.area_list):
-                    problems.append(f'{_screen_name}: 无 id_mark 锚')
+                    problems.append(f'{_screen_name}: 无 id_mark 识别标志')
             if problems:
                 log.error('[cw!][loop] 分发画面预检:%d 个画面异常 → 对应画面'
                           '每帧静默跳过(历史事故形态):%s',
@@ -593,7 +593,7 @@ class CwLoop(CwOperation):
                                    mode='read',
                                    group_id=f'gate:CwLoop@'
                                             f'{_gs_pa.write_seq + 1}'),
-                    verdict='pending 预测未中(判据假阳或延迟呈现;兜底清收口)')
+                    verdict='pending 预测未中(判据假阳或延迟呈现;兜底清收尾)')
         return match_name, pending_pred
 
     def _fallback_clear_pending(self) -> None:
@@ -1001,16 +1001,16 @@ class CwLoop(CwOperation):
                         note=('online:w75_stopped' if _stopped
                               else 'online:w75_abandoned'))
             except Exception as e:   # noqa: BLE001  观测旁路,不阻塞收尾
-                log.warning('[cw][loop] match_final 收口行写入失败(不阻塞): %s', e)
+                log.warning('[cw][loop] match_final 收尾行写入失败(不阻塞): %s', e)
             state.close_run(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=plane_of(_gs) if _observed else 1,
                 rounds_survived=round_num_of(_gs) if _observed else 1,
                 final_hp=int(_final_hp or 0),
-                notes=('stopped:operation 收口(W75)' if _stopped
-                       else 'abandoned:operation 异常收口(W75)'))
+                notes=('stopped:operation 收尾(W75)' if _stopped
+                       else 'abandoned:operation 异常收尾(W75)'))
             self._summary_written = True
-            log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
+            log.info('[cw][loop] 局终 summary 收尾:%s p%s-r%s hp=%s',
                      'stopped' if _stopped else 'abandoned',
                      plane_of(_gs) if _observed else 1,
                      round_num_of(_gs) if _observed else 1, _final_hp)
@@ -1023,7 +1023,7 @@ class CwLoop(CwOperation):
             except Exception as e:   # noqa: BLE001  观测旁路,best-effort
                 log.warning('[cw][loop] 局终装配失败(不阻塞): %s', e)
         except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞退出
-            log.warning('[cw][loop] 局终 summary 收口失败(不阻塞): %s', e)
+            log.warning('[cw][loop] 局终 summary 收尾失败(不阻塞): %s', e)
 
 
     # 补给节点完成事实的现役归宿 = 快照行自带域(journal)。
@@ -1266,7 +1266,7 @@ class CwLoop(CwOperation):
             )
             if _boss_frame(_frame_texts(self.ctx, screen)):
                 log.info('[cw-loop] 位面过渡身份帧含 boss 判别片段 → 接管派发'
-                          ' BOSS 简报(标题误读/位面锚可读的 boss 帧)')
+                          ' BOSS 简报(标题误读/位面识别标志可读的 boss 帧)')
 
                 def _on_boss_takeover(ok: bool, res: Any) -> None:
                     log.info('[cw-loop] BOSS 简报(位面过渡身份排他接管) → %s',
@@ -1342,7 +1342,7 @@ class CwLoop(CwOperation):
             return self._lobby_return_collect(screen)
 
         # 已登记画面暂无处理器(建档先于接入调用的过渡态)→ 等待,不落备战默认
-        log.warning('[cw-loop] 身份命中但无处理器(建档/接线过渡态): %s → 等待', name)
+        log.warning('[cw-loop] 身份命中但无处理器(建档/接入调用过渡态): %s → 等待', name)
         return self.round_wait(wait=1.0)
 
     def _lobby_return_collect(self, screen) -> OperationRoundResult:
@@ -1401,7 +1401,7 @@ class CwLoop(CwOperation):
                                 self.ctx.cw_match.session),
                             note='online:lobby_return')
                 except Exception as e:   # noqa: BLE001  观测旁路
-                    log.warning('[cw][loop] match_final 收口行写入失败'
+                    log.warning('[cw][loop] match_final 收尾行写入失败'
                                 '(不阻塞): %s', e)
                 state.close_run(
                     result='win' if _outcome.won else 'loss',
@@ -1424,7 +1424,7 @@ class CwLoop(CwOperation):
         # C2:收尾面非推进画面,写端不随 op 化迁移;包装补
         # op='回大厅收尾' 行,链体零改(链形透传,轮次结果即分支出口)。
         return self._dispatch_screen_op(
-            _lobby_return_step, journal_name='回大厅收口',
+            _lobby_return_step, journal_name='回大厅收尾',
             frame_tag='flow_lobby_return', wait=1.0)
 
 

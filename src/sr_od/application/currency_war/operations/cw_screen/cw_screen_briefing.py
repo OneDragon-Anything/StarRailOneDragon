@@ -180,7 +180,7 @@ class CwScreenBriefing(CwOperation):
             if not self.round_by_find_area(
                     self.last_screenshot, CwScreenBriefing.SCREEN_NAME,
                     CwScreenBriefing.MARK_AREA, crop_first=False).is_success:
-                log.info('[cw-flow-briefing] 已离开简报(重入观察裁决,观察直写容器完成)')
+                log.info('[cw-flow-briefing] 已离开简报(重入观察裁决,观察直写状态容器完成)')
                 return self.round_success('已离开简报(重入观察裁决)',
                                           wait=BRIEFING_SETTLE_S)
         # 点「下一步」离开简报(下一画面由上层编排/入口链调度)。

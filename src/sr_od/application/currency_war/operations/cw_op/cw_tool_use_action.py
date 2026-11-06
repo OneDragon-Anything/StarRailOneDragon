@@ -180,6 +180,6 @@ class CwActionToolUseOp(CwOperation):
                 gs, action,
                 ChannelSig(family='logic_action',
                            actor=type(self).__name__, mode='compute'))
-        detail = f'{tool_name} → {tgt_desc} 拖曳已发(上报已按成功写容器)'
+        detail = f'{tool_name} → {tgt_desc} 拖曳已发(上报已按成功写状态容器)'
         log.info(f'[cw][tool] {detail}')
         return self.round_success(detail)

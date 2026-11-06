@@ -351,8 +351,8 @@ def _bump_carrier(carrier: object, new_star: int,
         return replace(carrier, star=new_star, equips=list(new_equips),
                        uid=merge_uid)
     raise TypeError(
-        f'merge 载体形状不支持: {type(carrier).__name__}(容器原生 '
-        f'BenchSlot/Unit 之外形状,禁复活非容器推演)')
+        f'merge 载体形状不支持: {type(carrier).__name__}(状态容器原生 '
+        f'BenchSlot/Unit 之外形状,禁复活非状态容器推演)')
 
 
 # ============================================================

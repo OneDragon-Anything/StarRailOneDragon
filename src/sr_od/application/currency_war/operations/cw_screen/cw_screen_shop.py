@@ -471,7 +471,7 @@ class CwScreenShop(CwOperation):
         #  guard_proposal_vs_expected 读主域单点承载。)
         if not self._entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
-                     '容器沿用现值牌面决策')
+                     '状态容器沿用现值牌面决策')
         # 帧代次标注:每访问入口 = full(方向视图由
         # decide_shop_action 入口消费刷新;刷新后新访问 = 全新入口重估,
         # 限频由方向重算键守卫「每 game-round 恰一次」承载)。
@@ -638,10 +638,10 @@ class CwScreenShop(CwOperation):
             # 等重观察发现;非终结帧的 round_wait 让位本出口。
             _pending_n = len(game_state_of(match.session).screen_changes.pending)
             if _pending_n:
-                log.info('[cw][plan] overlay 登记 %d 项在册 → 交回外循环分发',
+                log.info('[cw][plan] overlay 已登记 %d 项 → 交回外循环分发',
                          _pending_n)
                 return self.round_success(
-                    f'overlay 登记 {_pending_n} 项在册,交回外循环分发', wait=0.8)
+                    f'overlay 已登记 {_pending_n} 项,交回外循环分发', wait=0.8)
             # 非终结:round_wait(帧不消费,零读屏;决策循环无防御上限,
             # 不收敛 = 策略实现 bug)。
             return self.round_wait()

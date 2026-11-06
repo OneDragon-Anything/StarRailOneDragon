@@ -94,7 +94,7 @@ def main() -> None:
               '遍历(跨局非单局连续演化;单局判读请加 --run <run_id>)')
     elif not snaps:
         print(f'⚠ --run {run_id} 在状态流水无轮快照(id 不存在,'
-              '或该段已被滚动清理——journal.retirement.jsonl 显影)')
+              '或该段已被滚动清理——journal.retirement.jsonl 里可见)')
         return
     print(f'=== 决策回放(journal 源){run_id or "(全部 run)"} ===')
 

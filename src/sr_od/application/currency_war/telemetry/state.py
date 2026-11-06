@@ -222,9 +222,9 @@ def close_run(result: str = "", plane_reached: int = 0,
         )
         flush_pending()
     except Exception as e:  # noqa: BLE001  观测件,失败不阻塞收尾
-        log.warning('[cw][telemetry] 收口流水落盘失败(不阻塞): %s', e)
+        log.warning('[cw][telemetry] 收尾流水落盘失败(不阻塞): %s', e)
     _RUN_CLOSED = True
-    log.info('[cw][telemetry] run 收口:%s p%s-r%s hp=%s (%s)',
+    log.info('[cw][telemetry] run 收尾:%s p%s-r%s hp=%s (%s)',
              result or '-', plane_reached, rounds_survived, final_hp,
              notes or '-')
 

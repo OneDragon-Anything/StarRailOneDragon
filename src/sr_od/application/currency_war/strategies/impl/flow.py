@@ -760,7 +760,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
-                'decide_shop_action: 容器商店 payload 离屏(shop=None)'
+                'decide_shop_action: 状态容器商店 payload 离屏(shop=None)'
                 '(黑板契约容器化:在屏前置 gs.shop.value is not None;'
                 'None=观察层失约,禁静默按空态决策)')
         # 未观察门(观察态落状态容器字段,策略消费只走 game state):主域观察基准
@@ -854,7 +854,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         gs = self.gs
         if gs.shop.value is None:
             raise ValueError(
-                'decide_shop_screen 驱动器: 容器商店 payload 离屏'
+                'decide_shop_screen 驱动器: 状态容器商店 payload 离屏'
                 '(shop=None;黑板契约:观察段是唯一写者;None=观察层失约,'
                 '禁静默按空态决策)')
         _sig = ChannelSig(family='logic_action', actor='CwFlowStrategy',

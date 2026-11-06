@@ -74,13 +74,13 @@ class CwActionPickMegastarOp(CwOperation):
             _gs = game_state_from_ctx(self.ctx)
             _opts = (_gs.megastar_opts.value if _gs is not None else None) or []
             assert _opts, (
-                '[cw-pick-megastar] 容器 megastar_opts 缺席/空(观察上报'
+                '[cw-pick-megastar] 状态容器 megastar_opts 缺席/空(观察上报'
                 f'缺失,禁坐标现算回退): idx={param.idx}')
             assert 0 <= param.idx < len(_opts), (
-                f'[cw-pick-megastar] param.idx 越界容器选项槽(策略器 bug): '
+                f'[cw-pick-megastar] param.idx 越界状态容器选项槽(策略器 bug): '
                 f'idx={param.idx} len={len(_opts)}')
             assert _opts[param.idx].xy is not None, (
-                '[cw-pick-megastar] 容器选项缺 xy(观察上报未产坐标,禁'
+                '[cw-pick-megastar] 状态容器选项缺 xy(观察上报未产坐标,禁'
                 f'二次取点): idx={param.idx} opt={_opts[param.idx]!r}')
             pt = Point(*_opts[param.idx].xy)
             if cw_sim_ports.mechanical_io_allowed():

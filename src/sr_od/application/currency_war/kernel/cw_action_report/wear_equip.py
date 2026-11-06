@@ -333,7 +333,7 @@ def report_action_wear_equip_param(gs: GameState, param: Any,
     located = _locate_unit(gs, param)
     if located is None:
         return _reject('wear_target_unit_missing',
-                       f'{param.char_name!r} 在册(bench/rows)',
+                       f'{param.char_name!r} 已登记(bench/rows)',
                        f'char_name={param.char_name!r} '
                        f'row={getattr(param, "row", "")!r} '
                        f'slot={getattr(param, "slot", 0)!r}')

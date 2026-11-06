@@ -68,7 +68,7 @@ class CwScreenWaitOneOne(CwOperation):
         if self.round_by_find_area(
                 screen, CwScreenWaitOneOne.PREP_SCREEN,
                 CwScreenWaitOneOne.PREP_ANCHOR, crop_first=False).is_success:
-            log.info('[cw-flow-wait11] 备战阶段锚命中(1-1 备战就绪)')
+            log.info('[cw-flow-wait11] 备战阶段识别标志命中(1-1 备战就绪)')
             obs = CwScreenWaitOneOneObs(on_screen=True, screen=screen)
             _match = getattr(self.ctx, 'cw_match', None)
             _gs = getattr(_match, 'gs', None) if _match is not None else None
@@ -81,9 +81,9 @@ class CwScreenWaitOneOne(CwOperation):
             self._first_seen_ts = now
         if now - self._first_seen_ts >= ONE_ONE_MAX_WAIT_S:
             self.save_screenshot(prefix='wait_one_one_timeout')   # 保留证据交循环
-            log.warning('[cw-flow-wait11] 等待超时(%.0fs 锚未现),留证交循环',
+            log.warning('[cw-flow-wait11] 等待超时(%.0fs 识别标志未现),留证交循环',
                         ONE_ONE_MAX_WAIT_S)
-            return self.round_fail('等待 1-1 备战超时(锚未现,已留证)')
+            return self.round_fail('等待 1-1 备战超时(识别标志未现,已留证)')
         return self.round_wait(wait=ONE_ONE_POLL_INTERVAL_S)
 
     @node_from(from_name='观察')

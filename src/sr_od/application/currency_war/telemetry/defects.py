@@ -137,8 +137,8 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
             gap=None, gap_large=False,
             auto_resolved=True,
             verdict=('留证-paddle 失读退化帧(单源 CV 行动,无差值语义;'
-                     '不计入双源分歧持续显影,检测链恢复后自消失;'
-                     '若 CV 占用源同时坏,由真分歧分键独立显影)'),
+                     '不计入双源分歧持续暴露,检测链恢复后自消失;'
+                     '若 CV 占用源同时坏,由真分歧分键独立暴露)'),
             refs=journal_refs({'stream': 'arbitration',
                                'key': f'source={source}|degraded=1'}),
             reader_source=str(source or ''),
@@ -171,7 +171,7 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
     if _DEPLOYED_2SRC_RUN_COUNTS[rid] == DEPLOYED_COUNT_2SRC_SUSTAINED_N:
         log.warning(
             '[cw!][obs] deployed 计数双源真分歧本局已 %d 次(逐次已仲裁取低值,'
-            '决策未消费污染源)→ 持续显影升 L1:归因双向——CV 占用源结构性'
+            '决策未消费污染源)→ 持续暴露升 L1:归因双向——CV 占用源结构性'
             '漂移 或 paddle X 检测链退化致对拍失真', DEPLOYED_COUNT_2SRC_SUSTAINED_N)
         record_defect(
             'deployed', DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED,
@@ -180,7 +180,7 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
                       f'(最近一次 paddle_x={paddle_n} cv_occupied={cv_n})'),
             gap=gap, gap_large=abs(gap) > 1,
             severity=SEVERITY_L1_ALERT,
-            verdict=('持续显影-同局真分歧达阈值(逐次行恒 L2 因仲裁已消化'
+            verdict=('持续暴露-同局真分歧达阈值(逐次行恒 L2 因仲裁已消化'
                      '决策面,但持续分歧要响铃;归因双向,先查本局 '
                      'deployed_count_2src_degraded 退化行占比——高=对拍失真'
                      '归 paddle 检测链,低=CV 占用源结构性漂移;处置=哨兵帧'
@@ -189,7 +189,7 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
             refs=[{'stream': 'arbitration',
                    'key': f'sustained_n={DEPLOYED_COUNT_2SRC_SUSTAINED_N}'}],
             reader_source=str(source or ''),
-            note='分歧持续显影升级行(每局至多一条;逐次明细见逐次行)')
+            note='分歧持续暴露升级行(每局至多一条;逐次明细见逐次行)')
 
 
 
@@ -313,7 +313,7 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         auto_resolved=field in AUTO_RESOLVED_OBS_FIELDS,
         confidence=conf,
         note='旁路自 obs_conflict 汇点(证据行 = journal obs_event '
-             'arbitrate,refs 锚即该行;历史冻结档案只读考古)')
+             'arbitrate,refs 参照即该行;历史冻结档案只读考古)')
 
 
 

@@ -441,7 +441,7 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     if getattr(ctx, 'cw_match', None) is None:
         return False
     from one_dragon.utils.log_utils import log as _log
-    _log.warning('[cw-entry] 检测到上一局残留 match 容器(%s)→ 弃置,'
+    _log.warning('[cw-entry] 检测到上一局残留 match 状态容器(%s)→ 弃置,'
                  '本局 session 全量重建', reason)
     ctx.cw_match = None
     if _RESET_PHASE_ROUND_CACHE is not None:

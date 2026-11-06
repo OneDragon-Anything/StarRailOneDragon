@@ -877,7 +877,7 @@ def apply_strategy_pick_sell_all_deal(gs: GameState, picked: Sequence[str],
                 # 运行期空 = 注册表漂移(出售刚清场,该费用档剩余池不应
                 # 为空);零写留 log 防御分支(随机赠卡池空支同款,
                 # 不改状态容器不炸链)
-                log.warning(f'[cw-sim] 出售发牌腿空桶(注册表漂移?):'
+                log.warning(f'[cw-sim] 出售发牌分支空桶(注册表漂移?):'
                             f'cost={cost} card={canon}')
                 continue
             for _ in range(count):
@@ -976,7 +976,7 @@ JOINT_DECISION_ENV_NAME: str = '联席决策'
 #: 此处自动跟随)。
 JOINT_DECISION_EXTRA_SLOT: tuple[int, int] = (
     ENV_POOL_REWRITE[JOINT_DECISION_ENV_NAME].extra_strategy_offer_node)
-assert JOINT_DECISION_EXTRA_SLOT is not None, '联席决策登记缺挂点(数量通道事实残缺)'
+assert JOINT_DECISION_EXTRA_SLOT is not None, '联席决策登记缺插入位置(数量通道事实残缺)'
 
 #: 单次 offer 候选张数(画面语义三选一;环境屏同构占位,U08)。
 OFFER_CANDIDATES: int = 3
@@ -2223,7 +2223,7 @@ class SimBackend:
         if decl.trigger not in ADVANCE_TRIGGER_KINDS:
             raise ValueError(
                 f'trigger {decl.trigger!r} 不在 advance 分派表键集 '
-                f'{sorted(ADVANCE_TRIGGER_KINDS)}(构造点漂移 = 接线 bug,'
+                f'{sorted(ADVANCE_TRIGGER_KINDS)}(构造点漂移 = 接入调用 bug,'
                 '禁静默)')
         if decl.trigger == 'node_advance':
             if decl.next_screen == '':
@@ -2562,7 +2562,7 @@ class SimBackend:
                                  rng=stream_rng(self.seed,
                                                 f'M11/grant/p{plane}'
                                                 f'/r{r}-gift'))
-            log.info('[cw-sim] 随机策略发放腿:%s 获得 → 发放 %s(%s)',
+            log.info('[cw-sim] 随机策略发放分支:%s 获得 → 发放 %s(%s)',
                      _src, rolled, _quality)
 
     def _on_invest_picked(self, *, opening: bool) -> None:
@@ -2598,7 +2598,7 @@ class SimBackend:
                                     evidence=sim_evidence(
                                         'strategy:recruit_drain:大扩招'),
                                     sig=obs_sig(group_id='sim:strategy'))
-                    log.info('[cw-sim] 大扩招扣金腿:持金 %s 扣 %s'
+                    log.info('[cw-sim] 大扩招扣金分支:持金 %s 扣 %s'
                              '(发 %s 只 4 费随机角色)',
                              gold_now, deduct, cnt)
         # 追加随机环境型(已登记名 = cw_investments.ENV_REROLL_NAMES,现役
@@ -2816,7 +2816,7 @@ class SimBackend:
                         self.gs.observe(self.gs.gold, 0,
                                         evidence=sim_evidence(tag),
                                         sig=obs_sig(group_id='sim:strategy'))
-                        log.info('[cw-sim] 超发货币负债腿:%s 清零 '
+                        log.info('[cw-sim] 超发货币负债分支:%s 清零 '
                                  '(快照 %s,现持 %s,增量 −%s)',
                                  _em.spec.name, _lost, gold_now, gold_now)
         # 选卡落地拍已损血衍生金效果条目(「获得等同于你已损失生命数量的金币」,
@@ -2850,7 +2850,7 @@ class SimBackend:
                     self.disclosures.setdefault(
                         STRATEGY_HP_LOSS_GOLD_BASELINE_ASSUMPTION,
                         'opening_minus_current_sim_model_v0')
-                    log.info('[cw-sim] 已损血衍生金腿:开局 %s 现值 %s '
+                    log.info('[cw-sim] 已损血衍生金分支:开局 %s 现值 %s '
                              '衍生金 +%s', self.hp_trail[0],
                              int(self.gs.hp.value or 0), gold_gain)
         # 选卡拍商店改写效果条目 + 位面段补发双效果条目(「现在及每个位面开始时」族,
@@ -3167,7 +3167,7 @@ class SimBackend:
                 self.gs.gold, int(self.gs.gold.value or 0) + _amount,
                 evidence=sim_evidence(tag),
                 sig=obs_sig(group_id='sim:strategy'))
-            log.info('[cw-sim] 超发货币回流腿:%s + %s(第 6 入口,p%sr%s)',
+            log.info('[cw-sim] 超发货币回流分支:%s + %s(第 6 入口,p%sr%s)',
                      _em_name, _amount, pos[0], pos[1])
         # 拍① 后行:本窗现读条目——remaining_nodes == 1 即「下一入口 =
         # 第 6 次入口」,快照回流额挂起待下一窗支付。
