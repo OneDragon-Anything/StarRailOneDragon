@@ -29,7 +29,7 @@ source_image: screens/货币战争-简报/default.webp
 ## 关键数据(策略相关 —— bot 已读)
 
 - **3 位面 boss**(每局 3 位面各 1,横排卡片:立绘 + 红色阵营标签 + 名字):名字 OCR 可读(`read_bosses` → **候选集**:卡片排列≠位面序,读数不可按序当 plane_bosses 用;位面序真值走 `CollectPlaneIntel` 位面详情逐位面实采 → `state.plane_bosses` → `boss_fit(comp.countered_by_bosses)`)。3 位面是玩法结构,**所有难度(A5/A8/A850)固定 3 个**(2026-08-05 攻略 + 官方确认;难度只改敌人强度/词缀,不改位面数)。boss 跨局随机(本局:增熵能源集团 / 火线动力机甲 / 银甲武装公司;另局见过:钢铁意志集团 / 银甲武装公司 / 纷争前线军团)。
-  - ⚠️ **数据缺口**:boss 机制/技能 + 哪些阵容怕哪个 boss(`comp.countered_by_bosses`)待采(图鉴/攻略);当前 `comp.countered_by_bosses` 空 → `boss_fit` 暂中性(登记在册的数据缺口)。
+  - ⚠️ **数据缺口**:boss 机制/技能 + 哪些阵容怕哪个 boss(`comp.countered_by_bosses`)待采(图鉴/攻略);当前 `comp.countered_by_bosses` 空 → `boss_fit` 暂中性(已登记的数据缺口)。
 - **敌人词缀**(A8 最高 4 个,每局随机):词缀行 OCR 可读(`read_affixes` → `state.enemy_affixes` → `AFFIX_MECHANIC_MAP` → `mechanics_fit`)。
   - **词缀名只显示**(简报画面),**点词缀弹 tooltip 显效果原文**(2026-08-05 实机点 4 词缀验证;tooltip 在词缀条上方,水平居中词缀,y 850-920)。HandleBriefing **固定采集**:每词缀点采 OCR 效果(`read_affix_effect`,纯解析找标题→取下方紧邻连续行 dy≤45)→ 对比注册表 `affix_effects_data.py` 文件最新 → 新名/描述不一致 → 截图(`affix_shots/<词缀>.png`,留作与注册表逐项比对的核验证据)+ `write_affix_effects` 写回注册表(本轮下游不生效,**下轮 import 生效**);一致跳过。
   - ⚠️ **数据缺口**:词缀效果 ground truth 靠运行时采集积累(注册表 py 自动写,逐步校准 competitors 攻略精炼为游戏原文);`AFFIX_MECHANIC_MAP` + 阵容机械属性(`mechanics_fit` 真生效)留待后续任务跟进。

@@ -32,9 +32,9 @@ source_image: screens/货币战争-星琼详情/default.webp
 
 - 无需读——弹窗本身无策略消费信息,入口链守卫识别即关。
 
-## 守卫挂点与决策指针
+## 守卫调用点与决策指针
 
-- 入口链守卫:注册表 `cw_entry_start._JADE_DETAIL_GUARD`(识别=上述双锚 AND,动作=点 `按钮-关闭X`,具名状态 `星琼详情弹窗关闭中`),四挂点 = app `_enter_lobby` 首节点 / `CwEntryEnter.wait_lobby` / `CwEntryStart.click_start` / `advance_to_prep`,守卫列各节点一切既有分支之前。
+- 入口链守卫:注册表 `cw_entry_start._JADE_DETAIL_GUARD`(识别=上述双锚 AND,动作=点 `按钮-关闭X`,具名状态 `星琼详情弹窗关闭中`),四个调用点 = app `_enter_lobby` 首节点 / `CwEntryEnter.wait_lobby` / `CwEntryStart.click_start` / `advance_to_prep`,守卫列各节点一切既有分支之前。
 - 决策依据:(守卫引入+交替循环上界闭合)→ (守卫族注册表化)。
 
 ## 识别快照

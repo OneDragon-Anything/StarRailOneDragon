@@ -70,7 +70,7 @@ source_image: screens/货币战争-遭遇节点/default.webp
 
 - **建档**:screen_info `货币战争-敌人信息浮层`(与备战难度入口同画面档、双入口;交互/坐标/双版差异详见 `货币战争-敌人信息浮层.md`;fixture `sr-od-test/screens/货币战争-敌人信息浮层/详情页.webp`,遭遇入口形态帧 `详情页-遭遇入口.png` 同目录)。
 - **遭遇版结构(2026-09-02 实测)**:标题「敌方信息」;顶部「遭遇其一/其二」页签(切两卡信息,**难度分随卡变**:实测 108+6 vs 108+16);右上「详情/技能」页签(均 OCR 全可读);左侧敌人波次格(两行,全带等级90);右栏敌人名+故事/技能清单;**底部红条 = 「敌人难度 NNN+N」+ 词缀 chips(OCR 全可读)+ 左右翻页箭头**;右上 X(1862,64)关闭。
-- **词缀读数通道开火前提已达成**:词缀 chips OCR 实测可读(随从强化/忽快忽慢/形单影只/极速制冷)——`read_encounter_options` 的 affixes 恒空缺口的读数通道就绪,接线消费待后续批。
+- **词缀读数通道开火前提已达成**:词缀 chips OCR 实测可读(随从强化/忽快忽慢/形单影只/极速制冷)——`read_encounter_options` 的 affixes 恒空缺口的读数通道就绪,接入调用消费待后续批。
 
 ## 识别快照
 
@@ -81,7 +81,7 @@ source_image: screens/货币战争-遭遇节点/default.webp
 
 ## 备注 / 待查
 
-- **分支刷新(2026-09-01 补录)**:底行「剩余次数：N」+ 圆箭头钮 = 优势布局「分支刷新」的刷新能力(每局 1 次,重置两卡难度/奖励)。证据:bwiki 优势布局表(`data/advantage_layouts.md`「分支刷新」行)+ competitors.md 节点表 + 归档帧 OCR(「剩余次数：1」)。bot 已接线消费(`cw_screen_encounter` 分支刷新执行链);**点击行为与未激活布局时的 UI 形态待实机验证**。
+- **分支刷新(2026-09-01 补录)**:底行「剩余次数：N」+ 圆箭头钮 = 优势布局「分支刷新」的刷新能力(每局 1 次,重置两卡难度/奖励)。证据:bwiki 优势布局表(`data/advantage_layouts.md`「分支刷新」行)+ competitors.md 节点表 + 归档帧 OCR(「剩余次数：1」)。bot 已接入调用消费(`cw_screen_encounter` 分支刷新执行链);**点击行为与未激活布局时的 UI 形态待实机验证**。
 - **screen_info 现状**:**已建(2026-08-10)** —— id_mark `标识-遭遇节点`(「遭遇节点」)+ `遭遇卡-其一`/`遭遇卡-其二`(卡身点击选中)+ `按钮-选择` + `按钮-返回备战界面`。穷举交互验证(2026-08-11)已补:onboarding §4 全元素行为实测过(**分支刷新点击行为未经实机验证(待验证项留待实机合并批次验证)**,见上条)。handler(`cw_screen_encounter.py`)已改经 `area_center` 读 screen_info 坐标(ClassVar 常量仅作缺失兜底;坐标单一源(唯一权威出处)=screen_info);档案帧 default.webp 回验 标识/按钮-选择 均 conf≈0.999 命中。
 - **策略化选卡**:bot 非固定选卡——按能力态选档:最近 2 场普通战斗胜负定能力态(足量 → 可及集内选最高难度档;边缘 → 限低档;不足或窗口数据不足 → 建议分支刷新,无剩余次数则保底最低档),同档并列按奖励偏好序(钻 > 装备 > 金币 > 末档)取先,其五/六高难档仅本局已清过该档才进入候选。判据语义单一源 = `docs/develop/sr_od/application/currency_war/strategy-docs/31_encounter_screen.md`(决策本体 = `src/sr_od/application/currency_war/strategies/impl/mandate_v1/encounter_pick.py`;执行链 = `src/sr_od/application/currency_war/operations/cw_screen/cw_screen_encounter.py`)。浮层「敌人难度」分数与词缀读数尚未接入选档判据(判据现消费卡标题难度档与结算观测,不读浮层;读数通道批待立项,浮层建档见本 doc 上节)。
 - 「遭遇其X」的 X 不固定(其一/其二/其四实测)→ 检测用前缀「遭遇其」+「选择」+「遭遇节点」组合更稳。

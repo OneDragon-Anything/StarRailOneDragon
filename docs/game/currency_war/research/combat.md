@@ -34,7 +34,7 @@
   若未损失小队生命值」(cw_invest_data.py id 103501);同判据消费方 =
   英雄登场/命运礼物/偶像经济(完胜加速分支)、佩佩客串(完美通关)、
   夜之半神(完胜翻倍)、都是这家伙的错!(完胜判定改写首例:「视为完美
-  通关」条件改写,bot 模型对齐面 = env 完胜腿 consult,invest_effects.md
+  通关」条件改写,bot 模型对齐面 = env 完胜改写效果条目 consult,invest_effects.md
   B 类本卡条)。结算屏取证面:挑战成功标识 + 小队生命值行
   (currency_war_settlement.yml 已建档登记),判定数据 = 结算帧
   killed/hp_after 两字段(cw_game_state.py Settlement 结构)。

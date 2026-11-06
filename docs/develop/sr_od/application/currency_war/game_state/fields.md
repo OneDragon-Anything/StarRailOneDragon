@@ -671,7 +671,7 @@ sim 先验写端(死亡救援分支):sim 局战斗结算折算点(`_resolve_batt
 预判成立(hp_before + hp_delta ≤ 0,与 `apply_hp_outcome` 内部判据同形)才触发;
 救援局**不触** `apply_hp_outcome`:保底位零翻转(用户裁定 2026-11-04 M-B 独立
 叠加 = 卡救先消耗、全局保底留给后续致死)且 dead 恒 False(败局属性不变,后段
-结算链照常);条件单一源 = `cw_gain_chain.take_strategy_death_save`(一次性闩
+结算链照常);条件单一源 = `cw_gain_chain.take_strategy_death_save`(一次性标志位
 strategy_death_save_used,§3.5.3a);live 零写观察覆盖(救援由游戏自算,hp 面
 结算页观察链现值覆盖)。
 **边界**:不可信帧不写。状态容器存**门前真值**、消费视图施门在消费侧(hp_readable/
@@ -1190,7 +1190,7 @@ env_grants_done——本队列不并入任何域版本 bump,他域本体未变)�
 计 1)。复合键三形:``first_buy_xp#<费用>``(首购经验分支费用粒度一次性标志位,一卡
 五费用桶各一发)、``take_all#<卡名>#<已耗事件序>``(全都要族配额一次性标志位,
 每耗 1 格追加一键,判定 = 前缀计数 < 配额 map `_TAKE_ALL_SUPPLY_QUOTA`
-(int 卡:银 1/金 2;彩 = None = recurring 无配额域恒放行零闩格)——布尔形会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
+(int 卡:银 1/金 2;彩 = None = recurring 无配额域恒放行零配额格)——布尔形会把配额 >1 卡的部分耗尽误判耗尽 = 静默漏发,族内
 统一计数形;域单调追加契约保持,判定不依赖序号取值)与
 ``perfect_rescue#<卡名>#<已耗序号>``(完胜判定改写配额一次性标志位,都是这家伙
 的错!id 352801,表载配额 3,判定同前缀计数形,写端见写入方⑥;域规格 =
@@ -1218,10 +1218,10 @@ at-most-once,live 零状态副本写经验条观察链覆盖);④策略卡购买
 费用匹配无星级轴〔已达标星级购买翻转 no-op 照常消耗〕,evidence
 `strategy_buy_star_flip:<卡名>`,producer `strategy_buy_star_flip_grant`;
 翻转在落位拍先于一次性标志位写 at-most-once,两边同写零 sim 门控——翻转 = 共享
-上报链确定性投影,板面观察对账兜底)。⑥策略卡完胜判定改写配额闩
+上报链确定性投影,板面观察对账兜底)。⑥策略卡完胜判定改写配额一次性标志位
 (都是这家伙的错!id 352801:kernel `check_strategy_perfect_rescue` 挂
 settle_confirm 分支,计数形键 `perfect_rescue#<卡名>#<已耗序>`,前缀计数 <
-配额放行,瞬时位 `settlement_perfect_rescue`(§3.5.3b)写与闩写同窗相邻,
+配额放行,瞬时位 `settlement_perfect_rescue`(§3.5.3b)写与标志位写同窗相邻,
 producer `strategy_perfect_rescue`;实机(live)和模拟器(sim)两边写,出售写状态的实现分支 sim 门内)。**拒落不置一次性标志位**(①):
 equips 未观察窗发放
 fail-closed 零写,一次性标志位同样不落——池现值维持达标时后续 tick 重试自愈;池
@@ -1859,7 +1859,7 @@ streak 带方向真值(§3.2.12)/ 金币仅胜局覆盖(§3.2.9)——写入规�
 观察登记、无判据载体**;待实机实证的问题=保底局结算分解面板显示原始伤害还是实际
 扣血;消费端一律按不确定降级。
 
-#### 3.5.3a 死亡救援一次性闩 strategy_death_save_used
+#### 3.5.3a 死亡救援一次性标志位 strategy_death_save_used
 
 **语义**:bool | None 逻辑态域——死亡救援触发器(藏一手 302801,死亡救援族首例;
 载荷单一源 = `cw_investments.py::STRATEGY_DEATH_SAVE_GRANTS`,救援后生命值/经验/
@@ -1869,12 +1869,12 @@ streak 带方向真值(§3.2.12)/ 金币仅胜局覆盖(§3.2.9)——写入规�
 「未判定」伪装成「已判定未触发」);消费读端 = take_strategy_death_save 门,
 None/False 两值均放行、True 拒绝。
 **写入方**:唯一 = `cw_gain_chain.take_strategy_death_save`(唯一调用点 = sim 结算
-折算点 `_resolve_battle` 前置分支,幂等 = 调用点 `_settled_key` + 闩双保险);
+折算点 `_resolve_battle` 前置分支,幂等 = 调用点 `_settled_key` + 标志位双保险);
 live 恒 None——救援事件 live 由游戏自算自显(救援局 = 败局,结算页有 hp 面入
-观察链,奖励两笔走下一备战帧 gold/xp 现读兜底),闩 live 零写零消费,实机和模拟器两边不对称
-(sim 闩真值/live 闩盲)与星核猎手锁域 live 不对称同型,零行为风险(live 无
+观察链,奖励两笔走下一备战帧 gold/xp 现读兜底),一次性标志位 live 零写零消费,实机和模拟器两边不对称
+(sim 标志位真值/live 标志位盲)与星核猎手锁域 live 不对称同型,零行为风险(live 无
 消费读端)。
-**边界**:接管局/恢复局:闩 = sim 写端事实域,接管局 None → 可再救一次(与
+**边界**:接管局/恢复局:一次性标志位 = sim 写端事实域,接管局 None → 可再救一次(与
 hp_floor_triggered 接管形态同款申报);快照 bool 保型直通(rebuild 免登记)。
 
 #### 3.5.3b 完胜判定改写瞬时位 settlement_perfect_rescue
@@ -1882,7 +1882,7 @@ hp_floor_triggered 接管形态同款申报);快照 bool 保型直通(rebuild �
 **语义**:bool | None 逻辑态域——策略卡「视为完美通关」改写面首例(都是这家伙的
 错!id 352801;载荷单一源 = `cw_investments.py::STRATEGY_PERFECT_RESCUE_GRANTS`,
 值 = (救援徽名, 配额))的**本场结算判定瞬时位**:True = 本场救援改写生效
-(「胜利∧损血∧徽携带∧配额>0」判据成立,判据机器 = 完胜判定正本
+(「胜利∧损血∧徽携带∧配额>0」判据成立,判据机器 = 完胜判定权威版本
 combat.md §3 同构读法 A,败局零救援),False = 判定不成立/不判定(真完胜/
 败局/环不足两行/字段缺/徽不携带/配额尽),None = 本局尚无判定执行(开局不种,
 gs-opening-seed B 类判据同 strategy_death_save_used 先例——种子 False 会把
@@ -1902,8 +1902,8 @@ unit.equips 备战观察填充);sim 结构性休眠(部署单位 unit.equips 恒
 不可达)→ sim 恒 False,env 检查行为零变化——sim 侧休眠 = 设计正确路径,
 激活前提 = sim 穿戴面建模(范围外申报)。
 **边界**:非持久——不落快照(schema/rebuild 零登记,跨节点无语义,每次结算
-重写;恢复局首结算前 None = 旧判同 None 语义);配额闩 = `strategy_conditional_done`
-共域计数形键 `perfect_rescue#<卡名>#<已耗序>`(§3.2.26a),与瞬时位分域:闩
+重写;恢复局首结算前 None = 旧判同 None 语义);配额一次性标志位 = `strategy_conditional_done`
+共域计数形键 `perfect_rescue#<卡名>#<已耗序>`(§3.2.26a),与瞬时位分域:一次性标志位
 = 局级恒存簿记、瞬时位 = 场级重写判定;零 rng(判定与出售对象选择全确定;
 出售写状态的实现分支 = sim 门内状态副本写,live 游戏自执行零写观察覆盖)。
 
