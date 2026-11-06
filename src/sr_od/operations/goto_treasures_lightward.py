@@ -29,6 +29,7 @@ _SELECT_SCREEN: str = '逐光捡金'
 _CATEGORY_SCREEN: str = '指南-逐光捡金'
 _GUIDE_SCREEN: str = '星际和平指南'
 _TEAM_SCREEN: str = '忘却之庭-编队'
+_MENU_SCREEN: str = '菜单'
 
 
 class TLMode(Enum):
@@ -175,8 +176,9 @@ class GotoTreasuresLightward(SrOperation):
         from one_dragon.base.geometry.point import Point
 
         screen = self.last_screenshot
-        if self.round_by_find_area(screen, '菜单', '开拓等级').is_success:
-            return self.round_success(wait=0.5)
+        if self.round_by_find_area(screen, _MENU_SCREEN, '开拓等级').is_success:
+            # 菜单打开动画约 1 秒级:过短的下节点截图会落在动画帧,OCR 点击落空
+            return self.round_success(wait=1.5)
 
         si = self.ctx.screen_loader.get_screen('大世界-普通')
         rect = None
@@ -195,21 +197,38 @@ class GotoTreasuresLightward(SrOperation):
     def menu_to_guide(self) -> OperationRoundResult:
         """菜单屏点指南图标 → 星际和平指南。
 
-        用全屏 OCR 找「指南」而非固定坐标:2026-11-05 实测菜单会因「玩法更新」
-        等新增条目动态重排(固定 rect 被挤位点中相邻图标)。菜单屏内「指南」
-        文字仅此一处,lcs 0.9 无误匹配风险。"""
+        用全屏 OCR 找「指南」而非固定坐标:菜单会因「玩法更新」等新增条目
+        动态重排(固定 rect 被挤位点中相邻图标);菜单屏内「指南」文字仅此
+        一处,lcs 0.9 无误匹配风险。
+        点击后验证转移:菜单打开动画期内点击会落空——round_by_ocr_and_click
+        只回报点击动作成功、无 until 验证,落空后下节点在菜单屏找不到指南页
+        tab 整链失败(实机复现);菜单屏锚(开拓等级)消失=指南页已打开,
+        未消失视为落空,round_retry 交由本节点重试。"""
         screen = self.last_screenshot
-        return self.round_by_ocr_and_click(
+        result = self.round_by_ocr_and_click(
             screen, '指南', lcs_percent=0.9,
             success_wait=1.5, retry_wait=1.5,
         )
+        if not result.is_success:
+            return result
+        confirm_screen = self.screenshot()
+        if self.round_by_find_area(confirm_screen, _MENU_SCREEN, '开拓等级').is_success:
+            return self.round_retry('指南点击落空(菜单屏未关闭)', wait=1.5)
+        return self.round_success(wait=1.5)
 
     @node_from(from_name='菜单进指南')
     @node_from(from_name='识别当前画面', status='AT_GUIDE')
     @operation_node(name='指南切逐光捡金tab', node_max_retry_times=6)
     def guide_to_category(self) -> OperationRoundResult:
-        """指南的 tab 图标位随激活 tab 宽度微移,area 已按实测收紧到第 4 图标位。"""
+        """指南切到逐光捡金 tab。
+
+        先短路判已在目标 tab:指南记住上次激活 tab,逐光捡金重入时该 tab 常已
+        激活——激活态图标变宽移位,收紧的模板 rect 命不中(实机复现),而此时
+        分类页标题直接可见,无需点击。
+        tab 图标位随激活 tab 宽度微移,area 已按实测收紧到第 4 图标位。"""
         screen = self.last_screenshot
+        if self.round_by_find_area(screen, _CATEGORY_SCREEN, '标识-标题-逐光捡金').is_success:
+            return self.round_success(status='AT_CATEGORY', wait=0.5)
         return self.round_by_find_and_click_area(
             screen, _GUIDE_SCREEN, 'TAB-逐光捡金',
             until_find_all=[(_CATEGORY_SCREEN, '标识-标题-逐光捡金')],
