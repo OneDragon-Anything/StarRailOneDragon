@@ -445,7 +445,7 @@ class TlPfBattleOp(SrOperation):
     def _click_back(self) -> OperationRoundResult:
         """结算画面点「返回虚构叙事」→ 虚构叙事选关。
 
-        首次 3 星通关会弹「快速通关」确认(视同通关所有前置关卡,点确认领取),
+        首次 3 星通关会弹「快速通关」确认(视同通关所有前置难度,点确认领取),
         先处理再判定到达选关。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'PF_TITLE').is_success:
