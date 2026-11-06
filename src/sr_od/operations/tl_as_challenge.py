@@ -72,9 +72,19 @@ _RESULT_SCREEN: str = '末日幻影-节点结算'
 _AXIOM_SCREEN: str = '末日幻影-终焉公理'
 _NODE_SCREEN: str = '忘却之庭-节点画面'  # 节点画面左栏锚(查看详情)与 FH 同构,复用其 area
 
-#: 角色列表滚动拖动(向下翻页;与忘却之庭编队屏同款列表,一次约移 2 行)
-_SCROLL_FROM: Point = Point(300, 760)
-_SCROLL_TO: Point = Point(300, 430)
+#: 角色列表滚动拖动(向下翻页;本机实测标定 2026-11-06:400px/0.5s 慢拖 =
+#: 精准 3 行、无惯性过冲、落定即识别清晰;快拖会触发惯性滚轮跳页,禁用。
+#: ⚠️ 拖动手感与本机鼠标 DPI/速度相关,换机需重标)
+_SCROLL_FROM: Point = Point(300, 850)
+_SCROLL_TO: Point = Point(300, 450)
+_SCROLL_DURATION: float = 0.5
+
+#: 回顶拖动(手指自上而下;单次 800px/0.3s 快拖 = 惯性滚动约 4+ 页,
+#: 列表到顶自动钳住,连拉 3 次任何起点都到顶)
+_TOP_FROM: Point = Point(300, 200)
+_TOP_TO: Point = Point(300, 1000)
+_TOP_DURATION: float = 0.3
+_TOP_DRAG_COUNT: int = 3
 
 #: 编队行槽位 1 点击点(展开列表 + 选中该行;放大标定实测填充态头像圆心——
 #: 空槽菱形与填充头像同位,行 1 (1025,396) / 行 2 (1025,678))
@@ -306,11 +316,11 @@ class TlAsTeamFillOp(SrOperation):
         方向 = 手指自上而下拖(250→850)= 列表向上滚回顶部;列表天然止于
         顶部,拖过头无副作用。上滑方向是向后翻页(与 _page_down 同向),
         反着写会把「回顶」变成「冲向列表尾」(实机实证:回顶后首扫页签
-        全是 4 星尾部角色)。次数 = 12:实机 5 次从队尾只退到中段
-        (~2 行/次),12 次 ≈ 全列表深度,任何起点都能拉满到顶。"""
-        for _ in range(12):
+        全是 4 星尾部角色)。单次大幅快拖惯性滚动约 4+ 页(本机实测),
+        3 次任何起点都到顶。"""
+        for _ in range(self._TOP_DRAG_COUNT):
             self.ctx.controller.drag_to(
-                Point(300, 850), start=Point(300, 250), duration=0.25)
+                self._TOP_TO, start=self._TOP_FROM, duration=self._TOP_DURATION)
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
@@ -333,10 +343,11 @@ class TlAsTeamFillOp(SrOperation):
             self._seen_sigs.add(sig)
         if self._down_stagnation >= 4:
             return self.round_fail(f'列表到底未找到 {target}')
-        # 翻页后等滚动完全停止再识别(实测 1.5s 会撞滚动中途帧:识别名缺失
-        # → 目标页被跳过且惯性叠加,5 页全空直达底部误判到底;3s 为实测安全值)
-        self.ctx.controller.drag_to(_SCROLL_TO, start=_SCROLL_FROM, duration=0.6)
-        return self.round_wait('向下翻页', wait=3)
+        # 本机标定:慢拖 400px/0.5s = 精准 3 行无过冲(见 _SCROLL_* 常量注释);
+        # 落定即识别清晰,wait 2s 留渲染余量
+        self.ctx.controller.drag_to(
+            _SCROLL_TO, start=_SCROLL_FROM, duration=_SCROLL_DURATION)
+        return self.round_wait('向下翻页', wait=2)
 
     @staticmethod
     def _page_sig(cells: list) -> str:
