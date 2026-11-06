@@ -247,6 +247,13 @@ class TlAsTeamFillOp(SrOperation):
             self._awaiting_expand = True
             return self.round_wait(f'选中行 {row_no}(待展开复验)', wait=1.5)
 
+        # 星启回验与找卡都依赖列表展开(「队伍N」标记在列表卡上,收起态列表
+        # 不可见 → 标记恒 0、找卡空识别,双向死循环)——收起态先点目标行槽位
+        # 展开(收起态语义 = 展开+选中,不移除角色)。
+        if self._arc_mode and not list_open:
+            self.ctx.controller.click(row_slot_point, press_time=0.15)
+            return self.round_wait('展开列表(回验/找卡前置)', wait=1.5)
+
         # 落位回验:星启走「队伍N」标记计数——槽位像素判空在 04 布局不可用
         # (V 亮度/SIFT 特征数/剪影模板三方案实测无区分度),members 脸库识别
         # 部分角色(特写变体)不中,名字匹配不可作唯一依据;每入队一人恰一张
