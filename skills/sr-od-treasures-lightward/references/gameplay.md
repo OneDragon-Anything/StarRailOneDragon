@@ -67,6 +67,7 @@ involves_screens: [逐光捡金, 挑战副本, 战斗画面, 队伍]
 - ⚠️ **app 代码未迁移 / 不可运行(2026-07-29 核实)**:`application/treasures_lightward/` **全部文件**(app / config / record / team_module / `op/*`)仍用旧 `sr.*` / `basic.*` 导入(如 `from sr.app.application_base import Application`、`from basic.i18_utils import gt`)。本仓库已重构为 `sr_od.*` —— `src/sr/`、`src/basic/` 不存在 → **无法导入**;且无 `_app_factory.py`、`list_applications` 不含本 app → **未注册、不运行**(sr_od 重构时漏迁移的死代码)。上方「bot 流程」「画面 area」按旧代码 / screen_info 记录,**仅供参考,不代表当前可运行**。需迁移到 `sr_od.*` 或移除。
 - **待实拍(条件态)**:FH / PC in-mode 战斗后各态实拍(需实际打一期;入口链 / 紊流弹窗 / FH 选关已归档,见 [screens/逐光捡金](../../../../docs/game/screens/逐光捡金.md))。
 - **末日幻影(Apoca)**:已探并建模(2026-11-05 实机建档:开场 / 选关 / 首领信息 / 编队 / 终焉公理 / 节点结算 各 screen doc);新框架挑战 op 已落地(`sr_od.operations.tl_as_challenge`,星启/难度04 未适配)。操作路由见 SKILL.md 对应类型块。
+- **星启模式(难度04,三节点)**(2026-11-06 实机勘察):选关默认选中星启;编队屏三行节点(击败 3 个首领,星级按分 6000/7800/9900/10200,污染等级 3);行位置整体上移(行距 282→217,行点击点 y≈396/613/830,行1 与双节点布局共位);当期环境 debuff 名显示于编队屏 boss 卡(本期「藤支配遗忘」)。挑战前置校验提示「请每队至少选择1名角色和1项增益效果」OCR 可读。识别缺口:空槽底板亮度使 V 判空与脸库匹配失效,槽位读数无法区分空/有角色;退出编队屏不保留未确认修改。适配进度与剩余工作见本地待办。
 - **异相仲裁**:2026-11-04 分类页确认存在(条目「异相仲裁·落叶归根」),未进探,未建模。
 - **challenge_mission screen 的「支援角色替换图标」area**:`pc_rect=[0,0,0,0]` 占位待填(见 [challenge_mission](../../../../docs/game/screens/challenge_mission.md)),不删。
 - **配队**:`treasures_lightward_team_module.search_best_mission_team` 自动选队伍,逻辑待细化。
