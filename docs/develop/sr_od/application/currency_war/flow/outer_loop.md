@@ -136,5 +136,5 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | run 收尾 | `after_operation_done` 全路径必达;`close_run` 零落盘,置跨局 run_id 重铸位;局终元数据归宿 = GameState 局终域 match_final 行 | `cw_loop.py::CwLoop.after_operation_done` |
 | op 调用流 | **全分支 dispatch 包装统一落**：`_dispatch_screen_op` 每次分发在出口落一行主日志 `[cw-op]` 行（`op=<名> plane=<位面> round=<轮次> dur=<秒>s outcome=<ok|fail|error>`，op 名 = 画面身份名，如 商店访问/备战/回大厅收尾…；只落出口行，dur = 单调钟差）+ 决策帧保留证据（frame_tag）；异常路径补落 outcome='error' 的行后上抛；op_journal 流已随 2026-09-15 用户裁定停用，存量档案双键切片只读 | server 主日志（`.log/mcp_server.log` / `.debug/sr_od_mcp/main_server.log`）+ `decision_frames/` |
 | 局终正常收尾（大厅收尾分支） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ 局终域 match_final 行 + `close_run` + 对局存档装配 + match 清空 | `cw_loop.py::CwLoop.loop 大厅收尾分支（代码注释「回到大厅(对局结束)→ 对局收尾」段）` |
-| 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（更新分支 = comp→统计簇名归一〔`LINE_STAT_CLUSTER` 查表，adherence 分组键与行为锚解耦〕；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
+| 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（更新分支 = comp→统计簇名归一〔`LINE_STAT_CLUSTER` 查表，adherence 分组键与行为定义件解耦〕；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
 | 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py::CwLoop._snap` |

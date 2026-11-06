@@ -730,7 +730,7 @@ advanced 闸内,§2.10 家族同形)→ 本原语窗收尾弹除。流程(§2.7 
 同构):①remaining <= 0 条目到期(到了及以后都算),无到期零写早退;
 ②离场对象 = uid ∈ 到期条目集 ∧ 身份 == 佩佩 ∧ 所在域 ∈ 备战 ∪ 上阵
 (溢出位身份串无 uid 载体结构性不可移除 = 不辖,条目照弹孤悬不再追踪)
-——移除走离场原语 `_remove_kechuan_units`(Unit 容器移除语义新机制件,
+——移除走离场原语 `_remove_kechuan_units`(Unit 名单移除语义新机制件,
 frozen 槽位置 None + 装备收集,write_logic_rand 形态);③装备全件走
 `gain_equipment` 原语转入库存(rand=True——转移写入确定性跟随佩佩确定性
 状态,sim 佩佩恒采样个体恒逻辑随机态〔判读 4 单分支实际可达,live 观察态
