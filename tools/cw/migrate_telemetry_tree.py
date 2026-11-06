@@ -9,7 +9,7 @@ LEGACY 声明文件(旧路径此后无任何活跃写点——写端常量已全
 ## 重跑语义与已知失效形态(诚实申报;曾申报「幂等可重跑」已被实证证伪)
 
 流文件(decisions/outcomes 等追加型 jsonl)的重跑合并走记账协议:
-manifest 记「当前 src 化身已消费到的字节偏移」;血缘判定按**内容锚**——
+manifest 记「当前 src 化身已消费到的字节偏移」;血缘判定按**内容基准**——
 src 前缀与 dst 尾部同窗字节哈希一致 = 同一化身,接尾;不一致 =
 move/unlink 后被旧代码进程重建的新化身,整份并入(2026-09-08 最近改动
 三审 M2 治本:旧实现按 size 与 offset 的大小猜血缘——恰比旧 offset 长
@@ -26,7 +26,7 @@ move/unlink 后被旧代码进程重建的新化身,整份并入(2026-09-08 最�
   (新化身从 0 整份并入无拼接点,不受此查;同源残躯无新字节可并,
   亦不受此查——二进制留证件的残躯清理靠这条路);
 ③dst 末非空行 == 待并段首非空行 → 判内容重叠,拒并。
-**残余风险(工具不自动处理,须人工对账)**:三态残留;锚失配且③未
+**残余风险(工具不自动处理,须人工对账)**:三态残留;基准失配且③未
 命中时(实为被外部改动的旧化身)按新化身整份并入可能引入重复;以及
 偏移记账与实际内容的任何错位。唯一强前提 = 迁移执行窗口旧根无写入方
 (实机静默局间);做不到时,重跑必须人工盯首跑报告,禁无人值守连跑。
@@ -140,14 +140,14 @@ def _refuse(report: list[str], name: str, why: str) -> str:
 
 
 def _lineage_anchor(dst: Path, src: Path, offset: int, size: int) -> str | None:
-    """血缘判定(内容锚哈希;2026-09-08 最近改动三审 M2 治本)。
+    """血缘判定(内容基准哈希;2026-09-08 最近改动三审 M2 治本)。
 
     记账协议下,上次已消费的 src 前缀字节 = dst 尾部同窗字节:两边
     sha256 一致 = src 与上次消费的是同一化身(接尾/残躯清理,返回
     'same');不一致 = 旧化身之后被重建的新化身(整份并入,返回 'new')。
-    返回 None = dst 现有字节不足锚窗(dst 被外部改动/截断,血缘不可证,
+    返回 None = dst 现有字节不足基准窗(dst 被外部改动/截断,血缘不可证,
     调用方拒并)。旧实现按 size 与 offset 的大小猜血缘,三种恰巧尺寸的
-    新化身分别被截头/误删/恒拒——内容锚把血缘钉在字节证据上,不再猜。
+    新化身分别被截头/误删/恒拒——内容基准把血缘钉在字节证据上,不再猜。
     """
     window = min(offset, size)
     dst_size = dst.stat().st_size
@@ -165,10 +165,10 @@ def _lineage_anchor(dst: Path, src: Path, offset: int, size: int) -> str | None:
 
 def _move_or_merge(src: Path, dst: Path, manifest: dict[str, int],
                    key: str, report: list[str]) -> str:
-    """流文件迁移:首次 move,重跑按内容锚血缘尾接/整并(协议见模块 docstring)。
+    """流文件迁移:首次 move,重跑按内容基准血缘尾接/整并(协议见模块 docstring)。
 
     重跑判定:manifest entry = 「当前 src 化身已消费到的字节」。血缘按
-    内容锚(_lineage_anchor):同源 = 接尾(start=offset,无新字节则残躯
+    内容基准(_lineage_anchor):同源 = 接尾(start=offset,无新字节则残躯
     清理);异源 = 新化身,从 0 整份并入。merge 前查(防线①②③,任一
     不满足拒并报人工):
     ①dst 存在而台账无 entry → dst 来源不可证,拒并;
@@ -199,21 +199,21 @@ def _move_or_merge(src: Path, dst: Path, manifest: dict[str, int],
         return _refuse(report, src.name,
                        'dst 已存在且台账无记账(疑似上次 copy+删源失败'
                        '的三态残留);盲并会整份重复,请人工比对后清理台账')
-    # —— 血缘判定(内容锚,三审 M2 治本)——
+    # —— 血缘判定(内容基准,三审 M2 治本)——
     anchor = _lineage_anchor(dst, src, offset, size)
     if anchor is None:
         return _refuse(report, src.name,
-                       f'dst 现有字节不足锚窗 {min(offset, size)}B'
+                       f'dst 现有字节不足基准窗 {min(offset, size)}B'
                        '(dst 被外部改动/截断,血缘不可证)')
     start = offset if anchor == 'same' else 0   # 同源=接尾;异源=新化身整份
     if start == size:
-        # 同源残躯:上次并入成功但 unlink 被占用,内容锚已证 src 全部
+        # 同源残躯:上次并入成功但 unlink 被占用,内容基准已证 src 全部
         # 字节都在 dst 里(恰等长的真新化身走 anchor='new' 分支整份并入,
         # 不再被当残躯误删);无新字节可并,顺手清掉。
         # 若进程仍握句柄,删除失败无害,留下次重跑
         with contextlib.suppress(OSError):
             src.unlink()
-        report.append(f'  clean  {src.name}(同源残躯,内容锚证实无新字节)')
+        report.append(f'  clean  {src.name}(同源残躯,内容基准证实无新字节)')
         return 'clean'
     # —— 防线②:偏移必须落在行边界(仅接尾路径——旧实现无条件执行,
     # 比记账小的新化身在此越界读空恒拒,申报的整份并入不可达)——
@@ -293,7 +293,7 @@ def _extract_conclusion(md_path: Path) -> str:
             m = _CONCLUSION_RE.match(line)
             if m:
                 return _tidy(m.group('c'))
-        # 回退:「总评/总结」节的首个内容行(新协议报告的收口格式)
+        # 回退:「总评/总结」节的首个内容行(新协议报告的收尾格式)
         in_summary = False
         for line in text_lines:
             if _SUMMARY_HEADING_RE.match(line):
@@ -403,8 +403,8 @@ def main() -> int:
     reviews = _OLD_REPLAY / 'matches' / 'reviews'
     n_review = _move_new_only(reviews, _NEW_DEEP, ['*.md'], report)
 
-    # ④ sim 批:sim_runs 全部条目 → telemetry/sim/(批账本与锚定批是
-    # 复现链锚点,留旧处 = 锚点断链,故整体迁;取舍见任务批注)。
+    # ④ sim 批:sim_runs 全部条目 → telemetry/sim/(批账本与基准批是
+    # 复现链引用,留旧处 = 引用断链,故整体迁;取舍见任务批注)。
     # 逐文件走 move_or_merge:sim 常开下重跑时,旧代码进程仍在旧根写
     # 「迁移后才出现的批」或给已迁批接尾——文件级偏移合并两头都不丢。
     if _OLD_SIM.exists():

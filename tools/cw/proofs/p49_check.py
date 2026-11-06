@@ -1,7 +1,7 @@
 """P49 压库期望价值 数值自检(不进 src、不提交;print 仅 ASCII)。
 
 复算证明文档 docs/game/currency_war/research/proofs/p49-pool-compression-ev.md:
-  (1) 口述/演示锚点:3费杂牌 ≈0.27 金/窗口、1费 ≈0.07(白压)、5费正确参数补算(k=9,j=7,池 81);
+  (1) 口述/演示基准:3费杂牌 ≈0.27 金/窗口、1费 ≈0.07(白压)、5费正确参数补算(k=9,j=7,池 81);
   (2) 边际压缩价值二维表(费用档 × 等级,Δ金/张;文档表 = 本节打印的誊录,全格断言 ±2%);
   (3) 线性律:3费@L7 边际在 taken∈[0,24] 恒定(±1.5%)——「每张杂牌恒定省」的数学形态;
   (4) 单调性:E[refreshes] 随 taken 单调降(全网格);
@@ -9,7 +9,7 @@
   (6) 窗口聚合:V_comp = A×Δ金(A=激活概率带),「一张 3费杂牌的窗口内价值」量级(下界,见 C3);
   (7) [34] 数学化:目标档匹配=必要条件(跨档购零压缩;_refresh_dist 双路径行为断言);
       V_opt(p41 公式现场重算,非誊录) vs V_comp 档间比较;
-  (8) 2★ 合成 tradeoff:sell_refund 往返账;r=3 已收口(2026-08-31 用户裁定,
+  (8) 2★ 合成 tradeoff:sell_refund 往返账;r=3 已定案(2026-08-31 用户裁定,
       economy §1 二次确认版):合成后卖出压缩保留 (3−r)×Δ金 ≡ 0;
   (9) [11] 联合:卖回概率 π 下的期望保留压缩 + 卖回档序 = argmin 每金压缩损失(Δ金/cost),
       含 L7 序翻转断言(2费→3费→1费,旧「1费先卖」被证伪)。
@@ -66,7 +66,7 @@ def per_gold(cost: int, level: int) -> float:
 
 print('== P49 check: pool compression EV ==')
 
-# --- (1) 锚点:演示脚本三行对拍(demo_compress.py 同源;5费行原参数传错,此处为正确参数补算) ---
+# --- (1) 基准:演示脚本三行对拍(demo_compress.py 同源;5费行原参数传错,此处为正确参数补算) ---
 anchors = [
     ('3cost@L7 per-card gold', dgold(3, 7), 0.24, 0.30),      # 用户读数 ≈0.27
     ('1cost@L5 per-card gold', dgold(1, 5), 0.06, 0.08),      # 用户读数 ≈0.07(白压)
@@ -225,14 +225,14 @@ for cost in (1, 2, 3, 4, 5):
 print('  [7] V_opt > V_comp(effective) all tiers; raw 5cost@L7 conditional 60 > V_opt ~51 '
       'but gated by A<=0.05 (search itself non-executable, E0=2200 refreshes)')
 
-# --- (8) 2★ 合成 tradeoff(sell_refund 往返账;r=3 已收口) ---
+# --- (8) 2★ 合成 tradeoff(sell_refund 往返账;r=3 已定案) ---
 assert sell_refund(2, 1) == 3 and sell_refund(2, 3) == 8  # 2star 1cost=+3 live(实证)
 rt_1c = sell_refund(2, 1) - 3 * 1
 rt_3c = sell_refund(2, 3) - 3 * 3
 assert rt_1c == 0, '1cost 2star round trip must be net 0 (frictionless)'
 assert rt_3c == -1, '3cost 2star round trip must be -1 (fee)'
 print(f'    round trip: 1cost 2star net {rt_1c:+d}; 3cost 2star net {rt_3c:+d}')
-# r=3 收口(2026-08-31 用户裁定,economy §1 二次确认版):卖 2★ 回池 3 张 1★——
+# r=3 定案(2026-08-31 用户裁定,economy §1 二次确认版):卖 2★ 回池 3 张 1★——
 # 不变量 = 剩余池 − resolved 固定池 − 持有副本总数(合成不销毁副本,2★ 计 3 张)。
 # 推论:①持有 2★ 期间压缩 3 张等效(合成不动池);②卖 2★ 一次性释放全部 3 张压缩,
 # cost≥2 另 −1 手续费 → merge-then-sell 相对卖 3×1★ 的压缩保留 (3−r)×Δ金 ≡ 0——

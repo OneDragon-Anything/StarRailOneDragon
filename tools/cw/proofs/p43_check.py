@@ -339,12 +339,12 @@ def main() -> None:
     print(f'  s0=0 full account: {full_s0:.1f} (differential {full_s0 - base:.1f})')
     print(f'  differential (full - baseline): {full - base:.1f} '
           f'(guide claim ~100, combat.md sec.4)')
-    # 文档 P4 行的演示口径数值锚(s0=1 为主口径,s0=0 为敏感性对照)
+    # 文档 P4 行的演示口径数值基准(s0=1 为主口径,s0=0 为敏感性对照)
     assert abs(full - 79.0) < 0.05 and abs(base - 38.7) < 0.05 \
         and abs(full - base - 40.3) < 0.05, 'P4 anchor values drifted'
     assert abs(full_s0 - base - 36.3) < 0.05, 's0=0 differential anchor drifted'
     assert full - base > 30, 'streak account must be material at whole-game scale'
-    # 解析锚:V(0,0,2) = 3 - p(短视界负斜率的闭式;R=2 起连胜账可对 p 微负)
+    # 解析基准:V(0,0,2) = 3 - p(短视界负斜率的闭式;R=2 起连胜账可对 p 微负)
     for p0 in (0.3, 0.5, 0.7):
         assert abs(v_of(0, 2, p0) - (3.0 - p0)) < 1e-9, \
             'V(0,0,2) must equal 3-p analytically'

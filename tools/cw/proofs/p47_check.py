@@ -266,7 +266,7 @@ def main() -> None:
 
     print()
     print('=== prop.3 dynamic correction (sellback channel): A-segment truncation, I=7 ===')
-    # 数值例 = 文档命题三动态修正节的亲算锚(截断段;fee/时点敞口为文档声明项,不入数)
+    # 数值例 = 文档命题三动态修正节的亲算基准(截断段;fee/时点敞口为文档声明项,不入数)
     cases = [
         (45, 4, 3, 9, 0),    # 近50同档:静态 0 -> 动态 0
         (50, 20, 3, 9, 3),   # 平台期跨档:静态 3,A 段 s=3 已收敛 -> 3

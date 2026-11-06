@@ -49,7 +49,7 @@ def main() -> None:
     print('d(g;84) 分段边界表锁定:[84,94)/[94,104)/[104,114)/[114,124)/[124,134)/≥134 '
           '→ 5/4/3/2/1/0')
 
-    # 中心标定点 r* 表(表 1/表 2 的 d≥4 列 NEVER、数值列锚点)
+    # 中心标定点 r* 表(表 1/表 2 的 d≥4 列 NEVER、数值列基准)
     anchors = [(134, 38.8), (124, 72.0), (114, 509.0)]
     for g, expect in anchors:
         got = r_star(g, V_CENTER)
@@ -57,7 +57,7 @@ def main() -> None:
     for g in (84, 94, 104):
         assert r_star(g, V_CENTER) == float('inf'), f'g={g} 应为 NEVER'
     print(f'中心 v={V_CENTER}:d=0/1/2 → r* = {r_star(134, V_CENTER):.1f}/'
-          f'{r_star(124, V_CENTER):.1f}/{r_star(114, V_CENTER):.1f}(锚 38.8/72/509),'
+          f'{r_star(124, V_CENTER):.1f}/{r_star(114, V_CENTER):.1f}(基准 38.8/72/509),'
           'd≥3 NEVER')
 
     # g<134 全域(中心点)恒负:r* > 视界 19

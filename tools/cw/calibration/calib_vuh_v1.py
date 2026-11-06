@@ -42,12 +42,12 @@ I_BAR_GOLD_PER_ROUND = 7          # p47 净收入带 [6,8] 中位(calibration.i_
 MIN_SAMPLE_FOR_POINT = 5          # used 样本低于此值的档只给保守下界
 H_BAND = (6, 14)                  # p41 自检④ H 稳健带
 #: 档间先验序(p41 特异性序:1费垫件 ≪ 2费 < 3费骨架 > 4费 > 5费贯穿;
-#: 样本不足档的下界锚 = 左邻档值,禁凭空拍值)
+#: 样本不足档的下界基准 = 左邻档值,禁凭空拍值)
 _COST_ORDER_FALLBACK = {1: 2.0, 2: 4.0, 3: 8.0, 4: 6.0, 5: 30.0}
 
 
 def v_bar_synthetic() -> dict:
-    """V̄ 合成价值链(p40 待标定清单口径 b「按注册表折算」;全部锚 =
+    """V̄ 合成价值链(p40 待标定清单口径 b「按注册表折算」;全部基准 =
     registry/cw_registry 已收字段,零新自由参数):
 
     V̄_net = rung 流 + 胜率边际流
@@ -242,7 +242,7 @@ def main() -> None:
               f'语料不可识别 p41 语义——仅记录)==  used n={len(h_all)} 中位='
               f'{statistics.median(h_all):.1f}')
 
-    print('\n== V̄ 合成价值链(注册表锚,零新自由参数;带 [e1 下沿, e2 上沿])==')
+    print('\n== V̄ 合成价值链(注册表基准,零新自由参数;带 [e1 下沿, e2 上沿])==')
     syn = v_bar_synthetic()
     print(f"  rung 流 e1/e2 = {syn['rung_stream_e1']:.2f}/{syn['rung_stream_e2']:.2f} 金,"
           f" 胜率流 = {syn['win_stream']:.2f} 金 (Δp={syn['dp_e01']:.3f} × 单战 "
@@ -267,7 +267,7 @@ def main() -> None:
             # 样本不足:取「左邻档已标定值 × 0.5」保守下界,禁点值
             fallback = _COST_ORDER_FALLBACK[c]
             print(f'  {c}费: β={b:+.2f} (used n={n_used} < {MIN_SAMPLE_FOR_POINT}'
-                  f') → 样本不足,保守下界 {fallback:.1f}金(先验序锚,非点值)')
+                  f') → 样本不足,保守下界 {fallback:.1f}金(先验序基准,非点值)')
     # 参考:控制 difficulty 不可行(66 局内 A 档近单值),声明为口径边界。
 
     report = {

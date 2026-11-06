@@ -1,4 +1,4 @@
-"""败轮补发口径判别·分桶重放(GameState 设计 §4.2 口径冲突挂账的仲裁实验)。
+"""败轮补发口径判别·分桶重放(GameState 设计 §4.2 口径冲突待办的仲裁实验)。
 
 问题:战斗败轮的轮首补发基项有两个互斥候选口径——
   H_base(基础奖励口径,玩家裁定 2026-09-09):补发 = 被败节点的基础奖励
@@ -253,12 +253,12 @@ def replay(matches_glob: str) -> None:
               f'= {ht_hit / ht_n * 100:.1f}%')
     else:
         print()
-        print('== 主子集战斗类样本 n=0:数据不足以定谳(见交付申报) ==')
+        print('== 主子集战斗类样本 n=0:数据不足以定论(见交付申报) ==')
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description='败轮补发口径判别·分桶重放(§4.2 挂账仲裁)')
+        description='败轮补发口径判别·分桶重放(§4.2 待办仲裁)')
     ap.add_argument('--matches',
                     default='.debug/currency_war/telemetry/matches/match_*.json')
     args = ap.parse_args()

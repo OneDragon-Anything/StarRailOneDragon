@@ -8,7 +8,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 #
 # 任务背景:R41-1 把「λ_U 序 vs 点估计全序的触发集同集性」升格为前提验证位
 # (v3.3 表先验算+预注册进判前锁,重合度<1 即红);R41-3 把 P3 回退先验下修值
-# 定谳为 P3 长度语料统计量(【拟·语料统计】槽位带出处)。本脚本一次性算两件:
+# 定论为 P3 长度语料统计量(【拟·语料统计】槽位带出处)。本脚本一次性算两件:
 #
 # 任务1(R41-1 同集先验算):直读 v3.3 主表产物 p51_v33_run.txt——Part 8 C 集合
 #   (|C|=21,各格 n/点估计[单调估计]/λ_U[CI 上端])与 Part 3M 主表各格 bootstrap CI,
@@ -135,7 +135,7 @@ def task1() -> None:
     print(f'\n分歧解剖:λ_U 序独有格 = {sorted(set(lam_ids) - only_pt)};'
           f'点估计序独有格(读法依赖) = {sorted((set(ptA) | set(ptB)) - set(lam_ids))}')
     print('判定口径(预注册):重合度<1 即红 ⇒ 当前表两序已分歧,#T 与触发集按点估计全序'
-          '重算(设计 §2.0-3 规格① R41-1 段定谳的生产线度量);λ_U 序口径语料参考值'
+          '重算(设计 §2.0-3 规格① R41-1 段定论的生产线度量);λ_U 序口径语料参考值'
           '(6.2%/25.7%/11.3%)保持参考值地位(R37-1)')
 
 
@@ -176,7 +176,7 @@ def task2() -> None:
     print(f'P3 槽:完整观测 m_complete={len(p3_complete)};右删失下界样本 m_censored={len(p3_censored)}')
     print('P3 右删失下界分布(去重轮数→局数):'
           + '; '.join(f'{v}轮:{dist_c[v]}局' for v in sorted(dist_c)))
-    # P1/P2 复核(P2=7 系 R25-1 语料定谳,同法复核)
+    # P1/P2 复核(P2=7 系 R25-1 语料定论,同法复核)
     p1_done = [lens[0] for _, _, lens in per_match if len(lens) >= 2]
     p2_done = [lens[1] for _, _, lens in per_match if len(lens) >= 3]
     d1, d2 = Counter(p1_done), Counter(p2_done)
@@ -212,7 +212,7 @@ def task2() -> None:
               '(完整 P3 观测)或对局档案落 plane_lengths_seen 字段;设计件 R41-3 段'
               '「已揭晓 P3 实测长度分布」前提按实测打标修正(档案无字段,前提不成立)。')
         print(f'辅助复核结论:P1=9({d1.get(9, 0)}/{len(p1_done)} 完整局);'
-              f'P2=7({d2.get(7, 0)}/{len(p2_done)} 完整局,R25-1 定谳复核成立)')
+              f'P2=7({d2.get(7, 0)}/{len(p2_done)} 完整局,R25-1 定论复核成立)')
 
 
 def main() -> None:

@@ -1,7 +1,7 @@
 """P41 囤积/卖出 EV 数值自检(不进 src、不提交;print 仅 ASCII)。
 
 复算证明文档 docs/game/currency_war/research/proofs/p41-hoard-sell-ev.md:
-  (1) 口述锚点 [22]-(3) 四组再遇数字(公式退化情形 u=H=1);
+  (1) 口述基准 [22]-(3) 四组再遇数字(公式退化情形 u=H=1);
   (2) expected_refreshes(k=1) 与独立近似 1/P_shop 的口径对账;
   (3) V_opt 二维表(L7-L10 全列 × 五档,脚本生成并逐格断言——文档表 = 本节打印的誊录);
   (4) 序对 u/H 标定误差的稳健性 + 独立档间扰动翻序数精确锁定(带序谓词口径);
@@ -42,7 +42,7 @@ def v_opt(level: int, cost: int, u: float, h: int) -> float:
 
 print('== P41 check: hoard/sell EV ==')
 
-# --- (1) 口述锚点(口述条目 22(登记簿已退役)-(3);u=H=1 的退化情形) ---
+# --- (1) 口述基准(口述条目 22(登记簿已退役)-(3);u=H=1 的退化情形) ---
 anchors = [
     ('1cost@L5 rounds', 1 / p_shop(5, 1), 7, 15),
     ('5cost@L8 rounds', 1 / p_shop(8, 5), 55, 65),

@@ -5,8 +5,8 @@ L(g, spend, R, Ī) ≡ 0(零息死仓构造,弱支配的息账项),零自由参�
 本脚本直调生产单一源复核(kernel 禁第二实现):
 - loss_exact / interest / saturation_line: src/sr_od/application/currency_war/
   kernel/cw_economy.py(P47 命题 2 双轨迹递推);
-- 掉血锚 S(n): cw_registry.streak_floor_loss_damage(辖域声明面,不入推导);
-- boss P15v2 锚 26.79 [24.25, 29.23]: p15 冻结语料值直录(math_proofs P15)。
+- 掉血基准 S(n): cw_registry.streak_floor_loss_damage(辖域声明面,不入推导);
+- boss P15v2 基准 26.79 [24.25, 29.23]: p15 冻结语料值直录(math_proofs P15)。
 
 重跑: $env:PYTHONPATH='src'; uv run python tools/cw/proofs/p70_check.py
 """
@@ -25,7 +25,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 OVERFLOW_OFFSET_MAX = 120   # 溢出量扫描上界(g = g* + 1 .. g* + 120)
 INCOME_BAND = range(4, 10)  # Ī 带 4-9(p47 A3 低带含败轮金口径)
 ROUNDS_MAX = 12             # R 扫描 0-12(P1=9/P2=7/P3=9 全覆盖)
-# boss P15v2 冻结语料锚(math_proofs P15 行,p15/p15v2_fit.py 冻结产物直录)
+# boss P15v2 冻结语料基准(math_proofs P15 行,p15/p15v2_fit.py 冻结产物直录)
 BOSS_P15V2_POINT, BOSS_P15V2_LO, BOSS_P15V2_HI = 26.79, 24.25, 29.23
 
 
@@ -63,7 +63,7 @@ def check_band_contrast() -> None:
     assert loss_exact(g_star + 1, 1, 1, 7, cap=cap) == 0
     crossing = loss_exact(g_star + 1, 2, 3, 7, cap=cap)
     assert crossing > 0, f'穿线格预期 L>0, 实得 {crossing}'
-    # 息帽封顶直觉锚: g* 处 interest 已封顶,溢出段增量零息
+    # 息帽封顶直觉依据: g* 处 interest 已封顶,溢出段增量零息
     assert interest(g_star, cap) == cap
     assert interest(g_star + 100, cap) == cap
     print(f'[断言2] 出辖对照: 带内 L={got}>0, 穿线 L={crossing}>0,'
@@ -71,18 +71,18 @@ def check_band_contrast() -> None:
 
 
 def check_registry_anchors() -> None:
-    """断言 3: 掉血锚 S(n) 与注册表单一源对账(辖域声明面,禁第二份)。"""
+    """断言 3: 掉血基准 S(n) 与注册表单一源对账(辖域声明面,禁第二份)。"""
     dmg = DEFAULT_REGISTRY.streak_floor_loss_damage
     assert dmg['encounter'][0] == 24.32, f"encounter 截距漂移: {dmg['encounter'][0]}"
     assert dmg['encounter'][1] == -4.53
     assert dmg['boss'][0] == 26.71
     assert dmg['boss'][1] == 0.0
     assert BOSS_P15V2_LO <= BOSS_P15V2_POINT <= BOSS_P15V2_HI
-    # 全锚非负: 侧 3「掉血不变多」单调性的数值面
+    # 全基准非负: 侧 3「掉血不变多」单调性的数值面
     for name, (intercept, _slope) in dmg.items():
-        assert intercept > 0, f'{name} 掉血锚非正'
-    print("[断言3] 掉血锚对账: encounter=(24.32,-4.53) boss=(26.71,0.0) "
-          f"registry 一致; boss P15v2 锚 {BOSS_P15V2_POINT} "
+        assert intercept > 0, f'{name} 掉血基准非正'
+    print("[断言3] 掉血基准对账: encounter=(24.32,-4.53) boss=(26.71,0.0) "
+          f"registry 一致; boss P15v2 基准 {BOSS_P15V2_POINT} "
           f"∈ [{BOSS_P15V2_LO}, {BOSS_P15V2_HI}] ✓")
 
 

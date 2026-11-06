@@ -1,4 +1,4 @@
-"""P89 换人持续预算的离散锚·复算脚本。
+"""P89 换人持续预算的离散基准·复算脚本。
 
 命题(docs/develop/sr_od/application/currency_war/proofs/p89.md;math_proofs.md P89 行):
 带源 = 真人尺保留率带 [0.59, 0.74](stage_transitions Q2)⟹
@@ -6,8 +6,8 @@
 - 等价形(保留率): (9−n_swap)/9 ∈ [0.59, 0.74] ⟹ n_swap = {3}(互补恒等);
 - 交叉核(过渡件分母): n_swap/8 ∈ [0.26, 0.41] ⟹ n_swap = {3};
 - 折算: 3 件 / 4 轮 = 0.75 次/轮(A/B 预注册线,禁入代码闸门);
-- 锚④反例自检: n=3 两正形式皆过;n=6 两正形式皆拒;v1 已废错误式
-  |9−n|/9 ∈ [0.26,0.41] 的整数解恰为 {6}(与结论自斥,勘误注在册)。
+- 基准④反例自检: n=3 两正形式皆过;n=6 两正形式皆拒;v1 已废错误式
+  |9−n|/9 ∈ [0.26,0.41] 的整数解恰为 {6}(与结论自斥,勘误注已登记)。
 
 零自由参数;算术用 Fraction 精确有理数,无浮点边差。带源文件 live-read
 (仓库持久文件,防带值漂移);三批 sim 报告住 .debug/temp/(易失),实测数字
@@ -89,15 +89,15 @@ def check_worked_fractions() -> None:
 
 
 def check_counterexample_n6() -> None:
-    """断言 6(批 A 验收锚④): n=3 满足两正形式;n=6 两正形式皆拒。"""
+    """断言 6(批 A 验收基准④): n=3 满足两正形式;n=6 两正形式皆拒。"""
     for n, want in ((3, True), (6, False)):
         sell_ok = in_band(Fraction(n, BOARD_N), SELL_LO, SELL_HI)
         keep_ok = in_band(Fraction(BOARD_N - n, BOARD_N), KEEP_LO, KEEP_HI)
         assert sell_ok == want and keep_ok == want, (
-            f'锚④失败: n={n} 正典式={sell_ok} 等价形={keep_ok} 预期 {want}')
+            f'基准④失败: n={n} 正典式={sell_ok} 等价形={keep_ok} 预期 {want}')
     # n=6 拒斥数值: 卖 6/9≈0.67 ∉ 卖出率带;留 3/9≈0.33 ∉ 保留率带
     assert Fraction(6, 9) > SELL_HI and Fraction(3, 9) < KEEP_LO
-    print('[断言6] 锚④反例自检: n=3 两正形式皆过;n=6 两正形式皆拒 '
+    print('[断言6] 基准④反例自检: n=3 两正形式皆过;n=6 两正形式皆拒 '
           '(卖 6/9≈0.67 ∉ [0.26,0.41],留 3/9≈0.33 ∉ [0.59,0.74]) PASS')
 
 
@@ -109,7 +109,7 @@ def check_v1_deprecated_form_self_refutes() -> None:
     lo, hi = SELL_LO * BOARD_N, SELL_HI * BOARD_N
     assert Fraction(117, 50) <= BOARD_N - 6 <= Fraction(333, 50)
     assert abs((9 - float(hi)) - 5.31) < 1e-9 and abs((9 - float(lo)) - 6.66) < 1e-9
-    # 废式(保留率公式配卖出率带)唯一解 6 ≠ 结论 3 = 自斥,已废(勘误注在册)
+    # 废式(保留率公式配卖出率带)唯一解 6 ≠ 结论 3 = 自斥,已废(勘误注已登记)
     print(f'[断言7] v1 废式自斥演示: |9−n|/9∈[0.26,0.41] ⟹ |9−n|∈[{float(lo)}, {float(hi)}] '
           f'⟹ n∈[{round(9 - float(hi), 2)}, {round(9 - float(lo), 2)}] ⟹ 解集 {{6}} ≠ 结论 {{3}}'
           f'——保留率式配卖出率带,照式即自斥,已废 PASS')
@@ -132,7 +132,7 @@ def check_conversion_and_endpoints() -> None:
 
 
 def check_band_source_live() -> None:
-    """断言 9: 带源 live-read——stage_transitions.md 在册带值防漂移。"""
+    """断言 9: 带源 live-read——stage_transitions.md 已登记带值防漂移。"""
     text = BAND_SOURCE.read_text(encoding='utf-8')
     assert '保留率 0.59-0.74' in text, '带源 :195 保留率带漂移或缺失'
     assert '保留率才是「卖没卖过渡」的正确读数' in text, '带源 :92-93 读数口径缺失'
@@ -148,7 +148,7 @@ _CHECKS = (
     ('交叉核', check_cross_denominator),
     ('互补恒等', check_complement_identity),
     ('逐例分数', check_worked_fractions),
-    ('锚④反例', check_counterexample_n6),
+    ('基准④反例', check_counterexample_n6),
     ('v1废式自斥', check_v1_deprecated_form_self_refutes),
     ('折算与端点', check_conversion_and_endpoints),
     ('带源live-read', check_band_source_live),
@@ -158,7 +158,7 @@ _CHECKS = (
 def main() -> int:
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')
-    print('P89 复算:换人持续预算的离散锚(A/B 预注册线的推导载体)')
+    print('P89 复算:换人持续预算的离散基准(A/B 预注册线的推导载体)')
     print('=' * 72)
     for name, fn in _CHECKS:
         try:

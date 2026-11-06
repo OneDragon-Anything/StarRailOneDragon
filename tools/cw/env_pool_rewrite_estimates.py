@@ -42,7 +42,7 @@ P2=7 = economy.md §10.2 位面典型节点表 + boss@p2r7 档案实证;P3 语�
 
 **π_offer 归一口径**(data-batch-estimates.md §6 约定):offer 卡品质按注册
 表 rarity 查得;查不得计「未解析」,按已知三品质份额等比例摊入归一。采样
-警告在册:档案帧未区分取卡 offer 与同次取卡内刷新后的新 offer(全部帧行
+警告已登记:档案帧未区分取卡 offer 与同次取卡内刷新后的新 offer(全部帧行
 计入,k 归属 = 该组时间夹逼到的取卡位)。
 
 **μ_E 区间口径**:CI = 品质子池内逐卡全通道值的 percentile bootstrap 95%
@@ -117,11 +117,11 @@ _QUALITY_PICK_SOURCES = frozenset({
 
 #: 扑满变体环境(净帧口径排除集):效果原文「本局的全部奖励节点替换为次元
 #: 扑满主题,掉落更多战利品」——卖出收入/金路径/息档等窗口先验系非普通局
-#: 形态,混入系统性抬高统计面。与 T-152 扑满局在册集(经济过热 ×7 + 经济
+#: 形态,混入系统性抬高统计面。与 T-152 扑满局已登记集(经济过热 ×7 + 经济
 #: 严重过热 ×1)同源;采样面裁定「148 总/140 普通」的「普通」即非扑满局。
 _PIGGY_ENVS = frozenset({'经济过热', '经济严重过热'})
 
-#: v1 在册 H_1 参照值(策略层 env_economy._STRAT_PICK_HORIZONS 现值 =
+#: v1 已登记 H_1 参照值(策略层 env_economy._STRAT_PICK_HORIZONS 现值 =
 #: strategies/impl/mandate_v1/env_economy.py;对拍用)
 _V1_H1_REF = 24
 
@@ -205,7 +205,7 @@ def _scan_match(path: Path) -> MatchRecord:
     eg = j.get('endgame') or {}
     rec.completed = eg.get('result') in ('win', 'loss')
 
-    # 污染判别 ①:环境在册名 ∩ ENV_POOL_REWRITE(品质改写挪位取卡流)
+    # 污染判别 ①:环境已登记名 ∩ ENV_POOL_REWRITE(品质改写挪位取卡流)
     # ∪ 扑满过热集(净帧口径,窗口先验非普通局形态)
     for e in ((j.get('opening') or {}).get('chosen_env') or []):
         name = e.get('name') if isinstance(e, dict) else str(e)
@@ -611,7 +611,7 @@ def main() -> None:
         if ok:
             horizons[k] = int(round(med))
     if 1 in horizons and horizons[1] != _V1_H1_REF:
-        print(f'  (v1 在册 H_1={_V1_H1_REF} 系回退口径 9+9+9=27 下的参照值;'
+        print(f'  (v1 已登记 H_1={_V1_H1_REF} 系回退口径 9+9+9=27 下的参照值;'
               f'本批以结构日程 25 + 实采中位为准,差异随批申报)')
 
     # ---- boss 槽实证申报(槽位取结构规则 _BOSS_SLOTS,附档案 boss 计数)----

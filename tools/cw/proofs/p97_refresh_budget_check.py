@@ -141,7 +141,7 @@ def main() -> int:
     print('\n'.join(lines_eta1))
     print(f'\n收入合计:η=1 上限 = {income_eta1};η={ETA} = {income}')
     print(f'节点白送 XP 合计 = {free_xp}')
-    # 结构锚:满息达成(η=1 下第 7 轮金 ≥ 50)/η 折扣方向
+    # 结构基准:满息达成(η=1 下第 7 轮金 ≥ 50)/η 折扣方向
     assert income_eta1 > income > 0, 'η 折扣方向'
     assert any(g >= 50 for g in golds_eta1[:7]), 'η=1 下前 7 轮内满息'
 
@@ -169,7 +169,7 @@ def main() -> int:
     print(f'达长线利好阈值(≥30 次付费刷新):{ge30}/{len(counts)} 条阵容;'
           f'达二手市场阈值(≥20 次):{ge20}/{len(counts)}')
 
-    # 检验锚:均值非负且停 9 级口径下阈值可达面非零(证明文档数字表锚)
+    # 检验基准:均值非负且停 9 级口径下阈值可达面非零(证明文档数字表基准)
     assert avg > 0, '预算均值为正(未入账收入只增不减,0 = 结构性错)'
     assert ge20 > 0, '二手市场阈值至少在部分阵容可达'
     return 0

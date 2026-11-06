@@ -18,7 +18,7 @@ from statistics import mean, median
 BASE = Path(__file__).parent
 sys.path.insert(0, str(BASE.parents[3] / 'src'))
 
-# ---- 注册表直调(门②锚,不用任何被审方自证数字)----
+# ---- 注册表直调(门②基准,不用任何被审方自证数字)----
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     LOSS_GOLD_BY_NODE,
     STREAK_GOLD_TABLE,
@@ -50,7 +50,7 @@ def load_rounds(d: Path) -> list[dict]:
         if r is None:
             continue
         sim = r.get('sim') or {}
-        # 纯金流差(注册表锚,见 Part A):不用逐轮收入分解(其 streak 字段结算时相
+        # 纯金流差(注册表基准,见 Part A):不用逐轮收入分解(其 streak 字段结算时相
         # 偏移,亲验 58 例中 38 例与注册表错位 1 档,事件金亦混入,不可靠)
         st = (r.get('state') or {}).get('streak') or 0
         node = o['node_type']
@@ -116,7 +116,7 @@ def boot_ci(stat_fn, runs, n=N_BOOT, seed=42):
     return pt, lo, hi
 
 
-print(f'注册表锚(直调 kernel/cw_economy):STREAK_GOLD_TABLE={STREAK_GOLD_TABLE} '
+print(f'注册表基准(直调 kernel/cw_economy):STREAK_GOLD_TABLE={STREAK_GOLD_TABLE} '
       f'LOSS_GOLD_BY_NODE={LOSS_GOLD_BY_NODE}')
 print(f'纯金流差理论带(连胜表 1-4 vs 败轮底金 2/4):{min(STREAK_GOLD_TABLE) - max(LOSS_GOLD_BY_NODE.values()):+d}'
       f' ~ {max(STREAK_GOLD_TABLE) - min(LOSS_GOLD_BY_NODE.values()):+d} 金/战\n')
@@ -145,7 +145,7 @@ for side in ('cw3', 'legacy_v2'):
 print()
 
 # ============ Part A:W_upside(连胜金收入差,板面战力桶)============
-print('=== A. W_upside:Δp(囤金胜率差) × Δflow_reg(注册表锚纯金流差,金/战) ===')
+print('=== A. W_upside:Δp(囤金胜率差) × Δflow_reg(注册表基准纯金流差,金/战) ===')
 print('   Δflow_reg(轮) = streak_gold(当前连胜级) - LOSS_GOLD_BY_NODE[节点];'
       '基础金/息/事件金两侧对消,不入差分\n')
 
@@ -270,7 +270,7 @@ for side in ('cw3', 'legacy_v2', 'pooled'):
             print(f'    {side} {bucket}×{nk}: n={len(sel_nk)} '
                   f'λ3={pt:.3f} [{lo:.3f},{hi:.3f}]')
     # ---- v3 必修1:换掉「距终>6 轮 λ3=0.000」论据分支(构造性恒真) ----
-    # dist_end 以已实现轨迹末轮为锚:距终>6 的轮按定义不可能在 3 轮内死亡,该条件期望恒 0
+    # dist_end 以已实现轨迹末轮为基准:距终>6 的轮按定义不可能在 3 轮内死亡,该条件期望恒 0
     # 与数据无关。改用非循环证据:①前瞻轮序危险率(死亡发生在第几轮,决策时轮序可观测);
     # ②桶构成(桶×侧 dist_end 分布,复验 V5 口径)。
     death_rounds = [rs[-1]['round'] + (rs[-1]['plane'] - 1) * 100 for rs in runs if rs and rs[0]['died']]

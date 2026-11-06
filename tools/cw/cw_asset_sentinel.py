@@ -32,7 +32,7 @@ OCR 模型 / avatar 脸库等运行时资产目录多次被外部清空(最近�
 ## 快照粒度(为什么轻量)
 
 存在性 + 关键文件清单 + 文件数 + 逐文件大小。不做校验和:mtime 在恢复/下载后
-不稳定不能作锚,校验和能多抓「同大小内容替换」形态,但逐轮全量哈希 50MB+ 的
+不稳定不能作基准,校验和能多抓「同大小内容替换」形态,但逐轮全量哈希 50MB+ 的
 CPU 成本对 60s 轮询不划算,且已实证的清空形态都是「数量/大小级」变化,大小
 快照已覆盖。
 
@@ -361,13 +361,13 @@ def write_evidence(path: Path, title: str, body: list[str]) -> None:
 
 def load_baseline(path: Path) -> dict | None:
     """读基线;不存在返 None(调用方走首跑生成)。损坏 → exit 2 禁静默重建:
-    基线是对比锚,坏了自动重建会把「已发生的清空」钉成新正常态。"""
+    基线是对比基准,坏了自动重建会把「已发生的清空」钉成新正常态。"""
     if not path.exists():
         return None
     try:
         data = json.loads(path.read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as e:
-        print(f'[asset-sentinel] 基线文件损坏({e!r})——基线是对比锚,禁静默重建;'
+        print(f'[asset-sentinel] 基线文件损坏({e!r})——基线是对比基准,禁静默重建;'
               f'确认资产恢复完成后用 --rebaseline 显式重建', flush=True)
         raise SystemExit(2) from e
     if not isinstance(data, dict) or not isinstance(data.get('targets'), dict):
@@ -475,7 +475,7 @@ def _selftest() -> int:
         snap1 = scan_target(tmp, spec)
         check('基线扫描清点', snap1['file_count'] == 4 and snap1['total_bytes'] == 315,
               f'got {snap1["file_count"]}/{snap1["total_bytes"]}')
-        # 满配基线(4 件)在此后各场景复用为对比锚;每次先抓基线再变更,
+        # 满配基线(4 件)在此后各场景复用为对比基准;每次先抓基线再变更,
         # 否则基线与扫描同态,diff 恒空(场景全失效)
         full_base = {'targets': {'t': snap1}}
 

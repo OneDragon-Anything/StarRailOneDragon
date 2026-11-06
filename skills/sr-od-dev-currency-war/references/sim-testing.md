@@ -2,7 +2,7 @@
 
 > CW skill 的模拟测试说明。读者 = 智能体。sim 的价值 = 在实机之前发现问题;任何改动上实机前问「模拟里能不能先暴露它」——能模拟到的就模拟,别拿实机试错。批怎么排、谁常驻跑 → autonomous-loop「sim 批组织细则」;**改动怎么验证(A/B)→ strategy-work「验证」**。
 >
-> **用法总纲**:统计指标是公共底座——没改动时,走「一、找问题」三步;有改动时按 strategy-work「验证」做 A/B(改前改后各跑一次统计对比),仍然差的指标回到三步下钻。
+> **用法总纲**:统计指标是公共基础数据——没改动时,走「一、找问题」三步;有改动时按 strategy-work「验证」做 A/B(改前改后各跑一次统计对比),仍然差的指标回到三步下钻。
 
 ## 先知道边界(sim 能信什么)
 
@@ -41,7 +41,7 @@ uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed
 - 产出 = 独立批目录(`telemetry/sim/sim_match_<时刻>/`,不写生产 replay)内的
   对局档案 `matches/match_<game_id>.json` + `state/journal.jsonl` + 识别仲裁帧
   `decision_frames/`;
-  stdout 附局况摘要(hp 链/节点序/金轨迹/终态,hp 写行 v 号即行锚)。
+  stdout 附局况摘要(hp 链/节点序/金轨迹/终态,hp 写行 v 号即行标记点)。
 - 局配置固定 A8/难度 108/环境在场(与测试冒烟同口径;A8 = 开局 HP 唯一
   实证档),词缀由 seed 采样;同 seed 同局可复现。
 - 复盘按 match-review 协议吃档案(渲染器 `--journal <批目录>/state/journal.jsonl`,或已装配局 `--match <game_id>`);判读边界同「先知道边界」——本形态档案

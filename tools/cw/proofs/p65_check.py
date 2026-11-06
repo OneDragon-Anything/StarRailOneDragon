@@ -4,7 +4,7 @@
    本脚本已冻结(comp-structure-unification 3.3,2026-11-04):P65 的
    命题对象——配方决策层(体系对域全族/伪阵容物化/promote_candidates
    消费链)——已随该迭代整批退役,**命题对象已退役不重立**;脚本保留 =
-   在册命题的历史验证载体(考古走 git 历史),不再维护可跑。
+   已登记命题的历史验证载体(考古走 git 历史),不再维护可跑。
 
    - SNAPSHOT_12 = **12 线时代历史快照锁**:现行注册表 21 线,冻结前
      重跑断言 1(枚举快照锁)即已显式红——属预期,不按「锁的存在性
@@ -18,7 +18,7 @@
 命题(math_proofs P65,设计=.debug/temp/currency_war/lock_path_p2_channel_design/
 DESIGN.md §2.1/§3):
 - 集合包含:晋升候选集 promote_candidates ⊆ 既有移交候选判据集
-  (cw_intention.update_intention P2 移交候选段,符号锚 = `_p2_handoff`
+  (cw_intention.update_intention P2 移交候选段,符号引用 = `_p2_handoff`
   支的 cands 列表推导)——promote_candidates 的每个合取项都在移交判据中,
   只多一条「体系键交集」纯限制,零新排序键(排序沿用移交候选
   资产厚度降序→再遇窗升序)零新自由参数;
@@ -33,7 +33,7 @@ DESIGN.md §2.1/§3):
   = _core_reachable ∧ G>ε。
 
 本脚本直调生产单一源复核(kernel 禁第二实现;v2 修订:晋升侧不再自实现
-公式,直调生产 promote_candidates——公式已落码,G8 观测载体在用):
+公式,直调生产 promote_candidates——公式已写进代码,G8 观测载体在用):
 - _pair_bond_keys / _v2_comps / _core_reachable /
   line_completion_feasibility / intention_core / p1_pair_candidates_of /
   _asset_thickness / encounter_window_rounds:cw_intention.py
@@ -85,13 +85,13 @@ if TYPE_CHECKING:
 
 # ===== P65 冻结副本(退役符号归档;迭代 2026-10-12-prep-shop-workflow-
 #      redesign 批 3.7:意向层机器本体〔含 promote_candidates〕随候选-
-#      锁定制退役删除。本脚本保留 = P65 在册命题的历史验证载体:冻结
+#      锁定制退役删除。本脚本保留 = P65 已登记命题的历史验证载体:冻结
 #      副本逐字取自退役前生产实现(git 历史),其依赖的
 #      line_completion_feasibility/_asset_thickness 等判据原语仍为在产
 #      符号——副本能继续复算当时的集合包含断言,但不再断言「生产直调」
 #      (生产符号已不存在,重跑语义 = 历史公式复核);位面读改桩属性
-#      ``gs.plane``(与脚本自有镜像 _handoff_candidates 同款鸭子读,
-#      生产 plane_of 已容器化读 node——原脚本在容器迁移前已断,本批
+#      ``gs.plane``(与脚本自有镜像 _handoff_candidates 同款鸭子类型读取,
+#      生产 plane_of 已改走状态容器读口读 node——原脚本在状态容器迁移前已断,本批
 #      冻结副本恢复可跑)。)=====
 def promote_candidates(gs: GameState,
                        ist: IntentionState,
@@ -218,7 +218,7 @@ class _StubState:
     """纯函数评估用最小状态桩(生产判据只读这些属性;bench/deployed 空
     = 核心不可见口径由 visible 参数显式注入)。
 
-    容器读口桩(容器化迁移后鸭子直存 int 不再兼容,与 ``gs.plane``
+    状态容器读口桩(状态容器化迁移后鸭子直存 int 不再兼容,与 ``gs.plane``
     桩属性同款处理):``node``(生产 plane_of/round_num_of 读
     ``gs.node.value``)/``level``(level_of 读 ``gs.level.value``)/
     ``node_seq_by_plane``(total_remaining_nodes 读
@@ -233,8 +233,8 @@ class _StubState:
         self.node = SimpleNamespace(value=SimpleNamespace(
             plane=plane, round_num=round_num))
         self.node_seq_by_plane = SimpleNamespace(value=None)
-        # bench/deployed 未观察桩(容器读口 value=None → 空池;需注入
-        # 成员的场景(_pair_achievable)在构造后覆写 bench 容器桩)。
+        # bench/deployed 未观察桩(状态容器读口 value=None → 空池;需注入
+        # 成员的场景(_pair_achievable)在构造后覆写 bench 名单桩)。
         self.bench = SimpleNamespace(value=None)
         self.deployed = SimpleNamespace(value=None)
         self.shop = []
@@ -253,7 +253,7 @@ class _StubIst:
 
 def _handoff_candidates(state, ist, session, reg, visible) -> list:
     """移交候选判据集(生产原式镜像:cw_intention.update_intention P2
-    移交候选段,符号锚 = `_p2_handoff` 支 cands 列表推导;逐合取项直调
+    移交候选段,符号引用 = `_p2_handoff` 支 cands 列表推导;逐合取项直调
     同一判据函数——禁第二实现,改生产须同步本镜像)。"""
     return [c for c in _v2_comps()
             if c.name not in ist.evicted
@@ -343,7 +343,7 @@ def _pair_achievable(target: tuple[str, ...]) -> bool:
             self.faction = ''
 
     state = _StubState(1, 5, 50, 1)
-    # bench 容器桩(生产 bench_units_of 读 gs.bench.value.slots 的
+    # bench 名单桩(生产 bench_units_of 读 gs.bench.value.slots 的
     # kind='unit' 槽;全 unit 槽 = 构造成员全体入池)。
     state.bench = SimpleNamespace(value=SimpleNamespace(
         slots=[SimpleNamespace(kind='unit', unit=_Bc(n))
@@ -394,7 +394,7 @@ def check_pair_nonempty_and_evicted_hole() -> None:
 
 
 def check_sort_keys_unchanged() -> None:
-    """断言 4:排序键零新增——晋升落码批的排序沿用移交候选既有键
+    """断言 4:排序键零新增——晋升实现批的排序沿用移交候选既有键
     (资产厚度降序 → 再遇窗升序),直证「零新排序键」申报。"""
     reg = DEFAULT_REGISTRY
     state = _StubState(2, 7, 50, 2)

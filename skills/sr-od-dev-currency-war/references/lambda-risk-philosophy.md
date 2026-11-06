@@ -1,6 +1,6 @@
 # λ 基座与风险架构——核心观点(skill 摘要)
 
-> **语义正本已并入 `docs/develop/sr_od/application/currency_war/strategy-docs/`**(λ/风险架构语义吸收进 00_framework.md 与 04_survival_budget.md;原 lambda-risk 全文已删除,出处考古走 git 历史)。改任何 λ_death/危险信号/战力建模相关内容前必读 strategy-docs 对应篇;本页只留判断要点。
+> **语义权威版本已并入 `docs/develop/sr_od/application/currency_war/strategy-docs/`**(λ/风险架构语义吸收进 00_framework.md 与 04_survival_budget.md;原 lambda-risk 全文已删除,出处考古走 git 历史)。改任何 λ_death/危险信号/战力建模相关内容前必读 strategy-docs 对应篇;本页只留判断要点。
 
 1. **λ 是唯一"错了就出局"的参数**(吸收态:死=一局清零;其他参数错=少赚可恢复)。不压死亡概率,任何"贪心最优"证不出来——切换信号的存在性是数学结构要求,不依赖语料。
 2. **硬闸门(用户裁定)**:仅 λ 表(血带入键)与 P15 掉血公式两处被授权消费 hp/战力数据;**其他任何战力相关内容进策略,须用户逐项确认**。

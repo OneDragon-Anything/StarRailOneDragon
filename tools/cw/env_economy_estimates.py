@@ -17,9 +17,9 @@ details/data-batch-estimates.md):
   区间 = Wilson 95% 比例区间(小样本比例的标准选择,下界不塌 0/1)。
 - (刷新分布两参数 refresh_{total,paid}_ge*_p / refresh_*_after*_e 的重采段
   已删除,2026-09-23 迁移迭代 3.2:gold_after_refreshes 通道改拍值注册
-  (策略层 _GOLD_AFTER_REFRESHES_FIXED,锚 = proofs/p97-refresh-budget.md
+  (策略层 _GOLD_AFTER_REFRESHES_FIXED,引用 = proofs/p97-refresh-budget.md
   §7),历史频率参数退役,无重采面。)
-- 扑满化增益(C 类 每奖励节点期望增益):**零有效估计**——扑满局在册
+- 扑满化增益(C 类 每奖励节点期望增益):**零有效估计**——扑满局已登记
   (8 局:经济过热 ×7 + 经济严重过热 ×1)但遥测无扑满战利品独立字段,
   奖励轮金差分混入备战净支出(买/卖/刷/升级),无法把增益从收支里分离;
   注册表不落该参数 → C 类通道 fail-closed(裸分维持)。

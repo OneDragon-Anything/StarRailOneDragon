@@ -60,7 +60,7 @@ def check_odds_shift_signs() -> None:
     p3 = [REFRESH_PROB[lv][3] for lv in (7, 8, 9, 10)]
     assert p3 == sorted(p3, reverse=True), f'3费概率应 lv7 起单调降: {p3}'
     assert abs(p3[0] - 0.40) < 1e-9 and abs(p3[1] - 0.32) < 1e-9, (
-        f'3费锚值漂移: {p3[:2]}')
+        f'3费基准值漂移: {p3[:2]}')
     e = {c: (expected_refreshes_for_card(8, c, 2, 0, 0),
              expected_refreshes_for_card(9, c, 2, 0, 0)) for c in (3, 4, 5)}
     assert e[3][0] < e[3][1], f'3费 E[ref] lv8→9 应恶化: {e[3]}'

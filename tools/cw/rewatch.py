@@ -132,7 +132,7 @@ def print_old_list(procs: list[psutil.Process]) -> None:
 
 
 def collect_tree(procs: list[psutil.Process]) -> list[psutil.Process]:
-    """树收编:每个进程经 psutil children(recursive=True) 并入其全部后代,
+    """树并入:每个进程经 psutil children(recursive=True) 并入其全部后代,
     按 pid 去重(排除本工具自身),返回「匹配进程 ∪ 后代」的杀集。
 
     为什么:哨兵实为 pwsh→uv→venv python→base python
@@ -189,7 +189,7 @@ def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
 def kill_all(procs: list[psutil.Process]) -> None:
     """杀净(树终杀 + 杀后复扫断言)。
 
-    树终杀:匹配进程+collect_tree 收编的后代一并杀;杀后复扫:重跑
+    树终杀:匹配进程+collect_tree 并入的后代一并杀;杀后复扫:重跑
     find_old_watchers,非空自动再杀(KILL_RESCAN_MAX 轮有界重试),仍
     非空 exit 2——把「杀净」从尽力而为变成可验证出口:杀净步骤被绕过
     时(2026-09-08 事故:Stop-Process 杀 pwsh 留 uv→python 孤儿)人忘了
@@ -204,13 +204,13 @@ def kill_all(procs: list[psutil.Process]) -> None:
         victims = collect_tree(procs)
         descendants = [p for p in victims if p.pid not in {q.pid for q in procs}]
         if descendants and round_no == 1:
-            print(f'[杀净] 树收编:并入 {len(descendants)} 个后代进程'
+            print(f'[杀净] 树并入:并入 {len(descendants)} 个后代进程'
                   f'(pid {[p.pid for p in descendants]})')
         still = _kill_procs(victims)
         leftover = find_old_watchers()
         remaining = _merge_procs(still, leftover)
         if not remaining:
-            print(f'[杀净] 已杀 {len(procs)} 个匹配进程+树收编后代'
+            print(f'[杀净] 已杀 {len(procs)} 个匹配进程+树并入后代'
                   f'(宽限 {KILL_GRACE_SEC}s 内全部退出);复扫零残留 ✅')
             return
         procs = remaining
@@ -222,13 +222,13 @@ def kill_all(procs: list[psutil.Process]) -> None:
 
 
 def kill_pids_tree(pids: list[int]) -> list[int]:
-    """按 pid 树终杀:目标进程+psutil 树收编后代一并 kill。
+    """按 pid 树终杀:目标进程+psutil 树并入后代一并 kill。
 
     cycle_restart 两处单点杀消费点(supervise 兄弟终止 / start_app 失败
     回滚)的复用缝:Popen.terminate() 在 Windows 下不
     级联,只杀 uv 层会孤儿化 venv python→base python 链——两处复用本
     实现,杀语义与 kill_all 单一源,禁在消费点自造第二套树杀。
-    返回杀后仍存活的杀集 pid(含树收编后代;空列表 = 全杀净,以「杀集
+    返回杀后仍存活的杀集 pid(含树并入后代;空列表 = 全杀净,以「杀集
     成员无一存活」为可验证出口);目标 pid 已死时幂等返回空。
     """
     targets: list[psutil.Process] = []

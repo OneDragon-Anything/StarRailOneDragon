@@ -10,7 +10,7 @@
      ``PLAZA_AUGMENTS`` / ``PLAZA_PORTALS``,数字 id 为稳定主键;name 经 canon 归一为
      注册表键(OCR 友好形);effect 为官方效果全文(去富文本标签,保换行)。
   2. ``docs/game/currency_war/data/invest_cards.md`` —— 人读版(翻阅/攻略引用):
-     按品质分组的表格;id 列 = 代码侧 ``source='plaza:<id>'`` 的双向链接锚。
+     按品质分组的表格;id 列 = 代码侧 ``source='plaza:<id>'`` 的双向链接引用。
 
 两层架构:本生成器只管 **base 事实层**(名字/品质/效果,API 直出);
 人工建模增量(economy 数值化/评估分/环境分类/阵营绑定/补遗条目)在
@@ -204,14 +204,14 @@ def diff_report(augments: list[dict], portals: list[dict]) -> None:
 def render_doc(version: str, augments: list[dict], portals: list[dict]) -> str:
     """生成人读版文档 invest_cards.md(与代码 cw_invest_data.py 双向链接,同源生成)。
 
-    id = 双向链接锚:代码侧 ``source='plaza:<id>'`` ↔ 本表 id 列。
+    id = 双向链接引用:代码侧 ``source='plaza:<id>'`` ↔ 本表 id 列。
     """
     lines = [
         f"# 货币战争 投资策略 / 投资环境(人读版,V{version})",
         "",
         f"> **由 `tools/cw/gen_plaza_invest.py` 生成,勿手编**(plaza 官方 API,重跑:`{GEN_CMD}`)。",
         "> 代码侧(机器消费,含 canon 键/effect 全文):`src/sr_od/application/currency_war/data/cw_invest_data.py`",
-        "> —— 两个文件**同源生成、双向链接**,以 plaza id 为锚;人工建模增量(economy/评估分)在 `cw_investments.py`。",
+        "> —— 两个文件**同源生成、双向链接**,以 plaza id 互为引用;人工建模增量(economy/评估分)在 `cw_investments.py`。",
         "",
     ]
     qn: dict[str, int] = {}

@@ -1,7 +1,7 @@
 """P37v2.1 晚转 XP 机会成本 期望口径闭合自检(实机口径重证版;print 仅 ASCII,不进 src)。
 
 复算证明文档 docs/game/currency_war/research/proofs/p37-late-xp-conversion-cost.md (v2.1):
-  (1) 注册表直调锚:利息律常量(GOLD_CAP_INTEREST/息律闭式 cw_economy.interest/
+  (1) 注册表直调基准:利息律常量(GOLD_CAP_INTEREST/息律闭式 cw_economy.interest/
       回退 cap=DEFAULT_INTEREST_CAP)
       与息律投资 interest_cap_override 例外域(开源节流 9/利息上调 10/买断制 0);
   (2) 收益端期望口径 E[I_gain] = q_full x cap,按 resolved cap 域(5/9/10)分列
@@ -18,7 +18,7 @@
   (6) 部分息敏感项:翻转所需非满息轮平均附加息量;
   (7) 实机口径翻转对照:rho=0.25 恰闭合格与 cap10 域在实机 q_full 下翻转(不闭合)。
 
-输入为注册表直调锚 + 语料现算 q_full(数据锁,见 q_full_corpus.py),确定性可重跑:
+输入为注册表直调基准 + 语料现算 q_full(数据锁,见 q_full_corpus.py),确定性可重跑:
   uv run python tools/cw/proofs/p37/p37v2_ev_closure.py   # q_full CI bootstrap 一并现算
 """
 import os
@@ -72,7 +72,7 @@ def hazard_per_round(lam3: float) -> float:
 
 
 def main() -> None:
-    # ---- (1) 注册表直调锚 ----
+    # ---- (1) 注册表直调基准 ----
     print('== (1) registry anchors (direct import, no transcription) ==')
     base_cap = DEFAULT_INTEREST_CAP  # 息律闭式派生 = GOLD_CAP_INTEREST // 10
     print(f'GOLD_CAP_INTEREST={GOLD_CAP_INTEREST} (息封顶金位, rate=1/10) '

@@ -13,7 +13,7 @@
   2. ``src/sr_od/application/currency_war/data/cw_plaza_posts.py`` —— 逐篇明细(胜率模型
       先验面训练样本;每篇=一条赢家发帖样本,样本权重=use 计数对数压缩再归一,见
       ``cw_win_model.plaza_sample_weight``;**生存者偏差语料,只作先验面/特征域
-      覆盖面,不作无偏胜率训练集**——校准锚=实机遥测负样本)。
+      覆盖面,不作无偏胜率训练集**——校准基准=实机遥测负样本)。
   3. ``docs/game/currency_war/data/plaza_meta.md`` —— 人读版(表格,供 COMP_LIBRARY 手判层校准)。
 
 两层架构(同 gen_plaza_invest.py 模式):本生成器只管 **base 事实层**(784 篇玩家帖
@@ -279,7 +279,7 @@ def render_posts(version_tag: str, recs: list) -> str:
         f"{len(recs)} 篇 V4.4 高难帖逐篇明细(v4.4 + 非KOL沙盒 + 未过期过滤,帖 id 去重)。",
         "",
         "**生存者偏差声明**:本语料全部为赢家发帖,只可作胜率模型的先验面/特征域"
-        "覆盖面,不可作无偏胜率训练集——校准锚=自家实机遥测(含负样本)。",
+        "覆盖面,不可作无偏胜率训练集——校准基准=自家实机遥测(含负样本)。",
         "样本权重口径单一源 = ``cw_win_model.plaza_sample_weight``"
         "(use 计数对数压缩 + 先验面份额归一);特征化单一源 = ``cw_win_model.plaza_post_features``。",
         '"""',
@@ -291,7 +291,7 @@ def render_posts(version_tag: str, recs: list) -> str:
         "@dataclass(frozen=True)",
         "class PlazaPost:",
         '    """单篇 plaza 高难发帖明细(逐篇胜利样本,胜率模型先验面)。"""',
-        "    post_id: str                        # 官方帖 id(溯源锚,生成器去重保证唯一)",
+        "    post_id: str                        # 官方帖 id(溯源基准,生成器去重保证唯一)",
         "    use: int                            # 被使用计数(0=官方未展示计数)",
         "    carries: tuple[str, ...]            # Final 阶段 carry 名(通常 1 个)",
         "    # (角色名, 星级, 费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择",
@@ -344,7 +344,7 @@ def render_corpus_doc(recs: list) -> str:
         f"含节奏标签 {sum(1 for r in recs if r['labels_t'])} 篇;含门户 {sum(1 for r in recs if r['portals_t'])} 篇;"
         f"含 Early 阶段 {sum(1 for r in recs if r['early_t'])} 篇。",
         "- 生存者偏差:全部为赢家发帖,只作先验面/特征域覆盖面,不作无偏胜率训练集;"
-        "校准锚=实机遥测(含负样本)。",
+        "校准依据=实机遥测(含负样本)。",
         "- 样本权重口径:`use>0 → 基础权重 + ln(1+use)` 后按先验面份额归一"
         "(单一源 `cw_win_model.plaza_sample_weight`)。",
         "",

@@ -19,7 +19,7 @@
       F0=+2 至多再烧 2 次,库存路径单调不增不穿仓;锅炉通道 E=36 炉 + 36 件
       基础死库存(炉效与直取同价、零炉优势);三通道账单 + 双支配结论(组件
       路径炉/件两维严格优、直取炉维同价件维严格优;盈亏平衡 17/6 废除,改
-      salvage 逃逸阈代数锚);
+      salvage 逃逸阈代数基准);
   (7) 准入捆绑约束(R1 两支,min(d,3) 显式建模):
       (a) 替换支(池>=3):同 d 同 r,EV 退化 = -Sum(ell) 线性、零吞吐补偿;
       (b) 增量支(池<3):混批增大 d -> 多得一次掷,净账 = w - ell(边际掷价值 w),
@@ -31,7 +31,7 @@
       「y ∈ 剩余 K」、基础按 component_demand 正缺口(hoard_gaps 为其机械化,
       支撑只含基础件);hoard_gaps/recycle_qualified 互斥性例证(阿雅线)。
 
-口径:池均匀 = p42 A9 同款承重假设(实测分布后幅度项复核);炉到货外生
+口径:池均匀 = p42 A9 同款起决定作用的假设(实测分布后幅度项复核);炉到货外生
 (投资牌流,economy §8 / equipment_mechanics §5 获取通道;裁定 G 后含锅炉局
 ——锅炉不产炉,原「非锅炉局」边界撤回)。
 """
@@ -206,7 +206,7 @@ vf = vb = Fraction(1, 1)
 flip_component = 24 * vf + 34 * vb    # 锅炉翻优组件所需 salvage(v_B 尺度)
 flip_direct = 36 * vb                 # 锅炉翻优直取所需 salvage(v_B 尺度)
 check(flip_component == Fraction(58, 1) and flip_direct == Fraction(36, 1),
-      'salvage 逃逸阈代数锚:s>58 / s>36(v_B 尺度),远超原二阶残值口径')
+      'salvage 逃逸阈代数基准:s>58 / s>36(v_B 尺度),远超原二阶残值口径')
 print('  channel bills (G): adv=36 furnaces | comp=12/16 furnaces + 2 basics | '
       'boiler=36 furnaces + 36 basics + F0-use cap')
 print(f'  dominance: boiler dominated by comp (both dims strict) and by direct '

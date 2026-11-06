@@ -65,7 +65,7 @@
 ## schema 分层语义(字段族边界;字段清单与值单一源 = `cw_comps.py`)
 
 - **身份**:阵容是谁、聚类代表;
-- **成型**:终局形态判据(AND 档 + 点名件(锚/core)在板;`form_progress` 唯一折法,禁消费位内联判定)。OR 组(`or_reqs`)已整字段退役——判据:口径错位,过渡体系启动判据(「量子或贝都行」)被误用作终局成型判据,两层判据各自归位(启动归过渡、完全体归终局,考古走 git 历史);`required_deployed` 亦整字段退役(2026-11-06,判例 = required-deployed-retirement)——点名件在板语义由锚体系承载:终局线点名件 = 单锚(`carry_anchor`),过渡条目 = core 全员,统一表达式进 fp 折条与部署 L1 named 层(「评分外硬约束补丁」教训:评分维度缺口应补评分项,不应造字段旁路);
+- **成型**:终局形态判据(AND 档 + 点名件(定义件/core)在板;`form_progress` 唯一折法,禁消费位内联判定)。OR 组(`or_reqs`)已整字段退役——判据:口径错位,过渡体系启动判据(「量子或贝都行」)被误用作终局成型判据,两层判据各自归位(启动归过渡、完全体归终局,考古走 git 历史);`required_deployed` 亦整字段退役(2026-11-06,先例 = required-deployed-retirement)——点名件在板语义由定义件体系承载:终局线点名件 = 单定义件(`carry_anchor`),过渡条目 = core 全员,统一表达式进 fp 折条与部署 L1 named 层(「评分外硬约束补丁」教训:评分维度缺口应补评分项,不应造字段旁路);
 - **成员**:谁在名单(core/shared 两档终局成员——shared = 第二档终局成员,双列
   重复登记被建库校验禁止(core∩shared 恒空,import 即炸);终局成员集 =
   core ∪ shared,送卡档位机器即以这两名单取档);
@@ -75,7 +75,7 @@
   自适应;新体系建成后旧载体须同批清算,勿留残余通道);
 - **装备**:到人配方(equip_assign 真源 + key_equips 投影;禁忌面已随
   `equip_taboos` 整字段退役 2026-11-05——唯一消费点囤货投影排除恒空
-  (禁忌件 ∉ 关键件投影,两域天然不相交)= 纯零行为字段,判例 =
+  (禁忌件 ∉ 关键件投影,两域天然不相交)= 纯零行为字段,先例 =
   equip-taboos-retirement;万敌禁盾教义归 final_comps 文档层,禁忌
   否决门若立项按统一维度另建,禁复活单套手编主链外挂点形态);
 - **过程性知识不进 schema**(何时/怎么长过来)——归 final_comps 叙事
@@ -109,7 +109,7 @@ strategy-docs/12 号篇 §3,本表不镜像。
    概念**(intention_core——意向核心,∈core 约束是 miss 计数良定义的
    刻意语义,落 cw_intention)。
 3. **两层 docstring 分责**:字段 docstring 写知识登记语义(「凭什么信」:
-   出处/校准口径);读口 docstring 写消费语义 + 正典文档锚。漂移在两层
+   出处/校准口径);读口 docstring 写消费语义 + 正典文档引用。漂移在两层
    docstring 对照下可见。
 
 **守卫的诚实声明**:无自动守卫(项目测试纪律禁源码扫描测试)。守卫上限 =
@@ -124,8 +124,8 @@ strategy-docs/12 号篇 §3,本表不镜像。
 | 加层羁绊 | `bonus_faction_reqs` | Comp property |
 | 阵容轮廓 | `all_factions` | Comp property |
 | 终局成员集 | `members` | Comp property |
-| 线 carry 单名锚 | `carry_anchor`(= core_chars[0],首位=定义件契约) | cw_comps 函数(旧 plaza_carry 字段/补全表/评分分歧登记表已随 plaza-carry-retirement 退役,聚类对账归 gen_plaza_comps 版本重跑差异报告) |
-| 分配器 arm 键 | `arm_key_of`(`LINE_STAT_CLUSTER` 查表,线名→统计簇名——adherence 分组键随簇不随定义件,与行为锚解耦) | cw_run_allocator 表+函数 |
+| 线 carry 单一具名定义件 | `carry_anchor`(= core_chars[0],首位=定义件契约) | cw_comps 函数(旧 plaza_carry 字段/补全表/评分分歧登记表已随 plaza-carry-retirement 退役,聚类对账归 gen_plaza_comps 版本重跑差异报告) |
+| 分配器 arm 键 | `arm_key_of`(`LINE_STAT_CLUSTER` 查表,线名→统计簇名——adherence 分组键随簇不随定义件,与行为定义件解耦) | cw_run_allocator 表+函数 |
 | CARRY 档全集 | `carry_set` | cw_comps 函数 |
 | 关键装备清单 | `key_equips` | Comp property(委托 derive_key_equips) |
 | 成员优先级 | `member_rank_of` / `derive_member_priority` | cw_comps 函数 |
@@ -171,7 +171,7 @@ compo-knowledge 证据三层):
 | 角色 | core/shared 两档名单 | 名单来自功能链,非出场率 |
 | 优先级 | 统一让位序 | **=功能链的序数化投影**(文档层留「为什么」,实现层只要序) |
 | 站位 | 角色层 position 真值 + 阵容层覆盖(排级+槽位级) | **CW 玩法每角色的可选站位定义**(front/back/common,`cw_chars.position`,官方 Common=双排皆可且技能效果不绑定排,游戏真值);common 默认 back 是无知识兜底而非游戏定义,排差异来自阵容机制面(受击方向/前后台强度分配/装备排绑定/巡海后台供增益类)。`char_positions` 值域 = 排级(`front`/`back`)**+ 槽位级**(`front@0-3`/`back@4-9`,@n=board_index 与攻略记号同源;攻略 board_index 知识如三月七@4-6 护盾相邻中段/万敌@0 一号位硬约束);**策略层槽位知识优先、自适应分配兜底**(落位优先占指定槽,被占/超容软回退;不触发已就位件重排)。同角色不同阵容可不同排(不死途黄泉线后排 vs 白厄线前排) |
-| 装备 | equip_assign 到人 | 「装备是角色特定的,到人不是到位置」;禁忌=阵容内在机制冲突的知识归 final_comps 文档层(equip_taboos 字段已退役——第 4 件整字段退役,判例链 lock_rules→entry_signals→key_items→equip_taboos) |
+| 装备 | equip_assign 到人 | 「装备是角色特定的,到人不是到位置」;禁忌=阵容内在机制冲突的知识归 final_comps 文档层(equip_taboos 字段已退役——第 4 件整字段退役,先例链 lock_rules→entry_signals→key_items→equip_taboos) |
 | 星级 | need_star | 高/低饥渴两档线(A4 星级统计批) |
 | 羁绊 | 优先级结构 | `faction_reqs`(档 0 = 核心羁绊层,同档多键等权全凑齐才成型;档 ≥1 = 加分层,进部署次层与采购面不进成型判定;原主/副档两字段已合并);OR 组(`or_reqs`)已整字段退役 |
 | 流派 | 分条定义 | A/B 双强各一套 Comp(姬子反震/输出方向拆条),不把分岔变量埋注释 |

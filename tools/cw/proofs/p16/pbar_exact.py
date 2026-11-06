@@ -1,4 +1,4 @@
-# P16 锚点重算:p̄(持续伤害, lv6) 三口径对拍(2026-09 P16 修复批)
+# P16 基准重算:p̄(持续伤害, lv6) 三口径对拍(2026-09 P16 修复批)
 #
 # 背景:P16_VALIDATION.md 瑕疵 A —— 原实现/证明把 Σ_cost P(≥1|cost) 当精确式,
 # 实为并集上界(同一次刷新可在多个费用档同时出目标件)。本脚本算三个口径:
@@ -134,7 +134,7 @@ def main() -> None:
     u = union_bound(tag, level)
     i = iid_closed(tag, level)
     e = exact_multinom(tag, level)
-    print(f'  (1) 并集上界 Σ_c P(≥1|c)      = {u:.6f}  (原锚点口径)')
+    print(f'  (1) 并集上界 Σ_c P(≥1|c)      = {u:.6f}  (原基准口径)')
     print(f'  (2) 逐格 iid 闭式 1−(1−q)^5   = {i:.6f}')
     print(f'  (3) 多项×超几何精确值          = {e:.6f}')
     mc = monte_carlo_simple(tag, level)

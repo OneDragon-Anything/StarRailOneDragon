@@ -6,28 +6,28 @@ run_id 曾在 ``CwLoop.__init__`` 才铸造,而入口链(简报/投资环境/投
 的遥测行早于铸造产生:``record_invest_cards`` 的「run_id 空则丢,否则盖
 ``_CURRENT_RUN_ID``」门把开局 env/strategy 行盖到**上一局** run 戳上(冷启动
 首局则零行)。治本修复 = 铸造前移到入口链(ensure_run_started);
-本工具治历史:按 runs.jsonl 收口时间线把 invest_cards.jsonl 逐行重归属
+本工具治历史:按 runs.jsonl 收尾时间线把 invest_cards.jsonl 逐行重归属
 「首个收口时刻 ≥ 行 ts 的 run」,再对受影响档案重建。
 
 ## 重算判定规则(方案 §2.2;判据与检出互逆)
 
-runs.jsonl 每行 ts = 收口时刻;run 生存期 = (上一收口, 本收口](单跑道一次
+runs.jsonl 每行 ts = 收尾时刻;run 生存期 = (上一收尾, 本收尾](单跑道一次
 一 run,顺序无交叠)。对 invest_cards.jsonl 每行 R(ts=t)::
 
-    owner = 收口时刻 ≥ t 的最早收口行
-    无 owner(t 晚于最后一收口,活局尾部)→ 保持原 run_id(申报,靠重跑自愈)
+    owner = 收尾时刻 ≥ t 的最早收尾行
+    无 owner(t 晚于最后一收尾,活局尾部)→ 保持原 run_id(申报,靠重跑自愈)
     owner == R.run_id                    → 不改(窗内合法行:局中 0s 选卡 + 已正确行)
     否则                                 → R.run_id ← owner.run_id(污染行重归属)
 
 **疑似串门-人工审(先于自动重归属;保持原 run_id,只点名)**——所盖 run S
-的收口状态存在两种失真形态,任一命中即入人工审清单:
+的收尾状态存在两种失真形态,任一命中即入人工审清单:
 
-1. S 收口行 ``source='recovered'``(兜底回填:ts=回填时刻而非真实
-   终局时刻)且 R.ts 早于 S 自身流行(名下各流 + 收口行)的最晚 ts——回填
+1. S 收尾行 ``source='recovered'``(兜底回填:ts=回填时刻而非真实
+   终局时刻)且 R.ts 早于 S 自身流行(名下各流 + 收尾行)的最晚 ts——回填
    时刻是名义窗尾而非真实窗尾,owner 规则对 S 名下的行失真。实践中即 S
    名义窗内全部行(超集保守,清单不改数据)。
-2. S 无收口行(硬崩且未被回填):归属时间线缺锚,owner 规则会把其名下行
-   自动改判给下一收口(可能隔了一个丢失局)——S 名下全部行不自动改。
+2. S 无收尾行(硬崩且未被回填):归属时间线缺基准,owner 规则会把其名下行
+   自动改判给下一收尾(可能隔了一个丢失局)——S 名下全部行不自动改。
 
 ## 安全三件
 
@@ -81,7 +81,7 @@ _JOURNAL_DIR = (_REPO / '.debug' / 'temp' / 'currency_war'
                 / 't109_telemetry_gaps')
 
 #: 入「所盖 run 自身流行最晚 ts」扫描的流(op_journal 行也带 run_id,一并入扫;
-#: 与 match_archive 切片流同面 + runs 收口行)
+#: 与 match_archive 切片流同面 + runs 收尾行)
 _STREAM_FILES: tuple[str, ...] = (
     'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
     'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
@@ -94,7 +94,7 @@ _RECOVERED_SOURCE: str = 'recovered'
 
 @dataclass
 class _CloseRow:
-    """runs.jsonl 一行收口锚(ts=收口时刻;idx=文件行序,并列 tie-break 用)。"""
+    """runs.jsonl 一行收尾基准(ts=收尾时刻;idx=文件行序,并列 tie-break 用)。"""
     ts: str
     run_id: str
     source: str
@@ -124,7 +124,7 @@ class _RepairPlan:
 
 
 def _load_closes(runs_rows: list[dict[str, Any]]) -> list[_CloseRow]:
-    """runs.jsonl → 收口锚列表(保留文件行序;「最早」在消费侧按 (ts, idx) 取)。"""
+    """runs.jsonl → 收尾基准列表(保留文件行序;「最早」在消费侧按 (ts, idx) 取)。"""
     closes: list[_CloseRow] = []
     for i, r in enumerate(runs_rows):
         rid = str(r.get('run_id') or '')
@@ -136,7 +136,7 @@ def _load_closes(runs_rows: list[dict[str, Any]]) -> list[_CloseRow]:
 
 
 def _find_owner(closes: list[_CloseRow], row_ts: str) -> _CloseRow | None:
-    """「收口时刻 ≥ 行 ts」的最早收口行(无 → None = 活局尾部)。
+    """「收口时刻 ≥ 行 ts」的最早收尾行(无 → None = 活局尾部)。
 
     ISO 秒级字符串字典序 = 时间序;并列按文件行序取先(min 的稳定 tie-break)。
     """
@@ -147,7 +147,7 @@ def _find_owner(closes: list[_CloseRow], row_ts: str) -> _CloseRow | None:
 
 
 def _latest_ts_by_run(replay_dir: Path) -> dict[str, str]:
-    """每个 run_id 名下各流行 + 收口行的最晚 ts(人工审形态①的判据输入)。
+    """每个 run_id 名下各流行 + 收尾行的最晚 ts(人工审形态①的判据输入)。
 
     不假设行 ts 单调(回填/补写行 ts 可能滞后于真实终局),逐行取 max。
     """
@@ -164,7 +164,7 @@ def _latest_ts_by_run(replay_dir: Path) -> dict[str, str]:
 
 
 def _close_status_by_run(closes: list[_CloseRow]) -> dict[str, list[_CloseRow]]:
-    """run_id → 其全部收口行(判「有收口/收口来源」;同名多行全保留)。"""
+    """run_id → 其全部收尾行(判「有收口/收口来源」;同名多行全保留)。"""
     out: dict[str, list[_CloseRow]] = {}
     for c in closes:
         out.setdefault(c.run_id, []).append(c)
@@ -174,7 +174,7 @@ def _close_status_by_run(closes: list[_CloseRow]) -> dict[str, list[_CloseRow]]:
 def plan_repair(invest_rows: list[dict[str, Any]],
                 closes: list[_CloseRow],
                 latest_ts: dict[str, str]) -> _RepairPlan:
-    """重算判定纯函数(行集 × 收口时间线 → 计划;同输入同输出,幂等根基)。"""
+    """重算判定纯函数(行集 × 收尾时间线 → 计划;同输入同输出,幂等根基)。"""
     plan = _RepairPlan()
     close_status = _close_status_by_run(closes)
     for line_no, row in enumerate(invest_rows, start=1):
@@ -195,37 +195,37 @@ def plan_repair(invest_rows: list[dict[str, Any]],
             plan.verdicts.append(_RowVerdict(
                 line_no=line_no, ts=ts, kind=kind, old_run_id=stamped,
                 new_run_id=stamped, action='manual_review',
-                reason=f'所盖 run {stamped} 无收口行(硬崩未回填),归属时间线缺锚'))
+                reason=f'所盖 run {stamped} 无收尾行(硬崩未回填),归属时间线缺基准'))
             plan.manual_review.append(
-                (line_no, ts, kind, stamped, '所盖 run 无收口行'))
+                (line_no, ts, kind, stamped, '所盖 run 无收尾行'))
             continue
         s_latest = max([latest_ts.get(stamped, '')] + [c.ts for c in s_closes])
         if any(c.source == _RECOVERED_SOURCE for c in s_closes) and ts < s_latest:
             plan.verdicts.append(_RowVerdict(
                 line_no=line_no, ts=ts, kind=kind, old_run_id=stamped,
                 new_run_id=stamped, action='manual_review',
-                reason=(f'所盖 run {stamped} 收口为 recovered 回填'
+                reason=(f'所盖 run {stamped} 收尾为 recovered 回填'
                         f'(回填 ts={s_latest} 是名义窗尾),行 ts={ts} 早于它')))
             plan.manual_review.append(
-                (line_no, ts, kind, stamped, '所盖 run 收口为 recovered 回填'))
+                (line_no, ts, kind, stamped, '所盖 run 收尾为 recovered 回填'))
             continue
         owner = _find_owner(closes, ts)
         if owner is None:
             plan.verdicts.append(_RowVerdict(
                 line_no=line_no, ts=ts, kind=kind, old_run_id=stamped,
                 new_run_id=stamped, action='keep_live_tail',
-                reason=f'行 ts={ts} 晚于最后一收口(活局尾部),保持原样(重跑自愈)'))
+                reason=f'行 ts={ts} 晚于最后一收尾(活局尾部),保持原样(重跑自愈)'))
             continue
         if owner.run_id == stamped:
             plan.verdicts.append(_RowVerdict(
                 line_no=line_no, ts=ts, kind=kind, old_run_id=stamped,
                 new_run_id=stamped, action='keep_window',
-                reason=f'窗内合法行(owner={owner.run_id} 收口 {owner.ts})'))
+                reason=f'窗内合法行(owner={owner.run_id} 收尾 {owner.ts})'))
             continue
         plan.verdicts.append(_RowVerdict(
             line_no=line_no, ts=ts, kind=kind, old_run_id=stamped,
             new_run_id=owner.run_id, action='reattribute',
-            reason=f'首个 close≥ts: {owner.run_id}(收口 {owner.ts})'))
+            reason=f'首个 close≥ts: {owner.run_id}(收尾 {owner.ts})'))
     return plan
 
 
@@ -348,7 +348,7 @@ def _v3_cross_check(replay_dir: Path,
 
     对拍口径:env 轴 = 首个 chosen_env == 最早 active_env;strategy 轴 =
     首个 chosen_strategies ∈ 最早 active_strategies 集合——位面过渡改选
-    会让 chosen 序列合法累积多值(cw_loop 0e/0s 局中分支),真值锚只取最早
+    会让 chosen 序列合法累积多值(cw_loop 0e/0s 局中分支),真值基准只取最早
     帧,故只对拍「开局那次选择」。返回 (mismatch 行, env 轴对拍数, strategy
     轴对拍数)。
     """
@@ -483,7 +483,7 @@ def _print_plan(replay_dir: Path, plan: _RepairPlan,
           f'{", ".join(affected) if affected else "(无)"}')
     if plan.roundtrip_mismatch:
         return   # 自检不过不做投影对账(投影基于失真序列会误导)
-    print('== V2 污染签名(行 ts > 所盖 run 收口;判定域=有正常收口归属的行,'
+    print('== V2 污染签名(行 ts > 所盖 run 收尾;判定域=有正常收尾归属的行,'
           '活局尾部与人工审行天然除外) ==')
     print(f'  本次重归属(=签名命中) {len(v_re)} 行 → apply 后归零')
     print('== V3 跨源真值对拍(投影态;真值源=档案内嵌 decisions 切片;'

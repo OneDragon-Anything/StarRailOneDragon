@@ -1,9 +1,9 @@
-"""P1/P25 再遇窗口自检(math_proofs P1、P25 锚点数字)。
+"""P1/P25 再遇窗口自检(math_proofs P1、P25 基准数字)。
 
 复算对象:
 - P1:「5费@7-8级再遇 60-180 轮」——单张目标卡在一次刷新(5 格)中至少出现
   1 张的概率 P1r,再遇期望轮数(每轮一次自动刷新口径)= 1/P1r。
-- P25 v2 勘误锚:「3费@lv7/8 再遇 7.4/9.1 轮」(旧版错标 5 费数据已勘误)。
+- P25 v2 勘误基准:「3费@lv7/8 再遇 7.4/9.1 轮」(旧版错标 5 费数据已勘误)。
 
 概率单一源 = cw_shop_odds(REFRESH_PROB / DISTINCT_CARDS_PER_CARD /
 POOL_COPIES_PER_CARD),与生产 refresh_prob 同源,非本脚本自建表。
@@ -32,7 +32,7 @@ def reencounter_rounds(level: int, cost: int) -> float:
 
 
 def main() -> None:
-    # P25 v2 勘误锚:3费@lv7/8 = 7.4/9.1 轮(±0.1 容差,索引关键数字)
+    # P25 v2 勘误基准:3费@lv7/8 = 7.4/9.1 轮(±0.1 容差,索引关键数字)
     r_3lv7 = reencounter_rounds(7, 3)
     r_3lv8 = reencounter_rounds(8, 3)
     assert abs(r_3lv7 - 7.4) < 0.1, f'3费@lv7 再遇 {r_3lv7:.2f} ≠ 7.4'
@@ -47,9 +47,9 @@ def main() -> None:
     assert abs(r_5lv8 - 60.0) < 2.0, f'5费@lv8 {r_5lv8:.2f} 非 ~60'
     assert abs(r_5lv7 - 180.0) < 2.0, f'5费@lv7 {r_5lv7:.2f} 非 ~180'
 
-    print(f'3费@lv7/lv8 再遇 = {r_3lv7:.2f}/{r_3lv8:.2f} 轮 (P25 锚 7.4/9.1)')
+    print(f'3费@lv7/lv8 再遇 = {r_3lv7:.2f}/{r_3lv8:.2f} 轮 (P25 基准 7.4/9.1)')
     print(f'5费@lv7/lv8 再遇 = {r_5lv7:.2f}/{r_5lv8:.2f} 轮 (P1 带 60-180)')
-    print('P1/P25 再遇窗口锚点全部通过')
+    print('P1/P25 再遇窗口基准全部通过')
 
 
 if __name__ == '__main__':
