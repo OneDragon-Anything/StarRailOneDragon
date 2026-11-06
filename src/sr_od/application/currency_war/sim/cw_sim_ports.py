@@ -7,13 +7,23 @@ sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换
 ``decision_assembly.install_obs_ports`` 家族「模块级槽 + 缺省关 + 装配点
 显式接通」;装配点 = sim 运行器(测试仓 harness 与未来实跑入口)。
 
-端口六口(薄协议,签名不随屏数增长):
+端口语义口(薄协议,签名不随屏数增长;整屏观察走 ``observe`` 注册表,
+**屏内子读点**〔非整屏观察语义的读法〕按需加显式方法,粒度先例 =
+``visible`` 问询):
 - ``screen_identity()`` —— 后端画面状态机答当前 screen_info 档名;
 - ``observe(screen_name)`` —— 生成器直出该屏 ``CwScreenXxxObs`` 形状产物
   (消费方 = 画面 op 读屏点,产物必须经 ``cw_screen_report`` 同名上报函数
   落状态容器,写通道铁律见 flow-seam 详设 §3);
+- ``node_sequence()`` —— 备战节点条读点答口(状态副本合成节点行;消费方
+  = 守卫的画面稳定判据与接管补采委派链,查询面零状态容器写);
+- ``plane_intel_view()`` —— 位面详情屏呈现面答口(接管补采识别管线的
+  逐点读数:选中位面/节点条槽/词缀/详情条标签/boss 名;纯查询零写);
 - ``sim_or_live_observation(screen_name, live_read)`` —— 读屏点改道 helper:
   装了后端 → ``observe``,否则原读链(逐屏显式读屏点一行机械接入);
+- ``sim_or_live_node_sequence(live_read)`` —— 备战节点条读点改道 helper
+  (同族;词缀随机态转正守卫「读节点条当画面稳定判据」的 sim 改道口);
+- ``sim_or_live_plane_intel_view(live_read)`` —— 位面详情呈现面读点改道
+  helper(同族;CwScreenPlaneIntel 识别管线逐点读数的 sim 答面);
 - ``click_answer(op, screen_name, area_name, until_find_all, until_not_find_all)``
   —— sim 点击应答:后端先按点击处理画面状态机转移,再出实机同形 round
   结果(机械镜 = :func:`mirror_click_answer`);
@@ -51,6 +61,17 @@ class SimBackendProtocol(Protocol):
 
     def observe(self, screen_name: str) -> Any:
         """生成器直出该屏观察产物(CwScreenXxxObs 形状;零截图零识别)。"""
+        ...
+
+    def node_sequence(self) -> list | None:
+        """备战节点条读点答口(状态副本合成 ``cw_node_reader.NodeSlot`` 行;
+        None = 当前画面无节点条可读,与实机「半开帧读条 = None」语义同形)。
+        """
+        ...
+
+    def plane_intel_view(self) -> Any:
+        """位面详情屏呈现面快照(接管补采识别管线的逐点读数答面;
+        ``PlaneIntelPresentation`` 形状)。"""
         ...
 
     def visible(self, screen_name: str, area_name: str) -> bool:
@@ -162,6 +183,36 @@ def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
     if _BACKEND is not None:
         name = _BACKEND.screen_identity()
         return name if name in screen_names else None
+    return live_read()
+
+
+def sim_or_live_node_sequence(
+        live_read: Callable[[], list | None]) -> list | None:
+    """备战节点条读点改道 helper(词缀随机态转正守卫「读节点条当画面
+    稳定判据」与接管补采委派链的 sim 改道口;sim_or_live 族扩展)。
+
+    装了后端 → ``node_sequence()``(状态副本合成节点行——sim 帧图像上
+    无可供 CV 识别的节点条,裸 CV 读恒 None 会把「画面稳定」判据封死,
+    这里改由后端直答);未装配 → ``live_read()`` 原 CV 读链,实机路径
+    零行为变化。
+    """
+    if _BACKEND is not None:
+        return _BACKEND.node_sequence()
+    return live_read()
+
+
+def sim_or_live_plane_intel_view(live_read: Callable[[], Any]) -> Any | None:
+    """位面详情屏呈现面读点改道 helper(CwScreenPlaneIntel 识别管线
+    逐点读数的 sim 答面;sim_or_live 族扩展)。
+
+    装了后端 → ``plane_intel_view()``(呈现面快照 ``PlaneIntelPresentation``:
+    选中位面/节点条槽/词缀/详情条标签/boss 名——识别管线要采的真值
+    后端状态副本全有,零识别直出);未装配 → 返回 ``live_read()``,
+    **实机调用面恒 None**(None = 无呈现面 = 走原 CV 读链,不是「读数
+    为空」;调用点先判 None 分流)。
+    """
+    if _BACKEND is not None:
+        return _BACKEND.plane_intel_view()
     return live_read()
 
 

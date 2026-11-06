@@ -991,7 +991,11 @@ class CwScreenPrep(CwOperation):
         分支);②``enemy_affixes ∈ gs.logic_rand_fields()``(词缀随机态:
         敌后破坏删除分支猜测名单/开局种子未验证初始值——策略器消费前必须
         先去位面详情补观察转正,write_logic_rand 消费门纪律)。
-        「节点条可读」守卫 = 半开帧(过场/overlay):第一支命中维持现役
+        「节点条可读」守卫 = 半开帧(过场/overlay):读法经
+        ``cw_sim_ports.sim_or_live_node_sequence`` 改道——实机 = 裸 CV 读链
+        原样(节点条真实可见,读数 = 稳定判据);sim = 后端自状态副本直答
+        (sim 帧图像无 CV 可识别节点条,裸读恒 None 会把本守卫封死成
+        「随机态永远等不到可读帧」活锁,T-440)。第一支命中维持现役
         return None(等下轮免费重判、不烧失败链,boss 面行为零变更;
         **双支同真按第一支现役处理**);仅第二支命中(词缀随机态 ∧ boss
         真值已在)时半开帧**封死**——决策延后一拍不放行(静默放行会让
@@ -1007,7 +1011,8 @@ class CwScreenPrep(CwOperation):
             return None
         _tk_slots = None
         with contextlib.suppress(Exception):
-            _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
+            _tk_slots = cw_sim_ports.sim_or_live_node_sequence(
+                lambda: read_node_sequence(self.ctx, self.last_screenshot))
         if _tk_slots is None:
             if _boss_missing:
                 return None   # 第一支(接管局 boss 面)半开帧:现役等下轮免费重判

@@ -191,6 +191,7 @@ from sr_od.application.currency_war.kernel.cw_levelup_callbacks import (
 )
 from sr_od.application.currency_war.kernel.cw_node_schedule import (
     NodePos,
+    PlaneSeqMissingError,
     final_supply_pos,
     node_sequence_of,
     sequence_next,
@@ -240,6 +241,7 @@ from sr_od.application.currency_war.kernel.cw_shop_deal import (
     sample_shop_deal_forced,
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
+from sr_od.application.currency_war.obs.cw_node_reader import NodeSlot
 from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.application.currency_war.sim.cw_sim_base import (
     logic_sig,
@@ -281,6 +283,9 @@ SCREEN_SUPPLY: str = '货币战争-补给'
 SCREEN_ENCOUNTER: str = '货币战争-遭遇节点'
 SCREEN_BOSS_BRIEFING: str = '货币战争-BOSS简报'
 SCREEN_PLANE_TRANSITION: str = '货币战争-位面过渡'
+#: 位面详情屏(接管补采委派链的呈现屏:备战点节点条开详情 → CwScreenPlaneIntel
+#: 识别 → 点 X 关回备战;呈现态 = 备战上的模态,封闭链见 T-440 委派闭环)。
+SCREEN_PLANE_INTEL: str = '货币战争-位面详情'
 SCREEN_BOX: str = '货币战争-备战-武装箱选择'
 SCREEN_EXPERT: str = '货币战争-备战-专家邀请函'
 SCREEN_MEGASTAR: str = '货币战争-盛会之星'
@@ -1531,7 +1536,7 @@ AFFIX_SAMPLE_COUNT: int = 3
 #: 模态屏族(选卡/弹窗呈现态; dismiss 事件返回底层屏)。
 _MODAL_SCREENS: frozenset[str] = frozenset({
     SCREEN_INVEST_ENV, SCREEN_INVEST_STRATEGY, SCREEN_BOX, SCREEN_EXPERT,
-    SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP,
+    SCREEN_MEGASTAR, SCREEN_PLANNER, SCREEN_SHOP, SCREEN_PLANE_INTEL,
 })
 
 #: sim 不可呈现浮层的「在场识别标志」(画面档 → 识别标志 area 集;3.4 联调 visible
@@ -1553,6 +1558,29 @@ class SimRunResult:
     rounds: tuple[int, int]
     hp_trail: tuple[int, ...]
     unmodeled: dict[str, object]
+
+
+@dataclass(frozen=True)
+class PlaneIntelPresentation:
+    """位面详情屏呈现面快照(:meth:`SimBackend.plane_intel_view` 产物;
+    纯查询非观察——零状态容器写,采集真值落账仍走 op 上报节点经
+    ``report_screen_plane_intel_obs`` 写门)。
+
+    字段形状与实机 CV 读链逐点同形(消费方 = CwScreenPlaneIntel 的
+    sim 改道读点,逐字段映射):``selected_plane`` ↔ 文本-节点编号 OCR
+    位面段;``node_slots`` ↔ ``read_plane_detail_nodes``;``enemy_affixes``
+    ↔ ``read_detail_affixes``;``node_type_label`` ↔
+    ``read_detail_node_type_label``(boss 节点点击后呈现,否则 None);
+    ``boss_name`` ↔ 大图标 SIFT 命中;``difficulty`` = sim 未建模恒
+    None(实机该读数本就 best-effort 缺位容忍,语义同形)。
+    """
+
+    selected_plane: int
+    node_slots: list
+    enemy_affixes: list[str]
+    node_type_label: str | None
+    boss_name: str | None
+    difficulty: int | None
 
 
 # ============================================================ 声明驱动推进
@@ -1788,6 +1816,13 @@ class SimBackend:
     #: 采样簿记私有(不入状态容器/不入快照恢复,呈现一次性标志位族同形先例)。
     _spy_stream_seq: dict[tuple[int, int], int] = field(
         init=False, default_factory=dict)
+    #: 位面详情呈现态·选中位面卡(1 基;None = 详情屏未呈现)。坐标系 =
+    #: 呈现态私有(不入状态容器/不入快照恢复,同形先例);写入端 = 详情屏
+    #: 点击源(位面卡点击推进,开屏点击源置当前节点位面)。
+    _pd_selected_plane: int | None = field(init=False, default=None)
+    #: 位面详情呈现态·boss 节点已选中(详情条「首领」标签呈现判据;
+    #: 切卡/关屏复位)。写入端 = 详情屏节点条点击源。
+    _pd_boss_selected: bool = field(init=False, default=False)
     _steps: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
@@ -1907,6 +1942,99 @@ class SimBackend:
         entry = self.gs.effects.first(STRATEGY_EFFECTS['免战牌'].id)
         return entry is not None and (entry.remaining_uses or 0) > 0
 
+    # ------------------------------------------------------ 屏内子读点答口
+
+    def node_sequence(self) -> list | None:
+        """备战节点条读点答口(:func:`cw_sim_ports.sim_or_live_node_sequence`
+        的 sim 答法;查询面零状态容器写)。
+
+        当前呈现屏非备战 → None(实机语义 = 节点条只在备战帧可见,半开帧/
+        其它画面读条 = None——守卫的「画面稳定判据」语义保持,词缀随机态
+        ∧ 备战帧时本答口非 None = 封死分支在 sim 不可达,活锁闭环的对偶面)。
+
+        备战帧 → 按状态副本合成 ``cw_node_reader.NodeSlot`` 行(合成细节 =
+        :meth:`_synth_node_slots`):序列真值 = ``node_sequence_of(位面,
+        场字段现值)``(策略改写后的场字段即权威,与节点窗呈现同口)。
+        序列缺键 = None(可读性守卫语义:合不出 = 不可读,禁静默造行)。
+        """
+        if self._screen != SCREEN_PREP:
+            return None
+        plane, _r = self._node_pos()
+        try:
+            node_sequence_of(plane, self.gs.node_seq_by_plane.value)
+        except PlaneSeqMissingError:
+            return None
+        return self._synth_node_slots(plane)
+
+    def plane_intel_view(self) -> PlaneIntelPresentation:
+        """位面详情屏呈现面答口(:func:`cw_sim_ports.sim_or_live_plane_intel_view`
+        的 sim 答法;形状契约 = :class:`PlaneIntelPresentation`)。
+
+        选中位面 = 状态机呈现态(位面卡点击源推进;None 防御面 = 1——
+        开屏点击源置当前节点位面,正常调用序恒有值);节点条槽/词缀/boss
+        名全自状态副本直出;详情条标签 = boss 节点已选中时「首领」(实机
+        详情条随选中节点联动,识别管线只在点 boss 后读标签,前态无消费)。
+        """
+        plane = self._pd_selected_plane or 1
+        bosses = self.gs.plane_bosses.value
+        boss = None
+        if bosses is not None and len(bosses) >= plane:
+            boss = bosses[plane - 1]
+        return PlaneIntelPresentation(
+            selected_plane=plane,
+            node_slots=self._synth_node_slots(plane),
+            enemy_affixes=list(self.gs.enemy_affixes.value or []),
+            node_type_label=('首领' if self._pd_boss_selected else None),
+            boss_name=boss,
+            difficulty=None,
+        )
+
+    def _synth_node_slots(self, plane: int) -> list:
+        """位面节点条合成(备战行读点与详情条预览共用;形状与坐标约定见
+        :meth:`node_sequence`)。state 按当前节点序位 past/current/upcoming
+        (非当前位面 = 整条 upcoming——详情条预览其它位面无当前态着色,
+        消费面只读 node_type 与槽序,标注零行为影响);当前槽 ``node_type``
+        = 节点类型真值(实机由 OCR 标签覆盖,状态副本直出同值),未来槽 =
+        序列真值(实机 Hu 模板匹配,状态副本直出),过去槽 None。cx/cy =
+        下标派生合成值(合成坐标约定——sim 消费面禁读坐标:委派链 sim
+        点击走区域点击源,不消费点位)。序列缺键 = 空表(调用方按不可读
+        语义消费,禁静默造行)。"""
+        try:
+            seq = node_sequence_of(plane, self.gs.node_seq_by_plane.value)
+        except PlaneSeqMissingError:
+            return []
+        cur_plane, r = self._node_pos()
+        cur = r if plane == cur_plane else 0
+        return [
+            NodeSlot(idx=i, cx=(i + 1) * 10, cy=(i + 1) * 10,
+                     state='past' if i < cur - 1
+                     else ('current' if cur and i == cur - 1 else 'upcoming'),
+                     node_type=(None if cur and i < cur - 1 else k),
+                     hu_dist=None)
+            for i, k in enumerate(seq)
+        ]
+
+    def _open_plane_intel(self) -> None:
+        """位面详情开屏点击源(备战节点条点击 → 模态呈现;flow-seam 附录 B
+        「推进型画面 op 点击 = click 源」同族)。
+
+        选中位面初值 = 当前节点位面(与实机「进屏初始选中随接管时点变」
+        同构——编排首拍恒点卡 1 重定选中,初值只影响点击前瞬间);非备战
+        帧 = 建模外点击静默忽略(屏门已拒点,呈现态不翻)。
+        """
+        if self._screen != SCREEN_PREP:
+            return
+        self._pd_selected_plane = self._node_pos()[0]
+        self._pd_boss_selected = False
+        self._present_modal(SCREEN_PLANE_INTEL)
+
+    def _close_plane_intel(self) -> None:
+        """位面详情关屏点击源(X 点击 → 模态返回备战;呈现态复位)。"""
+        self._pd_selected_plane = None
+        self._pd_boss_selected = False
+        self._dismiss_modal()
+
+
     def click_answer(self, op, screen_name: str, area_name: str,
                      until_find_all, until_not_find_all):
         """sim 点击应答:先处理点击源(状态机转移),再出实机同形
@@ -1942,6 +2070,27 @@ class SimBackend:
             self._record_box_click(area_name)
         elif screen_name == SCREEN_PREP and area_name == '按钮-商店':
             self._open_shop()
+        elif screen_name == SCREEN_PREP and area_name == '区域-节点条':
+            self._open_plane_intel()
+        elif screen_name == SCREEN_PLANE_INTEL \
+                and area_name.startswith('按钮-位面卡'):
+            # 位面卡点击源(建档名「按钮-位面卡N」:前缀剥除后余文 = 位面号,
+            # 1-3;切卡复位 boss 选中态,详情条随选中位面联动)。
+            try:
+                plane_no = int(area_name.removeprefix('按钮-位面卡'))
+            except ValueError:
+                return
+            if self._screen == SCREEN_PLANE_INTEL and plane_no in (1, 2, 3):
+                self._pd_selected_plane = plane_no
+                self._pd_boss_selected = False
+        elif screen_name == SCREEN_PLANE_INTEL and area_name == '区域-节点条':
+            # boss 节点点击源(详情条标签「首领」呈现态置位;识别管线
+            # 点 boss 后读标签验首领,先验 = 槽序最右)。
+            if self._screen == SCREEN_PLANE_INTEL:
+                self._pd_boss_selected = True
+        elif screen_name == SCREEN_PLANE_INTEL \
+                and area_name == '按钮-关闭位面详情':
+            self._close_plane_intel()
 
     def _advance_briefing(self) -> None:
         """简报下一步:env_present 且未定局 → 投资环境屏(M02 采样);

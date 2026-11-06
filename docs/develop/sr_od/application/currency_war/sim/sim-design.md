@@ -85,7 +85,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 ### 3.2 转移源两类
 
 1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派状态副本过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态结束本次访问/选卡状态副本过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
-2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
+2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店、接管补采位面详情族（备战节点条点击 → 详情屏模态呈现 / 位面卡点击 → 选中位面联动 / 详情节点条点击 → boss 标签呈现 / 点 X → 回备战——词缀随机态转正委派链的呈现面，T-440）。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
 
 **商店牌面观察链**（点击源「开店」的观察写回语义）：牌面 = 节点级持久事实，发牌时定（节点窗口序列的商店自动全刷；实机不可观察，后端私有记录 `SimBackend._shop_record`）。开店呈现时把记录写回 `gs.shop`（模拟读屏，对偶实机「每次进店 live 漏斗重读屏写 payload」——sim 无识别面，以发牌期记录承载同一观察语义）；关店动作上报 `leave_screen` 清空 `gs.shop` 呈现不清记录；节点切换新发牌自然覆盖记录（整店锁跳过发牌 = 牌面跨节点保留，同语义）。记录跟随 = 全部驱动入口（`screen_identity`/`observe`/`visible`/`click_answer`/`advance`）懒同步在屏 payload 非空即跟随——覆盖发牌/刷新/买卡一切写点（写点与下次开店之间必经驱动入口：策略帧循环先观察后决策）。写回仅离屏态生效（在屏态保持现值零写）。
 
@@ -185,12 +185,15 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 
 ### 6.2 端口模块（接口契约唯一载体）
 
-`sim/cw_sim_ports.py`——模块级装配槽 + 端口函数；缺省 `None` = 纯实机、零行为变化。端口六口（薄协议，签名不随屏数增长）：
+`sim/cw_sim_ports.py`——模块级装配槽 + 端口函数；缺省 `None` = 纯实机、零行为变化。端口语义口（薄协议，签名不随屏数增长；整屏观察走 `observe` 注册表，屏内子读点〔非整屏观察语义的读法〕按需加显式方法，粒度先例 = `visible` 问询）：
 
 - `screen_identity()`：后端画面状态机答当前 screen_info 档名。
 - `observe(screen_name)`：生成器直出该屏 `CwScreenXxxObs` 形状产物；消费方必须经同名上报函数落状态容器。
+- `node_sequence()`：备战节点条读点答口（状态副本合成节点行，None = 当前画面无节点条可读；消费方 = 词缀转正守卫的画面稳定判据与接管补采委派链；查询面零状态容器写）。
+- `plane_intel_view()`：位面详情屏呈现面答口（`PlaneIntelPresentation`：选中位面/节点条槽/词缀/详情条标签/boss 名；识别管线逐点读数的真值直答，纯查询零写）。
 - `sim_or_live_observation(screen_name, live_read)`：读屏点改道 helper（装了后端 → `observe`，否则原读链）；逐屏显式读屏点一行机械接入调用，是观察路径唯一的 op 触点。
 - `sim_or_live_identity(screen_names, live_read)`：画面身份读点改道 helper（外循环阶段一身份分发；档名 ∈ 调用方清单才返回）。
+- `sim_or_live_node_sequence(live_read)` / `sim_or_live_plane_intel_view(live_read)`：上两答口的 sim_or_live 族改道 helper（词缀随机态转正守卫「读节点条当画面稳定判据」与位面详情识别管线的 sim 改道口；T-440——sim 帧图像无 CV 可识别节点条，裸读恒 None 会把守卫封死成活锁）。
 - `click_answer(...)` / `visible(...)`：sim 点击应答（后端先按点击处理状态机转移，再出实机同形 round 结果，机械镜 = `cw_sim_ports.mirror_click_answer`）与 until/门可见性问询。
 - `declare_world(decl)`：动作后果声明喂入——转移动作 op 自上报出口直调；未装配 = no-op（实机零行为变化），装配后 = 后端 `advance(decl)`，`decl is None` 本层直返（契约权威版本 = §6.3）。
 

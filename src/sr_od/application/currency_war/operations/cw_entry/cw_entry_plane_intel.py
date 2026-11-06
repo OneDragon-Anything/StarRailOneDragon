@@ -22,6 +22,11 @@ bot 未走过简报链 / 人工要补)下,一键完成「进位面详情 → 委
 真值落状态容器 = 子 op 上报节点的写门(kernel 屏文件唯一一份);本 op 零
 字段写操作。坐标全走 screen_info area;fixture 验证用 sr-od-test/screens
 存档帧离线跑,不触实机。
+
+sim 形态(词缀转正闭环,T-440):节点条读法经 ``cw_sim_ports.sim_or_live_
+node_sequence`` 改道(实机裸 CV 读零变化);开/关详情两处直连点击在 sim
+改走 ``click_answer`` 点击源(后端按备战节点条点击/X 点击处理模态呈现
+转移)——委派链在 sim 状态副本上可完整走通,词缀随机态得以转正。
 """
 import logging
 import time
@@ -35,6 +40,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     gs_of_ctx,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 _log = logging.getLogger(__name__)
@@ -127,7 +133,11 @@ class CwEntryPlaneIntel(CwOperation):
         from sr_od.application.currency_war.obs.cw_observation import (
             read_node_sequence,
         )
-        slots = read_node_sequence(self.ctx, screen)
+        # 节点条读法 sim 改道(转正闭环配套,与守卫同口):实机 = 裸 CV 读
+        # (像素定位当前节点圆心);sim = 后端状态副本直答(sim 帧无 CV 可
+        # 识别节点条,裸读恒 None = 委派链在 sim 永远进不了详情屏)。
+        slots = cw_sim_ports.sim_or_live_node_sequence(
+            lambda: read_node_sequence(self.ctx, screen))
         cur = next((s for s in (slots or []) if s.state == 'current'), None) or (
             slots[0] if slots else None)
         if cur is None:
@@ -135,7 +145,15 @@ class CwEntryPlaneIntel(CwOperation):
         r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
         # 兜底字面量:area 缺失(离线/档案损坏)时的节点条原点(1080p 实测值)
         ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
-        self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
+        else:
+            # sim:点击 = 后端点击源(备战节点条点击 → 位面详情开屏),
+            # 必须过 click_answer 端口——直连旁路撞桩即炸且状态副本零反应
+            # (flow-seam §2 直连旁路逐点 port 检查;转移证据由下方标题
+            # 复查承接,与实机同判据)。
+            cw_sim_ports.click_answer(
+                self, _PREP_SCREEN, '区域-节点条', None, None)
         time.sleep(_DETAIL_OPEN_WAIT_S)
         screen = self.screenshot()
         if self.round_by_find_area(
@@ -166,7 +184,13 @@ class CwEntryPlaneIntel(CwOperation):
         x = self._area_center('按钮-关闭位面详情')
         if x is None:
             return self.round_fail('关闭按钮 area 缺失')
-        self.ctx.controller.click(x)
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.click(x)
+        else:
+            # sim:点击 = 后端点击源(X → 模态返回备战),同开屏分支的
+            # 端口纪律;转移证据 = 标题消失,由下方复查承接。
+            cw_sim_ports.click_answer(
+                self, _PD_SCREEN, '按钮-关闭位面详情', None, None)
         time.sleep(_CLOSE_WAIT_S)
         screen = self.screenshot()
         if self.round_by_find_area(

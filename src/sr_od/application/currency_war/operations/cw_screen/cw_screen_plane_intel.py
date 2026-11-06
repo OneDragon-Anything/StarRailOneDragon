@@ -34,6 +34,12 @@
 
 坐标全走 screen_info area;boss 节点圆由 ``read_plane_detail_nodes``
 动态定位(节点数随位面/投资策略变,不硬编码)。
+
+sim 形态(词缀转正闭环,T-440):识别域读法经
+``cw_sim_ports.sim_or_live_plane_intel_view`` 改道(后端状态副本直出
+``PlaneIntelPresentation``:选中位面/节点条槽/词缀/详情条标签/boss 名,
+真值零识别直出);位面卡/boss 节点两处直连点击在 sim 改走
+``click_answer`` 点击源。实机读链零变化(未装后端 = 分支不触)。
 """
 import contextlib
 import logging
@@ -53,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_screen_report.plane_intel import (
     report_screen_plane_intel_obs,
 )
 from sr_od.application.currency_war.operations.cw_operation_base import CwOperation
+from sr_od.application.currency_war.sim import cw_sim_ports
 from sr_od.context.sr_context import SrContext
 
 _log = logging.getLogger(__name__)
@@ -99,12 +106,21 @@ class CwScreenPlaneIntel(CwOperation):
             return None
         return Point((r.x1 + r.x2) // 2, (r.y1 + r.y2) // 2)
 
+    def _pd_view(self):
+        """位面详情呈现面读点(sim 改道口,``sim_or_live_plane_intel_view``
+        一行封装):装了后端 = ``PlaneIntelPresentation``;实机 = None
+        (调用点判 None 走原 CV 读链)。"""
+        return cw_sim_ports.sim_or_live_plane_intel_view(lambda: None)
+
     def _plane_no_on_detail_bar(self, screen) -> int | None:
         """详情条联动证据:节点编号「位面-轮次」OCR → 位面号(1 基)| None。
 
         节点详情条随选中位面卡联动(编号首位 = 当前选中位面);读不出
         (过渡帧/OCR 失败)→ None,由调用方按未联动处置。
         """
+        _pd = self._pd_view()
+        if _pd is not None:
+            return _pd.selected_plane
         from sr_od.application.currency_war.kernel.cw_obs_core import (
             _area_rect,
             _ocr,
@@ -129,7 +145,14 @@ class CwScreenPlaneIntel(CwOperation):
         if card is None:
             return self.round_fail(
                 f'位面卡 area 缺失:{_PLANE_CARD_AREAS[plane_no - 1]}')
-        self.ctx.controller.click(card)
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.click(card)
+        else:
+            # sim:位面卡点击 = 后端点击源(切卡 → 详情条联动),必须过
+            # click_answer 端口(flow-seam §2 直连旁路逐点 port 检查);
+            # 联动证据由下方 _plane_no_on_detail_bar 复查承接。
+            cw_sim_ports.click_answer(
+                self, _PD_SCREEN, _PLANE_CARD_AREAS[plane_no - 1], None, None)
         time.sleep(_PLANE_SWITCH_WAIT_S)
         screen = self.screenshot()
         if self._plane_no_on_detail_bar(screen) == plane_no:
@@ -163,7 +186,11 @@ class CwScreenPlaneIntel(CwOperation):
 
         大图标 area「区域-boss大图标」(~107px,特征 70+ vs 节点小图 ~17);
         未命中 → None(记日志留存证据;SIFT 断层判据防次名撞分)。
+        sim 改道:呈现面直答 boss 名(状态副本位面序真值,零识别)。
         """
+        _pd = self._pd_view()
+        if _pd is not None:
+            return _pd.boss_name
         import cv2 as _cv2
 
         from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
@@ -198,42 +225,61 @@ class CwScreenPlaneIntel(CwOperation):
         参考值(逐位面)、节点序列采集面(node6 统一落账)。
         """
         screen = self.screenshot()
+        # 识别域读点 sim 改道(呈现面快照一次取,逐字段消费;实机 None =
+        # 逐点走原 CV 读链零变化)。
+        _pd = self._pd_view()
         from sr_od.application.currency_war.obs.cw_observation import (
             read_plane_detail_nodes,
         )
-        slots = read_plane_detail_nodes(self.ctx, screen)
+        slots = (_pd.node_slots if _pd is not None
+                 else read_plane_detail_nodes(self.ctx, screen))
         boss_pt = self._boss_node_center(slots)
         if boss_pt is None:
             return self.round_retry(f'位面{plane_no} 节点条未读出(过渡帧/渲染态)')
         if not self._affixes and plane_no == 1:
-            from sr_od.application.currency_war.obs.cw_briefing_obs import (
-                read_detail_affixes,
-            )
-            self._affixes = read_detail_affixes(self.ctx, screen)
+            if _pd is not None:
+                self._affixes = list(_pd.enemy_affixes)
+            else:
+                from sr_od.application.currency_war.obs.cw_briefing_obs import (
+                    read_detail_affixes,
+                )
+                self._affixes = read_detail_affixes(self.ctx, screen)
             if self._affixes:
                 _log.info('[cw-plane-intel] 词缀随采(位面详情横条):%s',
                           self._affixes)
         # 敌人难度参考值(同帧顺带;只存参考,生产难度主源 = 备战画面敌方难度读数
-        # 两级管线不变;读缺/异常不阻塞识别主链)。
-        with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.obs.cw_observation import (
-                read_plane_detail_difficulty,
-            )
-            _dv = read_plane_detail_difficulty(self.ctx, screen)
-            if _dv is not None:
-                self._difficulty_refs[plane_no] = _dv
+        # 两级管线不变;读缺/异常不阻塞识别主链。sim 未建模 = 呈现面
+        # difficulty 恒 None,本读只在实机跑)。
+        if _pd is None:
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.obs.cw_observation import (
+                    read_plane_detail_difficulty,
+                )
+                _dv = read_plane_detail_difficulty(self.ctx, screen)
+                if _dv is not None:
+                    self._difficulty_refs[plane_no] = _dv
         # 节点序列采集面:该位面全节点预览序列随采随存(node6 统一落账
         # 并按位置先验回填 boss 位)。
         if slots:
             self._detail_seqs[plane_no] = [
                 getattr(s, 'node_type', None) for s in slots]
-        self.ctx.controller.click(boss_pt)
+        if cw_sim_ports.mechanical_io_allowed():
+            self.ctx.controller.click(boss_pt)
+        else:
+            # sim:boss 节点点击 = 后端点击源(详情条「首领」标签呈现态),
+            # 必须过 click_answer 端口(flow-seam §2 直连旁路逐点 port 检查)。
+            cw_sim_ports.click_answer(
+                self, _PD_SCREEN, '区域-节点条', None, None)
         time.sleep(_BOSS_CLICK_WAIT_S)
         self.screenshot()
-        from sr_od.application.currency_war.obs.cw_observation import (
-            read_detail_node_type_label,
-        )
-        label = read_detail_node_type_label(self.ctx, self.last_screenshot)
+        _pd_label = self._pd_view()
+        if _pd_label is not None:
+            label = _pd_label.node_type_label
+        else:
+            from sr_od.application.currency_war.obs.cw_observation import (
+                read_detail_node_type_label,
+            )
+            label = read_detail_node_type_label(self.ctx, self.last_screenshot)
         if not label:
             return self.round_retry(
                 f'位面{plane_no} 详情条类型名未读出(过渡帧/OCR失败)')
