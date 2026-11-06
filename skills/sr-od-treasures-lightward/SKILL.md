@@ -1,11 +1,11 @@
 ---
 name: sr-od-treasures-lightward
-description: 要打、自动化或理解逐光捡金系列玩法（忘却之庭·混沌回忆、虚构叙事、末日幻影、异相仲裁）时用——进副本、看环境增益、查推荐阵容、选编队进战斗、领奖励的操作路由与玩法分型知识。凡是「打这期混沌回忆/虚构叙事/末日幻影」「逐光捡金怎么自动挑战」「异相仲裁怎么进」，都先用本 skill，即使没明说。基础配队与养成决策归 sr-od-game-coach；单条 op 的实现与调试归 od-dev-write-operation；运行失败排查归 od-dev-debug-automation。
+description: 要打、自动化、开发或理解逐光捡金系列玩法（忘却之庭·混沌回忆、虚构叙事、末日幻影、异相仲裁）时用——进副本、看环境增益、查推荐阵容、选编队进战斗、领奖励的操作路由与玩法分型知识，references/gameplay.md 装玩法机制全量建档。凡是「打这期混沌回忆/虚构叙事/末日幻影」「逐光捡金怎么自动挑战」「异相仲裁怎么进」，或开发逐光捡金相关功能（新类型适配/修挑战 bug/补画面建档）、要了解该系列玩法机制，都先用本 skill，即使没明说。基础配队与养成决策归 sr-od-game-coach；单条 op 的实现与调试归 od-dev-write-operation；运行失败排查归 od-dev-debug-automation。
 ---
 
 # 逐光捡金玩法路由（sr-od-treasures-lightward）
 
-逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见 [docs/game/gameplay/treasures_lightward.md](../../docs/game/gameplay/treasures_lightward.md)；各画面建档见 docs/game/screens/ 下同名 doc。
+逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见本 skill [references/gameplay.md](references/gameplay.md)；各画面建档见 docs/game/screens/ 下同名 doc。
 
 ## 总 checklist（没做完这 5 步不算完成一次逐光捡金任务）
 
@@ -29,7 +29,7 @@ description: 要打、自动化或理解逐光捡金系列玩法（忘却之庭�
 
 ### 玩法概貌
 
-传统回合制挑战，相对普通：每关 2 波连续战斗（上下半各 1 支 4 人队，共 8 人），波间无结算直接衔接；星数按剩余行动轮计（满星 36）。每关有独立环境增益（记忆紊流，仅当前关生效），是三类中唯一「单层 buff」的玩法。机制细节见 gameplay doc「玩法机制」节。
+传统回合制挑战，相对普通：每关 2 波连续战斗（上下半各 1 支 4 人队，共 8 人），波间无结算直接衔接；星数按剩余行动轮计（满星 36）。每关有独立环境增益（记忆紊流，仅当前关生效），是三类中唯一「单层 buff」的玩法。机制细节见 references/gameplay.md「玩法机制」节。
 
 ### 操作路径（agent 从零到通关）
 

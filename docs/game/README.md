@@ -44,9 +44,9 @@
 ## 现状(2026-07-29 建档 doc 阶段完成)
 
 - screen_info 34 画面(识别模型)+ ~20 app。
-- **docs/game/ 知识文档:13 画面 doc + 16 玩法 doc,34 screen_info + ~20 app 全覆盖(对话 doc 为 screen_info 缺口补档)**。
+- **docs/game/ 知识文档:13 画面 doc + 15 玩法 doc**(逐光捡金玩法 doc 已移入 skill `skills/sr-od-treasures-lightward/references/gameplay.md`,见「规范」节),34 screen_info + ~20 app 全覆盖(对话 doc 为 screen_info 缺口补档)。
 - **画面 doc**(`screens/`):normal_world(含 basic/battle_fail 子态) / phone_menu / mission / synthesize / team / 角色(character) / store / bag(10 分类总览) / large_map / enter_game(含 choose_account/logout_dialog 子态) / battle / misc_screens(common/catapult/fast_recover_dialog) / 对话(dialog,NPC 选项对话;未在 screen_info)。
-- **玩法 doc**(`gameplay/`):currency_war / sim_uni / trailblaze_power / treasures_lightward / assignments / world_patrol / echo_of_war / ornamenet_extraction / nameless_honor / div_uni / guide / email / support_character / daily_training / relic_salvage / misc_apps(calibrator/large_map_recorder/buy_xianzhou_parcel/memory_crystal_shard/trick_snack)。
+- **玩法 doc**(`gameplay/`):currency_war / sim_uni / trailblaze_power / assignments / world_patrol / echo_of_war / ornamenet_extraction / nameless_honor / div_uni / guide / email / support_character / daily_training / relic_salvage / misc_apps(calibrator/large_map_recorder/buy_xianzhou_parcel/memory_crystal_shard/trick_snack)。
 - **待实拍 + 视觉大模型 归档**:登录/战斗过程态/各玩法画面(消耗开拓力或周限 / 遇敌 / 重启,需用户配合切画面);doc 的 source_image 从临时 .debug 截图 → 测试仓 `screens/<screen>/<state>.webp` 归档。
 - **已知数据缺口**(只记不改 screen_info):支援角色替换图标(challenge_mission/ornamenet_extraction)`pc_rect=[0,0,0,0]` 占位待填;合成按钮-最大值 `pc_rect` 占位;末日幻影(Apoca)screen_info 未建模;差分宇宙 Roguelike 演算 bot 未实现(仅饰品提取)。
 
@@ -59,7 +59,7 @@
 ## 规范
 
 - 画面 doc:`docs/game/screens/<screen_id>.md`,结构按 od-dev-screen-onboarding skill(何时出现 / 状态流转 / 识别特征 / 可交互元素 / 识别快照 / 备注)。
-- 玩法 doc:`docs/game/gameplay/<gameplay>.md`,结构按 sr-od-dev-gameplay-onboarding skill。
+- 玩法 doc:`docs/game/gameplay/<gameplay>.md`,结构按 sr-od-dev-gameplay-onboarding skill。**例外:逐光捡金**玩法 doc 移入 `skills/sr-od-treasures-lightward/references/gameplay.md`(负责人裁决:操作路由 + 玩法知识单一入口,开发与打法都从该 skill 进);双向引用关联键仍是 gameplay_name/screen_name 中文名,appears_in 反查用 grep gameplay_name 即达。
 - doc 写**稳定画面事实**,不写建档/排查过程产物(测试状态归 sr-od-test,bug 历史归 commit)。
 - **双向引用**(参照 ZZZ `docs/game/README.md`):
   - 画面 doc frontmatter `appears_in`:本画面出现在哪些玩法(`gameplay_name`)。
