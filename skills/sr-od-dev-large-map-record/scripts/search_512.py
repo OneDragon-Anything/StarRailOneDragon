@@ -8,7 +8,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-PROBE = r'D:\code\workspace\StarRailOneDragon\.debug\temp\animestudio\mys_probe'
+PROBE = r'D:\code\workspace\StarRailOneDragon\.debug\temp\map_probe\mys_probe'
 MAP_ID = 512
 ORIGIN = (1195, 2106)
 CANDS = [(885, 295), (655, 358), (828, 473), (893, 482), (890, 862)]

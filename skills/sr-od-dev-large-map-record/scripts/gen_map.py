@@ -13,7 +13,7 @@ import requests
 from PIL import Image
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-WORK = os.path.join(REPO, '.debug', 'temp', 'animestudio')
+WORK = os.path.join(REPO, '.debug', 'temp', 'map_probe')
 APP_VERSION = 'de16a09fca4e0ab89acf69fe0c12514f'
 BASE = 'https://api-static.mihoyo.com/common/srmap/sr_map/v1'
 PARAMS = f'app_sn=sr_map&lang=zh-cn&app_version={APP_VERSION}'

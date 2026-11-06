@@ -58,7 +58,7 @@ description: 为崩坏星穹铁道锄大地(world_patrol)录制缺失的大地�
 
 ## 6. 产物与去向
 
-- 全部产物落 `.debug/temp/animestudio/mys_probe/gen_<id>/`（运行时产物，不入库）。
+- 全部产物落 `.debug/temp/map_probe/mys_probe/gen_<id>/`（运行时产物，不入库）。
 - 正式资产落位（raw/mask 入 `assets/template/large_map/`、sp yml 入 `assets/game_data/world_patrol_map/`）与 uid 命名属产品化流程，不在本 skill 范围。
 - 机制结论与踩坑全文已沉淀于本 skill `design/overview.md`（随 skill 走）。
 

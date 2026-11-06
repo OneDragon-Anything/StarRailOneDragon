@@ -11,7 +11,7 @@ import numpy as np
 import cv2
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-PROBE = os.path.join(REPO, '.debug', 'temp', 'animestudio', 'mys_probe')
+PROBE = os.path.join(REPO, '.debug', 'temp', 'map_probe', 'mys_probe')
 MAP_ID = int(sys.argv[1])
 SHOT = sys.argv[2]
 OUT = os.path.join(PROBE, sys.argv[3])

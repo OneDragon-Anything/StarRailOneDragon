@@ -3,7 +3,7 @@
 数据分层（用户裁定）：定义层+skill 特效文本固化——tid/名称/星级/命途/获取
 途径+skill 特效文本（官方 wiki 原文透传，含五档叠影数值）；光锥故事**不固化**。映射内容的权威快照：官方 wiki 光锥频道
 （channel_id=19，170 把）+ 米游社 avatar/info equip 字段 tid 实证（50 把）+
-解包图标全量 SIFT 对照（内点数最优判据）——多源交叉后固化，固化后本模块
+归档图标全量 SIFT 对照（内点数最优判据）——多源交叉后固化，固化后本模块
 即唯一权威载体（快照 JSON 为易失本地件）。
 
 tid 分段规律（图标文件名与 mys equip id 同源）：2000x=3 星、210xx=4 星池内、
@@ -11,9 +11,9 @@ tid 分段规律（图标文件名与 mys equip id 同源）：2000x=3 星、210
 商店）；段内按实装顺序连续分配（同 sr_relic_sets 顺序律的星铁装备版）。
 
 图标归档：``assets/game_data/light_cone_icons/lightcone_<tid>.webp``（170 把
-全量，客户端解包产物转档；寻址公式见 ``icon_webp_rel_path``）。
+全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 
-版本刷新工序：游戏新版本后重跑 wiki 抓取 + 解包增量导出 + SIFT 对照（工序
+版本刷新工序：游戏新版本后重跑 wiki 抓取 + 图标增量归档 + SIFT 对照（工序
 详见私有 skill ``sr-od-dev-relic-data``，junction 挂载不入本仓）→ 与下方
 LIGHT_CONES 逐条 diff → 人工审阅后更新常量；勿临时塞未经核验的数据。
 
@@ -28,7 +28,7 @@ class LightConeDef:
     """光锥定义（官方 wiki 快照固化）。
 
     Attributes:
-        tid: 游戏内部光锥 ID——mys ``avatar/info`` equip id 与解包图标文件名
+        tid: 游戏内部光锥 ID——mys ``avatar/info`` equip id 与归档图标文件名
             同源（双源锚定）；生成期快照，恒稳。
         name: 官方光锥全名（社区简称不入表；锚点：「于夜色中」/「银河铁道之夜」）。
         rarity: 星级 3/4/5。

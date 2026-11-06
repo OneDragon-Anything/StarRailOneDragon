@@ -12,9 +12,9 @@
 **头像识别**:项目脸库 ``assets/template/character_avatar``(<英文 id>/raw.webp,98 角色,
 选择头像 art)× SIFT —— 经 ``TemplateLoader`` 特征缓存 + ``cv2_utils.feature_match_for_one``,
 生产范式同 ``sr_od/operations/team/check_team_members_in_world.py``。右侧队伍槽头像(74px 圆裁)
-全部命中;**编队卡内小头像是「编队卡图」变体**(解包 avatariconteam),与脸库 art 存在变体差异,
+全部命中;**编队卡内小头像是「编队卡图」变体**,与脸库 art 存在变体差异,
 歧义率显著更高(实机帧标定:槽位 8/8 对,卡内 16 格约 5 格歧义)——歧义以候选集诚实返回
-(已验证真值均落候选前二),不硬猜;根治 = 解包 avatariconteam 补变体模板库。
+(已验证真值均落候选前二),不硬猜;变体差异由独立皮肤模板库收敛(皮肤变体单独建库),不补通用编队卡变体库。
 
 **阈值标定**(实机帧,fixture = sr-od-test/screens/忘却之庭-编队/):
 - 真实头像 confidence ≥0.766,空槽占位图标伪命中 0.588 → 门槛 0.70;
@@ -355,7 +355,7 @@ def read_left_tab(ctx: SrContext, image: MatLike) -> str | None:
 def ensure_element_templates(ctx: SrContext) -> dict[str, TemplateInfo]:
     """元素弱点模板(元素名→TemplateInfo;assets/template/element_weakness/<元素>/raw.png)。
 
-    模板源 = 客户端解包 ``IconDamageType*`` 官方图标(64px RGBA),入库前预合成到
+    模板源 = 官方元素图标(64px RGBA),入库前预合成到
     实采底板色(RGB 31,30,50)上 —— 与游戏内「暗色圆板 + 彩色纹样」渲染一致。
     缓存 ctx(只读资源,幂等,并发安全);缺失降级为空 dict(走色相域回退)。
     """

@@ -21,7 +21,7 @@ GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/conten
 ```
 
 关键字段位置:
-- `data.content.rpg_new_tmp_content.base.userInfo` → **`avatarId`(游戏内数字 ID,即解包头像文件名)**、`name`、`baseType`(命途类名,大小写混杂)、`elementId`(已小写)、`rarity`
+- `data.content.rpg_new_tmp_content.base.userInfo` → **`avatarId`(游戏内数字 ID)**、`name`、`baseType`(命途类名,大小写混杂)、`elementId`(已小写)、`rarity`
 - `rpg_new_tmp_content.modules` → 行迹组件(`componentId=='trace_graph'`)的 `points[]`,`tag=='秘技'` 的点含秘技名称+描述+subTag(削韧/强化/妨害等战斗标签);每个角色多技能,按 tag 找,别按位置
 - `role_ascension` 组件 → 晋阶数值表与养成材料
 
@@ -64,5 +64,5 @@ header: x-rpc-wiki_app: hsr   +   x-rpc-language: <lang>
 
 - **id 不互通**:米游社 `content_id` ≠ HoYoWiki `entry_page_id`,连表键 = **归一化中文名**(•/·/・统一、去空格)
 - **同名多形态禁止裸中文名匹配**(三月七 vs 仙舟三月七会撞)——先用已知对锚定再匹配
-- 英文名归一化(小写、仅保留字母数字)= 社区 tag 惯例("Robin • Summeretto" → `robinsummeretto`,"Trailblazer: Elation" → `trailblazerelation`),可直接当英文 id 建议;但**不是**游戏资产内部代号(那个只在解包容器路径里)
+- 英文名归一化(小写、仅保留字母数字)= 社区 tag 惯例("Robin • Summeretto" → `robinsummeretto`,"Trailblazer: Elation" → `trailblazerelation`),可直接当英文 id 建议;但**不是**游戏资产内部代号
 - 开拓者各形态在两站都同名(开拓者·毁灭),男女只能靠性别信息源区分,勿按中文名合并

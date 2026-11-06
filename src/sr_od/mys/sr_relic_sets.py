@@ -8,8 +8,8 @@
 
 set_id 与单件 desc（2026-11-05 增量固化）：
 - ``set_id`` = 游戏内部套装 ID，双源锚定：①米游社 avatar/info 遗器件 id
-  实证（tid 公式 60000/50000+set_id*10+pos，43 套零冲突）；②解包图标
-  ``iconrelic_<set_id>_<pos>.png`` 文件名 ↔ wiki 单件图逐套对照仲裁
+  实证（tid 公式 60000/50000+set_id*10+pos，43 套零冲突）；②归档图标
+  ``iconrelic_<set_id>_<pos>.webp`` 文件名 ↔ wiki 单件图逐套对照仲裁
   （其余 19 套 + 顺序律全量吻合：set_id 按实装顺序连续分配，隧洞 101 起、
   位面 301 起，本模块排列序 = 实装序）。
 - ``desc`` = 单件描述（官方 wiki 原文透传）；``obtain`` = 套装获取途径。
@@ -17,11 +17,11 @@ set_id 与单件 desc（2026-11-05 增量固化）：
   effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
 
 图标归档：``assets/game_data/relic_icons/iconrelic_<set_id>_<pos>.webp``
-（192 件全量，客户端解包产物转档；寻址公式见 ``icon_webp_path``）。
+（192 件全量，官方图标转档归档；寻址公式见 ``icon_webp_path``）。
 
 版本刷新工序：游戏新版本后重跑 wiki 抓取生成新快照 → 与下方 RELIC_SETS
 逐条 diff → 人工审阅后更新常量；新套装 set_id 按顺序律续排（隧洞/位面各
-自分段连续），图标按容器路径增量解包归档；新版本套装未及固化时由
+自分段连续），图标按归档命名增量入库；新版本套装未及固化时由
 ``resolve_set_name`` 兜底（warning 不抛异常），勿临时塞未经抓取核验的数据。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数（同 sr_codes 模块纪律）。
@@ -62,7 +62,7 @@ class RelicSetDef:
         effects: 套装效果文案，键 ``'2'``/``'4'``（官方 wiki 原文透传，
             不清洗富文本）。
         set_id: 游戏内部套装 ID（tid 公式 60000/50000+set_id*10+pos 的
-            set_id 位；解包图标文件名同源——双源实证见模块 docstring；
+            set_id 位；归档图标文件名同源——双源实证见模块 docstring；
             生成期快照，恒稳）。
         obtain: 套装获取途径（官方 wiki 原文透传，如副本名；纯展示）。
     """

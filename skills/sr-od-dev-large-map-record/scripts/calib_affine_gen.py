@@ -14,7 +14,7 @@ import requests
 from PIL import Image
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-WORK = os.path.join(REPO, '.debug', 'temp', 'animestudio')
+WORK = os.path.join(REPO, '.debug', 'temp', 'map_probe')
 PROBE = os.path.join(WORK, 'mys_probe')
 CUT = (285, 190, 1300, 930)
 VIEW = (0, 100, 1430, 1015)

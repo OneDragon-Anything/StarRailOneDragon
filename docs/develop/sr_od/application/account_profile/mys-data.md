@@ -16,11 +16,11 @@
 
 **set_id 双源锚定与顺序律**：set_id 按实装顺序连续分配（隧洞从 101 起、位面从 301 起），常量排列序 = 实装序，与 set_id 严格双射（测试 `test_set_id_biject_with_list_order` 锁定）。新套装按此律续排，实证手段两档：tid 反查（账号穿戴后）与图标对照仲裁（实装初期即可），工序见私有 skill。
 
-**图标归档**：`assets/game_data/relic_icons/iconrelic_<set_id>_<pos>.webp`（全量单件，客户端解包产物转档）。识别模板边界：SIFT 特征匹配可用、matchTemplate 像素比对不可用（实测口径沿 avatar-extract）。
+**图标归档**：`assets/game_data/relic_icons/iconrelic_<set_id>_<pos>.webp`（全量单件，官方图标转档归档）。识别模板边界：SIFT 特征匹配可用、matchTemplate 像素比对不可用（实测口径）。
 
 **数据分层原则**：定义层（ID/名称/图标/分类/效果文案）进常量；内容层（词条每级数值、养成数值）不固化，运行时经 mys 接口现查。wiki 词条偶有错字/缺段——effects 与件名以已固化常量为准，wiki 只作新增字段来源。
 
-**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ set_id 顺序律续排 → 图标增量解包归档 → 测试锚点同步。完整工序（含脚本）见私有 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
+**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ set_id 顺序律续排 → 图标增量归档 → 测试锚点同步。完整工序（含脚本）见私有 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
 
 ## 2. 账号运行时数据（米游社）
 
