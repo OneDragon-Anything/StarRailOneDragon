@@ -85,18 +85,49 @@ _SLOT_POINTS: list[list[Point]] = [
     [Point(1025, 678), Point(1108, 678), Point(1190, 678), Point(1273, 678)],
 ]
 
+# --------------------------------------------------------------------------
+# 星启(难度04,三节点)布局坐标(2026-11-06 实机标定):
+# - 行槽位剪影点击点 x≈1494(行 y 330/548/763),与双节点(x1025)完全不同;
+# - 增益入口 = 行尾「+」按钮(x≈1826,y 与行同轴),双节点的「公理圆圈」area
+#   在 04 布局不适用;弹窗内选卡/装配效果与双节点共用同布局;
+# - 顶部垃圾桶可一键清空全部三行(含增益),双节点无此功能;
+# - 槽位像素判空在星启布局不可用(V/特征数/模板三方案实测无区分度),
+#   填充落位回验改用「角色列表卡『队伍N』标记 OCR 计数」(每入队一人 +1)。
+# --------------------------------------------------------------------------
+_ARC_ROW_SLOT_POINTS: dict[int, Point] = {
+    1: Point(1494, 330),
+    2: Point(1494, 548),
+    3: Point(1494, 763),
+}
+
+_ARC_SLOT_POINTS: list[list[Point]] = [
+    [Point(1494, 337), Point(1547, 337), Point(1600, 337), Point(1653, 337)],
+    [Point(1494, 548), Point(1547, 548), Point(1600, 548), Point(1653, 548)],
+    [Point(1494, 763), Point(1547, 763), Point(1600, 763), Point(1653, 763)],
+]
+
+_ARC_TRASH_POINT: Point = Point(1616, 66)   #: 星启垃圾桶(一键清空三行+增益)
+_ARC_AXIOM_POINTS: dict[int, Point] = {
+    1: Point(1826, 331),
+    2: Point(1826, 548),
+    3: Point(1826, 763),
+}
+
 
 class TlAsTeamFillOp(SrOperation):
     """编队选人:清空两行 + 按目标填 8 人。起点 = 末日幻影-编队屏。"""
 
     def __init__(self, ctx: SrContext, team_names: list[str]):
         SrOperation.__init__(self, ctx, op_name='末日幻影 编队选人')
-        if len(team_names) != 8:
-            raise ValueError(f'末日幻影需 8 名角色(2 行×4): {len(team_names)}')
-        if len(set(team_names)) != 8:
-            raise ValueError(f'末日幻影 8 名角色须互不相同: {team_names}')
+        if len(team_names) not in (8, 12):
+            raise ValueError(f'末日幻影需 8 人(双节点)或 12 人(星启三节点): {len(team_names)}')
+        if len(set(team_names)) != len(team_names):
+            raise ValueError(f'末日幻影角色须互不相同: {team_names}')
+        per_row = 4
+        self._arc_mode: bool = len(team_names) == 12  #: 星启三节点布局(坐标/清空/回验分派)
         self.teams: list[list[str]] = [
-            team_names[i:i + 4] for i in range(0, 8, 4)
+            team_names[i:i + per_row]
+            for i in range(0, len(team_names), per_row)
         ]
         for names in self.teams:
             for name in names:
@@ -122,6 +153,15 @@ class TlAsTeamFillOp(SrOperation):
         if not (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-末日幻影行').is_success
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
             return self.round_fail('不在末日幻影编队屏(前置:选关点前往挑战)')
+        if self._arc_mode:
+            # 星启:垃圾桶一键清空三行+增益(实测有效)。清空验证走标记计数
+            # (槽位像素判空在 04 不可用);垃圾桶无效时标记不降,retry 耗尽即
+            # fail 诚实上报。双节点逐槽移除路径不受影响。
+            tags = self._count_team_tags(screen)
+            if tags > 0:
+                self.ctx.controller.click(_ARC_TRASH_POINT, press_time=0.15)
+                return self.round_retry(f'星启垃圾桶清空(残留标记{tags})', wait=2)
+            return self.round_success('星启编队已空', wait=1)
         waves = read_team_waves(self.ctx, screen, screen_name=_TEAM_SCREEN)
         if not waves:
             # 锚未读到 = 降级空列表,不等于编队已空(弹窗遮挡锚行会走到这);
@@ -161,18 +201,19 @@ class TlAsTeamFillOp(SrOperation):
         if self._row_idx >= len(self.teams):
             return self.round_success('填充完成', wait=1)
 
-        # 难度布局防御:本 op 的槽位/效果/交互常量按双节点难度(01-03)标定;
-        # 最高难度(04,星启模式)为三节点区块布局,锚行数实读不符即显式失败。
+        # 难度布局防御:锚行数与队伍数不符 = 编队屏难度与目标不符(01-03 双行 /
+        # 星启 04 三行),显式失败提示选对难度。
         waves_probe = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
         if not waves_probe:
             return self.round_retry('波次锚未读到(画面遮挡?),重读', wait=1.5)
         if len(waves_probe) != len(self.teams):
             return self.round_fail(
                 f'编队屏节点数 {len(waves_probe)} 与队伍数 {len(self.teams)} 不符:'
-                f'三节点难度(星启模式)未适配,请在选关屏选择双节点难度(01-03)')
+                f'请让选关屏选中的难度与目标角色数匹配(8 人=01-03,12 人=星启)')
 
         row_no = self._row_idx + 1
         target = self.teams[self._row_idx][self._char_idx]
+        row_slot_point = self._row_slot_point(row_no)
 
         # 列表展开态判定用「角色列表」页签(展开态独有锚;锚文本须与收起态同
         # 区域的「首领攻略」零公共子序列,短锚「等级」与其 LCS 达 0.5 会假命中):
@@ -183,8 +224,10 @@ class TlAsTeamFillOp(SrOperation):
 
         # 行选中守卫:点卡落在「当前选中的行」,清空节点末尾留下的选中行不一定是
         # 目标行——每行第一个角色填充前必须重新选中目标行。状态机三步:
-        # 遗留展开(非本行)→ 点收起箭头;收起态 → 点目标行槽位 1(展开+选中
-        # 一步到位);点了槽位后以页签复验展开是否生效,未生效则重试。
+        # 遗留展开(非本行)→ 收起;收起态 → 点目标行槽位 1(展开+选中一步到位);
+        # 点了槽位后以页签复验展开是否生效,未生效则重试。
+        # 收起手法分派:星启 = 点目标行槽位(右上箭头在 04 = 关闭编队屏,不可用);
+        # 双节点 = 点右上收起箭头。
         if not self._row_selected:
             if self._awaiting_expand:
                 if list_open:
@@ -192,38 +235,44 @@ class TlAsTeamFillOp(SrOperation):
                     self._need_top = True
                     self._awaiting_expand = False
                     return self.round_wait(f'行 {row_no} 展开复验通过', wait=0.5)
-                self.ctx.controller.click(_ROW_SLOT_POINTS[row_no], press_time=0.15)
+                self.ctx.controller.click(row_slot_point, press_time=0.15)
                 return self.round_wait(f'选中行 {row_no}(重试)', wait=1.5)
             if list_open:
-                self.ctx.controller.click(Point(1862, 68), press_time=0.15)
+                self.ctx.controller.click(
+                    _ARC_ROW_SLOT_POINTS[row_no] if self._arc_mode
+                    else Point(1862, 68), press_time=0.15)
                 return self.round_wait('收起遗留展开的列表', wait=1.2)
-            self.ctx.controller.click(_ROW_SLOT_POINTS[row_no], press_time=0.15)
+            self.ctx.controller.click(row_slot_point, press_time=0.15)
             self._awaiting_expand = True
             return self.round_wait(f'选中行 {row_no}(待展开复验)', wait=1.5)
 
-        # 落位回验:目标已在行成员里 → 推进游标
-        waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
-        if not waves:
-            # 锚未读到的降级空列表不可当「成员为空」用(会误判落位失败死循环点卡)
-            return self.round_retry('落位回验锚未读到,重读', wait=1.5)
-        row_members = waves[row_no - 1].members if len(waves) >= row_no else []
-        members_dbg = [f'{m.char or "?"}[{"|".join(n for n, _ in m.candidates)}]'
-                       for m in row_members]
-        log.info('AS填充回验: 行%d 成员=%s 目标=%s', row_no, members_dbg, target)
-        if self._member_has(row_members, target):
-            log.info('AS填充: 行%d %s 已落位', row_no, target)
-            self._char_idx += 1
-            self._need_top = True
-            if self._char_idx >= 4:
-                self._char_idx = 0
-                self._row_idx += 1
-                self._row_selected = False
-                if self._row_idx < len(self.teams):
-                    # 跨行:收起列表,下一轮由行选中守卫重新展开目标行
-                    self.ctx.controller.click(Point(1862, 68), press_time=0.15)
-                    return self.round_wait(f'行 {row_no} 填充完成,收起列表', wait=1.2)
-                return self.round_success('填充完成', wait=1)
-            return self.round_wait(f'{target} 已落位', wait=0.8)
+        # 落位回验:星启走「队伍N」标记计数——槽位像素判空在 04 布局不可用
+        # (V 亮度/SIFT 特征数/剪影模板三方案实测无区分度),members 脸库识别
+        # 部分角色(特写变体)不中,名字匹配不可作唯一依据;每入队一人恰一张
+        # 列表卡带「队伍N」标记,全帧 OCR 计数即累计落位数。双节点走 members
+        # 名字匹配(实机验证过的路径)。
+        if self._arc_mode:
+            expected = self._row_idx * 4 + self._char_idx + 1
+            tags = self._count_team_tags(image)
+            if tags < expected:
+                # 标记数不足 = 上次点卡未生效;重复点卡/点已入队卡均无副作用
+                log.info('AS星启回验: 标记%d<预期%d,%s 未落位,重找点卡',
+                         tags, expected, target)
+            else:
+                log.info('AS星启回验: 标记%d≥预期%d,%s 已落位', tags, expected, target)
+                return self._advance_after_hit(target, row_no)
+        else:
+            waves = read_team_waves(self.ctx, image, screen_name=_TEAM_SCREEN)
+            if not waves:
+                # 锚未读到的降级空列表不可当「成员为空」用(会误判落位失败死循环点卡)
+                return self.round_retry('落位回验锚未读到,重读', wait=1.5)
+            row_members = waves[row_no - 1].members if len(waves) >= row_no else []
+            members_dbg = [f'{m.char or "?"}[{"|".join(n for n, _ in m.candidates)}]'
+                           for m in row_members]
+            log.info('AS填充回验: 行%d 成员=%s 目标=%s', row_no, members_dbg, target)
+            if self._member_has(row_members, target):
+                log.info('AS填充: 行%d %s 已落位', row_no, target)
+                return self._advance_after_hit(target, row_no)
 
         cells = read_character_cells_by_level(self.ctx, image)
 
@@ -284,6 +333,37 @@ class TlAsTeamFillOp(SrOperation):
             ))
         ))
 
+    def _advance_after_hit(self, target: str, row_no: int) -> OperationRoundResult:
+        """落位推进游标:行内下一角色 → 跨行(星启点目标行槽位收起,双节点点
+        右上收起箭头) → 全部完成。"""
+        self._char_idx += 1
+        self._need_top = True
+        if self._char_idx >= 4:
+            self._char_idx = 0
+            self._row_idx += 1
+            self._row_selected = False
+            if self._row_idx < len(self.teams):
+                if self._arc_mode:
+                    # 星启:展开态点他行槽位 = 仅收起列表,下轮守卫重新展开目标行
+                    self.ctx.controller.click(
+                        _ARC_ROW_SLOT_POINTS[self._row_idx + 1], press_time=0.15)
+                else:
+                    self.ctx.controller.click(Point(1862, 68), press_time=0.15)
+                return self.round_wait(f'行 {row_no} 填充完成,切下一行', wait=1.2)
+            return self.round_success('填充完成', wait=1)
+        return self.round_wait(f'{target} 已落位', wait=0.8)
+
+    def _row_slot_point(self, row_no: int) -> Point:
+        """行槽位 1 点击点,按布局模式分派(星启 x≈1494 / 双节点 x≈1025)。"""
+        return (_ARC_ROW_SLOT_POINTS if self._arc_mode
+                else _ROW_SLOT_POINTS)[row_no]
+
+    def _count_team_tags(self, image) -> int:
+        """全帧 OCR 数「队伍N」标记:每入队一人恰一张列表卡带标记,计数即
+        累计落位数(星启填充回验的唯一推进信号)。"""
+        results = self.ctx.ocr_service.get_ocr_result_list(image=image)
+        return sum(1 for r in results if '队伍' in (r.data or ''))
+
     @staticmethod
     def _cell_names(cell) -> list[str]:
         """格子可判名字列表:置信名在前,候选第一名在后。"""
@@ -308,30 +388,33 @@ class TlAsTeamFillOp(SrOperation):
 class TlAsAxiomEquipOp(SrOperation):
     """终焉公理装配:两行右端圆圈 → 弹窗选卡 → 装配效果。起点 = 编队屏(已填人)。"""
 
-    def __init__(self, ctx: SrContext, buff_slots: tuple[int, int] = (1, 1)):
+    def __init__(self, ctx: SrContext, buff_slots: tuple[int, ...] = (1, 1)):
         """
         Args:
             buff_slots: 每行装配的终焉公理增益序号(1 基,每行三选一;
                 增益名称随期轮换不可锚定,按卡片位置选择)。
-                默认 (1, 1) = 各装第一项(游戏默认项,保守)。
+                2 项 = 双节点(01-03);3 项 = 星启三节点。默认 (1, 1)。
         """
         SrOperation.__init__(self, ctx, op_name='末日幻影 终焉公理装配')
         if any(not 1 <= s <= 3 for s in buff_slots):
             raise ValueError(f'buff_slots 须为 1-3: {buff_slots}')
-        self._buff_slots: tuple[int, int] = buff_slots
-        self._row2_done: bool = False       #: 行 2 装配未做(装配顺序游标)
+        if len(buff_slots) not in (2, 3):
+            raise ValueError(f'buff_slots 需 2(双节点)或 3(星启)项: {buff_slots}')
+        self._buff_slots: tuple[int, ...] = buff_slots
+        self._row_idx: int = 0              #: 当前装配行(0 基)
         self._phase: str = 'open'           #: 装配子步:open 点圆圈 / select 点卡片 /
                                             # confirm 点装配效果 / closed 等弹窗关
 
     @operation_node(name='装配循环', is_start_node=True, node_max_retry_times=16)
     def _equip_loop(self) -> OperationRoundResult:
-        """两行各装配指定增益进终焉公理(行右端圆圈 → 弹窗选卡 → 装配效果)。
+        """逐行装配指定增益进终焉公理(行增益入口 → 弹窗选卡 → 装配效果)。
 
         行内「敌方特性」条款按钮(坚防守备/阵地转移等)是机制查看入口,点击
-        不改变装配(实机验证),真正的增益选择在行右端圆圈弹窗内;增益名称
-        随期轮换不可锚定,按位置 ``buff_slots``(1 基)选卡。装配生效后弹窗
-        自动关闭回编队屏,以「装配效果」按钮消失为到达证据。"""
-        row = 2 if self._row2_done else 1
+        不改变装配(实机验证);增益入口分派:星启 = 行尾「+」按钮(x≈1826,
+        y 与行同轴),双节点 = 建档「公理圆圈{row}」;增益名称随期轮换不可
+        锚定,按位置 ``buff_slots``(1 基)选卡。装配生效后弹窗自动关闭回
+        编队屏,以「装配效果」按钮消失为到达证据。"""
+        row = self._row_idx + 1
         screen = self.last_screenshot
         in_axiom = self.round_by_find_area(screen, _AXIOM_SCREEN, '文本-选择增益行').is_success
         in_team = (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-末日幻影行').is_success
@@ -342,7 +425,11 @@ class TlAsAxiomEquipOp(SrOperation):
                 self._phase = 'select'
                 return self.round_wait('公理弹窗已开', wait=0.5)
             if in_team:
-                self._click_area_center(_TEAM_SCREEN, f'按钮-公理圆圈{row}')
+                if self._row_idx < len(self._buff_slots) - 2:
+                    # 星启:行尾「+」即终焉公理入口(编入角色前后形态一致,实测)
+                    self.ctx.controller.click(_ARC_AXIOM_POINTS[row], press_time=0.15)
+                else:
+                    self._click_area_center(_TEAM_SCREEN, f'按钮-公理圆圈{row}')
                 self._phase = 'select'
                 return self.round_wait(f'打开行{row}公理弹窗', wait=1.5)
             return self.round_retry('不在编队屏也非公理弹窗', wait=1.5)
@@ -351,7 +438,7 @@ class TlAsAxiomEquipOp(SrOperation):
             if not in_axiom:
                 self._phase = 'open'
                 return self.round_retry('公理弹窗未开,重开', wait=1.2)
-            slot = self._buff_slots[row - 1]
+            slot = self._buff_slots[self._row_idx]
             self._click_area_center(_AXIOM_SCREEN, f'卡片-增益{slot}')
             self._phase = 'confirm'
             return self.round_wait(f'行{row}选增益{slot}', wait=0.8)
@@ -366,10 +453,10 @@ class TlAsAxiomEquipOp(SrOperation):
 
         # closed:弹窗应已自动关闭,到达编队屏 = 装配生效
         if in_team:
-            if row == 1:
-                self._row2_done = True
+            if self._row_idx < len(self._buff_slots) - 1:
+                self._row_idx += 1
                 self._phase = 'open'
-                return self.round_wait('行1装配完成', wait=1)
+                return self.round_wait(f'行{row}装配完成', wait=1)
             return self.round_success('装配完成', wait=1)
         if in_axiom:
             self._phase = 'confirm'
@@ -379,9 +466,9 @@ class TlAsAxiomEquipOp(SrOperation):
     def _click_area_center(self, screen_name: str, area_name: str) -> None:
         """按建档 rect 中心点击(纯定位区;坐标单一真相源在 screen_info)。"""
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
-        x1, y1, x2, y2 = area.pc_rect
+        rect = area.rect
         self.ctx.controller.click(
-            Point((x1 + x2) // 2, (y1 + y2) // 2), press_time=0.15)
+            Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2), press_time=0.15)
 
 
 class TlAsBattleOp(SrOperation):
@@ -420,16 +507,20 @@ class TlAsBattleOp(SrOperation):
             if self.round_by_find_area(screen, _RESULT_SCREEN, '按钮-返回末日幻影').is_success:
                 self.ctx.controller.click(Point(1240, 949), press_time=0.15)
                 return self.round_success(TlAsBattleOp.STATUS_DONE, wait=2.5)
-            if self.round_by_find_area(screen, _RESULT_SCREEN, '按钮-前往节点二').is_success:
-                self.ctx.controller.click(Point(1243, 949), press_time=0.15)
-                self._tech_used = False  # 新节点新秘技点
-                return self.round_retry('前往节点二', wait=3)
+            # 「前往节点二/三」按钮同位(结算页布局恒定,文本随节点轮换)——
+            # 统一按区域点击并重置秘技标记(新节点新秘技点)
+            self.ctx.controller.click(Point(1243, 949), press_time=0.15)
+            self._tech_used = False
+            return self.round_retry('前往下一节点', wait=3)
 
         if self.round_by_find_area(screen, _BANNER_SCREEN, '提示-点击空白处关闭').is_success:
-            # 简报标题区的「节点一/节点二」位置恒定(说明行数只影响下方区域),
+            # 简报标题区的「节点一/二/三」位置恒定(说明行数只影响下方区域),
             # 实读记入状态——节点流转的判定锚比结算页按钮文本更稳
             if self.round_by_find_area(screen, _BANNER_SCREEN, '标题-节点二行').is_success:
                 self._brief_node_no = 2
+                self._brief_pending = True
+            elif self.round_by_find_area(screen, _BANNER_SCREEN, '标题-节点三行').is_success:
+                self._brief_node_no = 3
                 self._brief_pending = True
             elif self.round_by_find_area(screen, _BANNER_SCREEN, '标题-节点一行').is_success:
                 self._brief_node_no = 1
@@ -460,15 +551,16 @@ class TlApocalypticShadowChallengeOp(SrOperation):
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
 
     def __init__(self, ctx: SrContext, team_names: list[str],
-                 buff_slots: tuple[int, int] = (1, 1)):
+                 buff_slots: tuple[int, ...] = (1, 1)):
         """
         Args:
-            team_names: 按行(节点)顺序拼接的角色中文名列表,8 人(2 行×4);
-                与脸库识别名一致,行 1 = 节点一队伍,行 2 = 节点二队伍。
-                队伍须避开带警告标记的角色(命途/养成警告,如当期试用角色)——
-                此类角色可落位,但「前往挑战」校验不通过(点击无反应)。
+            team_names: 按行(节点)顺序拼接的角色中文名列表,8 人(2 行×4,
+                双节点 01-03)或 12 人(3 行×4,星启 04);与脸库识别名一致,
+                行 1 = 节点一队伍,以此类推。队伍须避开带警告标记的角色
+                (命途/养成警告,如当期试用角色)——此类角色可落位,但「前往
+                挑战」校验不通过(点击无反应)。
             buff_slots: 每行装配的终焉公理增益序号(1 基;增益名称随期轮换,
-                按卡片位置选择)。默认 (1, 1) = 各装第一项(游戏默认项,保守)。
+                按卡片位置选择)。2 项 = 双节点,3 项 = 星启。默认全 1。
         """
         SrOperation.__init__(self, ctx, op_name='末日幻影 挑战')
         self.fill_op = TlAsTeamFillOp(ctx, team_names)
@@ -487,11 +579,8 @@ class TlApocalypticShadowChallengeOp(SrOperation):
         screen = self.last_screenshot
         if (self.round_by_find_area(screen, _TEAM_SCREEN, '标题-末日幻影行').is_success
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
-            # 难度徽章校验:三节点难度(04,星启模式)布局不同,本 op 未适配
-            if self.round_by_find_area(screen, _TEAM_SCREEN, '徽章-难度04').is_success:
-                return self.round_fail(
-                    '编队屏为难度04(三节点),本 op 仅适配双节点难度(01-03);'
-                    '请在选关屏选择 01-03 难度后重试')
+            # 难度与目标人数匹配校验(星启 04 三行/双节点 01-03 两行,由
+            # read_team_waves 锚行数实读)——不匹配在填充防御处显式失败
             return self.round_success()
         if self.round_by_find_area(screen, _BANNER_SCREEN, '提示-点击空白处关闭').is_success:
             return self.round_success('BANNER_UP')
