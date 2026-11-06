@@ -320,7 +320,7 @@ class TlAsTeamFillOp(SrOperation):
         3 次任何起点都到顶。"""
         for _ in range(_TOP_DRAG_COUNT):
             self.ctx.controller.drag_to(
-                self._TOP_TO, start=self._TOP_FROM, duration=self._TOP_DURATION)
+                _TOP_TO, start=_TOP_FROM, duration=_TOP_DURATION)
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
