@@ -34,6 +34,7 @@ import numpy as np
 
 from one_dragon.base.config.yaml_operator import YamlOperator
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.template_info import TemplateInfo
 from one_dragon.base.screen.template_loader import TemplateLoader
 from one_dragon.utils import cv2_utils, os_utils
@@ -42,7 +43,6 @@ from sr_od.config.character_const import CHARACTER_LIST, Character
 if TYPE_CHECKING:
     from cv2.typing import MatLike
 
-    from one_dragon.base.geometry.rectangle import Rect
     from sr_od.context.sr_context import SrContext
 
 SCREEN_NAME: str = '忘却之庭-编队'
@@ -179,10 +179,13 @@ class AnchorCell:
     Attributes:
         center: 头像点击中心(全图坐标)。
         guess: 该卡头像识别结果。
+        rect: 头像区矩形(全图坐标,即 center 所在裁片区)。供按格命中判定,
+            如「队伍N」标记框中心是否落在某卡头像区内 = 该卡已入队。
     """
 
     center: Point
     guess: MemberGuess
+    rect: Rect | None = None
 
 
 @dataclass
@@ -489,6 +492,9 @@ _WEAKNESS_BOSS_MAX_DY: int = 300      #: boss 名行与其波次锚行的最大�
 _ARC_ROW_SLOT_CYS: tuple[int, ...] = (337, 548, 763)  #: 三行槽位头像中心 y(行序)
 _ARC_SLOT_CXS: tuple[int, ...] = (1494, 1547, 1600, 1653)  #: 4 槽头像中心 x
 _ARC_SLOT_SIZE: int = 56                #: 槽位裁片边长(方)
+# ⚠️ 星启空槽判定未解决:空槽底板亮度(V≈182)与有角色无法按 V 区分;SIFT 特征数
+# 亦不可分(实测空槽 33/36 vs 有人 20/35——空槽剪影本身高纹理)。
+# 候选方案 = 空槽剪影模板匹配(空编 fixture 裁模板),标定后再实装。
 
 
 def _match_boss_weaknesses(ocr_results: list,
@@ -637,7 +643,9 @@ def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[Anchor
         cells.append(AnchorCell(
             center=Point(ax + _LEVEL_ANCHOR_AVATAR_W // 2,
                          ay + _LEVEL_ANCHOR_AVATAR_H // 2),
-            guess=guess))
+            guess=guess,
+            rect=Rect(ax, ay,
+                      ax + _LEVEL_ANCHOR_AVATAR_W, ay + _LEVEL_ANCHOR_AVATAR_H)))
     cells.sort(key=lambda c: (c.center.y, c.center.x))
     return cells
 
