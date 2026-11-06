@@ -62,7 +62,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'node': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='派生规则四条分支(备战解析/弹窗/位面过渡/BOSS简报)write_logic + 两帧确认门'
-              '(链正本 §2-4);商店查链目标 = 生效序与镜像最新者'
+              '(链权威版本 §2-4);商店查链目标 = 生效序与镜像最新者'
               '(_shop_panel_type_target,20260918-reconcile 第 11 例)+ '
               '类型直定倒退免疫(镜像序领先丢弃留证);观察每帧覆盖'),
     'node_path': ProjectionAuditRow(
@@ -71,7 +71,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '基线位面入口写定'),
     'node_path_baseline': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='位面入口写定恒稳(链正本 §2),局中不被链读覆盖'),
+        basis='位面入口写定恒稳(链权威版本 §2),局中不被链读覆盖'),
     # —— 单位域(可失配面核心;吸收规则族)——
     # 星级读数 = 席位单元属性(非独立状态容器字段),其识别层单帧抖动的吸收
     # 规则 = star_two_frame_gate(kernel/cw_reconcile 槽位锚定 + 两帧一致
@@ -79,9 +79,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'deployed': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='deploy/sell/swap 投影写端(单字段视图整值替换,'
-              '容器合并)'
+              '状态容器合并)'
               ' + 行内纯重排采新'
-              '(deploy_slot_reorder,20260918-reconcile 第5例收口;'
+              '(deploy_slot_reorder,20260918-reconcile 第5例收尾;'
               '吸收口径 = 子表内单元级多重集相等,换排不吸收)'
               ' + 星级抖动门采新(star_two_frame_gate,槽位锚定+两帧一致)'),
     'bench': ProjectionAuditRow(
@@ -100,11 +100,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 经济与成长 ——
     'gold': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
-        basis='buy/sell/levelup/refresh 投影 + 结算真值收口 '
+        basis='buy/sell/levelup/refresh 投影 + 结算真值收尾 '
               '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)。'
               '晶矿随机金走逻辑随机态,写端申报:生成写 = ore_reward_attach'
               '(挂接入口,含 rekey 重挂),兑现写 = collect_ore 上报'
-              '(logic_rand_outcome 行收口,2026-10-10-ore-reward-attach);'
+              '(logic_rand_outcome 行收尾,2026-10-10-ore-reward-attach);'
               '投资卡随机授予仍无写端(申报表族 2026-09-19 拆除待重设计),'
               '命中照真失配停'),
     'level': ProjectionAuditRow(
@@ -120,7 +120,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '零逻辑写端'),
     'pending_loss': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
-        basis='败态挂账(战斗结算失败分支写,轮首收入败补支消费即清;'
+        basis='败态登记暂存金额(战斗结算失败分支写,轮首收入败补支消费即清;'
               'sim 写端 = sim/cw_sim_backend;实机写端候结算屏败局观察)'),
     'shop_locked': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -149,7 +149,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='开局写定恒稳(cw_strategy_manager 职级写入)+ 观察覆盖'),
     'game_mode': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='标准/超频两屏无建档,写端接线前申报位(§3.1.2)'),
+        basis='标准/超频两屏无建档,写端接入调用前申报位(§3.1.2)'),
     'enemy_difficulty': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='非单调识别真值(§3.2.14),零逻辑写端'),
@@ -164,7 +164,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='开局写定(简报/位面详情实采写门;位面详情写门随机态分支'
               '走 observe 覆盖转正,T-45)+ 获得链删除分支(敌后破坏失效'
-              '删除 + 退化策略腿取尾删除,均经 _select_write 择道随机态)'
+              '删除 + 退化形态的只供策略算分的实现分支取尾删除,均经 _select_write 择道随机态)'
               '+ 观察覆盖'),
     'board': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
@@ -184,9 +184,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'free_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='商店免费刷新剩余次数(屏上「免费刷新 N」观察真值;观察写端'
-              ' = 入口观察漏斗刷新钮三态锚定,免费态锚次数/付费域锚 0/判不出'
+              ' = 入口观察漏斗刷新钮三态锚定,免费态识别标志次数/付费域识别标志 0/判不出'
               '跳写)+ 动作扣减/发放登记 logic 直写(burst 桥/节点边界桥/'
-              '合成事件腿三发放写端,后者宿主 = cw_effect_inventory;观察'
+              '合成事件分支三发放写端,后者宿主 = cw_effect_inventory;观察'
               '覆盖失配走 Field 既有安灯)'),
     'encounter_refresh_left': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
@@ -218,7 +218,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='本局已解锁专家顾问(获得链 advisor 道权威写:on_env_gained/'
               'on_strategy_gained/on_equipment_gained 解锁原语,只增去重;'
               '池派生消费 = cw_pool) + 专家邀请函通道申报行缺口'
-              '(pick_expert_name_unobserved,候选名观察建档批接线);'
+              '(pick_expert_name_unobserved,候选名观察建档批接入调用);'
               '商店出现未登记专家 = 观察覆盖采新'),
     'pending_item_grants': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -227,22 +227,22 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '推算知识,无观察读端'),
     'pending_strategy_offers': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略延时 offer 倒计时队列(唯一逻辑写端 = 获得链登记腿入队'
-              ' / 节点边界 tick 递减 / sim 呈现腿弹除回写),队列 = 卡文'
-              '推算知识,无观察读端;实机局呈现腿不接(不对称申报,'
+        basis='策略延时 offer 倒计时队列(唯一逻辑写端 = 获得链只登记不写状态的实现分支入队'
+              ' / 节点边界 tick 递减 / sim 呈现分支弹除回写),队列 = 卡文'
+              '推算知识,无观察读端;实机局呈现分支不接(不对称申报,'
               'pending_item_grants 同款)'),
     'pending_strategy_grants': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略延时发放倒计时队列(唯一逻辑写端 = 获得链登记腿入队'
-              ' / 节点边界 tick 递减 / sim 发放腿弹除回写),队列 = 卡文'
-              '推算知识,无观察读端;实机局发放腿不接(不对称申报,'
+        basis='策略延时发放倒计时队列(唯一逻辑写端 = 获得链只登记不写状态的实现分支入队'
+              ' / 节点边界 tick 递减 / sim 发放分支弹除回写),队列 = 卡文'
+              '推算知识,无观察读端;实机局发放分支不接(不对称申报,'
               'pending_strategy_offers 同款:发放物以 equips 观察首见'
               '入账)'),
     'pending_kechuan_leaves': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='佩佩客串离场倒计时队列(唯一逻辑写端 = 具名角色工厂发放刻'
               '入队 / 节点边界 tick 递减 / sim 节点窗收尾弹除回写),队列'
-              ' = 卡文推算知识,无观察读端;实机局离场腿不接(不对称申报:'
+              ' = 卡文推算知识,无观察读端;实机局离场分支不接(不对称申报:'
               '实机离场由游戏自己执行,后台空间变化 = bench 观察覆盖'
               '吸收)'),
     'strategy_conditional_done': ProjectionAuditRow(
@@ -252,53 +252,53 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '读端——发放登记事实非观察投影(同族行先例 = '
               'env_grants_done);逻辑写端十处 = '
               'cw_gain_chain.check_strategy_conditional_grants(tick 位'
-              '检查腿,发放成功 placed 刻追加;拒落域不闩自愈重试)+ sim '
-              '到级金腿闩笔(check_strategy_level_grants 决策、sim advance '
-              '双点接线段 + _skip_battle 记账段镜像共三点写,producer '
+              '检查分支,发放成功 placed 刻追加;拒落域不置一次性标志位自愈重试)+ sim '
+              '到级金发放一次性标志位写(check_strategy_level_grants 决策、sim advance '
+              '双点接入调用段 + _skip_battle 记账段镜像共三点写,producer '
               'strategy_level_grant)+ 策略卡到级'
-              '装备腿(check_strategy_level_equip_grants 直写形态,live '
+              '装备发放分支(check_strategy_level_equip_grants 直写形态,live '
               '结算位 + sim advance 双点同链,producer '
-              'strategy_level_equip_grant)+ 全都要族选卡事件消耗闩'
+              'strategy_level_equip_grant)+ 全都要族选卡事件消耗一次性标志位'
               '(check_strategy_take_all_supply 挂补给选定上报三 applied '
               '出口,事件消耗制每事件耗 1 格,计数键 take_all#<卡名>#<序号> '
               '前缀计数 < 配额(map 银 1/金 2),producer '
               'CwScreenSupplyNode 未选域发放写端家族值)+ 策略卡首购经验'
-              '桶闩(check_strategy_first_buy_xp_grants 挂买牌上报尾段,'
-              'evidence first_buy_xp#<费用>,先闩后 sim 世界写 '
+              '桶一次性标志位(check_strategy_first_buy_xp_grants 挂买牌上报尾段,'
+              'evidence first_buy_xp#<费用>,先置一次性标志位后 sim 把结果写进状态副本 '
               'xp:first_buy:* at-most-once,producer '
-              'strategy_first_buy_xp_grant)+ 策略卡购买翻星消耗闩'
+              'strategy_first_buy_xp_grant)+ 策略卡购买翻星消耗一次性标志位'
               '(mark_strategy_buy_star_flip_consumed 挂买牌上报 applied '
               '后尾段,纯卡名键,evidence strategy_buy_star_flip:<卡名>,'
-              '翻转在落位拍先于闩写 at-most-once,producer '
-              'strategy_buy_star_flip_grant)+ 策略卡节点序列改写闩'
-              '(check_strategy_node_rewrite 决策、sim 节点窗开挂点写,'
+              '翻转在落位拍先于一次性标志位写 at-most-once,producer '
+              'strategy_buy_star_flip_grant)+ 策略卡节点序列改写一次性标志位'
+              '(check_strategy_node_rewrite 决策、sim 节点窗开插入位置写,'
               '纯卡名键,evidence node_seq:strategy,与场字段改写值同拍'
               '同组,producer SimBackend:strategy_node_rewrite)+ 策略卡'
-              '首领完成固定集闩(check_strategy_boss_completion_grants '
+              '首领完成固定集一次性标志位(check_strategy_boss_completion_grants '
               '结算位链尾,纯卡名键,「下个首领」恰一次,evidence '
-              'strategy_boss_completion#<卡名>,全部 placed 才落闩拒落'
-              '不闩自愈)+ 策略卡装备到期消失闩(check_strategy_equip_'
-              'expiry 节点窗收口,fired 非空即封与移除集是否为空解耦,'
+              'strategy_boss_completion#<卡名>,全部 placed 才置一次性标志位拒置'
+              '不置自愈)+ 策略卡装备到期消失一次性标志位(check_strategy_equip_'
+              'expiry 节点窗收尾,fired 非空即封与移除集是否为空解耦,'
               'evidence strategy_equip_expiry:<卡名>,_select_write '
-              'rand=False 承载)+ 策略卡首领通关价值金闩(check_strategy_'
+              'rand=False 承载)+ 策略卡首领通关价值金一次性标志位(check_strategy_'
               'boss_clear_gold 结算位链尾,纯卡名键,「下一个首领」恰一次,'
               'evidence sim:engine:strategy:boss_clear_value:p<位面>r<轮>'
-              ',金笔 observe 与闩 write_logic 同窗两笔)+ 策略卡完胜判定'
-              '改写配额闩(check_strategy_perfect_rescue 挂 settle_confirm '
+              ',金笔 observe 与一次性标志位 write_logic 同窗两笔)+ 策略卡完胜判定'
+              '改写配额一次性标志位(check_strategy_perfect_rescue 挂 settle_confirm '
               '分支,计数形键 perfect_rescue#<卡名>#<已耗序>,前缀计数 < '
-              '配额放行(表载配额 3),瞬时位写与闩写同窗相邻,producer '
+              '配额放行(表载配额 3),瞬时位写与一次性标志位写同窗相邻,producer '
               'strategy_perfect_rescue)'),
     'strategy_hp_loss_accum': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='损血档位触发累积器(「每损失20点」按当前局全程累计实际'
-              '损血,发放刻取模余数结转,周期型触发器无 done 闩),无观察'
+              '损血,发放刻取模余数结转,周期型触发器无 done 一次性标志位),无观察'
               '读端——发放记账过程量(同族行先例 = env_grants_done/'
               'ore_declared_done);唯一逻辑写端 = cw_gain_chain.'
               'check_strategy_hp_loss_grants'),
     'forge_privilege_charges_left': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='刃锻特权化剩余生效次数(锻冶专家:刃次数账正本,Field 缺省'
-              '承载开局 1 零置位腿;消费 = 穿报刃锻支 forge_privilege_'
+        basis='刃锻特权化剩余生效次数(锻冶专家:刃次数账权威版本,Field 缺省'
+              '承载开局 1 零置位分支;消费 = 穿报刃锻支 forge_privilege_'
               'consume 笔,充能 = 获得链计数钩子 forge_privilege_recharge'
               ' 笔),无观察读端——次数 = 卡文推算知识(同族行先例 = '
               'strategy_hp_loss_accum)'),
@@ -312,64 +312,64 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'strategy_char_grant_bindings': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='绑定型随机角色授予名字绑定域(键 = 卡规范名,值 = 获得时点'
-              '采样掷得的绑定角色名;持续型值非「首次」布尔闩,与 '
+              '采样掷得的绑定角色名;持续型值非「首次」布尔一次性标志位,与 '
               'strategy_conditional_done 分域),无观察读端——掷骰结果非'
               '画面可读面;唯一逻辑写端 = cw_gain_effects.'
               '_make_bound_char_grant_effect(采样后 sim 门控写,live 零写'
-              ':live 掷骰是猜测且本域为复制发放腿唯一判据,假绑定静默存续'
+              ':live 掷骰是猜测且本域为复制发放分支唯一判据,假绑定静默存续'
               '不可接受);消费端 = cw_gain_chain.'
               'check_strategy_node_char_grants(持卡未绑定 fail-closed 零'
               '发放留证 gain_chain_strategy_char_bind_missing)'),
     'strategy_gold_next_nodes_left': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='分期金剩余腿数容器(键 = 卡规范名,值 = 该卡剩余「进入新'
-              '节点」发金腿数;每卡独立条目非聚合槽,双持姊妹卡各键并存,'
+        basis='分期金剩余发放数状态容器(键 = 卡规范名,值 = 该卡剩余「进入新'
+              '节点」发金次数;每卡独立条目非聚合槽,双持姊妹卡各键并存,'
               '与 strategy_char_grant_bindings 同形),无观察读端——剩余'
-              '腿数 = 卡文推算知识,游戏 UI 无读面;唯一逻辑写端两处 = '
+              '剩余发放数 = 卡文推算知识,游戏 UI 无读面;唯一逻辑写端两处 = '
               'cw_sim_backend._on_invest_picked(拿卡落地拍初始化,值 = '
               '注册值 gold_next_nodes_count 直接赋值,重置语义 = 排除闸'
-              '下防御性默认)与 _begin_node_window 收入段分期金腿(发金'
+              '下防御性默认)与 _begin_node_window 收入段分期金发放分支(发金'
               '与递减同拍),均 sim 门控写,live 零写——live 分期发放由'
-              '游戏自算自显,金整字段观察覆盖收口'),
+              '游戏自算自显,金整字段观察覆盖收尾'),
     'strategy_bond_battle_armed': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='策略卡羁绊条件战后发放武装标记(三态 None=未观察/False='
               '已消费/True=武装;触发-发放两拍制状态载体:结算拍评估「持卡'
               ' ∧ 战斗完成 ∧ 激活羁绊数 ≥ 表载阈值」置 True,下一节点窗'
               '拍采样交付后置 False),无观察读端——条件评估真值系 sim '
-              '世界内部判定(板面激活数),live 无独立观察通道(装备入栏 '
+              '状态副本内部判定(板面激活数),live 无独立观察通道(装备入栏 '
               '= equips 观察覆盖);唯一逻辑写端两处 = cw_gain_chain.'
               'check_strategy_bond_battle_grants(武装)/ '
               'discharge_strategy_bond_battle_grants(消费),唯一调用点 '
-              '= sim 结算腿与节点窗收口腿'),
+              '= sim 结算分支与节点窗收尾分支'),
     'strategy_bond_tier_fired': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略卡羁绊档位条件发放已发档位闩(逐档「首次」簿记,元素 '
+        basis='策略卡羁绊档位条件发放已发档位一次性标志位(逐档「首次」簿记,元素 '
               "= '<卡名>#<档位>' 复合键,first_buy_xp#<费用> 复合键同款;"
-              '降档再回不弹,祈愿首达档簿记判例),无观察读端——条件评估真值'
-              '系 sim 世界内部判定(板面激活数),live 无独立观察通道(星徽'
+              '降档再回不弹,祈愿首达档簿记先例),无观察读端——条件评估真值'
+              '系 sim 状态副本内部判定(板面激活数),live 无独立观察通道(星徽'
               '入栏 = equips 观察覆盖,不对称申报同族先例);唯一逻辑写端 '
               '= cw_gain_chain.check_strategy_bond_tier_grants(发放落位'
-              '刻逐档追加,拒落域不闩重试自愈),唯一调用点 = sim 结算腿'),
+              '刻逐档追加,拒落域不置一次性标志位重试自愈),唯一调用点 = sim 结算分支'),
     'strategy_grants_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略卡赠礼条件双腿已发标记(「首次」簿记,元素 = '
-              "'<卡名>#<腿键>' 复合键,腿键 = faction_count/next_reward_"
-              'node 封闭集,一卡双腿各闩各的),无观察读端——条件评估真值'
-              '(上阵羁绊计数/节点类型)系 sim 世界内部判定,live 无独立观察'
+        basis='策略卡赠礼条件两条效果条目已发标记(「首次」簿记,元素 = '
+              "'<卡名>#<效果条目键>' 复合键,效果条目键 = faction_count/next_reward_"
+              'node 封闭集,一卡两条效果条目各置各的一次性标志位),无观察读端——条件评估真值'
+              '(上阵羁绊计数/节点类型)系 sim 状态副本内部判定,live 无独立观察'
               '通道(角色落席/装备入栏 = bench/equips 观察覆盖,不对称申报'
               '同族先例);唯一逻辑写端 = cw_gain_chain.'
-              'check_strategy_gift_grants(发放落位刻逐腿追加,角色 placed '
-              '才闩,拒落域不闩重试自愈),唯一调用点 = sim 节点窗收口'),
+              'check_strategy_gift_grants(发放落位刻逐条目追加,角色 placed '
+              '才置一次性标志位,拒落域不置一次性标志位重试自愈),唯一调用点 = sim 节点窗收尾'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='轮内新鲜买入账(record_fresh_buy 单口),无 OCR 读端'),
+        basis='轮内新鲜买入账(record_fresh_buy 唯一入口函数),无 OCR 读端'),
     # —— 持久账本 ——
     'equips': ProjectionAuditRow(
         status=AUDIT_ABSORB_RULE,
         basis='sell 回收/穿戴扣减/桥直写 + 工具动作上报写端(cw_action_'
               'report/tool_use:消耗移除与效果同笔合并写,炉随机面 = '
-              'logic_rand 采样链)+ 策略卡世界发放具名装备写端'
+              'logic_rand 采样链)+ 策略卡状态副本发放具名装备写端'
               '(获得链 gain_equipment 确定发放尾追:延时发放/条件发放'
               '两通道)。已知缺口:投资卡随机装备授予现无写端无吸收'
               '(申报表族 2026-09-19 拆除待重设计,维持待其实现批消化),'
@@ -440,27 +440,27 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' = 模型推导非画面读面〔实机「备战席哪张被锁」识别未建,识别'
               '专项后补〕;逻辑写端 = cw_env_grants(check_env_battle_grants'
               ' 触发发放 + check_env_deploy_lock_perfect 完胜改写)+ '
-              'cw_gain_chain(环境获得链赠卡分支)三口,消费端 = deploy_move/'
+              'cw_gain_chain(环境获得链赠卡分支)三个登记入口,消费端 = deploy_move/'
               'swap_deploy 上报入口锁守卫 deploy_lock_block_reason;比对'
               '自愈无主动清理,记录滞留至局终'),
     'pending_item_opens': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='世界发放域〔环境∪策略〕倒计时件开盒队列(环境首例 T-34 '
+        basis='状态副本发放域〔环境∪策略〕倒计时件开盒队列(环境首例 T-34 '
               '命运礼物、策略首例偶像经济,元素 (件名, 解锁序位 NodePos),'
               '无观察读端——队列 = 卡文推算知识,战利品区板件'
               '显示另建观察域 giftbox_sight〔旁路读数留证,本队列三写端与'
               '语义不受其影响〕;'
               '逻辑写端 = cw_gain_chain.on_env_gained / on_strategy_gained '
               '登记入队双道 + '
-              'discharge_due_item_opens 到点弹除(sim 进节点收口,实机'
-              '不接)+ check_env_item_open_perfect 完胜回退三口,消费端'
+              'discharge_due_item_opens 到点弹除(sim 进节点收尾,实机'
+              '不接)+ check_env_item_open_perfect 完胜回退三个登记入口,消费端'
               ' = 开盒原语单一;到点比对自愈无主动清理'),
     'giftbox_sight': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='惊喜盒板件 ⏳N 读数观察域(纯旁路证据,设计 '
               '2026-10-19-giftbox-piece-obs):观察读端 = 备战观察 heavy '
               '段挂接入口(report_giftbox_sight_observed 单一写径,读到才'
-              '整条替换写、读不到零写),零逻辑写端;模型世界真值 = '
+              '整条替换写、读不到零写),零逻辑写端;模型状态副本里的值 = '
               'pending_item_opens 队列,本域不参与任何行为分支、运行时'
               '零比较零纠偏,与队列不一致 = 离线校准对账留证'),
     'env_grant_uid_seq': ProjectionAuditRow(
@@ -476,7 +476,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '化确定可计算,观察对账走节点行 CV 读→live 台账独立通道(失配'
               '留证不自动改写);逻辑写端双写 = cw_gain_chain.gain_invest_env '
               "尾段(evidence='node_seq:env',注册即落全量)+ 策略卡条件改写"
-              "(sim 节点窗开挂点,evidence='node_seq:strategy',登记表 = "
+              "(sim 节点窗开插入位置,evidence='node_seq:strategy',登记表 = "
               'cw_investments.STRATEGY_NODE_REWRITE_TRIGGERS,一局至多一次)'),
     # —— 交互状态 ——
     'prep_substate': ProjectionAuditRow(
@@ -565,16 +565,16 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='遭遇奖励兑现记录(结算兑现回调 claim_encounter_reward 写:'
               '双证判遭遇 + progress_delta>0 单判,兑现即清 chosen_encounter'
-              ' 单次消费;遥测接线候批)'),
+              ' 单次消费;遥测接入调用候批)'),
     'chosen_supply': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='补给选择结果(handler 写,无 chosen 观察读端)'),
     'unchosen_supply': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='补给未选列快照(画面 op 真选分支确认窗写,双消费即清 = '
-              'check_strategy_supply_salvage(R-entry 打捞腿)+ '
+              'check_strategy_supply_salvage(R-entry 打捞分支)+ '
               'check_strategy_take_all_supply(全都要族 R-choice 选卡'
-              '时点,先到——选卡即清,打捞腿下一补给进入后到早退零写);'
+              '时点,先到——选卡即清,打捞分支下一补给进入后到早退零写);'
               '无观察读端)'),
     'chosen_megastar': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
@@ -587,8 +587,8 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='祈愿试炼选择结果(handler 写,无 chosen 观察读端)'),
     'chosen_fortune': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='命运卜者选择结果(chosen 写端未接线 = fields.md §4 先补档,'
-              '无 chosen 观察读端;建档在册 cw_fortune_picker.yml)'),
+        basis='命运卜者选择结果(chosen 写端未接入调用 = fields.md §4 先补档,'
+              '无 chosen 观察读端;建档已登记 cw_fortune_picker.yml)'),
     'chosen_hack': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='骇入策划选择结果(handler 写,暂无画面建档)'),
@@ -608,7 +608,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     'yingyue_cost_tier': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='飞光·映月策略赋予型景元当前费用档(纯逻辑态:拿卡拍初始写 '
-              '= cw_gain_effects 组合行 tier 腿 + 升星拍 = cw_env_grants.'
+              '= cw_gain_effects 组合行 tier 发放条目 + 升星拍 = cw_env_grants.'
               'check_env_merge_grants 合并升星入口;读口唯一 = cw_economy.'
               'effective_cost,与 lv999_cost_tier 角色互斥禁误并)'),
     # —— 结算 ——
@@ -621,9 +621,9 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         basis='hp 保底事件位(§3.5.3,纯观察登记无判据载体)'),
     'strategy_death_save_used': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='死亡救援一次性闩(藏一手;救援发放刻置位局内恒存,一次性'
+        basis='死亡救援一次性标志位(藏一手;救援发放刻置位局内恒存,一次性'
               '触发器「首次」簿记,None/False 均放行),无观察读端——救援'
-              '事件 live 由游戏自算自显(闩 live 零写零消费,双端不对称'
+              '事件 live 由游戏自算自显(一次性标志位 live 零写零消费,实机和模拟器两边不对称'
               '申报同族先例),唯一逻辑写端 = cw_gain_chain.'
               'take_strategy_death_save,唯一调用点 = sim 结算折算点'),
     'settlement_perfect_rescue': ProjectionAuditRow(
@@ -634,19 +634,19 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '不落快照),无观察读端——判定是模型推算知识(live 判据输入 '
               '= 结算环与部署观察面);唯一逻辑写端 = cw_env_grants.'
               'check_strategy_perfect_rescue(挂 settle_confirm 分支'
-              '改写先于消费,双端写;sim 结构性休眠恒 False 零接线申报;'
+              '改写先于消费,实机和模拟器两边写;sim 结构性休眠恒 False 零接入调用申报;'
               '消费端 = 两完胜判据行 hp 持平判定旁路,域规格 = fields.md '
               '§3.5.3b)'),
     # —— 派生域与画面上下文 ——
     'prev_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='实机 = 观察汇聚(observe_screen_context,R1 §3.1.4);'
-              'sim = _announce_screen 容器广播(evidence screen: 前缀,'
+              'sim = _announce_screen 状态容器广播(evidence screen: 前缀,'
               '值级豁免结算/大厅屏,迭代 2026-10-16-sim-screen-announce)'),
     'current_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='实机 = 观察汇聚(observe_screen_context);'
-              'sim = _announce_screen 容器广播(第二写点,'
+              'sim = _announce_screen 状态容器广播(第二写点,'
               '迭代 2026-10-16-sim-screen-announce)'),
     'top_bar_raw': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,

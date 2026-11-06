@@ -80,7 +80,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         payload=EconomyEffect(xp_click_surcharge_from_level=1,
                               xp_click_surcharge_from_level_at=8),
         duties=DutyFlags(predict=True),
-        notes='CwActionLevelUpParam 金面改写源:8级起每次购经验+1金;归属=逻辑写(确定性),写端未接线走观察覆盖'),
+        notes='CwActionLevelUpParam 金面改写源:8级起每次购经验+1金;归属=逻辑写(确定性),写端未接入调用走观察覆盖'),
     # 变宝为废:官方「每个位面开始时，首次合成的进阶装备会有50%的概率变成垃圾袋。」
     # 改写面 = 装备库存:随机 50% → 不建逻辑写端,观察收尾(归属判据:含概率/随机
     # 结果不可预知)。trigger=ON_MERGE(装备合成事件,与武力刷新同触发面;每位面
@@ -91,7 +91,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(first_merge_equip_junk=0.5),
         duties=DutyFlags(predict=True),
-        notes='装备库存改写源:每位面首次合成进阶装备50%变垃圾袋;随机面不建逻辑写,观察收口'),
+        notes='装备库存改写源:每位面首次合成进阶装备50%变垃圾袋;随机面不建逻辑写,只靠画面读数'),
     # 永久创伤:官方「我方小队生命值降低时，会减少等同于生命值降低值20%的生命上限，
     # 最多降低生命上限的60%。」hp_max 字段在 GameState 缺位(健康充值/成本控制/
     # 二极管/本词缀=来源四源,一并缺口申报)→ 观察收尾;数值仅建档不进经济分
@@ -100,7 +100,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         id='永久创伤', name='永久创伤', trigger=TriggerKind.CONDITIONAL,
         duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
         payload=EconomyEffect(hp_max_loss_pct_of_loss=20, hp_max_loss_cap_pct=60),
-        notes='hp_max 词缀源(来源枚举第四源):hp_max 字段缺位,观察收口;数值仅建档'),
+        notes='hp_max 词缀源(来源枚举第四源):hp_max 字段缺位,只靠画面读数;数值仅建档'),
 }
 
 #: 谓词命中但不建 EffectSpec 的词缀(豁免必须点名 + 理由,禁静默)。
@@ -236,7 +236,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
           'grant,轮首收入族同型,组合写归节点边界金结算载体 settle_node_'
           'boundary_gold)',
     '精密拆装扳手': '金面:重复获得拆装扳手改+1金(确定性→逻辑写;写端=贡献算术'
-                 'equip_wrench_duplicate_gold,组合写收口=settle_wrench_duplicate_'
+                 'equip_wrench_duplicate_gold,组合写收尾=settle_wrench_duplicate_'
                  'gold,获得回执时点窗口独占);装备归属面:∞次取下全装备回区,'
                  '使用面写端=动作上报 report:report_action_precision_wrench_use_'
                  'param(两笔逻辑写:回区+穿戴清空,工具不递减)',
@@ -244,21 +244,21 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
               'equip_acquire_hp,获得时点窗口独占,hp 写入闸辖——hp 未读跳过;'
               '现观察覆盖兜底)',
     '诅咒·阿瓦隆': '生命面:战斗结算−6小队生命(确定性;结算屏真值同拍已含该效果'
-                '——独立 logic 直写=双计/部分预测刷缺陷台账,观察收口;确定性'
+                '——独立 logic 直写=双计/部分预测刷缺陷台账,只靠画面读数;确定性'
                 '算术归 sim 真值面与战前决策消费)',
     '罪孽王冠': '生命面:战败扣双倍小队生命(确定性;损失幅度=战斗事实非独立可算'
-             '面——独立直写=部分预测刷缺陷台账,观察收口;确定性算术归 sim 真值'
+             '面——独立直写=部分预测刷缺陷台账,只靠画面读数;确定性算术归 sim 真值'
              '面与战前决策消费);注册表正文 OCR 截断(「扣除双倍小队」后残缺)',
-    '生命之环': '生命上限面:+15%(确定性→逻辑写候选);hp_max 字段缺位,观察收口'
+    '生命之环': '生命上限面:+15%(确定性→逻辑写候选);hp_max 字段缺位,只靠画面读数'
               '+缺口申报',
-    '生命之环·特权': '生命上限面:+30%(确定性→逻辑写候选);hp_max 字段缺位,观察'
-                 '收口+缺口申报',
+    '生命之环·特权': '生命上限面:+30%(确定性→逻辑写候选);hp_max 字段缺位,只靠画面读数'
+                 '+缺口申报',
     '诅咒·宝石剑泽尔里奇': '容量面:−1团队规模——deploy_cap 识别真值观察写端照常跟踪,'
-                      '效果侧不建 cap 改写(宝钻同款豁免;负写端=观察收口)',
+                      '效果侧不建 cap 改写(宝钻同款豁免;负写端=只靠画面读数)',
     '数据拷贝仪': '单位面:装备者每参与3战获自身1星复制(计数臂确定性→逻辑写;写端'
                '=桥 spawn_equip_bench_unit,成熟回执时点窗口独占;参与计数进度'
-               '载体=settle_copy_machine_participation(现值观察面=前台+后台在册'
-               '单位));任意获得30%概率臂随机→观察收口',
+               '载体=settle_copy_machine_participation(现值观察面=前台+后台已登记'
+               '单位));任意获得30%概率臂随机→只靠画面读数',
     '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥,'
                  '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 分支 = '
                  '获得后果(1星[口述·权威 2026-09-18],后果 = 装备数据行后果应用 '
@@ -285,7 +285,7 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
             '回调,产物后果候实机采证留证行 furnace_mutate_consequence_candidate)',
     '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变'
               '特权(确定性变换→逻辑写;映射=·特权后缀 36/36 全覆盖;写端=桥 '
-              'transform_equip_to_privilege 库存分支,本批接线 = 工具上报合并单笔'
+              'transform_equip_to_privilege 库存分支,本批接入调用 = 工具上报合并单笔'
               '消费(移除工具 ∧ 变换同笔,映射桥 privilege_counterpart;桥零写'
               '分支透传留证);拖角色入账分支按不能拖角色处理 fail-closed 留证[用户裁定 '
               '2026-09-21 候实机测试],穿域特权化桥 transform_worn_equip_to_'
@@ -294,15 +294,15 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
              'report:report_action_wrench_use_param,两笔逻辑写 = equips 合并'
              '(移除工具 ∧ 追加穿戴件)+ 行域穿戴清空);工具消耗品−1(合并同笔)',
     '干将莫邪': '装备面:战斗开始时投影随机进阶装备——战斗内临时面,非备战期装备库存'
-             '持久改写;观察收口',
-    '极·干将莫邪': '装备面:同干将莫邪(70%概率投影特权装备);观察收口',
-    '诅咒·干将莫邪': '装备面:投影同干将莫邪+进战斗前随机3件临时变简易(随机→观察收口)',
+             '持久改写;只靠画面读数',
+    '极·干将莫邪': '装备面:同干将莫邪(70%概率投影特权装备);只靠画面读数',
+    '诅咒·干将莫邪': '装备面:投影同干将莫邪+进战斗前随机3件临时变简易(随机→只靠画面读数)',
     '好运令牌': '装备面:拖拽后从四件推荐进阶装备选一件获得(选定后确定→逻辑写;写端'
              '=桥 grant_equip_item,选定回执时点窗口独占;现役原子通路消费真值归'
-             '观察,写端接线候工具上报形态)',
-    '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→观察收口;自动行为'
+             '观察,写端接入调用候工具上报形态)',
+    '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→只靠画面读数;自动行为'
              '写入类)',
-    '随便骰子·特权': '装备归属面:同随便骰子(填充特权装备;随机→观察收口)',
+    '随便骰子·特权': '装备归属面:同随便骰子(填充特权装备;随机→只靠画面读数)',
 }
 
 
@@ -358,7 +358,7 @@ def _validate_equip_write_sides() -> None:
        cw_action_report.tool_use 已登记(动作上报写端单一宿主,改名/删除
        即炸);op: 观测定义非空;observation 无载荷;
     ③ 实现形(bridge/contribution/report/op)申报 notes 必含「逻辑写」、
-       observation 形必含「观察收尾」——登记与归属申报互证,防单边漂移
+       observation 形必含「只靠画面读数」——登记与归属申报互证,防单边漂移
        (report: 随机面 write_logic_rand 属逻辑族随机写,同覆盖「逻辑写」)。
     覆盖完备性(扫描命中集 vs 申报表键集)归测试(模块 docstring「防漂移测试」)。
     """
@@ -370,15 +370,15 @@ def _validate_equip_write_sides() -> None:
     for name, side in EQUIP_WRITE_SIDES.items():
         notes = EQUIP_REWRITE_DECLARATIONS[name]
         if side == 'observation':
-            if '观察收口' not in notes:
-                raise ValueError(f'负写端行申报必含「观察收口」:{name!r}')
+            if '只靠画面读数' not in notes:
+                raise ValueError(f'负写端行申报必含「只靠画面读数」:{name!r}')
         elif side.startswith(('bridge:', 'contribution:')):
             fn = getattr(_effect_inventory, side.split(':', 1)[1], None)
             if not callable(fn):
                 raise ValueError(
                     f'写端目标在 cw_effect_inventory 不可解析:{name!r} → {side!r}')
             if '逻辑写' not in notes:
-                raise ValueError(f'落码形行申报必含「逻辑写」归属成文:{name!r}')
+                raise ValueError(f'已实现形行申报必含「逻辑写」归属成文:{name!r}')
         elif side.startswith('report:'):
             # 动作上报写端单一宿主 = cw_action_report.tool_use(函数内惰性
             # import:tool_use 依赖链经 cw_gain_chain/cw_game_state,与本
@@ -389,13 +389,13 @@ def _validate_equip_write_sides() -> None:
             fn = getattr(_tool_use, side.split(':', 1)[1], None)
             if not callable(fn):
                 raise ValueError(
-                    f'写端目标在 cw_action_report.tool_use 不在册:{name!r}'
+                    f'写端目标在 cw_action_report.tool_use 未登记:{name!r}'
                     f' → {side!r}')
             if '逻辑写' not in notes:
-                raise ValueError(f'落码形行申报必含「逻辑写」归属成文:{name!r}')
+                raise ValueError(f'已实现形行申报必含「逻辑写」归属成文:{name!r}')
         elif side.startswith('op:'):
             if not side[3:].strip():
-                raise ValueError(f'op 形写端必带既有锚:{name!r}')
+                raise ValueError(f'op 形写端必须指名既有 op:{name!r}')
             if '逻辑写' not in notes:
                 raise ValueError(f'op 形行申报必含「逻辑写」归属成文:{name!r}')
         else:

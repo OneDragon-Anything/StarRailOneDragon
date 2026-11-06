@@ -69,9 +69,9 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     # 修复池项 OPEN 维持待办登记(定案手段 = 实机 boss 掉血分布交叉核对,
     # 从未执行),复活须先「交叉核对定案→三形态标注→实现」全流程。
     ('equipment', 'endgame_context'): (
-        '谓词', '不旁路', 'D-P3 修复池项 OPEN 挂账不变(定谳手段 = '
-        '实机 boss 掉血分布对拍,从未执行),复活须先「对拍定谳→三形态'
-        '标注→落码」全流程'),
+        '谓词', '不旁路', 'D-P3 修复池项 OPEN 登记成待办不变(定案手段 = '
+        '实机 boss 掉血分布对拍,从未执行),复活须先「对拍定案→三形态'
+        '标注→已写进代码」全流程'),
     # —— criteria/contracts(R198 判据契约层;基础设施非判据,恒开)——
     ('contracts', 'ensure_contract'): (
         '谓词', '不旁路', 'R198(判据契约纪律,单一源=criteria/contracts.py;'

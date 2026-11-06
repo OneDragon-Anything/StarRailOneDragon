@@ -162,7 +162,7 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
 # 与已定案按 0(用户裁定,永驻本表,消费端语义相同)——以条目文案为准。
 ENV_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 刷新概率结构翻倍:概率面已在 cw_shop_odds 已登记,金等价参数化缺失
-    '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 在册);金等价参数化缺失',
+    '轮岗': '刷新概率结构翻倍(概率面 cw_shop_odds 已登记);金等价参数化缺失',
     # 估值按 0 定案:2★ 商店价结构已定案(merge_mechanics §2.6 ×3 实付),
     # sim 直出分支已建(kernel ENV_SHOP_TWO_STAR_DEAL_PROB,占位概率禁入估值)
     '人才下沉': '估值按 0 处理(2026-10-16 用户裁定:2★ 直出收益不计入现金分;'
@@ -380,7 +380,7 @@ def _validate_estimates_governance() -> None:
                 f"C 类哨兵条目缺变体映射(参数查询将恒 miss):{_env_name!r}")
     for _name in ENV_ECONOMY_PENDING_MODELING:
         if _name not in INVESTMENT_ENVS:
-            raise ValueError(f"待建模在册孤儿键(注册表无此环境):{_name!r}")
+            raise ValueError(f"待建模登记表孤儿键(注册表无此环境):{_name!r}")
         if _name in ENV_ECONOMY:
             raise ValueError(f"待建模环境与 ENV_ECONOMY 双登记:{_name!r}")
 

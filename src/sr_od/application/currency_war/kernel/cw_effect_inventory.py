@@ -725,7 +725,7 @@ def env_portal_effects() -> dict[str, EffectSpec]:
             notes='条件窗口:升8级后3节点每节点+12XP;期限排程已落地(载体 = 本条目'
                   'anchor_pos 达成位 + XP_GRANTED 单调计数,剩余计算侧导出;发放 = '
                   'kernel 发放桥 grant_effect_node_xp 节点边界每拍检查,达成当拍不计、'
-                  '后继 3 节点各计;主挂点 = 购买经验上报尾段记达成位)'),
+                  '后继 3 节点各计;主插入位置 = 购买经验上报尾段记达成位)'),
         # 每取一张策略 +2×已持有数(id 147):触发面 = 每次取投资策略,TriggerKind
         # 无 ON_PICK 值 → 占 CONDITIONAL + notes 声明(禁私加枚举值——触发词表
         # 扩值须同步插入位置面评审,登记端零消费不构成扩值依据)。
@@ -1093,7 +1093,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     if partial_read and refund > 0:
         log.warning(
             '[cw!][effect-bridge] 板面重写出售域部分读(deployed=%s'
-            '/bench=%s)→ 退款 %d 零写入等观察收口(§6.3 输入不完整)',
+            '/bench=%s)→ 退款 %d 零写入等观察读数(§6.3 输入不完整)',
             front is not None, view is not None, refund)
     if gs.gold.value is not None and refund > 0 and not partial_read:
         gs.write_logic(gs.gold, int(gs.gold.value) + refund,
@@ -1298,7 +1298,7 @@ def spawn_equip_bench_unit(gs: GameState, char_id: str, star: int,
     """
     if not 1 <= star <= 3:
         raise ValueError(f'star 须在 1..3(Unit 星级值域),得 {star}'
-                         '(星级未采证的单位禁走本桥,走观察收口)')
+                         '(星级未采证的单位禁走本桥,只靠画面读数)')
     if cost_gate > 0 and cost > cost_gate:
         return False
     view = gs.bench.value

@@ -142,8 +142,8 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         carrier_kind='buy_landed',
         sim_domain='实机先行',
         evidence_required=False,
-        prerequisite='触发口 on_outcome(CwActionBuyCardParam) 随 §6.4 执行器收编批成立'
-                     '(R-J 挂账在案),禁绕收编私接触发;payload 类型化槽位'
+        prerequisite='触发口 on_outcome(CwActionBuyCardParam) 随 §6.4 执行器纳入统一结构批成立'
+                     '(R-J 已登记待办在案),禁绕纳入统一结构的入口私接触发;payload 类型化槽位'
                      '(含买因槽候裁)随 H2',
         source='统一观察架构 §12.2 buy_landed 行'),
     'sell_landed': AnchorSpec(
@@ -166,14 +166,14 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         carrier_kind=None,
         sim_domain='实机先行',
         evidence_required=False,
-        prerequisite='触发口随 §6.4 执行器收编批成立(R-J);试验边界键显影'
+        prerequisite='触发口随 §6.4 执行器纳入统一结构批成立(R-J);试验边界键在日志里暴露'
                      '挂 H2;非单一 kind 载体的锚行落盘面候 H2 申报',
         source='统一观察架构 §12.2 refresh_landed 行'),
     'levelup_landed': AnchorSpec(
         anchor_id='levelup_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
         host='prep_actions._level_up 成功路径写点(现役 kind=level_up 行,'
-             '同点调 on_level_up 升级标记挂点)',
+             '同点调 on_level_up 升级标记插入位置)',
         carrier_kind='level_up',
         sim_domain='实机先行',
         evidence_required=False,
@@ -195,7 +195,7 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         anchor_id='node_enter',
         trigger_type=ANCHOR_TRIGGER_BOUNDARY,
         host='画面分派点(cw_loop 外循环分派,进节点分派时点;现役 '
-             'node_enter 写点 = 战斗结算后仅辖战斗节点,待收编)',
+             'node_enter 写点 = 战斗结算后仅辖战斗节点,待纳入统一结构)',
         carrier_kind='node_enter',
         sim_domain='实机先行',
         evidence_required=False,
@@ -210,8 +210,8 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         carrier_kind='plane_enter',
         sim_domain='实机先行',
         evidence_required=False,
-        prerequisite='boundary 触发口候 H6;过渡相位表收编(§3.4)为宿主'
-                     '接线前提',
+        prerequisite='boundary 触发口候 H6;过渡相位表并入统一结构(§3.4)为宿主'
+                     '接入调用前提',
         source='统一观察架构 §12.2 plane_enter 行'),
     'settlement': AnchorSpec(
         anchor_id='settlement',
@@ -222,8 +222,8 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
         sim_domain='实机先行',
         evidence_required=False,
         prerequisite='boundary 触发口候 H6(H6 候选①的例外样本);候选值随 '
-                     'H2;效果账本结算挂点(on_battle_end)接线 = 本锚组成'
-                     '部分(记录模型设计 §5.1 挂账收敛)',
+                     'H2;效果账本结算插入位置(on_battle_end)接入调用 = 本锚组成'
+                     '部分(记录模型设计 §5.1 待办收敛)',
         source='统一观察架构 §12.2 settlement 行'),
 }
 
@@ -327,7 +327,7 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
     if spec is None:
         raise ValueError(
             f'锚 {anchor_id!r} 未入 ANCHOR_REGISTRY(集外锚 = 红,§12.2 '
-            f'封闭集:新锚先登记再接线;在册 = {sorted(ANCHOR_REGISTRY)})')
+            f'封闭集:新锚先登记再接入调用;已登记 = {sorted(ANCHOR_REGISTRY)})')
     if scope not in ANCHOR_SCOPES:
         raise ValueError(
             f'scope {scope!r} 不在口径域封闭值域内(合法 = '

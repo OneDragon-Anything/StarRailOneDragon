@@ -213,58 +213,58 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # 策略侧估值通道未建(两字段归 _PENDING_MODELING_FIELDS 待建模分类
     # 塌 0,激活归估值批)
     '固定理财': '位面段估值通道未建(xp_per_plane/free_refresh_per_plane'
-               '待建模分类塌 0);即时段与位面段世界发放腿均已建',
+               '待建模分类塌 0);即时段与位面段把结果写进状态副本的发放分支均已建',
     '固定理财+': '位面段估值通道未建(xp_per_plane/free_refresh_per_plane'
-                '待建模分类塌 0);即时段与位面段世界发放腿均已建',
+                '待建模分类塌 0);即时段与位面段把结果写进状态副本的发放分支均已建',
     # 公司严选:官方「现在及每个位面开始时，开启一个由5个独特4费角色组成
     # 的商店，并获得3金币」——即时段 instant_gold 面值已计分(现金通道);
     # 位面段金与商店改写对已挂值、状态副本发放效果条目已建(sim 位面首节点窗金效果条目/
     # 改写效果条目 + 选卡拍改写效果条目/补发双效果条目,改写 = 呈现面效果条目非现金流);估值通道
     # 未建(三字段待建模分类塌 0,激活归估值批)
     '公司严选': '位面段估值通道未建(gold_per_plane/shop_rewrite_forced_'
-               'cost/unique 待建模分类塌 0);即时段面值已计分,位面段世界'
-               '发放腿均已建',
+               'cost/unique 待建模分类塌 0);即时段面值已计分,位面段把结果写进状态副本的'
+               '发放分支均已建',
     # 孪生素数:首购计数经验分支(2/3/5/7/11——XP_GOLD_RATE 下数值与金同),
     # 字段全缺省 = 纯无字段分支( EconomyEffect(xp_instant=0) 全默认)
-    '孪生素数': '首购经验腿已建世界通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',
+    '孪生素数': '首购经验发放已建状态副本写入通道 STRATEGY_FIRST_BUY_XP_GRANTS;估值零登记维持',
     # 藏一手:死亡救援触发卡(用户裁定奖励随救援触发当场发放,注册行全默认);
     # 奖励载荷单一源 =
     # cw_investments.STRATEGY_DEATH_SAVE_GRANTS 把结果写进状态副本的实现分支
     # 已建(sim 结算折算点救援发放),救援价值不进经济分(归策略立场域,后继批立项)
-    '藏一手': '救援奖励腿已建世界通道 STRATEGY_DEATH_SAVE_GRANTS(随救援触发);'
+    '藏一手': '救援奖励发放已建状态副本写入通道 STRATEGY_DEATH_SAVE_GRANTS(随救援触发);'
               '估值零登记维持(救援价值归策略立场域,后继批立项)',
     # 空仓:节点条件 XP 效果条目(物品栏+备战席无装备〔消耗品除外〕每节点 +2)
     # 已建状态副本侧通道 = cw_investments.STRATEGY_EMPTY_EQUIP_XP_GRANTS + kernel
     # 纯判定 + sim 节点窗插入位置;即时效果条目 1 件随机简易 = cw_gain_effects 随机
     # 装备族泛化表(零估值面,无具名 gift);条件流挂 xp_per_node 无条件
     # 通道 = 系统性失真(孪生素数同判),STRATEGY_ECONOMY 零条目维持
-    '空仓': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
+    '空仓': '空仓经验发放已建状态副本写入通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
     # 空仓+:即时 10XP 走 xp_instant 通道(现金分自动激活),窗效果条目 2XP 同空仓
     # 谓词,装备效果条目 1 件简易同泛化表;估值零登记维持(随机装备不可具名)
-    '空仓+': '空仓经验腿已建世界通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
+    '空仓+': '空仓经验发放已建状态副本写入通道 STRATEGY_EMPTY_EQUIP_XP_GRANTS;估值零登记维持',
     # 人才空洞:节点条件 XP 效果条目(备战席角色 ≤4 名每节点 +3)已建状态副本侧通道 =
     # cw_investments.STRATEGY_BENCH_COUNT_XP_GRANTS + kernel 纯判定 +
     # sim 节点窗插入位置;条件流挂 xp_per_node 无条件通道 = 系统性失真
     # (空仓同判),STRATEGY_ECONOMY 零条目维持
-    '人才空洞': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
+    '人才空洞': '备战席计数经验发放已建状态副本写入通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
 
-    '人才济济': '备战席计数经验腿已建世界通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
+    '人才济济': '备战席计数经验发放已建状态副本写入通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
     # 愚者恶作剧:双效果条目分治——离场金效果条目(备战席 1星花火/火花进节点留 2/4 金
     # 离场)已建状态副本侧通道 = cw_investments.STRATEGY_BENCH_LEAVE_GOLD_GRANTS
     # + kernel 纯判定 + sim 节点窗插入位置;商店变形效果条目(2/4 费 20% 变花火/火花)
     # = 随机资产面零建模申报(effect-domain §6.4 用户裁定直辖,市场活力
     # 同型,live 观察覆盖,sim 收益面低估);估值零登记维持
-    '愚者恶作剧': '离场金腿已建世界通道 STRATEGY_BENCH_LEAVE_GOLD_GRANTS;'
-              '商店变形腿随机资产面零建模申报(观察覆盖);估值零登记维持',
+    '愚者恶作剧': '离场金发放已建状态副本写入通道 STRATEGY_BENCH_LEAVE_GOLD_GRANTS;'
+              '商店变形分支随机资产面零建模申报(观察覆盖);估值零登记维持',
     # 赞美太阳:节点条件 XP 效果条目(每拥有一件【白昼装备】以及其原型装备,
     # 进入新节点每件 +1)已建状态副本侧通道 = cw_investments
     # .STRATEGY_EQUIP_COUNT_XP_GRANTS(计数域 = DAYLIGHT_EQUIP_XP_NAME_SET
     # 白昼系名集)+ kernel 纯判定 + sim 节点窗插入位置;动态计数挂 xp_per_node
     # 无条件通道 = 系统性失真(零拥有局虚计/多件局漏计,空仓/人才空洞
     # 同判),STRATEGY_ECONOMY 零条目维持
-    '赞美太阳': '装备计数经验腿已建世界通道 STRATEGY_EQUIP_COUNT_XP_GRANTS;'
+    '赞美太阳': '装备计数经验发放已建状态副本写入通道 STRATEGY_EQUIP_COUNT_XP_GRANTS;'
               '估值零登记维持',
     # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
     # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
@@ -277,37 +277,37 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # —— 注册表外经济语义卡代表例(economy 未注册但 research 已登记明列
     # 经济结构 = 建模待修问题形态,按无已建模机械成分 0 分申报低估;
     # invest_effects 批 3/4 已登记,禁凭 research 记载凭直觉给分)——
-    '被动收入': '每节点 XP 经验腿已建世界通道 STRATEGY_BENCH_LEFT_COST_XP_GRANTS;估值零登记维持'
+    '被动收入': '每节点 XP 经验发放已建状态副本写入通道 STRATEGY_BENCH_LEFT_COST_XP_GRANTS;估值零登记维持'
                '大于买断制现金流),无字段载体',
     '气氛组': '战斗结束按 0 伤害角色数给 XP,无字段载体',
-    '气氛组+': '战斗结束按 0 伤害角色数给 XP 腿无字段载体(同气氛组);'
-              '即时 XP 腿已挂 xp_instant=8',
+    '气氛组+': '战斗结束按 0 伤害角色数给 XP 的分支无字段载体(同气氛组);'
+              '即时 XP 发放已挂 xp_instant=8',
     '存款回报': '条件免费刷新分支已建模(free_refresh_cond_prev_node_unspent=2,'
               '发放经节点桥,载体在 cw_investments.STRATEGY_ECONOMY);'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS 刷新族',
     '招财狗': '战斗胜利未损血 → 每佩佩 1 金(轨迹依赖:佩佩数×不败率),'
              '无字段载体',
     '免战牌': '跳过机制分支无经济字段载体(省一场战斗的价值面不折现,'
-             '世界面已建 = sim battle_skip 消费通道);即时 XP 腿已挂 '
+             '状态副本这一侧已建 = sim battle_skip 消费通道);即时 XP 发放已挂 '
              'xp_instant=30(现金计分)',
     # 合并同类项:金效果条目 = 刷新出对条件金(gold_per_refresh_pair,登记形态
     # 等值迁移自 instant_gold);burst 4 刷效果条目已建模(获得链登记效果条目发放),
     # 不列缺口。估值 fail-closed 申报句形态照现役值句。
-    '合并同类项': '刷新出对条件金腿(gold_per_refresh_pair)频次分布未采,'
+    '合并同类项': '刷新出对条件金发放(gold_per_refresh_pair)频次分布未采,'
                  '估值 fail-closed=0',
     # 大裁员:卖全场退款效果条目 = 无字段载体(退款额依赖场上构成,非估值常量;
     # 出售面状态副本侧通道已建 = STRATEGY_EFFECTS 条目登记效果条目双桥);×2 卖价修饰
     # 挂 sell_price_mult(待建模字段分类塌 0),施于净额/基础价口径待实采
     # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前状态副本侧退款按
     # 基础公式记(sim 低估申报制)。
-    '大裁员': '卖全场退款腿无字段载体(依赖场上构成,非估值常量);'
+    '大裁员': '卖全场退款分支无字段载体(依赖场上构成,非估值常量);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
     # 降本增效:免费购买效果条目已建(uses 载体 duration_uses=6,状态副本侧通道 =
     # STRATEGY_EFFECTS 条目 + 买牌上报免费闸);估值未入现金通道(免
     # 费省下的购牌金依赖后续购买行为,轨迹依赖族);×2 卖价修饰同大裁员
     # (sell_price_mult 轨迹依赖族待建模,施径口径待实采)。
-    '降本增效': '免费购买腿(6 次,uses 载体已建,估值未入现金通道);'
+    '降本增效': '免费购买分支(6 次,uses 载体已建,估值未入现金通道);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
 }
@@ -461,9 +461,9 @@ def _validate_pending_modeling_registry() -> None:
     (29 号稿 §2.1)人工对账兜底。"""
     for _name in STRATEGY_ECONOMY_PENDING_MODELING:
         if _name not in INVESTMENT_STRATEGIES:
-            raise ValueError(f"待建模在册孤儿键(注册表无此卡):{_name!r}")
+            raise ValueError(f"待建模登记表孤儿键(注册表无此卡):{_name!r}")
         if not STRATEGY_ECONOMY_PENDING_MODELING[_name]:
-            raise ValueError(f"待建模在册空描述:{_name!r}")
+            raise ValueError(f"待建模登记表空描述:{_name!r}")
     # ③ 全默认 economy 条目必须已登记(现仅孪生素数,直调亲核)
     _default_eff = EconomyEffect()
     _all_default = {n for n, eff in STRATEGY_ECONOMY.items()
