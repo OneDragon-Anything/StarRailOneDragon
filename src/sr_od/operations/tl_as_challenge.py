@@ -221,12 +221,11 @@ class TlAsTeamFillOp(SrOperation):
         list_open = self.round_by_find_area(
             image, _TEAM_SCREEN, '列表-角色列表页签').is_success
 
-        # 行选中守卫:点卡落在「当前选中的行」,清空节点末尾留下的选中行不一定是
-        # 目标行——每行第一个角色填充前必须重新选中目标行。状态机三步:
-        # 遗留展开(非本行)→ 收起;收起态 → 点目标行槽位 1(展开+选中一步到位);
-        # 点了槽位后以页签复验展开是否生效,未生效则重试。
-        # 收起手法分派:星启 = 点目标行槽位(右上箭头在 04 = 关闭编队屏,不可用);
-        # 双节点 = 点右上收起箭头。
+        # 行选中守卫(星启简化版):清空后全部槽位为空,点任何行槽位都无移除
+        # 风险,统一「点目标行槽位 → 复验展开」收敛:
+        # 收起态点 = 展开+选中;展开态且目标行=选中行 = 空槽无操作(选中已正确);
+        # 展开态且目标行≠选中行 = 收起列表,下轮再点 = 展开+选中。
+        # (双节点版本保留原三步守卫:展开态收起走右上箭头,该语义已实机验证。)
         if not self._row_selected:
             if self._awaiting_expand:
                 if list_open:
@@ -236,15 +235,6 @@ class TlAsTeamFillOp(SrOperation):
                     return self.round_wait(f'行 {row_no} 展开复验通过', wait=0.5)
                 self.ctx.controller.click(row_slot_point, press_time=0.15)
                 return self.round_wait(f'选中行 {row_no}(重试)', wait=1.5)
-            if list_open:
-                # 星启收起 = 点目标行槽位(右上箭头在 04 布局 = 关闭编队屏,
-                # 不可用);双节点 = 点右上收起箭头(实测语义)。
-                if self._arc_mode:
-                    self._click_area_center(
-                        _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[row_no])
-                else:
-                    self.ctx.controller.click(Point(1862, 68), press_time=0.15)
-                return self.round_wait('收起遗留展开的列表', wait=1.2)
             self.ctx.controller.click(row_slot_point, press_time=0.15)
             self._awaiting_expand = True
             return self.round_wait(f'选中行 {row_no}(待展开复验)', wait=1.5)
@@ -354,7 +344,8 @@ class TlAsTeamFillOp(SrOperation):
             self._row_selected = False
             if self._row_idx < len(self.teams):
                 if self._arc_mode:
-                    # 星启:展开态点他行槽位 = 仅收起列表,下轮守卫重新展开目标行
+                    # 星启:点下一行槽位两连(收起+重展开选中),由守卫复验收敛;
+                    # 清空后槽位全空,点击无移除风险
                     self._click_area_center(
                         _TEAM_SCREEN, _ARC_ROW_SLOT_AREAS[self._row_idx + 1])
                 else:
