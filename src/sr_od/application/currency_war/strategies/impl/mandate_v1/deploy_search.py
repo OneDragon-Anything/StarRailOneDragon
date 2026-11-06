@@ -46,7 +46,10 @@ from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_bond_equips import (
     unit_bond_tags,
 )
-from sr_od.application.currency_war.kernel.cw_comps import parse_char_position
+from sr_od.application.currency_war.kernel.cw_comps import (
+    carry_anchor,
+    parse_char_position,
+)
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     _bonds_named,
     board_unique_key,
@@ -76,7 +79,14 @@ if TYPE_CHECKING:
 
 # ===== 隔离常量(结构编码非标定:层间隔 10³ 数量级,语义 = 「高层任意
 # ===== 正分 > 低层满分」,区间内变动行为零变——unified-deploy-order §1)=====
-_L1_SCALE: float = 1_000_000_000.0    # L1 主目标羁绊满分域
+# L1 两层支配编码(required-deployed-retirement §2.2-1):named 层
+# (点名件在场率)×10⁹ 严格支配档位层 ×10⁸——层间 10 倍域差承载「任何
+# 满点名件板恒压任何缺点名件板」(原 required 灭零的防形态,跨线 argmax
+# 等价),L1 域顶随之 = 1.1×10⁹(named 满 + 档位满)。层间严格性的数据
+# 边界 = 过渡 core 规模 m ≤ 9(建库断言钉住)。
+_L1_NAMED_SCALE: float = 1_000_000_000.0   # L1 named 层(点名件在场率)满分域
+_L1_TIER_SCALE: float = 100_000_000.0      # L1 档位层(羁绊完成度)满分域
+_L1_SCALE: float = 1_000_000_000.0         # L1 空羁绊线 members 承载支满分域(仅锁定窗,同 10⁹ 数值不同语义)
 _L2_SCALE: float = 1_000_000.0        # L2 锁定非核心满分域(仅锁定窗)
 # L3 单位序(用户裁定 2026-10-30):buff/debuff(×3) > 万金油(×2) > 其他(×1)
 _L3_BUFF_DEBUFF: int = 3
@@ -210,9 +220,11 @@ def selection_score(panel: DeploySearchPanel,
     DP 组得分只是候选生成内部度量,本函数才是最终板面分,D7 补问 5)。
 
     返回 (L1, L2, L3) 三层分数(层间数量级隔离,调用方字典序承载):
-    - L1 = 加权平均 of f(角色完成度 × 档位完成度)× 10⁹,权重 = 目标
-      档激活人数;分族分支(空羁绊线 core∪shared 口径/required 逐名
-      折条)见函数体;
+    - L1 = 两层支配编码:named 层(点名件在场率,统一表达式 = 锚/core,
+      与 form_progress 同式)× 10⁹ + 档位层(加权平均 of f(角色完成度 ×
+      档位完成度),权重 = 目标档激活人数)× 10⁸——层间域差保证任何满
+      点名件板恒压任何缺点名件板;分族分支(空羁绊线 core∪shared
+      口径,保持 10⁹ 归一域)见函数体;
     - L2 = 加分层档位完成度加权平均 × 10⁶(仅锁定窗;键集 = 仅
       ``bonus_faction_reqs``——flex_factions 恒 L3,D3-1);
     - L3 = 计数制单位序(羁绊键按已达档、万金油按件)。
@@ -221,9 +233,10 @@ def selection_score(panel: DeploySearchPanel,
     names = {u.char_id for u in units}
     locked = panel.locked
 
-    # ---- L1(主目标羁绊层)----
-    l1_num = 0.0
-    l1_den = 0
+    # ---- L1(主目标羁绊层;两层支配编码:named 层 ×10⁹ 严格支配档位
+    # ---- 层 ×10⁸——原 required 灭零特判的防形态「缺点名件板不得
+    # ---- 赢满点名件板」由层间域差承载,层内各留连续比较面)----
+    l1 = 0.0
     comp: Comp | None = None
     groups: tuple[tuple[str, ...], ...] = ()
     if locked:
@@ -237,39 +250,48 @@ def selection_score(panel: DeploySearchPanel,
             # 裸键组(无 Comp 上下文;生产不再产裸键——过渡条目
             # 与终局线均以 Comp 入枚举)。
             groups = tuple((k,) for k in line_keys)
-    if comp is not None or groups:
-        required = tuple(comp.required_deployed or ()) \
-            if comp is not None else ()
-        if required and not all(r in names for r in required):
-            l1_den = 1   # required 逐名折条:缺名 → 该线 L1 = 0
-        elif groups:
-            for group in groups:
-                best_f = 0.0
-                best_w = 1
-                for k in group:
-                    if comp is not None and k in comp.core_faction_reqs:
-                        # Comp 条目键(终局候选/终局锁定/过渡条目同构:
-                        # 档位完成度经注册表档序)。
-                        head = int(comp.core_faction_reqs.get(k, 1))
-                        w = max(head, 1)
-                        tier_target = _fallback_tier_index(k, head)
-                        ach = _achieved_tiers(k, counts.get(k, 0))
-                        tier_done = ach / max(tier_target, 1)
-                        char_done = min(counts.get(k, 0) / max(head, 1), 1.0)
-                        f = char_done * tier_done
-                    if f * w > best_f * best_w:
-                        best_f, best_w = f, w
-                l1_num += best_f * best_w
-                l1_den += best_w
-        elif locked and comp is not None:
-            # 空羁绊线(反甲流档 0 空 ∧ factions=[]):L1 由角色
-            # 完成度单独承载(b≡1),分母 = core∪shared 总数、分子 =
-            # 其在场数(D2-3 修订——羁绊族口径对该线无源,改阵容成员
-            # 口径)。
-            members = set(comp.members)
-            l1_den = max(len(members), 1)
-            l1_num = float(len(members & names))
-    l1 = (l1_num / l1_den) * _L1_SCALE if l1_den else 0.0
+    if groups:
+        l1_num = 0.0
+        l1_den = 0
+        for group in groups:
+            best_f = 0.0
+            best_w = 1
+            for k in group:
+                if comp is not None and k in comp.core_faction_reqs:
+                    # Comp 条目键(终局候选/终局锁定/过渡条目同构:
+                    # 档位完成度经注册表档序)。
+                    head = int(comp.core_faction_reqs.get(k, 1))
+                    w = max(head, 1)
+                    tier_target = _fallback_tier_index(k, head)
+                    ach = _achieved_tiers(k, counts.get(k, 0))
+                    tier_done = ach / max(tier_target, 1)
+                    char_done = min(counts.get(k, 0) / max(head, 1), 1.0)
+                    f = char_done * tier_done
+                if f * w > best_f * best_w:
+                    best_f, best_w = f, w
+            l1_num += best_f * best_w
+            l1_den += best_w
+        tier_rate = (l1_num / l1_den) if l1_den else 0.0
+        # named 层(点名件在场率;独立分子分母,不进档位层加权平均
+        # ——与 form_progress 统一表达式同式:锚非空取单锚,否则 core
+        # 全员;裸键组无 Comp 上下文 → 无点名件,named_rate = 0)。
+        anchor = carry_anchor(comp) if comp is not None else ''
+        named = (anchor,) if anchor else (
+            tuple(comp.core_chars) if comp is not None else ())
+        named_rate = (sum(1 for n_ in named if n_ in names)
+                      / len(named)) if named else 0.0
+        l1 = named_rate * _L1_NAMED_SCALE + tier_rate * _L1_TIER_SCALE
+    elif locked and comp is not None:
+        # 空羁绊线(反甲流档 0 空 ∧ factions=[]):L1 由角色
+        # 完成度单独承载(b≡1),分母 = core∪shared 总数、分子 =
+        # 其在场数(D2-3 修订——羁绊族口径对该线无源,改阵容成员
+        # 口径)。保持 10⁹ 归一域原样(锁定窗单线无跨线比较面,
+        # 免动 margin 遥测/快照域);不挂 named 层——members 分子
+        # 已含锚(锚 ∈ members,建库断言③),挂则双计。
+        members = set(comp.members)
+        l1_den = max(len(members), 1)
+        l1_num = float(len(members & names))
+        l1 = (l1_num / l1_den) * _L1_SCALE
 
     # ---- L2(锁定线非核心羁绊层;键集 = 仅 faction_reqs 档 ≥1 合并
     # ---- (bonus_faction_reqs),D3-1)----
@@ -480,20 +502,23 @@ def search_deploy_target(panel: DeploySearchPanel,
     def _pool_of(keys: tuple[str, ...],
                  member_names: frozenset[str]) -> list[SearchUnit]:
         """体系/线骨架件池:羁绊标签 ∩ 键系 ∪ 线名单成员,骨架内按
-        选件序排序(**锁定线核心优先、逐档**,§2 段 1:required >
-        core > shared > 标签件——骨架优先圈 engine_required 铁三角
-        形态由成员序承载)。"""
+        选件序排序(**锁定线核心优先、逐档**,§2 段 1:锚 >
+        core > shared > 标签件——骨架优先圈锚(engine carry)形态
+        由成员序承载;锚层可达性由建库断言③钉住)。"""
         comp = panel.locked_comp if panel.locked else None
-        req = tuple(comp.required_deployed or ()) if comp is not None else ()
+        anchor = carry_anchor(comp) if comp is not None else ''
         core = set(comp.core_chars) if comp is not None else set()
         pool = [u for u in panel.units
                 if (_bonds_named(u.char_id) & set(keys)
                     or u.char_id in member_names)]
 
         def _line_rank(u: SearchUnit) -> int:
+            # 圈人分层仅锁定窗生效(未锁定窗恒 2——锚/core 取自
+            # locked_comp,未锁定帧无锁定线承载;锚空不命中——
+            # 合法 char_id 恒非空串)。
             if not panel.locked:
                 return 2
-            if u.char_id in req:
+            if u.char_id == anchor:
                 return 0
             if u.char_id in core:
                 return 1
@@ -796,6 +821,10 @@ def search_deploy_target(panel: DeploySearchPanel,
                 if _winner[2][_i] != _chal[2][_i]:
                     _layer, _gap = _i + 1, _winner[2][_i] - _chal[2][_i]
                     break
+            # layer_gap 数值语义(required-deployed-retirement 后):首异层
+            # 为 L1 时 = named 层(×10⁹)与档位层(×10⁸)的混合差——数值
+            # 落 10⁹ 段 = 点名件在场率差,10⁸ 段 = 档位完成度差(同
+            # named_rate 板间),遥测判读按段拆语义。
             margin_out.update(runner_up=_chal[3], first_diff_layer=_layer,
                               layer_gap=_gap)
     members, rows = best_out

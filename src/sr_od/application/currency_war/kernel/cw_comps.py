@@ -130,15 +130,11 @@ class Comp:
     #  条目无解析器 = 纯零行为字段;万敌禁盾教义归 final_comps 文档层,装备
     #  禁忌否决门若立项按统一维度另建——判例 = equip-taboos-retirement〕。)
 
-    # required_deployed 缺省空 = 行为不变。写方 = 终局条目直写(希儿量子)
-    # 与过渡组合条目生成期显式填(_build_transition_combos)。判定/进度
-    # 唯一折法 = ``form_progress``(单一源契约 fp=1.0 ⟺ 成型谓词),禁
-    # 消费位绕过自写内联判定(判据单一源契约)。
-    required_deployed: tuple[str, ...] = ()
-    """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
-    成型判据第一合取支「希儿在场」(transition_combos.md:27)。空 = 无
-    carry 条件。进度折法:逐名折一条 0/1 虚拟分支(在板=1 否则 0);state
-    缺 deployed 视图的轻量假想面板按 0 计(保守向,缺读≠满成)。"""
+    # (旧 required_deployed 字段〔carry 在场条件:点名件逐一在板〕已整
+    #  字段退役〔2026-11-06:「点名件在场」判据改锚体系承载——终局单锚
+    #  (carry_anchor)/过渡 core 全员,统一表达式消费位 = form_progress
+    #  折条 + 部署 L1 named 层 + 圈人锚层,「评分外硬约束补丁」教训判例
+    #  见该迭代 design §2.5——判例 = required-deployed-retirement〕。)
 
     # ===== 知识卡字段(选线/升级的共用知识地基;设计口径 =
     # strategy-docs/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
@@ -575,7 +571,6 @@ COMP_LIBRARY: list[Comp] = [
             # 机理),不到档 0 成型定义强度(对比量子/贝 96%+)。
             1: {"战技点": 2, "治疗": 2},
         },
-        required_deployed=("希儿",),   # 成型判据第一合取支「希儿在场」,到手即开线
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
@@ -1149,12 +1144,11 @@ TRANSITION_COMBO_PARTS: dict[str, tuple[str, str]] = {}
 def _build_transition_combos() -> list[Comp]:
     """建库期组合条目生成器:``TRANSITION_BONDS`` 两两组合 → C(n,2) 条 Comp。
 
-    字段合并规则:core/required = 两块点名件保序去重(希儿双修两块点名
+    字段合并规则:core = 两块点名件保序去重(希儿双修两块点名
     合并为一人);档 0 = 两块键 AND(五块 bond 互斥,无键冲突——校验②);
     need_star = 两块星级目标合批;其余 Comp 字段缺省空(过渡语义 =
     低门槛快锁,过渡条目只填档 0;档位推进属「成型后的场况插件」,归
-    部署/买牌机器状态驱动,不预枚举)。生成期显式填 required_deployed
-    (点名件全部在板),旧建库自动填循环随之退役。
+    部署/买牌机器状态驱动,不预枚举)。
     """
     out: list[Comp] = []
     for a, b in itertools.combinations(TRANSITION_BONDS, 2):
@@ -1165,7 +1159,6 @@ def _build_transition_combos() -> list[Comp]:
             name=name,
             core_chars=core,
             faction_reqs={0: {a.bond: a.tier, b.bond: b.tier}},
-            required_deployed=tuple(core),
             need_star={n: s for blk in (a, b) for n, s in blk.need_star},
         ))
     return out
@@ -1277,6 +1270,52 @@ def carry_set(comp: Comp) -> set[str]:
     return ({anchor} if anchor else set()) | set(comp.core_chars)
 
 
+def _validate_anchor_invariants() -> None:
+    """锚体系 import 期防线(required-deployed-retirement §2.1/§2.2;
+    非法 raise ValueError)。
+
+    点名件统一表达式(锚/core)的四条数据前提,手改库/fallback 表/生成器
+    破坏约定即炸:
+    ① COMP_LIBRARY 全线 carry_anchor 非空——终局点名件 = 单锚,
+       fp 折条/部署 named 层的「named = (anchor,)」半边数据前提;
+    ② TRANSITION_LIBRARY 全条目 carry_anchor 为空——过渡点名件 =
+       core 全员(结构保证:combo 名含 '+'、fallback 键不含过渡条目
+       名,本条防手改漂移静默翻转);
+    ③ 锚 ∈ members ∨ 锚羁绊(注册表 factions∪flows)∩ 档 0 键 ≠ ∅
+       ——锚层可达性:部署圈人池(羁绊标签 ∩ 键系 ∪ 成员名单)至少
+       一半边能圈到锚,断言防「锚进不了池 → named 恒 0 → 部署静默
+       空转」的数据漂移;
+    ④ 过渡条目 core 规模 ≤ 9——部署 L1 两层支配编码的层间严格性
+       数据边界(m=10 两层平局/m≥11 翻转;现状 m∈{1..5})。
+    """
+    for comp in COMP_LIBRARY:
+        anchor = carry_anchor(comp)
+        if not anchor:
+            raise ValueError(f'{comp.name}: 终局线 carry_anchor 为空'
+                             '(点名件统一表达式的单锚半边失源)')
+        if anchor in set(comp.members):
+            continue
+        ch = CHARACTERS.get(anchor)
+        anchor_bonds = (set(ch.factions) | set(ch.flows)) \
+            if ch is not None else set()
+        if not anchor_bonds & set(comp.core_faction_reqs):
+            raise ValueError(
+                f'{comp.name}: 锚 {anchor} 不可达(∉ members 且锚羁绊'
+                '不交档 0 键——圈人池圈不到锚)')
+    for comp in TRANSITION_LIBRARY:
+        if carry_anchor(comp):
+            raise ValueError(f'{comp.name}: 过渡条目 carry_anchor 应为空'
+                             '(过渡点名件 = core 全员)')
+        if len(comp.core_chars) > 9:
+            raise ValueError(
+                f'{comp.name}: core 规模 {len(comp.core_chars)} > 9'
+                '(L1 两层编码层间严格性边界:满点名件板恒压缺点名件板'
+                '在 m≤9 时成立)')
+
+
+_validate_anchor_invariants()
+
+
 # (旧 char_lock_hit/strategy_lock_hit 锁定判定原语已随 lock_rules 字段整字段
 #  退役删除〔统一阵容评分迭代,2026-11-03:全部即时锁退役,锁定 = P2 时点
 #  兜底唯一路径〕——角色/策略到手的线关联由线分证据分量(carry_set)与
@@ -1362,26 +1401,33 @@ def _owned_chars(gs: GameState) -> set[str]:
 
 
 def form_progress(comp: Comp, gs: GameState) -> float:
-    """成型度 0..1:档 0 各羁绊进度的均值 + required 逐名 0/1 折条的均值。
+    """成型度 0..1:档 0 各羁绊进度的均值 + 点名件逐名 0/1 折条的均值。
 
     comp_viability 先验用的 helper;纯阵营羁绊,不含角色(避免与 char_quality 三重计分)。
     入参 = 状态容器视图(决策面切统一状态容器;假想面板轻量桩只需提供
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
-    单一源契约:fp = 1.0 ⟺ 档 0 全键达标 ∧ required_deployed 全在板。
-    档 1 不进(加分层归部署次层/采购面)。``required_deployed`` 逐名折
-    一条 0/1 虚拟分支(在板=1;入参无 deployed 视图(轻量假想面板)
-    按 0 计 = 保守向,缺读≠满成),并经 ``getattr`` 缺省空读(真实 Comp
-    恒有字段;测试鸭型桩与旧序列化载体按「无 carry 条件」解释,与空
-    字段同值,不炸)。
-    档 0 空(非羁绊成型阵容,如反甲白厄)→ fp 恒 0(装备流走轮数兜底)。
+    单一源契约:fp = 1.0 ⟺ 档 0 全键达标 ∧ 点名件在场。点名件 =
+    统一表达式(与部署 L1 named 层同式):``carry_anchor`` 非空取单锚
+    (终局线),否则 core 全员(过渡条目)——锚源是统计字段(plaza_carry
+    聚类 + fallback),版本重跑换锚 → fp/锁定/部署语义随之变(carry_anchor
+    体系固有性质,fp 为敏感消费之一)。档 1 不进(加分层归部署次层/采购面)。
+    点名件逐名折一条 0/1 虚拟分支(在板=1;入参无 deployed 视图(轻量
+    假想面板)按 0 计 = 保守向,缺读≠满成)。
+    ⚠️ 旧 ``getattr(comp, 'required_deployed', ...)`` 鸭型桩容忍已随
+    字段退役撤销(旧桩缺该属性按「无 carry 条件」解释的承诺失效):
+    测试桩须按本表达式属性面(plaza_carry/core_chars)构造,缺属性
+    即 AttributeError = 尽早暴露桩漂移。
+    档 0 空(非羁绊成型阵容,如反甲白厄)→ fp 恒 0,与点名件解耦
+    (装备流走轮数兜底;白厄裸板不得因锚在板而 fp>0 → 出战误放行)。
     禁消费位绕过本函数自写 min(board,tier)≥tier 内联成型判定
     (判据双源;内联位清单与取代声明)。
     """
     core = comp.core_faction_reqs
-    required = getattr(comp, 'required_deployed', None) or ()
-    if not core and not required:
+    if not core:
         return 0.0
+    anchor = carry_anchor(comp)
+    named = (anchor,) if anchor else tuple(comp.core_chars)
     _board = getattr(gs, 'board', None)
     board = getattr(_board, 'value', None) or {}
     total = 0.0
@@ -1391,7 +1437,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
             continue
         total += min(board.get(f, 0), tier) / tier
         n += 1
-    if required:
+    if named:
         # 席位经状态容器视图读(无该属性 = 轻量假想面板,按 0 计保守向;
         # 行域合卷为 deployed 单字段,鸭型位同名)
         _view = getattr(getattr(gs, 'deployed', None), 'value', None)
@@ -1402,7 +1448,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
             for u in (*(u for u in (_front or ()) if u is not None),
                       *(u for u in (_back or ()) if u is not None))
             if getattr(u, 'char_id', None)}
-        for name in required:
+        for name in named:
             total += 1.0 if name in deployed_names else 0.0
             n += 1
     if n == 0:

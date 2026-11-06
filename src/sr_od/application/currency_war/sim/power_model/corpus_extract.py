@@ -51,7 +51,10 @@ from sr_od.application.currency_war.telemetry.cw_replay_reader import (
 )
 
 #: 抽取器版本(产物头部指纹域;特征/口径语义变更时递增)。
-EXTRACTOR_VERSION: str = 'v1'
+#: v2 = required-deployed-retirement:final_form_progress 特征语义变更
+#: (点名件折条源 = 锚/core 统一表达式;含 best_line argmax 的
+#: core_star_depth 连带漂移)——语料需按新版本重建。
+EXTRACTOR_VERSION: str = 'v2'
 
 #: 产物默认落点(gitignored 区;landing §3.1 指定)。
 DEFAULT_OUT_DIR: Path = (get_project_root() / '.debug' / 'currency_war'
