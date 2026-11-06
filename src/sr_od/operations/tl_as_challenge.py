@@ -310,12 +310,16 @@ class TlAsTeamFillOp(SrOperation):
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
-        return self.round_wait('回列表顶部', wait=1)
+        return self.round_wait('回列表顶部', wait=2)
 
     def _page_down(self, cells: list[AnchorCell], target: str,
                    row_no: int) -> OperationRoundResult:
         """当前页无目标:页签停滞判定 + 向下翻页(同页 4 次 = 到底 = fail)。"""
         sig = self._page_sig(cells)
+        if not sig:
+            # 空识别帧(滚动未停/展开动画)不参与停滞计数——快回顶后的首帧
+            # 常撞滚动余动,烧光停滞预算会把「没读完」误判成「到底」
+            return self.round_wait('列表识别未就绪,不计停滞', wait=1.5)
         log.info('AS填充诊断: 找 %s 行%d stagnation=%d 页签=%s',
                  target, row_no, self._down_stagnation, sig[:80])
         if sig in self._seen_sigs:
