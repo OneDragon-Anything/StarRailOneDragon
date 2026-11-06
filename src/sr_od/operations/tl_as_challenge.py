@@ -388,14 +388,16 @@ class TlAsTeamFillOp(SrOperation):
 class TlAsAxiomEquipOp(SrOperation):
     """终焉公理装配:两行右端圆圈 → 弹窗选卡 → 装配效果。起点 = 编队屏(已填人)。"""
 
-    def __init__(self, ctx: SrContext, buff_slots: tuple[int, ...] = (1, 1)):
+    def __init__(self, ctx: SrContext, buff_slots: tuple[int, ...] | list[int] = (1, 1)):
         """
         Args:
             buff_slots: 每行装配的终焉公理增益序号(1 基,每行三选一;
                 增益名称随期轮换不可锚定,按卡片位置选择)。
                 2 项 = 双节点(01-03);3 项 = 星启三节点。默认 (1, 1)。
+                接受 list(MCP JSON 反序列化产物),内部转 tuple。
         """
         SrOperation.__init__(self, ctx, op_name='末日幻影 终焉公理装配')
+        buff_slots = tuple(buff_slots)
         if any(not 1 <= s <= 3 for s in buff_slots):
             raise ValueError(f'buff_slots 须为 1-3: {buff_slots}')
         if len(buff_slots) not in (2, 3):
@@ -551,7 +553,7 @@ class TlApocalypticShadowChallengeOp(SrOperation):
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
 
     def __init__(self, ctx: SrContext, team_names: list[str],
-                 buff_slots: tuple[int, ...] = (1, 1)):
+                 buff_slots: tuple[int, ...] | list[int] = (1, 1)):
         """
         Args:
             team_names: 按行(节点)顺序拼接的角色中文名列表,8 人(2 行×4,
