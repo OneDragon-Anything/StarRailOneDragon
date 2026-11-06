@@ -18,7 +18,8 @@
 
 两层架构(同 gen_plaza_invest.py 模式):本生成器只管 **base 事实层**(784 篇玩家帖
 聚合的客观频次);手判层(strength/form_difficulty/star_goals 曲线取舍)在 ``cw_comps.py``
-COMP_LIBRARY 手维护 —— 代码 ``plaza_carry`` 字段是两层的对拍锚点。
+COMP_LIBRARY 手维护 —— 层间对账经生成末尾的差异报告(聚类 carry vs 各线
+core_chars[0],人裁定是否重排),不再经运行时字段。
 
 过滤规则(防污染):
   - ``rpg_game_big_version == "4.4"``(列表混旧版帖);
@@ -510,6 +511,38 @@ def main() -> None:
     print(f"[data] {len(clusters)} 聚类 <- {DATA_PY.relative_to(REPO)}")
     print(f"[posts] {len(recs)} 篇逐篇明细 <- {DATA_POSTS_PY.relative_to(REPO)}")
     print(f"[doc ] -> {DOC_MD.relative_to(REPO)}")
+    print_reconcile_report(clusters)
+
+
+def print_reconcile_report(clusters: list) -> None:
+    """版本重跑对账报告(人裁定是否重排手判层 core 序;不阻断生成)。
+
+    逐线比对「聚类层簇 carry 名 vs 手判层 COMP_LIBRARY 各线 core_chars[0]」
+    (首位=定义件契约);聚类侧查无该线簇(n<5 未成簇)单列「无簇」标注行,
+    不进差异清单——版本重跑流程消费,人裁定差异线是否重排 core 序
+    (plaza-carry-retirement:聚类实证自此只以校准证据身份存在)。"""
+    sys.path.insert(0, str(REPO / "src"))
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_run_allocator import (
+        LINE_STAT_CLUSTER,
+    )
+    cluster_by_carry = {c["carry"]: c for c in clusters}
+    diff: list[str] = []
+    no_cluster: list[str] = []
+    for comp in COMP_LIBRARY:
+        stat_cluster = LINE_STAT_CLUSTER.get(comp.name, "")
+        cl = cluster_by_carry.get(stat_cluster)
+        if cl is None:
+            no_cluster.append(f"{comp.name}(查簇名={stat_cluster!r})")
+        elif cl["carry"] != comp.core_chars[0]:
+            diff.append(f"{comp.name}: 聚类 carry={cl['carry']} vs "
+                        f"core[0]={comp.core_chars[0]}")
+    print("[对账] 聚类 carry vs 手判 core[0]:"
+          + (f"差异 {len(diff)} 线" if diff else "全线一致"))
+    for row in diff:
+        print(f"  [差异] {row}")
+    for row in no_cluster:
+        print(f"  [无簇] {row}")
 
 
 if __name__ == "__main__":
