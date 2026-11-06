@@ -306,8 +306,9 @@ class TlAsTeamFillOp(SrOperation):
         方向 = 手指自上而下拖(250→850)= 列表向上滚回顶部;列表天然止于
         顶部,拖过头无副作用。上滑方向是向后翻页(与 _page_down 同向),
         反着写会把「回顶」变成「冲向列表尾」(实机实证:回顶后首扫页签
-        全是 4 星尾部角色)。"""
-        for _ in range(5):
+        全是 4 星尾部角色)。次数 = 12:实机 5 次从队尾只退到中段
+        (~2 行/次),12 次 ≈ 全列表深度,任何起点都能拉满到顶。"""
+        for _ in range(12):
             self.ctx.controller.drag_to(
                 Point(300, 850), start=Point(300, 250), duration=0.25)
         self._need_top = False
