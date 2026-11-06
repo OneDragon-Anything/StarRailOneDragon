@@ -50,7 +50,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 - `TlFillTeamsOp`（`sr_od.operations.tl_fill_team.TlFillTeamsOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
 - 编队屏点「混沌回忆」按钮发起挑战（ops 均不点它）——op 内用 `round_by_find_and_click_area` 点「FH_START_CHALLENGE」area，MCP 手动操作用 `analyze_screen` 命中后 `click_game` 按钮中心。
-- `TlStartChallengeOp`（`sr_od.operations.tl_start_challenge.TlStartChallengeOp`，参数 wave_teams = [[波1四人],[波2四人]]）：前进 → 秘技 → 开战 → 两波自动循环 → 挑战成功收尾。
+- `TlStartChallengeOp`（`sr_od.operations.tl_start_challenge.TlStartChallengeOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
 
 ### 奖励
 
@@ -114,6 +114,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 - 「通关阵容」按钮位置随布局漂移：双节点(01-03)在编队屏右上 y≈147；星启(04)在同区域 y≈65——点击前以 OCR 实读「通关阵容」文本位置为准。
 - 星启编队屏交互模型（2026-11-06 实机）：点行内槽位剪影（x≈1494）= 展开选人列表 + 选中该行；行尾「+」（x≈1826）= 打开该行终焉公理增益弹窗；右上垃圾桶 = 清空全部三行（连增益一起清）；**退出编队屏直接关闭丢弃修改，从节点结算页「退出」回编队屏则保留**；改队后再挑战会弹「战绩重置」确认。
 - 通关阵容弹窗已建档（screen `末日幻影-通关阵容`：推荐/好友 tab、三节点行、一键上阵、换一批；fixture 测试仓 `末日幻影-通关阵容/推荐阵容.webp`）；推荐头像用脸库脚本识别（fixture 帧实测全部命中）。
+- **满员验证（星启）**：槽位像素判空在星启布局不可用（V 亮度/SIFT 特征数/剪影模板三方案实测均无区分度——空槽底板 V≈182 与头像同亮、剪影本身高纹理）；可靠信号 = **角色列表卡上的「队伍N」标记 OCR 计数**（12 标记 = 满员）+ 一键上阵确认弹窗预告的各节点持有数（持有不足的位会留空，需手动点槽位补人）。
 
 ### 奖励
 
