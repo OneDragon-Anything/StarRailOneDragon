@@ -121,7 +121,6 @@ class TlPfTeamFillOp(SrOperation):
         self._down_stagnation: int = 0    #: 向下翻页停滞计数
         self._seen_sigs: set[str] = set() #: 本次搜索已见页签集合(到底判定:
         #:   底部翻页会在最后两页弹跳,页签交替出现,单比上一页无法累计停滞)
-        self._last_page_sig: str = ''     #: 上一页签名(回顶判定用)
         self._need_row_select: bool = True #: 点卡前需先点目标行槽位选中(守卫)
 
     @operation_node(name='清空编队', is_start_node=True, node_max_retry_times=8)
@@ -192,20 +191,16 @@ class TlPfTeamFillOp(SrOperation):
 
         cells = read_character_cells_by_level(self.ctx, image)
 
-        # 每个角色搜索前先回列表顶部(页签连续两次相同 = 到顶)
+        # 回顶 = 固定大幅快拖 3 次,不验证到位(列表天然止于顶部,拖过头无副作用;
+        # 定案与实现同 tl_as_challenge._return_to_top)
         if self._need_top:
-            sig = self._page_sig(cells)
-            if sig == self._last_page_sig:
-                self._need_top = False
-                self._down_stagnation = 0
-                self._seen_sigs = set()
-                self._last_page_sig = ''
-                return self.round_wait('已回到列表顶部', wait=0.5)
-            self._last_page_sig = sig
             for _ in range(3):
                 self.ctx.controller.drag_to(
-                    Point(300, 760), start=Point(300, 430), duration=0.4)
-            return self.round_wait('滚回列表顶部', wait=3)
+                    Point(300, 1000), start=Point(300, 200), duration=0.3)
+            self._need_top = False
+            self._down_stagnation = 0
+            self._seen_sigs = set()
+            return self.round_wait('回列表顶部', wait=2)
 
         # 顶部起逐页向下找目标;点卡后下一轮以落位回验推进(点卡落空自然重试)。
         # 名字匹配:guess.char(置信名)与 candidates[0](候选第一名)都参与。
@@ -260,15 +255,16 @@ class TlPfTeamFillOp(SrOperation):
 
     @staticmethod
     def _member_has(members, target: str) -> bool:
-        """行成员里是否已有目标(置信名/候选全表任一命中,前缀变体也算)。"""
+        """行成员里是否已有目标(置信名/候选全表任一命中)。
+
+        ⚠️ 不做前缀匹配:变体卡(丹恒•腾荒/姬子•启行)是独立角色,前缀命中会把
+        「目标=丹恒」误判成「丹恒•腾荒 已落位」——跳过目标造成漏填。"""
         for m in members:
             names: list[str] = []
             if m.char:
                 names.append(m.char)
             names.extend(n for n, _ in m.candidates)
             if target in names:
-                return True
-            if any(len(n) > len(target) and n.startswith(target) for n in names):
                 return True
         return False
 
