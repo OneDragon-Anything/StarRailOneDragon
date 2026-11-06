@@ -31,7 +31,7 @@ cw_effect_inventory,门③键域校验在边判定内非前置闸)。转换卡�
 进阶类别门,门④次数账(:data:`cw_game_state.forge_privilege_charges_left`
 现值 > 0);命中产物按 ``privilege_counterpart`` 映射替换(单一源 =
 cw_effect_inventory),变换折叠进 worn 单笔(变换与合成写同一字段,
-二笔 = 中间态),次数扣减系不同字段独立笔;次数账充能腿 = 获得链
+二笔 = 中间态),次数扣减系不同字段独立笔;次数账充能效果条目 = 获得链
 gain_equipment 尾段计数钩子(cw_effect_inventory
 .record_forge_privilege_gain,与本支成对)。
 规则住本上报
@@ -87,7 +87,7 @@ def _wear_synthesis(equips: list[str],
     转换只辖基础档边(进阶产物);特权档产物非进阶件不在改写域。
 
     fuse_privilege = 融合召唤特权档边注入(持卡局回调:入参名属进阶且
-    对应特权件在册 → 返回特权名,否则 None;None = 零特权感知,逐位
+    对应特权件已登记 → 返回特权名,否则 None;None = 零特权感知,逐位
     等价旧形态)。特权档边与基础档边同入不动点循环逐轮求值——门②
     「worn 现值同进阶对」门③「映射恰一」都是循环内边判定,非前置闸
     (前置闸读法下基础档级联合出同进阶对的场景不可达)。特权件 category
@@ -148,7 +148,7 @@ def _synthesis_fuse_privilege(
     None = 零特权感知;惰性 import:映射单一源 = cw_effect_inventory
     .privilege_counterpart,不持卡连该模块 import 都不发生)。门①持卡
     判定在本构建(调用侧前置);门②同进阶(worn 现值成对判定住
-    ``_wear_synthesis`` 循环)与门③键域校验(进阶类别 + 特权件在册,
+    ``_wear_synthesis`` 循环)与门③键域校验(进阶类别 + 特权件已登记,
     映射为后缀拼接非查表,盲拼接产物不入账)都在回调内逐轮边判定。"""
     if _FUSE_CARD not in (gs.active_strategies.value or []):
         return None
@@ -168,7 +168,7 @@ def _synthesis_fuse_privilege(
 
 def _apply_forge_privilege(gs: GameState, unit: Unit, worn: list[str],
                            inputs: list[str], sig: ChannelSig) -> bool:
-    """刃锻特权化支(锻冶专家:刃腿2 机制件;融合召唤特权档边的姊妹卡
+    """刃锻特权化支(锻冶专家:刃效果条目2 机制件;融合召唤特权档边的姊妹卡
     闸形,异构成员 = 基础档合成产物特权化 + 刃栏辖域 + 次数账限次)。
     原位变换 ``worn`` 并独立扣减次数笔,返回是否发生特权化(evidence
     后缀段判定输入)。门序全在穿报 applied 路径内求值:
@@ -182,7 +182,7 @@ def _apply_forge_privilege(gs: GameState, unit: Unit, worn: list[str],
       同源混写。逐产物过进阶类别门(钻+简易 → 星徽产物等非进阶产物
       零变换;特权产物 category='特权' 天然不在门③ 键域,融合召唤
       同进阶对产物系净减件亦非基础档正增量——两卡分支零重入零双
-      变换)+ 特权件在册校验(映射为后缀拼接非查表,盲拼接产物不入
+      变换)+ 特权件已登记校验(映射为后缀拼接非查表,盲拼接产物不入
       账,融合召唤门③ 同判);
     - 门④次数:charges_left 现值 > 0 才逐件变换(缺省 1 = 基础次数);
       多产物 × 次数不足按 worn 序最左优先,确定性。

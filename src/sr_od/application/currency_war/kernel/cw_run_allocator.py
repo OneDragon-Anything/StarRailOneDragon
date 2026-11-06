@@ -124,7 +124,7 @@ class ThompsonAllocator:
 #: 线名 → 统计簇名(adherence 跨局统计的分组键;plaza-carry-retirement):
 #: 两层名字空间翻译——手判层线名 ↔ plaza 聚类层簇名(聚类层无线名概念,
 #: 翻译关系只能手判层登记)。**非行为判据**:arm 键随簇不随定义件
-#: (adherence 统计连续性),与行为锚(carry_anchor = core[0],随手判演化)
+#: (adherence 统计连续性),与行为定义件(carry_anchor = core[0],随手判演化)
 #: 解耦;版本重跑时与 PLAZA_CARRY_CLUSTERS 核对(gen_plaza_comps 对账报告)。
 #: 值 = 各线聚类簇 carry 名快照(空值线 = 原攻略补全值,同 fast 表退役前口径)。
 LINE_STAT_CLUSTER: dict[str, str] = {
@@ -145,7 +145,7 @@ def arm_key_of(comp: Comp) -> str:
     arm 键空间 = ``PLAZA_CARRY_CLUSTERS`` 中 ``n_posts >= 15`` 的聚类簇名
     (cw_loop ``_get_or_init_allocator`` 的 share 过滤式)——键空间即统计簇名
     空间,换算 = :data:`LINE_STAT_CLUSTER` 查表(统计分组键,非行为判据;
-    旧「= carry_anchor」换算随 plaza_carry 退役解耦——行为锚已派生 core[0],
+    旧「= carry_anchor」换算随 plaza_carry 退役解耦——行为定义件已派生 core[0],
     与统计簇名是两个概念)。换算值 ∉ ``allocator.arms``(低篇数线/无簇线)
     时由调用侧 ``arm_id not in arms`` 防线拦截,维持跳过语义;未登记线名
     → 空串(同样被该防线拦截)。本模块运行时零 kernel 依赖(纯函数离线可测)。

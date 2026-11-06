@@ -140,9 +140,9 @@ class IntentionState:
     - 遥测:``serialize_intention`` 字段全量序列化自动携带。
     """
 
-    last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
+    last_event: str = ''               # 最近一次状态转移(判读/遥测标记点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
-    """撤销出口①开窗的证据字段快照(实机判读锚点,设计 R3.5「无证据
+    """撤销出口①开窗的证据字段快照(实机判读标记点,设计 R3.5「无证据
     字段的开窗=守卫失效」;serialize_intention 全量序列化自动携带)。
 
     - 写入端 = update_intention 撤销出口①开窗分支(唯一写入点,每次
@@ -182,7 +182,7 @@ def intention_core(comp: Comp) -> str:
 
     = ``core_chars[0]``(首位=定义件契约,与 ``cw_comps.carry_anchor`` 同源
     ——carry 派生化后两读口归一,不再是两个概念;火花星间旅人线随主C 裁定
-    收口为火花)。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
+    收尾为火花)。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
     在多线间产生噪声信号)。
     """
     return comp.core_chars[0] if comp.core_chars else ''

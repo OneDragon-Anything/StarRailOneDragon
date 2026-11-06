@@ -196,7 +196,7 @@ def decision_trace_instance() -> StateJournal | None:
 #: 基线旁表(session 旁表模式,同 ``game_state_of`` 弱引用表 + 裸对象属性 +
 #: id 表三级兜底先例):键 = 局身份 session,新 session = 新局段 = 基线每局全新创建
 #: (§5.1 局段边界:基线、行序、前缀和全部以局段为界;恢复局跨段 = 多行多段
-#: 各自自洽,状态容器每局每局全新创建天然保证,无跨段账务耦合)。
+#: 各自自洽,状态容器每局全新创建天然保证,无跨段账务耦合)。
 _ANCHOR_BY_SESSION: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 _ANCHOR_ATTR: str = '_cw_decision_trace_anchor'
 _ANCHOR_BY_ID: dict[int, dict[str, int]] = {}
