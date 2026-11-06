@@ -92,21 +92,6 @@ LINE_HEAT: dict[str, int] = {
     '景元仙舟': 40,
 }
 
-#: 评分锚与 ``cw_comps.carry_anchor`` 的分歧登记(仅列不同值的线;
-#: 默认读法 = 登记表 → carry_anchor(),20/21 线走默认)。
-#: 火花星间旅人:攻略明文花火主C(BV 转录注)vs 聚类锚火花——评分口径取
-#: 攻略重述(持有花火点亮该线证据的历史行为保真);聚类真值不动(plaza_carry
-#: 字段语义 = 层间交叉核对基准)。
-_LINE_ANCHOR_DIVERGENCE: dict[str, str] = {
-    '火花星间旅人': '花火',
-}
-
-
-def rating_anchor(comp: Comp) -> str:
-    """评分锚(线分 CARRY_ANCHOR 档的具名核心;读法单一源 =
-    分歧登记表 ∘ carry_anchor)。"""
-    return _LINE_ANCHOR_DIVERGENCE.get(comp.name) or carry_anchor(comp)
-
 #: COMP_LIBRARY 注册序索引(全维平分的终局裁定 = 注册序首线;「显式规则
 #: 声明,非遍历序隐式定锁——稳定且可实现」,12 号篇 §1.1)。
 _COMP_REG_INDEX: dict[str, int] = {c.name: i for i, c in enumerate(COMP_LIBRARY)}
@@ -232,7 +217,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
     两通道派生(一名只命中自家注册表,无双计);boss = Σ三只克制 + 非
     boss 强敌(§3.4——红绿灯经词缀行通道/扑满经投资持有通道)。
     """
-    anchor = rating_anchor(comp)
+    anchor = carry_anchor(comp)
     carry = carry_set(comp)
     core_hits = (carry & held_chars) - {anchor}
     members = set(comp.members)
@@ -336,18 +321,6 @@ def anchor_line_of(gs: GameState, locked_comp: str,
     return get_comp(cands[0]) if cands else None
 
 
-def _validate_line_anchor() -> None:
-    """分歧登记表构建校验(import 即炸):登记键 ⊆ COMP_LIBRARY 线名集、
-    登记值 ∈ 角色注册表(手编写错名 = 基准档静默失效,防线保持)。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    names = {c.name for c in COMP_LIBRARY}
-    for line, anchor in _LINE_ANCHOR_DIVERGENCE.items():
-        if line not in names:
-            raise ValueError(
-                f'_LINE_ANCHOR_DIVERGENCE 键不在 COMP_LIBRARY 线名集:{line!r}')
-        if anchor not in CHARACTERS:
-            raise ValueError(
-                f'_LINE_ANCHOR_DIVERGENCE 锚不在角色注册表:{line!r}×{anchor!r}')
-
-
-_validate_line_anchor()
+# (旧评分锚分歧登记表 _LINE_ANCHOR_DIVERGENCE 与 rating_anchor 读口已随
+#  plaza_carry 退役整段删除:评分锚 = carry_anchor = core_chars[0] 单源
+#  ——火花星间旅人线分歧随主C 裁定收口,沿革见 plaza-carry-retirement。)

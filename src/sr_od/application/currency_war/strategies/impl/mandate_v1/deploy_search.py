@@ -48,6 +48,7 @@ from sr_od.application.currency_war.kernel.cw_bond_equips import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     carry_anchor,
+    named_units,
     parse_char_position,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
@@ -273,11 +274,10 @@ def selection_score(panel: DeploySearchPanel,
             l1_den += best_w
         tier_rate = (l1_num / l1_den) if l1_den else 0.0
         # named 层(点名件在场率;独立分子分母,不进档位层加权平均
-        # ——与 form_progress 统一表达式同式:锚非空取单锚,否则 core
-        # 全员;裸键组无 Comp 上下文 → 无点名件,named_rate = 0)。
-        anchor = carry_anchor(comp) if comp is not None else ''
-        named = (anchor,) if anchor else (
-            tuple(comp.core_chars) if comp is not None else ())
+        # ——named_units 统一表达式单一源(cw_comps,与 form_progress 折条
+        # 共用):终局单锚 = core[0] / 过渡 core 全员;裸键组无 Comp 上下文
+        # → 无点名件,named_rate = 0)。
+        named = named_units(comp)
         named_rate = (sum(1 for n_ in named if n_ in names)
                       / len(named)) if named else 0.0
         l1 = named_rate * _L1_NAMED_SCALE + tier_rate * _L1_TIER_SCALE

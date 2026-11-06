@@ -180,16 +180,11 @@ class HoardTarget:
 def intention_core(comp: Comp) -> str:
     """一条线的「意向核心」(撤销计数③口径的具名核心)。
 
-    取 ``plaza_carry``(实战聚类 carry,交叉核对基准)且在 core_chars 内者;否则
-    core_chars 首位。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
+    = ``core_chars[0]``(首位=定义件契约,与 ``cw_comps.carry_anchor`` 同源
+    ——carry 派生化后两读口归一,不再是两个概念;火花星间旅人线随主C 裁定
+    收口为火花)。单一核心保证 miss 计数良定义(避免花火/瓦尔特类共享件
     在多线间产生噪声信号)。
-    与 ``cw_comps.carry_anchor`` 分工:本函数 = 意向核心(∈core 约束,
-    miss 计数专用),非 carry 读口冗余副本;火花星间旅人线两者取值不同
-    (本函数取 core 首位花火 vs 聚类锚火花)= 两概念真实语义差(意向核心
-    拒绝不在 core 的聚类锚),非漂移。
     """
-    if comp.plaza_carry and comp.plaza_carry in comp.core_chars:
-        return comp.plaza_carry
     return comp.core_chars[0] if comp.core_chars else ''
 
 
