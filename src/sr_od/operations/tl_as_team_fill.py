@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -17,6 +18,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import cv2_utils, os_utils
 from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     AnchorCell,
@@ -32,11 +34,16 @@ if TYPE_CHECKING:
 
 _TEAM_SCREEN: str = '末日幻影-编队'
 
-#: 角色列表滚动拖动(向下翻页;本机实测标定:400px/0.5s 慢拖 =
-#: 精准 3 行、无惯性过冲、落定即识别清晰;快拖会触发惯性滚轮跳页,禁用。
-#: ⚠️ 拖动手感与本机鼠标 DPI/速度相关,换机需重标)
+#: 角色列表滚动拖动(向下翻页)。**本机实测**:列表滚动带按行吸附,拖距与
+#: 位移非线性——拖 320px 实测滚 1 行(相邻页重叠 3 行),拖 400px 滚 2 行
+#: (重叠 1 行)。重叠 2 行以上才防漏扫:可视区首尾各有一行裁切盲区,重叠
+#: 不足时边界行只在单页完整可见,识别失败即永久漏扫(星启找波提欧实证:
+#: 400px 翻页跳行丢卡,遍历 4 屏页签无它)。取 320px = 重叠 3 行(人类老莫
+#: 定案:重叠 2 行就够,取档留余量);吸附机制天然吸收 DPI 漂移。
+#: 慢拖 0.5s 无惯性过冲(快拖触发惯性跳页,禁用)。
+#: ⚠️ 吸附档位与本机鼠标 DPI/速度相关,换机需重标。
 _SCROLL_FROM: Point = Point(300, 850)
-_SCROLL_TO: Point = Point(300, 450)
+_SCROLL_TO: Point = Point(300, 530)
 _SCROLL_DURATION: float = 0.5
 
 #: 回顶拖动(手指自上而下;单次 800px/0.3s 快拖 = 惯性滚动约 4+ 页,
@@ -87,6 +94,9 @@ _ARC_ROW_SLOT_AREAS: dict[int, str] = {
 
 _ARC_TRASH_AREA: str = '04-垃圾桶'
 
+#: 遍历取证截图目录(.debug 已 gitignore;每次填充运行覆盖式新建序号文件)。
+_DIAG_SHOT_DIR: Path = Path(os_utils.get_work_dir()) / '.debug' / 'temp' / 'as_fill_diag'
+
 
 class TlAsTeamFillOp(SrOperation):
     """编队选人:清空两行 + 按目标填 8 人。起点 = 末日幻影-编队屏。"""
@@ -119,6 +129,21 @@ class TlAsTeamFillOp(SrOperation):
         # 写入时机 = 每轮扫描入栈,翻页/回顶/换行清空)
         self._page_frames: list[list[AnchorCell]] = []
         self._clear_slot: tuple[int, int] | None = None  #: 清空游标(行 0 基,槽 0 基)
+        self._shot_seq: int = 0          #: 遍历取证截图序号(运行内递增)
+        self._arc_cleared: bool = False  #: 星启清空已验证(列表卡无「队伍N」标记)
+
+    def _diag_shot(self, tag: str) -> None:
+        """每轮列表扫描落一张当前帧(逐页截图,人类老莫指定遍历取证)。
+
+        为什么:页签日志只有识别名集合,「目标找不到」时无法区分
+        「列表没遍历到那页」与「该页识别漏卡」;逐页截图把每一页真实
+        画面留档,与页签对账即可定位漏识别/漏遍历。"""
+        self._shot_seq += 1
+        safe_tag = re.sub(r'[\\/:*?"<>|]', '_', tag)
+        path = _DIAG_SHOT_DIR / f'{self._shot_seq:03d}_{safe_tag}.png'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cv2_utils.save_image(self.last_screenshot, path)
+        log.info('AS遍历截图: %s', path.name)
 
     @operation_node(name='清空编队', is_start_node=True, node_max_retry_times=24)
     def _clear_teams(self) -> OperationRoundResult:
@@ -226,8 +251,23 @@ class TlAsTeamFillOp(SrOperation):
             self.ctx.controller.click(row_slot_point, press_time=0.15)
             return self.round_wait('展开列表(回验/找卡前置)', wait=1.5)
 
+        # 清空防线(星启):垃圾桶点击无到达验证(点了无弹窗、槽位判空在此布局
+        # 不可用),清空失败会带着残留编队填充——已入队卡的找卡排除会让目标
+        # 「找不到」死路。用列表卡「队伍N」标记计数验证:标记 >0 = 未清空,
+        # 重按垃圾桶直至列表无标记(见 _team_tag_boxes 的标记识别区)。
+        if self._arc_mode and not self._arc_cleared:
+            tags = self._team_tag_boxes(image)
+            if tags:
+                self._click_area_center(_TEAM_SCREEN, _ARC_TRASH_AREA)
+                return self.round_retry(
+                    f'编队未清空(列表仍有{len(tags)}个队伍标记),重按垃圾桶', wait=2)
+            self._arc_cleared = True
+            return self.round_wait('清空验证通过(列表无队伍标记)', wait=0.5)
+
         # 找卡:星启 = 整页批量(见 _arc_fill_round);双节点 = 逐人找卡。
         cells = read_character_cells_by_level(self.ctx, image)
+        self._diag_shot(
+            f'行{row_no}找{target}_stagnation{self._down_stagnation}')
         if self._arc_mode:
             return self._arc_fill_round(image, cells, row_no)
 
@@ -264,21 +304,34 @@ class TlAsTeamFillOp(SrOperation):
         return self._page_down(cells, target, row_no)
 
     def _return_to_top(self) -> OperationRoundResult:
-        """固定快速大幅拖动回顶,不验证到位(人类老莫 2026-11-06 定案)。
+        """回顶并**验证到位**:循环「拖→扫页签」直到页签钳住不变。
 
-        方向 = 手指自上而下拖(250→850)= 列表向上滚回顶部;列表天然止于
-        顶部,拖过头无副作用。上滑方向是向后翻页(与 _page_down 同向),
-        反着写会把「回顶」变成「冲向列表尾」(实机实证:回顶后首扫页签
-        全是 4 星尾部角色)。单次大幅快拖惯性滚动约 4+ 页(本机实测),
-        3 次任何起点都到顶。"""
-        for _ in range(_TOP_DRAG_COUNT):
-            self.ctx.controller.drag_to(
-                _TOP_TO, start=_TOP_FROM, duration=_TOP_DURATION)
+        为什么必须验证:3 连快拖的惯性量随列表位置/内容高度浮动,
+        「固定 3 拖不验证」实测有时停中部有时到顶——不到顶就开遍历,
+        顶部带目标(最近使用序的编队成员)永久扫不到(海瑟音实证)。
+        到顶判据 = 相邻两次扫描页签相同(列表钳住不再滚动);
+        空识别帧(余动中)不算钳制,继续拖。"""
+        prev_sig = ''
+        for _round in range(6):
+            for _ in range(_TOP_DRAG_COUNT):
+                self.ctx.controller.drag_to(
+                    _TOP_TO, start=_TOP_FROM, duration=_TOP_DURATION)
+            time.sleep(1.2)
+            self.screenshot()
+            sig = self._scan_page_sig()
+            if sig and sig == prev_sig:
+                break
+            prev_sig = sig
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
         self._last_seek_sig = ''
-        return self.round_wait('回列表顶部', wait=2)
+        return self.round_wait('回列表顶部(已验证)', wait=1)
+
+    def _scan_page_sig(self) -> str:
+        """同步截图并返回当前页签名(回顶钳制判定用)。"""
+        cells = read_character_cells_by_level(self.ctx, self.last_screenshot)
+        return self._page_sig(cells)
 
     def _page_down(self, cells: list[AnchorCell], target: str,
                    row_no: int) -> OperationRoundResult:

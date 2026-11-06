@@ -6,9 +6,12 @@
 
 详见设计 spec §4.4(扫描根 operations/、三重过滤、op_id 拆分、纯反射)。
 """
+import builtins
+import contextlib
 import importlib
 import inspect
 import json
+import sys
 import types
 import typing
 from collections.abc import Iterator
@@ -108,26 +111,27 @@ def _resolve_annotations(cls: type) -> 'dict[str, Any]':
     ``from __future__ import annotations`` 下 ``inspect.signature`` 拿到的注解是字符串,
     字符串裸名匹配认不得 ``list[str]``/``dict[str, str]`` 等泛型写法 → 泛型列表参数被
     误判为不可序列化(2026-11-04 实测:``team_names: list[str]`` 被 run_operation 拒收)。
-    用 ``typing.get_type_hints`` 按定义模块命名空间求值还原;前向引用解析失败时回退
-    原始字符串注解(行为与修复前一致,由裸名匹配兜底)。
+    故按定义模块命名空间求值还原;**逐参数求值**——单个参数求值失败(如注解引用仅
+    TYPE_CHECKING 导入的前向引用名)只该参数回退字符串注解、由裸名匹配兜底,不影响
+    其余参数的可序列化判定(整体求值一败俱败)。
     """
     try:
-        return {
-            name: hint
-            for name, hint in typing.get_type_hints(cls.__init__).items()
-            if name not in ('self', 'ctx', 'return')
-        }
-    except Exception:  # noqa: BLE001 求值失败回退字符串注解
-        try:
-            sig = inspect.signature(cls.__init__)
-        except (TypeError, ValueError):
-            return {}
-        return {
-            p.name: p.annotation
-            for p in sig.parameters.values()
-            if p.name not in ('self', 'ctx')
-            and p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
-        }
+        sig = inspect.signature(cls.__init__)
+    except (TypeError, ValueError):
+        return {}
+    module_ns = vars(sys.modules.get(cls.__module__, builtins))
+    hints: dict[str, Any] = {}
+    for p in sig.parameters.values():
+        if p.name in ('self', 'ctx') or p.kind in (
+                inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            continue
+        ann = p.annotation
+        if isinstance(ann, str):
+            with contextlib.suppress(Exception):
+                ann = eval(ann, module_ns)  # noqa: S307 注解求值,命名空间限定为定义模块
+            # 求值失败保留字符串注解,由裸名匹配兜底
+        hints[p.name] = ann
+    return hints
 
 
 def _annotation_json_serializable(annotation: 'Any') -> bool:
