@@ -77,10 +77,10 @@ class Comp:
     ``factions`` = 核心羁绊键集(faction_reqs 档 0 派生,成型判定只看它);
     ``flex_factions`` = 弹性次要羁绊(不进 faction_reqs,但板面朝它铺不被
     board_alignment 罚、env/策略绑定照常亲和)。
-    ``core_chars[0]`` = 定义件(主C)——carry 锚(carry_anchor)的派生源。
+    ``core_chars[0]`` = 定义件(主C)——carry 定义件(carry_anchor)的派生源。
     """
     name: str                    # "追击飞霄"/"昼神阿雅"/"万敌单C"(roster 单一源 = 本注册表)
-    core_chars: list[str]        # 核心角色(名),首位 = 定义件(主C,carry 锚派生源)["姬子·启行","三月七"]
+    core_chars: list[str]        # 核心角色(名),首位 = 定义件(主C,carry_anchor 派生源)["姬子·启行","三月七"]
     faction_reqs: dict[int, dict[str, int]] = field(default_factory=dict)
     """羁绊要求(优先级结构):键 = 优先级档(0 最高,档号小 = 重要),
     值 = {羁绊规范名: 目标人数(几人激活算达标)}。
@@ -117,9 +117,9 @@ class Comp:
 
     # (旧 plaza_carry 字段〔plaza 实战聚类 carry 名〕已整字段退役〔2026-11-06:
     #  carry = core 序顶端(core_chars[0],首位=定义件契约)的派生读数——
-    #  统计实证直接进行为链是层次混淆,对账锚是版本重跑的校准证据非运行时
+    #  统计实证直接进行为链是层次混淆,对账基准是版本重跑的校准证据非运行时
     #  判据源;CARRY_ANCHOR_FALLBACK(3 条全部==core[0] 的复述表)与评分分歧
-    #  登记表随批退役,交叉核对职责移交 gen_plaza_comps 差异报告——判例 =
+    #  登记表随批退役,交叉核对职责移交 gen_plaza_comps 差异报告——先例 =
     #  plaza-carry-retirement〕。)
 
     # ===== 字段扩(C4 契约冻结语义;leader 裁决)=====
@@ -134,13 +134,13 @@ class Comp:
     # (旧 equip_taboos 字段〔本套禁买禁合成装备〕已整字段退役〔2026-11-05:
     #  唯一消费点囤货投影排除恒空(禁忌件 ∉ 关键件投影,两域天然不相交)+ 类级
     #  条目无解析器 = 纯零行为字段;万敌禁盾教义归 final_comps 文档层,装备
-    #  禁忌否决门若立项按统一维度另建——判例 = equip-taboos-retirement〕。)
+    #  禁忌否决门若立项按统一维度另建——先例 = equip-taboos-retirement〕。)
 
     # (旧 required_deployed 字段〔carry 在场条件:点名件逐一在板〕已整
-    #  字段退役〔2026-11-06:「点名件在场」判据改锚体系承载——终局单锚
+    #  字段退役〔2026-11-06:「点名件在场」判据改由定义件体系承载——终局单定义件
     #  (carry_anchor)/过渡 core 全员,统一表达式消费位 = form_progress
-    #  折条 + 部署 L1 named 层 + 圈人锚层,「评分外硬约束补丁」教训判例
-    #  见该迭代 design §2.5——判例 = required-deployed-retirement〕。)
+    #  折条 + 部署 L1 named 层 + 圈人定义件层,「评分外硬约束补丁」教训先例
+    #  见该迭代 design §2.5——先例 = required-deployed-retirement〕。)
 
     # ===== 知识卡字段(选线/升级的共用知识地基;设计口径 =
     # strategy-docs/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
@@ -220,7 +220,7 @@ class Comp:
                     f'{self.name}: equip_assign 键 {_who!r} ∉ '
                     'core_chars ∪ shared_chars(替班者须并入成员名单承载)')
         # flex 与档 ≥1 键域互斥建库校验(faction_reqs 迁移残留防线——同键
-        # 双登记 = 两容器边界渗漏,import 即炸;与 faction_reqs 校验②「同
+        # 双登记 = 两份登记表边界渗漏,import 即炸;与 faction_reqs 校验②「同
         # 羁绊禁跨档」对齐,本条管跨字段面)
         _flex_echo = set(self.flex_factions) & set(self.bonus_faction_reqs)
         if _flex_echo:
@@ -230,7 +230,7 @@ class Comp:
                 '有档位目标进 faction_reqs 档 ≥1,无档位目标才进 flex)')
         # (need_star 值域校验曾随 comp-data-row-cleanup 落地后撤销——1★ 行
         #  是活数据:unfinished_star_targets 对未持有成员 0 < 1 入未完成
-        #  目标集(「首张即目标」停留刷牌语义),非缺省等价死行;判例见
+        #  目标集(「首张即目标」停留刷牌语义),非缺省等价死行;先例见
         #  该迭代 attack.md A6 修正。)
 
     @property
@@ -267,7 +267,7 @@ class Comp:
     @property
     def members(self) -> tuple[str, ...]:
         """终局成员集 = core ∪ shared 两名单，注册表声明序去重（core 位在前）。
-        消费语义锚 = strategy-docs/12_line_and_intention.md §2（line_members_view
+        消费语义依据 = strategy-docs/12_line_and_intention.md §2（line_members_view
         读口/禁第二读口径）与 strategy-telemetry `k_members` 行（锁定帧语义）。
         集合消费写 ``set(comp.members)``；序 = 注册表声明序（首位 = 定义件，
         见 core_chars 字段注释；截断/排序 tie-break 消费）。"""
@@ -434,7 +434,7 @@ COMP_LIBRARY: list[Comp] = [
         # 通用速度件,不入 key_equips 分化面(A/B 均可穿,装备证据按分化件计);
         # 机制:反震吃「受击」,吸仇恨件互斥(攻略:「不要杰帕德,分受击概率」)。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(攻略 @4-6,星3「低血+相邻目标也获得护盾」→中段=相邻覆盖最大化,final_jizi_train 关键站位节;取中值@5)
-        # 双列回声清理:三月七/花火/瓦尔特 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:三月七/花火/瓦尔特 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
         # ===== 姬子列车家族·A 反震 =====   # ②类信号:四人 100% 固定(A/B 共用)
         equip_assign={"姬子·启行": ["以牙还牙甲", "以牙还牙甲"], "三月七": ["自适应外骨骼"]},
@@ -458,7 +458,7 @@ COMP_LIBRARY: list[Comp] = [
         # B套=冷笑话/动能剑/特权件等变化——括号变体件无主,不入册):姬子风暴潮
         # ×2+电锯;三月七外骨骼归 A 铁三角不随 B。
         char_positions={"三月七": "back@5"},   # 站位:三月七后排中段(同 A;领航员载体共享)
-        # 双列回声清理:三月七/花火/瓦尔特 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:三月七/花火/瓦尔特 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
         # ===== 姬子列车家族·B 直伤 =====
         equip_assign={"姬子·启行": ["火力风暴潮", "火力风暴潮", "高周波电锯"],
@@ -482,7 +482,7 @@ COMP_LIBRARY: list[Comp] = [
         # 交叉核对注(费用勘误):圣杯四人 = Archer 5费/Saber 3费/吉尔伽美什 2费/远坂凛 1费(注册表),
         # 旧注释「4 个 5 费成型难」错 —— 费用阶梯宽,成型难度主要在 Archer 本体。
         flex_factions=["战技点", "量子同频", "列车同行", "能量", "治疗", "盛会之星"],
-        # 双列回声清理:远坂凛 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:远坂凛 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["瓦尔特", "Saber"],   # Saber = 替班者转成员(「Archer 不来 Saber 一直 C,不卖转副C」,替班叙事见 final_grail_dual)
         # ===== 圣杯双C家族 A Archer 战技点线(燃料线官方接力结构)=====   # ②类信号:2 档开任务=燃料线入口
         equip_assign={"Archer": ["火力风暴潮", "高周波电锯", "动能激发剑"],
@@ -531,8 +531,8 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         # 成型羁绊队:欢愉 4-6 档乘区
-        # 双列回声清理:瓦尔特/爻光 core 列在册;members 读口去重(core 位在前),全消费面输出不变
-        shared_chars=["火花"],   # 交叉核对注:常驻是火花(16/25,4费)非花火;爻光 25/25 常驻(core 列在册)
+        # 双列回声清理:瓦尔特/爻光 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
+        shared_chars=["火花"],   # 交叉核对注:常驻是火花(16/25,4费)非花火;爻光 25/25 常驻(core 列已登记)
         char_positions={"爻光": "back", "绯英": "front@0"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版);绯英前排1号位(攻略 Final 标准式@0,25 帖归纳,2026-11-04 Common 全量审查登记)
         # ===== 欢愉族家族·绯英档(资源基准 6 级;无信号时的默认落点)=====   # ②类信号:绯英/银狼两档共用主体
         # content_id=7333;「欢愉 4-6 档」系连续区间误写);上限 5 = 4-5 主流带
@@ -620,7 +620,7 @@ COMP_LIBRARY: list[Comp] = [
         # 单一源 = cw_affinity_table.BOSS_AFFINITY,攻略无黄泉×具体公司名
         # boss 记载,版本重跑补登)。
 # 攻略:单体 boss 黄泉输出乏力(无公司名指向,待实机核)
-        # 双列回声清理:乱破 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:乱破 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["刃", "符玄", "卡芙卡"],   # 成型羁绊队:巡海4+减益4 档乘区;卡芙卡 = 替班者转成员(黄泉缺席时顶 C,不卖转副C;DOT 队核心亦常驻此线)
         # ===== 黄泉减益家族(无流派;第四件=装备池)=====   # ②类信号:4-6 档主体,到前 DOT 班底共享牌桌
         equip_assign={"黄泉": ["高周波电锯", EquipChoice("pool", ("永动机", "光速螺旋桨", "火力风暴潮"))],
@@ -641,13 +641,13 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="巡海击破", core_chars=["波提欧", "不死途", "乱破", "忘归人", "大丽花", "灵砂", "阮·梅"],
         # core 序换位(plaza-carry-retirement 3.1:首位=定义件契约):波提欧进首位
-        # (锚=波提欧簇,本条 plaza 校准注),不死途次之(巡海引擎件,羁绊结构序原首位)
+        # (基准=波提欧簇,本条 plaza 校准注),不死途次之(巡海引擎件,羁绊结构序原首位)
         faction_reqs={0: {"击破": 6, "巡海游侠": 4}},
         # ↺ 推翻「击破流萤」(plaza 784 篇):V4.4 击破代表已换代 —— 流萤任一阶段在场仅 29 篇
         # (carry 聚类 n=8,7/8 击破形)。**基准=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破基准)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
-        # 双列回声清理:忘归人 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:忘归人 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["黄泉", "流萤"],   # 成型羁绊队:击破6 档乘区
         flex_factions=["减益", "盛会之星"],
         equip_assign={"波提欧": ["虫洞掘进钻头", "光速螺旋桨"], "不死途": ["反重力皮靴"]},
@@ -668,7 +668,7 @@ COMP_LIBRARY: list[Comp] = [
         # 凛(远坂凛)V4.4 新:宝石叠99层→第二魔法实验拐198%爆伤(+默认70%=268%);饮月双电锯+风暴潮
         # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
         # 成型羁绊队:战技点4+列车4 档乘区
-        # 双列回声清理:远坂凛/瓦尔特/花火 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:远坂凛/瓦尔特/花火 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
         flex_factions=["量子同频", "盛会之星"],
         equip_assign={"丹恒·饮月": ["高周波电锯", "高周波电锯", "火力风暴潮"]},
@@ -694,7 +694,7 @@ COMP_LIBRARY: list[Comp] = [
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
         # ↑ 教义:闪闪=**反重力皮靴**(41%,
         #   锁轴速度载体;final_grail_dual.md 圣杯A)
-        # 双列回声清理:吉尔伽美什/Saber/瓦尔特/符玄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:吉尔伽美什/Saber/瓦尔特/符玄 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区
         # 远坂凛是 core(1 星即够,攻略口径)——不在本套 core_chars(名单 = 双王
         # 主体),星级知识经 need_star「攻略明文星级成员」通道入册
@@ -717,7 +717,7 @@ COMP_LIBRARY: list[Comp] = [
         # 前期龙丹战技点护航;上8大D找2星花火,3星质变;爻光三鞋(跑条供R回合)。
         # 怕正当防卫;极速制冷不怕(R时刻解控)。好运令牌给阿雅(装备最顶级)勿给花火/爻光。
         name="火花星间旅人", core_chars=["火花", "花火", "爻光", "开拓者·欢愉", "银狼LV.999"],
-        # 主C 裁定收口(plaza-carry-retirement 3.1,实战口径):火花进首位 ——
+        # 主C 裁定收尾(plaza-carry-retirement 3.1,实战口径):火花进首位 ——
         # plaza 火花簇 n=25(V4.4 Final carry=火花)vs BV 转录攻略单篇(2026-02,
         # V4.0 时代口径花火主C),版本差+样本量双差取实战;花火保留 core 次位
         # (欢愉成员/攻略明文 3★ 质变仍成立)。分歧沿革归 final_comps 交叉核对记录。
@@ -758,7 +758,7 @@ COMP_LIBRARY: list[Comp] = [
         # plaza:大黑塔 3星率 0.82(4费);5级搜牌 20/38 篇(小黑塔 1费 5级 D 干);装备 电锯29/永动机20/蓄能帆17/电光履16
         # 记忆主必拿(「记忆主一定要拿,后台花火防战技点不足」);后期可上花火补战技点。
         # ↑ 战场进化手册=小黑塔星级装备(星级→强度),归本条(教义)。
-        # 双列回声清理:黑塔/缇宝/翡翠 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:黑塔/缇宝/翡翠 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],   # 成型羁绊队:学者档=星级总量成长乘区
         # ===== 大黑塔群攻家族(档位=连续深度谱,非流派)=====   # ②类信号:星级总量成长
         equip_assign={"大黑塔": ["高周波电锯", "永动机", "电光履", "蓄能帆"],
@@ -791,7 +791,7 @@ COMP_LIBRARY: list[Comp] = [
         # —— 核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
         # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型
 # (银枝×单体长战类非公司名,不登 boss 吃怕表——同黄泉条目处置,待实机核)
-        # 双列回声清理:翡翠/知更鸟 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:翡翠/知更鸟 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
         flex_factions=["星间旅人", "公司", "盛会之星", "列车同行"],
         equip_assign={"银枝": ["火力风暴潮", "冷笑话引擎"]},
@@ -818,7 +818,7 @@ COMP_LIBRARY: list[Comp] = [
 # 依赖合成装备:以牙还牙甲×3 反甲链+掩体生成枪=胜利条件本身(final_baie_reflect 明文
         # 「反甲装备流」);装备依赖词条(变宝为废)的选型侧降分载体(合成侧由 junk_first 处理,
         # 两半互补)。羁绊维判非成型羁绊队:factions/档 0 皆空,装备流例外。
-        # 双列回声清理:白厄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:白厄 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=[],
         # ===== 白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
         # ↑ 档 1 只收了 B 流 {护盾2};A 流前排法则=标签数量×星级优先,A 巡海流(~64%)
@@ -851,7 +851,7 @@ COMP_LIBRARY: list[Comp] = [
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # 交叉核对注(狼尊簇 68 篇交叉核对):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
         # 成型羁绊队:欢愉 5-7 档乘区
-        # 双列回声清理:爻光 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:爻光 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["花火"],
         # ===== 欢愉族家族·银狼档(资源基准 9 级;与绯英档互含单向:银狼局含绯英 76%)=====   # ②类信号:绯英/银狼两档共用主体
         # 星核 2=笑点泵(银狼每攻 7 次放 40 笑点欢愉技)——本套已列档 0(星核猎手2),不入档 1(不重复);绯英 76% 在场沉淀
@@ -881,7 +881,7 @@ COMP_LIBRARY: list[Comp] = [
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(交叉核对注:升 A 依据不足,勿按万敌标准拔高)。
         # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(裁注)
-        # 双列回声清理:风堇/昔涟 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:风堇/昔涟 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["银狼"],
         flex_factions=["能量", "列车同行", "量子同频", "治疗"],
         equip_assign={"阿格莱雅": ["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨"]},
@@ -909,7 +909,7 @@ COMP_LIBRARY: list[Comp] = [
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
         # 成型羁绊队:追击档乘区(≥3追击=300%倍率)
-        # 双列回声清理:知更鸟/不死途/那刻夏 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:知更鸟/不死途/那刻夏 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["缇宝"],
         flex_factions=["公司", "群攻", "昼之半神"],
         equip_assign={"飞霄": ["火力风暴潮", "火力风暴潮"],
@@ -942,7 +942,7 @@ COMP_LIBRARY: list[Comp] = [
 
         char_positions={"万敌": "front@0"},   # 站位:万敌永远前排1号位(攻略硬约束,final_wandi_burn「万敌@0 独占前排」;燃血吃受击)
 # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
-        # 双列回声清理:长夜月 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:长夜月 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["风堇", "遐蝶"],
         # ===== 万敌燃血家族(无流派;装备收敛:风暴潮 95%+热血拳 90%)=====   # ②类信号:夜半 2(96% 必配,主档)
         equip_assign={"万敌": ["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"]},
@@ -974,7 +974,7 @@ COMP_LIBRARY: list[Comp] = [
         # 慢速:DOT 叠层×引爆磨血胜利条件(final_dot_kafka),冻结族词条的慢热载体。
         # 成型羁绊队:持续伤害档一路加深(2→4→6)是本线成长乘区。
 
-        # 双列回声清理:千冶·刃/黑天鹅 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:千冶·刃/黑天鹅 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["桑博"],
         # ===== DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分落位)=====   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"卡芙卡": ["火力风暴潮", "火力风暴潮"],
@@ -1005,7 +1005,7 @@ COMP_LIBRARY: list[Comp] = [
         faction_reqs={0: {"仙舟": 5}},
         # plaza:景元 3星率 0.69(5费);7级搜牌 7/16;装备 电锯13/风暴潮12/皮靴6;常驻 符玄13/爻光11/藿藿11
         # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊);成型羁绊队:仙舟5 召唤计数档乘区
-        # 双列回声清理:符玄 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:符玄 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["忘归人", "藿藿"],
         flex_factions=["治疗", "减益", "量子同频", "列车同行", "燃血", "狼狩"],
         equip_assign={"景元": ["火力风暴潮", "高周波电锯"], "镜流": ["反重力皮靴"]},
@@ -1029,7 +1029,7 @@ COMP_LIBRARY: list[Comp] = [
         # 慢速:DOT 磨血(桑博 DoT 越早越好,同 final_dot_kafka 磨血胜利条件)。
         # 成型羁绊队:持续伤害档乘区。
 
-        # 双列回声清理:卡芙卡/千冶·刃 core 列在册;members 读口去重(core 位在前),全消费面输出不变
+        # 双列回声清理:卡芙卡/千冶·刃 core 列已登记;members 读口去重(core 位在前),全消费面输出不变
         shared_chars=["海瑟音"],
         # ===== DOT卡芙卡家族·桑博专家变体(文档明言:策略入口变体,不独立成套)=====   # ②类信号:开局即战力,前期=终局同体一路加深
         equip_assign={"桑博": ["反重力皮靴", "反重力皮靴", "物质分解液"]},
@@ -1223,8 +1223,8 @@ def bond_score_members(block: TransitionBond) -> set[str]:
 
 
 # ===== CARRY 基准派生(carry = core 序顶端读数;plaza-carry-retirement)=====
-# CARRY 档口径(carry_set)不变:单名锚 ∪ core_chars 全员合流——变化的只是
-# 单名锚的源:旧独立字段 plaza_carry(聚类抄录)已退役,锚 = core_chars[0]
+# CARRY 档口径(carry_set)不变:单一具名定义件 ∪ core_chars 全员合流——变化的只是
+# 单一具名定义件的源:旧独立字段 plaza_carry(聚类抄录)已退役,定义件 = core_chars[0]
 # (首位=定义件契约,数据批换位/裁定已就位)。聚类实证的交叉核对职责移交
 # gen_plaza_comps 版本重跑差异报告(对账证据,不再进运行时字段)。
 # (旧 CARRY_ANCHOR_FALLBACK 表〔3 条空值线攻略补全〕随之退役:补全值全部
@@ -1232,11 +1232,11 @@ def bond_score_members(block: TransitionBond) -> set[str]:
 
 
 def carry_anchor(comp: Comp) -> str:
-    """线 CARRY 单名锚 = core 序顶端(core_chars[0];首位=定义件契约)。
+    """线 CARRY 单一具名定义件 = core 序顶端(core_chars[0];首位=定义件契约)。
 
-    锚的七个消费面(fp 点名折条/部署 L1 named 层/圈人序/装备分配序/评分锚/
-    跨线骨架排除)读口不变;锚 ∈ members 由构造恒真(core ⊆ members)。
-    聚类实证与本锚的差异归版本重跑对账报告裁定(gen_plaza_comps),
+    定义件的七个消费面(fp 点名折条/部署 L1 named 层/圈人序/装备分配序/评分定义件/
+    跨线骨架排除)读口不变;定义件 ∈ members 由构造恒真(core ⊆ members)。
+    聚类实证与该定义件的差异归版本重跑对账报告裁定(gen_plaza_comps),
     不再以运行时字段承载。"""
     return comp.core_chars[0] if comp.core_chars else ''
 
@@ -1244,7 +1244,7 @@ def carry_anchor(comp: Comp) -> str:
 def carry_set(comp: Comp) -> set[str]:
     """线 CARRY 档成员全集(持有证据分 CARRY 档口径;12 号篇 §1.1)。
 
-    = {``carry_anchor`` 单名锚} ∪ ``core_chars`` 全员——core 至少 1 人
+    = {``carry_anchor`` 单一具名定义件} ∪ ``core_chars`` 全员——core 至少 1 人
     → 返回恒非空;消费侧禁自拼合流集(判据双源)。"""
     anchor = carry_anchor(comp)
     return ({anchor} if anchor else set()) | set(comp.core_chars)
@@ -1252,7 +1252,7 @@ def carry_set(comp: Comp) -> set[str]:
 
 def named_units(comp: Comp | None) -> tuple[str, ...]:
     """点名件统一表达式(form_progress 折条与部署 L1 named 层共用,禁两处
-    各写半边):终局条目 = 单锚(core[0]);过渡组合条目 = core 全员;
+    各写半边):终局条目 = 单定义件(core[0]);过渡组合条目 = core 全员;
     ``None``(裸键组,无 Comp 上下文)→ 空组。
 
     过渡判据 = ``comp.name ∈ TRANSITION_COMBO_PARTS`` 键集(生成器单一源,
@@ -1267,19 +1267,19 @@ def named_units(comp: Comp | None) -> tuple[str, ...]:
 
 
 def _validate_anchor_invariants() -> None:
-    """锚体系 import 期防线(非法 raise ValueError)。
+    """定义件体系 import 期防线(非法 raise ValueError)。
 
     carry 派生化(plaza-carry-retirement)后的三条数据前提,手改库/生成器
     破坏约定即炸:
-    ① COMP_LIBRARY 全线 core_chars 非空——终局点名件 = 单锚(core[0])
-       的数据前提(锚非空的构造保证);
+    ① COMP_LIBRARY 全线 core_chars 非空——终局点名件 = 单定义件(core[0])
+       的数据前提(定义件非空的构造保证);
     ② TRANSITION_COMBO_PARTS 键集 == TRANSITION_LIBRARY 条目名集(与
        _validate_transition_combos ① 双钉)∧ COMP_LIBRARY 线名集与键集
        不相交——防终局线名撞 combo 命名(含 '+')被误判过渡 → 点名件从
-       单锚翻转全员的语义漂移;
+       单定义件翻转全员的语义漂移;
     ③ 过渡条目 core 规模 ≤ 9——部署 L1 两层支配编码的层间严格性
        数据边界(m=10 两层平局/m≥11 翻转;现状 m∈{1..5})。
-    (旧断言「锚可达性:锚 ∈ members ∨ 锚羁绊 ∩ 档 0 键 ≠ ∅」已删——
+    (旧断言「定义件可达性:定义件 ∈ members ∨ 定义件羁绊 ∩ 档 0 键 ≠ ∅」已删——
      core[0] ∈ members 由构造恒真,防线对象消失。)
     """
     for comp in COMP_LIBRARY:
@@ -1395,8 +1395,8 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
     单一源契约:fp = 1.0 ⟺ 档 0 全键达标 ∧ 点名件在场。点名件 =
-    ``named_units`` 统一表达式(终局单锚 = core[0] / 过渡 core 全员,
-    过渡判据 = TRANSITION_COMBO_PARTS 键集)——锚是 core 序顶端读数
+    ``named_units`` 统一表达式(终局单定义件 = core[0] / 过渡 core 全员,
+    过渡判据 = TRANSITION_COMBO_PARTS 键集)——定义件是 core 序顶端读数
     (首位=定义件契约),手判层演化经 core 序承载;聚类实证差异归版本
     重跑对账报告(gen_plaza_comps)裁定,不进运行时判据。档 1 不进
     (加分层归部署次层/采购面)。点名件逐名折一条 0/1 虚拟分支(在板=1;
@@ -1405,7 +1405,7 @@ def form_progress(comp: Comp, gs: GameState) -> float:
     (named = core[0])——过渡语义测试须取 TRANSITION_LIBRARY 真条目
     (named_units docstring 契约)。
     档 0 空(非羁绊成型阵容,如反甲白厄)→ fp 恒 0,与点名件解耦
-    (装备流走轮数兜底;白厄裸板不得因锚在板而 fp>0 → 出战误放行)。
+    (装备流走轮数兜底;白厄裸板不得因定义件在板而 fp>0 → 出战误放行)。
     禁消费位绕过本函数自写 min(board,tier)≥tier 内联成型判定
     (判据双源;内联位清单与取代声明)。
     """
