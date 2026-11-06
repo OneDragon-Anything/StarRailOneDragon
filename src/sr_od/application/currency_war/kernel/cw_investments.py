@@ -1154,7 +1154,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 随机的同费用角色。立刻获得5次免费刷新和10金币。」(cw_invest_data.py:351,
     # id 352101)。bench_reroll 族第二登记条目:重掷腿 = bench_reroll 载体(随机
     # 面零逻辑写端,观察收口);burst 腿 = free_refresh_burst 载体字段单条目双载
-    # (登记腿 burst 桥发放,同形先例 = 大裁员);金腿 instant_gold 在册零动
+    # (burst 由只登记不写状态的实现分支经桥发放,同形先例 = 大裁员);金腿 instant_gold 在册零动
     # (选卡金发放写端缺口维持族级待办)。
     '乱成一锅粥': EffectSpec(
         id='352101', name='乱成一锅粥', trigger=TriggerKind.NODE_ENTER,
@@ -1174,7 +1174,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 随机的同费用角色。立刻获得7次免费刷新和14金币。」(cw_invest_data.py:352,
     # id 352102)。bench_reroll 族第三登记条目:重掷腿与姊妹逐字同式 =
     # bench_reroll 载体同值(随机面零逻辑写端,观察收口);burst 腿 =
-    # free_refresh_burst 载体字段单条目双载(登记腿 burst 桥发放,同形先例 =
+    # free_refresh_burst 载体字段单条目双载(burst 由只登记不写状态的实现分支经桥发放,同形先例 =
     # 大裁员);金腿 instant_gold 在册零动(选卡金发放写端缺口维持族级待办)。
     '乱成一锅粥+': EffectSpec(
         id='352102', name='乱成一锅粥+', trigger=TriggerKind.NODE_ENTER,
