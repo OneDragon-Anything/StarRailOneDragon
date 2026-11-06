@@ -1222,7 +1222,7 @@ at-most-once,live 零状态副本写经验条观察链覆盖);④策略卡购买
 (都是这家伙的错!id 352801:kernel `check_strategy_perfect_rescue` 挂
 settle_confirm 分支,计数形键 `perfect_rescue#<卡名>#<已耗序>`,前缀计数 <
 配额放行,瞬时位 `settlement_perfect_rescue`(§3.5.3b)写与闩写同窗相邻,
-producer `strategy_perfect_rescue`;双端写,出售写状态的实现分支 sim 门内)。**拒落不置一次性标志位**(①):
+producer `strategy_perfect_rescue`;实机(live)和模拟器(sim)两边写,出售写状态的实现分支 sim 门内)。**拒落不置一次性标志位**(①):
 equips 未观察窗发放
 fail-closed 零写,一次性标志位同样不落——池现值维持达标时后续 tick 重试自愈;池
 永久回落阈下则不发放(边界非缺陷)。**无观察写入方**——发放登记事实非
@@ -1871,7 +1871,7 @@ None/False 两值均放行、True 拒绝。
 **写入方**:唯一 = `cw_gain_chain.take_strategy_death_save`(唯一调用点 = sim 结算
 折算点 `_resolve_battle` 前置分支,幂等 = 调用点 `_settled_key` + 闩双保险);
 live 恒 None——救援事件 live 由游戏自算自显(救援局 = 败局,结算页有 hp 面入
-观察链,奖励两笔走下一备战帧 gold/xp 现读兜底),闩 live 零写零消费,双端不对称
+观察链,奖励两笔走下一备战帧 gold/xp 现读兜底),闩 live 零写零消费,实机和模拟器两边不对称
 (sim 闩真值/live 闩盲)与星核猎手锁域 live 不对称同型,零行为风险(live 无
 消费读端)。
 **边界**:接管局/恢复局:闩 = sim 写端事实域,接管局 None → 可再救一次(与
@@ -1896,7 +1896,7 @@ settle_confirm 分支 check_env_battle_grants 调用邻位,先于两完胜判据
 两完胜判据行的 hp 持平判定旁路(`hp差≠0 and not 瞬时位.value`——True 时损血
 局亦判完胜 = 模型与游戏「视为完美通关」对齐,live 主收益;None/False 两值均
 维持旧判)。
-**双端写**:live 判据输入 = 观察面(结算环 killed/hp_after 结算读链 + deployed
+**实机和模拟器两边写**:live 判据输入 = 观察面(结算环 killed/hp_after 结算读链 + deployed
 unit.equips 备战观察填充);sim 结构性休眠(部署单位 unit.equips 恒空 → 徽携带
 恒假;双重休眠第二独立理由 = sim 结算帧胜利不掉血 →「胜利∧损血」分支结构性
 不可达)→ sim 恒 False,env 检查行为零变化——sim 侧休眠 = 设计正确路径,
