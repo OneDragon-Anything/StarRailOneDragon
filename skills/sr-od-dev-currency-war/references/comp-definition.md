@@ -124,9 +124,8 @@ strategy-docs/12 号篇 §3,本表不镜像。
 | 加层羁绊 | `bonus_faction_reqs` | Comp property |
 | 阵容轮廓 | `all_factions` | Comp property |
 | 终局成员集 | `members` | Comp property |
-| 线 carry 单名锚(聚类+补全口径) | `carry_anchor` | cw_comps 函数 |
-| 评分锚(攻略重述口径) | `rating_anchor`(分歧登记 ∘ carry_anchor) | line_select 函数(策略旁表豁免:评分口径取攻略重述是评分决策) |
-| 分配器 arm 键 | `arm_key_of`(= carry_anchor) | cw_run_allocator 函数(cw_loop 仅改调) |
+| 线 carry 单名锚 | `carry_anchor`(= core_chars[0],首位=定义件契约) | cw_comps 函数(旧 plaza_carry 字段/补全表/评分分歧登记表已随 plaza-carry-retirement 退役,聚类对账归 gen_plaza_comps 版本重跑差异报告) |
+| 分配器 arm 键 | `arm_key_of`(`LINE_STAT_CLUSTER` 查表,线名→统计簇名——adherence 分组键随簇不随定义件,与行为锚解耦) | cw_run_allocator 表+函数 |
 | CARRY 档全集 | `carry_set` | cw_comps 函数 |
 | 关键装备清单 | `key_equips` | Comp property(委托 derive_key_equips) |
 | 成员优先级 | `member_rank_of` / `derive_member_priority` | cw_comps 函数 |
