@@ -44,6 +44,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -358,11 +359,16 @@ class TlAsTeamFillOp(SrOperation):
         return (_ARC_ROW_SLOT_POINTS if self._arc_mode
                 else _ROW_SLOT_POINTS)[row_no]
 
+    #: 「队伍N」标记匹配:须「队伍」紧跟数字——编队屏顶部横幅「队伍发生变动…」
+    #: 同含「队伍」二字,宽松包含匹配会把常驻横幅计入,清空/回验永不收敛(实测翻车)
+    _TEAM_TAG_PAT: ClassVar[re.Pattern] = re.compile(r'^队伍\s*\d')
+
     def _count_team_tags(self, image) -> int:
         """全帧 OCR 数「队伍N」标记:每入队一人恰一张列表卡带标记,计数即
         累计落位数(星启填充回验的唯一推进信号)。"""
         results = self.ctx.ocr_service.get_ocr_result_list(image=image)
-        return sum(1 for r in results if '队伍' in (r.data or ''))
+        return sum(
+            1 for r in results if self._TEAM_TAG_PAT.match((r.data or '').strip()))
 
     @staticmethod
     def _cell_names(cell) -> list[str]:
