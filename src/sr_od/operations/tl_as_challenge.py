@@ -535,6 +535,9 @@ class TlAsAxiomEquipOp(SrOperation):
         if len(buff_slots) not in (2, 3):
             raise ValueError(f'buff_slots 需 2(双节点)或 3(星启)项: {buff_slots}')
         self._buff_slots: tuple[int, ...] = buff_slots
+        # 增益入口分派按布局模式(星启 = 行尾「+」area,双节点 = 建档圆圈);
+        # 星启判定 = 3 项增益,与 TlAsTeamFillOp 的 12 人判定同构
+        self._arc_mode: bool = len(buff_slots) == 3
         self._row_idx: int = 0              #: 当前装配行(0 基)
         self._phase: str = 'open'           #: 装配子步:open 点圆圈 / select 点卡片 /
                                             # confirm 点装配效果 / closed 等弹窗关
