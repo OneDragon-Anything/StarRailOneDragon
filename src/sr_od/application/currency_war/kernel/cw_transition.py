@@ -41,7 +41,7 @@ SIGNAL_WEIGHTS: dict[str, float] = {
 }
 
 # (信号定型门已停用 2026-09-04,「未证即停用」裁定:旧
-# COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
+# COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为写死值(原注释只证了
 # 「不能更低」),且 ready() 全库零生产消费(定型权威 =
 # cw_intention.committed_authority)。连同停用:t_of 全局轮序换算(唯一消费 = 已删 ready 的
 # 轮门,P2=7 节点按 9 计的量纲失真一并消失)。CommitSignals 保留为

@@ -167,7 +167,7 @@ class EffectSpec:
       BATTLEFIELD→BattlefieldEffect、UNIT_BUFF→UnitBuffRef(构建层校验);
       环境源经济条目 ECONOMY→EnvEconomyEffect(整局规则通道,与 per-node
       形态的 EconomyEffect 分型,值单一源 = cw_investments.ENV_ECONOMY)。
-    - pending/verdict:效果文本二义条目 pending=True,**不拍死**——verdict 保持
+    - pending/verdict:效果文本二义条目 pending=True,**不预先定死**——verdict 保持
       None 直到实采定案;消费端见 pending=True 必须走
       notes 声明的保守支。
     """

@@ -27,7 +27,7 @@ def nbar(buy_count_per_round: int = 0,
          invest_xp_per_node: int = 0) -> int:
     """n̄(resolved 自然 XP 流,按轮折算的张数口径)= XP_PER_BUY×买牌数 +
     投资 XP 流(P48 A3;buy=本窗口自然入手张数,invest_xp_per_node=resolved
-    投资每节点送 XP 折张——调用方按 cw_investments 注册表现读,禁拍死值)。"""
+    投资每节点送 XP 折张——调用方按 cw_investments 注册表现读,禁写死值)。"""
     return XP_PER_BUY * buy_count_per_round + invest_xp_per_node
 
 
