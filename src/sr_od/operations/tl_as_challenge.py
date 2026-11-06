@@ -233,6 +233,10 @@ class TlAsTeamFillOp(SrOperation):
                 f'请让选关屏选中的难度与目标角色数匹配(8 人=01-03,12 人=星启)')
 
         row_no = self._row_idx + 1
+        if self._char_idx >= len(self.teams[self._row_idx]):
+            # 批量点卡一轮可能点完整行,游标越界 = 行完成待推进
+            # (星启;双节点逐人推进不会越界,守卫对两者都安全)
+            return self._advance_row(row_no)
         target = self.teams[self._row_idx][self._char_idx]
         row_slot_point = self._row_slot_point(row_no)
 
