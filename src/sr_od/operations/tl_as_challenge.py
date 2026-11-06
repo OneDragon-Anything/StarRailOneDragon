@@ -301,12 +301,15 @@ class TlAsTeamFillOp(SrOperation):
         return self._page_down(cells, target, row_no)
 
     def _return_to_top(self) -> OperationRoundResult:
-        """固定快速大幅上拖回顶,不验证到位(人类老莫 2026-11-06 定案:
-        大幅快速上拖数次 + 停 1 秒即视为到顶——列表天然止于顶部,拖过头
-        无副作用;省掉两帧页签比对的逐轮收敛,每角色省 10-20 秒)。"""
+        """固定快速大幅拖动回顶,不验证到位(人类老莫 2026-11-06 定案)。
+
+        方向 = 手指自上而下拖(250→850)= 列表向上滚回顶部;列表天然止于
+        顶部,拖过头无副作用。上滑方向是向后翻页(与 _page_down 同向),
+        反着写会把「回顶」变成「冲向列表尾」(实机实证:回顶后首扫页签
+        全是 4 星尾部角色)。"""
         for _ in range(5):
             self.ctx.controller.drag_to(
-                Point(300, 250), start=Point(300, 850), duration=0.25)
+                Point(300, 850), start=Point(300, 250), duration=0.25)
         self._need_top = False
         self._down_stagnation = 0
         self._seen_sigs = set()
