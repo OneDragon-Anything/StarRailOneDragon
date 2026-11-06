@@ -1285,7 +1285,7 @@ def _validate_anchor_invariants() -> None:
     for comp in COMP_LIBRARY:
         if not comp.core_chars:
             raise ValueError(f'{comp.name}: 终局线 core_chars 为空'
-                             '(点名件单识别标志半边失源)')
+                             '(点名件单定义件半边失源)')
     if set(TRANSITION_COMBO_PARTS) != {e.name for e in TRANSITION_LIBRARY}:
         raise ValueError('TRANSITION_COMBO_PARTS 键集 != 条目名集'
                          '(键集是过渡判据单一源,双钉失效)')

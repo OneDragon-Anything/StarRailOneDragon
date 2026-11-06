@@ -268,7 +268,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
 
     # —— 首购经验条目(「获得本投资策略后，首次购买X费角色时，获得Y经验」
     #    族,首例 = 孪生素数):购买事实全毕后判据一次(持卡 ∧ 费用桶域
-    #    ∧ 一次性一次性标志位),费用取数 = card_cost 与本函数扣价同源零新增链。
+    #    ∧ 一次性标志位),费用取数 = card_cost 与本函数扣价同源零新增链。
     #    函数内自门 sim 装配(live 零写,经验条观察链覆盖);一次性标志位先于状态副本写
     #    (at-most-once,失败语义见触发函数 docstring)。一击多买 k>1 同
     #    费用桶恒单发(卡面「首次」语义,与上方 on_buy 计 k 次刻意分叉,

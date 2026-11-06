@@ -1521,7 +1521,7 @@ def check_strategy_first_buy_xp_grants(gs: GameState, *, cost: int,
     2. ``cost ∉ 1..5`` → 0(表外费用零发放留 log——购买费用域异常属
        上游形态,不炸不静默;卡面桶域 1/2/3/4/5 明写);
     3. ``first_buy_xp#<cost>`` ∈ strategy_conditional_done → 0(同桶
-       一次性一次性标志位;复合键 = 条件条目纯卡名键条款的费用粒度显式扩展——纯
+       一次性标志位;复合键 = 条件条目纯卡名键条款的费用粒度显式扩展——纯
        卡名键会让同卡第二费用桶被误短路);
     4. 查表 XP 量(值下标 = 费用−1)+ 落一次性标志位(write_logic,evidence
        ``first_buy_xp#<cost>``,「首次」封账);
@@ -2315,7 +2315,7 @@ def check_strategy_boss_completion_grants(gs: GameState, node_kind: str,
        战争边疆 P3 boss 位保留,两类修饰均不改 boss 位 kind);
     2. 逐持卡(active_strategies 状态容器直读)∩ STRATEGY_BOSS_COMPLETION_
        GRANTS,表外卡零条目跳过;卡名 ∈ strategy_conditional_done →
-       跳过(一次性一次性标志位:卡面「下个」= 恰一次,一次性标志位后后续首领不再发——
+       跳过(一次性标志位:卡面「下个」= 恰一次,一次性标志位后后续首领不再发——
        与枪在手「首领战后」每战发的无一次性标志位形对形分化,幂等守卫只防同战斗
        重放,不防下一场 boss,一次性标志位面必须函数内自管);
     3. 逐件 ``gain_equipment(rand=False)`` 确定发放(items 注册表序,
@@ -2399,7 +2399,7 @@ def check_strategy_boss_clear_gold(gs: GameState, sig: ChannelSig) -> None:
     1. 逐持卡(active_strategies 状态容器直读)∩ 登记表,表外卡零条目
        跳过(胜负/kind 门归调用方守卫——「通关」= won 且 kind=='boss',
        死亡局在 sim 提前 return 处已出局);
-    2. 卡名 ∈ strategy_conditional_done → 跳过(一次性一次性标志位:卡面
+    2. 卡名 ∈ strategy_conditional_done → 跳过(一次性标志位:卡面
        「下一个」= 拿卡后首个 won boss 恰一次,一次性标志位后同局后续首领不再
        发——防重两层各司其职:调用方节点键幂等守卫防同战斗重放,
        本一次性标志位防跨 boss 重复,函数内自管);

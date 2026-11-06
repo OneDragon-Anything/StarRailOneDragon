@@ -99,7 +99,7 @@
 
 ### 3.3 与 M7 角色级分配的接口(对抗轮一已定案:扩签名)
 
-代码真值:`equip_allocation(comp, deployed, owned, occupied=None)`(`cw_comps.py`)接收者顺序在函数内部派生(carry_anchor → core_chars,锚 = core[0] 派生),无优先序输入。接口设计为**显式签名扩展**:
+代码真值:`equip_allocation(comp, deployed, owned, occupied=None)`(`cw_comps.py`)接收者顺序在函数内部派生(carry_anchor → core_chars,定义件 = core[0] 派生),无优先序输入。接口设计为**显式签名扩展**:
 
 - 新增可选参数 `priority_order: list[str] | None = None`;`None`(缺省)= 现行内部派生序,零行为漂移;
 - **comp=None 路径定义**:`comp` 为 None(无目标/意向未定型帧)时 `priority_order` 强制为 None——优先层的重排依据([9] 序 + 谓词集合)依赖阵容名单;意向未定型帧词缀谓词集合退化为「在场角色全集按现行内部派生序」,即零重排,与「词缀层只重排不造第二套评分」自洽;

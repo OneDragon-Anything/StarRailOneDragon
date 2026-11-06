@@ -1,7 +1,7 @@
 # P87:希儿系成型判据文档口径放宽的完成率嵌套命题(形态端口 OR 语义)
 
 > **退役指针(comp-structure-unification)**:下文代码引用块的 `pair_target_comp`(伪阵容物化)与 cw_recipe 完全体档已随配方决策层退役(3.3);`form_tiers` 字段已并入 `faction_reqs`(档 0 = `core_faction_reqs` 读口,3.1);希儿系 or_reqs 承接的现行形态 = 过渡阵容库「希儿引擎」条目(or_reqs 与档 0 同键值一致,语义同构;strategy-docs/12 号稿 §3)。命题的 OR 嵌套数学本体不受影响;判读以本注为准,引用的现行符号不再存在。
-> ⚠️ **符号退役注记(2026-11-06,required-deployed-retirement)**:代码引用块的 `required_deployed=('希儿',)` 与「关联」节 or_reqs/required_deployed 双字段实现决策已整字段退役——「点名件在场」判据改锚体系承载(终局单锚 `carry_anchor`/过渡 core 全员统一表达式,消费位 = form_progress 折条 + 部署 L1 named 层)。命题的完成率嵌套数学本体不受影响;实现形态留档为历史,正文不逐行改写。
+> ⚠️ **符号退役注记(2026-11-06,required-deployed-retirement)**:代码引用块的 `required_deployed=('希儿',)` 与「关联」节 or_reqs/required_deployed 双字段实现决策已整字段退役——「点名件在场」判据改定义件承载(终局定义件 `carry_anchor`/过渡 core 全员统一表达式,消费位 = form_progress 折条 + 部署 L1 named 层)。命题的完成率嵌套数学本体不受影响;实现形态留档为历史,正文不逐行改写。
 > 状态:**已证(嵌套包含【推】级零数值依赖 + 表值=P38 闭式声明域;2026-09-09 正式化)**
 > 素材出处:希儿系形态批命题(
 > t171_xierie_criteria 目录下「命题_批序1_形态端口OR.md」(未入库临时档案、git 外),方案审放行附 5 低项
