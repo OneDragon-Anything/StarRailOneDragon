@@ -24,13 +24,13 @@
 
 ## 3.2 代码批：字段/表退役 + 派生改造 + 断言改造
 
-**范围**：`Comp.plaza_carry` 字段、`CARRY_ANCHOR_FALLBACK`、`_LINE_ANCHOR_DIVERGENCE`、`rating_anchor` 符号级删除；`carry_anchor` 改派生 `core_chars[0]`；新增 `named_units` 模块级派生函数（终局单锚/过渡全员/裸键组三态，过渡判据 = `TRANSITION_COMBO_PARTS` 键集）并替换 `form_progress`（点名折条）与 `deploy_search` L1 named 层（:278-282 附近）的就地表达式；`intention_core` 简化为 core[0]（plaza_carry 分支删除）；line_select 评分锚消费点直读 `carry_anchor`；`_validate_anchor_invariants` 按设计 §2.1 第 7 条改造（断言①等价改写/②换判据/③删/④不动）；cw_loop.py :1778 附近 plaza_carry 注释引用清理；cw_comps 模块头「plaza_carry 字段是两层交叉核对基准」句改写（交叉核对职责移交往对账报告）。**不含**：run 分配器（3.3）、对账工具（3.4）。
+**范围**：`Comp.plaza_carry` 字段、`CARRY_ANCHOR_FALLBACK`、`_LINE_ANCHOR_DIVERGENCE`、`rating_anchor` 符号级删除；`carry_anchor` 改派生 `core_chars[0]`；新增 `named_units` 模块级派生函数（终局单锚/过渡全员/裸键组三态，过渡判据 = `TRANSITION_COMBO_PARTS` 键集）并替换 `form_progress`（点名折条）与 `deploy_search` L1 named 层（:278-282 附近）的就地表达式；`intention_core` 简化为 core[0]（plaza_carry 分支删除）；line_select 评分锚消费点直读 `carry_anchor`；`_validate_anchor_invariants` 按设计 §2.1 第 7 条改造（断言①等价改写/②改双防线/③删/④不动）；**锚源语义注释段清理**（符号 grep 覆盖不到的语义面：form_progress「锚源是统计字段(plaza_carry 聚类 + fallback)…」整段、carry_anchor/carry_set docstring、_validate_anchor_invariants docstring——改写为派生口径）；cw_loop.py :1778 附近 plaza_carry 注释引用清理；cw_comps 模块头「plaza_carry 字段是两层交叉核对基准」句改写（交叉核对职责移交往对账报告）。**不含**：run 分配器（3.3）、对账工具（3.4）。
 **设计依据**：design.md §2.1 第 2/3/4/5/7 条、§2.5。
 **文件面**：`kernel/cw_comps.py`、`kernel/cw_intention.py`、`strategies/impl/mandate_v1/line_select.py`、`strategies/impl/mandate_v1/deploy_search.py`、`operations/cw_loop.py`；`sr-od-test/` 镜像（test_faction_derivation_locks 锚派生口径断言整段改写、test_line_select rating_anchor 断言改读、test_select_deployment 构造参数删、test_cw_comps/test_economy 值断言核对）。
 **依赖**：3.1（数据就位后派生值才与申报锚值一致）。
 **优先级建议**：9。
 **完成判据**：
-- 符号级 grep 清零：`plaza_carry` / `CARRY_ANCHOR_FALLBACK` / `_LINE_ANCHOR_DIVERGENCE` / `rating_anchor` 在 src 生产代码零残留（测试镜像同步清零）；
+- 符号级 grep 清零（**限定域** = kernel/strategies/operations/sim 的 Comp 属性面：`\.plaza_carry` 属性访问与 `plaza_carry=` 构造参数；`CARRY_ANCHOR_FALLBACK`/`_LINE_ANCHOR_DIVERGENCE`/`rating_anchor` 同域清零）——`data/cw_plaza_comps.py` 的聚类层自有字段（`PlazaCarryCluster.carry`）与 `tools/cw/gen_plaza_comps.py` 合法共存，**不在此判据域**；测试镜像同步清零；
 - 恒等断言：design §2.4 判定式落地批内测试覆盖（15 线逐位恒等 + 过渡条目 named_units == core 全员 + 火花线按申报值）；
 - 行为对照 design §2.2 表（火花线申报四项：members 扩员/评分锚移位/意向核心换键/fp·部署·装备第一顺位值不变）；
 - 完成前常规检查 + 全量测试。
@@ -67,7 +67,7 @@
 **文件面**：清单所列权威版本文档。
 **依赖**：3.1–3.4 全部。
 **优先级建议**：0。
-**完成判据**：清单清零；权威版本与实现一致；黑话终扫（design 方案与 landing/README 自身按术语表扫描清零；`proofs/` 已标注退役指针篇目豁免）。
+**完成判据**：清单清零；权威版本与实现一致；**清单完整性 grep 核验**——落地时先 grep `plaza_carry|CARRY_ANCHOR|carry_anchor` 全 docs/skills 面，命中篇不在清单则补列后清零；黑话终扫（design 方案与 landing/README 自身按术语表扫描清零；`proofs/` 已标注退役指针篇目豁免）。
 **验收凭据形式**：文档对照 review。
 
 ## 正本更新清单

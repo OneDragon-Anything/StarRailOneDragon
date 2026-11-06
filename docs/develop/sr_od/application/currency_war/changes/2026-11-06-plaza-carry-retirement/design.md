@@ -38,8 +38,8 @@
    过渡判据 = `TRANSITION_COMBO_PARTS` 键集（生成器单一源，键集与条目名集一致性已有建库校验①钉住）；`form_progress`（点名折条）与 `deploy_search` L1 named 层（:278-282）共用本函数——「同一表达式」契约保持，表达式本体换源。required-deployed-retirement 在 cw_comps:1410 与 deploy_search:275-282 的就地表达式随批替换。
 5. **`intention_core` 简化**：`return comp.core_chars[0] if comp.core_chars else ''`（原「plaza_carry∈core → 用之；否则 core[0]」的分支删除——core[0] 必 ∈ core，∈core 约束由构造满足；miss 计数语义不变，火花线计数键变化随 §2.2 申报）。
 6. **run 分配器键源换表**：新增 `LINE_STAT_CLUSTER: dict[str, str]`（线名 → 统计簇名，21 条，值 = 各线现行 `carry_anchor` 值快照；语义 = 跨局 adherence 统计的分组键，**非行为判据**——统计事实的合法运行时消费仅此一处）；`arm_key_of` 由 `carry_anchor(comp)` 改查表。键值恒等 → 分配器统计零重启。版本重跑时与 `PLAZA_CARRY_CLUSTERS` 核对（§2 系统级变化 8）。
-7. **锚不变量断言改造**（`_validate_anchor_invariants`）：断言①（终局线锚非空）→ 等价改写「COMP_LIBRARY 全线 core_chars 非空」；断言②（过渡条目锚空）→ 改「过渡条目 `named_units` == core 全员」（判据换 TRANSITION_COMBO_PARTS，防线语义不变：过渡点名件=全员）；断言③（锚可达性：∈members ∨ 羁绊∩档0）→ **删除**（core[0] ∈ members 由构造恒真）；断言④（过渡 core ≤9）不动。
-8. **对账迁移**：`tools/cw/gen_plaza_comps.py` 生成末尾追加差异报告——逐线比对「聚类 carry vs `COMP_LIBRARY` 各线 core_chars[0]」，输出不同值线清单（版本重跑流程消费；人裁定是否重排 core 序）。plaza 聚类自此只以「校准证据」身份存在。
+7. **锚不变量断言改造**（`_validate_anchor_invariants`）：断言①（终局线锚非空）→ 等价改写「COMP_LIBRARY 全线 core_chars 非空」；断言② → 改两条实防线：「TRANSITION_COMBO_PARTS 键集 == TRANSITION_LIBRARY 条目名集」（与 `_validate_transition_combos` ① 双钉）∧「COMP_LIBRARY 线名集 ∩ TRANSITION_COMBO_PARTS 键集 = ∅」（防终局线名撞 combo 命名 → named 从单锚翻转全员的语义漂移——新判据下旧断言②的防线对应形态）；断言③（锚可达性：∈members ∨ 羁绊∩档0）→ **删除**（core[0] ∈ members 由构造恒真）；断言④（过渡 core ≤9）不动。
+8. **对账迁移**：`tools/cw/gen_plaza_comps.py` 生成末尾追加差异报告——逐线比对「聚类 carry（PLAZA_CARRY_CLUSTERS）vs `COMP_LIBRARY` 各线 core_chars[0]」，输出不同值线清单；聚类侧查无该线 carry 簇的空值线（银枝/飞霄/桑博）单列「无簇」标注行，不进差异清单（版本重跑流程消费；人裁定是否重排 core 序）。plaza 聚类自此只以「校准证据」身份存在。
 
 ### 2.2 行为变化申报（逐线）
 
@@ -51,7 +51,7 @@
 | 银枝群攻 / 追击飞霄 / 专家桑博DOT | 无 | fallback 值恒等 core[0]，表删除零行为 |
 | 巡海击破 | core 序换位（波提欧进首位，不死途次之） | 锚值不变；members 序 / 装备分配 core 档内序 / 圈人 core 档内次级排序微差（次级序变化，主判据零变化） |
 | 双王圣杯 | core 序换位（Saber 进首位，吉尔伽美什次之） | 同上 |
-| **火花星间旅人** | **裁定收口（方向 = 实战口径）**：core 增「火花」进首位（→ [火花, 花火, 爻光, 开拓者·欢愉, 银狼LV.999]），花火保留 core 次位 | 依据就地标注：plaza 火花簇 n=25（V4.4 实证，Final carry=火花）vs BV 转录攻略单篇（2026-02 录制，V4.0 时代口径花火主C）——版本差与样本量双差指向实战口径。行为变化：members +火花（采购面/卖牌保护/成员视图纳入）；need_star 补火花条目（精值按 plaza 火花簇 `carry_star3_rate` 于数据批定档）；评分锚 花火→火花（持花火由 +8000 降 +4000〔仍在 core〕、持火花由 carry_set 成员档升 +8000——carry_set 原含火花，证据门行为不变）；意向核心 花火→火花（miss 计数重置，键变统计重启）；fp 点名 / 部署 L1 named / 装备第一顺位 **值不变**（原锚就是火花）。裁定可翻案性：推翻时仅改数据批一处（core 序与 need_star），代码批与断言不受影响；分歧沿革归 final_comps 交叉核对记录（§2.3） |
+| **火花星间旅人** | **裁定收口（方向 = 实战口径）**：core 增「火花」进首位（→ [火花, 花火, 爻光, 开拓者·欢愉, 银狼LV.999]），花火保留 core 次位 | 依据就地标注：plaza 火花簇 n=25（V4.4 实证，Final carry=火花）vs BV 转录攻略单篇（2026-02 录制，V4.0 时代口径花火主C）——版本差与样本量双差指向实战口径。行为变化：members +火花（采购面/卖牌保护/成员视图纳入）；need_star 补火花条目（定档规则：carry 位无攻略明文 → 按星级饥饿两档表以 `PLAZA_CARRY_CLUSTERS` 火花簇 `carry_star3_rate` 实测值定档，数据批就地注释；花火既有 3★ 条目**保留**——攻略明文星级不随主C 裁定失效）；评分锚 花火→火花（持花火由 +8000 降 +4000〔仍在 core〕、持火花由 carry_set 成员档升 +8000——carry_set 原含火花，证据门行为不变）；意向核心 花火→火花（miss 计数为局内状态、换键随局重置，无跨局迁移面——落地批核对 intention 状态生命周期属实）；fp 点名 / 部署 L1 named / 装备第一顺位 **值不变**（原锚就是火花）。裁定可翻案性：推翻时仅改数据批一处（core 序与 need_star），代码批与断言不受影响；分歧沿革归 final_comps 交叉核对记录（§2.3） |
 | 过渡组合条目（C(5,2)=10） | 无 | named_units 换源值恒等（core 全员），测试锁 |
 | run 分配器 | 无 | arm 键值恒等（查表快照） |
 
@@ -81,3 +81,11 @@ named_units 恒等(过渡条目): tuple(core_chars) 与旧表达式 else 半边�
 - `carry_anchor` / `carry_set` 签名与返回值域不变：其余消费点零改动。
 - `TRANSITION_COMBO_PARTS` 从模块内部键集升为过渡判据公开消费源（import 期可用性不变，键集校验已有）。
 - 测试桩兼容性：form_progress docstring 的「测试桩须按本表达式属性面(plaza_carry/core_chars)构造」句随换源改为「按 core_chars 构造」——缺 plaza_carry 属性的旧桩不再被容忍路径引用。
+- **named_units 桩语义（身份驱动申报）**：过渡判据 = 名字 ∈ 生成器键集（身份驱动），与旧表达式的数据驱动（anchor 空 → 全员半边）不同——**库外构造（测试桩/手写条目）恒按终局半边解释（named = core[0]）**，过渡语义测试须取 TRANSITION_LIBRARY 真条目；此为设计语义（终局/过渡是条目类型属性，非数据分支），非测试缺陷。
+
+### 2.6 关键取舍
+
+1. **member_priority 全序显式字段落选**：carry 派生只需要「顶端 vs 其余」一档切分（当前全库被消费的成员区分仅此一档：+8000/+4000 证据、10⁹ named 层、装备先拿 vs 同档序）；全序表达力超出消费面——「知识完备性不是理由」（level_plan 判例），且显式字段形态曾存在、零手编实证后已退役（derive_member_priority 迁移史）。逐角色精调若立项再升，从「首位契约」升全序是平滑路径。
+2. **LINE_STAT_CLUSTER 取整表（21 条）而非分歧小表**：该表定位 = 两层**名字空间翻译**（手判层线名 ↔ 统计层簇名），非统计值手编——聚类层没有线名概念，翻译关系只能手判层登记；整表直白可审计，分歧表（仅列 ≠ core[0] 者）省行数但把「默认恒等」藏进读法。arm 键随簇不随人（adherence 统计连续性），与行为锚（core[0]，随手判演化）解耦是表存在的理由。
+3. **火花裁定取实战口径而非攻略口径**：版本差（V4.0 攻略 vs V4.4 实证）+ 样本量差（1 篇 vs 25 篇）双差；攻略口径方案需扩 fallback 表语义（「聚类冲突裁定」类目）破坏「空=无簇」语义，成本更高。翻案仅动数据批（§2.2）。
+4. **过渡判据取 TRANSITION_COMBO_PARTS 键集而非 `Comp.is_transition` 字段**：键集现成、与条目名集的一致性已有建库校验双钉（§2.1 第 7 条），零新结构；加字段违背本迭代收敛方向（16→9 字段路径上反向加字段需更强理由）。身份驱动的测试桩代价已申报（§2.5）。
