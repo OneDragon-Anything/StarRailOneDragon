@@ -301,7 +301,7 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 先例)。独立键版本 1,同 env_grants_
                                 # done 先例不并入他域 bump——他域
                                 # 本体未变
-    'strategy_death_save_used': 1,  # 死亡救援一次性闩(藏一手;每局首次
+    'strategy_death_save_used': 1,  # 死亡救援一次性标志位(藏一手;每局首次
                                 # 致死触发救援发放刻置位,局内恒存,
                                 # 三态 None=未判定/False=已判定未触发/
                                 # True=已用,None 系设计语义不种开局
@@ -345,9 +345,9 @@ DEFAULT_GS_SCHEMA: dict[str, int] = {
                                 # 同 env_grants_done 先例不并入他域 bump
                                 # ——他域本体未变)
     'forge_privilege_charges_left': 1,  # 刃锻特权化剩余生效次数(锻冶
-                                # 专家:刃次数账正本;穿报刃锻支消耗/
+                                # 专家:刃次数账权威版本;穿报刃锻支消耗/
                                 # 获得链计数钩子充能,Field 缺省承载
-                                # 开局 1 零置位腿)。独立键版本 1,同
+                                # 开局 1 零置位写状态分支)。独立键版本 1,同
                                 # env_grants_done 先例不并入他域 bump
                                 # ——他域本体未变
     'forge_privilege_gained_count': 1,  # 刃锻特权化装备获得计数器(锻冶
@@ -2989,7 +2989,7 @@ class GameState:
     # clear_gold(结算位链尾,首领通关价值金一次性标志位,「下一个首领」恰一次,
     # evidence sim:engine:strategy:boss_clear_value:p<r>)
     # + check_strategy_perfect_rescue(结算位 settle_confirm 分支,完胜判定
-    # 改写配额闩,计数形键 perfect_rescue#<卡名>#<已耗序>,前缀计数 <
+    # 改写配额一次性标志位,计数形键 perfect_rescue#<卡名>#<已耗序>,前缀计数 <
     # 配额放行——布尔形会配额>1 部分耗尽误判耗尽,全都要族同禁)——
     # 写端清单单一源 = cw_projection_audit 审计行;
     # 消费 = 各检查实现跳过判定 + 快照恢复。取值时机 = 恒稳(局内单调追加,
@@ -3322,7 +3322,7 @@ class GameState:
     strategy_hp_loss_accum: Field[int] = field(default_factory=Field)
 
     # [索引定义] forge_privilege_charges_left = 刃锻特权化剩余生效次数
-    # (锻冶专家:刃次数账正本,卡面「合成进阶装备变为特权装备,该效果
+    # (锻冶专家:刃次数账权威版本,卡面「合成进阶装备变为特权装备,该效果
     # 可生效1次;每获得10件任意装备,额外可生效一次」。策略卡次数账
     # GameState 域 in-code 首例:「耗尽后可充能」与免战牌
     # effect_inventory.remaining_uses「用尽即效果离场」契约分野,不骑
@@ -3334,7 +3334,7 @@ class GameState:
     # cw_effect_inventory.record_forge_privilege_gain 充能笔(evidence
     # forge_privilege_recharge);无观察写端(次数 = 卡文推算知识,游戏
     # UI 无读面,实机消费归穿报与获得链门序)。开局初始值 = Field 缺省
-    # 承载 1(声明即真值,零置位写入腿——直构与 seed_opening_state 两域
+    # 承载 1(声明即真值,零置位写状态分支——直构与 seed_opening_state 两域
     # 同值,无卡局门序不消费零行为差)。
     forge_privilege_charges_left: Field[int] = field(
         default_factory=lambda: Field(1))
@@ -3350,7 +3350,7 @@ class GameState:
     # 补计;合成产物/变异产物/特权化替换件不经原语天然不计;好运令牌
     # 回执桥 grant_equip_item 直写不经原语 = 漏计差集申报制);无观察
     # 写端(计数过程量)。开局初始值 = Field 缺省承载 0(声明即真值,
-    # 零置位写入腿)。
+    # 零置位写状态分支)。
     forge_privilege_gained_count: Field[int] = field(
         default_factory=lambda: Field(0))
 
@@ -3603,12 +3603,12 @@ class GameState:
     # —— 结算(战斗后真值覆盖的数据源)——
     settlement: Field[Settlement | None] = field(default_factory=Field)
     hp_floor_triggered: Field[bool] = field(default_factory=Field)   # hp 保底触发事件位(§3.5.3;纯观察登记,无判据载体)
-    # 死亡救援一次性闩(藏一手;坐标系 = 当前局全程,取值时机 = 救援发放刻
+    # 死亡救援一次性标志位(藏一手;坐标系 = 当前局全程,取值时机 = 救援发放刻
     # 由 kernel take_strategy_death_save 置位,恒稳跨节点;写点唯一 =
     # take_strategy_death_save;None = 未判定(开局不种,gs-opening-seed
     # B 类判据同 hp_floor_triggered 先例:种子 False 会把「未判定」伪装成
     # 「已判定未触发」);消费读端 = take_strategy_death_save 门,None/False
-    # 两值均放行、True 拒绝;live 恒 None(闩 live 零写零消费,双端不对称
+    # 两值均放行、True 拒绝;live 恒 None(一次性标志位 live 零写零消费,实机和模拟器两边不对称
     # 申报见 fields.md §3.5.3a))
     strategy_death_save_used: Field[bool] = field(default_factory=Field)
     # [索引定义] settlement_perfect_rescue = 完胜判定改写瞬时位(策略卡
@@ -3616,7 +3616,7 @@ class GameState:
     # cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS)。坐标系 = 当前场
     # 战斗结算;写频 = 每次 settle_confirm 分支内判定执行各重写一次;
     # 三态:True = 本场救援改写生效(「胜利∧损血∧徽携带∧配额>0」判据
-    # 成立,判据机器 = 完胜判定正本 combat.md §3 同构读法 A),False =
+    # 成立,判据机器 = 完胜判定权威版本 combat.md §3 同构读法 A),False =
     # 判定不成立/不判定(真完胜/败局/环不足两行/字段缺/徽不携带/配额尽),
     # None = 本局尚无判定执行(开局不种,gs-opening-seed B 类判据同
     # strategy_death_save_used 先例——种子 False 会把「未判定」伪装成
@@ -3625,9 +3625,9 @@ class GameState:
     # 完胜判据函数——改写先于消费);消费读端 = check_env_deploy_lock_
     # perfect 与 check_env_item_open_perfect 两完胜判据行的 hp 持平判定
     # 旁路(True 时损血局亦判完胜 = 模型与游戏「视为完美通关」对齐,live
-    # 主收益;None/False 两值均维持旧判)。双端写:live 判据输入 = 观察面
+    # 主收益;None/False 两值均维持旧判)。live 和模拟器两边写:live 判据输入 = 观察面
     # (结算环 killed/hp_after 结算读链 + deployed unit.equips 备战观察
-    # 填充),判定/配额闩/瞬时位写双端同链;sim 结构性休眠(部署单位
+    # 填充),判定/配额一次性标志位/瞬时位写实机和模拟器两边同链;sim 结构性休眠(部署单位
     # unit.equips 恒空 → 徽携带恒假;双重休眠第二独立理由 = sim 结算帧
     # 胜利不掉血 →「胜利∧损血」分支结构性不可达)→ sim 恒 False,env
     # 检查行为零变化。非持久:不落快照(schema/rebuild 零登记——跨节点
@@ -4909,7 +4909,7 @@ def report_node_advance(gs: GameState, *, trigger: str,
         # 完胜判定改写检查(策略侧首例,都是这家伙的错!):同分支 check_env_
         # battle_grants 调用邻位——改写先于消费(下方两完胜判据函数 consult
         # 瞬时位 settlement_perfect_rescue,域规格见该字段注释);判定/配额
-        # 闩/瞬时位写双端同链(判据输入 = 观察面),出售腿 sim 门内 live 零写
+        # 一次性标志位/瞬时位写实机和模拟器两边同链(判据输入 = 观察面),出售写状态分支 sim 门内 live 零写
         # (游戏自执行出售,部署视图刷新/金读数观察承接)。惰性 import 同款;
         # 返回值仅日志面。
         from sr_od.application.currency_war.kernel.cw_env_grants import (

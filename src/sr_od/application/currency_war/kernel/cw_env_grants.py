@@ -556,8 +556,8 @@ def check_env_merge_grants(gs: GameState, facts: tuple[tuple[str, int], ...],
       升星,其 facts 过滤后零发放,链天然终止(无环,不设额外闸)。
 
     **职责扩面申报(飞光·映月费用档升星写端驻入)**:本函数现语义在
-    env 条件发放之外兼挂策略卡费用档写端——挂点 = 本函数入口(条件
-    矩阵之前),依据 = 合并升星事件全域单一收口:现役四发火点(买牌
+    env 条件发放之外兼挂策略卡费用档写端——插入位置 = 本函数入口(条件
+    矩阵之前),依据 = 合并升星事件全域唯一收尾点:现役四发火点(买牌
     上报/获得链/入席桥/晶矿角色奖励)与后继任何新发火点经此函数即被
     结构性全覆盖,防逐域内联漏挂(晶矿通道对镜流现役可达,漏挂即
     静默毒化——商店景元徽章除数按档解读,漏升档读数仍落合法倍数集)。
@@ -1009,7 +1009,7 @@ _PERFECT_RESCUE_PRODUCER: str = 'strategy_perfect_rescue'
 #: 禁表已通用化误判——take_strategy_death_save 点名申报同款)。
 _PERFECT_RESCUE_CARD: str = '都是这家伙的错！'
 
-#: 配额闩键前缀(strategy_conditional_done 域内本族键空间,与纯卡名键 /
+#: 配额一次性标志位键前缀(strategy_conditional_done 域内本族键空间,与纯卡名键 /
 #: first_buy_xp# / take_all# 键空间互不相交):完整键 =
 #: ``<前缀><卡名>#<已耗序号>``。判定只数前缀不依赖序号取值(全都要族
 #: 计数形同口径);禁布尔形(键存在 = 已耗)与计数形并存同域——配额 >1
@@ -1024,10 +1024,10 @@ def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
     可生效3次」触发器单一源,都是这家伙的错!id 352801 首例,完胜改写策略
     侧首例;登记表 = ``cw_investments.STRATEGY_PERFECT_RESCUE_GRANTS``;
     唯一调用点 = report_node_advance settle_confirm 分支,check_env_battle_
-    grants 调用邻位、先于两完胜判据消费函数——改写先于消费;双端同链)。
+    grants 调用邻位、先于两完胜判据消费函数——改写先于消费;实机和模拟器两边同链)。
 
     判据(读法 A 默认案 = 救援仅覆盖「胜利∧损血」,与完胜判据机器同构,
-    败局零救援;判据正本 = docs/game/currency_war/research/combat.md §3)
+    败局零救援;判据权威版本 = docs/game/currency_war/research/combat.md §3)
     = 结算环尾行 killed=True ∧ 相邻两帧 hp_after 差 ≠ 0(胜利但损血,可
     救援;真完胜 hp 持平 = 无需救援)∧ deployed 视图任一单位携带徽名 ∧
     配额未耗尽。环读口 = check_env_deploy_lock_perfect 同源
@@ -1036,24 +1036,24 @@ def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
     (偏严,禁猜)。偏差面(方向单一偏严):游戏侧救援判定与本判据机器如
     有出入,bot 模型侧按判据机器口径,live 出售事实由下一帧部署观察覆盖。
 
-    全条件成立 → 三笔:①配额闩追加(strategy_conditional_done 共域计数形
+    全条件成立 → 三笔:①配额一次性标志位追加(strategy_conditional_done 共域计数形
     键 ``perfect_rescue#<卡名>#<已耗序>``,前缀计数 < 配额放行);②瞬时位
     ``settlement_perfect_rescue`` 写 True(消费端 = 两完胜判据行的 hp
     持平判定旁路——「视为完美通关」改写落地,fields.md §3.5.3b);③出售
-    腿(sim 门内 ``sim_backend_installed()``):deployed 序首个携带者
+    写状态分支(sim 门内 ``sim_backend_installed()``):deployed 序首个携带者
     (前排子表优先、排内物理槽号序,裁决点默认案 A 确定序)槽置 None +
     定长视图重建写(动态子表直读,不经定长 10 截断桥——扩格帧后排扩展格
     携带者可命中,report_action_sell_deployed_param 现行同构)+ 退款金
     observe 笔(``sell_refund(star, bench_char_cost(u, gs))`` 卖价公式
     单一源)+ 装备回收第三笔(sold.equips 非空追加回 gs.equips 库存——
-    防 sim 穿戴面激活后徽随救援出售静默消失)。live 出售腿零写(游戏自
+    防 sim 穿戴面激活后徽随救援出售静默消失)。live 出售写状态分支零写(游戏自
     执行出售,部署视图刷新/金读数观察承接);条件不成立 → 瞬时位写 False
     (每次判定执行都重写,无陈值泄漏)。
 
-    sim 结构性休眠(设计正确路径,勿接线):sim 部署单位 unit.equips 恒空
+    sim 结构性休眠(设计正确路径,勿接入调用):sim 部署单位 unit.equips 恒空
     (gain_equipment 只写库存不穿戴,sim 无穿戴写端)→ 徽携带恒假;双重
     休眠第二独立理由 = sim 结算帧胜利不掉血 →「胜利∧损血」分支结构性
-    不可达 → sim 恒零救援零闩写、瞬时位恒 False → 两完胜判据行为零变化。
+    不可达 → sim 恒零救援零一次性标志位写、瞬时位恒 False → 两完胜判据行为零变化。
 
     - ``sig`` = 全部 logic 写共用的渠道签名,必须 logic_action / logic_hook
       族(obs 族进写通道即炸渠道族校验——禁 obs_sig;退款金 observe 笔的
@@ -1116,7 +1116,7 @@ def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
     if sold is None:
         _mark(False)
         return ()
-    # ① 配额闩(计数形,序号 = 写入时点「已耗+1」快照,判定只数前缀)。
+    # ① 配额一次性标志位(计数形,序号 = 写入时点「已耗+1」快照,判定只数前缀)。
     gs.write_logic(gs.strategy_conditional_done,
                    done + (f'{_PERFECT_RESCUE_LATCH_PREFIX}'
                            f'{_PERFECT_RESCUE_CARD}#{spent + 1}',),
@@ -1124,7 +1124,7 @@ def check_strategy_perfect_rescue(gs: GameState, sig: ChannelSig
                    evidence=evidence, sig=sig)
     # ② 瞬时位置位(消费端两完胜判据行的 hp 持平判定旁路)。
     _mark(True)
-    # ③ 出售腿(sim 门内状态副本写;live 游戏自执行出售零写观察覆盖)。
+    # ③ 出售写状态分支(sim 门内状态副本写;live 游戏自执行出售零写观察覆盖)。
     from sr_od.application.currency_war.sim.cw_sim_ports import (
         sim_backend_installed,
     )

@@ -282,7 +282,7 @@ def _entry_unit(x: object) -> Unit | None:
 
 def _merge_inherit_uid(entries: list, gs: GameState | None = None) -> int | None:
     """合成承继实例号单一源(T-368 佩佩客串批立项,个体归属承载的合成
-    级联腿):产物 uid = 素材中已发号 uid 的**最小值**(最老个体承继,
+    级联效果条目):产物 uid = 素材中已发号 uid 的**最小值**(最老个体承继,
     确定性可复现);素材全未发号 → None(产物新实体现役语义)。``gs``
     传入时**锁域豁免**:承继值命中未解锁上场锁记录(env_grant_deploy_locks,
     生效序位未到)→ 弃承继置 None——升星产物上场不被锁拦的用户裁定口径
@@ -906,7 +906,7 @@ def gain_equipment(gs: GameState, item: str, *, rand: bool,
     # 回调之后):每经原语净新增入栏 1 件计数 +1,达整 10 倍数充能
     # (机制单一源 = cw_effect_inventory.record_forge_privilege_gain,
     # 计数写通道随获得写通道;两 applied 路径尾段各一调用 = 转换拦截
-    # 落码后原语的双出口对表形)。拒落早退分支(equips 未观察)不达
+    # 已实现后原语的双出口对表形)。拒落早退分支(equips 未观察)不达
     # 本尾段,零写零计数。
     record_forge_privilege_gain(gs, write=write, sig=sig, producer=producer)
     return GainOutcome(placed=True, landing='skipped', merge_levels=0,
@@ -1235,7 +1235,7 @@ def check_strategy_kechuan_wear_grants(gs: GameState, *, won: bool,
     1. 持卡 ∩ STRATEGY_KECHUAN_WEAR_GRANTS 为空(未持卡/表外卡同路,
        表外卡禁从效果原文自动猜装)→ ();
     2. ``not won`` 或 ``hp_delta != 0`` →()(完美通关判据 = 胜利 ∧
-       本节点未损失小队生命值,combat.md 在册口径;判定输入与 win 金
+       本节点未损失小队生命值,combat.md 已登记口径;判定输入与 win 金
        同源。**sim 完胜 ≡ 胜利模型差**:BattleOutcome 契约胜局 hp_delta
        恒 0,M12 战斗简化档既有、本卡继承,sim 穿戴频次系统性偏高归
        对账预期差申报,M12 升级胜局 hp 模型时本判定自动跟随零改);
@@ -2135,7 +2135,7 @@ def check_strategy_hp_loss_grants(gs: GameState, hp_lost: int, *,
 
 #: 策略卡死亡救援触发写端署名(家族单一标识,_HP_LOSS_GRANT_PRODUCER/
 #: _BOSS_BATTLE_GRANT_PRODUCER 同款家族纪律;写端 = 本模块
-#: take_strategy_death_save(闩笔 + 经 grant_xp 的经验推进对两处),sim
+#: take_strategy_death_save(一次性标志位写 + 经 grant_xp 的经验推进对两处),sim
 #: 结算位发放刻,新写端新名不沿用链缺省伪装连续——grant_xp 缺省词根
 #: 'EffectLedgerBridge:成功经验' 系节点窗桥语义,救援 XP 非桥产物)。
 _DEATH_SAVE_PRODUCER: str = 'strategy_death_save'
@@ -2154,11 +2154,11 @@ def take_strategy_death_save(gs: GameState, *,
     条件矩阵(顺序即短路序):
 
     1. 未持卡('藏一手' not in active_strategies)→ None 零写;
-    2. 闩已置位(strategy_death_save_used 为 True)→ None 零写——救援
+    2. 一次性标志位已置位(strategy_death_save_used 为 True)→ None 零写——救援
        一次性(每局仅首次致死触发,后续致死正常死亡;用户裁定 2026-11-04);
     3. hp 基座未观察(None)→ None 零写(禁造假基座,apply_hp_outcome
-       未观察零写同款防御;现役开局种子底座下不可达,纯防御面);
-    4. 命中:闩置位 write_logic(evidence ``strategy_death_save:latch:<帧>``)
+       未观察零写同款防御;现役开局种子初始值下不可达,纯防御面);
+    4. 命中:一次性标志位置位 write_logic(evidence ``strategy_death_save:latch:<帧>``)
        → hp 写 40(observe 独立笔,载荷取表载值禁字面双写)→ 经验
        (grant_xp,produced_by 词根如实署名本写端)→ 金(observe 现值 +
        表载值,扑满收入 observe 金同款)→ 返回载荷三元组(调用方日志/
@@ -2173,17 +2173,17 @@ def take_strategy_death_save(gs: GameState, *,
 
     - **零 rng**(载荷全确定,无采样面;随机流零新键,M13 主流消耗序
       零扰动);
-    - **sig 单形态**:logic 族签名 = 入参 ``logic_sig``(闩笔 + 经验
+    - **sig 单形态**:logic 族签名 = 入参 ``logic_sig``(一次性标志位写 + 经验
       grant_xp 两笔 logic 写共用);obs 族签名(hp/金两笔)由函数内构——
       两族来源不同禁混用,入参 obs 族传 write_logic 即炸渠道族校验
       (check_strategy_hp_loss_grants 同款);
     - evidence 前缀 ``strategy_death_save:`` 与 ``battle:hp``/``income:``
       族分列可过滤审计;
-    - 幂等 = 闩 + 调用点 _settled_key 双保险;
+    - 幂等 = 一次性标志位 + 调用点 _settled_key 双保险;
     - **单成员机制域中间态**:函数体点名 '藏一手'(表 dict 形支持后继
       救援卡 +1 行;第二救援卡入表时升级 per-card 键形 + 函数去点名
       遍历,禁表已通用化误判——check_strategy_hp_loss_grants 同款申报);
-    - 与 T-142 损血档位累积器的组合态(落码现值核验):救援局 hp 落点 40,
+    - 与 T-142 损血档位累积器的组合态(已实现现值核验):救援局 hp 落点 40,
       调用方损血差分 = hp_before − 40(真值差口径);净回血(差 ≤0)被
       check_strategy_hp_loss_grants 首序 ``hp_lost <= 0`` 短路零入桶,
       净损血(差 >0,如 hp_before=45 救后 40 记 5)按真值差入桶——与
@@ -2887,7 +2887,7 @@ STRATEGY_GIFT_LEG_REWARD_ORE: str = 'reward_ore'
 #: 赠礼条目键·位面-节点合取条目(与登记表 STRATEGY_PLANE_BOSS_GRANTS 一一
 #: 对应,判定形状 = 节点窗开时 (位面, 节点类型) 合取命中;盗用身份 id 352401
 #: 首例,P2 boss 窗,骑 strategy_grants_done 复合串一次性标志位形——该节点
-#: 结构唯一,闩 = 跨节点重复条件的防御层,窗口幂等守卫不互代)。
+#: 结构唯一,一次性标志位 = 跨节点重复条件的防御层,窗口幂等守卫不互代)。
 STRATEGY_GIFT_LEG_P2_BOSS: str = 'p2_boss'
 
 
@@ -2920,7 +2920,7 @@ def check_strategy_gift_grants(gs: GameState, *, node_kind: str,
        通道(装备域已登记裁定:红钻贵族 2026-10-17 猜测写+观察纠偏;角色
        确定发放具名非采样,徽面 rand=True 系写通道语义非采样,零 rng
        消费);携带装备 '' = 无装备条目,直接落一次性标志位;
-    5. 角色落位后装备写即同拍完成(携带 = 入栏非穿戴——本条目的装备腿
+    5. 角色落位后装备写即同拍完成(携带 = 入栏非穿戴——本条目的装备效果条目
        是入栏携带非单位穿戴映射,获得链段不建单位-装备穿戴关系;获得
        后果 = EQUIP_ACQUIRE_CONSEQUENCES 表外零夹带。域级立场的策略链
        例外 = 佩佩客串周期穿戴条目 check_strategy_kechuan_wear_grants
@@ -3085,11 +3085,11 @@ def check_strategy_reward_ore_grants(gs: GameState, *, node_kind: str,
 
 def check_strategy_plane_boss_grants(gs: GameState, *, node_pos: NodePos,
                                      sig: ChannelSig) -> str | None:
-    """策略位面-节点合取条件世界发放检查(盗用身份 id 352401 首例;「进入
+    """策略位面-节点合取条件写状态副本发放检查(盗用身份 id 352401 首例;「进入
     第二位面的首领节点时，获得一个穿着2个【动能激发剑】和【列车同行星徽】
     的【火花】和1个【开拓者】」触发器单一源,唯一调用点 = sim 节点窗收尾
     boss 条件发放段——live 零写观察覆盖:角色落席有画面真值,实机局不接
-    本通道,世界发放经观察对账兜底)。
+    本通道,写状态副本的发放经观察对账兜底)。
 
     条件矩阵(顺序即短路序,逐序返回 None = 未发放):
 
@@ -3103,7 +3103,7 @@ def check_strategy_plane_boss_grants(gs: GameState, *, node_pos: NodePos,
        与 check_env_boss_grants 形态对齐)→ (位面, 节点类型) 与表值合取
        不符 → None(零坐标猜测,对序列修饰免疫);
     4. 封账一次性标志位 ``'<卡名>#p2_boss'`` ∈ strategy_grants_done 现值 →
-       None(一次性封账;P2 首领节点在现役修饰封闭集内结构唯一,闩 = 防御
+       None(一次性封账;P2 首领节点在现役修饰封闭集内结构唯一,一次性标志位 = 防御
        层——修饰规则集为可扩展封闭集,未来规则理论可产出第二 P2 boss,且
        窗口幂等守卫管「同节点重放」不管「跨节点重复条件」,两层守卫职责
        不同不互代);
@@ -3114,7 +3114,7 @@ def check_strategy_plane_boss_grants(gs: GameState, *, node_pos: NodePos,
 
     - 零 rng 形参:具名单名确定发放无采样(环境侧首领节点发放的 rng 形参
       系其随机池所需,本函数镜像其护栏栈但形状不盲抄);
-    - 穿戴腿/开拓者腿零建模(登记面申报):穿戴 = 家族披露键
+    - 穿戴效果条目/开拓者效果条目零建模(登记面申报):穿戴 = 家族披露键
       strategy_worn_equip_unmodeled 申报,开拓者 = 裸名 ∉ CHARACTER_ROSTER
       登记排除——持卡局资产面缺这两件 = 低估方向显式申报非缺口。
     """
@@ -3217,12 +3217,12 @@ def check_strategy_plane_start_grants(gs: GameState, *,
     锁/离场队列两域,白厄两域皆缺(普通 roster 单位现役缺省 None =
     单位天然无实例号),同函数姊妹分支(item 形)同窗亦无发号。
 
-    两分支零 done 闩零 GameState 新域:谓词 = 持卡 ∧ r==1 ∧ 位面 ∈
+    两分支零 done 一次性标志位零 GameState 新域:谓词 = 持卡 ∧ r==1 ∧ 位面 ∈
     条目静态值(同一位面开始窗唯一),跨窗天然单调,窗幂等守卫承担
     单次。中途拿卡不补发 = 用户裁定(角色子形词形辖域为选择性位面
     子集,显式不在「每个位面开始时」族补发辖域):登记晚于位面开始窗
     → 该窗零发放,只余后续位面窗(取卡窗恒 r∈{2,3},与 r==1 窗零
-    交叠,结构性成立);sim 选卡拍补发腿(补发族辖域 = item 形表)
+    交叠,结构性成立);sim 选卡拍补发效果条目(补发族辖域 = item 形表)
     不读本表,角色子形唯一消费点 = 本函数。
     """
     held = [n for n in gs.active_strategies.value or ()
@@ -4434,8 +4434,8 @@ def _remove_kechuan_units(gs: GameState,
                           target_uids: frozenset[int],
                           *, sig: ChannelSig,
                           ) -> tuple[list[int], dict[int, list[str]]]:
-    """离场移除原语(Unit 容器移除语义,T-207 四缺口之「离场原语缺」本批
-    立项收口,T-207 设计稿 §6):扫描备战 ∪ 上阵,uid 命中 ∧ 身份 == 佩佩
+    """离场移除原语(Unit 名单移除语义,T-207 四缺口之「离场原语缺」本批
+    立项收尾,T-207 设计稿 §6):扫描备战 ∪ 上阵,uid 命中 ∧ 身份 == 佩佩
     的单位**自槽位置 None**并收集其装备;两域 frozen replace 新构造,各自
     有变更才写(write_logic_rand 形态,_select_write rand=True 单一收束
     ——佩佩个体 = 采样件,移除 = 推算真值,判读 4 单分支)。溢出位身份

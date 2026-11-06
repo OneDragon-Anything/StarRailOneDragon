@@ -1340,7 +1340,7 @@ def grant_equip_item(gs: GameState, name: str, *, frame: str = '') -> bool:
 
 
 #: 锻冶专家:刃卡规范名(刃锻特权化次数账门①持卡判定键;登记面 =
-#: STRATEGY_GRANTS/STRATEGY_BINDINGS 同名条目在册零改动,卡文 =
+#: STRATEGY_GRANTS/STRATEGY_BINDINGS 同名条目已登记零改动,卡文 =
 #: data/cw_invest_data.py id 360601)。
 FORGE_PRIVILEGE_CARD: str = '锻冶专家:刃'
 #: 该卡辖域角色(卡面「【刃】的装备栏」/「【刃】在场上或备战席」;
@@ -1352,14 +1352,14 @@ FORGE_PRIVILEGE_GAINS_PER_CHARGE: int = 10
 
 def record_forge_privilege_gain(gs: GameState, *, write: Callable[..., None],
                                 sig: ChannelSig, producer: str) -> None:
-    """刃锻特权化装备获得计数(锻冶专家:刃腿3 机制件;唯一调用点 =
+    """刃锻特权化装备获得计数(锻冶专家:刃效果条目3 机制件;唯一调用点 =
     获得链 ``gain_equipment`` 原语尾段,本函数 = 装备域行为面单一宿主,
     与特权化桥同文件)。门①持卡 ∧ 刃在场门控,双门全过才计数:
 
     - 门①持卡:active_strategies 现值含 :data:`FORGE_PRIVILEGE_CARD`
       (穿报刃锻支同键,单一源);无卡局零行为差;
     - 在场门控:计数时点刃 ∈ deployed(front_slots/back_slots)∪bench
-      容器现值判定——离场期间获得不计数不补计(卡文字面直辖);容器
+      名单现值判定——离场期间获得不计数不补计(卡文字面直辖);名单
       未观察(None)= 无真值基座按不在场计;bench 侧经
       ``cw_exec_state.bench_slot_unit`` 解包读口(消费端唯一合法入口,
       禁内联 kind 判断),deployed 侧 = 子表列表成员现值。
@@ -2144,7 +2144,7 @@ def check_strategy_supply_salvage(gs: GameState, sig: ChannelSig) -> None:
 # 不依赖序号取值)。**禁布尔形(键存在 = 已耗)与计数形并存同域**:配额 >1
 # 时布尔判定把部分耗尽(已耗 1 格、尚剩格)误判耗尽 = 静默漏发,族内统一
 # 计数形;全都要·彩(id 331701,recurring 每次选择后)= None 配额卡——
-# recurring 无配额域,恒放行零闩格零 done 键(封账制只对 int 配额卡存在)。
+# recurring 无配额域,恒放行零配额格零 done 键(封账制只对 int 配额卡存在)。
 # 双持(银+金)= 同一选择事件两卡各耗各的 1 格、各发各的
 # 未选列(发放域内容同源,重复发放 = 卡面叠加语义零判重闸,姊妹双持族先例)。
 # 与打捞人才库族共存边界(共享场字段 ``unchosen_supply`` 双消费者):本族
@@ -2160,7 +2160,7 @@ _TAKE_ALL_LATCH_PREFIX: str = 'take_all#'
 #: 持卡判定与配额单一源(值形 map 泛化,先例 = 打捞族名单集 tuple 同位):
 #: 键 = 卡规范名,值两形——int = 卡面「下 N 个补给阶段选择后」的配额格数
 #:(全都要·银 id 131001 = 1、全都要·金 id 203501 = 2),None = 无界(卡面
-#: 无「下 N 个」限定词 = recurring 每次选择后,无配额域,恒放行零闩格;
+#: 无「下 N 个」限定词 = recurring 每次选择后,无配额域,恒放行零配额格;
 #: 防「未配置」误读——None 是显式无界非缺省)。全都要·彩(id 331701)=
 #: None。判定与配额读取合一防两抄本
 #: 漂移;不并入打捞集——发放语义异构(全列逐事件 vs 随机单列 recurring),
@@ -2184,7 +2184,7 @@ _TAKE_ALL_GRANT_STAR: int = 1
 #:   留选,对照 diamond_count 轨迹。
 #: - sim_failclosed_decision_leg:sim 局决策条目未接 → 未选集恒 None →
 #:   发放侧恒零发放(事件消耗一次性标志位 int 配额卡照设 = 一笔无害簿记写,
-#:   彩 None 配额卡零闩格;承打捞族同族语义,
+#:   彩 None 配额卡零配额格;承打捞族同族语义,
 #:   独立键因函数/名单集分立)。
 STRATEGY_TAKE_ALL_ASSUMPTION_KEYS: tuple[str, ...] = (
     'strategy_take_all_unchosen_diamond_pending',
@@ -2207,7 +2207,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     3. **事件消耗一次性标志位**:逐未耗尽卡追加 ``take_all#<卡名>#<已耗+1>`` 键
        (write_logic)——事件消耗制在此统一处理:不论源可否记录,每个
        applied 选择事件即耗 1 格(插入位置三个 applied 出口都会到达本函数,
-       兜底轮亦然);None 配额卡跳过写入(零闩格零 done 键,recurring 无
+       兜底轮亦然);None 配额卡跳过写入(零配额格零 done 键,recurring 无
        封账面,发放分支照常走);
     4. **源检查**:``gs.unchosen_supply.value`` 空/None → 零发放早退(None =
        无未选定案:未记录/兜底轮;sim 局恒此形态 = fail-closed 零发放);
@@ -2254,7 +2254,7 @@ def check_strategy_take_all_supply(gs: GameState, sig: ChannelSig) -> None:
     # 事件消耗一次性标志位(门 3):逐未耗尽卡追加一键,先于发放分支——兜底轮(源不可
     # 记录)也在此封账;序号 = 写入时点「已耗+1」快照(审计可读,判定只数
     # 前缀不依赖序号);evidence 与 char 条目同族前缀(账面归组一致)。
-    # None 配额卡跳过(零闩格零 done 键——recurring 无封账面,发放照常)。
+    # None 配额卡跳过(零配额格零 done 键——recurring 无封账面,发放照常)。
     for name in due:
         if _TAKE_ALL_SUPPLY_QUOTA[name] is None:
             continue
