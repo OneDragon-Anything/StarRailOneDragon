@@ -47,7 +47,7 @@ class AvatarTemplate:
     template_id: str
     character: Character
     variant: str
-    info: 'TemplateInfo'
+    info: TemplateInfo
 
 
 def iter_avatar_templates(ctx: SrContext) -> list[AvatarTemplate]:

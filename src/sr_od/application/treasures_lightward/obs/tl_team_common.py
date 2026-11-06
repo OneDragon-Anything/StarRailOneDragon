@@ -58,6 +58,19 @@ def ocr_lines(ctx: SrContext, image: MatLike, rect: Rect) -> list[str]:
     return [r.data for r in results if r.data]
 
 
+def get_area_center_point(ctx: SrContext, screen_name: str, area_name: str) -> Point:
+    """按建档 rect 取 area 中心点击点(坐标单一真相源在 screen_info)。
+
+    与 :func:`get_area_rect` 不同,area 缺失直接 raise——点击点缺失时
+    静默返 None 会让调用方把「没点」当「点了」。"""
+    si = ctx.screen_loader.get_screen(screen_name)
+    area = next((a for a in si.area_list if a.area_name == area_name), None) if si else None
+    if area is None or area.pc_rect is None:
+        raise ValueError(f'area 缺失: {screen_name}/{area_name}')
+    rect = area.pc_rect
+    return Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
+
+
 def identify_crop(crop: MatLike, templates: list[AvatarTemplate]) -> MemberGuess:
     """单头像裁片识别(诚实歧义,阈值标定见 tl_team_obs 模块 docstring)。"""
     if crop is None or crop.size == 0:

@@ -36,7 +36,7 @@ _TEAM_SCREEN: str = '忘却之庭-编队'
 _NODE_SCREEN: str = '忘却之庭-节点画面'
 
 
-class TlStartChallengeOp(SrOperation):
+class TlFhBattleOp(SrOperation):
 
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
     STATUS_FAIL: ClassVar[str] = '战斗失败'
@@ -45,7 +45,7 @@ class TlStartChallengeOp(SrOperation):
         """
         Args:
             node_teams: 每节点编队的角色中文名列表(外层=节点顺序,内层 4 人按槽位序;
-                与 TlFillTeamsOp 填充一致,秘技顺序按角色 technique_type 决策)。
+                与 TlFhTeamFillOp 填充一致,秘技顺序按角色 technique_type 决策)。
         """
         SrOperation.__init__(self, ctx, op_name='逐光捡金 节点战斗')
         self.teams: list[list[Character]] = []
@@ -86,9 +86,9 @@ class TlStartChallengeOp(SrOperation):
         # 1. 结算浮层优先
         if (self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_SUCCESS_1').is_success
                 or self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_SUCCESS_2').is_success):
-            return self.round_success(TlStartChallengeOp.STATUS_SUCCESS)
+            return self.round_success(TlFhBattleOp.STATUS_SUCCESS)
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'FH_AFTER_BATTLE_FAIL').is_success:
-            return self.round_fail(TlStartChallengeOp.STATUS_FAIL)
+            return self.round_fail(TlFhBattleOp.STATUS_FAIL)
 
         # 2. 弹窗(全屏暗化,遮蔽三锚)→ 关闭
         if self._popup_visible(screen):

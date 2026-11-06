@@ -2,7 +2,7 @@
 
 ⚠️ 适用范围:仅忘却之庭的编队屏(screen = 忘却之庭-编队,槽位/建议属性/预设卡
 area 均按混沌回忆布局标定)。虚构叙事/末日幻影各有自己的填充 op
-(``tl_pf_challenge.TlPfTeamFillOp`` / ``tl_as_challenge`` 内嵌填充循环)。
+(``tl_pf_team_fill.TlPfTeamFillOp`` / ``tl_as_challenge`` 内嵌填充循环)。
 
 前置:已在本画面(``GotoTreasuresLightward`` 到选关 → 点关卡水晶 → 编队屏)。
 交互模型(2026-11-04 实机实测):
@@ -42,7 +42,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class TlFillTeamsOp(SrOperation):
+class TlFhTeamFillOp(SrOperation):
 
     STATUS_ALL_FILLED: ClassVar[str] = '编队填充完成'
 
@@ -132,7 +132,7 @@ class TlFillTeamsOp(SrOperation):
                 f'节点识别未就绪或行数不足: 读到 {len(nodes)} 行,需 {len(self.teams)} 行',
                 wait=1.5)
         if self._team_idx >= len(self.teams):
-            return self.round_success(TlFillTeamsOp.STATUS_ALL_FILLED)
+            return self.round_success(TlFhTeamFillOp.STATUS_ALL_FILLED)
 
         node = nodes[self._team_idx]
         team = self.teams[self._team_idx]
