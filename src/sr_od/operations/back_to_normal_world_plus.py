@@ -61,8 +61,8 @@ class BackToNormalWorldPlus(SrOperation):
         # 模拟宇宙楼层内异常退出时,本 op 起手点「右上角返回」→ 弹出本面板 →
         # 角色图标分支误报成功 → app 带着面板继续乱点,循环 40 分钟。
         # 面板 area 早已建档(sim_uni.yml 菜单-暂离/结束并结算),纯分发表缺条目。
-        # 点「暂离」:保进度退出(下次模拟宇宙 app 从进度续跑,同 2026-08-30 续跑判例)。
-        # round_retry 同判例(点击可能不落地,逐帧重识别)。
+        # 点「暂离」:保进度退出(下次模拟宇宙 app 从进度续跑,同 2026-08-30 续跑先例)。
+        # round_retry 同先例(点击可能不落地,逐帧重识别)。
         result = self.round_by_find_area(screen, '模拟宇宙', '菜单-暂离')
         if result.is_success:
             self.round_by_find_and_click_area(screen, '模拟宇宙', '菜单-暂离')
@@ -181,7 +181,7 @@ class BackToNormalWorldPlus(SrOperation):
         # 此前兜底只会反复点右上角死循环至 FAIL,卡死下一个应用的起手
         # (现场:.log/mcp_server.log 当日 00:31 段,开拓力 FAIL 遗留战败屏)。
         # 与上述大厅分支同构:id_mark 正面识别(normal_world_battle_fail.yml)
-        # → area 点击 + round_retry 逐帧重识别(点击可能不落地,同判例拒 WAIT 永动)。
+        # → area 点击 + round_retry 逐帧重识别(点击可能不落地,同先例拒 WAIT 永动)。
         result = self.round_by_find_area(screen, '大世界-战斗失败', '标题-战斗失败')
         if result.is_success:
             self.round_by_find_and_click_area(screen, '大世界-战斗失败', '点击空白区域继续')
@@ -203,7 +203,7 @@ class BackToNormalWorldPlus(SrOperation):
         # 多跳中间态天然容忍(每轮重新识别当前画面)。
         # 项目规则:操作禁用 ESC,返回/关闭一律点坐标(本分支走 screen_info area)。
         # 用 round_retry 而非 round_wait:点击可能不落地,WAIT 不消耗 retry 会死循环
-        # (同本节点兜底分支既有判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
+        # (同本节点兜底分支既有先例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
         result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
         if result.is_success:
             # 锁光标恢复态加固:机器重启后游戏直接恢复进本 UI 时光标处于锁定态,

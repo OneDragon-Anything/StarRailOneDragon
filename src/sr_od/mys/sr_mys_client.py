@@ -629,7 +629,7 @@ def _build_set_effects(relics: list[SrRelic], ornaments: list[SrRelic]) -> list[
     """佩戴件名收集 → ``build_set_effects`` → SrSetEffect 冻结结构列表（契约 2）。
 
     分桶由本映射层负责（relics/ornaments 两数组即分桶，对齐 build_set_effects
-    的入参约定）；dict 条目到冻结结构的字段投影在此收口。未知件名已在逐件
+    的入参约定）；dict 条目到冻结结构的字段投影在此收尾。未知件名已在逐件
     映射时经 ``resolve_set_name`` 告警，此处按 build 层契约静默跳过不产出
     条目（不重复告警）。
     """

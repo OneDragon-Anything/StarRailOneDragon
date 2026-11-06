@@ -122,7 +122,7 @@ PROPERTY_INFO_SNAPSHOT: dict[int, str] = {
 # ---- 表 2：base_type 命途 → 中文（codes-draft.md 表 2）----
 # 全集 = 9：官方 wiki 筛选器全集、接口实测码域 1-9、genshin.py StarRailPath
 # 枚举、StarRailRes paths.json 四源同构（任务书曾假设 14，被三源证伪，勿扩
-# 10-14）。锚点：9=欢愉（开拓者 id 8010，wiki「开拓者•欢愉」词条双确认）、
+# 10-14）。基准：9=欢愉（开拓者 id 8010，wiki「开拓者•欢愉」词条双确认）、
 # 3=智识（姬子）。
 BASE_TYPE_CN: dict[int, str] = {
     1: '毁灭',

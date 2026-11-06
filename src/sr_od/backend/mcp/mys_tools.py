@@ -278,7 +278,7 @@ class MysAccessController:
         迟到票据双重防护：① 状态闸——非 awaiting_ticket（含已登出/已取消/
         已超限复位）一律丢弃；② 配对闸——payload.session_id 与控制器当前
         challenge 再比对一道（verifier 层 409 之外的第二道闸，T-3 评审强制
-        判据）。取消回传 → 状态复位 + verifier 关闭；票据 → 单轮收口
+        判据）。取消回传 → 状态复位 + verifier 关闭；票据 → 单轮收尾
         （complete_verification）后按结果推进或放弃。
         """
         with self._lock:

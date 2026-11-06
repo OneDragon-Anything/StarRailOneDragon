@@ -7,7 +7,7 @@
   之后按 mode 分叉到各自的「点入口按钮→到达验证」节点。
 - 到达验证锚:忘却之庭=选关混沌回忆视图双锚(FH_TITLE+标题-混沌回忆行)+紊流弹窗处理;
   虚构叙事=新期开场页(点开启故事)→选关(PF_TITLE);末日幻影=新期开场页(点前往挑战)
-  →选关(标题+难度条双锚);异相仲裁=目标画面未建档,点击入口按钮后显式失败挂账。
+  →选关(标题+难度条双锚);异相仲裁=目标画面未建档,点击入口按钮后显式失败并登记成待办。
 - 起点已在选关/编队屏且目标非忘却之庭时,经右上关闭X 退回大世界,再走手机菜单链
   (左上菜单图标→菜单屏指南图标)进指南——不走右上指南快捷按钮(车厢场景无此按钮)。
 
@@ -71,7 +71,7 @@ class GotoTreasuresLightward(SrOperation):
 
     - FORGOTTEN_HALL:终点=忘却之庭选关界面·混沌回忆视图·无弹窗(紊流更新弹窗自动关闭)。
     - PURE_FICTION:终点=虚构叙事选关画面(PF_TITLE;新期「开启故事」自动点击,分支待实测)。
-    - APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION:目标画面未建档(挂账),点击入口按钮后显式失败。
+    - APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION:目标画面未建档(登记成待办),点击入口按钮后显式失败。
     """
 
     def __init__(self, ctx: SrContext, mode: TLMode | str):
@@ -352,7 +352,7 @@ class GotoTreasuresLightward(SrOperation):
     @node_from(from_name='分类页选目标', status='ENTER_ANOMALY_ARBITRATION')
     @operation_node(name='异相仲裁进入', node_max_retry_times=4)
     def aa_enter(self) -> OperationRoundResult:
-        """异相仲裁目标画面未建档(挂账):点击前往挑战后显式失败,到达验证待建档后补。"""
+        """异相仲裁目标画面未建档(登记成待办):点击前往挑战后显式失败,到达验证待建档后补。"""
         screen = self.last_screenshot
         result = self.round_by_find_and_click_area(
             screen, _CATEGORY_SCREEN, '按钮-前往挑战-异相仲裁',

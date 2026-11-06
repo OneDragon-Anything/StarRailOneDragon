@@ -30,7 +30,7 @@ class LightConeDef:
     Attributes:
         tid: 游戏内部光锥 ID——mys ``avatar/info`` equip id 与归档图标文件名
             同源（双源锚定）；生成期快照，恒稳。
-        name: 官方光锥全名（社区简称不入表；锚点：「于夜色中」/「银河铁道之夜」）。
+        name: 官方光锥全名（社区简称不入表；基准：「于夜色中」/「银河铁道之夜」）。
         rarity: 星级 3/4/5。
         path_id: 命途 id（对齐 ``character_const`` 九命途 id 风格：
             destruction/preservation/hunt/abundance/nihility/erudition/

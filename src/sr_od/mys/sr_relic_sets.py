@@ -54,7 +54,7 @@ class RelicSetDef:
     """套装定义（快照 sets[] 固化 + set_id/obtain 增量）。
 
     Attributes:
-        set_name: 官方套装全名（社区简称不入表；锚点：「骇域漫游的信使」/
+        set_name: 官方套装全名（社区简称不入表；基准：「骇域漫游的信使」/
             「生命的翁瓦克」）。
         kind: ``'cavern'``=隧洞遗器（4 件套，2/4 件效果）、``'ornament'``=
             位面饰品（2 件套，仅 2 件效果，effects 无 ``'4'`` 键）。
