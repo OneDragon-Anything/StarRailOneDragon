@@ -73,7 +73,9 @@ class UpgradeTraceOp(SrOperation):
         :param ctx: 上下文
         :param target: 目标技能名(普攻/战技/终结技/天赋/秘技)
         :param fill_generic: 缺专属材料时是否自动确认「通用材料补全」
-        :param auto_farm: 缺材料时是否自动「快速刷取」补材料后继续升级
+        :param auto_farm: 缺材料时优先自动「快速刷取」补材料(常规资源,
+        独立先行,不依赖 fill_generic);刷取预算耗尽后若 fill_generic 也
+        授权则转通用材料补全,两参数均未授权则判停
         """
         self.target: str = target.strip()
         if self.target not in _SKILL_NAMES:
@@ -200,8 +202,16 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
             return self.round_retry('关闭面板,返回树态收尾', wait=1.5)
 
-        # ② 满级锚
+        # ② 满级锚 + 分类校验(r2 §2.4:锚命中先于分类校验会把「别的满级
+        # 技能的面板」误报成目标满级——锚命中后必须确认面板就是目标技能)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-已达最大等级').is_success:
+            category = self._read_panel_category()
+            if category != self.target:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(
+                        _TRACE_SCREEN, f'点击区-节点-{self.target}').rect.center)
+                return self.round_retry(
+                    f'满级锚在场但面板为 [{category}],再点目标节点切换', wait=1.5)
             log.info('行迹升级: %s 已达最大等级', self.target)
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
@@ -216,7 +226,8 @@ class UpgradeTraceOp(SrOperation):
             )
             if result.is_success:
                 return self.round_retry('节点面板已打开,重入分类', wait=1)
-            return result
+            # 不透传失败结果(r1 轻项:透传不计本节点重试预算),显式计预算
+            return self.round_retry('点击节点未进面板态,计入预算重试', wait=2)
         # 面板在但显示的不是目标技能(选中态残留/切换未生效) → 再点目标节点
         category = self._read_panel_category()
         if category != self.target:
@@ -230,18 +241,20 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-通用材料补全').is_success:
-            if not self.fill_generic:
-                self._capped = True
-                self._capped_level = self._read_panel_level()
-                log.info('行迹升级: 缺专属材料(通用材料补全未授权),判停于等级 %s',
-                         self._capped_level)
-                return self.round_retry('材料不足,关闭面板收尾', wait=1)
-            # fill_generic 已授权但快速刷取预算尚有 → 刷取路线优先(常规资源)
+            # 授权路由对齐光锥先例(r2 §2.1):auto_farm 独立先行(刷取是
+            # 常规资源路线,不依赖 fill_generic),预算耗尽再转通用材料补全,
+            # 均未授权才判停
             if self.auto_farm and self._farm_rounds < _FARM_ROUNDS_MAX:
                 return self._farm_substep(screen)
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-通用材料补全').rect.center)
-            return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
+            if self.fill_generic:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-通用材料补全').rect.center)
+                return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
+            self._capped = True
+            self._capped_level = self._read_panel_level()
+            log.info('行迹升级: 缺专属材料(fill_generic/auto_farm 均未授权),判停于等级 %s',
+                     self._capped_level)
+            return self.round_retry('材料不足,关闭面板收尾', wait=1)
 
         # ④b auto_farm 独立刷取路径:缺料但按钮为「使用通用材料补全」之外的
         # 形态(如快速刷取可直接用的形态)——刷取按钮/弹窗四态推进(照光锥 op)
@@ -250,11 +263,18 @@ class UpgradeTraceOp(SrOperation):
             if result is not None:
                 return result
 
-        # ⑤ 灰字全缺态(推理形态,未实测) → 判停
-        self._capped = True
-        self._capped_level = self._read_panel_level()
-        log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
-        return self.round_retry('材料不足,关闭面板收尾', wait=1)
+        # ⑤ 两按钮都不命中分两态(Y4,对抗修复 bb21c54e0 曾修、返工误退、
+        # 本轮恢复):「可提升至」锚可见 = 真灰字全缺判停;锚不可见 = 执行后
+        # 动画/过渡期按钮暂隐(反馈形态未实测) → 点面板外空白重试不判停
+        # ——误报判停比多等一轮危害大
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
+            self._capped = True
+            self._capped_level = self._read_panel_level()
+            log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
+            return self.round_retry('材料不足,关闭面板收尾', wait=1)
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
+        return self.round_retry('疑似动画/过渡态,点空白重试', wait=2)
 
     def _farm_substep(self, screen) -> OperationRoundResult | None:
         """auto_farm 快速刷取子流程一步(照光锥 op 四态推进)。
@@ -274,22 +294,10 @@ class UpgradeTraceOp(SrOperation):
         if self._farm_rounds >= _FARM_ROUNDS_MAX:
             log.info('行迹升级: 快速刷取预算(%d 次)耗尽', _FARM_ROUNDS_MAX)
             return None
-        if self.round_by_find_area(screen, _TRACE_SCREEN, '标题-等级提升').is_success or \
-                self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
+        # 刷取确认弹窗不在场 = 面板态,点「快速刷取」开弹窗;弹窗在场(模态
+        # 遮住面板锚)或都没命中 = 确认/连刷过渡,慢询等待
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速刷取').rect.center)
             return self.round_retry('打开快速刷取确认', wait=2)
-        # 确认弹窗与结果框都不在、面板锚也不在 = 连刷进行中,慢询等完成
         return self.round_retry('连刷中,慢询等待', wait=_FARM_POLL_SEC)
-
-        # ⑤ 两按钮都不命中分两态(Y4 对抗修):「可提升至」锚可见 = 真灰字
-        # 全缺判停;锚不可见 = 执行后的动画/过渡期按钮暂时不可见(反馈形态
-        # 未实测) → 点面板外空白重试,不判停——误报判停比多等一轮危害大
-        if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
-            self._capped = True
-            self._capped_level = self._read_panel_level()
-            log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
-            return self.round_retry('材料不足,关闭面板收尾', wait=1)
-        self.ctx.controller.click(
-            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
-        return self.round_retry('疑似动画/过渡态,点空白重试', wait=2)
