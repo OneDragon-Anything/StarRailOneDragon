@@ -5,7 +5,7 @@ description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角
 
 # 星穹铁道基础玩法教练（game-coach）
 
-agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法公共知识**（怎么判断），项目 MCP 的三个查询工具提供**角色/光锥/遗器静态基础信息**（relic_lookup / cone_lookup / character_lookup），米游社 MCP 提供**账号数据**（运行时拉取），游戏操作 MCP 执行动作。skill 家族分工：
+agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法公共知识**（怎么判断），项目 MCP 的三个查询工具提供**角色/光锥/遗器静态基础信息**（relic_lookup / cone_lookup / character_lookup），项目 `sr_od` MCP server 的 mys 工具组提供**账号数据**（`mys_get_characters` 概况 / `mys_get_roster_detail` 全量明细，会话管理 `mys_login`/`mys_logout`；运行时拉取），游戏操作 MCP 执行动作。skill 家族分工：
 
 - **本 skill（基础）**：机制规则 / 体系与阵容 / 角色养成 / 玩法框架 / 新手日常——任何场景都成立的知识
 - **专项 skill（特殊变形）**：逐光捡金（`sr-od-treasures-lightward`，期次环境/星启/速报）、货币战争（`sr-od-currency-war-guide`）等——本 skill 玩法层只留框架并**按 skill 名称**指向专项
