@@ -2427,8 +2427,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 及时雨:官方「获得3个随机2星4费角色和1个【完美投影仪】，获得4次
     # 免费刷新。」(cw_invest_data.py:248)。战力类零响应登记(UNIT_BUFF
     # 族):三行为条目已写进代码通道齐备(随机角色 PICK 组合行/投影仪箱条目同行/
-    # 免费刷新 ECONOMY burst 注册行零动作),登记条目为在场标记+姿态面;
-    # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
+    # 免费刷新 ECONOMY burst 注册行零动作;组合卡箱条目驻镜像表 + 组合行引用的
+    # 例外形态 = 贸易专家:停云,见 _STRATEGY_BOX_GRANTS 该行注释),登记条目为
+    # 在场标记+姿态面;effect_text 经数据面表达式单一源,版本更新改文自动跟随。
     '及时雨': EffectSpec(
         id='300701', name='及时雨',
         trigger=TriggerKind.PLANE_START,
@@ -4139,7 +4140,9 @@ STRATEGY_ALL_CHARS_ASSUMPTION_KEYS: tuple[str, ...] = (
 #   未指名——哪件/是否随机/是否扣
 #   库存 desc 全无载,放弃纪律叠加)/盗用身份(352401,「获得一个穿着2个
 #   【动能激发剑】和【列车同行星徽】的【火花】」授予穿戴句,写状态副本的发放效果条目 =
-#   STRATEGY_PLANE_BOSS_GRANTS 通道,穿戴件随发放零建模),后继引用本键不重立。
+#   STRATEGY_PLANE_BOSS_GRANTS 通道,穿戴件随发放零建模)/琼玉专家:青雀
+#   (360301,「获得装备着3个随机星徽的专家顾问【青雀】」穿戴腿,随机星徽
+#   三件随顾问入商店零建模),后继引用本键不重立。
 # - strategy_periodic_unit_leave_unmodeled: 策略卡召唤单位的**周期离场**
 #   (含离场所留)不建模——四缺口:kernel 单位移除仅卖出/合成摘除/板面
 #   清场三径,「无退款消失」无原语可调;「留下装备」因穿戴未建模无指涉物;
@@ -4496,13 +4499,15 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '步狸村之谜': GiftGrant(items_immediate=('简易武装箱',)),
     '阿哈大悦': GiftGrant(items_immediate=('简易武装箱',)),
     # 天降救兵:箱条目直读「获得1个【简易武装箱】」(随机角色条目 = PICK 组合
-    # 登记行随机星档工厂承载,不入本表);含两条效果条目的卡不入 _STRATEGY_BOX_GRANTS。
+    # 登记行随机星档工厂承载,不入本表);含两条效果条目的卡不入
+    # _STRATEGY_BOX_GRANTS——例外 = 贸易专家:停云(顾问族混发,箱条目参数
+    # 单源驻该表镜像行、组合行引用之,镜像行注释申报)。
     '天降救兵': GiftGrant(items_immediate=('简易武装箱',)),
     # 武装突入:箱条目直读「获得2个【简易武装箱】」(数量 = 元素重复次数约定
     # 直读,零新字段;遭遇奖励×2 条目 = 实机和模拟器两边均盲区零建模第三例[T-118 爆晶矿/
     # T-134 免费升舱同型,两截口径:倍数有载 desc 明写×2、奖励基值四层
-    # 无载 → 乘积不可建模,禁写「desc 无数值」错口径防传染];镜像表
-    # _STRATEGY_BOX_GRANTS 同键两元素元组承载)。
+    # 无载 → 乘积不可建模,禁写「desc 无数值」错口径防传染];箱条目 = 本表
+    # items_immediate 双元素直登,不入 _STRATEGY_BOX_GRANTS 镜像表)。
     '武装突入': GiftGrant(items_immediate=('简易武装箱',
                                       '简易武装箱')),
     # 秘密典籍:箱条目直读「获得1个【星徽秘典】」(对账 id 230901;

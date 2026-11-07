@@ -353,14 +353,19 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '刻逐档追加,拒落域不置一次性标志位重试自愈),唯一调用点 = sim 结算分支'),
     'strategy_grants_done': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
-        basis='策略卡赠礼条件两条效果条目已发标记(「首次」簿记,元素 = '
+        basis='策略卡条件发放条目已发标记(「首次」簿记,元素 = '
               "'<卡名>#<效果条目键>' 复合键,效果条目键 = faction_count/next_reward_"
-              'node 封闭集,一卡两条效果条目各置各的一次性标志位),无观察读端——条件评估真值'
-              '(上阵羁绊计数/节点类型)系 sim 状态副本内部判定,live 无独立观察'
+              'node/reward_ore/p2_boss 封闭集(单一源 = cw_gain_chain '
+              'STRATEGY_GIFT_LEG_* 家族常量,随表扩展新条目新常量;晶矿/位面-boss '
+              '两腿无 placement 载体,骑同域复合串一次性标志位形),无观察读端——条件评估真值'
+              '(上阵羁绊计数/节点类型/位面-节点类型合取)系 sim 状态副本内部判定,live 无独立观察'
               '通道(角色落席/装备入栏 = bench/equips 观察覆盖,不对称申报'
-              '同族先例);唯一逻辑写端 = cw_gain_chain.'
+              '同族先例);逻辑写端三函数 = cw_gain_chain.'
               'check_strategy_gift_grants(发放落位刻逐条目追加,角色 placed '
-              '才置一次性标志位,拒落域不置一次性标志位重试自愈),唯一调用点 = sim 节点窗收尾'),
+              '才置一次性标志位,拒落域不置一次性标志位重试自愈)/ '
+              'check_strategy_reward_ore_grants(策略晶矿奖励入账拍追加)/ '
+              'check_strategy_plane_boss_grants(位面 boss 窗发放刻追加),'
+              '调用点 = sim 节点窗收尾区'),
     'round_fresh_buys': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,
         basis='轮内新鲜买入账(record_fresh_buy 唯一入口函数),无 OCR 读端'),

@@ -116,23 +116,29 @@
 基数申报(诚实口径):`STRATEGY_EFFECTS` = **108 条,实码全量**(构建层校验与数据层
 不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族;含
 加油站登记期 burst 建模条目,§8;含合并同类项刷新出对条件金条目,§8 动作计数族
-——ON_REFRESH 触发现役 5 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项;含
-战力类 UNIT_BUFF 零响应登记四十六条 = OOTD·金/三三三/中产阶级/人海战术/
-全队的希望/创伤小组/前段发力/和平手枪祝福/团队力量·金/团队力量·银/基层贡献/
-完美开局/幸运中的幸运/幸运喷雾/幸运星祝福/应援团/延迟收益/当头一棒/
-打人就打脸·金/打通上下游·金/折叠小刀祝福/效率员工奖/星变/星级压制/
-榜样的力量·金/榜样的力量·银/正能量/溜佩佩/溜佩佩+/独狼/生命之花祝福/绕口令/
-装备党/读博深造/赞美太阳/量产型装甲祝福/钻石恒永久/风暴骑士/星魂升华/
-爆仓/领航专家:姬子/及时雨/幸运之子/超光速提拔/战术义眼+/黑塔纪元,
+——ON_REFRESH 触发现役 6 条 = 淘金客/采购专员·金/彩/市场干预/合并同类项/
+概率事件;含补给时点族 8 键 = 全都要·金/银/彩各本体 + supply_delta 申报键
+双条 + 打捞人才库/打捞人才库+,§7.4;含
+战力类 UNIT_BUFF 零响应登记五十九条 = OOTD·金/万箭齐发/三三三/三五成群/
+中产阶级/人海战术/保守派/全队的希望/创伤小组/前段发力/及时雨/后勤超响应/
+和平手枪祝福/团队力量·金/团队力量·银/基层贡献/基本保障/完美开局/
+幸运中的幸运/幸运之子/幸运喷雾/幸运星祝福/幸运闪避EX/应援团/延迟收益/
+当头一棒/战术义眼+/打人就打脸·金/打通上下游·彩/打通上下游·金/折叠小刀祝福/
+攻防一体/效率员工奖/星变/星级压制/星魂升华/更快,更幸运/榜样的力量·彩/
+榜样的力量·金/榜样的力量·银/正能量/溜佩佩/溜佩佩+/爆仓/独狼/生命之花祝福/
+绕口令/羁绊的力量/装备党/读博深造/调饮专家:加拉赫/赞美太阳/超光速提拔/
+野蛮成长/量产型装甲祝福/钻石恒永久/领航专家:姬子/风暴骑士/黑塔纪元,
 登记形态
 见 §7.1
 unit_buff);词缀源
 注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
-评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
+评估面 `STRATEGY_ECONOMY` = 100 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
-(`len` 实测;目录口径 = 两 overlay 键并集 = **97 卡**,84 候 + 14 已确认,与 impacts
-§4 目录一致)。讨论口径「89 条经济效果」非设计基数,与实码 92 的精确对应
-关系待用户裁决(§10-9),不作为设计基数。本表**不设每类条数列**——类分布随逐条
+(`len` 实测;逐条确定目录 = 两 overlay 键并集,现值 **174 卡**,`len` 实测;
+目录权威版本 = impacts §4——目录按注册表全集口径演进,文档表列滞后不改变
+目录口径、不作对账基准;已确认条目 = impacts §3)。讨论口径「89 条经济效果」
+非设计基数,与实码评估面的精确对应关系待用户裁决(§10-9),不作为设计基数。
+本表**不设每类条数列**——类分布随逐条
 确定进度漂移,静态计数不构成设计结论;逐卡归类登记权威版本 = impacts。
 
 | 类别 | 定义(效果语义) | state 记录形态(counter 判据) | 触发驱动 | 实码代表例(识别标志) |
@@ -204,10 +210,10 @@ unit_buff);词缀源
 
 ### 7.1 声明面
 
-- `TriggerKind` 7 值(kernel/cw_effect_inventory.py:55-63):INSTANT / PLANE_START /
-  NODE_ENTER / LEVEL_UP / ON_REFRESH / ON_MERGE / CONDITIONAL
-  (原 `BATTLE_END`/`ON_SELL`/`SUPPLY_PHASE` 三值在用零条目,已随死代码清偿移除,
-  见 §7.4)。
+- `TriggerKind` 8 值(kernel/cw_effect_inventory.py:55-63):INSTANT / PLANE_START /
+  NODE_ENTER / LEVEL_UP / ON_REFRESH / ON_MERGE / CONDITIONAL / SUPPLY_PHASE
+  (`BATTLE_END`/`ON_SELL` 两触发语义在用零条目、枚举值未建,SUPPLY_PHASE 已随
+  补给时点族启用,均见 §7.4)。
 - `DurationKind` 4 值(:66-71):once / permanent / n_nodes / while_held(与持有绑定,
   策略卡缺省;独立值供词缀源对齐语义)。
 - `EffectKind` 4 值(:74-79):economy / state / battlefield / unit_buff(unit_buff =
@@ -304,11 +310,17 @@ unit_buff);词缀源
   (`_EVENT_BATTLE_END`);条目计数/余量推进随建模批立战斗结算触发条目后经同一接入点
   自动生效,无需再改接入调用。
 
-### 7.4 战斗结算/出售/补给触发(零注册申报)
+### 7.4 战斗结算/出售触发(零注册申报)与补给触发(已启用)
 
-战斗结算(`BATTLE_END`)/出售(`ON_SELL`)/补给(`SUPPLY_PHASE`)三类触发语义在用
-零条目,枚举值**未建**(原预留枚举值已随死代码清偿移除——在用零条目 = 零驱动,
-枚举成员随启用批按需新增),不建事件。`ON_MERGE` 已有词缀源条目(**变宝
+战斗结算(`BATTLE_END`)/出售(`ON_SELL`)两触发语义在用零条目,枚举值**未建**
+(在用零条目 = 零驱动,枚举成员随启用批按需新增),不建事件。补给触发
+(`SUPPLY_PHASE`)已启用:在用 8 键 = 全都要·金/银/彩各「本体 +
+`#supply_delta` 申报键」双条(全捞效果条目驱动源 = 补给选定上报时点检查
+`check_strategy_take_all_supply`,列数修饰条目 = 声明载体,权威版本 =
+invest_effects.md 全都要族三条)+ 打捞人才库/打捞人才库+(驱动源 = 补给屏
+观察上报尾部检查 `check_strategy_supply_salvage`)——驱动 = 补给动作上报链
+既有接入点,零独立补给事件流,枚举值随族建模批回建。
+`ON_MERGE` 已有词缀源条目(**变宝
 为废**,`AFFIX_EFFECT_SPECS`,§7.6);投资策略侧 ON_MERGE 首条已启用 =
 **武力刷新**(合成装备,官方限定「合成装备时」;spec 条目入 `STRATEGY_EFFECTS`,
 状态副本发放分支 = §7.3 合成事件行——穿戴上报 applied 出口检查 `apply_on_merge_
@@ -320,8 +332,8 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 (buy/gain 两域单点双调,仅 sim 装配态观察通道发金,live 零写观察覆盖),装备
 合成域经上列名单集另路;分类 = 计数门槛 N=1 事件直结退化形——无跨帧计数器、
 无 GameState 新字段、零 rng;live 零写零披露键)。其余候选驱动卡(按卡文触发语义归类):
-按劳分配·剩余价值·无伤通关·气氛组·气氛组+(战斗结算)/人力重组出售面(出售时)/
-补给时点族——启用 = 各自建模批先立枚举值与规格条目、再接事件源,启用前按
+按劳分配·剩余价值·无伤通关·气氛组·气氛组+(战斗结算)/人力重组出售面(出售时)——
+启用 = 各自建模批先立枚举值与规格条目、再接事件源,启用前按
 §6 观察收尾兜底。
 
 ### 7.5 事件框架已关闭(hook 机制不建)
@@ -519,9 +531,8 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   拿卡当节点不重掷(per_node_pick_node_grant.md §4,无立即措辞,C 级佐证);+2 金
   读法 = 尾句独立句式、无触发语复述(对照定期福利金卡 gold_per_node 必复述
   「每次进入新节点时」措辞);sim 重掷面零建模(变换类既定边界,sim bench 轨迹不
-  反映每节点重掷);姊妹乱成一锅粥/+ 展开存在双载荷裁决位(重掷需 BattlefieldEffect、
-  爆发分支过 burst 桥需 EconomyEffect,EffectSpec 单 payload 字段不可并存),归族展开批
-  先裁。
+  反映每节点重掷);姊妹乱成一锅粥/+ 已按同族根治形展开登记(重掷分支与登记期
+  burst 分支单条目双载,载体扩展免双条目,小节见本族「乱成一锅粥/+」节)。
 
 #### 公司军火更新·银(130101)
 
@@ -542,6 +553,32 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   组合子(组合子辖同一效果体内多分支);sim 变异面零建模(变换族既定边界,公司人才流动
   同判);族模式卡:金(230601)/彩(330601)展开时本条目 payload 复用同词表值,差异
   全在发放分支泛化表行。
+
+#### 乱成一锅粥(352101)/ 乱成一锅粥+(352102)
+
+- **论断**:NODE_ENTER / while_held / BATTLEFIELD;duties = track;counter **不建**
+  (每节点重掷无累计/剩余语义);多分支单条目双载——重掷分支 = 备战席最左
+  6 槽逐节点同费重掷(payload 词表值 `BENCH_REROLL_LEFT6`,区间 = 备战席槽序
+  头 6 物理槽、容量 <6 时全席〔判读申报〕,辖域仅角色槽);登记期 burst 分支 =
+  「立刻获得 5/7 次免费刷新」(`free_refresh_burst` = 5/7,载体惯例同加油站——
+  BattlefieldEffect 载体携 burst,选卡登记点 burst 桥直通);金分支 = 选卡当场
+  10/14 金(`STRATEGY_ECONOMY` instant_gold,live 游戏发放观察覆盖,sim 金发放
+  缺口 = 选卡即时金族级既有待办,零通道)。
+- **证据**:规格 cw_investments.py(两卡 EffectSpec 条目,payload=
+  BattlefieldEffect(bench_reroll=BENCH_REROLL_LEFT6, free_refresh_burst=5/7);
+  注册行 STRATEGY_ECONOMY burst 5/7 + instant_gold 10/14);官方原文
+  cw_invest_data.py:351-352「每次进入新节点时，处在备战席最左侧6个位置的
+  角色变为随机的同费用角色。立刻获得5/7次免费刷新和10/14金币。」
+- **推理链**:「每次进入新节点时」= 节点进入持续触发,无剩余/门槛语义 →
+  counter 空;重掷结果随机(§6.3 随机分支/§6.4 随机资产面)交由观察收尾,
+  替换星级/装备归属/被替换去向未采证不消费;拿卡当节点不重掷
+  (per_node_pick_node_grant.md,无立即措辞,C 级佐证);「立刻」措辞承载登记期
+  burst 发放(选卡登记点发放,与公司人才流动尾句金无「立刻」措辞的独立句式
+  读法互证,双分支读法与卡文语序一致);「容量 <6 时全席」与「系统单位
+  (cost=0)是否入重掷域」= 判读申报制未采证面(姊妹 + 卡 notes 申报);
+  sim 重掷面零建模(随机改写面既定边界——sim bench 容器与写端在册但
+  bench_reroll 零消费,sim bench 轨迹不反映每节点重掷);burst 双源同值对账
+  (STRATEGY_ECONOMY 注册值 ↔ EffectSpec payload 值)归注册面测试锁。
 
 ### 动作计数族
 
@@ -1066,6 +1103,77 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   不建;战力数值不折金不进经济模型(invest_effects.md §0 战力类行),
   登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
 
+#### 保守派(351501)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS`
+  数据面表达式单一源);三条效果条目分治——战力面条目 = 本条目 UNIT_BUFF
+  零响应登记(基础段 8% 伤害减免 + 条件段「进入战斗时生命上限最低的角色
+  额外获得 12%」,两段数值/选角谓词全游戏侧自算,bot 仅登记);箱条目 =
+  获得时点效果另登 `PICK_INVEST_EFFECTS`(镜像 `cw_gain_effects
+  _STRATEGY_BOX_GRANTS['保守派'] = ('进阶武装箱',)`,落席走 `gain_bench_item`
+  原语),不入本条目辖域。bot 零响应——触发面「进入战斗时」系游戏侧战斗内
+  评估拍(TriggerKind 无战斗内成员,sim 战斗 = 瞬时结算无开始分相),无离散
+  触发事件 → trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec`
+  先例(占位零响应);伤害减免域零数值建模(战力类不进经济模型,sim 战斗
+  U01 纯随机零消费 = 结构性边界);不绑阵营(泛用数值,
+  `STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 = 已注册名无
+  economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['保守派']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:346(PlazaAugment 351501)。
+- **推理链**:条件评估/数值/选角(生命上限最低)全游戏侧自算,bot 零消费端、
+  不接入调用、不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF
+  (游戏侧自算,bot 仅登记)。
+
+#### 攻防一体(351601)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(单一源同保守派);bot 零响应——两段增幅
+  (25% 伤害减免 + 等同于伤害减免的伤害增幅)与跨轴联动读法〔同源快照 vs
+  全额镜像〕判读申报制留痕,零响应下两读法 bot 行为恒同,不构成二义冻结面
+  (pending=False);无离散触发事件 → trigger 占 PLANE_START 声明位(占位
+  零响应);不绑阵营(泛用数值,`STRATEGY_BINDINGS` 零触碰);现金分支 =
+  已注册名无 economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['攻防一体']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:347(PlazaAugment 351601)。
+- **推理链**:增幅生效/跨轴换算全游戏侧自算,bot 零消费端、不接入调用、
+  不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,
+  bot 仅登记)。
+
+#### 幸运闪避EX(351701)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(单一源同保守派);bot 零响应——**幸运一击域**
+  条目:全队幸运一击率直增(25%)与受击概率伤害变换(「有等同于30%幸运
+  一击率的概率使受到的伤害变为1」)全游戏侧自算,概率读法/变换边界判读
+  申报制留痕,零响应下读法间 bot 行为恒同(pending=False);幸运一击系战斗
+  机制名(机制权威版本 = combat.md 伤害公式三乘区节,幸运喷雾小节同域),
+  零建模理由 = 游戏侧战斗真值 bot 零消费;无离散触发事件 → trigger 占
+  PLANE_START 声明位(占位零响应);不绑阵营(泛用数值,
+  `STRATEGY_BINDINGS` 零触碰);现金分支 = 已注册名无 economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['幸运闪避EX']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:348(PlazaAugment 351701)。
+- **推理链**:受击变换随战斗内幸运一击触发连续生效,无离散触发事件 →
+  counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
+
+#### 羁绊的力量(351801)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(单一源同保守派);bot 零响应——**羁绊计数
+  条件域**条目:「每有一个已激活的非独立羁绊,小队获得 5% 伤害增幅和 3%
+  伤害减免」,计数线性缩放且双轴独立定值并列(非跨轴派生,禁平移攻防一体
+  联动读法);「已激活」口径 = 游戏侧定义(实机左面板读数为真值),羁绊计数
+  随游戏内状态连续变化,无离散触发事件 → trigger 占 PLANE_START 声明位
+  对齐 `_portal_placeholder_spec` 先例(占位零响应);非独立羁绊排除集与
+  团队力量·银同源(「非独立羁绊」= 独立羁绊段七名排除);不绑阵营(泛用
+  计数 buff,`STRATEGY_BINDINGS` 零触碰,表外默认空绑定);现金分支 =
+  已注册名无 economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['羁绊的力量']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:349(PlazaAugment 351801)。
+- **推理链**:计数与双轴数值全游戏侧自算,bot 零消费端、不接入调用、
+  不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,
+  bot 仅登记)。
+
 ## 9. 已关闭事项记录(结论与依据;不再复议)
 
 1. **同卡叠加语义已关闭**:效果域实例按 spec_key 唯一,**无叠加合并逻辑**——不存在
@@ -1101,9 +1209,9 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
    cw_invest_data.py:260 官方原文;注册表 `free_refresh_burst=9999`,cw_investments.py:168)
    驱动事件 = 现实时钟,非节点/动作坐标系——在用唯一墙钟卡;计数器模型是否增设
    墙钟驱动维待裁决,到达前 burst 入账 + 窗末清零分支交由观察覆盖兜底。
-9. **经济效果讨论口径与实码口径对应**:讨论口径 89 条 vs 实码评估面 92 条/目录并集
-   97 卡/官方全集 334 条(§5 基数申报);精确对应关系候核对。不阻塞:逐条确定目录
-   以注册表全集为准(impacts §4)。
+9. **经济效果讨论口径与实码口径对应**:讨论口径 89 条 vs 实码评估面 100 条/
+   目录并集 174 卡/官方全集 334 条(§5 基数申报);精确对应关系候核对。
+   不阻塞:逐条确定目录以注册表全集为准(impacts §4)。
 10. **注册表 verdict 回填**:固定理财已回填——位面段建模随批落地、中途拿卡
     所在位面补发经用户裁定(2026-11-01)人为定为,pending 撤除、保守支消解
     (§8 固定理财条目);姊妹固定理财+ 随同判展开批同态回填(pending 撤除,

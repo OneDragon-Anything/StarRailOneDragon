@@ -3697,10 +3697,12 @@ class SimBackend:
                 # 拍共用 _fire_strategy_random_grants 一门,exactly-once
                 # 由已掷源名集合保证)。
                 self._fire_strategy_random_grants(plane=plane, r=r)
-        # 策略卡每节点绑定角色复制发放效果条目(「每次进入新节点时,获得1星的
+        # 策略卡每节点角色复制发放效果条目(「每次进入新节点时,获得1星的
         # 该角色,补给后额外获得2个」族,价值投资·金首例):进窗事实点在
         # 窗口幂等守卫内(重放不双发),kernel 检查函数单一源
-        # check_strategy_node_char_grants(持卡 ∩ 绑定域驱动,未持卡零
+        # check_strategy_node_char_grants(持卡 ∩ 两登记域驱动:绑定形 =
+        # 绑定域映射〔补给后加成计数式〕/ 具名形 = 姊妹专表
+        # _STRATEGY_NODE_CHAR_GRANTS〔计数恒行值常量〕,未持卡零
         # 写)。与同段多条效果条目邻位收尾(定时道具/开盒/boss 发放/boss 金/尾款
         # 金/直发取卡;互不读对方字段,先后无行为差,同段为收尾序单一)
         # ——插入位置在商店全刷前:「每次进入新节点时」= 本窗内最早段,复制

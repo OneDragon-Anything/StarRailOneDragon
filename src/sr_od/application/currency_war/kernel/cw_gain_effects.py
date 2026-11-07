@@ -286,9 +286,11 @@ def _make_box_grant_effect(items: tuple[str, ...]) -> Callable[
 
     签名沿现役效果体 ``(gs, *, sig, rng)``(注册表分派统一传参,
     cw_gain_chain.on_strategy_gained);``rng`` 不消费——开箱分支确定发放
-    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点字段写分支:
-    三卡的战斗被动分支(能量恢复/伤害减免)非获得时点效果,不在本体
-    (design §1 明确不解决,归策略效果建模批)。
+    (rand=False,gain-chain.md §5),无采样面。效果体只覆盖获得时点占席道具
+    发放分支;表内持卡卡面另带的战斗被动类效果条目(能量恢复/伤害减免等)
+    非获得时点效果,不在本体——零战斗效果条目词面的卡(快请专家·彩)与本
+    工厂辖域无关,战斗被动条目由各自建模批登记 STRATEGY_EFFECTS
+    (UNIT_BUFF 零响应族)承载,本工厂不辖卡面全量。
     """
 
     def _effect(gs: GameState, *, sig: ChannelSig,
@@ -940,7 +942,10 @@ def _make_delayed_only_grant_effect(name: str) -> Callable[..., list[str]]:
 # ===== 多条效果条目组合效果(混发卡专属:策略卡获得时点两条效果条目/多条效果条目组合发放,族首 =====
 # ===== 卡 = 武装支援;各条目复用单族工厂,组合卡不入任何单族表——表行生成 =====
 # ===== 的是单条效果条目效果体,与组合体同名键经 dict 字面量顺序覆盖静默丢条目, =====
-# ===== 组合登记行 = 条目参数唯一出现点,单一源成立)=====
+# ===== 组合登记行 = 条目参数唯一出现点,单一源成立。例外成员 = 贸易专家:停云 =====
+# ===== (顾问族混发:箱条目参数单源驻 _STRATEGY_BOX_GRANTS 镜像行,组合行 =====
+# ===== 引用之不另写字面量,镜像派生的单箱条目效果体被同键组合行覆盖; =====
+# ===== 顾问解锁效果条目 = 登记面 advisor 道承载,不入组合体)=====
 
 def _compose_grant_legs(
         *legs: Callable[..., list[str]]) -> Callable[..., list[str]]:
