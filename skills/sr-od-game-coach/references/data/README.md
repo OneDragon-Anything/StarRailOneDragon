@@ -7,10 +7,8 @@
 | `char_cones.json` | 角色页「光锥推荐」表 | 96 |
 | `char_relics.json` | 角色页「遗器推荐」表 | 97 |
 | `char_teams.json` | 角色页「配队推荐」表 | 96 |
-| `char_ascension_materials.json` | **角色晋阶材料表**（官方 wiki role_ascension 组件快照）：每角色各晋阶段材料清单 + 满晋阶总量合并 | 92 |
-| `material_sources.json` | **养成材料获取途径表**（官方 wiki 材料条目快照）：稀有度 / 用途分类（角色晋阶·光锥晋阶·行迹等）/ 获取途径（掉落点·合成·置换） | 147 |
 
-- 晋阶/材料两表生成脚本：维护机 `.debug/temp/fetch_ascension_materials.py`（官方 wiki 直拉，channel 18/20，`sr-od-dev-official-api` skill 接口）。跳过的 9 条角色 = 前瞻未实装（艾莲/耀嘉音/星神★阿哈）与空壳词条（椒丘），与 characters.md 已知坑一致。
+- **角色晋阶材料表 / 副本产出材料表已转代码常量**（单一源，不在本目录）：`src/sr_od/config/character_ascension_const.py`（92 角色分段材料 + `get_character_ascension` 查询）、`src/sr_od/config/dungeon_drop_const.py`（副本产出 + `find_dungeon_by_material` 反查）。生成与刷新：`tools/game_data/generate_ascension_const.py`（官方 wiki 直拉）。
 
 ## 数据源现状（2026-11-05 起）
 
