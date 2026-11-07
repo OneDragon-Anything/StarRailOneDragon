@@ -61,7 +61,7 @@
 
 ### 2.3 计算规则（确定性，实现者无需再设计）
 1. **词条名归一**：入参与名册词条名（`name_cn`）都经内置**归一表**（别名表+口径包表，见 §2.4）转为标准名后比对；未识别的词条词（三表都归不上）→ 该角色 `warnings` 追加一条，该词按无效处理（不得静默当标准名错数）。⚠ 标准名全集（尤其「攻击力」flat 与「攻击力提高」% 是否同名异义）实现第一步拉真实名册核对，归一表据此定稿（land 阶段 1 验收项）。
-2. **数值解析**：`value` 是字符串（如 `"705"` / `"43.2%"`，依据：`src/sr_od/mys/sr_mys_client.py` SrPropertyEntry 冻结字段）——以 `%` 结尾 → 去 `%` 转 float（百分数值）；无 `%` → float（flat 数值）；解析失败 → `warnings` 追加并按 0 计。求和仅同名（归一后标准名）相加，% 与 flat 因标准名不同天然不混。
+2. **数值解析**：`value` 是字符串（如 `"705"` / `"43.2%"`，依据：`src/sr_od/mys/sr_mys_client.py` SrPropertyEntry 冻结字段）——以 `%` 结尾 → 去 `%` 转 float（百分数值）；无 `%` → float（flat 数值）；解析失败 → `warnings` 追加并按 0 计。求和仅同名（归一后标准名）相加；**% 与 flat 不混桶的实现依据**：名册 name_cn 对生命值/攻击力/防御力的平坦与百分比**同名**（实现期核实，三源钉死：sr_codes PROPERTY_INFO_SNAPSHOT 快照 / fixture hkrpg_avatar_info_detail_sample.json / test_sr_mys_client 映射断言），唯一判别依据 = value 的 % 后缀——带 % 归一到「提高」类百分比标准名，不带归一到平坦名词本体（归一表已按此定稿，测试 `test_flat_percent_homonym_no_mixing` 锁定；本条修正了原稿「标准名不同天然不混」的错误前提）。
 3. **计数遍历域**：遍历名册该角色的 `relics` 与 `ornaments` 两数组共 6 件（`pos_cn` 六部位：头部/手部/躯干/脚部/位面球/连结绳）。
 4. **命中计数**：每条副词条归一后的标准名 ∈ 展开后的有效集合 → `effective_hits += 强化次数(times)`，并按标准名累加解析后 `value`；否则按标准名累加 `wasted_rolls_by_stat`。
 5. **主词条核对**：仅对「躯干/脚部/位面球/连结绳」四部位执行（头部/手部主词条物理恒定，不参与核对、不进 `main_stat_check`）；`main_stat_check` 的穿错计数分母 = 传入期望的部位数。头/手两件的副词条正常计入命中与总次数。
