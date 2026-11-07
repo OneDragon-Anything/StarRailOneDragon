@@ -18,7 +18,7 @@
 
 - `mys_get_characters` = **概况**（等级/星魂数/命途/光锥摘要）——配队选人、练度成色初判；
 - `mys_get_roster_detail` = **全量**（遗器词条/星魂解锁状态/行迹等级/属性面板）——缺口分析、毕业面板对照。
-- 会话失效时按工具返回的 `session_expired` 重登即可；状态分支与坑在工具描述里自足。
+- 会话失效时按工具返回的 `session_expired` 重登即可；状态分支在工具描述里自足，会话备份/恢复与验证环节的坑见 `docs/develop/sr_od/backend/mys.md`（账号数据能力随 MCP 工具走，不设独立 skill）。
 
 ## 角色机制断点表（持续回填；判定来源为米游社攻略调研，存档 `.debug/temp/as_guide/research/`）
 

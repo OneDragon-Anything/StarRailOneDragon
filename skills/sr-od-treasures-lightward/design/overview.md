@@ -9,7 +9,7 @@
 - **基础配队 / 养成 / 体系知识** → `sr-od-game-coach`（本 skill 只路由，不装体系档）
 - **单条 op 的实现与调试** → `od-dev-write-operation`；**运行失败排查** → `od-dev-debug-automation`；**画面建档** → `od-dev-screen-onboarding`；**新玩法从零搭建** → `od-dev-gameplay-automation`
 - **具体游戏机制长文 / 坐标 / area** → 本 skill `references/gameplay.md`（玩法总览全量建档，原 `docs/game/gameplay/treasures_lightward.md`，经负责人裁决移入）与 `docs/game/screens/` 各画面 doc（skill 正文只留一句概貌 + 指针，防期次轮换导致的知识腐烂）
-- **账号数据** → `sr-od-account-inspection`（运行时拉取，不入知识库）
+- **账号数据** → mys MCP 工具直拉（运行时拉取，不入知识库；练度判读口径归 `sr-od-game-coach`）
 
 ## 构成
 
