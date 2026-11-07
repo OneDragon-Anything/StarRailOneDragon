@@ -64,8 +64,8 @@ class UpgradeTraceOp(SrOperation):
     (材料不足停在当前等级,日志带等级)。
 
     ⚠️ fill_generic / auto_farm 为真实资源消耗路线(通用材料合成替代/
-    每次刷取开拓力 30+快速刷取券 3):**调用方发起前必须向用户说明消耗
-    并获明确同意**,本 op 不代替调用方做这个确认。"""
+    每次刷取开拓力 10+快速刷取券 3,券数以实刷为准):**调用方发起前必须
+    向用户说明消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, target: str,
                  fill_generic: bool = False, auto_farm: bool = False):
