@@ -15,6 +15,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import cv2_utils
 from sr_od.application.treasures_lightward.obs.tl_team_common import (
+    SCREEN_NAME,
     AnchorCell,
     GridCell,
     MemberGuess,
@@ -185,7 +186,8 @@ def _guess_by_page_hits(page_hits: list[PageHit], avatar_rect: Rect) -> MemberGu
     )
 
 
-def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[AnchorCell]:
+def read_character_cells_by_level(ctx: SrContext, image: MatLike,
+                                  screen_name: str = SCREEN_NAME) -> list[AnchorCell]:
     """等级文本锚驱动的角色列表识别(滚动停驻位置无关)。
 
     OCR 找列表区全部「等级」文本锚(每张卡下方一条「等级NN」),角色身份
@@ -193,8 +195,12 @@ def read_character_cells_by_level(ctx: SrContext, image: MatLike) -> list[Anchor
     与锚上方头像区重叠归属,同位多模板按内点数仲裁,歧义比不足则候选诚实
     返回;整页无命中的锚走锚上方裁片匹配兜底——模板特征贫乏的角色在整页
     比值测试下好匹配不足,小裁片环境可过 RANSAC。返回按 (y, x) 排序
-    (自上而下、自左而右)。"""
-    area_rect = get_area_rect(ctx, '区域-角色网格')
+    (自上而下、自左而右)。
+
+    screen_name:识别哪屏的角色网格区(「区域-角色网格」area 须在该屏建档)。
+    同构列表(如角色详情页的角色列表浮层)按屏独立建档后传屏名复用本识别;
+    不传 = 逐光捡金编队屏(默认)。"""
+    area_rect = get_area_rect(ctx, '区域-角色网格', screen_name=screen_name)
     templates = iter_avatar_templates(ctx)
     cells: list[AnchorCell] = []
     if area_rect is None:
