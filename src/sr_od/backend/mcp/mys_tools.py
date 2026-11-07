@@ -422,7 +422,7 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="获取角色列表"))
     def mys_get_characters() -> dict:
-        """获取崩坏:星穹铁道角色列表（等级/稀有度/星魂数/命途/光锥摘要）；会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
+        """获取崩坏:星穹铁道角色列表（等级/稀有度/星魂数/命途/光锥摘要）——账号练度概况查询：评估账号练度成色、配队选人、养成检查时用这个轻口径入口；会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
 
         Returns:
             统一信封 ``{"status","message","data"}``：
@@ -441,7 +441,7 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="获取角色名册明细"))
     def mys_get_roster_detail() -> dict:
-        """获取崩坏:星穹铁道全角色名册明细（每名角色的遗器六件套词条明细/位面饰品/星魂/行迹/属性面板，词条与面板属性均为中文名，含套装名与已激活套装效果）。数据量较大（64 角色全量）。会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
+        """获取崩坏:星穹铁道全角色名册明细（每名角色的遗器六件套词条明细/位面饰品/星魂/行迹/属性面板，词条与面板属性均为中文名，含套装名与已激活套装效果）——账号练度全量明细：练度评估/缺口分析/毕业面板对照用这个全量入口（角色概况用 mys_get_characters 即可）。数据量较大（64 角色全量）。会话过期时返回 session_expired 并提示重新登录，不清除任何本机数据。
 
         Returns:
             统一信封 ``{"status","message","data"}``：
