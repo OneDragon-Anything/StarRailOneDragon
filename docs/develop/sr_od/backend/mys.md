@@ -31,6 +31,7 @@
 | `mys_logout()` | 清 session.json 与 role.json、留 device.json；幂等；awaiting 期调用取消验证 | `success` |
 | `mys_get_characters()` | 过期短路 → 角色发现 → index → 冻结字段集映射 | `success` + 角色数组（含 element_cn/base_type_cn 中文名）／`session_expired`／`error`（1034 → 专属文案） |
 | `mys_get_roster_detail()` | 过期短路 → 角色发现 → avatar/info(need_wiki=true) → 全量明细映射 | `success` + 全角色明细数组（遗器六件套词条含套装名/位面饰品/星魂/行迹/属性面板/已激活套装效果，均中文名）／`session_expired`／`error` |
+| `mys_evaluate_relic_substats(criteria, roster_data?)` | 纯计算（`relic_eval_tools.evaluate()`，零 IO；roster_data 缺省经 get_characters_detail 自拉，非 success 信封原样透传） | `success` + results（每角色 total_rolls/effective_hits/hit_ratio/hits_by_stat/wasted_rolls_by_stat/main_stat_check/threshold_report/weakest_piece/warnings/verdict）+ not_found + team_summary／`session_expired`/`verification_required`（仅自拉路径透传）／`error`（criteria 空或重名、roster_data 结构非法、1034 透传）。口径由调用方提供（取自 sr-od-game-coach 角色档「有效口径」行），工具不内置默认口径 |
 
 - ⚠️ `mys_login` 描述含知情声明：密码会作为工具参数传入大模型上下文，由使用者自行决定（框架层不记录工具入参，实测 mcp 1.28.1 源码）
 - **会话失效不清任何本机数据**：只写 expired 标记 + 提醒重登；数据接口触发 1034 时返回专属错误（验证链后续迭代实现）

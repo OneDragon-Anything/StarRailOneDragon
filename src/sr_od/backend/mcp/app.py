@@ -561,8 +561,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="删除配置列表项"))(make_delete_config_item(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="描述配置结构"))(make_describe_config(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出可改配置"))(make_list_app_configs(backend))
-    # 米游社账号三工具（登录/登出/角色列表；控制器单例在首次调用时装配，
-    # 注册期不构建——backend 为测试替身时零副作用）
+    # 米游社账号五工具（登录/登出/角色列表/名册明细/遗器词条评估；控制器单例在
+    # 首次调用时装配，注册期不构建——backend 为测试替身时零副作用）
     register_mys_tools(mcp, backend)
     register_character_tools(mcp, backend)
     register_cone_tools(mcp, backend)

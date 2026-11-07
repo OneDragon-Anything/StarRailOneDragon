@@ -18,7 +18,7 @@
 
 | 类别 | `readOnlyHint` | `destructiveHint` | 本项目 tool |
 |---|:---:|:---:|---|
-| 纯观察(只读,不改状态) | `True` | — | `check_game_window` / `capture_game_screen` / `analyze_screen` / `get_run_status` / `list_applications` / `list_operations` / `describe_operation` / `list_mcp_usage_guides` / `get_mcp_usage_guide` |
+| 纯观察(只读,不改状态) | `True` | — | `check_game_window` / `capture_game_screen` / `analyze_screen` / `get_run_status` / `list_applications` / `list_operations` / `describe_operation` / `list_mcp_usage_guides` / `get_mcp_usage_guide` / `mys_evaluate_relic_substats` |
 | 操作游戏 / 触发运行 / 改配置(改状态非破坏) | 不标(默认非 read_only) | — | `click_game` / `key_tap` / `drag` / `input_text` / `open_game` / `run_one_dragon` / `run_standalone_app` / `run_operation` / `stop_run` / `upsert_screen_area` |
 | 不可逆 / 破坏性 | 不标 | `True` | `delete_screen_area`(删 screen_info area) / `close_game`(关游戏) |
 
