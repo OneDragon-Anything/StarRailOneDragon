@@ -1,7 +1,7 @@
 """行迹 TAB → 角色技能(行迹)升级 operation(把目标主技能升到当前上限)。
 
 角色养成系列装备/技能线 op:角色技能升级。交互与光锥晋阶
-(upgrade_light_cone)结构同构,差异(2026-11-08 藿藿行迹实机摸底):
+(upgrade_light_cone)结构同构,差异(行迹树实机摸底):
 - 入口 = 行迹 TAB 行迹树上的主技能节点(点击坐标按面板关闭态校准——
   面板开关间树位移约 25px,点击热区紧,非节点区域点击=关闭面板);
 - 节点 → 技能名映射(藿藿样本实测):普攻(1002,583)/战技(1288,578)/
@@ -14,14 +14,16 @@
   消失显示蓝字「已达最大等级」。
 - 行迹等级上限随角色晋阶解锁(藿藿 80 级:普攻上限 6、其余 8~10、秘技 1)。
 
-材料说明:行迹与光锥晋阶**共用属性材料池**(藿藿样本:永恒之花/永寿幼芽
+材料说明:行迹与光锥晋阶**共用属性材料池**(样本:永恒之花/永寿幼芽
 同批不足)——常规刷取一次可补多线缺口。官方 wiki trace_graph 无材料字段,
-材料数量表未固化(全角色统一固定表,待 BWIKI 可达后补)——缺口判定以
-游戏内面板按钮态实读为准。
+材料数量表未固化(全角色统一固定表,待外部源可达后补)——缺口判定以
+游戏内面板按钮态实读为准。快速升级开关默认开(开=自动填材料;关态行为
+未实测);信用点不足形态未实测(预期判停兜底,报告理由可能误标为材料不足)。
 
 auto_farm/fill_generic 参数语义与消耗声明同 upgrade_character /
-upgrade_light_cone:**启用即真实资源消耗,调用方发起前必须向用户说明
-消耗并获明确同意**。
+upgrade_light_cone:auto_farm 的单次消耗按行迹材料档位=拟造花萼(赤)
+(开拓力 10/次,券数以实刷为准);**启用即真实资源消耗,调用方发起前必须
+向用户说明消耗并获明确同意**。
 
 前置:角色行迹 TAB(由 GotoCharacterDetail + SelectCharacterOp +
 SwitchCharacterTabOp('行迹') 保证);列表遮挡态显式失败。
@@ -47,8 +49,9 @@ _SKILL_NAMES: list[str] = ['普攻', '战技', '终结技', '天赋', '秘技']
 
 # 升级执行后的稳定等待(反馈形态未实测,首跑按 2.5s 起步)
 _TRACE_SETTLE_SEC: float = 2.5
-# 每次快速刷取的固定消耗(与角色/光锥同款)
-_FARM_TRAILBLAZE_PER: int = 30
+# 快速刷取消耗:行迹材料出自拟造花萼(赤),单次开拓力=10(指南档位数据);
+# 券数为先例同款未实测,首刷后回填修正
+_FARM_TRAILBLAZE_PER: int = 10
 _FARM_TICKET_PER: int = 3
 _FARM_POLL_SEC: float = 20.0
 _FARM_ROUNDS_MAX: int = 10
@@ -219,8 +222,14 @@ class UpgradeTraceOp(SrOperation):
                      self._capped_level)
             return self.round_retry('材料不足,关闭面板收尾', wait=1)
 
-        # ⑤ 灰字全缺态(推理形态,未实测) → 判停
-        self._capped = True
-        self._capped_level = self._read_panel_level()
-        log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
-        return self.round_retry('材料不足,关闭面板收尾', wait=1)
+        # ⑤ 两按钮都不命中分两态(Y4 对抗修):「可提升至」锚可见 = 真灰字
+        # 全缺判停;锚不可见 = 执行后的动画/过渡期按钮暂时不可见(反馈形态
+        # 未实测) → 点面板外空白重试,不判停——误报判停比多等一轮危害大
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
+            self._capped = True
+            self._capped_level = self._read_panel_level()
+            log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
+            return self.round_retry('材料不足,关闭面板收尾', wait=1)
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
+        return self.round_retry('疑似动画/过渡态,点空白重试', wait=2)
