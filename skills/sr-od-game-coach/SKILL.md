@@ -34,7 +34,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 | **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `mechanics/relic-sets.md` / `mechanics/light-cones.md`） |
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
 | **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
-| **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义） |
+| **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
 | **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；角色页推荐表与刷新流程 `references/data/README.md`（基础信息已走 MCP，兜底走官方 wiki API） |
 
 **红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
