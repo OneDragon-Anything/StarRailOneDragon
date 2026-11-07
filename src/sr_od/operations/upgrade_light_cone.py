@@ -21,7 +21,6 @@ SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
 
 import re
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -35,6 +34,13 @@ _LC_ASCEND_SCREEN: str = '光锥-等级提升'
 
 # 升级执行后横幅+动画的稳定等待
 _LC_ASCEND_SETTLE_SEC: float = 2.5
+# 每次快速刷取的固定消耗(难度 IV 实测;两项都扣,与角色晋阶同款)
+_LC_FARM_TRAILBLAZE_PER: int = 30
+_LC_FARM_TICKET_PER: int = 3
+# 快速刷取连刷的单轮等待(连刷含多次战斗,游戏自动停止;重入轮慢询状态)
+_LC_FARM_POLL_SEC: float = 20.0
+# auto_farm 单次晋阶段内最多刷取次数(防券/开拓力无限烧)
+_LC_FARM_ROUNDS_MAX: int = 10
 
 
 class UpgradeLightConeOp(SrOperation):
@@ -47,19 +53,30 @@ class UpgradeLightConeOp(SrOperation):
     梦之珠泪 159 个换永恒之花 15 的实测量级):**调用方发起前必须向用户
     说明消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
 
-    def __init__(self, ctx: SrContext, fill_generic: bool = False):
+    def __init__(self, ctx: SrContext, fill_generic: bool = False, auto_farm: bool = False):
         """
         :param ctx: 上下文
         :param fill_generic: 缺专属材料时是否用「通用材料补全」路线继续升级。
-            False(默认) = 判停返回光锥 TAB 报告等级(零额外消耗);
-            True = 自动确认材料补全弹窗(消耗通用材料合成替代)。
+            False(默认) = 不用通用材料;True = 自动确认材料补全弹窗(消耗通用
+            材料合成替代,如梦之珠泪 159 个换永恒之花 15 的实测量级)。
             **启用前调用方必须向用户说明消耗并获同意**。
+        :param auto_farm: 缺材料时是否自动「快速刷取」补材料后继续升级。
+            False(默认) = 不刷;True = 自动连刷补材料(**每次消耗开拓力 30 +
+            快速刷取券 3,券不可自然恢复**)。**启用前调用方必须向用户说明
+            消耗并获同意**。auto_farm=True 时优先走刷取路线(常规资源),
+            fill_generic 退为刷取预算耗尽后的后备路线。
         """
         self.fill_generic: bool = fill_generic
-        SrOperation.__init__(self, ctx, op_name=gt('光锥晋阶升级') + ('(通用材料)' if fill_generic else ''),
+        self.auto_farm: bool = auto_farm
+        SrOperation.__init__(self, ctx, op_name=gt('光锥晋阶升级') + ('(自动刷取)' if auto_farm else '')
+                             + ('(通用材料)' if fill_generic else ''),
                              node_max_retry_times=24)
         self._capped: bool = False          #: 材料不足已判停(回光锥 TAB 收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
+        self._farm_rounds: int = 0          #: 本次运行已执行的快速刷取次数(消耗统计)
+        if auto_farm:
+            log.info('光锥晋阶: auto_farm 已启用——材料不足将自动快速刷取'
+                     '(每次消耗开拓力 %d + 快速刷取券 %d)', _LC_FARM_TRAILBLAZE_PER, _LC_FARM_TICKET_PER)
 
     #------------------- 识别辅助 -------------------#
 
@@ -181,30 +198,54 @@ class UpgradeLightConeOp(SrOperation):
                 return result
             return self.round_success(status='MAX_LEVEL')
 
-        # ④ 升级执行(两按钮同位不同文,find 按 text 天然区分三态)
+        # ④ 升级执行:按钮文本「快速升级」= 材料足(白底可点),直接执行;
+        # 不命中 = 缺料态,进入 ⑤ 分流(两按钮同位不同文,find 按 text 天然区分)
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-快速升级').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行,等横幅', wait=_LC_ASCEND_SETTLE_SEC)
-        if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-通用材料补全').is_success:
-            if self.fill_generic:
+
+        # ⑤ 「快速升级」不命中 = 缺料态 → 三路分流:
+        # auto_farm 优先走快速刷取(常规资源);刷取预算耗尽后 fill_generic
+        # 可转通用材料补全(稀缺资源,单独授权);都未授权 = 判停。
+        if self.auto_farm:
+            if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-开始刷取').is_success:
+                # 确认弹窗在 → 点开始(游戏自动连刷到材料够并停止)
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-开始刷取').rect.center)
+                self._farm_rounds += 1
+                log.info('光锥晋阶: 第 %d 次快速刷取开始(消耗开拓力 %d + 券 %d)',
+                         self._farm_rounds, _LC_FARM_TRAILBLAZE_PER, _LC_FARM_TICKET_PER)
+                return self.round_retry('连刷进行中', wait=_LC_FARM_POLL_SEC)
+            if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-关闭刷取结果').is_success:
+                # 结果框在 = 连刷已自动停止(材料够) → 关闭回晋阶界面
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-关闭刷取结果').rect.center)
+                return self.round_retry('刷取完成,关闭回晋阶', wait=2)
+            if self._farm_rounds < _LC_FARM_ROUNDS_MAX:
+                if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '标题-等级提升').is_success:
+                    # 弹窗未开(晋阶界面裸露) → 打开刷取确认弹窗
+                    self.ctx.controller.click(
+                        self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-快速刷取').rect.center)
+                    return self.round_retry('打开快速刷取确认', wait=2)
+                # 确认弹窗与结果框都不在、晋阶界面锚也不在 = 连刷进行中
+                return self.round_retry('连刷中,慢询等待', wait=_LC_FARM_POLL_SEC)
+            log.info('光锥晋阶: 快速刷取预算(%d 次)耗尽', _LC_FARM_ROUNDS_MAX)
+
+        if self.fill_generic:
+            if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-通用材料补全').is_success:
                 self.ctx.controller.click(
                     self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-通用材料补全').rect.center)
                 return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
+            # 通用材料也不够(按钮灰字) → 判停
             self._capped = True
             self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
-            log.info('光锥晋阶: 缺专属材料(通用材料补全未授权),判停于等级 %s',
-                     self._capped_level)
-            return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
+            log.info('光锥晋阶: 材料全缺(通用材料亦不足),判停于等级 %s', self._capped_level)
+            return self.round_retry('材料全缺,关闭回光锥页收尾', wait=1)
 
-        # ⑤ 两按钮都不命中时分两态:晋阶锚(可提升至)可见 = 真禁用态(全缺)判停;
-        # 锚不可见 = 执行后的横幅/过渡态盖住了按钮区(横幅形态未实测) → 点空白
-        # 重试,不判停——横幅是暂态,空白点击会关掉它
-        if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '文本-可提升至').is_success:
-            self._capped = True
-            self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
-            log.info('光锥晋阶: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
-            return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
-        # 过渡态点空白(画面中部空白区,不压任何控件)
-        self.ctx.controller.click(Point(900, 550))
-        return self.round_retry('疑似横幅/过渡态,点空白重试', wait=2)
+        # 判停回光锥 TAB(等级留当前值)
+        self._capped = True
+        self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
+        log.info('光锥晋阶: 材料不足(fill_generic/auto_farm 均未授权),判停于等级 %s',
+                 self._capped_level)
+        return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
