@@ -6,9 +6,9 @@ area_list:
   id_mark: true
   pc_rect:
   - 805
-  - 185
+  - 140
   - 1105
-  - 360
+  - 365
   text: 挑战结束
   lcs_percent: 0.7
   template_sub_dir: ''
