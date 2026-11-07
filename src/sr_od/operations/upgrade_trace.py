@@ -202,7 +202,7 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
             return self.round_retry('关闭面板,返回树态收尾', wait=1.5)
 
-        # ② 满级锚 + 分类校验(r2 §2.4:锚命中先于分类校验会把「别的满级
+        # ② 满级锚 + 分类校验(锚命中先于分类校验会把「别的满级
         # 技能的面板」误报成目标满级——锚命中后必须确认面板就是目标技能)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-已达最大等级').is_success:
             category = self._read_panel_category()
@@ -226,7 +226,7 @@ class UpgradeTraceOp(SrOperation):
             )
             if result.is_success:
                 return self.round_retry('节点面板已打开,重入分类', wait=1)
-            # 不透传失败结果(r1 轻项:透传不计本节点重试预算),显式计预算
+            # 不透传失败结果(透传不计本节点重试预算),显式计预算
             return self.round_retry('点击节点未进面板态,计入预算重试', wait=2)
         # 面板在但显示的不是目标技能(选中态残留/切换未生效) → 再点目标节点
         category = self._read_panel_category()
@@ -241,7 +241,7 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-通用材料补全').is_success:
-            # 授权路由对齐光锥先例(r2 §2.1):auto_farm 独立先行(刷取是
+            # 授权路由对齐光锥先例:auto_farm 独立先行(刷取是
             # 常规资源路线,不依赖 fill_generic),预算耗尽再转通用材料补全,
             # 均未授权才判停
             if self.auto_farm and self._farm_rounds < _FARM_ROUNDS_MAX:
@@ -263,8 +263,8 @@ class UpgradeTraceOp(SrOperation):
             if result is not None:
                 return result
 
-        # ⑤ 两按钮都不命中分两态(Y4,对抗修复 bb21c54e0 曾修、返工误退、
-        # 本轮恢复):「可提升至」锚可见 = 真灰字全缺判停;锚不可见 = 执行后
+        # ⑤ 两按钮都不命中分两态(锚在=真缺;锚不在=动画过渡期按钮暂隐):
+        # 「可提升至」锚可见 = 真灰字全缺判停;锚不可见 = 执行后
         # 动画/过渡期按钮暂隐(反馈形态未实测) → 点面板外空白重试不判停
         # ——误报判停比多等一轮危害大
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
