@@ -87,8 +87,7 @@ def parse_main_table(html: str) -> dict[str, dict[str, int]]:
 
 
 def write_const(costs: dict[str, dict[str, int]]) -> None:
-    head = '''# -*- coding: utf-8 -*-
-"""行迹升级材料数量表(5 星角色统一固定表,分段口径)。
+    head = '''"""行迹升级材料数量表(5 星角色统一固定表,分段口径)。
 
 本文件由 tools/game_data/generate_trace_cost_const.py 从 BWIKI 角色页
 「技能晋阶材料」节生成,**禁手改**(数据修正走重新生成)。
