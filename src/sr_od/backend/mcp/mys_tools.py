@@ -1,9 +1,13 @@
-"""米游社账号 MCP 四工具 + 访问控制器（``MysAccessController``）。
+"""米游社账号 MCP 工具组（账号四工具 + 遗器评估工具）+ 访问控制器
+（``MysAccessController``）。
 
 设计出处：changes/mys-account-mcp/design.md §2.4（装配/状态机/并发语义/三工具/
 知情声明原文）+ §2.5 契约 6 + §2.6（凭据红线）；changes/mys-roster-detail/
 design.md §2 契约 5（第四工具 ``mys_get_roster_detail``，信封语义与
-``mys_get_characters`` 完全一致，复用同一状态机与信封文案）。职责分界（design.md §2.1）：
+``mys_get_characters`` 完全一致，复用同一状态机与信封文案）；changes/
+relic-substat-eval/design.md §2.2（评估工具 ``mys_evaluate_relic_substats``，
+计算在 ``relic_eval_tools`` 纯模块，本文件只做注册与缺省名册自拉——非
+success 信封原样透传）。职责分界（design.md §2.1）：
 验证的「单轮」在 ``one_dragon.mys.mys_client``（3.3 交付），验证的「循环」在
 本控制器——持有 verifier、attempt 计数上限、每轮重开验证页。
 
@@ -59,6 +63,7 @@ from one_dragon.mys.mys_http import HttpSend, RequestsHttpSend
 from one_dragon.mys.mys_session import MysApiError, MysSessionExpired, SessionStore
 from one_dragon.utils import os_utils
 from sr_od.backend.backend_context import SrBackendContext
+from sr_od.backend.mcp.relic_eval_tools import evaluate
 from sr_od.mys.sr_mys_client import SrMysClient, character_to_dict
 
 #: 控制器状态（design.md §2.4：idle / awaiting_ticket 两态）
@@ -380,10 +385,11 @@ def _get_controller(backend: SrBackendContext) -> MysAccessController:
 
 
 def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
-    """注册米游社账号四工具（由 ``create_mcp_server`` 调用，与既有
-    register_prompts 模式一致）。工具函数只做信封透传：全部业务语义
-    （状态机/验证循环/过期处置/脱敏）在 ``MysAccessController``，行为测试
-    以控制器为对象。"""
+    """注册米游社账号工具组（账号四工具 + 遗器评估工具；由
+    ``create_mcp_server`` 调用，与既有 register_prompts 模式一致）。工具函数
+    只做信封透传：账号四工具的全部业务语义（状态机/验证循环/过期处置/脱敏）
+    在 ``MysAccessController``，评估工具的计算在 ``relic_eval_tools``，行为
+    测试分别以控制器与纯函数为对象。"""
 
     @mcp.tool(annotations=ToolAnnotations(title="登录米游社"))
     def mys_login(
@@ -459,3 +465,44 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
               专属提示（本版本未实现该验证链）。
         """
         return _get_controller(backend).get_roster_detail()
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="评估遗器有效词条"))
+    def mys_evaluate_relic_substats(
+        criteria: Annotated[list[dict], Field(description=(
+            "每角色一条口径的列表，每条含：character_name（角色中文名，对名册精确匹配，"
+            "重复出现返回 error）；effective_substats（有效词条清单，元素为词条标准名、"
+            "词条别名或口径包名，如「暴击率」「大攻击」「双暴攻」，清单的补集一律视为无效）；"
+            "main_stat_expectations（可选，部位中文名（躯干/脚部/位面球/连结绳）→ 可接受"
+            "的主词条标准名数组，缺省则该角色跳过主词条核对）；stat_thresholds（可选，"
+            "词条标准名或别名 → 毕业线数值，口径 = 主词条（若同名）与副词条的词条求和）。"
+            "空列表返回 error"))],
+        roster_data: Annotated[list[dict] | None, Field(description=(
+            "mys_get_roster_detail 返回的 data（角色明细数组）；缺省则本工具自动拉取"))] = None,
+    ) -> dict:
+        """评估遗器副词条的命中情况——按传入的每角色有效词条口径，对名册遗器明细做确定性计数：命中数/浪费分布/主词条核对/毕业线对照。口径由调用方提供（取自 sr-od-game-coach 角色档的「有效口径」行，可按阵容定位调整），本工具不内置任何默认口径；未传口径的角色不评估。`roster_data` 可传 `mys_get_roster_detail` 已拉取的结果避免重复请求；不传则工具自动拉取。
+
+        Returns:
+            统一信封 ``{"status","message","data"}``：
+            - ``success``：``data`` 含 ``results``（角色名 → 评估结果：
+              total_rolls/effective_hits/hit_ratio/hits_by_stat/
+              wasted_rolls_by_stat/main_stat_check/threshold_report/
+              weakest_piece/warnings/verdict）与 ``not_found``（传入口径但
+              名册不存在的角色名）与 ``team_summary``（按命中占比升序的全队
+              排序）；success message 模板「共评估 N 名角色，M 名未命中名册」。
+            - ``session_expired`` / ``verification_required``：仅自拉名册
+              路径，controller 状态原样透传（处理方式同
+              ``mys_get_roster_detail``）。
+            - ``error``：名册拉取业务失败（1034 等原样透传）；
+              ``criteria`` 为空列表；``criteria`` 存在重复 ``character_name``
+              （message 列出重复名）；``roster_data`` 结构非法（message
+              提示应传 ``mys_get_roster_detail`` 返回的 ``data`` 字段内容
+              ——角色明细数组）。
+        """
+        if roster_data is None:
+            # 缺省自拉：非 success 信封（session_expired/verification_required/
+            # error）原样透传（design.md §2.2 Returns 段语义）
+            fetched = _get_controller(backend).get_roster_detail()
+            if fetched.get('status') != 'success':
+                return fetched
+            roster_data = fetched.get('data')
+        return evaluate(roster_data, criteria)
