@@ -1103,6 +1103,60 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   不建;战力数值不折金不进经济模型(invest_effects.md §0 战力类行),
   登记形态归 UNIT_BUFF(游戏侧自算,bot 仅登记)。
 
+#### 基本保障(351001)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(官方效果原文,构建期经 `PLAZA_AUGMENTS`
+  数据面表达式单一源);bot 零响应——**装备携带条件域**条目:「至少携带
+  1 件装备的角色获得 20% 生命增幅和 16% 伤害增幅」,「携带」系 buff 条件
+  读法申报(条件计数与两段增幅游戏侧自算,bot 仅登记;装备穿戴面零建模
+  既定边界,增益判定挂游戏侧穿戴事实 bot 零消费)。无离散触发事件 →
+  trigger 占 PLANE_START 声明位对齐 `_portal_placeholder_spec` 先例(占位
+  零响应);不绑阵营(泛用数值,`STRATEGY_BINDINGS` 零触碰,表外默认
+  空绑定);现金分支 = 已注册名无 economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['基本保障']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:341(PlazaAugment 351001)。
+- **推理链**:条件评估/数值/增幅生效全游戏侧自算,bot 零消费端、不接入调用、
+  不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,
+  bot 仅登记)。
+
+#### 更快,更幸运(351101)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(单一源同基本保障);bot 零响应——**速度/
+  幸运一击/行动值周期跳转三域**条目:首段「进入战斗时速度最高的角色及其
+  忆灵速度增幅提高 8%、幸运一击率提高 12%」(逐体点名对象选择,速度排序/
+  前三选取/忆灵绑定游戏侧定义,效率员工奖同域先例);周期段「每经过 20
+  行动值,在另一名我方角色上重复此效果」(行动值计数轴判读申报制留痕,
+  零响应下 bot 行为恒同——延迟收益同轴先例;「另一名」跳转选取规则游戏侧
+  自算)。触发面「进入战斗时」系游戏侧战斗内评估拍,无离散触发事件 →
+  trigger 占 PLANE_START 声明位(占位零响应);不绑阵营(泛用数值,
+  `STRATEGY_BINDINGS` 零触碰);现金分支 = 已注册名无 economy → (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['更快,更幸运']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:342(PlazaAugment 351101)。
+- **推理链**:选择/周期跳转/数值全游戏侧自算,bot 零消费端、不接入调用、
+  不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,
+  bot 仅登记)。
+
+#### 野蛮成长(351401)
+
+- **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter
+  不建);payload = `UnitBuffRef`(单一源同基本保障);bot 零响应——**随机
+  对象两域增益**条目:「战斗开始时,随机两名前台角色获得 100% 前台强度
+  提高,随机两名后台角色获得 100% 后台强度提高」,随机对象/前后台域界/
+  数值读法/持续性四判读面游戏侧自算,bot 仅登记(notes 申报制)。「战斗
+  开始时」系游戏侧战斗内评估拍(TriggerKind 无战斗内成员,sim 战斗 = 瞬时
+  结算无开始分相,星变同拍先例),无离散触发事件 → trigger 占 PLANE_START
+  声明位(占位零响应);「前台/后台」与代码词表「前排/后排」字面不同字,
+  对应系判读非直译(完美开局小节同款处置,零行为后果);不绑阵营(泛用
+  数值,`STRATEGY_BINDINGS` 零触碰);现金分支 = 已注册名无 economy →
+  (0.0, False)。
+- **证据**:规格 `STRATEGY_EFFECTS['野蛮成长']`(cw_investments.py 战力类零响应族
+  条目);官方原文 cw_invest_data.py:345(PlazaAugment 351401)。
+- **推理链**:随机选取/数值/持续性全游戏侧自算,bot 零消费端、不接入调用、
+  不实机查;无累计量 → counter 不建;登记形态归 UNIT_BUFF(游戏侧自算,
+  bot 仅登记)。
+
 #### 保守派(351501)
 
 - **论断**:PLANE_START 占位形 / while_held / UNIT_BUFF;duties 全空(counter

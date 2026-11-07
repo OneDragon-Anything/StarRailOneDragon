@@ -863,7 +863,9 @@ read_star/SIFT 链在用再证(采证帧读数连续一致),星级观察消费�
   最小 1 费——星级/费用确定,进席身份若随机则身份面走随机组);迷之旅人(条件
   两分支 sim 状态副本发放:激活4巡海游侠发 2★黄泉+携徽入栏/下一奖励节点发 1★波提欧,
   `kernel/cw_gain_chain.check_strategy_gift_grants`,live 零写观察覆盖,
-  §3.2.26g)。
+  §3.2.26g);盗用身份(位面-节点合取条件 sim 状态副本发放:进入第二位面首领
+  节点发 1★火花,`kernel/cw_gain_chain.check_strategy_plane_boss_grants`,
+  live 零写观察覆盖,§3.2.26g;穿戴件/开拓者两腿零建模 = §3.2.15 家族键申报)。
 - **随机/待证面(身份随机或构成未证)=不建逻辑写,交由观察收尾**:砂里淘金
   (发【砂金】,星级未证暂随本组)、天降救兵、援军族、
   全都要·银/金/彩、劳务派遣合同、人力重组(live 观察覆盖;sim 发牌面
@@ -1403,23 +1405,28 @@ strategy_conditional_done 种子族先例)。
 **域归属**:独立键 `strategy_bond_tier_fired`(§3.7.1;独立键先例 =
 env_grants_done——不并入任何域版本 bump,他域本体未变)。
 
-#### 3.2.26g 策略卡赠礼条件双条目已发标记 strategy_grants_done
+#### 3.2.26g 策略卡条件发放条目已发标记 strategy_grants_done
 
-**语义**:策略卡赠礼条件双条目通道(迷之旅人 id 253601 首例:「激活4
+**语义**:策略卡条件发放条目通道(迷之旅人 id 253601 首例:「激活4
 【巡海游侠】时…获得…2星【黄泉】(携【星间旅人星徽】)/进入下一个奖励
-节点时，获得【波提欧】」)的**逐分支「首次」封账域**——两分支各自置一次性标志位
+节点时，获得【波提欧】」)的**逐条目「首次」封账域**——各条目各自置一次性标志位
 (「一次(讨论)」/「下一个」= 卡文一次性限定直读),元素 =
-`'<卡名>#<分支键>'` 复合键(`strategy_bond_tier_fired` 逐档一次性标志位同款复合键
+`'<卡名>#<条目键>'` 复合键(`strategy_bond_tier_fired` 逐档一次性标志位同款复合键
 形,§3.2.26f);卡名段 = 条件发放注册表键同源(单一源 =
 `cw_investments.STRATEGY_FACTION_COUNT_GRANTS` /
-`STRATEGY_REWARD_NODE_GRANTS`),分支键段 = 触发函数模块常量封闭集
-(`faction_count`/`next_reward_node`,随表扩展新分支新常量)。
+`STRATEGY_REWARD_NODE_GRANTS` / `STRATEGY_REWARD_ORE_GRANTS` /
+`STRATEGY_PLANE_BOSS_GRANTS`),条目键段 = 触发函数模块常量封闭集
+(`faction_count`/`next_reward_node`/`reward_ore`/`p2_boss`,单一源 =
+`cw_gain_chain.STRATEGY_GIFT_LEG_*` 家族常量,随表扩展新条目新常量;晶矿/
+位面-boss 两腿无 placement 载体,骑同域复合串一次性标志位形)。
 
-**写入方**:唯一逻辑写入方 = `cw_gain_chain.check_strategy_gift_grants`
+**写入方**:逻辑写入方三函数 = `cw_gain_chain.check_strategy_gift_grants`
 (sim 节点窗收尾检查分支,发放落位 placed 刻逐条追加,发放与封账同
 evidence 同 sig;拒落域不置一次性标志位——bench/equips 未观察窗零写,条件维持达标
-时下窗重试自愈)。**无观察写入方**——条件评估真值(上阵羁绊计数/节点
-类型)sim 状态副本内部判定,live 无独立观察通道(角色落席/装备入栏 =
+时下窗重试自愈)/ `check_strategy_reward_ore_grants`(策略晶矿奖励入账拍追加)/
+`check_strategy_plane_boss_grants`(位面 boss 窗发放刻追加)。**无观察写入方**——
+条件评估真值(上阵羁绊计数/节点类型/位面-节点类型合取)sim 状态副本内部判定,
+live 无独立观察通道(角色落席/装备入栏 =
 bench/equips 观察覆盖,不对称申报同族先例);live 局结构性零触发,域恒
 空 = live 正常态。
 
