@@ -173,10 +173,28 @@ class UpgradeTraceOp(SrOperation):
         节点重试预算兜底耗尽显式失败。"""
         screen = self.last_screenshot
 
+        # ⓪ 材料补全确认弹窗(授权流④点出后弹,模态盖住面板)——优先处理
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '标题-材料补全弹窗').is_success:
+            if self.fill_generic:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-确认材料补全').rect.center)
+                log.info('行迹升级: 确认通用材料补全(消耗通用材料合成替代缺口)')
+                return self.round_retry('通用材料补全已确认,等界面刷新', wait=2.5)
+            # fill_generic=False 不应到达(④ 已拦);防御处理 = 取消+判停
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-取消材料补全').rect.center)
+            self._capped = True
+            self._capped_level = self._read_panel_level()
+            return self.round_retry('取消材料补全,关闭面板收尾', wait=1.5)
+
         # ① 已判停 → 关面板回树态,到了就成功结束
         if self._capped:
             if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-                log.info('行迹升级: 材料不足收尾,当前等级 %s', self._capped_level)
+                log.info('行迹升级: 收尾,当前等级 %s,快速刷取 %d 次'
+                         '(消耗开拓力 %d + 券 %d)',
+                         self._capped_level, self._farm_rounds,
+                         self._farm_rounds * _FARM_TRAILBLAZE_PER,
+                         self._farm_rounds * _FARM_TICKET_PER)
                 return self.round_success(status='MATERIAL_CAPPED', wait=1.5)
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
@@ -212,15 +230,57 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-通用材料补全').is_success:
-            if self.fill_generic:
-                self.ctx.controller.click(
-                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-通用材料补全').rect.center)
-                return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
-            self._capped = True
-            self._capped_level = self._read_panel_level()
-            log.info('行迹升级: 缺专属材料(通用材料补全未授权),判停于等级 %s',
-                     self._capped_level)
-            return self.round_retry('材料不足,关闭面板收尾', wait=1)
+            if not self.fill_generic:
+                self._capped = True
+                self._capped_level = self._read_panel_level()
+                log.info('行迹升级: 缺专属材料(通用材料补全未授权),判停于等级 %s',
+                         self._capped_level)
+                return self.round_retry('材料不足,关闭面板收尾', wait=1)
+            # fill_generic 已授权但快速刷取预算尚有 → 刷取路线优先(常规资源)
+            if self.auto_farm and self._farm_rounds < _FARM_ROUNDS_MAX:
+                return self._farm_substep(screen)
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-通用材料补全').rect.center)
+            return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
+
+        # ④b auto_farm 独立刷取路径:缺料但按钮为「使用通用材料补全」之外的
+        # 形态(如快速刷取可直接用的形态)——刷取按钮/弹窗四态推进(照光锥 op)
+        if self.auto_farm:
+            result = self._farm_substep(screen)
+            if result is not None:
+                return result
+
+        # ⑤ 灰字全缺态(推理形态,未实测) → 判停
+        self._capped = True
+        self._capped_level = self._read_panel_level()
+        log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
+        return self.round_retry('材料不足,关闭面板收尾', wait=1)
+
+    def _farm_substep(self, screen) -> OperationRoundResult | None:
+        """auto_farm 快速刷取子流程一步(照光锥 op 四态推进)。
+
+        返回 None = 预算耗尽(调用方继续走通用材料补全/判停)。"""
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-开始刷取').is_success:
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-开始刷取').rect.center)
+            self._farm_rounds += 1
+            log.info('行迹升级: 第 %d 次快速刷取开始(消耗开拓力 %d + 券 %d)',
+                     self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
+            return self.round_retry('连刷进行中', wait=_FARM_POLL_SEC)
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-关闭刷取结果').is_success:
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-关闭刷取结果').rect.center)
+            return self.round_retry('刷取完成,关闭回面板', wait=2)
+        if self._farm_rounds >= _FARM_ROUNDS_MAX:
+            log.info('行迹升级: 快速刷取预算(%d 次)耗尽', _FARM_ROUNDS_MAX)
+            return None
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '标题-等级提升').is_success or \
+                self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速刷取').rect.center)
+            return self.round_retry('打开快速刷取确认', wait=2)
+        # 确认弹窗与结果框都不在、面板锚也不在 = 连刷进行中,慢询等完成
+        return self.round_retry('连刷中,慢询等待', wait=_FARM_POLL_SEC)
 
         # ⑤ 两按钮都不命中分两态(Y4 对抗修):「可提升至」锚可见 = 真灰字
         # 全缺判停;锚不可见 = 执行后的动画/过渡期按钮暂时不可见(反馈形态
