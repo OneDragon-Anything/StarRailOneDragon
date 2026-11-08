@@ -29,100 +29,41 @@ SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
 
 
 import cv2
-import numpy as np
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils import cv2_utils, os_utils, str_utils
+from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME, icon_webp_rel_path
+from sr_od.operations.grid_template_locate import (
+    load_template_gray,
+    locate_cell_by_votes,
+)
 from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
 _REPLACE_SCREEN: str = '光锥-替换'
 
 # 网格几何:9 列均分列表区(列中心由区域 rect 推导,实测误差 <2px);
-# 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得
+# 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见 grid_template_locate)
 _GRID_COLS: int = 9
 # 每屏扫描的滚动拖拽:列表中心上移 300px(约 2 行卡位,避免跳行)
 _SCROLL_DRAG_PX: int = 300
 # 滚动扫描的屏幕数上限(全列表多屏,防无限滚)
 _SCAN_MAX_SCREENS: int = 12
-# 特征点聚簇的行间隔阈值(卡行高 ~170px + 间隙)
-_ROW_CLUSTER_GAP_PX: int = 100
-# 列带吸附半径(列间距 ~139px 的一半)
-_COL_SNAP_PX: int = 70
-# 定位成功的最低票数(实机单卡 9~19 票,噪声 <3)
-_MIN_CELL_VOTES: int = 4
 # 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
 _RESELECT_AFTER: int = 3
 
 
-def _load_template_gray(cone_name: str) -> np.ndarray | None:
-    """按光锥名加载解包图标灰度图(透明底合成白底,避免透明区噪声特征)。
-
-    :raises KeyError: 光锥名不在常量表(调用方前置校验过,防御保留)
-    """
-    cone = LIGHT_CONE_BY_NAME.get(cone_name)
-    if cone is None:
-        return None
-    path = os_utils.get_path_under_work_dir(*icon_webp_rel_path(cone.tid).split('/'))
-    img = cv2_utils.read_image(path)
-    if img is None:
-        return None
-    if img.shape[2] == 4:
-        alpha = img[:, :, 3:4] / 255.0
-        rgb = img[:, :, :3] * alpha + 255 * (1 - alpha)
-        return cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2GRAY)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-
-def _locate_cone_cell(screen_gray: np.ndarray, template_gray: np.ndarray,
-                      list_rect: Rect) -> Point | None:
-    """在替换界面截图里定位目标光锥卡:特征点落格投票。
-
-    对每个 good match 点:计入列表区内的点,y 排序聚簇(间隔超阈值分行),
-    取最大簇(≥ 最低票数),簇内点按列带投票取最高列。返回该格点击中心
-    (列中心, 簇 y 均值);票数不足/簇过小返回 None(目标不在当前屏)。
-    """
-    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
-    t_kp, t_desc = cv2_utils.feature_detect_and_compute(template_gray)
-    good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
-
-    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
-    pts = []
-    for m in good:
-        px, py = s_kp[m.trainIdx].pt
-        if x1 <= px <= x2 and y1 <= py <= y2:
-            pts.append((px, py))
-    if len(pts) < _MIN_CELL_VOTES:
-        return None
-
-    pts.sort(key=lambda p: p[1])
-    clusters: list[list[tuple[float, float]]] = []
-    for p in pts:
-        if clusters and p[1] - clusters[-1][-1][1] <= _ROW_CLUSTER_GAP_PX:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
-    best = max(clusters, key=len)
-    if len(best) < _MIN_CELL_VOTES:
-        return None
-
-    cell_w = (x2 - x1) / _GRID_COLS
-    col_centers = [x1 + cell_w * (i + 0.5) for i in range(_GRID_COLS)]
-    votes = [sum(1 for p in best if abs(p[0] - cx) < _COL_SNAP_PX) for cx in col_centers]
-    best_col = max(range(_GRID_COLS), key=lambda i: votes[i])
-    if votes[best_col] < _MIN_CELL_VOTES or votes[best_col] < len(best) * 0.5:
-        return None
-
-    cy = sum(p[1] for p in best) / len(best)
-    return Point(col_centers[best_col], cy)
+def _cone_col_centers(list_rect: Rect) -> list[float]:
+    """9 列等分推导列中心(网格几何唯一来源 = 列表区 area rect)。"""
+    cell_w = (list_rect.x2 - list_rect.x1) / _GRID_COLS
+    return [list_rect.x1 + cell_w * (i + 0.5) for i in range(_GRID_COLS)]
 
 
 class EquipLightConeOp(SrOperation):
@@ -209,12 +150,15 @@ class EquipLightConeOp(SrOperation):
                                    f'(未拥有或识别失败)')
 
         screen_img = self.screenshot()
-        template = _load_template_gray(self.cone_name)
-        if template is None:
+        cone = LIGHT_CONE_BY_NAME.get(self.cone_name)
+        if cone is None:
             return self.round_fail(f'光锥名 {self.cone_name} 不在常量表(CONES_NOT_FOUND)')
+        template = load_template_gray(icon_webp_rel_path(cone.tid))
+        if template is None:
+            return self.round_fail(f'光锥图标缺失:{icon_webp_rel_path(cone.tid)}')
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-        cell = _locate_cone_cell(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
-                                 template, list_area.rect)
+        cell = locate_cell_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
+                                    template, list_area.rect, _cone_col_centers(list_area.rect))
         if cell is None:
             center = list_area.rect.center
             self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),
