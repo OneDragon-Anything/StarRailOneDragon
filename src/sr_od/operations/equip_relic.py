@@ -116,14 +116,11 @@ class EquipRelicOp(SrOperation):
         screen = self.last_screenshot
 
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-遗器替换').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _REPLACE_SCREEN, '按钮-返回',
-                until_find_all=[(_RELIC_TAB_SCREEN, '标题-遗器着装')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=2,
-            )
-            if not result.is_success:
-                return result
-            screen = self.last_screenshot
+            # 返回箭头是无识别方法的纯坐标区(无文本/模板) —— 直接点坐标,
+            # 转移验证交给节点重入:重入时替换界面应已关,走下方标准入口
+            back_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-返回')
+            self.ctx.controller.click(back_area.rect.center)
+            return self.round_retry('已点返回,重入核对', wait=1.5)
 
         if not self.round_by_find_area(screen, _RELIC_TAB_SCREEN, '标题-遗器着装').is_success:
             return self.round_fail('不在遗器着装页(前置:进详情 + 选角色 + 切「遗器」页签)')
