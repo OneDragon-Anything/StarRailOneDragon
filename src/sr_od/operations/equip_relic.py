@@ -107,20 +107,20 @@ class EquipRelicOp(SrOperation):
 
     #------------------- 节点图 -------------------#
 
-    @operation_node(name='入口核对并进入部位', is_start_node=True, node_max_retry_times=5)
+    @operation_node(name='入口核对并进入部位', is_start_node=True, node_max_retry_times=8)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:须在遗器着装页;点目标遗器位直达该部位替换界面。
+        """入口核对:点目标遗器位直达该部位替换界面。
 
-        重入已在替换界面时先回着装页 —— 替换界面按部位筛选,重入的界面
-        筛选部位可能与目标不符(如实机复现:躯干界面重入找手部件)。"""
+        着装页遗器位与替换界面返回箭头均为**纯坐标区**(无文本/模板,find
+        不命中)—— 一律坐标点击;转移验证:点遗器位后查替换界面标题,点返回
+        后靠节点重入(重入时替换界面应已关)。重入已在替换界面时先返回着装
+        页 —— 界面按部位筛选,重入的筛选部位可能与目标不符(实机复现)。"""
         screen = self.last_screenshot
 
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-遗器替换').is_success:
-            # 返回箭头是无识别方法的纯坐标区(无文本/模板) —— 直接点坐标,
-            # 转移验证交给节点重入:重入时替换界面应已关,走下方标准入口
             back_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-返回')
             self.ctx.controller.click(back_area.rect.center)
-            return self.round_retry('已点返回,重入核对', wait=1.5)
+            return self.round_retry('已在替换界面,点返回回着装页', wait=1.5)
 
         if not self.round_by_find_area(screen, _RELIC_TAB_SCREEN, '标题-遗器着装').is_success:
             return self.round_fail('不在遗器着装页(前置:进详情 + 选角色 + 切「遗器」页签)')
@@ -128,11 +128,12 @@ class EquipRelicOp(SrOperation):
         slot_area = _POS_TO_SLOT_AREA.get(self.pos)
         if slot_area is None:
             return self.round_fail(f'部位 pos={self.pos} 无对应遗器位 area')
-        return self.round_by_find_and_click_area(
-            screen, _RELIC_TAB_SCREEN, slot_area,
-            until_find_all=[(_REPLACE_SCREEN, '标题-遗器替换')],
-            pre_delay=0.5, success_wait=2.5, retry_wait=2,
-        )
+        slot = self.ctx.screen_loader.get_area(_RELIC_TAB_SCREEN, slot_area)
+        self.ctx.controller.click(slot.rect.center)
+        result = self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '标题-遗器替换')
+        if result.is_success:
+            return self.round_success(status='ENTERED_REPLACE', wait=1)
+        return self.round_retry('点遗器位后替换界面未确认,重试', wait=1.5)
 
     @node_from(from_name='入口核对并进入部位')
     @operation_node(name='当前装备核对', node_max_retry_times=6)
