@@ -9,8 +9,8 @@
 
 SR 适配说明:照搬自上游 backend(``6a577983``)。上游的 ``charge_plan`` / ``notorious_hunt``
 路由依赖其专属模块(``ChargePlanItem`` / ``NotoriousHuntConfig`` / ``compendium_service``),
-SR 无对应实现 —— 已剔除并标 TODO。当前仅保留与 SR 共享框架的通用路由(``standalone_app`` / ``_group``)。
-后续 SR 接入体力计划等 @dataclass+from_dict 配置时,在此补对应 RouterEntry。
+SR 无对应实现 —— 已剔除。SR 已接入 ``trailblaze_power``(体力计划,``@dataclass`` 风格项 +
+领域方法 ``TrailblazePowerConfig.append_plan_item``);后续同类配置在此补对应 RouterEntry。
 """
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -18,6 +18,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.config.config_item import ConfigItem
+from sr_od.application.trailblaze_power.trailblaze_power_config import (
+    TrailblazePowerConfig,
+    TrailblazePowerPlanItem,
+)
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
@@ -29,7 +33,7 @@ if TYPE_CHECKING:
 class RouterEntry:
     """单个 app config 的路由条目。
 
-    各 callable 延迟 import(避免循环)。
+    各 callable 延迟 import(避免循环);无循环依赖的(如 trailblaze_power)直接模块级 import。
     field_schema / item_schema 集中声明(不散落 config 类)。
     """
 
@@ -124,7 +128,11 @@ def _build_list_fields(
     return [{
         'name': 'plan_list' if entry.item_kind == 'dataclass' else 'app_list',
         'id_kind': entry.id_kind,
-        'id_source': f"get_config 读 list.{entry.id_kind}(add 时自动生成,不要传)" if entry.id_kind == 'plan_id' else "get_config 读 list",
+        'id_source': (
+            f"get_config 读 list.{entry.id_kind}(add 时自动生成,不要传)" if entry.id_kind == 'plan_id'
+            else "get_config 读 data 里该列表的下标(0 基,顺序即下标);delete 时传 str(idx)" if entry.id_kind == 'idx'
+            else "get_config 读 list"
+        ),
         'item_kind': entry.item_kind,
         'item_fields': expanded_fields,
         'note': '未列字段(tab_name 等)由 dataclass 默认值自动补,add 时可不传',
@@ -139,14 +147,14 @@ def _validate_hint_for(app_id: str) -> str:
     hints = {
         'standalone_app': 'app_id 必须已注册(is_app_registered)',
         '_group': 'app_id 必须已注册;add 不支持(app 由注册注入)',
+        'trailblaze_power': 'mission_id 须能被指南数据解析(get_mission_by_unique_id);plan_times≥1;0≤run_times≤plan_times',
     }
     return hints.get(app_id, '')
 
 
 def _ro_item_fields_for(app_id: str) -> list[str]:
-    """各 config 的 item 级只读字段。"""
-    # SR 当前无 dataclass 列表类配置路由(charge_plan/notorious_hunt 已剔除);
-    # 后续接入 @dataclass+from_dict 配置时,在此补对应只读字段(如 plan_id/skipped)。
+    """各 config 的 item 级只读字段(add 时不需要/不能传的字段)。"""
+    # trailblaze_power:计划项全部字段均可显式传入,无自动生成标识 —— 无只读项。
     return []
 
 
@@ -205,13 +213,67 @@ def _group_delete(config: object, app_id: str) -> bool:
     return False
 
 
+# === trailblaze_power helpers(体力计划) ===
+
+def _trailblaze_power_get_config(
+    ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
+) -> object:
+    # 当前实例写穿 ctx 缓存实例 —— 一条龙开拓力 app 用的就是 ctx.power_config,
+    # 经此写入的计划对下一次 run 立即生效,无需重启。其他实例按需构造(落盘生效)。
+    idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
+    if idx == ctx.current_instance_idx:
+        return ctx.power_config
+    return TrailblazePowerConfig(ctx.guide_data, idx)
+
+
+def _trailblaze_power_item_from_dict(data: dict) -> object:
+    # mission 关联不在本步做(需 ctx,由 append_plan_item 统一处理,与 init_plan_list 同源)
+    return TrailblazePowerPlanItem(
+        mission_id=data.get('mission_id', ''),
+        team_num=data.get('team_num', 0),
+        support=data.get('support', 'none'),
+        plan_times=data.get('plan_times', 0),
+        run_times=data.get('run_times', 0),
+        diff=data.get('diff', 0),
+        file_num=data.get('file_num', 0),
+        team_name=data.get('team_name', ''),
+    )
+
+
+def _trailblaze_power_validate_item(ctx: 'SrContext', item: object) -> str | None:
+    # mission_id 可解析性由 append_plan_item 校验(需 guide_data,与 init_plan_list 同源);
+    # 这里只做数值边界,提前拦截明显的坏参数
+    if not item.mission_id:  # type: ignore[attr-defined]
+        return 'mission_id 不能为空'
+    if item.plan_times < 1:  # type: ignore[attr-defined]
+        return f'plan_times 必须≥1,实际 {item.plan_times}'  # type: ignore[attr-defined]
+    if item.run_times < 0 or item.run_times > item.plan_times:  # type: ignore[attr-defined]
+        return (f'run_times 须在 0~plan_times 内,'
+                f'实际 run_times={item.run_times}, plan_times={item.plan_times}')  # type: ignore[attr-defined]
+    return None
+
+
+def _trailblaze_power_add(config: object, item: object) -> None:
+    # append_plan_item 内部校验 mission 可解析,失败抛 ValueError(handler 转 error)
+    config.append_plan_item(item)  # type: ignore[attr-defined]
+
+
+def _trailblaze_power_delete(config: object, item_id: str) -> bool:
+    # item_id = plan_list 下标(0 基,str 传入);越界返回 False(handler 报未找到)
+    try:
+        idx = int(item_id)
+    except ValueError:
+        raise ValueError(f'item_id 应为 plan_list 下标数字,实际 {item_id!r}') from None
+    if idx < 0 or idx >= len(config.plan_list):  # type: ignore[attr-defined]
+        return False
+    config.delete_plan(idx)  # type: ignore[attr-defined]  # 内部 save 落盘
+    return True
+
+
 # === ROUTES(含 field_schema + item_schema) ===
 
 def _build_routes() -> dict[str, RouterEntry]:
     """延迟构建 ROUTES(enum_cls 需要 import,避免模块级循环)。"""
-    # TODO(SR): 接入 SR 专属 @dataclass+from_dict 配置路由(如体力计划等)时,
-    # 在此补 RouterEntry —— 参考上游 charge_plan/notorious_hunt(需 SR 对应领域方法:
-    # item_from_dict / validate_item / add / delete + field_schema / item_schema)。
     return {
         'standalone_app': RouterEntry(
             app_id='standalone_app',
@@ -245,6 +307,37 @@ def _build_routes() -> dict[str, RouterEntry]:
             item_schema=[
                 {'name': 'app_id', 'type': 'str', 'required': True, 'note': '必须已注册'},
                 {'name': 'enabled', 'type': 'bool', 'required': False, 'note': '经 set_app_enable 改,v1 无 MCP 入口'},
+            ],
+        ),
+        'trailblaze_power': RouterEntry(
+            app_id='trailblaze_power',
+            description='开拓力体力计划:plan_list 计划项(mission_id/plan_times/run_times 等)+ loop 循环开关;'
+                        'add/delete 写穿当前实例缓存,下一次一条龙 run 立即生效,无需重启',
+            item_from_dict=_trailblaze_power_item_from_dict,
+            get_config=_trailblaze_power_get_config,
+            validate_item=_trailblaze_power_validate_item,
+            add=_trailblaze_power_add,
+            delete=_trailblaze_power_delete,
+            id_kind='idx',
+            item_kind='dataclass',
+            supported_ops=('get', 'set', 'add', 'delete', 'describe'),
+            field_schema={
+                'loop': {'type': 'bool', 'desc': '计划全部完成后是否自动重置 run_times 循环执行'},
+            },
+            item_schema=[
+                {'name': 'mission_id', 'type': 'str', 'required': True,
+                 'note': '关卡唯一 id:「生存索引 {分类} {关卡} {区域}」;'
+                         '材料→关卡反查用 dungeon_drop_const.find_missions_by_material 的三元组拼出'},
+                {'name': 'plan_times', 'type': 'int', 'required': True,
+                 'note': '计划通关次数(缺口÷单次产量,向上取整)'},
+                {'name': 'run_times', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '已完成次数;新计划传 0'},
+                {'name': 'team_num', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '使用配队编号,0=游戏内当前配队'},
+                {'name': 'support', 'type': 'str', 'required': False, 'default': 'none',
+                 'note': '支援角色,"none"=不带支援'},
+                {'name': 'diff', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '难度,0=自动选最高'},
             ],
         ),
     }

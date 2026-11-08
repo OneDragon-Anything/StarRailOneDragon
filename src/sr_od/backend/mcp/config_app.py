@@ -55,7 +55,11 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
             entry.add(config, item)
             new_id: str | None = None
             if hasattr(config, 'plan_list') and config.plan_list:
-                new_id = config.plan_list[-1].plan_id
+                # 按 entry.id_kind 取项标识;项无该属性时(如开拓力计划项无 plan_id,
+                # id_kind=idx)回退列表下标 —— 直接取 .plan_id 会让已成功的 add 被误报为失败
+                new_id = getattr(config.plan_list[-1], entry.id_kind, None)
+                if new_id is None and entry.id_kind == 'idx':
+                    new_id = str(len(config.plan_list) - 1)
             elif entry.id_kind == 'app_id' and isinstance(item, str):
                 new_id = item
             return {'success': True, 'app_id': app_id, 'list_field': list_field, 'id': new_id}
@@ -69,7 +73,7 @@ def make_delete_config_item(backend: SrBackendContext) -> Callable:
     async def delete_config_item(
         app_id: Annotated[str, Field(description="app 配置 id,如 standalone_app")],
         list_field: Annotated[str, Field(description="列表字段名")],
-        item_id: Annotated[str, Field(description="项标识:standalone_app/_group 用 app_id;dataclass 路由用 plan_id")],
+        item_id: Annotated[str, Field(description="项标识:standalone_app/_group 用 app_id;dataclass 路由用 plan_id 或下标(见 list_app_configs 的 id_kind)")],
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
     ) -> dict:

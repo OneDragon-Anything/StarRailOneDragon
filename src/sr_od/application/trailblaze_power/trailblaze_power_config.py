@@ -74,6 +74,27 @@ class TrailblazePowerConfig(YamlConfig):
 
         self.plan_list.append(item)
 
+    def append_plan_item(self, item: TrailblazePowerPlanItem) -> None:
+        """
+        追加一条计划并落盘(MCP 通用配置路由 ``add_config_item`` 的领域方法)
+
+        与 init_plan_list 同源经 guide_data 关联 mission(一条龙运行按 item.mission 导航)。
+        关联失败抛 ValueError:追加是显式动作,失败必须可知 —— 区别于 init_plan_list
+        对无法解析旧数据的静默过滤。
+        :raises ValueError: mission_id 不在指南数据中
+        """
+        mission = self.guide_data.get_mission_by_unique_id(item.mission_id)
+        if mission is None:
+            raise ValueError(
+                f'关卡 {item.mission_id} 不在指南数据中。'
+                f'mission_id 格式:「生存索引 {{分类}} {{关卡}} {{区域}}」,'
+                f'材料对应关卡可用 dungeon_drop_const.find_missions_by_material 查得'
+            )
+        item.mission = mission
+
+        self.plan_list.append(item)
+        self.save()
+
     def update_plan(self, idx: int, new_plan: TrailblazePowerPlanItem):
         if idx >= len(self.plan_list):
             return
