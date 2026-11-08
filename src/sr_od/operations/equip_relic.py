@@ -17,8 +17,9 @@ SwitchCharacterTabOp('遗器') 保证);起点不符显式失败。
 """
 
 
-import cv2
 import time
+
+import cv2
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
