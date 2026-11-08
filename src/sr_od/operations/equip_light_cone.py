@@ -55,6 +55,8 @@ _ROW_CLUSTER_GAP_PX: int = 100
 _COL_SNAP_PX: int = 70
 # 定位成功的最低票数(实机单卡 9~19 票,噪声 <3)
 _MIN_CELL_VOTES: int = 4
+# 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
+_RESELECT_AFTER: int = 3
 
 
 def _load_template_gray(cone_name: str) -> np.ndarray | None:
@@ -134,6 +136,7 @@ class EquipLightConeOp(SrOperation):
         """
         self.cone_name: str = cone_name
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
+        self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回重新定位)
         SrOperation.__init__(self, ctx, op_name=gt('替换光锥') + f'({cone_name})',
                              node_max_retry_times=24)
 
@@ -188,11 +191,12 @@ class EquipLightConeOp(SrOperation):
                 (_REPLACE_SCREEN, '标题-光锥替换'),
                 (_REPLACE_SCREEN, '文本-命途相符组头'),
             ],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            pre_delay=0.5, success_wait=2.5, retry_wait=2,
         )
 
     @node_from(from_name='打开替换界面')
     @node_from(from_name='打开替换界面', status='REPLACE_SCREEN_OPEN')
+    @node_from(from_name='验证选中', status='RESELECT')  # 选中验证连续不符 → 回退重新定位
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
         """SIFT 落格投票定位目标卡 → 点击;未命中滚动重扫(框架重试驱动,有界)。"""
@@ -215,15 +219,22 @@ class EquipLightConeOp(SrOperation):
             return self.round_retry('当前屏未命中,滚动一屏重扫', wait=1)
 
         self.ctx.controller.click(cell)
+        self._select_retries = 0  # 重新点击后重置验证计数
         log.info('替换光锥: 定位到目标卡 (%.0f, %.0f),第 %d 屏', cell.x, cell.y, self._scan_screens + 1)
         return self.round_success(status='CLICKED', wait=1.2)
 
     @node_from(from_name='定位并选卡', status='CLICKED')
     @operation_node(name='验证选中', node_max_retry_times=10)
     def verify_selected(self) -> OperationRoundResult:
-        """OCR 右侧对比栏选中名,与目标名 fuzzy 匹配(名带形近变体)。"""
+        """OCR 右侧对比栏选中名,与目标名 fuzzy 匹配(名带形近变体)。
+
+        连续多次不符 = 点击未选中目标卡(定位误配或点击未生效),
+        转回重新定位;立即重读等待对比栏刷新。"""
         if self._read_name(_REPLACE_SCREEN, '读区-选中光锥名') is not None:
             return self.round_success(status='SELECTED_MATCHED')
+        self._select_retries += 1
+        if self._select_retries >= _RESELECT_AFTER:
+            return self.round_success(status='RESELECT')
         return self.round_retry('选中名与目标不符,重读', wait=1)
 
     @node_from(from_name='验证选中', status='SELECTED_MATCHED')
