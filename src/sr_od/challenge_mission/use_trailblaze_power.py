@@ -1,7 +1,6 @@
 import math
-
-from PIL.ImageChops import screen
-from typing import Optional, Callable, ClassVar
+from collections.abc import Callable
+from typing import ClassVar
 
 from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
@@ -38,8 +37,9 @@ class UseTrailblazePower(SrOperation):
     STATUS_CHALLENGE_EXIT_AGAIN: ClassVar[str] = '退出关卡后再来一次'
 
     def __init__(self, ctx: SrContext, mission: GuideMission,
-                 team_num: int, plan_times: int, support: Optional[str] = None,
-                 on_battle_success: Optional[Callable[[int, int], None]] = None):
+                 team_num: int, plan_times: int, support: str | None = None,
+                 on_battle_success: Callable[[int, int], None] | None = None,
+                 skip_transport: bool = False):
         """
         使用开拓力刷本
         :param ctx: 上下文
@@ -48,20 +48,20 @@ class UseTrailblazePower(SrOperation):
         :param support: 使用支援 传入角色ID
         :param plan_times: 计划挑战次数
         :param on_battle_success: 战斗成功的回调 用于记录、扣体力等
+        :param skip_transport: 跳过指南传送——起点已在挑战副本画面时用
+            (如材料弹窗跳转直达副本的路径),其余节点不变
         """
+        self.skip_transport: bool = skip_transport
 
         SrOperation.__init__(
-            self, ctx, op_name='%s %s %d' % (
-                gt(mission.unique_id),
-                gt('次数'),
-                plan_times)
+            self, ctx, op_name=f'{gt(mission.unique_id)} {gt("次数")} {plan_times}'
         )
 
         self.mission: GuideMission = mission
         self.team_num: int = team_num
-        self.support: Optional[str] = support
+        self.support: str | None = support
         self.plan_times: int = plan_times  # 计划挑战次数
-        self.on_battle_success: Optional[Callable[[int, int], None]] = on_battle_success
+        self.on_battle_success: Callable[[int, int], None] | None = on_battle_success
         self.current_challenge_times: int = 1  # 当前挑战的次数
         self.finish_times: int = 0  # 已经完成的次数
         self.battle_fail_times: int = 0  # 战斗失败次数
@@ -76,6 +76,9 @@ class UseTrailblazePower(SrOperation):
         传送
         :return:
         """
+        if self.skip_transport:
+            # 跳转路径(如材料弹窗直达副本)已把画面送到挑战副本,免传送
+            return self.round_success('跳过传送')
         op = GuideTransport(self.ctx, self.mission)
         return self.round_by_op_result(op.execute())
 
