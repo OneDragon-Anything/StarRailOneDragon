@@ -18,6 +18,7 @@ SwitchCharacterTabOp('遗器') 保证);起点不符显式失败。
 
 
 import cv2
+import time
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
@@ -130,6 +131,9 @@ class EquipRelicOp(SrOperation):
             return self.round_fail(f'部位 pos={self.pos} 无对应遗器位 area')
         slot = self.ctx.screen_loader.get_area(_RELIC_TAB_SCREEN, slot_area)
         self.ctx.controller.click(slot.rect.center)
+        # 先等过渡动画再验证标题 —— 点完立即查必查不到(动画中),而重入的
+        # 返回分支会把这个刚开对的界面关掉形成死循环(实机复现)
+        time.sleep(1.5)
         result = self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '标题-遗器替换')
         if result.is_success:
             return self.round_success(status='ENTERED_REPLACE', wait=1)
