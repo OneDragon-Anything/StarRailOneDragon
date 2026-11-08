@@ -196,16 +196,20 @@ class EquipRelicOp(SrOperation):
         )
 
     @node_from(from_name='确认替换')
-    @operation_node(name='结果核对')
+    @operation_node(name='结果核对', node_max_retry_times=5)
     def verify_result(self) -> OperationRoundResult:
-        """着装页套装效果读区含目标套装名(装备生效的间接核对)。"""
-        screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(_RELIC_TAB_SCREEN, '读区-套装效果')
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
-        texts = [str(r.data) for r in results]
-        idx = str_utils.find_in_list_with_fuzzy(self.set_name, texts, cutoff=0.6)
-        if idx is not None:
-            log.info('替换遗器: %s 已装备当前角色(套装效果含 %s)', self.piece_name, self.set_name)
+        """装备结果核对:重进部位替换界面读装备件名。
+
+        着装页无单件名读区,套装效果读区仅在成套(≥2 件)时含套装名 ——
+        散件换装(1 件)读不到,故重进部位界面读右侧详情的当前装备件名核对
+        (替换界面默认选中当前装备件)。收尾停在替换界面,下次 op 重入会
+        自动先回着装页。"""
+        slot = self.ctx.screen_loader.get_area(_RELIC_TAB_SCREEN, _POS_TO_SLOT_AREA[self.pos])
+        self.ctx.controller.click(slot.rect.center)
+        result = self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '标题-遗器替换')
+        if not result.is_success:
+            return self.round_fail('重进部位界面失败,无法核对装备结果')
+        if self._read_piece_name(_REPLACE_SCREEN, '读区-遗器名') is not None:
+            log.info('替换遗器: %s 已装备当前角色', self.piece_name)
             return self.round_success(status='RELIC_EQUIPPED', wait=0.5)
-        return self.round_fail('替换后着装页套装效果与目标不符(识别失败或替换未生效)')
+        return self.round_fail('装备结果核对失败:部位界面读区与目标件名不符')
