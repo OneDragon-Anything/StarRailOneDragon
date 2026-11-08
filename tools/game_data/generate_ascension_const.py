@@ -237,6 +237,38 @@ def get_character_ascension(cn_name: str) -> CharacterAscension | None:
     if stages is None:
         return None
     return CharacterAscension(cn_name, [AscensionStage(name, mats) for name, mats in stages.items()])
+
+
+# 晋阶表键内出现过的中点分隔符(官方 wiki 快照「·」「•」混用,如
+# 「开拓者·毁灭」与「开拓者•欢愉」并存)
+_KEY_SEPARATORS: tuple[str, ...] = ('·', '•', '・')
+
+#: 归一化键(去分隔符) → 原始表键
+_NORMALIZED_KEY_INDEX: dict[str, str] = {}
+for _name in _ASCENSION_DATA:
+    _normalized = _name
+    for _sep in _KEY_SEPARATORS:
+        _normalized = _normalized.replace(_sep, '')
+    _NORMALIZED_KEY_INDEX[_normalized] = _name
+
+
+def find_character_ascension(character_cn: str) -> CharacterAscension | None:
+    """角色定义中文名 → 晋阶材料表;比 get_character_ascension 多一层归一化匹配。
+
+    角色定义的中文名(如「开拓者·毁灭·男」带性别后缀)与晋阶表键
+    (「开拓者·毁灭」)不完全一致:归一化去分隔符后按前缀匹配——性别后缀
+    不改变晋阶表(男/女同表),常规角色名精确等同。表内无该角色返回 None
+    (裸「开拓者」不带命途也无法唯一定位,同返回 None,由调用方提示用全名)。
+    """
+    if character_cn in _ASCENSION_DATA:
+        return get_character_ascension(character_cn)
+    normalized = character_cn
+    for sep in _KEY_SEPARATORS:
+        normalized = normalized.replace(sep, '')
+    hits = [key for key in _NORMALIZED_KEY_INDEX if normalized.startswith(key)]
+    if len(hits) != 1:
+        return None
+    return get_character_ascension(_NORMALIZED_KEY_INDEX[hits[0]])
 '''
 
 
