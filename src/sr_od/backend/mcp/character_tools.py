@@ -25,6 +25,7 @@ from sr_od.config.character_const import Character
 from sr_od.config.dungeon_drop_const import (
     MATERIAL_EXTRA_SOURCES,
     find_dungeon_by_material,
+    find_missions_by_material,
 )
 from sr_od.mys.sr_character_details import resolve_eidolons, resolve_traces
 
@@ -73,17 +74,23 @@ def _char_ascension_block(char: Character) -> dict | None:
 
     dungeon_by_material 的键与 assets/game_data/interastral_peace_guide_data.yml
     的 category_name 对齐（拟造花萼金/赤、凝滞虚影等），可经指南数据路由导航
-    刷本；extra_sources_by_material 为副本外途径（合成/置换/商店/任务等）。
+    刷本；missions_by_material 为实例级映射（具体虚影/历战余响 boss，与指南
+    mission_name/region_name 同名对齐，可直接规划开拓力刷本）；extra_sources_by_material
+    为副本外途径（合成/置换/商店/任务等）。
     """
     ascension = find_character_ascension(char.cn)
     if ascension is None:
         return None
     dungeon_by_material: dict[str, list[str]] = {}
+    missions_by_material: dict[str, list[dict[str, str]]] = {}
     extra_by_material: dict[str, list[str]] = {}
     for material in ascension.total:
         dungeons = find_dungeon_by_material(material)
         if dungeons:
             dungeon_by_material[material] = dungeons
+        missions = find_missions_by_material(material)
+        if missions:
+            missions_by_material[material] = missions
         extra = MATERIAL_EXTRA_SOURCES.get(material)
         if extra:
             extra_by_material[material] = list(extra)
@@ -91,6 +98,7 @@ def _char_ascension_block(char: Character) -> dict | None:
         'stages': [{'name': s.name, 'materials': dict(s.materials)} for s in ascension.stages],
         'total': dict(ascension.total),
         'dungeon_by_material': dungeon_by_material,
+        'missions_by_material': missions_by_material,
         'extra_sources_by_material': extra_by_material,
     }
 
@@ -112,8 +120,8 @@ def lookup_character(
         element_cn: 属性中文过滤（火/冰/风/雷/量子/物理/虚数）。
         list_all: true 时忽略 query 按过滤条件返回全量基础列表（不带详情）。
         with_ascension: true 时单命中结果附带 ``ascension``（晋阶/突破材料
-            分段表 + 满晋阶总量 + 材料→刷取副本反查 + 副本外途径）；
-            ``list_all`` 模式不带。
+            分段表 + 满晋阶总量 + 材料→刷取副本反查（分类级+实例级）+ 副本外
+            途径）；``list_all`` 模式不带。
 
     Returns:
         ``{"status","message","data"}``：``success`` 时 data 为角色定义
@@ -191,8 +199,8 @@ def register_character_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类�
             description="true=忽略 query,按过滤条件返回全量角色基础列表(不含行迹/星魂详情,需提供至少一个过滤);默认 false")] = False,
         with_ascension: Annotated[bool, Field(
             description="true=单命中结果附带 ascension 晋阶(突破)材料块:分段需求 stages+满晋阶总量 total+材料→刷取副本反查 "
-                        "dungeon_by_material(键=指南分类名,可路由导航刷本)+副本外途径 extra_sources_by_material;"
-                        "list_all 模式不带;默认 false")] = False,
+                        "dungeon_by_material(键=指南分类名,可路由导航刷本)+实例级 missions_by_material(具体虚影/boss,与指南关卡同名对齐,"
+                        "可直接规划开拓力刷本)+副本外途径 extra_sources_by_material;list_all 模式不带;默认 false")] = False,
     ) -> dict:
         """观察类。按名字查询崩坏:星穹铁道角色的**静态基础信息**——本体定义(命途/属性/星级/秘技类型/数字id/头像路径)与行迹满级效果、星魂全6层效果;可选打通「角色→突破材料→所属副本」链路。
 
@@ -206,7 +214,8 @@ def register_character_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类�
               path_cn/element_cn/rarity/technique_type/icon)+``traces``(行迹满级
               列表: tag/name/max_level/max_values/desc)+``eidolons``(星魂:
               pos/name/desc)；``with_ascension=true`` 时另附 ``ascension``
-              (stages 分段需求/total 满晋阶总量/dungeon_by_material 材料→刷取副本/
+              (stages 分段需求/total 满晋阶总量/dungeon_by_material 材料→刷取副本
+              分类级/missions_by_material 实例级:具体虚影·boss,与指南关卡同名对齐/
               extra_sources_by_material 副本外途径;表未收录该角色时为 null)；
               ``list_all=true`` 时 ``data`` 为 ``{'list': [...], 'count': n}``
               仅基础字段(不带 traces/eidolons/ascension)；

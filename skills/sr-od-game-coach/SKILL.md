@@ -29,7 +29,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
-| **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途 | MCP：`character_lookup`（含行迹满级+星魂全6；`with_ascension=true` 带晋阶突破材料+所属副本反查）/ `cone_lookup`（含特效全文）/ `relic_lookup`（含套装效果+单件）；按中文名/数字id精确查，模糊多命中用全名 |
+| **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途 | MCP：`character_lookup`（含行迹满级+星魂全6；`with_ascension=true` 带晋阶突破材料+所属副本，含具体关卡实例）/ `cone_lookup`（含特效全文）/ `relic_lookup`（含套装效果+单件）；按中文名/数字id精确查，模糊多命中用全名 |
 | **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/INDEX.md` → `modes/<玩法>.md`（场景）→ `teams/<体系>.md`（为什么这么组）→ `lineups/<阵容>.md`（这四人怎么打）→ `characters/<角色>.md`；小众玩法不必为其优化配队 |
 | **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `mechanics/relic-sets.md` / `mechanics/light-cones.md`） |
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |

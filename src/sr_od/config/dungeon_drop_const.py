@@ -774,6 +774,780 @@ MATERIAL_EXTRA_SOURCES: dict[str, list[str]] = {
  ]
 }
 
+# 材料 → 具体副本实例(仅来源串带【区域】/boss 名的材料;与指南关卡同名对齐)
+MATERIAL_MISSIONS: dict[str, list[dict[str, str]]] = {
+ "万色，愚者自将": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "渡画泉隐"
+  }
+ ],
+ "四相，过河照君": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "渡画泉隐"
+  }
+ ],
+ "六合，王手飞车": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "渡画泉隐"
+  }
+ ],
+ "天体模型": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "海原电视塔"
+  }
+ ],
+ "星系框架": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "海原电视塔"
+  }
+ ],
+ "银河沙盘": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "海原电视塔"
+  }
+ ],
+ "法吉娜之酒": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "「辉痕圣林」神悟树庭"
+  }
+ ],
+ "法吉娜之泪": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "「辉痕圣林」神悟树庭"
+  }
+ ],
+ "法吉娜之心": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "「辉痕圣林」神悟树庭"
+  }
+ ],
+ "纷争血尘": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "「葬忆彼岸」时光归墟"
+  }
+ ],
+ "战魂血珀": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "「葬忆彼岸」时光归墟"
+  }
+ ],
+ "天谴血矛": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "「葬忆彼岸」时光归墟"
+  }
+ ],
+ "狂雷扫弦": [
+  {
+   "category": "凝滞虚影",
+   "mission": "音爆之形",
+   "region": "鸽川区"
+  }
+ ],
+ "灭流绝溢的缄默": [
+  {
+   "category": "历战余响",
+   "mission": "铁骸的锈冢·历战余响",
+   "region": "「葬忆彼岸」时光归墟"
+  }
+ ],
+ "明辉日珥": [
+  {
+   "category": "凝滞虚影",
+   "mission": "残灰之形",
+   "region": "「神谕圣地」雅努萨波利斯"
+  }
+ ],
+ "海妖残鳍": [
+  {
+   "category": "凝滞虚影",
+   "mission": "塞壬之形",
+   "region": "「酣歌海垠」斯缇科西亚"
+  }
+ ],
+ "暮晖烬蕾": [
+  {
+   "category": "凝滞虚影",
+   "mission": "烬日之形",
+   "region": "「穹顶关塞」晨昏之眼"
+  }
+ ],
+ "阳雷的遥想": [
+  {
+   "category": "历战余响",
+   "mission": "晨昏的回眸·历战余响",
+   "region": "「穹顶关塞」晨昏之眼"
+  }
+ ],
+ "侵略凝块": [
+  {
+   "category": "凝滞虚影",
+   "mission": "溟簇之形",
+   "region": "「龙骸古城」斯缇科西亚"
+  }
+ ],
+ "纷争先兆": [
+  {
+   "category": "凝滞虚影",
+   "mission": "役轮之形",
+   "region": "「命运重渊」雅努萨波利斯"
+  }
+ ],
+ "暗帷月华": [
+  {
+   "category": "凝滞虚影",
+   "mission": "凛月之形",
+   "region": "「呓语密林」神悟树庭"
+  }
+ ],
+ "思量的种": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "记忆之蕾",
+   "region": "「纷争荒墟」悬锋城"
+  }
+ ],
+ "阿赖耶华": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "记忆之蕾",
+   "region": "「纷争荒墟」悬锋城"
+  }
+ ],
+ "末那芽苗": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "记忆之蕾",
+   "region": "「纷争荒墟」悬锋城"
+  }
+ ],
+ "一曲合弦的幻景": [
+  {
+   "category": "凝滞虚影",
+   "mission": "弦音之形",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "吉光片羽": [
+  {
+   "category": "历战余响",
+   "mission": "心兽的战场·历战余响",
+   "region": "竞锋舰"
+  }
+ ],
+ "兽棺之钉": [
+  {
+   "category": "凝滞虚影",
+   "mission": "机狼之形",
+   "region": "幽囚狱"
+  }
+ ],
+ "一杯酩酊的时代": [
+  {
+   "category": "凝滞虚影",
+   "mission": "今宵之形",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "精致色稿": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "动态线稿": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "凌乱草图": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "同愿的遗音": [
+  {
+   "category": "历战余响",
+   "mission": "尘梦的赞礼·历战余响",
+   "region": "匹诺康尼大剧院"
+  }
+ ],
+ "星际和平工作证": [
+  {
+   "category": "凝滞虚影",
+   "mission": "职司之形",
+   "region": "克劳克影视乐园"
+  }
+ ],
+ "逆时一击": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "苏乐达TM热砂海选会场"
+  }
+ ],
+ "命定死因": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "苏乐达TM热砂海选会场"
+  }
+ ],
+ "陨铁弹丸": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "苏乐达TM热砂海选会场"
+  }
+ ],
+ "异木种籽": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "绥园"
+  }
+ ],
+ "万相果实": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "绥园"
+  }
+ ],
+ "滋长花蜜": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "绥园"
+  }
+ ],
+ "散逸星砂": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "克劳克影视乐园"
+  }
+ ],
+ "神体琥珀": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "克劳克影视乐园"
+  }
+ ],
+ "流星棱晶": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "克劳克影视乐园"
+  }
+ ],
+ "忿火之心": [
+  {
+   "category": "凝滞虚影",
+   "mission": "嗔怒之形",
+   "region": "朝露公馆"
+  }
+ ],
+ "冷藏梦箱": [
+  {
+   "category": "凝滞虚影",
+   "mission": "冰酿之形",
+   "region": "「白日梦」酒店-梦境"
+  }
+ ],
+ "炙梦喷枪": [
+  {
+   "category": "凝滞虚影",
+   "mission": "焦炙之形",
+   "region": "筑梦边境"
+  }
+ ],
+ "焚天之魔": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "丹鼎司"
+  }
+ ],
+ "星火之精": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "丹鼎司"
+  }
+ ],
+ "炽情之灵": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "丹鼎司"
+  }
+ ],
+ "月狂獠牙": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "麟渊境"
+  }
+ ],
+ "狼毒锯牙": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "麟渊境"
+  }
+ ],
+ "步离犬牙": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "麟渊境"
+  }
+ ],
+ "天外乐章": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "「白日梦」酒店-梦境"
+  }
+ ],
+ "空际小节": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "「白日梦」酒店-梦境"
+  }
+ ],
+ "云际音符": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "「白日梦」酒店-梦境"
+  }
+ ],
+ "蛀星孕灾的旧恶": [
+  {
+   "category": "历战余响",
+   "mission": "蛀星的旧靥·历战余响",
+   "region": "禁闭舱段"
+  }
+ ],
+ "幽府通令": [
+  {
+   "category": "凝滞虚影",
+   "mission": "幽府之形",
+   "region": "绥园"
+  }
+ ],
+ "过热钢刃": [
+  {
+   "category": "凝滞虚影",
+   "mission": "燔灼之形",
+   "region": "大矿区"
+  }
+ ],
+ "苍猿之钉": [
+  {
+   "category": "凝滞虚影",
+   "mission": "孽兽之形",
+   "region": "麟渊境"
+  }
+ ],
+ "无穷假身的遗恨": [
+  {
+   "category": "历战余响",
+   "mission": "不死的神实·历战余响",
+   "region": "麟渊境"
+  }
+ ],
+ "毁灭者的末路": [
+  {
+   "category": "历战余响",
+   "mission": "毁灭的开端·历战余响",
+   "region": "支援舱段"
+  }
+ ],
+ "守护者的悲愿": [
+  {
+   "category": "历战余响",
+   "mission": "寒潮的落幕·历战余响",
+   "region": "永冬岭"
+  }
+ ],
+ "镇灵敕符": [
+  {
+   "category": "凝滞虚影",
+   "mission": "偃偶之形",
+   "region": "工造司"
+  }
+ ],
+ "天人遗垢": [
+  {
+   "category": "凝滞虚影",
+   "mission": "天人之形",
+   "region": "丹鼎司"
+  }
+ ],
+ "炼形者雷枝": [
+  {
+   "category": "凝滞虚影",
+   "mission": "震厄之形",
+   "region": "廻星港"
+  },
+  {
+   "category": "凝滞虚影",
+   "mission": "鸣雷之形",
+   "region": "廻星港"
+  }
+ ],
+ "虚幻铸铁": [
+  {
+   "category": "凝滞虚影",
+   "mission": "空海之形",
+   "region": "基座舱段"
+  }
+ ],
+ "恒温晶壳": [
+  {
+   "category": "凝滞虚影",
+   "mission": "炎华之形",
+   "region": "铁卫禁区"
+  }
+ ],
+ "苦寒晶壳": [
+  {
+   "category": "凝滞虚影",
+   "mission": "冰棱之形",
+   "region": "流云渡"
+  }
+ ],
+ "风雪之角": [
+  {
+   "category": "凝滞虚影",
+   "mission": "霜晶之形",
+   "region": "残响回廊"
+  }
+ ],
+ "铁狼碎齿": [
+  {
+   "category": "凝滞虚影",
+   "mission": "锋芒之形",
+   "region": "大矿区"
+  }
+ ],
+ "往日之影的雷冠": [
+  {
+   "category": "凝滞虚影",
+   "mission": "霜晶之形",
+   "region": "残响回廊"
+  }
+ ],
+ "往日之影的金饰": [
+  {
+   "category": "凝滞虚影",
+   "mission": "幻光之形",
+   "region": "边缘通路"
+  }
+ ],
+ "漫游指南": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "城郊雪原"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "流云渡"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "筑梦边境"
+  }
+ ],
+ "提纯以太": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "边缘通路"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "太卜司"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "稚子的梦"
+  }
+ ],
+ "逐星之矢": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "城郊雪原"
+  }
+ ],
+ "净世残刃": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "收容舱段"
+  }
+ ],
+ "智识之钥": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "铆钉镇"
+  }
+ ],
+ "琥珀的坚守": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "支援舱段"
+  }
+ ],
+ "沉沦黑曜": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "大矿区"
+  }
+ ],
+ "群星乐章": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "机械聚落"
+  }
+ ],
+ "永恒之花": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "边缘通路"
+  }
+ ],
+ "凝缩以太": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "边缘通路"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "太卜司"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "稚子的梦"
+  }
+ ],
+ "暴风之眼": [
+  {
+   "category": "凝滞虚影",
+   "mission": "巽风之形",
+   "region": "铆钉镇"
+  }
+ ],
+ "无生残刃": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "收容舱段"
+  }
+ ],
+ "屠魔之矢": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "城郊雪原"
+  }
+ ],
+ "启迪之钥": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "铆钉镇"
+  }
+ ],
+ "冒险记录": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "城郊雪原"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "流云渡"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "筑梦边境"
+  }
+ ],
+ "寒铁的誓言": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "支援舱段"
+  }
+ ],
+ "虚空黑曜": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "大矿区"
+  }
+ ],
+ "家族颂歌": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "机械聚落"
+  }
+ ],
+ "生命之芽": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "边缘通路"
+  }
+ ],
+ "谐乐小调": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "机械聚落"
+  }
+ ],
+ "青铜的执着": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "存护之蕾",
+   "region": "支援舱段"
+  }
+ ],
+ "黯淡黑曜": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "大矿区"
+  }
+ ],
+ "破碎残刃": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "毁灭之蕾",
+   "region": "收容舱段"
+  }
+ ],
+ "旅情见闻": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "城郊雪原"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "流云渡"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "回忆之蕾",
+   "region": "筑梦边境"
+  }
+ ],
+ "猎兽之矢": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "巡猎之蕾",
+   "region": "城郊雪原"
+  }
+ ],
+ "稀薄以太": [
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "边缘通路"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "太卜司"
+  },
+  {
+   "category": "拟造花萼（金）",
+   "mission": "以太之蕾",
+   "region": "稚子的梦"
+  }
+ ],
+ "丰饶之种": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "丰饶之蕾",
+   "region": "边缘通路"
+  }
+ ],
+ "灵感之钥": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "智识之蕾",
+   "region": "铆钉镇"
+  }
+ ],
+ "信用点": [
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "虚无之蕾",
+   "region": "大矿区"
+  },
+  {
+   "category": "拟造花萼（赤）",
+   "mission": "同谐之蕾",
+   "region": "「白日梦」酒店-梦境"
+  }
+ ]
+}
+
 
 def find_dungeon_by_material(material_name: str) -> list[str]:
     """材料名 → 可刷取该材料的副本分类名列表(按 DUNGEON_MATERIAL_DROPS 反查)。
@@ -783,3 +1557,13 @@ def find_dungeon_by_material(material_name: str) -> list[str]:
     """
     return [category for category, drops in DUNGEON_MATERIAL_DROPS.items()
             if material_name in drops]
+
+
+def find_missions_by_material(material_name: str) -> list[dict[str, str]]:
+    """材料名 → 可刷取该材料的具体副本实例列表({category,mission,region})。
+
+    比分类级 find_dungeon_by_material 细一层:mission/region 与指南关卡
+    mission_name/region_name 同名对齐,可经指南数据定位具体关卡并规划刷本;
+    仅来源串带【区域】/boss 名的材料有条目,其余返回空列表(用分类级兜底)。
+    """
+    return MATERIAL_MISSIONS.get(material_name, [])
