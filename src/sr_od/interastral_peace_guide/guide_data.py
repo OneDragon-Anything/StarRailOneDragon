@@ -1,22 +1,25 @@
 import os
-from typing import List, Optional
 
 from one_dragon.base.config.config_item import ConfigItem
 from one_dragon.base.config.yaml_operator import YamlOperator
 from one_dragon.utils import os_utils, str_utils
 from one_dragon.utils.i18_utils import gt
-from sr_od.interastral_peace_guide.guide_def import GuideTab, GuideCategory, GuideMission
+from sr_od.interastral_peace_guide.guide_def import (
+    GuideCategory,
+    GuideMission,
+    GuideTab,
+)
 
 
 class SrGuideData:
 
     def __init__(self):
-        self.tab_list: List[GuideTab] = []
-        self.category_list: List[GuideCategory] = []
-        self.mission_list: List[GuideMission] = []
+        self.tab_list: list[GuideTab] = []
+        self.category_list: list[GuideCategory] = []
+        self.mission_list: list[GuideMission] = []
 
-        self.tab_2_category: dict[str, List[GuideCategory]] = {}
-        self.category_2_mission: dict[str, List[GuideMission]] = {}
+        self.tab_2_category: dict[str, list[GuideCategory]] = {}
+        self.category_2_mission: dict[str, list[GuideMission]] = {}
 
         self.load_data()
 
@@ -24,12 +27,12 @@ class SrGuideData:
         """
         读取文件
         """
-        self.tab_list: List[GuideTab] = []
-        self.category_list: List[GuideCategory] = []
-        self.mission_list: List[GuideMission] = []
+        self.tab_list: list[GuideTab] = []
+        self.category_list: list[GuideCategory] = []
+        self.mission_list: list[GuideMission] = []
 
-        self.tab_2_category: dict[str, List[GuideCategory]] = {}
-        self.category_2_mission: dict[str, List[GuideMission]] = {}
+        self.tab_2_category: dict[str, list[GuideCategory]] = {}
+        self.category_2_mission: dict[str, list[GuideMission]] = {}
 
         file_path = os.path.join(
             os_utils.get_path_under_work_dir('assets', 'game_data'),
@@ -59,9 +62,9 @@ class SrGuideData:
         category_name = category_data.get('category_name', '')
         category = GuideCategory(
             tab, category_name,
-            ui_cn=category_data.get('display_name', None),
+            ui_cn=category_data.get('display_name'),
             show_in_power_plan=category_data.get('show_in_power_plan', False),
-            remark_in_game=category_data.get('remark_in_game', None),
+            remark_in_game=category_data.get('remark_in_game'),
         )
 
         self.category_list.append(category)
@@ -78,17 +81,17 @@ class SrGuideData:
         mission = GuideMission(
             category,
             mission_name=mission_data.get('mission_name', ''),
-            display_name=mission_data.get('display_name', None),
+            display_name=mission_data.get('display_name'),
             power=mission_data.get('power', 0),
 
-            region_name=mission_data.get('region_name', None),
+            region_name=mission_data.get('region_name'),
             show_in_power_plan=mission_data.get('show_in_power_plan', False),
         )
 
         self.mission_list.append(mission)
         self.category_2_mission[category.unique_id].append(mission)
 
-    def best_match_tab_by_name(self, ocr_word: str) -> Optional[GuideTab]:
+    def best_match_tab_by_name(self, ocr_word: str) -> GuideTab | None:
         """
         根据OCR结果匹配TAB
         """
@@ -100,7 +103,7 @@ class SrGuideData:
         else:
             return self.tab_list[idx]
 
-    def best_match_category_by_name(self, ocr_word: str, tab: GuideTab) -> Optional[GuideCategory]:
+    def best_match_category_by_name(self, ocr_word: str, tab: GuideTab) -> GuideCategory | None:
         """
         根据OCR结果匹配GuideCategory
         """
@@ -112,7 +115,7 @@ class SrGuideData:
         else:
             return category_list[idx]
 
-    def best_match_mission_by_name(self, ocr_word: str, category: GuideCategory, region_name: Optional[str] = None) -> Optional[GuideMission]:
+    def best_match_mission_by_name(self, ocr_word: str, category: GuideCategory, region_name: str | None = None) -> GuideMission | None:
         """
         根据OCR结果匹配GuideMission
         """
@@ -127,7 +130,7 @@ class SrGuideData:
         else:
             return mission_list[idx]
 
-    def get_mission_by_unique_id(self, unique_id: str) -> Optional[GuideMission]:
+    def get_mission_by_unique_id(self, unique_id: str) -> GuideMission | None:
         """
         根据唯一标识获取对应的副本
         """
@@ -135,7 +138,21 @@ class SrGuideData:
             if mission.unique_id == unique_id:
                 return mission
 
-    def get_category_list_in_power_plan(self) -> List[ConfigItem]:
+    def get_mission_by_guide_info(self, category_name: str, mission_name: str,
+                                  region_name: str) -> GuideMission | None:
+        """
+        按 (分类名, 关卡名, 区域名) 精确匹配副本——口径与
+        dungeon_drop_const.MATERIAL_MISSIONS 的 {category, mission, region}
+        三元组一致(生成器 join 时即取自指南关卡字段),供材料刷取定位用
+        """
+        for mission in self.mission_list:
+            if (mission.cate.cn == category_name
+                    and mission.mission_name == mission_name
+                    and mission.region_name == region_name):
+                return mission
+        return None
+
+    def get_category_list_in_power_plan(self) -> list[ConfigItem]:
         """
         体力计划里的分类
         """
@@ -145,7 +162,7 @@ class SrGuideData:
             if i.show_in_power_plan
         ]
 
-    def get_mission_list_in_power_plan(self, category: GuideCategory) -> List[ConfigItem]:
+    def get_mission_list_in_power_plan(self, category: GuideCategory) -> list[ConfigItem]:
         """
         体力计划里的副本
         """
