@@ -192,29 +192,23 @@ class EquipRelicOp(SrOperation):
     @node_from(from_name='验证选中', status='SELECTED_MATCHED')
     @operation_node(name='确认替换', node_max_retry_times=6)
     def confirm_replace(self) -> OperationRoundResult:
-        """点「替换」即装备 → 自动回着装页(until=标题回 TAB)。"""
+        """点「替换」即装备。**与光锥不同:遗器替换后停在替换界面不回着装页**,
+        列表重排且选中态自动切到新装备件 —— 按钮从「替换」变回「卸下」即
+        装备生效的可靠锚(until)。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _REPLACE_SCREEN, '按钮-替换装备',
-            until_find_all=[(_RELIC_TAB_SCREEN, '标题-遗器着装')],
+            until_find_all=[(_REPLACE_SCREEN, '按钮-卸下')],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
 
     @node_from(from_name='确认替换')
     @operation_node(name='结果核对', node_max_retry_times=5)
     def verify_result(self) -> OperationRoundResult:
-        """装备结果核对:重进部位替换界面读装备件名。
+        """装备结果核对:替换生效后选中态即新装备件,直接读件名核对。
 
-        着装页无单件名读区,套装效果读区仅在成套(≥2 件)时含套装名 ——
-        散件换装(1 件)读不到,故重进部位界面读右侧详情的当前装备件名核对
-        (替换界面默认选中当前装备件)。收尾停在替换界面,下次 op 重入会
-        自动先回着装页。"""
-        slot = self.ctx.screen_loader.get_area(_RELIC_TAB_SCREEN, _POS_TO_SLOT_AREA[self.pos])
-        self.ctx.controller.click(slot.rect.center)
-        result = self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '标题-遗器替换')
-        if not result.is_success:
-            return self.round_fail('重进部位界面失败,无法核对装备结果')
+        收尾停在替换界面(遗器替换的实机行为),下次 op 重入会自动先回着装页。"""
         if self._read_piece_name(_REPLACE_SCREEN, '读区-遗器名') is not None:
             log.info('替换遗器: %s 已装备当前角色', self.piece_name)
             return self.round_success(status='RELIC_EQUIPPED', wait=0.5)
-        return self.round_fail('装备结果核对失败:部位界面读区与目标件名不符')
+        return self.round_fail('装备结果核对失败:替换界面读区与目标件名不符')
