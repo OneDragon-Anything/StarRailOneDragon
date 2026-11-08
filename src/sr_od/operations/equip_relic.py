@@ -109,11 +109,21 @@ class EquipRelicOp(SrOperation):
 
     @operation_node(name='入口核对并进入部位', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:须在遗器着装页;点目标遗器位直达该部位替换界面。"""
+        """入口核对:须在遗器着装页;点目标遗器位直达该部位替换界面。
+
+        重入已在替换界面时先回着装页 —— 替换界面按部位筛选,重入的界面
+        筛选部位可能与目标不符(如实机复现:躯干界面重入找手部件)。"""
         screen = self.last_screenshot
 
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-遗器替换').is_success:
-            return self.round_success(status='IN_REPLACE_SCREEN')
+            result = self.round_by_find_and_click_area(
+                screen, _REPLACE_SCREEN, '按钮-返回',
+                until_find_all=[(_RELIC_TAB_SCREEN, '标题-遗器着装')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            )
+            if not result.is_success:
+                return result
+            screen = self.last_screenshot
 
         if not self.round_by_find_area(screen, _RELIC_TAB_SCREEN, '标题-遗器着装').is_success:
             return self.round_fail('不在遗器着装页(前置:进详情 + 选角色 + 切「遗器」页签)')
@@ -127,7 +137,6 @@ class EquipRelicOp(SrOperation):
             pre_delay=0.5, success_wait=2.5, retry_wait=2,
         )
 
-    @node_from(from_name='入口核对并进入部位', status='IN_REPLACE_SCREEN')
     @node_from(from_name='入口核对并进入部位')
     @operation_node(name='当前装备核对', node_max_retry_times=6)
     def check_current(self) -> OperationRoundResult:
