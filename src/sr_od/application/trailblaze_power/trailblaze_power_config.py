@@ -74,14 +74,17 @@ class TrailblazePowerConfig(YamlConfig):
 
         self.plan_list.append(item)
 
-    def append_plan_item(self, item: TrailblazePowerPlanItem) -> None:
+    def add_plan_item(self, item: TrailblazePowerPlanItem, idx: Optional[int] = None) -> None:
         """
-        追加一条计划并落盘(MCP 通用配置路由 ``add_config_item`` 的领域方法)
+        新增一条计划并落盘(MCP 通用配置路由 ``add_config_item`` 的领域方法)
 
+        一条龙按 plan_list 顺序执行(get_next_plan 顺序取第一个未完成计划),
+        插入位置即执行顺位:idx=None 尾部追加;指定 idx 插到现有第 idx 项之前。
         与 init_plan_list 同源经 guide_data 关联 mission(一条龙运行按 item.mission 导航)。
-        关联失败抛 ValueError:追加是显式动作,失败必须可知 —— 区别于 init_plan_list
+        失败抛 ValueError:新增是显式动作,失败必须可知 —— 区别于 init_plan_list
         对无法解析旧数据的静默过滤。
-        :raises ValueError: mission_id 不在指南数据中
+        :param idx: 插入下标(0 基,合法域 0~当前列表长度)
+        :raises ValueError: mission_id 不在指南数据中,或 idx 越界
         """
         mission = self.guide_data.get_mission_by_unique_id(item.mission_id)
         if mission is None:
@@ -92,7 +95,12 @@ class TrailblazePowerConfig(YamlConfig):
             )
         item.mission = mission
 
-        self.plan_list.append(item)
+        if idx is None:
+            self.plan_list.append(item)
+        else:
+            if idx < 0 or idx > len(self.plan_list):
+                raise ValueError(f'插入位置 idx 越界:合法 0~{len(self.plan_list)},实际 {idx}')
+            self.plan_list.insert(idx, item)
         self.save()
 
     def update_plan(self, idx: int, new_plan: TrailblazePowerPlanItem):

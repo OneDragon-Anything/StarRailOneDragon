@@ -10,7 +10,7 @@
 SR 适配说明:照搬自上游 backend(``6a577983``)。上游的 ``charge_plan`` / ``notorious_hunt``
 路由依赖其专属模块(``ChargePlanItem`` / ``NotoriousHuntConfig`` / ``compendium_service``),
 SR 无对应实现 —— 已剔除。SR 已接入 ``trailblaze_power``(体力计划,``@dataclass`` 风格项 +
-领域方法 ``TrailblazePowerConfig.append_plan_item``);后续同类配置在此补对应 RouterEntry。
+领域方法 ``TrailblazePowerConfig.add_plan_item``);后续同类配置在此补对应 RouterEntry。
 """
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -42,7 +42,7 @@ class RouterEntry:
     item_from_dict: Callable[[dict], object]
     get_config: Callable[['SrContext', int | None, str | None], object]
     validate_item: Callable[['SrContext', object], str | None]
-    add: Callable[[object, object], None]
+    add: Callable[[object, object, int | None], None]  # idx=插入下标(None=尾部);列表有序的 config 位置即执行顺位
     delete: Callable[[object, str], bool]
     id_kind: str  # 'plan_id' / 'idx' / 'app_id'
     item_kind: str = 'dataclass'  # 'dataclass' / 'str' / 'dict'
@@ -176,8 +176,12 @@ def _standalone_app_validate_item(ctx: 'SrContext', item: str) -> str | None:
     return None
 
 
-def _standalone_app_add(config: object, item: str) -> None:
-    config.app_list = config.app_list + [item]  # type: ignore[attr-defined]
+def _standalone_app_add(config: object, item: str, idx: int | None = None) -> None:
+    # 独立应用列表同样有序(一条龙组执行顺序);越界切片天然落到尾部(handler 已挡负数)
+    if idx is None:
+        config.app_list = config.app_list + [item]  # type: ignore[attr-defined]
+    else:
+        config.app_list = config.app_list[:idx] + [item] + config.app_list[idx:]  # type: ignore[attr-defined]
 
 
 def _standalone_app_delete(config: object, item: str) -> bool:
@@ -227,7 +231,7 @@ def _trailblaze_power_get_config(
 
 
 def _trailblaze_power_item_from_dict(data: dict) -> object:
-    # mission 关联不在本步做(需 ctx,由 append_plan_item 统一处理,与 init_plan_list 同源)
+    # mission 关联不在本步做(需 ctx,由 add_plan_item 统一处理,与 init_plan_list 同源)
     return TrailblazePowerPlanItem(
         mission_id=data.get('mission_id', ''),
         team_num=data.get('team_num', 0),
@@ -241,7 +245,7 @@ def _trailblaze_power_item_from_dict(data: dict) -> object:
 
 
 def _trailblaze_power_validate_item(ctx: 'SrContext', item: object) -> str | None:
-    # mission_id 可解析性由 append_plan_item 校验(需 guide_data,与 init_plan_list 同源);
+    # mission_id 可解析性由 add_plan_item 校验(需 guide_data,与 init_plan_list 同源);
     # 这里只做数值边界,提前拦截明显的坏参数
     if not item.mission_id:  # type: ignore[attr-defined]
         return 'mission_id 不能为空'
@@ -253,9 +257,10 @@ def _trailblaze_power_validate_item(ctx: 'SrContext', item: object) -> str | Non
     return None
 
 
-def _trailblaze_power_add(config: object, item: object) -> None:
-    # append_plan_item 内部校验 mission 可解析,失败抛 ValueError(handler 转 error)
-    config.append_plan_item(item)  # type: ignore[attr-defined]
+def _trailblaze_power_add(config: object, item: object, idx: int | None = None) -> None:
+    # add_plan_item 内部校验 mission 可解析与插入位置越界,失败抛 ValueError(handler 转 error);
+    # 一条龙按 plan_list 顺序执行,插入位置 = 执行顺位
+    config.add_plan_item(item, idx)  # type: ignore[attr-defined]
 
 
 def _trailblaze_power_delete(config: object, item_id: str) -> bool:
@@ -312,6 +317,7 @@ def _build_routes() -> dict[str, RouterEntry]:
         'trailblaze_power': RouterEntry(
             app_id='trailblaze_power',
             description='开拓力体力计划:plan_list 计划项(mission_id/plan_times/run_times 等)+ loop 循环开关;'
+                        '一条龙按 plan_list 顺序执行,add 的 idx 插入位置即执行顺位(默认尾部);'
                         'add/delete 写穿当前实例缓存,下一次一条龙 run 立即生效,无需重启',
             item_from_dict=_trailblaze_power_item_from_dict,
             get_config=_trailblaze_power_get_config,

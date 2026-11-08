@@ -28,12 +28,14 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
         app_id: Annotated[str, Field(description="app 配置 id,如 standalone_app")],
         list_field: Annotated[str, Field(description="列表字段名(plan_list/app_list)")],
         item_dict: Annotated[dict, Field(description="列表项 dict(经 from_dict 反序列化)")],
+        idx: Annotated[int | None, Field(description="插入下标(0 基):插到现有第 idx 项之前;None=尾部追加。列表有序的场景(如开拓力计划按顺序执行)用 idx 控制执行顺位")] = None,
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
     ) -> dict:
         """加一个数据类列表项(如 standalone_app app)。操作类,改配置。
 
         通用入口,按 ``app_id`` 路由到该 config 的领域方法。写入前校验,不合法拒绝。
+        ``idx`` 控制有序列表的插入位置(缺省尾部追加)。
         改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
 
         Returns:
@@ -46,20 +48,23 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
         expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
         if list_field != expected_list:
             return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
+        if idx is not None and idx < 0:
+            return {'success': False, 'error': f'idx 应为非负下标(0 基),实际 {idx}'}
         try:
             config = entry.get_config(ctx, instance_idx, group_id)
             item = entry.item_from_dict(item_dict)
             err = entry.validate_item(ctx, item)
             if err:
                 return {'success': False, 'error': err}
-            entry.add(config, item)
+            entry.add(config, item, idx)
             new_id: str | None = None
             if hasattr(config, 'plan_list') and config.plan_list:
                 # 按 entry.id_kind 取项标识;项无该属性时(如开拓力计划项无 plan_id,
-                # id_kind=idx)回退列表下标 —— 直接取 .plan_id 会让已成功的 add 被误报为失败
+                # id_kind=idx)回退列表下标 —— 直接取 .plan_id 会让已成功的 add 被误报为失败。
+                # 指定 idx 插入时新项就在 idx 处(越界已由 config 层校验),不能用尾下标
                 new_id = getattr(config.plan_list[-1], entry.id_kind, None)
                 if new_id is None and entry.id_kind == 'idx':
-                    new_id = str(len(config.plan_list) - 1)
+                    new_id = str(idx if idx is not None else len(config.plan_list) - 1)
             elif entry.id_kind == 'app_id' and isinstance(item, str):
                 new_id = item
             return {'success': True, 'app_id': app_id, 'list_field': list_field, 'id': new_id}
