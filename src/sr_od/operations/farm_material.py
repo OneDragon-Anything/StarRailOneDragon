@@ -8,9 +8,11 @@ UseTrailblazePower(skip_transport=True) 完成选次数/配队/战斗——
 有没有可刷副本」的预期校验与日志,不参与导航。
 
 通用性(不同光锥/材料实测,样本 永恒之花/提纯以太/凝缩以太/永寿荣枝):
-- 材料栏为固定 4 槽位(经验书+突破材料+信用点等),缺料判定只比
-  「拥有/所需」数字,与材料名无关;材料名在弹窗打开后 OCR 一次,
-  仅用于静态表核对与日志;
+- 材料栏为固定 4 槽位(经验书+突破材料+信用点等),缺料判定用计数条
+  颜色统计:「拥有数」不足时变红、「所需数」恒白(实机放大样本确认),
+  红色主导像素达标即缺——OCR 不可用(红字漏读,实测全帧只读出白字
+  「15」丢红字「0」);材料名在弹窗打开后 OCR 一次,仅用于静态表核对
+  与日志;
 - 弹窗途径行的 Y 随描述长度漂移(短描述行1 y≈632,长描述 y≈655),
   固定行位不可用——按静态表预期(类别主干+区域)OCR 定位带【区域】的
   行再点其中心;
@@ -24,8 +26,6 @@ UseTrailblazePower 战斗收尾状态。
 隧洞 40),发起前必须向用户说明并获同意。全链实机验证见进度记录
 (1 次花萼×10 实跑通过)。
 """
-
-import re
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
@@ -47,7 +47,11 @@ _MATERIAL_CELL_COUNT: int = 4
 #: 弹窗途径列表的 OCR 搜索区(x 固定;y 覆盖描述漂移后途径行可能出现的范围)
 _POPUP_ROWS_RECT: Rect = Rect(793, 595, 1448, 790)
 
-_COUNT_RE = re.compile(r'(\d+)\s*/\s*(\d+)')
+#: 缺料判定阈值:计数条暗带内红色主导像素数下限。实测「拥有数」红字
+#: ≈52 px,充足格(白字/紫底)为 0(样本:惊魂夜 50 突破四格)
+_LACKING_RED_PIXEL_MIN: int = 20
+#: 计数条暗带 = 建档区底部的子带:距区底 [2, 24] px(文字行实测 y≈891-913)
+_COUNT_STRIP_Y_FROM_BOTTOM: tuple[int, int] = (2, 24)
 
 #: 类别名 → 弹窗行文案的类别主干(行文案不带「（赤）/（金）」后缀)
 _CATEGORY_STEM: dict[str, str] = {
@@ -91,30 +95,25 @@ class FarmMaterialOp(SrOperation):
 
     #------------------- 识别辅助 -------------------#
 
-    def _read_cell_count(self, cell_idx: int) -> tuple[int, int] | None:
-        """读材料格的「拥有/所需」;OCR 无计数文本(空格)返回 None。
+    def _cell_lacking(self, cell_idx: int) -> bool:
+        """单格缺料判定:计数条暗带内「拥有数」红色主导像素达标。
 
-        crop_first 关闭:格内计数文字小,裁剪后检测器易漏字(ocr_service
-        已知语义),全帧 OCR + rect 过滤实测可靠。"""
+        红色主导 = R 显著高于 G/B 且亮度足够(截图为 RGB 口径,双捕获
+        路径均 BGRA2RGB);槽位紫底 B≥R、白字三通道相近,均不满足。
+        途径同名判定无关本函数:所需数恒白,任何材料通用。"""
         area = self.ctx.screen_loader.get_area(_ASCEND_SCREEN, f'材料格-{cell_idx}')
-        screen = self.screenshot()
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=False)
-        for r in results:
-            m = _COUNT_RE.search(str(r.data or ''))
-            if m:
-                return int(m.group(1)), int(m.group(2))
-        return None
+        rect = area.rect
+        strip = self.screenshot()[rect.y2 - _COUNT_STRIP_Y_FROM_BOTTOM[1]:
+                                  rect.y2 - _COUNT_STRIP_Y_FROM_BOTTOM[0],
+                                  rect.x1: rect.x2].astype(int)
+        r, g, b = strip[:, :, 0], strip[:, :, 1], strip[:, :, 2]
+        red_dominant = (r - b > 40) & (r - g > 40) & (r > 170)
+        return int(red_dominant.sum()) >= _LACKING_RED_PIXEL_MIN
 
     def _scan_lacking_cell(self) -> int | None:
-        """逐格扫描,返回第一个缺料格(拥有 < 所需)的下标;无缺料返回 None。"""
+        """逐格检测,返回第一个缺料格下标;无缺料返回 None。"""
         for idx in range(1, _MATERIAL_CELL_COUNT + 1):
-            count = self._read_cell_count(idx)
-            if count is None:
-                continue
-            owned, needed = count
-            log.info('材料格-%d: 拥有 %d / 所需 %d', idx, owned, needed)
-            if owned < needed:
+            if self._cell_lacking(idx):
                 return idx
         return None
 
