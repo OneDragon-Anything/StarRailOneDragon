@@ -92,11 +92,14 @@ class FarmMaterialOp(SrOperation):
     #------------------- 识别辅助 -------------------#
 
     def _read_cell_count(self, cell_idx: int) -> tuple[int, int] | None:
-        """读材料格的「拥有/所需」;OCR 无计数文本(空格)返回 None。"""
+        """读材料格的「拥有/所需」;OCR 无计数文本(空格)返回 None。
+
+        crop_first 关闭:格内计数文字小,裁剪后检测器易漏字(ocr_service
+        已知语义),全帧 OCR + rect 过滤实测可靠。"""
         area = self.ctx.screen_loader.get_area(_ASCEND_SCREEN, f'材料格-{cell_idx}')
         screen = self.screenshot()
         results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
+            image=screen, rect=area.pc_rect, crop_first=False)
         for r in results:
             m = _COUNT_RE.search(str(r.data or ''))
             if m:
@@ -187,7 +190,7 @@ class FarmMaterialOp(SrOperation):
                 message=f'{self.material_name} 无可刷副本(途径均为敌方掉落/合成类)')
         screen = self.screenshot()
         ocr_lines = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=_POPUP_ROWS_RECT, crop_first=True)
+            image=screen, rect=_POPUP_ROWS_RECT, crop_first=False)
         row = self._match_expected_row(ocr_lines, missions)
         if row is None:
             self._close_popup()
