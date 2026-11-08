@@ -104,6 +104,8 @@ def parse_ascension_stages(html: str) -> dict[str, dict[str, int]] | None:
             # 容错取短边:个别行阶段格/材料格错位时宁缺勿错(完整性由锚点与
             # 解析数下限兜底)
             for stage, cell in zip(pending_stages, cells, strict=False):
+                if stage == '总计':
+                    continue  # 表尾汇总行不是阶段(计入会使 total 双倍统计)
                 mats: dict[str, int] = {}
                 for chunk in cell.split('class="cailiaoxiao"')[1:]:
                     tm = re.search(r'title="([^"]+)"', chunk)
@@ -149,6 +151,9 @@ def fetch_all() -> dict[str, dict[str, dict[str, int]]]:
 
 def _check_anchors(data: dict[str, dict[str, dict[str, int]]]) -> None:
     """锚点校验:指定段累计材料与实机计数条不符即拒绝生成。"""
+    for cone, stages in data.items():
+        if '总计' in stages:
+            raise RuntimeError(f'{cone} 混入「总计」汇总行(应跳过)')
     for cone, (stage_names, expected) in _ASCENSION_ANCHORS.items():
         stages = data.get(cone)
         if stages is None:
