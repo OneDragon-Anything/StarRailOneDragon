@@ -7,6 +7,16 @@ from sr_od.interastral_peace_guide.guide_data import SrGuideData
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 
 
+def get_war_mission_list(guide_data: SrGuideData) -> list[GuideMission]:
+    """
+    指南里历战余响分类的全部关卡(周本全量)
+    :return: 关卡列表,顺序即指南内分类顺序
+    """
+    tab = guide_data.best_match_tab_by_name(gt('生存索引', 'game'))
+    category = guide_data.best_match_category_by_name(gt('历战余响', 'game'), tab)
+    return guide_data.category_2_mission.get(category.unique_id, [])
+
+
 class EchoOfWarConfig(YamlConfig):
 
     def __init__(self, guide_data: SrGuideData, instance_idx: Optional[int] = None):
@@ -17,9 +27,7 @@ class EchoOfWarConfig(YamlConfig):
         self.init_plan_list()
 
     def init_plan_list(self):
-        tab = self.guide_data.best_match_tab_by_name(gt('生存索引', 'game'))
-        category = self.guide_data.best_match_category_by_name(gt('历战余响', 'game'), tab)
-        war_list: List[GuideMission] = self.guide_data.category_2_mission.get(category.unique_id, [])
+        war_list: List[GuideMission] = get_war_mission_list(self.guide_data)
 
         id_2_plan = {}
 
@@ -97,6 +105,31 @@ class EchoOfWarConfig(YamlConfig):
         self.plan_list[idx] = new_plan
 
         self.save()
+
+    def update_plan_by_mission_id(self, mission_id: str, new_plan: TrailblazePowerPlanItem) -> bool:
+        """
+        按 mission_id 原位更新计划并落盘(MCP 通用配置路由 ``update_config_item`` 的领域方法)
+
+        历战余响的计划列表由 init_plan_list 按周本全量补齐 —— 正确操作语义是改既有
+        条目的次数,而非增删条目(增删会在下次 init_plan_list 时被全量补齐重排/还原)。
+        原位替换保持列表顺序,mission 关联沿用既有条目。
+        :param mission_id: 定位用的关卡 id,须与 new_plan.mission_id 一致(防改错条目)
+        :param new_plan: 替换后的计划项
+        :return: True=定位并更新;False=列表中无该 mission_id
+        :raises ValueError: new_plan.mission_id 与定位 mission_id 不一致
+        """
+        if new_plan.mission_id != mission_id:
+            raise ValueError(
+                f'new_plan.mission_id ({new_plan.mission_id}) 与定位 mission_id ({mission_id}) 不一致'
+            )
+        for i, item in enumerate(self.plan_list):
+            if item.mission_id != mission_id:
+                continue
+            new_plan.mission = item.mission
+            self.plan_list[i] = new_plan
+            self.save()
+            return True
+        return False
 
     def save(self) -> None:
         """

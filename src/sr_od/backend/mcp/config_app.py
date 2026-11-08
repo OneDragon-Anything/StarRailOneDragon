@@ -45,6 +45,8 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
         entry = get_entry(app_id)
         if entry is None:
             return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
+        if 'add' not in entry.supported_ops or entry.add is None:
+            return {'success': False, 'error': f'{app_id} 不支持 add'}
         expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
         if list_field != expected_list:
             return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
@@ -93,6 +95,8 @@ def make_delete_config_item(backend: SrBackendContext) -> Callable:
         entry = get_entry(app_id)
         if entry is None:
             return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
+        if 'delete' not in entry.supported_ops or entry.delete is None:
+            return {'success': False, 'error': f'{app_id} 不支持 delete'}
         expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
         if list_field != expected_list:
             return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
@@ -105,6 +109,50 @@ def make_delete_config_item(backend: SrBackendContext) -> Callable:
         except Exception as e:  # noqa: BLE001
             return {'success': False, 'error': str(e)}
     return delete_config_item
+
+
+def make_update_config_item(backend: SrBackendContext) -> Callable:
+    """构造 ``update_config_item`` tool(按 item_id 原位替换列表项)。"""
+    async def update_config_item(
+        app_id: Annotated[str, Field(description="app 配置 id,如 trailblaze_power")],
+        list_field: Annotated[str, Field(description="列表字段名(plan_list)")],
+        item_id: Annotated[str, Field(description="项标识,按 list_app_configs 的 id_kind(如 echo_of_war 用 mission_id)")],
+        item_dict: Annotated[dict, Field(description="替换后的列表项完整 dict(全字段覆盖,未传字段取默认值)")],
+        instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
+        group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
+    ) -> dict:
+        """按项标识原位更新一个数据类列表项。操作类,改配置。
+
+        适用于「全量补齐型」列表(如历战余响计划:全部周本关卡常驻,只改次数不增删条目)
+        —— 原位替换保持顺序,写入前校验,不合法拒绝。
+        改配置前建议先调 ``get_config`` 读现有条目、``describe_config`` 查字段结构。
+
+        Returns:
+            ``{success, error}`` 或 ``{success: True, app_id, list_field, id}``。
+        """
+        ctx = backend.ctx
+        entry = get_entry(app_id)
+        if entry is None:
+            return {'success': False, 'error': f'不支持的 app_id: {app_id}'}
+        if 'update' not in entry.supported_ops or entry.update is None:
+            return {'success': False, 'error': f'{app_id} 不支持 update(增删用 add/delete)'}
+
+        expected_list = 'plan_list' if entry.item_kind == 'dataclass' else 'app_list'
+        if list_field != expected_list:
+            return {'success': False, 'error': f'list_field 应为 {expected_list},实际 {list_field}'}
+        try:
+            config = entry.get_config(ctx, instance_idx, group_id)
+            item = entry.item_from_dict(item_dict)
+            err = entry.validate_item(ctx, item)
+            if err:
+                return {'success': False, 'error': err}
+            updated = entry.update(config, item_id, item)
+            if not updated:
+                return {'success': False, 'error': f'未找到 id={item_id}'}
+            return {'success': True, 'app_id': app_id, 'list_field': list_field, 'id': item_id}
+        except Exception as e:  # noqa: BLE001
+            return {'success': False, 'error': str(e)}
+    return update_config_item
 
 
 def make_get_config(backend: SrBackendContext) -> Callable:

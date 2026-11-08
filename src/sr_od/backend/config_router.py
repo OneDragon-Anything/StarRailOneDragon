@@ -18,6 +18,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.config.config_item import ConfigItem
+from sr_od.application.echo_of_war.echo_of_war_config import (
+    EchoOfWarConfig,
+    get_war_mission_list,
+)
 from sr_od.application.trailblaze_power.trailblaze_power_config import (
     TrailblazePowerConfig,
     TrailblazePowerPlanItem,
@@ -42,13 +46,18 @@ class RouterEntry:
     item_from_dict: Callable[[dict], object]
     get_config: Callable[['SrContext', int | None, str | None], object]
     validate_item: Callable[['SrContext', object], str | None]
-    add: Callable[[object, object, int | None], None]  # idx=插入下标(None=尾部);列表有序的 config 位置即执行顺位
+    # add=插入条目(idx=插入下标,None=尾部);列表有序的 config 位置即执行顺位。
+    # add 必填显式传,不支持传 None(以 supported_ops 为准,handler 检查)。
+    add: Callable[[object, object, int | None], None] | None
     delete: Callable[[object, str], bool]
-    id_kind: str  # 'plan_id' / 'idx' / 'app_id'
+    id_kind: str  # 'plan_id' / 'idx' / 'app_id' / 'mission_id'
     item_kind: str = 'dataclass'  # 'dataclass' / 'str' / 'dict'
     supported_ops: tuple[str, ...] = ('get', 'set', 'add', 'delete', 'describe')
     field_schema: dict[str, dict] | None = None
     item_schema: list[dict] | None = None
+    # update=按 item_id 原位替换条目(全量补齐型列表的正确语义,顺序天然不变);
+    # 放尾位(dataclass 带默认字段须靠后)。None = 不支持,以 supported_ops 为准,handler 检查。
+    update: Callable[[object, str, object], bool] | None = None
 
 
 # === Enum 反射 helper ===
@@ -131,6 +140,7 @@ def _build_list_fields(
         'id_source': (
             f"get_config 读 list.{entry.id_kind}(add 时自动生成,不要传)" if entry.id_kind == 'plan_id'
             else "get_config 读 data 里该列表的下标(0 基,顺序即下标);delete 时传 str(idx)" if entry.id_kind == 'idx'
+            else f"get_config 读 list.{entry.id_kind};update 按它定位要改的条目" if entry.id_kind == 'mission_id'
             else "get_config 读 list"
         ),
         'item_kind': entry.item_kind,
@@ -148,6 +158,7 @@ def _validate_hint_for(app_id: str) -> str:
         'standalone_app': 'app_id 必须已注册(is_app_registered)',
         '_group': 'app_id 必须已注册;add 不支持(app 由注册注入)',
         'trailblaze_power': 'mission_id 须能被指南数据解析(get_mission_by_unique_id);plan_times≥1;0≤run_times≤plan_times',
+        'echo_of_war': 'mission_id 须属于历战余响分类(周本全量);plan_times≥1;0≤run_times≤plan_times',
     }
     return hints.get(app_id, '')
 
@@ -203,10 +214,6 @@ def _group_validate_item(ctx: 'SrContext', item: str) -> str | None:
     if not ctx.run_context.is_app_registered(item):
         return f'app_id {item} 未注册(不在应用列表)'
     return None
-
-
-def _group_add(_config: object, _item: str) -> None:
-    raise ValueError('_group 不支持 add(app 由注册注入)')
 
 
 def _group_delete(config: object, app_id: str) -> bool:
@@ -275,6 +282,39 @@ def _trailblaze_power_delete(config: object, item_id: str) -> bool:
     return True
 
 
+# === echo_of_war helpers(历战余响周本计划) ===
+
+def _echo_of_war_get_config(
+    ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
+) -> object:
+    # 当前实例写穿 ctx 缓存实例(历战余响 app 用同一对象,改完即生效);
+    # 其他实例按需构造(落盘生效)
+    idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
+    if idx == ctx.current_instance_idx:
+        return ctx.echo_of_war_config
+    return EchoOfWarConfig(ctx.guide_data, idx)
+
+
+def _echo_of_war_validate_item(ctx: 'SrContext', item: object) -> str | None:
+    # 数值边界与开拓力计划同规则;加严:mission_id 必须属于历战余响分类
+    # (全量补齐型列表,传花萼等其他分类关卡在 update 定位时必然找不到,
+    # 这里提前给出可读的错误原因)
+    err = _trailblaze_power_validate_item(ctx, item)
+    if err:
+        return err
+    war_ids = {w.unique_id for w in get_war_mission_list(ctx.guide_data)}
+    if item.mission_id not in war_ids:  # type: ignore[attr-defined]
+        return (f'关卡 {item.mission_id} 不属于历战余响分类;'
+                f'可用关卡经 get_config 读 data.plan_list[].mission_id 获取')
+    return None
+
+
+def _echo_of_war_update(config: object, item_id: str, item: object) -> bool:
+    # update_plan_by_mission_id 内部校验 mission_id 一致性,不一致抛 ValueError;
+    # 列表中无该 mission_id 返回 False(handler 报未找到)
+    return config.update_plan_by_mission_id(item_id, item)  # type: ignore[attr-defined]
+
+
 # === ROUTES(含 field_schema + item_schema) ===
 
 def _build_routes() -> dict[str, RouterEntry]:
@@ -304,7 +344,7 @@ def _build_routes() -> dict[str, RouterEntry]:
             item_from_dict=_standalone_app_item_from_dict,
             get_config=_group_get_config,
             validate_item=_group_validate_item,
-            add=_group_add,
+            add=None,  # _group 的 app 由注册注入,不支持 add(supported_ops 亦未含)
             delete=_group_delete,
             id_kind='app_id',
             item_kind='dict',
@@ -338,6 +378,35 @@ def _build_routes() -> dict[str, RouterEntry]:
                  'note': '计划通关次数(缺口÷单次产量,向上取整)'},
                 {'name': 'run_times', 'type': 'int', 'required': False, 'default': 0,
                  'note': '已完成次数;新计划传 0'},
+                {'name': 'team_num', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '使用配队编号,0=游戏内当前配队'},
+                {'name': 'support', 'type': 'str', 'required': False, 'default': 'none',
+                 'note': '支援角色,"none"=不带支援'},
+                {'name': 'diff', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '难度,0=自动选最高'},
+            ],
+        ),
+        'echo_of_war': RouterEntry(
+            app_id='echo_of_war',
+            description='历战余响(周本)计划:plan_list 由全部周本关卡全量补齐,不支持增删条目 ——'
+                        '改某关卡的挑战次数用 update(mission_id 定位,原位替换,顺序不变);'
+                        'add/delete 写穿当前实例缓存,下一次一条龙 run 立即生效,无需重启',
+            item_from_dict=_trailblaze_power_item_from_dict,  # 条目结构与开拓力计划同型(复用 TrailblazePowerPlanItem)
+            get_config=_echo_of_war_get_config,
+            validate_item=_echo_of_war_validate_item,
+            add=None,  # 全量补齐型列表:增删条目无意义(init_plan_list 会重排/还原)
+            update=_echo_of_war_update,
+            delete=None,
+            id_kind='mission_id',
+            item_kind='dataclass',
+            supported_ops=('get', 'update', 'describe'),
+            item_schema=[
+                {'name': 'mission_id', 'type': 'str', 'required': True,
+                 'note': '周本关卡唯一 id:「生存索引 历战余响 {关卡} {区域}」;可用关卡先 get_config 读现有列表'},
+                {'name': 'plan_times', 'type': 'int', 'required': True,
+                 'note': '计划挑战次数(周本每周 3 次有额外奖励,超过也有基础奖励)'},
+                {'name': 'run_times', 'type': 'int', 'required': False, 'default': 0,
+                 'note': '本轮已完成次数;想重新挑战传 0'},
                 {'name': 'team_num', 'type': 'int', 'required': False, 'default': 0,
                  'note': '使用配队编号,0=游戏内当前配队'},
                 {'name': 'support', 'type': 'str', 'required': False, 'default': 'none',
