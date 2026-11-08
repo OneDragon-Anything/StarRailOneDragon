@@ -27,14 +27,21 @@ UseTrailblazePower 战斗收尾状态。
 (1 次花萼×10 实跑通过)。
 """
 
+import time
+
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from one_dragon.utils.str_utils import find_best_match_by_difflib
 from sr_od.challenge_mission.use_trailblaze_power import UseTrailblazePower
-from sr_od.config.dungeon_drop_const import find_missions_by_material
+from sr_od.config.dungeon_drop_const import (
+    MATERIAL_MISSIONS,
+    find_missions_by_material,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 from sr_od.operations.sr_operation import SrOperation
@@ -52,6 +59,12 @@ _POPUP_ROWS_RECT: Rect = Rect(793, 595, 1448, 790)
 _LACKING_RED_PIXEL_MIN: int = 20
 #: 计数条暗带 = 建档区底部的子带:距区底 [2, 24] px(文字行实测 y≈891-913)
 _COUNT_STRIP_Y_FROM_BOTTOM: tuple[int, int] = (2, 24)
+
+#: 弹窗途径列表的拖动重扫上限(来源多的材料预期行可能在视口下方)
+_MAX_ROW_SCROLLS: int = 3
+#: 列表内拖动:起点在下终点在上 = 内容上移露出下方行(不用滚轮,按负责人要求)
+_ROW_DRAG_START: Point = Point(1120, 750)
+_ROW_DRAG_END: Point = Point(1120, 620)
 
 #: 类别名 → 弹窗行文案的类别主干(行文案不带「（赤）/（金）」后缀)
 _CATEGORY_STEM: dict[str, str] = {
@@ -130,8 +143,9 @@ class FarmMaterialOp(SrOperation):
         return None
 
     @staticmethod
-    def _match_expected_row(ocr_lines: list, missions: list[dict[str, str]]) -> object | None:
-        """在弹窗途径 OCR 行里定位静态表预期的副本行,返回命中的 OCR 行。
+    def _match_expected_row(
+            ocr_lines: list, missions: list[dict[str, str]]) -> tuple[object, dict[str, str]] | None:
+        """在弹窗途径 OCR 行里定位静态表预期的副本行,返回 (命中行, 对应条目)。
 
         匹配口径:行文案同时含类别主干(「拟造花萼（赤）」→「拟造花萼」,
         其余类别取全名)与区域名;敌方掉落/合成类行不含【区域】自然落选
@@ -142,7 +156,41 @@ class FarmMaterialOp(SrOperation):
             for line in ocr_lines:
                 text = str(line.data or '')
                 if stem in text and mission['region'] in text:
-                    return line
+                    return line, mission
+        return None
+
+    def _resolve_material_key(self, ocr_name: str) -> str | None:
+        """OCR 材料名 → 静态表键:精确优先,OCR 误读时 difflib 模糊兜底。
+
+        材料名是弹窗标题固定位置读出(实证 3 样本同位),但 OCR 可能误读
+        单字导致精确查表落空——模糊匹配容忍单字误差,仍不中返回 None
+        (表外材料或误读过甚,由调用方显式失败)。"""
+        if ocr_name in MATERIAL_MISSIONS:
+            return ocr_name
+        idx = find_best_match_by_difflib(ocr_name, list(MATERIAL_MISSIONS.keys()))
+        if idx is None:
+            return None
+        return list(MATERIAL_MISSIONS.keys())[idx]
+
+    def _locate_and_click_expected_row(self, missions: list[dict[str, str]]) -> tuple[object, dict[str, str]] | None:
+        """可见区定位预期途径行并点击;不可见则列表内拖动重扫(有界)。
+
+        来源多的材料预期行可能在视口下方(弹窗内容区可滚动),每轮未命中
+        拖动一次露出下方行;超过拖动上限仍未命中返回 None。拖动用
+        controller.drag_to(负责人要求不用滚轮)。"""
+        for scroll_round in range(_MAX_ROW_SCROLLS + 1):
+            screen = self.screenshot()
+            lines = self.ctx.ocr_service.get_ocr_result_list(
+                image=screen, rect=_POPUP_ROWS_RECT, crop_first=False)
+            matched = self._match_expected_row(lines, missions)
+            if matched is not None:
+                row, _ = matched
+                log.info('途径行命中: %s', str(row.data))
+                self.ctx.controller.click(row.center)
+                return matched
+            if scroll_round < _MAX_ROW_SCROLLS:
+                self.ctx.controller.drag_to(_ROW_DRAG_END, start=_ROW_DRAG_START, duration=0.5)
+                time.sleep(1)  # 拖动后列表滚动稳定
         return None
 
     #------------------- 节点图 -------------------#
@@ -177,35 +225,35 @@ class FarmMaterialOp(SrOperation):
     @node_from(from_name='打开材料弹窗')
     @operation_node(name='解析并跳转')
     def resolve_and_jump(self) -> OperationRoundResult:
-        """弹窗定材料 → 静态表预期 → OCR 定位副本途径行 → 点击跳转。"""
+        """弹窗定材料 → 静态表预期 → 定位副本途径行(必要时拖动重扫) → 点击跳转。"""
         self.material_name = self._read_popup_material_name()
         if not self.material_name:
             return self.round_fail('弹窗材料名 OCR 失败')
-        missions = find_missions_by_material(self.material_name)
+        material_key = self._resolve_material_key(self.material_name)
+        if material_key is None:
+            self._close_popup()
+            return self.round_fail(
+                f'{self.material_name}: 无法匹配已知材料(OCR 误读或静态表外材料)')
+        missions = find_missions_by_material(material_key)
         if not missions:
             self._close_popup()
             return self.round_fail(
                 status='MATERIAL_NO_DUNGEON',
-                message=f'{self.material_name} 无可刷副本(途径均为敌方掉落/合成类)')
-        screen = self.screenshot()
-        ocr_lines = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=_POPUP_ROWS_RECT, crop_first=False)
-        row = self._match_expected_row(ocr_lines, missions)
-        if row is None:
+                message=f'{material_key} 无可刷副本(途径均为敌方掉落/合成类)')
+        matched = self._locate_and_click_expected_row(missions)
+        if matched is None:
             self._close_popup()
             return self.round_fail(
-                f'{self.material_name}: 弹窗内未找到预期副本途径 {missions}')
+                f'{material_key}: 弹窗内未找到预期副本途径 {missions}(含拖动重扫)')
+        row, mission_entry = matched
         mission = self.ctx.guide_data.get_mission_by_guide_info(
-            missions[0]['category'], missions[0]['mission'], missions[0]['region'])
+            mission_entry['category'], mission_entry['mission'], mission_entry['region'])
         if mission is None:
             self._close_popup()
             return self.round_fail(
-                f'指南数据无关卡 {missions[0]}(常量表与指南数据不同步,重跑生成器)')
+                f'指南数据无关卡 {mission_entry}(常量表与指南数据不同步,重跑生成器)')
         self.mission = mission
-        center = row.center
-        log.info('跳转: %s → %s(%s)', self.material_name, mission.unique_id,
-                 str(row.data))
-        self.ctx.controller.click(center)
+        log.info('跳转: %s → %s(%s)', material_key, mission.unique_id, str(row.data))
         return self.round_success('已点击途径行,落点核对交给下一节点')
 
     @node_from(from_name='解析并跳转')
