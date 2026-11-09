@@ -64,8 +64,6 @@ _LEVEL_VALUE_RE = re.compile(r'(\d{1,3})')
 # 降级匹配的模板预缩放尺寸(实机列表渲染 ≈ 0.28-0.5 倍,同尺度匹配实测有效;
 # 全尺寸模板在整屏/格内匹配均因描述子尺度差失败,2026-11-09 实验矩阵实证)
 _FALLBACK_TEMPLATE_SIZE = (174, 204)
-# 降级匹配的接受线(格内聚簇 good 数;晚安与睡颜实证 15,噪声本底 ≤7)
-_FALLBACK_MIN_CLUSTER = 8
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
@@ -386,12 +384,13 @@ def _relic_piece_templates_scaled() -> dict[str, np.ndarray]:
 
 def _fallback_identity(gray: np.ndarray, card_rect: Rect,
                        scaled_templates: dict[str, np.ndarray]) -> tuple[str | None, int]:
-    """降级匹配:只取该卡区域内特征,对全库模板匹配取聚簇最大者(argmax,无阈值)。
+    """降级匹配:只取该卡区域内特征,对全库模板匹配取聚簇最大者(纯 argmax,无阈值)。
 
     整屏匹配的 Lowe 比值测试在同框式斜置卡牌间存在歧义竞争,真匹配被淘汰;
     格内局部匹配竞争者少,真匹配存活(晚安与睡颜实证:整屏 2 票 vs 格内 15 聚簇)。
-    返回 (光锥名/件名, 聚簇 good 数);全库均无 ≥_FALLBACK_MIN_CLUSTER 的聚簇
-    返 (None, 0)。
+    确定性先验:有等级锚点的卡必是全库之一(空格已被定位层过滤)——直接取聚簇
+    最高的名字,不设分数门槛(用户裁定:认错也只会认成库内最近似,优于 null)。
+    返回 (光锥名/件名, 聚簇 good 数);全库均无有效匹配时返 (None, 0)。
     """
     zone = gray[card_rect.y1:card_rect.y2, card_rect.x1:card_rect.x2]
     z_kp, z_desc = cv2_utils.feature_detect_and_compute(zone)
@@ -407,7 +406,7 @@ def _fallback_identity(gray: np.ndarray, card_rect: Rect,
         matches = bf.knnMatch(t_desc, z_desc, k=2)
         good_pts = [z_kp[m.trainIdx].pt for p in matches if len(p) == 2
                     and (m := p[0]) and m.distance < 0.75 * p[1].distance]
-        if len(good_pts) < _FALLBACK_MIN_CLUSTER:
+        if len(good_pts) < 3:
             continue
         # 聚簇:60px 半径内最大友好数(真命中聚在卡牌同位,误配分散)
         pts = np.float32(good_pts)
@@ -416,6 +415,4 @@ def _fallback_identity(gray: np.ndarray, card_rect: Rect,
             cluster = max(cluster, int((np.abs(pts - pts[i]).max(axis=1) < 60).sum()))
         if cluster > best_cluster:
             best_name, best_cluster = name, cluster
-    if best_cluster < _FALLBACK_MIN_CLUSTER:
-        return None, best_cluster
     return best_name, best_cluster
