@@ -28,7 +28,6 @@ from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.utils.log_utils import log
 from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
 from sr_od.backend.mcp.character_tools import register_character_tools
-from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
 from sr_od.backend.mcp.config_app import (
     make_add_config_item,
     make_delete_config_item,
@@ -38,6 +37,7 @@ from sr_od.backend.mcp.config_app import (
     make_set_config,
     make_update_config_item,
 )
+from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
 from sr_od.backend.mcp.mys_tools import register_mys_tools
 from sr_od.backend.mcp.prompts import (
     register_prompt_tools,
