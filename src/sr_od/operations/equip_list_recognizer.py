@@ -92,6 +92,10 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         """本画面列表区 area 名(坐标单一真相源)。"""
         raise NotImplementedError
 
+    def _col_centers(self, list_rect: Rect) -> list[float]:
+        """固定列中心 x 列表(行列解耦定位的列先验,列距按实机标定)。"""
+        raise NotImplementedError
+
     def _owner_min_score(self) -> float:
         """角标匹配阈值(光锥界面角标更小,匹配天花板低 → 阈值单独放低)。"""
         raise NotImplementedError
@@ -108,7 +112,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
             复用,避免整帧 cvtColor 重复计算。
         """
         ocr_results = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
-        anchor_rects = detect_card_anchors(ocr_results, list_area.rect)
+        anchor_rects = detect_card_anchors(ocr_results, list_area.rect, self._col_centers(list_area.rect))
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         contour_rects = detect_card_rects_contours(gray, list_area.rect)
         merged = list(anchor_rects)
@@ -140,6 +144,10 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 
     def _list_area_name(self) -> str:
         return '区域-光锥列表'
+
+    def _col_centers(self, list_rect: Rect) -> list[float]:
+        """9 列中心:首卡中心 x1+72.5 起步、列距恒 139px(锚点卡实测)。"""
+        return [list_rect.x1 + 72.5 + 139 * i for i in range(9)]
 
     def _owner_min_score(self) -> float:
         return CONE_OWNER_SCORE
@@ -233,6 +241,10 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
 
     def _list_area_name(self) -> str:
         return '区域-遗器列表'
+
+    def _col_centers(self, list_rect: Rect) -> list[float]:
+        """4 列中心:列表区 x1+66 起步、列距 110px(锚点卡实测)。"""
+        return [list_rect.x1 + 66 + 110 * i for i in range(4)]
 
     def _owner_min_score(self) -> float:
         return _MIN_OWNER_SCORE

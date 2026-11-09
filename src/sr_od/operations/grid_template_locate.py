@@ -198,16 +198,25 @@ def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list
     return rects
 
 
-def detect_card_anchors(ocr_results: list, list_rect: Rect) -> list[Rect]:
-    """从全图 OCR 结果提取装备卡的等级文本锚点,换算卡矩形预期区域。
+def detect_card_anchors(ocr_results: list, list_rect: Rect,
+                        col_centers: list[float]) -> list[Rect]:
+    """从全图 OCR 结果提取装备卡的等级文本锚点,按**行列解耦**换算卡矩形。
+
+    行列解耦(替代逐锚点独立换算):锚点 OCR 框的 **cx 随文本长度漂移**
+    (短文本框偏差实测 ±20px),不可信;**列位置用固定列中心先验**(列距恒定,
+    实测误差 ≤1px),锚点 cx 仅用于吸附到最近列;**行位置用锚点 cy 的聚类
+    众数**(同行多锚点取均值,单锚 y 噪声被平均;OCR 的 y 定位实测稳定)。
 
     :param ocr_results: 全图 OCR 结果列表(OcrMatchResult,含 .data/.rect)
     :param list_rect: 列表区(锚点须落在其内,排除右侧详情面板等)
+    :param col_centers: 固定列中心 x 列表(光锥 9 列/遗器 4 列,由列表区 rect
+        按实测列距推导,见 cone_col_centers/relic_col_centers)
     :return: 卡矩形清单(每个等级文本一张卡),按 (行, 列) 排序。
-        换算标定:光锥卡 139×155、文本中心=卡中心 x、卡底=文本 cy+12;
-        遗器卡 120×160、文本中心=卡中心 x、卡底=文本 cy+22(按文本样式自动区分)。
+        换算标定:光锥卡 139×155、卡底=锚点行带 cy+12;
+        遗器卡 120×160、卡底=锚点行带 cy+22(按文本样式自动区分)。
     """
-    rects: list[Rect] = []
+    # 1. 收集锚点 (cy, text)
+    anchors = []
     for r in ocr_results:
         text = str(r.data).strip()
         if not _LEVEL_TEXT_RE.match(text):
@@ -215,11 +224,45 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect) -> list[Rect]:
         rect = r.rect
         cx = (rect.x1 + rect.x2) / 2
         cy = (rect.y1 + rect.y2) / 2
+        if not (list_rect.x1 <= cx <= list_rect.x2 and list_rect.y1 <= cy <= list_rect.y2):
+            continue
+        anchors.append((cx, cy, text))
+    if not anchors:
+        return []
+
+    # 2. 行带聚类:锚点 cy 排序后按间隔分簇(行距 183~200px,簇内间隔阈值 100px),
+    #    每簇 cy 均值 = 该行行带(单锚 y 噪声被同行多锚平均)
+    anchors.sort(key=lambda a: a[1])
+    row_bands: list[float] = []
+    cluster_cys: list[float] = []
+    prev_cy = None
+    for _, cy, _text in anchors:
+        if prev_cy is not None and cy - prev_cy <= 100:
+            cluster_cys.append(cy)
+        else:
+            if cluster_cys:
+                row_bands.append(sum(cluster_cys) / len(cluster_cys))
+            cluster_cys = [cy]
+        prev_cy = cy
+    if cluster_cys:
+        row_bands.append(sum(cluster_cys) / len(cluster_cys))
+
+    # 3. 行 × 列组合:锚点吸附最近列中心,卡矩形 x 由固定列中心决定(cx 偏差不进入)
+    rects: list[Rect] = []
+    seen: set[tuple[int, int]] = set()
+    for cx, cy, text in anchors:
+        col = min(range(len(col_centers)), key=lambda i: abs(cx - col_centers[i]))
+        row = min(range(len(row_bands)), key=lambda i: abs(cy - row_bands[i]))
+        key = (row, col)
+        if key in seen:
+            continue
+        seen.add(key)
+        col_cx = col_centers[col]
+        band_cy = row_bands[row]
         if text.startswith('等级'):  # 光锥:卡 139×155
-            rect_card = Rect(cx - 70, cy - 143, cx + 69, cy + 12)
+            rect_card = Rect(col_cx - 70, band_cy - 143, col_cx + 69, band_cy + 12)
         else:  # 遗器「+N」:卡 120×160
-            rect_card = Rect(cx - 60, cy - 138, cx + 60, cy + 22)
-        # 卡矩形须与列表区相交(排除详情面板等区外文本)
+            rect_card = Rect(col_cx - 60, band_cy - 138, col_cx + 60, band_cy + 22)
         if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
             continue
         if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
