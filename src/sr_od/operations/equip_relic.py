@@ -32,7 +32,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.grid_template_locate import (
     load_template_gray,
-    locate_cell_by_votes,
+    locate_cells_by_votes,
 )
 from sr_od.operations.sr_operation import SrOperation
 
@@ -91,6 +91,7 @@ class EquipRelicOp(SrOperation):
         self.set_name: str = piece_def.set_name
         self.pos: int = piece.pos  # 部位坐标:1头 2手 3躯干 4脚 5位面球 6连结绳(常量表固化)
         self._scan_screens: int = 0
+        self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0
         SrOperation.__init__(self, ctx, op_name=gt('替换遗器') + f'({piece_name})',
                              node_max_retry_times=24)
@@ -152,7 +153,10 @@ class EquipRelicOp(SrOperation):
     @node_from(from_name='当前装备核对', status='NEED_REPLACE')
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
-        """SIFT 落格投票定位目标套装件 → 点击;未命中滚动重扫(框架重试驱动)。"""
+        """SIFT 落格投票定位目标套装件候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
+
+        候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 同套装多副本
+        场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。"""
         if self._scan_screens >= _SCAN_MAX_SCREENS:
             return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏未找到 {self.piece_name}'
                                    f'(未拥有或识别失败)')
@@ -164,18 +168,24 @@ class EquipRelicOp(SrOperation):
             return self.round_fail(f'遗器图标缺失:'
                                    f'{icon_webp_rel_path(set_def.set_id, self.pos)}')
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
-        cell = locate_cell_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
-                                    template, list_area.rect, _relic_col_centers(list_area.rect))
-        if cell is None:
+        cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
+                                      template, list_area.rect, _relic_col_centers(list_area.rect))
+        log.info('替换遗器: 本屏识别到目标件 %d 件 %s(第 %d 屏)',
+                 len(cells), [(c[0].x, c[0].y, f'{c[1]}票') for c in cells], self._scan_screens + 1)
+        if self._candidate_idx >= len(cells):
             center = list_area.rect.center
             self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),
                                         Point(center.x, center.y - _SCROLL_DRAG_PX // 2))
             self._scan_screens += 1
-            return self.round_retry('当前屏未命中,滚动一屏重扫', wait=1)
+            self._candidate_idx = 0
+            return self.round_retry('当前屏候选耗尽,滚动一屏重扫', wait=1)
 
+        cell = cells[self._candidate_idx][0]
         self.ctx.controller.click(cell)
+        self._candidate_idx += 1
         self._select_retries = 0  # 重新点击后重置验证计数
-        log.info('替换遗器: 定位到目标卡 (%.0f, %.0f),第 %d 屏', cell.x, cell.y, self._scan_screens + 1)
+        log.info('替换遗器: 点击候选 %d/%d (%.0f, %.0f)',
+                 self._candidate_idx, len(cells), cell.x, cell.y)
         return self.round_success(status='CLICKED', wait=1.2)
 
     @node_from(from_name='定位并选卡', status='CLICKED')

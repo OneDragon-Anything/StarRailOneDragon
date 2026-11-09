@@ -43,19 +43,20 @@ def load_template_gray(rel_path: str) -> np.ndarray | None:
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 
-def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
-                         list_rect: Rect, col_centers: list[float],
-                         col_snap_px: int = _COL_SNAP_PX,
-                         row_gap_px: int = _ROW_CLUSTER_GAP_PX,
-                         min_votes: int = _MIN_CELL_VOTES) -> Point | None:
-    """在替换类列表截图里定位模板图所在卡:特征点落格投票。
+def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
+                          list_rect: Rect, col_centers: list[float],
+                          col_snap_px: int = _COL_SNAP_PX,
+                          row_gap_px: int = _ROW_CLUSTER_GAP_PX,
+                          min_votes: int = _MIN_CELL_VOTES) -> list[tuple[Point, int]]:
+    """在替换类列表截图里定位模板图所在卡:**全量清单** —— 列表内每一个
+    同图标件的位置都识别出来,不丢件、不隐式偏好。
 
     对每个 good match 点:计入列表区内的点,y 排序聚簇(间隔超阈值分行),
-    取最大簇(≥ 最低票数),簇内点按列带投票取最高列。返回该格点击中心
-    (最高票列中心, 簇 y 均值);票数不足/簇过小返回 None(目标不在当前屏)。
+    对每个 (簇, 列) 组合计票,票数 ≥ min_votes 的组合全部返回。
 
-    同套装多件同屏(遗器场景)时票可能分裂到多列 —— 件名相同,任一列均
-    满足意图,取最高票列。
+    :return: [(格中心, 票数), ...] 按票数降序。同名光锥/同套装同部位的多件
+        副本各占一格 —— **选哪件是调用方基于全量清单的决策**(如多角色装备
+        同一把光锥时依次取不同副本,避免重复选中同一件),识别层不做隐式筛选。
     """
     s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
     t_kp, t_desc = cv2_utils.feature_detect_and_compute(template_gray)
@@ -68,7 +69,7 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
         if x1 <= px <= x2 and y1 <= py <= y2:
             pts.append((px, py))
     if len(pts) < min_votes:
-        return None
+        return []
 
     pts.sort(key=lambda p: p[1])
     clusters: list[list[tuple[float, float]]] = []
@@ -77,14 +78,30 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
             clusters[-1].append(p)
         else:
             clusters.append([p])
-    best = max(clusters, key=len)
-    if len(best) < min_votes:
-        return None
 
-    votes = [sum(1 for p in best if abs(p[0] - cx) < col_snap_px) for cx in col_centers]
-    best_col = max(range(len(col_centers)), key=lambda i: votes[i])
-    if votes[best_col] < min_votes or votes[best_col] < len(best) * 0.5:
-        return None
+    candidates: list[tuple[Point, int]] = []
+    for cluster in clusters:
+        if len(cluster) < min_votes:
+            continue
+        cy = sum(p[1] for p in cluster) / len(cluster)
+        votes = [sum(1 for p in cluster if abs(p[0] - cx) < col_snap_px) for cx in col_centers]
+        for i, v in enumerate(votes):
+            if v >= min_votes:
+                candidates.append((Point(col_centers[i], cy), v))
+    candidates.sort(key=lambda c: -c[1])
+    return candidates
 
-    cy = sum(p[1] for p in best) / len(best)
-    return Point(col_centers[best_col], cy)
+
+def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
+                         list_rect: Rect, col_centers: list[float],
+                         col_snap_px: int = _COL_SNAP_PX,
+                         row_gap_px: int = _ROW_CLUSTER_GAP_PX,
+                         min_votes: int = _MIN_CELL_VOTES) -> Point | None:
+    """定位模板图所在卡(最高票候选);无候选返回 None。
+
+    多件副本场景建议用 :meth:`locate_cells_by_votes` 取全量清单
+    (选哪件由调用方决策,识别层不隐式筛选)。"""
+    cells = locate_cells_by_votes(screen_gray, template_gray, list_rect, col_centers,
+                                  col_snap_px=col_snap_px, row_gap_px=row_gap_px,
+                                  min_votes=min_votes)
+    return cells[0][0] if cells else None
