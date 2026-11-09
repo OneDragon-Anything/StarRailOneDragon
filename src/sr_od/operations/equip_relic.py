@@ -22,6 +22,7 @@ import time
 import cv2
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -30,6 +31,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
+from sr_od.operations.equip_owner_match import match_owner
 from sr_od.operations.grid_template_locate import (
     load_template_gray,
     locate_cells_by_votes,
@@ -170,8 +172,15 @@ class EquipRelicOp(SrOperation):
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
         cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
                                       template, list_area.rect, _relic_col_centers(list_area.rect))
+        # 占用者识别:角标区偏移按遗器卡实测(格中心 +6/-63 ~ +61/-13)
+        owners = []
+        for c, _v in cells:
+            badge = Rect(c.x + 6, c.y - 63, c.x + 61, c.y - 13)
+            owner, _score = match_owner(screen_img, badge)
+            owners.append(owner or '未装备')
         log.info('替换遗器: 本屏识别到目标件 %d 件 %s(第 %d 屏)',
-                 len(cells), [(c[0].x, c[0].y, f'{c[1]}票') for c in cells], self._scan_screens + 1)
+                 len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],
+                 self._scan_screens + 1)
         if self._candidate_idx >= len(cells):
             center = list_area.rect.center
             self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),

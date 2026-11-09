@@ -40,6 +40,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME, icon_webp_rel_path
+from sr_od.operations.equip_owner_match import match_owner
 from sr_od.operations.grid_template_locate import (
     load_template_gray,
     locate_cells_by_votes,
@@ -163,8 +164,15 @@ class EquipLightConeOp(SrOperation):
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
         cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
                                       template, list_area.rect, _cone_col_centers(list_area.rect))
+        # 占用者识别:角标区偏移按光锥卡实测(格中心 +18/-83 ~ +78/-33)
+        owners = []
+        for c, _v in cells:
+            badge = Rect(c.x + 18, c.y - 83, c.x + 78, c.y - 33)
+            owner, _score = match_owner(screen_img, badge)
+            owners.append(owner or '未装备')
         log.info('替换光锥: 本屏识别到目标光锥 %d 件 %s(第 %d 屏)',
-                 len(cells), [(c[0].x, c[0].y, f'{c[1]}票') for c in cells], self._scan_screens + 1)
+                 len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],
+                 self._scan_screens + 1)
         if self._candidate_idx >= len(cells):
             # 本屏候选耗尽(或整屏未命中) → 滚动下一屏
             center = list_area.rect.center

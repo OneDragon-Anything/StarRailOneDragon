@@ -1,0 +1,76 @@
+"""装备列表卡「占用者识别」:角标区角色头像匹配。
+
+替换列表每件装备右上角的圆形头像角标 = 当前装备者头像的渲染,与解包
+``avatarminiicon``(64×64 圆形)同源同渲染 —— 缩放到 36px 后 matchTemplate
+匹配可靠(2026-11-09 实测:同角色 0.878 / 异角色 0.24-0.45,阈值 0.75 可分)。
+
+⚠️ 颜色/亮度统计判「有无角标」不具泛化性,已实测排除:卡面图案明暗盖过
+角标差异(光锥界面角标比卡面亮 +41,遗器界面反而暗 -36,两方向均反向)。
+占用识别只走头像匹配正路;全部模板低于阈值 = 未装备或角标角色不在库,
+诚实返回 None(不猜测)。
+
+模板库:`assets/template/character_avatar_mini/<角色id>.png`(由私有 skill
+``sr-od-dev-character-data`` 的 ``archive_mini_icons.py`` 从解包产物归档;
+``skin_`` 前缀为衣装变体,占用识别按角色归一)。
+"""
+
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.utils import cv2_utils, os_utils
+
+_MINI_DIR_REL = 'assets/template/character_avatar_mini'
+# 角标圆的有效直径 ~40px,mini 原始 64px 缩放到 36px 实测最优档
+_TEMPLATE_SIZE: int = 36
+# 命中阈值(实测同角色最低 0.878、异角色最高 0.453,取中)
+_MIN_OWNER_SCORE: float = 0.75
+
+_mini_cache: dict[str, np.ndarray] | None = None
+
+
+def _owner_templates() -> dict[str, np.ndarray]:
+    """懒加载全部角色 mini 模板(灰度 36×36;skin_ 前缀归一到角色 id)。"""
+    global _mini_cache
+    if _mini_cache is not None:
+        return _mini_cache
+    _mini_cache = {}
+    base = Path(os_utils.get_path_under_work_dir(*_MINI_DIR_REL.split('/')))
+    for f in base.glob('*.png'):
+        img = cv2_utils.read_image(str(f))
+        if img is None:
+            continue
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        name = f.stem[5:] if f.stem.startswith('skin_') else f.stem
+        _mini_cache[name] = cv2.resize(gray, (_TEMPLATE_SIZE, _TEMPLATE_SIZE))
+    return _mini_cache
+
+
+def match_owner(screen_rgb: np.ndarray, badge_rect: Rect) -> tuple[str | None, float]:
+    """识别角标区的占用角色。
+
+    :param screen_rgb: 整屏截图(RGB)
+    :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量)
+    :return: (角色 id, 最高分);最高分 < 阈值返回 (None, 最高分) —— 未装备
+        或角标角色不在模板库,不猜测。
+    """
+    zone = screen_rgb[badge_rect.y1:badge_rect.y2, badge_rect.x1:badge_rect.x2]
+    if zone.size == 0:
+        return None, 0.0
+    gray_zone = cv2.cvtColor(zone, cv2.COLOR_RGB2GRAY)
+
+    best_name: str | None = None
+    best_score = 0.0
+    for name, tmpl in _owner_templates().items():
+        if tmpl.shape[0] > gray_zone.shape[0] or tmpl.shape[1] > gray_zone.shape[1]:
+            continue
+        res = cv2.matchTemplate(gray_zone, tmpl, cv2.TM_CCOEFF_NORMED)
+        _, mv, _, _ = cv2.minMaxLoc(res)
+        if mv > best_score:
+            best_name, best_score = name, mv
+
+    if best_score < _MIN_OWNER_SCORE:
+        return None, best_score
+    return best_name, best_score
