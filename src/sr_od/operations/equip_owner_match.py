@@ -25,21 +25,27 @@ from sr_od.config.character_const import get_character_by_id
 _MINI_DIR_REL = 'assets/template/character_avatar_mini'
 # 角标圆的有效直径 ~40px,mini 原始 64px 缩放到 36px 实测最优档
 _TEMPLATE_SIZE: int = 36
+# 角标渲染**尺寸不统一**(遗器替换界面实机:同一列表内两档圆径 ~30px 与
+# ~48px 并存,固定 36px 模板只命中小档、大档 0.47 全灭)——匹配按多尺度
+# 展开,取各档最高分;档位覆盖实测两档圆径
+_TEMPLATE_SIZES: tuple[int, ...] = (36, 48)
 # 命中阈值(实测同角色最低 0.878、异角色最高 0.453,取中)
 _MIN_OWNER_SCORE: float = 0.75
 # 光锥界面角标渲染更小/更糊,实测同角色好匹配 0.72-0.91、噪声上限约 0.66,阈值 0.70 裕度薄,调参需回归;
 # 两界面的异角色误配上限都很低(0.35-0.45),放低不失区分度
 LIGHT_CONE_OWNER_SCORE: float = 0.70
 
-_mini_cache: dict[str, np.ndarray] | None = None
+_mini_cache: dict[int, dict[str, np.ndarray]] = {}
 
 
-def _owner_templates() -> dict[str, np.ndarray]:
-    """懒加载全部角色 mini 模板(灰度 36×36;skin_ 前缀归一到角色 id)。"""
-    global _mini_cache
-    if _mini_cache is not None:
+def _owner_templates() -> dict[int, dict[str, np.ndarray]]:
+    """懒加载全部角色 mini 模板,按匹配尺度分档(skin_ 前缀归一到角色 id)。
+
+    :return: 尺度 → (角色 id → 该尺度灰度模板);键常驻保证缓存命中。
+    """
+    if _mini_cache:
         return _mini_cache
-    _mini_cache = {}
+    lib: dict[int, dict[str, np.ndarray]] = {size: {} for size in _TEMPLATE_SIZES}
     base = Path(os_utils.get_path_under_work_dir(*_MINI_DIR_REL.split('/')))
     for f in base.glob('*.png'):
         img = cv2_utils.read_image(str(f))
@@ -47,13 +53,18 @@ def _owner_templates() -> dict[str, np.ndarray]:
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         name = f.stem[5:] if f.stem.startswith('skin_') else f.stem
-        _mini_cache[name] = cv2.resize(gray, (_TEMPLATE_SIZE, _TEMPLATE_SIZE))
+        for size in _TEMPLATE_SIZES:
+            lib[size][name] = cv2.resize(gray, (size, size))
+    _mini_cache.update(lib)
     return _mini_cache
 
 
 def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
                 min_score: float = _MIN_OWNER_SCORE) -> tuple[str | None, float]:
     """识别角标区的占用角色,返回**中文角色名**(如「黄泉」)。
+
+    多尺度匹配:角标渲染尺寸两档并存(见 _TEMPLATE_SIZES 注),各档独立
+    matchTemplate 取全局最高分判阈。
 
     :param screen_rgb: 整屏截图(RGB)
     :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量)
@@ -69,13 +80,14 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
 
     best_name: str | None = None
     best_score = 0.0
-    for name, tmpl in _owner_templates().items():
-        if tmpl.shape[0] > gray_zone.shape[0] or tmpl.shape[1] > gray_zone.shape[1]:
-            continue
-        res = cv2.matchTemplate(gray_zone, tmpl, cv2.TM_CCOEFF_NORMED)
-        _, mv, _, _ = cv2.minMaxLoc(res)
-        if mv > best_score:
-            best_name, best_score = name, mv
+    for templates_by_name in _owner_templates().values():
+        for name, tmpl in templates_by_name.items():
+            if tmpl.shape[0] > gray_zone.shape[0] or tmpl.shape[1] > gray_zone.shape[1]:
+                continue
+            res = cv2.matchTemplate(gray_zone, tmpl, cv2.TM_CCOEFF_NORMED)
+            _, mv, _, _ = cv2.minMaxLoc(res)
+            if mv > best_score:
+                best_name, best_score = name, mv
 
     if best_score < min_score:
         return None, best_score

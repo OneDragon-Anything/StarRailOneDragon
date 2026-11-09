@@ -42,11 +42,12 @@ from sr_od.operations.sr_operation import SrOperation
 _RELIC_TAB_SCREEN: str = '角色-遗器'
 _REPLACE_SCREEN: str = '遗器-替换'
 
-# 网格几何:4 列,首列中心相对列表区 x1 偏移 66px、列间距 110px
-# (实机实测;列表区 rect 见 screen_info「区域-遗器列表」,等分推导不成立 ——
-#  左边距与卡间距不均匀,故用偏移+间距双常量声明,坐标系 = 列表区 rect 内像素)
+# 网格几何:4 列,首列中心相对列表区 x1 偏移 66px、列间距 123px
+# (实机亮度剖面实测列中心 99/224/346/469;列表区 rect 见 screen_info
+# 「区域-遗器列表」,等分推导不成立 —— 左边距与卡间距不均匀,故用偏移+
+# 间距双常量声明,坐标系 = 列表区 rect 内像素)
 _GRID_COL_OFFSET: int = 66
-_GRID_COL_GAP: int = 110
+_GRID_COL_GAP: int = 123
 # 每屏扫描的滚动拖拽:列表中心上移 300px(约 2 行卡位,避免跳行)
 _SCROLL_DRAG_PX: int = 300
 # 滚动扫描的屏幕数上限

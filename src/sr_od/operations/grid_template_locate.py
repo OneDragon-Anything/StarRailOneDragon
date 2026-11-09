@@ -294,5 +294,5 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
 #------------------- 装备替换列表网格几何(已废弃固定网格,卡位走等级文本锚点) -------------------#
 # 遗器 4 列列中心公式仍被替换 op 的特征落格投票使用(op 自身在列表顶部工作,列位置固定)。
 def relic_col_centers(list_rect: Rect) -> list[float]:
-    """遗器替换列表列中心(偏移+间距常量,与替换 op 同源)。"""
-    return [list_rect.x1 + 66 + 110 * i for i in range(4)]
+    """遗器替换列表列中心(偏移+间距常量,与替换 op 同源;列距实机亮度剖面实测 123px)。"""
+    return [list_rect.x1 + 66 + 123 * i for i in range(4)]

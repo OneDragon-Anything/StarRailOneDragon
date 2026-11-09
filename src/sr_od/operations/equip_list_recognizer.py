@@ -68,6 +68,13 @@ _FALLBACK_TEMPLATE_SIZE = (174, 204)
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
 
+# 轮廓补充卡的网格吸附半径:中心 x 距列中心 / 中心 y 距锚点行带(卡中心)的
+# 最大偏差。实机验证:网格间隙纹理被 Canny 检出的伪矩形(如 122×113 的间隙
+# 框)中心落在列与列之间(偏差 ≥31px),真卡(含 OCR 漏锚卡)中心与网格交点
+# 偏差 ≤17px —— 以此区分,不吸附且不贴列表边缘的轮廓矩形丢弃。
+_CONTOUR_COL_SNAP_PX = 28
+_CONTOUR_ROW_SNAP_PX = 70
+
 
 def _iou(a: Rect, b: Rect) -> float:
     ix = max(0, min(a.x2, b.x2) - max(a.x1, b.x1))
@@ -106,7 +113,13 @@ class _EquipListRecognizerBase(ScreenRecognizer):
 
     def _locate_cards(self, ctx: SrContext, image: MatLike,
                       list_area) -> tuple[list[Rect], list, MatLike]:
-        """定位层:等级文本锚点 + 轮廓补充,去重合并(锚点优先)。
+        """定位层:等级文本锚点 + 轮廓补充,去重合并后按网格吸附过滤。
+
+        轮廓补充的误检源实机实证:网格间隙的装饰底纹会形成闭合轮廓,矩形
+        尺寸恰好落进卡尺寸窗,但中心不落在任何网格交点上;真卡(含 OCR 漏
+        锚卡)中心必与「列中心 × 锚点行带」交点吻合。过滤规则:与锚点卡
+        同列同行 → 保留(锚点漏读的真卡);贴列表上下边缘 → 保留(滚动
+        裁切卡,无完整网格交点);其余丢弃。
 
         :return: (卡矩形清单, 全图 OCR 结果, 列表灰度图)——灰度图供识别层
             复用,避免整帧 cvtColor 重复计算。
@@ -119,8 +132,41 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         for c_rect in contour_rects:
             if all(_iou(c_rect, a) < _DEDUPE_IOU for a in anchor_rects):
                 merged.append(c_rect)
+        merged = self._filter_contour_offgrid(merged, anchor_rects, list_area.rect)
         merged.sort(key=lambda r: (r.y1 // 100, r.x1))
         return merged, ocr_results, gray
+
+    def _filter_contour_offgrid(self, merged: list[Rect],
+                                anchor_rects: list[Rect], list_rect: Rect) -> list[Rect]:
+        """丢弃不吸附锚点网格、也不贴列表边缘的轮廓误检矩形。
+
+        锚点卡(行列解耦换算)天然在网格上,原样保留;仅对轮廓补充卡校验:
+        中心 x 吸附列中心(固定列先验)、中心 y 与某锚点卡中心同行带,两者
+        同时成立视为网格上的真卡(锚点 OCR 漏读场景);贴列表上下边缘的
+        轮廓卡是滚动裁切卡(无完整网格交点),保留。
+        """
+        col_centers = self._col_centers(list_rect)
+        kept: list[Rect] = []
+        anchor_set = {id(a) for a in anchor_rects}
+        for rect in merged:
+            if id(rect) in anchor_set or len(anchor_rects) == 0:
+                kept.append(rect)
+                continue
+            cx, cy = (rect.x1 + rect.x2) / 2, (rect.y1 + rect.y2) / 2
+            col_ok = min(abs(cx - c) for c in col_centers) <= _CONTOUR_COL_SNAP_PX
+            if not col_ok:
+                # 列吸附是硬条件:真卡(含滚动裁切卡)x 方向必在列上;网格间隙
+                # 纹理矩形顶到列表上边缘也不在列上(实机 476 中心 vs 列 429 实证)
+                continue
+            clipped_by_edge = (rect.y1 <= list_rect.y1 + 5
+                               or rect.y2 >= list_rect.y2 - 5)
+            if clipped_by_edge:
+                kept.append(rect)  # 裁切卡只豁免行检查(y 被截断,x 仍在列上)
+                continue
+            row_ok = min(abs(cy - (a.y1 + a.y2) / 2) for a in anchor_rects) <= _CONTOUR_ROW_SNAP_PX
+            if row_ok:
+                kept.append(rect)
+        return kept
 
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
@@ -229,22 +275,26 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     extras_doc: dict[str, str] = {
         'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
                  'set:套装名, pos_cn:部位, level:强化等级(0-15), '
-                 'owner:占用角色(中文名), identity: full(N票)/fallback(N簇)/none}],'
-                 '按卡位置排序;全部识别失败的卡不列',
-        'total_cards': '定位到的卡总数(锚点 + 轮廓补充)',
+                 'owner:占用角色(中文名), identity: full(N票)/fallback(N簇)/masked'
+                 '(重掷动画遮罩卡,身份不判)/none}],按卡位置排序;'
+                 '全部识别失败的卡不列',
+        'total_cards': '定位到的卡总数(锚点 + 网格吸附过滤后的轮廓补充)',
     }
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
-        # 角标区偏移实测(遗器卡):卡片矩形内右上角
-        return Rect(card_rect.x2 - 55, card_rect.y1 + 17,
-                    card_rect.x2, card_rect.y1 + 67)
+        # 角标区偏移(遗器卡实机霍夫圆实测):头像圆心 ≈ (x2-19, y1+34)、直径
+        # 35-37px,圆右缘超出卡右缘 ~1px —— 检测窗右缘外扩 6px 保证完整圆,
+        # 否则圆被裁缺角、matchTemplate 分数从 0.81 跌到 0.47(全灭实证)
+        return Rect(card_rect.x2 - 55, card_rect.y1 + 10,
+                    card_rect.x2 + 6, card_rect.y1 + 62)
 
     def _list_area_name(self) -> str:
         return '区域-遗器列表'
 
     def _col_centers(self, list_rect: Rect) -> list[float]:
-        """4 列中心:列表区 x1+66 起步、列距 110px(锚点卡实测)。"""
-        return [list_rect.x1 + 66 + 110 * i for i in range(4)]
+        """4 列中心:列表区 x1+66 起步、列距 123px(实机亮度剖面实测
+        列中心 99/224/346/469;与 EquipRelicOp/grid_template_locate 同源)。"""
+        return [list_rect.x1 + 66 + 123 * i for i in range(4)]
 
     def _owner_min_score(self) -> float:
         return _MIN_OWNER_SCORE
@@ -256,12 +306,30 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         screen_info: ScreenInfo,
     ) -> dict | None:
         """遗器列表完整绑定:每件 {件名, 套装, 部位, 强化等级, 占用者}。"""
+        return self._recognize(ctx, image,
+                               _relic_piece_templates(), _relic_piece_templates_scaled())
+
+    def recognize_for_pos(self, ctx: SrContext, image: MatLike, pos: int) -> dict | None:
+        """带部位先验的遗器列表识别(替换 op 用:从着装页点部位进来,列表已被
+        该部位筛选锁定——候选收缩到单部位,同框歧义与跨部位误配同时下降)。
+
+        :param pos: 装备部位号(1=头部 2=手部 3=躯干 4=脚部 5=位面球 6=连结绳,
+            与 SrRelicPieceDef.pos 同坐标系)。
+        """
+        return self._recognize(ctx, image,
+                               _relic_piece_templates_for_pos(pos),
+                               _relic_piece_templates_scaled_for_pos(pos))
+
+    def _recognize(self, ctx: SrContext, image: MatLike,
+                   templates: dict[str, MatLike],
+                   scaled_templates: dict[str, np.ndarray]) -> dict | None:
+        """遗器列表识别主体;模板集可替换(全库 / 部位子集)。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
         card_rects, ocr_results, gray = self._locate_cards(ctx, image, list_area)
 
         anchor_cx = [r.center.x for r in card_rects]
         identity_hits = identify_cells(
-            cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _relic_piece_templates(),
+            cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), templates,
             list_area.rect, anchor_cx=anchor_cx)
         identity_by_card: dict[int, tuple[int, str]] = {}
         for ccx, ccy, votes, name in identity_hits:
@@ -278,13 +346,18 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
                                         min_score=self._owner_min_score())
             level = self._read_level(ocr_results, card_rect)
-            ident = identity_by_card.get(idx)
-            piece_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
-            if piece_name is None:
-                piece_name, confidence = _fallback_identity(
-                    gray, card_rect, _relic_piece_templates_scaled())
-                if piece_name is not None:
-                    identity_src = f'fallback({confidence}簇)'
+            if self._is_masked_card(ocr_results, card_rect):
+                # 重掷动画帧:卡面被遮罩持续污染(同卡三帧 argmax 三个不同答案
+                # 实证),身份不可信——标记 masked 不猜,其余字段照常输出
+                piece_name, identity_src = None, 'masked'
+            else:
+                ident = identity_by_card.get(idx)
+                piece_name, identity_src = ((ident[1], f'full({ident[0]}票)')
+                                            if ident else (None, 'none'))
+                if piece_name is None:
+                    piece_name, confidence = _fallback_identity(gray, card_rect, scaled_templates)
+                    if piece_name is not None:
+                        identity_src = f'fallback({confidence}簇)'
             if piece_name is None and owner is None and level is None:
                 continue  # 全部识别失败的卡,不猜测
             item = {'cell': [card_rect.x1, card_rect.y1,
@@ -299,6 +372,23 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
             items.append(item)
         items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
         return {'items': items, 'total_cards': len(card_rects)}
+
+    def _is_masked_card(self, ocr_results: list, card_rect: Rect) -> bool:
+        """卡面被「重掷中」动画遮罩覆盖的检测(该卡身份不可识别,不猜测)。
+
+        重掷动画期间卡面上方覆盖黄色横幅与动态特效,卡面特征被持续污染
+        (同一卡连续三帧 fallback argmax 三个不同答案实证)——检测卡矩形内
+        是否出现「重掷」类文本(右下角重掷按钮在列表区外,不会被误命中)。
+        """
+        for r in ocr_results:
+            text = str(r.data).strip()
+            if not text.startswith('重'):
+                continue
+            rect = r.rect
+            if (card_rect.x1 + 10 <= (rect.x1 + rect.x2) / 2 <= card_rect.x2 - 10
+                    and card_rect.y1 <= (rect.y1 + rect.y2) / 2 <= card_rect.y2):
+                return True
+        return False
 
     def _read_level(self, ocr_results: list, card_rect: Rect) -> int | None:
         """从锚点 OCR 结果解析本卡的强化等级「+N」(0-15)。"""
@@ -374,6 +464,33 @@ def _relic_piece_templates_scaled() -> dict[str, np.ndarray]:
             name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
             for name, t in _relic_piece_templates().items()}
     return _relic_piece_scaled_cache
+
+
+_pos_piece_template_cache: dict[int, dict[str, MatLike]] = {}
+_pos_piece_scaled_cache: dict[int, dict[str, np.ndarray]] = {}
+
+
+def _relic_piece_templates_for_pos(pos: int) -> dict[str, MatLike]:
+    """部位过滤的遗器模板子集(pos 见 SrRelicPieceDef 坐标系;进程级缓存)。
+
+    替换界面顶部部位筛选 tab 锁定列表内容——列表内全部为该部位件,候选从
+    全库 192 件收缩到单部位(隧洞 ≤34 件),同框歧义竞争与跨部位误配同时
+    下降(部位先验由调用方提供:替换 op 从着装页点部位进来,部位恒已知)。
+    """
+    if pos not in _pos_piece_template_cache:
+        _pos_piece_template_cache[pos] = {
+            name: t for name, t in _relic_piece_templates().items()
+            if next(p for p in PIECE_TO_SET[name].pieces if p.name == name).pos == pos}
+    return _pos_piece_template_cache[pos]
+
+
+def _relic_piece_templates_scaled_for_pos(pos: int) -> dict[str, np.ndarray]:
+    """部位过滤的预缩放遗器模板子集(降级匹配用;与全尺寸子集同键同源)。"""
+    if pos not in _pos_piece_scaled_cache:
+        _pos_piece_scaled_cache[pos] = {
+            name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
+            for name, t in _relic_piece_templates_for_pos(pos).items()}
+    return _pos_piece_scaled_cache[pos]
 
 
 def _fallback_identity(gray: np.ndarray, card_rect: Rect,
