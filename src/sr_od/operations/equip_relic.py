@@ -148,6 +148,8 @@ class EquipRelicOp(SrOperation):
         return self.round_success(status='NEED_REPLACE')
 
     @node_from(from_name='当前装备核对', status='NEED_REPLACE')
+    @node_from(from_name='确认替换', status='ROB_CONFIRM_CANCELLED')
+    @node_from(from_name='验证选中', status='RESELECT')
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
         """识别器驱动的整屏识别定位目标件候选 → 逐个点击;屏内候选耗尽滚动重扫。
@@ -166,13 +168,15 @@ class EquipRelicOp(SrOperation):
         matched: list[dict] = []
         if out is not None:
             matched = [item for item in out['items'] if item['piece'] == self.piece_name]
-        # 未装备(owner=None)优先;同屏多副本全部入候选,逐个点击验证
-        matched.sort(key=lambda item: item['owner'] is not None)
+        # 仅未装备(owner=None)候选:owner 非 None 的件点击会弹「抢件确认」且
+        # 直接从对方身上换下 —— 编队角色的装备不可被动;owner 漏报的已装备件
+        # 由点击后的弹框分支兜底取消(见 dismiss_rob_confirm)
+        matched = [item for item in matched if item['owner'] is None]
 
-        log.info('替换遗器: 本屏识别 %d 件、目标 %d 件 %s(第 %d 屏)',
+        log.info('替换遗器: 本屏识别 %d 件、目标未装备 %d 件 %s(第 %d 屏)',
                  len(out['items']) if out else 0, len(matched),
-                 [(item['cell'][0], item['cell'][1], item['owner'])
-                  for item in matched], self._scan_screens + 1)
+                 [(item['cell'][0], item['cell'][1]) for item in matched],
+                 self._scan_screens + 1)
         if self._candidate_idx >= len(matched):
             list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
             center = list_area.rect.center
@@ -208,8 +212,19 @@ class EquipRelicOp(SrOperation):
     def confirm_replace(self) -> OperationRoundResult:
         """点「替换」即装备。**与光锥不同:遗器替换后停在替换界面不回着装页**,
         列表重排且选中态自动切到新装备件 —— 按钮从「替换」变回「卸下」即
-        装备生效的可靠锚(until)。"""
+        装备生效的可靠锚(until)。
+        抢件确认框兜底:owner 漏报的已装备件点击后游戏弹「遗器已被 X 装备,
+        是否替换?」—— 一律取消(装备他人件不可抢),推进到下一候选。"""
         screen = self.last_screenshot
+        if self.round_by_find_area(screen, _REPLACE_SCREEN, '文本-抢件确认').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _REPLACE_SCREEN, '按钮-抢件取消',
+                until_not_find_all=[(_REPLACE_SCREEN, '文本-抢件确认')],
+                pre_delay=0.3, success_wait=0.8, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_success(status='ROB_CONFIRM_CANCELLED')
+            return result
         return self.round_by_find_and_click_area(
             screen, _REPLACE_SCREEN, '按钮-替换装备',
             until_find_all=[(_REPLACE_SCREEN, '按钮-卸下')],
