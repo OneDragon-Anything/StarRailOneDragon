@@ -28,6 +28,7 @@ import cv2
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
+from sr_od.mys.sr_codes import RELIC_POS_CN
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.equip_owner_match import (
     _MIN_OWNER_SCORE,
@@ -122,6 +123,13 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
 
     screen_name = '遗器-替换'
 
+    extras_doc: dict[str, str] = {
+        'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
+                 'set:套装名, pos_cn:部位, level:强化等级, owner:占用角色id}],'
+                 '按格坐标排序;空格/全识别失败的格不列',
+        'total_cells': '网格内可见格总数(含未装备/空格)',
+    }
+
     def _grid_cells(self, list_rect: Rect) -> list[Rect]:
         return relic_grid_cells(list_rect)
 
@@ -142,7 +150,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         image: MatLike,
         screen_info: ScreenInfo,
     ) -> dict | None:
-        """遗器列表完整绑定:每格 {件名, 等级, 占用者};全空格不列。"""
+        """遗器列表完整绑定:每格 {件名, 套装, 部位, 等级, 占用者};全空格不列。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
         cells = relic_grid_cells(list_area.rect)
         col_centers = relic_col_centers(list_area.rect)
@@ -167,9 +175,15 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
             piece = identity_by_cell.get(idx)
             if piece is None and owner is None and level is None:
                 continue  # 空格(或全部识别失败,不猜测)
-            items.append({'cell': [cell_rect.x1, cell_rect.y1,
-                                   cell_rect.x2, cell_rect.y2],
-                          'piece': piece, 'level': level, 'owner': owner})
+            item = {'cell': [cell_rect.x1, cell_rect.y1,
+                             cell_rect.x2, cell_rect.y2],
+                    'piece': piece, 'level': level, 'owner': owner}
+            if piece is not None:
+                set_def = PIECE_TO_SET[piece]
+                pos = next(p.pos for p in set_def.pieces if p.name == piece)
+                item['set'] = set_def.set_name
+                item['pos_cn'] = RELIC_POS_CN[pos]
+            items.append(item)
         items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
         return {'items': items, 'total_cells': len(cells)}
 
@@ -190,7 +204,10 @@ def _relic_piece_templates() -> dict[str, MatLike]:
     if _relic_piece_template_cache is None:
         lib: dict[str, MatLike] = {}
         for piece_name, set_def in PIECE_TO_SET.items():
-            template = load_template_gray(icon_webp_rel_path(set_def.set_id, piece_name))
+            piece = next((p for p in set_def.pieces if p.name == piece_name), None)
+            if piece is None:
+                continue
+            template = load_template_gray(icon_webp_rel_path(set_def.set_id, piece.pos))
             if template is not None:
                 lib[piece_name] = template
         _relic_piece_template_cache = lib
