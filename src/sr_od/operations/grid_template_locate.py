@@ -105,3 +105,20 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
                                   col_snap_px=col_snap_px, row_gap_px=row_gap_px,
                                   min_votes=min_votes)
     return cells[0][0] if cells else None
+
+
+#------------------- 装备替换列表网格几何(识别器与 op 共用) -------------------#
+# 行带中心 = 实机标定的固定值(1080p;列表可视区内完整可见的行)
+# 光锥-替换:9 列等分(列中心由列表区 rect 推导),行带中心间距 200px
+def cone_grid_cells(list_rect: Rect) -> list[Point]:
+    """光锥替换列表全部格中心(9 列 × 4 行,行带中心 278/478/678/878 实机标定)。"""
+    cell_w = (list_rect.x2 - list_rect.x1) / 9
+    col_centers = [list_rect.x1 + cell_w * (i + 0.5) for i in range(9)]
+    return [Point(cx, cy) for cy in (278, 478, 678, 878) for cx in col_centers]
+
+
+# 遗器-替换:4 列(列表区 x1 + 首列偏移 66 + 间距 110),行带中心 260+183k 实机标定
+def relic_grid_cells(list_rect: Rect) -> list[Point]:
+    """遗器替换列表全部格中心(4 列 × 4 行,只含列表区内完整可见行)。"""
+    col_centers = [list_rect.x1 + 66 + 110 * i for i in range(4)]
+    return [Point(cx, cy) for cy in (260, 443, 626, 809) for cx in col_centers]
