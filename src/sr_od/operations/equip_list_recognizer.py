@@ -192,7 +192,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
                                         min_score=self._owner_min_score())
             level = self._read_level(ocr_results, card_rect)
             ident = identity_by_card.get(idx)
-            cone_name, identity_src = (ident if ident else (None, 'none'))
+            cone_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
             if cone_name is None:
                 cone_name, confidence = _fallback_identity(
                     gray, card_rect, _light_cone_templates_scaled())
@@ -285,7 +285,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                                         min_score=self._owner_min_score())
             level = self._read_level(ocr_results, card_rect)
             ident = identity_by_card.get(idx)
-            piece_name, identity_src = (ident if ident else (None, 'none'))
+            piece_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
             if piece_name is None:
                 piece_name, confidence = _fallback_identity(
                     gray, card_rect, _relic_piece_templates_scaled())
