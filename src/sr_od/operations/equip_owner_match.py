@@ -86,4 +86,14 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
 def _owner_cn(template_name: str) -> str:
     """模板英文 id → 中文角色名;character_const 未收录的兜底返回英文 id。"""
     character = get_character_by_id(template_name)
-    return character.cn if character is not None else template_name
+    if character is not None:
+        return character.cn
+    # mini 库 tag 与项目 Character.id 的已知差异(解包 tag 是官方英文缩写,
+    # 项目 id 是全称;随新角色出现按需补录)
+    alias = {'danhengil': 'danhengimbibitorlunae', 'topaz': 'topaznumby'}
+    alias_id = alias.get(template_name)
+    if alias_id is not None:
+        character = get_character_by_id(alias_id)
+        if character is not None:
+            return character.cn
+    return template_name
