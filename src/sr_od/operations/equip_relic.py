@@ -5,9 +5,9 @@ grid_template_locate)。交互链实机摸底:
 - 角色遗器着装页**点目标遗器位直达该部位的替换界面**(部位筛选已锁定,
   无需先点「替换」再选部位);4 列卡片网格;
 - 卡片上无遗器名(单件名只在选中后右侧详情可读);同套装同部位件名相同
-  (单件名由套装+部位唯一确定)——识别参数 = 单件名,PIECE_TO_SET 反查
-  套装与部位;部件图模板(按名称键寻址归档图标,见 sr_relic_sets.icon_webp_rel_path)
-  作 SIFT 模板落格投票,
+  (单件名由套装+部位唯一确定)——定位走 RelicReplaceRecognizer.recognize_for_pos
+  部位先验整屏识别(替换界面已按部位筛选,候选收缩到单部位),目标件名按
+  常量表名称直配;候选未装备件优先,
   同套装多件同屏时票分裂到多列但件名相同,选任一件均满足意图;
 - 选中未装备件后底部按钮「卸下」变「替换」;点「替换」即装备(实测即时
   生效,给已由他人装备的件会直接从对方身上换下)。
@@ -20,10 +20,7 @@ SwitchCharacterTabOp('遗器') 保证);起点不符显式失败。
 
 import time
 
-import cv2
-
 from one_dragon.base.geometry.point import Point
-from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -31,12 +28,8 @@ from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
-from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
-from sr_od.operations.equip_owner_match import match_owner
-from sr_od.operations.grid_template_locate import (
-    load_template_gray,
-    locate_cells_by_votes,
-)
+from sr_od.mys.sr_relic_sets import PIECE_TO_SET
+from sr_od.operations.equip_list_recognizer import RelicReplaceRecognizer
 from sr_od.operations.sr_operation import SrOperation
 
 _RELIC_TAB_SCREEN: str = '角色-遗器'
@@ -157,33 +150,31 @@ class EquipRelicOp(SrOperation):
     @node_from(from_name='当前装备核对', status='NEED_REPLACE')
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
-        """SIFT 落格投票定位目标套装件候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
+        """识别器驱动的整屏识别定位目标件候选 → 逐个点击;屏内候选耗尽滚动重扫。
 
-        候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 同套装多副本
-        场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。"""
+        定位走 RelicReplaceRecognizer.recognize_for_pos(部位先验子集:替换界面
+        已按部位筛选锁定,候选收缩到单部位;与 MCP analyze_screen 同一识别链)
+        —— 整屏识别一次给出全部件清单,目标件名按常量表名称直配(识别层
+        argmax 输出即常量表名,无 OCR 误差)。候选排序:未装备(owner=None)
+        优先 —— 同套装多副本场景下避免抢走他人装备的件。"""
         if self._scan_screens >= _SCAN_MAX_SCREENS:
             return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏未找到 {self.piece_name}'
                                    f'(未拥有或识别失败)')
 
         screen_img = self.screenshot()
-        set_def = PIECE_TO_SET[self.piece_name]
-        template = load_template_gray(icon_webp_rel_path(set_def.set_name, self.piece_name))
-        if template is None:
-            return self.round_fail(f'遗器图标缺失:'
-                                   f'{icon_webp_rel_path(set_def.set_name, self.piece_name)}')
-        list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
-        cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
-                                      template, list_area.rect, _relic_col_centers(list_area.rect))
-        # 占用者识别:角标区偏移按遗器卡实测(格中心 +6/-63 ~ +61/-13)
-        owners = []
-        for c, _v in cells:
-            badge = Rect(c.x + 6, c.y - 63, c.x + 61, c.y - 13)
-            owner, _score = match_owner(screen_img, badge)
-            owners.append(owner or '未装备')
-        log.info('替换遗器: 本屏识别到目标件 %d 件 %s(第 %d 屏)',
-                 len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],
-                 self._scan_screens + 1)
-        if self._candidate_idx >= len(cells):
+        out = RelicReplaceRecognizer().recognize_for_pos(self.ctx, screen_img, self.pos)
+        matched: list[dict] = []
+        if out is not None:
+            matched = [item for item in out['items'] if item['piece'] == self.piece_name]
+        # 未装备(owner=None)优先;同屏多副本全部入候选,逐个点击验证
+        matched.sort(key=lambda item: item['owner'] is not None)
+
+        log.info('替换遗器: 本屏识别 %d 件、目标 %d 件 %s(第 %d 屏)',
+                 len(out['items']) if out else 0, len(matched),
+                 [(item['cell'][0], item['cell'][1], item['owner'])
+                  for item in matched], self._scan_screens + 1)
+        if self._candidate_idx >= len(matched):
+            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
             center = list_area.rect.center
             self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),
                                         Point(center.x, center.y - _SCROLL_DRAG_PX // 2))
@@ -191,12 +182,14 @@ class EquipRelicOp(SrOperation):
             self._candidate_idx = 0
             return self.round_retry('当前屏候选耗尽,滚动一屏重扫', wait=1)
 
-        cell = cells[self._candidate_idx][0]
-        self.ctx.controller.click(cell)
+        item = matched[self._candidate_idx]
+        cell = item['cell']
+        self.ctx.controller.click(Point((cell[0] + cell[2]) // 2, (cell[1] + cell[3]) // 2))
         self._candidate_idx += 1
         self._select_retries = 0  # 重新点击后重置验证计数
-        log.info('替换遗器: 点击候选 %d/%d (%.0f, %.0f)',
-                 self._candidate_idx, len(cells), cell.x, cell.y)
+        log.info('替换遗器: 点击候选 %d/%d (%d,%d) owner=%s',
+                 self._candidate_idx, len(matched),
+                 (cell[0] + cell[2]) // 2, (cell[1] + cell[3]) // 2, item['owner'])
         return self.round_success(status='CLICKED', wait=1.2)
 
     @node_from(from_name='定位并选卡', status='CLICKED')
