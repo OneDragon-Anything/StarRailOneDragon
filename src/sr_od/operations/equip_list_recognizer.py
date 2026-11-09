@@ -55,11 +55,12 @@ class _EquipListRecognizerBase(ScreenRecognizer):
     """网格逐格占用者识别的公共实现;子类声明画面名 + 网格几何 + 角标偏移。"""
 
     extras_doc: dict[str, str] = {
-        'items': '占用件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, owner:角色id}],'
+        'items': '占用件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, owner:占用角色(中文名)}],'
                  '按格坐标排序;只含有占用者识别的格 —— 未装备/空格/角色不在'
                  '模板库的格不列出',
         'total_cells': '网格内可见格总数(含未装备/空格)',
-        'hint': '卡片上无装备名称文本;定位与装备某件走 EquipLightConeOp/EquipRelicOp',
+        'hint': '卡片上不印装备名称(名字只在选中后右侧详情出现)—— 装备身份与'
+                '占用者均靠图像匹配识别;定位与装备某件走 EquipLightConeOp/EquipRelicOp',
     }
 
     def _grid_cells(self, list_rect: Rect) -> list[Rect]:
@@ -125,7 +126,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
 
     extras_doc: dict[str, str] = {
         'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
-                 'set:套装名, pos_cn:部位, level:强化等级, owner:占用角色id}],'
+                 'set:套装名, pos_cn:部位, level:强化等级, owner:占用角色(中文名)}],'
                  '按格坐标排序;空格/全识别失败的格不列',
         'total_cells': '网格内可见格总数(含未装备/空格)',
     }

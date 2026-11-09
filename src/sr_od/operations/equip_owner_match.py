@@ -21,12 +21,16 @@ import numpy as np
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import cv2_utils, os_utils
+from sr_od.config.character_const import get_character_by_id
 
 _MINI_DIR_REL = 'assets/template/character_avatar_mini'
 # 角标圆的有效直径 ~40px,mini 原始 64px 缩放到 36px 实测最优档
 _TEMPLATE_SIZE: int = 36
 # 命中阈值(实测同角色最低 0.878、异角色最高 0.453,取中)
 _MIN_OWNER_SCORE: float = 0.75
+# 光锥界面角标渲染更小/更糊,匹配天花板 ~0.73(实测同角色最高 0.725),阈值单独放低;
+# 两界面的异角色误配上限都很低(0.35-0.45),放低不失区分度
+CONE_OWNER_SCORE: float = 0.70
 
 _mini_cache: dict[str, np.ndarray] | None = None
 
@@ -48,13 +52,16 @@ def _owner_templates() -> dict[str, np.ndarray]:
     return _mini_cache
 
 
-def match_owner(screen_rgb: np.ndarray, badge_rect: Rect) -> tuple[str | None, float]:
-    """识别角标区的占用角色。
+def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
+                min_score: float = _MIN_OWNER_SCORE) -> tuple[str | None, float]:
+    """识别角标区的占用角色,返回**中文角色名**(如「黄泉」)。
 
     :param screen_rgb: 整屏截图(RGB)
     :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量)
-    :return: (角色 id, 最高分);最高分 < 阈值返回 (None, 最高分) —— 未装备
-        或角标角色不在模板库,不猜测。
+    :param min_score: 命中阈值;遗器界面用默认,光锥界面传 CONE_OWNER_SCORE
+        (角标渲染更小,匹配天花板低)
+    :return: (中文角色名, 最高分);最高分 < 阈值返回 (None, 最高分) —— 未装备
+        或角标角色不在模板库,不猜测。中文映射缺失的角色兜底返回模板英文 id。
     """
     zone = screen_rgb[badge_rect.y1:badge_rect.y2, badge_rect.x1:badge_rect.x2]
     if zone.size == 0:
@@ -71,6 +78,12 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect) -> tuple[str | None, f
         if mv > best_score:
             best_name, best_score = name, mv
 
-    if best_score < _MIN_OWNER_SCORE:
+    if best_score < min_score:
         return None, best_score
-    return best_name, best_score
+    return _owner_cn(best_name), best_score
+
+
+def _owner_cn(template_name: str) -> str:
+    """模板英文 id → 中文角色名;character_const 未收录的兜底返回英文 id。"""
+    character = get_character_by_id(template_name)
+    return character.cn if character is not None else template_name
