@@ -1006,15 +1006,15 @@ _SET_BY_ID: dict[int, RelicSetDef] = {
 }
 
 #: 单件图标归档相对路径公式（项目 assets 根起）；192 件全量，见模块 docstring。
-_RELIC_ICON_REL_TEMPLATE = 'assets/game_data/relic_icons/iconrelic_{set_id}_{pos}.webp'
+_RELIC_ICON_REL_TEMPLATE = 'assets/game_data/relic_icons/{set_name}_{piece_name}.webp'
 
 
-def icon_webp_rel_path(set_id: int, pos: int) -> str:
-    """套装 set_id + 部位 pos → 单件图标 webp 的项目相对路径。
+def icon_webp_rel_path(set_name: str, piece_name: str) -> str:
+    """套装名 + 部件名 → 单件图标 webp 的项目相对路径。
 
     纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。
     """
-    return _RELIC_ICON_REL_TEMPLATE.format(set_id=set_id, pos=pos)
+    return _RELIC_ICON_REL_TEMPLATE.format(set_name=set_name, piece_name=piece_name)
 
 
 def resolve_set_by_tid(tid: int) -> RelicSetDef | None:

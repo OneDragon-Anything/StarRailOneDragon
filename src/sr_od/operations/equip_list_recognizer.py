@@ -333,7 +333,7 @@ def _light_cone_templates() -> dict[str, MatLike]:
     if _light_cone_template_cache is None:
         lib: dict[str, MatLike] = {}
         for cone_name, cone_def in LIGHT_CONE_BY_NAME.items():
-            template = load_template_gray(cone_icon_rel_path(cone_def.tid))
+            template = load_template_gray(cone_icon_rel_path(cone_def.name))
             if template is not None:
                 lib[cone_name] = template
         _light_cone_template_cache = lib
@@ -359,7 +359,7 @@ def _relic_piece_templates() -> dict[str, MatLike]:
             piece = next((p for p in set_def.pieces if p.name == piece_name), None)
             if piece is None:
                 continue
-            template = load_template_gray(icon_webp_rel_path(set_def.set_id, piece.pos))
+            template = load_template_gray(icon_webp_rel_path(set_def.set_name, piece.name))
             if template is not None:
                 lib[piece_name] = template
         _relic_piece_template_cache = lib

@@ -164,9 +164,9 @@ class EquipLightConeOp(SrOperation):
         cone = LIGHT_CONE_BY_NAME.get(self.cone_name)
         if cone is None:
             return self.round_fail(f'光锥名 {self.cone_name} 不在常量表(CONES_NOT_FOUND)')
-        template = load_template_gray(icon_webp_rel_path(cone.tid))
+        template = load_template_gray(icon_webp_rel_path(cone.name))
         if template is None:
-            return self.round_fail(f'光锥图标缺失:{icon_webp_rel_path(cone.tid)}')
+            return self.round_fail(f'光锥图标缺失:{icon_webp_rel_path(cone.name)}')
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
         cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
                                       template, list_area.rect, _cone_col_centers(list_area.rect))

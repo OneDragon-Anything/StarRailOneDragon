@@ -30,8 +30,8 @@ from sr_od.mys.sr_light_cones import (
     LIGHT_CONES,
     LightConeDef,
     icon_webp_rel_path,
-    resolve_light_cone_by_tid,
     resolve_light_cone,
+    resolve_light_cone_by_tid,
 )
 
 _PATH_ID_CN: dict[str, str] = {
@@ -51,7 +51,7 @@ def _cone_to_data(cone: LightConeDef, match: str) -> dict:
         'path_cn': _PATH_ID_CN.get(cone.path_id, cone.path_id),
         'obtain': cone.obtain,
         'skill': cone.skill,
-        'icon': icon_webp_rel_path(cone.tid),
+        'icon': icon_webp_rel_path(cone.name),
         'match': match,
     }
 

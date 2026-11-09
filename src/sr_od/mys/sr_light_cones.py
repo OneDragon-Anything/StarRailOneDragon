@@ -1427,15 +1427,15 @@ LIGHT_CONE_BY_TID: dict[int, LightConeDef] = {
 }
 
 #: 图标归档相对路径公式（项目 assets 根起）；170 把全量，见模块 docstring。
-_LIGHT_CONE_ICON_REL_TEMPLATE = 'assets/game_data/light_cone_icons/lightcone_{tid}.webp'
+_LIGHT_CONE_ICON_REL_TEMPLATE = 'assets/game_data/light_cone_icons/{name}.webp'
 
 
-def icon_webp_rel_path(tid: int) -> str:
-    """光锥 tid → 图标 webp 的项目相对路径。
+def icon_webp_rel_path(name: str) -> str:
+    """光锥名 → 图标 webp 的项目相对路径。
 
     纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。
     """
-    return _LIGHT_CONE_ICON_REL_TEMPLATE.format(tid=tid)
+    return _LIGHT_CONE_ICON_REL_TEMPLATE.format(name=name)
 
 
 def resolve_light_cone(name: str) -> LightConeDef | None:

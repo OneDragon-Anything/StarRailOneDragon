@@ -165,10 +165,10 @@ class EquipRelicOp(SrOperation):
 
         screen_img = self.screenshot()
         set_def = PIECE_TO_SET[self.piece_name]
-        template = load_template_gray(icon_webp_rel_path(set_def.set_id, self.pos))
+        template = load_template_gray(icon_webp_rel_path(set_def.set_name, self.piece_name))
         if template is None:
             return self.round_fail(f'遗器图标缺失:'
-                                   f'{icon_webp_rel_path(set_def.set_id, self.pos)}')
+                                   f'{icon_webp_rel_path(set_def.set_name, self.piece_name)}')
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
         cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
                                       template, list_area.rect, _relic_col_centers(list_area.rect))

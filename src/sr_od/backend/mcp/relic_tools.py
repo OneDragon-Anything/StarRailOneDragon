@@ -51,7 +51,7 @@ def _set_to_data(relic_set: RelicSetDef, matched_piece: str | None, match: str) 
                 'pos_cn': _POS_CN.get(piece.pos, f'未知部位({piece.pos})'),
                 'name': piece.name,
                 'desc': piece.desc,
-                'icon': icon_webp_rel_path(relic_set.set_id, piece.pos),
+                'icon': icon_webp_rel_path(relic_set.set_name, piece.name),
             }
             for piece in relic_set.pieces
         ],
