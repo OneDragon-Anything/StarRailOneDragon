@@ -11,6 +11,8 @@
 """
 
 
+import re
+
 import cv2
 import numpy as np
 
@@ -44,9 +46,8 @@ def load_template_gray(rel_path: str) -> np.ndarray | None:
 
 
 def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarray],
-                   list_rect: Rect, col_centers: list[float],
-                   min_votes: int = _MIN_CELL_VOTES) -> dict[tuple[int, int], str]:
-    """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,格 → 身份名。
+                   list_rect: Rect, min_votes: int = _MIN_CELL_VOTES) -> list[tuple[float, float, int, str]]:
+    """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,输出命中簇明细。
 
     与逐件调 :meth:`locate_cells_by_votes` 等价,但 screen 特征(全屏检测
     ~0.5s)只算一次 + 模板特征走进程级缓存(同对象重复调用零提取成本)——
@@ -55,8 +56,9 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
     :param named_templates: 身份名 → 模板灰度图(如遗器件名 → 部件图)。
         同图标多件副本共享同一身份名(遗器件名 = 套装+部位唯一确定)。
         dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
-    :return: {(格 x, 格 y): 身份名};一格多模板命中时取票数最高者。
-        格 y = 该模板特征点的 y 聚簇均值(非网格行带中心,调用方按需归一)。
+    :return: [(簇中心 x, 簇中心 y, 票数, 身份名), ...] 按票数降序;
+        **位置由匹配自身给出**(调用方与锚点推算的卡区域做重叠归属,
+        不依赖预设网格)。一格多模板命中时各模板条目并存,由调用方仲裁。
     """
     s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
     x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
@@ -80,19 +82,17 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
             else:
                 clusters.append([p])
         for cluster in clusters:
-            if len(cluster) < min_votes:
-                continue
-            cy = sum(p[1] for p in cluster) / len(cluster)
-            votes = [sum(1 for p in cluster if abs(p[0] - cx) < _COL_SNAP_PX)
-                     for cx in col_centers]
-            for i, v in enumerate(votes):
-                if v >= min_votes:
-                    key = (round(col_centers[i]), round(cy))
-                    prev = cell_owner.get(key)
-                    if prev is None or v > prev[1]:
-                        cell_owner[key] = (name, v)
+            ccx = sum(p[0] for p in cluster) / len(cluster)
+            ccy = sum(p[1] for p in cluster) / len(cluster)
+            votes = sum(1 for p in cluster if abs(p[0] - ccx) < _COL_SNAP_PX)
+            if votes >= min_votes:
+                key = (round(ccx), round(ccy))
+                prev = cell_owner.get(key)
+                if prev is None or votes > prev[1]:
+                    cell_owner[key] = (name, votes)
 
-    return {key: name for key, (name, _v) in cell_owner.items()}
+    return [(float(k[0]), float(k[1]), v, name)
+            for k, (name, v) in sorted(cell_owner.items(), key=lambda kv: -kv[1][1])]
 
 
 # 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——
@@ -157,6 +157,44 @@ def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
     return candidates
 
 
+#------------------- 装备替换列表卡位:等级文本锚点(识别器用) -------------------#
+# 替换列表每张卡底部都有等级徽章文本(光锥「等级N」/ 遗器「+N」)——OCR 命中位置
+# 即卡位锚点,滚动 / 命途分组头 / 空格天然免疫;固定网格几何在滚动后失效,已废弃。
+
+_LEVEL_TEXT_RE = re.compile(r'^(等级\d+|\+\d+)$')
+
+
+def detect_card_anchors(ocr_results: list, list_rect: Rect) -> list[Rect]:
+    """从全图 OCR 结果提取装备卡的等级文本锚点,换算卡矩形预期区域。
+
+    :param ocr_results: 全图 OCR 结果列表(OcrMatchResult,含 .data/.rect)
+    :param list_rect: 列表区(锚点须落在其内,排除右侧详情面板等)
+    :return: 卡矩形清单(每个等级文本一张卡),按 (行, 列) 排序。
+        换算标定:光锥卡 139×155、文本中心=卡中心 x、卡底=文本 cy+12;
+        遗器卡 120×160、文本中心=卡中心 x、卡底=文本 cy+22(按文本样式自动区分)。
+    """
+    rects: list[Rect] = []
+    for r in ocr_results:
+        text = str(r.data).strip()
+        if not _LEVEL_TEXT_RE.match(text):
+            continue
+        rect = r.rect
+        cx = (rect.x1 + rect.x2) / 2
+        cy = (rect.y1 + rect.y2) / 2
+        if text.startswith('等级'):  # 光锥:卡 139×155
+            rect_card = Rect(cx - 70, cy - 143, cx + 69, cy + 12)
+        else:  # 遗器「+N」:卡 120×160
+            rect_card = Rect(cx - 60, cy - 138, cx + 60, cy + 22)
+        # 卡矩形须与列表区相交(排除详情面板等区外文本)
+        if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
+            continue
+        if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
+            continue
+        rects.append(rect_card)
+    rects.sort(key=lambda r: (r.y1 // 100, r.x1))
+    return rects
+
+
 def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
                          list_rect: Rect, col_centers: list[float],
                          col_snap_px: int = _COL_SNAP_PX,
@@ -172,27 +210,8 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
     return cells[0][0] if cells else None
 
 
-#------------------- 装备替换列表网格几何(识别器与 op 共用) -------------------#
-# 行带中心 = 实机标定的固定值(1080p;列表可视区内完整可见的行)
-# 光锥-替换:9 列等分(列中心由列表区 rect 推导),行带中心间距 200px;
-# 卡片矩形半宽/半高按实机卡面(139×155)标定
-def cone_grid_cells(list_rect: Rect) -> list[Rect]:
-    """光锥替换列表全部卡片矩形(9 列 × 4 行,行带中心 278/478/678/878 实机标定)。"""
-    cell_w = (list_rect.x2 - list_rect.x1) / 9
-    col_centers = [list_rect.x1 + cell_w * (i + 0.5) for i in range(9)]
-    return [Rect(cx - 70, cy - 78, cx + 69, cy + 77)
-            for cy in (278, 478, 678, 878) for cx in col_centers]
-
-
-# 遗器-替换:4 列(列表区 x1 + 首列偏移 66 + 间距 110),行带中心 260+183k 实机标定;
-# 卡片矩形半宽/半高按实机卡面(120×160)标定
+#------------------- 装备替换列表网格几何(已废弃固定网格,卡位走等级文本锚点) -------------------#
+# 遗器 4 列列中心公式仍被替换 op 的特征落格投票使用(op 自身在列表顶部工作,列位置固定)。
 def relic_col_centers(list_rect: Rect) -> list[float]:
-    """遗器替换列表列中心(偏移+间距常量,与格中心函数同源)。"""
+    """遗器替换列表列中心(偏移+间距常量,与替换 op 同源)。"""
     return [list_rect.x1 + 66 + 110 * i for i in range(4)]
-
-
-def relic_grid_cells(list_rect: Rect) -> list[Rect]:
-    """遗器替换列表全部卡片矩形(4 列 × 4 行,只含列表区内完整可见行)。"""
-    col_centers = relic_col_centers(list_rect)
-    return [Rect(cx - 60, cy - 80, cx + 60, cy + 80)
-            for cy in (260, 443, 626, 809) for cx in col_centers]
