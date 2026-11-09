@@ -12,6 +12,7 @@
 
 
 import re
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -231,7 +232,8 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
         return []
 
     # 2. 行带聚类:锚点 cy 排序后按间隔分簇(行距 183~200px,簇内间隔阈值 100px),
-    #    每簇 cy 均值 = 该行行带(单锚 y 噪声被同行多锚平均)
+    #    每簇行带取 cy 整数**众数**(出现频次最高的值)——均值会被离群锚点拉偏,
+    #    众数反映最多锚点的共识位置
     anchors.sort(key=lambda a: a[1])
     row_bands: list[float] = []
     cluster_cys: list[float] = []
@@ -241,11 +243,13 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
             cluster_cys.append(cy)
         else:
             if cluster_cys:
-                row_bands.append(sum(cluster_cys) / len(cluster_cys))
+                int_cys = [int(round(c)) for c in cluster_cys]
+                row_bands.append(Counter(int_cys).most_common(1)[0][0])
             cluster_cys = [cy]
         prev_cy = cy
     if cluster_cys:
-        row_bands.append(sum(cluster_cys) / len(cluster_cys))
+        int_cys = [int(round(c)) for c in cluster_cys]
+        row_bands.append(Counter(int_cys).most_common(1)[0][0])
 
     # 3. 行 × 列组合:锚点吸附最近列中心,卡矩形 x 由固定列中心决定(cx 偏差不进入)
     rects: list[Rect] = []
