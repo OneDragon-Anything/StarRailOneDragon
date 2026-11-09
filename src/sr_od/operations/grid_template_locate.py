@@ -174,21 +174,25 @@ def locate_cell_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
 
 #------------------- 装备替换列表网格几何(识别器与 op 共用) -------------------#
 # 行带中心 = 实机标定的固定值(1080p;列表可视区内完整可见的行)
-# 光锥-替换:9 列等分(列中心由列表区 rect 推导),行带中心间距 200px
-def cone_grid_cells(list_rect: Rect) -> list[Point]:
-    """光锥替换列表全部格中心(9 列 × 4 行,行带中心 278/478/678/878 实机标定)。"""
+# 光锥-替换:9 列等分(列中心由列表区 rect 推导),行带中心间距 200px;
+# 卡片矩形半宽/半高按实机卡面(139×155)标定
+def cone_grid_cells(list_rect: Rect) -> list[Rect]:
+    """光锥替换列表全部卡片矩形(9 列 × 4 行,行带中心 278/478/678/878 实机标定)。"""
     cell_w = (list_rect.x2 - list_rect.x1) / 9
     col_centers = [list_rect.x1 + cell_w * (i + 0.5) for i in range(9)]
-    return [Point(cx, cy) for cy in (278, 478, 678, 878) for cx in col_centers]
+    return [Rect(cx - 70, cy - 78, cx + 69, cy + 77)
+            for cy in (278, 478, 678, 878) for cx in col_centers]
 
 
-# 遗器-替换:4 列(列表区 x1 + 首列偏移 66 + 间距 110),行带中心 260+183k 实机标定
+# 遗器-替换:4 列(列表区 x1 + 首列偏移 66 + 间距 110),行带中心 260+183k 实机标定;
+# 卡片矩形半宽/半高按实机卡面(120×160)标定
 def relic_col_centers(list_rect: Rect) -> list[float]:
     """遗器替换列表列中心(偏移+间距常量,与格中心函数同源)。"""
     return [list_rect.x1 + 66 + 110 * i for i in range(4)]
 
 
-def relic_grid_cells(list_rect: Rect) -> list[Point]:
-    """遗器替换列表全部格中心(4 列 × 4 行,只含列表区内完整可见行)。"""
+def relic_grid_cells(list_rect: Rect) -> list[Rect]:
+    """遗器替换列表全部卡片矩形(4 列 × 4 行,只含列表区内完整可见行)。"""
     col_centers = relic_col_centers(list_rect)
-    return [Point(cx, cy) for cy in (260, 443, 626, 809) for cx in col_centers]
+    return [Rect(cx - 60, cy - 80, cx + 60, cy + 80)
+            for cy in (260, 443, 626, 809) for cx in col_centers]

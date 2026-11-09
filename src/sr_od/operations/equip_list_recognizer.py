@@ -12,6 +12,7 @@
   不可用,但 SIFT 定位可行(定位器已实证)——全库 170 件逐模板跑当前未
   集成(单屏增量 ~10s),光锥 extras 暂只有占用者;需要时按遗器同款方法接。
 
+每格 ``cell`` = 卡片矩形 [x1,y1,x2,y2](1080p,可直接用于点击/裁图/可视化)。
 未列出格 = 空格 / 什么都识别不出(不猜测)。定位与装备某件走
 ``EquipLightConeOp`` / ``EquipRelicOp``(指定名称的 SIFT 全量清单)。
 
@@ -44,7 +45,6 @@ from sr_od.operations.grid_template_locate import (
 if TYPE_CHECKING:
     from cv2.typing import MatLike
 
-    from one_dragon.base.geometry.point import Point
     from one_dragon.base.operation.one_dragon_context import OneDragonContext
     from one_dragon.base.screen.screen_info import ScreenInfo
     from sr_od.context.sr_context import SrContext
@@ -54,18 +54,19 @@ class _EquipListRecognizerBase(ScreenRecognizer):
     """网格逐格占用者识别的公共实现;子类声明画面名 + 网格几何 + 角标偏移。"""
 
     extras_doc: dict[str, str] = {
-        'items': '占用件清单 [{cell:[x,y], owner:角色id}],按格坐标排序;'
-                 '只含有占用者识别的格 —— 未装备/空格/角色不在模板库的格不列出',
+        'items': '占用件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, owner:角色id}],'
+                 '按格坐标排序;只含有占用者识别的格 —— 未装备/空格/角色不在'
+                 '模板库的格不列出',
         'total_cells': '网格内可见格总数(含未装备/空格)',
         'hint': '卡片上无装备名称文本;定位与装备某件走 EquipLightConeOp/EquipRelicOp',
     }
 
-    def _grid_cells(self, list_rect: Rect) -> list[Point]:
-        """本画面的网格几何(格中心清单),几何实机标定值见 grid_template_locate。"""
+    def _grid_cells(self, list_rect: Rect) -> list[Rect]:
+        """本画面的网格几何(每格卡片矩形),实机标定值见 grid_template_locate。"""
         raise NotImplementedError
 
-    def _badge_rect(self, cell: Point) -> Rect:
-        """本画面的角标检测区(相对格中心的实测偏移)。"""
+    def _badge_rect(self, cell_rect: Rect) -> Rect:
+        """本画面的角标检测区(由卡片矩形换算,偏移实测)。"""
         raise NotImplementedError
 
     def _list_area_name(self) -> str:
@@ -84,15 +85,16 @@ class _EquipListRecognizerBase(ScreenRecognizer):
     ) -> dict | None:
         """网格逐格裁角标区跑角色头像匹配,返回占用件清单;列表区缺档返 None。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
+        cell_rects = self._grid_cells(list_area.rect)
         items: list[dict] = []
-        cells = self._grid_cells(list_area.rect)
-        for cell in cells:
-            owner, _score = match_owner(image, self._badge_rect(cell),
+        for cell_rect in cell_rects:
+            owner, _score = match_owner(image, self._badge_rect(cell_rect),
                                         min_score=self._owner_min_score())
             if owner is not None:
-                items.append({'cell': [round(cell.x), round(cell.y)], 'owner': owner})
+                items.append({'cell': [cell_rect.x1, cell_rect.y1,
+                                       cell_rect.x2, cell_rect.y2], 'owner': owner})
         items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
-        return {'items': items, 'total_cells': len(cells)}
+        return {'items': items, 'total_cells': len(cell_rects)}
 
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
@@ -100,12 +102,13 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 
     screen_name = '光锥-替换'
 
-    def _grid_cells(self, list_rect: Rect) -> list[Point]:
+    def _grid_cells(self, list_rect: Rect) -> list[Rect]:
         return cone_grid_cells(list_rect)
 
-    def _badge_rect(self, cell: Point) -> Rect:
-        # 角标区偏移实测(光锥卡):格中心 +18/-83 ~ +78/-33
-        return Rect(cell.x + 18, cell.y - 83, cell.x + 78, cell.y - 33)
+    def _badge_rect(self, cell_rect: Rect) -> Rect:
+        # 角标区偏移实测(光锥卡):卡片矩形内右上角
+        return Rect(cell_rect.x1 + 88, cell_rect.y1 - 5,
+                    cell_rect.x1 + 148, cell_rect.y1 + 45)
 
     def _list_area_name(self) -> str:
         return '区域-光锥列表'
@@ -119,12 +122,13 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
 
     screen_name = '遗器-替换'
 
-    def _grid_cells(self, list_rect: Rect) -> list[Point]:
+    def _grid_cells(self, list_rect: Rect) -> list[Rect]:
         return relic_grid_cells(list_rect)
 
-    def _badge_rect(self, cell: Point) -> Rect:
-        # 角标区偏移实测(遗器卡):格中心 +6/-63 ~ +61/-13
-        return Rect(cell.x + 6, cell.y - 63, cell.x + 61, cell.y - 13)
+    def _badge_rect(self, cell_rect: Rect) -> Rect:
+        # 角标区偏移实测(遗器卡):卡片矩形内右上角
+        return Rect(cell_rect.x2 - 55, cell_rect.y1 + 17,
+                    cell_rect.x2, cell_rect.y1 + 67)
 
     def _list_area_name(self) -> str:
         return '区域-遗器列表'
@@ -148,28 +152,31 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
             list_area.rect, col_centers)
         identity_by_cell: dict[int, str] = {}
         for (kx, ky), name in identity.items():
-            for idx, cell in enumerate(cells):
-                if abs(kx - cell.x) <= 60 and abs(ky - cell.y) <= 45:
+            for idx, cell_rect in enumerate(cells):
+                center = cell_rect.center
+                if abs(kx - center.x) <= 60 and abs(ky - center.y) <= 45:
                     # 同格多命中(相邻模板)保留先到;不同格互不覆盖
                     identity_by_cell.setdefault(idx, name)
                     break
 
         items: list[dict] = []
-        for idx, cell in enumerate(cells):
-            owner, _score = match_owner(image, self._badge_rect(cell),
+        for idx, cell_rect in enumerate(cells):
+            owner, _score = match_owner(image, self._badge_rect(cell_rect),
                                         min_score=self._owner_min_score())
-            level = _read_level_badge(ctx, image, self._badge_level_rect(cell))
+            level = _read_level_badge(ctx, image, self._level_rect(cell_rect))
             piece = identity_by_cell.get(idx)
             if piece is None and owner is None and level is None:
                 continue  # 空格(或全部识别失败,不猜测)
-            items.append({'cell': [round(cell.x), round(cell.y)],
+            items.append({'cell': [cell_rect.x1, cell_rect.y1,
+                                   cell_rect.x2, cell_rect.y2],
                           'piece': piece, 'level': level, 'owner': owner})
         items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
         return {'items': items, 'total_cells': len(cells)}
 
-    def _badge_level_rect(self, cell: Point) -> Rect:
-        # 等级徽章「+N」区实测(遗器卡):格中心 -30/+46 ~ +32/+74
-        return Rect(cell.x - 30, cell.y + 46, cell.x + 32, cell.y + 74)
+    def _level_rect(self, cell_rect: Rect) -> Rect:
+        # 等级徽章「+N」区实测(遗器卡):卡片矩形内底部中央
+        return Rect(cell_rect.center.x - 30, cell_rect.y2 - 35,
+                    cell_rect.center.x + 32, cell_rect.y2 - 7)
 
 
 #------------------- 遗器件名模板库(全量 192 件,进程级常驻) -------------------#
