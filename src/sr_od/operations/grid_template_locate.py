@@ -43,6 +43,71 @@ def load_template_gray(rel_path: str) -> np.ndarray | None:
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 
+def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarray],
+                   list_rect: Rect, col_centers: list[float],
+                   min_votes: int = _MIN_CELL_VOTES) -> dict[tuple[int, int], str]:
+    """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,格 → 身份名。
+
+    与逐件调 :meth:`locate_cells_by_votes` 等价,但 screen 特征(全屏检测
+    ~0.5s)只算一次 + 模板特征走进程级缓存(同对象重复调用零提取成本)——
+    大模板库场景(遗器全库 192 件部件图)每屏增量 ~5s。
+
+    :param named_templates: 身份名 → 模板灰度图(如遗器件名 → 部件图)。
+        同图标多件副本共享同一身份名(遗器件名 = 套装+部位唯一确定)。
+        dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
+    :return: {(格 x, 格 y): 身份名};一格多模板命中时取票数最高者。
+        格 y = 该模板特征点的 y 聚簇均值(非网格行带中心,调用方按需归一)。
+    """
+    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
+    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
+
+    cell_owner: dict[tuple[int, int], tuple[str, int]] = {}
+    for name, template_gray in named_templates.items():
+        t_kp, t_desc = _cached_template_features(template_gray)
+        good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
+        pts = []
+        for m in good:
+            px, py = s_kp[m.trainIdx].pt
+            if x1 <= px <= x2 and y1 <= py <= y2:
+                pts.append((px, py))
+        if len(pts) < min_votes:
+            continue
+        pts.sort(key=lambda p: p[1])
+        clusters: list[list[tuple[float, float]]] = []
+        for p in pts:
+            if clusters and p[1] - clusters[-1][-1][1] <= _ROW_CLUSTER_GAP_PX:
+                clusters[-1].append(p)
+            else:
+                clusters.append([p])
+        for cluster in clusters:
+            if len(cluster) < min_votes:
+                continue
+            cy = sum(p[1] for p in cluster) / len(cluster)
+            votes = [sum(1 for p in cluster if abs(p[0] - cx) < _COL_SNAP_PX)
+                     for cx in col_centers]
+            for i, v in enumerate(votes):
+                if v >= min_votes:
+                    key = (round(col_centers[i]), round(cy))
+                    prev = cell_owner.get(key)
+                    if prev is None or v > prev[1]:
+                        cell_owner[key] = (name, v)
+
+    return {key: name for key, (name, _v) in cell_owner.items()}
+
+
+# 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——
+# 临时新加载对象缓存 miss 无害,只是无收益)
+_template_feature_cache: dict[int, tuple] = {}
+
+
+def _cached_template_features(template_gray: np.ndarray) -> tuple:
+    """模板 SIFT 特征的进程级缓存包装(id 键控;常驻模板字典场景全量命中)。"""
+    key = id(template_gray)
+    if key not in _template_feature_cache:
+        _template_feature_cache[key] = cv2_utils.feature_detect_and_compute(template_gray)
+    return _template_feature_cache[key]
+
+
 def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
                           list_rect: Rect, col_centers: list[float],
                           col_snap_px: int = _COL_SNAP_PX,
@@ -118,7 +183,12 @@ def cone_grid_cells(list_rect: Rect) -> list[Point]:
 
 
 # 遗器-替换:4 列(列表区 x1 + 首列偏移 66 + 间距 110),行带中心 260+183k 实机标定
+def relic_col_centers(list_rect: Rect) -> list[float]:
+    """遗器替换列表列中心(偏移+间距常量,与格中心函数同源)。"""
+    return [list_rect.x1 + 66 + 110 * i for i in range(4)]
+
+
 def relic_grid_cells(list_rect: Rect) -> list[Point]:
     """遗器替换列表全部格中心(4 列 × 4 行,只含列表区内完整可见行)。"""
-    col_centers = [list_rect.x1 + 66 + 110 * i for i in range(4)]
+    col_centers = relic_col_centers(list_rect)
     return [Point(cx, cy) for cy in (260, 443, 626, 809) for cx in col_centers]
