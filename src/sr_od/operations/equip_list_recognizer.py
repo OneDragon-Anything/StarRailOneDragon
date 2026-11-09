@@ -18,7 +18,7 @@
   格内局部匹配竞争者少,真匹配存活)。
 
 **占用者**:逐卡裁角标区做角色头像匹配(equip_owner_match)——列表卡右上角
-的圆形角标 = 装备者头像,与解包 avatarminiicon 同源同渲染。
+的圆形角标 = 装备者头像,与游戏内列表角标渲染同源。
 
 卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与装备某件走
 ``EquipLightConeOp`` / ``EquipRelicOp``。并发安全:recognize 纯读,模板库
@@ -334,7 +334,7 @@ _relic_piece_scaled_cache: dict[str, np.ndarray] | None = None
 
 
 def _light_cone_templates() -> dict[str, MatLike]:
-    """光锥名 → 解包图标灰度模板(全量;常驻以命中 identify_cells 的特征缓存)。"""
+    """光锥名 → 图标灰度模板(全量;常驻以命中 identify_cells 的特征缓存)。"""
     global _light_cone_template_cache
     if _light_cone_template_cache is None:
         lib: dict[str, MatLike] = {}

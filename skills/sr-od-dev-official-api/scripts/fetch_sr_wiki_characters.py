@@ -1,8 +1,8 @@
 """国内米游社 wiki 角色频道拉取:列表 + 逐条详情,落成本地缓存。
 
 产出(运行时缓存,消费方 = sr-od-dev-character-data/scripts/finalize_map.py):
-  .debug/temp/animestudio/wiki_channel18.json        列表条目数组(content_id/title/ext/...)
-  .debug/temp/animestudio/details/<content_id>.json  逐条详情原始响应
+  .debug/temp/wiki_cache/wiki_channel18.json        列表条目数组(content_id/title/ext/...)
+  .debug/temp/wiki_cache/details/<content_id>.json  逐条详情原始响应
 
 接口与字段依据:本 skill references/characters.md「国内米游社」。
 已知坑(详见该文档):lang 参数恒中文;空壳词条(无 avatarId);avatarId=="0" 占位;
@@ -21,7 +21,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/content/list'
             '?app_sn=sr_wiki&channel_id=18&lang=zh-cn')
 DETAIL_URL = 'https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id={cid}'
-OUT_DIR = Path(r'.debug/temp/animestudio')
+OUT_DIR = Path(r'.debug/temp/wiki_cache')
 RETRIES = 3
 
 

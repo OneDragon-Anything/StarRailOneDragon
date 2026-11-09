@@ -7,8 +7,8 @@
 - 选卡后右侧变对比布局(当前装备 → 新选中),底部出现「替换」按钮;
 - 点「替换」**直接生效并自动回光锥 TAB,无确认弹窗** —— 替换是即时操作。
 
-识别定位(解包图标作识别模板的算法边界实测):
-- 解包图(``assets/game_data/light_cone_icons``,348×408 斜置卡牌)经
+识别定位(图标模板的算法边界实测):
+- 模板图(``assets/game_data/light_cone_icons``,348×408 斜置卡牌)经
   ``cv2_utils.feature_match`` 特征匹配可直接当模板(透明底合成白底转灰度;
   ``matchTemplate`` 像素比对不可用——重采样渲染差异使分数带重叠);
 - 定位用**特征点落格投票**而非 Homography 框:实机卡面是斜置卡牌的中心
@@ -40,7 +40,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME, icon_webp_rel_path
-from sr_od.operations.equip_owner_match import match_owner
+from sr_od.operations.equip_owner_match import CONE_OWNER_SCORE, match_owner
 from sr_od.operations.grid_template_locate import (
     load_template_gray,
     locate_cells_by_votes,
@@ -168,7 +168,7 @@ class EquipLightConeOp(SrOperation):
         owners = []
         for c, _v in cells:
             badge = Rect(c.x + 18, c.y - 83, c.x + 78, c.y - 33)
-            owner, _score = match_owner(screen_img, badge)
+            owner, _score = match_owner(screen_img, badge, min_score=CONE_OWNER_SCORE)
             owners.append(owner or '未装备')
         log.info('替换光锥: 本屏识别到目标光锥 %d 件 %s(第 %d 屏)',
                  len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],

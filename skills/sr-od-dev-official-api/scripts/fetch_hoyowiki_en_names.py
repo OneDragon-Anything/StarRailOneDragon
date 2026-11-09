@@ -1,7 +1,7 @@
 """国际版 HoYoWiki 角色菜单双语拉取:zh-cn + en-us 列表按 entry_page_id 互连,产中文名→英文名映射。
 
 产出(运行时缓存,消费方 = sr-od-dev-character-data/scripts/finalize_map.py):
-  .debug/temp/animestudio/hoyowiki_en_names.json
+  .debug/temp/wiki_cache/hoyowiki_en_names.json
     { "归一化中文名": {"en": 官方英文名, "en_normalized": 小写去符号, "hoyowiki_page_id": "<entry_page_id>"} }
 
 归一化口径:•/·/・统一为 ·、去全部空白、lower——与 finalize_map.py / gen_candidates.py 的 cn 连表键一致。
@@ -23,7 +23,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 LIST_URL = 'https://sg-act-public-api.hoyolab.com/hoyowiki/hsr/wapi/get_entry_page_list'
 MENU_ID = '104'  # 角色菜单
 PAGE_SIZE = 30
-OUT_DIR = Path(r'.debug/temp/animestudio')
+OUT_DIR = Path(r'.debug/temp/wiki_cache')
 RETRIES = 3
 CN_NORM = str.maketrans({'•': '·', '・': '·', '．': '.', ' ': '', '\u3000': ''})
 

@@ -1,17 +1,16 @@
 """装备列表卡「占用者识别」:角标区角色头像匹配。
 
-替换列表每件装备右上角的圆形头像角标 = 当前装备者头像的渲染,与解包
-``avatarminiicon``(64×64 圆形)同源同渲染 —— 缩放到 36px 后 matchTemplate
-匹配可靠(2026-11-09 实测:同角色 0.878 / 异角色 0.24-0.45,阈值 0.75 可分)。
+替换列表每件装备右上角的圆形头像角标 = 当前装备者头像的渲染,与游戏内
+列表角标渲染同源(64×64 圆形)—— 缩放到 36px 后 matchTemplate
+匹配可靠(实测:同角色 0.878 / 异角色 0.24-0.45,阈值 0.75 可分)。
 
 ⚠️ 颜色/亮度统计判「有无角标」不具泛化性,已实测排除:卡面图案明暗盖过
 角标差异(光锥界面角标比卡面亮 +41,遗器界面反而暗 -36,两方向均反向)。
 占用识别只走头像匹配正路;全部模板低于阈值 = 未装备或角标角色不在库,
 诚实返回 None(不猜测)。
 
-模板库:`assets/template/character_avatar_mini/<角色id>.png`(由私有 skill
-``sr-od-dev-character-data`` 的 ``archive_mini_icons.py`` 从解包产物归档;
-``skin_`` 前缀为衣装变体,占用识别按角色归一)。
+模板库:`assets/template/character_avatar_mini/<角色id>.png`
+(``skin_`` 前缀为衣装变体,占用识别按角色归一)。
 """
 
 from pathlib import Path
@@ -88,7 +87,7 @@ def _owner_cn(template_name: str) -> str:
     character = get_character_by_id(template_name)
     if character is not None:
         return character.cn
-    # mini 库 tag 与项目 Character.id 的已知差异(解包 tag 是官方英文缩写,
+    # mini 库 tag 与项目 Character.id 的已知差异(模板库 tag 用官方英文缩写,
     # 项目 id 是全称;随新角色出现按需补录)
     alias = {'danhengil': 'danhengimbibitorlunae', 'topaz': 'topaznumby'}
     alias_id = alias.get(template_name)

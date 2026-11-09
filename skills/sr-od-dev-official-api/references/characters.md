@@ -31,7 +31,7 @@ GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/conten
 - **前瞻未上线过滤**:行迹模块名带「前瞻」(如「角色行迹前瞻【请以正式版本为准】」)= 未实装;只查**模块名**,正文提及「前瞻」不算(攻略区常提及,整页文本搜索会误杀已上线角色)
 - `baseType` 大小写混杂(Preservation/TheHunt/remembrance…),消费前统一 lower;TheHunt→hunt
 - 实装日期/阵营在 `character_info` 组件的 textMap 里(键名「实装日期」「阵营」)
-- 拉取脚本:`scripts/fetch_sr_wiki_characters.py`(列表+逐条详情,缓存到 `.debug/temp/animestudio/`)
+- 拉取脚本:`scripts/fetch_sr_wiki_characters.py`(列表+逐条详情,缓存到 `.debug/temp/wiki_cache/`)
 
 ## 国际版 HoYoWiki(官方英文名唯一来源)
 
