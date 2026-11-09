@@ -90,6 +90,9 @@ class EquipRelicOp(SrOperation):
         self._scan_screens: int = 0
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0
+        self._rob_cells: set[tuple[int, int]] = set()  #: 抢件弹框格(cell 左上角)——
+        #: 弹框=该格是 owner 漏报的已装备件,取消后记录并不再点击(死循环防线)
+        self._last_clicked_cell: tuple[int, int] | None = None  #: 最近点击格左上角
         SrOperation.__init__(self, ctx, op_name=gt('替换遗器') + f'({piece_name})',
                              node_max_retry_times=24)
 
@@ -170,8 +173,11 @@ class EquipRelicOp(SrOperation):
             matched = [item for item in out['items'] if item['piece'] == self.piece_name]
         # 仅未装备(owner=None)候选:owner 非 None 的件点击会弹「抢件确认」且
         # 直接从对方身上换下 —— 编队角色的装备不可被动;owner 漏报的已装备件
-        # 由点击后的弹框分支兜底取消(见 dismiss_rob_confirm)
-        matched = [item for item in matched if item['owner'] is None]
+        # 由点击后的弹框分支兜底取消,且该格记入 _rob_cells 不再点(实机死循环
+        # 教训:同一格 owner 漏报会反复弹框)
+        matched = [item for item in matched
+                   if item['owner'] is None
+                   and (item['cell'][0], item['cell'][1]) not in self._rob_cells]
 
         log.info('替换遗器: 本屏识别 %d 件、目标未装备 %d 件 %s(第 %d 屏)',
                  len(out['items']) if out else 0, len(matched),
@@ -191,6 +197,7 @@ class EquipRelicOp(SrOperation):
         self.ctx.controller.click(Point((cell[0] + cell[2]) // 2, (cell[1] + cell[3]) // 2))
         self._candidate_idx += 1
         self._select_retries = 0  # 重新点击后重置验证计数
+        self._last_clicked_cell = (cell[0], cell[1])  #: 当前点击格(抢件弹框时记入 _rob_cells)
         log.info('替换遗器: 点击候选 %d/%d (%d,%d) owner=%s',
                  self._candidate_idx, len(matched),
                  (cell[0] + cell[2]) // 2, (cell[1] + cell[3]) // 2, item['owner'])
@@ -214,7 +221,8 @@ class EquipRelicOp(SrOperation):
         列表重排且选中态自动切到新装备件 —— 按钮从「替换」变回「卸下」即
         装备生效的可靠锚(until)。
         抢件确认框兜底:owner 漏报的已装备件点击后游戏弹「遗器已被 X 装备,
-        是否替换?」—— 一律取消(装备他人件不可抢),推进到下一候选。"""
+        是否替换?」—— 一律取消(装备他人件不可抢),该格记入 _rob_cells 不再
+        点击,转回定位换下一候选。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '文本-抢件确认').is_success:
             result = self.round_by_find_and_click_area(
@@ -223,6 +231,8 @@ class EquipRelicOp(SrOperation):
                 pre_delay=0.3, success_wait=0.8, retry_wait=1.5,
             )
             if result.is_success:
+                if self._last_clicked_cell is not None:
+                    self._rob_cells.add(self._last_clicked_cell)
                 return self.round_success(status='ROB_CONFIRM_CANCELLED')
             return result
         return self.round_by_find_and_click_area(
