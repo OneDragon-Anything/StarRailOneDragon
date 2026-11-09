@@ -222,19 +222,19 @@ class EquipRelicOp(SrOperation):
         装备生效的可靠锚(until)。
         抢件确认框兜底:owner 漏报的已装备件点击后游戏弹「遗器已被 X 装备,
         是否替换?」—— 一律取消(装备他人件不可抢),该格记入 _rob_cells 不再
-        点击,转回定位换下一候选。"""
+        点击,转回定位换下一候选。取消用 area 中心直点 + 显式等待消失
+        (round_by_find_and_click 的 0.8s until 判定实测误报失败)。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '文本-抢件确认').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _REPLACE_SCREEN, '按钮-抢件取消',
-                until_not_find_all=[(_REPLACE_SCREEN, '文本-抢件确认')],
-                pre_delay=0.3, success_wait=0.8, retry_wait=1.5,
-            )
-            if result.is_success:
-                if self._last_clicked_cell is not None:
-                    self._rob_cells.add(self._last_clicked_cell)
-                return self.round_success(status='ROB_CONFIRM_CANCELLED')
-            return result
+            if self._last_clicked_cell is not None:
+                self._rob_cells.add(self._last_clicked_cell)
+            cancel_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-抢件取消')
+            self.ctx.controller.click(cancel_area.rect.center)
+            time.sleep(1.5)
+            if self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '文本-抢件确认').is_success:
+                return self.round_retry('弹框仍在,再点取消', wait=0.5)
+            log.info('替换遗器: 抢件确认已取消(格 %s 记入跳过清单)', self._last_clicked_cell)
+            return self.round_success(status='ROB_CONFIRM_CANCELLED')
         return self.round_by_find_and_click_area(
             screen, _REPLACE_SCREEN, '按钮-替换装备',
             until_find_all=[(_REPLACE_SCREEN, '按钮-卸下')],
