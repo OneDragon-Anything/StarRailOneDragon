@@ -1,4 +1,4 @@
-"""光锥查询 MCP 工具：按名称/tid/星级/命途查光锥定义（运行时入口）。
+"""光锥查询 MCP 工具：按名称/星级/命途查光锥定义（运行时入口）。
 
 数据单一真相源是 ``sr_od.mys.sr_light_cones`` 常量模块（本模块只是查询
 薄壳，零 IO、零状态、无游戏依赖）；``with_ascension=true`` 时另读
@@ -7,9 +7,8 @@
 ``lookup_light_cone`` 便于独立测试。
 
 匹配策略（按优先级，命中即返回）：
-1. 纯数字 = 光锥 tid（mys equip id / 图标文件名）→ 精确反查
-2. 名称精确命中（170 名称索引）
-3. 名称子串模糊（双向包含，如「于夜色」→「于夜色中」）——多命中返回
+1. 名称精确命中（170 名称索引）
+2. 名称子串模糊（双向包含，如「于夜色」→「于夜色中」）——多命中返回
    候选列表不猜（社区简称不入表，见 sr_relic_sets 设计裁定）
 过滤参数（与 query 组合使用）：rarity / path_id 缩小模糊结果域；
 ``list_all=true`` 忽略 query 直接按过滤条件列全量（agent 圈选场景）。
@@ -31,7 +30,6 @@ from sr_od.mys.sr_light_cones import (
     LightConeDef,
     icon_webp_rel_path,
     resolve_light_cone,
-    resolve_light_cone_by_tid,
 )
 
 _PATH_ID_CN: dict[str, str] = {
@@ -44,7 +42,6 @@ _PATH_ID_CN: dict[str, str] = {
 def _cone_to_data(cone: LightConeDef, match: str) -> dict:
     """光锥定义 → 工具返回的 data dict（含特效文本与图标项目相对路径）。"""
     return {
-        'tid': cone.tid,
         'name': cone.name,
         'rarity': cone.rarity,
         'path_id': cone.path_id,
@@ -94,10 +91,10 @@ def lookup_light_cone(
     list_all: bool = False,
     with_ascension: bool = False,
 ) -> dict:
-    """按名称/tid 查光锥定义（统一信封，见模块 docstring 匹配策略）。
+    """按名称查光锥定义（统一信封，见模块 docstring 匹配策略）。
 
     Args:
-        query: 光锥官方全名 / tid 数字字符串 / 模糊子串。
+        query: 光锥官方全名 / 模糊子串。
         rarity: 星级过滤（3/4/5），None 不过滤；list_all=true 时必填其一与 path_id 组合。
         path_id: 命途 id 过滤（九命途 id），None 不过滤。
         list_all: true 时忽略 query 按过滤条件返回全量（data.list）。
@@ -135,19 +132,12 @@ def lookup_light_cone(
         return ((rarity is None or cone.rarity == rarity)
                 and (path_id is None or cone.path_id == path_id))
 
-    # 1. 纯数字 = tid 精确反查
-    if text.isdigit():
-        hit = resolve_light_cone_by_tid(int(text))
-        if hit is not None and _filter(hit):
-            return _single_hit(hit, 'tid')
-        return {'status': 'not_found', 'message': f'tid {text} 查无光锥', 'data': None}
-
-    # 2. 名称精确
+    # 1. 名称精确
     hit = resolve_light_cone(text)
     if hit is not None and _filter(hit):
         return _single_hit(hit, 'name_exact')
 
-    # 3. 名称子串模糊（过滤条件内）
+    # 2. 名称子串模糊（过滤条件内）
     candidates = [c for c in LIGHT_CONES
                   if _filter(c) and (text in c.name or c.name in text)]
     if len(candidates) == 1:
@@ -165,8 +155,8 @@ def register_light_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查询光锥"))
     def cone_lookup(
         query: Annotated[str, Field(
-            description="查询词,按优先级匹配:①光锥tid数字(如23000);②官方全名精确(如「于夜色中」);"
-                        "③名称子串模糊(如「于夜色」,多命中返回候选);list_all=true 时忽略本参数")] = "",
+            description="查询词,按优先级匹配:①官方全名精确(如「于夜色中」);"
+                        "②名称子串模糊(如「于夜色」,多命中返回候选);list_all=true 时忽略本参数")] = "",
         rarity: Annotated[int | None, Field(
             description="星级过滤:3/4/5;None 不过滤")] = None,
         path_id: Annotated[str | None, Field(
@@ -180,7 +170,7 @@ def register_light_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类
                         "与指南关卡同名对齐)+副本外途径 extra_sources_by_material;list_all 模式不带;"
                         "默认 false")] = False,
     ) -> dict:
-        """观察类。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/内部ID/图标路径/特效文本）;可选打通「光锥→晋阶材料→所属副本」链路。
+        """观察类。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/图标路径/特效文本）;可选打通「光锥→晋阶材料→所属副本」链路。
 
         与 ``relic_lookup`` 分工：本工具查**光锥**（武器卡牌）；查**遗器套装**走
         ``relic_lookup``；查**账号实际穿戴**走 ``mys_get_characters`` 的 equip 摘要。
@@ -189,7 +179,7 @@ def register_light_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类
 
         Returns:
             统一信封 ``{"status","message","data"}``：
-            - ``success``：``data`` 含 tid/name/rarity/path_cn(命途中文)/
+            - ``success``：``data`` 含 name/rarity/path_cn(命途中文)/
               obtain(获取途径)/skill(特效全文)/icon(图标相对路径)/match(命中方式)；
               ``with_ascension=true`` 时另附 ``ascension``(stages 分段需求/
               total 满晋阶总量/dungeon_by_material 分类级副本反查/

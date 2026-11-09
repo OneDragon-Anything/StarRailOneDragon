@@ -6,23 +6,18 @@
 4 件效果 34/34 齐备、planner 实测件名覆盖 100%）——本模块固化其内容，
 禁自行增删改；固化后本模块即唯一权威载体（快照 JSON 为易失本地件）。
 
-set_id 与单件 desc（2026-11-05 增量固化）：
-- ``set_id`` = 游戏内部套装 ID，双源锚定：①米游社 avatar/info 遗器件 id
-  实证（tid 公式 60000/50000+set_id*10+pos，43 套零冲突）；②归档图标
-  ``iconrelic_<set_id>_<pos>.webp`` 文件名 ↔ wiki 单件图逐套对照仲裁
-  （其余 19 套 + 顺序律全量吻合：set_id 按实装顺序连续分配，隧洞 101 起、
-  位面 301 起，本模块排列序 = 实装序）。
-- ``desc`` = 单件描述（官方 wiki 原文透传）；``obtain`` = 套装获取途径。
-  wiki 词条偶有错字/缺段（实测 8 套 effects/件名与已固化常量不一致）——
-  effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
+``desc`` = 单件描述（官方 wiki 原文透传）；``obtain`` = 套装获取途径。
+wiki 词条偶有错字/缺段（实测 8 套 effects/件名与已固化常量不一致）——
+effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
 
-图标归档：``assets/game_data/relic_icons/iconrelic_<set_id>_<pos>.webp``
-（192 件全量，官方图标转档归档；寻址公式见 ``icon_webp_path``）。
+图标归档：``assets/game_data/relic_icons/<套装名>_<件名>.webp``
+（192 件全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 
 版本刷新工序：游戏新版本后重跑 wiki 抓取生成新快照 → 与下方 RELIC_SETS
-逐条 diff → 人工审阅后更新常量；新套装 set_id 按顺序律续排（隧洞/位面各
-自分段连续），图标按归档命名增量入库；新版本套装未及固化时由
-``resolve_set_name`` 兜底（warning 不抛异常），勿临时塞未经抓取核验的数据。
+逐条 diff → 人工审阅后更新常量（排列序 = 实装序），图标按归档命名增量
+入库；新版本套装未及固化时由 ``resolve_set_name`` 兜底（warning 不抛异常），
+勿临时塞未经抓取核验的数据。完整工序（含内部 ID 映射数据）见私有 skill
+``sr-od-dev-equip-data``（junction 挂载不入本仓）。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数（同 sr_codes 模块纪律）。
 """
@@ -38,9 +33,9 @@ from one_dragon.utils.log_utils import log
 class SrRelicPieceDef:
     """套装单件定义（快照 pieces[].{name, pos} 固化 + desc 增量）。
 
-    pos 坐标系：game_record 件 id 公式 60000+set_id*10+pos 的 pos 位——
-    隧洞 1=头部 2=手部 3=躯干 4=脚部、位面 5=位面球 6=连结绳（与
-    sr_codes.RELIC_POS_CN 同源）；取值时机 = 生成期快照（固化于常量，恒稳）。
+    pos 坐标系：装备部位号——隧洞 1=头部 2=手部 3=躯干 4=脚部、
+    位面 5=位面球 6=连结绳（与 sr_codes.RELIC_POS_CN 同源）；
+    取值时机 = 生成期快照（固化于常量，恒稳）。
     """
 
     name: str
@@ -51,7 +46,7 @@ class SrRelicPieceDef:
 
 @dataclass(frozen=True)
 class RelicSetDef:
-    """套装定义（快照 sets[] 固化 + set_id/obtain 增量）。
+    """套装定义（快照 sets[] 固化 + obtain 增量）。
 
     Attributes:
         set_name: 官方套装全名（社区简称不入表；基准：「骇域漫游的信使」/
@@ -61,9 +56,6 @@ class RelicSetDef:
         pieces: 全部件定义（隧洞 4 件 / 饰品 2 件，pos 见 SrRelicPieceDef）。
         effects: 套装效果文案，键 ``'2'``/``'4'``（官方 wiki 原文透传，
             不清洗富文本）。
-        set_id: 游戏内部套装 ID（tid 公式 60000/50000+set_id*10+pos 的
-            set_id 位；归档图标文件名同源——双源实证见模块 docstring；
-            生成期快照，恒稳）。
         obtain: 套装获取途径（官方 wiki 原文透传，如副本名；纯展示）。
     """
 
@@ -71,12 +63,11 @@ class RelicSetDef:
     kind: Literal['cavern', 'ornament']
     pieces: tuple[SrRelicPieceDef, ...]
     effects: Mapping[str, str]
-    set_id: int = 0
     obtain: str = ''
 
 
 RELIC_SETS: tuple[RelicSetDef, ...] = (
-    # ---- 隧洞遗器（cavern，34 套，按 set_id 升序）----
+    # ---- 隧洞遗器（cavern，34 套，按实装顺序）----
     RelicSetDef(
         set_name='云无留迹的过客',
         kind='cavern',
@@ -90,7 +81,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '治疗量提高10%。',
             '4': '在战斗开始时，立即为我方恢复1个战技点。',
         },
-        set_id=101,
         obtain='漂泊之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -106,7 +96,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '攻击力提高12%。',
             '4': '使装备者的速度提高6%，普攻造成的伤害提高10%。',
         },
-        set_id=102,
         obtain='漂泊之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -122,7 +111,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '防御力提高15%。',
             '4': '使装备者提供的护盾量提高20%。',
         },
-        set_id=103,
         obtain='圣颂之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -138,7 +126,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '冰属性伤害提高10%。',
             '4': '当装备者施放终结技时，暴击伤害提高25%，持续2回合。',
         },
-        set_id=104,
         obtain='霜风之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -154,7 +141,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '物理属性伤害提高10%。',
             '4': '当装备者施放攻击或受到攻击后，其在本场战斗中攻击力提高5%，最多叠加5层。',
         },
-        set_id=105,
         obtain='迅拳之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -170,7 +156,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '受到伤害降低8%。',
             '4': '回合开始时，如果装备者当前生命值百分比小于等于50%，则回复等同于自身生命上限8%的生命值，并恢复5点能量。',
         },
-        set_id=106,
         obtain='睿治之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -186,7 +171,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '火属性伤害提高10%。',
             '4': '使装备者战技造成的伤害提高12%，并使施放终结技后的下一次攻击造成的火属性伤害提高12%。',
         },
-        set_id=107,
         obtain='野焰之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -202,7 +186,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '量子属性伤害提高10%。',
             '4': '当装备者对敌方目标造成伤害时，无视其10%的防御力。若目标拥有量子属性弱点，额外无视其10%的防御力。',
         },
-        set_id=108,
         obtain='睿治之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -218,7 +201,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '雷属性伤害提高10%。',
             '4': '当装备者施放战技时，使装备者的攻击力提高20%，持续1回合。',
         },
-        set_id=109,
         obtain='圣颂之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -234,7 +216,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '风属性伤害提高10%。',
             '4': '当装备者施放终结技后，使其行动提前25%。',
         },
-        set_id=110,
         obtain='霜风之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -250,7 +231,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '击破特攻提高16%。',
             '4': '使装备者的击破特攻提高16%。当装备者击破敌方目标弱点后，恢复3点能量。',
         },
-        set_id=111,
         obtain='迅拳之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -266,7 +246,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '虚数属性伤害提高10%。',
             '4': '装备者对陷入负面效果的敌方目标造成伤害时暴击率提高10%，对陷入禁锢状态的敌方目标造成伤害时暴击伤害提高20%。',
         },
-        set_id=112,
         obtain='野焰之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -282,7 +261,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '生命上限提高12%。',
             '4': '当装备者受到攻击或被我方目标消耗生命值后，暴击率提高8%，持续2回合，该效果最多叠加2层。',
         },
-        set_id=113,
         obtain='药使之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -298,7 +276,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '速度提高6%。',
             '4': '当装备者对我方目标施放终结技时，我方全体速度提高12%，持续1回合，该效果无法叠加。',
         },
-        set_id=114,
         obtain='药使之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -314,7 +291,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '追加攻击造成的伤害提高20%。',
             '4': '装备者施放追加攻击时，根据追加攻击造成伤害的次数，每次造成伤害时使装备者的攻击力提高6%，最多叠加8次，持续3回合。该效果在装备者下次施放追加攻击时移除。',
         },
-        set_id=115,
         obtain='幽冥之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -330,7 +306,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '攻击力提高12%。',
             '4': '敌方目标每承受1个持续伤害效果，装备者对其造成伤害时就无视其6%的防御力，最多计入3个持续伤害效果。',
         },
-        set_id=116,
         obtain='幽冥之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -346,7 +321,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '对受负面状态影响的敌人造成的伤害提高12%。',
             '4': '暴击率提高4%，装备者对陷入不少于2/3个负面效果的敌方目标造成的暴击伤害提高8%/12%。装备者对敌方目标施加负面效果后，上述效果提高100%，持续1回合。',
         },
-        set_id=117,
         obtain='梦潜之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -362,7 +336,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '击破特攻提高16%。',
             '4': '当装备者对我方目标施放终结技时，我方全体击破特攻提高30%，持续2回合，该效果无法叠加。',
         },
-        set_id=118,
         obtain='梦潜之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -378,7 +351,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '击破特攻提高16%。',
             '4': '当装备者的击破特攻大于等于150%时，对敌方目标造成的击破伤害无视其10%的防御力。当装备者的击破特攻大于等于250%时，对敌方目标造成的超击破伤害额外无视其15%的防御力。',
         },
-        set_id=119,
         obtain='勇骑之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -394,7 +366,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '攻击力提高12%。',
             '4': '使装备者的暴击率提高6%，装备者施放追加攻击时，使终结技造成的伤害提高36%，持续1回合。',
         },
-        set_id=120,
         obtain='勇骑之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -410,7 +381,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '速度提高6%。',
             '4': '对我方单体目标施放战技或终结技时，使技能目标的暴击伤害提高18%，持续2回合，该效果最多叠加2次。',
         },
-        set_id=121,
         obtain='迷识之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -426,7 +396,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '暴击率提高8%。',
             '4': '战技和终结技造成的伤害提高20%，施放终结技后，下一次施放战技时造成的伤害额外提高25%。',
         },
-        set_id=122,
         obtain='迷识之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -442,7 +411,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '攻击力提高12%。',
             '4': '装备者的忆灵在场时，装备者的速度提高6%，装备者的忆灵攻击时，装备者和忆灵的暴击伤害提高30%，持续2回合。',
         },
-        set_id=123,
         obtain='弦歌之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -458,7 +426,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '量子属性伤害提高10%。',
             '4': '使装备者的速度降低8%。进入战斗前，若装备者的速度小于110/95，使装备者的暴击率提高20%/32%。该效果同时对装备者的忆灵生效。',
         },
-        set_id=124,
         obtain='弦歌之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -474,7 +441,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '速度提高6%。',
             '4': '当装备者及其忆灵为装备者及其忆灵以外的我方目标提供治疗后，使装备者获得【甘霖】，每回合最多触发1次，持续2回合。装备者持有【甘霖】时，速度提高6%，我方全体暴击伤害提高15%，该效果无法叠加。',
         },
-        set_id=125,
         obtain='雳涌之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -490,7 +456,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '暴击伤害提高16%。',
             '4': '装备者成为其他我方目标的技能目标时，获得1层【助力】，最多叠加2层。施放终结技时，若持有2层【助力】，消耗所有【助力】，使装备者攻击力提高48%，持续1回合。',
         },
-        set_id=126,
         obtain='雳涌之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -506,7 +471,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '暴击率提高8%。',
             '4': '装备者施放普攻或战技后，若装备者的忆灵在场，使装备者及其忆灵生命上限提高24%，我方全体造成的伤害提高15%，持续至装备者下次施放普攻或战技后。',
         },
-        set_id=127,
         obtain='隐救之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -522,7 +486,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '提供的护盾量提高10%。',
             '4': '使装备者提供的护盾量提高12%，我方目标持有装备者提供的护盾时，暴击伤害提高15%。',
         },
-        set_id=128,
         obtain='隐救之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -538,7 +501,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '暴击伤害提高16%。',
             '4': '装备者及其忆灵造成的欢愉伤害无视目标10%的防御力，我方每累计获得5点笑点，造成的欢愉伤害额外无视目标1%的防御力，最多叠加10层。',
         },
-        set_id=129,
         obtain='魔占之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -554,7 +516,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '速度提高6%。',
             '4': '进入战斗前，若装备者的速度大于等于120/160，使装备者的暴击率提高10%/18%。装备者每场战斗首次施放欢愉技时，使我方全体欢愉度提高10%，该效果无法叠加。',
         },
-        set_id=130,
         obtain='魔占之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -570,7 +531,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '攻击力提高12%。',
             '4': '装备者进入战斗时/施放战技时，造成的战技与终结技伤害提高18%，最多叠加3层，装备者回合开始时/施放终结技后，移除1层该效果。',
         },
-        set_id=131,
         obtain='观火之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -586,7 +546,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '生命上限提高12%。',
             '4': '装备者对防御力降低状态的敌方目标造成的暴击伤害提高28%。装备者对敌方目标施加防御力降低状态后，使我方全体获得【助燃】，持续2回合，该效果无法叠加，持有【助燃】的我方目标造成的伤害提高15%。该效果在装备者施放攻击后可再次触发。',
         },
-        set_id=132,
         obtain='观火之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -602,7 +561,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '速度提高6%。',
             '4': '当装备者对我方其他单体目标施放战技或终结技时，使技能目标的欢愉度提高16%，持续3回合，若装备者持有的好活当赏大于等于10点，则额外使我方全体目标的暴击伤害提高12%，持续3回合。',
         },
-        set_id=133,
         obtain='密伶之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -618,7 +576,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
             '2': '暴击伤害提高16%。',
             '4': '使装备者普攻造成的伤害提高36%。当装备者施放普攻时，使装备者的攻击力提高20%，持续2回合。',
         },
-        set_id=134,
         obtain='密伶之径·侵蚀隧洞',
     ),
     RelicSetDef(
@@ -631,7 +588,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的攻击力提高12%。当装备者的速度大于等于120时，攻击力额外提高12%。',
         },
-        set_id=301,
         obtain='第三世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -644,7 +600,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的生命上限提高12%。当装备者的速度大于等于120时，我方全体攻击力提高8%。',
         },
-        set_id=302,
         obtain='第三世界·模拟宇宙；坚城不倒·差分宇宙',
     ),
     RelicSetDef(
@@ -657,7 +612,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的效果命中提高10%。同时提高装备者等同于当前效果命中25%的攻击力，最多提高25%。',
         },
-        set_id=303,
         obtain='第五世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -670,7 +624,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的防御力提高15%。当装备者的效果命中大于等于50%时，防御力额外提高15%。',
         },
-        set_id=304,
         obtain='第六世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -683,7 +636,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击伤害提高16%。当装备者的暴击伤害大于等于120%时，进入战斗后装备者的暴击率提高60%，持续到施放首次攻击后结束。',
         },
-        set_id=305,
         obtain='第五世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -696,7 +648,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击率提高8%。当装备者当前暴击率大于等于50%时，终结技和追加攻击造成的伤害提高15%。',
         },
-        set_id=306,
         obtain='第六世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -709,7 +660,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的击破特攻提高16%。当装备者的速度大于等于145时，击破特攻额外提高20%。',
         },
-        set_id=307,
         obtain='第四世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -722,7 +672,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的能量恢复效率提高5%。当装备者的速度大于等于120时，进入战斗时立刻使行动提前40%。',
         },
-        set_id=308,
         obtain='第四世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -735,7 +684,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击率提高8%。当装备者当前暴击率大于等于70%时，普攻和战技造成的伤害提高20%。',
         },
-        set_id=309,
         obtain='第七世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -748,7 +696,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的效果抵抗提高10%。当装备者的效果抵抗大于等于30%时，我方全体暴击伤害提高10%。',
         },
-        set_id=310,
         obtain='第七世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -761,7 +708,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的攻击力提高12%。当装备者的速度大于等于135/160时，使装备者造成的伤害提高12%/18%。',
         },
-        set_id=311,
         obtain='第八世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -774,7 +720,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的能量恢复效率提高5%。使队伍中与装备者属性相同的我方其他角色造成的伤害提高10%。',
         },
-        set_id=312,
         obtain='第八世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -787,7 +732,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击率提高4%。当敌方目标被消灭时，装备者暴击伤害提高4%，最多叠加10层。',
         },
-        set_id=313,
         obtain='第九世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -800,7 +744,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的攻击力提高12%。进入战斗时，若至少存在一名与装备者命途相同的队友，装备者的暴击率提高12%。',
         },
-        set_id=314,
         obtain='第九世界·模拟宇宙',
     ),
     RelicSetDef(
@@ -813,7 +756,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '我方角色施放追加攻击时，装备者获得一层【功勋】，最多叠加5层，每层【功勋】使装备者追加攻击造成的伤害提高5%，叠满5层时，额外使装备者的暴击伤害提高25%。',
         },
-        set_id=315,
         obtain='永恒笑剧·差分宇宙',
     ),
     RelicSetDef(
@@ -826,7 +768,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的速度提高6%。当装备者击中拥有火属性弱点的敌方目标时，击破特攻提高40%，持续1回合。',
         },
-        set_id=316,
         obtain='永恒笑剧·差分宇宙',
     ),
     RelicSetDef(
@@ -839,7 +780,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的能量恢复效率提高5%，如果装备者不是编队中的第一位角色，使编队中的第一位角色攻击力提高12%。',
         },
-        set_id=317,
         obtain='蠹役饥肠·差分宇宙',
     ),
     RelicSetDef(
@@ -852,7 +792,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击伤害提高16%，当存在装备者召唤的目标时，暴击伤害额外提高32%。',
         },
-        set_id=318,
         obtain='蠹役饥肠·差分宇宙',
     ),
     RelicSetDef(
@@ -865,7 +804,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的生命上限提高12%。当装备者的生命上限大于等于5000点时，使装备者及其忆灵的暴击伤害提高28%。',
         },
-        set_id=319,
         obtain='纷争不休·差分宇宙',
     ),
     RelicSetDef(
@@ -878,7 +816,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的速度提高6%。当装备者的速度大于等于135/180时，使装备者及其忆灵的治疗量提高12%/20%。',
         },
-        set_id=320,
         obtain='纷争不休·差分宇宙',
     ),
     RelicSetDef(
@@ -891,7 +828,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '队伍中当前在场的我方目标数量不等于4时，每多/少1名我方目标，使装备者及其忆灵造成的伤害提高9%/12%，最多叠加4/3层。',
         },
-        set_id=321,
         obtain='&nbsp;月下朱殷·差分宇宙',
     ),
     RelicSetDef(
@@ -904,7 +840,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的攻击力提高12%。当装备者的攻击力大于等于2400/3600时，使造成的持续伤害额外提高12%/24%。',
         },
-        set_id=322,
         obtain='&nbsp;月下朱殷·差分宇宙',
     ),
     RelicSetDef(
@@ -917,7 +852,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击率提高8%。装备者的忆灵在场时，我方全体速度提高8%，该效果无法叠加。',
         },
-        set_id=323,
         obtain='西风丛中·差分宇宙',
     ),
     RelicSetDef(
@@ -930,7 +864,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击伤害提高16%，若在同一回合内消耗大于等于3点战技点，额外使装备者暴击伤害提高32%，持续3回合。',
         },
-        set_id=324,
         obtain='西风丛中·差分宇宙',
     ),
     RelicSetDef(
@@ -943,7 +876,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的欢愉度提高8%。战斗中欢愉度首次达到40%/80%时，使装备者暴击伤害提高20%/32%。',
         },
-        set_id=325,
         obtain='鎏金追忆·差分宇宙',
     ),
     RelicSetDef(
@@ -956,7 +888,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '装备者施放追加攻击时，攻击力提高24%，持续2回合。当敌方目标被消灭时，我方全体在本场战斗中暴击伤害提高12%，该效果无法叠加。',
         },
-        set_id=326,
         obtain='鎏金追忆·差分宇宙',
     ),
     RelicSetDef(
@@ -969,7 +900,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '使装备者的暴击率提高8%。进入战斗时，若装备者与另一名队友均为开拓同行角色，使装备者的暴击伤害提高32%。',
         },
-        set_id=327,
         obtain='虫虫来袭·差分宇宙',
     ),
     RelicSetDef(
@@ -982,7 +912,6 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         effects={
             '2': '进入战斗时，若装备者能量上限大于等于200点，每超过1点使装备者造成的伤害提高0.2%，最多提高32%。',
         },
-        set_id=328,
         obtain='虫虫来袭·差分宇宙',
     ),
 )
@@ -1000,11 +929,6 @@ _SET_BY_NAME: dict[str, RelicSetDef] = {
     relic_set.set_name: relic_set for relic_set in RELIC_SETS
 }
 
-# set_id → 套装定义索引：tid 反查（mys 遗器件 id → 套装）与图标寻址用。
-_SET_BY_ID: dict[int, RelicSetDef] = {
-    relic_set.set_id: relic_set for relic_set in RELIC_SETS if relic_set.set_id
-}
-
 #: 单件图标归档相对路径公式（项目 assets 根起）；192 件全量，见模块 docstring。
 _RELIC_ICON_REL_TEMPLATE = 'assets/game_data/relic_icons/{set_name}_{piece_name}.webp'
 
@@ -1015,20 +939,6 @@ def icon_webp_rel_path(set_name: str, piece_name: str) -> str:
     纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。
     """
     return _RELIC_ICON_REL_TEMPLATE.format(set_name=set_name, piece_name=piece_name)
-
-
-def resolve_set_by_tid(tid: int) -> RelicSetDef | None:
-    """mys 遗器件 id（tid）→ 套装定义（miss 返回 None）。
-
-    tid 公式：隧洞 60000+set_id*10+pos、位面饰品 50000+set_id*10+pos
-    （2026-11-05 avatar/info 实证；pos 见 SrRelicPieceDef 坐标系）。
-    新版本套装未入常量时 miss 返回 None（调用方自行兜底），不抛异常。
-    """
-    base = 60000 if tid >= 60000 else 50000
-    rest = tid - base
-    if rest < 0:
-        return None
-    return _SET_BY_ID.get(rest // 10)
 
 
 def resolve_set_name(piece_name: str) -> str | None:

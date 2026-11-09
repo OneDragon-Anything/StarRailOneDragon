@@ -1,21 +1,18 @@
 """米游社光锥快照常量与查询助手。
 
-数据分层（用户裁定）：定义层+skill 特效文本固化——tid/名称/星级/命途/获取
-途径+skill 特效文本（官方 wiki 原文透传，含五档叠影数值）；光锥故事**不固化**。映射内容的权威快照：官方 wiki 光锥频道
-（channel_id=19，170 把）+ 米游社 avatar/info equip 字段 tid 实证（50 把）+
-归档图标全量 SIFT 对照（内点数最优判据）——多源交叉后固化，固化后本模块
-即唯一权威载体（快照 JSON 为易失本地件）。
+数据分层（用户裁定）：定义层+skill 特效文本固化——名称/星级/命途/获取
+途径+skill 特效文本（官方 wiki 原文透传，含五档叠影数值）；光锥故事**不固化**；
+游戏内部数字 ID 不入本模块（映射数据归私有 skill ``sr-od-dev-equip-data``）。
+映射内容的权威快照：官方 wiki 光锥频道（channel_id=19，170 把）与归档图标
+全量对照——多源交叉后固化，固化后本模块即唯一权威载体（快照 JSON 为易失
+本地件）。
 
-tid 分段规律（图标文件名与 mys equip id 同源）：2000x=3 星、210xx=4 星池内、
-2200x=4 星特殊渠道（活动/商店）、2300x=5 星池内、2400x=5 星特殊渠道（黑塔
-商店）；段内按实装顺序连续分配（同 sr_relic_sets 顺序律的星铁装备版）。
+图标归档：``assets/game_data/light_cone_icons/<光锥名>.webp``（170 把全量，
+官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 
-图标归档：``assets/game_data/light_cone_icons/lightcone_<tid>.webp``（170 把
-全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
-
-版本刷新工序：游戏新版本后重跑 wiki 抓取 + 图标增量归档 + SIFT 对照（工序
-详见私有 skill ``sr-od-dev-equip-data``，junction 挂载不入本仓）→ 与下方
-LIGHT_CONES 逐条 diff → 人工审阅后更新常量；勿临时塞未经核验的数据。
+版本刷新工序：游戏新版本后重跑 wiki 抓取 + 图标增量归档（工序详见私有
+skill ``sr-od-dev-equip-data``，junction 挂载不入本仓）→ 与下方 LIGHT_CONES
+逐条 diff → 人工审阅后更新常量；勿临时塞未经核验的数据。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数（同 sr_relic_sets 模块纪律）。
 """
@@ -28,8 +25,6 @@ class LightConeDef:
     """光锥定义（官方 wiki 快照固化）。
 
     Attributes:
-        tid: 游戏内部光锥 ID——mys ``avatar/info`` equip id 与归档图标文件名
-            同源（双源锚定）；生成期快照，恒稳。
         name: 官方光锥全名（社区简称不入表；基准：「于夜色中」/「银河铁道之夜」）。
         rarity: 星级 3/4/5。
         path_id: 命途 id（对齐 ``character_const`` 九命途 id 风格：
@@ -40,7 +35,6 @@ class LightConeDef:
             标记不清洗——展示原样；S1-S5 数值即括号序列自左至右）。
     """
 
-    tid: int
     name: str
     rarity: int
     path_id: str
@@ -51,7 +45,6 @@ class LightConeDef:
 LIGHT_CONES: tuple[LightConeDef, ...] = (
     # ---- 3 星（2000x 段） ----
     LightConeDef(
-        tid=20000,
         name='锋镝',
         rarity=3,
         path_id='hunt',
@@ -59,7 +52,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='危机 战斗开始时，使装备者的暴击率提高 【12%/15%/18%/21%/24%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=20001,
         name='物穰',
         rarity=3,
         path_id='abundance',
@@ -67,7 +59,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='繁盛 装备者施放战技和终结技时，治疗量提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=20002,
         name='天倾',
         rarity=3,
         path_id='destruction',
@@ -75,7 +66,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='破灭 使装备者普攻和战技造成的伤害提高 【20%/25%/30%/35%/40%】 。',
     ),
     LightConeDef(
-        tid=20003,
         name='琥珀',
         rarity=3,
         path_id='preservation',
@@ -83,7 +73,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='静滞 使装备者的防御力提高 【16%/20%/24%/28%/32%】 。当装备者当前生命值百分比小于50%时，其防御力额外提高 【16%/20%/24%/28%/32%】 。',
     ),
     LightConeDef(
-        tid=20004,
         name='幽邃',
         rarity=3,
         path_id='nihility',
@@ -91,7 +80,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='沉沦 战斗开始时，使装备者的效果命中提高 【20%/25%/30%/35%/40%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=20005,
         name='齐颂',
         rarity=3,
         path_id='harmony',
@@ -99,7 +87,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='协力 进入战斗后，使我方全体的攻击力提高 【8%/9%/10%/11%/12%】 。同类技能无法重复生效。',
     ),
     LightConeDef(
-        tid=20006,
         name='智库',
         rarity=3,
         path_id='erudition',
@@ -107,7 +94,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='博识 使装备者终结技造成的伤害提高 【28%/35%/42%/49%/56%】 。',
     ),
     LightConeDef(
-        tid=20007,
         name='离弦',
         rarity=3,
         path_id='hunt',
@@ -115,7 +101,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='鸣角 使装备者消灭敌方目标后，攻击力提高 【24%/30%/36%/42%/48%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=20008,
         name='嘉果',
         rarity=3,
         path_id='abundance',
@@ -123,7 +108,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='甘美 战斗开始时，立即为我方全体恢复 【6/7/9/10/12】 点能量。',
     ),
     LightConeDef(
-        tid=20009,
         name='乐圮',
         rarity=3,
         path_id='destruction',
@@ -131,7 +115,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='诛讨 使装备者对当前生命值百分比大于50%的敌方目标造成的伤害提高 【20%/25%/30%/35%/40%】 。',
     ),
     LightConeDef(
-        tid=20010,
         name='戍御',
         rarity=3,
         path_id='preservation',
@@ -139,7 +122,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='兴复 使装备者施放终结技时，回复等同于自身生命上限 【18%/21%/24%/27%/30%】 的生命值。',
     ),
     LightConeDef(
-        tid=20011,
         name='渊环',
         rarity=3,
         path_id='nihility',
@@ -147,7 +129,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='追逼 使装备者对减速状态下的敌方目标造成的伤害提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=20012,
         name='轮契',
         rarity=3,
         path_id='harmony',
@@ -155,7 +136,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='速决 使装备者施放攻击或受到攻击后，额外恢复 【4/5/6/7/8】 点能量，该效果单个回合内不可重复触发。',
     ),
     LightConeDef(
-        tid=20013,
         name='灵钥',
         rarity=3,
         path_id='erudition',
@@ -163,7 +143,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='顿悟 使装备者施放战技后额外恢复 【8/9/10/11/12】 点能量，该效果单个回合内不可重复触发。',
     ),
     LightConeDef(
-        tid=20014,
         name='相抗',
         rarity=3,
         path_id='hunt',
@@ -171,7 +150,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='联盟 使装备者在消灭敌方目标后，速度提高 【10%/12%/14%/16%/18%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=20015,
         name='蕃息',
         rarity=3,
         path_id='abundance',
@@ -179,7 +157,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='丰饶民 当装备者施放普攻后，使下一次行动提前 【12%/14%/16%/18%/20%】 。',
     ),
     LightConeDef(
-        tid=20016,
         name='俱殁',
         rarity=3,
         path_id='destruction',
@@ -187,7 +164,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='军团 装备者当前生命值百分比小于80%时，暴击率提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=20017,
         name='开疆',
         rarity=3,
         path_id='preservation',
@@ -195,7 +171,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='公司 当装备者击破敌方目标的弱点时，回复等同于自身生命上限 【12%/14%/16%/18%/20%】 的生命值。',
     ),
     LightConeDef(
-        tid=20018,
         name='匿影',
         rarity=3,
         path_id='nihility',
@@ -203,7 +178,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='机关 施放战技后，使装备者的下一次普攻对敌方目标造成等同于自身 【60%/75%/90%/105%/120%】 攻击力的附加伤害。',
     ),
     LightConeDef(
-        tid=20019,
         name='调和',
         rarity=3,
         path_id='harmony',
@@ -211,7 +185,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='家族 进入战斗时，我方全体速度提高 【12/14/16/18/20】 点，持续1回合。',
     ),
     LightConeDef(
-        tid=20020,
         name='睿见',
         rarity=3,
         path_id='erudition',
@@ -219,7 +192,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='天才 当装备者施放终结技时，攻击力提高 【24%/30%/36%/42%/48%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=20021,
         name='焚影',
         rarity=3,
         path_id='remembrance',
@@ -227,7 +199,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='美化 装备者首次召唤忆灵时，恢复1点战技点，并恢复自身 【12/14/16/18/20】 点能量。',
     ),
     LightConeDef(
-        tid=20022,
         name='溯忆',
         rarity=3,
         path_id='remembrance',
@@ -235,7 +206,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='入寐 忆灵的回合开始时，使装备者和忆灵分别获得1层【缅怀】，每层使造成的伤害提高 【8%/9%/10%/11%/12%】 ，最多叠加4层。忆灵消失时移除装备者和忆灵的【缅怀】。',
     ),
     LightConeDef(
-        tid=20023,
         name='嗤笑',
         rarity=3,
         path_id='elation',
@@ -243,7 +213,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='纵欢 阿哈时刻发动时，使装备者的欢愉度提高 【16%/20%/24%/28%/32%】 ，持续到阿哈时刻结束。',
     ),
     LightConeDef(
-        tid=20024,
         name='残泪',
         rarity=3,
         path_id='elation',
@@ -252,7 +221,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
     ),
     # ---- 4 星·池内（210xx 段） ----
     LightConeDef(
-        tid=21000,
         name='一场术后对话',
         rarity=4,
         path_id='abundance',
@@ -260,7 +228,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='互相治愈 使装备者的能量恢复效率提高 【8%/10%/12%/14%/16%】 ，并在施放终结技时治疗量提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=21001,
         name='晚安与睡颜',
         rarity=4,
         path_id='nihility',
@@ -268,7 +235,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='劳碌者 敌方目标每承受1个负面效果，装备者对其造成的伤害提高 【12%/15%/18%/21%/24%】 ，最多叠加3层。该效果对持续伤害也会生效。',
     ),
     LightConeDef(
-        tid=21002,
         name='余生的第一天',
         rarity=4,
         path_id='preservation',
@@ -276,7 +242,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='此刻定格 使装备者的防御力提高 【16%/18%/20%/22%/24%】 。进入战斗后，使我方全体的全属性抗性提高 【8%/9%/10%/11%/12%】 。同类技能无法重复生效。',
     ),
     LightConeDef(
-        tid=21003,
         name='唯有沉默',
         rarity=4,
         path_id='hunt',
@@ -284,7 +249,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='记录 使装备者的攻击力提高 【16%/20%/24%/28%/32%】 。当场上的敌方目标数量小于等于2时，装备者的暴击率提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=21004,
         name='记忆中的模样',
         rarity=4,
         path_id='harmony',
@@ -292,7 +256,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='老相片 使装备者的击破特攻提高 【28%/35%/42%/49%/56%】 。装备者施放攻击后，额外恢复 【4/5/6/7/8】 点能量，该效果单个回合内不可重复触发。',
     ),
     LightConeDef(
-        tid=21005,
         name='鼹鼠党欢迎你',
         rarity=4,
         path_id='destruction',
@@ -300,7 +263,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='奇妙冒险 装备者施放普攻、战技或终结技攻击敌方目标后，分别获取一层【淘气值】。每层使装备者的攻击力提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=21006,
         name='「我」的诞生',
         rarity=4,
         path_id='erudition',
@@ -308,7 +270,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='画像少女 使装备者追加攻击造成的伤害提高 【24%/30%/36%/42%/48%】 。若该敌方目标当前生命值百分比小于等于50%，则追加攻击造成的伤害额外提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=21007,
         name='同一种心情',
         rarity=4,
         path_id='abundance',
@@ -316,7 +277,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='救治与维修 使装备者的治疗量提高 【10%/12%/15%/17%/20%】 ，并在施放战技时为我方全体恢复 【2.0/2.5/3.0/3.5/4.0】 点能量。',
     ),
     LightConeDef(
-        tid=21008,
         name='猎物的视线',
         rarity=4,
         path_id='nihility',
@@ -324,7 +284,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='自信 使装备者的效果命中提高 【20%/25%/30%/35%/40%】 ，同时造成的持续伤害提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=21009,
         name='朗道的选择',
         rarity=4,
         path_id='preservation',
@@ -332,7 +291,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='时光如梭 使装备者受到攻击的概率提高，同时受到的伤害降低 【16%/18%/20%/22%/24%】 。',
     ),
     LightConeDef(
-        tid=21010,
         name='论剑',
         rarity=4,
         path_id='hunt',
@@ -340,7 +298,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='各自的答案 当装备者多次击中同一敌方目标时，每次造成的伤害提高 【8%/10%/12%/14%/16%】 ，该效果最多叠加5层。若攻击目标发生变化，立即解除当前的增益效果。',
     ),
     LightConeDef(
-        tid=21011,
         name='与行星相会',
         rarity=4,
         path_id='harmony',
@@ -348,7 +305,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='启程 进入战斗后，当我方目标造成与装备者相同属性的伤害时，造成的伤害提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=21012,
         name='秘密誓心',
         rarity=4,
         path_id='destruction',
@@ -356,7 +312,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='竭力而为 使装备者造成的伤害提高 【20%/25%/30%/35%/40%】 ，同时对当前生命值百分比大于等于装备者自身当前生命值百分比的敌方目标造成的伤害额外提高 【20%/25%/30%/35%/40%】 。',
     ),
     LightConeDef(
-        tid=21013,
         name='别让世界静下来',
         rarity=4,
         path_id='erudition',
@@ -364,7 +319,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='声音的力量 使装备者进入战斗时立即恢复 【20/23/26/29/32】 点能量，同时使其终结技造成的伤害提高 【32%/40%/48%/56%/64%】 。',
     ),
     LightConeDef(
-        tid=21014,
         name='此时恰好',
         rarity=4,
         path_id='abundance',
@@ -372,7 +326,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='折射的视线 使装备者的效果抵抗提高 【16%/20%/24%/28%/32%】 ，并使装备者的治疗量提高，提高数值等同于效果抵抗的 【33%/36%/39%/42%/45%】 ，最多使治疗量提高 【15%/18%/21%/24%/27%】 。',
     ),
     LightConeDef(
-        tid=21015,
         name='决心如汗珠般闪耀',
         rarity=4,
         path_id='nihility',
@@ -380,7 +333,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='回眸 当装备者击中敌方目标时，如果该目标不处于【攻陷】状态，则有 【60%/70%/80%/90%/100%】 的基础概率使其陷入【攻陷】状态。【攻陷】状态下的敌方目标防御力降低 【12%/13%/14%/15%/16%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=21016,
         name='宇宙市场趋势',
         rarity=4,
         path_id='preservation',
@@ -388,7 +340,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='新一轮洗牌 使装备者的防御力提高 【16%/20%/24%/28%/32%】 。当装备者受到攻击后，有 【100%/105%/110%/115%/120%】 的基础概率使敌方目标陷入灼烧状态，每回合造成等同于装备者 【40%/50%/60%/70%/80%】 防御力的持续伤害，持续2回合。',
     ),
     LightConeDef(
-        tid=21017,
         name='点个关注吧！',
         rarity=4,
         path_id='hunt',
@@ -396,7 +347,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='不赞不许走！ 使装备者普攻和战技造成的伤害提高 【24%/30%/36%/42%/48%】 ，当装备者的当前能量值等于其能量上限时，该效果额外提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=21018,
         name='舞！舞！舞！',
         rarity=4,
         path_id='harmony',
@@ -404,7 +354,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='停不下来啦！ 当装备者施放终结技后，我方全体行动提前 【16%/18%/20%/22%/24%】 。',
     ),
     LightConeDef(
-        tid=21019,
         name='在蓝天下',
         rarity=4,
         path_id='destruction',
@@ -412,7 +361,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='暖阳麦浪 使装备者攻击力提高 【16%/20%/24%/28%/32%】 ，当装备者消灭敌方目标后，暴击率提高 【12%/15%/18%/21%/24%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=21020,
         name='天才们的休憩',
         rarity=4,
         path_id='erudition',
@@ -420,7 +368,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='各得其所 使装备者攻击力提高 【16%/20%/24%/28%/32%】 ，当装备者消灭敌方目标后，暴击伤害提高 【24%/30%/36%/42%/48%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=21021,
         name='等价交换',
         rarity=4,
         path_id='abundance',
@@ -428,7 +375,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='酣适 当装备者的回合开始时，随机为1个当前能量百分比小于50%的我方其他目标恢复 【8/10/12/14/16】 点能量。',
     ),
     LightConeDef(
-        tid=21022,
         name='延长记号',
         rarity=4,
         path_id='nihility',
@@ -436,7 +382,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='休止符 使装备者的击破特攻提高 【16%/20%/24%/28%/32%】 ，对处于触电或风化状态的敌方目标造成的伤害提高 【16%/20%/24%/28%/32%】 ，该效果对持续伤害也会生效。',
     ),
     LightConeDef(
-        tid=21023,
         name='我们是地火',
         rarity=4,
         path_id='preservation',
@@ -444,7 +389,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='泪中人 战斗开始时，使我方全体受到的伤害降低 【8%/10%/12%/14%/16%】 ，持续5回合。同时立即为我方全体回复等同于各自已损失生命值 【30%/35%/40%/45%/50%】 的生命值。',
     ),
     LightConeDef(
-        tid=21024,
         name='春水初生',
         rarity=4,
         path_id='hunt',
@@ -452,7 +396,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='驱散余寒 进入战斗后，使装备者速度提高 【8%/9%/10%/11%/12%】 ，造成的伤害提高 【12%/15%/18%/21%/24%】 。当装备者受到伤害后该效果失效，下个回合结束时该效果恢复。',
     ),
     LightConeDef(
-        tid=21025,
         name='过往未来',
         rarity=4,
         path_id='harmony',
@@ -460,7 +403,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='旧日纸鸢 当装备者施放战技后，使下一个行动的我方其他目标造成的伤害提高 【16%/20%/24%/28%/32%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=21026,
         name='汪！散步时间！',
         rarity=4,
         path_id='destruction',
@@ -468,7 +410,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='快溜 使装备者的攻击力提高 【10%/12%/15%/17%/20%】 ，对处于灼烧或裂伤状态的敌方目标造成的伤害提高 【16%/20%/24%/28%/32%】 ，该效果对持续伤害也会生效。',
     ),
     LightConeDef(
-        tid=21027,
         name='早餐的仪式感',
         rarity=4,
         path_id='erudition',
@@ -476,7 +417,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='各就其位 使装备者造成伤害提高 【12%/15%/18%/21%/24%】 。每消灭1个敌方目标，装备者的攻击力提高 【4%/5%/6%/7%/8%】 ，该效果最多叠加3层。',
     ),
     LightConeDef(
-        tid=21028,
         name='暖夜不会漫长',
         rarity=4,
         path_id='abundance',
@@ -484,7 +424,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='小小灯火 使装备者的生命上限提高 【16%/20%/24%/28%/32%】 。施放普攻或战技后，为我方全体回复等同于各自生命上限 【2.0%/2.5%/3.0%/3.5%/4.0%】 的生命值。',
     ),
     LightConeDef(
-        tid=21029,
         name='后会有期',
         rarity=4,
         path_id='nihility',
@@ -492,7 +431,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='交手如交谈 装备者施放普攻或战技后，对随机1个受到攻击的敌方目标造成等同于自身 【48%/60%/72%/84%/96%】 攻击力的附加伤害。',
     ),
     LightConeDef(
-        tid=21030,
         name='这就是我啦！',
         rarity=4,
         path_id='preservation',
@@ -500,7 +438,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='新篇章 使装备者防御力提高 【16%/20%/24%/28%/32%】 。使装备者施放终结技时造成的伤害值提高，提高数值等同于装备者防御力的 【60%/75%/90%/105%/120%】 ，该效果每次施放终结技时对每个敌方目标仅生效1次。',
     ),
     LightConeDef(
-        tid=21031,
         name='重返幽冥',
         rarity=4,
         path_id='hunt',
@@ -508,7 +445,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='汹涌 使装备者暴击率提高 【12%/15%/18%/21%/24%】 。暴击后有 【16%/20%/24%/28%/32%】 的固定概率解除被攻击敌方目标所持有的1个增益效果，该效果每次攻击只可触发1次。',
     ),
     LightConeDef(
-        tid=21032,
         name='镂月裁云之意',
         rarity=4,
         path_id='harmony',
@@ -516,7 +452,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='秘密 在战斗开始时以及当装备者回合开始时，随机生效1个效果。该效果生效时，替换上次的效果且本次不会与上次重复。效果包含：使我方全体攻击力提高 【10%/12%/15%/17%/20%】 ；使我方全体暴击伤害提高 【12%/15%/18%/21%/24%】 ；使我方全体能量恢复效率提高 【6%/7%/9%/10%/12%】 。同类效果无法叠加，在装备者陷入无法战斗状态时解除。',
     ),
     LightConeDef(
-        tid=21033,
         name='无处可逃',
         rarity=4,
         path_id='destruction',
@@ -524,7 +459,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='绝境 使装备者的攻击力提高 【24%/30%/36%/42%/48%】 。当装备者消灭敌方目标时，回复等同于自身 【12%/15%/18%/21%/24%】 攻击力的生命值。',
     ),
     LightConeDef(
-        tid=21034,
         name='今日亦是和平的一日',
         rarity=4,
         path_id='erudition',
@@ -532,7 +466,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='风雨将至 进入战斗后，根据装备者的能量上限，提高装备者造成的伤害：每点能量提高 【0.20%/0.25%/0.30%/0.35%/0.40%】 ，最多计入160点。',
     ),
     LightConeDef(
-        tid=21035,
         name='何物为真',
         rarity=4,
         path_id='abundance',
@@ -540,7 +473,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='假设 使装备者的击破特攻提高 【24%/30%/36%/42%/48%】 。施放普攻后，装备者回复等同于 【2.0%/2.5%/3.0%/3.5%/4.0%】 生命上限+800点的生命值。',
     ),
     LightConeDef(
-        tid=21036,
         name='美梦小镇大冒险',
         rarity=4,
         path_id='harmony',
@@ -548,7 +480,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='团结 装备者施放普攻、战技、终结技中某一类型的技能后，为我方全体附加【童心】，【童心】可以使我方目标对应类型的技能所造成的伤害提高 【12%/14%/16%/18%/20%】 。【童心】仅对装备者最新使用的技能类型生效，且不可叠加。',
     ),
     LightConeDef(
-        tid=21037,
         name='最后的赢家',
         rarity=4,
         path_id='hunt',
@@ -556,7 +487,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='下注 使装备者的攻击力提高 【12%/14%/16%/18%/20%】 。当装备者对敌方目标造成暴击后获得一层【好运】，最多叠加4层。每层【好运】使装备者的暴击伤害提高 【8%/9%/10%/11%/12%】 ，【好运】在装备者的回合结束时移除。',
     ),
     LightConeDef(
-        tid=21038,
         name='在火的远处',
         rarity=4,
         path_id='destruction',
@@ -564,7 +494,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='爆燃 当装备者在单次受到攻击中累计损失的生命值超过最大生命值的25%，或单次消耗自身生命值超过最大生命值的25%，则立即回复等同于装备者生命上限15%的生命值，同时使装备者造成的伤害提高 【25%/31%/37%/43%/50%】 ，持续2回合。该效果每3回合只能触发1次。',
     ),
     LightConeDef(
-        tid=21039,
         name='织造命运之线',
         rarity=4,
         path_id='preservation',
@@ -572,7 +501,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='洞见 使装备者的效果抵抗提高 【12%/14%/16%/18%/20%】 。装备者每有100点防御力，使装备者造成的伤害提高 【0.8%/0.9%/1.0%/1.1%/1.2%】 ，最多使造成的伤害提高 【32%/36%/40%/44%/48%】 。',
     ),
     LightConeDef(
-        tid=21040,
         name='银河沦陷日',
         rarity=4,
         path_id='erudition',
@@ -580,7 +508,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='攻略 使装备者的攻击力提高 【16%/18%/20%/22%/24%】 。装备者施放攻击后，若有不少于2个被攻击的敌方目标具有对应属性弱点，装备者的暴击伤害提高 【20%/25%/30%/35%/40%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=21041,
         name='好戏开演',
         rarity=4,
         path_id='nihility',
@@ -588,7 +515,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='自娱自乐 装备者对敌方目标施加负面状态后，获得一层【戏法】，每层【戏法】使装备者造成的伤害提高 【6%/7%/8%/9%/10%】 ，最多叠加3层，持续1回合。当装备者的效果命中大于等于80%时，攻击力提高 【20%/24%/28%/32%/36%】 。',
     ),
     LightConeDef(
-        tid=21042,
         name='铭记于心的约定',
         rarity=4,
         path_id='destruction',
@@ -596,7 +522,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='传承 使装备者的击破特攻提高 【28%/35%/42%/49%/56%】 。当装备者施放终结技时，暴击率提高 【15%/18%/22%/26%/30%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=21043,
         name='两个人的演唱会',
         rarity=4,
         path_id='preservation',
@@ -604,7 +529,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='鼓舞 使装备者的防御力提高 【16%/20%/24%/28%/32%】 。场上每有一名持有护盾的角色，装备者造成的伤害提高 【4%/5%/6%/7%/8%】 。',
     ),
     LightConeDef(
-        tid=21044,
         name='无边曼舞',
         rarity=4,
         path_id='nihility',
@@ -612,7 +536,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='试探 使装备者的暴击率提高 【8%/10%/12%/14%/16%】 。装备者对处于防御降低或减速状态下的敌人造成的暴击伤害提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=21045,
         name='谐乐静默之后',
         rarity=4,
         path_id='erudition',
@@ -620,7 +543,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='沉寂 使装备者的击破特攻提高 【28%/35%/42%/49%/56%】 。装备者施放终结技后，速度提高 【8%/10%/12%/14%/16%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=21046,
         name='芳华待灼',
         rarity=4,
         path_id='harmony',
@@ -628,7 +550,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='莫失莫忘 使装备者的攻击力提高 【16%/20%/24%/28%/32%】 。进入战斗时，若有两名及以上我方角色拥有任意相同命途，使这些角色的暴击伤害提高 【16%/20%/24%/28%/32%】 。同类技能无法重复生效。',
     ),
     LightConeDef(
-        tid=21047,
         name='黑夜如影随行',
         rarity=4,
         path_id='hunt',
@@ -636,7 +557,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='隐匿 使装备者的击破特攻提高 【28%/35%/42%/49%/56%】 。进入战斗时或造成击破伤害后，速度提高 【8%/9%/10%/11%/12%】 ，持续2回合，该效果每回合只可触发1次。',
     ),
     LightConeDef(
-        tid=21048,
         name='梦的蒙太奇',
         rarity=4,
         path_id='abundance',
@@ -644,7 +564,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='学院式剪接 使装备者的速度提高 【8%/9%/10%/11%/12%】 ，攻击处于弱点击破状态下的敌方目标后，恢复 【3.0/3.5/4.0/4.5/5.0】 点能量，该效果每回合最多触发2次。',
     ),
     LightConeDef(
-        tid=21050,
         name='胜利只在朝夕间',
         rarity=4,
         path_id='remembrance',
@@ -652,7 +571,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='最后一击 使装备者的暴击伤害提高 【12%/15%/18%/21%/24%】 ，当装备者的忆灵对我方目标施放技能时，使我方全体目标造成的伤害提高 【8%/10%/12%/14%/16%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=21051,
         name='天才们的问候',
         rarity=4,
         path_id='remembrance',
@@ -660,7 +578,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='恭喜 使装备者的攻击力提高 【16%/20%/24%/28%/32%】 ，装备者施放终结技后，使装备者与忆灵造成的普攻伤害提高 【20%/25%/30%/35%/40%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=21052,
         name='多流汗，少流泪',
         rarity=4,
         path_id='remembrance',
@@ -668,7 +585,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='来练！ 使装备者的暴击率提高 【12%/14%/16%/18%/20%】 ，装备者的忆灵在场上时，装备者与忆灵造成的伤害提高 【24%/27%/30%/33%/36%】 。',
     ),
     LightConeDef(
-        tid=21053,
         name='愿旅途永远坦然',
         rarity=4,
         path_id='preservation',
@@ -676,7 +592,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='甜梦 使装备者提供的护盾量提高 【12%/15%/18%/21%/24%】 ，我方目标持有护盾时，造成的伤害提高 【12%/14%/16%/18%/20%】 。',
     ),
     LightConeDef(
-        tid=21054,
         name='故事的下一页',
         rarity=4,
         path_id='remembrance',
@@ -684,7 +599,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='书写 使装备者的生命上限提高 【16%/20%/24%/28%/32%】 。装备者的忆灵攻击后，使装备者与忆灵的治疗量提高 【12%/15%/18%/21%/24%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=21055,
         name='直到明天的明天',
         rarity=4,
         path_id='abundance',
@@ -692,7 +606,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='离别 使装备者的治疗量提高 【12%/15%/18%/21%/24%】 。我方目标当前生命值百分比大于等于50%时，造成的伤害提高 【12%/14%/16%/18%/20%】 。',
     ),
     LightConeDef(
-        tid=21056,
         name='追逐风的时候',
         rarity=4,
         path_id='harmony',
@@ -700,7 +613,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='慌张 进入战斗后，使我方全体造成的击破伤害提高 【16%/18%/20%/22%/24%】 。同类技能无法重复生效。',
     ),
     LightConeDef(
-        tid=21057,
         name='花儿不会忘记',
         rarity=4,
         path_id='remembrance',
@@ -708,7 +620,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='相依为命 使装备者的暴击伤害提高 【24%/28%/32%/36%/40%】 。装备者忆灵造成的暴击伤害额外提高 【24%/30%/36%/42%/48%】 。',
     ),
     LightConeDef(
-        tid=21058,
         name='一行往日的血',
         rarity=4,
         path_id='destruction',
@@ -716,7 +627,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='厮杀 使装备者的暴击率提高 【12%/14%/16%/18%/20%】 。装备者造成的战技和终结技伤害提高 【24%/28%/32%/36%/40%】 。',
     ),
     LightConeDef(
-        tid=21060,
         name='氤氲麦香的梦',
         rarity=4,
         path_id='erudition',
@@ -724,7 +634,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='憧憬 使装备者的暴击率提高 【12%/14%/16%/18%/20%】 。装备者造成的终结技和追加攻击伤害提高 【24%/28%/32%/36%/40%】 。',
     ),
     LightConeDef(
-        tid=21061,
         name='假日浴场大冒险',
         rarity=4,
         path_id='nihility',
@@ -732,7 +641,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='冷静一下 使装备者造成的伤害提高 【16%/20%/24%/28%/32%】 。装备者攻击后，有100%基础概率使受到攻击的目标陷入易伤状态，受到的伤害提高 【10%/11.5%/13%/14.5%/16%】 ，持续2回合。同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=21062,
         name='于那终点再见',
         rarity=4,
         path_id='hunt',
@@ -740,7 +648,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='执着 使装备者的暴击伤害提高 【24%/28%/32%/36%/40%】 。装备者造成的战技和追加攻击伤害提高 【24%/28%/32%/36%/40%】 。',
     ),
     LightConeDef(
-        tid=21064,
         name='菇菇嘎嘎历险记',
         rarity=4,
         path_id='elation',
@@ -748,7 +655,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='乱斗 使装备者的欢愉度提高【 12%/14%/16%/18%/20%】。 装备者施放欢愉技时，使敌方全体受到的欢愉伤害提高 【6%/7%/8%/9%/10%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=21065,
         name='今日好手气',
         rarity=4,
         path_id='elation',
@@ -756,7 +662,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='抉择 使装备者的暴击率提高 【12%/14%/16%/18%/20%】 。装备者施放欢愉技时，欢愉度提高 【12%/14%/16%/18%/20%】 ，该效果最多叠加2次。',
     ),
     LightConeDef(
-        tid=21066,
         name='放个短假',
         rarity=4,
         path_id='elation',
@@ -765,7 +670,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
     ),
     # ---- 4 星·特殊渠道（2200x 段） ----
     LightConeDef(
-        tid=22000,
         name='新手任务开始前',
         rarity=4,
         path_id='nihility',
@@ -773,7 +677,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='眼疾手快 使装备者的效果命中提高 【20%/25%/30%/35%/40%】 。当装备者攻击防御力被降低的敌方目标后，恢复 【4/5/6/7/8】 点能量。',
     ),
     LightConeDef(
-        tid=22001,
         name='嘿，我在这儿',
         rarity=4,
         path_id='abundance',
@@ -781,7 +684,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='不怕不怕啦 使装备者的生命上限提高 【8%/9%/10%/11%/12%】 。当装备者施放战技时，治疗量提高 【16%/19%/22%/25%/28%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=22002,
         name='为了明日的旅途',
         rarity=4,
         path_id='harmony',
@@ -789,7 +691,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='联结 使装备者的攻击力提高 【16%/20%/24%/28%/32%】 。装备者施放终结技后，造成的伤害提高 【18%/21%/24%/27%/30%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=22003,
         name='忍事录•音律狩猎',
         rarity=4,
         path_id='destruction',
@@ -797,7 +698,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='开演！ 使装备者的生命上限提高 【12%/15%/18%/21%/24%】 ，损失或回复自身生命值后，暴击伤害提高 【18.0%/22.5%/27.0%/31.5%/36.0%】 ，持续2回合，该效果每回合只可触发1次。',
     ),
     LightConeDef(
-        tid=22004,
         name='宇宙大生意',
         rarity=4,
         path_id='erudition',
@@ -805,7 +705,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='互惠 使装备者的攻击力提高 【8%/10%/12%/14%/16%】 。敌方目标每拥有1个不同属性的弱点，装备者对其造成的伤害提高 【4%/5%/6%/7%/8%】 ，最多计入7个。',
     ),
     LightConeDef(
-        tid=22005,
         name='永远的迷境饭',
         rarity=4,
         path_id='harmony',
@@ -813,7 +712,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='真香 使装备者的攻击力提高 【16%/20%/24%/28%/32%】 。装备者施放战技后，攻击力提高 【8%/10%/12%/14%/16%】 ，该效果最多叠加3层。',
     ),
     LightConeDef(
-        tid=22006,
         name='飞向粉色的明天',
         rarity=4,
         path_id='remembrance',
@@ -821,7 +719,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='凝望 装备者的暴击伤害提高 【12%/15%/18%/21%/24%】 。开拓者•记忆装备时，使我方全体目标造成的伤害提高 【8%/10%/12%/14%/16%】 ，强化普攻【明天，一同写下！】造成的伤害提高 【60%/70%/80%/90%/100%】 。',
     ),
     LightConeDef(
-        tid=22007,
         name='未来，有我们一起',
         rarity=4,
         path_id='elation',
@@ -829,7 +726,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='同行 使装备者的暴击伤害提高 【12%/15%/18%/21%/24%】 。装备者施放终结技后，使我方全体欢愉度提高 【8%/9%/10%/11%/12%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=22008,
         name='向着地平线的终点',
         rarity=4,
         path_id='hunt',
@@ -838,7 +734,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
     ),
     # ---- 5 星·池内（2300x 段） ----
     LightConeDef(
-        tid=23000,
         name='银河铁道之夜',
         rarity=5,
         path_id='erudition',
@@ -846,7 +741,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='流星群 场上每有1个敌方目标，使装备者的攻击力提高 【9.0%/10.5%/12.0%/13.5%/15.0%】 ，该效果最多叠加5层。当有敌方目标的弱点被击破时，装备者造成的伤害提高 【30%/35%/40%/45%/50%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=23001,
         name='于夜色中',
         rarity=5,
         path_id='hunt',
@@ -854,7 +748,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='花与蝶 使装备者的暴击率提高 【18%/21%/24%/27%/30%】 。当装备者在战斗中速度大于100时，每超过10点，普攻和战技造成的伤害提高 【6%/7%/8%/9%/10%】 ，同时终结技的暴击伤害提高 【12%/14%/16%/18%/20%】 ，该效果可叠加6层。',
     ),
     LightConeDef(
-        tid=23002,
         name='无可取代的东西',
         rarity=5,
         path_id='destruction',
@@ -862,7 +755,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='家人 使装备者的攻击力提高 【24%/28%/32%/36%/40%】 。当装备者消灭敌方目标或受到攻击后，立即回复等同于装备者攻击力 【8%/9%/10%/11%/12%】 的生命值，同时造成的伤害提高 【24%/28%/32%/36%/40%】 ，持续到自身下个回合结束。该效果不可叠加，每回合只可触发1次。',
     ),
     LightConeDef(
-        tid=23003,
         name='但战斗还未结束',
         rarity=5,
         path_id='harmony',
@@ -870,7 +762,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='继承人 使装备者的能量恢复效率提高 【10%/12%/14%/16%/18%】 ，并在对我方目标施放终结技时恢复1个战技点。该效果每施放2次终结技可触发1次。当装备者施放战技后，使下一个行动的我方其他目标造成的伤害提高 【30%/35%/40%/45%/50%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=23004,
         name='以世界之名',
         rarity=5,
         path_id='nihility',
@@ -878,7 +769,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='传承者 使装备者对陷入负面效果的敌方目标造成的伤害提高 【24%/28%/32%/36%/40%】 。当装备者施放战技时，装备者此次攻击的效果命中提高 【18%/21%/24%/27%/30%】 ，攻击力提高 【24%/28%/32%/36%/40%】 。',
     ),
     LightConeDef(
-        tid=23005,
         name='制胜的瞬间',
         rarity=5,
         path_id='preservation',
@@ -886,7 +776,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='决断 使装备者的防御力提高 【24%/28%/32%/36%/40%】 ，效果命中提高 【24%/28%/32%/36%/40%】 ，同时使自身受到攻击的概率提高。当装备者受到攻击后，防御力额外提高 【24%/28%/32%/36%/40%】 ，持续到自身回合结束。',
     ),
     LightConeDef(
-        tid=23006,
         name='只需等待',
         rarity=5,
         path_id='nihility',
@@ -894,7 +783,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='蜘蛛的网 使装备者造成的伤害提高 【24%/28%/32%/36%/40%】 。装备者每次施放攻击后，速度提高 【4.8%/5.6%/6.4%/7.2%/8.0%】 ，最多叠加3层。 当装备者击中敌方目标时，如果该目标不处于【游丝】状态，则有100%的基础概率使其陷入【游丝】状态。当敌方目标处于【游丝】状态时，也会被视为陷入了触电状态。【游丝】状态下，敌方目标每回合开始时受到等同于装备者 【60%/70%/80%/90%/100%】 攻击力的雷属性持续伤害，持续1回合。',
     ),
     LightConeDef(
-        tid=23007,
         name='雨一直下',
         rarity=5,
         path_id='nihility',
@@ -902,7 +790,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='幻影现实 使装备者的效果命中提高 【24%/28%/32%/36%/40%】 。当装备者对同时处于大于等于3个负面效果的敌方目标造成伤害时，暴击率提高 【12%/14%/16%/18%/20%】 。装备者施放普攻、战技、终结技后，有100%的基础概率对随机1个未持有【以太编码】的受击目标施加【以太编码】。持有【以太编码】的目标受到的伤害提高 【12%/14%/16%/18%/20%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=23008,
         name='棺的回响',
         rarity=5,
         path_id='abundance',
@@ -910,7 +797,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='荆棘 使装备者的攻击力提高 【24%/28%/32%/36%/40%】 。当装备者施放攻击后，每击中1名不同的敌方目标，恢复 【3.0/3.5/4.0/4.5/5.0】 点能量，每次攻击最多通过该方式恢复3次能量。当装备者施放终结技后，使我方全体速度提高 【12/14/16/18/20】 点，持续1回合。',
     ),
     LightConeDef(
-        tid=23009,
         name='到不了的彼岸',
         rarity=5,
         path_id='destruction',
@@ -918,7 +804,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='不得 使装备者的暴击率提高 【18%/21%/24%/27%/30%】 ，生命上限提高 【18%/21%/24%/27%/30%】 。当装备者受到攻击或装备者消耗自身生命值后，造成的伤害提高 【24%/28%/32%/36%/40%】 ，该效果在装备者施放攻击后解除。',
     ),
     LightConeDef(
-        tid=23010,
         name='拂晓之前',
         rarity=5,
         path_id='erudition',
@@ -926,7 +811,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='长夜 使装备者暴击伤害提高 【36%/42%/48%/54%/60%】 。使装备者战技和终结技造成的伤害提高 【18%/21%/24%/27%/30%】 。当装备者施放战技或终结技后,获得【梦身】效果。触发追加攻击时，消耗【梦身】，使追加攻击造成的伤害提高 【48%/56%/64%/72%/80%】 。',
     ),
     LightConeDef(
-        tid=23011,
         name='她已闭上双眼',
         rarity=5,
         path_id='preservation',
@@ -934,7 +818,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='视界 使装备者的生命上限提高 【24%/28%/32%/36%/40%】 ，能量恢复效率提高 【12%/14%/16%/18%/20%】 。当装备者的生命值降低时，使我方全体造成的伤害提高 【9.0%/10.5%/12.0%/13.5%/15.0%】 ，持续2回合。 每个波次开始时，为我方全体回复等同于各自已损失生命值 【80%/85%/90%/95%/100%】 的生命值。',
     ),
     LightConeDef(
-        tid=23012,
         name='如泥酣眠',
         rarity=5,
         path_id='hunt',
@@ -942,7 +825,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='美梦 使装备者的暴击伤害提高 【30%/35%/40%/45%/50%】 。当装备者的普攻或战技伤害未造成暴击时，使自身暴击率提高 【36%/42%/48%/54%/60%】 ，持续1回合。该效果每3回合可以触发1次。',
     ),
     LightConeDef(
-        tid=23013,
         name='时节不居',
         rarity=5,
         path_id='abundance',
@@ -950,7 +832,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='日有四时 使装备者生命上限提高 【18%/21%/24%/27%/30%】 ，治疗量提高 【12%/14%/16%/18%/20%】 。当装备者对我方目标提供治疗时，记录治疗量。当任意我方目标施放攻击后，根据记录治疗量的 【36%/42%/48%/54%/60%】 ，对随机1个受到攻击的敌方目标造成基于装备者属性的附加伤害。该伤害不受加成影响，每回合最多结算1次。',
     ),
     LightConeDef(
-        tid=23014,
         name='此身为剑',
         rarity=5,
         path_id='destruction',
@@ -958,7 +839,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='执此宵玉 使装备者的暴击伤害提高 【20%/23%/26%/29%/32%】 。当队友受到攻击或消耗生命值后，装备者获得1层【月蚀】，最多叠加3层。每层【月蚀】使装备者下一次攻击造成的伤害提高 【14.0%/16.5%/19.0%/21.5%/24.0%】 。叠满3层时，额外使该次攻击无视目标 【12%/14%/16%/18%/20%】 的防御力。该效果在装备者施放攻击后解除。',
     ),
     LightConeDef(
-        tid=23015,
         name='比阳光更明亮的',
         rarity=5,
         path_id='destruction',
@@ -966,7 +846,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='抵死 使装备者的暴击率提高 【18%/21%/24%/27%/30%】 。当装备者施放普攻时，获得1层【龙吟】，持续2回合。每层【龙吟】使装备者的攻击力提高 【18%/21%/24%/27%/30%】 ，能量恢复效率提高 【6.0%/7.0%/8.0%/9.0%/10.0%】 。【龙吟】最多叠加2层。',
     ),
     LightConeDef(
-        tid=23016,
         name='烦恼着，幸福着',
         rarity=5,
         path_id='hunt',
@@ -974,7 +853,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='一个一个来 使装备者暴击率提高 【18%/21%/24%/27%/30%】 ，追加攻击造成的伤害提高 【30%/35%/40%/45%/50%】 。装备者施放追加攻击后，使目标陷入【温驯】状态，该效果最多叠加2层。我方目标击中【温驯】状态下的敌方目标时，每层【温驯】使造成的暴击伤害提高 【12%/14%/16%/18%/20%】 。',
     ),
     LightConeDef(
-        tid=23017,
         name='惊魂夜',
         rarity=5,
         path_id='abundance',
@@ -982,7 +860,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='深度深呼吸 使装备者的能量恢复效率提高 【12%/14%/16%/18%/20%】 。我方目标施放终结技时，装备者为当前生命值百分比最低的我方目标回复等同于其 【10%/11%/12%/13%/14%】 生命上限的生命值。当装备者为我方目标提供治疗时，使该目标的攻击力提高 【2.4%/2.8%/3.2%/3.6%/4.0%】 ，该效果最多叠加5层，持续2回合。',
     ),
     LightConeDef(
-        tid=23018,
         name='片刻，留在眼底',
         rarity=5,
         path_id='erudition',
@@ -990,7 +867,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='骑士巡礼 使装备者的暴击伤害提高 【36%/42%/48%/54%/60%】 。当装备者施放终结技时，根据装备者的能量上限，提高装备者终结技造成的伤害：每点能量提高 【0.36%/0.42%/0.48%/0.54%/0.60%】 ，最多计入180点。',
     ),
     LightConeDef(
-        tid=23019,
         name='镜中故我',
         rarity=5,
         path_id='harmony',
@@ -998,7 +874,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='彻骨梅香 使装备者击破特攻提高 【60%/70%/80%/90%/100%】 。装备者施放终结技后，使我方全体造成的伤害提高 【24%/28%/32%/36%/40%】 ，持续3回合，并且若装备者击破特攻大于等于150%，则恢复1个战技点。 每个波次开始时，我方全体立即恢复 【10.0/12.5/15.0/17.5/20.0】 点能量，同类技能无法重复生效。',
     ),
     LightConeDef(
-        tid=23020,
         name='纯粹思维的洗礼',
         rarity=5,
         path_id='hunt',
@@ -1006,7 +881,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='思想训练 使装备者的暴击伤害提高 【20%/23%/26%/29%/32%】 。敌方目标每承受1个负面效果，装备者对其造成的暴击伤害额外提高 【8%/9%/10%/11%/12%】 ，最多叠加3层。施放终结技攻击敌方目标时，使装备者获得【论辩】效果，造成的伤害提高 【36%/42%/48%/54%/60%】 ，追加攻击无视目标 【24%/28%/32%/36%/40%】 的防御力，该效果持续2回合。',
     ),
     LightConeDef(
-        tid=23021,
         name='游戏尘寰',
         rarity=5,
         path_id='harmony',
@@ -1014,7 +888,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='善变 使装备者的暴击伤害提高 【32%/39%/46%/53%/60%】 。战斗开始时，使装备者获得【假面】，持续3回合。当装备者持有【假面】时，装备者的队友暴击率提高 【10%/11%/12%/13%/14%】 ，暴击伤害提高 【28%/35%/42%/49%/56%】 。装备者每恢复1个战技点，获得1层【彩焰】，恢复时溢出的战技点也会被计算在内。当【彩焰】达到4层后，移除所有【彩焰】并获得【假面】，持续4回合。',
     ),
     LightConeDef(
-        tid=23022,
         name='重塑时光之忆',
         rarity=5,
         path_id='nihility',
@@ -1022,7 +895,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='结晶 使装备者的效果命中提高 【40%/45%/50%/55%/60%】 。装备者对陷入风化、灼烧、触电、裂伤状态的敌方目标造成伤害时，分别获得1层【先知】，最多叠加4层。单场战斗中，每种持续伤害状态类型仅可叠加1次【先知】效果。每层【先知】使装备者的攻击力提高 【5%/6%/7%/8%/9%】 ，造成的持续伤害无视目标 【7.2%/7.9%/8.6%/9.3%/10.0%】 的防御力。',
     ),
     LightConeDef(
-        tid=23023,
         name='命运从未公平',
         rarity=5,
         path_id='preservation',
@@ -1030,7 +902,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='全下 使装备者的防御力提高 【40%/46%/52%/58%/64%】 ，当装备者为我方目标提供护盾时，使装备者的暴击伤害提高 【40%/46%/52%/58%/64%】 ，持续2回合。当装备者发动追加攻击击中敌方目标时，有 【100%/115%/130%/145%/160%】 的基础概率使受到攻击的敌方目标受到的伤害提高 【10.0%/11.5%/13.0%/14.5%/16.0%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=23024,
         name='行于流逝的岸',
         rarity=5,
         path_id='nihility',
@@ -1038,7 +909,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='司渡 使装备者的暴击伤害提高 【36%/42%/48%/54%/60%】 。当装备者击中敌方目标时，使敌方陷入【泡影】状态，持续1回合。装备者每次攻击时，对每个目标只可触发1次。装备者对陷入【泡影】状态的目标造成的伤害提高 【24%/28%/32%/36%/40%】 ，终结技造成的伤害额外提高 【24%/28%/32%/36%/40%】 。',
     ),
     LightConeDef(
-        tid=23025,
         name='梦应归于何处',
         rarity=5,
         path_id='destruction',
@@ -1046,7 +916,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='蜕变 使装备者的击破特攻提高 【60%/70%/80%/90%/100%】 。当装备者对敌方目标造成击破伤害时，使敌方陷入【溃败】状态，持续2回合。【溃败】状态下目标受到装备者造成的击破伤害提高 【24.0%/28.0%/32.0%/36.0%/40.0%】 ，速度降低20%，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23026,
         name='夜色流光溢彩',
         rarity=5,
         path_id='harmony',
@@ -1054,7 +923,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='抚慰 我方角色每次攻击时，使装备者获得1层【歌咏】，每层【歌咏】使装备者的能量恢复效率提高 【3.0%/3.5%/4.0%/4.5%/5.0%】 ，最多叠加5层。装备者施放终结技时，移除【歌咏】并获得【华彩】，【华彩】使装备者的攻击力提高 【48%/60%/72%/84%/96%】 ，使我方全体造成的伤害提高 【24%/28%/32%/36%/40%】 ，持续1回合。',
     ),
     LightConeDef(
-        tid=23027,
         name='驶向第二次生命',
         rarity=5,
         path_id='hunt',
@@ -1062,7 +930,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='苦航 使装备者的击破特攻提高 【60%/70%/80%/90%/100%】 ，造成的击破伤害无视目标 【20%/23%/26%/29%/32%】 的防御力。当装备者在战斗中击破特攻大于等于150%时，速度提高 【12%/14%/16%/18%/20%】 。',
     ),
     LightConeDef(
-        tid=23028,
         name='偏偏希望无价',
         rarity=5,
         path_id='erudition',
@@ -1070,7 +937,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='承诺 使装备者的暴击率提高 【16%/19%/22%/25%/28%】 。当装备者在战斗中暴击伤害大于120%时，每超过20%，追加攻击造成的伤害提高 【12%/14%/16%/18%/20%】 ，该效果可叠加4层。战斗开始时和装备者施放普攻后，使终结技或追加攻击造成的伤害无视目标 【20%/24%/28%/32%/36%】 的防御，持续2回合。',
     ),
     LightConeDef(
-        tid=23029,
         name='那无数个春天',
         rarity=5,
         path_id='nihility',
@@ -1078,7 +944,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='世事无痕 使装备者的效果命中提高 【60%/70%/80%/90%/100%】 ，装备者施放普攻、战技、终结技攻击敌方目标后，有60%的基础概率使其陷入【卸甲】状态。【卸甲】状态下，敌方目标受到的伤害提高 【10%/12%/14%/16%/18%】 ，持续2回合。若目标处于装备者施加的持续伤害状态，则有60%的基础概率将装备者施加的【卸甲】状态升级成【穷寇】状态，使敌方目标受到的伤害额外提高 【14%/16%/18%/20%/22%】 ，持续2回合，期间装备者无法对其施加【卸甲】。',
     ),
     LightConeDef(
-        tid=23030,
         name='落日时起舞',
         rarity=5,
         path_id='destruction',
@@ -1086,7 +951,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='沉酣 使装备者受到攻击的概率大幅提高，暴击伤害提高 【36%/42%/48%/54%/60%】 。当装备者施放终结技后，获得1层【火舞】，持续2回合，最多叠加2层。每层【火舞】使装备者追加攻击造成的伤害提高 【36%/42%/48%/54%/60%】 。',
     ),
     LightConeDef(
-        tid=23031,
         name='我将，巡征追猎',
         rarity=5,
         path_id='hunt',
@@ -1094,7 +958,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='震慑 使装备者的暴击率提高 【15.0%/17.5%/20.0%/22.5%/25.0%】 。装备者施放追加攻击时，获得1层【流光】，最多叠加2层。每层【流光】使装备者造成的终结技伤害无视目标 【27%/30%/33%/36%/39%】 的防御力。装备者回合结束时，移除1层【流光】。',
     ),
     LightConeDef(
-        tid=23032,
         name='唯有香如故',
         rarity=5,
         path_id='abundance',
@@ -1102,7 +965,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='安心 使装备者击破特攻提高 【60%/70%/80%/90%/100%】 。装备者施放终结技攻击敌方目标后，使其陷入【忘忧】状态，持续2回合，【忘忧】状态下的敌方目标受到的伤害提高 【10%/12%/14%/16%/18%】 ，若装备者当前击破特攻大于等于150%，受到的伤害提高效果额外提高 【8%/10%/12%/14%/16%】 。',
     ),
     LightConeDef(
-        tid=23033,
         name='忍法帖•缭乱破魔',
         rarity=5,
         path_id='erudition',
@@ -1110,7 +972,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='除邪 使装备者的击破特攻提高 【60%/70%/80%/90%/100%】 。进入战斗时立即恢复 【30.0/32.5/35.0/37.5/40.0】 点能量，且装备者施放终结技后获得【雷遁】，施放2次普攻后，装备者行动提前 【50%/55%/60%/65%/70%】 ，并移除【雷遁】。装备者施放终结技后会重置【雷遁】。',
     ),
     LightConeDef(
-        tid=23034,
         name='回到大地的飞行',
         rarity=5,
         path_id='harmony',
@@ -1118,7 +979,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='再启程 当装备者对我方单体角色施放战技或终结技后，装备者恢复 【6.0/6.5/7.0/7.5/8.0】 点能量，同时使技能目标获得1层【圣咏】，持续3回合，最多叠加3层，每层【圣咏】使持有者造成的伤害提高 【15%/17%/19%/21%/24%】 。装备者每对我方单体角色施放2次战技或终结技后，恢复1个战技点。',
     ),
     LightConeDef(
-        tid=23035,
         name='长路终有归途',
         rarity=5,
         path_id='nihility',
@@ -1126,7 +986,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='新生 使装备者的击破特攻提高 【60%/70%/80%/90%/100%】 。当有敌方目标的弱点被击破时，有100%的基础概率使其陷入【焚灼】状态，受到的击破伤害提高 【18%/21%/24%/27%/30%】 ，持续2回合，此效果可叠加2层。',
     ),
     LightConeDef(
-        tid=23036,
         name='将光阴织成黄金',
         rarity=5,
         path_id='remembrance',
@@ -1134,7 +993,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='创设 使装备者的基础速度提高 【12/14/16/18/20】 ，装备者和装备者的忆灵在攻击后使装备者获得1层【织锦】，每层【织锦】使装备者和装备者的忆灵暴击伤害提高 【9%/10.5%/12%/13.5%/15%】 ，最多叠加6层。叠加至上限时，每层【织锦】额外使造成的普攻伤害提高 【9%/10.5%/12%/13.5%/15%】 。',
     ),
     LightConeDef(
-        tid=23037,
         name='向着不可追问处',
         rarity=5,
         path_id='erudition',
@@ -1142,7 +1000,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='思维游戏 使装备者的暴击率提高 【12%/14%/16%/18%/20%】 。装备者施放终结技时，使装备者战技和终结技造成的伤害提高 【60%/70%/80%/90%/100%】 ，持续3回合。装备者施放终结技后，若本次终结技消耗的能量大于等于140点，恢复1个战技点。',
     ),
     LightConeDef(
-        tid=23038,
         name='如果时间是一朵花',
         rarity=5,
         path_id='harmony',
@@ -1150,7 +1007,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='希冀 装备者的暴击伤害提高 【36%/42%/48%/54%/60%】 。装备者施放追加攻击后额外恢复12点能量，并获得【谕示】，持续2回合。当装备者持有【谕示】时，我方全体目标的暴击伤害提高 【48%/60%/72%/84%/96%】 。进入战斗时，装备者恢复21点能量，并获得【谕示】，持续2回合。',
     ),
     LightConeDef(
-        tid=23039,
         name='血火啊，燃烧前路',
         rarity=5,
         path_id='destruction',
@@ -1158,7 +1014,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='远望 使装备者的生命上限提高 【18%/21%/24%/27%/30%】 ，受到的治疗量提高 【20%/25%/30%/35%/40%】 ，施放战技或终结技时消耗等同于自身 【6%/6.5%/7%/7.5%/8%】 生命上限的生命值，并使本次攻击造成的伤害提高 【30%/35%/40%/45%/50%】 ，若该效果消耗的生命值高于500点，可使伤害额外提高 【30%/35%/40%/45%/50%】 。 若当前生命值不足，该效果最多使装备者的当前生命值降低至1点。',
     ),
     LightConeDef(
-        tid=23040,
         name='让告别，更美一些',
         rarity=5,
         path_id='remembrance',
@@ -1166,7 +1021,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='铭刻 使装备者的生命上限提高 【30%/37.5%/45%/52.5%/60%】 ，装备者或装备者的忆灵在自身回合内损失生命值时，装备者获得【冥花】，【冥花】可以使装备者和装备者的忆灵造成伤害时，无视目标 【30%/35%/40%/45%/50%】 的防御力，持续2回合。 当装备者的忆灵消失时，使装备者行动提前 【12%/15%/18%/21%/24%】 。该效果最多触发1次，装备者每次施放终结技时重置触发次数。',
     ),
     LightConeDef(
-        tid=23041,
         name='生命当付之一炬',
         rarity=5,
         path_id='erudition',
@@ -1174,7 +1028,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='熔炼 装备者回合开始时恢复10点能量。若敌方目标拥有装备者添加的弱点，装备者对其造成的伤害提高 【60%/70%/80%/90%/100%】 。 当敌方目标受到装备者攻击时，装备者使其防御力降低 【12%/15%/18%/21%/24%】 ，持续2回合。同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23042,
         name='愿虹光永驻天空',
         rarity=5,
         path_id='remembrance',
@@ -1182,7 +1035,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='包容 使装备者的速度提高 【18%/21%/24%/27%/30%】 。装备者施放普攻、战技和终结技时消耗我方全体等同于当前生命值 【1%/1.25%/1.5%/1.75%/2%】 的生命值并使装备者的忆灵下一次攻击后额外对攻击目标造成1次等同于 【250%/312.5%/375%/437.5%/500%】 生命值消耗总量的基于装备者的忆灵属性的附加伤害，随后清空生命值消耗总量。装备者的忆灵施放忆灵技时，使敌方全体受到的伤害提高 【18%/22.5%/27%/31.5%/36%】 ，持续2回合。同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23043,
         name='谎言在风中飘扬',
         rarity=5,
         path_id='nihility',
@@ -1190,7 +1042,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='欺瞒 使装备者的速度提高 【18%/21%/24%/27%/30%】 。装备者施放攻击后，有120%的基础概率使敌方每个单体目标陷入【茫然】状态，【茫然】状态下的敌方目标防御力降低 【16%/18%/20%/22%/24%】 ，持续2回合，若装备者的速度大于等于170，有120%的基础概率使敌方每个单体目标陷入【失窃】状态，【失窃】状态下的敌方目标防御力降低 【8%/9%/10%/11%/12%】 ，持续2回合。【茫然】或【失窃】被重复施加时，仅最新施加的生效。',
     ),
     LightConeDef(
-        tid=23044,
         name='黎明恰如此燃烧',
         rarity=5,
         path_id='destruction',
@@ -1198,7 +1049,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='失却 使装备者的基础速度提高 【12/14/16/18/20】 ，造成伤害时无视目标 【18%/22.5%/27%/31.5%/36%】 的防御力。装备者施放终结技后，获得【烈阳】，回合开始时移除。持有【烈阳】时，装备者造成的伤害提高 【60%/78%/96%/114%/132%】 。',
     ),
     LightConeDef(
-        tid=23045,
         name='没有回报的加冕',
         rarity=5,
         path_id='destruction',
@@ -1206,7 +1056,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='骑士之王 使装备者的暴击伤害提高 【36%/45%/54%/63%/72%】 。施放终结技时，使装备者的攻击力提高 【40%/50%/60%/70%/80%】 ，若装备者的能量上限大于等于300点，为装备者固定恢复等同于装备者能量上限10%的能量，并使装备者的攻击力提高 【40%/50%/60%/70%/80%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=23046,
         name='理想燃烧的地狱',
         rarity=5,
         path_id='hunt',
@@ -1214,7 +1063,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='赤原猎兵 使装备者的暴击率提高 【16%/20%/24%/28%/32%】 。进入战斗时，若我方的战技点上限大于等于6点，使装备者的攻击力提高 【40%/50%/60%/70%/80%】 。装备者每次施放战技后，使装备者的攻击力提高 【10%/12%/15%/17%/20%】 ，最多叠加4次。',
     ),
     LightConeDef(
-        tid=23047,
         name='海洋为何而歌',
         rarity=5,
         path_id='nihility',
@@ -1222,7 +1070,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='独奏 使装备者的效果命中提高 【40%/45%/50%/55%/60%】 ，当有敌方目标陷入装备者施加的负面效果时，有 80% 的基础概率使其陷入【魂迷】状态，持续3回合，同类效果无法叠加。【魂迷】状态下，每有1个装备者施加的负面效果，受到的持续伤害提高 【5%/6.25%/7.5%/8.75%/10%】 ，该效果最多叠加6层，受到我方目标攻击时，使攻击者速度提高 【10%/12.5%/15%/17.5%/20%】 ，持续 3 回合。当装备者陷入无法战斗状态时，移除所有【魂迷】。',
     ),
     LightConeDef(
-        tid=23048,
         name='金血铭刻的时代',
         rarity=5,
         path_id='harmony',
@@ -1230,7 +1077,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='征服 使装备者的攻击力提高 【64%/80%/96%/112%/128%】 。施放终结技攻击后恢复1个战技点，装备者对我方单体角色施放战技后，使目标造成的战技伤害提高 【54%/67.5%/81%/94.5%/108%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=23049,
         name='致长夜的星光',
         rarity=5,
         path_id='remembrance',
@@ -1238,7 +1084,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='未眠 使装备者的生命上限提高 【30%/37.5%/45%/52.5%/60%】 。装备者的忆灵施放技能时，使装备者获得【夜色】。装备者持有【夜色】时，我方全体忆灵造成的伤害无视目标 【20%/22.5%/25%/27.5%/30%】 的防御力，装备者和装备者忆灵造成的伤害提高 【30%/37.5%/45%/52.5%/60%】 ，装备者的忆灵消失时为装备者恢复 【8/10/12/14/16】 点能量，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23050,
         name='勿忘她的火焰',
         rarity=5,
         path_id='nihility',
@@ -1246,7 +1091,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='焚身 使装备者的击破特攻提高 【60%/75%/90%/105%/120%】 。进入战斗时，使装备者和另一位开战的队友造成的击破伤害提高 【32%/42%/52%/62%/72%】 ，若不存在开战的队友则对装备者和击破特攻最高的队友生效，同类效果无法叠加。装备者为敌方目标添加弱点时，恢复1个战技点，该效果最多触发1次，施放终结技时重置可触发次数。',
     ),
     LightConeDef(
-        tid=23051,
         name='纵然山河万程',
         rarity=5,
         path_id='preservation',
@@ -1254,7 +1098,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='新鳞 使装备者的攻击力提高 【64%/80%/96%/112%/128%】 。装备者施放终结技时，为我方全体回复等同于装备者攻击力 【10%/12.5%/15%/17.5%/20%】 的生命值，额外为当前生命值最低的角色回复等同于装备者攻击力 【10%/12.5%/15%/17.5%/20%】 的生命值，并使我方全体获得【卫戍】，【卫戍】持续3回合。获得【卫戍】的目标，造成的伤害提高 【24%/30%/36%/42%/48%】 ，若目标拥有召唤物则造成的伤害额外提高 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=23052,
         name='爱如此刻永恒',
         rarity=5,
         path_id='remembrance',
@@ -1262,7 +1105,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='约定 使装备者的速度提高 【18%/21%/24%/27%/30%。】 装备者的忆灵对我方单体施放忆灵技时获得【空白】：敌方全体受到的伤害提高 【10%/12%/14%/16%/18%】 。装备者的忆灵对敌方施放忆灵技时获得【诗行】：我方全体的暴击伤害提高 【16%/19%/22%/25%/28%】 。装备者的忆灵同时持有【空白】和【诗行】时，【空白】和【诗行】的效果提高 【60%/65%/70%/75%/80%】 。',
     ),
     LightConeDef(
-        tid=23053,
         name='花花世界迷人眼',
         rarity=5,
         path_id='elation',
@@ -1270,7 +1112,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='瞩目 使装备者的暴击伤害提高 【48%/56%/64%/72%/80%】 。装备者在场时，队伍中每有1名「欢愉」命途的角色，战技点上限提高1点，最多提高3点；装备者每消耗1个战技点使自身造成的欢愉伤害无视敌方目标 【5%/6%/7%/8%/9%】 的防御力，最多叠加4层，若在同一回合内消耗大于等于4个战技点则使装备者获得【推流】。装备者持有【推流】时，我方全体欢愉度提高 【20%/24%/28%/32%/36%】 。同类光锥效果无法叠加。',
     ),
     LightConeDef(
-        tid=23054,
         name='当她决定看见',
         rarity=5,
         path_id='elation',
@@ -1278,7 +1119,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='破局 使装备者的速度提高 【18%/21%/24%/27%/30%】 。装备者进入战斗或对我方目标施放终结技时，使装备者获得【上上签】，持续3回合。当装备者持有【上上签】时，我方全体暴击率提高 【10%/11%/12%/13%/14%】 ，暴击伤害提高 【30%/37.5%/45%/52.5%/60%】 ，装备者自身能量恢复效率提高 【12%/14%/16%/18%/20%】 。 每个波次开始时，装备者固定恢复15点能量。',
     ),
     LightConeDef(
-        tid=23055,
         name='献给明日的色彩',
         rarity=5,
         path_id='elation',
@@ -1286,7 +1126,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='挥墨 使装备者的防御力提高 【48%/60%/72%/84%/96%】 。装备者对我方全体施放欢愉技时，使敌方全体受到的伤害提高 【22%/27%/33%/38%/44%】 ，持续3回合，为装备者固定恢复10点能量，并为我方全体回复等同于装备者防御力 【10%/12%/15%/17%/20%】 的生命值。',
     ),
     LightConeDef(
-        tid=23056,
         name='一场谎言的终幕',
         rarity=5,
         path_id='hunt',
@@ -1294,7 +1133,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='破局 使装备者的暴击率提高 【18%/21%/24%/27%/30%】 。战斗开始时或装备者每累计施放 4 次追加攻击，使装备者获得【影噬】，持续 3 回合。当装备者持有【影噬】时，攻击力提高 【40%/50%/60%/70%/80%】 ，并使敌方全体受到的伤害提高 【20%/22.5%/25%/27.5%/30%】 ，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23057,
         name='欢迎来到银河城',
         rarity=5,
         path_id='elation',
@@ -1302,7 +1140,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='稳赢 使装备者的速度提高 【18%/21%/24%/27%/30%】 ，造成的欢愉伤害无视目标 【20%/24%/28%/32%/36%】 的防御力。当装备者对自身单体施放终结技时，获得 【20/25/30/35/40】 点【笑点】。该效果最多触发1次，施放3次普攻后重置可触发次数。',
     ),
     LightConeDef(
-        tid=23058,
         name='邂逅于下一个花季',
         rarity=5,
         path_id='elation',
@@ -1310,7 +1147,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='遐想 使装备者的暴击伤害提高 【60%/75%/90%/105%/120%】 ，能量恢复效率提高 【10%/11.5%/13%/14.5%/16%】 。装备者的能量上限大于120时，每超出10点能量上限额外使能量恢复效率提高0.3%，最多计入360点超出的能量上限。装备者施放欢愉技时，使敌方全体受到的伤害提高 【15%/18.75%/22.5%/26.25%/30%】 ，持续2回合，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23059,
         name='灼尽炼狱的新骸',
         rarity=5,
         path_id='nihility',
@@ -1318,7 +1154,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='淬炼 使装备者的生命上限提高 【30%/37.5%/45%/52.5%60%】 ，装备者回合开始时，固定恢复20点能量，该效果每个波次可触发1次。装备者施放战技攻击后，使目标陷入【炼狱】状态，持续2回合，【炼狱】状态下目标受到的暴击伤害提高 【30%/37.5%/45%/52.5%60%】 ，受到来自装备者的暴击伤害额外提高 【30%/37.5%/45%/52.5%60%】 。',
     ),
     LightConeDef(
-        tid=23060,
         name='当一颗星照亮夜空',
         rarity=5,
         path_id='erudition',
@@ -1326,7 +1161,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='初愿 使装备者造成伤害时无视目标 【32%/36%40%/44%/48%】 的防御力。当装备者施放助战技时，恢复6点能量并获得【启航】，持续2回合，最多叠加3层。每层【启航】使助战技伤害提高 【20%/25%/30%/35%/40%】 ，【启航】达到3层时，每层【启航】使终结技伤害提高 【20%/25%/30%/35%/40%】 。',
     ),
     LightConeDef(
-        tid=23061,
         name='星火悄然闪耀',
         rarity=5,
         path_id='erudition',
@@ -1334,7 +1168,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='萌芽 使装备者的暴击率提高 【18%/21%/24%/27%/30%】 。我方任意角色在自身同一回合内累计消耗大于等于4点战技点时，装备者获得【闪耀王冠】，持续3回合。装备者持有【闪耀王冠】时，我方全体造成的伤害无视目标 【20%/24%/28%/32%/36%】 的防御力，装备者造成的战技伤害提高 【72%/84%/96%/108%/120%】 ，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23062,
         name='所见即我',
         rarity=5,
         path_id='destruction',
@@ -1342,7 +1175,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='随心 使装备者的攻击力提高 【18%/21%/24%/27%/30%】 ，能量恢复效率提高 【10%/12.5%/15%/17.5%/20%】 。装备者施放终结技时，每消耗1点能量值，使本次造成的终结技伤害提高 【0.2%/0.25%/0.3%/0.35%/0.4%】 ，最多提高 【72%/90%/108%/126%/144%】 。装备者进入战斗或施放终结技时，使装备者获得【王之娱乐】，持续3回合。当装备者持有【王之娱乐】时，我方全体暴击伤害提高 【24%/30%/36%/42%/48%】 ，同类效果无法叠加。',
     ),
     LightConeDef(
-        tid=23063,
         name='你将起身歌唱',
         rarity=5,
         path_id='remembrance',
@@ -1350,7 +1182,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='即兴 使装备者的生命上限提高 【30%/37.5%/45%/52.5%/60%】 ，装备者施放终结技后，为我方恢复1个战技点。进入战斗时，使装备者的行动提前 【30%/32.5%/35%/37.5%/40%】 ，并使装备者获得【新声】，持续2回合。装备者持有【新声】时，我方全体速度提高 【20%/25%/30%/35%/40%】 。',
     ),
     LightConeDef(
-        tid=23064,
         name='向浪花掷下盛夏',
         rarity=5,
         path_id='elation',
@@ -1359,7 +1190,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
     ),
     # ---- 5 星·特殊渠道（2400x 段） ----
     LightConeDef(
-        tid=24000,
         name='记一位星神的陨落',
         rarity=5,
         path_id='destruction',
@@ -1367,7 +1197,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='扑火 当装备者施放攻击时，使装备者本场战斗中的攻击力提高 【8%/10%/12%/14%/16%】 ，该效果最多叠加4层。当装备者击破敌方目标弱点后，造成的伤害提高 【12%/15%/18%/21%/24%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=24001,
         name='星海巡航',
         rarity=5,
         path_id='hunt',
@@ -1375,7 +1204,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='猎逐 使装备者的暴击率提高 【8%/10%/12%/14%/16%】 ，装备者对生命值百分比小于等于50%的敌方目标暴击率额外提高 【8%/10%/12%/14%/16%】 。当装备者消灭敌方目标后，攻击力提高 【20%/25%/30%/35%/40%】 ，持续2回合。',
     ),
     LightConeDef(
-        tid=24002,
         name='记忆的质料',
         rarity=5,
         path_id='preservation',
@@ -1383,7 +1211,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='珍存 使装备者的效果抵抗提高 【8%/10%/12%/14%/16%】 ，当装备者受到攻击后，如果自身未持有护盾，则获得1个等同于装备者 【16%/20%/24%/28%/32%】 生命上限的护盾，持续2回合。该效果每3回合只能触发1次。如果装备者持有护盾，则使自身受到的伤害降低 【12%/15%/18%/21%/24%】 。',
     ),
     LightConeDef(
-        tid=24003,
         name='孤独的疗愈',
         rarity=5,
         path_id='nihility',
@@ -1391,7 +1218,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='混沌灵药 使装备者的击破特攻提高 【20%/25%/30%/35%/40%】 。当装备者施放终结技时，使装备者造成的持续伤害提高 【24%/30%/36%/42%/48%】 ，持续2回合。陷入装备者施加的持续伤害效果的敌方目标被消灭时，装备者恢复 【4.0/4.5/5.0/5.5/6.0】 点能量。',
     ),
     LightConeDef(
-        tid=24004,
         name='不息的演算',
         rarity=5,
         path_id='erudition',
@@ -1399,7 +1225,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='无界之思 使装备者的攻击力提高 【8%/9%/10%/11%/12%】 。施放攻击后，每击中一名敌方目标，使攻击力额外提高 【4%/5%/6%/7%/8%】 ，该效果最多叠加 5 次，持续至下次攻击后，若击中大于等于3名敌方目标，使自身速度提高 【8%/10%/12%/14%/16%】 ，持续 1 回合。',
     ),
     LightConeDef(
-        tid=24005,
         name='记忆永不落幕',
         rarity=5,
         path_id='remembrance',
@@ -1407,7 +1232,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
         skill='收取 使装备者的速度提高 【6%/7.5%/9%/10.5%/12%】 。装备者施放战技后，使我方全体造成的伤害提高 【8%/10%/12%/14%/16%】 ，持续3回合。',
     ),
     LightConeDef(
-        tid=24006,
         name='欢愉满溢祝福',
         rarity=5,
         path_id='elation',
@@ -1419,11 +1243,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
 # 名称反查索引：模块加载时构建一次（进程内缓存）；170 名称唯一由单测锁定。
 LIGHT_CONE_BY_NAME: dict[str, LightConeDef] = {
     cone.name: cone for cone in LIGHT_CONES
-}
-
-# tid → 定义索引：mys equip id 反查与图标寻址用。
-LIGHT_CONE_BY_TID: dict[int, LightConeDef] = {
-    cone.tid: cone for cone in LIGHT_CONES
 }
 
 #: 图标归档相对路径公式（项目 assets 根起）；170 把全量，见模块 docstring。
@@ -1441,8 +1260,3 @@ def icon_webp_rel_path(name: str) -> str:
 def resolve_light_cone(name: str) -> LightConeDef | None:
     """光锥名 → 定义（miss 返回 None，不抛异常）。"""
     return LIGHT_CONE_BY_NAME.get(name)
-
-
-def resolve_light_cone_by_tid(tid: int) -> LightConeDef | None:
-    """mys equip id（tid）→ 光锥定义（miss 返回 None，不抛异常）。"""
-    return LIGHT_CONE_BY_TID.get(tid)
