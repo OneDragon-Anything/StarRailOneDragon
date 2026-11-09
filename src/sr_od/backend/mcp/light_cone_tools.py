@@ -30,7 +30,7 @@ from sr_od.mys.sr_light_cones import (
     LIGHT_CONES,
     LightConeDef,
     icon_webp_rel_path,
-    resolve_cone_by_tid,
+    resolve_light_cone_by_tid,
     resolve_light_cone,
 )
 
@@ -137,7 +137,7 @@ def lookup_light_cone(
 
     # 1. 纯数字 = tid 精确反查
     if text.isdigit():
-        hit = resolve_cone_by_tid(int(text))
+        hit = resolve_light_cone_by_tid(int(text))
         if hit is not None and _filter(hit):
             return _single_hit(hit, 'tid')
         return {'status': 'not_found', 'message': f'tid {text} 查无光锥', 'data': None}
@@ -158,7 +158,7 @@ def lookup_light_cone(
     return {'status': 'not_found', 'message': f'「{text}」查无光锥（可用名称子串模糊查询）', 'data': None}
 
 
-def register_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类型见 app.py 装配处
+def register_light_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类型见 app.py 装配处
     """注册光锥查询工具（app.py 装配入口）。"""
     del backend  # 纯常量查询，无 backend 依赖；参数保持装配签名一致
 

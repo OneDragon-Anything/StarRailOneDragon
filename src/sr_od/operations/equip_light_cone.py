@@ -40,7 +40,7 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME, icon_webp_rel_path
-from sr_od.operations.equip_owner_match import CONE_OWNER_SCORE, match_owner
+from sr_od.operations.equip_owner_match import LIGHT_CONE_OWNER_SCORE, match_owner
 from sr_od.operations.grid_template_locate import (
     load_template_gray,
     locate_cells_by_votes,
@@ -174,7 +174,7 @@ class EquipLightConeOp(SrOperation):
         owners = []
         for c, _v in cells:
             badge = Rect(c.x + 18, c.y - 83, c.x + 78, c.y - 33)
-            owner, _score = match_owner(screen_img, badge, min_score=CONE_OWNER_SCORE)
+            owner, _score = match_owner(screen_img, badge, min_score=LIGHT_CONE_OWNER_SCORE)
             owners.append(owner or '未装备')
         log.info('替换光锥: 本屏识别到目标光锥 %d 件 %s(第 %d 屏)',
                  len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],

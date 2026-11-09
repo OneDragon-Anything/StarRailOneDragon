@@ -42,7 +42,7 @@ from sr_od.mys.sr_light_cones import icon_webp_rel_path as cone_icon_rel_path
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.equip_owner_match import (
     _MIN_OWNER_SCORE,
-    CONE_OWNER_SCORE,
+    LIGHT_CONE_OWNER_SCORE,
     match_owner,
 )
 from sr_od.operations.grid_template_locate import (
@@ -150,7 +150,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         return [list_rect.x1 + 72.5 + 139 * i for i in range(9)]
 
     def _owner_min_score(self) -> float:
-        return CONE_OWNER_SCORE
+        return LIGHT_CONE_OWNER_SCORE
 
     def recognize(
         self,

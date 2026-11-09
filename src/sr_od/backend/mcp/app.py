@@ -28,7 +28,7 @@ from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.utils.log_utils import log
 from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
 from sr_od.backend.mcp.character_tools import register_character_tools
-from sr_od.backend.mcp.cone_tools import register_cone_tools
+from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
 from sr_od.backend.mcp.config_app import (
     make_add_config_item,
     make_delete_config_item,
@@ -567,7 +567,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     # 首次调用时装配，注册期不构建——backend 为测试替身时零副作用）
     register_mys_tools(mcp, backend)
     register_character_tools(mcp, backend)
-    register_cone_tools(mcp, backend)
+    register_light_cone_tools(mcp, backend)
     register_relic_tools(mcp, backend)
     register_prompts(mcp)
     register_prompt_tools(mcp)

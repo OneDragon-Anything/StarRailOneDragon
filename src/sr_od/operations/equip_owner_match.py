@@ -29,7 +29,7 @@ _TEMPLATE_SIZE: int = 36
 _MIN_OWNER_SCORE: float = 0.75
 # 光锥界面角标渲染更小/更糊,实测同角色好匹配 0.72-0.91、噪声上限约 0.66,阈值 0.70 裕度薄,调参需回归;
 # 两界面的异角色误配上限都很低(0.35-0.45),放低不失区分度
-CONE_OWNER_SCORE: float = 0.70
+LIGHT_CONE_OWNER_SCORE: float = 0.70
 
 _mini_cache: dict[str, np.ndarray] | None = None
 
@@ -57,7 +57,7 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
 
     :param screen_rgb: 整屏截图(RGB)
     :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量)
-    :param min_score: 命中阈值;遗器界面用默认,光锥界面传 CONE_OWNER_SCORE
+    :param min_score: 命中阈值;遗器界面用默认,光锥界面传 LIGHT_CONE_OWNER_SCORE
         (角标渲染更小,匹配天花板低)
     :return: (中文角色名, 最高分);最高分 < 阈值返回 (None, 最高分) —— 未装备
         或角标角色不在模板库,不猜测。中文映射缺失的角色兜底返回模板英文 id。
