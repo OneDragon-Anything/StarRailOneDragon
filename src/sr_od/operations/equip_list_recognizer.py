@@ -175,14 +175,14 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         identity_hits = identify_cells(
             cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _light_cone_templates(),
             list_area.rect)
-        identity_by_card: dict[int, tuple[str, str]] = {}
+        identity_by_card: dict[int, tuple[int, str]] = {}
         for ccx, ccy, votes, name in identity_hits:
             for idx, card_rect in enumerate(card_rects):
                 center = card_rect.center
                 if abs(ccx - center.x) <= 70 and abs(ccy - center.y) <= 78:
                     prev = identity_by_card.get(idx)
-                    if prev is None or votes > prev[1]:
-                        identity_by_card[idx] = (name, f'full({votes}票)')
+                    if prev is None or votes > prev[0]:
+                        identity_by_card[idx] = (votes, name)
                     break
 
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -268,14 +268,14 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         identity_hits = identify_cells(
             cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _relic_piece_templates(),
             list_area.rect)
-        identity_by_card: dict[int, tuple[str, str]] = {}
+        identity_by_card: dict[int, tuple[int, str]] = {}
         for ccx, ccy, votes, name in identity_hits:
             for idx, card_rect in enumerate(card_rects):
                 center = card_rect.center
                 if abs(ccx - center.x) <= 60 and abs(ccy - center.y) <= 60:
                     prev = identity_by_card.get(idx)
-                    if prev is None or votes > prev[1]:
-                        identity_by_card[idx] = (name, f'full({votes}票)')
+                    if prev is None or votes > prev[0]:
+                        identity_by_card[idx] = (votes, name)
                     break
 
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
