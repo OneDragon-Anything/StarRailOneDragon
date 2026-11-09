@@ -46,6 +46,7 @@ from sr_od.operations.equip_owner_match import (
     match_owner,
 )
 from sr_od.operations.grid_template_locate import (
+    _cached_template_features,
     detect_card_anchors,
     detect_card_rects_contours,
     identify_cells,
@@ -55,14 +56,13 @@ from sr_od.operations.grid_template_locate import (
 if TYPE_CHECKING:
     from cv2.typing import MatLike
 
-    from one_dragon.base.operation.one_dragon_context import OneDragonContext
     from one_dragon.base.screen.screen_info import ScreenInfo
     from sr_od.context.sr_context import SrContext
 
 _LEVEL_VALUE_RE = re.compile(r'(\d{1,3})')
 
 # 降级匹配的模板预缩放尺寸(实机列表渲染 ≈ 0.28-0.5 倍,同尺度匹配实测有效;
-# 全尺寸模板在整屏/格内匹配均因描述子尺度差失败,2026-11-09 实验矩阵实证)
+# 全尺寸模板在整屏/格内匹配均因描述子尺度差失败,多方案对比实验实证)
 _FALLBACK_TEMPLATE_SIZE = (174, 204)
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
@@ -73,7 +73,7 @@ def _iou(a: Rect, b: Rect) -> float:
     ix = max(0, min(a.x2, b.x2) - max(a.x1, b.x1))
     iy = max(0, min(a.y2, b.y2) - max(a.y1, b.y1))
     inter = ix * iy
-    union = a.x1 * 0 + (a.x2 - a.x1) * (a.y2 - a.y1) + (b.x2 - b.x1) * (b.y2 - b.y1) - inter
+    union = (a.x2 - a.x1) * (a.y2 - a.y1) + (b.x2 - b.x1) * (b.y2 - b.y1) - inter
     return inter / union if union > 0 else 0.0
 
 
@@ -101,8 +101,12 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         raise NotImplementedError
 
     def _locate_cards(self, ctx: SrContext, image: MatLike,
-                      list_area) -> list[Rect]:
-        """定位层:等级文本锚点 + 轮廓补充,去重合并(锚点优先)。"""
+                      list_area) -> tuple[list[Rect], list, MatLike]:
+        """定位层:等级文本锚点 + 轮廓补充,去重合并(锚点优先)。
+
+        :return: (卡矩形清单, 全图 OCR 结果, 列表灰度图)——灰度图供识别层
+            复用,避免整帧 cvtColor 重复计算。
+        """
         ocr_results = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
         anchor_rects = detect_card_anchors(ocr_results, list_area.rect)
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -112,28 +116,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
             if all(_iou(c_rect, a) < _DEDUPE_IOU for a in anchor_rects):
                 merged.append(c_rect)
         merged.sort(key=lambda r: (r.y1 // 100, r.x1))
-        return merged, ocr_results
-
-    def recognize(
-        self,
-        ctx: OneDragonContext,
-        image: MatLike,
-        screen_info: ScreenInfo,
-    ) -> dict | None:
-        """锚点+轮廓定位卡位 → 逐卡占用者识别;列表区缺档返 None。"""
-        list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
-        card_rects, _ocr = self._locate_cards(ctx, image, list_area)
-
-        items: list[dict] = []
-        for card_rect in card_rects:
-            owner, _score = match_owner(image, self._badge_rect(card_rect),
-                                        min_score=self._owner_min_score())
-            if owner is None:
-                continue
-            items.append({'cell': [card_rect.x1, card_rect.y1,
-                                   card_rect.x2, card_rect.y2], 'owner': owner})
-        items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
-        return {'items': items, 'total_cards': len(card_rects)}
+        return merged, ocr_results, gray
 
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
@@ -142,9 +125,10 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     screen_name = '光锥-替换'
 
     extras_doc: dict[str, str] = {
-        'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名, '
+        'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名(全库 argmax), '
                  'path_cn:命途, level:光锥等级(1-80), owner:占用角色(中文名), '
-                 'identity: full(主匹配)/fallback(降级匹配)/none}],按卡位置排序;'
+                 'identity: full(N票=整屏主匹配)/fallback(N簇=格内聚簇强度,低簇=低置信,'
+                 '可与同款兄弟格对照复核)}],按卡位置排序;'
                  '全部识别失败的卡不列',
         'total_cards': '定位到的卡总数(锚点 + 轮廓补充)',
     }
@@ -168,7 +152,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     ) -> dict | None:
         """光锥列表完整绑定:每件 {光锥名, 命途, 等级, 占用者, 识别层级}。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
-        card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
+        card_rects, ocr_results, gray = self._locate_cards(ctx, image, list_area)
 
         anchor_cx = [r.center.x for r in card_rects]
         identity_hits = identify_cells(
@@ -184,7 +168,6 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
                         identity_by_card[idx] = (votes, name)
                     break
 
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
@@ -238,7 +221,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     extras_doc: dict[str, str] = {
         'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
                  'set:套装名, pos_cn:部位, level:强化等级(0-15), '
-                 'owner:占用角色(中文名), identity: full/fallback}],'
+                 'owner:占用角色(中文名), identity: full(N票)/fallback(N簇)/none}],'
                  '按卡位置排序;全部识别失败的卡不列',
         'total_cards': '定位到的卡总数(锚点 + 轮廓补充)',
     }
@@ -262,7 +245,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     ) -> dict | None:
         """遗器列表完整绑定:每件 {件名, 套装, 部位, 强化等级, 占用者}。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
-        card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
+        card_rects, ocr_results, gray = self._locate_cards(ctx, image, list_area)
 
         anchor_cx = [r.center.x for r in card_rects]
         identity_hits = identify_cells(
@@ -278,7 +261,6 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                         identity_by_card[idx] = (votes, name)
                     break
 
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
@@ -400,7 +382,7 @@ def _fallback_identity(gray: np.ndarray, card_rect: Rect,
     best_name: str | None = None
     best_cluster = 0
     for name, t_s in scaled_templates.items():
-        t_kp, t_desc = cv2_utils.feature_detect_and_compute(t_s)
+        t_kp, t_desc = _cached_template_features(t_s)
         if t_desc is None:
             continue
         matches = bf.knnMatch(t_desc, z_desc, k=2)

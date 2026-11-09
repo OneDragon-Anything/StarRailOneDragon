@@ -24,12 +24,12 @@ from one_dragon.utils import cv2_utils, os_utils
 _ROW_CLUSTER_GAP_PX: int = 100
 # 列带吸附半径(约列间距一半)
 _COL_SNAP_PX: int = 70
-# 定位成功的最低票数(实机单卡 9~205 票,噪声 <3)
+# 定位成功的最低票数(实机单卡 9~205 票;幻影簇可达 4~6 票,靠归属窗兜住)
 _MIN_CELL_VOTES: int = 4
 
 
 def load_template_gray(rel_path: str) -> np.ndarray | None:
-    """加载图标模板灰度图(透明底合成白底,避免透明区噪声特征)。
+    """加载图标模板灰度图。注:webp 走 read_image 时 alpha 已被强制丢弃,透明区合成分支实际不可达,模板底色由归档脚本预合成。
 
     :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
     :return: 灰度图;文件不存在返回 None(调用方判停)
@@ -59,7 +59,7 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
         dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
     :param anchor_cx: 计票吸附的列中心 x 列表(卡矩形中心 x,锚点/轮廓检测给出)。
         同一行内多个卡位的匹配点必须**对各卡位分别计票**——簇均值自吸附会把
-        相邻卡的点混算成 1 票(2026-11-09 实证漏检根因);None 时回退簇均值
+        相邻卡的点混算成 1 票(同行跨卡混算漏检实证);None 时回退簇均值
         自吸附(单卡场景)。
     :return: [(簇中心 x, 簇中心 y, 票数, 身份名), ...] 按票数降序;
         **位置由匹配自身给出**(调用方与锚点推算的卡区域做重叠归属,
@@ -103,7 +103,7 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
 
 
 # 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——
-# 临时新加载对象缓存 miss 无害,只是无收益)
+# 注:临时对象 id 撞上已释放条目会错配旧特征,模板 dict 必须常驻)
 _template_feature_cache: dict[int, tuple] = {}
 
 

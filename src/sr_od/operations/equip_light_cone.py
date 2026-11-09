@@ -50,8 +50,10 @@ from sr_od.operations.sr_operation import SrOperation
 _LC_TAB_SCREEN: str = '角色-光锥'
 _REPLACE_SCREEN: str = '光锥-替换'
 
-# 网格几何:9 列均分列表区(列中心由区域 rect 推导,实测误差 <2px);
+# 网格几何:9 列,实机卡列首中心 = 列表区 x1+72.5、列距恒 139px(锚点卡实测);
 # 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见 grid_template_locate)
+# 注:9 等分推导的列距 147.2 与实机 139 不符,误差随列号线性增长至末列 +68px
+# (点击落卡右缘),已废弃。
 _GRID_COLS: int = 9
 # 每屏扫描的滚动拖拽:列表中心上移 300px(约 2 行卡位,避免跳行)
 _SCROLL_DRAG_PX: int = 300
@@ -60,11 +62,15 @@ _SCAN_MAX_SCREENS: int = 12
 # 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
 _RESELECT_AFTER: int = 3
 
+# 首卡中心相对列表区 x1 的偏移 = 首卡 x1 偏移(3) + 半卡宽(69.5)
+_CONE_FIRST_CENTER_OFFSET: float = 72.5
+_CONE_COL_PITCH: float = 139.0
+
 
 def _cone_col_centers(list_rect: Rect) -> list[float]:
-    """9 列等分推导列中心(网格几何唯一来源 = 列表区 area rect)。"""
-    cell_w = (list_rect.x2 - list_rect.x1) / _GRID_COLS
-    return [list_rect.x1 + cell_w * (i + 0.5) for i in range(_GRID_COLS)]
+    """列中心 = 首卡中心 + 139px 等距(实测列距恒定,与锚点卡矩形同源)。"""
+    first_center = list_rect.x1 + _CONE_FIRST_CENTER_OFFSET
+    return [first_center + _CONE_COL_PITCH * i for i in range(_GRID_COLS)]
 
 
 class EquipLightConeOp(SrOperation):

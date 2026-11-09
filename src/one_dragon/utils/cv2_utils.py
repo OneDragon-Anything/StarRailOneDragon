@@ -413,9 +413,13 @@ def feature_match(source_kp, source_desc, template_kp, template_desc,
     # feature_matcher = cv2.FlannBasedMatcher()
     feature_matcher = cv2.BFMatcher()
     matches = feature_matcher.knnMatch(template_desc, source_desc, k=2)
-    # 应用比值测试，筛选匹配点
+    # 应用比值测试，筛选匹配点。knnMatch(k=2) 在模板描述子不足 2 个时
+    # 返回长度 1 的条目,直接解包会 ValueError(与 feature_match_for_one 同类守卫)
     good_matches = []
-    for m, n in matches:
+    for pair in matches:
+        if len(pair) < 2:
+            continue
+        m, n = pair
         if m.distance < 0.75 * n.distance:
             good_matches.append(m)
 
