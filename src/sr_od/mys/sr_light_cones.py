@@ -14,7 +14,7 @@ tid 分段规律（图标文件名与 mys equip id 同源）：2000x=3 星、210
 全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 
 版本刷新工序：游戏新版本后重跑 wiki 抓取 + 图标增量归档 + SIFT 对照（工序
-详见私有 skill ``sr-od-dev-relic-data``，junction 挂载不入本仓）→ 与下方
+详见私有 skill ``sr-od-dev-equip-data``，junction 挂载不入本仓）→ 与下方
 LIGHT_CONES 逐条 diff → 人工审阅后更新常量；勿临时塞未经核验的数据。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数（同 sr_relic_sets 模块纪律）。

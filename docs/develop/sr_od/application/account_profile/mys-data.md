@@ -1,6 +1,6 @@
 # mys 数据层权威版本（账号数据映射 + 游戏静态定义）
 
-> `SrBackendContext` mys 切片的两个数据域：**账号运行时数据**（米游社接口实时拉取）与**游戏静态定义**（官方 wiki 快照固化为 Python 常量）。本文是结构契约权威版本（as-built）；迭代过程见 `changes/`，数据管道工序归私有 skill `sr-od-dev-relic-data`（junction 挂载，不入本仓）。
+> `SrBackendContext` mys 切片的两个数据域：**账号运行时数据**（米游社接口实时拉取）与**游戏静态定义**（官方 wiki 快照固化为 Python 常量）。本文是结构契约权威版本（as-built）；迭代过程见 `changes/`，数据管道工序归私有 skill `sr-od-dev-equip-data`（junction 挂载，不入本仓）。
 
 ## 1. 游戏静态定义（遗器套装数据层）
 
@@ -20,7 +20,7 @@
 
 **数据分层原则**：定义层（ID/名称/图标/分类/效果文案）进常量；内容层（词条每级数值、养成数值）不固化，运行时经 mys 接口现查。wiki 词条偶有错字/缺段——effects 与件名以已固化常量为准，wiki 只作新增字段来源。
 
-**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ set_id 顺序律续排 → 图标增量归档 → 测试锚点同步。完整工序（含脚本）见私有 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
+**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ set_id 顺序律续排 → 图标增量归档 → 测试锚点同步。完整工序（含脚本）见私有 skill `sr-od-dev-equip-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
 
 ## 2. 账号运行时数据（米游社）
 
