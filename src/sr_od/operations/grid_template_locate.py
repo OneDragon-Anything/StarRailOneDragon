@@ -164,6 +164,33 @@ def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
 _LEVEL_TEXT_RE = re.compile(r'^(等级\d+|\+\d+)$')
 
 
+def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list[Rect]:
+    """轮廓检测定位列表卡(等级文本锚点的补充锚):Canny+外轮廓,按卡尺寸窗过滤。
+
+    价值在「不完整卡位」:滚动到列表边缘被裁切的卡没有等级文本锚(文本滚出
+    可视区),但可见部分的轮廓仍可检出 —— 检出矩形可能只是卡的一部分(不完整),
+    调用方据此标记该卡为部分可见。与锚点卡去重(IoU 重叠)后合并使用。
+
+    :return: 检出的卡矩形(可见部分),按 (行, 列) 排序。
+    """
+    roi = screen_gray[list_rect.y1:list_rect.y2, list_rect.x1:list_rect.x2]
+    edges = cv2.Canny(roi, 40, 120)
+    edges = cv2.dilate(edges, np.ones((2, 2), np.uint8))
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    rects: list[Rect] = []
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        # 卡尺寸窗(光锥 139×155 / 遗器 120×160,部分可见卡允许缩小)
+        if not (60 < w < 200 and 70 < h < 220):
+            continue
+        if cv2.contourArea(c) / (w * h) < 0.5:
+            continue
+        rects.append(Rect(x + list_rect.x1, y + list_rect.y1,
+                          x + w + list_rect.x1, y + h + list_rect.y1))
+    rects.sort(key=lambda r: (r.y1 // 100, r.x1))
+    return rects
+
+
 def detect_card_anchors(ocr_results: list, list_rect: Rect) -> list[Rect]:
     """从全图 OCR 结果提取装备卡的等级文本锚点,换算卡矩形预期区域。
 
