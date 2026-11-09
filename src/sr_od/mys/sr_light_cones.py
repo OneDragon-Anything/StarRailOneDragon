@@ -1443,6 +1443,6 @@ def resolve_light_cone(name: str) -> LightConeDef | None:
     return LIGHT_CONE_BY_NAME.get(name)
 
 
-def resolve_cone_by_tid(tid: int) -> LightConeDef | None:
+def resolve_light_cone_by_tid(tid: int) -> LightConeDef | None:
     """mys equip id（tid）→ 光锥定义（miss 返回 None，不抛异常）。"""
     return LIGHT_CONE_BY_TID.get(tid)
