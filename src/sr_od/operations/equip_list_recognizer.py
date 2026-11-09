@@ -28,7 +28,10 @@ import cv2
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
+from sr_od.config.character_const import CHARACTER_PATH_LIST
 from sr_od.mys.sr_codes import RELIC_POS_CN
+from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
+from sr_od.mys.sr_light_cones import icon_webp_rel_path as cone_icon_rel_path
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.equip_owner_match import (
     _MIN_OWNER_SCORE,
@@ -100,9 +103,16 @@ class _EquipListRecognizerBase(ScreenRecognizer):
 
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
-    """「光锥-替换」画面:9 列网格逐格占用者识别。"""
+    """「光锥-替换」画面:9 列网格,每件 = 身份(光锥名+命途) + 等级 + 占用者。"""
 
     screen_name = '光锥-替换'
+
+    extras_doc: dict[str, str] = {
+        'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名, '
+                 'path_cn:命途, superimpose:叠影(罗马数字Ⅰ-Ⅴ), level:光锥等级, '
+                 'owner:占用角色(中文名)}],按格坐标排序;空格/全识别失败的格不列',
+        'total_cells': '网格内可见格总数(含未装备/空格)',
+    }
 
     def _grid_cells(self, list_rect: Rect) -> list[Rect]:
         return cone_grid_cells(list_rect)
@@ -117,6 +127,60 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 
     def _owner_min_score(self) -> float:
         return CONE_OWNER_SCORE
+
+    def _col_centers(self, list_rect: Rect) -> list[float]:
+        """光锥 9 列列中心(等分推导,与 op 的 _cone_col_centers 同一公式)。"""
+        cell_w = (list_rect.x2 - list_rect.x1) / 9
+        return [list_rect.x1 + cell_w * (i + 0.5) for i in range(9)]
+
+    def _level_rect(self, cell_rect: Rect) -> Rect:
+        # 等级徽章「等级80」过滤区(光锥卡):卡片底部全宽 —— rect 过滤按
+        # 「文本框 70% 落区内」判定,窄框会漏;全宽保证文本框落入
+        return Rect(cell_rect.x1 + 5, cell_rect.y2 - 55,
+                    cell_rect.x2 - 5, cell_rect.y2 - 4)
+
+    def recognize(
+        self,
+        ctx: SrContext,
+        image: MatLike,
+        screen_info: ScreenInfo,
+    ) -> dict | None:
+        """光锥列表完整绑定:每格 {光锥名, 命途, 光锥等级, 占用者};全空格不列。"""
+        list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
+        cells = cone_grid_cells(list_area.rect)
+        col_centers = self._col_centers(list_area.rect)
+
+        identity = identify_cells(
+            cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _light_cone_templates(),
+            list_area.rect, col_centers)
+        identity_by_cell: dict[int, str] = {}
+        for (kx, ky), name in identity.items():
+            for idx, cell_rect in enumerate(cells):
+                center = cell_rect.center
+                if abs(kx - center.x) <= 60 and abs(ky - center.y) <= 45:
+                    # 同格多命中(相邻模板)保留先到;不同格互不覆盖
+                    identity_by_cell.setdefault(idx, name)
+                    break
+
+        items: list[dict] = []
+        for idx, cell_rect in enumerate(cells):
+            owner, _score = match_owner(image, self._badge_rect(cell_rect),
+                                        min_score=self._owner_min_score())
+            level = _read_level_badge(ctx, image, self._level_rect(cell_rect), max_level=80)
+            cone = identity_by_cell.get(idx)
+            if cone is None and owner is None and level is None:
+                continue  # 空格(或全部识别失败,不猜测)
+            item = {'cell': [cell_rect.x1, cell_rect.y1,
+                             cell_rect.x2, cell_rect.y2],
+                    'cone': cone, 'level': level, 'owner': owner}
+            if cone is not None:
+                cone_def = LIGHT_CONE_BY_NAME[cone]
+                path_cn = next((p.cn for p in CHARACTER_PATH_LIST
+                                if p.id == cone_def.path_id), None)
+                item['path_cn'] = path_cn
+            items.append(item)
+        items.sort(key=lambda item: (item['cell'][1], item['cell'][0]))
+        return {'items': items, 'total_cells': len(cells)}
 
 
 class RelicReplaceRecognizer(_EquipListRecognizerBase):
@@ -215,17 +279,41 @@ def _relic_piece_templates() -> dict[str, MatLike]:
     return _relic_piece_template_cache
 
 
+#------------------- 光锥名模板库(全量 170 件,进程级常驻) -------------------#
+
+_light_cone_template_cache: dict[str, MatLike] | None = None
+
+
+def _light_cone_templates() -> dict[str, MatLike]:
+    """光锥名 → 解包图标灰度模板(全量;常驻以命中 identify_cells 的特征缓存)。"""
+    global _light_cone_template_cache
+    if _light_cone_template_cache is None:
+        lib: dict[str, MatLike] = {}
+        for cone_name, cone_def in LIGHT_CONE_BY_NAME.items():
+            template = load_template_gray(cone_icon_rel_path(cone_def.tid))
+            if template is not None:
+                lib[cone_name] = template
+        _light_cone_template_cache = lib
+    return _light_cone_template_cache
+
+
 _LEVEL_RE = re.compile(r'\+?\s*(\d{1,2})')
 
 
-def _read_level_badge(ctx: SrContext, image: MatLike, badge_rect: Rect) -> int | None:
-    """OCR 等级徽章「+N」(如 +15);读不到/非法返 None。"""
+
+def _read_level_badge(ctx: SrContext, image: MatLike, badge_rect: Rect,
+                      max_level: int = 15) -> int | None:
+    """OCR 等级徽章(遗器「+N」0-15 / 光锥「等级N」1-80);读不到/非法返 None。
+
+    crop_first=False(全图 OCR 后按 rect 过滤):紧框裁剪后文字检测器易漏字
+    (「等级80」小框实测整屏漏检);同帧多区域查询复用同一次全图识别,逐格
+    调用无额外 OCR 成本。"""
     area = ctx.ocr_service.get_ocr_result_list(
-        image=image, rect=badge_rect, crop_first=True)
+        image=image, rect=badge_rect, crop_first=False)
     for result in area:
         m = _LEVEL_RE.search(str(result.data))
         if m:
             level = int(m.group(1))
-            if 0 <= level <= 15:
+            if 0 <= level <= max_level:
                 return level
     return None
