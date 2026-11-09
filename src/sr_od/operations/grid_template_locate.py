@@ -46,7 +46,8 @@ def load_template_gray(rel_path: str) -> np.ndarray | None:
 
 
 def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarray],
-                   list_rect: Rect, min_votes: int = _MIN_CELL_VOTES) -> list[tuple[float, float, int, str]]:
+                   list_rect: Rect, anchor_cx: list[float] | None = None,
+                   min_votes: int = _MIN_CELL_VOTES) -> list[tuple[float, float, int, str]]:
     """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,输出命中簇明细。
 
     与逐件调 :meth:`locate_cells_by_votes` 等价,但 screen 特征(全屏检测
@@ -56,6 +57,10 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
     :param named_templates: 身份名 → 模板灰度图(如遗器件名 → 部件图)。
         同图标多件副本共享同一身份名(遗器件名 = 套装+部位唯一确定)。
         dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
+    :param anchor_cx: 计票吸附的列中心 x 列表(卡矩形中心 x,锚点/轮廓检测给出)。
+        同一行内多个卡位的匹配点必须**对各卡位分别计票**——簇均值自吸附会把
+        相邻卡的点混算成 1 票(2026-11-09 实证漏检根因);None 时回退簇均值
+        自吸附(单卡场景)。
     :return: [(簇中心 x, 簇中心 y, 票数, 身份名), ...] 按票数降序;
         **位置由匹配自身给出**(调用方与锚点推算的卡区域做重叠归属,
         不依赖预设网格)。一格多模板命中时各模板条目并存,由调用方仲裁。
@@ -63,7 +68,7 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
     s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
     x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
 
-    cell_owner: dict[tuple[int, int], tuple[str, int]] = {}
+    hits: dict[tuple[int, int], tuple[str, int]] = {}
     for name, template_gray in named_templates.items():
         t_kp, t_desc = _cached_template_features(template_gray)
         good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
@@ -84,15 +89,17 @@ def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarra
         for cluster in clusters:
             ccx = sum(p[0] for p in cluster) / len(cluster)
             ccy = sum(p[1] for p in cluster) / len(cluster)
-            votes = sum(1 for p in cluster if abs(p[0] - ccx) < _COL_SNAP_PX)
-            if votes >= min_votes:
-                key = (round(ccx), round(ccy))
-                prev = cell_owner.get(key)
-                if prev is None or votes > prev[1]:
-                    cell_owner[key] = (name, votes)
+            centers = anchor_cx if anchor_cx else [ccx]
+            for cx in centers:
+                votes = sum(1 for p in cluster if abs(p[0] - cx) < _COL_SNAP_PX)
+                if votes >= min_votes:
+                    key = (round(cx), round(ccy))
+                    prev = hits.get(key)
+                    if prev is None or votes > prev[1]:
+                        hits[key] = (name, votes)
 
     return [(float(k[0]), float(k[1]), v, name)
-            for k, (name, v) in sorted(cell_owner.items(), key=lambda kv: -kv[1][1])]
+            for k, (name, v) in sorted(hits.items(), key=lambda kv: -kv[1][1])]
 
 
 # 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——

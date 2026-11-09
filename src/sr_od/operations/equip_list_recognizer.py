@@ -172,9 +172,10 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
         card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
 
+        anchor_cx = [r.center.x for r in card_rects]
         identity_hits = identify_cells(
             cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _light_cone_templates(),
-            list_area.rect)
+            list_area.rect, anchor_cx=anchor_cx)
         identity_by_card: dict[int, tuple[int, str]] = {}
         for ccx, ccy, votes, name in identity_hits:
             for idx, card_rect in enumerate(card_rects):
@@ -265,9 +266,10 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
         card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
 
+        anchor_cx = [r.center.x for r in card_rects]
         identity_hits = identify_cells(
             cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _relic_piece_templates(),
-            list_area.rect)
+            list_area.rect, anchor_cx=anchor_cx)
         identity_by_card: dict[int, tuple[int, str]] = {}
         for ccx, ccy, votes, name in identity_hits:
             for idx, card_rect in enumerate(card_rects):
