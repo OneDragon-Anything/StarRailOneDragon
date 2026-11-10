@@ -14,6 +14,9 @@
   出现「筛选中」角标;
 - 筛选面板开着时点列表卡不刷新右侧详情 —— 必须走完确认链再选卡;
 - 弹窗滚动列表后点击系统性偏移一行 —— 只点 OCR 行文本中心(命中即给坐标);
+- 弹窗列表滚动拖拽按人工实机标定参数(rect 高度 80% 处起手、上滑 220px、
+  0.5s;见模块尾常量出处),拖拽后以行文本签名变化判定滚动生效,连续空滚
+  快速失败;
 - 背包筛选状态跨屏持久(替换列表继承):进入时已有「筛选中」角标属历史态,
   本 op 不清除,历史筛选与本 op 意图叠加时由件名核对诚实失败暴露。
 
@@ -50,8 +53,17 @@ _GRID_COLS: int = 8
 _MAX_CARD_TRIES: int = 16
 # 弹窗套装列表滚动屏数上限(隧洞 34 套/位面 28 套,每屏约 10 行,预算留余量)
 _SCAN_MAX_DRAGS: int = 8
-# 弹窗列表滚动拖拽:列表中心上移 300px(约 4 行半,相邻屏重叠足够)
-_DIALOG_DRAG_PX: int = 300
+# 弹窗列表滚动拖拽参数(人工实机标定,凭据:进展目录 evidence/live-verify-T4-select-bag.md):
+# 起点 = 列表区 rect 高度 80% 处(实机有效起点 y=650 ≈ rect[405,712] 的 80%),
+# 手指上滑 220px、时长 0.5s,连击三次滚动成功;首版 300px/起点贴 rect 底缘
+# (y=708,可视行末之下)实机空滚八屏列表纹丝未动 —— 起点落在滚动区边缓、
+# 拖距过大均偏离有效标定。x 取 rect 水平中心(两列行间缝隙,无行按压风险)。
+_DIALOG_DRAG_Y_ANCHOR: float = 0.8
+_DIALOG_DRAG_PX: int = 220
+_DIALOG_DRAG_DURATION: float = 0.5
+# 滚动生效判定:拖拽后相邻两轮列表行文本签名不变连续达此值 → 判滚动失效
+# (防静默空滚烧尽滚动预算;签名按轮 OCR 现读,滚动生效时首行必换)。
+_STALE_SCROLL_LIMIT: int = 2
 
 
 class SelectBagRelicOp(SrOperation):
@@ -93,6 +105,8 @@ class SelectBagRelicOp(SrOperation):
                 raise ValueError(f'套装 {set_name} 无部位 {pos}({RELIC_POS_CN[pos]})的件')
             self._piece_name = piece.name
         self._drags_left: int = _SCAN_MAX_DRAGS  #: 弹窗列表剩余滚动次数(scan_set_row 消耗)
+        self._last_rows: tuple[str, ...] | None = None  #: 上一轮列表行文本签名(滚动生效判定)
+        self._stale_scrolls: int = 0  #: 拖拽后列表签名不变的连续轮数(达 _STALE_SCROLL_LIMIT 判失效)
         self._card_idx: int = 0  #: 选卡游标(网格行优先展开的格序号,0 基)
         SrOperation.__init__(
             self, ctx,
@@ -198,7 +212,8 @@ class SelectBagRelicOp(SrOperation):
     def scan_and_check_set(self) -> OperationRoundResult:
         """OCR 扫弹窗套装列表找目标套装 → 点行文本中心勾选(命中即给坐标,
         实测坑:滚动后点击系统性偏移一行,只点行文本中心)。未找到滚动一屏
-        重扫,预算耗尽诚实失败。"""
+        重扫;拖拽后行文本签名连续不变 = 滚动失效,达上限诚实失败(防静默
+        空滚烧尽预算)。"""
         screen = self.screenshot()
         list_area = self.ctx.screen_loader.get_area(_RULE_SCREEN, '区域-套装列表')
         results = self.ctx.ocr_service.get_ocr_result_list(
@@ -212,13 +227,26 @@ class SelectBagRelicOp(SrOperation):
             log.info('背包选件: 勾选套装 %s (行中心 %d,%d)',
                      self.set_name, center.x, center.y)
             return self.round_success(status='ROW_CLICKED', wait=0.8)
+        signature = tuple(sorted(t for t in texts if t.strip()))
+        if self._last_rows is not None and signature == self._last_rows:
+            self._stale_scrolls += 1
+            if self._stale_scrolls >= _STALE_SCROLL_LIMIT:
+                return self.round_fail(
+                    f'弹窗列表滚动失效(连续 {_STALE_SCROLL_LIMIT} 次拖拽后'
+                    f'列表内容未变化,停在 {signature[0] if signature else "?"} 等行)')
+        else:
+            self._stale_scrolls = 0
+        self._last_rows = signature
         if self._drags_left <= 0:
             return self.round_fail(
                 f'筛选规则弹窗滚动 {_SCAN_MAX_DRAGS} 屏未找到套装 {self.set_name}')
-        center = list_area.rect.center
+        rect = list_area.rect
+        start = Point(rect.x1 + (rect.x2 - rect.x1) / 2,
+                      rect.y1 + (rect.y2 - rect.y1) * _DIALOG_DRAG_Y_ANCHOR)
         # 手指上滑 = 列表向深处翻页(标准触摸语义,拖拽不用滚轮)
-        self.ctx.controller.drag_to(Point(center.x, center.y - _DIALOG_DRAG_PX // 2),
-                                    Point(center.x, center.y + _DIALOG_DRAG_PX // 2))
+        self.ctx.controller.drag_to(
+            Point(start.x, start.y - _DIALOG_DRAG_PX), start,
+            duration=_DIALOG_DRAG_DURATION)
         self._drags_left -= 1
         return self.round_retry(f'未找到 {self.set_name},滚动一屏重扫', wait=1)
 
