@@ -165,10 +165,10 @@ area_list:
 - area_name: 读区-叠影
   id_mark: false
   pc_rect:
-  - 1465
-  - 570
+  - 1478
+  - 550
   - 1660
-  - 618
+  - 590
   text: 叠影1阶
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -180,9 +180,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 1478
-  - 622
+  - 592
   - 1650
-  - 672
+  - 632
   text: 继承人
   lcs_percent: 0.5
   template_sub_dir: ''

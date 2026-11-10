@@ -17,12 +17,12 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 文本-命途相符组头
-  id_mark: true
+  id_mark: false
   pc_rect:
-  - 100
-  - 138
-  - 268
-  - 175
+  - 110
+  - 140
+  - 300
+  - 180
   text: 与角色命途相符
   lcs_percent: 0.5
   template_sub_dir: ''
