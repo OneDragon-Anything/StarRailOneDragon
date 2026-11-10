@@ -64,9 +64,16 @@ _SCROLL_DRAG_PX: int = 300
 _SCAN_MAX_SCREENS: int = 12
 # 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
 _RESELECT_AFTER: int = 3
-# 滚回列表顶的拖拽次数预算:覆盖从列表任意深度回顶(全列表约 30 行,
-# 每次回卷约 2 行,11 次可达 + 余量),循环内以「组头行命中」判顶提前退出。
-_RESET_TOP_DRAGS: int = 15
+# 滚回列表顶:固定 5 次快速大范围拖拽(短 duration 甩动带惯性,单次位移≈
+# 拖距;光锥全列表约 30 行,5 次覆盖回顶;顶部态的多余拖拽被列表回弹吞掉,
+# 无害)—— 按 AGENTS §3 回顶规范,不做逐屏识别判顶,识别留给后续扫描
+# 自然从顶部开始。
+_RESET_TOP_DRAGS: int = 5
+# 回顶拖拽几何:锚 y=850(底部卡行带内,任意滚动相位下大概率落在卡上)+
+# 上滑 800px(终点 y=50,窗口内),duration 0.2s 快速甩动
+_TOP_DRAG_ANCHOR_Y: int = 850
+_TOP_DRAG_PX: int = 800
+_TOP_DRAG_DURATION: float = 0.2
 
 # 滚动拖拽的按下锚点(y):实机对照实验(A/B/D 三组)证明拖拽手势只有在按下点
 # 落在卡片内容上才被游戏识别 —— 按在列表边缘/组头等空白带会被无视(列表不动);
@@ -118,7 +125,6 @@ class EquipLightConeOp(SrOperation):
         self.level: int | None = level  #: 等级过滤,None=不过滤
         self.allow_take_over: bool = allow_take_over  #: 是否允许占用他人装备
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
-        self._reset_drags_left: int = _RESET_TOP_DRAGS  #: 滚顶节点剩余回卷次数(判顶循环内递减)
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
         self._seen_owned_match: bool = False  #: 扫描中见过符合过滤条件但被占用的件(失败信息依据)
@@ -179,27 +185,20 @@ class EquipLightConeOp(SrOperation):
         return self.round_success(status='ALREADY_EQUIPPED')
 
     @node_from(from_name='入口核对', status='IN_REPLACE_SCREEN')
-    @operation_node(name='滚回列表顶部', node_max_retry_times=20)
+    @operation_node(name='滚回列表顶部')
     def reset_to_top(self) -> OperationRoundResult:
-        """滚回列表顶部:每轮判顶(组头行只在顶部态可见,实机验证)未命中
-        才回卷一次;预算耗尽显式失败。
+        """滚回列表顶部:固定 5 次快速大范围拖拽(短 duration),不识别判顶。
 
-        旧实现固定拖 4 次(按下点落组头空白被游戏无视,列表原地不动),
-        目标在起点之下时从头扫描的前提被破坏 —— 判顶循环对「拖拽无效/
-        已在顶/深度未知」统一自愈。"""
-        current = self.check_and_update_current_screen(
-            self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
-        if current != _REPLACE_SCREEN:
-            return self.round_fail(f'替换列表已退出(当前画面判定: {current});'
-                                   f'重新打开列表后再调用本 op')
-        if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _REPLACE_SCREEN, '文本-命途相符组头') == FindAreaResultEnum.TRUE:
-            return self.round_success(status='AT_TOP')
-        if self._reset_drags_left <= 0:
-            return self.round_fail(f'滚回列表顶部失败(回卷 {_RESET_TOP_DRAGS} 次未见组头行)')
-        self._drag_scroll(toward_top=True)
-        self._reset_drags_left -= 1
-        return self.round_retry('向列表顶部回卷', wait=1)
+        列表已在顶部时多余拖拽被回弹吞掉,无害;滚顶是否到位由后续扫描的
+        识别结果兜底 —— 目标在前几屏却漏扫即滚顶不足,失败信息可定位。"""
+        list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
+        anchor_x = list_area.rect.center.x
+        for _ in range(_RESET_TOP_DRAGS):
+            self.ctx.controller.drag_to(
+                Point(anchor_x, _TOP_DRAG_ANCHOR_Y - _TOP_DRAG_PX),
+                Point(anchor_x, _TOP_DRAG_ANCHOR_Y),
+                duration=_TOP_DRAG_DURATION)
+        return self.round_success(status='AT_TOP', wait=0.5)
 
     @node_from(from_name='滚回列表顶部', status='AT_TOP')
     @node_from(from_name='验证选中', status='RESELECT')  # 选中验证连续不符 → 回退点下一个候选
