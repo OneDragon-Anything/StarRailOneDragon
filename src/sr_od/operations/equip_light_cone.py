@@ -17,8 +17,9 @@
   裁剪构图,Homography 估计会被拉偏(实测偏差可达 120px);逐匹配点按
   「x 落列带 + y 聚簇(间隔 >100px 分行)」投票,目标卡格得票显著最高
   (实机 15:2 / 9:2),取最高票簇中心吸附列中心点击;
-- 未命中滚动一屏重扫(拖拽,有界);OCR 验证用右侧对比栏读区(名带形近
-  变体,如「於/于」,fuzzy 匹配兜底)。
+- 未命中滚动一屏重扫(拖拽,有界);滚动按下点必须锚在卡片内容上 —— 按在
+  列表边缘/组头等空白带手势被游戏无视(实机对照实验 A/B/D);OCR 验证用
+  右侧对比栏读区(名带形近变体,如「於/于」,fuzzy 匹配兜底)。
 
 前置:光锥-替换列表(OpenLightConeReplaceOp 保证);起点不符显式失败。
 ⚠️ 装备即改变角色配装(即时生效),调用方须确认目标光锥正确;
@@ -57,14 +58,21 @@ _ENTRY_SCREENS: list[str] = [_LC_TAB_SCREEN, _REPLACE_SCREEN]
 # 注:9 等分推导的列距 147.2 与实机 139 不符,误差随列号线性增长至末列 +68px
 # (点击落卡右缘),已废弃。
 _GRID_COLS: int = 9
-# 每屏扫描的滚动拖拽:列表中心上移 300px(约 2 行卡位,避免跳行)
+# 每屏扫描的滚动拖拽总幅度:约 2 行卡位,避免跳行
 _SCROLL_DRAG_PX: int = 300
 # 滚动扫描的屏幕数上限(全列表多屏,防无限滚)
 _SCAN_MAX_SCREENS: int = 12
 # 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
 _RESELECT_AFTER: int = 3
-# 选件前滚回列表顶的拖拽次数;每轮执行一次,轮间画面判定兜底拖拽误触
-_RESET_TOP_DRAGS: int = 4
+# 滚回列表顶的拖拽次数预算:覆盖从列表任意深度回顶(全列表约 30 行,
+# 每次回卷约 2 行,11 次可达 + 余量),循环内以「组头行命中」判顶提前退出。
+_RESET_TOP_DRAGS: int = 15
+
+# 滚动拖拽的按下锚点(y):实机对照实验(A/B/D 三组)证明拖拽手势只有在按下点
+# 落在卡片内容上才被游戏识别 —— 按在列表边缘/组头等空白带会被无视(列表不动);
+# 620 取卡行带(543-698)中心,列表在任意滚动位置时该 y 都大概率落在某行卡上,
+# 即使偶发落空,判顶循环的「下一轮重判」会自然重试。
+_DRAG_ANCHOR_Y: int = 620
 
 # 首卡中心相对列表区 x1 的偏移 = 首卡 x1 偏移(3) + 半卡宽(69.5)
 _CONE_FIRST_CENTER_OFFSET: float = 72.5
@@ -110,7 +118,7 @@ class EquipLightConeOp(SrOperation):
         self.level: int | None = level  #: 等级过滤,None=不过滤
         self.allow_take_over: bool = allow_take_over  #: 是否允许占用他人装备
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
-        self._reset_drags_left: int = _RESET_TOP_DRAGS  #: 剩余滚顶拖拽次数(每轮一次)
+        self._reset_drags_left: int = _RESET_TOP_DRAGS  #: 滚顶节点剩余回卷次数(判顶循环内递减)
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
         self._seen_owned_match: bool = False  #: 扫描中见过符合过滤条件但被占用的件(失败信息依据)
@@ -119,19 +127,21 @@ class EquipLightConeOp(SrOperation):
 
     #------------------- 识别辅助 -------------------#
 
-    def _drag_toward_top_once(self) -> bool:
-        """执行一次滚顶拖拽(列表中心向上 400px);返回是否仍有剩余预算。
+    def _drag_scroll(self, toward_top: bool) -> None:
+        """执行一次列表滚动拖拽(总幅 300px,按下点锚在卡片行内)。
 
-        浏览模式与选卡模式共用 —— 两者都要「从头看列表」;每轮一次拖拽,
-        轮间画面判定兜底拖拽误触。"""
-        if self._reset_drags_left <= 0:
-            return False
+        drag_to 参数序为 (end, start) —— 终点在前;向下翻页 = 手指上滑
+        (终点在上),向顶部回卷 = 手指下滑(终点在下)。按下点必须在卡片
+        内容上,手势才被游戏识别(见 _DRAG_ANCHOR_Y 注)。"""
         list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-        center = list_area.rect.center
-        self.ctx.controller.drag_to(Point(center.x, center.y + 400),
-                                    Point(center.x, center.y - 400))
-        self._reset_drags_left -= 1
-        return True
+        anchor_x = list_area.rect.center.x
+        half = _SCROLL_DRAG_PX // 2
+        if toward_top:
+            self.ctx.controller.drag_to(
+                Point(anchor_x, _DRAG_ANCHOR_Y + half), Point(anchor_x, _DRAG_ANCHOR_Y - half))
+        else:
+            self.ctx.controller.drag_to(
+                Point(anchor_x, _DRAG_ANCHOR_Y - half), Point(anchor_x, _DRAG_ANCHOR_Y + half))
 
     def _read_name(self, screen_name: str, area_name: str) -> str | None:
         """OCR 读指定画面的名字读区,返回最相似的目标名判定由调用方做。"""
@@ -169,6 +179,29 @@ class EquipLightConeOp(SrOperation):
         return self.round_success(status='ALREADY_EQUIPPED')
 
     @node_from(from_name='入口核对', status='IN_REPLACE_SCREEN')
+    @operation_node(name='滚回列表顶部', node_max_retry_times=20)
+    def reset_to_top(self) -> OperationRoundResult:
+        """滚回列表顶部:每轮判顶(组头行只在顶部态可见,实机验证)未命中
+        才回卷一次;预算耗尽显式失败。
+
+        旧实现固定拖 4 次(按下点落组头空白被游戏无视,列表原地不动),
+        目标在起点之下时从头扫描的前提被破坏 —— 判顶循环对「拖拽无效/
+        已在顶/深度未知」统一自愈。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
+        if current != _REPLACE_SCREEN:
+            return self.round_fail(f'替换列表已退出(当前画面判定: {current});'
+                                   f'重新打开列表后再调用本 op')
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _REPLACE_SCREEN, '文本-命途相符组头') == FindAreaResultEnum.TRUE:
+            return self.round_success(status='AT_TOP')
+        if self._reset_drags_left <= 0:
+            return self.round_fail(f'滚回列表顶部失败(回卷 {_RESET_TOP_DRAGS} 次未见组头行)')
+        self._drag_scroll(toward_top=True)
+        self._reset_drags_left -= 1
+        return self.round_retry('向列表顶部回卷', wait=1)
+
+    @node_from(from_name='滚回列表顶部', status='AT_TOP')
     @node_from(from_name='验证选中', status='RESELECT')  # 选中验证连续不符 → 回退点下一个候选
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
@@ -182,9 +215,6 @@ class EquipLightConeOp(SrOperation):
         if current != _REPLACE_SCREEN:
             return self.round_fail(f'替换列表已退出(当前画面判定: {current});'
                                    f'重新打开列表后再调用本 op')
-
-        if self._drag_toward_top_once():
-            return self.round_retry(f'滚回列表顶部(剩 {self._reset_drags_left} 次拖拽)', wait=1)
 
         if self._scan_screens >= _SCAN_MAX_SCREENS:
             if self._seen_owned_match and not self.allow_take_over:
@@ -204,10 +234,7 @@ class EquipLightConeOp(SrOperation):
                                   for it in cands], self._scan_screens + 1)
         if self._candidate_idx >= len(cands):
             # 本屏候选耗尽(或整屏未命中) → 滚动下一屏
-            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-            center = list_area.rect.center
-            self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),
-                                        Point(center.x, center.y - _SCROLL_DRAG_PX // 2))
+            self._drag_scroll(toward_top=False)
             self._scan_screens += 1
             self._candidate_idx = 0
             return self.round_retry('当前屏候选耗尽,滚动一屏重扫', wait=1)
