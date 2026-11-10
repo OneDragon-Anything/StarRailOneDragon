@@ -192,14 +192,23 @@ class EquipLightConeOp(SrOperation):
         return self.round_success(status='CLICKED', wait=1.2)
 
     def _filter_candidates(self, items: list[dict]) -> list[dict]:
-        """识别清单 → 按入参过滤候选:名字必匹配,rank/level 提供时精确过滤;
-        未装备件(owner=None)排在已装备件前(多副本不抢他人装备)。"""
-        cands = [it for it in items if it.get('cone') == self.cone_name]
-        if self.rank is not None:
-            cands = [it for it in cands if it.get('rank') == self.rank]
-        if self.level is not None:
-            cands = [it for it in cands if it.get('level') == self.level]
-        return sorted(cands, key=lambda it: 0 if it.get('owner') is None else 1)
+        """识别清单 → 按入参过滤候选:名字必匹配;rank/level **读出且不符**
+        才排除(逐卡 rank 靠 OCR,滚动扫描中部分帧读不出=未知——未知件保留
+        但排在「确认匹配」件之后兜底);同优先级内未装备件(owner=None)在前
+        (多副本不抢他人装备)。"""
+        cands = []
+        for it in items:
+            if it.get('cone') != self.cone_name:
+                continue
+            rank, level = it.get('rank'), it.get('level')
+            if ((self.rank is not None and rank is not None and rank != self.rank)
+                    or (self.level is not None and level is not None and level != self.level)):
+                continue  # 明确不符
+            known = ((self.rank is None or rank == self.rank)
+                     and (self.level is None or level == self.level))
+            cands.append((0 if known else 1, 0 if it.get('owner') is None else 1, it))
+        cands.sort(key=lambda t: (t[0], t[1]))
+        return [it for _k, _o, it in cands]
 
     @node_from(from_name='定位并选卡', status='CLICKED')
     @operation_node(name='验证选中', node_max_retry_times=10)
