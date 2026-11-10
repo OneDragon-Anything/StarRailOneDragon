@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
@@ -35,7 +34,7 @@ import numpy as np
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from one_dragon.utils import cv2_utils, os_utils
+from one_dragon.utils import cv2_utils
 from sr_od.config.character_const import CHARACTER_PATH_LIST
 from sr_od.mys.sr_codes import RELIC_POS_CN
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
@@ -210,29 +209,44 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     def _owner_min_score(self) -> float:
         return LIGHT_CONE_OWNER_SCORE
 
-    def _read_superimpose(self, image: MatLike, card_rect: Rect) -> int | None:
+    def _read_superimpose(self, ctx: SrContext, image: MatLike,
+                          card_rect: Rect) -> int | None:
         """卡左缘叠影圆标 → 叠影数(1-5);无法判定返回 None。
 
-        叠影圆相对卡原点位置恒定(实机标定 +6,+48 起 34×34)——同位
-        裁窗与分档整圆 ROI 模板(assets/template/light_cone_superimpose/
-        <叠影数>_<序号>.png)直接 TM_CCOEFF_NORMED 匹配取最高分档,≥0.6 判定。
-        模板按配色态分文件(亮金底黑字 / 暗底金字同档相关系数为负,必须分模板)。
+        流程:HoughCircles 在卡左缘搜索窗定位叠影圆(实测四配色态圆参数稳定
+        r≈13)→ 按圆内接收边裁片归一 24×24 —— **裁出来的就是圆本身**,不携带
+        卡底背景与圆外装饰线 → 与分档模板(assets/template/light_cone_
+        superimpose/<叠影数>[-dark]/raw.webp,TemplateLoader 规范存储,同流程
+        采样归一)TM_CCOEFF_NORMED 匹配 ≥0.6 判定。模板 id 带 -dark 后缀 =
+        暗底金字态(同档异态相关系数为负,必须分模板),rank 取 id 前缀数字。
         III/IV 档候实机采样补档,当前该两档判 None。"""
-        templates = _superimpose_templates()
+        templates = _superimpose_templates(ctx)
         if not templates:
             return None
-        roi = cv2.cvtColor(
-            image[card_rect.y1 + 48:card_rect.y1 + 82,
-                  card_rect.x1 + 6:card_rect.x1 + 40], cv2.COLOR_RGB2GRAY)
-        best_rank, best_score = None, 0.0
-        for rank, tpl_list in templates.items():
-            for tpl in tpl_list:
-                score = float(cv2.matchTemplate(roi, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
-                if score > best_score:
-                    best_rank, best_score = rank, score
+        search = cv2.cvtColor(
+            image[card_rect.y1 + 46:card_rect.y1 + 84,
+                  card_rect.x1 + 4:card_rect.x1 + 42], cv2.COLOR_RGB2GRAY)
+        circles = cv2.HoughCircles(search, cv2.HOUGH_GRADIENT, dp=1, minDist=10,
+                                   param1=100, param2=14,
+                                   minRadius=10, maxRadius=16)
+        if circles is None:
+            return None
+        cx, cy, r = (int(round(v)) for v in circles[0][0])
+        r = max(r - 1, 1)  # 收 1px 去圆边抗锯齿环
+        x1, y1 = max(0, cx - r), max(0, cy - r)
+        x2, y2 = min(search.shape[1], cx + r), min(search.shape[0], cy + r)
+        if x2 - x1 < 8 or y2 - y1 < 8:
+            return None
+        probe = cv2.resize(search[y1:y2, x1:x2], _SUPERIMPOSE_NORM_SIZE,
+                           interpolation=cv2.INTER_AREA)
+        best_id, best_score = None, 0.0
+        for tid, tpl in templates.items():
+            score = float(cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
+            if score > best_score:
+                best_id, best_score = tid, score
         if best_score < _SUPERIMPOSE_MATCH_MIN:
             return None
-        return best_rank
+        return _superimpose_rank_of(best_id)
 
     def recognize(
         self,
@@ -263,7 +277,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
                                         min_score=self._owner_min_score())
             level = self._read_level(ocr_results, card_rect)
-            rank = self._read_superimpose(image, card_rect)
+            rank = self._read_superimpose(ctx, image, card_rect)
             ident = identity_by_card.get(idx)
             cone_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
             if cone_name is None:
@@ -507,32 +521,37 @@ def _light_cone_templates_scaled() -> dict[str, np.ndarray]:
 
 #------------------- 光锥叠影模板(卡左缘罗马数字标) -------------------#
 
-# 模板目录:<叠影数>_<序号>.png 的**整圆 ROI 灰度裁片**(34×34,含圆+字体+
-# 配色态;亮金底黑字 / 暗底金字各配色态独立模板——同档异态的相关系数为负,
-# 必须分模板)。叠影圆相对卡原点位置恒定 → 识别时同位裁窗直接对齐匹配。
-# III/IV 档候实机采样补档(账号当前无该两档叠影的光锥),缺档判 None。
-_SUPERIMPOSE_TEMPLATE_DIR = 'assets/template/light_cone_superimpose'
+# 模板目录(TemplateLoader 规范二级结构):<叠影数>[-dark]/raw.webp = 归一
+# 24×24 圆盘灰度裁片。id 不带 -dark = 亮金底黑字态,带 -dark = 暗底金字态
+# (同档异态相关系数为负,必须分模板)。叠影圆用 HoughCircles 定位后按圆
+# 内接收边裁片归一,识别时同流程——裁的就是圆本身,不携带卡底背景。
+# rank = id 前缀数字;III/IV 档候实机采样补档,当前该两档判 None。
+_SUPERIMPOSE_SUB_DIR = 'light_cone_superimpose'
 _SUPERIMPOSE_MATCH_MIN: float = 0.6
-_superimpose_tpl_cache: dict[int, list[np.ndarray]] | None = None
+_SUPERIMPOSE_NORM_SIZE = (24, 24)
+_superimpose_tpl_cache: dict[str, np.ndarray] | None = None
 
 
-def _superimpose_templates() -> dict[int, list[np.ndarray]]:
-    """叠影数 → 整圆 ROI 灰度模板列表(每档可含多配色态;进程级常驻)。"""
+def _superimpose_templates(ctx: SrContext) -> dict[str, np.ndarray]:
+    """模板 id → 归一灰度圆盘(24×24;经 ctx.template_loader,进程级常驻)。"""
     global _superimpose_tpl_cache
     if _superimpose_tpl_cache is None:
-        base = Path(os_utils.get_path_under_work_dir(*_SUPERIMPOSE_TEMPLATE_DIR.split('/')))
-        lib: dict[int, list[np.ndarray]] = {}
-        for f in sorted(base.glob('*.png')):
-            stem_rank = f.stem.split('_')[0]
-            if not stem_rank.isdigit():
+        lib: dict[str, np.ndarray] = {}
+        for info in ctx.template_loader.get_all_template_info_from_disk():
+            if info.sub_dir != _SUPERIMPOSE_SUB_DIR:
                 continue
-            img = cv2_utils.read_image(str(f))
-            if img is None:
+            raw = info.raw
+            if raw is None:
                 continue
-            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) if img.ndim == 3 else img
-            lib.setdefault(int(stem_rank), []).append(gray)
+            gray = cv2.cvtColor(raw, cv2.COLOR_RGB2GRAY) if raw.ndim == 3 else raw
+            lib[info.template_id] = gray
         _superimpose_tpl_cache = lib
     return _superimpose_tpl_cache
+
+
+def _superimpose_rank_of(template_id: str) -> int | None:
+    rank = template_id.split('_')[0]  # id 形如 '5' / '1_dark'——前缀数字 = 叠影数
+    return int(rank) if rank.isdigit() else None
 
 
 def _relic_piece_templates() -> dict[str, MatLike]:
