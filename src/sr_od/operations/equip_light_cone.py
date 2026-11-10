@@ -69,9 +69,10 @@ _RESELECT_AFTER: int = 3
 # 无害)—— 按 AGENTS §3 回顶规范,不做逐屏识别判顶,识别留给后续扫描
 # 自然从顶部开始。
 _RESET_TOP_DRAGS: int = 5
-# 回顶拖拽几何:锚 y=850(底部卡行带内,任意滚动相位下大概率落在卡上)+
-# 上滑 800px(终点 y=50,窗口内),duration 0.2s 快速甩动
-_TOP_DRAG_ANCHOR_Y: int = 850
+# 回顶拖拽几何:起点 y=50(上方窗口内)、终点 y=850(底部卡行带内)——
+# 手指下滑 = 内容回卷露出顶部(标准触摸语义,drag_to 终点在前);
+# 上滑 800px 的反向手势会向列表深处翻页,方向勿倒置。
+_TOP_DRAG_END_Y: int = 850
 _TOP_DRAG_PX: int = 800
 _TOP_DRAG_DURATION: float = 0.2
 
@@ -195,8 +196,8 @@ class EquipLightConeOp(SrOperation):
         anchor_x = list_area.rect.center.x
         for _ in range(_RESET_TOP_DRAGS):
             self.ctx.controller.drag_to(
-                Point(anchor_x, _TOP_DRAG_ANCHOR_Y - _TOP_DRAG_PX),
-                Point(anchor_x, _TOP_DRAG_ANCHOR_Y),
+                Point(anchor_x, _TOP_DRAG_END_Y),
+                Point(anchor_x, _TOP_DRAG_END_Y - _TOP_DRAG_PX),
                 duration=_TOP_DRAG_DURATION)
         return self.round_success(status='AT_TOP', wait=0.5)
 
