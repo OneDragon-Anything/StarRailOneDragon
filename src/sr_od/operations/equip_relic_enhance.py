@@ -24,7 +24,6 @@ target_level 停)/ ALREADY_MAX(起点已满)。target_level 配合 plus3 档实�
 """
 
 import re
-from typing import Literal
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -52,14 +51,17 @@ class EquipRelicEnhanceOp(SrOperation):
     """
 
     def __init__(self, ctx: SrContext,
-                 auto_insert: Literal['off', 'plus3', 'max'] = 'max',
+                 auto_insert: str = 'max',
                  target_level: int | None = None):
         """
         :param ctx: 上下文
         :param auto_insert: 自动置入档位——'max' = 一键填满(默认,实测直通
             满级);'plus3' = 每次+3 档(依赖游戏置入档位开关,实机摸底待做,
             当前显式失败);'off' = 不自动置入(手动放材料交互未实机摸底,
-            当前显式失败)。
+            当前显式失败)。注解用 str 而非 Literal:合法值由下方运行时校验,
+            MCP run_operation 的参数反射按注解判 JSON 可序列化,Literal
+            判 false 导致该参数经 MCP 传值被整体拒收(sr_od/backend/
+            operation_registry._annotation_json_serializable 不识别 Literal)。
         :param target_level: 目标等级 1-15;None = 拉满。到达即停
             (REACHED_TARGET)——plus3 档 + 分次调 target 可实现逐节点验收
             (省材料路线:到 +3 看词条,歪了不再续)。
