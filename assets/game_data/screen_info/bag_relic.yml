@@ -178,3 +178,159 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
+- area_name: 部位筛选-头部
+  id_mark: false
+  pc_rect:
+  - 345
+  - 113
+  - 415
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 部位筛选-手部
+  id_mark: false
+  pc_rect:
+  - 465
+  - 113
+  - 535
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 部位筛选-躯干
+  id_mark: false
+  pc_rect:
+  - 583
+  - 113
+  - 653
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 部位筛选-脚部
+  id_mark: false
+  pc_rect:
+  - 702
+  - 113
+  - 772
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 部位筛选-位面球
+  id_mark: false
+  pc_rect:
+  - 820
+  - 113
+  - 890
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 部位筛选-连结绳
+  id_mark: false
+  pc_rect:
+  - 938
+  - 113
+  - 1008
+  - 167
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-筛选漏斗
+  id_mark: false
+  pc_rect:
+  - 125
+  - 963
+  - 180
+  - 1017
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 背包-遗器-筛选
+- area_name: 标识-筛选中
+  id_mark: false
+  pc_rect:
+  - 138
+  - 905
+  - 228
+  - 950
+  text: 筛选中
+  lcs_percent: 0.7
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-遗器名
+  id_mark: false
+  pc_rect:
+  - 1395
+  - 122
+  - 1755
+  - 172
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 区域-遗器列表
+  id_mark: false
+  pc_rect:
+  - 145
+  - 200
+  - 1115
+  - 955
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-详情
+  id_mark: false
+  pc_rect:
+  - 1400
+  - 958
+  - 1610
+  - 1016
+  text: 详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 遗器详情
