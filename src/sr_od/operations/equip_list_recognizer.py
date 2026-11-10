@@ -213,56 +213,31 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
                           card_rect: Rect) -> int | None:
         """卡左缘叠影圆标 → 叠影数(1-5);无法判定返回 None。
 
-        流程(**圆形裁剪**,圆外一律置零——卡底背景/圆外装饰线全排除):
-        ① HoughCircles 在卡左缘搜索窗定位叠影圆(四配色态实测 r≈13 稳定);
-        ② 圆 bounding box 裁片 × 圆形 mask = 圆盘;
-        ③ 归一 24×24 后与分档模板(assets/template/light_cone_superimpose/
-        <叠影数>[-dark]/raw.webp,同流程圆形裁剪采样,TemplateLoader 规范
-        存储)TM_CCOEFF_NORMED 匹配 ≥0.6 判定。模板 id 带 -dark 后缀 =
-        暗底金字态(同档异态相关系数为负,必须分模板),rank 取 id 前缀数字。
+        流程(固定相对坐标 + 放大窗滑动匹配,不找圆——网格卡矩形规整一致,
+        圆在卡内的相对位置恒定,实机目检圆心 ≈ 卡内 (+27,+62)、r 11-15):
+        ① 探针 = 卡左缘放大窗 (x+7,y+42) 起 40×40(圆心 ±20,含圆完整+滑动
+        余量 ±7px;卡面装饰竖线在 x+50 外,不进窗);
+        ② 与分档紧圆模板(assets/template/light_cone_superimpose/<叠影数>
+        [-dark]/raw.webp,26×26=圆心 ±13,TemplateLoader 规范 webp 存储)
+        TM_CCOEFF_NORMED 滑动匹配取最高分,≥0.6 判定——位置漂移由滑动
+        吸收,无需逐卡找圆。模板 id 带 -dark 后缀 = 暗底金字态(同档异态
+        相关系数为负,必须分模板),rank 取 id 前缀数字。
         III/IV 档候实机采样补档,当前该两档判 None。"""
         templates = _superimpose_templates(ctx)
         if not templates:
             return None
-        search = cv2.cvtColor(
-            image[card_rect.y1 + 46:card_rect.y1 + 84,
-                  card_rect.x1 + 4:card_rect.x1 + 42], cv2.COLOR_RGB2GRAY)
-        circles = cv2.HoughCircles(search, cv2.HOUGH_GRADIENT, dp=1, minDist=10,
-                                   param1=100, param2=14,
-                                   minRadius=10, maxRadius=16)
-        if circles is None:
-            return None
-        probe = self._crop_superimpose_disk(search, circles[0][0])
-        if probe is None:
-            return None
+        probe = cv2.cvtColor(
+            image[card_rect.y1 + 42:card_rect.y1 + 82,
+                  card_rect.x1 + 7:card_rect.x1 + 47], cv2.COLOR_RGB2GRAY)
         best_id, best_score = None, 0.0
         for tid, tpl in templates.items():
-            score = float(cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
-            if score > best_score:
-                best_id, best_score = tid, score
+            res = cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)
+            _, max_score, _, _ = cv2.minMaxLoc(res)
+            if max_score > best_score:
+                best_id, best_score = tid, max_score
         if best_score < _SUPERIMPOSE_MATCH_MIN:
             return None
         return _superimpose_rank_of(best_id)
-
-    @staticmethod
-    def _crop_superimpose_disk(search_gray: np.ndarray,
-                               circle: np.ndarray) -> np.ndarray | None:
-        """搜索窗灰度 + Hough 圆 → 圆盘归一图(24×24,圆外置零);失败返回 None。"""
-        cx, cy, r = (int(round(v)) for v in circle)
-        r = max(r - 1, 1)
-        half = r
-        x1, y1 = max(0, cx - half), max(0, cy - half)
-        x2, y2 = min(search_gray.shape[1], x1 + 2 * half), min(search_gray.shape[0], y1 + 2 * half)
-        if x2 - x1 < 10 or y2 - y1 < 10:
-            return None
-        crop = search_gray[y1:y2, x1:x2]
-        ch, cw = crop.shape[:2]
-        mask = np.zeros((ch, cw), dtype=np.uint8)
-        cv2.circle(mask, (cx - x1, cy - y1), min(cx - x1, cy - y1,
-                                                 x2 - cx - 1, y2 - cy - 1, half) or 1,
-                   1, -1)
-        disk = crop * mask
-        return cv2.resize(disk, _SUPERIMPOSE_NORM_SIZE, interpolation=cv2.INTER_AREA)
 
     def recognize(
         self,
