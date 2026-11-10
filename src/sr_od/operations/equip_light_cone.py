@@ -34,6 +34,8 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+import time
+
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
@@ -91,6 +93,7 @@ class EquipLightConeOp(SrOperation):
         self.rank: int | None = rank   #: 叠影过滤,None=不过滤
         self.level: int | None = level  #: 等级过滤,None=不过滤
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
+        self._list_reset: bool = False  #: 选件前是否已滚回列表顶
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
         SrOperation.__init__(self, ctx, op_name=gt('替换光锥') + f'({cone_name})',
@@ -162,6 +165,18 @@ class EquipLightConeOp(SrOperation):
         if self._scan_screens >= _SCAN_MAX_SCREENS:
             return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏未找到 {self.cone_name}'
                                    f'(未拥有或识别失败)')
+
+        if not self._list_reset:
+            # 列表滚动位置在重开界面后保留——先滚回顶部再从头扫(目标件可能
+            # 在起点上方,只向下滚会永远错过;实机两次 12 屏未找到实证)
+            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
+            center = list_area.rect.center
+            for _i in range(4):
+                self.ctx.controller.drag_to(Point(center.x, center.y + 400),
+                                            Point(center.x, center.y - 400))
+                time.sleep(0.4)
+            self._list_reset = True
+            return self.round_retry('已滚回列表顶部,从头扫描', wait=1.5)
 
         screen_img = self.screenshot()
         screen_info = self.ctx.screen_loader.get_screen(_REPLACE_SCREEN)
