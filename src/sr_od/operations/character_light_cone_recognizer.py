@@ -48,13 +48,14 @@ class CharacterLightConeRecognizer(ScreenRecognizer):
         image: MatLike,
         screen_info: ScreenInfo,
     ) -> dict | None:
-        """全图 OCR 一遍 → 按读区矩形过滤 → 结构化输出。
+        """全图 OCR 一遍 → 按读区矩形过滤(行中心落在 rect 内)→ 结构化输出。
 
         不用 crop OCR(rect 裁剪识别不稳,实测叠影/技能名读区裁剪后 miss)。
-        过滤 = 行中心落在读区 rect **外扩 15px** 内:全图 OCR 与建档 rect 存
-        在 0-12px 小偏差(实测叠影行中心 y=568 vs rect 上缘 570),中心精确
-        在内会 miss;外扩量经核验不致跨区误吸(相邻区块间隔 >25px)。命途
-        读区含图标装饰,OCR 带杂字 → 用命途白名单清洗取命中项。"""
+        读区 rect 须贴合实际渲染位置(叠影/技能名两 rect 曾漂移 2-37px,
+        2026-11-10 按 OCR 实测中心校正)——rect 漂移时中心精确在内会 miss,
+        识别与建档打架 = 修 rect,不是给过滤加容差(容差外扩会吸入相邻读区,
+        实证生命/攻击读区间隔 <15px)。命途读区含图标装饰,OCR 带杂字 →
+        用命途白名单清洗取命中项。"""
         all_rows = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
         result: dict = {}
 
@@ -62,9 +63,8 @@ class CharacterLightConeRecognizer(ScreenRecognizer):
             area = ctx.screen_loader.get_area('角色-光锥', area_name)
             rect = area.rect
             texts = [str(r.data).strip() for r in all_rows
-                     if rect.x1 - 15 <= r.x + r.w / 2 <= rect.x2 + 15
-                     and rect.y1 - 15 <= r.y + r.h / 2 <= rect.y2 + 15
-                     and str(r.data).strip()]
+                     if rect.x1 <= r.x + r.w / 2 <= rect.x2
+                     and rect.y1 <= r.y + r.h / 2 <= rect.y2 and str(r.data).strip()]
             return ''.join(texts) if texts else None
 
         cone_name = read('读区-光锥名')
