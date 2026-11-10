@@ -20,6 +20,7 @@
 | [path-joy.md](mechanics/path-joy.md) | 欢愉命途：笑点→阿哈时刻→好活当赏、欢愉伤害独立乘区、欢愉度 |
 | [path-remembrance.md](mechanics/path-remembrance.md) | 记忆命途：忆灵系统、忆灵对照表、计数绑定、套装对忆灵生效 |
 | [relic-sets.md](mechanics/relic-sets.md) | 遗器套装速查：62 套官方分类标签+验证效果 |
+| [relic-enhancement.md](mechanics/relic-enhancement.md) | 遗器强化与更换决策：选件门槛（主词条对+≥2 条不同有效副词条）、省材料逐节点验收 vs 豪横满级两路线 |
 | [light-cones.md](mechanics/light-cones.md) | **光锥速查：170 杻全量（米游社百科）**——命途/星级/获取渠道分组（专武池/光锥呈现/黑塔商店/月卡/周本/活动）/特效要点含叠影梯度 |
 
 ## 体系层（一类配队一档，管「为什么这么组」）
