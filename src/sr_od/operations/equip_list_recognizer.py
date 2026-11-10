@@ -195,9 +195,12 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     }
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
-        # 角标区偏移实测(光锥卡):卡片矩形内右上角
-        return Rect(card_rect.x1 + 88, card_rect.y1 - 5,
-                    card_rect.x1 + 148, card_rect.y1 + 45)
+        # 角标区 = 角标整圆(含白色描边)外接正方形 44×44:圆心 ≈ 卡内
+        # (x1+117, y1+25)、直径 ≈45px(霍夫圆四张不同角色有角标卡一致 +
+        # 阈值化质心交叉验证;网格规整,相对位置恒定)。窗须完整含圆——
+        # 历史版本窗偏上 11px 裁掉圆下缘,曾致全库模板分数被压到 0.65-0.73。
+        return Rect(card_rect.x1 + 95, card_rect.y1 + 3,
+                    card_rect.x1 + 139, card_rect.y1 + 47)
 
     def _list_area_name(self) -> str:
         return '区域-光锥列表'
