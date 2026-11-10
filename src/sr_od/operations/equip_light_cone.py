@@ -29,13 +29,13 @@ SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
 
 
 
-import time
-
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.screen import screen_utils
+from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
@@ -45,6 +45,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
 _REPLACE_SCREEN: str = '光锥-替换'
+# 画面级判定的判定范围(只判这两屏):入口与转移确认一律用画面判定,禁单区域
+# 命中当画面判定 —— 两屏左上角标题「角色光锥 / 光锥替换」同位形近,单区域
+# OCR 相似度可互判命中,导致未点按钮即认定已在目标画面
+_ENTRY_SCREENS: list[str] = [_LC_TAB_SCREEN, _REPLACE_SCREEN]
 
 # 网格几何:9 列,实机卡列首中心 = 列表区 x1+72.5、列距恒 139px(锚点卡实测);
 # 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见 grid_template_locate)
@@ -57,6 +61,8 @@ _SCROLL_DRAG_PX: int = 300
 _SCAN_MAX_SCREENS: int = 12
 # 验证选中连续不符次数达此值 → 转回重新定位(点击未生效/误配自愈)
 _RESELECT_AFTER: int = 3
+# 选件前滚回列表顶的拖拽次数;每轮执行一次,轮间画面判定兜底拖拽误触
+_RESET_TOP_DRAGS: int = 4
 
 # 首卡中心相对列表区 x1 的偏移 = 首卡 x1 偏移(3) + 半卡宽(69.5)
 _CONE_FIRST_CENTER_OFFSET: float = 72.5
@@ -93,7 +99,7 @@ class EquipLightConeOp(SrOperation):
         self.rank: int | None = rank   #: 叠影过滤,None=不过滤
         self.level: int | None = level  #: 等级过滤,None=不过滤
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
-        self._list_reset: bool = False  #: 选件前是否已滚回列表顶
+        self._reset_drags_left: int = _RESET_TOP_DRAGS  #: 剩余滚顶拖拽次数(每轮一次)
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
         SrOperation.__init__(self, ctx, op_name=gt('替换光锥') + f'({cone_name})',
@@ -115,15 +121,16 @@ class EquipLightConeOp(SrOperation):
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:光锥 TAB 或替换界面;已装备目标光锥直接成功(幂等)。"""
-        screen = self.last_screenshot
+        """入口核对:画面级判定当前屏(替换界面续扫;TAB 做幂等检查)。
 
-        if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-光锥替换').is_success:
+        判定一律走画面级 id_mark 组合(见 _ENTRY_SCREENS 注):单区域命中在
+        两屏标题同位形近的场景不可靠。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
+        if current == _REPLACE_SCREEN:
             return self.round_success(status='IN_REPLACE_SCREEN')
-
-        if not self.round_by_find_area(screen, _LC_TAB_SCREEN, '标题-角色光锥').is_success:
-            return self.round_fail('不在光锥 TAB(前置:进详情 + 选角色 + 切「光锥」页签)')
-
+        if current != _LC_TAB_SCREEN:
+            return self.round_fail(f'不在光锥 TAB / 替换界面(当前画面判定: {current})')
         if self._read_name(_LC_TAB_SCREEN, '读区-光锥名') is not None:
             log.info('替换光锥: %s 已装备当前角色', self.cone_name)
             return self.round_success(status='ALREADY_EQUIPPED')
@@ -136,22 +143,25 @@ class EquipLightConeOp(SrOperation):
 
     @node_from(from_name='入口核对', status='CAN_REPLACE')
     @node_from(from_name='入口核对', status='IN_REPLACE_SCREEN')
+    @node_from(from_name='定位并选卡', status='REOPEN')  # 列表中途退出 → 重开界面自愈
     @operation_node(name='打开替换界面', node_max_retry_times=6)
     def open_replace(self) -> OperationRoundResult:
-        """光锥 TAB 点「替换」→ 替换界面(until=双锚:标题+命途相符组头)。
+        """画面级判定:已进替换界面直接确认;仍在 TAB 则点「替换」按钮。
 
-        已在替换界面(IN_REPLACE_SCREEN)时直接确认成功。"""
-        screen = self.last_screenshot
-        if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-光锥替换').is_success:
+        点击后的画面转移由下轮画面判定确认 —— until 的区域级验证与单区域
+        判定同源,不可靠;画面级判定是唯一转移证据。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
+        if current == _REPLACE_SCREEN:
             return self.round_success(status='REPLACE_SCREEN_OPEN')
-        return self.round_by_find_and_click_area(
-            screen, _LC_TAB_SCREEN, '按钮-替换',
-            until_find_all=[
-                (_REPLACE_SCREEN, '标题-光锥替换'),
-                (_REPLACE_SCREEN, '文本-命途相符组头'),
-            ],
-            pre_delay=0.5, success_wait=2.5, retry_wait=2,
-        )
+        if current != _LC_TAB_SCREEN:
+            return self.round_fail(f'不在光锥 TAB,无法打开替换界面(当前画面判定: {current})')
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _LC_TAB_SCREEN, '按钮-替换') != FindAreaResultEnum.TRUE:
+            return self.round_retry('未找到替换按钮', wait=2)
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, '按钮-替换').rect.center)
+        return self.round_retry('已点击替换按钮,等待进入替换界面', wait=2)
 
     @node_from(from_name='打开替换界面')
     @node_from(from_name='打开替换界面', status='REPLACE_SCREEN_OPEN')
@@ -161,32 +171,35 @@ class EquipLightConeOp(SrOperation):
         """SIFT 落格投票定位目标卡候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
 
         候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 多件同名副本
-        场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。"""
+        场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。
+        每轮开头画面级判定:拖拽/误触退出列表立刻发现,转回重开界面。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
+        if current != _REPLACE_SCREEN:
+            self._scan_screens = 0
+            self._candidate_idx = 0
+            self._reset_drags_left = _RESET_TOP_DRAGS
+            return self.round_success(status='REOPEN')
+
+        if self._reset_drags_left > 0:
+            # 列表滚动位置在重开界面后保留——先滚回顶部再从头扫(目标件可能
+            # 在起点上方,只向下滚会永远错过)
+            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
+            center = list_area.rect.center
+            self.ctx.controller.drag_to(Point(center.x, center.y + 400),
+                                        Point(center.x, center.y - 400))
+            self._reset_drags_left -= 1
+            return self.round_retry(f'滚回列表顶部(剩 {self._reset_drags_left} 次拖拽)', wait=1)
+
         if self._scan_screens >= _SCAN_MAX_SCREENS:
             return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏未找到 {self.cone_name}'
                                    f'(未拥有或识别失败)')
-
-        if not self._list_reset:
-            # 列表滚动位置在重开界面后保留——先滚回顶部再从头扫(目标件可能
-            # 在起点上方,只向下滚会永远错过;实机两次 12 屏未找到实证)
-            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-            center = list_area.rect.center
-            for _i in range(4):
-                self.ctx.controller.drag_to(Point(center.x, center.y + 400),
-                                            Point(center.x, center.y - 400))
-                time.sleep(0.4)
-            self._list_reset = True
-            return self.round_retry('已滚回列表顶部,从头扫描', wait=1.5)
 
         screen_img = self.screenshot()
         screen_info = self.ctx.screen_loader.get_screen(_REPLACE_SCREEN)
         out = LightConeReplaceRecognizer().recognize(self.ctx, screen_img, screen_info)
         items = (out or {}).get('items') or []
-        log.info('[诊断] 第%d屏 recognize items=%d, 名单=%s',
-                 self._scan_screens + 1, len(items),
-                 [(it.get('cone'), it.get('rank'), it.get('owner')) for it in items][:12])
         cands = self._filter_candidates(items)
-        log.info('[诊断] 第%d屏 过滤后 cands=%d', self._scan_screens + 1, len(cands))
         if cands:
             log.info('替换光锥: 本屏命中 %d 件 %s(第 %d 屏)',
                      len(cands), [(it['cell'][0], it.get('owner'), it.get('rank'))
@@ -246,13 +259,22 @@ class EquipLightConeOp(SrOperation):
     @node_from(from_name='验证选中', status='SELECTED_MATCHED')
     @operation_node(name='确认替换', node_max_retry_times=6)
     def confirm_replace(self) -> OperationRoundResult:
-        """点「替换」→ 直接生效并自动回光锥 TAB(until=标题回 TAB)。"""
-        screen = self.last_screenshot
-        return self.round_by_find_and_click_area(
-            screen, _REPLACE_SCREEN, '按钮-替换',
-            until_find_all=[(_LC_TAB_SCREEN, '标题-角色光锥')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
+        """画面级判定:已回 TAB 即替换生效;仍在替换界面则点「替换」按钮。
+
+        点「替换」直接生效并自动回光锥 TAB,无确认弹窗;画面转移由下轮
+        画面判定确认(直到判定为 TAB 才算替换完成)。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
+        if current == _LC_TAB_SCREEN:
+            return self.round_success(status='BACK_TO_TAB')
+        if current != _REPLACE_SCREEN:
+            return self.round_fail(f'异常画面,无法确认替换(当前画面判定: {current})')
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _REPLACE_SCREEN, '按钮-替换') != FindAreaResultEnum.TRUE:
+            return self.round_retry('未找到替换按钮', wait=2)
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-替换').rect.center)
+        return self.round_retry('已点击替换,等待回到光锥 TAB', wait=2)
 
     @node_from(from_name='确认替换')
     @operation_node(name='结果核对')
