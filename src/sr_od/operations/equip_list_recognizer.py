@@ -215,8 +215,9 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 
         流程(固定相对坐标 + 放大窗滑动匹配,不找圆——网格卡矩形规整一致,
         圆在卡内的相对位置恒定,实机目检圆心 ≈ 卡内 (+27,+62)、r 11-15):
-        ① 探针 = 卡左缘放大窗 (x+7,y+42) 起 40×40(圆心 ±20,含圆完整+滑动
-        余量 ±7px;卡面装饰竖线在 x+50 外,不进窗);
+        ① 探针 = 卡左缘放大窗 (x+2,y+42) 起 40×40(含圆完整+滑动余量;左界
+        收 x+2——裁切行轮廓补充卡的 rect.x1 偏右可达 10px,窗随 rect 偏移时
+        圆左缘会被窗缘切掉导致匹配失败;卡面装饰竖线在 x+50 外,不进窗);
         ② 与分档紧圆模板(assets/template/light_cone_superimpose/<叠影数>/
         raw.webp,26×26=圆心 ±13,TemplateLoader 规范 webp 存储)
         TM_CCOEFF_NORMED 滑动匹配取最高分,≥0.6 判定——位置漂移由滑动
@@ -228,7 +229,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
             return None
         probe = cv2.cvtColor(
             image[card_rect.y1 + 42:card_rect.y1 + 82,
-                  card_rect.x1 + 7:card_rect.x1 + 47], cv2.COLOR_RGB2GRAY)
+                  card_rect.x1 + 2:card_rect.x1 + 42], cv2.COLOR_RGB2GRAY)
         best_id, best_score = None, 0.0
         for tid, tpl in templates.items():
             res = cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)
