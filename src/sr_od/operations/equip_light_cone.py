@@ -216,7 +216,7 @@ class EquipLightConeOp(SrOperation):
 
         cand = cands[self._candidate_idx]
         cell = Rect(*cand['cell'])
-        self.ctx.controller.click(cell)
+        self.ctx.controller.click(cell.center)
         self._candidate_idx += 1
         self._select_retries = 0  # 重新点击后重置验证计数
         log.info('替换光锥: 点击候选 %d/%d rank=%s level=%s',
