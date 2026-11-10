@@ -24,7 +24,7 @@
 
 ## 装备与更换(操作路由)
 
-agent 全程可自动化,链路与可用工具:
+公共前置(三种情况都要,顺序执行):
 
 | 步骤 | 用什么 |
 |---|---|
@@ -32,15 +32,44 @@ agent 全程可自动化,链路与可用工具:
 | 选中目标角色 | op `sr_od.operations.select_character.SelectCharacterOp(cn_name='角色名')` |
 | 切到光锥 TAB | op `sr_od.operations.switch_character_tab.SwitchCharacterTabOp(tab_name='光锥')` |
 | 查看当前光锥 | 优先米游社 API `mys_get_characters`(注意数据有延迟);要实时确认用 MCP `analyze_screen`——画面为「角色-光锥」时 extras 返回 光锥名/命途/等级/叠影N阶/技能名/白值 |
-| 装备/更换光锥 | op `sr_od.operations.equip_light_cone.EquipLightConeOp(cone_name='光锥名', rank=叠影, level=等级)`(rank/level 可选,同名多副本时精确定位) |
-| 升级光锥到上限 | op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic, auto_farm)` |
+| 升级光锥到上限(不走列表,TAB 直接强化) | op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic, auto_farm)` |
+
+换光锥按意图分三种情况,路由不同:
+
+### 情况 1:不知道要换什么——先浏览账号光锥清单
+
+公共前置之后,打开替换列表看全清单再决定:
+
+| 步骤 | 用什么 |
+|---|---|
+| 打开替换列表 | op `sr_od.operations.open_light_cone_replace.OpenLightConeReplaceOp()` → 成功状态 OPENED(列表已开且滚回顶部) |
+| 读清单 | MCP `analyze_screen`——画面为「光锥-替换」时 extras.items 返回全列表,每件含 光锥名/命途/等级/叠影/占用者(owner) |
+| 决策 | 结合「决策规则」与配队知识(damage-and-affix.md)从清单里选定目标 |
+| 执行更换 | 走情况 2 或情况 3 的路由——后续 op 都支持从列表画面直接续跑,浏览后无需退出重进 |
+
+### 情况 2:知道要换什么,不确定账号里有没有/是否被占用——尝试换,不抢
+
+公共前置 + 打开替换列表,然后:
+
+op `sr_od.operations.equip_light_cone.EquipLightConeOp(cone_name='光锥名', rank=叠影?, level=等级?)`(rank/level 可选,同名多副本时精确定位)。结果解读:
+
+- 成功(ALREADY_EQUIPPED / LIGHT_CONE_EQUIPPED)= 目标已装备当前角色;
+- 失败「仅见已被装备的件」= 账号有但全部装在角色身上——**默认不占用他人
+  装备**(allow_take_over=False),转情况 1 浏览另选,或向用户确认能否抢;
+- 失败「未找到」= 账号没有此光锥。
+
+### 情况 3:明确要换什么,允许占用他人装备
+
+op 同情况 2,加 `allow_take_over=True`——把别人身上的目标光锥换过来
+(如「把停云的舞!舞!舞!换给布洛妮娅」)。仅当用户明确要求时使用:
+抢走即改变他人配装,不会自动恢复。
 
 - op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用,
   op_id 见上表(如 `sr_od.operations.equip_light_cone.EquipLightConeOp`)
 - `EquipLightConeOp` 幂等:当前角色已装备目标光锥时直接成功;内置滚动
-  扫描(12 屏预算)找件、未装备件优先(不抢他人装备)、选中验证与结果核对。
-  同名多副本时用 rank/level 入参精确定位(读得出且不符的件被排除,
-  读不出的件保留兜底排在确认匹配件之后)
+  扫描(12 屏预算)找件、选中验证与结果核对。同名多副本时用 rank/level
+  入参精确定位(读得出且不符的件被排除,读不出的件保留兜底排在确认匹配
+  件之后)
 - `UpgradeLightConeOp` **消耗真实材料**(以太+信用点,拉满约 1597 以太 +
   71 万信用点),fill_generic=通用材料填充、auto_farm=材料不足自动刷——
   两者发起前必须向用户确认消耗

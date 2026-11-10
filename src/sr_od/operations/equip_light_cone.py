@@ -1,9 +1,11 @@
-"""光锥 TAB → 替换光锥 operation(为当前角色装备指定光锥)。
+"""替换光锥 operation(在替换列表画面上为当前角色装备指定光锥)。
 
 角色养成系列的装备线 op:换光锥是配装调整动作(如刷材料前换辅助光锥)。
-交互链全流程实机摸底:
-- 光锥 TAB 点「替换」→ 光锥替换界面:9 列卡片网格,分「与角色命途相符 /
-  不相符」两组;**卡片上没有光锥名**(名字仅选中后右侧对比栏可读);
+前置导航(进列表)由 `open_light_cone_replace.OpenLightConeReplaceOp`
+承担,本 op 起点单一 = 光锥-替换列表画面,不在则显式失败。
+交互链实机摸底:
+- 替换界面:9 列卡片网格,分「与角色命途相符 / 不相符」两组;**卡片上
+  没有光锥名**(名字仅选中后右侧对比栏可读);
 - 选卡后右侧变对比布局(当前装备 → 新选中),底部出现「替换」按钮;
 - 点「替换」**直接生效并自动回光锥 TAB,无确认弹窗** —— 替换是即时操作。
 
@@ -18,9 +20,9 @@
 - 未命中滚动一屏重扫(拖拽,有界);OCR 验证用右侧对比栏读区(名带形近
   变体,如「於/于」,fuzzy 匹配兜底)。
 
-前置:光锥 TAB(由 GotoCharacterDetail + SelectCharacterOp +
-SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
-⚠️ 装备即改变角色配装(即时生效),调用方须确认目标光锥正确。
+前置:光锥-替换列表(OpenLightConeReplaceOp 保证);起点不符显式失败。
+⚠️ 装备即改变角色配装(即时生效),调用方须确认目标光锥正确;
+allow_take_over=True 会抢走他人装备,须用户明确授权。
 已知边界:「光锥建议排序」开着时,装备变化会触发列表实时重排 —— 刚完成
 一次替换立刻再换下一把,重排动画期 SIFT 全部漏扫(实机复现:连续两次
 换装第二次滚满预算判停),重跑即愈;调用方连续换装时在两次 op 之间留
@@ -45,9 +47,9 @@ from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
 _REPLACE_SCREEN: str = '光锥-替换'
-# 画面级判定的判定范围(只判这两屏):入口与转移确认一律用画面判定,禁单区域
-# 命中当画面判定 —— 两屏左上角标题「角色光锥 / 光锥替换」同位形近,单区域
-# OCR 相似度可互判命中,导致未点按钮即认定已在目标画面
+# 画面级判定的判定范围(只判相关屏):画面判定一律用画面级,禁单区域命中当
+# 画面判定 —— 两屏左上角标题「角色光锥 / 光锥替换」同位形近,单区域 OCR
+# 相似度可互判命中,导致未点按钮即认定已在目标画面
 _ENTRY_SCREENS: list[str] = [_LC_TAB_SCREEN, _REPLACE_SCREEN]
 
 # 网格几何:9 列,实机卡列首中心 = 列表区 x1+72.5、列距恒 139px(锚点卡实测);
@@ -76,20 +78,28 @@ def _cone_col_centers(list_rect: Rect) -> list[float]:
 
 
 class EquipLightConeOp(SrOperation):
-    """为当前角色装备指定光锥,终点 = 光锥 TAB(读区已显示目标光锥)。
+    """在替换列表画面上为当前角色装备指定光锥,终点 = 光锥 TAB(读区已显示
+    目标光锥;点「替换」后游戏自动回 TAB)。
 
-    结果状态:ALREADY_EQUIPPED(已装备,幂等成功)/ LIGHT_CONE_EQUIPPED(替换完成)。
-    失败:CONE_NOT_FOUND(名字不在常量表)/ 列表扫完未找到(未拥有或识别失败)。
-    ⚠️ 替换即时生效,调用方须确认目标光锥正确。
+    结果状态:ALREADY_EQUIPPED(目标已装备当前角色,幂等成功)/
+    LIGHT_CONE_EQUIPPED(替换完成)。
+    失败:不在替换列表画面 / 列表扫完未找到(未拥有或识别失败)/ 仅见被
+    占用件(默认不抢语义,allow_take_over=True 可占用)。
+    ⚠️ 替换即时生效,调用方须确认目标光锥正确;allow_take_over=True 会
+    抢走他人装备改变其配装,须用户明确授权。
     """
 
     def __init__(self, ctx: SrContext, cone_name: str,
-                 rank: int | None = None, level: int | None = None):
+                 rank: int | None = None, level: int | None = None,
+                 allow_take_over: bool = False):
         """
         :param ctx: 上下文
-        :param cone_name: 目标光锥全名(如「行于流逝的岸」;须与光锥列表显示名一致)
+        :param cone_name: 目标光锥全名(如「行于流逝的岸」;须与光锥列表显示名
+            一致)
         :param rank: 叠影数过滤(1-5,可选)——同名多副本时精确定位
         :param level: 等级过滤(1-80,可选)——进一步收窄候选
+        :param allow_take_over: 允许占用他人已装备的件;False(默认)= 只装
+            未装备件,目标全部被占用 → 显式失败;True 须用户明确授权
         """
         if rank is not None and not 1 <= rank <= 5:
             raise ValueError(f'rank {rank} 超出 1-5')
@@ -98,14 +108,30 @@ class EquipLightConeOp(SrOperation):
         self.cone_name: str = cone_name
         self.rank: int | None = rank   #: 叠影过滤,None=不过滤
         self.level: int | None = level  #: 等级过滤,None=不过滤
+        self.allow_take_over: bool = allow_take_over  #: 是否允许占用他人装备
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
         self._reset_drags_left: int = _RESET_TOP_DRAGS  #: 剩余滚顶拖拽次数(每轮一次)
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
+        self._seen_owned_match: bool = False  #: 扫描中见过符合过滤条件但被占用的件(失败信息依据)
         SrOperation.__init__(self, ctx, op_name=gt('替换光锥') + f'({cone_name})',
                              node_max_retry_times=24)
 
     #------------------- 识别辅助 -------------------#
+
+    def _drag_toward_top_once(self) -> bool:
+        """执行一次滚顶拖拽(列表中心向上 400px);返回是否仍有剩余预算。
+
+        浏览模式与选卡模式共用 —— 两者都要「从头看列表」;每轮一次拖拽,
+        轮间画面判定兜底拖拽误触。"""
+        if self._reset_drags_left <= 0:
+            return False
+        list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
+        center = list_area.rect.center
+        self.ctx.controller.drag_to(Point(center.x, center.y + 400),
+                                    Point(center.x, center.y - 400))
+        self._reset_drags_left -= 1
+        return True
 
     def _read_name(self, screen_name: str, area_name: str) -> str | None:
         """OCR 读指定画面的名字读区,返回最相似的目标名判定由调用方做。"""
@@ -121,50 +147,28 @@ class EquipLightConeOp(SrOperation):
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:画面级判定当前屏(替换界面续扫;TAB 做幂等检查)。
+        """入口核对:画面级判定在替换列表画面;目标已装备直接幂等成功。
 
-        判定一律走画面级 id_mark 组合(见 _ENTRY_SCREENS 注):单区域命中在
-        两屏标题同位形近的场景不可靠。"""
+        判定走画面级 id_mark 组合(见 _ENTRY_SCREENS 注):单区域命中在
+        标题同位形近的场景不可靠。"""
         current = self.check_and_update_current_screen(
-            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
-        if current == _REPLACE_SCREEN:
-            return self.round_success(status='IN_REPLACE_SCREEN')
-        if current != _LC_TAB_SCREEN:
-            return self.round_fail(f'不在光锥 TAB / 替换界面(当前画面判定: {current})')
-        if self._read_name(_LC_TAB_SCREEN, '读区-光锥名') is not None:
+            self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
+        if current != _REPLACE_SCREEN:
+            return self.round_fail(f'不在替换列表画面(当前画面判定: {current});'
+                                   f'先调 OpenLightConeReplaceOp 打开列表')
+        # 幂等检查:未选卡时左栏显示当前装备——目标已装备当前角色直接成功,
+        # 不被「不抢」语义排除
+        if self._read_name(_REPLACE_SCREEN, '读区-当前光锥名') is not None:
             log.info('替换光锥: %s 已装备当前角色', self.cone_name)
             return self.round_success(status='ALREADY_EQUIPPED')
-        return self.round_success(status='CAN_REPLACE')
+        return self.round_success(status='IN_REPLACE_SCREEN')
 
     @node_from(from_name='入口核对', status='ALREADY_EQUIPPED')
     @operation_node(name='已装备收尾')
     def already_equipped(self) -> OperationRoundResult:
         return self.round_success(status='ALREADY_EQUIPPED')
 
-    @node_from(from_name='入口核对', status='CAN_REPLACE')
     @node_from(from_name='入口核对', status='IN_REPLACE_SCREEN')
-    @node_from(from_name='定位并选卡', status='REOPEN')  # 列表中途退出 → 重开界面自愈
-    @operation_node(name='打开替换界面', node_max_retry_times=6)
-    def open_replace(self) -> OperationRoundResult:
-        """画面级判定:已进替换界面直接确认;仍在 TAB 则点「替换」按钮。
-
-        点击后的画面转移由下轮画面判定确认 —— until 的区域级验证与单区域
-        判定同源,不可靠;画面级判定是唯一转移证据。"""
-        current = self.check_and_update_current_screen(
-            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
-        if current == _REPLACE_SCREEN:
-            return self.round_success(status='REPLACE_SCREEN_OPEN')
-        if current != _LC_TAB_SCREEN:
-            return self.round_fail(f'不在光锥 TAB,无法打开替换界面(当前画面判定: {current})')
-        if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _LC_TAB_SCREEN, '按钮-替换') != FindAreaResultEnum.TRUE:
-            return self.round_retry('未找到替换按钮', wait=2)
-        self.ctx.controller.click(
-            self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, '按钮-替换').rect.center)
-        return self.round_retry('已点击替换按钮,等待进入替换界面', wait=2)
-
-    @node_from(from_name='打开替换界面')
-    @node_from(from_name='打开替换界面', status='REPLACE_SCREEN_OPEN')
     @node_from(from_name='验证选中', status='RESELECT')  # 选中验证连续不符 → 回退点下一个候选
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
@@ -172,26 +176,20 @@ class EquipLightConeOp(SrOperation):
 
         候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 多件同名副本
         场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。
-        每轮开头画面级判定:拖拽/误触退出列表立刻发现,转回重开界面。"""
+        每轮开头画面级判定:拖拽/误触退出列表立刻显式失败(重新打开后再调)。"""
         current = self.check_and_update_current_screen(
-            self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
+            self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
         if current != _REPLACE_SCREEN:
-            self._scan_screens = 0
-            self._candidate_idx = 0
-            self._reset_drags_left = _RESET_TOP_DRAGS
-            return self.round_success(status='REOPEN')
+            return self.round_fail(f'替换列表已退出(当前画面判定: {current});'
+                                   f'重新打开列表后再调用本 op')
 
-        if self._reset_drags_left > 0:
-            # 列表滚动位置在重开界面后保留——先滚回顶部再从头扫(目标件可能
-            # 在起点上方,只向下滚会永远错过)
-            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-            center = list_area.rect.center
-            self.ctx.controller.drag_to(Point(center.x, center.y + 400),
-                                        Point(center.x, center.y - 400))
-            self._reset_drags_left -= 1
+        if self._drag_toward_top_once():
             return self.round_retry(f'滚回列表顶部(剩 {self._reset_drags_left} 次拖拽)', wait=1)
 
         if self._scan_screens >= _SCAN_MAX_SCREENS:
+            if self._seen_owned_match and not self.allow_take_over:
+                return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏,{self.cone_name} '
+                                       f'仅见已被装备的件(allow_take_over=True 可占用)')
             return self.round_fail(f'滚动 {_SCAN_MAX_SCREENS} 屏未找到 {self.cone_name}'
                                    f'(未拥有或识别失败)')
 
@@ -226,8 +224,9 @@ class EquipLightConeOp(SrOperation):
     def _filter_candidates(self, items: list[dict]) -> list[dict]:
         """识别清单 → 按入参过滤候选:名字必匹配;rank/level **读出且不符**
         才排除(逐卡 rank 靠 OCR,滚动扫描中部分帧读不出=未知——未知件保留
-        但排在「确认匹配」件之后兜底);同优先级内未装备件(owner=None)在前
-        (多副本不抢他人装备)。"""
+        但排在「确认匹配」件之后兜底);allow_take_over=False 时被占用件
+        (owner≠None)整体排除——「尝试换但不抢」语义,True 时未装备件优先、
+        已装备件兜底。"""
         cands = []
         for it in items:
             if it.get('cone') != self.cone_name:
@@ -236,6 +235,10 @@ class EquipLightConeOp(SrOperation):
             if ((self.rank is not None and rank is not None and rank != self.rank)
                     or (self.level is not None and level is not None and level != self.level)):
                 continue  # 明确不符
+            if it.get('owner') is not None:
+                self._seen_owned_match = True  # 符合过滤条件但被占用(ALL_OWNED 失败信息依据)
+                if not self.allow_take_over:
+                    continue
             known = ((self.rank is None or rank == self.rank)
                      and (self.level is None or level == self.level))
             cands.append((0 if known else 1, 0 if it.get('owner') is None else 1, it))
