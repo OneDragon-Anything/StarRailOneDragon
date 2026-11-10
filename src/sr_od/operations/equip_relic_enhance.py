@@ -1,4 +1,4 @@
-"""背包-遗器选中件 → 强化到满级 operation(遗器养成线)。
+"""背包-遗器选中件 → 强化 operation(遗器养成线,含自动置入档位与目标等级)。
 
 装备养成三件套之一(识别/强化/替换,与 EquipRelicOp/EquipLightConeOp 同族)。
 交互链实机摸底(2026-11-10 全流程):
@@ -6,15 +6,17 @@
   (按钮位互斥,按文本区分——满级件无强化入口);
 - 强化页 = 遗器详情框架的「强化」tab:右侧「+N」与「N/M」经验读数、消耗
   材料槽区(2×4)、「4星及以下」筛选与「自动置入」;
-- **自动置入一次填满**(实机:一键置入经验材料堆,+0 件预览直通 +15、消耗
-  信用点 11.4 万量级)——不存在逐级强化交互,本 op 语义即「强化到满级/
-  材料耗尽」,不支持中间等级停点;
+- **「max」档自动置入一次填满**(实机:一键置入经验材料堆,+0 件预览直通
+  +15、消耗信用点 11.4 万量级);游戏另有「每次+3」置入档位开关(实机摸底
+  待做:开关位置/交互形态未记录),plus3 档依赖它,摸底前显式失败;
 - 强化执行后弹「等级提升」结果横幅(等级0»等级15 + 词条前后对比),
   点空白处关闭回强化页;
 - 满级态:右上角绿字「满级」、底部按钮位变灰字「已强化至当前等级上限」。
 
 前置:背包-遗器界面且目标件已选中(选件导航后续迭代,当前由调用方保证);
-起点不符显式失败。结果状态:MAX_LEVEL(强化至满级)/ ALREADY_MAX(起点已满)。
+起点不符显式失败。结果状态:MAX_LEVEL(强化至满级)/ REACHED_TARGET(达
+target_level 停)/ ALREADY_MAX(起点已满)。target_level 配合 plus3 档实现
+「逐节点验收」玩法(省材料路线,决策知识见 game-coach relic-enhancement.md)。
 
 ⚠️ 真实消耗:经验材料(自动置入按「4星及以下」筛选填入)+ 信用点(满强化
 11 万+/件)。调用方发起前自行确认消耗可接受——低星废弃料喂狗粮是常规
@@ -22,6 +24,7 @@
 """
 
 import re
+from typing import Literal
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -42,16 +45,39 @@ _LEVEL_RE = re.compile(r'\+\s*(\d{1,2})')
 
 
 class EquipRelicEnhanceOp(SrOperation):
-    """把背包选中的遗器强化到满级(或材料耗尽),终点 = 背包-遗器。
+    """把背包选中的遗器强化到满级/目标等级,终点 = 背包-遗器。
 
-    结果状态:MAX_LEVEL(强化至满级)/ ALREADY_MAX(起点已是满级件)。
+    结果状态:MAX_LEVEL(强化至满级)/ REACHED_TARGET(达 target_level 停) /
+    ALREADY_MAX(起点已是满级件)。
     """
 
-    def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name=gt('遗器强化'),
-                             node_max_retry_times=16)
+    def __init__(self, ctx: SrContext,
+                 auto_insert: Literal['off', 'plus3', 'max'] = 'max',
+                 target_level: int | None = None):
+        """
+        :param ctx: 上下文
+        :param auto_insert: 自动置入档位——'max' = 一键填满(默认,实测直通
+            满级);'plus3' = 每次+3 档(依赖游戏置入档位开关,实机摸底待做,
+            当前显式失败);'off' = 不自动置入(手动放材料交互未实机摸底,
+            当前显式失败)。
+        :param target_level: 目标等级 1-15;None = 拉满。到达即停
+            (REACHED_TARGET)——plus3 档 + 分次调 target 可实现逐节点验收
+            (省材料路线:到 +3 看词条,歪了不再续)。
+        """
+        if auto_insert not in ('off', 'plus3', 'max'):
+            raise ValueError(f'auto_insert {auto_insert!r} 不在 off/plus3/max')
+        if target_level is not None and not 1 <= target_level <= 15:
+            raise ValueError(f'target_level {target_level} 超出 1-15')
+        self.auto_insert: str = auto_insert
+        self.target_level: int | None = target_level
         self._enhanced_to: int | None = None  #: 强化执行后的等级读数(报告用)
         self._stat_baseline: list[str] | None = None  #: 强化前词条行基线(变化对比用)
+        SrOperation.__init__(
+            self, ctx,
+            op_name=gt('遗器强化')
+            + (f'(至+{target_level})' if target_level is not None else '')
+            + ('' if auto_insert == 'max' else f'({auto_insert})'),
+            node_max_retry_times=16)
 
     def _read_level(self) -> int | None:
         """强化页右上角「+N」等级读数(读区-等级经验裁剪 OCR)。"""
@@ -129,13 +155,14 @@ class EquipRelicEnhanceOp(SrOperation):
     @node_from(from_name='打开强化页')
     @operation_node(name='强化循环', node_max_retry_times=16)
     def enhance_loop(self) -> OperationRoundResult:
-        """flat loop:结果弹层 → 满级判定 → 置入+强化执行。
+        """flat loop:结果弹层 → 满级/达标判定 → 置入+强化执行。
 
         每轮分类(优先级):
         ① 「等级提升」结果横幅在 → 点空白关闭,重入循环;
-        ② 底部灰字「已强化至当前等级上限」在 → 读最终等级,关页收尾;
-        ③ 强化页裸露 → 点「自动置入」填料 → 点「强化」执行 → 等动画重入。
-        自动置入一次填满的实机行为下循环通常 1-2 轮;轮次预算兜底异常。"""
+        ② 底部灰字「已强化至当前等级上限」在 → 读最终等级+词条变化,关页收尾;
+        ②b target_level 提供且已达标 → 读词条变化,关页收尾(REACHED_TARGET);
+        ③ 强化页裸露 → 按档位置入 → 点「强化」执行 → 等动画重入。
+        max 档自动置入一次填满,循环通常 1-2 轮;轮次预算兜底异常。"""
         screen = self.last_screenshot
 
         # ① 结果横幅:点空白处关闭 → 回强化页
@@ -154,26 +181,34 @@ class EquipRelicEnhanceOp(SrOperation):
 
         # ② 满级判定:底部按钮位变灰字提示 → 读等级+词条变化,关页收尾
         if self.round_by_find_area(screen, _ENHANCE_SCREEN, '读区-满级提示').is_success:
-            self._enhanced_to = self._read_level()
-            final_stats = self._read_stat_lines()
-            changed = [line for line in final_stats
-                       if self._stat_baseline is None or line not in self._stat_baseline]
-            log.info('遗器强化: 已达满级(等级 %s),词条基线 %s 行 → 终态 %s 行,变化行 %s',
-                     self._enhanced_to,
-                     len(self._stat_baseline) if self._stat_baseline is not None else '?',
-                     len(final_stats), changed)
-            result = self.round_by_find_and_click_area(
+            self._log_stat_report('MAX_LEVEL')
+            return self.round_by_find_and_click_area(
                 screen, _ENHANCE_SCREEN, '按钮-关闭',
                 until_find_all=[(_BAG_RELIC_SCREEN, '二级标题-遗器')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=2,
             )
-            if result.is_success:
-                return self.round_success(status='MAX_LEVEL', wait=1.5)
-            return result
+
+        # ②b target 达标判定(满级判定后、置入执行前——每轮裸页态检查)
+        if self.target_level is not None:
+            level = self._read_level()
+            if level is not None and level >= self.target_level:
+                self._enhanced_to = level
+                self._log_stat_report('REACHED_TARGET')
+                return self.round_by_find_and_click_area(
+                    self.last_screenshot, _ENHANCE_SCREEN, '按钮-关闭',
+                    until_find_all=[(_BAG_RELIC_SCREEN, '二级标题-遗器')],
+                    pre_delay=0.5, success_wait=1.5, retry_wait=2,
+                )
 
         # ③ 强化页裸露:置入 → 执行
         if not self.round_by_find_area(screen, _ENHANCE_SCREEN, '标识-规则说明').is_success:
             return self.round_fail('不在强化页且无满级提示(画面状态未知)')
+
+        if self.auto_insert == 'off':
+            return self.round_fail('off 档(手动放材料)交互未实机摸底,暂不可自动化')
+        if self.auto_insert == 'plus3':
+            return self.round_fail('plus3 档依赖游戏「每次+3」置入档位开关,'
+                                   '开关位置/交互未实机摸底,暂不可自动化')
 
         if self._stat_baseline is None:
             self._stat_baseline = self._read_stat_lines()
@@ -192,3 +227,14 @@ class EquipRelicEnhanceOp(SrOperation):
             until_find_all=[(_RESULT_SCREEN, '标题-等级提升')],
             pre_delay=0.3, success_wait=_ENHANCE_SETTLE_SEC, retry_wait=2.5,
         )
+
+    def _log_stat_report(self, status: str) -> None:
+        """收尾日志:终态等级 + 词条行对比基线(变化行 = 可读的强化效果证据)。"""
+        self._enhanced_to = self._read_level()
+        final_stats = self._read_stat_lines()
+        changed = [line for line in final_stats
+                   if self._stat_baseline is None or line not in self._stat_baseline]
+        log.info('遗器强化: %s(等级 %s),词条基线 %s 行 → 终态 %s 行,变化行 %s',
+                 status, self._enhanced_to,
+                 len(self._stat_baseline) if self._stat_baseline is not None else '?',
+                 len(final_stats), changed)
