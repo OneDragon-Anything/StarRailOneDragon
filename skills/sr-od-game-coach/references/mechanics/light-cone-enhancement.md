@@ -119,20 +119,22 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 
 叠影 = 同名光锥合成提升技能阶(规则见 1 节:主件阶数+材料阶数,加法)。
 op `sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp(
-cone_name='主件光锥名', material_count=1, confirm_merge=False)`:
+cone_name='主件光锥名', use_auto_place=True, material_count=1,
+confirm_merge=False)`:
 
 | 参数 | 语义 |
 |---|---|
 | cone_name | 主件光锥名——**替换列表须已选中该件**(op 按「选中光锥名」OCR 校验,防合错主件;叠影视图本身不显示光锥名) |
-| material_count | 置入材料件数(1 = 阶数 +材料阶;上限 4;被装备件不可作材料,游戏自动过滤) |
+| use_auto_place | True(默认)= 「自动置入」:解锁并置入同名未装备副本直到叠影上限(rank3 一次跳到 5,消耗件数由剩余阶数决定);False = 受控单件放置只 +1 |
+| material_count | 仅受控单件路径生效:置入材料件数(上限 4;被装备件不可作材料,游戏自动过滤) |
 | confirm_merge | **False = 只做可叠判定零消耗**;True = 真实合成。⚠️ 合成不可逆 + 被消耗的锁定副本会被自动解锁(游戏强制),**True 前必须向用户说明并获同意** |
 
-结果状态:MERGED(合成完成)/ NEED_AUTH(可叠但未授权)/
-MAXED_OR_UNKNOWN(无「下阶段效果」,满阶或形态未知)/ 失败(消息带现场)。
+结果状态:MERGED(合成完成,仍可继续叠)/ MERGED_MAXED(合成完成且到满阶 5)/
+NEED_AUTH(可叠但未授权)/ MAXED(开跑即已满阶)/ 失败(消息带现场)。
 
 - op 经 MCP `run_operation(op_id='sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用
 - 入口两态均可:替换列表选中主件后发起,或已在等级提升画面发起;
-  多次提升重复运行(单次运行置 N 件材料 + 合成一次)
+  满阶主件发起 = 干净返回 MAXED(零消耗)
 
 - 备料(刷材料前算缺口):查单把光锥的材料总量、分段需求与刷取副本用
   `cone_lookup(with_ascension=true)`

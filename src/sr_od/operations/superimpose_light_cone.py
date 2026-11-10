@@ -9,8 +9,15 @@
 「光锥叠影 叠影X阶➔Y阶」→ 点空白关闭,回叠影视图(槽清空、下阶段阶数更新)。
 
 叠影规则(用户裁定):合成后阶数 = 主件阶数 + 各材料阶数(加法);材料经验
-等级不继承。本 op 单次运行 = 置入 material_count 件材料 + 合成一次,多次
-提升由调用方重复运行。主件身份在入口按「选中光锥名」OCR 校验,不符显式失败。
+等级不继承。本 op 单次运行 = 置入材料 + 合成一次,多次提升由调用方重复运行。
+主件身份在入口按「选中光锥名」OCR 校验,不符显式失败。
+
+材料放置双路径(use_auto_place 选):
+- 自动置入(默认):点「自动置入」→ 游戏弹「是否自动解锁以下高稀有度光锥,
+  并置入叠影材料」确认(候选 = 同名未装备副本,含锁定件)→ 确认后解锁置入
+  **直到叠影上限**(rank3 主件 +2 件 = 满阶 5,一次跳多阶);
+- 受控单件(use_auto_place=False):逐槽点选 material_count 件,每件走
+  「候选点击→(锁定则解锁)→置入」,适合只 +1 的精细控制。
 
 ⚠️ 不可逆 + 隐式解锁:confirm_merge=True 时真实消耗同名副本;被消耗副本若
 处于锁定态会被自动解锁(游戏强制要求,解锁无独立确认)。**调用方发起前必须
@@ -43,21 +50,25 @@ _CONFIRM_BTN_LCS: float = 0.8
 class SuperimposeLightConeOp(SrOperation):
     """对已选中的主件光锥执行一次叠影合成,终点 = 叠影视图(阶数已提升)。
 
-    结果状态:MERGED(合成完成)/ NEED_AUTH(未授权,停在可叠影视图、
-    未消耗)/ MAXED_OR_UNKNOWN(叠影视图无「下阶段效果」,满阶或形态未知)/
-    失败(入口/选件/材料链路任一步未达成,消息带现场)。
+    结果状态:MERGED(合成完成,仍可继续叠)/ MERGED_MAXED(合成完成且已到
+    满阶 5)/ NEED_AUTH(可叠但未授权,停在叠影视图零消耗)/ MAXED(开跑即
+    已满阶)/ 失败(入口/选件/材料链路任一步未达成,消息带现场)。
 
     前置契约见模块 docstring;主件由调用方在替换列表中预先选中。
     """
 
     def __init__(self, ctx: SrContext, cone_name: str,
-                 material_count: int = 1, confirm_merge: bool = False):
+                 use_auto_place: bool = True, material_count: int = 1,
+                 confirm_merge: bool = False):
         """
         :param ctx: 上下文
         :param cone_name: 主件光锥名(替换列表须已选中该件;用于入口校验,
             防止合错主件——叠影视图本身不显示光锥名)
-        :param material_count: 置入材料件数(1 = 阶数 +材料阶;多件 = 一次
-            加多阶,>1 为实验路径:候选行多件连放未实测)。上限 4(材料槽数)
+        :param use_auto_place: True(默认)= 「自动置入」路径——游戏自动解锁
+            并置入同名未装备副本**直到叠影上限**(一次跳多阶,消耗件数由
+            剩余阶数决定);False = 受控单件放置(只 +1)
+        :param material_count: 仅受控单件路径生效:置入材料件数(每件走
+            「候选点击→(锁定则解锁)→置入」)。上限 4(材料槽数)
         :param confirm_merge: 是否真实执行消耗性合成。False = 走到可叠判定
             即停(不放置材料不消耗);True = 置入材料并点叠影。
             **True 前调用方必须向用户说明并获同意**
@@ -65,11 +76,13 @@ class SuperimposeLightConeOp(SrOperation):
         if material_count < 1 or material_count > 4:
             raise ValueError(f'material_count 须在 1~4(材料槽数),实际 {material_count}')
         self.cone_name: str = cone_name
+        self.use_auto_place: bool = use_auto_place
         self.material_count: int = material_count
         self.confirm_merge: bool = confirm_merge
-        SrOperation.__init__(self, ctx, op_name=gt('光锥叠影') + f'({cone_name} x{material_count})',
+        SrOperation.__init__(self, ctx, op_name=gt('光锥叠影')
+                             + f'({cone_name} ' + ('自动置入' if use_auto_place else f'x{material_count}') + ')',
                              node_max_retry_times=20)
-        self._placed: int = 0            #: 已置入材料件数(材料放置循环进度)
+        self._placed: int = 0            #: 已置入材料件数(受控路径进度)
         self._unlock_attempted: bool = False  #: 当前候选是否已试过解锁路径
         self._banner_seen: bool = False  #: 结果横幅已出现(关闭后凭此判成功)
 
@@ -125,44 +138,74 @@ class SuperimposeLightConeOp(SrOperation):
         return result
 
     @node_from(from_name='入口核对', status='ON_ASCEND')
-    @operation_node(name='切叠影页', node_max_retry_times=6)
-    def open_superimpose_tab(self) -> OperationRoundResult:
-        """左列「叠影」TAB → 叠影视图(转移证据 = 「消耗材料」标签出现)。"""
-        if self.round_by_find_area(self.last_screenshot,
-                                   _ASCEND_SCREEN, '文本-消耗材料').is_success:
-            return self.round_success(status='ON_SUPERIMPOSE', wait=0.5)
-        result = self.round_by_find_and_click_area(
-            self.last_screenshot, _ASCEND_SCREEN, 'TAB-叠影',
-            until_find_all=[(_ASCEND_SCREEN, '文本-消耗材料')],
-            pre_delay=0.5, success_wait=1.2, retry_wait=2,
-        )
-        if result.is_success:
-            return self.round_success(status='ON_SUPERIMPOSE', wait=0.5)
-        return result
+    @operation_node(name='切叠影页与可叠判定', node_max_retry_times=8)
+    def open_and_judge(self) -> OperationRoundResult:
+        """flat loop:切「叠影」TAB,按叠影视图形态分流。
 
-    @node_from(from_name='切叠影页', status='ON_SUPERIMPOSE')
-    @operation_node(name='可叠判定')
-    def check_mergeable(self) -> OperationRoundResult:
-        """「下阶段效果」存在 = 可再叠;不存在 = 满阶或形态未知,显式失败。
+        普通形态(「消耗材料」区在)→ 再验「下阶段效果」= 可叠;
+        满叠形态(无材料区,右下「叠影已达最大值」)→ MAXED 显式失败。"""
+        screen = self.last_screenshot
 
-        confirm_merge=False 到此为止(不放置材料不消耗),NEED_AUTH 交上层
-        走授权后重跑。"""
-        if self.round_by_find_area(self.last_screenshot,
-                                   _ASCEND_SCREEN, '文本-下阶段效果').is_success:
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '文本-消耗材料').is_success:
             if not self.confirm_merge:
                 return self.round_fail('NEED_AUTH:可叠影,但 confirm_merge=False '
                                        '未授权消耗;授权后重跑(op 不会预放置材料)')
-            return self.round_success(status='CAN_MERGE')
-        return self.round_fail('MAXED_OR_UNKNOWN:叠影视图无「下阶段效果」'
-                               '(已满阶 5,或满阶形态与建档假设不符),不执行合成')
+            if self.round_by_find_area(screen,
+                                       _ASCEND_SCREEN, '文本-下阶段效果').is_success:
+                return self.round_success(status='CAN_MERGE')
+            return self.round_fail('MAXED_OR_UNKNOWN:有材料区但无「下阶段效果」'
+                                   '(与建档形态不符),不执行合成')
+        if self.round_by_find_area(screen,
+                                   _ASCEND_SCREEN, '文本-叠影已达最大值').is_success:
+            return self.round_fail('MAXED:叠影已满 5 阶(「叠影已达最大值」),不可再叠')
 
-    @node_from(from_name='可叠判定', status='CAN_MERGE')
+        result = self.round_by_find_and_click_area(
+            screen, _ASCEND_SCREEN, 'TAB-叠影',
+            pre_delay=0.5, success_wait=1.2, retry_wait=2,
+        )
+        if result.is_success:
+            return self.round_retry('已点叠影 TAB,等视图切换', wait=1.2)
+        return result
+
+    @node_from(from_name='切叠影页与可叠判定', status='CAN_MERGE')
     @operation_node(name='放置材料', node_max_retry_times=30)
     def place_materials(self) -> OperationRoundResult:
-        """逐件放置材料(self._placed 计进度,round_retry 重入推进)。
+        """按 use_auto_place 分流:自动置入(一次到上限)/受控单件逐槽放置。"""
+        if self.use_auto_place:
+            return self._place_auto()
+        return self._place_manual()
 
-        每件三步:点槽 → 点候选 → 判置入(未置入 = 锁定件,解锁后重点)。
-        候选格序号 = 已置入数 + 1(已置入件带 ⊖ 且不复用)。"""
+    def _place_auto(self) -> OperationRoundResult:
+        """自动置入路径:点「自动置入」→ 解锁确认弹窗点确认 → 判置入完成。
+
+        弹窗文案「是否自动解锁以下高稀有度光锥,并置入叠影材料」(候选含
+        锁定件时弹;全部已解锁可能不弹,分类顺序天然覆盖)。置入完成信号 =
+        右侧文案变「叠影后效果」。"""
+        screen = self.last_screenshot
+
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '文本-叠影后效果').is_success:
+            log.info('光锥叠影: 自动置入完成(材料已入槽)')
+            return self.round_success(status='PLACED', wait=0.5)
+
+        dialog_area = self.ctx.screen_loader.get_area(_DIALOG_SCREEN, '区域-提示弹窗')
+        result = self.round_by_ocr_and_click(screen, '确认', area=dialog_area,
+                                             lcs_percent=_CONFIRM_BTN_LCS)
+        if result.is_success:
+            log.info('光锥叠影: 自动解锁置入已确认')
+            return self.round_retry('已确认,等槽填充', wait=2)
+
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-自动置入').is_success:
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '按钮-自动置入').rect.center)
+            return self.round_retry('已点自动置入,等弹窗/置入', wait=2)
+
+        return self.round_retry('等待界面反馈(或无可用同名副本)', wait=2)
+
+    def _place_manual(self) -> OperationRoundResult:
+        """受控单件路径:逐槽点选,每件「候选点击→(锁定则解锁)→置入」。
+
+        候选格序号 = 已置入数 + 1(已置入件带 ⊖ 且不复用);进度存
+        self._placed,round_retry 重入推进。"""
         idx = self._placed + 1
         screen = self.last_screenshot
 
@@ -211,13 +254,19 @@ class SuperimposeLightConeOp(SrOperation):
                 self.ctx.screen_loader.get_area(_BANNER_SCREEN, '区域-结果横幅空白').rect.center)
             return self.round_retry('横幅已点,等关闭', wait=1.5)
 
-        # ② 横幅已出现过且现已消失 = 合成完成收尾
+        # ② 横幅已出现过且现已消失 = 合成完成;回叠影视图验证形态
+        # (普通态有「下阶段效果」;本次合成若到满阶则改显「叠影已达最大值」)
         if self._banner_seen:
             if self.round_by_find_area(screen,
                                        _ASCEND_SCREEN, '文本-下阶段效果').is_success:
-                log.info('光锥叠影: 合成完成(%s +%d 件材料),回到叠影视图',
-                         self.cone_name, self.material_count)
+                log.info('光锥叠影: 合成完成(%s +%s 材料路径),可继续叠',
+                         self.cone_name,
+                         '自动置入' if self.use_auto_place else f'{self.material_count} 件')
                 return self.round_success(status='MERGED', wait=1)
+            if self.round_by_find_area(screen,
+                                       _ASCEND_SCREEN, '文本-叠影已达最大值').is_success:
+                log.info('光锥叠影: 合成完成且已达满阶 5(%s)', self.cone_name)
+                return self.round_success(status='MERGED_MAXED', wait=1)
             return self.round_retry('横幅已关,等叠影视图恢复', wait=1.5)
 
         # ③ 确认弹窗(区域 OCR 定位「确认」,按钮 y 随文案浮动)
