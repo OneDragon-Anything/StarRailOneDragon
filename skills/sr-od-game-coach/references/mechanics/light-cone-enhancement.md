@@ -115,27 +115,46 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 ⚠️ `times` × 10 开拓力(拟造花萼)为真实消耗,发起前必须向用户确认。
 多个缺料材料时 op 每次只处理第一个缺料格,刷完重跑处理下一个。
 
-## 4. 叠影光锥(操作路由)
-
-叠影 = 同名光锥合成提升技能阶(规则见 1 节:主件阶数+材料阶数,加法)。
-op `sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp(
-cone_name='主件光锥名', use_auto_place=True, material_count=1,
-confirm_merge=False)`:
-
-| 参数 | 语义 |
-|---|---|
-| cone_name | 主件光锥名——**替换列表须已选中该件**(op 按「选中光锥名」OCR 校验,防合错主件;叠影视图本身不显示光锥名) |
-| use_auto_place | True(默认)= 「自动置入」:解锁并置入同名未装备副本直到叠影上限(rank3 一次跳到 5,消耗件数由剩余阶数决定);False = 受控单件放置只 +1 |
-| material_count | 仅受控单件路径生效:置入材料件数(上限 4;被装备件不可作材料,游戏自动过滤) |
-| confirm_merge | **False = 只做可叠判定零消耗**;True = 真实合成。⚠️ 合成不可逆 + 被消耗的锁定副本会被自动解锁(游戏强制),**True 前必须向用户说明并获同意** |
-
-结果状态:MERGED(合成完成,仍可继续叠)/ MERGED_MAXED(合成完成且到满阶 5)/
-NEED_AUTH(可叠但未授权)/ MAXED(开跑即已满阶)/ 失败(消息带现场)。
-
-- op 经 MCP `run_operation(op_id='sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用
-- 入口两态均可:替换列表选中主件后发起,或已在等级提升画面发起;
-  满阶主件发起 = 干净返回 MAXED(零消耗)
-
 - 备料(刷材料前算缺口):查单把光锥的材料总量、分段需求与刷取副本用
   `cone_lookup(with_ascension=true)`
-- op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用
+
+## 4. 叠影光锥(操作路由)
+
+叠影 = 同名光锥合成提升技能阶(规则见 1 节:主件阶数+材料阶数,加法,一次
+合成最多置 4 件材料)。由 op 完成:
+op `sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp(
+cone_name='主件光锥名', use_auto_place=True, material_count=1,
+confirm_merge=False)`。
+
+| 步骤 | 用什么 |
+|---|---|
+| 选中主件 | 在替换列表点选要叠影的那件。⚠️ 主件身份必须在这步定对:叠影视图本身不显示光锥名,op 靠「选中光锥名」OCR 在入口校验(不符显式失败,防合错) |
+| 执行叠影 | op `SuperimposeLightConeOp(...)`——自动点「强化」进等级提升、切「叠影」TAB、置入材料、合成、关横幅,结束后停在叠影视图 |
+
+材料放置双路径(`use_auto_place` 选,**默认自动置入**):
+
+- `use_auto_place=True`(默认):点「自动置入」——游戏自动解锁并置入同名
+  未装备副本**直到叠影上限**(rank3 实机一次 +2 到满阶 5;候选只给补到
+  上限所需件数)。锁定副本会被自动解锁(游戏强制,弹「是否自动解锁以下
+  高稀有度光锥」确认框,op 代答确认);被装备件不可作材料,游戏自动过滤。
+- `use_auto_place=False` + `material_count=N`(≤4):受控单件放置,逐槽
+  点选 N 件、每件阶数相加——适合只 +1 的精细控制(如只喂 1 张 rank1)。
+  锁定件由 op 代解锁后置入(点详情面板锁标,无二次确认)。
+
+消耗门(`confirm_merge`,默认 False):False = 只走到「可叠判定」即停,
+零消耗(不放置材料);True = 置入材料并点「叠影」执行合成。合成不可逆,
+且点「叠影」后弹「消耗光锥稀有度较高,是否继续?」确认框(3 星材料同文案,
+实机验证),op 自动代答。**True 前调用方必须向用户说明消耗并获明确同意**。
+
+结果解读:
+
+- MERGED = 合成完成,仍可继续叠(多次提升重复运行本 op);
+- MERGED_MAXED = 合成完成且已到满阶 5——满叠形态实证:材料区/自动置入/
+  叠影按钮整体消失,右下仅剩「叠影已达最大值」标签,无「下阶段效果」;
+- NEED_AUTH = 可叠但 confirm_merge=False,零消耗;
+- MAXED = 开跑时已满阶,零消耗;
+- 失败(消息带现场)= 选中件不是 cone_name / 画面不对 / 材料链路断
+  (候选不足等)。
+
+- op 经 MCP `run_operation(op_id='sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用;
+  满阶主件发起 = 干净返回 MAXED(零消耗)

@@ -21,7 +21,7 @@
 | [path-remembrance.md](mechanics/path-remembrance.md) | 记忆命途：忆灵系统、忆灵对照表、计数绑定、套装对忆灵生效 |
 | [relic-sets.md](mechanics/relic-sets.md) | 遗器套装速查：62 套官方分类标签+验证效果 |
 | [relic-enhancement.md](mechanics/relic-enhancement.md) | 遗器强化与更换决策：选件门槛（主词条对+≥2 条不同有效副词条）、省材料逐节点验收 vs 豪横满级两路线 |
-| [light-cone-enhancement.md](mechanics/light-cone-enhancement.md) | 光锥养成与装备决策：升级/晋阶/叠影优先级、装备与更换操作路由（EquipLightConeOp 前置） |
+| [light-cone-enhancement.md](mechanics/light-cone-enhancement.md) | 光锥养成与装备决策:升级/晋阶/叠影优先级、装备/升级/叠影三条操作路由(含 op 参数与消耗门) |
 | [light-cones.md](mechanics/light-cones.md) | **光锥速查：170 杻全量（米游社百科）**——命途/星级/获取渠道分组（专武池/光锥呈现/黑塔商店/月卡/周本/活动）/特效要点含叠影梯度 |
 
 ## 体系层（一类配队一档，管「为什么这么组」）
