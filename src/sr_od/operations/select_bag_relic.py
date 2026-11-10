@@ -265,11 +265,16 @@ class SelectBagRelicOp(SrOperation):
     @node_from(from_name='确认筛选')
     @node_from(from_name='打开筛选面板', status='NO_FILTER')
     @node_from(from_name='部位筛选', status='POS_SET')
-    @operation_node(name='选卡并核对', node_max_retry_times=24)
+    @node_from(from_name='核对选中件名', status='NEXT_CARD')
+    @operation_node(name='选卡', node_max_retry_times=24)
     def select_card(self) -> OperationRoundResult:
-        """网格行优先逐卡点选 → 读详情件名核对;不符推进下一格,预算耗尽
-        诚实失败。无套装意图时以底部强化/重掷按钮出现为选中证据(按钮位
-        互斥,按文本区分——满级件无强化入口)。"""
+        """点选当前格卡片,读名核对拆到「核对选中件名」的新轮:详情面板
+        刷新滞后于点击,点后同轮零间隔读名会读到上一卡的名字 → 下一轮
+        才命中目标名时实际选中高亮已是下一卡(错位静默选错件,下游强化
+        消耗真实材料);CLICKED(wait=1.2) 留出刷新间隔,读名前画面已
+        settle(同族 equip_relic.py「定位并选卡→验证选中」同款拆分)。
+        无套装意图时以底部强化/重掷按钮出现为选中证据(按钮位互斥,按
+        文本区分——满级件无强化入口)。"""
         if self._card_idx >= _MAX_CARD_TRIES:
             return self.round_fail(
                 f'选卡 {_MAX_CARD_TRIES} 格件名核对全不符'
@@ -282,12 +287,18 @@ class SelectBagRelicOp(SrOperation):
                 return self.round_success(status='SELECTED', wait=0.5)
             self._card_idx += 1
             return self.round_retry('底部无强化/重掷按钮(未有选中件),点下一格', wait=1)
-        center = self._card_center(self._card_idx)
-        self.ctx.controller.click(center)
+        self.ctx.controller.click(self._card_center(self._card_idx))
         self._card_idx += 1
+        return self.round_success(status='CLICKED', wait=1.2)
+
+    @node_from(from_name='选卡', status='CLICKED')
+    @operation_node(name='核对选中件名', node_max_retry_times=24)
+    def verify_selected(self) -> OperationRoundResult:
+        """新轮(画面已 settle)读详情件名与期望核对;不符推进下一格。
+        预算语义不变:每格一次核对,格数上限 = _MAX_CARD_TRIES,耗尽
+        诚实失败。"""
         read = self._read_detail_name()
         if self._name_matches(read):
             log.info('背包选件: 第 %d 格选中 %s', self._card_idx, read)
             return self.round_success(status='SELECTED', wait=0.5)
-        return self.round_retry(f'第 {self._card_idx} 格件名不符(读 {read}),点下一格',
-                                wait=1)
+        return self.round_success(status='NEXT_CARD', wait=1)
