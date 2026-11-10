@@ -41,8 +41,7 @@ from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
 from sr_od.mys.sr_light_cones import icon_webp_rel_path as cone_icon_rel_path
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.equip_owner_match import (
-    _MIN_OWNER_INLIERS,
-    LIGHT_CONE_OWNER_INLIERS,
+    OWNER_MATCH_MIN_INLIERS,
     match_owner,
 )
 from sr_od.operations.grid_template_locate import (
@@ -114,8 +113,9 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         raise NotImplementedError
 
     def _owner_min_inliers(self) -> int:
-        """角标 SIFT 匹配的 RANSAC 内点数判定阈。"""
-        raise NotImplementedError
+        """角标 SIFT 匹配的 RANSAC 内点数判定阈(光锥/遗器同阈,标定见
+        equip_owner_match 模块 docstring;界面有独立标定需求时覆写)。"""
+        return OWNER_MATCH_MIN_INLIERS
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
         """角标检测区(卡片矩形内右上角,偏移实测)。"""
@@ -207,9 +207,6 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     def _col_centers(self, list_rect: Rect) -> list[float]:
         """9 列中心:首卡中心 x1+72.5 起步、列距恒 139px(锚点卡实测)。"""
         return [list_rect.x1 + 72.5 + 139 * i for i in range(9)]
-
-    def _owner_min_inliers(self) -> int:
-        return LIGHT_CONE_OWNER_INLIERS
 
     def _read_superimpose(self, ctx: SrContext, image: MatLike,
                           card_rect: Rect) -> int | None:
@@ -327,9 +324,11 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     }
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
-        # 角标区偏移(遗器卡实机霍夫圆实测):头像圆心 ≈ (x2-19, y1+34)、直径
-        # 35-37px,圆右缘超出卡右缘 ~1px —— 检测窗右缘外扩 6px 保证完整圆,
-        # 否则圆被裁缺角、matchTemplate 分数从 0.81 跌到 0.47(全灭实证)
+        # 角标区(遗器卡,网格放大判读标定):头像圆心 ≈ (x2-19, y1+34)、直径
+        # ≈40px(小于光锥角标 44px),圆右缘可超出卡右缘 ~1px —— 检测窗右缘
+        # 外扩 6px 保证完整圆,否则圆被裁缺角导致匹配降分。语义与光锥同:
+        # 角标 = 当前穿着者(2026-11-10 实机 3 帧审计实证:12 件在穿副本
+        # 角标齐全且逐一识别正确,仓库件无角标)。
         return Rect(card_rect.x2 - 55, card_rect.y1 + 10,
                     card_rect.x2 + 6, card_rect.y1 + 62)
 
@@ -340,9 +339,6 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         """4 列中心:列表区 x1+66 起步、列距 123px(实机亮度剖面实测
         列中心 99/224/346/469;与 EquipRelicOp/grid_template_locate 同源)。"""
         return [list_rect.x1 + 66 + 123 * i for i in range(4)]
-
-    def _owner_min_inliers(self) -> int:
-        return _MIN_OWNER_INLIERS
 
     def recognize(
         self,
