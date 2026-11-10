@@ -156,6 +156,8 @@ class EquipRelicOp(SrOperation):
         时才核;防在错误角色上换装的安全校验)。OCR 读整行(如「虚无/黄泉」),
         角色名精确子串命中即过;个别字 OCR 误读按字符覆盖率 ≥0.5 兜底;
         核对通过返回 None,失败返回 round_fail。"""
+        if self.expected_character is None:
+            return None  #: 调用方未要求核对,整体跳过(连读区 OCR 也省)
         screen = self.screenshot()
         area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '读区-角色命途名')
         results = self.ctx.ocr_service.get_ocr_result_list(
