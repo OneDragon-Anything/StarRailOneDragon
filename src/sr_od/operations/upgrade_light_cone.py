@@ -2,17 +2,20 @@
 
 角色养成系列的装备线 op:光锥等级是角色 80 满级后的主要缺口项。
 交互与角色晋阶(UpgradeCharacterOp)结构同款,差异(光锥晋阶全流程实机摸底):
-- 入口 = 光锥 TAB 右下「强化」按钮(「替换」旁;满级形态未实测,按角色
-  晋阶同款假设满级时消失——首次满级光锥实测时复核);
+- 入口 = 光锥 TAB 右下「强化」按钮(「替换」旁;满级形态实测:按钮不消失,
+  可进晋阶界面,满级判定在晋阶界面内做);
 - 晋阶界面右上角是关闭 X(角色晋阶是返回箭头),关闭回光锥 TAB;
-- **缺材料时按钮三态**:材料足 = 白底「快速升级」;缺专属材料但通用材料
+- 晋阶界面右下按钮三态:材料足 = 白底「快速升级」;缺专属材料但通用材料
   够 = 白底「使用通用材料补全」(点击弹「材料补全」确认框,以通用材料
   合成替代缺口——通用材料是稀缺消耗品(梦之珠泪类,锄大地/活动来源),
   **确认即真实消耗,fill_generic=True 时调用方须先向用户说明并获同意**);
-  全缺 = 灰字禁用(形态未实测,按两态互斥逻辑推理)。
+  全缺 = 灰字禁用;
+- 满级形态:晋阶界面右下显示「已提升至最高阶」(「可提升至」标签不存在)
+  → 判满关闭收尾。
 
 前置:光锥 TAB(由 GotoCharacterDetail + SelectCharacterOp +
-SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
+SwitchCharacterTabOp('光锥') 保证);列表浮层开着显式失败先收列表;
+起点不符显式失败。
 
 晋阶结果横幅(执行成功后的弹层)未实测——首版按「两按钮不可见且晋阶
 锚不可见 = 过渡/横幅态,点空白重试」兜底,实测暴露专属文本后再补 area。
@@ -23,6 +26,8 @@ import re
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.base.screen import screen_utils
+from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
@@ -30,6 +35,8 @@ from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
 _LC_ASCEND_SCREEN: str = '光锥-等级提升'
+_REPLACE_SCREEN: str = '光锥-替换'
+_LIST_SCREEN: str = '角色-列表'
 
 # 升级执行后横幅+动画的稳定等待
 _LC_ASCEND_SETTLE_SEC: float = 2.5
@@ -45,11 +52,20 @@ _LC_FARM_ROUNDS_MAX: int = 10
 class UpgradeLightConeOp(SrOperation):
     """把当前角色的光锥升到上限,终点 = 光锥 TAB 页面。
 
-    结果状态:MAX_LEVEL(已满)/ LIGHT_CONE_CAPPED(材料不足停在当前等级,
-    结果日志带等级)。已满起点直接成功(MAX_LEVEL)。
+    结果状态:LIGHT_CONE_CAPPED(光锥已到上限 / 材料不足停在当前等级,
+    结果日志带等级)。已满级起点也归此状态(晋阶界面判「已提升至最高阶」
+    后关闭收尾)。
 
-    ⚠️ fill_generic=True 属真实资源消耗(通用材料合成替代晋阶缺口,如
-    梦之珠泪 159 个换永恒之花 15 的实测量级):**调用方发起前必须向用户
+    满级形态(实机):满级光锥的 TAB 页「强化」按钮不消失(可进晋阶界面),
+    晋阶界面右下显示「已提升至最高阶」——满级判定在晋阶界面内做,不在
+    TAB 入口做。
+    晋阶界面右下按钮三态:材料足 = 白底「快速升级」;缺专属材料但通用材料
+    够 = 白底「使用通用材料补全」(点击弹「材料补全」确认框,以通用材料
+    合成替代缺口——通用材料是稀缺消耗品(梦之珠泪类,锄大地/活动来源),
+    **确认即真实消耗,fill_generic=True 时调用方须先向用户说明并获同意**);
+    全缺 = 灰字禁用。
+
+    ⚠️ fill_generic=True 属真实资源消耗:**调用方发起前必须向用户
     说明消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, fill_generic: bool = False, auto_farm: bool = False):
@@ -97,40 +113,36 @@ class UpgradeLightConeOp(SrOperation):
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:须在光锥 TAB;按强化按钮有无分流。
+        """入口核对:画面级判定在光锥 TAB 且强化按钮可点。
 
-        列表遮挡不在本 op 范围(强化按钮被遮挡时不命中会误判满级,先显式判)。"""
-        screen = self.last_screenshot
-
-        if self.round_by_find_area(screen, '角色-列表', '标题-角色列表').is_success:
-            return self.round_fail('列表浮层开着(遮挡态):先由调用方收列表')
-
-        if not self.round_by_find_area(screen, _LC_TAB_SCREEN, '标题-角色光锥').is_success:
-            return self.round_fail('不在光锥 TAB(前置:前三步 op + 切「光锥」页签)')
-
-        if self.round_by_find_area(screen, _LC_TAB_SCREEN, '按钮-强化').is_success:
+        列表浮层(替换列表/角色列表)开着会遮挡强化按钮,画面判定识别浮层态
+        显式失败提示收列表;满级判定不在入口做(满级时强化按钮仍在,见类
+        docstring)。"""
+        current = self.check_and_update_current_screen(
+            self.last_screenshot,
+            screen_name_list=[_LC_TAB_SCREEN, _REPLACE_SCREEN, _LIST_SCREEN])
+        if current in (_REPLACE_SCREEN, _LIST_SCREEN):
+            return self.round_fail(f'{current} 浮层开着(遮挡态):先收列表'
+                                   f'(替换列表点右上返回箭头)')
+        if current != _LC_TAB_SCREEN:
+            return self.round_fail(f'不在光锥 TAB(当前画面判定: {current};'
+                                   f'前置:进详情 + 选角色 + 切「光锥」页签)')
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _LC_TAB_SCREEN, '按钮-强化') == FindAreaResultEnum.TRUE:
             return self.round_success(status='CAN_UPGRADE')
-        # 强化按钮不在:满级(假设,未实测复核)或替换/强化都不在 = 不在预期画面
-        if self.round_by_find_area(screen, _LC_TAB_SCREEN, '按钮-替换').is_success:
-            return self.round_success(status='ALREADY_MAX')
-        return self.round_fail('光锥 TAB 无强化/替换按钮(画面状态未知),请实机确认')
-
-    @node_from(from_name='入口核对', status='ALREADY_MAX')
-    @operation_node(name='已满级收尾')
-    def already_max(self) -> OperationRoundResult:
-        """已满级:直接成功。"""
-        return self.round_success(status='MAX_LEVEL')
+        return self.round_fail('光锥 TAB 无强化按钮(画面状态未知),请实机确认')
 
     @node_from(from_name='入口核对', status='CAN_UPGRADE')
     @operation_node(name='打开晋阶', node_max_retry_times=6)
     def open_ascend(self) -> OperationRoundResult:
-        """光锥 TAB 点「强化」→ 晋阶界面(until=双锚:标题+可提升至标签)。"""
+        """光锥 TAB 点「强化」→ 晋阶界面(until=双锚:标题+晋阶 TAB,两种
+        形态常驻;「可提升至」标签满级态不存在不能作转移锚)。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _LC_TAB_SCREEN, '按钮-强化',
             until_find_all=[
                 (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                (_LC_ASCEND_SCREEN, '文本-可提升至'),
+                (_LC_ASCEND_SCREEN, 'TAB-晋阶'),
             ],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
@@ -188,14 +200,21 @@ class UpgradeLightConeOp(SrOperation):
                     screen, _LC_TAB_SCREEN, '按钮-强化',
                     until_find_all=[
                         (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                        (_LC_ASCEND_SCREEN, '文本-可提升至'),
+                        (_LC_ASCEND_SCREEN, 'TAB-晋阶'),
                     ],
                     pre_delay=0.5, success_wait=1.5, retry_wait=2,
                 )
                 if result.is_success:
                     return self.round_retry('晋阶界面已开,重入分类', wait=1.5)
                 return result
-            return self.round_success(status='MAX_LEVEL')
+            return self.round_fail('离开晋阶界面且强化按钮不在(画面状态未知),请实机确认')
+
+        # 满级态:右下「已提升至最高阶」(可提升至标签不存在) → 判停收尾归档
+        if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '文本-已提升至最高阶').is_success:
+            self._capped = True
+            self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
+            log.info('光锥晋阶: 光锥已满级(已提升至最高阶,等级 %s)', self._capped_level)
+            return self.round_retry('满级,关闭回光锥页收尾', wait=1)
 
         # ④ 升级执行:按钮文本「快速升级」= 材料足(白底可点),直接执行;
         # 不命中 = 缺料态,进入 ⑤ 分流(两按钮同位不同文,find 按 text 天然区分)
