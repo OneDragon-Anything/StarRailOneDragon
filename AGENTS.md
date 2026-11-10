@@ -149,6 +149,7 @@ uv run ruff check --fix src/你修改的文件.py
 ## 9.文档规范
 
 - 写文档用直白表述，禁自造黑话或项目内部缩写（行业通用术语可用），首次出现的项目术语给定义 + 例子。注释规范见上节，同判据。
+- **章节标题带序号**（`## 1.` / `### 1.1`），方便引用与区分（如「见 3.2」）；单一大节的短文档可免。
 - 术语使用：货币战争（CW）域的术语以 `docs/develop/sr_od/application/currency_war/terminology.md`（统一术语表）为准——表列替换词必须换成白话写法，保留词首次出现给一句定义，游戏内容词不许改动。
 - **知识归位（任何玩法 app 通用）**：描述游戏的知识 → `docs/game/<玩法>/`（`sources/` = 外部原文存档、`research/` = 提炼结论，只收被应用或被核实的，细则见 [docs/game/README.md](docs/game/README.md)）；描述我们的系统 → 玩法设计文档区（见下方「双层文档流」）；实现进度不进任何文档，归进度追踪。判据：随游戏版本变 → game 子树；随架构变 → 设计文档区；随 commit 变 → 进度追踪。
 - **玩法知识随 skill**：玩法已有指引 skill（skill 的 `references/` 承载该玩法知识，作开发与打法的单一入口）→ 玩法总览 doc 写入 skill `references/`，`docs/game/gameplay/` 不重复建，docs/game/README.md 索引留指针；无玩法 skill → 照旧 `docs/game/gameplay/<玩法>.md`。判据与实例见 docs/game/README.md。
