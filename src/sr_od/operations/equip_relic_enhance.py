@@ -51,6 +51,7 @@ class EquipRelicEnhanceOp(SrOperation):
         SrOperation.__init__(self, ctx, op_name=gt('遗器强化'),
                              node_max_retry_times=16)
         self._enhanced_to: int | None = None  #: 强化执行后的等级读数(报告用)
+        self._stat_baseline: list[str] | None = None  #: 强化前词条行基线(变化对比用)
 
     def _read_level(self) -> int | None:
         """强化页右上角「+N」等级读数(读区-等级经验裁剪 OCR)。"""
@@ -65,6 +66,31 @@ class EquipRelicEnhanceOp(SrOperation):
                 if 0 <= level <= 15:
                     return level
         return None
+
+    def _read_stat_lines(self) -> list[str]:
+        """强化页右侧词条区 OCR 原始行(词条识别基线素材;解析器候实机校准)。
+
+        行形态实机样本:「攻击力 6.9%」(主词条,金色列首)、「速度 6②」/
+        「暴击率 5.5%①」(副词条带强化次数圈标)、「生命值 (+3可激活) 38」
+        (未激活第 4 词条灰字)。圈数字 OCR 识别率未实测,先原样保留文本行,
+        结构化解析候实机样本后迭代——当前只用于强化前后行级对比(行集合
+        差异 = 词条变化的可读证据)。"""
+        screen = self.screenshot()
+        area = self.ctx.screen_loader.get_area(_ENHANCE_SCREEN, '读区-词条列表')
+        results = self.ctx.ocr_service.get_ocr_result_list(
+            image=screen, rect=area.pc_rect, crop_first=True)
+        # 按 y 排序聚行(OCR 输出无序),同 y(±10px)合并为一条词条行
+        rows: list[tuple[int, str]] = []
+        for r in sorted(results, key=lambda item: item.rect.y1):
+            text = str(r.data or '').strip()
+            if not text:
+                continue
+            cy = (r.rect.y1 + r.rect.y2) // 2
+            if rows and abs(cy - rows[-1][0]) <= 10:
+                rows[-1] = (rows[-1][0], rows[-1][1] + ' ' + text)
+            else:
+                rows.append((cy, text))
+        return [text for _cy, text in rows]
 
     #------------------- 节点图 -------------------#
 
@@ -126,10 +152,16 @@ class EquipRelicEnhanceOp(SrOperation):
                 return self.round_retry('结果横幅已关,重入循环', wait=1)
             return result
 
-        # ② 满级判定:底部按钮位变灰字提示 → 读等级收尾
+        # ② 满级判定:底部按钮位变灰字提示 → 读等级+词条变化,关页收尾
         if self.round_by_find_area(screen, _ENHANCE_SCREEN, '读区-满级提示').is_success:
             self._enhanced_to = self._read_level()
-            log.info('遗器强化: 已达满级(等级 %s)', self._enhanced_to)
+            final_stats = self._read_stat_lines()
+            changed = [line for line in final_stats
+                       if self._stat_baseline is None or line not in self._stat_baseline]
+            log.info('遗器强化: 已达满级(等级 %s),词条基线 %s 行 → 终态 %s 行,变化行 %s',
+                     self._enhanced_to,
+                     len(self._stat_baseline) if self._stat_baseline is not None else '?',
+                     len(final_stats), changed)
             result = self.round_by_find_and_click_area(
                 screen, _ENHANCE_SCREEN, '按钮-关闭',
                 until_find_all=[(_BAG_RELIC_SCREEN, '二级标题-遗器')],
@@ -142,6 +174,10 @@ class EquipRelicEnhanceOp(SrOperation):
         # ③ 强化页裸露:置入 → 执行
         if not self.round_by_find_area(screen, _ENHANCE_SCREEN, '标识-规则说明').is_success:
             return self.round_fail('不在强化页且无满级提示(画面状态未知)')
+
+        if self._stat_baseline is None:
+            self._stat_baseline = self._read_stat_lines()
+            log.info('遗器强化: 词条基线 %s 行', len(self._stat_baseline))
 
         result = self.round_by_find_and_click_area(
             screen, _ENHANCE_SCREEN, '按钮-自动置入',
