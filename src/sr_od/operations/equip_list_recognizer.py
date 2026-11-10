@@ -217,8 +217,8 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         圆在卡内的相对位置恒定,实机目检圆心 ≈ 卡内 (+27,+62)、r 11-15):
         ① 探针 = 卡左缘放大窗 (x+7,y+42) 起 40×40(圆心 ±20,含圆完整+滑动
         余量 ±7px;卡面装饰竖线在 x+50 外,不进窗);
-        ② 与分档紧圆模板(assets/template/light_cone_superimpose/<叠影数>
-        [-dark]/raw.webp,26×26=圆心 ±13,TemplateLoader 规范 webp 存储)
+        ② 与分档紧圆模板(assets/template/light_cone_superimpose/<叠影数>/
+        raw.webp,26×26=圆心 ±13,TemplateLoader 规范 webp 存储)
         TM_CCOEFF_NORMED 滑动匹配取最高分,≥0.6 判定——位置漂移由滑动
         吸收,无需逐卡找圆。模板 id 带 -dark 后缀 = 暗底金字态(同档异态
         相关系数为负,必须分模板),rank 取 id 前缀数字。
@@ -512,11 +512,11 @@ def _light_cone_templates_scaled() -> dict[str, np.ndarray]:
 
 #------------------- 光锥叠影模板(卡左缘罗马数字标) -------------------#
 
-# 模板目录(TemplateLoader 规范二级结构):<叠影数>/raw.webp = 归一 24×24
-# 紧圆窗灰度裁片(圆心 ±13)。rank = id 前缀数字;III/IV 档候实机采样补档,
-# 当前该两档判 None。亮/暗底色卡共用单模板:TM_CCOEFF_NORMED 的去均值除
-# 方差 + 探针滑动匹配,实测底色亮度差与 ±3px 圆位漂移均被吸收(暗紫底卡
-# 对金褐底模板实测 0.99,无分态必要)。
+# 模板目录(TemplateLoader 规范二级结构):<叠影数>/raw.webp = 归一 26×26
+# 紧圆窗灰度裁片(圆心 ±13)。rank = 目录名数字;III/IV 档候实机采样补档,
+# 当前该两档判 None。底色差异(半透明圆透出卡底)由 TM_CCOEFF_NORMED 的
+# 去均值除方差 + 探针滑动匹配吸收,无需按底色分模板(暗紫底卡对金褐底
+# 模板实测 0.99)。
 _SUPERIMPOSE_SUB_DIR = 'light_cone_superimpose'
 _SUPERIMPOSE_MATCH_MIN: float = 0.6
 _SUPERIMPOSE_NORM_SIZE = (24, 24)
