@@ -213,16 +213,25 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
                           card_rect: Rect) -> int | None:
         """卡左缘叠影圆标 → 叠影数(1-5);无法判定返回 None。
 
-        流程:HoughCircles 在卡左缘搜索窗定位叠影圆(实测四配色态圆参数稳定
-        r≈13)→ 按圆内接收边裁片归一 24×24 —— **裁出来的就是圆本身**,不携带
-        卡底背景与圆外装饰线 → 与分档模板(assets/template/light_cone_
-        superimpose/<叠影数>[-dark]/raw.webp,TemplateLoader 规范存储,同流程
-        采样归一)TM_CCOEFF_NORMED 匹配 ≥0.6 判定。模板 id 带 -dark 后缀 =
-        暗底金字态(同档异态相关系数为负,必须分模板),rank 取 id 前缀数字。
+        主匹配:叠影圆相对卡原点位置恒定(实机标定 +6,+48 起 34×34)——同位
+        裁窗与分档整圆 ROI 模板(assets/template/light_cone_superimpose/
+        <叠影数>[-dark]/raw.webp,TemplateLoader 规范存储)TM_CCOEFF_NORMED
+        取最高分档。模板按配色态分 id(亮金底黑字 / 暗底金字同档相关系数为
+        负,必须分模板),rank 取 id 前缀数字。
+        后备(Hough 找圆):矩形窗分数不足时(首列个别卡有卡面装饰竖线穿入
+        拉低匹配分,样本 1/10)——HoughCircles 定位叠影圆、按圆内接收边裁片
+        归一(裁出来的就是圆本身,竖线在圆外被排除)后用模板的圆心子区再匹配。
         III/IV 档候实机采样补档,当前该两档判 None。"""
         templates = _superimpose_templates(ctx)
         if not templates:
             return None
+        roi = cv2.cvtColor(
+            image[card_rect.y1 + 48:card_rect.y1 + 82,
+                  card_rect.x1 + 6:card_rect.x1 + 40], cv2.COLOR_RGB2GRAY)
+        best_id, best_score = self._best_template_match(roi, templates)
+        if best_score >= _SUPERIMPOSE_MATCH_MIN:
+            return _superimpose_rank_of(best_id)
+        # 后备:Hough 找圆 → 圆盘裁片归一 → 与模板圆心子区匹配
         search = cv2.cvtColor(
             image[card_rect.y1 + 46:card_rect.y1 + 84,
                   card_rect.x1 + 4:card_rect.x1 + 42], cv2.COLOR_RGB2GRAY)
@@ -232,21 +241,30 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         if circles is None:
             return None
         cx, cy, r = (int(round(v)) for v in circles[0][0])
-        r = max(r - 1, 1)  # 收 1px 去圆边抗锯齿环
+        r = max(r - 1, 1)
         x1, y1 = max(0, cx - r), max(0, cy - r)
         x2, y2 = min(search.shape[1], cx + r), min(search.shape[0], cy + r)
         if x2 - x1 < 8 or y2 - y1 < 8:
             return None
-        probe = cv2.resize(search[y1:y2, x1:x2], _SUPERIMPOSE_NORM_SIZE,
+        probe = cv2.resize(search[y1:y2, x1:x2], (18, 24),
                            interpolation=cv2.INTER_AREA)
-        best_id, best_score = None, 0.0
-        for tid, tpl in templates.items():
-            score = float(cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
-            if score > best_score:
-                best_id, best_score = tid, score
+        disk_templates = {tid: tpl[2:26, 4:22]
+                          for tid, tpl in templates.items()}  # 模板圆盘子区(x+10~x+28, y+2~y+26)
+        best_id, best_score = self._best_template_match(probe, disk_templates)
         if best_score < _SUPERIMPOSE_MATCH_MIN:
             return None
         return _superimpose_rank_of(best_id)
+
+    @staticmethod
+    def _best_template_match(roi: np.ndarray,
+                             templates: dict[str, np.ndarray]) -> tuple[str | None, float]:
+        """逐模板 TM_CCOEFF_NORMED 取最高分(probe 与模板同尺寸,输出 1×1)。"""
+        best_id, best_score = None, 0.0
+        for tid, tpl in templates.items():
+            score = float(cv2.matchTemplate(roi, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
+            if score > best_score:
+                best_id, best_score = tid, score
+        return best_id, best_score
 
     def recognize(
         self,
