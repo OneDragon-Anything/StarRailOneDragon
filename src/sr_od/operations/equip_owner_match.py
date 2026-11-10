@@ -1,22 +1,36 @@
-"""装备列表卡「占用者识别」:角标区角色头像匹配。
+"""装备列表卡「占用者识别」:角标区角色头像 SIFT 特征匹配 + 双证据合取。
 
-替换列表每件装备右上角的圆形头像角标 = 当前装备者头像的渲染,与
-avatarminiicon 源图同源 —— 检测窗取角标整圆外接正方形(44×44,圆心
-居中)、模板缩放到 44px 单档后 matchTemplate 匹配可靠(实测:11 角色
-真匹配 1.00、无角标卡面假相似 ≤0.67)。
+替换列表每件装备右上角的圆形头像角标 = 当前装备者的游戏渲染;模板库 =
+avatarminiicon 64×64 圆形头像原样(``assets/template/character_avatar_mini/``,
+文件名 = Character.id,生成器见私有 skill ``sr-od-dev-character-data``)。
 
-⚠️ 颜色/亮度统计判「有无角标」不具泛化性,已实测排除:卡面图案明暗盖过
-角标差异(光锥界面角标比卡面亮 +41,遗器界面反而暗 -36,两方向均反向)。
-占用识别只走头像匹配正路;全部模板低于阈值 = 未装备或角标角色不在库,
-诚实返回 None(不猜测)。
+识别 = 结构证据 × 颜色证据,四道判定按序:
+1. SIFT 双尺度上采样(×2/×3)特征匹配,全库竞争取最高 RANSAC 内点数 ——
+   64px 小图原生特征贫乏,上采样后特征大量出现且两尺度互补;场景特征
+   每尺度只提取一次,模板逐个比对;
+2. Lowe 比值 0.7:放宽到 0.75/0.8 时无角标卡面(纯卡面装饰/星空背景)会
+   出现 15-29 内点的假一致(RANSAC 在装饰纹样上凑满阈),0.7 下无角标
+   卡面内点天花板 11、真角标最低 18,真假分离;
+3. 内点数 ≥ 阈值(15)且颜色验证通过:最高内点模板的 HSV 色相/饱和直方图
+   (角标内圆 vs 模板圆)Bhattacharyya 距离全库排名 <5 —— 直方图与结构
+   证据独立,假一致内点的模板颜色必然不符,防止结构闸被假内点击穿;
+4. 歧义降级:次高模板(不同角色)内点 ≥ 0.75×最高且也过阈 → 返回 None
+   不猜(两个模板相争 = 证据不唯一,诚实交给上层)。
 
-模板库:`assets/template/character_avatar_mini/<角色id>.png` —— 文件名 =
-Character.id(生成端 archive_mini_icons 按 character_const 的 avatar_id
-权威表转写);衣装变体 = `<角色id>_skin<衣装号>`(如
-march7th_preservation_skin01),识别时按角色归一(剥 _skin 后缀)。
-⚠️ 同角色不同衣装的角标渲染帧可能差异大(三月七皮肤:源图睁眼 vs
-列表角标闭眼,匹配分数显著不同)——识别失败时按「不在库」诚实返回
-None,不作猜测;实机发现新失败形态优先目检角标帧再补模板。
+方法矩阵实测排除(48 用例基准逐一对比):matchTemplate 多尺度(真假分数带
+重叠)、圆形掩码 NCC(掩码分数真假同带)、ORB(无角标假阳性)、AKAZE(误识)、
+pHash(全错);HSV 直方图单项 argmax 全对但纯颜色无法区分同色系角色,
+只作验证闸不作主判。基准固化为
+``sr-od-test/test/sr_od/operations/test_equip_owner_match.py``
+(3 帧整屏 fixture,21 真角标 + 27 无角标逐卡位人工标注真值)。
+
+实测:21 真角标 0 漏 0 误,27 无角标 0 假;真角标内点 18-61、无角标卡面
+最高 11。全部模板低于阈值 = 未装备或角标角色不在模板库,诚实返回 None
+(不猜测,上层按「不抢」语义处理)。
+
+角标窗 = 角标整圆外接正方形 44×44(光锥:卡内 (x1+95,y1+9)~(x1+139,y1+53),
+圆心≈(x1+117,y1+31) 外径≈44px,Canny 环拟合 7 卡一致);匹配时内部扩边
+±16 吸收定位偏差与列表选中卡轻微放大导致的角标溢出。
 """
 
 import re
@@ -30,84 +44,173 @@ from one_dragon.utils import cv2_utils, os_utils
 from sr_od.config.character_const import get_character_by_id
 
 _MINI_DIR_REL = 'assets/template/character_avatar_mini'
-# 角标窗 = 角标整圆(含描边)外接正方形 44×44(卡内 (x1+95,y1+3)~(x1+139,y1+47),
-# 霍夫圆实测圆心 (x1+117,y1+25) 整圆直径≈45px);模板 = avatarminiicon 源图
-# 原生 44×44,与角标渲染天然同尺寸,**不做任何缩放**(实测 44 原生模板+44 窗:
-# 11 角色真匹配 1.00、无角标卡面假相似 ≤0.67;任何 resize 都会引入插值失配)
-_TEMPLATE_SIZES: tuple[int, ...] = (44,)
-# 命中阈值(实测同角色最低 0.878、异角色最高 0.453,取中)
-_MIN_OWNER_SCORE: float = 0.75
-# 光锥界面角标渲染更小/更糊,avatarminiicon 源模板的真匹配分数实测
-# 0.46-0.72(花火/停云/缇宝等掉阈值下漏报,渐进治理:等解包头像源调研
-# 定位更同源素材);无角标卡面的假相似上限实测 ≤0.53,阈值 0.70 两侧
-# 均不误报
-LIGHT_CONE_OWNER_SCORE: float = 0.70
+# 角标窗边长与匹配扩边:扩边吸收调用方定位偏差与选中卡放大溢出
+_TEMPLATE_SIZE: int = 44
+_ZONE_PAD: int = 16
+# 上采样倍率:两尺度互补(部分角色仅在其一尺度上出足特征)
+_UPSAMPLE_SCALES: tuple[int, ...] = (2, 3)
+# Lowe 比值阈值(见模块 docstring 第 2 条:0.75+ 会让假一致内点过阈)
+_LOWES_RATIO: float = 0.7
+# 内点判定阈(真角标 18-61 / 无角标卡面 ≤11 的中界,偏真侧留漏报余量)
+_MIN_OWNER_INLIERS: int = 15
+LIGHT_CONE_OWNER_INLIERS: int = 15
+# 颜色验证闸:最高内点模板的直方图距离全库排名须小于此值
+_HIST_RANK_MAX: int = 5
+# 歧义降级:次高(不同角色)内点 ≥ 最高×此比例且 ≥ 内点阈 → None
+_AMBIG_RATIO: float = 0.75
+# 场景侧直方图采样圆半径(zone 76×76 内的角标内圆)
+_ZONE_HIST_RADIUS: int = 19
 
-_mini_cache: dict[int, dict[str, np.ndarray]] = {}
+_SIFT = cv2.SIFT_create(nfeatures=400)
+_MATCHER = cv2.BFMatcher()
+
+_tpl_cache: dict[str, np.ndarray] | None = None
+_feat_cache: dict[str, dict[int, tuple[list, np.ndarray | None]]] | None = None
+_hist_cache: dict[str, np.ndarray] | None = None
 
 
-def _owner_templates() -> dict[int, dict[str, np.ndarray]]:
-    """懒加载全部角色 mini 模板,按匹配尺度分档。
-
-    模板文件名 = Character.id(生成端 archive_mini_icons 已对齐,皮肤 =
-    `<角色id>_skin<衣装号>`);中文名归一统一在 _owner_cn 做(含皮肤名
-    剥后缀),本函数只管加载与分档。
-    :return: 尺度 → (角色 id → 该尺度灰度模板);键常驻保证缓存命中。
-    """
-    if _mini_cache:
-        return _mini_cache
-    lib: dict[int, dict[str, np.ndarray]] = {size: {} for size in _TEMPLATE_SIZES}
+def _templates() -> dict[str, np.ndarray]:
+    """全部模板 RGB。avatarminiicon 为 RGBA(圆外透明),取 RGB 三通道。"""
+    global _tpl_cache
+    if _tpl_cache is not None:
+        return _tpl_cache
+    out: dict[str, np.ndarray] = {}
     base = Path(os_utils.get_path_under_work_dir(*_MINI_DIR_REL.split('/')))
-    for f in base.glob('*.png'):
+    for f in sorted(base.glob('*.png')):
         img = cv2_utils.read_image(str(f))
         if img is None:
             continue
+        if img.ndim == 3 and img.shape[2] == 4:
+            img = img[:, :, :3]
+        out[f.stem] = img
+    _tpl_cache = out
+    return out
+
+
+def _tpl_features() -> dict[str, dict[int, tuple[list, np.ndarray | None]]]:
+    """模板特征缓存:名字 → 尺度 → (关键点, 描述子);描述子 None = 该尺度特征贫乏。"""
+    global _feat_cache
+    if _feat_cache is not None:
+        return _feat_cache
+    out: dict[str, dict[int, tuple[list, np.ndarray | None]]] = {}
+    for name, img in _templates().items():
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        for size in _TEMPLATE_SIZES:
-            lib[size][f.stem] = cv2.resize(gray, (size, size))
-    _mini_cache.update(lib)
-    return _mini_cache
+        by_scale: dict[int, tuple[list, np.ndarray | None]] = {}
+        for k in _UPSAMPLE_SCALES:
+            g_up = cv2.resize(gray, (gray.shape[1] * k, gray.shape[0] * k),
+                              interpolation=cv2.INTER_CUBIC)
+            by_scale[k] = _SIFT.detectAndCompute(g_up, None)
+        out[name] = by_scale
+    _feat_cache = out
+    return out
+
+
+def _tpl_hists() -> dict[str, np.ndarray]:
+    """模板 HSV 色相/饱和直方图缓存(模板圆内采样,归一化)。"""
+    global _hist_cache
+    if _hist_cache is not None:
+        return _hist_cache
+    out: dict[str, np.ndarray] = {}
+    for name, img in _templates().items():
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        mask = np.zeros(img.shape[:2], np.uint8)
+        cv2.circle(mask, (img.shape[1] // 2, img.shape[0] // 2),
+                   int(img.shape[0] * 0.45), 255, -1)
+        hist = cv2.calcHist([hsv], [0, 1], mask, [32, 32], [0, 180, 0, 256])
+        cv2.normalize(hist, hist)
+        out[name] = hist
+    _hist_cache = out
+    return out
+
+
+def _inliers_at_scale(kp_z: list, des_z: np.ndarray | None,
+                      tkp: list, tdesc: np.ndarray | None) -> int:
+    """单尺度匹配:knnMatch(Lowe ratio)+ RANSAC,返回内点数。"""
+    if des_z is None or tdesc is None or len(kp_z) < 4 or len(tkp) < 4 or len(des_z) < 4:
+        return 0
+    matches = _MATCHER.knnMatch(tdesc, des_z, k=2)
+    good = [m[0] for m in matches
+            if len(m) == 2 and m[0].distance < _LOWES_RATIO * m[1].distance]
+    if len(good) < 4:
+        return 0
+    src = np.float32([tkp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+    dst = np.float32([kp_z[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+    _, ransac_mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
+    return int(ransac_mask.sum()) if ransac_mask is not None else 0
 
 
 def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
-                min_score: float = _MIN_OWNER_SCORE) -> tuple[str | None, float]:
+                min_inliers: int = _MIN_OWNER_INLIERS) -> tuple[str | None, int]:
     """识别角标区的占用角色,返回**中文角色名**(如「黄泉」)。
 
-    多尺度匹配:角标渲染尺寸两档并存(见 _TEMPLATE_SIZES 注),各档独立
-    matchTemplate 取全局最高分判阈。
+    流程:角标窗扩边 → 场景 SIFT 特征(每尺度一次)→ 全库模板双尺度比对
+    → 内点阈 → 直方图距离排名验证 → 歧义降级 → 中文名。
 
     :param screen_rgb: 整屏截图(RGB)
-    :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量)
-    :param min_score: 命中阈值;遗器界面用默认,光锥界面传 LIGHT_CONE_OWNER_SCORE
-        (角标渲染更小,匹配天花板低)
-    :return: (中文角色名, 最高分);最高分 < 阈值返回 (None, 最高分) —— 未装备
-        或角标角色不在模板库,不猜测。中文映射缺失的角色兜底返回模板英文 id。
+    :param badge_rect: 角标检测区(调用方按所在界面的角标偏移换算,见各 op 常量;
+        窗须完整含角标圆,内部自动扩边吸收定位偏差)
+    :param min_inliers: RANSAC 内点数判定阈
+    :return: (中文角色名, 最高内点数);任一道判定不过返回 (None, 最高内点数) ——
+        未装备 / 角标角色不在模板库 / 证据歧义,不猜测。中文映射缺失的角色
+        兜底返回模板英文 id。
     """
-    zone = screen_rgb[badge_rect.y1:badge_rect.y2, badge_rect.x1:badge_rect.x2]
+    x1 = max(0, badge_rect.x1 - _ZONE_PAD)
+    y1 = max(0, badge_rect.y1 - _ZONE_PAD)
+    x2 = min(screen_rgb.shape[1], badge_rect.x2 + _ZONE_PAD)
+    y2 = min(screen_rgb.shape[0], badge_rect.y2 + _ZONE_PAD)
+    zone = screen_rgb[y1:y2, x1:x2]
     if zone.size == 0:
-        return None, 0.0
+        return None, 0
+    if zone.ndim == 3 and zone.shape[2] == 4:
+        zone = zone[:, :, :3]
     gray_zone = cv2.cvtColor(zone, cv2.COLOR_RGB2GRAY)
 
-    best_name: str | None = None
-    best_score = 0.0
-    for templates_by_name in _owner_templates().values():
-        for name, tmpl in templates_by_name.items():
-            if tmpl.shape[0] > gray_zone.shape[0] or tmpl.shape[1] > gray_zone.shape[1]:
-                continue
-            res = cv2.matchTemplate(gray_zone, tmpl, cv2.TM_CCOEFF_NORMED)
-            _, mv, _, _ = cv2.minMaxLoc(res)
-            if mv > best_score:
-                best_name, best_score = name, mv
+    zone_feats: dict[int, tuple[list, np.ndarray | None]] = {}
+    for k in _UPSAMPLE_SCALES:
+        g_up = cv2.resize(gray_zone, (gray_zone.shape[1] * k, gray_zone.shape[0] * k),
+                          interpolation=cv2.INTER_CUBIC)
+        zone_feats[k] = _SIFT.detectAndCompute(g_up, None)
 
-    if best_score < min_score:
-        return None, best_score
-    return _owner_cn(best_name), best_score
+    per: dict[str, int] = {}
+    for name, by_scale in _tpl_features().items():
+        per[name] = max(_inliers_at_scale(*zone_feats[k], *by_scale[k])
+                        for k in _UPSAMPLE_SCALES)
+    order = sorted(per.items(), key=lambda kv: -kv[1])
+    best_name, best_inliers = order[0]
+    if best_inliers < min_inliers:
+        return None, best_inliers
+
+    dists = {n: cv2.compareHist(h, _zone_hist(zone), cv2.HISTCMP_BHATTACHARYYA)
+             for n, h in _tpl_hists().items()}
+    hist_rank = sorted(dists, key=dists.get).index(best_name)
+    if hist_rank >= _HIST_RANK_MAX:
+        return None, best_inliers
+
+    if len(order) > 1:
+        second_name, second_inliers = order[1]
+        if (_owner_cn(second_name) != _owner_cn(best_name)
+                and second_inliers >= _AMBIG_RATIO * best_inliers
+                and second_inliers >= min_inliers):
+            return None, best_inliers
+
+    return _owner_cn(best_name), best_inliers
+
+
+def _zone_hist(zone_rgb: np.ndarray) -> np.ndarray:
+    """场景侧直方图:角标窗中心内圆采样(与模板圆同口径)。"""
+    hsv = cv2.cvtColor(zone_rgb, cv2.COLOR_RGB2HSV)
+    mask = np.zeros(zone_rgb.shape[:2], np.uint8)
+    cv2.circle(mask, (zone_rgb.shape[1] // 2, zone_rgb.shape[0] // 2),
+               _ZONE_HIST_RADIUS, 255, -1)
+    hist = cv2.calcHist([hsv], [0, 1], mask, [32, 32], [0, 180, 0, 256])
+    cv2.normalize(hist, hist)
+    return hist
 
 
 def _owner_cn(template_name: str) -> str:
     """模板名 → 中文角色名;皮肤模板(`<角色id>_skin<衣装号>`)剥后缀归一。
 
-    模板文件名 = Character.id(生成端 archive_mini_icons 保证),
+    模板文件名 = Character.id(生成器按 character_const 保证),
     character_const 直接可查;未收录的角色(库先于角色录入更新)兜底
     返回模板名原串,不猜测。"""
     character = get_character_by_id(template_name)
