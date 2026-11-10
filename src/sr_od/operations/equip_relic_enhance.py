@@ -7,16 +7,19 @@
 - 强化页 = 遗器详情框架的「强化」tab:右侧「+N」与「N/M」经验读数、消耗
   材料槽区(2×4)、「4星及以下」筛选与「自动置入」;
 - **「max」档自动置入一次填满**(实机:一键置入经验材料堆,+0 件预览直通
-  +15、消耗信用点 11.4 万量级);游戏另有「每次+3」置入档位开关(实机摸底
-  待做:开关位置/交互形态未记录),plus3 档依赖它,摸底前显式失败;
+  +15、消耗信用点 11.4 万量级);实机确认强化界面**没有**「每次+3」独立
+  置入档位控件(口径出处:skills/sr-od-game-coach/references/mechanics/
+  relic-enhancement.md),plus3 档当前不可用——需 op 改造为逐槽置入才能
+  支撑,支撑前显式失败;
 - 强化执行后弹「等级提升」结果横幅(等级0»等级15 + 词条前后对比),
   点空白处关闭回强化页;
 - 满级态:右上角绿字「满级」、底部按钮位变灰字「已强化至当前等级上限」。
 
-前置:背包-遗器界面且目标件已选中(选件导航后续迭代,当前由调用方保证);
-起点不符显式失败。结果状态:MAX_LEVEL(强化至满级)/ REACHED_TARGET(达
-target_level 停)/ ALREADY_MAX(起点已满)。target_level 配合 plus3 档实现
-「逐节点验收」玩法(省材料路线,决策知识见 game-coach relic-enhancement.md)。
+前置:背包-遗器界面且目标件已选中(前置导航 = SelectBagRelicOp,按部位
++可选套装选中目标件);起点不符显式失败。结果状态:MAX_LEVEL(强化至
+满级)/ REACHED_TARGET(达 target_level 停)/ ALREADY_MAX(起点已满)。
+target_level 配 max 档可中途停档;「逐节点验收」的 plus3 步进档当前
+不可用(见上),决策知识见 game-coach relic-enhancement.md。
 
 ⚠️ 真实消耗:经验材料(自动置入按「4星及以下」筛选填入)+ 信用点(满强化
 11 万+/件)。调用方发起前自行确认消耗可接受——低星废弃料喂狗粮是常规
@@ -56,9 +59,9 @@ class EquipRelicEnhanceOp(SrOperation):
         """
         :param ctx: 上下文
         :param auto_insert: 自动置入档位——'max' = 一键填满(默认,实测直通
-            满级);'plus3' = 每次+3 档(依赖游戏置入档位开关,实机摸底待做,
-            当前显式失败);'off' = 不自动置入(手动放材料交互未实机摸底,
-            当前显式失败)。注解用 str 而非 Literal:合法值由下方运行时校验,
+            满级);'plus3' = 每次+3 档(实机确认强化界面无该独立置入档位
+            控件,当前显式失败,候 op 逐槽置入改造);'off' = 不自动置入
+            (手动放材料交互未实机摸底,当前显式失败)。注解用 str 而非 Literal:合法值由下方运行时校验,
             MCP run_operation 的参数反射按注解判 JSON 可序列化,Literal
             判 false 导致该参数经 MCP 传值被整体拒收(sr_od/backend/
             operation_registry._annotation_json_serializable 不识别 Literal)。
@@ -209,8 +212,8 @@ class EquipRelicEnhanceOp(SrOperation):
         if self.auto_insert == 'off':
             return self.round_fail('off 档(手动放材料)交互未实机摸底,暂不可自动化')
         if self.auto_insert == 'plus3':
-            return self.round_fail('plus3 档依赖游戏「每次+3」置入档位开关,'
-                                   '开关位置/交互未实机摸底,暂不可自动化')
+            return self.round_fail('plus3 档不可用:强化界面无「每次+3」独立'
+                                   '置入档位控件(实机确认),候逐槽置入改造')
 
         if self._stat_baseline is None:
             self._stat_baseline = self._read_stat_lines()

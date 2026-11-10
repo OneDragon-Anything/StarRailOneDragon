@@ -71,8 +71,8 @@ class SelectBagRelicOp(SrOperation):
 
     结果状态:SELECTED(目标件已选中,详情件名与意图一致;无套装意图时以
     底部强化/重掷按钮出现为选中证据)。失败:入口非背包-遗器 / 套装名不在
-    常量表 / 套装无该部位件 / 弹窗内扫完未找到套装 / 选卡预算内件名核对
-    全不符。
+    常量表 / 套装无该部位件 / 弹窗内扫完未找到套装 / 选卡预算内未取得
+    选中件。
     """
 
     def __init__(self, ctx: SrContext, pos: int,
@@ -268,25 +268,17 @@ class SelectBagRelicOp(SrOperation):
     @node_from(from_name='核对选中件名', status='NEXT_CARD')
     @operation_node(name='选卡', node_max_retry_times=24)
     def select_card(self) -> OperationRoundResult:
-        """点选当前格卡片,读名核对拆到「核对选中件名」的新轮:详情面板
-        刷新滞后于点击,点后同轮零间隔读名会读到上一卡的名字 → 下一轮
-        才命中目标名时实际选中高亮已是下一卡(错位静默选错件,下游强化
-        消耗真实材料);CLICKED(wait=1.2) 留出刷新间隔,读名前画面已
-        settle(同族 equip_relic.py「定位并选卡→验证选中」同款拆分)。
-        无套装意图时以底部强化/重掷按钮出现为选中证据(按钮位互斥,按
-        文本区分——满级件无强化入口)。"""
+        """点选当前格卡片(行优先;无套装意图时即列表首件,落实「选中该
+        部位列表首件」契约——不点卡复用历史预选中件时,选中的未必是首件),
+        读名/证据核对拆到「核对选中件名」的新轮:详情面板刷新滞后于点击,
+        点后同轮零间隔读名会读到上一卡的名字 → 下一轮才命中目标名时实际
+        选中高亮已是下一卡(错位静默选错件,下游强化消耗真实材料);
+        CLICKED(wait=1.2) 留出刷新间隔,核对前画面已 settle(同族
+        equip_relic.py「定位并选卡→验证选中」同款拆分)。"""
         if self._card_idx >= _MAX_CARD_TRIES:
             return self.round_fail(
-                f'选卡 {_MAX_CARD_TRIES} 格件名核对全不符'
+                f'选卡 {_MAX_CARD_TRIES} 格未取得选中件'
                 + (f'(期望 {self._piece_name})' if self._piece_name else '(无套装意图)'))
-        if self._piece_name is None:
-            screen = self.last_screenshot
-            has_enhance = self.round_by_find_area(screen, _BAG_SCREEN, '按钮-强化').is_success
-            has_reroll = self.round_by_find_area(screen, _BAG_SCREEN, '按钮-重掷').is_success
-            if has_enhance or has_reroll:
-                return self.round_success(status='SELECTED', wait=0.5)
-            self._card_idx += 1
-            return self.round_retry('底部无强化/重掷按钮(未有选中件),点下一格', wait=1)
         self.ctx.controller.click(self._card_center(self._card_idx))
         self._card_idx += 1
         return self.round_success(status='CLICKED', wait=1.2)
@@ -294,9 +286,18 @@ class SelectBagRelicOp(SrOperation):
     @node_from(from_name='选卡', status='CLICKED')
     @operation_node(name='核对选中件名', node_max_retry_times=24)
     def verify_selected(self) -> OperationRoundResult:
-        """新轮(画面已 settle)读详情件名与期望核对;不符推进下一格。
-        预算语义不变:每格一次核对,格数上限 = _MAX_CARD_TRIES,耗尽
-        诚实失败。"""
+        """新轮(画面已 settle)核对选中证据:有套装意图读详情件名 fuzzy
+        核对;无套装意图以底部强化/重掷按钮出现为选中证据(按钮位互斥,
+        按文本区分——满级件无强化入口)。不符推进下一格,预算语义不变:
+        每格一次核对,格数上限 = _MAX_CARD_TRIES,耗尽诚实失败。"""
+        if self._piece_name is None:
+            screen = self.last_screenshot
+            has_enhance = self.round_by_find_area(screen, _BAG_SCREEN, '按钮-强化').is_success
+            has_reroll = self.round_by_find_area(screen, _BAG_SCREEN, '按钮-重掷').is_success
+            if has_enhance or has_reroll:
+                log.info('背包选件: 第 %d 格取得选中证据(强化/重掷按钮)', self._card_idx)
+                return self.round_success(status='SELECTED', wait=0.5)
+            return self.round_success(status='NEXT_CARD', wait=1)
         read = self._read_detail_name()
         if self._name_matches(read):
             log.info('背包选件: 第 %d 格选中 %s', self._card_idx, read)
