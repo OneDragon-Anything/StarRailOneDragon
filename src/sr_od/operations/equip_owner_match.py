@@ -9,10 +9,16 @@
 占用识别只走头像匹配正路;全部模板低于阈值 = 未装备或角标角色不在库,
 诚实返回 None(不猜测)。
 
-模板库:`assets/template/character_avatar_mini/<角色id>.png`
-(``skin_`` 前缀为衣装变体,占用识别按角色归一)。
+模板库:`assets/template/character_avatar_mini/<角色id>.png` —— 文件名 =
+Character.id(生成端 archive_mini_icons 按 character_const 的 avatar_id
+权威表转写);衣装变体 = `<角色id>_skin<衣装号>`(如
+march7th_preservation_skin01),识别时按角色归一(剥 _skin 后缀)。
+⚠️ 同角色不同衣装的角标渲染帧可能差异大(三月七皮肤:源图睁眼 vs
+列表角标闭眼猫爪,匹配 0.42 不过阈)——皮肤角标识别失败时按「不在库」
+诚实返回 None,不作猜测;实机发现新失败形态优先目检角标帧再补模板。
 """
 
+import re
 from pathlib import Path
 
 import cv2
@@ -39,8 +45,11 @@ _mini_cache: dict[int, dict[str, np.ndarray]] = {}
 
 
 def _owner_templates() -> dict[int, dict[str, np.ndarray]]:
-    """懒加载全部角色 mini 模板,按匹配尺度分档(skin_ 前缀归一到角色 id)。
+    """懒加载全部角色 mini 模板,按匹配尺度分档。
 
+    模板文件名 = Character.id(生成端 archive_mini_icons 已对齐,皮肤 =
+    `<角色id>_skin<衣装号>`);中文名归一统一在 _owner_cn 做(含皮肤名
+    剥后缀),本函数只管加载与分档。
     :return: 尺度 → (角色 id → 该尺度灰度模板);键常驻保证缓存命中。
     """
     if _mini_cache:
@@ -52,9 +61,8 @@ def _owner_templates() -> dict[int, dict[str, np.ndarray]]:
         if img is None:
             continue
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        name = f.stem[5:] if f.stem.startswith('skin_') else f.stem
         for size in _TEMPLATE_SIZES:
-            lib[size][name] = cv2.resize(gray, (size, size))
+            lib[size][f.stem] = cv2.resize(gray, (size, size))
     _mini_cache.update(lib)
     return _mini_cache
 
@@ -95,16 +103,17 @@ def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
 
 
 def _owner_cn(template_name: str) -> str:
-    """模板英文 id → 中文角色名;character_const 未收录的兜底返回英文 id。"""
+    """模板名 → 中文角色名;皮肤模板(`<角色id>_skin<衣装号>`)剥后缀归一。
+
+    模板文件名 = Character.id(生成端 archive_mini_icons 保证),
+    character_const 直接可查;未收录的角色(库先于角色录入更新)兜底
+    返回模板名原串,不猜测。"""
     character = get_character_by_id(template_name)
     if character is not None:
         return character.cn
-    # mini 库 tag 与项目 Character.id 的已知差异(模板库 tag 用官方英文缩写,
-    # 项目 id 是全称;随新角色出现按需补录)
-    alias = {'danhengil': 'danhengimbibitorlunae', 'topaz': 'topaznumby'}
-    alias_id = alias.get(template_name)
-    if alias_id is not None:
-        character = get_character_by_id(alias_id)
+    base = re.sub(r'_skin\d+$', '', template_name)
+    if base != template_name:
+        character = get_character_by_id(base)
         if character is not None:
             return character.cn
     return template_name
