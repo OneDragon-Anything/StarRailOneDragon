@@ -75,6 +75,16 @@ _DEDUPE_IOU = 0.5
 _CONTOUR_COL_SNAP_PX = 28
 _CONTOUR_ROW_SNAP_PX = 70
 
+# 部位筛选 tab(遗器-替换顶部):area 名 → 部位号。tab 为纯图标位无文字,
+# 选中态 = 图标提亮 + 底部白色横线指示器(与 SrRelicPieceDef.pos 同坐标系)
+_POS_TAB_AREAS: tuple[tuple[str, int], ...] = (
+    ('部位TAB-头部', 1), ('部位TAB-手部', 2), ('部位TAB-躯干', 3),
+    ('部位TAB-腿部', 4), ('部位TAB-位面球', 5), ('部位TAB-连结绳', 6),
+)
+# 白条判据阈值:横线像素(区域底部 8 行内灰度>180)实机选中格 28px、未选中
+# 全 0 —— ≥10px 判选中,低于则判不出退全库(不劣于无先验路径)
+_TAB_BAR_MIN_PX: int = 10
+
 
 def _iou(a: Rect, b: Rect) -> float:
     ix = max(0, min(a.x2, b.x2) - max(a.x1, b.x1))
@@ -305,9 +315,37 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         image: MatLike,
         screen_info: ScreenInfo,
     ) -> dict | None:
-        """遗器列表完整绑定:每件 {件名, 套装, 部位, 强化等级, 占用者}。"""
+        """遗器列表完整绑定:每件 {件名, 套装, 部位, 强化等级, 占用者}。
+
+        部位先验自读:顶部筛选 tab 的选中态白条指示器可判时,候选收缩到
+        单部位(替换界面列表恒按选中部位筛选);判不出退全库,不劣于旧路径。"""
+        pos = self._detect_pos_from_tabs(ctx, image)
+        if pos is not None:
+            return self._recognize(ctx, image,
+                                   _relic_piece_templates_for_pos(pos),
+                                   _relic_piece_templates_scaled_for_pos(pos))
         return self._recognize(ctx, image,
                                _relic_piece_templates(), _relic_piece_templates_scaled())
+
+    def _detect_pos_from_tabs(self, ctx: SrContext, image: MatLike) -> int | None:
+        """读顶部部位筛选 tab 的选中态 → 部位号;判不出返回 None(退全库)。
+
+        选中态判据(实机实测,当前筛选=头部帧):tab 为纯图标位(无文字),
+        选中 = 图标提亮 + **底部白色横线指示器**——横线像素(区域底部 8 行内
+        灰度>180)选中格 28px、未选中格全 0,白条 ≥10px 判选中;取白条最多的
+        tab。画面与建档不符(全 0)时诚实返回 None。"""
+        best_pos, best_bar = None, 0
+        for area_name, pos in _POS_TAB_AREAS:
+            area = ctx.screen_loader.get_area(self.screen_name, area_name)
+            rect = area.rect
+            roi = cv2.cvtColor(image[rect.y1:rect.y2, rect.x1:rect.x2],
+                               cv2.COLOR_RGB2GRAY)
+            bar = int((roi[-8:, :] > 180).sum())
+            if bar > best_bar:
+                best_pos, best_bar = pos, bar
+        if best_bar >= _TAB_BAR_MIN_PX:
+            return best_pos
+        return None
 
     def recognize_for_pos(self, ctx: SrContext, image: MatLike, pos: int) -> dict | None:
         """带部位先验的遗器列表识别(替换 op 用:从着装页点部位进来,列表已被
