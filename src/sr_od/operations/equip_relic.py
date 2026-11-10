@@ -47,6 +47,8 @@ _SCROLL_DRAG_PX: int = 300
 _SCAN_MAX_SCREENS: int = 12
 # 验证选中连续不符次数达此值 → 转回重新定位
 _RESELECT_AFTER: int = 3
+# 快速路径(复用已有正确部位列表)滚回顶部的拖拽次数
+_RESET_TOP_DRAGS: int = 4
 
 # 部位 pos → 着装页遗器位 area 名(skill 坐标系:1头 2手 3躯干 4脚 5球 6绳)
 _POS_TO_SLOT_AREA: dict[int, str] = {
@@ -65,16 +67,39 @@ def _relic_col_centers(list_rect) -> list[float]:
     return [x1 + _GRID_COL_OFFSET + _GRID_COL_GAP * i for i in range(4)]
 
 
+def _filter_candidates(matched: list[dict], allow_take_over: bool,
+                       rob_cells: set[tuple[int, int]]) -> list[dict]:
+    """候选过滤与排序(纯函数,allow_take_over 语义的单一实现点)。
+
+    False(默认):仅无主件(owner=None),且弹框取消过的格(_rob_cells)不再试
+    —— owner 漏报的已装备件由弹框分支兜底取消后记入,防同格反复弹框死循环
+    (实机教训)。True(交换语义):被穿着件也作候选,但无主件稳定排前 —— 先试
+    无主件,减少对他人配装的扰动;_rob_cells 防线只属取消路径,True 走确认
+    不维护。
+    """
+    if allow_take_over:
+        kept = [item for item in matched
+                if (item['cell'][0], item['cell'][1]) not in rob_cells]
+        kept.sort(key=lambda item: 0 if item['owner'] is None else 1)
+        return kept
+    return [item for item in matched
+            if item['owner'] is None
+            and (item['cell'][0], item['cell'][1]) not in rob_cells]
+
+
 class EquipRelicOp(SrOperation):
     """为当前角色装备指定遗器(按单件名定位套装与部位),终点 = 遗器着装页。
 
     结果状态:ALREADY_EQUIPPED(已装备,幂等成功)/ RELIC_EQUIPPED(替换完成,
     着装页套装效果读区含目标套装名核对)。
     失败:PIECE_NOT_FOUND(件名不在常量表)/ 列表扫完未找到(未拥有或识别失败)。
-    ⚠️ 替换即时生效;目标件若由其他角色装备中,会直接从对方身上换下。
+    装备语义(用户裁定,与光锥同):遗器装备 = 交换——目标件在他人身上时,
+    对方拿到当前角色脱下的件,不产生空手。默认 allow_take_over=False 不主动
+    动他人装备(候选只取无主件+弹框一律取消),True 才允许交换。
     """
 
-    def __init__(self, ctx: SrContext, piece_name: str, expected_character: str | None = None):
+    def __init__(self, ctx: SrContext, piece_name: str, expected_character: str | None = None,
+                 allow_take_over: bool = False):
         """
         :param ctx: 上下文
         :param piece_name: 遗器单件名(如「先驱的绝热围壳」;套装+部位唯一确定,
@@ -82,6 +107,11 @@ class EquipRelicOp(SrOperation):
         :param expected_character: 目标角色中文名(替换界面标题下「命途/角色名」
             核对,防在错误角色上换装;None = 跳过核对)。角色名经 OCR fuzzy 比对,
             OCR 误读(如「布洛妮娅」读缺字)不判失败,仅明显不同才判。
+        :param allow_take_over: 是否允许占用他人装备中的件(用户裁定:遗器装备
+            与光锥同为交换机制,对方拿到当前角色脱下的件,不产生空手)。False
+            (默认)=候选只取无主件,误点被穿着件时弹框一律取消;True=被穿着件
+            也作为候选(仍无主件优先),弹框点确认完成交换。True 前调用方必须
+            向用户确认——交换会改变对方配装。
         """
         piece_def = PIECE_TO_SET.get(piece_name)
         if piece_def is None:
@@ -91,11 +121,14 @@ class EquipRelicOp(SrOperation):
         self.set_name: str = piece_def.set_name
         self.pos: int = piece.pos  # 部位坐标:1头 2手 3躯干 4脚 5位面球 6连结绳(常量表固化)
         self.expected_character: str | None = expected_character
+        self.allow_take_over: bool = allow_take_over
         self._scan_screens: int = 0
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0
+        self._reset_drags_left: int = 0  #: 快速路径待滚顶次数(check_entry 设置,reset_top 消耗)
         self._rob_cells: set[tuple[int, int]] = set()  #: 抢件弹框格(cell 左上角)——
-        #: 弹框=该格是 owner 漏报的已装备件,取消后记录并不再点击(死循环防线)
+        #: 仅 allow_take_over=False 时维护:弹框=该格是 owner 漏报的已装备件,
+        #: 取消后记录并不再点击(死循环防线)
         self._last_clicked_cell: tuple[int, int] | None = None  #: 最近点击格左上角
         SrOperation.__init__(self, ctx, op_name=gt('替换遗器') + f'({piece_name})',
                              node_max_retry_times=24)
@@ -138,11 +171,21 @@ class EquipRelicOp(SrOperation):
 
         着装页遗器位与替换界面返回箭头均为**纯坐标区**(无文本/模板,find
         不命中)—— 一律坐标点击;转移验证:点遗器位后查替换界面标题,点返回
-        后靠节点重入(重入时替换界面应已关)。重入已在替换界面时先返回着装
-        页 —— 界面按部位筛选,重入的筛选部位可能与目标不符(实机复现)。"""
+        后靠节点重入(重入时替换界面应已关)。重入已在替换界面时读部位筛选:
+        与目标一致则直接复用本列表(先滚回顶部作干净扫描起点)——重进会把
+        用户手动切换的排序设置重置回「建议排序」(实机复现:动态重排下卡面
+        识别大面积漂移,故静态列表能复用就不重进);不一致才返回着装页重进。"""
         screen = self.last_screenshot
 
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '标题-遗器替换').is_success:
+            current_pos = RelicReplaceRecognizer()._detect_pos_from_tabs(
+                self.ctx, self.last_screenshot)
+            if current_pos == self.pos:
+                check = self._check_character_on_replace_screen()
+                if check is not None:
+                    return check
+                self._reset_drags_left = _RESET_TOP_DRAGS  #: 待滚顶次数(open_list 消耗)
+                return self.round_success(status='IN_REPLACE_RESET_TOP')
             back_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-返回')
             self.ctx.controller.click(back_area.rect.center)
             return self.round_retry('已在替换界面,点返回回着装页', wait=1.5)
@@ -167,6 +210,22 @@ class EquipRelicOp(SrOperation):
         return self.round_retry('点遗器位后替换界面未确认,重试', wait=1.5)
 
     @node_from(from_name='入口核对并进入部位')
+    @node_from(from_name='入口核对并进入部位', status='IN_REPLACE_RESET_TOP')
+    @operation_node(name='滚回列表顶部', node_max_retry_times=8)
+    def reset_top(self) -> OperationRoundResult:
+        """快速路径(IN_REPLACE_RESET_TOP)专用:复用已有列表前滚回顶部。
+        重进路径的列表天然在顶部,经节点直连跳过本节点。"""
+        if self._reset_drags_left > 0:
+            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
+            center = list_area.rect.center
+            self.ctx.controller.drag_to(Point(center.x, center.y + 400),
+                                        Point(center.x, center.y - 400))
+            self._reset_drags_left -= 1
+            return self.round_retry(f'滚回列表顶部(剩 {self._reset_drags_left} 次)', wait=1)
+        return self.round_success(status='TOP_RESETTED')
+
+    @node_from(from_name='入口核对并进入部位')
+    @node_from(from_name='滚回列表顶部')
     @operation_node(name='当前装备核对', node_max_retry_times=6)
     def check_current(self) -> OperationRoundResult:
         """替换界面右侧详情默认显示当前装备件:已是目标 = 幂等成功。"""
@@ -196,13 +255,8 @@ class EquipRelicOp(SrOperation):
         matched: list[dict] = []
         if out is not None:
             matched = [item for item in out['items'] if item['piece'] == self.piece_name]
-        # 仅未装备(owner=None)候选:owner 非 None 的件点击会弹「抢件确认」且
-        # 直接从对方身上换下 —— 编队角色的装备不可被动;owner 漏报的已装备件
-        # 由点击后的弹框分支兜底取消,且该格记入 _rob_cells 不再点(实机死循环
-        # 教训:同一格 owner 漏报会反复弹框)
-        matched = [item for item in matched
-                   if item['owner'] is None
-                   and (item['cell'][0], item['cell'][1]) not in self._rob_cells]
+        # allow_take_over 语义的过滤与排序见 _filter_candidates(单一实现点)
+        matched = _filter_candidates(matched, self.allow_take_over, self._rob_cells)
 
         log.info('替换遗器: 本屏识别 %d 件、目标未装备 %d 件 %s(第 %d 屏)',
                  len(out['items']) if out else 0, len(matched),
@@ -245,12 +299,29 @@ class EquipRelicOp(SrOperation):
         """点「替换」即装备。**与光锥不同:遗器替换后停在替换界面不回着装页**,
         列表重排且选中态自动切到新装备件 —— 按钮从「替换」变回「卸下」即
         装备生效的可靠锚(until)。
-        抢件确认框兜底:owner 漏报的已装备件点击后游戏弹「遗器已被 X 装备,
-        是否替换?」—— 一律取消(装备他人件不可抢),该格记入 _rob_cells 不再
-        点击,转回定位换下一候选。取消用 area 中心直点 + 显式等待消失
-        (round_by_find_and_click 的 0.8s until 判定实测误报失败)。"""
+        抢件确认框:owner 漏报/被穿着件点击后游戏弹「遗器已被 X 装备,
+        是否替换?」—— allow_take_over=False(默认)点取消并记录该格不再点击,
+        转回定位换下一候选;True 点确认完成交换(遗器装备=交换,对方拿到当前
+        角色脱下的件)。取消/确认均用 area 中心直点 + 显式等待消失
+        (round_by_find_and_click 的 0.8s until 判定实测误报失败)。
+        ⚠️ 确认按钮 area 尚未实机建档(候实机抓坐标),True 时弹框出现会显式
+        失败不误跑。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _REPLACE_SCREEN, '文本-抢件确认').is_success:
+            if self.allow_take_over:
+                confirm_area = self.ctx.screen_loader.get_area(
+                    _REPLACE_SCREEN, '按钮-抢件确认')
+                if confirm_area is None:
+                    return self.round_fail(
+                        'allow_take_over=True 但「按钮-抢件确认」未实机建档,'
+                        '为保护双方配装显式失败(候实机抓坐标补档后重试)')
+                self.ctx.controller.click(confirm_area.rect.center)
+                time.sleep(1.5)
+                if self.round_by_find_area(
+                        self.screenshot(), _REPLACE_SCREEN, '文本-抢件确认').is_success:
+                    return self.round_retry('交换确认框仍在,再点确认', wait=0.5)
+                log.info('替换遗器: 交换确认已点确认(交换生效)')
+                return self.round_success(status='ROB_CONFIRM_ACCEPTED')
             if self._last_clicked_cell is not None:
                 self._rob_cells.add(self._last_clicked_cell)
             cancel_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-抢件取消')
