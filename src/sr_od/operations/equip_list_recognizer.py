@@ -512,11 +512,11 @@ def _light_cone_templates_scaled() -> dict[str, np.ndarray]:
 
 #------------------- 光锥叠影模板(卡左缘罗马数字标) -------------------#
 
-# 模板目录(TemplateLoader 规范二级结构):<叠影数>[-dark]/raw.webp = 归一
-# 24×24 圆盘灰度裁片。id 不带 -dark = 亮金底黑字态,带 -dark = 暗底金字态
-# (同档异态相关系数为负,必须分模板)。叠影圆用 HoughCircles 定位后按圆
-# 内接收边裁片归一,识别时同流程——裁的就是圆本身,不携带卡底背景。
-# rank = id 前缀数字;III/IV 档候实机采样补档,当前该两档判 None。
+# 模板目录(TemplateLoader 规范二级结构):<叠影数>/raw.webp = 归一 24×24
+# 紧圆窗灰度裁片(圆心 ±13)。rank = id 前缀数字;III/IV 档候实机采样补档,
+# 当前该两档判 None。亮/暗底色卡共用单模板:TM_CCOEFF_NORMED 的去均值除
+# 方差 + 探针滑动匹配,实测底色亮度差与 ±3px 圆位漂移均被吸收(暗紫底卡
+# 对金褐底模板实测 0.99,无分态必要)。
 _SUPERIMPOSE_SUB_DIR = 'light_cone_superimpose'
 _SUPERIMPOSE_MATCH_MIN: float = 0.6
 _SUPERIMPOSE_NORM_SIZE = (24, 24)
