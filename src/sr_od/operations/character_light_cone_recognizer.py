@@ -13,6 +13,7 @@ import re
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
+from sr_od.config.character_const import CHARACTER_PATH_LIST
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -47,45 +48,53 @@ class CharacterLightConeRecognizer(ScreenRecognizer):
         image: MatLike,
         screen_info: ScreenInfo,
     ) -> dict | None:
-        """OCR 右栏各读区 → 当前装备光锥的结构化信息(字段失败时缺省)。"""
+        """全图 OCR 一遍 → 按读区矩形过滤(行中心落在 rect 内)→ 结构化输出。
+
+        不用 crop OCR(rect 裁剪识别不稳,实测叠影/技能名读区裁剪后 miss),
+        全图 OCR 与画面匹配的 area 命中同源(实测各读区均可命中)。命途读区
+        含图标装饰,OCR 带杂字 → 用命途白名单清洗取命中项。"""
+        all_rows = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
         result: dict = {}
-        cone_name = self._ocr(ctx, image, '读区-光锥名')
+
+        def read(area_name: str) -> str | None:
+            area = ctx.screen_loader.get_area('角色-光锥', area_name)
+            rect = area.rect
+            texts = [str(r.data).strip() for r in all_rows
+                     if rect.x1 <= r.x + r.w / 2 <= rect.x2
+                     and rect.y1 <= r.y + r.h / 2 <= rect.y2 and str(r.data).strip()]
+            return ''.join(texts) if texts else None
+
+        cone_name = read('读区-光锥名')
         if cone_name is not None:
             result['cone_name'] = cone_name
-        path_cn = self._ocr(ctx, image, '读区-命途')
-        if path_cn is not None:
-            result['path_cn'] = path_cn
 
-        level_text = self._ocr(ctx, image, '读区-等级')
+        path_text = read('读区-命途')
+        if path_text is not None:
+            hit = [p.cn for p in CHARACTER_PATH_LIST if p.cn in path_text]
+            if hit:
+                result['path_cn'] = hit[0]
+
+        level_text = read('读区-等级')
         if level_text is not None:
             m = _LEVEL_RE.search(level_text)
             if m is not None:
                 result['level'] = int(m.group(1))
 
-        rank_text = self._ocr(ctx, image, '读区-叠影')
+        rank_text = read('读区-叠影')
         if rank_text is not None:
             m = _RANK_RE.search(rank_text)
             if m is not None:
                 result['rank'] = int(m.group(1))
 
-        skill_name = self._ocr(ctx, image, '读区-光锥技能名')
+        skill_name = read('读区-光锥技能名')
         if skill_name is not None:
             result['skill_name'] = skill_name
 
         for key, area_name in (('hp', '读区-生命值'), ('atk', '读区-攻击力'),
                                ('def', '读区-防御力')):
-            num = self._ocr(ctx, image, area_name)
+            num = read(area_name)
             if num is not None:
                 digits = re.sub(r'[^\d]', '', num)
                 if digits:
                     result[key] = int(digits)
         return result or None
-
-    @staticmethod
-    def _ocr(ctx: SrContext, image: MatLike, area_name: str) -> str | None:
-        """按画面名 + area 名裁剪 OCR,合并该读区全部文本行(取区域唯一读数)。"""
-        area = ctx.screen_loader.get_area('角色-光锥', area_name)
-        results = ctx.ocr_service.get_ocr_result_list(
-            image=image, rect=area.pc_rect, crop_first=True)
-        texts = [str(r.data).strip() for r in results if str(r.data).strip()]
-        return ''.join(texts) if texts else None
