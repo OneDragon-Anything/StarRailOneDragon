@@ -235,8 +235,14 @@ class EquipRelicOp(SrOperation):
         开关开着时列表按建议匹配度动态重排(重掷动画期间评分持续变化 →
         持续重排 + 滚动自动回顶),「识别 → 点击」间隔超 2 秒即落空,是
         扫描失败的根因;本节点把它转静态。开关已关(模板不命中)时跳过
-        ——防呆:不重复点击已关闭的开关。until 用开关模板消失验证翻转
-        生效。"""
+        ——防呆:不重复点击已关闭的开关。
+        until 的真实验证机制:not_find_all 预检与入口防呆读同一帧(能走
+        到点击说明模板仍命中,预检恒不成功),真正验证 = until 使点击成功
+        返回 round_wait(operation.round_by_find_and_click_area,点击后无
+        until 参数才直接 round_success)强制本节点重入,重入轮以新帧重跑
+        入口防呆——模板已消失即走跳过分支确认翻转,点击被吞则再次点击。
+        until 参数不可删:删除则失去重入验证,开关点击被游戏吞掉时会静默
+        带病下行(动态重排扫描落空的原病无声回归)。"""
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, _SORT_RULE_SCREEN,
                                        '开关-建议排序').is_success:
@@ -253,7 +259,15 @@ class EquipRelicOp(SrOperation):
         """基础排序选「等级」(静态排序;等级未选中时灰 radio 模板命中)。
 
         等级已选中(橙色 radio 模板命中)时跳过——radio 点击幂等但防呆
-        不重复点。until 用选中态模板出现验证点击生效。"""
+        不重复点。
+        until 的真实验证机制:find_all 预检与入口防呆读同一帧(能走到点击
+        说明选中态模板未命中,预检恒不成功),真正验证 = until 使点击成功
+        返回 round_wait(operation.round_by_find_and_click_area,点击后无
+        until 参数才直接 round_success)强制本节点重入,重入轮以新帧重跑
+        入口防呆——选中态模板命中即走跳过分支确认生效,点击被吞则再次
+        点击。until 参数不可删:删除则失去重入验证,radio 点击被游戏吞掉
+        时弹窗带着「等级未选」状态被下一节点确认关闭,等级排序意图静默
+        落空且无下游拦截。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SORT_RULE_SCREEN,
                                    '单选-等级选中').is_success:
