@@ -182,7 +182,11 @@ class EquipLightConeOp(SrOperation):
         screen_info = self.ctx.screen_loader.get_screen(_REPLACE_SCREEN)
         out = LightConeReplaceRecognizer().recognize(self.ctx, screen_img, screen_info)
         items = (out or {}).get('items') or []
+        log.info('[诊断] 第%d屏 recognize items=%d, 名单=%s',
+                 self._scan_screens + 1, len(items),
+                 [(it.get('cone'), it.get('rank'), it.get('owner')) for it in items][:12])
         cands = self._filter_candidates(items)
+        log.info('[诊断] 第%d屏 过滤后 cands=%d', self._scan_screens + 1, len(cands))
         if cands:
             log.info('替换光锥: 本屏命中 %d 件 %s(第 %d 屏)',
                      len(cands), [(it['cell'][0], it.get('owner'), it.get('rank'))
