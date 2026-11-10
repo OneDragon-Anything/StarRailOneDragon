@@ -73,6 +73,8 @@ uv run ruff check --fix src/你修改的文件.py
 - `Operation` 由多个节点组成，每个节点是一个由 `@operation_node` 装饰的函数。
 - 多个节点之间，由 `@node_from` 来编排整个 `Operation` 下的节点执行顺序。
 - 写一个节点先想清楚三件事：当前画面是什么、这个节点要做什么操作、做完之后画面是留在本屏还是切到别的屏。
+- op 的入口节点必须先做画面级判定：`check_and_update_current_screen(screen, screen_name_list=[预期画面集合])` 确认当前画面在集合内再走分支；不在集合内显式失败（或转导航节点），禁止靠逐个 area 试命中推断所在画面。
+- 中途的画面转移验证优先 until：入口已锚定画面，中途操作都是预期内的转移，`until_find_all` 用目标画面的标志证据才算成功（多锚优先，防单区域与其他画面同位形近互判；点了≠成了），`until_not_find_all` 验证原态消失。
 - 如果一个节点是做跨画面的导航，优先使用 `round_by_goto_screen`，使用规范是：
   - 起点/终点/沿途画面全部已建档且可识别；
   - 画面之间的跳转关系已由 `goto_list` 建立；
