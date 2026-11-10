@@ -41,8 +41,8 @@ from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
 from sr_od.mys.sr_light_cones import icon_webp_rel_path as cone_icon_rel_path
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
 from sr_od.operations.equip_owner_match import (
-    _MIN_OWNER_SCORE,
-    LIGHT_CONE_OWNER_SCORE,
+    _MIN_OWNER_INLIERS,
+    LIGHT_CONE_OWNER_INLIERS,
     match_owner,
 )
 from sr_od.operations.grid_template_locate import (
@@ -113,8 +113,8 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         """固定列中心 x 列表(行列解耦定位的列先验,列距按实机标定)。"""
         raise NotImplementedError
 
-    def _owner_min_score(self) -> float:
-        """角标匹配阈值(光锥界面角标更小,匹配天花板低 → 阈值单独放低)。"""
+    def _owner_min_inliers(self) -> int:
+        """角标 SIFT 匹配的 RANSAC 内点数判定阈。"""
         raise NotImplementedError
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
@@ -195,12 +195,11 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     }
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
-        # 角标区 = 角标整圆(含白色描边)外接正方形 44×44:圆心 ≈ 卡内
-        # (x1+117, y1+25)、直径 ≈45px(霍夫圆四张不同角色有角标卡一致 +
-        # 阈值化质心交叉验证;网格规整,相对位置恒定)。窗须完整含圆——
-        # 历史版本窗偏上 11px 裁掉圆下缘,曾致全库模板分数被压到 0.65-0.73。
-        return Rect(card_rect.x1 + 95, card_rect.y1 + 3,
-                    card_rect.x1 + 139, card_rect.y1 + 47)
+        # 角标区 = 角标整圆(含白描边)外接正方形 44×44:圆心 ≈ 卡内
+        # (x1+117, y1+31)、外径 ≈44px(Canny 环带点拟合 7 卡一致 + 径向
+        # 亮度峰值交叉验证;网格规整,相对位置恒定)。
+        return Rect(card_rect.x1 + 95, card_rect.y1 + 9,
+                    card_rect.x1 + 139, card_rect.y1 + 53)
 
     def _list_area_name(self) -> str:
         return '区域-光锥列表'
@@ -209,8 +208,8 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         """9 列中心:首卡中心 x1+72.5 起步、列距恒 139px(锚点卡实测)。"""
         return [list_rect.x1 + 72.5 + 139 * i for i in range(9)]
 
-    def _owner_min_score(self) -> float:
-        return LIGHT_CONE_OWNER_SCORE
+    def _owner_min_inliers(self) -> int:
+        return LIGHT_CONE_OWNER_INLIERS
 
     def _read_superimpose(self, ctx: SrContext, image: MatLike,
                           card_rect: Rect) -> int | None:
@@ -270,7 +269,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
-                                        min_score=self._owner_min_score())
+                                        min_inliers=self._owner_min_inliers())
             level = self._read_level(ocr_results, card_rect)
             rank = self._read_superimpose(ctx, image, card_rect)
             ident = identity_by_card.get(idx)
@@ -342,8 +341,8 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         列中心 99/224/346/469;与 EquipRelicOp/grid_template_locate 同源)。"""
         return [list_rect.x1 + 66 + 123 * i for i in range(4)]
 
-    def _owner_min_score(self) -> float:
-        return _MIN_OWNER_SCORE
+    def _owner_min_inliers(self) -> int:
+        return _MIN_OWNER_INLIERS
 
     def recognize(
         self,
@@ -418,7 +417,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
-                                        min_score=self._owner_min_score())
+                                        min_inliers=self._owner_min_inliers())
             level = self._read_level(ocr_results, card_rect)
             if self._is_masked_card(ocr_results, card_rect):
                 # 重掷动画帧:卡面被遮罩持续污染(同卡三帧 argmax 三个不同答案
