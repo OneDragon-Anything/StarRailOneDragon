@@ -74,11 +74,14 @@ class EquipRelicOp(SrOperation):
     ⚠️ 替换即时生效;目标件若由其他角色装备中,会直接从对方身上换下。
     """
 
-    def __init__(self, ctx: SrContext, piece_name: str):
+    def __init__(self, ctx: SrContext, piece_name: str, expected_character: str | None = None):
         """
         :param ctx: 上下文
         :param piece_name: 遗器单件名(如「先驱的绝热围壳」;套装+部位唯一确定,
             同套装同部位的多件副本任意一件均满足)
+        :param expected_character: 目标角色中文名(替换界面标题下「命途/角色名」
+            核对,防在错误角色上换装;None = 跳过核对)。角色名经 OCR fuzzy 比对,
+            OCR 误读(如「布洛妮娅」读缺字)不判失败,仅明显不同才判。
         """
         piece_def = PIECE_TO_SET.get(piece_name)
         if piece_def is None:
@@ -87,6 +90,7 @@ class EquipRelicOp(SrOperation):
         self.piece_name: str = piece_name
         self.set_name: str = piece_def.set_name
         self.pos: int = piece.pos  # 部位坐标:1头 2手 3躯干 4脚 5位面球 6连结绳(常量表固化)
+        self.expected_character: str | None = expected_character
         self._scan_screens: int = 0
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0
@@ -107,6 +111,24 @@ class EquipRelicOp(SrOperation):
         texts = [str(r.data) for r in results]
         idx = str_utils.find_in_list_with_fuzzy(self.piece_name, texts, cutoff=0.6)
         return texts[idx] if idx is not None else None
+
+    def _check_character_on_replace_screen(self) -> OperationRoundResult | None:
+        """替换界面标题下「命途/角色名」核对目标角色(expected_character 提供
+        时才核;防在错误角色上换装的安全校验)。OCR 读整行(如「虚无/黄泉」),
+        角色名精确子串命中即过;个别字 OCR 误读按字符覆盖率 ≥0.5 兜底;
+        核对通过返回 None,失败返回 round_fail。"""
+        screen = self.screenshot()
+        area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '读区-角色命途名')
+        results = self.ctx.ocr_service.get_ocr_result_list(
+            image=screen, rect=area.pc_rect, crop_first=True)
+        text = ''.join(str(r.data) for r in results).replace(' ', '')
+        if self.expected_character in text:
+            return None
+        hit = sum(1 for ch in self.expected_character if ch in text)
+        if hit / len(self.expected_character) >= 0.5:
+            return None
+        return self.round_fail(f'替换界面角色核对失败:期望「{self.expected_character}」,'
+                               f'实读「{text}」—— 当前角色不符,请先切到目标角色')
 
     #------------------- 节点图 -------------------#
 
@@ -138,6 +160,9 @@ class EquipRelicOp(SrOperation):
         time.sleep(1.5)
         result = self.round_by_find_area(self.screenshot(), _REPLACE_SCREEN, '标题-遗器替换')
         if result.is_success:
+            check = self._check_character_on_replace_screen()
+            if check is not None:
+                return check
             return self.round_success(status='ENTERED_REPLACE', wait=1)
         return self.round_retry('点遗器位后替换界面未确认,重试', wait=1.5)
 
