@@ -24,14 +24,28 @@
 
 ## 装备与更换(操作路由)
 
-手动:角色详情 → 「光锥」TAB → 替换 → 列表滚动找件(列表按命途分组、
-多屏) → 点选 → 替换确认。
+agent 全程可自动化,链路与可用工具:
 
-自动化:`EquipLightConeOp(cone_name=目标光锥名)`——内置滚动扫描(预算
-12 屏)、未装备件优先(不抢他人装备)、选中验证与结果核对。**调用前置**:
-先导航到目标角色的详情-光锥 TAB(op 不做角色导航)。同名多副本时 op 按
-「未装备优先」选件,不挑叠影——需要指定叠影档时先 analyze_screen 查
-rank 再决策。画面知识见 docs/game/screens/光锥-替换.md。
+| 步骤 | 用什么 |
+|---|---|
+| 导航到角色详情 | MCP `goto_screen(target_screen_name='角色-详情')`——从大世界/菜单/任意已建档屏自动路由 |
+| 选中目标角色 | op `sr_od.operations.select_character.SelectCharacterOp(cn_name='角色名')` |
+| 切到光锥 TAB | op `sr_od.operations.switch_character_tab.SwitchCharacterTabOp(tab_name='光锥')` |
+| 查看当前光锥 | MCP 截图(read_image 目检)——TAB 页右栏有 光锥名/等级/叠影N阶 |
+| 装备/更换光锥 | op `sr_od.operations.equip_light_cone.EquipLightConeOp(cone_name='光锥名')` |
+| 升级光锥到上限 | op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic, auto_farm)` |
+
+- op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用,
+  op_id 见上表(如 `sr_od.operations.equip_light_cone.EquipLightConeOp`)
+- `EquipLightConeOp` 幂等:当前角色已装备目标光锥时直接成功;内置滚动
+  扫描(12 屏预算)找件、未装备件优先(不抢他人装备)、选中验证与结果核对。
+  同名多副本按「未装备优先」选件不挑叠影——需指定叠影档先 analyze_screen
+  查 rank 再决策
+- `UpgradeLightConeOp` **消耗真实材料**(以太+信用点,拉满约 1597 以太 +
+  71 万信用点),fill_generic=通用材料填充、auto_farm=材料不足自动刷——
+  两者发起前必须向用户确认消耗
+- 备料:以太之蕾(稀薄以太)+ 按光锥命途的之蕾(晋阶钥),查单把光锥的
+  材料总量用 cone_lookup(with_ascension=true)
 
 ## 与遗器养成的分工
 
