@@ -28,7 +28,6 @@ SwitchCharacterTabOp('光锥') 保证);起点不符显式失败。
 """
 
 
-import cv2
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
@@ -39,12 +38,7 @@ from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.context.sr_context import SrContext
-from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME, icon_webp_rel_path
-from sr_od.operations.equip_owner_match import LIGHT_CONE_OWNER_SCORE, match_owner
-from sr_od.operations.grid_template_locate import (
-    load_template_gray,
-    locate_cells_by_votes,
-)
+from sr_od.operations.equip_list_recognizer import LightConeReplaceRecognizer
 from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
@@ -81,12 +75,21 @@ class EquipLightConeOp(SrOperation):
     ⚠️ 替换即时生效,调用方须确认目标光锥正确。
     """
 
-    def __init__(self, ctx: SrContext, cone_name: str):
+    def __init__(self, ctx: SrContext, cone_name: str,
+                 rank: int | None = None, level: int | None = None):
         """
         :param ctx: 上下文
         :param cone_name: 目标光锥全名(如「行于流逝的岸」;须与光锥列表显示名一致)
+        :param rank: 叠影数过滤(1-5,可选)——同名多副本时精确定位
+        :param level: 等级过滤(1-80,可选)——进一步收窄候选
         """
+        if rank is not None and not 1 <= rank <= 5:
+            raise ValueError(f'rank {rank} 超出 1-5')
+        if level is not None and not 1 <= level <= 80:
+            raise ValueError(f'level {level} 超出 1-80')
         self.cone_name: str = cone_name
+        self.rank: int | None = rank   #: 叠影过滤,None=不过滤
+        self.level: int | None = level  #: 等级过滤,None=不过滤
         self._scan_screens: int = 0   #: 已扫描的屏幕数(滚动预算)
         self._candidate_idx: int = 0  #: 当前屏候选游标(点击验证失败后推进到下一候选)
         self._select_retries: int = 0  #: 验证选中连续不符次数(达阈值转回下一候选)
@@ -161,26 +164,17 @@ class EquipLightConeOp(SrOperation):
                                    f'(未拥有或识别失败)')
 
         screen_img = self.screenshot()
-        cone = LIGHT_CONE_BY_NAME.get(self.cone_name)
-        if cone is None:
-            return self.round_fail(f'光锥名 {self.cone_name} 不在常量表(CONES_NOT_FOUND)')
-        template = load_template_gray(icon_webp_rel_path(cone.name))
-        if template is None:
-            return self.round_fail(f'光锥图标缺失:{icon_webp_rel_path(cone.name)}')
-        list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
-        cells = locate_cells_by_votes(cv2.cvtColor(screen_img, cv2.COLOR_RGB2GRAY),
-                                      template, list_area.rect, _cone_col_centers(list_area.rect))
-        # 占用者识别:角标区偏移按光锥卡实测(格中心 +18/-83 ~ +78/-33)
-        owners = []
-        for c, _v in cells:
-            badge = Rect(c.x + 18, c.y - 83, c.x + 78, c.y - 33)
-            owner, _score = match_owner(screen_img, badge, min_score=LIGHT_CONE_OWNER_SCORE)
-            owners.append(owner or '未装备')
-        log.info('替换光锥: 本屏识别到目标光锥 %d 件 %s(第 %d 屏)',
-                 len(cells), [(c.x, o) for (c, _v), o in zip(cells, owners, strict=True)],
-                 self._scan_screens + 1)
-        if self._candidate_idx >= len(cells):
+        screen_info = self.ctx.screen_loader.get_screen(_REPLACE_SCREEN)
+        out = LightConeReplaceRecognizer().recognize(self.ctx, screen_img, screen_info)
+        items = (out or {}).get('items') or []
+        cands = self._filter_candidates(items)
+        if cands:
+            log.info('替换光锥: 本屏命中 %d 件 %s(第 %d 屏)',
+                     len(cands), [(it['cell'][0], it.get('owner'), it.get('rank'))
+                                  for it in cands], self._scan_screens + 1)
+        if self._candidate_idx >= len(cands):
             # 本屏候选耗尽(或整屏未命中) → 滚动下一屏
+            list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-光锥列表')
             center = list_area.rect.center
             self.ctx.controller.drag_to(Point(center.x, center.y + _SCROLL_DRAG_PX // 2),
                                         Point(center.x, center.y - _SCROLL_DRAG_PX // 2))
@@ -188,13 +182,24 @@ class EquipLightConeOp(SrOperation):
             self._candidate_idx = 0
             return self.round_retry('当前屏候选耗尽,滚动一屏重扫', wait=1)
 
-        cell = cells[self._candidate_idx][0]
+        cand = cands[self._candidate_idx]
+        cell = Rect(*cand['cell'])
         self.ctx.controller.click(cell)
         self._candidate_idx += 1
         self._select_retries = 0  # 重新点击后重置验证计数
-        log.info('替换光锥: 点击候选 %d/%d (%.0f, %.0f)',
-                 self._candidate_idx, len(cells), cell.x, cell.y)
+        log.info('替换光锥: 点击候选 %d/%d rank=%s level=%s',
+                 self._candidate_idx, len(cands), cand.get('rank'), cand.get('level'))
         return self.round_success(status='CLICKED', wait=1.2)
+
+    def _filter_candidates(self, items: list[dict]) -> list[dict]:
+        """识别清单 → 按入参过滤候选:名字必匹配,rank/level 提供时精确过滤;
+        未装备件(owner=None)排在已装备件前(多副本不抢他人装备)。"""
+        cands = [it for it in items if it.get('cone') == self.cone_name]
+        if self.rank is not None:
+            cands = [it for it in cands if it.get('rank') == self.rank]
+        if self.level is not None:
+            cands = [it for it in cands if it.get('level') == self.level]
+        return sorted(cands, key=lambda it: 0 if it.get('owner') is None else 1)
 
     @node_from(from_name='定位并选卡', status='CLICKED')
     @operation_node(name='验证选中', node_max_retry_times=10)
