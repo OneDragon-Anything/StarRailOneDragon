@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
@@ -34,7 +35,7 @@ import numpy as np
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
-from one_dragon.utils import cv2_utils
+from one_dragon.utils import cv2_utils, os_utils
 from sr_od.config.character_const import CHARACTER_PATH_LIST
 from sr_od.mys.sr_codes import RELIC_POS_CN
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
@@ -180,13 +181,14 @@ class _EquipListRecognizerBase(ScreenRecognizer):
 
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
-    """「光锥-替换」画面:分层定位 + 每件 = 光锥名/命途/等级/占用者。"""
+    """「光锥-替换」画面:分层定位 + 每件 = 光锥名/命途/等级/占用者/叠影。"""
 
     screen_name = '光锥-替换'
 
     extras_doc: dict[str, str] = {
         'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名(全库 argmax), '
                  'path_cn:命途, level:光锥等级(1-80), owner:占用角色(中文名), '
+                 'rank:叠影数(1-5,罗马数字标识别,判不出为 null), '
                  'identity: full(N票=整屏主匹配)/fallback(N簇=格内聚簇强度,低簇=低置信,'
                  '可与同款兄弟格对照复核)}],按卡位置排序;'
                  '全部识别失败的卡不列',
@@ -207,6 +209,70 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 
     def _owner_min_score(self) -> float:
         return LIGHT_CONE_OWNER_SCORE
+
+    def _read_superimpose(self, image: MatLike, card_rect: Rect) -> int | None:
+        """卡左缘叠影圆标的罗马数字 → 叠影数(1-5);无法判定返回 None。
+
+        圆标相对卡原点位置恒定(实机标定 +6,+48 起 34×34,标定帧见
+        sr-od-test fixture 与 .debug 实验记录);数字提取见 _extract_mark_digit
+        (金色域 HSV 分割,亮金底黑字 / 暗底金字两态通吃)。归一后与分档模板
+        (assets/template/light_cone_superimpose/<叠影数>.png,同口径二值归一)
+        TM_CCOEFF_NORMED 匹配,≥0.7 判定。实测区分度:命中档 0.95-1.00、
+        错档 ≤0.31。III/IV 档模板候实机采样补档,当前该两档判 None。
+        """
+        templates = _superimpose_templates()
+        if not templates:
+            return None
+        roi = image[card_rect.y1 + 48:card_rect.y1 + 82,
+                    card_rect.x1 + 6:card_rect.x1 + 40]
+        digit = self._extract_mark_digit(roi)
+        if digit is None:
+            return None
+        probe = cv2.resize(digit, _SUPERIMPOSE_NORM_SIZE, interpolation=cv2.INTER_AREA)
+        best_rank, best_score = None, 0.0
+        for rank, tpl in templates.items():
+            score = float(cv2.matchTemplate(probe, tpl, cv2.TM_CCOEFF_NORMED)[0][0])
+            if score > best_score:
+                best_rank, best_score = rank, score
+        if best_score < _SUPERIMPOSE_MATCH_MIN:
+            return None
+        return best_rank
+
+    @staticmethod
+    def _largest_component(binary: np.ndarray) -> np.ndarray | None:
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary)
+        if num_labels < 2:
+            return None
+        ranked = sorted(((stats[i, 4], i) for i in range(1, num_labels)), reverse=True)
+        return (labels == ranked[0][1]).astype(np.uint8) * 255
+
+    @classmethod
+    def _extract_mark_digit(cls, roi_rgb: np.ndarray) -> np.ndarray | None:
+        """叠影 ROI(RGB) → 数字特征图(float32 高通残差);提取失败返回 None。
+
+        叠影圆位置恒定 → 数字窗直接定死:ROI 中心 (8,6)-(26,28) 只含字+圆底。
+        字提取 = **高通滤波**:灰度归一后高斯模糊取低频(圆底光照渐变/弧带亮
+        度分层),残差 abs() = 字母笔画的高频结构——**极性无关**(亮金底黑字 /
+        金褐底浅字 / 暗底金字各配色态字都是相对底的高频异常,实测三种底色
+        同法可分;灰度 Otsu / 金色域分割在该形态下均失效:字与弧带同色连通、
+        4 星卡褐金底与圆盘同色域)。"""
+        inner_v = cv2.cvtColor(roi_rgb, cv2.COLOR_RGB2HSV)[6:28, 8:26, 2]
+        if inner_v.size == 0:
+            return None
+        normed = cv2.normalize(inner_v.astype(np.float32), None, 0.0, 1.0,
+                               cv2.NORM_MINMAX)
+        low_freq = cv2.GaussianBlur(normed, (5, 5), 0)
+        residual = np.abs(normed - low_freq)
+        # 圆形 mask:只留圆心 r12 内的高频(字母)——圆缘弧带/卡内装饰竖线的
+        # 残差更强且会与字母同色粘连(实测 I 档被右缘竖线干扰成 ‖ 形)
+        circle_mask = np.zeros_like(residual)
+        cv2.circle(circle_mask, (residual.shape[1] // 2, residual.shape[0] // 2),
+                   12, 1, -1)
+        residual = residual * circle_mask
+        peak = float(residual.max())
+        if peak <= 1e-6:
+            return None
+        return (residual / peak * 255).astype(np.uint8)
 
     def recognize(
         self,
@@ -237,6 +303,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
             owner, _score = match_owner(image, self._badge_rect(card_rect),
                                         min_score=self._owner_min_score())
             level = self._read_level(ocr_results, card_rect)
+            rank = self._read_superimpose(image, card_rect)
             ident = identity_by_card.get(idx)
             cone_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
             if cone_name is None:
@@ -249,7 +316,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
             item = {'cell': [card_rect.x1, card_rect.y1,
                              card_rect.x2, card_rect.y2],
                     'cone': cone_name, 'level': level, 'owner': owner,
-                    'identity': identity_src}
+                    'rank': rank, 'identity': identity_src}
             if cone_name is not None:
                 cone_def = LIGHT_CONE_BY_NAME[cone_name]
                 item['path_cn'] = next((p.cn for p in CHARACTER_PATH_LIST
@@ -476,6 +543,35 @@ def _light_cone_templates_scaled() -> dict[str, np.ndarray]:
             name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
             for name, t in _light_cone_templates().items()}
     return _light_cone_scaled_cache
+
+
+#------------------- 光锥叠影模板(卡左缘罗马数字标) -------------------#
+
+# 模板目录:数字命名的二值化归一数字图(文件名 = 叠影数);III/IV 档候实机
+# 采样补档(账号当前无该两档叠影的光锥),缺档时对应叠影判 None
+_SUPERIMPOSE_TEMPLATE_DIR = 'assets/template/light_cone_superimpose'
+# 归一尺寸与命中阈值:实测命中档 0.95-1.00、错档 ≤0.31,0.7 留足余量
+_SUPERIMPOSE_NORM_SIZE = (24, 24)
+_SUPERIMPOSE_MATCH_MIN: float = 0.7
+_superimpose_tpl_cache: dict[int, np.ndarray] | None = None
+
+
+def _superimpose_templates() -> dict[int, np.ndarray]:
+    """叠影数 → 二值化归一灰度模板(24×24,白=数字前景;进程级常驻)。"""
+    global _superimpose_tpl_cache
+    if _superimpose_tpl_cache is None:
+        base = Path(os_utils.get_path_under_work_dir(*_SUPERIMPOSE_TEMPLATE_DIR.split('/')))
+        lib: dict[int, np.ndarray] = {}
+        for f in sorted(base.glob('*.png')):
+            if not f.stem.isdigit():
+                continue
+            img = cv2_utils.read_image(str(f))
+            if img is None:
+                continue
+            gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY) if img.ndim == 3 else img
+            lib[int(f.stem)] = gray
+        _superimpose_tpl_cache = lib
+    return _superimpose_tpl_cache
 
 
 def _relic_piece_templates() -> dict[str, MatLike]:
