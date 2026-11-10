@@ -98,6 +98,21 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 「已提升至最高阶」后关闭收尾(状态同为 LIGHT_CONE_CAPPED,日志注明满级)——
 对满级光锥调用本 op 是安全的零消耗操作。
 
+**材料不足时(判停后)的手动刷材料**:不想烧快速刷取券(券不可恢复)或券
+不足时,可走副本刷取补材料:
+
+1. 进晋阶画面:光锥 TAB 点右下「强化」按钮(MCP `click_game(x=1825, y=992)`,
+   画面「角色-光锥」建档「按钮-强化」);
+2. op `sr_od.operations.farm_material.FarmMaterialOp(times=挑战次数)`——
+   自动实读晋阶画面第一个缺料材料 → 经游戏内「获取途径」跳转对应副本 →
+   委托开拓力挑战刷取。状态:FARMED(刷取完成)/ NO_LACKING(材料栏无缺料)/
+   MATERIAL_NO_DUNGEON(缺料材料无可刷副本——途径均为敌人掉落/合成,
+   无法跳转,只能实机获取);
+3. 刷够后重调 `UpgradeLightConeOp` 继续升级。
+
+⚠️ `times` × 10 开拓力(拟造花萼)为真实消耗,发起前必须向用户确认。
+多个缺料材料时 op 每次只处理第一个缺料格,刷完重跑处理下一个。
+
 - 备料(刷材料前算缺口):查单把光锥的材料总量、分段需求与刷取副本用
   `cone_lookup(with_ascension=true)`
 - op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用
