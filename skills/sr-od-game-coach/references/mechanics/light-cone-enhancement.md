@@ -101,9 +101,3 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 - 备料(刷材料前算缺口):查单把光锥的材料总量、分段需求与刷取副本用
   `cone_lookup(with_ascension=true)`
 - op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用
-
-## 4. 与遗器养成的分工
-
-光锥只管「装对 + 拉满 + 叠影」三件事,没有词条随机性(遗器才有刷词条
-问题);角色养成顺序通常是 角色/行迹 → 光锥 → 遗器,决策细节见
-damage-and-affix.md 与 relic-enhancement.md。
