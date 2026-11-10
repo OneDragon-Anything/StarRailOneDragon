@@ -11,6 +11,11 @@ grid_template_locate)。交互链实机摸底:
   同套装多件同屏时票分裂到多列但件名相同,选任一件均满足意图;
 - 选中未装备件后底部按钮「卸下」变「替换」;点「替换」即装备(实测即时
   生效,给已由他人装备的件会直接从对方身上换下)。
+- 重进替换列表后、扫描前执行排序前置(打开排序弹窗 → 关「遗器建议排序」
+  开关 → 选「等级」基础排序 → 确认):建议排序按匹配度动态重排,重掷动画
+  期间评分持续变化 → 持续重排 + 滚动自动回顶,「识别 → 点击」间隔超 2 秒
+  即落空;静态排序下列表稳定。快速路径(复用已在正确部位的列表)不重进
+  ——排序设置只在重进时被重置,复用时排序已静态,不重复执行前置。
 
 前置:角色遗器着装页(由 GotoCharacterDetail + SelectCharacterOp +
 SwitchCharacterTabOp('遗器') 保证);起点不符显式失败。
@@ -34,6 +39,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 _RELIC_TAB_SCREEN: str = '角色-遗器'
 _REPLACE_SCREEN: str = '遗器-替换'
+_SORT_RULE_SCREEN: str = '遗器-排序规则'
 
 # 网格几何:4 列,首列中心相对列表区 x1 偏移 66px、列间距 123px
 # (实机亮度剖面实测列中心 99/224/346/469;列表区 rect 见 screen_info
@@ -209,12 +215,70 @@ class EquipRelicOp(SrOperation):
             return self.round_success(status='ENTERED_REPLACE', wait=1)
         return self.round_retry('点遗器位后替换界面未确认,重试', wait=1.5)
 
-    @node_from(from_name='入口核对并进入部位')
+    @node_from(from_name='入口核对并进入部位', status='ENTERED_REPLACE')
+    @operation_node(name='打开排序弹窗', node_max_retry_times=6)
+    def open_sort_dialog(self) -> OperationRoundResult:
+        """点替换屏「遗器建议排序」按钮打开排序规则弹窗,until = 弹窗标题出现。"""
+        return self.round_by_find_and_click_area(
+            self.last_screenshot, _REPLACE_SCREEN, '按钮-遗器建议排序',
+            until_find_all=[(_SORT_RULE_SCREEN, '标题-排序规则')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+
+    @node_from(from_name='打开排序弹窗')
+    @operation_node(name='关建议排序', node_max_retry_times=6)
+    def disable_suggested_sort(self) -> OperationRoundResult:
+        """把「遗器建议排序」开关关掉(模板命中 = 开关橙色 ON)。
+
+        开关开着时列表按建议匹配度动态重排(重掷动画期间评分持续变化 →
+        持续重排 + 滚动自动回顶),「识别 → 点击」间隔超 2 秒即落空,是
+        扫描失败的根因;本节点把它转静态。开关已关(模板不命中)时跳过
+        ——防呆:不重复点击已关闭的开关。until 用开关模板消失验证翻转
+        生效。"""
+        screen = self.last_screenshot
+        if not self.round_by_find_area(screen, _SORT_RULE_SCREEN,
+                                       '开关-建议排序').is_success:
+            return self.round_success(status='SORT_OFF')
+        return self.round_by_find_and_click_area(
+            screen, _SORT_RULE_SCREEN, '开关-建议排序',
+            until_not_find_all=[(_SORT_RULE_SCREEN, '开关-建议排序')],
+            pre_delay=0.5, success_wait=1, retry_wait=2,
+        )
+
+    @node_from(from_name='关建议排序')
+    @operation_node(name='选等级排序', node_max_retry_times=6)
+    def select_level_sort(self) -> OperationRoundResult:
+        """基础排序选「等级」(静态排序;等级未选中时灰 radio 模板命中)。
+
+        等级已选中(橙色 radio 模板命中)时跳过——radio 点击幂等但防呆
+        不重复点。until 用选中态模板出现验证点击生效。"""
+        screen = self.last_screenshot
+        if self.round_by_find_area(screen, _SORT_RULE_SCREEN,
+                                   '单选-等级选中').is_success:
+            return self.round_success(status='LEVEL_SELECTED')
+        return self.round_by_find_and_click_area(
+            screen, _SORT_RULE_SCREEN, '单选-等级',
+            until_find_all=[(_SORT_RULE_SCREEN, '单选-等级选中')],
+            pre_delay=0.5, success_wait=1, retry_wait=2,
+        )
+
+    @node_from(from_name='选等级排序')
+    @operation_node(name='确认排序规则', node_max_retry_times=6)
+    def confirm_sort_rule(self) -> OperationRoundResult:
+        """点「确认」提交排序设置,until = 弹窗标题消失(弹窗关闭 = 列表
+        已按静态排序固定)。"""
+        return self.round_by_find_and_click_area(
+            self.last_screenshot, _SORT_RULE_SCREEN, '按钮-确认',
+            until_not_find_all=[(_SORT_RULE_SCREEN, '标题-排序规则')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+
     @node_from(from_name='入口核对并进入部位', status='IN_REPLACE_RESET_TOP')
     @operation_node(name='滚回列表顶部', node_max_retry_times=8)
     def reset_top(self) -> OperationRoundResult:
         """快速路径(IN_REPLACE_RESET_TOP)专用:复用已有列表前滚回顶部。
-        重进路径的列表天然在顶部,经节点直连跳过本节点。"""
+        重进路径经排序前置节点链固定静态排序后直达当前装备核对
+        (列表天然在顶部,无需滚顶)。"""
         if self._reset_drags_left > 0:
             list_area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '区域-遗器列表')
             center = list_area.rect.center
@@ -224,8 +288,8 @@ class EquipRelicOp(SrOperation):
             return self.round_retry(f'滚回列表顶部(剩 {self._reset_drags_left} 次)', wait=1)
         return self.round_success(status='TOP_RESETTED')
 
-    @node_from(from_name='入口核对并进入部位')
     @node_from(from_name='滚回列表顶部')
+    @node_from(from_name='确认排序规则')
     @operation_node(name='当前装备核对', node_max_retry_times=6)
     def check_current(self) -> OperationRoundResult:
         """替换界面右侧详情默认显示当前装备件:已是目标 = 幂等成功。"""
