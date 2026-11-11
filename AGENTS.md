@@ -172,7 +172,7 @@ uv run ruff check --fix src/你修改的文件.py
   └── xxx/                   # 【自由】其余正本按模块需要组织，无规定结构
   ```
 
-  **铁律**：`changes/` 会不定期、无理由删减——**代码与正本文档禁引其内容（长期引用），正本必须自足**；迭代内工件（任务书指针/账本 criteria/验收对照）引用总纲与详设**合法**，寿命 = 迭代。迭代设计的结构、写作硬规则与模板见 [iteration-design.md](docs/develop/harness/iteration-design.md)。
+  **铁律**：`changes/` 会不定期、无理由删减——**`changes/` 之外的一切长期存活物（代码含注释、正本文档、docs 其余文档、测试等）禁引其内容与路径（长期引用），正本必须自足**；迭代内工件（任务书指针/账本 criteria/验收对照）引用总纲与详设**合法**，寿命 = 迭代。迭代设计的结构、写作硬规则与模板见 [iteration-design.md](docs/develop/harness/iteration-design.md)。
 
 ## 10.测试规范
 
