@@ -1,7 +1,8 @@
 """米游社遗器套装快照常量与套装效果助手。
 
-设计出处：changes/mys-relic-sets/design.md §1（数据层，用户裁定禁 JSON 数据
-文件、数据写代码）。映射内容的权威快照：官方 wiki 遗器频道 2026-11-04 抓取
+设计出处：docs/develop/sr_od/application/account_profile/mys-data.md §1
+（游戏静态定义，用户裁定禁 JSON 数据文件、数据写代码）。映射内容的权威
+快照：官方 wiki 遗器频道 2026-11-04 抓取
 （版本 3.7；62 套 = 隧洞 34 + 位面饰品 28）+ 4.7 新增两套位面饰品（官方
 版本公告原文为文本源，效果数值经公告与社区 wiki 双源交叉核验；两大官方
 wiki 频道均未收录）——共 64 套 = 隧洞 34 + 位面饰品 30、件名 196 唯一、
@@ -12,8 +13,6 @@ wiki 频道均未收录）——共 64 套 = 隧洞 34 + 位面饰品 30、件�
 wiki 词条偶有错字/缺段（实测 8 套 effects/件名与已固化常量不一致）——
 effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
 
-图标归档：``assets/game_data/relic_icons/<套装名>_<件名>.webp``
-（196 件全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 识别模板规范库见 ``config/relic_templates.py``（空 id 套装暂缓入库）。
 
 版本刷新走 ``sr-od-dev-relic-data`` skill 工序；新套装未及固化时由
@@ -1034,18 +1033,6 @@ RELIC_POS_EN: dict[int, str] = {
     5: 'planarsphere',
     6: 'linkrope',
 }
-
-#: 单件图标归档相对路径公式（项目 assets 根起）；196 件全量，见模块 docstring。
-_RELIC_ICON_REL_TEMPLATE = 'assets/game_data/relic_icons/{set_name}_{piece_name}.webp'
-
-
-def icon_webp_rel_path(set_name: str, piece_name: str) -> str:
-    """套装名 + 部件名 → 单件图标 webp 的项目相对路径。
-
-    纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。
-    """
-    return _RELIC_ICON_REL_TEMPLATE.format(set_name=set_name, piece_name=piece_name)
-
 
 def resolve_set_name(piece_name: str) -> str | None:
     """件名 → 套装名（miss 兜底不抛异常）。

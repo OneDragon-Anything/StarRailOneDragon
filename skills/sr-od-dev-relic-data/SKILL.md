@@ -32,7 +32,7 @@ description: 维护崩坏:星穹铁道「遗器套装数据」全流程的单一
 
 `assets/template/relic_icon/<template_id>/raw.webp`,template_id = `<套装id>_<部位英文归一化>`(如 `spacesealingstation_planarsphere`)。命名约定即注册表,无 config.yml;遍历入口 `src/sr_od/config/relic_templates.py::iter_relic_templates(ctx)`(未知目录/缺原图直接 raise)。空 id 套装暂缓入库,回填后补录。
 
-双库关系:`assets/game_data/relic_icons/<套装名>_<件名>.webp`(名称键,公式 `icon_webp_rel_path`)是数据图标归档(过渡库存);模板规范库是识别消费的正库。消费方迁移到 `iter_relic_templates` 后旧库退役。
+双库关系:名称键旧库 `assets/game_data/relic_icons/` 已随消费方迁移到 `iter_relic_templates` 删除——识别消费以规范库为唯一正库,勿再按名称键归档或寻址。
 
 ## 4. 权威表(references/relics-full.json)
 

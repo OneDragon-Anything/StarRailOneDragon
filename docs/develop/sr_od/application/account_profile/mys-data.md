@@ -9,15 +9,14 @@
 **接口契约**（纯常量 + 纯函数，零 IO 零状态）：
 
 - `resolve_set_name(piece_name)` — 件名 → 套装名；miss 返回 None 并 warning（不抛异常），由映射层落「未知套装」兜底
-- `icon_webp_rel_path(set_name, piece_name)` — 单件图标归档的项目相对路径（纯公式寻址不查存在性）
 - `build_set_effects(relics, ornaments)` — 佩戴件分组统计 → 已激活套装效果条目
 - 索引：`PIECE_TO_SET`（件名反查）、`_SET_BY_NAME`——模块加载时各建一次
 
-**图标归档**：`assets/game_data/relic_icons/<套装名>_<件名>.webp`（全量单件，官方图标转档归档）。识别模板规范库：`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`（遍历入口 `config/relic_templates.py`，空 id 套装暂缓入库）。识别模板边界：SIFT 特征匹配可用、matchTemplate 像素比对不可用（实测口径）。
+**识别模板规范库**：`assets/template/relic_icon/<套装id>_<部位英文>/raw.webp`（遍历入口 `config/relic_templates.py`，空 id 套装暂缓入库）；识别用模板集一律经该入口取，不得自行扫目录或按名称键拼路径。遗器列表识别范式 = masked 模板匹配（`relic_list_recognizer`，双档级联）。
 
 **数据分层原则**：定义层（名称/图标/分类/效果文案）进常量；内容层（词条每级数值、养成数值）不固化，运行时经 mys 接口现查。wiki 词条偶有错字/缺段——effects 与件名以已固化常量为准，wiki 只作新增字段来源。
 
-**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ 图标按名称键增量归档 → 测试锚点同步。完整工序（含内部 ID 续排与映射表同步）见私有 skill `sr-od-dev-equip-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
+**版本刷新**：重抓 wiki 快照 → diff 常量 → 人工审阅更新（禁直灌）→ 识别模板按规范库增量补录 → 测试锚点同步。完整工序（含内部 ID 续排与映射表同步）见私有 skill `sr-od-dev-relic-data`；版本更新总入口 = `sr-od-version-update-adaptation` skill 路由表。
 
 ## 2. 账号运行时数据（米游社）
 

@@ -17,9 +17,9 @@ from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from sr_od.mys.sr_relic_sets import (
+    RELIC_POS_EN,
     RELIC_SETS,
     RelicSetDef,
-    icon_webp_rel_path,
 )
 
 _KIND_CN: dict[str, str] = {'cavern': '隧洞遗器', 'ornament': '位面饰品'}
@@ -34,8 +34,15 @@ _PIECE_INDEX: dict[str, RelicSetDef] = {
 }
 
 
+def _icon_rel_path(relic_set: RelicSetDef, piece) -> str | None:
+    """单件识别模板的规范库项目相对路径；空 id 套装（国际服未同步）返回 None。"""
+    if not relic_set.id:
+        return None
+    return f'assets/template/relic_icon/{relic_set.id}_{RELIC_POS_EN[piece.pos]}/raw.webp'
+
+
 def _set_to_data(relic_set: RelicSetDef, matched_piece: str | None, match: str) -> dict:
-    """套装定义 → 工具返回的 data dict（含每件图标项目相对路径）。"""
+    """套装定义 → 工具返回的 data dict（含每件识别模板路径）。"""
     return {
         'set_name': relic_set.set_name,
         'kind': relic_set.kind,
@@ -48,7 +55,7 @@ def _set_to_data(relic_set: RelicSetDef, matched_piece: str | None, match: str) 
                 'pos_cn': _POS_CN.get(piece.pos, f'未知部位({piece.pos})'),
                 'name': piece.name,
                 'desc': piece.desc,
-                'icon': icon_webp_rel_path(relic_set.set_name, piece.name),
+                'icon': _icon_rel_path(relic_set, piece),
             }
             for piece in relic_set.pieces
         ],

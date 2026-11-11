@@ -5,8 +5,11 @@
 过滤;滚动裁切卡(贴列表边缘、等级文本滚出、图案只露部分)信息不全,不识别;
 **身份层**——masked 模板匹配(TM):卡面 = 图标 × UI 缩放常量合成(同渲染),
 按绝对目标像素缩放模板,前景 mask(底色距分割)后 TM_CCORR_NORMED 匹配,
-低于拒答门槛诚实返回 None 不硬猜。缩放按模板原始尺寸换算(256 正源 → 90px、
-512 连结绳 → 96px),卡面渲染像素才是常量,比例随模板分辨率派生——混合尺寸
+低于拒答门槛诚实返回 None 不硬猜。模板集 = 识别模板规范库单一入口
+``config/relic_templates.iter_relic_templates``(规范目录
+``assets/template/relic_icon/<套装id>_<部位英文>/raw.webp``;空 id 套装
+暂缺不入库)。缩放按模板原始尺寸换算(256 正源 → 90px、
+512 连结绳 → 92/96px),卡面渲染像素才是常量,比例随模板分辨率派生——混合尺寸
 模板库禁用「比例」参数(512 件按 256 比例会缩小一半,连结绳全帧误判实证)。
 **占用者**——角标区角色头像 SIFT 匹配。
 
@@ -30,8 +33,9 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils import cv2_utils, os_utils
 from sr_od.config.character_const import get_character_by_id
+from sr_od.config.relic_templates import iter_relic_templates
 from sr_od.mys.sr_codes import RELIC_POS_CN
-from sr_od.mys.sr_relic_sets import PIECE_TO_SET, icon_webp_rel_path
+from sr_od.mys.sr_relic_sets import PIECE_TO_SET
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -220,8 +224,8 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         单部位(替换界面列表恒按选中部位筛选);判不出退全库,不劣于旧路径。"""
         pos = self._detect_pos_from_tabs(ctx, image)
         if pos is not None:
-            return self._recognize(ctx, image, *_tm_templates_for_pos(pos))
-        return self._recognize(ctx, image, *_tm_templates_all_lists())
+            return self._recognize(ctx, image, *_tm_templates_for_pos(ctx, pos))
+        return self._recognize(ctx, image, *_tm_templates_all_lists(ctx))
 
     def _detect_pos_from_tabs(self, ctx: SrContext, image: MatLike) -> int | None:
         """读顶部部位筛选 tab 的选中态 → 部位号;判不出返回 None(退全库)。
@@ -250,7 +254,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         :param pos: 装备部位号(1=头部 2=手部 3=躯干 4=脚部 5=位面球 6=连结绳,
             与 SrRelicPieceDef.pos 同坐标系)。
         """
-        return self._recognize(ctx, image, *_tm_templates_for_pos(pos))
+        return self._recognize(ctx, image, *_tm_templates_for_pos(ctx, pos))
 
     def _recognize(self, ctx: SrContext, image: MatLike,
                    main_templates: list[tuple[str, np.ndarray, np.ndarray]],
@@ -325,19 +329,6 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
 _tm_prep_cache: dict[str, list[tuple[np.ndarray, np.ndarray]]] | None = None
 
 
-def load_template_rgb(rel_path: str) -> np.ndarray | None:
-    """加载图标模板 RGB 图(cv2 产物 BGR,读入后立即转 RGB——口径纪律见 AGENTS.md §5)。
-
-    :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
-    :return: RGB 图;文件不存在返回 None(调用方判停)
-    """
-    path = os_utils.get_path_under_work_dir(*rel_path.split('/'))
-    img = cv2_utils.read_image(path)
-    if img is None:
-        return None
-    return img
-
-
 def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
     """归档 webp 的前景 mask:四角中位取合成底色,色距 >30 为前景。
 
@@ -350,28 +341,25 @@ def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
     return np.linalg.norm(rgb.astype(np.float64) - bg[None, None, :], axis=2) > 30
 
 
-def _tm_templates_all() -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
+def _tm_templates_all(ctx: SrContext) -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
     """遗器件名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(进程级缓存)。
 
-    缩放按模板原始尺寸归一:256 正源 → _TM_TARGET_PX、512 连结绳 → 92/96 双档
-    ——卡面渲染像素才是常量,比例随模板分辨率派生;连结绳双档覆盖列表常态与
-    选中卡(白框)的放大渲染。
+    模板经卡面库单一入口 iter_relic_templates 取(规范目录
+    assets/template/relic_icon/<套装id>_<部位英文>/raw.webp;空 id 套装
+    暂缺不入库,国际服 wiki 同步补 id 后自动生效)。缩放按模板原始尺寸归一:
+    256 系正源 → 90/96 双档、512 连结绳 → 92/96 双档——卡面渲染像素才是
+    常量,比例随模板分辨率派生;双档覆盖列表常态与选中卡(白框)的放大渲染。
     """
     global _tm_prep_cache
     if _tm_prep_cache is None:
         prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
-        for piece_name, set_def in PIECE_TO_SET.items():
-            piece = next((p for p in set_def.pieces if p.name == piece_name), None)
-            if piece is None:
-                continue
-            img = load_template_rgb(icon_webp_rel_path(set_def.set_name, piece_name))
-            if img is None:
-                continue
+        for entry in iter_relic_templates(ctx):
+            img = entry.info.raw
             mask = _fg_mask_from_rgb(img)
             # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~4%)。
             # 相似件分数接近时,选中卡的放大差足以让次优件反超(行1列2 死水头
             # 被透镜反超实证),双档级联为必需而非可选。
-            targets = ((_TM_TARGET_PX_ROPE, _TM_TARGET_PX_ROPE_SEL) if piece.pos == 6
+            targets = ((_TM_TARGET_PX_ROPE, _TM_TARGET_PX_ROPE_SEL) if entry.piece.pos == 6
                        else (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED))
             entries = []
             for target in targets:
@@ -379,29 +367,29 @@ def _tm_templates_all() -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
                 mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
                                      interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
                 entries.append((tpl, mask_s))
-            prep[piece_name] = entries
+            prep[entry.piece.name] = entries
         _tm_prep_cache = prep
     return _tm_prep_cache
 
 
-def _tm_templates_all_lists() -> tuple[list, list]:
+def _tm_templates_all_lists(ctx: SrContext) -> tuple[list, list]:
     """全库 TM 模板,分 (主档 list, 选中档 list) 两组(全库识别用)。"""
-    all_tmpl = _tm_templates_all()
+    all_tmpl = _tm_templates_all(ctx)
     main = [(name, *entries[0]) for name, entries in all_tmpl.items()]
     sel = [(name, tpl, mask)
            for name, entries in all_tmpl.items() for tpl, mask in entries[1:]]
     return main, sel
 
 
-def _tm_templates_for_pos(pos: int) -> tuple[list, list]:
+def _tm_templates_for_pos(ctx: SrContext, pos: int) -> tuple[list, list]:
     """部位过滤的 TM 模板子集,分 (主档 list, 选中档 list) 两组(pos 见
     SrRelicPieceDef 坐标系)。
 
     替换界面顶部部位筛选 tab 锁定列表内容——列表内全部为该部位件,候选从
-    全库 196 件收缩到单部位(隧洞 ≤34 件),跨部位误配同步下降(部位先验
+    全库收缩到单部位(隧洞 ≤34 件),跨部位误配同步下降(部位先验
     由调用方提供:替换 op 从着装页点部位进来,部位恒已知)。
     """
-    all_tmpl = _tm_templates_all()
+    all_tmpl = _tm_templates_all(ctx)
     main: list[tuple[str, np.ndarray, np.ndarray]] = []
     sel: list[tuple[str, np.ndarray, np.ndarray]] = []
     for name in all_tmpl:
