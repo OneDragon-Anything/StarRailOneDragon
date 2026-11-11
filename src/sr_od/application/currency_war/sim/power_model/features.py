@@ -4,15 +4,15 @@
 输入收敛为「板面计数 dict + 上阵槽位视图 + 等级」三要素——sim 侧由
 :meth:`features_from_game_state` 从 GameState 状态容器取,实机侧由
 :meth:`features_from_decision_row` 从 decisions 行 dict 取;任何一侧都
-不另写第二份特征算术(design 2026-10-19-sim-power-model-v1 §2.2
-「取大定义」;对齐测试 = 同一板面输入 → 两侧同一特征向量)。
+不另写第二份特征算术(双侧同源契约 = sim-power-model §4.2
+;对齐测试 = 同一板面输入 → 两侧同一特征向量)。
 
-特征全集 = design §2.2 表 14 设计位(13 维向量,训练期另加截距):
+特征全集 = sim-power-model §4.1 特征集+§4.3 分配表(13 维向量,训练期另加截距):
 
 === 定义与单一源(值域/出处)===
 - rung_1/rung_2/rung_3:过渡达成度分档 one-hot 三位(参考档 rung0 并入
   截距),单一源 = ``kernel/cw_battle_calib._settle_rung``(四体系达成数,
-  0-4);分档域钉四档(0-3,权威版本 §2「rung 四档(0-3)」+ 前代
+  0-4);分档域钉四档(0-3,sim-power-model §3/§4.1「rung 四档(0-3)」+ 前代
   cw_coarse_battle ``_win_cell`` 的 ``min(max(rung,0),3)`` 钳位先例),
   实现为 ``min(_settle_rung, RUNG_MAX)``——rung4(四体系全达成)并入
   rung3 位,与「r>=3 置位」逐位等价,无行为歧义。
@@ -25,7 +25,7 @@
   Σ(star−1)(用户 2026-10-19 裁定:星深须区分核心)。
 - enemy_difficulty / enemy_difficulty_missing:敌难度数值 + 缺失指示;
   缺失口径 = None ∨ 合理带 [20,300] 外(sim-power-model §4.1 上下文组
-  既定约定),缺失时数值按 0 载入、指示位置 1(design §2.2 #8)。
+  既定约定),缺失时数值按 0 载入、指示位置 1(sim-power-model §4.3 缺失指示位)。
 - plane_not_first:位面二值(P1 vs 非P1;P3 语料并入非P1,低置信披露)。
 - node_encounter / node_boss:node_type one-hot 两位,参考档 = 普通战斗
   (并入截距;one-hot 参考档选择只是重参数化,不改变模型表达族)。
@@ -106,7 +106,7 @@ def normalize_node_type(raw: Any) -> str:
 
 @dataclass(frozen=True)
 class FeatureVector:
-    """一场战斗的 13 维特征向量(design §2.2 表;训练期另加截距)。
+    """一场战斗的 13 维特征向量(sim-power-model §4.1;训练期另加截距)。
 
     字段序 = 向量位序(:meth:`to_list` 的输出序);训练脚本按
     :data:`FEATURE_NAMES` 对齐列,禁按位置隐式耦合。
@@ -204,7 +204,7 @@ class SimpleUnit:
 
 def best_line(board_value: dict[str, int] | None,
               deployed: DeployedView | None) -> tuple[Comp, float]:
-    """取大线(design §2.2「取大定义」的形式化):
+    """取大线(取大定义的形式化):
     ``best_line(B) = argmax_{comp ∈ COMP_LIBRARY} form_progress(comp, B)``,
     平局破缺 = COMP_LIBRARY 注册序首个最大值(确定性,两侧一致)。
 
@@ -329,7 +329,7 @@ def features_from_decision_row(row: dict[str, Any],
                                node_type: str) -> FeatureVector:
     """实机行侧适配:decisions 快照行 → 特征向量。
 
-    字段映射按实况(design §2.1:state.board/state.deployed,**无**
+    字段映射按实况(state.board/state.deployed,**无**
     board_factions——该键仅见于 sim 批产物):板面 = ``state.board``、
     上阵 = ``state.deployed``、等级 = ``state.level``、难度 =
     ``state.enemy_difficulty``、位面/轮次 = 行顶层(快照行即 join 键的

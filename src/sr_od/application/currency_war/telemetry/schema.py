@@ -143,7 +143,7 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 """
 
 
-# ===== 统一让位优先级迭代观测键面(3.5 键表;键名登记单一源 = 本节 +
+# ===== 统一让位优先级观测键面(键表;键名登记单一源 = 本节 +
 # 各键写点注释——判读读本节键族与停产/保留面,触发时机语义读写点)=====
 # 载体 = 策略器状态 ``cw4_counters`` 计数容器(局终快照链/决策迹
 # emitted-fields 双通道落盘,见 kernel/cw_decision_trace.EMITTED_FIELDS)。
@@ -178,7 +178,7 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   (gold_short 分支唯一行为)——分支随 gold_short 臂整删停产。
 # - session_funding_sell 取用键族(session_funding_sell/_tier_<1..8>/
 #   _rng_tail_hit)与 session_funding_exhausted:会话内筹资键族——
-#   随统一获取让位评估并入统一结构退役(roster-plane1-union design §2.2
+#   随统一获取让位评估并入统一结构退役(11 号稿 §4.0
 #   第 4 项 + 用户裁定 2026-10-30:金不足与席满同一评估,session_
 #   funding 场景行/funding 通道/专属计数整链删除),取用计数并入
 #   acquire_swap_sell 键族。
@@ -204,8 +204,8 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 # - <take>_rng_tail_hit:随机尾键命中——被取用件与池内另一件排序键
 #   去尾后全同(等价牌群内部随机定序对该取用实际生效)的取用计数
 #   (随机域判读:非等价件命中即键构造异常哨兵);
-# - node_end_interest_exempt_depleted(阶段 4;roster-plane1-union
-#   design §2.2 第 5 项,登记点原挂同设计 §2.2 第 3 项):凑息豁免
+# - node_end_interest_exempt_depleted(凑息豁免剔光帧观测键,
+#   32 号稿 §9):凑息豁免
 #   剔光帧计数——节末凑息跨档止盈后的可行池全为线内未达标成员、被
 #   豁免剔空 → 零卖出动作(该帧形态在豁免落地前不可观测;
 #   无豁免时该帧会卖出在建阵容件 → 有豁免零动作,§2.5「凑息频率
@@ -213,9 +213,9 @@ id+时间戳)」;键节原文已删档,考古走 git 历史)。
 #   evaluate_sell_candidates(counters 载体;消费位 = mandate_v1/
 #   entry.py 第 8 步传 cw4_counters);
 # - acquire_swap_sell / acquire_swap_declined:统一获取让位成功/拒绝
-#   (末位/扩位遇 X 放弃;阶段 3 起含金不足语境,拦因分键 =
+#   (末位/扩位遇 X 放弃;含金不足语境,拦因分键 =
 #   机会清单 blocked_by 字段而非计数键);
-# - acquire_yield_*(阶段 3;roster-plane1-union design §2.2 第 4 项):
+# - acquire_yield_*(统一获取让位评估,11 号稿 §4.0):
 #   acquire_yield_exhausted(池穷尽)/acquire_yield_restricted_skip
 #   (受限会话帧跳过)/acquire_swap_field_victim(victim = 场上件,
 #   写跨画面计划);
@@ -394,7 +394,7 @@ class DecisionTrace:
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
     # 商店波未买牌拒因串({牌名: 拒因};生产端 = cw4/shop.shop_unbought_
     # reasons,旧行缺省空 dict)。值域闭集单一源 = 生产端 docstring;
-    # 统一让位优先级迭代 3.4 起退役标签(protection_member_rejected/
+    # 统一让位优先级退役标签(protection_member_rejected/
     # hub_option/core_candidate_rejected)停写,历史行按退役语义读
     # (成员归并 non_line/owned 面,退役登记 = 上方键表节停产键族)。
     shop_rejects: dict[str, str] = field(default_factory=dict)
@@ -411,7 +411,7 @@ class DecisionTrace:
     #  extra.get 读缺省 None,schema 兼容)
     sess_commit_scores: dict[str, float] = field(default_factory=dict)  # CommitSignals 累积分
     sess_active_env: str = ""                     # 已选投资环境(portal 偏置源)
-    # —— 策略 v2(LineStrategy)字段(r226;redesign §6 遥测扩展:
+    # —— 策略 v2(LineStrategy)字段(遥测扩展:
     # 模式/终局阵容已锁定/桥——AB 交叉核对与三层置信的数据源)——
     strategy_id: str = ""                          # 本局策略 id(B2:分组键)
     ev_arm: str = ""                               # 分支位(R1-1:skeleton_only/full;仅 mandate_v1 写,legacy 恒空——判栈二元组 (strategy_id, ev_arm) 第二维)
@@ -517,13 +517,13 @@ class DecisionTrace:
     # (支出门·买侧收门拒因枚举计数键已停用——旧方案清退批,
     #  旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
     #  缺键读 None。)
-    # 预算-回执契约·对账门声明(w921_rd_design DESIGN §1.1-C;
+    # 预算-回执契约·对账门声明(预注册判据,git 历史可溯;
     # strategy_state_of(session).v3_posture_unfulfilled 透传):{auth_id, channel, reason,
     # channels, action}——授权未兑现帧的显式归档(reason=四枚举
     # no_premise/no_channel/no_candidate/no_budget;action=allocator/
     # crisis_release/downgrade)。None=无未兑现帧/开关关/无 match 注册。
     # 开分支判读主判据「授权未兑现帧占比」的数据源(判前预注册
-    # .debug/temp/currency_war/w937_rd_batch1/PREREG.md)。
+    # 预注册判据档案已失,git 历史可溯)。
     posture_unfulfilled: dict[str, Any] | None = None
     # (sess_pv_bench_block 已停用;存量 runs.jsonl
     #  判读脚本如遇旧键按历史台账读,新数据不再写。)
@@ -537,7 +537,7 @@ class DecisionTrace:
     # 补给轮决策行采集(观察层数据移交批):补给节点选卡确认后的合成
     # 决策帧(extra.phase='supply_pick')携带的选定快照——
     # {char, equip, has_diamond, refresh_left, options:[{char,equip,has_diamond}...],
-    # n_options}(迭代 2026-09-21-event-refresh-unify-supply-pick:布尔键
+    # n_options}(布尔键
     # refreshed 随计数闸停用——历史行该键按只读口径保留,判读端 .get
     # 容忍;新行携 refresh_left = 状态容器 supply_refresh_left 现值快照,
     # 可 None=未观察,供读端按剩余分型;无「本局初始授予数」基线,布尔
@@ -592,7 +592,7 @@ class OutcomeRecord:
     killed: bool | None = None
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(胜负+扣血真值,输轮也记)
     streak: int | None = None           # 连胜/连败带符号(r68:RoundOutcome 有此字段但序列化丢弃 → 补)
-    # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;镜像 cw_performance.RoundOutcome 同名字段)——
+    # —— 结算三项遥测(结算 OCR 面遥测字段;镜像 cw_performance.RoundOutcome 同名字段)——
     # progress_fill_ratio:挑战进度条填充率 [0,1](幅度绝对值;±N 在 progress_delta);
     # damage_base/damage_unfinished_progress:掉血说明 tooltip 两分量(tooltip 进页瞬态,
     # miss=None=删失显式可辨);damage_breakdown_visible:tooltip 在场与否(区分
@@ -643,7 +643,7 @@ class OutcomeRecord:
     # 确认时的 {char, equip, has_diamond, refresh_left, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
     # refresh_left=该次确认时点状态容器 supply_refresh_left 现值快照(可 None=未观察;
-    # 迭代 2026-09-21-event-refresh-unify-supply-pick 起布尔键 refreshed 停用,
+    # 布尔键 refreshed 已停用,
     # 历史行 refreshed 按只读口径保留,读端 .get 容忍);
     # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。
     #options=[{char,equip,has_diamond}...] + n_options=实际识别列数
@@ -774,7 +774,7 @@ class SpendUnitRecord:
     refresh_attempted: bool = False  # 本单元内至少点击过一次刷新
     # 刷新点击后牌面是否已变(两帧一致门+牌名集交叉核对);None=未尝试/不可判。
     # 现无生产写入端:唯一消费(失配告警 free_refresh_proc 豁免判定输入)随
-    # proc 通道停用,函数本体 refresh_board_changed_of 已删(详设 §2.3
+    # proc 通道停用,函数本体 refresh_board_changed_of 已删(退役申报
     # grep 定夺);字段保留读存量行。
     refresh_board_changed: bool | None = None
 

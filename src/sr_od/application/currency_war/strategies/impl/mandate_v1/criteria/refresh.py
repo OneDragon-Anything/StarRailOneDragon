@@ -4,11 +4,11 @@
 金线闸(:func:`r2_budget`,预留由 :func:`r2_card_reserve` 供给,调用方
 装配)→ 发射。
 
-预测门退役(统一让位优先级迭代 3.4,dismantle §1):旧「目标可买三效果条目
+预测门退役(11 号稿 §3):旧「目标可买三效果条目
 并集」(:func:`target_buyable`,判据与免费刷新分支的合取门)整门删除
 ——刷新时点信息不足、精确不可算,用信息最少的时点否决决策是
-g_20261029_084447 刷新卡死的直接机制(总纲 §1.2);判据收敛为三段式
-分派,免费效果条目改无条件刷(design §2.2)。该门符号已退役,禁按旧枚举
+刷新卡死病灶的直接机制(实机定位,git 历史可溯);判据收敛为三段式
+分派,免费效果条目改无条件刷(11 号稿 §3)。该门符号已退役,禁按旧枚举
 语义复活接入调用。
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 def refresh_warranted(state: GameState,
                       session: StrategySession) -> tuple[bool, str]:
-    """三段式刷新判据主式(shop_session §2.4)。
+    """三段式刷新判据主式(11 号稿 §3)。
 
     **值得刷新 ⟺ 存在「当前星级 < 必要星级」的角色 ∧(等级 ∈ 最优
     概率带 ∨ 等级 > 带上界〔被推过——当前即剩余可达最优〕)**;分派注:
@@ -43,7 +43,7 @@ def refresh_warranted(state: GameState,
 
     判据形态 = 查表零计算(用户裁定 2026-10-12「期望价值难算不直观,
     星级目标直接驱动」;原 R1 期望启动门已由本查表判据取代)。目标
-    可买合取已随预测门整门删除(统一让位优先级迭代 3.4,dismantle §1:
+    可买合取已随预测门整门删除(11 号稿 §3:
     刷新时点预测不可算,判据收敛本三分派;该门符号已退役,禁按旧枚举
     语义复活接入调用)。金前提(R2 预算门,预留 =
     saturation_line + 停留目标实费档)= 调用方装配,不在本函数。
@@ -66,7 +66,7 @@ def refresh_warranted(state: GameState,
         line_members_view,
         plane2_started_of,
     )
-    # 段边界裁决:P1 恒不刷(阶段属性与锁定态正交,shop_session §2.4)。
+    # 段边界裁决:P1 恒不刷(阶段属性与锁定态正交,11 号稿 §3)。
     if not plane2_started_of(state):
         return False, 'p1_no_refresh'
     level = int(level_of(state))

@@ -20,7 +20,7 @@ supply/encounter/box/晶矿面板)→ 状态容器各 opts 槽(经 ``cw_screen_r
    battle_resolve → 战斗结算、选卡族/箱 → 各状态过程、``''`` → 纯
    画面转移;推进后按 ``decl.next_screen`` 等值对账画面档
    (:meth:`_reconcile_next_screen`)。
-2. **点击源**(flow-seam 附录 B 边界登记:不入 kernel 事件集的推进型
+2. **点击源**(画面状态机边界登记:不入 kernel 事件集的推进型
    点击):简报下一步 / BOSS 简报点空白 / 位面过渡点空白 / 补给刷新 /
    开店。经端口 ``click_answer`` 感知。
 
@@ -1592,13 +1592,13 @@ class PlaneIntelPresentation:
 #: advance 分派表键集(``trigger`` 封闭集代码单一源;权威表 = 详设
 #: world-decl.md §3,值零新词沿用现役动作名)。``''`` = 纯画面转移,
 #: 恒合法(backend 只按 ``next_screen`` 推进,零专属过程);3.3 起 9 类
-#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;2026-10-17 迭代
-#: T-3 增 ``spy_shop_refresh``(商业间谍升级值变更回调状态副本侧分支:上报
+#: 过程 + 纯转移全量收齐,18 转移动作声明驱动全覆盖;
+#: ``spy_shop_refresh``(商业间谍升级值变更回调状态副本侧分支:上报
 #: 声明触发 + advance 尾统一排空段消费,非转移动作——next_screen 恒
-#: 备战档,零画面转移);2026-10-19 用户
-#: 裁定批增 ``refresh_invest_env``/``refresh_invest_strategy``(投资
-#: 两屏刷新状态副本侧分支,上报声明触发,同屏重呈现零转移);2026-10-29 流程
-#: 模型对齐批:``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
+#: 备战档,零画面转移);
+#: ``refresh_invest_env``/``refresh_invest_strategy``(投资
+#: 两屏刷新状态副本侧分支,上报声明触发,同屏重呈现零转移);
+#: ``pick_encounter`` 自 ``battle_resolve`` 拆出(遭遇选完
 #: 回备战并自动弹店,遭遇战改由出战触发——旧「选档落地即结算」随呈现
 #: 改造废止;``battle_resolve`` 现役唯一来源 = 出战声明);免战牌建模批
 #: 增 ``battle_skip``(免战跳过声明,来源 = 出战上报跳过子态分支,
@@ -1892,7 +1892,7 @@ class SimBackend:
         档,同档名子态由该档名生成器按状态机子态内部分派)。产物经同名
         ``report_screen_*`` 落状态容器(写通道铁律,单一源在 report 消费端)。
         未注册屏呈现 = :class:`LookupError` 具名响错(防静默失真,
-        flow-seam §3 锁)。惰性导入注册表:注册表反向引用本模块档名
+        sim-design.md §3 锁)。惰性导入注册表:注册表反向引用本模块档名
         常量,模块级互引成环。"""
         self._sync_shop_record()
         from sr_od.application.currency_war.sim.cw_sim_obs_gen import (
@@ -2015,7 +2015,7 @@ class SimBackend:
         ]
 
     def _open_plane_intel(self) -> None:
-        """位面详情开屏点击源(备战节点条点击 → 模态呈现;flow-seam 附录 B
+        """位面详情开屏点击源(备战节点条点击 → 模态呈现;画面状态机边界登记
         「推进型画面 op 点击 = click 源」同族)。
 
         选中位面初值 = 当前节点位面(与实机「进屏初始选中随接管时点变」
@@ -2051,7 +2051,7 @@ class SimBackend:
 
     def _handle_click_source(self, screen_name: str, area_name: str) -> None:
         """点击源分派(不入 kernel 事件集的推进型点击;逐 case =
-        flow-seam 附录 B 边界登记面)。"""
+        画面状态机边界登记面)。"""
         if screen_name == SCREEN_BRIEFING and area_name == '按钮-下一步':
             self._advance_briefing()
         elif screen_name == SCREEN_BOSS_BRIEFING \
@@ -2224,8 +2224,8 @@ class SimBackend:
             self._shop_record = payload
 
     def _apply_spy_shop_refresh(self) -> None:
-        """商业间谍升级连锁状态副本侧分支(2026-10-17-levelup-shop-transition
-        design §2.3 步①-③;触发 = spy_shop_refresh 声明,来源双消费口 =
+        """商业间谍升级连锁状态副本侧分支(sim 先行形态申报 = sim-design.md §8.2;
+        行为规格出处 git 历史可溯;触发 = spy_shop_refresh 声明,来源双消费口 =
         买经验上报尾单项喂入 + advance 尾统一排空段逐项直调;步④置信号
         = kernel 升级值变更回调(任意经验来源升级),写端唯一,不经本层)。
 
@@ -2236,7 +2236,7 @@ class SimBackend:
           同窗双执行不重牌;模块号沿 M21 续);发牌算法本体 = kernel
           ``sample_shop_deal`` 单一源,采样即状态副本里的值;
         - ②偷最贵 3 张 → 备战席真实入席(席满溢出 = 不入席 + 计数披露,
-          design §2.3 申报的 sim 先行形态;最贵序 = 费用降序 → 星级降序
+          sim 先行形态(sim-design.md §8.2);最贵序 = 费用降序 → 星级降序
           → 槽位升序确定性破并列);入席 = 状态容器 bench 观察直写(sim 状态副本
           真值通道,与 deal_shop 写 shop 同款;不级联合成——design 未
           申报偷取合成语义,保守不猜);
@@ -2299,7 +2299,7 @@ class SimBackend:
                              if b is None or b.kind == 'empty'), None)
                 if spot is None:
                     overflow += 1   # 席满溢出:不入席 + 计数披露(实机
-                    continue        # 观察点,design §2.3 申报待证实形态)
+                    continue        # 观察点,sim 先行形态待实机证实(sim-design.md §8.2))
                 slots[spot] = BenchSlot(
                     kind='unit',
                     unit=Unit(char_id=str(s.card.name or ''),
@@ -2376,7 +2376,7 @@ class SimBackend:
                 '禁静默)')
         if decl.trigger == 'node_advance':
             if decl.next_screen == '':
-                # 局终声明消费分支(键表示切换批 design §2.6):kernel 终局
+                # 局终声明消费分支(next_screen='' 局终声明):kernel 终局
                 # 事件式(sequence_next = None → applied=True match_end,
                 # 声明 next_screen='')的状态副本侧消费;kernel 声明权威、sim
                 # 对账的分工不变。
@@ -2410,8 +2410,8 @@ class SimBackend:
         elif decl.trigger == 'pick_invest_strategy':
             self._on_invest_picked(opening=False)
         elif decl.trigger == 'spy_shop_refresh':
-            # 商业间谍升级连锁状态副本侧分支(2026-10-17 迭代 design §2.3
-            # 步①-③;声明来源 = 上报尾喂入或 advance 尾排空段,
+            # 商业间谍升级连锁状态副本侧分支(sim-design.md §8.2 申报;
+            # 声明来源 = 上报尾喂入或 advance 尾排空段,
             # 步④置信号 = kernel 升级值变更回调,不经本层)。
             self._apply_spy_shop_refresh()
         elif decl.trigger == 'refresh_invest_strategy':
@@ -2422,7 +2422,7 @@ class SimBackend:
             # 投资环境屏整组刷新状态副本侧分支(同上批;环境刷新 = 整组重掷一次)。
             self._refresh_invest_env()
         elif decl.trigger == '':
-            # 纯转移(详设 §3 '' 行):统一幂等返回
+            # 纯转移(next_screen='' 空声明):统一幂等返回
             #(底层稳态由 _reconcile_next_screen 对账)。专家邀请函档
             # 特判呈现已停用(声明改底层屏)——专家画面的出现事实由
             # 登记(kind = expert_invite,open_bookcard 上报内 register)
@@ -2494,7 +2494,7 @@ class SimBackend:
         self._pending_reconcile.clear()
 
     def _record_decl_drift(self, decl: WorldDecl, actual: str) -> None:
-        """声明与状态机画面漂移保留证据(详设 §3 对账面;缺陷保留证据不停机,
+        """声明与状态机画面漂移保留证据(sim-design.md §6.3 声明契约对账;缺陷保留证据不停机,
         早期警报面 = :attr:`disclosures`)。"""
         self.disclosures.setdefault(DECL_SCREEN_DRIFT, []).append(
             f'{decl.trigger or "<pure>"}|{decl.next_screen or "<end>"}'
@@ -2664,8 +2664,8 @@ class SimBackend:
 
         - 触发载体 = 两个插入位置共用本助手:①拾取落地拍
           (:meth:`_on_invest_picked` 各落地效果条目后、难度旗牌更新前)
-          ②环境直发分支(T-46 策略大师数量效果条目 ``gain_invest_strategy``
-          调用后)。原设计一次性标志位挂拾取拍单点,被 T-46 直发分支实现(用户裁定
+          ②环境直发分支(策略大师数量效果条目 ``gain_invest_strategy``
+          调用后)。原设计一次性标志位挂拾取拍单点,被直发分支实现(用户裁定
           2026-10-26「直接发一张随机投资策略不开 offer 无选卡屏」)推翻:
           直发 = 非拾取路径,远见(棱彩 ∈ 直发全池)可经直发入列
           active_strategies,门单挂拾取拍会把效果条目②迟滞到下一拾取拍,违
@@ -2823,8 +2823,8 @@ class SimBackend:
         # 基准效果条目之后、难度旗牌更新之前——先落先占位、后落顺延插队(禁跨越
         # 已落基准效果条目重排);难度同拍时序 = granted 金(+3)与远见自身(豁免
         # 后 0)在下一拍 _update_difficulty_flag 同帧反映,与「选择后难度
-        # 即时反映」裁定(2026-10-14)一致。直发路径的另一插入位置见 T-46
-        # 直发分支(获得链调用后就地判,两个插入位置共用一门,R1 修订形态)。
+        # 即时反映」裁定(2026-10-14)一致。直发路径的另一插入位置见策略大师
+        # 直发分支(获得链调用后就地判,两个插入位置共用一门)。
         _grant_plane, _grant_r = self._node_pos()
         self._fire_strategy_random_grants(plane=_grant_plane, r=_grant_r)
         # 「选择后」敌方难度读数即时反映(裁定 2026-10-14);开局环境选卡时
@@ -3551,16 +3551,14 @@ class SimBackend:
             # 族位面段金支):XP 支同窗邻位独立笔,注册表直读禁聚合;窗口
             # 幂等守卫承接重放不双发。
             self._apply_strategy_plane_start_gold(plane)
-        # 环境定时道具到点发放(迭代 2026-09-24-scheduled-env-gifts
-        # design §2.4):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
+        # 环境定时道具到点发放(「第 N 位面开始时」类环境效果):本收尾在窗口幂等守卫内,且位面过渡点空白与直进
         # 节点共用——「第 N 位面开始时」类发放即落在该位面 1 号节点窗
         # 打开时点(位面过渡屏被点掉时),窗口重放不双发;环境发放为
         # 确定发放 → rand=False(gain-chain.md §5),组名沿 sim:env 与
         # 环境金同窗。
         discharge_due_item_grants(self.gs, plane=plane, round_num=r,
                                   rand=False, sig=logic_sig('sim:env'))
-        # 环境倒计时件到点开盒(T-34 命运礼物;设计 = T-34 设计稿 §2.4,
-        # 迭代 2026-09-23-invest-effects-calc):同一收尾点继承窗口幂等守卫
+        # 环境倒计时件到点开盒(命运礼物):同一收尾点继承窗口幂等守卫
         #(窗口重放不双发);开盒 = 确定事件非采样 → rand=False,
         # sig 组名沿 sim:env 与定时道具发放同窗。
         discharge_due_item_opens(self.gs, rand=False,
@@ -3662,13 +3660,12 @@ class SimBackend:
                 self.gs.observe(self.gs.gold, gold_before + supply_gold,
                                 evidence=sim_evidence(tag),
                                 sig=obs_sig(group_id=f'sim:{tag}'))
-        # 环境直发策略取卡插入位置(T-46 策略大师数量分支;设计 = T-46 定稿
-        # §2.2(e)):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
+        # 环境直发策略取卡插入位置(策略大师数量分支):进窗事实点在窗口幂等守卫内(重放不双发,定时道具/
         # 开盒/boss 先例位);禁置 _node_window_target_base(纯判定契约)
         # 与 _present_offer_or_node_screen(幂等守卫区段外,resume 复走
         # 双发面)。direct 插入位置查询 = kernel ENV_POOL_REWRITE 单一源
         #(表外环境 get None = 无直发的合法语义,登记残缺归评审把关,
-        # 空条目闸已随 2026-10-28 校验治理移除);当前节点 ==
+        # 空条目闸已随校验治理移除);当前节点 ==
         # extra_strategy_grant_node → 直接经获得链
         # 发一张随机投资策略,不开 offer 无选卡屏(用户裁定 2026-10-26),
         # 发放后照常进该节点正常流程;到手名并入 excluded_invest(维持
@@ -4821,15 +4818,15 @@ class SimBackend:
                         evidence=sim_evidence(
                             f'streak:p{node.plane}r{node.round_num}'),
                         sig=obs_sig(group_id='sim:streak'))
-        # —— 环境条件发放触发(迭代 2026-10-10-env-conditional-grants
-        # landing 3.3;接入调用点 = streak observe 之后,连胜真值已落账,
+        # —— 环境条件发放触发(
+        # 接入调用点 = streak observe 之后,连胜真值已落账,
         # 条件单一源 = kernel check_env_streak_grants)。sig 写死单形态
         # = logic_sig('sim:env'):触发函数两写均为 logic 渠道,obs 族进
         # write_logic_rand 即炸渠道族校验(禁 obs_sig,详设
         # env-conditional-grant.md §5)。返回非 None → 宝钻回调(入参
         # 只传装备名,sig 由回调内构 obs 族;宝钻裁决只认财富宝钻 =
         # 回调内早退,接入调用不预判)。带钻补给不采纳回调:钻类型未建模,
-        # _on_supply_picked 零改动(详设 §5「补给宝钻不采纳回调」)。
+        # _on_supply_picked 零改动)。
         granted = check_env_streak_grants(self.gs, signed,
                                           logic_sig('sim:env'))
         if granted is not None:
@@ -5216,7 +5213,7 @@ class SimBackend:
         身份问询懒呈现(:meth:`screen_identity`)会把模态压上大厅,
         而 :meth:`advance` 对 done 状态副本早退不消费——选卡 op 无限重派
         (驱动步上限 5000 烧穿后的失败截图风暴把整局拖到测试超时;
-        2026-10-31 统一部署批戊批后 DP 轨迹首次触达该态,定位实录)。
+        实测曾由部署 DP 轨迹首次触达该态,定位实录)。
         簿记(fired 集/计数)不清——其生命周期 = 局,与 pending 队列
         语义分界(:func:`clear_screen_changes` 同口径)。"""
         self.done = True

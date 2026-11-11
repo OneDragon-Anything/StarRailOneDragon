@@ -76,7 +76,7 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 _TState = TypeVar('_TState')
 
 
-# ===== 策略遥测捕获缝(capture-store §1;信封契约 = design.md §2)=====
+# ===== 策略遥测捕获缝(捕获缝本体与信封契约 = strategy-telemetry.md §1/§2)=====
 
 #: 决策入口显式闭集(14 个;包裹面唯一依据,禁名称前缀通配——前缀规则会把
 #: ``decide_shop_screen`` 序列驱动器(返回 list)卷入「恰一动作」信封语义,
@@ -108,7 +108,7 @@ def _node_envelope(gs: GameState | None) -> dict[str, Any] | None:
 
 
 def _wrap_decision_entry(fn: Callable[..., Any]) -> Callable[..., Any]:
-    """单决策入口包裹(捕获缝本体;语义 = capture-store §1/§2):
+    """单决策入口包裹(捕获缝本体;语义 = strategy-telemetry.md §1/§2):
 
     in-flight 守卫(super() 复用基类实现的内层直通,嵌套归属 = 最外层
     一条)→ dseq 自增 → 原方法 → 信封 + payload 钩子 + sink 落盘
@@ -127,9 +127,9 @@ def _wrap_decision_entry(fn: Callable[..., Any]) -> Callable[..., Any]:
             dseq: int = self._dseq_counter
             dtag = f'{self.STRATEGY_ID}:{dseq}'
             result = fn(self, *args, **kwargs)
-            # payload 钩子异常降级 {}(capture-store §3;信封构造为容缺
-            # 读取、不可抛,不与之合并守卫面)。入参 = 入口返回值(产物
-            # 透传键的通道载体,pick-margin-telemetry design §2.1)。
+            # payload 钩子异常降级 {}(信封构造为容缺
+            # 读取、不可抛,不与之合并守卫面;捕获存储面 = strategy-telemetry §3)。
+            # 透传键的通道载体,strategy-telemetry §2 产物透传键行)。
             try:
                 payload = self.decision_payload(result)
             except Exception as e:  # noqa: BLE001  载荷故障降级,不毒化决策
@@ -174,7 +174,7 @@ def _wrap_decision_entry(fn: Callable[..., Any]) -> Callable[..., Any]:
 class CwStrategy(ABC, Generic[_TState]):
     """一整套货币战争局内打法(可替换的决策大脑;终态契约:构造注入 + 零参入口)。
 
-    **终态契约**(2026-09-16-strategy-terminal-contract;用户裁定干净断不留壳):
+    **终态契约**(构造注入+零参入口;用户裁定干净断不留壳,契约形状 = flow/session.md):
     - **构造注入**:每局全新创建 ``Strategy(gs, config)``——``self.gs`` 当局状态容器
       单例只读引用、``self.config`` 按参注入、``self.state`` 策略器私有状态
       实例(缺省 None,子类覆写 :meth:`_create_state` 定制)、``self.rng``
@@ -236,7 +236,7 @@ class CwStrategy(ABC, Generic[_TState]):
         self.state = self._create_state()   # 经下方 setter 与 gs 宿主同源挂接
         seed = getattr(config, 'strategy_seed', None)
         self.rng = random.Random(seed if seed is not None else 0)
-        # 捕获缝实例态(capture-store §1):dseq = 决策序号(信封 dtag 基数,
+        # 捕获缝实例态(捕获缝语义申报):dseq = 决策序号(信封 dtag 基数,
         # 按局清零——实例不跨局);in-flight 旗 = super() 嵌套链内层直通守卫。
         self._dseq_counter: int = 0
         self._decision_in_flight: bool = False
@@ -271,7 +271,7 @@ class CwStrategy(ABC, Generic[_TState]):
         wrapper 在原方法返回后调用,入参 ``result`` = 入口返回值(词表
         动作字段透传载荷的通道载体;带缺省参 = 非破坏扩展——旧签名
         覆写收到多余实参 TypeError 走 wrapper 既有异常降级 {} 通道,
-        不静默毒化决策返回值),钩子异常降级 {}(capture-store §3)。
+        不静默毒化决策返回值),钩子异常降级 {}(strategy-telemetry.md §3 存储与发现面)。
         载荷两类来源(语义权威版本 = strategy-docs/strategy-telemetry.md):
         **现读键**(出口后 gs/state 现读)与**产物透传键**(词表动作
         字段与私有槽,均为决策帧出口时点快照)——禁依赖未入决策产物
@@ -368,7 +368,7 @@ class CurrencyWarMatch:
     生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个契约调用点收到的 session 就是它 →
     局终置 ``ctx.cw_match = None``(防跨局污染)。
 
-    ``gs``/``performance`` = 终态契约前置落位(landing §3.1):状态容器正身挂
+    ``gs``/``performance`` = 终态契约前置落位(契约形状 = flow/session.md):状态容器正身挂
     Match(策略器终态改持只读引用,ops 取状态容器 = 「取当局事实」语义)、
     观测统计归框架侧。本批 additive 填充——消费接入调用归终态切换批,
     现役读面仍走 session 旁口。
@@ -406,7 +406,7 @@ def set_obs_reset_hook(reset_phase_round_cache: Callable[[], None]) -> None:
 
 #: 策略遥测 sink 注入槽(缺省 None = 零写,纯单测零副作用):决策信封
 #: 落盘回调(实现住 telemetry/strategy_telemetry,写盘与 run_id 供给都
-#: 归彼处——策略包禁 import telemetry,槽位与写盘分离,capture-store §4)。
+#: 归彼处——策略包禁 import telemetry,槽位与写盘分离,strategy-telemetry.md §3)。
 #: 生产装配点 = app/decision_assembly ``install_obs_ports()`` 同位;
 #: sim 侧注入 = cw_sim_match_drive 装配段(recorder 重定向同段)。
 _DECISION_SINK: Callable[[dict], None] | None = None

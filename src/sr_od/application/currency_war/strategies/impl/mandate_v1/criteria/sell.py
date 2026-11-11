@@ -4,7 +4,7 @@
 funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两分支同开、
 mandate=false+funding_support=true)。换线清仓出口(line_switch_sell)
 已删除(候选-锁定制:锁定为一次性决策,无换目标后的清场需求——
-line_and_upgrade §1.6;V_MS 槽随函数删除撤槽)。
+停用面申报,git 历史可溯;V_MS 槽随函数删除撤槽)。
 
 fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
 第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖(T1 语义重写)
@@ -80,7 +80,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
                       merge_guard_release: frozenset[str] | set[str] = frozenset(),
                       dedup_names: set[str] | None = None,
                       ) -> tuple[list[int], str]:
-    """凑息卖·回拉动作发出点(T1;设计 13_buy_face_design §2.2)。
+    """凑息卖·回拉动作发出点(11 号稿 §4.0 场景表 node_end_interest 行)。
 
     语义(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
     ① **金位触发(下一利息档缺口驱动)**:当前金未达下一利息档线
@@ -113,7 +113,7 @@ def sell_for_interest(gold: int, bench: list[BenchSlot],
     缺口〔跨档〕帧数——跨档止盈下发出即闭合,键名保留 g* 字样 =
     历史遥测兼容,语义按本行)。
 
-    凑息禁令(血线硬地板解锁包件②)已删除(line_and_upgrade §2.3
+    凑息禁令(血线硬地板解锁包件②)已删除(11 号稿 §2 拦截层
     血线地板解锁行——唯一消费方 = 已废止的血线解锁;正典依据
     口述条目 39(登记簿已退役)「HP 不作决策依据」,濒死响应 = 修经济/阵容
     本身,凑息卖回不受血线覆盖)。

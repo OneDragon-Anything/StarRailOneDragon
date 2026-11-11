@@ -13,7 +13,7 @@ sim 重构为「游戏后端」(SimBackend)后,流程侧与后端的全部替换
 - ``screen_identity()`` —— 后端画面状态机答当前 screen_info 档名;
 - ``observe(screen_name)`` —— 生成器直出该屏 ``CwScreenXxxObs`` 形状产物
   (消费方 = 画面 op 读屏点,产物必须经 ``cw_screen_report`` 同名上报函数
-  落状态容器,写通道铁律见 flow-seam 详设 §3);
+  落状态容器,写通道铁律 = sim-design.md §6.2);
 - ``node_sequence()`` —— 备战节点条读点答口(状态副本合成节点行;消费方
   = 守卫的画面稳定判据与接管补采委派链,查询面零状态容器写);
 - ``plane_intel_view()`` —— 位面详情屏呈现面答口(接管补采识别管线的
@@ -174,7 +174,7 @@ def sim_or_live_identity(screen_names: tuple[str, ...] | list[str],
     """画面身份读点改道 helper(外循环阶段一身份分发的接入原语)。
 
     语义与 :func:`sim_or_live_observation` 同族:装了后端 →
-    ``screen_identity()``(画面状态机唯一答口,flow-seam 附录 A.2
+    ``screen_identity()``(画面状态机唯一答口,sim-design.md §6.2
     「sim 画面身份归 screen_identity」),且仅当档名 ∈ 调用方清单时返回
     (清单外 = None,结束本次访问调用方默认分支——与实机 ``get_match_screen_name``
     的清单过滤语义同形,备战两识别标志同帧命中的默认分支因此不受影响);未装配 → 执行
@@ -220,7 +220,7 @@ def mechanical_io_allowed() -> bool:
     """机械 IO 分支(直连 controller 点击/拖拽)当前是否可达。
 
     实机(未装配)True;sim 装配后 False——机械执行分支静默跳过,动作的
-    状态副本反应由紧随的自上报(上报函数族)承接(flow-seam 详设 §2
+    状态副本反应由紧随的自上报(上报函数族)承接(sim-design.md §6.5
     直连旁路 port 检查口,与各旁路文件逐点守卫同用;漏改路径仍由
     运行器 controller 桩兜底触碰即炸)。
     """

@@ -2,7 +2,7 @@
 
 判据体系 = 升级触发统一与资金门重定义批(用户裁定 2026-10-18 四条;
 触发/资金门/删除面权威基准 = strategy-docs/11_shop_decisions.md §2)+
-2026-10-17-levelup-shop-transition 迭代收尾(资格门全链判定单一源
+资格门全链判定单一源
 :func:`upgrade_gate_verdict`,支出形态单帧原子,跨画面键退役):
 
 - **触发单判据三分派**(11 号稿 §2 停留门「可达最优等级」模型承接):
@@ -114,7 +114,7 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     """P48 整买纪律(D-BUYNOTE):整批 XP 放行判据。
 
     仅当「一次买齐到下一级」的金够付时放行(clicks×click_cost ≤ gold)
-    ——散买 XP(买不够升级)零收益,拦截(line_and_upgrade §2.2 裸金
+    ——散买 XP(买不够升级)零收益,拦截(整买形态判据位,
     足支的判据位;P72(1) 整买形态 = Leontief 互补的实现载体)。
     """
     if clicks_to_next <= 0:
@@ -132,7 +132,7 @@ def _plane_round_of(state: GameState) -> tuple[int, int]:
 
 
 def prob_band_of_cost(cost: int) -> tuple[int, int]:
-    """费用档 → 最优概率带 (下界,上界)(line_and_upgrade §2.1 停留门)。
+    """费用档 → 最优概率带 (下界,上界)(11 号稿 §2 停留门)。
 
     带 = **搜索域 1..9 内** REFRESH_PROB 概率峰值的等级区间,平顶整段
     取全部峰值等级(1 费带 [1,3] 类)——成员由 REFRESH_PROB 直接计算。
@@ -142,7 +142,7 @@ def prob_band_of_cost(cost: int) -> tuple[int, int]:
     lv10 出域依据:P35 已证停手窗 lv9→10 恒负 + ``peak_refresh_level``
     在产表即此口径(1..9 域内取峰,cw_plane_table);带成员与该表的
     关系 = 带上界取 max(带)(单点峰形态,并列取高档),peak_refresh_
-    level 作域上限校验,非带定义本体(line_and_upgrade §2.1 带成员
+    level 作域上限校验,非带定义本体(11 号稿 §2 带成员
     规则与在产载体关系申报)。
     """
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
@@ -156,8 +156,8 @@ def _held_max_star(state: GameState, name: str) -> int:
     """同名持有最高星(bench ∪ 场上全场域;未持有 = 0)。
 
     星级目标完成判定 = 持有最高星 ≥ 必要星级(need_star 以「追到底」
-    语义登记,合成路径的中间拷贝由最高星天然承载,line_and_upgrade
-    §1.5)。"""
+    语义登记,合成路径的中间拷贝由最高星天然承载(
+    11 号稿 §1 序 1 星级口径)。"""
     best = 0
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_units_of,
@@ -171,7 +171,7 @@ def _held_max_star(state: GameState, name: str) -> int:
 
 
 def unfinished_star_targets(state: GameState) -> list[tuple[str, int, int]]:
-    """未完成星级目标集(line_and_upgrade §1.5/§2.1;锁定线 need_star
+    """未完成星级目标集(11 号稿 §1 序 1 星级口径/§2;锁定线 need_star
     驱动)。
 
     锁定线 need_star 表中持有最高星 < 必要星级的成员,返回
@@ -179,7 +179,7 @@ def unfinished_star_targets(state: GameState) -> list[tuple[str, int, int]]:
     2★ 即完成(§1.5);辅助 1★ 持有即完成,未持有者入集(首张即目标)。
     费用档 = ``effective_cost`` 当前实费 resolved 口径(银狼系变费后
     实档,档漂移时带随之重取)。未锁定期 = 空集(停留门覆盖锁定后,
-    line_and_upgrade §2.1)。
+    11 号稿 §2)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     from sr_od.application.currency_war.kernel.cw_economy import (
@@ -203,7 +203,7 @@ def unfinished_star_targets(state: GameState) -> list[tuple[str, int, int]]:
 
 
 def stay_target_of(state: GameState) -> tuple[str, int, int] | None:
-    """当前停留目标 = 未完成星级目标中费用档最低者(shop_session §2.4
+    """当前停留目标 = 未完成星级目标中费用档最低者(11 号稿 §2
     多目标停留顺序:先低费后高费,与搜牌等级节奏一致;并列取注册表
     名序,确定性)。"""
     targets = unfinished_star_targets(state)
@@ -218,7 +218,7 @@ def _locked_and_plane2(state: GameState,
 
     P1 硬规则锁定子局星级目标存在仍不覆盖(P1 零主动升级,阶段保护:
     P1 经验论证在案〔到 7 级为 P2 人口目标,P1 冲级与「P1 恒不刷」及
-    经验账冲突,line_and_upgrade §2.1〕;P2 未锁定窗口同样零升级——
+    经验账冲突,11 号稿 §2〕;P2 未锁定窗口同样零升级——
     窗口靠候选缺件刷新,锁定后带驱动接管)。窗口谓词形态 =
     ``plane2_started_of``(宪法第 2 条合规)。"""
     from sr_od.application.currency_war.strategies.impl.mandate_v1.session_scope import (

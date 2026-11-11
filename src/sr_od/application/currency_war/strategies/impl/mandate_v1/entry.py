@@ -1,14 +1,14 @@
 """cw4 备战决策入口(十段全扫工序)。
 
 工序结构(判据权威版本 = strategy-docs/22_prep_screen.md §1;2026-10-17
-迭代 design §2.2 重排——新增第 1 步商店随机态重开,其后顺延):每次回
+工序重排(新增第 1 步商店随机态重开,其后顺延;正本 = 22 号稿 §1):每次回
 到备战画面从第 0 步向下扫描,执行第一个满足条件的步骤并返回其动作,
 下一帧重新扫描(单动作循环不变;回跳语义——腾位后回头点晶矿、买完牌
 回头部署——在全扫下自然表达):
 
     第 0 步 溢出告警自救 → 第 1 步 商店随机态重开(信号在:清 handled
         标记 + 开店进店 + 清信号)→ 第 2 步 点开消耗品 → 第 3 步 晶矿
-     → 第 4 步 升级检查(design §2.2:判据每帧重评,资格门全链同参
+     → 第 4 步 升级检查(11 号稿 §2:判据每帧重评,资格门全链同参
         消费 criteria/levelup;命中 → 凑金/发射)
      → 第 5 步 商店会话 → 第 6 步 部署调整 → 第 7 步 装备与工具
      → 第 8 步 节末凑息 → 第 9 步 出战
@@ -17,7 +17,7 @@
     M6 一星兜底带)由店内会话(23 号篇)与卖出评估器(criteria/sell_candidates,
     卖出场景注册表)承载;卖出场景统一消费 ``evaluate_sell_candidates``;
 升级判据本体与发射资格门全链 = ``criteria/levelup``(11 号篇 §2 +
-design §2.1 七道成员集单一源),本模块只做工序接入调用与发出组装。
+11 号篇 §1 序 1 名单三态单一源),本模块只做工序接入调用与发出组装。
 部署/装备/工具判据单一源 = deploy_plan / cw_equip_wear_plan /
 cw_equip_env(第 6/7 步只承载调用时机)。
 
@@ -300,7 +300,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
                               session: StrategySession, state: GameState,
                               tag: str) -> None:
     """告警帧态 1 上阵安置动作发出点(部署统一批丁纳入统一管理后的专用执行路径,
-    unified-deploy-order §4 entry 备战工序部署面行 D3-4:告警帧常规搜索
+    24 号稿 §1.3 执行形态行:告警帧搜索
     跳过,态 1 上阵腾槽 = 专用路径——bench 真单位直落场上空槽(腾 bench
     席),载体 = 统一拖动(上阵纯为腾槽保命,告警解除后
     下轮全扫恢复常规部署)。
@@ -430,7 +430,7 @@ def emit(session: StrategySession,
         return _rescue   # 含 [] = 防御分支零动作返回主循环(不出战)
 
     # —— 前置步:计划游标逐帧消化(第 0 步溢出自救后新插;roster-
-    #    plane1-union design §2.2 第 4 项执行端 + 用户裁定补录「跨画面
+    #    11 号稿 §4.0 执行端 + 用户裁定补录「跨画面
     #    计划变量终版」:商店决策一次定型,备战照单执行零重验)——
     # 槽在期间本步优先于第 1-9 全部步(含第 5 步开店与第 9 步出战——
     # 计划未完成不出战);被第 0 步自救抢占的帧本步不运行(告警帧零
@@ -439,7 +439,7 @@ def emit(session: StrategySession,
     if _plan_out is not None:
         return _plan_out
 
-    # —— 第 1 步:商店随机态重开(2026-10-17 迭代 design §2.2 第 1 步/
+    # —— 第 1 步:商店随机态重开(22 号稿 §1 第 1 步/
     # §2.4)——信号在 = 商店有未处理的随机态新牌面(含商业间谍偷入备战席
     # 的 3 张,用户裁定「很高的优先级」;置于溢出自救之后、资源动作之前):
     # 清 handled 标记 → 开店进店(入口观察读真牌面,会话循环正常评估)
@@ -466,7 +466,7 @@ def emit(session: StrategySession,
     if _ore_out:
         return _ore_out
 
-    # —— 第 4 步:升级检查(design §2.2:判据每帧重评,无跨画面键;
+    # —— 第 4 步:升级检查(11 号稿 §2:判据每帧重评,无跨画面键;
     # 资格门全链 = criteria/levelup.upgrade_gate_verdict 两屏同参单一源。
     # 命中后发射:全链通过 → 单帧原子整批(实付上界 = 发射时授权
     # 值,授权不跨帧携带)+ 清 handled 标记;金不足(花后破线)→
@@ -506,7 +506,7 @@ def emit(session: StrategySession,
 
     # 形态⑥观测(纯观测零行为,fail-closed 期只记不判):target 空窗
     # ∧ 濒死带 ∧ 域外 ∧ 持金 ∧ 本帧零金消费——金滞留入败局的形态暴露
-    # (键名申报源 = supply_arbitration_design §5.1 terminal_targetless_
+    # (键名申报源 = 写点注释 terminal_targetless_
     # idle;载体适用范围随工序重排收窄 = 到达第 8 步之后的帧,实体面/开店/
     # 部署/装备帧提前返回不入键;到达本段的帧无 LevelUp/OpenShop 类
     # 动作,旧动作面条件恒真,申报)。
@@ -599,7 +599,7 @@ def _step0_overflow_self_rescue(session: StrategySession, gs: GameState,
 
 
 def _yield_plan_fail(st, counters: dict, plan) -> None:
-    """计划失败出口③(design §2.2 第 4 项执行端:V 不在场/卖失败/级联
+    """计划失败出口(11 号稿 §4.0 执行端/22 号稿 §1 前置步:V 不在场/卖失败/级联
     卡死三态同款)——清槽 + X 路径失败标记置位 + 恢复扫描;下轮商店重评
     走 bench 件路径或机会清单(标记消费 = shop 统一获取让位评估排除
     场上件 victim,PV-8)。
@@ -618,7 +618,7 @@ def _yield_plan_fail(st, counters: dict, plan) -> None:
 
 def _step_yield_plan(session: StrategySession,
                      gs: GameState) -> list[Emitted] | None:
-    """前置步:计划游标逐帧消化(工序第 0 步后新插;总纲 design §2.2
+    """前置步:计划游标逐帧消化(工序第 0 步后新插;22 号稿 §1 前置步
     第 4 项执行端 = 照计划操作零重验,逐帧消化步骤序列)。
 
     - 槽空/节点戳失效 → 返回 None(扫描正常推进);
@@ -707,7 +707,7 @@ def _step_yield_plan(session: StrategySession,
                 continue
             _yield_plan_fail(st, counters, plan)
             return None
-        # deploy 步骤(阶段 5/6 差分执行器驱动,§3.5 D8-1 定稿:拖动与
+        # deploy 步骤(差分执行器驱动,24 号稿 §1.3:拖动与
         # 重观察交替 + 完整卡死检测):
         # - 上帧已发拖动(pending_reobserve)→ 本帧发 obs(in_place)
         #   环内重观察(观察帧对账:自上报推演 vs 实读板面);
@@ -886,7 +886,7 @@ def _step2_ore(session: StrategySession, gs: GameState) -> list[Emitted]:
             points=select_ore_clicks(targets, ORE_CLICK_BATCH_MAX_K)),
             True, 'prep_spheres')]
     # 席满:统一序列末位让位(采晶矿前空位场景;3.2 改造 = 垫件谓词
-    # 过滤退役【拍,总纲 §2.7 无场景专属池子/身份过滤退役】——部署重排
+    # 过滤退役【拍,32 号稿 §8 无场景专属池子/11 号稿 §4.0 身份过滤退役】——部署重排
     # 后的全局面序列,末位即让位对象;无任何可卖件 → 放弃晶矿保留:
     # 确定的高价值持有不换随机产出的让位只发生在序列真空时,挂待玩家
     # 确认申报沿袭,prep_pipeline「关键取舍」节差分申报)。
@@ -1073,9 +1073,9 @@ def _step4_shop_session_pending(session: StrategySession,
 def _step5_deploy(session: StrategySession, gs: GameState,
                   frame: MandateFrame,
                   levelup_actions: list[Emitted]) -> list[Emitted]:
-    """部署调整步(工序第 6 步;阶段 5/6 切差分执行器——unified-
-    deploy-order §5 步骤映射:第 6 步 = 搜索定型 + 差分执行器,
-    与前置步级联共用 §3 执行器)。
+    """部署调整步(工序第 6 步;差分执行器——
+    24 号稿 §1.3:第 6 步 = 搜索定型 + 差分执行器,
+    与前置步级联共用同一执行器)。
 
     形态 = 常规部署差分(非计划执行期):**零读屏多动作循环 + 入口
     heavy 对账**现状维持(§3.5 D9-3:无卡死判定需求,收敛由下一入口
@@ -1090,8 +1090,8 @@ def _step5_deploy(session: StrategySession, gs: GameState,
         deploy_diff,
     )
     prep = mandate.assemble_prep_context(session, gs, frame)
-    # 次名分量收集出参(真实出口唯一传入点,pick-margin-telemetry
-    # design §2.1:虚拟 4 调用点不传,分流由调用侧承载)。
+    # 次名分量收集出参(真实出口唯一传入点,strategy-telemetry §2 键表)。
+    # 24 号稿 §1.4 虚拟路径:虚拟调用点不传,分流由调用侧承载)。
     _margin: dict = {}
     target = mandate.select_deployment(frame, prep, margin_out=_margin)
     actions = deploy_diff.deploy_diff_target_actions(session, gs, target)
@@ -1240,9 +1240,9 @@ def _step7_node_end_interest(session: StrategySession,
     """节末凑息步(工序第 8 步;22 号篇 §1 第 8 步;3.2 改造 = 统一序列
     消费,场景池/身份面随评估器重写退役——部署重排后全局面序列,部署
     定型内档 1 天然永不先卖,「凑金/凑息可卖场上无关角色」形态废止,
-    总纲 §2.7 行为申报)。
+    32 号稿 §8 行为申报)。
 
-    凑息豁免(roster-plane1-union design §2.2 第 5 项):候选池剔除
+    凑息豁免(32 号稿 §9/11 号稿 §4.0 场景表):候选池剔除
     线内未达标成员(线内 ∧ 手持 ∧ 星未达目标)——为利息不得动阵容
     在建件,是为利息绝对不可卖,非排序后移;被迫类卖出(溢出/晶矿/
     获取让位)不适用。池空 → 零动作,剔光帧落观测键(评估器写点,
@@ -1276,9 +1276,9 @@ def _step7_node_end_interest(session: StrategySession,
         return []
     # 统一序列消费(3.2):跨档止盈已为节末凑息场景参数(评估器内实现,
     # 仅「单件退金 ≥ 缺口」者入序列,按实际星级退金判——仅一星过滤退役
-    # 【拍,总纲 §2.4】),取用 = 让位序首位;无可行件 = 序列真空,
-    # 零动作(观测键已随身份段退役,3.4)。凑息豁免(roster-plane1-
-    # union design §2.2 第 5 项):线内未达标成员为利息绝对不可卖,
+    # 【拍,11 号稿 §4.0 场景表】),取用 = 让位序首位;无可行件 = 序列真空,
+    # 零动作(观测键已随身份段退役)。凑息豁免(
+    # 凑息豁免,32 号稿 §9):线内未达标成员为利息绝对不可卖,
     # 评估器池过滤承载;剔光帧(唯一可行件全为线内未达标成员 → 零
     # 动作)观测键随 counters 载体落账(写点 = 评估器,键 =
     # sell_candidates.INTEREST_EXEMPT_DEPLETED_KEY)。

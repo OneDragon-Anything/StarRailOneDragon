@@ -10,7 +10,7 @@ strategy-docs/22_prep_screen.md 第 6 步与 12_line_and_intention.md
   (语义权威版本 = strategy-telemetry.md 键表;window 键已随 entry_signals
   整体退役);
 - 产物透传键 2(pick_margin/deploy_margin):词表动作字段与私有槽,
-  均为**决策帧出口时点快照**(pick-margin-telemetry design §2.2)。
+  均为**决策帧出口时点快照**(键表 = strategy-telemetry §2)。
 
 纯读纪律:本模块零写(不碰 cw4_counters/状态容器域/意向缓存/私有槽——
 deploy_margin 读槽后清挂 bridge 覆写,读后清不入本模块);K 空窗
@@ -127,8 +127,8 @@ def _pick_margin_key(result: object | None) -> dict | None:
     """pick_margin 键:投资两面选卡帧的次名分量(产物透传键)。
 
     值源 = 决策入口返回动作实例的 ``margin`` 字段(词表动作字段通道,
-    flow 从决策产物拷入;键形与边界值表 = pick-margin-telemetry
-    design §2.2-1/2)。非选卡帧(动作无该字段)与刷新建议帧/空候选
+    flow 从决策产物拷入;键形与边界值表 = strategy-telemetry §2
+    pick_margin 行)。非选卡帧(动作无该字段)与刷新建议帧/空候选
     帧 → None(不落值)。纯读:本模块不改动作实例。"""
     return getattr(result, 'margin', None)
 
@@ -137,7 +137,7 @@ def _deploy_margin_key(gs: GameState) -> dict | None:
     """deploy_margin 键:部署定型次名分量(私有槽透传键)。
 
     值源 = StrategyState.deploy_margin 槽现读(写入端单一源 =
-    entry._step5_deploy;键形 = pick-margin-telemetry design §2.2-3,
+    entry._step5_deploy;键形 = strategy-telemetry §2 deploy_margin 行,
     帧定界 = bridge 入口清+读后清 → 非部署帧读到恒空/None)。读槽属
     纯读;读后清挂 bridge 覆写(本模块零写纪律不动)。"""
     return state_of(gs).deploy_margin

@@ -1,4 +1,4 @@
-"""语料抽取器(旧流 decisions/outcomes → 训练样本行;landing §3.1)。
+"""语料抽取器(旧流 decisions/outcomes → 训练样本行;sim-power-model §8-1)。
 
 canonical 口径单一源 = sim-power-model §5.1(join 键/快照规则/去重与
 降级/坏局排除/标签);特征算术 = 同包 :mod:`features`(双侧同源,本模
@@ -15,7 +15,7 @@ extraction/``(gitignored 区),零主流程副作用;本模块仅在显式运行
   (``fake_``/``sim_`` 前缀规则 + 显式事故名单,run 粒度拦「进错目录
   的 run」,先例同 Δ池生成器)。
 - 铁律 3(HP 不入胜负模型)= 训练样本行零 HP 字段;HP 量只进幅度
-  样本表(design §2.4,供 3.4 直方估计,不回喂胜负模型)。
+  样本表(幅度层,供直方估计,不回喂胜负模型;sim-power-model §6.1)。
 
 产物头部 = 源指纹(输入文件集 sha256 + 抽取器版本)+ 三数重钉
 (战斗类结局/有标签/胜事件)+ 丢弃分桶(source×位面)+ MNAR 缺失率
@@ -56,11 +56,11 @@ from sr_od.application.currency_war.telemetry.cw_replay_reader import (
 #: core_star_depth 连带漂移)——语料需按新版本重建。
 EXTRACTOR_VERSION: str = 'v2'
 
-#: 产物默认落点(gitignored 区;landing §3.1 指定)。
+#: 产物默认落点(gitignored 区;sim-power-model §8-1 指定)。
 DEFAULT_OUT_DIR: Path = (get_project_root() / '.debug' / 'currency_war'
                          / 'sim_power_model_v1' / 'extraction')
 
-#: 默认许可源 = 已核实实机流根(design §2.1;待盘点候选经普查裁定
+#: 默认许可源 = 已核实实机流根(待盘点候选经普查裁定
 #: sim 后不进许可集,裁定记录随产物)。
 DEFAULT_LICENSE_DIRS: tuple[Path, ...] = (LIVE_DIR,)
 
@@ -322,7 +322,7 @@ def align_decisions_snapshots(
 # ===== 训练样本行与幅度样本表 =====
 
 def is_censored_hp(hp_after: int) -> bool:
-    """删失判定单一口径:hp_after ∈ {0,1} 即删失(design §2.4)。
+    """删失判定单一口径:hp_after ∈ {0,1} 即删失。
 
     伤害被血量吸收——归零行与首保底剩 1 行均属截断观测(真实采样值
     ≥ 观测值);偶然落在 {0,1} 的未截断行会被误标,误标率如实披露。
@@ -456,7 +456,7 @@ def extract_training_corpus(
             'win_events': win_keys,
             'param_budget_floor': win_keys // 10,
             'budget_gate_triggered': (win_keys // 10) < 6,
-            'caliber_note': '预算 = 胜事件键数/10 向下取整(design §2.1/§2.3;'
+            'caliber_note': '预算 = 胜事件键数/10 向下取整(sim-power-model §4.3;'
                             '行级 battle_outcomes_rows 为 raw 参考口径)',
         },
         'drop_buckets_by_source_plane': dict(sorted(drop_buckets.items())),
@@ -476,7 +476,7 @@ def extract_training_corpus(
 
 # ===== target_comp 统计 =====
 
-#: 组合标签族前缀(「过渡配方·X(+Y)」形态;design §2.2 取大定义节)。
+#: 组合标签族前缀(「过渡配方·X(+Y)」形态;取大定义 = :func:`best_line`)。
 _TRANSITION_LABEL_PREFIX = '过渡配方·'
 
 
@@ -535,7 +535,7 @@ def survey_directory(dir_path: Path) -> dict[str, Any]:
 
     裁定规则(证据 → source):run_id 带 ``sim_`` 前缀 = sim 批;
     state 子键含 ``board_factions`` = sim 批(该键名仅见于 sim 批产物,
-    design §2.1);两证皆无 = 实机。拿不准(证据缺失/矛盾)→ 标
+    );两证皆无 = 实机。拿不准(证据缺失/矛盾)→ 标
     pending 并给证据。本函数是运行时普查工具,只读不写。"""
     dec_path = dir_path / 'decisions.jsonl'
     out_path = dir_path / 'outcomes.jsonl'
@@ -585,7 +585,7 @@ def adjudicate_source(evidence: dict[str, Any]) -> str:
 
 
 def build_survey_record() -> dict[str, Any]:
-    """许可集普查记录(landing §3.1 ①;运行时读候选目录证据)。
+    """许可集普查记录(sim-power-model §8-1 第①步;运行时读候选目录证据)。
 
     覆盖面:已核实实机(live)/ 待盘点候选(p3_ab 4 目录 + gs1 smoke
     2 目录)/ 默认排除面(sim 批根逐文件计数,铁律 2)。"""
@@ -614,7 +614,7 @@ def build_survey_record() -> dict[str, Any]:
     entries.insert(0, {
         'path': str(LIVE_DIR.resolve().relative_to(root)),
         'source': 'live',
-        'disposition': 'licensed(已核实实机;design §2.1)',
+        'disposition': 'licensed(已核实实机)',
         'evidence': survey_directory(LIVE_DIR) if LIVE_DIR.exists() else {},
     })
     entries.append({
@@ -679,8 +679,8 @@ def run_extraction(license_dirs: list[Path] | tuple[Path, ...],
 def main() -> None:
     """CLI 入口(默认许可 = live 流根;产物落 .debug 指定目录)。"""
     parser = argparse.ArgumentParser(
-        description='CW 战力模型语料抽取器(旧流;landing 2026-10-19-'
-                    'sim-power-model-v1 §3.1)')
+        description='CW 战力模型语料抽取器(旧流;'
+                    'sim-power-model §8-1)')
     parser.add_argument('--out', type=Path, default=DEFAULT_OUT_DIR,
                         help='产物目录(默认 .debug gitignored 区)')
     parser.add_argument('--license-dir', type=Path, action='append',

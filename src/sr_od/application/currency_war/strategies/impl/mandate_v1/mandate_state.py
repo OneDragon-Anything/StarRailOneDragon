@@ -27,7 +27,7 @@ one_dragon 零 import 本类。
 - **S3 升级检查不立变量**——升级检查 = 期望态
   新鲜度派生,非存储旗标,本类禁新增对应字段。
 
-职责来源裁定(用户 2026-09-06,session.md 头注):session 只承载「从游戏
+职责来源裁定(用户 2026-09-06,flow/session.md 头注):session 只承载「从游戏
 画面观察到的数据」;策略推导产生的中间状态(目标意向/定型信号/回退集/
 纪律计数/遥测分键表/推导缓存)是**策略器的内容**,由实现包私有定义、
 一局内存活、自己持有。框架经 ``CwStrategy.create_state`` 工厂钩子按局
@@ -303,7 +303,7 @@ class StrategyState:
     # mandate.stall_buys_register 兼容 shim);读端单一源 =
     # sell_gate.active_window(窗口段,press/垫保两类,活跃 = 登记轮
     # ==当前轮)/ sell_gate.stall_protect_active(T3 单类视图)。
-    # 生命周期四出口(方案 v3 §3.1;①卖出销/②部署销/②′合成销/
+    # 生命周期四出口(11 号稿 §4.1;①卖出销/②部署销/②′合成销/
     # ③轮界销):consume_on_sell / prune_on_deploy / consume_on_merge /
     # 读端轮界过期;obligation/hold 类 τ=∞ 不轮界过期,由出口①②②′
     # 与换线闭合(close_on_switch)承载。账闭合按五键分键

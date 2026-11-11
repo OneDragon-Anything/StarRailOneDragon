@@ -1,4 +1,4 @@
-"""criteria/shop_session——商店会话读数协议与解拦复核(shop_session §4.2)。
+"""criteria/shop_session——商店会话读数协议与解拦复核(22 号稿 §1 第 5 步)。
 
 本模块 = 商店会话的共用判据面(宪法第 6 条:备战第 5 步与商店入口两画面
 消费同一函数,非画面文件互 import;存储 = session_scope/StrategyState)。
@@ -38,14 +38,14 @@ as-built 备战帧金位不可观察(cw_screen_prep「gold 仅 shop 开态可信
   (:func:`session_gold`)判缺口,禁每笔触发开店重读(防震荡申报的自洽
   前提);账面与下一实读偏差 = 漏账侦测信号(实机观察点)。
 
-## 解拦复核(shop_session §4.2;唯一触发点 = 备战第 5 步入口)
+## 解拦复核(22 号稿 §1 第 5 步;唯一触发点 = 备战第 5 步入口)
 
 入口段(关门态)= :func:`shop_unblock_recheck`:判金位(账面)/席位空出
 (备战可观察),任一使清单记录拦因解除 → 解拦(调用方清标记开店);金位
 分支账面失效时申报读数开门(路径③金位读数形态,契约 A)。店内段 =
 :func:`shop_recheck_drop_off_face`:会话入口验证记录的目标牌是否仍在
 当前牌面,不在即销项(刷新/消耗后已不在店)。方向锁定不走清单解拦(锁定
-写入直接清标记,line_and_upgrade §1.4)。
+写入直接清标记,12 号稿 §2 锁定写入连带动作)。
 """
 from __future__ import annotations
 
@@ -319,7 +319,7 @@ def detect_merge_result_frame(gs: GameState) -> bool:
 
 @dataclass(frozen=True)
 class RecheckOutcome:
-    """解拦复核入口段结果(shop_session §4.2)。
+    """解拦复核入口段结果(22 号稿 §1 第 5 步)。
 
     ``unblock`` = 任一记录拦因解除(调用方清「本节点已处理」标记,本步
     开店);``need_gold_read`` = 金不足类记录在场 ∧ 账面失效(调用方按
@@ -333,7 +333,7 @@ class RecheckOutcome:
 def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
     """解拦复核判定函数(入口段·关门态;备战第 5 步入口唯一触发)。
 
-    按键分轴(roster-plane1-union design §2.2 第 4 项步 6 S5-4/S6-4/
+    按键分轴(11 号稿 §4.0 解拦分轴行;旧 session_funding 解拦轴随场景退役——
     S7-5;旧 session_funding 解拦轴〔金 ≥ price〕随场景退役——统一
     让位的金位轴按记录语境分轴):
 
@@ -346,7 +346,7 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
       金)+ 节点边界(新货架必新签名);签名轴在**重开店帧首评**消费
       (:func:`shop_recheck_face_signature`,会话入口内务段);
     - 金不足池穷尽类 ``gold_short``:现行轴(金位 ≥ price 解除线);
-    - 方向锁定不走本清单(锁定写入直接清标记,line_and_upgrade §1.4);
+    - 方向锁定不走本清单(锁定写入直接清标记,12 号稿 §2 锁定写入连带动作);
       记录拦因闭集 = {席满,金不足,优先级不足·席满语境,优先级不足·
       金不足语境}(ShopOpportunity.blocked_by 值域;bench_full 为零写入
       死键,闭集保留)。
@@ -386,7 +386,7 @@ def shop_unblock_recheck(gs: GameState) -> RecheckOutcome:
 
 
 def shop_recheck_face_signature(gs: GameState) -> int:
-    """优先级不足·金语境的签名轴(重开店帧首评;design §2.2 第 4 项
+    """优先级不足·金语境的签名轴(重开店帧首评;22 号稿 §1 第 5 步——
     S7-5——解拦复核在关门态读不到货架,签名对比 = 重开店后的首帧:
     签名 ≠ 记录签名 → 记录销项〔新货架必重评,买入臂照常自评——货架/
     金位现况即最新,撞闸按现行闸处理〕;签名相同 → 记录保持有效)。
@@ -413,7 +413,7 @@ def shop_recheck_face_signature(gs: GameState) -> int:
 
 
 def shop_recheck_drop_off_face(gs: GameState) -> int:
-    """解拦复核店内段(shop_session §4.2;会话入口消费)。
+    """解拦复核店内段(22 号稿 §1 第 5 步;会话入口消费)。
 
     验证清单记录的目标牌是否仍在当前牌面——不在即销项(刷新/消耗后已
     不在店);清单空且无其他可买 → 正常收工再关店(收工写清单以收工时

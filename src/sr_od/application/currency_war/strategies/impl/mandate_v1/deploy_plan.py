@@ -4,9 +4,9 @@
 **谁上场、去哪一排、落哪个槽,全部由本模块决定;框架(执行链/写侧)
 在落位上零决定**——选人/排路由/槽位选择的本模块单一源见下。
 
-- 选人 = 统一部署搜索(``deploy_search.search_deploy_target``,阶段
-  5/6 乙起;旧七桶选人族已随部署统一批丁丁批纳入统一管理时删除——unified-
-  deploy-order §2/§4):target_board = 角色名 → (排, 选定星);
+- 选人 = 统一部署搜索(``deploy_search.search_deploy_target``);
+  旧七桶选人族已随部署统一批纳入统一管理时删除;
+  target_board = 角色名 → (排, 选定星);
 - 排路由(:func:`deploy_row_pref`,三级):阵容站位覆盖(``Comp.char_
   positions`` 字段契约「阵容特定站位要求,覆盖注册表站位真值默认」)> 注册表
   ``get_char(char_id).position_pref()`` 派生 > back 兜底——旧链路备战
@@ -48,10 +48,10 @@ if TYPE_CHECKING:
 # (七桶选人族(_deploy_plan_inputs/select_deployments/
 #  select_deployments_reasoned/has_deployable/has_deployable_reasoned/
 #  can_deploy_single)与部署计划装配 deploy_plan_moves/
-#  DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY 已随部署统一批丁丁批纳入统一管理时删除:
+#  DEPLOY_PLAN_SLOT_TABLE_UNHEALTHY_KEY 已随部署统一批纳入统一管理时删除:
 #  围栏/成对/点火序/核心桶/必需件首桶/cap/同名去重/配方底线门/板空保底 =
-#  旧线性序补丁史,选人 = 统一部署搜索定型单属(unified-deploy-order
-#  §2/§4);紧缩占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读
+#  旧线性序补丁史,选人 = 统一部署搜索定型单属(24 号稿 §1);
+#  紧缩占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读
 #  坐标系承载。)
 
 
@@ -63,12 +63,12 @@ def _slot_cid(b) -> str:
 
 
 def deploy_row_pref(char_id: str, comp: object | None) -> str:
-    """落位排路由(策略三级;design §2.2「每人的排全部由策略实现决定」)。
+    """落位排路由(策略三级;24 号稿 §1.1 站位分行)。
 
     ① 阵容 站位覆盖:``Comp.char_positions``(字段契约「阵容 特定站位
        要求(角色→front/back),覆盖注册表 position_pref 默认」;已登记实例
        = 爻光必后台/万敌独前排/知更鸟前台,攻略实证);
-    ② 注册表派生:``get_char(char_id).position_pref()``(design §2.1
+    ② 注册表派生:``get_char(char_id).position_pref()``(24 号稿 §1.1:
        「position_pref 不入形状,消费点经注册表按 char_id 派生;禁全局
        get_role_position」——旧链路备战候选恒按后排、注册表偏好恒被
        丢弃的行为变化申报项在此生效);
@@ -94,7 +94,7 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
     """落位策略(排路由 + 前排保证 + 槽位选择;P3 落位决策权归策略本体)。
 
     - 排 = :func:`deploy_row_pref` 三级路由;
-    - **前排保证**(kernel 规则随迁,2026-08-16 修正口径):pref=back
+    - **前排保证**(kernel 规则随迁,24 号稿 §1.1):pref=back
       ∧ 前排全空(出战硬要求前排有角色)时队列后方真 front 候选提到
       当前位,无 front 候选才强转当前 back 件;
     - 槽位 = 策略遍历状态容器视图现值自定:deployed 视图子表下标(排内 1 基
@@ -166,23 +166,23 @@ def deploy_slot_plans(bench: list[BenchSlot], up_idx: list[int],
 
 # (部署计划装配 deploy_plan_moves(选人 × 落位 × 状态容器对位)已随七桶
 #  选人族纳入统一管理时删除:三路定型(卖出评估器/获取让位/出战链)消费统一
-#  部署搜索 target_board,装配链退役——unified-deploy-order §4;紧缩
+#  部署搜索 target_board,装配链退役;紧缩
 #  占席序 × 状态容器槽位表对位防线由差分执行器的状态容器直读坐标系承载。)
 
 
 def battle_chain_deploy_params(session: StrategySession) -> list:
     """出战链部署计划(统一拖动/换星直卖序;恢复局同步步/达标分支共用,
-    计划单一源 = 统一部署搜索 + 差分执行器,unified-deploy-order §2.7/§3)。
+    计划单一源 = 统一部署搜索 + 差分执行器,24 号稿 §1.3/§1.4)。
 
-    阶段 5/6 丁:发射器换统一链(旧七桶选人 ``deploy_plan_moves`` 在板满帧
+    发射器 = 统一链(旧七桶选人 ``deploy_plan_moves`` 已随选人族纳入统一管理退役,在板满帧
     恒零计划——「板满 ∧ bench core 待上 ∧ 无合格 victim → 直接出战」的
     deploy_swap_no_victim 形态根因)。要不要换/换谁下 = 统一搜索定型
     (target_board);板满帧经交换交互上场(被换下者回 bench 源槽,由卖出
-    场景按统一让位序处置——§2.7 职责边界)。差分动作序与第 6 步/计划游标
+    场景按统一让位序处置——32 号稿 §1 部署先行边界)。差分动作序与第 6 步/计划游标
     共用 :func:`deploy_diff.deploy_diff_target_actions` 语义(fresh 拦截同源)。
 
-    frame 装配 = 状态容器现读(原 cw_loop._battle_chain_deploy_moves 内联段
-    迁入;design §2.2「出战链不再装配选人输入」——出战链只调策略层计划
+    frame 装配 = 状态容器现读(出战链不装配选人输入,24 号稿 §1.3/§1.4——
+    出战链只调策略层计划
     入口)。空板面/定型收敛 = 空 move 序(CwActionStartBattleParam 照发)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         game_state_of,
@@ -221,7 +221,7 @@ def launch_deploy_pending(session: StrategySession, gs: GameState) -> bool:
 
     kernel ``readiness_launch_decision``/``launch_board_quality_report``
     的 ``deploy_pending_fn`` 注入单一实现(依赖倒置:kernel 禁 strategies
-    直引,由 bridge 注入本函数对象;unified-deploy-order §4 发射抑制谓词
+    直引,由 bridge 注入本函数对象;24 号稿 §1.4 发射抑制谓词
     行——语义 = 统一部署搜索定型后差分执行器仍有动作在途,「还有部署
     可做」→ 质量推迟帧让部署先收敛)。旧 ``has_deployable`` 七桶判空
     随选人族退役,本函数为其语义后继。"""

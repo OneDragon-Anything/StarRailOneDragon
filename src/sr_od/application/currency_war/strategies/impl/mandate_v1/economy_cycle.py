@@ -1,7 +1,7 @@
 r"""经济循环总模型:储备制(R*/义务/通道容量)。
 
-设计=唯一规格:`.debug/temp/currency_war/w471_economy_cycle/DESIGN.md`
-(对抗审计修复项内建)。核心语义:金账从「地板制」(只
+设计规格:本头注即 as-built 语义权威(原 .debug/temp 设计稿已失,
+无法考古,git 历史可溯)。核心语义:金账从「地板制」(只
 规定花后下限)改为「储备制」——任何时刻金 g 与储备上限 R* 的差
 ``(g − R*)+`` 是负有转化义务的死钱,每轮必须经三条转化通道(升级/
 刷新/买牌)之一转成战力,义务 = max(既有分支义务, min(富余, C_t))。
@@ -28,16 +28,16 @@ r"""经济循环总模型:储备制(R*/义务/通道容量)。
 - **利息计算基数守卫收窄**:利息线以内的常态帧(g≤R*)行为零漂移(义务只在
   富余段激活;I-1 基准)。
 
-分包期 0b(§3.3-①a/①b):接缝(refresh_ev_budget)
+接缝下沉:refresh_ev_budget
 与其依赖族(reserve_cap/_registry_of/_vd_core_of/REFRESH_ROLL_CAP)
-下沉 kernel 层 cw_economy(物理居包根,期 1 归位)
+下沉 kernel 层 cw_economy(物理居包根)
 (原 kernel→decision 断环边:cw_economy.get_node_goal 标量投影体内懒
 import 决策包)。本模块只余容量/义务核算层;接缝符号在函数内懒 import
 自 cw_economy——monkeypatch 桩点重钉至 cw_economy 符号后,属性动态
 解析保证拦截语义不变。
 
 P2 刷新容量 12 < 收入 13-19 的扩容评估 = 披露面(判读层义务帧兑现率
-分布),本模块不改刷新帽(设计 §4 风险声明③)。
+分布),本模块不改刷新帽。
 """
 from __future__ import annotations
 

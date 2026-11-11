@@ -1,7 +1,7 @@
 """cw4 证明层残留件——停手线谓词(``stop_buy``)。
 
 停用申报(
-line_and_upgrade §1.6 停用面清单):本模块原承载的换线机器
+停用面申报,git 历史可溯):本模块原承载的换线机器
 (``should_switch``/θ 滞回/D_min 驻留/回锁窗 ``update_line_state``/
 ``register_eviction``/``resolve_switch_params``)、证据门影子评估族
 (``evaluate_evidence_gate``/``evidence_gate``/``LockSandwichFrame``/

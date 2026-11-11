@@ -93,7 +93,7 @@ def p1_blood_floor(state: GameState) -> bool:
     **现行消费面 = 纯观测**(entry.py 形态⑥金滞留观测的带判定/
     flow.py 锁生成可行性观察件共谓词)——决策面消费(血线硬地板
     解锁包三件:经验停付让位/凑息禁令/跌破利息档批解锁)已随血线地板
-    删除链停用(line_and_upgrade §2.3 血线地板解锁行;正典依据 口述条目 39(登记簿已退役)「HP 不作决策依据」——濒死响应 = 修经济/阵容本身)。本谓词
+    删除链停用(11 号稿 §2 拦截层 血线地板解锁行;正典依据 口述条目 39(登记簿已退役)「HP 不作决策依据」——濒死响应 = 修经济/阵容本身)。本谓词
     保留为观测分键的带判定读口。
 
     判定:信任门 = ``hp_decision_trusted``(kernel 单一源;不可信帧/
@@ -124,11 +124,11 @@ def p2_blood_floor(state: GameState) -> bool:
     **现行消费面 = 纯观测**(flow.py 锁生成可行性观察件的 boss 濒死
     死区分键 / entry.py 形态⑥金滞留观测的带判定)——决策面消费
     (解锁包三件:M3 停付让位/凑息禁令/濒死解锁)已删除(随血线地板删除链;
-    line_and_upgrade §2.3 血线地板解锁行),本谓词保留为观测分键的
+    11 号稿 §2 拦截层 血线地板解锁行),本谓词保留为观测分键的
     带判定读口,不再有解锁包合成口(原 ``p2_blood_floor_unlock``
     随决策消费面消亡)。
 
-    判定(同构不同域,原设计稿 §2.1):
+    判定(同构不同域,与同族 p1 谓词镜像):
     - 信任门 = ``hp_decision_trusted``(kernel 单一源,同 p1);
     - 位面域 = plane ≥ 2(与 p1 的 plane==1 互补且不交);
     - 阈值常量单一源 = ``lambda_death.HP_BAND_NEAR_DEATH``(血带结构
@@ -172,7 +172,7 @@ def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
 
 
 # ===== 前窗/零成型谓词族(P90 面①;设计权威版本 =
-# .debug/temp/currency_war/attacks/t175_exit_margin/设计方案.md §4.1,
+# 11 号稿 §3.1(P90 前窗行);
 # 命题 = math_proofs P90-P94 行)=====
 
 #: 零战斗节点词集(节点表查表的战斗性判定的非战斗半边):生产表中文词

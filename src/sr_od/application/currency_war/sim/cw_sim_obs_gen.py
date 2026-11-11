@@ -1,4 +1,4 @@
-"""金路径观察生成器 + 档名注册表(sim 统一迭代 flow-seam 详设 §3)。
+"""金路径观察生成器 + 档名注册表(sim-design.md §3.1/§6.4)。
 
 生成器 = 「sim 状态副本 → 屏契约观察产物」的直译:从状态副本真值(状态容器
 ``GameState`` + 后端画面状态机运行时)填 ``CwScreenXxxObs`` 结构体,
@@ -9,7 +9,7 @@
 **注册表键 = screen_info 档名(唯一)**;子态不设独立键——同档名子态
 (晶矿子态 / wait_one_one 变体 / 整店锁)由该档名生成器按状态机子态
 内部分派出对应观察产物。金路径档名清单 13 档(权威 =
-``flow-seam.md`` §3):备战(含晶矿子态、wait_one_one 变体)、商店、
+``sim-design.md`` §3.1):备战(含晶矿子态、wait_one_one 变体)、商店、
 battle_wait(战斗结算窗)、补给、投资环境、投资策略、简报、boss 简报、
 位面过渡、遭遇、开箱、巨星、planner。**非金路径屏不出注册表**:
 后端状态机呈现未注册屏时 ``observe`` = :class:`LookupError` 具名响错
@@ -107,7 +107,7 @@ if TYPE_CHECKING:
     _GenFn = Callable[[SimBackend], object]
     _ReportFn = Callable[[GameState, object], None]
 
-#: 金路径档名清单(flow-seam.md §3 权威清单的代码镜像;
+#: 金路径档名清单(sim-design.md §3.1 权威口径的代码镜像;
 #: 注册表覆盖核对测试消费 = 清单逐行有生成器)。
 GOLDEN_PATH_SCREEN_NAMES: tuple[str, ...] = (
     SCREEN_PREP,              # 备战(含晶矿子态、wait_one_one 变体)
@@ -142,7 +142,7 @@ def _node_pos_or_default(backend: SimBackend) -> tuple[int, int, str]:
 def gen_prep(backend: SimBackend) -> CwScreenPrepObs:
     """备战档生成器(晶矿子态 / wait_one_one 变体按 ``_sub`` 内部分派)。
 
-    - 控制信号(flow-seam §3:状态机已知商店开合与 overlay 呈现态):
+    - 控制信号(sim-design.md §3:状态机已知商店开合与 overlay 呈现态):
       ``shop_open`` = 商店模态在场(状态机真值,观察备战时恒 False——
       模态在场则档名为开商店,非本生成器覆盖);``event_overlay`` = overlay
       呈现态(同理由,备战档在场 = 无 overlay 压顶,恒 None);
@@ -341,7 +341,7 @@ def observe_screen(backend: SimBackend, screen_name: str) -> object:
     """注册表分派:档名 → 生成器产物经同名上报函数落状态容器并返回。
 
     未注册档名 = :class:`LookupError` 具名响错(状态机呈现未注册屏 =
-    sim 适用范围外/调用点接错,防静默失真;flow-seam §3 锁)。判定基准 =
+    sim 适用范围外/调用点接错,防静默失真;sim-design.md §3 锁)。判定基准 =
     注册表键集,非「当前呈现屏匹配」——观察请求与呈现屏错位由流程侧
     visible 门承接(且 wait_one_one 惰性完成会在问询间隙合法翻屏,
     身份断言会误伤)。
@@ -351,7 +351,7 @@ def observe_screen(backend: SimBackend, screen_name: str) -> object:
         raise LookupError(
             f'sim 观察生成器未注册: {screen_name!r}'
             '(金路径 13 档名清单外 = 状态机不应呈现该屏或观察点接入调用错;'
-            '防静默失真响错,flow-seam §3)')
+            '防静默失真响错,sim-design.md §3)')
     gen, report = entry
     obs = gen(backend)
     report(backend.gs, obs)

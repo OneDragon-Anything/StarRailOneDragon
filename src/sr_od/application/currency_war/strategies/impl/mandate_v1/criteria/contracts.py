@@ -12,7 +12,7 @@
 数学**(判据本体函数零触碰)。
 
 覆盖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
-已删除(随候选-锁定制整体)(见 proof.py 停用申报;line_and_upgrade §1.6),
+已删除(随候选-锁定制整体)(见 proof.py 停用申报,git 历史可溯),
 无行为接入调用遗留。
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     规格适用范围裁决(ZERO_REFRESH_DIAG §3 第 3 条,原文):硬约束③ S 预留
     拦截对象列=「EV 买入面(序 3-5 追加支出,stockpile 等)+ M6」
     (dominance_buy 行已随通道退役删除——富余买入并入 M6 一星兜底带,
-    comp-structure-unification 3.4;前提=目标线 K 已成型(k_members
+    20 号稿 §3 出口序申报行;前提=目标线 K 已成型(k_members
     非空)):
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 待办项)。
@@ -88,7 +88,7 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     """先例(K 空窗回退,第三病灶)前提:战略层产物字段值域全集含
     空窗期——K 投影域覆盖 None。
 
-    SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定):
+    K 投影 None 值域裁定(git 历史可溯):
     ``state_of(session).target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
     把 None 当「已终局阵容锁定状态」直接投影(``line_members(None)→()``)=
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
@@ -136,19 +136,19 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('buy', 'ev_buy_candidates'): Contract(
         _s_reserve_line_formed,
         'EV 买候选(S 预留消费位):辖 EV 买面,前提=目标线成型',
-        'ZERO_REFRESH_DIAG §3 第 3 条(硬约束③拦截对象列)+02_mandate_layer §4 ③'),
+        '02_mandate_layer §4(硬约束封闭定义)'),
     ('buy', 'ev_buy_veto'): Contract(
         None, 'EV 买否决门(随候选流一体;R7-1 发射面后半)',
         'BYPASS_TABLE 对应行(criteria/__init__.py 单一源;buy.ev_buy_* 行)'),
     # —— criteria/sell ——
     ('sell', 'sell_for_interest'): Contract(
         None, '凑息档 EV 面(T_SEARCH 缺省 fail-closed 自带)',
-        '01_math_framework §3.2+P41 桶不动资格(R20-1)'),
+        '01_math_framework §3.2+P41 桶不动资格'),
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
-        '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
+        '02_mandate_layer §2/§7+BYPASS_TABLE 行(支付支撑通道)'),
     # —— criteria/levelup(11 号稿 §2;判据组 = 触发三分派/概率带/
-    #    整买纪律/等级帽/P21 全域判定/资金线门)——
+    #    整买纪律/等级帽/资金线门)——
     ('levelup', 'upgrade_trigger'): Contract(
         None,
         '升级触发单判据三分派(stay_gate/natural):辖锁定后 ∧ '
@@ -181,12 +181,12 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '三段式刷新判据主式(查表零计算:P1 恒不刷'
         '〔plane2_started 谓词〕/P2 未锁窗口候选缺件/锁定后星级目标'
         '——带归属绑定 = 当前停留目标的带);目标可买合取已随预测门'
-        '退役删除(统一让位优先级迭代 3.4,dismantle §1——刷新时点'
+        '退役删除(11 号稿 §3 预测门整拆——刷新时点'
         '预测不可算,判据收敛三分派,拒因键 target_unbuyable 同批'
         '退役);无标定槽位依赖',
-        'shop_session §2.4(迭代 2026-10-12;用户裁定「期望价值难算不'
-        '直观,星级目标直接驱动」——R1 路径总账判据面退役的本批替代面;'
-        '3.4 预测门整拆)'),
+        '11 号稿 §3(用户裁定「期望价值难算不'
+        '直观,星级目标直接驱动」——R1 路径总账判据面退役的替代面;'
+        '预测门整拆)'),
     ('refresh', 'r2_budget'): Contract(
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
@@ -221,11 +221,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
     # —— 三先例的非 criteria 消费位 ——
     # (契约键 ('mandate','dominance_buy') 已随 dominance_buy 通道退役
-    #  整删——富余买入并入 M6 一星兜底带,comp-structure-unification
-    #  3.4,press-stockpile §1;S 预留语境前提由 M6 侧
+    #  整删——富余买入并入 M6 一星兜底带(20 号稿 §3 出口序申报行),
+    #  S 预留语境前提由 M6 侧
     #  ('stockpile','stockpile_buy') 键继续承载。)
     # (契约键 ('mandate','core_single_card_buy_eligible') 已随 C1 支
-    #  退役整删——统一让位优先级迭代 3.4,dismantle §2 跨文件死件。)
+    #  退役整删——卖出身份段退役批,git 历史可溯。)
     # —— 第三病灶(K 空窗回退)消费位 ——
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
@@ -234,11 +234,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '候选首位带=过渡候选首位条目见即买集;换轴后任意位面同判,'
         '旧 P2+ 位面带已废),单一源=cw_intention(禁复制);'
         '供给在场而回退解析空集即违例(两带均构造性非空)',
-        'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
-        '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3'
-        '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标)'
-        '+P86 证明批 §4.6(带维度非对称期待;3.4 甲/乙臂退役修订;'
-        'comp-structure-unification 3.3 换轴再修订)'),
+        'K 投影 None 值域裁定(git 历史可溯)'
+        '+旧核缺口审查修订(git 历史可溯)'
+        '+K 空窗回退规格补注(git 历史可溯)'
+        '+proofs/p86-proof-batch.md §4.6(带维度非对称期待;甲/乙臂退役修订;'
+        '换轴再修订,git 历史可溯)'),
 }
 
 

@@ -9,8 +9,8 @@ PER_ROUND/N_CRISIS/V_GAP〔换线机器与换线窗口侧〕、
 V_C_MINUS_V_F/E2_CONCENTRATION_BAND〔P76 两槽〕、
 LEVELUP_MISSING_SET_AGG〔升级概率账臂删除〕、
 W_POP〔人口位臂删除〕、MERGE_PROGRESS_X2〔旧卖出价值函数退役,
-统一让位优先级迭代 3.4〕
-——候选-锁定制无定型门标定项,槽位不迁移,line_and_upgrade §1.6)。
+统一让位优先级批〕
+——候选-锁定制无定型门标定项,槽位不迁移,停用面申报(git 历史可溯))。
 每项一个 ``Optional`` 槽位,
 **缺省 None = 对应判据分支 fail-closed**;标定值只能经本模块 ``inject``
 显式注入(带 CI 对象)——「注入即开闸」事故(TUNING#1/#2)的结构性防线,
@@ -51,7 +51,7 @@ class _Slot:
 _SLOTS: dict[str, _Slot] = {
     # —— 【拟】清单快照的存活槽(下列已随换线机器/换线窗口侧消费面
     #    撤槽:V_MS/V_GAP/THETA/D_MIN/DELTA_HYST/DELTA_PRIOR/CONV_GOLD_
-    #    PER_ROUND/P_REC/N_CRISIS;line_and_upgrade §1.6;零槽位
+    #    PER_ROUND/P_REC/N_CRISIS;撤槽申报,git 历史可溯;零槽位
     #    由 statefn/lambda_death.py λ 表承载)——
     'U_X': _Slot('#1 u_x/H_x 使用概率/需要时距;分槽/带序逐格(R17-4)'),
     'RHO_IMPUTE': _Slot('#4 ρ 摊派口径(A7);均匀摊保守首版'),

@@ -64,12 +64,12 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 
 def _launch_front_check(gs: GameState) -> CwAction | None:
     """前置动作发出点:出战就绪帧短路三遍编排,产出动作发出意图(动作发出
-    决策的策略层宿主;旧达标分支决策迁驻,design §2.3)。
+    决策的策略层宿主;旧达标分支决策迁驻(22 号稿 §1 第 9 步 前置动作发出点)。
 
     - 判定核 = kernel ``readiness_launch_decision``(线成员谓词注入
       单一源 = statefn.predicates.line_members,禁内联第二实现);
-    - **计划槽非空谓词**(S7-2,roster-plane1-union design §2.2 第 4
-      项):出战就绪 ∧ 跨画面计划槽非空 → 让位于十段扫描(备战前置步
+    - **计划槽非空谓词**(22 号稿 §1 前置步让位谓词)
+      :出战就绪 ∧ 跨画面计划槽非空 → 让位于十段扫描(备战前置步
       逐帧消化计划;段旗复位——计划期视同就绪段结束,计划完成后新段
       允许再访;其余短路功能零改);
     - 质量推迟帧(出战就绪 ∧ defer_by_quality)不发出,分键
@@ -79,7 +79,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     - 出战就绪 ∧ 帧级金判定 ``in_launch_spend_zone`` 命中(禁内联金利息线
       比较)→ 受限商店访问意图 ``CwActionOpenShopParam()``(**普通开店
       形态**;进出店 = 普通 OpenShop/0n 路径,访问内消费由策略侧自限
-      接管,详设 §2.10);
+      接管,自限语义见 flow.py decide_shop_screen 受限消费段);
       **每个出战就绪段至多一次**(段旗 cw4_launch_spend_visited,脱离出战
       就绪复位;复位后再次出战就绪仍命中允许新段再访);段内已访问 → 落无条件发出
       (旧形态「访问后照发」跨帧等价,金不回落无死循环);
@@ -118,8 +118,8 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
         _st.cw4_launch_spend_visited = False   # 出战就绪段结束,段旗复位
         return None
     if getattr(_st, 'yield_plan', None) is not None:
-        # 计划槽非空 → 让位于十段扫描(S7-2:roster-plane1-union design
-        # §2.2 第 4 项——计划未完成不出战,槽在期间备战前置步优先于
+        # 计划槽非空 → 让位于十段扫描(22 号稿 §1 前置步让位谓词:
+        # 计划未完成不出战,槽在期间备战前置步优先于
         # 第 1-9 全部步〔含第 5 步开店与第 9 步出战〕;计划期打断出战
         # 就绪段,段旗复位——计划完成后新段可再访)。
         _st.cw4_launch_spend_visited = False
@@ -138,7 +138,7 @@ def _launch_front_check(gs: GameState) -> CwAction | None:
     if in_launch_spend_zone(gold_of(gs), gs):
         if not _st.cw4_launch_spend_visited:
             _st.cw4_launch_spend_visited = True
-            return CwActionOpenShopParam()   # 普通开店形态(详设 §2.10)
+            return CwActionOpenShopParam()   # 普通开店形态(受限访问自限,见 flow 受限消费段)
         # 段内已访问:落无条件发出
     return CwActionStartBattleParam()
 
@@ -214,7 +214,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
         (原 ``calibration.apply()`` P76 两槽注入位已删除——
         V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
-        line_and_upgrade §1.6;audit/calibration.py 一并移除。)"""
+        停用面申报(git 历史可溯);audit/calibration.py 一并移除。)"""
         super().__init__(gs, config, registry)
 
     def decide_prep_screen(self) -> CwAction:
@@ -232,10 +232,10 @@ class MandateV1Strategy(CwFlowStrategy):
         接入调用解析策略器状态;game_state_of(gs) 本体直通)。
         """
         # 节点边界处理 + 方向签名前置(契约 B/C:两入口调同一对函数,
-        # 时序 = 边界 → 签名 → 决策;line_and_upgrade §3 执行时序节)。
+        # 时序 = 边界 → 签名 → 决策(12 号稿 §2)。
         session_scope.handle_node_boundary(self.gs)
         session_scope.refresh_line_if_needed(self.gs)
-        # 部署私有槽入口清(pick-margin-telemetry design §2.1 帧定界
+        # 部署私有槽入口清(deploy_margin 产物透传键帧定界,strategy-telemetry §2
         # 双保险之一:防跨帧陈旧——上一 prep 帧写槽后 emit 段/truncate
         # 抛异常的残留槽在此兜底清空,非部署帧读到恒空的结构保证)。
         state_of(self.gs).deploy_margin = None
@@ -266,9 +266,9 @@ class MandateV1Strategy(CwFlowStrategy):
         flow 基类现行决策,零改动)。
 
         节点边界处理与方向签名前置(契约 B/C)与备战入口调同一对
-        函数——商店决策入口的统一行为(shop_session §1:入口首查节点
+        函数——商店决策入口的统一行为(23 号稿 §1:入口首查节点
         边界检测与标记检查,标记检查位归 3.6 会话重排接入调用),时序 =
-        边界 → 签名 → 决策(line_and_upgrade §3 执行时序节)。生产
+        边界 → 签名 → 决策(12 号稿 §2)。生产
         单动作循环与 :meth:`decide_shop_screen` 驱动器都经本口,两面
         同源。
         """
@@ -377,7 +377,7 @@ class MandateV1Strategy(CwFlowStrategy):
         与备战帧同参)。异常不自吞——基类 wrapper 的降级 {} 兜底是
         唯一降级通道(捕获缝约定)。
 
-        部署私有槽读后清(pick-margin-telemetry design §2.1 帧定界
+        部署私有槽读后清(deploy_margin 产物透传键帧定界,strategy-telemetry §2
         双保险之二:槽非空时读键后即清,一次性消费——非部署帧读到
         恒空;decision_payload.py 模块零写纪律不动,清槽挂本覆写)。
         """

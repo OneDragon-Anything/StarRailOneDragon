@@ -299,8 +299,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         """payload 槽候选读口(黑板契约:进决策时 None = 观察层失约抛错,
         禁静默按空候选决策;details §2.1)。
 
-        **选卡族失效触发集中调用点**(shop_session §4.2 读数协议②;批
-        3.6):本读口 = 全部 pick 决策入口(三选一/二选一选卡族)共用
+        **选卡族失效触发集中调用点**(读数协议②失效族,criteria/shop_session.py 头注;
+        ):本读口 = 全部 pick 决策入口(三选一/二选一选卡族)共用
         的候选槽读口,prep/shop 决策不经此口——任何选卡帧在此失效金位
         账面(选中即失效实读,不枚举单项效果;刷新建议帧同样适用 = 保守侧,
         多失效一拍的代价 = 下次实读锚定)。
@@ -399,8 +399,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                                                        reason=out.reason)
         # 选卡结果喂 CommitSignals(条件活遥测;建议帧不落此段)。
         self._feed_invest_strategy_signals(options)
-        # margin 拷入(词表动作字段通道,pick-margin-telemetry design
-        # §2.1:决策产物次名分量 → 动作实例,经 decision_payload 钩子
+        # margin 拷入(词表动作字段通道,产物透传键契约 = strategy-telemetry
+        # §2 键表:决策产物次名分量 → 动作实例,经 decision_payload 钩子
         # 键 pick_margin 透传;建议帧不选卡,自然不拷)。
         return pick_param_cls(idx=out.idx, reason=out.reason,
                               margin=out.margin)
@@ -408,7 +408,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     def _feed_invest_strategy_signals(self, options: list) -> None:
         """所选帧对各线的通道派生线分加分 → 阵容分贡献(纯遥测,
         决策面零消费——投资源不参与证明自身的反自馈检查现状即合规)。
-        判读口径申报(统一阵容评分迭代 design §6:遥测流保持不断,
+        判读口径申报(29 号稿 §4 遥测条款:遥测流保持不断,
         改读新派生函数):值 = 投资通道派生线分加分(cw_line_scales
         数量级:实证升档 750/定义卡 500/强档 300/中档 150/flex 软档
         30;批 2 起含顾问入商店通道中档),**非**旧 ``augment_affinity``
@@ -473,7 +473,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 self.state.scratch[self._INVEST_ADVICE_MEMO_KEY] = memo_key
                 return CwActionRefreshInvestCardsParam(
                     slots=tuple(range(len(options))), reason=out.reason)
-        # margin 拷入(同策略轴侧,pick-margin-telemetry design §2.1)。
+        # margin 拷入(同策略轴侧,产物透传键契约 = strategy-telemetry §2)。
         return pick_param_cls(idx=out.idx, reason=out.reason,
                               margin=out.margin)
 
@@ -649,13 +649,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_box_card(self) -> CwActionPickBoxCardParam:
         """武装箱/节点弹窗装备卡 4 选 1(终态零参口;候选 =
-        ``gs.box_card_names``;薄壳;armory-box-value 定稿设计
-        §2.2-§2.5)。打分基准 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
+        ``gs.box_card_names``;薄壳;打分机器单一源 = kernel/cw_equip_value.py)。
+        打分基准 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
         日志哨兵,保守向);打分唯一住共享机器 ``pick_equipment``(序数
-        分档 + 近兑现 + 通用输出先验,design §2.2/§2.3),本壳零打分实现。
-        库存账(design §2.5):备用 ``gs.equips`` 现值(近兑现对数)+
+        分档 + 近兑现 + 通用输出先验,单一源同上),本壳零打分实现。
+        库存账(同上单一源装备账口径):备用 ``gs.equips`` 现值(近兑现对数)+
         部署位/备战席穿戴账(合计进总持有,需求守卫)。effect_pick_bias
-        通道随薄壳化移除(恒 0 无行为差,处置声明见 design §1.4)。
+        通道随薄壳化移除(恒 0 无行为差,处置声明 git 历史可溯)。
         无信息 fallback idx=0(机器 names 空契约)。"""
         names = self._require_slot_options(self.gs.box_card_names,
                                            'box_card_names')
@@ -789,8 +789,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # game_state_of 解析到一次性空状态容器,禁)。
         action = shop.decide_shop_action(gs, gs, self.config,
                                          registry=self.registry)
-        # 动作发出帧受限消费·策略侧自限(详设 §2.10;flow 闸停用前的先行落地
-        # ——受限会话内自限先拦,闸永不触拒,行为与现役逐位一致)。标记
+        # 动作发出帧受限消费·策略侧自限(launch 仲裁段退役后的策略侧落地,
+        # 22 号稿 §1 第 9 步 受限商店访问帧语义——自限先拦,闸永不触拒,行为逐位一致)。标记
         # 派生与谓词皆 kernel 单一源直调;金读 = 状态容器读口 gold_of,与 flow
         # 闸闭包同帧同值(决策与检之间零动作,期望态无推进)。
         from sr_od.application.currency_war.kernel.cw_launch_arbitrage import (
@@ -807,9 +807,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             return action
         # 拒 = 消费终止:本动作不执行,决策改发 CloseShop 收访问(评估序
         # 不变、不跳过高位改试低位 = 金出口族红线 5 逐位平移,非改试次优)。
-        # 受阻遥测分键 = kernel 常量(现役 flow 闸闭包同键写入 cw4_counters,
-        # run-1 两写点按动作互斥不自增;run-2 闸停用后本写点为唯一写点,
-        # 分键宿主随拒拍落 strategy_state,详设 §2.10)。
+        # 受阻遥测分键 = kernel 常量 KEY_GATE_BLOCKS(写入 cw4_counters,
+        # 闸停用后本写点为唯一写点,
+        # 分键宿主随拒拍落 strategy_state)。
         _ct = getattr(self.state, 'cw4_counters', None)
         if isinstance(_ct, dict):
             _ct[KEY_GATE_BLOCKS] = _ct.get(KEY_GATE_BLOCKS, 0) + 1

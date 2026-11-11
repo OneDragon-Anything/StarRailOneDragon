@@ -1,4 +1,4 @@
-"""终局线选择内核(统一阵容评分;迭代 2026-11-03-unified-line-scoring)。
+"""终局线选择内核(统一阵容评分,正本 = 12 号稿)。
 
 判据唯一源 = strategy-docs/12_line_and_intention.md §1(统一阵容评分:
 **纯加权和,一个公式** + 数量级表——四轮对抗审查定稿,特殊处理全退役,
@@ -8,7 +8,7 @@
   :mod:`kernel/cw_line_scales`,本模块零裸数字)+ top3 候选;
 - **候选入选证据门**(§1.2:线分量 env ∨ carry ∨ 插件 > 0——
   **不含热度**,热度只作有证据线间的排序,不是入选理由);
-- **锁定 = P2 时点兜底唯一路径**(§1.3/design §6:硬规则查表/角色硬锁/
+- **锁定 = P2 时点兜底唯一路径**(12 号稿 §1.3:硬规则查表/角色硬锁/
   策略即时锁全退役——拿到什么都不直接锁,分数说话;锁定 =
   ``plane2_started ∧ p2_strategy_pick_done`` → 候选首名;无排除过滤,
   重开级已数值化,全线极低分局最劣如实表现);
@@ -102,7 +102,7 @@ CANDIDATE_TOP_N: int = 3
 
 @dataclass(frozen=True)
 class OpeningCtx:
-    """开局简报上下文(design §6 扩参方案:r4/Y4-4——线分词缀/boss/投资
+    """开局简报上下文(line_score_key 扩参 opening_ctx,12 号稿 §1.1——线分词缀/boss/投资
     分量的输入面,从 GameState 现读;调用方构造,签名幂等)。
 
     - ``enemy_affixes``:开局简报词缀名元组(键空间 = AFFIX_EFFECTS 注册名
@@ -114,7 +114,7 @@ class OpeningCtx:
       投资环境分 + 投资策略分(通道派生)+ 扑满强敌可见通道(持有扑满
       环境 = 经济环境产物开局可见)消费;
     - ``held_equips``:装备持有多重集(批 3:装备证据分量输入面)——
-      key_equips 逐件持有证据(A/B 拆分线的分化面,design §5「B 唯一
+      key_equips 逐件持有证据(A/B 拆分线的分化面,12 号稿 §1.1「B 唯一
       分化面 = 装备证据」)。
     """
 
@@ -164,7 +164,7 @@ def held_invest_names_of(gs: GameState) -> frozenset[str]:
 
 @dataclass(frozen=True)
 class LineScore:
-    """线分数值分解(design §2 单值和的命名分量;``total`` = 各分量和)。
+    """线分数值分解(12 号稿 §1.1 单值和的命名分量;``total`` = 各分量和)。
 
     分量即证据门判据面(:attr:`gate_positive` = env ∨ carry ∨
     插件 > 0,**不含热度/装备**——12 号篇 §1.2「热度不是入选理由」保持;
@@ -194,7 +194,7 @@ class LineScore:
 
 def equip_evidence_bonus(comp: Comp,
                          held_equips: tuple[str, ...]) -> int:
-    """装备证据分量(批 3;design §5「B 唯一分化面 = 装备证据」的线分
+    """装备证据分量(12 号稿 §1.1 姬子 A/B 拆分批;「B 唯一分化面 = 装备证据」的线分
     承载):线 ``key_equips`` 逐件持有,每件 :data:`PLUGIN_BONUS`
     (插件档复用——同为「线构成件的持有实证」,与角色插件层同族,
     零新常数);多重集计数(key_equips 重复件按重复计,如以牙还牙甲×2)。
@@ -241,7 +241,7 @@ def line_score_breakdown(comp: Comp, held_chars: frozenset[str],
 
 def line_score_key(comp: Comp, held_chars: frozenset[str],
                    opening_ctx: OpeningCtx) -> int:
-    """线分数(design §2 单值和;排序消费 = 降序,见 :func:`_line_sort_key`)。"""
+    """线分数(12 号稿 §1.1 单值和;排序消费 = 降序,见 :func:`_line_sort_key`)。"""
     return line_score_breakdown(comp, held_chars, opening_ctx).total
 
 
@@ -282,7 +282,7 @@ def evaluate_lock(candidates: tuple[str, ...],
                   p2_strategy_pick_done: bool) -> str | None:
     """锁定判定(P2 时点兜底唯一路径;返回应终局阵容锁定名,None = 不锁)。
 
-    硬规则/即时锁全退役(design §6):核心在手 = carry 证据分(数值必然性
+    硬规则/即时锁全退役(12 号稿 §1.3):核心在手 = carry 证据分(数值必然性
     替代角色硬锁)、定义卡/强关联投资 = 通道派生加分(替代策略即时锁)——
     拿到什么都不直接锁,分数说话;触发 = ``plane2_started``(窗口谓词,
     首入 (2,*) 段)∧ ``p2_strategy_pick_done``(P2 起首次投资策略三选一
@@ -302,7 +302,7 @@ def evaluate_lock(candidates: tuple[str, ...],
 
 def anchor_line_of(gs: GameState, locked_comp: str,
                    demoted_endgame: bool) -> Comp | None:
-    """选卡基准线(design §3.2 选卡侧统一:r4/R4-4 用户决定——锁定前帧基准
+    """选卡基准线(选卡侧统一,29 号稿 §2.2——锁定前帧基准
     统一 = 候选首名线,P1/P2 同一公式;帧间抖动由签名稳定性钳制)。
 
     锁定帧(非降格)= 锁定线本体(方向已裁定);未锁/降格帧 = 证据门版

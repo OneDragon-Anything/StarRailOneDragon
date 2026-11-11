@@ -1,4 +1,4 @@
-"""货币战争 策略遥测落盘 sink(DecisionRecord jsonl;capture-store §4)。
+"""货币战争 策略遥测落盘 sink(DecisionRecord jsonl;strategy-telemetry.md §3)。
 
 槽位与写盘分离:策略包零 I/O(wrapper 只经 ``set_decision_sink`` 注入槽
 调本函数),run_id 补齐与局外零写判断都归本函数(策略包禁 import

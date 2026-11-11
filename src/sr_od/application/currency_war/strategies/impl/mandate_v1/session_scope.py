@@ -146,8 +146,8 @@ def handle_node_boundary(gs: GameState) -> None:
              prev, cur)
 
 
-#: 「第二位面已启动」窗口谓词的置位序位下界(line_and_upgrade §1.4
-#: 时点兜底行):(位面,轮) 序位元组,均 1 基,轮次 1 基下 (2,1) 即
+#: 「第二位面已启动」窗口谓词的置位序位下界(时点兜底口径,
+#: (位面,轮) 序位元组,均 1 基,轮次 1 基下 (2,1) 即
 #: (2,*) 段最小序位——字典序 ≥ (2,1) ⇔ 首入第二位面段。
 _PLANE2_START_MIN_POS: tuple[int, int] = (2, 1)
 
@@ -159,7 +159,7 @@ def _update_plane2_started(gs: GameState, st: StrategyState) -> None:
     水位)序位首入 (2,*) 段。为什么用 node_hist_pos 而非 effective_node_pos
     现值:标志语义 = 「第二位面已启动」的历史事实,单调水位天然承载
     (现值可被纠偏写序中间态拉回,历史事实不可逆);载体指认 =
-    line_and_upgrade §1.4 时点兜底行。消费端 = 3.7 时点兜底,经
+    时点兜底口径(上常量注)。消费端 = 时点兜底消费位,经
     :func:`plane2_started_of` 读布尔标志(宪法第 2 条合规:窗口谓词
     形态,非位面元组字面量直接比较)。
     """
@@ -178,7 +178,7 @@ def plane2_started_of(gs: GameState) -> bool:
 
 @dataclass(frozen=True)
 class LineMembersView:
-    """方向状态读接口的返回视图(契约 B;line_and_upgrade §3)。
+    """方向状态读接口的返回视图(契约 B;12 号稿 §2)。
 
     消费方(备战部署/凑息/自救与商店买入序/置换账)消费同一视图,
     禁各自维护第二份名单与口径(方向状态契约)。
@@ -316,7 +316,7 @@ def _recompute_line_state(gs: GameState, st: StrategyState) -> None:
 
 
 def refresh_line_if_needed(gs: GameState) -> None:
-    """方向签名前置段(契约 B;line_and_upgrade §3 步骤 1-3)。
+    """方向签名前置段(契约 B;12 号稿 §2)。
 
     备战决策入口与商店决策入口各挂本前置函数;执行时序(帧内先后序)
     = 节点边界重置 → 本函数 → 决策:
@@ -339,7 +339,7 @@ def refresh_line_if_needed(gs: GameState) -> None:
 
 def write_line_lock(gs: GameState, comp_name: str) -> None:
     """锁定写入(一次性决策;**连带动作三件的唯一所有者 = 本函数**,
-    line_and_upgrade §3 载体落位节——§1.4/契约 B 对连带动作的引用均
+    12 号稿 §2——旧件对连带动作的引用均
     指向此处)。键面归一后本函数兼任 ``target_comp`` 的**终态
     单写者**(锁定线槽 = target_comp;旧物化链键已退役,无第二写者):
 
@@ -349,7 +349,7 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
       此分支为防御位;
     - 连带动作三件:
       ① 清商店会话标记(``shop_handled``——下一轮备战第 5 步按锁定
-         线名单重开会话全量评估,shop_session §4.2「方向锁定不走清单
+         线名单重开会话全量评估,12 号稿 §2「方向锁定不走清单
          解拦」);
       ② 候选快照**清空**并停算(锁定后只读锁定线,无候选维护;清空
          消除消费歧义——锁定后读 ``line_candidates`` 恒 = 空集,语义
@@ -389,10 +389,10 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
 
 
 def line_members_view(gs: GameState) -> LineMembersView:
-    """方向状态读接口(契约 B;line_and_upgrade §3)。
+    """方向状态读接口(契约 B;12 号稿 §2)。
 
     未锁定 → 空名单 + 未锁定旗标(两域据此走件级评估路径——候选囤件
-    优先级,line_and_upgrade §1.3);锁定 → 锁定线名单(core_chars ∪
+    优先级,12 号稿 §1.2/§1.3);锁定 → 锁定线名单(core_chars ∪
     shared_chars,注册表序去重)。
     """
     st = state_of(gs)
@@ -435,7 +435,7 @@ def direction_comp_of(gs: GameState) -> Comp | None:
 
 
 def mark_shop_handled(gs: GameState) -> None:
-    """商店会话标记写入(仅正常收工位调用;shop_session §4.1)。
+    """商店会话标记写入(仅正常收工位调用;23 号稿 §1 收工判定)。
 
     值 = 当前生效节点号二元组(位面,轮;取值时机 = 正常收工帧现读
     ``effective_node_pos``)。异常退出/失读停机不写 = 调用方纪律(收工
@@ -456,7 +456,7 @@ def clear_shop_handled(gs: GameState) -> None:
 
 
 def shop_handled_for_current_node(gs: GameState) -> bool:
-    """商店会话标记检查:本节点是否已正常收工处理(shop_session §4.1)。
+    """商店会话标记检查:本节点是否已正常收工处理(23 号稿 §1)。
 
     判定语义 = 值 ≠ 当前节点号视为未处理;跨节点失效由节点边界重置
     统一清值(契约 C),本值比对作为双保险保留——标记写入后节点号已
@@ -468,7 +468,7 @@ def shop_handled_for_current_node(gs: GameState) -> bool:
 
 
 def record_shop_opportunity(gs: GameState, record: ShopOpportunity) -> None:
-    """未消费机会清单追加记录(shop_session §4.2;写入端 = 商店会话
+    """未消费机会清单追加记录(11 号稿 §4.0 机会清单;写入端 = 商店会话
     正常收工位,3.6 接入调用)。追加序保留(同牌多次记录为独立行,消费
     端按牌名自取最近态)。"""
     st = state_of(gs)

@@ -172,7 +172,7 @@ class PriorityContext:
     成员名 → (层, 位次) 二元组,
     小 = 优先级高。终局成员 = (0, 线内序数)——各活性线知识卡
     ``member_priority`` 字段直读(cw_comps.member_rank_of,空表/旧数据
-    回退 core 两档派生——总纲 §2.1.1 迁移期形态 = core 0/其余 1),
+    回退 core 两档派生 = core 0/其余 1,32 号稿 §2 取值规则),
     跨线成员取各线最小序数(字典序 min,core 优先于非 core);过渡
     成员 = (1, 线内两档位次)(条目 ``member_rank_of`` 的 core=0/其余=1,
     跨多条目同名成员取最小位次,与终局侧同构);重叠成员归终局(装配序
@@ -515,7 +515,7 @@ def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
 
 def _refund_loss(unit: HeldUnit | ShopUnit) -> int:
     """档内并列金币 tie-break 键(用户裁定 2026-10-30 三,金币维全局
-    核查表;roster-plane1-union design §2.2 第 1 项)。
+    核查表;退金损失键口径 = 32 号稿 §6)。
 
     口径 = 再购同件成本 − 卖出退金:再购成本 = 实费档 × 同名 1★ 基础
     副本折算(合成链重建价,折算单一源 = ``star_base_copies``);退金 =
@@ -540,7 +540,7 @@ def _tier7_bond_member(name: str) -> bool:
 
 
 def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:
-    """凑息卖出豁免谓词(单一源;roster-plane1-union design §2.2 第 5 项)。
+    """凑息卖出豁免谓词(单一源;32 号稿 §9 凑息豁免行/11 号稿 §4.0 场景表)。
 
     豁免集 = 线内成员 ∧ 手持 ∧ 星未达目标:``is_member ∧
     max_star < max(need, 2)``。成员名单与目标星读口同源(sort_key

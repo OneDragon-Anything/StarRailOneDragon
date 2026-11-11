@@ -4,30 +4,30 @@
 一个评估函数服务全部卖出触发场景(溢出紧急处理/采晶矿前空位/节末凑息;
 升级凑金场景已随凑金链整删——用户裁定 2026-10-30:不存在升级卖牌
 凑金,保持最大压牌库,钱够了再升;会话内筹资场景已随统一获取让位评估
-纳入统一管理时退役——roster-plane1-union design §2.2 第 4 项:获取受阻〔席满 ∨
+纳入统一管理时退役——统一获取让位评估(11 号稿 §4.0):获取受阻〔席满 ∨
 金不足〕走买入臂内联统一评估,禁经本注册表),输入 =
 (场景,状态容器状态),输出 = 按让位序排序的卖出候选或空。三触发卖出判据件
 规格单一源 = strategy-docs/11_shop_decisions.md §4.0;统一序列判定与
 卖出取用形态规格权威版本 = strategy-docs/32_unified_sell_priority.md(§3/§8):
 
 - **统一序列消费**:各场景排序单一源 = ``criteria/priority.sell_order``
-  (禁第二排序实现,总纲 §2.9 接口契约 1)——部署重排
+  (禁第二排序实现,32 号稿 §1)——部署重排
   (``mandate.select_deployment``)定型后的全局面序列,末位起取用;
-- **无场景专属池子**【拍,总纲 §2.7】:部署定型内的牌 = 档 1 天然
+- **无场景专属池子**【拍,32 号稿 §8】:部署定型内的牌 = 档 1 天然
   永不先卖,场景不再各自设池;
 - **身份过滤退役**:填充牌过滤/凑息仅一星过滤/筹资仅一星过滤删除
-  (序列天然排序;「不设仅一星代理过滤」= 总纲 §2.4 用户决定);
-- **循环防线保留**(与优先级正交,防操作空转,总纲 §2.4):窗口段/
+  (序列天然排序;「不设仅一星代理过滤」= 11 号稿 §4.0 用户决定);
+- **循环防线保留**(与优先级正交,防操作空转,32 号稿 §9/11 号稿 §4.1):窗口段/
   L1 同轮禁卖/种子年龄豁免(常规面经 ``sell_exclusions`` 装配)+
   合成素材拒入守卫含释放集旁路 + 空板止损守卫;溢出场景全资格豁免
   保留(保命优先);跨档止盈保留为节末凑息场景参数;**凑息豁免**
-  (roster-plane1-union design §2.2 第 5 项)同为节末凑息场景参数
+  (32 号稿 §9 凑息豁免)同为节末凑息场景参数
   ——候选池剔除线内未达标成员(线内 ∧ 手持 ∧ 星未达目标,谓词
   单一源 = ``priority.interest_exempt_member``;为利息绝对不可卖,
   非排序后移;池空 → 零卖出),被迫类卖出(溢出/晶矿/获取让位)
   不适用——动机二分:因席位/金币被迫按优先级让位的无豁免;
 
-**旧判据退役申报(3.4,dismantle §3 卖侧)**:旧价值函数(变现价 +
+**旧判据退役申报(卖出身份段退役批卖侧)**:旧价值函数(变现价 +
 再遇期权 + 合成进度口径的 ``sell_gold_equivalent`` 三项、
 ``MERGE_PROGRESS_X2`` 登记槽)与冻结遗留 deploy_swap 评估路径、羁绊
 排序谓词(``bond_tier_drops_if_sold``/``is_field_irrelevant_unit``)、
@@ -109,11 +109,11 @@ class SellSceneSpec:
 
     - ``face``:循环防线资格面(全资格豁免仅溢出;常规面防线清单见
       模块头);
-    - ``cross_tier_only``:跨档止盈(节末凑息独有场景参数,design §2.4
+    - ``cross_tier_only``:跨档止盈(节末凑息独有场景参数,11 号稿 §4.0 场景表跨档止盈
       保留行)——仅「单件退金 ≥ 到下一利息档缺口」的候选可卖,跨不了
       档的卖出零利息收益,一件不卖;
     - ``exempt_unmet_members``:凑息豁免(节末凑息独有场景参数,
-      roster-plane1-union design §2.2 第 5 项)——候选池剔除线内
+      32 号稿 §9 凑息豁免)——候选池剔除线内
       未达标成员,池空零卖出;字段语义详见字段注;
     - ``legacy_channel``:P78 通道标记(sell_exclusions 装配的通道谱系
       参数;None = 不装配)。
@@ -124,7 +124,7 @@ class SellSceneSpec:
     legacy_channel: str | None   # P78 通道标记(None = 不装配)
     cross_tier_only: bool = False   # 跨档止盈(节末凑息)
     exempt_unmet_members: bool = False
-    """凑息豁免(节末凑息独有;roster-plane1-union design §2.2 第 5 项):
+    """凑息豁免(节末凑息独有;32 号稿 §9 凑息豁免):
     候选池剔除线内未达标成员(线内 ∧ 手持 ∧ 星未达目标,谓词单一源 =
     ``priority.interest_exempt_member``)——为利息绝对不可卖,非排序
     后移;达标线内件(完成品居档 2/4,冗余副本落兜底档)与非线内件照常参与。仅利息
@@ -134,18 +134,18 @@ class SellSceneSpec:
 
 #: 场景注册表(闭集;三触发三场景):
 #: - ``shop_swap`` 行已随席满置换账被六步流程整段替换退役(3.2,
-#:   dismantle §2——六步流程直通 ``priority.sell_order``,不经本评估器);
-#: - ``c1_make_room`` 行已随 C1 单卡核心支退役删除(3.4,dismantle §2
+#:   六步流程直通 ``priority.sell_order``,不经本评估器);
+#: - ``c1_make_room`` 行已随 C1 单卡核心支退役删除(
 #:   场景死行);
 #: - ``deploy_swap`` 冻结遗留行已随旧价值函数退役删除(3.4;kernel
 #:   swap 机器(swap_sell_exclusion_reason 含)亦已随部署统一批丁整链
-#:   纳入统一管理——unified-deploy-order §2.7/§4,被换下者回 bench 由统一让位序
+#:   纳入统一管理——24 号稿 §1.4,被换下者回 bench 由统一让位序
 #:   处置,部署换人域无独立卖出资格面);
 #: - ``levelup_liquidate_prep`` 行已随升级凑金链整删退役(用户裁定
 #:   2026-10-30:不存在升级卖牌凑金——保持最大压牌库,钱够了再升;
 #:   金不足帧恒 defer 等钱,零卖出动作);
 #: - ``session_funding`` 行已随统一获取让位评估纳入统一管理时退役(roster-
-#:   plane1-union design §2.2 第 4 项 + 用户裁定 2026-10-30:统一
+#:   11 号稿 §4.0 统一获取让位评估 + 用户裁定 2026-10-30:统一
 #:   优先级——金不足与席满同一评估,禁再立筹资/凑金/腾位类场景;
 #:   `funding` 通道随场景退役无消费者,SELL_CHANNELS 同批删除)。
 SCENE_SPECS: dict[str, SellSceneSpec] = {
@@ -167,7 +167,7 @@ SELL_SCENARIOS: frozenset[str] = frozenset(SCENE_SPECS)
 #: 第 0 步态 4)。
 REJECT_NO_CANDIDATES: str = 'no_candidates'
 
-#: 凑息豁免剔光帧观测键(roster-plane1-union design §2.2 第 5 项;
+#: 凑息豁免剔光帧观测键(32 号稿 §9 凑息豁免;
 #: 登记点原挂同设计 §2.2 第 3 项):节末凑息跨档止盈后的可行池全为
 #: 线内未达标成员、被豁免剔空 → 零卖出动作的帧计数。设计指出该帧
 #: 形态在豁免落地前不可观测;本键使「无豁免会卖出在建阵容
@@ -302,7 +302,7 @@ def evaluate_sell_candidates(
     5. 跨档止盈(仅节末凑息):让位序内保留「单件退金 ≥ 到下一利息档
        缺口」者;无下一利息档(满档/买断制)或无可行件 = 空输出
        (REJECT_NO_CANDIDATES,一件不卖);
-    6. 凑息豁免(仅节末凑息;roster-plane1-union design §2.2 第 5 项):
+    6. 凑息豁免(仅节末凑息;32 号稿 §9 凑息豁免):
        可行池剔除线内未达标成员(谓词单一源 =
        ``priority.interest_exempt_member``——为利息绝对不可卖,非
        排序后移);豁免把可行池剔空(无豁免时该帧会卖出在建阵容件)
@@ -331,7 +331,7 @@ def evaluate_sell_candidates(
     )
     frame = mandate.snapshot_frame(gs)
     prep = mandate.assemble_prep_context(gs, gs, frame)
-    # 部署定型(阶段 5/6 统一部署搜索内核):返回 target_board =
+    # 部署定型(统一部署搜索内核,24 号稿 §1):返回 target_board =
     # 名 → (排, 星);档 1 名集消费 = 键集(接口契约②)。
     target_board = mandate.select_deployment(frame, prep)
     target = frozenset(target_board)
@@ -421,7 +421,7 @@ def evaluate_sell_candidates(
             cand, tier=int(k[0]),
             rng_tail_hit=_prefixes.count(k[:-1]) >= 2))
     if spec.cross_tier_only:
-        # 跨档止盈(场景参数;design §2.4 保留行):仅「单件退金 ≥ 到
+        # 跨档止盈(场景参数;11 号稿 §4.0 场景表 保留行):仅「单件退金 ≥ 到
         # 下一利息档缺口」者可卖;无下一档(满档/买断制)= 无卖益,
         # 一件不卖。
         _gold = int(gold_of(gs) or 0)
@@ -438,7 +438,7 @@ def evaluate_sell_candidates(
     if not yield_order:
         return (), REJECT_NO_CANDIDATES
     if spec.exempt_unmet_members:
-        # 凑息豁免(场景参数;design §2.2 第 5 项):跨档止盈后的可行池
+        # 凑息豁免(场景参数;32 号稿 §9):跨档止盈后的可行池
         # 剔除线内未达标成员——谓词单一源 = priority.interest_exempt_
         # member(线内 ∧ 手持 ∧ 星未达目标;为利息绝对不可卖,非排序
         # 后移),达标线内件(完成品居档 2/4,冗余副本落兜底档)与非线内件照常参与。
