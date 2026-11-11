@@ -125,7 +125,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 轮 = 一次"备战环 → 出战 → 战斗 → 结算"。推进信号：
 - 出战成功：`_battle_ts = monotonic()`（战斗窗口宽限计时起点，BATTLE_WATCH_GRACE_S=600 覆盖实测 4-5.5min 战斗）+ `_battle_wait_active=True`；
 - 结算：CwScreenBattleWait 完成判据白名单（备战取单识别标志'备战标识-购买经验'宽判定——免战帧亦恒在;双识别标志精判归循环备战分支职责）；`saw_settlement` → `_battle_ts=None`；
-- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = `CwActionPickSupplyOp` 确认（until = 下一节点备战 id_mark）后上报 supply_confirm。观察 id_mark 确认 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体停用，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
+- **节点推进（外循环零写点）**：序号前进唯一动作入口 = kernel `report_node_advance`——战斗节点终结 = `CwOpSettleConfirm` 转移证据（完成判据白名单命中）后上报 settle_confirm；补给节点终结 = 出战动作上报 supply_finish（宿主参数 = `CwActionStartBattleParam`；补给选卡确认不推进，2026-10-29 流程模型对齐）。观察 id_mark 确认 = 画面 op 观察 node（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 补给屏节点条 → kernel `observe_node_anchor`）。历史开局链分支写点已整体停用，外循环与观察漏斗均不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）；
 - 轮计数 `_settle.rounds_done`（SettlementState，结算链已并入；max_rounds 停点消费）；
 - 节点真值：节点行观察归备战观察域——备战入口 heavy 观察消费位（`cw_screen_prep.py::_write_prep_node_chain`，识别复用 `observe_full` 现役 `read_node_sequence` 调用）写槽序表/台账（[../screens/prep.md](../screens/prep.md) §3）。
 

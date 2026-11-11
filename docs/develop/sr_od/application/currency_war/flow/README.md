@@ -19,7 +19,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 ┌─ 外层循环（cw_loop.py）────────────────────────────────────────┐
 │ 画面识别 → 分支路由（身份分发/特殊规则 overlay → 备战 1 → 战斗窗 → 大厅 3c）│
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
-│ 节点推进 = 终结动作上报（settle/supply_confirm）+ 画面 op 锚定   │
+│ 节点推进 = 终结动作上报（settle/supply_finish）+ 画面 op 锚定   │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
 ├─ 画面指挥(35 画面 op,每屏独立类直继承 SrOperation,两 node 形态)──┤
 │ 观察 node:门 → 显式读屏(唯一读屏点)→ CwScreenXxxObs →          │
@@ -53,7 +53,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 
 图下白话解读：备战决策链：先消费方向版本标记 → 检查是否直接出战（出战就绪帧短路返回）→ 非就绪帧披露预算 → 逐帧决策循环（①读备战实况 → ②套数学证明 → ③必要时升档/换线评估 → ④执行骨架义务 M1-M7 → ⑤按期望值选动作 → ⑥无动作则出战）；商店决策走单动作接口。图中其余旧词对照："备战 1/大厅 3c/0n"等为代码内历史分支号（现已全部换成按画面身份分发）；"armed 帧"= 出战就绪帧；"词表"= 动作类型清单；"零判效"= 只点击不判断是否生效。
 
-分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。节点推进喂入 = **动作上报 + 画面 op id_mark 确认**：战斗/补给节点终结动作 op 上报（kernel `report_node_advance`，trigger 封闭集 {settle_confirm, supply_confirm}）+ 画面 op 观察 id_mark 确认（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`）；观察漏斗与外循环分支写点不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
+分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地（机械发出、零判效;落地判定归观察侧对账,见 [../screens/op-layer.md](../screens/op-layer.md) §1）"**。节点推进喂入 = **动作上报 + 画面 op id_mark 确认**：战斗/补给节点终结动作 op 上报（kernel `report_node_advance`，trigger 封闭集 {settle_confirm, supply_finish}）+ 画面 op 观察 id_mark 确认（`CwScreenPrep` 备战顶栏 / `CwScreenSupplyNode` 节点条 → kernel `observe_node_anchor`）；观察漏斗与外循环分支写点不写推进域（判定语义单一源 = [../game_state/node-derivation.md](../game_state/node-derivation.md)）。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
 
 **用户裁定（2026-09-21,决策控制分层铁律）**：凡用于**控制决策行为**的闸门与判断——政策闸、动作放行闸门、花金/消费限制、动作值域过滤——必须在**策略侧**实现（策略器决策时自限,会话状态存 StrategyState）；**流程侧（外循环 / 画面 op / 动作执行）禁止任何形式的决策闸门与政策判断**。流程侧的合法判断面仅限：画面识别与路由（外循环本职）、防 bug 守卫断言（非控制流）、失败治理与停机（失败出口非决策控制）。决策的值域与节拍永远由策略器在决策时决定——流程侧出现「需要判断该不该放某个动作过」= 分层错误,修法 = 迁策略侧（单一源 = 本条;各篇 op/action 文档引用以指针为准）。
 
