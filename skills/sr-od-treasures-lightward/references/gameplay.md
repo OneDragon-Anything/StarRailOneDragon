@@ -1,7 +1,7 @@
 ---
 gameplay_name: 忘却之庭(逐光捡金)
 app_id: treasures_lightward
-last_updated: 2026-11-07
+last_updated: 2026-11-11
 source: 实机实测(2026-11,4.6 版本期) + screen_info 逐光捡金屏族(13 yml) + 官方公告(4.3/4.5 版本更新说明、4.3 前瞻直播、1.5 忘却之庭优化) + WebSearch 攻略;实机证据优先,攻略仅补充
 involves_screens: [逐光捡金, 忘却之庭-编队, 忘却之庭-节点画面, 虚构叙事-编队, 末日幻影-选关, 挑战副本, 战斗画面, 队伍]
 ---
@@ -55,15 +55,18 @@ involves_screens: [逐光捡金, 忘却之庭-编队, 忘却之庭-节点画面,
 - **攻击/开战**:`ctx.controller.initiate_attack()`(点击画面中心主动发起攻击——框架提供的标准开战接口);
 - **锁光标场景点击**:框架 area 点击需非零按压(press_time≈0.15s,0s 落空)+ `pc_alt=True`;MCP 手动操作用 `click_game(x, y, pc_alt=True)`。
 
-## bot 现状(2026-11-06 复核)
+## bot 现状
 
-- **旧 app 不可运行**:`application/treasures_lightward/` 是重构前遗产(`from sr.*` / `from basic.*` 导入,`ModuleNotFoundError`),无 factory 未注册——2026-11-06 grep 复核仍然如此。
-- **新框架单次挑战 ops 已落地**(`src/sr_od/operations/`):`tl_fill_team` / `tl_start_challenge`(FH) / `tl_pf_challenge`(PF 组合+子 op) / `tl_as_challenge`(AS 组合+子 op)。用法与参数见 SKILL.md 各类型块;多关循环编排(app 级)未迁移,由调用方控制。
+- **旧框架代码已删除**:迁移前的旧 app/配队模块/旧 op(application/treasures_lightward
+  下 app/config/record/team_module/const 与 op/)均为 `sr.*` 旧包布局、import 即失败,
+  已整体移除(git 历史可考)。
+- **新框架单次挑战 ops 已落地**(`src/sr_od/application/treasures_lightward/operations/`,
+  按玩法分子包 `forgotten_hall` / `pure_fiction` / `apocalyptic_shadow`,公共导航在包根):
+  FH = `forgotten_hall.team_fill` / `forgotten_hall.battle`;PF = `pure_fiction.challenge`(组合+子 op);
+  AS = `apocalyptic_shadow.challenge`(组合+子 op) / `apocalyptic_shadow.reward_claim`(期次奖励) /
+  `apocalyptic_shadow.battle_exit`(弃赛退出)。
+  用法与参数见 SKILL.md 各类型块与 [operations.md](operations.md);多关循环编排(app 级)未迁移,由调用方控制。
 - **op 命名已统一「节点」**:`node_teams` 参数、「节点战斗」op 名、「节点待命态」注释与识别域符号(`NodeInfo`/`read_team_nodes`/extras 键 `nodes`)均已按术语定案改名;屏名「忘却之庭-节点画面」与统一术语一致,无需改。
-
-## bot 流程(`application/treasures_lightward`,旧架构,仅作规格参考)
-
-`TreasuresLightwardApp` 调度(节点链):选分类 → 检测记录+传送 → 检测总星数 → 满星完成 / 找最大已解锁关 → 循环挑战(选关→配队→战斗→检测星→下一关)。op:challenge_mission / check_max_unlock_mission / check_mission_star / check_star / choose_character + forgotten_hall/(choose_mission / team / reward)+ tl_battle / tl_wait;`search_best_mission_team`(配队模块选最优队伍)。
 
 ## 画面(逐光捡金屏族,13 yml,2026-11-06 现状)
 
@@ -92,8 +95,7 @@ involves_screens: [逐光捡金, 忘却之庭-编队, 忘却之庭-节点画面,
   - **自动战斗的机制陷阱**:boss 带「自选单挑」类强制机制时,游戏自动战斗会乱抓单挑人选(社区多人实证的分数波动源)——选队阶段就避开「被抓者不可替代」的配置,不指望战斗中人工干预;具体机制以当期攻略拆解为准。
 - **异相仲裁**:2026-11 分类页确认存在,未进探,未建模。
 - **challenge_mission screen 的「支援角色替换图标」area**:`pc_rect=[0,0,0,0]` 占位待填(见 [challenge_mission](../../../../docs/game/screens/challenge_mission.md)),不删。
-- **配队**:`treasures_lightward_team_module.search_best_mission_team` 自动选队伍(旧架构),逻辑待细化。
-- **重 app 编排**:节点链(choose → check → challenge → 循环)详细待 develop doc。
+- **app 级编排**:多关循环(选关 → 配队 → 战斗 → 检测星 → 下一关)未建模,详细待 develop doc。
 
 ## 参考来源
 

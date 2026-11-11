@@ -5,7 +5,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 # 逐光捡金玩法路由（sr-od-treasures-lightward）
 
-逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见本 skill [references/gameplay.md](references/gameplay.md)；各画面建档见 docs/game/screens/ 下同名 doc。
+逐光捡金（Treasures Lightward）是常驻高难挑战合集，入口链：大世界 → 手机菜单 → 星际和平指南 → 逐光捡金 tab → 分类页（左侧四类）。玩法总机制与入口链细节见本 skill [references/gameplay.md](references/gameplay.md)；**各副本的逐步操作路由（步骤表/op 参数/结果解读/失败去向/奖励领取）见 [references/operations.md](references/operations.md)**；各画面建档见 docs/game/screens/ 下同名 doc。
 
 ## 总 checklist（没做完这 5 步不算完成一次逐光捡金任务）
 
@@ -44,6 +44,8 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 操作路径（agent 从零到通关）
 
+逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §2；概要：
+
 1. `GotoTreasuresLightward(mode='forgotten_hall')` → 选关（记忆紊流更新弹窗自动关闭）。
 2. 选关界面点目标关卡水晶 → 编队屏（画面 doc：忘却之庭-编队）。
 3. 读输入：编队屏每半场「建议属性」（= 该半场敌人弱点表）+ 敌人等级 +「词条-记忆紊流」看本关增益。
@@ -57,9 +59,9 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- `TlFhTeamFillOp`（`sr_od.application.treasures_lightward.operations.tl_fh_team_fill.TlFhTeamFillOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
-- 编队屏点「混沌回忆」按钮发起挑战（ops 均不点它）——op 内用 `round_by_find_and_click_area` 点「FH_START_CHALLENGE」area，MCP 手动操作用 `analyze_screen` 命中后 `click_game` 按钮中心。
-- `TlFhBattleOp`（`sr_od.application.treasures_lightward.operations.tl_fh_battle.TlFhBattleOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
+- `TlFhTeamFillOp`（`sr_od.application.treasures_lightward.operations.forgotten_hall.team_fill.TlFhTeamFillOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
+- 编队屏点「按钮-最终开始」发起挑战（ops 均不点它，由调用方做）——MCP 手动操作：`analyze_screen` 命中「忘却之庭-编队」后 `click_game(x=1672, y=985, pc_alt=True)` 点按钮中心（屏级 pc_alt 锁光标）。
+- `TlFhBattleOp`（`sr_od.application.treasures_lightward.operations.forgotten_hall.battle.TlFhBattleOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
 
 ### 奖励
 
@@ -74,6 +76,8 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 操作路径
 
+逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §3；概要：
+
 1. `GotoTreasuresLightward(mode='pure_fiction')` → 选关（新期开场介绍页自动点「开启故事」）。
 2. 选关点目标关卡纸鹤 → 编队屏（画面 doc：虚构叙事-编队）。
 3. 读输入：左栏「战意效果」列表 + 每行「荒腔走板」——点行加号开弹窗后，用 MCP `analyze_screen` 识别「虚构叙事-荒腔走板」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
@@ -86,7 +90,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- 组合 op（把子 op 串成完整挑战的入口 op）`TlPureFictionChallengeOp`（`sr_od.application.treasures_lightward.operations.tl_pf_challenge.TlPureFictionChallengeOp`）：参数 team_names（8 人按行序）、buff_slot（战意效果序号，1 基）、buff_slots（每行荒腔走板序号列表，1 基）。前置 = 已在虚构叙事编队屏（组合 op 不做选关→编队屏跳转，操作路径步骤 2 由调用方完成）。
+- 组合 op（把子 op 串成完整挑战的入口 op）`TlPureFictionChallengeOp`（`sr_od.application.treasures_lightward.operations.pure_fiction.challenge.TlPureFictionChallengeOp`）：参数 team_names（8 人按行序）、buff_slot（战意效果序号，1 基）、buff_slots（每行荒腔走板序号列表，1 基）。前置 = 已在虚构叙事编队屏（组合 op 不做选关→编队屏跳转，操作路径步骤 2 由调用方完成）。
 - 内部子 op 也可单独跑：`TlPfTeamFillOp` / `TlPfBuffEquipOp`（buff_slot + buff_slots）/ `TlPfBattleOp`。
 
 ### 奖励
@@ -102,6 +106,8 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 操作路径
 
+逐步路由表（含结果解读与失败去向）见 [references/operations.md](references/operations.md) §4；概要：
+
 1. `GotoTreasuresLightward(mode='apocalyptic_shadow')` → 选关（新期开场介绍页自动点「前往挑战」；画面 doc：末日幻影-选关）。
 2. 选关默认选中最高可玩难度——进编队屏前重新点目标难度标签。
 3. 读输入：「末日幻影-首领信息」画面看 boss 弱点与机制；行尾圆圈开「终焉公理」弹窗后，用 MCP `analyze_screen` 识别「末日幻影-终焉公理」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
@@ -114,7 +120,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- 组合 op `TlApocalypticShadowChallengeOp`（`sr_od.application.treasures_lightward.operations.tl_as_challenge.TlApocalypticShadowChallengeOp`）：参数 team_names（8 人按行序）、buff_slots（每行终焉公理序号，1 基，默认 (1,1)）。入口节点自行处理「选关屏→编队屏」跳转（已在编队屏 / 挑战进行中也直接接续）。
+- 组合 op `TlApocalypticShadowChallengeOp`（`sr_od.application.treasures_lightward.operations.apocalyptic_shadow.challenge.TlApocalypticShadowChallengeOp`）：参数 team_names（8 人按行序）、buff_slots（每行终焉公理序号，1 基，默认 (1,1)）。入口节点自行处理「选关屏→编队屏」跳转（已在编队屏 / 挑战进行中也直接接续）。
 - 队伍须避开带警告标记的角色（如当期试用）——可落位但「前往挑战」校验不过、点击无反应。
 - 内部子 op 也可单独跑：`TlAsTeamFillOp` / `TlAsAxiomEquipOp`（buff_slots）/ `TlAsBattleOp`。
 
