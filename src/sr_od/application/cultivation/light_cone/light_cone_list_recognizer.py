@@ -65,11 +65,10 @@ _GRID_ROW_GAP_PX: int = 172
 # 插行判定的间距容差(锚点行带 cy 有个位数噪声)
 _GRID_ROW_GAP_TOL_PX: int = 40
 
-# 插值补全位的空格判别阈:卡矩形内 Canny(40,120) 边缘像素数下限。实机标定
-# (替换列表滚动帧):真卡 ≥826、空格(纯星空背景)≤636,阈值取 700——插值位
-# 真卡按「宁可漏不猜错」原则,证据不足即不出卡(用户裁定:分组列表只补
-# 有肯定证据的位置,难定的算了)
-_EMPTY_SLOT_MIN_EDGES = 700
+# 插值补全位的语义证据窗:卡底等级文本的纵向容差(卡底=行带 cy+12,文本 cy
+# 落在 [卡底-60, 卡底+10])与横向半径(文本宽度波动)
+_LEVEL_TEXT_ZONE_DY = (60, 10)
+_LEVEL_TEXT_ZONE_DX = 60
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
@@ -141,30 +140,53 @@ class _EquipListRecognizerBase(ScreenRecognizer):
             if all(_iou(c_rect, a) < _DEDUPE_IOU for a in anchor_rects):
                 merged.append(c_rect)
         merged = self._filter_contour_offgrid(merged, anchor_rects, list_area.rect)
-        merged.extend(self._keep_evidenced_interps(merged, interp_rects, gray))
+        merged.extend(self._keep_evidenced_interps(merged, interp_rects,
+                                                   contour_rects, ocr_results))
         merged.sort(key=lambda r: (r.y1 // 100, r.x1))
         return merged, ocr_results
 
     def _keep_evidenced_interps(self, merged: list[Rect], interp_rects: list[Rect],
-                                gray: np.ndarray) -> list[Rect]:
-        """网格插值补全位的证据门槛:未被已有卡覆盖且卡内容达标的才出卡。
+                                contour_rects: list[Rect],
+                                ocr_results: list) -> list[Rect]:
+        """网格插值补全位的证据门槛:有轮廓证据或等级文本证据的才出卡。
 
         光锥替换列表按命途分组,组末行常不满(如 28 张 = 3 满行 + 1)——网格
         补位若无条件出卡,会把空格(纯星空背景)也补成卡;空格 TM 可达
         0.90-0.95(高于拒答门槛,实机幻影条目实证)。补全位判定:
         ①与已出卡(锚点/轮廓卡)重叠 → 同一卡,不重复出;
-        ②卡矩形内边缘像素数 ≥_EMPTY_SLOT_MIN_EDGES → 有卡内容,出;
-        ③都不满足 → 丢弃(难定的算了,滚动后完整卡会以锚点形态出现,
-        不损失召回)。"""
+        ②轮廓证据:卡尺寸窗的闭合卡形区域被 Canny 检出(星点碎块过不了
+        卡尺寸窗);
+        ③语义证据:卡底「等级」文本在 OCR 结果中在场(列表真卡必有等级
+        徽章,星点闪烁变不出文字)。
+        都不满足 → 丢弃(难定的算了,滚动后完整卡会以锚点形态出现,不损失
+        召回)。⚠️ 曾用「矩形内边缘像素数 ≥ 阈值」判空——星空背景有闪烁
+        动画,边缘数逐帧漂移(空格实测 636 → 换帧超阈),固定阈值不鲁棒,
+        已废弃。"""
         kept: list[Rect] = []
         for rect in interp_rects:
             if any(_iou(rect, m) >= _DEDUPE_IOU for m in merged):
                 continue
-            roi = gray[rect.y1:rect.y2, rect.x1:rect.x2]
-            edges = cv2.Canny(roi, 40, 120)
-            if int((edges > 0).sum()) >= _EMPTY_SLOT_MIN_EDGES:
+            if any(_iou(rect, c) >= _DEDUPE_IOU for c in contour_rects):
+                kept.append(rect)
+                continue
+            if self._has_level_text(rect, ocr_results):
                 kept.append(rect)
         return kept
+
+    @staticmethod
+    def _has_level_text(rect: Rect, ocr_results: list) -> bool:
+        """卡底语义证据:该卡矩形底部区域内存在「等级」开头文本。"""
+        cx = (rect.x1 + rect.x2) / 2
+        dy_up, dy_down = _LEVEL_TEXT_ZONE_DY
+        for r in ocr_results:
+            text = str(r.data).strip()
+            if not text.startswith('等级'):
+                continue
+            rc = r.rect
+            if (rect.y2 - dy_up <= rc.center.y <= rect.y2 + dy_down
+                    and abs(rc.center.x - cx) <= _LEVEL_TEXT_ZONE_DX):
+                return True
+        return False
 
     def _filter_contour_offgrid(self, merged: list[Rect],
                                 anchor_rects: list[Rect], list_rect: Rect) -> list[Rect]:
