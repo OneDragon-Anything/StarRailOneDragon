@@ -1,20 +1,27 @@
 """光锥替换列表画面识别器:分层定位 + 分层识别(自含实现,不跨域共用)。
 
-``analyze_screen`` 精准命中「光锥-替换」后,按「网格多目标识别分层范式」识别
-(od-dev-write-operation 多目标特征识别节):
-**定位层**——每卡底部「等级N」文本锚点 + 轮廓补充(锚点漏读真卡) + 网格吸附
-过滤;滚动裁切卡(贴列表边缘、等级文本滚出、图案只露部分)信息不全,不识别;
-**内容识别层**——整屏主匹配 ``full(N票)`` + 格内兜底 ``fallback(N簇)``;
+``analyze_screen`` 精准命中「光锥-替换」后,按「列表 / 网格内容识别范式」识别
+(od-dev-write-operation references/list-grid-content-recognition.md):
+**定位层**——每卡底部「等级N」文本锚点 + 轮廓补充(锚点漏读真卡) + 网格刚性
+拓扑补全(行带内补列 / 行带间插行,只在证实行带之间补,不外推);滚动裁切卡
+(可见高度不足、图案只露部分)信息不全,不识别;
+**身份层**——masked 模板匹配(TM):卡面 = 图标构图贴图 × UI 缩放常量合成。
+模板正源(itemfigures 256×256)与实机列表卡面**同构图同源**——「列表只渲染
+立绘一部分」发生在立绘→构图贴图一步,不发生在贴图→卡面一步,卡面是构图贴图
+的等比缩小(实测 ~0.39),逐像素比对成立(实机 27 卡单尺度全对、NCC 0.981-0.995,
+错误模板天花板 0.961)。按绝对目标像素缩放(主档 100px;选中卡白框放大 ~6% →
+106px 双档级联),前景 mask(底色距分割)后 TM_CCORR_NORMED 匹配,低于拒答
+门槛诚实返回 None 不硬猜。缩放按模板原始尺寸换算——卡面渲染像素才是常量,
+比例随模板分辨率派生,混合尺寸模板库禁用「比例」参数(遗器连结绳 512 件按
+256 比例缩半全帧误判实证)。
 **占用者**——角标区角色头像 SIFT 匹配。
 
-网格定位/身份投票/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
+网格定位/TM 身份/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
 一份,两域零 import——域自治裁定见
 docs/develop/sr_od/application/cultivation/changes/2026-11-11-domain-restructure/
-design.md §2.2),代码逐行与拆分前 equip_list_recognizer /
-grid_template_locate / equip_owner_match 一致(行为锁定,批次B 判据)。
-卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与装备某件走
-``EquipLightConeOp``。并发安全:recognize 纯读,模板库与特征缓存均为只读
-懒加载(幂等)。
+design.md §2.2)。卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与
+装备某件走 ``EquipLightConeOp``。并发安全:recognize 纯读,模板预处理缓存均为
+只读懒加载(幂等)。
 """
 from __future__ import annotations
 
@@ -26,7 +33,6 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils import cv2_utils, os_utils
@@ -42,19 +48,38 @@ if TYPE_CHECKING:
 
 _LEVEL_VALUE_RE = re.compile(r'(\d{1,3})')
 
-# 降级匹配的模板预缩放尺寸(实机列表渲染 ≈ 0.28-0.5 倍,同尺度匹配实测有效;
-# 全尺寸模板在整屏/格内匹配均因描述子尺度差失败,多方案对比实验实证)
-_FALLBACK_TEMPLATE_SIZE = (174, 204)
+# masked TM 身份层参数(实机替换列表 27 卡标定:真值卡彩色 NCC 0.981-0.995、
+# 同款多副本(最多 9 连)判名一致、次高模板天花板 0.961)
+_TM_TARGET_PX = 100        # 256 正源模板的目标像素(卡面渲染实测 ~100px,2px 步进扫描峰值)
+_TM_TARGET_PX_SELECTED = 106  # 选中卡(白框)渲染放大 ~6% → 106px(尺度扫描峰值)
+_TM_CASCADE_GATE = 0.97    # 级联门槛:主档 NCC 低于此的卡再跑选中档(选中卡主档 ~0.97,
+                           # 正常卡 ≥0.981 不触发,增量成本可忽略)
+_TM_SEARCH_PAD = 22        # 卡矩形外扩(吸收定位偏差与版本间网格漂移)
+_TM_GATE = 0.85            # 拒答门槛:低于此视为无有效图案,诚实返回 None 不硬猜
+# 轮廓补充卡的完整高度下限:低于视为滚动裁切的部分卡(完整卡 155 高)
+_CONTOUR_MIN_CARD_H = 135
+# 网格插行的标准行距(光锥卡行距实机恒定,标定帧行带 cy 597/770/942 间距 172-173)
+_GRID_ROW_GAP_PX: int = 172
+# 插行判定的间距容差(锚点行带 cy 有个位数噪声)
+_GRID_ROW_GAP_TOL_PX: int = 40
+
+# 插值补全位的空格判别阈:卡矩形内 Canny(40,120) 边缘像素数下限。实机标定
+# (替换列表滚动帧):真卡 ≥826、空格(纯星空背景)≤636,阈值取 700——插值位
+# 真卡按「宁可漏不猜错」原则,证据不足即不出卡(用户裁定:分组列表只补
+# 有肯定证据的位置,难定的算了)
+_EMPTY_SLOT_MIN_EDGES = 700
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
 
 # 轮廓补充卡的网格吸附半径:中心 x 距列中心 / 中心 y 距锚点行带(卡中心)的
-# 最大偏差。实机验证:网格间隙纹理被 Canny 检出的伪矩形(如 122×113 的间隙
-# 框)中心落在列与列之间(偏差 ≥31px),真卡(含 OCR 漏锚卡)中心与网格交点
-# 偏差 ≤17px —— 以此区分,不吸附且不贴列表边缘的轮廓矩形丢弃。
+# 最大偏差。真卡(含 OCR 漏锚卡)中心必与「列中心 × 锚点行带」交点吻合,
+# 网格间隙纹理的伪矩形中心落在列与列之间,以此区分,不吸附且不贴列表边缘
+# 的轮廓矩形丢弃。
 _CONTOUR_COL_SNAP_PX = 28
 _CONTOUR_ROW_SNAP_PX = 70
+
+
 def _iou(a: Rect, b: Rect) -> float:
     ix = max(0, min(a.x2, b.x2) - max(a.x1, b.x1))
     iy = max(0, min(a.y2, b.y2) - max(a.y1, b.y1))
@@ -69,7 +94,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
     extras_doc: dict[str, str] = {
         'items': '装备件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, owner:占用角色(中文名)}],'
                  '按卡位置排序;全部识别失败的卡不列',
-        'total_cards': '定位到的卡总数(锚点 + 轮廓补充)',
+        'total_cards': '定位到的卡总数(锚点 + 网格吸附过滤后的轮廓补充)',
         'hint': '卡片上不印装备名称(名字只在选中后右侧详情出现)——身份与占用者'
                 '均靠图像匹配识别;定位与装备某件走 EquipLightConeOp/EquipRelicOp',
     }
@@ -92,21 +117,21 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         raise NotImplementedError
 
     def _locate_cards(self, ctx: SrContext, image: MatLike,
-                      list_area) -> tuple[list[Rect], list, MatLike]:
+                      list_area) -> tuple[list[Rect], list]:
         """定位层:等级文本锚点 + 轮廓补充,去重合并后按网格吸附过滤。
 
         轮廓补充的误检源实机实证:网格间隙的装饰底纹会形成闭合轮廓,矩形
         尺寸恰好落进卡尺寸窗,但中心不落在任何网格交点上;真卡(含 OCR 漏
         锚卡)中心必与「列中心 × 锚点行带」交点吻合。过滤规则:与锚点卡
-        同列同行 → 保留(锚点漏读的真卡,信息完整);贴列表上下边缘 → 丢弃
+        同列同行 → 保留(锚点漏读的真卡,信息完整);可见高度不足 → 丢弃
         (滚动裁切卡,等级文本已滚出、图案只露部分,信息不全不识别,见
         _filter_contour_offgrid);其余丢弃。
 
-        :return: (卡矩形清单, 全图 OCR 结果, 列表灰度图)——灰度图供识别层
-            复用,避免整帧 cvtColor 重复计算。
+        :return: (卡矩形清单, 全图 OCR 结果)
         """
         ocr_results = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
-        anchor_rects = detect_card_anchors(ocr_results, list_area.rect, self._col_centers(list_area.rect))
+        anchor_rects, interp_rects = detect_card_anchors(
+            ocr_results, list_area.rect, self._col_centers(list_area.rect))
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         contour_rects = detect_card_rects_contours(gray, list_area.rect)
         merged = list(anchor_rects)
@@ -114,8 +139,30 @@ class _EquipListRecognizerBase(ScreenRecognizer):
             if all(_iou(c_rect, a) < _DEDUPE_IOU for a in anchor_rects):
                 merged.append(c_rect)
         merged = self._filter_contour_offgrid(merged, anchor_rects, list_area.rect)
+        merged.extend(self._keep_evidenced_interps(merged, interp_rects, gray))
         merged.sort(key=lambda r: (r.y1 // 100, r.x1))
-        return merged, ocr_results, gray
+        return merged, ocr_results
+
+    def _keep_evidenced_interps(self, merged: list[Rect], interp_rects: list[Rect],
+                                gray: np.ndarray) -> list[Rect]:
+        """网格插值补全位的证据门槛:未被已有卡覆盖且卡内容达标的才出卡。
+
+        光锥替换列表按命途分组,组末行常不满(如 28 张 = 3 满行 + 1)——网格
+        补位若无条件出卡,会把空格(纯星空背景)也补成卡;空格 TM 可达
+        0.90-0.95(高于拒答门槛,实机幻影条目实证)。补全位判定:
+        ①与已出卡(锚点/轮廓卡)重叠 → 同一卡,不重复出;
+        ②卡矩形内边缘像素数 ≥_EMPTY_SLOT_MIN_EDGES → 有卡内容,出;
+        ③都不满足 → 丢弃(难定的算了,滚动后完整卡会以锚点形态出现,
+        不损失召回)。"""
+        kept: list[Rect] = []
+        for rect in interp_rects:
+            if any(_iou(rect, m) >= _DEDUPE_IOU for m in merged):
+                continue
+            roi = gray[rect.y1:rect.y2, rect.x1:rect.x2]
+            edges = cv2.Canny(roi, 40, 120)
+            if int((edges > 0).sum()) >= _EMPTY_SLOT_MIN_EDGES:
+                kept.append(rect)
+        return kept
 
     def _filter_contour_offgrid(self, merged: list[Rect],
                                 anchor_rects: list[Rect], list_rect: Rect) -> list[Rect]:
@@ -123,33 +170,39 @@ class _EquipListRecognizerBase(ScreenRecognizer):
 
         锚点卡(行列解耦换算)天然在网格上,原样保留;仅对轮廓补充卡校验:
         中心 x 吸附列中心(固定列先验)、中心 y 与某锚点卡中心同行带,两者
-        同时成立视为网格上的真卡(锚点 OCR 漏读场景);贴列表上下边缘的
-        轮廓卡是滚动裁切卡,直接丢弃——裁切卡等级文本已滚出可视区(输出必缺
-        等级)、图案只露部分(特征更弱,错认风险高于完整卡),识别无消费价值;
-        完整卡在滚动后必以完整形态出现,不损失召回(多目标识别范式「不与任何
-        预期区域重叠的命中丢弃」,od-dev-write-operation)。
+        同时成立视为网格上的真卡(锚点 OCR 漏读场景);可见高度不足的轮廓卡
+        是滚动裁切卡,直接丢弃——裁切卡等级文本已滚出可视区(输出必缺等级)、
+        图案只露部分,识别无消费价值;完整卡在滚动后必以完整形态出现,不损失
+        召回(多目标识别范式「不与任何预期区域重叠的命中丢弃」)。
         """
         col_centers = self._col_centers(list_rect)
         kept: list[Rect] = []
         anchor_set = {id(a) for a in anchor_rects}
         for rect in merged:
-            if id(rect) in anchor_set or len(anchor_rects) == 0:
+            if id(rect) in anchor_set:
                 kept.append(rect)
                 continue
             cx, cy = (rect.x1 + rect.x2) / 2, (rect.y1 + rect.y2) / 2
             col_ok = min(abs(cx - c) for c in col_centers) <= _CONTOUR_COL_SNAP_PX
             if not col_ok:
                 # 列吸附是硬条件:真卡(含滚动裁切卡)x 方向必在列上;网格间隙
-                # 纹理矩形顶到列表上边缘也不在列上(实机 476 中心 vs 列 429 实证)
+                # 纹理矩形顶到列表上边缘也不在列上
                 continue
-            clipped_by_edge = (rect.y1 <= list_rect.y1 + 5
-                               or rect.y2 >= list_rect.y2 - 5)
-            if clipped_by_edge:
-                continue  # 裁切卡:等级文本滚出、图案不全,识别无消费价值,丢弃
+            # 裁切判据 = 可见高度不足(轮廓只包住卡的一部分),而非「贴列表边缘」
+            # ——网格行1 卡 y1 会略超列表区上界(area 标定偏大/版本网格漂移),
+            # 完整卡按贴边误杀会整行丢失(遗器侧 4.7 实机实证)
+            if (rect.y2 - rect.y1) < _CONTOUR_MIN_CARD_H:
+                continue  # 部分可见卡:图案不全,识别无消费价值,丢弃
+            if not anchor_rects:
+                # 无锚点(OCR 全空极端位)时轮廓是唯一信息源:行检查豁免,
+                # 列吸附与部分卡检查照走(丢弃语义与有锚一致)
+                kept.append(rect)
+                continue
             row_ok = min(abs(cy - (a.y1 + a.y2) / 2) for a in anchor_rects) <= _CONTOUR_ROW_SNAP_PX
             if row_ok:
                 kept.append(rect)
         return kept
+
 
 class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     """「光锥-替换」画面:分层定位 + 每件 = 光锥名/命途/等级/占用者/叠影。"""
@@ -157,13 +210,12 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
     screen_name = '光锥-替换'
 
     extras_doc: dict[str, str] = {
-        'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名(全库 argmax), '
+        'items': '光锥件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, cone:光锥名, '
                  'path_cn:命途, level:光锥等级(1-80), owner:占用角色(中文名), '
                  'rank:叠影数(1-5,罗马数字标识别,判不出为 null), '
-                 'identity: full(N票=整屏主匹配)/fallback(N簇=格内聚簇强度,低簇=低置信,'
-                 '可与同款兄弟格对照复核)}],按卡位置排序;'
+                 'identity: tm(NCC=masked 模板匹配置信)/none}],按卡位置排序;'
                  '全部识别失败的卡不列',
-        'total_cards': '定位到的卡总数(锚点 + 轮廓补充)',
+        'total_cards': '定位到的卡总数(锚点 + 网格吸附过滤后的轮廓补充)',
     }
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
@@ -217,23 +269,11 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         image: MatLike,
         screen_info: ScreenInfo,
     ) -> dict | None:
-        """光锥列表完整绑定:每件 {光锥名, 命途, 等级, 占用者, 识别层级}。"""
+        """光锥列表完整绑定:每件 {光锥名, 命途, 等级, 占用者, 叠影}。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
-        card_rects, ocr_results, gray = self._locate_cards(ctx, image, list_area)
+        card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
 
-        anchor_cx = [r.center.x for r in card_rects]
-        identity_hits = identify_cells(
-            cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), _light_cone_templates(),
-            list_area.rect, anchor_cx=anchor_cx)
-        identity_by_card: dict[int, tuple[int, str]] = {}
-        for ccx, ccy, votes, name in identity_hits:
-            for idx, card_rect in enumerate(card_rects):
-                center = card_rect.center
-                if abs(ccx - center.x) <= 70 and abs(ccy - center.y) <= 78:
-                    prev = identity_by_card.get(idx)
-                    if prev is None or votes > prev[0]:
-                        identity_by_card[idx] = (votes, name)
-                    break
+        identity_by_card = _tm_identify_cells(image, *_tm_template_lists(), card_rects)
 
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
@@ -242,12 +282,8 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
             level = self._read_level(ocr_results, card_rect)
             rank = self._read_superimpose(ctx, image, card_rect)
             ident = identity_by_card.get(idx)
-            cone_name, identity_src = ((ident[1], f'full({ident[0]}票)') if ident else (None, 'none'))
-            if cone_name is None:
-                cone_name, confidence = _fallback_identity(
-                    gray, card_rect, _light_cone_templates_scaled())
-                if cone_name is not None:
-                    identity_src = f'fallback({confidence}簇)'
+            cone_name, identity_src = ((ident[1], f'tm({ident[0]:.3f})')
+                                       if ident else (None, 'none'))
             if cone_name is None and owner is None and level is None:
                 continue  # 全部识别失败的卡,不猜测
             item = {'cell': [card_rect.x1, card_rect.y1,
@@ -279,29 +315,118 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
                 if 1 <= level <= 80:
                     return level
         return None
-_light_cone_template_cache: dict[str, MatLike] | None = None
-_light_cone_scaled_cache: dict[str, np.ndarray] | None = None
-def _light_cone_templates() -> dict[str, MatLike]:
-    """光锥名 → 图标灰度模板(全量;常驻以命中 identify_cells 的特征缓存)。"""
-    global _light_cone_template_cache
-    if _light_cone_template_cache is None:
-        lib: dict[str, MatLike] = {}
+
+
+#------------------- masked TM 身份层(域内副本) -------------------#
+
+_tm_prep_cache: dict[str, list[tuple[np.ndarray, np.ndarray]]] | None = None
+
+
+def load_template_rgb(rel_path: str) -> np.ndarray | None:
+    """加载图标模板 RGB 图(cv2_utils.read_image 输出恒为 RGB 口径,口径纪律
+    见 AGENTS.md §5:cv2 一族产物不经转换不得进 RGB 流转)。
+
+    :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
+    :return: RGB 图;文件不存在返回 None(调用方判停)
+    """
+    path = os_utils.get_path_under_work_dir(*rel_path.split('/'))
+    return cv2_utils.read_image(path)
+
+
+def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
+    """归档 webp 的前景 mask:四角中位取合成底色,色距 >30 为前景。
+
+    归档模板无 alpha(透明区已按稀有度合成卡框底色),底色平坦不产生匹配
+    信号;TM 逐像素比对必须剔除底色,否则底色互相关稀释前景分数。
+    """
+    corners = np.stack([rgb[:4, :4].reshape(-1, 3), rgb[:4, -4:].reshape(-1, 3),
+                        rgb[-4:, :4].reshape(-1, 3), rgb[-4:, -4:].reshape(-1, 3)])
+    bg = np.median(corners.reshape(-1, 3), axis=0)
+    return np.linalg.norm(rgb.astype(np.float64) - bg[None, None, :], axis=2) > 30
+
+
+def _tm_templates_all() -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
+    """光锥名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(进程级缓存)。
+
+    缩放按模板原始尺寸归一:256 正源 → 主档 100px / 选中档 106px——卡面渲染
+    像素才是常量(27 卡单尺度全对实证),比例随模板分辨率派生;双档覆盖列表
+    常态与选中卡(白框)的放大渲染。
+    """
+    global _tm_prep_cache
+    if _tm_prep_cache is None:
+        prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
         for cone_name, cone_def in LIGHT_CONE_BY_NAME.items():
-            template = load_template_gray(cone_icon_rel_path(cone_def.name))
-            if template is not None:
-                lib[cone_name] = template
-        _light_cone_template_cache = lib
-    return _light_cone_template_cache
+            img = load_template_rgb(cone_icon_rel_path(cone_def.name))
+            if img is None:
+                continue
+            mask = _fg_mask_from_rgb(img)
+            # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~6%)。
+            # 相似件分数接近时,选中卡的放大差足以让次优件反超(遗器侧行内
+            # 死水头被透镜反超实证),双档级联为必需而非可选。
+            entries = []
+            for target in (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED):
+                tpl = cv2.resize(img, (target, target), interpolation=cv2.INTER_AREA).astype(np.float32)
+                mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
+                                     interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
+                entries.append((tpl, mask_s))
+            prep[cone_name] = entries
+        _tm_prep_cache = prep
+    return _tm_prep_cache
 
 
-def _light_cone_templates_scaled() -> dict[str, np.ndarray]:
-    """光锥名 → 预缩放灰度模板(降级匹配用,与实机列表渲染同尺度)。"""
-    global _light_cone_scaled_cache
-    if _light_cone_scaled_cache is None:
-        _light_cone_scaled_cache = {
-            name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
-            for name, t in _light_cone_templates().items()}
-    return _light_cone_scaled_cache
+def _tm_template_lists() -> tuple[list, list]:
+    """全库 TM 模板,分 (主档 list, 选中档 list) 两组。"""
+    all_tmpl = _tm_templates_all()
+    main = [(name, *entries[0]) for name, entries in all_tmpl.items()]
+    sel = [(name, *entries[1]) for name, entries in all_tmpl.items()]
+    return main, sel
+
+
+def _tm_identify_cells(image: MatLike, main_templates: list[tuple[str, np.ndarray, np.ndarray]],
+                       sel_templates: list[tuple[str, np.ndarray, np.ndarray]],
+                       card_rects: list[Rect]) -> dict[int, tuple[float, str]]:
+    """逐卡 masked TM 身份匹配,返回 {卡序号: (NCC, 光锥名)};低于门槛不返回。
+
+    每卡搜索区 = 卡矩形外扩 _TM_SEARCH_PAD(吸收定位偏差与版本间网格漂移);
+    模板前景 mask 后 TM_CCORR_NORMED(逐像素真实比对,无 SIFT 的特征库存量
+    偏差——argmax 认成的是最万金油模板而非最近似件的缺陷不复现)。级联:
+    先跑主档,低于 _TM_CASCADE_GATE 的卡再跑选中档(选中卡白框渲染放大 ~6%,
+    相似件分数接近时主档会被次优件反超)取两档最高;仍低于 _TM_GATE 不进
+    结果(无有效身份的诚实拒答,不硬猜)。
+    """
+
+    def _run(templates: list[tuple[str, np.ndarray, np.ndarray]],
+             region: np.ndarray) -> tuple[float, str | None]:
+        best_name, best_ncc = None, -1.0
+        for name, tpl, mask in templates:
+            th, tw = tpl.shape[:2]
+            if th >= region.shape[0] or tw >= region.shape[1] or not mask.any():
+                continue
+            res = cv2.matchTemplate(region, tpl, cv2.TM_CCORR_NORMED, mask=mask)
+            res = np.nan_to_num(res, nan=-1.0, posinf=-1.0, neginf=-1.0)
+            _, mx, _, _ = cv2.minMaxLoc(res)
+            if mx > best_ncc:
+                best_name, best_ncc = name, float(mx)
+        return best_ncc, best_name
+
+    img_f = image.astype(np.float32)
+    results: dict[int, tuple[float, str]] = {}
+    for idx, rect in enumerate(card_rects):
+        rx1 = max(0, rect.x1 - _TM_SEARCH_PAD)
+        ry1 = max(0, rect.y1 - _TM_SEARCH_PAD)
+        rx2 = rect.x2 + _TM_SEARCH_PAD
+        ry2 = rect.y2 + _TM_SEARCH_PAD
+        region = img_f[ry1:ry2, rx1:rx2]
+        ncc, name = _run(main_templates, region)
+        if ncc < _TM_CASCADE_GATE and sel_templates:
+            ncc2, name2 = _run(sel_templates, region)
+            if ncc2 > ncc:
+                ncc, name = ncc2, name2
+        if name is not None and ncc >= _TM_GATE:
+            results[idx] = (ncc, name)
+    return results
+
+
 #------------------- 光锥叠影模板(卡左缘罗马数字标) -------------------#
 
 # 模板目录(TemplateLoader 规范二级结构):<叠影数>/raw.webp = 归一 26×26
@@ -337,180 +462,13 @@ def _superimpose_templates(ctx: SrContext) -> dict[str, np.ndarray]:
 def _superimpose_rank_of(template_id: str) -> int | None:
     rank = template_id.split('_')[0]  # id 形如 '5' / '1_dark'——前缀数字 = 叠影数
     return int(rank) if rank.isdigit() else None
-def _fallback_identity(gray: np.ndarray, card_rect: Rect,
-                       scaled_templates: dict[str, np.ndarray]) -> tuple[str | None, int]:
-    """降级匹配:只取该卡区域内特征,对全库模板匹配取聚簇最大者(纯 argmax,无阈值)。
-
-    整屏匹配的 Lowe 比值测试在同框式斜置卡牌间存在歧义竞争,真匹配被淘汰;
-    格内局部匹配竞争者少,真匹配存活(晚安与睡颜实证:整屏 2 票 vs 格内 15 聚簇)。
-    确定性先验:定位层过滤空格后留下的卡必是库内真件(锚点卡或锚点漏读的
-    完整图案卡)——直接取聚簇最高的名字,不设分数门槛(用户裁定:认错也只会
-    认成库内最近似,优于 null)。
-    返回 (光锥名/件名, 聚簇 good 数);全库均无有效匹配时返 (None, 0)。
-    """
-    zone = gray[card_rect.y1:card_rect.y2, card_rect.x1:card_rect.x2]
-    z_kp, z_desc = cv2_utils.feature_detect_and_compute(zone)
-    if z_desc is None or len(z_kp) == 0:
-        return None, 0
-    bf = cv2.BFMatcher()
-    best_name: str | None = None
-    best_cluster = 0
-    for name, t_s in scaled_templates.items():
-        t_kp, t_desc = _cached_template_features(t_s)
-        if t_desc is None:
-            continue
-        matches = bf.knnMatch(t_desc, z_desc, k=2)
-        good_pts = [z_kp[m.trainIdx].pt for p in matches if len(p) == 2
-                    and (m := p[0]) and m.distance < 0.75 * p[1].distance]
-        if len(good_pts) < 3:
-            continue
-        # 聚簇:60px 半径内最大友好数(真命中聚在卡牌同位,误配分散)
-        pts = np.float32(good_pts)
-        cluster = 0
-        for i in range(len(pts)):
-            cluster = max(cluster, int((np.abs(pts - pts[i]).max(axis=1) < 60).sum()))
-        if cluster > best_cluster:
-            best_name, best_cluster = name, cluster
-    return best_name, best_cluster
-# 特征点 y 聚簇的行间隔阈值(卡行高+间隙的量级)
-_ROW_CLUSTER_GAP_PX: int = 100
-# 列带吸附半径(约列间距一半)
-_COL_SNAP_PX: int = 70
-# 定位成功的最低票数(实机单卡 9~205 票;幻影簇可达 4~6 票,靠归属窗兜住)
-_MIN_CELL_VOTES: int = 4
-def load_template_gray(rel_path: str) -> np.ndarray | None:
-    """加载图标模板灰度图。注:webp 走 read_image 时 alpha 已被强制丢弃,透明区合成分支实际不可达,模板底色由归档脚本预合成。
-
-    :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
-    :return: 灰度图;文件不存在返回 None(调用方判停)
-    """
-    path = os_utils.get_path_under_work_dir(*rel_path.split('/'))
-    img = cv2_utils.read_image(path)
-    if img is None:
-        return None
-    if img.shape[2] == 4:
-        alpha = img[:, :, 3:4] / 255.0
-        rgb = img[:, :, :3] * alpha + 255 * (1 - alpha)
-        return cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2GRAY)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-# 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——
-# 注:临时对象 id 撞上已释放条目会错配旧特征,模板 dict 必须常驻)
-_template_feature_cache: dict[int, tuple] = {}
 
 
-def _cached_template_features(template_gray: np.ndarray) -> tuple:
-    """模板 SIFT 特征的进程级缓存包装(id 键控;常驻模板字典场景全量命中)。"""
-    key = id(template_gray)
-    if key not in _template_feature_cache:
-        _template_feature_cache[key] = cv2_utils.feature_detect_and_compute(template_gray)
-    return _template_feature_cache[key]
-def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarray],
-                   list_rect: Rect, anchor_cx: list[float] | None = None,
-                   min_votes: int = _MIN_CELL_VOTES) -> list[tuple[float, float, int, str]]:
-    """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,输出命中簇明细。
-
-    与逐件调 :meth:`locate_cells_by_votes` 等价,但 screen 特征(全屏检测
-    ~0.5s)只算一次 + 模板特征走进程级缓存(同对象重复调用零提取成本)——
-    大模板库场景(遗器全库 192 件部件图)每屏增量 ~5s。
-
-    :param named_templates: 身份名 → 模板灰度图(如遗器件名 → 部件图)。
-        同图标多件副本共享同一身份名(遗器件名 = 套装+部位唯一确定)。
-        dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
-    :param anchor_cx: 计票吸附的列中心 x 列表(卡矩形中心 x,锚点/轮廓检测给出)。
-        同一行内多个卡位的匹配点必须**对各卡位分别计票**——簇均值自吸附会把
-        相邻卡的点混算成 1 票(同行跨卡混算漏检实证);None 时回退簇均值
-        自吸附(单卡场景)。
-    :return: [(簇中心 x, 簇中心 y, 票数, 身份名), ...] 按票数降序;
-        **位置由匹配自身给出**(调用方与锚点推算的卡区域做重叠归属,
-        不依赖预设网格)。一格多模板命中时各模板条目并存,由调用方仲裁。
-    """
-    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
-    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
-
-    hits: dict[tuple[int, int], tuple[str, int]] = {}
-    for name, template_gray in named_templates.items():
-        t_kp, t_desc = _cached_template_features(template_gray)
-        good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
-        pts = []
-        for m in good:
-            px, py = s_kp[m.trainIdx].pt
-            if x1 <= px <= x2 and y1 <= py <= y2:
-                pts.append((px, py))
-        if len(pts) < min_votes:
-            continue
-        pts.sort(key=lambda p: p[1])
-        clusters: list[list[tuple[float, float]]] = []
-        for p in pts:
-            if clusters and p[1] - clusters[-1][-1][1] <= _ROW_CLUSTER_GAP_PX:
-                clusters[-1].append(p)
-            else:
-                clusters.append([p])
-        for cluster in clusters:
-            ccx = sum(p[0] for p in cluster) / len(cluster)
-            ccy = sum(p[1] for p in cluster) / len(cluster)
-            centers = anchor_cx if anchor_cx else [ccx]
-            for cx in centers:
-                votes = sum(1 for p in cluster if abs(p[0] - cx) < _COL_SNAP_PX)
-                if votes >= min_votes:
-                    key = (round(cx), round(ccy))
-                    prev = hits.get(key)
-                    if prev is None or votes > prev[1]:
-                        hits[key] = (name, votes)
-
-    return [(float(k[0]), float(k[1]), v, name)
-            for k, (name, v) in sorted(hits.items(), key=lambda kv: -kv[1][1])]
-def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
-                          list_rect: Rect, col_centers: list[float],
-                          col_snap_px: int = _COL_SNAP_PX,
-                          row_gap_px: int = _ROW_CLUSTER_GAP_PX,
-                          min_votes: int = _MIN_CELL_VOTES) -> list[tuple[Point, int]]:
-    """在替换类列表截图里定位模板图所在卡:**全量清单** —— 列表内每一个
-    同图标件的位置都识别出来,不丢件、不隐式偏好。
-
-    对每个 good match 点:计入列表区内的点,y 排序聚簇(间隔超阈值分行),
-    对每个 (簇, 列) 组合计票,票数 ≥ min_votes 的组合全部返回。
-
-    :return: [(格中心, 票数), ...] 按票数降序。同名光锥/同套装同部位的多件
-        副本各占一格 —— **选哪件是调用方基于全量清单的决策**(如多角色装备
-        同一把光锥时依次取不同副本,避免重复选中同一件),识别层不做隐式筛选。
-    """
-    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
-    t_kp, t_desc = cv2_utils.feature_detect_and_compute(template_gray)
-    good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
-
-    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
-    pts = []
-    for m in good:
-        px, py = s_kp[m.trainIdx].pt
-        if x1 <= px <= x2 and y1 <= py <= y2:
-            pts.append((px, py))
-    if len(pts) < min_votes:
-        return []
-
-    pts.sort(key=lambda p: p[1])
-    clusters: list[list[tuple[float, float]]] = []
-    for p in pts:
-        if clusters and p[1] - clusters[-1][-1][1] <= row_gap_px:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
-
-    candidates: list[tuple[Point, int]] = []
-    for cluster in clusters:
-        if len(cluster) < min_votes:
-            continue
-        cy = sum(p[1] for p in cluster) / len(cluster)
-        votes = [sum(1 for p in cluster if abs(p[0] - cx) < col_snap_px) for cx in col_centers]
-        for i, v in enumerate(votes):
-            if v >= min_votes:
-                candidates.append((Point(col_centers[i], cy), v))
-    candidates.sort(key=lambda c: -c[1])
-    return candidates
 #------------------- 装备替换列表卡位:等级文本锚点(识别器用) -------------------#
-# 替换列表每张卡底部都有等级徽章文本(光锥「等级N」/ 遗器「+N」)——OCR 命中位置
-# 即卡位锚点,滚动 / 命途分组头 / 空格天然免疫;固定网格几何在滚动后失效,已废弃。
+# 替换列表每张卡底部都有等级徽章文本(光锥「等级N」)——OCR 命中位置即卡位
+# 锚点,滚动 / 命途分组头 / 空格天然免疫;固定网格几何在滚动后失效,已废弃。
 
-_LEVEL_TEXT_RE = re.compile(r'^(等级\d+|\+\d+)$')
+_LEVEL_TEXT_RE = re.compile(r'^等级\d+$')
 
 
 def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list[Rect]:
@@ -529,7 +487,7 @@ def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list
     rects: list[Rect] = []
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
-        # 卡尺寸窗(光锥 139×155 / 遗器 120×160,部分可见卡允许缩小)
+        # 卡尺寸窗(光锥 139×155,部分可见卡允许缩小)
         if not (60 < w < 200 and 70 < h < 220):
             continue
         if cv2.contourArea(c) / (w * h) < 0.5:
@@ -538,24 +496,33 @@ def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list
                           x + w + list_rect.x1, y + h + list_rect.y1))
     rects.sort(key=lambda r: (r.y1 // 100, r.x1))
     return rects
+
+
 def detect_card_anchors(ocr_results: list, list_rect: Rect,
                         col_centers: list[float]) -> list[Rect]:
-    """从全图 OCR 结果提取装备卡的等级文本锚点,按**行列解耦**换算卡矩形。
+    """从全图 OCR 结果提取光锥卡的等级文本锚点,按**网格刚性拓扑**换算卡矩形。
 
     行列解耦(替代逐锚点独立换算):锚点 OCR 框的 **cx 随文本长度漂移**
     (短文本框偏差实测 ±20px),不可信;**列位置用固定列中心先验**(列距恒定,
     实测误差 ≤1px),锚点 cx 仅用于吸附到最近列;**行位置用锚点 cy 的聚类
     众数**(同行多锚点取均值,单锚 y 噪声被平均;OCR 的 y 定位实测稳定)。
 
+    **网格插值补卡**(网格刚性拓扑下锚点只是采样点,漏采样不改变网格):
+    ①行带内补列——同行带锚点数 < 列数时缺列按固定列先验补出;②行带间
+    插行——相邻行带间距为标准行距整数倍时,中间必夹整行漏锚卡,按网格
+    插值补出。**只在证实行带之间插补,不向最高行带之上/最低行带之下外推**
+    (列表边界/滚动裁切/组末不满行的不确定性留在边缘)。**补位 ≠ 出卡**:
+    列表按命途分组,组末行常不满(如 28 张 = 3 满行 + 1),无条件补位会把
+    空格也补成卡(实机幻影条目实证)——补位候选单列返回,由调用方按轮廓/
+    内容证据取舍(见 ``_keep_evidenced_interps``)。
+
     :param ocr_results: 全图 OCR 结果列表(OcrMatchResult,含 .data/.rect)
     :param list_rect: 列表区(锚点须落在其内,排除右侧详情面板等)
-    :param col_centers: 固定列中心 x 列表(光锥 9 列/遗器 4 列,由列表区 rect
-        按实测列距推导,见 cone_col_centers/relic_col_centers)
-    :return: 卡矩形清单(每个等级文本一张卡),按 (行, 列) 排序。
-        换算标定:光锥卡 139×155、卡底=锚点行带 cy+12;
-        遗器卡 120×160、卡底=锚点行带 cy+22(按文本样式自动区分)。
+    :param col_centers: 固定列中心 x 列表(9 列,由列表区 rect 按实测列距推导)
+    :return: (锚点证据卡矩形清单, 网格补位候选清单),各自按 (行, 列) 排序。
+        换算标定:光锥卡 139×155、卡底=锚点行带 cy+12。
     """
-    # 1. 收集锚点 (cy, text)
+    # 1. 收集锚点 (cx, cy)
     anchors = []
     for r in ocr_results:
         text = str(r.data).strip()
@@ -570,7 +537,7 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
     if not anchors:
         return []
 
-    # 2. 行带聚类:锚点 cy 排序后按间隔分簇(行距 183~200px,簇内间隔阈值 100px),
+    # 2. 行带聚类:锚点 cy 排序后按间隔分簇(行距 ~172px,簇内间隔阈值 100px),
     #    每簇行带取 cy 整数**众数**(出现频次最高的值)——均值会被离群锚点拉偏,
     #    众数反映最多锚点的共识位置
     anchors.sort(key=lambda a: a[1])
@@ -590,29 +557,45 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
         int_cys = [int(round(c)) for c in cluster_cys]
         row_bands.append(Counter(int_cys).most_common(1)[0][0])
 
-    # 3. 行 × 列组合:锚点吸附最近列中心,卡矩形 x 由固定列中心决定(cx 偏差不进入)
-    rects: list[Rect] = []
-    seen: set[tuple[int, int]] = set()
-    for cx, cy, text in anchors:
+    # 2.5 网格插行:相邻行带间距为标准行距整数倍时,中间必夹整行漏锚卡,
+    #     按网格插值补出中间行带(间距容差内才插,异常间距不乱补);
+    #     最高行带之上/最低行带之下不外推(边缘不确定性,见 docstring)
+    grid_rows: list[int] = []
+    for i, band in enumerate(row_bands):
+        if i > 0:
+            gap = band - row_bands[i - 1]
+            k = round(gap / _GRID_ROW_GAP_PX)
+            if k >= 2 and abs(gap - k * _GRID_ROW_GAP_PX) <= _GRID_ROW_GAP_TOL_PX:
+                for j in range(1, k):
+                    grid_rows.append(row_bands[i - 1] + round(j * gap / k))
+        grid_rows.append(band)
+
+    # 3. 锚点位(证据卡)与网格补位(候选)分开出:锚点吸附的 (行带, 列) 为
+    #    锚点证据位,其余(缺列补位 + 插值行全位)为补位候选,由调用方按
+    #    证据取舍;光锥卡 139×155
+    anchor_cells: set[tuple[int, int]] = set()
+    for cx, cy, _text in anchors:
         col = min(range(len(col_centers)), key=lambda i: abs(cx - col_centers[i]))
-        row = min(range(len(row_bands)), key=lambda i: abs(cy - row_bands[i]))
-        key = (row, col)
-        if key in seen:
-            continue
-        seen.add(key)
-        col_cx = col_centers[col]
-        band_cy = row_bands[row]
-        if text.startswith('等级'):  # 光锥:卡 139×155
-            rect_card = Rect(col_cx - 70, band_cy - 143, col_cx + 69, band_cy + 12)
-        else:  # 遗器「+N」:卡 120×160
-            rect_card = Rect(col_cx - 60, band_cy - 138, col_cx + 60, band_cy + 22)
-        if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
-            continue
-        if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
-            continue
-        rects.append(rect_card)
-    rects.sort(key=lambda r: (r.y1 // 100, r.x1))
-    return rects
+        band = min(grid_rows, key=lambda b: abs(b - cy))
+        anchor_cells.add((band, col))
+    evidenced: list[Rect] = []
+    interpolated: list[Rect] = []
+    for band in grid_rows:
+        for col_idx, col_cx in enumerate(col_centers):
+            rect_card = Rect(col_cx - 70, band - 143, col_cx + 69, band + 12)
+            if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
+                continue
+            if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
+                continue
+            if (band, col_idx) in anchor_cells:
+                evidenced.append(rect_card)
+            else:
+                interpolated.append(rect_card)
+    evidenced.sort(key=lambda r: (r.y1 // 100, r.x1))
+    interpolated.sort(key=lambda r: (r.y1 // 100, r.x1))
+    return evidenced, interpolated
+
+
 _MINI_DIR_REL = 'assets/template/character_avatar_mini'
 # 角标窗边长与匹配扩边:扩边吸收调用方定位偏差与选中卡放大溢出
 _TEMPLATE_SIZE: int = 44
@@ -637,6 +620,8 @@ _MATCHER = cv2.BFMatcher()
 _tpl_cache: dict[str, np.ndarray] | None = None
 _feat_cache: dict[str, dict[int, tuple[list, np.ndarray | None]]] | None = None
 _hist_cache: dict[str, np.ndarray] | None = None
+
+
 def _templates() -> dict[str, np.ndarray]:
     """全部模板 RGB。avatarminiicon 为 RGBA(圆外透明),取 RGB 三通道。"""
     global _tpl_cache
@@ -705,6 +690,8 @@ def _inliers_at_scale(kp_z: list, des_z: np.ndarray | None,
     dst = np.float32([kp_z[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
     _, ransac_mask = cv2.findHomography(src, dst, cv2.RANSAC, 5.0)
     return int(ransac_mask.sum()) if ransac_mask is not None else 0
+
+
 def match_owner(screen_rgb: np.ndarray, badge_rect: Rect,
                 min_inliers: int = OWNER_MATCH_MIN_INLIERS) -> tuple[str | None, int]:
     """识别角标区的占用角色,返回**中文角色名**(如「黄泉」)。

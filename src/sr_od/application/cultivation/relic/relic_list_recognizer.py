@@ -501,18 +501,20 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
     众数**(同行多锚点取均值,单锚 y 噪声被平均;OCR 的 y 定位实测稳定)。
 
     **网格插值补卡**(网格刚性拓扑下锚点只是采样点,漏采样不改变网格):
-    ①行带内补列——证实行带内四列恒满(列表按排序连续填充),缺列按固定
+    ①行带内补列——非末行带恒满(列表按排序连续填充、无分组),缺列按固定
     列先验补出(4.7 实机脚部帧行1 单锚点确立行带,列1/3/4 漏锚网格补齐实证);
     ②行带间插行——相邻行带间距为标准行距整数倍时,中间必夹整行漏锚卡,
     按网格插值补出。**只在证实行带之间插补,不向最高行带之上/最低行带之下
-    外推**(列表边界/滚动裁切/末尾不满的不确定性留在边缘,由轮廓补充与
-    TM 拒答兜底)。
+    外推**(列表边界/滚动裁切的不确定性留在边缘)。**最后一个行带只出锚点
+    位**:列表无分组、只有末行可能不满——末行带的缺列无法区分「空格」与
+    「漏锚真卡」,不补(宁缺不猜);该行滚动后成为中间行,按恒满规则自然
+    补全,不损失召回。
 
     :param ocr_results: 全图 OCR 结果列表(OcrMatchResult,含 .data/.rect)
     :param list_rect: 列表区(锚点须落在其内,排除右侧详情面板等)
     :param col_centers: 固定列中心 x 列表(光锥 9 列/遗器 4 列,由列表区 rect
         按实测列距推导,见 cone_col_centers/relic_col_centers)
-    :return: 卡矩形清单(行带 × 列全组合,按 (行, 列) 排序)。
+    :return: 卡矩形清单(锚点位 + 非末行带补位,按 (行, 列) 排序)。
         换算标定:光锥卡 139×155、卡底=锚点行带 cy+12;
         遗器卡 120×160、卡底=锚点行带 cy+22(按文本样式自动区分)。
     """
@@ -564,15 +566,24 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
                     grid_rows.append(row_bands[i - 1] + round(j * gap / k))
         grid_rows.append(band)
 
-    # 3. 行带 × 全部列中心出卡:证实行带内四列恒满,缺列按固定列先验补出
-    #    (锚点 cx 不进入卡矩形,与行列解耦口径一致);卡样式按锚点文本判定
-    #    (整张列表同款,同一画面不会混样式)
+    # 3. 出卡:列表连续无分组(部位筛选后的持有清单),非末行带恒满,缺列
+    #    补出;最后一个行带只出锚点位(该行可能不满,空格与漏锚卡不可分,
+    #    宁缺不猜——滚动后该行成为中间行,按恒满规则自然补全)。卡样式按
+    #    锚点文本判定(整张列表同款,同一画面不会混样式)
     cone_style = any(text.startswith('等级') for _, _, text in anchors)
     top_off, bot_off = (143, 12) if cone_style else (138, 22)
     x2_off = 69 if cone_style else 60
+    anchor_cells: set[tuple[int, int]] = set()
+    for cx, cy, _text in anchors:
+        col = min(range(len(col_centers)), key=lambda i: abs(cx - col_centers[i]))
+        band = min(grid_rows, key=lambda b: abs(b - cy))
+        anchor_cells.add((band, col))
+    last_band = grid_rows[-1]
     rects: list[Rect] = []
     for band in grid_rows:
-        for col_cx in col_centers:
+        for col_idx, col_cx in enumerate(col_centers):
+            if band == last_band and (band, col_idx) not in anchor_cells:
+                continue  # 末行带只出锚点位
             rect_card = (Rect(col_cx - 70, band - top_off, col_cx + x2_off, band + bot_off)
                          if cone_style else
                          Rect(col_cx - 60, band - top_off, col_cx + 60, band + bot_off))

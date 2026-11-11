@@ -9,14 +9,16 @@
 - 选卡后右侧变对比布局(当前装备 → 新选中),底部出现「替换」按钮;
 - 点「替换」**直接生效并自动回光锥 TAB,无确认弹窗** —— 替换是即时操作。
 
-识别定位(图标模板的算法边界实测):
-- 模板图(``assets/game_data/light_cone_icons``,348×408 斜置卡牌)经
-  ``cv2_utils.feature_match`` 特征匹配可直接当模板(透明底合成白底转灰度;
-  ``matchTemplate`` 像素比对不可用——重采样渲染差异使分数带重叠);
-- 定位用**特征点落格投票**而非 Homography 框:实机卡面是斜置卡牌的中心
-  裁剪构图,Homography 估计会被拉偏(实测偏差可达 120px);逐匹配点按
-  「x 落列带 + y 聚簇(间隔 >100px 分行)」投票,目标卡格得票显著最高
-  (实机 15:2 / 9:2),取最高票簇中心吸附列中心点击;
+识别定位(masked TM 范式,算法边界实测):
+- 身份模板(``assets/game_data/light_cone_icons``,图标构图贴图 256×256,与
+  实机列表卡面同构图同源)经 masked 模板匹配识别:按绝对目标像素缩放
+  (主档 100px/选中卡白框档 106px)、前景 mask 剔除合成底色后
+  TM_CCORR_NORMED 逐像素比对,实机 27 卡全对;SIFT 特征匹配已退役
+  (特征库存量偏差使 argmax 认成最万金油模板而非最近似件,同款多副本
+  场景尤甚);构图不同的家族(详情页斜置大卡排版)禁作列表模板
+  (构图相似度 0.17-0.37,错认根源);
+- 定位用每卡底部「等级N」文本锚点(OCR)+ 轮廓补充 + 网格刚性拓扑补全
+  (见本域 light_cone_list_recognizer),不依赖图像匹配定位;
 - 未命中滚动一屏重扫(拖拽,有界);滚动按下点必须锚在卡片内容上 —— 按在
   列表边缘/组头等空白带手势被游戏无视(实机对照实验 A/B/D);OCR 验证用
   右侧对比栏读区(名带形近变体,如「於/于」,fuzzy 匹配兜底)。
@@ -25,7 +27,7 @@
 ⚠️ 装备即改变角色配装(即时生效),调用方须确认目标光锥正确;
 allow_take_over=True 会抢走他人装备,须用户明确授权。
 已知边界:「光锥建议排序」开着时,装备变化会触发列表实时重排 —— 刚完成
-一次替换立刻再换下一把,重排动画期 SIFT 全部漏扫(实机复现:连续两次
+一次替换立刻再换下一把,重排动画期识别全部漏扫(实机复现:连续两次
 换装第二次滚满预算判停),重跑即愈;调用方连续换装时在两次 op 之间留
 数秒间隔或失败重试一次。
 """
@@ -56,7 +58,7 @@ _REPLACE_SCREEN: str = '光锥-替换'
 _ENTRY_SCREENS: list[str] = [_LC_TAB_SCREEN, _REPLACE_SCREEN]
 
 # 网格几何:9 列,实机卡列首中心 = 列表区 x1+72.5、列距恒 139px(锚点卡实测);
-# 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见本域 light_cone_list_recognizer)
+# 行位置随滚动变化,由 OCR 锚点行带动态获得(见本域 light_cone_list_recognizer)
 # 注:9 等分推导的列距 147.2 与实机 139 不符,误差随列号线性增长至末列 +68px
 # (点击落卡右缘),已废弃。
 _GRID_COLS: int = 9
@@ -207,11 +209,10 @@ class EquipLightConeOp(SrOperation):
     @node_from(from_name='验证选中', status='RESELECT')  # 选中验证连续不符 → 回退点下一个候选
     @operation_node(name='定位并选卡', node_max_retry_times=30)
     def find_and_select(self) -> OperationRoundResult:
-        """SIFT 落格投票定位目标卡候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
+        """识别清单过滤目标卡候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
 
-        候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 多件同名副本
-        场景下避免抢走他人装备的件(落格投票全量清单语义见本域
-        light_cone_list_recognizer.locate_cells_by_votes)。
+        候选按清单序 = 未被头像角标遮挡(未被装备)的件优先 —— 多件同名副本
+        场景下避免抢走他人装备的件(不抢语义见 _filter_candidates)。
         每轮开头画面级判定:拖拽/误触退出列表立刻显式失败(重新打开后再调)。"""
         current = self.check_and_update_current_screen(
             self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
