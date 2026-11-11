@@ -52,6 +52,10 @@ _TM_SEARCH_PAD = 22       # 卡矩形外扩(吸收定位偏差与版本间网格
 _TM_GATE = 0.85           # 拒答门槛:低于此视为无有效图案(重掷中遮挡卡 0.86 级),诚实返回 None
 # 轮廓补充卡的完整高度下限:低于视为滚动裁切的部分卡(完整卡 160 高;部分卡实测 111)
 _CONTOUR_MIN_CARD_H = 140
+# 网格插行的标准行距(遗器卡行距实机恒定,diag 帧行带 180/328/477/626/775 间距 148-149)
+_GRID_ROW_GAP_PX: int = 149
+# 插行判定的间距容差(锚点行带 cy 有个位数噪声)
+_GRID_ROW_GAP_TOL_PX: int = 40
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
@@ -489,18 +493,26 @@ def detect_card_rects_contours(screen_gray: np.ndarray, list_rect: Rect) -> list
     return rects
 def detect_card_anchors(ocr_results: list, list_rect: Rect,
                         col_centers: list[float]) -> list[Rect]:
-    """从全图 OCR 结果提取装备卡的等级文本锚点,按**行列解耦**换算卡矩形。
+    """从全图 OCR 结果提取装备卡的等级文本锚点,按**网格刚性拓扑**换算卡矩形。
 
     行列解耦(替代逐锚点独立换算):锚点 OCR 框的 **cx 随文本长度漂移**
     (短文本框偏差实测 ±20px),不可信;**列位置用固定列中心先验**(列距恒定,
     实测误差 ≤1px),锚点 cx 仅用于吸附到最近列;**行位置用锚点 cy 的聚类
     众数**(同行多锚点取均值,单锚 y 噪声被平均;OCR 的 y 定位实测稳定)。
 
+    **网格插值补卡**(网格刚性拓扑下锚点只是采样点,漏采样不改变网格):
+    ①行带内补列——证实行带内四列恒满(列表按排序连续填充),缺列按固定
+    列先验补出(4.7 实机脚部帧行1 单锚点确立行带,列1/3/4 漏锚网格补齐实证);
+    ②行带间插行——相邻行带间距为标准行距整数倍时,中间必夹整行漏锚卡,
+    按网格插值补出。**只在证实行带之间插补,不向最高行带之上/最低行带之下
+    外推**(列表边界/滚动裁切/末尾不满的不确定性留在边缘,由轮廓补充与
+    TM 拒答兜底)。
+
     :param ocr_results: 全图 OCR 结果列表(OcrMatchResult,含 .data/.rect)
     :param list_rect: 列表区(锚点须落在其内,排除右侧详情面板等)
     :param col_centers: 固定列中心 x 列表(光锥 9 列/遗器 4 列,由列表区 rect
         按实测列距推导,见 cone_col_centers/relic_col_centers)
-    :return: 卡矩形清单(每个等级文本一张卡),按 (行, 列) 排序。
+    :return: 卡矩形清单(行带 × 列全组合,按 (行, 列) 排序)。
         换算标定:光锥卡 139×155、卡底=锚点行带 cy+12;
         遗器卡 120×160、卡底=锚点行带 cy+22(按文本样式自动区分)。
     """
@@ -539,27 +551,36 @@ def detect_card_anchors(ocr_results: list, list_rect: Rect,
         int_cys = [int(round(c)) for c in cluster_cys]
         row_bands.append(Counter(int_cys).most_common(1)[0][0])
 
-    # 3. 行 × 列组合:锚点吸附最近列中心,卡矩形 x 由固定列中心决定(cx 偏差不进入)
+    # 2.5 网格插行:相邻行带间距为标准行距整数倍时,中间必夹整行漏锚卡,
+    #     按网格插值补出中间行带(间距容差内才插,异常间距不乱补);
+    #     最高行带之上/最低行带之下不外推(边缘不确定性,见 docstring)
+    grid_rows: list[int] = []
+    for i, band in enumerate(row_bands):
+        if i > 0:
+            gap = band - row_bands[i - 1]
+            k = round(gap / _GRID_ROW_GAP_PX)
+            if k >= 2 and abs(gap - k * _GRID_ROW_GAP_PX) <= _GRID_ROW_GAP_TOL_PX:
+                for j in range(1, k):
+                    grid_rows.append(row_bands[i - 1] + round(j * gap / k))
+        grid_rows.append(band)
+
+    # 3. 行带 × 全部列中心出卡:证实行带内四列恒满,缺列按固定列先验补出
+    #    (锚点 cx 不进入卡矩形,与行列解耦口径一致);卡样式按锚点文本判定
+    #    (整张列表同款,同一画面不会混样式)
+    cone_style = any(text.startswith('等级') for _, _, text in anchors)
+    top_off, bot_off = (143, 12) if cone_style else (138, 22)
+    x2_off = 69 if cone_style else 60
     rects: list[Rect] = []
-    seen: set[tuple[int, int]] = set()
-    for cx, cy, text in anchors:
-        col = min(range(len(col_centers)), key=lambda i: abs(cx - col_centers[i]))
-        row = min(range(len(row_bands)), key=lambda i: abs(cy - row_bands[i]))
-        key = (row, col)
-        if key in seen:
-            continue
-        seen.add(key)
-        col_cx = col_centers[col]
-        band_cy = row_bands[row]
-        if text.startswith('等级'):  # 光锥:卡 139×155
-            rect_card = Rect(col_cx - 70, band_cy - 143, col_cx + 69, band_cy + 12)
-        else:  # 遗器「+N」:卡 120×160
-            rect_card = Rect(col_cx - 60, band_cy - 138, col_cx + 60, band_cy + 22)
-        if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
-            continue
-        if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
-            continue
-        rects.append(rect_card)
+    for band in grid_rows:
+        for col_cx in col_centers:
+            rect_card = (Rect(col_cx - 70, band - top_off, col_cx + x2_off, band + bot_off)
+                         if cone_style else
+                         Rect(col_cx - 60, band - top_off, col_cx + 60, band + bot_off))
+            if rect_card.x2 < list_rect.x1 or rect_card.x1 > list_rect.x2:
+                continue
+            if rect_card.y2 < list_rect.y1 or rect_card.y1 > list_rect.y2:
+                continue
+            rects.append(rect_card)
     rects.sort(key=lambda r: (r.y1 // 100, r.x1))
     return rects
 _MINI_DIR_REL = 'assets/template/character_avatar_mini'
