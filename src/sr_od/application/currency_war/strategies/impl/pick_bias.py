@@ -30,7 +30,7 @@ class PickBiasTable:
     wish_faction: float = 20.0            # target/框架阵营相关词
     wish_operation: float = 10.0          # 刷新/购买操作向(与 DP 攒息协同)
     # 武装箱四选一常数(box_key_equip/box_key_material)已随该面迁共享机器
-    # cw_equip_value 序数分档制停用(git 历史可溯);材料通用性表同批停用
+    # cw_equip_value 序数分档制停用;材料通用性表同批停用
 
 
 PICK_BIAS = PickBiasTable()

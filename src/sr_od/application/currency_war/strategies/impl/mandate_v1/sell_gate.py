@@ -87,7 +87,7 @@ if TYPE_CHECKING:
 #: 绕 A 手搓排除」的第五通道复发形态)。通道族谱(11 号稿 §4.0 承继
 #: 清单 P78 行):interest = 节末凑息;m4_fuel = 备战域晶矿腾位/告警
 #: 自救;m4_fuel 语义现由评估器 'ore_make_room'/'self_rescue' 场景承载;
-#: line_switch 换线整合通道已随候选-锁定制停用撤档(git 历史可溯;
+#: line_switch 换线整合通道已随候选-锁定制停用撤档;
 #: shop_swap = 店内置换账通道已随六步流程整段替换退役(
 #: SCENE_SPECS 同步);funding = 会话内筹资通道已随统一获取让位评估
 #: 纳入统一管理时退役(11 号稿 §4.0:金不足与席满
@@ -895,7 +895,7 @@ def sell_hold_exclusions(session: StrategySession,
 
 
 #: 空板止损守卫拒因分键(单一源;判据函数拒帧计数与测试同消费,禁裸写)。
-#: 设计出处 = 补给仲裁设计稿(v2,git 历史可溯;
+#: 设计出处 = 补给仲裁设计稿(v2;
 #: 应修-3 单条件后态判定版)+ 总图对账重审(reviews/出口族对账重审.md
 #: 「现在可落:空板止损单件」行)。
 EMPTY_BOARD_SELL_GUARD_KEY: str = 'empty_board_sell_guard'

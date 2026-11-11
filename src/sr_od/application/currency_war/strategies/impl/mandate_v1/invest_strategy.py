@@ -198,7 +198,7 @@ def _econ_effect_flag(eff: EconomyEffect | None) -> int:
 
 # ===== 单卡组件(29 号稿 §2)=====
 # (旧方向分触线集构造 _touched_line_comps/_locked_line_comps 已随方向分链
-# 整线下线删除——29 号稿 §2.2 方向分行废止,git 历史可溯。)
+# 整线下线删除——29 号稿 §2.2 方向分行废止。)
 
 
 def _locked_alignment_n(bindings: tuple[frozenset[str], frozenset[str]] | None,

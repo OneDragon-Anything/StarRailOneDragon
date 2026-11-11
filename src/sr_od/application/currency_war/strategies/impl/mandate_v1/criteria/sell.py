@@ -4,7 +4,7 @@
 funding_support_sell(支付能力变现子域,R13-5 支付支撑通道,两分支同开、
 mandate=false+funding_support=true)。换线清仓出口(line_switch_sell)
 已删除(候选-锁定制:锁定为一次性决策,无换目标后的清场需求——
-停用面申报,git 历史可溯;V_MS 槽随函数删除撤槽)。
+停用面申报;V_MS 槽随函数删除撤槽)。
 
 fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
 第四态无载/sell_refund 损坏)⇒ 不评不卖。凑息卖(T1 语义重写)

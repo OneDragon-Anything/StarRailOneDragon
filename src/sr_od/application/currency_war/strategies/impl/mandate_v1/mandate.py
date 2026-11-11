@@ -1073,7 +1073,7 @@ def run_mandate(frame: MandateFrame,
 
 
 # (mark_equip_pass_executed / mark_tools_pass_executed 备战期标志写点已随
-#  组合壳 RunEquip/RunTools 删除停用(git 历史可溯):
+#  组合壳 RunEquip/RunTools 删除停用:
 #  M7/M7.5 逐帧现算形态下逐件逻辑态使判据面天然收敛,同 phase 一次标志与
 #  逐件序互斥;载体字段 cw4_m7_equipped_phase/cw4_tools_phase 同批删除,
 #  0 穿活锁防线归 visit 动作数上限 + 环级无进展守卫。)

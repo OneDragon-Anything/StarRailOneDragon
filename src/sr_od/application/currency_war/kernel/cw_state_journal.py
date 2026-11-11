@@ -1,6 +1,6 @@
 """统一 state 状态流水落盘(无条件常开)。
 
-设计裁定(原 ADR 0630/0634,已停用删除(随ADR 档案)——git 历史可溯;journal 无条件常开,无开关无影子期)
+设计裁定(原 ADR 0630/0634,已停用删除(随 ADR 档案);journal 无条件常开,无开关无影子期)
 
 (记录机制
 as-built 权威版本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md``)。

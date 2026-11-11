@@ -3527,7 +3527,7 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     '二手市场': EnvEconomyEffect(gold_after_refreshes=(20, 30)),
     # 全部奖励节点替换为(超级)次元扑满、掉落(超)多战利品(id 105/119 原文
     # 直读;效果无数值,增益真值+CI 在估算注册表按变体分键,当前零有效估计
-    # → 通道 fail-closed 裸分维持,数据批口径归数据采集批(详设原文已删,git 历史可溯)
+    # → 通道 fail-closed 裸分维持,数据批口径归数据采集批(详设原文已删)
     '经济过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
     '经济严重过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
 }
@@ -3588,7 +3588,7 @@ _validate_env_ore_grants()
 # 档位机器 = cw_comps.gift_hit_tier(消费契约见其 docstring);档位是定序实现
 # 常数非金流期望(定序/基数分账),不经经济入口,消费位 = 策略层 gift_value
 # (gift_hit_tier 包装;28 号稿 §2 与 29 号稿 §2.3)。
-# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删,git 历史可溯)。
+# 逐条语义与分档落点 = 本表登记 + 效果原文对账 id(详设盘点原文已删)。
 # 锁面(测试仓):kernel/test_gain_chain.py(ENV_GIFTS 分道/道具/定时通道 +
 # 落地相全量接入)、strategies/impl/mandate_v1/test_invest_strategy.py(档→分
 # 映射/具名分档/键完备)、sim/test_sim_backend.py(sim 状态副本写入分支到点发放)。
@@ -4736,7 +4736,7 @@ _validate_endorse_choice_disclosure()
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
 # 直接入现金分会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
 # + 序一致性检验)经数据批判定未过,维持 fail-closed(判定依据
-# = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
+# = invest-env 迭代 layer-e-promotion-batch 详设);层 Q
 # (定序残域,池内挑卡
 # 与功能价值)= 零现金分维持(现金通道 fail-closed 即无值;
 # 知识评估已对两半作过知识性净评),两层从不相加——

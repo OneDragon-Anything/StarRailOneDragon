@@ -1228,8 +1228,7 @@ PIGGY_NO_HP_LOSS: str = 'piggy_node_no_hp_loss_u01_face'
 #: kernel :data:`ENV_ORE_PANEL_BONUS`。不进 kernel ORE_ASSUMPTION_KEYS
 #: 汇总 tuple——该 tuple 辖 sphere 内容分布假设且现无发射接入调用,本键
 #: 沿 :data:`ORE_PLANE_START_PENDING` 先例住本模块、接入
-#: :data:`_BASE_DISCLOSURES`、测试直断发射(设计稿已退役,
-#: git 历史可溯)。
+#: :data:`_BASE_DISCLOSURES`、测试直断发射。
 PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
 
 #: 商店 2★ 直出概率占位披露键(人才下沉 id 121:「商店中有概率出现2星
@@ -1238,8 +1237,7 @@ PIGGY_ORE_PANEL_BONUS_PLACEHOLDER: str = 'piggy_ore_panel_bonus_placeholder'
 #: 表双源,量级单一源 = kernel :data:`ENV_SHOP_TWO_STAR_DEAL_PROB`(翻
 #: 星分支 = kernel/cw_shop_deal,sim/live 两执行面共用)。沿
 #: :data:`PIGGY_ORE_PANEL_BONUS_PLACEHOLDER` 先例住本模块、接入
-#: :data:`_BASE_DISCLOSURES`、测试直断发射(设计稿已退役,
-#: git 历史可溯)。
+#: :data:`_BASE_DISCLOSURES`、测试直断发射。
 SHOP_TWO_STAR_DEAL_PLACEHOLDER: str = 'shop_two_star_deal_prob_user_placeholder'
 
 
@@ -2225,7 +2223,7 @@ class SimBackend:
 
     def _apply_spy_shop_refresh(self) -> None:
         """商业间谍升级连锁状态副本侧分支(sim 先行形态申报 = sim-design.md §8.2;
-        行为规格出处 git 历史可溯;触发 = spy_shop_refresh 声明,来源双消费口 =
+        行为规格出处见 git 历史;触发 = spy_shop_refresh 声明,来源双消费口 =
         买经验上报尾单项喂入 + advance 尾统一排空段逐项直调;步④置信号
         = kernel 升级值变更回调(任意经验来源升级),写端唯一,不经本层)。
 

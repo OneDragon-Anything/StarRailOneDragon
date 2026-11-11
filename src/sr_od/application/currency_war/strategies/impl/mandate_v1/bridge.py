@@ -214,7 +214,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
         (原 ``calibration.apply()`` P76 两槽注入位已删除——
         V_C_MINUS_V_F/E2_CONCENTRATION_BAND 槽位不迁移,
-        停用面申报(git 历史可溯);audit/calibration.py 一并移除。)"""
+        停用面申报;audit/calibration.py 一并移除。)"""
         super().__init__(gs, config, registry)
 
     def decide_prep_screen(self) -> CwAction:

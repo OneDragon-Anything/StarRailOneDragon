@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 #: 过渡体系阈值(仙舟3/列车2/DOT2;三羁绊(阵营,阈值)对从 SYSTEM_CARDS 派生
 #: (排除 seele 卡——希儿系是 deployed 单卡判定非阵营计数);
 #: tier 阈值经 FACTIONS 注册表,单一源。
-#: ⚠️ 遗留副本(迁移计划原文已删,git 历史可溯):
+#: ⚠️ 遗留副本(迁移计划原文已删):
 #: 权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS(同派生式,零字面双源);
 #: 本副本仅为 sim/旧判据消费点保留;权威副本删除后随之清理;勿新增消费。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(

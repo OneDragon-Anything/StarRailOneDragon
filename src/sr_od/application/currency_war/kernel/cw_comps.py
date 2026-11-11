@@ -1322,7 +1322,7 @@ def get_comp(name: str) -> Comp | None:
 # 策略层 strategies/impl/mandate_v1/gift_value.py。)
 
 
-# ===== 送卡型档位阶梯(定序机器,零数值;详设原文已删,git 历史可溯)=====
+# ===== 送卡型档位阶梯(定序机器,零数值;详设原文已删)=====
 # 档 = 角色在候选套中的身份,高→低 core/shared/off;_GIFT_TIER_DOWN =
 # 条件降档链(规则 3:兑现概率 <1 且行为依赖,定序上只给弱一档的确定性)。
 _GIFT_TIER_RANK: dict[str, int] = {'off': 0, 'shared': 1, 'core': 2}
@@ -1354,7 +1354,7 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
                   ) -> str:
     """送卡型环境 GiftGrant 的命中档('core'|'shared'|'off')。
 
-    实现三规则(全部定序,零数值;详设原文已删,git 历史可溯):
+    实现三规则(全部定序,零数值;详设原文已删):
     ① 即时优先——即时集非空取其最优档,不看条件集(确定性赠卡是估值支撑面);
     ② 条件降档——即时集为空取条件集最优档降一档(core→shared→off);
     ③ advisor 族切换由调用方做(同一套档位判定;本函数不读 advisor)。

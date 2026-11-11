@@ -12,7 +12,7 @@
 数学**(判据本体函数零触碰)。
 
 覆盖外声明:换线判据族(should_switch/回锁窗/干旱计数/证据门影子评估)
-已删除(随候选-锁定制整体)(见 proof.py 停用申报,git 历史可溯),
+已删除(随候选-锁定制整体)(见 proof.py 停用申报),
 无行为接入调用遗留。
 """
 from __future__ import annotations
@@ -88,7 +88,7 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     """先例(K 空窗回退,第三病灶)前提:战略层产物字段值域全集含
     空窗期——K 投影域覆盖 None。
 
-    K 投影 None 值域裁定(git 历史可溯):
+    K 投影 None 值域裁定:
     ``state_of(session).target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
     把 None 当「已终局阵容锁定状态」直接投影(``line_members(None)→()``)=
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
@@ -225,7 +225,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     #  S 预留语境前提由 M6 侧
     #  ('stockpile','stockpile_buy') 键继续承载。)
     # (契约键 ('mandate','core_single_card_buy_eligible') 已随 C1 支
-    #  退役整删——卖出身份段退役批,git 历史可溯。)
+    #  退役整删——卖出身份段退役批。)
     # —— 第三病灶(K 空窗回退)消费位 ——
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
@@ -234,11 +234,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '候选首位带=过渡候选首位条目见即买集;换轴后任意位面同判,'
         '旧 P2+ 位面带已废),单一源=cw_intention(禁复制);'
         '供给在场而回退解析空集即违例(两带均构造性非空)',
-        'K 投影 None 值域裁定(git 历史可溯)'
-        '+旧核缺口审查修订(git 历史可溯)'
-        '+K 空窗回退规格补注(git 历史可溯)'
+        'K 投影 None 值域裁定'
+        '+旧核缺口审查修订'
+        '+K 空窗回退规格补注'
         '+proofs/p86-proof-batch.md §4.6(带维度非对称期待;甲/乙臂退役修订;'
-        '换轴再修订,git 历史可溯)'),
+        '换轴再修订)'),
 }
 
 

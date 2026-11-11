@@ -16,7 +16,7 @@ from __future__ import annotations
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
 # —— 过渡配方阵营/基础档(原 kernel/cw_line_defs;r271 统一单一源)——
-# 口径源:已退役口述登记簿条目 [20](git 历史可溯)
+# 口径源:已退役口述登记簿条目 [20]
 # (过渡配方:3仙舟+2DOT 基础 → +2列车2护盾 渐进)。
 RECIPE_FACTIONS: frozenset[str] = frozenset(
     {'仙舟', '持续伤害', '列车同行', '护盾'})

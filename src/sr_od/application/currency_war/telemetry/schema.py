@@ -517,13 +517,13 @@ class DecisionTrace:
     # (支出门·买侧收门拒因枚举计数键已停用——旧方案清退批,
     #  旧键名见清查报告 OLD_MIX_AUDIT §1.3;存量 runs.jsonl 判读脚本按
     #  缺键读 None。)
-    # 预算-回执契约·对账门声明(预注册判据,git 历史可溯;
+    # 预算-回执契约·对账门声明(预注册判据;
     # strategy_state_of(session).v3_posture_unfulfilled 透传):{auth_id, channel, reason,
     # channels, action}——授权未兑现帧的显式归档(reason=四枚举
     # no_premise/no_channel/no_candidate/no_budget;action=allocator/
     # crisis_release/downgrade)。None=无未兑现帧/开关关/无 match 注册。
     # 开分支判读主判据「授权未兑现帧占比」的数据源(判前预注册
-    # 预注册判据档案已失,git 历史可溯)。
+    # 预注册判据档案已失)。
     posture_unfulfilled: dict[str, Any] | None = None
     # (sess_pv_bench_block 已停用;存量 runs.jsonl
     #  判读脚本如遇旧键按历史台账读,新数据不再写。)

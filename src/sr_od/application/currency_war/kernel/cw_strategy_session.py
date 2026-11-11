@@ -7,7 +7,7 @@
 + 框架设施(rng 种子契约基准 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
 (mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局每局全新创建)。
-执行层不设独立状态载体(执行层状态类目已停用,git 历史可溯):
+执行层不设独立状态载体(执行层状态类目已停用):
 op/流程侧产生的状态按其语义各自归位——局内事实写 GameState 状态容器
 (Field 组与非 Field 簿记组,宿主 ``kernel/cw_game_state.py``),
 防重入由决策面读状态容器计数自行裁决。

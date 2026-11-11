@@ -57,7 +57,7 @@ fuel_filler_stall/ev/p90/p91/p94)随各分支
 退役删除,十档口径 = 32 号稿 §3;dominance 族键随富余买入通道
 退役停写——通道并入 M6 一星兜底带(20 号稿 §3 出口序申报行),
 历史键不清理)。P86 三分支旧键族(shop_no_target_*/
-hub_option_*)随并入停用(并入对照表 git 历史可溯)。
+hub_option_*)随并入停用。
 统一让位优先级定型退役键族:shop_refresh_target_unbuyable
 (刷新预测门拒因)/ core_*(C1 单卡核心囤积规则整规退役)/
 protection_hoard_*(囤货臂退役)/ transition_hold_locked_frame
@@ -1857,7 +1857,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             # 可上场预检 = 快照+X 跑统一搜索、X ∈ target 判定(24 号稿 §1.4
             # 改接;旧七桶 can_deploy_single 围栏预检随选人族纳入统一管理,
             # deploy_target_sets/fw_carry/locked_faction_scope/配方底线
-            # 豁免入参同批退役——git 历史可溯)。
+            # 豁免入参同批退役)。
             for card in _buy_view('press_buy_deployable'):
                 name = card.name or ''
                 if not name or name in obligation_members:
@@ -2093,8 +2093,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                     continue
                 # 可上场预检改接统一搜索(24 号稿 §1.4;旧七桶
                 # can_deploy_single + deploy_target_sets/fw_carry/
-                # locked_faction_scope/配方底线豁免入参随选人族纳入统一管理,
-                # git 历史可溯)。
+                # locked_faction_scope/配方底线豁免入参随选人族纳入统一管理)。
                 try:
                     _ff_ok, _ff_why = deploy_plan.can_deploy_single_unified(
                         session, gs, name, 1)

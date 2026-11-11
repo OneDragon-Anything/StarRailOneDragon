@@ -395,7 +395,7 @@ _validate_estimates_governance()
 # 上列行为依赖通道)。**转正判定的当前态 = fail-closed**:受限
 # 通道实测 μ_E 不随品质单调(银 3.31 > 金 2.42),直入现金分会产出病态序;
 # 转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验,两条件缺一不入
-# (转正判定历史裁定,git 历史可溯)。数据批已执行判定:第 1 条完成,第 2 条未过(全通道 μ_E
+# (转正判定历史裁定)。数据批已执行判定:第 1 条完成,第 2 条未过(全通道 μ_E
 # 点估计 银≥金 残差未翻转)→ 两参数表维持哨兵不落,本段行为零变化;判定
 # 依据、读数与回炉候选 = invest-env 迭代 layer-e-promotion-batch 详设(git
 # 历史可溯),重采入口 = tools/cw/env_pool_rewrite_estimates.py。
@@ -410,7 +410,7 @@ _validate_estimates_governance()
 #: 样本面 = 净帧普通口径(扑满过热局整局剔除,对齐「148 总/140 普通」采样
 #: 面裁定)。重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位
 #: 演化只改本表;口径与样本量 = invest-env 迭代 layer-e-promotion-batch 详设
-#: (git 历史可溯))。v1 已登记值 24 系日程回退口径(9+9+9)下的参照值,被本
+#: )。v1 已登记值 24 系日程回退口径(9+9+9)下的参照值,被本
 #: 实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 

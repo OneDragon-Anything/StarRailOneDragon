@@ -655,7 +655,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         分档 + 近兑现 + 通用输出先验,单一源同上),本壳零打分实现。
         库存账(同上单一源装备账口径):备用 ``gs.equips`` 现值(近兑现对数)+
         部署位/备战席穿戴账(合计进总持有,需求守卫)。effect_pick_bias
-        通道随薄壳化移除(恒 0 无行为差,处置声明 git 历史可溯)。
+        通道随薄壳化移除(恒 0 无行为差)。
         无信息 fallback idx=0(机器 names 空契约)。"""
         names = self._require_slot_options(self.gs.box_card_names,
                                            'box_card_names')

@@ -6,7 +6,7 @@
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
 本模块 = 单一源;消费方一律 import,不再本地定义。
-口径源:已退役口述登记簿条目 [20](git 历史可溯)
+口径源:已退役口述登记簿条目 [20]
 (过渡配方:3仙舟+2DOT 基础 → +2列车2护盾 渐进)。
 """
 from __future__ import annotations

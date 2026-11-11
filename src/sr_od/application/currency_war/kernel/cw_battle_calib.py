@@ -12,7 +12,7 @@
 历史面(规则表结算层 node_delta 族 / P2 参数化存活层 p2_* 族 /
 Δ池采样键 _deployable_depth)随 sim 结算收尾删除——消费方
 (Δ池采样 / 规则表回退)已随 sim 重做批次退场,src/测试仓零调用;
-数据表权威版本 data/cw_battle_tables.py 同批删除(git 历史可溯)。
+数据表权威版本 data/cw_battle_tables.py 同批删除。
 
 桩点契约:消费方函数内懒 import 本模块符号(属性动态解析),
 monkeypatch 钉本模块符号(锁改判裁决=N7,禁 shim)。
