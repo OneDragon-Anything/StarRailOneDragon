@@ -1,6 +1,6 @@
 """虚构叙事编队选人(清空两行 + 按目标填 8 人;落位回验驱动)。
 
-模式与末日幻影填充循环(``tl_as_challenge``)同款 —— 均从同一轮死循环排查沉淀:
+模式与末日幻影填充循环(``apocalyptic_shadow.challenge``)同款 —— 均从同一轮死循环排查沉淀:
 锚驱动列表识别 / 跳过已落位目标(**点击已在编队中的角色 = 将其移除**,不移除
 会在搜索时把已填角色点掉) / 页签名集合到底判定 / 点卡带 press_time。
 
@@ -149,7 +149,7 @@ class TlPfTeamFillOp(SrOperation):
         cells = read_character_cells_by_level(self.ctx, image)
 
         # 回顶 = 固定大幅快拖 3 次,不验证到位(列表天然止于顶部,拖过头无副作用;
-        # 定案与实现同 tl_as_challenge._return_to_top)
+        # 定案与实现同 apocalyptic_shadow.challenge._return_to_top)
         if self._need_top:
             for _ in range(3):
                 self.ctx.controller.drag_to(

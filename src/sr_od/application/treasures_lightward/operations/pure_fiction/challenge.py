@@ -3,11 +3,11 @@
 
 子 op 按职责拆分(与末日幻影同构的组合模式):
 
-- :class:`tl_pf_team_fill.TlPfTeamFillOp` 编队选人:清空两行 + 按目标填 8 人;
+- :class:`team_fill.TlPfTeamFillOp` 编队选人:清空两行 + 按目标填 8 人;
   起点 = 虚构叙事-编队,终点 = 编队屏(已填满)。
-- :class:`tl_pf_buff_equip.TlPfBuffEquipOp` 增益装配:左栏战意效果单选 + 两行
+- :class:`buff_equip.TlPfBuffEquipOp` 增益装配:左栏战意效果单选 + 两行
   荒腔走板弹窗三选一装配;起点 = 编队屏(已填人),终点 = 编队屏(已装配)。
-- :class:`tl_pf_battle.TlPfBattleOp` 节点战斗推进:进入故事 → 关卡简报关闭 →
+- :class:`battle.TlPfBattleOp` 节点战斗推进:进入故事 → 关卡简报关闭 →
   前进+秘技+开战 → 战斗等待 → 结算返回;起点 = 编队屏(已装配),终点 = 虚构叙事选关。
 - :class:`TlPureFictionChallengeOp` 组合:入口多态 → 选人 → 装配 → 战斗推进。
 
@@ -23,11 +23,13 @@ from typing import TYPE_CHECKING, ClassVar
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from sr_od.application.treasures_lightward.operations.tl_pf_battle import TlPfBattleOp
-from sr_od.application.treasures_lightward.operations.tl_pf_buff_equip import (
+from sr_od.application.treasures_lightward.operations.pure_fiction.battle import (
+    TlPfBattleOp,
+)
+from sr_od.application.treasures_lightward.operations.pure_fiction.buff_equip import (
     TlPfBuffEquipOp,
 )
-from sr_od.application.treasures_lightward.operations.tl_pf_team_fill import (
+from sr_od.application.treasures_lightward.operations.pure_fiction.team_fill import (
     TlPfTeamFillOp,
 )
 from sr_od.operations.sr_operation import SrOperation

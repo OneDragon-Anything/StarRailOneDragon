@@ -4,15 +4,15 @@
 拆分为多个可独立 ``run_operation`` 的 op(人类老莫 2026-11-06 指示:不同场景
 用不同 op,挑战 op 组合它们);实现按职责拆文件(本文件 = 组合入口 + re-export):
 
-- :class:`tl_as_team_fill.TlAsTeamFillOp` 编队选人:清空两/三行 + 按目标填 8/12 人
+- :class:`team_fill.TlAsTeamFillOp` 编队选人:清空两/三行 + 按目标填 8/12 人
   (星启整页批量点卡,双节点逐人回验驱动);
   起点 = 末日幻影-编队,终点 = 编队屏(已填满)。
-- :class:`tl_as_buff_equip.TlAsAxiomEquipOp` 终焉公理装配:两行右端圆圈 → 弹窗选卡
+- :class:`buff_equip.TlAsAxiomEquipOp` 终焉公理装配:两行右端圆圈 → 弹窗选卡
   → 装配效果;起点 = 编队屏(已填人),终点 = 编队屏(已装配)。
-- :class:`tl_as_battle.TlAsBattleOp` 节点战斗推进:简报关闭 → 前进+秘技+开战 →
+- :class:`battle.TlAsBattleOp` 节点战斗推进:简报关闭 → 前进+秘技+开战 →
   战斗等待 → 节点结算推进 → 最终结算;起点 = 首领简报横幅或节点画面,
   终点 = 最终结算点「返回末日幻影」后。
-- :class:`tl_as_battle_exit.TlAsBattleExitOp` 退出当前节点战斗/结算(弃赛/换队场景)。
+- :class:`battle_exit.TlAsBattleExitOp` 退出当前节点战斗/结算(弃赛/换队场景)。
 - :class:`TlApocalypticShadowChallengeOp` 组合:入口多态 → 选人 → 装配 →
   前往挑战 → 战斗推进 → 返回选关。
 
@@ -53,14 +53,16 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.application.treasures_lightward.obs.tl_team_common import (
     get_area_center_point,
 )
-from sr_od.application.treasures_lightward.operations.tl_as_battle import TlAsBattleOp
-from sr_od.application.treasures_lightward.operations.tl_as_battle_exit import (
+from sr_od.application.treasures_lightward.operations.apocalyptic_shadow.battle import (
+    TlAsBattleOp,
+)
+from sr_od.application.treasures_lightward.operations.apocalyptic_shadow.battle_exit import (
     TlAsBattleExitOp,
 )
-from sr_od.application.treasures_lightward.operations.tl_as_buff_equip import (
+from sr_od.application.treasures_lightward.operations.apocalyptic_shadow.buff_equip import (
     TlAsAxiomEquipOp,
 )
-from sr_od.application.treasures_lightward.operations.tl_as_team_fill import (
+from sr_od.application.treasures_lightward.operations.apocalyptic_shadow.team_fill import (
     TlAsTeamFillOp,
 )
 from sr_od.operations.sr_operation import SrOperation

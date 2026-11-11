@@ -2,7 +2,7 @@
 
 ⚠️ 适用范围:仅忘却之庭的编队屏(screen = 忘却之庭-编队,槽位/建议属性/预设卡
 area 均按混沌回忆布局标定)。虚构叙事/末日幻影各有自己的填充 op
-(``tl_pf_team_fill.TlPfTeamFillOp`` / ``tl_as_challenge`` 内嵌填充循环)。
+(``pure_fiction.team_fill.TlPfTeamFillOp`` / ``apocalyptic_shadow.challenge`` 内嵌填充循环)。
 
 前置:已在本画面(``GotoTreasuresLightward`` 到选关 → 点关卡水晶 → 编队屏)。
 交互模型(2026-11-04 实机实测):
@@ -11,7 +11,7 @@ area 均按混沌回忆布局标定)。虚构叙事/末日幻影各有自己的�
 - 左列表拖动滚动,每屏 16 格。
 
 填充目标按角色中文名给出(与脸库识别名一致)。模式与末日幻影填充循环
-(``tl_as_challenge``)同款 —— 均从同一轮死循环排查沉淀:
+(``apocalyptic_shadow.challenge``)同款 —— 均从同一轮死循环排查沉淀:
 - 列表识别用**等级锚驱动**(``read_character_cells_by_level``,滚动停驻位置无关),
   不用固定网格(要求停驻与标定帧一致,拖动误差累积会整页错位);
 - 回验锚未读到 ≠ 成员为空(降级空列表会误判「已落位/已清空」死循环点卡)→ 重读;
@@ -52,7 +52,7 @@ class TlFhTeamFillOp(SrOperation):
     _SCROLL_TO: Point = Point(300, 450)
     _SCROLL_DURATION: float = 0.5
     #: 回顶(固定大幅快拖 3 次,任何起点都到顶;不验证到位 —— 定案见
-    #: tl_as_challenge._return_to_top 注释)
+    #: apocalyptic_shadow.challenge._return_to_top 注释)
     _TOP_FROM: Point = Point(300, 200)
     _TOP_TO: Point = Point(300, 1000)
     _TOP_DURATION: float = 0.3
