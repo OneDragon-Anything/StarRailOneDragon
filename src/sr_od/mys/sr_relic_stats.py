@@ -3,8 +3,8 @@
 五表三函数原下沉自 ``sr_od.backend.mcp.relic_eval_tools``（下沉取舍 =
 别名表/口径包双份必漂移，语义只有一个消费者集合但两个调用场景；归属层 =
 ``sr_od/mys/`` 与 ``sr_codes.PROPERTY_INFO_SNAPSHOT`` 同层的既有惯例，
-出处 = docs/develop/sr_od/application/cultivation/changes/2026-11-12-relic-equip-flow
-design.md §2.2 下沉清单）。
+出处 = 遗器装备流程改造的下沉清单裁定（git 历史可溯；设计过程件已随迭代退役，
+下沉面 = 本模块五表三函数）。
 
 标准名口径（名册核对定稿结论；依据 = 两份在库真实名册产物：
 ``sr_od.mys.sr_codes.PROPERTY_INFO_SNAPSHOT``（实测词典 56 码词条名快照）与
