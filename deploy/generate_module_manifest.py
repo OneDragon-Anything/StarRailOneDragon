@@ -25,7 +25,9 @@ EXCLUDE_SRCPATHS: list[str] = [
 # 它们不是项目源码,而是工具产物 / 虚拟环境 —— 扫到会把第三方库源码当成项目代码,
 # 严重污染清单(实测 src/sr_od/gui/.install/uv_cache 被误扫进 1482 个无关 .py)。
 # 不影响 CI(干净 checkout 无这些目录),但本地开发者跑 generate 会踩坑。
-EXCLUDE_DIRNAMES: set[str] = {".install", ".venv", "__pycache__"}
+# .debug 是项目约定的本地调试目录(gitignore),内含临时脚本(含跨项目试跑
+# 代码),扫进来会把无关 import 混进清单(实测混入 basic/sklearn 等非本项目依赖)。
+EXCLUDE_DIRNAMES: set[str] = {".install", ".venv", "__pycache__", ".debug"}
 
 # 项目路径
 DEPLOY_DIR = Path(__file__).parent  # 当前脚本所在目录（deploy）
@@ -38,6 +40,9 @@ def get_src_roots(src_dir: Path) -> list[Path]:
     """
     获取需要扫描的源码目录
     自动扫描 src/ 下所有一级子文件夹
+    排除卫生目录(同 EXCLUDE_DIRNAMES):一级根不排除会把 src/.debug 等工具
+    目录当源码包,其内临时脚本(含跨项目试跑代码)的 import 会污染清单
+    (实测混入 basic/sklearn 等非本项目依赖)。
     """
     if not src_dir.exists():
         print(f"[warn] Source directory does not exist: {src_dir}")
@@ -45,7 +50,7 @@ def get_src_roots(src_dir: Path) -> list[Path]:
 
     src_roots = []
     for item in src_dir.iterdir():
-        if item.is_dir():
+        if item.is_dir() and item.name not in EXCLUDE_DIRNAMES:
             src_roots.append(item)
 
     return sorted(src_roots)

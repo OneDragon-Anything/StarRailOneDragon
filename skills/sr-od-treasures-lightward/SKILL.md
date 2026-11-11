@@ -12,12 +12,12 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 1. ☐ **判类型**：确认目标是四类之一——忘却之庭·混沌回忆 / 虚构叙事 / 末日幻影 / 异相仲裁（对应代码枚举 TLMode：FORGOTTEN_HALL / PURE_FICTION / APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION）。异相仲裁未探明，直接告知用户不能自动打。必做。
 2. ☐ **收集输入**：① 环境增益（按类型块的读法读当期实值）；② 敌人弱点与等级（编队屏「建议属性」等）；③ 账号练度（mys MCP 直拉：`mys_get_characters` 概况 / `mys_get_roster_detail` 全量；练度判读口径见 `sr-od-game-coach` `references/investment.md`）。判据：三样各有明确值或标「不可得」，不许缺省编造。必做。
 3. ☐ **定阵容**：按 `sr-od-game-coach` 的配队决策工作流选体系与成员，交叉游戏内「通关阵容」推荐。判据：每队给出成员 + 一句核心逻辑。必做。
-4. ☐ **导航并挑战**：按类型块的「操作路径」跑 op（经 MCP `run_operation`，op_id 格式 `sr_od.operations.<模块>.<类名>`）。判据：op 返回挑战成功状态。必做。
+4. ☐ **导航并挑战**：按类型块的「操作路径」跑 op（经 MCP `run_operation`，op_id 格式 `sr_od.application.treasures_lightward.operations.<模块>.<类名>`）。判据：op 返回挑战成功状态。必做。
 5. ☐ **奖励确认**：挑战流程内的奖励弹窗由战斗 op 自动处理；期次累计奖励按类型块的「奖励」节核对入口。判据：奖励领取情况有明确结论。必做。
 
 ## 公共路由（所有类型通用）
 
-- **进副本**：`GotoTreasuresLightward`（`sr_od.operations.goto_treasures_lightward.GotoTreasuresLightward`，参数 mode = 枚举值字符串）。任意画面出发；已在入口链画面（选关/编队屏等）自动接续，新期开场介绍页与期次更新弹窗自动处理。终点：忘却之庭 = 选关（混沌回忆视图）；虚构叙事 / 末日幻影 = 各自选关。
+- **进副本**：`GotoTreasuresLightward`（`sr_od.application.treasures_lightward.operations.goto_treasures_lightward.GotoTreasuresLightward`，参数 mode = 枚举值字符串）。任意画面出发；已在入口链画面（选关/编队屏等）自动接续，新期开场介绍页与期次更新弹窗自动处理。终点：忘却之庭 = 选关（混沌回忆视图）；虚构叙事 / 末日幻影 = 各自选关。
 - **游戏基础信息**（角色/光锥/遗器静态数据）：按 `sr-od-game-coach` 的 MCP 常量查询（`character_lookup` / `cone_lookup` / `relic_lookup`），零 IO 不需登录。
 - **首领原型库**：逐光捡金首领 = 「原型怪 + 当期变形」——固有机制跨期跨模式复现，且不一定写在环境文本里。挑战前查 [references/bosses.md](references/bosses.md) 的机制族谱与原型档，当期只对照变形（弱点/数值/场地特性组合以首领信息画面实读为准）；实证到的新固有机制回填原型库。
 - **账号养成状态**：mys MCP 直拉（`mys_get_characters` 概况 / `mys_get_roster_detail` 全量明细）；练度判读口径见 `sr-od-game-coach` `references/investment.md`。
@@ -57,9 +57,9 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- `TlFillTeamsOp`（`sr_od.operations.tl_fill_team.TlFillTeamsOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
+- `TlFhTeamFillOp`（`sr_od.application.treasures_lightward.operations.tl_fh_team_fill.TlFhTeamFillOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
 - 编队屏点「混沌回忆」按钮发起挑战（ops 均不点它）——op 内用 `round_by_find_and_click_area` 点「FH_START_CHALLENGE」area，MCP 手动操作用 `analyze_screen` 命中后 `click_game` 按钮中心。
-- `TlStartChallengeOp`（`sr_od.operations.tl_start_challenge.TlStartChallengeOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
+- `TlFhBattleOp`（`sr_od.application.treasures_lightward.operations.tl_fh_battle.TlFhBattleOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
 
 ### 奖励
 
@@ -86,7 +86,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- 组合 op（把子 op 串成完整挑战的入口 op）`TlPureFictionChallengeOp`（`sr_od.operations.tl_pf_challenge.TlPureFictionChallengeOp`）：参数 team_names（8 人按行序）、buff_slot（战意效果序号，1 基）、buff_slots（每行荒腔走板序号列表，1 基）。前置 = 已在虚构叙事编队屏（组合 op 不做选关→编队屏跳转，操作路径步骤 2 由调用方完成）。
+- 组合 op（把子 op 串成完整挑战的入口 op）`TlPureFictionChallengeOp`（`sr_od.application.treasures_lightward.operations.tl_pf_challenge.TlPureFictionChallengeOp`）：参数 team_names（8 人按行序）、buff_slot（战意效果序号，1 基）、buff_slots（每行荒腔走板序号列表，1 基）。前置 = 已在虚构叙事编队屏（组合 op 不做选关→编队屏跳转，操作路径步骤 2 由调用方完成）。
 - 内部子 op 也可单独跑：`TlPfTeamFillOp` / `TlPfBuffEquipOp`（buff_slot + buff_slots）/ `TlPfBattleOp`。
 
 ### 奖励
@@ -114,7 +114,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- 组合 op `TlApocalypticShadowChallengeOp`（`sr_od.operations.tl_as_challenge.TlApocalypticShadowChallengeOp`）：参数 team_names（8 人按行序）、buff_slots（每行终焉公理序号，1 基，默认 (1,1)）。入口节点自行处理「选关屏→编队屏」跳转（已在编队屏 / 挑战进行中也直接接续）。
+- 组合 op `TlApocalypticShadowChallengeOp`（`sr_od.application.treasures_lightward.operations.tl_as_challenge.TlApocalypticShadowChallengeOp`）：参数 team_names（8 人按行序）、buff_slots（每行终焉公理序号，1 基，默认 (1,1)）。入口节点自行处理「选关屏→编队屏」跳转（已在编队屏 / 挑战进行中也直接接续）。
 - 队伍须避开带警告标记的角色（如当期试用）——可落位但「前往挑战」校验不过、点击无反应。
 - 内部子 op 也可单独跑：`TlAsTeamFillOp` / `TlAsAxiomEquipOp`（buff_slots）/ `TlAsBattleOp`。
 
