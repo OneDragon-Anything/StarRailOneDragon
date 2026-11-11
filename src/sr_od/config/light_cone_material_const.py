@@ -1,6 +1,6 @@
 """光锥晋阶材料使用表:材料名 → 使用该材料的光锥清单(BWIKI 快照)。
 
-本文件由 tools/game_data/generate_light_cone_material_const.py 从 BWIKI
+本文件由光锥材料生成器（随本机装备数据维护 skill 维护，不入仓）从 BWIKI
 「光锥晋阶材料一览」页生成,**禁手改**(数据修正走重新生成)。
 查询方向:给光锥找晋阶材料用 get_materials_for_light_cone;给材料找
 适用光锥用 get_light_cones_for_material。光锥晋阶材料数量为全光锥统一

@@ -1,6 +1,6 @@
 """副本产出材料表:指南分类名 → 该分类副本可产出的材料名清单。
 
-本文件由 tools/game_data/generate_ascension_const.py 从官方 wiki 快照生成,
+本文件由 skills/sr-od-dev-character-data/scripts/generate_ascension_const.py 从官方 wiki 快照生成,
 **禁手改**(单一源 = 官方 wiki;数据修正走重新生成)。
 键与 assets/game_data/interastral_peace_guide_data.yml 的 category_name 对齐,
 可直接经 SrGuideData 路由导航刷本。

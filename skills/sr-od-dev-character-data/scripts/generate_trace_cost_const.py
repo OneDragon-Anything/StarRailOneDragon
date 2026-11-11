@@ -89,7 +89,7 @@ def parse_main_table(html: str) -> dict[str, dict[str, int]]:
 def write_const(costs: dict[str, dict[str, int]]) -> None:
     head = '''"""行迹升级材料数量表(5 星角色统一固定表,分段口径)。
 
-本文件由 tools/game_data/generate_trace_cost_const.py 从 BWIKI 角色页
+本文件由 skills/sr-od-dev-character-data/scripts/generate_trace_cost_const.py 从 BWIKI 角色页
 「技能晋阶材料」节生成,**禁手改**(数据修正走重新生成)。
 - 段名「A→B」= 技能等级 A 升到 B;解锁条件 = 角色晋阶段数(「1→2」需
   角色晋阶 1,以此类推)——行迹升级 op 的「可提升至N级」即受此约束。

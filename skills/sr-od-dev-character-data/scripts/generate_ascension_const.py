@@ -3,7 +3,7 @@
 数据流:官方 wiki → 本脚本(拉取+转换) → character_ascension_const.py /
 dungeon_drop_const.py。版本更新后重跑刷新(数据块禁手改,单一源=官方 wiki)。
 
-用法:PYTHONPATH=src 下 uv run python tools/game_data/generate_ascension_const.py
+用法:PYTHONPATH=src 下 uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py
 """
 import json
 import re
@@ -418,7 +418,7 @@ def find_character_ascension(character_cn: str) -> CharacterAscension | None:
 def write_ascend_const(char_data: dict) -> None:
     head = '''"""角色晋阶材料表(分段):每段为一次晋阶(等级上限提升)的材料消耗。
 
-本文件由 tools/game_data/generate_ascension_const.py 从官方 wiki 快照生成,
+本文件由 skills/sr-od-dev-character-data/scripts/generate_ascension_const.py 从官方 wiki 快照生成,
 **禁手改**(单一源 = 官方 wiki;数据修正走重新生成)。
 段名与游戏内晋阶界面一致(如「30级晋阶」= 30 级时的晋阶,晋阶后上限+10)。
 """
@@ -437,7 +437,7 @@ def write_dungeon_const(dungeon_drops: dict, material_extra: dict,
                         material_missions: dict) -> None:
     head = '''"""副本产出材料表:指南分类名 → 该分类副本可产出的材料名清单。
 
-本文件由 tools/game_data/generate_ascension_const.py 从官方 wiki 快照生成,
+本文件由 skills/sr-od-dev-character-data/scripts/generate_ascension_const.py 从官方 wiki 快照生成,
 **禁手改**(单一源 = 官方 wiki;数据修正走重新生成)。
 键与 assets/game_data/interastral_peace_guide_data.yml 的 category_name 对齐,
 可直接经 SrGuideData 路由导航刷本。

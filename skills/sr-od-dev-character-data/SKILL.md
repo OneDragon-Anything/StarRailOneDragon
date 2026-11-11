@@ -33,8 +33,10 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 2. ☐ **权威表刷新(可选,推荐)**——本机若有角色数据维护管线则按其合并脚本归档权威表;快照随仓分发,跳过本步不影响后续录入。
 3. ☐ **录入注册表**——`src/sr_od/config/character_const.py` 新增 Character 常量 + 追加 CHARACTER_LIST 末尾;字段规则见 §3。
 4. ☐ **头像模板入库**——`assets/template/character_avatar/<Character.id>/raw.webp`;素材按开头口径获取,入库判据:目录名 = Character.id、无损 webp。
-5. ☐ **验证**——见 §6。
-6. ☐ **提交**——git add 逐文件点名(character_const.py + 头像文件),commit message 写清新增了哪些角色;账号没有该角色时注明「头像模板待实机验证」。
+5. ☐ **行迹/星魂常量刷新**——`uv run python skills/sr-od-dev-character-data/scripts/fetch_character_details.py`(抓官方 wiki 详情)→ `uv run python skills/sr-od-dev-character-data/scripts/gen_character_details.py`(重生成 `src/sr_od/mys/sr_character_details.py`)。消费方 = mys 详情查询与 MCP `character_lookup`(行迹满级/星魂全 6/秘技描述)。判据:按新角色 avatarId 能 `resolve_traces`/`resolve_eidolons`。⚠️ 前瞻期固化过的角色实装后必须重抓(前瞻数值/描述会过期);已实装角色行迹数值随版本调整也靠本步刷新。
+6. ☐ **晋阶材料刷新**——`uv run python skills/sr-od-dev-character-data/scripts/generate_ascension_const.py`(官方 wiki → `character_ascension_const.py` + `dungeon_drop_const.py`)。消费方 = MCP `character_lookup` 的 with_ascension 链路(晋阶材料 → 副本反查)。判据:按新角色 cn 能 `find_character_ascension`。行迹升级材料表(`trace_levelup_const.py`)为全 5 星统一固定表,新 5 星无需重跑。
+7. ☐ **验证**——见 §6。
+8. ☐ **提交**——git add 逐文件点名,commit message 写清新增了哪些角色;账号没有该角色时注明「头像模板待实机验证」。第 5/6 步的产物(sr_character_details.py、两个 const 文件)随本批一并提交。专属光锥/遗器数据归装备数据维护域的版本工序,不在本 checklist。
 
 ## 3. 字段录入规则(character_const.py)
 
@@ -98,7 +100,7 @@ technique_type 分类判据(读秘技描述;分类决定战斗 op 先放秘技�
 
 权威表 = `references/characters-full.json`(含 cn/en/path/element/rarity/avatarId/hoyowiki_page_id);中间快照:characters-index-snapshot.json(索引兜底)、wiki-channel18-snapshot.json(米游社列表兜底)、id-map.json / id-map-full.json(头像源图特征匹配结论)。
 
-随仓脚本:`fetch_character_details.py`(抓行迹满级+星魂详情)、`gen_character_details.py`(生成 `src/sr_od/mys/sr_character_details.py` 常量模块)、`align_character_ids.py`(权威表 ↔ 注册表 ID 对账)、`apply_avatar_ids.py`(注册表批量补 avatar_id,历史一次性)。本机若有完整维护管线(权威表合并/候选生成/头像批量归档),以其为准。
+随仓脚本:`fetch_character_details.py`(抓行迹满级+星魂详情)、`gen_character_details.py`(生成 `src/sr_od/mys/sr_character_details.py` 常量模块)、`generate_ascension_const.py`(官方 wiki → 角色晋阶材料 + 副本产出两常量)、`generate_trace_cost_const.py`(BWIKI → 行迹升级材料固定表,全 5 星通用)、`align_character_ids.py`(权威表 ↔ 注册表 ID 对账)、`apply_avatar_ids.py`(注册表批量补 avatar_id,历史一次性)。本机若有完整维护管线(权威表合并/候选生成/头像批量归档),以其为准。
 
 **前瞻未上线过滤**:wiki 详情里【角色行迹】模块名带「前瞻」(如「角色行迹前瞻【请以正式版本为准】」)= 角色未实装,**不录入**。只查模块名——正文文本提到「前瞻」不算(攻略正文常提及版本前瞻,整页文本搜索会误杀已上线角色)。
 

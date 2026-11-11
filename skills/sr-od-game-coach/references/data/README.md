@@ -8,7 +8,7 @@
 | `char_relics.json` | 角色页「遗器推荐」表 | 97 |
 | `char_teams.json` | 角色页「配队推荐」表 | 96 |
 
-- **角色晋阶材料表 / 副本产出材料表已转代码常量**（单一源，不在本目录）：`src/sr_od/config/character_ascension_const.py`（92 角色分段材料 + `get_character_ascension` 查询）、`src/sr_od/config/dungeon_drop_const.py`（副本产出 + `find_dungeon_by_material` 反查）。生成与刷新：`tools/game_data/generate_ascension_const.py`（官方 wiki 直拉）。
+- **角色晋阶材料表 / 副本产出材料表已转代码常量**（单一源，不在本目录）：`src/sr_od/config/character_ascension_const.py`（92 角色分段材料 + `get_character_ascension` 查询）、`src/sr_od/config/dungeon_drop_const.py`（副本产出 + `find_dungeon_by_material` 反查）。生成与刷新：`skills/sr-od-dev-character-data/scripts/generate_ascension_const.py`（官方 wiki 直拉）。
 
 ## 数据源现状（2026-11-05 起）
 
