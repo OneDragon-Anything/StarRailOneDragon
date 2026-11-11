@@ -100,24 +100,24 @@ class StrategySession:
     # (last_state 槽已停用:三写点(备战观察×2/
     #  买牌融合段)与全部遗留读者已切状态容器单例(game_state_of);备战
     #  快照的现役宿主 = 状态容器,观察喂入 = read_game_state 漏斗。)
-    # (终态契约 §A 防御缓存已删:结算 hp 基准 last_hp/last_hp_t、对账基准
+    # (防御缓存已删:结算 hp 基准 last_hp/last_hp_t、对账基准
     #  last_hp_real/last_hp_real_node、hp 下行拒信通道 hp_suspect、左移
     #  推断族 last_node_type/upcoming_types/nodeseq_probe_anchor、node
     #  识别值 node_type_current——真值职责归 gs(覆盖写端 + carried +
-    #  node_kind_of 推导),失准走识别优化批,design §1.3。)
-    # (终态契约 §A′ 探针族宿主迁移:plane_node_table/plane_node_table_plane/
+    #  node_kind_of 推导),失准走识别优化批。)
+    # (探针族宿主迁移:plane_node_table/plane_node_table_plane/
     #  plane_lengths_seen session 份停用——单一源 = gs.node_books
     #  (NodeBooks,写端 = prep 采集,读端 = cw_plane_table 经桥)。)
-    # (终态契约 §B:last_streak session 份停用——结算带符号真值由结算
+    # (last_streak session 份停用——结算带符号真值由结算
     #  覆盖写端直入 gs.streak,economy/观察消费读状态容器。)
-    # (终态契约 §B 重复账停用:active_strategies/active_env/last_owned_equips
+    # (重复账停用:active_strategies/active_env/last_owned_equips
     #  session 份已删——单一源 = gs(write_logic 选择写点),kernel/obs 消费读状态容器。)
     # (chosen_megastar/chosen_partner session 份已停用:
     #  单一源 = gs.chosen_*(write_logic 选择写点),session 份零读者。)
     # (briefing_affixes/briefing_bosses session 份已停用:
     #  单一源 = gs.enemy_affixes/gs.plane_bosses,写端 = 简报/位面详情采集/
     #  prep 补采直写/获得链删除分支〔敌后破坏失效删除 + 退化策略条目取尾
-    #  删除,随机态写 + 位面详情补观察转正,T-45/退化批〕;affixes 幂等
+    #  删除,随机态写 + 位面详情补观察转正〕;affixes 幂等
     #  覆盖读+采、bosses 恒覆写含读空清、保位 None 不滤语义全部上移状态容器
     #  写端。)
     # (selected_difficulty/enemy_difficulty session 份已停用:
@@ -134,7 +134,7 @@ class StrategySession:
     #  黑板帧停用 阶段 3.5:名单/装备/占用/晶矿全部状态容器
     #  域承载,策略器唯读状态容器契约归位;观察控制信号降级为备战环 op 局部
     #  对象,不经 session。)
-    # (终态契约 §B:黑板帧刷新代次标注 prep_frame_class/shop_frame_class
+    # (黑板帧刷新代次标注 prep_frame_class/shop_frame_class
     #  session 槽已停用——迁 gs 非 Field 双槽 frame_class_prep/
     #  frame_class_shop(值域/消费协议/写点面全量随迁,详 gs 字段注);
     #  语义:full = 入口主观察帧(方向重估全程);view = 派生帧(只刷视图);

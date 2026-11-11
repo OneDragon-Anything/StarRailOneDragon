@@ -205,8 +205,7 @@ class EncounterLog:
 def game_start_reset(gs: GameState) -> None:
     """开局清空(生命周期 = 局)。
 
-    孤儿态申报(迭代 2026-09-24-encounter-screen-strategy-migration
-    design §2.1):全仓零调用——环/经验表的局生命周期实际由 GameState
+    孤儿态申报:全仓零调用——环/经验表的局生命周期实际由 GameState
     平级字段 default_factory 每局全新创建承担(每局新状态容器,开局即空);本钩子 =
     生命周期设计意图的已登记保留面(显式复位口),不随判据迁移删除。
     """
@@ -247,8 +246,8 @@ def record_settlement_row(gs: GameState, outcome: RoundOutcome, *,
     return verdict
 
 
-# ===== 遭遇奖励兑现回调(结算确认链插入位置;迭代 2026-09-21-event-refresh-
-# unify-supply-pick §2.4,attack3 X4/X7 + R1 复攻定案后形态, r2)=====
+# ===== 遭遇奖励兑现回调(结算确认链插入位置;判据正本 =
+# strategy-docs/31_encounter_screen.md 立场与重拍回退节)=====
 
 def claim_encounter_reward(gs: GameState) -> str:
     """遭遇奖励兑现(纯状态容器读零读屏;``CwOpSettleConfirm`` 确认点击后、
@@ -256,7 +255,7 @@ def claim_encounter_reward(gs: GameState) -> str:
     覆写 node 镜像;``report_node_advance`` 只推进 node_pos 不写镜像,
     推进前后调对读值无差别)。
 
-    判据(design §2.4,attack3 X4/X7 + R1 定案):
+    判据(双证定案:节点镜像 ∧ 结算环尾行,细则见下):
     - 节点判遭遇 = **双证**——``gs.node`` 镜像(:func:`node_kind_of`,
       最近备战帧观察的下一节点类型,英文 token)== ``'encounter'``
       **∧** ``gs.settlement_ring`` 尾行 ``node_type == '遭遇'``(本局

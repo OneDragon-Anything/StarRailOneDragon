@@ -291,8 +291,8 @@ class CwScreenPrep(CwOperation):
                     is_merge_effect_window,
                 )
                 _gs_obs = gs_of_ctx(getattr(self, 'ctx', None), session)
-                # 备战帧节点锚定(迭代 2026-09-20-node-advance-action-report
-                # design §2.4 写端 1,攻击 F1 已定案):heavy 观察回执携带本帧
+                # 备战帧节点锚定(正本 = game_state/node-derivation.md
+                # 观察锚定;写端申报见 flow/README.md 推进喂入节):heavy 观察回执携带本帧
                 # plane/round → observe_node_anchor(处置规则 = kernel
                 # helper 单一源:first_anchor/advance 补推/reanchor/
                 # stale_dropped)。锚定输入与旧备战分支同源(read_phase_round
@@ -304,8 +304,8 @@ class CwScreenPrep(CwOperation):
                         and _st.round_num is not None:
                     with contextlib.suppress(Exception):
                         # 锚定输入即键((位面,轮) 元组直传;键表示下调用方
-                        # 零坐标换算义务,迭代
-                        # 2026-10-12-abolish-node-ordinal design §2.5)——
+                        # 零坐标换算义务,正本 =
+                        # game_state/node-domain.md)——
                         # 备战帧锚定是位面内全部战斗/奖励节点含 boss 的唯一
                         # node_pos 观察写端(漏传/错读的越域形态由 kernel
                         # 位面在表守卫丢弃保留证据)。
@@ -387,7 +387,8 @@ class CwScreenPrep(CwOperation):
                 # 备战帧现行链写端:slots 由 observe_full
                 # heavy 回传(原弃槽点改造),写状态容器在 director 侧(单写者
                 # 原则);逐格映射/写门/基线回填语义见函数 docstring。
-                # 节点行观察消费位同帧同点(详设 §2.8):槽序表/台账/图标
+                # 节点行观察消费位同帧同点(正本 =
+                # flow/projection_contract.md 备战观察行):槽序表/台账/图标
                 # 采集写点随迁此处,识别复用现役读零新增。
                 _write_prep_node_chain(session, _of.get('node_slots'),
                                        _prep_sig, screen=screen)
@@ -430,7 +431,7 @@ class CwScreenPrep(CwOperation):
                 # 写一律过挂接入口(单一写径,禁第二写径):容差配对轨迹
                 # 继承/声明出队生成/消失清洗都在入口对「写前旧坐标 × 写后
                 # 新坐标」逐帧判定,散写即身份键漂移(声明金被「消失清洗 +
-                # 新现重掷」链路静默蒸发,详设 §4)。
+                # 新现重掷」链路静默蒸发,正本 = game_state/fields.md §3.2.8a)。
                 _sph_pts = tuple((color, int(p.x), int(p.y), int(r))
                                  for color, p, r in _sph_list)
                 report_spheres_observed(
@@ -923,7 +924,7 @@ class CwScreenPrep(CwOperation):
         if op_cls is CwActionOpenShopOp:
             # 显式开店路径在本执行体内完成完整商店访问(开→访问→收店)
             # 后已回备战帧;仅访问失败路径店开态返回主循环重新识别
-            # (详设 §2.10:受限仲裁路径已停用,开店 = 唯一普通形态)。
+            # (正本 = flow/action_ops.md §4 OpenShop 行:受限仲裁路径已停用,开店 = 唯一普通形态)。
             return self.round_success(f'{key} ✓,交回外循环重识别',
                                       wait=op_cls.terminal_wait)
         if op_cls is CwActionOpenBoxOp:
@@ -968,8 +969,8 @@ class CwScreenPrep(CwOperation):
             log.info(f'[cw][director] {action_key(action)} → {_detail_lbu}')
             return None
         if isinstance(action, CwActionOpenShopParam):
-            # 开店 = 唯一普通形态(详设 §2.10:受限访问截流分支随动作发出帧
-            # 仲裁段停用;受限会话进出店 = 本普通路径,访问内消费由策略
+            # 开店 = 唯一普通形态(正本 = flow/action_ops.md §4 OpenShop 行:受限访问截流分支
+            # 已停用;受限会话进出店 = 本普通路径,访问内消费由策略
             # 侧自限)。
             _, detail = self._open_shop_phase()
             log.info(f'[cw][director] {action_key(action)} → {detail}')
@@ -984,8 +985,8 @@ class CwScreenPrep(CwOperation):
         """接管补采委派(插入位置 = op 观察 node;编排单一源 =
         CwEntryPlaneIntel:门/开关详情屏/委派实采/真值落状态容器写门全在编排侧)。
 
-        触发谓词(两支取或;设计 = T-45 设计稿 §2.2 接入调用 1,迭代
-        2026-09-23-invest-effects-calc):①``gs.plane_bosses`` 空(本局
+        触发谓词(两支取或;正本 = screens/plane_intel.md 编排门三重节):
+        ①``gs.plane_bosses`` 空(本局
         尚无位面序真值,接管局 boss 面;不引入显式失效标记——重复委派由
         编排的真值跳过门兜住,委派失败交外循环失败链,无自带计数/放弃
         分支);②``enemy_affixes ∈ gs.logic_rand_fields()``(词缀随机态:
@@ -1195,10 +1196,11 @@ class CwScreenPrep(CwOperation):
         路径与 0n 转交路径共用。驱动 = 构造 :class:`CwScreenShop`
         (两 node 规范形态)节点函数直驱(观察 node 恰一次 → 决策动作
         node round_wait 循环至终结;不经框架 execute 循环——轮间零截图,
-        决策循环零读屏纪律)。出参交接契约(详设 §2.2):失败判定 =
+        决策循环零读屏纪律)。出参交接契约(正本 =
+        flow/action_ops.md §2.1):失败判定 =
         轮结果 ``is_success``(False = 未识别卡停机/未观察熔断的
         round_fail);执行账 = ``op.ledger.total_*``。节点行观察已归备战
-        观察域(详设 §2.8,本备战环 heavy 观察消费),访问返回主循环,零额外动作。
+        观察域(正本 = flow/projection_contract.md 备战观察行,本备战环 heavy 观察消费),访问返回主循环,零额外动作。
         失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
         """
         # [临时钩子插入位置] 特殊投资策略商店采集停机(采够删:整段 = 上方
@@ -1321,7 +1323,7 @@ def _write_prep_node_chain(session: object, slots: list | None,
     插入位置 = 备战入口 heavy 观察的节点行读(``observe_full`` 现役
     ``read_node_sequence`` 调用回传 slots——识别零新增;director 侧写状态容器,
     组装层单写者原则只回传 slots)。节点行观察已自商店域归位本消费位
-    (迭代 2026-09-21-shop-refresh-terminal 详设 §2.8:原宿主 = 商店访问
+    (原宿主 = 商店访问
     尾探针 ``cw_screen_shop.probe_node_type``,随其停用整体迁入,
     守卫逐位随迁;触发面 = 每次备战入口 heavy 观察,覆盖 ≥ 现役仅商店尾
     触发):同帧同点依次落——

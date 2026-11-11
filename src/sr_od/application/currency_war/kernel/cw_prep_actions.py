@@ -14,7 +14,7 @@ kernel/data;app 依一切)——共享视图归 kernel 是唯一同时满足两�
 app/prep_actions.py 的 PrepActionExecutor,「产出动作」在策略层
 CwStrategy.decide_prep_screen 决策接口。
 
-策略禁读契约(迭代 2026-10-10-ore-reward-attach):``ore_rewards`` 附着值
+策略禁读契约(正本 = flow/projection_contract.md §2 ore_rewards 行):``ore_rewards`` 附着值
 禁入任何决策读面——实机为随机猜测,读它 = oracle 泄漏;纪律面双防线 =
 随机态域消费门(:meth:`GameState.logic_rand_fields` 不可信侧口径 +
 消费前必须重观察)+ 本契约声明(先例 = cw_hp_policy.hp_readable 消费门
@@ -61,7 +61,7 @@ def select_ore_clicks(spheres: list, cap: int,
     ORE_CLICK_HARD_CAP)。席满让路门/占席晶矿语义归动作发出点(既有门),
     本函数不覆盖。
 
-    策略禁读契约(迭代 2026-10-10-ore-reward-attach):挑选仅消费色/
+    策略禁读契约(同模块头):挑选仅消费色/
     半径(大优先);``ore_rewards`` 附着值禁读——实机为随机猜测,读它
     = oracle 泄漏(防线口径见模块头)。
 

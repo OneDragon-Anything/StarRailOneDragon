@@ -87,7 +87,7 @@ def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> Non
     log.info(f'[{tag}] safe_click {point}')
     if not mechanical_io_allowed():
         # sim:机械执行分支静默成功,状态副本变化由调用方紧随的上报承接
-        #(直连旁路 port 检查,flow-seam §2)
+        #(直连旁路 port 检查,正本 = sim/sim-design.md §6)
         return
     op.ctx.controller.mouse_move(point)
     op.ctx.controller.click(point)

@@ -10,7 +10,7 @@
 把等级推上去时连锁不发生。收敛为「一个值回调 + 两个经验入账函数」后:
 逻辑写经验(grant_xp/买经验上报)经 level 写尾自动进本调度器,观察写经验
 (模拟器域)统一经 ``settle_xp_observe`` 显式调本调度器——连锁对任意经验
-来源生效(设计稿:迭代 2026-09-23-invest-effects-calc T-432)。
+来源生效;设计正本 = game_state/logic-updates/level-up.md)。
 
 调度器守卫(全列,任一命中即返回):old_level None(种子写/首写,镜像
 ``on_enemy_affixes_logic_write`` 的 old None 防误触发);new <= old(降级/
@@ -63,7 +63,7 @@ def on_level_up_change(gs: GameState, old_level: int | None,
 
     三块连锁序(见模块头):信号置位(幂等,带来源代次戳 = 置位时点生效
     节点序位,节点边界清扫只清过期代次——节点推进时点源的新信号不被当
-    旧牌面清掉,迭代 2026-09-23-invest-effects-calc T-434)→ spy 状态副本写入分支
+    旧牌面清掉;代次判据正本 = game_state/logic-updates/start-battle.md)→ spy 状态副本写入分支
     声明入簿记队列(模拟器门)→ 节节高升 2★ 发放(持有判定 + 模拟器门,
     连跳按中间等级序列逐级,费用随各自等级)→ 升级窗口达成位记录
     (内部自判条目已登记 ∧ 未记录 ∧ 等级达标,零旁路条件安全)。

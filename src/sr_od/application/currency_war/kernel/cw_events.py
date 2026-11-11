@@ -50,7 +50,7 @@ class EncounterOption:
     越高敌人越强、奖励越好)。
     affixes:敌人词缀 OCR 原名(**写端恒空列表**——遭遇选项 UI 不显词缀、
     画面无数据源,产品事实;词缀作用于线分的唯一时点 = 开局简报词缀行,
-    统一阵容评分迭代 design §3.3「作用点单点」)。字段保留为观察载荷
+    12_line_and_intention.md §1.1「作用点单点:开局简报词缀入线分」)。字段保留为观察载荷
     契约形状(消费端恒按空集)。
     rewards:奖励(钻/装备/金币;偏好序消费 = 策略层 encounter_pick
     reward_tier 档序)。
@@ -293,8 +293,8 @@ def normalize_equip_name(text: str) -> str:
     return hits[0] if len(hits) == 1 else ''
 
 
-# ===== 补给装备名注册表级分层归一(迭代 2026-09-21-event-refresh-unify-
-# ===== supply-pick design §2.0B;与上方银狼基准集归一两入口分立,互不复用)=====
+# ===== 补给装备名注册表级分层归一(正本 = game_state/logic-updates/pick-supply.md §1;
+# ===== 与上方银狼基准集归一两入口分立,互不复用)=====
 
 #: 装备注册表全键集 longest-first 定序(分层归一第 2 层 containment 与
 #: 第 3 层相似的遍历序;构建期定序,「分身墨镜Max」先于「分身墨镜」受检)。
@@ -303,7 +303,7 @@ _REGISTRY_EQUIP_NAMES: tuple[str, ...] = tuple(
 
 
 def normalize_registry_equip_name(text: str) -> str:
-    """补给侧装备名归一(注册表 158 键全键集分层归一;design §2.0B)。
+    """补给侧装备名归一(注册表 158 键全键集分层归一;正本 = logic-updates/pick-supply.md §1)。
 
     与 :func:`normalize_equip_name`(银狼基准集 10 件集)分立:补给基础件不在
     银狼基准集名单,恒未解析——故另立本入口,键集 = 装备注册表全键集。

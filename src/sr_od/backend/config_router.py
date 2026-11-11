@@ -4,9 +4,6 @@
 **不裸写 data**(覆写 save() 的 config 会丢写)。handler 写穿 ctx 内同一缓存实例
 (经 run_context.get_config 等),写入前校验,不合法拒绝。
 
-详见 `docs/superpowers/specs/2026-07-24-mcp-config-design.md`(v5) +
-`docs/superpowers/specs/2026-07-25-mcp-config-describe-design.md`(v5)。
-
 SR 适配说明:照搬自上游 backend(``6a577983``)。上游的 ``charge_plan`` / ``notorious_hunt``
 路由依赖其专属模块(``ChargePlanItem`` / ``NotoriousHuntConfig`` / ``compendium_service``),
 SR 无对应实现 —— 已剔除。SR 已接入 ``trailblaze_power``(体力计划,``@dataclass`` 风格项 +

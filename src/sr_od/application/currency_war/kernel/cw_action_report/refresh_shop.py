@@ -1,6 +1,6 @@
 """货币战争动作上报:刷新商店(report_action_refresh_shop_param)。
 
-刷新动作上报分支(2026-09-21 商店刷新迭代 design §2-6/§2-9 立骨架,后续
+刷新动作上报分支(三支结构正本 = flow/action_ops.md §4 RefreshShop 行,后续
 分支随各效果建模批增补;条目序 = 建模序,执行序见函数 docstring):
 
 - **计数分支**:付费/全量两计数经 ``gs.effects.record_refresh`` 唯一入口触发

@@ -205,8 +205,8 @@ class CwScreenSupplyNode(CwOperation):
         同款;crop_first=False 全帧识别按带过滤,防小框裁剪漏检)。
         正则命中 + 值域内(plane∈1-3/round ≤ node_round_cap(场字段现值),
         与 read_phase_round 值域守卫同源——OCR 抓错源当 miss)→ **节点序位
-        元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算,迭代
-       -abolish-node-ordinal design §2.5;越域位面形态由 kernel
+        元组 (plane, rnd) 直返**(键表示下读数即键,零坐标换算,正本 =
+        game_state/node-domain.md;越域位面形态由 kernel
         锚定位面在表守卫丢弃留存证据)。
         读不得/值域外 → None(调用方 = 跳过,禁猜)。纯读。
         """
@@ -308,7 +308,8 @@ class CwScreenSupplyNode(CwOperation):
         return self._do_action()
 
     def _refresh_gate_allows(self, left: int | None) -> bool:
-        """刷新对照闸全式(两态分量不同,决策链接入调用迭代 design §2.2):
+        """刷新对照闸全式(两态分量不同,正本 =
+        strategy-docs/23_shop_screen.md §1 刷新放行条件):
         状态容器 ``supply_refresh_left`` 读数 ≥1 ∧ 识别标志分量——实机 =
         ``_refresh_point`` 在位(识别标志缺并入拒绝面,防「残值 ∧ 识别标志缺」帧机械
         点击 None,遭遇屏同款先例);sim = 无识别标志条件(恒过,sim 分支不依赖

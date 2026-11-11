@@ -79,7 +79,7 @@ def _advance_gold(session, delta: int, *,
 
 
 def _owned_add(session, item: str) -> None:
-    """owned 库存逻辑推进:+1 件(选卡/确认到账类;终态契约 §B:单一源 =
+    """owned 库存逻辑推进:+1 件(选卡/确认到账类;单一源 =
     gs.equips,现读-改写-回写)。"""
     from sr_od.application.currency_war.kernel.cw_game_state import (
         ChannelSig,
@@ -105,7 +105,7 @@ def apply_confirm_effect(session, payload: dict, *,
 
     语义(逐行自原 dict 分支平移,零行为):
     - ``ConfirmBox``/``ConfirmTome`` 且 item 在场:
-      owned +1(终态契约 §B:单一源 = gs.equips,现读-改写-回写;补给
+      owned +1(单一源 = gs.equips,现读-改写-回写;补给
       入栏/后果分支不读本口——写语义单点 =
       ``cw_action_report.pick_supply.report_action_pick_supply_param``);
     - ``ConfirmExpertCash``:现金为王弃卡取现金固定回金 +4 金账直推;
@@ -254,7 +254,7 @@ def trailblazer_row_identity(char_id: str, to_row: str,
     None)``;非开拓者/空名 → None(调用方保持原身份)。
 
     消费面 = :func:`trailblazer_row_unit`(Unit 状态容器原生唯一载体),
-    归一口唯一(design §3 不变量 5;swap 与 deploy_move 两上报均经
+    归一口唯一(正本 = flow/action_exec.md §1 统一动作清单「MoveUnit」行;swap 与 deploy_move 两上报均经
     :func:`trailblazer_row_unit` 同源,哨兵 =
     test_faction_derivation_locks 开拓者形态归一节)。"""
     from sr_od.application.currency_war.data.cw_chars import (

@@ -1,12 +1,11 @@
 """货币战争 hp 施门 kernel 政策层(决策消费面的统一读口)。
 
-**适用范围**:决策内存消费面消费 hp 的统一读口单点。终态契约(2026-09-16-
-strategy-terminal-contract)识别防御基准停用后,本层收敛为 **gs.hp 直读**:
+**适用范围**:决策内存消费面消费 hp 的统一读口单点。识别防御基准停用后,本层收敛为 **gs.hp 直读**:
 「上一真值」职责由结算覆盖写端(``cw_screen_battle_wait`` §3.5.1)+
 carried 语义(fields.md §2.1)承载;旧结算新鲜度门
 (``apply_hp_freshness_gate``,session.last_hp/last_hp_t 基准 + gap 窗)
 随基准停用删除——失读窗不再有基准补,实机识别失准走识别优化批
-(design §1.3 用户裁定,行为变化登记)。
+(用户裁定,行为变化登记)。
 
 **依赖方向**:本模块只 import kernel 内类型(类型注解经 TYPE_CHECKING),
 禁反向依赖策略实现层(策略层 ``strategies/impl/cw_strategy.gated_hp``
@@ -33,10 +32,10 @@ def decision_hp(gs: GameState, session: StrategySession) -> int | None:
     """决策面 hp 读口(hp 决策消费点统一经本口,禁旁路直读
     ``gs.hp.value`` 手写第二门)。
 
-    终态契约 §A:session 结算基准(last_hp/last_hp_t)与新鲜度门随防御
+    session 结算基准(last_hp/last_hp_t)与新鲜度门随防御
     缓存停用删除,本口 = ``gs.hp`` 直读——「上一真值」由结算覆盖写端 +
-    carried 语义承载(失读窗行为变化登记 design §1.3)。``session``
-    形参保留 = 消费点签名稳定(终态切换批随 kernel 参数清单复核定夺)。
+    carried 语义承载(失读窗行为变化登记)。``session``
+    形参保留 = 消费点签名稳定(参数清单复核定夺)。
     可信位判定另经 :func:`hp_decision_trusted_of`,禁与本口混写双位判定。
     """
     return gs.hp.value

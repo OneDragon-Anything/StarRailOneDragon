@@ -1,4 +1,4 @@
-"""货币战争 装备价值共享机器(选装入口单一源;design 出处 = armory-box-value 迭代 design §2.1-§2.3,承 supply-selection 迭代裁定 5/6(git 历史可溯)「装备价值做成通用机器,禁第二套」)。
+"""货币战争 装备价值共享机器(选装入口单一源;判据正本 = strategy-docs/13_pick_family.md §1 E18 行·armory-box-value 定稿「装备价值做成通用机器,禁第二套」,下文「13 号稿」同指)。
 
 四件套:
 - ``EQUIP_GENERIC_VALUE`` / ``equip_generic_value``:通用输出先验表
@@ -6,25 +6,25 @@
   审计链随表迁移);
 - ``equip_material_generality``:注册表配方引用条数(诚实派生;计数
   单位 = 配方**条数**,自对配方成员双槽只计 1 条;箱打分不消费——
-  简易域内恒值无序,design §2.1);
+  简易域内恒值无序,13 号稿 §1);
 - ``key_recipe_pairs`` / ``key_fit_names``:锁定阵容契合全集
   (成品 ∪ 材料对成员;key_fit_names 由 pairs 派生,单一推导);
 - ``equip_tier`` / ``pick_equipment``:通用选装入口(序数分档制,
-  design §2.2-§2.3;「候选全部为装备的多选一」场景禁第二套打分)。
+  13 号稿 §1;「候选全部为装备的多选一」场景禁第二套打分)。
 
   (原第五件 ``decide_equip_overlay_pick`` = 选择装备 overlay 三选一判据
   已停用——屏不存在,见外循环停用号 0a0。)
 
-档位语义(design §2.2/§2.3,零参数):
+档位语义(13 号稿 §1,零参数):
 - tier 3:key 直击且需求未满足(持有数_total < 需求件数);
 - tier 2:近兑现(选卡解锁首对——选前对数 0 ∧ 选后 ≥1;对数按备用账,
   栏内合成的输入面在装备区库存);
 - tier 1:key 材料(∃ 未满足 K,x ∈ 其材料对);
 - tier 0:其余(未锁态全体落此档,纯 base 排序)。
 
-账口径(design §2.5):owned_spare = 装备区备用库存账;owned_total =
+账口径(13 号稿 §1):owned_spare = 装备区备用库存账;owned_total =
 总持有账(备用 + 部署位穿戴 + 备战席穿戴,需求守卫用)。已知失真
-通道与待办见 design §2.3 边界清单。
+通道见上文 ``equip_material_generality`` 行(箱打分不消费)。
 """
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ def equip_material_generality(name: str) -> int:
 
     诚实派生,手工梯度表已停用。直调现状(2026-09-12 实跑):简易 8 件
     各 10 条完全同值、蓝钻/红钻各 11 条、垃圾袋 2 条、进阶 0 条——简易域
-    内恒值无序,故箱打分不消费本函数(design §2.1);保留供非箱消费位
+    内恒值无序,故箱打分不消费本函数(13 号稿 §1);保留供非箱消费位
     与注册表形态审计(V2 快照测试)。
     """
     count = 0
@@ -119,7 +119,7 @@ def key_recipe_pairs(key_equips) -> dict[str, tuple[tuple[str, str], ...]]:
 
 def _near_redeem(name: str, pairs_by_key: dict[str, tuple[tuple[str, str], ...]],
                  unmet_keys: list[str], spare_counts: Counter) -> bool:
-    """近兑现判定(design §2.3,意图锚定「选卡解锁首对」):∃ 未满足 K 的
+    """近兑现判定(13 号稿 §1,意图锚定「选卡解锁首对」):∃ 未满足 K 的
     材料对 (A, B),选 name 使该对从 0 对变为 ≥1 对。
 
     操作条件:交叉对 = name 为零侧且另一侧 ≥1;自对 = 持 1 补第 2 只
@@ -144,7 +144,7 @@ def _near_redeem(name: str, pairs_by_key: dict[str, tuple[tuple[str, str], ...]]
 def equip_tier(name: str, *, key_equips: Sequence[str] = (),
                owned_spare: Sequence[str] = (),
                owned_total: Sequence[str] | None = None) -> int:
-    """装备名 → 档位 3/2/1/0(design §2.2/§2.3)。
+    """装备名 → 档位 3/2/1/0(13 号稿 §1)。
 
     key_equips = 锁定阵容关键装备**可含重复序列**(需求件数 = 原序列
     count;禁 frozenset——去重会丢「阿雅需 2 皮靴」类需求);空序列 =
@@ -177,7 +177,7 @@ def pick_equipment(names: list[str], *, key_equips: Sequence[str] = (),
 
     key_equips 空 = 未锁态(全体 tier 0 → 纯 base 排序);names 空 → 0。
     base = 通用输出先验(equip_generic_value);材料通用性不进 base
-    (简易域恒值无序,design §2.1/§2.2)。"""
+    (简易域恒值无序,13 号稿 §1)。"""
     if not names:
         return 0
     best_i = 0

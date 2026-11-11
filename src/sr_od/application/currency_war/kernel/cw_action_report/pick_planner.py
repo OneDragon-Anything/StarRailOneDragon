@@ -65,7 +65,7 @@ _PLANNER_PRODUCER: str = 'CwActionPickPlannerParam'
 _LV999_ID: str = '银狼LV.999'   # 变换窗/级联/档行身份名(cw_chars 规范名)
 
 def _decl(gs: GameState) -> WorldDecl:
-    """银狼策划声明构造(详设 §2 表 #11;next_screen = 当前节点屏,
+    """银狼策划声明构造(正本 = flow/action_ops.md §4.8 声明终值表 #11;next_screen = 当前节点屏,
     推导单一源 = ``node_screen_now``;trigger 封闭集单一源 = sim 后端
     advance 分派表键集,值零新词沿用现役动作名)。"""
     return WorldDecl(next_screen=node_screen_now(gs),

@@ -16,8 +16,8 @@ economy.md「恢复局商店锁死」条)。
 轻屏统一形态):观察 node = 横幅门(徽记模板识别标志 miss → 「强敌」片段判别
 兜底;不在 = 已推进 → 早退 success 返回主循环重新判定,obs 不装载)+ 门内
 obs{on_screen} → ``report_screen_boss_briefing_obs``(boss 类型直定写端,
-目标 = 现 hist——迭代-node-advance-action-report 切换批自旧
-BOSS 简报分支迁移,design §2.5 表;直定前置同源守卫见 kernel 屏文件,
+目标 = 现 hist——自旧 BOSS 简报分支迁移,正本 =
+game_state/node-domain.md 节点类型权威链;直定前置同源守卫见 kernel 屏文件,
 match/gs 缺席跳过)→ obs 挂实例属性进
 决策 node。决策动作 node = 点空白一次推进 → success 结束本次访问(本屏一次点击
 即终结,横幅退场裁决 = 外循环重派后的下一次入口门,不做 op 内轮询)。
@@ -172,7 +172,7 @@ class CwScreenBossBriefing(CwOperation):
         else:
             # sim:本点击是后端点击源(空白点击 → battle_resolve 推进),
             # 必须过 click_answer 端口——直连旁路静默跳过 = 状态副本零反应,
-            # 横幅永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
+            # 横幅永驻 → 外循环重派风暴(sim/sim-design.md §6 直连旁路逐点
             # port 检查;动作 op 族「状态副本反应由自上报承接」形态不适用
             # 本屏,推进通道只有点击源)。
             cw_sim_ports.click_answer(

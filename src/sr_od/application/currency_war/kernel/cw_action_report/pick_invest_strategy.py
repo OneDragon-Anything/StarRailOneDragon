@@ -29,7 +29,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
-#: 投资策略声明的推进分派类别(详设 §2 表 #8;封闭集单一源 = sim 后端
+#: 投资策略声明的推进分派类别(正本 = flow/action_ops.md §4.8 声明终值表 #8;封闭集单一源 = sim 后端
 #: advance 分派表键集,值零新词沿用现役动作名)。
 _DECL_TRIGGER: str = 'pick_invest_strategy'
 

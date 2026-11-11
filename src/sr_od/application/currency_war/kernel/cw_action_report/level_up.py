@@ -31,7 +31,7 @@ def report_action_level_up_param(gs: GameState, param: Any, sig: ChannelSig,
     达帽 = applied=False + reason='level_cap' 零写(帽单一源 =
     ``cw_economy.level_cap_of``:无卡 = MAX_PLAYER_LEVEL,持等级帽卡 =
     注册表覆写经聚合归一);executed None = 击数自算 1(理想执行,sim 路径)。
-    现役触发面 = 备战域(商店域发射已随 2026-10-17 迭代 T-1 退役,
+    现役触发面 = 备战域(商店域发射通道已退役,
     商店域双类型词表随 T-4 退役删除)。
 
     **升级连锁(商业间谍/节节高升/窗口记位)**:三块连锁已统一迁入升级

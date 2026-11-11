@@ -213,8 +213,8 @@ def report_giftbox_sight_observed(gs: GameState, readings: tuple[int, ...], *,
                                   sig: ChannelSig,
                                   evidence: str = '') -> None:
     """giftbox_sight 观察写端单一挂接入口(live = 备战观察 heavy 段;sim
-    零接入调用——sim 无板件;设计 = .debug/progress/2026-10-19-giftbox-piece-obs/
-    designs/giftbox-piece-obs.md §2.2)。
+    零接入调用——sim 无板件;域语义 = 纯旁路证据观察域,字段登记 =
+    game_state/fields.md giftbox_sight 行)。
 
     上报语义(用户裁定 2026-10-19):
 

@@ -92,9 +92,9 @@ AFFIX_HP_RESYNC_EVIDENCE: str = 'prior:affix_disable_hp'
 def on_enemy_affixes_logic_write(gs: GameState, old_names: list[str] | None,
                                  new_names: list[str] | None,
                                  source: str) -> None:
-    """词缀域逻辑写尾的 HP 先验跟随回调(T-45 敌后破坏删除分支;设计 =
-    迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.3 裁决点 a,2026-10-18
-    用户方案「词缀更新回调」+ 对抗轮 2 N1/N2 修法甲落定形态)。
+    """词缀域逻辑写尾的 HP 先验跟随回调(词缀失效删除分支;设计正本 =
+    game_state/gain-chain.md 词缀失效删除分支节,用户方案「词缀更新回调」
+    落定形态)。
 
     插入位置 = ``cw_game_state._write_logic_frame`` enemy_affixes 分支尾
     (logic/logic_rand 两逻辑通道同经;**observe 覆盖不经该宿主 = 零回调**

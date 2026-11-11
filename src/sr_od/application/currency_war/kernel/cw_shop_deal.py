@@ -2,7 +2,7 @@
 
 本模块 = 发牌算法单一源,sim ``deal_shop``(sim/cw_sim_backend)与实机
 刷新上报随机态分支(kernel/cw_action_report/refresh_shop)共用同一发牌
-代码(2026-09-21 商店刷新 design §2-9/详设 §2.9「上报回调分支·刷新随机
+代码(正本 = flow/action_ops.md §4 RefreshShop 行「上报回调分支·刷新随机
 态」):实机上采样是猜测(上报函数经 ``write_logic_rand`` 写随机态,观察
 覆盖差异 = 预期内),sim 里采样即状态副本真值(sim ``deal_shop`` 经
 ``gs.observe`` 真值直写)。「两执行面同源」= 期望态两执行面同源原则

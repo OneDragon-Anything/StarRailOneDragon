@@ -1,6 +1,6 @@
 """字段投影完备性审计注册面(观察对账族架构收束)。
 
-**问题域**:统一观察对账失配告警(2026-09-16-unified-obs-reconcile)把「游戏侧
+**问题域**:统一观察对账失配告警把「游戏侧
 状态变更未投影进逻辑态」逐帧暴露为停局——逐例打补丁不可收敛(2026-09-18
 五连停局实证,``.debug/temp/incidents/20260918-reconcile/``),本注册面把
 **全部 GameState 状态容器字段**对「游戏侧变更是否会造成 observe 失配」做
@@ -104,7 +104,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               '(settle_truth:边界收入随结算入账,boundary_income_credited 留证)。'
               '晶矿随机金走逻辑随机态,写端申报:生成写 = ore_reward_attach'
               '(挂接入口,含 rekey 重挂),兑现写 = collect_ore 上报'
-              '(logic_rand_outcome 行收尾,2026-10-10-ore-reward-attach);'
+              '(logic_rand_outcome 行收尾;正本 = flow/projection_contract.md §2);'
               '投资卡随机授予仍无写端(申报表族 2026-09-19 拆除待重设计),'
               '命中照真失配停'),
     'level': ProjectionAuditRow(
@@ -462,8 +462,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
               ' = 开盒原语单一;到点比对自愈无主动清理'),
     'giftbox_sight': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='惊喜盒板件 ⏳N 读数观察域(纯旁路证据,设计 '
-              '2026-10-19-giftbox-piece-obs):观察读端 = 备战观察 heavy '
+        basis='惊喜盒板件 ⏳N 读数观察域(纯旁路证据):观察读端 = 备战观察 heavy '
               '段挂接入口(report_giftbox_sight_observed 单一写径,读到才'
               '整条替换写、读不到零写),零逻辑写端;模型状态副本里的值 = '
               'pending_item_opens 队列,本域不参与任何行为分支、运行时'
@@ -517,7 +516,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
     # —— 选择族 opts 槽(观察读面)——
     'invest_strategy_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
-        basis='选择族读面(终态契约 landing §3.1),零逻辑写端'),
+        basis='选择族读面,零逻辑写端'),
     'invest_env_opts': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='选择族读面(环境选卡 OCR),零逻辑写端'),
@@ -647,12 +646,11 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='实机 = 观察汇聚(observe_screen_context,R1 §3.1.4);'
               'sim = _announce_screen 状态容器广播(evidence screen: 前缀,'
-              '值级豁免结算/大厅屏,迭代 2026-10-16-sim-screen-announce)'),
+              '值级豁免结算/大厅屏)'),
     'current_screen': ProjectionAuditRow(
         status=AUDIT_WRITE_END,
         basis='实机 = 观察汇聚(observe_screen_context);'
-              'sim = _announce_screen 状态容器广播(第二写点,'
-              '迭代 2026-10-16-sim-screen-announce)'),
+              'sim = _announce_screen 状态容器广播(第二写点)'),
     'top_bar_raw': ProjectionAuditRow(
         status=AUDIT_OBSERVATION_ONLY,
         basis='顶栏原文观察层字段(用户终裁 2026-09-11 字段层次终极版:'
@@ -661,7 +659,7 @@ PROJECTION_AUDIT: dict[str, ProjectionAuditRow] = {
         status=AUDIT_WRITE_END,
         basis='两态序键:锚定态 observe_node_anchor 直写 observation / '
               '推进态 report_node_advance 经推进原语写 logic(值 = '
-              '(位面,轮) 元组键,2026-10-12-abolish-node-ordinal)'),
+              '(位面,轮) 元组键;正本 = game_state/node-domain.md)'),
     # —— 回执与局终 ——
     'receipts': ProjectionAuditRow(
         status=AUDIT_PROCESS_ONLY,

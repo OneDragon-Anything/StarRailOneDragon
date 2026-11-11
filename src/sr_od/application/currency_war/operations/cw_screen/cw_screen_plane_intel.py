@@ -149,7 +149,7 @@ class CwScreenPlaneIntel(CwOperation):
             self.ctx.controller.click(card)
         else:
             # sim:位面卡点击 = 后端点击源(切卡 → 详情条联动),必须过
-            # click_answer 端口(flow-seam §2 直连旁路逐点 port 检查);
+            # click_answer 端口(sim/sim-design.md §6 直连旁路逐点 port 检查);
             # 联动证据由下方 _plane_no_on_detail_bar 复查承接。
             cw_sim_ports.click_answer(
                 self, _PD_SCREEN, _PLANE_CARD_AREAS[plane_no - 1], None, None)
@@ -267,7 +267,7 @@ class CwScreenPlaneIntel(CwOperation):
             self.ctx.controller.click(boss_pt)
         else:
             # sim:boss 节点点击 = 后端点击源(详情条「首领」标签呈现态),
-            # 必须过 click_answer 端口(flow-seam §2 直连旁路逐点 port 检查)。
+            # 必须过 click_answer 端口(sim/sim-design.md §6 直连旁路逐点 port 检查)。
             cw_sim_ports.click_answer(
                 self, _PD_SCREEN, '区域-节点条', None, None)
         time.sleep(_BOSS_CLICK_WAIT_S)

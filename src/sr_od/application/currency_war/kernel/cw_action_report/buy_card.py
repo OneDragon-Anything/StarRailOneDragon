@@ -309,7 +309,7 @@ def report_action_buy_card_param(gs: GameState, param: Any, sig: ChannelSig,
         mark_gold_spent(gs, produced_by='CwActionBuyCardParam', sig=_grp_sig)
 
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
-    #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
+    #    特邀专家:银狼,设计 = game_state/gain-chain.md 专家解锁节(gs.unlocked_experts)
     #    §2.3):购买事实确立后判据一次——购买 = 银狼LV.999 的现役主流
     #    获得渠道(3 费档基础池恒可刷),插入位置与 on_buy 回调分支同位
     #    (简单分支 + 合成连锁 + 升星分支全毕后,拒买 applied=False 早退

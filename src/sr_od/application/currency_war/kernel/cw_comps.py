@@ -259,7 +259,7 @@ class Comp:
     def all_factions(self) -> set[str]:
         """阵容轮廓:核心 ∪ 副档 ∪ 弹性羁绊全集(亲和/过滤/板面判定用;
         成型判定仍只看档 0)。副档键计入轮廓 = 副档语义修正
-        (comp-structure-unification 3.1 变化②——旧读法不含副档键,
+        (旧读法不含副档键,
         属消费面未接副档字段的历史遗留,非设计裁定)。"""
         return (set(self.factions) | set(self.bonus_faction_reqs)
                 | set(self.flex_factions))
@@ -377,8 +377,7 @@ RUST_AFFIX_NAME: str = '库藏生锈'
 
 
 # (旧 ENV_COMP_AFFINITY/AUGMENT_COMP_AFFINITY 两亲和表与 augment_affinity/
-#  augment_env_affinity 查询口已随统一阵容评分迭代退役删除〔2026-11-03,
-#  统一阵容评分迭代的退役清单〕——投资↔阵容关联的运行时单一源 = 效果原文通道派生
+#  augment_env_affinity 查询口已退役删除〔2026-11-03 用户裁定〕——投资↔阵容关联的运行时单一源 = 效果原文通道派生
 #  kernel/cw_invest_channels(env_line_bonus/strategy_line_bonus,实证覆盖升档
 #  +定义卡+引擎匹配手编表);查询归一防线随迁(入口先 normalize_invest_name)。
 #  沿革与 plaza 频次校准数据考古走 git 历史。)
@@ -392,7 +391,7 @@ RUST_AFFIX_NAME: str = '库藏生锈'
 
 
 # (CORE_SINGLE_CARD_REGISTRY 直通终局线单卡依赖型核心登记已随 C1
-#  单卡核心囤积规则退役删除——统一让位优先级迭代 3.4,总纲 §2.5:
+#  单卡核心囤积规则退役删除——C1 直购支配性支/恒买腾位/买面保护消费全退役后该登记无生产消费面,
 #  C1 直购支配性支/恒买腾位/买面保护消费全退役后该登记无生产消费面,
 #  随批退役;登记值 = 知识判据出处指针,沿革与排除举证见 git 历史。)
 
@@ -1304,8 +1303,8 @@ _validate_anchor_invariants()
 
 
 # (旧 char_lock_hit/strategy_lock_hit 锁定判定原语已随 lock_rules 字段整字段
-#  退役删除〔统一阵容评分迭代,2026-11-03:全部即时锁退役,锁定 = P2 时点
-#  兜底唯一路径〕——角色/策略到手的线关联由线分证据分量(carry_set)与
+#  退役删除〔2026-11-03 用户裁定:全部即时锁退役,锁定 = P2 时点
+#  兜底唯一路径,正本 = strategy-docs/12_line_and_intention.md §1.3〕——角色/策略到手的线关联由线分证据分量(carry_set)与
 #  投资通道派生(kernel/cw_invest_channels)数值承载,沿革考古走 git 历史。)
 
 
@@ -1360,11 +1359,10 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
     ② 条件降档——即时集为空取条件集最优档降一档(core→shared→off);
     ③ advisor 族切换由调用方做(同一套档位判定;本函数不读 advisor)。
 
-    消费位(2026-09-23 迁移迭代 3.2 起)= 策略层
+    消费位 = 策略层
     ``strategies/impl/mandate_v1/gift_value.py``(档→分映射 GIFT_TIER_SCORE
     与 advisor 折减在彼处;本函数只产档,禁消费侧二次推导档位)。
-    evicted 传导免费获得:候选套收窄 → 档随之下调或失格(详设 §2.1.4-5
-    直调例:持续伤害契约排除三 DOT 套 → 椒丘即时档落 shared(千冶减益),
+    evicted 传导免费获得:候选套收窄 → 档随之下调或失格(直调例:持续伤害契约排除三 DOT 套 → 椒丘即时档落 shared(千冶减益),
     条件降档落 'off';千冶减益再被排除 → 即时档亦整条 'off')。
     """
     if grant.chars_immediate:

@@ -19,7 +19,7 @@ CW operations 树全部操作类的唯一父类(实机路径行为零变化):继
 - ``park_cursor()`` —— sim 零光标可停,静默跳过;实机 → ``super()``。
 
 其余 round_by_* / screen_utils 助手一律 ``super()`` 透传(全量清点表 =
-flow-seam 详设附录 A);直连 controller 旁路不在本类覆写(逐点 port 检查
+sim/sim-design.md 端口语义口节);直连 controller 旁路不在本类覆写(逐点 port 检查
 归各旁路文件,运行器 controller 桩兜底触碰即炸)。
 
 sim 分支的等待语义:等待参数透传丢弃(sim 状态副本瞬时呈现,测试侧
@@ -104,7 +104,7 @@ class CwOperation(SrOperation):
         until 轮询分支在本层收尾:点击已发出(``node_clicked``)且带 until 时,
         直接以端口 ``visible`` 问询出结果,**不再进后端 click_answer**——
         后端按点击处理状态机转移,轮询重入会重复触发转移(「sim 点击分支
-        已成功不重发」,flow-seam 详设 §2)。
+        已成功不重发」,正本 = sim/sim-design.md §6)。
         """
         if cw_sim_ports.sim_backend_installed():
             if self.node_clicked and (until_find_all is not None

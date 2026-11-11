@@ -90,9 +90,10 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool]:
       分类,消费方停链 fail-closed——与 kernel 帧级闸同一严格轴);
     - blood/forbidden = F2 唯一 L1 守卫输入(L1 = 非血∧非禁)。
     (旧第四位 ``top``〔顶级判定,消费 = 已停用的「新卡达顶级停链」〕
-    已随统一阵容评分迭代清理退役——顶级判定现经线分引擎派生且依赖
+    已随统一阵容评分清理退役(正本 = strategy-docs/12_line_and_intention.md
+    §1.1)——顶级判定现经线分引擎派生且依赖
     选卡识别标志线〔gs 面〕,D*-free 单名签名承载不了;刷新链守卫三闸
-    均不消费顶级位,随手清理,design §6 退役消费点全列。)
+    均不消费顶级位,随手清理。)
     帧级 D*-dependent 判据(对齐档 N/max_N)只在 kernel:handler 禁直调 kernel
     判据算刷新建议(G1——直调会丢 D*① 三参换基),本 helper 只服务执行期守卫
     与中断检查,不产决策。

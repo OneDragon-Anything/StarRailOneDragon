@@ -12,8 +12,8 @@
   spheres 终值同样依随机链而变(后续晶矿开否取决于采样奖励是否耗席),
   本动作不存在确定面写;观察覆盖差异 = 随机效果落地预期内
   (``logic_rand_outcome`` 台账行),策略消费前必须重观察;
-- **奖励来源 = ore_rewards 附着值兑现**(迭代 2026-10-10-ore-reward-
-  attach:掷骰已前移到生成侧挂接入口 ``cw_ore_channel``,点击只兑现):
+- **奖励来源 = ore_rewards 附着值兑现**(正本 = flow/projection_contract.md §2 晶矿族四域
+  + game_state/fields.md §3.2.8a:掷骰已前移到生成侧挂接入口 ``cw_ore_channel``,点击只兑现):
   命中附着键 → 直接应用**零掷骰**;缺项(挂接入口不变量破坏的罕见态)
   → 兜底 ``kernel/cw_ore_reward.py::roll_ore_reward``(临时口径 v0,
   假设档披露键已登记),该点全部写行 evidence 前缀
@@ -86,7 +86,7 @@ _MISSING_LEVEL_REASON: str = 'ore_reward_attach_missing_level'
 def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
                                     session: object = None,
                                     rng: random.Random | None = None) -> LogicOutcome:
-    """点晶矿上报(逐点顺序推演 + 随机态逐步写;design §2.4 全表)。
+    """点晶矿上报(逐点顺序推演 + 随机态逐步写;正本 = game_state/fields.md §3.2.8a/§4 全表)。
 
     - **整批拒(零写)**:spheres 未观察(现行为)/载荷无交集(现行为)/
       bench 未观察('bench_unobserved'——席满守卫与角色落点均不可判)。
@@ -187,7 +187,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             continue   # 席满即该点无效:晶矿留在 spheres,不摘不采
 
         # —— 奖励来源 = ore_rewards 附着值兑现(掷骰已前移到生成侧)——
-        # 键制 'x,y' 与挂接入口 cw_ore_channel 同格(总纲 §2 接口契约)
+        # 键制 'x,y' 与挂接入口 cw_ore_channel 同格(game_state/fields.md §3.2.8a 接口契约)
         attach_key = f'{xy[0]},{xy[1]}'
         attached = (gs.ore_rewards.value or {}).get(attach_key)
         if attached is not None:
@@ -203,7 +203,7 @@ def report_action_collect_ore_param(gs: GameState, param: Any, sig: ChannelSig,
             reward = roll_ore_reward(roll_rng, int(level))
             ev_prefix = _MISSING_EVIDENCE_PREFIX
 
-        # 步1 spheres 摘除(随机态——终值依随机链而变,design §2.4 表注)
+        # 步1 spheres 摘除(随机态——终值依随机链而变,fields.md §3.2.8a 表注)
         remaining = [q for q in remaining
                      if (int(q[1]), int(q[2])) != xy]
         _w_rand(gs.spheres, OreSight(

@@ -140,7 +140,7 @@ GOLD_SETTLE_MAX_POLLS: int = 3
 GOLD_SETTLE_INTERVAL_S: float = 0.5
 
 #: 「文本-难度」数字区徽记带上沿(裁片内 y,1080p 像素):数字区上半是徽记图案、
-#: 下半是数字。像素亲测(58 帧 fixture 裁片):徽记占 y 0..45、
+#: 下半是数字。离线裁片实测:徽记占 y 0..45、
 #: 数字带 y>=55,取 48 留双向安全距。``_ocr_difficulty_binarized`` 据此抹带。
 _DIFFICULTY_EMBLEM_BAND_Y: int = 48
 
@@ -837,11 +837,10 @@ def _ocr_difficulty_binarized(ctx: SrContext, screen: MatLike, rect: Rect | None
                               scale: int = 4) -> list:
     """敌方难度读数专用预处理 OCR:裁剪 → 放大 → OTSU → 反转 → 徽记 y 分带剔除。
 
-    为什么整链不可省(58 帧 fixture 离线交叉核对,产物
-    ``.debug/temp/currency_war/w526_difficulty_reader/``):
+    为什么整链不可省(离线裁片 58 帧全量交叉核对):
     - 白色艺术字数字 + 深色纹理旗底 + 顶部徽记贴边,原生直读 0/58;
     - OTSU 把数字从纹理旗底分离;反转成黑字白底(paddle 对白底黑字稳);
-    - 徽记在同区域上半(裁片 y<48,像素亲测:徽记占 y 0..45、数字带 y>=55),
+    - 徽记在同区域上半(裁片 y<48,实测:徽记占 y 0..45、数字带 y>=55),
       不剔除会被 OCR 混入图形噪声;按 y 分带即可,无需连通域。
     """
     if rect is None:
@@ -1117,8 +1116,7 @@ def read_phase_round(ctx: SrContext, screen: MatLike,
     return 1, 1
 
 
-#: 连通域字形几何阈值(1080p「区域-部署数」裁片,58 帧 fixture 连通域亲测,
-#: 产物 ``.debug/temp/currency_war/w529_xy_reader_impl/``):
+#: 连通域字形几何阈值(1080p「区域-部署数」裁片,离线 58 帧连通域实测):
 #: 数字与斜杠字形连通域全高 h≥45;人形图标两块(头 h≈19 + 身 h≈39)恒低于线,
 #: 据此剔图标 —— 实验证明图标/数字起点逐帧漂移,固定偏移蒙版不可用([0:55] 条带
 #: 在 0/3 帧切掉 '0' 左缘),形状过滤是唯一可靠面。
@@ -2324,8 +2322,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
       =P2a 开店动作期(仅买牌决策所需);``battle_or_transit``=战斗/过渡帧(仅
       位面轮次)。**None = 全量路径 = 现行为逐行不变**(存量调用点/测试零波及);
       未注册阶段名 → warning + 全量(fail-open:未知态不猜,回退现行为)。
-    :param screen_name: 调用方已知的当前画面建档名(迭代
-      2026-09-16-unified-obs-reconcile:观察侧失配豁免键 = 画面×字段×写端,
+    :param screen_name: 调用方已知的当前画面建档名(失配豁免键 = 画面×字段×写端,
       sig.screen 在场是精确键可命中的前提)。画面 op 分派时自知当前画面
       即传其建档名(如「货币战争-备战」/「货币战争-备战-开商店」);
       不知道画面名的调用点传 None(缺省,现状测试形态不变)——sig.screen
@@ -2410,9 +2407,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         node_type = _ledger_t if _ledger_t is not None else _obs_t
         if _ledger_t is not None:
             verify_node_type_votes(ctx, screen, plane, round_num)
-    # 终态契约 §A:last_level_obs 先验随等级单调守卫停用删除
+    # last_level_obs 先验随等级单调守卫停用删除
     # (_last_lv 恒 0 = 无历史先验;等级真值 = gs.level 结算/观察覆盖 +
-    # carried;误读窗行为变化登记 design §1.3)。_expected_level 结构先验
+    # carried;误读窗行为变化登记)。_expected_level 结构先验
     # (位面/轮次推算)保留。
     _match = getattr(ctx, 'cw_match', None)   # enemy_difficulty 回退源仍用(§B 换源)
     _last_lv = 0
@@ -2681,8 +2678,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             frame = f'p{plane}-r{round_num}'
             # 渠道①签名(显式签名铺满;§3.2.1 ①类属 = 观察汇聚
             # 模块):真读/沿用两 mode 各一;screen = 调用方画面建档名
-            # (失配豁免精确键的观察侧维度,迭代 2026-09-16-unified-obs-
-            # reconcile 补齐);hp 等带质量维的专项 sig 在各自写点。
+            # (失配豁免精确键的观察侧维度);hp 等带质量维的专项 sig 在各自写点。
             _sig_read = ChannelSig(family='obs', actor='cw_observation',
                                    screen=screen_name, mode='read')
             _sig_carry = ChannelSig(family='obs', actor='cw_observation',

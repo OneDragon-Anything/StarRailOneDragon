@@ -4,7 +4,7 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 出口由落地复查判落地(弹窗不在 = 选卡落地)+ 完成承诺固定时长
 ``CW_OVERLAY_SETTLE_S``。
 
-形态(迭代 2026-09-18-screen-op-flat-report):观察 node + 决策动作 node 两
+形态(screens/op-layer.md 两 node 形态):观察 node + 决策动作 node 两
 段直继承 SrOperation。观察 node = 入口门(标识-星徽秘典,miss = round_fail
 返回主循环重新判定)+ 卡阵营名一次读(全屏 OCR「X星徽」去后缀,x 升序;入口帧
 一次读,与现役决策体读同帧等价)→ 观察标准化门(阵营名经 FACTIONS 注册表

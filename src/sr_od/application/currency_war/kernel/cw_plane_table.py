@@ -33,7 +33,7 @@ from __future__ import annotations
 
 
 def _probe_books(session):
-    """探针簿记宿主解析(终态契约 §A′:gs.node_books 单一源)。
+    """探针簿记宿主解析(gs.node_books 单一源)。
 
     双形态宿主:GameState 本体(终态零参 decide 直传 self.gs)→ 直读
     node_books;session/裸对象(过渡期旧读法)→ 经 game_state_of 桥;

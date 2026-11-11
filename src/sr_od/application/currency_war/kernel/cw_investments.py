@@ -477,7 +477,7 @@ class EnvEconomyEffect:
       证伪改条件概率)
     - gold_per_strategy_coef: 每取一张策略 +coef×含本张已持有数(策略大师 2;
       口径 = 含本张,用户裁定 2026-10-26:第 k 张到手发 coef×k,首张 coef×1;
-      3-5 节点额外策略不计——策略域价值非经济通道,design §2.2.1)
+      3-5 节点额外策略不计——策略域价值非经济通道)
     - gold_after_refreshes: (刷新阈值,返金)(长线利好 (30,20)/二手市场 (20,30);
       B 类,估值公式与参数归数据批)
     - refresh_cost_after: (刷新阈值,新成本)(长线利好 (30,1);基价 2 为游戏定义)
@@ -525,7 +525,7 @@ class GiftGrant:
     """投资环境的**具名发放**结构(送卡/送道具估值;InvestmentEnv 同区 schema)。
 
     发放按「取环境当场到手(即时)」与「满足条件后到手(条件)」两分——估值只对
-    确定性部分给足档,条件部分降档处理(详设 §2.1.2 规则 3)。送卡的价值判据 =
+    确定性部分给足档,条件部分降档处理(正本 = strategy-docs/29_invest_strategy_screen.md §2.3 赠卡分)。送卡的价值判据 =
     **所赠角色是否被候选终局阵容使用**(结构集合级,零数值零战力,开局静态可用;
     模块职责说明 00_framework §1.1 禁战力建模,卖价残值对「送的人有没有人用」零判别力)。
     档位机器 = ``cw_comps.gift_hit_tier``;档位是定序实现常数非金流期望
@@ -551,9 +551,9 @@ class GiftGrant:
       特权阶级(效果原文「第二位面开始时,获得1个特权武装箱。」)
     - advisor: True=专家顾问入商店语义(特邀专家;创造一个可购买的购买选项,
       需再花店价且占购买预算,价值严格低于同档白得——资产账/可得性账分立,
-      详设 §2.1.2 规则 2);False=直接送卡(契约,白得资产)
+      29 号稿 §2.3「付费期权 < 白得」);False=直接送卡(契约,白得资产)
     - sell_value_note: 卖价残值注记(【注】下界;卖价 ≈ 按费用退金,度量费用
-      不度量阵容价值,不进任何分值族,详设 §2.1.2-2)
+      不度量阵容价值,不进任何分值族,29 号稿 §2.3)
     - chars_random_immediate: 取环境当场发放的随机角色,元素 =
       RandomCharSpec,数量 = 元素重复次数(效果原文「获得1个随机N费角色」
       直读形态的结构化承载)。「不可具名不入」注释覆盖 chars_immediate/
@@ -1043,7 +1043,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_UPGRADE_ALL),
         duties=DutyFlags(predict=True),
         notes='board/target 全量失效→方向重估强制重派生是后续批辖域;'
-              '写归属=替换面随机零逻辑写(详设 §5 全员晋升行)'),
+              '写归属=替换面随机零逻辑写'),
     # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
     # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读
@@ -2375,7 +2375,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 爆仓:官方「我方小队攻击敌方目标后，若其生命值百分比少于16%，将其
     # 【斩杀】。」(cw_invest_data.py, id 253301)。
     # 战斗域三重皆盲零建模登记(UNIT_BUFF 族):斩杀阈值触发面/生命值百分
-    # 比读数/斩杀执行面游戏侧自算,bot 零响应(REVIEW-T173 同卡反复独立
+    # 比读数/斩杀执行面游戏侧自算,bot 零响应(同卡反复独立
     # 复测成立;effect_text 经数据面表达式单一源,版本更新改文自动跟随)。
     '爆仓': EffectSpec(
         id='253301', name='爆仓',
@@ -2532,8 +2532,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 完美进化(id 331901):官方「进入战斗时，穿戴【战场进化手册】的1星角色
     # 会变为2星。」战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,
     # bot 零响应;pending=False = 变形持续性已登记用户裁定 2026-11-01 直接
-    # 消解(临时+策略默认不选,T-180 节;星变/读博深造两姊妹同判已实现
-    # pending=False 现值),REVIEW-T267「战斗开始变形族后继持续性轴届时
+    # 消解(临时+策略默认不选;星变/读博深造两姊妹同判已实现
+    # pending=False 现值),「战斗开始变形族后继持续性轴届时
     # 直接承已登记用户裁定(临时),无二义残留」宣示兑现)。
     '完美进化': EffectSpec(
     id='331901', name='完美进化', trigger=TriggerKind.PLANE_START,
@@ -2743,7 +2743,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 攻防一体(id 351601):官方「我方小队获得25%伤害减免，且获得等同于
     # 伤害减免的伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「等同
     # 于伤害减免的伤害增幅」跨轴联动读法[同源快照 vs 全额镜像两读]零响
-    # 应下 bot 行为恒同 = 判读申报制[REVIEW-T392 两档叠合同构先例];两段
+    # 应下 bot 行为恒同 = 判读申报制[两档叠合同构先例];两段
     # 增幅游戏侧自算,bot 零响应;无离散触发事件,trigger 占位形)。
     '攻防一体': EffectSpec(
     id='351601', name='攻防一体',
@@ -3325,7 +3325,7 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
     入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import game_state_of
-    # 终态契约 §B:单一源 = gs.active_strategies(write_logic 选择写点)。
+    # 单一源 = gs.active_strategies(write_logic 选择写点)。
     for name in (game_state_of(session).active_strategies.value
                  or []) if session is not None else []:
         s = get_strategy(name)
@@ -3336,8 +3336,8 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 
 
 def spy_on_level_up_active(session) -> int:
-    """商业间谍升级偷牌张数现读(0 = 未持有;2026-10-17-levelup-shop-
-    transition design §2.3 升级回调已登记判定单一源)。
+    """商业间谍升级偷牌张数现读(0 = 未持有;升级回调已登记判定单一源,
+    正本 = game_state/logic-updates/level-up.md)。
 
     已登记判定 = EffectSpec 300201(STRATEGY_EFFECTS['商业间谍'],
     trigger=LEVEL_UP,payload.steal_on_level_up=3 官方「升级时刷新商店,
@@ -3508,7 +3508,7 @@ _REWARD_NODE_BONUS_MARK: float = 1.0
 ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     # 每位面开局 (6,8,12) 金晶矿(id 103 原文直读;晶矿自动开启假设见 schema 注)
     '增发货币': EnvEconomyEffect(gold_per_plane_start=(6, 8, 12)),
-    # 开局额外 +6 金(id 113;随机环境期望不计,design §2.6 取舍)
+    # 开局额外 +6 金(id 113;随机环境期望不计)
     '蓝海': EnvEconomyEffect(gold_instant=6),
     # 升 8 级后 3 节点各 +12XP(id 138)= 36XP;×1:1 折金等价
     # (策略层 env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设已登记)
@@ -3519,11 +3519,11 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
     # 花费金币刷新 30 次后 +20 金、之后刷价 2→1(id 120 原文直读;基价 2 =
     # cw_state.REFRESH_COST_BASE 游戏定义)。付费阈值(总数阈值 = 二手市场行),
-    # 估值 = P(达 30)×[20 + (2−1)×E(后继刷新)],design §2.2.1 B 类公式
+    # 估值 = P(达 30)×[20 + (2−1)×E(后继刷新)],B 类公式
     '长线利好': EnvEconomyEffect(gold_after_refreshes=(30, 20),
                                  refresh_cost_after=(30, 1)),
     # 商店刷新 20 次后 +30 金(id 106);【员工投影仪】件不入经济(装备资产,
-    # design §2.2.1 B 类行)。总刷新阈值,估值 = P(达 20)×30
+    # (同上 B 类公式)。总刷新阈值,估值 = P(达 20)×30
     '二手市场': EnvEconomyEffect(gold_after_refreshes=(20, 30)),
     # 全部奖励节点替换为(超级)次元扑满、掉落(超)多战利品(id 105/119 原文
     # 直读;效果无数值,增益真值+CI 在估算注册表按变体分键,当前零有效估计
@@ -3634,7 +3634,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果
     # (停云终结技增益/加拉赫击破档分支状态副本发放已接(ENV_BOND_TIER_GRANTS),
     # 装备资产不入估值维持/桑博节点礼盒)异质不入估值,停云/桑博仅占位登记
-    # (详设 §2.1.1 注;桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
+    # (桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
     '特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
     '特邀专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
     '特邀专家:银狼': GiftGrant(chars_conditional=(
@@ -3668,8 +3668,8 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 环境金 gold_per_plane_start 落 (plane, 1) 节点窗)。登记不落席:入状态容器
     # 队列 pending_item_grants,到点经 discharge_due_item_grants 发放
     # (环境发放 = 确定发放;生产插入位置 = sim 进节点收束,实机不接——队列登记
-    # 后保持原样,备战真值归观察覆盖,迭代 2026-09-24-scheduled-env-gifts
-    # design §2.5 不对称申报)
+    # 后保持原样,备战真值归观察覆盖;sim/live 不对称申报正本 =
+    # game_state/gain-chain.md 定时发放节)
     '特权阶级': GiftGrant(items_scheduled=(('2-1', '特权武装箱'),)),
     # 随机支登记(id 109 效果原文「开局拥有1个随机4费角色。」直读,
     # PlazaPortal('109'));星级未标 = star 1 先验(晶矿 CHAR_DROP_STAR/
@@ -4078,8 +4078,7 @@ ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
 #:   = 对账零,4%/2% 的基数口径/叠加上限/单位边界/首触发时点另四维零载)。
 #:   共通:「每节点层数计数器」= 预建机制无驱动(命运礼物开盒内容同案先例)
 #:   且现役 counters 为效果级非角色级、按角色叠层无落点,不建;真值实采后
-#:   按周期触发器骨架起建零迁移(设计 = T-36 设计稿 §2.5/T-44 设计稿 §2.3
-#:   预留指针);首例 = 战力提升(id 136)。
+#:   按周期触发器骨架起建零迁移);首例 = 战力提升(id 136)。
 ENV_GIFT_UNMODELED_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_worn_badges_unmodeled',
     'env_gift_badge_drop_unmodeled',
@@ -4323,7 +4322,7 @@ _validate_env_gifts()
 # 表头);②全表效果文本反扫(「获得…roster 名」)补网(龙虎兄弟狸/佩佩驾到/
 # 艾丝妲的猛犬!/招财狗——无角色绑定的直读发放,佩佩 ∈ CHARACTER_ROSTER);
 # ③开箱分支(「获得…【箱】」占席道具直读,箱名 = items 元素,数量 = 元素
-# 重复次数;迭代 2026-09-24-advanced-armory-box 起,箱条目卡随批扩员);④非直读
+# 重复次数;箱条目卡随批扩员);④非直读
 # 人工转正(溜佩佩/溜佩佩+,卡面「佩佩逛街」句 = 效果实现发放但非「获得」
 # 直读引导,人工裁定入册,反扫白名单两键同批退役;这么大的钻石 = 用户裁定
 # 2026-11-02 读法 B「佩佩真实入后台」,佩佩携钻句同判入册);⑤非候选直读
@@ -4736,7 +4735,7 @@ _validate_endorse_choice_disclosure()
 # value 驻策略层),
 # 当前态恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
 # 直接入现金分会产出「白银时代>黄金时代」噪声序;层 E 转正准入门(全通道重算
-# + 序一致性检验,详设 §2.2.2)经数据批判定未过,维持 fail-closed(判定依据
+# + 序一致性检验)经数据批判定未过,维持 fail-closed(判定依据
 # = invest-env 迭代 layer-e-promotion-batch 详设,git 历史可溯);层 Q
 # (定序残域,池内挑卡
 # 与功能价值)= 零现金分维持(现金通道 fail-closed 即无值;
@@ -4745,7 +4744,7 @@ _validate_endorse_choice_disclosure()
 # 呈现(标尺语义权威版本 = strategy-docs/28_invest_env_screen.md;层 E 语义
 # = 策略层 env_economy._pool_rewrite_value docstring)。
 # 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域
-# 价值不折金不进层 E,字段只登记事实(详设 §2.2.4);执行消费端 = sim
+# 价值不折金不进层 E,字段只登记事实;执行消费端 = sim
 # (联席插入位置派生 JOINT_DECISION_EXTRA_SLOT;银金彩刷新 = 策略屏刷新呈现
 # 与刷新状态副本写入分支,2026-10-19 用户裁定批接入)。
 # 测试 = 测试仓 test_sim_offer.py(判据单点 + 名单 ⊆ ENV_POOL_REWRITE 一致性)
@@ -5208,7 +5207,7 @@ def _validate_strategy_perfect_rescue_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
     失联);② 徽名双源:徽名必须在 EQUIPMENTS 且类别 = 星徽族(版本改名/
-    类别调整不静默;零配方非合成件事实不校验,T-219 设计稿 §1.2 已定案,
+    类别调整不静默;零配方非合成件事实不校验(定案,
     申报面 = 本 docstring 非运行时哨)。"""
     orphans = [n for n in STRATEGY_PERFECT_RESCUE_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -5628,7 +5627,7 @@ class EnvDeployLockGrant:
     - deploy_lock_nodes: 上场锁期(「19个节点」直读);解锁序位 =
       获得刻生效序位沿节点日程表步进本值(计数起点 = 获得节点计入
       锁定段,系设计定读——卡文无计数起点词,证伪通道 = 实机环境选择后
-      锁倒计时读数,披露键随 T-33 设计稿披露 9);
+      锁倒计时读数;披露键随本域登记);
     - perfect_win_accel: 「战斗完胜后,上场节点额外提前1点」开关
       (desc 有该分支 = True;真实值已登记,防后继无完胜分支的同形卡误挂)。"""
     spec: RandomCharSpec
@@ -5671,7 +5670,7 @@ _validate_env_deploy_lock_grants()
 # cw_invest_data.py);策略道首例 = 偶像经济(id 303401「获得【火花】和
 # 一个【火花礼盒】，倒计时10个节点后礼盒打开,……战斗完胜时,额外减少1
 # 点倒计时。」,PlazaAugment)。惊喜盒/火花礼盒 = 战利品区浮动件非占席
-# (实机板件实证 = 与晶矿球同区,T-34 设计稿 §1 两帧证据),故不入
+# (实机板件实证 = 与晶矿球同区,两帧证据),故不入
 # GiftGrant(道具通道 = _place_bench_item 占席落位,与板件位置直接矛盾)、
 # 不入 BENCH_ITEM_NAMES 词表(非占席,词表派生式零扩)。策略卡「获得
 # 【角色】+ 倒计时件」双条目分表:角色条目住 STRATEGY_GRANTS(chars_immediate),
@@ -5689,10 +5688,10 @@ class EnvDelayedItemGrant:
     - item: 倒计时件名(「【惊喜盒】」直读;战利品区浮动件非占席——
       实证 = reward_giftbox_phantom.webp 与晶矿球同区);
     - open_delay_nodes: 开盒倒计时节点数(「12个节点」直读);
-      解锁位 = 获得刻生效序位沿日程步进本值(计数起点 = T-34 设计稿
-      裁决点 3:获得节点计入);
+      解锁位 = 获得刻生效序位沿日程步进本值(计数起点 =
+      获得节点计入);
     - perfect_win_accel: 「战斗完胜后,倒计时额外减少1点」加速分支旗
-      (分支本体 = T-34 设计稿裁决点 1)。"""
+      (分支本体 = gain-chain.md 倒计时件通道节)。"""
     item: str
     open_delay_nodes: int
     perfect_win_accel: bool
@@ -5794,8 +5793,7 @@ _validate_env_supply_equip_count()
 # 「经济过热/经济严重过热」两扑满环境局,sim 奖励面板矿在普通奖励识别标志
 # (sim/cw_sim_backend.REWARD_ORE_PANEL_ANCHOR,8 矿)之上的增量矿数
 # ——承载卡面「掉落(超)多战利品」幅度差异的 sim 占位:游戏 desc 无
-# 数值,值 = 用户占位人为定为(2026-10-15,设计 designs/T-20-jingji-
-# yanzhong-guore.md §8),非核实游戏事实,待实机采证校准;占位申报
+# 数值,值 = 用户占位人为定为(2026-10-15),非核实游戏事实,待实机采证校准;占位申报
 # 披露键 = sim/cw_sim_backend.PIGGY_ORE_PANEL_BONUS_PLACEHOLDER。
 # 两键独立人为定为、独立校准:「经济严重过热」=「经济过热」再 +4 的阶梯
 # 关系只是本轮占位取值的来历,非不变量、不校验——实采可只调一键。
@@ -6057,7 +6055,7 @@ STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
     # 想出棱彩投资策略！」(cw_invest_data.py, id 260201)。延时条目:深思熟
     # 虑 5 节点 → 棱彩投资提议(delay_nodes=5/offer_quality=棱彩,refresh_
     # count 缺省=可刷新基形沿 201103 先例);条目1「2个青雀」= 注册行维持
-    # 单元素,数量 2 失真申报(REVIEW-T287 裁决点 2:估值集合级零影响,
+    # 单元素,数量 2 失真申报(估值集合级零影响,
     # 族批统一口径提级呈报)/条目2 金6 已登记零动作(grants 面白得桶,本表
     # 零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
     '摸个鱼吧II': (StrategyDelayedOffer(id='260201', delay_nodes=5,
@@ -6355,8 +6353,7 @@ _validate_strategy_encounter_battle_grants()
 # 「首领节点战斗结算后状态副本发放」策略域:键 = 策略规范名,值 = (装备类别
 # 词, 件数) 扁平二元组(单档;多档族卡出现时沿表值形状泛化先例扩序列,
 # 本批不预泛化——首例触发器形状单一)。触发面 = boss 节点战斗结算(节点
-# 类型条件内嵌于触发函数,表不设节点键——扩形状各建各表,设计
-# designs/T-105-yizhan-yangzhan.md §2.1 口径);发放物 = 随机装备(类别
+# 类型条件内嵌于触发函数,表不设节点键——扩形状各建各表);发放物 = 随机装备(类别
 # 池采样),与 STRATEGY_ENCOUNTER_BATTLE_GRANTS(占席道具确定发放)形状
 # 异构故不共表。卡面无「胜利」限定 = 败局存活也发、无「首次」限定 =
 # 可重复(无 done 一次性标志位,防重归调用方节点键幂等守卫);live 零写观察覆盖
@@ -6565,8 +6562,8 @@ _validate_strategy_win_gold_grants()
 # 键 = 策略规范名,值 = (装备类别词, 件数) 扁平二元组。
 # ⚠️ 类别词 = roll_random_equip 采样参数语义(装备注册表类别),与
 # STRATEGY_BOSS_BATTLE_GRANTS 表值同形异义——先例表类别词 = 占席道具箱名
-# 前缀语义(消费端发箱),两表消费动作异构故分表不共载(T-368 设计稿
-# 9.5-1 类别词两义申报,禁复用先例解析器)。触发面 = 战斗结算完胜分支
+# 前缀语义(消费端发箱),两表消费动作异构故分表不共载(类别词两义申报,
+# 禁复用先例解析器)。触发面 = 战斗结算完胜分支
 # (胜利 ∧ 未损血,判定输入与 STRATEGY_WIN_GOLD_GRANTS 同源);穿戴对象 =
 # 本卡发放佩佩个体(uid 过滤,承载 = pending_kechuan_leaves 域),动作 =
 # Unit.equips 直写 append(**不走 gain_equipment**——穿戴非玩家获得,
@@ -6840,8 +6837,7 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # 装备」不在本表——两条效果条目同属选卡获得时点,登记条目 = PICK_INVEST_
     # EFFECTS 组合登记行(随机进阶条目×延时入队条目,cw_gain_effects,不入
     # 泛化表防同名键覆盖丢即时条目);「随机」词在本条目显式,即时条目进阶
-    # 装备缺词判读申报制(随机类别池均匀 v0 读法 =
-    # designs/T-237-huishou-jihua.md §1.3,后继引用禁当已定案转引))
+    # 装备缺词判读申报制(随机类别池均匀 v0 读法,后继引用禁当已定案转引))
     '回收计划': StrategyDelayedGrant(id='230701', delay_nodes=5, item='',
                                      item_category='简易'),
     # 回收计划+(id 230702 原文直读,cw_invest_data.py:186;卡文延时条目 =

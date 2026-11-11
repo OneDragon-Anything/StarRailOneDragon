@@ -342,7 +342,7 @@ def _emit_consequence_candidates(gs: GameState, sig: ChannelSig,
                                  evidence: str) -> None:
     """变异后果采证钩子:采样命中 ``EQUIP_ACQUIRE_CONSEQUENCES`` 键集成员
     → 留存证据行,供实机局判读比对「变异产物是否触发后果」(推翻「变异不
-    触发」即升格 ``on_equipment_gained``,design §1.4 采证点)。"""
+    触发」即升格 ``on_equipment_gained``;采证点正本 = game_state/gain-chain.md 获得回调枚举)。"""
     for src, new_item in pairs:
         if new_item in EQUIP_ACQUIRE_CONSEQUENCES:
             _emit_defect(field_name='equips',

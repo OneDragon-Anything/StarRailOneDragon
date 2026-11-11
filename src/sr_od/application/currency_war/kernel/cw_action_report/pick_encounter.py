@@ -1,7 +1,7 @@
 """货币战争动作上报:遭遇节点选择(report_action_pick_encounter_param)。
 
-**发出即写**(迭代 2026-09-21-event-refresh-unify-supply-pick design
-§2.4;用户裁定 2026-09-21:选卡点击发出后即结束本次访问,选择事实 = 动作执行时产生):
+**发出即写**(正本 = flow/action_ops.md §4 PickEncounter 行;
+用户裁定 2026-09-21:选卡点击发出后即结束本次访问,选择事实 = 动作执行时产生):
 ``CwActionPickEncounterOp`` 确认点击后立即写 ``chosen_encounter``——
 写端位置 = op-layer §2.2 动作事实边界(遭遇例外改判,
 先例 = 投资域 chosen 迁获得链的显式收窄条款;zero_writes 零写族语义

@@ -1,7 +1,7 @@
 """难度账本与价值地图 v0:记账恒等式 + 场合依赖定价。
 
 **现状**:OCR 读侧已通(``cw_observation.read_enemy_difficulty`` 敌方难度读数两级管线,
-58 帧 fixture 交叉核对 41/41 有敌方难度读数帧读对),本模块主体仍是**记账恒等式**(自持选择
+离线交叉核对:含敌方难度读数的帧 41/41 全部读对),本模块主体仍是**记账恒等式**(自持选择
 自己知道);OCR 读数经 ``reconcile`` 对账。−18% 敌血 flat 惩罚三态同值(大胜值 0/
 边际值一条命/无解值 0)——方向对场合全错;200+ 溢出 bug 使「堆难度」成为终局
 武器,系统经读通后的读数可见。
@@ -58,8 +58,7 @@ class DifficultyAccount:
         difficulty_delta 进 augments(节点型限定暂并入静态);
         difficulty_per_streak 走 streak 动态项。品质通胀(API 无数值)不建。
 
-        孤儿态登记(迭代 2026-09-24-encounter-screen-strategy-migration
-        design §2.7):本模块 ``marginal_value`` 的唯一消费链(原 kernel
+        孤儿态登记:本模块 ``marginal_value`` 的唯一消费链(原 kernel
         遭遇难度档评分)已停用——``marginal_value``/
         ``DifficultyAccount`` 现全仓零生产消费(孤儿态;物理删除归后续
         清理批,``GROWTH_PER_STREAK`` 有 sim 活消费,按符号逐个处置,

@@ -1,21 +1,20 @@
-"""晶矿掉落奖励采样器(logic-rand-sampling 迭代;纯函数离线可测,sim/live 共用)。
+"""晶矿掉落奖励采样器(纯函数离线可测,sim/live 共用)。
 
-**临时建模口径 v0**(design §0 裁决 2/§0.1:用户 2026-09-20 临时人为定为,
+**临时建模口径 v0**(用户 2026-09-20 临时人为定为,
 **非核实游戏事实,待实机采集数据优化**):点开晶矿 = 金币/装备/角色 三选一。
 规则参数全部集中本模块常量面(各带披露键),采集校准只改常量与披露键、
 不动结构;校准数据源 = 随机态观察收尾的 ``logic_rand_outcome`` 行(采样值
 vs 实读真值逐局积累)。
 
-已登记冲突调和(design §0 裁决 2):screen_flow_timing #16 三形态佐证本口径;
+已登记冲突调和:screen_flow_timing #16 三形态佐证本口径;
 fields.md §4.2 的「箱」与 final_wandi_burn 的「稀有物」为 v0 有意不建模
 ——采样错形态时观察收尾兜底(安全的不准确),代价由席满让路门 + 观察
 回补既有裁定承担。
 
-采样语义(design §2.1):实机上采样是猜测(标随机态,观察校准);sim 里
+采样语义(正本 = game_state/fields.md §2.5):实机上采样是猜测(标随机态,观察校准);sim 里
 采样即状态副本真值——同一采样函数两副面孔。
 
-矿批附着生成(详设
-details/ore-reward-channel.md §3)::func:`generate_ore_rewards` = 矿进入
+矿批附着生成(正本 = game_state/fields.md §3.2.8a)::func:`generate_ore_rewards` = 矿进入
 状态副本时的附着奖励单一生成入口(声明金先占席、归属 rng 掷、其余逐矿采样),
 live/sim 共用,禁第二实现。
 """
@@ -28,7 +27,7 @@ from sr_od.application.currency_war.data.cw_chars import chars_by_cost
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.data.cw_shop_odds import REFRESH_PROB
 
-# ===== 规则参数常量面(采集校准唯一改点;各带披露键,与 design §0.1 一一对应) ==-
+# ===== 规则参数常量面(采集校准唯一改点;各带披露键,与下方 ORE_ASSUMPTION_KEYS 一一对应) ==-
 
 #: 类型权重(临时口径:三选一等概率,权重未实测;披露键 ore_type_uniform)
 REWARD_TYPE_WEIGHTS: dict[str, float] = {'gold': 1.0, 'equip': 1.0, 'char': 1.0}
@@ -45,7 +44,7 @@ CHAR_DROP_STAR: int = 1
 _SIMPLE_EQUIP_POOL: tuple[str, ...] = tuple(sorted(
     name for name, eq in EQUIPMENTS.items() if eq.category == '简易'))
 
-#: 建模假设档披露键纯登记清单(design §0.1;零发射接入调用、不进随局披露输出——登记辖域仅本常量,键按死键备案)
+#: 建模假设档披露键纯登记清单(零发射接入调用、不进随局披露输出——登记辖域仅本常量,键按死键备案)
 ORE_ASSUMPTION_KEYS: tuple[str, ...] = (
     'ore_type_uniform',
     'ore_gold_uniform_1_5',
@@ -73,8 +72,8 @@ def roll_ore_reward(rng: random.Random, level: int) -> OreReward:
     - level = 当前玩家等级(经济域观察值;报告层守卫保证非 None)。
       概率表覆盖 Lv1-10,表外档(注册表/状态不一致)显式炸——响亮暴露,
       禁静默兜底档(采样错档 = 校准数据全废)。
-    - 多点批 = 每点独立调用一次,同一 rng 实例顺序推进(design §2.3:
-      批内序列不重置,跨批经流键 uses 坐标隔离)。
+    - 多点批 = 每点独立调用一次,同一 rng 实例顺序推进(批内序列不重置,
+      跨批经流键 uses 坐标隔离)。
     """
     if level not in REFRESH_PROB:
         raise ValueError(

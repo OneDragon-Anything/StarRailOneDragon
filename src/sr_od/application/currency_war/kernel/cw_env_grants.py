@@ -826,7 +826,7 @@ def check_env_deploy_lock_perfect(gs: GameState, sig: ChannelSig
     之后,重复上报结构性不重查,T-30 同款性质)。
 
     判据(用户裁定 2026-10-18:结算胜利 ∧ 本节点未损失小队生命值;
-    设计 = T-33 设计稿 §2.4,迭代 2026-09-23-invest-effects-calc)=
+    设计 = game_state/gain-chain.md 环境定时发放节)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,域规格 =
@@ -919,15 +919,14 @@ def check_env_item_open_perfect(gs: GameState, sig: ChannelSig
     之后,重复上报结构性不重查,T-30 同款性质)。
 
     判据(用户裁定 2026-10-18 口径:结算胜利 ∧ 本节点未损失小队生命值;
-    设计 = T-34 设计稿 §2.5,迭代 2026-09-23-invest-effects-calc)=
+    设计 = game_state/gain-chain.md 倒计时件通道节)=
     结算环(settlement_ring)**尾行 killed=True ∧ 尾行 hp_after 与前一行
     hp_after 持平**(hp 持平判定带完胜判定改写旁路:瞬时位
     ``settlement_perfect_rescue`` True = 损血局亦判完胜,与 deploy_lock
     行同形,域规格 = fields.md §3.5.3b)**(机械口径单一源 = check_env_deploy_lock_perfect 同判据
     已登记;killed 语义/hp 差分基准的推导权威版本见彼处 docstring,宁缺勿造:
     环不足两行或任一侧 hp_after None 不判定)。判据判定行内联同式非共享
-    谓词:check_env_deploy_lock_perfect 本体属零混改面(T-34 设计稿
-    §3 零改动清单),本函数与 T-33 完胜分支零代码耦合(域不同:
+    谓词:check_env_deploy_lock_perfect 本体属零混改面,本函数与完胜提前分支零代码耦合(域不同:
     env_grant_deploy_locks vs pending_item_opens)。
 
     作用域 = env_grants_done 中本表 perfect_win_accel=True 卡名
@@ -1211,8 +1210,7 @@ def check_env_dot_grants(gs: GameState, sig: ChannelSig, *,
                          ) -> str | None:
     """持续伤害契约条件分支触发检查(猜测写 + 证实单一源;三个接入调用点共用
     本函数,条件判定不漂移):live 结算覆盖窗猜测写 / live 备战屏观察证实
-    / sim 结算分支猜测写+进度累计+证实(设计 = T-28 设计稿 §2.2/§2.3,
-    迭代 2026-09-23-invest-effects-calc)。建模动机:计数源(敌方 DoT
+    / sim 结算分支猜测写+进度累计+证实)。建模动机:计数源(敌方 DoT
     状态)实机和模拟器两边皆盲无状态副本真值生产点 → 不可数但可假设、可证实——每次结算
     「假设获得黑天鹅」随机态垫入,live 由备战观察收敛、sim 由固定战斗数
     收敛。
@@ -1378,8 +1376,7 @@ def grant_env_bond_tier(gs: GameState, env: str, bond: str,
 
 
 #: 取卡触发发放跳发缺陷 kind(gold 现值 None 时零写留证;取卡事件不可重放,
-#: 静默放弃 = 永久假账——用户裁定 2026-10-26,登记于 T-46 策略大师设计稿
-#: §2.1(b) 条件 3)。
+#: 静默放弃 = 永久假账——用户裁定 2026-10-26)。
 DEFECT_ENV_PICK_GRANT_SKIPPED: str = 'env_pick_grant_skipped'
 
 

@@ -122,8 +122,7 @@ class CurrencyWarApp(SrApplication):
             install_state_telemetry,
         )
         install_state_telemetry(run_id_provider=state.current_run_id)
-        # 统一观察对账失配告警武装(幂等;设计 = 迭代 2026-09-16-unified-obs-reconcile
-        # §2.4;处置壳 = stop_running 一行,截图归框架):
+        # 统一观察对账失配告警武装(幂等;处置壳 = stop_running 一行,截图归框架):
         # 真失配缺陷行 → 停机;kernel 槽缺省关,生产在此与出口钩子同点接通。
         set_reconcile_andon_hook(_build_reconcile_andon(ctx))
         # obs_event 并入 GameState 供给(kernel 禁自寻会话;观察冲突证据

@@ -101,8 +101,7 @@ class CwEntryPlaneIntel(CwOperation):
                 f'不在货币战争对局画面(需{_PREP_SCREEN}或{_PD_SCREEN}),无法补采')
 
         # 真值已在(简报链早前采过/上一轮本 op 成功)→ 零点击直接结论。
-        # 跳过门扩面(T-45 设计稿 §2.2 接入调用 2,迭代 2026-09-23-invest-
-        # effects-calc):位面真值已有 **∧** 词缀非随机态才跳过——词缀
+        # 跳过门扩面(正本 = screens/plane_intel.md 编排门三重节):位面真值已有 **∧** 词缀非随机态才跳过——词缀
         # 随机态(敌后破坏删除分支猜测名单/开局种子)时放行补观察,防旧门
         # 把「正常局 boss 真值已在 + 词缀随机态待转正」拦在委派之外。
         _gs = gs_of_ctx(self.ctx, sess)
@@ -150,7 +149,7 @@ class CwEntryPlaneIntel(CwOperation):
         else:
             # sim:点击 = 后端点击源(备战节点条点击 → 位面详情开屏),
             # 必须过 click_answer 端口——直连旁路撞桩即炸且状态副本零反应
-            # (flow-seam §2 直连旁路逐点 port 检查;转移证据由下方标题
+            # (sim/sim-design.md §6 直连旁路逐点 port 检查;转移证据由下方标题
             # 复查承接,与实机同判据)。
             cw_sim_ports.click_answer(
                 self, _PREP_SCREEN, '区域-节点条', None, None)

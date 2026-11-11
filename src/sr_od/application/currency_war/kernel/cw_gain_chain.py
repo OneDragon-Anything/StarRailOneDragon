@@ -192,13 +192,13 @@ ENV_REROLL_DECL: str = 'gain_chain_env_reroll_decl'
 
 #: 敌后破坏(id 146)词缀失效删除分支的采样分支具名键(函数内经
 #: :func:`action_sampling_rng` 解析,实机和模拟器两边同槽先例 = env_merge_grant;
-#: 权威版本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1 裁决点 b)。
+#: 权威版本 = game_state/gain-chain.md 词缀失效删除分支节(裁决点 b)。
 ENV_AFFIX_DISABLE_RNG_TOOL: str = 'env_affix_disable'
 
 #: 敌后破坏删除分支的空状态容器申报行 kind(选卡时词缀状态容器空[简报失读等]→
 #: 跳过删除:实机已失效而模型未删,偏差全程持续无自愈——该态状态容器非
 #: 随机态,补观察谓词不命中;独立小块沿 ENV_REROLL_DECL 同形,语义申报
-#: 非缺陷告警;权威版本 = T-45 设计稿 §6 披露键 3)。
+#: 非缺陷告警;权威版本 = game_state/gain-chain.md 词缀失效删除分支节)。
 ENV_AFFIX_DISABLE_EMPTY_DECL: str = 'env_affix_disable_empty_container'
 
 #: 敌后破坏(id 146)环境规范名(枚举即收敛硬编码分支的判定键,单卡
@@ -213,8 +213,7 @@ STRATEGY_AFFIX_DISABLE_STRATEGY: str = '退化'
 #: 退化词缀失效分支的空状态容器申报行 kind(选卡时词缀状态容器空[简报失读等]→
 #: 跳过删除:实机已失效而模型未删,偏差全程持续无自愈——该态状态容器非
 #: 随机态,补观察谓词不命中;沿 ENV_AFFIX_DISABLE_EMPTY_DECL 同形,
-#: 语义申报非缺陷告警;设计 = 迭代 2026-09-23-invest-effects-calc
-#: designs/REVIEW-T291.md §3,机制单一源 = 敌后破坏已落三条效果条目机制)。
+#: 语义申报非缺陷告警;机制单一源 = 敌后破坏已落三条效果条目机制)。
 STRATEGY_AFFIX_DISABLE_EMPTY_DECL: str = 'strategy_affix_disable_empty_container'
 
 #: 获得时点随机策略发放申报行 kind(独立小块,非 DEFECT_ 词表成员,沿
@@ -922,8 +921,7 @@ def gain_bench_item(gs: GameState, item: str, *, rand: bool,
     落位(备战槽或溢出位)。``rand=False`` = 确定发放(策略箱分支/环境发放
     同约定,gain-chain.md §5);``producer`` 缺省 = 链缺省署名。
 
-    公开动机(kernel 策略发放面补「占席道具」形态,迭代
-    2026-09-24-advanced-armory-box design §2.2):本原语公开前效果体
+    公开动机(kernel 策略发放面补「占席道具」形态):本原语公开前效果体
     (cw_gain_effects)无占席道具发放口可消费——骇客卡 bench 分支走
     gain_character,道具分支无对应入口。
     """
@@ -1209,7 +1207,7 @@ def _kechuan_wear_picks(u: Unit | None, held: list[str],
     """单只穿戴采样(非目标单位 None;目标 = uid ∈ 本卡集 ∧ 身份 == 佩佩;
     逐持卡逐档采样——与 check_strategy_boss_battle_grants 逐持卡逐档同构,
     同形卡经 active_strategies 按名去重结构性单实例,叠加持卡不可达;
-    逐持卡形态沿先例,叠加语义申报归 T-368 设计稿 9.5-4)。"""
+    逐持卡形态沿先例,叠加持卡不可达为申报前提)。"""
     if u is None or u.uid is None or int(u.uid) not in owned \
             or str(u.char_id) != _KECHUAN_UNIT_IDENTITY:
         return None
@@ -1672,7 +1670,7 @@ def check_strategy_bench_count_xp(gs: GameState) -> int:
 
 
 # ============================================================ 开源节流条件息顶满(tick 捕获→窗口消费对)
-# 载体契约单一源(设计 = 迭代 designs/T-295-kaiyuan-jieru.md §2.3;锁
+# 载体契约单一源(锁
 # 「tick 捕获 → 窗口消费清零」契约,不锁载体形):tick 闸滚位前捕获置数
 # → sim 节点窗开消费读清。两函数同文件内聚;条件判定单一源 =
 # cw_economy.strategy_interest_floor。
@@ -3516,8 +3514,7 @@ def check_strategy_equip_expiry(gs: GameState, *,
 def _node_frame(gs: GameState) -> str:
     """链内 frame 字符串(「位面-轮」统一标识,如 ``2-3``;节点未观察 =
     空——登记分支 evidence 用;编号时代的 p{plane}-r{round} 双形态随键
-    表示统一,消除同 run 双形态并立,迭代
-    2026-10-12-abolish-node-ordinal 披露 2)。"""
+    表示统一,消除同 run 双形态并立;正本 = game_state/node-domain.md)。"""
     _nd = gs.node.value
     return (f'{_nd.plane}-{_nd.round_num}' if _nd is not None else '')
 
@@ -3801,8 +3798,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       ``env_deploy_lock:<名>#uid<n>@<位>-<轮>``(锁登记串)。落位成败与
       锁记录/done 解耦(placed=False 零写留证,锁记录照写)。锁随 uid
       不随名(掷骰名是猜测,bench 首观察覆盖纠偏,守卫拒/放对象不受扰);
-      拦截复用 deploy_move/swap_deploy 既有守卫零新建(设计 = T-33
-      设计稿 §2.3,迭代 2026-09-23-invest-effects-calc);
+      拦截复用 deploy_move/swap_deploy 既有守卫零新建(正本 =
+      game_state/gain-chain.md 环境定时发放节);
     - **随机支**(``chars_random_immediate``,具名支之后):牌库时点池
       (cw_pool ``grant_char_pool`` = 规格域 ∩ 当时牌库,未解锁专家剔除,
       用户裁定 2026-10-28)内均匀掷骰选名 → ``gain_character`` 落席,星级
@@ -3853,7 +3850,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
       先例);删除写触发词缀域写尾 HP 先验回调(cw_opening_hp.
       on_enemy_affixes_logic_write,_write_logic_frame 插入位置)。效果串
       ``env_affix_disable:<词缀名>``。首例 = 敌后破坏(id 146;
-      设计 = T-45 设计稿 §2.1,迭代 2026-09-23-invest-effects-calc);
+      设计正本 = game_state/gain-chain.md 词缀失效删除分支节);
     - 查无效果(表外环境)= 安静不写(用户裁定),真值归观察覆盖。
       (欢愉契约条件分支不在本枚举:其正式模型 = 银狼策划选择上报动作落地时点的
       条件分支 rider,住 ``cw_action_report.pick_planner``,触发事件 =
@@ -3884,8 +3881,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
     effects: list[str] = []
     # 随机赠卡锁分支(状态副本发放域登记表白名单,ENV_GIFTS 查表之前——表外
     # 环境零写径不受扰):采样发卡 + 实例发号 + 上场锁写 + 完胜作用域
-    # done 登记,同窗相邻写(设计 = T-33 设计稿 §2.3,迭代
-    # 2026-09-23-invest-effects-calc)。锁随 uid 不随名:守卫匹配键 =
+    # done 登记,同窗相邻写(正本 =
+    # game_state/gain-chain.md 环境定时发放节)。锁随 uid 不随名:守卫匹配键 =
     # uid(cw_env_grants.deploy_lock_block_reason),掷骰名是猜测、bench
     # 首观察静默覆盖纠偏,不影响锁的拒/放对象。kernel 反向模块级零
     # import 契约:函数内惰性取(本函数既有 DOT_ANCHOR_KEY_PREFIX/
@@ -3965,13 +3962,12 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                            f'#uid{uid}@{unlock[0]}-{unlock[1]}')
     # 延迟道具支线(状态副本发放域登记表白名单,同在 ENV_GIFTS 查表之前——
     # 表外环境零写径不受扰):倒计时件 = 战利品区浮动件非占席(实机板件
-    # 实证,T-34 设计稿 §1)→ 纯队列登记零席位写(不调 _place_bench_item,
+    # 实证,正本 = game_state/gain-chain.md 倒计时件通道节)→ 纯队列登记零席位写(不调 _place_bench_item,
     # 不碰 bench/overflow 任何字段);开盒内容不建模(卡面 desc 无载,硬
-    # 裁定 = T-34 设计稿披露 1)。解锁位 = 获得刻生效序位沿日程表步进
-    # open_delay_nodes 步(计数起点 = 获得节点计入,裁决点 3;生效序位
+    # 裁定)。解锁位 = 获得刻生效序位沿日程表步进
+    # open_delay_nodes 步(计数起点 = 获得节点计入;生效序位
     # 未锚定 = 开局段结构性形态,防御基准 (1,1);步进遇 None(局终方向)
-    # 停留最后合法值,T-33 锁分支同款)。设计 = T-34 设计稿 §2.3,迭代
-    # 2026-09-23-invest-effects-calc。
+    # 停留最后合法值,deploy_lock 锁分支同款)。
     _delayed = ENV_DELAYED_ITEM_GRANTS.get(_name)
     if _delayed is not None:
         base = effective_node_pos(gs) or (1, 1)
@@ -3979,7 +3975,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         for _ in range(_delayed.open_delay_nodes):
             nxt = sequence_next(unlock, gs.node_seq_by_plane.value)
             if nxt is None:
-                break   # 局终方向无后继:停留最后合法值(T-33 同款)
+                break   # 局终方向无后继:停留最后合法值(deploy_lock 同款)
             unlock = nxt
         write = _select_write(gs, rand)   # 与链内其余写同收束
         write(gs.pending_item_opens,
@@ -4001,8 +3997,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                        f'@{unlock[0]}-{unlock[1]}')
     # 词缀失效删除分支(敌后破坏 id 146「开局时，使一个已生成的敌人词缀
     # 失效。」,状态副本发放域硬编码分支沿 DOT_CONTRACT_ENV 枚举即收敛先例,
-    # 不入登记表——单卡零复用面;设计 = T-45 设计稿 §2.1,迭代
-    # 2026-09-23-invest-effects-calc):失效建模 = 删除式——从词缀名单
+    # 不入登记表——单卡零复用面;设计正本 =
+    # game_state/gain-chain.md 词缀失效删除分支节):失效建模 = 删除式——从词缀名单
     # (gs.enemy_affixes)均匀随机删 1 个、剩余列表整条替换写回,经
     # _select_write 择道且 rand=True 双保险声明采样链(live 选卡发生在
     # 开局未锚定窗 → 自动落随机态 = 裁定的「词缀要变成随机态」;掷骰
@@ -4044,7 +4040,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         unlock_tail = '+'.join(grant.chars_immediate)
         if grant.chars_conditional:
             # 条件形态支(首例 = 特邀专家:银狼,「获得角色触发型」族插入位置④;
-            # 设计 = 迭代 2026-09-23-invest-effects-calc T-42 §2.4):
+            # 设计 = game_state/gain-chain.md 专家解锁节(「首次获得」判定)):
             # 「首次获得」涵盖环境获得之前已发生的获得——环境获得时刻对
             # 在场单位(bench ∪ deployed ∪ 溢出位)判一次,开局种子起手与
             # 先购得后经蓝海改写等中途获得本环境局在此收尾;环境获得后的
@@ -4079,8 +4075,8 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
                             sig=sig)
         return (f'advisor_unlock:{_name}:{unlock_tail}',)
     if grant.replaces_opening_supply:
-        # 开局替换清席支(先清后发,首例 = 人才储备 id 144;设计 = T-43 设计稿
-        # §2.3,迭代 2026-09-23-invest-effects-calc):「开局补给替换」=
+        # 开局替换清席支(先清后发,首例 = 人才储备 id 144;设计正本 =
+        # game_state/gain-chain.md 开局补给替换节):「开局补给替换」=
         # 开局发放的初始角色被本环境赠卡取代——移除 bench 上全部角色槽
         # (kind='unit';占席道具类槽不在替换面,开局窗该形态结构性不存在,
         # 防御性保留),部署行/溢出席开局窗恒空不触。写通道 = _select_write
@@ -4106,8 +4102,7 @@ def on_env_gained(gs: GameState, session: object, env_name: str, *,
         effects.append(f'env_gift:{char}')
     # 持续伤害契约键分支(纯登记件非门控,消费 = 对账面):获得刻
     # best-effort 登记 'dot_anchor#<位面>-<轮>'(与即时分支同窗相邻,
-    # write_logic 直写,同 evidence 同 sig;设计 = T-28 设计稿 §2.1,
-    # 迭代 2026-09-23-invest-effects-calc)。须显式判 node——_node_frame
+    # write_logic 直写,同 evidence 同 sig)。须显式判 node——_node_frame
     # 节点未观察返回空串,照抄会产出 'dot_anchor#-' 畸形键;开局三选一
     # 获取时 sim 节点尚未进窗(node None)→ 不写 = 预期形态,缺记不影响
     # 猜测写/计数/证实(check_env_dot_grants 门控 = active_env)。
@@ -4246,8 +4241,8 @@ def discharge_due_item_grants(gs: GameState, *, plane: int, round_num: int,
       §5;写通道仍经 :func:`_select_write` 单一收束);
     - 零吞错:落位异常上抛(gain-chain.md §6),队列回写收尾;生产插入位置
       (sim 进节点收束)无重入面 = 无幂等需求,未来实机插入位置接入调用时按其
-      重入面另评(迭代 2026-09-24-scheduled-env-gifts design §2.3);
-    - 实机局不接本原语(同迭代 design §2.5 不对称申报):队列登记后保持
+      重入面另评(不对称申报,正本 = game_state/gain-chain.md 定时发放节);
+    - 实机局不接本原语(同上不对称申报):队列登记后保持
       原样,备战真值由观察覆盖。
     """
     due: list[dict] = []
@@ -4278,15 +4273,15 @@ def discharge_due_item_opens(gs: GameState, *, rand: bool,
     并弹除,其余保留;一次 write 回写保留队列,返回效果串(每命中项
     ``item_opened:<名>``)。唯一调用点 = sim 进节点收尾
     (discharge_due_item_grants 调用邻位,cw_sim_backend 进节点收尾,
-    T-34 设计稿 §2.4 插入位置);实机局不接(不对称申报,
-    cw_game_state.pending_item_opens 域注,T-34 设计稿裁决点 4)。
+    正本 = game_state/gain-chain.md 倒计时件通道节);实机局不接(不对称申报,
+    cw_game_state.pending_item_opens 域注)。
 
-    - 零消耗分支:件 = 战利品区浮动件非占席(实机板件实证,T-34 设计稿
-      §1),无席位槽可消耗——开盒 = 队列弹除 + 板件从战利品区消失
+    - 零消耗分支:件 = 战利品区浮动件非占席(实机板件实证,正本 =
+      game_state/gain-chain.md 倒计时件通道节),无席位槽可消耗——开盒 = 队列弹除 + 板件从战利品区消失
       (游戏侧事实,模型零席位写;开出的奖励若落席由现役 bench/装备
       观察自然捕捉)。
     - 开盒零产出写入(硬裁定:开盒内容卡面 desc 无载,放弃建模 =
-      T-34 设计稿披露 1 delayed_item_open_content_unmodeled;sim 状态副本
+      披露键 delayed_item_open_content_unmodeled;sim 状态副本
       比实机少一份随机奖励;真值建立后 = 本原语加发放分支,零迁移)。
     - rand 语义:开盒 = 确定事件(非采样),调用方传 rand=False
       (discharge_due_item_grants 同款);写通道经 :func:`_select_write`
@@ -4434,8 +4429,7 @@ def _remove_kechuan_units(gs: GameState,
                           target_uids: frozenset[int],
                           *, sig: ChannelSig,
                           ) -> tuple[list[int], dict[int, list[str]]]:
-    """离场移除原语(Unit 名单移除语义,T-207 四缺口之「离场原语缺」本批
-    立项收尾,T-207 设计稿 §6):扫描备战 ∪ 上阵,uid 命中 ∧ 身份 == 佩佩
+    """离场移除原语(Unit 名单移除语义):扫描备战 ∪ 上阵,uid 命中 ∧ 身份 == 佩佩
     的单位**自槽位置 None**并收集其装备;两域 frozen replace 新构造,各自
     有变更才写(write_logic_rand 形态,_select_write rand=True 单一收束
     ——佩佩个体 = 采样件,移除 = 推算真值,判读 4 单分支)。溢出位身份
@@ -4573,8 +4567,7 @@ def discharge_due_kechuan_leaves(gs: GameState, *,
 def expert_conditional_trigger(gs: GameState, char_name: str, *, rand: bool,
                                sig: ChannelSig, evidence: str) -> bool:
     """特邀专家族条件形态触发判据(「首次获得 X 时,顾问入商店」;首例 =
-    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
-    §2.1/§2.3)。三条件全与:
+    特邀专家:银狼,设计正本 = game_state/gain-chain.md 专家解锁节)。三条件全与:
 
     ①``char_name`` == 触发角色名——现役唯一 = ``银狼LV.999``,触发映射
       硬编码分支、不建注册表:触发角色名只存在于
@@ -4701,11 +4694,11 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
        登记表白名单,环境道 :func:`on_env_gained` 同支函数级镜像——
        策略卡「获得【角色】+ 倒计时件」双条目分表的礼盒条目,首例 = 偶像
        经济火花礼盒):倒计时件 = 战利品区浮动件非占席(实机板件实证 =
-       与晶矿球同区,T-34 设计稿 §1)→ 纯队列登记零席位写(不碰
+       与晶矿球同区;正本 = game_state/gain-chain.md 倒计时件通道节)→ 纯队列登记零席位写(不碰
        bench/overflow 任何字段);开盒内容不建模(卡面 desc 无载,
        裁定 = invest_effects.md §5 裁定行)。解锁位 = 获得刻生效序位
        沿节点日程表步进 ``open_delay_nodes`` 步(计数起点 = 获得节点
-       计入,T-34 设计稿裁决点 3;生效序位未锚定 = 开局段结构性形态,
+       计入;生效序位未锚定 = 开局段结构性形态,
        防御基准 (1,1);步进遇 None〔局终方向〕停留最后合法值);
        ``perfect_win_accel`` 开时 ``env_grants_done`` 幂等写
        ``(卡名, DELAYED_OPEN_ACCEL_KEY)`` 作用域键(消费 =
@@ -4731,8 +4724,8 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
                        f'{"+".join(_grant.chars_immediate)}')
     # 策略链词缀失效分支(退化 id 260601「使最右侧的敌人词缀失效，并使
     # 敌人难度-5。获得8金币。」——失效条目建模 = 删除式取尾,机制单一源 =
-    # 敌后破坏已落三条效果条目机制(T-45 设计稿 §2.5 族面条款:选择规则均匀随机
-    # 换为取尾;生效方案 = designs/REVIEW-T291.md §3 改判建模);难度-5/
+    # 敌后破坏已落三条效果条目机制(选择规则均匀随机改判取尾,判据
+    # = 本模块敌后破坏分支同款);难度-5/
     # +8 金两条效果条目 = STRATEGY_ECONOMY 注册行已登记静态承载,无获得时点动作)
     if canon == STRATEGY_AFFIX_DISABLE_STRATEGY:
         _aff = list(gs.enemy_affixes.value or [])
@@ -4757,13 +4750,12 @@ def on_strategy_gained(gs: GameState, strategy_name: str, *, rand: bool,
             effects.append(f'strategy_affix_disable:{removed}')
     # 延迟道具支线(状态副本发放域登记表白名单,环境道 on_env_gained 延迟
     # 支线同构镜像——策略卡「获得【角色】+倒计时件」双条目分表的礼盒条目,
-    # 首例 = 偶像经济火花礼盒,设计 = T-329 设计稿 §2.1,迭代
-    # 2026-09-23-invest-effects-calc):倒计时件 = 战利品区浮动件非占席
-    # (实机板件实证,T-34 设计稿 §1)→ 纯队列登记零席位写(不调
+    # 首例 = 偶像经济火花礼盒,判据 = invest_effects.md §5 裁定行):倒计时件 = 战利品区浮动件非占席
+    # (实机板件实证;正本 = game_state/gain-chain.md 倒计时件通道节)→ 纯队列登记零席位写(不调
     # _place_bench_item,不碰 bench/overflow 任何字段);开盒内容不建模
     # (卡面 desc 无载,裁定 = invest_effects.md §5 裁定行)。解锁位 =
     # 获得刻生效序位沿节点日程表步进 open_delay_nodes 步(计数起点 =
-    # 获得节点计入,T-34 设计稿裁决点 3;生效序位未锚定 = 开局段结构性
+    # 获得节点计入;生效序位未锚定 = 开局段结构性
     # 形态,防御基准 (1,1);步进遇 None(局终方向)停留最后合法值,
     # 环境道同款)。零 rng(到手确定件名、解锁位确定推算);rand 语义
     # 与链内其余写同(_select_write 收尾)。kernel 反向模块级零 import

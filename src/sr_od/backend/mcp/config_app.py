@@ -1,8 +1,5 @@
 """MCP 配置修改工具:通用入口 + app_id 路由到领域方法(写穿 ctx + 校验前置)。
 
-详见 `docs/superpowers/specs/2026-07-24-mcp-config-design.md`(v5) +
-`docs/superpowers/specs/2026-07-25-mcp-config-describe-design.md`(v5)。
-
 SR 适配:照搬自上游 backend(``6a577983``)。``_inject_category_options`` 依赖上游的
 ``compendium_service``(SR 无),且仅服务于已剔除的 charge_plan/notorious_hunt 路由 ——
 SR 版改为 no-op(早返),待 SR 接入 category 类配置时再补。

@@ -19,7 +19,7 @@
 
 (组合决策层——CardState/CombinationDecision/BlankWindowDecision 三元
 数据类与 pick_card_combination/blank_window_policy/_INTENT_CARD_MAP/权重
-常量——已随 comp-structure-unification 3.3 配方决策层退役删除:组合选卡
+常量——已随配方决策层退役删除:组合选卡
 与空窗买门的消费面由过渡候选机器与商店冷启动臂承接,考古走 git 历史。)
 
 消费方(数据层保留面):体系判定(board_rung 口径)/引擎完备度
@@ -119,7 +119,7 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
 
 
 # (组合决策层三元数据类 CardState/CombinationDecision/BlankWindowDecision
-#  已随 comp-structure-unification 3.3 配方决策层退役删除——组合选卡/空窗
+#  已随配方决策层退役删除——组合选卡/空窗
 #  买门消费面已由过渡候选机器与商店冷启动臂承接,考古走 git 历史。)
 
 # ===== 体系判定(冻结的判据语义;p1_definition 一)=====

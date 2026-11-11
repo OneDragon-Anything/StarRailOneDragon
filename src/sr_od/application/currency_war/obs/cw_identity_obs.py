@@ -1623,8 +1623,8 @@ def read_ore_sights(ctx: SrContext, screen: MatLike,
     return spheres
 
 
-# ===== 惊喜盒板件观察(战利品区 ⏳N 读数;迭代设计 = .debug/progress/
-# 2026-10-19-giftbox-piece-obs/designs/giftbox-piece-obs.md §2.1)=====
+# ===== 惊喜盒板件观察(战利品区 ⏳N 读数;纯旁路证据观察域,字段登记 =
+# game_state/fields.md giftbox_sight 行)=====
 # 战利品区浮动板件(红盒金边+深蓝缎带+中央金徽+盒身白花,左下「⏳N」金色
 # 沙漏徽章),与晶矿球同区(screen_info「区域-奖励」)。检测两段式:段1 盒体
 # 模板区域匹配(浮动件不定位,禁固定位坐标)→ 段2 命中位 + 徽章相对偏移

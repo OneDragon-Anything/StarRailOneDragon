@@ -19,7 +19,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     game_state_of,
 )
 
-# (终态契约 §A:下行守卫标定常量 HP_REAL_JUMP_CONFLICT/HP_LOSS_CAP_P100_BY_NODE/
+# (下行守卫标定常量 HP_REAL_JUMP_CONFLICT/HP_LOSS_CAP_P100_BY_NODE/
 #  HP_SUSPECT_*/HP_ZERO_LOSS_NODE_TYPES 随守卫删除——cw_registry 标定面
 #  失去消费方,标定段归属复核归 docstring 桶。)
 from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
@@ -253,7 +253,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
     return out['bench'], out['deployed']
 
 
-#: 星级稳定性口径 = 「槽位锚定 + 两帧一致才采新」(终态契约 §A;
+#: 星级稳定性口径 = 「槽位锚定 + 两帧一致才采新」(
 #: 门本体 = :func:`_gate_star_jitter`,与本门特效窗判别正交合并:
 #: 时间维两帧一致 + 帧态维窗内冻结)。口径依据 = 2026-09-15 局深检
 #: .debug/currency_war/deep_review/run_20260915_054718.md §5 三次 episode
@@ -444,14 +444,14 @@ def reconcile_tracking(session, bench: BenchView | None,
     return True, bench, deployed
 
 
-# (终态契约 §A:hp 同域上行留存证据阈值/下行守卫三助手(_battle_facts_between/
+# (hp 同域上行留存证据阈值/下行守卫三助手(_battle_facts_between/
 #  _outcome_is_no_loss/_reject_down)已停用——
-#  行为变化登记 design §1.3,实机失准走识别优化批。)
+#  行为变化登记:实机失准走识别优化批。)
 
 
 def reconcile_hp(session, new_hp: int | None, screen=None, *,
                  source: str = 'read_game_state') -> tuple[int | None, bool]:
-    """hp 对账统一入口(终态契约 §A 简化形态)。
+    """hp 对账统一入口(简化形态)。
 
     旧三层(保旧不写沿用/下行守卫/复现确认/帧龄门)随 session 防御基准
     (last_hp_real/last_hp_real_node/hp_suspect)停用删除——「上一真值」
@@ -459,7 +459,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     三层设计「读不到保旧沿用 last_hp_real」;ADR 档案目录已删,原文 =
     git 历史 docs/develop/currency_war/decisions/0282-hp-three-layers.md。
     定案:结算观测 hp_after 与沿用基准的先后语义随停用消解——结算覆盖是
-    hp 唯一真值入口,本读侧无基准可遮蔽之;行为变化登记 design §1.3:
+    hp 唯一真值入口,本读侧无基准可遮蔽之;行为变化登记:
     失读窗不再有基准补,实机识别失准走识别优化批)。
 
     保留两支:
@@ -480,7 +480,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
         # 开局全无真值 → 遥测实证的初值表先验(实证档 A8/108:
         # 基础 82、「开局不利」62;无实证档 → None 诚实未知)。
         # 先验非真读,readable=False;真值帧到达即被观察覆盖。
-        # (终态契约 §B:三先验输入全读状态容器——briefing 写端直入
+        # (三先验输入全读状态容器——briefing 写端直入
         #  gs.enemy_affixes/selected_difficulty/enemy_difficulty。)
         prior = (opening_hp_prior(
             game_state_of(session).enemy_affixes.value,

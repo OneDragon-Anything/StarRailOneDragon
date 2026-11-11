@@ -164,7 +164,7 @@ class CwScreenPlaneTransition(CwOperation):
         else:
             # sim:本点击是后端点击源(空白点击 → 节点窗口收尾推进),
             # 必须过 click_answer 端口——直连旁路静默跳过 = 状态副本零反应,
-            # 过渡屏永驻 → 外循环重派风暴(flow-seam §2 直连旁路逐点
+            # 过渡屏永驻 → 外循环重派风暴(sim/sim-design.md §6 直连旁路逐点
             # port 检查;动作 op 族「状态副本反应由自上报承接」形态不适用
             # 本屏,推进通道只有点击源)。
             cw_sim_ports.click_answer(

@@ -7,14 +7,14 @@
 
 - **过渡候选机器**(:func:`update_transition_candidates`/
   ``transition_locked``/条目集族):过渡层方向机器(计分三面/候选
-  top3/候选内成型锁定)——comp-structure-unification 3.3 落地,旧 P1
+  top3/候选内成型锁定)——过渡层方向机器,旧 P1
   配方对链(update_p1_recipe/``p1_pair`` 族)已随配方决策层退役删除,
   过渡层生命周期挂钩终局锁定事件(锁定写入即退役清空);
 - **囤货与回退接口**(:func:`hoard_target_set`/``k_empty_window_fallback``/
   ``locked_buy_*`` 族):买侧与部署侧的现行读面;``locked_comp``/``phase``
   改为锁定线槽派生缓存(写端 = mandate_v1.session_scope,锁定 ⟺
-  target_comp 非空)。P86 无目标期三分支判据的甲/乙臂已随统一让位
-  优先级迭代 3.4 退役(K 目标未锁期源切换 = 策略层候选快照三线并集
+  target_comp 非空)。P86 无目标期三分支判据的甲/乙臂已退役
+  (K 目标未锁期源切换 = 策略层候选快照三线并集
   ∪ 过渡层贡献名单;丙分支保利息缺省保留);
 - **定型权威**(:func:`committed_authority`/:func:`committed_from`):
   规则④「位面 ≥ 2 恒定型」支已停用(P2 时点兜底锁定替代;§1.6 行为
@@ -82,12 +82,11 @@ if TYPE_CHECKING:
 # ===== 常量(意向层机器停用后保留的常量;撤销/信号族随机器删除)=====
 
 # 无目标期帧囤货缺省:P86 三分支判据的甲臂(方向化囤货)与乙臂(枢纽
-# 期权)已随统一让位优先级迭代 3.4 退役(总纲 §2.7【拍】:K 目标未锁期
+# 期权)已退役(申报【拍】:K 目标未锁期
 # 源切换 = 策略层候选快照三线成员并集 ∪ 配方成员,买面与优先级面统一;「机器判活方向
 # ∉ 候选 top3」的囤货兑现通道随锁后不换线消亡——与单卡核心囤积同逻辑)。
-# 证明处置:p86-proof-batch.md 甲分支定理 A 证明随判据死迁出(3.4 对
-# 照项结论),乙分支证明章同批删除;丙分支(换现保利息,命题 C)域
-# = 旧 p2plus 位面带,已随 comp-structure-unification 3.3 换轴废除
+# 证明处置:p86-proof-batch.md 甲分支定理 A 证明随判据死迁出,乙分支证明章同批删除;丙分支(换现保利息,命题 C)域
+# = 旧 p2plus 位面带,已随换轴废除
 # (未终局锁定帧过渡层照常活跃,终局锁定帧恒有方向)——命题 C 表述
 # 留档证明批,在役消费面不复存在(见下方退役注记)。
 
@@ -108,7 +107,7 @@ class IntentionState:
     ``locked_comp``/``phase`` 改为锁定线槽派生缓存,写端 =
     mandate_v1.session_scope〔同步于 refresh/锁定动作〕;``transition_
     locked`` = 过渡层锁定态〔写端 = ``update_transition_candidates``,
-    comp-structure-unification 3.3;旧 P1 配方对链字段族已随配方决策层
+    过渡层机器落地面;旧 P1 配方对链字段族已随配方决策层
     退役删除〕。机器时代字段(``weak_comp``/``lock_layer``/``evicted``/
     ``demoted_endgame`` 等)无写端恒缺省,
     读端按保守缺省语义消费〔evicted=∅ 恒空集/demoted=False〕)。"""
@@ -388,7 +387,7 @@ def line_completion_feasibility(gs: GameState,
 # 语义存档 = math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
 
 
-# ===== 过渡阵容库候选机器(comp-structure-unification 3.3 新机器)=====
+# ===== 过渡阵容库候选机器 =====
 # 用户裁定(2026-11-04):过渡层与终局层两套阵容库独立,各自候选与锁定;
 # 计分一维(成员持有)先行 + 词缀/boss 统一减分制(纯减分、不设排除特殊
 # 逻辑——量子熄火等词缀实际效果是暂时性削弱,过渡期战斗强度低下不构成
@@ -600,12 +599,12 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     return chars, equips
 
 
-# ===== 无目标期囤货缺省(统一让位优先级迭代 3.4 退役注记)=====
+# ===== 无目标期囤货缺省(退役注记)=====
 # 原状 = P86 无目标期三分支判据(适用范围 = p2plus 无目标帧;活跃域 =
 # 位面 2,证明批引理 Z):甲分支(方向化囤货,定理 A)/ 乙分支(枢纽
 # 期权,定理 B 族)/ 丙分支(换现保利息,命题 C)。
 #
-# 退役裁定(总纲 §2.7【拍,按裁决模式推导可翻案】):
+# 退役裁定(申报【拍,按裁决模式推导可翻案】):
 # - **甲分支判活路径退役**:未锁无目标帧的囤货方向不再取机器判活方向
 #   ——非候选 top3 的方向囤其成员无兑现通道(锁后不换线),与单卡核心
 #   囤积/囤货臂同逻辑;K 目标未锁期源切换 = 策略层候选快照三线成员
@@ -617,7 +616,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
 #   NoTargetArms.hub_names 随本批删除);
 # - **丙分支域随 3.3 换轴消亡**(3.4 修订注:原注「在役判据」已失效):
 #   丙分支辖域 = 旧 p2plus 位面带(未锁 P2+ 无目标帧),该带已随
-#   comp-structure-unification 3.3 换轴废除(未终局锁定帧过渡层照常
+#   换轴废除(未终局锁定帧过渡层照常
 #   活跃、终局锁定帧恒有方向,k_empty_window_fallback 只余 p1_gap/
 #   p1_lock_band 两带且构造性非空)——「不囤、金留线上吃息」的合法
 #   空集形态不再有到达帧,在役消费面清零。

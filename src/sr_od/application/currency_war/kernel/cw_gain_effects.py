@@ -172,8 +172,7 @@ def _apply_effect_hacker_wolf(gs: GameState, *, sig: ChannelSig,
     return steps
 
 
-# ===== 开箱分支效果(策略卡获得时点占席道具发放;进阶武装箱首例,迭代
-# ===== 2026-09-24-advanced-armory-box design §2.3)=====
+# ===== 开箱分支效果(策略卡获得时点占席道具发放;进阶武装箱首例)=====
 
 #: 开箱分支卡发放名单单一源(卡规范名 → 发放道具名;登记面镜像 =
 #: cw_investments.STRATEGY_GRANTS 同名卡 items_immediate,一致性测试逐对
@@ -651,7 +650,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段拦截),
     # 两条效果条目分治。自我交互属卡面字面:选卡先注册后跑本效果,掷得的采样名
     # 经原语时被转换条目拦截消费——净得 1 箱,rng 消耗序不变(先掷后转),
-    # 非特例豁免(设计 designs/T-143-ziyou-shichang.md §2.1)。
+    # 非特例豁免)。
     '自由市场': ('简易', 1),
     # 枪在手(id 200501)「立刻获得1件随机简易装备」即时条目直读行(cw_
     # invest_data.PLAZA_AUGMENTS 同 id 行);同卡战后条目「首领战后,获得
@@ -677,8 +676,7 @@ _STRATEGY_RANDOM_EQUIP_GRANTS: dict[str, tuple[str, int]] = {
     # 获得一个【好运令牌】」)不辖本表——「改为获得」条件改写另表
     # cw_investments.STRATEGY_EQUIP_GAIN_CONVERSIONS 在获得原语顶段
     # 拦截,两条效果条目分治(自由市场同构);自我交互属卡面字面:选卡先注册后
-    # 跑本效果,掷得的采样名 ∈ 简易池不入本卡进阶谓词照常入栏(设计
-    # designs/T-248-haoyunlai.md §2.3)。
+    # 跑本效果,掷得的采样名 ∈ 简易池不入本卡进阶谓词照常入栏)。
     '好运来': ('简易', 2),
 }
 

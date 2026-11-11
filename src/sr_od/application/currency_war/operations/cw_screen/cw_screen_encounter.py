@@ -61,7 +61,7 @@ round_fail 零盲发;pick idx 越界 = 守卫断言 AssertionError;两守卫均�
 pick_encounter.py,发出即写;确认未生效窗内为暂态意图值由重派覆盖自愈,
 奖励兑现回调的消费防线 = 兑现后清 chosen 单次消费,见 kernel/
 cw_encounter_selection.py::claim_encounter_reward)。sim 分支:刷新链不
-适用(sim 无遭遇刷新执行面,design §2.3 申报);遭遇选档决策有 sim
+适用(sim 无遭遇刷新执行面,正本 = sim/sim-wiring.md 节点屏刷新剩余呈现行);遭遇选档决策有 sim
 消费段,判据等价支撑 = kernel 判据函数 + 实机已登记行为测试。
 """
 import time
@@ -195,7 +195,8 @@ class CwScreenEncounter(CwOperation):
                      ' → 重调一次决策', _left)
             act = match.strategy.decide_encounter()
             if isinstance(act, CwActionRefreshNodeOptionsParam):
-                # 防线(design §2.5):重调仍返刷新建议 ∧ 刷新识别标志读缺 =
+                # 防线(正本 = strategy-docs/31_encounter_screen.md fail-closed
+                # 纪律):重调仍返刷新建议 ∧ 刷新识别标志读缺 =
                 # 无界重进循环面——round_fail 返回主循环,失败计入外循环
                 # OP_FAIL_REDISPATCH_LIMIT(零点击 round_success 结束本次访问不
                 # 计数且清零计数窗,外循环对该循环无防护),有界收敛。

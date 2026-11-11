@@ -288,7 +288,7 @@ class ActiveEffect:
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);插入位置现读递减
     anchor_pos: tuple[int, int] | None = None
     # 条件窗口达成位伴生基准(成功经验「升到8级后,进入接下来3个节点」首例;
-    # 首例 = T-38 设计稿 §2.5,载体辨析权威版本):坐标系 = (位面,轮) 节点序位
+    # 载体辨析权威版本 = 本字段注释):坐标系 = (位面,轮) 节点序位
     # 元组(cw_node_schedule.NodePos 同形,与 acquired_key 同键);写入端唯一
     # = 伴生基准方法 :meth:`ActiveEffectInventory.set_xp_window_anchor`(发放桥
     # grant_effect_node_xp / 主插入位置 _record_lv8_window_start 经它写,零旁路直改
@@ -705,8 +705,7 @@ def env_portal_effects() -> dict[str, EffectSpec]:
             duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
             payload=ENV_ECONOMY['增发货币'],
             notes='整局规则面:每位面开局 6/8/12 金晶矿(位面周期);payload 单一源 = ENV_ECONOMY'),
-        # 选卡当场 +6 金(id 113):即时面 → INSTANT/ONCE(随机环境期望不计,
-        # design §2.6 取舍)。
+        # 选卡当场 +6 金(id 113):即时面 → INSTANT/ONCE(随机环境期望不计)。
         '蓝海': EffectSpec(
             id='113', name='蓝海', trigger=TriggerKind.INSTANT,
             duration=DurationKind.ONCE, category=EffectKind.ECONOMY,
@@ -993,7 +992,7 @@ def apply_board_rewrite(gs: GameState, spec: EffectSpec, *,
     牌),大裁员/降本增效卖价 ×2 修饰 = 全族缺口低估申报(退款按基础公式记,口径待
     实采;现金为王卡文无「双倍」句,退款 = 标准卖价);全员晋升替换面 = 维持 sim 零建模(穿戴装备归属未采证,禁猜;
     其拆装扳手×2 装备条目经获得链 sim 同链生效,不在本申报面)。残余未建模
-    申报面 = sim-design §8.2「板面重写族」行。
+    申报面 = sim/sim-design.md「板面重写族」行。
 
     **未知语义值 = 保守 no-op + 留存证据**(禁猜):新板面重写卡入册时须同步
     扩本桥归属分支,防注册表声明了语义而写端静默丢。
@@ -1891,8 +1890,8 @@ def grant_bench_unit_cascade(gs: GameState, name: str, star: int, *,
             log.warning('[cw-effect] 策略卡合成发放分支失败(不阻塞):'
                         f'{merge_facts} {e}')
     # —— 条件形态专家触发分支(「首次获得 X 时,顾问入商店」族,首例 =
-    #    特邀专家:银狼,设计 = 迭代 2026-09-23-invest-effects-calc T-42
-    #    §2.3):入席 + merge_cascade_write 级联 + 触发发放分支全毕后判据
+    #    特邀专家:银狼,设计 = game_state/gain-chain.md 专家解锁节
+    #    (gs.unlocked_experts)):入席 + merge_cascade_write 级联 + 触发发放分支全毕后判据
     #    一次(「全毕后触发」与购买链同款时序;装备获得后果确定性通道
     #    数据拷贝仪Max 送银狼LV.999 由此承接)。rand 透传(采样链内获得
     #    与本写同窗);状态写沿主链零吞错——与上方触发发放分支 best-effort
@@ -1924,7 +1923,7 @@ class EquipAcquireReport:
 def apply_equip_acquire_consequence(gs: GameState, item: str, *,
                                     frame: str = '', rand: bool = False,
                                     sig: ChannelSig | None = None) -> EquipAcquireReport:
-    """桥·装备获得后果应用(全渠道统一后置钩子;design §2.2)。
+    """桥·装备获得后果应用(全渠道统一后置钩子;正本 = game_state/gain-chain.md 装备获得后果)。
 
     件名查 :data:`EQUIP_ACQUIRE_CONSEQUENCES`:命中 → 送出单位经
     :func:`grant_bench_unit_cascade` 入席+级联(正常推演);表外件 →

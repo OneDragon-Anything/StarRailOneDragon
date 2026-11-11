@@ -1,4 +1,4 @@
-"""货币战争 词缀吃怕表注册表(逐线 × 词缀;design §3.3/§4)。
+"""货币战争 词缀吃怕表注册表(逐线 × 词缀;判据正本 = strategy-docs/12_line_and_intention.md §1.1,下文「正本」同指)。
 
 结构 = ``{线名: {词缀注册名: AffixStance}}``;键名空间 =
 data/affix_effects_data 的 ``AFFIX_EFFECTS`` 注册名(52 词缀,运行时采集
@@ -7,18 +7,18 @@ data/affix_effects_data 的 ``AFFIX_EFFECTS`` 注册名(52 词缀,运行时采�
 
 数据源 = docs/game/currency_war/research/final_comps/ 各篇 counter 节
 (逐线攻略实证;**直接记载 > 类间概括 > 机制推定**三级证据序,本表只收
-直接记载)。批次划分(design §8):批 1 = 注册表结构 + 万敌行;批 2 =
+直接记载)。登记分两批落地:批 1 = 注册表结构 + 万敌行;批 2 =
 其余 11 已审线扩行 + 未登记线兜底层(方向保守:只给怕不给吃)。
 
-同词缀方向逐线相反是本表存在理由(design §1 第 4 条「词缀吃怕是阵容
+同词缀方向逐线相反是本表存在理由(设计原则「词缀吃怕是阵容
 特定知识」):正当防卫对万敌 +900、其余登记线均怕(−150,列车系 A/B
 两套亦怕正当防卫);列车同行·反震另吃受击触发族(忍无可忍/同步行动)
 +750(敌方多动=反震燃料;·直伤 B 无吃行)。
 
-万敌无燃料底线(design §4 a 类·独例):开局词缀 ∩ 燃料集 = 空 →
+万敌无燃料底线(正本 §1.1 独例):开局词缀 ∩ 燃料集 = 空 →
 :data:`cw_line_scales.RESTART_PENALTY`(与重开级同档);燃料集 =
 本表万敌行**正值**词缀名的投影(吃怕表为源,投影派生单一源)。
-「反伤类」= 正当防卫族同义(design §4 表注:AFFIX_EFFECTS 当前无
+「反伤类」= 正当防卫族同义(正本表注:AFFIX_EFFECTS 当前无
 独立「反伤」注册名,万敌篇词条矩阵「强吃…反伤类」的族指即正当防卫本名)。
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ class AffixStance:
     - ``score``:主阶段(成型常态)分值,现行帧消费值;
     - ``stage_overrides``:双面词条的阶段条件覆写((阶段名, 分值) 序列)。
       当前唯一双面词条 = 万敌×灼热轰炸(低血期怕 −150/成型后吃 +750,
-      design §3.3):低血期判定输入面 = 运行时血量阈值现读(血量占当前
+      正本 §1.1):低血期判定输入面 = 运行时血量阈值现读(血量占当前
       上限比例低于阈值即低血期),血量未观察帧不覆写(主阶段分值兜底,
       fail 方向 = 成型常态);
     - ``note``:分值依据(攻略篇/设计节号)——手编数据的防漂移基准。
@@ -54,7 +54,7 @@ class AffixStance:
     note: str = ''
 
 
-#: 俗称/别名待采集登记(design §3.3「俗称建映射,未采集词条待实机采集
+#: 俗称/别名待采集登记(正本 §1.1「俗称建映射,未采集词条待实机采集
 #: 归位,俗称键不入表」):攻略原话里的俗称在 AFFIX_EFFECTS 无对应注册名,
 #: 禁猜键(错键 = 分值静默失效);实机简报词缀行采集到该词条后,在此建
 #: 俗称→注册名映射并把分值登记进对应线行。
@@ -98,7 +98,7 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
         '永久创伤': AffixStance(
             score=RESTART_PENALTY,
             note='final_wandi_burn「重开级:永久创伤」;design §2 重开级(排除=极大减分)'),
-        # 已登记强吃线的未登记词条记 0 不罚(design §3.3)——不建 0 分键,
+        # 已登记强吃线的未登记词条记 0 不罚(正本 §1.1)——不建 0 分键,
         # 缺键即 0(见 :func:`affix_line_score`)。
     },
     # ===== 希儿量子(final_seele_quantum counter 节)=====
@@ -191,7 +191,7 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
     '列车同行·反震': {
         # 「词条:吃忍无可忍/同步行动/怪物提速;怕正当防卫/能量逃逸/时间刺客」
         # (final_jizi_train L25,A 反震主体形态)——怪物提速俗称待采集
-        # (AFFIX_ALIASES_PENDING);+750=受击触发类燃料档(design §5 姬子A
+        # (AFFIX_ALIASES_PENDING);+750=受击触发类燃料档(正本 §1.1 姬子A
         # 「吃…(+750 受击触发类)」,反震吃敌方多动)。
         '忍无可忍': AffixStance(
             score=AFFIX_STRONG_FUEL,
@@ -210,10 +210,10 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
     },
     # ===== 列车同行·直伤(B;final_jizi_train B 输出节无词条记载)=====
     '列车同行·直伤': {
-        # 怕集同 A 保守复制(design §5「B 节无记载保守复制」——A 节类级
+        # 怕集同 A 保守复制(正本 §1.1「B 节无记载保守复制」——A 节类级
         # counter 证据覆盖两形态);无吃行(受击燃料档属 A 反震引擎,B
         # 直伤不吃)。注:机制推演 B 可能更怕正当防卫(直伤高频攻击吃
-        # 反伤),无实证不升档(design §5)。
+        # 反伤),无实证不升档(正本 §1.1)。
         '正当防卫': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
         '能量逃逸': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
         '时间刺客': AffixStance(score=FEAR_PENALTY, note='B 节无记载,怕集同 A 保守复制(design §5)'),
@@ -223,24 +223,24 @@ AFFINITY_TABLE: dict[str, dict[str, AffixStance]] = {
     # 昼神阿雅:counter 仅 boss 面(「counter:电视机 boss → 避」,boss 表辖)。
     # 反甲白厄:忌「燃血类/回血 buff 减行动值」均无注册名(52 词缀表无对应
     #   词条,待实机采集);受击触发类两推断打架(受击多→反甲触发多 vs
-    #   受击多→白厄本体先死)标 0 待 sim 不登(design §5 白厄节)。
+    #   受击多→白厄本体先死)标 0 待 sim 不登(正本 §1.1 白厄节)。
 }
 
-#: 无燃料底线登记线(design §4 a 类:词缀依赖独例 = 万敌;开局词缀 ∩
+#: 无燃料底线登记线(正本 §1.1:词缀依赖独例 = 万敌;开局词缀 ∩
 #: 燃料集 = 空 → 重开级)。出现第二条依赖线时在此扩名即可——燃料集恒按
 #: 「该线吃怕表行正值投影」现算,无第二份名单。
 FUEL_BOTTOM_LINES: frozenset[str] = frozenset({'万敌单C'})
 
 
 # ===== 兜底层(未登记线的效果原文泛化;方向保守:只给怕不给吃)=====
-# design §3.3:「效果原文分档作未登记词缀默认兜底(方向保守:只给怕不给吃)」
+# 正本 §1.1:「效果原文分档作未登记词缀默认兜底(方向保守:只给怕不给吃)」
 # + 批 2 任务:「未登记线(长尾 8 线 + 词缀面空白的已审线)由兜底层覆盖
 # 怕向;已登记强吃线(万敌/列车同行)的未登记词条记 0 不罚」。
 # 判定边界:线在 AFFINITY_TABLE 有非空行 = 已登记线(只查表,缺键记 0);
 # 无行/空行 = 未登记线(泛化层给怕)。泛化规则只收效果原文无歧义项
 # (有向争议词缀如正当防卫/时间刺客不泛化——机制泛化不预判方向)。
 
-#: 主C属性列(属性熄火×7 判定;design §3.3 批 2:「大黑塔冰/希儿量子等,
+#: 主C属性列(属性熄火×7 判定;正本 §1.1:「大黑塔冰/希儿量子等,
 #: 从 final_comps 引擎节核」)。仅收直接证据(词缀 counter 记载/装备效果
 #: 原文中的属性字眼);核不出的线不入(该线属性熄火不泛化——CW 注册表
 #: 无属性字段,用本体游戏知识补全属机制推定,违反证据序)。当前三条
@@ -327,7 +327,7 @@ _ELEMENT_AFFIXES: dict[str, str] = {
 
 def generic_fear_bonus(line_name: str,
                         enemy_affixes: tuple[str, ...]) -> int:
-    """兜底层泛化分(design §3.3:未登记线 × 未登记词缀,效果原文泛化
+    """兜底层泛化分(正本 §1.1:未登记线 × 未登记词缀,效果原文泛化
     **只给怕不给吃**;方向保守 = 有向争议词缀不泛化)。
 
     规则集(最小无歧义集;每条 = 效果原文直读,不依赖攻略实证):
@@ -375,7 +375,7 @@ def affix_row_of(line_name: str) -> dict[str, AffixStance]:
 
 
 def fuel_set_of(line_name: str) -> frozenset[str]:
-    """线燃料集 = 吃怕表该行**正值**词缀名投影(design §4:吃怕表为源,
+    """线燃料集 = 吃怕表该行**正值**词缀名投影(正本 §1.1:吃怕表为源,
     投影派生单一源——禁手抄第二份名单;行登记变动燃料集自动跟随)。"""
     return frozenset(
         affix for affix, stance in affix_row_of(line_name).items()
@@ -384,10 +384,10 @@ def fuel_set_of(line_name: str) -> frozenset[str]:
 
 def affix_line_score(line_name: str,
                      enemy_affixes: tuple[str, ...]) -> int:
-    """线词缀分(design §2 公式的词缀分量;线分引擎消费)。
+    """线词缀分(统一评分公式的词缀分量,正本 §1.1;线分引擎消费)。
 
     = Σ 本线吃怕表[开局词缀] 主阶段分值 + 无燃料底线(登记线 ∧ 开局词缀 ∩
-    燃料集 = 空 → 重开级)。登记边界(design §3.3 批 2):线有非空吃怕行 =
+    燃料集 = 空 → 重开级)。登记边界(正本 §1.1):线有非空吃怕行 =
     已登记线——未登记词条记 0 不罚(强吃线的未登记词条尤其不误伤);线
     无行 = 未登记线(长尾 8 线+词缀面空白的已审线)——泛化层只给怕
     (:func:`generic_fear_bonus`)。双面词条阶段覆写:低血期判定需运行时
@@ -455,7 +455,7 @@ _validate_affinity_table()
 
 
 # ============================================================
-# BOSS 面 + 非 boss 强敌(design §3.4;开局简报前置决策)
+# BOSS 面 + 非 boss 强敌(正本 §1.1 敌情克制分;开局简报前置决策)
 # ============================================================
 
 @dataclass(frozen=True)
@@ -471,7 +471,7 @@ class BossStance:
 
 
 #: boss 吃怕表(键 = boss 规范公司名,BOSS_MECHANICS 名空间;俗称经
-#: ``normalize_boss_name`` 归位)。数据依据 = 4 线实证(design §3.4:
+#: ``normalize_boss_name`` 归位)。数据依据 = 4 线攻略实证(正本 §1.1:
 #: 姬子 4 只〔扑满归强敌段〕/希儿蕉研组/阿雅电视机/白厄史瓦罗)——
 #: **无直接记载不登记**(D4 清单唯红绿灯带类级括注且适用线均已实证,
 #: 其余条目无类级指向不外推);其余 16 线 boss 面空白声明接受(表尾注),
@@ -481,7 +481,7 @@ BOSS_AFFINITY: dict[str, dict[str, BossStance]] = {
     # 「counter:扑满(拖时间)/死龙/酒杯怪/电视机/存护星神/红绿灯(白厄子
     # 形态)」(L77)——姬子线 boss 克制引擎结算双形态同源(类级记载),
     # 两套同登记;扑满/红绿灯归非 boss 强敌段;存护星神待验证映射表;
-    # 红绿灯「(白厄子形态)」注记正名 = 克白厄子形态非姬子(design §3.4,
+    # 红绿灯「(白厄子形态)」注记正名 = 克白厄子形态非姬子(正本 §1.1,
     # 与 README「红绿灯→转姬子」一致,不登本行)。
     '列车同行·反震': {
         '灰手生命科技': BossStance(   # 死龙(BOSS_NICKNAMES 归位)
@@ -518,7 +518,7 @@ BOSS_AFFINITY: dict[str, dict[str, BossStance]] = {
             score=RESTART_PENALTY,
             note='final_baie_reflect「史瓦罗 = 重开级(攻略多帖共识)」'),
     },
-    # ===== 其余 16 线 boss 面空白声明(design §3.4「D4 类级清单兜底或
+    # ===== 其余 16 线 boss 面空白声明(正本 §1.1「D4 类级清单兜底或
     # 声明接受」二选一,选声明接受)=====
     # README D4 清单逐项核:唯红绿灯带类级括注「反甲系」——其适用线
     # (反甲白厄/万敌单C)已经实证登记(红绿灯归非 boss 强敌段,万敌见
@@ -550,7 +550,7 @@ STRONG_ENEMY_AFFINITY: dict[str, dict[str, BossStance]] = {
             score=RESTART_PENALTY,
             note='final_wandi_burn 词条矩阵「重开级:永久创伤/红绿灯(机械 counter)」'),
     },
-    # 扑满怕档(counter 有解降档,design §3.3):姬子反震慢速「打不动扑满
+    # 扑满怕档(counter 有解降档,正本 §1.1):姬子反震慢速「打不动扑满
     # 拖到结束」,但瓦尔特延后倒计时是机制解(final_jizi_train「老杨必拿」)
     # → 降档为怕 −150 而非重开级(A/B 双形态同登记——拖时间克慢速对直伤
     # 形态同向,B 无独立解记载)。定性出处注:拖时间克反震慢速为
@@ -568,7 +568,7 @@ STRONG_ENEMY_AFFINITY: dict[str, dict[str, BossStance]] = {
     },
 }
 
-#: boss 旧名待验证映射表(design §3.4「旧名:存护星神/贝洛伯格加血机器入
+#: boss 旧名待验证映射表(正本 §1.1「旧名:存护星神/贝洛伯格加血机器入
 #: 待验证映射表(不静默丢)」;版本重跑核,不臆造规范名指向)。
 #: - 存护星神:姬子 counter 节记载(final_jizi_train L77),20 boss 图鉴
 #:   无对应名,候选不可辨——实机简报 boss 行采集到后再归位;
@@ -585,7 +585,7 @@ BOSS_NAME_PENDING: dict[str, str] = {
 
 def boss_line_score(line_name: str,
                     plane_bosses: tuple[str, ...]) -> int:
-    """线 boss 分(design §3.4「boss 分 = Σ三只克制」;开局简报 3 boss
+    """线 boss 分(正本 §1.1「boss 分 = Σ三只克制」;开局简报 3 boss
     候选集均权——位面真值 = CollectPlaneIntel 后逐位面,权重精细档先均权,
     即开局即按简报全集求和)。boss 名经 :func:`normalize_boss_name` 归位
     规范公司名再查表(俗称/简称输入合法);未登记 boss/线记 0(16 线空白
@@ -603,7 +603,7 @@ def boss_line_score(line_name: str,
 def strong_enemy_score(line_name: str,
                        enemy_affixes: tuple[str, ...],
                        held_invest: frozenset[str]) -> int:
-    """非 boss 强敌分(design §3.4;作用点 = 开局线分,与 boss 分量合并
+    """非 boss 强敌分(正本 §1.1 敌情克制分;作用点 = 开局线分,与 boss 分量合并
     进 LineScore.boss)。
 
     可观察性双通道:红绿灯 = 简报词缀行 OCR 原名透传命中(词缀读链不注册

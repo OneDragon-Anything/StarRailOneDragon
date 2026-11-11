@@ -39,7 +39,7 @@ from sr_od.application.currency_war.kernel.cw_node_schedule import (
 )
 from sr_od.application.currency_war.kernel.cw_world_decl import WorldDecl
 
-#: 出战声明的推进分派类别(详设 §2 表 #3;封闭集单一源 = sim 后端
+#: 出战声明的推进分派类别(正本 = flow/action_ops.md §4.8 声明终值表 #3;封闭集单一源 = sim 后端
 #: advance 分派表键集,值零新词沿用归并过程名)。
 _DECL_TRIGGER: str = 'battle_resolve'
 

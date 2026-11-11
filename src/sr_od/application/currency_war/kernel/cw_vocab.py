@@ -259,9 +259,8 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'funding_support',          # 支付筹资卖出(义务买金币位保障)
     'self_rescue_sell',         # 溢出告警自救卖出(十段工序第 0 步态 3;自救扩展面)
     'ore_make_room',            # 晶矿腾位垫件卖出(十段工序第 3 步;垫件谓词过滤后取价值最小)
-    'shop_swap',                # 席满买入六步流程卖旧(统一让位优先级迭代 3.2
-                                # 置换账替换后的在役取用通道;词 = 机制指认保留名,
-                                # 总纲 §2.8 黑话对照——旧店内置换账场景行已退役,
+    'shop_swap',                # 席满买入六步流程卖旧(置换账替换后的在役取用通道;
+                                # 词 = 机制指认保留名,旧店内置换账场景行已退役,
                                 # 本键 = 六步流程卖旧动作的发出登记值)
 })
 
@@ -285,7 +284,7 @@ SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
 class CwActionLevelUpParam:
     cost: int        # 本次「购买经验」单击花金(一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     clicks: int = 1
-    # 本动作携带的购买击数(整批发出形态;2026-10-17 迭代 design §2.2
+    # 本动作携带的购买击数(整批发出形态;正本 = flow/action_ops.md §4 BuyCard 行
     # 单帧原子:判据同帧重评后一次发整批,实付上界 = 发射时授权值)。
     # 缺省 1 = 单击形态(逐帧单击发出的兼容值;执行器按本字段连点)。
     auth_basis: str = ''
@@ -646,7 +645,7 @@ class CwActionStartBattleParam:
 
 # 动作全集白名单(统一词表运行时元组;注册完备测试的遍历单一源;消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
 # ⚠️ 教训(原 PREP_ACTION_TYPES 先例):**新增动作必须同步登记本白名单**
-# —— 选择族动作化(策略器终态契约;落地 landing §3.1 纯新增零消费,
+# —— 选择族动作化(纯新增零消费,
 #       decide 接入调用归终态切换批)=====
 
 # 选择族公共契约(原 PickOption 基类,摊平后 12 个叶子逐类重声明 idx/reason):
@@ -687,7 +686,7 @@ class CwActionPickSupplyParam:
     装备布局,既有构造点零变化)。
     三字段不入动作实例键(归因载荷不改变动作身份,``route_tag`` 先例);
     动作 op 确认点击后立即上报,按实际开出内容应用(单位入账分支 + 装备入账分支
-    0..n 件 + 后果链,即时单相,design §2.0B)。
+    0..n 件 + 后果链,即时单相;正本 = flow/action_ops.md §1「点完即写」)。
     """
     idx: int
     # [索引定义] 坐标系: 该画面候选槽位序号,坐标系 = 对应 payload 槽
@@ -717,7 +716,7 @@ class CwActionPickInvestStrategyParam:
     「选择动作执行就按成功处理,没有选到就是代码 bug」,原分步上报废除)。
     norm_name/route_tag/margin 不入动作实例键(归因载荷不改变动作身份,
     同 route_tag 先例)。``margin`` = 次名分量遥测载荷(决策评分帧的
-    竞争域次名,键形 = pick-margin-telemetry design §2.2-2;None =
+    竞争域次名,键形正本 = strategy-docs/strategy-telemetry.md §1(pick_margin 行);None =
     非选卡出口/空候选帧不落值,经 decision_payload 钩子键 pick_margin
     透传)。
     """
@@ -741,7 +740,7 @@ class CwActionPickInvestEnvParam:
 
     拆类与上报语义同 CwActionPickInvestStrategyParam:点完确认立即自
     上报完整结果(获得投资环境 → gain_invest_env 整链)。``margin``
-    语义同策略屏侧(pick-margin-telemetry design §2.2-1 键形)。
+    语义同策略屏侧(strategy-telemetry.md §1 键形)。
     """
     idx: int
     # [索引定义] 坐标系: 同 CwActionPickInvestStrategyParam.idx。
@@ -971,7 +970,7 @@ CW_ACTION_TYPES: tuple = (
     CwActionStaffProjectorUseParam, CwActionPerfectProjectorUseParam, CwActionLuckyTokenUseParam,
     CwActionStartBattleParam,
     CwActionOpenShopParam,
-    # 选择族动作化(终态契约;CwActionPickFortuneParam/
+    # 选择族动作化(CwActionPickFortuneParam/
     # CwActionPickExpertInviteParam = 契约扩员新增;
     # CwActionPickEquipParam 已停用删除——选择装备屏不存在,勿复活)
     CwActionPickEncounterParam, CwActionPickSupplyParam, CwActionPickInvestStrategyParam, CwActionPickInvestEnvParam, CwActionPickMegastarParam, CwActionPickPartnerParam,
@@ -981,7 +980,7 @@ CW_ACTION_TYPES: tuple = (
     CwActionObsParam,
 )
 
-#: 选择族收敛单表(终态契约 §2.7):pick 子类型单表(12 个;原 13 个,
+#: 选择族收敛单表:pick 子类型单表(12 个;原 13 个,
 #: CwActionPickEquipParam 随选择装备屏误判停用删除),供 handler 分派/
 #: 注册完备测试遍历(三刷新动作走各自既有点击链不入本表;Obs = 观察请求
 #: 语义,不属选择族)。

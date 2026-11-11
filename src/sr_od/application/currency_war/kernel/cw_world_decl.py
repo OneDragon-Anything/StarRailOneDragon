@@ -6,9 +6,7 @@
 经 ``cw_sim_ports.declare_world`` 喂入 sim 后端驱动状态副本推进,实机侧
 (端口未装 = no-op)作 journal 预期画面记账料,禁作判效断言。
 
-设计依据 = 动作后果声明化迭代总纲 ``design.md`` §1/§2.2 与详设
-``details/world-decl.md``(迭代收尾后契约归宿 = sim 权威版本
-``sim-design.md`` §6.3);本模块只放 schema,零 import 零机制——
+设计正本 = sim 权威版本 ``sim-design.md`` §6.3(声明契约权威版本);本模块只放 schema,零 import 零机制——
 ``trigger`` 封闭集的代码单一源 = ``sim/cw_sim_backend`` 的 advance
 分派表键集,构造点校验不在本件(与上报函数纯函数纪律同向:零机制)。
 """
@@ -19,7 +17,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class WorldDecl:
-    """动作后果声明(上报函数构造;消费面见详设 §4)。"""
+    """动作后果声明(上报函数构造;消费面正本 = flow/projection_contract.md「动作后果声明的消费面原则」+ sim-design.md §6.3)。"""
 
     #: 动作后确定的下一画面 screen_info 档名;'' = 无画面(局终等未建模终态)。
     next_screen: str
