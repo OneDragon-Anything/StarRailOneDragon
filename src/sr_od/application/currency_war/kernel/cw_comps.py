@@ -1828,8 +1828,8 @@ def equip_allocation(comp: Comp | None,
         else:
             _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
         # (_units 元素 = (行名,槽号, Unit) 三元组,_iter_deployed_rows 契约;
-        #  构造解包吃掉槽号位——下游消费(死库存回收/保底)全按 (rn, d)
-        #  二元组,曾按二元组解包 _units 即此处崩点,持有阵容的局走到
+        #  构造拆包吃掉槽号位——下游消费(死库存回收/保底)全按 (rn, d)
+        #  二元组,曾按二元组拆包 _units 即此处崩点,持有阵容的局走到
         #  通用兜底段必炸。)
         _others = [(rn, d) for rn, _sn, d in _units
                    if getattr(d, 'char_id', '')

@@ -361,7 +361,7 @@ def shop_unbought_reasons(gs: GameState,
     唯一合法拦截集=金/席硬闸+发出截断。
     """
     # 状态容器单位域现读(P4 状态容器形):bench = 占席条目(BenchSlot),身份经
-    # 解包口取;deployed = 行域单位紧缩序(本函数内多处同吃同一推导)。
+    # 拆包口取;deployed = 行域单位紧缩序(本函数内多处同吃同一推导)。
     bench = bench_entries_of(gs)
     deployed = _deployed_units_of(gs)
     owned = ({mandate._slot_cid(b) for b in bench}

@@ -1,11 +1,11 @@
 ---
 name: sr-od-dev-character-data
-description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口——拉取全量角色列表(含星魂/行迹)、按列表更新项目代码文件、头像模板获取。游戏版本更新时用于获取新角色信息。数据接口细节归 sr-od-dev-official-api;头像离线批量获取手法归本机解包类 skill。英文:maintain character data pipeline, version update character data entry。
+description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口——拉取全量角色列表(含星魂/行迹)、按列表更新项目代码文件、头像模板获取。游戏版本更新时用于获取新角色信息。数据接口细节归 sr-od-dev-official-api。英文:maintain character data pipeline, version update character data entry。
 ---
 
 # 角色数据维护
 
-> 分工:wiki 接口的调用细节(URL/字段位置/坑)→ `sr-od-dev-official-api`;头像素材的离线批量获取手法→本机解包类 skill(若挂载);本文只管流程编排与项目侧定义。
+> 分工:wiki 接口的调用细节(URL/字段位置/坑)→ `sr-od-dev-official-api`;本文只管流程编排与项目侧定义;头像素材的获取途径见 §3。
 
 ## 1. 拉取全量角色列表(存临时目录)
 
@@ -18,7 +18,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 - 接口细节(域名/参数/字段位置/已知坑)见 sr-od-dev-official-api `references/characters.md`,本文不重复。
 - 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本需 `PYTHONPATH=src`)。
 - **收录判据**:关键字段齐全才收录;空壳词条(有页面无 avatarId)、占位(avatarId=0)、前瞻未实装(详情行迹**模块名**带「前瞻」,正文提及不算)一律不录。
-- 权威表快照随仓分发(`references/characters-full.json`,数字 ID ↔ 中文名/英文名/命途/属性/星级),是各脚本与人工对账的锚;刷新合并是可选动作(本机解包类 skill 有合并管线),不刷不影响按列表录入。
+- 权威表快照随仓分发(`references/characters-full.json`,数字 ID ↔ 中文名/英文名/命途/属性/星级),是各脚本与人工对账的锚;刷新合并是可选动作(合并管线不在本仓维护),不刷不影响按列表录入。
 
 ## 2. 按角色列表更新项目代码文件
 
@@ -36,7 +36,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 ## 3. 头像获取
 
 - 默认模板库:`assets/template/character_avatar/<Character.id>/raw.webp`,目录名 = Character.id,图非 webp 先无损转 webp。
-- 获取途径:本机解包类 skill 有头像导出手法(游戏版本更新拿新角色头像模板从这走)优先按它;没有则参考当前模板库、到游戏内截图、或到米游社获取。
+- 获取途径:到米游社获取官方头像展示图,或游戏内截图,或参考当前模板库既有件;统一源口径见下条。
 - 统一源口径:160×188 方形官方头像;皮肤衣装模板目录 `<Character.id>_skin<序号>`(定义见附录 B)。
 - 小头像角标库(64×64)的归档见附录 C,新角色如需角标同步归档。
 

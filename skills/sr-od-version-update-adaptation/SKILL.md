@@ -21,10 +21,8 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 |---|---|---|
 | 新角色数据录入 | 已建档 | `references/character-data-entry.md` |
 | 光锥数据(新实装/词条改动) | 已建档 | `sr-od-dev-cone-data` skill(随仓分发):总流程六步 checklist(双源抓取/权威表/常量生成审阅/图标归档/测试锚点) |
-| 遗器套装数据(新实装/效果改动) | 已建档(归本机装备数据类 skill,若挂载) | 该 skill 的「版本更新工序」节(wiki 重抓 diff/ID 顺序律或 SIFT 对照/图标增量归档/测试锚点同步) |
+| 遗器套装数据(新实装/效果改动) | 已建档 | `sr-od-dev-relic-data` skill(随仓分发):总流程八步 checklist(双源抓取/常量 diff 审阅/权威表/图标增量归档/测试锚点) |
 | 货币战争(CW)玩法适配 | 已建档(归 CW skill) | `sr-od-dev-currency-war` skill 的 `references/version-update.md`(数据重采/阵容重跑/万金油名单复核/版本敏感注册表核对) |
-
-**依赖边界**：标「归私有 skill」的适配项依赖的 skill 因特殊情况未发布，未随本仓分发；相关数据可到米游社按 API 获取。
 
 **未建档适配项**(新地图、新玩法、新系统、机制改动等任何不在表里的项)按此流程补档,禁凭猜直接改:
 

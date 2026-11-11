@@ -6,8 +6,8 @@
 
 ## 2. 边界
 
-- 遗器套装数据不归本 skill（版本更新工序在本机装备数据类 skill，因含解包与数字 id 权威存储未随仓分发）。
-- 光锥图标的解包导出手法不归本 skill（归本机解包类 skill）；本 skill 只定归档口径（名称键/稀有度底色）。
+- 遗器套装数据不归本 skill（版本更新工序归 `sr-od-dev-relic-data`）。
+- 光锥图标的导出手法不归本 skill（不在本仓维护）；本 skill 只定归档口径（名称键/稀有度底色）。
 - wiki 接口的字段位置与坑不进本文（归 `sr-od-dev-official-api` 的 references）。
 
 ## 3. 构成

@@ -220,7 +220,7 @@ def _gate_star_jitter(session, bench, deployed, screen, *,
         holds: dict[int, int] = {}   # id(读 Unit) → 保旧星
         for anchor, cid, star, unit in entries:
             # 基线条目即 Unit(两域读条目构造同构:bench 占位件 = unit None
-            # / deployed 空槽跳过——基准上无身份走下方更替分支,无解包层)。
+            # / deployed 空槽跳过——基准上无身份走下方更替分支,无拆包层)。
             _acct_unit = tracked_at.get(anchor)
             if _acct_unit is None or not cid \
                     or cid != str(getattr(_acct_unit, 'char_id', '') or ''):

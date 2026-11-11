@@ -3725,7 +3725,7 @@ def _cond_expert_presence_names(gs: GameState) -> set[str] | None:
     """条件形态在场判定读口(插入位置④专用;唯一消费点 = :func:`on_env_gained`
     advisor 分道条件形态支):环境获得时刻在场单位名集合 = 备战席 ∪ 上阵
     ∪ 溢出位(三次状态容器读全廉价,与合成池 ``_build_pool`` 同三域口径;
-    槽件解包走 ``bench_slot_unit`` 读口单一源,禁内联 kind 判断)。溢出位
+    槽件拆包走 ``bench_slot_unit`` 读口单一源,禁内联 kind 判断)。溢出位
     身份串可能是占席道具名(非角色),入集无害——判据按规范名直等,
     道具名不可能命中触发名。bench 未观察(None)→ None 供调用方
     fail-closed:开局种子恒种 bench,种子初值下生产实机和模拟器两边不可达,本分支

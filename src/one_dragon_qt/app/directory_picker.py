@@ -298,7 +298,7 @@ class DirectoryPickerInterface(QWidget):
         if not isinstance(window, DirectoryPickerWindow):
             return
 
-        # 启动解包，切换到进度页
+        # 启动展开，切换到进度页
         self.picker_stack.setCurrentIndex(1)
 
         self._runner = UnpackResourceRunner(self.installer_dir, self.selected_path)
@@ -341,7 +341,7 @@ class DirectoryPickerInterface(QWidget):
             self.count_label.setText(self.translator.get_text('copying', current=current, total=total))
 
     def _on_unpack_finished(self, success: bool) -> None:
-        """解包完毕：成功时设定目标目录并关窗；失败时弹错误提示。"""
+        """展开完毕：成功时设定目标目录并关窗；失败时弹错误提示。"""
         window = self.window()
         if not isinstance(window, DirectoryPickerWindow):
             return

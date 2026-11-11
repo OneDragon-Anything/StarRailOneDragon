@@ -126,7 +126,7 @@ def main() -> int:
     lines.append('')
     lines.append('数据分层：定义层+skill 特效文本固化——id/名称/星级/命途/获取途径+skill 特效')
     lines.append('文本（官方 wiki 原文透传，含五档叠影数值）；光锥故事**不固化**；游戏内部')
-    lines.append('数字 tid 不入本模块（tid 与名称的解包侧映射归本机解包类 skill）。')
+    lines.append('数字 tid 不入本模块（tid 与名称的映射不在公开仓维护）。')
     lines.append('固化语义：obtain/skill 文本固化后本模块即唯一权威载体——重生成时已有词条')
     lines.append('冻结保留（wiki 侧存在编辑损坏，漂移由生成器报告供人工核对），wiki 只喂新增。')
     lines.append('')

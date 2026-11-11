@@ -146,7 +146,7 @@ class MandateFrame:
     **状态容器形状(现行基准形态)**:
     - ``bench`` = 占席条目紧缩序(状态容器 ``BenchSlot``,kind != 'empty',
       物理槽序;占位件 kind 面在域内,身份经 ``cw_exec_state.
-      bench_slot_unit`` 解包读口取——faction/position_pref 不入形状的
+      bench_slot_unit`` 拆包读口取——faction/position_pref 不入形状的
       注册表派生口径在消费点落位);
     - ``deployed`` = 行域单位紧缩序(deployed 视图两子表的状态容器
       ``Unit``,前排在前;char_id/star/equips 直读);
@@ -267,7 +267,7 @@ def _deployed_units_of(state: GameState) -> list:
 
 def _slot_cid(b) -> str:
     """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件 = '')。
-    本模块 BenchSlot 解包单一读点(P4 状态容器形)。"""
+    本模块 BenchSlot 拆包单一读点(P4 状态容器形)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )
@@ -276,7 +276,7 @@ def _slot_cid(b) -> str:
 
 
 def _slot_unit(b):
-    """占席条目 → 内嵌 Unit(占位件/None 洞 = None;P4 状态容器形解包口,
+    """占席条目 → 内嵌 Unit(占位件/None 洞 = None;P4 状态容器形拆包口,
     跨模块消费经本名——shop.py 合成对计数等身份+星级双读位共用)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
@@ -368,7 +368,7 @@ def fuel_sell_candidates(bench: list[BenchSlot],
     统一让位优先级迭代 3.4 收缩后的形态)。
 
     输入域 = 占席条目域(状态容器 ``BenchSlot`` 紧缩序,占位件 kind 面在域内;
-    身份/星级经 ``bench_slot_unit`` 解包读口,benchchar-retirement P4
+    身份/星级经 ``bench_slot_unit`` 拆包读口,benchchar-retirement P4
     状态容器形)。
 
     **身份资格面退役申报(卖出身份段退役批)**:原身份/代理资格门随静态
