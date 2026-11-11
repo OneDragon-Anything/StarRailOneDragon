@@ -165,8 +165,9 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     extras_doc: dict[str, str] = {
         'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
                  'set:套装名, pos_cn:部位, level:强化等级(0-15), '
-                 'owner:占用角色(中文名), identity: full(N票)/fallback(N簇)/masked'
-                 '(重掷动画遮罩卡,身份不判)/none}],按卡位置排序;'
+                 'owner:占用角色(中文名), identity: full(N票=整屏主匹配)/'
+                 'crop(N簇=卡面裁片库命中,同源识别)/fallback(N簇=官方图格内'
+                 '兜底)/masked(重掷动画遮罩卡,身份不判)/none}],按卡位置排序;'
                  '全部识别失败的卡不列',
         'total_cards': '定位到的卡总数(锚点 + 网格吸附过滤后的轮廓补充)',
     }
@@ -272,9 +273,23 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                 piece_name, identity_src = ((ident[1], f'full({ident[0]}票)')
                                             if ident else (None, 'none'))
                 if piece_name is None:
-                    piece_name, confidence = _fallback_identity(gray, card_rect, scaled_templates)
-                    if piece_name is not None:
-                        identity_src = f'fallback({confidence}簇)'
+                    # 卡面裁片库与官方部件图**合并统一 argmax**(竞争式)——两库
+                    # 分段各自 argmax 会让裁片库的低簇噪声答案(2 簇)抢走官方图
+                    # 本可判对的卡(现场帧 5 卡误检实证);统一竞争下同源裁片在真
+                    # 件上以显著簇数胜出(黑牛仔帽 20/29 簇 vs 官方图最佳 10/13),
+                    # 负样本卡官方图高分反压裁片(25/9/7 vs 2),天然互斥。
+                    crops = _card_face_crops(ctx)
+                    if crops:
+                        merged = dict(scaled_templates)
+                        merged.update(crops)  # 同件名时裁片覆盖官方图(同源更准)
+                        piece_name, confidence = _fallback_identity(gray, card_rect, merged)
+                        if piece_name is not None:
+                            identity_src = (f'crop({confidence}簇)' if piece_name in crops
+                                            else f'fallback({confidence}簇)')
+                    else:
+                        piece_name, confidence = _fallback_identity(gray, card_rect, scaled_templates)
+                        if piece_name is not None:
+                            identity_src = f'fallback({confidence}簇)'
             if piece_name is None and owner is None and level is None:
                 continue  # 全部识别失败的卡,不猜测
             item = {'cell': [card_rect.x1, card_rect.y1,
@@ -377,6 +392,8 @@ def _relic_piece_templates_scaled_for_pos(pos: int) -> dict[str, np.ndarray]:
             name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
             for name, t in _relic_piece_templates_for_pos(pos).items()}
     return _pos_piece_scaled_cache[pos]
+
+
 def _fallback_identity(gray: np.ndarray, card_rect: Rect,
                        scaled_templates: dict[str, np.ndarray]) -> tuple[str | None, int]:
     """降级匹配:只取该卡区域内特征,对全库模板匹配取聚簇最大者(纯 argmax,无阈值)。
@@ -411,6 +428,42 @@ def _fallback_identity(gray: np.ndarray, card_rect: Rect,
         if cluster > best_cluster:
             best_name, best_cluster = name, cluster
     return best_name, best_cluster
+
+
+#------------------- 卡面裁片模板库(弱匹配件的同源识别通道) -------------------#
+# 背景:官方部件图(透明底合成白底)与游戏内卡面渲染存在视角/光影差异,个别件
+# (快枪手的野穗毡帽,黑牛仔帽图案)「模板↔卡面」特征同源性弱——单对匹配仅
+# 5 聚簇,全库 argmax 被无关件(诗人的莳萝花冠 10-13 簇)稳定压过,兜底恒错认
+# →目标件名永不出现→漏检(2026-11-11 现场帧 20 卡诊断实证)。
+# 机制:从实机帧裁「卡面图案区」入库作同源模板——同源匹配聚簇暴涨(黑牛仔帽
+# 实测 5→20/29 簇,argmax 稳胜,负样本零误检)。增量建设:不为全库建卡(不可行),
+# 仅对实机判定弱匹配的件按需入库;官方部件图路径原样保留作兜底,裁片库为空的
+# 环境行为与建库前完全一致。
+# 入库工序:实机帧 → 裁无角标卡卡内图案核心区(卡内偏移 (12,18)-(108,112),
+# 96×94;避开角标/等级文本/卡框)→ cv2_utils.save_image 存
+# assets/template/relic_card_face/<件名>/raw.webp → 目录名即件名,零登记表。
+_CARD_FACE_SUB_DIR = 'relic_card_face'
+_card_face_crop_cache: dict[str, np.ndarray] | None = None
+
+
+def _card_face_crops(ctx: SrContext) -> dict[str, np.ndarray]:
+    """卡面裁片模板库(件名 → 灰度裁片;进程级常驻,特征缓存按对象 id 键控)。"""
+    global _card_face_crop_cache
+    if _card_face_crop_cache is not None:
+        return _card_face_crop_cache
+    lib: dict[str, np.ndarray] = {}
+    for info in ctx.template_loader.get_all_template_info_from_disk():
+        if info.sub_dir != _CARD_FACE_SUB_DIR:
+            continue
+        raw = info.raw
+        if raw is None:
+            continue
+        gray_tpl = cv2.cvtColor(raw, cv2.COLOR_RGB2GRAY) if raw.ndim == 3 else raw
+        lib[info.template_id] = gray_tpl
+    _card_face_crop_cache = lib
+    return lib
+
+
 # 特征点 y 聚簇的行间隔阈值(卡行高+间隙的量级)
 _ROW_CLUSTER_GAP_PX: int = 100
 # 列带吸附半径(约列间距一半)
