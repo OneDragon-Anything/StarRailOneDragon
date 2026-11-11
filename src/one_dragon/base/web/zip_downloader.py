@@ -1,4 +1,5 @@
 import os
+import zipfile
 from collections.abc import Callable
 
 from one_dragon.base.web.common_downloader import (
@@ -88,11 +89,11 @@ class ZipDownloader(CommonDownloader):
     def is_file_existed(self) -> bool:
         """
         检查文件是否存在
-        额外判断压缩包是否已经存在了
+        额外判断压缩包是否已经存在且完整 (下载中断留下的残缺压缩包不算)
         """
         exists = CommonDownloader.is_file_existed(self)
         if exists:
             return True
 
         zip_file_path = os.path.join(self.param.save_file_path, self.param.save_file_name)
-        return os.path.exists(zip_file_path)
+        return os.path.exists(zip_file_path) and zipfile.is_zipfile(zip_file_path)
