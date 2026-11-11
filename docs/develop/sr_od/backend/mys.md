@@ -42,4 +42,3 @@
 - 通用层：[one_dragon/mys README](../../../one_dragon/mys/README.md)
 - 协议规格：[application/account_profile/miyoushe-api-flow.md](../application/account_profile/miyoushe-api-flow.md)
 - 登录验证分支规格与跨项目对照：[application/account_profile/login-verification-research.md](../application/account_profile/login-verification-research.md)
-- 迭代过程：`application/account_profile/changes/mys-account-mcp/`（账号接入）、`application/account_profile/changes/mys-roster-detail/`（角色明细与中文字段）、`application/account_profile/changes/mys-relic-sets/`（套装名与激活效果）

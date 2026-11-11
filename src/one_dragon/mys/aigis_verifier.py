@@ -1,10 +1,10 @@
 """本地 aigis 验证页服务（跨游戏通用）。
 
-设计出处：changes/mys-account-mcp/design.md §2.2 aigis_verifier 小节、§2.5
-契约 4；组件调用参数与双载口径：login-verification-research.md §3.2；取消
-闭环与自动弹出手法：同文档 §10.5-3（Moonward）。
+设计出处：docs/develop/one_dragon/mys/README.md（模块表 aigis_verifier 行）；
+组件调用参数与双载口径：login-verification-research.md §3.2；取消闭环与
+自动弹出手法：同文档 §10.5-3（Moonward）。
 
-- 挑战不下沉 URL（design.md §2.8）：服务端持有「当前 pending 挑战」，页面
+- 挑战不下沉 URL：服务端持有「当前 pending 挑战」，页面
   加载/刷新时 GET /challenge 取最新挑战——刷新即换新题，不存在旧 URL 解旧题。
 - 页面模板是纯静态模块常量：挑战数据完全经 GET /challenge 的 JSON 流转，
   模板零插值——research §10.5-3 的「参数 base64 后嵌入 HTML 防转义」手法在
@@ -82,7 +82,7 @@ _VERIFIER_HTML: str = '''<!doctype html>
   const container = document.querySelector('#captchaContainer');
   const showStatus = (text) => { statusEl.textContent = text; };
   const showError = (text) => { errorEl.textContent = text; };
-  // 回传契约：{session_id, ticket} 或 {session_id, cancelled: true}（design.md §2.5 契约 4）
+  // 回传契约：{session_id, ticket} 或 {session_id, cancelled: true}
   const postTicket = async (payload) => {
     const response = await fetch('/ticket', {
       method: 'POST',
@@ -265,7 +265,7 @@ class _AigisRequestHandler(BaseHTTPRequestHandler):
 class AigisVerifier:
     """aigis 验证页宿主：pending 挑战服务端持有 + 票据/取消回传接收。
 
-    生命周期（design.md §2.2/§2.4）：start 挂载挑战（服务未起则以 port=0 绑
+    生命周期：start 挂载挑战（服务未起则以 port=0 绑
     随机空闲端口，已起则复用同端口）→ 页面解题回传 → close 释放端口（幂等；
     关闭后实例不可再用，重开验证由上层新建实例）。
     """
@@ -327,7 +327,7 @@ class AigisVerifier:
         与回调分派。返回（HTTP 状态码, 应答 JSON）。
 
         - 无 pending 或 session_id 与 pending 不一致 → 409 丢弃（防旧页面解
-          旧题的迟到票据污染新一轮挑战，design.md §2.2）；
+          旧题的迟到票据污染新一轮挑战）；
         - cancelled 真值 → 按取消语义记录；ticket 为对象 → 按票据记录；两者
           皆无 → 400（契约外回传不进等待方）。
         """

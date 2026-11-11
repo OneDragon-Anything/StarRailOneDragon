@@ -1,7 +1,7 @@
 """崩坏:星穹铁道专属米游社封装：角色定位自动发现 + hkrpg 角色列表（轻/富双口径）。
 
-设计出处：changes/mys-account-mcp/design.md §2.3 / §2.5 契约 5（v1 轻口径）、
-changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细富口径）。
+设计出处：docs/develop/sr_od/backend/mys.md「sr_od/mys（崩铁特有封装）」节
+（v1 轻口径、v2 中文字段与明细富口径的冻结字段集契约）。
 组合通用 ``one_dragon.mys.mys_client.MysClient``（不继承），在其通用
 ``request()`` 之上固化三件游戏专属事实：
 
@@ -12,26 +12,27 @@ changes/mys-roster-detail/design.md §2 契约 2/3/4（v2 中文字段与明细�
    登出与换绑登录清除后自动重发现；
 2. 角色列表映射：``hkrpg/api/index`` 的 ``data.avatar_list`` 到
    ``SrCharacter`` 冻结字段集——v1 八字段以 2026-11-03 实测响应为准
-   （结构快照固化于测试仓 fixture，见 mys-account-mcp landing §3.4）；
+   （结构快照固化于测试仓 fixture
+   ``sr-od-test/test/fixtures/mys/hkrpg_index_snapshot.json``）；
    v2 增 ``element_cn``/``base_type_cn`` 两中文字段（码表经
    ``sr_od.mys.sr_codes`` 解析，接口层直接出中文，消费方零查表）。
    icon 等大体积字段不透传（本封装的消费方是练度盘点，不是资源下载）。
 3. 角色明细映射（``get_characters_detail``）：打全量明细端点
    ``hkrpg/api/avatar/info``（``need_wiki=true`` 是五词典与明细数组的来源
    开关；``hkrpg/api/index`` 每角色只有轻口径 12 字段、不含遗器/星魂/
-   行迹/面板——design.md §1 端点勘误，实机验收实证），对响应做富映射——
+   行迹/面板——端点勘误见 miyoushe-api-flow.md §8.2，实机验收实证），对响应做富映射——
    遗器/位面饰品/星魂/行迹/属性面板到
    ``CharacterDetail`` 冻结字段集（契约 3/4）；词条显示名走
    ``sr_codes`` 三层查表，响应原生 ``data.property_info`` 键归一 int
    后作动态词典透传；遗器 lore desc/icon/figure/内部 id 等不透传。
-4. 套装映射（changes/mys-relic-sets/design.md §2 契约 1/2）：遗器/饰品
+4. 套装映射（mys-data.md §2 映射契约）：遗器/饰品
    单件经 ``sr_relic_sets.resolve_set_name`` 件名反查套装名（miss 落
    「未知套装」字面量，告警由 resolve 层负责、本层不重复告警）；角色级
    收集 relic/ornament 件名经 ``build_set_effects`` 产出已激活套装效果
    条目 ``SrSetEffect``（未入常量的件名不产出条目）。v1 ``get_characters``
-   轻口径不加套装字段（契约 4，外部行为零改动）。
+   轻口径不加套装字段（外部行为零改动）。
 
-会话失效透传（design.md §2.3）：``MysSessionExpired`` 原样上抛给上层
+会话失效透传：``MysSessionExpired`` 原样上抛给上层
 （MCP 工具层翻译成「请重新登录」并打过期标记），本模块不做任何处置。
 """
 
@@ -51,7 +52,7 @@ from sr_od.mys.sr_codes import (
 )
 from sr_od.mys.sr_relic_sets import build_set_effects, resolve_set_name
 
-#: 角色定位缓存文件内容（design.md §2.2 mys_session：``{"role_id","server"}``，
+#: 角色定位缓存文件内容（role.json 契约：``{"role_id","server"}``，
 #: role_id 恒为字符串）
 ROLE_CACHE_KEYS: frozenset[str] = frozenset({'role_id', 'server'})
 
@@ -63,13 +64,13 @@ HSR_GAME_BIZ: str = 'hkrpg_cn'
 LOCAL_EXPIRED_CODE: int = 10001
 
 #: 件名查无套装时的兜底套装名（resolve_set_name miss 落此字面量；告警由
-#: resolve 层负责，映射层不重复告警——mys-relic-sets design.md §2 契约 1）
+#: resolve 层负责，映射层不重复告警——mys-data.md §2 映射契约）
 UNKNOWN_SET_NAME: str = '未知套装'
 
 
 @dataclass(frozen=True)
 class ConeSummary:
-    """光锥摘要（冻结字段集，design.md §2.3）：name/level/rank/rarity。
+    """光锥摘要（冻结字段集）：name/level/rank/rarity。
 
     Attributes:
         name: 光锥名称。
@@ -88,8 +89,7 @@ class ConeSummary:
 class SrCharacter:
     """崩铁角色（v1 八字段 + v2 中文字段，冻结字段集——字段增删即契约失败）。
 
-    字段集契约：changes/mys-roster-detail/design.md §2 契约 2（= v1 八字段
-    〔mys-account-mcp design.md §2.3，以 2026-11-03 index 实测响应固化〕
+    字段集契约：v1 八字段（以 2026-11-03 index 实测响应固化）
     + ``element_cn``/``base_type_cn`` 两中文字段）；v1 存量消费方按既有
     字段序取值不受影响（新字段只追加在尾部）。icon/image 等大体积字段
     不透传。equip 在角色未装备光锥时为 None（实测存在此形态）。
@@ -137,7 +137,7 @@ class SrPropertyEntry:
 
 @dataclass(frozen=True)
 class SrRelic:
-    """遗器/位面饰品单件（两数组同构，冻结字段集契约 4 + mys-relic-sets 契约 1）。
+    """遗器/位面饰品单件（两数组同构，冻结字段集）。
 
     Attributes:
         name: 件名（官方中文，如「翔鹰的长喙头盔」）。
@@ -200,12 +200,11 @@ class SrSkillStage:
 
 @dataclass(frozen=True)
 class SrSkill:
-    """行迹（冻结字段集契约 4）。
+    """行迹（冻结字段集）。
 
     Attributes:
-        name: 技能类型标签（取响应 ``remake`` 字段，官方中文：普攻/战技/
-            终结技/天赋/秘技/额外能力/属性加成/欢愉技——codes-draft.md
-            实测词表）。
+        name: 技能类型标签（取响应 ``remake`` 字段，官方中文实测词表：普攻/战技/
+            终结技/天赋/秘技/额外能力/属性加成/欢愉技）。
         level: 行迹等级。
         is_activated: 是否已激活。
         stages: 分段文案列表（终结技等多段技能一条以上）。
@@ -219,7 +218,7 @@ class SrSkill:
 
 @dataclass(frozen=True)
 class SrPanelProperty:
-    """角色面板属性行（冻结字段集契约 4）。
+    """角色面板属性行（冻结字段集）。
 
     Attributes:
         name_cn: 属性显示中文名（sr_codes 三层查表，同 SrPropertyEntry）。
@@ -237,11 +236,11 @@ class SrPanelProperty:
 
 @dataclass(frozen=True)
 class SrSetEffectEntry:
-    """已激活套装效果单档（冻结字段集，mys-relic-sets design.md §2 契约 2）。
+    """已激活套装效果单档（冻结字段集，mys-data.md §2 映射契约）。
 
     Attributes:
         count: 激活档位件数（2 或 4；只列已激活档，未激活档不出现在列表）。
-        desc: 该档效果文案（官方 wiki 原文透传，不清洗富文本——契约 5）。
+        desc: 该档效果文案（官方 wiki 原文透传，不清洗富文本）。
     """
 
     count: int
@@ -250,7 +249,7 @@ class SrSetEffectEntry:
 
 @dataclass(frozen=True)
 class SrSetEffect:
-    """角色已激活套装效果条目（冻结字段集，mys-relic-sets design.md §2 契约 2）。
+    """角色已激活套装效果条目（冻结字段集，mys-data.md §2 映射契约）。
 
     由佩戴件名按套装分组统计产出（build_set_effects，映射层
     ``_build_set_effects`` 做字段投影）；未入套装常量的件名不产出条目。
@@ -274,13 +273,13 @@ class SrSetEffect:
 
 @dataclass(frozen=True)
 class CharacterDetail:
-    """角色全量明细（冻结字段集契约 3——字段增删即契约失败）。
+    """角色全量明细（冻结字段集——字段增删即契约失败）。
 
     全量明细端点 ``hkrpg/api/avatar/info`` 富映射（``hkrpg/api/index`` 只有
-    轻口径字段、不含明细——design.md §1 端点勘误）：轻口径 10 字段
+    轻口径字段、不含明细——端点勘误见 miyoushe-api-flow.md §8.2）：轻口径 10 字段
     语义不变，追加遗器/饰品/星魂/行迹/面板/已激活套装效果六组明细
-    （套装效果组为 mys-relic-sets 契约 2）。desc(遗器 lore)/icon/
-    figure/URL/point_id 等大体积与内部形态字段一律不透传（契约 4 清单）。
+    （套装效果组见 mys-data.md §2）。desc(遗器 lore)/icon/
+    figure/URL/point_id 等大体积与内部形态字段一律不透传。
 
     Attributes:
         id: 角色数字 id（游戏内部 id）。
@@ -324,7 +323,7 @@ class SrMysClient:
     """崩铁专属米游社客户端：组合通用 client，提供角色列表获取。"""
 
     def __init__(self, client: MysClient, store: SessionStore) -> None:
-        """两参必填（design.md §2.3）：client 提供通用请求管线，store 提供
+        """两参必填：client 提供通用请求管线，store 提供
         角色定位缓存与过期标记读取——同一 store 实例须贯穿装配链（同锁）。"""
         self._client: MysClient = client
         self._store: SessionStore = store
@@ -333,7 +332,7 @@ class SrMysClient:
         """获取崩铁角色列表（过期短路 → 角色定位 → index → 冻结字段映射）。
 
         1. 过期短路：本地会话已标记过期时直接抛 ``MysSessionExpired``，
-           不发起注定失败的请求（design.md §2.3 判据第 1 条）；
+           不发起注定失败的请求（过期短路判据第 1 条）；
         2. 角色定位：读 ``role.json`` 缓存（server 取缓存值，不硬编码）；
            无缓存则走角色自动发现并写回缓存；
         3. 请求 ``hkrpg/api/index`` 取 ``data.avatar_list``；
@@ -358,10 +357,10 @@ class SrMysClient:
 
         管线前置与 v1 轻口径一致（过期短路 → 角色定位），端点不同：avatar/info
         需带 ``need_wiki=true`` 才回 ``property_info`` 等五词典与全量明细数组
-        （design.md §1 端点勘误），一次调用只打一次接口；响应原生
+        （端点勘误见 miyoushe-api-flow.md §8.2），一次调用只打一次接口；响应原生
         ``data.property_info``（键为字符串）归一 int 后作动态词典透传给词条/
         面板中文名查表（sr_codes 三层查表契约）。``avatar_list`` 逐条富映射
-        ``CharacterDetail``（契约 3）；缺失 avatar_list 按协议错误上抛，不
+        ``CharacterDetail``（冻结字段集）；缺失 avatar_list 按协议错误上抛，不
         静默返回空列表掩盖响应形态漂移。
 
         Raises:
@@ -506,7 +505,7 @@ def _resolve_set_name_or_unknown(piece_name: object) -> str:
     """件名 → 套装名（resolve 反查；miss 或件名缺失落「未知套装」兜底）。
 
     告警责任在 resolve 层（``resolve_set_name`` miss 时 warning 恰一次），
-    本层不重复告警（mys-relic-sets design.md §2 契约 1）；件名非字符串
+    本层不重复告警（mys-data.md §2 映射契约）；件名非字符串
     （实测正常数据恒为字符串，此处为形态漂移兜底）不进 resolve、静默落
     兜底——单件异常不中断整份角色明细映射（与 _map_relic_list 容错纪律一致）。
     """

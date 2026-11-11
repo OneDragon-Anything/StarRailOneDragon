@@ -1,17 +1,16 @@
 """米游社账号 MCP 工具组（账号四工具 + 遗器评估工具）+ 访问控制器
 （``MysAccessController``）。
 
-设计出处：changes/mys-account-mcp/design.md §2.4（装配/状态机/并发语义/三工具/
-知情声明原文）+ §2.5 契约 6 + §2.6（凭据红线）；changes/mys-roster-detail/
-design.md §2 契约 5（第四工具 ``mys_get_roster_detail``，信封语义与
-``mys_get_characters`` 完全一致，复用同一状态机与信封文案）；changes/
-relic-substat-eval/design.md §2.2（评估工具 ``mys_evaluate_relic_substats``，
-计算在 ``relic_eval_tools`` 纯模块，本文件只做注册与缺省名册自拉——非
-success 信封原样透传）。职责分界（design.md §2.1）：
-验证的「单轮」在 ``one_dragon.mys.mys_client``（3.3 交付），验证的「循环」在
-本控制器——持有 verifier、attempt 计数上限、每轮重开验证页。
+设计出处：docs/develop/sr_od/backend/mys.md「MCP 工具（register_mys_tools）」
+节（装配/状态机/并发语义/工具信封语义/知情声明原文/凭据红线/统一信封三键；
+``mys_get_roster_detail`` 信封语义与 ``mys_get_characters`` 完全一致，复用
+同一状态机与信封文案；评估工具 ``mys_evaluate_relic_substats`` 计算在
+``relic_eval_tools`` 纯模块，本文件只做注册与缺省名册自拉——非 success
+信封原样透传）。职责分界（docs/develop/one_dragon/mys/README.md）：验证的
+「单轮」在 ``one_dragon.mys.mys_client``，验证的「循环」在本控制器——持有
+verifier、attempt 计数上限、每轮重开验证页。
 
-并发语义（design.md §2.4 定死，控制器锁串行化入口）：
+并发语义（契约定死，控制器锁串行化入口）：
 - awaiting_ticket 期二次 ``mys_login``：不重复登录——新账密即收即弃（不存储
   不加密），返回现存 ``verification_required`` 信封 + 现存 URL；
 - awaiting_ticket 期 ``mys_get_characters`` 与 ``mys_get_roster_detail``：
@@ -28,18 +27,18 @@ success 信封原样透传）。职责分界（design.md §2.1）：
   （会话已落盘且未标记过期 → ``already_logged_in``；已标记过期 → 跳过判定
   走正常登录，成功后整体覆盖、标记随覆盖消失）。
 
-会话过期处置（design.md §2.4/§2.6）：``mys_get_characters`` 与
+会话过期处置：``mys_get_characters`` 与
 ``mys_get_roster_detail`` 收到 ``MysSessionExpired`` →
 ``store.mark_expired()``（**不清任何文件**，重登失败时
 旧数据原样保留）→ 信封 ``session_expired``；清除仅发生于用户显式登出或登录
 成功整体覆盖。
 
-信封脱敏（landing §3.4 判据）：任何信封的 message/data 不含 cookie/token/
+信封脱敏（验收判据）：任何信封的 message/data 不含 cookie/token/
 密码——信封内容只有固定文案、验证页 URL、角色列表与角色明细（明细载荷经
 ``character_to_dict`` 序列化，冻结字段集不含任何凭据字段）；异常文本只透传
 ``MysApiError`` 的 retcode 与服务端 message（client 层已保证不含本机凭据）。
 
-FastMCP 工具入参日志核查结论（landing §3.4 判据，实读 mcp 1.28.1 源码）：
+FastMCP 工具入参日志核查结论（实读 mcp 1.28.1 源码）：
 框架层不记录工具入参——调用链 ``ToolManager.call_tool`` → ``Tool.run`` →
 ``FuncMetadata.call_fn_with_arg_validation`` 全程无携带 arguments 的日志语句；
 lowlevel server 仅记录请求类型名（``type(req).__name__``）。故无需框架层脱敏；
@@ -66,21 +65,21 @@ from sr_od.backend.backend_context import SrBackendContext
 from sr_od.backend.mcp.relic_eval_tools import evaluate
 from sr_od.mys.sr_mys_client import SrMysClient, character_to_dict
 
-#: 控制器状态（design.md §2.4：idle / awaiting_ticket 两态）
+#: 控制器状态（idle / awaiting_ticket 两态）
 STATE_IDLE: str = 'idle'
 STATE_AWAITING_TICKET: str = 'awaiting_ticket'
 
-#: 验证重试上限（design.md §2.4 验证循环：最多重复解题 3 次）
+#: 验证重试上限（验证循环：最多重复解题 3 次）
 MAX_VERIFY_ATTEMPTS: int = 3
 
-#: 数据接口风控（1034）专属文案（design.md §2.4 mys_get_characters 原文；
-#: 1034 验证链本迭代不实现，design.md §1 明确不解决项 7）
+#: 数据接口风控（1034）专属文案（mys_get_characters 错误分支原文；
+#: 1034 验证链为后续迭代事项）
 RISK_CONTROL_1034_MESSAGE: str = '数据接口触发风控验证，本版本未实现该验证链，请稍后重试或反馈'
 
-#: 会话过期信封文案（design.md §2.4 mys_get_characters 原文语义）
+#: 会话过期信封文案（mys_get_characters 原文语义）
 SESSION_EXPIRED_MESSAGE: str = '数据已过期，请重新登录（mys_login）；本机数据不受影响'
 
-#: 验证引导文案（design.md §2.4 mys_login verification_required 信封原文）
+#: 验证引导文案（mys_login verification_required 信封原文）
 VERIFICATION_REQUIRED_MESSAGE: str = (
     '请在浏览器打开以下地址完成人机验证；若被要求再次验证请重复解题（最多 3 次），'
     '完成后用 mys_get_characters 验证登录结果'
@@ -88,7 +87,7 @@ VERIFICATION_REQUIRED_MESSAGE: str = (
 
 
 def _envelope(status: str, message: str | None = None, data: object = None) -> dict:
-    """统一信封（design.md §2.5 契约 6）：三键齐全，data 默认 None。"""
+    """统一信封：三键齐全，data 默认 None。"""
     return {'status': status, 'message': message, 'data': data}
 
 
@@ -105,7 +104,7 @@ class MysAccessController:
         http_send: HttpSend,
         verifier_factory: Callable[[], AigisVerifier],
     ) -> None:
-        """装配链（design.md §2.4）：session_dir → SessionStore →
+        """装配链：session_dir → SessionStore →
         DeviceIdentity → MysClient；verifier 工厂在每次进入验证轮时调用一次
         （verifier close 后实例不可复用，重开验证须新实例——aigis_verifier
         生命周期约定）。
@@ -124,7 +123,7 @@ class MysAccessController:
         self._client: MysClient = MysClient(self._store, self._device, http_send)
         self._sr_client: SrMysClient = SrMysClient(self._client, self._store)
         self._verifier_factory: Callable[[], AigisVerifier] = verifier_factory
-        # 控制器锁：三工具入口与票据回传回调全部经它串行化（design.md §2.4）；
+        # 控制器锁：三工具入口与票据回传回调全部经它串行化；
         # SessionStore 内部另有同实例锁，两层锁保护对象不同（状态机 / 落盘）
         self._lock: threading.Lock = threading.Lock()
         self._state: str = STATE_IDLE
@@ -133,7 +132,7 @@ class MysAccessController:
         self._current_challenge: AigisChallenge | None = None
         self._attempt: int = 0
         # 验证循环超限/失败的留档错误；信封在用户下次调用时体现 error 一次
-        # （design.md §2.4 验证循环第 2 步）。None = 无留档错误。
+        # （验证循环第 2 步）。None = 无留档错误。
         self._last_error: str | None = None
 
     @property
@@ -156,7 +155,7 @@ class MysAccessController:
     def login(self, username: str, password: str) -> dict:
         """登录入口（状态机 idle 分支 + awaiting 复用分支）。
 
-        已登录判定（design.md §2.4 定死）：会话存在且 cookies 非空且未标记
+        已登录判定（契约定死）：会话存在且 cookies 非空且未标记
         过期 → ``already_logged_in``；不主动探测官方接口。已标记过期则跳过
         判定走正常登录（成功后 ``save_session_full`` 整体覆盖，标记随覆盖
         消失）。awaiting_ticket 期新账密即收即弃，复用现存验证信封。
@@ -191,7 +190,7 @@ class MysAccessController:
         device.json 设备锚）+ awaiting 期取消验证轮 + 清留档错误。"""
         with self._lock:
             if self._state == STATE_AWAITING_TICKET:
-                # awaiting 期登出 = 取消验证（design.md §2.4）：状态复位 +
+                # awaiting 期登出 = 取消验证：状态复位 +
                 # verifier 关闭；此后迟到票据被 _on_ticket 状态闸丢弃
                 self._reset_verification()
             self._client.logout()
@@ -214,7 +213,7 @@ class MysAccessController:
             try:
                 characters = self._sr_client.get_characters()
             except MysSessionExpired:
-                # 过期处置（design.md §2.4/§2.6）：只打标记不清任何文件
+                # 过期处置：只打标记不清任何文件
                 self._store.mark_expired()
                 return _envelope('session_expired', SESSION_EXPIRED_MESSAGE)
             except MysApiError as e:
@@ -229,8 +228,8 @@ class MysAccessController:
                              [character_to_dict(c) for c in characters])
 
     def get_roster_detail(self) -> dict:
-        """角色名册明细入口（``mys_get_roster_detail`` 业务语义；design.md §2
-        契约 5：信封逐态与 ``get_characters`` 完全一致，仅成功载荷换明细）：
+        """角色名册明细入口（``mys_get_roster_detail`` 业务语义；信封逐态与
+        ``get_characters`` 完全一致，仅成功载荷换明细）：
         awaiting 期不裸打请求；``MysSessionExpired`` → 打过期标记（不清任何
         文件）+ ``session_expired``；1034 → 专属文案；其余业务错误 →
         ``error`` 透传 retcode；成功载荷经 ``character_to_dict`` 序列化
@@ -247,7 +246,7 @@ class MysAccessController:
             try:
                 details = self._sr_client.get_characters_detail()
             except MysSessionExpired:
-                # 过期处置（design.md §2.4/§2.6）：只打标记不清任何文件
+                # 过期处置：只打标记不清任何文件
                 self._store.mark_expired()
                 return _envelope('session_expired', SESSION_EXPIRED_MESSAGE)
             except MysApiError as e:
@@ -264,7 +263,7 @@ class MysAccessController:
     # ---- 状态机内部（调用方须持控制器锁）----
 
     def _is_logged_in(self) -> bool:
-        """已登录判定（design.md §2.4 定死）：cookies 非空且未标记过期。"""
+        """已登录判定（契约定死）：cookies 非空且未标记过期。"""
         return bool(self._store.load_cookies()) and not self._store.is_expired()
 
     def _enter_verification(self, challenge: AigisChallenge) -> None:
@@ -347,8 +346,8 @@ def _open_verify_page(url: str) -> None:
 
 
 def _default_verifier_factory() -> AigisVerifier:
-    """真实验证页工厂：open_browser 接 webbrowser.open（运行入口注入真实现，
-    设计出处 design.md §2.2 aigis_verifier）。"""
+    """真实验证页工厂：open_browser 接 webbrowser.open（运行入口注入真实现；
+    设计出处 = docs/develop/one_dragon/mys/README.md aigis_verifier 行）。"""
     return AigisVerifier(open_browser=_open_verify_page)
 
 
@@ -365,7 +364,7 @@ def _get_controller(backend: SrBackendContext) -> MysAccessController:
     - 实例目录按首次调用时刻的当前实例解析（``backend.ctx.current_instance_idx``
       ——SrContext 现有 API，实例目录 = 当前实例的 config 目录）；
     - requests 真实实装（``RequestsHttpSend``）与 webbrowser 打开回调在此传入
-      （运行入口职责，design.md §2.4）；
+      （运行入口职责）；
     - 注册期（create_mcp_server）不构建：既不让注册路径触碰文件系统，也让
       backend 为测试替身时零副作用。
 
@@ -500,7 +499,7 @@ def register_mys_tools(mcp: FastMCP, backend: SrBackendContext) -> None:
         """
         if roster_data is None:
             # 缺省自拉：非 success 信封（session_expired/verification_required/
-            # error）原样透传（design.md §2.2 Returns 段语义）
+            # error）原样透传（信封透传契约）
             fetched = _get_controller(backend).get_roster_detail()
             if fetched.get('status') != 'success':
                 return fetched

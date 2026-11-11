@@ -5,14 +5,14 @@
   miyoushe-api-flow.md §2；
 - 验证触发分诊（双条件、message 不参与）与 x-rpc-aigis 双层解析：
   login-verification-research.md §2.1-§2.3；
-- 模块职责与跨层契约：changes/mys-account-mcp/design.md §2.2 mys_client
-  小节、§2.5 契约 1/3。
+- 模块职责与跨层契约：docs/develop/one_dragon/mys/README.md（模块表
+  mys_client 行：login/complete_verification 均单轮语义、循环归调用方）。
 
-职责分界（design.md §2.1 定死）：login 与 complete_verification 均是单轮
+职责分界（README 定死）：login 与 complete_verification 均是单轮
 语义——login 一次请求 + 分诊，验证触发时解析并返回挑战（AigisChallenge）；
 complete_verification 组装票据回传头、原样重发一次并观察结果；验证「循环」
 （每轮重开验证页、重试上限计数）由上层控制器持有，本模块不做任何跨请求编排。
-凭据红线（design.md §2.6）：密码仅在 login 调用栈内存（RSA 加密后进请求体）；
+凭据红线（README「纪律红线」）：密码仅在 login 调用栈内存（RSA 加密后进请求体）；
 cookie 只入内存罐与 session.json；两者不进任何日志与异常文本——本模块异常
 只携带 retcode 与服务端 message 文案。
 """
@@ -85,7 +85,7 @@ class AigisChallenge:
 
 @dataclass
 class LoginResult:
-    """单轮登录结果（design.md §2.5 契约 1）。
+    """单轮登录结果。
 
     Attributes:
         status: 'ok' = 会话已建立并落盘；'need_verification' = 触发人机验证。
@@ -194,7 +194,7 @@ def _assemble_aigis_header(challenge: AigisChallenge, ticket: dict) -> str:
 
 
 def _resolve_request_url(path_or_url: str) -> str:
-    """双形态目标解析（design.md §2.2 request）：以 http 开头 = 绝对 URL，
+    """双形态目标解析：以 http 开头 = 绝对 URL，
     仅允许 https 且主机在白名单（mys_const.HOST_WHITELIST），违规 ValueError
     （白名单外主机不属于米游社 API 面，请求头/cookie 不外发）；否则视作
     game_record 基座相对路径（前导 '/' 容错剔除，基座本身以 '/' 结尾）。"""
@@ -211,12 +211,12 @@ class MysClient:
     """米游社通用客户端：login / request / logout（均为单轮语义，无内部循环）。"""
 
     def __init__(self, store: SessionStore, device: DeviceIdentity, http_send: HttpSend) -> None:
-        """三参全部必填无默认（design.md §2.2 / §2.5 契约 3）：requests 真实
+        """三参全部必填无默认：requests 真实
         实装由运行入口（MCP 装配层）传入，测试注入剧本式假实现——缺任一参数
         构造即失败，测试不注入就零副作用。
 
         内存 cookie 罐构造时从落盘会话恢复：跨进程续用已落盘会话（MCP server
-        重启后不重登即可继续请求，design.md §2.4 重启语义的前提）。
+        重启后不重登即可继续请求）。
         """
         self._store: SessionStore = store
         self._device: DeviceIdentity = device
@@ -258,7 +258,7 @@ class MysClient:
             ensure_ascii=False,
             separators=(',', ':'),
         ).encode('utf-8')
-        # 重发基座留存（design.md §2.2 complete_verification「原样重发」）：
+        # 重发基座留存（complete_verification「原样重发」契约）：
         # 票据重发须与首轮请求 body/其余头逐字节一致（官方前端拦截器语义，
         # login-verification-research.md §4.1），而 complete_verification 签名
         # 不含账密——最近一次登录请求的加密产物在此留存，DS 由重发方重新生成
@@ -279,7 +279,7 @@ class MysClient:
                 # 不满足即非成功，保守上抛不落盘（不写空会话文件）
                 raise MysApiError(0, '登录响应未下发任何 Set-Cookie，会话不可用')
             self._jar.update(cookies)
-            # 清除角色定位缓存（换绑后强制重新发现，design.md §2.2 login）：
+            # 清除角色定位缓存（换绑后强制重新发现）：
             # SessionStore 的删除原语只有 clear（session+role 双删），复用后再
             # 紧跟整体覆盖重建 session.json——净效果 = role 删除 + 新会话落盘；
             # 两步之间崩溃的窗口内无会话文件，下次直接重登，无脏态残留
@@ -293,7 +293,7 @@ class MysClient:
     def complete_verification(self, challenge: AigisChallenge, ticket: dict) -> LoginResult:
         """验证单轮收尾：票据组装 → 回传头 → 原样重发 loginByPassword → 分诊。
 
-        单轮语义（design.md §2.2 / §2.5 契约 2，无内部循环）：带票据重发恰一次。
+        单轮语义（无内部循环）：带票据重发恰一次。
         分诊：retcode==0 → Set-Cookie 全量入罐 + save_session_full 整体覆盖落盘
         （expired 标记随覆盖消失；role.json 一并清除——验证完成即登录事件完成，
         登录态可能换绑，与 login 成功路径同一收取逻辑）→ ok；-3101 或 aigis 头
@@ -355,7 +355,7 @@ class MysClient:
         标记——flow.md §4.4「无论成败都收取」口径，服务端滚动下发不因业务失败
         而中断）；retcode 命中 ``SESSION_EXPIRED_RETCODES``
         抛 MysSessionExpired；1034 落入通用非 0 分支按裸 MysApiError 抛出
-        （1034 验证链本迭代不实现，design.md §1 明确不解决项 7）；成功返回
+        （1034 验证链为后续迭代事项）；成功返回
         data 字段（非 dict 视为空）。"""
         url = _resolve_request_url(path_or_url)
         if query:
@@ -393,7 +393,7 @@ class MysClient:
     # ---- 登出 ----
 
     def logout(self) -> None:
-        """仅本地清除（design.md §2.2）：删 session.json 与 role.json（保留
+        """仅本地清除：删 session.json 与 role.json（保留
         device.json 设备锚）并清空内存罐。不调用任何官方登出端点——flow.md
         全文无登出端点记载，不引入未验证请求。幂等。"""
         self._store.clear()

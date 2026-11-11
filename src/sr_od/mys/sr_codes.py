@@ -1,10 +1,10 @@
 """米游社 game_record 中文码表快照与三层查表助手。
 
-设计出处：changes/mys-roster-detail/design.md §2 契约 1（三层查表，miss 不抛异常）。
-映射内容的权威草案：codes-draft.md（mys-roster-detail 侦察报告，四源交叉验证）——
+设计出处：docs/develop/sr_od/backend/mys.md「sr_od/mys（崩铁特有封装）」节
+（三层查表，miss 不抛异常）。映射内容的权威草案：四源交叉验证的码表侦察稿——
 本模块只固化其映射，禁自行增删改；未来新码一律走兜底而非进表。
 
-三层查表契约（design.md §2 契约 1）：
+三层查表契约：
 1. 响应原生词典优先：调用方透传 ``avatar/info`` 的 ``data.property_info``
    （56 码官方词典，随响应更新、自动前向兼容新码）。**键须先归一为 int**——
    响应原生键是字符串。显示名取词条内「干净可用值」（非空且不含 ``#``），
@@ -13,14 +13,14 @@
    property_name_relic 带 ``#1[i]``（靠 name 字段规避），对偶处理；
 2. 硬编码快照兜底：下方 ``PROPERTY_INFO_SNAPSHOT``（2026-11-03 实测词典 56 码
    逐键固化）与四张小表；
-3. 终兜底：「未知属性(pt=N)」等文案 + warning，不抛异常（官方有预占码位习惯，
-   codes-draft.md §5；新码等响应词典带名后经层 1 自动前向兼容）。
+3. 终兜底：「未知属性(pt=N)」等文案 + warning，不抛异常（官方有预占码位习惯；
+   新码等响应词典带名后经层 1 自动前向兼容）。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数；词典参数由调用方传入并在
 调用侧归一键型，本模块不做缓存。
 
 撞域纪律：星魂 ``ranks[].pos`` 同取 1-6 但语义是星魂序号，与遗器部位码撞值域
-（codes-draft.md 表 4「同码不同义」警告）——``RELIC_POS_CN`` / ``resolve_relic_pos_cn``
+（同码不同义）——``RELIC_POS_CN`` / ``resolve_relic_pos_cn``
 只许服务遗器/饰品 pos 字段，两处禁共用。
 """
 
@@ -47,12 +47,12 @@ class PropertyNameInfo(TypedDict, total=False):
     property_name_relic: str
 
 
-# ---- 表 1：property_type → 属性中文名（codes-draft.md 表 1）----
+# ---- 表 1：property_type → 属性中文名 ----
 # 2026-11-03 实测词典 56 码逐键固化：53 实名 + 2 空名占位如实存空串 + 1 占位符
-# 修正码（36）。三域编号独立（面板/主词条/副词条，codes-draft.md §1.1），
+# 修正码（36）。三域编号独立（面板/主词条/副词条），
 # 双层兜底下按码查名即可，无需分域接口。
 PROPERTY_INFO_SNAPSHOT: dict[int, str] = {
-    # 面板码 1-11（codes-draft.md §1.2；64 角色全员出现）
+    # 面板码 1-11（64 角色全员出现）
     1: '生命值',
     2: '攻击力',
     3: '防御力',
@@ -80,7 +80,7 @@ PROPERTY_INFO_SNAPSHOT: dict[int, str] = {
     23: '量子属性抗性提高',
     24: '虚数属性伤害提高',
     25: '虚数属性抗性提高',
-    # 遗器词条码 26-36（codes-draft.md §1.3：26/28/30 基础值、27/29/31 平坦值、
+    # 遗器词条码 26-36（26/28/30 基础值、27/29/31 平坦值、
     # 32-34 百分比组、35 词典保留码勿在词条解析依赖）
     26: '基础生命值',  # 词典 name 干净；其 relic 字段带占位符——快照存干净名
     27: '生命值',
@@ -102,7 +102,7 @@ PROPERTY_INFO_SNAPSHOT: dict[int, str] = {
     41: '风属性抗性提高',
     42: '量子属性抗性提高',
     43: '虚数属性抗性提高',
-    # 词条主/副码 51-61（54/55 仅主词条、57 仅副词条，codes-draft.md §1.3）
+    # 词条主/副码 51-61（54/55 仅主词条、57 仅副词条）
     51: '速度',
     52: '暴击率',
     53: '暴击伤害',
@@ -119,7 +119,7 @@ PROPERTY_INFO_SNAPSHOT: dict[int, str] = {
     72: '欢愉度',
 }
 
-# ---- 表 2：base_type 命途 → 中文（codes-draft.md 表 2）----
+# ---- 表 2：base_type 命途 → 中文 ----
 # 全集 = 9：官方 wiki 筛选器全集、接口实测码域 1-9、genshin.py StarRailPath
 # 枚举、StarRailRes paths.json 四源同构（任务书曾假设 14，被三源证伪，勿扩
 # 10-14）。基准：9=欢愉（开拓者 id 8010，wiki「开拓者•欢愉」词条双确认）、
@@ -136,7 +136,7 @@ BASE_TYPE_CN: dict[int, str] = {
     9: '欢愉',
 }
 
-# ---- 表 3：element 英文码 → 属性中文（codes-draft.md 表 3，wiki 筛选器措辞）----
+# ---- 表 3：element 英文码 → 属性中文（wiki 筛选器措辞）----
 # element_id 掩码族 = 1/2/4/8/16/32/64（2 的幂位掩码，与响应 element_id 字段
 # 一一对应）；封装以字符串码为准、element_id 仅作掩码运算用。陷阱：接口字符串
 # 用 lightning，社区 StarRailRes 内部名用 Thunder——两套名字勿混淆。
@@ -150,7 +150,7 @@ ELEMENT_CN: dict[str, str] = {
     'imaginary': '虚数',  # element_id=64
 }
 
-# ---- 表 4：遗器 pos → 部位中文（codes-draft.md 表 4）----
+# ---- 表 4：遗器 pos → 部位中文 ----
 # 1-4 = 隧洞遗器、5-6 = 位面饰品（wiki 遗器详情页逐部位措辞）。
 # 撞域纪律：星魂 ranks[].pos 同取 1-6 但语义是星魂序号——两处禁共用本表。
 RELIC_POS_CN: dict[int, str] = {
@@ -162,8 +162,8 @@ RELIC_POS_CN: dict[int, str] = {
     6: '连结绳',
 }
 
-# 表 4 附：部位 → 主词条可选集（配置封闭集，StarRailRes 四稀有度档交叉一致，
-# codes-draft.md 表 4）。供 validate_relic_main_affix 做轻校验；脚部 34（防御%）
+# 表 4 附：部位 → 主词条可选集（配置封闭集，StarRailRes 四稀有度档交叉一致）。
+# 供 validate_relic_main_affix 做轻校验；脚部 34（防御%）
 # 属配置集但实测账号未观测到，如实保留。
 RELIC_MAIN_AFFIX_ALLOWED: dict[int, frozenset[int]] = {
     1: frozenset({27}),  # 头部：生命值平坦（物理约束恒成立）
@@ -223,7 +223,7 @@ def resolve_property_cn(pt: int, property_info: Mapping[int, PropertyNameInfo] |
 def resolve_base_type_cn(bt: int) -> str:
     """base_type 数字码 → 命途中文名（miss 兜底不抛异常）。
 
-    codes-draft.md §5：新命途实装时走兜底勿猜码。
+    新命途实装时走兜底勿猜码。
     """
     name = BASE_TYPE_CN.get(bt)
     if name is not None:

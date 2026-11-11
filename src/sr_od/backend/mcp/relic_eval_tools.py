@@ -1,8 +1,9 @@
 """遗器有效词条评估纯计算模块（``mys_evaluate_relic_substats`` 的计算层）。
 
-设计出处：docs/develop/sr_od/backend/changes/relic-substat-eval/design.md
-§2.2（出参 schema）/§2.3（计算规则 1-10）/§2.4（归一表与口径包表）/
-§2.5（模块路径与「纯函数+常量+注册分离」取舍，同构 character_tools.py 先例）。
+设计出处：docs/develop/sr_od/backend/mys.md「MCP 工具」节
+``mys_evaluate_relic_substats`` 行（工具契约与出参 schema）；计算规则 1-10、
+归一表与口径包表为本模块固化口径（以模块常量注释与单测为准）；
+「纯函数+常量+注册分离」取舍同构 character_tools.py 先例。
 零 IO、零副作用：名册明细与口径均由调用方传入；MCP 注册层在 ``mys_tools.py``
 （缺省名册经控制器自拉 + 非 success 信封原样透传），本模块不 import 任何
 MCP / backend 依赖。
@@ -44,15 +45,15 @@ STANDARD_STAT_NAMES: frozenset[str] = frozenset({
 #: 消歧；出处见模块 docstring 名册核对结论）
 FLAT_PERCENT_HOMONYM_NAMES: frozenset[str] = frozenset({'生命值', '攻击力', '防御力'})
 
-#: 同名异义三词的百分比标准名（design.md §2.4 百分比标准名）
+#: 同名异义三词的百分比标准名
 PERCENT_STANDARD_BY_NAME: dict[str, str] = {
     '生命值': '生命值提高',
     '攻击力': '攻击力提高',
     '防御力': '防御力提高',
 }
 
-#: 速记别名表：口径入参用词 → 标准名（定义出处 = design.md §2.4；
-#: 用词依据 = mys_get_roster_detail 字段名与 game-coach 角色档措辞）
+#: 速记别名表：口径入参用词 → 标准名（用词依据 = mys_get_roster_detail
+#: 字段名与 game-coach 角色档措辞）
 STAT_NAME_ALIASES: dict[str, str | list[str]] = {
     '攻击%': '攻击力提高',
     '大攻击': '攻击力提高',
@@ -71,10 +72,10 @@ STAT_NAME_ALIASES: dict[str, str | list[str]] = {
     '回能': '能量恢复效率',
     '治疗': '治疗量加成',
     '双暴': ['暴击率', '暴击伤害'],
-    '速度': '速度',  # 同名直通（design §2.4 原文）
+    '速度': '速度',  # 同名直通
 }
 
-#: 口径包表：速记 → 标准名集合（定义出处 = design.md §2.4；定稿判据 =
+#: 口径包表：速记 → 标准名集合（定稿判据 =
 #: 验收名单 12 人角色档口径行实际用到的包，与名册词条名全集无关）
 STAT_PACKS: dict[str, list[str]] = {
     '双暴攻': ['暴击率', '暴击伤害', '攻击力提高'],
@@ -392,13 +393,14 @@ def _evaluate_one(entry: dict, criteria_entry: dict) -> dict:
 
 
 def evaluate(roster_data: list[dict], criteria: list[dict]) -> dict:
-    """评估遗器有效词条命中（统一信封；design.md §2.2/§2.3）。
+    """评估遗器有效词条命中（统一信封）。
 
     Args:
         roster_data: ``mys_get_roster_detail`` 返回的 data（角色明细数组，
             元素结构 = CharacterDetail 的 asdict；本函数只读
             name/relics/ornaments 及遗器词条字段）。
-        criteria: 每角色口径列表（元素字段见 design.md §2.2 字段表）。
+        criteria: 每角色口径列表（元素字段：character_name/effective_substats/
+            main_stat_expectations/stat_thresholds）。
 
     Returns:
         ``{"status","message","data"}``：
