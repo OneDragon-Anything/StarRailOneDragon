@@ -92,18 +92,17 @@ def merge_ocr_result_to_multiple_line(ocr_map, join_space: bool = True, merge_li
     return merge_ocr_result_map
 
 
-def match_word_list_by_priority(
+def match_all_words(
         ocr_result_map: dict[str, MatchResultList],
         word_list: list[str],
-        ignore_list: Optional[list[str]] = None
-) -> tuple[str, MatchResultList]:
+) -> dict[str, MatchResultList]:
     """
-    在OCR匹配结果中 找到目标匹配结果
-    最终按传入word_list的顺序 返回第一个匹配的结果
+    在OCR匹配结果中 找到所有目标词的匹配结果
+    与 match_word_list_by_priority 的区别:返回全部命中词而非首个命中,
+    支持「多词同时存在才动作」类判定(如弹窗需要两个按钮词同现来确认画面)
     :param ocr_result_map: OCR识别结果
-    :param word_list: 按顺序匹配的目标列表
-    :param ignore_list: 目标列表中部分元素只是为了防止匹配错误例如传入 ["领取", "已领取"] 可以防止 "已领取*1" 匹配到 "领取"，而"已领取"又不需要真正匹配
-    :return: 匹配结果
+    :param word_list: 目标词列表
+    :return: {word: MatchResultList} 仅包含命中的词
     """
     to_match_list: list[str] = [
         gt(i, 'game') for i in word_list
@@ -119,6 +118,24 @@ def match_word_list_by_priority(
             match_map[match_word] = MatchResultList(only_best=False)
 
         match_map[match_word].extend(mrl)
+
+    return match_map
+
+
+def match_word_list_by_priority(
+        ocr_result_map: dict[str, MatchResultList],
+        word_list: list[str],
+        ignore_list: Optional[list[str]] = None
+) -> tuple[str, MatchResultList]:
+    """
+    在OCR匹配结果中 找到目标匹配结果
+    最终按传入word_list的顺序 返回第一个匹配的结果
+    :param ocr_result_map: OCR识别结果
+    :param word_list: 按顺序匹配的目标列表
+    :param ignore_list: 目标列表中部分元素只是为了防止匹配错误例如传入 ["领取", "已领取"] 可以防止 "已领取*1" 匹配到 "领取"，而"已领取"又不需要真正匹配
+    :return: 匹配结果
+    """
+    match_map: dict[str, MatchResultList] = match_all_words(ocr_result_map, word_list)
 
     for word in word_list:
         if ignore_list is not None and word in ignore_list:
