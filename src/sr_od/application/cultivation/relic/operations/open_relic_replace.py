@@ -21,9 +21,11 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
+from sr_od.application.cultivation.relic.relic_list_recognizer import (
+    RelicReplaceRecognizer,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_codes import RELIC_POS_CN
-from sr_od.operations.equip_list_recognizer import RelicReplaceRecognizer
 from sr_od.operations.sr_operation import SrOperation
 
 _RELIC_TAB_SCREEN: str = '角色-遗器'

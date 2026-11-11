@@ -1,7 +1,7 @@
 """遗器位 → 替换遗器 operation(为当前角色装备指定套装的指定部位遗器)。
 
-角色养成系列的装备线 op(与 EquipLightConeOp 同构,定位算法共用
-grid_template_locate)。交互链实机摸底:
+角色养成系列的装备线 op(与 EquipLightConeOp 同构,定位算法同源——
+本域自含实现见 relic_list_recognizer)。交互链实机摸底:
 - 角色遗器着装页**点目标遗器位直达该部位的替换界面**(部位筛选已锁定,
   无需先点「替换」再选部位);4 列卡片网格;
 - 卡片上无遗器名(单件名只在选中后右侧详情可读);同套装同部位件名相同
@@ -32,9 +32,11 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.cultivation.relic.relic_list_recognizer import (
+    RelicReplaceRecognizer,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.mys.sr_relic_sets import PIECE_TO_SET
-from sr_od.operations.equip_list_recognizer import RelicReplaceRecognizer
 from sr_od.operations.sr_operation import SrOperation
 
 _RELIC_TAB_SCREEN: str = '角色-遗器'

@@ -42,8 +42,10 @@ from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.cultivation.light_cone.light_cone_list_recognizer import (
+    LightConeReplaceRecognizer,
+)
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.equip_list_recognizer import LightConeReplaceRecognizer
 from sr_od.operations.sr_operation import SrOperation
 
 _LC_TAB_SCREEN: str = '角色-光锥'
@@ -54,7 +56,7 @@ _REPLACE_SCREEN: str = '光锥-替换'
 _ENTRY_SCREENS: list[str] = [_LC_TAB_SCREEN, _REPLACE_SCREEN]
 
 # 网格几何:9 列,实机卡列首中心 = 列表区 x1+72.5、列距恒 139px(锚点卡实测);
-# 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见 grid_template_locate)
+# 行位置随滚动变化,不预设行带 —— 由特征点 y 聚簇动态获得(见本域 light_cone_list_recognizer)
 # 注:9 等分推导的列距 147.2 与实机 139 不符,误差随列号线性增长至末列 +68px
 # (点击落卡右缘),已废弃。
 _GRID_COLS: int = 9
@@ -208,7 +210,8 @@ class EquipLightConeOp(SrOperation):
         """SIFT 落格投票定位目标卡候选序列 → 逐个点击;屏内候选耗尽滚动重扫。
 
         候选按票降序 = 未被头像角标遮挡(未被装备)的件优先 —— 多件同名副本
-        场景下避免抢走他人装备的件(见 grid_template_locate 模块 docstring)。
+        场景下避免抢走他人装备的件(落格投票全量清单语义见本域
+        light_cone_list_recognizer.locate_cells_by_votes)。
         每轮开头画面级判定:拖拽/误触退出列表立刻显式失败(重新打开后再调)。"""
         current = self.check_and_update_current_screen(
             self.last_screenshot, screen_name_list=[_REPLACE_SCREEN])
