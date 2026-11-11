@@ -53,11 +53,13 @@
 - F16 按钮条右端小按钮（≈(383,993)）= 升降序切换：点击列表反转，图标带方向箭头（帧：排序方向反转列表「1↓」）。
 - ⚠️ F15 的推论（现存隐患）：`EquipRelicOp` 重进路径用文本区「按钮-遗器建议排序」（OCR 命中「遗器建议排序」文本）打开排序弹窗——列表一旦被设为静态排序（含用户手动设置），该文本区不再命中「遗器建议排序」，**排序前置链打不开弹窗会卡住**。本迭代必须把该 area 改为纯坐标区（rect 恒定不依赖文本）。
 
-**词缀读区**（帧：候选详情词缀）：
+**词缀读区**（帧：候选详情词缀 / 候选详情词缀平坦值）：
 
 - F17 点选列表卡后，右侧详情面板 = 选中件完整词条：读区-遗器名（件名 OCR 清晰）、读区-部位等级（「头部」+「+15」）、读区-主词条（「生命值」+「705」）、读区-副词条（最多 4 行）。
-- F18 副词条行的 OCR 形态 = **词条名（左）+ 数值串（右）**，强化次数（绿色小数字）被 OCR 拼进数值串尾部：实测样例「生命值 6.9%0」「防御力 9.1%0」「暴击伤害 22.0%3」「效果抵抗 3.4%」——**次数可能缺失**（第 4 词条 0 次时绿色小数字未读出），解析必须容错：数字后缀有则用、缺失按 0 计。
-- F19 masked 卡（重掷动画遮罩）的卡面不可识别（已档行为），但点选后**右侧详情读区正常可读**——扫描 op 对 masked 卡以详情 OCR 件名为准，不依赖 TM 身份。
+- F18 副词条行 = **词条名（左）+ 数值（右对齐）+ 强化次数角标（独立元素）**。次数 ≥1 时渲染**浅绿填充圆形角标**（内部深色数字，位于数值右侧至行右缘的固定列位，直径 ≈26px）；次数 0 不渲染角标。帧实证两形态：候选详情词缀帧（% 词条：生命值 6.9% [绿1] / 防御力 9.1% [绿1] / 暴击伤害 22.0% [绿3] / 效果抵抗 3.4% [无角标，0 次]）、候选详情词缀平坦值帧（平坦词条：防御力 55 [绿2]，与 % 词条 18.1% [绿2] 同帧共存）。
+- F19 行级 OCR 对绿标角标的读法**不稳定且会拼进数值串**：同一元素两种实证误读——候选详情词缀帧把绿标「1」读成裸数字「0」拼进串（「6.9%0」），平坦值帧把绿标「2」读成「②」拼进串（「55②」）。**次数判读不信任行级 OCR 尾数**。
+- F20 次数解析策略（由 F18/F19 推定）：每行对**角标固定区域**（行右缘、数值右缘以右，1080p 空间 x≈1855-1895）做绿色圆形检测——命中 = 有角标，对圆内数字单独放大 OCR 得 times；无圆 = times 0。数值串按此清洗：% 词条截到 %，平坦词条取完整数字（「速度 25」类歧义由角标几何分离消除），行级 OCR 拼入的角标字符（② / 裸数字）一律剔除。
+- F21 masked 卡（重掷动画遮罩）的卡面不可识别（已档行为），但点选后**右侧详情读区正常可读**——扫描 op 对 masked 卡以详情 OCR 件名为准，不依赖 TM 身份。
 
 ### 2.2 词缀约束模型
 
@@ -69,30 +71,32 @@ substat_criteria: list[dict] | None = None
 # 例: [{"stats": ["暴击"], "min_times": 1}, {"stats": ["暴伤", "速度"], "min_times": 5}]
 ```
 
-- 词条词解析复用 `relic_eval_tools._resolve_criteria_word` 的三表（口径包 → 别名 → 标准名直通）。**下沉**：三表 + 解析函数从 `src/sr_od/backend/mcp/relic_eval_tools.py` 搬到业务层新模块 `src/sr_od/mys/sr_relic_stats.py`（遗器词条语义常量层，MCP 评估与游戏内 op 共用单一源）；`relic_eval_tools.py` 改 import 并删除本地副本。测试 import 路径随迁、断言不变。
+- 词条词解析复用 `relic_eval_tools` 的语义层。**下沉清单（逐符号）**：`STANDARD_STAT_NAMES` / `FLAT_PERCENT_HOMONYM_NAMES` / `PERCENT_STANDARD_BY_NAME` / `STAT_NAME_ALIASES` / `STAT_PACKS` 五表 + `_resolve_criteria_word` / `_resolve_roster_stat` / `_parse_stat_value` 三函数，从 `src/sr_od/backend/mcp/relic_eval_tools.py` 全量搬到业务层新模块 `src/sr_od/mys/sr_relic_stats.py`（遗器词条语义常量层，MCP 评估与游戏内 op 共用单一源——部分搬迁会制造同名异义消歧双实现，正是要防的漂移）；`MAIN_CHECK_SLOTS` / `ROSTER_STRUCTURE_ERROR_MESSAGE` 是评估工具专用，留在 `relic_eval_tools.py` 并改 import 下沉符号。
+- 测试安排：新增 `sr_relic_stats` 测试文件；既有 relic_eval 用例中规则 1（口径词解析）场景随迁为新模块用例（两个既有测试文件均不直接 import 待搬符号，无 import 随迁面）。
 - 游戏内 OCR 词条名 → 标准名的解析同用一套（游戏词条文本与名册 name_cn 同为官方文本；平坦/% 同名异义按数值串的 `%` 后缀消歧，逻辑同 `_resolve_roster_stat`）。
-- 判定对象 = **副词条强化次数**（副词条 1-4 条，0-15 次合计）；次数缺失按 0 计（F18；+0 件全 0 次天然不满足任何 ≥1 约束，语义正确）。次数缺失造成的漏判风险在候选档案中带 `times_confirmed: false` 标记供人复核。
+- 判定对象 = **副词条强化次数**（副词条 1-4 条，每条 0-5 次、合计 0-15）；次数一律按 F20 的角标区域判读（不信任行级 OCR 尾数），0 次无角标天然不满足任何 ≥1 约束（+0 件全 0 次，语义正确）。角标数字的小图 OCR 失败时该行 `times_confirmed: false`，约束判定按不满足处理并标记供人复核（宁漏装不误装）。
 
 ### 2.3 模块与 op 设计
 
 新模块 `src/sr_od/application/cultivation/relic/relic_detail_reader.py`（遗器域内，识别器同域）：
 
-- `read_detail(ctx) -> dict`：OCR 读右侧详情读区（件名/部位等级/主词条/副词条），返回结构化 `{piece, pos_cn, level, main: {name, value}, subs: [{name, value, times, times_confirmed}]}`；词条名经 `sr_relic_stats` 解析为标准名，未识别词原样保留并标记。
+- `read_detail(ctx) -> dict`：OCR 读右侧详情读区（件名/部位等级/主词条/副词条），返回结构化 `{piece, pos_cn, level, main: {name, value}, subs: [{name, value, times, times_confirmed}]}`；词条名经 `sr_relic_stats` 解析为标准名，未识别词原样保留并标记。次数按 F20 角标区域判读（绿色圆检测 + 圆内数字放大 OCR），不信任行级 OCR 尾数。
 - 供 `ScanRelicCandidatesOp`（扫描）与 `EquipRelicOp`（约束判定）共用，读取逻辑单一实现点。
 
 新 op `FilterRelicReplaceOp`（`operations/filter_relic_replace.py`）：
 
 - 参数：`pos: int`、`set_name: str | None = None`、`sort_stat: str | None = None`（标准名或别名，经解析层归一；第一版只支持单属性——多属性优先级 UI 支持后置）。
 - 入口：自含（同 `OpenRelicReplaceOp.check_entry` 同源逻辑：已在正确部位列表复用，不在则从着装页点遗器位进入；域内 op 各自持入口副本为既有惯例）。
-- `set_name` 链：漏斗开面板（F1）→ 点套装「点击选择」→ 弹窗（F3，按套装类别切「位面饰品」TAB）→ OCR 扫行找目标套装点行文本中心（F4，滚动失效判定同 `SelectBagRelicOp`）→ 确认（F5）→ 漏斗关面板。验证 = 「筛选中」角标 area 命中（F7）。
-- `sort_stat` 链：点排序设置按钮（改纯坐标，见 F15 推论）→ 关建议排序（既有四节点链复用）→ 弹窗滚动区内 OCR 动态定位目标属性行（F12 行文本 = 属性名，静态 area 不可行）→ 点行 → 确认（F14）。验证 = 排序摘要读区含属性名（F15）。
-- 两参数独立可选；都 None = 幂等只保证部位正确。不做「清除筛选/清除排序」动作（边界：用户手动清或候后续补「重置」链）。
+- `set_name` 链：漏斗开面板（F1）→ 点套装「点击选择」→ 弹窗（F3，按套装类别切「位面饰品」TAB）→ **先点「全部清除」清残留勾选**（幂等：重复运行同参数时行已勾选，盲点即反选；清除范围含套装勾选以 S3 实机验证为准）→ OCR 扫行找目标套装点行文本中心（F4）→ 确认（F5）→ 漏斗关面板。验证 = 「筛选中」角标 area 命中（F7）。
+- `sort_stat` 链（排序前置子链与 `EquipRelicOp` 既有链**同源复制**、注明出处，域内节点复制为既有惯例；子链构成与 equip_relic 版本不同——**不含确认节点**，属性行点选后统一确认）：点排序设置按钮（改造后纯坐标区）→ 关建议排序 → 基础排序固定选「等级」→ **不确认** → 弹窗滚动区内 OCR 动态定位目标属性行（F12 行文本 = 属性名，静态 area 不可行）→ **先点「全部清除」清属性排序残留**（F13 多选优先级制 + F11 选中历史保留，不清则产出「残留属性+目标属性」混合优先级）→ 点目标属性行 → 确认（F14）。验证 = 排序摘要读区与期望**全等**「等级|<属性名>」（F15；含式校验拦不住残留属性混合）。
+- 两参数独立可选；都 None = 幂等只保证部位正确。**不做「清除筛选/清除排序」收尾动作**——筛选态是后续扫描的流程前提（保留即意图）；跨 op 残留风险与防线见下条。
+- **共享持久筛选态的跨 op 约束**（F9：替换屏与背包共享同一筛选存储）：①链内自洽——Filter(set=S)→Scan→Equip(该套装件) 全程在 S 的筛选列表上进行，目标件不被过滤；②链外防线——`EquipRelicOp` 入口预检「标识-筛选中」角标，命中即显式失败并提示「列表带历史套装筛选，目标件可能被隐藏；先清除筛选（人工或后续补清除链）再跑」；③操作顺序约束写入 game coach 流程档（S6）。
 
 新 op `ScanRelicCandidatesOp`（`operations/scan_relic_candidates.py`）：
 
 - 参数：`pos: int`、`expected_character: str | None = None`（复用 EquipRelicOp 的角色核对语义）。**单屏语义**（用户裁定「先给一屏」）：只扫当前视口，翻页由调用方滚动后再调。
 - 前置：已在替换屏 + 部位正确 + **静态排序**（入口检查排序摘要读区 =「遗器建议排序」时显式失败，要求先跑 `FilterRelicReplaceOp` 或手动静态排序——动态重排下点选→读取会漂移，EquipRelicOp 已档教训）。
-- 行为：`recognize_for_pos` 整屏清单 → 逐卡点选（每卡 wait≈1.2s 等详情刷新）→ `read_detail` 读词缀 → 合并档案。件名以**详情 OCR 为准**（F19，TM 身份仅先验）；masked 卡照常进档案。
+- 行为：`recognize_for_pos` 整屏清单 → 逐卡点选（每卡 wait≈1.2s 等详情刷新）→ `read_detail` 读词缀 → 合并档案。件名以**详情 OCR 为准**（F21，TM 身份仅先验）；masked 卡照常进档案。
 - 输出：`round_success(result=JSON)`——`{"pos", "candidates": [{"cell", "piece", "set", "pos_cn", "level", "owner", "main", "subs", "times_confirmed"}], "bottom_reached": bool}`；`bottom_reached` = 末行带锚点数 < 4 列（调用方据此决定是否滚动续扫）。
 - 副作用边界：只改选中态，不触 卸下/替换/重掷。
 
@@ -101,8 +105,8 @@ substat_criteria: list[dict] | None = None
 - 新参数 `substat_criteria: list[dict] | None = None`；None = 现行为完全不变（含既有测试兼容）。
 - 提供时：候选定位不变（件名匹配）；`verify_selected` 节点在件名匹配后追加 `read_detail` → 约束判定（`sr_relic_stats` 解析）：
   - 满足 → 照旧进确认替换；
-  - 不满足 → 记录该件词缀概要进日志，转 `RESELECT` 推进下一候选（复用既有 `_candidate_idx` 游标与 `_RESELECT_AFTER` 机制——「验证不过换下一件」的节点流转已存在）；
-  - 全部候选耗尽不满足 → `round_fail`，fail 信息带逐件概要（人可据此放宽约束）。
+  - 不满足 → 该件词缀概要 append 进实例级清单 `self._substat_reports`（如「+15 防御力55x2 暴伤18.1%x2 …不满足 暴击≥1」），转 `RESELECT` 推进下一候选（复用既有 `_candidate_idx` 游标与 `_RESELECT_AFTER` 机制——「验证不过换下一件」的节点流转已存在）；
+  - **耗尽分流**（改在 `find_and_select` 既有滚动预算耗尽分支）：`_substat_reports` 非空 → `round_fail('全部 N 件候选均不满足词缀约束' + 逐件概要)`；为空 → 现文案（「滚动 12 屏未找到」语义不变）。文案同时附「列表可能带残留筛选」提示（与筛选中预检互为双保险）。
 - 选中的那件如果是**被穿着件**（owner≠null 且 allow_take_over=False）现有取消机制照旧生效——约束判定在取消逻辑之前不改变其语义。
 
 ### 2.4 画面建档清单（S1 用 MCP `upsert_screen_area` 系列工具落盘）
@@ -112,15 +116,16 @@ substat_criteria: list[dict] | None = None
   - 新增：「按钮-筛选漏斗」纯坐标区、「按钮-排序方向」纯坐标区、「读区-排序摘要」OCR 区、「标识-筛选中」OCR 区。
 - 新 screen「遗器-替换-筛选」（筛选面板，帧：筛选面板开）：id_mark = 「文本-快速操作」+「文本-稀有度标签」（详情面板无这两词）；area：按钮-套装选择、按钮-保存、按钮-重置、按钮-筛选方案、TAB-状态（快速操作区只作 id_mark 不点击）。
 - 新 screen「遗器-替换-筛选规则」（F3 弹窗，帧：筛选规则弹窗）：id_mark = 「标题-筛选规则」；area：区域-套装列表、TAB-位面饰品、按钮-确认、按钮-全部清除。
-- 「遗器-排序规则」screen 增补：区域-弹窗滚动区（拖拽定位）；属性行靠 OCR 动态定位不建静态 area（滚动位置相对，行 y 不定）。
+- 「遗器-排序规则」screen 增补：区域-弹窗滚动区（拖拽定位）；属性行靠 OCR 动态定位不建静态 area（滚动位置相对，行 y 不定）；「按钮-全部清除」选中态不依赖（点击后由后续步骤验证）。
 - 画面 doc 同步：`docs/game/screens/遗器-替换.md`（筛选漏斗/排序摘要/升降序）、`遗器-排序规则.md`（属性排序分区）、新建筛选面板与弹窗两篇。
+- 新证据帧归档：`候选详情词缀平坦值.webp`（已入库，S2 解析单测的平坦形态 fixture）。
 
 ### 2.5 测试设计
 
-- fixture：S1 归档的 14 帧即测试资产（筛选面板/弹窗/排序三态/属性选中态/排序后列表/词缀详情帧）。
-- `relic_detail_reader`：词缀详情帧的解析单测（含次数缺失容错、平坦/% 消歧、未识别词标记）。
+- fixture：已归档 **15 张摸底帧（14 张交互链帧 + 平坦值词缀帧）+ 既有建档帧 `default.webp` 共 16 张**（default.webp = 替换屏默认态：列表 + 右侧详情面板 + 排序摘要「遗器建议排序」——S4 流程测试「建议排序开着 → 显式失败」的替换屏默认态帧取它；平坦值帧 `候选详情词缀平坦值.webp` 为 S2 解析单测的平坦形态 fixture）。
+- `relic_detail_reader`：词缀详情两帧（% 形态 + 平坦形态）的解析单测（角标区域判读、次数缺失/0 次、平坦/% 消歧、未识别词标记）；整帧 OCR 一次、断言共享结果（慢计算只算一次），单条实测 ≥2s 登记 `sr-od-test/slow_marks.txt`。
 - `sr_relic_stats`：约束解析单测（口径包/别名/未知词；从 relic_eval 既有用例随迁 + 遗器侧新用例）。
-- `FilterRelicReplaceOp` / `ScanRelicCandidatesOp` / `EquipRelicOp` 约束模式：fixture_controller 流程测试（剧本 = 摸底交互链，节点点击与转移断言；约束模式含「首件不满足→跳过→次件满足→替换」与「全部不满足→fail 带概要」两条）。
+- `FilterRelicReplaceOp` / `ScanRelicCandidatesOp` / `EquipRelicOp` 约束模式：fixture_controller 流程测试（剧本 = 摸底交互链，节点点击与转移断言；约束模式含「首件不满足→跳过→次件满足→替换」与「全部不满足→fail 带概要分流」两条；幂等含「重复运行同参数不反选」）。
 - 既有 `EquipRelicOp` 测试（criteria=None 路径）必须全绿——现行为不变的回归锁。
 
 ### 2.6 关键取舍
