@@ -18,3 +18,9 @@ msgstr "Resource Download"
 
 msgid "文本资源管理"
 msgstr "Text Resource Management"
+
+msgid "智库"
+msgstr "Data Bank"
+
+msgid "已收录"
+msgstr "Collected"
