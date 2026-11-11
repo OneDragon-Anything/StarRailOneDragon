@@ -59,20 +59,20 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ### 编队与战斗 op
 
-- `TlFhTeamFillOp`（`sr_od.application.treasures_lightward.operations.forgotten_hall.team_fill.TlFhTeamFillOp`，参数 team_names = 8 个角色中文名按波序拼接，每 4 人切一波）：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
+- `TlFhTeamFillOp`（`sr_od.application.treasures_lightward.operations.forgotten_hall.team_fill.TlFhTeamFillOp`，参数 team_names = 8 个角色中文名的列表（按波序，每 4 人切一波））：清空编队 + 按波填人。⚠️ 仅适用忘却之庭编队屏，其余类型布局不同不可套用。
 - 编队屏点「按钮-最终开始」发起挑战（ops 均不点它，由调用方做）——MCP 手动操作：`analyze_screen` 命中「忘却之庭-编队」后 `click_game(x=1672, y=985, pc_alt=True)` 点按钮中心（屏级 pc_alt 锁光标）。
 - `TlFhBattleOp`（`sr_od.application.treasures_lightward.operations.forgotten_hall.battle.TlFhBattleOp`，参数 node_teams = [[节点1四人],[节点2四人]]）：前进 → 秘技 → 开战 → 两节点自动循环 → 挑战成功收尾。
 
 ### 奖励
 
-- 首次 3 星通关最高解锁关弹「快速通关」（视同通关全部前置，奖励列表 + 确认）→「获得物品」页——由 `TlStartChallengeOp` 自动处理。
+- 首次 3 星通关最高解锁关弹「快速通关」（视同通关全部前置，奖励列表 + 确认）→「获得物品」页——由 `TlFhBattleOp` 自动处理。
 - 期次累计奖励：选关界面「按钮-星芒礼包」→ 馈赠弹窗（印记馈赠 / 回忆馈赠两 tab）。自动领取 op 未建模，需 MCP 手动点击（坐标以画面 doc 为准）。
 
 ## 虚构叙事（PURE_FICTION）
 
 ### 玩法概貌
 
-多波群怪速刷，按击杀数计分。增益双层：编队屏左栏「战意效果」全局单选（对全部关卡生效）+ 每行行首加号打开「荒腔走板」弹窗三选一（每关独立）。
+多波群怪速刷，按击杀数计分。增益双层：编队屏左栏「战意效果」全局单选（对全部关卡生效）+ 每行行尾加号打开「荒腔走板」弹窗三选一（每关独立）。
 
 ### 操作路径
 
@@ -80,7 +80,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 1. `GotoTreasuresLightward(mode='pure_fiction')` → 选关（新期开场介绍页自动点「开启故事」）。
 2. 选关点目标关卡纸鹤 → 编队屏（画面 doc：虚构叙事-编队）。
-3. 读输入：左栏「战意效果」列表 + 每行「荒腔走板」——点行加号开弹窗后，用 MCP `analyze_screen` 识别「虚构叙事-荒腔走板」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
+3. 读输入：左栏「战意效果」列表 + 每行「荒腔走板」——点行尾加号开弹窗后，用 MCP `analyze_screen` 识别「虚构叙事-荒腔走板」，extras 返回 node_no/boss_name/buffs（含 slot/name/equipped/desc）。
 4. 跑挑战 op（见「编队与战斗 op」）。
 
 ### 攻略与推荐阵容
@@ -91,7 +91,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 ### 编队与战斗 op
 
 - 组合 op（把子 op 串成完整挑战的入口 op）`TlPureFictionChallengeOp`（`sr_od.application.treasures_lightward.operations.pure_fiction.challenge.TlPureFictionChallengeOp`）：参数 team_names（8 人按行序）、buff_slot（战意效果序号，1 基）、buff_slots（每行荒腔走板序号列表，1 基）。前置 = 已在虚构叙事编队屏（组合 op 不做选关→编队屏跳转，操作路径步骤 2 由调用方完成）。
-- 内部子 op 也可单独跑：`TlPfTeamFillOp` / `TlPfBuffEquipOp`（buff_slot + buff_slots）/ `TlPfBattleOp`。
+- 内部子 op 也可单独跑：`TlPfTeamFillOp` / `TlPfBuffEquipOp`（buff_slot + buff_slots）/ `TlPfBattleOp`（完整 op_id 见 [references/operations.md](references/operations.md) §3）。
 
 ### 奖励
 
@@ -122,7 +122,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 - 组合 op `TlApocalypticShadowChallengeOp`（`sr_od.application.treasures_lightward.operations.apocalyptic_shadow.challenge.TlApocalypticShadowChallengeOp`）：参数 team_names（8 人按行序）、buff_slots（每行终焉公理序号，1 基，默认 (1,1)）。入口节点自行处理「选关屏→编队屏」跳转（已在编队屏 / 挑战进行中也直接接续）。
 - 队伍须避开带警告标记的角色（如当期试用）——可落位但「前往挑战」校验不过、点击无反应。
-- 内部子 op 也可单独跑：`TlAsTeamFillOp` / `TlAsAxiomEquipOp`（buff_slots）/ `TlAsBattleOp`。
+- 内部子 op 也可单独跑：`TlAsTeamFillOp` / `TlAsAxiomEquipOp`（buff_slots）/ `TlAsBattleOp`（完整 op_id 见 [references/operations.md](references/operations.md) §4）。
 
 ### 末日幻影补充（星启交互模型与通关阵容）
 
@@ -135,7 +135,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 - 快速通关补发——由 `TlAsBattleOp` 自动处理。
 - 期次累计奖励：选关屏左下礼物盒 → 「末日幻影-祭礼奖励」弹窗，两 tab（永劫祭礼=期次星数累计 / 终局祭礼=各难度首通）**各点一次「领取」即全 tab 一键发放**，领取后弹「获得物品」页点空白处关闭——`TlRewardClaimOp` 已建模实跑（无领路径实机验证、领取路径 fixture 覆盖）。⚠️「奇珍琳琅」袋子入口是兑换商店（消耗代币兑换材料），不是领奖入口。
-- 星启模式（难度04，三节点）：挑战链已实机打通——`TlApocalypticShadowChallengeOp(team_names 12 人按行序, buff_slots 三节点序号)` 跑全链；`TlAsBattleOp` 可单独重打或从中断接续（起点=选关屏或节点画面）。识别校准注意：节点结算「标题-挑战结束」框与选关「难度-01」lcs 已按实机定标（以 screen_info 为准，选关 doc 有待复验备注）。
+- 星启模式（难度04，三节点）：挑战链已实机打通——`TlApocalypticShadowChallengeOp(team_names 12 人按行序, buff_slots 三节点序号)` 跑全链；`TlAsBattleOp` 可单独重打或从中断接续（起点=选关屏或节点画面）。识别阈值已按实机定标（以 screen_info 为准，选关 doc 有待复验备注）。
 
 ## 异相仲裁（ANOMALY_ARBITRATION）
 
