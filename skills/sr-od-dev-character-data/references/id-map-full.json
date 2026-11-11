@@ -1,0 +1,681 @@
+{
+ "1001": {
+  "cn": "三月七",
+  "tag": "mar7th",
+  "path": "preservation",
+  "element": "ice",
+  "rarity": 4
+ },
+ "1002": {
+  "cn": "丹恒",
+  "tag": "danheng",
+  "path": "hunt",
+  "element": "wind",
+  "rarity": 4
+ },
+ "1003": {
+  "cn": "姬子",
+  "tag": "himeko",
+  "path": "erudition",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1004": {
+  "cn": "瓦尔特",
+  "tag": "welt",
+  "path": "nihility",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1005": {
+  "cn": "卡芙卡",
+  "tag": "kafka",
+  "path": "nihility",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1006": {
+  "cn": "银狼",
+  "tag": "silverwolf",
+  "path": "nihility",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1008": {
+  "cn": "阿兰",
+  "tag": "arlan",
+  "path": "destruction",
+  "element": "lightning",
+  "rarity": 4
+ },
+ "1009": {
+  "cn": "艾丝妲",
+  "tag": "asta",
+  "path": "harmony",
+  "element": "fire",
+  "rarity": 4
+ },
+ "1013": {
+  "cn": "黑塔",
+  "tag": "herta",
+  "path": "erudition",
+  "element": "ice",
+  "rarity": 4
+ },
+ "1014": {
+  "cn": "Saber",
+  "tag": "saber",
+  "path": "destruction",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1015": {
+  "cn": "Archer",
+  "tag": "archer",
+  "path": "hunt",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1101": {
+  "cn": "布洛妮娅",
+  "tag": "bronya",
+  "path": "harmony",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1102": {
+  "cn": "希儿",
+  "tag": "seele",
+  "path": "hunt",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1103": {
+  "cn": "希露瓦",
+  "tag": "serval",
+  "path": "erudition",
+  "element": "lightning",
+  "rarity": 4
+ },
+ "1104": {
+  "cn": "杰帕德",
+  "tag": "gepard",
+  "path": "preservation",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1105": {
+  "cn": "娜塔莎",
+  "tag": "natasha",
+  "path": "abundance",
+  "element": "physical",
+  "rarity": 4
+ },
+ "1106": {
+  "cn": "佩拉",
+  "tag": "pela",
+  "path": "nihility",
+  "element": "ice",
+  "rarity": 4
+ },
+ "1107": {
+  "cn": "克拉拉",
+  "tag": "clara",
+  "path": "destruction",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1108": {
+  "cn": "桑博",
+  "tag": "sampo",
+  "path": "nihility",
+  "element": "wind",
+  "rarity": 4
+ },
+ "1109": {
+  "cn": "虎克",
+  "tag": "hook",
+  "path": "destruction",
+  "element": "fire",
+  "rarity": 4
+ },
+ "1110": {
+  "cn": "玲可",
+  "tag": "lynx",
+  "path": "abundance",
+  "element": "quantum",
+  "rarity": 4
+ },
+ "1111": {
+  "cn": "卢卡",
+  "tag": "luka",
+  "path": "nihility",
+  "element": "physical",
+  "rarity": 4
+ },
+ "1112": {
+  "cn": "托帕&账账",
+  "tag": "topaz",
+  "path": "hunt",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1201": {
+  "cn": "青雀",
+  "tag": "qingque",
+  "path": "erudition",
+  "element": "quantum",
+  "rarity": 4
+ },
+ "1202": {
+  "cn": "停云",
+  "tag": "tingyun",
+  "path": "harmony",
+  "element": "lightning",
+  "rarity": 4
+ },
+ "1203": {
+  "cn": "罗刹",
+  "tag": "luocha",
+  "path": "abundance",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1204": {
+  "cn": "景元",
+  "tag": "jingyuan",
+  "path": "erudition",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1205": {
+  "cn": "刃",
+  "tag": "blade",
+  "path": "destruction",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1206": {
+  "cn": "素裳",
+  "tag": "sushang",
+  "path": "hunt",
+  "element": "physical",
+  "rarity": 4
+ },
+ "1207": {
+  "cn": "驭空",
+  "tag": "yukong",
+  "path": "harmony",
+  "element": "imaginary",
+  "rarity": 4
+ },
+ "1208": {
+  "cn": "符玄",
+  "tag": "fuxuan",
+  "path": "preservation",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1209": {
+  "cn": "彦卿",
+  "tag": "yanqing",
+  "path": "hunt",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1210": {
+  "cn": "桂乃芬",
+  "tag": "guinaifen",
+  "path": "nihility",
+  "element": "fire",
+  "rarity": 4
+ },
+ "1211": {
+  "cn": "白露",
+  "tag": "bailu",
+  "path": "abundance",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1212": {
+  "cn": "镜流",
+  "tag": "jingliu",
+  "path": "destruction",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1213": {
+  "cn": "丹恒•饮月",
+  "tag": "danhengil",
+  "path": "destruction",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1214": {
+  "cn": "雪衣",
+  "tag": "xueyi",
+  "path": "destruction",
+  "element": "quantum",
+  "rarity": 4
+ },
+ "1215": {
+  "cn": "寒鸦",
+  "tag": "hanya",
+  "path": "harmony",
+  "element": "physical",
+  "rarity": 4
+ },
+ "1217": {
+  "cn": "藿藿",
+  "tag": "huohuo",
+  "path": "abundance",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1218": {
+  "cn": "椒丘",
+  "tag": "jiaoqiu",
+  "path": "nihility",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1220": {
+  "cn": "飞霄",
+  "tag": "feixiao",
+  "path": "hunt",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1221": {
+  "cn": "云璃",
+  "tag": "yunli",
+  "path": "destruction",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1222": {
+  "cn": "灵砂",
+  "tag": "lingsha",
+  "path": "abundance",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1223": {
+  "cn": "貊泽",
+  "tag": "moze",
+  "path": "hunt",
+  "element": "lightning",
+  "rarity": 4
+ },
+ "1224": {
+  "cn": "三月七",
+  "tag": "mar7th2",
+  "path": "hunt",
+  "element": "imaginary",
+  "rarity": 4
+ },
+ "1225": {
+  "cn": "忘归人",
+  "tag": "fugue",
+  "path": "nihility",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1301": {
+  "cn": "加拉赫",
+  "tag": "gallagher",
+  "path": "abundance",
+  "element": "fire",
+  "rarity": 4
+ },
+ "1302": {
+  "cn": "银枝",
+  "tag": "argenti",
+  "path": "erudition",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1303": {
+  "cn": "阮•梅",
+  "tag": "ruanmei",
+  "path": "harmony",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1304": {
+  "cn": "砂金",
+  "tag": "aventurine",
+  "path": "preservation",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1305": {
+  "cn": "真理医生",
+  "tag": "drratio",
+  "path": "hunt",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1306": {
+  "cn": "花火",
+  "tag": "sparkle",
+  "path": "harmony",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1307": {
+  "cn": "黑天鹅",
+  "tag": "blackswan",
+  "path": "nihility",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1308": {
+  "cn": "黄泉",
+  "tag": "acheron",
+  "path": "nihility",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1309": {
+  "cn": "知更鸟",
+  "tag": "robin",
+  "path": "harmony",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1310": {
+  "cn": "流萤",
+  "tag": "sam",
+  "path": "destruction",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1312": {
+  "cn": "米沙",
+  "tag": "misha",
+  "path": "destruction",
+  "element": "ice",
+  "rarity": 4
+ },
+ "1313": {
+  "cn": "星期日",
+  "tag": "sunday",
+  "path": "harmony",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1314": {
+  "cn": "翡翠",
+  "tag": "jade",
+  "path": "erudition",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1315": {
+  "cn": "波提欧",
+  "tag": "boothill",
+  "path": "hunt",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1317": {
+  "cn": "乱破",
+  "tag": "rappa",
+  "path": "erudition",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1321": {
+  "cn": "大丽花",
+  "tag": "dahlia",
+  "path": "nihility",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1401": {
+  "cn": "大黑塔",
+  "tag": "theherta",
+  "path": "erudition",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1402": {
+  "cn": "阿格莱雅",
+  "tag": "aglaea",
+  "path": "remembrance",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1403": {
+  "cn": "缇宝",
+  "tag": "tribbie",
+  "path": "harmony",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1404": {
+  "cn": "万敌",
+  "tag": "mydei",
+  "path": "destruction",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1405": {
+  "cn": "那刻夏",
+  "tag": "anaxa",
+  "path": "erudition",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1406": {
+  "cn": "赛飞儿",
+  "tag": "cipher",
+  "path": "nihility",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1407": {
+  "cn": "遐蝶",
+  "tag": "castorice",
+  "path": "remembrance",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1408": {
+  "cn": "白厄",
+  "tag": "phainon",
+  "path": "destruction",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1409": {
+  "cn": "风堇",
+  "tag": "hyacine",
+  "path": "remembrance",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1410": {
+  "cn": "海瑟音",
+  "tag": "hysilens",
+  "path": "nihility",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1412": {
+  "cn": "刻律德菈",
+  "tag": "cerydra",
+  "path": "harmony",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1413": {
+  "cn": "长夜月",
+  "tag": "evernight",
+  "path": "remembrance",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1414": {
+  "cn": "丹恒•腾荒",
+  "tag": "danhengpt",
+  "path": "preservation",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1415": {
+  "cn": "昔涟",
+  "tag": "cyrene",
+  "path": "remembrance",
+  "element": "ice",
+  "rarity": 5
+ },
+ "1501": {
+  "cn": "火花",
+  "tag": "Sparxie",
+  "path": "elation",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1502": {
+  "cn": "爻光",
+  "tag": "yaoguang",
+  "path": "elation",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1504": {
+  "cn": "不死途",
+  "tag": "ashveil",
+  "path": "hunt",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1505": {
+  "cn": "绯英",
+  "tag": "evanescia",
+  "path": "elation",
+  "element": "physical",
+  "rarity": 5
+ },
+ "1506": {
+  "cn": "银狼LV.999",
+  "tag": "silverwolflv999",
+  "path": "elation",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "1507": {
+  "cn": "千冶•刃",
+  "tag": "mortenaxblade",
+  "path": "nihility",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1508": {
+  "cn": "远坂凛",
+  "tag": "tohsakarin",
+  "path": "erudition",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "1509": {
+  "cn": "吉尔伽美什",
+  "tag": "gilgamesh",
+  "path": "destruction",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "1510": {
+  "cn": "姬子•启行",
+  "tag": "himekonova",
+  "path": "erudition",
+  "element": "fire",
+  "rarity": 5
+ },
+ "1512": {
+  "cn": "知更鸟•晴歌",
+  "tag": "robinsummeretto",
+  "path": "remembrance",
+  "element": "wind",
+  "rarity": 5
+ },
+ "1513": {
+  "cn": "砂金•戏浪",
+  "tag": "aventurinewaveflair",
+  "path": "elation",
+  "element": "quantum",
+  "rarity": 5
+ },
+ "8001": {
+  "cn": "{NICKNAME}",
+  "tag": "playerboy",
+  "path": "destruction",
+  "element": "physical",
+  "rarity": 5
+ },
+ "8002": {
+  "cn": "{NICKNAME}",
+  "tag": "playergirl",
+  "path": "destruction",
+  "element": "physical",
+  "rarity": 5
+ },
+ "8003": {
+  "cn": "{NICKNAME}",
+  "tag": "playerboy2",
+  "path": "preservation",
+  "element": "fire",
+  "rarity": 5
+ },
+ "8004": {
+  "cn": "{NICKNAME}",
+  "tag": "playergirl2",
+  "path": "preservation",
+  "element": "fire",
+  "rarity": 5
+ },
+ "8005": {
+  "cn": "{NICKNAME}",
+  "tag": "playerboy3",
+  "path": "harmony",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "8006": {
+  "cn": "{NICKNAME}",
+  "tag": "playergirl3",
+  "path": "harmony",
+  "element": "imaginary",
+  "rarity": 5
+ },
+ "8007": {
+  "cn": "{NICKNAME}",
+  "tag": "playerboy4",
+  "path": "remembrance",
+  "element": "ice",
+  "rarity": 5
+ },
+ "8008": {
+  "cn": "{NICKNAME}",
+  "tag": "playergirl4",
+  "path": "remembrance",
+  "element": "ice",
+  "rarity": 5
+ },
+ "8009": {
+  "cn": "{NICKNAME}",
+  "tag": "playerboy5",
+  "path": "elation",
+  "element": "lightning",
+  "rarity": 5
+ },
+ "8010": {
+  "cn": "{NICKNAME}",
+  "tag": "playergirl5",
+  "path": "elation",
+  "element": "lightning",
+  "rarity": 5
+ }
+}

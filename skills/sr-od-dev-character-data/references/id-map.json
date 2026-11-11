@@ -1,0 +1,358 @@
+{
+ "1001": {
+  "character": "march7th_preservation",
+  "inliers": 12
+ },
+ "1002": {
+  "character": "danheng",
+  "inliers": 4
+ },
+ "1003": {
+  "character": "himeko",
+  "inliers": 14
+ },
+ "1004": {
+  "character": "welt",
+  "inliers": 14
+ },
+ "1005": {
+  "character": "kafka",
+  "inliers": 7
+ },
+ "1006": {
+  "character": "silverwolf",
+  "inliers": 19
+ },
+ "1008": {
+  "character": "arlan",
+  "inliers": 17
+ },
+ "1009": {
+  "character": "asta",
+  "inliers": 13
+ },
+ "1013": {
+  "character": "herta",
+  "inliers": 12
+ },
+ "1014": {
+  "character": "saber",
+  "inliers": 9
+ },
+ "1015": {
+  "character": "archer",
+  "inliers": 11
+ },
+ "1101": {
+  "character": "bronya",
+  "inliers": 14
+ },
+ "1102": {
+  "character": "seele",
+  "inliers": 14
+ },
+ "1103": {
+  "character": "serval",
+  "inliers": 15
+ },
+ "1104": {
+  "character": "gepard",
+  "inliers": 15
+ },
+ "1105": {
+  "character": "natasha",
+  "inliers": 14
+ },
+ "1106": {
+  "character": "pela",
+  "inliers": 17
+ },
+ "1107": {
+  "character": "clara",
+  "inliers": 11
+ },
+ "1108": {
+  "character": "sampo",
+  "inliers": 14
+ },
+ "1109": {
+  "character": "hook",
+  "inliers": 17
+ },
+ "1110": {
+  "character": "lynx",
+  "inliers": 11
+ },
+ "1111": {
+  "character": "luka",
+  "inliers": 12
+ },
+ "1112": {
+  "character": "topaznumby",
+  "inliers": 13
+ },
+ "1201": {
+  "character": "qingque",
+  "inliers": 21
+ },
+ "1202": {
+  "character": "tingyun",
+  "inliers": 23
+ },
+ "1203": {
+  "character": "luocha",
+  "inliers": 9
+ },
+ "1204": {
+  "character": "jingyuan",
+  "inliers": 15
+ },
+ "1205": {
+  "character": "blade",
+  "inliers": 9
+ },
+ "1206": {
+  "character": "sushang",
+  "inliers": 14
+ },
+ "1207": {
+  "character": "yukong",
+  "inliers": 17
+ },
+ "1208": {
+  "character": "fuxuan",
+  "inliers": 18
+ },
+ "1209": {
+  "character": "yanqing",
+  "inliers": 12
+ },
+ "1210": {
+  "character": "guinaifen",
+  "inliers": 14
+ },
+ "1211": {
+  "character": "bailu",
+  "inliers": 22
+ },
+ "1212": {
+  "character": "jingliu",
+  "inliers": 10
+ },
+ "1213": {
+  "character": "danhengimbibitorlunae",
+  "inliers": 10
+ },
+ "1214": {
+  "character": "xueyi",
+  "inliers": 8
+ },
+ "1215": {
+  "character": "hanya",
+  "inliers": 20
+ },
+ "1217": {
+  "character": "huohuo",
+  "inliers": 18
+ },
+ "1218": {
+  "character": "jiaoqiu",
+  "inliers": 14
+ },
+ "1220": {
+  "character": "feixiao",
+  "inliers": 22
+ },
+ "1221": {
+  "character": "yunli",
+  "inliers": 19
+ },
+ "1222": {
+  "character": "lingsha",
+  "inliers": 9
+ },
+ "1223": {
+  "character": "moze",
+  "inliers": 10
+ },
+ "1224": {
+  "character": "march7th_hunt",
+  "inliers": 16
+ },
+ "1225": {
+  "character": "fugue",
+  "inliers": 17
+ },
+ "1301": {
+  "character": "gallagher",
+  "inliers": 12
+ },
+ "1302": {
+  "character": "argenti",
+  "inliers": 8
+ },
+ "1303": {
+  "character": "ruanmei",
+  "inliers": 14
+ },
+ "1304": {
+  "character": "aventurine",
+  "inliers": 13
+ },
+ "1305": {
+  "character": "drratio",
+  "inliers": 13
+ },
+ "1306": {
+  "character": "sparkle",
+  "inliers": 18
+ },
+ "1307": {
+  "character": "blackswan",
+  "inliers": 33
+ },
+ "1308": {
+  "character": "acheron",
+  "inliers": 18
+ },
+ "1309": {
+  "character": "robin",
+  "inliers": 17
+ },
+ "1310": {
+  "character": "firefly",
+  "inliers": 12
+ },
+ "1312": {
+  "character": "misha",
+  "inliers": 12
+ },
+ "1313": {
+  "character": "sunday",
+  "inliers": 11
+ },
+ "1314": {
+  "character": "jade",
+  "inliers": 7
+ },
+ "1315": {
+  "character": "boothill",
+  "inliers": 17
+ },
+ "1317": {
+  "character": "rappa",
+  "inliers": 23
+ },
+ "1321": {
+  "character": "the_dahlia",
+  "inliers": 8
+ },
+ "1401": {
+  "character": "the_herta",
+  "inliers": 15
+ },
+ "1402": {
+  "character": "aglaea",
+  "inliers": 4
+ },
+ "1403": {
+  "character": "tribbie",
+  "inliers": 28
+ },
+ "1404": {
+  "character": "mydei",
+  "inliers": 12
+ },
+ "1405": {
+  "character": "anaxa",
+  "inliers": 18
+ },
+ "1407": {
+  "character": "casorice",
+  "inliers": 20
+ },
+ "1408": {
+  "character": "phainon",
+  "inliers": 19
+ },
+ "1409": {
+  "character": "hyacine",
+  "inliers": 24
+ },
+ "1410": {
+  "character": "hysilens",
+  "inliers": 23
+ },
+ "1412": {
+  "character": "cerydra",
+  "inliers": 15
+ },
+ "1413": {
+  "character": "evernight",
+  "inliers": 10
+ },
+ "1414": {
+  "character": "danhengpermansorterrae",
+  "inliers": 8
+ },
+ "1415": {
+  "character": "cyrene",
+  "inliers": 15
+ },
+ "1501": {
+  "character": "sparxie",
+  "inliers": 16
+ },
+ "1502": {
+  "character": "yao_guang",
+  "inliers": 17
+ },
+ "1506": {
+  "character": "silverwolf_999",
+  "inliers": 15
+ },
+ "1508": {
+  "character": "xueyi",
+  "inliers": 4
+ },
+ "8001": {
+  "character": "caelum_destruction",
+  "inliers": 14
+ },
+ "8002": {
+  "character": "stelle_destruction",
+  "inliers": 17
+ },
+ "8003": {
+  "character": "caelum_preservation",
+  "inliers": 8
+ },
+ "8004": {
+  "character": "stelle_preservation",
+  "inliers": 17
+ },
+ "8005": {
+  "character": "caelum_harmony",
+  "inliers": 18
+ },
+ "8006": {
+  "character": "stelle_harmony",
+  "inliers": 11
+ },
+ "8007": {
+  "character": "caelum_remembrance",
+  "inliers": 15
+ },
+ "8008": {
+  "character": "stelle_remembrance",
+  "inliers": 17
+ },
+ "8009": {
+  "character": "caelum_elation",
+  "inliers": 13
+ },
+ "8010": {
+  "character": "stelle_elation",
+  "inliers": 8
+ }
+}
