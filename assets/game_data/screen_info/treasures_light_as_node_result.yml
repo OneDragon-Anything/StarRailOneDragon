@@ -47,12 +47,12 @@ area_list:
 - area_name: 按钮-重新挑战
   id_mark: true
   pc_rect:
-  - 765
+  - 528
   - 875
   - 1060
   - 985
   text: 重新挑战
-  lcs_percent: 0.5
+  lcs_percent: 0.7
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7
