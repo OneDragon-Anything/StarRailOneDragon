@@ -42,9 +42,10 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 
 ## 附录 A. 项目 Character id 定义
 
-- **id**:官方英文名归一化——小写、空格转下划线、其余符号删除(先例 The Herta → `the_herta`、Yao Guang → `yao_guang`、Aeon☆Aha → `aeonaha`);形态/变体加后缀(先例 `march7th_hunt`、`silverwolf_999`)。id 定了不改:用户 config yaml 与头像目录都引用它。
+- **id**:英文代号,= 官方英文名归一化——小写、空格转下划线、其余符号删除(先例 The Herta → `the_herta`、Yao Guang → `yao_guang`、Aeon☆Aha → `aeonaha`);形态/变体加后缀(先例 `march7th_hunt`、`silverwolf_999`)。id 定了不改:用户 config yaml 与头像目录都引用它。
+  - **英文名来源**:国际版 HoYoWiki 词条名(`fetch_hoyowiki_en_names.py` 拉取,官方英文唯一源)。米游社国内站只有中文名,**推不出英文 id**;国际版词条未同步时,人工从官方实机情报定名(先例:阿哈 ←「AEON ☆ AHA」,定名时国际版词条尚未上线)。
 - **cn**:游戏内显示名原文(含间隔号与装饰符号,如「阮•梅」「星神★阿哈」「银狼LV.999」);开拓者形态写「开拓者·<命途>·<男/女>」。OCR 按此名做最长公共子序列匹配,必须与游戏内显示一致。
-- **avatar_id**:米游社 wiki 详情的数字 avatarId(权威表锚定);勿猜勿复用。
+- **avatar_id**:米游社 wiki 详情的数字 avatarId,录入时人工从词条抄录(权威表锚定);勿猜勿复用。
 - **path / combat_type / level**:现有常量直接用;新命途按定位归入 ATTACK(输出)/SURVIVAL(生存)/SUPPORT(辅助)分类列表;level = 稀有度(5 星 = 5)。
 - **technique_type**(读秘技描述分类,决定战斗 op 先放秘技还是先攻击):直接攻击无增益 → `TECHNIQUE_ATTACK`;获得持续增益不攻击 → `TECHNIQUE_BUFF`;部署持续领域 → `TECHNIQUE_AREA`;增益由攻击触发或强化攻击 → `TECHNIQUE_BUFF_ATTACK`;同上且攻击后消失 → `TECHNIQUE_BUFF_ATTACK_DISAPPEAR`。拿不准就对比同型既有角色。
 - **buff_lasting_seconds**:秘技增益持续秒数;描述明确给秒数按描述,常驻类填 999(先例 ruanmei),拿不准用默认 20。
