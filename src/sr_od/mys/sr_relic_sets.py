@@ -1053,6 +1053,22 @@ def resolve_set_name(piece_name: str) -> str | None:
     return relic_set.set_name
 
 
+def resolve_set_kind(set_name: str) -> str | None:
+    """套装名 → 类别（``'cavern'``=隧洞 / ``'ornament'``=位面饰品）。
+
+    替换屏筛选弹窗按类别切 TAB 用；miss（新版本套装未入常量或名字拼错）
+    返回 None，调用方显式失败，不猜类别。
+
+    Args:
+        set_name: 官方套装全名。
+
+    Returns:
+        ``RelicSetDef.kind``；miss 返回 None。
+    """
+    relic_set = _SET_BY_NAME.get(set_name)
+    return relic_set.kind if relic_set is not None else None
+
+
 def build_set_effects(
     relic_piece_names: list[str],
     ornament_piece_names: list[str],
