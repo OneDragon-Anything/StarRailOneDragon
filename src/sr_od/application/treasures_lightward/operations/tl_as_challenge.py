@@ -51,11 +51,17 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.treasures_lightward.operations.tl_as_battle import TlAsBattleOp
+from sr_od.application.treasures_lightward.operations.tl_as_battle_exit import (
+    TlAsBattleExitOp,
+)
+from sr_od.application.treasures_lightward.operations.tl_as_buff_equip import (
+    TlAsAxiomEquipOp,
+)
+from sr_od.application.treasures_lightward.operations.tl_as_team_fill import (
+    TlAsTeamFillOp,
+)
 from sr_od.operations.sr_operation import SrOperation
-from sr_od.operations.tl_as_battle import TlAsBattleOp
-from sr_od.operations.tl_as_battle_exit import TlAsBattleExitOp
-from sr_od.operations.tl_as_buff_equip import TlAsAxiomEquipOp
-from sr_od.operations.tl_as_team_fill import TlAsTeamFillOp
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
