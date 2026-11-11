@@ -42,8 +42,7 @@ description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口
 
 ## 3. 图标获取与归档
 
-- **识别模板库（规范库）**：`assets/template/light_cone_icon/<LightConeDef.id>/raw.webp`（id 键，命名约定即注册表）；遍历单一入口 = 项目 `src/sr_od/config/light_cone_templates.py`（`iter_light_cone_templates`）。新光锥同步入库；空 id（国际服未同步）暂缺，回填后补录。
-- **数据图标归档（过渡库存）**：`assets/game_data/light_cone_icons/<光锥名>.webp`（名称键，`icon_webp_rel_path` 公式寻址）——存量消费方迁移到识别模板库后退役。
+- **识别模板库（规范库，唯一归档）**：`assets/template/light_cone_icon/<LightConeDef.id>/raw.webp`（id 键，命名约定即注册表）；遍历单一入口 = 项目 `src/sr_od/config/light_cone_templates.py`（`iter_light_cone_templates`）。新光锥同步入库；空 id（国际服未同步）暂缺，回填后补录。原名称键归档（`assets/game_data/light_cone_icons/` + `icon_webp_rel_path`）已随消费方迁移删除——**勿再按名称键归档或寻址**。
 - 获取途径：本机解包类 skill 有光锥图标导出手法（按内部 id 段收窄增量导出）优先按它；没有则到米游社 wiki 词条取展示图降级使用，或游戏内截图。两库归档件卡框底色按稀有度与实机一致（5 星金框/4 星紫框/3 星蓝框）。
 
 ## 附录 A. 项目光锥 id 定义
@@ -51,5 +50,5 @@ description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口
 - **id**：英文代号 = 官方英文名归一化——小写、仅保留字母数字、符号一律剥离（先例：In the Night → `inthenight`）。id 与角色域 `Character.id` 同风格、独立命名空间。
 - **英文名来源**：国际版 HoYoWiki 光锥菜单（zh/en 列表按词条 id 互连，`fetch_hoyowiki_cone_en_names.py` 拉取，官方英文唯一源）。米游社国内站只有中文名，**推不出英文 id**。
 - **未同步处理**：国际服未建页 → id 留空串，**宁缺勿错勿猜**；官方公告已给名的可先人工登记（权威表 `source=manual` 行，wiki 上线后自动转正，先例：当第一声「阿哈」响起）。国际服词条名含脏字符（前导空格/换行/BOM/半角标点实测），连表键归一化会清掉，勿手工对名。
-- **对齐链**：`权威表（references/cones-full.json，键=归一化中文名）→ id/en/rarity/path_id + 两侧词条 id`。消费方：名称域 `LIGHT_CONE_BY_NAME`/`resolve_light_cone`/MCP `cone_lookup`/图标名称键寻址（过渡）；id 域 `src/sr_od/config/light_cone_templates.py`（卡面模板遍历）。
+- **对齐链**：`权威表（references/cones-full.json，键=归一化中文名）→ id/en/rarity/path_id + 两侧词条 id`。消费方：名称域 `LIGHT_CONE_BY_NAME`/`resolve_light_cone`/MCP `cone_lookup`（icon 字段按 id 模板路径）；id 域 `src/sr_od/config/light_cone_templates.py`（卡面模板遍历,识别消费方一律经它取模板）。
 - **tid 边界**：游戏内部数字 tid 不入公开仓（常量/MCP 契约/测试均无）；tid ↔ 名称的映射与解包数据到本项目 id 的对接，归本机解包类 skill。

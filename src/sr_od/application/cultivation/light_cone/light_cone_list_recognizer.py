@@ -3,17 +3,19 @@
 ``analyze_screen`` 精准命中「光锥-替换」后,按「列表 / 网格内容识别范式」识别
 (od-dev-write-operation references/list-grid-content-recognition.md):
 **定位层**——每卡底部「等级N」文本锚点 + 轮廓补充(锚点漏读真卡) + 网格刚性
-拓扑补全(行带内补列 / 行带间插行,只在证实行带之间补,不外推);滚动裁切卡
+拓扑补全(行带内补列 / 行带间插行,只在证实行带之间补,不外推);列表按命途
+分组、组末行常不满,补位须过内容证据门槛(空格是纯星空背景),滚动裁切卡
 (可见高度不足、图案只露部分)信息不全,不识别;
 **身份层**——masked 模板匹配(TM):卡面 = 图标构图贴图 × UI 缩放常量合成。
-模板正源(itemfigures 256×256)与实机列表卡面**同构图同源**——「列表只渲染
-立绘一部分」发生在立绘→构图贴图一步,不发生在贴图→卡面一步,卡面是构图贴图
-的等比缩小(实测 ~0.39),逐像素比对成立(实机 27 卡单尺度全对、NCC 0.981-0.995,
-错误模板天花板 0.961)。按绝对目标像素缩放(主档 100px;选中卡白框放大 ~6% →
-106px 双档级联),前景 mask(底色距分割)后 TM_CCORR_NORMED 匹配,低于拒答
-门槛诚实返回 None 不硬猜。缩放按模板原始尺寸换算——卡面渲染像素才是常量,
-比例随模板分辨率派生,混合尺寸模板库禁用「比例」参数(遗器连结绳 512 件按
-256 比例缩半全帧误判实证)。
+模板正源(卡面库单一入口 iter_light_cone_templates,TemplateLoader 规范目录
+light_cone_icon/<id>/raw.webp,256×256)与实机列表卡面**同构图同源**——「列表
+只渲染立绘一部分」发生在立绘→构图贴图一步,不发生在贴图→卡面一步,卡面是
+构图贴图的等比缩小(实测 ~0.39),逐像素比对成立(实机 27 卡单尺度全对、
+NCC 0.981-0.995,错误模板天花板 0.961)。按绝对目标像素缩放(主档 100px;
+选中卡白框放大 ~6% → 106px 双档级联),前景 mask(底色距分割)后
+TM_CCORR_NORMED 匹配,低于拒答门槛诚实返回 None 不硬猜。缩放按模板原始
+尺寸换算——卡面渲染像素才是常量,比例随模板分辨率派生,混合尺寸模板库
+禁用「比例」参数(遗器连结绳 512 件按 256 比例缩半全帧误判实证)。
 **占用者**——角标区角色头像 SIFT 匹配。
 
 网格定位/TM 身份/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
@@ -37,8 +39,8 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils import cv2_utils, os_utils
 from sr_od.config.character_const import CHARACTER_PATH_LIST, get_character_by_id
+from sr_od.config.light_cone_templates import iter_light_cone_templates
 from sr_od.mys.sr_light_cones import LIGHT_CONE_BY_NAME
-from sr_od.mys.sr_light_cones import icon_webp_rel_path as cone_icon_rel_path
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -273,7 +275,7 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
         card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
 
-        identity_by_card = _tm_identify_cells(image, *_tm_template_lists(), card_rects)
+        identity_by_card = _tm_identify_cells(image, *_tm_template_lists(ctx), card_rects)
 
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
@@ -322,17 +324,6 @@ class LightConeReplaceRecognizer(_EquipListRecognizerBase):
 _tm_prep_cache: dict[str, list[tuple[np.ndarray, np.ndarray]]] | None = None
 
 
-def load_template_rgb(rel_path: str) -> np.ndarray | None:
-    """加载图标模板 RGB 图(cv2_utils.read_image 输出恒为 RGB 口径,口径纪律
-    见 AGENTS.md §5:cv2 一族产物不经转换不得进 RGB 流转)。
-
-    :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
-    :return: RGB 图;文件不存在返回 None(调用方判停)
-    """
-    path = os_utils.get_path_under_work_dir(*rel_path.split('/'))
-    return cv2_utils.read_image(path)
-
-
 def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
     """归档 webp 的前景 mask:四角中位取合成底色,色距 >30 为前景。
 
@@ -345,38 +336,39 @@ def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
     return np.linalg.norm(rgb.astype(np.float64) - bg[None, None, :], axis=2) > 30
 
 
-def _tm_templates_all() -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
+def _tm_templates_all(ctx: SrContext) -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
     """光锥名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(进程级缓存)。
 
-    缩放按模板原始尺寸归一:256 正源 → 主档 100px / 选中档 106px——卡面渲染
-    像素才是常量(27 卡单尺度全对实证),比例随模板分辨率派生;双档覆盖列表
-    常态与选中卡(白框)的放大渲染。
+    模板经卡面库单一入口 iter_light_cone_templates 取(规范目录
+    assets/template/light_cone_icon/<id>/raw.webp;空 id 锥暂缺不入库,等
+    国际版 wiki 同步补 id 自动生效)。缩放按模板原始尺寸归一:256 正源 →
+    主档 100px / 选中档 106px——卡面渲染像素才是常量,比例随模板分辨率
+    派生;双档覆盖列表常态与选中卡(白框)的放大渲染。
     """
     global _tm_prep_cache
-    if _tm_prep_cache is None:
-        prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
-        for cone_name, cone_def in LIGHT_CONE_BY_NAME.items():
-            img = load_template_rgb(cone_icon_rel_path(cone_def.name))
-            if img is None:
-                continue
-            mask = _fg_mask_from_rgb(img)
-            # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~6%)。
-            # 相似件分数接近时,选中卡的放大差足以让次优件反超(遗器侧行内
-            # 死水头被透镜反超实证),双档级联为必需而非可选。
-            entries = []
-            for target in (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED):
-                tpl = cv2.resize(img, (target, target), interpolation=cv2.INTER_AREA).astype(np.float32)
-                mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
-                                     interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
-                entries.append((tpl, mask_s))
-            prep[cone_name] = entries
-        _tm_prep_cache = prep
+    if _tm_prep_cache is not None:
+        return _tm_prep_cache
+    prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
+    for entry in iter_light_cone_templates(ctx):
+        img = entry.info.raw
+        mask = _fg_mask_from_rgb(img)
+        # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~6%)。
+        # 相似件分数接近时,选中卡的放大差足以让次优件反超(遗器侧行内
+        # 死水头被透镜反超实证),双档级联为必需而非可选。
+        entries = []
+        for target in (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED):
+            tpl = cv2.resize(img, (target, target), interpolation=cv2.INTER_AREA).astype(np.float32)
+            mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
+                                 interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
+            entries.append((tpl, mask_s))
+        prep[entry.light_cone.name] = entries
+    _tm_prep_cache = prep
     return _tm_prep_cache
 
 
-def _tm_template_lists() -> tuple[list, list]:
+def _tm_template_lists(ctx: SrContext) -> tuple[list, list]:
     """全库 TM 模板,分 (主档 list, 选中档 list) 两组。"""
-    all_tmpl = _tm_templates_all()
+    all_tmpl = _tm_templates_all(ctx)
     main = [(name, *entries[0]) for name, entries in all_tmpl.items()]
     sel = [(name, *entries[1]) for name, entries in all_tmpl.items()]
     return main, sel

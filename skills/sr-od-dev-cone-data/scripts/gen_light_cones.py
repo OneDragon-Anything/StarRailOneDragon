@@ -27,7 +27,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三
 TABLE = Path(__file__).resolve().parent.parent / 'references' / 'cones-full.json'
 DETAILS = PROJECT_ROOT / '.debug' / 'temp' / 'cone_wiki' / 'cone_details_cn.json'
 OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_light_cones.py'
-ICON_DIR = PROJECT_ROOT / 'assets' / 'game_data' / 'light_cone_icons'
+TEMPLATE_DIR = PROJECT_ROOT / 'assets' / 'template' / 'light_cone_icon'
 
 VALID_PATHS = {'destruction', 'preservation', 'hunt', 'abundance', 'nihility',
                'erudition', 'harmony', 'remembrance', 'elation'}
@@ -133,8 +133,8 @@ def main() -> int:
     lines.append('id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki；')
     lines.append('权威表随仓分发（sr-od-dev-cone-data skill references/cones-full.json）。')
     lines.append('')
-    lines.append(f'图标归档：``assets/game_data/light_cone_icons/<光锥名>.webp``（{n} 把全量，')
-    lines.append('官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。')
+    lines.append('图标模板:``assets/template/light_cone_icon/<id>/raw.webp``(TemplateLoader')
+    lines.append('规范二级结构,按 id 寻址;id 为空串的把暂缺,等 wiki 同步补 id 后归档)。')
     lines.append('')
     lines.append('版本刷新工序：游戏新版本后重跑官方 wiki 抓取并重新生成本模块（生成器随本仓')
     lines.append('skills/sr-od-dev-cone-data/ 维护）→ 与下方 LIGHT_CONES 逐条 diff → 人工审阅后')
@@ -196,18 +196,6 @@ def main() -> int:
     lines.append('    cone.name: cone for cone in LIGHT_CONES')
     lines.append('}')
     lines.append('')
-    lines.append('#: 图标归档相对路径公式（项目 assets 根起）；见模块 docstring。')
-    lines.append("_LIGHT_CONE_ICON_REL_TEMPLATE = 'assets/game_data/light_cone_icons/{name}.webp'")
-    lines.append('')
-    lines.append('')
-    lines.append('def icon_webp_rel_path(name: str) -> str:')
-    lines.append('    """光锥名 → 图标 webp 的项目相对路径。')
-    lines.append('')
-    lines.append('    纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。')
-    lines.append('    """')
-    lines.append('    return _LIGHT_CONE_ICON_REL_TEMPLATE.format(name=name)')
-    lines.append('')
-    lines.append('')
     lines.append('def resolve_light_cone(name: str) -> LightConeDef | None:')
     lines.append('    """光锥名 → 定义（miss 返回 None，不抛异常）。"""')
     lines.append('    return LIGHT_CONE_BY_NAME.get(name)')
@@ -221,9 +209,10 @@ def main() -> int:
         print(f'文本漂移 {len(drift)} 条（保持冻结值,请人工核对 wiki 是否误改）: {drift}')
     if skipped_manual:
         print(f'跳过 manual 行（等 wiki 词条）: {skipped_manual}')
-    missing_icons = [e['cn'] for e in entries if not (ICON_DIR / f"{e['cn']}.webp").is_file()]
+    missing_icons = [e['cn'] for e in entries
+                     if e['id'] and not (TEMPLATE_DIR / e['id'] / 'raw.webp').is_file()]
     if missing_icons:
-        print(f'图标归档缺失 {len(missing_icons)}（图标工序补）: {missing_icons}')
+        print(f'图标模板缺失 {len(missing_icons)}(图标工序补): {missing_icons}')
     return 0
 
 

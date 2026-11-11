@@ -9,8 +9,8 @@
 id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki；
 权威表随仓分发（sr-od-dev-cone-data skill references/cones-full.json）。
 
-图标归档：``assets/game_data/light_cone_icons/<光锥名>.webp``（170 把全量，
-官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
+图标模板:``assets/template/light_cone_icon/<id>/raw.webp``(TemplateLoader
+规范二级结构,按 id 寻址;id 为空串的把暂缺,等 wiki 同步补 id 后归档)。
 
 版本刷新工序：游戏新版本后重跑官方 wiki 抓取并重新生成本模块（生成器随本仓
 skills/sr-od-dev-cone-data/ 维护）→ 与下方 LIGHT_CONES 逐条 diff → 人工审阅后
@@ -1423,18 +1423,6 @@ LIGHT_CONES: tuple[LightConeDef, ...] = (
 LIGHT_CONE_BY_NAME: dict[str, LightConeDef] = {
     cone.name: cone for cone in LIGHT_CONES
 }
-
-#: 图标归档相对路径公式（项目 assets 根起）；见模块 docstring。
-_LIGHT_CONE_ICON_REL_TEMPLATE = 'assets/game_data/light_cone_icons/{name}.webp'
-
-
-def icon_webp_rel_path(name: str) -> str:
-    """光锥名 → 图标 webp 的项目相对路径。
-
-    纯公式寻址不查存在性（零 IO 纪律）；文件归档见模块 docstring。
-    """
-    return _LIGHT_CONE_ICON_REL_TEMPLATE.format(name=name)
-
 
 def resolve_light_cone(name: str) -> LightConeDef | None:
     """光锥名 → 定义（miss 返回 None，不抛异常）。"""

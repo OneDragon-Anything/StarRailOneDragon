@@ -28,7 +28,6 @@ from sr_od.config.light_cone_ascension_const import get_light_cone_ascension
 from sr_od.mys.sr_light_cones import (
     LIGHT_CONES,
     LightConeDef,
-    icon_webp_rel_path,
     resolve_light_cone,
 )
 
@@ -40,7 +39,7 @@ _PATH_ID_CN: dict[str, str] = {
 
 
 def _cone_to_data(cone: LightConeDef, match: str) -> dict:
-    """光锥定义 → 工具返回的 data dict（含特效文本与图标项目相对路径）。"""
+    """光锥定义 → 工具返回的 data dict(含特效文本与图标模板项目相对路径)。"""
     return {
         'name': cone.name,
         'rarity': cone.rarity,
@@ -48,7 +47,8 @@ def _cone_to_data(cone: LightConeDef, match: str) -> dict:
         'path_cn': _PATH_ID_CN.get(cone.path_id, cone.path_id),
         'obtain': cone.obtain,
         'skill': cone.skill,
-        'icon': icon_webp_rel_path(cone.name),
+        'icon': (f'assets/template/light_cone_icon/{cone.id}/raw.webp'
+                 if cone.id else None),
         'match': match,
     }
 
