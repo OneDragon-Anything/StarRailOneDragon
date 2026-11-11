@@ -61,7 +61,7 @@
 | RefreshShop(刷新) | `CwActionRefreshShopParam` | `cw_refresh_shop_action.py::CwActionRefreshShopOp` | **访问终结**(§6) |
 | CloseShop(关商店) | `CwActionCloseShopParam` | `cw_close_shop_action.py::CwActionCloseShopOp`(执行位 = 真机械点击「收起」+ 幂等已关出口 + 清场上报) | **访问终结**(§6) |
 | SellBench(卖备战) | `CwActionSellBenchParam` | `cw_prep_sell_bench_action.py::CwActionSellBenchOp`(动作类型清单摊平后商店/备战共用单一注册行;原商店域文件 `cw_sell_bench_action.py` 已停用删除) | 非终结 |
-| LevelUp(买经验) | `CwActionLevelUpParam`(单类型;原 LevelUpShop 同字段双类型已随 2026-10-17 迭代 T-4 退役删除) | 注册行 = `cw_prep_level_up_action.py::CwActionLevelUpOp`(备战域);原商店域 `cw_level_up_action.py` 已停用删除 | 非终结 |
+| LevelUp(买经验) | `CwActionLevelUpParam`(单类型) | 注册行 = `cw_prep_level_up_action.py::CwActionLevelUpOp`(备战域) | 非终结 |
 | SellDeployed(卖上阵) | `CwActionSellDeployedParam` | `cw_sell_deployed_action.py::CwActionSellDeployedOp`(换人判定单一源 = `kernel/cw_deploy_logic.py::swap_sell_exclusion_reason`,转型域经 `swap_bond_gate_domain` 判别子分派双门资格面) | 非终结 |
 | SwapDeploy(上阵↔备战对调) | `CwActionSwapDeployParam` | 未接入调用(动作类型清单+上报函数/sim 消费在用;动作类型清单完备性保留) | 非终结 |
 | DeployMove(部署) | `CwActionDeployMoveParam` | `cw_deploy_move_action.py::CwActionDeployMoveOp`(bench→上阵单步拖拽,动作发出点逐帧现算) | 非终结 |

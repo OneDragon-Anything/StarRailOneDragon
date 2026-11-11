@@ -90,7 +90,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 **非契约成员(实现层,不在 ABC 面)**:
 
 - `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 逐动作直调上报函数推进期望态(kernel/cw_action_report 函数族;快照三件组与升星连锁写内聚于买牌上报),终结动作截停、CloseShop 收尾不入序列。回放/既有序列测试消费；生产执行侧不走（单动作循环），sim 亦不走（sim 经真流程消费单动作接口 `decide_shop_action`）。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
-- `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**(方向节拍 = 每游戏轮只做一次的贵段):方向重估开销大,用两个标记槽记录最近一次备战/商店观察是新是旧（`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none）:决策入口据此每游戏轮只做一次贵段,其余帧只刷新便宜的派生视图;标记读完即清,只有观察装配点和决策环能写（驱动器不写帧类槽）。批 3.7(迭代 2026-10-12-prep-shop-workflow-redesign)后贵段 = **P1 过渡配方链驱动**(`update_p1_recipe`,位面辖域 = `plane2_started_of` 窗口谓词)——终局线选择(候选-锁定制)在 session_scope 前置段(`refresh_line_if_needed`,两入口先于本段执行),不占本节拍;派生视图 = `opening_recipe_comp` 物化(配方对伪 comp;锁定线槽 `target_comp` 的终态单写者 = `session_scope.write_line_lock`,本段零写)。
+- `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**(方向节拍 = 每游戏轮只做一次的贵段):方向重估开销大,用两个标记槽记录最近一次备战/商店观察是新是旧（`gs.frame_class_prep`/`gs.frame_class_shop` ∈ full/view/none）:决策入口据此每游戏轮只做一次贵段,其余帧只刷新便宜的派生视图;标记读完即清,只有观察装配点和决策环能写（驱动器不写帧类槽）。贵段 = **P1 过渡配方链驱动**(`update_p1_recipe`,位面辖域 = `plane2_started_of` 窗口谓词)——终局线选择(候选-锁定制)在 session_scope 前置段(`refresh_line_if_needed`,两入口先于本段执行),不占本节拍;派生视图 = `opening_recipe_comp` 物化(配方对伪 comp;锁定线槽 `target_comp` 的终态单写者 = `session_scope.write_line_lock`,本段零写)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(停用批)**:结算策略半惰性加工(掉血三个分支/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记分支前置零写端/三分支零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 状态容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
 

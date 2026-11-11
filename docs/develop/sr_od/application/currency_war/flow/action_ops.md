@@ -98,7 +98,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 | RefreshShop | CwActionRefreshShopOp | `cw_refresh_shop_action.py` | 刷新商店(终结动作,结束后返回主循环重进 = 入口观察重建牌面):点刷新钮 → 固定等待 1s(`REFRESH_CLICK_SETTLE_WAIT_S`;等待不是判效)→ 刷价记账(状态容器刷价现值读口,失读回基价常量)→ 自上报 `report_action_refresh_shop_param` 同一上报口三支(计数触发 `record_refresh` paid/total;免费次数扣减分支 = `gs.free_refresh_left` Field 值判定与扣减,None = 未观察保守按付费——次数是记账面非决策闸;随机采样分支 = kernel 采样器 `cw_shop_deal.sample_shop_deal` 经 `write_logic_rand` 写牌面随机态,observe 覆盖差异 = 预期内不进失配告警)。体内零读屏零验证(§1「用户裁定（零新增读屏）」合规);「刷新是否生效」归观察侧对账,执行侧零重试。发出条件 = 商店决策产 RefreshShop(现役发出点 = 利息线闸门,策略语义见 strategy-docs)。 |
 | CloseShop | CwActionCloseShopOp | `cw_close_shop_action.py` | 关店恒可用终结 op:执行位 = 帧上找「按钮-收起」真点击(miss = 店已关,幂等出口;miss 回执 reason 码 = `定位缺失(按钮-收起)`,见 §5)+ 固定等待 + 自上报 `report_action_close_shop_param` 清场;零转移验证(点击未生效 = 外循环重分发自然重派)。发出条件 = 商店决策无动作可做时主动选它终结本画面访问(全函数契约要求的恒可用终结)。 |
 
-### 4.2 备战族(9 行,含工具原子 7 行;LevelUpShop 同字段双类型显式独立行已随 2026-10-17 迭代 T-4 词表退役删除,注册表回归单类型单行)
+### 4.2 备战族(9 行,含工具原子 7 行;注册表单类型单行)
 
 | 动作类型 | op 类 | 文件 | 说明 |
 |---|---|---|---|
@@ -180,7 +180,7 @@ op 形态(动作 op 重组 as-built):动作 op = `CwActionXxxOp`,继承框架 `S
 
 ### 4.6 动作类型已登记、不经注册表分发的类(3 类)
 
-- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新终结分支/补给刷新终结分支/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结、结束本次访问返回主循环重观察 + 闸 = 剩余次数观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;遭遇/补给两链已随剩余次数化修复,全链合规)。(LevelUpShop 与 pick 12 类曾在本节名单,分别随注册表显式独立行〔该行已随 2026-10-17 迭代 T-4 双类型退役,单类型单行回归 §4.2〕与 pick 族并入出列;HoldFrame 曾已登记,2026-09-20 随 obs scope 口径并入删除。)
+- `RefreshNodeOptions` / `RefreshSupply` / `RefreshInvestCards`:三刷新建议动作,走各画面既有点击链(遭遇刷新终结分支/补给刷新终结分支/投资逐卡刷新)。**执行语义全域规范 = 刷新即终结、结束本次访问返回主循环重观察 + 闸 = 剩余次数观察真值**(规范单一源 = [../screens/op-layer.md](../screens/op-layer.md) §1.4;遭遇/补给两链已随剩余次数化修复,全链合规)。
 - (Obs `scope='outer_loop'` 口径同为分支拦截型、不经本表派发,但其动作类型有注册行(§4.4 in_place 路径派发用),不属本节「无注册行」豁免面。)
 
 ### 4.7 层级区别:动作域之外的组合壳 / 画面 op(不进注册表,列出以划清「动作 op」边界)

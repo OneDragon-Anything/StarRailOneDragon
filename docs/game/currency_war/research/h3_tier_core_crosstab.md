@@ -9,8 +9,8 @@
 ## 口径
 
 - 数据:实机 outcomes 流全量 191 行——普通战斗 83 / 奖励 68 / 遭遇 23 /
-  boss 17;弃局 0 行(采集时点 = 2026-09-02,时落
-  `.debug/temp/currency_war/replay/outcomes.jsonl`;2026-09-07 布局裁定后
+  boss 17;弃局 0 行(采集时点 = 2026-09-02,当时临时区 replay 流;
+  2026-09-07 布局裁定后
   该流随历史语料停用,逐局数据在按局档案 `telemetry/matches/` 的
   slices.outcomes 切片内);
 - 档位 tier = `recipe_tier(board_before)`(`RECIPE_FACTIONS`
@@ -68,8 +68,8 @@ battle-only 口径(普通战斗/遭遇/boss)同型:tier7+ core1 100%
 
 - 遥测侧补 `deployed` 角色名进 outcomes 行 → 真 core trio 在场数
   (core_count_for 语义),摆脱阵营代理;
-- tier7+ 各格样本 ≥10 后重跑本文脚本
-  (`.debug/temp/currency_war/cw_dev/h3_crosstab.py`,参数化在头部)。
+- tier7+ 各格样本 ≥10 后按本文口径重跑
+  (原脚本为本地过程件已退役,统计口径以本文为准)。
 
 ## 真 core 口径首版(2026-08-24 升级;deployed 同轮联结)
 
@@ -77,8 +77,7 @@ battle-only 口径(普通战斗/遭遇/boss)同型:tier7+ core1 100%
 `state.deployed[].char_id` 历史覆盖 94.1%,按 `(run_id, round_num)`
 同轮联结 outcomes 命中 169/170(all)/61/62(battle)——角色名
 一直躺在语料里,升级是纯离线活
-(脚本 `.debug/temp/currency_war/cw_dev/h3_trio_crosstab.py`,
-报告 `h3_trio_report.json`,随语料增长可重跑)。
+(脚本与报告为本地过程件已退役,口径与结果以本文为准)。
 
 **口径两版**:①对全体阵容取 core 最大重叠——**弃用**(任何
 阵容都撞得上某个阵容的 core,指标膨胀:无 core0 格,vs 阵营
@@ -117,8 +116,7 @@ factions 最大重叠者为该局主导阵容,数其 core_chars 在场数)——
 
 ## 来源
 
-- 脚本:`.debug/temp/currency_war/cw_dev/h3_crosstab.py`(2026-08-25);
-- 原始报告 JSON:`.debug/temp/currency_war/cw_dev/h3_crosstab_report.json`;
+- 脚本与原始报告 JSON:本地过程件(已退役,2026-08-25;统计结果已收编本文);
 - 「档内要不要细分」悬置问题的档位阶梯统计(e0 13.9%/e1 41.6%/e2 77.8%,n=187/89/9)**口径注(2026-08-26)**:阶梯 = **战斗节点胜率按档分桶**(99 局全部战斗样本,合计 285);与本文交叉表(191 行轮级语料,含奖励节点 68 行)**是同语料池的两个不同口径统计**——n 底数不同属口径差非矛盾。引用阶梯一律指胜率口径(math_proofs 第 3 号命题,单篇文件 p03,为规范出处);
 - 决策关联:悬置问题「档内要不要细分」——本文是其登记的实机交叉表首版;
   结论支持「仅 tier≥7 档内细分有数据支撑」。

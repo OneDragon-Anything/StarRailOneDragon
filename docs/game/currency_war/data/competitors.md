@@ -12,7 +12,7 @@
 >
 > **合计 V4.4 约 50 个敌人词缀**。A8 高难翻车主因;本文按**机制分类**作词缀索引(效果原文分类,便于查阅)。
 > **词缀效果原文的单一源 = `src/sr_od/application/currency_war/data/affix_effects_data.py`**(HandleBriefing 运行时采集,D-81 守卫防 OCR 覆盖)——本文是机制分类叙事层,数值以注册表为准。
-> **方向判定归口(2026-11 统一阵容评分迭代)**:词缀×线克/利**方向**不再由本文件机制分类预判——逐线吃怕单一源 = `kernel/cw_affinity_table`(攻略实证词缀+boss 吃怕表;未登记线兜底层只给怕不给吃);选卡克制减分 = 策略层 `pick_common.AFFIX_COUNTERS_FACTIONS`(词缀→受克羁绊名直写表,消费 = `pick_common.counter_pick_penalty`;原 `MECHANIC_COUNTERS` 三件套间接链路已随克制表直写迭代删除)。本文各级「克X/利X」注记为攻略叙事参考,**不构成策略输入**(机制泛化不预判方向——正当防卫对白厄受击流两推断打架等案例已在吃怕表逐线裁决)。
+> **方向判定归口(2026-11 落定)**:词缀×线克/利**方向**不再由本文件机制分类预判——逐线吃怕单一源 = `kernel/cw_affinity_table`(攻略实证词缀+boss 吃怕表;未登记线兜底层只给怕不给吃);选卡克制减分 = 策略层 `pick_common.AFFIX_COUNTERS_FACTIONS`(词缀→受克羁绊名直写表,消费 = `pick_common.counter_pick_penalty`;原 `MECHANIC_COUNTERS` 三件套间接链路已随克制表直写迭代删除)。本文各级「克X/利X」注记为攻略叙事参考,**不构成策略输入**(机制泛化不预判方向——正当防卫对白厄受击流两推断打架等案例已在吃怕表逐线裁决)。
 > 遇「投资环境·敌后破坏」可让一个已生成词缀失效(见 `cw_investments.py::INVESTMENT_ENVS` 敌后破坏)。
 
 ---
@@ -128,7 +128,7 @@
 
 ---
 
-## 机制 tag 映射(原 `MECHANIC_COUNTERS` 注册表的叙事镜像——该表已随克制表直写迭代删除,现役选卡克制面 = `pick_common.AFFIX_COUNTERS_FACTIONS` 直写表仅 2 条活链路〔净化身心/永久创伤〕;本段保留为机制分类叙事参考,不构成策略输入)
+## 机制 tag 映射(原 `MECHANIC_COUNTERS` 注册表的叙事镜像——该注册表已删除,现役选卡克制面 = `pick_common.AFFIX_COUNTERS_FACTIONS` 直写表仅 2 条活链路〔净化身心/永久创伤〕;本段保留为机制分类叙事参考,不构成策略输入)
 
 **counter(克 comp 机械属性)**:
 - 属性熄火 ×7 → `[依赖<属性>]`(风/火/冰/雷/物理/量子/虚数 各一;纯色队被克)

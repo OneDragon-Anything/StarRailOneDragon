@@ -16,7 +16,7 @@
 晶矿(奖励球)进入对局的渠道,现登记三处(前一渠道已实采,后两渠道呈现面待实机校):
 
 - **奖励节点面板**(已采,主渠道):奖励节点呈现的晶矿点列,点开掉落规则 = 上文口径 v0;
-- **位面声明**(呈现面待实机校):环境「增发货币」在各位面开局声明一枚金晶矿,经声明矿通道(`cw_investments.ENV_ORE_GRANTS`)入局;自动开启与否/色档未实采,披露键 `ORE_PLANE_START_PENDING`/`ENV_ECONOMY_PENDING_VERIFICATION`(invest_effects.md §6 T-29 行同源);
+- **位面声明**(呈现面待实机校):环境「增发货币」在各位面开局声明一枚金晶矿,经声明矿通道(`cw_investments.ENV_ORE_GRANTS`)入局;自动开启与否/色档未实采,披露键 `ORE_PLANE_START_PENDING`/`ENV_ECONOMY_PENDING_VERIFICATION`(invest_effects.md §6 位面开局声明矿共轭行同源);
 - **击杀掉落**(呈现面待实机校,触发面零建模):策略卡爆晶矿族(银 id 102601 20%/金 id 202001 30%/彩 id 301501 45%)「我方小队消灭敌方目标时」逐击杀概率掉落一枚战利品晶矿——触发源 sim/live 两边皆盲,零建模(不编近似数,权威版本 = invest_effects.md §6 爆晶矿族行);呈现面(画面位置/时点/色档/大小)未记录,披露键 `strategy_ore_drop_presentation_unknown`。live 侧零代码观察覆盖:任何来源新现的晶矿经单一写径 `report_spheres_observed`(`kernel/cw_ore_channel.py`)自动附着采样,采集链对来源不可知,bot 无需感知矿从何而来。
 
 后两渠道的实机呈现面首遇校后归本篇补档。

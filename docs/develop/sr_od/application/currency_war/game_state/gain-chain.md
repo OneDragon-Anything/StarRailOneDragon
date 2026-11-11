@@ -99,7 +99,7 @@ producer=GAIN_CHAIN_PRODUCER)`(`rng` = 环境随机支采样注入,透传
   (独家代言产物以牙还牙甲属'进阶' = 好运来行源类别,「产物类别不属
   任何已登记源类别」的结构性佐证对该卡不成立,不重入由直落不重查承载)。
 转换辖域 = 一切经本原语的获得事件字面全域(含持卡自身卡效果条目的随机采样
-与开箱链所得——「将要获得」无获路枚举,T-102-attack F1 教训同源;占席
+与开箱链所得——「将要获得」无获路枚举;占席
 道具分支箱→简易→转换→箱单层终止:转发落位路径不再进入本原语);
 live 零写观察覆盖(实机转换由游戏自算,双状态容器观察自然对账)。
 非写端的产物预测(穿着即合成的合成产物面)经公开只读判定件
@@ -995,11 +995,11 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     同经、observe 覆盖零回调,经 `write_prior` 重算先验——fields.md
     §3.1.6);状态容器空 → 跳过删除,零写 + 申报行(`kind =
     ENV_AFFIX_DISABLE_EMPTY_DECL`,实机已失效而模型未删,偏差全程持续,
-    设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。T-14 蓝海追加
+    设计披露键 3)。效果串 `env_affix_disable:<词缀名>`。蓝海追加
     链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
     触发,设计披露键 6);姊妹卡退化形态的只供策略算分的实现分支已按本机制落地(on_strategy_gained
     硬编码分支,选择规则换取尾,mid-run 守卫住 HP 回调,见下)。
-    设计权威版本 = 迭代 2026-09-23-invest-effects-calc T-45 设计稿 §2.1/§2.3。
+    (机制权威版本 = 本节上述内容;设计过程稿已随迭代退役。)
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost|faction, star, type_tag)` 随机赠卡规格(家族载体,「随机N费」与
     「随机【阵营】」两族共载体,采样轴二选一构建期互斥校验,费用轴首例 =
@@ -1030,7 +1030,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     BENCH_ITEM_NAMES)——确定具名发放,写通道走随机态(2026-10-17 用户裁定:
     「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据
     ——猜测写 + equips 观察覆盖纠偏,首观察静默覆盖落 `logic_rand_outcome`
-    台账,锚定与否都不进失配网;先例 = T-5 财富宝钻/T-29 奖励全分支随机态;
+    台账,锚定与否都不进失配网;先例 = 财富宝钻/奖励全分支随机态(获得链既有裁定);
     本支零采样不需 rng)。效果串 `equip_gift:<名>`,与 `env_gift:`/
     `env_star_grant:`/`item_gift:` 前缀分域。登记与构建校验 =
     `_validate_env_gifts` 装备名漂移哨(逐名 ∈ EQUIPMENTS;治理口径
@@ -1051,7 +1051,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     前缀 `env_equip_random:<名>`(与具名支 `equip_gift:`/随机角色支
     `env_gift_random:` 分域,审计归组键)。`rng` 回退/条件解析与随机角色
     支同款。
-  - **持续伤害契约基准键分支**(条件分支建模 T-28,获得刻纯登记):具名支发完
+  - **持续伤害契约基准键分支**(获得刻纯登记):具名支发完
     椒丘/卡芙卡后,`on_env_gained` 对本卡追加登记 `env_grants_done` 条件键
     `dot_anchor#<位面>-<轮>`(与即时分支同窗相邻 write_logic 直写,同
     evidence 同 sig;**纯登记件非门控**——显式判 node,节点未进窗〔开局
@@ -1205,8 +1205,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   **策略链词缀失效分支**(退化 id 260601「使最右侧的敌人词缀失效，并使
   敌人难度-5。获得8金币。」失效分支;硬编码沿敌后破坏 `ENV_AFFIX_DISABLE_ENV`
   枚举即收敛先例,禁入 `PICK_INVEST_EFFECTS` 四名闭集——键集闭集锁,
-  误登记吃红;生效方案 = 迭代 2026-09-23-invest-effects-calc
-  designs/REVIEW-T291.md §3 改判建模,机制单一源 = T-45 设计稿 §2.5):
+  误登记吃红;生效方案 = 本节改判建模(设计过程稿已随迭代退役),机制单一源 = 本节与 `kernel/cw_gain_chain.py` 策略词缀失效分支):
   选退化 → 词缀名单非空时**取尾删 1 个**——「最右侧」= 状态容器尾元素
   (状态容器序 = 词缀横条位置域,读链 center.x 升序排序识别标志保序,简报/位面
   详情两读链同识别标志),剩余列表整条替换写回;经 `_select_write` 择道且
@@ -1230,7 +1229,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   `_place_bench_item` 调用、禁 bench/overflow 任何字段),队列 =
   `pending_item_opens`(fields.md §3.2.25)追加 `(件名, 解锁序位)`
   (解锁序位 = 获得刻生效序位沿节点日程表步进 `open_delay_nodes` 步,
-  计数起点 = 获得节点计入〔T-34 设计稿裁决点 3〕;获得时点未落定窗防御基准
+  计数起点 = 获得节点计入(设计定读);获得时点未落定窗防御基准
   (1,1);步进遇 None 停留最后合法值);`perfect_win_accel` 开时追加
   done 条件键 `delayed_open_accel`(幂等不重写,作用域按键查表卡名
   无关;消费 = `check_env_item_open_perfect` 完胜回退,settle_confirm
@@ -1290,7 +1289,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
 - 零采样 rand=True 例外(2026-10-17 用户裁定):环境通道即时装备支
   (`equips_immediate`)确定具名、零采样,仍以 rand=True 走随机态通道——
   「选卡时点游戏实际发下」对首例环境未经实机判读核实,卡面文本是唯一证据,
-  猜测写 + 观察覆盖纠偏(先例 = T-5 财富宝钻随机态获得);语义 = 通道选择
+  猜测写 + 观察覆盖纠偏(先例 = 财富宝钻随机态获得);语义 = 通道选择
   声明而非采样,不需 rng。
 - 零采样 rand=False 例外:装备获得转换(§2.3)= 确定事件
   (「改为获得」无分布面),占席道具分支转发 `gain_bench_item` 恒

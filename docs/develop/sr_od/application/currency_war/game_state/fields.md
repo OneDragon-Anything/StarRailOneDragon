@@ -184,7 +184,7 @@ A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/
 清场;敌人难度 = 恒稳开局基线初值,后续敌方难度读数真读覆盖归主条目(§3.2.14)。标准化收敛后
 本写语义的输入 = 标准注册名(观察侧转换,失败 = 观察失败零写,待办登记见屏契约));
 ②接管补采实采写入方=位面详情屏(数据进入点 =
-`report_screen_plane_intel_obs`,词缀写门三分支(T-45 扩面,分支序即短路序):读数 None
+`report_screen_plane_intel_obs`,词缀写门三分支(分支序即短路序):读数 None
 = 本轮无此面/失读不进写门;状态容器随机态(logic_rand)→ observe 通道覆盖转正(非空与空列表
 读数均可——被覆盖对象是猜测非真值,删尽态空表转正闭环收敛;差异落 `logic_rand_outcome`
 台账、等值零台账;签名 = obs/CwScreenPlaneIntel/货币战争-位面详情/read);状态容器非随机态
@@ -192,8 +192,7 @@ A8/难度108(§3.1.6 三写入方时序)。node 族/payload 域/事件选择域/
 compute,采集真值落账族)、非空状态容器不写(幂等保持,防真值互踩);`plane_bosses` 写门不变:
 已有真值不覆写——简报源先落时实采不冲真值,无真值 3 槽保位全量写;
 详 = [../screens/plane_intel.md](../screens/plane_intel.md));
-③获得链删除分支写入方=选敌后破坏(id 146「开局时，使一个已生成的敌人词缀失效。」,T-45
-删除式建模)与选退化(id 260601「使最右侧的敌人词缀失效……」,策略卡):前者均匀随机删
+③获得链删除分支写入方=选敌后破坏(id 146「开局时，使一个已生成的敌人词缀失效。」,删除式建模)与选退化(id 260601「使最右侧的敌人词缀失效……」,策略卡):前者均匀随机删
 1 个,后者取尾删 1 个(「最右侧」= 状态容器尾元素)——剩余列表整条替换写回,均经
 `_select_write` 择道随机态(`kernel/cw_gain_chain.on_env_gained` /
 `on_strategy_gained`;gain-chain.md §3 词缀失效删除分支条/策略链词缀失效分支)。
@@ -377,7 +376,7 @@ kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
   离场留装备)、愚者恶作剧(离场产金已建状态副本通道 = `STRATEGY_BENCH_LEAVE_GOLD_GRANTS`
   节点窗收入段最前分支,BenchView 匹配槽置空槽 + 金独立笔,§5.2 已结构化出列段本卡行;
   进席走买牌域)、打捞人才库/+(进补给阶段发
-  未选角色进席)、发牌进席族(节节高升/天降救兵/价值投资/援军族/全都要等,按归属(彩名补:T-321 批,绑表随函数自动跟随)
+  未选角色进席)、发牌进席族(节节高升/天降救兵/价值投资/援军族/全都要等,按归属(彩名补批,绑表随函数自动跟随)
   判据逐卡分面,§3.2.18/§5.3)。
 - 获得链写入方(kernel,`GAIN_CHAIN_PRODUCER`;**发放写端** = 道具槽 item
   身份权威源):环境赠卡道具分支——`on_env_gained`
@@ -396,8 +395,6 @@ kind(supply_box/tome/bookcard)必带钉名道具名,unit/empty 恒 None。
   cw_investments `STRATEGY_ENCOUNTER_BATTLE_GRANTS`,唯一调用点 = sim
   `_resolve_battle` 结算分支,live 零写观察覆盖;链式契约权威版本 =
   gain-chain.md §2.11)。
-  T-2/2026-09-24 批落地时未申报,随本行一并清偿(2026-10-17,T-31 批文档义务
-  +独立验收 C1 处置;纯文档申报,零行为)。
 **边界**:**容量唯一改写源=节省工位**(官方原文「在接下来3个节点只有3个备战席位置。
 随后,获得3件简易装备」)——时限效果,激活期间 capacity=3、3 节点后自动回 9,经
 效果账本容量逻辑态桥 `project_effect_capacity` 逻辑写入(桥声明契约=payload 鸭子属性
@@ -712,7 +709,7 @@ evidence 区分。敌方难度读数通道=**弱**(stylized 数字 OCR 常空,�
   写通道 = `anchor_aware_write` 择口):即时装备支(2026-10-17 用户裁定 rand=True
   恒随机态——「选卡时点游戏实际发下」对首例环境未经实机判读核实,猜测写 + 观察
   覆盖纠偏;首例 = 红钻贵族「红钻」)+ 随机装备支(rand=True 类别池采样入栏,
-  首例 = 劳务派遣合同「随机星徽」——T-19 落地时未申报,随本行一并清偿)
+  首例 = 劳务派遣合同「随机星徽」——落地时未申报,随本行一并清偿)
   + 策略卡获得时点采样支(`cw_gain_effects.PICK_INVEST_EFFECTS` 随机装备族,
   泛化表 `(category, count)` 行登记,池 = `equips_by_category` 注册表派生单源、
   类别池均匀 → `gain_equipment(rand=True)` 入栏):打捞人才库+ 句2(简易池 =
@@ -1094,7 +1091,7 @@ NodePos)`;解锁序位坐标系 = NodePos(位面,轮)字典序、1 基(§2.2 节
 不接——实机开盒由游戏自己执行,板件消失/奖励落席归现役观察覆盖,不对称申报
 同 pending_item_grants;开盒零产出写入,开盒内容卡面无载放弃建模);③完胜
 回退 = `check_env_item_open_perfect`(settle_confirm 分支插入位置,结算环判据同
-T-33 完胜口径,两边跑——解锁位回退是纯模型知识修正,与开盒原语 live 不接
+完胜口径(结算胜利 ∧ 本节点未损血),两边跑——解锁位回退是纯模型知识修正,与开盒原语 live 不接
 无矛盾)。**无观察写入方**——队列是卡文推算知识;战利品区板件显示另建观察
 读数域 `giftbox_sight`(§3.2.25a,纯旁路留证,本队列三个登记入口与语义不受其影响)。
 链式契约权威版本 =
@@ -1353,7 +1350,7 @@ count`(=3)初始化,此后每进入一个新节点窗消耗一期,归零即停�
 各键并存、各窗各付各额,零判重闸,§3.2.26c 同形;聚合 payload amount
 求和/count 取 max = 策略侧选卡估值口径,对分期双持 = 畸形,禁作状态副本支付
 源);缺键 = 未持该卡/未初始化,耗尽条目留置 0 不清除。「现在」分支(拿卡
-当场 +7)无状态副本写端 = T-112 族级待办维持不建,本域不承载。
+当场 +7)无状态副本写端 = 族级待办维持不建,本域不承载。
 
 **写入方**:唯一逻辑写入方两处,均 sim 门控写(`cw_sim_backend`):①拿卡
 落地拍初始化(`_on_invest_picked` 分期金初始化分支 `apply_strategy_pick_
@@ -1947,15 +1944,14 @@ delayed_open_accel 通道两道写端,见条件键清单)。登记表(白名单�
 `report_action_refresh_shop_param` 尾部,live/sim 同段 op 代码同口);
 `'interest_threshold'` = 利息累计阈值触发器(公司契约;消费 =
 `check_env_interest_grants`);`'battle_co_presence'` = 同战共现触发器
-(星核猎手契约 id 129,T-30;每环境至多一个,(env, 本键) 天然唯一,消费 =
+(星核猎手契约 id 129;每环境至多一个,(env, 本键) 天然唯一,消费 =
 `check_env_battle_grants`,唯一调用点 = `report_node_advance`
 settle_confirm 分支,黑天鹅直登相邻,触发形状节 = §3.5.6);
 `'star_grant#<装备名>'` = 随机星徽授予分支绑定键(# 后载荷 = 发放装备名,
 键值载荷是条件键的扩展形态,随劳务派遣合同登记;写端 =
 `cw_gain_chain.on_env_gained` 随机装备支,消费 = 绑定存在性检查,不承担
 幂等);`'boss#<位面>-<轮>'` = 首领节点周期发放幂等键(每节点一键,消费 =
-`check_env_boss_grants`);`'dot_confirm'` = 持续伤害契约条件分支证实(T-28;
-消费 = `check_env_dot_grants` 证实门);`'dot_anchor#<位面>-<轮>'` = 持续
+`check_env_boss_grants`);`'dot_confirm'` = 持续伤害契约条件分支证实(消费 = `check_env_dot_grants` 证实门);`'dot_anchor#<位面>-<轮>'` = 持续
 伤害契约获得刻基准键(**纯登记件非门控**,写端 = `cw_gain_chain.on_env_gained`
 基准键分支,开局三选一获取形态可缺);`'dot_battle#<k>'` = 持续伤害契约 sim
 进度键(k 从 1 起 append-only,证实计数单一源,进度分支 sim 专用);
@@ -1963,16 +1959,15 @@ settle_confirm 分支,黑天鹅直登相邻,触发形状节 = §3.5.6);
 每阈值一键、阈值嵌键,消费 = `check_env_ore_open_grants`,唯一调用点 =
 采晶矿上报函数 `report_action_collect_ore_param` 尾部,live/sim 同段 op
 代码同口);`'deploy_lock_uid#<uid>'` = 赠卡锁**完胜作用域隔离键**(# 后
-载荷 = 赠卡实例号,键值载荷形态随 `star_grant#`;首例 = 英雄登场 id 133,
-T-33;写端 = `cw_gain_chain.on_env_gained` 赠卡锁分支,发放刻与锁记录同窗;
+载荷 = 赠卡实例号,键值载荷形态随 `star_grant#`;首例 = 英雄登场 id 133;写端 = `cw_gain_chain.on_env_gained` 赠卡锁分支,发放刻与锁记录同窗;
 消费 = `check_env_deploy_lock_perfect` 完胜改写的作用域门——只回退本键集
 内 uid 的锁记录,异环境锁记录不受同卡完胜加速;纯作用域登记,非幂等守卫);
-`'bond_tier_<档位>'` = 击破档位触发器(特邀专家:加拉赫 id 142,T-41;
+`'bond_tier_<档位>'` = 击破档位触发器(特邀专家:加拉赫 id 142;
 每档一键〔现值 2/4/6/9〕,一次性封账降档再回不重发;档位单一源 =
 `FACTIONS['击破'].tiers`,构建期卡面档位对拍闸防双源漂移,消费 =
 `check_env_bond_tier_grants`,触发形状节见下);`'delayed_open_accel'` =
 状态副本发放域〔环境 ∪ 策略〕倒计时件**完胜加速作用域键**(首例 = 命运礼物
-id 134,T-34;第二例 = 偶像经济 id 303401,策略道首例;每卡至多一个,
+id 134;第二例 = 偶像经济 id 303401,策略道首例;每卡至多一个,
 (卡名, 本键) 天然唯一 + 获得刻幂等不重写;写端 = `cw_gain_chain.
 on_env_gained`(环境道)/ `on_strategy_gained`(策略道)延迟道具支线,
 perfect_win_accel 开时获得刻与开盒队列登记同窗;消费 =
@@ -2062,7 +2057,7 @@ resolved cap)+ flat;唯一计数刻 = 1f 失败页败局行写点,显式败局�
 存续);done 为空的接管形态 = 计数同步归零 → 重新累计达标后再发(同局
 双托帕&账账 = 家族「最佳猜测」边界的 interest 形状)。
 
-**dot_confirm 条件分支形状**(同域第五通道,持续伤害契约 id 127,T-28;
+**dot_confirm 条件分支形状**(同域第五通道,持续伤害契约 id 127;
 **无登记表**——本卡不入五张条件发放登记表,建模形状 = 猜测写+证实,非
 条件检查型,反向锁测试钉住防误登记):计数源(敌方 DoT 状态)两边皆盲
 无状态副本里的值生产点 → 不可数但可假设、可证实(四型族面口径 =
@@ -2092,8 +2087,8 @@ bench ∪ 上阵 ∪ 溢出含黑天鹅则不叠写,与 gain_character 3 合 1 �
 局型**(席满):猜测态落溢出位、bench 观察永不见它 → 证实延迟至该单位进
 备战席,期间幂等守卫代行封写,无行为面损伤。
 
-**bond_tier_<档位> 触发形状**(同域第六通道,特邀专家:加拉赫 id 142,
-T-41;登记表 = `cw_investments.ENV_BOND_TIER_GRANTS`,值 = (羁绊名,
+**bond_tier_<档位> 触发形状**(同域第六通道,特邀专家:加拉赫 id 142;
+登记表 = `cw_investments.ENV_BOND_TIER_GRANTS`,值 = (羁绊名,
 发放装备名) 白名单制,档位不入表——单一源 = `FACTIONS[bond].tiers`):
 击破羁绊资格计数(资格集口径 = 出身 ∨ 持星徽,`_qualification_sets`
 派生值;L2 装备贡献——击破星徽穿戴者计入——是既有口径)≥ 档位时发放
@@ -2176,8 +2171,7 @@ deploy_cap/back_layout/diamond_count 联动属观察域,识别器读屏跟踪,�
 `('星核猎手契约', 'battle_co_presence')`(同 evidence 前缀同 sig;链内
 展开行带 `#place`/`#mergeN` 后缀 = 前缀共享非全等)。零 rng。
 **赠卡锁分支**(`cw_gain_chain.on_env_gained`,登记表 =
-`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 白名单,首例 = 英雄登场 id 133,
-T-33)获得刻同窗四笔:发号(同计数器双口第二口,evidence
+`cw_investments.ENV_DEPLOY_LOCK_GRANTS` 白名单,首例 = 英雄登场 id 133)获得刻同窗四笔:发号(同计数器双口第二口,evidence
 `on_env_gained:<环境>#uid`)+ 随机赠卡链(`gain_character` rand=True,
 规格池均匀掷骰,uid 随行)+ 锁域追加 + `env_grants_done` 追加
 `deploy_lock_uid#<uid>`(perfect_win_accel 开时;域规格 = §3.5.5)。
@@ -2205,7 +2199,7 @@ uid,旧档宽容读缺省 None);**审计** = 两行 PROCESS_ONLY(无观察读取
 赋号**(`gain_character` uid 形参注入点,落位构造唯一;现役注入点三处 =
 `check_env_battle_grants` 发放刻、`cw_gain_chain.on_env_gained` 赠卡锁
 分支发放刻、`cw_gain_effects._make_char_grant_effect` 策略链具名角色
-工厂发放刻〔T-368 佩佩客串批扩,辖 `_STRATEGY_CHAR_GRANTS` 名单全部键,
+工厂发放刻〔佩佩客串批扩,辖 `_STRATEGY_CHAR_GRANTS` 名单全部键,
 均经 `env_grant_uid_seq` 计数器发号〕),其余恒 None:商店购入/观察重建
 (`identify_slots` 构造单位)/溢出位身份重建/合成产物未承继发号时
 (承继规则 = `cw_gain_chain._merge_inherit_uid` 单一源,素材已发号 uid
@@ -2698,7 +2692,7 @@ WHILE_HELD/ECONOMY,payload 引 `STRATEGY_ECONOMY` 同一实例;发放 =
 (`gs.observe`,on_diamond 口径),live 零写观察覆盖兜底;§5.3 合并同类项行);
 公司严选(「现在及每个位面开始时，开启一个由5个独特4费角色组成的商店，并获得
 3金币」把结果写进状态副本的实现分支三件出列:即时段 instant_gold=3 已登记估值面维持〔金面
-禁直写硬裁定——发放写端缺口族级 T-112 口径不变〕;位面段金 `gold_per_plane=3`
+禁直写硬裁定——发放写端缺口族级口径不变〕;位面段金 `gold_per_plane=3`
 = sim 位面首节点窗 `strategy:plane_gold:p{位面}` 单笔 + 选卡拍补发
 `strategy:plane_gold_refire:<卡名>`〔用户裁定 2026-11-01 族级,中途拿卡判当前
 位面已开始登记拍全额补发,状态容器金缺读零写禁猜,§3.2.9 周期族金支行〕;商店改写对
@@ -2957,7 +2951,7 @@ effect_inventory 等级日程(逻辑写入方候选)。
 逻辑写入方=**分期日程**(「现在及接下来 3 次进入新节点」每次发金)。时点=逐节点非
 轮首。状态容器已落位 = `strategy_gold_next_nodes_left`(§3.2.26e):拿卡落地拍按
 注册值 count 初始化、节点窗收入段每窗递减(sim 门控写,live 零写);「现在」分支
-(拿卡当场金)无状态副本写端 = T-112 族级待办维持不建,实存性披露键 =
+(拿卡当场金)无状态副本写端 = 族级待办维持不建,实存性披露键 =
 `STRATEGY_GOLD_NEXT_NODES_NOW_LEG_UNVERIFIED`(cw_sim_backend)。
 
 #### 砂里淘金(gold_per_2star2cost_merge=2)
@@ -3271,7 +3265,7 @@ cap/back_layout」,观察写入方照常跟踪真实 cap。
     `settlement_ring`(结算观测环:产结算屏节点的 RoundOutcome 消费子集,
     深度 10 同场去重;行结构 `_RingRow` = (plane, round_num, node_type,
     killed, progress_fill_ratio, difficulty_node, encounter_tier,
-    hp_after)——hp_after = 战后小队 HP 透传(T-33 增,写端 = live
+    hp_after)——hp_after = 战后小队 HP 透传(写端 = live
     `record_settlement_row` 入行 + sim 结算分支补写帧两写端;None = 读缺
     不参与判定;消费 = 完胜判定相邻帧差分,既有读口零扰)/
     `encounter_log`(本局全量遭遇行,遭遇经验证据通道)/

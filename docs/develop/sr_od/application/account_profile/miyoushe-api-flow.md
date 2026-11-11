@@ -2,7 +2,7 @@
 
 > 目的：在自家仓库（Python）实现「密码登录 → game_record 数据读取（原神/星铁通用管线）」能力前，把已被实测证明可跑通的参考实现逐行摸清并固化成规格。
 >
-> 参考实现：`teyvat-resin-planner`（MIT，Node 22 零依赖），本机克隆于 `.debug/temp/teyvat-resin-planner/`（不入 git）。本文所有 `文件名:行号` 均指该目录下文件；所有常量已内联，无需翻参考仓库。
+> 参考实现：`teyvat-resin-planner`（MIT，Node 22 零依赖），本机曾克隆于 `.debug/temp/teyvat-resin-planner/`（本地易失件，不入 git；上游仓库 URL 待补录（遗留登记），commit 锚见 §8.1「参考实现 commit SHA」）。本文所有 `文件名:行号` 均指该目录下文件；所有常量已内联，无需翻参考仓库。
 >
 > 实测背书（2026-11-03）：密码登录 → 原神 game_record 全链路 3 接口零错误；同一会话探测星铁 hkrpg `index`/`note`/`avatar/info` 全部一次通过、零人机验证（过程记录见 `skills/sr-od-account-inspection/references/api.md`「复核实验」节）。
 >
@@ -374,15 +374,15 @@ retcode 10034 时响应头 `x-rpc-verify` 内嵌 JSON `{ticket, token}`（`accou
 965672384105a4bc40959beffad51f9e5581ebe2
 ```
 
-（`git -C .debug/temp/teyvat-resin-planner rev-parse HEAD` 实测输出。）
+（参考实现本机克隆 `rev-parse HEAD` 实测输出；本机克隆为易失件，重建 = 上游同名仓库检出此 commit。）
 
 ### 8.2 实测流量校对记录
 
-**实测流量轨迹（2026-11-03 抓取）**：`.debug/temp/teyvat-resin-planner/.private/trace.log`（JSONL，10 条，cookie 值脱敏）：loginByPassword ×1、原神 getUserGameRolesByCookie/dailyNote/character/list ×6、hkrpg index/note/avatar-info ×3，**全部 retcode 0**。登录 Set-Cookie 名单已据此补全（见「2. 密码登录」节）。仍待定向补抓的两段：getFp 真实响应（登录命中 24h 缓存未发起，待 fp 缓存过期后的登录补录）；createVerification/verifyVerification 完整往返（会话未触发风控，需人为构造 1034 场景补录）。
+**实测流量轨迹（2026-11-03 抓取）**：本地抓包记录（JSONL，10 条，cookie 值脱敏；过程件易失，结论以本节为准）：loginByPassword ×1、原神 getUserGameRolesByCookie/dailyNote/character/list ×6、hkrpg index/note/avatar-info ×3，**全部 retcode 0**。登录 Set-Cookie 名单已据此补全（见「2. 密码登录」节）。仍待定向补抓的两段：getFp 真实响应（登录命中 24h 缓存未发起，待 fp 缓存过期后的登录补录）；createVerification/verifyVerification 完整往返（会话未触发风控，需人为构造 1034 场景补录）。
 
-**自家实现端到端校对（2026-11-04）**：按本规格实现的 `one_dragon/mys/`（登录/aigis 分支/通用请求）+ `sr_od/mys/`（崩铁角色列表）已在真机 MCP 环境端到端跑通并验收（迭代 mys-account-mcp，T-5 实机报告）：密码登录两次均零人机验证通过、角色发现 + index 返回 64 角色、空罐/登出后打接口实测命中会话失效映射（码值经信封脱敏未透出）、1034 未出现。规格与实现零出入。
+**自家实现端到端校对（2026-11-04）**：按本规格实现的 `one_dragon/mys/`（登录/aigis 分支/通用请求）+ `sr_od/mys/`（崩铁角色列表）已在真机 MCP 环境端到端跑通并验收：密码登录两次均零人机验证通过、角色发现 + index 返回 64 角色、空罐/登出后打接口实测命中会话失效映射（码值经信封脱敏未透出）、1034 未出现。规格与实现零出入。
 
-**avatar/info 往返校对（2026-11-04，迭代 mys-roster-detail）**：`hkrpg/api/avatar/info?need_wiki=true` 经自家客户端实机往返验收——64 角色全量明细（遗器/位面饰品/星魂/行迹/面板）7201 项逐项对账 0 mismatch；`data.property_info`（56 码官方词典）与 `need_wiki` 开关语义实证；**端点勘误实证**：`hkrpg/api/index` 只出轻名册 12 字段/角色，明细数据仅在 avatar/info（规划器合并产物曾致此混淆）。
+**avatar/info 往返校对（2026-11-04）**：`hkrpg/api/avatar/info?need_wiki=true` 经自家客户端实机往返验收——64 角色全量明细（遗器/位面饰品/星魂/行迹/面板）7201 项逐项对账 0 mismatch；`data.property_info`（56 码官方词典）与 `need_wiki` 开关语义实证；**端点勘误实证**：`hkrpg/api/index` 只出轻名册 12 字段/角色，明细数据仅在 avatar/info（规划器合并产物曾致此混淆）。
 
 ### 8.3 外部出处
 

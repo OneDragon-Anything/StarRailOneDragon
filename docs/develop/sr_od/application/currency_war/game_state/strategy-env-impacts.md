@@ -73,7 +73,7 @@
 | 策略层消费 | 位面开始时点资源入账(免费刷余额 +2 直接改变位面初的刷新经济,免费刷不耗金);XP 入账。⚠️ 免费刷新按钮未正式建档接入(缺口任务),接入前策略层对该余额的消费只能走规划面不可走执行面 |
 
 ### 淘金客(2026-09-10 用户确认)
-- 被动收入(300601):备战席左一角色基础费用 XP(条件 XP 族第 4 形,fields XP 缺口出列;T-299 批接入调用)
+- 被动收入(300601):备战席左一角色基础费用 XP(条件 XP 族第 4 形,fields XP 缺口出列)
 
 
 | 槽 | 内容 |
@@ -151,7 +151,7 @@
 | 槽 | 内容 |
 |---|---|
 | 官方原文 | `cw_invest_data.py` PlazaAugment id=302401,名=伟大征服,品质=棱彩:「连胜奖励变为3倍，敌人难度+N，N为你的当前连胜数。获得12经验。」 |
-| 机制 | 三条分支注册行+消费链已登记:分支①连胜金×3 = `STRATEGY_ECONOMY['伟大征服'].win_reward_mult=3.0`(cw_investments.py:468;聚合取最大不叠乘 → kernel 轮首收入统一公式 `cw_economy._streak_component`,施于连胜分量含奖励轮,supply/败补支不生效;sim 消费 = `income_modifiers_of` 两点——常规轮首 `apply_round_start_income` + 扑满递延快照结算分支);分支②敌人难度+N = `difficulty_per_streak=1`(sim M19 `cw_sim_enemy.difficulty_of` 注册表直读,special = per_streak×GROWTH_PER_STREAK×连胜;sim 写点 = `enemy_difficulty` 观察 + `DifficultyRecord` 簿记;难度不入 sim 胜负面 = 已登记边界,胜负建模另批;live 游戏自算,bot 备战画面敌方难度读数观察);分支③+12经验 = `xp_instant=12`(注册行已登记;live 游戏自算+XP 面板观察覆盖;sim 即时经验写端 = 选卡落地拍直读注册表〔禁经聚合——`aggregate_economy` 装配字段集不含 xp_instant/difficulty_per_streak〕,通道设计在 T-87 经验到账稿,实现批先落后三卡同链生效) |
+| 机制 | 三条分支注册行+消费链已登记:分支①连胜金×3 = `STRATEGY_ECONOMY['伟大征服'].win_reward_mult=3.0`(cw_investments.py:468;聚合取最大不叠乘 → kernel 轮首收入统一公式 `cw_economy._streak_component`,施于连胜分量含奖励轮,supply/败补支不生效;sim 消费 = `income_modifiers_of` 两点——常规轮首 `apply_round_start_income` + 扑满递延快照结算分支);分支②敌人难度+N = `difficulty_per_streak=1`(sim M19 `cw_sim_enemy.difficulty_of` 注册表直读,special = per_streak×GROWTH_PER_STREAK×连胜;sim 写点 = `enemy_difficulty` 观察 + `DifficultyRecord` 簿记;难度不入 sim 胜负面 = 已登记边界,胜负建模另批;live 游戏自算,bot 备战画面敌方难度读数观察);分支③+12经验 = `xp_instant=12`(注册行已登记;live 游戏自算+XP 面板观察覆盖;sim 即时经验写端 = 选卡落地拍直读注册表〔禁经聚合——`aggregate_economy` 装配字段集不含 xp_instant/difficulty_per_streak〕,通道设计归获得链经验到账段〔本行申报〕,实现批先落后三卡同链生效) |
 | state 影响 | **注册行+消费链已登记,无新字段/无计数器**——连胜数本就在 state;倍率与难度项消费端直读注册表现值,不经效果清单(`STRATEGY_EFFECTS`/`PICK_INVEST_EFFECTS` 均无本卡条目,获得链安静形态正确;连胜联动类规格条目议题见 effect-domain §10-6) |
 | 策略层消费 | xp_instant=12 面值计分(现金通道,存量锁 test_invest_strategy.py `伟大征服=(12.0, True)`);win_reward_mult 轨迹依赖塌 0(`_PENDING_MODELING_FIELDS`,建模落地自动进现金分);difficulty_per_streak 永不计分(难度→价值需战力建模,宪法一禁域);选卡价值(连胜期奖励爆炸/难度+连胜风险核算)归策略侧立场域 |
 

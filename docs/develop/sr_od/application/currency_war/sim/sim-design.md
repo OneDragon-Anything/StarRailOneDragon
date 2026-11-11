@@ -85,7 +85,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 ### 3.2 转移源两类
 
 1. **动作后果声明**（kernel `cw_world_decl.WorldDecl`，契约权威版本 = §6.3）：转移动作 op 经端口 `cw_sim_ports.declare_world` 喂入 `SimBackend.advance`，按 `decl.trigger` 分派状态副本过程/画面呈现、完成后按 `decl.next_screen` 等值对账。18 转移动作全量声明驱动：settle_confirm/supply_confirm（经 kernel `report_node_advance`）→ 节点推进；start_battle/pick_encounter → 战斗结算 → 结算页；开箱动作落地 → 武装箱画面 + 候选生成；pick 族 → 模态结束本次访问/选卡状态副本过程；纯转移类（开书册卡/关店/零写选卡族）→ 按 `next_screen` 推进画面。同一终结动作重复上报不二次推进 = kernel 观察态门（重复上报零推进）+ 后端逐 handler 幂等守卫。
-2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店、接管补采位面详情族（备战节点条点击 → 详情屏模态呈现 / 位面卡点击 → 选中位面联动 / 详情节点条点击 → boss 标签呈现 / 点 X → 回备战——词缀随机态转正委派链的呈现面，T-440）。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
+2. **点击源**（不经声明通道的推进型点击，经端口 `click_answer` 感知）：简报下一步、BOSS 简报点空白、位面过渡点空白、补给刷新、开店、接管补采位面详情族（备战节点条点击 → 详情屏模态呈现 / 位面卡点击 → 选中位面联动 / 详情节点条点击 → boss 标签呈现 / 点 X → 回备战——词缀随机态转正委派链的呈现面）。这些点击的转移语义权威源 = `docs/develop/sr_od/application/currency_war/screens/` 各篇的终结动作与返回表。
 
 **商店牌面观察链**（点击源「开店」的观察写回语义）：牌面 = 节点级持久事实，发牌时定（节点窗口序列的商店自动全刷；实机不可观察，后端私有记录 `SimBackend._shop_record`）。开店呈现时把记录写回 `gs.shop`（模拟读屏，对偶实机「每次进店 live 漏斗重读屏写 payload」——sim 无识别面，以发牌期记录承载同一观察语义）；关店动作上报 `leave_screen` 清空 `gs.shop` 呈现不清记录；节点切换新发牌自然覆盖记录（整店锁跳过发牌 = 牌面跨节点保留，同语义）。记录跟随 = 全部驱动入口（`screen_identity`/`observe`/`visible`/`click_answer`/`advance`）懒同步在屏 payload 非空即跟随——覆盖发牌/刷新/买卡一切写点（写点与下次开店之间必经驱动入口：策略帧循环先观察后决策）。写回仅离屏态生效（在屏态保持现值零写）。
 
@@ -193,7 +193,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 - `plane_intel_view()`：位面详情屏呈现面答口（`PlaneIntelPresentation`：选中位面/节点条槽/词缀/详情条标签/boss 名；识别管线逐点读数的真值直答，纯查询零写）。
 - `sim_or_live_observation(screen_name, live_read)`：读屏点改道 helper（装了后端 → `observe`，否则原读链）；逐屏显式读屏点一行机械接入调用，是观察路径唯一的 op 触点。
 - `sim_or_live_identity(screen_names, live_read)`：画面身份读点改道 helper（外循环阶段一身份分发；档名 ∈ 调用方清单才返回）。
-- `sim_or_live_node_sequence(live_read)` / `sim_or_live_plane_intel_view(live_read)`：上两答口的 sim_or_live 族改道 helper（词缀随机态转正守卫「读节点条当画面稳定判据」与位面详情识别管线的 sim 改道口；T-440——sim 帧图像无 CV 可识别节点条，裸读恒 None 会把守卫封死成活锁）。
+- `sim_or_live_node_sequence(live_read)` / `sim_or_live_plane_intel_view(live_read)`：上两答口的 sim_or_live 族改道 helper（词缀随机态转正守卫「读节点条当画面稳定判据」与位面详情识别管线的 sim 改道口——sim 帧图像无 CV 可识别节点条，裸读恒 None 会把守卫封死成活锁）。
 - `click_answer(...)` / `visible(...)`：sim 点击应答（后端先按点击处理状态机转移，再出实机同形 round 结果，机械镜 = `cw_sim_ports.mirror_click_answer`）与 until/门可见性问询。
 - `declare_world(decl)`：动作后果声明喂入——转移动作 op 自上报出口直调；未装配 = no-op（实机零行为变化），装配后 = 后端 `advance(decl)`，`decl is None` 本层直返（契约权威版本 = §6.3）。
 
@@ -261,6 +261,7 @@ sim 是**游戏本体的单局模拟器**（「游戏后端」），不是策略
 | 装备/工具发放 | 发放空表/特权投影仪/炉拖角色模式未建模（`UNMODELED_GRANTS` 族披露键） | 装备获取轨迹 sim 不可判 |
 | 合成事件覆盖面 | 角色 3 星合成事件源 = buy/gain 两生产域已覆盖（买牌上报合并连锁/获得链补给选卡·策略直发·环境发放——星星相印金分支两域可达）；**变体合成**（白衣伙伴/双龙会互用升星变体，cw_invest_data 变体行）与**投影仪复制源合成**（工具使用动作 sim 无执行面,复制不可达）不建模（边界申报本行,无独立披露键） | 变体/复制源合成的金分支与合成计数相关结论禁出（系统性低估）；live 侧实机真值不受影响 |
 | 策略卡合成触发发放覆盖面 | 「合成2星2费角色时获得砂金」（砂里淘金，`STRATEGY_MERGE_GRANTS` + `check_strategy_merge_grants`）事件源 = 同一 merge facts 采集（buy/gain 四发火点与 `check_env_merge_grants` 同点并排，buy/gain 两域可达）；**变体合成**与**投影仪复制源合成**不可达边界同上行 | 同上行：变体/复制源合成的发放相关结论禁出（系统性低估）；live 侧实机真值不受影响（live 零写沿发牌族权威版本） |
+| 商业间谍升级连锁（sim 先行形态） | 升级值变更触发偷最贵 3 张（费用降序 → 星级降序 → 槽位升序确定性破并列）→ 备战席真实入席；**席满溢出 = 不入席 + 计数披露**（bench 观察 evidence `shop:spy_steal`，实机溢出形态待证）；入席零级联合成（sim 先行简化申报）；行为规格出处 git 历史可溯 | 席满溢出形态与级联合成缺席按 sim 先行形态判读，实机证伪风险申报 |
 | 策略卡晶矿开启触发发放覆盖面 | 「开启晶矿时，有50%概率获得一个低一档的晶矿」（黄晶矿工，`STRATEGY_ORE_OPEN_EFFECTS` + `check_strategy_ore_open_effects`）触发分支 = 两边同段采集上报尾部同口已建模（流键 rng = sim 状态副本里的值/live 预测写观察覆盖自愈）；**「极低概率获得棱彩晶矿」分支零建模**（desc 无数值，API 裁定不实机查，披露键 `strategy_ore_tier_down_prism_prob_unknown` 常驻）——持有局棱彩晶矿获取量系统性低估；低一档链序（棱彩→金→蓝→灰）系推断非档案（披露键 `strategy_ore_tier_chain_inferred` 常驻，链序错 = 单档少发非错发状态副本写） | 持卡局棱彩晶矿获取量与低一档档位分布相关结论禁出（系统性低估）；权威版本 = game 侧 invest_effects.md §2 黄晶矿工行 + §6 未决知识两行 |
 | 策略位面-boss 条件发放穿戴腿 | 盗用身份（`STRATEGY_PLANE_BOSS_GRANTS`）发放角色所带穿戴件（2×【动能激发剑】+【列车同行星徽】）零建模——穿戴面既定边界，披露键 `strategy_worn_equip_unmodeled` | 持卡局穿戴件资产面结论禁出（系统性低估）；live 侧实机真值不受影响 |
 | 策略位面-boss 条件发放开拓者腿 | 盗用身份「获得1个【开拓者】」零建模（裸名 ∉ 角色名册，登记排除） | 持卡局开拓者资产面结论禁出（系统性低估）；live 侧实机真值不受影响 |

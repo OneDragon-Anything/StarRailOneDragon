@@ -32,7 +32,7 @@
 | S6 | IKUNHEIHIE/miyoushe-checkin `接口验证记录.md` | **真机实测记录**（2026-10-23/26，全新设备触发验证全链路） | **实测记录 S6** |
 | S7 | UIGF-org/mihoyo-api-collect `hoyolab/login/password_passport.md`、`other/error_code.md` | 社区文档 | **UIGF** |
 | S8 | box-opener/zzz-calculator `web/miyoushe.py`；CMHopeSunshine/LittlePaimon `get_cookie.py` | 第三方实现（旁证） | 旁证 |
-| S9 | 本地参考实现 `.debug/temp/teyvat-resin-planner/`（成功路径基准，见 miyoushe-api-flow.md） | 本项目实测 | **参考实现** |
+| S9 | 参考实现 `teyvat-resin-planner`（成功路径基准；上游与 commit 锚见 miyoushe-api-flow.md 卷首与 §8.1） | 本项目实测 | **参考实现** |
 
 排除性结论：**MihoyoBBSTools（Womsxd）无密码登录**（`login.py` 只做 cookie/stoken 维护）；**SeelieEx（KeyPJ）无登录模块**（全树只有凭已有 cookie 的读数 adapter/crawler，是参考实现设备指纹模板的出处，不涉及登录验证）。
 

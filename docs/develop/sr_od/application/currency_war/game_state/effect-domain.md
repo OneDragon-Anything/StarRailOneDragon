@@ -427,7 +427,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 - **证据**:规格 cw_investments.py(STRATEGY_EFFECTS 条目 payload 引 STRATEGY_
   ECONOMY 同一实例;注册行四字段 6/6/3/3);官方原文 cw_invest_data.py:131
   「现在以及每个位面开始时，获得6经验值和3次免费刷新。」
-- **推理链**:卡文逐字同构仅数值异 → 同 posture 先例(T-178 先例:裁决联动
+- **推理链**:卡文逐字同构仅数值异 → 同 posture 先例(裁决联动
   禁两态);pending 与姊妹同批撤除(notes 记同判裁定),verdict 维持 None。
 
 #### 公司严选(301401)
@@ -435,7 +435,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
 - **论断**:PLANE_START / permanent / STATE;duties = track+respond(对表姊妹
   固定理财写进代码形);counter **不建**;payload = STRATEGY_ECONOMY 同一实例。
   分三段:即时段(「现在」)= instant_gold 3 已登记估值面(金面禁直写——发放
-  写端缺口族级 T-112 口径,零 kernel 桥);选卡改写分支 = sim 选卡尾段,窗口起点
+  写端缺口族级口径,零 kernel 桥);选卡改写分支 = sim 选卡尾段,窗口起点
   快照差分限定「本拍新获得」(消费后快照前滚,链式选卡不重燃旧卡、重放差分
   恒空);位面段 = gold_per_plane 3(**策略域位面周期金首例**)+ 位面开始改写分支
   (M05 全刷后后置覆盖),双支 = sim 位面首节点窗独立笔(金 `strategy:plane_
@@ -448,7 +448,7 @@ payload 字段判别零交叉:角色合成域发放分支 = `check_strategy_star
   forced_unique True);官方原文 cw_invest_data.py:257「现在及每个位面开始时,
   开启一个由5个独特4费角色组成的商店,并获得3金币。」
 - **推理链**:触发词族「现在及(以)每个位面开始时」第 3 员,补发读法 = 族级
-  用户裁定直接适用(REVIEW-T309 §1-5 无需用户决定,T-183 同判先例)。「独特」= 同帧
+  用户裁定直接适用(无需用户决定的同判先例)。「独特」= 同帧
   去重(desc 自载显式例外,基线 U13 允许重复辖基线);强制费用档 = kernel
   `sample_shop_deal_forced` 单源(商店发牌出口 drawable_names,翻星分支与基线
   共享——人才下沉局合成);锁交互沿间谍效果分支形(无锁守卫,真值待实采与间谍

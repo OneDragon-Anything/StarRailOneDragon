@@ -48,7 +48,7 @@
 | `cw_coarse_battle` 结算键单调 | rung 单调 ✓ / 胜率表非单调(见 §1.2) | **半对** |
 | registry `vd_p1_loss_*`(P21 L41) | `cw_registry.py:358-361` 存在(intercept 11.32/slope −0.37)。但 P21 的 L_c=15.39 是 **P2 语料值**(P21 L29/L58),L41 行内容是 Δp=+11.7pp——**指针错位**:「L41」既不定义 L_c,15.39 也不出自 vd_p1_loss_* | 小瑕(支配性只用 L_c>0,数值不入判据,不影响结论) |
 | `test_cw_f1_residual_fill.py` 四条测试 | 文件在,实为 **8 条用例**(4 个测试面 + W718/W767 取证测试等),亲跑 **8/8 绿**(4.6s) | ✓ |
-| (设计 §一病理+逐帧账本) | 文件存在,但仅在 `.debug/progress/2026-08-31-currency-war-redesign/支撑/adr_archive_20260901/` 归档;`docs/develop/sr_od/application/currency_war/decisions/` 目录已不存在(README 指针断裂,全仓状态非本件独有);「W716 F1 修复设计 §一/§三」正文只存 git 历史(engine_p1 docstring 注「迁移审计 w716(git 历史)」) | 可达性降级(证据在,指针不耐久) |
+| (设计 §一病理+逐帧账本) | F1 修复设计正文与逐帧账本证据只存 git 历史(commit 可溯);原 `docs/develop/sr_od/application/currency_war/decisions/` 目录已删除(README 指针断裂,全仓状态非本件独有);ADR 归档件仅存本地易失档案(不入仓);「F1 修复设计 §一/§三」正文只存 git 历史(engine_p1 docstring 注「迁移审计(git 历史)」) | 可达性降级(证据在,指针不耐久) |
 | p14 专属引用点(装备表/合成概率/λ=0.5 语料与 CI) | **N/A**:p24 无 λ、无合成概率消费;该等引用点属 p14 辖域,禁碰 | N/A |
 
 ---
