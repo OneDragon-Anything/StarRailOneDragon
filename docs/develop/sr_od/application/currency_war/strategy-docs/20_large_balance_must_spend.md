@@ -93,8 +93,7 @@ G_must = 10 × cap_resolved_of_session
     裁决随之消亡,§7.5 ADR 待办关闭。)
 
 (dominance 出口已随富余买入通道并入 M6 一星兜底带退役——出口序
-    不再单列 dominance,其降排序语义由 M6 候选带排序承载;退役裁定
-    git 历史可溯。)
+    不再单列 dominance,其降排序语义由 M6 候选带排序承载。)
 
 每层拒因独立细分键(出口一层不新增;出口二层用 `17_stall_form_spend_authority.md`
    §7.4 七键),零静默。动作发出点声明见 §3.5。

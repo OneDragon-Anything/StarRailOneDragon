@@ -999,7 +999,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     链相容限 sim 端(二次入链 = sim 专属,live 端无二次入链零删除分支
     触发,设计披露键 6);姊妹卡退化形态的只供策略算分的实现分支已按本机制落地(on_strategy_gained
     硬编码分支,选择规则换取尾,mid-run 守卫住 HP 回调,见下)。
-    (机制权威版本 = 本节上述内容;设计过程稿已随迭代退役。)
+    (机制权威版本 = 本节上述内容。)
   - **随机支**(`chars_random_immediate`,具名支之后):元素 = `RandomCharSpec
     (cost|faction, star, type_tag)` 随机赠卡规格(家族载体,「随机N费」与
     「随机【阵营】」两族共载体,采样轴二选一构建期互斥校验,费用轴首例 =
@@ -1205,7 +1205,7 @@ STRATEGY_EFFECTS 零响应条目(UNIT_BUFF 零响应族);快请专家·彩
   **策略链词缀失效分支**(退化 id 260601「使最右侧的敌人词缀失效，并使
   敌人难度-5。获得8金币。」失效分支;硬编码沿敌后破坏 `ENV_AFFIX_DISABLE_ENV`
   枚举即收敛先例,禁入 `PICK_INVEST_EFFECTS` 四名闭集——键集闭集锁,
-  误登记吃红;生效方案 = 本节改判建模(设计过程稿已随迭代退役),机制单一源 = 本节与 `kernel/cw_gain_chain.py` 策略词缀失效分支):
+  误登记吃红;生效方案 = 本节改判建模,机制单一源 = 本节与 `kernel/cw_gain_chain.py` 策略词缀失效分支):
   选退化 → 词缀名单非空时**取尾删 1 个**——「最右侧」= 状态容器尾元素
   (状态容器序 = 词缀横条位置域,读链 center.x 升序排序识别标志保序,简报/位面
   详情两读链同识别标志),剩余列表整条替换写回;经 `_select_write` 择道且

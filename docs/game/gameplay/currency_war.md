@@ -18,7 +18,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 
 | 想了解 | 去读 |
 |---|---|
-| 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | 已退役口述登记簿(2026-10-16 删,git 历史可溯)(直觉假设登记簿) |
+| 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | 已退役口述登记簿(2026-10-16 删)(直觉假设登记簿) |
 | 经济机制:牌池 / 刷新概率 / 商店行为 | [economy.md](../currency_war/research/economy.md) |
 | 战斗机制:伤害乘区 / 星级 / 扣血结构 | [combat.md](../currency_war/research/combat.md) |
 | 对局画面流程与各屏事实 | [screen_flow_timing.md](../currency_war/research/screen_flow_timing.md) + [screens/](../screens/)(currency_war_* 各屏) |

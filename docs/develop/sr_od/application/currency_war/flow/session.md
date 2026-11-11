@@ -33,7 +33,7 @@
 
 统计(**清册全集对账:dataclass 字段 79 + 动态属性 25(`cw4_counters` + §2.6 的 24 个)= 104 项**)。dataclass 侧:**观察 28 项(留)+ 框架设施 2 项(留)+ 策略器 28 项(迁出,含动态属性 `cw4_counters`)+ 执行层 16 项(迁出)+ 停用 5 项(全部带前置动作)**;动态属性侧另有 **24 项(迁出,§2.6)**。策略器迁出合计 **52 项**(28+24)。清册全集来源声明:dataclass 字段枚举自 `cw_strategy_session.py` 全文;动态属性枚举自两源并集——`flow.py on_match_start` 清零段(`flow.py:120-180`,20 个)+ 消费侧惰性建 4 个(`v3_registry`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap`)。两源并集即迁移账本全集,逐项有落点(动态属性段已并入清册)。
 
-> **as-built 字段账对账**(实施批落位实际数,计划外发现字段的逐波清单单一源 = 「落位裁量」节):实际迁移 **MandateState 72 具名 + scratch dict** = 本篇清册计划内 52 + 实施时发现的计划外 20(第一波 9 + 第二波 11);**ExecState 22 具名** = 本篇清册 16 + 计划外 6。执行层状态类目此后整体停用(git 历史可溯):ExecState 载体与访问口已拆除,22 具名字段各自归位(删/策略器状态/GameState 状态容器),见 §2.4 as-built 停用注。两波计划外字段均为实施批按 §6.1「计划外字段一律视为范围遗漏」收录的实装 grep 发现项(产生者/消费者与清册同族),按本篇自己的对账规则回写入账,防止下批按清册找字段归属系统性误导。
+> **as-built 字段账对账**(实施批落位实际数,计划外发现字段的逐波清单单一源 = 「落位裁量」节):实际迁移 **MandateState 72 具名 + scratch dict** = 本篇清册计划内 52 + 实施时发现的计划外 20(第一波 9 + 第二波 11);**ExecState 22 具名** = 本篇清册 16 + 计划外 6。执行层状态类目此后整体停用:ExecState 载体与访问口已拆除,22 具名字段各自归位(删/策略器状态/GameState 状态容器),见 §2.4 as-built 停用注。两波计划外字段均为实施批按 §6.1「计划外字段一律视为范围遗漏」收录的实装 grep 发现项(产生者/消费者与清册同族),按本篇自己的对账规则回写入账,防止下批按清册找字段归属系统性误导。
 
 ### 2.1 观察数据——留 session(表列 26 项,GameState 归一批后现态)
 
@@ -81,7 +81,7 @@
 
 ### 2.4 执行层状态——迁出至执行侧载体(16 项;as-built 实际落点 22 具名 = 16 清册 + 计划外第二波 6:`last_prep_action_sig`/`_supply_detour_done`/`cw_prep_pending_accts`/`cw_takeover_collect_done`/`cw_takeover_tries`(此两名已停用删除——现行接管补采无 gs 字段,真值经位面详情屏写门落状态容器)/`cw4_swap_arm_on`,见 「落位裁量」节)
 
-> **as-built 停用注(执行层落点列消解)**:执行侧载体(`ExecState`,本表「迁出落点」列的目标态宿主)已随执行层状态类目整体停用(git 历史可溯)——GameState 成为一统的局内事实状态容器后,执行层不再设独立状态载体。本表各字段终局:失败记忆(`deploy_fail_counts`/`equip_drag_fail_counts`)、死面(`_supply_detour_done`)、期望账(`pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts`/`expected_state` 族)、僵尸轮账(`v2_round_key`/`v2_round_sold`)删除;防重入半边按语义归位(megastar 旗标 → 策略器状态 `StrategyState.megastar_clicked`,刷新计数 → GameState `node_screen_refresh` 域状态容器计数);席位真值 → 主域字段(bench/deployed);暂存/接管恢复/簿记/节点台账 → GameState 状态容器(选择域/match_facts 域/plane_node_sequences)。现行字段规格单一源 = `../game_state/fields.md` §3.4 与 `../game_state/README.md` §3.3。
+> **as-built 停用注(执行层落点列消解)**:执行侧载体(`ExecState`,本表「迁出落点」列的目标态宿主)已随执行层状态类目整体停用——GameState 成为一统的局内事实状态容器后,执行层不再设独立状态载体。本表各字段终局:失败记忆(`deploy_fail_counts`/`equip_drag_fail_counts`)、死面(`_supply_detour_done`)、期望账(`pending_buy_expect`/`xp_expect_ledger`/`cw_prep_pending_accts`/`expected_state` 族)、僵尸轮账(`v2_round_key`/`v2_round_sold`)删除;防重入半边按语义归位(megastar 旗标 → 策略器状态 `StrategyState.megastar_clicked`,刷新计数 → GameState `node_screen_refresh` 域状态容器计数);席位真值 → 主域字段(bench/deployed);暂存/接管恢复/簿记/节点台账 → GameState 状态容器(选择域/match_facts 域/plane_node_sequences)。现行字段规格单一源 = `../game_state/fields.md` §3.4 与 `../game_state/README.md` §3.3。
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 迁出落点(目标态归属) |
 |---|---|---|---|---|
@@ -179,7 +179,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
                                           停用残字段:物理删除(5 项,带前置)
 ```
 
-> as-built 实际数(计划外两波并入后):MandateState 72 具名 + scratch;ExecState 22 具名——逐波清单与对账见 §2 统计行 as-built 注。上图「执行侧载体」目标态已消解:执行层状态类目停用(git 历史可溯)后,现行结构 = StrategySession(观察数据)+ StrategyState(策略器状态)+ GameState 状态容器(局内事实独占承载,含 Field 域与非 Field 簿记),见 flow/README §2.5 与 `../game_state/README.md`。session 侧现态另经 **GameState 归一批**修正(§2.1 注):`last_state`/`effect_inventory` 不再落 session(现役宿主 = GameState 状态容器 / `GameState.effects`),`pending_round_outcomes` 后批新增——session 现态字段集以 `cw_strategy_session.py` 类体为准。
+> as-built 实际数(计划外两波并入后):MandateState 72 具名 + scratch;ExecState 22 具名——逐波清单与对账见 §2 统计行 as-built 注。上图「执行侧载体」目标态已消解:执行层状态类目停用后,现行结构 = StrategySession(观察数据)+ StrategyState(策略器状态)+ GameState 状态容器(局内事实独占承载,含 Field 域与非 Field 簿记),见 flow/README §2.5 与 `../game_state/README.md`。session 侧现态另经 **GameState 归一批**修正(§2.1 注):`last_state`/`effect_inventory` 不再落 session(现役宿主 = GameState 状态容器 / `GameState.effects`),`pending_round_outcomes` 后批新增——session 现态字段集以 `cw_strategy_session.py` 类体为准。
 
 ## 5. 影响面逐项声明
 

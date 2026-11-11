@@ -94,14 +94,14 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(停用批)**:结算策略半惰性加工(掉血三个分支/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记分支前置零写端/三分支零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;槽连同写半已整删,现不存在(`StrategySession` 无该字段,全树零写点零读点);结算真值现役归宿 = `kernel/cw_game_state.py::apply_settlement_cover` 状态容器覆盖 + `performance.history`。
 - `write_shop_mirrors`(遥测镜像写者)。
 
-注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一的每局新建入口/局终收尾);旧 `on_round_end` 拆两半——观察半 = battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点 → `performance.record`;同点过 hp 置信门更新 `SettlementState.last_outcome_hp`),策略半(`session.pending_round_outcomes` 待加工槽惰性 drain)已随消费侧停用**整删——槽与写半均不存在**。旧 `decide_prep_action` 薄委托已删(git 历史可溯)。
+注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一的每局新建入口/局终收尾);旧 `on_round_end` 拆两半——观察半 = battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点 → `performance.record`;同点过 hp 置信门更新 `SettlementState.last_outcome_hp`),策略半(`session.pending_round_outcomes` 待加工槽惰性 drain)已随消费侧停用**整删——槽与写半均不存在**。旧 `decide_prep_action` 薄委托已删。
 
 **序列语义(历史注——旧批量序列时代的冻结条款,从旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段反推)**【本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结动作与单动作循环取代([../screens/op-layer.md](../screens/op-layer.md) §1),本节仅作旧序列测试与历史 ADR 的解读钥匙;其中 fail-stop/恢复原语条款已随零验证批(用户裁定:动作层不做效果验证,判效归下一帧观察)停用,现行控制流 = 终结动作 + 机械执行零判效（零判效 = 执行代码只点击、不判断动作是否生效,真值归下一帧观察）】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发出时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已停用,截断点语义由终结动作吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结动作。
 - **fail-stop**(已停用):原「任一动作未落地 → 恢复原语(关已知弹层)→ 返回主循环 heavy 重观察重调接口」随零验证批删除;现行 = 动作机械发出零判效,落地判定归观察侧对账(../screens/op-layer.md §1)。参数非法拒绝仍为执行前契约检查。
-- **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 自上报(`report_action_<snake>_param`,每动作一个具名接口)直写状态容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目停用(git 历史可溯)。
+- **对账唯一发生点 = 观察边界**(现行有效,两态制归一):动作 op 自上报(`report_action_<snake>_param`,每动作一个具名接口)直写状态容器逻辑态,落地判定归观察边界对账(`cw_reconcile` + observe 失配台账兜底);执行侧验证已废(零判效),期望态暂存对账通道已随执行层状态类目停用。
 - **控制流类动作已整体停用出动作类型清单**(DeferSpheres 族随词汇清理批删除;overlay 让位由环入口直接返回主循环承载);策略器禁用空批表达控制流(商店侧空批通道已由 CloseShop 终结取代)。
-- **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、stall 门、强制出战;执行失败记忆机制已随执行层状态类目停用(git 历史可溯)。
+- **生命周期机制归流程侧**(现行有效):幂等键 `action_key`、stall 门、强制出战;执行失败记忆机制已随执行层状态类目停用。
 
 共 每局全新创建口 2 + 分画面决策入口 15 = 17（抽象合计 16 + 工厂 1）。新事件面优先归并进既有 pick 接口或走契约改版,禁旁路自造接口。
 
@@ -109,7 +109,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 
 - **依赖方向**：实现包 → 知识层/数学层/执行层单向；分包依赖矩阵禁 decision→obs 直依（obs 读口经 app 层装配点 `install_obs_ports()` 注入）；决策本体 = 纯函数（bridge.decide_prep_frame，决策输入 = 状态容器 game state 直读；旧 obs 黑板帧已停用）。
 - **装配点**：观察数据单一写端纪律保持（旧黑板帧已停用）；`_RESET_PHASE_ROUND_CACHE` 注入槽（缺省关）+ `discard_stale_match_container`（异常路径残留状态容器弃置——session 全量重建 by construction）。
-- **决策 hp 读口与可信位**（hp 决策消费面的统一读口；现役决策消费面 = 血本位局的经验批支付门币种读数,`kernel/cw_economy.xp_batch_payment_gate_for`,判据语义 = 支付能力检查非线判据,`../strategy-docs/00_framework.md` §3 合法消费面第 2 项）：统一读口 = `kernel/cw_hp_policy.py::decision_hp`（gs.hp 直读）——『上一真值』由结算覆盖写端 + carried 语义承载（`../game_state/fields.md` §2.1）；可信位另经 `kernel/cw_hp_policy.py::hp_decision_trusted_of`（`gs.hp.source ∈ {observation, carried}`，prior/logic fail-closed——信息缺失时宁可判不可信,不猜值），禁与本口混写双位判定；hp 不入其余任何策略判据（00 §3），新增 hp 决策消费点必经读口或登记豁免（消费同门申报纪律 = `kernel/cw_hp_policy.py` 模块头）。原『gated_hp 结算 HP 新鲜度门』（可信窗覆盖现读）已删除，失读窗不再有识别标志补，识别失准走识别优化批（git 历史可溯）。
+- **决策 hp 读口与可信位**（hp 决策消费面的统一读口；现役决策消费面 = 血本位局的经验批支付门币种读数,`kernel/cw_economy.xp_batch_payment_gate_for`,判据语义 = 支付能力检查非线判据,`../strategy-docs/00_framework.md` §3 合法消费面第 2 项）：统一读口 = `kernel/cw_hp_policy.py::decision_hp`（gs.hp 直读）——『上一真值』由结算覆盖写端 + carried 语义承载（`../game_state/fields.md` §2.1）；可信位另经 `kernel/cw_hp_policy.py::hp_decision_trusted_of`（`gs.hp.source ∈ {observation, carried}`，prior/logic fail-closed——信息缺失时宁可判不可信,不猜值），禁与本口混写双位判定；hp 不入其余任何策略判据（00 §3），新增 hp 决策消费点必经读口或登记豁免（消费同门申报纪律 = `kernel/cw_hp_policy.py` 模块头）。原『gated_hp 结算 HP 新鲜度门』（可信窗覆盖现读）已删除，失读窗不再有识别标志补，识别失准走识别优化批。
 - **sim 消费面注记**:sim = 游戏后端（`sim/cw_sim_backend.py::SimBackend`，驱动反转——真流程当驱动者，状态副本(GameState)在后端）：本节四层全图（外层循环 + 画面 op + 动作 op + 策略器）装上后端即在 sim 状态副本跑一局，**全决策面 sim 可达**（备战编排/商店/事件单选族消费同一套决策代码；补给决策面决策链接入调用已生效 = `decide_supply` sim 可调用，其选项池为占位分布——前置②换真实池完成前，补给判据的 sim 结论带占位分布失真声明，语义权威版本 = [../strategy-docs/30_supply_screen.md](../strategy-docs/30_supply_screen.md) §6）；批量运行与 A/B 不在 sim 本体内（边界单一源 = [../sim/sim-design.md](../sim/sim-design.md) §8.3）；战斗结算随机输出面等校准缺口的判读限制单一源 = sim-design §8.2 申报清单。
 
 ### 2.4 换核与 A/B(现状口径)
@@ -120,7 +120,7 @@ CW 域术语已并入统一术语表 [../terminology.md](../terminology.md)（�
 
 ### 2.5 无状态策略与 session / 策略器状态
 
-策略实例不持有可变每局状态;状态两类分离(设计单一源 = `flow/session.md` as-designed):**观察数据**走 `StrategySession`(框架每局新建、局终销毁,只承载读屏采集);**策略器状态** = 实现包私有 `StrategyState`,经 `CwStrategy.create_state` 工厂(非 abstract,基类缺省 None)每局全新创建、挂 `session.strategy_state` 黑盒引用,框架只搬运引用,策略器侧消费经访问函数(`strategy_state_of`/impl 侧 `state_of`)。**执行层状态类目已停用**(git 历史可溯):局内事实由 GameState 状态容器独占承载,防重入由决策面读状态容器计数自行裁决,执行层不再设旁表状态载体。执行层需要读写策略器状态时(如画面 op 读写防重入宿主 `StrategyState.megastar_clicked`),一律经 kernel `strategy_state_of`(None-safe,状态缺席不新建)——禁 impl 侧 `state_of` 从执行层调用(其 None 新建覆写副作用属策略器装配语义,执行层不得触发)。异常路径残留状态容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃(`cw_strategy.py`)。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关(`cw_strategy.py`)。
+策略实例不持有可变每局状态;状态两类分离(设计单一源 = `flow/session.md` as-designed):**观察数据**走 `StrategySession`(框架每局新建、局终销毁,只承载读屏采集);**策略器状态** = 实现包私有 `StrategyState`,经 `CwStrategy.create_state` 工厂(非 abstract,基类缺省 None)每局全新创建、挂 `session.strategy_state` 黑盒引用,框架只搬运引用,策略器侧消费经访问函数(`strategy_state_of`/impl 侧 `state_of`)。**执行层状态类目已停用**:局内事实由 GameState 状态容器独占承载,防重入由决策面读状态容器计数自行裁决,执行层不再设旁表状态载体。执行层需要读写策略器状态时(如画面 op 读写防重入宿主 `StrategyState.megastar_clicked`),一律经 kernel `strategy_state_of`(None-safe,状态缺席不新建)——禁 impl 侧 `state_of` 从执行层调用(其 None 新建覆写副作用属策略器装配语义,执行层不得触发)。异常路径残留状态容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃(`cw_strategy.py`)。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关(`cw_strategy.py`)。
 
 ## 3. 各篇导读
 

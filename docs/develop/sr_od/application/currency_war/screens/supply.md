@@ -72,7 +72,7 @@ pick = match.strategy.decide_supply()(零参;候选读状态容器 supply 槽)
 
 ## 6. 状态上报面
 
-- `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发出前,数据源 = obs 载体 `options[pick.idx]` 与执行载体同帧同源、两态一致;值 = (角色, 装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——有没有钻石由消费侧按 `DIAMOND_EQUIP_NAMES` 名单自列表派生;空候选轮/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目停用(git 历史可溯),直写是载体消亡后的唯一形态;确认未落地窗内状态容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
+- `chosen_supply` write_logic(**确认即写**,选卡分支单点直写、点击链发出前,数据源 = obs 载体 `options[pick.idx]` 与执行载体同帧同源、两态一致;值 = (角色, 装备名列表) 2 元组,OCR 原文 y 序,不带钻字段——有没有钻石由消费侧按 `DIAMOND_EQUIP_NAMES` 名单自列表派生;空候选轮/刷新轮无选定不写,None 保持「无记录」)。口径申报:supply 确认即写,chosen_tome 维持「出口验真后写」家族口径——差异理由 = supply 的中转暂存宿主随执行层状态类目停用,直写是载体消亡后的唯一形态;确认未落地窗内状态容器短暂持未落地选定,现无决策读者,低危可接受,出口验真保留为观察面。
 - 动作回执:`note_action_receipt`(receipts 域,`CwActionPickSupplyOp` 两出口全簿记——每执行恰一条回执行:确认点击已发 = reason=''/实机确认定位缺失 = `定位缺失(按钮-确认)`/sim 点击经端口受理恒按已发出簿记 reason='';detail = idx + 内容摘要;screen = `货币战争-补给`)。**第 5 处产回执执行链**(前四处 = prep 统一口/close_shop/open_shop/shop 落地门),契约单一源 = [../game_state/fields.md](../game_state/fields.md) 回执契约节。
 - 候选观察:`report_screen_supply_node_obs` 摄入候选写状态容器 `supply` 域(空 = 读缺不写)+ `supply_refresh_left` 摄入(读缺跳写)。
 - **效果逻辑态单相上报**(`kernel/cw_action_report/pick_supply.py::report_action_pick_supply_param`,即时单相):装备部分 = owned += 0..n 件归一规范名(集合 = 首件 + `extra_norm_items`,主件 → 附加件画面 y 序;无装备名读数列时 = 装备域零写 + 保留证据(日志行 + reason `no_equip_column` 载体)、不发缺陷)+ 角色单位部分(角色入席 + 合成级联)+ 获得后果链(命中后果表送角色 → bench + 级联);内容全未知 = 受影响域值不变查来源 + 缺陷保留证据(禁猜);名未解析件 = 逐件值不变查来源 + 缺陷保留证据(fail-closed,错名不入账由观察覆盖自愈,已解析件照常入账)。

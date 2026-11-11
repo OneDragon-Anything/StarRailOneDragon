@@ -15,7 +15,7 @@
    - **战力状态为边缘时的难度上限**:κ_S = 边缘时可及难度档 ≤ `EDGE_CAP`(立场常量,保守向:能力缺口最近出现过、无余量论证)。
    - **奖励偏好序**:钻 > 装备 > 金币 > 末档(立场常量,过目登记 = `REWARD_ORDER_APPROVED`)。
    - 两值登记表 = `encounter_pick.py` 立场常量区(集中一处,值单一源在代码)。**用户备注**:两项为暂定值,实机遥测数据累积后重拍(重拍触发器 = 遭遇帧判读积累)。**重拍回退机制**:立场常量任一置 None → decide 走「立场未过目」回退态(恒最低档零刷新,§2.6)——重拍 = 直接编辑立场常量区,commit 即过目凭据。
-4. **EV 核已停用并删除**(2026-09-24 同日裁定):历史 EV 判据核 `mandate_v1/encounter.py`(EV(b) = V_r − Δλ_death·G_loss 形态)与 `audit/provisional.py` 双槽整体停用删除——三核并存使「遭遇判据单一源」语义永久含混;EV 数值分支已被 P64 证伪并删除(静态映射不可标定)、悬置期零行为面(双 None 恒走保守兜底选低难零刷新)。其数学形态(原 P26 同构,已废弃删除——2026-10-29 证明史清理,git 可溯)在 `08_events.md` E3 依据行按历史注记读,设计资产 git 历史可溯。
+4. **EV 核已停用并删除**(2026-09-24 同日裁定):历史 EV 判据核 `mandate_v1/encounter.py`(EV(b) = V_r − Δλ_death·G_loss 形态)与 `audit/provisional.py` 双槽整体停用删除——三核并存使「遭遇判据单一源」语义永久含混;EV 数值分支已被 P64 证伪并删除(静态映射不可标定)、悬置期零行为面(双 None 恒走保守兜底选低难零刷新)。其数学形态(原 P26 同构,已废弃删除——2026-10-29 证明史清理)在 `08_events.md` E3 依据行按历史注记读。
 
 ## 2. 决策结构:战力状态直选
 
@@ -82,7 +82,7 @@ sim 局结算环无写端(sim 侧结算链不调 `record_settlement_row`)→ κ_
 
 ## 4. 数学登记待办
 
-1. **比值判据重新启用 = 浮层读数通道批**:可及性比值判据已被 P64 证伪并删除(敌方难度读数→敌难度静态映射不可标定,证明 = [../proofs/p64-encounter-dstat-static-map-uncalibratable.md](../proofs/p64-encounter-dstat-static-map-uncalibratable.md));重新启用前置 = 敌方信息浮层「敌人难度」读数通道批(点亮前置链①;浮层画面知识 = [../../../../../game/screens/货币战争-敌人信息浮层.md](../../../../../game/screens/货币战争-敌人信息浮层.md),遭遇入口②形态已建档),比值判据结构与标定链 git 历史可溯。
+1. **比值判据重新启用 = 浮层读数通道批**:可及性比值判据已被 P64 证伪并删除(敌方难度读数→敌难度静态映射不可标定,证明 = [../proofs/p64-encounter-dstat-static-map-uncalibratable.md](../proofs/p64-encounter-dstat-static-map-uncalibratable.md));重新启用前置 = 敌方信息浮层「敌人难度」读数通道批(点亮前置链①;浮层画面知识 = [../../../../../game/screens/货币战争-敌人信息浮层.md](../../../../../game/screens/货币战争-敌人信息浮层.md),遭遇入口②形态已建档)。
 2. **E-3 标定**:f_min/G_BASE 定标与进度条双定案(fill 双槽),注入位 = 策略层 `encounter_pick.apply_calibration`(合法键 = fill 双键;kernel 侧注入口仅收 `D_ENC_VARIANT` 装填拨盘,两注入口物理隔离互不写入)。**申报义务**:fill 阈值 `_FILL_EDGE_THRESHOLD` 在双槽定案注入后成活闸门数字——注入批须按【拟】纪律登记(置信区间 + fail-closed 退路 + 标定义务 owner 与期限);当前 None 期不激活。
 3. **EV 形态登记(登记对象已废弃)**:EV 判据形态(奖励增量 vs λ_death 敞口增量)原登记 P26(硬节点备战 EV 门同构)——P26 已废弃删除(2026-10-29,git 可溯),该形态重立须走新命题批。EV 核停用删除(裁定 4)的裁定不受影响。
 4. **档位↑⇒奖励价值↑ 采样验证**:选档主序「难度档最高」的奖励侧依据现 = 游戏原文定性句 + 单帧实测(`docs/game/screens/currency_war_encounter.md`);升档的奖励价值增益须实机采样验证(原【拟】登记待办载体 = 本节)。

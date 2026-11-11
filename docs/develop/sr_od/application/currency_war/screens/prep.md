@@ -81,7 +81,7 @@ action = strategy.decide_prep_screen(状态容器 game state 直读;
 ## 6. 状态上报面
 
 - 动作 → 上报函数:逐动作规格见 [../game_state/logic-updates/](../game_state/logic-updates/README.md)(备战域 = `kernel/cw_action_report/<snake>.py::report_action_<snake>_param`;dict 确认族到账 = `kernel/cw_exec_state.py::apply_confirm_effect`)。
-- 席位单账直写:动作落地由上报函数直写主域字段(bench/deployed),无平行第二账;动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目停用(git 历史可溯)。
+- 席位单账直写:动作落地由上报函数直写主域字段(bench/deployed),无平行第二账;动作落地判定归观察边界对账(两态制:逻辑态直写 + 观察覆盖,失配 = 纠偏/缺陷台账,零决策不重执行);期望态暂存记账机制已随执行层状态类目停用。
 
 ## 7. 子态与 overlay
 
