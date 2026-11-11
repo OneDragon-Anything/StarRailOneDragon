@@ -111,7 +111,9 @@ uv run ruff check --fix src/你修改的文件.py
 - **坐标系统一**：框架提供的截图、画面识别、鼠标点击等，均统一至 1920×1080。唯一例外：离线分析外部传入的非 1080p 图片时，返回坐标是该图的像素空间。
 - **坐标单一真相源**：所有识别、点击的坐标区域都要使用 screen_info 保存、获取，避免代码中硬编码。
 - **不能单独修改 screen_info 的 yml 文件**：运行时加载的是合并缓存（`_od_merged.yml`），手改分 yml 不更新缓存 = 改了也白改。
-- **图片读写一律走框架 `cv2_utils`**（`read_image`/`save_image`：兼容中文路径、统一 RGB 口径）——临时调试脚本与 fixture 归档同样适用；裸 `cv2.imread`/`imwrite` 中文路径静默失败，`imencode` 直存会 R/B 反色。**模板资产**：模板读取优先走框架服务（`TemplateLoader`），裁模板用 webp 无损归档。
+- **图像数据全项目统一按 RGB(A) 流转**。cv2 一族（imread/imdecode/imencode/imwrite）输入输出恒为 BGR：cv2 读入后立即 cvtColor 转 RGB 再进入后续处理，存盘前转回 BGR，或直接走框架 cv2_utils.save_image（RGB 口径）。禁止跨口径传递：cv2 产物不转换不得交给 RGB 口径函数/存盘函数，RGB 数据不得直接交给 cv2 写盘函数；图像处理函数的 docstring 必须声明输入输出的通道口径。
+- 图片读写一律走框架 `cv2_utils`（read_image/save_image：兼容中文路径、统一 RGB 口径），临时调试脚本与 fixture 归档同样适用；裸 cv2.imwrite 中文路径静默失败。
+- 模板资产：模板读取优先走框架服务（TemplateLoader），裁模板用 webp 无损归档。
 
 ## 6.MCP
 
