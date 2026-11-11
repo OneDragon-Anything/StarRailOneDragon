@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 from one_dragon.base.config.basic_game_config import BasicGameConfig
 from one_dragon.base.config.config_item import ConfigItem
@@ -51,6 +50,19 @@ CHARACTER_NAME_LCS_PERCENT = {
 }
 
 
+# 文本语言 → 游戏窗口标题。游戏内切文本语言时窗口标题一并变化,
+# 控制器按此查找窗口,必须与 lang 同步更新(SwitchLanguageOp 完成时负责刷新)。
+WIN_TITLE_BY_LANG: dict[str, str] = {
+    'cn': '崩坏：星穹铁道',
+    'en': 'Honkai: Star Rail',
+}
+
+
+def _lang_to_i18(lang: str) -> str:
+    """游戏语言值(cn/en)→ 框架 i18 目录值(zh/en);未知回退 zh。"""
+    return 'en' if lang == 'en' else 'zh'
+
+
 class MiniMapPos:
 
     def __init__(self, x, y, r):
@@ -66,7 +78,7 @@ class MiniMapPos:
         self.ry = self.y + self.r + 3
 
     def __repr__(self):
-        return "(%d, %d) %.2f" % (self.x, self.y, self.r)
+        return f"({self.x}, {self.y}) {self.r:.2f}"
 
     @property
     def mm_center(self) -> Point:
@@ -79,7 +91,7 @@ class MiniMapPos:
 
 class GameConfig(BasicGameConfig):
 
-    def __init__(self, instance_idx: Optional[int] = None):
+    def __init__(self, instance_idx: int | None = None):
         BasicGameConfig.__init__(self, instance_idx=instance_idx)
         self.mini_map_pos: MiniMapPos = MiniMapPos(139, 149, 93)
 
@@ -238,6 +250,7 @@ class GameConfig(BasicGameConfig):
     @property
     def win_title(self) -> str:
         """
-        游戏窗口名称 只有区服有关
+        游戏窗口名称 随文本语言联动(见 WIN_TITLE_BY_LANG)
+        :return:
         """
-        return '崩坏：星穹铁道'
+        return WIN_TITLE_BY_LANG.get(self.lang, '崩坏：星穹铁道')

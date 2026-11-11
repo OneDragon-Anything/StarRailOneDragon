@@ -1,0 +1,116 @@
+screen_id: settings_language
+screen_name: 设置-语言
+pc_alt: false
+area_list:
+- area_name: 标题-设置
+  id_mark: true
+  pc_rect:
+  - 100
+  - 35
+  - 155
+  - 63
+  text: 设置
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 标题-语言
+  id_mark: true
+  pc_rect:
+  - 100
+  - 60
+  - 220
+  - 95
+  text: 语言
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-文本语言值
+  id_mark: false
+  pc_rect:
+  - 1400
+  - 195
+  - 1830
+  - 258
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 下拉-文本语言
+  id_mark: false
+  pc_rect:
+  - 1405
+  - 195
+  - 1830
+  - 260
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 项-简体中文
+  id_mark: false
+  pc_rect:
+  - 1405
+  - 278
+  - 1830
+  - 345
+  text: 简体中文
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 项-English
+  id_mark: false
+  pc_rect:
+  - 1405
+  - 425
+  - 1830
+  - 490
+  text: English
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 弹窗-标题资源下载
+  id_mark: false
+  pc_rect:
+  - 870
+  - 358
+  - 1050
+  - 400
+  text: 资源下载
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 弹窗-确认按钮
+  id_mark: false
+  pc_rect:
+  - 1080
+  - 683
+  - 1340
+  - 737
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

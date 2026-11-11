@@ -1,5 +1,20 @@
+#
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+msgid "开拓等级"
+msgstr "Trailblaze Level"
+
+msgid "语言"
+msgstr "Language"
+
+msgid "图像"
+msgstr "Graphics"
+
+msgid "资源下载"
+msgstr "Resource Download"
+
+msgid "简体中文"
+msgstr "Chinese"

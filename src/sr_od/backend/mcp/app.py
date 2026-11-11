@@ -37,6 +37,7 @@ from sr_od.backend.mcp.config_app import (
     make_set_config,
     make_update_config_item,
 )
+from sr_od.backend.mcp.game_config_tools import register_game_config_tools
 from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
 from sr_od.backend.mcp.mys_tools import register_mys_tools
 from sr_od.backend.mcp.prompts import (
@@ -569,6 +570,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     register_character_tools(mcp, backend)
     register_light_cone_tools(mcp, backend)
     register_relic_tools(mcp, backend)
+    register_game_config_tools(mcp, backend)
     register_prompts(mcp)
     register_prompt_tools(mcp)
 
