@@ -2,15 +2,16 @@
 
 ``analyze_screen`` 精准命中「遗器-替换」后,按「网格多目标识别分层范式」识别
 (od-dev-write-operation 多目标特征识别节):
-**定位层**——每卡底部「等级N」文本锚点 + 轮廓补充 + 网格吸附过滤;
+**定位层**——每卡底部「+N」文本锚点 + 轮廓补充(锚点漏读真卡) + 网格吸附
+过滤;滚动裁切卡(贴列表边缘、等级文本滚出、图案只露部分)信息不全,不识别;
 **内容识别层**——整屏主匹配 ``full(N票)`` + 格内兜底 ``fallback(N簇)``;
 **占用者**——角标区角色头像 SIFT 匹配。
 
 网格定位/身份投票/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
-一份,两域零 import——域自治裁定见
-docs/develop/sr_od/application/cultivation/changes/2026-11-11-domain-restructure/
-design.md §2.2),代码逐行与拆分前 equip_list_recognizer /
-grid_template_locate / equip_owner_match 一致(行为锁定,批次B 判据)。
+一份,两域零 import——域自治口径见项目文档
+docs/develop/sr_od/application/cultivation/README.md §3),定位与匹配逻辑
+源自装备列表实机标定(equip_list_recognizer / grid_template_locate /
+equip_owner_match 同源),其上按本域实机证据独立演进。
 卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与装备某件走
 ``EquipRelicOp``/``SelectBagRelicOp``。并发安全:recognize 纯读,模板库与特征缓存均为只读
 懒加载(幂等)。
@@ -107,8 +108,9 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         轮廓补充的误检源实机实证:网格间隙的装饰底纹会形成闭合轮廓,矩形
         尺寸恰好落进卡尺寸窗,但中心不落在任何网格交点上;真卡(含 OCR 漏
         锚卡)中心必与「列中心 × 锚点行带」交点吻合。过滤规则:与锚点卡
-        同列同行 → 保留(锚点漏读的真卡);贴列表上下边缘 → 保留(滚动
-        裁切卡,无完整网格交点);其余丢弃。
+        同列同行 → 保留(锚点漏读的真卡,信息完整);贴列表上下边缘 → 丢弃
+        (滚动裁切卡,等级文本已滚出、图案只露部分,信息不全不识别,见
+        _filter_contour_offgrid);其余丢弃。
 
         :return: (卡矩形清单, 全图 OCR 结果, 列表灰度图)——灰度图供识别层
             复用,避免整帧 cvtColor 重复计算。
@@ -127,18 +129,21 @@ class _EquipListRecognizerBase(ScreenRecognizer):
 
     def _filter_contour_offgrid(self, merged: list[Rect],
                                 anchor_rects: list[Rect], list_rect: Rect) -> list[Rect]:
-        """丢弃不吸附锚点网格、也不贴列表边缘的轮廓误检矩形。
+        """丢弃不吸附锚点网格的轮廓误检矩形与滚动裁切卡。
 
         锚点卡(行列解耦换算)天然在网格上,原样保留;仅对轮廓补充卡校验:
         中心 x 吸附列中心(固定列先验)、中心 y 与某锚点卡中心同行带,两者
         同时成立视为网格上的真卡(锚点 OCR 漏读场景);贴列表上下边缘的
-        轮廓卡是滚动裁切卡(无完整网格交点),保留。
+        轮廓卡是滚动裁切卡,直接丢弃——裁切卡等级文本已滚出可视区(输出必缺
+        等级)、图案只露部分(特征更弱,错认风险高于完整卡),识别无消费价值;
+        完整卡在滚动后必以完整形态出现,不损失召回(多目标识别范式「不与任何
+        预期区域重叠的命中丢弃」,od-dev-write-operation)。
         """
         col_centers = self._col_centers(list_rect)
         kept: list[Rect] = []
         anchor_set = {id(a) for a in anchor_rects}
         for rect in merged:
-            if id(rect) in anchor_set or len(anchor_rects) == 0:
+            if id(rect) in anchor_set:
                 kept.append(rect)
                 continue
             cx, cy = (rect.x1 + rect.x2) / 2, (rect.y1 + rect.y2) / 2
@@ -150,7 +155,11 @@ class _EquipListRecognizerBase(ScreenRecognizer):
             clipped_by_edge = (rect.y1 <= list_rect.y1 + 5
                                or rect.y2 >= list_rect.y2 - 5)
             if clipped_by_edge:
-                kept.append(rect)  # 裁切卡只豁免行检查(y 被截断,x 仍在列上)
+                continue  # 裁切卡:等级文本滚出、图案不全,识别无消费价值,丢弃
+            if not anchor_rects:
+                # 无锚点(OCR 全空极端位)时轮廓是唯一信息源:行检查豁免,
+                # 列吸附与贴边裁切卡检查照走(裁切卡丢弃语义与有锚一致)
+                kept.append(rect)
                 continue
             row_ok = min(abs(cy - (a.y1 + a.y2) / 2) for a in anchor_rects) <= _CONTOUR_ROW_SNAP_PX
             if row_ok:
@@ -400,8 +409,9 @@ def _fallback_identity(gray: np.ndarray, card_rect: Rect,
 
     整屏匹配的 Lowe 比值测试在同框式斜置卡牌间存在歧义竞争,真匹配被淘汰;
     格内局部匹配竞争者少,真匹配存活(晚安与睡颜实证:整屏 2 票 vs 格内 15 聚簇)。
-    确定性先验:有等级锚点的卡必是全库之一(空格已被定位层过滤)——直接取聚簇
-    最高的名字,不设分数门槛(用户裁定:认错也只会认成库内最近似,优于 null)。
+    确定性先验:定位层过滤空格后留下的卡必是库内真件(锚点卡或锚点漏读的
+    完整图案卡)——直接取聚簇最高的名字,不设分数门槛(用户裁定:认错也只会
+    认成库内最近似,优于 null)。
     返回 (光锥名/件名, 聚簇 good 数);全库均无有效匹配时返 (None, 0)。
     """
     zone = gray[card_rect.y1:card_rect.y2, card_rect.x1:card_rect.x2]
