@@ -1,7 +1,7 @@
 # 并行开发的 worktree 批隔离
 
 > 本文是「多批并行开发怎么互不干扰」的设计权威版本（as-built）：写系统现在的结构、语义、接口契约与边界。
-> 术语：**change** = 一次迭代主题，就是 `docs/develop/<模块>/changes/<change-id>/` 那个目录名（例：`2026-09-11-unified-state`）；**树** = 一棵 git worktree 检出；**集成分支** = 主工作区当前检出的那条分支（本迭代即 `feat/mcp-backend-sync2`）。
+> 术语：**change** = 一次迭代主题，就是 `docs/develop/<模块>/changes/<change-id>/` 那个目录名（例：`2026-01-01-example-change`）；**树** = 一棵 git worktree 检出；**集成分支** = 主工作区当前检出的那条分支（本迭代即 `feat/mcp-backend-sync2`）。
 
 ## 1. 动机
 
@@ -11,10 +11,10 @@
 
 | 东西 | 取值 | 例 |
 |---|---|---|
-| 设计目录 | `docs/develop/<模块>/changes/<change-id>/` | `changes/2026-09-11-unified-state/` |
-| 主仓树 | `<仓库根>/.debug/worktrees/<change-id>/` | `.debug/worktrees/2026-09-11-unified-state/` |
-| 主仓分支 | `wt/<change-id>` | `wt/2026-09-11-unified-state` |
-| 测试仓树 | `<主仓树>/sr-od-test/`（配对检出） | `.debug/worktrees/2026-09-11-unified-state/sr-od-test/` |
+| 设计目录 | `docs/develop/<模块>/changes/<change-id>/` | `changes/2026-01-01-example-change/` |
+| 主仓树 | `<仓库根>/.debug/worktrees/<change-id>/` | `.debug/worktrees/2026-01-01-example-change/` |
+| 主仓分支 | `wt/<change-id>` | `wt/2026-01-01-example-change` |
+| 测试仓树 | `<主仓树>/sr-od-test/`（配对检出） | `.debug/worktrees/2026-01-01-example-change/sr-od-test/` |
 | 测试仓分支 | `wt/<change-id>`（同名） | 同上 |
 | 审查档案 | `.debug/change-reviews/<change-id>/` | 攻击报告、验收结论、合并报告 |
 

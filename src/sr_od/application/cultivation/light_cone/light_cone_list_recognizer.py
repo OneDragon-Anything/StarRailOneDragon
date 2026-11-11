@@ -19,9 +19,9 @@ TM_CCORR_NORMED 匹配,低于拒答门槛诚实返回 None 不硬猜。缩放按
 **占用者**——角标区角色头像 SIFT 匹配。
 
 网格定位/TM 身份/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
-一份,两域零 import——域自治裁定见
-docs/develop/sr_od/application/cultivation/changes/2026-11-11-domain-restructure/
-design.md §2.2)。卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与
+一份,两域零 import——域自治裁定见域正本
+docs/develop/sr_od/application/cultivation/README.md §2「分域即分治」
+与 §3「识别器自含口径」)。卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与
 装备某件走 ``EquipLightConeOp``。并发安全:recognize 纯读,模板预处理缓存均为
 只读懒加载(幂等)。
 """
