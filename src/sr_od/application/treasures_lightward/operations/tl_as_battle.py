@@ -7,9 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.treasures_lightward.obs.tl_team_common import (
+    get_area_center_point,
+)
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.operations.technique import UseTechnique
 
@@ -56,11 +58,15 @@ class TlAsBattleOp(SrOperation):
 
         if self.round_by_find_area(screen, _RESULT_SCREEN, '标题-挑战结束').is_success:
             if self.round_by_find_area(screen, _RESULT_SCREEN, '按钮-返回末日幻影').is_success:
-                self.ctx.controller.click(Point(1240, 949), press_time=0.15)
+                self.ctx.controller.click(
+                    get_area_center_point(self.ctx, _RESULT_SCREEN, '按钮-返回末日幻影'),
+                    press_time=0.15)
                 return self.round_success(TlAsBattleOp.STATUS_DONE, wait=2.5)
             # 「前往节点二/三」按钮同位(结算页布局恒定,文本随节点轮换)——
             # 统一按区域点击并重置秘技标记(新节点新秘技点)
-            self.ctx.controller.click(Point(1243, 949), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _RESULT_SCREEN, '按钮-前往节点二'),
+                press_time=0.15)
             self._tech_used = False
             return self.round_retry('前往下一节点', wait=3)
 
@@ -76,7 +82,9 @@ class TlAsBattleOp(SrOperation):
             elif self.round_by_find_area(screen, _BANNER_SCREEN, '标题-节点一行').is_success:
                 self._brief_node_no = 1
                 self._brief_pending = True
-            self.ctx.controller.click(Point(960, 950), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _BANNER_SCREEN, '区域-空白关闭点'),
+                press_time=0.15)
             return self.round_retry(f'关闭首领简报(节点{self._brief_node_no})', wait=2.5)
 
         if self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success:
@@ -90,7 +98,9 @@ class TlAsBattleOp(SrOperation):
                 self._tech_used = True
                 return self.round_retry('施放秘技', wait=3)
             self.ctx.controller.move('w', press_time=2)
-            self.ctx.controller.click(Point(960, 540), press_time=0.1)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _NODE_SCREEN, '区域-画面中心'),
+                press_time=0.1)
             return self.round_retry(f'节点{self._brief_node_no} 发起战斗', wait=5)
 
         return self.round_wait('战斗进行中', wait=5)

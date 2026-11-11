@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -21,9 +20,6 @@ if TYPE_CHECKING:
 _SELECT_SCREEN: str = '逐光捡金'
 _TEAM_SCREEN: str = '虚构叙事-编队'
 _NODE_SCREEN: str = '忘却之庭-节点画面'  # 节点画面左栏锚(查看详情)与 FH 同构,复用其 area
-
-#: 关卡简报空白关闭点(横幅下半部无元素区)
-_BRIEF_CLOSE_POINT: Point = Point(960, 950)
 
 
 class TlPfBattleOp(SrOperation):
@@ -58,7 +54,9 @@ class TlPfBattleOp(SrOperation):
         """关卡简报横幅(本期战斗机制说明页)→ 点空白关闭;节点画面 → 进入战斗循环。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'NODE_FIRST_CLICK_EMPTY').is_success:
-            self.ctx.controller.click(_BRIEF_CLOSE_POINT, press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '区域-简报空白关闭点'),
+                press_time=0.15)
             return self.round_wait('关闭关卡简报', wait=2)
         if self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success:
             return self.round_success()
@@ -109,7 +107,9 @@ class TlPfBattleOp(SrOperation):
             return self.round_success()
         if self.round_by_find_area(
                 screen, _SELECT_SCREEN, '按钮-快速通关确认').is_success:
-            self.ctx.controller.click(Point(960, 611), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-快速通关确认'),
+                press_time=0.15)
             return self.round_wait('领取快速通关奖励', wait=2)
         click = self.round_by_find_and_click_area(
             screen, _SELECT_SCREEN, 'PF_AFTER_BATTLE_BACK_BTN', success_wait=2)

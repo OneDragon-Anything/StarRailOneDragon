@@ -94,7 +94,7 @@ class TlFhBattleOp(SrOperation):
         if self._popup_visible(screen):
             # 不走 round_by_click_area:框架点击 press_time=0(短按),锁光标场景
             # 需非零按压才生效(实机 0.1s+ 有效,0s 落空);坐标从建档 area 中心取
-            rect = self._node_area_rect('NODE_FIRST_CLICK_EMPTY')
+            rect = self._area_rect(_NODE_SCREEN, 'NODE_FIRST_CLICK_EMPTY')
             if rect is not None:
                 center = Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
                 self.ctx.controller.click(center, press_time=0.15, pc_alt=True)
@@ -142,7 +142,11 @@ class TlFhBattleOp(SrOperation):
             return self.round_retry('快速通关弹窗未找到确认按钮', wait=1)
         # 获得物品页(点击空白关闭)→ 点页面空白区
         if self.round_by_find_area(screen, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_EMPTY').is_success:
-            self.ctx.controller.click(Point(960, 400), press_time=0.15)
+            rect = self._area_rect(_SELECT_SCREEN, '按钮-获得物品空白')
+            if rect is not None:
+                self.ctx.controller.click(
+                    Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2),
+                    press_time=0.15)
             return self.round_wait('关闭获得物品页', wait=1.5)
         for btn_area in ('FH_AFTER_BATTLE_BACK_BTN_2', 'FH_AFTER_BATTLE_BACK_BTN_1'):
             click = self.round_by_find_and_click_area(
@@ -160,9 +164,9 @@ class TlFhBattleOp(SrOperation):
                 and self.round_by_find_area(screen, _NODE_SCREEN, '面板-状态效果').is_success
                 and self.round_by_find_area(screen, _NODE_SCREEN, '面板-查看详情').is_success)
 
-    def _node_area_rect(self, area_name: str):
-        """节点画面某 area 的 pc_rect(点击坐标来源;屏/area 缺失 None)。"""
-        si = self.ctx.screen_loader.get_screen(_NODE_SCREEN)
+    def _area_rect(self, screen_name: str, area_name: str):
+        """某画面某 area 的 pc_rect(点击坐标来源;屏/area 缺失 None)。"""
+        si = self.ctx.screen_loader.get_screen(screen_name)
         if si is None:
             return None
         area = next((a for a in si.area_list if a.area_name == area_name), None)

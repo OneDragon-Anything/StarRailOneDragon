@@ -47,10 +47,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.treasures_lightward.obs.tl_team_common import (
+    get_area_center_point,
+)
 from sr_od.application.treasures_lightward.operations.tl_as_battle import TlAsBattleOp
 from sr_od.application.treasures_lightward.operations.tl_as_battle_exit import (
     TlAsBattleExitOp,
@@ -124,16 +126,24 @@ class TlApocalypticShadowChallengeOp(SrOperation):
             return self.round_success('BATTLE_ONGOING')
         if self.round_by_find_area(
                 screen, _SELECT_SCREEN, '按钮-更换编队确认').is_success:
-            self.ctx.controller.click(Point(1165, 672), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-更换编队确认'),
+                press_time=0.15)
             return self.round_retry('确认更换编队弹窗', wait=2.5)
         if self.round_by_find_area(screen, _SELECT_SCREEN, '按钮-更换编队').is_success:
-            self.ctx.controller.click(Point(1748, 737), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-更换编队'),
+                press_time=0.15)
             return self.round_retry('选关屏点更换编队', wait=2.5)
         if self.round_by_find_area(screen, _SELECT_SCREEN, '按钮-重新挑战').is_success:
-            self.ctx.controller.click(Point(928, 890), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-重新挑战'),
+                press_time=0.15)
             return self.round_retry('选关屏点重新挑战', wait=2.5)
         if self.round_by_find_area(screen, _SELECT_SCREEN, '按钮-前往挑战').is_success:
-            self.ctx.controller.click(Point(960, 841), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-前往挑战'),
+                press_time=0.15)
             return self.round_retry('选关屏点前往挑战', wait=2.5)
         return self.round_retry('画面异常(既非选关屏也非编队屏)', wait=1.5)
 
@@ -165,10 +175,16 @@ class TlApocalypticShadowChallengeOp(SrOperation):
             return self.round_success()
         if self.round_by_find_area(
                 screen, _SELECT_SCREEN, '按钮-更换编队确认').is_success:
-            self.ctx.controller.click(Point(1165, 672), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _SELECT_SCREEN, '按钮-更换编队确认'),
+                press_time=0.15)
             return self.round_retry('确认更换编队弹窗', wait=2.5)
         if self.round_by_find_area(screen, _TEAM_SCREEN, '按钮-前往挑战').is_success:
-            self.ctx.controller.click(Point(1577, 985), press_time=0.15)
+            # 点击位 = 编队屏实测点击区(area「点击-前往挑战」);其文本识别区
+            # 偏宽,中心与实测点击位不同,点击区独立建档
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _TEAM_SCREEN, '点击-前往挑战'),
+                press_time=0.15)
             return self.round_retry('点击前往挑战', wait=2.5)
         return self.round_retry('画面异常(不在编队屏也未见简报)', wait=1.5)
 
@@ -194,7 +210,10 @@ class TlApocalypticShadowChallengeOp(SrOperation):
             return self.round_success(TlApocalypticShadowChallengeOp.STATUS_SUCCESS)
         if self.round_by_find_area(
                 screen, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_CONFIRM').is_success:
-            self.ctx.controller.click(Point(960, 988), press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(
+                    self.ctx, _SELECT_SCREEN, 'AFTER_BATTLE_QUICK_PASS_CONFIRM'),
+                press_time=0.15)
             return self.round_wait('领取快速通关奖励', wait=2)
         click = self.round_by_find_and_click_area(
             screen, _RESULT_SCREEN, '按钮-返回末日幻影', success_wait=2)

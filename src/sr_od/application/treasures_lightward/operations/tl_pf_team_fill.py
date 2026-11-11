@@ -25,6 +25,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.treasures_lightward.obs.tl_team_common import (
     AnchorCell,
     MemberGuess,
+    get_area_center_point,
 )
 from sr_od.application.treasures_lightward.obs.tl_team_obs import (
     read_character_cells_by_level,
@@ -41,22 +42,6 @@ _TEAM_SCREEN: str = '虚构叙事-编队'
 #: 角色列表滚动拖动(向下翻页;与忘却之庭编队屏同款列表)
 _SCROLL_FROM: Point = Point(300, 760)
 _SCROLL_TO: Point = Point(300, 430)
-
-#: 编队行槽位 1 点击点(展开列表 + 选中该行;screen_info 行1/行2-槽位1 中心——
-#: 空槽与已填头像同位同尺寸圆框)
-_ROW_SLOT_POINTS: dict[int, Point] = {
-    1: Point(1317, 772),
-    2: Point(1317, 880),
-}
-
-#: 行垃圾桶点击点(清空当前选中行;⚠️ 只清选中行非全清)
-_TRASH_POINTS: dict[int, Point] = {
-    1: Point(1834, 693),
-    2: Point(1834, 693),
-}
-
-#: 收起左栏角色列表:右上返回箭头
-_COLLAPSE_POINT: Point = Point(1862, 68)
 
 
 class TlPfTeamFillOp(SrOperation):
@@ -96,8 +81,13 @@ class TlPfTeamFillOp(SrOperation):
                 and self.round_by_find_area(screen, _TEAM_SCREEN, '标题-编队行').is_success):
             return self.round_fail('不在虚构叙事编队屏(前置:选关点关卡纸鹤)')
         for row_no in (1, 2):
-            self.ctx.controller.click(_ROW_SLOT_POINTS[row_no], press_time=0.15)
-            self.ctx.controller.click(_TRASH_POINTS[row_no], press_time=0.15)
+            # 垃圾桶位置固定不随行变(只清「当前选中行」),故先选行再点删
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _TEAM_SCREEN, f'行{row_no}-槽位1'),
+                press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _TEAM_SCREEN, '按钮-行垃圾桶'),
+                press_time=0.15)
         return self.round_success(wait=2)
 
     @node_from(from_name='清空编队')
@@ -111,7 +101,9 @@ class TlPfTeamFillOp(SrOperation):
         image = self.last_screenshot
         if self._row_idx >= len(self.teams):
             # 全部落位:收起左栏列表,交装配环节
-            self.ctx.controller.click(_COLLAPSE_POINT, press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _TEAM_SCREEN, '按钮-收起列表'),
+                press_time=0.15)
             return self.round_success('填充完成', wait=1)
 
         row_no = self._row_idx + 1
@@ -123,9 +115,13 @@ class TlPfTeamFillOp(SrOperation):
         if self._need_row_select:
             cells = read_character_cells_by_level(self.ctx, image)
             if self._page_sig(cells):  # 列表展开 → 先收起
-                self.ctx.controller.click(_COLLAPSE_POINT, press_time=0.15)
+                self.ctx.controller.click(
+                    get_area_center_point(self.ctx, _TEAM_SCREEN, '按钮-收起列表'),
+                    press_time=0.15)
                 return self.round_wait('收起列表以便重选目标行', wait=1)
-            self.ctx.controller.click(_ROW_SLOT_POINTS[row_no], press_time=0.15)
+            self.ctx.controller.click(
+                get_area_center_point(self.ctx, _TEAM_SCREEN, f'行{row_no}-槽位1'),
+                press_time=0.15)
             self._need_row_select = False
             self._need_top = True
             return self.round_wait(f'选中行 {row_no}', wait=1.5)

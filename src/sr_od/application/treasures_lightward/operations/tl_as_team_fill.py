@@ -53,23 +53,12 @@ _TOP_TO: Point = Point(300, 1000)
 _TOP_DURATION: float = 0.3
 _TOP_DRAG_COUNT: int = 3
 
-#: 编队行槽位 1 点击点(展开列表 + 选中该行;放大标定实测填充态头像圆心——
-#: 空槽菱形与填充头像同位,行 1 (1025,396) / 行 2 (1025,678))
-_ROW_SLOT_POINTS: dict[int, Point] = {
-    1: Point(1025, 396),
-    2: Point(1025, 678),
-}
-
-#: 全部槽位点击点(清空用,行内左→右;圆心距约 82px)
-_SLOT_POINTS: list[list[Point]] = [
-    [Point(1025, 396), Point(1108, 396), Point(1190, 396), Point(1273, 396)],
-    [Point(1025, 678), Point(1108, 678), Point(1190, 678), Point(1273, 678)],
-]
-
 # --------------------------------------------------------------------------
 # 星启(难度04,三节点)布局:交互坐标已建档进 screen_info「末日幻影-编队」
 # (area 名 04- 前缀:04-行N槽位1 / 04-增益入口-行N / 04-垃圾桶 / 04-星启模式
 # 标签 id_mark),坐标单一真相源在 screen_info,op 经 area 中心点击。
+# 01-03 双节点布局同走建档(槽位点击 = area「槽位N头像-M」中心,放大标定
+# 实测:填充态头像圆心 = 点击位,空槽菱形与填充头像同位)。
 # 交互语义实测结论(写这些分支的依据):
 # - 行槽位剪影点击(收起态) = 展开选人列表 + 选中该行;展开态点当前选中行
 #   已入队槽位 = 移除角色;点他行槽位 = 仅收起列表;
@@ -181,7 +170,7 @@ class TlAsTeamFillOp(SrOperation):
             return self.round_success('编队已空', wait=1)
 
         r, s = target
-        point = _SLOT_POINTS[r][s]
+        point = self._area_center(f'槽位{r + 1}头像-{s + 1}')
         self.ctx.controller.click(point, press_time=0.15)
         log.info('AS清空: 点行%d槽%d (列表展开=%s)', r + 1, s + 1, list_open)
         # 展开态且该行为选中行 = 移除;否则本点击只做展开/收起,下一轮实读继续
@@ -379,21 +368,20 @@ class TlAsTeamFillOp(SrOperation):
             self._row_idx += 1
             self._row_selected = False
             if self._row_idx < len(self.teams):
-                self.ctx.controller.click(Point(1862, 68), press_time=0.15)
+                self._click_area_center(_TEAM_SCREEN, '按钮-收起列表')
                 return self.round_wait(f'行 {row_no} 填充完成,切下一行', wait=1.2)
             return self.round_success('填充完成', wait=1)
         return self.round_wait(f'{target} 已落位', wait=0.8)
 
     def _row_slot_point(self, row_no: int) -> Point:
-        """行槽位 1 点击点:从 screen_info area 读中心(坐标单一真相源;
-        星启 = 04-行N槽位1,双节点 = 01-03 布局 area「槽位N头像-1」的
-        等效点击位按历史标定暂留常量,偿清归 op 硬编码清理批)。"""
+        """行槽位 1 点击点:从 screen_info area 读 rect 中心(坐标单一真相源;
+        星启 = 04-行N槽位1,双节点 = 槽位N头像-1,两者中心为等效点击位)。"""
         if self._arc_mode:
-            return self._arc_area_center(_ARC_ROW_SLOT_AREAS[row_no])
-        return _ROW_SLOT_POINTS[row_no]
+            return self._area_center(_ARC_ROW_SLOT_AREAS[row_no])
+        return self._area_center(f'槽位{row_no}头像-1')
 
-    def _arc_area_center(self, area_name: str) -> Point:
-        """星启交互点坐标从 screen_info area 读 rect 中心(单一真相源)。"""
+    def _area_center(self, area_name: str) -> Point:
+        """本屏某 area 的 rect 中心(坐标单一真相源在 screen_info)。"""
         rect = self.ctx.screen_loader.get_area(_TEAM_SCREEN, area_name).rect
         return Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)
 

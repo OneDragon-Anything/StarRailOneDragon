@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.treasures_lightward.obs.tl_team_common import (
@@ -18,12 +17,6 @@ if TYPE_CHECKING:
 
 _TEAM_SCREEN: str = '虚构叙事-编队'
 _CACOPHONY_SCREEN: str = '虚构叙事-荒腔走板'
-
-#: 装配加号(行右端圆形按钮,已入队后出现;screen_info 行1/行2-装配加号 中心)
-_EQUIP_POINTS: dict[int, Point] = {
-    1: Point(1830, 780),
-    2: Point(1830, 888),
-}
 
 
 class TlPfBuffEquipOp(SrOperation):
@@ -84,7 +77,10 @@ class TlPfBuffEquipOp(SrOperation):
                 self._phase = 'select'
                 return self.round_wait(f'行{row_no}弹窗已开', wait=0.5)
             if in_team:
-                self.ctx.controller.click(_EQUIP_POINTS[row_no], press_time=0.15)
+                # 装配加号 = 行右端圆形按钮,已入队后出现(screen_info 行N-装配加号)
+                self.ctx.controller.click(
+                    get_area_center_point(self.ctx, _TEAM_SCREEN, f'行{row_no}-装配加号'),
+                    press_time=0.15)
                 self._phase = 'select'
                 return self.round_wait(f'点行{row_no}装配加号', wait=1.5)
             return self.round_retry('不在编队屏也非弹窗', wait=1.5)
