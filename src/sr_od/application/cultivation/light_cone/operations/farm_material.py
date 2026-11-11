@@ -73,7 +73,7 @@ _CATEGORY_STEM: dict[str, str] = {
 }
 
 
-class FarmMaterialOp(SrOperation):
+class FarmLightConeMaterialOp(SrOperation):
     """把晋阶画面上第一个缺料材料跳转到副本并刷 times 次。
 
     结果状态:FARMED(刷取完成)/ NO_LACKING(材料栏无缺料,无需刷取)/

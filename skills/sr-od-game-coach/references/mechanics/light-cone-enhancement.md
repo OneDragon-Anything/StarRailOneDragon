@@ -35,7 +35,7 @@
 
 | 步骤 | 用什么 |
 |---|---|
-| 打开替换列表 | op `sr_od.operations.open_light_cone_replace.OpenLightConeReplaceOp()` → 成功状态 OPENED(列表已开且滚回顶部) |
+| 打开替换列表 | op `sr_od.application.cultivation.light_cone.operations.open_light_cone_replace.OpenLightConeReplaceOp()` → 成功状态 OPENED(列表已开且滚回顶部) |
 | 读清单 | MCP `analyze_screen`——画面为「光锥-替换」时 extras.items 返回全列表,每件含 光锥名/命途/等级/叠影/占用者(owner) |
 | 决策 | 结合「决策规则」与配队知识(damage-and-affix.md)从清单里选定目标 |
 | 执行更换 | 走情况 2 或情况 3 的路由——后续 op 都支持从列表画面直接续跑,浏览后无需退出重进 |
@@ -48,7 +48,7 @@
 
 公共前置 + 打开替换列表,然后:
 
-op `sr_od.operations.equip_light_cone.EquipLightConeOp(cone_name='光锥名', rank=叠影?, level=等级?)`(rank/level 可选,同名多副本时精确定位)。结果解读:
+op `sr_od.application.cultivation.light_cone.operations.equip_light_cone.EquipLightConeOp(cone_name='光锥名', rank=叠影?, level=等级?)`(rank/level 可选,同名多副本时精确定位)。结果解读:
 
 - 成功(ALREADY_EQUIPPED / LIGHT_CONE_EQUIPPED)= 目标已装备当前角色;
 - 失败「仅见已被装备的件」= 账号有但全部装在角色身上——**默认不占用他人
@@ -62,7 +62,7 @@ op 同情况 2,加 `allow_take_over=True`——把别人身上的目标光锥换
 抢走即改变他人配装,不会自动恢复。
 
 - op 经 MCP `run_operation(op_id='<模块路径>.<类名>', args={...})` 调用,
-  op_id 见上表(如 `sr_od.operations.equip_light_cone.EquipLightConeOp`)
+  op_id 见上表(如 `sr_od.application.cultivation.light_cone.operations.equip_light_cone.EquipLightConeOp`)
 - `EquipLightConeOp` 幂等:当前角色已装备目标光锥时直接成功;内置滚动
   扫描(12 屏预算)找件、选中验证与结果核对。同名多副本时用 rank/level
   入参精确定位(读得出且不符的件被排除,读不出的件保留兜底排在确认匹配
@@ -71,7 +71,7 @@ op 同情况 2,加 `allow_take_over=True`——把别人身上的目标光锥换
 ## 3. 升级光锥(操作路由)
 
 升级 = 提升光锥等级(吃白值)与晋阶(突破等级上限),由同一个 op 完成:
-op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, auto_farm=False)`,
+op `sr_od.application.cultivation.light_cone.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, auto_farm=False)`,
 成功状态 LIGHT_CONE_CAPPED(光锥已到上限,或材料不足停在当前等级——日志注明)。
 
 | 步骤 | 用什么 |
@@ -105,7 +105,7 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 
 1. 进晋阶画面:光锥 TAB 点右下「强化」按钮(MCP `click_game(x=1825, y=992)`,
    画面「角色-光锥」建档「按钮-强化」);
-2. op `sr_od.operations.farm_material.FarmMaterialOp(times=挑战次数)`——
+2. op `sr_od.application.cultivation.light_cone.operations.farm_material.FarmLightConeMaterialOp(times=挑战次数)`——
    自动实读晋阶画面第一个缺料材料 → 经游戏内「获取途径」跳转对应副本 →
    委托开拓力挑战刷取。状态:FARMED(刷取完成)/ NO_LACKING(材料栏无缺料)/
    MATERIAL_NO_DUNGEON(缺料材料无可刷副本——途径均为敌人掉落/合成,
@@ -122,7 +122,7 @@ op `sr_od.operations.upgrade_light_cone.UpgradeLightConeOp(fill_generic=False, a
 
 叠影 = 同名光锥合成提升技能阶(规则见 1 节:主件阶数+材料阶数,加法,一次
 合成最多置 4 件材料)。由 op 完成:
-op `sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp(
+op `sr_od.application.cultivation.light_cone.operations.superimpose_light_cone.SuperimposeLightConeOp(
 cone_name='主件光锥名', use_auto_place=True, material_count=1,
 confirm_merge=False)`。
 
@@ -156,5 +156,5 @@ confirm_merge=False)`。
 - 失败(消息带现场)= 选中件不是 cone_name / 画面不对 / 材料链路断
   (候选不足等)。
 
-- op 经 MCP `run_operation(op_id='sr_od.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用;
+- op 经 MCP `run_operation(op_id='sr_od.application.cultivation.light_cone.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用;
   满阶主件发起 = 干净返回 MAXED(零消耗)

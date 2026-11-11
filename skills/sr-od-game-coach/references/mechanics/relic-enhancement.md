@@ -72,7 +72,7 @@
 
 | 步骤 | 用什么 |
 |---|---|
-| 打开替换列表 | op `sr_od.operations.open_relic_replace.OpenRelicReplaceOp(pos=部位号)`(1头 2手 3躯干 4脚 5位面球 6连结绳)→ 成功状态 OPENED(列表已开、部位筛选正确、滚回顶部) |
+| 打开替换列表 | op `sr_od.application.cultivation.relic.operations.open_relic_replace.OpenRelicReplaceOp(pos=部位号)`(1头 2手 3躯干 4脚 5位面球 6连结绳)→ 成功状态 OPENED(列表已开、部位筛选正确、滚回顶部) |
 | 读清单 | MCP `analyze_screen`——画面为「遗器-替换」时 extras.items 返回该部位全清单,每件含 件名/套装/部位/强化等级/穿着者(owner)/识别来源 |
 | 决策 | 结合「决策规则」与角色档有效词条从清单里选定目标;穿着者 owner≠null 的件已被他人穿着,选出后走 3.2 由 op 自动避开 |
 | 执行更换 | 走情况 2 的路由;或收尾:点列表右上返回回着装页(画面「按钮-返回」) |
@@ -82,7 +82,7 @@
 
 ### 3.2. 情况 2:知道要换什么——直接换
 
-op `sr_od.operations.equip_relic.EquipRelicOp(piece_name='单件名',
+op `sr_od.application.cultivation.relic.operations.equip_relic.EquipRelicOp(piece_name='单件名',
 expected_character='角色名', allow_take_over=False)`(expected_character 可选,
 做目标角色核对防在错误角色上换装;allow_take_over 见下)。单件名 = 套装+部位
 唯一确定(如「先驱的绝热围壳」),同名多副本任意一件均满足意图。结果解读:
@@ -101,7 +101,7 @@ expected_character='角色名', allow_take_over=False)`(expected_character 可�
   布洛妮娅」)。⚠️ 交换确认按钮的实机坐标尚未建档,True 遇弹框会显式失败
   保护双方配装,候实机补档后可用。
 
-- op 经 MCP `run_operation(op_id='sr_od.operations.equip_relic.EquipRelicOp',
+- op 经 MCP `run_operation(op_id='sr_od.application.cultivation.relic.operations.equip_relic.EquipRelicOp',
   args={...})` 调用;op 幂等:当前角色已装备目标件时直接成功;内置滚动
   扫描(12 屏预算)、部位先验整屏识别定位与替换后套装核对;已在正确部位的
   替换列表时直接复用该列表(不重进——重进会重置手动切换的排序设置,
@@ -119,8 +119,8 @@ expected_character='角色名', allow_take_over=False)`(expected_character 可�
 
 | 步骤 | 用什么 |
 |---|---|
-| 选件导航 | op `sr_od.operations.select_bag_relic.SelectBagRelicOp(pos=部位号, set_name='套装名')`(1头 2手 3躯干 4脚 5位面球 6连结绳)——部位筛选 + 套装筛选(走筛选面板与筛选规则弹窗,按常量表套装类别自动切 tab),选中首个匹配件,终点 = 背包-遗器且目标件选中;`set_name` 可省(不筛套装直接选首件);`main_stat` 参数暂未实现(主属性选择弹窗未实机摸底,传入显式失败) |
-| 执行强化 | op `sr_od.operations.equip_relic_enhance.EquipRelicEnhanceOp(auto_insert='max', target_level=None)`——进强化页、读强化前词条基线、自动置入材料、执行、关结果横幅,终点回背包-遗器 |
+| 选件导航 | op `sr_od.application.cultivation.relic.operations.select_bag_relic.SelectBagRelicOp(pos=部位号, set_name='套装名')`(1头 2手 3躯干 4脚 5位面球 6连结绳)——部位筛选 + 套装筛选(走筛选面板与筛选规则弹窗,按常量表套装类别自动切 tab),选中首个匹配件,终点 = 背包-遗器且目标件选中;`set_name` 可省(不筛套装直接选首件);`main_stat` 参数暂未实现(主属性选择弹窗未实机摸底,传入显式失败) |
+| 执行强化 | op `sr_od.application.cultivation.relic.operations.equip_relic_enhance.EquipRelicEnhanceOp(auto_insert='max', target_level=None)`——进强化页、读强化前词条基线、自动置入材料、执行、关结果横幅,终点回背包-遗器 |
 
 背包筛选交互要点(实测行为,影响选件链的判断):
 
