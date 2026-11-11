@@ -398,7 +398,7 @@ def _tm_templates_for_pos(pos: int) -> tuple[list, list]:
     SrRelicPieceDef 坐标系)。
 
     替换界面顶部部位筛选 tab 锁定列表内容——列表内全部为该部位件,候选从
-    全库 192 件收缩到单部位(隧洞 ≤34 件),跨部位误配同步下降(部位先验
+    全库 196 件收缩到单部位(隧洞 ≤34 件),跨部位误配同步下降(部位先验
     由调用方提供:替换 op 从着装页点部位进来,部位恒已知)。
     """
     all_tmpl = _tm_templates_all()

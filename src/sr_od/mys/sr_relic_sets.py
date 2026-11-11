@@ -2,8 +2,10 @@
 
 设计出处：changes/mys-relic-sets/design.md §1（数据层，用户裁定禁 JSON 数据
 文件、数据写代码）。映射内容的权威快照：官方 wiki 遗器频道 2026-11-04 抓取
-（版本 3.7；62 套 = 隧洞 34 + 位面饰品 28、件名 192 唯一、2 件效果 62/62、
-4 件效果 34/34 齐备、planner 实测件名覆盖 100%）——本模块固化其内容，
+（版本 3.7；62 套 = 隧洞 34 + 位面饰品 28）+ 4.7 新增两套位面饰品（官方
+版本公告原文为文本源，效果数值经公告与社区 wiki 双源交叉核验；两大官方
+wiki 频道均未收录）——共 64 套 = 隧洞 34 + 位面饰品 30、件名 196 唯一、
+2 件效果 64/64、4 件效果 34/34 齐备——本模块固化其内容，
 禁自行增删改；固化后本模块即唯一权威载体（快照 JSON 为易失本地件）。
 
 ``desc`` = 单件描述（官方 wiki 原文透传）；``obtain`` = 套装获取途径。
@@ -11,7 +13,7 @@ wiki 词条偶有错字/缺段（实测 8 套 effects/件名与已固化常量�
 effects 与件名一律以本模块原有常量为准，wiki 只作新增字段来源。
 
 图标归档：``assets/game_data/relic_icons/<套装名>_<件名>.webp``
-（192 件全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
+（196 件全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
 
 版本刷新工序：游戏新版本后重跑 wiki 抓取生成新快照 → 与下方 RELIC_SETS
 逐条 diff → 人工审阅后更新常量（排列序 = 实装序），图标按归档命名增量
@@ -914,9 +916,33 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         },
         obtain='虫虫来袭·差分宇宙',
     ),
+    RelicSetDef(
+        set_name='神的瞬息欢愉',
+        kind='ornament',
+        pieces=(
+            SrRelicPieceDef(name='瞬息欢愉的永恒舞台', pos=5, desc='位面球中封装着瞬息欢愉之地的舞台，每一道欢笑与哀哭都镌刻着阿哈珍藏的瞬间。'),
+            SrRelicPieceDef(name='瞬息欢愉的魔术道具', pos=6, desc='瞬息欢愉之地保存的魔术道具，彩带缠绕在祂指尖，群星为祂旋转、欢唱。'),
+        ),
+        effects={
+            '2': '使装备者的速度提高6%。当装备者的欢愉度大于等于40%时，进入战斗时立刻使行动提前40%。',
+        },
+        obtain='戏剧中人·差分宇宙',
+    ),
+    RelicSetDef(
+        set_name='亚空异容所',
+        kind='ornament',
+        pieces=(
+            SrRelicPieceDef(name='异容所的深黯裂隙', pos=5, desc='位面球中封装着星际和平公司异常事物管理与收容所的神秘裂隙，在这座设施内，理性高于直觉，规则高于理性。'),
+            SrRelicPieceDef(name='异容所的负向胶卷', pos=6, desc='异容所的零号收容物，常以放映机的形象出现，其真相却鲜有人知。'),
+        ),
+        effects={
+            '2': '使装备者的速度提高6%，当装备者的速度大于等于145时，进入战斗后使我方全体击破特攻提高18%，该效果无法叠加。',
+        },
+        obtain='戏剧中人·差分宇宙',
+    ),
 )
 
-# 件名反查索引：模块加载时构建一次（进程内缓存）；192 件名唯一由单测锁定。
+# 件名反查索引：模块加载时构建一次（进程内缓存）；196 件名唯一由单测锁定。
 PIECE_TO_SET: dict[str, RelicSetDef] = {
     piece.name: relic_set
     for relic_set in RELIC_SETS
@@ -929,7 +955,7 @@ _SET_BY_NAME: dict[str, RelicSetDef] = {
     relic_set.set_name: relic_set for relic_set in RELIC_SETS
 }
 
-#: 单件图标归档相对路径公式（项目 assets 根起）；192 件全量，见模块 docstring。
+#: 单件图标归档相对路径公式（项目 assets 根起）；196 件全量，见模块 docstring。
 _RELIC_ICON_REL_TEMPLATE = 'assets/game_data/relic_icons/{set_name}_{piece_name}.webp'
 
 
