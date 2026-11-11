@@ -1,0 +1,643 @@
+{
+ "云无留迹的过客": {
+  "cn": "云无留迹的过客",
+  "en": "Passerby of Wandering Cloud",
+  "id": "passerbyofwanderingcloud",
+  "kind": "cavern",
+  "wiki_content_id": "571",
+  "hoyowiki_page_id": "140",
+  "order": 1,
+  "source": "wiki"
+ },
+ "野穗伴行的快枪手": {
+  "cn": "野穗伴行的快枪手",
+  "en": "Musketeer of Wild Wheat",
+  "id": "musketeerofwildwheat",
+  "kind": "cavern",
+  "wiki_content_id": "574",
+  "hoyowiki_page_id": "139",
+  "order": 2,
+  "source": "wiki"
+ },
+ "净庭教宗的圣骑士": {
+  "cn": "净庭教宗的圣骑士",
+  "en": "Knight of Purity Palace",
+  "id": "knightofpuritypalace",
+  "kind": "cavern",
+  "wiki_content_id": "578",
+  "hoyowiki_page_id": "142",
+  "order": 3,
+  "source": "wiki"
+ },
+ "密林卧雪的猎人": {
+  "cn": "密林卧雪的猎人",
+  "en": "Hunter of Glacial Forest",
+  "id": "hunterofglacialforest",
+  "kind": "cavern",
+  "wiki_content_id": "576",
+  "hoyowiki_page_id": "141",
+  "order": 4,
+  "source": "wiki"
+ },
+ "街头出身的拳王": {
+  "cn": "街头出身的拳王",
+  "en": "Champion of Streetwise Boxing",
+  "id": "championofstreetwiseboxing",
+  "kind": "cavern",
+  "wiki_content_id": "575",
+  "hoyowiki_page_id": "134",
+  "order": 5,
+  "source": "wiki"
+ },
+ "戍卫风雪的铁卫": {
+  "cn": "戍卫风雪的铁卫",
+  "en": "Guard of Wuthering Snow",
+  "id": "guardofwutheringsnow",
+  "kind": "cavern",
+  "wiki_content_id": "579",
+  "hoyowiki_page_id": "133",
+  "order": 6,
+  "source": "wiki"
+ },
+ "熔岩锻铸的火匠": {
+  "cn": "熔岩锻铸的火匠",
+  "en": "Firesmith of Lava-Forging",
+  "id": "firesmithoflavaforging",
+  "kind": "cavern",
+  "wiki_content_id": "577",
+  "hoyowiki_page_id": "150",
+  "order": 7,
+  "source": "wiki"
+ },
+ "繁星璀璨的天才": {
+  "cn": "繁星璀璨的天才",
+  "en": "Genius of Brilliant Stars",
+  "id": "geniusofbrilliantstars",
+  "kind": "cavern",
+  "wiki_content_id": "568",
+  "hoyowiki_page_id": "145",
+  "order": 8,
+  "source": "wiki"
+ },
+ "激奏雷电的乐队": {
+  "cn": "激奏雷电的乐队",
+  "en": "Band of Sizzling Thunder",
+  "id": "bandofsizzlingthunder",
+  "kind": "cavern",
+  "wiki_content_id": "573",
+  "hoyowiki_page_id": "136",
+  "order": 9,
+  "source": "wiki"
+ },
+ "晨昏交界的翔鹰": {
+  "cn": "晨昏交界的翔鹰",
+  "en": "Eagle of Twilight Line",
+  "id": "eagleoftwilightline",
+  "kind": "cavern",
+  "wiki_content_id": "570",
+  "hoyowiki_page_id": "135",
+  "order": 10,
+  "source": "wiki"
+ },
+ "流星追迹的怪盗": {
+  "cn": "流星追迹的怪盗",
+  "en": "Thief of Shooting Meteor",
+  "id": "thiefofshootingmeteor",
+  "kind": "cavern",
+  "wiki_content_id": "569",
+  "hoyowiki_page_id": "138",
+  "order": 11,
+  "source": "wiki"
+ },
+ "盗匪荒漠的废土客": {
+  "cn": "盗匪荒漠的废土客",
+  "en": "Wastelander of Banditry Desert",
+  "id": "wastelanderofbanditrydesert",
+  "kind": "cavern",
+  "wiki_content_id": "572",
+  "hoyowiki_page_id": "148",
+  "order": 12,
+  "source": "wiki"
+ },
+ "宝命长存的莳者": {
+  "cn": "宝命长存的莳者",
+  "en": "Longevous Disciple",
+  "id": "longevousdisciple",
+  "kind": "cavern",
+  "wiki_content_id": "1225",
+  "hoyowiki_page_id": "1236",
+  "order": 13,
+  "source": "wiki"
+ },
+ "骇域漫游的信使": {
+  "cn": "骇域漫游的信使",
+  "en": "Messenger Traversing Hackerspace",
+  "id": "messengertraversinghackerspace",
+  "kind": "cavern",
+  "wiki_content_id": "1224",
+  "hoyowiki_page_id": "1237",
+  "order": 14,
+  "source": "wiki"
+ },
+ "毁烬焚骨的大公": {
+  "cn": "毁烬焚骨的大公",
+  "en": "The Ashblazing Grand Duke",
+  "id": "theashblazinggrandduke",
+  "kind": "cavern",
+  "wiki_content_id": "1971",
+  "hoyowiki_page_id": "1601",
+  "order": 15,
+  "source": "wiki"
+ },
+ "幽锁深牢的系囚": {
+  "cn": "幽锁深牢的系囚",
+  "en": "Prisoner in Deep Confinement",
+  "id": "prisonerindeepconfinement",
+  "kind": "cavern",
+  "wiki_content_id": "1968",
+  "hoyowiki_page_id": "1600",
+  "order": 16,
+  "source": "wiki"
+ },
+ "死水深潜的先驱": {
+  "cn": "死水深潜的先驱",
+  "en": "Pioneer Diver of Dead Waters",
+  "id": "pioneerdiverofdeadwaters",
+  "kind": "cavern",
+  "wiki_content_id": "2371",
+  "hoyowiki_page_id": "1925",
+  "order": 17,
+  "source": "wiki"
+ },
+ "机心戏梦的钟表匠": {
+  "cn": "机心戏梦的钟表匠",
+  "en": "Watchmaker, Master of Dream Machinations",
+  "id": "watchmakermasterofdreammachinations",
+  "kind": "cavern",
+  "wiki_content_id": "2372",
+  "hoyowiki_page_id": "1926",
+  "order": 18,
+  "source": "wiki"
+ },
+ "荡除蠹灾的铁骑": {
+  "cn": "荡除蠹灾的铁骑",
+  "en": "Iron Cavalry Against the Scourge",
+  "id": "ironcavalryagainstthescourge",
+  "kind": "cavern",
+  "wiki_content_id": "3165",
+  "hoyowiki_page_id": "2649",
+  "order": 19,
+  "source": "wiki"
+ },
+ "风举云飞的勇烈": {
+  "cn": "风举云飞的勇烈",
+  "en": "The Wind-Soaring Valorous",
+  "id": "thewindsoaringvalorous",
+  "kind": "cavern",
+  "wiki_content_id": "3166",
+  "hoyowiki_page_id": "2655",
+  "order": 20,
+  "source": "wiki"
+ },
+ "重循苦旅的司铎": {
+  "cn": "重循苦旅的司铎",
+  "en": "Sacerdos' Relived Ordeal",
+  "id": "sacerdosrelivedordeal",
+  "kind": "cavern",
+  "wiki_content_id": "4261",
+  "hoyowiki_page_id": "3162",
+  "order": 21,
+  "source": "wiki"
+ },
+ "识海迷坠的学者": {
+  "cn": "识海迷坠的学者",
+  "en": "Scholar Lost in Erudition",
+  "id": "scholarlostinerudition",
+  "kind": "cavern",
+  "wiki_content_id": "4262",
+  "hoyowiki_page_id": "3161",
+  "order": 22,
+  "source": "wiki"
+ },
+ "凯歌祝捷的英豪": {
+  "cn": "凯歌祝捷的英豪",
+  "en": "Hero of Triumphant Song",
+  "id": "herooftriumphantsong",
+  "kind": "cavern",
+  "wiki_content_id": "4665",
+  "hoyowiki_page_id": "3342",
+  "order": 23,
+  "source": "wiki"
+ },
+ "哀歌覆国的诗人": {
+  "cn": "哀歌覆国的诗人",
+  "en": "Poet of Mourning Collapse",
+  "id": "poetofmourningcollapse",
+  "kind": "cavern",
+  "wiki_content_id": "4666",
+  "hoyowiki_page_id": "3343",
+  "order": 24,
+  "source": "wiki"
+ },
+ "烈阳惊雷的女武神": {
+  "cn": "烈阳惊雷的女武神",
+  "en": "Warrior Goddess of Sun and Thunder",
+  "id": "warriorgoddessofsunandthunder",
+  "kind": "cavern",
+  "wiki_content_id": "5373",
+  "hoyowiki_page_id": "3783",
+  "order": 25,
+  "source": "wiki"
+ },
+ "恶海逐波的船长": {
+  "cn": "恶海逐波的船长",
+  "en": "Wavestrider Captain",
+  "id": "wavestridercaptain",
+  "kind": "cavern",
+  "wiki_content_id": "5374",
+  "hoyowiki_page_id": "3782",
+  "order": 26,
+  "source": "wiki"
+ },
+ "再创天地的救世主": {
+  "cn": "再创天地的救世主",
+  "en": "World-Remaking Deliverer",
+  "id": "worldremakingdeliverer",
+  "kind": "cavern",
+  "wiki_content_id": "5916",
+  "hoyowiki_page_id": "4012",
+  "order": 27,
+  "source": "wiki"
+ },
+ "自匿星芒的隐士": {
+  "cn": "自匿星芒的隐士",
+  "en": "Self-Enshrouded Recluse",
+  "id": "selfenshroudedrecluse",
+  "kind": "cavern",
+  "wiki_content_id": "5917",
+  "hoyowiki_page_id": "4013",
+  "order": 28,
+  "source": "wiki"
+ },
+ "闪耀功勋的魔法少女": {
+  "cn": "闪耀功勋的魔法少女",
+  "en": "Ever-Glorious Magical Girl",
+  "id": "evergloriousmagicalgirl",
+  "kind": "cavern",
+  "wiki_content_id": "6826",
+  "hoyowiki_page_id": "4770",
+  "order": 29,
+  "source": "wiki"
+ },
+ "应天涉远的卜者": {
+  "cn": "应天涉远的卜者",
+  "en": "Diviner of Distant Reach",
+  "id": "divinerofdistantreach",
+  "kind": "cavern",
+  "wiki_content_id": "6825",
+  "hoyowiki_page_id": "4769",
+  "order": 30,
+  "source": "wiki"
+ },
+ "星如我见的领航员": {
+  "cn": "星如我见的领航员",
+  "en": "",
+  "id": "",
+  "kind": "cavern",
+  "wiki_content_id": "7645",
+  "hoyowiki_page_id": "",
+  "order": 31,
+  "source": "wiki"
+ },
+ "叩问天工的名冶": {
+  "cn": "叩问天工的名冶",
+  "en": "Divine-Querying Master Smith",
+  "id": "divinequeryingmastersmith",
+  "kind": "cavern",
+  "wiki_content_id": "7644",
+  "hoyowiki_page_id": "5344",
+  "order": 32,
+  "source": "wiki"
+ },
+ "戏梦点星的伶人": {
+  "cn": "戏梦点星的伶人",
+  "en": "",
+  "id": "",
+  "kind": "cavern",
+  "wiki_content_id": "8122",
+  "hoyowiki_page_id": "",
+  "order": 33,
+  "source": "wiki"
+ },
+ "贪噬禁果的异端": {
+  "cn": "贪噬禁果的异端",
+  "en": "",
+  "id": "",
+  "kind": "cavern",
+  "wiki_content_id": "8123",
+  "hoyowiki_page_id": "",
+  "order": 34,
+  "source": "wiki"
+ },
+ "太空封印站": {
+  "cn": "太空封印站",
+  "en": "Space Sealing Station",
+  "id": "spacesealingstation",
+  "kind": "ornament",
+  "wiki_content_id": "586",
+  "hoyowiki_page_id": "147",
+  "order": 35,
+  "source": "wiki"
+ },
+ "不老者的仙舟": {
+  "cn": "不老者的仙舟",
+  "en": "Fleet of the Ageless",
+  "id": "fleetoftheageless",
+  "kind": "ornament",
+  "wiki_content_id": "587",
+  "hoyowiki_page_id": "144",
+  "order": 36,
+  "source": "wiki"
+ },
+ "泛银河商业公司": {
+  "cn": "泛银河商业公司",
+  "en": "Pan-Cosmic Commercial Enterprise",
+  "id": "pancosmiccommercialenterprise",
+  "kind": "ornament",
+  "wiki_content_id": "582",
+  "hoyowiki_page_id": "146",
+  "order": 37,
+  "source": "wiki"
+ },
+ "筑城者的贝洛伯格": {
+  "cn": "筑城者的贝洛伯格",
+  "en": "Belobog of the Architects",
+  "id": "belobogofthearchitects",
+  "kind": "ornament",
+  "wiki_content_id": "580",
+  "hoyowiki_page_id": "151",
+  "order": 38,
+  "source": "wiki"
+ },
+ "星体差分机": {
+  "cn": "星体差分机",
+  "en": "Celestial Differentiator",
+  "id": "celestialdifferentiator",
+  "kind": "ornament",
+  "wiki_content_id": "583",
+  "hoyowiki_page_id": "149",
+  "order": 39,
+  "source": "wiki"
+ },
+ "停转的萨尔索图": {
+  "cn": "停转的萨尔索图",
+  "en": "Inert Salsotto",
+  "id": "inertsalsotto",
+  "kind": "ornament",
+  "wiki_content_id": "581",
+  "hoyowiki_page_id": "152",
+  "order": 40,
+  "source": "wiki",
+  "intl_cn": "停止转动的萨尔索图"
+ },
+ "盗贼公国塔利亚": {
+  "cn": "盗贼公国塔利亚",
+  "en": "Talia: Kingdom of Banditry",
+  "id": "taliakingdomofbanditry",
+  "kind": "ornament",
+  "wiki_content_id": "584",
+  "hoyowiki_page_id": "143",
+  "order": 41,
+  "source": "wiki"
+ },
+ "生命的翁瓦克": {
+  "cn": "生命的翁瓦克",
+  "en": "Sprightly Vonwacq",
+  "id": "sprightlyvonwacq",
+  "kind": "ornament",
+  "wiki_content_id": "585",
+  "hoyowiki_page_id": "137",
+  "order": 42,
+  "source": "wiki"
+ },
+ "繁星竞技场": {
+  "cn": "繁星竞技场",
+  "en": "Rutilant Arena",
+  "id": "rutilantarena",
+  "kind": "ornament",
+  "wiki_content_id": "1223",
+  "hoyowiki_page_id": "1238",
+  "order": 43,
+  "source": "wiki"
+ },
+ "折断的龙骨": {
+  "cn": "折断的龙骨",
+  "en": "Broken Keel",
+  "id": "brokenkeel",
+  "kind": "ornament",
+  "wiki_content_id": "1231",
+  "hoyowiki_page_id": "1235",
+  "order": 44,
+  "source": "wiki"
+ },
+ "苍穹战线格拉默": {
+  "cn": "苍穹战线格拉默",
+  "en": "Firmament Frontline Glamoth",
+  "id": "firmamentfrontlineglamoth",
+  "kind": "ornament",
+  "wiki_content_id": "1969",
+  "hoyowiki_page_id": "1599",
+  "order": 45,
+  "source": "wiki"
+ },
+ "梦想之地匹诺康尼": {
+  "cn": "梦想之地匹诺康尼",
+  "en": "Penacony Land of the Dreams",
+  "id": "penaconylandofthedreams",
+  "kind": "ornament",
+  "wiki_content_id": "1970",
+  "hoyowiki_page_id": "1598",
+  "order": 46,
+  "source": "wiki"
+ },
+ "无主荒星茨冈尼亚": {
+  "cn": "无主荒星茨冈尼亚",
+  "en": "Sigonia, the Unclaimed Desolation",
+  "id": "sigoniatheunclaimeddesolation",
+  "kind": "ornament",
+  "wiki_content_id": "2588",
+  "hoyowiki_page_id": "2373",
+  "order": 47,
+  "source": "wiki"
+ },
+ "出云显世与高天神国": {
+  "cn": "出云显世与高天神国",
+  "en": "Izumo Gensei and Takama Divine Realm",
+  "id": "izumogenseiandtakamadivinerealm",
+  "kind": "ornament",
+  "wiki_content_id": "2590",
+  "hoyowiki_page_id": "2372",
+  "order": 48,
+  "source": "wiki"
+ },
+ "奔狼的都蓝王朝": {
+  "cn": "奔狼的都蓝王朝",
+  "en": "Duran, Dynasty of Running Wolves",
+  "id": "durandynastyofrunningwolves",
+  "kind": "ornament",
+  "wiki_content_id": "3167",
+  "hoyowiki_page_id": "2650",
+  "order": 49,
+  "source": "wiki"
+ },
+ "劫火莲灯铸炼宫": {
+  "cn": "劫火莲灯铸炼宫",
+  "en": "Forge of the Kalpagni Lantern",
+  "id": "forgeofthekalpagnilantern",
+  "kind": "ornament",
+  "wiki_content_id": "3168",
+  "hoyowiki_page_id": "2651",
+  "order": 50,
+  "source": "wiki"
+ },
+ "沉陆海域露莎卡": {
+  "cn": "沉陆海域露莎卡",
+  "en": "Lushaka, the Sunken Seas",
+  "id": "lushakathesunkenseas",
+  "kind": "ornament",
+  "wiki_content_id": "3872",
+  "hoyowiki_page_id": "3064",
+  "order": 51,
+  "source": "wiki"
+ },
+ "奇想蕉乐园": {
+  "cn": "奇想蕉乐园",
+  "en": "The Wondrous BananAmusement Park",
+  "id": "thewondrousbananamusementpark",
+  "kind": "ornament",
+  "wiki_content_id": "3871",
+  "hoyowiki_page_id": "3059",
+  "order": 52,
+  "source": "wiki"
+ },
+ "谧宁拾骨地": {
+  "cn": "谧宁拾骨地",
+  "en": "Bone Collection's Serene Demesne",
+  "id": "bonecollectionsserenedemesne",
+  "kind": "ornament",
+  "wiki_content_id": "4975",
+  "hoyowiki_page_id": "3566",
+  "order": 53,
+  "source": "wiki"
+ },
+ "渊思寂虑的巨树": {
+  "cn": "渊思寂虑的巨树",
+  "en": "Giant Tree of Rapt Brooding",
+  "id": "gianttreeofraptbrooding",
+  "kind": "ornament",
+  "wiki_content_id": "4974",
+  "hoyowiki_page_id": "3565",
+  "order": 54,
+  "source": "wiki"
+ },
+ "妖精织梦的乐园": {
+  "cn": "妖精织梦的乐园",
+  "en": "Arcadia of Woven Dreams",
+  "id": "arcadiaofwovendreams",
+  "kind": "ornament",
+  "wiki_content_id": "5635",
+  "hoyowiki_page_id": "3903",
+  "order": 55,
+  "source": "wiki"
+ },
+ "沉欢醉饮的海隅": {
+  "cn": "沉欢醉饮的海隅",
+  "en": "Revelry by the Sea",
+  "id": "revelrybythesea",
+  "kind": "ornament",
+  "wiki_content_id": "5634",
+  "hoyowiki_page_id": "3904",
+  "order": 56,
+  "source": "wiki"
+ },
+ "永恒之地翁法罗斯": {
+  "cn": "永恒之地翁法罗斯",
+  "en": "Amphoreus, The Eternal Land",
+  "id": "amphoreustheeternalland",
+  "kind": "ornament",
+  "wiki_content_id": "6270",
+  "hoyowiki_page_id": "4068",
+  "order": 57,
+  "source": "wiki"
+ },
+ "天国@直播间": {
+  "cn": "天国@直播间",
+  "en": "Tengoku@Livestream",
+  "id": "tengokulivestream",
+  "kind": "ornament",
+  "wiki_content_id": "6271",
+  "hoyowiki_page_id": "4069",
+  "order": 58,
+  "source": "wiki"
+ },
+ "零号关卡朋克洛德": {
+  "cn": "零号关卡朋克洛德",
+  "en": "Punklorde Stage Zero",
+  "id": "punklordestagezero",
+  "kind": "ornament",
+  "wiki_content_id": "7107",
+  "hoyowiki_page_id": "5012",
+  "order": 59,
+  "source": "wiki"
+ },
+ "千星荟萃之城": {
+  "cn": "千星荟萃之城",
+  "en": "City of Converging Stars",
+  "id": "cityofconvergingstars",
+  "kind": "ornament",
+  "wiki_content_id": "7108",
+  "hoyowiki_page_id": "5009",
+  "order": 60,
+  "source": "wiki"
+ },
+ "坠星启航地": {
+  "cn": "坠星启航地",
+  "en": "",
+  "id": "",
+  "kind": "ornament",
+  "wiki_content_id": "7797",
+  "hoyowiki_page_id": "",
+  "order": 61,
+  "source": "wiki"
+ },
+ "寰宇生研院": {
+  "cn": "寰宇生研院",
+  "en": "",
+  "id": "",
+  "kind": "ornament",
+  "wiki_content_id": "7796",
+  "hoyowiki_page_id": "",
+  "order": 62,
+  "source": "wiki"
+ },
+ "神的瞬息欢愉": {
+  "cn": "神的瞬息欢愉",
+  "en": "",
+  "id": "",
+  "kind": "ornament",
+  "wiki_content_id": "",
+  "hoyowiki_page_id": "",
+  "order": 63,
+  "source": "manual"
+ },
+ "亚空异容所": {
+  "cn": "亚空异容所",
+  "en": "",
+  "id": "",
+  "kind": "ornament",
+  "wiki_content_id": "",
+  "hoyowiki_page_id": "",
+  "order": 64,
+  "source": "manual"
+ }
+}

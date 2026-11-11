@@ -14,12 +14,10 @@ effects 与件名一律以本模块原有常量为准，wiki 只作新增字段�
 
 图标归档：``assets/game_data/relic_icons/<套装名>_<件名>.webp``
 （196 件全量，官方图标转档归档；寻址公式见 ``icon_webp_rel_path``）。
+识别模板规范库见 ``config/relic_templates.py``（空 id 套装暂缓入库）。
 
-版本刷新工序：游戏新版本后重跑 wiki 抓取生成新快照 → 与下方 RELIC_SETS
-逐条 diff → 人工审阅后更新常量（排列序 = 实装序），图标按归档命名增量
-入库；新版本套装未及固化时由 ``resolve_set_name`` 兜底（warning 不抛异常），
-勿临时塞未经抓取核验的数据。完整工序（含内部 ID 映射数据）见私有 skill
-``sr-od-dev-equip-data``（junction 挂载不入本仓）。
+版本刷新走 ``sr-od-dev-relic-data`` skill 工序；新套装未及固化时由
+``resolve_set_name`` 兜底（warning 不抛异常），勿临时塞未经抓取核验的数据。
 
 模块纪律：零外部 IO、零状态——纯常量 + 纯函数（同 sr_codes 模块纪律）。
 """
@@ -51,6 +49,10 @@ class RelicSetDef:
     """套装定义（快照 sets[] 固化 + obtain 增量）。
 
     Attributes:
+        id: 套装英文 id = 官方英文名归一化（小写仅字母数字，符号全剥，
+            与 ``sr_light_cones.LightConeDef.id`` 同规）；数据源 = 国际服
+            wiki（en-us）。国际服未收录的套装留空串（宁缺勿错），名单由
+            测试白名单锁定，国际服同步后回填。
         set_name: 官方套装全名（社区简称不入表；基准：「骇域漫游的信使」/
             「生命的翁瓦克」）。
         kind: ``'cavern'``=隧洞遗器（4 件套，2/4 件效果）、``'ornament'``=
@@ -61,6 +63,7 @@ class RelicSetDef:
         obtain: 套装获取途径（官方 wiki 原文透传，如副本名；纯展示）。
     """
 
+    id: str
     set_name: str
     kind: Literal['cavern', 'ornament']
     pieces: tuple[SrRelicPieceDef, ...]
@@ -71,6 +74,7 @@ class RelicSetDef:
 RELIC_SETS: tuple[RelicSetDef, ...] = (
     # ---- 隧洞遗器（cavern，34 套，按实装顺序）----
     RelicSetDef(
+        id='passerbyofwanderingcloud',
         set_name='云无留迹的过客',
         kind='cavern',
         pieces=(
@@ -86,6 +90,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='漂泊之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='musketeerofwildwheat',
         set_name='野穗伴行的快枪手',
         kind='cavern',
         pieces=(
@@ -101,6 +106,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='漂泊之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='knightofpuritypalace',
         set_name='净庭教宗的圣骑士',
         kind='cavern',
         pieces=(
@@ -116,6 +122,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='圣颂之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='hunterofglacialforest',
         set_name='密林卧雪的猎人',
         kind='cavern',
         pieces=(
@@ -131,6 +138,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='霜风之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='championofstreetwiseboxing',
         set_name='街头出身的拳王',
         kind='cavern',
         pieces=(
@@ -146,6 +154,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='迅拳之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='guardofwutheringsnow',
         set_name='戍卫风雪的铁卫',
         kind='cavern',
         pieces=(
@@ -161,6 +170,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='睿治之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='firesmithoflavaforging',
         set_name='熔岩锻铸的火匠',
         kind='cavern',
         pieces=(
@@ -176,6 +186,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='野焰之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='geniusofbrilliantstars',
         set_name='繁星璀璨的天才',
         kind='cavern',
         pieces=(
@@ -191,6 +202,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='睿治之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='bandofsizzlingthunder',
         set_name='激奏雷电的乐队',
         kind='cavern',
         pieces=(
@@ -206,6 +218,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='圣颂之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='eagleoftwilightline',
         set_name='晨昏交界的翔鹰',
         kind='cavern',
         pieces=(
@@ -221,6 +234,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='霜风之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='thiefofshootingmeteor',
         set_name='流星追迹的怪盗',
         kind='cavern',
         pieces=(
@@ -236,6 +250,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='迅拳之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='wastelanderofbanditrydesert',
         set_name='盗匪荒漠的废土客',
         kind='cavern',
         pieces=(
@@ -251,6 +266,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='野焰之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='longevousdisciple',
         set_name='宝命长存的莳者',
         kind='cavern',
         pieces=(
@@ -266,6 +282,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='药使之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='messengertraversinghackerspace',
         set_name='骇域漫游的信使',
         kind='cavern',
         pieces=(
@@ -281,6 +298,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='药使之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='theashblazinggrandduke',
         set_name='毁烬焚骨的大公',
         kind='cavern',
         pieces=(
@@ -296,6 +314,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='幽冥之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='prisonerindeepconfinement',
         set_name='幽锁深牢的系囚',
         kind='cavern',
         pieces=(
@@ -311,6 +330,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='幽冥之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='pioneerdiverofdeadwaters',
         set_name='死水深潜的先驱',
         kind='cavern',
         pieces=(
@@ -326,6 +346,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='梦潜之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='watchmakermasterofdreammachinations',
         set_name='机心戏梦的钟表匠',
         kind='cavern',
         pieces=(
@@ -341,6 +362,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='梦潜之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='ironcavalryagainstthescourge',
         set_name='荡除蠹灾的铁骑',
         kind='cavern',
         pieces=(
@@ -356,6 +378,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='勇骑之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='thewindsoaringvalorous',
         set_name='风举云飞的勇烈',
         kind='cavern',
         pieces=(
@@ -371,6 +394,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='勇骑之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='sacerdosrelivedordeal',
         set_name='重循苦旅的司铎',
         kind='cavern',
         pieces=(
@@ -386,6 +410,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='迷识之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='scholarlostinerudition',
         set_name='识海迷坠的学者',
         kind='cavern',
         pieces=(
@@ -401,6 +426,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='迷识之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='herooftriumphantsong',
         set_name='凯歌祝捷的英豪',
         kind='cavern',
         pieces=(
@@ -416,6 +442,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='弦歌之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='poetofmourningcollapse',
         set_name='哀歌覆国的诗人',
         kind='cavern',
         pieces=(
@@ -431,6 +458,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='弦歌之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='warriorgoddessofsunandthunder',
         set_name='烈阳惊雷的女武神',
         kind='cavern',
         pieces=(
@@ -446,6 +474,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='雳涌之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='wavestridercaptain',
         set_name='恶海逐波的船长',
         kind='cavern',
         pieces=(
@@ -461,6 +490,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='雳涌之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='worldremakingdeliverer',
         set_name='再创天地的救世主',
         kind='cavern',
         pieces=(
@@ -476,6 +506,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='隐救之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='selfenshroudedrecluse',
         set_name='自匿星芒的隐士',
         kind='cavern',
         pieces=(
@@ -491,6 +522,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='隐救之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='evergloriousmagicalgirl',
         set_name='闪耀功勋的魔法少女',
         kind='cavern',
         pieces=(
@@ -506,6 +538,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='魔占之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='divinerofdistantreach',
         set_name='应天涉远的卜者',
         kind='cavern',
         pieces=(
@@ -521,6 +554,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='魔占之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='',
         set_name='星如我见的领航员',
         kind='cavern',
         pieces=(
@@ -536,6 +570,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='观火之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='divinequeryingmastersmith',
         set_name='叩问天工的名冶',
         kind='cavern',
         pieces=(
@@ -551,6 +586,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='观火之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='',
         set_name='戏梦点星的伶人',
         kind='cavern',
         pieces=(
@@ -566,6 +602,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='密伶之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='',
         set_name='贪噬禁果的异端',
         kind='cavern',
         pieces=(
@@ -581,6 +618,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='密伶之径·侵蚀隧洞',
     ),
     RelicSetDef(
+        id='spacesealingstation',
         set_name='太空封印站',
         kind='ornament',
         pieces=(
@@ -593,6 +631,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第三世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='fleetoftheageless',
         set_name='不老者的仙舟',
         kind='ornament',
         pieces=(
@@ -605,6 +644,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第三世界·模拟宇宙；坚城不倒·差分宇宙',
     ),
     RelicSetDef(
+        id='pancosmiccommercialenterprise',
         set_name='泛银河商业公司',
         kind='ornament',
         pieces=(
@@ -617,6 +657,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第五世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='belobogofthearchitects',
         set_name='筑城者的贝洛伯格',
         kind='ornament',
         pieces=(
@@ -629,6 +670,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第六世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='celestialdifferentiator',
         set_name='星体差分机',
         kind='ornament',
         pieces=(
@@ -641,6 +683,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第五世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='inertsalsotto',
         set_name='停转的萨尔索图',
         kind='ornament',
         pieces=(
@@ -653,6 +696,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第六世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='taliakingdomofbanditry',
         set_name='盗贼公国塔利亚',
         kind='ornament',
         pieces=(
@@ -665,6 +709,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第四世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='sprightlyvonwacq',
         set_name='生命的翁瓦克',
         kind='ornament',
         pieces=(
@@ -677,6 +722,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第四世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='rutilantarena',
         set_name='繁星竞技场',
         kind='ornament',
         pieces=(
@@ -689,6 +735,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第七世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='brokenkeel',
         set_name='折断的龙骨',
         kind='ornament',
         pieces=(
@@ -701,6 +748,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第七世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='firmamentfrontlineglamoth',
         set_name='苍穹战线格拉默',
         kind='ornament',
         pieces=(
@@ -713,6 +761,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第八世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='penaconylandofthedreams',
         set_name='梦想之地匹诺康尼',
         kind='ornament',
         pieces=(
@@ -725,6 +774,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第八世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='sigoniatheunclaimeddesolation',
         set_name='无主荒星茨冈尼亚',
         kind='ornament',
         pieces=(
@@ -737,6 +787,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第九世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='izumogenseiandtakamadivinerealm',
         set_name='出云显世与高天神国',
         kind='ornament',
         pieces=(
@@ -749,6 +800,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='第九世界·模拟宇宙',
     ),
     RelicSetDef(
+        id='durandynastyofrunningwolves',
         set_name='奔狼的都蓝王朝',
         kind='ornament',
         pieces=(
@@ -761,6 +813,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='永恒笑剧·差分宇宙',
     ),
     RelicSetDef(
+        id='forgeofthekalpagnilantern',
         set_name='劫火莲灯铸炼宫',
         kind='ornament',
         pieces=(
@@ -773,6 +826,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='永恒笑剧·差分宇宙',
     ),
     RelicSetDef(
+        id='lushakathesunkenseas',
         set_name='沉陆海域露莎卡',
         kind='ornament',
         pieces=(
@@ -785,6 +839,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='蠹役饥肠·差分宇宙',
     ),
     RelicSetDef(
+        id='thewondrousbananamusementpark',
         set_name='奇想蕉乐园',
         kind='ornament',
         pieces=(
@@ -797,6 +852,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='蠹役饥肠·差分宇宙',
     ),
     RelicSetDef(
+        id='bonecollectionsserenedemesne',
         set_name='谧宁拾骨地',
         kind='ornament',
         pieces=(
@@ -809,6 +865,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='纷争不休·差分宇宙',
     ),
     RelicSetDef(
+        id='gianttreeofraptbrooding',
         set_name='渊思寂虑的巨树',
         kind='ornament',
         pieces=(
@@ -821,6 +878,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='纷争不休·差分宇宙',
     ),
     RelicSetDef(
+        id='arcadiaofwovendreams',
         set_name='妖精织梦的乐园',
         kind='ornament',
         pieces=(
@@ -833,6 +891,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='&nbsp;月下朱殷·差分宇宙',
     ),
     RelicSetDef(
+        id='revelrybythesea',
         set_name='沉欢醉饮的海隅',
         kind='ornament',
         pieces=(
@@ -845,6 +904,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='&nbsp;月下朱殷·差分宇宙',
     ),
     RelicSetDef(
+        id='amphoreustheeternalland',
         set_name='永恒之地翁法罗斯',
         kind='ornament',
         pieces=(
@@ -857,6 +917,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='西风丛中·差分宇宙',
     ),
     RelicSetDef(
+        id='tengokulivestream',
         set_name='天国@直播间',
         kind='ornament',
         pieces=(
@@ -869,6 +930,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='西风丛中·差分宇宙',
     ),
     RelicSetDef(
+        id='punklordestagezero',
         set_name='零号关卡朋克洛德',
         kind='ornament',
         pieces=(
@@ -881,6 +943,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='鎏金追忆·差分宇宙',
     ),
     RelicSetDef(
+        id='cityofconvergingstars',
         set_name='千星荟萃之城',
         kind='ornament',
         pieces=(
@@ -893,6 +956,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='鎏金追忆·差分宇宙',
     ),
     RelicSetDef(
+        id='',
         set_name='坠星启航地',
         kind='ornament',
         pieces=(
@@ -905,6 +969,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='虫虫来袭·差分宇宙',
     ),
     RelicSetDef(
+        id='',
         set_name='寰宇生研院',
         kind='ornament',
         pieces=(
@@ -917,6 +982,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='虫虫来袭·差分宇宙',
     ),
     RelicSetDef(
+        id='',
         set_name='神的瞬息欢愉',
         kind='ornament',
         pieces=(
@@ -929,6 +995,7 @@ RELIC_SETS: tuple[RelicSetDef, ...] = (
         obtain='戏剧中人·差分宇宙',
     ),
     RelicSetDef(
+        id='',
         set_name='亚空异容所',
         kind='ornament',
         pieces=(
@@ -953,6 +1020,19 @@ PIECE_TO_SET: dict[str, RelicSetDef] = {
 # 与 PIECE_TO_SET 同源同载入（件名键 ≠ 套装名键，两索引不可互查）。
 _SET_BY_NAME: dict[str, RelicSetDef] = {
     relic_set.set_name: relic_set for relic_set in RELIC_SETS
+}
+
+#: 部位号 → 部位英文官方术语归一化（小写仅字母数字）。pos 坐标系同
+#: SrRelicPieceDef（隧洞 1-4 / 位面 5-6）；原文 = 国际服 wiki 词条 Set 块
+#: pos 字段（Head/Hands/Body/Feet/Planar Sphere/Link Rope）。
+#: 消费方：识别模板 template_id 公式（``f'{RelicSetDef.id}_{RELIC_POS_EN[pos]}'``）。
+RELIC_POS_EN: dict[int, str] = {
+    1: 'head',
+    2: 'hands',
+    3: 'body',
+    4: 'feet',
+    5: 'planarsphere',
+    6: 'linkrope',
 }
 
 #: 单件图标归档相对路径公式（项目 assets 根起）；196 件全量，见模块 docstring。
