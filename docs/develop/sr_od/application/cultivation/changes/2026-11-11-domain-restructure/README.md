@@ -8,7 +8,7 @@
 
 ## 进度
 
-- 迭代设计:定稿（对抗报告 A1-A9 全部处置完毕,见 attack.md 与各文档修订）
+- 迭代设计:定稿(对抗报告 A1-A9 全部处置完毕,见 attack.md 与各文档修订)
 - 设计对抗:收敛 · 报告=[attack.md](attack.md)
-- 落地:0/5 done（明细见 landing.md）
-- 正本更新:未开始
+- 落地:批次A done / 批次B done / 正本更新 done;角色突破线+行迹线两新 op wait 实机窗(明细见 landing.md)
+- 正本更新:清零(正本区 README + 三 screens doc 死链修复;AGENTS.md 树粒度豁免)
