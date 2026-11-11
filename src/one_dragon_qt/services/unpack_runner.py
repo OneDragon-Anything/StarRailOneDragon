@@ -9,7 +9,7 @@ from PySide6.QtCore import QThread, Signal
 
 
 class UnpackResourceRunner(QThread):
-    """资源展开线程：读取安装清单，将安装器目录中的文件逐一校验后搬运至工作目录。"""
+    """资源解包线程：读取安装清单，将安装器目录中的文件逐一校验后搬运至工作目录。"""
 
     unpack_done = Signal(bool)        # 搬运完成信号，参数为是否成功
     log_message = Signal(str)       # 当前文件名日志信号
@@ -218,7 +218,7 @@ class UnpackResourceRunner(QThread):
             self._finish(True)
             return
 
-        # 无清单说明安装目录不含待搬运资源（开发环境 / 在线安装等），视为无需展开
+        # 无清单说明安装目录不含待搬运资源（开发环境 / 在线安装等），视为无需解包
         if not (src_root / 'install_manifest.json').exists():
             self._finish(True)
             return
@@ -230,7 +230,7 @@ class UnpackResourceRunner(QThread):
             ok = self._copy_by_manifest_then_cleanup(src_root, dst_root)
             self._finish(ok)
         except Exception as e:
-            self.log_message.emit(f"展开资源失败: {e}")
+            self.log_message.emit(f"解包资源失败: {e}")
             self._finish(False)
 
     def _finish(self, success: bool) -> None:

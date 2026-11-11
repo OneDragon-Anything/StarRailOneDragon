@@ -216,10 +216,10 @@ DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
 
 
 def bench_slot_unit(slot: BenchSlot | None) -> Unit | None:
-    """BenchSlot → 内嵌 Unit 的拆包读口(§2.4 字段映射约定的读法单一源):
+    """BenchSlot → 内嵌 Unit 的解包读口(§2.4 字段映射约定的读法单一源):
     ``kind='unit'`` 且内嵌非空 → 该 Unit;占位件(kind ∈ tome/bookcard/
     supply_box)/空槽/None 洞 → None。身份(char_id)/星级/装备/槽号
-    信息位的消费面统一经本口拆包,禁消费点各自内联 kind 判断。"""
+    信息位的消费面统一经本口解包,禁消费点各自内联 kind 判断。"""
     if slot is None or slot.kind != 'unit':
         return None
     return slot.unit

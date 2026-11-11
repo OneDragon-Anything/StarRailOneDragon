@@ -130,7 +130,7 @@ def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
 
 
 def _entry_cid(x: object) -> str:
-    """占席条目 → 身份名(bench 占席条目 = BenchSlot 拆包,deployed 行域
+    """占席条目 → 身份名(bench 占席条目 = BenchSlot 解包,deployed 行域
     单位直读;P4 状态容器形统一读点)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
@@ -142,7 +142,7 @@ def _entry_cid(x: object) -> str:
 
 
 def _entry_star(x: object) -> int:
-    """占席条目 → 星级(bench 占席条目 = BenchSlot 拆包,deployed 直读)。"""
+    """占席条目 → 星级(bench 占席条目 = BenchSlot 解包,deployed 直读)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )

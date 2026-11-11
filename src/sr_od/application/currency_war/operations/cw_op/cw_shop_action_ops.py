@@ -146,7 +146,7 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     # 未执行该 import 即引用,UnboundLocalError(实机案例:
     # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
     # P4 状态容器形:席位域 = BenchView.slots(BenchSlot),身份经 bench_slot_unit
-    # 拆包读口取(动作 bench_idx = 状态容器下标,统一词表坐标系)。
+    # 解包读口取(动作 bench_idx = 状态容器下标,统一词表坐标系)。
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )

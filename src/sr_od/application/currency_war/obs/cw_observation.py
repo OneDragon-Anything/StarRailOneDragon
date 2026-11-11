@@ -2104,7 +2104,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike,
         record_defect,
     )
     _time.sleep(0.8)
-    # controller.screenshot 返回 (时间戳,帧|None) 元组(非帧本体),须拆包;
+    # controller.screenshot 返回 (时间戳,帧|None) 元组(非帧本体),须解包;
     # 帧缺席(截取失败)= 无法重观察,保首读不猜。
     _ts2, _frame2 = ctx.controller.screenshot()
     slots2 = _read_once(_frame2) if _frame2 is not None else slots

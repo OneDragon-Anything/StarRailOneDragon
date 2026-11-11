@@ -13,7 +13,7 @@ board_unique_key(统一搜索枚举基本单位)、engines_count 族(过渡体�
 机制事实)、deployed_bond_counts/board_target_line_weight(支撑观测)。
 
 这里只收**纯决策**。输入 = 状态容器形状(bench = 占席条目 ``BenchSlot``
-紧缩序,身份经 ``bench_slot_unit`` 拆包;deployed = 行域 ``Unit``,
+紧缩序,身份经 ``bench_slot_unit`` 解包;deployed = 行域 ``Unit``,
 benchchar-retirement P4 状态容器形),身份可判(char_id 空串=未识别,
 围栏语义「照旧上」保留)。
 """

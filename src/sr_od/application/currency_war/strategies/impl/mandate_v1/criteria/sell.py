@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 def _slot_of(b: object, idx: int | None = None) -> int:
     """占席条目 → 卖出候选位键(紧缩序下标;Unit.slot 仅作信息位,
     候选键 = 条目在紧缩占席序(物理槽序)中的 0 基下标,
-    发出侧经状态容器槽位表枚举对位还原;``idx`` 显式传位,P4 状态容器形拆包
+    发出侧经状态容器槽位表枚举对位还原;``idx`` 显式传位,P4 状态容器形解包
     单一读点,本模块三通道共用)。"""
     return int(idx if idx is not None else 0)
 

@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 def _slot_cid(b) -> str:
     """占席条目 → 身份名(单位 = 内嵌 Unit.char_id;占位件/None = '';
-    P4 状态容器形,拆包单一源 = kernel ``bench_slot_unit``)。"""
+    P4 状态容器形,解包单一源 = kernel ``bench_slot_unit``)。"""
     u = bench_slot_unit(b)
     return (getattr(u, 'char_id', '') or '') if u is not None else ''
 

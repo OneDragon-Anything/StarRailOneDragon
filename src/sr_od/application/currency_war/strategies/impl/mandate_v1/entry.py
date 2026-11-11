@@ -322,7 +322,7 @@ def _emit_deploy_moves_scoped(out: list, frame: MandateFrame,
     )
     bench = bench_entries_of(state)
     on_board = set(frame.deployed_names)
-    # 选人:bench 真单位(占位件经拆包口自然剔除)∧ 名不在板上(同名
+    # 选人:bench 真单位(占位件经解包口自然剔除)∧ 名不在板上(同名
     # 去重;未识别 char_id='' 恒不在 on_board = 旧「照旧上」fail-open)。
     up_idx = [i for i, b in enumerate(bench)
               if bench_slot_unit(b) is not None
@@ -758,7 +758,7 @@ def _step_yield_plan(session: StrategySession,
 
 def _bench_compact_idx(gs: GameState, name: str) -> int | None:
     """bench 紧缩占席序下标 → 名对位(缺位者/目标名的现读定位;陈旧
-    帧名不在席 = None)。身份拆包 = ``bench_slot_unit`` 统一读口。"""
+    帧名不在席 = None)。身份解包 = ``bench_slot_unit`` 统一读口。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         bench_slot_unit,
     )

@@ -1360,7 +1360,7 @@ def record_forge_privilege_gain(gs: GameState, *, write: Callable[..., None],
     - 在场门控:计数时点刃 ∈ deployed(front_slots/back_slots)∪bench
       名单现值判定——离场期间获得不计数不补计(卡文字面直辖);名单
       未观察(None)= 无真值基座按不在场计;bench 侧经
-      ``cw_exec_state.bench_slot_unit`` 拆包读口(消费端唯一合法入口,
+      ``cw_exec_state.bench_slot_unit`` 解包读口(消费端唯一合法入口,
       禁内联 kind 判断),deployed 侧 = 子表列表成员现值。
 
     计数口径 = 经原语的获得即 1 件(「获得」= 净新增字面直辖):合成
@@ -1386,7 +1386,7 @@ def record_forge_privilege_gain(gs: GameState, *, write: Callable[..., None],
     if not present:
         bench_view = gs.bench.value
         if bench_view is not None:
-            # 运行期惰性取(模块头零包内 import 契约,拆包读口单一源)。
+            # 运行期惰性取(模块头零包内 import 契约,解包读口单一源)。
             from sr_od.application.currency_war.kernel.cw_exec_state import (
                 bench_slot_unit,
             )
