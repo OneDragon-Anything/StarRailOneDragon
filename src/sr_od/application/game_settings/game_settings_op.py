@@ -14,21 +14,17 @@
   (cn=崩坏：星穹铁道 / en=Honkai: Star Rail),控制器按标题查找窗口,
   不同步刷新 = 本次运行结束后窗口失明。
 
-多语言判定走框架既有机制:screen_info 文本 area 的 text 写中文,
-``screen_utils.find_area`` 匹配时经 ``gt(text, 'game')`` 按当前 i18 语言翻译
-(en 翻译在 ``assets/text/game/en.po`` → 编译进 game.mo;cn 模式 gt 缺 cn
-目录返回原文)。判定 area 的翻译词条:开拓等级/语言/图像/资源下载/简体中文。
-点击目标全是固定位置控件;大世界是锁光标画面(screen 级 pc_alt=true),其上
-的点击取 area 中心显式 pc_alt=True。
-
-结构:每节点 = 自判定循环(每轮先判画面状态决定动作,达成才 success 出去)
-—— 「点击」与「确认转移」必须在同一节点,拆开会让点击节点只回 retry 直到
-重试上限(转移确认节点永远不会被调度)。
+导航复用现成件:``OpenPhoneMenu``(ESC 开菜单 + BackToNormalWorldPlus 兜底,
+任何画面可达)、``ClickPhoneMenuItem(SETTINGS)``(模板匹配设置图标,语言
+无关)。语言页内的判定走框架 gt 翻译:screen_info 文本 area 的 text 写中文,
+``find_area`` 匹配时经 ``gt(text, 'game')`` 按当前 i18 语言翻译(en 词条在
+``assets/text/game/en.po`` → 编译进 game.mo)。点击目标全是固定位置控件;
+弹窗(资源下载确认/使用确认)文案随发起时界面语言,与 gt 方向自洽。
 
 边界:op 的 gt 翻译方向 = 配置语言 —— 「界面英文 + 配置 cn」的漂移态下
-中文锚匹配会失效,先用 MCP ``update_game_config(lang='en')`` 校正配置再跑
+文本锚匹配会失效,先用 MCP ``update_game_config(lang='en')`` 校正配置再跑
 本 op(target='cn')。切换到 en 且英文文本资源未下载时,游戏弹资源下载确认
-+ 使用确认两个弹窗(中文界面发起时弹窗为中文),本 op 自动逐个点确认。
++ 使用确认两个弹窗,本 op 自动逐个点确认。
 """
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -39,6 +35,8 @@ from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils.i18_utils import gt, update_default_lang
 from one_dragon.utils.str_utils import find_in_list_with_fuzzy
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
+from sr_od.operations.menu import phone_menu_const, phone_menu_utils
 from sr_od.operations.sr_operation import SrOperation
 
 _WORLD_SCREEN: str = '大世界'
@@ -60,111 +58,136 @@ class SwitchLanguageOp(SrOperation):
     参数:
         target_lang: 目标文本语言,取 ``GameLanguageEnum`` 的 value('cn'/'en')。
 
-    失败:不在大世界(导航前置缺失)/ 离开语言设置页 / 弹窗处理超限。
+    失败:语言页读区持续读不出值 / 弹窗处理超限。
     """
 
     def __init__(self, ctx: SrContext, target_lang: str = 'cn'):
         self.target_lang: str = target_lang
         self.target_value: str = _LANG_VALUE_WORDS.get(target_lang, _CN_VALUE)
-        self.current_lang: str = ctx.game_config.lang
         SrOperation.__init__(self, ctx, op_name=gt('切换游戏语言'),
-                             node_max_retry_times=30)
+                             node_max_retry_times=40)
 
-    @operation_node(name='入口核对', is_start_node=True)
-    def check_entry(self) -> OperationRoundResult:
-        """入口判定用语言无关锚:本 op 的合法发起场景含 English 界面(切回
-        中文),画面级判定(文本锚组合)在英文界面必失效(实测判定 None),
-        故以「角色图标」模板单锚判定 —— 大世界右上角头像图标,位置独有且
-        语言无关。不在锚位 = 不在大世界,fail 交用户导航。"""
-        if screen_utils.find_area(
-                self.ctx, self.last_screenshot,
-                _WORLD_SCREEN, '角色图标') != FindAreaResultEnum.TRUE:
-            return self.round_fail(
-                '未命中大世界角色图标(当前不在主界面,或画面被遮挡);'
-                '请先回到主界面再运行本 op')
-        return self.round_success()
-
-    @node_from(from_name='入口核对')
-    @operation_node(name='打开手机菜单')
+    @operation_node(name='打开菜单', is_start_node=True)
     def open_menu(self) -> OperationRoundResult:
-        """自判定循环:菜单展开锚(开拓等级,gt 按 i18 翻译)命中 → success;
-        未命中 → 点手机菜单入口后重试。大世界是锁光标画面(screen 级
-        pc_alt=true),area 级 pc_alt 默认 False,取中心显式 pc_alt=True
-        点击(自由光标下 Alt+点击无害,先例 back_to_normal_world_plus)。"""
+        """自判定循环:
+        - 菜单已开(开拓等级锚,gt 按 i18 翻译双语可用)→ success;
+        - 大世界(角色图标模板锚命中)→ 点击手机图标本体展开菜单;点击
+          自带把游戏带到前台+键盘焦点的效果,后续 ESC 类键盘操作才有焦点;
+        - 两者都不命中 → 纯等待重试,**不在状态不明时点击**(点击菜单已开
+          时的同位置会命中左上角活动入口 UI,误开别的界面)。
+        大世界是锁光标画面(screen 级 pc_alt=true),area 级 pc_alt 默认
+        False,取中心显式 pc_alt=True 点击(先例 back_to_normal_world_plus)。"""
         if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _MENU_SCREEN, '读区-菜单判定') == FindAreaResultEnum.TRUE:
+                                  _MENU_SCREEN, '开拓等级') == FindAreaResultEnum.TRUE:
             return self.round_success()
-        menu_area = self.ctx.screen_loader.get_area(_WORLD_SCREEN, '按钮-手机菜单')
-        self.ctx.controller.click(menu_area.rect.center, pc_alt=True)
-        # wait 必须 ≥ 菜单展开动画实测时长(2s 不够:判定跑在动画里,失败后再
-        # 点击会把已展开的菜单点关,循环反复误触世界交互物)
-        return self.round_retry('已点击手机菜单,等待菜单展开', wait=3)
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _WORLD_SCREEN, '角色图标') == FindAreaResultEnum.TRUE:
+            menu_area = self.ctx.screen_loader.get_area(_WORLD_SCREEN, '按钮-手机菜单')
+            self.ctx.controller.click(menu_area.rect.center, pc_alt=True)
+            # wait ≥ 菜单展开动画实测时长,判定跑在动画里会失败
+            return self.round_retry('已点击手机菜单,等待菜单展开', wait=3)
+        # 其它画面(设置页/菜单残留页等):标准兜底回到大世界,下轮循环点击图标
+        op = BackToNormalWorldPlus(self.ctx)
+        return self.round_retry(op.execute().status, wait=2)
 
-    @node_from(from_name='打开手机菜单')
+    @node_from(from_name='打开菜单')
     @operation_node(name='打开设置')
     def open_settings(self) -> OperationRoundResult:
-        """自判定循环:已在设置页(标题锚 语言/图像,gt 翻译)→ success 带
-        status(游戏会记忆上次页签);仍在菜单 → 点设置齿轮后重试。"""
+        """自判定循环:已在设置页(标题锚 语言/图像,游戏会记忆上次页签)
+        → success 带 status;仍在菜单 → 点右侧竖栏「设置」齿轮后重试。
+
+        设置齿轮模板匹配(phone_menu_item_26_settings,语言无关)只在菜单态
+        做 —— 点击生效后菜单关闭,再匹配侧栏必然失败,会误报「找不到」。"""
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LANG_SCREEN, '标题-语言') == FindAreaResultEnum.TRUE:
             return self.round_success(status='ON_LANGUAGE')
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _IMAGE_SCREEN, '标题-图像') == FindAreaResultEnum.TRUE:
             return self.round_success(status='ON_IMAGE')
-        settings_area = self.ctx.screen_loader.get_area(_MENU_SCREEN, '按钮-设置')
-        self.ctx.controller.click(settings_area.rect.center)
+        result = phone_menu_utils.get_phone_menu_item_pos_at_right(
+            self.ctx, self.last_screenshot, phone_menu_const.SETTINGS)
+        if result is None:
+            return self.round_retry('菜单侧栏未找到设置图标', wait=1.5)
+        self.ctx.controller.click(result.center)
         return self.round_retry('已点击设置,等待设置页打开', wait=2.5)
 
-    @node_from(from_name='打开设置', status='ON_IMAGE')
+    @node_from(from_name='打开设置')
     @operation_node(name='切到语言页签')
     def open_lang_tab(self) -> OperationRoundResult:
-        """自判定循环:已在语言页 → success;仍在图像页 → 点语言页签后重试;
-        两页都不在 → fail(设置页被意外关闭)。"""
+        """自判定循环:已在语言页 → success;图像页 → 点语言页签后重试;
+        两页标题都未命中 → 设置页尚未打开/加载中,等待重试。"""
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LANG_SCREEN, '标题-语言') == FindAreaResultEnum.TRUE:
             return self.round_success()
         if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _IMAGE_SCREEN, '标题-图像') != FindAreaResultEnum.TRUE:
-            return self.round_fail('离开设置页(标题判定未命中,意外画面)')
-        tab_area = self.ctx.screen_loader.get_area(_IMAGE_SCREEN, '页签-语言')
-        self.ctx.controller.click(tab_area.rect.center)
-        return self.round_retry('已点击语言页签,等待切换', wait=1.5)
+                                  _IMAGE_SCREEN, '标题-图像') == FindAreaResultEnum.TRUE:
+            tab_area = self.ctx.screen_loader.get_area(_IMAGE_SCREEN, '页签-语言')
+            self.ctx.controller.click(tab_area.rect.center)
+            return self.round_retry('已点击语言页签,等待切换', wait=1.5)
+        return self.round_retry('设置页标题未命中,等待页面打开', wait=2)
 
-    @node_from(from_name='打开设置', status='ON_LANGUAGE')
     @node_from(from_name='切到语言页签')
-    @operation_node(name='切换语言')
-    def switch_language(self) -> OperationRoundResult:
-        """语言页主循环:读当前值 → 展开下拉 → 点目标项 → 处理确认弹窗,
-        以「文本语言当前值 = 目标」为出口(点了≠成了)。离开语言页 fail。"""
-        if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _LANG_SCREEN, '标题-语言') != FindAreaResultEnum.TRUE:
-            return self.round_fail('离开语言设置页(意外画面)')
+    @node_from(from_name='等待切换生效', status='NOT_SWITCHED')
+    @operation_node(name='展开选项列表')
+    def expand_options(self) -> OperationRoundResult:
+        """展开文本语言下拉(单职责:只保证列表展开,不碰选项)。
 
-        current_value = self._read_lang_value()
-        if current_value == self.target_lang:
+        已是目标语言(幂等短路)→ SWITCHED;列表已展开(「文本资源管理」
+        是列表底部独有锚,未展开时该位置是第二个下拉框区域)→ 进入选择;
+        未展开 → 点下拉后重试(下拉展开动画 ~1.5-1.8s,动画未结束时点击
+        列表项会被忽略,wait 须覆盖)。"""
+        value = self._read_lang_value()
+        if value == self.target_lang:
             return self.round_success(status='SWITCHED')
+        if value is None:
+            return self.round_retry('读区读不出语言值,等待界面稳定', wait=4)
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _LANG_SCREEN, '锚-列表展开') == FindAreaResultEnum.TRUE:
+            return self.round_success(status='EXPANDED')
+        dropdown_area = self.ctx.screen_loader.get_area(_LANG_SCREEN, '下拉-文本语言')
+        self.ctx.controller.click(dropdown_area.rect.center)
+        return self.round_retry('已点开文本语言下拉,等待列表展开', wait=3)
 
-        # 弹窗态:资源下载确认 / 使用确认,两个弹窗的确认按钮同位,逐个确认
+    @node_from(from_name='展开选项列表', status='EXPANDED')
+    @operation_node(name='选择目标语言')
+    def select_language(self) -> OperationRoundResult:
+        """列表展开态下点击目标语言项。判项区域 (1405,278)-(1830,345) 在
+        展开态覆盖列表第一行;未展开态该位置是第二个下拉框 —— en 界面下
+        Voice 行显示 'Chinese' 与 gt('简体中文')='Chinese' 同词,不先锚定
+        「列表已展开」就会误判并点开 Voice 下拉(en→cn 反复失败实测根因)。"""
+        item_area_name = '项-简体中文' if self.target_lang == 'cn' else '项-English'
+        if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                  _LANG_SCREEN, item_area_name) != FindAreaResultEnum.TRUE:
+            return self.round_retry('目标语言项未可见,等待列表稳定', wait=1.5)
+        item_area = self.ctx.screen_loader.get_area(_LANG_SCREEN, item_area_name)
+        self.ctx.controller.click(item_area.rect.center)
+        return self.round_success(status='CLICKED')
+
+    @node_from(from_name='选择目标语言', status='CLICKED')
+    @operation_node(name='等待切换生效')
+    def wait_switch_applied(self) -> OperationRoundResult:
+        """点击选项后的纯等待:游戏重载整包文本资源(en↔cn 实测 >10s),
+        期间读区可能读不出值。任何后续点击都会干扰(点下拉=再展开、点选项
+        =反向切换),本节点零点击,以「读值 = 目标」为出口。
+
+        首次切换到 en 时游戏弹资源下载确认 + 使用确认两个弹窗(发起时界面
+        为中文,弹窗文案为中文,gt 方向自洽),自动逐个点确认。"""
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LANG_SCREEN, '弹窗-标题资源下载') == FindAreaResultEnum.TRUE:
             confirm_area = self.ctx.screen_loader.get_area(_LANG_SCREEN, '弹窗-确认按钮')
             self.ctx.controller.click(confirm_area.rect.center)
             return self.round_retry('弹窗已确认,等待下一状态(下载/应用)', wait=3)
 
-        # 下拉展开态:目标语言项(text 锚,gt 翻译)可见则点它
-        item_area_name = '项-简体中文' if self.target_lang == 'cn' else '项-English'
-        if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _LANG_SCREEN, item_area_name) == FindAreaResultEnum.TRUE:
-            item_area = self.ctx.screen_loader.get_area(_LANG_SCREEN, item_area_name)
-            self.ctx.controller.click(item_area.rect.center)
-            return self.round_retry(f'已点击目标语言项 {self.target_value}', wait=2)
+        value = self._read_lang_value()
+        if value == self.target_lang:
+            return self.round_success(status='SWITCHED')
+        if value is None:
+            return self.round_retry('界面重载中,读区暂不可读', wait=4)
+        # 读值仍是旧语言:点击未生效(如落在展开动画中),回展开节点重走
+        return self.round_retry(status='NOT_SWITCHED', wait=2)
 
-        # 未展开:点文本语言下拉
-        dropdown_area = self.ctx.screen_loader.get_area(_LANG_SCREEN, '下拉-文本语言')
-        self.ctx.controller.click(dropdown_area.rect.center)
-        return self.round_retry('已点开文本语言下拉', wait=1.5)
-
-    @node_from(from_name='切换语言', status='SWITCHED')
+    @node_from(from_name='展开选项列表', status='SWITCHED')
+    @node_from(from_name='等待切换生效', status='SWITCHED')
     @operation_node(name='同步配置')
     def save_config(self) -> OperationRoundResult:
         """语言已切换:更新 game_config.lang + 刷新控制器窗口标题 + i18 默认语言。"""

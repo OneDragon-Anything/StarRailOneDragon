@@ -16,5 +16,5 @@ msgstr "Graphics"
 msgid "资源下载"
 msgstr "Resource Download"
 
-msgid "简体中文"
-msgstr "Chinese"
+msgid "文本资源管理"
+msgstr "Text Resource Management"
