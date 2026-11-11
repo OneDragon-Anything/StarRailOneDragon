@@ -9,7 +9,8 @@
 mys_get_roster_detail（SrRank/SrSkill），本模块是**全量静态定义**（不随账号变）。
 
 版本刷新：游戏新版本后重跑官方 wiki 角色详情抓取并重新生成本模块
-（生成器随角色数据维护 skill 维护，不入本仓），生成后人工审阅 diff。
+（生成器 skills/sr-od-dev-character-data/scripts/gen_character_details.py，随本仓
+维护），生成后人工审阅 diff。
 
 模块纪律：零外部 IO、零状态——纯常量（同 sr_relic_sets 模块纪律）。
 """

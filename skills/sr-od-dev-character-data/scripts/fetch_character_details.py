@@ -12,11 +12,10 @@ import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import unquote
 
 import requests
 
-PROJECT_ROOT = Path(r'D:\code\workspace\StarRailOneDragon')
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/'
               'content/list?app_sn=sr_wiki&channel_id=18&lang=zh-cn')
@@ -146,11 +145,14 @@ def fetch_detail(content_id: int) -> dict:
 def main() -> int:
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     auth = json.loads(AUTH.read_text(encoding='utf-8'))
+    known_cids = {info.get('wiki_content_id') for info in auth.values()}
     entries = fetch_list()
-    # 词条清单(content_id → 标题);权威表提供数字 avatarId 校验用
+    # 权威表缺失的词条当场提示(版本更新新角色未入表时第一时间可见),不中断抓取
     results = []
     for entry in entries:
         cid = entry['content_id']
+        if cid not in known_cids:
+            print(f'[提示] {entry.get("title")} (cid={cid}) 不在随仓权威表——疑似新词条,先补权威表再进生成')
         record = fetch_detail(cid)
         record['content_id'] = cid
         record['title'] = entry.get('title') or ''

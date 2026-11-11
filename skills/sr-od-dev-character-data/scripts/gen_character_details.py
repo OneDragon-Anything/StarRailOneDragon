@@ -8,7 +8,7 @@
 import json
 from pathlib import Path
 
-PROJECT_ROOT = Path(r'D:\code\workspace\StarRailOneDragon')
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 DETAILS = PROJECT_ROOT / '.debug' / 'temp' / 'char_wiki' / 'char_details.json'
 AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_character_details.py'
@@ -69,7 +69,8 @@ def main() -> int:
     lines.append('mys_get_roster_detail（SrRank/SrSkill），本模块是**全量静态定义**（不随账号变）。')
     lines.append('')
     lines.append('版本刷新：游戏新版本后重跑官方 wiki 角色详情抓取并重新生成本模块')
-    lines.append('（生成器随角色数据维护 skill 维护，不入本仓），生成后人工审阅 diff。')
+    lines.append('（生成器 skills/sr-od-dev-character-data/scripts/gen_character_details.py，随本仓')
+    lines.append('维护），生成后人工审阅 diff。')
     lines.append('')
     lines.append('模块纪律：零外部 IO、零状态——纯常量（同 sr_relic_sets 模块纪律）。')
     lines.append('"""')

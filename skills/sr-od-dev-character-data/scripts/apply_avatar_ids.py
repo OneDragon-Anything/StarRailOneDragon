@@ -7,7 +7,7 @@ import json
 import re
 from pathlib import Path
 
-PROJECT_ROOT = Path(r'D:\code\workspace\StarRailOneDragon')
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 CONST_FILE = PROJECT_ROOT / 'src' / 'sr_od' / 'config' / 'character_const.py'
 MAP_FILE = PROJECT_ROOT / '.debug' / 'temp' / 'char_avatar_id_map.json'
 
