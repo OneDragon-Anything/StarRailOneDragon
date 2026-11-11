@@ -98,9 +98,10 @@ class TlAsBattleOp(SrOperation):
                 self._tech_used = True
                 return self.round_retry('施放秘技', wait=3)
             self.ctx.controller.move('w', press_time=2)
+            # 节点画面屏级 pc_alt(锁光标),点击需按住 Alt 才生效(与 FH 同款点击对齐)
             self.ctx.controller.click(
                 get_area_center_point(self.ctx, _NODE_SCREEN, '区域-画面中心'),
-                press_time=0.1)
+                press_time=0.1, pc_alt=True)
             return self.round_retry(f'节点{self._brief_node_no} 发起战斗', wait=5)
 
         return self.round_wait('战斗进行中', wait=5)
