@@ -222,12 +222,22 @@ class EquipRelicOp(SrOperation):
     @node_from(from_name='入口核对并进入部位', status='ENTERED_REPLACE')
     @operation_node(name='打开排序弹窗', node_max_retry_times=6)
     def open_sort_dialog(self) -> OperationRoundResult:
-        """点替换屏「遗器建议排序」按钮打开排序规则弹窗,until = 弹窗标题出现。"""
-        return self.round_by_find_and_click_area(
-            self.last_screenshot, _REPLACE_SCREEN, '按钮-遗器建议排序',
-            until_find_all=[(_SORT_RULE_SCREEN, '标题-排序规则')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
+        """点替换屏「按钮-排序设置」(纯坐标区)打开排序规则弹窗。
+
+        按钮条文本随排序形态变化(建议排序=「遗器建议排序」/ 静态排序=
+        「稀有度|暴击率,速度」形态),文本 find 不恒命中 → 纯坐标直点
+        (与入口核对节点的遗器位点击同模式);转移验证 = 弹窗标题出现,
+        未出现重入再点(点击被吞由节点重试兜住)。"""
+        if self.round_by_find_area(self.last_screenshot, _SORT_RULE_SCREEN,
+                                   '标题-排序规则').is_success:
+            return self.round_success(status='SORT_DIALOG_OPENED')
+        area = self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-排序设置')
+        self.ctx.controller.click(area.rect.center)
+        time.sleep(1.5)
+        if self.round_by_find_area(self.screenshot(), _SORT_RULE_SCREEN,
+                                   '标题-排序规则').is_success:
+            return self.round_success(status='SORT_DIALOG_OPENED', wait=0.5)
+        return self.round_retry('点排序设置后排序弹窗未确认,重试', wait=2)
 
     @node_from(from_name='打开排序弹窗')
     @operation_node(name='关建议排序', node_max_retry_times=6)
