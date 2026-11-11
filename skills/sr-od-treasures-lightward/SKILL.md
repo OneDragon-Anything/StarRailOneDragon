@@ -12,7 +12,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 1. ☐ **判类型**：确认目标是四类之一——忘却之庭·混沌回忆 / 虚构叙事 / 末日幻影 / 异相仲裁（对应代码枚举 TLMode：FORGOTTEN_HALL / PURE_FICTION / APOCALYPTIC_SHADOW / ANOMALY_ARBITRATION）。异相仲裁未探明，直接告知用户不能自动打。必做。
 2. ☐ **收集输入**：① 环境增益（按类型块的读法读当期实值）；② 敌人弱点与等级（编队屏「建议属性」等）；③ 账号练度（mys MCP 直拉：`mys_get_characters` 概况 / `mys_get_roster_detail` 全量；练度判读口径见 `sr-od-game-coach` `references/investment.md`）。判据：三样各有明确值或标「不可得」，不许缺省编造。必做。
 3. ☐ **定阵容**：按 `sr-od-game-coach` 的配队决策工作流选体系与成员，交叉游戏内「通关阵容」推荐。判据：每队给出成员 + 一句核心逻辑。必做。
-4. ☐ **导航并挑战**：按类型块的「操作路径」跑 op（经 MCP `run_operation`，op_id 格式 `sr_od.application.treasures_lightward.operations.<模块>.<类名>`）。判据：op 返回挑战成功状态。必做。
+4. ☐ **导航并挑战**：按类型块的「操作路径」跑 op（经 MCP `run_operation`，op_id 格式 `sr_od.application.treasures_lightward.operations.<玩法子包>.<模块>.<类名>`，子包 = forgotten_hall / pure_fiction / apocalyptic_shadow，公共导航无子包段）。判据：op 返回挑战成功状态。必做。
 5. ☐ **奖励确认**：挑战流程内的奖励弹窗由战斗 op 自动处理；期次累计奖励按类型块的「奖励」节核对入口。判据：奖励领取情况有明确结论。必做。
 
 ## 公共路由（所有类型通用）
