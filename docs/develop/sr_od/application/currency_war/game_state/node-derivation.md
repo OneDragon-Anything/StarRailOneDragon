@@ -10,13 +10,13 @@
 节点推进 = **上一节点终结动作落地**的上报(用户裁定 2026-09-20;去证据门修正
 2026-09-21:点击即上报,观察态门为唯一门):战斗节点终结 =
 结算胜利确认(点击「继续挑战」);补给节点终结 =
-补给选择确认(确认点击)。实现 = kernel 三原语
+补给出战完成(出战点击;补给选卡确认不再推进,2026-10-29 流程模型对齐)。实现 = kernel 三原语
 (cw_game_state.py):①**`report_node_advance`**(动作路径唯一入口;观察态门 =
 `node_pos` value 在场 ∧ source=observation **双条件**,candidate =
 `sequence_next(生效序位, 场字段)`(`cw_node_schedule` 后继原语,位面切换在此
 发生);`sequence_next` 无后继 = 超出建模域 → **局终声明事件式**(零写入零
 效果 tick,`applied=True, reason='match_end'`),
-trigger 封闭集 = {settle_confirm, supply_confirm});②**`advance_node_effective`**
+trigger 封闭集 = {settle_confirm, supply_finish});②**`advance_node_effective`**
 (推进生效原语 = 序位前进唯一落账入口:candidate 去重守卫(元组比较)→ 写
 node_pos——来源由
 调用方定,动作上报 = logic 推进未确认态/确认补推 = observation——→
@@ -41,7 +41,7 @@ id_mark 确认 helper,两写入位置共用:CwScreenPrep 备战顶栏 / CwScreen
 
 ### 3.1 画面流转全景图(每条边标注判定来源与所属规则)
 
-判定来源速记(现行模型):id_mark 族 = `round_by_find_area`(screen_info 识别标志);OCR = `round_by_ocr`;双识别标志(两个 id_mark 同帧命中) = 备战「备战标识-购买经验」+「按钮-出战」;**settle** = 结算确认动作上报(`report_node_advance(trigger='settle_confirm')`,宿主 CwOpSettleConfirm)/ **supply** = 补给确认动作上报(supply_confirm,宿主 CwActionPickSupplyOp)/ **id_mark 确认** = `observe_node_anchor`(prep = CwScreenPrep 备战顶栏 / supply-bar = CwScreenSupplyNode 补给屏节点条),零 = 不推进不确认。行号 = 历史工作树快照,判读按符号名定位。
+判定来源速记(现行模型):id_mark 族 = `round_by_find_area`(screen_info 识别标志);OCR = `round_by_ocr`;双识别标志(两个 id_mark 同帧命中) = 备战「备战标识-购买经验」+「按钮-出战」;**settle** = 结算确认动作上报(`report_node_advance(trigger='settle_confirm')`,宿主 CwOpSettleConfirm)/ **supply** = 补给出战完成动作上报(supply_finish,宿主 CwActionStartBattleParam;补给选卡确认不推进)/ **id_mark 确认** = `observe_node_anchor`(prep = CwScreenPrep 备战顶栏 / supply-bar = CwScreenSupplyNode 补给屏节点条),零 = 不推进不确认。行号 = 历史工作树快照,判读按符号名定位。
 
 | # | 边(从 → 到) | 判定来源(识别识别标志/判定值) | node_enter 语义(规则) |
 |---|---|---|---|
@@ -132,9 +132,9 @@ ENV_NODE_REWRITE_RULES`)经场字段
 - candidate = `sequence_next(生效序位, gs.node_seq_by_plane.value)` → 经推进
   生效原语落账(source=logic,推进未确认态;
   观察确认同值翻回确认态后,下一节点终结动作由此解锁)。trigger 封闭集 =
-  `{settle_confirm, supply_confirm}`(集外显式报错;journal 行 actor 归因映射 =
+  `{settle_confirm, supply_finish}`(集外显式报错;journal 行 actor 归因映射 =
   kernel `_NODE_ADVANCE_ACTORS`:settle_confirm→CwOpSettleConfirm /
-  supply_confirm→CwActionPickSupplyOp)。
+  supply_finish→CwActionStartBattleParam)。
 - **终局语义(事件式声明)**:`sequence_next` 返回 None(下一位面无序列表,
   或 pos 位面不在序列表——位面 2 末终局确认,或实机位面 3 确认后的上报形态)=
   超出建模域 → **局终声明事件式**——零写入(无后继序位可写)、零效果 tick
@@ -150,13 +150,16 @@ ENV_NODE_REWRITE_RULES`)经场字段
   简报 op 被分派时 hist 已在 boss 节点,类型直定目标恒正确。重复/未生效的点击
   重试上报被观察态门挡(零推进零危害);战败分支不进本 op、不推进(终局
   流转 E15,节点序止于终局)。
-- **触发点 2(补给确认)**:`CwActionPickSupplyOp` 点「确认」→ 补给参数
-  上报 + supply_confirm 推进上报直接双发(点击即上报,零证据探查);漏报
-  形态兜底归观察确认。
+- **触发点 2(补给出战)**:`CwActionStartBattleParam`(出战动作;补给节点
+  语义 = 选卡确认后回备战,点「按钮-出战」即完成节点进下一回合,无战斗
+  无结算屏)→ 出战点击即上报 supply_finish;旧「补给确认点击落地即上报
+  supply_confirm」语义已废止(2026-10-29 流程模型对齐),漏报形态兜底归
+  观察确认。
 - **报告时点语义**:两触发点均**点击即上报**(用户裁定 2026-09-21)——
-  无证据等待 ⇒ 上报先于下一节点任何画面渲染;**「先推进后选卡」结构性
-  成立**(确认点击先于下一节点一切弹窗与选卡,由因果序保证,不依赖任何
-  弹窗推断)。
+  无证据等待 ⇒ 上报先于下一节点任何画面渲染。补给链时序 = 选卡确认
+  (即时单相上报补给参数,零推进)→ 回备战 → 出战点击上报 supply_finish
+  推进(2026-10-29 流程模型对齐后;旧「确认点击即推进、先推进后选卡」
+  的因果论证随 supply_confirm 废止失效)。
 
 **3. 推进生效原语(`advance_node_effective`,序位前进唯一落账入口)**:
 
