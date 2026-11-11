@@ -222,7 +222,7 @@ area_list:
   id_mark: false
   pc_rect:
   - 1478
-  - 218
+  - 205
   - 1700
   - 300
   text: ''
@@ -236,9 +236,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 1478
-  - 305
+  - 293
   - 1905
-  - 360
+  - 335
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -250,9 +250,9 @@ area_list:
   id_mark: false
   pc_rect:
   - 1478
-  - 360
+  - 332
   - 1905
-  - 525
+  - 510
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
