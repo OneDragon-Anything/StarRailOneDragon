@@ -100,7 +100,7 @@ class CwActionPickSupplyOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(target)
             op.ctx.controller.click(target)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)。点击即上报推进
         # (去证据门,用户裁定:动作 op 不做任何确认——点了

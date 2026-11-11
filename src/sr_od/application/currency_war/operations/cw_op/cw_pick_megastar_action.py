@@ -86,7 +86,7 @@ class CwActionPickMegastarOp(CwOperation):
             if cw_sim_ports.mechanical_io_allowed():
                 op.ctx.controller.mouse_move(pt)
                 op.ctx.controller.click(pt)
-            # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+            # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
             time.sleep(0.6)
         # 确认 = 建档「按钮-确认选择」查找点击(round_by_find_and_click_area
         # 全族统一,用户裁定;不带 until = 动作 op 禁验证;area

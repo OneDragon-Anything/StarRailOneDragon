@@ -73,7 +73,7 @@ class CwActionPickWishTrialOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(pt)
             op.ctx.controller.click(pt)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         time.sleep(1.0)
         # 确认选择(祈愿试炼屏 area;原位形态:找到才点,success_wait 等
         # 关闭动画,零判效)。轮次结果经旁路回传(族形态)。

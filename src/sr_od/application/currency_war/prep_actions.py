@@ -315,8 +315,8 @@ class PrepActionExecutor:
             # action_ops.md §2.3);
             # 执行缝(假环境)不经真分派 = round 成功态原值透传。
             self.last_launch_ok = op_success
-        # (S1 清键执行侧落地门已随迭代 2026-10-12-prep-shop-workflow-
-        # redesign 停用删除——备战期开店标志废止,清键门无对象。)
+        # (S1 清键执行侧落地门已停用删除
+        # 备战期开店标志废止,清键门无对象。)]
         # (动作逻辑效果推进已并入各 op 自上报
         #  (op 内直调自己的上报函数,op-layer.md §1.2):原执行器
         #  apply_op_effect 调用删除 = 双记防线——op 已写,本处再写即双记。)

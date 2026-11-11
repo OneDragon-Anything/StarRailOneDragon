@@ -67,7 +67,7 @@ class CwActionPickPlannerOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(target)
             op.ctx.controller.click(target, press_time=op.CLICK_PRESS_TIME)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         time.sleep(1.2)   # 等选中动画
         # 点卡 = 机械单发(用户裁定:详情面板检测拆;用户定性
         # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧

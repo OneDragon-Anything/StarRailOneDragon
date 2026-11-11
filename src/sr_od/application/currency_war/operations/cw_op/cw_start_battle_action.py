@@ -124,7 +124,7 @@ class CwActionStartBattleOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(btn)
             ex._ctx.controller.click(btn)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         time.sleep(self.POST_CLICK_WAIT_S)
         detail = self._settle_post_click_popup(ex)
         # —— 自上报(机械发出后;跳过子态事实携带,免战递减 = 上报时)——

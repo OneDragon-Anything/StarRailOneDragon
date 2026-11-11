@@ -88,7 +88,7 @@ class CwActionWearEquipOp(CwOperation):
             time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         else:
             # sim:owned 网格定位属帧识别域(sentinel 无读),机械拖拽静默
-            # 成功(直连旁路 port 检查,flow-seam §2);自上报照走
+            # 成功(直连旁路 port 检查,sim-design.md §6.5);自上报照走
             pass
         ex._op.park_cursor(after_wait=0.1)
         # —— 自上报(机械发出后;op-layer.md §1.2)——

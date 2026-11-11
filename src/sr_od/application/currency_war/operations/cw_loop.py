@@ -717,7 +717,7 @@ class CwLoop(CwOperation):
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
     def _absorb_selected_difficulty(self, session: StrategySession) -> None:
-        """入口链职级难度 ctx 中转 → 状态容器(GameState)(终态契约 §B:直写 gs.selected_difficulty)。
+        """入口链职级难度 ctx 中转 → 状态容器(GameState)(终态契约:直写 gs.selected_difficulty)。
         """
         # 本局职级(CwEntryStart 难度确认屏读存 ctx.cw_selected_difficulty)
         # → gs.selected_difficulty 状态容器字段写入(3.5.1 接入调用;观察事实,遥测/对账消费)。
@@ -1029,7 +1029,7 @@ class CwLoop(CwOperation):
     # 补给节点完成事实的现役归宿 = 快照行自带域(journal)。
 
     def _route_clear_stale_payloads(self, match_name: str | None) -> None:
-        """路由点陈旧清点(策略器终态契约 landing §3.1):画面附加域离屏是
+        """路由点陈旧清点(策略器终态契约,契约形状 = flow/session.md):画面附加域离屏是
         结构事实非失读(§2.2 显式例外),插入位置钉在「识别产出后、身份分发前」,
         复用当轮识别结果零二次识别。
 
@@ -1515,7 +1515,7 @@ class CwLoop(CwOperation):
         # 变化(flow-seam 附录 A.2「sim 画面身份归 screen_identity」)。
         #
         _match_name, _pending_pred = self._resolve_frame_identity(screen)
-        # 路由点陈旧清点(终态契约 landing §3.1):识别产出后、身份分发前,
+        # 路由点陈旧清点(终态契约,契约形状 = flow/session.md):识别产出后、身份分发前,
         # 复用当轮识别结果;语义三定义见 _route_clear_stale_payloads。
         self._route_clear_stale_payloads(_match_name)
         if _match_name is not None:

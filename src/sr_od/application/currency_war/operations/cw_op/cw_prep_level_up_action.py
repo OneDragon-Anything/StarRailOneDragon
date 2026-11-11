@@ -108,7 +108,7 @@ class CwActionLevelUpOp(CwOperation):
             ex._ctx.controller.mouse_move(btn)   # 防吞点击(review M-5)
             for _ in range(clicks):
                 ex._ctx.controller.click(btn)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         # 商店访问账(shop 域 visit 汇总口径;备战 env 无 ledger 字段 =
         # 备战域无访问账概念,跳过——发出即记账,与买/刷 op 同位)。
         _led = getattr(env, 'ledger', None)

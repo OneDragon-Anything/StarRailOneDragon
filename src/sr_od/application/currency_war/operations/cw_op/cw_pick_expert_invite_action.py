@@ -84,7 +84,7 @@ class CwActionPickExpertInviteOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             op.ctx.controller.mouse_move(pt)
             op.ctx.controller.click(pt)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
         # 自上报(机械链发出后;零写,契约面统一)。上报后一行声明喂入
         # (动作后果声明化喂入契约 = design.md §2.2 契约 3;实机端口未装

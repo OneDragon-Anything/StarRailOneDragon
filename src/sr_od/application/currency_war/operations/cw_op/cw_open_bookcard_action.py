@@ -113,7 +113,7 @@ class CwActionOpenBookcardOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(center)   # 防吞点击(同开箱/采晶矿口径)
             ex._ctx.controller.click(center)
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         # 固定动画等待(等待归产生动画的操作,固定等待族 =
         # flow/action_ops.md §2.2;判效交下一帧观察)
         from sr_od.application.currency_war.prep_actions import (

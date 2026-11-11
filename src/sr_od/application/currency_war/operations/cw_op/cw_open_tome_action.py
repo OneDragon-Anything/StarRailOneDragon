@@ -108,7 +108,7 @@ class CwActionOpenTomeOp(CwOperation):
         if cw_sim_ports.mechanical_io_allowed():
             ex._ctx.controller.mouse_move(center)   # 防吞点击
             ex._ctx.controller.click(center)        # 单击:开启即弹
-        # else sim:机械执行分支静默成功(直连旁路 port 检查,flow-seam §2)
+        # else sim:机械执行分支静默成功(直连旁路 port 检查,sim-design.md §6.5)
         # 固定动画等待(等待归产生动画的操作;弹窗就位与否交下一帧观察)
         from sr_od.application.currency_war.prep_actions import (
             _OVERLAY_ANIM_WAIT_S,
