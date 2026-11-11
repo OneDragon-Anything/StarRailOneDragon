@@ -1,20 +1,20 @@
 """遗器替换列表画面识别器:分层定位 + 分层识别(自含实现,不跨域共用)。
 
-``analyze_screen`` 精准命中「遗器-替换」后,按「网格多目标识别分层范式」识别
-(od-dev-write-operation 多目标特征识别节):
+``analyze_screen`` 精准命中「遗器-替换」后,按「网格多目标识别分层范式」识别:
 **定位层**——每卡底部「+N」文本锚点 + 轮廓补充(锚点漏读真卡) + 网格吸附
 过滤;滚动裁切卡(贴列表边缘、等级文本滚出、图案只露部分)信息不全,不识别;
-**内容识别层**——整屏主匹配 ``full(N票)`` + 格内兜底 ``fallback(N簇)``;
+**身份层**——masked 模板匹配(TM):卡面 = 图标 × UI 缩放常量合成(同渲染),
+按绝对目标像素缩放模板,前景 mask(底色距分割)后 TM_CCORR_NORMED 匹配,
+低于拒答门槛诚实返回 None 不硬猜。缩放按模板原始尺寸换算(256 正源 → 90px、
+512 连结绳 → 96px),卡面渲染像素才是常量,比例随模板分辨率派生——混合尺寸
+模板库禁用「比例」参数(512 件按 256 比例会缩小一半,连结绳全帧误判实证)。
 **占用者**——角标区角色头像 SIFT 匹配。
 
-网格定位/身份投票/角标匹配的实现为本模块内副本(relic_list_recognizer 各持
-一份,两域零 import——域自治口径见项目文档
-docs/develop/sr_od/application/cultivation/README.md §3),定位与匹配逻辑
-源自装备列表实机标定(equip_list_recognizer / grid_template_locate /
-equip_owner_match 同源),其上按本域实机证据独立演进。
+网格定位/角标匹配的实现为本模块内副本(光锥/遗器两域零 import——域自治口径
+见项目文档 docs/develop/sr_od/application/cultivation/README.md §3)。
 卡片上无装备名称文本(名字只在选中后右侧详情出现)——定位与装备某件走
-``EquipRelicOp``/``SelectBagRelicOp``。并发安全:recognize 纯读,模板库与特征缓存均为只读
-懒加载(幂等)。
+``EquipRelicOp``/``SelectBagRelicOp``。并发安全:recognize 纯读,模板预处理
+缓存均为只读懒加载(幂等)。
 """
 from __future__ import annotations
 
@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
 from one_dragon.utils import cv2_utils, os_utils
@@ -42,9 +41,17 @@ if TYPE_CHECKING:
 
 _LEVEL_VALUE_RE = re.compile(r'(\d{1,3})')
 
-# 降级匹配的模板预缩放尺寸(实机列表渲染 ≈ 0.28-0.5 倍,同尺度匹配实测有效;
-# 全尺寸模板在整屏/格内匹配均因描述子尺度差失败,多方案对比实验实证)
-_FALLBACK_TEMPLATE_SIZE = (174, 204)
+# masked TM 身份层参数(2026-11-11 实机六部位帧验证:真值卡彩色 NCC 0.93-0.99,
+# 全部判对;错误匹配峰值 ~0.93 出现在缩放档错位时,档位对齐后未复现)
+_TM_TARGET_PX = 90        # 256 系正源模板的目标像素(卡面渲染实测 ~90px)
+_TM_TARGET_PX_ROPE = 92   # 连结绳(pos6,512×512 正源)未选中卡渲染实测 ~92px
+_TM_TARGET_PX_ROPE_SEL = 96  # 连结绳选中卡(白框)渲染放大 ~4% → 96px(尺度扫描峰值)
+_TM_TARGET_PX_SELECTED = 96  # 256 系选中卡(白框)渲染实测 96px(尺度扫描峰值;与连结绳选中卡同值)
+_TM_CASCADE_GATE = 0.95   # 级联门槛:主档 NCC 低于此的卡再跑选中档(选中卡通常 0-2 张,增量成本可忽略)
+_TM_SEARCH_PAD = 22       # 卡矩形外扩(吸收定位偏差与版本间网格漂移)
+_TM_GATE = 0.85           # 拒答门槛:低于此视为无有效图案(重掷中遮挡卡 0.86 级),诚实返回 None
+# 轮廓补充卡的完整高度下限:低于视为滚动裁切的部分卡(完整卡 160 高;部分卡实测 111)
+_CONTOUR_MIN_CARD_H = 140
 
 # 与锚点卡去重的 IoU 门槛(轮廓矩形与锚点矩形重叠过半视为同一卡)
 _DEDUPE_IOU = 0.5
@@ -102,7 +109,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         raise NotImplementedError
 
     def _locate_cards(self, ctx: SrContext, image: MatLike,
-                      list_area) -> tuple[list[Rect], list, MatLike]:
+                      list_area) -> tuple[list[Rect], list]:
         """定位层:等级文本锚点 + 轮廓补充,去重合并后按网格吸附过滤。
 
         轮廓补充的误检源实机实证:网格间隙的装饰底纹会形成闭合轮廓,矩形
@@ -112,8 +119,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
         (滚动裁切卡,等级文本已滚出、图案只露部分,信息不全不识别,见
         _filter_contour_offgrid);其余丢弃。
 
-        :return: (卡矩形清单, 全图 OCR 结果, 列表灰度图)——灰度图供识别层
-            复用,避免整帧 cvtColor 重复计算。
+        :return: (卡矩形清单, 全图 OCR 结果)
         """
         ocr_results = ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
         anchor_rects = detect_card_anchors(ocr_results, list_area.rect, self._col_centers(list_area.rect))
@@ -125,7 +131,7 @@ class _EquipListRecognizerBase(ScreenRecognizer):
                 merged.append(c_rect)
         merged = self._filter_contour_offgrid(merged, anchor_rects, list_area.rect)
         merged.sort(key=lambda r: (r.y1 // 100, r.x1))
-        return merged, ocr_results, gray
+        return merged, ocr_results
 
     def _filter_contour_offgrid(self, merged: list[Rect],
                                 anchor_rects: list[Rect], list_rect: Rect) -> list[Rect]:
@@ -152,10 +158,11 @@ class _EquipListRecognizerBase(ScreenRecognizer):
                 # 列吸附是硬条件:真卡(含滚动裁切卡)x 方向必在列上;网格间隙
                 # 纹理矩形顶到列表上边缘也不在列上(实机 476 中心 vs 列 429 实证)
                 continue
-            clipped_by_edge = (rect.y1 <= list_rect.y1 + 5
-                               or rect.y2 >= list_rect.y2 - 5)
-            if clipped_by_edge:
-                continue  # 裁切卡:等级文本滚出、图案不全,识别无消费价值,丢弃
+            # 裁切判据 = 可见高度不足(轮廓只包住卡的一部分),而非「贴列表边缘」
+            # ——网格行1 卡 y1 会略超列表区上界(area 标定偏大/版本网格漂移),
+            # 完整卡按贴边误杀会整行丢失(4.7 版本脚部帧行1 三卡实证)
+            if (rect.y2 - rect.y1) < _CONTOUR_MIN_CARD_H:
+                continue  # 部分可见卡:图案不全,识别无消费价值,丢弃
             if not anchor_rects:
                 # 无锚点(OCR 全空极端位)时轮廓是唯一信息源:行检查豁免,
                 # 列吸附与贴边裁切卡检查照走(裁切卡丢弃语义与有锚一致)
@@ -174,7 +181,7 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
     extras_doc: dict[str, str] = {
         'items': '遗器件清单 [{cell:[x1,y1,x2,y2] 卡片矩形, piece:单件名, '
                  'set:套装名, pos_cn:部位, level:强化等级(0-15), '
-                 'owner:占用角色(中文名), identity: full(N票)/fallback(N簇)/masked'
+                 'owner:占用角色(中文名), identity: tm(NCC)/masked'
                  '(重掷动画遮罩卡,身份不判)/none}],按卡位置排序;'
                  '全部识别失败的卡不列',
         'total_cards': '定位到的卡总数(锚点 + 网格吸附过滤后的轮廓补充)',
@@ -209,11 +216,8 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         单部位(替换界面列表恒按选中部位筛选);判不出退全库,不劣于旧路径。"""
         pos = self._detect_pos_from_tabs(ctx, image)
         if pos is not None:
-            return self._recognize(ctx, image,
-                                   _relic_piece_templates_for_pos(pos),
-                                   _relic_piece_templates_scaled_for_pos(pos))
-        return self._recognize(ctx, image,
-                               _relic_piece_templates(), _relic_piece_templates_scaled())
+            return self._recognize(ctx, image, *_tm_templates_for_pos(pos))
+        return self._recognize(ctx, image, *_tm_templates_all_lists())
 
     def _detect_pos_from_tabs(self, ctx: SrContext, image: MatLike) -> int | None:
         """读顶部部位筛选 tab 的选中态 → 部位号;判不出返回 None(退全库)。
@@ -242,30 +246,16 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
         :param pos: 装备部位号(1=头部 2=手部 3=躯干 4=脚部 5=位面球 6=连结绳,
             与 SrRelicPieceDef.pos 同坐标系)。
         """
-        return self._recognize(ctx, image,
-                               _relic_piece_templates_for_pos(pos),
-                               _relic_piece_templates_scaled_for_pos(pos))
+        return self._recognize(ctx, image, *_tm_templates_for_pos(pos))
 
     def _recognize(self, ctx: SrContext, image: MatLike,
-                   templates: dict[str, MatLike],
-                   scaled_templates: dict[str, np.ndarray]) -> dict | None:
-        """遗器列表识别主体;模板集可替换(全库 / 部位子集)。"""
+                   main_templates: list[tuple[str, np.ndarray, np.ndarray]],
+                   sel_templates: list[tuple[str, np.ndarray, np.ndarray]]) -> dict | None:
+        """遗器列表识别主体;TM 模板集可替换(全库 / 部位子集)。"""
         list_area = ctx.screen_loader.get_area(self.screen_name, self._list_area_name())
-        card_rects, ocr_results, gray = self._locate_cards(ctx, image, list_area)
+        card_rects, ocr_results = self._locate_cards(ctx, image, list_area)
 
-        anchor_cx = [r.center.x for r in card_rects]
-        identity_hits = identify_cells(
-            cv2.cvtColor(image, cv2.COLOR_RGB2GRAY), templates,
-            list_area.rect, anchor_cx=anchor_cx)
-        identity_by_card: dict[int, tuple[int, str]] = {}
-        for ccx, ccy, votes, name in identity_hits:
-            for idx, card_rect in enumerate(card_rects):
-                center = card_rect.center
-                if abs(ccx - center.x) <= 60 and abs(ccy - center.y) <= 60:
-                    prev = identity_by_card.get(idx)
-                    if prev is None or votes > prev[0]:
-                        identity_by_card[idx] = (votes, name)
-                    break
+        identity_by_card = _tm_identify_cells(image, main_templates, sel_templates, card_rects)
 
         items: list[dict] = []
         for idx, card_rect in enumerate(card_rects):
@@ -273,17 +263,12 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                                         min_inliers=self._owner_min_inliers())
             level = self._read_level(ocr_results, card_rect)
             if self._is_masked_card(ocr_results, card_rect):
-                # 重掷动画帧:卡面被遮罩持续污染(同卡三帧 argmax 三个不同答案
-                # 实证),身份不可信——标记 masked 不猜,其余字段照常输出
+                # 重掷动画帧:卡面被遮罩持续污染,身份不可信——标记 masked 不猜
                 piece_name, identity_src = None, 'masked'
             else:
                 ident = identity_by_card.get(idx)
-                piece_name, identity_src = ((ident[1], f'full({ident[0]}票)')
+                piece_name, identity_src = ((ident[1], f'tm({ident[0]:.3f})')
                                             if ident else (None, 'none'))
-                if piece_name is None:
-                    piece_name, confidence = _fallback_identity(gray, card_rect, scaled_templates)
-                    if piece_name is not None:
-                        identity_src = f'fallback({confidence}簇)'
             if piece_name is None and owner is None and level is None:
                 continue  # 全部识别失败的卡,不猜测
             item = {'cell': [card_rect.x1, card_rect.y1,
@@ -333,232 +318,143 @@ class RelicReplaceRecognizer(_EquipListRecognizerBase):
                 if 0 <= level <= 15:
                     return level
         return None
-_relic_piece_template_cache: dict[str, MatLike] | None = None
-_relic_piece_scaled_cache: dict[str, np.ndarray] | None = None
-def _relic_piece_templates() -> dict[str, MatLike]:
-    """遗器件名 → 部件图灰度模板(全量;常驻以命中 identify_cells 的特征缓存)。"""
-    global _relic_piece_template_cache
-    if _relic_piece_template_cache is None:
-        lib: dict[str, MatLike] = {}
-        for piece_name, set_def in PIECE_TO_SET.items():
-            piece = next((p for p in set_def.pieces if p.name == piece_name), None)
-            if piece is None:
-                continue
-            template = load_template_gray(icon_webp_rel_path(set_def.set_name, piece.name))
-            if template is not None:
-                lib[piece_name] = template
-        _relic_piece_template_cache = lib
-    return _relic_piece_template_cache
+_tm_prep_cache: dict[str, list[tuple[np.ndarray, np.ndarray]]] | None = None
 
 
-def _relic_piece_templates_scaled() -> dict[str, np.ndarray]:
-    """遗器件名 → 预缩放灰度模板(降级匹配用)。"""
-    global _relic_piece_scaled_cache
-    if _relic_piece_scaled_cache is None:
-        _relic_piece_scaled_cache = {
-            name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
-            for name, t in _relic_piece_templates().items()}
-    return _relic_piece_scaled_cache
-
-
-_pos_piece_template_cache: dict[int, dict[str, MatLike]] = {}
-_pos_piece_scaled_cache: dict[int, dict[str, np.ndarray]] = {}
-
-
-def _relic_piece_templates_for_pos(pos: int) -> dict[str, MatLike]:
-    """部位过滤的遗器模板子集(pos 见 SrRelicPieceDef 坐标系;进程级缓存)。
-
-    替换界面顶部部位筛选 tab 锁定列表内容——列表内全部为该部位件,候选从
-    全库 192 件收缩到单部位(隧洞 ≤34 件),同框歧义竞争与跨部位误配同时
-    下降(部位先验由调用方提供:替换 op 从着装页点部位进来,部位恒已知)。
-    """
-    if pos not in _pos_piece_template_cache:
-        _pos_piece_template_cache[pos] = {
-            name: t for name, t in _relic_piece_templates().items()
-            if next(p for p in PIECE_TO_SET[name].pieces if p.name == name).pos == pos}
-    return _pos_piece_template_cache[pos]
-
-
-def _relic_piece_templates_scaled_for_pos(pos: int) -> dict[str, np.ndarray]:
-    """部位过滤的预缩放遗器模板子集(降级匹配用;与全尺寸子集同键同源)。"""
-    if pos not in _pos_piece_scaled_cache:
-        _pos_piece_scaled_cache[pos] = {
-            name: cv2.resize(t, _FALLBACK_TEMPLATE_SIZE)
-            for name, t in _relic_piece_templates_for_pos(pos).items()}
-    return _pos_piece_scaled_cache[pos]
-
-
-def _fallback_identity(gray: np.ndarray, card_rect: Rect,
-                       scaled_templates: dict[str, np.ndarray]) -> tuple[str | None, int]:
-    """降级匹配:只取该卡区域内特征,对全库模板匹配取聚簇最大者(纯 argmax,无阈值)。
-
-    整屏匹配的 Lowe 比值测试在同框式斜置卡牌间存在歧义竞争,真匹配被淘汰;
-    格内局部匹配竞争者少,真匹配存活(晚安与睡颜实证:整屏 2 票 vs 格内 15 聚簇)。
-    确定性先验:定位层过滤空格后留下的卡必是库内真件(锚点卡或锚点漏读的
-    完整图案卡)——直接取聚簇最高的名字,不设分数门槛(用户裁定:认错也只会
-    认成库内最近似,优于 null)。
-    返回 (光锥名/件名, 聚簇 good 数);全库均无有效匹配时返 (None, 0)。
-    """
-    zone = gray[card_rect.y1:card_rect.y2, card_rect.x1:card_rect.x2]
-    z_kp, z_desc = cv2_utils.feature_detect_and_compute(zone)
-    if z_desc is None or len(z_kp) == 0:
-        return None, 0
-    bf = cv2.BFMatcher()
-    best_name: str | None = None
-    best_cluster = 0
-    for name, t_s in scaled_templates.items():
-        t_kp, t_desc = _cached_template_features(t_s)
-        if t_desc is None:
-            continue
-        matches = bf.knnMatch(t_desc, z_desc, k=2)
-        good_pts = [z_kp[m.trainIdx].pt for p in matches if len(p) == 2
-                    and (m := p[0]) and m.distance < 0.75 * p[1].distance]
-        if len(good_pts) < 3:
-            continue
-        # 聚簇:60px 半径内最大友好数(真命中聚在卡牌同位,误配分散)
-        pts = np.float32(good_pts)
-        cluster = 0
-        for i in range(len(pts)):
-            cluster = max(cluster, int((np.abs(pts - pts[i]).max(axis=1) < 60).sum()))
-        if cluster > best_cluster:
-            best_name, best_cluster = name, cluster
-    return best_name, best_cluster
-
-
-# 特征点 y 聚簇的行间隔阈值(卡行高+间隙的量级)
-_ROW_CLUSTER_GAP_PX: int = 100
-# 列带吸附半径(约列间距一半)
-_COL_SNAP_PX: int = 70
-# 定位成功的最低票数(实机单卡 9~205 票;幻影簇可达 4~6 票,靠归属窗兜住)
-_MIN_CELL_VOTES: int = 4
-def load_template_gray(rel_path: str) -> np.ndarray | None:
-    """加载图标模板灰度图。注:webp 走 read_image 时 alpha 已被强制丢弃,透明区合成分支实际不可达,模板底色由归档脚本预合成。
+def load_template_rgb(rel_path: str) -> np.ndarray | None:
+    """加载图标模板 RGB 图(cv2 产物 BGR,读入后立即转 RGB——口径纪律见 AGENTS.md §5)。
 
     :param rel_path: 项目相对路径(如 assets/game_data/... 的 / 分隔形式)
-    :return: 灰度图;文件不存在返回 None(调用方判停)
+    :return: RGB 图;文件不存在返回 None(调用方判停)
     """
     path = os_utils.get_path_under_work_dir(*rel_path.split('/'))
     img = cv2_utils.read_image(path)
     if img is None:
         return None
-    if img.shape[2] == 4:
-        alpha = img[:, :, 3:4] / 255.0
-        rgb = img[:, :, :3] * alpha + 255 * (1 - alpha)
-        return cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2GRAY)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-# 模板特征进程级缓存(键 = 模板对象 id;调用方需持模板 dict 常驻才能命中——
-# 注:临时对象 id 撞上已释放条目会错配旧特征,模板 dict 必须常驻)
-_template_feature_cache: dict[int, tuple] = {}
+    return img
 
 
-def _cached_template_features(template_gray: np.ndarray) -> tuple:
-    """模板 SIFT 特征的进程级缓存包装(id 键控;常驻模板字典场景全量命中)。"""
-    key = id(template_gray)
-    if key not in _template_feature_cache:
-        _template_feature_cache[key] = cv2_utils.feature_detect_and_compute(template_gray)
-    return _template_feature_cache[key]
-def identify_cells(screen_gray: np.ndarray, named_templates: dict[str, np.ndarray],
-                   list_rect: Rect, anchor_cx: list[float] | None = None,
-                   min_votes: int = _MIN_CELL_VOTES) -> list[tuple[float, float, int, str]]:
-    """批量身份识别:截图特征**只算一次**,逐命名模板落格投票,输出命中簇明细。
+def _fg_mask_from_rgb(rgb: np.ndarray) -> np.ndarray:
+    """归档 webp 的前景 mask:四角中位取合成底色,色距 >30 为前景。
 
-    与逐件调 :meth:`locate_cells_by_votes` 等价,但 screen 特征(全屏检测
-    ~0.5s)只算一次 + 模板特征走进程级缓存(同对象重复调用零提取成本)——
-    大模板库场景(遗器全库 192 件部件图)每屏增量 ~5s。
-
-    :param named_templates: 身份名 → 模板灰度图(如遗器件名 → 部件图)。
-        同图标多件副本共享同一身份名(遗器件名 = 套装+部位唯一确定)。
-        dict 需常驻(特征缓存按对象 id 键控,临时对象无法命中缓存)。
-    :param anchor_cx: 计票吸附的列中心 x 列表(卡矩形中心 x,锚点/轮廓检测给出)。
-        同一行内多个卡位的匹配点必须**对各卡位分别计票**——簇均值自吸附会把
-        相邻卡的点混算成 1 票(同行跨卡混算漏检实证);None 时回退簇均值
-        自吸附(单卡场景)。
-    :return: [(簇中心 x, 簇中心 y, 票数, 身份名), ...] 按票数降序;
-        **位置由匹配自身给出**(调用方与锚点推算的卡区域做重叠归属,
-        不依赖预设网格)。一格多模板命中时各模板条目并存,由调用方仲裁。
+    归档模板无 alpha(透明区已合成深紫底),底色平坦不产生匹配信号;TM 逐
+    像素比对必须剔除底色,否则底色互相关稀释前景分数。
     """
-    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
-    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
+    corners = np.stack([rgb[:4, :4].reshape(-1, 3), rgb[:4, -4:].reshape(-1, 3),
+                        rgb[-4:, :4].reshape(-1, 3), rgb[-4:, -4:].reshape(-1, 3)])
+    bg = np.median(corners.reshape(-1, 3), axis=0)
+    return np.linalg.norm(rgb.astype(np.float64) - bg[None, None, :], axis=2) > 30
 
-    hits: dict[tuple[int, int], tuple[str, int]] = {}
-    for name, template_gray in named_templates.items():
-        t_kp, t_desc = _cached_template_features(template_gray)
-        good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
-        pts = []
-        for m in good:
-            px, py = s_kp[m.trainIdx].pt
-            if x1 <= px <= x2 and y1 <= py <= y2:
-                pts.append((px, py))
-        if len(pts) < min_votes:
-            continue
-        pts.sort(key=lambda p: p[1])
-        clusters: list[list[tuple[float, float]]] = []
-        for p in pts:
-            if clusters and p[1] - clusters[-1][-1][1] <= _ROW_CLUSTER_GAP_PX:
-                clusters[-1].append(p)
-            else:
-                clusters.append([p])
-        for cluster in clusters:
-            ccx = sum(p[0] for p in cluster) / len(cluster)
-            ccy = sum(p[1] for p in cluster) / len(cluster)
-            centers = anchor_cx if anchor_cx else [ccx]
-            for cx in centers:
-                votes = sum(1 for p in cluster if abs(p[0] - cx) < _COL_SNAP_PX)
-                if votes >= min_votes:
-                    key = (round(cx), round(ccy))
-                    prev = hits.get(key)
-                    if prev is None or votes > prev[1]:
-                        hits[key] = (name, votes)
 
-    return [(float(k[0]), float(k[1]), v, name)
-            for k, (name, v) in sorted(hits.items(), key=lambda kv: -kv[1][1])]
-def locate_cells_by_votes(screen_gray: np.ndarray, template_gray: np.ndarray,
-                          list_rect: Rect, col_centers: list[float],
-                          col_snap_px: int = _COL_SNAP_PX,
-                          row_gap_px: int = _ROW_CLUSTER_GAP_PX,
-                          min_votes: int = _MIN_CELL_VOTES) -> list[tuple[Point, int]]:
-    """在替换类列表截图里定位模板图所在卡:**全量清单** —— 列表内每一个
-    同图标件的位置都识别出来,不丢件、不隐式偏好。
+def _tm_templates_all() -> dict[str, list[tuple[np.ndarray, np.ndarray]]]:
+    """遗器件名 → [(RGB 模板, 前景 mask), ...] 按档位,已缩放到目标像素(进程级缓存)。
 
-    对每个 good match 点:计入列表区内的点,y 排序聚簇(间隔超阈值分行),
-    对每个 (簇, 列) 组合计票,票数 ≥ min_votes 的组合全部返回。
-
-    :return: [(格中心, 票数), ...] 按票数降序。同名光锥/同套装同部位的多件
-        副本各占一格 —— **选哪件是调用方基于全量清单的决策**(如多角色装备
-        同一把光锥时依次取不同副本,避免重复选中同一件),识别层不做隐式筛选。
+    缩放按模板原始尺寸归一:256 正源 → _TM_TARGET_PX、512 连结绳 → 92/96 双档
+    ——卡面渲染像素才是常量,比例随模板分辨率派生;连结绳双档覆盖列表常态与
+    选中卡(白框)的放大渲染。
     """
-    s_kp, s_desc = cv2_utils.feature_detect_and_compute(screen_gray)
-    t_kp, t_desc = cv2_utils.feature_detect_and_compute(template_gray)
-    good, _, _, _ = cv2_utils.feature_match(s_kp, s_desc, t_kp, t_desc)
+    global _tm_prep_cache
+    if _tm_prep_cache is None:
+        prep: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
+        for piece_name, set_def in PIECE_TO_SET.items():
+            piece = next((p for p in set_def.pieces if p.name == piece_name), None)
+            if piece is None:
+                continue
+            img = load_template_rgb(icon_webp_rel_path(set_def.set_name, piece_name))
+            if img is None:
+                continue
+            mask = _fg_mask_from_rgb(img)
+            # 双档:主档(未选中卡渲染) + 选中档(选中卡白框放大 ~4%)。
+            # 相似件分数接近时,选中卡的放大差足以让次优件反超(行1列2 死水头
+            # 被透镜反超实证),双档级联为必需而非可选。
+            targets = ((_TM_TARGET_PX_ROPE, _TM_TARGET_PX_ROPE_SEL) if piece.pos == 6
+                       else (_TM_TARGET_PX, _TM_TARGET_PX_SELECTED))
+            entries = []
+            for target in targets:
+                tpl = cv2.resize(img, (target, target), interpolation=cv2.INTER_AREA).astype(np.float32)
+                mask_s = (cv2.resize(mask.astype(np.uint8), (target, target),
+                                     interpolation=cv2.INTER_NEAREST) * 255).astype(np.uint8)
+                entries.append((tpl, mask_s))
+            prep[piece_name] = entries
+        _tm_prep_cache = prep
+    return _tm_prep_cache
 
-    x1, y1, x2, y2 = list_rect.x1, list_rect.y1, list_rect.x2, list_rect.y2
-    pts = []
-    for m in good:
-        px, py = s_kp[m.trainIdx].pt
-        if x1 <= px <= x2 and y1 <= py <= y2:
-            pts.append((px, py))
-    if len(pts) < min_votes:
-        return []
 
-    pts.sort(key=lambda p: p[1])
-    clusters: list[list[tuple[float, float]]] = []
-    for p in pts:
-        if clusters and p[1] - clusters[-1][-1][1] <= row_gap_px:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
+def _tm_templates_all_lists() -> tuple[list, list]:
+    """全库 TM 模板,分 (主档 list, 选中档 list) 两组(全库识别用)。"""
+    all_tmpl = _tm_templates_all()
+    main = [(name, *entries[0]) for name, entries in all_tmpl.items()]
+    sel = [(name, tpl, mask)
+           for name, entries in all_tmpl.items() for tpl, mask in entries[1:]]
+    return main, sel
 
-    candidates: list[tuple[Point, int]] = []
-    for cluster in clusters:
-        if len(cluster) < min_votes:
+
+def _tm_templates_for_pos(pos: int) -> tuple[list, list]:
+    """部位过滤的 TM 模板子集,分 (主档 list, 选中档 list) 两组(pos 见
+    SrRelicPieceDef 坐标系)。
+
+    替换界面顶部部位筛选 tab 锁定列表内容——列表内全部为该部位件,候选从
+    全库 192 件收缩到单部位(隧洞 ≤34 件),跨部位误配同步下降(部位先验
+    由调用方提供:替换 op 从着装页点部位进来,部位恒已知)。
+    """
+    all_tmpl = _tm_templates_all()
+    main: list[tuple[str, np.ndarray, np.ndarray]] = []
+    sel: list[tuple[str, np.ndarray, np.ndarray]] = []
+    for name in all_tmpl:
+        if next(p for p in PIECE_TO_SET[name].pieces if p.name == name).pos != pos:
             continue
-        cy = sum(p[1] for p in cluster) / len(cluster)
-        votes = [sum(1 for p in cluster if abs(p[0] - cx) < col_snap_px) for cx in col_centers]
-        for i, v in enumerate(votes):
-            if v >= min_votes:
-                candidates.append((Point(col_centers[i], cy), v))
-    candidates.sort(key=lambda c: -c[1])
-    return candidates
+        entries = all_tmpl[name]
+        main.append((name, *entries[0]))
+        for tpl, mask in entries[1:]:
+            sel.append((name, tpl, mask))
+    return main, sel
+
+
+def _tm_identify_cells(image: MatLike, main_templates: list[tuple[str, np.ndarray, np.ndarray]],
+                       sel_templates: list[tuple[str, np.ndarray, np.ndarray]],
+                       card_rects: list[Rect]) -> dict[int, tuple[float, str]]:
+    """逐卡 masked TM 身份匹配,返回 {卡序号: (NCC, 件名)};低于门槛不返回。
+
+    每卡搜索区 = 卡矩形外扩 _TM_SEARCH_PAD(吸收定位偏差与版本间网格漂移);
+    模板前景 mask 后 TM_CCORR_NORMED(逐像素真实比对,无 SIFT 的特征库存量
+    偏差——argmax 认成的是最万金油模板而非最近似件的缺陷不复现)。级联:
+    先跑主档,低于 _TM_CASCADE_GATE 的卡再跑选中档(选中卡白框渲染放大 ~4%,
+    相似件分数接近时主档会被次优件反超)取两档最高;仍低于 _TM_GATE 不进
+    结果(重掷中遮挡卡等无有效身份的诚实拒答,不硬猜)。
+    """
+
+    def _run(templates: list[tuple[str, np.ndarray, np.ndarray]],
+             region: np.ndarray) -> tuple[float, str | None]:
+        best_name, best_ncc = None, -1.0
+        for name, tpl, mask in templates:
+            th, tw = tpl.shape[:2]
+            if th >= region.shape[0] or tw >= region.shape[1] or not mask.any():
+                continue
+            res = cv2.matchTemplate(region, tpl, cv2.TM_CCORR_NORMED, mask=mask)
+            res = np.nan_to_num(res, nan=-1.0, posinf=-1.0, neginf=-1.0)
+            _, mx, _, _ = cv2.minMaxLoc(res)
+            if mx > best_ncc:
+                best_name, best_ncc = name, float(mx)
+        return best_ncc, best_name
+
+    img_f = image.astype(np.float32)
+    results: dict[int, tuple[float, str]] = {}
+    for idx, rect in enumerate(card_rects):
+        rx1 = max(0, rect.x1 - _TM_SEARCH_PAD)
+        ry1 = max(0, rect.y1 - _TM_SEARCH_PAD)
+        rx2 = rect.x2 + _TM_SEARCH_PAD
+        ry2 = rect.y2 + _TM_SEARCH_PAD
+        region = img_f[ry1:ry2, rx1:rx2]
+        ncc, name = _run(main_templates, region)
+        if ncc < _TM_CASCADE_GATE and sel_templates:
+            ncc2, name2 = _run(sel_templates, region)
+            if ncc2 > ncc:
+                ncc, name = ncc2, name2
+        if name is not None and ncc >= _TM_GATE:
+            results[idx] = (ncc, name)
+    return results
+
+
 #------------------- 装备替换列表卡位:等级文本锚点(识别器用) -------------------#
 # 替换列表每张卡底部都有等级徽章文本(光锥「等级N」/ 遗器「+N」)——OCR 命中位置
 # 即卡位锚点,滚动 / 命途分组头 / 空格天然免疫;固定网格几何在滚动后失效,已废弃。
