@@ -2,7 +2,7 @@
 
 > 目的：在自家仓库（Python）实现「密码登录 → game_record 数据读取（原神/星铁通用管线）」能力前，把已被实测证明可跑通的参考实现逐行摸清并固化成规格。
 >
-> 参考实现：`teyvat-resin-planner`（MIT，Node 22 零依赖），本机曾克隆于 `.debug/temp/teyvat-resin-planner/`（本地易失件，不入 git；上游仓库 URL 待补录（遗留登记），commit 锚见 §8.1「参考实现 commit SHA」）。本文所有 `文件名:行号` 均指该目录下文件；所有常量已内联，无需翻参考仓库。
+> 参考实现：`teyvat-resin-planner`（MIT，Node 22 零依赖），本机曾克隆于 `.debug/temp/teyvat-resin-planner/`（本地易失件，不入 git，已随临时区清理退役——上游仓库 URL 不可考，commit 锚（§8.1「参考实现 commit SHA」）随之不可解析，考古以本文内联常量与结论为准）。本文所有 `文件名:行号` 均指该目录下文件；所有常量已内联，无需翻参考仓库。
 >
 > 实测背书（2026-11-03）：密码登录 → 原神 game_record 全链路 3 接口零错误；同一会话探测星铁 hkrpg `index`/`note`/`avatar/info` 全部一次通过、零人机验证（过程记录见 `skills/sr-od-account-inspection/references/api.md`「复核实验」节）。
 >
