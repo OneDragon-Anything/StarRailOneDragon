@@ -18,6 +18,7 @@
 - `scripts/build_cone_authority_table.py`：权威表组装（wiki × intl × 模块顺序 + manual 行登记）。
 - `scripts/gen_light_cones.py`：常量模块生成（冻结纪律 + 新增取文 + 漂移报告）。
 - `references/cones-full.json`：权威表随仓快照（生成器输入与人工对账锚）。
+- 项目侧配套：`src/sr_od/config/light_cone_templates.py`（识别模板库 `assets/template/light_cone_icon/<id>/raw.webp` 的遍历单一入口，id 键命名约定即注册表）。
 
 ## 4. 关键设计动机
 
