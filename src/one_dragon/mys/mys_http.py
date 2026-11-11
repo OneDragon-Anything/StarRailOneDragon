@@ -1,6 +1,6 @@
 """米游社 HTTP 发送抽象与 requests 实装。
 
-HttpSend 契约（design.md §2.2 mys_http / §2.5 契约 3）：http_send 全链路必填
+HttpSend 契约（docs/develop/one_dragon/mys/README.md 模块表 mys_http 行）：http_send 全链路必填
 无默认——真实实装 ``RequestsHttpSend`` 只由运行入口（MCP 装配层）传入，
 测试注入剧本式假实现。headers 为 ``list[tuple[str, str]]`` 保序保重复，
 多条 Set-Cookie 不合并；取单值头用本模块的 ``header_get`` 大小写不敏感助手。

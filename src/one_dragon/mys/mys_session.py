@@ -1,6 +1,6 @@
 """米游社会话与设备的落盘持久化 + 会话异常体系。
 
-会话文件布局（design.md §2.2 mys_session / §2.5 契约 7）：
+会话文件布局（docs/develop/one_dragon/mys/README.md「会话文件布局与语义」节）：
 ``config/<实例>/mys/`` 下三文件、JSON、原子写（同目录临时文件 + ``os.replace``）
 + 权限尽力 0o600（POSIX 生效；Windows 依 ACL 继承，失败不阻塞主流程）。
 
@@ -35,7 +35,7 @@ DEVICE_SCHEMA_VERSION: int = 1
 #: 10001 = Please login（skills/sr-od-account-inspection/references/api.md
 #: 错误码分诊表 2026-10-14 实测）；-100 = TokenInvalid
 #: （login-verification-research.md §5）。空罐打 game_record 的实际返回码
-#: 两权威源均未记载，以实机首验定案（landing 3.5 观察点）。
+#: 两权威源均未记载，以实机首验定案。
 SESSION_EXPIRED_RETCODES: frozenset[int] = frozenset({10001, -100})
 
 
@@ -69,7 +69,7 @@ class SessionStore:
     """session.json / role.json / device.json 的持久化原语（全部入口持锁）。"""
 
     def __init__(self, session_dir: Path, lock: threading.Lock) -> None:
-        """两参必填（design.md §2.2）：目录与锁都由装配层提供，禁默认自建。
+        """两参必填：目录与锁都由装配层提供，禁默认自建。
 
         Args:
             session_dir: 三文件的存放目录（不存在时写入前自动创建）。

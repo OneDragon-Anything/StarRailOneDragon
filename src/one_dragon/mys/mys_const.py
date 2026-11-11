@@ -65,7 +65,7 @@ GET_FP_REFERER: str = 'https://act.mihoyo.com/'
 # 见 miyoushe-api-flow.md §3.4）
 DEVICE_PLATFORM_VALUE: str = '4'
 
-# ---- 主机白名单（仅允许 https；出处：design.md §2.2 mys_const 小节）----
+# ---- 主机白名单（仅允许 https；契约见 docs/develop/one_dragon/mys/README.md 模块表 mys_const 行）----
 # 与参考实现 ALLOWED 的差异：换入 public-data-api.mihoyo.com 供 getFp；
 # 弃 bbs-api.miyoushe.com（本迭代无该域请求，角色发现走 api-takumi 本就在名单内）。
 HOST_WHITELIST: frozenset[str] = frozenset({

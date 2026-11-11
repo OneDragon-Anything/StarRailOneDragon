@@ -1,8 +1,8 @@
 """米游社设备身份：device_id 持久化 + getFp 设备指纹（含缓存与降级）。
 
 口径出处：miyoushe-api-flow.md §3（device.json 结构 / getFp 端点与 20 字段
-固定指纹模板 / 四判据 / 24h 缓存与 30 分钟冷却 / 设备头三件）、design.md
-§2.2 mys_device 小节。
+固定指纹模板 / 四判据 / 24h 缓存与 30 分钟冷却 / 设备头三件）；结构契约见
+docs/develop/one_dragon/mys/README.md 模块表 mys_device 行。
 
 - device_id 是设备信誉锚：device.json 存在即用，正常路径严禁轮换（已登录
   设备重复登录不触发验证，依据 login-verification-research.md §3.4 调研）。
@@ -99,7 +99,7 @@ def _json_compact(data: dict) -> bytes:
 class DeviceIdentity:
     """设备身份：device_id 读写 + getFp 注册，产出请求设备头三件。
 
-    构造两参必填无默认（design.md §2.2 / §2.5 契约 3）：store 与 http_send
+    构造两参必填无默认：store 与 http_send
     都由装配层注入，测试注入临时目录 + 假发送函数即零副作用。
     """
 
