@@ -2,9 +2,9 @@
 
 画面 = 货币战争-遭遇节点(选难度档二选一 + 每局一次分支刷新)。决策本体
 = 能力态直通形:κ_S 三态表 + 边缘态天花板 + 经验档层 + 奖励序数 tiebreak
-+ 刷新阀,判据语义单一源 = 迭代设计
-docs/develop/sr_od/application/currency_war/changes/
-2026-09-24-encounter-screen-strategy-migration/design.md §2.2-§2.5。
++ 刷新阀,判据语义单一源 = 正本
+strategy-docs/31_encounter_screen.md(§1 裁定登记 / §2 决策结构;
+立场值单一源 = 本文件立场常量区)。
 可及性比值分支(g^(D_win−D_enc) ≥ f_min)已停用(P64:敌方难度读数→敌难度静态映射
 不可标定)——能力态直接判,t ≤ 4 档零标定可及;其五/六(Δ 无源档)走
 经验档层交集。
@@ -12,11 +12,11 @@ docs/develop/sr_od/application/currency_war/changes/
 本文件 = 遭遇判据线载体(宪法五:换一套策略实现会要不同的值/序,故判据
 值/序随本体驻策略层):立场常量区(【拍】登记)、fill 双定案槽、
 reward_tier 档序、三态表均在本文件。生产接入调用 = flow.decide_encounter
-直调本文件 :func:`decide`(kernel 侧判据面已同批迁出删除;迁移批
-2026-09-24-encounter-screen-strategy-migration 原子切换)。
+直调本文件 :func:`decide`(kernel 侧判据面已迁出删除,31 号稿 §1
+迁移注记)。
 
 窗口口径 = 结算观测环最近 2 个普通战斗行(普战口径;奖励/遭遇/boss 行
-不入窗,design §2.2 候选 A 定案)。刷新闸内嵌:读
+不入窗,31 号稿 §2.1 窗口口径裁定)。刷新闸内嵌:读
 ``gs.encounter_refresh_left`` 剩余语义(None = 未观察 → 不可刷,
 fail-closed),不设 refresh_used 参。
 
@@ -39,14 +39,14 @@ if TYPE_CHECKING:
     )
 
 # ===== 立场常量区(【拍】登记表:两闸门值集中一处,值单一源在代码)=====
-# 形态依据 = design §2.2/§2.3:偏好型闸门量按「闸门位立场值」登记(登记即
+# 形态依据 = 31 号稿 §1 章程修订:偏好型闸门量按「闸门位立场值」登记(登记即
 # 立场、零拟合零观测,不经【拟】纪律);非注入面(apply_calibration 不覆盖),
 # 重拍 = 直接编辑本区(None → 过目值),commit 即过目凭据。两值已过目
 # 批准(2026-09-24,同一裁决门;用户备注:暂定值,实机遥测累积后重拍,
 # 重拍触发器 = 遭遇帧判读积累)。
 # 任一常量置 None = 立场未过目 → :func:`decide` 走重拍回退态:恒最低档
 # 零刷新,reason = 'e3-simple|dark-fallback:stance-unconfirmed'
-# (fail 向显式保守缺省,非标定型暗装;design §2.3)。
+# (fail 向显式保守缺省,非标定型暗装;31 号稿 §1 立场登记)。
 
 #: 边缘态可及难度天花板:κ_S = 边缘时难度档 t ≤ 本值才可及(保守向:
 #: 能力缺口最近出现过、无余量论证)。
@@ -57,7 +57,7 @@ EDGE_CAP: int | None = 2
 #: 本登记(commit = 过目凭据)。
 REWARD_ORDER_APPROVED: bool | None = True
 
-# ===== fill 双定案槽 + 策略层注入面(随三态表连体迁;design §2.3)=====
+# ===== fill 双定案槽 + 策略层注入面(随三态表连体迁;31 号稿 §4 fill 双槽)=====
 
 #: 进度条填充方向定案:'forward'(红=已推进)/'inverted'(红=未完成,判据量
 #: 改 1−fill)/None = 未定案 → fill 分支不激活(照旧 fail-closed)。
@@ -68,11 +68,11 @@ BAR_SEMANTICS: str | None = None
 
 #: 删失归态的 fill 阈值(节点内归一语义 (a) 的对称中点;条语义/方向未定案
 #: 前该分支不激活——fill 删失分支独立成立)。双槽定案注入后成活闸门数字,
-#: 注入批须按【拟】纪律登记(design §2.7 登记义务)。
+#: 注入批须按【拟】纪律登记(31 号稿 §4 申报义务)。
 _FILL_EDGE_THRESHOLD = 0.5
 
 #: 策略层注入口合法键 = fill 双键(与 kernel 侧仅收 D_ENC_VARIANT 的
-#: 注入口物理隔离,两套标定面互不写入;design §2.3)。
+#: 注入口物理隔离,两套标定面互不写入;31 号稿 §4 注入位)。
 _CALIBRATABLE = ('PROGRESS_BAR_DIRECTION', 'BAR_SEMANTICS')
 
 
@@ -103,7 +103,7 @@ def reset_calibration() -> None:
 
 def _kappa_state(w1: bool | None, w2: bool | None,
                  fill_old: float | None, fill_new: float | None) -> str:
-    """窗口两场 → 能力态('足量'/'边缘'/'不足';design §2.2 三态表)。
+    """窗口两场 → 能力态('足量'/'边缘'/'不足';31 号稿 §2.2 三态表)。
 
     / = 窗口两场 killed(None = 删失);fill 分支 = 恰一胜时败局侧的
     进度填充率降档(进度条双定案前不激活——照旧 fail-closed,fill 只走
@@ -143,7 +143,7 @@ _REWARD_TIER_UNMAPPED = 3
 def reward_tier(text: str) -> int:
     """奖励预览文本 → tiebreak 偏好档(纯函数;词表单一源 = 三注册表并集)。
 
-    序(design §2.4):文本命中钻石注册表 → 钻档;命中装备注册表(含工具
+    序(31 号稿 §2.4):文本命中钻石注册表 → 钻档;命中装备注册表(含工具
     类,同档不加细分)→ 装备档;含「金币」字面 → 金币档;映射不到(含
     空文本/奖励预览缺失)→ 末档。钻石检测集单一源 =
     kernel/cw_obs_core.DIAMOND_EQUIP_NAMES(游戏装备真值,读数域共用)。
@@ -175,7 +175,7 @@ class EncounterPickDecision:
     [索引定义] idx = options 列表下标(0 基;坐标系 = 调用方传入候选序
                 左→右 = 画面卡列序,与选项 ``EncounterOption.idx`` 同一
                 坐标系;取值时机 = 本帧决策期快照,恒稳);reason = 归因串
-                (design §2.2 格式与因词封闭枚举,仅观测)。
+                (31 号稿 §2.6 格式与因词封闭枚举,仅观测)。
     """
     idx: int
     reason: str
@@ -188,7 +188,7 @@ class EncounterRefreshSuggestion:
     reason: str
 
 
-# ===== 决策本体(判据值/序单一源;design §2.2 决策序)=====
+# ===== 决策本体(判据值/序单一源;31 号稿 §2 决策结构)=====
 
 def _lowest_idx(options: list[EncounterOption]) -> int:
     """最低档下标(fail 向/重拍回退态的机械执行目标;并列取输入序先)。"""
@@ -200,7 +200,7 @@ def _lowest_idx(options: list[EncounterOption]) -> int:
 def _empty_reachable_frame(options: list[EncounterOption], gs: GameState,
                            why: str
                            ) -> EncounterPickDecision | EncounterRefreshSuggestion:
-    """可及集空帧的刷新阀(fail-closed;design §2.5):剩余 ≥1 → 建议刷;
+    """可及集空帧的刷新阀(fail-closed;31 号稿 §2.5):剩余 ≥1 → 建议刷;
     None(未观察)/0(刷尽)→ 落最低档。闸内嵌读 ``gs.encounter_refresh_left``
     剩余语义(全域规范 = screens/op-layer.md §1.4)。"""
     left = gs.encounter_refresh_left.value
@@ -216,7 +216,7 @@ def decide(options: list[EncounterOption], gs: GameState,
            ) -> EncounterPickDecision | EncounterRefreshSuggestion:
     """遭遇选档决策(能力态直通形;纯值出口,flow 包装动作词表)。
 
-    决策序(design §2.2):立场过目门 → 窗口提取(最近 2 普战行,<2 =
+    决策序(31 号稿 §2):立场过目门 → 窗口提取(最近 2 普战行,<2 =
     窗口不足独立态)→ κ_S 三态(不足 → 阀)→ 可及集(cap 过滤在前;
     t ≤ 4 能力态直判,t ≥ 5 经验档层交集)→ 空集 → 阀 → 选档
     (difficulty 最高主序,同档 tiebreak 档序小 = 优,仍并列输入序先)。

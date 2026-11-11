@@ -247,4 +247,4 @@ b 非空需要:①存在隐状态 h 使现货观测似然 L(S|h) 非常量;②h 
 
 修订中核对记录:审查报告引用的两处引用点笔误按实码更正——「check_affordable 裸金门」实际定义在 mandate.py L164-170(报告写 shop.py L164-170,该处为 import 段);`dominance_buy_eligible` 资格语义(1★ 燃料/可退件,mandate.py L398-402)核实后本记录与 §2.1 用语义描述+精确行号。审查报告全部其余 file:line 引用逐处亲核吻合。
 
-退役勘误(统一保护集迭代,changes/2026-10-15-unified-protection-set design §2.2/§2.4):本文 §0 数据源行、§2.1 总表、§2.3 与修正 3b、§9 白话中的 **④转线件/转线包与 TRANSITION_PACK 引用**随策展身份面退役——④转投分支整条退役、TRANSITION_PACK 符号及其档位标签删除,相关分支与复现域条目仅存历史审计价值(其穷举结论对当时代码态有效);现行买面承接 = 序 1 保护集名单 + 囤货臂(11_shop_decisions §1)。同表 **②(b) prio1 tier∈(CORE,TRANSITION)** 的档位表述随 `line_identity_tier` 三分档 helper 退役,现行 ②(b) 优先档判据 = 保护集/registry 核心口径(11 §4.1)。卖面侧静态持有排除集(本文未直引,随文同族口径)现行构成 = 保护集 ∪ registry 核心(11 §4.1)。
+退役勘误(统一保护集迭代裁定):本文 §0 数据源行、§2.1 总表、§2.3 与修正 3b、§9 白话中的 **④转线件/转线包与 TRANSITION_PACK 引用**随策展身份面退役——④转投分支整条退役、TRANSITION_PACK 符号及其档位标签删除,相关分支与复现域条目仅存历史审计价值(其穷举结论对当时代码态有效);现行买面承接 = 序 1 保护集名单 + 囤货臂(11_shop_decisions §1)。同表 **②(b) prio1 tier∈(CORE,TRANSITION)** 的档位表述随 `line_identity_tier` 三分档 helper 退役,现行 ②(b) 优先档判据 = 保护集/registry 核心口径(11 §4.1)。卖面侧静态持有排除集(本文未直引,随文同族口径)现行构成 = 保护集 ∪ registry 核心(11 §4.1)。

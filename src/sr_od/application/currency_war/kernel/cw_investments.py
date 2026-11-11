@@ -3406,19 +3406,19 @@ def resolve_strategy_canonical(name: str) -> str | None:
     return None
 
 
-# ===== 阵容指向集(投资选卡阵容冲突护栏的判据源;设计 =
-# docs/develop/sr_od/application/currency_war/changes/
-# 2026-10-17-invest-direction-guard/design.md §2.1)=====
+# ===== 阵容指向集(投资选卡阵容冲突护栏的判据源;护栏正本 =
+# strategy-docs/29_invest_strategy_screen.md §5 与 28_invest_env_screen.md
+# 护栏节)=====
 # 指向集 = 「这张投资服务哪些阵容阵营」的阵营名集合:非空 = 有阵容指向;
 # 空 = 通用卡(纯经济/纯战力/随机角色族/时代规则类),无冲突可判。全部
 # 派生自既有注册表(零手抄登记,版本重采自动跟);线库(cw_comps)/通道
 # 派生(cw_invest_channels)反向引用一律函数内延迟 import——两者模块级
 # 均已引本文件,反向模块级即成环。消费位 = strategies/impl/
-# mandate_v1/invest_strategy 冲突基准(§2.2);锁定线指向不设函数
+# mandate_v1/invest_strategy 冲突基准;锁定线指向不设函数
 # (锁定 Comp.factions 消费侧现读)。
 
 def env_faction_scope(env_name: str) -> frozenset[str]:
-    """投资环境的阵容指向集(faction 分支 + 通道派生分支;§2.1)。
+    """投资环境的阵容指向集(faction 分支 + 通道派生分支;护栏判据)。
 
     - faction 分支:``INVESTMENT_ENVS[env].faction`` 非空入集(概念股/邀请/
       契约全量登记;专家类例外 = 特邀专家:加拉赫→击破);

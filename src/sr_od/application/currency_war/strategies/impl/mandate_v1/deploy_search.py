@@ -1,12 +1,12 @@
 """统一部署搜索(评分制;部署判据件,策略层 mandate_v1)。
 
-设计单一源 = changes/2026-10-30-roster-plane1-union/details/
-unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
-取优)。总纲 §2.7 职责边界:场上去留 = 部署算法单属——本模块回答
+设计单一源 = 策略面正本 strategy-docs/24_deploy_segment.md
+(下称「正本」;§1.1 评分函数 / §1.2 三段搜索)。职责边界(正本 §1):
+场上去留 = 部署算法单属——本模块回答
 「谁上场、去哪一排、选哪颗星」,输出 target_board(角色名 →
 (排, 选定星));卖出/优先级面只消费定型结论(档 1 名集消费)。
 
-三段搜索结构(§2):
+三段搜索结构(正本 §1.2):
 - 段 0 枚举准备(build_deploy_panel 装配):唯一性键归一(开拓者各排
   形态互斥)、同键多副本取最高星(落场后形态:银狼 3★ 上场即 1★)、
   召唤物/系统件(cost=0)固定后台剔除、未知身份件保留现位不入枚举
@@ -18,22 +18,22 @@ unified-deploy-order.md(§1 评分函数 / §2 三段搜索 / §3 段 3 评分
   锁定条目在前;锁定 = 锁定线羁绊骨架,档 0 每键一组,过渡层退役
   恒空),骨架 = 档位形态集合(键档激活人数的前缀截断点),全枚举,
   空骨架合法;
-- 段 2 补人:候选生成器(近似,unified-deploy-order §2 段 2 近似
+- 段 2 补人:候选生成器(近似,正本 §1.2 段 2 近似
   申报——DP 候选生成 + 终评全量评分的正确性结构):线内件优先占席
   (D8-3)+ 分组单位序贪心 + 组取舍变体 + **分组背包 DP 联合分配**
   (跨组增益捕获:多组部分凑档形态贪心序与单组变体覆盖不到,DP 按
   组值增量背包取优);
-- 段 3 评分取优:全候选板按 §1 评分函数**全量终评**(DP 组分只是
+- 段 3 评分取优:全候选板按正本 §1.1 评分函数**全量终评**(DP 组分只是
   候选生成内部度量,段 3 重算,单归属近似不影响终评正确性)→
   最高分组内排分配 → (站位分, 稳定键, 随机尾键) 定序取一。
 
-评分层结构(§1,数值制):L1 主目标羁绊(10⁹ 域,f = 角色完成度 ×
+评分层结构(正本 §1.1,数值制):L1 主目标羁绊(10⁹ 域,f = 角色完成度 ×
 档位完成度乘法合成)> L2 锁定非核心加分层(bonus_faction_reqs,10⁶ 域,仅锁定窗)>
 L3 普通(计数制,buff/debuff ×3 > 万金油 ×2 > 其他 ×1)。一键单归属、取当前评估
 上下文最高层。金币维零交互(CW 部署免费——用户裁定 2026-10-30
 三,核查过非漏项)。
 
-rng = 局面哈希播种(§1 D3-7:同一状态容器状态 → 同一 rng 序,跨帧稳定
+rng = 局面哈希播种(正本 §1.1 rng 播种:同一状态容器状态 → 同一 rng 序,跨帧稳定
 防并列板帧间翻转;同帧多次搜索共享同序 rng → 同帧判定确定)。
 """
 from __future__ import annotations
@@ -79,8 +79,8 @@ if TYPE_CHECKING:
     )
 
 # ===== 隔离常量(结构编码非标定:层间隔 10³ 数量级,语义 = 「高层任意
-# ===== 正分 > 低层满分」,区间内变动行为零变——unified-deploy-order §1)=====
-# L1 两层支配编码(required-deployed-retirement §2.2-1):named 层
+# ===== 正分 > 低层满分」,区间内变动行为零变——正本 §1.1)=====
+# L1 两层支配编码(原 required_deployed 灭零特判的防形态,正本 §1.1):named 层
 # (点名件在场率)×10⁹ 严格支配档位层 ×10⁸——层间 10 倍域差承载「任何
 # 满点名件板恒压任何缺点名件板」(原 required 灭零的防形态,跨线 argmax
 # 等价),L1 域顶随之 = 1.1×10⁹(named 满 + 档位满)。层间严格性的数据
@@ -102,7 +102,7 @@ class SearchUnit:
     [索引定义] ``origin`` = 'board'(现役场上,带现排)| 'bench';
     ``key`` = 唯一性键(开拓者各排形态归一;char_id 空 = None 未知件,
     段 0 已剔除不出现在 units);``star`` = 落场后形态星级(银狼 3★
-    上场即 1★,§1 星级形态裁定)。
+    上场即 1★,正本 §1.1 星级形态)。
     """
 
     key: str
@@ -116,7 +116,7 @@ class SearchUnit:
 
 @dataclass(frozen=True)
 class DeploySearchPanel:
-    """搜索输入面板(状态容器读口全列的鸭子类型(duck typing)面板,§1 虚拟面板字段域)。
+    """搜索输入面板(状态容器读口全列的鸭子类型(duck typing)面板,正本 §1.1 虚拟面板字段域)。
 
     生产装配 = :func:`build_deploy_panel`;虚拟重算(获取让位评估 /
     can_deploy_single 快照+X)= 调用方替换 ``units``/``current_board``
@@ -132,7 +132,7 @@ class DeploySearchPanel:
     front_capacity: int
     back_capacity: int
     """排容量:front 恒 4;back = back_capacity_of − 后排召唤物/未知件
-    占格(段 3 排分配扣减,§2 段 3 D2-8/D9-2)。"""
+    占格(段 3 排分配扣减,正本 §1.2 段 3 D2-8/D9-2)。"""
     locked: bool                       # 锁定窗(line_members_view.locked)
     locked_comp: Comp | None           # 锁定线(target_comp;锁定窗非空)
     candidate_comps: tuple[Comp, ...]  # 未终局锁定帧终局候选族(候选三线)
@@ -144,7 +144,7 @@ class DeploySearchPanel:
     """现板面(名 → 现排;稳定键输入 = 与现板面一致数,名+排粒度)。"""
 
 
-# ============================================================ 评分函数(§1)
+# ============================================================ 评分函数(正本 §1.1)
 
 
 def _fallback_tier_index(bond: str, head_count: int) -> int:
@@ -177,7 +177,7 @@ def _tag_counts(units: list[SearchUnit],
         -> dict[str, int]:
     """板上单位的羁绊标签多集总和(计数单一源 = ``unit_bond_tags``:
     角色注册表出身 + 开拓者排形态归一 + 布洛妮娅选边单边化(peers =
-    板上其余单位)+ 装备贡献四合一,§1 羁绊计数口径——用户确认
+    板上其余单位)+ 装备贡献四合一,正本 §1.1 羁绊计数口径——用户确认
     2026-10-30 羁绊按角色数量和星徽)。
 
     ``cache`` = 板外预计算的单位标签缓存;选边型双羁绊角色(布洛
@@ -205,7 +205,7 @@ def _tag_counts(units: list[SearchUnit],
 
 def _line_form_tier_groups(comp: Comp | None) -> tuple[tuple[str, ...], ...]:
     """线的 L1 键组:档 0 每键一组(终局候选/终局锁定/过渡条目同构,
-    §2 段 1)。"""
+    正本 §1.2 段 1)。"""
     if comp is None:
         return ()
     return tuple((k,) for k in comp.core_faction_reqs)
@@ -217,7 +217,7 @@ def selection_score(panel: DeploySearchPanel,
                     line_keys: tuple[str, ...],
                     tag_cache: dict[str, tuple[str, ...]] | None = None,
                     ) -> tuple[float, float, int]:
-    """选人分全量终评(§1 评分函数;段 3 对每个完整候选板重算——
+    """选人分全量终评(正本 §1.1 评分函数;段 3 对每个完整候选板重算——
     DP 组得分只是候选生成内部度量,本函数才是最终板面分,D7 补问 5)。
 
     返回 (L1, L2, L3) 三层分数(层间数量级隔离,调用方字典序承载):
@@ -356,7 +356,7 @@ def _unit_sort_key(u: SearchUnit, comp_pos: Comp | None,
 def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
         -> list[int]:
     """骨架前缀截断点集合(档位形态集合:每键的各档激活人数 +
-    全取——t=0 与 t=可达档各一套形态,§2 段 1 D-15;**空键集
+    全取——t=0 与 t=可达档各一套形态,正本 §1.2 段 1 D-15;**空键集
     (空羁绊线)时全前缀**——无档位基准点,required/core 逐件渐进
     形态 = 池序前缀全枚举)。"""
     cuts: set[int] = {0, len(pool)}
@@ -374,10 +374,10 @@ def _assign_rows(members: list[SearchUnit], panel: DeploySearchPanel,
                  comp_pos: Comp | None) -> dict[str, str] | None:
     """段 3 排分配(char_positions 强制 → 场上件**现排滞回** →
     deploy_row_pref → back 兜底 + 前排保证 + 前后排容量 + 开拓者形态
-    排约束;溢出 = 站位分损失最小者让位〔row_pref 兜底级排序,§2 段 3
+    排约束;溢出 = 站位分损失最小者让位〔row_pref 兜底级排序,正本 §1.2 段 3
     牺牲序〕;不可解 → None(容量矛盾,由排分配容量约束排除)。
 
-    现排滞回(§1 稳定键「与现板面一致数」的结构化承载,宽域):场上件
+    现排滞回(正本 §1.1 稳定键「与现板面一致数」的结构化承载,宽域):场上件
     的排偏好起点 = 现排——row_pref 符合度(pos)不压滞回,等分板上现
     板保持原排(结构化滞回);注册表强约束(char_positions)仍最高优先,
     容量溢出时按牺牲序让位。"""
@@ -441,7 +441,7 @@ def _position_score(members: list[SearchUnit], rows: dict[str, str],
     """(站位分, 稳定键):站位分 = 分配排对**偏好起点**(char_positions
     强制 > 场上件现排滞回 > deploy_row_pref,与 :func:`_assign_rows`
     同一 prefs 序)的符合数;稳定键 = 与现板面一致数(名+排粒度,星维
-    不进——星变更本就该动板,§1 D3-7)。"""
+    不进——星变更本就该动板,正本 §1.1 rng 播种)。"""
     cp = (getattr(comp_pos, 'char_positions', None) or {})
     pos = 0
     for u in members:
@@ -461,7 +461,7 @@ def _position_score(members: list[SearchUnit], rows: dict[str, str],
 
 
 def _situation_seed(panel: DeploySearchPanel) -> int:
-    """局面哈希播种(§1 D3-7:同一状态容器状态 → 同一 rng 序,跨帧稳定;
+    """局面哈希播种(正本 §1.1 rng 播种:同一状态容器状态 → 同一 rng 序,跨帧稳定;
     同帧多次搜索〔含 can_deploy_single 逐牌〕共享同序 rng)。
 
     哈希 = 稳定摘要(zlib.crc32)——禁裸 ``hash()``:Python 字符串哈希按
@@ -481,7 +481,7 @@ def _situation_seed(panel: DeploySearchPanel) -> int:
 def search_deploy_target(panel: DeploySearchPanel,
                          margin_out: dict | None = None,
                          ) -> dict[str, tuple[str, int]]:
-    """统一部署搜索主入口(三段;纯函数零 IO,§1 接口契约④)。
+    """统一部署搜索主入口(三段;纯函数零 IO,接口契约见正本 §1.4)。
 
     返回 target_board = {角色名: (排, 选定星, 槽位或 None)}(接口契约②,
     载荷星维承载就位粒度名+排+星;槽位维 = char_positions 槽位级登记
@@ -489,9 +489,10 @@ def search_deploy_target(panel: DeploySearchPanel,
     (容量矛盾,结构不可达防御)→ 返回空 dict(消费端 fail-closed
     按现板定型,申报)。
 
-    ``margin_out`` = 可选次名分量收集出参(pick-margin-telemetry
-    design §2.1:段 3 并行收集,纯函数零状态写——传入非 None dict
-    且搜索成功时填 §2.2-3 键形;缺省 None = 不收集,虚拟定型调用点
+    ``margin_out`` = 可选次名分量收集出参(挑边差距遥测的私有槽通道;
+    遥测正本 = strategy-docs/strategy-telemetry.md ``deploy_margin`` 行:
+    段 3 并行收集,纯函数零状态写——传入非 None dict
+    且搜索成功时填次名键形;缺省 None = 不收集,虚拟定型调用点
     不传即零开销零写入;搜索返 {} 时保持空 = 调用方据此不落值)。
     """
     rng = random.Random(_situation_seed(panel))
@@ -502,7 +503,7 @@ def search_deploy_target(panel: DeploySearchPanel,
     def _pool_of(keys: tuple[str, ...],
                  member_names: frozenset[str]) -> list[SearchUnit]:
         """体系/线骨架件池:羁绊标签 ∩ 键系 ∪ 线名单成员,骨架内按
-        选件序排序(**锁定线核心优先、逐档**,§2 段 1:定义件 >
+        选件序排序(**锁定线核心优先、逐档**,正本 §1.2 段 1:定义件 >
         core > shared > 标签件——骨架优先圈定义件(engine carry)形态
         由成员序承载;定义件层可达性由建库断言③钉住)。"""
         comp = panel.locked_comp if panel.locked else None
@@ -632,14 +633,14 @@ def search_deploy_target(panel: DeploySearchPanel,
 
     def _dp_fill(skel: tuple[SearchUnit, ...],
                  line_keys: tuple[str, ...]) -> list[list[SearchUnit]]:
-        """分组背包 DP 补人候选(§2 段 2 设计基线的组间联合形态;unified-
-        deploy-order §2 段 2——骨架 + 线内件优先占席(D8-3)后,剩余席位
+        """分组背包 DP 补人候选(正本 §1.2 段 2 设计基线的组间联合形态;
+        骨架 + 线内件优先占席(D8-3)后,剩余席位
         按「羁绊分组 + 万金油特组」背包联合分配):补贪心序与单组
         变体都覆盖不到的**多组部分凑档**形态(跨组增益捕获——两组各差
         1-2 件成档时,贪心全局序可能交错取件致两组成档皆失,单组变体只
         保一组;DP 按组值增量联合取优)。
 
-        近似口径(与设计 §2 段 2 近似申报同款,终评兜底):组值 = 组键
+        近似口径(与正本 §1.2 段 2 近似申报同款,终评兜底):组值 = 组键
         已达档增量 × L3 系数(首标签归属单键计,件次标签贡献不可见——
         段 3 全量终评兜底);万金油组按件 ×2。
 
@@ -780,7 +781,7 @@ def search_deploy_target(panel: DeploySearchPanel,
     # ---- 段 3 评分取优(全量终评 + 排分配 + 字典序)----
     best_key: tuple | None = None
     best_out: tuple[tuple[SearchUnit, ...], dict[str, str]] | None = None
-    # 次名分量并行收集(纯观测,design §2.1/§2.2-3;条目 = (全键,
+    # 次名分量并行收集(纯观测,挑边差距遥测的私有槽通道;条目 = (全键,
     # 成员键集, 三层分, 排序板签名)——收集面只加变量,评分/比较/取优
     # 逻辑逐行不动;margin_out None 时零收集零开销)。
     _scored: list[tuple[tuple, frozenset[str], tuple[float, float, int],
@@ -806,7 +807,7 @@ def search_deploy_target(panel: DeploySearchPanel,
         return {}
     if margin_out is not None:
         # 挑战者 = 成员集与胜者不同的最高板(排序键 = 段 3 全键同款,
-        # design §2.2-3 禁另立排序;dedup 键含评估上下文 → 同成员集
+        # 禁另立排序;dedup 键含评估上下文 → 同成员集
         # 不同 comp/keys 的板不算挑战者)。无挑战者 → 三键 null 形态
         # (与尾键决胜的 0/0 区分);三层全同(尾键决胜)→ 首异层 0/层差 0。
         _winner = max(_scored, key=lambda t: t[0])
@@ -846,11 +847,11 @@ def search_deploy_target(panel: DeploySearchPanel,
 def build_deploy_panel(session: StrategySession, gs: GameState,
                        frame: MandateFrame | None = None,
                        ) -> DeploySearchPanel:
-    """搜索面板生产装配(状态容器读口全列一次现取;§1 虚拟面板字段域)。
+    """搜索面板生产装配(状态容器读口全列一次现取;正本 §1.1 虚拟面板字段域)。
 
     段 0 过滤在此执行:上场锁(uid 命中记录;虚拟件 uid=None 名
     命中锁名单即视为锁,fail-closed)/召唤物系统件(cost=0,固定后台
-    末位剔除)/未知身份件不入枚举但占 K 占格(§2 段 0 D3-13/D5-6)。
+    末位剔除)/未知身份件不入枚举但占 K 占格(正本 §1.2 段 0)。
     **无窗口硬约束**(entry_signals 整体退役,2026-11 用户终裁):上场
     时机 = 骨架/L1 完成度自适应(终局件在未成型面板自然被 L1 递减挤出)。
     """
@@ -914,7 +915,7 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
 
     def _mk(cid: str, star: int, origin: str, row: str, uid: int | None,
             equips: tuple[str, ...]) -> SearchUnit:
-        # 银狼落场后形态(§1:3★ 上场即下档 1★——现档 = 5 费封顶时
+        # 银狼落场后形态(正本 §1.1:3★ 上场即下档 1★——现档 = 5 费封顶时
         # 恒等搬运,与上报层同一变换纯函数口径对齐)。
         eff_star = star
         if cid == '银狼LV.999' and star >= 3 and lv999_tier < 5:
@@ -1012,7 +1013,7 @@ def panel_from_virtual(session: StrategySession, gs: GameState,
                        bench_slots: list, field_units: list,
                        ) -> DeploySearchPanel:
     """虚拟路径面板(获取让位评估步 3 / can_deploy_single 快照+X:
-    生产面板状态容器读口 + 虚拟 bench/场上单位替换,§1 接口契约③)。
+    生产面板状态容器读口 + 虚拟 bench/场上单位替换,正本 §1.4 虚拟路径契约)。
 
     ``bench_slots`` = 虚拟 bench 槽位条目列表(升星连锁模拟产物,
     SimAcquisition.bench 的 BenchSlot 半);``field_units`` = 虚拟场

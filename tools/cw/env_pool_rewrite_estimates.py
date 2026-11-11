@@ -1,11 +1,10 @@
 """层 E 转正数据批:全通道 μ_E 重算 + π_offer 实采 + 序一致性检验(T-155)。
 
-品质改写型层 E(design = changes/2026-09-12-invest-env/details/
-env-value-models.md §2.2)的两参数表落参批重采入口:
+品质改写型层 E(投资环境估值设计裁定的层 E 模型)的两参数表落参批重采入口:
 - ``STRAT_POOL_ECON_MEANS``:μ_E(q; H) = 品质子池全通道金流均值,键 (品质, 视界);
 - ``OFFER_QUALITY_DIST``:π_offer,k(q) = 第 k 次取卡 offer 品质分布。
 
-**全通道口径**(转正准入门第 1 条,§2.2.2):受限直接金流/XP 通道(v1 八通道)
+**全通道口径**(转正准入门第 1 条):受限直接金流/XP 通道(v1 八通道)
 + 排除集补参——刷新族(免费刷新期望节金 = min(可发次数, 观测刷新需求窗口量)
 × 基价 2)、息档覆写(观测金路径逐节点 E[min(g//10, cap)] − E[min(g//10, 5)]
 递推,息律单源 = proofs/p47-interest-account.md,零新拟合)、合成/卖价族
@@ -16,8 +15,8 @@ env-value-models.md §2.2)的两参数表落参批重采入口:
 gold_per_20hp_lost(schema 注明故意不进经济分)、固定理财位面开始段(注册表
 既挂待建模)。
 
-**样本与滤波**(口径文档 = changes/2026-09-12-invest-env/details/
-data-batch-estimates.md 同源纪律):真实档案(文件名不含 fake);完成局
+**样本与滤波**(与数据批口径同源纪律——真实档案、完成局参与、整局
+剔除两类污染):真实档案(文件名不含 fake);完成局
 (``endgame.result ∈ {win, loss}``)参与统计。统计面再排除两类「整局剔除」
 污染——①品质改写局:chosen_env ∈ ENV_POOL_REWRITE,或任一取卡帧命中改写
 后续 offer 的策略源(远见/彩虹期货±/黄金期货±/黄金投资/白银投资),取卡流
@@ -25,7 +24,7 @@ data-batch-estimates.md 同源纪律):真实档案(文件名不含 fake);完成�
 过热(奖励节点被扑满主题替换,卖出收入/金路径/息档等窗口先验系非普通局
 形态)——净帧口径(对齐采样面「148 总/140 普通」裁定,T-152 扑满局同集)。
 已知覆盖限制:chosen_env 仅部分档案非空,缺读局的①②按 env 判别的半边
-失效(策略源判别不受影响;量化申报 = 口径文档 §2)。
+失效(策略源判别不受影响)。
 
 **日程与截断口径**:全局节点号按结构日程 P1=9/P2=7/P3=9 先验(总 25;
 P2=7 = economy.md §10.2 位面典型节点表 + boss@p2r7 档案实证;P3 语料零
@@ -40,7 +39,7 @@ P2=7 = economy.md §10.2 位面典型节点表 + boss@p2r7 档案实证;P3 语�
 总视界 − 已完成(取卡发生在轮 r 进行中,当前轮计入剩余)。注册门:每 k
 有效选定事件 n ≥ 20(与扑满采集门槛同族),不足则该位哨兵不落(禁拍值)。
 
-**π_offer 归一口径**(data-batch-estimates.md §6 约定):offer 卡品质按注册
+**π_offer 归一口径**(数据批口径约定):offer 卡品质按注册
 表 rarity 查得;查不得计「未解析」,按已知三品质份额等比例摊入归一。采样
 警告已登记:档案帧未区分取卡 offer 与同次取卡内刷新后的新 offer(全部帧行
 计入,k 归属 = 该组时间夹逼到的取卡位)。
@@ -92,7 +91,7 @@ _Z: float = 1.959964   # 95% 双侧正态分位(显式常量,不引 scipy)
 #: P2=7(经济研究 §10.2 位面典型节点表 + boss@p2r7 实证 + kernel
 #: nodes_of_plane「P2=7 槽 16 局语料实证」;注释引用不 import,判别工具
 #: 独立)、P3=9 先验(语料零完成局,端点纪律 = 结构上端 9)。总视界 25。
-#: v1 详设的「schedule_of 先验 9+9+9=27」是 P2 真值入册前的回退口径,本批
+#: v1 落参批的「schedule_of 先验 9+9+9=27」是 P2 真值入册前的回退口径,本批
 #: 落参以结构真值 25 为准(H_k 实采同映射,两口径差随批申报)。
 _PLANE_OFFSETS: dict[int, int] = {1: 0, 2: 9, 3: 16}
 _TOTAL_NODES = 25
@@ -507,10 +506,10 @@ def window_sum(profiles: dict[int, dict[str, float]], key: str,
 def econ_value_full(eff: EconomyEffect, h: int, ctx: dict,
                     restricted: bool = False) -> float:
     """单策略全通道金流期望(econ_gold(s; H);restricted=True 退 v1 八通道,
-    供详设初测(银3.31/金2.42/棱彩4.16)对拍验证通道实现同构)。"""
+    供转正批初测(银3.31/金2.42/棱彩4.16)对拍验证通道实现同构)。"""
     start = _TOTAL_NODES - h
     v = 0.0
-    # —— v1 受限八通道(详设 §2.2.2 econ_gold_v1 清单)——
+    # —— v1 受限八通道(econ_gold_v1 清单)——
     v += eff.instant_gold
     v += eff.gold_per_node * h
     v += eff.interest_flat_per_node * h
@@ -759,7 +758,7 @@ def main() -> None:
 
     # restricted 对拍(v1 八通道 @ H=24 参照)
     restr = mu_table(True, {1: _V1_H1_REF})
-    print(f'\n=== restricted 对拍(v1 八通道 @ H={_V1_H1_REF};详设初测 '
+    print(f'\n=== restricted 对拍(v1 八通道 @ H={_V1_H1_REF};转正批初测 '
           f'银3.31/金2.42/棱彩4.16) ===')
     for q in _QUALITY_ORDER:
         m, ci, n = restr[(q, _V1_H1_REF)]

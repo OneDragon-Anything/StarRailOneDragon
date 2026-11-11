@@ -24,7 +24,7 @@
 
 ## 2. payload 键表(mandate_v1 v1)
 
-payload 七键(键闭集)分**两类来源**:**现读键** 5(direction / k_members / k_fallback / transition_candidates / member_rank)= 决策帧出口后的 gs/state **现读**;**产物透传键** 2(pick_margin / deploy_margin)= 词表动作字段与私有槽,均为**决策帧出口时点快照**。两类皆纯读、不改决策行为(禁依赖未入决策产物与既许槽位的内部局部量)。实现位 = `strategies/impl/mandate_v1/decision_payload.py`(薄委托入口 `bridge.MandateV1Strategy.decision_payload`);产物透传通道设计 = changes/2026-11-02-pick-margin-telemetry(该迭代收尾后语义并入本表,通道权威版本 = 词表字段/槽位定义注释)。
+payload 七键(键闭集)分**两类来源**:**现读键** 5(direction / k_members / k_fallback / transition_candidates / member_rank)= 决策帧出口后的 gs/state **现读**;**产物透传键** 2(pick_margin / deploy_margin)= 词表动作字段与私有槽,均为**决策帧出口时点快照**。两类皆纯读、不改决策行为(禁依赖未入决策产物与既许槽位的内部局部量)。实现位 = `strategies/impl/mandate_v1/decision_payload.py`(薄委托入口 `bridge.MandateV1Strategy.decision_payload`);通道权威版本 = 词表字段/槽位定义注释。
 
 | 键 | 类型 | 语义 | 读口 |
 |---|---|---|---|

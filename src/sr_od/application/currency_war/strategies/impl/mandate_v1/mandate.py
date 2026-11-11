@@ -113,7 +113,7 @@ if TYPE_CHECKING:
 # (M1″ seam 门常量 M1P_SEAM_VERIFIED 与 cw4_m1p_seam_verified/
 #  cw4_m1p_arm_pending/cw4_m1p_plan_pending 载体已随部署统一批丁纳入统一管理时删除:
 #  emit_swap_redeploy 发射缝随 kernel swap 机器退役,门与分键失去判读对象
-#  ——unified-deploy-order §2.7/§4 kernel swap 机器行。)
+#  ——kernel swap 机器行已随统一部署搜索退役。)
 
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(必花分支重试风暴防线;
 # 商店域同构缓存随商店期腾席卖射停用删除——席满缺员形态在商店域
@@ -143,7 +143,7 @@ class Emitted:
 class MandateFrame:
     """骨架 pass 输入帧(D-C44:黑板全量现读,每帧重建、零跨帧快照)。
 
-    **状态容器形状(benchchar-retirement P4,design §2.1/§2.4)**:
+    **状态容器形状(现行基准形态)**:
     - ``bench`` = 占席条目紧缩序(状态容器 ``BenchSlot``,kind != 'empty',
       物理槽序;占位件 kind 面在域内,身份经 ``cw_exec_state.
       bench_slot_unit`` 解包读口取——faction/position_pref 不入形状的
@@ -630,8 +630,8 @@ def dead_stock_pair_buy_reject_reason(name: str, star: int,
 # (M1″ 终局阵容锁定转型域部署执行放行判定族——_deploy_advances_form /
 #  _redeploy_emission_allowed(P79-3 三轴门)/ _bond_gate_recalc_allowed
 #  (发射帧复算统一门)——已随部署统一批丁纳入统一管理时删除:在发射层重新回答
-#  「要不要换」的部署问题已由统一部署搜索定型单属承载(unified-deploy-
-#  order §2.7/总纲 §2.7 违例面①;P79 消解,math_proofs 索引行随批处置)。)
+#  「要不要换」的部署问题已由统一部署搜索定型单属承载(部署定型单属的
+#  违例面裁定;P79 消解,math_proofs 索引行随批处置)。)
 
 
 # ===== executor 本体 =====
@@ -800,8 +800,7 @@ def run_mandate(frame: MandateFrame,
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=frame.gold), counters):
             # 释放集同参同源(N3:cap_hold 与本位装配同一现读;凑息通道
-            # 消费释放成员 = P78-5′ 对价豁免条款照常覆盖,无新增豁免需求,
-            # design §2.1.7-4)。
+            # 消费释放成员 = P78-5′ 对价豁免条款照常覆盖,无新增豁免需求)。
             _dp_release = dead_pair_exit_release(
                 session, k, frame.bench, frame.deployed, frame.round_num,
                 cap_hold=locked_buy_cap_hold(state), counters=counters)
@@ -983,7 +982,7 @@ def run_mandate(frame: MandateFrame,
 
     # (M1″ 板满换阵补部署意图块已随部署统一批丁纳入统一管理时删除:板满帧换人 =
     # 统一部署搜索定型 + 差分执行器交换交互(entry 第 6 步承载),被换下
-    # 者回 bench 由卖出场景处置——unified-deploy-order §2.7/§4;板满帧
+    # 者回 bench 由卖出场景处置——统一部署搜索定型单属;板满帧
     # 本测试面骨架的部署面由 M1/M5 空槽臂 + entry 生产链承载。)
 
     # M6 富余转压牌库(存在性=金>g*;档匹配 fail-closed ⇒ 不买
@@ -1083,14 +1082,15 @@ def run_mandate(frame: MandateFrame,
 # (M1″ 板满换阵补部署动作发出点 emit_swap_redeploy(含 emit_swap 首对 SellDeployed
 #  形态/转型域 swap 链)已随部署统一批丁纳入统一管理时删除:板满帧换人 = 统一部署
 #  搜索定型 + 差分执行器交换交互,被换下者回 bench 由卖出场景处置——
-#  unified-deploy-order §2.7/§4 kernel swap 机器行;SellDeployed 在役
+#  kernel swap 机器随统一部署搜索退役;SellDeployed 在役
 #  发出点自此收敛为三处(卖出评估器 deployed 支/计划变量执行位/同名
-#  异星换),详设 §3.6 与总纲 M4 姊妹出口行同口径。)
+#  异星换),与部署段正本(24 号稿 §1.4)发出点清单同口径。)
 
 
 # ============================================================
-# 部署选人纯函数接口(统一让位优先级迭代 3.1 结构抽取,判据零改动;
-# 契约 = changes/2026-10-29-unified-priority/details/acquisition-and-sell.md §1)
+# 部署选人纯函数接口(统一让位优先级判定的结构抽取,判据零改动;
+# 接口契约正本 = strategy-docs/32_unified_sell_priority.md §1〔部署先行〕
+# 与 24_deploy_segment.md §1.4〔三路共用定型〕)
 # ============================================================
 
 
@@ -1128,24 +1128,28 @@ def select_deployment(frame: MandateFrame,
                       virtual_field: list | None = None,
                       margin_out: dict | None = None,
                       ) -> dict[str, tuple[str, int]]:
-    """部署定型(统一部署搜索内核;阶段 5/6 换内核,消费接口改版 =
-    总纲接口契约②:target_board = 角色名 → (排, 选定星)——星维承载
-    就位粒度名+排+星;档 1 名集消费 = ``frozenset(target)``)。
+    """部署定型(统一部署搜索内核;消费接口契约 = target_board = 角色名
+    → (排, 选定星)——星维承载
+    就位粒度名+排+星;档 1 名集消费 = ``frozenset(target)``;正本 =
+    strategy-docs/24_deploy_segment.md §1)。
 
     生产路径(= 三路共用定型:卖出评估器/获取让位/出战链)面板装配 =
     ``deploy_search.build_deploy_panel``(段 0 硬约束过滤:唯一性键
-    归一/窗口谓词/上场锁/召唤物/未知件);虚拟路径(获取让位评估步 3
-    快照+X,接口契约③)= ``virtual_bench``/``virtual_field`` 传升星
+    归一/窗口谓词/上场锁/召唤物/未知件);虚拟路径(获取让位评估的
+    快照+X 置入;24 号稿 §1.4 虚拟路径契约)= ``virtual_bench``/``virtual_field``
+    传升星
     连锁模拟产物(SimAcquisition 两半),窗口谓词共享、成员域分窗
     声明(部署枚举池 = 全部真实单位)。
 
-    ``margin_out`` = 可选次名分量收集出参(pick-margin-telemetry
-    design §2.1:透传段 3 收集,纯函数零状态写;真实出口 =
+    ``margin_out`` = 可选次名分量收集出参(挑边差距遥测的私有槽通道;
+    遥测正本 = strategy-docs/strategy-telemetry.md ``deploy_margin`` 行:
+    透传段 3 收集,纯函数零状态写;真实出口 =
     entry._step5_deploy 传入,虚拟 4 调用点[shop 获取让位×2/
     sell_candidates/supply]不传即零写入——sell_candidates 与 entry
     实参形态相同,分流只能由调用侧承载)。
 
-    评分函数纯函数(§1 接口契约④:消费状态容器状态,sim 可跑,禁 IO);
+    评分函数纯函数(接口契约:消费状态容器状态,sim 可跑,禁 IO;
+    24 号稿 §1.1 末条);
     rng 局面哈希播种(同一状态容器状态 → 同一 target,跨帧稳定)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
@@ -1162,9 +1166,8 @@ def select_deployment(frame: MandateFrame,
 
 
 # ============================================================
-# 局面快照与虚拟置牌(统一让位优先级迭代 3.2;获取角色流程与卖出触发
-# 的部署重排共享输入。契约 = changes/2026-10-29-unified-priority/details/
-# acquisition-and-sell.md §1 定案:局面快照纯计算,禁状态容器深拷贝)
+# 局面快照与虚拟置牌(统一让位优先级判定;获取角色流程与卖出触发
+# 的部署重排共享输入。契约定案:局面快照纯计算,禁状态容器深拷贝)
 # ============================================================
 
 
@@ -1368,7 +1371,7 @@ def cheapest_member_cost(frame: MandateFrame) -> int:
 #  _deploy_emit_held/_emit_deploy_moves/_deployable)已随部署统一批丁丁批
 #  纳入统一管理时删除:七桶选人族的拒因闭集与板满前置门随选人退役——选人 = 统一
 #  部署搜索定型,「还有部署可做」= 差分非空(launch_deploy_pending 族,
-#  unified-deploy-order §4 发射抑制谓词行);deploy_cap_full/deploy_emit_
+#  发射抑制谓词随选人退役);deploy_cap_full/deploy_emit_
 #  held_* 键族失去判读对象随批停产,板满帧部署由差分执行器交换交互承载。)
 
 

@@ -6,8 +6,7 @@ transition_combos.md;位面演化定量 → stage_transitions.md;打法纪律 �
 已退役口述登记簿(2026-10-16 删))——**改本模块前先读并对表**,理解变更先改文档
 (防实现漂移)。
 
-**退役申报(统一保护集迭代 changes/2026-10-15-unified-protection-set
-design.md §2.4)**:本模块原承载的策展过渡包判据族(框架件计数
+**退役申报(统一保护集迭代裁定)**:本模块原承载的策展过渡包判据族(框架件计数
 ``_framework_counts``/框架选定 ``pick_framework``/买牌打分
 ``transition_score``)判据数据源 = TRANSITION_PACK 策展名单与
 carry/partial/drop 档位标签,符号删除后为死码,随符号删除(全仓

@@ -1,8 +1,10 @@
 """货币战争 统一阵容评分·数量级标尺(单一常数源)。
 
-出处 = docs/develop/sr_od/application/currency_war/changes/
-2026-11-03-unified-line-scoring/design.md §2 数量级表(四轮对抗审查定稿:
-正项上界全库自算校准,层间支配靠数量级实现,示意值 = 本表锁定值)。
+出处 = 统一阵容评分迭代的数量级标尺设计(四轮对抗审查定稿:正项上界
+全库自算校准,层间支配靠数量级实现,示意值 = 本表锁定值);权威版本
+= 本文件常量(正本 = docs/develop/sr_od/application/currency_war/
+strategy-docs/12_line_and_intention.md §1.1「数量级表」:常数单一源 =
+本模块)。
 
 单一源纪律:本迭代线分数值只写常量名、值在本文件一处定义。消费面 =
 线分引擎(strategies/impl/mandate_v1/line_select)/词缀吃怕表
@@ -14,14 +16,14 @@
 免策略层↔kernel 反向 import 成环(与 cw_investments 里 kernel 注册表/
 策略层分值映射的两层分工同一形态)。
 
-不变量(design §2「sim 不变量」):任意构局任一候选线,其全部正项之和
+不变量(标尺设计「sim 不变量」裁定):任意构局任一候选线,其全部正项之和
 上界 < |重开级| = 100000——重开级单条即数值排他(含重开级命中的线分恒
 低于无命中线);上界自算测试 = 测试仓 test_line_select「正项上界自算」。
 """
 from __future__ import annotations
 
 #: 重开级(词缀/boss)与万敌无燃料底线:排除 = 极大减分,任何构局正项和
-#: 追不上(design §1 用户裁定链第 2 条「排除=极大减分」)。
+#: 追不上(统一阵容评分裁定「排除=极大减分」)。
 RESTART_PENALTY: int = -100_000
 
 #: carry·anchor(线基准核心,每名):基准核心单卡即战力(攻略「希儿到手即开线」);

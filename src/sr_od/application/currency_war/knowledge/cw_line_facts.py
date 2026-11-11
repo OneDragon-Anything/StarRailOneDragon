@@ -52,9 +52,8 @@ def bond_members(bond: str) -> set[str]:
     """单羁绊成员名集(阵营∪流派全成员口径;希儿系=希儿∪两放大器阵营
     成员)。遥测 ρ 实测与过渡条目成员展开的在店/计分判据单一源。
 
-    公开化(统一保护集迭代 changes/2026-10-15-unified-protection-set
-    design.md §2.1):跨层成员枚举消费本公开口,禁各消费层同式复写第
-    N 份;零行为改名。"""
+    公开化(统一保护集迭代裁定):跨层成员枚举消费本公开口,禁各消费
+    层同式复写第 N 份;零行为改名。"""
     if bond == SEELE_SYSTEM:
         bonds: set[str] = {'量子同频', '贝洛伯格'}
         out: set[str] = {'希儿'}
@@ -68,8 +67,8 @@ def bond_members(bond: str) -> set[str]:
 
 
 def framework_members(framework: str) -> list[str]:
-    """过渡框架成员名单(注册表现算;统一保护集迭代 design.md §2.4 ①:
-    策展档位标签消费的迁移单一源,替代已删除的 TRANSITION_PACK 过滤)。
+    """过渡框架成员名单(注册表现算;统一保护集迭代裁定:策展档位
+    标签消费的迁移单一源,替代已删除的 TRANSITION_PACK 过滤)。
 
     成员 = 框架键面(:data:`FRAMEWORK_FACTIONS`)各羁绊 :func:`bond_members`
     的并集(阵营∪流派口径);未注册框架返回空表。返回序 = ``CHARACTERS``

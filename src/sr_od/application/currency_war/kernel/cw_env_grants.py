@@ -1,9 +1,8 @@
 """环境条件发放:连胜/刷新次数/利息累计/首领节点/合并升星/晶矿开启计数/同战共现触发检查 kernel 函数 + 持续伤害契约条件分支(猜测写+证实)+ 上场锁守卫判定 + 赠卡锁完胜提前检查 + 宝钻获得回调(live/sim 同一单一源)。
 
-迭代 2026-10-10-env-conditional-grants(kernel 面,详设 =
-docs/develop/sr_od/application/currency_war/changes/
-2026-10-10-env-conditional-grants/details/env-conditional-grant.md §1–§4;
-接入调用归该迭代 landing 3.2(live)/3.3(sim),本模块零接入调用)。
+环境条件发放通道(kernel 面)经专项迭代对抗评审定稿;条件判定矩阵与
+sig 形态的裁定语义已并入本 docstring 与各函数 docstring,接入调用归
+两端调用点(live 观察写端 / sim 装配端),本模块零接入调用。
 
 为什么 kernel 单一函数(live 与 sim 都调它):结算 streak 真值链两端
 同构(live = 结算覆盖写端 apply_settlement_cover 落账,sim = 结算分支
@@ -59,7 +58,7 @@ sim 状态副本真值,回退自掷 = live 猜测口径);
 在 rng 在场的采晶矿上报函数内,采样分支独立具名键使两条分支流键分离,
 重放归因更净;具名分支零 rng 消耗,掷名仅随机分支一笔)。
 
-边界披露(显式接受,详设 §3 同名节):①同窗洗白——发放后同窗口的
+边界披露(显式接受):①同窗洗白——发放后同窗口的
 确定性 equips 写会把字段来源翻成纯 logic,下一 heavy 帧观察对 logic
 源失配走失配告警(值由观察采新,续跑即愈);②恢复局——中断恢复对局 done 为
 空,首个 streak ≥ 阈值结算触发发放 = 最佳猜测;③OCR 假阳——假发放
@@ -214,7 +213,7 @@ _DIAMOND_EVIDENCE: str = 'env_diamond'
 _RICH_DIAMOND: str = '财富宝钻'
 
 #: 回调三写的渠道签名(kernel 内构 obs 族;observe 渠道校验只收 obs 族)。
-#: group_id 按详设 §4 指定形态 'sim:env-diamond'(三写同组 = 同窗事实)。
+#: group_id 形态 'sim:env-diamond'(三写同组 = 同窗事实)。
 #: actor = 具名写入者(本回调),不引 sim 侧 ``SIM_ENGINE_ACTOR``——
 #: kernel→sim 模块级反向边禁止(sim 依赖 kernel,反向即环)。
 _DIAMOND_SIG: ChannelSig = ChannelSig(family='obs', actor='EnvDiamondGrant',
@@ -240,9 +239,9 @@ def check_env_streak_grants(gs: GameState, streak_after: int,
                             sig: ChannelSig) -> str | None:
     """结算连胜条件发放触发检查(单一源;调用点 = streak 落账之后,
     live = ``apply_settlement_cover`` 结算覆盖调用点后 / sim = 结算分支
-    streak observe 后,接入调用归 3.2/3.3)。
+    streak observe 后,接入调用归两端调用点)。
 
-    条件矩阵(顺序即短路序,详设 §3):逐序返回 None = 未发放:
+    条件矩阵(顺序即短路序):逐序返回 None = 未发放:
 
     1. 当前环境(active_env)None/空链 → None;
     2. 环境不在登记表(ENV_STREAK_GRANTS)→ None;
@@ -259,7 +258,7 @@ def check_env_streak_grants(gs: GameState, streak_after: int,
        决定是否调宝钻回调——sim 专用,live 忽略返回值)。
 
     - ``sig`` = 两写共用的渠道签名,必须 logic_action / logic_hook 族
-      (obs 族即炸渠道族校验——禁 obs_sig,详设 §5 sig 单形态);
+      (obs 族即炸渠道族校验——禁 obs_sig,sig 单形态见模块头);
     - 本函数零 rng:随机态指认知通道,追加位置(尾部)确定。
     """
     env = gs.active_env.value

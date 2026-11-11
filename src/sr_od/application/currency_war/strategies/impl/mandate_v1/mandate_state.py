@@ -19,7 +19,7 @@ one_dragon 零 import 本类。
   ``v3_release_reason``;原 ``v3_release`` 泄息指令死槽已随死代码
   清偿移除);
 - **CommitSignals** → ``commit_signals``(定型信号累积器〔评估数据表,
-  §1.6 边界外保留项〕,投资选卡帧惰性建);
+  意向层机器停用后的边界外保留项〕,投资选卡帧惰性建);
 - **S1 开店标志/S2 wanted 残差** → 已删除
   (会话标记/会话循环承接);
 - **刷新推论** → 无独立字段(原 ``v3_dir_refresh_used``/``v2_round_refreshes``
@@ -58,17 +58,17 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ShopOpportunity:
-    """未消费机会清单记录(shop_session §4.2:判据通过但被资源拦下的牌)。
+    """未消费机会清单记录(判据通过但被资源拦下的牌)。
 
     写入端 = 商店会话正常收工位(已接通调用);消费端 = 备战第 4
-    步入口的解拦复核(判定函数 3.6 建造)。字段集 = 解拦判定所需最小面
+    步入口的解拦复核(判定函数由商店会话域承载)。字段集 = 解拦判定所需最小面
     (金位解除线 = 注册表价 `price` 比对、`order_class` = 解拦后重评的
     归属序)。
 
     `blocked_by` = 'priority_insufficient_gold'(金不足/叠加态语境的统一
-    获取让位拒绝,roster-plane1-union design §2.2 第 4 项步 6 分键)记录
+    获取让位拒绝,统一获取让位评估的分键契约)记录
     必带 `gold_snapshot`/`gold_gap`/`shelf_signature` 三字段(解拦分轴
-    数据载体,design S5-4/S6-4);其余键三字段缺省 None(各自解拦轴不
+    数据载体);其余键三字段缺省 None(各自解拦轴不
     消费)。
     """
 
@@ -80,7 +80,7 @@ class ShopOpportunity:
     gold'(优先级不足·金不足语境含叠加态;解拦轴 = 金位增量 ≥ 缺口
     绝对值 ∨ 重开店帧首评货架签名对比,shop_session 解拦分轴)。"""
     price: int        # 注册表价(金的解除线比对基准)
-    order_class: str  # 买入序类(统一买入策略的序归属;值域随 3.6 接入调用枚举)
+    order_class: str  # 买入序类(统一买入策略的序归属;值域随接入调用枚举)
     gold_snapshot: int | None = None
     """[索引定义] 记录时点金快照(priority_insufficient_gold 金位增量轴
     的基值;取值时机 = 让位评估帧现读会话金;写端 = shop 统一获取让位
@@ -96,8 +96,8 @@ class ShopOpportunity:
 
 @dataclass
 class YieldPlanStep:
-    """获取让位计划的单步骤(通用有序步骤序列;总纲 roster-plane1-union
-    design §2.2 第 4 项写端载荷 + 用户裁定补录「载荷 = 通用有序步骤序列」)。
+    """获取让位计划的单步骤(通用有序步骤序列;统一获取让位评估的
+    写端载荷契约 + 用户裁定补录「载荷 = 通用有序步骤序列」)。
 
     ``kind`` 值域:'sell'(卖出前缀件——场上件经 SellDeployed 执行,备战
     件经 SellBench 执行,落位由执行端按 name 现读分派)/ 'deploy'(驱
@@ -115,7 +115,7 @@ class YieldPlanStep:
 @dataclass
 class YieldPlan:
     """获取让位跨画面计划变量(商店决策一次定型,备战照单执行零重验;
-    总纲 design §2.2 第 4 项 + 用户裁定补录「跨画面计划变量终版」)。
+    统一获取让位评估契约 + 用户裁定补录「跨画面计划变量终版」)。
 
     - ``steps`` = 卖前缀件(让位序,末位先卖)→(席位语境)驱板面至 T;
       纯金语境无 deploy 步骤(``target_board`` = None,场位缺口由常规
@@ -131,9 +131,9 @@ class YieldPlan:
 
     steps: list[YieldPlanStep] = field(default_factory=list)
     target_board: dict[str, tuple[str, int]] | None = None
-    """目标板 T(阶段 5/6 统一部署搜索定型:名 → (排, 星),就位粒度
-    名+排+星——unified-deploy-order 接口契约②;席位语境 =「当前 −
-    前缀」定型板面〔与步 3 的「当前 + X」定型不同输入,design SF-6〕;
+    """目标板 T(统一部署搜索定型:名 → (排, 星),就位粒度
+    名+排+星——部署定型消费接口契约;席位语境 =「当前 −
+    前缀」定型板面〔与步 3 的「当前 + X」定型不同输入〕;
     纯金语境 = None)。"""
     context: str = 'seat'
     cursor: int = 0
@@ -142,7 +142,7 @@ class YieldPlan:
     """[索引定义] 驱板步骤的最近观察进展度量(已就位名字数——名+排
     +星全对者;取值时机 = 计划执行期观察帧对账后现读;-1 = 尚未观察)。
     卡死检测数据源:连续 2 次重观察后本值不增(含无动作帧,DF-7/S7-9)
-    = 驱板卡死 → 失败出口③(unified-deploy-order §3.5 完整版,替换
+    = 驱板卡死 → 失败出口③(驱板卡死完整版契约,替换
     阶段 3 简化版)。"""
     stall_frames: int = 0
     """连续无进展重观察次数(驱板步骤卡死计数;进展恢复即清零;
@@ -183,7 +183,7 @@ class StrategyState:
     #  无写端恒空,框架阵营消费面已换过渡层条目。)
 
     # ===== 定型面(定型信号推导;局)=====
-    # CommitSignals(定型信号累积器,评估数据表——§1.6 机器本体停用的
+    # CommitSignals(定型信号累积器,评估数据表——意向层机器停用后的
     # 边界外保留项;投资选卡帧惰性建并喂入,纯遥测决策面零消费)。
     commit_signals: object = None
 
@@ -288,7 +288,7 @@ class StrategyState:
     # (M1″ pending 载体 cw4_m1p_arm_pending/cw4_m1p_plan_pending 与 seam
     #  门旗 cw4_m1p_seam_verified 已随部署统一批丁丁纳入统一管理时删除——
     #  emit_swap_redeploy 发射缝随 kernel swap 机器退役,载体失去判读
-    #  对象;unified-deploy-order §2.7/§4。)
+    #  对象;kernel swap 机器已随统一部署搜索退役。)
     # 素材滞留首见轮账(名 → 首见帧轮次)。
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
@@ -331,19 +331,18 @@ class StrategyState:
     # = operations/cw_screen/cw_screen_megastar.py(复位/读/置位三点)。
     megastar_clicked: bool = False
 
-    # ===== 节点作用域与方向状态键(session 作用域键基建批
-    #       2026-10-12-prep-shop-workflow-redesign §3.1;读写单一源 =
+    # ===== 节点作用域与方向状态键(session 作用域键基建;读写单一源 =
     #       session_scope 模块函数族,节点作用域键的重置清单唯一所有者
     #       = session_scope._NODE_SCOPE_RESET_TABLE——新键登记进表,
     #       禁各自散写重置逻辑)=====
-    # [索引定义] shop_handled = 「本节点已处理」商店会话标记
-    # (shop_session §4.1):值 = 最后正常收工处理的节点号二元组
+    # [索引定义] shop_handled = 「本节点已处理」商店会话标记:
+    # 值 = 最后正常收工处理的节点号二元组
     # (位面,轮)(均 1 基);取值时机 = 正常收工帧现读生效节点序位
     # (写入端单一源 = session_scope.mark_shop_handled);None = 本节点
     # 未处理(局首天然缺省 = 未处理)。跨节点失效 = 节点边界重置清值
     # + 值比对双保险(session_scope.shop_handled_for_current_node)。
     shop_handled: tuple[int, int] | None = None
-    # 未消费机会清单(shop_session §4.2):判据通过但被资源拦下的牌
+    # 未消费机会清单:判据通过但被资源拦下的牌
     # 记录(ShopOpportunity 元组序,记录序 = 追加序);正常收工写、
     # 节点边界重置清空;读写单一源 = session_scope 存储函数族。
     shop_opportunities: tuple[ShopOpportunity, ...] = ()
@@ -352,15 +351,14 @@ class StrategyState:
     # = 边界函数执行时现读覆盖(写入端单一源 = session_scope.
     # handle_node_boundary);None = 本局尚未执行过边界处理。
     node_boundary_last_pos: tuple[int, int] | None = None
-    # 「第二位面已启动」窗口谓词标志(line_and_upgrade §1.4 时点兜底
+    # 「第二位面已启动」窗口谓词标志(时点兜底
     # 载体):node_hist_pos 序位首入 (2,*) 段时置位,单调置位永不复位
     #(不进节点边界重置清单——历史事实非节点作用域态);消费端 = 3.7
     # 时点兜底,读布尔标志(session_scope.plane2_started_of)非位面
     # 元组字面量比较(宪法第 2 条合规的窗口谓词形态)。
     plane2_started: bool = False
 
-    # ===== 获取让位跨画面计划变量(roster-plane1-union design §2.2
-    #       第 4 项;节点作用域——重置表登记 + 节点戳双保险;写端单一源
+    # ===== 获取让位跨画面计划变量(统一获取让位评估契约;节点作用域——重置表登记 + 节点戳双保险;写端单一源
     #       = shop.py 统一获取让位评估,执行端单一源 = entry.py 前置步
     #       计划游标)=====
     # [索引定义] yield_plan = 待执行计划槽:None = 无计划(扫描正常推进);
@@ -376,7 +374,7 @@ class StrategyState:
     # 单一源 = entry 前置步失败出口。
     x_path_failed: bool = False
 
-    # ===== 方向状态键(契约 B;line_and_upgrade §3 载体落位;
+    # ===== 方向状态键(方向状态契约;载体落位;
     #       键面归一:锁定线槽 = target_comp〔意向面段,终态单写者 =
     #       session_scope.write_line_lock〕+ 候选快照 + 过渡候选槽;
     #       line_locked_comp 过渡键与配方物化键 opening_recipe_comp
@@ -397,7 +395,7 @@ class StrategyState:
     # 清空。非节点作用域键(候选随持有/词缀事件重排,节点边界不重置);
     # 开局零持有合法空(冷启动兜底归商店臂,见即买并集键域)。
     transition_candidates: tuple[str, ...] = ()
-    # 方向证据签名(上次评估签名;line_and_upgrade §3 步骤 2 幂等
+    # 方向证据签名(上次评估签名;幂等
     # 跳过的判据):签名同值跳过重算;节点边界重置置 None 失效(强制
     # 下帧重算)。写入端单一源 = session_scope.refresh_line_if_needed。
     line_eval_signature: tuple | None = None
@@ -425,7 +423,7 @@ class StrategyState:
     # ===== 商店会话读数协议与会话循环键(读写单一源 =
     #       criteria/shop_session 协议函数族与会话循环动作发出点——新键在
     #       session_scope._NODE_SCOPE_RESET_TABLE 显式登记的以表为准)=====
-    # [索引定义] gold_ledger = 金位读数账面(shop_session §4.2 读数协议):
+    # [索引定义] gold_ledger = 金位读数账面(读数协议):
     # 真金最优估计;None = 失效待再锚定(节点边界重置/事件级失效触发置
     # None;会话入口实读再锚定覆写)。取值时机 = 会话入口锚定帧 + 记账
     # 钩子增量维护。备战域金位唯一供给(第 4 步攒批/第 8 步节末凑息/第 5 步
@@ -436,19 +434,19 @@ class StrategyState:
     # 入口 +1,单一锚定信号);-1 = 本局尚未锚定。非节点作用域键(节点
     # 边界不清——账面本身已清,判重键保留避免边界帧重复锚定日志)。
     gold_ledger_visit_serial: int = -1
-    # 序 2 场况插件的会话累计额度(shop_session §2.2 序 2:会话开始帧
+    # 序 2 场况插件的会话累计额度(序 2 口径:会话开始帧
     # 快照 deploy_cap − deployed,买入递减,会话内不读现场——店内
     # deployed 恒定,现读每帧同值永不递减)。每 visit 入口重取快照
     # (店内 deployed 不变 ⇒ 与会话开始帧等值)。
     shop_plugin_budget: int = 0
     # 返利族 5 费购买计数(伴生入金:每购买 3 个 5 费角色 +3;局级单调)。
     shop_five_cost_buys: int = 0
-    # 读数会话意图标记(shop_session §1 路径③):备战侧读数开店动作发出点
+    # 读数会话意图标记(读数开店路径③):备战侧读数开店动作发出点
     # 置 True;收工消费——True ∧ 本会话零处理动作 ⇒ 不置标记(非处理性
     # 会话,同节点后续真实会话不受污染)。任意关店出口清位。
     shop_read_intent: bool = False
-    # 本 visit 受限访问标记(P70 动作发出帧仲裁授权的溢出段消费;契约 A 豁免
-    # 条款):visit 入口按 launch_restricted_session_active 现算快照——
+    # 本 visit 受限访问标记(P70 动作发出帧仲裁授权的溢出段消费;受限
+    # visit 豁免条款):visit 入口按 launch_restricted_session_active 现算快照——
     # 受限 visit 的关店不置标记、不受会话标记覆盖。
     shop_visit_restricted: bool = False
     # 会话内处理动作旗标(收工写标记的判定输入):本会话内任一处理
@@ -458,10 +456,8 @@ class StrategyState:
     # 持有 3★ 名集快照(合成族失效的帧差检测基线;criteria/shop_session
     # .detect_merge_result_frame 单一写端)。
     held_3star_snapshot: dict = field(default_factory=dict)
-    # [索引定义] refresh_blocked = 刷新负结果记忆标记(W11,迭代
-    # 2026-10-28-hp-purge-refresh-reform;设计 = details/shop-buy-reform.md
-    # §3;mandate_state 新增字段行 = 3.3 行级分工,与 3.1 已清的计数器/
-    # 孤儿字段行区不重叠):值 = 比对键四元组 (生效节点序位, 金, 席位
+    # [索引定义] refresh_blocked = 刷新负结果记忆标记(W11,刷新改造
+    # 迭代;与既有计数器/孤儿字段行区不重叠):值 = 比对键四元组 (生效节点序位, 金, 席位
     # 快照, 星级目标键),键构造与读取单一源 = shop._refresh_block_key;
     # None = 无标记。取值时机 = 置位帧/消费帧各现读一次(置位 = 刷新提案
     # 被拒〔目标可买 False ∨ 金线不足〕帧,写端 = shop.py 刷新提案段三
@@ -471,11 +467,11 @@ class StrategyState:
     # 变化(金变/席位变/星级目标完成)同经键比对清标记。
     refresh_blocked: tuple | None = None
 
-    # ===== 部署定型次名分量遥测槽(changes/2026-11-02-pick-margin-
-    #       telemetry design §2.1 私有槽通道;帧定界 = 入口清+读后清
-    #       双保险)=====
+    # ===== 部署定型次名分量遥测槽(挑边差距遥测的私有槽通道;遥测
+    #       正本 = strategy-docs/strategy-telemetry.md;帧定界 = 入口清
+    #       +读后清双保险)=====
     # [索引定义] deploy_margin = 部署定型(备战第 6 步 select_deployment
-    # 真实出口)的次名分量键值:键形 = design §2.2-3 {runner_up: 挑战者
+    # 真实出口)的次名分量键值:键形 = {runner_up: 挑战者
     # 板签名(排序名列表)|null, first_diff_layer: 首异层号(0-3)|null,
     # layer_gap: 层差|null},diff 空收敛帧 = {"diff_empty": True} 形态。
     # 坐标系/取值时机 = 决策帧出口时点快照(非持久状态,单帧定界);

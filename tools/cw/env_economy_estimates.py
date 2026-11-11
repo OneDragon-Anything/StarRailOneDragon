@@ -1,4 +1,4 @@
-"""投资环境经济估算参数·数据批(2026-09-12 invest-env 迭代 3.3;design.md §2.2.4)。
+"""投资环境经济估算参数·数据批(投资环境估值设计的数据批产物)。
 
 从对局档案遥测(telemetry/matches 按局档案)统计 B/C 类估值参数,产出可直接
 落入策略层 ``strategies/impl/mandate_v1/env_economy.py`` 的
@@ -8,8 +8,7 @@
 重采入口:版本更新/策略行为漂移后重跑 → 对照旧值 → 手工更新注册表
 (注册表是手维护常量,本脚本不回写源码,防自动改行为面)。
 
-统计口径(与注册表 landed 值同批,细则 = changes/2026-09-12-invest-env/
-details/data-batch-estimates.md):
+统计口径(与注册表 landed 值同批):
 - 样本:真实局档案(文件名不含 fake;``endgame.result ∈ {win, loss}`` 的
   完成局参与比例/分布统计——弃局(collapse/停机)截断了局 horizon,计入会
   系统性低估整局行为量;败局是完整 horizon(死亡即终点)不剔除。

@@ -87,8 +87,8 @@ class Comp:
     - 档 0 = 核心羁绊层:同档多键 = 需要多个核心羁绊,等权、全部凑齐才成型;
     - 档 ≥1 = 加分层:进部署次层与采购面,不进成型判定;
     - 档 0 可缺席(非羁绊成型阵容,如反甲白厄——空 dict)。
-    档内键书写顺序零语义(结构契约:changes/2026-11-04-comp-structure-
-    unification details/faction-priority.md §2;唯一过渡期例外 =
+    档内键书写顺序零语义(结构契约:阵容注册表结构统一裁定的羁绊
+    优先级契约;唯一过渡期例外 =
     cw_intention 面板主羁绊名首键读法,随配方机器退役)。"""
 
     @property
@@ -140,7 +140,7 @@ class Comp:
     #  字段退役〔2026-11-06:「点名件在场」判据改由定义件体系承载——终局单定义件
     #  (carry_anchor)/过渡 core 全员,统一表达式消费位 = form_progress
     #  折条 + 部署 L1 named 层 + 圈人定义件层,「评分外硬约束补丁」教训先例
-    #  见该迭代 design §2.5——先例 = required-deployed-retirement〕。)
+    #  该字段退役迭代的教训裁定;先例 = required-deployed-retirement〕。)
 
     # ===== 知识卡字段(选线/升级的共用知识地基;设计口径 =
     # strategy-docs/12_line_and_intention.md §1)。玩法知识(终局阵容的客观
@@ -378,7 +378,7 @@ RUST_AFFIX_NAME: str = '库藏生锈'
 
 # (旧 ENV_COMP_AFFINITY/AUGMENT_COMP_AFFINITY 两亲和表与 augment_affinity/
 #  augment_env_affinity 查询口已随统一阵容评分迭代退役删除〔2026-11-03,
-#  design §7 退役清单〕——投资↔阵容关联的运行时单一源 = 效果原文通道派生
+#  统一阵容评分迭代的退役清单〕——投资↔阵容关联的运行时单一源 = 效果原文通道派生
 #  kernel/cw_invest_channels(env_line_bonus/strategy_line_bonus,实证覆盖升档
 #  +定义卡+引擎匹配手编表);查询归一防线随迁(入口先 normalize_invest_name)。
 #  沿革与 plaza 频次校准数据考古走 git 历史。)
@@ -411,7 +411,7 @@ V2_FAMILIES: tuple[str, ...] = (
 
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====
-    # —— 姬子列车 A/B 拆分(统一阵容评分迭代批 3,design §5):拆分证据 =
+    # —— 姬子列车 A/B 拆分(统一阵容评分迭代批 3 的拆分裁定):拆分证据 =
     # 装备/副档分岔(外骨骼+以牙还牙甲族+护盾2 vs 风暴潮+电锯+冷笑话+减益2);
     # A/B 同 core 不同引擎结算方向(final_jizi §5 装备原理「同一引擎本体的
     # 两种伤害结算方向(助战技直伤 vs 受击反伤),切换件不改引擎」)——

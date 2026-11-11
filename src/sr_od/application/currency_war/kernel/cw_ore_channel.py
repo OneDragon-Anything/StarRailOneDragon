@@ -1,10 +1,9 @@
 """晶矿奖励附着通道:spheres 观察写端单一挂接入口 + 声明入队/过期电平检查。
 
-迭代 2026-10-10-ore-reward-attach(kernel 面,详设 =
-docs/develop/sr_od/application/currency_war/changes/2026-10-10-ore-reward-attach/
-details/ore-reward-channel.md §4-§5)。
+晶矿奖励附着通道(kernel 面)经专项迭代对抗评审定稿,设计裁定语义
+已并入本 docstring 与各函数 docstring。
 
-为什么单一入口(详设问题与约束末条):spheres 的写端有两处(live = 备战
+为什么单一入口(通道设计的核心约束):spheres 的写端有两处(live = 备战
 观察写端,sim = 节点面板呈现),附着奖励的身份键与 spheres 坐标耦合——
 容差配对轨迹继承只在写端逐帧交叉核对「写前旧坐标 × 写后新坐标」时可判,散落
 两处即键漂移(声明金被「消失清洗 + 新现重掷」链路静默蒸发)。两端
@@ -25,7 +24,7 @@ details/ore-reward-channel.md §4-§5)。
   逻辑态(``write_logic``;kernel 确定效果直写先例)。
 
 声明入队/过期 = **电平触发单一规则**(无边沿检测、无帧间记忆、无 op 成员;
-边沿形态已否定,取舍见详设「关键取舍」节):入队条件在每判定点现查
+边沿形态已评审否决):入队条件在每判定点现查
 pending+done 双守卫(守卫状态住 GameState,op 每备战环重建无可失忆);
 恢复局两形态(离线回放 done 随快照存续 / live 中断恢复对局 active_env 恒空)
 各自闭合。**次序硬约束 = 入队检查完成先于同帧 spheres 写**(接错次序则
@@ -59,7 +58,7 @@ def _ore_key(xy: tuple[int, int]) -> str:
 
 def _pair_tolerance(old_coords: list[tuple[int, int]],
                     new_coords: list[tuple[int, int]]) -> dict[int, int]:
-    """容差配对(身份连续性判定,详设 §4 步序 3):旧列 × 新列贪心最近
+    """容差配对(身份连续性判定):旧列 × 新列贪心最近
     一一配对 → ``{旧下标: 新下标}``。
 
     - 配对门 = 双轴独立 ≤ 持存容差(单一源 = ``cw_identity_obs.
@@ -73,7 +72,7 @@ def _pair_tolerance(old_coords: list[tuple[int, int]],
     - 误配几何可达域(同帧两矿圆心最小间距 = Hough ``minDist=35``,跨帧
       各抖 ±12px 时异矿最窄 11px ≤ tol,交叉配对几何可达):贪心最近在
       真对距离(抖差,常态 ≪ 11px)< 交叉对距离时选真对,常态救回;
-      误配接受并披露(详设 §4 步序 3 边界披露)。
+      误配接受并披露(边界披露)。
     """
     # 函数体内 lazy import 公开名(kernel→obs 单向分层的本迭代立例形态)
     from sr_od.application.currency_war.obs.cw_identity_obs import (
@@ -102,7 +101,7 @@ def report_spheres_observed(gs: GameState, sight: OreSight, *,
                             obs_sig: ChannelSig,
                             hook_sig: ChannelSig,
                             evidence: str) -> None:
-    """spheres 观察写端单一挂接入口(live/sim 共用;详设 §4 步序)。
+    """spheres 观察写端单一挂接入口(live/sim 共用;步序见下)。
 
     步序(单一入口,两端写 spheres 一律经此):
 
@@ -126,7 +125,7 @@ def report_spheres_observed(gs: GameState, sight: OreSight, *,
     - ``obs_sig`` = spheres 观察写的渠道①签名;``hook_sig`` = 挂接写
       (ore_rewards/声明域)用的 sig(泛指:live = logic_hook 族
       group_id 'prep:ore-channel',sim = logic_action 族 logic_sig
-      ('sim:ores'),族差异归两端接入调用,详设 §5 sig 形态);
+      ('sim:ores'),族差异归两端接入调用,sig 形态见模块头通道分工);
     - ``evidence`` = spheres 观察写证据串(空串按无证据透传);
     - 点击未真开的回补形态(点击已摘除、下帧矿重现):无旧坐标可配对 →
       按未配对新现重掷 = 新猜测,无偏;误记金域随机态由观察收尾纠偏。
@@ -239,9 +238,9 @@ def report_giftbox_sight_observed(gs: GameState, readings: tuple[int, ...], *,
 
 
 def check_ore_declared_level(gs: GameState, *, hook_sig: ChannelSig) -> None:
-    """声明入队/过期电平检查(详设 §5;live 判定点 = 每个 heavy 帧
-    ``observe_full`` 回执后、spheres 写之前;sim = 节点窗起点,接入调用归
-    3.3/3.4)。
+    """声明入队/过期电平检查(live 判定点 = 每个 heavy 帧
+    ``observe_full`` 回执后、spheres 写之前;sim = 节点窗起点,接入
+    调用归两端调用点)。
 
     **电平触发单一规则**(无边沿检测、无帧间记忆、无 op 成员):
 
@@ -256,7 +255,7 @@ def check_ore_declared_level(gs: GameState, *, hook_sig: ChannelSig) -> None:
       (write_logic,evidence 留痕 ``ore_declared_expired#p{old}``,逐旧
       位面一行)。边界披露:依赖 plane 读数单调(node 域漏斗直写无倒退
       免疫),plane 误读抖动 = 位面内至多重发一条声明,观察收尾自愈,
-      接受并披露(详设 §5);若实机为自动开启(矿永不出现),pending
+      接受并披露;若实机为自动开启(矿永不出现),pending
       条目留至位面过渡被清理即终态——零污染。
     """
     node = gs.node.value

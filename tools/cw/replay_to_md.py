@@ -27,15 +27,12 @@
 显影(画面 op 观察到什么本章显什么,首写定帧值;注册键回读与观察
 回读异值 → 章尾注记)→ 动作节×N → 策略评价」;策略遥测装配(有文件时):动作节标题下
 「策略依据」块(动作级回执 dtag join)/章内「#### 策略依据」小节
-(章级挂载)/章尾未落地与失配注记/局头策略遥测行,设计 =
-``docs/develop/sr_od/application/currency_war/changes/2026-10-24-strategy-telemetry/``
-details/render-assembly.md)→ 未归节(有则)
+(章级挂载)/章尾未落地与失配注记/局头策略遥测行)
+→ 未归节(有则)
 → 未归行(防静默丢行)
 → 复盘者附加(固定空节,复盘者协议产物落点)。策略侧会话态(v3 意向/
-cw4_counters 等)不渲染;无收尾章、无局况速览。设计 =
-``docs/develop/sr_od/application/currency_war/changes/2026-10-16-journal-review-renderer/``
-(details/pipeline.md 渲染管线、details/render-spec.md 显示规范);
-切章证据收窄与画面广播注册键 = 渲染器自身实现为准(以代码为准)。
+cw4_counters 等)不渲染;无收尾章、无局况速览。渲染管线与显示规范
+以渲染器自身实现为准(以代码为准)。
 
 ## 用法(主仓根目录,PYTHONPATH=src)
 

@@ -1,14 +1,14 @@
 """货币战争策略器 session 作用域键基建(节点边界重置 + 方向状态骨架 +
 商店会话标记与机会清单存储)。
 
-职责与设计依据(迭代 changes/2026-10-12-prep-shop-workflow-redesign):
+职责与设计依据(备战-商店工作流改造裁定):
 
 - **节点边界处理** = 节点作用域键重置清单的唯一所有者
-  (prep_pipeline §3;design 契约 C):备战/商店两决策入口各调同一
+  (节点边界重置契约):备战/商店两决策入口各调同一
   函数 :func:`handle_node_boundary`,检测到节点号(位面,轮)变化时
   按 :data:`_NODE_SCOPE_RESET_TABLE` 复位——其他模块的节点作用域键
   显式登记进该表,禁各自散写重置逻辑;
-- **方向状态**(design 契约 B;line_and_upgrade §3;键面归一
+- **方向状态**(方向状态契约;键面归一
   后的终态形态):
   :func:`refresh_line_if_needed`(签名前置段,幂等跳过 + 候选-锁定
   判据内核 = :mod:`line_select`)+
@@ -16,17 +16,17 @@
   ``target_comp`` 终态单写者)+
   :func:`line_members_view`(名单读接口)+
   :func:`direction_comp_of`(现行方向读口:锁定线优先,未锁 = 过渡
-  配方开局面——§1.6 消费面分派的组合读形态);
-- **商店会话标记与机会清单存储**(design 契约 A;shop_session §4):
+  配方开局面——消费面分派的组合读形态);
+- **商店会话标记与机会清单存储**(商店会话契约):
   ``shop_handled`` 标记与未消费机会清单的写入/清空/查询——解拦复核
-  判定函数归迭代建造,本模块只建存储。
+  判定函数归商店会话域实现,本模块只建存储。
 
 现行键面:``target_comp`` 双写者冲突
 已消——写者收为锁定动作(:func:`write_line_lock` 终态单写者);旧配方
 物化链键 ``opening_recipe_comp`` 已随配方决策层退役(方向读口
 direction_comp_of 四层优先现读);``line_locked_comp`` 过渡键已删除。
 kernel 消费面经 ``ist.locked_comp``/``ist.phase``
-派生缓存续读(重建写端 = 本模块刷新/锁定动作同步,§1.6「line_
+派生缓存续读(重建写端 = 本模块刷新/锁定动作同步,「line_
 members_view 刷新时重写 locked_comp」的实现形态)。
 """
 from __future__ import annotations
@@ -57,39 +57,39 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp, Unit
 
 
-# ============================================================ 节点边界处理(契约 C)
+# ============================================================ 节点边界处理
 
 
-# 节点边界重置清单表(键清单唯一所有者 = 本模块;prep_pipeline §3;
-# design 契约 C)。每行 = (StrategyState 属性名,复位值)。
+# 节点边界重置清单表(键清单唯一所有者 = 本模块;
+# 节点边界重置契约)。每行 = (StrategyState 属性名,复位值)。
 # 登记扩展方式:其他模块的节点作用域键在此显式登记(键名 + 初始值),
 # 禁各自散写重置逻辑——重置动作集中执行才可被逐键测试对账。
 #
-# 清单(prep_pipeline §3;前若干项 = 重置动作,尾项 = 负登记):
+# 清单(前若干项 = 重置动作,尾项 = 负登记):
 # ① shop_handled → 清值(新节点牌面全换,旧标记语义死亡;机制依据 =
 #    economy §2.1「节点切换自动刷新全店」);
 # ② shop_opportunities → 清空(牌面变了,旧机会作废);
 # ③ line_eval_signature → 置失效(强制下帧重算——节点变动伴随结算
 #    收入与自然经验,资产面可能变化);
 # ④ 金位读数账面 gold_ledger → 置失效(读数失效条件「节点切换」经本
-#    清单落地,契约 C;「经验就是财富」类节点结算入金由本项天然吸收
-#    ——失效先行;登记来源 = shop_session §4.2 读数协议);
+#    清单落地;「经验就是财富」类节点结算入金由本项天然吸收
+#    ——失效先行;登记来源 = 金位读数协议);
 # ⑤ 商店会话会话域旗标(shop_read_intent/shop_visit_restricted/
 #    shop_session_processing/shop_plugin_budget)→ 复位(会话不跨节点;
 #    边界帧残留旗标防泄入下一节点会话,卫生性复位);
 # ⑥ 方向状态本身(target_comp / line_candidates /
 #    transition_candidates)不重置——锁定为一次性决策跨节点持续保留
-#    (契约 C;候选快照随签名重算自然更新、过渡候选槽随方向节拍贵段
+#    (候选快照随签名重算自然更新、过渡候选槽随方向节拍贵段
 #    重算自写〔update_transition_candidates,写端单一〕,均非节点
 #    作用域键,清空点 = 终局锁定写入〔write_line_lock 过渡层退役
 #    清空〕)。plane2_started 同不重置(单调历史事实);
 #    p2_pick_baseline/p2_strategy_pick_done 同不重置(时点兜底触发
 #    分支为单调事实,且锁定后无消费面);
 # ⑦ 获取让位跨画面计划槽 yield_plan → 清空 + X 路径失败标记
-#    x_path_failed → 复位(roster-plane1-union design §2.2 第 4 项:
+#    x_path_failed → 复位(统一获取让位评估契约:
 #    节点切换 = 新货架新局面,旧计划/失败标记语义死亡;槽另带节点戳
 #    双保险,见 mandate_state 字段注)。
-# (升级预授权重置行已随 2026-10-17 迭代 T-4 键退役删除——
+# (升级预授权重置行已随升级预授权键退役删除——
 #  判据同帧重评后无跨帧授权可清。)
 _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
     ('shop_handled', None),
@@ -106,12 +106,12 @@ _NODE_SCOPE_RESET_TABLE: tuple[tuple[str, object], ...] = (
 
 
 def handle_node_boundary(gs: GameState) -> None:
-    """节点边界处理函数(备战/商店两决策入口各调同一函数;契约 C)。
+    """节点边界处理函数(备战/商店两决策入口各调同一函数)。
 
     - 触发检测 = 函数内部上次处理节点号比对(判重键
       ``node_boundary_last_pos`` 存储):生效序位 ``effective_node_pos``
       变化才执行,相同节点号不重复执行(重置操作全部幂等,重复执行
-      无害——判重为避免冗余执行与日志噪声,prep_pipeline §3);
+      无害——判重为避免冗余执行与日志噪声);
     - 首次调用(上次记录 None)同样执行:状态对象局首每局全新创建天然初值,
       重置冗余但无害,统一「变化即执行」语义免特判;
     - 节点号未观察(None)不执行:未观察不当真。
@@ -128,11 +128,11 @@ def handle_node_boundary(gs: GameState) -> None:
     st.node_boundary_last_pos = cur
     for attr, reset_value in _NODE_SCOPE_RESET_TABLE:
         setattr(st, attr, reset_value)
-    # 商店随机态重开信号节点边界清扫(2026-10-17 迭代 design §2.4:信号
+    # 商店随机态重开信号节点边界清扫(商店随机态重开裁定:信号
     # 宿主 = GameState 簿记槽 shop_randomized_pending,不在 StrategyState
     # 重置表——节点推进 = 旧节点商店牌面语义死亡,过期代次随之失效,与
-    # 重置表 shop_handled 清值同机制依据)。代次判据(迭代
-    # 2026-09-23-invest-effects-calc T-434):只清真旧源 = 戳 ≠ 当前生效
+    # 重置表 shop_handled 清值同机制依据)。代次判据(投资效果计算
+    # 迁移迭代的账本校准):只清真旧源 = 戳 ≠ 当前生效
     # 序位(cur,与 :func:`effective_node_pos` 判定基准同源);戳 = cur =
     # 节点推进时点置位的新源(经 T-432 advance 尾排空置位,恰在进入新
     # 节点的同一次 advance 内盖新节点戳),保留交本帧重开位消费——无差别
@@ -181,7 +181,7 @@ class LineMembersView:
     """方向状态读接口的返回视图(契约 B;line_and_upgrade §3)。
 
     消费方(备战部署/凑息/自救与商店买入序/置换账)消费同一视图,
-    禁各自维护第二份名单与口径(design 契约 B)。
+    禁各自维护第二份名单与口径(方向状态契约)。
     """
 
     locked: bool               # 锁定旗标(锁定线槽非空)
@@ -207,7 +207,7 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
     分量)+ 等级 + 节点号 + 锁定态。为什么等级入签名:店内整级购买经验
     后等级变 → 概率表变 → 候选分数与刷新判据期望全变,消费旧等级概率 =
     评估陈旧(设计原文)。env 入签名(review-37 R1)与词缀/boss 入签名
-    (2026-11-03-unified-line-scoring design §6,沿 env 先例):两者现进
+    (统一阵容评分裁定,沿 env 先例):两者现进
     线分(投资通道派生/词缀分),变化而签名其余分量不变时幂等跳过会漏
     重算——词缀/boss 简报观察晚于开局首帧(中断恢复位面详情转正帧),
     缺签名分量 = 候选消费静默旧值。锁定态入签名:锁定写入为一次性事件,
@@ -233,7 +233,7 @@ def _direction_signature(gs: GameState, st: StrategyState) -> tuple:
 def _sync_derived_lock_cache(st: StrategyState) -> None:
     """kernel 派生缓存同步(``ist.locked_comp``/``ist.phase`` ← 锁定线槽)。
 
-    §1.6 意向层机器本体停用后,``ist.locked_comp`` 不再有状态机写者,
+    意向层机器本体停用后,``ist.locked_comp`` 不再有状态机写者,
     改为锁定线槽(``target_comp``)的派生缓存——「重建写端 =
     line_members_view 刷新时重写 locked_comp(派生缓存单一写端)」的
     实现形态:kernel 消费面(cw_economy/cw_deploy_logic/shop/flow 装配
@@ -356,7 +356,7 @@ def write_line_lock(gs: GameState, comp_name: str) -> None:
          自明,无需另查锁定旗标)——停算结构承载于
          :func:`_recompute_line_state` 的锁定守卫;
       ③ kernel 派生缓存同步(见下行)。
-      (旧升级预授权连带清键已随 2026-10-17 迭代 T-4 键退役删除——
+      (旧升级预授权连带清键已随升级预授权键退役删除——
       判据同帧重评,无跨帧授权可清。)
       **过渡层退役清空(换轴,用户裁定 2026-11-04)**:终局锁定写入点
       = 过渡层退役清空出口——候选槽(``transition_candidates`` 清空)
@@ -404,7 +404,7 @@ def line_members_view(gs: GameState) -> LineMembersView:
 
 
 def direction_comp_of(gs: GameState) -> Comp | None:
-    """现行方向阵容读口(§1.6 消费面分派的组合读形态;四层优先现读,
+    """现行方向阵容读口(消费面分派的组合读形态;四层优先现读,
     无状态物化——物化链键 opening_recipe_comp 已随配方决策层退役)。
 
     四层优先序(comp-structure-unification 第四侧):

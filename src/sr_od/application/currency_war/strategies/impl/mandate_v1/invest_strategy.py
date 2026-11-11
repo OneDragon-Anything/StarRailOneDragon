@@ -12,7 +12,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 
 - 现金分 = strategy_economy.strategy_economy_value(resolved ∧ > 0 才计,
   fail-closed 恒 0);
-- 方向分(2026-11-03-unified-line-scoring 选卡侧统一,design §3.2)=
+- 方向分(统一阵容评分迭代的选卡侧裁定,12 号稿 §1.1 投资通道派生)=
   卡 × **候选 top1 线**的线分引擎加分(:func:`strategy_line_bonus`
   通道派生;基准 = :func:`line_select.anchor_line_of`,P1/P2 同式,
   锁定帧 = 锁定线)——量纲申报:方向分/克制减分携线分数量级
@@ -24,7 +24,7 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 - 转向轴 = strategy_priority 命中 + :data:`pick_common.
   STEERING_PRIORITY_BONUS`(软偏好,立场系数);strategy_forbid = 排除出
   候选(不走分值,29 号稿 §2.4);
-- 克制减分(counters_dot 硬排除迁移,design §3.2/§7)= 克制 top1 线
+- 克制减分(counters_dot 硬排除迁移,统一阵容评分裁定)= 克制 top1 线
   主派的卡 −:data:`cw_line_scales.COUNTER_PICK_PENALTY`(纯加权,
   「自拆台」排除分区与「定义型分区」随布尔排除位退役)。
 
@@ -32,8 +32,9 @@ env_economy.XP_GOLD_RATE 承载),非多标尺层次压制形态
 排除 → 血本位三态 → 组件总分 argmax;归因标签按管线序拼接,护栏未生效帧
 tag/输出与无护栏逐位一致。
 
-阵容冲突护栏(changes/2026-10-17-invest-direction-guard,下称「护栏设计」
-§2.2/§2.3):基准 = 锁线 Comp.factions(锁定帧,历史误持不入基)∨ 已持有
+阵容冲突护栏(阵容指向护栏裁定,下称「护栏设计」;正本 =
+strategy-docs/29_invest_strategy_screen.md §5):基准 = 锁线 Comp.factions
+(锁定帧,历史误持不入基)∨ 已持有
 投资指向并集(未锁定帧,:func:`_conflict_basis`);基准空帧护栏不辖,
 选卡行为与无护栏逐位一致。排除语义 = 域收缩非负分;刷新侧出域卡沿
 E-豁免同款(不入帧级顶级/不计 max_N/恒入动作集/不算 L1)。
@@ -41,7 +42,7 @@ E-豁免同款(不入帧级顶级/不计 max_N/恒入动作集/不算 L1)。
 刷新判据(29 号稿 §4;P81 承接):帧级门与槽级顶级两谓词分立,
 帧级门 = 候选恰 3 ∧ 全精确分类 ∧ 无帧级顶级卡 ∧(终局阵容锁定帧 max_N≠1);
 槽级动作集 = 非槽级顶级可刷/被禁与出域恒入/唯一 L1 守卫。**顶级类派生
-修订**(design §3.2):定义型查表布尔退役 → 「给 top1 线加分 ≥
+修订**(统一阵容评分裁定):定义型查表布尔退役 → 「给 top1 线加分 ≥
 :data:`DEFINING_BONUS_MIN`(强档阈值,一处常数)」——实证升档
 (+750)/定义卡(+500)过阈,概念股/契约档(+300)不入(现行亲和表
 语义对齐:概念股/契约为环境卡,策略侧本无此档)。
@@ -99,7 +100,7 @@ if TYPE_CHECKING:
         CurrencyWarConfig,
     )
 
-#: 定义卡强档阈值(design §3.2:「顶级不刷」=「给 top1 线加分 ≥ 本值的
+#: 定义卡强档阈值(统一阵容评分裁定:「顶级不刷」=「给 top1 线加分 ≥ 本值的
 #: 卡不刷新换掉」,一处常数):实证升档(+750)/定义卡(+500)过阈;
 #: 概念股/契约档(+300)不入。基准 = :func:`anchor_line_of`(P1/P2 同式,
 #: 锁定帧 = 锁定线;空候选帧基准缺失 → 方向分 0 → 不过阈,保守缺省)。
@@ -117,7 +118,8 @@ class InvestStrategyDecision:
     total = 组件总分(统一标尺,分 = 金等价;方向/克制携线分数量级,
     见模块 docstring 量纲申报);components = 六组件分解
     (现金,方向,赠卡,立场,转向轴,克制减分),与总分同帧快照,仅观测。
-    margin = 次名分量遥测(pick-margin-telemetry design §2.2-2,键形
+    margin = 次名分量遥测(词表动作字段通道,遥测正本 =
+    strategy-docs/strategy-telemetry.md ``pick_margin`` 行,键形
     与边界值表同 invest_env.InvestEnvDecision;取域 = 结构分区竞争域
     [:func:`_pick_domain` 输出],空候选帧不落值 None;仅观测)。
     """
@@ -217,12 +219,12 @@ def _locked_alignment_n(bindings: tuple[frozenset[str], frozenset[str]] | None,
             + sum(1 for ch in bound_chars if ch in lc.core_chars))
 
 
-# ===== 阵容冲突护栏(护栏设计 §2.2/§2.3)=====
+# ===== 阵容冲突护栏(护栏设计)=====
 
 
 def _conflict_basis(gs: GameState, locked_comp: str,
                     demoted_endgame: bool) -> frozenset[str]:
-    """冲突基准(护栏设计 §2.2):锁定帧 = 锁线 Comp.factions——锁定 =
+    """冲突基准(护栏设计):锁定帧 = 锁线 Comp.factions——锁定 =
     终局方向裁定完成,历史误持不入基(误持黑塔纪元后锁定圣杯,基准 =
     锁线 factions,银河学者卡照排);未锁定帧 = 已持有投资的指向并集
     (环境 + 策略,持有 append-only → 基准单调不减,出域判定只收紧)。
@@ -257,7 +259,8 @@ def _components(canonical: str | None, opt: str, gs: GameState,
     未解析名(垃圾名)→ 全 0。
 
     - 现金分走 canonical(resolved ∧ > 0 才计,fail-closed 恒 0);
-    - 方向分 = 卡 × 选卡基准线的通道派生加分(design §3.2 选卡侧统一;
+    - 方向分 = 卡 × 选卡基准线的通道派生加分(统一阵容评分选卡侧裁定,
+      12 号稿 §1.1 投资通道派生;
       ``anchor`` = :func:`anchor_line_of` 产物,None〔基准缺失帧〕→ 恒 0);
     - 赠卡分:STRATEGY_GRANTS + grant_gift_value(无条目自然 0);
     - 立场分:空表恒 0(表外卡默认 0);
@@ -265,7 +268,7 @@ def _components(canonical: str | None, opt: str, gs: GameState,
       STEERING_PRIORITY_BONUS(软偏好);
     - 克制减分:选项名含词缀关键词 ∧ 词缀克制名单(``AFFIX_COUNTERS_FACTIONS``,
       pick_common 单一源)与基准线档 0 羁绊键集 ``core_factions`` 有交集 →
-      COUNTER_PICK_PENALTY(counters_dot 硬排除迁移,design §3.2;基准缺失帧不减)。
+      COUNTER_PICK_PENALTY(counters_dot 硬排除迁移,统一阵容评分裁定;基准缺失帧不减)。
     """
     if canonical is None:
         return (0.0,) * 7
@@ -294,12 +297,12 @@ class _Cand:
     idx = options 列表下标(0 基,取值时机 = 本帧决策期快照);
     exact = 归一后精确命中注册表(get_strategy;LCS 兜底不入刷新分类,
     fail-closed——评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严);
-    defining = 派生顶级位(design §3.2:给基准线加分 ≥
+    defining = 派生顶级位(统一阵容评分裁定:给基准线加分 ≥
     ``DEFINING_BONUS_MIN``——旧 augment_affinity 查表布尔退役;基准缺失帧
     方向分 0 → 恒 False);
     align_n = 终局阵容锁定帧绑定元素命中数(未锁定帧恒 0,N 无语义);
     off_direction = 阵容冲突护栏出域标记(基准非空 ∧ 指向集非空 ∧ 与基准
-    零交,护栏设计 §2.3;基准空帧/通用卡恒 False)。
+    零交,护栏设计;基准空帧/通用卡恒 False)。
     """
     idx: int
     opt: str
@@ -329,11 +332,12 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     告警(观测基准,申报 5 义务实现)——精确 miss 而解析成功 = LCS 互撞
     形态,误中会把错卡的大额现金分赋给形变名,须可见。
 
-    basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):仅对 canonical
+    basis = 冲突基准(护栏设计:锁定线 factions ∨ 持有投资指向并集,
+    调用方入口算好传入):仅对 canonical
     非 None 的候选算指向集并标出域——评分帧保留全量候选(不前置过滤,
     帧级门「候选恰 3」与刷新分类全量可见),排除在 :func:`_pick_domain`。"""
     locked_frame = bool(locked_comp) and not demoted_endgame
-    # 选卡基准线(design §3.2 r4/R4-4:锁定帧 = 锁定线;未锁帧 = 候选首名,
+    # 选卡基准线(统一阵容评分裁定:锁定帧 = 锁定线;未锁帧 = 候选首名,
     # P1/P2 同式)——顶级保护/方向分/克制减分三消费同基准,单帧单读。
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
     # 选卡基准线档 0 羁绊键集(受克判定输入,契约 A;基准缺失帧
@@ -362,7 +366,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
             else None
         align_n = _locked_alignment_n(bindings, locked_comp) \
             if locked_frame else 0
-        # 出域标记(护栏设计 §2.3):基准非空 ∧ 候选有指向 ∧ 与基准零交;
+        # 出域标记(护栏设计):基准非空 ∧ 候选有指向 ∧ 与基准零交;
         # 通用卡(指向集空)与基准空帧恒不标记
         scope = strategy_faction_scope(canonical) \
             if canonical is not None else frozenset()
@@ -407,9 +411,9 @@ def _argmax_tiebreak(cands: list[_Cand]) -> _Cand:
 
 def _pick_domain(cands: list[_Cand]) -> tuple[list[_Cand], str]:
     """结构分区,返回 (竞争域,归因标签串)。落地序 = 阵容冲突护栏 → 禁选
-    → 血本位三态(29 号稿 §3 + 护栏设计 §2.3;统一阵容评分迭代:自拆台
+    → 血本位三态(29 号稿 §3 + 护栏设计;统一阵容评分迭代:自拆台
     排除与定义型分区随布尔排除位退役——克制改选卡减分、定义型支配由
-    方向分 +500 数值实现,design §3.2/§7);标签按管线序拼接、空格
+    方向分 +500 数值实现,统一阵容评分裁定);标签按管线序拼接、空格
     分隔,常规帧空串(护栏未生效帧输出与无护栏逐位一致)。
 
     0. 阵容冲突护栏:出域候选(off_direction,与全部持有指向都冲突)
@@ -458,8 +462,9 @@ def _pick_decision(cands: list[_Cand]) -> InvestStrategyDecision:
     """评分帧 → 选卡决策(结构分区 + 组件总分 argmax,平分裁决键取先;
     空候选帧不进本函数,由入口防御)。
 
-    margin = 竞争域次名分量(纯观测,pick-margin-telemetry design
-    §2.2-2):次名 = 域内除胜者外按**同一平分裁决键** :func:`_tie_key`
+    margin = 竞争域次名分量(纯观测,词表动作字段通道;
+    遥测正本 = strategy-docs/strategy-telemetry.md ``pick_margin`` 行):
+    次名 = 域内除胜者外按**同一平分裁决键** :func:`_tie_key`
     的最高者(禁另立排序);域内不足 2 候选 → 三键 null 形态。收集面
     只加变量不改序——argmax 与域过滤逻辑逐行不动。"""
     domain, tag = _pick_domain(cands)
@@ -489,7 +494,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
     刷新闸全败后的重调)时再调 decide 仍返建议——落选卡走本口,同一评分
     基线保证零选卡漂移(29 号稿 §4X;缺此口则建议帧三闸全败时
-    op round_fail,现实可达路径)。冲突基准在此入口算好(护栏设计 §2.2,
+    op round_fail,现实可达路径)。冲突基准在此入口算好(护栏设计,
     :func:`_conflict_basis`)传入评分帧。"""
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -516,14 +521,14 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
     - options = 屏上候选名列表(状态容器序);locked_comp/demoted_endgame/
       evicted 与现役 kernel 调用的三参同源(flow 意向状态直通);
     - 选卡 = 结构分区 + 组件总分 argmax(见 :func:`decide_pick`;冲突基准
-      在本入口算好,护栏设计 §2.2);
+      在本入口算好,护栏设计);
     - 刷新判据(P81 承接,29 号稿 §4):帧级门 = 候选恰 3 ∧ 全
       精确分类 ∧ 帧内无帧级顶级卡 ∧(终局阵容锁定帧 max_N≠1)——帧级门失败
       (含未锁定帧)→ 整帧不刷,槽级不评;帧级门过 → 槽级动作集 = 非槽级
       顶级可刷/被禁与出域恒入/唯一 L1 守卫,动作集非空 → 建议(输出槽序
       元组;刷新余量三闸留 op 层,结构零改动);
     - **帧级顶级类 = 派生顶级(给基准线加分 ≥ ``DEFINING_BONUS_MIN``,
-      design §3.2)∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
+      统一阵容评分裁定)∨ 持续通道引擎**(E-豁免:被禁/出域卡不入
       判定、不计 max_N);**槽级顶级类 = 帧级顶级类 ∨ 对齐保护**(终局
       阵容锁定帧 = 非血 ∧ N≥2 元素命中;未锁定帧 = 恒 False——基准缺失
       帧方向分 0,保守向不保护)。
@@ -558,7 +563,7 @@ def _refresh_slots(cands: list[_Cand],
     if len(cands) != 3 or not all(c.exact for c in cands):
         return ()
     # 帧级门③:帧内无帧级顶级卡(E-豁免:被禁/出域卡不入判定——被禁卡
-    # 永不被选、出域卡被护栏排除,都不构成达档、不阻断触发;护栏设计 §2.3
+    # 永不被选、出域卡被护栏排除,都不构成达档、不阻断触发;护栏设计:
     # 出域沿被禁同款)
     _top_frame = any((not c.forbidden) and (not c.off_direction)
                      and (c.defining or c.engine)

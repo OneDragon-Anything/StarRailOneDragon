@@ -316,10 +316,10 @@ def p2_supply_horizon(gs: GameState,
 
     H 只含日程维:视界回答「还剩几轮等得到缺件供给」,可行性 G 门
     (``line_completion_feasibility``)在 H 上取幂。hp 不入本视界
-    (hp 是对局结果不是策略决策输入,2026-10-28 用户裁定;迭代
-    changes/2026-10-28-hp-purge-refresh-reform R-3 删血项、机制保留
-    ——行为变化 = 可行性与回退带不再随血低收紧,含 P2 未锁定窗口
-    囤货方向;``k_empty_window_fallback`` 机器与消费链不受影响)。
+    (hp 是对局结果不是策略决策输入,2026-10-28 用户裁定;血量清除
+    改造裁定删血项、机制保留——行为变化 = 可行性与回退带不再随血低
+    收紧,含 P2 未锁定窗口囤货方向;``k_empty_window_fallback`` 机器
+    与消费链不受影响)。
     适用范围 = P2(P1/P3 调用面禁用——消费位自守)。
     """
     return plane_remaining_nodes(gs, session)
@@ -910,7 +910,7 @@ def locked_buy_cap_hold(state: GameState | None) -> int | None:
 # (锁定线配方底线门豁免 locked_line_recipe_floor_conflict 已随部署统一批
 #  丁丁批纳入统一管理删除:配方底线门(recipe_floor_holds/RECIPE_FLOOR_*)随七桶
 #  选人族退役——选人 = 统一部署搜索定型,「列车 core 不被补部署绕回上板」
-#  的底线语义由搜索评分承载,unified-deploy-order §2/§4。)
+#  的底线语义由搜索评分承载。)
 
 
 def locked_faction_scope(ist: IntentionState | None,

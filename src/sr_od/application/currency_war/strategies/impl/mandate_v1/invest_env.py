@@ -25,12 +25,12 @@ env_economy.XP_GOLD_RATE 承载),取代旧 kernel 的多标尺层次压制(裸�
 
 argmax 取最高,平分取先。禁选(env_forbid 命中)与阵容冲突出域 =
 排除出候选(28 号稿 §3);选卡克制(counters_dot 硬排除迁移,
-2026-11-03-unified-line-scoring design §3.2/§7)= 克制基准线主派的
+统一阵容评分裁定)= 克制基准线主派的
 候选减 :data:`cw_line_scales.COUNTER_PICK_PENALTY`(纯加权;环境名
 不含词缀注册名族,该分量现行恒 0——机制与策略屏同源,判据不双源)。
 
-阵容冲突护栏(changes/2026-10-17-invest-direction-guard,下称「护栏设计」
-§2.2/§2.4):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
+阵容冲突护栏(阵容指向护栏裁定;正本 =
+strategy-docs/28_invest_env_screen.md 护栏节):出域槽(候选环境有阵容指向且与冲突基准零交)并入既有
 excluded 槽位表通道(禁选/自拆台同路)——次数闸过先建议刷新,闸尽落选时
 出域已排除,全出域帧走既有 all-excluded 回退(不制造空选);基准空帧
 (无指向持有 ∧ 未锁定)护栏不辖,行为与无护栏逐位一致。基准语义与
@@ -94,7 +94,8 @@ class InvestEnvDecision:
 
     idx = options 列表下标(0 基;候选序 = 调用方传入序,取值时机 =
     本帧决策期快照);reason = 归因串(总分与四组件分解,仅观测)。
-    margin = 次名分量遥测(pick-margin-telemetry design §2.2-1 键形
+    margin = 次名分量遥测(词表动作字段通道,遥测正本 =
+    strategy-docs/strategy-telemetry.md ``pick_margin`` 行,键形
     ``{runner_up, runner_up_total, margin}``,值源 = 决策评分帧 scores
     列表[含转向轴],禁用 option_total;竞争域仅 1 候选 → 三键 null;
     空候选帧不落值 None;仅观测,决策面零消费)。
@@ -289,8 +290,8 @@ REFRESH_THRESHOLD: float = _derive_refresh_threshold()
 
 def _conflict_basis(gs: GameState, locked_comp: str,
                     demoted_endgame: bool) -> frozenset[str]:
-    """冲突基准(护栏设计 §2.2;与策略侧 invest_strategy._conflict_basis
-    同款语义,两屏平行实现——基准语义单一源 = 护栏设计 §2.2,代码双份
+    """冲突基准(护栏设计;与策略侧 invest_strategy._conflict_basis
+    同款语义,两屏平行实现——基准语义单一源 = 护栏裁定,代码双份
     沿两屏文件不互相 import 的包结构):
 
     - 锁定帧(locked_comp 非空 ∧ 非降格)= 锁线 Comp.factions——锁定 =
@@ -326,10 +327,11 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
     判定输入键集循环外单帧单读,沿旧机器纪律):
     返回 (总分含转向轴,转向加分,五组件,排除标记)。
 
-    basis = 冲突基准(护栏设计 §2.2,调用方入口算好传入):出域槽
-    (候选环境有指向且与基准零交,§2.4)并入 excluded 槽位表——与禁选
+    basis = 冲突基准(护栏设计:锁定线 factions ∨ 持有投资指向并集,
+    调用方入口算好传入):出域槽
+    (候选环境有指向且与基准零交)并入 excluded 槽位表——与禁选
     同通道,禁选槽触发建议刷与全排除回退两条既有路径原样复用,
-    零新出口形态。克制减分(counters_dot 硬排除迁移,design §3.2/§7)
+    零新出口形态。克制减分(counters_dot 硬排除迁移,统一阵容评分裁定)
     = 组件分量:环境名不含词缀注册名族,该分量现行恒 0——机制与策略屏
     同源(基准线 = :func:`line_select.anchor_line_of`),判据不双源。"""
     anchor = anchor_line_of(gs, locked_comp, demoted_endgame)
@@ -347,7 +349,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
         _steer = STEERING_PRIORITY_BONUS if any(
             _p in _opt for _p in env_priority) else 0.0
         _counter = float(counter_pick_penalty(_opt, core_factions))
-        # 出域标记(护栏设计 §2.3 规则表):基准非空 ∧ 候选有指向 ∧ 与
+        # 出域标记(护栏设计):基准非空 ∧ 候选有指向 ∧ 与
         # 基准零交;通用环境(指向集空)与基准空帧恒不标记
         _scope = env_faction_scope(_opt)
         _off = bool(basis) and bool(_scope) and not (_scope & basis)
@@ -361,7 +363,7 @@ def _score_frame(options: list[str], gs: GameState, locked_comp: str,
 
 def _runner_up_margin(options: list[str], scores: list[float],
                       best_idx: int, excluded: list[bool]) -> dict:
-    """次名分量收集(纯观测,pick-margin-telemetry design §2.2-1;与
+    """次名分量收集(纯观测,词表动作字段通道;与
     胜者同一竞争域——``excluded`` 传实际排除表 = 竞争域,全排除退化帧
     由调用方传空表 = 全体域,与 argmax 的域选择同一逻辑)。
 
@@ -409,7 +411,7 @@ def decide_pick(options: list[str], gs: GameState, locked_comp: str,
     独立成口的原因:decide 是纯函数,flow 同帧去重 memo 命中(handler
     刷新闸全败后的重调,28 号稿 §4「建议帧首调发建议、紧随重调落选卡」)
     时再调 decide 仍返建议——落选卡走本口,同一评分基线保证零选卡漂移。
-    冲突基准在此入口算好(护栏设计 §2.2,:func:`_conflict_basis`)传入
+    冲突基准在此入口算好(护栏设计,:func:`_conflict_basis`)传入
     评分帧,出域槽排除与 :func:`decide` 同基线。"""
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
@@ -433,7 +435,7 @@ def decide(options: list[str], gs: GameState, locked_comp: str,
       evicted = 意向状态三参同源直通(flow 解析后传入,28 号稿 §2.9
       「意向解析留 flow」);
     - 禁选(env_forbid 命中,子串匹配与白名单一致)与阵容冲突出域槽
-      (护栏设计 §2.4,基准 = :func:`_conflict_basis`)= 排除出候选
+      (护栏设计,基准 = :func:`_conflict_basis`)= 排除出候选
       (excluded 槽位表同通道);克制减分为组件分量(见 :func:`_score_frame`
       docstring,counters_dot 硬排除迁移);
     - 建议刷 = 排除槽存在 ∨ 帧最好总分 < REFRESH_THRESHOLD,且次数闸
