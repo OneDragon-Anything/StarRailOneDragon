@@ -72,6 +72,10 @@ class BuyNamelessHonorPassOp(SrOperation):
             raise ValueError(f'不支持的支付渠道: {pay_channel},可选 {_PAY_CHANNELS}')
         self._open_pay: bool = open_pay
         self._pay_channel: str = pay_channel
+        # 奖励 tab 切换尝试标记(执行期,单次运行内):True=已点过 tab-奖励——
+        # 主面板会记忆上次离开的 tab,进面板先无条件点一次奖励 tab(幂等,已在
+        # 奖励 tab 时点击无变化),点过仍无购买入口才能判定「入口缺失」
+        self._reward_tab_clicked: bool = False
         SrOperation.__init__(self, ctx, op_name=gt('购买无名客的荣勋'),
                              node_max_retry_times=20)
 
@@ -113,7 +117,7 @@ class BuyNamelessHonorPassOp(SrOperation):
     @node_from(from_name='核对到主面板', status='ON_PANEL')
     @operation_node(name='核对购买入口')
     def check_purchase_entry(self) -> OperationRoundResult:
-        """判定未购买态购买入口(按钮+提示条双锚);已购态两锚均消失。"""
+        """确保在奖励 tab 并判定未购买态购买入口(按钮+提示条双锚)。"""
         button_hit = _area_hit(self.ctx, self.last_screenshot,
                                _HONOR_SCREEN, '按钮-解锁无名客的荣勋')
         hint_hit = _area_hit(self.ctx, self.last_screenshot,
@@ -122,9 +126,13 @@ class BuyNamelessHonorPassOp(SrOperation):
             if not self._open_pay:
                 return self.round_success(status='AT_ENTRY', wait=0.5)
             return self.round_success(status='ENTRY_READY', wait=0.5)
-        if not button_hit and not hint_hit:
-            return self.round_fail('未找到购买入口(可能本期已解锁付费轨,或面板异常)')
-        return self.round_retry('购买入口单锚命中(另一锚未识别),重试', wait=1)
+        if self._reward_tab_clicked:
+            return self.round_fail('奖励 tab 下未找到购买入口(可能本期已解锁付费轨,或面板异常)')
+        # 主面板记忆上次离开的 tab,先切奖励 tab 再判购买入口
+        area = self.ctx.screen_loader.get_area(_HONOR_SCREEN, 'tab-奖励')
+        self.ctx.controller.click(area.rect.center)
+        self._reward_tab_clicked = True
+        return self.round_retry('已点奖励 tab,等购买入口出现', wait=1.5)
 
     @node_from(from_name='核对购买入口', status='ENTRY_READY')
     @operation_node(name='打开付款弹窗')
