@@ -1,17 +1,22 @@
-"""跃迁抽卡 op —— 在跃迁页执行跃迁 1 次 / 10 次。
+"""跃迁抽卡 op —— 在跃迁页执行跃迁 1 次 / 10 次，抽完停在结果总览页供用户看出货。
 
 ⚠️ 消耗红线（skills/sr-od-game-consume）：跃迁按钮是消耗控件，点击即扣专票/
 星票；本 op 只应在用户明确授权的抽卡请求下调用（agent 不得自行发起）。
+票不足时的星琼兑换（160/张）是追加消耗决策，``allow_jade_exchange=True``
+同样必须先获用户明确授权。
 
 流程（2026-11-12 实机探索建档）：
-- 跃迁页点「跃迁1次/10次」→ 抽卡动画（数秒）→ 跃迁-结果画面（物品展示，
-  点击画面任意处继续）→ 回跃迁页。10 连为逐件展示，需多次点击直至回到跃迁页。
+- 跃迁页点「跃迁1次/10次」→ 抽卡动画（数秒）→ 跃迁-结果画面逐件展示（点
+  击任意处翻页）→ 10 连推进到「跃迁-结果总览」页（全部出货汇总）后**停止**，
+  用户直接在总览页看出货；单抽展示自动结束回跃迁页（单抽无总览页）。
+- 逐件展示中点击转化卡面会误入角色详情页（养成系统既有屏「角色-详情」）——
+  处理节点检测到即点其关闭按钮自愈。
 - 专票不足时游戏会弹星琼兑换确认（160 星琼/张，跃迁-兑换确认屏已建档）——
   由「兑换确认闸」节点按 allow_jade_exchange 分流：授权点确认继续抽，
   未授权点取消干净失败。兑换是追加消耗决策，传 True 前必须获用户明确授权。
-- 结果画面稀有度形态只实测过 4★ 光锥态；3★/5★ 展示差异未建档（5★ 有专属
-  动画与展示时长），op 用「离开跃迁页→循环点击至跃迁页回归」的闭环设计，
-  不依赖结果画面内部锚，形态差异天然兼容（超时兜底见节点预算）。
+
+「结束抽卡」收摊（用户明示后）：跑 ReadWarpStatusOp {back_to_world: true}，
+其导航链从结果总览页/跃迁页回大世界。
 
 导航逻辑与 [ReadWarpStatusOp](read_warp_status.py) 同款（起点任意画面）。
 """
@@ -38,38 +43,36 @@ _ALLOWED_TIMES: set[int] = {WARP_TIMES_ONE, WARP_TIMES_TEN}
 
 
 class WarpOp(SrOperation):
-    """在跃迁页当前选中卡池执行跃迁，抽完留在跃迁页（便于连抽/读数）。
+    """在跃迁页当前选中卡池执行跃迁，抽完**停在结果总览页**供用户看出货。
 
     结果状态：
-    - ``WARP_DONE``：抽卡完成并已回到跃迁页（结果画面已全部关闭）；
+    - ``WARP_AT_SUMMARY``：10 连完成，停在「跃迁-结果总览」页（用户直接看
+      全部出货；用户要求结束抽卡时由收摊流程返回大世界）；
+    - ``WARP_DONE``：单抽完成回到跃迁页（单抽无总览页，展示自动结束）；
     - ``STAY_ENTRY``：times 非法（1/10 之外）直接返回；
     失败：当前池票不足且未授权星琼兑换（已点取消干净退出）、导航失败、
-    抽卡后超时未回跃迁页。
+    抽卡后超时未推进。
 
     注意：调用前调用方负责选中目标卡池（跃迁页左侧列表）——本 op 不切池
     （切池判定依赖池子数量动态识别，见跃迁 doc），在哪个池点按钮就抽哪个池。
     """
 
     def __init__(self, ctx: SrContext, times: int = WARP_TIMES_ONE,
-                 back_to_world: bool = False,
                  allow_jade_exchange: bool = False):
         """
         :param ctx: 上下文
         :param times: 跃迁次数，仅支持 1 / 10
-        :param back_to_world: 抽完后是否回大世界收摊（默认 False 留在跃迁页，
-            便于连续抽取或读数确认）
         :param allow_jade_exchange: 票不足时是否允许消耗星琼自动兑换补票
             （160 星琼/张，游戏弹窗确认）。False = 点取消干净失败；True =
             点确认继续抽。**兑换是追加消耗决策，调用方必须先获用户明确授权**
             才能传 True。
         """
         self._times: int = times
-        self._back_to_world: bool = back_to_world
         self._allow_jade_exchange: bool = allow_jade_exchange
         self._clicked: bool = False
         """已点过跃迁按钮（结果处理节点据此分流：点前=点按钮，点后=关结果画面）"""
         SrOperation.__init__(self, ctx, op_name=gt('跃迁抽卡'),
-                             node_max_retry_times=30)
+                             node_max_retry_times=80)
 
     @operation_node(name='前往跃迁页', is_start_node=True)
     def go_to_warp(self) -> OperationRoundResult:
@@ -144,29 +147,31 @@ class WarpOp(SrOperation):
     @node_from(from_name='兑换确认闸', status='NO_EXCHANGE')
     @operation_node(name='处理结果画面', node_max_retry_times=80)
     def handle_result(self) -> OperationRoundResult:
-        """循环处理抽卡展示直到回到跃迁页。
+        """循环处理抽卡展示，10 连推进到结果总览页后**停在总览页**供用户看出货。
 
         画面形态分流（10 连实测）：
-        - 跃迁页：全部展示已关闭 → WARP_DONE；
-        - 角色-详情（既有养成屏——**点击转化卡面会误入此页**，游戏抽卡展示
-          本身不自动弹详情）：点其「按钮-关闭」自愈返回展示流；
-        - 跃迁-结果总览（逐件看完后的汇总页）：点右上 ×；
-        - 其他（普通逐件结果画面/抽卡动画）：点中央继续区域。
+        - 跃迁-结果总览（逐件看完后的汇总页）→ ``WARP_AT_SUMMARY`` 停止——
+          用户直接看全部出货；后续收摊归「结束抽卡」场景（用户明示结束后
+          跑 ReadWarpStatusOp，其导航链从总览页回大世界）。
+        - 跃迁页：单抽展示自动结束直接回跃迁页（单抽无总览页）→ ``WARP_DONE``。
+        - 角色-详情（**点击转化卡面会误入此页**——游戏展示流程本身不弹详情，
+          是中央点击落在可点击的转化卡面上导致的）：点其「按钮-关闭」自愈
+          返回展示流。
+        - 其他（普通逐件结果画面/抽卡动画）：点中央继续区域翻页。
 
-        ⚠️ 点击必须带 press_time=0.1（展示类画面普遍对极短点击不响应）；
-        中央点击落在转化卡面上会进入角色详情页——靠本节点的详情检测自愈。
-        跃迁页回归超预算 = 停在未建档画面，fail 报告现场。
+        ⚠️ 点击必须带 press_time=0.1（展示类画面普遍对极短点击不响应）。
+        跃迁页/总览页回归超预算 = 停在未建档画面，fail 报告现场。
         """
         if not self._clicked:
             return self.round_retry('未点过跃迁按钮却进入结果处理(节点流异常)', wait=1)
         current = self.check_and_update_current_screen(screen_name_list=[
             _WARP_SCREEN, _CHAR_DETAIL_SCREEN, _WARP_RESULT_SUMMARY])
+        if current == _WARP_RESULT_SUMMARY:
+            return self.round_success(status='WARP_AT_SUMMARY', wait=1)
         if current == _WARP_SCREEN:
             return self.round_success(status='WARP_DONE', wait=1)
         if current == _CHAR_DETAIL_SCREEN:
             self._click_area_center(_CHAR_DETAIL_SCREEN, '按钮-关闭')
-        elif current == _WARP_RESULT_SUMMARY:
-            self._click_area_center(_WARP_RESULT_SUMMARY, '按钮-关闭X')
         else:
             self._click_area_center(_WARP_SCREEN_RESULT, '点击-继续区域')
         # 点了≠成了：下一轮 check 确认画面推进；本轮先等待过渡
@@ -176,17 +181,3 @@ class WarpOp(SrOperation):
         """点指定 area 中心（press_time=0.1，点击有效性由调用方轮询验证）。"""
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
         self.ctx.controller.click(area.center, press_time=0.1)
-
-    @node_from(from_name='处理结果画面', status='WARP_DONE')
-    @operation_node(name='回大世界')
-    def back_to_world(self) -> OperationRoundResult:
-        """按 back_to_world 参数收摊（默认留在跃迁页便于连抽/读数）。"""
-        if not self._back_to_world:
-            return self.round_success(status='STAY_WARP', wait=0.5)
-        result = self.round_by_find_and_click_area(
-            self.last_screenshot, _WARP_SCREEN, '按钮-关闭',
-            until_find_all=[(_NORMAL_WORLD, '右上图标-角色详情')],
-            success_wait=1.5, retry_wait=1.5)
-        if result.is_success:
-            return self.round_success(status=result.status, wait=0.5)
-        return result
