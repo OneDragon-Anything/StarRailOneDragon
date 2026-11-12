@@ -1,6 +1,6 @@
 import time
+
 from cv2.typing import MatLike
-from typing import Optional
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
@@ -11,6 +11,9 @@ from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.operations.store.store_const import StoreItem
+
+_BUY_DIALOG_SCREEN: str = '商店-购买弹窗'
+"""购买弹窗独立建档:弹窗蒙层把背景高斯模糊,商店屏 tab 锚不可读,无法作父屏子态识别(2026-11-12 实拍)"""
 
 
 class BuyStoreItem(SrOperation):
@@ -23,7 +26,7 @@ class BuyStoreItem(SrOperation):
         :param item: 要购买的商品
         :param buy_num: 要购买的数量 0的话代表最大值
         """
-        SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('购买商品'), gt(item.cn, 'game')))
+        SrOperation.__init__(self, ctx, op_name=f'{gt("购买商品")} {gt(item.cn, "game")}')
 
         self.item: StoreItem = item  # 要购买的商品
         self.buy_num: int = buy_num  # 要购买的数量
@@ -46,7 +49,7 @@ class BuyStoreItem(SrOperation):
             self.ctx.controller.click(press_time=0.1)
             return self.round_success(wait=0.5)
 
-    def get_item_pos(self, screen: MatLike) -> Optional[Point]:
+    def get_item_pos(self, screen: MatLike) -> Point | None:
         """
         获取商品的位置
         :param screen: 游戏画面
@@ -70,10 +73,10 @@ class BuyStoreItem(SrOperation):
         """
         screen = self.last_screenshot
         # 售罄 / 兑换材料不足时弹窗无「购买最大值」按钮,直接进确认节点(会点取消),避免空找按钮重试到超时
-        if self.round_by_find_area(screen, '商店', '购买-已售罄').is_success \
-                or self.round_by_find_area(screen, '商店', '购买-兑换材料不足').is_success:
+        if self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-已售罄').is_success \
+                or self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-兑换材料不足').is_success:
             return self.round_success(wait=0.5)
-        return self.round_by_find_and_click_area(screen, '商店', '按钮-购买最大值',
+        return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买最大值',
                                                  success_wait=0.5, retry_wait=1)
 
     @node_from(from_name='选择数量')
@@ -85,14 +88,14 @@ class BuyStoreItem(SrOperation):
         """
         screen = self.last_screenshot
 
-        result1 = self.round_by_find_area(screen, '商店', '购买-已售罄')
-        result2 = self.round_by_find_area(screen, '商店', '购买-兑换材料不足')
+        result1 = self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-已售罄')
+        result2 = self.round_by_find_area(screen, _BUY_DIALOG_SCREEN, '购买-兑换材料不足')
 
         if result1.is_success or result2.is_success:
-            return self.round_by_find_and_click_area(screen, '商店', '按钮-购买取消',
+            return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买取消',
                                                      success_wait=2, retry_wait=1)
         else:
-            return self.round_by_find_and_click_area(screen, '商店', '按钮-购买确认',
+            return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '按钮-购买确认',
                                                      success_wait=2, retry_wait=1)
 
     @node_from(from_name='确认购买', status='按钮-购买确认')
@@ -103,5 +106,5 @@ class BuyStoreItem(SrOperation):
         :return:
         """
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, '商店', '点击空白处关闭',
+        return self.round_by_find_and_click_area(screen, _BUY_DIALOG_SCREEN, '点击空白处关闭',
                                                  success_wait=1, retry_wait=1)
