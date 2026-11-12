@@ -15,11 +15,14 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class ClickPhoneMenuItem(SrOperation):
+    """点击手机菜单中间大图标区的指定项(如「开拓等级」「任务」),必要时上下滑动找位。
+    起点:菜单画面;终点:目标项的功能画面。
+    """
 
     def __init__(self, ctx: SrContext, item: PhoneMenuItem):
         """
-        点击菜单中的某个特定的项（中间大图标那块）
-        需要先保证在菜单页面上
+        :param ctx: 上下文
+        :param item: 要点击的菜单项(取值见 PhoneMenuItem 常量表)
         """
         super().__init__(ctx, op_name=gt('点击菜单 %s') % gt(item.cn))
 

@@ -12,12 +12,14 @@ from sr_od.operations.team.choose_team import ChooseTeam
 
 
 class ChooseTeamInWorld(SrOperation):
+    """从大世界出发完成配队切换并回到大世界(开菜单 → 编队 → 选配队并启用 → 返回)。
+    起点:任意可控画面;终点:大世界(目标配队已启用)。
+    """
 
     def __init__(self, ctx: SrContext, team_num: int):
         """
-        在大世界中 根据队伍编号选择配队 选择后再返回大世界页面
         :param ctx: 上下文
-        :param team_num: 队伍编号 从1开始
+        :param team_num: 队伍编号,从 1 开始
         """
         SrOperation.__init__(self, ctx, op_name=gt('选择配队'))
         self.team_num: int = team_num

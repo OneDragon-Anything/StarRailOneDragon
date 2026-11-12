@@ -23,11 +23,15 @@ _HOME_SCREEN: str = '智库主页'
 
 class OpenDataBankOp(SrOperation):
     """从任意画面导航到智库主页。
+    起点:任意可控画面;终点:智库主页(标题「智库」锚命中)。
 
     失败:菜单项持续找不到,或智库主页标题持续不命中。
     """
 
     def __init__(self, ctx: SrContext):
+        """
+        :param ctx: 上下文
+        """
         SrOperation.__init__(self, ctx, op_name=gt('打开智库'),
                              node_max_retry_times=20)
 

@@ -11,13 +11,14 @@ from sr_od.screen_state import common_screen_state
 
 
 class OpenPhoneMenu(SrOperation):
-
-    """
-    打开菜单 = 看到开拓等级 看不到的情况只需要不停按 ESC 即可
-    使用 BackToNormalWorldPlus 确保任何情况都能打开
+    """打开手机菜单(右上角开拓等级可见的那个面板)。
+    起点:任意可控画面(不在菜单时先回大世界再按菜单键);终点:菜单画面。
     """
 
     def __init__(self, ctx: SrContext):
+        """
+        :param ctx: 上下文
+        """
         super().__init__(ctx, op_name=gt('打开菜单'))
 
     @operation_node(name='画面识别', node_max_retry_times=10, is_start_node=True)

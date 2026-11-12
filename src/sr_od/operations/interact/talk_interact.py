@@ -13,6 +13,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class TalkInteract(SrOperation):
+    """推进对话直到出现指定选项并选择它:对话进行中点屏幕下方空白处继续,
+    识别到目标选项文字后点击选中。
+    起点:对话画面;终点:对话推进至目标选项被选择(对话可能仍在继续)。
+    """
 
     INTERACT_RECT: ClassVar[Rect] = Rect(1292, 560, 1878, 802)
 
@@ -20,11 +24,10 @@ class TalkInteract(SrOperation):
                  lcs_percent: float = -1,
                  conversation_seconds: int = 10):
         """
-        交谈过程中的交互
-        :param ctx:
-        :param option: 交谈中选择的选项
-        :param lcs_percent: 使用LCS匹配的阈值
-        :param conversation_seconds: 交谈最多持续的秒数
+        :param ctx: 上下文
+        :param option: 要选择的对话选项文案(右下角选项区内匹配)
+        :param lcs_percent: 选项文字的 LCS 匹配阈值,-1 用 OCR 默认
+        :param conversation_seconds: 整个交谈过程的超时秒数
         """
 
         super().__init__(ctx, timeout_seconds=conversation_seconds,

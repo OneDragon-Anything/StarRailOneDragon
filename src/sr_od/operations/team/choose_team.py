@@ -16,16 +16,19 @@ from sr_od.screen_state import common_screen_state
 
 
 class ChooseTeam(SrOperation):
+    """在配队管理页选择指定编号的配队,可顺带点击「启用」;编号被遮挡时按
+    等间距推断位置或横向拖动列表寻找。
+    起点:配队管理页;终点:配队管理页(目标配队已选中/启用)。
+    """
 
     TEAM_NUM_RECT: ClassVar[Rect] = Rect(505, 40, 1380, 105)  # 配队号码
     TURN_ON_RECT: ClassVar[Rect] = Rect(1590, 960, 1760, 1000)  # 【启用】按钮
 
     def __init__(self, ctx: SrContext, team_num: int, on: bool = False):
         """
-        需要在配队管理页面使用 选择对应配队
         :param ctx: 上下文
-        :param team_num: 队伍编号
-        :param on: 是否需要点击【启用】
+        :param team_num: 队伍编号,从 1 开始;传 0 直接视为成功(跳过选择)
+        :param on: 选中后是否点击【启用】按钮
         """
         SrOperation.__init__(self, ctx, op_name=gt('选择配队'))
         self.team_num: int = team_num

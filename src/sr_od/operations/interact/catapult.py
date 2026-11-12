@@ -42,14 +42,15 @@ def get_move_interact_words(ctx: SrContext, screen: MatLike) -> List[MatchResult
 
 
 class Catapult(SrOperation):
-    """
-    弹珠机
+    """弹珠机交互:等待轨迹连线完成后点击「弹射」发射弹珠;轨迹被阻挡时
+    点「离开」并确认退出,判定失败。
+    起点:弹珠机画面(弹珠待发射);终点:弹射完成,或已退出弹珠机(轨迹被阻挡)。
     """
 
     def __init__(self, ctx: SrContext, lcs_percent: float = 0.1):
         """
-        :param ctx:
-        :param lcs_percent: ocr匹配阈值
+        :param ctx: 上下文
+        :param lcs_percent: 「轨迹连通」文案的 LCS 匹配阈值
         """
         super().__init__(ctx)
         self.lcs_percent: float = lcs_percent

@@ -15,16 +15,19 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class ChooseSupport(SrOperation):
+    """在支援角色列表页选择指定角色并点击入队;不指定角色时直接视为成功。
+    找不到目标支援角色时失败(状态「未找到支援角色」)。
+    起点:支援角色列表页(队伍画面);终点:返回上级画面(选完入队/或未选直接关闭)。
+    """
 
     STATUS_SUPPORT_NOT_FOUND: ClassVar[str] = '未找到支援角色'
     STATUS_SUPPORT_NEEDED: ClassVar[str] = '需要支援角色'
 
     def __init__(self, ctx: SrContext, character_id: Optional[str], skip_check_screen: bool = False):
         """
-        在角色列表页 选择对应支援角色
-        如果不传入支援角色 则直接返回成功
-        :param ctx:
-        :param character_id:
+        :param ctx: 上下文
+        :param character_id: 支援角色的角色 ID(character_const 定义);传 None 表示无需支援,直接成功
+        :param skip_check_screen: 跳过开始的画面识别(调用方确信已在支援页时用)
         """
         SrOperation.__init__(self, ctx, op_name=gt('选择支援'))
 

@@ -11,10 +11,14 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SwitchAccount(SrOperation):
+    """登出当前账号并重新走登录流程(用于切换到另一个账号,不指定目标账号——
+    登录页由人工或后续流程选择)。
+    起点:大世界;终点:大世界(重新登录后)。
+    """
 
     def __init__(self, ctx: SrContext):
         """
-        登出当前账号
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name=gt('切换账号'))
 

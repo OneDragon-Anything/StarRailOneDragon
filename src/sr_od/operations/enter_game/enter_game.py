@@ -34,11 +34,16 @@ LOGIN_PAGE_MARK_WORD: str = '公告'  # 登录页标志词:登录页右上角是
 
 
 class EnterGame(SrOperation):
+    """完成游戏登录直到进入大世界:处理点击进入/账号密码输入/公告与提示弹窗/
+    版本剧情提醒(点「稍后再看」跳过)/模拟宇宙残留画面等全部中途状态。
+    起点:任意登录相关画面或已在游戏;终点:大世界。
+    """
 
     def __init__(self, ctx: SrContext, switch: bool = False):
         """
-        进入游戏后 进行登陆
-        :param ctx:
+        :param ctx: 上下文
+        :param switch: 是否强制切换账号(登出当前账号后重新登录;
+            多实例跑一条龙时自动强制)
         """
         SrOperation.__init__(self, ctx, op_name=gt('进入游戏'))
 

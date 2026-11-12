@@ -46,6 +46,7 @@ class DataBankTab(Enum):
 
 class SelectDataBankTabOp(SrOperation):
     """在智库主页点选分类,进入对应图鉴列表页。
+    起点:智库主页;终点:目标分类的图鉴列表页(标题+已收录双锚命中)。
 
     失败:起点不在智库主页(需先跑 ``OpenDataBankOp``),或点击后目标
     列表页锚持续不命中。

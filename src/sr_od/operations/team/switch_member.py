@@ -11,6 +11,10 @@ from sr_od.screen_state import common_screen_state
 
 
 class SwitchMember(SrOperation):
+    """在大世界切换当前操作角色到指定顺位的队友,并处理可能的快速恢复
+    (复活)弹窗——无可用消耗品时自动点取消,切换视为失败。
+    起点:大世界;终点:大世界(角色已切换)。
+    """
 
     STATUS_CONFIRM: ClassVar[str] = '确认'
 
@@ -18,11 +22,10 @@ class SwitchMember(SrOperation):
                  skip_first_screen_check: bool = False,
                  skip_resurrection_check: bool = False):
         """
-        切换角色 需要在大世界页面
-        :param ctx:
-        :param num: 第几个队友 从1开始
-        :param skip_first_screen_check: 是否跳过第一次画面状态检查
-        :param skip_resurrection_check: 跳过复活检测 逐光捡金中可跳过
+        :param ctx: 上下文
+        :param num: 切换到第几个队友,从 1 开始
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在大世界时提速用)
+        :param skip_resurrection_check: 跳过复活检测(逐光捡金场景可跳过)
         """
         SrOperation.__init__(self, ctx, op_name='%s %d' % (gt('切换角色'), num))
 

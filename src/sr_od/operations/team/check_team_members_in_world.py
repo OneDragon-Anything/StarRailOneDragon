@@ -14,12 +14,15 @@ from sr_od.screen_state import common_screen_state
 
 
 class CheckTeamMembersInWorld(SrOperation):
+    """读取当前大世界配队的四名角色(按名字与头像双重识别,未识别出的位置为 None),
+    结果经运行结果 data 返回并同步更新 ctx.team_info。
+    起点:大世界(右侧需显示 4 名角色头像);终点:大世界(原画面,纯读数)。
+    """
 
     def __init__(self, ctx: SrContext, character_list: list[Character] | None = None):
         """
-        需要在大世界 右侧显示4名角色头像时使用
-        获取组队角色
         :param ctx: 上下文
+        :param character_list: 预填的配队角色(识别只补空位);传 None 全部识别
         """
         SrOperation.__init__(self, ctx, op_name=gt('组队角色判断'))
 

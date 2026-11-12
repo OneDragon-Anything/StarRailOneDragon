@@ -9,8 +9,14 @@ from sr_od.operations.enter_game.open_game import OpenGame
 
 
 class OpenAndEnterGame(Operation):
+    """启动游戏并完成登录,直到进入大世界(OpenGame + EnterGame 的串联入口)。
+    起点:任意(游戏未运行);终点:大世界。
+    """
 
     def __init__(self, ctx: SrContext):
+        """
+        :param ctx: 上下文
+        """
         self.ctx: SrContext = ctx
         Operation.__init__(self, ctx, op_name=gt('打开并登录游戏'),
                            need_check_game_win=False)

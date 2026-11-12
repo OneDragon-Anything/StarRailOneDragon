@@ -10,8 +10,14 @@ from sr_od.context.sr_context import SrContext
 
 
 class OpenGame(Operation):
+    """启动游戏客户端进程(按账户管理配置的路径与启动参数),不进行登录。
+    起点:任意(游戏未运行);终点:游戏窗口出现,停在登录相关画面(未登录态)。
+    """
 
     def __init__(self, ctx: SrContext):
+        """
+        :param ctx: 上下文
+        """
         self.ctx: SrContext = ctx
         Operation.__init__(self, ctx, op_name=gt('打开游戏'),
                            need_check_game_win=False)
