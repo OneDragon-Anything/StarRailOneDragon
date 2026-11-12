@@ -22,7 +22,7 @@
 | [relic-sets.md](mechanics/relic-sets.md) | 遗器套装速查：62 套官方分类标签+验证效果 |
 | [relic-enhancement.md](mechanics/relic-enhancement.md) | 遗器养成与装备决策:选件门槛、省材料 vs 豪横两路线、浏览/更换/强化三条操作路由(含 op 参数、不抢件语义与强化入口差异) |
 | [light-cone-enhancement.md](mechanics/light-cone-enhancement.md) | 光锥养成与装备决策:升级/晋阶/叠影优先级、装备/升级/叠影三条操作路由(含 op 参数与消耗门) |
-| [light-cones.md](mechanics/light-cones.md) | **光锥速查：170 杻全量（米游社百科）**——命途/星级/获取渠道分组（专武池/光锥呈现/黑塔商店/月卡/周本/活动）/特效要点含叠影梯度 |
+| [light-cones.md](mechanics/light-cones.md) | **光锥速查：171 杻全量（米游社百科）**——命途/星级/获取渠道分组（专武池/光锥呈现/黑塔商店/月卡/周本/活动）/特效要点含叠影梯度 |
 
 ## 体系层（一类配队一档，管「为什么这么组」）
 
