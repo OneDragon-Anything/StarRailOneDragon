@@ -152,26 +152,148 @@ def _annotation_json_serializable(annotation: 'Any') -> bool:
         if isinstance(annotation, type):
             return issubclass(annotation, _JSON_SCALAR_TYPES) or annotation is type(None)
         return False
-    # 泛型:list[int]、dict[str, str]、tuple[...] → True
+    # 泛型:元素类型决定可传性——list[str]/dict[str, str]/tuple[...] → True;
+    # 元素含不可传类型(如 list[普通自定义类]) → False(元素级判定,防 dict 元素
+    # 借容器通道静默直达 __init__)
     if origin in (list, dict, tuple, set):
-        return True
-    # Optional/Union(PEP 604 ``X | Y`` 或 typing.Union):任一非 None 分支可序列化即可
+        args = [a for a in typing.get_args(annotation) if a is not Ellipsis]
+        if not args:
+            return True  # 未参数化容器
+        return all(_annotation_json_serializable(a) for a in args)
+    # Optional/Union(PEP 604 ``X | Y`` 或 typing.Union):非 None 分支判定——
+    # None 分支不算可序列化证据,防 Optional[自定义类] 因「能传 None」洗白为
+    # 可直传(其 dict 值需规整,归 coercible 判定)
     if origin is types.UnionType or origin is typing.Union:
-        return any(_annotation_json_serializable(a) for a in typing.get_args(annotation))
+        non_none = [a for a in typing.get_args(annotation) if a is not type(None)]
+        return any(_annotation_json_serializable(a) for a in non_none)
     return False
 
 
-def _annotation_coercible(annotation: 'Any') -> bool:
-    """判断类型注解是否可从 dict 反序列化(``@dataclass`` + 有可调用 ``from_dict``)。
+def _from_dict_type(tp: 'Any') -> 'type | None':
+    """注解本身是 ``@dataclass`` + 可调用 ``from_dict`` 的类时返回该类,否则 None。"""
+    if (isinstance(tp, type) and hasattr(tp, '__dataclass_fields__')
+            and callable(getattr(tp, 'from_dict', None))):
+        return tp
+    return None
 
-    这类参数 ``run_operation`` 接受 dict 值,实例化前用 ``from_dict`` 转成实例
-    (如未来 SR 的 ``@dataclass``+``from_dict`` 计划项)。非 dataclass / 无 ``from_dict`` → False(仍需走 application)。
+
+def _annotation_allows_none(annotation: 'Any') -> bool:
+    """注解是否接受 None 值(仅 ``Optional``/``Union`` 含 None 分支时 True)。"""
+    origin = typing.get_origin(annotation)
+    return (origin is types.UnionType or origin is typing.Union) and type(None) in typing.get_args(annotation)
+
+
+def _coerce_value(annotation: 'Any', value: 'Any') -> 'tuple[bool, Any]':
+    """把 JSON 值规整为注解形态(值→注解的**单一规整源**)。
+
+    校验(``validate_args`` 干跑判可行性)与实例化前规整(``coerce_params``)共用
+    本函数,两处行为永不漂移。可处理的形态(其余一律 ``(False, 原值)``):
+
+    - 注解是 ``@dataclass``+``from_dict`` 且值为 dict → 实例;
+    - ``Optional``/``Union``:按匹配的非 None 分支递归规整(None 值无需动作,
+      匹配与否归校验的值匹配层);
+    - ``list[X]`` / ``dict[K, X]`` 且 X 为 dataclass+from_dict:值是 list/dict
+      且元素全为 dict → 逐元素规整(元素规整只做 list 与 dict 的值,tuple/set
+      的定长异构形态不做);
+    - ``tuple``/``set`` 注解(裸或参数化)且值为 list → 纯容器转换(JSON 只有
+      list,转换为对应容器)。
+
+    Returns:
+        ``(是否已规整, 规整后的值)``;未规整时值原样返回,由调用方处置
+        (值本就匹配注解的放行、不匹配的拒)。
     """
-    if not isinstance(annotation, type):
-        return False
-    if not hasattr(annotation, '__dataclass_fields__'):
-        return False
-    return callable(getattr(annotation, 'from_dict', None))
+    tp = _from_dict_type(annotation)
+    if tp is not None:
+        if isinstance(value, dict):
+            return True, tp.from_dict(value)
+        return False, value
+
+    origin = typing.get_origin(annotation)
+    if origin is types.UnionType or origin is typing.Union:
+        if value is not None:
+            for branch in typing.get_args(annotation):
+                if branch is type(None):
+                    continue
+                ok, coerced = _coerce_value(branch, value)
+                if ok:
+                    return True, coerced
+        return False, value
+
+    if annotation is tuple or origin is tuple:
+        if isinstance(value, list):
+            return True, tuple(value)
+        return False, value
+    if annotation is set or origin is set:
+        if isinstance(value, list):
+            return True, set(value)
+        return False, value
+
+    if origin is list or annotation is list:
+        args = typing.get_args(annotation)
+        if args:
+            elem = args[0]
+            if (_from_dict_type(elem) is not None and isinstance(value, list)
+                    and all(isinstance(e, dict) for e in value)):
+                return True, [_coerce_value(elem, e)[1] for e in value]
+        return False, value
+    if origin is dict or annotation is dict:
+        args = typing.get_args(annotation)
+        if len(args) == 2:
+            elem = args[1]
+            if (_from_dict_type(elem) is not None and isinstance(value, dict)
+                    and all(isinstance(e, dict) for e in value.values())):
+                return True, {k: _coerce_value(elem, e)[1] for k, e in value.items()}
+        return False, value
+
+    return False, value
+
+
+def _annotation_coercible(annotation: 'Any') -> bool:
+    """注解可否从 JSON 结构规整为实例(能力面与 ``_coerce_value`` 一致)。
+
+    顶层 ``@dataclass``+``from_dict``、``Optional``/``Union`` 分支含之、
+    ``list[X]`` 元素 / ``dict[K, X]`` 值为之一 → True。tuple/set 的纯容器
+    转换不算 coercible(其参数 ``json_serializable`` 已为 True,走值匹配层)。
+    """
+    if _from_dict_type(annotation) is not None:
+        return True
+    origin = typing.get_origin(annotation)
+    if origin is types.UnionType or origin is typing.Union:
+        return any(
+            a is not type(None) and _annotation_coercible(a)
+            for a in typing.get_args(annotation)
+        )
+    if origin is list:
+        args = typing.get_args(annotation)
+        return len(args) == 1 and _annotation_coercible(args[0])
+    if origin is dict:
+        args = typing.get_args(annotation)
+        return len(args) == 2 and _annotation_coercible(args[1])
+    return False
+
+
+def _coercible_expectation(annotation: 'Any') -> str:
+    """coercible 注解的期望 JSON 值形态(校验错误信息给调用方的可读提示)。"""
+    tp = _from_dict_type(annotation)
+    if tp is not None:
+        return f'dict({tp.__name__} 的字段)'
+    origin = typing.get_origin(annotation)
+    if origin is types.UnionType or origin is typing.Union:
+        args = typing.get_args(annotation)
+        branches = [a for a in args if a is not type(None)]
+        inner = _coercible_expectation(branches[0]) if branches else '?'
+        if len(branches) < len(args):
+            return f'{inner} 或 null'
+        return inner
+    if origin is list:
+        args = typing.get_args(annotation)
+        return f'list[{_coercible_expectation(args[0])}]' if args else 'list'
+    if origin is dict:
+        args = typing.get_args(annotation)
+        if len(args) == 2:
+            return f'dict[key, {_coercible_expectation(args[1])}]'
+        return 'dict'
+    return _annotation_display(annotation)
 
 
 def _value_matches_annotation(value: 'Any', annotation: 'Any') -> bool:
@@ -202,17 +324,18 @@ def _value_matches_annotation(value: 'Any', annotation: 'Any') -> bool:
         if annotation is dict:
             return isinstance(value, dict)
         if annotation is tuple:
-            return isinstance(value, tuple)
+            # JSON 只有 list:tuple/set 注解接受 list 值(实例化前 coerce_params 转换)
+            return isinstance(value, (tuple, list))
         if annotation is set:
-            return isinstance(value, (set, frozenset))
+            return isinstance(value, (set, frozenset, list))
     if origin is list:
         return isinstance(value, list)
     if origin is dict:
         return isinstance(value, dict)
     if origin is tuple:
-        return isinstance(value, tuple)
+        return isinstance(value, (tuple, list))
     if origin is set:
-        return isinstance(value, (set, frozenset))
+        return isinstance(value, (set, frozenset, list))
     if isinstance(annotation, str):
         # 字符串注解(求值失败回退):仅裸名可判
         name = annotation.strip()
@@ -229,11 +352,13 @@ def _value_matches_annotation(value: 'Any', annotation: 'Any') -> bool:
     return True
 
 
-def coerce_dataclass_params(cls: type, args: dict) -> dict:
-    """实例化前,把 ``@dataclass + from_dict`` 参数的 dict 值反序列化为实例。
+def coerce_params(cls: type, args: dict) -> dict:
+    """实例化前,把各参数的 JSON 值规整为注解形态(单一源 = ``_coerce_value``)。
 
-    仅处理「注解是 dataclass 且有 ``from_dict``」且当前值为 dict 的参数;
-    其余参数原样保留。返回新 dict(不就地改调用方传入的 args)。
+    覆盖 dataclass+from_dict 及其 Optional/Union 分支、list/dict 容器元素级
+    规整、tuple/set 注解的 list 值转换;不适用规整的参数原样保留。返回新
+    dict(不就地改调用方传入的 args)。可行性已由 ``validate_args`` 干跑校验,
+    此处按同一函数真跑,行为不漂移。
     """
     try:
         sig = inspect.signature(cls.__init__)
@@ -247,8 +372,9 @@ def coerce_dataclass_params(cls: type, args: dict) -> dict:
         if p.name not in coerced:
             continue
         annotation = hints.get(p.name, p.annotation)
-        if _annotation_coercible(annotation) and isinstance(coerced[p.name], dict):
-            coerced[p.name] = annotation.from_dict(coerced[p.name])
+        ok, value = _coerce_value(annotation, coerced[p.name])
+        if ok:
+            coerced[p.name] = value
     return coerced
 
 
@@ -489,23 +615,23 @@ def validate_args(cls: type, args: dict) -> str | None:
         required = p.default is inspect.Parameter.empty
         if required and p.name not in args:
             return f'缺少必填参数: {p.name}'
-        # coercible 参数(@dataclass+from_dict)只接受 dict 值(实例化前用 from_dict 反序列化);
-        # 传标量/列表/None 会绕过 coerce,错误类型进 op 构造 → 在此明确拒绝。
-        if (
-            p.name in args
-            and _annotation_coercible(annotation)
-            and not isinstance(args[p.name], dict)
-        ):
-            return f'参数 {p.name} 必须为 dict'
-        if p.name in args and not _annotation_json_serializable(annotation) and not _annotation_coercible(annotation):
+        if p.name not in args:
+            continue
+        value = args[p.name]
+        if not _annotation_json_serializable(annotation) and not _annotation_coercible(annotation):
             return f'参数 {p.name} 为不支持的数据类型({_annotation_display(annotation)}),请走 application'
-        if (
-            p.name in args
-            and not _annotation_coercible(annotation)
-            and not _value_matches_annotation(args[p.name], annotation)
-        ):
+        if _annotation_coercible(annotation):
+            # 干跑规整判可行性(结果丢弃,实例化前由 coerce_params 真跑,同一函数
+            # 不漂移):规整成功放行;失败且值也非注解接受的形态(仅 Optional 的
+            # None)→ 拒,错误信息带期望 JSON 形态供调用方自纠。
+            ok, _ = _coerce_value(annotation, value)
+            if not ok and not (value is None and _annotation_allows_none(annotation)):
+                return (f'参数 {p.name} 的值与注解不符'
+                        f'(期望 {_coercible_expectation(annotation)},得到 {type(value).__name__})')
+            continue
+        if not _value_matches_annotation(value, annotation):
             return (f'参数 {p.name} 的值类型与注解不符'
-                    f'(期望 {_annotation_display(annotation)},得到 {type(args[p.name]).__name__})')
+                    f'(期望 {_annotation_display(annotation)},得到 {type(value).__name__})')
 
     # 校验提供的值本身可 JSON 序列化(防御:调用方传入非 JSON 原生对象)
     for name, value in args.items():
