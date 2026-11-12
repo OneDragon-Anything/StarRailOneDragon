@@ -1,0 +1,260 @@
+screen_id: warp_main
+screen_name: 跃迁
+pc_alt: false
+area_list:
+- area_name: 文本-查看详情
+  id_mark: true
+  pc_rect:
+  - 335
+  - 972
+  - 555
+  - 1012
+  text: 查看详情
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-跃迁1次
+  id_mark: true
+  pc_rect:
+  - 1280
+  - 965
+  - 1440
+  - 1005
+  text: 跃迁1次
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1830
+  - 30
+  - 1885
+  - 90
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 大世界
+- area_name: 按钮-角色试用
+  id_mark: false
+  pc_rect:
+  - 575
+  - 970
+  - 800
+  - 1015
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-跃迁1次
+  id_mark: false
+  pc_rect:
+  - 1155
+  - 955
+  - 1465
+  - 1015
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-跃迁10次
+  id_mark: false
+  pc_rect:
+  - 1495
+  - 955
+  - 1795
+  - 1015
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-查看详情
+  id_mark: false
+  pc_rect:
+  - 330
+  - 970
+  - 560
+  - 1015
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-星迹重温
+  id_mark: false
+  pc_rect:
+  - 850
+  - 705
+  - 1090
+  - 760
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-商店兑换
+  id_mark: false
+  pc_rect:
+  - 45
+  - 900
+  - 170
+  - 1005
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 商店
+- area_name: 文本-角色活动跃迁标签
+  id_mark: false
+  pc_rect:
+  - 330
+  - 170
+  - 530
+  - 212
+  text: 角色活动跃迁
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-UP角色名
+  id_mark: false
+  pc_rect:
+  - 900
+  - 632
+  - 1095
+  - 680
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-剩余时间
+  id_mark: false
+  pc_rect:
+  - 420
+  - 298
+  - 570
+  - 332
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 货币-星轨专票数量
+  id_mark: false
+  pc_rect:
+  - 1540
+  - 48
+  - 1615
+  - 88
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 货币-星琼数量
+  id_mark: false
+  pc_rect:
+  - 1665
+  - 45
+  - 1815
+  - 90
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 货币-星票数量
+  id_mark: false
+  pc_rect:
+  - 1483
+  - 45
+  - 1580
+  - 90
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 货币-跃迁进度
+  id_mark: false
+  pc_rect:
+  - 1240
+  - 45
+  - 1430
+  - 90
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 商店
+- area_name: 按钮-星缘相邀
+  id_mark: false
+  pc_rect:
+  - 1570
+  - 230
+  - 1885
+  - 295
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 跃迁-星缘相邀
+- area_name: 文本-当前池名
+  id_mark: false
+  pc_rect:
+  - 100
+  - 30
+  - 480
+  - 100
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
