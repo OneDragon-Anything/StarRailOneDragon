@@ -1,6 +1,6 @@
 ---
 name: sr-od-game-coach
-description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角色养成（装备/光锥/词条/练度）、体系与阵容、玩法规则、新手日常决策（如「怎么配队」「这个角色怎么玩怎么养」「词条堆什么」「体力怎么分」「这期打什么」「练度够不够进队」）时用——基础玩法知识技能：agent 读完即可像老玩家一样做游戏决策。特殊玩法的期次环境与特殊变形（逐光捡金环境/货币战争羁绊等）归各自专项 skill，本 skill 只装任何场景都成立的基础知识。凡涉及崩铁玩法理解与决策先用本 skill，即使没明说。
+description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角色养成（装备/光锥/词条/练度）、体系与阵容、玩法规则、新手日常决策、抽卡投入决策（「这个角色值不值得抽」「要不要抽」「星魂怎么规划」，机制断点表+角色档调研轮次支撑）时用（如「怎么配队」「这个角色怎么玩怎么养」「词条堆什么」「体力怎么分」「这期打什么」「练度够不够进队」「阿哈值得抽吗」）——基础玩法知识技能：agent 读完即可像老玩家一样做游戏决策。特殊玩法的期次环境与特殊变形（逐光捡金环境/货币战争羁绊等）归各自专项 skill，本 skill 只装任何场景都成立的基础知识。凡涉及崩铁玩法理解与决策先用本 skill，即使没明说；新角色实装/上版本盖棺的攻略调研归 maintenance/research-methodology.md。
 ---
 
 # 星穹铁道基础玩法教练（game-coach）
@@ -35,7 +35,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
 | **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
 | **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
-| **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；角色页推荐重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
+| **知识库维护** | 新角色实装调研/上版本角色盖棺复核/抽卡决策调研（这期 UP 值不值得抽）/补档 | `maintenance/research-methodology.md`（米游社+B站 bili-cli 调研流程与入档格式）+ `maintenance/research-status.md`（覆盖对账与待复核清单）；角色页数据重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
 
 **红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
 
