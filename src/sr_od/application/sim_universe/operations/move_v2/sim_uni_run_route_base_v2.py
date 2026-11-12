@@ -29,6 +29,9 @@ from sr_od.sr_map import mini_map_utils
 
 
 class SimUniRunRouteBaseV2(SrOperation):
+    """v2 楼层通关基类(小地图/画面特征循环决策的公共骨架;中间基类,
+    由战斗/精英/事件/休整四个子类继承,不直接运行)。
+    起点:模拟宇宙对应楼层移动画面(子类构造时声明楼层类型)。"""
 
     STATUS_FIGHT: ClassVar[str] = '遭遇战斗'
     STATUS_WITH_RED: ClassVar[str] = '小地图有红点'

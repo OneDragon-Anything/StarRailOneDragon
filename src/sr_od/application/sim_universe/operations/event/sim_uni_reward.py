@@ -16,6 +16,11 @@ from sr_od.screen_state import common_screen_state
 
 
 class SimUniReward(SrOperation):
+    """领取模拟宇宙沉浸奖励(用开拓力兑换沉浸器,循环领取直到达次数上限),
+    领完自动关闭奖励弹窗。
+    起点:模拟宇宙-沉浸奖励弹窗已打开;终点:奖励弹窗已关闭(领完或达上限)。
+    副作用:消耗开拓力兑换沉浸奖励(每次 40 开拓力)。
+    """
 
     POWER_NUM_RECT: ClassVar[Rect] = Rect(623, 715, 655, 744)  # 开拓力数字部分
     QTY_RECT: ClassVar[Rect] = Rect(1060, 715, 1090, 744)  # 沉浸器数字部分
@@ -27,10 +32,9 @@ class SimUniReward(SrOperation):
                  on_reward: Optional[Callable[[int, int], None]] = None
                  ):
         """
-        模拟宇宙 - 获取沉浸奖励 需要已经打开领取的对话框
-        :param ctx:
-        :param max_to_get: 最多获取多少次奖励
-        :param on_reward: 获取奖励时的回调
+        :param ctx: 上下文
+        :param max_to_get: 最多领取次数(0 = 不领直接关闭)
+        :param on_reward: 每次领取后的回调(使用开拓力, 获得数量)
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('沉浸奖励')),)
 

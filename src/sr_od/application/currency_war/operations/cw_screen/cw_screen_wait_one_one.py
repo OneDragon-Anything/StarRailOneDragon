@@ -44,7 +44,8 @@ def _monotonic() -> float:
 
 
 class CwScreenWaitOneOne(CwOperation):
-    """等待 1-1 备战就绪:轮询「备战阶段」识别标志;超上界保留证据 fail 交循环。"""
+    """等待 1-1 备战就绪:轮询「备战阶段」识别标志;超上界保留证据 fail 交循环。
+    起点:货币战争对局内(1-1 开局过渡态);终点:货币战争-备战画面(识别标志出现)。"""
 
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
     PREP_ANCHOR: ClassVar[str] = '标识-备战阶段'
