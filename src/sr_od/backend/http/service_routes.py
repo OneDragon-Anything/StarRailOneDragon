@@ -99,11 +99,12 @@ async def handle_game_run_standalone(backend: SrBackendContext, request: Request
 
 
 async def handle_game_operations(backend: SrBackendContext, request: Request | None = None) -> Response:
-    """处理 ``GET /game/operations``:列出可运行的自定义 operation(仅 op_id 紧凑形态)。
+    """处理 ``GET /game/operations``:列出可运行的自定义 operation(定位符紧凑形态)。
 
-    与 MCP ``list_operations`` 同契约(``compact_operation_list`` 单源):仅 op_id
-    列表不带参数 schema,``query`` query 参数子串过滤。业务失败一律 ``200 + body``
-    (``{error}``),不引入 4xx/5xx(除 backend 未就绪)。
+    与 MCP ``list_operations`` 同契约(``compact_operation_list`` 单源):仅定位符
+    列表不带参数 schema(类名无同名冲突时为短名,冲突时为完整 op_id),``query``
+    query 参数按完整 op_id 子串过滤。业务失败一律 ``200 + body``(``{error}``),
+    不引入 4xx/5xx(除 backend 未就绪)。
     """
     query = request.query_params.get('query', '') if request is not None else ''
     try:

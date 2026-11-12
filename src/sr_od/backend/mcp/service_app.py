@@ -134,14 +134,17 @@ def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
     def list_operations(
         query: Annotated[str, Field(description="子串过滤 op_id(大小写不敏感),如 'move'/'battle';空=全量")] = "",
     ) -> dict:
-        """列出可运行的自定义 operation 的 op_id 清单(扫描 operations/ 承载包,纯反射不实例化)。
+        """列出可运行的自定义 operation 的定位符清单(扫描 operations/ 承载包,纯反射不实例化)。
 
-        只返回 op_id(<module>.<ClassName>)列表,不含参数 schema——LLM 上下文有限,
-        全量参数 schema 必然截断;参数详情用 ``describe_operation(op_id)`` 查。
-        列 operation 用本 tool;列应用用 ``list_applications``。
+        只返回定位符列表,不含参数 schema——LLM 上下文有限,全量参数 schema 必然
+        截断;参数详情用 ``describe_operation(定位符)`` 查。列应用用 ``list_applications``。
+
+        元素可直接传给 describe_operation / run_operation:类名无同名冲突时为类名
+        短名(如 MoveDirectly),有同名冲突时为完整 op_id(含点),无需区分。
 
         Args:
-            query: op_id 子串过滤(大小写不敏感);空串 = 全量。找目标 op 先传关键字
+            query: 子串过滤(大小写不敏感),按完整 op_id 匹配——类名是其后缀,
+                模块路径中的词也可作关键字;空串 = 全量。找目标 op 先传关键字
                 缩小范围(如 'move'/'battle'/'charge'),避免全量长列表。
 
         Returns:

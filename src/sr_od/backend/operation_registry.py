@@ -15,6 +15,7 @@ import json
 import sys
 import types
 import typing
+from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -328,32 +329,40 @@ def scan_operations(ctx: 'SrContext', refresh: bool = False) -> OperationListRes
 
 
 def compact_operation_list(result: OperationListResult, query: str = '') -> dict:
-    """把扫描结果转成紧凑列表负载(仅 op_id,不带参数 schema)。
+    """把扫描结果转成紧凑列表负载(定位符列表,不带参数 schema)。
 
     MCP ``list_operations`` 与 HTTP ``GET /game/operations`` 共用此函数,单源保证
     两适配器契约一致。紧凑化的原因:MCP 消费者是 LLM(上下文有限),全量参数
-    schema(约 170 op / 80KB)必然截断,仅 op_id 约 14KB 可完整送达;参数详情由
-    ``describe_operation`` 按需补。
+    schema(约 170 op / 80KB)必然截断,仅定位符列表约数 KB 可完整送达;参数详情
+    由 ``describe_operation`` 按需补。
+
+    列表元素是「可直接传给 ``describe_operation`` / ``run_operation`` 的定位符」:
+    类名无同名冲突时返回类名短名,有冲突的类名返回完整 op_id——元素含不含点
+    自可辨,两种形态都被下游接受,调用方无需区分。
 
     Args:
         result: ``scan_operations`` 的扫描结果。
-        query: op_id 子串过滤(大小写不敏感,首尾空白忽略);空 = 全量。
+        query: 子串过滤(大小写不敏感,首尾空白忽略),按完整 op_id 匹配——类名
+            是其后缀,模块路径中的词也可作过滤关键字;空 = 全量。
 
     Returns:
         ``{total, count, operations[], failures[], hint}``:``total`` = 全量数,
-        ``count`` = 过滤后返回数,``operations[]`` = op_id 升序列表,
+        ``count`` = 过滤后返回数,``operations[]`` = 定位符列表(原 op_id 序),
         ``failures[]`` = 单模块 import 失败记录。
     """
     needle = query.strip().lower()
-    op_ids = [o.op_id for o in result.operations]
-    if needle:
-        op_ids = [op_id for op_id in op_ids if needle in op_id.lower()]
+    name_counts = Counter(o.class_name for o in result.operations)
+    op_ids = []
+    for o in result.operations:
+        if needle and needle not in o.op_id.lower():
+            continue
+        op_ids.append(o.class_name if name_counts[o.class_name] == 1 else o.op_id)
     return {
         'total': len(result.operations),
         'count': len(op_ids),
         'operations': op_ids,
         'failures': list(result.failures),
-        'hint': '参数 schema 用 describe_operation(op_id) 查,运行用 run_operation(op_id, args)',
+        'hint': '元素可直接传给 describe_operation / run_operation;无同名类时为类名短名,同名冲突时为完整 op_id',
     }
 
 
