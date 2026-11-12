@@ -84,9 +84,10 @@ def normalize_cn_name(name: str) -> str:
 
 
 class SelectCharacterOp(SrOperation):
-    """在角色详情画面打开角色列表,选中指定角色,收起列表。
-
-    终点状态:角色-详情画面·详情 TAB·列表已收起·当前角色 = 目标角色。
+    """在角色详情画面打开角色列表,按名字找到目标角色(列表滚动遍历直到
+    到底),选中后收起列表。
+    起点:角色-详情画面(列表开/关均可,自行处理);终点:角色-详情画面·
+    详情 TAB·列表已收起·当前角色 = 目标角色。不在详情画面时显式失败。
     """
 
     def __init__(self, ctx: SrContext, cn_name: str):

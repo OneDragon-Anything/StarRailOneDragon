@@ -41,13 +41,15 @@ NPC_DIALOG_FAREWELL_LCS: float = 0.7
 
 
 class BackToNormalWorldPlus(SrOperation):
+    """增强版返回大世界:从任意画面(含模拟宇宙/差分宇宙/货币战争等玩法内、
+    对话、各面板弹窗、公告)逐层退出,确保落回大世界——用于应用结束后保证
+    下一个应用有干净的起点。
+    起点:任意可控画面;终点:大世界。
+    """
 
     def __init__(self, ctx: SrContext):
         """
-        返回普通大世界 增强版
-        需要在任何情况下使用都能顺利地返回手机菜单 用于应用结束后 确保不会卡死下一个应用
-        已考虑场景如下
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name=gt('返回普通大世界'))
 

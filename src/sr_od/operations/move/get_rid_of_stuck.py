@@ -8,20 +8,16 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class GetRidOfStuck(SrOperation):
+    """移动脱困:按被困次数选择六种绕行组合之一(左前/右前/后左前/后右前/
+    左后右前/右后左前,左右顺序交错防原地打转),绕行后恢复前进;
+    data 返回本次脱困耗时秒数。
+    起点:大世界(移动中被困);终点:大世界(已恢复前进)。
+    """
 
     def __init__(self, ctx: SrContext, stuck_times: int):
         """
-        简单的脱困指令
-        返回数据为脱困使用的时间
-        以下方式各尝试2遍
-        1. 往左 然后往前走
-        2. 往右 然后往前走
-        3. 往后再往右 然后往前走  # 注意这里左右顺序要跟上面相反 可以防止一左一右还卡在原处
-        4. 往后再往左 然后往前走
-        5. 往左再往后再往右 然后往前走
-        6. 往右再往后再往左 然后往前走
-        :param ctx:
-        :param stuck_times: 被困次数 1~12
+        :param ctx: 上下文
+        :param stuck_times: 被困次数,1~12;次数决定用哪种绕行组合与步幅
         """
         super().__init__(ctx, op_name='%s %d' % (gt('尝试脱困'), stuck_times))
         self.stuck_times: int = stuck_times

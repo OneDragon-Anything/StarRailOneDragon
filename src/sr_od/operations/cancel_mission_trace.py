@@ -11,14 +11,17 @@ from sr_od.screen_state import common_screen_state
 
 
 class CancelMissionTrace(SrOperation):
+    """取消大世界的任务追踪(点左侧追踪条 → 任务页停止追踪),避免任务指引
+    干扰大地图定位;本会话已取消过则直接成功。使用大地图的 app 启动时调用。
+    起点:大世界;终点:大世界(追踪已取消或本无追踪)。
+    """
 
     STATUS_CANCELLED: ClassVar[str] = '已取消'
     STATUS_CLICK_TRACE: ClassVar[str] = '尝试点击追踪任务'
 
     def __init__(self, ctx: SrContext):
         """
-        尝试取消任务追踪 在需要使用大地图的app启动时调用
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name=gt('取消任务追踪'))
 

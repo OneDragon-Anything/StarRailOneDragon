@@ -7,12 +7,15 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class ClickPoint(SrOperation):
+    """点击指定坐标(1080p 游戏空间)。非 MCP 传参单元:point 参数为运行时
+    坐标对象,仅限代码内调用。
+    起点:任意画面;终点:原画面(点击动作完成,后续画面由点击目标决定)。
+    """
 
     def __init__(self, ctx: SrContext, point: Point):
         """
-        点击指定坐标
         :param ctx: 上下文
-        :param point: 坐标
+        :param point: 点击坐标(1920×1080 游戏空间)
         """
         SrOperation.__init__(
             self, ctx,

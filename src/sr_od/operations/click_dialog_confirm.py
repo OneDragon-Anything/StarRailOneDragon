@@ -8,15 +8,15 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class ClickDialogConfirm(SrOperation):
+    """点击通用确认对话框的「确认」按钮(如模拟宇宙丢弃奇物/祝福的确认)。
+    起点:任意出现确认对话框的画面;终点:弹窗已确认关闭(后续画面由调用场景决定)。
+    """
 
     def __init__(self, ctx: SrContext,
                  wait_after_success: Optional[int] = None):
         """
-        点击对话框的确认 当前使用情况有
-        - 模拟宇宙 丢弃奇物
-        - 模拟宇宙 丢弃祝福
-        :param ctx:
-        :param wait_after_success: 点击成功后等待的秒数
+        :param ctx: 上下文
+        :param wait_after_success: 点击成功后等待的秒数(None 用框架默认)
         """
         SrOperation.__init__(self, ctx, op_name=gt('点击确认'))
         self.wait_after_success: Optional[int] = wait_after_success

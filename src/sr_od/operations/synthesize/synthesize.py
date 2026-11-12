@@ -17,14 +17,17 @@ from sr_od.operations.synthesize.synthesize_const import SynthesizeItem, Synthes
 
 
 class Synthesize(SrOperation):
+    """合成指定物品:自动导航(回大世界 → 菜单 → 合成)后选物品、选数量、
+    确认合成。非 MCP 传参单元:item 参数为运行时合成物品对象,仅限代码内调用。
+    起点:任意可控画面;终点:合成页面(物品已合成)。
+    副作用:消耗材料合成物品。
+    """
 
     def __init__(self, ctx: SrContext, item: SynthesizeItem, num: int):
         """
-        如果不在合成页面 则进入合成页面
-        合成指定物品后 停留在指定页面
         :param ctx: 上下文
-        :param item: 要合成的物品
-        :param num: 要合成的数量 0为最大值。当前只支持最大值
+        :param item: 要合成的物品(合成物品常量表对象)
+        :param num: 合成数量,0 为最大值(当前仅支持最大值)
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('合成', 'game'), ''))
 

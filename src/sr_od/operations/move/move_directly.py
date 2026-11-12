@@ -28,6 +28,14 @@ from sr_od.sr_map.sr_map_def import Region
 
 
 class MoveDirectly(SrOperation):
+    """从起始坐标朝目标点直线移动(小地图定位 + 脱困),途中可处理怪物锁定
+    进入战斗(秘技/普通开怪可选)。非 MCP 传参单元:参数为运行时地图/坐标对象,
+    仅限代码内调用。
+
+    移动机制:开始用传入坐标直接移动;途中实时计算新坐标(限定距离与朝向一致
+    才采用),因此途中不应有移动外的转向;被怪物锁定会停下进战斗。
+    起点:大世界(起始坐标附近);终点:目标点附近(或战斗胜利后继续走完)。
+    """
 
     max_len: int = 6  # 最多存储多少个走过的坐标
     rec_pos_interval: float = 0.5  # 间隔多少秒记录一次坐标
@@ -49,13 +57,17 @@ class MoveDirectly(SrOperation):
                  technique_only: bool = False,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         """
-        从当前位置 朝目标点直线前行
-        有简单的脱困功能
-
-        1. 最开始使用传入的开始坐标 直接开始移动
-        2. 移动途中计算新的坐标，计算坐标会判断在一定距离内，且方向与当前人物朝向基本一致
-        3. 由于第2点，移动途中不应该有任何移动外转向，避免计算坐标被舍弃
-        4. 移动途中可能被怪物锁定而停下来
+        :param ctx: 上下文
+        :param lm_info: 起始点所在大地图信息
+        :param start: 起始坐标(大地图像素系)
+        :param target: 目标坐标(与 start 同系)
+        :param next_lm_info: 目标点所属的大地图信息(跨图移动时传;None=同图)
+        :param stop_afterwards: 到达后是否停止移动(接续移动的路线传 False)
+        :param no_run: 强制步行(不疾跑)
+        :param no_battle: 本段路保证无战斗(跳过战斗判断)
+        :param technique_fight: 途中遇怪用秘技进战斗
+        :param technique_only: 只用秘技进战斗(不普攻开怪)
+        :param op_callback: 运行结束回调
         """
         SrOperation.__init__(self, ctx, op_name=gt('移动 %s -> %s') % (start, target), op_callback=op_callback)
         self.lm_info: LargeMapInfo = lm_info

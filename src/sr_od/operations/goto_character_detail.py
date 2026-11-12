@@ -41,12 +41,14 @@ _SUB_TAB_SCREENS: list[tuple[str, str]] = [
 
 class GotoCharacterDetail(SrOperation):
     """导航到角色详情画面(详情 TAB,不经过角色列表)。
-
-    终点状态:角色-详情画面·详情 TAB·无弹窗,停留在进入时默认选中的角色
-    (队伍头像对应角色/上次查看角色);选角色由后续 op 负责。
+    起点:任意可控画面(不在角色域时先回大世界再入);终点:角色-详情画面·
+    详情 TAB·无弹窗,停留在进入时默认选中的角色;选角色由后续 op 负责。
     """
 
     def __init__(self, ctx: SrContext):
+        """
+        :param ctx: 上下文
+        """
         SrOperation.__init__(self, ctx, op_name=gt('前往角色详情'))
 
     @operation_node(name='识别当前画面', is_start_node=True, node_max_retry_times=5)

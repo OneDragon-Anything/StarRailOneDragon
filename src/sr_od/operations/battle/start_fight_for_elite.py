@@ -16,6 +16,11 @@ from sr_od.screen_state import common_screen_state
 
 
 class StartFightForElite(SrOperation):
+    """对不主动攻击的精英怪备战并开战:按配队计算秘技施放顺序(优先不触发
+    战斗的增益类,最后用攻击类技能开怪),逐人切换施放后发起攻击进入战斗。
+    适用于逐光捡金、模拟宇宙精英怪。
+    起点:大世界(精英怪附近);终点:战斗画面。
+    """
 
     STATUS_DONE: ClassVar[str] = '使用完毕'
 
@@ -24,15 +29,11 @@ class StartFightForElite(SrOperation):
                  skip_point_check: bool = False,
                  skip_resurrection_check: bool = False):
         """
-        对不会主动攻击的精英怪开战 上BUFF之后进入战斗
-        优先使用上BUFF不触发战斗的秘技 最后再使用开战技能
-        适用于
-        - 逐光捡金
-        - 模拟宇宙 精英怪
-        :param ctx:
-        :param character_list: 当前配队 无传入时自动识别 但不准
-        :param skip_point_check: 跳过使用秘技时检测秘技点 逐光捡金可用
-        :param skip_resurrection_check: 跳过切换角色时检测复活 逐光捡金可用
+        :param ctx: 上下文
+        :param character_list: 当前配队;传 None 自动识别(头像识别,可能不准)。
+            非 MCP 传参单元:此参数为运行时角色对象列表,仅限代码内调用
+        :param skip_point_check: 跳过秘技点检测(逐光捡金可用)
+        :param skip_resurrection_check: 跳过切换角色时的复活检测(逐光捡金可用)
         """
         SrOperation.__init__(self, ctx, op_name=gt('使用秘技 进入战斗'),)
         self.character_list_from_param: Optional[List[Character]] = character_list

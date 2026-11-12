@@ -17,14 +17,18 @@ _BUY_DIALOG_SCREEN: str = '商店-购买弹窗'
 
 
 class BuyStoreItem(SrOperation):
+    """在商店页面购买指定商品(模板匹配定位,列表外自动下滑寻找),处理购买
+    数量弹窗后完成购买。非 MCP 传参单元:item 参数为运行时商品对象,
+    仅限代码内调用。
+    起点:商店页面;终点:商店页面(商品已购买)。
+    副作用:消耗游戏货币购买商品,购买不可退。
+    """
 
     def __init__(self, ctx: SrContext, item: StoreItem, buy_num: int):
         """
-        在一个商店页面使用
-        购买商品后 最后停留在商店页面
         :param ctx: 上下文
-        :param item: 要购买的商品
-        :param buy_num: 要购买的数量 0的话代表最大值
+        :param item: 要购买的商品(商店商品常量表对象)
+        :param buy_num: 购买数量,0 代表买满(弹窗默认最大值)
         """
         SrOperation.__init__(self, ctx, op_name=f'{gt("购买商品")} {gt(item.cn, "game")}')
 

@@ -10,18 +10,18 @@ from sr_od.screen_state import common_screen_state
 
 
 class WaitInWorld(SrOperation):
-
-    """
-    等待加载 直到进入游戏主界面 右上角有角色图标
+    """等待画面加载直到进入大世界(右上角角色图标可见),超时失败。
+    起点:任意加载中画面;终点:大世界。
     """
 
     def __init__(self, ctx: SrContext, wait: float = 20,
                  wait_after_success: float = 0,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         """
-        :param ctx:
-        :param wait: 最多等待秒数
-        :param op_callback: 回调
+        :param ctx: 上下文
+        :param wait: 最多等待秒数(超时判失败)
+        :param wait_after_success: 成功后额外停留秒数
+        :param op_callback: 运行结束回调
         """
         SrOperation.__init__(self, ctx, op_name=gt('等待主界面'), timeout_seconds=wait, op_callback=op_callback)
         self.wait_after_success: float = wait_after_success

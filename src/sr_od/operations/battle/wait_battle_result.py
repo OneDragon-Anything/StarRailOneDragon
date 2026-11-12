@@ -7,8 +7,16 @@ from sr_od.screen_state import battle_screen_state, common_screen_state
 
 
 class WaitBattleResult(SrOperation):
+    """等待战斗结束并判定胜负:期间自动点掉确认类提示弹窗;状态返回
+    「战斗成功」/「战斗失败」。
+    起点:战斗画面(或即将进战斗);终点:战斗结算画面(胜负已判定)。
+    """
 
     def __init__(self, ctx: SrContext, try_attack: bool = False):
+        """
+        :param ctx: 上下文
+        :param try_attack: 画面仍在大世界时是否尝试发起攻击(用于战斗未开打的兜底)
+        """
         super().__init__(ctx, op_name=gt('等待战斗结果'))
 
         self.try_attack: bool = try_attack

@@ -74,6 +74,11 @@ class UseTechniqueResult:
 
 
 class UseTechnique(SrOperation):
+    """用当前角色施放一次秘技,秘技点不足时可吃消耗品补点(快速恢复弹窗
+    自动处理);结果经 data 返回 UseTechniqueResult(是否用了秘技/消耗品数等)。
+    判定节奏偏快(该方法也被用于开怪前摇,慢了会被怪袭击)。
+    起点:大世界;终点:大世界(秘技已施放或按参数放弃)。
+    """
 
     STATUS_CAN_USE: ClassVar[str] = '可使用秘技'
     STATUS_CONTINUE_USE: ClassVar[str] = '继续使用秘技'
@@ -86,16 +91,13 @@ class UseTechnique(SrOperation):
                  exit_after_use: bool = True,
                  ):
         """
-        需在大世界页面中使用
-        用当前角色使用秘技
-        返回 data=UseTechniqueResult
-        这个方法有用在了开怪上 因此判断需要快点 防止被袭
-        :param ctx:
-        :param max_consumable_cnt: 秘技点不足时最多使用的消耗品个数
-        :param need_check_available: 是否需要检查秘技是否可用 普通大世界战斗后 会有一段时间才能使用秘技
-        :param need_check_point: 是否检测剩余秘技点再使用。如果没有秘技点 又不能用消耗品 那就不使用了。目前OCR较慢 不建议开启
-        :param trick_snack: 只使用奇巧零食
-        :param exit_after_use: 当能使用秘技的情况下 一定要使用了秘技再退出
+        :param ctx: 上下文
+        :param max_consumable_cnt: 秘技点不足时最多吃的消耗品个数(0=不吃)
+        :param need_check_available: 先检查秘技是否可用(大世界战斗后有一段冷却期)
+        :param need_check_point: 使用前检测剩余秘技点,没点又不能吃消耗品就不施放
+            (OCR 较慢,默认不开)
+        :param trick_snack: 只使用奇巧零食补点
+        :param exit_after_use: 秘技可用时必须施放完才结束
         """
         SrOperation.__init__(self, ctx, op_name=gt('施放秘技'))
 
@@ -211,13 +213,13 @@ class UseTechnique(SrOperation):
 
 
 class CheckTechniquePoint(SrOperation):
+    """读取大世界右下角的当前剩余秘技点数,结果经 data 返回(int)。
+    起点:大世界;终点:大世界(原画面,纯读数)。
+    """
 
     def __init__(self, ctx: SrContext):
         """
-        需在大世界页面中使用
-        通过右下角数字 检测当前剩余的秘技点数
-        返回附加状态为秘技点数
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name=gt('检测秘技点数'))
 
@@ -236,6 +238,10 @@ class CheckTechniquePoint(SrOperation):
 
 
 class FastRecover(SrOperation):
+    """通过快速恢复弹窗使用消耗品补秘技点,吃够数量或补满为止;结果状态区分
+    使用了/没使用/无需使用消耗品。判定节奏偏快(该方法也被用于开怪前摇)。
+    起点:大世界(快速恢复弹窗);终点:大世界(消耗品已使用或按参数放弃)。
+    """
 
     STATUS_NO_NEED_CONSUMABLE: ClassVar[str] = '无需使用消耗品'
     STATUS_NO_USE_CONSUMABLE: ClassVar[str] = '没使用消耗品'
@@ -246,10 +252,8 @@ class FastRecover(SrOperation):
                  quirky_snacks: bool = False
                  ):
         """
-        使用消耗品恢复秘技点
-        这个方法有用在了开怪上 因此判断需要快点 防止被袭
-        :param ctx:
-        :param max_consumable_cnt: 秘技点不足时最多使用的消耗品个数
+        :param ctx: 上下文
+        :param max_consumable_cnt: 最多使用的消耗品个数(0=不吃)
         :param quirky_snacks: 只使用奇巧零食
         """
         SrOperation.__init__(self, ctx, op_name=gt('快速恢复'))

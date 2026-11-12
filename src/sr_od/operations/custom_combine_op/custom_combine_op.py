@@ -25,15 +25,18 @@ from sr_od.sr_map.operations.transport_by_map import TransportByMap
 
 
 class CustomCombineOp(SrOperation):
+    """按用户自定义配置文件顺序执行一组指令(传送/移动/交互/等待/点击/
+    购买/合成等),全部执行完返回大世界。
+    起点:任意可控画面;终点:大世界。
+    """
 
     STATUS_ALL_DONE: ClassVar[str] = '全部完成'
 
     def __init__(self, ctx: SrContext, config_name: str, no_battle: bool = False):
         """
-        按配置文件执行对应的指令
-        最后会返回大世界
-        :param ctx:
-        :param config_name:
+        :param ctx: 上下文
+        :param config_name: 自定义指令配置文件名(custom_combine_op 配置)
+        :param no_battle: 移动类指令按无战斗模式执行
         """
         self.config: CustomCombineOpConfig = CustomCombineOpConfig(config_name)
         self.op_idx: int = 0  # 当前指定的指令下标

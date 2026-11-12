@@ -49,11 +49,10 @@ _SUB_TAB_SCREENS: list[tuple[str, str]] = [
 
 
 class SwitchCharacterTabOp(SrOperation):
-    """在角色详情画面切换左侧 TAB 到目标页。
-
-    终点状态:目标 TAB 激活(到达验证锚可见)。前置:角色详情画面(列表
-    已收起)——由 GotoCharacterDetail / SelectCharacterOp 保证;遮挡态
-    与域外起点显式失败,不替调用方补导航。"""
+    """在角色详情画面切换左侧 TAB 到目标页(详情/光锥/行迹/遗器/星魂/信息)。
+    起点:角色详情画面(列表已收起,由 GotoCharacterDetail / SelectCharacterOp
+    保证);终点:目标 TAB 激活(到达验证锚可见)。遮挡态与域外起点显式失败,
+    不替调用方补导航。"""
 
     def __init__(self, ctx: SrContext, tab_name: str):
         """

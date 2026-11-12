@@ -6,15 +6,14 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class WaitInSeconds(SrOperation):
-    """
-    等待一定秒数 可以用在
-    1. 疾跑后固定在原地再操作
+    """在当前画面原地等待指定秒数,不做任何操作(如疾跑后等角色停稳再截图)。
+    起点:任意画面;终点:原画面。
     """
 
     def __init__(self, ctx: SrContext, seconds: float = 10):
         """
-        :param ctx:
-        :param seconds: 等待多少秒
+        :param ctx: 上下文
+        :param seconds: 等待秒数,支持小数
         """
         SrOperation.__init__(self, ctx, op_name=gt('等待秒数 %.2f') % seconds)
         self.seconds: float = float(seconds)

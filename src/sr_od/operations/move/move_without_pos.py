@@ -13,6 +13,13 @@ from sr_od.sr_map import mini_map_utils
 
 
 class MoveWithoutPos(SrOperation):
+    """从起始坐标朝目标点「盲走」:按距离换算的秒数直线步行,不计算坐标、
+    不做战斗判断。适合难以定位坐标的短途移动。非 MCP 传参单元:参数为运行时
+    坐标对象,仅限代码内调用。
+
+    使用前人物应处于静止(转向基准才稳定);到达后 data 返回目标点坐标。
+    起点:大世界(起始坐标附近);终点:目标点附近(纯移动,原画面)。
+    """
 
     def __init__(self, ctx: SrContext,
                  start: Point,
@@ -20,13 +27,11 @@ class MoveWithoutPos(SrOperation):
                  move_time: Optional[float] = None,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         """
-        从当前位置 朝目标点直线前行
-        按照不疾跑的速度移动若干秒 中途不会计算坐标 也不会进行任何战斗判断
-        适合在难以判断坐标的情况下使用 且中途不会有任何打断或困住的情况
-
-        为了更稳定移动到目标点 使用前人物应该静止
-
-        返回 data = 目标点坐标
+        :param ctx: 上下文
+        :param start: 起始坐标(小地图像素系)
+        :param target: 目标坐标(与 start 同系)
+        :param move_time: 移动秒数;None=按两点距离与步行速度自动换算
+        :param op_callback: 运行结束回调
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s -> %s' % (gt('机械移动'), start, target),
