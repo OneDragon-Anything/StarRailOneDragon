@@ -420,12 +420,20 @@ class ScreenContext:
             return None
         return from_route.get(to_screen, None)
 
-    def update_current_screen_name(self, screen_name: str) -> None:
+    def update_current_screen_name(self, screen_name: str, source: str | None = None) -> None:
         """
         更新当前的画面名字
+
+        Args:
+            screen_name: 当前的画面名字
+            source: 本次转移的来源描述(如 判定/点击乐观/goto跳转),由 op 侧调用位传入;
+                None 时不打 debug 日志(backend 等非 op 调用天然静默),不影响更新行为
         """
+        old_screen_name = self.current_screen_name
         self.last_screen_name = self.current_screen_name
         self.current_screen_name = screen_name
+        if source is not None and old_screen_name != screen_name:
+            log.debug('画面状态: %s→%s (来源: %s)', old_screen_name, screen_name, source)
 
     # ---- Screen Scope 管理 ----
     # 通过 ScreenInfo.app_id 自动区分全局/局部 screen：

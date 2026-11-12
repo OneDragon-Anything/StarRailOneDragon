@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -32,6 +34,19 @@ class FindAreaResultEnum(Enum):
     AREA_NO_CONFIG = -2  # 区域配置找不到
 
 
+def _area_log_key(screen_name: str | None, area: ScreenArea) -> str:
+    """B 组 debug 日志的区域上下文:有画面名时 '<画面.区域>';旧调用方不传画面名时退化为裸区域名。"""
+    return f'{screen_name}.{area.area_name}' if screen_name is not None else area.area_name
+
+
+def _lcs_ratio_of(target_text: str, ocr_text: str) -> float:
+    """LCS 长度占目标文本长度的比例,与 str_utils.find_by_lcs 的判定分母同口径。"""
+    if len(target_text) == 0:
+        return 0.0
+    return str_utils.longest_common_subsequence_length(
+        target_text.lower(), ocr_text.lower()) / len(target_text)
+
+
 def find_area(
     ctx: OneDragonContext,
     screen: MatLike,
@@ -60,7 +75,10 @@ def find_area(
         log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
                     screen_name, area_name)
         return FindAreaResultEnum.AREA_NO_CONFIG
-    return find_area_in_screen(ctx, screen, area, crop_first)
+    result = find_area_in_screen(ctx, screen, area, crop_first, screen_name=screen_name)
+    log.debug('find_area %s.%s: %s', screen_name, area_name,
+              '命中' if result == FindAreaResultEnum.TRUE else '未命中')
+    return result
 
 
 def find_area_binary(
@@ -89,7 +107,11 @@ def find_area_binary(
         log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
                     screen_name, area_name)
         return FindAreaResultEnum.AREA_NO_CONFIG
-    return find_area_in_screen_binary(ctx, screen, area, binary_threshold, crop_first)
+    result = find_area_in_screen_binary(ctx, screen, area, binary_threshold, crop_first,
+                                        screen_name=screen_name)
+    log.debug('find_area %s.%s: %s', screen_name, area_name,
+              '命中' if result == FindAreaResultEnum.TRUE else '未命中')
+    return result
 
 
 def find_area_in_screen_binary(
@@ -98,6 +120,7 @@ def find_area_in_screen_binary(
     area: ScreenArea,
     binary_threshold: int = 127,
     crop_first: bool = False,
+    screen_name: str | None = None,
 ) -> FindAreaResultEnum:
     """
     使用二值化图像在截图中查找区域
@@ -107,12 +130,15 @@ def find_area_in_screen_binary(
         area: 区域
         binary_threshold: 二值化阈值，默认为127
         crop_first: 在传入区域时 是否先裁剪再进行识别
+        screen_name: 画面名称 仅用于 debug 日志上下文 不传时日志只打区域名
 
     Returns:
         FindAreaResultEnum: 是否可以匹配到指定区域
     """
     if area is None:
         return FindAreaResultEnum.AREA_NO_CONFIG
+
+    area_key = _area_log_key(screen_name, area)
 
     # 对屏幕进行二值化处理
     binary_screen = cv2_utils.to_binary(screen, threshold=binary_threshold)
@@ -126,8 +152,16 @@ def find_area_in_screen_binary(
             crop_first=crop_first,
         )
 
+        target_text = gt(area.text, 'game')
         for ocr_result in ocr_result_list:
-            if str_utils.find_by_lcs(gt(area.text, 'game'), ocr_result.data, percent=area.lcs_percent):
+            hit = str_utils.find_by_lcs(target_text, ocr_result.data, percent=area.lcs_percent)
+            if log.isEnabledFor(logging.DEBUG):
+                # lcs 值与 find_by_lcs 同口径(LCS 长度占目标文本长度的比例),日志值与判定结果才自洽
+                lcs_ratio = _lcs_ratio_of(target_text, ocr_result.data)
+                log.debug('find_area %s: OCR"%s" vs "%s" lcs=%.2f/%.2f → %s',
+                          area_key, ocr_result.data, target_text, lcs_ratio,
+                          area.lcs_percent, '命中' if hit else '未命中')
+            if hit:
                 find = True
                 break
     elif area.is_template_area:
@@ -144,6 +178,11 @@ def find_area_in_screen_binary(
             binary_threshold=binary_threshold,
         )
         find = mrl.max is not None
+        # 低于阈值时 mrl.max 为 None,原始 conf 已被 cv2_utils.match_template 过滤,日志打 '-'
+        log.debug('find_area %s: 模板%s conf=%s/%.2f → %s',
+                  area_key, area.template_id,
+                  f'{mrl.max.confidence:.2f}' if mrl.max is not None else '-',
+                  area.template_match_threshold, '命中' if find else '未命中')
 
     return FindAreaResultEnum.TRUE if find else FindAreaResultEnum.FALSE
 
@@ -153,6 +192,7 @@ def find_area_in_screen(
     screen: MatLike,
     area: ScreenArea,
     crop_first: bool = False,
+    screen_name: str | None = None,
 ) -> FindAreaResultEnum:
     """
     游戏截图中 是否能找到对应的区域
@@ -162,12 +202,15 @@ def find_area_in_screen(
         screen: 游戏截图
         area: 区域
         crop_first: 在传入区域时 是否先裁剪再进行文本识别
+        screen_name: 画面名称 仅用于 debug 日志上下文 不传时日志只打区域名
 
     Returns:
         bool: 是否可以匹配到指定区域
     """
     if area is None:
         return FindAreaResultEnum.AREA_NO_CONFIG
+
+    area_key = _area_log_key(screen_name, area)
 
     find: bool = False
     if area.is_text_area:
@@ -178,8 +221,16 @@ def find_area_in_screen(
             crop_first=crop_first,
         )
 
+        target_text = gt(area.text, 'game')
         for ocr_result in ocr_result_list:
-            if str_utils.find_by_lcs(gt(area.text, 'game'), ocr_result.data, percent=area.lcs_percent):
+            hit = str_utils.find_by_lcs(target_text, ocr_result.data, percent=area.lcs_percent)
+            if log.isEnabledFor(logging.DEBUG):
+                # lcs 值与 find_by_lcs 同口径(LCS 长度占目标文本长度的比例),日志值与判定结果才自洽
+                lcs_ratio = _lcs_ratio_of(target_text, ocr_result.data)
+                log.debug('find_area %s: OCR"%s" vs "%s" lcs=%.2f/%.2f → %s',
+                          area_key, ocr_result.data, target_text, lcs_ratio,
+                          area.lcs_percent, '命中' if hit else '未命中')
+            if hit:
                 find = True
                 break
     elif area.is_template_area:
@@ -188,6 +239,11 @@ def find_area_in_screen(
         mrl = ctx.tm.crop_and_match_template(screen, rect, area.template_sub_dir, area.template_id,
                                              threshold=area.template_match_threshold)
         find = mrl.max is not None
+        # 低于阈值时 mrl.max 为 None,原始 conf 已被 cv2_utils.match_template 过滤,日志打 '-'
+        log.debug('find_area %s: 模板%s conf=%s/%.2f → %s',
+                  area_key, area.template_id,
+                  f'{mrl.max.confidence:.2f}' if mrl.max is not None else '-',
+                  area.template_match_threshold, '命中' if find else '未命中')
 
     return FindAreaResultEnum.TRUE if find else FindAreaResultEnum.FALSE
 
@@ -277,10 +333,17 @@ def find_and_click_area(
         for ocr_result in ocr_result_list:
             if str_utils.find_by_lcs(gt(area.text, 'game'), ocr_result.data, percent=area.lcs_percent):
                 if ctx.controller.click(ocr_result.center, pc_alt=area.pc_alt, gamepad_key=area.gamepad_key):
+                    log.debug('点击 %s.%s @ (%d,%d) pc_alt=%s → 成功',
+                              screen_name, area_name, ocr_result.center.x, ocr_result.center.y,
+                              'T' if area.pc_alt else 'F')
                     return OcrClickResultEnum.OCR_CLICK_SUCCESS
                 else:
+                    log.debug('点击 %s.%s @ (%d,%d) pc_alt=%s → 失败',
+                              screen_name, area_name, ocr_result.center.x, ocr_result.center.y,
+                              'T' if area.pc_alt else 'F')
                     return OcrClickResultEnum.OCR_CLICK_FAIL
 
+        log.debug('find_area %s.%s: 未命中(不点击)', screen_name, area_name)
         return OcrClickResultEnum.OCR_CLICK_NOT_FOUND
     elif area.is_template_area:
         rect = area.rect
@@ -288,17 +351,28 @@ def find_and_click_area(
         mrl = ctx.tm.crop_and_match_template(screen, rect, area.template_sub_dir, area.template_id,
                                              threshold=area.template_match_threshold)
         if mrl.max is None:
+            log.debug('find_area %s.%s: 未命中(不点击)', screen_name, area_name)
             return OcrClickResultEnum.OCR_CLICK_NOT_FOUND
 
         matched_center = mrl.max.center + rect.left_top
         to_click = Point(ctx.controller.center_point.x, matched_center.y) if center_x else matched_center
 
         if ctx.controller.click(to_click, pc_alt=area.pc_alt, gamepad_key=area.gamepad_key):
+            log.debug('点击 %s.%s @ (%d,%d) pc_alt=%s → 成功',
+                      screen_name, area_name, to_click.x, to_click.y,
+                      'T' if area.pc_alt else 'F')
             return OcrClickResultEnum.OCR_CLICK_SUCCESS
         else:
+            log.debug('点击 %s.%s @ (%d,%d) pc_alt=%s → 失败',
+                      screen_name, area_name, to_click.x, to_click.y,
+                      'T' if area.pc_alt else 'F')
             return OcrClickResultEnum.OCR_CLICK_FAIL
     else:
-        ctx.controller.click(area.center, pc_alt=area.pc_alt, gamepad_key=area.gamepad_key)
+        clicked = ctx.controller.click(area.center, pc_alt=area.pc_alt, gamepad_key=area.gamepad_key)
+        # 纯定位区点击:返回枚举保持既有语义恒为 SUCCESS,日志如实记录 click 执行结果
+        log.debug('点击 %s.%s @ (%d,%d) pc_alt=%s → %s',
+                  screen_name, area_name, area.center.x, area.center.y,
+                  'T' if area.pc_alt else 'F', '成功' if clicked else '失败')
         return OcrClickResultEnum.OCR_CLICK_SUCCESS
 
 
@@ -365,26 +439,43 @@ def get_match_screen_name(
     Returns:
         str | None: 画面名称
     """
+    start_time = time.time()
+    # 判定序 = 实际调用过 is_target_screen 的画面(scope 跳过/提前命中后未判定的不计)
+    tried_screen_names: list[str] = []
+    result: str | None = None
+
     if screen_name_list is not None:
         for screen_info in ctx.screen_loader.screen_info_list:
             if screen_info.screen_name not in screen_name_list:
                 continue
+            tried_screen_names.append(screen_info.screen_name)
             if is_target_screen(ctx, screen, screen_info=screen_info, crop_first=crop_first):
-                return screen_info.screen_name
+                result = screen_info.screen_name
+                break
     elif ctx.screen_loader.current_screen_name is not None or ctx.screen_loader.last_screen_name is not None:
-        return get_match_screen_name_from_last(ctx, screen, crop_first=crop_first)
+        result = get_match_screen_name_from_last(ctx, screen, crop_first=crop_first,
+                                                 tried_screen_names=tried_screen_names)
     else:
         for screen_info in ctx.screen_loader.active_screen_info_list:
+            tried_screen_names.append(screen_info.screen_name)
             if is_target_screen(ctx, screen, screen_info=screen_info, crop_first=crop_first):
-                return screen_info.screen_name
+                result = screen_info.screen_name
+                break
 
-    return None
+    log.debug('画面判定: %s (判定 %d, %.2fs)',
+              result, len(tried_screen_names), time.time() - start_time)
+    if result is None:
+        log.debug('画面判定: None (试过 [%s] 全未中)',
+                  ', '.join(tried_screen_names[:10]))
+
+    return result
 
 
 def get_match_screen_name_from_last(
     ctx: OneDragonContext,
     screen: MatLike,
     crop_first: bool = False,
+    tried_screen_names: list[str] | None = None,
 ) -> str | None:
     """
     根据游戏截图 从上次记录的画面开始 匹配一个最合适的画面
@@ -392,6 +483,8 @@ def get_match_screen_name_from_last(
         ctx: 上下文
         screen: 游戏截图
         crop_first: 在传入区域时 是否先裁剪再进行文本识别
+        tried_screen_names: 出参 收集实际调用过 is_target_screen 的画面判定序
+            (scope 跳过的只展开邻居不判定,不计入),供父函数打判定日志
 
     Returns:
         str | None: 画面名称
@@ -425,6 +518,8 @@ def get_match_screen_name_from_last(
                             bfs_list.append(goto_screen)
             continue
 
+        if tried_screen_names is not None:
+            tried_screen_names.append(current_screen_name)
         if is_target_screen(ctx, screen, screen_name=current_screen_name, crop_first=crop_first):
             return current_screen_name
 
@@ -442,6 +537,8 @@ def get_match_screen_name_from_last(
     for screen_info in ctx.screen_loader.active_screen_info_list:
         if screen_info.screen_name in bfs_list:
             continue
+        if tried_screen_names is not None:
+            tried_screen_names.append(screen_info.screen_name)
         if is_target_screen(ctx, screen, screen_info=screen_info, crop_first=crop_first):
             return screen_info.screen_name
 
@@ -481,7 +578,9 @@ def is_target_screen(
             continue
         existed_id_mark = True
 
-        if find_area_in_screen(ctx, screen, screen_area, crop_first) != FindAreaResultEnum.TRUE:
+        # 透传 screen_name 让 B1a 详情行带画面上下文(area_name 跨画面不唯一,否则无法对号)
+        if find_area_in_screen(ctx, screen, screen_area, crop_first,
+                               screen_name=screen_info.screen_name) != FindAreaResultEnum.TRUE:
             fit_id_mark = False
             break
 
