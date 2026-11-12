@@ -2,7 +2,8 @@
 
 效果:按传入的商品名在兑换商店购买指定数量,画面停在商店列表页,
 购买结果(实际数量/单价/余额/月限剩余)经运行结果 data 返回。
-起点:商店页常驻商店任意 tab(或兑换弹窗重入);终点:商店页目标 tab 列表页。
+起点:商店页常驻商店任意 tab(列表滚动位任意,op 自行回顶;或兑换弹窗重入);
+终点:商店页目标 tab 列表页。
 副作用:消耗星芒/余烬等兑换材料,不可逆。仅限用户明确授权的购买请求调用。
 
 兑换商店五个 tab(星芒兑换/余烬兑换/星尘之礼/光锥呈现/戏言成真)共用同一
@@ -33,6 +34,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 from sr_od.application.cultivation.account.operations.read_warp_status import (
     parse_count,
 )
@@ -92,11 +94,11 @@ _SCROLL_STEP: int = 300
 至少完整露出一行商品,不漏扫"""
 _SCROLL_MAX_ROUNDS: int = 12
 """滚动找商品的保险上限(余烬页约 10 行),防列表异常时无限拖"""
+_RESET_SCROLL_MAX_DRAGS: int = 12
+"""回顶拖拽上限(余烬页从底部回顶约 8 行,单拖约 1.7 行;判静止提前退出)"""
 _SCROLL_SAME_TEXT_ROUNDS: int = 2
 """拖后画面文本与上轮一致的连续轮数判定到底(行吸附列表拖后无变化 = 到底;
 连续 2 轮防拖拽动画过渡帧/轮间时序导致的单轮同帧误判)"""
-_NAME_MATCH_LCS: float = 0.6
-"""商品名 OCR 兜底相似度(LCS 占关键词长度比);主判据为包含"""
 
 # 卡不可购态角标关键词:命中即 fail,不进弹窗(售罄弹窗确认按钮禁用,进了也无法购买)
 _BADGE_UNAVAILABLE_KEYWORDS: tuple[str, ...] = ('已售罄', '已达上限', '未解锁')
@@ -106,7 +108,23 @@ _POPUP_STATUS_KEYWORDS: tuple[tuple[str, str], ...] = (
     ('兑换材料不足', 'INSUFFICIENT_MATERIALS'),
 )
 
+_TITLE_MATCH_LCS: float = 0.8
+"""弹窗商品名校验的 LCS 兜底阈值:弹窗标题字体有异体字形态(实测「命运的
+足迹」标题 OCR 为「命运的足跡」,LCS=0.8);阈值须高于易混对的相似度
+(星轨通票/星轨专票 LCS=0.75,低于阈值不误放行)"""
+
+
+def _is_target_popup_title(title: str | None, goods_cn: str) -> bool:
+    """弹窗商品名与目标关键词匹配:包含优先,异体字形态走 LCS 兜底。"""
+    if not title:
+        return False
+    return (goods_cn in title
+            or str_utils.find_by_lcs(goods_cn, title,
+                                     percent=_TITLE_MATCH_LCS))
+
+
 _COUNT_OCR_SCALE: float = 3.0
+"""数量型 area 的 OCR 放大倍数(单字符数字兜底,同 ReadWarpStatusOp 口径)"""
 """数量型 area 的 OCR 放大倍数(单字符数字兜底,同 ReadWarpStatusOp 口径)"""
 _BALANCE_TOLERANCE: int = 2
 """余额差值终验容差(顶部货币读数的 OCR 个位抖动)"""
@@ -275,15 +293,15 @@ class ExchangeShopBuyGoods(SrOperation):
         """入口画面级判定,分发:商店页 → 子 op 切 tab 后进扫描;弹窗 → 商品名核验后直接调数量。
 
         画面不在预期集合直接失败(不做逐 area 试命中推断);切 tab 复用
-        ShopSwitchTabOp(自带目标 tab 锚验证,切 tab 后列表自动回顶)。
+        ShopSwitchTabOp(自带目标 tab 选中态模板锚验证)。注意:目标 tab 已是
+        当前 tab 时点击幂等、列表**不回顶**(回顶由 reset_scroll 节点负责)。
         """
         screen = self.check_and_update_current_screen(screen_name_list=[
             _SHOP_SCREEN, _POPUP_SCREEN])
         if screen == _POPUP_SCREEN:
             title = self._area_text(self.last_screenshot, _POPUP_SCREEN,
                                     _AREA_POPUP_TITLE)
-            if title is None or not str_utils.find_by_lcs(
-                    self._goods_cn, title, percent=_NAME_MATCH_LCS):
+            if not _is_target_popup_title(title, self._goods_cn):
                 return self.round_fail(
                     f'当前兑换弹窗不是目标商品 {self._goods_cn}(弹窗商品名: '
                     f'{title or "未识别"}),请先关闭该弹窗再重试')
@@ -291,18 +309,54 @@ class ExchangeShopBuyGoods(SrOperation):
             return self.round_success(status='POPUP_OPENED', wait=1)
         if screen != _SHOP_SCREEN:
             return self.round_fail('起点不在商店页,请先导航到商店(常驻商店)')
+        # 前台点击/拖拽要求游戏窗口激活:窗口失焦时手势落在窗外全部无效
+        # (实机对照:MCP 工具每次 active_window 后有效,op 中途失焦后无效)
+        self.ctx.controller.active_window()
         switch_op = ShopSwitchTabOp(self.ctx, tab=self._tab)
         switch_result = switch_op.execute()
         if not switch_result.success:
             return self.round_fail(f'切换到目标 tab 失败: {switch_result.status}')
+        return self.round_success(status='TAB_READY', wait=0.5)
+
+    @node_from(from_name='准备tab', status='TAB_READY')
+    @operation_node(name='回顶列表', node_max_retry_times=20)
+    def reset_scroll(self) -> OperationRoundResult:
+        """扫描前把商品列表回滚到顶:起点滚动位置不定(上一 op 可能留在中途),
+        从顶部起扫才能覆盖全列表。回顶 = 手指下滑(内容上移),拖一次 → 等吸附
+        → OCR 全文对比判静止,连续静止即到顶——连发拖拽会被后续手势打断
+        吸附,净位移只剩最后一拖,不能一次拖到位。
+
+        拖拽 x 取列表右缘空白带(第 6 列卡右缘之外):卡面手势可能被判定为
+        点击卡而非列表滚动。duration ≥0.5:更快的快速手势不被识别为拖拽
+        (实机对照,同参数 0.5 有效 0.3 无效)。
+        """
+        area = self.ctx.screen_loader.get_area(_SHOP_SCREEN, _AREA_LIST_REGION)
+        drag_x = area.rect.x2 - 60
+        drag_y_top = max(area.center.y - 260, area.rect.y1 + 40)
+        drag_y_bottom = min(area.center.y + 260, area.rect.y2 - 40)
+        full_text = self._scan_goods(self.last_screenshot)[1]
+        for _ in range(_RESET_SCROLL_MAX_DRAGS):
+            self.ctx.controller.drag_to(
+                Point(drag_x, drag_y_bottom), Point(drag_x, drag_y_top),
+                duration=0.5)
+            # round_wait 借框架等待睡吸附时长;丢弃返回值(流转由节点 return 决定)
+            self.round_wait('回顶拖拽后等待吸附', wait=0.8)
+            self.screenshot()  # 节点内主动取新帧(last_screenshot 仅轮次开头更新)
+            new_text = self._scan_goods(self.last_screenshot)[1]
+            if new_text == full_text:
+                # 同帧 + 顶行商品可见 = 真到顶;同帧但顶行不在 = 拖拽被偶发
+                # 吞掉(实机:首拖无效曾误判到顶,列表实际留在原地),继续强拖
+                if self._top_row_visible():
+                    break
+            full_text = new_text
         self._pre_balance = parse_count(self._area_count_text(
             self.last_screenshot, _SHOP_SCREEN, _AREA_CURRENCY))
         if self._pre_balance is None:
             return self.round_fail('顶部货币余额读取失败,无法进行余额终验')
-        return self.round_success(status='TAB_READY',
-                                  data={'pre_balance': self._pre_balance}, wait=1)
+        # wait 覆盖末次拖拽的惯性+吸附余波,保证 locate 拿到静止帧
+        return self.round_success(status='RESET_DONE', wait=1.5)
 
-    @node_from(from_name='准备tab', status='TAB_READY')
+    @node_from(from_name='回顶列表', status='RESET_DONE')
     @node_from(from_name='滚动一格', status='SCROLLED')
     @operation_node(name='定位商品', node_max_retry_times=30)
     def locate_goods(self) -> OperationRoundResult:
@@ -314,8 +368,7 @@ class ExchangeShopBuyGoods(SrOperation):
         if self._exchange_popup_visible():
             title = self._area_text(self.last_screenshot, _POPUP_SCREEN,
                                     _AREA_POPUP_TITLE)
-            if title is None or not str_utils.find_by_lcs(
-                    self._goods_cn, title, percent=_NAME_MATCH_LCS):
+            if not _is_target_popup_title(title, self._goods_cn):
                 return self.round_fail(
                     f'兑换弹窗商品名与目标不符(期望 {self._goods_cn},'
                     f'实读 {title or "未识别"}),中止')
@@ -352,10 +405,13 @@ class ExchangeShopBuyGoods(SrOperation):
     @node_from(from_name='定位商品', status='SCROLL_NEXT')
     @operation_node(name='滚动一格')
     def scroll_next(self) -> OperationRoundResult:
-        """列表区中心上滑一格(行吸附),回定位商品重扫。"""
+        """列表区右缘空白带上滑一格(行吸附),回定位商品重扫。
+
+        拖拽 x 同 reset_scroll 取列表右缘空白带,避免手势落在商品卡上。
+        """
         area = self.ctx.screen_loader.get_area(_SHOP_SCREEN, _AREA_LIST_REGION)
-        start = area.center
-        end = Point(start.x, start.y - _SCROLL_STEP)
+        start = Point(area.rect.x2 - 60, area.center.y)
+        end = Point(area.rect.x2 - 60, area.center.y - _SCROLL_STEP)
         self.ctx.controller.drag_to(end, start, duration=0.8)
         self._scroll_rounds += 1
         return self.round_success(status='SCROLLED', wait=1)
@@ -486,8 +542,9 @@ class ExchangeShopBuyGoods(SrOperation):
     def _scan_goods(self, screen) -> tuple[Rect | None, str]:
         """商品列表区 OCR 扫描,返回 (目标卡槽位 rect 或 None, 本帧全文)。
 
-        商品名以「包含 + LCS 相似度兜底」匹配;命中文本的中心 x 归入 6 列
-        窗口,卡顶由名字中心反推(见模块头网格几何注释),任意滚动态可定位。
+        商品名用**包含匹配**——不引入模糊兜底:同名易混对(星轨通票/星轨
+        专票一字之差)模糊匹配会误命中,后果是读错卡的角标甚至点错卡,
+        比漏扫(诚实失败)严重。
         """
         area = self.ctx.screen_loader.get_area(_SHOP_SCREEN, _AREA_LIST_REGION)
         ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(
@@ -495,9 +552,7 @@ class ExchangeShopBuyGoods(SrOperation):
         full_text = ''.join(result.data for result in ocr_result_list)
         for result in ocr_result_list:
             text = result.data or ''
-            if (self._goods_cn not in text
-                    and not str_utils.find_by_lcs(self._goods_cn, text,
-                                                  percent=_NAME_MATCH_LCS)):
+            if self._goods_cn not in text:
                 continue
             center = result.center
             col = self._locate_window(center.x, _GRID_COL_WINDOWS)
@@ -564,12 +619,26 @@ class ExchangeShopBuyGoods(SrOperation):
         """
         card_rect, _ = self._scan_goods(self.last_screenshot)
         if card_rect is None:
-            self.ctx.log.info('购买后列表重定位未命中目标卡(可能已换光重排),'
-                              '月限剩余以弹窗前读数为准')
+            log.info('购买后列表重定位未命中目标卡(可能已换光重排),'
+                     '月限剩余以弹窗前读数为准')
             return None
         badge_text = self._ocr_rect_text(
             screen=self.last_screenshot, rect=self._badge_rect(card_rect))
         return parse_monthly_left(badge_text)
+
+    def _top_row_visible(self) -> bool:
+        """列表顶行(吸附后标准首行)是否有商品名:回顶判定辅助。
+
+        商品名在卡内垂直偏移恒定 → 顶行名字中心必落在标准行位附近;
+        顶行不可见说明列表未到顶(顶部截断态)或拖拽无效。
+        """
+        area = self.ctx.screen_loader.get_area(_SHOP_SCREEN, _AREA_LIST_REGION)
+        y_low = _NAME_OFFSET_FROM_TOP - 25
+        y_high = _NAME_OFFSET_FROM_TOP + 35
+        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(
+            self.last_screenshot, rect=area.rect)
+        return any(y_low <= result.center.y <= y_high
+                   for result in ocr_result_list)
 
     def _click_area_center(self, screen_name: str, area_name: str) -> None:
         """点指定 area 中心(press_time=0.1,点击有效性由调用方轮询验证)。"""
