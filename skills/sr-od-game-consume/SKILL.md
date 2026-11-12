@@ -1,6 +1,6 @@
 ---
 name: sr-od-game-consume
-description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；买大月卡(无名勋礼/无名客的荣勋 ￥68 档)到付款码、切微信/支付宝渠道、查大月卡购买状态；规划中:跃迁抽卡。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」也用。消费决策(该不该买/性价比/何时续)归 sr-od-game-coach；画面建档细节归 docs/game/screens/store.md、无名勋礼.md 与 无名勋礼-购买档位页.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, renew, payment QR code, recharge。
+description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；买大月卡(无名勋礼/无名客的荣勋 ￥68 档)到付款码、切微信/支付宝渠道、查大月卡购买状态；规划中:跃迁抽卡。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」也用；提到无名客的奖章(￥128档)或礼包/皮肤/星琼直充等未收录消费项的请求同样用(路由表有如实告知的去向,防凭猜操作摸到真实货币入口)。消费决策(该不该买/性价比/何时续)归 sr-od-game-coach；画面建档细节归 docs/game/screens/store.md、无名勋礼.md 与 无名勋礼-购买档位页.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, nameless medal, renew, payment QR code, recharge, top-up。
 ---
 
 # 游戏内消费路由（sr-od-game-consume）
