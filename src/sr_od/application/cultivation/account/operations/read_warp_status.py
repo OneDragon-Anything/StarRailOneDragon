@@ -19,7 +19,7 @@
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils import str_utils
+from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
@@ -46,6 +46,9 @@ _AREA_JADE: str = '货币-星琼数量'
 _AREA_SPECIAL_PASS: str = '货币-星轨专票数量'
 _AREA_STANDARD_PASS: str = '货币-星票数量'
 _AREA_PROGRESS: str = '货币-跃迁进度'
+
+_COUNT_OCR_SCALE: float = 3.0
+"""数量型 area 的 OCR 放大倍数——单字符数字在原始分辨率下检出失败,3 倍实测可读(2 倍无效)"""
 
 # 标签文本 → 池类型:按关键子串匹配(OCR 对 Fate[UBW] 前缀可能乱码,子串稳)
 _LABEL_KEYWORDS: list[tuple[str, str]] = [
@@ -101,6 +104,26 @@ def _area_text(ctx: SrContext, screen, screen_name: str, area_name: str) -> str 
     if len(ocr_result_list) == 0:
         return None
     return ''.join(result.data for result in ocr_result_list)
+
+
+def _area_count_text(ctx: SrContext, screen, screen_name: str, area_name: str) -> str | None:
+    """读数量型 area(纯数字):两层取数——全图 OCR+rect 过滤 → 3 倍放大裁剪 OCR 兜底。
+
+    引擎边界(实测):det 对孤立单字符(个位数票数如「7」)在全图检出漏检,
+    裁剪小图的 det 响应又随输入尺寸浮动——两种路径互补,先走稳定路径
+    (全图过滤,多位数恒定),null 再走放大兜底(个位数部分检出,3 倍实测
+    优于 2 倍);仍 None 由调用方容错(读数 null 不阻塞,精确值以游戏内为准)。
+    """
+    area = ctx.screen_loader.get_area(screen_name, area_name)
+    ocr_result_list = ctx.ocr_service.get_ocr_result_list(screen, rect=area.rect)
+    if len(ocr_result_list) > 0:
+        return ''.join(result.data for result in ocr_result_list)
+    cropped = cv2_utils.crop_image_only(screen, area.rect)
+    big = cv2_utils.scale_image(cropped, scale=_COUNT_OCR_SCALE)
+    raw = ctx.ocr.run_ocr(big)
+    if len(raw) == 0:
+        return None
+    return ''.join(raw.keys())
 
 
 class ReadWarpStatusOp(SrOperation):
@@ -168,7 +191,7 @@ class ReadWarpStatusOp(SrOperation):
         if pool_type == POOL_TYPE_UNKNOWN:
             return self.round_retry('标签区无可识别文本(画面未加载完成?),等待重试', wait=1.5)
 
-        jade = parse_count(_area_text(self.ctx, screen, _WARP_SCREEN, _AREA_JADE))
+        jade = parse_count(_area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_JADE))
         if jade is None:
             return self.round_retry('星琼数量读数失败(货币区未加载完成?),等待重试', wait=1.5)
 
@@ -177,10 +200,10 @@ class ReadWarpStatusOp(SrOperation):
         progress: str | None = None
         if pool_type == POOL_TYPE_STANDARD:
             standard_pass = parse_count(
-                _area_text(self.ctx, screen, _WARP_SCREEN, _AREA_STANDARD_PASS))
+                _area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_STANDARD_PASS))
         else:
             special_pass = parse_count(
-                _area_text(self.ctx, screen, _WARP_SCREEN, _AREA_SPECIAL_PASS))
+                _area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_SPECIAL_PASS))
             progress = parse_progress(
                 _area_text(self.ctx, screen, _WARP_SCREEN, _AREA_PROGRESS))
 

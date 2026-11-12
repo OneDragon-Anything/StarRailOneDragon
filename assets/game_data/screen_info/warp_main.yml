@@ -175,10 +175,10 @@ area_list:
 - area_name: 货币-星轨专票数量
   id_mark: false
   pc_rect:
-  - 1540
-  - 48
-  - 1615
-  - 88
+  - 1535
+  - 45
+  - 1620
+  - 90
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
