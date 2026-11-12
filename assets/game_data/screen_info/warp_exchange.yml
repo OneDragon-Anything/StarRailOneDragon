@@ -1,0 +1,46 @@
+screen_id: warp_exchange
+screen_name: 跃迁-兑换确认
+pc_alt: false
+area_list:
+- area_name: 文本-星轨专票不足
+  id_mark: true
+  pc_rect:
+  - 630
+  - 505
+  - 1280
+  - 550
+  text: 星轨专票不足
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-确认
+  id_mark: false
+  pc_rect:
+  - 990
+  - 648
+  - 1348
+  - 700
+  text: 确认
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-取消
+  id_mark: false
+  pc_rect:
+  - 572
+  - 648
+  - 930
+  - 700
+  text: 取消
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []

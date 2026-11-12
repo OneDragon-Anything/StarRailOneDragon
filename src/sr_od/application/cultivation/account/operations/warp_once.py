@@ -6,8 +6,9 @@
 流程（2026-11-12 实机探索建档）：
 - 跃迁页点「跃迁1次/10次」→ 抽卡动画（数秒）→ 跃迁-结果画面（物品展示，
   点击画面任意处继续）→ 回跃迁页。10 连为逐件展示，需多次点击直至回到跃迁页。
-- 专票不足时游戏会弹星琼兑换确认（160 星琼/张）——本 op **不自动兑换**
-  （兑换 = 追加消耗决策），票不足直接 fail 由调用方裁决。
+- 专票不足时游戏会弹星琼兑换确认（160 星琼/张，跃迁-兑换确认屏已建档）——
+  由「兑换确认闸」节点按 allow_jade_exchange 分流：授权点确认继续抽，
+  未授权点取消干净失败。兑换是追加消耗决策，传 True 前必须获用户明确授权。
 - 结果画面稀有度形态只实测过 4★ 光锥态；3★/5★ 展示差异未建档（5★ 有专属
   动画与展示时长），op 用「离开跃迁页→循环点击至跃迁页回归」的闭环设计，
   不依赖结果画面内部锚，形态差异天然兼容（超时兜底见节点预算）。
@@ -26,6 +27,9 @@ from sr_od.screen_state.common_screen_state import is_normal_in_world
 
 _WARP_SCREEN: str = '跃迁'
 _WARP_SCREEN_RESULT: str = '跃迁-结果'
+_WARP_EXCHANGE_SCREEN: str = '跃迁-兑换确认'
+_WARP_CHAR_DETAIL: str = '跃迁-角色详情'
+_WARP_RESULT_SUMMARY: str = '跃迁-结果总览'
 _NORMAL_WORLD: str = '大世界-普通'
 
 WARP_TIMES_ONE: int = 1
@@ -39,22 +43,29 @@ class WarpOp(SrOperation):
     结果状态：
     - ``WARP_DONE``：抽卡完成并已回到跃迁页（结果画面已全部关闭）；
     - ``STAY_ENTRY``：times 非法（1/10 之外）直接返回；
-    失败：当前池专票不足（不自动兑换星琼）、导航失败、抽卡后超时未回跃迁页。
+    失败：当前池票不足且未授权星琼兑换（已点取消干净退出）、导航失败、
+    抽卡后超时未回跃迁页。
 
     注意：调用前调用方负责选中目标卡池（跃迁页左侧列表）——本 op 不切池
     （切池判定依赖池子数量动态识别，见跃迁 doc），在哪个池点按钮就抽哪个池。
     """
 
     def __init__(self, ctx: SrContext, times: int = WARP_TIMES_ONE,
-                 back_to_world: bool = False):
+                 back_to_world: bool = False,
+                 allow_jade_exchange: bool = False):
         """
         :param ctx: 上下文
         :param times: 跃迁次数，仅支持 1 / 10
         :param back_to_world: 抽完后是否回大世界收摊（默认 False 留在跃迁页，
             便于连续抽取或读数确认）
+        :param allow_jade_exchange: 票不足时是否允许消耗星琼自动兑换补票
+            （160 星琼/张，游戏弹窗确认）。False = 点取消干净失败；True =
+            点确认继续抽。**兑换是追加消耗决策，调用方必须先获用户明确授权**
+            才能传 True。
         """
         self._times: int = times
         self._back_to_world: bool = back_to_world
+        self._allow_jade_exchange: bool = allow_jade_exchange
         self._clicked: bool = False
         """已点过跃迁按钮（结果处理节点据此分流：点前=点按钮，点后=关结果画面）"""
         SrOperation.__init__(self, ctx, op_name=gt('跃迁抽卡'),
@@ -82,8 +93,7 @@ class WarpOp(SrOperation):
     def click_warp(self) -> OperationRoundResult:
         """校验次数合法后点「跃迁1次/10次」，until 跃迁页按钮消失（动画开始）。
 
-        专票不足的兜底：跃迁页顶栏读不到票数时无法预判，点击后游戏弹兑换
-        确认弹窗——该弹窗未建档，fail 报告现场由调用方裁决（不自动兑换）。
+        票不足时游戏弹星琼兑换确认——由「兑换确认闸」节点按授权分流处理。
         """
         if self._times not in _ALLOWED_TIMES:
             return self.round_fail(f'不支持的跃迁次数: {self._times}（仅支持 1/10）',
@@ -102,27 +112,70 @@ class WarpOp(SrOperation):
         return result
 
     @node_from(from_name='点跃迁按钮', status='WARP_CLICKED')
-    @operation_node(name='处理结果画面', node_max_retry_times=40)
-    def handle_result(self) -> OperationRoundResult:
-        """循环点击结果画面中央区域关闭展示，until 跃迁页 id_mark 回归。
+    @operation_node(name='兑换确认闸')
+    def exchange_gate(self) -> OperationRoundResult:
+        """票不足时游戏弹星琼兑换确认(160/张)——按授权分流。
 
-        10 连逐件展示需多次点击（含点击跳过抽卡动画，游戏允许）；每轮点击
-        后 sleep 等翻页动画。回到跃迁页后中央点击无害（立绘区无 UI）。
-        **点击必须带 press_time=0.1**：结果画面的「点击任意处继续」对
-        press_time=0 的极短点击不响应（实测 controller.click 默认值点不动，
-        手动带 0.1s 按压即生效）——故不走 round_by_click_area（内部固定
-        press_time=0）。跃迁页回归超预算 = 可能停在未建档画面（5★ 展示
-        形态未建档），fail 报告现场。
+        画面级判定(弹窗 id_mark=「星轨专票不足」+「确认」双锚)：
+        - 弹窗在：allow_jade_exchange=True 点确认继续抽；False 点取消
+          干净失败(退出后游戏停在跃迁页,无残留态)。
+        - 弹窗不在：票足已直接进抽卡动画,放行到结果处理。
+
+        点击必须带 press_time=0.1(游戏弹窗按钮对极短点击不响应,与结果画面
+        同款坑)——故不走 round_by_find_and_click_area(内部固定 press_time=0,
+        且其 until 曾被 OCR 偶发漏检误满足造成假成功),改为显式点击+手动
+        验证弹窗消失才算生效。
+        """
+        if self.check_and_update_current_screen(
+                screen_name_list=[_WARP_EXCHANGE_SCREEN]) != _WARP_EXCHANGE_SCREEN:
+            return self.round_success(status='NO_EXCHANGE', wait=1)
+        button = '按钮-确认' if self._allow_jade_exchange else '按钮-取消'
+        button_area = self.ctx.screen_loader.get_area(_WARP_EXCHANGE_SCREEN, button)
+        self.ctx.controller.click(button_area.center, press_time=0.1)
+        # 点了≠成了：弹窗文本消失才算点击生效
+        if self.check_and_update_current_screen(
+                screen_name_list=[_WARP_EXCHANGE_SCREEN]) != _WARP_EXCHANGE_SCREEN:
+            if self._allow_jade_exchange:
+                return self.round_success(status='EXCHANGED', wait=4)
+            return self.round_fail('票不足且未授权星琼兑换,已点取消(跃迁未执行)')
+        return self.round_retry('兑换弹窗点击未生效,重试', wait=1.5)
+
+    @node_from(from_name='兑换确认闸', status='EXCHANGED')
+    @node_from(from_name='兑换确认闸', status='NO_EXCHANGE')
+    @operation_node(name='处理结果画面', node_max_retry_times=80)
+    def handle_result(self) -> OperationRoundResult:
+        """循环处理抽卡展示直到回到跃迁页。
+
+        四种画面形态分流（10 连实测）：
+        - 跃迁页：全部展示已关闭 → WARP_DONE；
+        - 跃迁-角色详情（抽出角色卡时弹出，满魂转化也会弹）：中央点击无效，
+          点右上 × 关闭；
+        - 跃迁-结果总览（逐件看完后的汇总页）：同样点右上 ×；
+        - 其他（普通逐件结果画面/抽卡动画）：点中央继续区域。
+
+        点击必须带 press_time=0.1（展示类画面普遍对极短点击不响应）。
+        跃迁页回归超预算 = 停在未建档画面，fail 报告现场。
         """
         if not self._clicked:
             return self.round_retry('未点过跃迁按钮却进入结果处理(节点流异常)', wait=1)
-        area = self.ctx.screen_loader.get_area(_WARP_SCREEN_RESULT, '点击-继续区域')
-        self.ctx.controller.click(area.center, press_time=0.1)
-        # 点了≠成了：跃迁页 id_mark 回归才算全部展示关闭
-        if self.check_and_update_current_screen(
-                screen_name_list=[_WARP_SCREEN]) == _WARP_SCREEN:
+        current = self.check_and_update_current_screen(screen_name_list=[
+            _WARP_SCREEN, _WARP_CHAR_DETAIL, _WARP_RESULT_SUMMARY])
+        if current == _WARP_SCREEN:
             return self.round_success(status='WARP_DONE', wait=1)
-        return self.round_retry('结果展示未结束,继续点击', wait=1.5)
+        if current == _WARP_CHAR_DETAIL:
+            self._click_close_x(_WARP_CHAR_DETAIL)
+        elif current == _WARP_RESULT_SUMMARY:
+            self._click_close_x(_WARP_RESULT_SUMMARY)
+        else:
+            area = self.ctx.screen_loader.get_area(_WARP_SCREEN_RESULT, '点击-继续区域')
+            self.ctx.controller.click(area.center, press_time=0.1)
+        # 点了≠成了：下一轮 check 确认画面推进；本轮先等待过渡
+        return self.round_retry('结果展示未结束,继续处理', wait=1.5)
+
+    def _click_close_x(self, screen_name: str) -> None:
+        """点指定屏的右上 × 关闭按钮（press_time=0.1，点击有效性由调用方轮询验证）。"""
+        area = self.ctx.screen_loader.get_area(screen_name, '按钮-关闭X')
+        self.ctx.controller.click(area.center, press_time=0.1)
 
     @node_from(from_name='处理结果画面', status='WARP_DONE')
     @operation_node(name='回大世界')
