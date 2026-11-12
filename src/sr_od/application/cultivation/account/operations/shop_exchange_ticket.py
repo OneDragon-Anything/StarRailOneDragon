@@ -25,7 +25,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 _SHOP_SCREEN: str = '商店'
 _POPUP_SCREEN: str = '商店-兑换弹窗'
-_GOODS_AREA: str = '商品列表'
+_GOODS_TICKET_CARD: str = '商品-星轨专票卡'
 _ANCHOR_TAB: str = 'tab-常驻商店'
 
 _AREA_POPUP_MARK: str = '文本-兑换数量'
@@ -73,8 +73,10 @@ class ShopExchangeTicketOp(SrOperation):
             return self.round_success(status='POPUP_OPENED', wait=1)
         if screen != _SHOP_SCREEN:
             return self.round_fail('起点不在商店页,请先经 EnterShopFromWarpOp 进入')
+        # 专票卡固定在星芒页第 1 行第 1 列——不能用「商品列表」area 中心
+        # (页面几何中心落在第 4 列光锥卡上,误开月限商品的兑换窗,实测踩坑)
         result = self.round_by_find_and_click_area(
-            self.last_screenshot, _SHOP_SCREEN, _GOODS_AREA,
+            self.last_screenshot, _SHOP_SCREEN, _GOODS_TICKET_CARD,
             until_find_all=[(_POPUP_SCREEN, _AREA_POPUP_MARK)],
             success_wait=1.5, retry_wait=1.5)
         if result.is_success:
@@ -99,6 +101,9 @@ class ShopExchangeTicketOp(SrOperation):
         if current is None:
             return self.round_retry('兑换数量读取失败,重试', wait=1)
         if self._count is None:
+            # 拉满只需点一次:点击后读数验证生效(数量>1 即已拉满),防重复点击
+            if current > 1:
+                return self.round_success(status='COUNT_READY', wait=1)
             self._click_area_center(_POPUP_SCREEN, _AREA_MAX)
             return self.round_retry('已点拉满,下一轮读数验证', wait=1)
         if current == self._count:
