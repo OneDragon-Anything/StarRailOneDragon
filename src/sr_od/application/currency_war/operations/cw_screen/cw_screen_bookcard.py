@@ -75,6 +75,7 @@ _FACTION_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 class CwScreenBookcard(CwOperation):
     """星徽秘典四选一:OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关)。
+    起点:货币战争-星徽秘典四选一画面;终点:选卡完成弹窗自关(返回主循环)。
 
     决策面 = 策略器零参决策(打分:target 阵营/board 已有/配方框架;单一
     源 = ``strategies/impl/flow.py::decide_star_tome``),本 op 零选卡倾向

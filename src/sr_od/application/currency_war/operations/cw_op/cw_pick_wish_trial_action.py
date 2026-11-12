@@ -32,6 +32,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickWishTrialOp(CwOperation):
     """祈愿试炼确认链(统一 pick-op 分发并入)。
+    起点:货币战争-祈愿试炼画面(动作执行时);终点:点选卡并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点试炼卡身选中(防吞点击,选中点 = 动作 op 自状态容器
     ``wish_trial_opts_xy`` 按 ``param.idx`` 取——op-layer.md §1.1 :35,

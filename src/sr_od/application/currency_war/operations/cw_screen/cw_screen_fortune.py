@@ -50,7 +50,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenFortune(CwOperation):
-    """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
+    """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。
+    起点:货币战争-命运卜者三选一画面;终点:选卡并确认完成,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-命运卜者强化'   # screen_info 画面(cw_fortune_picker.yml)
     # ⚠️ 待实机核(载体迁移非新证):卡位/文字带 = live 已实测确认

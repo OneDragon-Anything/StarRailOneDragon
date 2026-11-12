@@ -103,7 +103,8 @@ _EQUIP_LCS_AMBIGUITY_MARGIN: float = 0.15
 
 
 class CwScreenBoxPick(CwOperation):
-    """武装箱 4 选 1 选卡画面 op(选卡即终结;单选族例外,判据 = screens/README.md §3)。"""
+    """武装箱 4 选 1 选卡画面 op(选卡即终结;单选族例外,判据 = screens/README.md §3)。
+    起点:货币战争-武装箱 4 选 1 画面;终点:选卡完成(选卡即终结,返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战-武装箱选择'
     #: 卡身点击 y(点卡名下方一点避「查看详情」按钮;实测)

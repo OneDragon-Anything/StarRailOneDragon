@@ -31,7 +31,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenNextButton(CwOperation):
-    """前进按钮:OCR「下一步」→ 点击(简报等画面的兜底推进)。"""
+    """前进按钮:OCR「下一步」→ 点击(简报等画面的兜底推进)。
+    起点:货币战争-「下一步」按钮出现;终点:已点击推进,画面离开(返回主循环)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-前进按钮')

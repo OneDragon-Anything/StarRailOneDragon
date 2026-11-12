@@ -40,7 +40,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenConsumableOverlay(CwOperation):
-    """消耗品详情浮层:双 OCR 条件入口,点右上 × 关闭。"""
+    """消耗品详情浮层:双 OCR 条件入口,点右上 × 关闭。
+    起点:货币战争-消耗品详情浮层出现;终点:浮层已关闭(返回主循环)。"""
 
     #: 关闭控件:同族「道具详情弹窗」的右上 ×(道具详情弹窗家族共用)
     CLOSE_SCREEN = '货币战争-道具详情弹窗'

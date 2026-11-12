@@ -16,6 +16,7 @@ from sr_od.interastral_peace_guide.open_guide import GuideOpen
 
 class CwEntryEnter(CwOperation):
     """从大世界进入「货币战争」大厅(入口流程 M1)。
+    起点:大世界;终点:货币战争大厅(弹窗守卫自动处理沿途一次性弹窗)。
 
     路径:打开指南(星际和平指南)→ 旷宇纷争 TAB → (货币战争分类默认选中)→ 前往参与
     → 关一次性弹窗(「点击空白处关闭」类 / 版本公告轮播,见 wait_lobby)→ 货币战争大厅。

@@ -36,7 +36,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenItemDetailPopup(CwOperation):
-    """道具详情弹窗:点 × 关闭;入口 = OCR「聘用书」∧ 非祈愿屏。"""
+    """道具详情弹窗:点 × 关闭;入口 = OCR「聘用书」∧ 非祈愿屏。
+    起点:货币战争-道具详情弹窗出现;终点:弹窗已关闭(返回主循环)。"""
 
     CLOSE_AREA = '按钮-关闭'
 

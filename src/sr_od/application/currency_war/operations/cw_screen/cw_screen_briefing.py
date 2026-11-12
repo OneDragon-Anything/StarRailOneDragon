@@ -57,7 +57,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenBriefing(CwOperation):
-    """简报:识别简报 → 读词缀/boss/难度(report 落状态容器)+ 词缀效果采集 → 点下一步(落地复查后返回主循环)。"""
+    """简报:识别简报 → 读词缀/boss/难度(report 落状态容器)+ 词缀效果采集 → 点下一步(落地复查后返回主循环)。
+    起点:货币战争-简报画面;终点:读完词缀/boss/难度并点下一步,画面离开(返回主循环)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领
     #: + 按钮-下一步 + 区域-词缀行 + 区域-首领行。

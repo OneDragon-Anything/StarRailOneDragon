@@ -67,7 +67,9 @@ SCROLL_TO = Point(600, 520)
 
 
 class HarvestEquipCodex(SrOperation):
-    """采集当前 tier tab 的全部装备图标 + 全图(点格→截图→OCR名→存→滚动→去重)。"""
+    """采集当前 tier tab 的全部装备图标 + 全图(点格→截图→OCR名→存→滚动→去重)。
+    起点:货币战争-装备图鉴页(目标 tab 当前或按 tab_x 切换);终点:原画面
+    (全部图标与全图已落输出目录)。"""
 
     def __init__(self, ctx: SrContext, tier: str = '当前', tab_x: int = 0):
         """

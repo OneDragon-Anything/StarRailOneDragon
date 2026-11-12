@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 class CwActionOpenShopOp(CwOperation):
     """开店(注册行 = terminal 承载行;执行抛 AssertionError)。
+    起点:货币战争-备战画面(动作执行时);终点:点击开店入口(终结动作,注册行承载);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     终结动作:开店切商店画面(非帧稳定)→ 本备战访问终结,返回主循环
     重识别;终结等待 = ``terminal_wait``(与原决策循环 ``wait=1.0`` 逐字

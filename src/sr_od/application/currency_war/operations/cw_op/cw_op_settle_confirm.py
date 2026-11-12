@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 
 class CwOpSettleConfirm(CwOperation):
     """货币战争-结算确认 原子动作 op(点击 + 长按兜底 + 推进上报;
+    起点:货币战争-结算确认画面(动作执行时);终点:点击结算确认(战斗节点推进上报);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     去证据门形态 = 点击即上报)。
 
     生产路径 = ``CwScreenBattleWait`` ②段委托本类 ``execute()``。单 node

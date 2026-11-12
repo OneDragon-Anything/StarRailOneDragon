@@ -108,7 +108,8 @@ def _guard_classify(name: str, config) -> tuple[bool, bool, bool]:
 
 
 class CwScreenInvestStrategy(CwOperation):
-    """投资策略 3 选 1:OCR 卡名 → decide_invest 决策 → (按需逐卡刷新)→ 点最优卡 + 确认。"""
+    """投资策略 3 选 1:OCR 卡名 → decide_invest 决策 → (按需逐卡刷新)→ 点最优卡 + 确认。
+    起点:货币战争-投资策略 3 选 1 画面;终点:选卡并确认完成,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
     # 卡选中点击 Y:screen_info「区域-卡名行」center.y(=卡名选中行);常量=兜底。

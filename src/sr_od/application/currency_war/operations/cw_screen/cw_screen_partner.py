@@ -46,7 +46,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenPartner(CwOperation):
-    """选择伙伴 overlay:OCR 候选 → decide_partner 选 → 「点选候选→确认」脉冲 → 标识消失 = 完成。"""
+    """选择伙伴 overlay:OCR 候选 → decide_partner 选 → 「点选候选→确认」脉冲 → 标识消失 = 完成。
+    起点:货币战争-选择伙伴浮层出现;终点:选伙伴并确认,浮层消失(返回主循环)。"""
 
     # 候选阵营标签行 y 过滤带(候选 label 在 y~362;排除标题 64 / 指令 130 / 详情 445 / 确认 582)。
     # 实测( 1-7 节点):候选 label 护盾/能量 在 y≈362;放宽 [340,400] 容变。

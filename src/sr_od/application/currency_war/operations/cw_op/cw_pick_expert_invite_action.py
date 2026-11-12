@@ -34,6 +34,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickExpertInviteOp(CwOperation):
     """专家邀请函选卡链(统一 pick-op 分发并入;点卡即选,无确认钮)。
+    起点:货币战争-专家邀请函画面(动作执行时);终点:点选一张卡(即选即定);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点选(点击点 = 状态容器 ``expert_invite.card_points[idx]`` ∨ ``cash_point``
     (idx=-1;观察上报写入,op-layer.md §1.1 :35),动作 op 按下标自取,

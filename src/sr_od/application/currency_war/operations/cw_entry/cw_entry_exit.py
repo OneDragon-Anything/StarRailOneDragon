@@ -59,7 +59,9 @@ BATTLE_STREAK_ENTER: int = 4
 
 
 class CwEntryExit(CwOperation):
-    """放弃当前货币战争对局,返回大厅(退局调度器)。"""
+    """放弃当前货币战争对局,返回大厅(退局调度器)。
+    起点:货币战争对局内任意画面;终点:货币战争大厅(对局已放弃)。
+    副作用:放弃当前对局进度,不可恢复。"""
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
 

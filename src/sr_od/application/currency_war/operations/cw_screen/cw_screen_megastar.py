@@ -64,6 +64,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwScreenMegastar(CwOperation):
     """盛会之星:候选立绘 → decide_megastar 选巨星 + 确认(旧巨星节点执行器内联)。
+    起点:货币战争-盛会之星画面;终点:选巨星并确认完成,画面离开(返回主循环)。
 
     节点完成门 = 「仍在巨星 overlay?」(标识-盛会之星);确认未落地 =
     下一帧门复检自愈(动作链 bug 归动作层修,不加验证段)。单动作确认

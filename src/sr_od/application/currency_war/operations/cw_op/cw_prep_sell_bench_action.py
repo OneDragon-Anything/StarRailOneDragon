@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 class CwActionSellBenchOp(CwOperation):
     """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
+    起点:货币战争-备战画面(动作执行时);终点:拖动备战槽角色到出售区卖出;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     机械执行,源槽像素验重试拆除)。非终结。
 
     双域执行(商店执行链端口接入调用):备战域经 ``PrepExecEnv.executor``

@@ -52,7 +52,8 @@ def _sentinel_frame() -> np.ndarray:
 
 
 class CwOperation(SrOperation):
-    """CW 操作基类(operations 树唯一父类;sim 覆写面见模块 docstring)。"""
+    """CW 全域 op 的公共基类(operations 树唯一父类;sim 覆写面见模块 docstring)。
+    中间基类,非独立运行单元——由各画面 op / 动作 op 继承使用,不直接运行。"""
 
     def __init__(self, ctx: SrContext,
                  node_max_retry_times: int = 3,

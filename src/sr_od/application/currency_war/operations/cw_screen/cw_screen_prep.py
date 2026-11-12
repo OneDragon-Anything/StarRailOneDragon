@@ -167,6 +167,7 @@ def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
 
 class CwScreenPrep(CwOperation):
     """备战决策环(两 node 形态):观察 node(环装配前置 + 清场 + heavy
+    起点:货币战争-备战画面;终点:备战决策环至出战/离开备战(返回主循环)。
     观察 → CwScreenPrepObs 可选域 report 落状态容器 + 事件 overlay 早退 +
     接管补采委派 + 纯观察审计族)→ 决策动作 node(单动作决策循环整体:
     决策(状态容器 game state 直读,F3 形状校验)→ 执行(机械执行无成败

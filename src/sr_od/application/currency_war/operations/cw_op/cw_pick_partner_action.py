@@ -33,6 +33,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickPartnerOp(CwOperation):
     """选择伙伴 pick 确认链(统一动作工厂 迁入)。
+    起点:货币战争-选择伙伴画面(动作执行时);终点:点选伙伴并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     「点选候选 → 确认」脉冲链整体迁入(未选中实证下重点选,单选语义
     无反选面;确认被拒的防线判定留在画面 op 决策半)。选中态标记

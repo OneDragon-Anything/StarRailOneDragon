@@ -43,7 +43,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenWishTrial(CwOperation):
-    """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认。"""
+    """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认。
+    起点:货币战争-祈愿试炼浮层出现;终点:选卡并确认完成(返回主循环)。"""
 
     # 卡位不建 screen_info area(op-layer.md §1.1 :35 适用范围判据:选项点击
     # 坐标属观察上报的选项集构成数据,入坐标域;确认钮等静态控件识别标志维持

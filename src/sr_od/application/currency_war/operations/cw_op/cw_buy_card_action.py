@@ -46,6 +46,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionBuyCardOp(CwOperation):
     """买一张 = 一个动作 op(满栏例外下一击多张仍一个 op,张数由游戏
+    起点:货币战争-商店画面(动作执行时);终点:点击买入一张卡(满栏例外下一击多张);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     规则定、上报按 merge_buy_k 计——方案 A 补裁)。
 
     自上报(op-layer.md §1.2):机械发出后直调

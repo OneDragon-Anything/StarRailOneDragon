@@ -462,6 +462,7 @@ class _FnResult:
 
 class CwLoop(CwOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
+    起点:货币战争-备战画面(对局已开始);终点:对局结束(结算完成回大厅/大厅入口)。
 
     每轮分发(两阶段形态,as-built =
     flow/outer_loop.md §2):

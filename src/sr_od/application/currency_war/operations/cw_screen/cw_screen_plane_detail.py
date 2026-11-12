@@ -32,7 +32,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenPlaneDetail(CwOperation):
-    """位面详情:点「按钮-关闭位面详情」→ 落地复查后结束本次访问(零验证)。"""
+    """位面详情:点「按钮-关闭位面详情」→ 落地复查后结束本次访问(零验证)。
+    起点:货币战争-位面详情画面;终点:已点关闭,画面离开(返回主循环)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-位面详情')

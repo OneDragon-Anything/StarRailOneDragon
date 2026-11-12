@@ -46,7 +46,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenShopCardDetailPopup(CwOperation):
-    """商店卡牌详情弹窗:双 id_mark 识别标志入口,点 X → 落地复查结束本次访问(零验证)。"""
+    """商店卡牌详情弹窗:双 id_mark 识别标志入口,点 X → 落地复查结束本次访问(零验证)。
+    起点:货币战争-商店卡牌详情弹窗出现;终点:弹窗已关闭(返回主循环)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-商店卡牌详情')

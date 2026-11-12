@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
 class CwActionSellDeployedOp(CwOperation):
     """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
+    起点:货币战争-备战画面(动作执行时);终点:拖动上阵角色到出售区卖出;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。

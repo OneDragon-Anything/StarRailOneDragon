@@ -39,6 +39,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickFortuneOp(CwOperation):
     """命运卜者强化三选一确认链(统一 pick-op 分发并入)。
+    起点:货币战争-命运卜者强化画面(动作执行时);终点:点选强化卡并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点卡选中(safe_click 防吞点击;点卡坐标 = 按下标自状态容器
     ``fortune_opts_xy`` 读〔坐标随报条款,缺/越界 = 守卫断言;选中几何

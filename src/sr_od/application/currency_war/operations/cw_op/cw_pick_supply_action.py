@@ -70,6 +70,7 @@ def _note_receipt(op: SrOperation, reason: str, detail: str = '') -> None:
 
 class CwActionPickSupplyOp(CwOperation):
     """补给节点 pick 确认链(统一动作工厂 迁入)。
+    起点:货币战争-补给节点画面(动作执行时);终点:点选补给卡并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     刷新圆钮机械点击留在画面 op(刷新链 = 刷新建议动作
     ``CwActionRefreshSupplyParam`` 的执行半)——pick execute 语义 =

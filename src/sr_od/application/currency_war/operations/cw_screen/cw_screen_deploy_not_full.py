@@ -39,7 +39,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenDeployNotFull(CwOperation):
-    """出战人数未达上限弹窗:勾本局不再提示 + 确认。"""
+    """出战人数未达上限弹窗:勾本局不再提示 + 确认。
+    起点:货币战争-出战人数未满弹窗出现;终点:已勾选本局不再提示并确认(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-未达上限警告'   # screen_info 画面(currency_war_deploy_not_full.yml)
     # 勾选/确认:screen_info center;常量=screen_info 缺失兜底。

@@ -32,7 +32,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenEmblemDetailPopup(CwOperation):
-    """星徽详情弹窗:双识别标志入口其一,点「按钮-关闭」(不用 ESC,见模块头)。"""
+    """星徽详情弹窗:双识别标志入口其一,点「按钮-关闭」(不用 ESC,见模块头)。
+    起点:货币战争-星徽详情弹窗出现;终点:弹窗已关闭(返回主循环)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-星徽详情')

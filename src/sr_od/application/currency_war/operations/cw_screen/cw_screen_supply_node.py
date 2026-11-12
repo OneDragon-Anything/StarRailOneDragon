@@ -123,7 +123,8 @@ _NODE_BAR_RE = re.compile(r'(\d{1,2})\s*-\s*(\d{1,2})')
 
 
 class CwScreenSupplyNode(CwOperation):
-    """补给节点:点卡身选中 + 确认,overlay 消失(门 miss)= 节点完成。"""
+    """补给节点:点卡身选中 + 确认,overlay 消失(门 miss)= 节点完成。
+    起点:货币战争-补给节点浮层出现;终点:选卡并确认,浮层消失(节点完成,返回主循环)。"""
 
     # 刷新圆钮 = 「剩余次数：N」文本左侧固定偏移(遭遇屏 _REFRESH_BTN_DX 同族先例,
     # 文本锚定;运行时识别标志 = 建档「文本-剩余次数」rect 约束 OCR,单一真相源 =

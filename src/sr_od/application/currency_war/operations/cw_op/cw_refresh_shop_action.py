@@ -38,6 +38,7 @@ REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 class CwActionRefreshShopOp(CwOperation):
     """刷新 = 终结 op(唯一引入新事实的动作,期望态必须在新事实处重建
+    起点:货币战争-商店画面(动作执行时);终点:点击刷新(终结动作,唯一引入新事实);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     ——终结后返回主循环,下一段入口重观察)。
 
     体内零读屏零比对零验证(action_ops §1 动作 op 无论执行前后

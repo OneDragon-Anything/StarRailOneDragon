@@ -93,7 +93,8 @@ if TYPE_CHECKING:
 
 
 class CwScreenEncounter(CwOperation):
-    """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。"""
+    """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。
+    起点:货币战争-遭遇节点二选一画面;终点:选卡并确认完成,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-遭遇节点'   # screen_info 画面(currency_war_encounter.yml)
     # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移。归档帧

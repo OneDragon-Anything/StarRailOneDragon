@@ -34,6 +34,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickMegastarOp(CwOperation):
     """盛会之星 pick 确认链(统一动作工厂 迁入)。
+    起点:货币战争-盛会之星画面(动作执行时);终点:点选巨星并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     候选选中半迁入本类(pick-op-unify 批,``env.need_select`` 驱动,见
     ``run``);``chosen_megastar`` 写端留在画面 op(单次逻辑写入豁免面,

@@ -61,7 +61,8 @@ _GATE_PASS_STATUS: str = '门通过(session 在、画面合法、无位面真值
 
 
 class CwEntryPlaneIntel(CwOperation):
-    """中断恢复补采编排:门 → 打开位面详情 → 委派实采 → 关闭(独立调起入口)。"""
+    """中断恢复补采编排:门 → 打开位面详情 → 委派实采 → 关闭(独立调起入口)。
+    起点:货币战争-备战画面;终点:备战画面(位面真值已落状态容器/已有真值跳过)。"""
 
     STATUS_DONE: ClassVar[str] = '接管补采完成(位面真值已落状态容器)'
     STATUS_SKIP: ClassVar[str] = '状态容器已有位面真值,跳过补采'

@@ -32,6 +32,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickBoxCardOp(CwOperation):
     """武装箱四选一选卡链(统一 pick-op 分发并入;点卡选中即确认,单步)。
+    起点:货币战争-武装箱四选一画面(动作执行时);终点:点选一张卡(选中即确认);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点卡(mouse_move+click;点击点 = 状态容器 ``box_card_names_xy[idx]``——
     观察期按避让几何(卡名带下方 y,避「查看详情」按钮)解出上报,

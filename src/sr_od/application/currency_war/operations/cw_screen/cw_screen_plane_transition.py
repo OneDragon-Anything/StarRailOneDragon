@@ -81,7 +81,8 @@ def _build_transition_chain(gs: GameState | None,
 
 
 class CwScreenPlaneTransition(CwOperation):
-    """位面过渡:识别「点击空白处继续」→ 点空白 → 落地复查后结束本次访问(零验证)。"""
+    """位面过渡:识别「点击空白处继续」→ 点空白 → 落地复查后结束本次访问(零验证)。
+    起点:货币战争-位面过渡画面出现;终点:已点空白推进,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-位面过渡'
     PROMPT_AREA: ClassVar[str] = '提示-点击空白继续'

@@ -112,6 +112,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
 
 class CwScreenExpertInvite(CwOperation):
     """专家邀请函弹窗选卡(默认策略)→ 验弹窗关(收案)。
+    起点:货币战争-专家邀请函弹窗出现;终点:选卡且弹窗已关闭(返回主循环)。
 
     入口态单一 = 弹窗已开(外循环阶段一身份分发,分发判定单一源 =
     ``flow/outer_loop.md`` §2.2;开卡半 = 备战词表

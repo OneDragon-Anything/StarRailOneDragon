@@ -36,7 +36,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenPrepLockedReturn(CwOperation):
-    """备战暗色锁定子态:点「返回XX选择」按钮(画面档参数化)。"""
+    """备战暗色锁定子态:点「返回XX选择」按钮(画面档参数化)。
+    起点:货币战争-备战暗色锁定子态;终点:已点返回按钮,回到选择画面(返回主循环)。"""
 
     def __init__(self, ctx: SrContext, screen_name: str, area_name: str):
         """:param screen_name: 命中的画面档(策略锁定/遭遇锁定二选一)

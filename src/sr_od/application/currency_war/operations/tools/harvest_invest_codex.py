@@ -34,7 +34,9 @@ OUT_DIR = get_project_root() / '.debug/temp/currency_war'
 
 
 class HarvestInvestCodex(CwOperation):
-    """采当前图鉴页(策略或环境);kind 只影响输出文件名。**从顶部开始**(回顶+验证)。"""
+    """采当前图鉴页(策略或环境)整页数据为 JSONL;kind 只影响输出文件名。
+    **从顶部开始**(回顶+验证)。
+    起点:货币战争-投资图鉴页(目标 tab 已选);终点:原画面(整页数据已落文件)。"""
 
     def __init__(self, ctx: SrContext, kind: str = 'strategies'):
         CwOperation.__init__(self, ctx, op_name=f'采投资图鉴-{kind}',

@@ -54,6 +54,7 @@ class CwObsOverlayBail(RuntimeError):
 
 class CwActionObsOp(CwOperation):
     """环内重观察:宿主 heavy 观察链重跑(漏斗直写状态容器 = 上报),
+    起点:货币战争对局内任意画面(环内重观察发现 overlay);终点:返回主循环重新分发(控制流动作,非游戏动作)。
     零点击零拖拽;落地/对账语义 = 观察边界本体(以实际观察为准)。非终结。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。

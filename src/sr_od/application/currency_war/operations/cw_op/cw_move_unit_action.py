@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 
 
 class CwActionMoveUnitOp(CwOperation):
-    """统一拖动(front/back/bench 任意源 → 任意目标)。非终结。"""
+    """统一拖动(front/back/bench 任意源 → 任意目标)。非终结。
+    起点:货币战争-备战画面(动作执行时);终点:拖动一个角色到目标位;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。"""
 
     #: 非终结动作(每类显式声明,无基类缺省)。
     terminal = False

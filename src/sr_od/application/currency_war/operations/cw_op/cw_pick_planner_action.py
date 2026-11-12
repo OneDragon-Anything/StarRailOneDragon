@@ -35,6 +35,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickPlannerOp(CwOperation):
     """银狼策划 pick 确认链(统一动作工厂 迁入)。
+    起点:货币战争-银狼策划画面(动作执行时);终点:点选方案并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点卡选中(避开卡内「详情」按钮区的选中点几何归决策半 ``_card_point``
     单一源)→ 确认(建档「按钮-骇入确认」查找点击,全族统一;详情面板

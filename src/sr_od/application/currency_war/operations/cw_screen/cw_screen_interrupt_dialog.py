@@ -38,7 +38,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenInterruptDialog(CwOperation):
-    """中断挑战 dialog:点右上 X 关闭(失败新帧重试),绝不点放弃并结算。"""
+    """中断挑战 dialog:点右上 X 关闭(失败新帧重试),绝不点放弃并结算。
+    起点:货币战争-中断挑战弹窗出现;终点:已点 X 关闭(保留挑战,返回主循环)。"""
 
     def __init__(self, ctx: SrContext):
         CwOperation.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')

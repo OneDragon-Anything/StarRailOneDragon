@@ -36,6 +36,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickStarTomeOp(CwOperation):
     """星徽秘典四选一选卡链(统一 pick-op 分发并入;点卡即选,弹窗自关)。
+    起点:货币战争-星徽秘典画面(动作执行时);终点:点选一张卡(弹窗自关);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点卡(safe_click 防吞点击;点击点 = 状态容器 ``star_tome_opts_xy[idx]``——
     观察期解出上报,op-layer.md §1.1 :35 坐标单一真相源 = 观察上报,

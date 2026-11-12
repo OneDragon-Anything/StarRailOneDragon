@@ -40,6 +40,7 @@ from sr_od.context.sr_context import SrContext
 
 class CwActionPickEncounterOp(CwOperation):
     """遭遇节点 pick 确认链(机械语义单一源,统一动作工厂 迁入)。
+    起点:货币战争-遭遇节点画面(动作执行时);终点:点选一张卡并确认;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
 
     点卡选中(建档「遭遇卡-其一/其二」area 取点,取值直接使用,area
     缺失零检查 = 使用点自然异常,禁兜底坐标)→ 确认步机械完成即结束本次访问

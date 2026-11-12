@@ -44,6 +44,7 @@ _BOOKCARD_BENCH_KIND = 'bookcard'
 
 class CwActionOpenBookcardOp(CwOperation):
     """开书册卡:槽号解析 → 点槽中心(建档坐标)→ 固定动画等待
+    起点:货币战争-备战画面(动作执行时);终点:点击书册卡槽开启;动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     (纯机械执行)。终结动作(动作发出点 = 策略器 entry ① prep 实体面卡片
     分支,screens/README §5.5;弹专家邀请函 = 新事实 → 结束本次访问,与
     OpenBox 终结化同构,规范基准 = op-layer.md §1.4)。"""

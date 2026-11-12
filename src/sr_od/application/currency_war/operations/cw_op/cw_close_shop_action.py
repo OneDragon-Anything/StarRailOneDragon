@@ -57,6 +57,7 @@ def _note_receipt(op: SrOperation, reason: str) -> None:
 
 class CwActionCloseShopOp(CwOperation):
     """关店 = 恒可用终结动作 op(恒可用终结不变量 = screens/op-layer.md
+    起点:货币战争-商店画面(动作执行时);终点:点关闭按钮离店(终结动作);动作已发出并上报逻辑态,停留原画面(判效归下一帧观察)。
     §1.4;终结集总表 = screens/README.md §6):执行即本画面访问结束、
     返回主循环。"""
 

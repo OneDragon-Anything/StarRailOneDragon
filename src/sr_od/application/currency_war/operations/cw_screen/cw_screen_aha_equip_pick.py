@@ -36,7 +36,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenAhaEquipPick(CwOperation):
-    """阿哈装备选择:点第 1 装备(固定策略申报,见模块头)。"""
+    """阿哈装备选择:点第 1 装备(固定策略申报,见模块头)。
+    起点:货币战争-阿哈装备选择画面;终点:已点第 1 装备,画面离开(返回主循环)。"""
 
     FIRST_EQUIP_AREA = '按钮-简易装备首件'
 

@@ -32,7 +32,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenRefreshOddsPopup(CwOperation):
-    """商店刷新概率表弹窗:点 × 关闭(mouse_move 防吞点击保留)。"""
+    """商店刷新概率表弹窗:点 × 关闭(mouse_move 防吞点击保留)。
+    起点:货币战争-商店刷新概率表弹窗出现;终点:弹窗已关闭(返回主循环)。"""
 
     CLOSE_AREA = '按钮-关闭概率表'
 

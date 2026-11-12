@@ -83,7 +83,8 @@ def read_ocr_texts(ctx, screen) -> list[str]:
 
 
 class CwScreenBossBriefing(CwOperation):
-    """BOSS 简报:识别「强敌来袭」→ 点空白 → 返回主循环重新判定。"""
+    """BOSS 简报:识别「强敌来袭」→ 点空白 → 返回主循环重新判定。
+    起点:货币战争-BOSS 简报出现;终点:已点空白推进,画面离开(返回主循环)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-BOSS简报'
     # 横幅识别标志 = 阵营徽记模板(二值化模板匹配,OCR 误读免疫;从标题 OCR 识别标志

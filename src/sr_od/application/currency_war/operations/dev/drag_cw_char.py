@@ -41,6 +41,7 @@ _ROWS: dict[str, str] = {'front': '前排', 'back': '后排', 'bench': '备战�
 
 class DragCwChar(CwOperation):
     """货币战争 拖动角色(通用,槽位输入;开发 / 测试用)+ 统一拖拽原语 ``drag_char``。
+    起点:货币战争-备战画面;终点:原画面(角色已拖到目标槽位)。
 
     ``run_operation`` 调用例::
 

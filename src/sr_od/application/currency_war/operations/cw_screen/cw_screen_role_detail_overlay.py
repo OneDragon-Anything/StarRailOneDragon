@@ -45,7 +45,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenRoleDetailOverlay(CwOperation):
-    """详情弹窗:双识别标志其一(装备推荐/合成公式)命中,点面板外空白关+落地复查结束本次访问。"""
+    """详情弹窗:双识别标志其一(装备推荐/合成公式)命中,点面板外空白关+落地复查结束本次访问。
+    起点:货币战争-详情弹窗(装备推荐/合成公式)出现;终点:弹窗已关闭(返回主循环)。"""
 
     #: 关闭点击位:备战前后排之间的真空白(面板外,两 overlay 家族共用)
     BLANK_SCREEN = '货币战争-备战'

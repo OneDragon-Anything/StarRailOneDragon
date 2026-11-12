@@ -38,7 +38,8 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenArmoryBox(CwOperation):
-    """道具获得说明弹窗:点 × 关闭 + 落地复查后结束本次访问(零验证)。"""
+    """道具获得说明弹窗:点 × 关闭 + 落地复查后结束本次访问(零验证)。
+    起点:货币战争-道具获得说明弹窗出现;终点:弹窗已关闭(返回主循环)。"""
 
     DIALOG_SCREEN: ClassVar[str] = '货币战争-武装箱弹窗'
 

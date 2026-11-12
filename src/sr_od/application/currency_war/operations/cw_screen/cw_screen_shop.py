@@ -338,6 +338,7 @@ def _note_shop_skip_unobserved(op: SrOperation,
 
 class CwScreenShop(CwOperation):
     """货币战争商店画面 op(两 node 规范形态)。
+    起点:货币战争-商店画面;终点:商店决策循环至终结动作(离开商店,返回主循环)。
 
     生产两路(外循环 0n 转交与备战显式开店同口 ``visit_open_shop``、
     ``run_operation`` 单跑)构造本类并节点函数直驱(观察 node 恰一次 →

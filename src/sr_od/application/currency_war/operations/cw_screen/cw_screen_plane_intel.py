@@ -76,6 +76,7 @@ _BOSS_CLICK_WAIT_S: float = 1.5
 
 class CwScreenPlaneIntel(CwOperation):
     """位面详情纯识别(6 node 管线;中断恢复的对局补采识别本体,编排归
+    起点:货币战争-位面详情画面(中断恢复补采);终点:识别完成上报状态容器(返回主循环)。
     CwEntryPlaneIntel)。"""
 
     SCREEN_NAME: ClassVar[str] = _PD_SCREEN
