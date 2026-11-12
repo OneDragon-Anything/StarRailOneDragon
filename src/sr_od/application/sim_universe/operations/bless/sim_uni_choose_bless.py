@@ -27,6 +27,11 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniChooseBless(SrOperation):
+    """在模拟宇宙的选择祝福画面,按挑战配置的优先级选祝福并确认;连续祝福
+    (一场战斗两次祝福)会自动继续选,直到祝福画面消失。
+    起点:模拟宇宙-选择祝福画面;终点:祝福已确认,画面离开祝福选择
+    (进入下一场景/触发后续内容)。
+    """
 
     RESET_BTN: ClassVar[Rect] = Rect(1160, 960, 1460, 1000)  # 重置祝福
     CONFIRM_BTN: ClassVar[Rect] = Rect(1530, 960, 1865, 1000)  # 确认
@@ -39,15 +44,11 @@ class SimUniChooseBless(SrOperation):
                  skip_first_screen_check: bool = True,
                  before_level_start: bool = False):
         """
-        按照优先级选择祝福 如果选择后仍然在选择祝福画面 则继续选择。可能的情况有
-        - 连续祝福，例如第一场战斗有两次祝福
-        - 脚本并没有选择到祝福，游戏画面一直停流
-
-        选择祝福后 如果还有再次触发的内容，左上角title会较快消失。返回大世界的话，左上角title会较慢消失。
-        :param ctx:
-        :param config: 挑战配置
-        :param skip_first_screen_check: 是否跳过第一次的画面状态检查
-        :param before_level_start: 是否在楼层开始的选择
+        :param ctx: 上下文
+        :param config: 挑战配置(祝福优先级);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在祝福页时提速)
+        :param before_level_start: 楼层开始前的开拓祝福选择(确认按钮位置不同)
         """
         SrOperation.__init__(self, ctx, op_name=f"{gt('模拟宇宙', 'game')} {gt('选择祝福')}")
 

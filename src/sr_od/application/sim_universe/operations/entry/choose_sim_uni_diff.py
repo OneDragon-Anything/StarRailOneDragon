@@ -12,6 +12,9 @@ from sr_od.screen_state import common_screen_state
 
 
 class ChooseSimUniDiff(SrOperation):
+    """在模拟宇宙入口页选择挑战难度(点击左侧难度列表对应档位)。
+    起点:模拟宇宙入口页(已选普通模拟宇宙);终点:入口页(难度已选中)。
+    """
 
     DIFF_POINT_MAP: ClassVar[dict[int, Point]] = {
         1: Point(132, 166),
@@ -23,10 +26,8 @@ class ChooseSimUniDiff(SrOperation):
 
     def __init__(self, ctx: SrContext, num: int):
         """
-        需要在模拟宇宙入口页面中使用 且先选择了普通模拟宇宙
-        选择对应的难度
-        :param ctx:
-        :param num: 难度 支持 1~5
+        :param ctx: 上下文
+        :param num: 难度 1~5;传 0 用游戏当前默认难度(直接成功)
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %s' % (gt('模拟宇宙', 'game'), gt('选择难度'),

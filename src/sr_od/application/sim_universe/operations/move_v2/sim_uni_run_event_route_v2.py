@@ -19,6 +19,10 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class SimUniRunEventRouteV2(SimUniRunRouteBaseV2):
+    """通关事件层:识别小地图事件图标/画面事件牌并移动交互,处理完进下层。
+    非 MCP 传参单元:参数为运行时楼层类型对象,仅限代码内调用。
+    起点:模拟宇宙事件层移动画面;终点:进入下一层(事件已处理)。
+    """
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType = SimUniLevelTypeEnum.EVENT.value):
         """

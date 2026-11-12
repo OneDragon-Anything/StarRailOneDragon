@@ -20,6 +20,10 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class SimUniRunRespiteRouteV2(SimUniRunRouteBaseV2):
+    """通关休整层:攻击罐子获取奖励、与黑塔交互后进下层。
+    非 MCP 传参单元:参数为运行时楼层类型对象,仅限代码内调用。
+    起点:模拟宇宙休整层移动画面;终点:进入下一层。
+    """
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType = SimUniLevelTypeEnum.RESPITE.value):
         SimUniRunRouteBaseV2.__init__(self, ctx, level_type=level_type)

@@ -19,13 +19,9 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class MoveDirectlyInSimUni(MoveDirectly):
-    """
-    从当前位置 朝目标点直线前行
-    有简单的脱困功能
-
-    模拟宇宙专用
-    - 不需要考虑特殊点
-    - 战斗后需要选择祝福
+    """模拟宇宙专用直线移动:从起始坐标走向目标点,战斗后自动处理祝福选择,
+    不考虑特殊点。非 MCP 传参单元:参数为运行时地图/坐标对象,仅限代码内调用。
+    起点:模拟宇宙楼层移动画面;终点:目标点附近(战斗打完继续走完)。
     """
     def __init__(self, ctx: SrContext, lm_info: LargeMapInfo,
                  start: Point, target: Point,

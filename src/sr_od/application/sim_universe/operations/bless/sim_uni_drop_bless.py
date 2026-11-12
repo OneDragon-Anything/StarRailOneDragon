@@ -17,6 +17,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniDropBless(SrOperation):
+    """在模拟宇宙的丢弃祝福画面,按优先级保留最优祝福、丢弃其余(祝福超上限
+    时游戏强制选择丢弃),确认弹窗自动点确认。
+    起点:模拟宇宙-丢弃祝福画面;终点:祝福已丢弃确认,画面离开丢弃选择。
+    """
 
     STATUS_RETRY: ClassVar[str] = '重试其他祝福位置'
 
@@ -25,10 +29,10 @@ class SimUniDropBless(SrOperation):
                  skip_first_screen_check: bool = True
                  ):
         """
-        按照优先级选择祝福
-        :param ctx:
-        :param config: 挑战配置
-        :param skip_first_screen_check: 是否跳过第一次的画面状态检查
+        :param ctx: 上下文
+        :param config: 挑战配置(祝福优先级);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在丢弃页时提速)
         """
         SrOperation.__init__(
             self,

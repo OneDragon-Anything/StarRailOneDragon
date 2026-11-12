@@ -21,6 +21,10 @@ from sr_od.screen_state import common_screen_state
 
 
 class SimUniMoveToInteractByDetect(SrOperation):
+    """按画面识别可交互目标的位置并朝之移动,直到可交互并完成交互。
+    进入前需确保当前朝向能识别到目标(本 op 不大幅转向找目标)。
+    起点:模拟宇宙楼层移动画面(交互目标在视野内);终点:交互完成/识别不到。
+    """
 
     STATUS_ARRIVAL: ClassVar[str] = '已到达'
     STATUS_INTERACT: ClassVar[str] = '已交互'
@@ -31,16 +35,11 @@ class SimUniMoveToInteractByDetect(SrOperation):
                  interact_word: str,
                  interact_during_move: bool = False):
         """
-        根据画面识别可交互内容的位置 并朝之移动。
-        进入之前 应该确保当前朝向能识别到内容，本操作不会旋转太多去找识别目标
-        停下来的条件有
-        - 识别不到可交互内容
-        - 可交互(单行文本)
-        - 进行了交互
         :param ctx: 上下文
-        :param interact_class: 需要交互的类型
-        :param interact_word: 交互文本
-        :param interact_during_move: 移动过程中不断尝试交互 开启后不会再使用OCR判断是否有可交互的文本。使用前需满足 1.移动时任何交互都能接受 2.交互后不在大世界
+        :param interact_class: 交互目标类型(显示名)
+        :param interact_word: 交互按钮文本
+        :param interact_during_move: 移动过程中不断尝试交互(开启后不再用 OCR 判
+            交互文本;使用前须满足:移动途中任何交互都能接受、交互后离开大世界)
         """
         SrOperation.__init__(self, ctx, op_name=gt(f'向 {interact_class} 移动', 'ui'))
 

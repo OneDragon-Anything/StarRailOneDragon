@@ -31,6 +31,10 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class MoveToNextLevel(SrOperation):
+    """朝当前楼层的下一层入口移动并交互进入下层(精英层交互有确认弹窗)。
+    非 MCP 传参单元:参数为运行时楼层类型/路线对象,仅限代码内调用。
+    起点:模拟宇宙楼层移动画面;终点:下一层(交互完成)。
+    """
 
     MOVE_TIME: ClassVar[float] = 1.5  # 每次移动的时间
     CHARACTER_CENTER: ClassVar[Point] = Point(960, 920)  # 界面上人物的中心点 取了脚底
@@ -47,12 +51,12 @@ class MoveToNextLevel(SrOperation):
                  config: Optional[SimUniChallengeConfig] = None,
                  random_turn: bool = True):
         """
-        朝下一层入口走去 并且交互
-        :param ctx:
-        :param level_type: 当前楼层的类型 精英层的话 有可能需要确定
-        :param route: 当前使用路线
-        :param current_pos: 当前人物的位置
+        :param ctx: 上下文
+        :param level_type: 当前楼层类型(精英层交互需确认)
+        :param route: 当前使用的路线(无则盲找入口)
+        :param current_pos: 当前人物坐标(无则自动定位)
         :param config: 挑战配置
+        :param random_turn: 找不到入口时随机转向
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('向下一层移动')),)
         self.level_type: SimUniLevelType = level_type

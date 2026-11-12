@@ -19,6 +19,10 @@ from sr_od.sr_map import mini_map_utils
 
 
 class SimUniRunEliteRouteV2(SimUniRunRouteBaseV2):
+    """通关精英层:向红点(精英)移动→开怪→领奖励→进下层。
+    非 MCP 传参单元:参数为运行时楼层类型对象,仅限代码内调用。
+    起点:模拟宇宙精英层移动画面;终点:进入下一层(战斗与奖励已完成)。
+    """
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType = SimUniLevelTypeEnum.ELITE.value,
                  max_reward_to_get: int = 0,

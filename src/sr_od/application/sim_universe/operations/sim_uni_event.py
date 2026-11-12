@@ -30,6 +30,10 @@ class SimUniEventOption:
 
 
 class SimUniEvent(SrOperation):
+    """处理模拟宇宙的事件交互:读事件选项并选择(当前固定选第一个),处理
+    确认弹窗与后续触发的祝福/奇物选择,直到事件画面结束。
+    起点:模拟宇宙-事件画面;终点:事件交互完成,画面离开事件。
+    """
 
     STATUS_NO_OPT: ClassVar[str] = '无选项'
     STATUS_CHOOSE_OPT_CONFIRM: ClassVar[str] = '需确定'
@@ -43,8 +47,10 @@ class SimUniEvent(SrOperation):
                  config: Optional[SimUniChallengeConfig] = None,
                  skip_first_screen_check: bool = True):
         """
-        模拟宇宙 事件
-        :param ctx:
+        :param ctx: 上下文
+        :param config: 挑战配置;None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在事件页时提速)
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('事件', 'game')))
 

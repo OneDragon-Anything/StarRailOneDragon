@@ -17,6 +17,10 @@ from sr_od.operations.technique import UseTechnique
 
 
 class SimUniRunCombatRoute(SrOperation):
+    """按预定路线清怪通关战斗层(逐点移动+进战斗),直到进入下层。
+    非 MCP 传参单元:参数为运行时路线/楼层类型对象,仅限代码内调用。
+    起点:模拟宇宙战斗层移动画面;终点:进入下一层。
+    """
 
     def __init__(self, ctx: SrContext, world_num: int, level_type: SimUniLevelType, route: SimUniRoute,
                  config: Optional[SimUniChallengeConfig] = None,

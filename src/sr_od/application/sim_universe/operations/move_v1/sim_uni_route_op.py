@@ -19,6 +19,10 @@ from sr_od.sr_map.sr_map_def import Region
 
 
 class SimUniRunRouteOp(SrOperation):
+    """按预定路线的指令序列逐条执行(移动/交互/等待),走完整个路线;data 返回
+    最新坐标。非 MCP 传参单元:参数为运行时路线对象,仅限代码内调用。
+    起点:模拟宇宙楼层移动画面(路线起点);终点:路线走完(最新坐标)。
+    """
 
     STATUS_ALL_OP_DONE: ClassVar[str] = '执行结束'
 

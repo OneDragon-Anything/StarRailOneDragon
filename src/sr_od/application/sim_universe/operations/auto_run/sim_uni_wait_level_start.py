@@ -13,15 +13,20 @@ from sr_od.screen_state import common_screen_state
 
 
 class SimUniWaitLevelStart(SrOperation):
+    """等待模拟宇宙某一层加载开始:期间自动处理开局开拓祝福/奇物选择,
+    直到进入楼层移动画面。
+    起点:模拟宇宙层间加载(任意中间态);终点:楼层移动画面。
+    """
 
     def __init__(self, ctx: SrContext,
                  config: Optional[SimUniChallengeConfig] = None,
                  wait_after_success: Optional[int] = None
                  ):
         """
-        模拟宇宙 等待某一层的开始
-        :param ctx:
-        :param wait_after_success: 进入后等待秒数
+        :param ctx: 上下文
+        :param config: 挑战配置(祝福/奇物优先级);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param wait_after_success: 进入移动画面后额外等待秒数(小地图缩放稳定)
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' %

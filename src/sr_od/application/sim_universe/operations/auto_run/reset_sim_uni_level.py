@@ -14,14 +14,17 @@ from sr_od.operations.wait.wait_in_world import WaitInWorld
 
 
 class ResetSimUniLevel(SrOperation):
+    """暂离模拟宇宙再重新进入(经黑塔办公室交互 → 选宇宙 → 继续),重置楼层
+    内位置,用于移动卡死脱困。
+    起点:模拟宇宙楼层移动画面;终点:同一宇宙的楼层移动画面(位置已重置)。
+    """
 
     TEMP_LEAVE: ClassVar[Rect] = Rect  # 暂离
 
     def __init__(self, ctx: SrContext, world_num: int):
         """
-        需要在模拟宇宙 移动画面中使用
-        暂离后重新进入 用于重置位置 脱困
-        :param ctx:
+        :param ctx: 上下文
+        :param world_num: 重进的目标宇宙编号(1~8)
         """
         SrOperation.__init__(
             self, ctx,

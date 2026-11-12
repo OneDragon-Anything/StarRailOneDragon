@@ -16,6 +16,9 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniRunWorld(SrOperation):
+    """完整通关一整个宇宙(逐层挑战直到首领通关),失败时自动退出结算。
+    起点:模拟宇宙某宇宙的楼层画面;终点:首领通关(状态「通关」)/失败已退出。
+    """
 
     STATUS_SUCCESS: ClassVar[str] = '通关'
 
@@ -25,8 +28,13 @@ class SimUniRunWorld(SrOperation):
                  get_reward_callback: Optional[Callable[[int, int], None]] = None,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         """
-        模拟宇宙 完成整个宇宙
-        最后退出
+        :param ctx: 上下文
+        :param world_num: 第几宇宙,1~8
+        :param config: 挑战配置;None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param max_reward_to_get: 最多获取奖励次数(0=不限)
+        :param get_reward_callback: 获取奖励后的回调(使用开拓力, 获得数量)
+        :param op_callback: 运行结束回调
         """
         op_name = '%s %s' % (
             gt('模拟宇宙', 'game'),

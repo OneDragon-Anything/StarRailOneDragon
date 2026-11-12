@@ -27,6 +27,11 @@ from sr_od.sr_map import mini_map_utils
 
 
 class SimUniRunLevel(SrOperation):
+    """识别当前楼层类型(战斗/事件/休整/精英/首领)并完整通关整层,直到进入
+    下一层或首领通关;卡死时自动暂离重进(有重置上限)。战斗失败等异常交外层。
+    起点:模拟宇宙某层移动画面;终点:下一层移动画面,或首领通关(状态
+    「首领通关」)/ 达重置上限失败。
+    """
 
     STATUS_BOSS_CLEARED: ClassVar[str] = '首领通关'
     STATUS_NO_RESET: ClassVar[str] = '失败到达重置上限'
@@ -38,10 +43,14 @@ class SimUniRunLevel(SrOperation):
                  op_callback: Optional[Callable[[OperationResult], None]] = None,
                  skip_check_members: bool = False):
         """
-        模拟宇宙中 识别楼层类型并运行
-        完整通过整个楼层 进入下个楼层或通关后退出
-        异常情况交由外层处理
-        - 战斗失败
+        :param ctx: 上下文
+        :param world_num: 第几宇宙,1~8
+        :param config: 挑战配置;None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param max_reward_to_get: 最多获取奖励次数(0=不限)
+        :param get_reward_callback: 获取奖励后的回调(世界号, 次数)
+        :param op_callback: 运行结束回调
+        :param skip_check_members: 跳过配队检测
         """
         op_name = '%s %s %s' % (
             gt('模拟宇宙', 'game'),

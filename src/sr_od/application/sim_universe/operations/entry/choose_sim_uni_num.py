@@ -15,6 +15,11 @@ from sr_od.screen_state import common_screen_state
 
 
 class ChooseSimUniNum(SrOperation):
+    """在模拟宇宙入口页切换到目标宇宙(上一/下一逐个切换);有进行中的宇宙
+    先继续它,实际挑战的宇宙号经 data 返回。
+    起点:模拟宇宙入口页(已选普通模拟宇宙);终点:入口页·目标宇宙已选中
+    (或进行中的宇宙已确认继续)。
+    """
 
     CURRENT_BTN: ClassVar[Point] = Point(1276, 567)  # 选择当前宇宙
     PREVIOUS_BTN: ClassVar[Point] = Point(1216, 198)  # 换到上一个宇宙
@@ -26,11 +31,9 @@ class ChooseSimUniNum(SrOperation):
     def __init__(self, ctx: SrContext, num: int,
                  op_callback: Optional[Callable[[OperationResult], None]] = None):
         """
-        需要在模拟宇宙入口页面中使用 且先选择了普通模拟宇宙
-        选择对应的宇宙 如果有进行中的宇宙 会先继续完成
-        返回结果中的 data 为实际挑战的第几宇宙
-        :param ctx:
-        :param num: 第几宇宙 支持 1~8
+        :param ctx: 上下文
+        :param num: 第几宇宙,1~8
+        :param op_callback: 运行结束回调
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %d' % (gt('模拟宇宙', 'game'), gt('选择宇宙'), num),

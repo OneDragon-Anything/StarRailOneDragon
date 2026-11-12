@@ -11,15 +11,17 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniStart(SrOperation):
+    """从模拟宇宙入口页开始挑战:有进度点「继续」,无进度点「重新开始/下载
+    初始角色」并确认启动,直到进入选择命途页面。
+    起点:模拟宇宙入口页(已选普通模拟宇宙);终点:模拟宇宙-选择命途页面。
+    """
 
     STATUS_RESTART: ClassVar[str] = '重新开始'
     STATUS_CONTINUE: ClassVar[str] = '继续'
 
     def __init__(self, ctx: SrContext):
         """
-        需要在模拟宇宙入口页面中使用 且先选择了普通模拟宇宙
-        选择 重新开始 或 继续
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('开始挑战'))

@@ -31,6 +31,10 @@ from sr_od.screen_state import (
 
 
 class SimUniEnterFight(SrOperation):
+    """在模拟宇宙楼层内主动进入战斗:按小地图红圈判断被敌人锁定,主动发起
+    攻击(可用秘技开怪)打完战斗及后续祝福/奇物选择,直到回到楼层移动画面。
+    起点:模拟宇宙楼层移动画面(被锁定/需开怪);终点:楼层移动画面(战斗完成)。
+    """
 
     ATTACK_INTERVAL: ClassVar[float] = 0.2  # 发起攻击的间隔
     EXIT_AFTER_NO_ALTER_TIME: ClassVar[int] = 2  # 多久没警报退出
@@ -47,8 +51,12 @@ class SimUniEnterFight(SrOperation):
                  no_attack: bool = False,
                  first_state: str | None = None):
         """
-        模拟宇宙中 主动进入战斗
-        根据小地图的红圈 判断是否被敌人锁定
+        :param ctx: 上下文
+        :param config: 挑战配置(秘技开怪等);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param disposable: 攻击对象是可破坏物(打完即走,不等战斗)
+        :param no_attack: 不主动攻击(只等被袭进战斗)
+        :param first_state: 调用方已知的初始画面状态(跳过首轮判定提速)
         """
         super().__init__(ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('进入战斗')))
 

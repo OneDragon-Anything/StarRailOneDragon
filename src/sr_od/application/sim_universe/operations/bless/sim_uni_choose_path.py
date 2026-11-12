@@ -14,16 +14,18 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniChoosePath(SrOperation):
+    """在模拟宇宙的选择命途页面选择指定命途并确认(命途条找不到时左右滑动)。
+    起点:模拟宇宙-选择命途页面;终点:命途已确认,进入楼层。
+    """
 
     PATH_RECT: ClassVar[Rect] = Rect(134, 665, 1788, 708)  # 命途
     CONFIRM_BTN: ClassVar[Rect] = Rect(1529, 957, 1869, 1006)  # 确认命途
 
     def __init__(self, ctx: SrContext, path: SimUniPath):
         """
-        需要在模拟宇宙-选择命途页面中使用
-        选择对应的命途
-        :param ctx:
-        :param path: 目标命途
+        :param ctx: 上下文
+        :param path: 目标命途(SimUniPath 枚举值)。
+            非 MCP 传参单元:此参数为运行时枚举对象,仅限代码内调用
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择命途')),

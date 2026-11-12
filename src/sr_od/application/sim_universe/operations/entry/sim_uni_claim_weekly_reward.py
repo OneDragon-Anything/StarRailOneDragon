@@ -8,12 +8,13 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniClaimWeeklyReward(SrOperation):
+    """领取模拟宇宙的每周积分奖励(有红点时点开并一键领取,无红点跳过)。
+    起点:模拟宇宙主页面;终点:模拟宇宙主页面(奖励已领取/本无可领)。
+    """
 
     def __init__(self, ctx: SrContext):
         """
-        模拟宇宙 领取每周的积分奖励
-        需要在模拟宇宙的主页面中使用
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('获取每周积分奖励')))
 

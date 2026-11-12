@@ -26,6 +26,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniChooseCurio(SrOperation):
+    """在模拟宇宙的选择奇物画面,按挑战配置的优先级选一个奇物并确认;
+    单次运行只处理一次选择,再次触发由外层循环调用。
+    起点:模拟宇宙-选择奇物画面;终点:奇物已确认选择,画面离开奇物选择。
+    """
     # 奇物名字对应的框 - 3个的情况
     CURIO_RECT_3_LIST: ClassVar[list[Rect]] = [
         Rect(315, 280, 665, 320),
@@ -53,14 +57,10 @@ class SimUniChooseCurio(SrOperation):
     def __init__(self, ctx: SrContext, config: SimUniChallengeConfig | None = None,
                  skip_first_screen_check: bool = True):
         """
-        模拟宇宙中 选择奇物
-        这里只处理一次选择奇物 再次触发的内容由外层调用处理
-        目前使用的有
-        - 战斗后/破坏物后 sim_uni_battle
-        - 事件 sim_uni_event
         :param ctx: 上下文
-        :param config: 挑战配置
-        :param skip_first_screen_check: 是否跳过第一次画面状态检查
+        :param config: 挑战配置(奇物优先级);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在奇物页时提速)
         """
         SrOperation.__init__(self, ctx, op_name=f"{gt('模拟宇宙', 'game')} {gt('选择奇物')}")
 
@@ -223,6 +223,10 @@ class SimUniChooseCurio(SrOperation):
 
 
 class SimUniDropCurio(SrOperation):
+    """在模拟宇宙的丢弃奇物画面,按优先级保留最优奇物、丢弃其余(奇物超上限
+    时游戏强制选择),确认弹窗自动点确认。
+    起点:模拟宇宙-丢弃奇物画面;终点:奇物已丢弃确认,画面离开丢弃选择。
+    """
 
     DROP_BTN: ClassVar[Rect] = Rect(1024, 647, 1329, 698)  # 确认丢弃
     STATUS_RETRY: ClassVar[str] = '重试其他奇物位置'
@@ -230,10 +234,10 @@ class SimUniDropCurio(SrOperation):
     def __init__(self, ctx: SrContext, config: SimUniChallengeConfig | None = None,
                  skip_first_screen_check: bool = True):
         """
-        模拟宇宙中 丢弃奇物
-        :param ctx:
-        :param config: 挑战配置
-        :param skip_first_screen_check: 是否跳过第一次画面状态检查
+        :param ctx: 上下文
+        :param config: 挑战配置(奇物优先级);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
+        :param skip_first_screen_check: 跳过首轮画面检查(调用方确信在丢弃页时提速)
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('丢弃奇物', 'game')))
 

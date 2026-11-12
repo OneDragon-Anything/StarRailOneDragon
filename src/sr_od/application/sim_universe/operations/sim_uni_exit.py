@@ -15,6 +15,10 @@ from sr_od.screen_state import battle_screen_state
 
 
 class SimUniExit(SrOperation):
+    """从模拟宇宙任意场景退出并结算,直到回到大世界(兜底退出:兼容战斗/
+    失败/菜单等各场景;中途战斗自动打完)。
+    起点:模拟宇宙内任意场景;终点:大世界(已结算/暂离)。
+    """
 
     STATUS_EXIT_CLICKED: ClassVar[str] = '点击结算'
     STATUS_BACK_MENU: ClassVar[str] = '返回菜单'
@@ -26,8 +30,9 @@ class SimUniExit(SrOperation):
 
     def __init__(self, ctx: SrContext, is_in_x: bool = False, temporarily_leave: bool = False ):
         """
-        模拟宇宙 结束并结算
-        :param ctx:
+        :param ctx: 上下文
+        :param is_in_x: 当前在差分宇宙(退出多一步「返回主界面」)
+        :param temporarily_leave: 暂离保进度退出(不结算,下次可继续)
         """
         SrOperation.__init__(self, ctx,
                              op_name=f'{gt("模拟宇宙", "game")} {gt("结束并结算")}'

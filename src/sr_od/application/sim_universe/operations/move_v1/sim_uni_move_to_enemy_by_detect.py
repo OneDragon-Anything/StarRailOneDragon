@@ -20,6 +20,10 @@ from sr_od.sr_map import mini_map_utils
 
 
 class SimUniMoveToEnemyByDetect(SrOperation):
+    """按画面识别(怪物头顶特征)朝最近的敌人移动,直到贴近或被锁定。
+    进入前需确保当前朝向能识别到怪(本 op 不转向找怪)。
+    起点:模拟宇宙楼层移动画面(怪在视野内);终点:贴近敌人/被锁定。
+    """
 
     STATUS_ARRIVAL: ClassVar[str] = '已到达'
     STATUS_FIGHT: ClassVar[str] = '遭遇战斗'
@@ -27,12 +31,7 @@ class SimUniMoveToEnemyByDetect(SrOperation):
 
     def __init__(self, ctx: SrContext):
         """
-        根据画面识别怪的位置 朝怪移动。
-        进入之前 应该确保当前朝向能识别到怪，本操作不会旋转去找怪
-        停下来的条件有
-        - 找不到怪
-        - 被怪物锁定
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name=gt('向怪物移动'))
 

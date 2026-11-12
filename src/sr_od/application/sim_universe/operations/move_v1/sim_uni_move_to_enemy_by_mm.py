@@ -18,6 +18,11 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class SimUniMoveToEnemyByMiniMap(SrOperation):
+    """按小地图红点(敌人)移动:持续定位最近红点走近,直到贴近、被锁定或
+    长时间无位移。
+    起点:模拟宇宙楼层移动画面(小地图有红点);终点:贴近敌人/被锁定。
+    """
+
     STATUS_ARRIVAL: ClassVar[str] = '已到达'
     STATUS_FIGHT: ClassVar[str] = '遭遇战斗'
 
@@ -26,13 +31,9 @@ class SimUniMoveToEnemyByMiniMap(SrOperation):
 
     def __init__(self, ctx: SrContext, no_attack: bool = False, stop_after_arrival: bool = False):
         """
-        从小地图上判断 向其中一个红点移动
-        停下来的条件有
-        - 距离红点过近
-        - 被怪物锁定
         :param ctx: 上下文
         :param no_attack: 不主动发起攻击
-        :param stop_after_arrival: 到达后停止 如果明确知道到达后会发起攻击 则可以不停止
+        :param stop_after_arrival: 到达后停止移动(确信到达后会自动触发攻击时可不停)
         """
         SrOperation.__init__(self, ctx, op_name=gt('向红点移动'))
 

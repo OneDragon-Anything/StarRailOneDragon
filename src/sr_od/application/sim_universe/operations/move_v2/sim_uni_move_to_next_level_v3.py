@@ -29,9 +29,20 @@ from sr_od.sr_map import mini_map_utils
 
 
 class MoveToNextLevelV3(SrOperation):
+    """朝下层入口移动并交互进入下层(YOLO/特征识别入口方向,自动转向寻找;
+    休整/精英层须出现正确交互词才交互)。非 MCP 传参单元:参数为运行时楼层
+    类型对象,仅限代码内调用。
+    起点:模拟宇宙楼层移动画面;终点:进入下一层。
+    """
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType, with_entry: bool = True,
                  turn_direction: int = 0):
+        """
+        :param ctx: 上下文
+        :param level_type: 楼层类型(决定交互词策略)
+        :param with_entry: 开始前已识别到入口
+        :param turn_direction: 找入口的转向(1=右,-1=左,0=自动)
+        """
         SrOperation.__init__(self, ctx, op_name=gt('向下层移动v3'))
         self.level_type: SimUniLevelType = level_type
         self.start_with_entry: bool = with_entry  # 开始前是否识别到入口

@@ -16,6 +16,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class SimUniUpgradeBless(SrOperation):
+    """在模拟宇宙的祝福强化页面,用剩余碎片逐个强化可升级的祝福(按剩余
+    碎片数保留可升级数量),强化完点退出。
+    起点:模拟宇宙-祝福强化页面;终点:强化完成已退出(回祝福列表)。
+    """
 
     UPGRADE_BTN: ClassVar[Rect] = Rect(1566, 960, 1862, 1011)  # 强化
     EXIT_BTN: ClassVar[Rect] = Rect(1829, 40, 1898, 95)  # 退出
@@ -27,8 +31,7 @@ class SimUniUpgradeBless(SrOperation):
 
     def __init__(self, ctx: SrContext):
         """
-        模拟宇宙 强化祝福
-        :param ctx:
+        :param ctx: 上下文
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('强化祝福')))
 

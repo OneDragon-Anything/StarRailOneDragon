@@ -14,12 +14,18 @@ from sr_od.operations.team.switch_member import SwitchMember
 
 
 class SimUniFightElite(SrOperation):
+    """挑战模拟宇宙的精英/首领:检测敌人(头顶等级/YOLO 锁定)→ 按配队顺序
+    施放秘技 → 攻击进战斗打完,战斗后切回 1 号位。
+    起点:模拟宇宙楼层移动画面(精英/首领附近);终点:战斗完成回楼层移动画面。
+    """
 
     STATUS_ENEMY_NOT_FOUND: ClassVar[str] = '没有敌人'
 
     def __init__(self, ctx: SrContext, config: Optional[SimUniChallengeConfig] = None):
         """
-        模拟宇宙 - 挑战精英、首领
+        :param ctx: 上下文
+        :param config: 挑战配置(秘技开怪等);None 用 ctx 的当前配置。
+            非 MCP 传参单元:此参数为运行时配置对象,仅限代码内调用
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s' % (

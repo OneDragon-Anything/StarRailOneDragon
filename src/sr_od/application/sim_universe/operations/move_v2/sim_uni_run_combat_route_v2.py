@@ -26,6 +26,10 @@ from sr_od.sr_map.mini_map_info import MiniMapInfo
 
 
 class SimUniRunCombatRouteV2(SimUniRunRouteBaseV2):
+    """清怪通关战斗层(v2 循环决策:红点→敌对物种→下层入口优先级推进),
+    直到进入下层。非 MCP 传参单元:参数为运行时楼层类型对象,仅限代码内调用。
+    起点:模拟宇宙战斗层移动画面;终点:进入下一层。
+    """
 
     def __init__(self, ctx: SrContext, level_type: SimUniLevelType = SimUniLevelTypeEnum.COMBAT.value):
         """
