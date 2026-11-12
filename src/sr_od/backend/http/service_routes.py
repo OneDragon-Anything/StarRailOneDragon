@@ -120,7 +120,9 @@ async def handle_game_operations_describe(
 ) -> Response:
     """处理 ``GET /game/operations/describe?op_id=``:描述单个 operation 参数 schema。
 
-    op_id 走 query 参数;业务失败(缺 op_id / 解析失败)一律 ``200 + {error}``。
+    op_id 走 query 参数,支持完整 ``<module>.<ClassName>`` 或类名短名(短名多命中
+    返 ``{ambiguous: True, matches[]}`` 全部候选,与 MCP ``describe_operation``
+    同契约);业务失败(缺 op_id / 解析失败 / 短名未找到)一律 ``200 + {error}``。
     """
     op_id = None
     if request is not None:
@@ -142,8 +144,10 @@ async def handle_game_run_operation(
     """处理 ``POST /game/run/operation?op_id=&block=``:运行自定义 operation(args 走 JSON body)。
 
     op_id、block 走 query;args 走 JSON body(整体 body 即 args 字典,空 body 时 args={})。
-    resolve_op_class + validate_args 先校验,通过后 op_factory 闭包 bake args 提交单跑道。
-    业务失败(非 Operation / 缺参 / 复杂数据类 / 并发拒绝)一律 ``200 + {started: False, error}``。
+    op_id 支持完整 ``<module>.<ClassName>`` 或类名短名(短名多命中拒绝并列候选,
+    与 MCP ``run_operation`` 同契约),``resolve_unique_op`` + ``validate_args``
+    先校验,通过后 op_factory 闭包 bake args 提交单跑道。
+    业务失败(非 Operation / 短名歧义 / 缺参 / 复杂数据类 / 并发拒绝)一律 ``200 + {started: False, error}``。
     """
     op_id: str | None = None
     block = False
@@ -160,14 +164,18 @@ async def handle_game_run_operation(
     if not op_id:
         return JSONResponse({'started': False, 'error': '缺少 op_id query 参数'})
     try:
-        cls = operation_registry.resolve_op_class(op_id)
+        cls = operation_registry.resolve_unique_op(op_id)
         err = operation_registry.validate_args(cls, args or {})
         if err:
             return JSONResponse({'started': False, 'error': err})
         # 闭包 bake args(与 MCP 侧一致:槽只认 op_factory(ctx) → Operation)
         def op_factory(ctx):  # noqa: ANN202 闭包签名固定 Callable[[SrContext], Operation]
             return cls(ctx, **(args or {}))
-        ok, future = backend.run_slot._start('http', op_factory=op_factory, display_name=op_id)
+        # display_name 用解析后的完整 op_id:短名传入时也能在运行状态/日志定位到具体 op
+        ok, future = backend.run_slot._start(
+            'http', op_factory=op_factory,
+            display_name=f'{cls.__module__}.{cls.__name__}',
+        )
     except Exception as e:  # noqa: BLE001 resolve/validate/_start 异常兜底
         return JSONResponse({'started': False, 'error': str(e)})
     if not ok:

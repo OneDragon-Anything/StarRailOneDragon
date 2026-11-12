@@ -8,6 +8,7 @@
 """
 import builtins
 import contextlib
+import difflib
 import importlib
 import inspect
 import json
@@ -399,6 +400,61 @@ def resolve_op_class(op_id: str) -> type:
     return cls
 
 
+def match_short_name(name: str) -> list[OperationInfo] | None:
+    """类名短名匹配:返回类名精确命中的扫描条目(0/1/N 个)。
+
+    仅当 ``name`` 不含 ``.`` 时生效(短名形态);含 ``.`` 返回 None,调用方走
+    完整 op_id 实时解析路径(``resolve_op_class``)。完整 op_id 不经扫描缓存是
+    刻意的:缓存只在进程内、无刷新入口,新写的 op 类用完整 op_id 仍可实时命中,
+    短名(依赖缓存)不改变该语义,只做纯增量。
+
+    Args:
+        name: 类名短名(大小写敏感,精确匹配)。
+
+    Returns:
+        命中的扫描条目列表;短名形态无命中为空列表;非短名形态(含 ``.``)为 None。
+    """
+    if '.' in name:
+        return None
+    result = scan_operations(None)
+    return [o for o in result.operations if o.class_name == name]
+
+
+def _short_name_not_found_error(name: str) -> ValueError:
+    """短名未找到的报错(附 difflib 相似类名建议,降低传错名的试错轮次)。"""
+    candidates = sorted({o.class_name for o in scan_operations(None).operations})
+    near = difflib.get_close_matches(name, candidates, n=3, cutoff=0.4)
+    hint = f',最接近的类名: {", ".join(near)}' if near else ''
+    return ValueError(f'未找到类名 {name} 对应的 operation{hint};完整清单用 list_operations 查')
+
+
+def resolve_unique_op(identifier: str) -> type:
+    """run 入口的唯一解析:完整 op_id 或类名短名,短名多命中拒绝。
+
+    Args:
+        identifier: 完整 op_id(``<module>.<ClassName>``,实时解析)或类名短名
+            (扫描缓存精确匹配)。
+
+    Returns:
+        唯一命中的 operation 类。
+
+    Raises:
+        ValueError: 短名多命中(歧义,报错列候选 op_id)/ 短名未找到(附相似类名) /
+            op_id 形态解析失败(同 ``resolve_op_class``)。
+    """
+    shorts = match_short_name(identifier)
+    if shorts is None:
+        return resolve_op_class(identifier)
+    if not shorts:
+        raise _short_name_not_found_error(identifier)
+    if len(shorts) > 1:
+        ids = sorted(i.op_id for i in shorts)
+        raise ValueError(
+            f'类名 {identifier} 命中 {len(ids)} 个 operation,为避免误运行请用完整 op_id 指定: '
+            + '; '.join(ids))
+    return resolve_op_class(shorts[0].op_id)
+
+
 def validate_args(cls: type, args: dict) -> str | None:
     """校验 ``cls(ctx, **args)`` 的参数:必填齐全 + 无复杂数据类参数 + 值可 JSON 序列化。
 
@@ -452,24 +508,15 @@ def validate_args(cls: type, args: dict) -> str | None:
     return None
 
 
-def describe_operation(ctx: 'SrContext', op_id: str) -> dict:
-    """描述单个 operation 的反射参数 schema(纯反射,不实例化)。
-
-    Args:
-        ctx: SrContext(占位)。
-        op_id: 定位标识。
-
-    Returns:
-        含 op_id/class_name/module/params(各 param 标 json_serializable)/debuggable 的字典。
-    """
-    cls = resolve_op_class(op_id)
+def _describe_single(cls: type) -> dict:
+    """单个 operation 类的参数 schema 反射描述(describe_operation 的单条主体)。"""
     params = _reflect_params(cls)
     # 所有必填参数 json_serializable 或 coercible(可从 dict 反序列化) → debuggable=True
     debuggable = all(
         p.json_serializable or p.coercible for p in params if p.required
     )
     return {
-        'op_id': op_id,
+        'op_id': f'{cls.__module__}.{cls.__name__}',
         'class_name': cls.__name__,
         'module': cls.__module__,
         'params': [
@@ -485,3 +532,37 @@ def describe_operation(ctx: 'SrContext', op_id: str) -> dict:
         ],
         'debuggable': debuggable,
     }
+
+
+def describe_operation(ctx: 'SrContext', op_id: str) -> dict:
+    """描述 operation 的反射参数 schema(纯反射,不实例化)。
+
+    ``op_id`` 支持两种形态:完整 ``<module>.<ClassName>``(实时解析,契约不变)或
+    类名短名(扫描缓存精确匹配)。短名命中多个同名类时返回 ``ambiguous`` 形态
+    全部候选;命中唯一时返回单条描述(与旧契约同形,靠 ``ambiguous`` 键区分)。
+
+    Args:
+        ctx: SrContext(占位)。
+        op_id: 完整 op_id 或类名短名。
+
+    Returns:
+        单命中: ``{op_id, class_name, module, params[], debuggable}``;``params[]``
+        元素含 name/annotation/required/default/json_serializable/coercible。
+        多命中: ``{ambiguous: True, count, matches[](每条同单命中结构), hint}``。
+
+    Raises:
+        ValueError: 短名未找到(附相似类名建议)/ op_id 形态解析失败。
+    """
+    shorts = match_short_name(op_id)
+    if shorts is None:
+        return _describe_single(resolve_op_class(op_id))
+    if not shorts:
+        raise _short_name_not_found_error(op_id)
+    if len(shorts) > 1:
+        return {
+            'ambiguous': True,
+            'count': len(shorts),
+            'matches': [_describe_single(resolve_op_class(i.op_id)) for i in shorts],
+            'hint': '命中多个同名类,用完整 op_id 精确指定',
+        }
+    return _describe_single(resolve_op_class(shorts[0].op_id))

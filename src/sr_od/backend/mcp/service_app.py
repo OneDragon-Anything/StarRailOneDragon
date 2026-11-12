@@ -159,19 +159,23 @@ def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
 def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
     """构造 ``describe_operation`` tool(自定义 operation 运行入口)。"""
     def describe_operation(
-        op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取")],
+        op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly),命中多个同名类时全部返回")],
     ) -> dict:
         """描述单个 operation 的参数 schema(纯反射,不实例化)。
 
-        op_id 格式 ``<dotted module path>.<ClassName>``,可从 list_operations 获取。
-        每个参数标 json_serializable(标量/list/dict=True、复杂数据类如 ChargePlanItem=False,
-        提示走 application);整体 debuggable 表示所有必填参数是否可经 JSON 传入。
+        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名(如
+        ``MoveDirectly``):短名命中唯一时返回单条 schema;命中多个同名类时返回
+        ``{ambiguous: True, matches[]}`` 全部候选;未找到时报错附相似类名建议。
+        每个参数标 json_serializable(标量/list/dict=True、复杂数据类如
+        ChargePlanItem=False,提示走 application);整体 debuggable 表示所有必填
+        参数是否可经 JSON 传入。
 
         Returns:
-            ``{op_id, debuggable, params[]}``;``params[]`` 元素:
+            单命中 ``{op_id, debuggable, params[]}``;``params[]`` 元素:
             ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'), required,
             default(默认值字符串,必填为 None), json_serializable(可否直接传 JSON 值),
             coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``。
+            多命中 ``{ambiguous: True, count, matches[](每条同单命中结构), hint}``。
         """
         try:
             return operation_registry.describe_operation(backend.ctx, op_id)
@@ -187,14 +191,16 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
     resolve_op_class + validate_args 在调用方线程先校验,通过后才提交单跑道运行槽。
     """
     async def run_operation(
-        op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取")],
+        op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly),命中多个同名类时报错并列出候选")],
         args: Annotated[dict | None, Field(description="构造参数 dict;JSON 标量/列表/字典,@dataclass+from_dict 参数传 dict 自动反序列化;其余复杂数据类走 application")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
     ) -> dict:
-        """按 op_id(package.path.ClassName)运行任意 operation;args 传构造参数。
+        """按 op_id(package.path.ClassName)或类名短名运行任意 operation;args 传构造参数。
 
         单个 operation 用本 tool;全套用 ``run_one_dragon``;单个应用用 ``run_standalone_app``。
 
+        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名:短名命中
+        唯一即运行;命中多个同名类时拒绝并列出候选 op_id(防误运行)。
         args 传 JSON 标量/列表/字典;``@dataclass``+``from_dict`` 参数传 dict,实例化前自动反序列化;其余复杂数据类走 application。
         用 list_operations / describe_operation 查 op_id 与参数。
         block=False(默认)立刻返回,用 get_run_status 查进度;block=True 阻塞到结束。
@@ -207,7 +213,7 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
             进度/结果细节看 ``get_run_status``。
         """
         try:
-            cls = operation_registry.resolve_op_class(op_id)
+            cls = operation_registry.resolve_unique_op(op_id)
             err = operation_registry.validate_args(cls, args or {})
             if err:
                 return {'started': False, 'error': err}
@@ -216,8 +222,10 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
                 # @dataclass+from_dict 参数的 dict 值反序列化为实例
                 coerced_args = operation_registry.coerce_dataclass_params(cls, args or {})
                 return cls(ctx, **coerced_args)
+            # display_name 用解析后的完整 op_id:短名传入时也能在运行状态/日志定位到具体 op
             ok, future = backend.run_slot._start(
-                'mcp', op_factory=op_factory, display_name=op_id,
+                'mcp', op_factory=op_factory,
+                display_name=f'{cls.__module__}.{cls.__name__}',
             )
         except Exception as e:  # noqa: BLE001 工具层兜底(resolve/validate/_start 异常)
             return {'started': False, 'error': str(e)}
