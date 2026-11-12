@@ -66,7 +66,7 @@ area_list:
   - 955
   - 1465
   - 1015
-  text: ''
+  text: 跃迁1次
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -80,7 +80,7 @@ area_list:
   - 955
   - 1795
   - 1015
-  text: ''
+  text: 跃迁10次
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
