@@ -1,0 +1,60 @@
+screen_id: store_gift_dialog
+screen_name: 商店-礼包弹窗
+pc_alt: false
+area_list:
+- area_name: 文本-购买后立刻获得
+  id_mark: true
+  pc_rect:
+  - 836
+  - 322
+  - 1478
+  - 352
+  text: 购买后立刻获得
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-确认
+  id_mark: false
+  pc_rect:
+  - 985
+  - 765
+  - 1348
+  - 825
+  text: 确认
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 按钮-取消
+  id_mark: false
+  pc_rect:
+  - 573
+  - 765
+  - 930
+  - 825
+  text: 取消
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 读区-弹窗商品名
+  id_mark: false
+  pc_rect:
+  - 836
+  - 268
+  - 1160
+  - 318
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
