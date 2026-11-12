@@ -12,10 +12,12 @@
 
 交互事实(画面建档见 ``docs/game/screens/store.md``):
 - 菜单点「商店」有较长开屏过场(黑屏加载),核对到店节点按宽等待轮询;
-- 详情页点「购买 ¥30.00」直接弹扫码支付(无中间确认步);
+- 详情页点「购买/续订 ¥30.00」直接弹扫码支付(无中间确认步;生效中按钮为「续订」,
+  左侧栏凭证项角标显示剩余天数,且购买后该项会漂移到侧栏末位 —— 入口 area
+  按整条侧栏建,文本命中即点击文字位置,不依赖槽位);
 - 扫码弹窗默认支付宝码,「其他支付方式」切微信,「返回支付宝扫码」切回,
   两按钮同槽位互斥,可作渠道态判据;
-- 月卡生效 ≥179 天时游戏禁购,购买按钮可能不出现 → 显式失败并注明该可能。
+- 月卡生效 ≥179 天时游戏禁购,购买/续订按钮可能不出现 → 显式失败并注明该可能。
 """
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -110,14 +112,23 @@ class BuyExpressSupplyPassOp(SrOperation):
     @node_from(from_name='选列车补给凭证', status='OPEN_QR')
     @operation_node(name='打开扫码支付')
     def open_qr(self) -> OperationRoundResult:
-        """点「购买 ¥30.00」打开扫码弹窗;按钮缺失先判禁购态再报失败。"""
+        """点「购买/续订 ¥30.00」打开扫码弹窗;按钮缺失先判禁购态再报失败。
+
+        按钮文案随凭证状态二态:无生效凭证 =「购买」,生效中 =「续订」
+        (同槽位,OCR 二选一)。
+        """
         if _area_hit(self.ctx, self.last_screenshot, _STORE_SCREEN, '标题-扫码支付'):
             return self.round_success(status='QR_SHOWN', wait=1)
-        if _area_hit(self.ctx, self.last_screenshot, _STORE_SCREEN, '按钮-购买'):
-            area = self.ctx.screen_loader.get_area(_STORE_SCREEN, '按钮-购买')
-            self.ctx.controller.click(area.rect.center)
-            return self.round_retry('已点购买,等扫码弹窗', wait=2)
-        return self.round_fail('未找到购买按钮(月卡生效 ≥179 天时游戏禁购,或页面异常)')
+        buy_area_name: str | None = None
+        for name in ('按钮-购买', '按钮-续订'):
+            if _area_hit(self.ctx, self.last_screenshot, _STORE_SCREEN, name):
+                buy_area_name = name
+                break
+        if buy_area_name is None:
+            return self.round_fail('未找到购买/续订按钮(月卡生效 ≥179 天时游戏禁购,或页面异常)')
+        area = self.ctx.screen_loader.get_area(_STORE_SCREEN, buy_area_name)
+        self.ctx.controller.click(area.rect.center)
+        return self.round_retry(f'已点{buy_area_name},等扫码弹窗', wait=2)
 
     @node_from(from_name='打开扫码支付', status='QR_SHOWN')
     @operation_node(name='核对支付渠道')
