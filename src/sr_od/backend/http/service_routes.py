@@ -98,18 +98,21 @@ async def handle_game_run_standalone(backend: SrBackendContext, request: Request
     return JSONResponse({'success': bool(result and result.success), 'result': msg})
 
 
-async def handle_game_operations(backend: SrBackendContext, _request: Request | None = None) -> Response:
-    """处理 ``GET /game/operations``:列出可运行的自定义 operation(纯反射,无副作用)。
+async def handle_game_operations(backend: SrBackendContext, request: Request | None = None) -> Response:
+    """处理 ``GET /game/operations``:列出可运行的自定义 operation(仅 op_id 紧凑形态)。
 
-    业务失败一律 ``200 + body``(``{error}``),不引入 4xx/5xx(除 backend 未就绪)。
+    与 MCP ``list_operations`` 同契约(``compact_operation_list`` 单源):仅 op_id
+    列表不带参数 schema,``query`` query 参数子串过滤。业务失败一律 ``200 + body``
+    (``{error}``),不引入 4xx/5xx(除 backend 未就绪)。
     """
+    query = request.query_params.get('query', '') if request is not None else ''
     try:
         result = await asyncio.to_thread(operation_registry.scan_operations, backend.ctx)
     except BackendNotReadyError as e:
         return _err(str(e))
     except Exception as e:  # noqa: BLE001 扫描异常兜底
         return JSONResponse({'error': str(e)})
-    return JSONResponse(asdict(result))
+    return JSONResponse(operation_registry.compact_operation_list(result, query))
 
 
 async def handle_game_operations_describe(

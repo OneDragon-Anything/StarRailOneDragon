@@ -8,7 +8,7 @@ from pydantic import Field
 
 from sr_od.backend import operation_registry
 from sr_od.backend.backend_context import SrBackendContext
-from sr_od.backend.schemas import ApplicationListResult, OperationListResult
+from sr_od.backend.schemas import ApplicationListResult
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.operation_base import OperationResult
@@ -129,26 +129,30 @@ def make_list_applications(backend: SrBackendContext) -> Callable[[], Applicatio
     return list_applications
 
 
-def make_list_operations(backend: SrBackendContext) -> Callable[[], OperationListResult | dict]:
+def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
     """构造 ``list_operations`` tool(自定义 operation 运行入口)。"""
-    def list_operations() -> OperationListResult | dict:
-        """列出可运行的自定义 operation(扫描 operations/ 承载包,纯反射不实例化)。
+    def list_operations(
+        query: Annotated[str, Field(description="子串过滤 op_id(大小写不敏感),如 'move'/'battle';空=全量")] = "",
+    ) -> dict:
+        """列出可运行的自定义 operation 的 op_id 清单(扫描 operations/ 承载包,纯反射不实例化)。
 
+        只返回 op_id(<module>.<ClassName>)列表,不含参数 schema——LLM 上下文有限,
+        全量参数 schema 必然截断;参数详情用 ``describe_operation(op_id)`` 查。
         列 operation 用本 tool;列应用用 ``list_applications``。
 
-        返回每个 operation 的 op_id(<module>.<ClassName>)与 __init__ 参数 schema(已剔除
-        self/ctx)。用 describe_operation 看单个详情,用 run_operation 按 op_id 运行。无副作用。
+        Args:
+            query: op_id 子串过滤(大小写不敏感);空串 = 全量。找目标 op 先传关键字
+                缩小范围(如 'move'/'battle'/'charge'),避免全量长列表。
 
         Returns:
-            ``{operations[], failures[]}``。``operations[]`` 元素:
-            ``{op_id, class_name, module, params[]}``;``params[]`` 元素见
-            ``describe_operation`` 的 Returns(结构相同)。``failures[]`` 是单模块
-            import 失败记录(``{module}: {error}``),不影响其余扫描结果。
+            ``{total, count, operations[], failures[], hint}``;``failures[]`` 是
+            单模块 import 失败记录(``{module}: {error}``),不影响其余扫描结果。
         """
         try:
-            return operation_registry.scan_operations(backend.ctx)
+            result = operation_registry.scan_operations(backend.ctx)
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'error': str(e)}
+        return operation_registry.compact_operation_list(result, query)
     return list_operations
 
 

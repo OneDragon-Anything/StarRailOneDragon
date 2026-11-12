@@ -326,6 +326,36 @@ def scan_operations(ctx: 'SrContext', refresh: bool = False) -> OperationListRes
     return result
 
 
+def compact_operation_list(result: OperationListResult, query: str = '') -> dict:
+    """把扫描结果转成紧凑列表负载(仅 op_id,不带参数 schema)。
+
+    MCP ``list_operations`` 与 HTTP ``GET /game/operations`` 共用此函数,单源保证
+    两适配器契约一致。紧凑化的原因:MCP 消费者是 LLM(上下文有限),全量参数
+    schema(约 170 op / 80KB)必然截断,仅 op_id 约 14KB 可完整送达;参数详情由
+    ``describe_operation`` 按需补。
+
+    Args:
+        result: ``scan_operations`` 的扫描结果。
+        query: op_id 子串过滤(大小写不敏感,首尾空白忽略);空 = 全量。
+
+    Returns:
+        ``{total, count, operations[], failures[], hint}``:``total`` = 全量数,
+        ``count`` = 过滤后返回数,``operations[]`` = op_id 升序列表,
+        ``failures[]`` = 单模块 import 失败记录。
+    """
+    needle = query.strip().lower()
+    op_ids = [o.op_id for o in result.operations]
+    if needle:
+        op_ids = [op_id for op_id in op_ids if needle in op_id.lower()]
+    return {
+        'total': len(result.operations),
+        'count': len(op_ids),
+        'operations': op_ids,
+        'failures': list(result.failures),
+        'hint': '参数 schema 用 describe_operation(op_id) 查,运行用 run_operation(op_id, args)',
+    }
+
+
 def resolve_op_class(op_id: str) -> type:
     """按 ``<dotted module path>.<ClassName>`` 解析出 operation 类。
 

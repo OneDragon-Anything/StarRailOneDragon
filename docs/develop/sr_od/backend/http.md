@@ -16,7 +16,7 @@
 | GET | `/game/applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
 | POST | `/game/run/one-dragon?block=` | `backend.run_one_dragon('http')` | 默认返受理 `{"started": true, ...}`；`block=true` 等待结束返终态 `{"success": bool, "result": 文本}` |
 | POST | `/game/run/standalone?app_id=&block=` | `backend.run_standalone_app('http', app_id)` | `app_id` 为空时使用 GUI「应用运行」当前选中项;返回形态同 `/game/run/one-dragon` |
-| GET | `/game/operations` | `operation_registry.scan_operations(ctx)` | 可运行自定义 op 列表（`op_id` + 参数 schema，纯反射不实例化） |
+| GET | `/game/operations` | `operation_registry.scan_operations(ctx)` + `compact_operation_list` | 仅 op_id 紧凑列表（`{total, count, operations[], failures[], hint}`，`?query=` 子串过滤大小写不敏感；与 MCP `list_operations` 同契约单源，参数 schema 走 `/game/operations/describe`） |
 | GET | `/game/operations/describe?op_id=` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每参数标 `json_serializable` + 整体 `debuggable`） |
 | POST | `/game/run/operation?op_id=&block=` | `operation_registry` 校验 + `run_slot._start`（op 路径） | 默认返受理;`block=true` 等结束返终态 `{"success": bool, "result": 文本}`;`args` 走 JSON body |
 | GET | `/game/status` | `backend.query_status()` | `RunStatusResult` JSON |

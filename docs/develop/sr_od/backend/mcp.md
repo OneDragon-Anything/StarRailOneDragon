@@ -21,7 +21,7 @@
 | `list_applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
 | `run_one_dragon(block=False)` | `backend.run_one_dragon('mcp')` | 默认立刻返回受理 `{started: True, ...}`；`block=True` 等结束返终态 `{success, result}` |
 | `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项；返回形态同 `run_one_dragon` |
-| `list_operations` | `operation_registry.scan_operations(ctx)` | 可运行自定义 op 列表（`op_id` + 参数 schema，纯反射不实例化） |
+| `list_operations(query="")` | `operation_registry.scan_operations(ctx)` | 仅 op_id 升序列表（`{total, count, operations[], failures[], hint}`，`query` 子串过滤大小写不敏感；不带参数 schema——LLM 上下文有限，参数详情走 `describe_operation`；HTTP `/game/operations` 消费者是脚本不受此限，仍返全量） |
 | `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + `coercible` + 整体 `debuggable`） |
 | `run_operation(op_id, args=None, block=False)` | `operation_registry` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回受理；`block=True` 返终态 `{success, result}`；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返 `{started: False, error}`。`@dataclass`+`from_dict` 参数可从 dict 传入 |
 | `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{success, app_id, data|key,value}`（读配置字段/全 data；只读） |
