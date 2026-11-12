@@ -429,7 +429,12 @@ class Operation(OperationBase):
                         pass
                     else:
                         arrow = f"{from_node_name} -> {node_name}" if self._previous_node is not None else node_name
-                        log.info('%s 节点 %s 返回状态 %s', self.display_name, arrow, round_result_status)
+                        # 尾缀追加不改原语义(通知/overlay 走 round_result 对象,无文本消费方):
+                        # 耗时与 overlay 轮性能同源;retry 计数为递增后值(此处打点在递增前)
+                        round_suffix = f'({time.time() - self.round_start_time:.1f}s)'
+                        if round_result.result == OperationRoundResultEnum.RETRY:
+                            round_suffix += f' retry={self.node_retry_times + 1}/{self.node_max_retry_times}'
+                        log.info('%s 节点 %s 返回状态 %s %s', self.display_name, arrow, round_result_status, round_suffix)
                     self._emit_overlay_round_trace(
                         from_node_name=from_node_name,
                         node_name=node_name,
@@ -489,6 +494,11 @@ class Operation(OperationBase):
                     op_result = self.op_success(round_result.status, round_result.data)
                     break
                 elif round_result.result == OperationRoundResultEnum.FAIL:
+                    # 仅 op 以失败终结时兜底存图;节点级 fail 与 retry 耗尽不存——
+                    # fail 是节点间常规转移手段(fail→else 兜底),逐转移存图量级不成立
+                    fail_node_name = 'none' if self._current_node is None else self._current_node.cn
+                    fail_shot = self.save_screenshot(prefix=f'{self.__class__.__name__}_fail_{fail_node_name}')
+                    log.debug('%s 终结失败截图保存至 %s', self.display_name, fail_shot)
                     op_result = self.op_fail(round_result.status, round_result.data)
                     break
                 else:
@@ -984,12 +994,17 @@ class Operation(OperationBase):
                     area_name=until_area_name,
                     crop_first=crop_first,
                 )
+                # 逐锚行只覆盖实际验证过的锚:首个未命中即 break,break 后的锚未验证、不打
+                log.debug('until 验证: (%s, %s) %s', until_screen_name, until_area_name,
+                          '出现' if result == FindAreaResultEnum.TRUE else '未出现')
                 if result != FindAreaResultEnum.TRUE:
                     all_found = False
                     break
 
             if all_found:
+                log.debug('until 结论: 全部通过')
                 return self.round_success(status=area_name, wait=success_wait, wait_round_time=success_wait_round)
+            log.debug('until 结论: 锚未满足,继续等')
 
         if until_not_find_all is not None and self.node_clicked:
             any_found: bool = False
@@ -1001,12 +1016,17 @@ class Operation(OperationBase):
                     area_name=until_area_name,
                     crop_first=crop_first,
                 )
+                # not_find 系语义相反:首个命中即 break(锚仍出现=未满足),break 后的锚不打
+                log.debug('until 验证: (%s, %s) %s', until_screen_name, until_area_name,
+                          '出现' if result == FindAreaResultEnum.TRUE else '未出现')
                 if result == FindAreaResultEnum.TRUE:
                     any_found = True
                     break
 
             if not any_found:
+                log.debug('until 结论: 全部通过')
                 return self.round_success(status=area_name, wait=success_wait, wait_round_time=success_wait_round)
+            log.debug('until 结论: 锚未满足,继续等')
 
         time.sleep(pre_delay)
         click = screen_utils.find_and_click_area(
@@ -1467,20 +1487,22 @@ class Operation(OperationBase):
             screen = self.last_screenshot
 
         current_screen_name = screen_utils.get_match_screen_name(self.ctx, screen)
-        self.ctx.screen_loader.update_current_screen_name(current_screen_name)
+        self.ctx.screen_loader.update_current_screen_name(current_screen_name, source='判定')
         if current_screen_name is None:
             return self.round_retry(Operation.STATUS_SCREEN_UNKNOWN, wait=retry_wait, wait_round_time=retry_wait_round)
-        log.debug(f'当前识别画面 {current_screen_name}')
         if current_screen_name == screen_name:
             return self.round_success(current_screen_name, wait=success_wait, wait_round_time=success_wait_round)
 
         route = self.ctx.screen_loader.get_screen_route(current_screen_name, screen_name)
         if route is None or not route.can_go:
             return self.round_fail(f'无法从 {current_screen_name} 前往 {screen_name}')
+        log.debug('goto 路由: %s→%s 经 [%s]',
+                  current_screen_name, screen_name,
+                  ', '.join(f'{node.from_screen}.{node.from_area}' for node in route.node_list))
 
         result = self.round_by_find_and_click_area(screen, current_screen_name, route.node_list[0].from_area)
         if result.is_success:
-            self.ctx.screen_loader.update_current_screen_name(route.node_list[0].to_screen)
+            self.ctx.screen_loader.update_current_screen_name(route.node_list[0].to_screen, source='goto跳转')
             return self.round_wait(result.status, wait=retry_wait, wait_round_time=retry_wait_round)
         else:
             return self.round_retry(result.status, wait=retry_wait, wait_round_time=retry_wait_round)
@@ -1494,7 +1516,8 @@ class Operation(OperationBase):
         """
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
         if area.goto_list is not None and len(area.goto_list) > 0:
-            self.ctx.screen_loader.update_current_screen_name(area.goto_list[0])
+            # goto_list[0] 是点击后画面的乐观推断(无验证),来源标记供画面状态日志对账
+            self.ctx.screen_loader.update_current_screen_name(area.goto_list[0], source='点击乐观')
 
     def check_and_update_current_screen(
         self,
@@ -1521,7 +1544,7 @@ class Operation(OperationBase):
             screen_name_list=screen_name_list,
             crop_first=crop_first,
         )
-        self.ctx.screen_loader.update_current_screen_name(current_screen_name)
+        self.ctx.screen_loader.update_current_screen_name(current_screen_name, source='判定')
         # [临时采集] is_debug 时给迷失之地待建档画面存档(ASCII key 防 mojibake,采完删)
         if self.ctx.env_config.is_debug:
             _lv_cap_key = {
