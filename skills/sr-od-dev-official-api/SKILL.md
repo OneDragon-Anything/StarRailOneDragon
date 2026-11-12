@@ -1,6 +1,6 @@
 ---
 name: sr-od-dev-official-api
-description: 需要米哈游官方数据(角色/物品等游戏内容:数字 ID、中英文名、命途/属性/稀有度、技能描述、养成材料等)时用——官方 wiki 有大量可直接调的 REST API,先打官方接口,不要先翻第三方仓(StarRailRes/Dimbreath 系均有 DMCA 或停更风险)。SKILL.md 只讲两个平台入口与公共技巧;具体接口与参数按主题在 references/ 索引。英文:official HSR/miHoYo API, wiki endpoints, character data。
+description: 需要米哈游官方数据(角色/物品等游戏内容:数字 ID、中英文名、命途/属性/稀有度、技能描述、养成材料等)时用,或要查当期跃迁卡池(这期 UP 是谁/卡池起止/UP 概率)时用——官方 wiki 有大量可直接调的 REST API,先打官方接口,不要先翻第三方仓(StarRailRes/Dimbreath 系均有 DMCA 或停更风险)。SKILL.md 只讲两个平台入口与公共技巧;具体接口与参数按主题在 references/ 索引。英文:official HSR/miHoYo API, wiki endpoints, character data, gacha banner UP。
 ---
 
 # 米哈游官方 API·入口与公共技巧
@@ -29,5 +29,6 @@ description: 需要米哈游官方数据(角色/物品等游戏内容:数字 ID�
 ## references 索引(具体接口与参数按主题分文档)
 
 - `references/characters.md` — 角色数据:列表/详情接口、avatarId 位置、技能描述抽取、双语连表方式
+- `references/gacha.md` — 跃迁卡池:当期角色池 UP(含 UP 角色名二跳)、单池全量 JSON(光锥池/概率)、gacha_id 缓存提取
 - `references/currency-war.md` — 货币战争:攻略广场 API(活动页后端)、CW 图鉴频道、icon 库映射约定
 - `references/map.md` — 观测枢大地图(srmap):地图树/楼层底图/锚点点位接口、官方坐标系换算、锄大地新地图产线素材源

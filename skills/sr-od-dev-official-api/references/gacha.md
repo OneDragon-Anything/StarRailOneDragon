@@ -1,0 +1,40 @@
+# 跃迁卡池接口(当期 UP 查询)
+
+> 「这期池子是什么角色」的官方直连答案。两个互补源:**米游社 wiki gacha_pool**(角色池当期 UP,零登录幂等 GET,推荐首选)与 **gacha_info zh-cn.json**(单池全量含光锥池,需游戏 webview 配合拿 gacha_id)。两源均已实调验证,实测实例取愚戏众星期。
+
+## 1. 米游社 wiki gacha_pool(当期角色池,首选)
+
+```
+GET https://act-api-takumi.mihoyo.com/common/blackboard/sr_wiki/v1/gacha_pool?app_sn=sr_wiki
+```
+
+- 零登录零特殊头(幂等 GET 直连);`retcode: 0` = 成功。
+- `data.list[]` = **当期角色活动池 + 联动池**(不含光锥池/常驻池——wiki 首页蛋池卡只展示角色池),每条:
+  - `title`(池名)、`start_time`/`end_time`(起止,含年月日时分)、`activity_url`(米游社公告)、`content_before_act`(状态文案,wiki 维护可能滞后如显示「即将开始」但实际已开——以 `start_time` 为准);
+  - `pool[]` = 该池 UP 词条:`url` 含 `content/<id>/detail` 的 content_id + `icon`(UP 立绘 PNG)。
+
+**UP 角色名**(二跳):
+
+```
+GET https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info
+    ?app_sn=sr_wiki&content_id=<pool[].url 里的 id>
+```
+
+`data.content.title` = UP 名。pool[] 第一条通常是 UP 5★(avatar),其余为 UP 4★——实测样本:愚戏众星 = 星神★阿哈+艾丝妲/玲可/驭空、铭心之萃 = 银狼LV.999+火花,与游戏内详情页 JSON 的 items_up_* 完全一致。
+
+## 2. gacha_info zh-cn.json(单池全量,含光锥池)
+
+```
+GET https://operation-webstatic.mihoyo.com/gacha_info/hkrpg/prod_gf_cn/<gacha_id>/zh-cn.json
+```
+
+- 每期池子一个 `gacha_id`(50 位 hex,客户端生成,不可枚举);JSON 含 `title`/`gacha_type`(11=角色活动/12=光锥活动/21=联动)/`items_up_star_5`(对象数组:`item_name`/`item_type`(avatar/equipment)/`item_attr`/`image_url`)/`items_up_star_4`/全套概率(`base_prob_star5` 0.6%/`up_prob` 50% 等)/`version_switch`(版本号)。
+- `items_up_star_5[].item_id/origin_item_id` 可能为 0(占位),取 `item_name`;`is_up` 字段恒 0 无语义,别依赖。
+- **gacha_id 获取**:游戏内某池点「查看详情」→ webview 请求该池 JSON → URL 落游戏 HTTP 缓存 → 提取。缓存路径 `<游戏根>/StarRail_Data/webCaches/<版本>/Cache/Cache_Data/`(data_* 文件游戏运行中被进程锁,先复制再按 ASCII 读字节,正则抓 `gacha_info/hkrpg/prod_gf_cn/[a-f0-9]+/zh-cn.json`)。webview 渲染可能卡死(见本仓 docs/game/screens/跃迁.md),**JSON 请求先于渲染完成落缓存**——卡死不影响抓取,等待数秒即可退出。
+- 逐池点详情(切池→点查看详情→等约 5 秒→退出)可集齐当期各活动池;**常驻池的详情 JSON 实测抓不到**(多次等待均未落缓存,疑常驻池不请求此接口——常驻池无「当期」概念,影响可忽略)。
+
+## 3. 两源分工与已知坑
+
+- **日常「这期池子是什么角色」**:gacha_pool 一跳直答(角色池+联动池 UP);要光锥池 UP 或概率明细才走 gacha_info(游戏内配合)。
+- 依赖纪律:拉到的 JSON **先快照进自有资产**(本仓数据文件或维护者目录)再消费——官方接口可能改版,快照即单一事实源。
+- wiki 频道树接口(`home/map?app_sn=sr_wiki`)可枚举 wiki 全频道(channel_id 45=活动跃迁,eggPool 展示容器,其 content/list 恒空——数据走 gacha_pool);角色/光锥等其他 channel_id 见 references/characters.md。
