@@ -1,7 +1,7 @@
 """国际版 HoYoWiki 遗器菜单双语拉取:zh-cn + en-us 列表按 entry_page_id 互连。
 
-产出(运行时缓存,消费方 = build_relic_authority_table.py):
-  .debug/temp/relic_wiki/hoyowiki_relic_id_map.json
+产出(拉取缓存,统一落 `.debug/game_data/relic/wiki/`,消费方 = build_relic_authority_table.py):
+  .debug/game_data/relic/wiki/hoyowiki_relic_id_map.json
     { "归一化中文名": {"en": 官方英文名, "id": 小写仅字母数字, "hoyowiki_page_id": "<entry_page_id>"} }
 
 归一化口径:intl 词条名含脏字符(前导空格/BOM/半角逗号实测)——lstrip BOM +
@@ -26,7 +26,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 LIST_URL = 'https://sg-act-public-api.hoyolab.com/hoyowiki/hsr/wapi/get_entry_page_list'
 MENU_ID = '108'  # 遗器菜单
 PAGE_SIZE = 30
-OUT_DIR = Path(r'.debug/temp/relic_wiki')
+OUT_DIR = Path(r'.debug/game_data/relic/wiki')
 RETRIES = 3
 CN_NORM = str.maketrans({',': '，', ' ': '', '\u3000': ''})
 
@@ -112,6 +112,8 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / 'hoyowiki_relic_id_map.json').write_text(
         json.dumps(mapping, ensure_ascii=False, indent=1), encoding='utf-8')
+    (out_dir / 'fetched_at.txt').write_text(
+        time.strftime('%Y-%m-%dT%H:%M:%S'), encoding='utf-8')
     print(f'互连成功 {len(mapping)} 条 -> {out_dir / "hoyowiki_relic_id_map.json"}')
     if conflicts:
         print(f'同名撞键(需人工裁决,未写入): {sorted(set(conflicts))}')

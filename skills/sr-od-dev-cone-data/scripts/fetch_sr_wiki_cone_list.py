@@ -2,8 +2,9 @@
 
 解析:详情 contents[0].text 的 data-data(light 模块:career 命途/rate 星级/skill 特效
 + general/desc 模块 HTML 键值表:「实装版本」相邻单元格 = 获取途径)。
-产出:.debug/temp/cone_wiki/cone_details_cn.json
+产出:.debug/game_data/cone/wiki/cone_details_cn.json
     { "<content_id>": {title, career, rate, skill, obtain} }(desc 故事不落盘,不固化)
+  .debug/game_data/cone/wiki/fetched_at.txt(本次拉取时间,重跑前先看日期防用过期缓存)
 
 限流防护:API 高频后返回 retcode=0 空模板(career 解析不中),命中校验+间隔递增重试。
 仅标准库+requests,项目根目录运行(约 170 次 × 1.5s,数分钟):
@@ -22,7 +23,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-OUT_FILE = PROJECT_ROOT / '.debug' / 'temp' / 'cone_wiki' / 'cone_details_cn.json'
+OUT_FILE = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'cone_details_cn.json'
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/'
             'content/list?app_sn=sr_wiki&channel_id=19&lang=zh-cn')
 DETAIL_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/'
@@ -126,6 +127,8 @@ def main() -> int:
         time.sleep(1.5)
 
     OUT_FILE.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
+    OUT_FILE.parent.joinpath('fetched_at.txt').write_text(
+        time.strftime('%Y-%m-%dT%H:%M:%S'), encoding='utf-8')
     print(f'完成 {len(results)}/{len(entries)},失败 {len(failed)} {failed[:5]},产出 {OUT_FILE}')
     return 0
 

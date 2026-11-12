@@ -22,8 +22,8 @@ description: 维护崩坏:星穹铁道「光锥数据」全流程的单一入口
 
 | 拉取内容 | 脚本 | 临时产物 |
 |---|---|---|
-| 国内 wiki 清单 + 详情（中文名/命途/星级/特效/获取途径） | 本 skill `scripts/fetch_sr_wiki_cone_list.py` | `.debug/temp/cone_wiki/cone_details_cn.json` |
-| 国际服官方英文名（zh/en 列表按词条 id 互连） | 本 skill `scripts/fetch_hoyowiki_cone_en_names.py` | `.debug/temp/wiki_cache/hoyowiki_cone_en_names.json` |
+| 国内 wiki 清单 + 详情（中文名/命途/星级/特效/获取途径） | 本 skill `scripts/fetch_sr_wiki_cone_list.py` | `.debug/game_data/cone/wiki/cone_details_cn.json` |
+| 国际服官方英文名（zh/en 列表按词条 id 互连） | 本 skill `scripts/fetch_hoyowiki_cone_en_names.py` | `.debug/game_data/cone/wiki/hoyowiki_cone_en_names.json` |
 
 - 运行方式：项目根 `uv run python <脚本路径>`（均仅标准库 + requests；国际服域名可能需代理，urllib 自动读 `HTTP_PROXY`/`HTTPS_PROXY`）。
 - **收录判据**：详情解析命中命途与星级才算有效词条；解析失败重试后仍无效的记入失败清单人工看，勿静默跳过。

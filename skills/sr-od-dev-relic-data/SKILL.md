@@ -7,7 +7,7 @@ description: 维护崩坏:星穹铁道「遗器套装数据」全流程的单一
 
 ## 1. 总流程 checklist(版本更新/新套装实装时)
 
-1. ☐ 刷新双源输入:① `scripts/fetch_sr_wiki_relic_list.py`(国内 wiki 遗器频道,content_id);② `scripts/fetch_hoyowiki_relic_en_names.py`(国际服 zh/en 互连 → 英文名/id)。产物在 `.debug/temp/relic_wiki/`。
+1. ☐ 刷新双源输入:① `scripts/fetch_sr_wiki_relic_list.py`(国内 wiki 遗器频道,content_id);② `scripts/fetch_hoyowiki_relic_en_names.py`(国际服 zh/en 互连 → 英文名/id)。产物在 `.debug/game_data/relic/wiki/`(本 skill 拉取缓存统一落点;旁置 fetched_at.txt 记拉取时间,重跑前先看日期防用过期缓存)。
 2. ☐ 国内 wiki 详情重抓(新套装词条详情:效果/件名/desc)——详情抓取脚本含官方 wiki 特殊模板解析,不在本仓维护;只拿名称/编号不需要它。
 3. ☐ diff 常量 `src/sr_od/mys/sr_relic_sets.py`:新套装清单对照 → **人工审阅**新条目(set_name/kind/pieces/effects/obtain/desc)。**禁直灌 wiki 数据**——wiki 词条有错字/缺段实测;效果数值要双源交叉(官方公告原文 × wiki),冲突以官方公告为准(实证:4.7 亚空异容所 18% vs 测试服库 15%,公告胜;BWIKI 件名「深黢」vs 公告「深黯」,公告胜)。
 4. ☐ 常量更新:`RelicSetDef` 新条目(排列序 = 实装序);`id` 字段按国际服英文名归一化回填,国际服未收录留空串(宁缺勿错)。文本源优先级:官方公告原文 > wiki。

@@ -58,6 +58,6 @@
 
 ## 6. 产物与去向
 
-- 全部中间产物落 `.debug/temp/map_probe/mys_probe/gen_<id>/`(运行时产物,不入库)。
+- 全部中间产物落 `.debug/game_data/map/probe/mys_probe/gen_<id>/`(拉取缓存统一落点,不入库)。
 - 正式落位(uid 命名、raw/mask 入 `assets/template/large_map/`、sp 行入区域特殊点 yml、mm_icon 登记与新图标查重)按 `region-data-entry.md` 的数据模型与命名规则执行。
 - 机制结论与踩坑论据沉淀在本 skill `design/overview.md`(随 skill 走)。

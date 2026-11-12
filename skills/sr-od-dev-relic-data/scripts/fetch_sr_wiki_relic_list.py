@@ -1,7 +1,7 @@
 """抓取国内官方 wiki 遗器频道(channel_id=30)套装列表。
 
-产出(运行时缓存,消费方 = build_relic_authority_table.py 与 wiki 详情重抓):
-  .debug/temp/relic_wiki/cnwiki_relic_list.json
+产出(拉取缓存,统一落 `.debug/game_data/relic/wiki/`,消费方 = build_relic_authority_table.py 与 wiki 详情重抓):
+  .debug/game_data/relic/wiki/cnwiki_relic_list.json
     [ {content_id, name} ]  按列表序（= 频道展示序,非实装序）
 
 接口:act-api-takumi-static.mihoyo.com content/list(官方自营 REST,
@@ -10,6 +10,7 @@
 """
 import json
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -18,7 +19,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')  # Windows 控制台默认 GBK,中文输出会乱码
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-OUT_DIR = PROJECT_ROOT / '.debug' / 'temp' / 'relic_wiki'
+OUT_DIR = PROJECT_ROOT / '.debug' / 'game_data' / 'relic' / 'wiki'
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/'
             'content/list?app_sn=sr_wiki&channel_id=30&lang=zh-cn')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -42,6 +43,7 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUT_DIR / 'cnwiki_relic_list.json'
     out.write_text(json.dumps(entries, ensure_ascii=False, indent=1), encoding='utf-8')
+    (OUT_DIR / 'fetched_at.txt').write_text(time.strftime('%Y-%m-%dT%H:%M:%S'), encoding='utf-8')
     print(f'国内 wiki 遗器频道 {len(entries)} 条 -> {out}')
     return 0
 

@@ -67,4 +67,4 @@
 
 ## 版本更新重跑流程
 
-删 `.debug/temp/` 旧缓存 JSON → 重跑 fetch 脚本 → 覆盖 `references/data/` → git diff 看官方变化 → 按 templates 更新知识档 → research-status 记录新快照日期。
+删 `.debug/game_data/` 下对应域的旧缓存 JSON → 重跑 fetch 脚本(拉取缓存统一落 `.debug/game_data/<域>/`,旁置 fetched_at.txt 记拉取时间) → 覆盖 `references/data/` → git diff 看官方变化 → 按 templates 更新知识档 → research-status 记录新快照日期。

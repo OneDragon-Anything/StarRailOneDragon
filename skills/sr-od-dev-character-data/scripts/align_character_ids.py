@@ -3,7 +3,7 @@
 主键:en_normalized == Character.id(90 条);例外手工规则:
 - 开拓者 8001-8010:奇数=男(caelum_*)偶数=女(stelle_*),按命途配对
 - 三月七 1224(无 en_normalized) → march7th_hunt
-输出:.debug/temp/char_avatar_id_map.json —— {avatarId: character_id} + 未对账清单
+输出:.debug/game_data/character/char_avatar_id_map.json —— {avatarId: character_id} + 未对账清单
 """
 import json
 import re
@@ -12,7 +12,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 CONST_FILE = PROJECT_ROOT / 'src' / 'sr_od' / 'config' / 'character_const.py'
-OUT = PROJECT_ROOT / '.debug' / 'temp' / 'char_avatar_id_map.json'
+OUT = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'char_avatar_id_map.json'
 
 # 开拓者数字 ID → 常量英文代号(奇男偶女 × 五命途;三月七双形态)
 MANUAL: dict[str, str] = {

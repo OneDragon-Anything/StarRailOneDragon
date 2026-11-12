@@ -16,7 +16,7 @@ import re
 import urllib.request
 from pathlib import Path
 
-CACHE_HTML = '.debug/temp/bwiki_char_huohuo.html'
+CACHE_HTML = '.debug/game_data/character/bwiki_char_huohuo.html'
 PAGE_URL = 'https://wiki.biligame.com/sr/%E8%97%BF%E8%97%BF'
 OUT_PATH = 'src/sr_od/config/trace_levelup_const.py'
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0'

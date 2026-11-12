@@ -2,7 +2,7 @@
 
 输入:
   references/cones-full.json                    (build_cone_authority_table.py 产物)
-  .debug/temp/cone_wiki/cone_details_cn.json    (fetch_sr_wiki_cone_list.py 产物)
+  .debug/game_data/cone/wiki/cone_details_cn.json    (fetch_sr_wiki_cone_list.py 产物)
 产出:src/sr_od/mys/sr_light_cones.py(完整模块,含 id 字段)。
 
 纪律:
@@ -25,7 +25,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 TABLE = Path(__file__).resolve().parent.parent / 'references' / 'cones-full.json'
-DETAILS = PROJECT_ROOT / '.debug' / 'temp' / 'cone_wiki' / 'cone_details_cn.json'
+DETAILS = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'cone_details_cn.json'
 OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_light_cones.py'
 TEMPLATE_DIR = PROJECT_ROOT / 'assets' / 'template' / 'light_cone_icon'
 

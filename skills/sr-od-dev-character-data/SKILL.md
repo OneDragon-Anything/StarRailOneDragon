@@ -11,9 +11,9 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 
 | 拉取内容 | 脚本 | 临时产物 |
 |---|---|---|
-| 角色列表 + 基础字段(中文名/avatarId/命途/属性/星级/秘技) | official-api 的 `fetch_sr_wiki_characters.py` | `.debug/temp/wiki_cache/wiki_channel18.json` + `details/<content_id>.json` |
-| 官方英文名 | official-api 的 `fetch_hoyowiki_en_names.py` | `.debug/temp/wiki_cache/hoyowiki_en_names.json` |
-| 行迹满级 + 星魂全 6 详情 | 本 skill `scripts/fetch_character_details.py` | `.debug/temp/char_wiki/char_details.json` |
+| 角色列表 + 基础字段(中文名/avatarId/命途/属性/星级/秘技) | official-api 的 `fetch_sr_wiki_characters.py` | `.debug/game_data/character/wiki/wiki_channel18.json` + `details/<content_id>.json` |
+| 官方英文名 | official-api 的 `fetch_hoyowiki_en_names.py` | `.debug/game_data/character/wiki/hoyowiki_en_names.json` |
+| 行迹满级 + 星魂全 6 详情 | 本 skill `scripts/fetch_character_details.py` | `.debug/game_data/character/wiki/char_details.json` |
 
 - 接口细节(域名/参数/字段位置/已知坑)见 sr-od-dev-official-api `references/characters.md`,本文不重复。
 - 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本需 `PYTHONPATH=src`)。

@@ -1,8 +1,9 @@
 """国内米游社 wiki 角色频道拉取:列表 + 逐条详情,落成本地缓存。
 
-产出(运行时缓存,消费方 = sr-od-dev-character-data/scripts/finalize_map.py):
-  .debug/temp/wiki_cache/wiki_channel18.json        列表条目数组(content_id/title/ext/...)
-  .debug/temp/wiki_cache/details/<content_id>.json  逐条详情原始响应
+产出(拉取缓存,统一落 `.debug/game_data/character/wiki/`,消费方 = sr-od-dev-character-data):
+  .debug/game_data/character/wiki/wiki_channel18.json        列表条目数组(content_id/title/ext/...)
+  .debug/game_data/character/wiki/details/<content_id>.json  逐条详情原始响应
+  .debug/game_data/character/wiki/fetched_at.txt             本次拉取时间(重跑前先看日期防用过期缓存)
 
 接口与字段依据:本 skill references/characters.md「国内米游社」。
 已知坑(详见该文档):lang 参数恒中文;空壳词条(无 avatarId);avatarId=="0" 占位;
@@ -21,7 +22,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/content/list'
             '?app_sn=sr_wiki&channel_id=18&lang=zh-cn')
 DETAIL_URL = 'https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/content/info?app_sn=sr_wiki&content_id={cid}'
-OUT_DIR = Path(r'.debug/temp/wiki_cache')
+OUT_DIR = Path(r'.debug/game_data/character/wiki')
 RETRIES = 3
 
 
@@ -53,6 +54,8 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / 'wiki_channel18.json').write_text(
         json.dumps(entries, ensure_ascii=False, indent=1), encoding='utf-8')
+    (out_dir / 'fetched_at.txt').write_text(
+        time.strftime('%Y-%m-%dT%H:%M:%S'), encoding='utf-8')
     print(f'列表: {len(entries)} 条 -> {out_dir / "wiki_channel18.json"}')
 
     detail_dir = out_dir / 'details'

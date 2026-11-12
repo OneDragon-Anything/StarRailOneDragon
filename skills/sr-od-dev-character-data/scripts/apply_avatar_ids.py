@@ -1,6 +1,6 @@
 """一次性:character_const.py 的 98 条 Character 定义批量补 avatar_id 字段。
 
-依据:.debug/temp/char_avatar_id_map.json(character_id → avatarId,双源对账 98/98)
+依据:.debug/game_data/character/char_avatar_id_map.json(character_id → avatarId,双源对账 98/98)
 改动:①Character.__init__ 尾部加 avatar_id 参数(默认 0);②每条定义行尾插 avatar_id=N。
 """
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 CONST_FILE = PROJECT_ROOT / 'src' / 'sr_od' / 'config' / 'character_const.py'
-MAP_FILE = PROJECT_ROOT / '.debug' / 'temp' / 'char_avatar_id_map.json'
+MAP_FILE = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'char_avatar_id_map.json'
 
 
 def main() -> int:

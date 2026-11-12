@@ -1,6 +1,6 @@
 """侦察:角色详情抓取结果 → sr_character_details.py 常量模块生成。
 
-输入:.debug/temp/char_wiki/char_details.json(101 条 wiki 抓取)
+输入:.debug/game_data/character/wiki/char_details.json(101 条 wiki 抓取)
     + 随仓权威表(wiki_content_id → 数字 avatarId)
 过滤:error(rpg 空旧模板)/前瞻占位(traces<8)跳过并标注。
 产出:src/sr_od/mys/sr_character_details.py(完整模块,数据段位置参数紧凑单行)。
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-DETAILS = PROJECT_ROOT / '.debug' / 'temp' / 'char_wiki' / 'char_details.json'
+DETAILS = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'wiki' / 'char_details.json'
 AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_character_details.py'
 

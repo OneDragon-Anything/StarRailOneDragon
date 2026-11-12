@@ -1,8 +1,8 @@
 """组装遗器权威表:常量 RELIC_SETS × 国内 content_id × 国际服 en/id 映射。
 
 输入(先跑同目录两个 fetch 脚本刷新):
-  .debug/temp/relic_wiki/cnwiki_relic_list.json     国内 channel 30 列表
-  .debug/temp/relic_wiki/hoyowiki_relic_id_map.json 国际服 zh/en 互连映射
+  .debug/game_data/relic/wiki/cnwiki_relic_list.json     国内 channel 30 列表
+  .debug/game_data/relic/wiki/hoyowiki_relic_id_map.json 国际服 zh/en 互连映射
 
 产出(权威表,提交进仓):references/relics-full.json,键 = 归一化中文名(国服
 官方名),字段:cn/en/id/kind/wiki_content_id/hoyowiki_page_id/intl_cn/order/source。
@@ -24,7 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'src'))
 
 from sr_od.mys.sr_relic_sets import RELIC_SETS  # noqa: E402
 
-TEMP = PROJECT_ROOT / '.debug' / 'temp' / 'relic_wiki'
+TEMP = PROJECT_ROOT / '.debug' / 'game_data' / 'relic' / 'wiki'
 OUT_FILE = Path(__file__).resolve().parents[1] / 'references' / 'relics-full.json'
 
 # 常量名 → intl 词条名（译名差异别名;国际服本地化与国服名不一致时人工登记,

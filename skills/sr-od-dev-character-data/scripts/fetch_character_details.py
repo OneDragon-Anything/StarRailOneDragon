@@ -6,7 +6,8 @@
 
 输入:随仓权威表 characters-full.json(wiki_content_id,98 数字 ID)
     + game-coach character_full_list.json(101 词条,含重复形态,交叉补齐)
-输出:.debug/temp/char_wiki/char_details.json —— {content_id: {name, traces[], eidolons[]}}
+输出:.debug/game_data/character/wiki/char_details.json —— {content_id: {name, traces[], eidolons[]}}
+      (拉取缓存统一落 .debug/game_data/<域>/,旁置 fetched_at.txt 记本次拉取时间)
 """
 import json
 import re
@@ -19,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三
 AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/'
               'content/list?app_sn=sr_wiki&channel_id=18&lang=zh-cn')
-OUT_FILE = PROJECT_ROOT / '.debug' / 'temp' / 'char_wiki' / 'char_details.json'
+OUT_FILE = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'wiki' / 'char_details.json'
 DETAIL_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/'
               'content/info?app_sn=sr_wiki&content_id={cid}&lang=zh-cn')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'

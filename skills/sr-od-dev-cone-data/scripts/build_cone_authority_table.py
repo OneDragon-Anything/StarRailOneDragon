@@ -1,8 +1,8 @@
 """组装光锥权威表:国内 wiki 详情 × 国际服英文名 × 现有模块排序 → references/cones-full.json。
 
 输入:
-  .debug/temp/cone_wiki/cone_details_cn.json      (fetch_sr_wiki_cone_list.py 产物)
-  .debug/temp/wiki_cache/hoyowiki_cone_en_names.json (fetch_hoyowiki_cone_en_names.py 产物)
+  .debug/game_data/cone/wiki/cone_details_cn.json      (fetch_sr_wiki_cone_list.py 产物)
+  .debug/game_data/cone/wiki/hoyowiki_cone_en_names.json (fetch_hoyowiki_cone_en_names.py 产物)
   src/sr_od/mys/sr_light_cones.py                  (文本解析,取条目顺序与分段)
 
 产出 references/cones-full.json,键 = 归一化中文名,值字段:
@@ -23,8 +23,8 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-DETAILS = PROJECT_ROOT / '.debug' / 'temp' / 'cone_wiki' / 'cone_details_cn.json'
-EN_NAMES = PROJECT_ROOT / '.debug' / 'temp' / 'wiki_cache' / 'hoyowiki_cone_en_names.json'
+DETAILS = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'cone_details_cn.json'
+EN_NAMES = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'hoyowiki_cone_en_names.json'
 MODULE = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_light_cones.py'
 OUT = Path(__file__).resolve().parent.parent / 'references' / 'cones-full.json'
 
