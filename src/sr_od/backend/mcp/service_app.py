@@ -19,12 +19,11 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
     async def run_one_dragon(
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到一条龙结束")] = False,
     ) -> dict:
-        """按当前 GUI/配置的一条龙设置启动完整一条龙运行。
+        """按当前 GUI/配置的一条龙设置启动完整一条龙运行。长耗时(全套应用,可达小时级)。操作类(会控制游戏)。
 
-        跑全套已启用应用用本 tool;单个应用用 ``run_standalone_app``;单个 operation 用 ``run_operation``。
-
-        block=False(默认)立刻返回,用 get_run_status 查进度;block=True 阻塞到结束。
-        副作用:操作游戏并运行已启用的一条龙应用组;单跑道,已有运行时返回错误。
+        跑全套已启用应用用本 tool;单个应用用 ``run_standalone_app``;单个 operation
+        用 ``run_operation``。副作用:操作游戏;单跑道(同一时间只允许一个运行,
+        已有运行时返回拒绝,含 source + 提示)。
 
         Returns:
             三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
@@ -64,12 +63,11 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
         app_id: Annotated[str | None, Field(description="独立应用 ID;None=用 GUI「应用运行」当前选中项")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
     ) -> dict:
-        """启动独立应用。
+        """启动单个独立应用。操作类(会控制游戏)。
 
         单个应用用本 tool;全套用 ``run_one_dragon``;单个 operation 用 ``run_operation``。
-
-        app_id 为空时使用 GUI「应用运行」当前选中的应用。block=False(默认)立刻返回,
-        用 get_run_status 查进度;block=True 阻塞到结束。副作用:操作游戏并运行目标应用。
+        ``app_id`` 缺省时用 GUI「应用运行」当前选中的应用,可运行应用清单用
+        ``list_applications`` 查。副作用:操作游戏;单跑道,已有运行时返回拒绝。
 
         Returns:
             三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
@@ -106,21 +104,19 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
 def make_list_applications(backend: SrBackendContext) -> Callable[[], ApplicationListResult | dict]:
     """构造 ``list_applications`` tool。"""
     def list_applications() -> ApplicationListResult | dict:
-        """列出当前实例可运行应用、独立应用列表和当前选中项(无副作用)。
+        """列出当前实例可运行应用、独立应用列表和当前选中项。观察类(只读,不刷新配置)。
 
         列应用用本 tool;列可运行 operation 用 ``list_operations``。
 
         返回的 ``current_instance_idx`` 是激活实例的 idx(账号下标):**idx N → config/0N 目录**
-        (idx 1 → config/01 账号01,idx 2 → config/02 账号02),**不是** config/0<idx+1>。
-        激活实例看 ``config/one_dragon.yml`` 的 ``instance_list`` 里 ``active: true`` 项;
+        (idx 1 → config/01 账号01),**不是** config/0<idx+1>。激活实例看
+        ``config/one_dragon.yml`` 的 ``instance_list`` 里 ``active: true`` 项;
         改某实例配置前据此定位目录,别把 idx 当目录号做偏移。
 
         Returns:
             ``{current_instance_idx, active_standalone_app_id, applications[]}``;
-            ``active_standalone_app_id`` = GUI「独立应用运行」当前选中项(无则 None)。
-            ``applications[]`` 元素: ``{app_id, app_name, enabled_in_one_dragon(是否在
-            一条龙组里启用), in_standalone_list(是否在独立应用列表), is_active_standalone
-            (是否为当前选中独立应用)}``。
+            ``applications[]`` 元素: ``{app_id, app_name, enabled_in_one_dragon,
+            in_standalone_list, is_active_standalone}``。
         """
         try:
             return backend.list_applications()
@@ -134,7 +130,7 @@ def make_list_operations(backend: SrBackendContext) -> Callable[..., dict]:
     def list_operations(
         query: Annotated[str, Field(description="子串过滤 op_id(大小写不敏感),如 'move'/'battle';空=全量")] = "",
     ) -> dict:
-        """列出可运行的自定义 operation 的定位符清单(扫描 operations/ 承载包,纯反射不实例化)。
+        """列出可运行的自定义 operation 的定位符清单。观察类(纯反射,不实例化,不改任何状态)。
 
         只返回定位符列表,不含参数 schema——LLM 上下文有限,全量参数 schema 必然
         截断;参数详情用 ``describe_operation(定位符)`` 查。列应用用 ``list_applications``。
@@ -164,20 +160,18 @@ def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
     def describe_operation(
         op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly),命中多个同名类时全部返回")],
     ) -> dict:
-        """描述单个 operation 的参数 schema(纯反射,不实例化)。
+        """描述单个 operation 的参数 schema。观察类(纯反射,不实例化,不改任何状态)。
 
         op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名(如
         ``MoveDirectly``):短名命中唯一时返回单条 schema;命中多个同名类时返回
         ``{ambiguous: True, matches[]}`` 全部候选;未找到时报错附相似类名建议。
-        每个参数标 json_serializable(标量/list/dict=True、复杂数据类如
-        ChargePlanItem=False,提示走 application);整体 debuggable 表示所有必填
-        参数是否可经 JSON 传入。
 
         Returns:
-            单命中 ``{op_id, debuggable, params[]}``;``params[]`` 元素:
-            ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'), required,
-            default(默认值字符串,必填为 None), json_serializable(可否直接传 JSON 值),
-            coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``。
+            单命中 ``{op_id, class_name, module, params[], debuggable}``;``params[]``
+            元素: ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'),
+            required, default(默认值字符串,必填为 None), json_serializable(可否直接传
+            JSON 值), coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``;
+            ``debuggable``=所有必填参数是否可经 JSON 传入。
             多命中 ``{ambiguous: True, count, matches[](每条同单命中结构), hint}``。
         """
         try:
@@ -198,16 +192,15 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         args: Annotated[dict | None, Field(description="构造参数 dict;JSON 标量/列表/字典,@dataclass+from_dict 参数传 dict 自动反序列化;其余复杂数据类走 application")] = None,
         block: Annotated[bool, Field(description="False=立刻返回用 get_run_status 查进度(默认);True=阻塞到结束")] = False,
     ) -> dict:
-        """按 op_id(package.path.ClassName)或类名短名运行任意 operation;args 传构造参数。
+        """按 op_id(package.path.ClassName)或类名短名运行任意 operation;args 传构造参数。操作类(会控制游戏)。
 
         单个 operation 用本 tool;全套用 ``run_one_dragon``;单个应用用 ``run_standalone_app``。
 
         op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名:短名命中
         唯一即运行;命中多个同名类时拒绝并列出候选 op_id(防误运行)。
-        args 传 JSON 标量/列表/字典;``@dataclass``+``from_dict`` 参数传 dict,实例化前自动反序列化;其余复杂数据类走 application。
-        用 list_operations / describe_operation 查 op_id 与参数。
-        block=False(默认)立刻返回,用 get_run_status 查进度;block=True 阻塞到结束。
-        副作用:操作游戏;单跑道,已有运行时返回错误(含 source + 提示)。
+        args 传 JSON 标量/列表/字典;``@dataclass``+``from_dict`` 参数传 dict,
+        实例化前自动反序列化;其余复杂数据类走 application(先 ``describe_operation``
+        看参数)。副作用:操作游戏;单跑道,已有运行时返回拒绝(含 source + 提示)。
 
         Returns:
             三种形态:① 参数/并发错误 dict ``{started: False, error(, source, hint)}``;

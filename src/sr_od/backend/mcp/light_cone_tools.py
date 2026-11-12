@@ -170,12 +170,11 @@ def register_light_cone_tools(mcp, backend) -> None:  # noqa: ANN001 backend 类
                         "与指南关卡同名对齐)+副本外途径 extra_sources_by_material;list_all 模式不带;"
                         "默认 false")] = False,
     ) -> dict:
-        """观察类。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/图标路径/特效文本）;可选打通「光锥→晋阶材料→所属副本」链路。
+        """观察类(只读,零 IO 纯常量查询,不需要登录与游戏在线)。按名字查询崩坏:星穹铁道光锥的静态定义（星级/命途/获取途径/图标路径/特效文本）;可选打通「光锥→晋阶材料→所属副本」链路。
 
         与 ``relic_lookup`` 分工：本工具查**光锥**（武器卡牌）；查**遗器套装**走
         ``relic_lookup``；查**账号实际穿戴**走 ``mys_get_characters`` 的 equip 摘要。
         skill 字段为特效全文（含叠影 S1-S5 梯度数值,【】括号序列自左至右）。
-        零 IO 纯常量查询,不需要登录与游戏在线。
 
         Returns:
             统一信封 ``{"status","message","data"}``：

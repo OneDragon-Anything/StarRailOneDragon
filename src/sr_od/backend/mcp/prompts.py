@@ -197,15 +197,16 @@ def register_prompt_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出操作指南"))
     def list_mcp_usage_guides() -> list[dict[str, str]]:
-        """列出 sr_od MCP 可用操作指南,相当于帮助目录。观察类。
+        """列出 sr_od MCP 可用操作指南,相当于帮助目录。观察类(只读)。
 
-        每项含 ``mode``(user/dev):user 项面向普通使用者(跑龙/独立应用),dev 项面向开发者(验证 op/调试)。
+        每项含 ``mode``(user/dev):user 项面向普通使用者(跑龙/独立应用),
+        dev 项面向开发者(验证 op/调试)。
         """
         return list_prompt_guides()
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取操作指南"))
     def get_mcp_usage_guide(name: str, app_id: str | None = None) -> str:
-        """读取 sr_od MCP 操作指南，相当于某个任务的 --help。观察类。
+        """读取 sr_od MCP 操作指南，相当于某个任务的 --help。观察类(只读)。
 
         Args:
             name: 指南名称，可先调用 ``list_mcp_usage_guides`` 查看。

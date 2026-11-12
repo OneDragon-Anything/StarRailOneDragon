@@ -11,6 +11,7 @@
       ``block=True`` 阻塞到完成、``block=False`` 立刻返回。
     - 运行类 tool 工厂（``make_open_game`` 等）为模块级函数，
       只调 backend 公开方法，不戳 run_slot 私有，便于独立测试。
+    - 增减 MCP method（新增/删除 tool）后需客户端 /mcp 重连才能拿到新工具清单。
 
 tool 写法（annotations / Field / 返回 / docstring）遵循
 ``docs/develop/sr_od/backend/mcp-implementation.md``。
@@ -71,18 +72,18 @@ def make_open_game(backend: SrBackendContext) -> Callable:
         enter: Annotated[bool, Field(description="True=打开+自动登录到大世界;False=只打开停在 ready 态不登录")] = True,
         block: Annotated[bool, Field(description="True=阻塞到完成;False=立刻返回,用 get_run_status 查进度")] = True,
     ) -> dict:
-        """打开游戏(可选自动登录)。长耗时,需交互式桌面。操作类。
+        """打开游戏(可选自动登录)。长耗时,需交互式桌面。操作类(会启动游戏进程,可能登录)。
 
-        enter=True(默认)→ 打开 + 自动登录(= 原 open_and_enter_game,到大世界);
-        enter=False → 只打开 + 等窗口就绪,停在「打开游戏」ready 态(不登录),
-        供调用方分步驱动登录流程。
-        block=True(默认)阻塞到完成;block=False 立刻返回,用 get_run_status 查进度。
-        副作用:操作游戏(启动 exe / 可能登录);单跑道,已有运行时返回错误(含 source + 提示)。
+        enter=True(默认)→ 打开 + 自动登录,到大世界;enter=False → 只打开 +
+        等窗口就绪,停在 ready 态(不登录),供调用方分步驱动登录流程。
+        副作用:启动 exe / 可能登录;单跑道(同一时间只允许一个运行,已有运行时
+        返回拒绝,含 source + 提示)。
 
         Returns:
             三种形态:① 并发拒绝 dict ``{started: False, error, source, hint}``;
             ② 受理 dict ``{started: True, source, started_at, hint}``(block=False);
             ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
+            进度/结果细节看 ``get_run_status``。
         """
         from sr_od.operations.enter_game.open_and_enter_game import OpenAndEnterGame
         from sr_od.operations.enter_game.open_game import OpenGame
@@ -111,7 +112,7 @@ def make_open_game(backend: SrBackendContext) -> Callable:
 def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusResult]:
     """构造 ``get_run_status`` tool(模块级,便于独立测试)。"""
     def get_run_status() -> RunStatusResult:
-        """查当前/最近一次运行状态(无副作用)。观察类。
+        """查询当前/最近一次运行状态。观察类(只读,无副作用)。
 
         运行中返当前节点/耗时/重试;非运行返结果/失败定位。停止运行用 ``stop_run``。
 
@@ -120,8 +121,7 @@ def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusResu
             current_node, retry_count, last_status, failed_node}``。
             ``state`` 取值 ``idle``(无运行)/``running``/``success``/``failed``/``stopped``;
             ``current_node``/``retry_count`` 仅运行中有值;``last_status`` 仅终态有值
-            (成功描述 / 失败原因 / ``已停止[来源]``(来源=stop_source,如
-            ``mcp:stop_run`` / ``hook:*`` / ``gui:*``));``failed_node`` 仅 failed 时有值
+            (成功描述 / 失败原因 / ``已停止[来源]``);``failed_node`` 仅 failed 时有值
             (失败停在哪一步,排障锚点);``started_at`` 为 ISO 时间戳,可作 tail 日志锚点。
         """
         return backend.query_status()
@@ -131,9 +131,13 @@ def make_get_run_status(backend: SrBackendContext) -> Callable[[], RunStatusResu
 def make_stop_run(backend: SrBackendContext) -> Callable[[], dict]:
     """构造 ``stop_run`` tool(模块级,便于独立测试)。"""
     def stop_run() -> dict:
-        """发出停止信号,operation 在当前节点完成后退出(非强杀)。操作类。
+        """向正在运行的 operation 发出停止信号(当前节点完成后退出,非强杀)。操作类。
 
-        返回仅表信号已发出(过渡期 get_run_status 仍显示 running)。
+        返回仅表信号已发出——过渡期 ``get_run_status`` 仍显示 running,
+        以其离开 running 为准。
+
+        Returns:
+            ``{stopped: True, source}``(信号已发)或 ``{stopped: False, error}``(当前无运行)。
         """
         return backend.stop()
     return stop_run
@@ -158,18 +162,19 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="检查游戏窗口"))
     def check_game_window() -> WindowStatus | dict:
-        """检查星穹铁道游戏窗口状态(只读,不改状态)。观察类。
+        """检查星穹铁道游戏窗口状态。观察类(只读,不改任何状态)。
 
-        返回窗口标题、有效性、激活态、缩放比例及客户区矩形(与 HTTP ``/game/window`` 同构)。
+        判游戏是否在跑/窗口是否存在看 ``is_win_valid``;返回窗口标题、有效性、
+        激活态、缩放比例及客户区矩形(与 HTTP ``/game/window`` 同构)。
 
         Returns:
             ``WindowStatus``(win_title / is_win_valid / is_win_active / is_win_scale /
             x / y / width / height;位置字段不可用时为 None);backend 抛错时返回
             ``{'error': <原因>}``。
 
-            判游戏是否在跑/窗口是否存在,看 ``is_win_valid``:**勿据 win_title 判断** ——
-            win_title 是 controller 缓存的预期标题(从配置来),游戏未启动时仍可能为该
-            预期常量、非 None;is_win_valid=False 才表示没找到匹配窗口。
+            ⚠️ 勿据 win_title 判断窗口存在与否——win_title 是 controller 缓存的
+            预期标题(从配置来),游戏未启动时仍可能为该预期常量、非 None;
+            is_win_valid=False 才表示没找到匹配窗口。
         """
         try:
             return backend.check_window()
@@ -178,11 +183,11 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="捕获游戏截图"))
     def capture_game_screen() -> dict:
-        """捕获游戏画面并保存截图,返回结构化结果。观察类。
+        """捕获游戏画面并保存截图,返回结构化结果。观察类(只读,不改任何状态)。
 
-        **仅在「只要截图文件本身、不做画面分析」时用本 tool**(如存档证据 / 喂视觉大模型)。
-        要知道画面是什么(OCR / 画面匹配)直接调 ``analyze_screen`` —— 它默认自己截图自己分析,
-        不需要也不应该先走本 tool。
+        仅在「只要截图文件本身、不做画面分析」时用(存档证据 / 喂视觉大模型);
+        要知道画面是什么(OCR / 画面匹配)直接调 ``analyze_screen``——它自己截图
+        自己分析,先走本 tool 再传路径是多一次往返,且两次截图间画面可能已变。
 
         Returns:
             ``{success: True, path: 截图文件绝对路径}``;backend 抛错时
@@ -202,7 +207,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
         include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
     ) -> AnalyzeScreenResult:
-        """识别层的客观回读:画面身份判定 + area 命中坐标 + 结构化数据。观察类,不改游戏状态。
+        """识别层的客观回读:画面身份判定 + area 命中坐标 + 结构化数据。观察类(只读,不改游戏状态)。
 
         **定位分工(当前模型有原生视觉,本工具不再是「眼睛」)**:
         - 「看懂画面」(布局 / 图标语义 / 状态 / 未建档元素)→ 用你自己的视觉
@@ -214,12 +219,12 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         - 典型连招:新画面先视觉看懂 → 建档 → 用本工具对账;已知画面轮询
           状态只调本工具(不带 save_image)。
 
-        **默认用法:不带参数直接调用** —— 自动截当前游戏画面并分析(需游戏在线),
-        **不要先调 capture_game_screen 再把路径传进来**(多一次往返,且两次截图间画面可能已变)。
+        **默认用法:不带参数直接调用**——自动截当前游戏画面并分析(需游戏在线),
+        **不要先调 capture_game_screen 再把路径传进来**。
 
-        传 screenshot 仅用于**离线**场景(分析已存的历史截图,无需游戏在线):绝对路径
-        按路径读 / 纯名字到 ``.debug/images/<名字>.png`` 读;**不回写**识别状态。
-        用于离线校验/反哺 screen_info。
+        传 screenshot 仅用于**离线**场景(分析已存的历史截图,无需游戏在线):
+        绝对路径按路径读 / 纯名字到 ``.debug/images/<名字>.png`` 读;**不回写**
+        识别状态。用于离线校验/反哺 screen_info。
 
         Returns:
             ``AnalyzeScreenResult``:顶层字段 ``success`` / ``ocr_texts`` / ``screens`` /
@@ -232,28 +237,18 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             **例外**:离线传入(``screenshot`` 参数)的**非 1080p 图片**未经缩放,返回坐标
             是该图自身像素空间,别当游戏坐标直接喂点击。
 
-            嵌套结构:
-            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (1080p 游戏坐标);
-              **默认空列表**,``include_ocr=True`` 才返回全量散落 OCR(未归类到任何
-              area 的文本;读屏幕零散文字/校对文字区时开)。
-            - ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
-              ``unmatched_areas`` 仅精准命中时填充,``reason`` 取值 ``no_method``(纯定位区,
-              无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
-              子态区,带 text/template_id,用于判断当前子态);模糊候选恒为空。
-            - ``areas[]``(命中详情): ``{area_name, area_type('text'|'template'), x, y,
-              width, height(1080p 游戏坐标), text(仅文本区,实际命中文本), confidence(文本=OCR
-              score / 模板=匹配度)}``。
+            ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
+            ``unmatched_areas`` 仅精准命中时填充,``reason`` 取值 ``no_method``(纯定位区,
+            无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
+            子态区,用于判断当前子态);模糊候选恒为空。``areas[]``(命中详情):
+            ``{area_name, area_type('text'|'template'), x, y, width, height, text, confidence}``。
 
-            ``vision_hint``(success 时):本结果与视觉判读的分工提醒(本工具=识别对账;
-            理解画面/未建档元素用视觉),非错误。
+            ``ocr_texts[]`` 默认空列表,``include_ocr=True`` 才返回全量散落 OCR
+            (未归类到任何 area 的文本)。
 
-            ``extras``(精准命中时):若该画面注册了额外识别器(recognizer),带该画面的结构化
-            领域事实(画面特定结构,如货币战争备战画面的前后台 / 备战席角色 + 金币 / 阶段);
-            识别器异常不中断本结果(extras=None);无注册识别器的画面恒为 None。
-
-            ``extras_doc``(与 extras 平级):extras 各字段的说明 dict(字段名 → 一行语义,
-            含取值格式 / 读不到时的值 / 可靠性注意);有 extras 语义时直接读它,不必猜;
-            无注册识别器 / 未声明时为 None。
+            ``extras``(精准命中时):该画面注册的识别器产出的结构化领域事实;
+            各字段语义直接读 ``extras_doc``(字段 → 一行语义),不必猜;无注册
+            识别器 / 识别器异常时为 None,不影响其余结果。
         """
         try:
             return backend.analyze(screenshot, save_image, include_ocr)
@@ -269,16 +264,18 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         capture: Annotated[str, Field(description="'window'=游戏窗口(按句柄定位,窗口不在退回 desktop);'desktop'=全桌面")] = 'window',
         bitrate: Annotated[str, Field(description="目标码率,如 6M")] = '6M',
     ) -> dict:
-        """录屏(**dev-only**)。观察类,不占单跑道,可与 bot run 并行。需 dev 依赖 imageio-ffmpeg。
+        """录屏(**dev-only**)。观察类(只读,不占单跑道,可与 bot run 并行)。需 dev 依赖 imageio-ffmpeg。
 
-        ffmpeg gdigrab 采集,跑在本 server(Session 1),能录游戏画面。编码器自动
-        探测:h264_nvenc(NVIDIA GPU)可用则用之,否则回退 libx264 软编,结果带
-        ``encoder`` 字段。window 捕获按框架解析的游戏窗口句柄定位(防 gdigrab 按
-        标题命中同名隐藏 0×0 窗)。典型用法:① record_screen(mode='start', out_name='match01')
-        → 跑 bot → record_screen(mode='stop')(start 为 fragmented mp4,中途被 kill
-        也安全可播;启动即死的 ffmpeg 会在 start 时直接报错);② record_screen(mode='fixed',
-        duration=30) 录当前画面。imageio-ffmpeg 为延迟导入,缺失时本 tool 返回提示、
-        不影响 server 启动。
+        ffmpeg gdigrab 采集,跑在本 server,能录游戏画面。编码器自动探测:
+        h264_nvenc(NVIDIA GPU)可用则用之,否则回退 libx264 软编,结果带
+        ``encoder`` 字段。window 捕获按框架解析的游戏窗口句柄定位(防 gdigrab
+        按标题命中同名隐藏 0×0 窗)。
+
+        典型用法:① ``record_screen(mode='start', out_name='match01')`` → 跑 bot
+        → ``record_screen(mode='stop')``(start 为 fragmented mp4,中途被 kill
+        也安全可播;启动即死的 ffmpeg 会在 start 时直接报错);②
+        ``record_screen(mode='fixed', duration=30)`` 录当前画面。
+        imageio-ffmpeg 缺失时本 tool 返回提示、不影响 server 启动。
 
         Returns:
             dict: ``{success, path?, pid?, action, error?, hint?, encoder?, returncode?}``。
@@ -297,11 +294,12 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         color_range: list[list[int]] | None = None, goto_list: list[str] | None = None,
         id_mark: bool = False, gamepad_key: str | None = None,
     ) -> dict:
-        """按 area_name 在指定 screen 插入或更新一个 area(写 yml + reload)。操作类,改 screen_info。
+        """按 area_name 在指定 screen 插入或更新一个 area(写 yml + reload)。操作类(改画面建档,不碰游戏运行时)。
 
-        area_name 存在则整体更新,不存在则追加。校验:screen 存在、area_name 非空、pc_rect 合法、
-        模板引用存在(template_id 非空时)。写回 yml 并 reload,下次 analyze_screen 即生效。无需游戏在线。
-        pc_alt 是 screen 级属性(create_screen 设置),area 不单设。
+        area_name 存在则整体更新,不存在则追加。校验:screen 存在、area_name 非空、
+        pc_rect 合法、模板引用存在(template_id 非空时)。写回 yml 并 reload,
+        下次 ``analyze_screen`` 即生效。无需游戏在线。pc_alt 是 screen 级属性
+        (``create_screen`` 设置),area 不单设。
 
         Returns:
             dict: ``{success, screen_name, area_name, action(inserted/updated), area_count, error}``。
@@ -321,7 +319,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """按 area_name 删除指定 screen 的一个 area(写 yml + reload)。操作类,不可逆。
 
         screen_name + area_name 定位;area 不存在则 success=False。
-        写回 yml 并 reload,下次 analyze_screen 即生效。
+        写回 yml 并 reload,下次 ``analyze_screen`` 即生效。
 
         Returns:
             dict: ``{success, screen_name, area_name, action(deleted), area_count, error}``。
@@ -339,10 +337,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         app_id: str = '',
         pc_alt: bool = False,
     ) -> dict:
-        """创建一个新画面(空 area_list;写 yml + reload)。操作类,改 screen_info。
+        """创建一个新画面(空 area_list;写 yml + reload)。操作类(改画面建档,不碰游戏运行时)。
 
-        screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area`` 加 area。
-        无需游戏在线。**增减 MCP method 需客户端 /mcp 重连**获取新工具。
+        screen_id 不与既有冲突、screen_name 唯一。创建后用 ``upsert_screen_area``
+        加 area。无需游戏在线。画面名清单用 ``list_screen_names`` 查。
 
         Returns:
             dict: ``{success, screen_id, screen_name, action(created), error}``。
@@ -355,10 +353,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出画面名"))
     def list_screen_names() -> dict:
-        """列出全部画面名(只读)。观察类,无需游戏在线。
+        """列出全部画面名。观察类(只读),无需游戏在线。
 
-        screen_name 是 screen_info 的匹配键(中文,须完全一致)—— goto_list
-        填写、goto_screen 目标选择、get_screen_detail 入参都从这里查。
+        screen_name 是画面建档的匹配键(中文,须完全一致)——``goto_list`` 填写、
+        ``goto_screen`` 目标选择、``get_screen_detail`` 入参都从这里查。
 
         Returns:
             dict: ``{success, count, screen_names(排序全量), error}``。
@@ -372,10 +370,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     def get_screen_detail(
         screen_name: Annotated[str, Field(description="画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
     ) -> dict:
-        """读取单个画面档全集:全部 area(含 goto_list)+ 路由可达邻居(只读)。观察类。
+        """读取单个画面档全集:全部 area(含 goto_list)+ 路由可达邻居。观察类(只读),无需游戏在线。
 
-        analyze_screen 只回当前帧命中;本方法回建档全集 —— 核对 screen_info、
-        查「从这里能 goto 到哪」(goto_neighbors)、建档补漏用。无需游戏在线。
+        ``analyze_screen`` 只回当前帧命中;本方法回建档全集——核对画面建档、
+        查「从这里能 goto 到哪」(goto_neighbors)、建档补漏用。
 
         Returns:
             dict: ``{success, screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[], error}``。
@@ -392,10 +390,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         target_screen_name: Annotated[str, Field(description="目标画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
         max_steps: Annotated[int, Field(description="最多点击次数,防路由成环", ge=1, le=30)] = 10,
     ) -> dict:
-        """沿建档 goto_list 路由导航到目标画面。操作类(实际点击游戏)。
+        """沿画面建档的路由边自动导航到目标画面(实际点击游戏)。操作类(会控制游戏)。
 
         复用 op 层 round_by_goto_screen 的同一套路由图:识别当前画面 → 查
-        Floyd 路由 → 逐边点击对应 area。报「无路径」= 两画面间 goto 边未建档
+        Floyd 路由 → 逐边点击对应 area。报「无路径」= 两画面间跳转边未建档
         (补 area 的 goto_list,别硬试坐标)。goto_list 如实记录跳转(含不可逆/
         消耗类出口,不做安全过滤);本工具会自动点击沿途边,路径安全由调用方负责。
 
@@ -415,10 +413,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
     @mcp.tool(annotations=ToolAnnotations(destructiveHint=True, title="关闭游戏"))  # 操作类+破坏性:关游戏
     def close_game() -> str:
-        """关闭游戏(发关闭窗口信号,秒级)。操作类。
+        """关闭游戏窗口(发关闭信号,秒级)。操作类,破坏性(游戏会被关闭)。
 
-        controller 吞异常不返成功标志,故只表「信号已发」—— 用 check_game_window
-        验证是否真关。
+        controller 吞异常不返成功标志,故返回只表「信号已发」——用
+        ``check_game_window`` 验证是否真关。
 
         Returns:
             ``{success: True, result: <backend 返回文本>}``(信号已发,非已关闭);
@@ -439,16 +437,14 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         press_time: Annotated[float, Field(description="按住时长(秒);默认 0.1(游戏识别下限,0=极短按可能无效)")] = 0.1,
         pc_alt: Annotated[bool, Field(description="点击前是否按住 Alt 解锁光标;大世界等 pc_alt=true 画面必需,其余 False")] = False,
     ) -> dict:
-        """点击游戏窗口内坐标(1080p 游戏空间,同 screen_info pc_rect 中心)。操作类。
+        """点击游戏窗口内坐标(1080p 游戏空间,同画面建档 pc_rect 中心)。操作类(会控制游戏)。
 
         鼠标点击用本 tool;键盘按键用 ``key_tap``;鼠标拖拽用 ``drag``。
-
         坐标经控制器缩放到真实屏幕;不在窗口内则不点击(in_window=False)。需游戏窗口就绪。
 
-        pc_alt=True 时点击前先按住 Alt 解锁光标 —— 大世界等 pc_alt=true 画面必需
-        (星穹铁道锁光标,不按 Alt 点击落空)。判断依据:目标画面对应 screen_info
-        的 ``pc_alt`` 字段;框架内部点击(跑 application)会自动带,经 MCP 手动点击
-        pc_alt 画面时需显式传 True。其余画面保持 False。
+        pc_alt=True 时点击前先按住 Alt 解锁光标——大世界等锁光标画面必需
+        (不按 Alt 点击落空);判断依据:目标画面对应画面建档的 ``pc_alt`` 字段。
+        框架内部点击(跑 application)会自动带,经 MCP 手动点击锁光标画面时需显式传 True。
 
         ⚠️ 操作后建议 sleep:底层 click 无内置等待,点 UI 常触发画面切换(菜单/弹窗/
         进画面),连续操作或 ``capture_game_screen`` 前建议 sleep ~1s 等动画(否则截过渡帧)。
@@ -475,17 +471,14 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         key: Annotated[str, Field(description="框架键名:w/a/s/d 移动、f 交互、esc、space 等(沿用框架 btn_controller 约定)")],
         press_time: Annotated[float, Field(description="按住时长(秒);0=短按 tap,>0=长按(如移动长按 1-2s)")] = 0.0,
     ) -> dict:
-        """键盘按键(press_time=0 短按,>0 长按)。操作类。
+        """向游戏发送键盘按键(press_time=0 短按,>0 长按)。操作类(会控制游戏)。
 
         键盘按键用本 tool;鼠标点击用 ``click_game``;拖拽用 ``drag``。
+        覆盖框架按键:移动 ``w``/``a``/``s``/``d``、交互 ``f``、``esc``、``space``
+        等;press_time>0 长按(如移动长按 1-2s)。需游戏窗口就绪。
 
-        覆盖框架 btn_controller 能发的键:移动 ``w``/``a``/``s``/``d``、交互 ``f``、
-        ``esc``、``space`` 等(键名沿用框架约定)。press_time>0 长按(如移动长按 1-2s)。
-        需游戏窗口就绪。
-
-        ⚠️ 操作后建议 sleep(底层无内置等待):移动 wasd ~1s 等角色到位(不等就 interact
-        可能失效,见 scratch_card issue #2405)、交互 ``f`` ~1-2s 进场景/对话、``esc``
-        ~0.5s 开关菜单。连续操作前按需 sleep。
+        ⚠️ 操作后建议 sleep(底层无内置等待):移动 wasd ~1s 等角色到位、交互
+        ``f`` ~1-2s 进场景/对话、``esc`` ~0.5s 开关菜单。连续操作前按需 sleep。
 
         Returns:
             ``{success, key, press_time, error?}``;backend 抛错时 success=False + error。
@@ -504,14 +497,13 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         x1: float, y1: float, x2: float, y2: float,
         duration: Annotated[float, Field(description="拖拽耗时(秒),默认 1.0")] = 1.0,
     ) -> dict:
-        """鼠标按住拖拽((x1,y1)→(x2,y2),1080p 游戏坐标,同 screen_info pc_rect)。操作类。
+        """鼠标按住拖拽((x1,y1)→(x2,y2),1080p 游戏坐标)。操作类(会控制游戏)。
 
         鼠标拖拽用本 tool;点击用 ``click_game``;按键用 ``key_tap``。
-
         覆盖刮刮卡刮开、八卦收集来回拖、咖啡拖动等。需游戏窗口就绪。
 
-        ⚠️ 操作后建议 sleep:底层 drag 无内置等待,拖后画面变化(刮/滚),连续操作或
-        capture 前建议 sleep ~0.5s。
+        ⚠️ 操作后建议 sleep:底层 drag 无内置等待,拖后画面变化(刮/滚),
+        连续操作或 capture 前建议 sleep ~0.5s。
 
         Returns:
             ``{success, x1, y1, x2, y2, duration, error?}``;backend 抛错时 success=False + error。
@@ -530,12 +522,13 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         text: Annotated[str, Field(description="要输入的文本(账号/密码/兑换码等)")],
         use_clipboard: Annotated[bool | None, Field(description="None=跟随 game_config.type_input_way;True=强制剪贴板;False=强制逐键")] = None,
     ) -> dict:
-        """向当前焦点输入框输入文本(账号/密码等)。操作类。
+        """向当前焦点输入框输入文本(账号/密码/兑换码等)。操作类(会控制游戏)。
 
-        需先用 click_game 点击输入框聚焦。需游戏窗口就绪。
+        需先用 ``click_game`` 点击输入框聚焦。需游戏窗口就绪。
 
         Returns:
-            ``{success, method, masked_text, error?}``;backend 抛错时 success=False + error。
+            ``{success, method, masked_text, error?}``(masked_text 密码类输入打码);
+            backend 抛错时 success=False + error。
         """
         try:
             return backend.input_text(text, use_clipboard)

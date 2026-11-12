@@ -29,11 +29,11 @@ def make_add_config_item(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
     ) -> dict:
-        """加一个数据类列表项(如 standalone_app app)。操作类,改配置。
+        """加一个数据类列表项(如 standalone_app 应用)。操作类(会改配置文件)。
 
-        通用入口,按 ``app_id`` 路由到该 config 的领域方法。写入前校验,不合法拒绝。
-        ``idx`` 控制有序列表的插入位置(缺省尾部追加)。
-        改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+        通用入口,按 ``app_id`` 路由到该 config 的领域方法,写入前校验,不合法拒绝。
+        ``idx`` 控制有序列表的插入位置(缺省尾部追加)。增删改配置前建议先调
+        ``describe_config`` 查字段结构、合法值与只读项;当前配置值用 ``get_config`` 读。
 
         Returns:
             ``{success, error}`` 或 ``{success: True, app_id, list_field, id(新项标识)}``。
@@ -81,9 +81,10 @@ def make_delete_config_item(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
     ) -> dict:
-        """删一个数据类列表项。操作类,改配置,可逆性低。
+        """删一个数据类列表项。操作类(会改配置文件),不可逆性低(删前确认项标识)。
 
-        改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+        增删改配置前建议先调 ``describe_config`` 查字段结构;项标识的取值口径
+        (id_kind)用 ``list_app_configs`` 查。
 
         Returns:
             ``{success, error}`` 或 ``{success: True, app_id, list_field, id}``。
@@ -118,11 +119,12 @@ def make_update_config_item(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前实例)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认组")] = None,
     ) -> dict:
-        """按项标识原位更新一个数据类列表项。操作类,改配置。
+        """按项标识原位更新一个数据类列表项。操作类(会改配置文件)。
 
-        适用于「全量补齐型」列表(如历战余响计划:全部周本关卡常驻,只改次数不增删条目)
-        —— 原位替换保持顺序,写入前校验,不合法拒绝。
-        改配置前建议先调 ``get_config`` 读现有条目、``describe_config`` 查字段结构。
+        适用于「全量补齐型」列表(如历战余响计划:全部周本关卡常驻,只改次数不增删
+        条目)——原位替换保持顺序,写入前校验,不合法拒绝。增删条目用
+        ``add_config_item`` / ``delete_config_item``;改前建议先 ``get_config``
+        读现有条目、``describe_config`` 查字段结构。
 
         Returns:
             ``{success, error}`` 或 ``{success: True, app_id, list_field, id}``。
@@ -160,9 +162,9 @@ def make_get_config(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认")] = None,
     ) -> dict:
-        """读配置字段或全部 data。观察类,不改配置。
+        """读配置字段或全部 data。观察类(只读,不改任何状态)。
 
-        改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+        字段结构与合法值用 ``describe_config`` 查;可用配置清单用 ``list_app_configs``。
 
         Returns:
             key 传入 → ``{success: True, app_id, key, value(字段值)}``;
@@ -191,10 +193,12 @@ def make_set_config(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认")] = None,
     ) -> dict:
-        """写配置的简单字段(开关/下拉/输入)。操作类,改配置。
+        """写配置的简单字段(开关/下拉/输入)。操作类(会改配置文件)。
 
-        只读字段(run_times/plan_id 等)拒绝。写穿 ctx 缓存实例。
-        改配置前建议先调 ``describe_config`` 查字段结构、合法值与只读项。
+        只读字段(run_times/plan_id 等运行态)拒绝;写穿 ctx 缓存实例并落盘。
+        列表项的增/删/改用 ``add_config_item`` / ``delete_config_item`` /
+        ``update_config_item``;改前建议先调 ``describe_config`` 查字段结构、
+        合法值与只读项。
 
         Returns:
             ``{success: True, app_id, key, value}`` 或 ``{success: False, error(只读/不合法原因,
@@ -234,10 +238,11 @@ def make_describe_config(backend: SrBackendContext) -> Callable:
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前)")] = None,
         group_id: Annotated[str | None, Field(description="组 id;None=默认")] = None,
     ) -> dict:
-        """描述配置结构(可改字段 / 只读 / list item 结构 / add 示例)。观察类。
+        """描述配置结构(可改字段 / 只读字段 / 列表项结构 / 加项示例)。观察类(只读)。
 
-        返回 set_fields(可改 + enum options) + ro_fields(只读) + list_fields(item 结构 + add_example)。
-        智能体看到后可直接生成正确的 set/add 调用。不知道 app_id 时先 list_app_configs。
+        返回 set_fields(可改 + enum options) + ro_fields(只读) + list_fields
+        (item 结构 + add_example)——据此可直接生成正确的 set/add 调用。
+        当前配置值用 ``get_config`` 读;不知道有哪些 app_id 时先 ``list_app_configs``。
 
         Returns:
             ``{success, app_id, description, set_fields, ro_fields, list_fields, note}``。
@@ -295,10 +300,12 @@ def make_list_app_configs(backend: SrBackendContext) -> Callable:
     async def list_app_configs(
         instance_idx: Annotated[int | None, Field(description="实例 idx(idx N→config/0N:idx 1→config/01 账号01;None=当前)")] = None,
     ) -> dict:
-        """列出可改配置的 app_id(首次发现入口)。观察类。
+        """列出可改配置的 app_id 清单。观察类(只读)。
 
-        返回每个 config 的 app_id + description + supported_ops + item_kind + id_kind。
-        智能体看到 item_kind 知道 item 是 dataclass / str / dict,不会套错模板。
+        配置路由的首次发现入口:返回每个 config 的 app_id + description +
+        supported_ops + item_kind + id_kind——``item_kind`` 说明列表项类型
+        (dataclass/str/dict),``id_kind`` 说明项标识字段名,照此生成正确的
+        add/delete/update 调用;字段级结构再进 ``describe_config``。
 
         Returns:
             ``{success, configs[]}``;``configs[]`` 元素: ``{app_id, description,
