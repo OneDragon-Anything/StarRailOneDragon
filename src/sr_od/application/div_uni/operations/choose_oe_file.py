@@ -9,13 +9,16 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class ChooseOeFile(SrOperation):
+    """在差分宇宙存档选择页选择指定存档并确认进入。
+    起点:位面饰品提取-存档选择页;终点:位面饰品提取画面。
+    """
 
     def __init__(self, ctx: SrContext, num: int):
         """
-        选择存档 最终返回【位面饰品提取】画面
+        :param ctx: 上下文
+        :param num: 存档编号 1~4;0 = 不选(保持默认档案)
         """
         SrOperation.__init__(self, ctx, op_name=gt('选择存档'))
-
         self.num: int = num  # 需要选择的存档编号 0代表不选
 
     @operation_node(name='识别画面', is_start_node=True)

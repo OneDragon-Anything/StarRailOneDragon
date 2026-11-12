@@ -24,6 +24,11 @@ from sr_od.screen_state import battle_screen_state
 
 
 class ChallengeOrnamentExtraction(SrOperation):
+    """位面饰品提取完整流程:选存档/难度/次数/配队/支援 → 挑战指定次数 →
+    领取奖励。非 MCP 传参单元:mission 参数为运行时副本对象,仅限代码内调用。
+    起点:任意可控画面(自行导航);终点:位面饰品提取画面(全部次数完成)。
+    副作用:消耗开拓力(次数 × 副本单次消耗)。
+    """
 
     def __init__(self, ctx: SrContext, mission: GuideMission, run_times: int,
                  diff: int, file_num: int, team_name: str, support_character: str,

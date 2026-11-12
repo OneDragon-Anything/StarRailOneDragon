@@ -45,7 +45,8 @@ _SCROLL_TO: Point = Point(300, 430)
 
 
 class TlPfTeamFillOp(SrOperation):
-    """编队选人:清空两行 + 按目标填 8 人。起点 = 虚构叙事-编队屏。"""
+    """编队选人:清空两行 + 按目标填 8 人。
+    起点:虚构叙事-编队屏;终点:编队屏(目标队伍已填)。"""
 
     def __init__(self, ctx: SrContext, team_names: list[str]):
         SrOperation.__init__(self, ctx, op_name='虚构叙事 编队选人')

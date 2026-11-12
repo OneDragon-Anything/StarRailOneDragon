@@ -43,6 +43,8 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class TlFhTeamFillOp(SrOperation):
+    """忘却之庭编队选人:按节点顺序逐队填入目标角色(列表滚动找人)。
+    起点:忘却之庭-编队屏;终点:编队屏(各节点队伍已填)。"""
 
     STATUS_ALL_FILLED: ClassVar[str] = '编队填充完成'
 

@@ -41,7 +41,8 @@ _TEAM_SCREEN: str = '虚构叙事-编队'
 
 
 class TlPureFictionChallengeOp(SrOperation):
-    """虚构叙事完整挑战(组合 op):选人 → 增益装配 → 战斗推进 → 返回选关。"""
+    """虚构叙事完整挑战(组合 op):选人 → 增益装配 → 战斗推进 → 返回选关。
+    起点:虚构叙事-选关画面(目标关卡已选中);终点:选关画面(挑战完成)。"""
 
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
 

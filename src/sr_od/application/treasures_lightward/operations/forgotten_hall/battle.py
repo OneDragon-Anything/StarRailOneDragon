@@ -37,6 +37,9 @@ _NODE_SCREEN: str = '忘却之庭-节点画面'
 
 
 class TlFhBattleOp(SrOperation):
+    """忘却之庭/混沌回忆节点战斗推进:逐节点施放秘技开战打完,直到全部
+    节点结算返回选关。
+    起点:忘却之庭-编队屏(已填人已装配);终点:选关画面(挑战完成)。"""
 
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
     STATUS_FAIL: ClassVar[str] = '战斗失败'

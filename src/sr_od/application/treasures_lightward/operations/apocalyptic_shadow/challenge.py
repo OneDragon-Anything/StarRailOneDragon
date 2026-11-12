@@ -86,7 +86,8 @@ __all__ = [
 
 
 class TlApocalypticShadowChallengeOp(SrOperation):
-    """末日幻影完整挑战(组合 op):选人 → 装配 buff → 前往挑战 → 战斗推进 → 返回选关。"""
+    """末日幻影完整挑战(组合 op):选人 → 装配 buff → 前往挑战 → 战斗推进 → 返回选关。
+    起点:末日幻影-选关画面(目标关卡已选中);终点:选关画面(挑战完成)。"""
 
     STATUS_SUCCESS: ClassVar[str] = '挑战成功'
 

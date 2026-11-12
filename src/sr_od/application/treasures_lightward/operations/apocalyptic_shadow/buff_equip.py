@@ -25,7 +25,8 @@ _ARC_AXIOM_AREAS: dict[int, str] = {
 
 
 class TlAsAxiomEquipOp(SrOperation):
-    """终焉公理装配:两行右端圆圈 → 弹窗选卡 → 装配效果。起点 = 编队屏(已填人)。"""
+    """终焉公理装配:两行右端圆圈 → 弹窗选卡 → 装配效果。
+    起点:末日幻影-编队屏(已填人);终点:编队屏(已装配)。"""
 
     def __init__(self, ctx: SrContext, buff_slots: tuple[int, ...] | list[int] = (1, 1)):
         """

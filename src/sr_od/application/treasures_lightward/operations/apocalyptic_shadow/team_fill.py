@@ -88,7 +88,8 @@ _DIAG_SHOT_DIR: Path = Path(os_utils.get_work_dir()) / '.debug' / 'temp' / 'as_f
 
 
 class TlAsTeamFillOp(SrOperation):
-    """编队选人:清空两行 + 按目标填 8 人。起点 = 末日幻影-编队屏。"""
+    """编队选人:清空两行 + 按目标填 8 人(或星启 12 人)。
+    起点:末日幻影-编队屏;终点:编队屏(目标队伍已填)。"""
 
     def __init__(self, ctx: SrContext, team_names: list[str]):
         SrOperation.__init__(self, ctx, op_name='末日幻影 编队选人')

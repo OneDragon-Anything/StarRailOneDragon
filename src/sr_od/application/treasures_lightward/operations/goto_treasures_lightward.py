@@ -68,6 +68,7 @@ _ENTER_STATUS: dict[TLMode, str] = {
 
 class GotoTreasuresLightward(SrOperation):
     """导航到逐光捡金指定玩法的入口画面。
+    起点:任意可控画面;终点按玩法见下。
 
     - FORGOTTEN_HALL:终点=忘却之庭选关界面·混沌回忆视图·无弹窗(紊流更新弹窗自动关闭)。
     - PURE_FICTION:终点=虚构叙事选关画面(PF_TITLE;新期「开启故事」自动点击,分支待实测)。

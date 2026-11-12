@@ -19,6 +19,13 @@ from sr_od.sr_map.operations.transport_to_recover import TransportToRecover
 
 
 class ChallengeEchoOfWar(SrOperation):
+    """挑战历战余响副本指定次数(传送 → 选配队/支援 → 挑战 → 战斗 → 领奖
+    循环);有阵亡角色时自动传送复活点复活再继续。剩余次数由调用方控制,
+    本 op 不检查。
+    起点:任意可控画面(自行导航);终点:历战余响副本画面(全部次数完成)。
+    副作用:消耗周本挑战次数(每周限量);非 MCP 传参单元:mission 参数为
+    运行时副本对象,仅限代码内调用。
+    """
 
     STATUS_WITH_DEAD: ClassVar[str] = '有阵亡角色'
 
@@ -27,9 +34,12 @@ class ChallengeEchoOfWar(SrOperation):
                  support: Optional[str] = None,
                  on_battle_success: Optional[Callable[[int, int], None]]=None):
         """
-        挑战历战余响
-        这里不关注有没有剩余次数 由调用方控制
-        这里就算没有剩余次数也会进行挑战的
+        :param ctx: 上下文
+        :param mission: 要挑战的历战余响副本
+        :param team_num: 配队编号
+        :param plan_times: 计划挑战次数
+        :param support: 支援角色 ID,None = 不用
+        :param on_battle_success: 每次战斗成功后的回调(成功次数, 计划次数)
         """
         SrOperation.__init__(self, ctx,
                              op_name='%s %s %s %d' % (

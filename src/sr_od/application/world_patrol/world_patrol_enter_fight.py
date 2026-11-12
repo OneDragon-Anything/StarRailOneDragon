@@ -16,6 +16,11 @@ from sr_od.screen_state import common_screen_state, battle_screen_state, fast_re
 
 
 class WorldPatrolEnterFight(SrOperation):
+    """锄大地途中主动进入战斗:按小地图红圈判断被敌人锁定,主动攻击(可用
+    秘技开怪)打完战斗,直到回到大世界移动画面。
+    起点:大世界(锄大地路线中被锁定/遇怪);终点:大世界(战斗完成)。
+    """
+
     ATTACK_INTERVAL: ClassVar[float] = 0.2  # 发起攻击的间隔
     EXIT_AFTER_NO_ALTER_TIME: ClassVar[int] = 2  # 多久没警报退出
     EXIT_AFTER_NO_BATTLE_TIME: ClassVar[int] = 20  # 持续多久没有进入战斗画面就退出 这时候大概率是小地图判断被怪物锁定有问题
@@ -30,7 +35,11 @@ class WorldPatrolEnterFight(SrOperation):
                  first_state: Optional[str] = None,
                  disposable: bool = False):
         """
-        根据小地图的红圈 判断是否被敌人锁定 进行主动攻击
+        :param ctx: 上下文
+        :param technique_fight: 使用秘技开怪
+        :param technique_only: 仅使用秘技开怪(不普攻)
+        :param first_state: 调用方已知的初始画面状态(跳过首轮判定提速)
+        :param disposable: 攻击对象是可破坏物(打完即走,无法用秘技)
         """
         SrOperation.__init__(self, ctx, op_name=gt('进入战斗'))
         self.technique_fight: bool = technique_fight  # 使用秘技开怪

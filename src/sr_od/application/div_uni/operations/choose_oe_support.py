@@ -10,13 +10,16 @@ from sr_od.operations.team.choose_support import ChooseSupport
 
 
 class ChooseOeSupport(SrOperation):
+    """在位面饰品提取画面选择指定支援角色(选完自动关闭弹窗)。
+    起点:位面饰品提取画面;终点:位面饰品提取画面(支援已选/未选关闭)。
+    """
 
     STATUS_DUPLICATE_REPLACED: ClassVar[str] = '已替换重复角色'
 
     def __init__(self, ctx: SrContext, character_id: str | None):
         """
-        在位面饰品提取画面 选择支援
-        执行后停留在 位面饰品提取画面
+        :param ctx: 上下文
+        :param character_id: 支援角色 ID;None = 不选支援直接关闭
         """
         SrOperation.__init__(self, ctx, op_name=f"{gt('饰品提取', 'game')} {gt('选择支援')}")
 

@@ -29,13 +29,17 @@ from sr_od.sr_map.sr_map_def import Region
 
 
 class WorldPatrolRunRoute(SrOperation):
+    """运行一条完整的锄大地路线(按路线指令逐条执行:移动/交互/战斗)。
+    非 MCP 传参单元:参数为运行时路线对象,仅限代码内调用。
+    起点:大世界(路线起点区域);终点:大世界(路线走完)。
+    """
+
     STATUS_ALL_DONE: ClassVar[str] = '执行结束'
 
     def __init__(self, ctx: SrContext, route: WorldPatrolRoute):
         """
-        运行一条锄地路线
-        :param ctx:
-        :param route: 路线
+        :param ctx: 上下文
+        :param route: 要运行的锄大地路线
         """
         self.route: WorldPatrolRoute = route
 

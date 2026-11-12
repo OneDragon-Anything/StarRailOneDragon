@@ -53,7 +53,8 @@ _LANG_VALUE_WORDS: dict[str, str] = {'cn': _CN_VALUE, 'en': _EN_VALUE}
 
 
 class SwitchLanguageOp(SrOperation):
-    """切换游戏内文本语言到目标语言,终点 = 语言已切换且配置已同步。
+    """切换游戏内文本语言到目标语言(进设置 → 语言页 → 选择 → 确认)。
+    起点:任意可控画面(自行导航);终点:大世界(语言已切换且配置已同步)。
 
     参数:
         target_lang: 目标文本语言,取 ``GameLanguageEnum`` 的 value('cn'/'en')。

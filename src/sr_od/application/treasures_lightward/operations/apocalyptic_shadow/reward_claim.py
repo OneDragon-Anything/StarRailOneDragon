@@ -33,10 +33,11 @@ _CLAIM_CLICK_LIMIT: int = 6
 
 class TlRewardClaimOp(SrOperation):
     """领取逐光捡金期次奖励(永劫祭礼 + 终局祭礼,一键全领)。
+    起点:末日幻影-选关屏(或已在祭礼弹窗内);终点:选关屏(奖励已领取,
+    回到可继续挑战状态)。
 
-    入口 = 末日幻影-选关屏左下礼物盒(或在祭礼弹窗内直接接续);
-    不在选关屏时显式失败,不自行长途导航(入口链由 GotoTreasuresLightward 负责)。
-    """
+    入口 = 末日幻影-选关屏左下礼物盒;不在选关屏时显式失败,不自行长途
+    导航(入口链由 GotoTreasuresLightward 负责)。"""
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='逐光捡金 领取奖励')
