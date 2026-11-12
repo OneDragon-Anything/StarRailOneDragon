@@ -14,8 +14,8 @@
 - 专票不足时游戏会弹星琼兑换确认（160 星琼/张，跃迁-兑换确认屏已建档）——
   由「兑换确认闸」节点按 allow_jade_exchange 分流；确认后星琼仍不足会**接着
   弹古老梦华兑换确认**（1 梦华=1 星琼按需补差额，跃迁-梦华兑换屏已建档）——
-  按 allow_dream_exchange 分流。两者都是追加消耗决策，传 True 前必须获用户
-  明确授权；任一未授权则点取消干净失败。
+  按 allow_oneiric_exchange 分流（古老梦华官方英文 Oneiric Shard）。两者都
+  是追加消耗决策，传 True 前必须获用户明确授权；任一未授权则点取消干净失败。
 
 「结束抽卡」收摊（用户明示后）：跑 ReadWarpStatusOp {back_to_world: true}，
 其导航链从结果总览页/跃迁页回大世界。
@@ -35,7 +35,7 @@ from sr_od.screen_state.common_screen_state import is_normal_in_world
 _WARP_SCREEN: str = '跃迁'
 _WARP_SCREEN_RESULT: str = '跃迁-结果'
 _WARP_EXCHANGE_SCREEN: str = '跃迁-兑换确认'
-_WARP_DREAM_SCREEN: str = '跃迁-梦华兑换'
+_WARP_ONEIRIC_SCREEN: str = '跃迁-梦华兑换'
 _CHAR_DETAIL_SCREEN: str = '角色-详情'
 _WARP_RESULT_SUMMARY: str = '跃迁-结果总览'
 _NORMAL_WORLD: str = '大世界-普通'
@@ -62,7 +62,7 @@ class WarpOp(SrOperation):
 
     def __init__(self, ctx: SrContext, times: int = WARP_TIMES_ONE,
                  allow_jade_exchange: bool = False,
-                 allow_dream_exchange: bool = False):
+                 allow_oneiric_exchange: bool = False):
         """
         :param ctx: 上下文
         :param times: 跃迁次数，仅支持 1 / 10
@@ -70,14 +70,14 @@ class WarpOp(SrOperation):
             （160 星琼/张，游戏弹窗确认）。False = 点取消干净失败；True =
             点确认继续抽。**兑换是追加消耗决策，调用方必须先获用户明确授权**
             才能传 True。
-        :param allow_dream_exchange: 星琼也不足时是否允许使用古老梦华按需兑换
-            （1 星梦华=1 星琼，游戏二次弹窗确认）。False = 点取消干净失败。
-            **古老梦华只能充值/月卡类途径获取，部分玩家专门囤积兑换皮肤**——
-            消耗它同样必须先获用户明确授权。
+        :param allow_oneiric_exchange: 星琼也不足时是否允许使用古老梦华按需兑换
+            （1 梦华=1 星琼，游戏二次弹窗确认；古老梦华官方英文 Oneiric Shard）。
+            False = 点取消干净失败。**古老梦华只能充值/月卡类途径获取，部分玩家
+            专门囤积兑换皮肤**——消耗它同样必须先获用户明确授权。
         """
         self._times: int = times
         self._allow_jade_exchange: bool = allow_jade_exchange
-        self._allow_dream_exchange: bool = allow_dream_exchange
+        self._allow_oneiric_exchange: bool = allow_oneiric_exchange
         self._clicked: bool = False
         """已点过跃迁按钮（结果处理节点据此分流：点前=点按钮，点后=关结果画面）"""
         SrOperation.__init__(self, ctx, op_name=gt('跃迁抽卡'),
@@ -131,7 +131,7 @@ class WarpOp(SrOperation):
         - 一级「跃迁-兑换确认」（星轨专票不足，N 星琼买 M 张）：
           allow_jade_exchange=True 点确认；False 点取消干净失败。
         - 确认后星琼不足会**接着弹二级「跃迁-梦华兑换」**（古老梦华按需兑换）：
-          allow_dream_exchange=True 点确认继续抽；False 点取消干净失败。
+          allow_oneiric_exchange=True 点确认继续抽；False 点取消干净失败。
         - 两个弹窗都不在 = 票足直接进抽卡动画，放行。
 
         点击必须带 press_time=0.1（游戏弹窗按钮对极短点击不响应,与结果画面
@@ -139,19 +139,19 @@ class WarpOp(SrOperation):
         偶发漏检误满足造成假成功)。
         """
         screen = self.check_and_update_current_screen(screen_name_list=[
-            _WARP_EXCHANGE_SCREEN, _WARP_DREAM_SCREEN])
+            _WARP_EXCHANGE_SCREEN, _WARP_ONEIRIC_SCREEN])
         if screen == _WARP_EXCHANGE_SCREEN:
             if not self._allow_jade_exchange:
                 return self._click_and_verify_closed(_WARP_EXCHANGE_SCREEN, '按钮-取消',
                                                      fail_status='票不足且未授权星琼兑换,已点取消(跃迁未执行)')
             return self._click_and_verify_closed(_WARP_EXCHANGE_SCREEN, '按钮-确认',
                                                  success_status='JADE_EXCHANGED', wait=2)
-        if screen == _WARP_DREAM_SCREEN:
-            if not self._allow_dream_exchange:
-                return self._click_and_verify_closed(_WARP_DREAM_SCREEN, '按钮-取消',
+        if screen == _WARP_ONEIRIC_SCREEN:
+            if not self._allow_oneiric_exchange:
+                return self._click_and_verify_closed(_WARP_ONEIRIC_SCREEN, '按钮-取消',
                                                      fail_status='星琼不足且未授权古老梦华兑换,已点取消(跃迁未执行)')
-            return self._click_and_verify_closed(_WARP_DREAM_SCREEN, '按钮-确认',
-                                                 success_status='DREAM_EXCHANGED', wait=4)
+            return self._click_and_verify_closed(_WARP_ONEIRIC_SCREEN, '按钮-确认',
+                                                 success_status='ONEIRIC_EXCHANGED', wait=4)
         return self.round_success(status='NO_EXCHANGE', wait=1)
 
     def _click_and_verify_closed(self, screen_name: str, button: str,
@@ -174,7 +174,7 @@ class WarpOp(SrOperation):
 
     @node_from(from_name='兑换确认闸', status='EXCHANGED')
     @node_from(from_name='兑换确认闸', status='JADE_EXCHANGED')
-    @node_from(from_name='兑换确认闸', status='DREAM_EXCHANGED')
+    @node_from(from_name='兑换确认闸', status='ONEIRIC_EXCHANGED')
     @node_from(from_name='兑换确认闸', status='NO_EXCHANGE')
     @operation_node(name='处理结果画面', node_max_retry_times=80)
     def handle_result(self) -> OperationRoundResult:

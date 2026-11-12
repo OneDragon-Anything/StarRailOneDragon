@@ -1,7 +1,9 @@
 """商店内切换兑换 tab —— 余烬兑换 / 星芒兑换。
 
-商店默认打开在星芒兑换 tab(角色转化材料:换票 20 星芒/张,每月 1 张);
-余烬兑换 tab 是光锥转化材料页(换票 90 余烬/张,**每月限量 5 张**)。
+商店默认打开在星芒兑换 tab(角色转化材料「未熄的星芒」,官方英文
+Undying Starlight:换票 20 星芒/张,不限量);余烬兑换 tab 是光锥转化
+材料页(「未熄的余烬」,官方英文 Undying Embers:换票 90 余烬/张,
+**每月限量 5 张**)。
 两个 tab 的商品第一行第 4 列槽位内容不同,以此作为切换验证锚:
 - 余烬兑换页 = 「冒险记录 ×2」;星芒兑换页 = 「银河铁道之夜」。
 
@@ -23,14 +25,16 @@ from sr_od.operations.sr_operation import SrOperation
 
 _SHOP_SCREEN: str = '商店'
 
-TAB_ASH: str = 'ash'
-"""余烬兑换 tab(光锥转化材料,换票 90 余烬/张每月 5 张)"""
-TAB_STARDUST: str = 'stardust'
-"""星芒兑换 tab(角色转化材料,换票 20 星芒/张每月 1 张)"""
-_ALLOWED_TABS: set[str] = {TAB_ASH, TAB_STARDUST}
+TAB_EMBERS: str = 'embers'
+"""余烬兑换 tab(光锥转化材料「未熄的余烬」,官方英文 Undying Embers;
+换票 90 余烬/张每月 5 张)"""
+TAB_STARLIGHT: str = 'starlight'
+"""星芒兑换 tab(角色转化材料「未熄的星芒」,官方英文 Undying Starlight;
+换票 20 星芒/张不限量)"""
+_ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT}
 
-_TAB_AREA: dict[str, str] = {TAB_ASH: 'tab-余烬兑换', TAB_STARDUST: 'tab-星芒兑换'}
-_ANCHOR_AREA: dict[str, str] = {TAB_ASH: '文本-冒险记录', TAB_STARDUST: '文本-银河铁道之夜'}
+_TAB_AREA: dict[str, str] = {TAB_EMBERS: 'tab-余烬兑换', TAB_STARLIGHT: 'tab-星芒兑换'}
+_ANCHOR_AREA: dict[str, str] = {TAB_EMBERS: '文本-冒险记录', TAB_STARLIGHT: '文本-银河铁道之夜'}
 
 _AREA_CURRENCY: str = '读区-货币数量'
 _AREA_TICKET_TIMES: str = '读区-专票兑换次数'
@@ -47,15 +51,16 @@ class ShopSwitchTabOp(SrOperation):
     型,偶发漏检只会多一次无害点击,无假满足风险)。
 
     结果状态:
-    - ``ASH_TAB`` / ``STARDUST_TAB``:目标 tab 已切换完成;
+    - ``EMBERS_TAB`` / ``STARLIGHT_TAB``:目标 tab 已切换完成;
     - ``STAY_ENTRY``:tab 非法;
     失败:起点不在商店页。
     """
 
-    def __init__(self, ctx: SrContext, tab: str = TAB_ASH):
+    def __init__(self, ctx: SrContext, tab: str = TAB_EMBERS):
         """
         :param ctx: 上下文
-        :param tab: 目标 tab,``ash``=余烬兑换 / ``stardust``=星芒兑换
+        :param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换
+            (取值 = 官方英文名 Undying Embers / Undying Starlight 的主体词)
         """
         self._tab: str = tab
         SrOperation.__init__(self, ctx, op_name=gt('商店切换兑换页'),
@@ -65,7 +70,7 @@ class ShopSwitchTabOp(SrOperation):
     def switch_tab(self) -> OperationRoundResult:
         """校验目标合法后点目标 tab,until 特征商品锚出现。"""
         if self._tab not in _ALLOWED_TABS:
-            return self.round_fail(f'不支持的 tab: {self._tab}(仅支持 ash/stardust)',
+            return self.round_fail(f'不支持的 tab: {self._tab}(仅支持 embers/starlight)',
                                    status='STAY_ENTRY')
         if self.check_and_update_current_screen(
                 screen_name_list=[_SHOP_SCREEN]) != _SHOP_SCREEN:
@@ -77,12 +82,12 @@ class ShopSwitchTabOp(SrOperation):
             until_find_all=[(_SHOP_SCREEN, anchor)],
             success_wait=1.5, retry_wait=1.5)
         if result.is_success:
-            return self.round_success(status='ASH_TAB' if self._tab == TAB_ASH
-                                      else 'STARDUST_TAB', wait=1)
+            return self.round_success(status='EMBERS_TAB' if self._tab == TAB_EMBERS
+                                      else 'STARLIGHT_TAB', wait=1)
         return result
 
-    @node_from(from_name='切换兑换页', status='ASH_TAB')
-    @node_from(from_name='切换兑换页', status='STARDUST_TAB')
+    @node_from(from_name='切换兑换页', status='EMBERS_TAB')
+    @node_from(from_name='切换兑换页', status='STARLIGHT_TAB')
     @operation_node(name='收尾')
     def finish(self) -> OperationRoundResult:
         """终点节点:余烬兑换 tab 附带读数(余烬数量+专票月限剩余次数)入 data。
@@ -91,13 +96,13 @@ class ShopSwitchTabOp(SrOperation):
         ReadWarpStatusOp);「可兑换:5/5」为星轨专票月限剩余(90 余烬/张,
         每月 5 张)。星芒兑换 tab 无专票月限商品,只返回货币数量。
         """
-        tab = 'ASH_TAB' if self._tab == TAB_ASH else 'STARDUST_TAB'
+        tab = 'EMBERS_TAB' if self._tab == TAB_EMBERS else 'STARLIGHT_TAB'
         data: dict = {
             'tab': self._tab,
             'material_count': parse_count(self._area_count_text(
                 self.last_screenshot, _SHOP_SCREEN, _AREA_CURRENCY)),
         }
-        if self._tab == TAB_ASH:
+        if self._tab == TAB_EMBERS:
             ticket_text = self._area_text(self.last_screenshot,
                                           _SHOP_SCREEN, _AREA_TICKET_TIMES)
             data['ticket_exchange_times'] = ticket_text

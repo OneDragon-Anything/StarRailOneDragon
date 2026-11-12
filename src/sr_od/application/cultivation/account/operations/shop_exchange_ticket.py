@@ -1,9 +1,11 @@
 """商店兑换专票 op —— 商店兑换页用转化材料兑换星轨专票。
 
-两个供货渠道(``source`` 参数):
-- ``stardust`` 星芒兑换(角色转化材料):20 星芒/张,不限量,拉满受星芒余额限制;
-- ``ash`` 余烬兑换(光锥转化材料):90 余烬/张,**每月限量 5 张**(按版本月历刷新),
-  拉满受月限剩余与余烬余额共同限制;月限剩余读自弹窗左下「可兑换 X/5」胶囊。
+两个供货渠道(``source`` 参数,取值 = 材料官方英文名主体词):
+- ``starlight`` 星芒兑换(角色转化材料「未熄的星芒」,官方英文 Undying Starlight):
+  20 星芒/张,不限量,拉满受星芒余额限制;
+- ``embers`` 余烬兑换(光锥转化材料「未熄的余烬」,官方英文 Undying Embers):
+  90 余烬/张,**每月限量 5 张**(按版本月历刷新),拉满受月限剩余与余烬余额
+  共同限制;月限剩余读自弹窗左下「可兑换 X/5」胶囊。
 
 ⚠️ 消耗红线:兑换消耗星芒/余烬(抽卡副产物材料),仅限用户明确授权的兑换请求调用。
 参数 ``count``:``None`` = 拉满全部(能换多少换多少);数字 = 兑换指定张数。
@@ -41,11 +43,11 @@ from sr_od.application.cultivation.account.operations.read_warp_status import (
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-SOURCE_STARDUST: str = 'stardust'
-"""星芒兑换渠道(角色转化材料,20/张,不限量)"""
-SOURCE_ASH: str = 'ash'
-"""余烬兑换渠道(光锥转化材料,90/张,每月限量 5 张)"""
-_ALLOWED_SOURCES: set[str] = {SOURCE_ASH, SOURCE_STARDUST}
+SOURCE_STARLIGHT: str = 'starlight'
+"""星芒兑换渠道(角色转化材料「未熄的星芒」,官方英文 Undying Starlight,20/张不限量)"""
+SOURCE_EMBERS: str = 'embers'
+"""余烬兑换渠道(光锥转化材料「未熄的余烬」,官方英文 Undying Embers,90/张每月限量 5 张)"""
+_ALLOWED_SOURCES: set[str] = {SOURCE_EMBERS, SOURCE_STARLIGHT}
 
 _SHOP_SCREEN: str = '商店'
 _POPUP_SCREEN: str = '商店-兑换弹窗'
@@ -54,7 +56,7 @@ _GOODS_TICKET_CARD: str = '商品-星轨专票卡'
 # 当前兑换 tab 判定:两 tab 第 1 行第 4 列槽位商品互斥(建档 area 同 rect 不同文本),
 # 读该槽位 OCR 含目标关键词即处于对应 tab
 _AREA_TAB_SLOT: str = '文本-冒险记录'
-_TAB_SLOT_KEYWORD: dict[str, str] = {SOURCE_ASH: '冒险', SOURCE_STARDUST: '银河铁道'}
+_TAB_SLOT_KEYWORD: dict[str, str] = {SOURCE_EMBERS: '冒险', SOURCE_STARLIGHT: '银河铁道'}
 
 _AREA_POPUP_MARK: str = '文本-兑换数量'
 _AREA_CONFIRM: str = '按钮-确认'
@@ -106,12 +108,12 @@ class ShopExchangeTicketOp(SrOperation):
     """
 
     def __init__(self, ctx: SrContext, count: int | None = None,
-                 source: str = SOURCE_STARDUST):
+                 source: str = SOURCE_STARLIGHT):
         """
         :param ctx: 上下文
         :param count: 兑换张数;``None`` = 拉满全部(星芒受余额限制,余烬受月限+余额)。
             **消耗参数:仅限用户明确授权的兑换请求传入。**
-        :param source: 供货渠道,``stardust``=星芒(不限量) / ``ash``=余烬(月限 5)。
+        :param source: 供货渠道,``starlight``=星芒(不限量) / ``embers``=余烬(月限 5)。
         """
         self._count: int | None = count
         self._source: str = source
@@ -137,7 +139,7 @@ class ShopExchangeTicketOp(SrOperation):
         """
         if self._source not in _ALLOWED_SOURCES:
             return self.round_fail(
-                f'不支持的 source: {self._source}(仅支持 stardust/ash)')
+                f'不支持的 source: {self._source}(仅支持 starlight/embers)')
         screen = self.check_and_update_current_screen(screen_name_list=[
             _SHOP_SCREEN, _POPUP_SCREEN])
         if screen == _POPUP_SCREEN:
@@ -194,7 +196,7 @@ class ShopExchangeTicketOp(SrOperation):
             self._area_count_text(self.last_screenshot, _POPUP_SCREEN, _AREA_COUNT))
         if current is None:
             return self.round_retry('兑换数量读取失败,重试', wait=1)
-        if self._source == SOURCE_ASH and self._monthly_left is None:
+        if self._source == SOURCE_EMBERS and self._monthly_left is None:
             monthly_text = self._area_text(self.last_screenshot, _POPUP_SCREEN,
                                            _AREA_MONTHLY_LEFT)
             self._monthly_left = parse_monthly_left(monthly_text)
@@ -214,7 +216,7 @@ class ShopExchangeTicketOp(SrOperation):
             self._pull_confirmed = False
             self._click_area_center(_POPUP_SCREEN, _AREA_MAX)
             return self.round_retry('已点拉满,下一轮读数验证', wait=1.5)
-        if self._source == SOURCE_ASH and self._count > self._monthly_left:
+        if self._source == SOURCE_EMBERS and self._count > self._monthly_left:
             return self.round_fail(
                 f'兑换 {self._count} 张超本月剩余额度({self._monthly_left} 张),'
                 f'不截断执行;如需全换请传 count=None(拉满)')
@@ -254,7 +256,7 @@ class ShopExchangeTicketOp(SrOperation):
             material_left = parse_count(
                 self._area_count_text(self.last_screenshot, _SHOP_SCREEN, _AREA_CURRENCY))
             monthly_left: int | None = None
-            if self._source == SOURCE_ASH:
+            if self._source == SOURCE_EMBERS:
                 badge_text = self._area_text(self.last_screenshot, _SHOP_SCREEN,
                                              _AREA_MONTHLY_BADGE)
                 monthly_left = parse_monthly_left(badge_text)

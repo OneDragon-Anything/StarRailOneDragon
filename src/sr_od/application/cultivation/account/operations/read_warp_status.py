@@ -35,8 +35,9 @@ POOL_TYPE_CONE: str = 'cone'
 """光锥活动跃迁"""
 POOL_TYPE_COLLAB: str = 'collab'
 """联动跃迁(如 Fate[UBW];票种与角色池同,读法同活动池)"""
-POOL_TYPE_STANDARD: str = 'standard'
-"""常驻跃迁(星票;无标签时不能直接判常驻,须读到标签文本)"""
+POOL_TYPE_REGULAR: str = 'regular'
+"""常驻跃迁(官方英文 Regular Warp,池名 Stellar Warp;星票;无标签时不能直接
+判常驻,须读到标签文本)"""
 POOL_TYPE_UNKNOWN: str = 'unknown'
 """标签区无可识别文本(画面未加载完成/新池型)"""
 
@@ -44,7 +45,7 @@ _AREA_POOL_NAME: str = '文本-当前池名'
 _AREA_POOL_LABEL: str = '文本-角色活动跃迁标签'
 _AREA_JADE: str = '货币-星琼数量'
 _AREA_SPECIAL_PASS: str = '货币-星轨专票数量'
-_AREA_STANDARD_PASS: str = '货币-星票数量'
+_AREA_RAIL_PASS: str = '货币-星票数量'
 _AREA_PROGRESS: str = '货币-跃迁进度'
 
 _COUNT_OCR_SCALE: float = 3.0
@@ -55,7 +56,7 @@ _LABEL_KEYWORDS: list[tuple[str, str]] = [
     ('角色活动跃迁', POOL_TYPE_CHARACTER),
     ('光锥活动跃迁', POOL_TYPE_CONE),
     ('联动跃迁', POOL_TYPE_COLLAB),
-    ('常驻跃迁', POOL_TYPE_STANDARD),
+    ('常驻跃迁', POOL_TYPE_REGULAR),
 ]
 
 
@@ -133,7 +134,8 @@ class ReadWarpStatusOp(SrOperation):
     - ``WARP_STATUS``:读数完成,``OperationResult.data`` 携带:
       ``pool_name``(左上全名,如「跃迁 愚戏众星」)/ ``pool_type``
       (POOL_TYPE_* 常量)/ ``stellar_jade``(星琼)/ ``special_pass``
-      (专票,活动池)/ ``standard_pass``(星票,常驻池)/ ``warp_progress``
+      (星轨专票,活动池,官方英文 Star Rail Special Pass)/ ``rail_pass``
+      (星轨通票,常驻池,官方英文 Star Rail Pass)/ ``warp_progress``
       (「N/M」万象和鸣进度,活动池;None = 无);
     失败:画面无法到达跃迁页、跃迁页货币区读数全空(画面异常)。
     消耗:零 —— 本 op 只读不点消耗控件。
@@ -196,11 +198,11 @@ class ReadWarpStatusOp(SrOperation):
             return self.round_retry('星琼数量读数失败(货币区未加载完成?),等待重试', wait=1.5)
 
         special_pass: int | None = None
-        standard_pass: int | None = None
+        rail_pass: int | None = None
         progress: str | None = None
-        if pool_type == POOL_TYPE_STANDARD:
-            standard_pass = parse_count(
-                _area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_STANDARD_PASS))
+        if pool_type == POOL_TYPE_REGULAR:
+            rail_pass = parse_count(
+                _area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_RAIL_PASS))
         else:
             special_pass = parse_count(
                 _area_count_text(self.ctx, screen, _WARP_SCREEN, _AREA_SPECIAL_PASS))
@@ -212,7 +214,7 @@ class ReadWarpStatusOp(SrOperation):
             'pool_type': pool_type,
             'stellar_jade': jade,
             'special_pass': special_pass,
-            'standard_pass': standard_pass,
+            'rail_pass': rail_pass,
             'warp_progress': progress,
         }
         # 终点节点(回大世界)的 round 结果才是 OperationResult 的数据源,
