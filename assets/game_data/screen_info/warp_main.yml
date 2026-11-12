@@ -175,9 +175,9 @@ area_list:
 - area_name: 货币-星轨专票数量
   id_mark: false
   pc_rect:
-  - 1535
+  - 1495
   - 45
-  - 1620
+  - 1590
   - 90
   text: ''
   lcs_percent: 0.5
@@ -189,9 +189,9 @@ area_list:
 - area_name: 货币-星琼数量
   id_mark: false
   pc_rect:
-  - 1665
+  - 1662
   - 45
-  - 1815
+  - 1748
   - 90
   text: ''
   lcs_percent: 0.5
