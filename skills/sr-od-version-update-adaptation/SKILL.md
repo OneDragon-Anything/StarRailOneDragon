@@ -1,6 +1,6 @@
 ---
 name: sr-od-version-update-adaptation
-description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适配跟进时用——清点新版本内容并逐项适配,已建档适配项见路由表(当前:新角色数据录入、光锥数据、遗器套装数据、货币战争玩法适配)。凡是「新版本出了要跟」「这版本有什么要适配」「新角色出了录一下数据」都用,即使没明说跟哪些。英文:game version update adaptation, patch follow-up, new character data entry。
+description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适配跟进时用——清点新版本内容并逐项适配,已建档适配项见路由表(当前:副本数据更新、新角色数据录入、光锥数据、遗器套装数据、货币战争玩法适配)。凡是「新版本出了要跟」「这版本有什么要适配」「新角色出了录一下数据」都用,即使没明说跟哪些。英文:game version update adaptation, patch follow-up, new character data entry。
 ---
 
 # 游戏版本更新适配
@@ -19,7 +19,7 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 
 | 适配项 | 状态 | 方法 |
 |---|---|---|
-| 副本数据更新(指南注册表) | 已建档 | `references/dungeon-data-entry.md`——**先于新角色数据录入执行**(join 锚点依赖) |
+| 副本数据更新(指南注册表) | 已建档(归地图信息 skill) | `sr-od-dev-map-data` skill(随仓分发)的 `references/dungeon-data-entry.md`——**先于新角色数据录入执行**(join 锚点依赖) |
 | 新角色数据录入 | 已建档 | `references/character-data-entry.md` |
 | 光锥数据(新实装/词条改动) | 已建档 | `sr-od-dev-cone-data` skill(随仓分发):总流程六步 checklist(双源抓取/权威表/常量生成审阅/图标归档/测试锚点) |
 | 遗器套装数据(新实装/效果改动) | 已建档 | `sr-od-dev-relic-data` skill(随仓分发):总流程八步 checklist(双源抓取/常量 diff 审阅/权威表/图标增量归档/测试锚点) |

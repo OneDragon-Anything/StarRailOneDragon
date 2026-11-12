@@ -13,8 +13,8 @@
 ## 构成
 
 - `SKILL.md`:总流程 checklist + 适配项路由表(含未建档项的去向:调研 → 确认 → 补档 → 实施)。
-- `references/dungeon-data-entry.md`:副本数据更新(指南注册表的三源枚举、口径、验证;三类源仲裁序、join 锚点依赖)。
 - `references/character-data-entry.md`:新角色数据录入(character_const 字段规则、头像模板、验证)。
+- 副本数据更新方法在 `sr-od-dev-map-data` skill 的 `references/dungeon-data-entry.md`(地图信息域归该 skill,本 skill 只留路由与顺序约束)。
 
 ## 决策与动机
 
