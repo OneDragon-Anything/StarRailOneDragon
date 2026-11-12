@@ -28,7 +28,7 @@ from sr_od.screen_state.common_screen_state import is_normal_in_world
 _WARP_SCREEN: str = '跃迁'
 _WARP_SCREEN_RESULT: str = '跃迁-结果'
 _WARP_EXCHANGE_SCREEN: str = '跃迁-兑换确认'
-_WARP_CHAR_DETAIL: str = '跃迁-角色详情'
+_CHAR_DETAIL_SCREEN: str = '角色-详情'
 _WARP_RESULT_SUMMARY: str = '跃迁-结果总览'
 _NORMAL_WORLD: str = '大世界-普通'
 
@@ -146,35 +146,35 @@ class WarpOp(SrOperation):
     def handle_result(self) -> OperationRoundResult:
         """循环处理抽卡展示直到回到跃迁页。
 
-        四种画面形态分流（10 连实测）：
+        画面形态分流（10 连实测）：
         - 跃迁页：全部展示已关闭 → WARP_DONE；
-        - 跃迁-角色详情（抽出角色卡时弹出，满魂转化也会弹）：中央点击无效，
-          点右上 × 关闭；
-        - 跃迁-结果总览（逐件看完后的汇总页）：同样点右上 ×；
+        - 角色-详情（既有养成屏——**点击转化卡面会误入此页**，游戏抽卡展示
+          本身不自动弹详情）：点其「按钮-关闭」自愈返回展示流；
+        - 跃迁-结果总览（逐件看完后的汇总页）：点右上 ×；
         - 其他（普通逐件结果画面/抽卡动画）：点中央继续区域。
 
-        点击必须带 press_time=0.1（展示类画面普遍对极短点击不响应）。
+        ⚠️ 点击必须带 press_time=0.1（展示类画面普遍对极短点击不响应）；
+        中央点击落在转化卡面上会进入角色详情页——靠本节点的详情检测自愈。
         跃迁页回归超预算 = 停在未建档画面，fail 报告现场。
         """
         if not self._clicked:
             return self.round_retry('未点过跃迁按钮却进入结果处理(节点流异常)', wait=1)
         current = self.check_and_update_current_screen(screen_name_list=[
-            _WARP_SCREEN, _WARP_CHAR_DETAIL, _WARP_RESULT_SUMMARY])
+            _WARP_SCREEN, _CHAR_DETAIL_SCREEN, _WARP_RESULT_SUMMARY])
         if current == _WARP_SCREEN:
             return self.round_success(status='WARP_DONE', wait=1)
-        if current == _WARP_CHAR_DETAIL:
-            self._click_close_x(_WARP_CHAR_DETAIL)
+        if current == _CHAR_DETAIL_SCREEN:
+            self._click_area_center(_CHAR_DETAIL_SCREEN, '按钮-关闭')
         elif current == _WARP_RESULT_SUMMARY:
-            self._click_close_x(_WARP_RESULT_SUMMARY)
+            self._click_area_center(_WARP_RESULT_SUMMARY, '按钮-关闭X')
         else:
-            area = self.ctx.screen_loader.get_area(_WARP_SCREEN_RESULT, '点击-继续区域')
-            self.ctx.controller.click(area.center, press_time=0.1)
+            self._click_area_center(_WARP_SCREEN_RESULT, '点击-继续区域')
         # 点了≠成了：下一轮 check 确认画面推进；本轮先等待过渡
         return self.round_retry('结果展示未结束,继续处理', wait=1.5)
 
-    def _click_close_x(self, screen_name: str) -> None:
-        """点指定屏的右上 × 关闭按钮（press_time=0.1，点击有效性由调用方轮询验证）。"""
-        area = self.ctx.screen_loader.get_area(screen_name, '按钮-关闭X')
+    def _click_area_center(self, screen_name: str, area_name: str) -> None:
+        """点指定 area 中心（press_time=0.1，点击有效性由调用方轮询验证）。"""
+        area = self.ctx.screen_loader.get_area(screen_name, area_name)
         self.ctx.controller.click(area.center, press_time=0.1)
 
     @node_from(from_name='处理结果画面', status='WARP_DONE')

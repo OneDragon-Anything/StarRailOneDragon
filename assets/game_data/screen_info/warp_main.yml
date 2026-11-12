@@ -17,7 +17,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 文本-跃迁1次
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 1280
   - 965
