@@ -4,8 +4,8 @@
 - 角色行迹:data.points[]——tag/name/tableData(等级表,末行=满级)/subList(分段描述 HTML)
 - 角色星魂:data.richText——HTML 表格,剥标签提取【N】名称+效果描述
 
-输入:随仓权威表 characters-full.json(wiki_content_id,98 数字 ID)
-    + game-coach character_full_list.json(101 词条,含重复形态,交叉补齐)
+输入:随仓权威表 characters-full.json(wiki_content_id → 数字 avatarId)
+    + game-coach character_full_list.json(含重复形态,交叉补齐)
 输出:.debug/game_data/character/wiki/char_details.json —— {content_id: {name, traces[], eidolons[]}}
       (拉取缓存统一落 .debug/game_data/<域>/,旁置 fetched_at.txt 记本次拉取时间)
 """
