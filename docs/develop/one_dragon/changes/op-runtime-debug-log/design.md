@@ -65,11 +65,7 @@
 
 - F2：`goto 路由: <起点>→<终点> 经 [<画面.区域>, …]`（route.node_list 逐跳）。
 
-**H. 失败自动存图（仅 op 终结处）**
-
-- H1：**仅在 op 以 FAIL 终结处**（operation.py 487-497 块）`save_screenshot(prefix=f'{类名}_fail_{节点名}')`，文件名入日志。节点级 `round_fail` **不存图**——`_get_next_node`（562）按 success/fail 分流出边，fail 是节点间常规转移手段（fail→else 兜底），逐转移存图的量级与「FAIL=出了事」的暗示都不成立；retry 耗尽转 FAIL（474）同样不存（该轮 432 行 INFO + D2/D3 尾缀可查）。量级：一次实测时段 op 终结 FAIL 通常 0-2 次，磁盘可忽略。
-
-**I. 画面状态转移（新增，堵决策链最后缺口）**
+**I. 画面状态转移（堵决策链最后缺口）**
 
 - I1：`screen_loader.update_current_screen_name` 内统一打（一处覆盖全部调用位）：`画面状态: <旧>→<新> (来源: <判定|点击乐观|goto跳转|…>)`——实现为该函数加可选 `source: str | None = None` 参数，四个调用位（operation.py:1470 判定、1483 goto 跳转、1497 点击乐观取 goto_list[0]、1524 check_and_update）各自传来源。理由：`current_screen_name` 是下一次 BFS 判定的起点（from_last 403-406），1497 的乐观更新无任何验证却直接改写判定起点——「为什么这次判定从错误画面展开」的答案藏在这类转移里，A1 只报结果不报起点来源。
 

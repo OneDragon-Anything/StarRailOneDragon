@@ -23,7 +23,7 @@
 
 ## 3.2 operation 运行层日志（C/D/F/H 组 + I 调用位）
 
-**范围**：C1（until 逐锚行按实际验证集 + 总结论行，break 语义按 design §2.1 C）、D2/D3（INFO 行尾缀，D3=递增后值）、F2（goto 路由）、H1（**仅 op 终结 FAIL 处**存图，prefix=f'{类名}_fail_{节点名}'）、I 组四个调用位传 source、删 1473 行重复 debug。边界——不含 screen_utils.py。
+**范围**：C1（until 逐锚行按实际验证集 + 总结论行，break 语义按 design §2.1 C）、D2/D3（INFO 行尾缀，D3=递增后值）、F2（goto 路由）、I 组四个调用位传 source、删 1473 行重复 debug。边界——不含 screen_utils.py。（原 H1 失败自动存图经用户裁定移除：部分 op 允许失败为合法出口，逐失败存图成噪声。）
 **设计依据**：design.md §2.1 C/D/F/H/I。
 **文件面**：`src/one_dragon/base/operation/operation.py`。
 **依赖**：3.1（I 组参数先行；联调同批验证）。

@@ -28,7 +28,6 @@ op 一轮执行的决策链 = 截图 → 画面判定 → 识别 → 分支 → 
 | D2 | 主循环节点流转 INFO 行尾缀 | `(X.Xs)` | 轮次耗时,与 round_perf 同源 |
 | D3 | 同上(RETRY 时) | `retry=<N>/<上限>`,N=递增后值 | 节点预算余量 |
 | F2 | `round_by_goto_screen` | `goto 路由: <起点>→<终点> 经 [<画面.区域>…]` | 路由边排查 |
-| H1 | op 终结 FAIL 处 | `save_screenshot(prefix='<类名>_fail_<节点名>')` + 文件名入日志 | 仅 op 终结;节点级 fail 是常规转移不存图 |
 | I1 | `screen_loader.update_current_screen_name` | `画面状态: <旧>→<新> (来源: <判定|goto跳转|点击乐观>)` | source 非 None 且旧≠新才打;判定起点来源可追 |
 
 接口:`find_area_in_screen(_binary)` 与 `update_current_screen_name` 各加可选参数(`screen_name` / `source`),None 时兼容既有调用方(日志退化)。

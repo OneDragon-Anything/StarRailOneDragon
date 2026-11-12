@@ -494,11 +494,6 @@ class Operation(OperationBase):
                     op_result = self.op_success(round_result.status, round_result.data)
                     break
                 elif round_result.result == OperationRoundResultEnum.FAIL:
-                    # 仅 op 以失败终结时兜底存图;节点级 fail 与 retry 耗尽不存——
-                    # fail 是节点间常规转移手段(fail→else 兜底),逐转移存图量级不成立
-                    fail_node_name = 'none' if self._current_node is None else self._current_node.cn
-                    fail_shot = self.save_screenshot(prefix=f'{self.__class__.__name__}_fail_{fail_node_name}')
-                    log.debug('%s 终结失败截图保存至 %s', self.display_name, fail_shot)
                     op_result = self.op_fail(round_result.status, round_result.data)
                     break
                 else:
