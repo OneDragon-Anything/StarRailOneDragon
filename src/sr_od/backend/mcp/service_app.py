@@ -205,7 +205,8 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         Returns:
             三种形态:① 参数/并发错误 dict ``{started: False, error(, source, hint)}``;
             ② 受理 dict ``{started: True, op_id, source, started_at, hint}``(block=False);
-            ③ block=True 终态 dict ``{success: bool, result: <结果文本>}``。
+            ③ block=True 终态 dict ``{success: bool, result: <结果文本>, data}`` ——
+            ``data`` = op 的数据通道(读数类 op 携带结果,无数据时为 None)。
             进度/结果细节看 ``get_run_status``。
         """
         try:
@@ -241,6 +242,9 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         result: OperationResult | None = await asyncio.wrap_future(future)
         if result is None:
             return {'success': False, 'result': 'operation 运行结束,但未返回结果'}
+        # data 是 op 的数据通道(读数类 op 如 ReadWarpStatusOp 把结果放这里);
+        # 无数据的 op 为 None,不占输出
         return {'success': result.success,
-                'result': 'operation 运行成功' if result.success else f'operation 运行失败: {result.status}'}
+                'result': 'operation 运行成功' if result.success else f'operation 运行失败: {result.status}',
+                'data': result.data}
     return run_operation
