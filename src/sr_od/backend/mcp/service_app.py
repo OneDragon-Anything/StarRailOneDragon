@@ -167,8 +167,10 @@ def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
         ``{ambiguous: True, matches[]}`` 全部候选;未找到时报错附相似类名建议。
 
         Returns:
-            单命中 ``{op_id, class_name, module, params[], debuggable}``;``params[]``
-            元素: ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'),
+            单命中 ``{op_id, class_name, module, docstring, params[], debuggable}``;
+            ``docstring`` = 本类 docstring(做什么/起终点画面/副作用/参数语义,
+            未写为 None,不继承基类)——远程使用者看不到源码,op 语义唯一来源;
+            ``params[]`` 元素: ``{name, annotation(类型注解字符串,如 'str'/'ChargePlanItem'),
             required, default(默认值字符串,必填为 None), json_serializable(可否直接传
             JSON 值), coercible(@dataclass+from_dict,可传 dict 自动反序列化)}``;
             ``debuggable``=所有必填参数是否可经 JSON 传入。

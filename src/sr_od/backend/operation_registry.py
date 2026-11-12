@@ -517,6 +517,14 @@ def validate_args(cls: type, args: dict) -> str | None:
     return None
 
 
+def _own_docstring(cls: type) -> str | None:
+    """取本类自己写的 docstring(不含继承),无则 None;``cleandoc`` 清惯例缩进。"""
+    raw = cls.__dict__.get('__doc__')
+    if not raw:
+        return None
+    return inspect.cleandoc(raw)
+
+
 def _describe_single(cls: type) -> dict:
     """单个 operation 类的参数 schema 反射描述(describe_operation 的单条主体)。"""
     params = _reflect_params(cls)
@@ -528,6 +536,11 @@ def _describe_single(cls: type) -> dict:
         'op_id': f'{cls.__module__}.{cls.__name__}',
         'class_name': cls.__name__,
         'module': cls.__module__,
+        # 本类 docstring 整段透传:远程使用者看不到源码,op 语义(做什么/起终点
+        # 画面/副作用/参数含义)对它的唯一来源就是这里。必须取 ``cls.__dict__``
+        # 而非 ``cls.__doc__``——后者沿 MRO 继承,本类未写时会把基类描述错安到
+        # 所有未写 docstring 的 op 头上。
+        'docstring': _own_docstring(cls),
         'params': [
             {
                 'name': p.name,
@@ -555,7 +568,8 @@ def describe_operation(ctx: 'SrContext', op_id: str) -> dict:
         op_id: 完整 op_id 或类名短名。
 
     Returns:
-        单命中: ``{op_id, class_name, module, params[], debuggable}``;``params[]``
+        单命中: ``{op_id, class_name, module, docstring, params[], debuggable}``;
+        ``docstring`` = 本类 docstring(未写为 None,不继承基类);``params[]``
         元素含 name/annotation/required/default/json_serializable/coercible。
         多命中: ``{ambiguous: True, count, matches[](每条同单命中结构), hint}``。
 
