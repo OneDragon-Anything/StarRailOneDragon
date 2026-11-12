@@ -11,6 +11,26 @@ pc_alt: false
 
 商店界面。**2026-11-12 UI 改版后为双层结构**:顶层 tab「推荐商店 / 常驻商店」;推荐商店挂商品推广页(列车补给凭证/开拓助力等直购商品),常驻商店挂兑换类子商店(星芒/余烬兑换、外观、星琼购买等)。真实货币购买(月卡/星琼)的入口都在这里。**不锁光标**(`pc_alt=false`)。
 
+**子商店/分类页全景(2026-11-12 中英双语实拍,详见 skills/sr-od-game-consume/references/跃迁抽卡.md §1.1 对照表)**:
+
+| 层级 | 中文 | 官方英文 | 备注 |
+|---|---|---|---|
+| 顶栏层 1 | 推荐商店 | Recommended Store | 商店默认落点;左侧栏商品项随版本轮换(寰宇美学/万象和鸣/开拓助力/特惠车票/专票礼盒/列车补给凭证) |
+| 顶栏层 2 | 常驻商店 | Permanent Store | 常驻内容 |
+| 常驻·左侧菜单 | 兑换商店 | Exchange Shop | **跃迁兑换链主战场**(跃迁页「Exchange」按钮直达,默认落星芒兑换 tab) |
+| 兑换商店·tab | 星芒兑换 | Starlight Exchange | 材料=未熄的星芒 Undying Starlight(来源 Warp);换票 20/张不限量 |
+| 兑换商店·tab | 余烬兑换 | Embers Exchange | 材料=未熄的余烬 Undying Embers(来源 Warp);换票 90/张月限 5 |
+| 兑换商店·tab | 星尘之礼 | Gift of Stardust | 材料=孤星明尘 Lone Stardust(异相仲裁产出);✗与跃迁无关 |
+| 兑换商店·tab | 光锥呈现 | Light Cone Manifest | 材料=流光余晖 Lucent Afterglow(忘却之庭/虚构叙事/末日幻影/历战余响产出) |
+| 兑换商店·tab | 戏言成真 | Jokes Come True | 材料=璧羽 Jade Feather(忘却之庭产出) |
+| 常驻·左侧菜单 | 聚灵铸星 | Stellar Convergence | — |
+| 常驻·左侧菜单 | 外观商店 | Cosmetic Store | — |
+| 常驻·左侧菜单 | 协议商店 | Contract Shop | — |
+| 常驻·左侧菜单 | 捕获梦华 | Oneiric Pouch | 古老梦华 Oneiric Shard 充值/查看 |
+| 常驻·左侧菜单 | 星琼购买 | Stellar Purchase | 真实货币,bot 不用 |
+
+**万象和鸣 Myriad Symphony**(推荐商店当前活动,2026-11-12 实拍):消耗**时装邀请函 Fashion Invites** 或 **星轨专票 Star Rail Special Pass** 获得**回响 Resonance**,累计领奖励(3200/1600 两档,奖励箱=奇缘星魂 Affinitive Eidolon)——**跃迁页顶部 N/3200 进度即本活动 Resonance 进度**(两处实拍互证)。⚠️ 易混:**星尘 Stardust(孤星明尘)≠ 星芒 Starlight(未熄的星芒)**,前者是异相仲裁产出的独立代币。
+
 > 2026-11-12 实机核对:本档为**新版 UI** 全量重写。旧版 UI(左上面包屑「商店/推荐」+ 左侧 7 入口平铺:推荐/列车补给/兑换商店/聚灵铸星/外观商店/协议商店/捕获梦华/星琼购买)已整体过期,对应旧 fixture(原 推荐/光锥呈现/戏言成真.webp)已换成新版实拍。
 
 ## 1. 何时出现 + 状态流转
