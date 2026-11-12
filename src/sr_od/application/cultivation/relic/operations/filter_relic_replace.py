@@ -104,6 +104,7 @@ def _expected_summary(attr_row_text: str) -> str:
 
 class FilterRelicReplaceOp(SrOperation):
     """把替换列表设到「目标部位 + 可选套装筛选 + 可选静态属性排序」。
+    起点:遗器-替换列表;终点:原画面(筛选条件已设置,不切屏)。
 
     结果状态:FILTER_SET(set_name 链完成)/SORT_SET(排序链完成)/NOOP(两参
     均空,仅保证部位正确的幂等空跑)。

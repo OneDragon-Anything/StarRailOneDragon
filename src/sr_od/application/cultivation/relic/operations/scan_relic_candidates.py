@@ -50,7 +50,8 @@ _BOTTOM_ROW_SPLIT_PX: int = 100
 
 
 class ScanRelicCandidatesOp(SrOperation):
-    """扫描当前视口的替换列表候选,产出逐卡词缀档案(JSON)。
+    """扫描当前视口的替换列表候选,产出逐卡词缀档案(JSON,经 data 返回)。
+    起点:遗器-替换列表(部位筛选正确);终点:原画面(纯读数,列表位置不变)。
 
     结果状态:SCANNED(data = ``{"pos", "candidates", "bottom_reached"}``;
     candidates 元素 = ``{cell, piece, set, pos_cn, level, owner, main, subs,

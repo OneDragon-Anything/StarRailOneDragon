@@ -44,7 +44,8 @@ _COUNT_OCR_SCALE: float = 3.0
 
 
 class ShopSwitchTabOp(SrOperation):
-    """在商店页切换余烬兑换 / 星芒兑换 tab。
+    """在商店页切换余烬兑换 / 星芒兑换 tab(特征商品锚验证到达)。
+    起点:商店页;终点:商店页·目标 tab 激活。
 
     切换验证用目标 tab 的特征商品锚(第一行第 4 列槽位,两 tab 内容互斥)——
     框架 until 模式:点 tab → 重入查锚 → 锚在即已在目标 tab(until_find 出现

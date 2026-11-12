@@ -45,7 +45,11 @@ def _area_hit(ctx: SrContext, screen, screen_name: str, area_name: str) -> bool:
 
 
 class BuyExpressSupplyPassOp(SrOperation):
-    """导航到列车补给凭证详情页,可选打开扫码支付弹窗。
+    """导航到列车补给凭证(小月卡)详情页,可选打开扫码支付弹窗摆付款码。
+    起点:任意可控画面;终点:凭证详情页(open_qr=False)/扫码支付弹窗已
+    打开且渠道就绪(open_qr=True,等用户扫码)。
+    副作用:open_qr=True 语义为发起购买(真实支付由用户扫码完成,bot 不代付);
+    False 为零消耗浏览。
 
     结果状态:
     - ``ON_PAGE``:已到详情页(open_qr=False,零消耗);

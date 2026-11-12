@@ -96,7 +96,9 @@ def _filter_candidates(matched: list[dict], allow_take_over: bool,
 
 
 class EquipRelicOp(SrOperation):
-    """为当前角色装备指定遗器(按单件名定位套装与部位),终点 = 遗器着装页。
+    """为当前角色装备指定遗器(按单件名定位套装与部位)。
+    起点:遗器-替换列表(部位筛选正确);终点:遗器着装页(目标件已装备,
+    套装效果读区含目标套装名核对)。
 
     结果状态:ALREADY_EQUIPPED(已装备,幂等成功)/ RELIC_EQUIPPED(替换完成,
     着装页套装效果读区含目标套装名核对)。

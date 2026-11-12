@@ -128,7 +128,10 @@ def _area_count_text(ctx: SrContext, screen, screen_name: str, area_name: str) -
 
 
 class ReadWarpStatusOp(SrOperation):
-    """导航到跃迁页并读取抽卡资产状态,可选回大世界收摊。
+    """导航到跃迁页并读取抽卡资产状态(池名/池类型/星琼/专票/星票/进度),
+    可选回大世界收摊,结果经运行结果 data 返回。
+    起点:任意可控画面;终点:大世界(back_to_world=True)/跃迁页(False)。
+    消耗:零 —— 只读不点消耗控件(高消耗画面下的零消耗承诺)。
 
     结果状态:
     - ``WARP_STATUS``:读数完成,``OperationResult.data`` 携带:

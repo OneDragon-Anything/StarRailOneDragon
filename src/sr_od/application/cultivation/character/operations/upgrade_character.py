@@ -50,7 +50,8 @@ _FARM_ROUNDS_MAX: int = 10
 
 
 class UpgradeCharacterOp(SrOperation):
-    """把当前角色升到晋阶上限(或材料耗尽),终点 = 详情 TAB 页面。
+    """把当前角色升到晋阶上限(或材料耗尽),消耗养成材料。
+    起点:角色-详情画面·详情 TAB·列表已收起;终点:角色-详情画面(详情 TAB)。
 
     结果状态:MAX_LEVEL(已到晋阶上限)/ MATERIAL_CAPPED(材料耗尽停在
     当前等级,结果文本带等级与消耗)。已满级起点直接成功(MAX_LEVEL)。

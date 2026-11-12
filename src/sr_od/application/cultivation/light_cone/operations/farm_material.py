@@ -74,7 +74,10 @@ _CATEGORY_STEM: dict[str, str] = {
 
 
 class FarmLightConeMaterialOp(SrOperation):
-    """把晋阶画面上第一个缺料材料跳转到副本并刷 times 次。
+    """在晋阶画面实读第一个缺料材料,经游戏内「获取途径」跳转副本并刷取。
+    起点:光锥-等级提升(材料栏可见);终点:副本战斗收尾状态
+    (UseTrailblazePower 终态)/无缺料或无可刷副本时停在原画面。
+    副作用:消耗开拓力(times × 副本单次消耗),调用方发起前须获用户同意。
 
     结果状态:FARMED(刷取完成)/ NO_LACKING(材料栏无缺料,无需刷取)/
     MATERIAL_NO_DUNGEON(缺料材料无可刷副本,途径均为掉落/合成类)。

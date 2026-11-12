@@ -47,7 +47,9 @@ _LEVEL_RE = re.compile(r'\+\s*(\d{1,2})')
 
 
 class EquipRelicEnhanceOp(SrOperation):
-    """把背包选中的遗器强化到满级/目标等级,终点 = 背包-遗器。
+    """把背包中已选中的遗器强化到满级/目标等级。
+    起点:背包-遗器(目标件已选中);终点:背包-遗器(强化完成)。
+    副作用:消耗遗器经验材料与信用点。
 
     结果状态:MAX_LEVEL(强化至满级)/ REACHED_TARGET(达 target_level 停) /
     ALREADY_MAX(起点已是满级件)。

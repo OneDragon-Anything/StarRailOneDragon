@@ -58,7 +58,8 @@ _FARM_ROUNDS_MAX: int = 10
 
 
 class UpgradeTraceOp(SrOperation):
-    """把目标主技能升到当前上限,终点 = 行迹 TAB 树态。
+    """把指定主技能(行迹)升到当前上限,消耗行迹材料。
+    起点:角色-行迹 TAB(树态);终点:角色-行迹 TAB(目标技能已升满或材料判停)。
 
     结果状态:MAX_LEVEL(已满,含起点即满)/ 升满当前上限 / MATERIAL_CAPPED
     (材料不足停在当前等级,日志带等级)。

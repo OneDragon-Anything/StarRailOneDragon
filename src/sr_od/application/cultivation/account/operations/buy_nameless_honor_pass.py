@@ -56,7 +56,11 @@ def _area_hit(ctx: SrContext, screen, screen_name: str, area_name: str) -> bool:
 
 
 class BuyNamelessHonorPassOp(SrOperation):
-    """导航到无名勋礼购买入口,可选点击购买打开付款弹窗。
+    """导航到无名勋礼(大月卡)购买入口,可选点击购买打开付款弹窗摆付款码。
+    起点:任意可控画面;终点:主面板购买入口可见(open_pay=False)/付款弹窗
+    已打开且渠道就绪(open_pay=True,等用户扫码)。
+    副作用:open_pay=True 语义为发起购买(真实支付由用户扫码完成,bot 不代付);
+    False 为零消耗浏览。
 
     结果状态:
     - ``AT_ENTRY``:已到主面板且未购买态购买入口可见(open_pay=False,零消耗);

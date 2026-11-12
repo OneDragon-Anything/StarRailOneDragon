@@ -50,7 +50,8 @@ _LC_FARM_ROUNDS_MAX: int = 10
 
 
 class UpgradeLightConeOp(SrOperation):
-    """把当前角色的光锥升到上限,终点 = 光锥 TAB 页面。
+    """把当前角色的光锥升到等级上限,消耗光锥养成材料。
+    起点:角色-光锥 TAB(列表浮层已收);终点:角色-光锥 TAB(升满或材料判停)。
 
     结果状态:LIGHT_CONE_CAPPED(光锥已到上限 / 材料不足停在当前等级,
     结果日志带等级)。已满级起点也归此状态(晋阶界面判「已提升至最高阶」

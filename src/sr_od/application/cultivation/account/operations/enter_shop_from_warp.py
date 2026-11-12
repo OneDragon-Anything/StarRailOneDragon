@@ -22,7 +22,8 @@ _SHOP_SCREEN: str = '商店'
 
 
 class EnterShopFromWarpOp(SrOperation):
-    """从跃迁页点「商店兑换」进入商店页。
+    """从跃迁页点「商店兑换」进入商店页(默认星芒兑换 tab)。
+    起点:跃迁页(单一职责,不做跨画面导航);终点:商店页。
 
     结果状态：
     - ``SHOP_OPENED``：商店页已打开（默认星芒兑换 tab）；

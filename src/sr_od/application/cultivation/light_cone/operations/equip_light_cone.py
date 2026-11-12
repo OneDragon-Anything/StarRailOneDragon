@@ -98,8 +98,10 @@ def _cone_col_centers(list_rect: Rect) -> list[float]:
 
 
 class EquipLightConeOp(SrOperation):
-    """在替换列表画面上为当前角色装备指定光锥,终点 = 光锥 TAB(读区已显示
-    目标光锥;点「替换」后游戏自动回 TAB)。
+    """在光锥-替换列表中找到指定光锥(模板识别+滚动扫描)并为当前角色装备。
+    起点:光锥-替换列表画面;终点:角色-光锥 TAB(目标光锥已装备,替换后
+    游戏自动回 TAB)。
+    副作用:改变角色配装(即时生效);allow_take_over=True 会抢走他人装备。
 
     结果状态:ALREADY_EQUIPPED(目标已装备当前角色,幂等成功)/
     LIGHT_CONE_EQUIPPED(替换完成)。
