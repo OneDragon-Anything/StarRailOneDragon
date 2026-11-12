@@ -50,10 +50,7 @@ VALID_PATHS = set(CAREER_TO_PATH.values())
 
 # wiki 尚未收录、但已有官方公告名的新词条(id/rarity/path 以公告为准;wiki 同步后自动转正)。
 # 2300x 段续排 tid 由客户端资产侧证实存在,skill/obtain 等词条数据以 wiki 上线为准。
-MANUAL_ENTRIES: list[dict] = [
-    {'cn': '当第一声「阿哈」响起', 'rarity': 5, 'path_id': 'elation',
-     'segment': '5 星·池内（2300x 段）', 'note': '4.7 阿哈专属光锥,官方公告名'},
-]
+MANUAL_ENTRIES: list[dict] = []
 
 _SEG_RE = re.compile(r'# ---- (.+?) ----')
 _NAME_RE = re.compile(r"name='(.+?)',")
