@@ -12,8 +12,10 @@
 - 逐件展示中点击转化卡面会误入角色详情页（养成系统既有屏「角色-详情」）——
   处理节点检测到即点其关闭按钮自愈。
 - 专票不足时游戏会弹星琼兑换确认（160 星琼/张，跃迁-兑换确认屏已建档）——
-  由「兑换确认闸」节点按 allow_jade_exchange 分流：授权点确认继续抽，
-  未授权点取消干净失败。兑换是追加消耗决策，传 True 前必须获用户明确授权。
+  由「兑换确认闸」节点按 allow_jade_exchange 分流；确认后星琼仍不足会**接着
+  弹古老梦华兑换确认**（1 梦华=1 星琼按需补差额，跃迁-梦华兑换屏已建档）——
+  按 allow_dream_exchange 分流。两者都是追加消耗决策，传 True 前必须获用户
+  明确授权；任一未授权则点取消干净失败。
 
 「结束抽卡」收摊（用户明示后）：跑 ReadWarpStatusOp {back_to_world: true}，
 其导航链从结果总览页/跃迁页回大世界。
@@ -33,6 +35,7 @@ from sr_od.screen_state.common_screen_state import is_normal_in_world
 _WARP_SCREEN: str = '跃迁'
 _WARP_SCREEN_RESULT: str = '跃迁-结果'
 _WARP_EXCHANGE_SCREEN: str = '跃迁-兑换确认'
+_WARP_DREAM_SCREEN: str = '跃迁-梦华兑换'
 _CHAR_DETAIL_SCREEN: str = '角色-详情'
 _WARP_RESULT_SUMMARY: str = '跃迁-结果总览'
 _NORMAL_WORLD: str = '大世界-普通'
@@ -58,7 +61,8 @@ class WarpOp(SrOperation):
     """
 
     def __init__(self, ctx: SrContext, times: int = WARP_TIMES_ONE,
-                 allow_jade_exchange: bool = False):
+                 allow_jade_exchange: bool = False,
+                 allow_dream_exchange: bool = False):
         """
         :param ctx: 上下文
         :param times: 跃迁次数，仅支持 1 / 10
@@ -66,9 +70,14 @@ class WarpOp(SrOperation):
             （160 星琼/张，游戏弹窗确认）。False = 点取消干净失败；True =
             点确认继续抽。**兑换是追加消耗决策，调用方必须先获用户明确授权**
             才能传 True。
+        :param allow_dream_exchange: 星琼也不足时是否允许使用古老梦华按需兑换
+            （1 星梦华=1 星琼，游戏二次弹窗确认）。False = 点取消干净失败。
+            **古老梦华只能充值/月卡类途径获取，部分玩家专门囤积兑换皮肤**——
+            消耗它同样必须先获用户明确授权。
         """
         self._times: int = times
         self._allow_jade_exchange: bool = allow_jade_exchange
+        self._allow_dream_exchange: bool = allow_dream_exchange
         self._clicked: bool = False
         """已点过跃迁按钮（结果处理节点据此分流：点前=点按钮，点后=关结果画面）"""
         SrOperation.__init__(self, ctx, op_name=gt('跃迁抽卡'),
@@ -117,33 +126,55 @@ class WarpOp(SrOperation):
     @node_from(from_name='点跃迁按钮', status='WARP_CLICKED')
     @operation_node(name='兑换确认闸')
     def exchange_gate(self) -> OperationRoundResult:
-        """票不足时游戏弹星琼兑换确认(160/张)——按授权分流。
+        """票不足的二级弹窗链，按授权逐级分流。
 
-        画面级判定(弹窗 id_mark=「星轨专票不足」+「确认」双锚)：
-        - 弹窗在：allow_jade_exchange=True 点确认继续抽；False 点取消
-          干净失败(退出后游戏停在跃迁页,无残留态)。
-        - 弹窗不在：票足已直接进抽卡动画,放行到结果处理。
+        - 一级「跃迁-兑换确认」（星轨专票不足，N 星琼买 M 张）：
+          allow_jade_exchange=True 点确认；False 点取消干净失败。
+        - 确认后星琼不足会**接着弹二级「跃迁-梦华兑换」**（古老梦华按需兑换）：
+          allow_dream_exchange=True 点确认继续抽；False 点取消干净失败。
+        - 两个弹窗都不在 = 票足直接进抽卡动画，放行。
 
-        点击必须带 press_time=0.1(游戏弹窗按钮对极短点击不响应,与结果画面
-        同款坑)——故不走 round_by_find_and_click_area(内部固定 press_time=0,
-        且其 until 曾被 OCR 偶发漏检误满足造成假成功),改为显式点击+手动
-        验证弹窗消失才算生效。
+        点击必须带 press_time=0.1（游戏弹窗按钮对极短点击不响应,与结果画面
+        同款坑）——显式点击+手动验证弹窗消失才算生效(框架 until 曾被 OCR
+        偶发漏检误满足造成假成功)。
         """
+        screen = self.check_and_update_current_screen(screen_name_list=[
+            _WARP_EXCHANGE_SCREEN, _WARP_DREAM_SCREEN])
+        if screen == _WARP_EXCHANGE_SCREEN:
+            if not self._allow_jade_exchange:
+                return self._click_and_verify_closed(_WARP_EXCHANGE_SCREEN, '按钮-取消',
+                                                     fail_status='票不足且未授权星琼兑换,已点取消(跃迁未执行)')
+            return self._click_and_verify_closed(_WARP_EXCHANGE_SCREEN, '按钮-确认',
+                                                 success_status='JADE_EXCHANGED', wait=2)
+        if screen == _WARP_DREAM_SCREEN:
+            if not self._allow_dream_exchange:
+                return self._click_and_verify_closed(_WARP_DREAM_SCREEN, '按钮-取消',
+                                                     fail_status='星琼不足且未授权古老梦华兑换,已点取消(跃迁未执行)')
+            return self._click_and_verify_closed(_WARP_DREAM_SCREEN, '按钮-确认',
+                                                 success_status='DREAM_EXCHANGED', wait=4)
+        return self.round_success(status='NO_EXCHANGE', wait=1)
+
+    def _click_and_verify_closed(self, screen_name: str, button: str,
+                                 success_status: str | None = None,
+                                 fail_status: str | None = None,
+                                 wait: float = 1.5) -> OperationRoundResult:
+        """点击弹窗按钮（press_time=0.1）并验证弹窗消失。
+
+        消失 → success_status 非 None 时返回 round_success（流转下一节点），
+        否则返回 round_fail（fail_status 即失败文案）；未消失 → round_retry。
+        """
+        area = self.ctx.screen_loader.get_area(screen_name, button)
+        self.ctx.controller.click(area.center, press_time=0.1)
         if self.check_and_update_current_screen(
-                screen_name_list=[_WARP_EXCHANGE_SCREEN]) != _WARP_EXCHANGE_SCREEN:
-            return self.round_success(status='NO_EXCHANGE', wait=1)
-        button = '按钮-确认' if self._allow_jade_exchange else '按钮-取消'
-        button_area = self.ctx.screen_loader.get_area(_WARP_EXCHANGE_SCREEN, button)
-        self.ctx.controller.click(button_area.center, press_time=0.1)
-        # 点了≠成了：弹窗文本消失才算点击生效
-        if self.check_and_update_current_screen(
-                screen_name_list=[_WARP_EXCHANGE_SCREEN]) != _WARP_EXCHANGE_SCREEN:
-            if self._allow_jade_exchange:
-                return self.round_success(status='EXCHANGED', wait=4)
-            return self.round_fail('票不足且未授权星琼兑换,已点取消(跃迁未执行)')
-        return self.round_retry('兑换弹窗点击未生效,重试', wait=1.5)
+                screen_name_list=[screen_name]) != screen_name:
+            if success_status is not None:
+                return self.round_success(status=success_status, wait=wait)
+            return self.round_fail(status=fail_status)
+        return self.round_retry('弹窗点击未生效,重试', wait=1.5)
 
     @node_from(from_name='兑换确认闸', status='EXCHANGED')
+    @node_from(from_name='兑换确认闸', status='JADE_EXCHANGED')
+    @node_from(from_name='兑换确认闸', status='DREAM_EXCHANGED')
     @node_from(from_name='兑换确认闸', status='NO_EXCHANGE')
     @operation_node(name='处理结果画面', node_max_retry_times=80)
     def handle_result(self) -> OperationRoundResult:
