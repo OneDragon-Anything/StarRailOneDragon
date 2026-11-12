@@ -84,15 +84,17 @@ test_shop_buy_goods 流程测试素材)"""
 _LIST_Y_MIN: int = 110
 """卡顶反推的合理上界(列表区上沿之上视为异帧残留,拒绝)"""
 # 卡左上角限额角标区(「可兑换 X/Y」/「已达上限」/「已售罄」/「未解锁」),
-# 按卡槽 rect 推演;窗口不盖住角标下方的倒计时文本框
-_BADGE_OFFSET: tuple[int, int, int, int] = (5, 8, 175, 52)
+# 按卡槽 rect 推演;角标为悬挂样式(文字框左缘超出卡左缘约 25px,实拍标定),
+# x1 需左移容纳;窗口 y 不盖住角标下方的倒计时文本框
+_BADGE_OFFSET: tuple[int, int, int, int] = (-25, 8, 175, 52)
 _SCROLL_STEP: int = 300
 """单次滚动拖距(px),行高 325 且列表按行吸附,300 拖距吸附 1 行,连续帧
 至少完整露出一行商品,不漏扫"""
 _SCROLL_MAX_ROUNDS: int = 12
 """滚动找商品的保险上限(余烬页约 10 行),防列表异常时无限拖"""
-_SCROLL_SAME_TEXT_ROUNDS: int = 1
-"""拖后画面文本与上轮一致的连续次数判定到底(行吸附列表拖后无变化 = 到底)"""
+_SCROLL_SAME_TEXT_ROUNDS: int = 2
+"""拖后画面文本与上轮一致的连续轮数判定到底(行吸附列表拖后无变化 = 到底;
+连续 2 轮防拖拽动画过渡帧/轮间时序导致的单轮同帧误判)"""
 _NAME_MATCH_LCS: float = 0.6
 """商品名 OCR 兜底相似度(LCS 占关键词长度比);主判据为包含"""
 
@@ -257,6 +259,8 @@ class ExchangeShopBuyGoods(SrOperation):
         """目标商品卡槽位(列表页坐标;弹窗打开期间列表不滚动,坐标恒稳)"""
         self._last_scan_text: str | None = None
         """上一轮列表区 OCR 全文(拖后一致判到底)"""
+        self._same_text_rounds: int = 0
+        """全文与上轮一致的连续轮数(达 _SCROLL_SAME_TEXT_ROUNDS 判到底)"""
         self._scroll_rounds: int = 0
         """已执行滚动次数(保险上限)"""
         self._last_pull_count: int | None = None
@@ -319,12 +323,16 @@ class ExchangeShopBuyGoods(SrOperation):
             return self.round_success(status='POPUP_OPENED', wait=1)
         card_rect, full_text = self._scan_goods(self.last_screenshot)
         if card_rect is None:
+            if full_text == self._last_scan_text:
+                self._same_text_rounds += 1
+            else:
+                self._same_text_rounds = 0
+                self._last_scan_text = full_text
             if (self._scroll_rounds > 0
-                    and full_text == self._last_scan_text):
+                    and self._same_text_rounds >= _SCROLL_SAME_TEXT_ROUNDS):
                 return self.round_fail(
                     f'列表已到底,未找到商品 {self._goods_cn}({self._goods_cn} '
                     f'可能未在售或本期额度形态变化)')
-            self._last_scan_text = full_text
             if not self._scroll_search:
                 return self.round_fail(
                     f'首屏未找到商品 {self._goods_cn}(scroll_search=False 不滚动)')
@@ -373,7 +381,7 @@ class ExchangeShopBuyGoods(SrOperation):
             keyword, status = status_bar
             self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
             return self.round_fail(
-                f'弹窗出现不可购横条「{keyword}」,已点取消', status=status)
+                f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
         current: int | None = parse_count(
             self._area_count_text(self.last_screenshot, _POPUP_SCREEN, _AREA_COUNT))
         if current is None:
@@ -450,7 +458,7 @@ class ExchangeShopBuyGoods(SrOperation):
                 keyword, status = status_bar
                 self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
                 return self.round_fail(
-                    f'弹窗出现不可购横条「{keyword}」,已点取消', status=status)
+                    f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
             self._click_area_center(_POPUP_SCREEN, _AREA_CONFIRM)
             return self.round_retry('确认未生效,弹窗仍在,重点确认', wait=1.5)
         if self.check_and_update_current_screen(

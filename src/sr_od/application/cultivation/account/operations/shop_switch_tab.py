@@ -4,8 +4,12 @@
 Undying Starlight:换票 20 星芒/张,不限量);余烬兑换 tab 是光锥转化
 材料页(「未熄的余烬」,官方英文 Undying Embers:换票 90 余烬/张,
 **每月限量 5 张**)。
-两个 tab 的商品第一行第 4 列槽位内容不同,以此作为切换验证锚:
-- 余烬兑换页 = 「冒险记录 ×2」;星芒兑换页 = 「银河铁道之夜」。
+
+切换验证锚 = 目标 tab 的**选中态模板**(选中 tab 白亮字、未选中灰字,
+模板按颜色可区分)——旧方案「第 1 行第 4 列槽位商品互斥文本」已废弃:
+版本内商品增删会把卡片挤后移(实测 2026-11-12 该槽位从冒险记录变为
+凝缩以太),商品文本锚随列表内容漂移;tab 选中态是页面结构元素,
+与商品列表内容无关。实机证实切 tab 后商品列表自动回顶。
 
 入口从跃迁页进商店见 [EnterShopFromWarpOp](enter_shop_from_warp.py)。
 """
@@ -34,22 +38,27 @@ TAB_STARLIGHT: str = 'starlight'
 _ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT}
 
 _TAB_AREA: dict[str, str] = {TAB_EMBERS: 'tab-余烬兑换', TAB_STARLIGHT: 'tab-星芒兑换'}
-_ANCHOR_AREA: dict[str, str] = {TAB_EMBERS: '文本-冒险记录', TAB_STARLIGHT: '文本-银河铁道之夜'}
+_ANCHOR_AREA: dict[str, str] = {
+    TAB_EMBERS: 'tab-余烬兑换-选中',
+    TAB_STARLIGHT: 'tab-星芒兑换-选中',
+}
 
 _AREA_CURRENCY: str = '读区-货币数量'
-_AREA_TICKET_TIMES: str = '读区-专票兑换次数'
+_AREA_FIRST_SLOT_MONTHLY: str = '读区-首列月限角标'
+"""第 1 行第 1 列商品卡的「可兑换 X/5」月限角标(余烬页首列=月限商品;
+实机证实月限商品换光后从首列移到列表末尾,该角标读数随首列商品变化,
+仅作切换后读数参考,不作硬校验)"""
 
 _COUNT_OCR_SCALE: float = 3.0
 """数量型 area 的 OCR 放大倍数(单字符数字兜底,同 ReadWarpStatusOp 口径)"""
 
 
 class ShopSwitchTabOp(SrOperation):
-    """在商店页切换余烬兑换 / 星芒兑换 tab(特征商品锚验证到达)。
-    起点:商店页;终点:商店页·目标 tab 激活。
+    """在商店页切换余烬兑换 / 星芒兑换 tab。
 
-    切换验证用目标 tab 的特征商品锚(第一行第 4 列槽位,两 tab 内容互斥)——
-    框架 until 模式:点 tab → 重入查锚 → 锚在即已在目标 tab(until_find 出现
-    型,偶发漏检只会多一次无害点击,无假满足风险)。
+    切换验证用目标 tab 的选中态模板(见模块 docstring)——框架 until 模式:
+    点 tab → 重入查锚 → 锚在即已在目标 tab(until_find 出现型,偶发漏检
+    只会多一次无害点击,无假满足风险)。
 
     结果状态:
     - ``EMBERS_TAB`` / ``STARLIGHT_TAB``:目标 tab 已切换完成;
@@ -69,10 +78,10 @@ class ShopSwitchTabOp(SrOperation):
 
     @operation_node(name='切换兑换页', is_start_node=True)
     def switch_tab(self) -> OperationRoundResult:
-        """校验目标合法后点目标 tab,until 特征商品锚出现。"""
+        """校验目标合法后点目标 tab,until 选中态模板锚出现。"""
         if self._tab not in _ALLOWED_TABS:
-            return self.round_fail(f'不支持的 tab: {self._tab}(仅支持 embers/starlight)',
-                                   status='STAY_ENTRY')
+            return self.round_fail(
+                f'不支持的 tab(STAY_ENTRY): {self._tab}(仅支持 embers/starlight)')
         if self.check_and_update_current_screen(
                 screen_name_list=[_SHOP_SCREEN]) != _SHOP_SCREEN:
             return self.round_fail('起点不在商店页,请先经 EnterShopFromWarpOp 进入')
@@ -91,11 +100,12 @@ class ShopSwitchTabOp(SrOperation):
     @node_from(from_name='切换兑换页', status='STARLIGHT_TAB')
     @operation_node(name='收尾')
     def finish(self) -> OperationRoundResult:
-        """终点节点:余烬兑换 tab 附带读数(余烬数量+专票月限剩余次数)入 data。
+        """终点节点:附带读数(货币数量+首列月限角标)入 data。
 
-        余烬数量用两层取数(全图过滤→3 倍放大兜底,个位数兜底,同
-        ReadWarpStatusOp);「可兑换:5/5」为星轨专票月限剩余(90 余烬/张,
-        每月 5 张)。星芒兑换 tab 无专票月限商品,只返回货币数量。
+        货币数量用两层取数(全图过滤→3 倍放大兜底,个位数兜底,同
+        ReadWarpStatusOp);首列月限角标「可兑换：X/Y」格式:分子=本期限
+        剩余次数,分母=月限总量;get_positive_digits 对「5/5」会取成 55,
+        须用斜杠对正则分别取值。星芒页首列无月限商品,角标读数为 None。
         """
         tab = 'EMBERS_TAB' if self._tab == TAB_EMBERS else 'STARLIGHT_TAB'
         data: dict = {
@@ -103,17 +113,14 @@ class ShopSwitchTabOp(SrOperation):
             'material_count': parse_count(self._area_count_text(
                 self.last_screenshot, _SHOP_SCREEN, _AREA_CURRENCY)),
         }
-        if self._tab == TAB_EMBERS:
-            ticket_text = self._area_text(self.last_screenshot,
-                                          _SHOP_SCREEN, _AREA_TICKET_TIMES)
-            data['ticket_exchange_times'] = ticket_text
-            # 「可兑换：5/5」格式:分子=本月剩余次数,分母=月限总量;get_positive_digits
-            # 对「5/5」会取成 55,须用斜杠对正则分别取值
-            if ticket_text is not None:
-                m = re.search(r'(\d+)\s*/\s*(\d+)', ticket_text)
-                if m is not None:
-                    data['ticket_exchange_left'] = int(m.group(1))
-                    data['ticket_exchange_total'] = int(m.group(2))
+        monthly_text = self._area_text(self.last_screenshot,
+                                       _SHOP_SCREEN, _AREA_FIRST_SLOT_MONTHLY)
+        data['first_slot_monthly_text'] = monthly_text
+        if monthly_text is not None:
+            m = re.search(r'(\d+)\s*/\s*(\d+)', monthly_text)
+            if m is not None:
+                data['first_slot_monthly_left'] = int(m.group(1))
+                data['first_slot_monthly_total'] = int(m.group(2))
         return self.round_success(status=tab, data=data, wait=0.5)
 
     def _area_text(self, screen, screen_name: str, area_name: str) -> str | None:
