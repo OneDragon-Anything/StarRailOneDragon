@@ -1,6 +1,17 @@
-{
+"""官方 wiki 角色映射(内嵌替代原 characters-full.json,2026-11-12 废除中间 JSON)。
+
+数据 = 米游社百科角色频道快照:数字 avatarId → 中文名/英文名/命途/属性/星级/
+wiki content_id(hoyowiki_page_id 为国际服互连 id)。source=unmapped 条目为占位
+(未连上 wiki 的 avatarId)。消费方 = 同目录三脚本(fetch_character_details /
+gen_character_details / align_character_ids);非项目运行时依赖(运行时 avatarId
+映射在 src/sr_od/config/character_const.py 的 Character.avatar_id)。
+
+刷新:新角色手工加条目(或重跑外部合并管线后回填),跑 align_character_ids.py 对账验证。
+"""
+
+WIKI_CHARACTERS: dict = {
  "999": {
-  "cn": null,
+  "cn": None,
   "source": "unmapped"
  },
  "1001": {
@@ -365,9 +376,9 @@
  },
  "1211": {
   "cn": "白露",
-  "path": null,
-  "element": null,
-  "rarity": null,
+  "path": None,
+  "element": None,
+  "rarity": None,
   "feature_char": "bailu",
   "source": "snapshot-fallback",
   "en": "Bailu",
@@ -431,9 +442,9 @@
  },
  "1218": {
   "cn": "椒丘",
-  "path": null,
-  "element": null,
-  "rarity": null,
+  "path": None,
+  "element": None,
+  "rarity": None,
   "feature_char": "jiaoqiu",
   "source": "snapshot-fallback",
   "en": "Jiaoqiu",

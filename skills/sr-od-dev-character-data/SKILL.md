@@ -18,7 +18,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 - 接口细节(域名/参数/字段位置/已知坑)见 sr-od-dev-official-api `references/characters.md`,本文不重复。
 - 运行方式:项目根目录 `uv run python <脚本路径>`(official-api 两个脚本仅标准库;本 skill 脚本需 `PYTHONPATH=src`)。
 - **收录判据**:关键字段齐全才收录;空壳词条(有页面无 avatarId)、占位(avatarId=0)、前瞻未实装(详情行迹**模块名**带「前瞻」,正文提及不算)一律不录。
-- 权威表快照随仓分发(`references/characters-full.json`,数字 ID ↔ 中文名/英文名/命途/属性/星级),是各脚本与人工对账的锚;刷新合并是可选动作(合并管线不在本仓维护),不刷不影响按列表录入。
+- **wiki 映射内嵌于脚本**(2026-11-12 起废除中间权威表 JSON):数字 ID ↔ 中文名/英文名/命途/属性/星级的映射在 `scripts/_wiki_map.py`(WIKI_CHARACTERS dict),是各脚本与人工对账的锚;新角色手工加条目,跑 `align_character_ids.py` 对账验证;不刷不影响按列表录入。
 
 ## 2. 按角色列表更新项目代码文件
 
@@ -50,7 +50,7 @@ description: 维护崩坏:星穹铁道「角色数据」全流程的单一入口
 - **technique_type**(读秘技描述分类,决定战斗 op 先放秘技还是先攻击):直接攻击无增益 → `TECHNIQUE_ATTACK`;获得持续增益不攻击 → `TECHNIQUE_BUFF`;部署持续领域 → `TECHNIQUE_AREA`;增益由攻击触发或强化攻击 → `TECHNIQUE_BUFF_ATTACK`;同上且攻击后消失 → `TECHNIQUE_BUFF_ATTACK_DISAPPEAR`。拿不准就对比同型既有角色。
 - **buff_lasting_seconds**:秘技增益持续秒数;描述明确给秒数按描述,常驻类填 999(先例 ruanmei),拿不准用默认 20。
 - **注册点**:CHARACTER_LIST 追加末尾(按实装顺序);SPECIAL_ATTACK_CHARACTER_LIST 仅当非输出命途但玩法 op 需当攻击位才加(先例 KAFKA、ACHERON),无消费方不加。
-- **对齐链**:`avatarId ↔ 权威表(references/characters-full.json,键 en_normalized == Character.id) ↔ 模板目录名`。消费方:`src/sr_od/config/avatar_templates.py`(模板链,目录名直连)、`src/sr_od/mys/sr_character_details.py` 与 `src/sr_od/backend/mcp/character_tools.py`(数字 id 链)。例外:开拓者 8001-8010 奇数男(caelum_*)偶数女(stelle_*)按命途配对;三月七 1224 官方名「仙舟三月七」无独立英文名 → march7th_hunt;同名多形态禁止裸中文名连表。
+- **对齐链**:`avatarId ↔ 本 skill scripts/_wiki_map.py(键 en_normalized == Character.id) ↔ 模板目录名`。消费方:`src/sr_od/config/avatar_templates.py`(模板链,目录名直连)、`src/sr_od/mys/sr_character_details.py` 与 `src/sr_od/backend/mcp/character_tools.py`(数字 id 链)。例外:开拓者 8001-8010 奇数男(caelum_*)偶数女(stelle_*)按命途配对;三月七 1224 官方名「仙舟三月七」无独立英文名 → march7th_hunt;同名多形态禁止裸中文名连表。
 
 ## 附录 B. 皮肤头像模板 id 定义
 

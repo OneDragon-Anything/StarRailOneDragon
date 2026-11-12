@@ -25,7 +25,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 
 > 数据源优先级：**MCP 常量查询【官：固化自官方 wiki 快照，随项目版本更新】≈ 百科官方表【官】> 视频实证【攻：B站+BV号】> 推导口径【攻】**；数值一律满级；装备推荐是条件式（按阵容选择）。
 >
-> **基础信息查询走 MCP（优先）**：角色定义/行迹满级/星魂效果 → `character_lookup`；光锥（星级/命途/特效全文/获取）→ `cone_lookup`；遗器套装（效果/单件/部位）→ `relic_lookup`。均为零 IO 常量查询，不需要登录；模糊多命中返回候选，用官方全名精确查。MCP 不可用时兜底：`references/data/` 快照与 `mechanics/` 速查表。
+> **基础信息查询走 MCP（优先）**：角色定义/行迹满级/星魂效果 → `character_lookup`；光锥（星级/命途/特效全文/获取）→ `cone_lookup`；遗器套装（效果/单件/部位）→ `relic_lookup`。均为零 IO 常量查询，不需要登录；模糊多命中返回候选，用官方全名精确查。MCP 不可用时兜底：官方 wiki API 直查（`sr-od-dev-official-api`）与 `mechanics/` 速查表。
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
@@ -35,7 +35,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 | **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
 | **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
 | **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
-| **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；角色页推荐表与刷新流程 `references/data/README.md`（基础信息已走 MCP，兜底走官方 wiki API） |
+| **知识库维护** | 新版本更新/补档/调研 | `maintenance/`（templates 写档/methodology 经验/research-status 对账）；角色页推荐重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
 
 **红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
 

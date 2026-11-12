@@ -3,7 +3,7 @@
 ## 1. 分层
 
 - **常量层(公开仓,唯一权威载体)**:`src/sr_od/mys/sr_relic_sets.py`——名称域(中文名/件名/效果/描述/获取途径)+ 套装英文 id。用户裁定:禁 JSON 数据文件、数据写代码;新增条目人工审阅后手工维护。
-- **权威表(公开 skill)**:`skills/sr-od-dev-relic-data/references/relics-full.json`——wiki 侧连接数据(content_id/page_id/英文名/别名/来源)与 id 的对照;常量是数据本体,权威表是 wiki 管道的连接件。
+- **对账报告(公开 skill 脚本)**:`scripts/build_relic_authority_table.py` 直接对账常量与双 wiki 缓存,stdout 报告(零落盘);常量是数据本体,脚本是 wiki 管道与常量之间的对账连接件。
 - **编号映射(本机私有)**:图标编号↔名称映射、图标导出与转档;公开仓只知「有这个映射」,不知内容。
 
 ## 2. 挂接架构(id 中枢)

@@ -4,7 +4,7 @@
 - 角色行迹:data.points[]——tag/name/tableData(等级表,末行=满级)/subList(分段描述 HTML)
 - 角色星魂:data.richText——HTML 表格,剥标签提取【N】名称+效果描述
 
-输入:随仓权威表 characters-full.json(wiki_content_id → 数字 avatarId)
+输入:同目录 _wiki_map.py 内嵌映射(wiki_content_id → 数字 avatarId)
     + game-coach character_full_list.json(含重复形态,交叉补齐)
 输出:.debug/game_data/character/wiki/char_details.json —— {content_id: {name, traces[], eidolons[]}}
       (拉取缓存统一落 .debug/game_data/<域>/,旁置 fetched_at.txt 记本次拉取时间)
@@ -15,9 +15,11 @@ import time
 from pathlib import Path
 
 import requests
+from _wiki_map import (
+    WIKI_CHARACTERS,  # noqa: E402  同目录内嵌映射(sys.path[0] = 脚本目录)
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 LIST_URL = ('https://act-api-takumi-static.mihoyo.com/common/blackboard/sr_wiki/v1/home/'
               'content/list?app_sn=sr_wiki&channel_id=18&lang=zh-cn')
 OUT_FILE = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'wiki' / 'char_details.json'
@@ -145,7 +147,7 @@ def fetch_detail(content_id: int) -> dict:
 
 def main() -> int:
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    auth = json.loads(AUTH.read_text(encoding='utf-8'))
+    auth = WIKI_CHARACTERS
     known_cids = {info.get('wiki_content_id') for info in auth.values()}
     entries = fetch_list()
     # 权威表缺失的词条当场提示(版本更新新角色未入表时第一时间可见),不中断抓取

@@ -44,7 +44,7 @@ def normalize_cn(title: str) -> str:
 
 def normalize_en(name: str) -> str:
     """官方英文名 → 项目 Character.id 风格建议值:仅保留字母数字(小写)。
-    口径对齐 references/characters-full.json 现表:"Topaz & Numby "→topaznumby、
+    口径对齐 sr-od-dev-character-data scripts/_wiki_map.py 现表:"Topaz & Numby "→topaznumby、
     "Trailblazer: Elation"→trailblazerelation——符号一律剥离,不枚举符号集。"""
     return re.sub(r'[^a-z0-9]', '', name.lower())
 

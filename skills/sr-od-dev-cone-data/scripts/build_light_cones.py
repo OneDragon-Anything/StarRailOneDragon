@@ -1,18 +1,26 @@
-"""权威表 + wiki 详情 → src/sr_od/mys/sr_light_cones.py 常量模块生成。
+"""光锥管道单脚本:wiki 双缓存 → 直接产出 src/sr_od/mys/sr_light_cones.py 常量模块。
 
-输入:
-  references/cones-full.json                    (build_cone_authority_table.py 产物)
-  .debug/game_data/cone/wiki/cone_details_cn.json    (fetch_sr_wiki_cone_list.py 产物)
+中间权威表 JSON 已废除(2026-11-12):原 build/gen 两步经 cones-full.json 中转,
+现合并为单脚本内存传递,skill 仓里只留「脚本 + 脚本直接产出的常量模块」。
+对账锚 = git 历史常量版本:重生成后 diff 现模块,冻结纪律保证已有词条不动、
+漂移仅报告人工核对。
+
+输入(拉取缓存,先跑同目录两个 fetch 脚本刷新):
+  .debug/game_data/cone/wiki/cone_details_cn.json      (fetch_sr_wiki_cone_list.py 产物)
+  .debug/game_data/cone/wiki/hoyowiki_cone_en_names.json (fetch_hoyowiki_cone_en_names.py 产物)
+  src/sr_od/mys/sr_light_cones.py                  (文本解析,取条目顺序与分段;兼冻结源)
+
 产出:src/sr_od/mys/sr_light_cones.py(完整模块,含 id 字段)。
 
 纪律:
 - 数据块禁手改(单一源 = 官方 wiki,修正走重新生成);
-- manual 行(source=manual,无 wiki 词条)跳过不生成,等 wiki 上线后随 diff 进模块;
+- manual 行(官方公告占位,wiki 未收录)跳过不生成,等 wiki 上线后随 diff 进模块;
+- 已有词条 obtain/skill 冻结保留(wiki 侧存在编辑损坏),文本漂移仅报告人工核对;
 - 生成后人工审阅 diff:skill/obtain 文本与旧模块的漂移要逐条过目(wiki 侧回改)。
 
 校验:名称唯一 / id 唯一且仅小写字母数字(允许空串=国际服未同步) / 星级与命途枚举 /
 图标归档缺失仅警告(归档走图标工序,不阻塞生成)。
-项目根目录运行:uv run python skills/sr-od-dev-cone-data/scripts/gen_light_cones.py
+项目根目录运行:uv run python skills/sr-od-dev-cone-data/scripts/build_light_cones.py
 """
 import json
 import re
@@ -24,13 +32,57 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-TABLE = Path(__file__).resolve().parent.parent / 'references' / 'cones-full.json'
 DETAILS = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'cone_details_cn.json'
-OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_light_cones.py'
+EN_NAMES = PROJECT_ROOT / '.debug' / 'game_data' / 'cone' / 'wiki' / 'hoyowiki_cone_en_names.json'
+MODULE = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_light_cones.py'
+OUT = MODULE
 TEMPLATE_DIR = PROJECT_ROOT / 'assets' / 'template' / 'light_cone_icon'
 
-VALID_PATHS = {'destruction', 'preservation', 'hunt', 'abundance', 'nihility',
-               'erudition', 'harmony', 'remembrance', 'elation'}
+CN_NORM = str.maketrans({'•': '·', '・': '·', '．': '.', ' ': '', '\u3000': ''})
+
+CAREER_TO_PATH = {
+    '存护': 'preservation', '智识': 'erudition', '巡猎': 'hunt', '同谐': 'harmony',
+    '毁灭': 'destruction', '丰饶': 'abundance', '虚无': 'nihility',
+    '记忆': 'remembrance', '欢愉': 'elation',
+}
+
+VALID_PATHS = set(CAREER_TO_PATH.values())
+
+# wiki 尚未收录、但已有官方公告名的新词条(id/rarity/path 以公告为准;wiki 同步后自动转正)。
+# 2300x 段续排 tid 由客户端资产侧证实存在,skill/obtain 等词条数据以 wiki 上线为准。
+MANUAL_ENTRIES: list[dict] = [
+    {'cn': '当第一声「阿哈」响起', 'rarity': 5, 'path_id': 'elation',
+     'segment': '5 星·池内（2300x 段）', 'note': '4.7 阿哈专属光锥,官方公告名'},
+]
+
+_SEG_RE = re.compile(r'# ---- (.+?) ----')
+_NAME_RE = re.compile(r"name='(.+?)',")
+_FROZEN_RE = re.compile(
+    r"name='(?P<name>[^']*)',\n"
+    r"        rarity=\d+,\n"
+    r"        path_id='[a-z]+',\n"
+    r"        obtain='(?P<obtain>[^']*)',\n"
+    r"        skill='(?P<skill>[^']*)',")
+_TAG_RE = re.compile(r'<[^>]+>')
+
+
+def parse_module_order() -> list[dict]:
+    """模块文本 → [{name, segment, order}](按出现序)。"""
+    rows: list[dict] = []
+    segment = ''
+    for line in MODULE.read_text(encoding='utf-8').splitlines():
+        mc = _SEG_RE.search(line)
+        if mc:
+            segment = mc.group(1).strip()
+            continue
+        mc = _NAME_RE.search(line)
+        if mc:
+            rows.append({'name': mc.group(1), 'segment': segment, 'order': len(rows)})
+    return rows
+
+
+def norm_cn(name: str) -> str:
+    return name.translate(CN_NORM).lower()
 
 
 def py_str(text: str) -> str:
@@ -42,34 +94,96 @@ def plain_text(raw: str) -> str:
     """wiki skill/obtain 文本归一化:逐标签转空格(【】梯度两侧空格即由此而来)+
     HTML 实体解码+空白折叠。结构化词条(纯文本)经此为恒等变换,旧模板 HTML 词条
     剥后与结构化词条同构。"""
-    text = re.sub(r'<[^>]+>', ' ', raw)
+    text = _TAG_RE.sub(' ', raw)
     text = unescape(text)
     return re.sub(r'\s+', ' ', text).strip()
-
-
-_FROZEN_RE = re.compile(
-    r"name='(?P<name>[^']*)',\n"
-    r"        rarity=\d+,\n"
-    r"        path_id='[a-z]+',\n"
-    r"        obtain='(?P<obtain>[^']*)',\n"
-    r"        skill='(?P<skill>[^']*)',")
 
 
 def parse_frozen_texts() -> dict[str, dict[str, str]]:
     """现模块 → {名称: {obtain, skill}}(转义原文,回写时原样复用不做二次转义)。"""
     frozen: dict[str, dict[str, str]] = {}
-    for m in _FROZEN_RE.finditer(OUT.read_text(encoding='utf-8')):
+    for m in _FROZEN_RE.finditer(MODULE.read_text(encoding='utf-8')):
         frozen[m['name']] = {'obtain': m['obtain'], 'skill': m['skill']}
     return frozen
 
 
+def build_table(details: dict[str, dict], en_map: dict[str, dict]) -> tuple[dict[str, dict], list[str]]:
+    """wiki 详情 × intl 英文名 × 模块排序 → 权威表(内存) + 问题清单。"""
+    module_rows = parse_module_order()
+    table: dict[str, dict] = {}
+    problems: list[str] = []
+    used_cids: set[str] = set()
+    for row in module_rows:
+        key = norm_cn(row['name'])
+        cid = next((cid for cid, r in details.items() if r.get('title') == row['name']), None)
+        record = details.get(cid) if cid is not None else None
+        if record is None:
+            problems.append(f'{row["name"]}: wiki 详情缺失')
+            continue
+        used_cids.add(cid)
+        en_row = en_map.get(key)
+        career = record.get('career') or ''
+        if career not in CAREER_TO_PATH:
+            problems.append(f'{row["name"]}: 未知命途 {career!r}')
+            continue
+        rate_digits = re.sub(r'[^0-9]', '', record.get('rate') or '')
+        if rate_digits not in ('3', '4', '5'):
+            problems.append(f'{row["name"]}: 未知星级 {record.get("rate")!r}')
+            continue
+        table[key] = {
+            'cn': row['name'],
+            'en': en_row['en'] if en_row else '',
+            'id': en_row['en_normalized'] if en_row else '',
+            'rarity': int(rate_digits),
+            'path_id': CAREER_TO_PATH[career],
+            'wiki_content_id': int(cid),
+            'hoyowiki_page_id': en_row['hoyowiki_page_id'] if en_row else None,
+            'order': float(row['order']),
+            'segment': row['segment'],
+            'source': 'wiki',
+        }
+
+    # 人工登记行:仅占 wiki 未收录的键;wiki 同步后同键自动被 wiki 行覆盖
+    for manual in MANUAL_ENTRIES:
+        key = norm_cn(manual['cn'])
+        if key in table:
+            problems.append(f'人工行 {manual["cn"]}: wiki 已收录,删除 MANUAL_ENTRIES 该行')
+            continue
+        seg_max = max((r['order'] for r in table.values() if r['segment'] == manual['segment']),
+                      default=-1)
+        table[key] = {
+            'cn': manual['cn'], 'en': '', 'id': '', 'rarity': manual['rarity'],
+            'path_id': manual['path_id'], 'wiki_content_id': None,
+            'hoyowiki_page_id': None, 'order': seg_max + 0.5,
+            'segment': manual['segment'], 'source': 'manual',
+            'note': manual.get('note', ''),
+        }
+
+    unused = sorted(set(details) - used_cids)
+    if unused:
+        problems.append(f'wiki 详情未被模块引用: {[details[c]["title"] for c in unused]}')
+
+    id_vals = [r['id'] for r in table.values() if r['id']]
+    dup = {v for v in id_vals if id_vals.count(v) > 1}
+    if dup:
+        problems.append(f'id 重复: {sorted(dup)}')
+    return table, problems
+
+
 def main() -> int:
-    table: dict[str, dict] = json.loads(TABLE.read_text(encoding='utf-8'))
     details: dict[str, dict] = json.loads(DETAILS.read_text(encoding='utf-8'))
+    en_map: dict[str, dict] = json.loads(EN_NAMES.read_text(encoding='utf-8'))
+    print(f'wiki 详情 {len(details)} 条 / intl 互连 {len(en_map)} 条')
+
+    table, build_problems = build_table(details, en_map)
+    n_en = sum(1 for r in table.values() if r['en'])
+    n_manual = sum(1 for r in table.values() if r['source'] == 'manual')
+    print(f'权威表(内存) {len(table)} 条(en 已回填 {n_en},manual {n_manual})')
+
     frozen = parse_frozen_texts()
 
     rows = sorted(table.values(), key=lambda r: r['order'])
-    problems: list[str] = []
+    problems = list(build_problems)
     skipped_manual: list[str] = []
     drift: list[str] = []
     fresh_names: list[str] = []
@@ -130,8 +244,7 @@ def main() -> int:
     lines.append('固化语义：obtain/skill 文本固化后本模块即唯一权威载体——重生成时已有词条')
     lines.append('冻结保留（wiki 侧存在编辑损坏，漂移由生成器报告供人工核对），wiki 只喂新增。')
     lines.append('')
-    lines.append('id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki；')
-    lines.append('权威表随仓分发（sr-od-dev-cone-data skill references/cones-full.json）。')
+    lines.append('id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki。')
     lines.append('')
     lines.append('图标模板:``assets/template/light_cone_icon/<id>/raw.webp``(TemplateLoader')
     lines.append('规范二级结构,按 id 寻址;id 为空串的把暂缺,等 wiki 同步补 id 后归档)。')

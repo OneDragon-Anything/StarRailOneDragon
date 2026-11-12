@@ -6,8 +6,7 @@
 固化语义：obtain/skill 文本固化后本模块即唯一权威载体——重生成时已有词条
 冻结保留（wiki 侧存在编辑损坏，漂移由生成器报告供人工核对），wiki 只喂新增。
 
-id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki；
-权威表随仓分发（sr-od-dev-cone-data skill references/cones-full.json）。
+id 定义：英文代号 = 官方英文名归一化（小写仅字母数字），来源国际版 HoYoWiki。
 
 图标模板:``assets/template/light_cone_icon/<id>/raw.webp``(TemplateLoader
 规范二级结构,按 id 寻址;id 为空串的把暂缺,等 wiki 同步补 id 后归档)。

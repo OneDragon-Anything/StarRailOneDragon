@@ -1,4 +1,4 @@
-"""侦察:权威表(数字 avatarId) ↔ character_const.py(英文代号) 映射对照。
+"""侦察:内嵌 wiki 映射(数字 avatarId) ↔ character_const.py(英文代号) 对账。
 
 主键:en_normalized == Character.id(90 条);例外手工规则:
 - 开拓者 8001-8010:奇数=男(caelum_*)偶数=女(stelle_*),按命途配对
@@ -9,8 +9,11 @@ import json
 import re
 from pathlib import Path
 
+from _wiki_map import (
+    WIKI_CHARACTERS,  # noqa: E402  同目录内嵌映射(sys.path[0] = 脚本目录)
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
-AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 CONST_FILE = PROJECT_ROOT / 'src' / 'sr_od' / 'config' / 'character_const.py'
 OUT = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'char_avatar_id_map.json'
 
@@ -30,7 +33,7 @@ MANUAL: dict[str, str] = {
 
 
 def main() -> int:
-    auth = json.loads(AUTH.read_text(encoding='utf-8'))
+    auth = WIKI_CHARACTERS
     const_text = CONST_FILE.read_text(encoding='utf-8')
     const_ids = set(re.findall(r"= Character\(id='([a-z0-9_]+)'", const_text))
     cn_by_id = dict(re.findall(r"= Character\(id='([a-z0-9_]+)',\s*cn='([^']+)'", const_text))

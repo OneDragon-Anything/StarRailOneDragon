@@ -1,16 +1,19 @@
 """侦察:角色详情抓取结果 → sr_character_details.py 常量模块生成。
 
-输入:.debug/game_data/character/wiki/char_details.json(101 条 wiki 抓取)
-    + 随仓权威表(wiki_content_id → 数字 avatarId)
+输入:.debug/game_data/character/wiki/char_details.json(wiki 抓取)
+    + 同目录 _wiki_map.py 内嵌映射(wiki_content_id → 数字 avatarId)
 过滤:error(rpg 空旧模板)/前瞻占位(traces<8)跳过并标注。
 产出:src/sr_od/mys/sr_character_details.py(完整模块,数据段位置参数紧凑单行)。
 """
 import json
 from pathlib import Path
 
+from _wiki_map import (
+    WIKI_CHARACTERS,  # noqa: E402  同目录内嵌映射(sys.path[0] = 脚本目录)
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # 仓库根（scripts 上三级）
 DETAILS = PROJECT_ROOT / '.debug' / 'game_data' / 'character' / 'wiki' / 'char_details.json'
-AUTH = Path(__file__).resolve().parent.parent / 'references' / 'characters-full.json'  # 相对脚本定位,换仓不失效
 OUT = PROJECT_ROOT / 'src' / 'sr_od' / 'mys' / 'sr_character_details.py'
 
 
@@ -21,7 +24,7 @@ def py_str(text: str) -> str:
 
 def main() -> int:
     details = json.loads(DETAILS.read_text(encoding='utf-8'))
-    auth = json.loads(AUTH.read_text(encoding='utf-8'))
+    auth = WIKI_CHARACTERS
     # wiki_content_id → (avatarId, cn)
     cid_to_aid: dict[int, tuple[int, str]] = {}
     for aid_str, info in auth.items():

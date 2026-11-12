@@ -51,4 +51,4 @@ design/                       # 本目录：设计记录
 - 机制结论尽量给官方文本锚点（行迹名/技能名），攻略数值（公式系数、面板目标）必须标【攻】。
 - 档内「信息缺口」节是诚实清单：官方文本无法取证、攻略分歧的点如实记录，禁止脑补。
 
-- **skill 家族架构（v13，用户裁定）**：本 skill=基础玩法知识（任何场景成立）；特殊玩法专项 skill 分立（逐光捡金 sr-od-treasures-lightward / 货币战争 sr-od-currency-war-guide，待建）——modes/ 只留框架+按 skill 名称指针；skill 间引用一律用 skill 名称不用路径；数据底座在 references/data/（skill 自包含）。
+- **skill 家族架构（v13，用户裁定）**：本 skill=基础玩法知识（任何场景成立）；特殊玩法专项 skill 分立（逐光捡金 sr-od-treasures-lightward / 货币战争 sr-od-currency-war-guide，待建）——modes/ 只留框架+按 skill 名称指针；skill 间引用一律用 skill 名称不用路径；官方数据不留原文快照（v14，2026-11-12 用户裁定同 CW 底稿先例：结论进知识档、原文按需重拉,拉取缓存落 `.debug/game_data/`）。

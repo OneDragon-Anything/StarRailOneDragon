@@ -1,6 +1,6 @@
 # 数据管道（官方数据与视频调研怎么来）
 
-> 数据抓取的技术路径与解析坑；状态对账见 [research-status.md](research-status.md)。快照产物在 `references/data/`（skill 自包含）。
+> 数据抓取的技术路径与解析坑；状态对账见 [research-status.md](research-status.md)。拉取缓存统一落 `.debug/game_data/`（不入仓）；**不存原文快照**（结论进知识档、原文按需重拉）。
 
 ## 米游社百科 API
 
@@ -67,4 +67,4 @@
 
 ## 版本更新重跑流程
 
-删 `.debug/game_data/` 下对应域的旧缓存 JSON → 重跑 fetch 脚本(拉取缓存统一落 `.debug/game_data/<域>/`,旁置 fetched_at.txt 记拉取时间) → 覆盖 `references/data/` → git diff 看官方变化 → 按 templates 更新知识档 → research-status 记录新快照日期。
+重跑 fetch 脚本(拉取缓存统一落 `.debug/game_data/`,旁置 fetched_at.txt 记拉取时间)→ 与角色知识档(references/characters/)逐角色比对官方推荐变化 → 只更新有变化的知识档 → research-status 记录新快照日期。**不存原文快照**(2026-11-12 裁定,同 CW 底稿先例:结论进档、原文按需重拉;知识档的【官：…】出处标注指官方百科页面,核对时直查 wiki)。
