@@ -23,4 +23,25 @@ msgid "智库"
 msgstr "Data Bank"
 
 msgid "已收录"
-msgstr "Collected"
+msgstr "Indexed"
+
+msgid "光锥"
+msgstr "Light Cones"
+
+msgid "角色"
+msgstr "Characters"
+
+msgid "遗器"
+msgstr "Relics"
+
+msgid "敌对物种"
+msgstr "Enemy Creatures"
+
+msgid "星神"
+msgstr "Aeons"
+
+msgid "派系"
+msgstr "Factions"
+
+msgid "专有名词"
+msgstr "Terms"
