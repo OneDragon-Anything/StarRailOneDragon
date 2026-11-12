@@ -70,6 +70,7 @@ class TemplateMatcher:
         source_kps, source_desc = cv2_utils.feature_detect_and_compute(source, source_mask)
         template = self.template_loader.get_template(template_sub_dir, template_id)
         if template is None:
+            log.error(f'未加载模板 {template_id}')
             return None
         template_kps, template_desc = template.features
 

@@ -545,6 +545,8 @@ class PcControllerBase(ControllerBase):
         if win_pos is not None:
             pyautogui.moveTo(win_pos.x, win_pos.y)
             time.sleep(0.1)  # 原本 pyautogui 的操作会有0.1s延迟, 现在去掉了, 故在这里加上延迟
+        else:
+            log.error('鼠标移动位置不在游戏窗口区域 (%s)', game_pos)
 
     def park_cursor(self, game_pos: Point,
                     before_wait: float = 0.0, after_wait: float = 0.2) -> None:

@@ -162,6 +162,17 @@ class ScreenContext:
             s.screen_name for s in self.screen_info_list if not s.app_id
         }
 
+        # 汇总行:排查「某画面没参与判定」时,先在此区分没加载还是 scope 排除/判定没中
+        route_edge_cnt = sum(
+            len(area.goto_list)
+            for screen_info in self.screen_info_list
+            for area in screen_info.area_list
+            if area.goto_list is not None
+        )
+        source = '内存' if from_memory else ('分文件' if from_separated_files else '合并缓存')
+        log.debug('画面加载完成: %d 个画面 %d 条路由边 (来源: %s)',
+                  len(self.screen_info_list), route_edge_cnt, source)
+
     def load_extra_screen_dir(self, dir_path: str, default_app_id: str = '') -> None:
         """从额外目录加载 screen YAML 并注册（用于插件 screen 注入）
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import inspect
+import logging
 import time
 from collections.abc import Callable
 from functools import cached_property
@@ -1491,9 +1492,11 @@ class Operation(OperationBase):
         route = self.ctx.screen_loader.get_screen_route(current_screen_name, screen_name)
         if route is None or not route.can_go:
             return self.round_fail(f'无法从 {current_screen_name} 前往 {screen_name}')
-        log.debug('goto 路由: %s→%s 经 [%s]',
-                  current_screen_name, screen_name,
-                  ', '.join(f'{node.from_screen}.{node.from_area}' for node in route.node_list))
+        if log.isEnabledFor(logging.DEBUG):
+            # 守卫:join+生成器在参数位立即求值,debug 关闭时白算
+            log.debug('goto 路由: %s→%s 经 [%s]',
+                      current_screen_name, screen_name,
+                      ', '.join(f'{node.from_screen}.{node.from_area}' for node in route.node_list))
 
         result = self.round_by_find_and_click_area(screen, current_screen_name, route.node_list[0].from_area)
         if result.is_success:

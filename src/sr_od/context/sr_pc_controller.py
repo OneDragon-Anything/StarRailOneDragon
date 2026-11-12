@@ -158,7 +158,7 @@ class SrPcController(PcControllerBase):
             log.error('当前角度为空 无法判断移动方向')
             return False
         self.turn_by_pos(pos1, pos2, angle)
-        log.info('寻路中 当前点: %s 目标点: %s ', pos1, pos2)
+        log.debug('寻路中 当前点: %s 目标点: %s ', pos1, pos2)
         self.start_moving_forward(run=run)
         return True
 
@@ -181,7 +181,7 @@ class SrPcController(PcControllerBase):
         :return:
         """
         delta_angle = cal_utils.angle_delta(from_angle, to_angle)
-        log.info('当前角度: %.2f度 目标角度: %.2f度 转动朝向: %.2f度', from_angle, to_angle, delta_angle)
+        log.debug('当前角度: %.2f度 目标角度: %.2f度 转动朝向: %.2f度', from_angle, to_angle, delta_angle)
         self.turn_by_angle(delta_angle)
 
     def turn_by_angle(self, angle: float):

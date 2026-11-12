@@ -685,7 +685,7 @@ def is_valid_result_with_possible_pos(result: Optional[MatchResult],
 
     dis = cal_utils.distance_between(last_pos, next_pos)
     if dis > move_distance * 1.1:
-        log.info('计算坐标 %s 与 当前坐标 %s 距离较远 %.2f 舍弃', next_pos, last_pos, dis)
+        log.debug('计算坐标 %s 与 当前坐标 %s 距离较远 %.2f 舍弃', next_pos, last_pos, dis)
         return False
 
     if current_angle is None:
@@ -697,8 +697,8 @@ def is_valid_result_with_possible_pos(result: Optional[MatchResult],
         next_angle = cal_utils.get_angle_by_pts(pos_to_cal_angle, next_pos)
     angle_delta = cal_utils.angle_delta(current_angle, next_angle)
     if dis > 5 and abs(angle_delta) > 40:
-        log.info('计算坐标 %s 的角度 %.2f 与 当前朝向 %.2f 相差较大 %.2f 舍弃',
-                 next_pos, next_angle, current_angle, angle_delta)
+        log.debug('计算坐标 %s 的角度 %.2f 与 当前朝向 %.2f 相差较大 %.2f 舍弃',
+                  next_pos, next_angle, current_angle, angle_delta)
         return False
 
     return True
@@ -720,14 +720,14 @@ def is_valid_result(result: MatchResult, verify: VerifyPosInfo) -> bool:
     next_pos = result.center
     dis = cal_utils.distance_between(last_pos, next_pos)
     if dis > verify.max_distance * 1.1:
-        log.info('计算坐标 %s 与 当前坐标 %s 距离较远 %.2f 舍弃', next_pos, last_pos, dis)
+        log.debug('计算坐标 %s 与 当前坐标 %s 距离较远 %.2f 舍弃', next_pos, last_pos, dis)
         return False
 
     if verify.line_p1 is not None and verify.line_p2 is not None:
         dis = cal_utils.distance_to_line(next_pos, verify.line_p1, verify.line_p2)
         if dis > 20:
-            log.info('计算坐标 %s 与 移动直线 ( %s %s )距离较远 %.2f 舍弃',
-                     next_pos, verify.line_p1, verify.line_p2, dis)
+            log.debug('计算坐标 %s 与 移动直线 ( %s %s )距离较远 %.2f 舍弃',
+                      next_pos, verify.line_p1, verify.line_p2, dis)
             return False
 
     return True
