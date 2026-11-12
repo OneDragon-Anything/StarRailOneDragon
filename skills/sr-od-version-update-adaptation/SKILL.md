@@ -19,13 +19,13 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 
 | 适配项 | 状态 | 方法 |
 |---|---|---|
-| 地图区域信息更新 | 已建档(归地图信息 skill) | `sr-od-dev-map-data` skill(随仓分发)的 `references/region-data-entry.md`——**先于新角色数据录入执行**(新角色刷取链路依赖) |
-| 副本数据更新(指南注册表) | 已建档(归地图信息 skill) | `sr-od-dev-map-data` skill(随仓分发)的 `references/dungeon-data-entry.md`——**先于新角色数据录入执行**(join 锚点依赖) |
+| 地图区域信息更新 | 已建档(归地图信息 skill) | `sr-od-dev-map-data` skill 的 `references/region-data-entry.md` |
+| 副本数据更新(指南注册表) | 已建档(归地图信息 skill) | `sr-od-dev-map-data` skill 的 `references/dungeon-data-entry.md` |
 | 新角色数据录入 | 已建档 | `references/character-data-entry.md` |
-| 光锥数据(新实装/词条改动) | 已建档 | `sr-od-dev-cone-data` skill(随仓分发):总流程五步 checklist(双源抓取/常量生成审阅/图标归档/测试锚点;脚本直产常量,无中间权威表) |
-| 遗器套装数据(新实装/效果改动) | 已建档 | `sr-od-dev-relic-data` skill(随仓分发):总流程八步 checklist(双源抓取/常量 diff 审阅/对账报告/图标增量归档/测试锚点;常量为唯一权威载体,无中间权威表;wiki 缺数据走该 skill §6 兜底路由) |
-| 货币战争(CW)玩法适配 | 已建档(归 CW skill) | `sr-od-dev-currency-war` skill 的 `references/version-update.md`(数据重采/阵容重跑/万金油名单复核/版本敏感注册表核对) |
-| 大地图录制 | 缓录(不阻塞流程) | `sr-od-dev-map-data` skill 的 `references/large-map-record.md`——**流程内不等待**:前提是账号全探索(含支线),收尾登记待录清单提醒,探索完成后按该文档补录 |
+| 光锥数据(新实装/词条改动) | 已建档 | `sr-od-dev-cone-data` skill 的总流程 checklist |
+| 遗器套装数据(新实装/效果改动) | 已建档 | `sr-od-dev-relic-data` skill 的总流程 checklist |
+| 货币战争(CW)玩法适配 | 已建档(归 CW skill) | `sr-od-dev-currency-war` skill 的 `references/version-update.md` |
+| 大地图录制 | 缓录(不阻塞流程) | `sr-od-dev-map-data` skill 的 `references/large-map-record.md` |
 
 **未建档适配项**(新地图、新玩法、新系统、机制改动等任何不在表里的项)按此流程补档,禁凭猜直接改:
 
