@@ -1,6 +1,6 @@
 ---
 name: sr-od-game-consume
-description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；大月卡(无名勋礼/无名客的荣勋)导航与状态查询可用、自动摆付款码待条件；规划中:跃迁抽卡。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」也用。消费决策(该不该买/性价比/何时续)归 sr-od-game-coach；月卡充值画面建档细节归 docs/game/screens/store.md 与 docs/game/screens/无名勋礼.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, renew, payment QR code, recharge。
+description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；买大月卡(无名勋礼/无名客的荣勋 ￥68 档)到付款码、切微信/支付宝渠道、查大月卡购买状态；规划中:跃迁抽卡。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」也用。消费决策(该不该买/性价比/何时续)归 sr-od-game-coach；画面建档细节归 docs/game/screens/store.md、无名勋礼.md 与 无名勋礼-购买档位页.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, renew, payment QR code, recharge。
 ---
 
 # 游戏内消费路由（sr-od-game-consume）
@@ -18,8 +18,8 @@ description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用�
 | 消费项 | 路由 | 状态 |
 |---|---|---|
 | 小月卡(列车补给凭证)购买/续订/查剩余天数 | [references/月卡充值.md](references/月卡充值.md)——op `BuyExpressSupplyPassOp` 一键到付款码，细节(机制/入参/状态/失败去向)全在该档 | 可用 |
-| 大月卡(无名勋礼)查状态/导航到购买入口 | [references/大月卡充值.md](references/大月卡充值.md)——op `BuyNamelessHonorPassOp(open_pay=False)` 到主面板确认入口,零消耗 | 导航可用 |
-| 大月卡购买(自动摆付款码) | 同上档——op `open_pay=True` 支付弹窗段按商店同构预写,**待一次实机购买验证**;收到购买请求:先查该档 §4 待条件,如用户同意发起,现场核对弹窗形态后再交码 | 待条件 |
+| 大月卡(无名勋礼)查购买状态/导航 | [references/大月卡充值.md](references/大月卡充值.md)——op `BuyNamelessHonorPassOp(open_pay=False)` 判未购/已购态,零消耗 | 可用 |
+| 大月卡(无名勋礼)购买 ￥68 档(荣勋)到付款码 | 同上档——op `open_pay=True, pay_channel=...` 全链到扫码弹窗(档位页自动选 ￥68;￥128 奖章档只识别不点击);2026-11-12 实机走通 | 可用 |
 | 跃迁(抽卡，星琼消耗) | 未建设；收到此类请求:抽卡属高消耗决策，先引导用户过 sr-od-game-coach 的投入评估，操作路由待补 | 待建 |
 | 其他未收录消费项(礼包/皮肤/星琼直充等) | 未建档未收录——如实告知未支持，勿凭猜导航；值得做则挂账待建 | 未收录 |
 

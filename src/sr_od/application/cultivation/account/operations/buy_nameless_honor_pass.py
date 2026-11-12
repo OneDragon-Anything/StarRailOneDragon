@@ -15,11 +15,18 @@
 - 版本周期内第一次进无名勋礼先落整屏「购买推广页」,点「开启无名勋礼」是
   查看/继续语义不会付费(用户裁决,2026-08-27 实机走通退出链);经
   「等级加速弹窗」(点弹窗内提示位关闭,点外部无效)才到主面板;
-- 未购买态购买入口唯一:主面板奖励 tab 右下「解锁无名客的荣勋」
-  (上方伴生「解锁立即获得」提示条,双锚判未购买态);已购买态该入口消失;
-- 付款弹窗按与商店扫码支付弹窗同构建模(同一游戏支付组件,全屏居中):
-  默认支付宝码,「其他支付方式」切微信,「返回支付宝扫码」切回 —— 该段
-  建档/交互待实机验证后回填(2026-11-12 摸索时未发起购买)。
+- 未购买态购买入口唯一:主面板奖励 tab 右下「解锁无名客的荣勋」;**未购买态
+  判据 = 「解锁立即获得」提示条**(已购买态按钮仍在但提示条消失,2026-11-12
+  实购后实证);
+- 主面板点「解锁无名客的荣勋」→ 落「无名勋礼-购买档位页」(2026-11-12 实机):
+  两档价格卡(荣勋￥68.00 / 奖章￥128.00,原价￥146 划线),op 点荣勋档 ¥68 按钮
+  → 扫码支付弹窗;
+- 扫码支付弹窗(2026-11-12 实机,挂「无名勋礼-购买档位页」屏建档):渠道为
+  并排 tab(支付宝[推荐] | 微信支付),默认支付宝码;与商店版「其他支付方式」
+  按钮不同构,当前渠道以二维码下方标注判(支付宝态=「支付宝扫码」/微信态=
+  「微信扫码」,同位互斥);二维码有时效,过期态中央出刷新按钮点击重出码;
+- 支付完成后(用户扫码)落「获得物品:星琼×680」弹窗(点击空白处关闭),
+  回主面板即已购买态。
 """
 
 from one_dragon.base.operation.operation_edge import node_from
@@ -35,9 +42,8 @@ from sr_od.operations.menu.open_phone_menu import OpenPhoneMenu
 from sr_od.operations.sr_operation import SrOperation
 
 _HONOR_SCREEN: str = '无名勋礼'
-# 支付弹窗 area 建在商店屏(同款全屏支付组件);跨屏文本 area 按 rect 内容命中,
-# 不依赖画面 id_mark。待实机验证无名勋礼场景下坐标一致后回填独立建档。
-_PAY_DIALOG_SCREEN: str = '商店'
+# 购买档位页与其上的扫码支付弹窗 area 同屏挂载(弹窗只在档位页上出现)
+_PURCHASE_PAGE_SCREEN: str = '无名勋礼-购买档位页'
 
 PAY_CHANNEL_ALIPAY: str = 'alipay'
 PAY_CHANNEL_WECHAT: str = 'wechat'
@@ -117,17 +123,22 @@ class BuyNamelessHonorPassOp(SrOperation):
     @node_from(from_name='核对到主面板', status='ON_PANEL')
     @operation_node(name='核对购买入口')
     def check_purchase_entry(self) -> OperationRoundResult:
-        """确保在奖励 tab 并判定未购买态购买入口(按钮+提示条双锚)。"""
-        button_hit = _area_hit(self.ctx, self.last_screenshot,
-                               _HONOR_SCREEN, '按钮-解锁无名客的荣勋')
+        """确保在奖励 tab 并判定未购买态购买入口。
+
+        未购买态判据 =「解锁立即获得」提示条(唯一可靠):已购买态(2026-11-12
+        实证)购买按钮仍在(可去档位页升奖章档)但提示条消失,故按钮不作判据。
+        """
         hint_hit = _area_hit(self.ctx, self.last_screenshot,
                              _HONOR_SCREEN, '标识-解锁立即获得')
-        if button_hit and hint_hit:
+        if hint_hit:
             if not self._open_pay:
                 return self.round_success(status='AT_ENTRY', wait=0.5)
             return self.round_success(status='ENTRY_READY', wait=0.5)
         if self._reward_tab_clicked:
-            return self.round_fail('奖励 tab 下未找到购买入口(可能本期已解锁付费轨,或面板异常)')
+            if _area_hit(self.ctx, self.last_screenshot,
+                         _HONOR_SCREEN, '按钮-解锁无名客的荣勋'):
+                return self.round_fail('已处于已购买态(按钮在但提示条消失),无需购买荣勋档')
+            return self.round_fail('奖励 tab 下未找到购买入口(面板异常,现场核查)')
         # 主面板记忆上次离开的 tab,先切奖励 tab 再判购买入口
         area = self.ctx.screen_loader.get_area(_HONOR_SCREEN, 'tab-奖励')
         self.ctx.controller.click(area.rect.center)
@@ -135,33 +146,53 @@ class BuyNamelessHonorPassOp(SrOperation):
         return self.round_retry('已点奖励 tab,等购买入口出现', wait=1.5)
 
     @node_from(from_name='核对购买入口', status='ENTRY_READY')
-    @operation_node(name='打开付款弹窗')
+    @operation_node(name='打开购买档位页')
     def open_pay(self) -> OperationRoundResult:
-        """点「解锁无名客的荣勋」发起购买(调用方须已获用户同意)。
-
-        弹窗形态按与商店扫码支付弹窗同构建模,待实机验证后回填。
+        """点主面板「解锁无名客的荣勋」→ 落购买档位页(2026-11-12 实机:
+        点解锁按钮不直接弹扫码,先落「无名勋礼-购买档位页」两档价格卡)。
         """
-        if _area_hit(self.ctx, self.last_screenshot, _PAY_DIALOG_SCREEN, '标题-扫码支付'):
-            return self.round_success(status='PAY_SHOWN', wait=1)
+        if _area_hit(self.ctx, self.last_screenshot,
+                     '无名勋礼-购买档位页', '文本-无名客的奖章') \
+                and _area_hit(self.ctx, self.last_screenshot,
+                              '无名勋礼-购买档位页', '按钮-购买荣勋68'):
+            return self.round_success(status='PURCHASE_PAGE', wait=1)
         area = self.ctx.screen_loader.get_area(_HONOR_SCREEN, '按钮-解锁无名客的荣勋')
         self.ctx.controller.click(area.rect.center)
-        return self.round_retry('已点购买按钮,等付款弹窗', wait=2)
+        return self.round_retry('已点购买按钮,等档位页加载', wait=2)
 
-    @node_from(from_name='打开付款弹窗', status='PAY_SHOWN')
+    @node_from(from_name='打开购买档位页', status='PURCHASE_PAGE')
+    @operation_node(name='选荣勋档')
+    def select_honor(self) -> OperationRoundResult:
+        """点「￥68.00」(荣勋档)发起支付 —— 奖章档(￥128)是更高消费档,
+        op 只建模识别永不点击。
+        """
+        if _area_hit(self.ctx, self.last_screenshot, _PURCHASE_PAGE_SCREEN, '标题-扫码支付'):
+            return self.round_success(status='PAY_SHOWN', wait=1)
+        area = self.ctx.screen_loader.get_area('无名勋礼-购买档位页', '按钮-购买荣勋68')
+        self.ctx.controller.click(area.rect.center)
+        return self.round_retry('已点￥68.00(荣勋档),等扫码弹窗', wait=2)
+
+    @node_from(from_name='选荣勋档', status='PAY_SHOWN')
     @operation_node(name='核对支付渠道')
     def check_channel(self) -> OperationRoundResult:
-        """确保付款弹窗停留在调用方要的渠道(支付宝默认,微信需切一次)。"""
-        alipay_state = _area_hit(self.ctx, self.last_screenshot,
-                                 _PAY_DIALOG_SCREEN, '按钮-其他支付方式')
-        wechat_state = _area_hit(self.ctx, self.last_screenshot,
-                                 _PAY_DIALOG_SCREEN, '按钮-返回支付宝扫码')
-        if self._pay_channel == PAY_CHANNEL_ALIPAY and alipay_state:
+        """确保扫码弹窗停留在调用方要的渠道(默认支付宝,微信需点 tab 切一次)。
+
+        无名勋礼弹窗渠道为并排 tab(支付宝[推荐] | 微信支付),与商店版
+        「其他支付方式」按钮不同构;当前渠道判据 = 二维码下方标注,两文本
+        同位互斥(2026-11-12 实证):支付宝态 =「支付宝扫码」,微信态 =「微信扫码」。
+        """
+        if not _area_hit(self.ctx, self.last_screenshot,
+                         _PURCHASE_PAGE_SCREEN, '标题-扫码支付'):
+            return self.round_fail('扫码支付弹窗未出现(弹窗异常,现场核查)')
+        alipay_qr = _area_hit(self.ctx, self.last_screenshot,
+                              _PURCHASE_PAGE_SCREEN, '文本-支付宝扫码')
+        wechat_qr = _area_hit(self.ctx, self.last_screenshot,
+                              _PURCHASE_PAGE_SCREEN, '文本-微信扫码')
+        if self._pay_channel == PAY_CHANNEL_ALIPAY and alipay_qr:
             return self.round_success(status='PAY_OPENED', wait=0.5)
-        if self._pay_channel == PAY_CHANNEL_WECHAT:
-            if wechat_state:
-                return self.round_success(status='PAY_OPENED', wait=0.5)
-            if alipay_state:
-                area = self.ctx.screen_loader.get_area(_PAY_DIALOG_SCREEN, '按钮-其他支付方式')
-                self.ctx.controller.click(area.rect.center)
-                return self.round_retry('已切微信支付,等二维码刷新', wait=1.5)
-        return self.round_fail('付款弹窗渠道按钮均未命中(弹窗形态待实机核查或异常)')
+        if self._pay_channel == PAY_CHANNEL_WECHAT and wechat_qr:
+            return self.round_success(status='PAY_OPENED', wait=0.5)
+        tab_name = 'tab-支付宝' if self._pay_channel == PAY_CHANNEL_ALIPAY else 'tab-微信支付'
+        area = self.ctx.screen_loader.get_area(_PURCHASE_PAGE_SCREEN, tab_name)
+        self.ctx.controller.click(area.rect.center)
+        return self.round_retry(f'当前非目标渠道,已点{tab_name},等二维码刷新', wait=1.5)
