@@ -245,7 +245,18 @@ _GOODS_META: dict[str, tuple[str, str, str]] = {
     'gepard': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_CHARACTER, '杰帕德'),
     'yanqing': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_CHARACTER, '彦卿'),
     'bailu': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_CHARACTER, '白露'),
-    # 聚灵铸星光锥兑换 tab(4 蓝徽;英文态仅采到于夜色中,其余待补拍后扩)
+    # 聚灵铸星光锥兑换 tab(4 蓝徽,常驻 5 星光锥;英文名 2026-11-13 英文态实采)
+    'those_many_springs': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '那无数个春天'),
+    'dance_at_sunset': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '落日时起舞'),
+    'flowing_nightglow': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '夜色流光溢彩'),
+    'an_instant_before_a_gaze': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '留在眼底'),
+    'night_of_fright': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '惊魂夜'),
+    'incessant_rain': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '雨一直下'),
+    'worrisome_blissful': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '烦恼着'),
+    'past_self_in_mirror': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '镜中故我'),
+    'she_already_shut_her_eyes': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '闭上双眼'),
+    'the_unreachable_side': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '彼岸'),
+    'echoes_of_the_coffin': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '棺的回响'),
     'in_the_night': (_SHOP_STELLAR_CONVERGENCE, _SC_TAB_LIGHT_CONE, '于夜色中'),
     # 协议商店 Contract Shop:黑塔支持协议礼包(黑塔券,限购+倒计时)
     'herta_contract_strategic_cooperation': (_SHOP_CONTRACT, None, '战略合作协议'),
