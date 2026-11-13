@@ -203,13 +203,17 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_success(status='IN_CHALLENGE')
         if current is None:
             # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
-            # 自身锚;升级动画过渡帧查等级提升左上锚(锚命中即接管交升级循环,
-            # 循环首查会重新分类当前态)
+            # 自身锚;刷取中断(结算画面/重建副本画面/升级过渡帧)查等级提升
+            # 左上锚与战斗结算退出钮(锚命中即接管交对应循环重分类)
             for anchor in ('标题-材料补全弹窗', '标题-光锥详情'):
                 if screen_utils.find_area(
                         self.ctx, self.last_screenshot,
                         _LC_ASCEND_SCREEN, anchor) == FindAreaResultEnum.TRUE:
                     return self.round_success(status='ALREADY_ASCEND')
+            if screen_utils.find_area(
+                    self.ctx, self.last_screenshot,
+                    _BATTLE_SCREEN, '按钮-退出关卡') == FindAreaResultEnum.TRUE:
+                return self.round_success(status='IN_CHALLENGE')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
             return self.round_success(status='ALREADY_ASCEND')
@@ -514,6 +518,16 @@ class UpgradeLightConeOp(SrOperation):
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '标题-光锥详情').is_success:
             log.info('光锥晋阶: 刷取完成回到等级提升,已刷 %d 轮', self._farm_rounds)
             return self.round_success(status='FARMED', wait=1)
+        # 结算画面(战斗已胜,含退出关卡/再来一次):点退出关卡回副本画面
+        if self.round_by_find_area(screen, _BATTLE_SCREEN, '按钮-退出关卡').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _BATTLE_SCREEN, '按钮-退出关卡',
+                until_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            )
+            if result.is_success:
+                return self.round_retry('结算已退出,重入分类', wait=2)
+            return result
         if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果').is_success:
             result = self.round_by_find_and_click_area(
                 screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果',
