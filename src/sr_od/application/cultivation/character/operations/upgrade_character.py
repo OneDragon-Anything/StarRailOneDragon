@@ -20,13 +20,15 @@
   画面 → 两条刷取路线由 use_fast_ticket 分流:True = 副本画面左下「快速刷取」
   (快速刷取券)→ 确认框「消耗开拓力30+券3」→ 确认免战斗直接领奖;
   False = 正常「挑战」→ 编队「开始挑战」→ 自动战斗 → 结算「退出关卡」。
-  刷完关闭副本回到等级提升界面,材料齐后继续升级——循环每轮只刷 1 次,
-  材料够不够由右下按钮状态自反馈,不足再走刷取直至预算耗尽。
+  刷完逐层回退(副本 X → 资源窗口 X)回等级提升界面,材料齐后继续升级——
+  循环每轮只刷 1 次,材料够不够由右下按钮状态自反馈,不足再走刷取直至
+  预算耗尽。
 
-补料路线:通用材料补全(fill_generic 默认 True,确认即执行)优先于刷取——
-右下按钮可点时不进刷取流程;右下全灰(「材料不足」)才走快速刷取。
-**调用方发起前须向用户说明:刷取消耗开拓力 30/次,use_fast_ticket=True
-另消耗快速刷取券 3/次(券不可自然恢复)**。
+补料路线与授权分层:通用材料补全(fill_generic 默认 True,确认即执行)
+优先于刷取——右下按钮可点时不进刷取流程;右下全灰(「材料不足」)时由
+farm_dungeon 控制:False(默认,安全)= 判停收尾(零额外消耗);True = 走
+快速刷取(**刷取消耗开拓力 30/次,use_fast_ticket=True 另耗快速刷取券
+3/次,券不可自然恢复**)。
 
 前置:角色详情画面·详情 TAB·列表已收起(前三步保证);本 op 不选角色、
 不切页签——起点不符显式失败,组合编排归调用方。
@@ -75,28 +77,34 @@ class UpgradeCharacterOp(SrOperation):
     升到上限后自动切晋阶态,晋阶执行后继续升级循环。
 
     ⚠️ fill_generic=True(默认)会消耗通用材料灵之珠泪:调用方发起前须向
-    用户提示。⚠️ 刷取路线属真实资源消耗(开拓力 30/次,use_fast_ticket=True
-    另耗快速刷取券 3/次,券不可自然恢复):**调用方发起前必须向用户说明
-    预计消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
+    用户提示。⚠️ farm_dungeon=True 会真实刷副本(开拓力 30/次,
+    use_fast_ticket=True 另耗快速刷取券 3/次,券不可自然恢复):**调用方
+    发起前必须向用户说明预计消耗并获明确同意**,本 op 不代替调用方做这个
+    确认。"""
 
     def __init__(self, ctx: SrContext, fill_generic: bool = True,
-                 use_fast_ticket: bool = True):
+                 farm_dungeon: bool = False, use_fast_ticket: bool = True):
         """
         :param ctx: 上下文
         :param fill_generic: 缺料时是否用「使用通用材料补全」路线(消耗通用
             材料灵之珠泪合成补齐)。True(默认) = 自动确认材料补全弹窗——
             灵之珠泪量大不稀缺,是官方默认补全路径;调用方发起前向用户提示
-            即可。False = 不消耗通用材料,缺料走刷取路线或判停。
-        :param use_fast_ticket: 右下全灰(材料不足)时的刷取路线。
-            True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**消耗开拓力
-            30/次 + 快速刷取券 3/次,券不可自然恢复**)。False = 进副本正常
-            挑战自动战斗(**消耗开拓力 30/次**,无券消耗)。
-            **启用前调用方必须向用户说明消耗并获同意**。
+            即可。False = 不消耗通用材料。
+        :param farm_dungeon: 右下全灰(材料不足,通用材料补全不可用/未授权)
+            时是否刷副本补料。False(默认,安全) = 不刷,直接判停收尾;True =
+            走「快速刷取 → 资源窗口 → 进入副本」路线刷补材料继续升级
+            (**真实消耗开拓力**)。启用前调用方必须向用户说明并获同意。
+        :param use_fast_ticket: farm_dungeon=True 时的刷取方式。
+            True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**另耗快速
+            刷取券 3/次,券不可自然恢复**)。False = 正常挑战自动战斗
+            (只耗开拓力 30/次,耗时约 2 分钟/轮)。
         """
         self.fill_generic: bool = fill_generic
+        self.farm_dungeon: bool = farm_dungeon
         self.use_fast_ticket: bool = use_fast_ticket
         SrOperation.__init__(self, ctx, op_name=gt('角色晋阶升级')
-                             + ('(券刷取)' if use_fast_ticket else '(手动刷取)')
+                             + ('(券刷取)' if farm_dungeon and use_fast_ticket else '')
+                             + ('(手动刷取)' if farm_dungeon and not use_fast_ticket else '')
                              + ('' if fill_generic else '(不用通用材料)'),
                              node_max_retry_times=40)  # 升级↔晋阶交替多轮(≤6 阶晋阶+分段升级+横幅关闭),默认必中途夭折
         self._entry_btn_area: str = _ENTRY_BTN_ASCEND  #: 入口命中的按钮 area(打开界面用)
@@ -105,9 +113,10 @@ class UpgradeCharacterOp(SrOperation):
         self._farm_rounds: int = 0         #: 本次运行已执行的刷取次数(消耗统计)
         self._ascend_count: int = 0        #: 本次运行已执行的升级次数(日志统计)
         self._promotion_count: int = 0     #: 本次运行已执行的晋阶次数(日志统计)
-        log.info('晋阶: 刷取路线=%s,通用材料补全=%s——每次刷取消耗开拓力 30'
-                 + (' + 快速刷取券 3' if use_fast_ticket else ''),
-                 '券' if use_fast_ticket else '手动打', fill_generic)
+        if farm_dungeon:
+            log.info('晋阶: 缺料将刷副本,路线=%s——每次消耗开拓力 %d'
+                     + (' + 快速刷取券 3' if use_fast_ticket else ''),
+                     '券免战斗' if use_fast_ticket else '自动战斗', _FARM_TRAILBLAZE_PER)
 
     #------------------- 识别辅助 -------------------#
 
@@ -303,12 +312,16 @@ class UpgradeCharacterOp(SrOperation):
             return self.round_retry(f'晋阶已执行(第{self._promotion_count}次),等横幅',
                                     wait=_ASCEND_SETTLE_SEC)
 
-        # ⑥ 全部不命中 = 灰底「材料不足」全缺态 → 刷取路线(预算内)/判停
-        if self._farm_rounds >= _FARM_ROUNDS_MAX:
+        # ⑥ 全部不命中 = 灰底「材料不足」全缺态 → farm_dungeon 授权走刷取,否则判停
+        if not self.farm_dungeon or self._farm_rounds >= _FARM_ROUNDS_MAX:
+            if not self.farm_dungeon:
+                log.info('晋阶: 材料全缺(按钮灰底),farm_dungeon 未授权,判停于等级 %s',
+                         self._read_ascend_level())
+            else:
+                self._capped_level = self._read_ascend_level()
+                log.info('晋阶: 刷取预算(%d 次)耗尽,判停于等级 %s', _FARM_ROUNDS_MAX, self._capped_level)
             self._capped = True
-            self._capped_level = self._read_ascend_level()
-            log.info('晋阶: 刷取预算(%d 次)耗尽,判停于等级 %s', _FARM_ROUNDS_MAX, self._capped_level)
-            return self.round_retry('刷取预算耗尽,返回详情收尾', wait=1)
+            return self.round_retry('材料不足,返回详情收尾', wait=1)
         return self.round_success(status='NEED_FARM')
 
     @node_from(from_name='升级循环', status='NEED_FARM')
