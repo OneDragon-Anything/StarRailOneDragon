@@ -64,19 +64,21 @@ class UpgradeTraceOp(SrOperation):
     结果状态:MAX_LEVEL(已满,含起点即满)/ 升满当前上限 / MATERIAL_CAPPED
     (材料不足停在当前等级,日志带等级)。
 
-    ⚠️ fill_generic / auto_farm 为真实资源消耗路线(通用材料合成替代/
-    每次刷取开拓力 10+快速刷取券 3,券数以实刷为准):**调用方发起前必须
-    向用户说明消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
+    路线优先级:通用材料补全(fill_generic,默认开,通用材料非稀缺——用户
+    裁定的最优先路线)→ auto_farm 刷取(真实消耗开拓力 10+快速刷取券 3,
+    券数以实刷为准)。**auto_farm 发起前调用方必须向用户说明消耗并获明确
+    同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, target: str,
-                 fill_generic: bool = False, auto_farm: bool = False):
+                 fill_generic: bool = True, auto_farm: bool = False):
         """
         :param ctx: 上下文
         :param target: 目标技能名(普攻/战技/终结技/天赋/秘技)
         :param fill_generic: 缺专属材料时是否自动确认「通用材料补全」
-        :param auto_farm: 缺材料时优先自动「快速刷取」补材料(常规资源,
+        (默认 True)
+        :param auto_farm: 缺材料时自动「快速刷取」补材料(常规资源,
         独立先行,不依赖 fill_generic);刷取预算耗尽后若 fill_generic 也
-        授权则转通用材料补全,两参数均未授权则判停
+        开启则转通用材料补全,两路均关则判停
         """
         self.target: str = target.strip()
         if self.target not in _SKILL_NAMES:

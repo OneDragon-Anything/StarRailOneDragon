@@ -34,9 +34,10 @@ docs/game/screens/光锥-等级提升.md):
 开拓力不足时快速刷取/挑战按钮静默无反应(白底与可用态无视觉差异)——
 open_farm_window/手动挑战的重试预算耗尽即判停,不空烧轮次。
 
-补料路线与授权分层:通用材料补全(fill_generic)优先于刷取(farm_dungeon)
-——补全按钮在场时点它;按钮不在且 farm_dungeon 授权才进刷取链。两者都是
-真实消耗,发起前调用方必须向用户说明并获同意。
+补料路线与优先级:通用材料补全(fill_generic,默认开)优先于刷取
+(farm_dungeon)优先于手动刷——通用材料非稀缺,用户裁定为默认授权的
+最优先路线;刷取类真实消耗开拓力与快速刷取券,发起前调用方必须向用户
+说明并获同意。
 
 前置:光锥 TAB(列表浮层已收);终点:光锥 TAB(升满或材料判停)。
 """
@@ -91,18 +92,18 @@ class UpgradeLightConeOp(SrOperation):
     终点:角色-光锥 TAB。结果状态:LIGHT_CONE_CAPPED(已满级 / 材料耗尽停在
     当前等级,日志注明等级与消耗)。
 
-    ⚠️ fill_generic=True 消耗通用材料(合成命途专属晋阶材料);⚠️
-    farm_dungeon=True 真实刷副本:券路线(use_fast_ticket=True)消耗 =
+    ⚠️ farm_dungeon=True 真实刷副本:券路线(use_fast_ticket=True)消耗 =
     券刷次数合计 × 券 1(不耗开拓力);手动路线消耗 = 手动场数 × 开拓力
     10(不耗券)。farm_rounds_max 限制刷取轮数(券轮=一次确认框执行、手动
     轮=一场战斗)。开拓力不足部分由游戏自动以备用开拓力抵扣,备用亦尽时
     游戏弹「开拓力补充」弹窗,本 op 不处理、预算内轮次失败判停。**发起前
-    调用方必须按最坏消耗向用户说明并获同意**。
+    调用方必须按最坏消耗向用户说明并获同意**(通用材料默认授权,见
+    fill_generic)。
 
     :param ctx: 上下文
     :param fill_generic: 缺料时用「使用通用材料补全」路线(通用材料合成
-        命途专属晋阶材料)。True = 自动确认补全弹窗;False(默认) = 不消耗
-        通用材料。
+        命途专属晋阶材料)。True(默认,通用材料非稀缺,用户裁定的最优先
+        路线) = 自动确认补全弹窗;False = 不消耗通用材料。
     :param farm_dungeon: 缺可刷材料(快速刷取按钮有效)时刷副本补料。False
         (默认,安全) = 不刷,材料不足判停;True = 走快速刷取链(**真实消耗
         开拓力与券**)。
@@ -115,7 +116,7 @@ class UpgradeLightConeOp(SrOperation):
     :param farm_rounds_max: 整个运行允许的刷取轮数上限(耗尽判停,可续跑)。
     """
 
-    def __init__(self, ctx: SrContext, fill_generic: bool = False,
+    def __init__(self, ctx: SrContext, fill_generic: bool = True,
                  farm_dungeon: bool = False, use_fast_ticket: bool = True,
                  farm_times_per_round: int = 1, farm_rounds_max: int = 10):
         """
