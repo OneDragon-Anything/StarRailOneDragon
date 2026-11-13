@@ -9,8 +9,9 @@
 - 界面「快速升级」开关恒开(op 不动开关):材料自动预填到可达等级;
 - 界面右下按钮分流(白/灰底文本直接区分,find 按 text 天然互斥):
   材料足 = 白底「快速升级」,点击直接执行;缺专属材料但通用材料(灵之珠泪,
-  量大不稀缺)够 = 白底「使用通用材料补全」→「材料补全」确认框 → 确认后
-  材料合成补齐;全缺 = 灰底「材料不足」;
+  量大不稀缺)够 = 白底「使用通用材料补全」→「材料补全」确认框 → **确认即
+  执行**(升级态补经验材料后继续升;晋阶态补晋阶材料后直接晋阶),弹对应
+  结果横幅;全缺 = 灰底「材料不足」;
 - 升到当前上限后界面自动切晋阶态(当前→下一阶段对比视图),晋阶材料需求
   单独列出,执行晋阶后上限提升,继续升级——升级与晋阶交替直到 80;
 - 执行后横幅两种标题:升级 =「等级提升」、晋阶 =「角色晋阶」,点空白关闭;
@@ -42,8 +43,9 @@ _ASCEND_SCREEN: str = '角色-等级提升'
 
 # 升级/晋阶执行的横幅+动画稳定等待(实测约 2s,点空白后再收尾)
 _ASCEND_SETTLE_SEC: float = 2.5
-# 通用材料补全确认后的材料合成/界面刷新等待
-_FILL_SETTLE_SEC: float = 2.5
+# 通用材料补全确认后的等待:确认即执行升级/晋阶并弹横幅,横幅弹出动画
+# 约 1-2s,太短会截到动画中帧(横幅文字未到位 → 横幅锚不命中 → 过渡态误判)
+_FILL_SETTLE_SEC: float = 3.0
 # 每次快速刷取的固定消耗(难度 IV 实测;两项都扣)
 _FARM_TRAILBLAZE_PER: int = 30
 _FARM_TICKET_PER: int = 3
@@ -240,8 +242,12 @@ class UpgradeCharacterOp(SrOperation):
                 return self.round_retry('返回详情页,重入收尾', wait=1.5)
             return result
 
-        # ④ 详情页判定(打开前)
+        # ④ 不在等级提升界面:先确认在详情页再判按钮——横幅弹出动画期间
+        # 界面锚与详情按钮都不可见,无详情页锚防御会把过渡态误判成满级
         if not self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
+            if not self.round_by_find_area(screen, _DETAIL_SCREEN, '按钮-属性详情').is_success:
+                return self.round_retry('不在晋阶界面也不在详情页(横幅/加载过渡态),等画面稳定',
+                                        wait=1.5)
             if self.round_by_find_area(screen, _DETAIL_SCREEN, _ENTRY_BTN_ASCEND).is_success:
                 self._entry_btn_area = _ENTRY_BTN_ASCEND
             elif self.round_by_find_area(screen, _DETAIL_SCREEN, _ENTRY_BTN_RISE).is_success:
