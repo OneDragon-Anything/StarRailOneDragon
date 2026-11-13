@@ -411,8 +411,13 @@ class UpgradeCharacterOp(SrOperation):
         screen = self.last_screenshot
         # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
         # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
-        # 分流:结果框在 = 刷取完成交返回分类;两弹窗都不在 = 刷取进行中慢询
-        # 等待;只有确认框在才执行次数设置与确认点击
+        # 分流:开拓力补充弹窗在 = 券已扣但开拓力不够,刷取被拦,显式判停
+        # (WAIT 循环无重试上限,不判停会空转烧穿预算);结果框在 = 刷取完成
+        # 交返回分类;两弹窗都不在 = 刷取进行中慢询等待;只有确认框在才执行
+        # 次数设置与确认点击
+        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            return self.round_fail('开拓力不足:游戏弹「开拓力补充」弹窗拦截刷取,'
+                                   '判停待开拓力/备用开拓力恢复')
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
