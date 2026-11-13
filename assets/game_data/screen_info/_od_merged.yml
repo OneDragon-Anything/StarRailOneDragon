@@ -1940,7 +1940,7 @@
     color_range: null
     goto_list: []
   - area_name: 挑战按钮
-    id_mark: false
+    id_mark: true
     pc_rect:
     - 1370
     - 958
