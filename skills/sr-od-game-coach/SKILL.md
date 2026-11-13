@@ -31,7 +31,7 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
-| **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途 | MCP：`character_lookup`（含行迹满级+星魂全6；`with_ascension=true` 带晋阶突破材料+所属副本，含具体关卡实例）/ `cone_lookup`（含特效全文）/ `relic_lookup`（含套装效果+单件）；按中文名/数字id精确查，模糊多命中用全名 |
+| **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途、XX怎么获得/哪里弄 | MCP：`character_lookup`（含行迹满级+星魂全6；`with_ascension=true` 带晋阶突破材料+所属副本，含具体关卡实例）/ `cone_lookup`（含特效全文+获取途径）/ `relic_lookup`（含套装效果+单件+获取途径）；按中文名/数字id精确查，模糊多命中用全名 |
 | **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/modes/<玩法>.md`（场景）→ `references/teams/INDEX.md`（体系选型）→ `references/lineups/INDEX.md`（阵容档）→ `references/characters/INDEX.md`（按命途定位角色档）；小众玩法不必为其优化配队 |
 | **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `references/mechanics/relic-sets.md` / `references/mechanics/light-cones.md`） |
 | **装备与养成操作** | 怎么把光锥/遗器装上角色/换下来/查谁占用；升级/晋阶/行迹该用哪个 op、缺料时消耗门在哪 | `references/mechanics/light-cone-enhancement.md` §2（装备与更换操作路由：浏览清单/试换不抢/明确要抢三情况，含 op 名与失败语义）· `references/mechanics/relic-enhancement.md`（遗器浏览/更换/强化操作路由）· 升级 op 总清单与消耗授权纪律 → `references/basics/新手与日常决策.md` 养成 op 节 |
