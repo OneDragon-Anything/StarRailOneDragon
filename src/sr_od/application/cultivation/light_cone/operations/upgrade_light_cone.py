@@ -162,10 +162,12 @@ class UpgradeLightConeOp(SrOperation):
         """光锥 TAB 左上读名区 OCR「命途/角色名」取「/」后段。
 
         用途:手动刷取返回链会落到大世界,角色详情不记忆上次角色(实测显示
-        列表首位),需凭此名重选。读不出返回 None,返回链到重选步时显式失败,
-        不影响升级主流程。"""
-        screen = self.screenshot()
+        列表首位),需凭此名重选。area 未建档/读不出返回 None,返回链到重选
+        步时显式失败,不影响升级主流程。"""
         area = self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, '读名区-左上')
+        if area is None:
+            return None
+        screen = self.screenshot()
         results = self.ctx.ocr_service.get_ocr_result_list(
             image=screen, rect=area.pc_rect, crop_first=True)
         for r in results:
