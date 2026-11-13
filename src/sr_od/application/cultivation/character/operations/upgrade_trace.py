@@ -41,6 +41,9 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 _TRACE_SCREEN: str = '角色-行迹'
+# 快速刷取两弹窗独立画面(与光锥/角色线同构,见 upgrade_light_cone 常量注)
+_FAST_FARM_DIALOG: str = '快速刷取弹窗'
+_FAST_FARM_RESULT: str = '快速刷取结果弹窗'
 
 # 主技能名清单(节点点击坐标的 screen_info 单一真相源 =
 # 「角色-行迹」screen 的 点击区-节点-<技能名> area,藿藿样本实测;
@@ -294,16 +297,16 @@ class UpgradeTraceOp(SrOperation):
         """auto_farm 快速刷取子流程一步(照光锥 op 四态推进)。
 
         返回 None = 预算耗尽(调用方继续走通用材料补全/判停)。"""
-        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-开始刷取').is_success:
+        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取').is_success:
             self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-开始刷取').rect.center)
+                self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-确认快速刷取').rect.center)
             self._farm_rounds += 1
             log.info('行迹升级: 第 %d 次快速刷取开始(消耗开拓力 %d + 券 %d)',
                      self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
             return self.round_retry('连刷进行中', wait=_FARM_POLL_SEC)
-        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-关闭刷取结果').is_success:
+        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-关闭刷取结果').rect.center)
+                self.ctx.screen_loader.get_area(_FAST_FARM_RESULT, '按钮-关闭刷取结果').rect.center)
             return self.round_retry('刷取完成,关闭回面板', wait=2)
         if self._farm_rounds >= self.farm_rounds_max:
             log.info('行迹升级: 快速刷取预算(%d 轮)耗尽', self.farm_rounds_max)

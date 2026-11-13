@@ -49,6 +49,10 @@ from sr_od.operations.sr_operation import SrOperation
 _DETAIL_SCREEN: str = '角色-详情'
 _ASCEND_SCREEN: str = '角色-等级提升'
 _CHALLENGE_SCREEN: str = '挑战副本'
+# 快速刷取两弹窗独立建档(选次数/结果两个弹窗,标题同名不同位,各自
+# id_mark=标题;模态盖住副本 id_mark,识别与交互都走弹窗画面)
+_FAST_FARM_DIALOG: str = '快速刷取弹窗'
+_FAST_FARM_RESULT: str = '快速刷取结果弹窗'
 _RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
 
 # 升级/晋阶执行的横幅+动画稳定等待(实测约 2s,点空白后再收尾)
@@ -382,7 +386,7 @@ class UpgradeCharacterOp(SrOperation):
         if self.use_fast_ticket:
             result = self.round_by_find_and_click_area(
                 screen, _CHALLENGE_SCREEN, '按钮-快速刷取副本',
-                until_find_all=[(_CHALLENGE_SCREEN, '标题-快速刷取弹窗')],
+                until_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=2,
             )
             if result.is_success:
@@ -402,8 +406,8 @@ class UpgradeCharacterOp(SrOperation):
     def confirm_ticket_farm(self) -> OperationRoundResult:
         """确认框内把刷取次数设到 farm_times_per_round(OCR 现读 + 点「+」
         补偿;游戏会记住上次次数,故只增不减,超滑条上限由游戏封顶)→ 点确认
-        → until 结果框「关闭」按钮出现(⚠️ 结果框与确认框标题同名同位
-        「快速刷取」,消失判定不可用;结果框出现 = 领奖完成回副本画面)。"""
+        → until 结果框「关闭」按钮出现(结果框为独立画面「快速刷取结果弹窗」,
+        与确认框同名不同位;结果框出现 = 领奖完成)。"""
         self._farm_rounds += 1
         set_result = self._set_farm_times(self.farm_times_per_round)
         if not set_result.is_success:
@@ -414,8 +418,8 @@ class UpgradeCharacterOp(SrOperation):
                  _FARM_TICKET_PER, self.farm_times_per_round)
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
-            screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
-            until_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
+            screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取',
+            until_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
 
@@ -424,7 +428,7 @@ class UpgradeCharacterOp(SrOperation):
         上限,随副本类型 8/24);正数 = OCR 读「刷取次数 N」现值 → 点「+」
         补差值 → OCR 复核达标即成。失败显式返回,交由节点预算兜底。"""
         if target == -1:
-            max_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数拉满')
+            max_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数拉满')
             self.ctx.controller.click(max_area.rect.center)
             time.sleep(1)  # 滑条动画
             current = self._read_farm_times()
@@ -435,7 +439,7 @@ class UpgradeCharacterOp(SrOperation):
                 return self.round_fail('拉满后无法读取刷取次数')
             log.info('晋阶: 刷取次数已拉满至 %d', current)
             return self.round_success()
-        plus_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数加')
+        plus_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数加')
         for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
             current = self._read_farm_times()
             if current is None:
@@ -448,7 +452,7 @@ class UpgradeCharacterOp(SrOperation):
     def _read_farm_times(self) -> int | None:
         """确认框「刷取次数 N」OCR 取 N(打开即游戏记忆的上次值,非恒 1)。"""
         screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '读区-刷取次数')
+        area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '读区-刷取次数')
         results = self.ctx.ocr_service.get_ocr_result_list(
             image=screen, rect=area.pc_rect, crop_first=True)
         for r in results:
@@ -490,10 +494,10 @@ class UpgradeCharacterOp(SrOperation):
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
             log.info('晋阶: 刷取完成回到养成界面,已刷 %d 次', self._farm_rounds)
             return self.round_success(status='FARMED')
-        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果').is_success:
+        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             result = self.round_by_find_and_click_area(
-                screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果',
-                until_not_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
+                screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果',
+                until_not_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
             )
             if result.is_success:

@@ -10,10 +10,10 @@ docs/game/screens/光锥-等级提升.md):
 - 材料全齐:白底「快速升级」执行钮(旧形态,area 保留);
 - 缺可合成材料:白底「使用通用材料补全」+左侧「快速刷取」;
 - 通用材料不可合成且缺可刷材料:仅「快速刷取」;
-- 「可提升至80级」badge 与快速刷取相互独立:badge 在但缺不可刷材料(命途
-  专属晋阶材料,材料详情获取途径为空)时,点快速刷取静默无反应——游戏提示
+- 「可提升至80级」badge 与快速刷取相互独立:badge 在但原始材料已足够
+  (缺口可由合成覆盖,无需副本刷取)时,点快速刷取静默无反应——游戏提示
   「当前并未缺少可以通过快速刷取获取的材料」。因此 open_farm_window 的
-  until 超时 = 缺料不可刷,判停并提示改走通用材料补全(fill_generic)。
+  until 超时 = 无可刷缺口,判停并提示改走通用材料补全(fill_generic)。
 
 快速刷取链(照 UpgradeCharacterOp 新版结构):
 点「快速刷取」→「培养还需获取资源」窗口(缺料行:材料+开拓力10+「进入」)
@@ -30,7 +30,9 @@ docs/game/screens/光锥-等级提升.md):
   角色名在入口核对时从光锥 TAB 左上读名区 OCR 记下(格式「命途/名字」)。
 
 消耗(拟造花萼·赤实测):每次刷取开拓力 10 + 快速刷取券 1(与角色晋阶线
-30+3 不同,券耗随副本类型变化);确认框滑条上限 24;次数不记忆(重开=1)。
+30+3 不同,券耗随副本类型变化);开拓力不足部分由备用开拓力补足(消耗行
+实证:开拓力先结、备用补差额),不耗星琼/燃料。确认框滑条上限 24;次数
+不记忆(重开=1)。
 开拓力不足时快速刷取/挑战按钮静默无反应(白底与可用态无视觉差异)——
 open_farm_window/手动挑战的重试预算耗尽即判停,不空烧轮次。
 
@@ -66,6 +68,11 @@ _WORLD_SCREEN: str = '大世界-普通'
 _DETAIL_SCREEN: str = '角色-详情'
 _RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
 _CHALLENGE_SCREEN: str = '挑战副本'
+# 快速刷取两弹窗独立建档(模态盖住副本 id_mark,识别必须走弹窗自身锚):
+# 选次数与结果是两个弹窗,标题同名「快速刷取」但位置不同(y≈304 / y≈249),
+# 各自画面 id_mark=标题,坐标互斥不误判
+_FAST_FARM_DIALOG: str = '快速刷取弹窗'
+_FAST_FARM_RESULT: str = '快速刷取结果弹窗'
 _BATTLE_SCREEN: str = '战斗画面'
 _LC_PROMO_BANNER_SCREEN: str = '光锥-等级提升-晋阶横幅'
 _LC_RETURN_SCREEN: str = '光锥-等级提升-材料返还'
@@ -93,12 +100,12 @@ class UpgradeLightConeOp(SrOperation):
     当前等级,日志注明等级与消耗)。
 
     ⚠️ farm_dungeon=True 真实刷副本:券路线(use_fast_ticket=True)消耗 =
-    券刷次数合计 × 券 1(不耗开拓力);手动路线消耗 = 手动场数 × 开拓力
-    10(不耗券)。farm_rounds_max 限制刷取轮数(券轮=一次确认框执行、手动
-    轮=一场战斗)。开拓力不足部分由游戏自动以备用开拓力抵扣,备用亦尽时
-    游戏弹「开拓力补充」弹窗,本 op 不处理、预算内轮次失败判停。**发起前
-    调用方必须按最坏消耗向用户说明并获同意**(通用材料默认授权,见
-    fill_generic)。
+    券刷次数合计 × (开拓力 10 + 券 1)——券只免战斗,开拓力照扣:先扣开拓
+    力再以备用开拓力补足(确认框消耗行实证),不耗星琼/燃料;手动路线消耗
+    = 手动场数 × 开拓力 10(不耗券)。farm_rounds_max 限制刷取轮数(券轮=
+    一次确认框执行、手动轮=一场战斗)。开拓力+备用亦尽时游戏弹「开拓力
+    补充」弹窗,本 op 不处理、预算内轮次失败判停。**发起前调用方必须按
+    最坏消耗向用户说明并获同意**(通用材料默认授权,见 fill_generic)。
 
     :param ctx: 上下文
     :param fill_generic: 缺料时用「使用通用材料补全」路线(通用材料合成
@@ -217,7 +224,8 @@ class UpgradeLightConeOp(SrOperation):
         if current is None:
             # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
             # 自身锚;刷取中断(结算画面/重建副本画面/升级过渡帧)查等级提升
-            # 左上锚与战斗结算退出钮(锚命中即接管交对应循环重分类)
+            # 左上锚与战斗结算退出钮;快速刷取确认框/结果框态(挑战按钮被
+            # 模态遮住,副本 id_mark 不命中)查弹窗标题锚
             for anchor in ('标题-材料补全弹窗', '标题-光锥详情'):
                 if screen_utils.find_area(
                         self.ctx, self.last_screenshot,
@@ -227,6 +235,12 @@ class UpgradeLightConeOp(SrOperation):
                     self.ctx, self.last_screenshot,
                     _BATTLE_SCREEN, '按钮-退出关卡') == FindAreaResultEnum.TRUE:
                 return self.round_success(status='IN_CHALLENGE')
+            # 快速刷取两弹窗按独立画面识别(标题同名不同位,各自 id_mark)
+            for dialog_screen in (_FAST_FARM_DIALOG, _FAST_FARM_RESULT):
+                if screen_utils.find_area(
+                        self.ctx, self.last_screenshot,
+                        dialog_screen, '标题-快速刷取弹窗') == FindAreaResultEnum.TRUE:
+                    return self.round_success(status='IN_CHALLENGE')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
             return self.round_success(status='ALREADY_ASCEND')
@@ -362,9 +376,9 @@ class UpgradeLightConeOp(SrOperation):
         # ⑦ 缺料态执行钮:「使用通用材料补全」(通用可覆盖缺口,消耗通用
         # 材料) /「材料合成」(不需通用材料的合成:原始材料满足或通用材料
         # 不够)——两者点击均弹同款「材料补全」确认框,fill_generic 路线
-        # 处理一致;fill_generic=False 时「材料合成」形态直接判停——该
-        # 形态下快速刷取静默无效(游戏判定缺口已被合成覆盖,实机实证:
-        # 资源窗口打不开),走刷取链只会空烧重试预算
+        # 处理一致;fill_generic=False 时「材料合成」形态直接判停——该形态
+        # 原始材料已足够,按快速刷取机制(无可刷缺口)预期无收益,走刷取链
+        # 只会空烧重试预算
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-通用材料补全').is_success:
             if self.fill_generic:
                 self.ctx.controller.click(
@@ -447,7 +461,7 @@ class UpgradeLightConeOp(SrOperation):
         if self.use_fast_ticket:
             result = self.round_by_find_and_click_area(
                 screen, _CHALLENGE_SCREEN, '按钮-快速刷取副本',
-                until_find_all=[(_CHALLENGE_SCREEN, '标题-快速刷取弹窗')],
+                until_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=2,
             )
             if result.is_success:
@@ -473,9 +487,9 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='副本刷取分流', status='USE_TICKET')
     @operation_node(name='券确认刷取', node_max_retry_times=6)
     def confirm_ticket_farm(self) -> OperationRoundResult:
-        """确认框内把刷取次数设到 farm_times_per_round → 点确认 → until 结果
-        框「关闭」出现(结果框与确认框标题同名同位,消失判定不可用;结果框
-        出现 = 领奖完成回副本画面)。
+        """确认框内把刷取次数设到 farm_times_per_round → 点确认 → until
+        结果框「关闭」出现(结果框为独立画面「快速刷取结果弹窗」,出现 =
+        领奖完成)。
 
         次数设置注意:光锥确认框次数不记忆(重开恒 1,与角色晋阶线不同),
         现读+补偿式设置两种情况天然兼容。"""
@@ -484,13 +498,15 @@ class UpgradeLightConeOp(SrOperation):
         if not set_result.is_success:
             return set_result
         self._farm_draws += self._farm_times_set
-        log.info('光锥晋阶: 第 %d 轮券刷取 %d 次(消耗券 %d,券免战斗不耗开拓力)',
+        log.info('光锥晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 券 %d,'
+                 '券免战斗开拓力照扣)',
                  self._farm_rounds, self._farm_times_set,
-                 self._farm_draws * _LC_FARM_TICKET_PER)
+                 self._farm_times_set * _LC_FARM_TRAILBLAZE_PER,
+                 self._farm_times_set * _LC_FARM_TICKET_PER)
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
-            screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
-            until_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
+            screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取',
+            until_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
 
@@ -499,7 +515,7 @@ class UpgradeLightConeOp(SrOperation):
         类型,拟造花萼实测24);正数 = OCR 读「刷取次数 N」现值 → 点「+」补
         差值 → 达标即成。失败显式返回,交由节点预算兜底。"""
         if target == -1:
-            max_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数拉满')
+            max_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数拉满')
             self.ctx.controller.click(max_area.rect.center)
             time.sleep(1)  # 滑条动画
             current = self._read_farm_times()
@@ -511,7 +527,7 @@ class UpgradeLightConeOp(SrOperation):
             self._farm_times_set = current
             log.info('光锥晋阶: 刷取次数已拉满至 %d', current)
             return self.round_success()
-        plus_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数加')
+        plus_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数加')
         for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
             current = self._read_farm_times()
             if current is None:
@@ -526,7 +542,7 @@ class UpgradeLightConeOp(SrOperation):
     def _read_farm_times(self) -> int | None:
         """确认框「刷取次数 N」OCR 取 N。"""
         screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '读区-刷取次数')
+        area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '读区-刷取次数')
         results = self.ctx.ocr_service.get_ocr_result_list(
             image=screen, rect=area.pc_rect, crop_first=True)
         for r in results:
@@ -587,10 +603,10 @@ class UpgradeLightConeOp(SrOperation):
             if result.is_success:
                 return self.round_retry('结算已退出,重入分类', wait=2)
             return result
-        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果').is_success:
+        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             result = self.round_by_find_and_click_area(
-                screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果',
-                until_not_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
+                screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果',
+                until_not_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
             )
             if result.is_success:
