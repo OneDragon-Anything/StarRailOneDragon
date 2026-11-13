@@ -36,6 +36,7 @@ farm_dungeon 控制:False(默认,安全)= 判停收尾(零额外消耗);True = �
 """
 
 import re
+import time
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -103,14 +104,15 @@ class UpgradeCharacterOp(SrOperation):
             True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**每次刷取
             以快速刷取券 3 张抵扣开拓力,券不可自然恢复**)。False = 正常
             挑战自动战斗(耗时约 2 分钟/轮)。
-        :param farm_times_per_round: 每轮刷取在确认框中设置的次数(1 起;
-            滑条上限随副本类型 8/24,超出部分由游戏封顶)。越大循环轮次越少
-            但越容易过量刷取(消耗多余开拓力)。
+        :param farm_times_per_round: 每轮刷取次数。正数 = 确认框内设置的固定
+            次数(OCR 现读 + 点「+」设到目标;滑条上限随副本类型 8/24,超出
+            部分由游戏封顶);-1 = 点「^」拉满到当日次数上限(效率最高,但可能
+            过量刷取消耗多余开拓力)。越大循环轮次越少。
         :param farm_rounds_max: 整个运行允许的刷取轮数上限(防无限烧预算;
             耗尽判停收尾,调用方可续跑)。
         """
-        if farm_times_per_round < 1:
-            raise ValueError(f'farm_times_per_round 必须 >= 1, 得到 {farm_times_per_round}')
+        if farm_times_per_round == 0 or farm_times_per_round < -1:
+            raise ValueError(f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')
         if farm_rounds_max < 1:
             raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
         self.fill_generic: bool = fill_generic
@@ -413,9 +415,21 @@ class UpgradeCharacterOp(SrOperation):
         )
 
     def _set_farm_times(self, target: int) -> OperationRoundResult:
-        """快速刷取确认框内把次数设到 target:OCR 读「刷取次数 N」现值 →
-        点「+」补差值 → OCR 复核达标(或滑条封顶)即成。失败显式返回,
-        交由节点预算兜底。"""
+        """快速刷取确认框内把次数设到目标:target=-1 = 点「^」拉满(滑条
+        上限,随副本类型 8/24);正数 = OCR 读「刷取次数 N」现值 → 点「+」
+        补差值 → OCR 复核达标即成。失败显式返回,交由节点预算兜底。"""
+        if target == -1:
+            max_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数拉满')
+            self.ctx.controller.click(max_area.rect.center)
+            time.sleep(1)  # 滑条动画
+            current = self._read_farm_times()
+            if current is None:
+                time.sleep(1)
+                current = self._read_farm_times()
+            if current is None:
+                return self.round_fail('拉满后无法读取刷取次数')
+            log.info('晋阶: 刷取次数已拉满至 %d', current)
+            return self.round_success()
         plus_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数加')
         for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
             current = self._read_farm_times()
