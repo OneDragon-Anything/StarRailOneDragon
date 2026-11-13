@@ -159,39 +159,44 @@ class UpgradeLightConeOp(SrOperation):
         return None
 
     def _read_character_name(self) -> str | None:
-        """光锥 TAB 左上读名区 OCR「命途/角色名」取「/」后段。
+        """光锥 TAB / 等级提升 左上读名区 OCR「命途/角色名」取「/」后段
+        (两界面左上布局相同,分别建档)。
 
         用途:手动刷取返回链会落到大世界,角色详情不记忆上次角色(实测显示
         列表首位),需凭此名重选。area 未建档/读不出返回 None,返回链到重选
         步时显式失败,不影响升级主流程。"""
-        area = self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, '读名区-左上')
-        if area is None:
-            return None
-        screen = self.screenshot()
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
-        for r in results:
-            text = str(r.data or '').strip()
-            if '/' in text:
-                name = text.rsplit('/', maxsplit=1)[-1].strip()
-                if name:
-                    return name
+        for screen_name in (_LC_TAB_SCREEN, _LC_ASCEND_SCREEN):
+            area = self.ctx.screen_loader.get_area(screen_name, '读名区-左上')
+            if area is None:
+                continue
+            results = self.ctx.ocr_service.get_ocr_result_list(
+                image=self.screenshot(), rect=area.pc_rect, crop_first=True)
+            for r in results:
+                text = str(r.data or '').strip()
+                if '/' in text:
+                    name = text.rsplit('/', maxsplit=1)[-1].strip()
+                    if name:
+                        return name
         return None
 
     #------------------- 节点图 -------------------#
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """画面级判定在光锥 TAB 且强化按钮可点;记下角色名(手动刷取返回链用)。
+        """画面级判定:光锥 TAB(强化入口)或已在等级提升(中断接管);记下角色
+        名(手动刷取返回链用)。
 
-        列表浮层开着会遮挡强化按钮,识别浮层态显式失败提示先收列表;满级
-        判定不在入口做(满级时强化按钮仍在,见升级循环内判)。"""
+        列表浮层开着会遮挡强化按钮,识别浮层态显式失败提示先收列表;现场已在
+        等级提升(如上次运行中断/弹窗浮层)时直入升级循环接管。"""
         current = self.check_and_update_current_screen(
             self.last_screenshot,
-            screen_name_list=[_LC_TAB_SCREEN, _REPLACE_SCREEN, _LIST_SCREEN])
+            screen_name_list=[_LC_TAB_SCREEN, _LC_ASCEND_SCREEN,
+                              _REPLACE_SCREEN, _LIST_SCREEN])
         if current in (_REPLACE_SCREEN, _LIST_SCREEN):
             return self.round_fail(f'{current} 浮层开着(遮挡态):先收列表'
                                    f'(替换列表点右上返回箭头)')
+        if current == _LC_ASCEND_SCREEN:
+            return self.round_success(status='ALREADY_ASCEND')
         if current != _LC_TAB_SCREEN:
             return self.round_fail(f'不在光锥 TAB(当前画面判定: {current};'
                                    f'前置:进详情 + 选角色 + 切「光锥」页签)')
@@ -216,6 +221,7 @@ class UpgradeLightConeOp(SrOperation):
         )
 
     @node_from(from_name='打开等级提升')
+    @node_from(from_name='入口核对', status='ALREADY_ASCEND')
     @node_from(from_name='刷取返回分类', status='FARMED')
     @node_from(from_name='重走入口链', status='FARMED')
     @operation_node(name='升级循环', node_max_retry_times=40)
