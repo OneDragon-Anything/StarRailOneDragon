@@ -1,6 +1,6 @@
 ---
 name: sr-od-game-consume
-description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；买大月卡(无名勋礼/无名客的荣勋 ￥68 档)到付款码、切微信/支付宝渠道、查大月卡购买状态；跃迁抽卡全链(读票数星琼当前池/选池/执行1次10连/票不足星琼兑换闸/收摊——执行须用户逐次确认池子与次数)。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」「抽卡/来一发/十连」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」「专票还剩几张」也用；提到无名客的奖章(￥128档)或礼包/皮肤/星琼直充等未收录消费项的请求同样用(路由表有如实告知的去向,防凭猜操作摸到真实货币入口)。消费决策(该不该买/性价比/何时续/该不该抽)归 sr-od-game-coach；画面建档细节归 docs/game/screens/store.md、无名勋礼.md、无名勋礼-购买档位页.md、跃迁.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, nameless medal, renew, payment QR code, recharge, top-up, warp, gacha pull。
+description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用——买小月卡(列车补给/列车补给凭证)、续订月卡、给用户摆付款码(扫码支付)、查月卡剩余天数与生效状态；买大月卡(无名勋礼/无名客的荣勋 ￥68 档)到付款码、切微信/支付宝渠道、查大月卡购买状态；跃迁抽卡全链(读票数星琼当前池/选池/执行1次10连/票不足星琼兑换闸/收摊——执行须用户逐次确认池子与次数)；常驻商店子商店兑换(聚灵铸星金徽/蓝徽换角色光锥、协议商店黑塔券买协议礼包、外观商店星琼买时装)——op 未实测,agent 亲自操作。凡是「帮我买月卡/充值/氪一张/续订/给我付款码」「抽卡/来一发/十连」类请求即使用本 skill，即使没明说细节；查「月卡还剩几天」「大月卡/战令买了没」「无名勋礼剩余时间」「专票还剩几张」也用；提到无名客的奖章(￥128档)或礼包/皮肤/星琼直充/金徽兑换/黑塔券礼包等消费项的请求同样用(路由表有如实告知的去向,防凭猜操作摸到真实货币入口)。消费决策(该不该买/性价比/何时续/该不该抽)归 sr-od-game-coach；画面建档细节归 docs/game/screens/store.md、无名勋礼.md、无名勋礼-购买档位页.md、跃迁.md；单条 op 的实现调试归 od-dev-write-operation；本 skill 只管操作路由与消耗红线。英文:buy monthly pass, express supply pass, nameless honor, nameless medal, renew, payment QR code, recharge, top-up, warp, gacha pull, stellar convergence, herta contract。
 ---
 
 # 游戏内消费路由（sr-od-game-consume）
@@ -21,6 +21,7 @@ description: 指导/执行崩坏:星穹铁道游戏内真实货币消费时用�
 | 大月卡(无名勋礼)查购买状态/导航 | [references/大月卡充值.md](references/大月卡充值.md)——op `BuyNamelessHonorPassOp(open_pay=False)` 判未购/已购态,零消耗 | 可用 |
 | 大月卡(无名勋礼)购买 ￥68 档(荣勋)到付款码 | 同上档——op `open_pay=True, pay_channel=...` 全链到扫码弹窗(档位页自动选 ￥68;￥128 奖章档只识别不点击);2026-11-12 实机走通 | 可用 |
 | 跃迁(抽卡)读资产/导航/执行 | [references/跃迁抽卡.md](references/跃迁抽卡.md)——op `ReadWarpStatusOp` 一键读星琼/专票/星票/当前池(MCP run_operation 的 data 携带结果)、op `WarpOp` 执行跃迁1次/10次(当前池,抽完留页);**跃迁按钮=消耗控件,仅限用户明确授权的抽卡请求调用,agent 不得自行发起;票不足不自动兑换星琼** | 全链可用(执行须用户授权) |
+| 常驻商店其他子商店兑换:聚灵铸星(金徽换常驻五星角色/蓝徽换光锥)、协议商店(黑塔券买黑塔支持协议礼包)、外观商店(星琼直购时装) | 画面与商品知识见 [docs/game/screens/store.md](../../../docs/game/screens/store.md) §6.9;**对应 op `ExchangeShopBuyGoods`(shop=stellar_convergence/contract)购买全链未实机测试,仅供参考——agent 应亲自操作**(MCP 手动导航+点卡+弹窗观察+按用户指令确认),不要直接调 op 跑全链;已知形态:聚灵铸星=滑条弹窗可重复兑换升星魂、协议商店=礼包确认弹窗(无数量滑条,数量恒 1)、全限购+「已售罄/已达上限」角标拦截 | op 未实测,仅参考 |
 | 其他未收录消费项(礼包/皮肤/星琼直充等) | 未建档未收录——如实告知未支持,勿凭猜导航；值得做则挂账待建 | 未收录 |
 
 ## 各消费项通用的验证纪律
