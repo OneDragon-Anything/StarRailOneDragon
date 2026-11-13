@@ -394,7 +394,14 @@ class UpgradeLightConeOp(SrOperation):
                 screen, _LC_ASCEND_SCREEN, '按钮-快速刷取').is_success:
             return self.round_success(status='NEED_FARM')
 
-        # ⑨ 判停:补全钮不在(缺不可合成料)+未授权刷取,或刷取钮不在(无可刷缺口)
+        # ⑨ 判停:「材料不足」灰字(全缺:晋阶与合成原料均不足)显式识别,
+        # 其余(缺不可刷材料或未授权)走通用兜底——两者都是不可推进终态,
+        # 仅日志文案区分
+        if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '文本-材料不足').is_success:
+            self._capped = True
+            self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
+            log.info('光锥晋阶: 右下「材料不足」灰字(全缺),判停于等级 %s', self._capped_level)
+            return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
         self._capped = True
         self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
         log.info('光锥晋阶: 无可推进路径(缺不可刷材料或未授权),判停于等级 %s', self._capped_level)
