@@ -231,24 +231,32 @@ class SelectCharacterOp(SrOperation):
     def _return_to_top(self) -> OperationRoundResult:
         """回顶并验证到位:连拖后扫页签,相邻两次相同 = 列表钳住不再滚动。
 
-        空识别帧(滚动余动中)不算钳制,继续拖。到位后重置遍历状态。"""
+        每次拖拽后等惯性滚动结束再起下一次(背靠背连拖会打断惯性并把
+        列表触摸锁死,实机整列表卡死);空识别帧(滚动余动中)不算钳制,
+        继续拖。耗尽未钳制 = 显式失败(列表可能卡死,不假报到位)。"""
         prev_sig = ''
+        verified = False
         for _round in range(6):
             for _ in range(_TOP_DRAG_COUNT):
                 self.ctx.controller.drag_to(_TOP_TO, start=_TOP_FROM, duration=_TOP_DURATION)
-            time.sleep(1.2)
+                time.sleep(1.0)  # 惯性滚动收尾
             self.screenshot()
             cells = read_character_cells_by_level(self.ctx, self.last_screenshot,
                                                   screen_name=_LIST_SCREEN)
             sig = self._page_sig(cells)
             if sig and sig == prev_sig:
+                verified = True
                 break
             prev_sig = sig
+            time.sleep(0.5)  # 页签扫描间隔
         self._need_top = False
         self._stagnation = 0
         self._seen_sigs = set()
         self._last_page_sig = ''
-        return self.round_wait('已回列表顶部(钳制验证通过)', wait=1)
+        if verified:
+            return self.round_wait('已回列表顶部(钳制验证通过)', wait=1)
+        return self.round_fail(f'回顶后列表未钳制(页签: {prev_sig or "空"}),'
+                               f'疑似滚动异常,请实机确认')
 
     @node_from(from_name='寻找并选中', status='SELECTED')
     @node_from(from_name='入口核对', status='ALREADY_TARGET')
