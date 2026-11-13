@@ -49,6 +49,7 @@ from sr_od.operations.sr_operation import SrOperation
 _DETAIL_SCREEN: str = '角色-详情'
 _ASCEND_SCREEN: str = '角色-等级提升'
 _CHALLENGE_SCREEN: str = '挑战副本'
+_RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
 
 # 升级/晋阶执行的横幅+动画稳定等待(实测约 2s,点空白后再收尾)
 _ASCEND_SETTLE_SEC: float = 2.5
@@ -350,11 +351,14 @@ class UpgradeCharacterOp(SrOperation):
     @node_from(from_name='升级循环', status='NEED_FARM')
     @operation_node(name='打开资源窗口', node_max_retry_times=3)
     def open_farm_window(self) -> OperationRoundResult:
-        """界面左下点「快速刷取」→「培养还需获取资源」窗口(until=窗口标题)。"""
+        """界面左下点「快速刷取」→「培养还需获取资源」窗口(until=窗口标题)。
+
+        资源窗口为角色/光锥/行迹三线共享浮层,area 建档在独立 screen
+        「培养资源窗口」。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _ASCEND_SCREEN, '按钮-快速刷取',
-            until_find_all=[(_ASCEND_SCREEN, '标题-培养资源窗口')],
+            until_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
 
@@ -364,7 +368,7 @@ class UpgradeCharacterOp(SrOperation):
         """资源窗口点缺料行的「进入」→ 直达对应副本挑战画面(until=挑战锚)。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
-            screen, _ASCEND_SCREEN, '按钮-进入副本',
+            screen, _RESOURCE_WINDOW_SCREEN, '按钮-进入副本',
             until_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
@@ -494,10 +498,10 @@ class UpgradeCharacterOp(SrOperation):
             if result.is_success:
                 return self.round_retry('刷取结果框已关,重入分类', wait=1)
             return result
-        if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-培养资源窗口').is_success:
+        if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
             result = self.round_by_find_and_click_area(
-                screen, _ASCEND_SCREEN, '按钮-关闭资源窗口',
-                until_not_find_all=[(_ASCEND_SCREEN, '标题-培养资源窗口')],
+                screen, _RESOURCE_WINDOW_SCREEN, '按钮-关闭资源窗口',
+                until_not_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
             )
             if result.is_success:
