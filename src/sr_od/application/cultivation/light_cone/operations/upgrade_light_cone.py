@@ -294,7 +294,9 @@ class UpgradeLightConeOp(SrOperation):
                 if result.is_success:
                     return self.round_retry('等级提升已开,重入分类', wait=1.5)
                 return result
-            return self.round_fail('离开等级提升界面且强化按钮不在(画面状态未知),请实机确认')
+            # 详情与强化钮同时不可见 = 升级执行动画/横幅过渡帧:等稳定重判
+            # (真异常由节点重试预算兜底耗尽显式失败)
+            return self.round_retry('界面过渡中,等稳定重判', wait=2.0)
 
         # ④ 满级态:右下「已提升至最高阶」→ 判停收尾归档
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '文本-已提升至最高阶').is_success:
