@@ -139,7 +139,7 @@ description: 要打、自动化、开发或理解逐光捡金系列玩法（忘�
 
 ## 异相仲裁（ANOMALY_ARBITRATION）
 
-未探明：无画面建档、无玩法 doc、无挑战 op。`GotoTreasuresLightward` 对它的分支点击入口按钮后显式失败挂账。要打它：先按 `od-dev-screen-onboarding` 建档 → 按 `od-dev-gameplay-automation` 从零做 op——在此之前如实告知用户不能自动打。
+未探明：无画面建档、无玩法 doc、无挑战 op。`GotoTreasuresLightward` 对它的分支点击入口按钮后显式失败挂账。要打它：先按 `od-dev-screen-onboarding` 建档 → 按 `od-dev-write-application` 从零做 op——在此之
 
 ## 现状边界
 

@@ -167,7 +167,7 @@ op `apocalyptic_shadow.reward_claim.TlRewardClaimOp()`(无参)。前置 = 末日
 ## 5. 边界(当前不能做的)
 
 - **异相仲裁**:未探明(无建档/无 op)——如实告知不能自动打;要支持先按
-  `od-dev-screen-onboarding` 建档再按 `od-dev-gameplay-automation` 从零做。
+  `od-dev-screen-onboarding` 建档再按 `od-dev-write-application` 从零做。
 - **FH 星启(难度 12,三节点)**:挑战 ops 未适配(显式防御),不能自动打。
 - **PF 星启**:结构未实跑,未验证。
 - **多关循环编排**(连打多个难度/关卡):无 app 级编排,由调用方按 2.1/3.1/4.1

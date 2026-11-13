@@ -6,7 +6,7 @@
 
 ## 边界
 
-- 锄大地路线编写、巡访自动化 op、小地图(minimap)识别调参、screen_info 画面建档不在本 skill:玩法自动化开发归 od-dev-gameplay-automation / od-dev-write-operation / od-dev-screen-onboarding。
+- 锄大地路线编写、巡访自动化 op、小地图(minimap)识别调参、screen_info 画面建档不在本 skill:玩法自动化开发归 od-dev-write-application / od-dev-write-operation / od-dev-screen-onboarding。
 - 「版本更新后跟什么」的总编排归 sr-od-version-update-adaptation;本 skill 只承载地图信息各注册表本身的更新方法(含副本注册表)。
 - 地图录制只产底图资产(raw/mask/定标坐标),不写路线。
 
