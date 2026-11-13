@@ -27,10 +27,9 @@ area_list:
   lcs_percent: 0.5
   template_sub_dir: normal_world
   template_id: ui_icon_03
-  template_match_threshold: 0.7
+  template_match_threshold: 0.5
   color_range: null
-  goto_list:
-  - 背包-养成材料
+  goto_list: []
 - area_name: 左上图标-菜单
   id_mark: false
   pc_rect:
