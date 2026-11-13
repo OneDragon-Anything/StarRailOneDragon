@@ -193,11 +193,14 @@ class UpgradeLightConeOp(SrOperation):
         等级提升(如上次运行中断/弹窗浮层)时直入升级循环接管。"""
         current = self.check_and_update_current_screen(
             self.last_screenshot,
-            screen_name_list=[_LC_TAB_SCREEN, _LC_ASCEND_SCREEN,
+            screen_name_list=[_LC_TAB_SCREEN, _LC_ASCEND_SCREEN, _CHALLENGE_SCREEN,
                               _REPLACE_SCREEN, _LIST_SCREEN])
         if current in (_REPLACE_SCREEN, _LIST_SCREEN):
             return self.round_fail(f'{current} 浮层开着(遮挡态):先收列表'
                                    f'(替换列表点右上返回箭头)')
+        if current == _CHALLENGE_SCREEN:
+            # 刷取中断现场(战斗/结算/重建副本画面):直入返回分类收口
+            return self.round_success(status='IN_CHALLENGE')
         if current is None:
             # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
             # 自身锚;升级动画过渡帧查等级提升左上锚(锚命中即接管交升级循环,
@@ -497,6 +500,7 @@ class UpgradeLightConeOp(SrOperation):
 
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
+    @node_from(from_name='入口核对', status='IN_CHALLENGE')
     @operation_node(name='刷取返回分类', node_max_retry_times=12)
     def back_after_farm(self) -> OperationRoundResult:
         """刷取后返回分类(flat):手动路线与券路线的落点不同——
@@ -532,11 +536,16 @@ class UpgradeLightConeOp(SrOperation):
             screen, screen_name_list=[_CHALLENGE_SCREEN, _WORLD_SCREEN, _DETAIL_SCREEN,
                                       _LC_TAB_SCREEN, '大世界'])
         if current == _CHALLENGE_SCREEN:
-            return self.round_by_find_and_click_area(
+            result = self.round_by_find_and_click_area(
                 screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
-                until_find_all=[(_LC_ASCEND_SCREEN, '标题-光锥详情')],
+                until_not_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
                 pre_delay=0.5, success_wait=2, retry_wait=2,
             )
+            if result.is_success:
+                # 手动路线:副本画面为重建态,关闭后落大世界;券路线:按栈回
+                # 退到等级提升——两种落点都交回本分类重判
+                return self.round_retry('副本画面已关,重入分类', wait=2)
+            return result
         if current in (_WORLD_SCREEN, '大世界'):
             return self.round_success(status='BACK_TO_WORLD', wait=1)
         if current in (_DETAIL_SCREEN, _LC_TAB_SCREEN):
