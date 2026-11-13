@@ -15,14 +15,18 @@
 - 升到当前上限后界面自动切晋阶态(当前→下一阶段对比视图),晋阶材料需求
   单独列出,执行晋阶后上限提升,继续升级——升级与晋阶交替直到 80;
 - 执行后横幅两种标题:升级 =「等级提升」、晋阶 =「角色晋阶」,点空白关闭;
-- 右下「快速刷取」:缺料时消耗开拓力 30/次 + 快速刷取券 3/次补材料
-  (券不可自然恢复)。
+- 右下「快速刷取」(2026-11-13 新版交互实机摸底):点开弹「培养还需获取资源」
+  窗口(缺料材料清单,每行「开拓力30 + 进入」)→ 点「进入」直达对应副本挑战
+  画面 → 两条刷取路线由 use_fast_ticket 分流:True = 副本画面左下「快速刷取」
+  (快速刷取券)→ 确认框「消耗开拓力30+券3」→ 确认免战斗直接领奖;
+  False = 正常「挑战」→ 编队「开始挑战」→ 自动战斗 → 结算「退出关卡」。
+  刷完关闭副本回到等级提升界面,材料齐后继续升级——循环每轮只刷 1 次,
+  材料够不够由右下按钮状态自反馈,不足再走刷取直至预算耗尽。
 
-补料路线(auto_farm=True 时优先级):快速刷取(常规资源)→ 通用材料补全
-(fill_generic 后备);都未授权 = 判停。fill_generic 默认 True(灵之珠泪
-不稀缺,是官方设计的默认补全路径),**调用方发起前仍须向用户提示会消耗
-通用材料**;auto_farm 属真实资源消耗,**调用方发起前必须向用户说明消耗
-(预计刷取次数 × 30 开拓力 + × 3 券)并获用户明确同意**,不得静默启用。
+补料路线:通用材料补全(fill_generic 默认 True,确认即执行)优先于刷取——
+右下按钮可点时不进刷取流程;右下全灰(「材料不足」)才走快速刷取。
+**调用方发起前须向用户说明:刷取消耗开拓力 30/次,use_fast_ticket=True
+另消耗快速刷取券 3/次(券不可自然恢复)**。
 
 前置:角色详情画面·详情 TAB·列表已收起(前三步保证);本 op 不选角色、
 不切页签——起点不符显式失败,组合编排归调用方。
@@ -40,19 +44,18 @@ from sr_od.operations.sr_operation import SrOperation
 
 _DETAIL_SCREEN: str = '角色-详情'
 _ASCEND_SCREEN: str = '角色-等级提升'
+_CHALLENGE_SCREEN: str = '挑战副本'
 
 # 升级/晋阶执行的横幅+动画稳定等待(实测约 2s,点空白后再收尾)
 _ASCEND_SETTLE_SEC: float = 2.5
 # 通用材料补全确认后的等待:确认即执行升级/晋阶并弹横幅,横幅弹出动画
 # 约 1-2s,太短会截到动画中帧(横幅文字未到位 → 横幅锚不命中 → 过渡态误判)
 _FILL_SETTLE_SEC: float = 3.0
-# 每次快速刷取的固定消耗(难度 IV 实测;两项都扣)
+# 每次刷取的固定消耗(难度 IV 实测;两项都扣)
 _FARM_TRAILBLAZE_PER: int = 30
 _FARM_TICKET_PER: int = 3
-# 快速刷取连刷的单轮等待(每次连刷含多次战斗,自动停止;重入轮慢询状态)
-_FARM_POLL_SEC: float = 20.0
-# auto_farm 单次晋阶段内最多刷取次数(防券/开拓力无限烧:缺料大时刷满预算
-# 判停报告,调用方可续跑)
+# 刷取次数预算(防开拓力/券无限烧:每轮循环刷 1 次,材料够不够由右下按钮
+# 状态自反馈,不足再走刷取直至预算耗尽判停,调用方可续跑)
 _FARM_ROUNDS_MAX: int = 10
 
 # 详情页入口按钮两 area 同 rect 不同 text,OCR find 天然互斥
@@ -72,39 +75,39 @@ class UpgradeCharacterOp(SrOperation):
     升到上限后自动切晋阶态,晋阶执行后继续升级循环。
 
     ⚠️ fill_generic=True(默认)会消耗通用材料灵之珠泪:调用方发起前须向
-    用户提示。⚠️ auto_farm=True 属真实资源消耗(开拓力 30/次 + 快速刷取券
-    3/次,券不可自然恢复):**调用方发起前必须向用户说明预计消耗并获明确
-    同意**,本 op 不代替调用方做这个确认。"""
+    用户提示。⚠️ 刷取路线属真实资源消耗(开拓力 30/次,use_fast_ticket=True
+    另耗快速刷取券 3/次,券不可自然恢复):**调用方发起前必须向用户说明
+    预计消耗并获明确同意**,本 op 不代替调用方做这个确认。"""
 
-    def __init__(self, ctx: SrContext, fill_generic: bool = True, auto_farm: bool = False):
+    def __init__(self, ctx: SrContext, fill_generic: bool = True,
+                 use_fast_ticket: bool = True):
         """
         :param ctx: 上下文
         :param fill_generic: 缺料时是否用「使用通用材料补全」路线(消耗通用
             材料灵之珠泪合成补齐)。True(默认) = 自动确认材料补全弹窗——
             灵之珠泪量大不稀缺,是官方默认补全路径;调用方发起前向用户提示
-            即可。False = 不消耗通用材料,缺料走 auto_farm 或判停。
-        :param auto_farm: 材料不足时是否自动「快速刷取」补材料后继续升级。
-            False(默认) = 不刷,缺料走 fill_generic 或判停(安全,零额外
-            消耗);True = 自动连刷补材料继续升(消耗开拓力 30/次 + 快速刷取
-            券 3/次)。**启用前调用方必须向用户说明消耗并获同意**。
-            auto_farm=True 时优先走刷取路线(常规资源),fill_generic 退为
-            刷取预算耗尽后的后备路线。
+            即可。False = 不消耗通用材料,缺料走刷取路线或判停。
+        :param use_fast_ticket: 右下全灰(材料不足)时的刷取路线。
+            True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**消耗开拓力
+            30/次 + 快速刷取券 3/次,券不可自然恢复**)。False = 进副本正常
+            挑战自动战斗(**消耗开拓力 30/次**,无券消耗)。
+            **启用前调用方必须向用户说明消耗并获同意**。
         """
         self.fill_generic: bool = fill_generic
-        self.auto_farm: bool = auto_farm
+        self.use_fast_ticket: bool = use_fast_ticket
         SrOperation.__init__(self, ctx, op_name=gt('角色晋阶升级')
-                             + ('(自动刷取)' if auto_farm else '')
+                             + ('(券刷取)' if use_fast_ticket else '(手动刷取)')
                              + ('' if fill_generic else '(不用通用材料)'),
                              node_max_retry_times=40)  # 升级↔晋阶交替多轮(≤6 阶晋阶+分段升级+横幅关闭),默认必中途夭折
         self._entry_btn_area: str = _ENTRY_BTN_ASCEND  #: 入口命中的按钮 area(打开界面用)
         self._capped: bool = False         #: 材料不足已判停(回详情页收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
-        self._farm_rounds: int = 0         #: 本次运行已执行的快速刷取次数(消耗统计)
+        self._farm_rounds: int = 0         #: 本次运行已执行的刷取次数(消耗统计)
         self._ascend_count: int = 0        #: 本次运行已执行的升级次数(日志统计)
         self._promotion_count: int = 0     #: 本次运行已执行的晋阶次数(日志统计)
-        if auto_farm:
-            log.info('晋阶: auto_farm 已启用——材料不足将自动快速刷取'
-                     '(每次消耗开拓力 %d + 快速刷取券 %d)', _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
+        log.info('晋阶: 刷取路线=%s,通用材料补全=%s——每次刷取消耗开拓力 30'
+                 + (' + 快速刷取券 3' if use_fast_ticket else ''),
+                 '券' if use_fast_ticket else '手动打', fill_generic)
 
     #------------------- 识别辅助 -------------------#
 
@@ -181,6 +184,7 @@ class UpgradeCharacterOp(SrOperation):
         )
 
     @node_from(from_name='打开晋阶')
+    @node_from(from_name='返回养成界面')  # 刷取链收口:副本刷完回养成界面重入本循环
     @operation_node(name='升级循环', node_max_retry_times=40)
     def upgrade_loop(self) -> OperationRoundResult:
         """flat loop:确认框 → 横幅 → 判停收尾 → 详情判 → 按钮分流。
@@ -263,12 +267,7 @@ class UpgradeCharacterOp(SrOperation):
                 return self.round_retry('晋阶界面已开,重入分类', wait=1.5)
             return result
 
-        # ⑤ 右下按钮分流(先 auto_farm 刷取子流程,再三个白底按钮,全不中判停)
-        if self.auto_farm:
-            farm_result = self._try_farm_route(screen)
-            if farm_result is not None:
-                return farm_result
-
+        # ⑤ 右下按钮分流(三个白底按钮,全不命中 = 灰底缺料进刷取路线)
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-快速升级').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '按钮-快速升级').rect.center)
@@ -293,46 +292,105 @@ class UpgradeCharacterOp(SrOperation):
             return self.round_retry(f'晋阶已执行(第{self._promotion_count}次),等横幅',
                                     wait=_ASCEND_SETTLE_SEC)
 
-        # 全部不命中 = 灰底「材料不足」全缺态 → 判停
-        self._capped = True
-        self._capped_level = self._read_ascend_level()
-        log.info('晋阶: 材料全缺(按钮灰底),判停于等级 %s', self._capped_level)
-        return self.round_retry('材料不足,返回详情收尾', wait=1)
-
-    #------------------- 快速刷取子流程(auto_farm) -------------------#
-
-    def _try_farm_route(self, screen) -> OperationRoundResult | None:
-        """auto_farm 快速刷取子流程四态推进;不走刷取路线时返回 None 交回
-        按钮分流(「快速升级」白底态 / fill_generic 路线 / 判停)。
-
-        「使用通用材料补全」白底在 = 缺料态:预算内开刷取确认弹窗推进;
-        「快速升级」白底在 = 材料足,不属于刷取路线(返回 None 交回分流)。"""
-        if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-开始刷取').is_success:
-            # 确认弹窗在 → 点开始(此后游戏自动连刷到材料够并停止)
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '按钮-开始刷取').rect.center)
-            self._farm_rounds += 1
-            log.info('晋阶: 第 %d 次快速刷取开始(消耗开拓力 %d + 券 %d)',
-                     self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
-            return self.round_retry('连刷进行中', wait=_FARM_POLL_SEC)
-        if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-关闭刷取结果').is_success:
-            # 结果框在 = 连刷已自动停止(材料够) → 关闭回晋阶界面
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '按钮-关闭刷取结果').rect.center)
-            return self.round_retry('刷取完成,关闭回晋阶', wait=2)
+        # ⑥ 全部不命中 = 灰底「材料不足」全缺态 → 刷取路线(预算内)/判停
         if self._farm_rounds >= _FARM_ROUNDS_MAX:
-            if self.fill_generic:
-                # 预算耗尽转通用材料补全后备路线(与类 docstring 的路线优先级一致)
-                log.info('晋阶: 快速刷取预算(%d 次)耗尽,转通用材料补全路线', _FARM_ROUNDS_MAX)
-                return None
             self._capped = True
             self._capped_level = self._read_ascend_level()
-            log.info('晋阶: 快速刷取预算(%d 次)耗尽,判停于等级 %s',
-                     _FARM_ROUNDS_MAX, self._capped_level)
+            log.info('晋阶: 刷取预算(%d 次)耗尽,判停于等级 %s', _FARM_ROUNDS_MAX, self._capped_level)
             return self.round_retry('刷取预算耗尽,返回详情收尾', wait=1)
-        if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-快速刷取').is_success:
-            # 弹窗未开(晋阶界面裸露且快速刷取按钮可见 = 缺料态) → 打开确认弹窗
+        return self.round_success(status='NEED_FARM')
+
+    @node_from(from_name='升级循环', status='NEED_FARM')
+    @operation_node(name='打开资源窗口', node_max_retry_times=3)
+    def open_farm_window(self) -> OperationRoundResult:
+        """界面左下点「快速刷取」→「培养还需获取资源」窗口(until=窗口标题)。"""
+        screen = self.last_screenshot
+        return self.round_by_find_and_click_area(
+            screen, _ASCEND_SCREEN, '按钮-快速刷取',
+            until_find_all=[(_ASCEND_SCREEN, '标题-培养资源窗口')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+
+    @node_from(from_name='打开资源窗口')
+    @operation_node(name='进入副本', node_max_retry_times=3)
+    def enter_dungeon(self) -> OperationRoundResult:
+        """资源窗口点缺料行的「进入」→ 直达对应副本挑战画面(until=挑战锚)。"""
+        screen = self.last_screenshot
+        return self.round_by_find_and_click_area(
+            screen, _ASCEND_SCREEN, '按钮-进入副本',
+            until_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+
+    @node_from(from_name='进入副本')
+    @operation_node(name='副本刷取')
+    def farm_in_dungeon(self) -> OperationRoundResult:
+        """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。"""
+        screen = self.last_screenshot
+        if self.use_fast_ticket:
+            result = self.round_by_find_and_click_area(
+                screen, _CHALLENGE_SCREEN, '按钮-快速刷取副本',
+                until_find_all=[(_CHALLENGE_SCREEN, '标题-快速刷取弹窗')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            )
+            if result.is_success:
+                return self.round_success(status='USE_TICKET')
+            return result
+        result = self.round_by_find_and_click_area(
+            screen, _CHALLENGE_SCREEN, '挑战按钮',
+            until_find_all=[(_CHALLENGE_SCREEN, '按钮-开始编队挑战')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+        if result.is_success:
+            return self.round_success(status='MANUAL_FIGHT')
+        return result
+
+    @node_from(from_name='副本刷取', status='USE_TICKET')
+    @operation_node(name='券确认刷取', node_max_retry_times=4)
+    def confirm_ticket_farm(self) -> OperationRoundResult:
+        """快速刷取确认框点确认(次数默认 1,每轮刷 1 次由循环自反馈收敛)
+        → until 确认框消失(直接领奖回副本画面)。"""
+        self._farm_rounds += 1
+        log.info('晋阶: 第 %d 次券刷取(消耗开拓力 %d + 快速刷取券 %d)',
+                 self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
+        screen = self.last_screenshot
+        return self.round_by_find_and_click_area(
+            screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
+            until_not_find_all=[(_CHALLENGE_SCREEN, '标题-快速刷取弹窗')],
+            pre_delay=0.5, success_wait=2, retry_wait=2,
+        )
+
+    @node_from(from_name='副本刷取', status='MANUAL_FIGHT')
+    @operation_node(name='手动挑战战斗', node_max_retry_times=30)
+    def manual_fight(self) -> OperationRoundResult:
+        """编队画面开始挑战 → 自动战斗(约 1-2 分钟,until 重试覆盖)
+        → 结算点「退出关卡」回副本画面。"""
+        if self.round_by_find_area(self.last_screenshot,
+                                   _CHALLENGE_SCREEN, '按钮-开始编队挑战').is_success:
             self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '按钮-快速刷取').rect.center)
-            return self.round_retry('打开快速刷取确认', wait=2)
-        return None
+                self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-开始编队挑战').rect.center)
+            self._farm_rounds += 1
+            log.info('晋阶: 第 %d 次手动刷取开始(消耗开拓力 %d)',
+                     self._farm_rounds, _FARM_TRAILBLAZE_PER)
+            return self.round_retry('战斗进行中', wait=15)
+        screen = self.last_screenshot
+        return self.round_by_find_and_click_area(
+            screen, '战斗画面', '按钮-退出关卡',
+            until_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+
+    @node_from(from_name='券确认刷取')
+    @node_from(from_name='手动挑战战斗')
+    @operation_node(name='返回养成界面', node_max_retry_times=6)
+    def back_to_ascend(self) -> OperationRoundResult:
+        """关闭副本(右上 X)→ 回等级提升界面(until=标题锚)→ 重入升级循环。"""
+        screen = self.last_screenshot
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
+            log.info('晋阶: 刷取完成回到养成界面,已刷 %d 次', self._farm_rounds)
+            return self.round_success(status='FARMED')
+        return self.round_by_find_and_click_area(
+            screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
+            until_find_all=[(_ASCEND_SCREEN, '标题-等级提升')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
