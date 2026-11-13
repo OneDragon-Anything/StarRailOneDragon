@@ -49,6 +49,7 @@ from sr_od.backend.mcp.prompts import (
 from sr_od.backend.mcp.relic_tools import register_relic_tools
 from sr_od.backend.mcp.service_app import (
     make_describe_operation,
+    make_describe_operation_flow,
     make_list_applications,
     make_list_operations,
     make_run_one_dragon,
@@ -548,6 +549,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     mcp.tool(annotations=ToolAnnotations(title="停止运行"))(make_stop_run(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="列出可运行 operation"))(make_list_operations(backend))
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查看 operation 参数"))(make_describe_operation(backend))
+    mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查看 operation 节点流转"))(make_describe_operation_flow(backend))
     mcp.tool(annotations=ToolAnnotations(title="运行 operation"))(make_run_operation(backend))
     # 配置修改工具(通用入口,按 app_id 路由到各 config 领域方法)
     mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取配置"))(make_get_config(backend))

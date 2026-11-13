@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from sr_od.backend import operation_registry
+from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import BackendNotReadyError, SrBackendContext
 
 
@@ -139,6 +139,32 @@ async def handle_game_operations_describe(
     return JSONResponse(info)
 
 
+async def handle_game_operations_flow(
+    backend: SrBackendContext, request: Request | None = None,
+) -> Response:
+    """处理 ``GET /game/operations/flow?op_id=&mermaid=``:查看单个 operation 节点流转图。
+
+    与 MCP ``describe_operation_flow`` 同契约(``operation_flow.describe_operation_flow``
+    单源):op_id 支持完整 ``<module>.<ClassName>``(接受任意 Operation 子类含
+    Application)或类名短名(短名多命中返 ``{ambiguous: True, candidates[]}``);
+    业务失败(缺 op_id / 解析失败 / 短名未找到)一律 ``200 + {error}``。核心函数
+    纯反射不依赖 backend 就绪;``to_thread`` 包装是因为短名路径的首次全仓扫描
+    较慢,避免阻塞事件循环。
+    """
+    op_id = None
+    mermaid = False
+    if request is not None:
+        op_id = request.query_params.get('op_id')
+        mermaid = request.query_params.get('mermaid', 'false').lower() == 'true'
+    if not op_id:
+        return JSONResponse({'error': '缺少 op_id query 参数'})
+    try:
+        info = await asyncio.to_thread(operation_flow.describe_operation_flow, op_id, mermaid=mermaid)
+    except Exception as e:  # noqa: BLE001 解析异常兜底(核心函数不碰 backend,无未就绪分支)
+        return JSONResponse({'error': str(e)})
+    return JSONResponse(info)
+
+
 async def handle_game_run_operation(
     backend: SrBackendContext, request: Request | None = None,
 ) -> Response:
@@ -228,6 +254,11 @@ def register_service_routes(mcp: FastMCP, backend: SrBackendContext) -> None:
     async def _game_operations_describe(request: Request) -> Response:
         """GET /game/operations/describe 路由分发。"""
         return await handle_game_operations_describe(backend, request)
+
+    @mcp.custom_route("/game/operations/flow", methods=["GET"])
+    async def _game_operations_flow(request: Request) -> Response:
+        """GET /game/operations/flow 路由分发。"""
+        return await handle_game_operations_flow(backend, request)
 
     @mcp.custom_route("/game/run/operation", methods=["POST"])
     async def _game_run_operation(request: Request) -> Response:

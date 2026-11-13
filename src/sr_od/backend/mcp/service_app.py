@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from pydantic import Field
 
-from sr_od.backend import operation_registry
+from sr_od.backend import operation_flow, operation_registry
 from sr_od.backend.backend_context import SrBackendContext
 from sr_od.backend.schemas import ApplicationListResult
 
@@ -181,6 +181,58 @@ def make_describe_operation(backend: SrBackendContext) -> Callable[[str], dict]:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'error': str(e)}
     return describe_operation
+
+
+def make_describe_operation_flow(backend: SrBackendContext) -> Callable[[str, bool], dict]:
+    """构造 ``describe_operation_flow`` tool(自定义 operation 运行入口)。
+
+    核心函数纯反射不依赖 backend.ctx,签名保留 backend 与既有工厂对齐
+    (挂接层统一注入模式);MCP / HTTP 同契约走同一核心函数。
+    """
+    def describe_operation_flow(
+        op_id: Annotated[str, Field(description="operation 定位标识 <module>.<ClassName>,可从 list_operations 获取;也可只传类名短名(如 MoveDirectly);完整形态实时解析,接受任意 Operation 子类含 Application")],
+        mermaid: Annotated[bool, Field(description="True 时额外返回 mermaid 字段(flowchart 源码,渲染交给客户端);默认 False 不占返回体")] = False,
+    ) -> dict:
+        """查看单个 operation 的节点流转图(节点/边/诊断)。观察类(纯反射,不实例化,不改任何状态)。
+
+        ``describe_operation`` 看参数 schema,本 tool 看节点怎么流转(怎么走/
+        失败走哪/收尾在哪),两者互补。不实例化的原因:``SrOperation.__init__``
+        构造 ``OpenAndEnterGame`` 等副作用依赖,且编排校验要等 ``execute`` 才
+        触发——静态提取零副作用,还能在运行前发现断名边/多起点等编排错误
+        (诊断 error 级与运行时 raise 一一对应)。
+
+        op_id 支持完整 ``<dotted module path>.<ClassName>`` 或类名短名(如
+        ``MoveDirectly``)。完整形态实时解析,接受任意 Operation 子类含
+        Application(app 同样是节点编排重灾区,本工具口径是可读性不限可运行性);
+        短名走扫描缓存精确匹配,App 类被可运行性口径过滤不进缓存,短名查不到
+        属预期,改用完整 op_id。
+
+        Args:
+            op_id: operation 定位标识,完整 ``<module>.<ClassName>`` 或类名短名。
+            mermaid: True 时额外返回 ``mermaid`` 字段(flowchart 源码),默认 False。
+
+        Returns:
+            单命中: ``{op_id, class_name, module, start_node(None=多起点/无起点),
+            node_count, edge_count, flow, mermaid, nodes[], edges[], diagnostics[],
+            notes[]}``。``flow`` = 文本流转图主形态(含图例行;``←入:`` 标注仅
+            入边≥2 的汇聚节点出现;断名边以 ``←✗不存在的来源`` 挂在 to 节点侧)。
+            ``nodes[]`` 按 BFS 执行序(不可达垫底): ``{cn, method(定位源码用),
+            is_start_node, timeout_seconds, node_max_retry_times, reachable}``。
+            ``edges[]`` 断名边(``from=None``)统一垫底: ``{from, to, success,
+            status, ignore_status(已静态归一)}``。``diagnostics[]``:
+            ``{level, code, message}``,error=运行时必炸或图不成立(断名边/重复
+            节点名/多起点/无起点),warn=结构可疑不致命(不可达节点/同方向多条
+            兜底边/边挂非节点方法)——出现 error 时 ``flow`` 仍尽力渲染,调试
+            价值在运行前看到全貌。
+            短名多命中: ``{ambiguous: True, count, candidates[], hint}``(只列
+            候选 op_id,不带 schema)。
+            解析失败(未找到/非 Operation 子类): ``{error}``。
+        """
+        try:
+            return operation_flow.describe_operation_flow(op_id, mermaid=mermaid)
+        except Exception as e:  # noqa: BLE001 工具层兜底
+            return {'error': str(e)}
+    return describe_operation_flow
 
 
 def make_run_operation(backend: SrBackendContext) -> Callable:
