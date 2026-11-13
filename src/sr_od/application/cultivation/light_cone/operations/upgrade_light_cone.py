@@ -595,6 +595,20 @@ class UpgradeLightConeOp(SrOperation):
                 self.ctx.screen_loader.get_area(_WORLD_SCREEN, '右上图标-角色详情').rect.center,
                 pc_alt=True)
             return self.round_retry('已点角色详情图标,等详情页', wait=2)
+        if current == _LC_TAB_SCREEN:
+            # 角色页记忆了上次浏览位置(点图标直接落光锥 TAB):已是目标角色
+            # 的 TAB,直接点强化接管,无需重选
+            result = self.round_by_find_and_click_area(
+                screen, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
+                until_find_all=[
+                    (_LC_ASCEND_SCREEN, '标题-光锥详情'),
+                    (_LC_ASCEND_SCREEN, 'TAB-升级'),
+                ],
+                pre_delay=0.5, success_wait=1.5, retry_wait=2,
+            )
+            if result.is_success:
+                return self.round_success(status='FARMED', wait=1)
+            return result
         if current != _DETAIL_SCREEN:
             return self.round_retry(f'入口链中画面未识别(判定: {current}),等稳定重判', wait=1.5)
 
