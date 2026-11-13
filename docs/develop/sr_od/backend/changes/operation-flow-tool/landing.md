@@ -11,13 +11,14 @@
 ## 3.1 核心提取模块 + 测试
 
 **范围**：新建 `src/sr_od/backend/operation_flow.py`（静态提取 / 诊断 / 文本图渲染 / 短名与完整 op_id 解析复用 `operation_registry`）+ `sr-od-test/test/sr_od/backend/test_operation_flow.py`。边界：不含 MCP/HTTP 挂接与正本文档。
-**设计依据**：design.md §2.2（提取语义）、§2.4（flow 格式与诊断枚举）、§2.5（框架前缀）、§2.7（测试计划）
+**设计依据**：design.md §2.2（提取语义）、§2.4.1-§2.4.4（排序 / flow 格式 / mermaid / 诊断枚举）、§2.5（框架前缀）、§2.7（测试计划）
 **文件面**：`src/sr_od/backend/operation_flow.py`（新建）、`sr-od-test/test/sr_od/backend/test_operation_flow.py`（新建）
 **依赖**：无
 **优先级建议**：9
 **完成判据**：
 - 提取行为对照 design.md §2.2 七条规则逐条成立（测试覆盖 §2.7 四组用例）；
-- 诊断 code 七枚举各有最小用例断言（含 `duplicate_fallback_edge` 的生效边指认）；
+- 诊断 code 七枚举各有最小用例断言（含 `duplicate_fallback_edge` 的生效边指认、`no_start` 下不逐节点报 unreachable）；
+- flow 显示对照 §2.4.1/§2.4.2（BFS 序、头部摘要+图例行、`←入:` 仅入边≥2 标注、终点/不可达标注）；mermaid 渲染对照 §2.4.3（引号 label / classDef / 断名虚拟节点）；
 - 完成前常规检查（本文首节）
 **验收凭据形式**：pytest 测试名
 

@@ -26,8 +26,7 @@
   3. HTTP 镜像端点（与 MCP 同契约单源）。
 - 明确不解决：
   - 不改 `one_dragon` 公共框架（不动 Operation / 装饰器 / 运行时校验逻辑——公共包改动需跨项目同步，本需求在 SR 侧只读注解即可满足）；
-  - 不做运行时流转 tracing（运行路径已有 `send_node_notify` / 日志 / `get_run_status`，不重复）；
-  - 不做 mermaid/图形渲染输出（文本分组图 + 结构化数据已覆盖 LLM 与人读；需要时后续扩展）；
+  - 不做运行时流转 tracing（运行路径已有 `send_node_notify` / 日志 / `get_run_status`，不重复）；不做图形渲染**引擎**（mermaid 源码输出即止，渲染交给客户端）；
   - 不推断 `need_check_game_win`（静态无法可靠判定——子类 super 调用传字面量的场景会误判，见 §2.5）。
 
 ## 2. 方案（单文档完整设计）
@@ -60,10 +59,11 @@
 ### 2.3 工具契约
 
 ```
-describe_operation_flow(op_id: str) -> dict
+describe_operation_flow(op_id: str, mermaid: bool = False) -> dict
 ```
 
-- `op_id` 契约与 `describe_operation` 完全同构：完整 `<module>.<ClassName>`（`resolve_op_class` 实时解析，**接受任意 Operation 子类，含 Application**——app 类同样是节点编排重灾区，如 `currency_war_app`；运行类工具 `_is_runnable_op` 排除 Application 是「可运行性」口径，本工具是「可读性」口径，不排斥）或类名短名（扫描缓存精确匹配，多命中返 `{ambiguous: True, matches[]}` 候选 op_id 列表——App 类不在扫描根内，短名查不到属预期，报错文案提示用完整 op_id）。
+- `op_id` 契约与 `describe_operation` 完全同构：完整 `<module>.<ClassName>`（`resolve_op_class` 实时解析，**接受任意 Operation 子类，含 Application**——app 类同样是节点编排重灾区，如 `currency_war_app`；运行类工具 `_is_runnable_op` 排除 Application 是「可运行性」口径，本工具是「可读性」口径，不排斥）或类名短名（扫描缓存精确匹配，多命中返 `{ambiguous: True, matches[]}` 候选 op_id 列表——App 类不在扫描根内，短名查不到属预期，报错文案提示用完整 op_id）。ambiguous 形态**刻意**比 `describe_operation` 的轻（只列候选 op_id 不带参数 schema）：该场景调用方只需要选对目标再看图，带 schema 纯膨胀。
+- `mermaid=True` 时额外返回 `mermaid` 字段（mermaid flowchart 源码，渲染规则见 §2.4），默认 False 不占返回体。
 - 解析失败（未找到 / 非 Operation 子类）→ MCP 层 except 返回 `{error}`，与 `describe_operation` 同模式；不引入 `success` 键（观察类工具既有惯例）。
 
 返回结构：
@@ -74,12 +74,13 @@ describe_operation_flow(op_id: str) -> dict
   'start_node': str | None,        # multiple_start/no_start 时 None
   'node_count': int, 'edge_count': int,
   'flow': str,                     # 文本流转图（§2.4 格式，主形态）
-  'nodes': [                       # 按字母序（与运行时遍历序一致）
+  'mermaid': str | None,           # mermaid=True 时为 flowchart 源码，否则 None
+  'nodes': [                       # BFS 序（§2.4 排序规则），不可达节点垫底
     {'cn': str, 'method': str,           # 方法名，定位源码用
      'is_start_node': bool, 'timeout_seconds': float|None,
      'node_max_retry_times': int, 'reachable': bool},
   ],
-  'edges': [                       # 遍历序（§2.2 第 7 条）
+  'edges': [                       # from 节点 BFS 序 × 节点内构建序（§2.2 第 7 条）
     {'from': str, 'to': str|None,        # to=None = 断名边（missing_node）
      'success': bool, 'status': str|None, 'ignore_status': bool},
   ],
@@ -93,23 +94,55 @@ describe_operation_flow(op_id: str) -> dict
 - `diagnostics` 出现 error 时 `flow` 仍尽力渲染（断名边画成 `→ ✗节点不存在`）——调试价值在「运行前看到全貌」，不是报错即止。
 - tool docstring 按 MCP 惯例写全（观察类 / 纯反射不实例化 / 为什么不实例化：`SrOperation.__init__` 构造 `OpenAndEnterGame` 等副作用依赖）。
 
-### 2.4 文本流转图格式与诊断项
+### 2.4 显示格式与诊断项
 
-`flow` 主格式（按节点分组、节点字母序，边行缩进挂靠）：
+#### 2.4.1 排序规则（可读性的根）
+
+**节点按执行序排，不按字母序**：`getmembers` 字母序是运行时实现细节，对阅读毫无意义（中文节点名按码点排序后执行叙事全乱）。定义 **BFS 序**：从全部起点（显式起点，无显式则全部入度 0 节点；多起点按字母序依次入队）做广度优先遍历，节点按首次发现序输出；起点缺失（`no_start`）时退化为字母序全列；不可达节点统一垫底（字母序）。`flow` 与 `nodes[]`/`edges[]` 用同一序——三个视图序一致，交叉对照不迷路。BFS 序天然把主干放前、分支靠后、孤岛垫底，贴近阅读直觉。
+
+#### 2.4.2 文本流转图（`flow`，主形态）
+
+按节点分组、边行缩进挂靠；头部两行固定（摘要行 + 图例行——图例与图不分离，记号自解释）：
 
 ```
-# UseTrailblazePower (sr_od.challenge_mission.use_trailblaze_power.UseTrailblazePower)
+# UseTrailblazePower (sr_od.challenge_mission.use_trailblaze_power.UseTrailblazePower) · 12节点 24边 · 起点=传送
+# 图例: (成功/失败)=按节点返回结果分流 · status=仅该返回状态走此边 · 兜底=该方向其余状态的落点
 [起点] 传送 (method=transport)
   ├─(成功·status=开拓力弹框-取消)→ 点击挑战后确认
   ├─(失败)→ ✗节点不存在「阵亡传送恢复」
   └─(兜底·成功)→ 选择次数
+点击挑战后确认 (method=confirm_click) ←入: 传送, 点击挑战, 战斗结果处理
+  ├─(成功)→ 选择配队
+  └─(失败·status=无对话框)→ 选择配队
 选择次数 (method=choose_times) [终点]
-  （无出边：返回成功即整个 op 成功）
 ```
 
-- 边标注规则：`success` → `(成功)` / `(失败)`；`status` 非空追加 `·status=<值>`；`ignore_status=True` 追加 `·兜底`（语义：该 success 方向任意 status 匹配不到时的落点）。
-- 节点标注：起点 `[起点]`；无出边 `[终点]`；不可达节点追加 `[不可达]`。
-- 环（A→B→A）在分组图里天然表达为两条边行，不特殊处理；可达性判定用 BFS（含环、含断名边跳过）。
+- **边标注**：`success` → `(成功)` / `(失败)`；`status` 非空追加 `·status=<值>`；`ignore_status=True` 追加 `·兜底`。
+- **节点标注**：起点 `[起点]`；无出边 `[终点]`；不可达 `[不可达]`（垫底区）。
+- **入边来源标注 `←入:`**：入边 ≥2 的节点在头部行尾列出全部来源节点名（去重）——多入口汇聚点是最容易乱的地方，反向追踪不用全文搜；单入边不标（顺着上一块自然可见）。
+- **终点语义**一次进 `notes`（「无出边节点：返回成功即整个 op 成功、返回失败即整个 op 失败」），不在每个终点节点上重复。
+- 环（A→B→A）在分组图里天然表达为两条边行；可达性判定用 BFS（断名边跳过）。
+
+#### 2.4.3 mermaid 渲染（`mermaid=True` 时）
+
+与文本图同数据源第二渲染——分组文本强在逐节点精读，mermaid 强在分支/汇聚/环的全局形貌（可渲染的客户端里一眼看形），互补不互斥。规则：
+
+- 节点 id 用 `n1/n2/…`（BFS 序），label 引号包裹节点 cn——中文、空格、括号等永不炸语法；断名边目标画虚拟节点 `✗节点不存在「xxx」`。
+- 边标注与文本图同款记号（`成功·status=xxx·兜底`）放 `-->|…|`。
+- classDef 两类：起点绿色、不可达红色虚线；边按 BFS 序输出（渲染序即执行序）。
+
+```mermaid
+flowchart TD
+  n1["传送"]:::start
+  n2["点击挑战后确认"]
+  n3["选择次数"]
+  n1 -->|成功·status=开拓力弹框-取消| n2
+  n1 -->|兜底·成功| n3
+  classDef start fill:#c8e6c9
+  classDef unreachable stroke:#e53935,stroke-dasharray:5 5
+```
+
+#### 2.4.4 诊断项
 
 诊断项（`code` 稳定枚举，level 语义：error = 运行时必炸或图不成立；warn = 结构可疑但不致命）：
 
@@ -119,7 +152,7 @@ describe_operation_flow(op_id: str) -> dict
 | `duplicate_node_name` | error | 不同方法产出同 `cn` 节点 | 运行时 `_add_node` raise（L359） |
 | `multiple_start` | error | 显式多起点，或自动判定多个入度 0 节点 | 运行时 raise（L244/L311） |
 | `no_start` | error | 无显式起点且无入度 0 节点 | 运行时 raise（L315） |
-| `unreachable_node` | warn | 从起点 BFS 不可达（含起点为 None 时全图不可达） | 运行时静默——节点永不执行，改漏 `node_from` 的典型症状 |
+| `unreachable_node` | warn | 从全部起点 BFS 不可达；**`no_start` 时不逐节点报**（一个 error 已说明全图不可达，逐节点 warn 是刷屏噪音），`nodes[].reachable` 全 false 表达 | 运行时静默——节点永不执行，改漏 `node_from` 的典型症状 |
 | `duplicate_fallback_edge` | warn | 同 `(from, success 方向)` 下 `ignore_status=True` 的边 >1 条 | 运行时静默——`_get_next_node` 后遍历者覆盖先遍历者（L571-L572），先写的兜底路径静默丢失；message 按 §2.2 第 7 条遍历序指出生效的那条 |
 | `edge_on_non_node` | warn | 边注解挂在未被 `@operation_node` 装饰的方法上 | 运行时静默——`_analyse_node_annotations` 对无节点注解的方法 `continue`，边被丢弃（L236-L238） |
 
@@ -139,22 +172,22 @@ describe_operation_flow(op_id: str) -> dict
 - 解析复用 `operation_registry.resolve_op_class` / `match_short_name` / `_short_name_not_found_error`（不重写解析；ambiguous 形态列候选 op_id，无需 matches 全 schema）。
 - 新模块 `operation_flow.py` 只依赖 `inspect` + `one_dragon.base.operation.operation_node/operation_edge` 的数据类（只读，不 import Operation 运行时逻辑）——`operation_registry.py` 已 717 行，不再塞入。
 - MCP 工厂与注册：`service_app.py` `make_describe_operation_flow(backend)`（签名对齐既有工厂，虽不实际用 backend.ctx——与 `describe_operation` 的 ctx 占位同理）+ `app.py` `mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="查看 operation 节点流转"))`。
-- HTTP：`GET /game/operations/flow?op_id=`，`asyncio.to_thread` 包核心函数，业务失败 `200 + {error}`——与 `handle_game_operations_describe` 同模式（service_routes.py L119-L139）。
+- HTTP：`GET /game/operations/flow?op_id=&mermaid=`，`asyncio.to_thread` 包核心函数，业务失败 `200 + {error}`——与 `handle_game_operations_describe` 同模式（service_routes.py L119-L139）。
 
 ### 2.7 测试计划
 
 `sr-od-test/test/sr_od/backend/test_operation_flow.py`（镜像 `test_operation_registry.py` 位置）：
 
-1. **正常图提取**：测试模块内定义 fake op 类（真装饰器 `@operation_node`/`@node_from`，多节点多分支含 status/兜底边），断言 nodes/edges/start_node/flow 文本关键行。
-2. **诊断各 code 一条**：每个 code 构造最小 fake 类断言（missing_node / duplicate_node_name / multiple_start / no_start / unreachable_node / duplicate_fallback_edge + 生效边指认 / edge_on_non_node）。
-3. **解析层**：完整 op_id 传测试内 fake 类（`resolve_op_class` 实时 importlib 解析可行）；短名路径不在扫描根，不测（属 registry 既有覆盖面）。
-4. **Application 类可达**：fake Application 子类完整 op_id 也能提取（契约 §2.3）。
+1. **正常图提取**：测试模块内定义 fake op 类（真装饰器 `@operation_node`/`@node_from`，多节点多分支含 status/兜底边/汇聚点/环），断言 nodes/edges/start_node/flow 文本关键行、BFS 序（§2.4.1）、`←入:` 标注仅入边≥2 时出现、mermaid 渲染语法要素（引号 label / classDef / 断名虚拟节点）。
+2. **诊断各 code 一条**：每个 code 构造最小 fake 类断言（missing_node / duplicate_node_name / multiple_start / no_start + 其下不逐节点报 unreachable / unreachable_node / duplicate_fallback_edge + 生效边指认 / edge_on_non_node）。
+3. **解析层**：完整 op_id 传扫描根内真实类（如 `sr_od.operations.move.move_directly.MoveDirectly`——测试内 fake 类不在扫描根、pytest 模块路径 importlib 解析不稳，不用）；短名路径不在扫描根新增覆盖（属 registry 既有覆盖面）。
+4. **Application 类可达**：fake Application 子类经内部函数直测提取（不走解析层，理由同上）。
 
 测试纪律遵循 sr-od-test/README：fake 类全在测试文件内、零副作用（不实例化 op，只做类级反射）、不连真游戏。
 
 ## 3. 关键取舍
 
 - **静态扫描 vs 实例化后读 `_node_edges_map`**：实例化最省事（直接拿运行时成品图），但 `SrOperation.__init__` 构造 `OpenAndEnterGame(ctx)` 等副作用依赖（sr_operation.py L24），`operation_registry` 全模块哲学就是纯反射不实例化——静态扫描沿用该哲学，且能覆盖「实例化即炸」的断名错误（实例化路径在 `_init_network` 就 raise，工具反而没法用）。
-- **文本分组图 vs mermaid**：mermaid 可渲染但节点多时源码同样乱、且 LLM 消费无优势；分组文本信息密度最高、无歧义。结构化 `edges[]` 已提供程序化消费通道，后续要 mermaid 是纯增量。
+- **文本分组图 + mermaid 双渲染、mermaid 默认关**：分组文本强在逐节点精读（LLM 与终端场景信息密度最高、无歧义），mermaid 强在分支/汇聚/环的全局形貌（可渲染客户端一眼看形）；二者互补不互斥，按需开关避免返回体翻倍。
 - **不诊断「成功无路」启发式**：见 §2.4 末段——静态证据不足，误报伤信任。
 - **App 类不进短名解析**：App 不在扫描根（`_SCAN_ROOTS` 排除 Application 是既有口径），短名自然查不到；完整 op_id 实时解析覆盖该场景，错误文案引导即可。
