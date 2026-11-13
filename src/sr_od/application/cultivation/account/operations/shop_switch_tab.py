@@ -1,4 +1,4 @@
-"""商店内切换兑换 tab —— 余烬兑换 / 星芒兑换。
+"""商店内切换兑换 tab —— 余烬兑换 / 星芒兑换 / 光锥呈现。
 
 商店默认打开在星芒兑换 tab(角色转化材料「未熄的星芒」,官方英文
 Undying Starlight:换票 20 星芒/张,不限量);余烬兑换 tab 是光锥转化
@@ -35,13 +35,24 @@ TAB_EMBERS: str = 'embers'
 TAB_STARLIGHT: str = 'starlight'
 """星芒兑换 tab(角色转化材料「未熄的星芒」,官方英文 Undying Starlight;
 换票 20 星芒/张不限量)"""
-_ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT}
+TAB_LIGHT_CONE_MANIFEST: str = 'light_cone_manifest'
+"""光锥呈现 tab(4星常驻光锥兑换,官方英文 Light Cone Manifest;
+货币流光余晖,单把 200,单次兑换上限 5 张)"""
+_ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT, TAB_LIGHT_CONE_MANIFEST}
 
-_TAB_AREA: dict[str, str] = {TAB_EMBERS: 'tab-余烬兑换', TAB_STARLIGHT: 'tab-星芒兑换'}
-_ANCHOR_AREA: dict[str, str] = {
-    TAB_EMBERS: 'tab-余烬兑换-选中',
-    TAB_STARLIGHT: 'tab-星芒兑换-选中',
+_TAB_AREA: dict[str, str] = {
+    TAB_EMBERS: 'tab-余烬兑换', TAB_STARLIGHT: 'tab-星芒兑换',
+    TAB_LIGHT_CONE_MANIFEST: 'tab-光锥呈现',
 }
+_ANCHOR_AREA: dict[str, str] = {
+    TAB_EMBERS: 'tab-余烬兑换-选中', TAB_STARLIGHT: 'tab-星芒兑换-选中',
+    TAB_LIGHT_CONE_MANIFEST: 'tab-光锥呈现-选中',
+}
+
+
+def _tab_status(tab: str) -> str:
+    """tab 标识符 → 节点出口 status(如 ``embers`` → ``EMBERS_TAB``)。"""
+    return f'{tab.upper()}_TAB'
 
 _AREA_CURRENCY: str = '读区-货币数量'
 _AREA_FIRST_SLOT_MONTHLY: str = '读区-首列月限角标'
@@ -54,14 +65,15 @@ _COUNT_OCR_SCALE: float = 3.0
 
 
 class ShopSwitchTabOp(SrOperation):
-    """在商店页切换余烬兑换 / 星芒兑换 tab。
+    """在商店页切换兑换 tab(余烬兑换 / 星芒兑换 / 光锥呈现)。
 
     切换验证用目标 tab 的选中态模板(见模块 docstring)——框架 until 模式:
     点 tab → 重入查锚 → 锚在即已在目标 tab(until_find 出现型,偶发漏检
     只会多一次无害点击,无假满足风险)。
 
     结果状态:
-    - ``EMBERS_TAB`` / ``STARLIGHT_TAB``:目标 tab 已切换完成;
+    - ``EMBERS_TAB`` / ``STARLIGHT_TAB`` / ``LIGHT_CONE_MANIFEST_TAB``:
+      目标 tab 已切换完成;
     - ``STAY_ENTRY``:tab 非法;
     失败:起点不在商店页。
     """
@@ -69,8 +81,9 @@ class ShopSwitchTabOp(SrOperation):
     def __init__(self, ctx: SrContext, tab: str = TAB_EMBERS):
         """
         :param ctx: 上下文
-        :param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换
-            (取值 = 官方英文名 Undying Embers / Undying Starlight 的主体词)
+        :param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换 /
+            ``light_cone_manifest``=光锥呈现
+            (取值 = 官方英文名主体词 snake_case)
         """
         self._tab: str = tab
         SrOperation.__init__(self, ctx, op_name=gt('商店切换兑换页'),
@@ -81,7 +94,8 @@ class ShopSwitchTabOp(SrOperation):
         """校验目标合法后点目标 tab,until 选中态模板锚出现。"""
         if self._tab not in _ALLOWED_TABS:
             return self.round_fail(
-                f'不支持的 tab(STAY_ENTRY): {self._tab}(仅支持 embers/starlight)')
+                f'不支持的 tab(STAY_ENTRY): {self._tab}(仅支持 '
+                f'{"/".join(sorted(_ALLOWED_TABS))})')
         if self.check_and_update_current_screen(
                 screen_name_list=[_SHOP_SCREEN]) != _SHOP_SCREEN:
             return self.round_fail('起点不在商店页,请先经 EnterShopFromWarpOp 进入')
@@ -92,12 +106,12 @@ class ShopSwitchTabOp(SrOperation):
             until_find_all=[(_SHOP_SCREEN, anchor)],
             success_wait=1.5, retry_wait=1.5)
         if result.is_success:
-            return self.round_success(status='EMBERS_TAB' if self._tab == TAB_EMBERS
-                                      else 'STARLIGHT_TAB', wait=1)
+            return self.round_success(status=_tab_status(self._tab), wait=1)
         return result
 
     @node_from(from_name='切换兑换页', status='EMBERS_TAB')
     @node_from(from_name='切换兑换页', status='STARLIGHT_TAB')
+    @node_from(from_name='切换兑换页', status='LIGHT_CONE_MANIFEST_TAB')
     @operation_node(name='收尾')
     def finish(self) -> OperationRoundResult:
         """终点节点:附带读数(货币数量+首列月限角标)入 data。
@@ -107,7 +121,6 @@ class ShopSwitchTabOp(SrOperation):
         剩余次数,分母=月限总量;get_positive_digits 对「5/5」会取成 55,
         须用斜杠对正则分别取值。星芒页首列无月限商品,角标读数为 None。
         """
-        tab = 'EMBERS_TAB' if self._tab == TAB_EMBERS else 'STARLIGHT_TAB'
         data: dict = {
             'tab': self._tab,
             'material_count': parse_count(self._area_count_text(
@@ -121,7 +134,8 @@ class ShopSwitchTabOp(SrOperation):
             if m is not None:
                 data['first_slot_monthly_left'] = int(m.group(1))
                 data['first_slot_monthly_total'] = int(m.group(2))
-        return self.round_success(status=tab, data=data, wait=0.5)
+        return self.round_success(status=_tab_status(self._tab), data=data,
+                                  wait=0.5)
 
     def _area_text(self, screen, screen_name: str, area_name: str) -> str | None:
         """读画面建档 area 内的 OCR 文本(空 = None)。"""

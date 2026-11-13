@@ -9,7 +9,8 @@
 兑换商店五个 tab(星芒兑换/余烬兑换/星尘之礼/光锥呈现/戏言成真)共用同一
 画面结构(6 列商品网格 + 同款兑换弹窗),本 op 的流程与 tab 无关;tab 差异
 只体现在切换锚(:class:`ShopSwitchTabOp`)与商品清单(:data:`_GOODS_META`),
-新 tab 启用 = 补锚建档 + 加映射条目,不改本类代码。当前实测开放星芒/余烬。
+新 tab 启用 = 补锚建档 + 加映射条目,不改本类代码。当前实测开放星芒/余烬/
+光锥呈现(光锥呈现单把定价,弹窗带数量滑条,单次兑换上限 5 张)。
 
 :param goods: 商品英文标识符(官方英文名主体词 snake_case),如 ``pass``(星轨
     通票 Star Rail Pass)/``special_pass``(星轨专票)/``tracks_of_destiny``
@@ -19,7 +20,8 @@
 :param count: 购买数量;``None`` = 拉满(受月限剩余与余额共同限制)。
     指定数量超月限剩余或超余额时**直接失败,不静默截断**——静默减量违背
     用户意图,须显式失败让调用方改传拉满或减量。
-:param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换;
+:param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换 /
+    ``light_cone_manifest``=光锥呈现;
     ``None`` = 按 :data:`_GOODS_META` 的默认 tab。
 :param scroll_search: 商品不在当前首屏时是否滚动扫描;``False`` = 只在
     首屏找、找不到直接失败——确定商品在首屏时(如票类三件套)传 False 提速。
@@ -40,13 +42,14 @@ from sr_od.application.cultivation.account.operations.read_warp_status import (
 )
 from sr_od.application.cultivation.account.operations.shop_switch_tab import (
     TAB_EMBERS,
+    TAB_LIGHT_CONE_MANIFEST,
     TAB_STARLIGHT,
     ShopSwitchTabOp,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-_ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT}
+_ALLOWED_TABS: set[str] = {TAB_EMBERS, TAB_STARLIGHT, TAB_LIGHT_CONE_MANIFEST}
 _SHOP_EXCHANGE: str = 'exchange'
 _SHOP_STELLAR_CONVERGENCE: str = 'stellar_convergence'
 _SHOP_CONTRACT: str = 'contract'
@@ -68,16 +71,11 @@ _AREA_LIST_REGION: str = '商品列表'
 _AREA_POPUP_MARK: str = '文本-兑换数量'
 _AREA_POPUP_TITLE: str = '读区-弹窗商品名'
 _AREA_POPUP_MONTHLY: str = '读区-弹窗月限剩余'
-_AREA_POPUP_PRICE: str = '读区-弹窗价格'
 _AREA_POPUP_STATUS_BAR: str = '文本-弹窗状态横条'
 _AREA_CONFIRM: str = '按钮-确认'
 _AREA_CANCEL: str = '按钮-取消'
-_AREA_PLUS: str = '按钮-加号'
-_AREA_MINUS: str = '按钮-减号'
-_AREA_MAX: str = '按钮-拉满'
 _AREA_COUNT: str = '读区-兑换数量'
 _AREA_CURRENCY: str = '读区-货币数量'
-_AREA_REWARD_MARK: str = '文本-获得物品'
 _AREA_GIFT_MARK: str = '文本-购买后立刻获得'
 _AREA_GIFT_TITLE: str = '读区-弹窗商品名'
 _AREA_GIFT_CONFIRM: str = '按钮-确认'
@@ -90,10 +88,12 @@ _SC_TAB2_ANCHOR: str = '文本-光锥兑换'
 _SC_TAB_CHARACTER: str = 'character_redemption'
 _SC_TAB_LIGHT_CONE: str = 'light_cone_redemption'
 _CT_ANCHOR: str = '文本-战略合作协议'
-_REWARD_CLOSE_POS: Point = Point(100, 1000)
-"""关闭「获得物品」奖励弹窗的遮罩点击点:遮罩任意处可关,但关闭瞬间存在
-穿透竞态(遮罩销毁后释放事件落下层),落点必须在商品卡网格与左侧菜单之外
-的无元素空白区。买 1 件也会弹奖励弹窗(实机双样本),确认后必查此分支。"""
+_POST_MAX_ROUNDS: int = 40
+"""后购收尾的手动轮数上限(覆盖最长展示动画;框架节点预算仅作兜底)"""
+_SKIP_POS: Point = Point(1875, 68)
+"""后购画面右上角通用点击点:展示画面=跳过键,获得物品弹窗=「点击空白处
+关闭」的可关区,一笔通吃;商店页识别命中时不会走到此点击(该位置在商店页
+是关闭 X,误点会关店,故点击严格放在画面识别为非商店页之后)"""
 
 # 商品网格几何(1080p):6 列 × N 行,列距 245、卡宽约 216。列位置固定不随
 # 滚动变,行位置随滚动吸附态漂移(常规行距 325,列表底部对齐态行位偏移)——
@@ -137,6 +137,18 @@ _TITLE_MATCH_LCS: float = 0.8
 """弹窗商品名校验的 LCS 兜底阈值:弹窗标题字体有异体字形态(实测「命运的
 足迹」标题 OCR 为「命运的足跡」,LCS=0.8);阈值须高于易混对的相似度
 (星轨通票/星轨专票 LCS=0.75,低于阈值不误放行)"""
+
+# 弹窗中部控件行几何(锚定推导):弹窗中部布局随描述文字行数浮动(实测两
+# 变体——余烬月限型 2026-11-12 实拍、光锥呈现型 2026-11-13 实拍——滑条行
+# y 相差 35px),固定矩形撑不住;「兑换数量：N」标签是弹窗结构元素,两变体
+# 相对偏移一致(滑条行 +24px、价格行 +55px),以标签 OCR 框中心为锚推导控件位。
+# x 为两变体恒定值:滑条行 减号 778 / 加号 1378 / 拉满 1453,价格框 x 1050-1230。
+_ROW_DY: int = 24
+_MINUS_X: int = 778
+_PLUS_X: int = 1378
+_MAX_X: int = 1453
+_PRICE_RECT_REL: tuple[int, int, int, int] = (-90, 35, 90, 75)
+"""价格读区相对标签锚的 (dx1, dy1, dx2, dy2);锚 x≈1140 → 框 x 1050-1230"""
 
 
 def _is_target_popup_title(title: str | None, goods_cn: str) -> bool:
@@ -230,6 +242,8 @@ _GOODS_META: dict[str, tuple[str, str, str]] = {
     'time_waits_for_no_one': (_SHOP_EXCHANGE, TAB_STARLIGHT, '时节不居'),
     'dan_heng': (_SHOP_EXCHANGE, TAB_STARLIGHT, '丹恒'),
     'serval': (_SHOP_EXCHANGE, TAB_STARLIGHT, '希露瓦'),
+    # 光锥呈现 tab(4星常驻光锥,200 流光余晖/把,单次兑换上限 5 张)
+    'mushyshroomysadventures': (_SHOP_EXCHANGE, TAB_LIGHT_CONE_MANIFEST, '菇菇嘎嘎历险记'),
     # 聚灵铸星 Stellar Convergence:常驻 5 星角色(1 金徽,可重复兑换升星魂;
     # 角色兑换 tab)。关键词取卡面名唯一子串(「阮·梅」的间隔点 OCR 易丢,
     # 取单字「阮」;「托帕&账账」取「托帕」)
@@ -295,7 +309,8 @@ class ExchangeShopBuyGoods(SrOperation):
     失败:起点不在商店页、商品标识符未注册、tab 切换失败、商品不在列表
     (滚动到底未命中)、目标卡不可购(已售罄/已达上限/未解锁)、弹窗状态
     横条(售罄/兑换材料不足)、数量超月限或超余额(不截断)、数量调不到
-    目标、确认未生效、余额差值终验不符。
+    目标、确认未生效、余额差值终验不符、确认后画面未回商店页(此时购买
+    可能已完成,失败 data 带尽力读的余额供人工对账)。
     """
 
     def __init__(self, ctx: SrContext, goods: str, count: int | None = None,
@@ -305,7 +320,8 @@ class ExchangeShopBuyGoods(SrOperation):
         :param ctx: 上下文
         :param goods: 商品英文标识符,见类 docstring(未注册抛 ValueError)
         :param count: 购买数量;``None`` = 拉满。**消耗参数:仅限用户明确授权的购买请求传入。**
-        :param tab: 目标 tab;``None`` = 按 :data:`_GOODS_META` 默认
+        :param tab: 目标 tab,``embers``=余烬兑换 / ``starlight``=星芒兑换 /
+            ``light_cone_manifest``=光锥呈现;``None`` = 按 :data:`_GOODS_META` 默认
         :param shop: 目标子商店(exchange/stellar_convergence/contract);
             ``None`` = 按 :data:`_GOODS_META` 默认
         :param scroll_search: 商品不在首屏时是否滚动扫描(默认 True)
@@ -321,7 +337,7 @@ class ExchangeShopBuyGoods(SrOperation):
         resolved_tab = meta[1] if tab is None else tab
         if resolved_shop == _SHOP_EXCHANGE and resolved_tab not in _ALLOWED_TABS:
             raise ValueError(
-                f'不支持的 tab: {resolved_tab}(仅支持 embers/starlight)')
+                f'不支持的 tab: {resolved_tab}(仅支持 {"/".join(sorted(_ALLOWED_TABS))})')
         if count is not None and count <= 0:
             raise ValueError(f'count 必须为正数或 None(拉满),收到: {count}')
 
@@ -365,6 +381,10 @@ class ExchangeShopBuyGoods(SrOperation):
         """上一轮拉满后的数量读数(两轮同值判滑条到顶,防 1 张顶格时误判未生效)"""
         self._pull_confirmed: bool = False
         """同值已复点一次(区分「已到顶」与「单次点击丢失」,第二次同值才判到顶)"""
+        self._probe_price: int | None = None
+        """单价探测点击前的弹窗价格(None = 未在探测;下一轮价差=单价,0=已到顶)"""
+        self._post_rounds: int = 0
+        """后购收尾已用轮数(达 _POST_MAX_ROUNDS 判画面不收敛,带语境失败)"""
         SrOperation.__init__(self, ctx, op_name=gt('商店购买'),
                              node_max_retry_times=60)
 
@@ -551,7 +571,8 @@ class ExchangeShopBuyGoods(SrOperation):
         受余额截断),两轮读数同值判到顶(余额/月限只够 1 张时 current==1 也
         是终态,不能用 >1 判生效);count=N:先做月限与余额预判(超限 fail 不
         截断),再读当前数量 c,c<N 点「+」,c==N 记 bought 进确认,c>N 点「-」
-        (弹窗默认 1,理论上 c<=N 恒成立,减号分支为兜底)。
+        (弹窗默认 1,理论上 c<=N 恒成立,减号分支为兜底)。数量读取带价格
+        互推兜底:单价确立后,数量 OCR 噪声轮由「价格整除单价」反推。
 
         礼包确认形态(协议商店,无数量滑条):数量恒 1,打开即视为 COUNT_READY。
         """
@@ -564,14 +585,42 @@ class ExchangeShopBuyGoods(SrOperation):
             return self.round_retry('弹窗未打开,等待画面稳定', wait=1)
         if not self._exchange_popup_visible():
             return self.round_fail('兑换弹窗已不在屏(被意外关闭?),中止调整')
+        anchor = self._popup_quantity_anchor()
+        if anchor is None:
+            return self.round_retry('兑换数量标签未定位到,重试', wait=1)
         status_bar = self._popup_status_bar()
         if status_bar is not None:
             keyword, status = status_bar
             self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
             return self.round_fail(
                 f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
+        price = parse_count(self._popup_price_text(anchor))
         current: int | None = parse_count(
             self._area_count_text(self.last_screenshot, _POPUP_SCREEN, _AREA_COUNT))
+        if current is None and price is not None and self._unit_price is not None \
+                and self._unit_price > 0 and price % self._unit_price == 0:
+            # 数量 OCR 噪声兜底:弹窗价格恒 = 单价×数量(实测数量 4 全图/裁剪
+            # 双读皆败、价格 '800' 稳定),整除反推数量;非整除视为垃圾值不采用。
+            current = price // self._unit_price
+        if current is None and price is not None:
+            # 数量与单价双盲(重入弹窗即遇噪声数字,单价无法由「成功读数×价格」
+            # 自举):+ 一击测单价——点前记价,下一轮价差=单价;价差 0 = 已到
+            # 滑条顶,数量与单价由上限条(单次兑换上限N张)反推。目标过冲会被
+            # 减号分支走回,无多买风险(确认仅在 current==count 时发生)。
+            cap = self._slider_cap()
+            if self._probe_price is not None and price == self._probe_price:
+                if cap is not None:
+                    self._unit_price = max(1, price // cap)
+                    current = cap
+            elif self._probe_price is not None and price > self._probe_price:
+                self._unit_price = price - self._probe_price
+                current = price // self._unit_price
+            if current is None:
+                self._probe_price = price
+                self.ctx.controller.click(Point(_PLUS_X, anchor.y + _ROW_DY),
+                                          press_time=0.1)
+                return self.round_retry('数量不可读,+一击测单价,下一轮对价差',
+                                        wait=1.5)
         if current is None:
             return self.round_retry('兑换数量读取失败,重试', wait=1)
         if self._monthly_left is None:
@@ -582,9 +631,6 @@ class ExchangeShopBuyGoods(SrOperation):
                 if self._monthly_left is None:
                     return self.round_retry('月限剩余读取失败,重试', wait=1)
         if self._unit_price is None:
-            price_text = self._area_text(self.last_screenshot, _POPUP_SCREEN,
-                                         _AREA_POPUP_PRICE)
-            price = parse_count(price_text)
             if price is None:
                 return self.round_retry('弹窗价格读取失败,重试', wait=1)
             self._unit_price = max(1, round(price / current))
@@ -602,11 +648,13 @@ class ExchangeShopBuyGoods(SrOperation):
                     self._bought = current
                     return self.round_success(status='COUNT_READY', wait=1)
                 self._pull_confirmed = True
-                self._click_area_center(_POPUP_SCREEN, _AREA_MAX)
+                self.ctx.controller.click(Point(_MAX_X, anchor.y + _ROW_DY),
+                                          press_time=0.1)
                 return self.round_retry('数量同值,复点拉满区分到顶/丢点', wait=1.5)
             self._last_pull_count = current
             self._pull_confirmed = False
-            self._click_area_center(_POPUP_SCREEN, _AREA_MAX)
+            self.ctx.controller.click(Point(_MAX_X, anchor.y + _ROW_DY),
+                                      press_time=0.1)
             return self.round_retry('已点拉满,下一轮读数验证', wait=1.5)
         if self._monthly_left is not None and self._count > self._monthly_left:
             return self.round_fail(
@@ -616,33 +664,27 @@ class ExchangeShopBuyGoods(SrOperation):
             self._bought = current
             return self.round_success(status='COUNT_READY', wait=1)
         if current < self._count:
-            self._click_area_center(_POPUP_SCREEN, _AREA_PLUS)
+            self.ctx.controller.click(Point(_PLUS_X, anchor.y + _ROW_DY),
+                                      press_time=0.1)
         else:
-            self._click_area_center(_POPUP_SCREEN, _AREA_MINUS)
+            self.ctx.controller.click(Point(_MINUS_X, anchor.y + _ROW_DY),
+                                      press_time=0.1)
         return self.round_retry(f'当前数量 {current},向目标 {self._count} 调整中',
                                 wait=0.6)
 
     @node_from(from_name='调整数量', status='COUNT_READY')
     @operation_node(name='确认购买', node_max_retry_times=15)
     def confirm(self) -> OperationRoundResult:
-        """状态分派确认购买:每轮先读画面证据再决定动作,无证据不点击。
+        """点确认,until 购买弹窗消失(转移验证:弹窗锚不在 = 确认已生效)。
 
-        优先级:①「获得物品」奖励弹窗(实机证实买 1 件也会弹)→ 点安全空白
-        点关闭——不能点确认按钮坐标:关闭瞬间遮罩销毁、释放事件可能穿透
-        下层,落在确认坐标上会误触商品卡;②兑换弹窗仍在(「兑换数量」可读)
-        → 横条在则点取消诚实失败,否则重点确认;③两者都不在且画面识别为
-        商店页 → 购买完成,余额差值硬校验 + 月限角标软读数终验。
+        弹窗消失后的画面收敛(4星光锥全屏展示动画/获得物品弹窗/回列表)由
+        下一节点统一分类处理,本节点只负责「确认已生效」这一件事。
         """
-        # 关键词语义匹配而非非空判断:商店页正常态下同 rect 会扫到 tab 词/
-        # 商品价格数字,非空判断会把正常商店页误判成弹窗在屏
-        reward_text = self._area_text(self.last_screenshot, self._shop_screen,
-                                      _AREA_REWARD_MARK)
-        if reward_text is not None and '获得物品' in reward_text:
-            self.ctx.controller.click(_REWARD_CLOSE_POS, press_time=0.1)
-            return self.round_retry('获得物品弹窗,点安全空白点关闭', wait=1.5)
-        if self._popup_is_gift and self._gift_popup_visible():
-            self._click_area_center(_GIFT_SCREEN, _AREA_GIFT_CONFIRM)
-            return self.round_retry('确认未生效,礼包弹窗仍在,重点确认', wait=1.5)
+        if self._popup_is_gift:
+            if self._gift_popup_visible():
+                self._click_area_center(_GIFT_SCREEN, _AREA_GIFT_CONFIRM)
+                return self.round_retry('确认未生效,礼包弹窗仍在,重点确认', wait=1.5)
+            return self.round_success(status='CONFIRMED', wait=1.5)
         if self._exchange_popup_visible():
             status_bar = self._popup_status_bar()
             if status_bar is not None:
@@ -650,8 +692,27 @@ class ExchangeShopBuyGoods(SrOperation):
                 self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
                 return self.round_fail(
                     f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
-            self._click_area_center(_POPUP_SCREEN, _AREA_CONFIRM)
-            return self.round_retry('确认未生效,弹窗仍在,重点确认', wait=1.5)
+            result = self.round_by_find_and_click_area(
+                self.last_screenshot, _POPUP_SCREEN, _AREA_CONFIRM,
+                until_not_find_all=[(_POPUP_SCREEN, _AREA_POPUP_MARK)],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5)
+            if result.is_success:
+                return self.round_success(status='CONFIRMED', wait=1.5)
+            return result
+        # 弹窗已不在屏(重入:上一轮确认已生效),直接放行进收尾
+        return self.round_success(status='CONFIRMED', wait=1)
+
+    @node_from(from_name='确认购买', status='CONFIRMED')
+    @operation_node(name='后购收尾', node_max_retry_times=60)
+    def post_confirm(self) -> OperationRoundResult:
+        """确认生效后的画面收敛:识别回商店页即终验,其余画面一律点右上角。
+
+        后购画面不可枚举(4星光锥全屏展示动画/获得物品弹窗/过渡帧),共性 =
+        右上角为跳过键或「点击空白处关闭」可关区,点 _SKIP_POS 一笔通吃;
+        点击严格放在画面识别为非商店页之后,不做盲点。预算烧尽时购买可能
+        已完成,失败信息带尽力读的余额供人工对账。
+        """
+        self._post_rounds += 1
         if self.check_and_update_current_screen(
                 screen_name_list=[self._shop_screen]) == self._shop_screen:
             balance_left = parse_count(self._area_count_text(
@@ -672,7 +733,16 @@ class ExchangeShopBuyGoods(SrOperation):
                 'balance_left': balance_left,
                 'monthly_left': monthly_left,
             }, wait=1)
-        return self.round_retry('画面过渡中(未识别到弹窗或商店页),等待', wait=1.5)
+        if self._post_rounds >= _POST_MAX_ROUNDS:
+            return self.round_fail(
+                '已点确认与右上角跳过,画面未回商店页——购买可能已完成,'
+                '余额与到货请人工核对', data={
+                    'balance_left': parse_count(self._area_count_text(
+                        self.last_screenshot, self._shop_screen, _AREA_CURRENCY)),
+                })
+        self.ctx.controller.click(_SKIP_POS, press_time=0.1)
+        return self.round_retry('后购画面(展示动画/获得物品弹窗),点右上角跳过/空白',
+                                wait=1.5)
 
     def _scan_goods(self, screen) -> tuple[Rect | None, str]:
         """商品列表区 OCR 扫描,返回 (目标卡槽位 rect 或 None, 本帧全文)。
@@ -746,6 +816,39 @@ class ExchangeShopBuyGoods(SrOperation):
                 return keyword, status
         return None
 
+    def _popup_quantity_anchor(self) -> Point | None:
+        """弹窗中部控件行锚:「兑换数量：N」标签 OCR 框中心;未定位返回 None。
+
+        弹窗中部布局随描述文字行数浮动(见模块常量区标定说明),固定矩形
+        撑不住;标签为弹窗结构元素,两变体相对偏移一致,故以它为锚。
+        """
+        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(
+            self.last_screenshot)
+        for result in ocr_result_list:
+            text = result.data or ''
+            if '兑换数量' in text:
+                return result.center
+        return None
+
+    def _popup_price_text(self, anchor: Point) -> str | None:
+        """锚推导价格读区内的 OCR 文本(空 = None)。"""
+        rect = Rect(anchor.x + _PRICE_RECT_REL[0], anchor.y + _PRICE_RECT_REL[1],
+                    anchor.x + _PRICE_RECT_REL[2], anchor.y + _PRICE_RECT_REL[3])
+        return self._ocr_rect_text(self.last_screenshot, rect)
+
+    def _slider_cap(self) -> int | None:
+        """读弹窗上限条「单次兑换上限N张」的 N;无此条(月限型弹窗)返回 None。
+
+        与 :meth:`_popup_status_bar` 同 area:上限条关键词不在不可购关键词
+        集合内,两条互不误触。
+        """
+        text = self._area_text(self.last_screenshot, _POPUP_SCREEN,
+                               _AREA_POPUP_STATUS_BAR)
+        if text is None:
+            return None
+        m = re.search(r'上限\s*(\d+)\s*张', text)
+        return int(m.group(1)) if m is not None else None
+
     def _rescan_monthly_left(self) -> int | None:
         """购买后重扫列表读目标卡月限角标(软终验)。
 
@@ -810,11 +913,18 @@ class ExchangeShopBuyGoods(SrOperation):
         return ''.join(result.data for result in ocr_result_list)
 
     def _area_count_text(self, screen, screen_name: str, area_name: str) -> str | None:
-        """读数量型 area:两层取数——全图 OCR+rect 过滤 → 3 倍放大裁剪兜底。"""
+        """读数量型 area:两层取数——全图 OCR+rect 过滤 → 非数字时 3 倍放大裁剪兜底。
+
+        全图 OCR 对单个小数字易出噪声字形(实测兑换数量 4 全图读成 'a'/'O',
+        静态 rect 命中非空但不可解析),只判空会漏触发兜底;非数字结果一律走
+        放大裁剪二次识别,数字可读性显著更好。
+        """
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
         ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area.rect)
         if len(ocr_result_list) > 0:
-            return ''.join(result.data for result in ocr_result_list)
+            joined = ''.join(result.data for result in ocr_result_list)
+            if parse_count(joined) is not None:
+                return joined
         cropped = cv2_utils.crop_image_only(screen, area.rect)
         big = cv2_utils.scale_image(cropped, scale=_COUNT_OCR_SCALE)
         raw = self.ctx.ocr.run_ocr(big)
