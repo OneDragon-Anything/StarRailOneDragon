@@ -21,8 +21,9 @@
   (快速刷取券)→ 确认框「消耗开拓力30+券3」→ 确认免战斗直接领奖;
   False = 正常「挑战」→ 编队「开始挑战」→ 自动战斗 → 结算「退出关卡」。
   刷完逐层回退(副本 X → 资源窗口 X)回等级提升界面,材料齐后继续升级——
-  循环每轮只刷 1 次,材料够不够由右下按钮状态自反馈,不足再走刷取直至
-  预算耗尽。
+  每轮刷取次数 = farm_times_per_round(确认框内 OCR 现读 + 点「+」设置),
+  材料够不够由右下按钮状态自反馈,不足再走刷取直至预算(farm_rounds_max
+  轮)耗尽。
 
 补料路线与授权分层:通用材料补全(fill_generic 默认 True,确认即执行)
 优先于刷取——右下按钮可点时不进刷取流程;右下全灰(「材料不足」)时由
@@ -77,13 +78,17 @@ class UpgradeCharacterOp(SrOperation):
     升到上限后自动切晋阶态,晋阶执行后继续升级循环。
 
     ⚠️ fill_generic=True(默认)会消耗通用材料灵之珠泪:调用方发起前须向
-    用户提示。⚠️ farm_dungeon=True 会真实刷副本(开拓力 30/次,
-    use_fast_ticket=True 另耗快速刷取券 3/次,券不可自然恢复):**调用方
-    发起前必须向用户说明预计消耗并获明确同意**,本 op 不代替调用方做这个
-    确认。"""
+    用户提示。⚠️ farm_dungeon=True 会真实刷副本:**总消耗上限 =
+    farm_times_per_round × farm_rounds_max 次 ×(开拓力 30/次,
+    use_fast_ticket=True 时每次另以快速刷取券 3 张抵扣部分开拓力)**,
+    开拓力不足部分由游戏自动以备用开拓力等量抵扣(玩家自存体力池,非
+    稀有货币);备用亦耗尽时游戏弹「开拓力补充」弹窗,本 op 不处理该弹窗、
+    会预算耗尽显式失败——**调用方发起前必须按最坏消耗向用户说明并获
+    明确同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, fill_generic: bool = True,
-                 farm_dungeon: bool = False, use_fast_ticket: bool = True):
+                 farm_dungeon: bool = False, use_fast_ticket: bool = True,
+                 farm_times_per_round: int = 1, farm_rounds_max: int = 10):
         """
         :param ctx: 上下文
         :param fill_generic: 缺料时是否用「使用通用材料补全」路线(消耗通用
@@ -95,13 +100,24 @@ class UpgradeCharacterOp(SrOperation):
             走「快速刷取 → 资源窗口 → 进入副本」路线刷补材料继续升级
             (**真实消耗开拓力**)。启用前调用方必须向用户说明并获同意。
         :param use_fast_ticket: farm_dungeon=True 时的刷取方式。
-            True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**另耗快速
-            刷取券 3/次,券不可自然恢复**)。False = 正常挑战自动战斗
-            (只耗开拓力 30/次,耗时约 2 分钟/轮)。
+            True(默认) = 副本内用「快速刷取」券免战斗直接领奖(**每次刷取
+            以快速刷取券 3 张抵扣开拓力,券不可自然恢复**)。False = 正常
+            挑战自动战斗(耗时约 2 分钟/轮)。
+        :param farm_times_per_round: 每轮刷取在确认框中设置的次数(1 起;
+            滑条上限随副本类型 8/24,超出部分由游戏封顶)。越大循环轮次越少
+            但越容易过量刷取(消耗多余开拓力)。
+        :param farm_rounds_max: 整个运行允许的刷取轮数上限(防无限烧预算;
+            耗尽判停收尾,调用方可续跑)。
         """
+        if farm_times_per_round < 1:
+            raise ValueError(f'farm_times_per_round 必须 >= 1, 得到 {farm_times_per_round}')
+        if farm_rounds_max < 1:
+            raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
         self.fill_generic: bool = fill_generic
         self.farm_dungeon: bool = farm_dungeon
         self.use_fast_ticket: bool = use_fast_ticket
+        self.farm_times_per_round: int = farm_times_per_round
+        self.farm_rounds_max: int = farm_rounds_max
         SrOperation.__init__(self, ctx, op_name=gt('角色晋阶升级')
                              + ('(券刷取)' if farm_dungeon and use_fast_ticket else '')
                              + ('(手动刷取)' if farm_dungeon and not use_fast_ticket else '')
@@ -110,13 +126,17 @@ class UpgradeCharacterOp(SrOperation):
         self._entry_btn_area: str = _ENTRY_BTN_ASCEND  #: 入口命中的按钮 area(打开界面用)
         self._capped: bool = False         #: 材料不足已判停(回详情页收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
-        self._farm_rounds: int = 0         #: 本次运行已执行的刷取次数(消耗统计)
+        self._farm_rounds: int = 0         #: 本次运行已执行的刷取轮数(消耗统计)
         self._ascend_count: int = 0        #: 本次运行已执行的升级次数(日志统计)
         self._promotion_count: int = 0     #: 本次运行已执行的晋阶次数(日志统计)
         if farm_dungeon:
-            log.info('晋阶: 缺料将刷副本,路线=%s——每次消耗开拓力 %d'
-                     + (' + 快速刷取券 3' if use_fast_ticket else ''),
-                     '券免战斗' if use_fast_ticket else '自动战斗', _FARM_TRAILBLAZE_PER)
+            log.info('晋阶: 缺料将刷副本,路线=%s,每轮 %d 次,预算 %d 轮——'
+                     '每次消耗开拓力 30 + 快速刷取券 3'
+                     if use_fast_ticket else
+                     '晋阶: 缺料将刷副本,路线=%s,每轮 %d 次,预算 %d 轮——'
+                     '每次消耗开拓力 30',
+                     '券免战斗' if use_fast_ticket else '自动战斗',
+                     farm_times_per_round, farm_rounds_max)
 
     #------------------- 识别辅助 -------------------#
 
@@ -250,12 +270,13 @@ class UpgradeCharacterOp(SrOperation):
         # ③ 材料耗尽已判 → 返回箭头回详情页,到了就成功结束(报告消耗)
         if self._capped:
             if self.round_by_find_area(screen, _DETAIL_SCREEN, '按钮-属性详情').is_success:
-                log.info('晋阶: 收尾,当前等级 %s,升级 %d 次/晋阶 %d 次/快速刷取 %d 次'
+                total_farms = self._farm_rounds * self.farm_times_per_round
+                log.info('晋阶: 收尾,当前等级 %s,升级 %d 次/晋阶 %d 次/刷取 %d 轮×%d 次'
                          '(消耗开拓力 %d + 券 %d)',
                          self._capped_level, self._ascend_count, self._promotion_count,
-                         self._farm_rounds,
-                         self._farm_rounds * _FARM_TRAILBLAZE_PER,
-                         self._farm_rounds * _FARM_TICKET_PER)
+                         self._farm_rounds, self.farm_times_per_round,
+                         total_farms * _FARM_TRAILBLAZE_PER,
+                         total_farms * _FARM_TICKET_PER)
                 return self.round_success(status='MATERIAL_CAPPED', wait=1.5)
             result = self.round_by_find_and_click_area(
                 screen, _ASCEND_SCREEN, '按钮-返回箭头',
@@ -313,13 +334,13 @@ class UpgradeCharacterOp(SrOperation):
                                     wait=_ASCEND_SETTLE_SEC)
 
         # ⑥ 全部不命中 = 灰底「材料不足」全缺态 → farm_dungeon 授权走刷取,否则判停
-        if not self.farm_dungeon or self._farm_rounds >= _FARM_ROUNDS_MAX:
+        if not self.farm_dungeon or self._farm_rounds >= self.farm_rounds_max:
             if not self.farm_dungeon:
                 log.info('晋阶: 材料全缺(按钮灰底),farm_dungeon 未授权,判停于等级 %s',
                          self._read_ascend_level())
             else:
                 self._capped_level = self._read_ascend_level()
-                log.info('晋阶: 刷取预算(%d 次)耗尽,判停于等级 %s', _FARM_ROUNDS_MAX, self._capped_level)
+                log.info('晋阶: 刷取预算(%d 轮)耗尽,判停于等级 %s', self.farm_rounds_max, self._capped_level)
             self._capped = True
             return self.round_retry('材料不足,返回详情收尾', wait=1)
         return self.round_success(status='NEED_FARM')
@@ -370,20 +391,52 @@ class UpgradeCharacterOp(SrOperation):
         return result
 
     @node_from(from_name='副本刷取', status='USE_TICKET')
-    @operation_node(name='券确认刷取', node_max_retry_times=4)
+    @operation_node(name='券确认刷取', node_max_retry_times=6)
     def confirm_ticket_farm(self) -> OperationRoundResult:
-        """快速刷取确认框点确认(次数默认 1,每轮刷 1 次由循环自反馈收敛)
+        """确认框内把刷取次数设到 farm_times_per_round(OCR 现读 + 点「+」
+        补偿;游戏会记住上次次数,故只增不减,超滑条上限由游戏封顶)→ 点确认
         → until 结果框「关闭」按钮出现(⚠️ 结果框与确认框标题同名同位
         「快速刷取」,消失判定不可用;结果框出现 = 领奖完成回副本画面)。"""
         self._farm_rounds += 1
-        log.info('晋阶: 第 %d 次券刷取(消耗开拓力 %d + 快速刷取券 %d)',
-                 self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
+        set_result = self._set_farm_times(self.farm_times_per_round)
+        if not set_result.is_success:
+            return set_result
+        log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d×%d + 快速刷取券 %d×%d)',
+                 self._farm_rounds, self.farm_times_per_round,
+                 _FARM_TRAILBLAZE_PER, self.farm_times_per_round,
+                 _FARM_TICKET_PER, self.farm_times_per_round)
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
             until_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
+
+    def _set_farm_times(self, target: int) -> OperationRoundResult:
+        """快速刷取确认框内把次数设到 target:OCR 读「刷取次数 N」现值 →
+        点「+」补差值 → OCR 复核达标(或滑条封顶)即成。失败显式返回,
+        交由节点预算兜底。"""
+        plus_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数加')
+        for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
+            current = self._read_farm_times()
+            if current is None:
+                return self.round_fail('无法读取确认框刷取次数')
+            if current >= target:
+                return self.round_success()
+            self.ctx.controller.click(plus_area.rect.center)
+        return self.round_fail(f'刷取次数未能设到 {target}')
+
+    def _read_farm_times(self) -> int | None:
+        """确认框「刷取次数 N」OCR 取 N(打开即游戏记忆的上次值,非恒 1)。"""
+        screen = self.screenshot()
+        area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '读区-刷取次数')
+        results = self.ctx.ocr_service.get_ocr_result_list(
+            image=screen, rect=area.pc_rect, crop_first=True)
+        for r in results:
+            m = re.search(r'\d+', str(r.data or ''))
+            if m:
+                return int(m.group())
+        return None
 
     @node_from(from_name='副本刷取', status='MANUAL_FIGHT')
     @operation_node(name='手动挑战战斗', node_max_retry_times=30)
