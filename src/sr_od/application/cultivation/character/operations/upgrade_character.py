@@ -349,14 +349,15 @@ class UpgradeCharacterOp(SrOperation):
     @operation_node(name='券确认刷取', node_max_retry_times=4)
     def confirm_ticket_farm(self) -> OperationRoundResult:
         """快速刷取确认框点确认(次数默认 1,每轮刷 1 次由循环自反馈收敛)
-        → until 确认框消失(直接领奖回副本画面)。"""
+        → until 结果框「关闭」按钮出现(⚠️ 结果框与确认框标题同名同位
+        「快速刷取」,消失判定不可用;结果框出现 = 领奖完成回副本画面)。"""
         self._farm_rounds += 1
         log.info('晋阶: 第 %d 次券刷取(消耗开拓力 %d + 快速刷取券 %d)',
                  self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
-            until_not_find_all=[(_CHALLENGE_SCREEN, '标题-快速刷取弹窗')],
+            until_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
 
@@ -382,13 +383,26 @@ class UpgradeCharacterOp(SrOperation):
 
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
-    @operation_node(name='返回养成界面', node_max_retry_times=6)
+    @operation_node(name='返回养成界面', node_max_retry_times=8)
     def back_to_ascend(self) -> OperationRoundResult:
-        """关闭副本(右上 X)→ 回等级提升界面(until=标题锚)→ 重入升级循环。"""
+        """关结果框(如有)→ 关副本(右上 X)→ 回等级提升界面(until=标题锚)
+        → 重入升级循环。
+
+        层级回退待实测确认:从养成界面跳转来的副本,关闭后可能回到资源
+        窗口而非直接回养成界面——节点自环重试覆盖逐层关闭。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
             log.info('晋阶: 刷取完成回到养成界面,已刷 %d 次', self._farm_rounds)
             return self.round_success(status='FARMED')
+        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _CHALLENGE_SCREEN, '按钮-关闭刷取结果',
+                until_not_find_all=[(_CHALLENGE_SCREEN, '按钮-关闭刷取结果')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('刷取结果框已关,重入分类', wait=1)
+            return result
         return self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
             until_find_all=[(_ASCEND_SCREEN, '标题-等级提升')],
