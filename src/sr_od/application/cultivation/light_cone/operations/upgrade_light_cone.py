@@ -194,6 +194,7 @@ class UpgradeLightConeOp(SrOperation):
         current = self.check_and_update_current_screen(
             self.last_screenshot,
             screen_name_list=[_LC_TAB_SCREEN, _LC_ASCEND_SCREEN, _CHALLENGE_SCREEN,
+                              _WORLD_SCREEN, '大世界',
                               _REPLACE_SCREEN, _LIST_SCREEN])
         if current in (_REPLACE_SCREEN, _LIST_SCREEN):
             return self.round_fail(f'{current} 浮层开着(遮挡态):先收列表'
@@ -201,6 +202,9 @@ class UpgradeLightConeOp(SrOperation):
         if current == _CHALLENGE_SCREEN:
             # 刷取中断现场(战斗/结算/重建副本画面):直入返回分类收口
             return self.round_success(status='IN_CHALLENGE')
+        if current in (_WORLD_SCREEN, '大世界'):
+            # 手动刷取返回链的中断落点:从大世界重走入口链
+            return self.round_success(status='BACK_TO_WORLD')
         if current is None:
             # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
             # 自身锚;刷取中断(结算画面/重建副本画面/升级过渡帧)查等级提升
@@ -505,7 +509,7 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
     @node_from(from_name='入口核对', status='IN_CHALLENGE')
-    @operation_node(name='刷取返回分类', node_max_retry_times=12)
+    @operation_node(name='刷取返回分类', node_max_retry_times=30)
     def back_after_farm(self) -> OperationRoundResult:
         """刷取后返回分类(flat):手动路线与券路线的落点不同——
 
@@ -568,6 +572,7 @@ class UpgradeLightConeOp(SrOperation):
 
     @node_from(from_name='刷取返回分类', status='BACK_TO_WORLD')
     @node_from(from_name='刷取返回分类', status='BACK_TO_CHARACTER')
+    @node_from(from_name='入口核对', status='BACK_TO_WORLD')
     @operation_node(name='重走入口链', node_max_retry_times=30)
     def reenter_from_world(self) -> OperationRoundResult:
         """手动刷取返回链收口:副本关闭落到大世界/角色页(浮层栈已卸载),
@@ -593,13 +598,13 @@ class UpgradeLightConeOp(SrOperation):
         if current != _DETAIL_SCREEN:
             return self.round_retry(f'入口链中画面未识别(判定: {current}),等稳定重判', wait=1.5)
 
-        # 已在详情页:重选角色(详情不记忆上次角色)
-        if self._char_name is None:
-            return self.round_fail('手动刷取返回后需重选角色,但入口未读到角色名(OCR 失败)')
-        select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
-        select_result = select_op.execute()
-        if not select_result.success:
-            return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')
+        # 已在详情页:有入口记名则重选;无记名(大世界现场直接开跑)直接切 TAB——
+        # 中断场景详情页显示的就是上次浏览的目标角色,边界已在 docstring 声明
+        if self._char_name is not None:
+            select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+            select_result = select_op.execute()
+            if not select_result.success:
+                return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')
         tab_op = SwitchCharacterTabOp(self.ctx, tab_name='光锥')
         tab_result = tab_op.execute()
         if not tab_result.success:
