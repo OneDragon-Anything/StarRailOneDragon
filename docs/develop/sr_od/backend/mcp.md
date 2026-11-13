@@ -4,7 +4,7 @@
 
 ## 工具
 
-34 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry` + `run_slot._start`：
+35 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry`（+ 流转查看 `operation_flow`）+ `run_slot._start`：
 
 | MCP tool | 委托 | 返回 |
 |---|---|---|
@@ -23,6 +23,7 @@
 | `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项；返回形态同 `run_one_dragon` |
 | `list_operations(query="")` | `operation_registry.scan_operations(ctx)` + `compact_operation_list` | 定位符紧凑列表（`{total, count, operations[], failures[], hint}`；元素无同名类时为类名短名、冲突时为完整 op_id，可直接传 describe/run；`query` 按完整 op_id 子串过滤大小写不敏感；不带参数 schema——参数详情走 `describe_operation`，与 HTTP `/game/operations` 同契约单源） |
 | `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + `coercible` + 整体 `debuggable`）+ 本类 `docstring` 整段透传（做什么/起终点画面/副作用/参数语义；未写为 None，取 `cls.__dict__` 不继承基类——远程使用者看不到源码，语义唯一来源）；`op_id` 亦接受类名短名（大小写敏感精确匹配），多命中返 `{ambiguous: True, matches[]}`，未找到报错附相似类名 |
+| `describe_operation_flow(op_id, mermaid=False)` | `operation_flow.describe_operation_flow(op_id, mermaid)`（纯反射不实例化，不依赖 backend 就绪） | op 节点流转图：`{op_id, class_name, module, start_node, node_count, edge_count, flow, mermaid, nodes[], edges[], diagnostics[], notes[]}`。`flow` 文本图按 BFS 执行序（主干前/分支后/不可达垫底），边标注 `(成功/失败·status=xxx/兜底)`，入边≥2 的汇聚点标 `←入:` 来源，断名边挂 to 节点侧 `←✗`；`diagnostics` 静态诊断（error=运行时必炸：断名边/重复节点名/多起点/零起点；warn=结构可疑：不可达/同方向多条兜底边/边挂非节点方法）；`mermaid=true` 多带 flowchart 源码（默认 false）。`op_id` 同 describe_operation 双形态，完整形态可查 Application 类（可读性口径不排斥 app）；诊断零 error 的全仓基线由 `test_operation_flow.py` 的全量回归测试制度化。查 op **怎么流转**用本 tool，查 op **参数怎么传**用 `describe_operation` |
 | `run_operation(op_id, args=None, block=False)` | `operation_registry.resolve_unique_op` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回受理；`block=True` 返终态 `{success, result}`；`op_id` 亦接受类名短名，多命中拒绝并列候选 op_id；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返 `{started: False, error}`。`@dataclass`+`from_dict` 参数可从 dict 传入 |
 | `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{success, app_id, data|key,value}`（读配置字段/全 data；只读） |
 | `set_config(app_id, key, value)` | `config_router` 路由 → 写穿 ctx + 校验只读 | `{success, app_id, key, value}`（写简单/enum 字段；只读字段拒绝） |

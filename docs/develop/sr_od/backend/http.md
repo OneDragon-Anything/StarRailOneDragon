@@ -18,6 +18,7 @@
 | POST | `/game/run/standalone?app_id=&block=` | `backend.run_standalone_app('http', app_id)` | `app_id` 为空时使用 GUI「应用运行」当前选中项;返回形态同 `/game/run/one-dragon` |
 | GET | `/game/operations` | `operation_registry.scan_operations(ctx)` + `compact_operation_list` | 定位符紧凑列表（`{total, count, operations[], failures[], hint}`；元素无同名类时为类名短名、冲突时为完整 op_id，可直接传 describe/run；`?query=` 按完整 op_id 子串过滤大小写不敏感；与 MCP `list_operations` 同契约单源，参数 schema 走 `/game/operations/describe`） |
 | GET | `/game/operations/describe?op_id=` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每参数标 `json_serializable` + 整体 `debuggable`）；`op_id` 亦接受类名短名，多命中返 `{ambiguous: True, matches[]}`，未找到报错附相似类名 |
+| GET | `/game/operations/flow?op_id=&mermaid=` | `operation_flow.describe_operation_flow(op_id, mermaid)`（纯反射不实例化，不依赖 backend 就绪） | 节点流转图：`{op_id, class_name, module, start_node, node_count, edge_count, flow, mermaid, nodes[], edges[], diagnostics[], notes[]}`——`flow` 文本图（BFS 执行序 + 汇聚点入边标注 + 断名边挂 to 侧）、`diagnostics` 静态诊断（error=运行时必炸 / warn=结构可疑）、`mermaid=true` 多带 flowchart 源码；完整 op_id 可查 Application 类；与 MCP `describe_operation_flow` 同契约单源 |
 | POST | `/game/run/operation?op_id=&block=` | `operation_registry.resolve_unique_op` 校验 + `run_slot._start`（op 路径） | 默认返受理;`block=true` 等结束返终态 `{"success": bool, "result": 文本}`;`args` 走 JSON body;`op_id` 亦接受类名短名，多命中拒绝并列候选 op_id |
 | GET | `/game/status` | `backend.query_status()` | `RunStatusResult` JSON |
 | POST | `/game/stop` | `backend.stop()` | `{"stopped": bool, ...}` JSON |
@@ -44,7 +45,7 @@
 | 调用方式 | REST | tool-call |
 | 共享对象 | 同一个 `SrBackendContext` | 同一个 `SrBackendContext` |
 
-运行态三件套**对称暴露**：`/game/enter` ↔ `open_game`、`/game/status` ↔ `get_run_status`、`/game/stop` ↔ `stop_run`，两侧调同一 backend 方法（[design-principles.md](design-principles.md) P11），跨适配器状态共享同一 `RunSlot`（HTTP 触发的运行 MCP 也能查到）；应用运行端点对应 `run_one_dragon` / `run_standalone_app` / `list_applications`；自定义 op 运行入口对应 `list_operations` / `describe_operation` / `run_operation`（`/game/operations` ↔ `list_operations`、`/game/operations/describe` ↔ `describe_operation`、`/game/run/operation` ↔ `run_operation`）。
+运行态三件套**对称暴露**：`/game/enter` ↔ `open_game`、`/game/status` ↔ `get_run_status`、`/game/stop` ↔ `stop_run`，两侧调同一 backend 方法（[design-principles.md](design-principles.md) P11），跨适配器状态共享同一 `RunSlot`（HTTP 触发的运行 MCP 也能查到）；应用运行端点对应 `run_one_dragon` / `run_standalone_app` / `list_applications`；自定义 op 运行入口对应 `list_operations` / `describe_operation` / `run_operation` / `describe_operation_flow`（`/game/operations` ↔ `list_operations`、`/game/operations/describe` ↔ `describe_operation`、`/game/operations/flow` ↔ `describe_operation_flow`、`/game/run/operation` ↔ `run_operation`）。
 
 ## 路线图（尚未实现）
 
