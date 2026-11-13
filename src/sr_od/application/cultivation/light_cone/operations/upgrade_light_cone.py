@@ -44,6 +44,7 @@ open_farm_window/手动挑战的重试预算耗尽即判停,不空烧轮次。
 import re
 import time
 
+from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -65,6 +66,8 @@ _DETAIL_SCREEN: str = '角色-详情'
 _RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
 _CHALLENGE_SCREEN: str = '挑战副本'
 _BATTLE_SCREEN: str = '战斗画面'
+_LC_PROMO_BANNER_SCREEN: str = '光锥-等级提升-晋阶横幅'
+_LC_RETURN_SCREEN: str = '光锥-等级提升-材料返还'
 
 # 升级执行后横幅+动画的稳定等待
 _LC_ASCEND_SETTLE_SEC: float = 2.5
@@ -306,6 +309,14 @@ class UpgradeLightConeOp(SrOperation):
             self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             log.info('光锥晋阶: 光锥已满级(已提升至最高阶,等级 %s)', self._capped_level)
             return self.round_retry('满级,关闭回光锥页收尾', wait=1)
+
+        # ④b 晋阶横幅/材料返还页(升满/晋阶成功时先后出现的全屏浮层,点击
+        # 空白处关闭;实测顺序:晋阶横幅 → 材料返还 → 回等级提升)
+        for banner in ((_LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅'),
+                       (_LC_RETURN_SCREEN, '标题-材料返还')):
+            if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
+                self.ctx.controller.click(Point(960, 120))
+                return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
 
         # ⑤ 材料全齐:白底「快速升级」执行钮(与⑥同位不同文,OCR 天然互斥)
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-快速升级').is_success:
