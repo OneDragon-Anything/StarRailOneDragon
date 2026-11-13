@@ -1,7 +1,7 @@
 """货币战争 投资策略 + 投资环境领域模型(meta 层,V4.4)。
 
 **两层架构**:
-- **base 事实层** = ``cw_invest_data.py``(``tools/cw/gen_plaza_invest.py`` 从米游社攻略广场
+- **base 事实层** = ``cw_invest_data.py``(``skills/sr-od-dev-currency-war/scripts/gen_plaza_invest.py`` 从米游社攻略广场
   官方 API 生成,勿手编):名字/品质/效果全文,数字 id 稳定主键,投资策略 334 + 投资环境 83
   官方全量(游戏内数据银行同口径,米游社百科 doc 的 19 条版本漂移缺口就此补齐)。
 - **建模增量层** = 本文件手维护(API 给不了的人工建模):
@@ -20,7 +20,7 @@
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
 
-**版本更新工作流**:重跑 ``uv run python tools/cw/gen_plaza_invest.py`` → 看 diff 报告
+**版本更新工作流**:重跑 ``uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_invest.py`` → 看 diff 报告
 (新增/移除/改名/品质变)→ 修 overlay 孤儿键 → 完成。
 
 **用途**:

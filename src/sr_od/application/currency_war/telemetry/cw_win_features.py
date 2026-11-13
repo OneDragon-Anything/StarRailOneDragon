@@ -7,7 +7,7 @@ node_type 等非 deployed 派生特征由训练表侧 join 提供,见
 
 特征设计 = 早期 TFT 自动棋胜率特征向 CW 的映射论证(原 win_model ADR 草稿
 未入库已灭失;特征语义现行载体 = 本 docstring 特征清单与
-``features_from_deployed`` 消费契约,训练管线/特征列序 = tools/cw/win_model_m1.py)。
+``features_from_deployed`` 消费契约,训练管线/特征列序 = skills/sr-od-dev-currency-war/scripts/win_model_m1.py)。
 本模块是**纯函数**(无 I/O / 无游戏依赖),
 sim 与离线训练脚本共用;M2 接入 sim 结算器时直接 import。
 

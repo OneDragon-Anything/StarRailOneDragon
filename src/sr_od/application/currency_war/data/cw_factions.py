@@ -1,7 +1,7 @@
 """货币战争 阵营/羁绊(factions)数据库。
 
 ⚠️ **本文件是判断层(人维护)**:category/note/desc/tiers 是人工判断;官方数据
-(tools/cw/gen_factions.py,traits.json)**不写任何 src 文件**——它只做 stdout 交叉核对
+(skills/sr-od-dev-currency-war/scripts/gen_factions.py,traits.json)**不写任何 src 文件**——它只做 stdout 交叉核对
 (tiers/成员逐键比本表与 cw_chars,不一致非零退出)。原数据层 ``cw_factions_data.py``
 (TRAIT_TIERS/TRAIT_ROLES)已删:tiers/成员/效果全文单一源都在本表与 cw_chars 注册表,
 版本更新重跑交叉核对器校验,不维护平行数据模块。
@@ -43,7 +43,7 @@ class FactionInfo:
         return [c.name for c in chars_by_faction(self.cn, include_flows=include_flows)]
 
 
-# 米游社百科 V4.4 权威(tiers 单一源 = 本表;官方交叉核对 = 重跑 tools/cw/gen_factions.py,
+# 米游社百科 V4.4 权威(tiers 单一源 = 本表;官方交叉核对 = 重跑 skills/sr-od-dev-currency-war/scripts/gen_factions.py,
 # stdout 报 tiers/成员逐键 diff,不一致非零退出;
 # desc 由 r155 从官方 config 灌入,版本升级→重跑交叉核对器→stdout 渲染全文交叉核对 desc)。
 # 分类按效果归类;tiers 为逐层激活人数。

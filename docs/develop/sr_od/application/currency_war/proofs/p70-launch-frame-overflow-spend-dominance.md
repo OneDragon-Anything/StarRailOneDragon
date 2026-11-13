@@ -3,7 +3,7 @@
 > 状态:**已证(结构命题,构造性直证,零自由参数;适用范围=溢出段 g>g* 且开战帧∧战斗类节点;带内段(金在利息带内 g≤g*)不在本命题适用范围,登记为 L1' 双门 fail-closed(fail-closed=条件不满足即维持现状不动);2026-09-06 正式化)**
 > 立项材料指针:`未入库临时档案(git 外)currency_war/launch_gold_tradeoff/DESIGN.md` v1(命题 L1 两段式设计;sim71 判读二 35/109 帧重叠面 + sink_baseline 三面 p<0.0001 成对恶化 = 立项事实面,非证明输入)
 > 代码引用:`kernel/cw_economy.py`(`interest` / `loss_exact` P47 命题 2 双轨迹递推单一源 / `saturation_line` g* 派生 / `in_must_spend_zone` 适用范围缺口在案)、`kernel/cw_launch_admission.py:readiness_launch_decision`(开战判据核 armed 单一源)、`sim/engine_p1.py:1130`(`range(0 if _round_launch else 8)` 开战帧短路决策段=本命题适用范围缺口的代码形态)
-> 数值自检脚本:`tools/cw/proofs/p70_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p70_check.py`,全部断言通过)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p70_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p70_check.py`,全部断言通过)
 > 编号已定案:math_proofs 索引顺延至 P70(索引末位 P69,无 P70 占位冲突,编号核对批规则下本号成立)。
 
 ## 命题(形式化)
@@ -106,4 +106,4 @@ EV(spend) − EV(留存) = ΔV − L(g, spend, R, Ī) − 摩擦
 - **开战帧短路保留裁定**(本命题的适用范围缺口即短路保留的决策段禁区;修复处置 = 短路前插消费仲裁段只跑本命题溢出段判据,带内 fail-closed);
 - 设计正文:`未入库临时档案(git 外)currency_war/launch_gold_tradeoff/DESIGN.md` v1 §1.1/§1.4(命题 L1 两段式与统一判据式;带内段 L1' 立项登记待办)。
 
-*(本件为 v1.0;未改任何现有证明文件;数值自检脚本入库 `tools/cw/proofs/p70_check.py` 可重跑。)*
+*(本件为 v1.0;未改任何现有证明文件;数值自检脚本入库 `skills/sr-od-dev-currency-war/scripts/proofs/p70_check.py` 可重跑。)*

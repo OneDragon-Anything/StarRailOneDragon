@@ -35,7 +35,7 @@ StarRailOneDragon/
 │           └── backend/                # 设计文档区（同构双层结构）
 ├── skills/<name>/                      # SR 专属 skill（sr-od- 前缀，提交）
 ├── deploy/                             # 打包构建脚本（说明见 .github/dev.md）
-├── tools/                              # 辅助脚本（cw / mcp / worktree）
+├── tools/                              # 辅助脚本（mcp / worktree；cw 工具已归 skill scripts/）
 └── sr-od-test/                         # 测试仓库（独立 git 仓，不入本仓）
 ```
 

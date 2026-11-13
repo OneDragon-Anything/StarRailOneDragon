@@ -439,7 +439,7 @@ class CwScreenSupplyNode(CwOperation):
         # 余次数现值快照,可 None——布尔键随计数闸消亡,left 供读端
         # 按剩余分型,无「本局初始授予数」基线故携带而非推导)——
         # 选定事实现场载荷,现役消费面 = 零(遥测接入调用候批;复盘
-        # 渲染方 = tools/cw/replay_to_md.py「画面-补给」画面章)。
+        # 渲染方 = skills/sr-od-dev-currency-war/scripts/replay_to_md.py「画面-补给」画面章)。
         picked = {'char': _opt.char, 'equip': _opt.equip,
                   'has_diamond': _opt.has_diamond,
                   'extra_equips': _opt.extra_equips,

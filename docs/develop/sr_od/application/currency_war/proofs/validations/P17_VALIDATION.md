@@ -4,7 +4,7 @@
 
 > 验证对象:`docs/game/currency_war/research/proofs/p17-ab-hp-measure-legality.md`(单篇)+ `math_proofs.md` 索引行 P17。只读禁改,本报告为唯一产出。
 > 验证人:逐件证明验证批(P17 专项)。日期:2026-09(重建纪元,P51 v3 之后)。
-> 阅读门声明:已读 game 侧核心文档(gameplay.md / user_playstyle 全文含 [2][18][27][28][39][40] / math_proofs 索引 / P3/P15/P16 单篇与索引 / P51 v3 / P11 索引)+ 注册表直调(`cw_registry.py`:interest_cap=5、hp_to_gold=0.5、boss_tax_p75=34.0)+ P15v2 冻结语料(`tools/cw/proofs/p15/fit_results.json`,66 局/427 战斗行)+ 消费面全链(w328 DESIGN / w920 DESIGN / w947+w947c prereg / w951 prereg 及回填 / w956 prereg)+ strategy-work(skill references)。跳过项:final_comps/、transition_combos 等阵容知识篇——本件为方法论件,不建模任何具体阵容,无交集(声明理由:五门均不消费阵容知识)。
+> 阅读门声明:已读 game 侧核心文档(gameplay.md / user_playstyle 全文含 [2][18][27][28][39][40] / math_proofs 索引 / P3/P15/P16 单篇与索引 / P51 v3 / P11 索引)+ 注册表直调(`cw_registry.py`:interest_cap=5、hp_to_gold=0.5、boss_tax_p75=34.0)+ P15v2 冻结语料(`skills/sr-od-dev-currency-war/scripts/proofs/p15/fit_results.json`,66 局/427 战斗行)+ 消费面全链(w328 DESIGN / w920 DESIGN / w947+w947c prereg / w951 prereg 及回填 / w956 prereg)+ strategy-work(skill references)。跳过项:final_comps/、transition_combos 等阵容知识篇——本件为方法论件,不建模任何具体阵容,无交集(声明理由:五门均不消费阵容知识)。
 
 ## 五门逐门判定
 
@@ -89,5 +89,5 @@
 ## 验证过程声明
 
 - 未修改任何文件;唯一产出=本报告。
-- 数值复核:P15v2 带/CI 逐项读自冻结语料 `tools/cw/proofs/p15/fit_results.json`(corpus_sha256=7f5f…68ba);注册表值直调 `src/sr_od/application/currency_war/kernel/cw_registry.py`;三轮 A/B 数字读自对应 prereg 与 w947 REPORT/judge 回填。
+- 数值复核:P15v2 带/CI 逐项读自冻结语料 `skills/sr-od-dev-currency-war/scripts/proofs/p15/fit_results.json`(corpus_sha256=7f5f…68ba);注册表值直调 `src/sr_od/application/currency_war/kernel/cw_registry.py`;三轮 A/B 数字读自对应 prereg 与 w947 REPORT/judge 回填。
 - 强度声明:本判决最弱环节=级 4「形态→胜率」现行无已证数值来源(这不削弱合法性命题,只封死 +8 数值复活路径,直到该级重证)。

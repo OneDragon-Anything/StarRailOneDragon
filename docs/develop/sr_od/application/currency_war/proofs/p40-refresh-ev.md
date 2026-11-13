@@ -2,7 +2,7 @@
 
 > 状态:**已推导(单步 EV 门 + 完成门 + 预算门三层规则;数值自检通过方向验证,sim 交叉核对登记待办)**
 > 数据源(单一源代码,数值不抄):`cw_shop_odds`(`REFRESH_PROB`/`POOL_COPIES_PER_CARD`/`DISTINCT_CARDS_PER_COST`/`_refresh_dist`/`expected_refreshes`/`rotation_probs`/`ROTATION_CHANCE`)、`cw_economy`(`interest` 口径 = gold//10 上限 5,economy.md §10.1 实测);机制面 = economy.md §2/§2.1/§5、invest_effects.md §2(B 类突变)、user_playstyle [1][2][3][17][22]
-> 计算脚本:`tools/cw/proofs/p40_refresh_ev_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p40_refresh_ev_check.py`;直接 import 注册表复算)
+> 计算脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py`;直接 import 注册表复算)
 > 提出:CW 策略重构·刷新命题(2026-09);证明 = 本批
 > 前置:p47 利息账(**L 联动批已执行**:R2 利息损失项已换规范式 L(g,spend,R_全局,Ī);旧树过渡口径 t×min(R,3) 已停用——原 P13 单篇已删,git 可溯);[3]/[17]/[31]/[1](刷的纪律口述);economy.md §2(刷新找牌超几何模型)
 > ⚠️ 本篇为**自含推导**(同命题旧证明已作废,未引用;已作废、禁止引用的 p05/p11/p22 未读)

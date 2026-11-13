@@ -20,7 +20,7 @@
 
 ## 2. 证据源说明
 
-- **A 原文单一源 = `src/sr_od/application/currency_war/data/cw_invest_data.py`**(plaza 官方 API V4.4 生成、版本冻结、勿手编;生成器 `tools/cw/gen_plaza_invest.py`)。本目录曾设 `sources/` 外部攻略存档,现已整体移除(已登记记录见 [invest_effects.md](invest_effects.md) §0.1「攻略存档已删」注),原文引证一律回归该注册表。
+- **A 原文单一源 = `src/sr_od/application/currency_war/data/cw_invest_data.py`**(plaza 官方 API V4.4 生成、版本冻结、勿手编;生成器 `skills/sr-od-dev-currency-war/scripts/gen_plaza_invest.py`)。本目录曾设 `sources/` 外部攻略存档,现已整体移除(已登记记录见 [invest_effects.md](invest_effects.md) §0.1「攻略存档已删」注),原文引证一律回归该注册表。
 - B 已登记结论:`research/` 全目录检索「免费刷新」仅 [economy.md](economy.md)(手动刷新 2 金/次恒定)与 [invest_effects.md](invest_effects.md)(概率事件 45%)两条,均不含「拿卡当节点发放」命题——本篇为该命题首份已登记结论。
 - C 推断源:官方卡文的「现在/立刻」措辞惯例(§4)。
 - 遥测旁证:现存实机遥测(`.debug/currency_war/telemetry/live/state/journal.jsonl`)全文检索「加油站/搜打撤」零命中——这两卡本就未入效果账本注册表,拿取无痕迹,**旁证缺失**,不影响原文定案。

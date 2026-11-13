@@ -2,7 +2,7 @@
 
 > 状态:**已推导+P48 修复批修订(2026-09-07,验证判决=需修:命题 3 补死亡截断项 λ_death·销毁风险敞口(注:风险敞口=可能随死亡整笔损失、无法收回的金额)并划 P48×P51 三段管辖;floor/E[刷费]/n̄ 三参数 resolved 化)**;命题 4 域限定=全部目标视界(视界=剩余战斗数,下文同)内可完成,截断域改枚举/DP;S 并入分支二窗口预留;k* 语义差异显式;数值自检入库;ρ 摊派/n̄ 估计器待标定(**XP 表待标定①已撤:2026-08-31 用户确收,economy §9 表为正**)。**实现护栏**:现行 `decision_v2/scoring.py` 的小数等级线性计价通道与本引理冲突——Phase 3 实现不得经该通道授权零散 LevelUp
 > 数据源(引用值逐一注明):`cw_state`(`XP_PER_BUY`=4 / `XP_TO_NEXT_LEVEL`={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / `xp_clicks_to_level` 单一源 / `XP_CLICK_COST_FALLBACK`=4 flat,三帧)、sim `engine_p1`(买牌同源 +4 XP/张)、`cw_plane_table`(`GOLD_CAP_INTEREST`=50 / `interest`=min(g//10,5))、`cw_economy`(`BASE_INCOME`=5 / `REWARD_BASE_GOLD_BY_ROUND`={1:3,2:4} / 收入口径,p47 A3 同源)、economy.md §2.1(升级不触发商店刷新)§9(XP 门槛表,2026-08-31 已收案=确定表)§10.1(收入实测)、p39 数值表(ΔV_band 示例:4费2星 L7→L8=103.3 / L8→L9=23.0 / L6→L7=28.4 / 5费2星 L8→L9=282.7)
-> 数值自检脚本:`tools/cw/proofs/p48_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p48_check.py`,全部断言通过)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p48_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p48_check.py`,全部断言通过)
 > 提出:CW 策略重构·数学证明工程批(p48);证明=本批;口述引用=user_playstyle **[41]**(2026-08-31,最高权威)
 > 前置(消费方接口,只引结论不重新推导):p39(双分支门/EV_up/U_L 含 xp_cur 抵扣)、p47(利息流封顶与损失函数 L(g,d,R,Ī))、p40(R0 停止条件=「无必要刷新」口径)、p41(V_opt——买牌压牌库的已登记事实,对照项)
 > ⚠️ 本证明自含:未读已作废、禁止引用的 p05/p13/p03/p35;升级 EV 的量级账归 p39、利息账归 p47,本文只管**储蓄-整买的时序结构**。

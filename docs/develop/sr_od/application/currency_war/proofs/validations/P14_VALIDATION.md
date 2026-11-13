@@ -16,7 +16,7 @@
 
 ### ①-1 🔴 Q1 全部轮期望数值 = 积分截断伪影(实质缺陷,可行性判定翻转)
 
-被审脚本 `tools/cw/proofs/equip_expectation.py` `wait_rounds_for_demand`(:117)`scale = max(k)/rate` 作积分上界——注释写「均值最大分量的 ~3 倍覆盖」但**代码没有任何 3× 余量**。E[max] 类量需要的上界 ≫ 最大分量均值,截断使结果系统性偏低。
+被审脚本 `skills/sr-od-dev-currency-war/scripts/proofs/equip_expectation.py` `wait_rounds_for_demand`(:117)`scale = max(k)/rate` 作积分上界——注释写「均值最大分量的 ~3 倍覆盖」但**代码没有任何 3× 余量**。E[max] 类量需要的上界 ≫ 最大分量均值,截断使结果系统性偏低。
 
 独立复算(闭式 + 充分上界数值积分,两者互证一致;截断复刻=按被审代码逻辑重写):
 

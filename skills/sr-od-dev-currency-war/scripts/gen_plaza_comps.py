@@ -1,0 +1,549 @@
+"""货币战争 · plaza 实战阵容统计生成器(match_hard 高难帖聚合;版本更新重跑)。
+
+数据源(免登录公开 API,同 plaza_fetch.py):
+  POST {BASE}/game/lineup/index  body 含 match_hard=true(高难/A8 实战筛选)
+  BASE = https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game
+  (必需 header x-rpc-currencywar-tourn: tourn;cursor 分页;Recommend 排序空返回,只支持 Hot)
+
+产出(**同源三产物,双向链接,均勿手编**):
+  1. ``src/sr_od/application/currency_war/data/cw_plaza_comps.py`` —— 代码侧(机器消费):
+     ``PLAZA_CARRY_CLUSTERS``(按 carry 聚类 n≥5 的实战统计:羁绊/常驻角色/carry 装备/
+     节奏标签/投资策略/环境偏好/3星率/样本量/use 权重)+ ``PLAZA_GLOBAL``(全局 meta:
+     羁绊频次/装备频次/合成首选/过渡单位池/星级费用档/label 词表/开拓者形态)。
+  2. ``src/sr_od/application/currency_war/data/cw_plaza_posts.py`` —— 逐篇明细(胜率模型
+      先验面训练样本;每篇=一条赢家发帖样本,样本权重=use 计数对数压缩再归一,见
+      ``cw_win_model.plaza_sample_weight``;**生存者偏差语料,只作先验面/特征域
+      覆盖面,不作无偏胜率训练集**——校准基准=实机遥测负样本)。
+  3. ``docs/game/currency_war/data/plaza_meta.md`` —— 人读版(表格,供 COMP_LIBRARY 手判层校准)。
+
+两层架构(同 gen_plaza_invest.py 模式):本生成器只管 **base 事实层**(784 篇玩家帖
+聚合的客观频次);手判层(strength/form_difficulty/star_goals 曲线取舍)在 ``cw_comps.py``
+COMP_LIBRARY 手维护 —— 层间对账经生成末尾的差异报告(聚类 carry vs 各线
+core_chars[0],人裁定是否重排),不再经运行时字段。
+
+过滤规则(防污染):
+  - ``rpg_game_big_version == "4.4"``(列表混旧版帖);
+  - ``create_by_env != "TournLineupEnv_KOLSandbox"``(官方演示非玩家实战);
+  - ``is_expired / is_sub_expired`` 剔除。
+canon 规则(同 gen_plaza_chars.py):plaza 名 ``•``(U+2022)→``·``(U+00B7);开拓者
+8009=开拓者·欢愉 / 8007=开拓者·记忆;换形态按 ``switch_role_map`` 映射(终局 8009→8007)。
+召唤物 id(12041/12042 景元神君变体)只入羁绊计数不入 roster —— 本聚合只消费 role_stages
+roster 字段,天然隔离;神君不计 carry/units。
+
+用法(项目根):
+  uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py            # 在线拉取 + 生成
+  uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py --cache    # 用本地最新 jsonl 缓存(离线)
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import urllib.request
+from collections import Counter, defaultdict
+from pathlib import Path
+
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+
+REPO = Path(__file__).resolve().parents[3]
+DATA_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_comps.py"
+DATA_POSTS_PY = REPO / "src/sr_od/application/currency_war/data/cw_plaza_posts.py"
+DOC_MD = REPO / "docs/game/currency_war/data/plaza_meta.md"
+CACHE = Path(".debug/temp/currency_war/plaza/lineups_HotHard.jsonl")
+CONFIG_GLOB = ".debug/temp/currency_war/plaza/config_v*.json"
+
+BASE = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game"
+HEADERS = {
+    "Content-Type": "application/json",
+    "x-rpc-currencywar-tourn": "tourn",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer": "https://act.miyoushe.com/",
+    "Origin": "https://act.miyoushe.com",
+}
+GEN_CMD = "uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py"
+MIN_CLUSTER_N = 5   # carry 聚类最小样本量(低于不入库,长尾见 doc 汇总)
+
+TRAILBLAZER = {"8009": "开拓者·欢愉", "8007": "开拓者·记忆"}
+
+
+def canon(r: dict) -> str:
+    rid = str(r.get("id") or "")
+    if rid in TRAILBLAZER:
+        return TRAILBLAZER[rid]
+    return (r.get("name") or "").replace(chr(0x2022), chr(0x00B7))
+
+
+# ===== 采集 =====
+
+def fetch_pages(pages: int = 200, sleep_s: float = 0.4) -> list:
+    """在线拉取 match_hard 攻略列表(cursor 分页拉到尽,去重)。"""
+    items: list = []
+    token = ""
+    seen: set = set()
+    for page in range(1, pages + 1):
+        body = {
+            "game": "hkrpg", "page": str(page), "limit": "10",
+            "lineup_type": "Tourn", "next_page_token": token,
+            "role_ids": [], "trait_ids": [], "match_change_job": False,
+            "match_hard": True, "order": "Hot",
+        }
+        req = urllib.request.Request(f"{BASE}/lineup/index", data=json.dumps(body).encode(), headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            d = json.loads(resp.read())
+        if d.get("retcode") != 0:
+            raise RuntimeError(f"lineup/index p{page} retcode={d.get('retcode')} msg={d.get('message')}")
+        data = d["data"]
+        got = data.get("list") or []
+        new = [x for x in got if x["id"] not in seen]
+        seen.update(x["id"] for x in new)
+        items.extend(new)
+        token = data.get("next_page_token") or ""
+        if not new or not token:
+            break
+        time.sleep(sleep_s)
+    print(f"[fetch] {len(items)} 篇(高难 Hot)")
+    return items
+
+
+def filter_valid(items: list) -> tuple[list, str]:
+    """版本/KOL/过期过滤(规则见模块 docstring)。
+
+    版本目标**从官方 config 缓存推导**(``config_v*.json`` 的 ``rpg_game_big_version``),
+    非硬编码 —— 版本更新重跑 config 子命令后本生成器自动对齐新版本,旧版帖(3.7-4.3 等)
+    全部拦截,防静默污染。
+    """
+    cands = sorted(REPO.glob(CONFIG_GLOB))
+    if not cands:
+        raise RuntimeError("无 config 缓存(先跑 plaza_fetch.py config),版本目标无从推导")
+    version = json.loads(cands[-1].read_text(encoding="utf-8")).get("rpg_game_big_version")
+    if not version:
+        raise RuntimeError(f"config 缓存 {cands[-1].name} 无 rpg_game_big_version 字段")
+    out = []
+    dropped_ver = dropped_kol = dropped_exp = 0
+    for x in items:
+        td = x.get("tourn_detail") or {}
+        if td.get("rpg_game_big_version") != version:
+            dropped_ver += 1
+            continue
+        if td.get("create_by_env") == "TournLineupEnv_KOLSandbox":
+            dropped_kol += 1
+            continue
+        if td.get("is_expired") or td.get("is_sub_expired"):
+            dropped_exp += 1
+            continue
+        out.append(x)
+    print(f"[filter] 目标版本 V{version}(config 推导): {len(items)} -> {len(out)} 有效"
+          f"(弃 旧版{dropped_ver} KOL{dropped_kol} 过期{dropped_exp})")
+    return out, version
+
+
+# ===== 聚合 =====
+
+def use_of(x: dict) -> int:
+    return int((x.get("game_data") or {}).get("recent_interact", {}).get("use") or 0)
+
+
+def final_stage(td: dict) -> dict:
+    for st in td["role_stages"]:
+        if st["stage"] == "Final":
+            return st
+    return td["role_stages"][-1]
+
+
+def stage_units(st: dict, switch: dict) -> list:
+    units = []
+    for pos_key, pos in (("front", st.get("front_roles") or []), ("back", st.get("back_roles") or [])):
+        for r in pos:
+            rid = str(r.get("id") or "")
+            rid_sw = switch.get(rid, rid)
+            name = TRAILBLAZER.get(rid_sw) or canon(r)
+            units.append({"name": name, "star": r.get("star", 1), "is_carry": bool(r.get("is_carry")),
+                          "rarity": int(r.get("rarity") or 0), "pos": pos_key})
+    return units
+
+
+def post_record(x: dict) -> dict:
+    """单帖 → 聚合字段(Final 视角 + 全阶段)。"""
+    td = x["tourn_detail"]
+    switch: dict = {}
+    for st in td["role_stages"]:
+        switch.update({str(k): str(v) for k, v in (st.get("switch_role_map") or {}).items()})
+    fin = final_stage(td)
+    units = stage_units(fin, switch)
+    traits = []
+    for t in fin.get("traits") or []:
+        acts = [ly.get("layer") for ly in t.get("layers", []) if ly.get("is_activated")]
+        if acts and max(acts) >= 2:
+            traits.append(t["trait_name"])
+    equips: dict[str, list[str]] = defaultdict(list)
+    for r in [*(fin.get("front_roles") or []), *(fin.get("back_roles") or [])]:
+        for key in ("first_equipments", "second_equipments"):
+            for e in r.get(key) or []:
+                equips[canon(r)].append((e.get("name") or "").replace(chr(0x2022), chr(0x00B7)))
+    return {
+        "use": use_of(x),
+        "units": units, "traits": traits, "equips": dict(equips),
+        "augs": [a.get("name", "").replace(chr(0x2022), chr(0x00B7))
+                 for a in [*(td.get("first_fight_augments") or []), *(td.get("second_fight_augments") or [])]],
+        "portals": [p.get("title", "") for p in td.get("portals") or []],
+        "labels": [lb.get("text", "") for lb in td.get("labels") or []],
+        "switch": switch,
+        "early": [u["name"] for u in stage_units(td["role_stages"][0], switch)],
+        "craft_first": (td.get("order_compose") or [{}])[0].get("name", ""),
+        "basic_first": (td.get("order_basic") or [{}])[0].get("name", ""),
+    }
+
+
+def aggregate(posts: list) -> tuple[list, dict]:
+    """按 carry 聚类(n≥MIN_CLUSTER_N)+ 全局统计。"""
+    recs = [post_record(x) for x in posts]
+    clusters: dict[str, list] = defaultdict(list)
+    for p in recs:
+        for u in p["units"]:
+            if u["is_carry"]:
+                clusters[u["name"]].append(p)
+
+    out = []
+    for carry, ps in sorted(clusters.items(), key=lambda kv: -len(kv[1])):
+        if len(ps) < MIN_CLUSTER_N:
+            continue
+        trait_c = Counter(t for p in ps for t in p["traits"])
+        unit_c = Counter(u["name"] for p in ps for u in p["units"])
+        carry_eq = Counter(e for p in ps for e in p["equips"].get(carry, []))
+        aug_c = Counter(a for p in ps for a in p["augs"])
+        label_c = Counter(lb for p in ps for lb in p["labels"])
+        portal_c = Counter(pt for p in ps for pt in p["portals"])
+        carry_units = [u for p in ps for u in p["units"] if u["name"] == carry]
+        out.append({
+            "carry": carry, "n_posts": len(ps), "total_use": sum(p["use"] for p in ps),
+            "carry_star3_rate": round(sum(1 for u in carry_units if u["star"] >= 3) / max(len(carry_units), 1), 2),
+            "traits": trait_c.most_common(10),
+            "units": [(k, v) for k, v in unit_c.most_common(12) if k != carry],
+            "carry_equips": carry_eq.most_common(8),
+            "augs": aug_c.most_common(8),
+            "labels": label_c.most_common(5),
+            "portals": portal_c.most_common(5),
+        })
+
+    star_by_cost: dict[int, list] = defaultdict(lambda: [0, 0])
+    for p in recs:
+        for u in p["units"]:
+            if not u["is_carry"] or not u["rarity"]:
+                continue
+            star_by_cost[u["rarity"]][1] += 1
+            if u["star"] >= 3:
+                star_by_cost[u["rarity"]][0] += 1
+    switch_c = Counter(f"{TRAILBLAZER.get(k, k)}->{TRAILBLAZER.get(v, v)}" for p in recs for k, v in p["switch"].items())
+    glob = {
+        "n_posts": len(posts),
+        "trait_freq": Counter(t for p in recs for t in p["traits"]).most_common(),
+        "equip_freq": Counter(e for p in recs for es in p["equips"].values() for e in es).most_common(50),
+        "craft_first": Counter(p["craft_first"] for p in recs if p["craft_first"]).most_common(20),
+        "basic_first": Counter(p["basic_first"] for p in recs if p["basic_first"]).most_common(15),
+        "early_units": Counter(u for p in recs for u in p["early"]).most_common(25),
+        "label_freq": Counter(lb for p in recs for lb in p["labels"]).most_common(),
+        "switch_freq": switch_c.most_common(6),
+        "star3_by_cost": {str(c): round(s / max(n, 1), 2) for c, (s, n) in sorted(star_by_cost.items())},
+        "n_clusters": len(out),
+    }
+    return out, glob
+
+
+# ===== 渲染 =====
+
+def post_corpus_record(x: dict) -> dict:
+    """单帖 → 逐篇明细 dict(cw_plaza_posts.py 语料;字段语义见该文件 docstring)。"""
+    rec = post_record(x)
+    rec["post_id"] = str(x.get("id") or "")
+    rec["carries"] = tuple(dict.fromkeys(u["name"] for u in rec["units"] if u["is_carry"]))
+    rec["units_t"] = tuple(
+        (u["name"], int(u["star"]), int(u["rarity"] or 0), u["pos"], u["is_carry"])
+        for u in rec["units"])
+    rec["equips_t"] = tuple((k, tuple(v)) for k, v in rec["equips"].items())
+    rec["traits_t"] = tuple(rec["traits"])
+    rec["augs_t"] = tuple(rec["augs"])
+    rec["portals_t"] = tuple(rec["portals"])
+    rec["labels_t"] = tuple(rec["labels"])
+    rec["early_t"] = tuple(rec["early"])
+    return rec
+
+
+def render_posts(version_tag: str, recs: list) -> str:
+    lines = [
+        f"# 警告:本文件由 skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py 生成(plaza lineup/index match_hard,{version_tag}),勿手编。",
+        f"# 重跑: {GEN_CMD}",
+        "# 同源产物: cw_plaza_comps.py(聚类聚合)/ docs/game/currency_war/data/plaza_meta.md(人读版,尾部逐篇语料账)。",
+        '"""货币战争 plaza 逐篇发帖明细(高难赢家帖语料,gen_plaza_comps.py 生成)。',
+        "",
+        f"{len(recs)} 篇 V4.4 高难帖逐篇明细(v4.4 + 非KOL沙盒 + 未过期过滤,帖 id 去重)。",
+        "",
+        "**生存者偏差声明**:本语料全部为赢家发帖,只可作胜率模型的先验面/特征域"
+        "覆盖面,不可作无偏胜率训练集——校准基准=自家实机遥测(含负样本)。",
+        "样本权重口径单一源 = ``cw_win_model.plaza_sample_weight``"
+        "(use 计数对数压缩 + 先验面份额归一);特征化单一源 = ``cw_win_model.plaza_post_features``。",
+        '"""',
+        "from __future__ import annotations",
+        "",
+        "from dataclasses import dataclass",
+        "",
+        "",
+        "@dataclass(frozen=True)",
+        "class PlazaPost:",
+        '    """单篇 plaza 高难发帖明细(逐篇胜利样本,胜率模型先验面)。"""',
+        "    post_id: str                        # 官方帖 id(溯源基准,生成器去重保证唯一)",
+        "    use: int                            # 被使用计数(0=官方未展示计数)",
+        "    carries: tuple[str, ...]            # Final 阶段 carry 名(通常 1 个)",
+        "    # (角色名, 星级, 费用档 rarity, pos(front/back), is_carry);星级为帖主编辑器选择",
+        "    units: tuple[tuple[str, int, int, str, bool], ...]",
+        "    equips: tuple[tuple[str, tuple[str, ...]], ...]   # 角色名 → Final 装备名(仅 Final 阶段)",
+        "    traits: tuple[str, ...]             # Final 激活羁绊(激活层>=2 口径,同聚合)",
+        "    augs: tuple[str, ...]               # 两轮投资策略实选(合并)",
+        "    portals: tuple[str, ...]            # 门户(投资环境)选择",
+        "    labels: tuple[str, ...]             # 节奏标签(5/6/7级搜牌/速升8/9)",
+        "    early: tuple[str, ...]              # Early(位面1)阶段单位名",
+        "    craft_first: str                    # 合成首选(order_compose[0])",
+        "    basic_first: str                    # 基础件首选(order_basic[0])",
+        "",
+        "",
+        "PLAZA_POSTS: tuple[PlazaPost, ...] = (",
+    ]
+    for r in recs:
+        lines.append(
+            f"    PlazaPost(post_id={r['post_id']!r}, use={r['use']}, carries={r['carries']!r},\n"
+            f"        units={r['units_t']!r},\n"
+            f"        equips={r['equips_t']!r},\n"
+            f"        traits={r['traits_t']!r}, augs={r['augs_t']!r},\n"
+            f"        portals={r['portals_t']!r}, labels={r['labels_t']!r}, early={r['early_t']!r},\n"
+            f"        craft_first={r['craft_first']!r}, basic_first={r['basic_first']!r}),"
+        )
+    lines += [
+        ")",
+        "",
+        "",
+        "def post_by_id() -> dict[str, PlazaPost]:",
+        '    """帖 id → 明细。"""',
+        "    return {p.post_id: p for p in PLAZA_POSTS}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def render_corpus_doc(recs: list) -> str:
+    """plaza_meta.md 尾部「逐篇语料账」节(与 cw_plaza_posts.py 同源同批)。"""
+    n = len(recs)
+    n_use = sum(1 for r in recs if r["use"] > 0)
+    return "\n".join([
+        "",
+        "## 逐篇语料账(与 `cw_plaza_posts.py` 同源同批生成)",
+        "",
+        f"- 落库 {n} 篇(帖 id 去重后);有 use 计数 {n_use} 篇"
+        f"(占比 {round(n_use / max(n, 1), 2)});use 合计 {sum(r['use'] for r in recs)}。",
+        "- 特征覆盖:含装备明细"
+        f" {sum(1 for r in recs if r['equips_t'])} 篇;含激活羁绊 {sum(1 for r in recs if r['traits_t'])} 篇;"
+        f"含节奏标签 {sum(1 for r in recs if r['labels_t'])} 篇;含门户 {sum(1 for r in recs if r['portals_t'])} 篇;"
+        f"含 Early 阶段 {sum(1 for r in recs if r['early_t'])} 篇。",
+        "- 生存者偏差:全部为赢家发帖,只作先验面/特征域覆盖面,不作无偏胜率训练集;"
+        "校准依据=实机遥测(含负样本)。",
+        "- 样本权重口径:`use>0 → 基础权重 + ln(1+use)` 后按先验面份额归一"
+        "(单一源 `cw_win_model.plaza_sample_weight`)。",
+        "",
+    ])
+
+
+def _tup(pairs: list) -> str:
+    return "(" + ", ".join(f"({k!r}, {v})" for k, v in pairs) + ",)" if pairs else "()"
+
+
+def render_data(version_tag: str, clusters: list, glob: dict) -> str:
+    lines = [
+        f"# 警告:本文件由 skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py 生成(plaza lineup/index match_hard,{version_tag}),勿手编。",
+        f"# 重跑: {GEN_CMD}",
+        "# 同源产物(人读版,COMP_LIBRARY 手判层校准用): docs/game/currency_war/data/plaza_meta.md",
+        '# 手判层(勿混): src/sr_od/application/currency_war/kernel/cw_comps.py COMP_LIBRARY(strength/form_difficulty/level_plan)。',
+        '"""货币战争 plaza 实战 comp 统计(高难玩家帖聚合,gen_plaza_comps.py 生成)。',
+        "",
+        f"{glob['n_posts']} 篇 V4.4 高难帖(v4.4 + 非KOL沙盒 + 未过期过滤),按 Final 阶段 carry 聚类 {glob['n_clusters']} 个(n≥{MIN_CLUSTER_N})。",
+        "频次字段语义:X×N = N 篇帖中出现;star3_by_cost = carry 费用档 3 星率(客观频次,仅校准对拍用——费用档星目标启发式已废弃,星目标只认成型档显式要求)。",
+        '装备只记 Final 阶段(编辑器 UI 限制,非玩法事实——目标套装);合成时序看 PLAZA_GLOBAL["craft_first"]。',
+        '"""',
+        "from __future__ import annotations",
+        "",
+        "from dataclasses import dataclass",
+        "",
+        "",
+        "@dataclass(frozen=True)",
+        "class PlazaCarryCluster:",
+        '    """单个 carry 主C的实战聚类(base 事实层;判断语义在 cw_comps.py 手判层)。"""',
+        "    carry: str",
+        "    n_posts: int",
+        "    total_use: int                       # 被使用次数合计(可信度权重;头部帖才有计数)",
+        "    carry_star3_rate: float              # carry 终局 3 星率(客观频次,校准对拍用;不作星目标决策输入)",
+        "    traits: tuple[tuple[str, int], ...]      # Final 激活羁绊频次(核心+次要混排)",
+        "    units: tuple[tuple[str, int], ...]       # 常驻角色频次(不含 carry)",
+        "    carry_equips: tuple[tuple[str, int], ...]  # carry 装备频次(Final 目标套装)",
+        "    augs: tuple[tuple[str, int], ...]        # 投资策略实选频次(两轮合并)",
+        "    labels: tuple[tuple[str, int], ...]      # 节奏标签(5/6/7级搜牌/速升8/9)",
+        "    portals: tuple[tuple[str, int], ...]     # 投资环境偏好",
+        "",
+        "",
+        "PLAZA_CARRY_CLUSTERS: tuple[PlazaCarryCluster, ...] = (",
+    ]
+    for c in clusters:
+        lines.append(
+            f"    PlazaCarryCluster(carry={c['carry']!r}, n_posts={c['n_posts']}, total_use={c['total_use']},\n"
+            f"        carry_star3_rate={c['carry_star3_rate']},\n"
+            f"        traits={_tup(c['traits'])},\n"
+            f"        units={_tup(c['units'])},\n"
+            f"        carry_equips={_tup(c['carry_equips'])},\n"
+            f"        augs={_tup(c['augs'])},\n"
+            f"        labels={_tup(c['labels'])},\n"
+            f"        portals={_tup(c['portals'])}),"
+        )
+    lines += [")", "", "PLAZA_GLOBAL: dict = {"]
+    for key in ("n_posts", "n_clusters", "trait_freq", "equip_freq", "craft_first", "basic_first",
+                "early_units", "label_freq", "switch_freq", "star3_by_cost"):
+        lines.append(f"    {key!r}: {glob[key]!r},")
+    lines += [
+        "}",
+        "",
+        "",
+        "def cluster_by_carry() -> dict[str, PlazaCarryCluster]:",
+        '    """carry 名 → 聚类(n≥5)。"""',
+        "    return {c.carry: c for c in PLAZA_CARRY_CLUSTERS}",
+        "",
+        "",
+        "def early_transition_pool() -> dict[str, int]:",
+        '    """Early(位面1)阶段单位频次 —— 全局过渡池先验(消费)。"""',
+        '    return dict(PLAZA_GLOBAL["early_units"])',
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def render_doc(version_tag: str, clusters: list, glob: dict) -> str:
+    lines = [
+        "---",
+        f"version: {version_tag}",
+        "generated_by: skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py",
+        "related_code: src/sr_od/application/currency_war/data/cw_plaza_comps.py",
+        "---",
+        "",
+        "# 货币战争 plaza 实战 meta(人读版)",
+        "",
+        f"> **由 `skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py` 生成,勿手编**(plaza lineup/index match_hard 高难帖,重跑:`{GEN_CMD}`)。",
+        "> 代码侧(机器消费):`src/sr_od/application/currency_war/data/cw_plaza_comps.py` —— 同源生成、双向链接。",
+        "> 用途:`cw_comps.py COMP_LIBRARY` 手判层(strength/form_difficulty/level_plan)的校准对拍源。",
+        "",
+        f"{glob['n_posts']} 篇 V4.4 高难玩家帖(过滤 v4.4 + 非KOL沙盒 + 未过期),{glob['n_clusters']} 个 carry 聚类(n≥{MIN_CLUSTER_N})。",
+        "",
+        "## carry 聚类总表",
+        "",
+        "| carry | 篇数 | use合计 | 3星率 | 核心羁绊(频次) | carry 装备 top | 主节奏 |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for c in clusters:
+        traits = "、".join(f"{k}×{v}" for k, v in c["traits"][:4])
+        eqs = "、".join(f"{k}×{v}" for k, v in c["carry_equips"][:4])
+        label = c["labels"][0][0] if c["labels"] else "-"
+        lines.append(f"| {c['carry']} | {c['n_posts']} | {c['total_use']} | {c['carry_star3_rate']} | {traits} | {eqs} | {label} |")
+    lines += [
+        "",
+        "## 全局统计",
+        "",
+        "### 羁绊频次(Final 激活)",
+        "",
+    ]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["trait_freq"]))
+    lines += ["", "### 装备频次(Final 目标套装;时序见合成首选)", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["equip_freq"][:30]))
+    lines += ["", "### 合成首选(order_compose[0])", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["craft_first"]))
+    lines += ["", "### 基础件首选(order_basic[0])", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["basic_first"]))
+    lines += ["", "### Early(位面1)过渡单位池", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["early_units"]))
+    lines += ["", "### 节奏标签词表", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["label_freq"]))
+    lines += ["", "### carry 费用档 3 星率(星级目标先验)", ""]
+    lines.append("、".join(f"{c}费={r}" for c, r in glob["star3_by_cost"].items()))
+    lines += ["", "### 开拓者终局形态(switch)", ""]
+    lines.append("、".join(f"{k}×{v}" for k, v in glob["switch_freq"]))
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="生成 plaza 实战 comp 统计(数据层)")
+    parser.add_argument("--cache", action="store_true", help="用本地 lineups_HotHard.jsonl(离线)")
+    args = parser.parse_args()
+
+    if args.cache:
+        if not CACHE.exists():
+            raise RuntimeError("无本地缓存,去掉 --cache 在线拉")
+        items = [json.loads(ln) for ln in CACHE.open(encoding="utf-8")]
+        print(f"[cache] {len(items)} 篇")
+    else:
+        items = fetch_pages()
+        CACHE.parent.mkdir(parents=True, exist_ok=True)
+        with CACHE.open("w", encoding="utf-8") as f:
+            for x in items:
+                f.write(json.dumps(x, ensure_ascii=False) + "\n")
+
+    posts, version = filter_valid(items)
+    if not posts:
+        raise RuntimeError("过滤后为空,检查数据源")
+    clusters, glob = aggregate(posts)
+    version_tag = f"V{version}"
+    recs = [post_corpus_record(x) for x in posts]
+    # 逐篇明细先按帖 id 去重(缓存文件理论已去重,此处防御聚合/明细双口径漂移)
+    seen_ids: set = set()
+    uniq: list = []
+    for r in recs:
+        if r["post_id"] and r["post_id"] not in seen_ids:
+            seen_ids.add(r["post_id"])
+            uniq.append(r)
+    recs = uniq
+    DATA_PY.write_text(render_data(version_tag, clusters, glob), encoding="utf-8")
+    DATA_POSTS_PY.write_text(render_posts(version_tag, recs), encoding="utf-8")
+    DOC_MD.write_text(render_doc(version_tag, clusters, glob)
+                      + render_corpus_doc(recs), encoding="utf-8")
+    print(f"[data] {len(clusters)} 聚类 <- {DATA_PY.relative_to(REPO)}")
+    print(f"[posts] {len(recs)} 篇逐篇明细 <- {DATA_POSTS_PY.relative_to(REPO)}")
+    print(f"[doc ] -> {DOC_MD.relative_to(REPO)}")
+    print_reconcile_report(clusters)
+
+
+def print_reconcile_report(clusters: list) -> None:
+    """版本重跑对账报告(人裁定是否重排手判层 core 序;不阻断生成)。
+
+    逐线比对「聚类层簇 carry 名 vs 手判层 COMP_LIBRARY 各线 core_chars[0]」
+    (首位=定义件契约);聚类侧查无该线簇(n<5 未成簇)单列「无簇」标注行,
+    不进差异清单——版本重跑流程消费,人裁定差异线是否重排 core 序
+    (plaza-carry-retirement:聚类实证自此只以校准证据身份存在)。"""
+    sys.path.insert(0, str(REPO / "src"))
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_run_allocator import (
+        LINE_STAT_CLUSTER,
+    )
+    cluster_by_carry = {c["carry"]: c for c in clusters}
+    diff: list[str] = []
+    no_cluster: list[str] = []
+    for comp in COMP_LIBRARY:
+        stat_cluster = LINE_STAT_CLUSTER.get(comp.name, "")
+        cl = cluster_by_carry.get(stat_cluster)
+        if cl is None:
+            no_cluster.append(f"{comp.name}(查簇名={stat_cluster!r})")
+        elif cl["carry"] != comp.core_chars[0]:
+            diff.append(f"{comp.name}: 聚类 carry={cl['carry']} vs "
+                        f"core[0]={comp.core_chars[0]}")
+    print("[对账] 聚类 carry vs 手判 core[0]:"
+          + (f"差异 {len(diff)} 线" if diff else "全线一致"))
+    for row in diff:
+        print(f"  [差异] {row}")
+    for row in no_cluster:
+        print(f"  [无簇] {row}")
+
+
+if __name__ == "__main__":
+    main()

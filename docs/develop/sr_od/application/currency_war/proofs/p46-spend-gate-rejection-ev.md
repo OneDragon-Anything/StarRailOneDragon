@@ -2,7 +2,7 @@
 
 > 状态:**已推导(三谓词精确化 + 域内期望净损结构 + 豁免类条件判据;数值自检通过方向验证,sim 交叉核对登记待办。经「L 联动批」:C 规范式 = p47 L(g,d,R_全局,Ī) 递推九处点名逐处切换落地(过渡式并列保留);数值表加规范 L 列;P1 域改 L 基判据(分带标签停用);定期标记实现面登记)**
 > 数据源(单一源代码/文档,引用处逐一注明):`cw_plane_table.interest`(利息函数 = min(g//10, 5),economy.md §10.1 实测同口径)、`cw_state.sell_refund`(退金机制事实)、`decision_v2/ev.interest_cost`(现行利息损失实现及其口径注记)、`decision_v2/spend_gate`(现行支出门 D1 分支 = 本命题实现雏形)、economy.md §10.1(收入公式)/§3(卖出退金);口述 = user_playstyle [11][17][22][32][33](利息规则簇 + 消费有效性,[6][12][19] 联动)
-> 数值自检脚本:`tools/cw/proofs/p46_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p46_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p46_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p46_check.py`)
 > 提出:CW 策略重构·支出命题(2026-09);证明 = 本批
 > 前置(只引结论):**p47(利息损失规范单一源:L(g,d,R_全局,Ī) 递推——L 联动批已全文切换;P13 过渡口径 C = t×min(R,3) 已停用(留作历史交叉核对)**、P38(完成概率五层模型——豁免类②的通道,新证明树已收尾)、p40(刷新 EV 三层门——分工声明见 ⑤);V_ms 同源消费的 P3 rung_value 框架属旧树(**待证假设**;其「连胜-利息」子域重新推导件=p43 已交付——但 p43 的 A7 域**不含** rung/V_ms 定价,V_ms 的重新推导应指 p40/p41 或另立新件,P43 修订 2 轮的对齐声明)
 > ⚠️ 本篇为**自含推导**(同命题旧证明已作废,未引用、未读取)

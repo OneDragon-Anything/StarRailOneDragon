@@ -1,12 +1,12 @@
 # P5 逐件证明验证:牌池超几何模型(五门)
 
-> 验证对象:`docs/game/currency_war/research/proofs/p05-refresh-vs-levelup.md`(索引行 = `math_proofs.md` P5 行)+ 其计算脚本 `tools/cw/proofs/w120_p5_refresh_levelup.py`
+> 验证对象:`docs/game/currency_war/research/proofs/p05-refresh-vs-levelup.md`(索引行 = `math_proofs.md` P5 行)+ 其计算脚本 `skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py`
 > 验证日期:2026-09(重建纪元五门验证批);本报告只读验证,未改任何生产/证明文件。
 > 阅读门:全量 `docs/game/currency_war/`(README/economy §1-§3/user_playstyle)+ 注册表直调(`cw_shop_odds` 全文、`cw_state`/`cw_economy` 常量、`cw_chars` 派生)+ `06_input_model` §3 + 公理栈(零调参/参数溯源/超额收益隔离/纯金流)。无跳过项。
 
 ## 0. 验证方法与复算声明
 
-- **亲跑复现**:`PYTHONPATH=src; uv run python tools/cw/proofs/w120_p5_refresh_levelup.py` —— ①p(L,c) 曲线全表、②期望刷金、③升级成本、④argmin 总账四组数字**与证明单篇逐位一致**(含边界格打平值 75.4/75.4)。
+- **亲跑复现**:`PYTHONPATH=src; uv run python skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py` —— ①p(L,c) 曲线全表、②期望刷金、③升级成本、④argmin 总账四组数字**与证明单篇逐位一致**(含边界格打平值 75.4/75.4)。
 - **引用点直调**:池参数/概率表/XP 表/刷价全部直接 import 注册表核对(不用被审方实现抄读,脚本本身 import 注册表属正确单一源用法;我另以独立只读脚本复核常量值)。
 
 ## 门① 内部推导(超几何口径/池演化)——逐逐步核

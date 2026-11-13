@@ -535,7 +535,7 @@ def loss_compensation_base(plane: int, round_num: int, node_type: str) -> int:
 
     〔口径冲突待办·判别已执行〕:旧口径 = LOSS_GOLD_BY_NODE 类型表
     {battle:2, encounter:4, boss:4}(108 局差分)。仲裁实验
-    (分桶重放,tools/cw/loss_comp_bucket_replay.py,146 局语料,
+    (分桶重放,skills/sr-od-dev-currency-war/scripts/loss_comp_bucket_replay.py,146 局语料,
     )**数据不足以定案**:判别判据所需的 P1r1/r2 败局阶梯
     样本在语料中不存在(低轮位 bot 恒胜),boss 桶 n=1;且标准节点序把
     「被败节点类型」与「下一节点类型」结构性绑定(battle→encounter→

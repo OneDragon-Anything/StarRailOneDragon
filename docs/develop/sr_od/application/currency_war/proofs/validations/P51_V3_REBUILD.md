@@ -7,8 +7,8 @@
 > (NMF:333;现行权威声明=strategy-docs 00 §6/01 §5)=**难度带×血带×位面×节点,
 > 2×3×2×4=48 格,板面/bench 维不入键**——math_proofs P51 行已按 B1 更新;本报告
 > 的板面粗档形态为**已判废候选**,仅存推导过程史料,数值面禁按本报告钥匙消费。
-> 脚本(入库,可复跑):`tools/cw/proofs/p51/p51_v3_rebuild.py`
-> (`$env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'; uv run python tools/cw/proofs/p51/p51_v3_rebuild.py`);
+> 脚本(入库,可复跑):`skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py`
+> (`$env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py`);
 > 本轮全量输出存档:`.debug/temp/currency_war/redesign/p51_v3_run_final.txt`。
 > 数据:**实机语料** 67 局(match_g_*.json,2026-08-27~09-01,逐轮 855 行;死亡 57 局)——
 > 全程零 sim 输入(P15 公理栈「禁 sim 账本」同款纪律,旧表 sim 循环病从数据源上根除)。
@@ -121,7 +121,7 @@
 
 # v3.1 迭代(2026-09-10;按基座攻击第二轮 IMPL_LAMBDA_ATTACK_R2 §7 六条前置修正)
 
-> 执行:数学工程批。脚本更新=`tools/cw/proofs/p51/p51_v3_rebuild.py`(增 Part 7/8/9,前六 Part
+> 执行:数学工程批。脚本更新=`skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py`(增 Part 7/8/9,前六 Part
 > 复跑与 v3 定稿逐数一致:67 局/855 行/773 真值覆盖/残差分布全同)。全量输出存档:
 > `.debug/temp/currency_war/redesign/p51_v31_run.txt`。本节为**候选形态 v3.1 呈报**,
 > 仍不替换旧表、不改下游消费,待用户批。
@@ -206,7 +206,7 @@ A 的消费形态(区间敞口/禁边际/处置标签)原样继承到 B1。
 
 ## v3.1-6 P37 档案补件(对应 R2 前置 5 之 P37 部分)
 
-- **cluster bootstrap 入库**:`tools/cw/proofs/p37/q_full_corpus.py`(可复跑;口径=证明
+- **cluster bootstrap 入库**:`skills/sr-od-dev-currency-war/scripts/proofs/p37/q_full_corpus.py`(可复跑;口径=证明
   §2A:r4-r7 ∧ hp>25,行末金=下一轮决策前金,run 级重抽 N=2000 seed=37)。
   当前语料现算 **129/470=0.2745,CI [0.219,0.331]**(文档转录基准 125/465=0.269
   [0.212,0.328],漂移 +0.006 在容差 0.03 内)。
@@ -239,7 +239,7 @@ A 的消费形态(区间敞口/禁边际/处置标签)原样继承到 B1。
 
 # v3.2 迭代(2026-09;R30 键单一源对齐——IMPL_ADV_R30 问题 1 修复批)
 
-> 执行:数学工程批。脚本更新=`tools/cw/proofs/p51/p51_v3_rebuild.py`(Part 3M 主表新增/
+> 执行:数学工程批。脚本更新=`skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py`(Part 3M 主表新增/
 > Part 3A-7 降对照存档/Part 8 按 PL 键重做/Part 9 更名+拟合方向修正)。全量输出存档:
 > `.debug/temp/currency_war/redesign/p51_v32_run.txt`。**主表切换**:本节起工件主表输出
 > =**PL 键(位面键)**,与设计件键声明(难度×血×位面×节点)同构——R26-H1 后设计键与
@@ -304,7 +304,7 @@ PL 键在方向修正+语料扩窗后**仍全面占优**(AIC Δ125,LOO 双低)�
 
 # v3.3 迭代(2026-09;F1 血带轴方向修复——IMPL_LAMBDA_ATTACK_R3 修复批)
 
-> 执行:数学工程批。脚本更新=`tools/cw/proofs/p51/p51_v3_rebuild.py`(血带维 dims 全键形态
+> 执行:数学工程批。脚本更新=`skills/sr-od-dev-currency-war/scripts/proofs/p51/p51_v3_rebuild.py`(血带维 dims 全键形态
 > 修正+方向断言护栏+R31-6 distinct 口径界落地+受污标签数据驱动重写+空格经验流量披露)。
 > 全量输出存档:`.debug/temp/currency_war/redesign/p51_v33_run.txt`。语料 **72 局(死亡 60)
 > /926 行/真值覆盖 844**(较 v3.2 存档 +1 局,漂移容差内,攻击报告复跑同口径)。

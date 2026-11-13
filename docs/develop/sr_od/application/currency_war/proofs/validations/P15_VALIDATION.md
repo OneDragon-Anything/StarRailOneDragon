@@ -73,7 +73,7 @@
 
 ## 修正建议(含扩样清单)
 
-1. **【复现性,最高优先】语料与拟合入库**:W324 语料已删——从生产 replay(`replay/outcomes.jsonl` 语料池,现 n=191/99 局,尚薄)重建冻结语料 + 拟合脚本 + `fit_results.json`(含逐 rung cell n/均值/CI)入 `tools/cw/proofs/p15/`(git 载体,.debug 不可作拟合件存档位);registry 注释的 SE 升格为机器可读字段(先例:`streak_floor_loss_damage` 的版本披露惯例)。
+1. **【复现性,最高优先】语料与拟合入库**:W324 语料已删——从生产 replay(`replay/outcomes.jsonl` 语料池,现 n=191/99 局,尚薄)重建冻结语料 + 拟合脚本 + `fit_results.json`(含逐 rung cell n/均值/CI)入 `skills/sr-od-dev-currency-war/scripts/proofs/p15`(git 载体,.debug 不可作拟合件存档位);registry 注释的 SE 升格为机器可读字段(先例:`streak_floor_loss_damage` 的版本披露惯例)。
 2. **【标定治本】改用 [27] 指定的结算屏三项拆解直采 B 与 P**(基础伤害/未完成进度伤害分列),拟合 B(位面,节点序)与 P(敌剩余)两支而非 B+P 混合均值——同时根治门③混杂(斜率=B↑×P↓对消)与「线性于 rung」的代理假设。
 3. **【口径修正】收益式按节点类型分段**:`Σ_类型 L_c(类型)×该类型剩余数`(encounter/boss 档已在 registry),替换「battle 档 × 全战斗计数」的低估——属证明文量化层修正,不触命题。
 4. **【消费面整改,随 P51 落地】**`hp_to_gold × L_c` 价值换算通道按金流公理退役:伤害只进 λ_death 的概率侧(桶×节点胜率×槽序计数合成)与机制叙述;授权带类消费改经 W_floor。P15 单篇补「消费边界」节注明。

@@ -99,7 +99,7 @@
 
 画面 op 共 34 个:`operations/cw_screen/` 33 类 + 画面框 1 类(`operations/cw_op/cw_op_settle_confirm.py::CwOpSettleConfirm`;`CwOpCloseShop` 编排壳已停用——关店执行位并入动作 op `CwActionCloseShopOp` 真机械执行,见 §4 动作面。`CwOpOpenShop` 推进型两 node 壳已停用删除——开店 = 规范动作形态 `operations/cw_op/cw_op_open_shop.py::open_shop` 直调体(单段机械执行 + 发出即记账恒 True,幂等判定归流程层),2026-10-16 open-shop-action-spec。原 CwScreenEquipPick 随选择装备屏误判停用删除,2026-09-22)。分七型:
 
-复盘认知同步义务识别标志(journal-review-renderer 迭代裁定,2026-10-16):**新增/停用画面 op 须同步渲染器 `tools/cw/replay_to_md.py` 画面注册表**。判定口径 = actor 带 `CwScreen` 前缀且未入 `ACTOR_REGISTRY` → 复盘报告暴露「未注册写入者」缺口尾注(响亮暴露,防静默);豁免 = 快照章形态 op(CwScreenPrep/CwScreenShop/CwScreenBattleWait,由 `current_screen` 值开章,不经 actor 判定)与已知动作类豁免清单 `_ACTION_ACTOR_EXEMPT`(历史动作命名,如 CwScreenBuyCards)。同步动作:新增画面 op → 补 `ACTOR_REGISTRY`(章名/决策面/0 观察键集)与 `SCREEN_REGISTRY`(快照屏 id);新增 CwScreen 前缀动作类 → 补 `_ACTION_ACTOR_EXEMPT`。
+复盘认知同步义务识别标志(journal-review-renderer 迭代裁定,2026-10-16):**新增/停用画面 op 须同步渲染器 `skills/sr-od-dev-currency-war/scripts/replay_to_md.py` 画面注册表**。判定口径 = actor 带 `CwScreen` 前缀且未入 `ACTOR_REGISTRY` → 复盘报告暴露「未注册写入者」缺口尾注(响亮暴露,防静默);豁免 = 快照章形态 op(CwScreenPrep/CwScreenShop/CwScreenBattleWait,由 `current_screen` 值开章,不经 actor 判定)与已知动作类豁免清单 `_ACTION_ACTOR_EXEMPT`(历史动作命名,如 CwScreenBuyCards)。同步动作:新增画面 op → 补 `ACTOR_REGISTRY`(章名/决策面/0 观察键集)与 `SCREEN_REGISTRY`(快照屏 id);新增 CwScreen 前缀动作类 → 补 `_ACTION_ACTOR_EXEMPT`。
 
 | 型 | 判据 | 屏清单 | report |
 |---|---|---|---|

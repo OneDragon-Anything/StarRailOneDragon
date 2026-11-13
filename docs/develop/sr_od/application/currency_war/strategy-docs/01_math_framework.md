@@ -132,7 +132,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 
 | 状态量 | 语义要点 | 单一源 |
 |---|---|---|
-| L(g,d,R,Ī) 利息档损失 | 双轨迹递推（cap 按 resolved 参数化：默认 5/利息规则投资 10/开源节流 9/买断制 0） | **P47**（tools/cw/proofs/p47_check.py 可 import loss_exact） |
+| L(g,d,R,Ī) 利息档损失 | 双轨迹递推（cap 按 resolved 参数化：默认 5/利息规则投资 10/开源节流 9/买断制 0） | **P47**（skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py 可 import loss_exact） |
 | λ_death(λ 查表键) | 直测分层表带 CI（P51 标定工件，**启动必载**的查表基础设施——数据工件保留血带维键结构）；**决策时可观测量 = 分层胜率 × 槽序表剩余战斗数（P51 Λ.1 生成式）；禁用事后 R（=整局打完后回看的事后实际死亡率）、禁用桶级混合值、hp 不入自变量、板面/bench 维不入键**；现役无决策消费（原决策消费族已随拦截层删除链停用，血带维键构造已撤——新增概率侧消费须先过 00 §6 λ 表使用纪律审查） | **P51**（采集 #3 = λ 连续模型，到位后替换分层表） |
 | W_floor / W_flow | 等待代价两通道：W_flow∈[0,0.5] 小项；W_floor = λ_death×(g+Φ)——**消费形态 = 区间敞口比较（用置信区间整体比较，禁拿单点值当真值引用）** | **P51** |
 | Ī(净收入率) | 按收入日程逐节点现算（base(r)+streak[决策前相]+败轮底金） | cw_economy 收入三表（全【注】） |
@@ -141,7 +141,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 | V_opt(囤件期权) | u·P_miss·C_rescue（二维表按当前等级取格；消费处金可行性截断现检） | **P41** ① |
 | V_slot(bench 槽价) | 有空槽 = 0；free≤1 = max 被阻断动作净 EV；合成完备购不入阻断集 | **P41** ③ |
 | ΔP̂(完成概率增量) | P̂(集齐|H∪{x}, B−c) − P̂(集齐|H, B)，Π Binomial 尾（阈值边际 ≥8-10pp 或走 DP） | **P38** |
-| p̄(切换终局阵容命中率) | 多项×超几何精确式（P16 数学件保留；换线判据消费已随候选-锁定制终止） | **P16**（tools/cw/proofs/p16/pbar_exact.py） |
+| p̄(切换终局阵容命中率) | 多项×超几何精确式（P16 数学件保留；换线判据消费已随候选-锁定制终止） | **P16**（skills/sr-od-dev-currency-war/scripts/proofs/p16/pbar_exact.py） |
 | 最优概率带 prob_band | REFRESH_PROB 直算：搜索域 1..9 内概率峰值的等级区间（平顶整段，带下界 = min；`peak_refresh_level` 单点峰 = 带上界作域上限校验）；带费用档 = 实费 resolved 口径 | `criteria/levelup.prob_band_of_cost`（表 = data REFRESH_PROB） |
 | 刷新判据（三段式分派） | 结构判据零期望计算：P1 恒不主动刷（plane2_started 谓词）/ P2 未锁窗口候选缺件 / 锁定后星级目标驱动（无星级目标即不刷）——免费刷新无条件刷（无判据门）；金线闸 = r2_budget（预留 = saturation_line + 停留目标实费档） | `criteria/refresh.refresh_warranted` / `r2_budget` / `r2_card_reserve`（规格见 11 §3） |
 | resolved 投资状态 | 利息上限/刷价/XP 流/池参数的语境修正开关 | cw_investments.STRATEGY_ECONOMY（overlay 登记,值单一源）;利息上限的解析口 = `aggregate_economy(session.active_strategies).interest_cap_override`（kernel `cw_economy.cap_resolved_of_session`,并持取宽/None 回默认;刷新/XP/池参数族的运行时突变解析面另见 INVEST_MUTATIONS 登记态） |

@@ -58,7 +58,7 @@
 5. **方法论与证明**(怎么读阵容 / 怎么论证策略;工具篇,可穿插读):
    - [combo_methodology.md](combo_methodology.md) — 阵容理解方法论(技能 / 羁绊 / 玩法三层)+ 攻略黑话查证纪律
    - [plaza_methodology.md](plaza_methodology.md) — 玩法方法论 M1-M16(资源入口 / 核心×弹性 / 升星经济学 / 装备优先级…)
-   - [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) — 策略命题的数学期望证明集**索引**(命题状态表;单篇证明在 [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 目录,一命题一篇含推导过程与数字表;计算脚本在 `tools/cw/proofs/`)
+   - [math_proofs.md](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) — 策略命题的数学期望证明集**索引**(命题状态表;单篇证明在 [proofs/](../../../develop/sr_od/application/currency_war/proofs/) 目录,一命题一篇含推导过程与数字表;计算脚本在 `skills/sr-od-dev-currency-war/scripts/proofs`)
 
 ## 索引(什么问题查哪篇)
 

@@ -191,7 +191,7 @@ sim 设计权威版本三篇见 `sim/`（体系总纲 sim-design、状态容器 
 | 位置 | 负责 |
 |---|---|
 | `knowledge/`、`data/` | 知识数据与静态数据 |
-| `tools/cw/`(仓根 tools) | 复盘骨架生成器、哨兵、证明与采样工具(评审/运维面,不在 app 运行路径上) |
+| `skills/sr-od-dev-currency-war/scripts/`(skill 工具区) | 复盘骨架生成器、哨兵、数据采集生成器、证明与采样工具(评审/运维面,不在 app 运行路径上) |
 | `docs/game/currency_war/` | 游戏机制知识(sources 原文/research 提炼;sim 与判据的机制依据) |
 | 本目录各权威版本 | flow/(外循环路由/动作执行契约/守卫/session/退出链/策略↔流程契约)、screens/(画面 op 一画面一文档)、game_state/(字段规格/逐动作逻辑态更新 logic-updates/)、strategy-docs/(策略决策设计)、sim/(模拟设计)、proofs/(证明) |
 

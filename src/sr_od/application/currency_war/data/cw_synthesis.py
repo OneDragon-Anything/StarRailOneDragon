@@ -2,7 +2,7 @@
 
 **单一源 = ``cw_equipment_data.EQUIPMENTS[].recipes``(官方 API compose_list 采集生成)**。
 本模块的全部配方常量在 import 时从注册表派生——recipes 改了(版本更新重拉
-``tools/cw/plaza_fetch.py`` → ``tools/cw/gen_equip_registry.py``)本图谱自动跟上,
+``skills/sr-od-dev-currency-war/scripts/plaza_fetch.py`` → ``skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py``)本图谱自动跟上,
 无手抄双源。
 
 **合成机理**:2 件「基础件」合成 1 件「进阶」。注册表每件进阶的 recipes 列出

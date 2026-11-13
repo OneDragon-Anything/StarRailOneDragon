@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 # 处置该折算)
 XP_GOLD_RATE: float = 1.0
 
-# ===== 估算参数键约定(单一源;数据批 = tools/cw/env_economy_estimates.py)=====
+# ===== 估算参数键约定(单一源;数据批 = skills/sr-od-dev-currency-war/scripts/env_economy_estimates.py)=====
 # 位面到达 = plane_arrival_p{位面}(P2/P3;原 invest-env 迭代需估参数①)。
 _PLANE_ARRIVAL_KEY = 'plane_arrival_p{}'
 # C 类扑满化增益 = reward_node_bonus_{变体}(原 invest-env 迭代需估参数③)。
@@ -106,7 +106,7 @@ _STRATEGY_PICK_PLANES: tuple[int, ...] = (1, 1, 2)
 # 立,不读局内刷新计数(gs.effects.refresh_total/refresh_paid 不消费)、
 # 不做按阵容预算分支(唯一例外阵容景元仙舟按拍值平摊 = 「拍一个价值」
 # 语义的接受面,P97 §7)。改拍值先重跑 P97 脚本
-# (tools/cw/proofs/p97_refresh_budget_check.py,P97 §7 消费契约)。
+# (skills/sr-od-dev-currency-war/scripts/proofs/p97_refresh_budget_check.py,P97 §7 消费契约)。
 #: 二手市场 = 30:阈值 20 次总刷新,P97 实证 20/20 阵容可达 → 全局兑现,
 #: 价值 = 返金 30(用户确定);
 #: 长线利好 = 50:阈值 30 次付费刷新,P97 均值 60.5 次/19-20 阵容可达 →
@@ -123,7 +123,7 @@ class EconomyEstimate:
 
     ci 两端点参与 fail-closed 方向检验:端点重算 expected_gold ≤ 0(金期望
     方向翻转)→ resolved=False。source/cutoff = 数据来源与统计截止申报
-    (数据批义务;重采 = 重跑 tools/cw/env_economy_estimates.py 后手工更新
+    (数据批义务;重采 = 重跑 skills/sr-od-dev-currency-war/scripts/env_economy_estimates.py 后手工更新
     本表,值只落代码不自动回写)。
     """
     value: float
@@ -146,12 +146,12 @@ ENV_ECONOMY_ESTIMATES: dict[str, EconomyEstimate] = {
     'plane_arrival_p2': EconomyEstimate(
         value=0.9649, ci=(0.9132, 0.9863),
         source='对局档案遥测 146 局(完成局 114)endgame.plane_reached;'
-               ' tools/cw/env_economy_estimates.py,Wilson 95%',
+               ' skills/sr-od-dev-currency-war/scripts/env_economy_estimates.py,Wilson 95%',
         cutoff='2026-09-12'),
     'plane_arrival_p3': EconomyEstimate(
         value=0.0877, ci=(0.0483, 0.1540),
         source='对局档案遥测 146 局(完成局 114)endgame.plane_reached;'
-               ' tools/cw/env_economy_estimates.py,Wilson 95%',
+               ' skills/sr-od-dev-currency-war/scripts/env_economy_estimates.py,Wilson 95%',
         cutoff='2026-09-12'),
 }
 
@@ -398,7 +398,7 @@ _validate_estimates_governance()
 # (转正判定历史裁定)。数据批已执行判定:第 1 条完成,第 2 条未过(全通道 μ_E
 # 点估计 银≥金 残差未翻转)→ 两参数表维持哨兵不落,本段行为零变化;判定
 # 依据、读数与回炉候选 = invest-env 迭代 layer-e-promotion-batch 详设(git
-# 历史可溯),重采入口 = tools/cw/env_pool_rewrite_estimates.py。
+# 历史可溯),重采入口 = skills/sr-od-dev-currency-war/scripts/env_pool_rewrite_estimates.py。
 # 消费端(resolved ∧ expected_gold > 0)自动承载准入门第 2 条方向自洽。
 
 #: 取卡序 k(1 基,同 StrategyPoolRewrite.rewrite_picks 坐标系)→ 取卡后剩余
@@ -408,7 +408,7 @@ _validate_estimates_governance()
 #: (落点 79/80 局在 P1 r3)、H_2=15(63/66 局在 P2 r2);取卡序 3 的有效
 #: 样本 n=3 低于注册门 20 → 哨兵不落,时代/尾彩通道因 H_3 缺参 fail-closed。
 #: 样本面 = 净帧普通口径(扑满过热局整局剔除,对齐「148 总/140 普通」采样
-#: 面裁定)。重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位
+#: 面裁定)。重采入口 = skills/sr-od-dev-currency-war/scripts/env_pool_rewrite_estimates.py(实采定位
 #: 演化只改本表;口径与样本量 = invest-env 迭代 layer-e-promotion-batch 详设
 #: )。v1 已登记值 24 系日程回退口径(9+9+9)下的参照值,被本
 #: 实采取代。
@@ -418,7 +418,7 @@ _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 #: 四元组;键第二维 = H_k,公式 μ_E(q; H) 视界入参化的直接承载)。品质键 =
 #: 注册表品质名('棱彩'/'金'/'银')。
 #: **不落参数申报(转正数据批判定:准入门未过)**:全通道重算与序一致性
-#: 检验已执行(重采入口 = tools/cw/env_pool_rewrite_estimates.py)——
+#: 检验已执行(重采入口 = skills/sr-od-dev-currency-war/scripts/env_pool_rewrite_estimates.py)——
 #: 第 1 条(全通道补参)完成,第 2 条未过:全通道 μ_E 点估计 银≥金 残差
 #: (H=23 +0.015 / H=15 +0.100,净帧口径,深居卡池抽样噪声,成对差值 CI 全
 #: 含 0),转正判定维持 fail-closed,本表继续哨兵不落;序一致性

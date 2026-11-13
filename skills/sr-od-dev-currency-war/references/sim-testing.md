@@ -62,10 +62,10 @@ uv run python skills/sr-od-dev-currency-war/scripts/cw_sim_match_drive.py --seed
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局复盘渲染 = `tools/cw/replay_to_md.py` 吃批目录裸 journal(运行需 `PYTHONPATH=src`,项目根跑):
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。sim 局复盘渲染 = `skills/sr-od-dev-currency-war/scripts/replay_to_md.py` 吃批目录裸 journal(运行需 `PYTHONPATH=src`,项目根跑):
 
 ```
-$env:PYTHONPATH='src'; uv run python tools/cw/replay_to_md.py --journal <批目录>/state/journal.jsonl --game-id <局名> --out <复盘.md>
+$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/replay_to_md.py --journal <批目录>/state/journal.jsonl --game-id <局名> --out <复盘.md>
 ```
 
 已装配档案的局 `--match <game_id>` 同样可读(档案切片含 journal);缺省落盘 `.debug/currency_war/deep_review/<game_id>.md`,sim 局可用 `--out` 落批目录。报告结构 = match-review.md「产出形态与红线」节(局头/开局/节点×画面×动作,文末「复盘者附加」空节);可疑项检测器预填已随旧复盘骨架工具移除,可疑项由复盘者按判定尺自查(match-review「判定尺」)。sim 局直查 = 批目录(缺省 `.debug/currency_war/telemetry/sim/<批名>/`)内 `state/journal.jsonl` 行行自足直读(判读读面单一源 = `src/sr_od/application/currency_war/telemetry/journal_query.py`)——sim 批无判读 CLI 视图入口(`--sim-batch` 已随旧视图删除,仓内亦无 cw_telemetry/cw_sim 独立命令,别手搓脚本)。

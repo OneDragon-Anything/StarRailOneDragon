@@ -35,7 +35,7 @@
 
 ### ①-3 自检脚本亲跑
 
-`PYTHONPATH=src; uv run python tools/cw/proofs/p50_check.py` → **ALL P50 CHECKS PASSED**(2026-09-01 本批亲跑;控制台中文乱码为 GBK 显示问题,不影响断言)。脚本可跑、断言在、ruff 干净——与 p14「脚本死了没人发现」形成对照,检验点有效。
+`PYTHONPATH=src; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p50_check.py` → **ALL P50 CHECKS PASSED**(2026-09-01 本批亲跑;控制台中文乱码为 GBK 显示问题,不影响断言)。脚本可跑、断言在、ruff 干净——与 p14「脚本死了没人发现」形成对照,检验点有效。
 
 ### ①-4 次级发现(不翻案,建议随批修)
 

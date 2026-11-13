@@ -10,7 +10,7 @@
 - equipment_mechanics.md 全文(162 行):已全量读(③门对照原文)。
 - 注册表直调:`cw_equipment_data.py`(:55-199 进阶/星徽/白昼/特权/简易/工具全段)、`cw_synthesis.py`(8 个被引函数/常量定位)、`cw_comps.py`(key_equips/derive_key_equips/equip_assign 分配纪律)、`economy.md` §8/§10.2、`user_playstyle.md` [42]/[29]/[9]/[22]/[24]/[32]/[39]/[40]。
 - 06_input_model.md §3(注册表地图):已读,装备注册表单一源指向 `cw_equipment_data`+`cw_synthesis`,与 p42 数据源声明一致。
-- 数值自检脚本 `tools/cw/proofs/p42_check.py`(686 行):已全量读 + 亲跑。
+- 数值自检脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p42_check.py`(686 行):已全量读 + 亲跑。
 - 无交集文件:p14/p38/p40/p41/p46 正文未读(p42 自含推导声明禁读同域旧证明,验证从其声明);其接口声明(⑥ 分工表)按索引行交叉核对,未发现矛盾。
 - 公理栈(零调参/参数溯源/超额收益隔离/纯金流,math_proofs.md 索引 + p51 头部定义):已读,⑤门判定用。
 
@@ -18,7 +18,7 @@
 
 - **EV 结构逐步核**:① V_comp = 流期望 × f_x 边际(子集背包跨配方不可重复消费)——持有维望远镜恒等式在数学上精确(差分求和消中间项,结构正确),跨件 partner 连乘为独立性近似且方向已数值测试(上界);③ 支配不等式系数 (1/8)/(7/8) 与均匀池回转分支自消的写法自洽(y=x 分支喂出又收进=无操作,代数不变量脚本测试);④ 令牌二项尾 P(<n) 优于零到件尾的反例守卫成立(P(=0) 随份数缩小会反向选择,证明断言正确)。
 - **[42] 裁定消费一致性**:p42 ③ 的消费口径(默认保留不喂 / 唯一例外=已知无后续供给[P3 boss, W=0]时冗余件可喂 / 近兑现张任何时刻绝不喂)与 user_playstyle :227-234 原文逐条吻合,无越权替玩家改口述。
-- **数值脚本亲跑**:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p42_check.py` → **ALL ASSERTIONS PASSED**(全部断言含 81/32/33/11 违例格计数、W=12/18 稳定性、pool=7 放大测试、独立性上界 0.7080≥0.7056)。
+- **数值脚本亲跑**:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p42_check.py` → **ALL ASSERTIONS PASSED**(全部断言含 81/32/33/11 违例格计数、W=12/18 稳定性、pool=7 放大测试、独立性上界 0.7080≥0.7056)。
 - **手算抽查**:推论 1' 损失带 ℓ=P(Bin(W,λ)=0)∈[0.71,0.95] —— (1−0.0375)^9≈0.709、(1−0.00625)^9≈0.945,吻合;K8 闭合计数(28 交叉+8 自配=36)注册表逐条数过吻合;狼尊 anchor(鞋 demand 5+刀 1,T=8)与 4d 重算一致。
 - 小瑕疵(非阻断):文档 4a-p7 记 +0.379,脚本 print 显示 0.380——同值舍入差(断言 abs<0.001 通过),建议统一写 +0.3794 或双位小数。
 

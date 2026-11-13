@@ -2,7 +2,7 @@
 
 > 状态:**已证(结构定理,域命题——只在安全域 D_ε 上成立;引理 2 为条件引理,强度承 P39/P40/P48 判据证明的既有边界;数值面=P51 表消费的量级例证,注记级)**
 > 数据源(引用值逐一注明,数值不重采):`p51` v3(§2 两通道分解/§4-B 风险敞口(注:风险敞口=可能随死亡整笔损失、无法收回的金额)与混合 λ/§4-B-2 分层 λ 表/§4-B-3 桶构成/§4-C 局终销毁中位)、`p39`(双分支门+贪心两级枚举+边界带数值)、`p40`(刷新三层门)、`p47`(利息账 L 与 cap=5)、`p48`(三段管辖+统一判据)、`plaza_methodology` M1-M7(骨架义务集)、DEATH_POSTMORTEM(死因 A1+B=68% 单一模式,philosophy §4)、`docs/develop/currency_war/lambda-risk-philosophy.md` §1-3(**只引用不修改**——本件即该篇 §3「可证形态=域命题」的证明落地)。
-> 数值自检脚本:`tools/cw/proofs/p52_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p52_check.py`,全部断言通过)。
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p52_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p52_check.py`,全部断言通过)。
 > 提出:CW 策略重构·数学证明工程批(p52);证明=本批。
 > ⚠️ 本证明自含:结构推导从 P51 的期望分解框架直接重建;不消费任何已废数值(P3/P12 旧引用、v1 W 常数形态)。
 
@@ -163,4 +163,4 @@ V(π*) − V(π_greedy)
 - 下游消费:姿态层(发展优先默认+危险只升不降)的数学背书——策略实现消费本定理时**只消费结构与方向,数值表不作闸门**(P51 同款纪律);
 - sim 交叉核对登记待办:①激活率门(philosophy §3 验收条件②);②引理 2 边界带(P39 交叉核对项 2 同源);③安全带 c_σ 错配带(P51 §8 A/B J1/J2 同源)。
 
-*(本件为 v1.0;未改任何现有证明文件/philosophy/设计件;数值自检脚本入库 `tools/cw/proofs/p52_check.py` 可重跑。)*
+*(本件为 v1.0;未改任何现有证明文件/philosophy/设计件;数值自检脚本入库 `skills/sr-od-dev-currency-war/scripts/proofs/p52_check.py` 可重跑。)*

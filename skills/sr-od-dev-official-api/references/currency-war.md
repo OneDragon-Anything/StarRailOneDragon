@@ -1,6 +1,6 @@
 # 货币战争接口(攻略广场 API + 米游社 CW 图鉴频道)
 
-> 现成采集器:`tools/cw/plaza_fetch.py`(config/lineups/icons 子命令,版本更新重跑;浏览器版 `plaza_harvest.js` 免环境粘 console)。生成器:`gen_plaza_chars.py`(角色文档+立绘库+对拍)/`gen_plaza_comps.py`/`gen_plaza_invest.py`/`gen_equip_registry.py`。
+> 现成采集器:`skills/sr-od-dev-currency-war/scripts/plaza_fetch.py`(config/lineups/icons 子命令,版本更新重跑;浏览器版 `plaza_harvest.js` 免环境粘 console)。生成器:`gen_plaza_chars.py`(角色文档+立绘库+对拍)/`gen_plaza_comps.py`/`gen_plaza_invest.py`/`gen_equip_registry.py`。
 
 ## 攻略广场 API(活动页后端,免登录公开)
 

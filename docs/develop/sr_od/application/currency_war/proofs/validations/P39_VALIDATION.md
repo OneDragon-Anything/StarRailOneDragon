@@ -172,6 +172,6 @@ P51 已立的分层律:**λ_death(板面战力桶, R)>0 段(掉血期/未成型�
 
 ## 复核可重跑性
 
-- 数值自检:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p39_levelup_ev_check.py`(全部断言绿,亲跑);
+- 数值自检:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p39_levelup_ev_check.py`(全部断言绿,亲跑);
 - 账本复算:`uv run python .debug/temp/currency_war/redesign/p39_val_check.py`(门④ A/B/C 三组数字);
 - 本报告未改动任何证明/代码/索引/账本文件。

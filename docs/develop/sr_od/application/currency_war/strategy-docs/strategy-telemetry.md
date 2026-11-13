@@ -1,7 +1,7 @@
 # 策略遥测数据规范(DecisionRecord:信封 + mandate_v1 payload)
 
 > 本篇是**策略遥测数据的语义权威版本**:策略器决策记录(信封 + 载荷)的键闭集、取值语义与判读注意。读者 = 判读遥测数据/复盘报告的工程师与智能体。
-> 产生端 = 基类捕获缝(`kernel/strategies` 层,决策入口被自动包裹,见 `strategies/impl/cw_strategy.py` 模块头「策略遥测捕获缝」节);消费端 = 复盘渲染器(`tools/cw/replay_to_md.py --strategy-telemetry`,按需装配)。
+> 产生端 = 基类捕获缝(`kernel/strategies` 层,决策入口被自动包裹,见 `strategies/impl/cw_strategy.py` 模块头「策略遥测捕获缝」节);消费端 = 复盘渲染器(`skills/sr-od-dev-currency-war/scripts/replay_to_md.py --strategy-telemetry`,按需装配)。
 > 术语:**帧** = 一次「观察画面 → 决策 → 发出一个动作」的循环时点(见 [README.md](README.md) 术语表);**决策入口** = `CwStrategy` 的 14 个零参 `decide_*` 抽象入口闭集。
 
 ## 1. 信封(envelope)键闭集
@@ -41,7 +41,7 @@ payload 七键(键闭集)分**两类来源**:**现读键** 5(direction / k_membe
 
 ### 2.1 章级挂载的已知降级(申报句)
 
-**章级同键多实例 FIFO 错位为已知降级**:无回执形态的记录(11 个选择族入口,不产回执;补给确认链产回执、走动作级 join,不在此列)由渲染器按 `(entry, node)` 键挂载到画面章;同一 node 内同 title 章出现多个实例时(同 node 内备战 → 商店 → 备战),渲染器按「章首现序 × 记录 dseq 序」FIFO 依次分配。单线程下决策序与画面访问序一致,但重试/回跳形态下**依据块归属到哪个同 title 章可能与真实画面次序错位**——判读同 node 多同 title 章的「策略依据」小节时,以 dtag 对应的动作/回执为准,章归属仅作参考(分配机制 = 渲染器常量与章合并逻辑,`tools/cw/replay_to_md.py`)。
+**章级同键多实例 FIFO 错位为已知降级**:无回执形态的记录(11 个选择族入口,不产回执;补给确认链产回执、走动作级 join,不在此列)由渲染器按 `(entry, node)` 键挂载到画面章;同一 node 内同 title 章出现多个实例时(同 node 内备战 → 商店 → 备战),渲染器按「章首现序 × 记录 dseq 序」FIFO 依次分配。单线程下决策序与画面访问序一致,但重试/回跳形态下**依据块归属到哪个同 title 章可能与真实画面次序错位**——判读同 node 多同 title 章的「策略依据」小节时,以 dtag 对应的动作/回执为准,章归属仅作参考(分配机制 = 渲染器常量与章合并逻辑,`skills/sr-od-dev-currency-war/scripts/replay_to_md.py`)。
 
 ## 3. 存储与发现指要
 

@@ -3,7 +3,7 @@
 **生产实际用的库**:``deploy_bench._get_templates`` 等加载
 ``assets/template/currency_war/portrait_plaza``(**官方立绘库**,plaza big_icon 烘焙,72 角色,
 中文规范名 key,含变体分开取:姬子/姬子·启行、丹恒·饮月/丹恒·腾荒、刃/千冶·刃、银狼/银狼LV.999;
-``tools/cw/gen_plaza_chars.py`` 生成)。``resolve_char_name``
+``skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`` 生成)。``resolve_char_name``
 对中文 key 直接返(立绘库),对英文 id 映射(脸库),两库兼容。旧手采库 ``character_cw_portrait``
 (白框法)与其前身 ``currency_war_portrait`` 已删除,plaza 库为唯一立绘库。
 
@@ -56,7 +56,7 @@ def load_avatar_templates(avatar_dir: Path) -> AvatarTemplates:
     (阈值 10),玩家名遮挡卡名时 SIFT 是唯一通道 → 变体机制必要。
 
     若同目录存在 ``mask.png``(官方库烘焙产物,alpha 二值掩码),SIFT 只在掩码区提特征
-    (背景色不进描述子;ADR 见烘焙生成器 tools/cw/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
+    (背景色不进描述子;ADR 见烘焙生成器 skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py)。无 mask 则全图(旧手采库兼容)。
 
     **变体模板逐文件掩码**:变体 ``raw_<域>.png`` 优先读同目录
     ``mask_<域>.png``(如 ``raw_board.png`` ↔ ``mask_board.png``),缺失再退 ``mask.png``

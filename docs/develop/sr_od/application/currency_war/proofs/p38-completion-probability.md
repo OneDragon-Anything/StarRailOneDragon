@@ -3,7 +3,7 @@
 > **符号改名指针(comp-structure-unification 3.1)**:本文所引 `COMP_LIBRARY` 的 `form_tiers` 字段已并入 `faction_reqs`(档 0 = 核心羁绊层,统一读口 `core_faction_reqs`),键值与语义不变——缺口件来源的口径恒等,数学本体不受影响。
 > 状态:**已证(精确 DP;独立性近似=无衰减子模型的严格上界+衰减情形数值实证;闭式误差带经数值交叉核对;预算含升级成本与利息爬坡期口径)**
 > 数据源(全部真实表值,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9)、`cw_chars`(`CHARACTERS` 注册表:每卡费用与阵营/流派标签——合格集的来源)、`cw_comps`(`COMP_LIBRARY`:`form_tiers`/`core_chars`——缺口件的来源;等级日程不由注册表供给,见 A4)、`cw_economy`(`SHOP_REFRESH_COST`=2)、economy.md §10.1(收入公式:基础奖励分段 3/4/5 + 连胜四档 1/2/3/4 + 利息 min(g//10, 5))
-> 数值自检脚本:`tools/cw/proofs/p38_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p38_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py`)
 > 提出:策略重构批(证据门 score = 完成概率 × 权重,本文推导「完成概率」因子)
 > 前置:概率/池口径=`cw_shop_odds` 注册表(机制事实单一源;P5 域在新证明树下的重新推导件=p39/p40);**P13 域(守 50 利息账)的重新推导件 p47 已收尾(L 联动批落地:⑤层利息流简化换逐位面常数);P1 域(弃购再遇账)重新推导件=p41 已收尾(修订 3 轮)——本篇对其残差引用按已证结论使用**(archive/redesign/01 §6;推翻则 O4 联动复算——已随五方联动批核验闭环)
 
@@ -68,7 +68,7 @@ q_k = p(L, c) × W_k,其中 W_k = Σ_{x∈Q_k∩c} (a_c − j_x) / (v_c·a_c −
 
 REFRESH_PROB 随等级剧烈变化(c=5:L7=0.01 → L10=0.25,25 倍),等级又是花钱决策——v0 不做内生优化(联合优化「升级 vs 刷新 vs 购买」是另一个证明的领地,P5 已给单件口径的 argmin 结构)。**本证明条件于等级日程 L(r)**(来源:调用方传入——重建后由升级 EV 引擎给出,本证明只条件于它):
 
-q_k(r) = q_k(L(r)) 逐轮取表值。视野内件 k 的命中数 = 逐轮 Binomial(5·(1+r_manual(r)), q_k(r)) 的**Poisson-binomial**(成功率逐轮不同的独立和)。闭式实现用逐轮卷积或直接用平均 q̄_k 的 Binomial 近似(误差二阶;自检脚本 tools/cw/proofs/p38_check.py 的变等级混合用例含 ≤0.4pp 断言测试,实测方向保守)。
+q_k(r) = q_k(L(r)) 逐轮取表值。视野内件 k 的命中数 = 逐轮 Binomial(5·(1+r_manual(r)), q_k(r)) 的**Poisson-binomial**(成功率逐轮不同的独立和)。闭式实现用逐轮卷积或直接用平均 q̄_k 的 Binomial 近似(误差二阶;自检脚本 skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py 的变等级混合用例含 ≤0.4pp 断言测试,实测方向保守)。
 
 ### ⑤层 金约束:预算 → 试验次数
 
@@ -162,7 +162,7 @@ P̂(集齐) = Π_{k=1}^{K} Tail_k,Tail_k = P(Binomial(N·5, q̄_k) ≥ n_k),q̄_
 5. **衰减重尾**:含 n_k=9 单卡件的用例,闭式乐观偏差是否落在 +8pp 带内(超带 = 衰减建模必须升级);
 6. **轮岗(ROTATION_CHANCE=0.2)混杂**:sim 开轮岗后重新交叉核对——闭式若不感知轮岗应系统性偏低(轮岗抬高被翻倍档的 q),偏差量 = 该档件专属修正项的标定输入。
 
-## 数值自检(脚本 `tools/cw/proofs/p38_check.py`)
+## 数值自检(脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p38_check.py`)
 
 三个玩具用例(真实表值:Lv9 P3 场景 / Lv7 P2 场景 / Lv9 同费三件竞争压力形态),N∈{6,12,25,50}:
 

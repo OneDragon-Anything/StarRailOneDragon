@@ -5,7 +5,7 @@ P51_V3_REBUILD v3.3+本模块为单一源):
 - 加载对象 = P51 v3.3 **PL 键(位面键)主表**:键 = 难度带(2)×血带(3)×
   位面(P1/P2+)×节点类型(4),共 48 格(非空 38 / 空格 10);板面/bench 维
   **不入键**(PL 键实证,旧 v3.1/v3.2 板面键表系对照存档,禁再被消费位引用)。
-- 表数据 = ``data/lambda_death_pl_v33.json``(由 tools/cw/proofs/p51/
+- 表数据 = ``data/lambda_death_pl_v33.json``(由 skills/sr-od-dev-currency-war/scripts/proofs/p51
   gen_pl_v33_json.py 从 P51_V3_REBUILD v3.3 运行产物生成,含逐格消费标签
   与空格回退处置)。**启动必载**(R2-4):import 时即加载;加载失败或格值
   None = 运行时损坏守卫 + 报警,不作合法缺省姿态。

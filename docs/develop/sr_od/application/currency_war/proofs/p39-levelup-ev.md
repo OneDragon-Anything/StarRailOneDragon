@@ -2,7 +2,7 @@
 
 > 状态:**已证(P39 修复批 2026-09-01 修订:分支二 (c) 改视界条件门 floor_eff、分支一谓词补操作性定义、XP 表状态勘误[±20% 带已撤]、Ī 消参改收入日程现算;结构推导 + 真实概率表数值自检)**
 > 数据源(单一源代码,数值不抄):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 / `expected_refreshes` 超几何精确 刷新找牌期望 / `POOL_COPIES_PER_CARD` / `DISTINCT_CARDS_PER_COST`)、`cw_economy`(`XP_PER_BUY`=4 / `XP_TO_NEXT_LEVEL`={3:4,4:6,5:20,6:40,7:52,8:72,9:84} / `XP_CLICK_COST_FALLBACK`=4 flat / `REFRESH_COST_BASE`=2 / `SHOP_REFRESH_COST`=2 / `schedule_upgrade` 现行接入调用);机制面 `economy.md`(利息 gold//10 封顶 5、升级不触发商店刷新 §2.1、刷新找牌期望模型 §2)
-> 数值自检脚本:`tools/cw/proofs/p39_levelup_ev_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p39_levelup_ev_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p39_levelup_ev_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p39_levelup_ev_check.py`)
 > 提出:CW 策略重构·数学证明工程批(p39);证明=本批
 > 前置:p47 利息损失规范 L 递推(**L 联动批已执行**:A4 的 C_int 已换 p47 规范口径;旧树过渡口径 t×min(R,3) 已停用——原 P13 单篇已删,git 可溯);口述 [3]/[7]/[12]/[33](`user_playstyle.md`)
 > ⚠️ 本证明自含:未参考已作废旧证明(p05/p35/p11/p22),推导从概率表与经济常量直接重建。

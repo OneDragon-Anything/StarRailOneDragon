@@ -2,7 +2,7 @@
 
 > 状态:**已证(形态判定:底线是状态函数非常数;数值带=现行阶梯)**
 > 数据源(全部真实表值+sim 账本):`cw_economy`(`STREAK_GOLD_TABLE`/`BASE_REWARD_GOLD`=5/利息结构 min(5,gold//10))、`cw_state`(`XP_TO_NEXT_LEVEL`/`XP_PER_BUY`=4/`XP_CLICK_COST_FALLBACK`=4/`sell_refund`)、`cw_horizon`(`NODES_PER_PLANE`=9/`TOTAL_NODES`=27)、decision_v2 registry(`h3_win_rate`/`hp_to_gold`=0.5/`interest_recovery_rounds`=3.0)、Δ池硬节点掉血桶均值(交叉核对检查输出:encounter 桶9 −17.7/boss 桶9 −24.9)、sim 交叉核对账本 `w135_crosscheck`(seeds 0-99,池指纹 bab146c68c5df11a)、「单局复盘」口径出口金 27.3(`deep_read/W128_单局复盘_给用户.md`)
-> 计算脚本:`tools/cw/proofs/w137_p10_exit_gold_floor.py`(可重跑复核,零随机纯表值+账本统计)
+> 计算脚本:`skills/sr-od-dev-currency-war/scripts/proofs/w137_p10_exit_gold_floor.py`(可重跑复核,零随机纯表值+账本统计)
 > 提出:2026-08-27 用户已最终确认(「出口金 27 肯定太穷了,但底线数值该用期望账算,有人提过 40+」);证明:对应证明批次(计算脚本可重跑,git 历史可溯)
 
 ## 命题

@@ -2,7 +2,7 @@
 
 > 状态:**已推导(V_opt 三项结构 + 卖出不等式 + 槽定价近似;数值自检通过——口述引用点 [22]③ 四组数字全部复算落带;**二维表 L7-L10 全列由脚本生成并逐格断言 ±2%(`p41_check.py`);卖出主式 max(V_opt, V_ms·ΔP̂) 三处同形(命题/推导/脚本一致)**;sim 交叉核对登记待办)——**P41 修复批落地(依 P41_VALIDATION 六条)**:①燃料件卖出改支配性论证消 u(零参数,零重叠∧1★全额退→卖出净成本=0 结构性支配);②V_power 按 0 计价改道声明为「待 P51 W 引理接管的缺省项」(λ_death 概率侧,禁 hp_to_gold);③② 分类表补未定型期/危局适用范围条款(对齐 DESIGN_MANDATE_LAYER M4 判据回写);④二维表消费处金可行性截断规范;⑤`expected_refreshes` 第 4 参 c 消歧注;u/H 首版点值保留作历史对照(不授权消费)**
 > 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费实机 OCR 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9 / `expected_refreshes` 超几何 DP)、`cw_state.sell_refund`(退金机制事实)、economy.md §1(牌池)/§2(刷新找牌超几何模型)/§2.1(节点切换=整店自动刷新=每轮一次免费试验)/§3(卖出退金与免费操纵)、merge_mechanics §2.5(满栏合成例外)、user_playstyle [13][21][22][31][32][34];刷价 2 金 = `cw_economy.SHOP_REFRESH_COST`(经 p40 转引)
-> 数值自检脚本:`tools/cw/proofs/p41_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p41_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p41_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p41_check.py`)
 > 提出:CW 策略重构·囤积/卖出命题(2026-09);证明 = 本批
 > 前置(只引结论):p46(支出否决域——其豁免判据 `E_rev ⇔ V_opt ≥ L(g,c,R_全局,Ī)+fee` 消费本篇的 V_opt,**本篇即其定价来源**;L 联动批换轨)、p38(完成概率五层模型——分工声明见 ⑤)、p40(刷新 EV——C_rescue 复用其 c_eff 与 E[refreshes] 口径);p47 利息损失规范口径(L 递推)在接口处引用——L 联动批已落地
 > ⚠️ 本篇为**自含推导**(禁 anchor 的 p01/p29 未读未引)
@@ -204,7 +204,7 @@ B = { 插件购(非合成完备), 囤积购(目标外/未定型,V_opt 型), 压�
 - **p40 与本篇共用**:C_rescue = c_eff × E[refreshes|k=1] 复用 p40 的 c_eff 口径与 `expected_refreshes` 实现,不新设刷价参数;p40 R1 完成门的 E[refreshes] 是 k=缺口深度版,本篇是 k=1 版,同一 DP 的两个调用点;
 - **p47(利息损失规范单一源,L 联动批)**:本篇不消费利息档账;持有期利息差(囤件占金的 carry)在 p46 的 L(g,c,R_全局,Ī) 侧入账,本篇 V_opt 是**毛规避价值**,两者在 p46 不等式两侧相遇,不重不漏。
 
-## 数值自检(脚本 `tools/cw/proofs/p41_check.py`,全部断言通过)
+## 数值自检(脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p41_check.py`,全部断言通过)
 
 | 节 | 内容 | 验证点 |
 |---|---|---|

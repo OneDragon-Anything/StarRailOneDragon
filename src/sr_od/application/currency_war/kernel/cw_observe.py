@@ -35,7 +35,7 @@ _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 # 复盘 md):.debug/currency_war/deep_review/。
 # 旧根 .debug/temp/currency_war/{replay,sim_runs} 同期停用:该处历史
 # 材料已迁新树,旧路径不再有任何活跃写点(存量数据一次性迁移见
-# tools/cw/migrate_telemetry_tree.py,可重跑补迁运行中局的终局产物)。
+# skills/sr-od-dev-currency-war/scripts/migrate_telemetry_tree.py,可重跑补迁运行中局的终局产物)。
 # 全部经 get_project_root 仓根锚定:旧的相对 Path 形态 cwd 敏感
 # (非仓根 cwd 启动即指错目录,sim/pool 审查#7 同因先改绝对,此处统一)。
 TELEMETRY_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'

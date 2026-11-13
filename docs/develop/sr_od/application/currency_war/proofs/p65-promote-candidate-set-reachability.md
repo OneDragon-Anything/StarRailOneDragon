@@ -1,6 +1,6 @@
 # P65:晋升候选集可达性(集合包含直证 + 12 线枚举快照测试)
 
-> **【已退役——原地留档可溯】本命题对象(配方晋升机制:`promote_candidates` 生产实装与其体系键交集支)已随过渡阵容库迭代退役(comp-structure-unification 3.3,transition-library「验证脚本逐个裁定」表):配方决策层整体退役后无消费面,命题不再重立;复算脚本 `tools/cw/proofs/p65_check.py` 已冻结(导入守卫打印冻结横幅;SNAPSHOT_12 为 12 线时代历史快照锁,21 线注册表下断言显式红属预期)。下文为退役前原文,引用的现行符号(`p1_pair_frozen_obs`/`_pair_bond_keys`/`form_tiers` 等)不再存在,判读以本标注为准。**
+> **【已退役——原地留档可溯】本命题对象(配方晋升机制:`promote_candidates` 生产实装与其体系键交集支)已随过渡阵容库迭代退役(comp-structure-unification 3.3,transition-library「验证脚本逐个裁定」表):配方决策层整体退役后无消费面,命题不再重立;复算脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py` 已冻结(导入守卫打印冻结横幅;SNAPSHOT_12 为 12 线时代历史快照锁,21 线注册表下断言显式红属预期)。下文为退役前原文,引用的现行符号(`p1_pair_frozen_obs`/`_pair_bond_keys`/`form_tiers` 等)不再存在,判读以本标注为准。**
 >
 > 状态:**已证 v2(集合包含直证,零自由参数;非空性=生产展开语义结构判据
 > + evicted 反例入册;v1 反例洞经复核裁决撤回,2026-09-06 正式化)**
@@ -21,7 +21,7 @@
 > - `_core_reachable`(可达判据)/ `line_completion_feasibility`(G 判据,
 >   阈值 = `cw_registry.revoke_miss_tolerance_eps` 既有单一源)/
 >   `_derive_p1_pair`(p1_pair 派生)。
-> 复算脚本:`tools/cw/proofs/p65_check.py`(v2 直调生产 promote_candidates,
+> 复算脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py`(v2 直调生产 promote_candidates,
 > 10368 格状态网格;快照测试测试 =
 > `sr-od-test/test/sr_od/app/currency_war/test_cw_p65_promote_snapshot.py`)。
 
@@ -73,11 +73,11 @@ P 的定义(`promote_candidates` 逐行)是 H 的判据合取再加一条合取�
 
 经验面复核:状态网格 plane×level×hp×round×pair×visible×evicted 共
 **10368 格**,逐格直调生产 `promote_candidates` 断言 P ⊆ H
-(`tools/cw/proofs/p65_check.py` 断言 2,全过;快照测试测试另含 144 格抽样)。
+(`skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py` 断言 2,全过;快照测试测试另含 144 格抽样)。
 
 ## 3. 12 线枚举快照测试(设计稿验收要求)
 
-结构事实(快照测试 = `tools/cw/proofs/p65_check.py` SNAPSHOT_12 + 测试仓同表,
+结构事实(快照测试 = `skills/sr-od-dev-currency-war/scripts/proofs/p65_check.py` SNAPSHOT_12 + 测试仓同表,
 漂移即测试红)。**口径注(M2)**:表中「字面体系键交集」列 = 档键与
 `TRANSITION_TRAITS` 三羁绊键的字面交集(注册表快照口径);生产晋升判据
 消费的是 `_pair_bond_keys` 展开键(希儿系→{量子同频, 贝洛伯格}),展开

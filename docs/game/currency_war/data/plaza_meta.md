@@ -1,12 +1,12 @@
 ---
 version: V4.4
-generated_by: tools/cw/gen_plaza_comps.py
+generated_by: skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py
 related_code: src/sr_od/application/currency_war/data/cw_plaza_comps.py
 ---
 
 # 货币战争 plaza 实战 meta(人读版)
 
-> **由 `tools/cw/gen_plaza_comps.py` 生成,勿手编**(plaza lineup/index match_hard 高难帖,重跑:`uv run python tools/cw/gen_plaza_comps.py`)。
+> **由 `skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py` 生成,勿手编**(plaza lineup/index match_hard 高难帖,重跑:`uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py`)。
 > 代码侧(机器消费):`src/sr_od/application/currency_war/data/cw_plaza_comps.py` —— 同源生成、双向链接。
 > 用途:`cw_comps.py COMP_LIBRARY` 手判层(strength/form_difficulty/level_plan)的校准比对源。
 

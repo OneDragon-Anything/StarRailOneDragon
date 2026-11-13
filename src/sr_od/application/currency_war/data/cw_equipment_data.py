@@ -1,7 +1,7 @@
 """货币战争 装备领域模型(Equipment + EQUIPMENTS 全量注册表;meta 层,V4.4)。
 
-**生成**:本文件由 ``tools/cw/gen_equip_registry.py`` 生成(**勿手改**;
-重跑 ``uv run python tools/cw/gen_equip_registry.py``)。
+**生成**:本文件由 ``skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py`` 生成(**勿手改**;
+重跑 ``uv run python skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py``)。
 数据源优先级:骨架(name/category)= plaza 官方 API > 图鉴截图;
 effect = 图鉴 OCR(plaza 数值校验层修正误读)> md;
 recipes/props/official = plaza 官方 API(compose_list 结构化合成树 + properties

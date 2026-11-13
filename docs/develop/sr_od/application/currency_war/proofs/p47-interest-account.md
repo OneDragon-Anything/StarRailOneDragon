@@ -1,8 +1,8 @@
 # P47 利息规则经济账:守 50 期望利息流与利息档损失函数(第一性原理重新推导)
 
-> 状态:**已证(精确双轨迹递推=规范解;闭式=逐边界求和近似,549 格交叉核对 max 偏差 6 金、典型 ≤2;数值自检入库可重跑(`tools/cw/proofs/p47_check.py`);两处待标定口径已收尾——①息结算时点(2026-08-31 用户裁定)、②基础奖励分段(在案结算帧已定案 {1:3,2:4}+5,残余仅 1-5 归专项),残余待标定见清单③④⑤。五方联动批已执行(p38/p39/p40/p46/p41 消费方全部切换;命题三含动态修正(卖回通道),见命题三末节))**
+> 状态:**已证(精确双轨迹递推=规范解;闭式=逐边界求和近似,549 格交叉核对 max 偏差 6 金、典型 ≤2;数值自检入库可重跑(`skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py`);两处待标定口径已收尾——①息结算时点(2026-08-31 用户裁定)、②基础奖励分段(在案结算帧已定案 {1:3,2:4}+5,残余仅 1-5 归专项),残余待标定见清单③④⑤。五方联动批已执行(p38/p39/p40/p46/p41 消费方全部切换;命题三含动态修正(卖回通道),见命题三末节))**
 > 数据源(引用值逐一注明):`cw_plane_table`(`GOLD_CAP_INTEREST`=50 / `interest`=min(g//10,5) / `DEFAULT_PLANE_LENGTHS` P1=9·P2=7·P3=9 先验)、`cw_economy`(`BASE_INCOME`=5 / `REWARD_BASE_GOLD_BY_ROUND`={1:3,2:4} / `STREAK_GOLD_TABLE` 0-1→1·2-4→2·5→3·6+→4 / `LOSS_GOLD_BY_NODE` battle=2·encounter=boss=4)、economy.md §10.1(收入公式实测:基础+连胜+利息)、`cw_state.sell_refund`(卖出退金,本证明只在假设 A5 边界提及)
-> 数值自检脚本:`tools/cw/proofs/p47_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p47_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py`)
 > 提出:CW 策略重构·数学证明工程批(p47);证明=本批
 > 前置(消费方接口,定义本文输出形态):p38 ⑤层(A5/A6 金位递推 + 「31金/位面」简化)、p39 A4(C_int = t×min(R,3))、p40 R2(买 iff V ≥ t×min(R,3))
 > ⚠️ **本证明自含**:未读已作废旧证明 p13/p03,全部数字与形式由本文模型重新导出;「31金/位面」「min(R,3)」只作为消费方交叉核对基准出现,不是推导输入。
@@ -176,7 +176,7 @@ L_sellback(g, d, R, Ī, s) = Σ_{k=1..min(s,R)} [ interest(B_k) − interest(A_k
 
 **分工声明**:p46 管买入否决域(一笔买入本身过不过它的 EV 门),本证明只供给**利息账项**——p39 的 C_int、p40 R2 的利息损失项、p38 ⑤层的利息流日程。本证明不推导否决域、不涉及 V 的标定(V 归 p40 的 V̄/V_gap 框架)。
 
-## 数值自检(脚本 `tools/cw/proofs/p47_check.py`,全 ASCII 输出)
+## 数值自检(脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p47_check.py`,全 ASCII 输出)
 
 1. **守 50 利息流**:17 组 (g₀,T,Ī) 网格 + 现实带(每轮买 2)——命题一表全部由脚本复算;
 2. **利息档损失**:精确双轨迹 vs 旧口径 vs 闭式,平台/爬坡/贴档线/富余段四组场景 + R 扫描(饱和形态)——命题二/三表;

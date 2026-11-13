@@ -1,5 +1,5 @@
-# 警告:本文件由 tools/cw/gen_plaza_comps.py 生成(plaza lineup/index match_hard,V4.4),勿手编。
-# 重跑: uv run python tools/cw/gen_plaza_comps.py
+# 警告:本文件由 skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py 生成(plaza lineup/index match_hard,V4.4),勿手编。
+# 重跑: uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py
 # 同源产物(人读版,COMP_LIBRARY 手判层校准用): docs/game/currency_war/data/plaza_meta.md
 # 手判层(勿混): src/sr_od/application/currency_war/kernel/cw_comps.py COMP_LIBRARY(深入游戏理解手判层)。
 """货币战争 plaza 实战阵容统计(高难玩家帖聚合,gen_plaza_comps.py 生成)。

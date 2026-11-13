@@ -2,7 +2,7 @@
 
 > 状态:**已证**(边界精确化;「不用特殊处理」结论成立,理由改写为期权账)
 > 数据源:真实表(开局金 5、`BASE_REWARD_GOLD`=5、`STREAK_GOLD_TABLE`=(1,1,2,2,2,3,4)、息=min(5,gold//10)、`sell_refund` cost=1 无手续费)
-> 计算脚本:`tools/cw/proofs/w120_p5_refresh_levelup.py`(同脚本 P6 节)
+> 计算脚本:`skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py`(同脚本 P6 节)
 > 提出:2026-08-25 用户口述;证明:对应证明批次(计算脚本可重跑,git 历史可溯)
 
 ## 命题

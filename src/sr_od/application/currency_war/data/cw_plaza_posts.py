@@ -1,5 +1,5 @@
-# 警告:本文件由 tools/cw/gen_plaza_comps.py 生成(plaza lineup/index match_hard,V4.4),勿手编。
-# 重跑: uv run python tools/cw/gen_plaza_comps.py
+# 警告:本文件由 skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py 生成(plaza lineup/index match_hard,V4.4),勿手编。
+# 重跑: uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py
 # 同源产物: cw_plaza_comps.py(聚类聚合)/ docs/game/currency_war/data/plaza_meta.md(人读版,尾部逐篇语料账)。
 """货币战争 plaza 逐篇发帖明细(高难赢家帖语料,gen_plaza_comps.py 生成)。
 

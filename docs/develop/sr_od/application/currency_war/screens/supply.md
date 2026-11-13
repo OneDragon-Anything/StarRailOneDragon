@@ -58,7 +58,7 @@ pick = match.strategy.decide_supply()(零参;候选读状态容器 supply 槽)
        success_wait 1.5)→ 动作 op 即时单相上报完整结果(选卡确认零推进,节点推进归出战 supply_finish) + 动作回执簿记
 ```
 
-选定快照 `picked`(角色/首件装备/附加装备 `extra_equips`/钻 + `refresh_left` 状态容器现值快照)= 选定事实现场载荷,在用消费面 = 零(遥测接入调用待后续实施;在读渲染方 = `tools/cw/replay_to_md.py` `_supply_entry`);空候选轮/刷新轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_pick_supply_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜逐件翻来源保留证据)。
+选定快照 `picked`(角色/首件装备/附加装备 `extra_equips`/钻 + `refresh_left` 状态容器现值快照)= 选定事实现场载荷,在用消费面 = 零(遥测接入调用待后续实施;在读渲染方 = `skills/sr-od-dev-currency-war/scripts/replay_to_md.py` `_supply_entry`);空候选轮/刷新轮不带快照。选卡+确认+即时上报整体经动作工厂(`cw_pick_supply_action.py::CwActionPickSupplyOp`;归一件名 = 注册表级分层归一 `normalize_registry_equip_name` 现算:精确快道 → containment longest-first → 相似救援唯一命中,多/零命中 = '' 禁猜逐件翻来源保留证据)。
 
 ## 5. 终结与交回
 

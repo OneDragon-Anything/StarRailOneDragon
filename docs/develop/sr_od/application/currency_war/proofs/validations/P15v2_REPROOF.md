@@ -2,7 +2,7 @@
 
 > 状态:**重证完成(继承命题复核通过;幅度命题=显式模型带 CI 成立,方向稳健口径)**
 > 背景:原 P15(11.32−0.37·rung 拟合)2026-09-01 裁定「源语料已灭=证明不成立」,回归系数作废禁引;本件按公理顺序重证。
-> 语料与脚本入库:`tools/cw/proofs/p15/`(`p15v2_fit.py` + `corpus_battle_loss.jsonl` 冻结语料 + `fit_results.json`,sha256 头 `848dc1aa…`)——**语料随证明入 git 载体,防重蹈「.debug 清理=证明不成立」**。
+> 语料与脚本入库:`skills/sr-od-dev-currency-war/scripts/proofs/p15`(`p15v2_fit.py` + `corpus_battle_loss.jsonl` 冻结语料 + `fit_results.json`,sha256 头 `848dc1aa…`)——**语料随证明入 git 载体,防重蹈「.debug 清理=证明不成立」**。
 > 消费标准(对齐 P51 验证结论):真瓶颈是胜率薄桶非伤害幅度,本件按「方向稳健」最低标准给幅度带,禁过度精化。
 
 ## 0. 公理与消费边界(先立规矩)
@@ -74,7 +74,7 @@ P51 λ_death 需要:① 槽序剩余战斗数(P15v2-A,精确计数,满足);② �
 
 ## 6. 检验点(可重跑)
 
-- `uv run python tools/cw/proofs/p15/p15v2_fit.py`(仓库根,`PYTHONPATH=src`)= **只读自检**(2026-09-04 双模式改造:对入库 corpus 重算并与 `fit_results.json` 逐位对账 + corpus sha 核验,零写入)→ 主表/细桶逐位复现(seed 固定);`--refreeze` = 显式重冻(仅裁定过的新冻结使用,重冻后须 commit+回填本件主表与 sha+同步全部消费文本)。
+- `uv run python skills/sr-od-dev-currency-war/scripts/proofs/p15/p15v2_fit.py`(仓库根,`PYTHONPATH=src`)= **只读自检**(2026-09-04 双模式改造:对入库 corpus 重算并与 `fit_results.json` 逐位对账 + corpus sha 核验,零写入)→ 主表/细桶逐位复现(seed 固定);`--refreeze` = 显式重冻(仅裁定过的新冻结使用,重冻后须 commit+回填本件主表与 sha+同步全部消费文本)。
 - 语料抽头核验:`corpus_battle_loss.jsonl` 首行应含 `game_id/plane/round/node_type/rung/killed/hp_before/hp_after/delta/censored` 十字段。
 
 ## 7. 遗留登记成待办(不阻断本件)

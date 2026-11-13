@@ -2,7 +2,7 @@
 
 > 验证角色:数学验证工程师(逐件证明验证批,一件一批)。**只读禁改**:本报告未改任何证明/代码/注册表/账本;新增产物仅本报告。
 > 日期:2026-09-07。验证对象 = `docs/game/currency_war/research/proofs/p40-refresh-ev.md` 单篇 + `math_proofs.md` 索引 P40 行。
-> 复算:`tools/cw/proofs/p40_refresh_ev_check.py` 亲跑(`$env:PYTHONPATH='src'; uv run python …`,输出全量核对);注册表直调见门②清单。
+> 复算:`skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py` 亲跑(`$env:PYTHONPATH='src'; uv run python …`,输出全量核对);注册表直调见门②清单。
 
 ## 0. 阅读门与公理栈
 
@@ -95,4 +95,4 @@ V̄=24.7 分解逐项(全部直调核对):
 5. **生产面无动作项**:现行 `refresh_ev_budget` 未消费 V̄,无需回滚;cw3 接入调用批(缺口⑥)若重启,按本报告 §8.1 的降级路径重写 R0-2/R1 的价值侧,禁直接恢复 v_bar 点值闸门。
 
 ---
-*本报告数字可由 `tools/cw/proofs/p40_refresh_ev_check.py` + 注册表直调(cw_shop_odds/cw_registry/cw_invest_data/cw_economy)重现;全部验证只读,未改任何文件。*
+*本报告数字可由 `skills/sr-od-dev-currency-war/scripts/proofs/p40_refresh_ev_check.py` + 注册表直调(cw_shop_odds/cw_registry/cw_invest_data/cw_economy)重现;全部验证只读,未改任何文件。*

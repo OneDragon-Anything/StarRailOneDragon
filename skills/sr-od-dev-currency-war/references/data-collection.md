@@ -7,14 +7,14 @@
 - **权威序**:游戏内图鉴(数据银行)/plaza 官方 API > 米游社百科 > 社区攻略(多篇交叉才可用)。
 - **铁律**:所有影响玩法的游戏数据/描述/效果一律存盘作参考,标来源(content_id/URL+版本)——策略代码以这些为地基,别引用了不落盘。
 - **遇不懂的游戏知识先搜再写**:机制/数值/规则/上限不懂就先查米游社/wiki/图鉴核实 → 补进玩法 doc,别凭猜硬写——猜的机制进代码 = 假信号地基。
-- **两层架构**:数据层(`*_data.py`/生成器产出,勿手编)+ 判断层(人维护,cw_factions 类别/cw_comps 评级等)——生成器写目标有白名单守卫,改注册表前先查 `tools/cw/` 是否有该文件的生成器。
-- **版本更新**:重跑生成器看内建 diff(角色/投资/羁绊/装备/聚类全家,见 tools/cw/ 各脚本)→ diff 驱动复核。
+- **两层架构**:数据层(`*_data.py`/生成器产出,勿手编)+ 判断层(人维护,cw_factions 类别/cw_comps 评级等)——生成器写目标有白名单守卫,改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)是否有该文件的生成器。
+- **版本更新**:重跑生成器看内建 diff(角色/投资/羁绊/装备/聚类全家,见 skill scripts 各脚本)→ diff 驱动复核。
 
 ## 一、plaza 官方 API 直采(免登录公开接口)
 
 基址 `act-api-takumi.miyoushe.com/event/rpgcurrencywar/game`,header `x-rpc-currencywar-tourn: tourn`:
 
-| 域 | 生成器(tools/cw/) | 产出 | 采集要点 |
+| 域 | 生成器(skill scripts/) | 产出 | 采集要点 |
 |---|---|---|---|
 | 角色 | `gen_plaza_chars.py` | stdout 交叉核对 diff(交叉核对器,不一致非零退出,无落盘产物) | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(334+83) | 数字 id 稳定主键;效果官方全文去富文本 |

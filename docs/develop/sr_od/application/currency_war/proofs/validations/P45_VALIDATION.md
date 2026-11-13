@@ -26,7 +26,7 @@
 
 ### 门② 引用点直调 + 脚本可重跑状态 —— **通过(本次亲跑)**
 
-`tools/cw/proofs/p49_check.py` 本次亲跑(PYTHONPATH=src,uv run):**ALL ASSERTIONS PASSED**——引用点三组(3费@L7=0.268 / 1费@L5=0.070 / 5费@L8 补算 20.0)、二维表全格 ±2%、线性律 [0,24] ±0.01%、单调性、V_opt 现场重算与 p41 表差 ≤0.04、2★ 往返账、卖回档序翻转断言全绿。注册表引用点(SHOP_SLOTS=5 / POOL_COPIES 27/27/9/9/9 / DISTINCT 20/15/14/14/9 / 池量 540/405/126/126/81 / sell_refund 口径)经脚本断言与既有验证直调双确认。脚本当前可重跑、无 import 断链。
+`skills/sr-od-dev-currency-war/scripts/proofs/p49_check.py` 本次亲跑(PYTHONPATH=src,uv run):**ALL ASSERTIONS PASSED**——引用点三组(3费@L7=0.268 / 1费@L5=0.070 / 5费@L8 补算 20.0)、二维表全格 ±2%、线性律 [0,24] ±0.01%、单调性、V_opt 现场重算与 p41 表差 ≤0.04、2★ 往返账、卖回档序翻转断言全绿。注册表引用点(SHOP_SLOTS=5 / POOL_COPIES 27/27/9/9/9 / DISTINCT 20/15/14/14/9 / 池量 540/405/126/126/81 / sell_refund 口径)经脚本断言与既有验证直调双确认。脚本当前可重跑、无 import 断链。
 
 ### 门③ 建模对象 vs 玩法文档 —— **通过(P49_VALIDATION 门③ 复核 + 撤并无新增建模面)**
 

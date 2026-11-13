@@ -2,7 +2,7 @@
 
 > 状态:**已证(主定理)+2 个边界格如实列**;⑤预算前提按「平面 R 上界口径」理解(见口径注记)
 > 数据源(全部真实表值):`cw_shop_odds`(`REFRESH_PROB`/`POOL_COPIES_PER_CARD`/`DISTINCT_CARDS_PER_COST`/`expected_refreshes`)、`cw_state`(`XP_TO_NEXT_LEVEL`/`XP_PER_BUY`=4/`XP_CLICK_COST_FALLBACK`=4)、`cw_economy`(`SHOP_REFRESH_COST`=2)
-> 计算脚本:`tools/cw/proofs/w120_p5_refresh_levelup.py`(可重跑复核,零随机纯表值)
+> 计算脚本:`skills/sr-od-dev-currency-war/scripts/proofs/w120_p5_refresh_levelup.py`(可重跑复核,零随机纯表值)
 > 提出:2026-08-25 用户口述精确化([3] 注记);证明:对应证明批次(计算脚本可重跑,git 历史可溯)
 
 ## 命题

@@ -2,7 +2,7 @@
 
 > 状态:**已推导(现行口径 = 修订 3 轮定型的逐配方口径;本命题经 3 轮修订与对抗评审,修订要点 git 历史可溯——价值实现单元改为「单条配方兑现」(合成即可穿),分层维度从「残深」改为「最近兑现距离 × partner 到位率」,望远镜恒等式持有维重证 + 组件级聚合形式撤销(all-or-nothing 前提与游戏事实相悖),支配定理按 partner 门控重写,对抗评审极端角(下称「对抗角」)的 λ 口径改逐件显式,数值自检全绿)。核心结论:② 机会成本严格正(尺度假设下弱最优);③ 满需关张支配只在「伙伴到位」时成立(全库全带),「关张件但伙伴未到位」对抗角 81 格可违(W=9/12/18 稳定,旧 W≤9 适用范围条款废止),残深≥2(喂后)带内**并非**全负(全 inv 扫描:带内可违 33 格次/5 格带顶仍正,近关张层 11 格;对抗角全 inv 32 格——旧「15→4」系 inv=1 截面假象);④ 独立性近似入 A10;sim 交叉核对登记待办)**
 > 数据源(单一源代码/文档,引用处逐一注明):`cw_synthesis.py`(K8 闭合图谱派生 :41-76 / `component_demand` :131 / `synthesis_membership` :161 / `SYNTHESIS_MEMBERSHIP_THRESHOLD` :158 / `plan_syntheses` :187 / `recycle_qualified` :253 / `hoard_gaps` :271——机制事实层,README 豁免章程下作为已定事实消费,本篇不重新推导图谱)、`cw_equipment_data.py`(注册表:唯一件标记 :71/:84/:93、工具 7 件 :182-188、effect 站位限定 :66-:150)、`cw_comps.py`(`Comp.key_equips` :99 / `equip_assign` :141(含 `EquipChoice` :58)/ `equip_taboos` :145 / `derive_key_equips` :172 / `equip_fit` :1335 / 分配纪律 docstring :1841-1877(配对守卫));机制文档 = equipment_mechanics.md 全文(穿着即合成 §1/§1.1、站位限定 §2、商店角色不附带装备(裁定) §3、唯一件 §4、工具 §5、回收流水线与囤积原则);经济文档 = economy.md §8(概念股送件 :86)/§10.2(节点表,P1 r5=supply);口述 = user_playstyle [9](211)/[29](216)/[32](95-99),联动 [22]/[24]/[39]/[40]
-> 数值自检脚本:`tools/cw/proofs/p42_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p42_check.py`)
+> 数值自检脚本:`skills/sr-od-dev-currency-war/scripts/proofs/p42_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python skills/sr-od-dev-currency-war/scripts/proofs/p42_check.py`)
 > 提出:CW 策略重构·装备命题(archive/redesign/01 §4.6 + E4/E10/E11;2026-09);证明 = 本批
 > ⚠️ 本篇为**自含推导**(已作废、禁止引用的 p14 及其他同域旧证明未读未引;`cw_synthesis` 图谱派生函数按 README 豁免章程作机制事实消费,**策略期望部分(何时合/回收/工具时机)是本篇新推导域**)
 > ⚠️ **符号退役注记(2026-11-05)**:数据源 `Comp.equip_taboos` 已整字段退役(equip-taboos-retirement 迭代——唯一消费点囤货投影排除恒空,纯零行为字段)。本篇 `taboo(C)` 符号与全部删域步骤(②⑤⑧⑨ 与 [29] 数学地位段)按**空删域退化**继续成立:删域 ∅ ⊂ 删域任意集合,含删域步骤的推导在退化形态下不动;[29]「禁忌过滤 = 可行域删减(∞ 成本项)」的数学地位留档本篇。正文不逐行改写。
@@ -275,7 +275,7 @@ P(Bin=n_x) ∈ [1.2e-9, 8.0e-6],低估 4~8 个数量级(狼尊第 1 张鞋实算
 
 **[39]/[40] 合规检查**:本篇全部决策输入 = {金(仅经 p46/p41 接口间接)、轮/窗口 W、流参数 λ、线 K/taboo/assign、库存};**无任何 HP/血量输入、无胜率模型**(A8;唯一涉战力处 V_adv 保持 ⚪ 未货币化符号项,与 [39] 禁用输入域一致)。
 
-## 数值自检(脚本 `tools/cw/proofs/p42_check.py`,全部断言通过)
+## 数值自检(脚本 `skills/sr-od-dev-currency-war/scripts/proofs/p42_check.py`,全部断言通过)
 
 | 节 | 内容 | 验证点 |
 |---|---|---|

@@ -16,7 +16,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 `tools/cw/` 有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(72 档,`tools/cw/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(72 档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
@@ -24,7 +24,7 @@
 | [competitors.md](competitors.md) | 敌人词缀(~50)机制分类/克制叙事 + 竞争对手阵营(**词缀效果原文已入注册表 `affix_effects_data.AFFIX_EFFECTS`——运行时采集 ground truth;本文保留机制分类与克制启示层;20 个竞争对手阵营仍未建模,本文唯一源**) | ~50词缀 | 🟡 词缀=米游社攻略统计+实机采集校准(🔴 20个竞争对手阵营待实机) |
 | [advantage_layouts.md](advantage_layouts.md) | 优势布局/职级效果(等价钻钞 meta 增益;**注册表未建,本文唯一源**) | ~20 | ⚠️ bwiki,米游社-pending |
 | [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
-| [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准比对源) | 29 聚类 | 🟢 官方 API |
+| [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`skills/sr-od-dev-currency-war/scripts/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准比对源) | 29 聚类 | 🟢 官方 API |
 
 > 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费停用删除;
 > 停用前的人读快照 `docs/develop/currency_war/power_table_meta.md` 亦已停用,出处走 git 历史。
