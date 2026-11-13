@@ -27,6 +27,15 @@
 | 切到光锥 TAB | op `sr_od.operations.switch_character_tab.SwitchCharacterTabOp(tab_name='光锥')` |
 | 查看当前光锥 | 优先米游社 API `mys_get_characters`(注意数据有延迟);要实时确认用 MCP `analyze_screen`——画面为「角色-光锥」时 extras 返回 光锥名/命途/等级/叠影N阶/技能名/白值 |
 
+⚠️ 入口按钮按角色装备态二态:已装备角色右下是「替换+强化」,无装备角色
+只有「装备」(点它同样进替换列表)——op `OpenLightConeReplaceOp` /
+`EquipLightConeOp` 已自动适配两态,无需手动区分。
+
+**卸下光锥**(让角色回到未装备态,如换装方案重排时):无独立 op,手动三步
+——打开替换列表 → `analyze_screen` extras 找到当前装备件(owner=当前角色
+或与 TAB 读数同名)点选 → 点「卸下」按钮(点选当前装备件后确认按钮变卸下,
+直接生效回光锥 TAB)。卸下是改变配装的副作用操作,发起前向用户确认。
+
 换光锥按意图分三种情况,路由不同:
 
 ### 2.1. 情况 1:不知道要换什么——先浏览账号光锥清单
@@ -135,7 +144,7 @@ confirm_merge=False)`。
 
 | 步骤 | 用什么 |
 |---|---|
-| 选中主件 | 在替换列表点选要叠影的那件。⚠️ 主件身份必须在这步定对:叠影视图本身不显示光锥名,op 靠「选中光锥名」OCR 在入口校验(不符显式失败,防合错) |
+| 选中主件 | 在替换列表点选要叠影的那件:MCP `analyze_screen`(画面「光锥-替换」时 extras.items 每件含 cell:[x1,y1,x2,y2] 卡片矩形与 cone 名)→ 找到目标件 → `click_game` 点 cell 中心。⚠️ 主件身份必须在这步定对:叠影视图本身不显示光锥名,op 靠「选中光锥名」OCR 在入口校验(不符显式失败,防合错) |
 | 执行叠影 | op `SuperimposeLightConeOp(...)`——自动点「强化」进等级提升、切「叠影」TAB、置入材料、合成、关横幅,结束后停在叠影视图 |
 
 材料放置双路径(`use_auto_place` 选,**默认自动置入**):
@@ -165,3 +174,17 @@ confirm_merge=False)`。
 
 - op 经 MCP `run_operation(op_id='sr_od.application.cultivation.light_cone.operations.superimpose_light_cone.SuperimposeLightConeOp', args={...})` 调用;
   满阶主件发起 = 干净返回 MAXED(零消耗)
+
+叠影结束停在叠影视图,收尾:点右上角关闭 X 回光锥 TAB(`click_game` 画面
+「光锥-等级提升」建档「按钮-关闭X」;升级 op 的自动收尾同款控件)。
+
+典型组合「给角色补一把新锥并叠满再装备」的执行顺序(装备与叠影两条路由
+的衔接):
+
+1. 公共前置 + 打开替换列表(见 2.1);
+2. 选中一件新副本作主件(上表做法)→ `SuperimposeLightConeOp(cone_name=...,
+   use_auto_place=True, confirm_merge=True)` 一次置入到满阶(消耗件数 =
+   补到 S5 所需,自动解锁弹窗与稀有度确认框 op 代答);
+3. 叠影收尾(关闭 X 回光锥 TAB);
+4. 重新打开替换列表,`EquipLightConeOp(cone_name=..., rank=5)` 装备刚叠满
+   的那件(未装备件,无抢装问题;同名剩余低阶副本用 rank 区分开)。

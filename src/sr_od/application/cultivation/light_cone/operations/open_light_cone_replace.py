@@ -4,7 +4,8 @@
 (清单由调用方经 MCP analyze_screen 的 extras 读取)与换装 op
 (EquipLightConeOp,起点要求在列表画面)的前置。
 
-交互事实:光锥 TAB 底部「替换」按钮 → 光锥替换界面;替换界面无独立关闭
+交互事实:光锥 TAB 底部入口按钮按装备态二态——已装备态「替换」、无装备态
+(装第一把)「装备」,点击都进光锥替换界面;替换界面无独立关闭
 按钮建档,退出靠界面左上返回控件(未建档,浏览收尾用 analyze_screen 定位
 后 click_game)。
 
@@ -67,12 +68,15 @@ class OpenLightConeReplaceOp(SrOperation):
         current = self.check_and_update_current_screen(
             self.last_screenshot, screen_name_list=_ENTRY_SCREENS)
         if current == _LC_TAB_SCREEN:
-            if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                      _LC_TAB_SCREEN, '按钮-替换') != FindAreaResultEnum.TRUE:
-                return self.round_retry('未找到替换按钮', wait=2)
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, '按钮-替换').rect.center)
-            return self.round_retry('已点击替换按钮,等待进入替换界面', wait=2)
+            # 入口按钮按角色装备态二选一:已装备态「替换」,无装备态(装第一把)
+            # 「装备」,两按钮点击都进光锥-替换列表
+            for btn_name in ('按钮-替换', '按钮-装备'):
+                if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                          _LC_TAB_SCREEN, btn_name) == FindAreaResultEnum.TRUE:
+                    self.ctx.controller.click(
+                        self.ctx.screen_loader.get_area(_LC_TAB_SCREEN, btn_name).rect.center)
+                    return self.round_retry('已点入口按钮,等待进入替换界面', wait=2)
+            return self.round_retry('未找到替换/装备按钮', wait=2)
         if current != _REPLACE_SCREEN:
             return self.round_fail(f'异常画面,无法打开替换列表(当前判定: {current})')
         if self._reset_drags_left > 0:

@@ -6,8 +6,9 @@
 交互链实机摸底:
 - 替换界面:9 列卡片网格,分「与角色命途相符 / 不相符」两组;**卡片上
   没有光锥名**(名字仅选中后右侧对比栏可读);
-- 选卡后右侧变对比布局(当前装备 → 新选中),底部出现「替换」按钮;
-- 点「替换」**直接生效并自动回光锥 TAB,无确认弹窗** —— 替换是即时操作。
+- 选卡后右侧变对比布局(当前装备 → 新选中),底部出现确认按钮;
+- 确认按钮按目标角色装备态二态:已装备态「替换」、无装备态(装第一把)
+  「装备」——点任一**直接生效并自动回光锥 TAB,无确认弹窗**,替换是即时操作。
 
 识别定位(masked TM 范式,算法边界实测):
 - 身份模板(TemplateLoader 规范目录 ``light_cone_icon/<id>/raw.webp``,图标
@@ -305,12 +306,15 @@ class EquipLightConeOp(SrOperation):
             return self.round_success(status='BACK_TO_TAB')
         if current != _REPLACE_SCREEN:
             return self.round_fail(f'异常画面,无法确认替换(当前画面判定: {current})')
-        if screen_utils.find_area(self.ctx, self.last_screenshot,
-                                  _REPLACE_SCREEN, '按钮-替换') != FindAreaResultEnum.TRUE:
-            return self.round_retry('未找到替换按钮', wait=2)
-        self.ctx.controller.click(
-            self.ctx.screen_loader.get_area(_REPLACE_SCREEN, '按钮-替换').rect.center)
-        return self.round_retry('已点击替换,等待回到光锥 TAB', wait=2)
+        # 确认按钮按目标角色装备态二选一:换装态「替换」,无装备态装第一把
+        # 「装备」,点击都直接生效并回光锥 TAB(无确认弹窗)
+        for btn_name in ('按钮-替换', '按钮-装备'):
+            if screen_utils.find_area(self.ctx, self.last_screenshot,
+                                      _REPLACE_SCREEN, btn_name) == FindAreaResultEnum.TRUE:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_REPLACE_SCREEN, btn_name).rect.center)
+                return self.round_retry('已点确认按钮,等待回到光锥 TAB', wait=2)
+        return self.round_retry('未找到替换/装备按钮', wait=2)
 
     @node_from(from_name='确认替换')
     @operation_node(name='结果核对')
