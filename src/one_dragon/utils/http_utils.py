@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 import urllib.request
 from collections.abc import Callable
@@ -45,7 +46,13 @@ def download_file(download_url: str, save_file_path: str,
         if progress_callback is not None:
             progress_callback(progress, msg)
 
-    temp_file_path = f'{save_file_path}.part'
+    # 每次下载在目标目录生成独立的临时文件 避免并发/重入下载互相覆盖或误删
+    save_dir = os.path.dirname(save_file_path) or '.'
+    os.makedirs(save_dir, exist_ok=True)
+    temp_fd, temp_file_path = tempfile.mkstemp(
+        dir=save_dir, prefix=f'{os.path.basename(save_file_path)}.', suffix='.part'
+    )
+    os.close(temp_fd)
     try:
         msg = f"{gt('开始下载')} {download_url}"
         log.info(msg)
