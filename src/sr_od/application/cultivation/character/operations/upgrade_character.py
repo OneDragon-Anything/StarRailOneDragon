@@ -205,6 +205,17 @@ class UpgradeCharacterOp(SrOperation):
         异常形态(材料足但点击没生效)由节点重试预算兜底耗尽显式失败。"""
         screen = self.last_screenshot
 
+        # ⓪ 材料返还覆盖页(晋阶后游戏返还差额材料,全屏覆盖挡住一切锚)
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '文本-材料返还').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _ASCEND_SCREEN, '点击区-关闭返还页',
+                until_not_find_all=[(_ASCEND_SCREEN, '文本-材料返还')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('材料返还页已关,重入分类', wait=1)
+            return result
+
         # ① 材料补全确认框
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-材料补全弹窗').is_success:
             if self.fill_generic:
