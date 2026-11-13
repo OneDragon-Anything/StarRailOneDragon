@@ -1,22 +1,22 @@
 ---
 name: sr-od-game-coach
-description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角色养成（装备/光锥/词条/练度）、体系与阵容、玩法规则、新手日常决策、抽卡投入决策（「这个角色值不值得抽」「要不要抽」「星魂怎么规划」，机制断点表+角色档调研轮次支撑）时用（如「怎么配队」「这个角色怎么玩怎么养」「词条堆什么」「体力怎么分」「这期打什么」「练度够不够进队」「阿哈值得抽吗」）——基础玩法知识技能：agent 读完即可像老玩家一样做游戏决策。特殊玩法的期次环境与特殊变形（逐光捡金环境/货币战争羁绊等）归各自专项 skill，本 skill 只装任何场景都成立的基础知识。凡涉及崩铁玩法理解与决策先用本 skill，即使没明说；新角色实装/上版本盖棺的攻略调研归 maintenance/research-methodology.md。
+description: 需要崩坏:星穹铁道基础玩法知识——配队决策、角色养成（装备/光锥/词条/练度，含装/换光锥遗器的操作路由）、体系与阵容、玩法规则、新手日常决策、抽卡投入决策（「这个角色值不值得抽」「要不要抽」「星魂怎么规划」，机制断点表+角色档调研轮次支撑）时用（如「怎么配队」「这个角色怎么玩怎么养」「词条堆什么」「体力怎么分」「这期打什么」「练度够不够进队」「怎么换光锥」「这件遗器谁占着」「阿哈值得抽吗」）——基础玩法知识技能：agent 读完即可像老玩家一样做游戏决策。特殊玩法的期次环境与特殊变形（逐光捡金环境/货币战争羁绊等）归各自专项 skill，本 skill 只装任何场景都成立的基础知识。凡涉及崩铁玩法理解与决策先用本 skill，即使没明说；新角色实装/上版本盖棺的攻略调研归 references/maintenance/research-methodology.md。
 ---
 
 # 星穹铁道基础玩法教练（game-coach）
 
 agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法公共知识**（怎么判断），项目 MCP 的三个查询工具提供**角色/光锥/遗器静态基础信息**（relic_lookup / cone_lookup / character_lookup），项目 `sr_od` MCP server 的 mys 工具组提供**账号数据**（`mys_get_characters` 概况 / `mys_get_roster_detail` 全量明细，会话管理 `mys_login`/`mys_logout`；运行时拉取），游戏操作 MCP 执行动作。skill 家族分工：
 
-- **本 skill（基础）**：机制规则 / 体系与阵容 / 角色养成 / 玩法框架 / 新手日常——任何场景都成立的知识
+- **本 skill（基础）**：机制规则 / 体系与阵容 / 角色养成 / 玩法框架 / 新手日常——任何场景都成立的知识；养成操作路由（装/换/升级该用哪个 op、消耗门在哪）装在 mechanics/ 养成档
 - **专项 skill（特殊变形）**：逐光捡金（`sr-od-treasures-lightward`，期次环境/星启/速报）、货币战争（`sr-od-currency-war-guide`）等——本 skill 玩法层只留框架并**按 skill 名称**指向专项
-- 边界：不含自动化操作流程（归玩法自动化 skill）、不含任何账号数据（运行时拉取）、知识档不出现特定账号信息
+- 边界：不含玩法画面自动化流程（进本/编队怎么点，归玩法自动化 skill）、不含 op/app 的实现与调试（归 od-dev-write-operation 等开发 skill）、不含任何账号数据（运行时拉取）、知识档不出现特定账号信息
 
 ## 配队决策工作流（必做 5 步）
 
 > 没做完这 5 步不算完成一次配队决策。
 
 1. ☐ **收集输入**：目标环境每波次的敌人弱点、当期环境增益/湍流（可得时）、可用角色池与练度快照。判据：三样输入都有明确值或明确标「不可得」，不许缺省编造。必做。
-2. ☐ **按弱点与环境筛体系**：读 `references/INDEX.md` 的体系索引，按弱点属性×环境增益筛候选体系。判据：每个候选给一句「为什么匹配」，被排除的当前主流体系给一句排除理由。必做。
+2. ☐ **按弱点与环境筛体系**：读 `references/teams/INDEX.md`，按弱点属性×环境增益筛候选体系。判据：每个候选给一句「为什么匹配」，被排除的当前主流体系给一句排除理由。必做。
 3. ☐ **读候选体系档**：拿到骨架槽位、绑定规则、替补矩阵。判据：能回答「这个体系缺某成员时换谁、损失什么」。必做。
 4. ☐ **逐成员读角色档并做练度门槛检查**：对照角色档的转化上限与有效词条口径检查练度快照。判据：每个成员给出「够格 / 短板+差多少数值」；角色档「绑定与互斥」节里的硬否决必须拦截（例：护盾生存位进生命烧血体系）。必做。
 5. ☐ **输出编队与缺口报告**：最终每队编成 + 一句核心逻辑 + 练度/配装缺口清单。判据：缺口具体到「谁差什么词条、差多少数值」（例：效果命中 109%、转化上限 140%，差 31%）。必做。
@@ -26,16 +26,19 @@ agent 通过本 skill + MCP 掌握怎么玩崩铁：本 skill 装**基础玩法�
 > 数据源优先级：**MCP 常量查询【官：固化自官方 wiki 快照，随项目版本更新】≈ 百科官方表【官】> 视频实证【攻：B站+BV号】> 推导口径【攻】**；数值一律满级；装备推荐是条件式（按阵容选择）。
 >
 > **基础信息查询走 MCP（优先）**：角色定义/行迹满级/星魂效果 → `character_lookup`；光锥（星级/命途/特效全文/获取）→ `cone_lookup`；遗器套装（效果/单件/部位）→ `relic_lookup`。均为零 IO 常量查询，不需要登录；模糊多命中返回候选，用官方全名精确查。MCP 不可用时兜底：官方 wiki API 直查（`sr-od-dev-official-api`）与 `mechanics/` 速查表。
+>
+> 路由表内文档路径均相对 skill 根目录（`references/` = 知识语料，`maintenance/` = 维护者文档）。
 
 | 问题域 | 典型问题 | 路由 |
 |---|---|---|
 | **基础信息查询** | 这个角色/光锥/遗器是什么、什么效果、几星什么命途 | MCP：`character_lookup`（含行迹满级+星魂全6；`with_ascension=true` 带晋阶突破材料+所属副本，含具体关卡实例）/ `cone_lookup`（含特效全文）/ `relic_lookup`（含套装效果+单件）；按中文名/数字id精确查，模糊多命中用全名 |
-| **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/INDEX.md` → `modes/<玩法>.md`（场景）→ `teams/<体系>.md`（为什么这么组）→ `lineups/<阵容>.md`（这四人怎么打）→ `characters/<角色>.md`；小众玩法不必为其优化配队 |
-| **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `mechanics/relic-sets.md` / `mechanics/light-cones.md`） |
-| **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
-| **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `mechanics/`（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance） |
-| **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
-| **知识库维护** | 新角色实装调研/上版本角色盖棺复核/抽卡决策调研（这期 UP 值不值得抽）/补档 | `maintenance/research-methodology.md`（米游社+B站 bili-cli 调研流程与入档格式）+ `maintenance/research-status.md`（覆盖对账与待复核清单）；角色页数据重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
+| **配队决策** | 怎么配队/选人/换人/这期打什么 | `references/modes/<玩法>.md`（场景）→ `references/teams/INDEX.md`（体系选型）→ `references/lineups/INDEX.md`（阵容档）→ `references/characters/INDEX.md`（按命途定位角色档）；小众玩法不必为其优化配队 |
+| **装备选择** | 穿什么/光锥选谁/套装选型/词条堆什么 | 角色档「二、推荐装备」（光锥链+套装条件式+主副词条+转化上限）→ 具体光锥/遗器数据 MCP `cone_lookup` / `relic_lookup`（兜底 `references/mechanics/relic-sets.md` / `references/mechanics/light-cones.md`） |
+| **装备与养成操作** | 怎么把光锥/遗器装上角色/换下来/查谁占用；升级/晋阶/行迹该用哪个 op、缺料时消耗门在哪 | `references/mechanics/light-cone-enhancement.md` §2（装备与更换操作路由：浏览清单/试换不抢/明确要抢三情况，含 op 名与失败语义）· `references/mechanics/relic-enhancement.md`（遗器浏览/更换/强化操作路由）· 升级 op 总清单与消耗授权纪律 → `references/basics/新手与日常决策.md` 养成 op 节 |
+| **玩法适配** | 混沌/虚构/末日/异相仲裁怎么打 | `references/modes/玩法层总览.md` → 对应玩法档（规则/增益/适配体系） |
+| **机制理解** | 某角色机制/大招充能/命途规则/战斗基础 | MCP `character_lookup`（行迹/星魂官方文本）→ 角色档「一、技能说明」+ `references/mechanics/INDEX.md` → 对应机制档（combat-basics/damage-and-affix/ult-resources/path-joy/path-remembrance 等） |
+| **练度评价** | 够不够格进队/差多少 | 角色档「转化上限」+ 深挖实证的毕业面板/配速（参考向）→ `references/mechanics/damage-and-affix.md`（上限语义）；练度成色分层（主力输出星魂优先，0魂平民/2魂小康、角色机制断点表）→ `references/investment.md` |
+| **知识库维护** | 新角色实装调研/上版本角色盖棺复核/抽卡决策调研（这期 UP 值不值得抽）/补档 | `references/maintenance/research-methodology.md`（米游社+B站 bili-cli 调研流程与入档格式）+ `references/maintenance/research-status.md`（覆盖对账与待复核清单）；角色页数据重跑与比对流程 `maintenance/data-pipeline.md`（基础信息已走 MCP，兜底走官方 wiki API） |
 
 **红线**：未命中（知识库无该档）→ 如实告知，给官方 wiki 核验路径，禁止凭训练记忆编造；信息缺口项向用户转述时必须声明「未实证」。
 

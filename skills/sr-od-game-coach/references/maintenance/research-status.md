@@ -1,6 +1,6 @@
 # 调研状态对账
 
-> 知识库各部分与官方版本的同步状态。INDEX.md 覆盖追踪表的底档；每次调研后更新本表。方法论见 [research-methodology.md](research-methodology.md)。
+> 知识库各部分与官方版本的同步状态。characters/INDEX.md 覆盖追踪表的底档；每次调研后更新本表。方法论见 [research-methodology.md](research-methodology.md)。
 
 ## 知识库现状
 
@@ -21,4 +21,4 @@
 
 ## 调研轮次记录（近期）
 
-- **2026-11-12 星神★阿哈实装首周调研**：R1 官方文本（character_lookup）+ R2·深挖 B站三源（卡特亚 182 万/粥粥 20 万/梦轩 dada 17 万播放）+ 米游社图文交叉 → 新建角色档、欢愉队体系档 R3、INDEX/断点表联动更新。方法论首跑，流程沉淀至 research-methodology.md。
+- **2026-11-12 星神★阿哈实装首周调研**：R1 官方文本（character_lookup）+ R2·深挖 B站三源（卡特亚 182 万/粥粥 20 万/梦轩 dada 17 万播放）+ 米游社图文交叉 → 新建角色档、欢愉队体系档 R3、characters/INDEX/断点表联动更新。方法论首跑，流程沉淀至 research-methodology.md。
