@@ -383,13 +383,13 @@ class UpgradeCharacterOp(SrOperation):
 
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
-    @operation_node(name='返回养成界面', node_max_retry_times=8)
+    @operation_node(name='返回养成界面', node_max_retry_times=10)
     def back_to_ascend(self) -> OperationRoundResult:
-        """关结果框(如有)→ 关副本(右上 X)→ 回等级提升界面(until=标题锚)
-        → 重入升级循环。
+        """逐层回退:关结果框(如有)→ 关副本 X → 关资源窗口 X → 回等级
+        提升界面(until=标题锚)→ 重入升级循环。
 
-        层级回退待实测确认:从养成界面跳转来的副本,关闭后可能回到资源
-        窗口而非直接回养成界面——节点自环重试覆盖逐层关闭。"""
+        跳转链逆推实测(2026-11-13):副本关闭后回「培养还需获取资源」窗口,
+        再关才回养成界面——节点自环覆盖逐层关闭。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
             log.info('晋阶: 刷取完成回到养成界面,已刷 %d 次', self._farm_rounds)
@@ -402,6 +402,15 @@ class UpgradeCharacterOp(SrOperation):
             )
             if result.is_success:
                 return self.round_retry('刷取结果框已关,重入分类', wait=1)
+            return result
+        if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-培养资源窗口').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _ASCEND_SCREEN, '按钮-关闭资源窗口',
+                until_not_find_all=[(_ASCEND_SCREEN, '标题-培养资源窗口')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('资源窗口已关,重入分类', wait=1)
             return result
         return self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
