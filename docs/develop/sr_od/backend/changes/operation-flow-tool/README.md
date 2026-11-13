@@ -7,7 +7,7 @@
 
 ## 进度
 
-- 迭代设计:对抗审中（两轮修订已吸收双报告必修项）
-- 设计对抗:进行中 · 报告=[attack-impl.md](attack-impl.md)（实现者走查）、[attack-root.md](attack-root.md)（无前提/规范/治本）
-- 落地:未开始
+- 迭代设计:定稿（双对抗报告必修项全吸收：attack-impl 3 条 / attack-root 3 条）
+- 设计对抗:收敛 · 报告=[attack-impl.md](attack-impl.md)、[attack-root.md](attack-root.md)
+- 落地:阶段 1/2 派工中（明细见 landing.md）
 - 正本更新:未开始
