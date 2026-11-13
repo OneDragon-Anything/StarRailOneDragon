@@ -1,3 +1,5 @@
+import os
+import tempfile
 import time
 import urllib.request
 from collections.abc import Callable
@@ -44,12 +46,21 @@ def download_file(download_url: str, save_file_path: str,
         if progress_callback is not None:
             progress_callback(progress, msg)
 
+    # 每次下载在目标目录生成独立的临时文件 避免并发/重入下载互相覆盖或误删
+    save_dir = os.path.dirname(save_file_path) or '.'
+    os.makedirs(save_dir, exist_ok=True)
+    temp_fd, temp_file_path = tempfile.mkstemp(
+        dir=save_dir, prefix=f'{os.path.basename(save_file_path)}.', suffix='.part'
+    )
+    os.close(temp_fd)
     try:
         msg = f"{gt('开始下载')} {download_url}"
         log.info(msg)
         if progress_callback is not None:
             progress_callback(0, msg)
-        _, __ = urllib.request.urlretrieve(download_url, save_file_path, log_download_progress)
+        # 先下载到临时文件 完成后再改名 避免取消/失败时留下不完整的文件被误判为已下载
+        _, __ = urllib.request.urlretrieve(download_url, temp_file_path, log_download_progress)
+        os.replace(temp_file_path, save_file_path)
         msg = f"{gt('下载完成')} {save_file_path}"
         log.info(msg)
         if progress_callback is not None:
@@ -67,6 +78,12 @@ def download_file(download_url: str, save_file_path: str,
             progress_callback(0, msg)
         log.error(msg, exc_info=True)
         return False
+    finally:
+        if os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+            except OSError:
+                log.warning(f'清理临时文件失败 {temp_file_path}')
 
 class DownloadCancelledError(Exception):
     pass
