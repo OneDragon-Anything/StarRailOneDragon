@@ -493,6 +493,15 @@ class UpgradeLightConeOp(SrOperation):
 
         次数设置注意:光锥确认框次数不记忆(重开恒 1,与角色晋阶线不同),
         现读+补偿式设置两种情况天然兼容。"""
+        screen = self.last_screenshot
+        # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
+        # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
+        # 分流:结果框在 = 刷取完成交返回分类;两弹窗都不在 = 刷取进行中慢询
+        # 等待;只有确认框在才执行次数设置与确认点击
+        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
+            return self.round_success(status='RESULT_OPEN', wait=1.5)
+        if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
+            return self.round_wait('刷取执行中,等结果框', wait=2)
         self._farm_rounds += 1
         set_result = self._set_farm_times(self.farm_times_per_round)
         if not set_result.is_success:
