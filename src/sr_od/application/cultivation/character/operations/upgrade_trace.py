@@ -54,7 +54,6 @@ _TRACE_SETTLE_SEC: float = 2.5
 _FARM_TRAILBLAZE_PER: int = 10
 _FARM_TICKET_PER: int = 3
 _FARM_POLL_SEC: float = 20.0
-_FARM_ROUNDS_MAX: int = 10
 
 
 class UpgradeTraceOp(SrOperation):
@@ -70,7 +69,8 @@ class UpgradeTraceOp(SrOperation):
     同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, target: str,
-                 fill_generic: bool = True, auto_farm: bool = False):
+                 fill_generic: bool = True, auto_farm: bool = False,
+                 farm_times_per_round: int = -1, farm_rounds_max: int = 1):
         """
         :param ctx: 上下文
         :param target: 目标技能名(普攻/战技/终结技/天赋/秘技)
@@ -79,12 +79,23 @@ class UpgradeTraceOp(SrOperation):
         :param auto_farm: 缺材料时自动「快速刷取」补材料(常规资源,
         独立先行,不依赖 fill_generic);刷取预算耗尽后若 fill_generic 也
         开启则转通用材料补全,两路均关则判停
+        :param farm_times_per_round: 每轮刷取次数,正数或 -1(拉满)。默认
+            -1,与光锥/角色线同构——⚠️ 实现待补:行迹快速刷取弹窗的连刷
+            次数当前由游戏自身控制,本参数已接收校验但逻辑未接入。
+        :param farm_rounds_max: 刷取轮数预算(耗尽转通用材料补全/判停)。
+            默认 1 轮,与光锥/角色线同构。
         """
         self.target: str = target.strip()
         if self.target not in _SKILL_NAMES:
             raise ValueError(f'未知技能名: {target}(可选: {"/".join(_SKILL_NAMES)})')
+        if farm_times_per_round == 0 or farm_times_per_round < -1:
+            raise ValueError(f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')
+        if farm_rounds_max < 1:
+            raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
         self.fill_generic: bool = fill_generic
         self.auto_farm: bool = auto_farm
+        self.farm_times_per_round: int = farm_times_per_round  #: 占位,见 docstring(实现待补)
+        self.farm_rounds_max: int = farm_rounds_max
         SrOperation.__init__(self, ctx, op_name=gt('行迹升级') + '-' + self.target,
                              node_max_retry_times=24)
         self._capped: bool = False
@@ -247,7 +258,7 @@ class UpgradeTraceOp(SrOperation):
             # 授权路由对齐光锥先例:auto_farm 独立先行(刷取是
             # 常规资源路线,不依赖 fill_generic),预算耗尽再转通用材料补全,
             # 均未授权才判停
-            if self.auto_farm and self._farm_rounds < _FARM_ROUNDS_MAX:
+            if self.auto_farm and self._farm_rounds < self.farm_rounds_max:
                 return self._farm_substep(screen)
             if self.fill_generic:
                 self.ctx.controller.click(
@@ -294,8 +305,8 @@ class UpgradeTraceOp(SrOperation):
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-关闭刷取结果').rect.center)
             return self.round_retry('刷取完成,关闭回面板', wait=2)
-        if self._farm_rounds >= _FARM_ROUNDS_MAX:
-            log.info('行迹升级: 快速刷取预算(%d 次)耗尽', _FARM_ROUNDS_MAX)
+        if self._farm_rounds >= self.farm_rounds_max:
+            log.info('行迹升级: 快速刷取预算(%d 轮)耗尽', self.farm_rounds_max)
             return None
         # 刷取确认弹窗不在场 = 面板态,点「快速刷取」开弹窗;弹窗在场(模态
         # 遮住面板锚)或都没命中 = 确认/连刷过渡,慢询等待

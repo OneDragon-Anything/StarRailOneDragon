@@ -90,7 +90,7 @@ class UpgradeCharacterOp(SrOperation):
 
     def __init__(self, ctx: SrContext, fill_generic: bool = True,
                  farm_dungeon: bool = False, use_fast_ticket: bool = True,
-                 farm_times_per_round: int = 1, farm_rounds_max: int = 10):
+                 farm_times_per_round: int = -1, farm_rounds_max: int = 1):
         """
         :param ctx: 上下文
         :param fill_generic: 缺料时是否用「使用通用材料补全」路线(消耗通用
@@ -107,10 +107,11 @@ class UpgradeCharacterOp(SrOperation):
             挑战自动战斗(耗时约 2 分钟/轮)。
         :param farm_times_per_round: 每轮刷取次数。正数 = 确认框内设置的固定
             次数(OCR 现读 + 点「+」设到目标;滑条上限随副本类型 8/24,超出
-            部分由游戏封顶);-1 = 点「^」拉满到当日次数上限(效率最高,但可能
-            过量刷取消耗多余开拓力)。越大循环轮次越少。
-        :param farm_rounds_max: 整个运行允许的刷取轮数上限(防无限烧预算;
-            耗尽判停收尾,调用方可续跑)。
+            部分由游戏封顶)。默认 -1 = 点「^」拉满——材料是共享库存,多余
+            可给其他角色或留未来用,用户裁定的默认策略。
+        :param farm_rounds_max: 整个运行允许的刷取轮数上限(耗尽判停收尾,
+            调用方可续跑)。默认 1 = 只刷一轮(拉满),回来不够即判停报告
+            ——多轮连刷的缺口应由调用方按剩余预算显式续跑。
         """
         if farm_times_per_round == 0 or farm_times_per_round < -1:
             raise ValueError(f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')

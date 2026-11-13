@@ -111,14 +111,16 @@ class UpgradeLightConeOp(SrOperation):
         副本内用快速刷取券免战斗直接领奖;False = 正常挑战自动战斗(每场
         约1分钟)。
     :param farm_times_per_round: 每轮确认框内设置的刷取次数(OCR 现读+点
-        「+」补偿,游戏封顶滑条上限24);-1 = 点「^」拉满(可能过量刷取消耗
-        多余开拓力)。
+        「+」补偿,游戏封顶滑条上限24)。默认 -1 = 点「^」拉满——材料是
+        共享库存,多余可给其他角色或留未来用,用户裁定的默认策略。
     :param farm_rounds_max: 整个运行允许的刷取轮数上限(耗尽判停,可续跑)。
+        默认 1 = 只刷一轮(拉满),回来不够即判停报告——多轮连刷的缺口应
+        由调用方按剩余预算显式续跑。
     """
 
     def __init__(self, ctx: SrContext, fill_generic: bool = True,
                  farm_dungeon: bool = False, use_fast_ticket: bool = True,
-                 farm_times_per_round: int = 1, farm_rounds_max: int = 10):
+                 farm_times_per_round: int = -1, farm_rounds_max: int = 1):
         """
         参数语义见类 docstring;此处仅做取值校验。
         """
@@ -274,8 +276,10 @@ class UpgradeLightConeOp(SrOperation):
         ④ 不在等级提升界面 → 光锥 TAB 判:强化在 = 重开界面;
         ⑤ 「已提升至最高阶」在 = 满级 → 判停收尾归档;
         ⑥ 「快速升级」执行钮命中(材料全齐) → 点执行;
-        ⑦ 「使用通用材料补全」命中(缺可合成材料) → fill_generic 点(弹窗交
-           ①下轮确认);未授权但 farm_dungeon 可用 → NEED_FARM 直接刷;
+        ⑦ 「使用通用材料补全」/「材料合成」命中(缺料两形态,点后均弹同款
+           确认框) → fill_generic 点(弹窗交①下轮确认);「通用材料补全」
+           形态未授权但 farm_dungeon 可用 → NEED_FARM 直接刷,「材料合成」
+           形态未授权直接判停(该形态快速刷取无效);
         ⑧ 无补全钮 → farm_dungeon 可用且「快速刷取」钮在 = 缺可刷材料 →
            NEED_FARM;否则判停(经验书足+晋阶不可刷/不可合成的常见形态)。
         异常形态由节点重试预算兜底耗尽显式失败。"""
@@ -355,7 +359,12 @@ class UpgradeLightConeOp(SrOperation):
 
         farm_budget_left = self.farm_dungeon and self._farm_rounds < self.farm_rounds_max
 
-        # ⑦ 缺可合成材料:「使用通用材料补全」在场
+        # ⑦ 缺料态执行钮:「使用通用材料补全」(通用可覆盖缺口,消耗通用
+        # 材料) /「材料合成」(不需通用材料的合成:原始材料满足或通用材料
+        # 不够)——两者点击均弹同款「材料补全」确认框,fill_generic 路线
+        # 处理一致;fill_generic=False 时「材料合成」形态直接判停——该
+        # 形态下快速刷取静默无效(游戏判定缺口已被合成覆盖,实机实证:
+        # 资源窗口打不开),走刷取链只会空烧重试预算
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-通用材料补全').is_success:
             if self.fill_generic:
                 self.ctx.controller.click(
@@ -367,6 +376,17 @@ class UpgradeLightConeOp(SrOperation):
             self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             log.info('光锥晋阶: 缺料且 fill_generic/farm_dungeon 均未授权,判停于等级 %s',
                      self._capped_level)
+            return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
+
+        if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-材料合成').is_success:
+            if self.fill_generic:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-材料合成').rect.center)
+                return self.round_retry('已点材料合成,等确认弹窗', wait=1.5)
+            self._capped = True
+            self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
+            log.info('光锥晋阶: 材料合成形态(快速刷取无效)且 fill_generic 未授权,'
+                     '判停于等级 %s', self._capped_level)
             return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
 
         # ⑧ 无补全钮:仅剩刷取路线(缺可刷材料时「快速刷取」钮在场)
