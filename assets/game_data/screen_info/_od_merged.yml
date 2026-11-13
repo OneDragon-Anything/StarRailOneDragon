@@ -10519,12 +10519,12 @@
   pc_alt: true
   area_list:
   - area_name: 右上图标-角色详情
-    id_mark: true
+    id_mark: false
     pc_rect:
     - 1800
     - 0
     - 1900
-    - 90
+    - 100
     text: ''
     lcs_percent: 0.5
     template_sub_dir: normal_world
