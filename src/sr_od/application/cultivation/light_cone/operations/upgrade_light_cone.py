@@ -92,11 +92,12 @@ class UpgradeLightConeOp(SrOperation):
     当前等级,日志注明等级与消耗)。
 
     ⚠️ fill_generic=True 消耗通用材料(合成命途专属晋阶材料);⚠️
-    farm_dungeon=True 真实刷副本:**总消耗上限 = farm_rounds_max ×
-    farm_times_per_round ×(开拓力 10 + 快速刷取券 1)**,use_fast_ticket=
-    True 时以券抵扣开拓力(券不可自然恢复)。开拓力不足部分由游戏自动以
-    备用开拓力抵扣,备用亦尽时游戏弹「开拓力补充」弹窗,本 op 不处理、
-    预算内轮次失败判停。**发起前调用方必须按最坏消耗向用户说明并获同意**。
+    farm_dungeon=True 真实刷副本:券路线(use_fast_ticket=True)消耗 =
+    券刷次数合计 × 券 1(不耗开拓力);手动路线消耗 = 手动场数 × 开拓力
+    10(不耗券)。farm_rounds_max 限制刷取轮数(券轮=一次确认框执行、手动
+    轮=一场战斗)。开拓力不足部分由游戏自动以备用开拓力抵扣,备用亦尽时
+    游戏弹「开拓力补充」弹窗,本 op 不处理、预算内轮次失败判停。**发起前
+    调用方必须按最坏消耗向用户说明并获同意**。
 
     :param ctx: 上下文
     :param fill_generic: 缺料时用「使用通用材料补全」路线(通用材料合成
@@ -137,7 +138,10 @@ class UpgradeLightConeOp(SrOperation):
         self._char_name: str | None = None  #: 入口记下的角色名(手动刷取回大世界后重选用)
         self._capped: bool = False          #: 材料不足已判停(回光锥 TAB 收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
-        self._farm_rounds: int = 0          #: 已执行的刷取轮数(消耗统计)
+        self._farm_rounds: int = 0          #: 已执行的刷取轮数(预算控制;券轮=1次确认框,手动轮=1场)
+        self._farm_draws: int = 0           #: 券刷累计次数(券消耗;确认框实际设到的次数)
+        self._manual_fights: int = 0        #: 手动战斗场数(开拓力消耗)
+        self._farm_times_set: int = 0       #: 本轮确认框实际设到的次数(_set_farm_times 写入)
         self._upgrade_count: int = 0        #: 升级执行次数(日志统计)
         if farm_dungeon:
             log.info('光锥晋阶: farm_dungeon 已启用——缺可刷材料将刷副本,路线=%s,'
@@ -190,7 +194,9 @@ class UpgradeLightConeOp(SrOperation):
         名(手动刷取返回链用)。
 
         列表浮层开着会遮挡强化按钮,识别浮层态显式失败提示先收列表;现场已在
-        等级提升(如上次运行中断/弹窗浮层)时直入升级循环接管。"""
+        等级提升(如上次运行中断/弹窗浮层)时直入升级循环接管。手动刷取链
+        (farm_dungeon + 非 use_fast_ticket)授权时读名失败 = 消耗前判停——
+        返回链需凭记名重选角色,打完一场才发现无名会白烧开拓力。"""
         current = self.check_and_update_current_screen(
             self.last_screenshot,
             screen_name_list=[_LC_TAB_SCREEN, _LC_ASCEND_SCREEN, _CHALLENGE_SCREEN,
@@ -225,6 +231,12 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_fail(f'不在光锥 TAB(当前画面判定: {current};'
                                    f'前置:进详情 + 选角色 + 切「光锥」页签)')
         self._char_name = self._read_character_name()
+        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
+            # 手动链返回后需凭记名重选角色(角色详情不记忆上次角色),读不到
+            # 就在消耗前拦住——等打完一场再失败会白烧 1 场开拓力
+            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
+                                   '左上读名区 OCR 未读到——请实机确认画面,'
+                                   '或改用券路线(use_fast_ticket=True)')
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN) == FindAreaResultEnum.TRUE:
             return self.round_success(status='CAN_UPGRADE')
@@ -250,17 +262,20 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='重走入口链', status='FARMED')
     @operation_node(name='升级循环', node_max_retry_times=40)
     def upgrade_loop(self) -> OperationRoundResult:
-        """flat loop:补全弹窗 → 判停收尾 → 界面重开 → 满级判 → 按钮分流。
+        """flat loop:补全弹窗 → 横幅浮层 → 判停收尾 → 界面重开 → 满级判 →
+        按钮分流。
 
         每轮分类(优先级):
         ① 「材料补全」确认弹窗在 → fill_generic 确认继续 / 未授权取消判停;
-        ② 已判停(_capped) → 关 X 回光锥 TAB,到了就 LIGHT_CONE_CAPPED 成功;
-        ③ 不在等级提升界面 → 光锥 TAB 判:强化在 = 重开界面;
-        ④ 「已提升至最高阶」在 = 满级 → 判停收尾归档;
-        ⑤ 「快速升级」执行钮命中(材料全齐) → 点执行;
-        ⑥ 「使用通用材料补全」命中(缺可合成材料) → fill_generic 点(弹窗交
+        ② 晋阶横幅/材料返还页(全屏浮层)在 → 点空白关闭——必须先于界面
+           重开判定:浮层盖住等级提升锚,后置会被④误判过渡帧空转到预算耗尽;
+        ③ 已判停(_capped) → 关 X 回光锥 TAB,到了就 LIGHT_CONE_CAPPED 成功;
+        ④ 不在等级提升界面 → 光锥 TAB 判:强化在 = 重开界面;
+        ⑤ 「已提升至最高阶」在 = 满级 → 判停收尾归档;
+        ⑥ 「快速升级」执行钮命中(材料全齐) → 点执行;
+        ⑦ 「使用通用材料补全」命中(缺可合成材料) → fill_generic 点(弹窗交
            ①下轮确认);未授权但 farm_dungeon 可用 → NEED_FARM 直接刷;
-        ⑦ 无补全钮 → farm_dungeon 可用且「快速刷取」钮在 = 缺可刷材料 →
+        ⑧ 无补全钮 → farm_dungeon 可用且「快速刷取」钮在 = 缺可刷材料 →
            NEED_FARM;否则判停(经验书足+晋阶不可刷/不可合成的常见形态)。
         异常形态由节点重试预算兜底耗尽显式失败。"""
         screen = self.last_screenshot
@@ -278,14 +293,22 @@ class UpgradeLightConeOp(SrOperation):
             self._capped_level = self._read_lc_level()
             return self.round_retry('取消材料补全,返回收尾', wait=1.5)
 
-        # ② 已判停 → 关 X 回光锥 TAB → 到了就结束
+        # ② 晋阶横幅/材料返还页(升满/晋阶成功时先后出现的全屏浮层,点击
+        # 空白处关闭;实测顺序:晋阶横幅 → 材料返还 → 回等级提升)
+        for banner in ((_LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅'),
+                       (_LC_RETURN_SCREEN, '标题-材料返还')):
+            if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
+                self.ctx.controller.click(Point(960, 120))
+                return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
+
+        # ③ 已判停 → 关 X 回光锥 TAB → 到了就结束
         if self._capped:
             if self.round_by_find_area(screen, _LC_TAB_SCREEN, '标题-角色光锥').is_success:
                 log.info('光锥晋阶: 收尾,当前光锥等级 %s,升级 %d 次/刷取 %d 轮'
-                         '(消耗开拓力 %d + 券 %d)',
+                         '(券刷 %d 次耗券 %d,手动 %d 场耗开拓力 %d)',
                          self._capped_level, self._upgrade_count, self._farm_rounds,
-                         self._farm_rounds * self.farm_times_per_round * _LC_FARM_TRAILBLAZE_PER,
-                         self._farm_rounds * self.farm_times_per_round * _LC_FARM_TICKET_PER)
+                         self._farm_draws, self._farm_draws * _LC_FARM_TICKET_PER,
+                         self._manual_fights, self._manual_fights * _LC_FARM_TRAILBLAZE_PER)
                 return self.round_success(status='LIGHT_CONE_CAPPED', wait=1.5)
             result = self.round_by_find_and_click_area(
                 screen, _LC_ASCEND_SCREEN, '按钮-关闭X',
@@ -296,7 +319,7 @@ class UpgradeLightConeOp(SrOperation):
                 return self.round_retry('返回光锥页,重入收尾', wait=1.5)
             return result
 
-        # ③ 界面重开(打开前/收尾途中不在等级提升)
+        # ④ 界面重开(打开前/收尾途中不在等级提升)
         if not self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '标题-光锥详情').is_success:
             if self.round_by_find_area(screen, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN).is_success:
                 result = self.round_by_find_and_click_area(
@@ -314,22 +337,14 @@ class UpgradeLightConeOp(SrOperation):
             # (真异常由节点重试预算兜底耗尽显式失败)
             return self.round_retry('界面过渡中,等稳定重判', wait=2.0)
 
-        # ④ 满级态:右下「已提升至最高阶」→ 判停收尾归档
+        # ⑤ 满级态:右下「已提升至最高阶」→ 判停收尾归档
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '文本-已提升至最高阶').is_success:
             self._capped = True
             self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             log.info('光锥晋阶: 光锥已满级(已提升至最高阶,等级 %s)', self._capped_level)
             return self.round_retry('满级,关闭回光锥页收尾', wait=1)
 
-        # ④b 晋阶横幅/材料返还页(升满/晋阶成功时先后出现的全屏浮层,点击
-        # 空白处关闭;实测顺序:晋阶横幅 → 材料返还 → 回等级提升)
-        for banner in ((_LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅'),
-                       (_LC_RETURN_SCREEN, '标题-材料返还')):
-            if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
-                self.ctx.controller.click(Point(960, 120))
-                return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
-
-        # ⑤ 材料全齐:白底「快速升级」执行钮(与⑥同位不同文,OCR 天然互斥)
+        # ⑥ 材料全齐:白底「快速升级」执行钮(与⑦同位不同文,OCR 天然互斥)
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-快速升级').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_LC_ASCEND_SCREEN, '按钮-快速升级').rect.center)
@@ -339,7 +354,7 @@ class UpgradeLightConeOp(SrOperation):
 
         farm_budget_left = self.farm_dungeon and self._farm_rounds < self.farm_rounds_max
 
-        # ⑥ 缺可合成材料:「使用通用材料补全」在场
+        # ⑦ 缺可合成材料:「使用通用材料补全」在场
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '按钮-通用材料补全').is_success:
             if self.fill_generic:
                 self.ctx.controller.click(
@@ -353,12 +368,12 @@ class UpgradeLightConeOp(SrOperation):
                      self._capped_level)
             return self.round_retry('材料不足,关闭回光锥页收尾', wait=1)
 
-        # ⑦ 无补全钮:仅剩刷取路线(缺可刷材料时「快速刷取」钮在场)
+        # ⑧ 无补全钮:仅剩刷取路线(缺可刷材料时「快速刷取」钮在场)
         if farm_budget_left and self.round_by_find_area(
                 screen, _LC_ASCEND_SCREEN, '按钮-快速刷取').is_success:
             return self.round_success(status='NEED_FARM')
 
-        # ⑧ 判停:补全钮不在(缺不可合成料)+未授权刷取,或刷取钮不在(无可刷缺口)
+        # ⑨ 判停:补全钮不在(缺不可合成料)+未授权刷取,或刷取钮不在(无可刷缺口)
         self._capped = True
         self._capped_level = self._read_lc_level(_LC_ASCEND_SCREEN)
         log.info('光锥晋阶: 无可推进路径(缺不可刷材料或未授权),判停于等级 %s', self._capped_level)
@@ -410,6 +425,14 @@ class UpgradeLightConeOp(SrOperation):
             if result.is_success:
                 return self.round_success(status='USE_TICKET')
             return result
+        # 副本态锚(「拟造花萼」标题)在场才点挑战;否则(编队态/战斗态/结算态)
+        # 直接交手动战斗节点分类——⚠️「挑战按钮」area 的 rect/text 与编队画面
+        # 「开始挑战」坐标巧合重叠,无副本态前置判定会在编队画面误点开新战斗
+        # (实测 23 场事故,星琼被自动购开拓力)。边界:锚只覆盖拟造花萼类副本,
+        # 其他副本类型(侵蚀之隧等)实机遇到时补建档再泛化。
+        if not self.round_by_find_area(
+                screen, _CHALLENGE_SCREEN, '标题-拟造花萼').is_success:
+            return self.round_success(status='MANUAL_FIGHT')
         result = self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '挑战按钮',
             until_find_all=[(_CHALLENGE_SCREEN, '按钮-开始编队挑战')],
@@ -432,13 +455,10 @@ class UpgradeLightConeOp(SrOperation):
         set_result = self._set_farm_times(self.farm_times_per_round)
         if not set_result.is_success:
             return set_result
-        log.info('光锥晋阶: 第 %d 轮券刷取 %s 次(消耗开拓力 %d×%s + 券 %d×%s)',
-                 self._farm_rounds,
-                 '拉满' if self.farm_times_per_round == -1 else str(self.farm_times_per_round),
-                 _LC_FARM_TRAILBLAZE_PER,
-                 '上限' if self.farm_times_per_round == -1 else str(self.farm_times_per_round),
-                 _LC_FARM_TICKET_PER,
-                 '上限' if self.farm_times_per_round == -1 else str(self.farm_times_per_round))
+        self._farm_draws += self._farm_times_set
+        log.info('光锥晋阶: 第 %d 轮券刷取 %d 次(消耗券 %d,券免战斗不耗开拓力)',
+                 self._farm_rounds, self._farm_times_set,
+                 self._farm_draws * _LC_FARM_TICKET_PER)
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _CHALLENGE_SCREEN, '按钮-确认快速刷取',
@@ -460,6 +480,7 @@ class UpgradeLightConeOp(SrOperation):
                 current = self._read_farm_times()
             if current is None:
                 return self.round_fail('拉满后无法读取刷取次数')
+            self._farm_times_set = current
             log.info('光锥晋阶: 刷取次数已拉满至 %d', current)
             return self.round_success()
         plus_area = self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-刷取次数加')
@@ -468,6 +489,7 @@ class UpgradeLightConeOp(SrOperation):
             if current is None:
                 return self.round_fail('无法读取确认框刷取次数')
             if current >= target:
+                self._farm_times_set = current
                 return self.round_success()
             self.ctx.controller.click(plus_area.rect.center)
             time.sleep(0.4)  # 滑条动画
@@ -488,26 +510,31 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='副本刷取分流', status='MANUAL_FIGHT')
     @operation_node(name='手动挑战战斗', node_max_retry_times=30)
     def manual_fight(self) -> OperationRoundResult:
-        """编队画面开始挑战 → 自动战斗(until 重试慢询覆盖) → 结算点
-        「退出关卡」回副本画面。⚠️ 进入战斗会卸载浮层栈,退出后的副本画面
-        为重建态——back_after_farm 据此分流回大世界重走入口链。"""
-        if self.round_by_find_area(self.last_screenshot,
-                                   _CHALLENGE_SCREEN, '按钮-开始编队挑战').is_success:
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-开始编队挑战').rect.center)
-            self._farm_rounds += 1
-            log.info('光锥晋阶: 第 %d 场手动刷取开始(消耗开拓力 %d)',
-                     self._farm_rounds, _LC_FARM_TRAILBLAZE_PER)
-            return self.round_retry('战斗进行中', wait=_LC_FIGHT_POLL_SEC)
+        """编队态确认并点开始挑战;战斗/结算/退出交回返回分类(结算分支点
+        「退出关卡」)。⚠️ 编队态判定必须双锚:「队伍标题」在 + 「拟造花萼」
+        标题(副本态锚)不在——「开始编队挑战」area 的 rect/text 与副本态
+        「挑战按钮」坐标巧合重叠,单 area 判定会在副本画面误命中导致无限
+        开战(实测 23 场事故,星琼被自动购开拓力)。"""
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(
-            screen, _BATTLE_SCREEN, '按钮-退出关卡',
-            until_find_all=[(_CHALLENGE_SCREEN, '挑战按钮')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
+        in_team = self.round_by_find_area(
+            screen, _CHALLENGE_SCREEN, '队伍标题').is_success
+        in_dungeon = self.round_by_find_area(
+            screen, _CHALLENGE_SCREEN, '标题-拟造花萼').is_success
+        if not (in_team and not in_dungeon):
+            # 非编队态(战斗中/结算/副本画面):交回返回分类收口
+            log.info('光锥晋阶: 已离开编队画面(战斗/结算态),交返回分类')
+            return self.round_success(status='BATTLE_DONE', wait=2)
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-开始编队挑战').rect.center)
+        self._farm_rounds += 1
+        self._manual_fights += 1
+        log.info('光锥晋阶: 第 %d 场手动刷取开始(消耗开拓力 %d)',
+                 self._manual_fights, _LC_FARM_TRAILBLAZE_PER)
+        return self.round_retry('战斗进行中', wait=_LC_FIGHT_POLL_SEC)
 
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
+    @node_from(from_name='手动挑战战斗', status='BATTLE_DONE')
     @node_from(from_name='入口核对', status='IN_CHALLENGE')
     @operation_node(name='刷取返回分类', node_max_retry_times=30)
     def back_after_farm(self) -> OperationRoundResult:
@@ -578,9 +605,14 @@ class UpgradeLightConeOp(SrOperation):
         """手动刷取返回链收口:副本关闭落到大世界/角色页(浮层栈已卸载),
         重走 光锥TAB 入口链回等级提升。
 
-        步骤:大世界点右上角色图标 → 详情(不记忆上次角色,需重选) →
-        SelectCharacterOp(入口记下的角色名) → 切光锥 TAB → 点强化 →
-        until 等级提升 → FARMED 交回升级循环。"""
+        步骤:大世界点右上角色图标 → 详情 → SelectCharacterOp(入口记下的
+        角色名) → 切光锥 TAB → 点强化 → until 等级提升 → FARMED 交回升级
+        循环。
+
+        防升错防线:无入口记名时不得接管——角色详情不记忆上次角色(显示
+        列表首位)、光锥 TAB 归属不可凭画面确认,显式失败让调用方从目标
+        角色的光锥 TAB 重新发起;落在光锥 TAB 时有记名还须读名区一致才
+        接管点强化。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '标题-光锥详情').is_success:
             log.info('光锥晋阶: 已回到等级提升,重入升级循环')
@@ -597,21 +629,40 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_retry('已点角色详情图标,等详情页', wait=2)
         if current == _LC_TAB_SCREEN:
             # ⚠️ 角色页记忆的位置不一定是目标角色(实测记忆的是最近战斗编队
-            # 首位,非中断前的目标角色)——无记名时不可盲点强化,否则会升错人
-            # 的光锥;显式失败让调用方从目标角色的光锥 TAB 重新发起(入口会
-            # 读名建立校验)
-            return self.round_fail('落在光锥 TAB 但无入口角色名可校验,'
-                                   '为防升错光锥放弃接管——请从目标角色的光锥 TAB 重新发起')
+            # 首位,非中断前的目标角色)——落在光锥 TAB 时须校验:有记名且
+            # 读名区读出的角色一致才接管点强化,否则不可盲点强化,否则会升错
+            # 人的光锥
+            if self._char_name is not None:
+                seen = self._read_character_name()
+                if seen == self._char_name:
+                    result = self.round_by_find_and_click_area(
+                        self.last_screenshot, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
+                        until_find_all=[
+                            (_LC_ASCEND_SCREEN, '标题-光锥详情'),
+                            (_LC_ASCEND_SCREEN, 'TAB-升级'),
+                        ],
+                        pre_delay=0.5, success_wait=1.5, retry_wait=2,
+                    )
+                    if result.is_success:
+                        return self.round_success(status='FARMED', wait=1)
+                    return result
+            return self.round_fail('落在光锥 TAB 但无法确认是目标角色的光锥'
+                                   '(入口未记名或读名不一致),为防升错放弃接管'
+                                   '——请从目标角色的光锥 TAB 重新发起')
         if current != _DETAIL_SCREEN:
             return self.round_retry(f'入口链中画面未识别(判定: {current}),等稳定重判', wait=1.5)
 
-        # 已在详情页:有入口记名则重选;无记名(大世界现场直接开跑)直接切 TAB——
-        # 中断场景详情页显示的就是上次浏览的目标角色,边界已在 docstring 声明
-        if self._char_name is not None:
-            select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
-            select_result = select_op.execute()
-            if not select_result.success:
-                return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')
+        # 已在详情页:有入口记名才重选——⚠️角色详情不记忆上次角色(显示列表
+        # 首位),无记名时切 TAB 升的是谁不可知,显式失败防升错(实测角色页
+        # 记忆≠目标角色的反例见上方 LC_TAB 分支注释)
+        if self._char_name is None:
+            return self.round_fail('落在角色详情但入口未读到角色名,无法安全重选'
+                                   '(角色详情显示的是列表首位而非上次浏览角色)'
+                                   '——请从目标角色的光锥 TAB 重新发起')
+        select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+        select_result = select_op.execute()
+        if not select_result.success:
+            return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')
         tab_op = SwitchCharacterTabOp(self.ctx, tab_name='光锥')
         tab_result = tab_op.execute()
         if not tab_result.success:
