@@ -196,12 +196,14 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_fail(f'{current} 浮层开着(遮挡态):先收列表'
                                    f'(替换列表点右上返回箭头)')
         if current is None:
-            # 浮层帧(如材料补全弹窗开启)整帧画面识别失败(背景暗化连左上锚
-            # OCR 也不稳):直查弹窗自身锚,命中即接管交升级循环确认
-            if screen_utils.find_area(
-                    self.ctx, self.last_screenshot,
-                    _LC_ASCEND_SCREEN, '标题-材料补全弹窗') == FindAreaResultEnum.TRUE:
-                return self.round_success(status='ALREADY_ASCEND')
+            # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
+            # 自身锚;升级动画过渡帧查等级提升左上锚(锚命中即接管交升级循环,
+            # 循环首查会重新分类当前态)
+            for anchor in ('标题-材料补全弹窗', '标题-光锥详情'):
+                if screen_utils.find_area(
+                        self.ctx, self.last_screenshot,
+                        _LC_ASCEND_SCREEN, anchor) == FindAreaResultEnum.TRUE:
+                    return self.round_success(status='ALREADY_ASCEND')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
             return self.round_success(status='ALREADY_ASCEND')
