@@ -52,7 +52,7 @@
 2. **边**：函数带 `operation_edge_annotation`（`OperationEdgeDesc` 列表）→ 每条 desc 一条边；**to 节点 = 该边注解所在方法自己的节点**（恒可解析——运行时 `edge.node_to_name` 也是这么填充的，L252；静态不读 `node_to_name` 字段，它可能被历史运行实例污染）。断名边的悬空字段是 **from**：`edges[]` 中 `from=None`。
 3. **from 节点**：按 `desc.node_from_name` 匹配节点映射（同名归属见第 1 条）；匹配不到 = 诊断 `missing_node`（运行时 L258 同样 raise）。
 4. **边属性**：`success` / `status` 直接读 desc 字段；**`ignore_status` 必须静态归一**——`OperationEdgeDesc.__init__` 是裸赋值（operation_edge.py L61），归一发生在运行时 `OperationEdge.__init__`（L36：`False if status is not None else ignore_status`）；且 `node_from` 装饰器的 `ignore_status` 默认 True，读原值会把所有 status 边误标兜底、令 `duplicate_fallback_edge` 对健康 op 误报。静态归一 = 镜像 `OperationEdge` 构造语义：`ignore_status = False if status is not None else desc.ignore_status`。
-5. **起点判定**（镜像 L242-L315）：显式 `is_start_node=True` 优先——**同名双显式起点不报 `multiple_start`**（运行时 L243 `start_node.cn != node.cn` 条件放过，最终由重复名校验兜住）；不同名显式多起点 → `multiple_start`。无显式起点时按**业务边入度 0** 自动判定（入度不含断名边——它没有 from 节点，不构成可达路径；运行时该场景先炸 `missing_node`，静态口径只需自洽不误导）；自动判定出多个 → `multiple_start`；零起点 → `no_start`。
+5. **起点判定**（镜像 L242-L315）：显式 `is_start_node=True` 优先——**同名双显式起点不报 `multiple_start`**（运行时 L243 `start_node.cn != node.cn` 条件放过，最终由重复名校验兜住）；不同名显式多起点 → `multiple_start`。无显式起点时按**业务边入度 0** 自动判定（入度不含断名边——它没有 from 节点，不构成可达路径；运行时该场景先炸 `missing_node`，静态口径只需自洽不误导）；自动判定出多个 → `multiple_start`；零起点 → `no_start`。**零节点类豁免**：类没有任何节点注解时不做起点判定、零诊断、`start_node=None`——零节点中间基类（如 `CwOperation`，被扫描清单收录但从不单独运行，节点由子类提供）空图上 `no_start` 是噪音而非编排错误，且会让全量回归基线（§2.7 第 5 条）永远红。
 6. **遍历序**：`getmembers` 按名称字母序 + 方法内装饰器自下而上追加序——与运行时 edge_list 构建序一致，用于 §2.4.4 兜底边诊断判定「哪条生效」。
 
 ### 2.3 工具契约
@@ -115,7 +115,7 @@ describe_operation_flow(op_id: str, mermaid: bool = False) -> dict
 选择次数 (method=choose_times) [终点]
 ```
 
-- **边标注**：`success` → `(成功)` / `(失败)`；`status` 非空追加 `·status=<值>`；归一后 `ignore_status=True` 追加 `·兜底`。
+- **边标注**：方向段 `(成功)` / `(失败)`；修饰段二选一——`·status=<值>`（status 非空时）或 `·兜底`（归一后 `ignore_status=True` 时，此时 status 恒 None，二者互斥）；形态如 `(兜底·成功)` / `(成功·status=xxx)`。
 - **节点标注**：起点 `[起点]`；无出边 `[终点]`；不可达 `[不可达]`（垫底区）。
 - **入边来源标注 `←入:`**：入边 ≥2 的节点在头部行尾列出全部来源节点名（去重）——多入口汇聚点是最容易乱的地方，反向追踪不用全文搜；单入边不标（顺着上一块自然可见）。断名边**不进 `←入:` 计数**，单独以 `←✗不存在的来源「from名」(条件)` 呈现在同一位置——断名边挂在 **to 节点**侧（它没有 from 块可挂靠，且事故语义是「这个节点的某条入路断了」）。
 - **终点语义**一次进 `notes`（「无出边节点：返回成功即整个 op 成功、返回失败即整个 op 失败」），不在每个终点节点上重复。
