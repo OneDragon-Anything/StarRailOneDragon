@@ -1,6 +1,6 @@
 # 知识档模板（维护者文档）
 
-> 各层知识档的标准结构与填写规范。方法论与经验教训见 [methodology.md](methodology.md)；调研状态对账见 [research-status.md](research-status.md)。
+> 各层知识档的标准结构与填写规范。方法论与经验教训见 [methodology.md](methodology.md)；调研状态对账属维护进度记录不进 git，存巡检工作区（位置见 [../references/maintenance/patrol.md](../references/maintenance/patrol.md)）。
 
 ## 公共红线（所有档）
 

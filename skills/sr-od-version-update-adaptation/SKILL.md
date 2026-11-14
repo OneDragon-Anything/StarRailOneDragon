@@ -10,7 +10,7 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 ## 总流程(必做 checklist)
 
 1. ☐ 确认游戏客户端已是新版本且能进大世界——判据:游戏窗口有效、能截到画面(项目 MCP 的 check_game_window / analyze_screen)。已更到新版本则直接过;没更按 od-mihoyo-launcher 更新;客户端本身有问题先修客户端,别开始适配【必做】
-2. ☐ 清点本版本新内容,列适配项清单——来源:官方版本公告、官方维基(接口打法见 sr-od-dev-official-api)、当期卡池(接口见 sr-od-dev-official-api 的 gacha.md)。清点维度逐项列:新角色、新光锥、新遗器套装、新地图区域、新副本、新玩法、既有玩法机制改动、攻略知识(新角色实装调研/上版本角色盖棺复核)。与用户对齐本次跟哪些(用户已明示范围则直接用)【必做】
+2. ☐ 清点本版本新内容,列适配项清单——来源:官方版本公告、官方维基(接口打法见 sr-od-dev-official-api)、当期卡池(接口见 sr-od-dev-official-api 的 gacha.md)。清点维度逐项列:新角色、新光锥、新遗器套装、新地图区域、新副本、新玩法、既有玩法机制改动、攻略知识(新角色实装调研/上版本角色盖棺复核登记)。与用户对齐本次跟哪些(用户已明示范围则直接用)【必做】
 3. ☐ 逐项适配——已建档项按「适配项路由」进对应方法文档;未建档项按「未建档适配项」先补档再实施;顺序:「地图区域信息更新」「副本数据更新」先于「新角色数据录入」(角色晋阶材料的刷取副本 join 以地图信息注册表为锚);「攻略知识更新」最后做(依赖角色/光锥/遗器数据已录入且 MCP 可查,攻略调研需要官方文本打底);「大地图录制」不阻塞流程——适配收尾时登记待录清单,提醒「大世界探索完成后录制大地图」【必做】
 4. ☐ 汇总验证——判据:每个改过的 .py 过 ruff check(只对本文件);测试影响面在 sr-od-test 里搜改动的常量名 / 文件名,有命中就跑、无命中记「无受影响测试」;实机冒烟前重启项目 MCP server(server 进程缓存已加载代码与常量,不重启测的是旧逻辑);本机游戏可登录时实机冒烟一轮受影响玩法【必做】
 5. ☐ 按适配项分阶段提交,git add 逐文件点名【必做】
@@ -24,7 +24,7 @@ description: 游戏版本更新后,要给本项目(星穹铁道一条龙)做适�
 | 新角色数据录入 | 已建档 | `references/character-data-entry.md` |
 | 光锥数据(新实装/词条改动) | 已建档 | `sr-od-dev-cone-data` skill 的总流程 checklist |
 | 遗器套装数据(新实装/效果改动) | 已建档 | `sr-od-dev-relic-data` skill 的总流程 checklist |
-| 攻略知识更新(game-coach 角色说明/配队说明/抽卡建议) | 已建档 | `references/game-coach-knowledge-update.md`(调研与入档方法论在 game-coach 的 maintenance/) |
+| 攻略知识更新(game-coach 角色说明/配队说明/抽卡建议) | 已建档 | `references/game-coach-knowledge-update.md`(调研与入档方法论在 game-coach 的 maintenance/;版本更新日只做硬事件+登记复核条目,持续演进复核归 game-coach 的常态化巡检 patrol.md) |
 | 货币战争(CW)玩法适配 | 已建档(归 CW skill) | `sr-od-dev-currency-war` skill 的 `references/version-update.md` |
 | 大地图录制 | 缓录(不阻塞流程) | `sr-od-dev-map-data` skill 的 `references/large-map-record.md` |
 
