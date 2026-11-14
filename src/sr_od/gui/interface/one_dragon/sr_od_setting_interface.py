@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QWidget,
 )
-from qfluentwidgets import FluentIcon, SettingCardGroup
+from qfluentwidgets import FluentIcon, SettingCardGroup, isDarkTheme
 
 from one_dragon.base.operation.application import application_const
 from one_dragon.utils.i18_utils import gt
@@ -36,19 +36,33 @@ class ExchangeOrderCard(MultiLineSettingCard):
     读取(缺失补尾/未知剔除/去重),拖拽只写显式顺序。
     """
 
-    _PILL_QSS = '''
+    _PILL_QSS_DARK = '''
     QListWidget { background: transparent; outline: none; }
     QListWidget::item {
         background: rgba(255, 255, 255, 0.14);
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 10px;
-        padding: 8px 16px;
+        padding: 3px 14px;
         margin: 0px 5px;
-        color: white;
-        font-size: 14px;
+        color: #f5f5f5;
+        font-size: 13px;
     }
-    QListWidget::item:hover { background: rgba(255, 255, 255, 0.22); }
+    QListWidget::item:hover { background: rgba(255, 255, 255, 0.24); }
     QListWidget::item:selected { background: rgba(255, 255, 255, 0.10); }
+    '''
+    _PILL_QSS_LIGHT = '''
+    QListWidget { background: transparent; outline: none; }
+    QListWidget::item {
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 10px;
+        padding: 3px 14px;
+        margin: 0px 5px;
+        color: #1f1f1f;
+        font-size: 13px;
+    }
+    QListWidget::item:hover { background: rgba(0, 0, 0, 0.10); }
+    QListWidget::item:selected { background: rgba(0, 0, 0, 0.04); }
     '''
 
     def __init__(self, config):
@@ -65,9 +79,10 @@ class ExchangeOrderCard(MultiLineSettingCard):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._list.setFixedHeight(52)
+        self._list.setFixedHeight(36)
         self._list.setMinimumWidth(360)
-        self._list.setStyleSheet(self._PILL_QSS)
+        self._list.setStyleSheet(
+            self._PILL_QSS_DARK if isDarkTheme() else self._PILL_QSS_LIGHT)
         self._list.model().rowsMoved.connect(self._on_reordered)
         self._reload(config.exchange_order)
 
@@ -78,9 +93,8 @@ class ExchangeOrderCard(MultiLineSettingCard):
             content=gt('拖动交换位置;仅余额不够换满时有意义(先到先得)'),
             line_list=[[self._list]],
         )
-        # 单行卡默认 60px(内容区仅 ~28px),装不下 52px 的 pill 列表会溢出
-        # 把卡撑开——显式加高(16 顶边距 + 52 列表 + 20 底部呼吸 = 88)
-        self.setFixedHeight(88)
+        # 不加高:与其他设置卡保持一致的 60px 标准单行高
+        # (pill 压缩到 36px,塞进 60px 卡的内容区;主题色经 isDarkTheme 取)
 
     def _reload(self, order: list[str]) -> None:
         """按顺序清单重建条目(构造与拖动落位后的序号重排共用)。"""
