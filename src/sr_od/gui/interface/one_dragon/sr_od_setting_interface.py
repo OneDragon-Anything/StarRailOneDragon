@@ -41,10 +41,7 @@ class ExchangeOrderCard(MultiLineSettingCard):
         强调色左条做顺序标记与 hover 反馈;强调色随用户主题色(qconfig),
         浅深主题两套中性文字色。"""
         accent = qconfig.themeColor.value
-        if isDarkTheme():
-            text = '#f5f5f5'
-        else:
-            text = '#1f1f1f'
+        text = '#f5f5f5' if isDarkTheme() else '#1f1f1f'
         return f'''
         QListWidget {{ background: transparent; outline: none; }}
         QListWidget::item {{
