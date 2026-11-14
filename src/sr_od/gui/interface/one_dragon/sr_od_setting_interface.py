@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QListWidget,
     QListWidgetItem,
+    QListView,
     QWidget,
 )
 from qfluentwidgets import FluentIcon, SettingCardGroup
@@ -28,42 +29,71 @@ from sr_od.context.sr_context import SrContext
 
 
 class ExchangeOrderCard(MultiLineSettingCard):
-    """兑换顺序卡:月限三件套的执行顺序,拖动行即改(config.exchange_order)。
+    """兑换顺序卡:一行三个 pill,横向拖动交换位置(方案 A,2026-11-14)。
 
-    仅「余烬不够换满」时顺序才有意义(先到先得);清单读写走配置的
-    自愈读取(缺失补尾/未知剔除/去重),拖拽只写显式顺序。
+    序号徽标 = 条目文本前缀「N␣␣名称」,拖动后按落位重排重渲染;仅
+    「余烬不够换满」时顺序才有意义(先到先得)。清单读写走配置的自愈
+    读取(缺失补尾/未知剔除/去重),拖拽只写显式顺序。
     """
+
+    _PILL_QSS = '''
+    QListWidget { background: transparent; outline: none; }
+    QListWidget::item {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 8px 18px;
+        margin: 0px 6px;
+        color: white;
+        font-size: 14px;
+    }
+    QListWidget::item:selected { background: rgba(255, 255, 255, 0.18); }
+    '''
 
     def __init__(self, config):
         self._config = config
 
         self._list = QListWidget()
-        self._list.setFixedSize(260, 96)
+        self._list.setFlow(QListView.Flow.LeftToRight)
+        self._list.setWrapping(False)
         self._list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._list.setDefaultDropAction(Qt.DropAction.MoveAction)
         self._list.setSelectionMode(
             QAbstractItemView.SelectionMode.SingleSelection)
-        self._list.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self._list.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._list.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._list.setFixedHeight(52)
+        self._list.setMinimumWidth(360)
+        self._list.setStyleSheet(self._PILL_QSS)
         self._list.model().rowsMoved.connect(self._on_reordered)
-
-        for goods_id in config.exchange_order:
-            item = QListWidgetItem(MONTHLY_TRIO[goods_id])
-            item.setData(Qt.ItemDataRole.UserRole, goods_id)
-            self._list.addItem(item)
+        self._reload(config.exchange_order)
 
         MultiLineSettingCard.__init__(
             self,
             icon=FluentIcon.GAME,
             title=gt('兑换顺序', 'game'),
-            content=gt('拖动排序;仅余额不够换满时有意义(先到先得)'),
+            content=gt('拖动交换位置;仅余额不够换满时有意义(先到先得)'),
             line_list=[[self._list]],
         )
-        # 默认单行卡高 60px 装不下 3 行列表,显式加高
-        self.setFixedHeight(150)
+
+    def _reload(self, order: list[str]) -> None:
+        """按顺序清单重建条目(构造与拖动落位后的序号重排共用)。"""
+        self._list.clear()
+        for idx, goods_id in enumerate(order):
+            item = QListWidgetItem(f'{idx + 1}   {MONTHLY_TRIO[goods_id]}')
+            item.setData(Qt.ItemDataRole.UserRole, goods_id)
+            self._list.addItem(item)
 
     def _on_reordered(self) -> None:
         goods_list = [self._list.item(idx).data(Qt.ItemDataRole.UserRole)
                       for idx in range(self._list.count())]
         self._config.exchange_order = goods_list
+        # 序号徽标随落位重排(重写文本,不触发 rowsMoved)
+        for idx in range(self._list.count()):
+            item = self._list.item(idx)
+            goods_id = item.data(Qt.ItemDataRole.UserRole)
+            item.setText(f'{idx + 1}   {MONTHLY_TRIO[goods_id]}')
 
 
 class SrOdSettingInterface(VerticalScrollInterface):
