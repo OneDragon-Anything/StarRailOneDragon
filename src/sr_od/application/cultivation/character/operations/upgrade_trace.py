@@ -72,8 +72,9 @@ class UpgradeTraceOp(SrOperation):
     (材料不足判停,日志带收尾等级)/ 不在目标技能面板(起跑校验或循环内
     画面异动 fail——前者零消耗直落,后者经收尾关面板回树态)。
 
-    路线优先级:通用材料补全(fill_generic,默认开——通用材料非稀缺,用户
-    裁定的最优先路线)→ farm_dungeon 券刷(真实消耗开拓力 10+券 1/次)。
+    路线地位:fill_generic(通用材料补全,默认开——通用材料非稀缺)是默认
+    补料路线;显式开启 farm_dungeon(真实消耗开拓力 10+券 1/次)= 调用方
+    显式要求优先刷取——预算内缺料先券刷,预算耗尽回落通用补全/判停。
     **farm_dungeon 发起前调用方必须向用户说明消耗并获明确同意**。
     """
 
@@ -361,6 +362,7 @@ class UpgradeTraceOp(SrOperation):
                 return self.round_success('CLOSE_PANEL')
             if self._panel_farm_click_rounds <= 1 and self.round_by_find_area(
                     screen, _TRACE_SCREEN, '提示-无可刷缺口').is_success:
+                self._panel_farm_click_rounds = 0
                 self._final_status = 'MATERIAL_CAPPED'
                 self._end_level = self._read_panel_level()
                 self.save_screenshot(prefix='行迹面板快速刷取')
