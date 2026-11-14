@@ -548,7 +548,23 @@ class Operation(OperationBase):
         return current_round_result
 
     def _get_next_node(self, current_round_result: OperationRoundResult):
-        """根据当前轮结果找到下一个节点。
+        """根据当前轮结果找到下一个节点（WAIT 与预算内的 RETRY 在 execute
+        循环里直接重跑本节点、不查边；重试耗尽的 RETRY 转 FAIL 后才查边）。
+
+        匹配顺序（遍历当前节点的出边）：
+        1. success 标志先过滤：只有与结果成败方向一致的边参与匹配；
+        2. 精确状态匹配：edge.status 与结果 status 完全相等（含两者均为
+           None）的边立即命中并返回；
+        3. 兜底边：声明时不带 status 的边（ignore_status），仅在没有任何
+           精确状态边命中时采用；
+        4. 全不命中：返回 None，execute 据此收尾整个指令——SUCCESS 结果
+           以当前状态成功结束，FAIL 结果失败结束。
+
+        边界（写边的易错点）：
+        - 状态边必须挂在产生该状态的节点上：from_name 写错时它只是挂在
+          别的节点上的一条永不命中的边，不报错；真实节点缺这条精确边，
+          其自定义状态返回后会被兜底边静默接走走错分支，或令整个指令
+          以该状态静默成功结束。
 
         Args:
             current_round_result: 当前轮执行的结果。
