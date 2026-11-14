@@ -165,6 +165,8 @@ class UpgradeCharacterOp(SrOperation):
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
         self._stop_status: str = 'MATERIAL_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取有界自旋用)
+        self._farm_window_wait_rounds: int = 0  #: 资源窗口连开失败的连续等待轮数(快速刷取静默无反应有界自旋用)
+        self._squad_clicked: bool = False   #: 编队钮已点击待生效标志(计场数在离开编队态时发生,点击无效的重入轮不重计)
         self._start_level: int | None = None  #: 首入晋阶界面读到的起始等级(收尾报告「起始→结束」口径)
         self._banner_seen: bool = False    #: 横幅沿计数标志(关闭点击未生效的 WAIT 重入轮不重计)
         self._banner_upgrade_count: int = 0  #: 升级结果横幅计数(=实际完成升级次数;通用补全触发的自动升级不经按钮)
@@ -229,6 +231,22 @@ class UpgradeCharacterOp(SrOperation):
                 or self.round_by_find_area(
                     screen, _CHALLENGE_SCREEN, '标题-凝滞虚影').is_success)
 
+    def _log_final_summary(self, stop_status: str, level_text: str) -> None:
+        """收尾统计日志(判停收尾与满级终态共用):按钮次数与横幅计数分列
+        (通用补全触发的自动升级/晋阶不经按钮,以横幅计数与等级差呈现);
+        刷取消耗按确认框实际设到的次数记账(配置 -1 是拉满指令非次数),
+        手动路线不耗券、开拓力按场数计。"""
+        log.info('晋阶: 收尾(%s),等级 %s,升级按钮 %d 次(横幅计 %d)/'
+                 '晋阶按钮 %d 次(横幅计 %d)/刷取 %d 轮(券刷 %d 次'
+                 '耗开拓力 %d 耗券 %d,手动 %d 场耗开拓力 %d)',
+                 stop_status, level_text,
+                 self._ascend_count, self._banner_upgrade_count,
+                 self._promotion_count, self._banner_promotion_count,
+                 self._farm_rounds, self._farm_draws,
+                 self._farm_draws * _FARM_TRAILBLAZE_PER,
+                 self._farm_draws * _FARM_TICKET_PER,
+                 self._manual_fights, self._manual_fights * _FARM_TRAILBLAZE_PER)
+
     def _close_result_banner(self) -> OperationRoundResult:
         """关闭执行结果横幅(点空白;升级横幅「等级提升」/晋阶横幅「角色晋阶」
         两种标题,任一在即关,until=两横幅都消失)。"""
@@ -286,7 +304,8 @@ class UpgradeCharacterOp(SrOperation):
                     ('开拓力补充弹窗', '标题-开拓力补充弹窗', 'LEFTOVER'),
                     (_BATTLE_SCREEN, '按钮-退出关卡', 'LEFTOVER'),
                     (_CHALLENGE_SCREEN, '挑战按钮', 'LEFTOVER'),
-                    (_ASCEND_SCREEN, '标题-等级提升', 'ALREADY_ASCEND')):
+                    (_ASCEND_SCREEN, '标题-等级提升', 'ALREADY_ASCEND'),
+                    (_ASCEND_SCREEN, '标题-材料补全弹窗', 'ALREADY_ASCEND')):
                 if screen_utils.find_area(
                         self.ctx, screen,
                         probe_screen, probe_anchor) == FindAreaResultEnum.TRUE:
@@ -336,7 +355,7 @@ class UpgradeCharacterOp(SrOperation):
     @node_from(from_name='打开晋阶')
     @node_from(from_name='入口核对', status='ALREADY_ASCEND')
     @node_from(from_name='返回养成界面')  # 刷取链收口:副本刷完回养成界面重入本循环
-    @node_from(from_name='返回养成界面', status='FARM_WINDOW_FAIL')  # 快速刷取静默无反应(无可刷缺口):回循环判停收尾
+    @node_from(from_name='打开资源窗口', status='FARM_WINDOW_FAIL')  # 快速刷取静默无反应(无可刷缺口):回循环判停收尾
     @node_from(from_name='重走入口链', status='FARMED')  # 手动链收口:大世界重走入口链回到养成界面
     @operation_node(name='升级循环', node_max_retry_times=40)
     def upgrade_loop(self) -> OperationRoundResult:
@@ -414,23 +433,10 @@ class UpgradeCharacterOp(SrOperation):
             if self._capped_level is None:
                 self._capped_level = self._read_ascend_level()
             if self.round_by_find_area(screen, _DETAIL_SCREEN, '按钮-属性详情').is_success:
-                # 统计口径:升级/晋阶按钮次数=按钮执行;通用补全触发的自动
-                # 升级/晋阶不经按钮,以横幅计数与等级差呈现;刷取消耗按确认
-                # 框实际设到的次数记账(配置 -1 是拉满指令非次数;手动路线
-                # 不耗券,开拓力按场数计)
                 level_text = (f'{self._start_level}→{self._capped_level}'
                               if self._start_level is not None
                               else str(self._capped_level))
-                log.info('晋阶: 收尾(%s),等级 %s,升级按钮 %d 次(横幅计 %d)/'
-                         '晋阶按钮 %d 次(横幅计 %d)/刷取 %d 轮(券刷 %d 次'
-                         '耗开拓力 %d 耗券 %d,手动 %d 场耗开拓力 %d)',
-                         self._stop_status, level_text,
-                         self._ascend_count, self._banner_upgrade_count,
-                         self._promotion_count, self._banner_promotion_count,
-                         self._farm_rounds, self._farm_draws,
-                         self._farm_draws * _FARM_TRAILBLAZE_PER,
-                         self._farm_draws * _FARM_TICKET_PER,
-                         self._manual_fights, self._manual_fights * _FARM_TRAILBLAZE_PER)
+                self._log_final_summary(self._stop_status, level_text)
                 return self.round_success(status=self._stop_status, wait=1.5)
             result = self.round_by_find_and_click_area(
                 screen, _ASCEND_SCREEN, '按钮-返回箭头',
@@ -452,6 +458,9 @@ class UpgradeCharacterOp(SrOperation):
             elif self.round_by_find_area(screen, _DETAIL_SCREEN, _ENTRY_BTN_RISE).is_success:
                 self._entry_btn_area = _ENTRY_BTN_RISE
             else:
+                level_text = (f'{self._start_level}→80'
+                              if self._start_level is not None else '80')
+                self._log_final_summary('MAX_LEVEL', level_text)
                 return self.round_success(status='MAX_LEVEL')
             result = self.round_by_find_and_click_area(
                 screen, _DETAIL_SCREEN, self._entry_btn_area,
@@ -472,6 +481,9 @@ class UpgradeCharacterOp(SrOperation):
 
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '按钮-通用材料补全').is_success:
             if not self.fill_generic:
+                # 与光锥线的差异决策:光锥缺料且未授权补全时转 NEED_FARM 刷取;
+                # 角色线右下按钮可点 = 缺口可由通用材料覆盖,按补料优先级
+                # (通用补全优先于刷取,见模块 docstring)直接判停不进刷取
                 self._capped = True
                 self._capped_level = self._read_ascend_level()
                 log.info('晋阶: 缺料且 fill_generic 未授权,判停于等级 %s', self._capped_level)
@@ -507,8 +519,9 @@ class UpgradeCharacterOp(SrOperation):
 
         ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR 但点击静默无反应
         (光锥线同位实测,游戏提示当前并未缺少可通过快速刷取获取的材料)
-        ——helper 重试预算耗尽(is_fail)即此形态,转判停收尾;原样透传
-        WAIT 会无界自旋挂死一条龙。"""
+        ——点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
+        原样透传会无界自旋挂死一条龙:连等 4 轮超限转判停;按钮真消失的
+        重试预算耗尽(is_fail)同样转判停。"""
         screen = self.last_screenshot
         result = self.round_by_find_and_click_area(
             screen, _ASCEND_SCREEN, '按钮-快速刷取',
@@ -516,13 +529,22 @@ class UpgradeCharacterOp(SrOperation):
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
         if result.is_success:
+            self._farm_window_wait_rounds = 0
             return result
-        if result.is_fail:
+        if result.is_fail or self._farm_window_wait_rounds >= 3:
+            self._farm_window_wait_rounds = 0
             self._capped = True
             self._stop_status = 'MATERIAL_CAPPED'
-            log.info('晋阶: 资源窗口未打开(快速刷取静默无反应/无可刷缺口),'
-                     '判停收尾——可改用 fill_generic 通用材料补全路线')
+            if result.is_fail:
+                log.info('晋阶: 资源窗口未打开(快速刷取钮已消失/不可用),'
+                         '判停收尾——可改用 fill_generic 通用材料补全路线')
+            else:
+                self.save_screenshot(prefix='打开资源窗口')
+                log.info('晋阶: 资源窗口连续未打开(快速刷取静默无反应/'
+                         '无可刷缺口),现场已截图,判停收尾——可改用 '
+                         'fill_generic 通用材料补全路线')
             return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
+        self._farm_window_wait_rounds += 1
         return result
 
     @node_from(from_name='打开资源窗口')
@@ -578,7 +600,11 @@ class UpgradeCharacterOp(SrOperation):
         """确认框内把刷取次数设到 farm_times_per_round(OCR 现读 + 点「+」
         补偿;游戏会记住上次次数,故只增不减,超滑条上限由游戏封顶)→ 点确认
         → until 结果框「关闭」按钮出现(结果框为独立画面「快速刷取结果弹窗」,
-        与确认框同名不同位;结果框出现 = 领奖完成)。"""
+        与确认框同名不同位;结果框出现 = 领奖完成)。
+
+        记账口径:轮数与消耗在确认点击生效(helper 返回 success)后才记账
+        ——确认点击未生效的 WAIT 重入轮只重发确认,不重复设次数、不重复
+        计数;确认被开拓力不足拦截时回滚本轮记账(未成交)。"""
         screen = self.last_screenshot
         # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
         # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
@@ -587,32 +613,38 @@ class UpgradeCharacterOp(SrOperation):
         # 交返回分类;两弹窗都不在 = 刷取进行中慢询等待;只有确认框在才执行
         # 次数设置与确认点击
         if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
-            self._farm_draws -= self._farm_times_set  # 本轮未成交,回滚确认前计数
+            self._farm_draws -= self._farm_times_set  # 本轮未成交,回滚确认前记账
+            self._farm_times_set = 0
             self._capped = True
             self._stop_status = 'POWER_CAPPED'
-            log.info('晋阶: 开拓力不足判停,原路清场返回详情页'
-                     '(可待开拓力恢复后续跑)')
+            log.info('晋阶: 确认已发出但被开拓力不足拦截,本轮未成交——'
+                     '原路清场返回详情页(可待开拓力恢复后续跑)')
             return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
             return self.round_wait('刷取执行中,等结果框', wait=2)
-        self._farm_rounds += 1
-        set_result = self._set_farm_times(self.farm_times_per_round)
-        if not set_result.is_success:
-            return set_result
-        self._farm_draws += self._farm_times_set
-        log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
-                 '券免战斗开拓力照扣)',
-                 self._farm_rounds, self._farm_times_set,
-                 self._farm_times_set * _FARM_TRAILBLAZE_PER,
-                 self._farm_times_set * _FARM_TICKET_PER)
-        screen = self.last_screenshot
-        return self.round_by_find_and_click_area(
+        # 确认框在:次数未设则先设;已设(重入:确认点击未生效)跳过设次数
+        # 只重发确认——记账在确认点击生效后才发生,重入轮不重计
+        if self._farm_times_set == 0:
+            set_result = self._set_farm_times(self.farm_times_per_round)
+            if not set_result.is_success:
+                return set_result
+        result = self.round_by_find_and_click_area(
             screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取',
             until_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
+        if result.is_success:
+            self._farm_rounds += 1
+            self._farm_draws += self._farm_times_set
+            log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
+                     '券免战斗开拓力照扣)',
+                     self._farm_rounds, self._farm_times_set,
+                     self._farm_times_set * _FARM_TRAILBLAZE_PER,
+                     self._farm_times_set * _FARM_TICKET_PER)
+            self._farm_times_set = 0  # 本轮已记账归零,防后续重入重复记账
+        return result
 
     def _set_farm_times(self, target: int) -> OperationRoundResult:
         """快速刷取确认框内把次数设到目标:target=-1 = 点「^」拉满(滑条
@@ -673,6 +705,7 @@ class UpgradeCharacterOp(SrOperation):
         # 清场返回——盲点重试会空烧战斗轮预算
         if self.round_by_find_area(screen,
                                    '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            self._squad_clicked = False  # 未开战,本旗标作废(计场在离开编队态时)
             self._capped = True
             self._stop_status = 'POWER_CAPPED'
             log.info('晋阶: 手动路线开拓力不足判停,原路清场返回详情页')
@@ -680,15 +713,19 @@ class UpgradeCharacterOp(SrOperation):
         in_team = self.round_by_find_area(
             screen, _CHALLENGE_SCREEN, '队伍标题').is_success
         if not (in_team and not self._in_dungeon_state(screen)):
-            # 非编队态(战斗中/结算/副本画面):交返回分类收口
+            # 非编队态(战斗中/结算/副本画面):交返回分类收口;计场在编队钮
+            # 点击生效(离开编队态)时发生——点击无效的重入轮不重计
+            if self._squad_clicked:
+                self._squad_clicked = False
+                self._farm_rounds += 1
+                self._manual_fights += 1
+                log.info('晋阶: 第 %d 场手动刷取开始(消耗开拓力 %d)',
+                         self._manual_fights, _FARM_TRAILBLAZE_PER)
             log.info('晋阶: 已离开编队画面(战斗/结算态),交返回分类')
             return self.round_success(status='BATTLE_DONE', wait=2)
         self.ctx.controller.click(
             self.ctx.screen_loader.get_area(_CHALLENGE_SCREEN, '按钮-开始编队挑战').rect.center)
-        self._farm_rounds += 1
-        self._manual_fights += 1
-        log.info('晋阶: 第 %d 场手动刷取开始(消耗开拓力 %d)',
-                 self._manual_fights, _FARM_TRAILBLAZE_PER)
+        self._squad_clicked = True
         return self.round_retry('战斗进行中', wait=15)
 
     @node_from(from_name='券确认刷取')
@@ -706,9 +743,11 @@ class UpgradeCharacterOp(SrOperation):
 
         残留弹窗两类(开拓力不足判停/中断现场遗留,盖住副本/养成锚致整帧
         识别 None):点取消清场后重入分类——补充弹窗「确认」是星琼购开拓力,
-        永不触碰。副本画面判定走挑战锚探测 + 非编队态要求:凝滞虚影类副本
-        无画面级精准判定(画面 id_mark 只含拟造花萼),而「挑战按钮」area
-        与编队画面「开始挑战」文本互恰,编队画面会误命中。"""
+        永不触碰。编队画面(队伍标题在场,手动路线开拓力被拦/编队残留的
+        落点)点右上 X 回副本画面再逐层回退。副本画面判定走挑战锚探测 +
+        非编队态要求:凝滞虚影类副本无画面级精准判定(画面 id_mark 只含
+        拟造花萼),而「挑战按钮」area 与编队画面「开始挑战」文本互恰,
+        编队画面会误命中。"""
         screen = self.last_screenshot
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
             log.info('晋阶: 刷取完成回到养成界面,已刷 %d 轮', self._farm_rounds)
@@ -761,6 +800,18 @@ class UpgradeCharacterOp(SrOperation):
             )
             if result.is_success:
                 return self.round_retry('资源窗口已关,重入分类', wait=1)
+            return result
+        # 编队画面(队伍标题在场):点右上 X 回副本画面再逐层回退——手动路线
+        # 开拓力被拦(补充弹窗取消后)的落点;X 与副本关闭钮同槽位,点击生效
+        # 以队伍锚消失验证
+        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
+                until_not_find_all=[(_CHALLENGE_SCREEN, '队伍标题')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('编队画面已关,重入分类', wait=1.5)
             return result
         # 副本画面(拟造花萼精准判定在/凝滞虚影仅锚可证):关闭后按路线落点
         # 重判(券路线回资源窗口、手动路线回大世界)——编队态不进此分支
@@ -820,7 +871,13 @@ class UpgradeCharacterOp(SrOperation):
                 return self.round_fail('落在角色详情但入口未读到角色名,无法安全重选'
                                        '(角色详情显示的是列表首位而非上次浏览角色)'
                                        '——请从目标角色的详情 TAB 重新发起')
-            select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+            try:
+                select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+            except ValueError:
+                # 读名 OCR 偏差/变体名不在角色列表:构造期校验拦截,显式失败
+                # 带明确文案,不让异常走引擎兜底烧 30 轮重试
+                return self.round_fail(f'入口读名 {self._char_name} 不在角色列表,'
+                                       '无法安全重选(读名可能不准)——请实机确认')
             select_result = select_op.execute()
             if not select_result.success:
                 return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')

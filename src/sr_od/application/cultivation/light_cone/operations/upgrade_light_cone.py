@@ -153,6 +153,7 @@ class UpgradeLightConeOp(SrOperation):
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
         self._stop_status: str = 'LIGHT_CONE_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取分流有界自旋用)
+        self._farm_window_wait_rounds: int = 0  #: 资源窗口连开失败的连续等待轮数(快速刷取静默无反应有界自旋用)
         self._start_level: int | None = None  #: 入口读到的起始等级(收尾报告「起始→结束」口径)
         self._ascend_banner_count: int = 0  #: 晋阶横幅关闭次数(=完成的晋阶次数;通用补全触发的自动升级不经快速升级按钮)
         self._promo_banner_seen: bool = False  #: 晋阶横幅沿计数标志(关闭点击未生效的 WAIT 重入轮不重计)
@@ -476,13 +477,25 @@ class UpgradeLightConeOp(SrOperation):
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
         if result.is_success:
+            self._farm_window_wait_rounds = 0
             return result
-        if result.is_fail:
+        # 点击「假成功」(按钮白底常在可 OCR)但窗口不开:helper 恒 WAIT 不计
+        # 重试,原样透传会无界自旋挂死一条龙——连等 4 轮超限与重试耗尽
+        # (is_fail,按钮消失)同转判停
+        if result.is_fail or self._farm_window_wait_rounds >= 3:
+            self._farm_window_wait_rounds = 0
             self._capped = True
             self._stop_status = 'LIGHT_CONE_CAPPED'
-            log.info('光锥晋阶: 资源窗口未打开(无可刷缺口),判停收尾'
-                     '——可改用 fill_generic 通用材料补全路线')
+            if result.is_fail:
+                log.info('光锥晋阶: 资源窗口未打开(无可刷缺口),判停收尾'
+                         '——可改用 fill_generic 通用材料补全路线')
+            else:
+                self.save_screenshot(prefix='打开资源窗口')
+                log.info('光锥晋阶: 资源窗口连续未打开(快速刷取静默无反应/'
+                         '无可刷缺口),现场已截图,判停收尾——可改用 '
+                         'fill_generic 通用材料补全路线')
             return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
+        self._farm_window_wait_rounds += 1
         return result
 
     @node_from(from_name='打开资源窗口')
@@ -717,6 +730,18 @@ class UpgradeLightConeOp(SrOperation):
             if result.is_success:
                 return self.round_retry('资源窗口已关,重入分类', wait=1)
             return result
+        # 编队画面(队伍标题在场):点右上 X 回副本画面再逐层回退——手动路线
+        # 开拓力被拦(补充弹窗取消后)的落点;X 与副本关闭钮同槽位,点击生效
+        # 以队伍锚消失验证
+        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
+                until_not_find_all=[(_CHALLENGE_SCREEN, '队伍标题')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('编队画面已关,重入分类', wait=1.5)
+            return result
         current = self.check_and_update_current_screen(
             screen, screen_name_list=[_CHALLENGE_SCREEN, _WORLD_SCREEN, _DETAIL_SCREEN,
                                       _LC_TAB_SCREEN, '大世界'])
@@ -799,7 +824,13 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_fail('落在角色详情但入口未读到角色名,无法安全重选'
                                    '(角色详情显示的是列表首位而非上次浏览角色)'
                                    '——请从目标角色的光锥 TAB 重新发起')
-        select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+        try:
+            select_op = SelectCharacterOp(self.ctx, cn_name=self._char_name)
+        except ValueError:
+            # 读名 OCR 偏差/变体名不在角色列表:构造期校验拦截,显式失败
+            # 带明确文案,不让异常走引擎兜底烧 30 轮重试
+            return self.round_fail(f'入口读名 {self._char_name} 不在角色列表,'
+                                   '无法安全重选(读名可能不准)——请实机确认')
         select_result = select_op.execute()
         if not select_result.success:
             return self.round_fail(f'重选角色 {self._char_name} 失败: {select_result.status}')
