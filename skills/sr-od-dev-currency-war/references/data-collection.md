@@ -19,14 +19,14 @@
 | 角色 | `gen_plaza_chars.py` | 四件落盘产物:注册表段片段(`.debug/game_data/currency_war/plaza/registry_chars_v<版本>.py`,两侧标记注释与 `cw_chars.py` 官方段标记逐字一致,版本更新按标记**整段替换**接入)+ 人读角色文档 + 立绘模板(`assets/template/currency_war/character_avatar/`,与主游同构命名)+ 掉出名单 diff 报告(`dropped_v<版本>.md`,分纯角色掉出/系统单位迁出两类,**掉出方向唯一出口**);对拍显式传参 `--check-only`(片段 vs config 快照逐字段,不一致**非零退出**;main 默认产段不跑对拍) | config API;**同名多档各一条**(星神★阿哈 4/5/7 费);`•`(U+2022)→`·`(U+00B7) canon 归一(归一单一源),产出段名字含 • 直接报错 |
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(334+83) | 数字 id 稳定主键;效果官方全文去富文本 |
 | 羁绊 | `gen_traits.py` | `cw_traits_data`(29 条 `TRAITS` 按 trait_id + `trait_by_name` 按消费侧名;默认 dry-run 预览,`--land` 落库)+ 中间产物(traits_intermediate_v<版本>.json)+ 三源交叉/成员对拍报告(stdout) | 聚合生成器+对拍一体:官方 config 骨架过滤(trait_type 0/1/2=29 条基座,type 3 主角光环专属不进本域)→ 攻略广场 Hot 帖聚合(帖内 role_stages[].traits[] 为唯一全结构源;按 trait_id 分桶,去重 = layers 最多、并列取新帖,role_ids 跨帖并集)+ 富文本渲染 + role_ids→规范名翻译(查表契约 = 派生形态:运行期从角色注册表 CHARACTERS 派生映射,fail-closed)+ 成员对拍(官方 vs 注册表自报,差异逐条人裁)+ count_mode 判定表(带官方 desc 引文校验)+ wiki 交叉验证(27 词条,只出报告不落数据);任一对拍不一致非零退出 |
-| 装备 | `gen_equip_registry.py` | `cw_equipment_data` | 优先级分层:骨架=plaza>图鉴>md 兜底;effect=图鉴 OCR>plaza 校正;recipes=plaza compose_list+图鉴 icon 反查交叉 |
+| 装备 | `gen_equip_registry.py` | `cw_equipment_data`(116 = 官方 105 + 配方链派生简易 11) | **v4.7 起 config 单源直灌**:官方分类名直落(七分类+派生简易装备)、desc 即效果全文、compose_list 即合成链、properties 即结构化属性;旧图鉴 OCR 校正链退役(三 wiki 停旧赛季不可作数值源) |
 | 实战阵容 | `gen_plaza_comps.py` | `cw_plaza_comps`+plaza_meta | lineup/index match_hard,过滤版本/KOL 沙盒/过期 → is_carry 聚类 |
 
 ## 二、游戏内图鉴实采(权威,需实机)
 
 | 域 | 方式 | 要点 |
 |---|---|---|
-| 装备图鉴 | `harvest_equip_codex.py`(半自动 op) | 前置手动:数据银行→装备图鉴→点 tier tab;脚本点格→截图→OCR→翻页→0 新增停。⚠️ **必须与游戏同 Session 跑**(pyautogui 跨 session 找不到窗口) |
+| ~~装备图鉴~~ | `harvest_equip_codex.py`(半自动 op) | **v4.7 起免除**(config desc 即效果全文,实机 OCR 校正链退役;文件删留挂账)。历史形态:数据银行→装备图鉴→点 tier tab;脚本点格→截图→OCR→翻页→0 新增停。⚠️ 必须与游戏同 Session |
 | boss 图鉴 | 用户截图批 → OCR → 人判 tag | `cw_enemy_data.BOSS_MECHANICS`(20);俗称→规范名映射(BOSS_NICKNAMES)用户核对 |
 | 刷新概率表 | 实机 OCR | `cw_shop_odds.REFRESH_PROB`(Lv1-10×费,行和=100% 校验);入口=商店面板底部百分比条弹窗 |
 | 牌池副本数 | 攻略+用户确认 | 1/2费=27、3-5费=9(非 3 倍数的版本档**弃用**——3合1 机制决定均 3 倍数,判据可复用) |

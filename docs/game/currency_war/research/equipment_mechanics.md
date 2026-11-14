@@ -2,8 +2,8 @@
 
 > **性质**:装备子系统的机制事实与使用策略。**证据三级**:【代码实证】=注册表/消费代码可定位(权威源顺序:注册表 `cw_equipment_data.py`/`cw_synthesis.py` 为已定事实层 > 攻略 `sources/` > 口述补充);【口述·权威】=用户口述(玩法判断类最高权威);【攻略佐证】=`sources/` 存档或 plaza API 文本;【推断】=由已有事实推得、未实测。(注:本篇四级标签管单条结论的**信源分级**;阵容理解另有「证据三层」方法分层——统计骨架×逐篇细节×机制解释,见 [combo_methodology.md](combo_methodology.md)。两套体系用途不同,勿混用。)
 > 创建:2026-08-26(run 26 崩坏局后装备层盲区大发现,用户开始系统口述装备玩法)。2026-08-27 按注册表逐条补码源出处。
-> 版本基准:**V4.4**(4.5 更新无相关修复条目)。
-> 数据单一源:效果文本与数值 = `src/sr_od/application/currency_war/data/cw_equipment_data.py`(生成文件,勿手改;重跑 `skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py`);合成图谱 = `cw_synthesis.py`(import 期从注册表 `recipes` 字段派生)。本文只记机制结论与「凭什么信」,不复写数值。
+> 版本基准:**v4.7**(换赛季全量重制:装备 116 件重灌、类别改官方七分类+派生简易装备、合成链重做;本文 V4.4 实证条目在 v4.7 机制下逐条待重审,重审前按【推断】级对待)。
+> 数据单一源:效果文本与数值 = `src/sr_od/application/currency_war/data/cw_equipment_data.py`(生成文件,勿手改;重跑 `skills/sr-od-dev-currency-war/scripts/gen_equip_registry.py`;v4.7 起 = plaza config 单源直灌,官方 desc 即效果全文,旧图鉴 OCR 校正链退役);合成图谱 = `cw_synthesis.py`(import 期从注册表 `recipes` 字段派生)。本文只记机制结论与「凭什么信」,不复写数值。
 
 ## 机制事实
 

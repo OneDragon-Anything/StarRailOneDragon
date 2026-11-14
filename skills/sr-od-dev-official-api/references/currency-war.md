@@ -1,6 +1,7 @@
 # 货币战争接口(攻略广场 API + 米游社 CW 图鉴频道)
 
 > 现成采集器:`skills/sr-od-dev-currency-war/scripts/plaza_fetch.py`(config/lineups/icons 子命令,版本更新重跑;浏览器版 `plaza_harvest.js` 免环境粘 console)。生成器:`gen_plaza_chars.py`(角色文档+立绘库+对拍)/`gen_plaza_comps.py`/`gen_plaza_invest.py`/`gen_equip_registry.py`。
+> 装备数据通道(v4.7 实证):config equipment_list 即装备全量(105 条,desc = 效果全文富文本、compose_list = 合成链、properties = 结构化基础属性)——**免实机图鉴 OCR**;米游社 wiki(242 空/211 旧赛季)、国际服(CW 装备菜单未建)、BWIKI(S1 快照)均不可作 v4.7 数值源。
 
 ## 攻略广场 API(活动页后端,免登录公开)
 
