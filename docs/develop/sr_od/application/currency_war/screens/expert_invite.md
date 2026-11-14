@@ -16,7 +16,7 @@
 观察 node = 弹窗在场门(「标识-专家邀请函」;miss = round_fail 返回主循环重识别自愈)+ 弹窗载体一次读(每访问恰一次,决策轮复用实例载体):
 
 - 板面阵营 `obs/cw_observation.py::read_board`(弹窗帧左侧羁绊面板透出可读;读数失败 = 空 dict 走现金为王兜底,告警不阻塞);
-- 卡羁绊解析 `_resolve_card_bonds`(逐卡 area 约束 OCR):文本精确命中 `data/cw_factions.py::FACTIONS` 键 → 文本含键(OCR 噪声容错)→ 文本 = `data/cw_chars.py::CHARACTERS` 角色名取其首个羁绊(factions 优先,空则 flows)→ 全未命中 = None(策略层走兜底);
+- 卡羁绊解析 `_resolve_card_bonds`(逐卡 area 约束 OCR):文本精确命中 `data/cw_factions.py::FACTIONS` 键 → 文本含键(OCR 噪声容错)→ 文本 = `data/cw_chars.py::get_char` 角色名命中取其首个羁绊(factions 优先,空则 schools)→ 全未命中 = None(策略层走兜底);
 - 选卡坐标解算(坐标随观察上报,[op-layer.md](op-layer.md) §1.1「选择坐标观察上报」):四卡区中心(`CARD_AREAS` 逐区 `area_center`)+「卡-现金为王」区中心,观察期一次解算,值形状 = 1080p 平铺元组,随 payload 同门一并上报;坐标单一真相源 = 观察上报,决策半零现算(动作 op 自状态容器按下标取,见 §4)。
 
 观察 payload = `CwScreenExpertInviteObs`(`on_screen`/`card_bonds`/`board`/`card_points`/`cash_point`/`screen`,住 `kernel/cw_screen_report/expert_invite.py`);report = `report_screen_expert_invite_obs` 载体写状态容器 `expert_invite` 槽(`ExpertInvitePayload` card_bonds/board/card_points/cash_point 四字段同门一并写,恒写;match/gs 缺席的局外兜底路径跳过)。
@@ -38,7 +38,7 @@ board/card_bonds = 观察轮 obs 载体
 pick = decide_expert_invite()(零参;候选读状态容器 expert_invite 槽;
   判据本体 = kernel choose_expert_index;屏内无兜底)
   ① 主力阵营(在场计数最大,并列取名字序首个保证确定性)同线卡优先;
-  ② 次选与任一在场阵营(board 计数 >0)同线卡(羁绊面板口径 = factions∪flows
+  ② 次选与任一在场阵营(board 计数 >0)同线卡(羁绊面板口径 = factions∪schools
     并计,卡上标签同属一个羁绊命名空间);
   ③ 全无同线 / board 空 / card_bonds 空 → -1(现金为王:选卡无依据时
     经济兜底优于盲选)

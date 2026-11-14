@@ -57,7 +57,7 @@
 | 6 | `stay_target 非空 ∧ not is_member ∧ cost == stay_target[2]`（**压牌库**：升星目标实费档的阵容外牌；成员整体排除；目标为 None 本档为空，全部落后续档） | `(-unit_star, refund_loss, in_hand, tail)` | `criteria/levelup.stay_target_of`（resolved 实费口径，变费卡随档）+ `cw_economy.effective_cost`（手持牌变费现值） |
 | 7 | `is_member ∧ copies ∧ need≤1 ∧ max_star<2`（**凑两星过程保护**） | `(member_rank, -total_star, refund_loss, in_hand, tail)` | 两态名单（§2）+ `held_copies` |
 | 8 | `name ∈ CROSS_LINE_KEEP_NAMES ∧ max_star<2`（**万金油全线留用**；到两星掉兜底档 10） | `(-total_star, refund_loss, in_hand, tail)` | `protection.py` CROSS_LINE_KEEP_NAMES（用户决定既有常量） |
-| 9 | 羁绊成员（盛会之星/量子同频/护盾/减益）∧ `max_star<2`（**羁绊留用**；到两星掉兜底档 10） | `(-total_star, refund_loss, in_hand, tail)` | 角色自报 factions/flows（`cw_chars.CHARACTERS`）× `cw_factions.FACTIONS` 键求交，成员关系派生；名单常量 = `priority.py` TIER7_BOND_NAMES |
+| 9 | 羁绊成员（盛会之星/量子同频/护盾/减益）∧ `max_star<2`（**羁绊留用**；到两星掉兜底档 10） | `(-total_star, refund_loss, in_hand, tail)` | 角色自报 factions/schools（`cw_chars.CHARACTERS`）× `cw_factions.FACTIONS` 键求交，成员关系派生；名单常量 = `priority.py` TIER7_BOND_NAMES |
 | 10 | 兜底（任何未命中上表者；含成员多余副本，§5） | `(prob, -cost, -unit_star, refund_loss, in_hand, tail)` | `cw_shop_odds.refresh_prob(level, 实费档)`；实费档 = 商店牌牌面自报 / 手持牌 `HeldUnit.cost` 装配供给，未注册名按中费 3 保守估 |
 
 实现引用 = `priority.py::sort_key` 逐档 return（档 1 = `:623`、档 2 = `:631`、档 3 = `:637`、档 4 = `:645`、档 5 = `:649`、档 6 = `:656`、档 7 = `:660`、档 8 = `:664`、档 9 = `:667`、档 10 = `:671`）；本表与函数体逐档一致，改判定先改表再改码。

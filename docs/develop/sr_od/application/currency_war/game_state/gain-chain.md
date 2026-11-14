@@ -444,7 +444,7 @@ id 200901,登记表 = `cw_investments.STRATEGY_BOND_BATTLE_GRANTS` 白名单:
    未观察 → 激活数 = 0 fail-closed;FACTIONS 外未知名不计;激活判据 =
    计数 ≥ `FACTIONS[tag].tiers[0]`(档位单一源;独立羁绊 tiers=(1,)
    单人即激活,与左面板同口径——**board_by_row 身份聚合只算
-   factions+flows 不含 independent**,独立行只有 board 状态容器〔左面板
+   factions+schools 不含 independent**,独立行只有 board 状态容器〔左面板
    直读〕可承载,双源 max 融合下实机两源互补);
 3. 逐持卡:激活数 ≥ 表载阈值 → `write_logic` 置武装标记
    `strategy_bond_battle_armed = True`(evidence
@@ -1006,7 +1006,7 @@ back_layout)= sim 侧独立回调 `cw_env_grants.on_diamond_acquired`(observe
     人才引进「开局拥有1个随机4费角色」id 109,阵营轴首例 = 追击概念股
     「获得【追击】角色」id 1001——【X】为流派名非角色名,不入具名检查域);
     发放 = 牌库时点池(`cw_pool.grant_char_pool`:基底 = 规格过滤池
-    `random_char_pool` 注册表派生单一源——采样轴内 × char_type 含标签,
+    `random_char_pool` 注册表派生单一源——采样轴内 × category_tags 含标签
     费用轴 = chars_by_cost 全档,阵营轴 = chars_by_faction 默认含流派
     匹配,池非空构建期校验,误登角色名/笔误阵营名 → 域空 import 即炸;
     双形态合并随基底;叠加层 = 未解锁专家剔除〔用户裁定 2026-10-28

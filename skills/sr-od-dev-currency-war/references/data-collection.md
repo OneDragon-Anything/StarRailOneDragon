@@ -16,7 +16,7 @@
 
 | 域 | 生成器(skill scripts/) | 产出 | 采集要点 |
 |---|---|---|---|
-| 角色 | `gen_plaza_chars.py` | stdout 交叉核对 diff(交叉核对器,不一致非零退出,无落盘产物) | config API;**同名多档各一条**(银狼 3/4/5 费);开拓者双形态按 id 映射(8009 欢愉/8007 记忆);`•`→`·` canon |
+| 角色 | `gen_plaza_chars.py` | 四件落盘产物:注册表段片段(`.debug/game_data/currency_war/plaza/registry_chars_v<版本>.py`,两侧标记注释与 `cw_chars.py` 官方段标记逐字一致,版本更新按标记**整段替换**接入)+ 人读角色文档 + 立绘模板(`assets/template/currency_war/character_avatar/`,与主游同构命名)+ 掉出名单 diff 报告(`dropped_v<版本>.md`,分纯角色掉出/系统单位迁出两类,**掉出方向唯一出口**);对拍显式传参 `--check-only`(片段 vs config 快照逐字段,不一致**非零退出**;main 默认产段不跑对拍) | config API;**同名多档各一条**(星神★阿哈 4/5/7 费);`•`(U+2022)→`·`(U+00B7) canon 归一(归一单一源),产出段名字含 • 直接报错 |
 | 投资策略/环境 | `gen_plaza_invest.py` | `cw_invest_data`(334+83) | 数字 id 稳定主键;效果官方全文去富文本 |
 | 羁绊 | `gen_factions.py` | stdout 交叉核对 diff(交叉核对器,替代已删的 cw_factions_data 平行数据层) | 两跳:lineup/index 按羁绊筛采 trait_detail(采集器在 .debug,版本更新重跑)+ config 属性映射;effect_rich 自渲染(未知 property type 警告不静默) |
 | 装备 | `gen_equip_registry.py` | `cw_equipment_data` | 优先级分层:骨架=plaza>图鉴>md 兜底;effect=图鉴 OCR>plaza 校正;recipes=plaza compose_list+图鉴 icon 反查交叉 |
@@ -74,7 +74,7 @@
 | 实体 | 增量属性(人维护) | 消费点 |
 |---|---|---|
 | **投资策略/环境**(`cw_investments`) | `STRATEGY_ECONOMY`(EconomyEffect 45 字段:给金/免费刷/利息覆写/难度Δ/连胜倍率/合成与购买触发族…,字段三分 = 计分/待建模/不计)+ 卡级待建模登记 `STRATEGY_ECONOMY_PENDING_MODELING`;`STRATEGY_GRANTS` 策略卡具名发放(登记判据 = strategy-docs/29_invest_strategy_screen.md §2.3);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定。选卡评序 = 策略层组件分(strategy-docs/29_invest_strategy_screen.md 与 28_invest_env_screen.md),本表不留选卡分 | 两屏选卡策略器(invest_strategy/invest_env)/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
-| **角色**(`cw_chars`) | char_type/f 流派阵营两分/independent/开拓者形态映射(按排归一) | 部署站位/羁绊计数/压缩牌库 |
+| **角色**(`cw_chars`) | 纯角色无人工增量字段——费用/站位/category_tags 多标签/羁绊三字段(factions+schools+independent)/is_expert/is_hide 全为官方镜像字段;人工维护面 = `SYSTEM_UNITS` 系统单位段(5 条,实机采集溯源,生成器不触碰)+ 机制表(开拓者形态表/选边双羁绊表,当前数据驱动空转) | 部署站位/羁绊计数/牌池与费段统计(`is_hide` 过滤由购买/概率语义消费方执行,数据层查询不过滤)/概率 v 值派生(`DISTINCT_CARDS_PER_COST`) |
 | **羁绊**(`cw_factions`) | category 四分类(combat/economy/support/independent)/tiers/note 人判注记 | 评分/成型判定/骨架派生 |
 | **comp**(`cw_comps`) | core/shared 名单二分/faction_reqs(羁绊要求优先级结构:档 0 核心、档 ≥1 加分层;原 form_tiers/sub_tiers 已合并)/flex_factions(弹性)/key_equips(可重复)/equip_assign(到人配方)/char_positions(comp 级站位覆盖)/need_star(星级目标;mechanic_attributes/countered_by_bosses 与 level_plan 曲线等评估字段已先后退役,git 可溯) | 线分/候选与锁定/成型判定/部署搜索/装备分配 |
 | **装备**(`cw_equipment_data`) | category 九类/stacking/recipes 多路/props 结构化数值 | 补给选择/合成/equip_fit |

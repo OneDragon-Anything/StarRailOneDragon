@@ -42,9 +42,9 @@
 
 ### 3.1 角色域
 
-- 入口:`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`(拉取+角色文档+识别模板+对拍,对拍不一致**非零退出**是设计行为)。
-- 注册表 = `src/sr_od/application/currency_war/data/cw_chars.py`。官方字段(cost/position/羁绊归属/is_expert)从配置照抄;人判字段(char_type 输出/辅助/治疗标签、factions/flows 两分)按官方 `trait_type` 归位(0=阵营类→factions、1=流派类→flows、2=特殊类→单独建模待裁)。
-- 验收:生成器对拍零 diff(除已裁决例外);`DISTINCT_CARDS_PER_COST` 从注册表派生自动跟上。
+- 入口:`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py`(产出五件:注册表段片段 `registry_chars_v<版本>.py` / 人读角色文档 / 立绘模板 `character_avatar/` / 掉出名单 diff 报告 / `--check-only` 对拍)。
+- 注册表 = `src/sr_od/application/currency_war/data/cw_chars.py`。官方段生成片段按两侧标记注释**整段替换**接入(标记与 `cw_chars.py` 官方段标记逐字一致,零人工补逗号);`SYSTEM_UNITS` 系统单位段为实机采集人工维护,生成器不触碰。字段全官方镜像(cost/position/category_tags 多标签/羁绊三字段 factions+schools+independent/is_expert/is_hide 从配置照抄),角色名经 `canon()` 归一(U+2022→U+00B7;产出段含 • 直接报错)。
+- 验收:`--check-only` 片段 vs config 对拍归零——**无需例外清单**:注册表为官方多条 1:1 镜像(同名多档各一条),旧单条注册表形式下的 `CHECK_EXCEPTIONS` 例外机制已随重建作废删除;`DISTINCT_CARDS_PER_COST` 从注册表派生自动跟上。
 
 ### 3.2 羁绊域
 
@@ -64,8 +64,8 @@
 
 ### 3.5 识别模板面
 
-- 生成器自动产:角色立绘模板(费用底色直接取官方费用字段,不依赖注册表)、装备模板(字节比对幂等,官方换图自动跟上)——都在 `gen_plaza_chars.py` 内。
-- **掉出名单的旧模板不自动删**:重跑后比对名单差异,打印「注册表有而官方名单无」清单,删除留给人工裁定(防误删换皮重出单位的识别资产)。
+- 生成器自动产:角色立绘模板(`assets/template/currency_war/character_avatar/<规范名>/`,与主游 `assets/template/character_avatar/` 同构命名;多档同名共用一目录,费用底色取起始档官方费用字段,不依赖注册表)、装备模板(字节比对幂等,官方换图自动跟上)——都在 `gen_plaza_chars.py` 内。
+- **掉出名单的旧模板不自动删**:生成器产掉出名单 diff 报告(`.debug/game_data/currency_war/plaza/dropped_v<版本>.md`,分「纯角色掉出(文档删除清单)」与「系统单位迁出」两类,掉出方向唯一出口),模板删除留给人工裁定(防误删换皮重出单位的识别资产)。
 - 新画面元素(新 UI/新交互)实机冒烟时按 od-dev-screen-onboarding 建档。
 
 ## 4. 换赛季重做的特有面
@@ -78,7 +78,7 @@
 
 | 层 | 处理 | 理由 |
 |---|---|---|
-| 注册表条目 | 删(或标退役) | 带着旧条目跑 = 策略消费过期名单 |
+| 注册表条目 | 随官方段标记整段替换自然移除(重建即替换,无单独删除动作) | 带着旧条目跑 = 策略消费过期名单 |
 | 角色文档 | 删(git 历史可溯) | 生成物,重跑不再产出 |
 | 识别模板目录 | **暂留**,实机确认无换皮重出再清 | 特殊单位可能以新形态回归,误删 = 识别断档 |
 
@@ -102,7 +102,7 @@
 - **角色技能全文已在官方配置里**(含星级数值)——不再需要外部 wiki 补技能描述;若某条目 `skill_stars` 为空,按缺数据上报,别脑补。
 - **官方配置的 `trait_info_list` 是空骨架**(名字/门槛/成员全空)——羁绊数据从帖子聚合,不从它读。
 - **生成物内嵌的生成器路径指针**(`generated_by`/`GEN_CMD`)在重跑时自动更新;手改生成物无意义。
-- **对拍非零退出 = 注册表待同步的正常信号**,不是生成器坏了;先看 diff 分型(新角色/费用变/羁绊变)再动注册表。
+- **`--check-only` 片段 vs config 对拍非零退出 = 生成段待重产/待接入的正常信号**,不是生成器坏了;先看 diff 分型(新角色/费用变/羁绊变)再重跑生成器、按标记整段替换官方段。
 
 ## 边界
 

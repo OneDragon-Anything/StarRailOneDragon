@@ -115,6 +115,6 @@ readable/trusted 标记恒按真值填（`cw_sim_obs_gen.py::gen_shop`），消�
 
 | 层 | 内容 | 消费方 | 状态 |
 |---|---|---|---|
-| L1 纯羁绊全集 | 角色标签：factions+flows+independent，开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | 两侧同源（实机 `obs/cw_observation.py::board_from_tracked` 与 kernel `cw_bond_equips._recount_board`/`unit_bond_tags` 单一源标签；后端板面基座与巨星评估器消费同源重算） |
+| L1 纯羁绊全集 | 角色标签：factions+schools+independent，开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | 两侧同源（实机 `obs/cw_observation.py::board_from_tracked` 与 kernel `cw_bond_equips._recount_board`/`unit_bond_tags` 单一源标签；后端板面基座与巨星评估器消费同源重算） |
 | L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」（净效果无条件 +1） | board_from_tracked（实机）、Unit.equips（sim 同款字段）、win_features faction_counts | 落地（equips 消费链通，穿戴/获得动作分支同实机回写） |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | 战力模型特征面 | 未建（需求件 = sim-power-model.md） |
