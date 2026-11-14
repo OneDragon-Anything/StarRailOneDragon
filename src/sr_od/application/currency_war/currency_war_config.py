@@ -10,6 +10,11 @@ from __future__ import annotations
 from one_dragon.base.config.yaml_config import YamlConfig
 
 # —— meta 默认值(2026-08 调研;版本更新后以米游社百科/游戏图鉴校准)——
+# ⚠️ v4.7 换赛季豁免声明:DEFAULT_* 手编偏好(策略 meta 层,GUI/YAML 可改)
+# 不随羁绊注册表换版联动——其中含 v4.7 消失档羁绊名/掉出角色名的条目在
+# 运行时为「永不命中的偏好项」(bot 真值 = 实机 OCR,偏好仅 tiebreaker,
+# 失配条目自然落空不炸);随策略批按 v4.7 校准重排,羁绊消费点迁移批
+# 不改内容、仅豁免消失名清零判据(消费代码清零范围不含本文件)。
 
 # 成型快+稳的战力型阵营靠前(研究粗排:贝洛伯格/仙舟/盛会之星 > 巡海游侠/群攻 > 追击/狼狩)
 DEFAULT_FACTION_PRIORITY: list[str] = [

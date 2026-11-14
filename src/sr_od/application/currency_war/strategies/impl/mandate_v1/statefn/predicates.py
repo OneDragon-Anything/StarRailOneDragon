@@ -228,53 +228,53 @@ def front_window_frame(state: GameState) -> bool:
 
 def zero_form_frame(deployed: list) -> bool:
     """零成型帧谓词(P90 收窄适用范围 e=0;P94 谓词原文 = per-体系
-    ``board_factions[s] < FACTIONS[s].tiers[0]``,希儿系复合判据单列)。
+    ``board_factions[s] < 羁绊注册表[s].tiers[0]``,V4.4 希儿系复合判据
+    已随希儿系退役删除)。
 
-    四体系 = 三羁绊系(阈值对 = knowledge/cw_engine_facts.
-    TRANSITION_TRAITS 的同注册表派生式——SYSTEM_CARDS × FACTIONS tiers[0];
-    strategies→knowledge 非法桶边故本地同式派生,零漂移契约同款:
-    同一注册表派生不存在字面双源,禁写字面阈值)+ 希儿系(复合判据
-    单一实现 = kernel ``seele_system_formed``)。板面计数 = 已上场全
-    羁绊计数(kernel ``deployed_bond_counts`` 单一源,bench 持有不计
-    ——激活档是板面档)。``engines_count`` 为四体系合计标量,禁作
-    per-体系谓词(设计轮一低 8③ 口径),本函数逐体系比较。
+    体系集 = TRANSITION_TRAITS 同注册表派生式——SYSTEM_CARDS ×
+    羁绊注册表(trait_by_name) tiers[0](strategies→knowledge 非法桶边
+    故本地同式派生,零漂移契约同款:同一注册表派生不存在字面双源,
+    禁写字面阈值;v4.7 换赛季后派生自动收窄至沿用档 DOT 卡——V4.4
+    希儿系复合判据〔kernel ``seele_system_formed``〕随希儿掉出角色
+    注册表退役)。板面计数 = 已上场全羁绊计数(kernel
+    ``deployed_bond_counts`` 单一源,bench 持有不计——激活档是板面档)。
+    ``engines_count`` 为体系合计标量,禁作 per-体系谓词(设计轮一低
+    8③ 口径),本函数逐体系比较。
     """
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_traits_data import (
+        trait_by_name,
+    )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         deployed_bond_counts,
-        seele_system_formed,
     )
     from sr_od.application.currency_war.kernel.cw_system_cards import (
         SYSTEM_CARDS,
     )
     system_tiers = tuple(
-        (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
+        (card.judge_factions[0], trait_by_name[card.judge_factions[0]].tiers[0])
         for card in SYSTEM_CARDS.values() if card.card_id != 'seele')
     deployed_names = {d.char_id or '' for d in (deployed or [])
                       if d is not None and (d.char_id or '')}
     board_factions = deployed_bond_counts(deployed_names)
-    for bond, tier in system_tiers:
-        if board_factions.get(bond, 0) >= tier:
-            return False
-    return not seele_system_formed(board_factions, deployed_names)
+    # 逐体系比较(任一体系达档 = 非零成型帧);全未达档 → 零成型帧。
+    return all(board_factions.get(bond, 0) < tier
+               for bond, tier in system_tiers)
 
 
 def advances_four_system(name: str) -> bool:
-    """四体系推进件判定(零成型帧排序层前移对象;P20 方向级背书,
+    """体系推进件判定(零成型帧排序层前移对象;P20 方向级背书,
     非金量纲、不构成支出放行)。
 
-    推进件 = 店内卡所属阵营/流派命中三羁绊体系键(SYSTEM_CARDS ×
-    FACTIONS 注册表同注册表派生,zero_form_frame 同源注释)∨ 希儿系
-    贡献件(kernel ``is_seele_system_member`` 单一源,入参 = 该卡自身
-    bonds:希儿本人 + 量子/贝放大器)。零成型帧上全部体系 < tiers[0],
+    推进件 = 角色羁绊标签命中体系键(SYSTEM_CARDS × 羁绊注册表同注册表
+    派生,zero_form_frame 同源注释)。零成型帧上全部体系 < tiers[0],
     任一体系成员买入都单调推进激活进度(P90 收益面 iii)。
+    (V4.4 希儿系贡献件分支〔kernel ``is_seele_system_member``:希儿本人
+    + 量子/贝放大器〕随希儿系退役删除——两放大器羁绊消失、希儿掉出
+    角色注册表,纯标签命中即 v4.7 数据下的完整语义。)
     """
     if not name:
         return False
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        is_seele_system_member,
-    )
     from sr_od.application.currency_war.kernel.cw_system_cards import (
         SYSTEM_CARDS,
     )
@@ -283,9 +283,7 @@ def advances_four_system(name: str) -> bool:
         return False
     bonds = {card.judge_factions[0]
              for card in SYSTEM_CARDS.values() if card.card_id != 'seele'}
-    if bonds & ({*ch.factions} | {*ch.schools}):
-        return True
-    return is_seele_system_member(name, {*ch.factions} | {*ch.schools})
+    return bool(bonds & ({*ch.factions} | {*ch.schools}))
 
 
 __all__ = [

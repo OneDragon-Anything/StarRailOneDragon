@@ -12,13 +12,16 @@
 - ``on_equips_changed(gs, changed_pairs, source)``:同名存活单位
   (旧,新) 对中 equips 有差者(事件通知层);
 - ``on_qualification_changed(gs, old_sets, new_sets, source)``:盯的
-  资格名集(弹窗两阵营 + 伙伴 + ENV_BOND_TIER_GRANTS 羁绊,注册表
-  驱动)旧/新(派生存值)→ 判 S1a 跨档 / S1b 巨星重选 / S2 伙伴;
+  资格名集(弹窗羁绊表 + ENV_BOND_TIER_GRANTS 羁绊,注册表
+  驱动)旧/新(派生存值)→ 判 S1a 跨档
+  (V4.4 的 S1b 巨星重选/S2 伙伴判据随盛会之星/列车同行羁绊消失
+  退役——v4.7 换赛季,见模块头与退役标注;策略批重建);
 - ``on_star_changed(gs, old_star, new_star, source)``:场上银狼星级
   (派生存值,无/1/2/3)→ 判 S3 planner;
 - ``check_env_bond_tier_grants(gs, new_sets, source)``:羁绊档位条件
   发放判据(ENV_BOND_TIER_GRANTS 注册表驱动;挂 deployed 写尾**门外**
-  必查,电平 + 每档一次性 done 封账,发放原语住 cw_env_grants)。
+  必查,电平 + 每档一次性 done 封账,发放原语住 cw_env_grants;
+  v4.7 中间态表空——击破档位换代,条目待投资域 v4.7 重采)。
 
 资格集与羁绊计数字段(board)分立:资格集 = 名集合(判据面;出身 ∨
 持徽,贡献单一源 cw_bond_equips.unit_bond_tags,开拓者按排形态);
@@ -28,8 +31,8 @@ level 域同款值回调见 ``cw_levelup_callbacks``(升级连锁调度器,
 宿主挂 ``_write_logic_frame`` level 分支尾)。
 
 判据簿记(住 cw_overlay_register.ScreenChanges sidecar):
-巨星跨档无簿记(每次上穿即弹,降档再升也弹——用户裁定);祈愿首达档
-一次;planner 每费用档一次;伙伴无上限;占卜屋住 S4 上报点(本模块外)。
+祈愿首达档一次;planner 每费用档一次;占卜屋住 S4 上报点(本模块外);
+(V4.4 巨星跨档无簿记/伙伴无上限两判据随弹窗羁绊退役。)
 """
 from __future__ import annotations
 
@@ -40,28 +43,26 @@ if TYPE_CHECKING:
         Unit,
     )
 
-#: 盯的阵营 → 跨档弹窗 kind(注册表驱动小表
-#: 「判据归位」表:阵营→弹窗映射 + FACTIONS 档位表,零硬编码档线)。
-#: 盛会之星 = 纯上穿无簿记;命运圣杯 = 首达档一次(簿记分键见下)。
-_FACTION_POPUP_KINDS: dict[str, str] = {
-    '盛会之星': 'megastar',
-    '命运圣杯': 'wish_trial',
-}
-
-#: S2 伙伴判据的在场前提角色(列车同行核心; §1.2
-#: 用户裁定「姬子·启行在场 ∧ 另有成员」)。
-_PARTNER_ANCHOR_CHAR: str = '姬子·启行'
-
-#: S2 伙伴的阵营名。
-_PARTNER_FACTION: str = '列车同行'
+#: 盯的羁绊 → 跨档弹窗 kind(注册表驱动小表「判据归位」表:羁绊→弹窗
+#: 映射 + 羁绊注册表档位表,零硬编码档线)。
+#: ⚠️ v4.7 换赛季退役:V4.4 两弹窗羁绊盛会之星(megastar,纯上穿无簿记)/
+#: 命运圣杯(wish_trial,首达档一次簿记分键)均入消失档——弹窗机制已
+#: 不存在,表清空退役(S1a 循环骨架保留:表驱动零迭代,策略批按 v4.7
+#: 新弹窗体系重建时按需重新登记)。
+_FACTION_POPUP_KINDS: dict[str, str] = {}
 
 #: S3 planner 的星级跟踪角色(银狼 LV.999;与 deploy_move 升费分支/
 #: lv999_cost_tier 同名同源;场上同名唯一 =  裁决 1 已登记守卫)。
+#: v4.7 注册表在册,S3 判据不受换赛季影响,保留。
 _PLANNER_CHAR: str = '银狼LV.999'
 
-#: S1b 巨星重选的首档门槛(盛会之星 tiers 首档 = 2;用户裁定:场上
-#: 只剩一个/零个盛会之星角色不弹)。
-_MEGASTAR_FIRST_TIER: int = 2
+# (_PARTNER_ANCHOR_CHAR/_PARTNER_FACTION/_MEGASTAR_FIRST_TIER 与 S1b
+#  巨星重选/S2 伙伴判据段随 v4.7 换赛季退役:盛会之星/列车同行羁绊
+#  消失——列车同行伙伴弹窗(姬子·启行在场前提)与巨星重选弹窗机制
+#  均不存在,考古走 git 历史。)
+
+# (S1b/S2 判据段退役,保留 S1a 表驱动循环 + S3 planner + 羁绊档位
+#  条件发放判据(check_env_bond_tier_grants,注册表驱动)。)
 
 
 def _iter_field_units(view) -> list[tuple[str, Unit]]:
@@ -81,16 +82,16 @@ def _iter_field_units(view) -> list[tuple[str, Unit]]:
 def _qualification_sets(view) -> dict[str, set[str]]:
     """视图 → 盯的资格名集(派生存值;注册表驱动扩容)。
 
-    资格 = 出身 ∨ 持该阵营星徽(装备贡献单一源 = cw_bond_equips.
+    资格 = 出身 ∨ 持该羁绊星徽(装备贡献单一源 = cw_bond_equips.
     unit_bond_tags:出身/卡带/星徽全量口径;名不在注册表/未知 → 零标签,
-    该名对所有阵营无资格)。开拓者按所在排形态(
+    该名对所有羁绊无资格)。开拓者按所在排形态(
     「资格集语义」节)。选边型双羁绊角色(布洛妮娅,
     cw_chars.SIDE_PICK_DUAL_BONDS)标签经 peers 透传选边单边化 →
     其资格集自动单边(计入边一侧有资格、另一侧无)。
 
-    watched = 弹窗两阵营 + 伙伴 + ENV_BOND_TIER_GRANTS 羁绊(羁绊档位
-    发放判据要按资格计数判档,资格集一并盯;扩容零干扰 = 既有 S1a/
-    S1b/S2 判据只读各自阵营,不读本扩容集)。
+    watched = 弹窗羁绊表(v4.7 空表,见模块头退役标注) +
+    ENV_BOND_TIER_GRANTS 羁绊(羁绊档位发放判据要按资格计数判档,
+    资格集一并盯;扩容零干扰 = 既有判据只读各自羁绊,不读本扩容集)。
     """
     from sr_od.application.currency_war.kernel.cw_bond_equips import (
         unit_bond_tags,
@@ -98,7 +99,7 @@ def _qualification_sets(view) -> dict[str, set[str]]:
     from sr_od.application.currency_war.kernel.cw_investments import (
         ENV_BOND_TIER_GRANTS,
     )
-    watched = [*_FACTION_POPUP_KINDS, _PARTNER_FACTION]
+    watched = [*_FACTION_POPUP_KINDS]
     for _bond, _equip in ENV_BOND_TIER_GRANTS.values():
         if _bond not in watched:
             watched.append(_bond)
@@ -157,13 +158,19 @@ def on_equips_changed(gs, changed_pairs, source: str) -> None:
 
 
 def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
-    """资格集变更回调 → S1a 跨档 / S1b 巨星重选 / S2 伙伴判据
-    (全部资格集判据,判据归位 = 值回调单一源)。"""
-    # —— S1a 档位跨越:有弹窗的阵营资格集大小上穿任一档线,单写至多
+    """资格集变更回调 → S1a 跨档判据
+    (全部资格集判据,判据归位 = 值回调单一源)。
+
+    (V4.4 的 S1b 巨星重选/S2 伙伴判据段随盛会之星/列车同行羁绊消失
+    退役,见模块头退役标注;策略批按 v4.7 新弹窗体系重建。)
+    """
+    # —— S1a 档位跨越:有弹窗的羁绊资格集大小上穿任一档线,单写至多
     #    一次。无来源排除(合成继承星徽致跨档同弹;经典合成名集合不变
-    #    天然不进本回调)。巨星 = 纯上穿无簿记(降档再升也弹,用户裁定);
-    #    祈愿 = 首达档一次(降档再回不弹,簿记分键)。
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    #    天然不进本回调)。v4.7:弹窗羁绊表空(盛会之星/命运圣杯消失)
+    #    → 零迭代,S1a 语义随策略批新弹窗体系重建。
+    from sr_od.application.currency_war.data.cw_traits_data import (
+        trait_by_name,
+    )
     from sr_od.application.currency_war.kernel.cw_overlay_register import (
         KIND_SCREEN_NAMES,
         register_screen_change,
@@ -171,7 +178,7 @@ def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
     for faction, kind in _FACTION_POPUP_KINDS.items():
         old_n = len(old_sets.get(faction, ()))
         new_n = len(new_sets.get(faction, ()))
-        crossed = [t for t in FACTIONS[faction].tiers
+        crossed = [t for t in trait_by_name[faction].tiers
                    if old_n < t <= new_n]
         if not crossed:
             continue
@@ -185,28 +192,10 @@ def on_qualification_changed(gs, old_sets, new_sets, source: str) -> None:
             gs, kind, KIND_SCREEN_NAMES[kind],
             source=f's1a_upcross:{faction}@{source}')
 
-    # —— S1b 巨星重选:chosen_megastar 跌出盛会之星资格集(名消失 或
-    #    卸徽致出身∨持徽两失)∧ 写后资格计数仍达首档(用户裁定)。
-    chosen = gs.chosen_megastar.value
-    if chosen:
-        _ms = '盛会之星'
-        if chosen in old_sets.get(_ms, ()) \
-                and chosen not in new_sets.get(_ms, ()) \
-                and len(new_sets.get(_ms, ())) >= _MEGASTAR_FIRST_TIER:
-            register_screen_change(
-                gs, 'megastar', KIND_SCREEN_NAMES['megastar'],
-                source=f's1b_reselect@{source}')
-
-    # —— S2 伙伴:列车同行资格集元素增减(无来源排除;合成继承获资格
-    #    同弹,经典合成集合不变天然不弹)∧ 写后前提现读(姬子·启行
-    #    在场 ∧ 另有成员)。
-    _pf = _PARTNER_FACTION
-    if old_sets.get(_pf) != new_sets.get(_pf):
-        _ns = new_sets.get(_pf, set())
-        if _PARTNER_ANCHOR_CHAR in _ns and len(_ns) >= 2:
-            register_screen_change(
-                gs, 'partner', KIND_SCREEN_NAMES['partner'],
-                source=f's2_member_change@{source}')
+    # (S1b 巨星重选〔chosen_megastar 跌出盛会之星资格集重选〕与 S2 伙伴
+    #  〔列车同行资格集增减 + 姬子·启行在场前提〕两判据段已随 v4.7
+    #  换赛季退役——盛会之星/列车同行羁绊消失,弹窗机制不存在,
+    #  考古走 git 历史。)
 
 
 def on_star_changed(gs, old_star, new_star, source: str) -> None:
@@ -256,7 +245,9 @@ def check_env_bond_tier_grants(gs, new_sets, source: str) -> None:
     env = gs.active_env.value
     if not env:
         return
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_traits_data import (
+        trait_by_name,
+    )
     from sr_od.application.currency_war.kernel.cw_env_grants import (
         BOND_TIER_KEY_PREFIX,
         grant_env_bond_tier,
@@ -270,7 +261,7 @@ def check_env_bond_tier_grants(gs, new_sets, source: str) -> None:
     bond, equip_name = grant
     count = len(new_sets.get(bond, ()))
     done = tuple(gs.env_grants_done.value or ())
-    for tier in FACTIONS[bond].tiers:
+    for tier in trait_by_name[bond].tiers:
         if count < tier:
             continue
         if (env, f'{BOND_TIER_KEY_PREFIX}{tier}') in done:

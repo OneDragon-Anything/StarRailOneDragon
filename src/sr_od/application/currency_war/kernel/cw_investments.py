@@ -51,17 +51,16 @@ from sr_od.application.currency_war.data.cw_chars import (
 from sr_od.application.currency_war.data.cw_dropped_names import (
     GUARD_ALL_UNIT_NAMES,
     GUARD_CHARACTER_ROSTER,
-    v47_dropped_bonds,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
 )
-from sr_od.application.currency_war.data.cw_factions import (
-    FACTIONS,
-)
 from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
+)
+from sr_od.application.currency_war.data.cw_traits_data import (
+    trait_by_name,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BENCH_REROLL_LEFT6,
@@ -1926,7 +1925,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
     # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+ 条目。
     # 羁绊激活计数 = 游戏侧真值(实机 OCR 左面板激活数,currency_war_config.py:6);
-    # 「非独立」= cw_factions.py 独立羁绊段七名排除,desc 明文。
+    # 「非独立」语义 = 非常规组队羁绊排除(新数据层口径 = trait_type=2
+    # 独立羁绊,判据语义重定义声明见 cw_gain_chain 激活全集判据)。
     '团队力量·银': EffectSpec(
         id='150101', name='团队力量·银',
         trigger=TriggerKind.PLANE_START,
@@ -3764,133 +3764,47 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     ),
     # ===== 概念股族(id 1001-1016,模式卡 T-48;族展开登记模板见
     # docs/develop/sr_od/application/currency_war/game_state/fields.md §5.2)=====
-    # id 1001 效果原文直读:「追击」= desc【追击】直读(流派名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
+    # ⚠️ **v4.7 换赛季退役声明**:消失档羁绊轴的 10 条概念股(燃血/列车同行/
+    # 银河学者/贝洛伯格/仙舟/狼狩/昼之半神/夜之半神/减益/战技点,id 1002/1004/
+    # 1005/1006/1008/1009/1010/1011/1014/1016)随羁绊消费点迁移批退役——
+    # 「随机 N 羁绊角色」机制已不存在(注册表查无该羁绊);沿用档 5 条
+    # (追击/能量/星间旅人/击破/群攻)保留,v4.7 新概念股条目待投资域
+    # v4.7 重采后按族模板登记。考古走 git 历史。
+    # id 1001 效果原文直读:「追击」= desc【追击】直读(流派名,与羁绊
+    # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
     # 简易池 = category '简易' 现值 8 件。
     '追击概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='追击', star=1),),
                             equips_random_immediate=('简易',)),
-    # id 1002 效果原文直读:「燃血」= desc【燃血】直读(流派名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
-    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
-    # 简易池 = category '简易' 现值 8 件。
-    '燃血概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='燃血', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1003 效果原文直读:「能量」= desc【能量】直读(流派名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
+    # id 1003 效果原文直读:「能量」= desc【能量】直读(流派名,与羁绊
+    # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS);
     # 简易池 = category '简易' 现值 8 件。
     '能量概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='能量', star=1),),
                             equips_random_immediate=('简易',)),
-    # id 1004 效果原文直读:「列车同行」= desc【列车同行】直读(阵容羁绊名,
-    # 与 ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
-    # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
-    # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md「列车送幸运星」线索
-    # 已随 fixed_hypothesis 键已登记);简易池 = category '简易' 现值 8 件。
-    '列车同行概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='列车同行', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1005 效果原文直读:「银河学者」= desc【银河学者】直读(阵营羁绊名,
-    # 与 ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
-    # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
-    # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md 四卡线索名单不含
-    # 银河学者 = 装备身份零先验,均匀 v0 + 按卡固定假说待校准);简易池 =
-    # category '简易' 现值 8 件。
-    '银河学者概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='银河学者', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1006 效果原文直读:「贝洛伯格」= desc【贝洛伯格】直读(阵营羁绊名,
-    # 与 ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
-    # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
-    # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md 四卡线索名单不含
-    # 贝洛伯格 = 装备身份零先验,均匀 v0 + 按卡固定假说待校准);简易池 =
-    # category '简易' 现值 8 件。
-    '贝洛伯格概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='贝洛伯格', star=1),),
-                            equips_random_immediate=('简易',)),
     # id 1007 效果原文直读:「星间旅人」= desc【星间旅人】直读(阵营羁绊名,
-    # 与 ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
+    # 与羁绊注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
     # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
     # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md 四卡线索名单不含
     # 星间旅人 = 装备身份零先验,均匀 v0 + 按卡固定假说待校准);简易池 =
     # category '简易' 现值 8 件。
     '星间旅人概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='星间旅人', star=1),),
                             equips_random_immediate=('简易',)),
-    # id 1008 效果原文直读:「仙舟」= desc【仙舟】直读(阵营羁绊名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
-    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md 四卡线索名单含仙舟→折叠小刀,先验随 fixed_hypothesis 键已登记);
-    # 简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤(用户裁定
-    # 2026-10-28:未解锁专家不入候选,域 9 名过滤后 7 名,青雀/停云为专家)。
-    '仙舟概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='仙舟', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1009 效果原文直读:「狼狩」= desc【狼狩】直读(阵营羁绊名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
-    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md 四卡线索名单不含狼狩,身份零先验,fixed_hypothesis 家族键
-    # 已登记);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
-    # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,貊泽
-    # is_expert=True)。
-    '狼狩概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='狼狩', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1010 效果原文直读:「昼之半神」= desc【昼之半神】直读(阵营羁绊名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
-    # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md「昼神送轮滑鞋」先验已随 fixed_hypothesis 键已登记);简易池 =
-    # category '简易' 现值 8 件;本域无专家(6 名 is_expert 全空),牌库时点
-    # 过滤对本域恒等;独立单位昔涟照发(族级口径 economy.md:94)。
-    '昼之半神概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='昼之半神', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1011 效果原文直读:「夜之半神」= desc【夜之半神】直读(阵营羁绊名,与
-    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
-    # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md 四卡线索名单不含夜之半神 = 装备身份零先验,均匀 v0 + 按卡固定
-    # 假说待校准);简易池 = category '简易' 现值 8 件;本域无专家(7 名 is_expert
-    # 全空),牌库时点过滤对本域恒等;独立单位昔涟照发(族级口径 economy.md:94)。
-    '夜之半神概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='夜之半神', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1012 效果原文直读:「击破」= desc【击破】直读(流派名,与 ENV_FACTION
-    # 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
+    # id 1012 效果原文直读:「击破」= desc【击破】直读(流派名,与羁绊
+    # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
     # economy.md 四卡线索名单不含击破,身份零先验,fixed_hypothesis 家族键
     # 已登记);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
-    # (族级裁定 2026-10-28:未解锁专家不入候选,域 9 名过滤后 7 名,加拉赫/
-    # 姬子 is_expert=True;独立条目「姬子·启行」schools 空非本域,勿混淆)。
+    # (族级裁定 2026-10-28:未解锁专家不入候选;独立条目「姬子·启行」
+    # schools 空非本域,勿混淆)。
     '击破概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='击破', star=1),),
                             equips_random_immediate=('简易',)),
     # id 1013 效果原文直读:「群攻」= desc【群攻】直读(流派羁绊名,与
-    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
+    # 羁绊注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
     # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
     # economy.md 四卡线索名单不含群攻 = 装备身份零先验,均匀 v0 + 按卡固定
-    # 假说待校准);简易池 = category '简易' 现值 8 件;本域无专家(7 名 is_expert
-    # 全空),牌库时点过滤对本域恒等;缇宝 schools「群攻、量子同频」双羁绊
-    # (量子同频无概念股卡,零联动);翡翠为公司契约具名发放对象(:1502,
-    # 具名 vs 随机字段不相交,正交零冲突)。
+    # 假说待校准);简易池 = category '简易' 现值 8 件。
     '群攻概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='群攻', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1014 效果原文直读:「减益」= desc【减益】直读(流派羁绊名,与
-    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
-    # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md 四卡线索名单不含减益 = 装备身份零先验,均匀 v0 + 按卡固定
-    # 假说待校准);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
-    # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,佩拉
-    # is_expert=True;千冶·刃 ≠ 专家「刃」);椒丘为「持续伤害契约」具名发放
-    # 对象(具名 vs 随机字段不相交,正交零冲突);千冶·刃 schools
-    # 「燃血、减益」双羁绊(燃血域已落地,跨域共享非独占;星核猎手
-    # 无概念股卡且星核猎手契约具名对象仅卡芙卡,零联动)。
-    '减益概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='减益', star=1),),
-                            equips_random_immediate=('简易',)),
-    # id 1016 效果原文直读:「战技点」= desc【战技点】直读(流派羁绊名,与
-    # ENV_FACTION 派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_
-    # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
-    # economy.md 四卡线索名单不含战技点 = 装备身份零先验,均匀 v0 + 按卡固定
-    # 假说待校准);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
-    # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,青雀
-    # is_expert=True);独立单位 Archer 照发(族级口径 economy.md:94 点名
-    # 战技点(Archer),independent='魔术师');花火(2费,schools 战技点、量子同频)
-    # ≠ 火花(4费,schools 战技点、欢愉)两名形近成员,量子同频/欢愉均无概念股卡
-    # 零联动;具名交集 5 名正交:丹恒·饮月/花火 = 战技点契约具名、火花 =
-    # 战技点契约条件∪欢愉契约条件、远坂凛/Archer = 命运圣杯契约具名/条件
-    # (具名 vs 随机字段不相交);域独占 3 名 = 远坂凛/花火/Archer。本卡 =
-    # 概念股族第十五实例(族收官:登记至此 15/15)。
-    '战技点概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='战技点', star=1),),
                             equips_random_immediate=('简易',)),
     # —— 邀请族首例(模式卡 T-63;后继邀请卡 T-64..T-82 逐卡套用本行形状,
     # 纯数据行零机制新增)——
@@ -4261,12 +4175,10 @@ def _validate_random_char_spec(table: str, name: str, spec: RandomCharSpec) -> N
     :func:`_validate_env_gifts` docstring。table/name = 报错定位
     (文案沿各表现款句式)。
 
-    v4.7 换赛季收缩中间态:阵营轴落在已确认掉出羁绊键
-    (``v47_dropped_bonds``,FACTIONS 旧键不再被现役注册表角色自报)的
-    登记条目放行——池空是已确认的换赛季收缩非新漂移,登记残余归羁绊
-    消费点迁移批清偿(放行集语义见 data/cw_dropped_names 模块注)。"""
-    if spec.faction and spec.faction in v47_dropped_bonds():
-        return
+    (v4.7 换赛季收缩中间态的「已确认掉出羁绊键放行」分支已随羁绊
+    消费点迁移批清偿退役:依赖放行的概念股/契约登记条目已删,新登记
+    落在消失档羁绊名上时池空哨照炸 = 人工复审,不再有已确认放行集。)
+    """
     if not random_char_pool(spec):
         raise ValueError(
             f"{table} 随机赠卡池空({name!r}):"
@@ -5519,12 +5431,10 @@ _validate_env_interest_grants()
 # **表间豁免声明**(ENV_MERGE_GRANTS 同款):本表键与 ENV_GIFTS 共存
 # = 合法形态(两表同键各表各域——ENV_GIFTS 的 chars_conditional 辖
 # 估值域档位机器,本表辖状态副本发放),与 ENV_ECONOMY 无 ∩ 冲突。
-ENV_ORE_OPEN_GRANTS: dict[str, tuple[int, int, tuple[str, ...], str]] = {
-    # 战技点契约(id 128 原文直读:「打开20个晶矿后,获得【火花】和1个
-    # 随机战技点羁绊角色;之后每打开10个晶矿,都可重复获得一次角色奖励」
-    # ——首阈值 20/步长 10 卡面直读,重复次数上限无 = 无限重复)
-    '战技点契约': (20, 10, ('火花',), '战技点'),
-}
+# ⚠️ **v4.7 换赛季退役声明**:唯一条目「战技点契约」的随机羁绊轴 =
+# 战技点(v4.7 消失档羁绊)——条件机制已不存在,条目随羁绊消费点迁移
+# 批退役;v4.7 新契约环境条目待投资域 v4.7 重采后按注册行直用本通道。
+ENV_ORE_OPEN_GRANTS: dict[str, tuple[int, int, tuple[str, ...], str]] = {}
 
 
 def _validate_env_ore_open_grants() -> None:
@@ -5535,8 +5445,10 @@ def _validate_env_ore_open_grants() -> None:
     ② 具名角色名漂移:具名角色元组逐名必须在 GUARD_ALL_UNIT_NAMES(发放
     角色闸,版本改名不静默);
     ③ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空(羁绊名
-    错字/版本改名都表现为池空;已确认掉出羁绊键放行,见
-    ``_validate_random_char_spec``)。值形属防登记笔误类,已移除。
+    错字/版本改名都表现为池空)。
+    (v4.7 换赛季收缩中间态的「已确认掉出羁绊键放行」分支已随羁绊
+    消费点迁移批清偿退役,同 _validate_random_char_spec。)
+    值形属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_ORE_OPEN_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -5548,7 +5460,7 @@ def _validate_env_ore_open_grants() -> None:
                 raise ValueError(
                     f"ENV_ORE_OPEN_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                     f"版本改名?):{_name!r}")
-        if _faction not in v47_dropped_bonds() and not chars_by_faction(_faction):
+        if not chars_by_faction(_faction):
             raise ValueError(
                 f"ENV_ORE_OPEN_GRANTS 随机羁绊池空({_n!r}):"
                 f"chars_by_faction({_faction!r}) 现值非空校验失败"
@@ -5899,22 +5811,22 @@ _validate_env_shop_two_star_deal_prob()
 # **状态副本发放域**(条件达成的状态副本发放新表,ENV_STREAK/REFRESH/BOSS/MERGE/
 # INTEREST/ORE_OPEN/BATTLE/DEPLOY_LOCK/DELAYED_ITEM 同族):键 = 环境规范
 # 名,值 = (羁绊名, 发放装备名)。**档位不入表**:单一源 =
-# FACTIONS[bond].tiers(权威裁定「羁绊阈值仍以 cw_factions 为准」,
-# docs/game/currency_war/research/invest_effects.md「羁绊激活口径」节;
-# 跨档判据同源先例 = kernel/cw_faction_callbacks 弹窗阵营档位判定)。
+# 羁绊注册表 trait_by_name[bond].tiers;跨档判据同源先例 =
+# kernel/cw_faction_callbacks 弹窗档位判定)。
 # 表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS 同款
 # 纪律)。消费面 = kernel/cw_faction_callbacks.check_env_bond_tier_grants
 # (deployed 写尾门外必查)+ kernel/cw_env_grants.grant_env_bond_tier
 # (发放原语:equips 尾追 + done 登记两笔同窗)。
 # **表间豁免声明**(ENV_REFRESH_GRANTS 先例同款):本表为状态副本发放域表,
-# 与估值域表分域不互斥——本条目键与 ENV_GIFTS['特邀专家:加拉赫'] 同键
-# 并存合法(先例 = ENV_ORE_GRANTS ∩ ENV_ECONOMY 的增发货币两表并存),
-# 不参与「单一环境只落一个估值结构」三表互斥校验。
-ENV_BOND_TIER_GRANTS: dict[str, tuple[str, str]] = {
-    # 激活2/4/6/9击破羁绊时,获得1件【以太钻头】(id 142 原文直读,
-    # cw_invest_data PlazaPortal('142'))
-    '特邀专家:加拉赫': ('击破', '以太钻头'),
-}
+# 与估值域表分域不互斥——条目键与 ENV_GIFTS 同键并存合法(先例 =
+# ENV_ORE_GRANTS ∩ ENV_ECONOMY 的增发货币两表并存),不参与「单一环境
+# 只落一个估值结构」三表互斥校验。
+# ⚠️ **v4.7 换赛季退役声明**:唯一条目「特邀专家:加拉赫」的卡面效果
+# 「激活 2/4/6/9 击破羁绊时获得以太钻头」基于 V4.4 击破档位谱;v4.7
+# 击破档位换代(2/4/6/9→2/4/6/8,档位单一源 = 新数据层)且特邀专家
+# 环境卡面待投资域 v4.7 重采——卡面/注册表两侧失同步,条目按漂移哨
+# 设计退役(v4.7 新效果原文重采后按注册行直用本通道)。考古走 git 历史。
+ENV_BOND_TIER_GRANTS: dict[str, tuple[str, str]] = {}
 
 
 def _validate_env_bond_tier_grants() -> None:
@@ -5922,12 +5834,13 @@ def _validate_env_bond_tier_grants() -> None:
     grants 先例):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
-    ② 羁绊名漂移:bond 必须在 FACTIONS(档位单一源失联 = 判据失效);
+    ② 羁绊名漂移:bond 必须在羁绊注册表(trait_by_name;档位单一源失联 =
+    判据失效);
     ③ 装备名漂移:发放装备必须在 EQUIPMENTS(发放写出库存里不存在的
     名字 = 假身份混进 equips,ENV_STREAK_GRANTS ②同款);
-    ④ 卡面档位对拍闸:FACTIONS[bond].tiers 串(现值 '2/4/6/9')必须是
-    该环境 effect 原文的子串——击破 tiers V4.4 实证跨版本会变
-    (2/4/6/8/10→2/4/6/9),plaza 重生成改 desc 或有人改 FACTIONS 后两侧
+    ④ 卡面档位对拍闸:trait_by_name[bond].tiers 串必须是
+    该环境 effect 原文的子串——击破 tiers 跨版本会变(档位单一源随
+    羁绊注册表换版),plaza 重生成改 desc 或羁绊注册表改档后两侧
     失同步 = 构建期炸出强制人工复审,防档位漂移静默错发。对拍 = 子串
     包含形态,极端同形假通过可接受(闸目的 = 漂移可见性,非精确文本
     解析)。
@@ -5937,21 +5850,21 @@ def _validate_env_bond_tier_grants() -> None:
         raise ValueError(
             f"ENV_BOND_TIER_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_bond, _equip) in ENV_BOND_TIER_GRANTS.items():
-        if _bond not in FACTIONS:
+        if _bond not in trait_by_name:
             raise ValueError(
-                f"ENV_BOND_TIER_GRANTS 羁绊名漂移({_n!r} FACTIONS 无此"
+                f"ENV_BOND_TIER_GRANTS 羁绊名漂移({_n!r} 羁绊注册表无此"
                 f"羁绊,版本改名?):{_bond!r}")
         if _equip not in EQUIPMENTS:
             raise ValueError(
                 f"ENV_BOND_TIER_GRANTS 装备名漂移({_n!r} 注册表无此装备,"
                 f"版本改名?):{_equip!r}")
-        _tiers_str = '/'.join(str(t) for t in FACTIONS[_bond].tiers)
+        _tiers_str = '/'.join(str(t) for t in trait_by_name[_bond].tiers)
         if _tiers_str not in INVESTMENT_ENVS[_n].effect:
             raise ValueError(
                 f"ENV_BOND_TIER_GRANTS 卡面档位对拍失同步({_n!r}):"
-                f"FACTIONS[{_bond!r}].tiers={FACTIONS[_bond].tiers} 串 "
+                f"羁绊注册表[{_bond!r}].tiers={trait_by_name[_bond].tiers} 串 "
                 f"{_tiers_str!r} 不在效果原文 {INVESTMENT_ENVS[_n].effect!r} "
-                f"中(档位单一源 = FACTIONS,卡面/注册表任一侧改档 = "
+                f"中(档位单一源 = 羁绊注册表,卡面/注册表任一侧改档 = "
                 f"构建期强制人工复审)")
 
 
@@ -7388,10 +7301,10 @@ _validate_strategy_bench_leave_gold_grants()
 # 「<门槛羁绊>羁绊激活时,战斗中首次激活 A/B/C 个不同的非独立羁绊后,
 # 获得【具名装备】」策略域首例:键 = 策略规范名,值 = StrategyBondTierGrant
 # (gate_faction, tiers, item)。档位入表(区别于环境侧 ENV_BOND_TIER_
-# GRANTS 档位单一源 = FACTIONS tiers——本域卡面档位(3/7/10)与门槛
-# 羁绊自身档位(2/3/4/5/6)两套数值异构,卡面明写常量必须显式登记,防
-# 随 FACTIONS 改版静默漂移)。触发-发放单拍制:结算拍状态评估(gate ∧
-# 激活非独立羁绊数 ≥ 档位)逐档首达直接具名发放,发放时点 = 结算拍本
+# GRANTS 档位单一源 = 羁绊注册表 tiers——本域卡面档位(3/7/10)与门槛
+# 羁绊自身档位两套数值异构,卡面明写常量必须显式登记,防随羁绊注册表
+# 改版静默漂移)。触发-发放单拍制:结算拍状态评估(gate ∧
+# 激活非常规组队羁绊数 ≥ 档位)逐档首达直接具名发放,发放时点 = 结算拍本
 # 拍——卡面「战斗中…后获得」无「进入节点时」载体句,与战后触发族
 # (结算拍武装 + 节点窗交付两拍制,发放时点在下一节点窗开)时点语义
 # 异构故不共表(扩形状各建各表,STRATEGY_BOND_BATTLE_GRANTS 同款
@@ -7408,6 +7321,12 @@ _validate_strategy_bench_leave_gold_grants()
 # 表外策略一律无条目,禁从效果原文自动猜装(STRATEGY_BOND_BATTLE_
 # GRANTS 同款纪律);同族后继「gate + 多档 + 具名 + 逐档一次性标志位」卡按注册行
 # 直用本通道接入。
+# ⚠️ **v4.7 换赛季退役声明**:唯一条目「梦境大舞台」的 gate 门槛羁绊 =
+# 盛会之星(v4.7 消失档)——「盛会之星羁绊激活时」前置条件已不存在,
+# 条件机制整体失效,条目随羁绊消费点迁移批退役;发放判据链
+# (cw_gain_chain.check_strategy_bond_tier_grants 的「非常规组队羁绊
+# 激活数」计数)已按 v4.7 数据层语义重定义(trait_type 判据),v4.7 新
+# 同族卡重采后按注册行直用本通道。考古走 git 历史。
 
 @dataclass(frozen=True)
 class StrategyBondTierGrant:
@@ -7415,9 +7334,9 @@ class StrategyBondTierGrant:
     羁绊后,获得【具名装备】」登记结构(策略卡羁绊档位条件发放通道专属
     登记表;字段语义 = 卡面效果原文直读):
 
-    - gate_faction: 门槛羁绊(FACTIONS 键;其计数 ≥ 自身 tiers[0] 才
-      进入档位评估——「羁绊激活时」平读 = 前置状态条件,状态检查型
-      持续满足,gate 关闭期不发放不记档);
+    - gate_faction: 门槛羁绊(羁绊注册表 trait_by_name 键;其计数 ≥
+      自身 tiers[0] 才进入档位评估——「羁绊激活时」平读 = 前置状态
+      条件,状态检查型持续满足,gate 关闭期不发放不记档);
     - tiers: 档位阈值序列(「首次激活3/7/10个」直读,升序登记;逐档
       首达各发一件,升序 = 同拍跳档时各档发放语序单一源);
     - item: 逐档发放具名装备(EQUIPMENTS 键,「获得【盛会之星星徽】」
@@ -7428,15 +7347,7 @@ class StrategyBondTierGrant:
     item: str
 
 
-STRATEGY_BOND_TIER_GRANTS: dict[str, StrategyBondTierGrant] = {
-    # 盛会之星羁绊激活时,战斗中首次激活3/7/10个不同的非独立羁绊后,
-    # 获得【盛会之星星徽】(id 252301 原文直读,cw_invest_data
-    # .PLAZA_AUGMENTS 同 id 行;档位 3/7/10 = 卡面明写常量,gate 基数
-    # 2 = FACTIONS tiers[0] 派生非登记值;「不同的非独立羁绊」计数排除
-    # 独立羁绊、门槛羁绊自身计入,判据归触发函数单一源)
-    '梦境大舞台': StrategyBondTierGrant(
-        gate_faction='盛会之星', tiers=(3, 7, 10), item='盛会之星星徽'),
-}
+STRATEGY_BOND_TIER_GRANTS: dict[str, StrategyBondTierGrant] = {}
 
 
 def _validate_strategy_bond_tier_grants() -> None:
@@ -7448,8 +7359,8 @@ def _validate_strategy_bond_tier_grants() -> None:
     表域测试把关,防线强于 import 期形查):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
-    静默失联);② gate 漂移:gate_faction 必须在 FACTIONS(档位判据
-    派生源失联 = 条件条目静默失效);③ 装备名漂移:item 必须在
+    静默失联);② gate 漂移:gate_faction 必须在羁绊注册表(trait_by_name;
+    档位判据派生源失联 = 条件条目静默失效);③ 装备名漂移:item 必须在
     EQUIPMENTS(_validate_env_bond_tier_grants 装备名漂移哨同形——
     EQUIPMENTS 为游戏数据派生注册表,版本更新改名/移除装备可独立触发;
     错名运行期 = gain_equipment 对未知名盲追加幻影装备入栏,import 期
@@ -7461,10 +7372,10 @@ def _validate_strategy_bond_tier_grants() -> None:
             f"STRATEGY_BOND_TIER_GRANTS 孤儿键(base 无此卡?):"
             f"{sorted(orphans)}")
     for _name, _grant in STRATEGY_BOND_TIER_GRANTS.items():
-        if _grant.gate_faction not in FACTIONS:
+        if _grant.gate_faction not in trait_by_name:
             raise ValueError(
                 f"STRATEGY_BOND_TIER_GRANTS gate 羁绊漂移({_name!r} "
-                f"FACTIONS 无此羁绊,版本改名?):{_grant.gate_faction!r}")
+                f"羁绊注册表无此羁绊,版本改名?):{_grant.gate_faction!r}")
         if _grant.item not in EQUIPMENTS:
             raise ValueError(
                 f"STRATEGY_BOND_TIER_GRANTS 装备名漂移({_name!r} "
@@ -7511,9 +7422,10 @@ def _validate_strategy_gift_grants() -> None:
     静默失联);② 角色名漂移:发放角色必须在 GUARD_ALL_UNIT_NAMES(发放
     角色闸,版本改名不静默——错名运行期 = gain_character 对未注册名零
     落位或幻影,import 期哨是唯一响亮拦截面);③ 阵营名漂移:判据阵营
-    必须在 FACTIONS(判据源失联 = 条件条目静默永不达标);④ 装备名漂移:
-    携带装备 '' 或在 EQUIPMENTS(同 _validate_strategy_conditional_grants
-    装备名漂移哨同形——错名 = 盲追加幻影装备入栏)。
+    必须在羁绊注册表 trait_by_name(判据源失联 = 条件条目静默永不达标);
+    ④ 装备名漂移:携带装备 '' 或在 EQUIPMENTS(同
+    _validate_strategy_conditional_grants 装备名漂移哨同形——错名 =
+    盲追加幻影装备入栏)。
     """
     for table, label in ((STRATEGY_FACTION_COUNT_GRANTS, 'FACTION_COUNT'),
                          (STRATEGY_REWARD_NODE_GRANTS, 'REWARD_NODE')):
@@ -7528,10 +7440,10 @@ def _validate_strategy_gift_grants() -> None:
             raise ValueError(
                 f"STRATEGY_FACTION_COUNT_GRANTS 角色名漂移({_name!r} "
                 f"注册表无此角色,版本改名?):{_char!r}")
-        if _faction not in FACTIONS:
+        if _faction not in trait_by_name:
             raise ValueError(
                 f"STRATEGY_FACTION_COUNT_GRANTS 判据阵营漂移({_name!r} "
-                f"FACTIONS 无此羁绊,版本改名?):{_faction!r}")
+                f"羁绊注册表无此羁绊,版本改名?):{_faction!r}")
         if _equip and _equip not in EQUIPMENTS:
             raise ValueError(
                 f"STRATEGY_FACTION_COUNT_GRANTS 装备名漂移({_name!r} "

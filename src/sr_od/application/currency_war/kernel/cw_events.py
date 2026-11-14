@@ -201,8 +201,9 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     是档位实现常数,只承载层间/层内定序,非基准基数:
 
     - **升费档**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
-      滚强度)。档内修饰:target 含银狼线(狼尊欢愉/量子系)⇒ **升档**(100+30,
-      升费兑现更高);银狼确定不在场(board 有信息但无银狼)⇒ **降档**(100−60,
+      滚强度)。档内修饰:target 含银狼线(狼尊欢愉系)⇒ **升档**(100+30,
+      升费兑现更高;V4.4 量子系并入项随量子同频羁绊消失退役);银狼确定
+      不在场(board 有信息但无银狼)⇒ **降档**(100−60,
       投资无处兑现);信息缺失不降权(在场判定保守)。
     - **装备档**(其余;含弱化词未知名卡文按本档回落):_equip_value 回落
       (装备注册表);target key_equip 命中 ⇒ **装备域内命中优先键**(+15,
@@ -211,8 +212,10 @@ def decide_planner(options: list[PlannerOption], gs: GameState,
     """
     _tgt_chars = set(target_comp.core_chars) if target_comp is not None else set()
     _tgt_factions = set(target_comp.factions) if target_comp is not None else set()
+    # 银狼线判定(V4.4 = 欢愉 ∪ 量子同频;量子同频羁绊随 v4.7 换赛季
+    # 消失退役,现役面 = 欢愉单键)。
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
-        _tgt_factions & {'欢愉', '量子同频'})
+        _tgt_factions & {'欢愉'})
     # 在场判定:bench+deployed 的 char_id(状态容器单位域现读;信息缺失=空→不降权,保守)
     front, back = deployed_rows_of(gs)
     _owned = {u.char_id for u in (*front, *back, *bench_units_of(gs))

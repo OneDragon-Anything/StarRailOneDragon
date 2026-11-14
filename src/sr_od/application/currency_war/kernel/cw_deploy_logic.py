@@ -26,7 +26,7 @@ from sr_od.application.currency_war.data.cw_chars import (
     get_char,
     side_pick_bond,
 )
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
@@ -42,23 +42,22 @@ if TYPE_CHECKING:
         Unit,
     )
 
-#: 过渡体系阈值(仙舟3/列车2/DOT2;三羁绊(阵营,阈值)对从 SYSTEM_CARDS 派生
-#: (排除 seele 卡——希儿系是 deployed 单卡判定非阵营计数);
-#: tier 阈值经 FACTIONS 注册表,单一源。
+#: 过渡体系阈值(现役面 = DOT2 单羁绊;三羁绊(羁绊,阈值)对从 SYSTEM_CARDS 派生
+#: (V4.4 排除 seele 卡——希儿系是 deployed 单卡判定非阵营计数;三卡已随
+#: v4.7 换赛季退役,派生自动收窄至沿用档 DOT 卡);
+#: tier 阈值经羁绊注册表(trait_by_name),单一源。
 #: ⚠️ 遗留副本(迁移计划原文已删):
 #: 权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS(同派生式,零字面双源);
 #: 本副本仅为 sim/旧判据消费点保留;权威副本删除后随之清理;勿新增消费。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
-    (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
+    (card.judge_factions[0], trait_by_name[card.judge_factions[0]].tiers[0])
     for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
 )
 
-#: 希儿系放大器阵营(量子/贝——伤害在希儿技能层,放大器非独立伤害源,
-#: transition_combos.md 四体系表;桑博=贝+DOT 双籍是常态不是边界)
-#: (希儿系体系键 SEELE_SYSTEM_KEY 已随 kernel swap 机器纳入统一管理删除:历史
-#: 消费 = 让渡序度量域/守恒门,现役单卡体系键 = deploy_search 私有
-#: 副本,统一搜索计分面自足。)
-SEELE_AMP_FACTIONS: frozenset[str] = frozenset({'量子同频', '贝洛伯格'})
+# (希儿系放大器阵营 SEELE_AMP_FACTIONS('量子同频'/'贝洛伯格')与希儿系
+#  判据族〔seele_system_formed/is_seele_system_member〕随 v4.7 换赛季退役:
+#  两放大器羁绊消失、引擎单卡希儿掉出角色注册表,机制不存在——
+#  考古走 git 历史;消费方 statefn/predicates 同批收窄。)
 
 
 def engines_count(board_factions: dict[str, int],
@@ -68,49 +67,36 @@ def engines_count(board_factions: dict[str, int],
     cw_sim 侧保留同名薄委托,checks 模块经本模块消费——检查网不
     import cw_sim 的架构锁由依赖方向保证)。
 
-    四体系:仙舟3/列车2/DOT2(TRANSITION_TRAITS 阈值)+ 希儿系
-    (希儿在场 ∧ 放大器≥2)。两两组合=过渡成型。
+    V4.4 四体系 = 仙舟3/列车2/DOT2(TRANSITION_TRAITS 阈值)+ 希儿系
+    (希儿在场 ∧ 放大器≥2);v4.7 换赛季后现役面 = TRANSITION_TRAITS
+    收窄(仅 DOT 卡)+ 希儿系退役——两两组合=过渡成型的语义随策略批
+    按 v4.7 新体系重建。
     """
-    n = sum(1 for bond, tier in TRANSITION_TRAITS
-            if board_factions.get(bond, 0) >= tier)
-    if seele_system_formed(board_factions, deployed_names):
-        n += 1
-    return n
+    return sum(1 for bond, tier in TRANSITION_TRAITS
+               if board_factions.get(bond, 0) >= tier)
 
 
-def seele_system_formed(board_factions: dict[str, int],
-                        deployed_names: frozenset[str] | set[str]) -> bool:
-    """希儿系达成谓词(单一实现;engines_count 与转型分支守恒门同吃)。
-
-    希儿在场 ∧ 放大器 ≥2(量子同频 ∨ 贝洛伯格任一,「或」口径)。
-    从 engines_count 内联式提出:守恒门需要**逐体系**的达成布尔
-    (engines_count 只出总数,粒度不够),提函数 = 不写第二份希儿系
-    判定(新资格族语义只在判定函数链实现一次)。
-    """
-    return ('希儿' in deployed_names
-            and (board_factions.get('量子同频', 0) >= 2
-                 or board_factions.get('贝洛伯格', 0) >= 2))
+# (seele_system_formed 希儿系达成谓词已随希儿系退役删除——消费方
+#  statefn/predicates.zero_form_frame 同批收窄。)
 
 
 def is_seele_system_member(char_id: str, bonds: set[str]) -> bool:
-    """希儿系贡献件判据(单卡 + 放大器;守卫/保护适用范围口径)。
+    """已退役桩(v4.7 换赛季):希儿系贡献件判据不再成立。
 
-    希儿本人(单卡)+ 量子同频/贝洛伯格放大器件——与 cw_evolution.
-    _engine_systems_formed/_contributes_engine_system/_is_member 的
-    希儿系分支同口径(此前已有单卡判据先例,此处提为单一源函数)。
-    tier=1:希儿系作为四过渡体系之一的档(已退役口述登记簿 四体系封闭
-    裁定,transitions.md;希儿系引擎=希儿在场 ∧ 放大器 ≥2,但**恢复
-    种子**的适用范围口径取贡献件全计——清空任意最后一件贡献件都使该体系
-    归零,owned 计数含希儿与全部放大器件)。
+    V4.4 语义 = 希儿本人(单卡)+ 量子同频/贝洛伯格放大器件;v4.7 后
+    两放大器羁绊消失、希儿掉出角色注册表——恒 False 使消费链
+    (statefn/predicates.advances_four_system 等)行为自然收敛为
+    纯羁绊键判定,签名保留防调用链断裂,策略批重建时整函数移除。
     """
-    return char_id == '希儿' or bool(bonds & SEELE_AMP_FACTIONS)
+    del char_id, bonds
+    return False
 
 
-#: B_t 板面线内阵营集(四过渡体系:TRANSITION_TRAITS 三羁绊阵营 ∪
-#: 希儿系放大器阵营;与 engines_count 同适用范围的支撑面)。纯遥测观测
+#: B_t 板面线内羁绊集(V4.4 四过渡体系三羁绊阵营;v4.7 后 = TRANSITION_TRAITS
+#: 键集——希儿系放大器阵营并入项随希儿系退役删除)。纯遥测观测
 #: 适用范围(纯遥测口径延续),不进任何判据。
 SYSTEM_LINE_FACTIONS: frozenset[str] = (
-    frozenset(b for b, _t in TRANSITION_TRAITS) | SEELE_AMP_FACTIONS)
+    frozenset(b for b, _t in TRANSITION_TRAITS))
 
 
 def board_target_line_weight(
@@ -118,10 +104,10 @@ def board_target_line_weight(
     """B_t:板面目标线支撑计数(件级单一源;form_score 替代披露口径)。
 
     逐件判定 = 全羁绊(factions+schools,CHARACTERS 注册表)∩
-    ``SYSTEM_LINE_FACTIONS`` 非空,或希儿本人(单卡判据,与
-    ``is_seele_system_member`` 希儿分支同口径);命中件计 1——桑博=贝+DOT 双籍
-    只计 1 件(件级非阵营级,阵营级计数会双籍重复)。bench 囤件不计入
-    (与旧 form_score 同裁决口径:「上场了才算支撑」)。
+    ``SYSTEM_LINE_FACTIONS`` 非空(V4.4 语义另含希儿本人单卡计件——
+    希儿系随 v4.7 换赛季退役,该分支删除);命中件计 1——桑博=贝+DOT 双籍
+    只计 1 件(V4.4 口径,件级非阵营级,阵营级计数会双籍重复)。bench 囤件
+    不计入(与旧 form_score 同裁决口径:「上场了才算支撑」)。
 
     定位:纯遥测观测面,不进判据(零行为面)。替代口径的依据 =
     form_score 预测力判定(sim 90 局全量:现口径在决策
@@ -138,7 +124,7 @@ def board_target_line_weight(
     """
     n = 0
     for name in deployed_names:
-        if name == '希儿' or bool(_bonds_named(name) & SYSTEM_LINE_FACTIONS):
+        if bool(_bonds_named(name) & SYSTEM_LINE_FACTIONS):
             n += 1
     return n
 

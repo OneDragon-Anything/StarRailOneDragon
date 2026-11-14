@@ -10,7 +10,7 @@ engines_count 是机制事实判据(transition_combos.md 2026-08-23 定稿口径
 归知识层合法;cw_deploy_logic 内的决策半部(部署围栏)不随迁。
 
 零漂移契约:与 kernel/cw_deploy_logic 同名符号派生式同源(同一
-SYSTEM_CARDS/FACTIONS 注册表派生,不存在字面双源;本模块 = 知识层
+SYSTEM_CARDS/羁绊注册表(trait_by_name)派生,不存在字面双源;本模块 = 知识层
 权威副本,kernel 侧同名副本的处理待办见该文件注释;
 sim 旧引擎消费点已停用)。**新增消费一律
 import 本模块。**
@@ -20,14 +20,15 @@ import 本模块。**
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
-# 与 op 侧同源(RECIPE ∪ ENGINE 桥派生集;三羁绊(阵营,阈值)对改从
-# SYSTEM_CARDS 派生(排除 seele 卡——希儿系是 deployed 单卡判定非阵营
-# 计数,deploy 排序/形态维无意义);tier 阈值经 FACTIONS 注册表,单一源)。
+# 与 op 侧同源(RECIPE ∪ ENGINE 桥派生集;三羁绊(羁绊,阈值)对改从
+# SYSTEM_CARDS 派生(V4.4 排除 seele 卡——希儿系是 deployed 单卡判定非阵营
+# 计数,deploy 排序/形态维无意义;三卡已随 v4.7 换赛季退役,派生自动收窄
+# 至沿用档 DOT 卡);tier 阈值经羁绊注册表(trait_by_name),单一源)。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
-    (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
+    (card.judge_factions[0], trait_by_name[card.judge_factions[0]].tiers[0])
     for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
 )
 
@@ -35,18 +36,13 @@ TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
 def engines_count(board_factions: dict[str, int],
                   deployed_names: frozenset[str] | set[str] = frozenset()
                   ) -> int:
-    """过渡体系达成数(四体系:仙舟3/列车2/DOT2(TRANSITION_TRAITS
-    阈值)+ 希儿系(希儿在场 ∧ 放大器≥2)。两两组合=过渡成型。
+    """过渡体系达成数(V4.4 四体系:仙舟3/列车2/DOT2(TRANSITION_TRAITS
+    阈值)+ 希儿系;两两组合=过渡成型)。
 
-    希儿系 = 希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
-    与三羁绊同级可组合(口径出处 = docs/game/currency_war/research/
-    transition_combos.md 希儿系行)。
+    v4.7 换赛季收窄:仙舟/列车同行羁绊消失 → TRANSITION_TRAITS 现役面
+    = DOT 卡单羁绊;希儿系分支(希儿在场 ∧ 量子同频/贝洛伯格 ≥2——
+    机制出处 = docs/game/currency_war/research/transition_combos.md 希儿系行)
+    随希儿掉出角色注册表退役删除。新体系语义归策略批按 v4.7 重建。
     """
-    n = sum(1 for bond, tier in TRANSITION_TRAITS
-            if board_factions.get(bond, 0) >= tier)
-    seele = ('希儿' in deployed_names
-             and (board_factions.get('量子同频', 0) >= 2
-                  or board_factions.get('贝洛伯格', 0) >= 2))
-    if seele:
-        n += 1
-    return n
+    return sum(1 for bond, tier in TRANSITION_TRAITS
+               if board_factions.get(bond, 0) >= tier)

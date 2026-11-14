@@ -1,13 +1,17 @@
 """货币战争 P1 体系卡+组合规则(契约包 C2;判断层手编)。
 
+⚠️ **v4.7 换赛季退役声明**:本表 = V4.4 P1 教义四卡体系;v4.7「入画奇航」S2
+换赛季后,仙舟/列车同行/量子同频/贝洛伯格羁绊消失、引擎单卡希儿掉出角色
+注册表——xianzhou3/train2/seele 三卡判据机制已不存在,随本批退役
+(考古走 git 历史);dot2 判据羁绊「持续伤害」为沿用档卡,判据迁移至新
+数据层 ``cw_traits_data.trait_by_name``。v4.7 新体系卡(策略行为重建)
+归策略暂缓批恢复后的策略迭代,本模块禁凭空登记新卡。
+
 **单一源**:
-- 教义 = 「P1 体系卡定义」深度研读笔记(体系卡四张/
-  组合规则/升级路径;判据语义逐字对齐);
-- 契约 = 同目录 ``契约包_C1-C7.md`` C2 节(签名冻结级;判据内部权重草案级);
-- tier 阈值单一源 = ``cw_factions.FACTIONS``(仙舟 3 档/持续伤害 2 档/列车同行 2 档/
-  量子同频 2 档/贝洛伯格 2 档均取 ``tiers[0]``,不在本文件重复硬编码);
-- 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
-  测试基准;本文件只 import 不复制)。
+- tier 阈值单一源 = ``cw_traits_data.trait_by_name``(持续伤害取
+  ``tiers[0]``,不在本文件重复硬编码)。
+  (V4.4 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值;
+  消费面随仙舟卡退役断开,权威副本仍在彼处。)
 
 **契约偏差声明(相对 C2 伪码;保留面)**:
 1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
@@ -27,15 +31,15 @@
 
 词条吃怕表(数据字段 ``affix_likes``/``affix_fears``):词缀名与
 ``affix_effects_data``/竞品 data 对齐(DOT 吃敌方频动=忍无可忍/同步行动/应激反应,
-怕净化身心;希儿警惕量子熄火;仙舟/列车泛用);消费面 = 过渡候选
-机器的词缀软排除判据(cw_intention.TRANSIT_AFFIX_PENALTY 的数据参照)。
+怕净化身心;消费面 = 过渡候选机器的词缀软排除判据
+(cw_intention.TRANSIT_AFFIX_PENALTY 的数据参照)。
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
@@ -43,28 +47,26 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     deployed_rows_of,
 )
 
-# 符号解耦:铁三角权威副本在 knowledge/cw_line_facts,
-# 不再依赖 kernel/cw_line_defs(迁移待办文件)
-from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
+# (铁三角名单 _CORE_TRIO 的消费面 = V4.4 仙舟卡引擎件,随卡退役断开;
+#  权威副本仍在 knowledge/cw_line_facts,考古走 git 历史。)
 
-# ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
-_XIANZHOU_TIER: int = FACTIONS['仙舟'].tiers[0]              # 3(仙舟≥3 激活)
-_DOT_TIER: int = FACTIONS['持续伤害'].tiers[0]               # 2(持续伤害≥2)
-_TRAIN_TIER: int = FACTIONS['列车同行'].tiers[0]             # 2(列车同行≥2)
+# ===== 判据常量(tier 阈值派生自新数据层,单一源)=====
+# (_XIANZHOU_TIER/_TRAIN_TIER 随仙舟/列车同行羁绊消失退役删除;
+#  _DOT_TIER = 沿用档「持续伤害」首档,唯一存活阈值。)
+_DOT_TIER: int = trait_by_name['持续伤害'].tiers[0]          # v4.7 = 3
 
-_SEELE: str = '希儿'   # 卡4 引擎单卡(伤害全在她技能层,量子/贝是放大器)
+# (_SEELE 随希儿掉出角色注册表退役删除——seele 卡已退役,常量无消费。)
 
 @dataclass(frozen=True)
 class SystemCard:
     """一张 P1 体系卡(乐高块;p1_definition 一·体系卡)。
 
-    - ``card_id``:'xianzhou3' | 'dot2' | 'train2' | 'seele';
+    - ``card_id``:现役仅 'dot2'(v4.7 前含 'xianzhou3'/'train2'/'seele');
     - ``judge``:判据描述(文档性;**函数 ``card_active`` 才是权威**);
-    - ``engine_required``:引擎件(仙舟=铁三角三人;其余空);
-    - ``star_goal``:星级目标(仙舟铁三角 2★;希儿 3★;其余不追);
-    - ``judge_factions``:判据阵营元组(希儿系双元组=('量子同频','贝洛伯格');
-      其余单元组)——**卡→阵营映射的单一数据源**(字段化防多处手抄漂移,
-      加卡零改动);
+    - ``engine_required``:引擎件(V4.4 语义 = 仙舟=铁三角三人;现役卡空);
+    - ``star_goal``:星级目标(V4.4 语义 = 仙舟铁三角 2★/希儿 3★;现役卡不追);
+    - ``judge_factions``:判据羁绊元组——**卡→羁绊映射的单一数据源**
+      (字段化防多处手抄漂移,加卡零改动);
     - ``affix_likes``/``affix_fears``:词条吃怕表(数据字段;消费面 =
       过渡候选机器词缀软排除判据的表参照)。
     """
@@ -78,42 +80,17 @@ class SystemCard:
     affix_fears: list[str] = field(default_factory=list)
 
 
+# (xianzhou3/train2/seele 三卡随 v4.7 换赛季退役:仙舟/列车同行羁绊消失、
+#  希儿系连引擎单卡都已掉出角色注册表——三卡判据机制不存在,考古走 git 历史。)
 SYSTEM_CARDS: dict[str, SystemCard] = {
-    'xianzhou3': SystemCard(
-        card_id='xianzhou3', display_name='仙舟3',
-        judge='仙舟≥3 人(3 人档激活);引擎=铁三角功能链不可拆(缺一=空壳)',
-        engine_required=sorted(_CORE_TRIO),
-        star_goal=dict.fromkeys(_CORE_TRIO, 2),   # 铁三角 2★ 即成型;不追 3★
-        judge_factions=('仙舟',),
-        affix_likes=[],                          # 词条泛用(神君不挑敌方形态)
-        affix_fears=[],
-    ),
     'dot2': SystemCard(
         card_id='dot2', display_name='DOT2',
-        judge='持续伤害≥2 人(2 人档激活,最低门槛);无引擎要求',
+        judge='持续伤害≥首档(3 人档激活,v4.7);无引擎要求',
         engine_required=[],
         star_goal={},                            # 星级不追
         judge_factions=('持续伤害',),
         affix_likes=['忍无可忍', '同步行动', '应激反应'],   # 吃敌方频动→DOT 多结算
-        affix_fears=['净化身心'],                # 敌解负面+回血(羁绊注册表 note:该环境别玩 DOT)
-    ),
-    'train2': SystemCard(
-        card_id='train2', display_name='列车2',
-        judge='列车同行≥2 人;无引擎(凑出就能用)',
-        engine_required=[],
-        star_goal={},
-        judge_factions=('列车同行',),
-        affix_likes=[],                          # 词条泛用
-        affix_fears=[],
-    ),
-    'seele': SystemCard(
-        card_id='seele', display_name='希儿系',
-        judge='希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2);引擎=希儿单卡',
-        engine_required=[_SEELE],
-        star_goal={_SEELE: 3},                   # 希儿追 3★(高饥渴线,从 P1 就可开始)
-        judge_factions=('量子同频', '贝洛伯格'),   # 双分支(顺序=演进目标基准取首位)
-        affix_likes=[],
-        affix_fears=['量子熄火'],                # 量子属性伤害限 1(重开级 counter)
+        affix_fears=['净化身心'],                # 敌解负面+回血(羁绊注册表注记:该环境别玩 DOT)
     ),
 }
 
@@ -127,9 +104,9 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
 def _char_traits(ch) -> tuple[str, ...]:
     """角色的全部羁绊 tag(阵营 factions + 流派 schools)。
 
-    持续伤害/量子同频等是**流派**羁绊(cw_chars.Character.schools),仙舟/贝洛伯格
-    等是阵营(factions)——判据消费「该角色算不算某羁绊的件」必须双看(单看
-    factions 会漏 DOT/量子件)。
+    持续伤害等是**流派**羁绊(cw_chars.Character.schools),阵营类羁绊在
+    factions——判据消费「该角色算不算某羁绊的件」必须双看(单看 factions
+    会漏流派件)。
     """
     return (ch.factions or ()) + (ch.schools or ())
 
@@ -141,10 +118,8 @@ def _owned_units(gs: GameState) -> list:
     return [*front, *back, *bench_units_of(gs)]
 
 
-def _owned_names(gs: GameState) -> set[str]:
-    """在场∪bench 的角色名集合(char_id 已识别者;未识别槽不计)。"""
-    return {u.char_id for u in _owned_units(gs)
-            if getattr(u, 'char_id', '')}
+# (_owned_names/_seele_on_board 两 helper 的消费面 = V4.4 seele 卡分支,
+#  随卡退役删除;考古走 git 历史。)
 
 
 def _faction_count(gs: GameState, faction: str) -> int:
@@ -160,36 +135,19 @@ def _faction_count(gs: GameState, faction: str) -> int:
     return max(cnt_board, cnt_ident)
 
 
-def _seele_on_board(gs: GameState) -> bool:
-    """希儿在场(= 上阵 deployed;bench 不算「在场」)。"""
-    front, back = deployed_rows_of(gs)
-    return any(u.char_id == _SEELE for u in (*front, *back))
-
-
 def card_active(card: SystemCard, gs: GameState) -> bool:
-    """体系判定(C2 冻结判据语义,逐字对 p1_definition):
+    """体系判定(V4.4 冻结判据语义;v4.7 现役面 = DOT 卡单卡):
 
-    - 仙舟3 = 仙舟 ≥3;
-    - DOT2 = 持续伤害 ≥2;
-    - 列车2 = 列车同行 ≥2;
-    - 希儿系 = 希儿在场 AND(量子同频 ≥2 OR 贝洛伯格 ≥2)。
+    - DOT2 = 持续伤害 ≥ 首档(v4.7 = 3)。
+    (仙舟3/列车2/希儿系三卡已随 v4.7 换赛季退役,card_id 不再注册。)
     """
-    if card.card_id == 'xianzhou3':
-        return _faction_count(gs, '仙舟') >= _XIANZHOU_TIER
     if card.card_id == 'dot2':
         return _faction_count(gs, '持续伤害') >= _DOT_TIER
-    if card.card_id == 'train2':
-        return _faction_count(gs, '列车同行') >= _TRAIN_TIER
-    if card.card_id == 'seele':
-        if not _seele_on_board(gs):
-            return False
-        return any(_faction_count(gs, f) >= FACTIONS[f].tiers[0]
-                   for f in card.judge_factions)
     raise ValueError(f'未知体系卡: {card.card_id}')
 
 
 def card_engine_complete(card: SystemCard, owned: set[str]) -> bool:
-    """引擎完备度(C2 冻结语义):仙舟=铁三角三人组到齐(缺一=空壳);无引擎卡恒 True。
+    """引擎完备度(V4.4 冻结语义:V4.4 仙舟卡=铁三角三人组到齐;无引擎卡恒 True)。
 
     ``owned`` = 拥有角色名集合(在场∪bench 口径,由调用方给;判据只看「有没有」,
     bench 里的引擎件算到齐——上场时机归演进引擎/围栏,不归本判定)。
@@ -202,7 +160,7 @@ def card_engine_complete(card: SystemCard, owned: set[str]) -> bool:
 # ===== 件数/组合选择(组合规则 1-3;权重草案级)=====
 
 def _card_factions(card: SystemCard) -> tuple[str, ...]:
-    """该体系卡的判据阵营(希儿系双分支;其余单阵营)。
+    """该体系卡的判据羁绊(单元组;V4.4 希儿系双分支随卡退役)。
 
     映射本体已字段化为 ``SystemCard.judge_factions``
     (本函数保留为兼容视图,行为=原样返回字段)。
@@ -213,27 +171,9 @@ def _card_factions(card: SystemCard) -> tuple[str, ...]:
 def card_pieces(card: SystemCard, gs: GameState) -> int:
     """该体系当前件数(来牌主判据):在场+bench 的该系件数(含引擎件)。
 
-    - 阵营系(仙舟/DOT/列车):按阵营成员身份计(deployed∪bench);
-    - 希儿系:希儿在手(在场∪bench)计 1 + 量子/贝成员件数(bench+deployed
-      身份口径)——引擎+放大器合为「件数」近似。
+    按羁绊成员身份计(deployed∪bench;V4.4 希儿系「引擎+放大器去重计件」
+    特殊分支随 seele 卡退役)。
     """
-    if card.card_id == 'seele':
-        owned = _owned_names(gs)
-        if _SEELE not in owned:
-            return 0   # 无希儿时量子/贝不能独立当过渡(放大器不算来牌方向)
-        # 引擎(希儿)+ 放大器(量子/贝成员)按**角色去重**计件(多羁绊角色
-        # 双分支只计一次;希儿本人既是引擎又属双分支,也只计一次)
-        members: set[str] = set()
-        for fac in _card_factions(card):
-            for c in _owned_units(gs):
-                if not getattr(c, 'char_id', ''):
-                    continue
-                ch = get_char(c.char_id)
-                if ch is not None and fac in _char_traits(ch):
-                    members.add(c.char_id)
-        if _SEELE in owned:
-            members.add(_SEELE)
-        return len(members)
     fac = _card_factions(card)[0]
     n = 0
     for c in _owned_units(gs):

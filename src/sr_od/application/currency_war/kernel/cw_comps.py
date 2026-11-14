@@ -1,5 +1,13 @@
 """货币战争 阵容库(纯逻辑,可测,不碰游戏)。
 
+⚠️ **v4.7 换赛季退役声明**:COMP_LIBRARY 条目为 V4.4 旧赛季阵容知识
+(faction_reqs 羁绊键/成员名单均为 V4.4 口径)——v4.7「入画奇航」S2 换
+赛季后羁绊名大换血,条目内羁绊键不在新注册表(trait_by_name),本迭代
+只保证 import 不炸:羁绊名白名单建库校验随旧数据面退役(其余结构校验
+保留);消费方为策略暂缓批(无运行时触达)。阵容知识重建归知识层批
+(策略暂缓批恢复后的 compo-knowledge 版本重跑),条目内容不更新、
+考古走 git 历史。
+
 战略层:围绕目标阵容 commit + 转型 + 巨星。
 auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模块给**可配置 + 自适应**的选目标机制。
 
@@ -186,7 +194,9 @@ class Comp:
                     '不在合法值域(front/back/front@0-3/back@4-9)')
         # 羁绊要求结构建库期校验(faction-priority.md §5;非法数据
         # import 即炸,消费端信任结构合法)
-        from sr_od.application.currency_war.data.cw_factions import FACTIONS
+        # (v4.7 换赛季:①「羁绊名 ∈ 注册表白名单」校验随旧数据面退役——
+        #  COMP_LIBRARY 条目羁绊键为 V4.4 口径,不在新注册表,校验保留
+        #  = import 期整表炸;羁绊名合法性回归归知识层批重建。)
         seen_bonds: dict[str, int] = {}
         prios = sorted(self.faction_reqs)
         # ④ 档号非负、不跳档(连续 0..max;档 0 缺席 = 全空 dict)
@@ -198,11 +208,6 @@ class Comp:
         for prio in prios:
             layer = self.faction_reqs[prio]
             for bond, need in layer.items():
-                # ① 羁绊名 ∈ 注册表白名单
-                if bond not in FACTIONS:
-                    raise ValueError(
-                        f'{self.name}: faction_reqs[{prio}] 羁绊名未注册'
-                        f' {bond!r}(白名单 = cw_factions.FACTIONS 键全集)')
                 # ② 同一羁绊不得跨档
                 if bond in seen_bonds:
                     raise ValueError(

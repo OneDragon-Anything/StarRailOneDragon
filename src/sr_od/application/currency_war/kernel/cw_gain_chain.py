@@ -47,7 +47,7 @@ from sr_od.application.currency_war.data.cw_equipment_data import (
     CONSUMABLE_EQUIP_CATEGORIES,
     EQUIPMENTS,
 )
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_board_by_row import (
     board_by_row_of,
 )
@@ -2571,9 +2571,9 @@ def check_strategy_bond_battle_grants(gs: GameState,
     2. 激活羁绊数评估:逐羁绊 ``max(board 状态容器计数, board_by_row 身份
        聚合计数)`` 取 max 判激活(判激活侧 max 容错,cw_system_cards.
        _faction_count 同款——漏判激活比多判更伤);board 与 deployed
-       双未观察 → 激活数 = 0 fail-closed 宁缺勿造;FACTIONS 外未知名
-       不计;激活判据 = 计数 ≥ ``FACTIONS[tag].tiers[0]``(档位单一
-       源 = FACTIONS;独立羁绊 tiers=(1,) 单人即激活,与左面板显示
+       双未观察 → 激活数 = 0 fail-closed 宁缺勿造;羁绊注册表外未知名
+       不计;激活判据 = 计数 ≥ ``trait_by_name[tag].tiers[0]``(档位单一
+       源 = 羁绊注册表;独立羁绊 tiers=(1,) 单人即激活,与左面板显示
        同口径);
     3. 逐持卡:激活数 ≥ 表载阈值 → ``write_logic`` 置武装标记
        ``strategy_bond_battle_armed = True``(evidence
@@ -2600,7 +2600,7 @@ def check_strategy_bond_battle_grants(gs: GameState,
     row_counts = board_by_row_of(gs).total()
     activated = 0
     for tag in set(board_counts) | set(row_counts):
-        faction = FACTIONS.get(tag)
+        faction = trait_by_name.get(tag)
         if faction is None or not faction.tiers:
             continue
         if max(int(board_counts.get(tag, 0)), int(row_counts.get(tag, 0))) \
@@ -2708,14 +2708,19 @@ def check_strategy_bond_tier_grants(gs: GameState,
        跳过零写零一次性标志位——「羁绊激活时」= 前置状态条件,状态检查型持续
        满足,gate 关闭期不武装不记档;gate 后开而计数已达标 → 首个
        达标结算发放(漏判激活比多判更伤容错方向同源);
-    3. 激活非独立羁绊全集:FACTIONS 逐族 ``计数 ≥ tiers[0]`` ∧
-       ``category != 'independent'`` 过滤取集合——卡面「不同的非独立
-       羁绊」平读排除独立 7 族(卡面显式限定词,代码侧排除本卡首例消
-       费 category 字段),gate 羁绊自身计入(非独立族,平读无限定
-       排除词);计数走 :func:`cw_system_cards._faction_count`(board
-       状态容器 × board_by_row 身份聚合双源取 max 容错——判激活侧非计费
-       侧;L2 星徽装备贡献只有 board 状态容器(左面板真值口径)承载,双源
-       max 融合天然计入;双源双缺 → 0 零武装 fail-closed);
+    3. 激活常规组队羁绊全集:羁绊注册表(trait_by_name)逐族
+        ``计数 ≥ tiers[0]`` ∧ ``trait_type in (0, 1)`` 过滤取集合——
+        卡面「不同的非独立羁绊」平读排除非常规组队羁绊(卡面显式限定词)。
+        **判据语义重定义**(v4.7 数据层迁移):旧排除集 = 旧注册表
+        category='independent' 7 个单卡专属羁绊,新排除集 = 官方
+        trait_type=2 六个特殊羁绊——集合内容换代但「排除非常规组队
+        羁绊」的业务判据一致;官方 trait_type = 数据层唯一分类字段
+        (旧 category 无官方对应物,不迁移)。gate 羁绊自身计入(常规
+        组队族时平读无限定排除词);计数走 :func:`cw_system_cards.
+        _faction_count`(board 状态容器 × board_by_row 身份聚合双源取
+        max 容错——判激活侧非计费侧;L2 星徽装备贡献只有 board 状态
+        容器(左面板真值口径)承载,双源 max 融合天然计入;双源双缺 → 0
+        零武装 fail-closed);
     4. 逐档首达一次性标志位 + 发放:``spec.tiers`` 升序逐档,激活数 ≥ 档位 ∧
        ``'<卡名>#<档位>'`` ∉ 一次性标志位域(strategy_bond_tier_fired)→
        ``gain_equipment(rand=False)`` 具名确定发放(零 rng,较类别
@@ -2735,12 +2740,15 @@ def check_strategy_bond_tier_grants(gs: GameState,
     granted: list[str] = []
     for name in held:
         spec = STRATEGY_BOND_TIER_GRANTS[name]
-        if _faction_count(gs, spec.gate_faction) \
-                < FACTIONS[spec.gate_faction].tiers[0]:
+        gate = trait_by_name[spec.gate_faction]
+        if _faction_count(gs, spec.gate_faction) < gate.tiers[0]:
             continue
-        activated = {f for f, info in FACTIONS.items()
-                     if info.category != 'independent'
-                     and _faction_count(gs, f) >= info.tiers[0]}
+        # 「不同的非独立羁绊」判据(语义重定义声明见 docstring 条 3):
+        # 排除 trait_type=2 特殊羁绊(官方分类,旧 category 判据不迁移),
+        # 计入 trait_type 0(阵营)/1(流派)常规组队羁绊。
+        activated = {f for f, t in trait_by_name.items()
+                     if t.trait_type in (0, 1)
+                     and _faction_count(gs, f) >= t.tiers[0]}
         for tier in spec.tiers:
             if len(activated) < tier:
                 continue
