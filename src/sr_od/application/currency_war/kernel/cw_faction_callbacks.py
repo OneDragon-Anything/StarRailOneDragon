@@ -24,7 +24,7 @@
   v4.7 中间态表空——击破档位换代,条目待投资域 v4.7 重采)。
 
 资格集与羁绊计数字段(board)分立:资格集 = 名集合(判据面;出身 ∨
-持徽,贡献单一源 cw_bond_equips.unit_bond_tags,开拓者按排形态);
+持徽,贡献单一源 cw_bond_equips.unit_bond_tags);
 board = 多集口径(卡带系多计,策略消费口)——两者非视图关系。
 
 level 域同款值回调见 ``cw_levelup_callbacks``(升级连锁调度器,
@@ -65,17 +65,15 @@ _PLANNER_CHAR: str = '银狼LV.999'
 #  条件发放判据(check_env_bond_tier_grants,注册表驱动)。)
 
 
-def _iter_field_units(view) -> list[tuple[str, Unit]]:
-    """视图 → (排, Unit) 占用清单(排 = 子表名,开拓者形态归一的
-    判据输入;空槽跳过)。"""
+def _iter_field_units(view) -> list[Unit]:
+    """视图 → 上场单位清单(空槽跳过)。"""
     if view is None:
         return []
-    out: list[tuple[str, Unit]] = []
-    for row, sub in (('front', view.front_slots or []),
-                     ('back', view.back_slots or [])):
+    out: list[Unit] = []
+    for sub in (view.front_slots or [], view.back_slots or []):
         for u in sub:
             if u is not None:
-                out.append((row, u))
+                out.append(u)
     return out
 
 
@@ -84,10 +82,7 @@ def _qualification_sets(view) -> dict[str, set[str]]:
 
     资格 = 出身 ∨ 持该羁绊星徽(装备贡献单一源 = cw_bond_equips.
     unit_bond_tags:出身/卡带/星徽全量口径;名不在注册表/未知 → 零标签,
-    该名对所有羁绊无资格)。开拓者按所在排形态(
-    「资格集语义」节)。选边型双羁绊角色(布洛妮娅,
-    cw_chars.SIDE_PICK_DUAL_BONDS)标签经 peers 透传选边单边化 →
-    其资格集自动单边(计入边一侧有资格、另一侧无)。
+    该名对所有羁绊无资格)。
 
     watched = 弹窗羁绊表(v4.7 空表,见模块头退役标注) +
     ENV_BOND_TIER_GRANTS 羁绊(羁绊档位发放判据要按资格计数判档,
@@ -104,12 +99,8 @@ def _qualification_sets(view) -> dict[str, set[str]]:
         if _bond not in watched:
             watched.append(_bond)
     sets: dict[str, set[str]] = {f: set() for f in watched}
-    # 选边型双羁绊角色(布洛妮娅)经 peers 透传按图鉴逻辑单边计入——
-    # 标签单边化后其资格集自动单边(同聚合单一源口径)。
-    units = list(_iter_field_units(view))
-    for row, u in units:
-        tags = unit_bond_tags(u, row=row,
-                              peers=[u2 for _r2, u2 in units if u2 is not u])
+    for u in _iter_field_units(view):
+        tags = unit_bond_tags(u)
         for f in watched:
             if f in tags:
                 sets[f].add(str(u.char_id))
@@ -121,7 +112,7 @@ def _planner_star(view) -> int | None:
 
     场上同名唯一(裁决 1 入口守卫已登记)⇒ 至多一值;防御性取首见。
     """
-    for _row, u in _iter_field_units(view):
+    for u in _iter_field_units(view):
         if str(u.char_id) == _PLANNER_CHAR:
             return int(u.star)
     return None
@@ -131,17 +122,16 @@ def _diff_by_name(old_view, new_view
                   ) -> tuple[list, list, list]:
     """一次 deployed 写按名分解三类事件(
     语义」节):成员增(名新现)/ 成员减(名消失)/ 存活对(同名且
-    (星, equips,排面) 有差的 (旧单位,新单位) 对——名含排面时
-    开拓者换形态按名消失+名新增进前两类,资格集总对比仍正确)。"""
-    old_by_name: dict[str, tuple[str, Unit]] = {
-        str(u.char_id): (row, u) for row, u in _iter_field_units(old_view)}
-    new_by_name: dict[str, tuple[str, Unit]] = {
-        str(u.char_id): (row, u) for row, u in _iter_field_units(new_view)}
-    added = [u for n, (_r, u) in new_by_name.items() if n not in old_by_name]
-    removed = [u for n, (_r, u) in old_by_name.items() if n not in new_by_name]
+    (星, equips) 有差的 (旧单位,新单位) 对)。"""
+    old_by_name: dict[str, Unit] = {
+        str(u.char_id): u for u in _iter_field_units(old_view)}
+    new_by_name: dict[str, Unit] = {
+        str(u.char_id): u for u in _iter_field_units(new_view)}
+    added = [u for n, u in new_by_name.items() if n not in old_by_name]
+    removed = [u for n, u in old_by_name.items() if n not in new_by_name]
     changed: list[tuple[Unit, Unit]] = [
-        (old_by_name[n][1], u) for n, (_r, u) in new_by_name.items()
-        if n in old_by_name and old_by_name[n][1] != u]
+        (old_by_name[n], u) for n, u in new_by_name.items()
+        if n in old_by_name and old_by_name[n] != u]
     return added, removed, changed
 
 

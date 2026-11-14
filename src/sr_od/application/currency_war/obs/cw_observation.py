@@ -1657,7 +1657,7 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
     口径(迁移审计):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
-    ——L1 全集(factions+schools+independent,开拓者按排归一)**+ L2 星徽装备
+    ——L1 全集(factions+schools+independent)**+ L2 星徽装备
     羁绊贡献**(``deployed[].equips``,deploy_bench 读回在案):
     星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
     该羁绊行 +1,是面板真值的一部分(迁移审计§2:此前缺维度 → computed_vs_ocr
@@ -1667,32 +1667,20 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
         {羁绊: 在场人数};**表空 或 含未知身份(char_id 空/'?'/不在注册表)→ None**
         (混合态不切,OCR 兜底——未知角色的阵营贡献算不出,半算比漏算更毒;观察冲突保留证据会暴露
         混合频率)。**无阵营已知角色不 bail**:白厄「救世主」复制效果不计人数
-        (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(双羁绊登记:贝洛
-        伯格阵营+燃血流派)按图鉴逻辑选边单边计入——比较其余在场角色的
-        注册表出身计数(图鉴「加入人数更多的羁绊」,规则单一源 =
-        cw_chars.side_pick_bond,peers 经 unit_bond_tags 透传);
+        (官方 trait 3005)→ 跳过零贡献即精确;
         独立羁绊行计入(与左面板显示同口径)。
 
     入参形状 = 主域派生下标工作表(list[Unit | None],cw_game_state.
-    deployed_indexed_of_view):排归属由下标派生(0-3 前/4-9 后,动作
-    坐标系单一源口径),开拓者形态归一按派生排传入。
+    deployed_indexed_of_view)。
     """
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        DEPLOYED_FRONT_CAPACITY,
-    )
     _occ = [(i, u) for i, u in enumerate(dep or [])
             if u is not None]   # 槽位表滤 None
     if not _occ:
         return None
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     counts: dict[str, int] = {}
-    # 选边型双羁绊角色的计入边依赖全场构成(选边不分排,基数 = 全板其余
-    # 角色)→ 先收齐有效单位全集,聚合时传 peers = 其余单位。
-    units = [bc for _i, bc in _occ]
-    for i, bc in _occ:
-        row = 'front' if i < DEPLOYED_FRONT_CAPACITY else 'back'
-        tags = unit_bond_tags(bc, row=row,
-                              peers=[u for u in units if u is not bc])
+    for _i, bc in _occ:
+        tags = unit_bond_tags(bc)
         if tags:
             for t in tags:
                 counts[t] = counts.get(t, 0) + 1
@@ -1701,14 +1689,7 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
         cid = getattr(bc, 'char_id', '') or ''
         if not cid or cid == '?':
             return None
-        from sr_od.application.currency_war.data.cw_chars import (
-            is_trailblazer,
-            trailblazer_form,
-        )
-        _cid = cid
-        if is_trailblazer(_cid):
-            _cid = trailblazer_form(_cid, row)
-        ch = get_char(_cid)
+        ch = get_char(cid)
         if ch is None:
             return None   # 注册表无此角色:阵营贡献算不出,保守退 OCR
         if ch.factions or ch.schools or ch.independent:

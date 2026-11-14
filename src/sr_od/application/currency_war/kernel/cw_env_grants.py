@@ -791,7 +791,7 @@ def check_env_battle_grants(gs: GameState, sig: ChannelSig) -> str | None:
     from sr_od.application.currency_war.kernel.cw_faction_callbacks import (
         _iter_field_units,
     )
-    present = {str(u.char_id) for _row, u in _iter_field_units(gs.deployed.value)}
+    present = {str(u.char_id) for u in _iter_field_units(gs.deployed.value)}
     if not all(any(name in present for name in group)
                for group in grant.presence_groups):
         return None

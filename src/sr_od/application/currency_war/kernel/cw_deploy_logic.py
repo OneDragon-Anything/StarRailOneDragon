@@ -22,9 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
-    SIDE_PICK_DUAL_BONDS,
     get_char,
-    side_pick_bond,
 )
 from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -151,22 +149,13 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     消费面 = 卖出评估器支撑判定与推判重放板面重推导(原七桶选人/
     swap 计划消费点已随部署统一批丁纳入统一管理删除;未注册名不计——无名可判
     即无阵营信号,件本身的去重/fail-open 由消费面管)。
-    选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)按
-    ``cw_chars.side_pick_bond`` 选边单边计入(贡献 = [side] 替代双边
-    出身;基数 = 其余在场 cid 的注册表出身,同图鉴「角色的数量」口径,
-    不含装备贡献)。
     """
     out: dict[str, int] = {}
-    cids = list(deployed_cids)
-    for cid in cids:
+    for cid in deployed_cids:
         ch = get_char(cid) if cid else None
         if ch is None:
             continue
-        if cid in SIDE_PICK_DUAL_BONDS:
-            tags: tuple[str, ...] = (side_pick_bond(
-                cid, [c for c in cids if c != cid]),)
-        else:
-            tags = tuple(ch.factions or ()) + tuple(ch.schools or ())
+        tags = tuple(ch.factions or ()) + tuple(ch.schools or ())
         for f in tags:
             out[f] = out.get(f, 0) + 1
     return out
@@ -308,11 +297,6 @@ def board_unique_key(bc: Unit) -> str | None:
     入参 = 行域/工作表 ``Unit``,唯一消费域;§2.4)。
 
     - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
-    - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
     - 其余 = char_id 本身。
     """
-    cid = getattr(bc, 'char_id', '') or ''
-    if not cid:
-        return None
-    from sr_od.application.currency_war.data.cw_chars import is_trailblazer
-    return '__trailblazer__' if is_trailblazer(cid) else cid
+    return getattr(bc, 'char_id', '') or None

@@ -66,32 +66,6 @@ class Character:
         return "back"   # back / common → back
 
 
-# ===== 开拓者形态切换 =====
-# 机制:注册表按「归一基名 → {排: 该排的形态规范名}」登记形态表,身份计算
-# (羁绊/计数)按「当前排」归一形态(同一开拓者前台/后台形态羁绊不同,同局
-# 反复换排是常态操作,不归一会造成羁绊计数虚高/漏算)。v4.7 名单开拓者仅基名
-# 「开拓者」单条目(旧双形态「开拓者·记忆/欢愉」不在册)→ 形态表清空:
-# trailblazer_form 基名直通、is_trailblazer 恒 False(数据驱动空转);未来名单
-# 恢复形态条目时补表即恢复归一。
-_TRAILBLAZER_FORMS: dict[str, dict[str, str]] = {}
-
-
-def trailblazer_form(name: str, row: str) -> str:
-    """开拓者按排归一形态名:``row`` = "front"/"back";非开拓者原样返回。
-
-    形态表空(当前名单开拓者仅基名单条目,无双形态)→ 基名直通,
-    name 原样返回;row 参数保留(消费方签名不变,当前无归一可做)。
-    """
-    forms = next((v for k, v in _TRAILBLAZER_FORMS.items() if k in name), None)
-    if forms is not None and row in forms:
-        return forms[row]
-    return name
-
-
-def is_trailblazer(name: str) -> bool:
-    return any(base in name for base in _TRAILBLAZER_FORMS)
-
-
 def _ch(
     name: str,
     cost: int,
@@ -302,49 +276,3 @@ def chars_by_faction(faction: str, include_schools: bool = True) -> list[Charact
     if include_schools:
         out += [c for c in CHARACTERS if faction in c.schools and c not in out]
     return out
-
-
-# ===== 选边型双羁绊(板面羁绊计数选边机制;机制/承载分工见
-# cw_bond_equips.unit_bond_tags docstring 与 fields.md §5.2 披露键组)=====
-
-#: 选边型双羁绊角色(首例布洛妮娅,用户裁定 2026-10-28):注册表
-#: factions/schools 双边都登记(采样域/成员反查双边命中),板面羁绊
-#: 计数按图鉴逻辑选边单边计入。值 = (羁绊甲, 羁绊乙);比较基数 =
-#: 其余在场角色的注册表出身(factions+schools,不含装备贡献);平局 =
-#: 乙(布洛妮娅 = 燃血,可见条目形态默认;假设,披露键
-#: BRONYA_SIDE_PICK_TIE_BLOOD 登记)。
-#: 布洛妮娅不在 v4.7 名单 → 本表当前为空映射死码(无害,机制原样保留);
-#: 未来名单出现双羁绊角色时按同口径登记。
-SIDE_PICK_DUAL_BONDS: dict[str, tuple[str, str]] = {'布洛妮娅': ('贝洛伯格', '燃血')}
-
-#: 选边平局默认乙羁绊的假设申报键(图鉴只写「人数更多」,平局无依据;
-#: 校准源 = 实机对局布洛妮娅在场且两边等数时的羁绊等级面板读数,
-#: 随机态观察只靠画面读数,不响停)。
-BRONYA_SIDE_PICK_TIE_BLOOD: str = 'bronya_side_pick_tie_blood'
-
-
-def side_pick_bond(char_id: str, peer_cids: list[str] | None) -> str | None:
-    """选边型双羁绊角色的板面计入羁绊名(非该类角色 = None)。
-
-    peer_cids = 同场其余角色 cid(不含自己);基数只数注册表出身
-    (factions+schools)。开拓者不在选边两边(列车同行/能量出身,基数
-    零贡献),其形态读法与本规则无关,不另立读法。平局 → 乙羁绊
-    (SIDE_PICK_DUAL_BONDS 值第二位,假设申报 BRONYA_SIDE_PICK_TIE_BLOOD)。
-    未注册 peer 不计两边(同注册表口径)。"""
-    pair = SIDE_PICK_DUAL_BONDS.get(char_id)
-    if pair is None:
-        return None
-    bond_a, bond_b = pair
-    count_a = count_b = 0
-    for cid in (peer_cids or ()):
-        ch = get_char(str(cid)) if cid else None
-        if ch is None:
-            continue
-        born = set(ch.factions) | set(ch.schools)
-        if bond_a in born:
-            count_a += 1
-        if bond_b in born:
-            count_b += 1
-    if count_a > count_b:
-        return bond_a
-    return bond_b

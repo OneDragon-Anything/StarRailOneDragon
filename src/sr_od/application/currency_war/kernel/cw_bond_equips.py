@@ -11,7 +11,7 @@
 口径分层(sim-wiring.md「羁绊口径分层」节):
 
 - **L1 纯羁绊全集**:factions + schools + independent(独立羁绊行与左面板
-  同口径),开拓者按当前排归一形态(前排=记忆/后排=欢愉);
+  同口径);
 - **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
   (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述裁定)/
   欢愉卡带与星核猎手卡带 = **计数 +1**
@@ -25,11 +25,7 @@ from __future__ import annotations
 import re
 
 from sr_od.application.currency_war.data.cw_chars import (
-    SIDE_PICK_DUAL_BONDS,
     get_char,
-    is_trailblazer,
-    side_pick_bond,
-    trailblazer_form,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 
@@ -102,28 +98,15 @@ def equip_bond_grants(equip_name: str) -> tuple[str, ...]:
     return _EQUIP_BOND_GRANTS.get(equip_name, ())
 
 
-def unit_bond_tags(bc, row: str | None = None,
-                   peers: list | None = None) -> tuple[str, ...]:
+def unit_bond_tags(bc) -> tuple[str, ...]:
     """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献)。
 
     - 角色:CHARACTERS 注册表 factions + schools + independent 全集;
-      开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_deployed
-      同口径);排源 = ``row`` 显式形参(状态容器下标派生,§2.1——
-      tracked deployed 为 Unit 行域/下标表,行归属由行参或下标传入,
-      缺省回落 'back');
-    - **选边型双羁绊角色单边化(peers 非 None 时)**:SIDE_PICK_DUAL_
-      BONDS 注册角色(布洛妮娅)把双边出身标签(factions+schools)换成
-      按 side_pick_bond 选出的单边(规则单一源 = cw_chars.side_pick_
-      bond,基数 = ``peers`` 各单位注册表出身,不含装备贡献);independent
-      (大守护者)不受选边影响照常计入;``peers`` = 同场其余单位列表
-      (duck-type 同 ``bc``,不含自己);``None`` = 缺省现行全集行为
-      (不传上下文的既有调用点兼容,选边型角色双边照出);
     - 装备分两类语义(用户口述裁定,最高权威):
       * **星徽 = 额外增加一个羁绊**(add-if-absent):只把没有该羁绊的
         单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者
-        对该羁绊贡献 2 = 自身 1 + 卡 1);选边型角色的星徽判重相对
-        **选边后**标签集(装备贡献叠加独立于选边,用户裁定 2026-10-28);
+        对该羁绊贡献 2 = 自身 1 + 卡 1);
     - 身份未知(char_id 空/'?'/不在注册表)→ **空元组**(调用方决定兜底:
       board_from_deployed 整体 bail;_recount_board 回退 faction 字段;
       状态容器派生 ``cw_game_state._row_unit_tags`` 零兜底——Unit 无 faction
@@ -135,19 +118,10 @@ def unit_bond_tags(bc, row: str | None = None,
     cid = getattr(bc, 'char_id', '') or ''
     if not cid or cid == '?':
         return ()
-    eff_row = row or (getattr(bc, 'position_pref', 'back') or 'back')
-    if is_trailblazer(cid):
-        cid = trailblazer_form(cid, eff_row)
     ch = get_char(cid)
     if ch is None:
         return ()
     tags: list[str] = [*ch.factions, *ch.schools]
-    side = side_pick_bond(cid, [str(getattr(p, 'char_id', '') or '')
-                                for p in (peers or [])]) if peers is not None else None
-    if side is not None:
-        skipped = SIDE_PICK_DUAL_BONDS[cid]
-        tags = [t for t in tags if t not in skipped]
-        tags.insert(0, side)
     if ch.independent:
         tags.append(ch.independent)
     seen = set(tags)
@@ -178,22 +152,19 @@ def _recount_board(deployed: list) -> dict[str, int]:
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
     口径(口径统一):**羁绊全集 + 星徽装备贡献**——
-    factions+schools+independent,开拓者按排归一,装备羁绊(星徽/卡带)
+    factions+schools+independent,装备羁绊(星徽/卡带)
     计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
-    选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)
-    经 peers 透传按图鉴逻辑单边计入(其余单位注册表出身计数选边)。
     未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
     单标签(空/'?' 不计,生产 OCR 空板同形;Unit 无 faction 位,该兜底
     仅 faction 载体鸭子输入可达)。值漂移由 checks 的
     board↔deployed 一致性测试双向暴露。"""
     from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
     out: dict[str, int] = {}
-    # 选边型双羁绊角色的计入边依赖全场构成(任一角色增删可翻转)→
-    # 先收齐有效单位全集,聚合时向 unit_bond_tags 传 peers = 其余单位。
-    units = [d for d in (deployed or []) if d is not None]
-    for d in units:
-        tags = unit_bond_tags(d, peers=[u for u in units if u is not d])
+    for d in (deployed or []):
+        if d is None:
+            continue
+        tags = unit_bond_tags(d)
         if tags:
             for t in tags:
                 out[t] = out.get(t, 0) + 1

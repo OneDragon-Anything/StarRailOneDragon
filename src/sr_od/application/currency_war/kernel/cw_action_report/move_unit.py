@@ -74,7 +74,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     无同名,``board_unique_key``)/ 上场锁(``deploy_lock_block_
     reason``)/ 银狼变换窗(落场写下一费用档 1★ + 档行 + 级联,与
     旧 deploy_move 上报同核,随其戊批纳入统一管理并入本核)。场上→场上纯换位与
-    下场/席内挪位无锁无变换(开拓者形态归一除外)。
+    下场/席内挪位无锁无变换。
 
     bench/deployed 写后 board 羁绊计数随行写端挂钩重算(禁手写)。
     """
@@ -92,9 +92,6 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     )
     from sr_od.application.currency_war.kernel.cw_env_grants import (
         deploy_lock_block_reason,
-    )
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        trailblazer_row_unit,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
         BENCH_CAPACITY_DEFAULT,
@@ -215,7 +212,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
     _tier_before = 0
     if src_domain == 'bench' and dst_domain in ('front', 'back'):
         # bench → 场上:直落(dst 空)或被占者回 bench 源槽(交换)。
-        moved = trailblazer_row_unit(unit, dst_domain)
+        moved = unit
         _tier_before = effective_cost(gs, _TRANSFORM_CHAR_ID)
         transform = (moved.char_id == _TRANSFORM_CHAR_ID
                      and moved.star == _TRANSFORM_STAR
@@ -232,7 +229,7 @@ def report_action_move_unit_param(gs: GameState, param: Any,
             src_list[src_i] = None
         else:
             up_unit = occupier_unit
-            moved = trailblazer_row_unit(up_unit, src_domain)
+            moved = up_unit
             _tier_before = effective_cost(gs, _TRANSFORM_CHAR_ID)
             transform = (moved.char_id == _TRANSFORM_CHAR_ID
                          and moved.star == _TRANSFORM_STAR
@@ -243,9 +240,8 @@ def report_action_move_unit_param(gs: GameState, param: Any,
             dst_list[dst_i] = _bench_slot(unit)
     elif src_domain in ('front', 'back') and dst_domain in ('front', 'back'):
         # 场上 → 场上:纯换位(dst 空 = 挪排;被占 = 场上互换)。
-        # 无锁无变换;开拓者按目标排定形态。
-        moved = trailblazer_row_unit(unit, dst_domain)
-        src_list[src_i] = (trailblazer_row_unit(occupier_unit, src_domain)
+        moved = unit
+        src_list[src_i] = (occupier_unit
                            if occupier is not None else None)
         dst_list[dst_i] = moved
     else:

@@ -63,31 +63,20 @@ def _settle_rung(gs: GameState) -> int:
 def _board_factions_of(deployed) -> dict[str, int]:
     """上场角色的阵营计数(生产 board 口径,schools 并计)。
 
-    消费点 = cw_win_features 阵营计数复用。选边型双羁绊角色(布洛妮娅,
-    ``cw_chars.SIDE_PICK_DUAL_BONDS``)按 ``cw_chars.side_pick_bond``
-    选边单边计入(基数 = 其余在场角色注册表出身,不含装备贡献)。
+    消费点 = cw_win_features 阵营计数复用。
     """
-    from sr_od.application.currency_war.data.cw_chars import (
-        SIDE_PICK_DUAL_BONDS as _SP,
-    )
     from sr_od.application.currency_war.data.cw_chars import (
         get_char as _get_char,
     )
-    from sr_od.application.currency_war.data.cw_chars import (
-        side_pick_bond as _side_pick,
-    )
     out: dict[str, int] = {}
-    units = [d for d in (deployed or []) if d is not None]
-    cids = [str(getattr(d, 'char_id', '') or '') for d in units]
-    for cid in cids:
+    for d in (deployed or []):
+        if d is None:
+            continue
+        cid = str(getattr(d, 'char_id', '') or '')
         ch = _get_char(cid) if cid else None
         if ch is None:
             continue
-        if cid in _SP:
-            tags: tuple[str, ...] = (_side_pick(
-                cid, [c for c in cids if c != cid]),)
-        else:
-            tags = (ch.factions or ()) + (ch.schools or ())
+        tags = (ch.factions or ()) + (ch.schools or ())
         for f in tags:
             out[f] = out.get(f, 0) + 1
     return out

@@ -247,37 +247,6 @@ def bench_place(bench: list[BenchSlot | None], slot: BenchSlot) -> int | None:
 #  4-9=后排 1-6)由消费点内联算术承载,消费面 = 卖场上阵 op 与遥测归档。)
 
 
-def trailblazer_row_identity(char_id: str, to_row: str,
-                             ) -> tuple[str, str | None] | None:
-    """开拓者按排形态归一的身份核(单一源):换排 = 命途切换(char_id
-    切目标排形态,faction 跟随首阵营)。返回 ``(新 char_id,首阵营或
-    None)``;非开拓者/空名 → None(调用方保持原身份)。
-
-    消费面 = :func:`trailblazer_row_unit`(Unit 状态容器原生唯一载体),
-    归一口唯一(正本 = flow/action_exec.md §1 统一动作清单「MoveUnit」行;swap 与 deploy_move 两上报均经
-    :func:`trailblazer_row_unit` 同源,哨兵 =
-    test_faction_derivation_locks 开拓者形态归一节)。"""
-    from sr_od.application.currency_war.data.cw_chars import (
-        get_char,
-        is_trailblazer,
-        trailblazer_form,
-    )
-    if char_id and is_trailblazer(char_id):
-        cid = trailblazer_form(char_id, to_row)
-        _tc = get_char(cid)
-        fac = (_tc.factions[0]
-               if (_tc is not None and _tc.factions) else None)
-        return cid, fac
-    return None
-
-
-def trailblazer_row_unit(unit: Unit, to_row: str) -> Unit:
-    """开拓者换排形态归一(Unit 状态容器原生版):char_id 切目标排形态;
-    非开拓者原样返回(frozen replace 新构造)。"""
-    from dataclasses import replace
-    ident = trailblazer_row_identity(str(unit.char_id or ''), to_row)
-    return replace(unit, char_id=ident[0]) if ident is not None else unit
-
 # ===== 位面节点序列台账(session 级权威表) ================================
 # 权威依据(用户口述,最高权威):位面内节点类型与数量**只有投资环境选择能改变**
 # (变异位唯一)→ 同一位面内节点序列是常量,可以「进位面时读一次建档 + 投资环境

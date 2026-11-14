@@ -6,11 +6,6 @@ sidecar);本模块仅存留与其判据解耦的 sim 侧特殊建模件。
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.data.cw_chars import (
-    is_trailblazer,
-    trailblazer_form,
-)
-
 #: 三星五费特效披露键(战力特征无档,第一期无消费面)。
 THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 
@@ -18,13 +13,3 @@ THREE_STAR_FIVE_COST_PENDING: str = 'three_star_five_cost_effect_pending_u26'
 # (planner 升星判据助手已停用删除:
 #  判据单一源 = kernel/cw_faction_callbacks 的星级值回调,
 #  每费用档簿记 = ScreenChanges.planner_tiers_fired。)
-
-def trailblazer_form_of(char_id: str, row: str) -> str:
-    """开拓者按排形态名(kernel 单一源引用口;非开拓者原样返回)。
-
-    ``row`` 坐标系 = 'front'|'back'(kernel 同名参数同域);部署分支的
-    形态归一已在 kernel 转移函数内,本口仅供 sim 侧查询/测试对账。
-    """
-    if not is_trailblazer(char_id):
-        return char_id
-    return trailblazer_form(char_id, row)

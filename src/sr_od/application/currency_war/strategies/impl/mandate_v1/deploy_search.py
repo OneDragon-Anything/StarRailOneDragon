@@ -177,27 +177,19 @@ def _tag_counts(units: list[SearchUnit],
                 cache: dict[str, tuple[str, ...]] | None = None) \
         -> dict[str, int]:
     """板上单位的羁绊标签多集总和(计数单一源 = ``unit_bond_tags``:
-    角色注册表出身 + 开拓者排形态归一 + 布洛妮娅选边单边化(peers =
-    板上其余单位)+ 装备贡献四合一,正本 §1.1 羁绊计数口径——用户确认
+    角色注册表出身 + 装备贡献,正本 §1.1 羁绊计数口径——用户确认
     2026-10-30 羁绊按角色数量和星徽)。
 
-    ``cache`` = 板外预计算的单位标签缓存;选边型双羁绊角色(布洛
-    娅,SIDE_PICK_DUAL_BONDS)tags 依赖板面 peers——恒现算不缓存。
+    ``cache`` = 板外预计算的单位标签缓存(同板多次评估共用,标签只依赖
+    单位自身)。
     """
-    from sr_od.application.currency_war.data.cw_chars import (
-        SIDE_PICK_DUAL_BONDS,
-    )
     counts: dict[str, int] = {}
     for u in units:
-        if cache is not None and u.char_id in cache \
-                and u.char_id not in SIDE_PICK_DUAL_BONDS:
+        if cache is not None and u.char_id in cache:
             tags = cache[u.char_id]
         else:
-            # peers = 同场其余单位对象(duck-type char_id;传名字字符串
-            # 会使 unit_bond_tags 的选边基数提取得空 → 平局燃血,错账)。
-            peers = [p for p in units if p.char_id != u.char_id]
-            tags = unit_bond_tags(u, peers=peers)
-            if cache is not None and u.char_id not in SIDE_PICK_DUAL_BONDS:
+            tags = unit_bond_tags(u)
+            if cache is not None:
                 cache[u.char_id] = tags
         for tag in tags:
             counts[tag] = counts.get(tag, 0) + 1

@@ -34,7 +34,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTER_ROSTER,
     chars_by_faction,
-    trailblazer_form,
 )
 from sr_od.application.currency_war.kernel.cw_bond_equips import equip_bond_grants
 from sr_od.application.currency_war.kernel.cw_events import MegastarOption
@@ -262,8 +261,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
     - ②动态 = 场上(``gs.deployed``)穿「盛会之星」羁绊
       星徽的角色(现读;判据复用 kernel 既有装备羁绊派生语义
       ``equip_bond_grants``——「星徽 = 装备者加入该羁绊」,禁观察域手搓
-      第二套羁绊逻辑;开拓者按排归一形态,与 kernel ``unit_bond_tags``
-      同口径)。
+      第二套羁绊逻辑)。
 
     收窄域即根除跨名误标准化通道:全表域下误读恰成另一注册名时精确分支
     直接放行错误标准名,边距拒判对精确分支不生效。gs 为 None(局外)只用
@@ -281,8 +279,8 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
         return domain
     seen = set(domain)
     _view = gs.deployed.value
-    for row_name, sub in (('front', _view.front_slots if _view is not None else ()),
-                          ('back', _view.back_slots if _view is not None else ())):
+    for sub in (_view.front_slots if _view is not None else (),
+                _view.back_slots if _view is not None else ()):
         for unit in (sub or []):
             if unit is None:
                 continue   # 槽位表空槽
@@ -290,8 +288,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
             if not any(_MEGASTAR_FACTION in equip_bond_grants(eq)
                        for eq in equips):
                 continue
-            cid = getattr(unit, 'char_id', '') or ''
-            name = trailblazer_form(cid, row_name)
+            name = getattr(unit, 'char_id', '') or ''
             if name and name in CHARACTER_ROSTER and name not in seen:
                 seen.add(name)
                 domain.append(name)
