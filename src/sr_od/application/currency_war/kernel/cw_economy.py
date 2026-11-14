@@ -132,8 +132,8 @@ def xp_clicks_to_level(level: int, xp_cur: int,
 
 # 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局旧决策行
 # 相邻金差对账(只含 CwActionLevelUpParam+Refresh 的最小对账对)全部 = 2,不随金币/
-# 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
-# 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
+# 次数/等级变;概率事件免费刷折算的值单一源 = cw_investments.STRATEGY_ECONOMY
+# .refresh_free_chance(0.50) → 期望刷价 2×(1−0.50)=1.0,隐含基价 2。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
 # (数值 = min(gold//10,5) = 利息公式,非刷价;三流交叉核对定案)——
 # 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
 # 消费点语义:状态容器 ``shop_refresh_cost`` 缺读帧 ``or`` 回退本常量(刷新上报
