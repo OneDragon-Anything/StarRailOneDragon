@@ -16,7 +16,7 @@
 
 ## 文件说明
 
-**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_factions.FACTIONS`,32)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(72 档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
+**已入代码注册表的数据 doc 已删,别再造**(单一源在代码;查值直接看注册表):羁绊(`cw_traits_data.TRAITS`,29 条,`skills/sr-od-dev-currency-war/scripts/gen_traits.py` 生成勿手编)/角色(`cw_chars.CHARACTERS`,72)/投资策略(`cw_invest_data.py`,plaza API 334)/投资环境(`cw_investments`,~82)/装备(`cw_equipment_data.EQUIPMENTS`,158)。**注册表模块全景 = 代码 `data/` 目录各 `cw_*.py`**(模块 docstring 自述职责);⚠️ 改注册表前先查 skill scripts(`skills/sr-od-dev-currency-war/scripts/`)有没有该文件的生成器(`*_data.py` 数据层勿手编,判断层反向标注)。本目录另有生成器快照 `characters/`(72 档,`skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py` 生成,值以 `cw_chars.CHARACTERS` 为准,勿手编);其余仅存**未建模的唯一源**:
 
 | 文件 | 内容 | 条目数 | 完整度 |
 |---|---|---|---|
@@ -69,8 +69,8 @@
 
 1. **查版本变更**:读官方赛季扩充说明 article —— V3.8=`71454150`、V4.0=`73128301`、V4.2=`74751746`、V4.4=`76641553`(新版本找对应 article)→ 知道改了哪些(新角色/羁绊调整/费用变/新投资策略环境/新装备)。
 2. **重抓米游社图鉴**:chrome-devtools + Edge → `channel/map/209` 各子频道(员工=210/装备=211/投资策略=212/投资环境=213/羁绊=214)→ API `content/info?content_id=<id>` 顺序取(见"复现方法")→ 同步代码注册表。
-3. **核对 diffs**:新抓 vs 旧,标变更(factions tiers 变?character 费用/阵营变?新事件?新装备?)→ 更新 `cw_factions.py` / `currency_war_config.py` / `COMP_LIBRARY`。
+3. **核对 diffs**:新抓 vs 旧,标变更(羁绊增删/档位变?character 费用/阵营变?新事件?新装备?)→ 更新 `currency_war_config.py` / `COMP_LIBRARY`(羁绊由生成器直出,重跑 `skills/sr-od-dev-currency-war/scripts/gen_traits.py`,见 skill `sr-od-dev-currency-war`)。
 4. **源标注**:每条数据标米游社 content_id/URL + 版本(V4.x),便于追溯 + 下次更新定位。**一切游戏数据都要有来源**(用户要求:攻略可看其他源,具体游戏数据以米游社/游戏内为准)。
-5. **回归测试**:`cw_factions`/config 改后跑 `sr-od-test/test/sr_od/app/currency_war/`,确保策略代码不崩。
+5. **回归测试**:`cw_traits_data`/config 改后跑 `sr-od-test/test/sr_od/app/currency_war/`,确保策略代码不崩。
 
 > **数据源优先级**:米游社百科/游戏内(权威)>>> bwiki/NGA/攻略(参考,需米游社校准)。标注 🟢 米游社原文 / 🟡 攻略一致 / 🔴 未找到。

@@ -45,7 +45,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
 | **阵容定义字段设计方法论**(字段准入判据/目标态快照原则/时间维度归属/名单多胞胎警惕) | [references/comp-definition.md](references/comp-definition.md) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |
-| 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_factions`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
+| 游戏数据值(角色/羁绊/装备/概率) | 代码注册表 `cw_chars`/`cw_traits_data`/`cw_equipment`/`cw_shop_odds` 等——**值只在代码,data doc 只记「凭什么信」** |
 | 数据怎么采集/版本更新重采/采集钩子盘点 | [references/data-collection.md](references/data-collection.md) |
 | 版本更新后 CW 域要做哪些事(适配清单) | [references/version-update.md](references/version-update.md)(数据重采/阵容重跑/万金油名单复核/版本敏感注册表核对) |
 | 外部攻略原文(版本冻结) | `docs/game/currency_war/sources/`(只带元数据头,原文不改) |
