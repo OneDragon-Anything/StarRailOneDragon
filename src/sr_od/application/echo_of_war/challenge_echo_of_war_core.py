@@ -60,17 +60,9 @@ class ChallengeEchoOfWarCore(SrOperation):
         包装层完成,本 op 兜底归一:'none' 与 None 同样跳过支援)
     """
 
-    STATUS_NOT_IN_CHALLENGE_SCREEN: ClassVar[str] = '不在历战余响挑战画面'
-    STATUS_PLAN_FINISHED: ClassVar[str] = '已完成计划次数'
-    STATUS_TIMEOUT_VICTORY_EXITED: ClassVar[str] = '超时胜利已退出'
-    STATUS_GIVE_UP_ON_LOSING_STREAK: ClassVar[str] = '连败放弃'
-    STATUS_TIMES_EXHAUSTED: ClassVar[str] = '本周次数耗尽'
-    STATUS_POWER_INSUFFICIENT: ClassVar[str] = '开拓力不足'
-    STATUS_WITH_DEAD_RECOVERED: ClassVar[str] = '有阵亡角色已复活'
-    STATUS_BATTLE_DEADLOCK: ClassVar[str] = '战斗超时无结算'
-
     # 内部路由 status(非对外出口,类体内以裸名供 @node_from 引用):
     # 弹窗取消点击结果、弹窗迟到等待、战斗态值、超时收尾分流
+    # (对外出口 status 在模块层常量,包装层/测试按名导入,类内不设副本防双源)
     _ROUTE_DEATH_CANCEL: ClassVar[str] = '阵亡弹框-取消'
     _ROUTE_NO_DIALOG: ClassVar[str] = '无对话框'
     _ROUTE_RETRY_INITIATE: ClassVar[str] = '重试再发起'
@@ -242,8 +234,7 @@ class ChallengeEchoOfWarCore(SrOperation):
         return self.round_success(self._ROUTE_RETRY_INITIATE)
 
     @node_from(from_name='战斗结果处理', status='再来一次按钮')
-    @operation_node(name='再来一次后确认', node_max_retry_times=10,
-                    timeout_seconds=RESULT_SETTLE_TIMEOUT_SECONDS)
+    @operation_node(name='再来一次后确认', node_max_retry_times=10)
     def confirm_after_challenge_again(self) -> OperationRoundResult:
         """
         再来一次后三弹窗防线(弹窗盖在战斗结算画面上);无弹窗=战斗已开始

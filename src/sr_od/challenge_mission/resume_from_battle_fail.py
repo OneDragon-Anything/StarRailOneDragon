@@ -27,7 +27,9 @@ class ResumeFromBattleFail(SrOperation):
     STATUS_RESUMED: ClassVar[str] = '已回挑战画面'
     STATUS_NOT_LEFT: ClassVar[str] = '失败画面未能离开'
 
-    # 挑战态锚:通用几何对花萼/周本帧均命中(2026-11-14 两形态失败画面实测)
+    # 挑战态锚:通用几何对花萼/周本两形态失败画面帧均命中
+    # (fixture 标定:sr-od-test/screens/大世界-战斗失败/战斗失败-历战余响.webp
+    #  与 sr-od-test/screens/挑战副本-历战余响/挑战面板.webp)
     CHALLENGE_ANCHOR: ClassVar[tuple[str, str]] = ('挑战副本', '挑战按钮')
 
     def __init__(self, ctx: SrContext):

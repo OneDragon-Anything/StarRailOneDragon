@@ -148,10 +148,11 @@ class ChallengeEchoOfWarByName(SrOperation):
             if status == STATUS_TIMES_EXHAUSTED:
                 # 带使命语义层的记账动作:清剩余次数(镜像 app 侧同款职责)
                 self.ctx.echo_of_war_run_record.left_times = 0
-            if status in (STATUS_PLAN_FINISHED, STATUS_TIMEOUT_VICTORY_EXITED):
-                log.info('实际消耗 开拓力 %d×%d 次 + 周本次数 %d 次',
-                         self.mission_obj.power, core.battle_success_times,
-                         core.battle_success_times)
+            # 实际消耗记账由日志承载(设计口径):六类成功都可能带非零成功次数,
+            # 连败放弃/次数耗尽分支同样可能已消耗部分开拓力
+            log.info('实际消耗 开拓力 %d×%d 次 + 周本次数 %d 次',
+                     self.mission_obj.power, core.battle_success_times,
+                     core.battle_success_times)
             return self.round_success(status)
         # 不在历战余响挑战画面 / 战斗超时无结算 / 未列明的一切 → 原样透传
         return self.round_fail(status)
