@@ -94,7 +94,7 @@ $env:PYTHONPATH = "src"; uv run python -m sr_od.backend.entry.server --port 2400
 #    Claude Code: claude mcp add --transport http sr_od http://127.0.0.1:24001/mcp
 ```
 
-- **工具清单见 [sr_od/backend/mcp.md](../sr_od/backend/mcp.md)**（不在此列举，避免随实现演进过时）。
+- **工具清单以各 tool 的 docstring 为准**（定义在 `src/sr_od/backend/mcp/`，注册入口 `app.py`；不建集中清单文档，避免与实现脱节）。
 - **远程 SSH**（在别的机器 SSH 到游戏本机操作）场景下，游戏在 Session 1、SSH 在 Session 0，需用常驻 daemon 跨会话拉起 server —— 详见 [AI 编码助手接入 §MCP](ai_coding.md#mcp) 与 [sr_od/backend/](../sr_od/backend/)。
 
 ### LSP（代码导航，pyright）

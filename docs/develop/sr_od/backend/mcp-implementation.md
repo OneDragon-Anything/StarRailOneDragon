@@ -92,7 +92,6 @@ def click_game(
 - [ ] `title` annotation(可选):Anthropic Directory 提交时每个 tool 必须有 title;本项目不提交 Directory,按需作 UI 显示名;
 - [ ] 难懂参数加了 `Field description`;
 - [ ] 返回结构化(非裸字符串,单值 ack 除外)+ 错误兜底按第 3 节;
-- [ ] **同步 `mcp.md` 工具表**(签名 / 参数 / 返回 / tool 总数)—— 文档与实现脱节是最高频坑;
 - [ ] HTTP 对称能力是否也要补(两个适配器消费者都用 → 放 backend 共享,见 design P11);
 - [ ] 测试(`sr-od-test/test/sr_od/backend/`)断言对齐新返回;
 - [ ] `ruff check` 改动文件 + 经 daemon 重启 server 验证 tool 注册。
@@ -100,6 +99,6 @@ def click_game(
 ## 相关
 
 - [design-principles.md](design-principles.md) —— 设计原则(本文上游,为什么这么设计)
-- [mcp.md](mcp.md) —— 工具表现状 spec(本文第 7 节 checklist 同步的对象)
+- [mcp.md](mcp.md) —— 适配器说明与接入（传输 / 配置 / 跨工具约定；工具契约单一源在各 tool docstring，无集中清单）
 - [http.md](http.md) —— HTTP 适配器(返回结构对称基准)
 - Anthropic 官方 `mcp-server-dev` plugin([tool-design.md](https://github.com/anthropics/claude-plugins-official/blob/main/plugins/mcp-server-dev/skills/build-mcp-server/references/tool-design.md))—— 通用 MCP tool 设计方法论(本文只叠加项目特化;安装见 [setup/ai_coding.md](../../setup/ai_coding.md))

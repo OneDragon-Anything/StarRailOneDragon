@@ -2,51 +2,11 @@
 
 > 把 `SrBackendContext`（见 [architecture.md](architecture.md)）以 **MCP** 暴露给 MCP 客户端（AI 编码工具等）。MCP 是两个并行适配器之一，另一个是 HTTP（见 [http.md](http.md)）；两者共享同一 backend。
 
-## 工具
+## 工具契约的单一源
 
-35 个 `@mcp.tool`，多数委托一个 backend 方法；自定义 op 工具另走 `operation_registry`（+ 流转查看 `operation_flow`）+ `run_slot._start`：
+本文档**不维护工具清单**——每个 tool 的名称、参数与返回契约，单一源是代码里各 tool 函数的 docstring（agent 经 MCP 工具列表直接读到，不会与实现脱节）。工具定义在 `src/sr_od/backend/mcp/`：注册入口 `app.py`，按资源分组在各 `*_tools.py`；自定义 op 工具另走 `operation_registry`（+ 流转查看 `operation_flow`）+ `run_slot._start`。
 
-| MCP tool | 委托 | 返回 |
-|---|---|---|
-| `check_game_window` | `backend.check_window()` | `WindowStatus`（结构化 JSON；backend 抛错时返 `{'error': ...}`） |
-| `capture_game_screen` | `backend.capture()` | `{success, path}`（截图落盘 `.debug/sr_od_mcp/screenshot/`，`path` 为绝对路径） |
-| `analyze_screen(screenshot=None, save_image=False)` | `backend.analyze()` | `AnalyzeScreenResult`（结构化 JSON；实时 + `save_image=True` 多回传 `screenshot_path`；success 时带 `vision_hint` 能力边界提示；精准命中画面若注册了额外识别器,多回传 `extras` 该画面的结构化领域事实 + 平级 `extras_doc` 字段说明,见 [screen-recognizers.md](screen-recognizers.md)） |
-| `upsert_screen_area(screen_name, area_name, pc_rect, ...)` | `backend.upsert_screen_area()` | `{success, action(inserted/updated), area_count, error}`（写 yml + reload） |
-| `delete_screen_area(screen_name, area_name)` | `backend.delete_screen_area()` | `{success, action(deleted), area_count, error}`（写 yml + reload） |
-| `open_game(enter=True, block=True)` | `backend.start_run('mcp', op_factory)`（`enter=False`→`OpenGame`，`enter=True`→`OpenAndEnterGame`） | `block=True`：终态 `{success, result}`；`block=False`：受理 `{started: True, ...}`；并发拒绝 `{started: False, error, source, hint}` |
-| `click_game(x, y, press_time=0.1, pc_alt=False)` | `backend.click_game()` | `{success, x, y, in_window, pc_alt}`（坐标不在窗口内 → `in_window=False`；`pc_alt=True` 大世界等锁光标画面点击前需按 Alt 解锁） |
-| `input_text(text, use_clipboard=None)` | `backend.input_text()` | `{success, method, masked_text}`（`use_clipboard=None` 跟 `game_config.type_input_way`） |
-| `key_tap(key, press_time=0)` | `backend.key_tap()` | `{success, key, press_time}`（框架键名 `w`/`a`/`s`/`d`/`f`/`esc`/`space`；`press_time>0` 长按） |
-| `drag(x1, y1, x2, y2, duration=1)` | `backend.drag()` | `{success, x1, y1, x2, y2, duration}`（`(x1,y1)→(x2,y2)` 1080p 游戏坐标拖拽，覆盖刮刮卡 / 收集来回拖等） |
-| `list_applications` | `backend.list_applications()` | 当前实例可运行应用、独立应用列表和当前选中项（只读，不刷新配置） |
-| `run_one_dragon(block=False)` | `backend.run_one_dragon('mcp')` | 默认立刻返回受理 `{started: True, ...}`；`block=True` 等结束返终态 `{success, result}` |
-| `run_standalone_app(app_id=None, block=False)` | `backend.run_standalone_app('mcp', app_id)` | `app_id=None` 时使用 GUI「应用运行」当前选中项；返回形态同 `run_one_dragon` |
-| `list_operations(query="")` | `operation_registry.scan_operations(ctx)` + `compact_operation_list` | 定位符紧凑列表（`{total, count, operations[], failures[], hint}`；元素无同名类时为类名短名、冲突时为完整 op_id，可直接传 describe/run；`query` 按完整 op_id 子串过滤大小写不敏感；不带参数 schema——参数详情走 `describe_operation`，与 HTTP `/game/operations` 同契约单源） |
-| `describe_operation(op_id)` | `operation_registry.describe_operation(ctx, op_id)` | 单个 op 参数 schema（每个参数标 `json_serializable` + `coercible` + 整体 `debuggable`）+ 本类 `docstring` 整段透传（做什么/起终点画面/副作用/参数语义；未写为 None，取 `cls.__dict__` 不继承基类——远程使用者看不到源码，语义唯一来源）；`op_id` 亦接受类名短名（大小写敏感精确匹配），多命中返 `{ambiguous: True, matches[]}`，未找到报错附相似类名 |
-| `describe_operation_flow(op_id, mermaid=False)` | `operation_flow.describe_operation_flow(op_id, mermaid)`（纯反射不实例化，不依赖 backend 就绪） | op 节点流转图：`{op_id, class_name, module, start_node, node_count, edge_count, flow, mermaid, nodes[], edges[], diagnostics[], notes[]}`。`flow` 文本图按 BFS 执行序（主干前/分支后/不可达垫底），边标注 `(成功/失败·status=xxx/兜底)`，入边≥2 的汇聚点标 `←入:` 来源，断名边挂 to 节点侧 `←✗`；`diagnostics` 静态诊断（error=运行时必炸：断名边/重复节点名/多起点/零起点；warn=结构可疑：不可达/同方向多条兜底边/边挂非节点方法）；`mermaid=true` 多带 flowchart 源码（默认 false）。`op_id` 同 describe_operation 双形态，完整形态可查 Application 类（可读性口径不排斥 app）；诊断零 error 的全仓基线由 `test_operation_flow.py` 的全量回归测试制度化。查 op **怎么流转**用本 tool，查 op **参数怎么传**用 `describe_operation` |
-| `run_operation(op_id, args=None, block=False)` | `operation_registry.resolve_unique_op` 校验 + 反序列化 + `run_slot._start`（op 路径） | 默认立刻返回受理；`block=True` 返终态 `{success, result}`；`op_id` 亦接受类名短名，多命中拒绝并列候选 op_id；非 Operation / 缺参 / 不支持的数据类 / 并发拒绝返 `{started: False, error}`。`@dataclass`+`from_dict` 参数可从 dict 传入 |
-| `get_config(app_id, key=None)` | `config_router` 路由 → 各 config 领域方法 | `{success, app_id, data|key,value}`（读配置字段/全 data；只读） |
-| `set_config(app_id, key, value)` | `config_router` 路由 → 写穿 ctx + 校验只读 | `{success, app_id, key, value}`（写简单/enum 字段；只读字段拒绝） |
-| `add_config_item(app_id, list_field, item_dict, idx=None)` | `config_router` 路由 → `item_from_dict` + 校验 + add | `{success, app_id, list_field, id}`（增改列表项，`idx` 控制有序列表插入位置；写入前校验） |
-| `delete_config_item(app_id, list_field, item_id)` | `config_router` 路由 → delete | `{success, app_id, list_field, id}`（删列表项；可逆性低） |
-| `update_config_item(app_id, list_field, item_id, item_dict)` | `config_router` 路由 → 按 item_id 原位替换 | `{success, app_id, list_field, id}`（全量补齐型列表改条目，顺序不变） |
-| `describe_config(app_id, category=None)` | `config_router` 路由 → schema 组装 | `{success, set_fields, ro_fields, list_fields, ...}`（结构化 schema + add 示例；只读） |
-| `list_app_configs()` | `config_router.all_entries()` | `{success, configs:[{app_id, description, supported_ops, item_kind, id_kind}]}`（可改配置目录；只读） |
-| `get_run_status` | `backend.query_status()` | `RunStatusResult`（运行中返当前节点/重试；终态返结果/失败定位） |
-| `stop_run` | `backend.stop()` | `{"stopped": bool, ...}`（仅表信号已发出，过渡期 `get_run_status` 仍显示 running） |
-| `close_game` | `backend.close_game()` | `{success, result}`（信号已发，非已关闭；controller 吞异常，用 `check_game_window` 验证） |
-| `list_mcp_usage_guides` | `mcp/prompts.py` | 可用操作指南目录，相当于帮助索引 |
-| `get_mcp_usage_guide(name, app_id=None)` | `mcp/prompts.py` | 指定操作指南正文，相当于任务级 `--help` |
-| `mys_login(username, password)` | `mys_tools.py` `MysAccessController` | 统一信封 `{status, message, data}`：`success` / `already_logged_in` / `verification_required`（含本地验证页 URL，人工过验后台自动续跑）/ `error`（-3208/-3235 即停）。⚠️ 知情声明（tool 描述含）：密码会作为工具参数传入大模型上下文，由使用者自行决定；成功仅落盘 cookie 会话（config/当前实例/mys/），密码不落盘 |
-| `mys_logout()` | `mys_tools.py` | `{status: success}`（幂等；清 session.json 与 role.json、保留 device.json） |
-| `mys_get_characters()` | `mys_tools.py` → `SrMysClient.get_characters()` | `success` + 崩铁角色数组（冻结字段集，含 element_cn/base_type_cn 中文名）／`session_expired`（提示重登，不清本机数据）／`error`（1034 → 专属文案） |
-| `mys_get_roster_detail()` | `mys_tools.py` → `SrMysClient.get_characters_detail()` | `success` + 全角色明细数组（遗器六件套词条/位面饰品/星魂/行迹/属性面板，均中文名）／`session_expired`（提示重登，不清本机数据）／`error` |
-| `mys_evaluate_relic_substats(criteria, roster_data?)` | `mys_tools.py` → `relic_eval_tools.evaluate()`（口径参数化纯计数，零 IO；roster_data 缺省自拉） | `success` + results/not_found/team_summary／`session_expired`/`verification_required`（自拉透传）／`error`（criteria 空或重名、roster_data 非法、1034 透传）。口径取自 sr-od-game-coach 角色档「有效口径」行，工具不内置默认口径 |
-| `relic_lookup(query)` | `relic_tools.py` → `lookup_relic()`（直读 `sr_relic_sets` 常量，零 IO） | 统一信封：`success` + 套装静态定义（set_name/kind_cn/obtain/effects/pieces 含件名/部位/描述/图标相对路径）／`ambiguous`（模糊多命中，`candidates` 候选列表）／`not_found`。查询词按优先级：件名精确 → 套装全名 → 子串模糊。查账号穿戴数据走 `mys_get_roster_detail` |
-| `cone_lookup(query, rarity=None, path_id=None, list_all=False, with_ascension=False)` | `light_cone_tools.py` → `lookup_light_cone()`（直读 `sr_light_cones` 常量，零 IO；`with_ascension=true` 另读 `light_cone_ascension_const`（BWIKI 逐光锥页生成，惊魂夜实机锚）+ `dungeon_drop_const` 反查） | 统一信封：`success` + 光锥静态定义（name/rarity/path_cn/obtain/skill 特效全文/icon 相对路径）；`with_ascension=true` 时单命中另附 `ascension` 晋阶材料块（分段需求 `stages`，段名「Y级」=突破段/「X～Y级」=经验段以稀薄以太计/满晋阶总量 `total`/材料→刷取副本反查 `dungeon_by_material` 分类级/`missions_by_material` 实例级/副本外途径 `extra_sources_by_material`；表未收录该光锥为 null）；`list_all=true` 按 rarity/path_id 过滤列全量（不带详情与 ascension）；`ambiguous` 候选列表／`not_found`。查询词：全名精确 → 子串模糊。查账号穿戴走 `mys_get_characters` |
-| `character_lookup(query, rarity=None, path_cn=None, element_cn=None, list_all=False, with_ascension=False)` | `character_tools.py` → `lookup_character()`（直读 `character_const`+`sr_character_details` 常量，零 IO；`with_ascension=true` 另读 `character_ascension_const`/`dungeon_drop_const` 反查） | 统一信封：`success` + 角色静态基础信息（avatar_id/id/cn/path_cn/element_cn/rarity/technique_type/icon 相对路径），精确/模糊单命中另带 `traces`（行迹满级）与 `eidolons`（星魂全 6）；`with_ascension=true` 时另附 `ascension` 晋阶材料块（分段需求 `stages`/满晋阶总量 `total`/材料→刷取副本反查 `dungeon_by_material` 分类级（键=指南分类可路由导航）/`missions_by_material` 实例级（具体虚影·历战余响 boss·花萼区域，与指南 mission_name/region_name 同名对齐，可直接规划开拓力刷本）/副本外途径 `extra_sources_by_material`；表未收录该角色为 null，开拓者性别后缀由 `find_character_ascension` 归一化匹配）；`list_all=true` 按过滤列全量基础列表（不带 traces/eidolons/ascension）；`ambiguous` 候选列表／`not_found`。查询词：数字 id → 中文名/英文代号 → 子串模糊。查账号拥有与练度走 `mys_get_characters` |
-
-要点：
+## 跨工具约定要点
 
 - **返回契约（跨工具统一）**：成功标志键一律 `success`（bool）；运行类受理语义用 `started`（≠完成）；`stop_run` 的 `stopped` 表信号已发、`/health` 的 `ok` 表健康探测，是各自语义惯例。裸字符串 + `错误:` 前缀的返回已全部结构化（`capture_game_screen`/`close_game`/block 终态），调用方判错不再靠字符串匹配。
 - `app.py` 放 MCP server 创建、基础 game tool 和总注册入口；`service_app.py` 放应用运行 tool 与自定义 op tool 工厂。

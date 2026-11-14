@@ -29,7 +29,7 @@ uv run python -m sr_od.backend.entry.server --host 127.0.0.1 --port 24001
 
 | 适配器 | 入口 | 能力 |
 |---|---|---|
-| MCP | `POST /mcp`（streamable-http） | 19 个 tool：感知/操作 + 应用运行 + 自定义 op 运行 + 帮助指南（见 [mcp.md](mcp.md)） |
+| MCP | `POST /mcp`（streamable-http） | 感知/操作 + 应用运行 + 自定义 op 运行 + 帮助指南；工具契约以各 tool docstring 为准（注册入口 `src/sr_od/backend/mcp/app.py`） |
 | HTTP | `GET /health` | 本机服务探测（GUI「MCP 服务」页用） |
 | HTTP | `GET /game/window` `/game/capture` `/game/analyze` | 窗口状态 / 截图 / 画面分析 |
 | HTTP | `POST /game/enter?block=` | 打开游戏（op 路径） |

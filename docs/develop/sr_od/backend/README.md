@@ -65,7 +65,7 @@ GUI 启动：打开「开发工具 -> MCP 服务」，使用同一条入口命�
 | [design-principles.md](design-principles.md) | **设计纲领**：MCP tool 的能力边界与设计原则（agent 能力视角） |
 | [mcp-implementation.md](mcp-implementation.md) | **实现规范**：MCP tool 代码层落地（annotations / Field / 返回 / docstring / 同步 checklist，与 design-principles 配对） |
 | [architecture.md](architecture.md) | `SrBackendContext` 架构、生命周期、方法、资源约束、进程模型 |
-| [mcp.md](mcp.md) | MCP 适配器（tool、传输、注册） |
+| [mcp.md](mcp.md) | MCP 适配器（传输、注册、跨工具约定） |
 | [http.md](http.md) | HTTP `/game/*` 适配器 |
 | [entry.md](entry.md) | 服务入口、运行方式 |
 | [remote-ssh.md](remote-ssh.md) | 远程 SSH daemon（Session 1 常驻，管主 server 启停） |
