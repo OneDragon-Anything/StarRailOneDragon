@@ -14188,10 +14188,10 @@
   - area_name: 按钮-晋阶奖励红点
     id_mark: false
     pc_rect:
-    - 1836
-    - 218
-    - 1892
-    - 274
+    - 1846
+    - 211
+    - 1907
+    - 272
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
