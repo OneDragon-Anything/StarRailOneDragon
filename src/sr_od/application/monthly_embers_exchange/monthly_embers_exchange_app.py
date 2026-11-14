@@ -12,9 +12,10 @@ changes/v1-initial/application-flow.md,四段式):
     ③ 领奖段 无(获得物品弹窗在购买 op 内)
     ④ 返回段 BackToNormalWorldPlus(一条龙在大世界干净交接)
 
-运行语义:周期 DAILY,预期内完成(含全部售罄/零购买/全部关闭/余额终止)
-照常标当日完成——「已换不重买」由购买 op 售罄拦截承担;额度月中解锁
-(版本口径)最迟次日补上。业务字段随循环逐项即时写入运行记录。
+运行语义:周期 MONTHLY(额度自然月刷新,用户裁定)——每月首跑换到换
+不动为止,预期内完成(含全部售罄/零购买/全部关闭/余额终止)标本月完成,
+月内不再跑;「不重买」由购买 op 售罄拦截兜底。业务字段随循环逐项即时
+写入运行记录。
 """
 
 from one_dragon.base.operation.application_run_record import AppRunRecord

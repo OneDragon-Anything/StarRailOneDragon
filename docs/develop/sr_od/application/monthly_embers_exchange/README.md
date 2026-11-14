@@ -8,11 +8,11 @@
 
 ## 2. 运行语义
 
-- **编排**(四段式):导航段 `OpenExchangeShop` → 兑换段(按优先级逐项 `ExchangeShopBuyGoods(count=None, scroll_search=False)`)→ 返回段 `BackToNormalWorldPlus`。无领奖段(获得物品弹窗在购买 op 内)。
+- **运行语义**(四段式):导航段 `OpenExchangeShop` → 兑换段(按配置顺序逐项 `ExchangeShopBuyGoods(count=None, scroll_search=False)`)→ 返回段 `BackToNormalWorldPlus`。无领奖段(获得物品弹窗在购买 op 内)。
 - **首屏判定**:月限三件套可用排前、售罄沉底——首屏没有即本期已尽,跳过不滚动。
 - **分支语义**:购买失败带 `data.fail_status`(SOLD_OUT/CARD_UNAVAILABLE/NOT_FOUND/INSUFFICIENT_MATERIALS)→ 跳过或终止循环(余额不足即终止,其后项放弃);其余失败 = 非预期 → 尽力返回大世界后 FAIL。
-- **运行记录**:周期 DAILY,预期内完成(含全售罄/零购买/余额终止)照常标完成;`bought_*` 当日累计、`skip_note` 单次运行诊断(运行开始清零)、`balance_left` 最近观测。取舍依据(为何不是 MONTHLY):期限口径未分辨,日周期在月历/版本周两口径下额度解锁都最迟次日补上。
-- **时序**:常规兑换 1-2 分钟;全售罄空跑整跑约 2 分钟。
+- **运行记录**:周期 MONTHLY(额度按自然月刷新,用户裁定)——每月首跑换到换不动为止,预期内完成(含全售罄/零购买/全部关闭/余额终止)标本月完成,月内不再跑;「不重买」由购买 op 的售罄拦截兜底。`bought_*` 当月累计、`skip_note` 单次运行诊断(运行开始清零)、`balance_left` 最近观测。
+- **时序**:常规兑换 1-2 分钟;全售罄空跑整跑约 2 分钟(每月至多一次)。
 
 ## 3. 配置
 

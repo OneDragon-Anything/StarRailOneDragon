@@ -11,6 +11,7 @@ class AppRunRecordPeriod(Enum):
 
     DAILY = 1
     WEEKLY = 2
+    MONTHLY = 3
 
 
 class AppRunRecord(YamlConfig):
@@ -105,6 +106,10 @@ class AppRunRecord(YamlConfig):
             return self.dt != current_dt
         elif self.record_period == AppRunRecordPeriod.WEEKLY:
             return os_utils.get_sunday_dt(self.dt) != os_utils.get_sunday_dt(current_dt)
+        elif self.record_period == AppRunRecordPeriod.MONTHLY:
+            # 月界 = dt 前 6 位(YYYYMM 自然月桶);dt 已含游戏日界偏移,
+            # 跨月时刻的偏移日归属随偏移日走
+            return self.dt[:6] != current_dt[:6]
         else:
             return True
 

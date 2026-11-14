@@ -6,15 +6,16 @@ from one_dragon.base.operation.application_run_record import (
 
 
 class MonthlyEmbersExchangeRunRecord(AppRunRecord):
-    """每月余烬兑换运行记录:周期 DAILY + 业务字段(购买数量/跳过明细/余额)。
+    """每月余烬兑换运行记录:周期 MONTHLY + 业务字段(购买数量/跳过明细/余额)。
 
-    DAILY 取舍依据:期限口径(月历/版本周)未分辨,日周期在两口径下额度
-    解锁后都最迟次日补上(设计文档 design.md §2.4);「已换不重买」由
-    购买 op 的售罄拦截承担,不靠记录层月内跳过。
+    MONTHLY 依据:兑换商店月限额度按自然月刷新(用户裁定,权威玩家知识;
+    当期倒计时恰与月初重合才一度无法分辨口径)——「月内跳过」语义成立:
+    每月首跑换到换不动为止,标完成后月内不再跑(用户裁定 4)。「不重买」
+    由购买 op 的售罄拦截兜底。
 
-    字段生命周期:bought_* 当日周期累计(同日重跑累加,失败重跑不丢已购);
+    字段生命周期:bought_* 当月周期累计(同月失败重跑累加,不丢已购);
     skip_note 单次运行诊断(运行开始清零,防跨次叠加过期观察);
-    balance_left 最近一次观测。日界翻转 reset_record 全清。
+    balance_left 最近一次观测。自然月翻转 reset_record 全清。
     """
 
     def __init__(self, instance_idx: int | None = None,
@@ -22,7 +23,7 @@ class MonthlyEmbersExchangeRunRecord(AppRunRecord):
         AppRunRecord.__init__(self, 'monthly_embers_exchange',
                               instance_idx=instance_idx,
                               game_refresh_hour_offset=game_refresh_hour_offset,
-                              record_period=AppRunRecordPeriod.DAILY)
+                              record_period=AppRunRecordPeriod.MONTHLY)
 
     @property
     def bought_pass(self) -> int:
