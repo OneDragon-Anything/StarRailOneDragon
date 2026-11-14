@@ -14,7 +14,10 @@ op 自动闭环 = 升级循环 + 通用材料补全(双形态:「使用通用材
 「材料合成」同位不同文,与光锥线同构平移)+ 花萼券刷路线(面板「快速刷取」
 → 培养资源窗口 → 花萼行券按钮 → 共用快速刷取弹窗 → 连刷次数设置 → 回
 面板)。确认刷取后的返回落点未实测(探索时 E2E 授权未批停在控件前;取消
-路径已实测回资源窗口),为实机券刷 E2E 的验证项。
+路径已实测回资源窗口),为实机券刷 E2E 的验证项。面板「快速刷取」点击在
+缺口可由合成覆盖时被游戏拒绝并弹 toast(实测显示≈2s,光锥线同款)——券刷
+链面板态以 toast 正判(前两轮门控探测,防慢开窗误读)命中即 MATERIAL_CAPPED
+判停收口,漏检由连点封顶(4 次)兜底。
 
 手动刷本划出 op 边界(负责人裁定):结算后回不到面板态,op 判停交还
 agent——周本走 ChallengeEchoOfWarByName;花萼手动刷由调用方按行迹缺料
@@ -57,6 +60,9 @@ _FARM_TICKET_PER: int = 1
 _FARM_POLL_SEC: float = 20.0
 # 收尾关面板连等封顶:纯定位区点击 + until_not 无界等待的防线(超时限 60s)
 _CLOSE_PANEL_MAX_ROUNDS: int = 5
+# 券刷链面板钮连点封顶:toast 正判漏检时的兜底(无可刷缺口点击恒被拒、窗
+# 永不开;连点 4 次仍未开 = 漏检或界面异态,判停收口)
+_PANEL_FARM_CLICK_MAX: int = 4
 
 
 class UpgradeTraceOp(SrOperation):
@@ -103,6 +109,7 @@ class UpgradeTraceOp(SrOperation):
         self._farm_rounds: int = 0  #: 已执行的券刷轮数(预算控制)
         self._farm_times_set: int = 0  #: 确认框实际设到的连刷次数(券耗记账)
         self._chain_farm_done: bool = False  #: 券刷链内状态机:确认已点=True(窗口分支据此关窗而非再点券钮)
+        self._panel_farm_click_rounds: int = 0  #: 面板钮连续点击轮数(toast 探测门控与漏检兜底封顶用,窗口/弹窗出现即复位)
         self._final_status: str | None = None  #: 终态 status(收尾节点携带落账)
         self._close_rounds: int = 0  #: 收尾关面板连等计数(纯定位区无界等待防线)
         self._end_level: int | None = None  #: 收尾面板等级(日志对照)
@@ -270,9 +277,13 @@ class UpgradeTraceOp(SrOperation):
         (连刷次数按 farm_times_per_round 设置)→ 确认 → 结果框关 → 资源
         窗口关 → 回面板态交回升级循环。
 
-        依据分态:取消路径已实测(取消回资源窗口→关窗回面板);确认刷取后
-        的返回落点未实测(探索时 E2E 授权未批停在控件前)——回面板以
-        「简略描述」开关回归为成功锚,确认路径落点为实机券刷 E2E 验证项。
+        面板态分两态:链内收口回落(_chain_farm_done=True,确认刷完关窗/
+        取消路径同落点)→ 复位交回升级循环重判(预算在彼端核);链入口
+        (False,NEED_FARM 刚路由进来,窗未开)→ 点面板「快速刷取」开窗:
+        点前探无可刷缺口 toast 正判(门控同光锥线——仅前两次点击后的轮
+        探测,防慢开窗冗余点击被拒再弹的 toast 被误读为无可刷缺口),命中
+        即 MATERIAL_CAPPED 判停收口;漏检由连点封顶(_PANEL_FARM_CLICK_MAX)
+        兜底。
         预算在升级循环路由时已核(本链单轮执行,确认后 _farm_rounds+1)。
         连刷轮询用 round_wait 慢询(不计重试——连刷时长随次数不可预估,
         硬上限 = 节点 timeout_seconds)。"""
@@ -280,6 +291,7 @@ class UpgradeTraceOp(SrOperation):
 
         # 快速刷取弹窗在:未确认(设次数+确认)/连刷进行中(确认钮已消失)
         if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
+            self._panel_farm_click_rounds = 0
             if self.round_by_find_area(
                     screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取').is_success:
                 if self._farm_times_set == 0:
@@ -301,6 +313,7 @@ class UpgradeTraceOp(SrOperation):
 
         # 结果框(领奖完成):关闭后回资源窗口
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
+            self._panel_farm_click_rounds = 0
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_FAST_FARM_RESULT, '按钮-关闭刷取结果').rect.center)
             return self.round_retry('刷取结果框已关,回资源窗口', wait=1.5)
@@ -310,6 +323,7 @@ class UpgradeTraceOp(SrOperation):
         # 画面是设计外链路);确认已点(_chain_farm_done=True)→ 关窗回面板态
         # (取消/确认路径同落点,取消路径已实测)
         if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
+            self._panel_farm_click_rounds = 0
             if not self._chain_farm_done:
                 if not self.round_by_find_area(
                         screen, _RESOURCE_WINDOW_SCREEN, '行锚-本周可领取奖励次数').is_success:
@@ -326,11 +340,36 @@ class UpgradeTraceOp(SrOperation):
                 return self.round_retry('资源窗口已关,回面板态', wait=1)
             return result
 
-        # 面板态(简略描述回归)= 链路收口,交回升级循环重判(材料够则继续
-        # 升级,不够且预算尽则判停);链内状态机复位备下一轮
+        # 面板态分两态:链内收口回落(_chain_farm_done=True,确认刷完关窗/
+        # 取消路径同落点)→ 复位交回升级循环重判(预算在彼端核);链入口
+        # (False,NEED_FARM 刚路由进来,窗未开)→ 点面板「快速刷取」开窗:
+        # 点前探无可刷缺口 toast 正判(门控同光锥线——仅前两次点击后的轮
+        # 探测,防慢开窗冗余点击被拒再弹的 toast 被误读为无可刷缺口),命中
+        # 即 MATERIAL_CAPPED 判停收口;漏检由连点封顶(_PANEL_FARM_CLICK_MAX)
+        # 兜底。
         if self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-            self._chain_farm_done = False
-            return self.round_success('回面板', wait=1)
+            if self._chain_farm_done:
+                self._chain_farm_done = False
+                self._panel_farm_click_rounds = 0
+                return self.round_success('回面板', wait=1)
+            if self._panel_farm_click_rounds >= _PANEL_FARM_CLICK_MAX:
+                self._final_status = 'MATERIAL_CAPPED'
+                self._end_level = self._read_panel_level()
+                self.save_screenshot(prefix='行迹面板快速刷取')
+                log.info('行迹升级: 面板快速刷取连续未开窗(toast 漏检,兜底封顶),'
+                         '现场已截图,判停收口')
+                return self.round_success('CLOSE_PANEL')
+            if self._panel_farm_click_rounds <= 1 and self.round_by_find_area(
+                    screen, _TRACE_SCREEN, '提示-无可刷缺口').is_success:
+                self._final_status = 'MATERIAL_CAPPED'
+                self._end_level = self._read_panel_level()
+                self.save_screenshot(prefix='行迹面板快速刷取')
+                log.info('行迹升级: 无可刷缺口(游戏 toast 命中),判停收口')
+                return self.round_success('CLOSE_PANEL')
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速刷取').rect.center)
+            self._panel_farm_click_rounds += 1
+            return self.round_retry('已点面板快速刷取,等资源窗口', wait=1.5)
 
         return self.round_wait('券刷链过渡态,慢询等待', wait=_FARM_POLL_SEC)
 
@@ -376,6 +415,7 @@ class UpgradeTraceOp(SrOperation):
 
     @node_from(from_name='入口校验', status='CLOSE_PANEL')
     @node_from(from_name='升级循环', status='CLOSE_PANEL')
+    @node_from(from_name='券刷链', status='CLOSE_PANEL')  # 券刷链 toast 正判/连点封顶判停(缺此边会被兜底边静默接回升级循环)
     @operation_node(name='收尾关面板', timeout_seconds=60, node_max_retry_times=8)
     def close_panel(self) -> OperationRoundResult:
         """一切出口的必经:点空白关面板回树态,落 _final_status。
