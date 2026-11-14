@@ -3848,7 +3848,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # economy.md 四卡线索名单不含击破,身份零先验,fixed_hypothesis 家族键
     # 已登记);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
     # (族级裁定 2026-10-28:未解锁专家不入候选,域 9 名过滤后 7 名,加拉赫/
-    # 姬子 is_expert=True;独立条目「姬子·启行」flows 空非本域,勿混淆)。
+    # 姬子 is_expert=True;独立条目「姬子·启行」schools 空非本域,勿混淆)。
     '击破概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='击破', star=1),),
                             equips_random_immediate=('简易',)),
     # id 1013 效果原文直读:「群攻」= desc【群攻】直读(流派羁绊名,与
@@ -3856,7 +3856,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # KEYS);简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
     # economy.md 四卡线索名单不含群攻 = 装备身份零先验,均匀 v0 + 按卡固定
     # 假说待校准);简易池 = category '简易' 现值 8 件;本域无专家(7 名 is_expert
-    # 全空),牌库时点过滤对本域恒等;缇宝 flows「群攻、量子同频」双羁绊
+    # 全空),牌库时点过滤对本域恒等;缇宝 schools「群攻、量子同频」双羁绊
     # (量子同频无概念股卡,零联动);翡翠为公司契约具名发放对象(:1502,
     # 具名 vs 随机字段不相交,正交零冲突)。
     '群攻概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='群攻', star=1),),
@@ -3868,7 +3868,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 假说待校准);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
     # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,佩拉
     # is_expert=True;千冶·刃 ≠ 专家「刃」);椒丘为「持续伤害契约」具名发放
-    # 对象(具名 vs 随机字段不相交,正交零冲突);千冶·刃 flows
+    # 对象(具名 vs 随机字段不相交,正交零冲突);千冶·刃 schools
     # 「燃血、减益」双羁绊(燃血域已落地,跨域共享非独占;星核猎手
     # 无概念股卡且星核猎手契约具名对象仅卡芙卡,零联动)。
     '减益概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='减益', star=1),),
@@ -3880,8 +3880,8 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 假说待校准);简易池 = category '简易' 现值 8 件;采样域 = 牌库时点过滤
     # (族级裁定 2026-10-28:未解锁专家不入候选,域 7 名过滤后 6 名,青雀
     # is_expert=True);独立单位 Archer 照发(族级口径 economy.md:94 点名
-    # 战技点(Archer),independent='魔术师');花火(2费,flows 战技点、量子同频)
-    # ≠ 火花(4费,flows 战技点、欢愉)两名形近成员,量子同频/欢愉均无概念股卡
+    # 战技点(Archer),independent='魔术师');花火(2费,schools 战技点、量子同频)
+    # ≠ 火花(4费,schools 战技点、欢愉)两名形近成员,量子同频/欢愉均无概念股卡
     # 零联动;具名交集 5 名正交:丹恒·饮月/花火 = 战技点契约具名、火花 =
     # 战技点契约条件∪欢愉契约条件、远坂凛/Archer = 命运圣杯契约具名/条件
     # (具名 vs 随机字段不相交);域独占 3 名 = 远坂凛/花火/Archer。本卡 =
@@ -4186,7 +4186,7 @@ ENV_OPENING_REPLACE_ASSUMPTION_KEYS: tuple[str, ...] = (
 #:   单数省写;先验错 = sim 状态副本多/少装备,bench 无感、资产对照偏差);
 #: - env_star_grant_bind_single: 「对应羁绊」= 分支1 采样单枚固定绑定
 #:   (desc 句式回指解读;若实机为已持全部星徽各触发,模型少发);
-#: - env_boss_grant_char_uniform: 羁绊成员池等概率 + flows 含入
+#: - env_boss_grant_char_uniform: 羁绊成员池等概率 + schools 含入
 #:   (chars_by_faction 默认参数,与 FactionInfo.members 同源);
 #: - env_boss_grant_char_star1: 分支2 星级 1★ 先验(晶矿 CHAR_DROP_STAR
 #:   同句式,先验错走 bench 观察星级覆盖);

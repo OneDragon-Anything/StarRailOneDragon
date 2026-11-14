@@ -30,7 +30,7 @@
 字段多由测试构造/重放档案填充;未填(None/默认)时决策安全降级。
 
 **board 模型**(口径统一):
-- ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
+- ``board`` = 已上阵羁绊计数(**全集口径**:factions+schools+independent+星徽装备
   贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;观察真值 =
   游戏左面板,观察侧双源仲裁;口径 = 羁绊全集,非主阵营单标签)。
 - 状态容器 GameState 中 board = **派生量**(禁独立手写):front_row/back_row

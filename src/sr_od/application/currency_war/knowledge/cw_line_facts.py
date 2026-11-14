@@ -61,7 +61,7 @@ def bond_members(bond: str) -> set[str]:
         bonds = {bond}
         out = set()
     for name, c in CHARACTERS.items():
-        if (set(c.factions) | set(c.flows)) & bonds:
+        if (set(c.factions) | set(c.schools)) & bonds:
             out.add(name)
     return out
 

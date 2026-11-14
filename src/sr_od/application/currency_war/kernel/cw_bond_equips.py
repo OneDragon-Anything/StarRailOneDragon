@@ -10,7 +10,7 @@
 
 口径分层(sim-wiring.md「羁绊口径分层」节):
 
-- **L1 纯羁绊全集**:factions + flows + independent(独立羁绊行与左面板
+- **L1 纯羁绊全集**:factions + schools + independent(独立羁绊行与左面板
   同口径),开拓者按当前排归一形态(前排=记忆/后排=欢愉);
 - **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
   (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述裁定)/
@@ -106,13 +106,13 @@ def unit_bond_tags(bc, row: str | None = None,
                    peers: list | None = None) -> tuple[str, ...]:
     """一个已上阵单位的羁绊标签**多集**(L1 全集 + L2 装备贡献)。
 
-    - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
+    - 角色:CHARACTERS 注册表 factions + schools + independent 全集;
       开拓者按排归一形态(前排=记忆/后排=欢愉,与 board_from_deployed
       同口径);排源 = ``row`` 显式形参(状态容器下标派生,§2.1——
       tracked deployed 为 Unit 行域/下标表,行归属由行参或下标传入,
       缺省回落 'back');
     - **选边型双羁绊角色单边化(peers 非 None 时)**:SIDE_PICK_DUAL_
-      BONDS 注册角色(布洛妮娅)把双边出身标签(factions+flows)换成
+      BONDS 注册角色(布洛妮娅)把双边出身标签(factions+schools)换成
       按 side_pick_bond 选出的单边(规则单一源 = cw_chars.side_pick_
       bond,基数 = ``peers`` 各单位注册表出身,不含装备贡献);independent
       (大守护者)不受选边影响照常计入;``peers`` = 同场其余单位列表
@@ -141,7 +141,7 @@ def unit_bond_tags(bc, row: str | None = None,
     ch = CHARACTERS.get(cid)
     if ch is None:
         return ()
-    tags: list[str] = [*ch.factions, *ch.flows]
+    tags: list[str] = [*ch.factions, *ch.schools]
     side = side_pick_bond(cid, [str(getattr(p, 'char_id', '') or '')
                                 for p in (peers or [])]) if peers is not None else None
     if side is not None:
@@ -178,7 +178,7 @@ def _recount_board(deployed: list) -> dict[str, int]:
     board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
 
     口径(口径统一):**羁绊全集 + 星徽装备贡献**——
-    factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
+    factions+schools+independent,开拓者按排归一,装备羁绊(星徽/卡带)
     计入;与实机 ``board_from_deployed``(= 游戏左面板真值口径)同源,
     per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
     选边型双羁绊角色(布洛妮娅,``cw_chars.SIDE_PICK_DUAL_BONDS``)

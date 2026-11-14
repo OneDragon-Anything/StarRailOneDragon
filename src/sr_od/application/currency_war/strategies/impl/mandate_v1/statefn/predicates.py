@@ -284,9 +284,9 @@ def advances_four_system(name: str) -> bool:
         return False
     bonds = {card.judge_factions[0]
              for card in SYSTEM_CARDS.values() if card.card_id != 'seele'}
-    if bonds & ({*ch.factions} | {*ch.flows}):
+    if bonds & ({*ch.factions} | {*ch.schools}):
         return True
-    return is_seele_system_member(name, {*ch.factions} | {*ch.flows})
+    return is_seele_system_member(name, {*ch.factions} | {*ch.schools})
 
 
 __all__ = [

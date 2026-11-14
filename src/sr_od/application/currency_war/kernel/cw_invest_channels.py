@@ -117,7 +117,7 @@ _ENV_CATEGORY_TIER: dict[str, int] = {
 #: 入席、需付费购买、不提率)——供给改写幅度弱一档,取**中档 +150**
 #: (「使其加入商店」= 该角色可购性 0→1 的定向供给,0 分漏掉;强档
 #: 高估——概念股的提率条目不存在)。
-#: 目标线 = 顾问角色羁绊(factions∪flows)∩ 线核心键羁绊命中
+#: 目标线 = 顾问角色羁绊(factions∪schools)∩ 线核心键羁绊命中
 #: (:func:`_faction_hit_bonus` 同一降档规则——flex 弱关联仍归 0)。
 ENV_ADVISOR_CHARS: dict[str, str] = {
     '特邀专家:桑博': '桑博',
@@ -187,7 +187,7 @@ def _advisor_line_bonus(advisor_name: str, comp) -> int:
     if ch is None:
         return 0
     return max((_faction_hit_bonus(f, INVEST_MID, comp)
-                for f in (*ch.factions, *ch.flows)), default=0)
+                for f in (*ch.factions, *ch.schools)), default=0)
 
 
 def env_line_bonus(env_name: str, comp) -> int:

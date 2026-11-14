@@ -43,9 +43,9 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 
 
 def char_has_tag(ch, tag: str) -> bool:
-    """板面标签 = 阵营(factions)∪ 流派(flows)的并集(outcomes board 口径)。"""
+    """板面标签 = 阵营(factions)∪ 流派(schools)的并集(outcomes board 口径)。"""
     return tag in (getattr(ch, 'factions', None) or ()) \
-        or tag in (getattr(ch, 'flows', None) or ())
+        or tag in (getattr(ch, 'schools', None) or ())
 
 
 def p_bar_faction(tag: str, level: int) -> float:

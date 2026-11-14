@@ -1657,7 +1657,7 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
     计数天然是全集,不受滚动/遮挡/OCR 误读影响。
 
     口径(迁移审计):per-unit 标签单一源 = ``cw_bond_equips.unit_bond_tags``
-    ——L1 全集(factions+flows+independent,开拓者按排归一)**+ L2 星徽装备
+    ——L1 全集(factions+schools+independent,开拓者按排归一)**+ L2 星徽装备
     羁绊贡献**(``deployed[].equips``,deploy_bench 读回在案):
     星徽「装备者加入【X】羁绊」/欢愉卡带「已是成员计数+1」装备后左面板
     该羁绊行 +1,是面板真值的一部分(迁移审计§2:此前缺维度 → computed_vs_ocr
@@ -1711,7 +1711,7 @@ def board_from_deployed(dep: list) -> dict[str, int] | None:
         ch = get_char(_cid)
         if ch is None:
             return None   # 注册表无此角色:阵营贡献算不出,保守退 OCR
-        if ch.factions or ch.flows or ch.independent:
+        if ch.factions or ch.schools or ch.independent:
             continue      # 防御:有角色标签则 tags 非空,理论不可达
         # 三者皆空且装备无贡献 = 注册表数据异常(旧版同判)→ 保守退 OCR
         return None

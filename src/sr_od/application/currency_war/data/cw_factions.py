@@ -36,7 +36,7 @@ class FactionInfo:
     def members(self, include_flows: bool = True) -> list[str]:
         """该羁绊的成员角色名(从 CHARACTERS 反查;include_flows=True 含流派羁绊成员)。
 
-        成员关系是**派生**的(角色自报 factions/flows),不在 FactionInfo 重复硬编码 ——
+        成员关系是**派生**的(角色自报 factions/schools),不在 FactionInfo 重复硬编码 ——
         改 CHARACTERS 自动传导,单一真相源(工程化原则)。
         """
         from sr_od.application.currency_war.data.cw_chars import chars_by_faction

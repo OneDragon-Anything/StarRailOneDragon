@@ -67,7 +67,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
       自家核准集(``comp.members``,core∪shared——注册表成员名单是结构量:
       白厄类空羁绊单卡/不死途类视图外 shared 件经此计入支撑,否则
       阵容自家核心被误判线外恒推迟)或全羁绊(CHARACTERS 注册表
-      factions∪flows)∩ ``comp.all_factions`` 非空
+      factions∪schools)∩ ``comp.all_factions`` 非空
       的件数——阵容视图 = 核心∪弹性羁绊(cw_comps.all_factions,
       口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
       未注册/未识别名按线外计(fail-closed:支撑不认)。
@@ -105,7 +105,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
         ch = CHARACTERS.get(name) if name else None
         if ch is None:
             continue   # 未识别件支撑不认(fail-closed)
-        if (set(ch.factions) | set(ch.flows)) & view:
+        if (set(ch.factions) | set(ch.schools)) & view:
             line_weight += 1
     occupied = len(deployed)
     plan_available = bool(deploy_pending_fn(gs))

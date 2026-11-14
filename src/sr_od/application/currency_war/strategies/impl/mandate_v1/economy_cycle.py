@@ -84,7 +84,7 @@ def _crosses_engine_tier(gs: GameState, name: str) -> bool:
     ch = CHARACTERS.get(name)
     if ch is None:
         return False
-    bonds = set(ch.factions or ()) | set(ch.flows or ())
+    bonds = set(ch.factions or ()) | set(ch.schools or ())
     fac = dict(gs.board.value or {})
     if not (bonds & {b for b, _t in TRANSITION_TRAITS}):
         return False

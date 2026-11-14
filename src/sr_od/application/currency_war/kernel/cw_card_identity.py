@@ -19,7 +19,7 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
 def is_engine_piece(name: str) -> bool:
     """引擎件身份(注册表现算单一源;种子排除,P78-7)。
 
-    判据 = 角色注册表 factions∪flows 与引擎三阵营(ENGINE_FACTIONS,
+    判据 = 角色注册表 factions∪schools 与引擎三阵营(ENGINE_FACTIONS,
     桥池 engine_bonds 派生)交集非空(与原 ``cw_line_defs.classify_buy``
     的 ``'engine'`` 分支同判据,该函数已随死代码清偿移除,本函数 =
     生产决策位可直调的单一源
@@ -36,5 +36,5 @@ def is_engine_piece(name: str) -> bool:
     ch = CHARACTERS.get(name or '')
     if ch is None:
         return False
-    bonds = set(ch.factions) | set(ch.flows)
+    bonds = set(ch.factions) | set(ch.schools)
     return bool(bonds & set(ENGINE_FACTIONS))

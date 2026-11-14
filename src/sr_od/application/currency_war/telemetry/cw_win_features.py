@@ -12,7 +12,7 @@ node_type 等非 deployed 派生特征由训练表侧 join 提供,见
 sim 与离线训练脚本共用;M2 接入 sim 结算器时直接 import。
 
 数值单一源:
-- 阵营计数复用 ``cw_battle_calib._board_factions_of``(factions+flows 并计口径);
+- 阵营计数复用 ``cw_battle_calib._board_factions_of``(factions+schools 并计口径);
 - 激活阈值读 ``cw_factions.FACTIONS[*].tiers``(不复制数值);
 - 角色费用读 ``cw_chars.CHARACTERS[*].cost``。
 """
@@ -58,7 +58,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``unknown_char_count``:char_id 非空但不在注册表的人数(识别形变
       残留,>0 时 bow/total_cost 有漏计,训练侧披露口径);
     - ``faction_counts``:阵营计数(``_board_factions_of`` 口径,
-      factions+flows 并计);
+      factions+schools 并计);
     - ``tier_hist``:羁绊档位直方图({1:..,2:..,3:..,4:..},
       每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
     - ``max_tier``:最高激活档位(阵容成型度粗粒度代理);

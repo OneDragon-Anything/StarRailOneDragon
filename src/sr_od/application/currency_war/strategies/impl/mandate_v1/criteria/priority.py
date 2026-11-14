@@ -74,7 +74,7 @@ RANK_TRANSITION_BOTTOM: tuple[int, int] = (1, CANDIDATE_TOP_N)
 #: 档 9 羁绊名单(原档 7,名单与成员判定不变、仅档号位移;用户决定,
 #: 判定表权威版本 = 32 号稿 §3 档 9 行;
 #: 巨星独特加成/敌人受伤提高+同频/护盾强度+伤害增幅/敌人挂离火)。
-#: 成员判定 = 角色自报 factions/flows 与本名单求交(单一真相源 =
+#: 成员判定 = 角色自报 factions/schools 与本名单求交(单一真相源 =
 #: data/cw_factions.py FACTIONS 键 × cw_chars 自报,成员关系派生)。
 TIER7_BOND_NAMES: frozenset[str] = frozenset(
     {'盛会之星', '量子同频', '护盾', '减益'})
@@ -531,12 +531,12 @@ def _refund_loss(unit: HeldUnit | ShopUnit) -> int:
 
 def _tier7_bond_member(name: str) -> bool:
     """档 9 成员判定(原档 7,名单与判定规则不变、仅档号位移;
-    角色自报 factions/flows 与用户决定名单求交;
+    角色自报 factions/schools 与用户决定名单求交;
     注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
     ch = CHARACTERS.get(name)
     if ch is None:
         return False
-    return bool((set(ch.factions) | set(ch.flows)) & TIER7_BOND_NAMES)
+    return bool((set(ch.factions) | set(ch.schools)) & TIER7_BOND_NAMES)
 
 
 def interest_exempt_member(name: str, ctx: PriorityContext) -> bool:

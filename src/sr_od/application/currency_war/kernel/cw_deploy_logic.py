@@ -117,7 +117,7 @@ def board_target_line_weight(
         deployed_names: frozenset[str] | set[str] | list[str]) -> int:
     """B_t:板面目标线支撑计数(件级单一源;form_score 替代披露口径)。
 
-    逐件判定 = 全羁绊(factions+flows,CHARACTERS 注册表)∩
+    逐件判定 = 全羁绊(factions+schools,CHARACTERS 注册表)∩
     ``SYSTEM_LINE_FACTIONS`` 非空,或希儿本人(单卡判据,与
     ``is_seele_system_member`` 希儿分支同口径);命中件计 1——桑博=贝+DOT 双籍
     只计 1 件(件级非阵营级,阵营级计数会双籍重复)。bench 囤件不计入
@@ -144,11 +144,11 @@ def board_target_line_weight(
 
 
 def _bonds_named(char_id: str) -> set[str]:
-    """按名字查全羁绊(factions+flows);未识别/未注册 → 空集。"""
+    """按名字查全羁绊(factions+schools);未识别/未注册 → 空集。"""
     ch = CHARACTERS.get(char_id) if char_id else None
     if ch is None:
         return set()
-    return set(ch.factions) | set(ch.flows)
+    return set(ch.factions) | set(ch.schools)
 
 
 # (点火增益/配方底线门/仙舟供给谓词/围栏集(DEPLOY_FENCE)与七桶选人
@@ -180,7 +180,7 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
             tags: tuple[str, ...] = (side_pick_bond(
                 cid, [c for c in cids if c != cid]),)
         else:
-            tags = tuple(ch.factions or ()) + tuple(ch.flows or ())
+            tags = tuple(ch.factions or ()) + tuple(ch.schools or ())
         for f in tags:
             out[f] = out.get(f, 0) + 1
     return out

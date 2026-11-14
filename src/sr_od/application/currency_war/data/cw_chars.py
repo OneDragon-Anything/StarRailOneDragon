@@ -26,7 +26,7 @@ class Character:
     position: str               # "front"(前台)/ "back"(后台)/ "common"(前后台皆可,官方 Common:技能效果不绑定排)
     char_type: str              # 类型:输出/治疗/护盾/辅助(多标签用 "、" 分隔,如 "治疗、辅助")
     factions: tuple[str, ...]   # 阵营羁绊(仙舟/贝洛伯格/…;无则空)
-    flows: tuple[str, ...]      # 流派羁绊(击破/燃血/…;无则空)
+    schools: tuple[str, ...]      # 流派羁绊(击破/燃血/…;无则空)
     independent: str = ""       # 独立羁绊名(挚爱之人/救世主/大守护者…;无则 "")
     source: str = ""            # 米游社 content_id
     # 专家顾问(V4.4 机制,economy.md §1):初始不参与普通商店招募(fixed_pool
@@ -94,13 +94,13 @@ def is_trailblazer(name: str) -> bool:
 
 
 def _ch(name: str, cost: int, position: str, char_type: str,
-        factions: str = "", flows: str = "", independent: str = "", source: str = "",
+        factions: str = "", schools: str = "", independent: str = "", source: str = "",
         bench_effect: str = "", is_expert: bool = False) -> Character:
     """构造助手:阵营/流派用"、"分隔的字符串 → tuple。空串 → 空 tuple。"""
     return Character(
         name=name, cost=cost, position=position, char_type=char_type,
         factions=tuple(f for f in factions.split("、") if f) if factions else (),
-        flows=tuple(f for f in flows.split("、") if f) if flows else (),
+        schools=tuple(f for f in schools.split("、") if f) if schools else (),
         independent=independent, source=source, bench_effect=bench_effect,
         is_expert=is_expert,
     )
@@ -186,7 +186,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
         # 更多的羁绊」;选边机制单一源 = cw_bond_equips.unit_bond_tags,
         # 规则 = cw_chars.side_pick_bond)。口径史:2026-08-15 trait 对齐
         # 曾按 plaza 可见条目 11012(燃血+大守护者)清空 factions、仅留
-        # flows='燃血';隐藏条目 11011 = 贝洛伯格+大守护者(变体)——
+        # schools='燃血';隐藏条目 11011 = 贝洛伯格+大守护者(变体)——
         # 2026-10-28 起按双羁绊全登记口径收敛,变体形态分歧不建第二条目。
     _ch("Archer", 5, "front", "输出", "命运圣杯", "战技点", independent="魔术师", source="6188"),
     _ch("云璃", 5, "back", "输出", "狼狩", "能量", source="6187"),
@@ -263,11 +263,11 @@ def chars_by_cost(cost: int) -> list[Character]:
 def chars_by_faction(faction: str, include_flows: bool = True) -> list[Character]:
     """属某阵营的角色(include_flows=True 则也匹配流派羁绊)。
 
-    成员关系派生自 CHARACTERS(角色自报 factions/flows)—— FactionInfo.members() 调本函数。
+    成员关系派生自 CHARACTERS(角色自报 factions/schools)—— FactionInfo.members() 调本函数。
     """
     out = [c for c in CHARACTERS.values() if faction in c.factions]
     if include_flows:
-        out += [c for c in CHARACTERS.values() if faction in c.flows and c not in out]
+        out += [c for c in CHARACTERS.values() if faction in c.schools and c not in out]
     return out
 
 
@@ -275,9 +275,9 @@ def chars_by_faction(faction: str, include_flows: bool = True) -> list[Character
 # cw_bond_equips.unit_bond_tags docstring 与 fields.md §5.2 披露键组)=====
 
 #: 选边型双羁绊角色(首例布洛妮娅,用户裁定 2026-10-28):注册表
-#: factions/flows 双边都登记(采样域/成员反查双边命中),板面羁绊
+#: factions/schools 双边都登记(采样域/成员反查双边命中),板面羁绊
 #: 计数按图鉴逻辑选边单边计入。值 = (羁绊甲, 羁绊乙);比较基数 =
-#: 其余在场角色的注册表出身(factions+flows,不含装备贡献);平局 =
+#: 其余在场角色的注册表出身(factions+schools,不含装备贡献);平局 =
 #: 乙(布洛妮娅 = 燃血,可见条目形态默认;假设,披露键
 #: BRONYA_SIDE_PICK_TIE_BLOOD 登记)。
 SIDE_PICK_DUAL_BONDS: dict[str, tuple[str, str]] = {'布洛妮娅': ('贝洛伯格', '燃血')}
@@ -292,7 +292,7 @@ def side_pick_bond(char_id: str, peer_cids: list[str] | None) -> str | None:
     """选边型双羁绊角色的板面计入羁绊名(非该类角色 = None)。
 
     peer_cids = 同场其余角色 cid(不含自己);基数只数注册表出身
-    (factions+flows)。开拓者不在选边两边(列车同行/能量出身,基数
+    (factions+schools)。开拓者不在选边两边(列车同行/能量出身,基数
     零贡献),其形态读法与本规则无关,不另立读法。平局 → 乙羁绊
     (SIDE_PICK_DUAL_BONDS 值第二位,假设申报 BRONYA_SIDE_PICK_TIE_BLOOD)。
     未注册 peer 不计两边(同注册表口径)。"""
@@ -305,7 +305,7 @@ def side_pick_bond(char_id: str, peer_cids: list[str] | None) -> str | None:
         ch = CHARACTERS.get(str(cid)) if cid else None
         if ch is None:
             continue
-        born = set(ch.factions) | set(ch.flows)
+        born = set(ch.factions) | set(ch.schools)
         if bond_a in born:
             count_a += 1
         if bond_b in born:

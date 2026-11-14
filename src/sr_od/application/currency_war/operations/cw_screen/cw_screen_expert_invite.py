@@ -75,7 +75,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
 
     解析优先级:① 文本命中 FACTIONS 键(阵营/流派标签,如「仙舟」「能量」);
     ② 文本含 FACTIONS 键(OCR 噪声容错);③ 文本 = 角色注册表名 → 取其首个
-    羁绊(factions 优先,空则 flows)。全部未命中 → None(策略层走兜底)。
+    羁绊(factions 优先,空则 schools)。全部未命中 → None(策略层走兜底)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
@@ -105,8 +105,8 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
         if ch is not None:
             if ch.factions:
                 return ch.factions[0]
-            if ch.flows:
-                return ch.flows[0]
+            if ch.schools:
+                return ch.schools[0]
     return None
 
 

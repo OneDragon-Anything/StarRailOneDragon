@@ -420,7 +420,7 @@ def choose_expert_index(card_bonds: list[str | None],
 
     判据(行为保持版=在场浓度版,三级语义原样):
     ① 主力阵营(在场计数最大;并列取名字序首个,保证确定性)同线优先;
-    ② 次选任意在场阵营(board 计数 > 0)同线——羁绊面板口径 = factions∪flows
+    ② 次选任意在场阵营(board 计数 > 0)同线——羁绊面板口径 = factions∪schools
     并计(read_board),卡上阵营/流派标签同属一个羁绊命名空间,可直接对键;
     ③ 全无同线 → -1(现金为王)。
     board 为空(读数失败)走 ③:选卡无依据时经济兜底优于盲选。

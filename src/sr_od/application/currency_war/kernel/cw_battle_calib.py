@@ -61,7 +61,7 @@ def _settle_rung(gs: GameState) -> int:
 
 
 def _board_factions_of(deployed) -> dict[str, int]:
-    """上场角色的阵营计数(生产 board 口径,flows 并计)。
+    """上场角色的阵营计数(生产 board 口径,schools 并计)。
 
     消费点 = cw_win_features 阵营计数复用。选边型双羁绊角色(布洛妮娅,
     ``cw_chars.SIDE_PICK_DUAL_BONDS``)按 ``cw_chars.side_pick_bond``
@@ -87,7 +87,7 @@ def _board_factions_of(deployed) -> dict[str, int]:
             tags: tuple[str, ...] = (_side_pick(
                 cid, [c for c in cids if c != cid]),)
         else:
-            tags = (ch.factions or ()) + (ch.flows or ())
+            tags = (ch.factions or ()) + (ch.schools or ())
         for f in tags:
             out[f] = out.get(f, 0) + 1
     return out

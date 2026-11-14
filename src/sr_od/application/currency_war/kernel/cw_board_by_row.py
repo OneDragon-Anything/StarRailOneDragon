@@ -7,7 +7,7 @@
 口径(契约 C6,契约冻结;状态容器行域输入形态):
 - 输入 = 状态容器行域 ``(front_row, back_row)``,元素 = 状态容器 ``Unit``(deployed 计算形状),纯逻辑组装,无识别;排归属由行入参原生承载
   (「排归属由下标派生」的行域形态,不再读 position_pref 信息位);
-- 标签 = 角色羁绊全集(阵营 factions + 流派 flows,多羁绊角色每系都计——与
+- 标签 = 角色羁绊全集(阵营 factions + 流派 schools,多羁绊角色每系都计——与
   board 左面板多阵营计数口径一致);**例外 = 选边型双羁绊角色**(布洛
   尼娅,SIDE_PICK_DUAL_BONDS)按图鉴逻辑选边单边计入(其余单位注册表
   出身计数,不分排,peers = 全板其余单位——图鉴「小队中」= 全队);
@@ -47,7 +47,7 @@ def _trait_tags(unit: Unit, row: str,
                 peers: list[Unit] | None = None) -> tuple[str, ...]:
     """一个已上阵单位的羁绊标签全集(开拓者先按排归一形态)。
 
-    char_id 识别 → CHARACTERS 注册表 factions+flows 全集(多羁绊每系都计);
+    char_id 识别 → CHARACTERS 注册表 factions+schools 全集(多羁绊每系都计);
     未识别/未注册 → 空元组(不可判标签不计,口径见模块头)。
     选边型双羁绊角色(布洛妮娅,cw_chars.SIDE_PICK_DUAL_BONDS)在 peers
     非 None 时按 cw_chars.side_pick_bond 选边单边计入(基数 = peers 各
@@ -65,7 +65,7 @@ def _trait_tags(unit: Unit, row: str,
                                         for p in peers])
         if side is not None:
             return (side,)
-    return tuple(ch.factions) + tuple(ch.flows)
+    return tuple(ch.factions) + tuple(ch.schools)
 
 
 @dataclass(frozen=True)

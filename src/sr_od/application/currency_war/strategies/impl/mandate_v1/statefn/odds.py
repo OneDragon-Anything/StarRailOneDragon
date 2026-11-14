@@ -122,7 +122,7 @@ def card_search_window(level: int, omega: float | None = None) -> frozenset[int]
 
 def _char_has_tag(ch: object, tag: str) -> bool:
     return tag in (getattr(ch, 'factions', None) or ()) \
-        or tag in (getattr(ch, 'flows', None) or ())
+        or tag in (getattr(ch, 'schools', None) or ())
 
 
 def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:

@@ -125,13 +125,13 @@ SYSTEM_CARDS: dict[str, SystemCard] = {
 # ===== 体系判定(冻结的判据语义;p1_definition 一)=====
 
 def _char_traits(ch) -> tuple[str, ...]:
-    """角色的全部羁绊 tag(阵营 factions + 流派 flows)。
+    """角色的全部羁绊 tag(阵营 factions + 流派 schools)。
 
-    持续伤害/量子同频等是**流派**羁绊(cw_chars.Character.flows),仙舟/贝洛伯格
+    持续伤害/量子同频等是**流派**羁绊(cw_chars.Character.schools),仙舟/贝洛伯格
     等是阵营(factions)——判据消费「该角色算不算某羁绊的件」必须双看(单看
     factions 会漏 DOT/量子件)。
     """
-    return (ch.factions or ()) + (ch.flows or ())
+    return (ch.factions or ()) + (ch.schools or ())
 
 
 def _owned_units(gs: GameState) -> list:
