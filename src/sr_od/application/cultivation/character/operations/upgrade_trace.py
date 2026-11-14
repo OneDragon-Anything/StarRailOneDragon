@@ -113,7 +113,7 @@ class UpgradeTraceOp(SrOperation):
         self._panel_farm_click_rounds: int = 0  #: 面板钮连续点击轮数(toast 探测门控与漏检兜底封顶用,窗口/弹窗出现即复位)
         self._final_status: str | None = None  #: 终态 status(收尾节点携带落账)
         self._close_rounds: int = 0  #: 收尾关面板连等计数(纯定位区无界等待防线)
-        self._feedback_clicks: int = 0  #: 升级反馈横幅期连续点空白计数(连续 3 轮无面板锚判画面异动)
+        self._feedback_clicks: int = 0  #: 反馈遮罩期连续盲点计数(连续 6 轮无面板锚判画面异动)
         self._end_level: int | None = None  #: 收尾面板等级(日志对照)
         if farm_dungeon:
             log.info('行迹升级: farm_dungeon 已启用(每次消耗开拓力 %d + 券 %d)',
@@ -209,26 +209,19 @@ class UpgradeTraceOp(SrOperation):
             self._final_status = 'MAX_LEVEL'
             return self.round_success('CLOSE_PANEL')
 
-        # ② 面板态判定:开关不在的两种分态——升级反馈横幅期(确认补全后游戏
-        # 弹全屏「行迹提升」横幅,遮罩期除横幅外 OCR 全盲,横幅「点击空白处
-        # 关闭」锚在场即证)点安全域空白关横幅(计课上限 8 次,防点击失效无界);
-        # 横幅也不在 = 未知态纯慢询(不盲点——面板态的该空白是关面板位,锚
-        # OCR 单次抖动误点会关掉真面板),连续 3 轮才判画面异动(节点选择归
-        # agent,op 不自纠、fail 交 agent)
+        # ② 面板态判定:开关不在 = 升级反馈横幅/特效期(全屏遮罩,OCR 除遮罩
+        # 自身外全盲,遮罩版式随技能描述长度浮动不可建档)或画面真异动。
+        # 不识别遮罩物(负责人方案):盲点右下安全域空白(遮罩语义=「点击空白
+        # 处关闭」,面板态该点也是关面板位,树态惰性)直到面板锚回归;连续 6 轮
+        # 仍无锚 = 画面真异动,判失配交 agent(节点选择归 agent,op 不自纠)
         if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-            banner = self.round_by_find_area(screen, _TRACE_SCREEN, '文本-升级反馈横幅')
             self._feedback_clicks += 1
-            if banner.is_success:
-                if self._feedback_clicks >= 8:
-                    self._final_status = '不在目标技能面板'
-                    return self.round_success('CLOSE_PANEL')
-                self.ctx.controller.click(
-                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-关面板空白').rect.center)
-                return self.round_retry('升级反馈横幅期,点空白关闭', wait=2)
-            if self._feedback_clicks >= 3:
+            if self._feedback_clicks >= 6:
                 self._final_status = '不在目标技能面板'
                 return self.round_success('CLOSE_PANEL')
-            return self.round_wait('面板锚未识别且非横幅,慢询等稳定', wait=2)
+            self.ctx.controller.click(
+                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-关面板空白').rect.center)
+            return self.round_retry('面板锚未现,点空白回界面', wait=2)
         self._feedback_clicks = 0
 
         # ③ 分类校验:面板在但显示的不是 target(选中态残留/切换未生效)
@@ -446,19 +439,11 @@ class UpgradeTraceOp(SrOperation):
         final = self._final_status if self._final_status else 'MAX_LEVEL'
         screen = self.last_screenshot
         if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-            # MISS 的两态:升级反馈横幅遮罩(横幅锚在场,非「面板已关」——点
-            # 空白关横幅后重判,面板仍开则继续关闭流程)/真已关或未知态(横幅
-            # 锚也 miss)落账;盲点安全域的做法废弃(无法区分遮罩与已关,且对
-            # 模态弹窗无效)
-            if self.round_by_find_area(
-                    screen, _TRACE_SCREEN, '文本-升级反馈横幅').is_success:
-                self.ctx.controller.click(
-                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-关面板空白').rect.center)
-                return self.round_retry('收尾遇升级反馈横幅,点空白关闭', wait=2)
+            # MISS = 面板已关(反馈遮罩由升级循环 ② 的盲点循环清理,到本节点
+            # 时遮罩不应存在):落账
             log.info('行迹升级: 收尾完成,面板已关,终态 %s,等级 %s',
                      final, self._end_level)
             return self.round_success(final, wait=1)
-        self._close_rounds += 1
         if self._close_rounds >= _CLOSE_PANEL_MAX_ROUNDS:
             return self.round_fail('面板连续未关闭(空白点击未生效),交调用方处置')
         self.ctx.controller.click(
