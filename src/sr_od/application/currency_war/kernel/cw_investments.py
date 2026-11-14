@@ -66,7 +66,6 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     BENCH_REROLL_LEFT6,
     BENCH_REROLL_RIGHT3,
     BOARD_REWRITE_SELL_ALL,
-    BOARD_REWRITE_SELL_ALL_DEAL,
     BOARD_REWRITE_UPGRADE_ALL,
     EQUIPS_REROLL_SAME_QUALITY,
     EQUIPS_TRANSFORM_ADVANCED_MATTER,
@@ -665,7 +664,6 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
                           difficulty_inflation_exempt=True),
     # ↑ 全额建模:「后续策略节点→随机棱彩(不可刷)」+「不增加敌人难度」(API 原文;
     # 期权/难度侧由 33/36 号消费)
-    '贸易专家:停云': EconomyEffect(instant_gold=10),
     '佩佩驾到': EconomyEffect(instant_gold=8),
     # 控制规模:「最大等级变为7级，获得【财富宝钻】和40金币。」(卡面原文,
     # cw_invest_data PlazaAugment id 302901,棱彩)。三条效果条目分治:帽改写实现 =
@@ -682,18 +680,6 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 载荷单一源 = STRATEGY_DEATH_SAVE_GRANTS 死亡救援触发注册表;本行
     # 全默认 = 估值面无经济通道(救援价值归策略立场域,后继批立项)。
     '藏一手': EconomyEffect(),
-    # 都是这家伙的错!:官方「获得【命运圣杯星徽】和10金币。若未完美通关
-    # 战斗且有携带【命运圣杯星徽】的角色参与战斗，视为完美通关并出售1名
-    # 携带【命运圣杯星徽】的上场角色，可生效3次。」(卡面原文,cw_invest_data
-    # PlazaAugment id 352801,棱彩)。三条效果条目分治:徽效果条目 = cw_gain_effects
-    # .PICK_INVEST_EFFECTS 组合登记行(具名装备工厂确定发放 rand=False,
-    # 与登记表条目 equips_immediate 的镜像一致性 = 本卡 GRANTS 零登记,
-    # 装备效果条目唯一出现点纪律,控制规模同物同形);10 金条目 = instant_gold=10
-    # 已登记估值零漂(选卡金发放写端缺口 = instant_gold 族级既有申报);
-    # 救援效果条目(「视为完美通关」判定改写)载荷单一源 =
-    # STRATEGY_PERFECT_RESCUE_GRANTS 白名单表(结算时点条件改写,消费 =
-    # kernel/cw_env_grants.check_strategy_perfect_rescue)。
-    '都是这家伙的错！': EconomyEffect(instant_gold=10),
     '及时雨': EconomyEffect(free_refresh_burst=4),
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
     '公司严选': EconomyEffect(instant_gold=3, gold_per_plane=3,
@@ -712,11 +698,6 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
                                free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
     '黄金垃圾': EconomyEffect(instant_gold=15),
     '退化': EconomyEffect(instant_gold=8, difficulty_delta=-5),
-    '停云顾问': EconomyEffect(instant_gold=4),
-    '加拉赫顾问': EconomyEffect(instant_gold=4),
-    '摸个鱼吧II': EconomyEffect(instant_gold=6),
-    '摸个鱼吧I': EconomyEffect(instant_gold=6),
-    '按劳分配': EconomyEffect(gold_per_node=1),
     '专家招募+': EconomyEffect(instant_gold=12),
     '专家招募': EconomyEffect(instant_gold=4),
     '大扩招': EconomyEffect(instant_gold=16),
@@ -743,7 +724,6 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '嘴硬': EconomyEffect(instant_gold=6, loss_hp_extra=5, keep_streak_on_loss=True),
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
-    '经验就是财富': EconomyEffect(instant_gold=4),
     '二极管': EconomyEffect(instant_gold=6, hp_instant=10,
                             encounter_tier_extremes_only=True),
     # ↑ hp=卡面「获得10小队生命值和生命上限」即时半句直读(hp_max 半句
@@ -834,7 +814,6 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     #   本卡 −20),字段分派通用通道自动双向覆盖。
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
     # 动态/血金互兑族
-    '狸财经狸': EconomyEffect(interest_flat_per_node=2),
     # ↑ API 全文:30 本金进不了字段(非给玩家);息+2/节点;金<20 取 10(流动性保险,
     #   行为条件流);P3 首领取全部存款(存款累计值消费端推)。数值侧先建固定息。
     '不等价交换': EconomyEffect(hp_gold_swap=True),
@@ -856,11 +835,9 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '简单模式': EconomyEffect(difficulty_delta=-3),
     '难度修改器': EconomyEffect(difficulty_delta=-4, difficulty_node_types=('遭遇', '首领')),
     # 合成/出售触发族(选卡照常评估)
-    '砂里淘金': EconomyEffect(gold_per_2star2cost_merge=2),
     # ↑ 合 2星2费 白得砂金(2费可卖 ≈2 金/张;阵容用得上则价值更高,经济侧按下界)
     '星星相印': EconomyEffect(gold_per_3star_merge=5),
     '武力刷新': EconomyEffect(refresh_per_compose=2),
-    '降本增效': EconomyEffect(sell_price_mult=2.0),
     # —— 机制修改器审计 F1/F2/F3(效果原文=cw_invest_data
     #    plaza API 逐字:概率事件 300401/奋斗协议 301801/市场干预 102201)——
     '概率事件': EconomyEffect(refresh_free_chance=0.45),
@@ -999,15 +976,8 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '所在位面(已开始)位面段登记拍全额补发(用户裁定 2026-11-01 '
               '定案,与固定理财族同判)。「独特」=同帧去重,桶不足填尽量多、'
               '余槽留空;2★ 直出翻星效果条目与基线共享(人才下沉局)'),
-    # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
     # 四歧义(改道是否吞策略给的 XP/转换同事件性/上限/版本变体)见该条目待采待办;
     # 定案前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定案后补 payload。
-    '经验就是财富': EffectSpec(
-        id='103601', name='经验就是财富', trigger=TriggerKind.CONDITIONAL,
-        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
-        payload=STRATEGY_ECONOMY['经验就是财富'], duties=DutyFlags(respond=True),
-        pending=True,
-        notes='待采(W610-P1 §1.4.1 四歧义);保守支=改道吞非购买 XP'),
     # 商业间谍:官方「购买经验的花费减1,升级时刷新商店,并偷取其中最贵的3个角色」。
     # 战场段(升级偷牌)入 spec;降价段在 STRATEGY_ECONOMY(xp_buy_cost_discount)。
     '商业间谍': EffectSpec(
@@ -1018,12 +988,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='CwActionLevelUpParam 后商店必刷新+偷最贵 3 张;shop 读牌/买牌对账须预知'),
     # 双手狸开键盘!(游戏内单位名 Gemi狸;注册表官方卡名见 204101):
     # 官方「进入新节点时,它会免费刷新商店2次,自动购买你场上拥有的角色」。
-    '双手狸开键盘！': EffectSpec(
-        id='204101', name='双手狸开键盘！', trigger=TriggerKind.NODE_ENTER,
-        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(free_refresh_on_node_enter=2, auto_buy_owned=True),
-        duties=DutyFlags(track=True, predict=True),
-        notes='代买使「牌自己消失」,商店读牌/买牌对账必须预知(挂时序实证归采集批);效果条目3 自动购买零登记 = bot 实机和模拟器两边零响应(触发面型① eligible 载体未建,scoped 决策禁落放弃表防后继族被写死);召唤单位零建模,实机名待族级实机取证批'),
     # 采购专员·金/彩:官方「每7/5次刷新,商店会刷出5张费用相同的角色,费用为你备战席
     # 最左侧角色的费用」。刷新计数器走 inventory counters[CounterKey.REFRESH]。
     '采购专员·金': EffectSpec(
@@ -1047,18 +1011,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='board/target 全量失效→方向重估强制重派生是后续批辖域;'
               '写归属=替换面随机零逻辑写'),
-    # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
     # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读
     # 归类同族:全员晋升/人力重组/大裁员/现金为王=即时全场板面重写/出售)。
-    '人力重组': EffectSpec(
-        id='102801', name='人力重组', trigger=TriggerKind.INSTANT,
-        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL_DEAL),
-        duties=DutyFlags(predict=True),
-        notes='全场出售事件;执行时序编排(卖→发牌);'
-              '写归属=出售面逻辑写/发牌面 live 不写逻辑只靠画面读数·sim 发牌分支承接'
-              '(cw_sim_backend.apply_strategy_pick_sell_all_deal)'),
     # 大裁员:官方「出售场上和备战席的所有角色，获得双倍价格的金币。获得6次免费刷新。」
     # (cw_invest_data.py:134)。卖全场族注册卡,板面重写桥素出售语义清场+基础
     # 公式退款;发牌条目非本卡卡文面(sim 发牌判据按语义值细分,素出售不入集,
@@ -1074,7 +1029,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='卖全场+6 刷选卡当场;×2 卖价修饰缺口 G4 待实采(净额/基础价),'
               '退款按基础公式'),
-    # 降本增效:官方「出售场上和备战席的所有角色，获得双倍价格的金币。
     # 你接下来6次购买角色是免费的。」(cw_invest_data.py:136)。卖全场族
     # 素出售第二张注册卡(姊妹大裁员同构出售条目;人力重组走 _DEAL 值非素);
     # 卖价 ×2 修饰 = sell_price_mult(STRATEGY_ECONOMY 已登记),退款施径 =
@@ -1083,14 +1037,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 首例机制):uses 维度与 duration 类别独立播种(_seed_progress),
     # duration=ONCE 只注记出售条目一次性语义;递减插入位置 = 买牌上报单点
     # (report_action_buy_card_param,按张计,k 张 = k 次),用尽移除。
-    '降本增效': EffectSpec(
-        id='202301', name='降本增效', trigger=TriggerKind.INSTANT,
-        duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
-        duties=DutyFlags(predict=True, track=True),
-        duration_uses=6,
-        notes='卖全场+双倍卖价缺口 G4 待实采(净额/基础价),退款按基础公式;'
-              '6 次购买免费(remaining_uses 为权威版本,买牌上报递减,用尽移除)'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面适用范围。
     '躺平': EffectSpec(
@@ -1355,7 +1301,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '换位镜像增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
-    # 风暴骑士:官方「前台一号位角色获得150%速度增幅。进入战斗时，该角色
     # 回合开始时，受到等同于生命上限70%固定数值的风属性附加伤害。」
     # (cw_invest_data.py, id 251001)。
     # 战力类零响应登记(UNIT_BUFF 族):速度增幅/self-debuff 反噬段游戏侧
@@ -1363,36 +1308,11 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # T-258 DONE 立制;70% 伤害语境承 T-257 已登记归类;混合极性 sim 双
     # clause 方向申报);effect_text 经数据面表达式单一源,版本更新改文
     # 自动跟随。
-    '风暴骑士': EffectSpec(
-        id='251001', name='风暴骑士',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '251001')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族);'
-              '增幅与反噬两段游戏侧自算,bot 仅登记;'
-              '无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
-    # 幸运中的幸运:官方「进入战斗时，我方队员幸运一击率若大于20%，则降低
     # 至20%，每通过该方式降低1%幸运一击率，使幸运一击伤害提高2%。」
     # (cw_invest_data.py, id 251101)。
     # 战力类零响应登记(UNIT_BUFF 族):「该方式」读法/队员粒度两读均落
     # 零响应域 bot 行为恒同判读申报制留痕(T-170 权威版本+姊妹同判形);
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
-    '幸运中的幸运': EffectSpec(
-        id='251101', name='幸运中的幸运',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '251101')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族);'
-              '降阈换伤两段游戏侧自算,bot 仅登记;'
-              '无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
     # 榜样的力量·金:官方「战斗中，伤害统计排名第一的队员成为【榜样】，
     # 前/后台强度提高40%。其他队员前/后台强度提高10%。」(cw_invest_data.py,
     # id 251201)。
@@ -1509,7 +1429,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '效果条目1 具名授予在 PICK_INVEST_EFFECTS 直书行;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
-    # 读博深造:官方「战斗开始时，若银河学者羁绊处于激活状态，一名随机的
     # 1费或2费银河学者变成3星。获得【艾丝妲】和【阮·梅】。」
     # (cw_invest_data.py, id 251901)。
     # 战力类零响应登记(UNIT_BUFF 族):条件段(羁绊激活+随机升星)游戏侧
@@ -1517,40 +1436,12 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 不选(姊妹同判,pending=False 已定案);条目 2/3 送卡在 PICK_INVEST_
     # EFFECTS char×char 组合行(本表零条目);effect_text 经数据面表达式
     # 单一源,版本更新改文自动跟随。
-    '读博深造': EffectSpec(
-        id='251901', name='读博深造',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '251901')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族);'
-              '条件段与随机升星游戏侧自算,bot 仅登记;'
-              '送卡两条效果条目在 PICK_INVEST_EFFECTS 组合行;'
-              '变形持续性承 T-180 案 A 判读申报制;'
-              '无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
-    # 装备党:官方「激活狼狩羁绊时，狼狩角色们每穿戴一件装备，就获得4%
     # 伤害增幅和2%速度增幅。获得【椒丘】和【飞霄】。」(cw_invest_data.py,
     # id 252201)。
     # 战力类零响应登记(UNIT_BUFF 族):条件段(羁绊激活+计件增幅)与两段
     # 增幅游戏侧自算,bot 零响应(计件读法两读 bot 行为恒等判读申报制
     # 留痕);条目 2/3 送卡在 PICK_INVEST_EFFECTS char×char 组合行(本表零
     # 条目);effect_text 经数据面表达式单一源,版本更新改文自动跟随。
-    '装备党': EffectSpec(
-        id='252201', name='装备党',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '252201')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族);'
-              '羁绊激活计件与两段增幅游戏侧自算,bot 仅登记;'
-              '送卡两条效果条目在 PICK_INVEST_EFFECTS 组合行;'
-              '无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
     # 幸运星祝福:官方「获得1个【幸运星】」(cw_invest_data.py, id 230101)。
     # 战力类零响应登记(祝福族首例):祝福面游戏侧自算,bot 零响应;
     # effect_text 经数据面表达式单一源,版本更新改文自动跟随。
@@ -1585,28 +1476,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
             a.effect for a in PLAZA_AUGMENTS if a.id == '230301')),
         duties=DutyFlags(),
         notes='战力类零响应登记(祝福族第 3 条);'
-              '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
-    '生命之花祝福': EffectSpec(
-        id='230401', name='生命之花祝福',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '230401')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(祝福族第 4 条);'
-              '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
-    '量产型装甲祝福': EffectSpec(
-        id='230501', name='量产型装甲祝福',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '230501')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(祝福族第 5 条);'
               '游戏侧自算,bot 仅登记;无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
     # 成长基金:官方「在你到达9级时，提供40金币。」(cw_invest_data.py:56,
@@ -2002,7 +1871,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '条件与数值游戏侧自算,bot 仅登记;关卡进度读法定义游戏侧,'
               '判读申报制不在读法间定死);无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
-    # 效率员工奖:官方「进入战斗时，速度最高的三名角色及其忆灵速度增幅提高10%。」
     # (cw_invest_data.py:102,PlazaAugment 150601)。战力类零响应登记
     # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
     # 「游戏侧自算,bot 仅登记」),同形先例 = 全队的希望/溜佩佩/溜佩佩+/
@@ -2011,18 +1879,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 游戏侧,sim 不建模速度。「及其忆灵」系官方卡文词面(更快,更幸运/
     # 绕口令/软弱无力词缀逐字同型;幸运之子/人海战术系忆灵词面同域近似
     # 型),非注册名域对象。
-    '效率员工奖': EffectSpec(
-        id='150601', name='效率员工奖',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '150601')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族第 8 条);对象选择(进入战斗时'
-              '速度最高三名角色及其忆灵)与数值(10% 速度增幅)游戏侧自算,'
-              'bot 仅登记;无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
     # 基层贡献:官方「你的场上每有一个1费角色，我方小队获得3%速度增幅和2%伤害减免。
     # 3星1费改为提供3倍。」(cw_invest_data PlazaAugment 150701;出处用符号名引用不挂
     # 行号——该文件系 gen_plaza_invest.py 再生件,行号随重跑漂移)。战力类零响应
@@ -2310,26 +2166,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '行动提前/衰减/两段增幅游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'
               '(对齐 _portal_placeholder_spec 先例)'),
-    # 现金为王:官方「出售场上和备战席的所有角色，之后每场进入战斗时，为我方
-    # 前台提供护盾，护盾量等同于该次出售角色所获得总金币数*1000。」
-    # (cw_invest_data.py:200)。卖全场族素出售第三张注册卡(大裁员/降本增效
-    # 姊妹,人力重组走 _DEAL 值非素):出售面 = 板面重写桥素出售语义清场 +
-    # 基础公式退款(卡文无「双倍」句,无卖价修饰);护盾面 = 「每场进入战斗
-    # 时前台获盾」持久被动游戏侧自算(bot 零响应,U01 sim 战斗零消费),
-    # 记忆量 = 桥退款权威写入同闸记账实例 counters[CounterKey.SHIELD_BANK]
-    # (= 退款×1000 卡文明写,常量承载;写端唯一 = 板面重写桥,空场/部分读
-    # 零记账),不设独立字段(权威版本 fields.md 卖全场族行/effect-domain §4
-    # 伴生数值空间)。
-    '现金为王': EffectSpec(
-        id='250301', name='现金为王', trigger=TriggerKind.INSTANT,
-        duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
-        duties=DutyFlags(predict=True),
-        notes='出售面=板面重写桥素出售(人力重组同构);护盾记忆量=桥退款'
-              '×1000 记实例 counters[SHIELD_BANK](权威版本 fields.md 卖全场族'
-              '行/effect-domain §4);护盾授予=每场进入战斗游戏侧自算 '
-              'bot 零响应'),
-    # 赞美太阳:官方「每拥有一件【白昼装备】以及其原型装备，在进入新节点时
     # 就获得1点经验。角色每穿戴一件【白昼装备】，幸运一击率提高10%。获得
     # 【那刻夏】。」(cw_invest_data.py, id 252401)。
     # 三条效果条目分治:条目 1 装备计数经验 = 条件 XP 族状态副本写入通道
@@ -2339,21 +2175,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 登记(invest_effects 战力类「幸运」直辖,游戏侧自算,bot 仅登记);
     # 条目 3 具名授予在 STRATEGY_GRANTS 直书行(本表零条目);effect_text
     # 经数据面表达式单一源,版本更新改文自动跟随。
-    '赞美太阳': EffectSpec(
-        id='252401', name='赞美太阳',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '252401')),
-        duties=DutyFlags(),
-        notes='效果条目 2 幸运一击率 +10%/件战力类零响应登记(UNIT_BUFF 族);'
-              '穿戴计数与增幅游戏侧自算,bot 仅登记;'
-              '效果条目 1 经验发放分支 = STRATEGY_EQUIP_COUNT_XP_GRANTS 状态副本写入通道'
-              '(拥有 = 四源持有口径,判定单一源在 cw_gain_chain),'
-              '本条目不承载;效果条目 3 那刻夏授予在 STRATEGY_GRANTS;'
-              '无离散触发事件,trigger 占位形'
-              '(对齐 _portal_placeholder_spec 先例)'),
     # 星魂升华:官方「本局游戏中，我方前台角色的星魂提高1阶」
     # (cw_invest_data.py PlazaAugment 253101)。战力类零响应登记
     # (invest_effects.md 战力类行:不进经济模型;EffectKind.UNIT_BUFF
@@ -2392,7 +2213,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='战斗域三重皆盲零建模登记(UNIT_BUFF 族);'
               '斩杀阈值与执行游戏侧自算,bot 仅登记;'
               '无离散触发事件,trigger 占位形'),
-    # 领航专家:姬子:官方「获得专家顾问【姬子】，并使其在本局游戏中加入
     # 商店。战斗开始时，姬子邀请大家品尝咖啡，根据她的星级使我方全体
     # 行动提前40%/70%/100%，获得25%/50%/90%速度增幅，所有前台角色损失
     # 40%当前生命值。」(cw_invest_data.py, id 260901)。
@@ -2400,17 +2220,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 游戏侧自算,bot 零响应(星级轴读法判读申报制留痕;行动提前读法 =
     # T-255/T-257 同族先例);effect_text 经数据面表达式单一源,版本更新
     # 改文自动跟随。
-    '领航专家:姬子': EffectSpec(
-        id='260901', name='领航专家:姬子',
-        trigger=TriggerKind.PLANE_START,
-        duration=DurationKind.WHILE_HELD,
-        category=EffectKind.UNIT_BUFF,
-        payload=UnitBuffRef(effect_text=next(
-            a.effect for a in PLAZA_AUGMENTS if a.id == '260901')),
-        duties=DutyFlags(),
-        notes='战力类零响应登记(UNIT_BUFF 族);'
-              '行动提前/速度增幅/HP 损失段游戏侧自算,bot 仅登记;'
-              '无离散触发事件,trigger 占位形'),
     # 概率事件:官方「刷新时有45%概率获得一次免费刷新。」
     # (cw_invest_data.py:245)。付费域口径 = 研究文档现值
     # (invest_effects.md「现按付费域建模」,待实机实证任意刷是否 proc;
@@ -2533,24 +2342,11 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
               '注册行 props;装备本体 effect 真伤系装备描述域权威版本游戏侧自'
               '算,与卡面叠加面分野),判读两维并列申报禁当定论:源绑定'
               '(卡源限定/任意源)×生效域(穿戴者/全体小队)'),
-    # 完美进化(id 331901):官方「进入战斗时，穿戴【战场进化手册】的1星角色
     # 会变为2星。」战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,
     # bot 零响应;pending=False = 变形持续性已登记用户裁定 2026-11-01 直接
     # 消解(临时+策略默认不选;星变/读博深造两姊妹同判已实现
     # pending=False 现值),「战斗开始变形族后继持续性轴届时
     # 直接承已登记用户裁定(临时),无二义残留」宣示兑现)。
-    '完美进化': EffectSpec(
-    id='331901', name='完美进化', trigger=TriggerKind.PLANE_START,
-    payload=UnitBuffRef(
-        effect_text=next(a.effect for a in PLAZA_AUGMENTS
-                         if a.id == '331901')),
-    duration=DurationKind.WHILE_HELD, category=EffectKind.BATTLEFIELD,
-    pending=False,
-    notes='战力类 UNIT_BUFF 零响应登记(1→2 星升级游戏侧自算,bot 零响'
-          '应;任务书战力类已登记硬裁定);变形持续性 = 用户裁定 2026-11-01'
-          '已定案(临时+策略默认不选),星变/读博深造同判现值 pending=False;'
-          '触发语义 = 进入战斗时(战斗开始族格,PLANE_START 占位);零新字'
-          '段零披露键零写端。'),
     # 幸运之子(id 350101):官方「我方小队幸运一击率提高25%。进入战斗时，
     # 我方小队中幸运一击率达到100%的角色，自身与忆灵幸运一击伤害提高
     # 40%。」战力类 UNIT_BUFF 零响应登记(幸运一击族同域 5 卡+效率员工奖
@@ -2664,20 +2460,9 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           'bot 仅登记);'
           '「达到」边界读法判读申报制[零响应下 bot 行为恒同];'
           '无离散触发事件,trigger 占位形。'),
-    # 基本保障(id 351001):官方「至少携带1件装备的角色获得20%生命增幅和
     # 16%伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「携带」系 buff
     # 条件读法申报,不涉送卡口径;条件计数与两段增幅游戏侧自算,bot 零响
     # 应;无离散触发事件,trigger 占位形)。
-    '基本保障': EffectSpec(
-    id='351001', name='基本保障',
-    trigger=TriggerKind.PLANE_START,
-    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
-    payload=UnitBuffRef(effect_text=next(
-    a.effect for a in PLAZA_AUGMENTS if a.id == '351001')),
-    duties=DutyFlags(),
-    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
-          '「携带」系 buff 条件读法申报,条件计数与两段增幅游戏侧自算,'
-          'bot 仅登记;无离散触发事件,trigger 占位形。'),
     # 更快,更幸运(id 351101):官方「进入战斗时，速度最高的角色及其忆灵速
     # 度增幅提高8%，幸运一击率提高12%。每经过20行动值，在另一名我方角色
     # 上重复此效果。」战力类 UNIT_BUFF 零响应登记(同形族;「速度最高」选择
@@ -2728,22 +2513,11 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     notes='战力类 UNIT_BUFF 零响应登记(同形族);'
           '随机对象/前后台域界/数值读法/持续性四判读面游戏侧自算,'
           'bot 仅登记;无离散触发事件,trigger 占位形。'),
-    # 保守派(id 351501):官方「我方小队获得8%伤害减免。进入战斗时，生命上
     # 限最低的角色额外获得12%伤害减免。获得一件【进阶武装箱】。」战力类
     # UNIT_BUFF 零响应登记(同形族;箱效果条目三卡族,箱发放分支已在箱条目组注
     # 登记;伤害减免两段/「生命上限最低」选角谓词四判读面游戏侧自算,bot 零
     # 响应 = 判读申报制零行为承载;hp_max 读侧谓词不入枚举;无离散触发事
     # 件,trigger 占位形)。
-    '保守派': EffectSpec(
-    id='351501', name='保守派',
-    trigger=TriggerKind.PLANE_START,
-    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
-    payload=UnitBuffRef(effect_text=next(
-    a.effect for a in PLAZA_AUGMENTS if a.id == '351501')),
-    duties=DutyFlags(),
-    notes='战力类 UNIT_BUFF 零响应登记(同形族);'
-          '伤害减免两段/选角谓词四判读面游戏侧自算,bot 仅登记;'
-          '无离散触发事件,trigger 占位形。'),
     # 攻防一体(id 351601):官方「我方小队获得25%伤害减免，且获得等同于
     # 伤害减免的伤害增幅。」战力类 UNIT_BUFF 零响应登记(同形族;「等同
     # 于伤害减免的伤害增幅」跨轴联动读法[同源快照 vs 全额镜像两读]零响
@@ -2796,7 +2570,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
           '线性缩放且双轴独立定值并列非跨轴派生[禁平移「攻防一体」联动'
           '读法],计数判定与数值游戏侧自算,bot 仅登记;「已激活」口径 = '
           '游戏侧定义[实机面板为真值];无离散触发事件,trigger 占位形。'),
-    # 调饮专家:加拉赫(id 360501):官方「获得装备着【绝对热量】的专家顾问
     # 【加拉赫】,并使其在本局游戏中加入商店。加拉赫行动时,为我方全体恢复
     # 3点能量并触发【绝对热量】的生命回复效果。」顾问授予族三条效果条目分治:效果条目1
     # 顾问解锁+入商店 = GRANTS advisor=True 条目已登记零动作(获得链 advisor
@@ -2808,22 +2581,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 效果面「恢复3点能量」能量战斗内轴 sim/状态/obs 全盲;联动面「触发
     # 绝对热量生命回复」依赖佩戴面零建模;全游戏侧自算,bot 仅登记;
     # 生效前置 = 加拉赫已上阵行动,顾问解锁≠上阵)。
-    '调饮专家:加拉赫': EffectSpec(
-    id='360501', name='调饮专家:加拉赫',
-    trigger=TriggerKind.PLANE_START,
-    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
-    payload=UnitBuffRef(effect_text=next(
-    a.effect for a in PLAZA_AUGMENTS if a.id == '360501')),
-    duties=DutyFlags(),
-    notes='顾问授予族三条效果条目分治:效果条目1 顾问解锁+入商店 = GRANTS advisor=True'
-          '条目已登记零动作(获得链解锁→入商店全链已写进代码);效果条目2 佩戴绝对热量'
-          '零建模(strategy_worn_equip_unmodeled 家族键申报,绝对热量/'
-          '绝对热量·特权 独立条目分立防误引);效果条目3 行动触发双效果触发/'
-          '效果/联动三盲零建模,数值游戏侧自算 bot 仅登记;生效前置 = '
-          '加拉赫已上阵行动(顾问解锁≠上阵);受益粒度 = 我方全体;装备'
-          '联动依赖 = 绝对热量佩戴面零建模;无离散触发事件,trigger/'
-          'duration 为登记占位非真实语义。'),
-    # 黑塔纪元(id 352601):官方「出战时，你拥有的【黑塔】们每有1总金币价值，
     # 都使【黑塔】们追击时额外转一圈。你拥有的【黑塔】们每有1总金币价值，
     # 使【黑塔】/【大黑塔】获得10%前后台强度。」战力类 UNIT_BUFF 零响应
     # 登记(UNIT_BUFF 族):强度增幅效果条目对象具名(黑塔/大黑塔)+「每有
@@ -2836,18 +2593,6 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 判读申报制);获得时点/合成触发两效果条目分治 = PICK_INVEST_EFFECTS
     # 即时行 + STRATEGY_MERGE_GRANTS 合成触发行(同卡三表三通道,各管各
     # 效果条目);无离散触发事件,trigger 占位形。
-    '黑塔纪元': EffectSpec(
-    id='352601', name='黑塔纪元',
-    trigger=TriggerKind.PLANE_START,
-    duration=DurationKind.WHILE_HELD, category=EffectKind.UNIT_BUFF,
-    payload=UnitBuffRef(effect_text=next(
-    a.effect for a in PLAZA_AUGMENTS if a.id == '352601')),
-    duties=DutyFlags(),
-    notes='战力类 UNIT_BUFF 零响应登记(UNIT_BUFF 族);'
-          '「每有1总金币价值」计量与10%前后台强度游戏侧自算,bot 仅登记;'
-          '计价口径 = 用户裁定 2026-11-06 按购入原价[本卡逐卡裁定,后继'
-          '『价值』词面卡仍逐卡裁];追击转圈效果条目型③两边皆盲零登记;'
-          '无离散触发事件,trigger 占位形。'),
 }
 
 
@@ -2873,18 +2618,16 @@ def _validate_strategy_effects() -> None:
 # 真正的手维护信息只有例外条与不可派生名单;派生结果在构建期与逐位交叉核对基准比对
 # (派生化零行为变化,决策与逐位交叉核对记录见 git 历史)。
 _ENV_SUFFIX_DERIVED_NAMES: tuple[str, ...] = (
-    # 概念股 15
-    '追击概念股', '击破概念股', '群攻概念股', '能量概念股', '燃血概念股', '减益概念股',
-    '战技点概念股', '仙舟概念股', '贝洛伯格概念股', '狼狩概念股', '星间旅人概念股',
-    '银河学者概念股', '列车同行概念股', '昼之半神概念股', '夜之半神概念股',
-    # 邀请 20
-    '仙舟邀请', '贝洛伯格邀请', '狼狩邀请', '盛会之星邀请', '星间旅人邀请', '银河学者邀请',
-    '列车同行邀请', '昼之半神邀请', '夜之半神邀请', '追击邀请', '击破邀请', '群攻邀请',
-    '能量邀请', '燃血邀请', '减益邀请', '持续伤害邀请', '量子同频邀请', '战技点邀请',
-    '欢愉邀请', '命运圣杯邀请',
-    # 契约 7(阵营绑定 = 获赠该阵营角色,补)
-    '星核猎手契约', '战技点契约', '公司契约', '持续伤害契约', '量子同频契约', '欢愉契约',
-    '命运圣杯契约',
+    # 概念股 14(官方 15 卡同名双 id 1015/2208「群攻概念股」取一名;序 = 官方 id 序)
+    '群攻概念股', '仙舟舰队概念股', '奇兽花园概念股', '幻月游戏概念股', '开拓银轨概念股',
+    '千星商会概念股', '追击概念股', '持续伤害概念股', '连击概念股', '击破概念股',
+    '召唤概念股', '欢愉概念股', '反击概念股', '能量概念股',
+    # 邀请 18(id 2101-2119,序 = 官方 id 序)
+    '仙舟舰队邀请', '奇兽花园邀请', '幻月游戏邀请', '星间旅人邀请', '开拓银轨邀请',
+    '星核猎手邀请', '小小巨人邀请', '梦境交织邀请', '黄金大饭店邀请', '追击邀请',
+    '持续伤害邀请', '群攻邀请', '连击邀请', '击破邀请', '召唤邀请', '欢愉邀请',
+    '反击邀请', '能量邀请',
+    # 契约 0(V4.7 无契约族)
 )
 
 # 不可派生环境的手写例外(带溯源;类别值不属三类后缀)
@@ -2898,15 +2641,12 @@ _ENV_CATEGORY_EXCEPTIONS: dict[str, str] = {
     '人才下沉': '规则', '联席决策': '规则', '轮岗': '规则', '劳务派遣合同': '规则',
     '战争边疆': '规则', '粗星佩佩': '规则', '三星佩佩': '规则', '敌后破坏': '规则',
     '进化算法': '规则', '策略大师': '规则',
-    '人才储备': '专家', '战力飙升': '专家', '战力提升': '专家', '专家研讨会': '专家',
-    '特邀专家:银狼': '专家', '特邀专家:加拉赫': '专家', '特邀专家:停云': '专家',
-    '特邀专家:桑博': '专家', '命运礼物': '专家', '英雄登场': '专家',
+    '人才储备': '专家', '战力飙升': '专家', '战力提升': '专家',
+    '命运礼物': '专家', '英雄登场': '专家',
 }
 
 # 阵营绑定例外:名字推不出阵营(带用户确认注)
-_ENV_FACTION_EXCEPTIONS: dict[str, str] = {
-    '特邀专家:加拉赫': '击破',  # 加拉赫=击破角色(plaza traits 盛会之星/击破/治疗)+击破档位给钻头(用户确认)
-}
+_ENV_FACTION_EXCEPTIONS: dict[str, str] = {}
 
 
 def _derive_env_tables() -> tuple[dict[str, str], dict[str, str]]:
@@ -2931,10 +2671,7 @@ ENV_CATEGORY, ENV_FACTION = _derive_env_tables()
 
 
 # ===== 补遗:plaza 不收的条目(手维护)=====
-_MANUAL_EXTRAS: list[InvestmentStrategy] = [
-    # 与「追击星徽套组」(id 320101,PLAZA_AUGMENTS)同效果,plaza 只收一张;米游社图鉴收两张(content 6302)
-    _strat("追击星徽套组(二)", "棱彩", "获得1个【追击星徽】,和1个【飞霄】,以及1个【永动机】。(与追击星徽套组同效果)", "6302"),
-]
+_MANUAL_EXTRAS: list[InvestmentStrategy] = []
 
 
 # ===== 合并层:base(plaza API)× overlay → 注册表=====
@@ -3195,75 +2932,32 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
 _STRATEGY_BINDINGS_EXPLICIT: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     # —— 星徽单件(金):阵营星徽 + 阵营 key 角色 ——
     # (星徽套组(棱彩)条目已派生化:由本段单件 + 名字规则派生,见 _derive_megastar_set_bindings)
-    '列车同行星徽': (frozenset({'列车同行'}), frozenset({'丹恒·饮月'})),
-    '银河学者星徽': (frozenset({'银河学者'}), frozenset({'艾丝妲'})),
-    '贝洛伯格星徽': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
-    '星间旅人星徽': (frozenset({'星间旅人'}), frozenset({'银枝'})),
-    '仙舟星徽': (frozenset({'仙舟'}), frozenset({'藿藿'})),
-    '狼狩星徽': (frozenset({'狼狩'}), frozenset({'椒丘'})),
-    '盛会之星星徽': (frozenset({'盛会之星'}), frozenset({'花火'})),
-    '昼之半神星徽': (frozenset({'昼之半神'}), frozenset({'风堇'})),
-    '夜之半神星徽': (frozenset({'夜之半神'}), frozenset({'万敌'})),
-    '命运圣杯星徽': (frozenset({'命运圣杯'}), frozenset({'远坂凛'})),
-    '追击星徽': (frozenset({'追击'}), frozenset({'飞霄'})),
-    '击破星徽': (frozenset({'击破'}), frozenset({'阮·梅'})),
-    '群攻星徽': (frozenset({'群攻'}), frozenset({'翡翠'})),
-    '能量星徽': (frozenset({'能量'}), frozenset({'星期日'})),
-    '治疗星徽': (frozenset({'治疗'}), frozenset({'风堇'})),
-    '燃血星徽': (frozenset({'燃血'}), frozenset({'万敌'})),
-    '减益星徽': (frozenset({'减益'}), frozenset({'黄泉'})),
-    '持续伤害星徽': (frozenset({'持续伤害'}), frozenset({'卡芙卡'})),
-    '量子同频星徽': (frozenset({'量子同频'}), frozenset({'希儿'})),
-    '护盾星徽': (frozenset({'护盾'}), frozenset({'砂金'})),
-    '战技点星徽': (frozenset({'战技点'}), frozenset({'丹恒·饮月'})),
-    '欢愉星徽': (frozenset({'欢愉'}), frozenset({'绯英'})),
+    # V4.7 换季机械事实登记(阵营=星徽名去尾/角色=卡文直读,零效果建模判断);方向分行为效应归建模期复核
+    '星间旅人星徽': (frozenset({'星间旅人'}), frozenset({'忘归人'})),
+    '追击星徽': (frozenset({'追击'}), frozenset({'托帕&账账'})),
+    '击破星徽': (frozenset({'击破'}), frozenset({'忘归人'})),
+    '群攻星徽': (frozenset({'群攻'}), frozenset({'瓦尔特'})),
+    '能量星徽': (frozenset({'能量'}), frozenset({'绯英'})),
+    '治疗星徽': (frozenset({'治疗'}), frozenset({'灵砂'})),
+    '持续伤害星徽': (frozenset({'持续伤害'}), frozenset({'桂乃芬'})),
+    '欢愉星徽': (frozenset({'欢愉'}), frozenset({'火花'})),
+    # —— V4.7 新增单件(12 张,序 = 官方 id 序;登记口径同上行机械事实)——
+    '仙舟舰队星徽': (frozenset({'仙舟舰队'}), frozenset({'桂乃芬'})),
+    '奇兽花园星徽': (frozenset({'奇兽花园'}), frozenset({'那刻夏'})),
+    '幻月游戏星徽': (frozenset({'幻月游戏'}), frozenset({'火花'})),
+    '开拓银轨星徽': (frozenset({'开拓银轨'}), frozenset({'瓦尔特'})),
+    '星核猎手星徽': (frozenset({'星核猎手'}), frozenset({'流萤'})),
+    '小小巨人星徽': (frozenset({'小小巨人'}), frozenset({'刻律德菈'})),
+    '梦境交织星徽': (frozenset({'梦境交织'}), frozenset({'黑天鹅'})),
+    '黄金大饭店星徽': (frozenset({'黄金大饭店'}), frozenset({'万敌'})),
+    '连击星徽': (frozenset({'连击'}), frozenset({'那刻夏'})),
+    '召唤星徽': (frozenset({'召唤'}), frozenset({'景元'})),
+    '反击星徽': (frozenset({'反击'}), frozenset({'云璃'})),
+    '守护星徽': (frozenset({'守护'}), frozenset({'真珠'})),
     # —— 阵容专属机制强化(金):效果点名声援某阵营机制 ——
-    '双人舞': (frozenset({'星核猎手'}), frozenset({'千冶·刃', '卡芙卡'})),
-    '读博深造': (frozenset({'银河学者'}), frozenset({'艾丝妲', '阮·梅'})),
-    '钢铁美学': (frozenset({'贝洛伯格'}), frozenset({'希儿'})),
-    '人在旅途': (frozenset({'星间旅人'}), frozenset({'绯英', '银枝'})),
-    '装备党': (frozenset({'狼狩'}), frozenset({'椒丘', '飞霄'})),
-    '梦境大舞台': (frozenset({'盛会之星'}), frozenset({'花火'})),
-    '赞美太阳': (frozenset({'昼之半神'}), frozenset({'那刻夏'})),
-    '月光宝盒': (frozenset({'夜之半神'}), frozenset({'赛飞儿', '万敌'})),
-    '借力打力': (frozenset({'群攻'}), frozenset({'黑塔', '缇宝'})),
-    '超充站': (frozenset({'能量'}), frozenset({'阿格莱雅', '藿藿'})),
-    '燃起来了': (frozenset({'燃血'}), frozenset({'万敌', '千冶·刃'})),
-    '量子力学': (frozenset({'量子同频'}), frozenset({'希儿'})),
-    '如有神助': (frozenset({'仙舟'}), frozenset()),       # 神君伤害(仙舟召唤)
-    '迷之旅人': (frozenset({'巡海游侠'}), frozenset({'黄泉', '波提欧'})),
     '阿哈大悦': (frozenset({'欢愉'}), frozenset()),       # 欢愉羁绊激活时强化阿哈
-    '不虚此行': (frozenset({'列车同行'}), frozenset()),   # 星穹列车/光轨
-    '离火燎原': (frozenset({'减益'}), frozenset()),       # 离火真伤
-    '按劳分配': (frozenset({'战技点'}), frozenset()),     # 金币上限随战技点羁绊档位(用户确认)
-    '步狸村之谜': (frozenset({'狼狩'}), frozenset()),     # 狸狸穿戴狼狩星徽(用户确认,同 星徽→绑定 判据)
     # —— 阵容专属机制强化(棱彩)——
-    '盗用身份': (frozenset({'列车同行'}), frozenset({'火花'})),  # 所赠列车同行星徽(用户确认;{NICKNAME}=开拓者卡已归一)
-    '飞光·传剑': (frozenset({'仙舟'}), frozenset({'彦卿', '景元'})),  # 神君引用+双仙舟角色(用户确认)
-    '都是这家伙的错！': (frozenset({'命运圣杯'}), frozenset()),
     # —— 赠 key 角色 / 双子互升 / 专家顾问(角色绑定,无阵营)——
-    '飞光·映月': (frozenset(), frozenset({'镜流', '景元'})),
-    '本姑娘就是罗刹': (frozenset(), frozenset({'三月七', '罗刹'})),
-    '黑塔纪元': (frozenset(), frozenset({'大黑塔', '黑塔'})),
-    '轮回不止': (frozenset(), frozenset({'白厄'})),
-    '白衣伙伴': (frozenset(), frozenset({'白厄', '星期日'})),
-    '双龙会': (frozenset(), frozenset({'丹恒·饮月', '丹恒·腾荒'})),
-    '偶像经济': (frozenset({'星间旅人'}), frozenset({'火花'})),  # 火花=星间旅人 4费核心(plaza traits 确认;用户授权查角色数据定)
-    '愚者恶作剧': (frozenset(), frozenset({'花火', '火花'})),
-    '砂里淘金': (frozenset(), frozenset({'砂金'})),
-    '琼玉专家:青雀': (frozenset(), frozenset({'青雀'})),
-    '贸易专家:停云': (frozenset(), frozenset({'停云'})),
-    '调饮专家:加拉赫': (frozenset(), frozenset({'加拉赫'})),
-    '锻冶专家:刃': (frozenset(), frozenset({'刃'})),
-    '骇客专家:银狼': (frozenset(), frozenset({'银狼'})),
-    '潜行专家:貊泽': (frozenset(), frozenset({'貊泽'})),
-    '战术专家:佩拉': (frozenset(), frozenset({'佩拉'})),
-    '领航专家:姬子': (frozenset(), frozenset({'姬子'})),
-    '加拉赫顾问': (frozenset(), frozenset({'加拉赫'})),
-    '停云顾问': (frozenset(), frozenset({'停云'})),
-    '摸个鱼吧I': (frozenset(), frozenset({'青雀'})),
-    '摸个鱼吧II': (frozenset(), frozenset({'青雀'})),
-    '摸个鱼吧III': (frozenset(), frozenset({'青雀'})),
 }
 
 
@@ -3600,51 +3294,10 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
     # 战技点 128/星核猎手 129/欢愉 1201/命运圣杯 1202/特邀专家 141/142/143/148
     # 道具型:火药味 101
-    '量子同频契约': GiftGrant(chars_conditional=(
-        ('符玄', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
-        ('希儿', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
-    )),
-    '公司契约': GiftGrant(
-        chars_immediate=('翡翠', '砂金'),
-        chars_conditional=(('托帕&账账', '累计获得40利息后'),),
-    ),
-    '持续伤害契约': GiftGrant(
-        chars_immediate=('椒丘', '卡芙卡'),
-        chars_conditional=(('黑天鹅', '不同持续伤害状态计数达到180'),),
-    ),
-    '战技点契约': GiftGrant(
-        chars_immediate=('丹恒·饮月', '花火'),
-        chars_conditional=(('火花',
-                            '打开20个晶矿后(并附1个随机战技点羁绊角色,不可具名不入全集机;'
-                            '之后每打开10个晶矿可重复)'),),
-    ),
-    '星核猎手契约': GiftGrant(
-        chars_immediate=('卡芙卡',),
-        chars_conditional=(('流萤',
-                            '刃或千冶·刃/卡芙卡/银狼LV.999或银狼同战一役后获得,'
-                            '2个节点后才能上场'),),
-    ),
-    '欢愉契约': GiftGrant(
-        chars_immediate=('银狼LV.999',),
-        chars_conditional=(
-            ('火花', '触发独立羁绊【头号玩家】选项时随机获得'),
-            ('开拓者·欢愉', '触发独立羁绊【头号玩家】选项时随机获得'),
-        ),
-    ),
-    '命运圣杯契约': GiftGrant(
-        chars_immediate=('远坂凛', '吉尔伽美什'),
-        chars_conditional=(('Archer', '完成两次圣杯试炼后'),),
-    ),
     # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果
     # (停云终结技增益/加拉赫击破档分支状态副本发放已接(ENV_BOND_TIER_GRANTS),
     # 装备资产不入估值维持/桑博节点礼盒)异质不入估值,停云/桑博仅占位登记
     # (桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
-    '特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
-    '特邀专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
-    '特邀专家:银狼': GiftGrant(chars_conditional=(
-        ('银狼', '首次获得【银狼LV.999】时,顾问入商店'),
-    ), advisor=True),
-    '特邀专家:桑博': GiftGrant(chars_immediate=('桑博',), advisor=True),
     # 道具通道首条(id 101 效果原文「开局时获得2个简易武装箱」直读;数量 =
     # 元素重复次数)。道具 = 占席待开箱,非角色非经济,档位机器恒 off(不进
     # 打分);消费 = on_env_gained 效果串 + 遥测申报(状态容器承载字段归 sim
@@ -3731,17 +3384,6 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     #   口径归观察。
     # 星级 = 用户裁定佩佩无星级(2026-10-15):链必填实参落 1 为占位非先验。
     '粗星佩佩': GiftGrant(chars_immediate=('佩佩',)),
-    # 专家研讨会(id 139,效果原文「获得1个【专家邀请函】和1个【简易武装箱】。」
-    # 直读,PlazaPortal('139');卡文无「开局时」字样,环境效果唯一可实现
-    # 时点 = 环境注册(选卡当场),用户裁定 2026-10-24)。卡文序 = 邀请函
-    # 先箱后。专家邀请函 = kind='bookcard'(开卡链)、简易武装箱 =
-    # kind='supply_box'(开箱链);落席类别判定单一源 = BENCH_ITEM_KINDS
-    # (与本条目同批登记,缺一 = 落席直查 KeyError 响亮可见,无书写顺序
-    # 语义)。不设 advisor=True:advisor 语义 = 顾问
-    # 直接入商店(特邀专家),本卡为道具中间态,开启时点与选择权在玩家,
-    # 开卡后语义归现役开卡/选卡链。bookcard 槽件发放首例(items 通道此前
-    # 全为武装箱系)。
-    '专家研讨会': GiftGrant(items_immediate=('专家邀请函', '简易武装箱')),
     # 开局替换型赠卡首例(id 144 效果原文「开局补给替换为3个随机3费角色」
     # 直读,PlazaPortal('144'))。时序 = 实机环境确认先于开局补给发放,替换
     # 挂环境获得链先清后发(on_env_gained 清席支,状态副本结果与「开局发放时点
@@ -3782,14 +3424,6 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     # 简易池 = category '简易' 现值 8 件。
     '能量概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='能量', star=1),),
                             equips_random_immediate=('简易',)),
-    # id 1007 效果原文直读:「星间旅人」= desc【星间旅人】直读(阵营羁绊名,
-    # 与羁绊注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_
-    # ASSUMPTION_KEYS);简易装备 1 件 = 单数叙述默认假设
-    # (ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;economy.md 四卡线索名单不含
-    # 星间旅人 = 装备身份零先验,均匀 v0 + 按卡固定假说待校准);简易池 =
-    # category '简易' 现值 8 件。
-    '星间旅人概念股': GiftGrant(chars_random_immediate=(RandomCharSpec(faction='星间旅人', star=1),),
-                            equips_random_immediate=('简易',)),
     # id 1012 效果原文直读:「击破」= desc【击破】直读(流派名,与羁绊
     # 注册表派生名同源);星级 1 = 先验(ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS);
     # 简易装备 1 件 = 单数叙述默认假设(ENV_CONCEPT_STOCK_ASSUMPTION_KEYS;
@@ -3808,26 +3442,10 @@ ENV_GIFTS: dict[str, GiftGrant] = {
                             equips_random_immediate=('简易',)),
     # —— 邀请族首例(模式卡 T-63;后继邀请卡 T-64..T-82 逐卡套用本行形状,
     # 纯数据行零机制新增)——
-    # id 1101 效果原文「获得一个【列车同行星徽】。」直读,PlazaPortal('1101');
-    # 「一个」= 1 件,数量 = 元素重复次数与 items 通道同约定;无时点修饰词
-    # = 环境注册时点(专家研讨会裁定 2026-10-24 同判)。列车同行星徽 =
-    # EQUIPMENTS category='星徽' 件(具名装备通道,非占席道具;装备身份与
-    # items 词表分域,BENCH_ITEM_NAMES 派生只扫 items 两通道)。通道语义 =
-    # 发放一件可穿戴的羁绊授予装备入栏,穿戴时机与目标 = 玩家动作面
-    # (观察域),发放面不涉。
-    '列车同行邀请': GiftGrant(equips_immediate=('列车同行星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见模式卡设计稿 T-63 §2.4)——
-    # id 1102 效果原文「获得一个【银河学者星徽】。」直读,PlazaPortal('1102');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。银河学者星徽
-    # recipes 非空可合成(红钻+光能电池)——合成获得路径与发放条目正交,零触碰。
-    '银河学者邀请': GiftGrant(equips_immediate=('银河学者星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1103 效果原文「获得一个【贝洛伯格星徽】。」直读,PlazaPortal('1103');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。贝洛伯格星徽
-    # recipes 非空可合成(红钻+量产型装甲)——合成获得路径与发放条目正交,零触碰。
-    '贝洛伯格邀请': GiftGrant(equips_immediate=('贝洛伯格星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
     # id 1104 效果原文「获得一个【星间旅人星徽】。」直读,PlazaPortal('1104');
@@ -3836,34 +3454,14 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '星间旅人邀请': GiftGrant(equips_immediate=('星间旅人星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1105 效果原文「获得一个【仙舟星徽】。」直读,PlazaPortal('1105');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。仙舟星徽
-    # recipes 非空可合成(红钻+折叠小刀)——合成获得路径与发放条目正交,零触碰。
-    '仙舟邀请': GiftGrant(equips_immediate=('仙舟星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1106 效果原文「获得一个【狼狩星徽】。」直读,PlazaPortal('1106');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。狼狩星徽
-    # recipes 非空可合成(红钻+生命之花)——合成获得路径与发放条目正交,零触碰。
-    '狼狩邀请': GiftGrant(equips_immediate=('狼狩星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1107 效果原文「获得一个【盛会之星星徽】。」直读,PlazaPortal('1107');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。盛会之星星徽
-    # recipes 非空可合成(红钻+幸运星)——合成获得路径与发放条目正交,零触碰。
-    '盛会之星邀请': GiftGrant(equips_immediate=('盛会之星星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1108 效果原文「获得一个【昼之半神星徽】。」直读,PlazaPortal('1108');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。昼之半神星徽
-    # recipes 非空可合成(红钻+轮滑鞋)——合成获得路径与发放条目正交,零触碰。
-    '昼之半神邀请': GiftGrant(equips_immediate=('昼之半神星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1109 效果原文「获得一个【夜之半神星徽】。」直读,PlazaPortal('1109');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。夜之半神星徽
-    # recipes 非空可合成(红钻+和平手枪)——合成获得路径与发放条目正交,零触碰。
-    '夜之半神邀请': GiftGrant(equips_immediate=('夜之半神星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
     # id 1110 效果原文「获得一个【追击星徽】。」直读,PlazaPortal('1110');
@@ -3890,16 +3488,8 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '能量邀请': GiftGrant(equips_immediate=('能量星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1114 效果原文「获得一个【燃血星徽】。」直读,PlazaPortal('1114');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。燃血星徽
-    # recipes 非空可合成(蓝钻+生命之花)——合成获得路径与发放条目正交,零触碰。
-    '燃血邀请': GiftGrant(equips_immediate=('燃血星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1115 效果原文「获得一个【减益星徽】。」直读,PlazaPortal('1115');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。减益星徽
-    # recipes 非空可合成(蓝钻+和平手枪)——合成获得路径与发放条目正交,零触碰。
-    '减益邀请': GiftGrant(equips_immediate=('减益星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
     # id 1116 效果原文「获得一个【持续伤害星徽】。」直读,PlazaPortal('1116');
@@ -3908,15 +3498,6 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '持续伤害邀请': GiftGrant(equips_immediate=('持续伤害星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1117 效果原文「获得一个【量子同频星徽】。」直读,PlazaPortal('1117');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。量子同频星徽
-    # recipes 空,合成路径不存在(获取 = 本卡发放+策略卡 220901+套组 320901);零合成面触碰。
-    '量子同频邀请': GiftGrant(equips_immediate=('量子同频星徽',)),
-    # id 1118 效果原文「获得一个【战技点星徽】。」直读,PlazaPortal('1118');
-    # 「一个」= 1 件,无时点修饰词 = 环境注册时点(族模板同判)。战技点星徽
-    # recipes 非空可合成(蓝钻+折叠小刀,合成获得路径与发放条目正交);desc 机制
-    # 尾巴(战技/普攻无视 20% 防御)为装备自身穿戴面语义,发放面无感。
-    '战技点邀请': GiftGrant(equips_immediate=('战技点星徽',)),
     # —— 邀请族展开卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
     # id 1119 效果原文「获得一个【欢愉星徽】。」直读,PlazaPortal('1119');
@@ -3925,10 +3506,6 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '欢愉邀请': GiftGrant(equips_immediate=('欢愉星徽',)),
     # —— 邀请族收官卡(逐卡套用上方族模板形状,纯数据行零机制新增;
     # 卡卡特有面就地申报,族展开契约见上方族模板注释)——
-    # id 1120 效果原文「获得1个【命运圣杯星徽】。」直读,PlazaPortal('1120');
-    # 「1个」= 数字形态 1 件(族内唯一数量词异形,与他卡「一个」同义直读),无时点修饰词 = 环境注册时点(族模板同判)。命运圣杯星徽
-    # recipes 空 = 合成路径不存在(获取 = 本卡发放+策略卡 211401+棱彩策略卡 352801);零合成面触碰。
-    '命运圣杯邀请': GiftGrant(equips_immediate=('命运圣杯星徽',)),
 }
 
 
@@ -4268,135 +3845,41 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # —— 顾问型 11 条(advisor=True,付费期权沿 ×0.5 折减)——
     # 效果原文 = 「获得专家顾问【X】,并使其在本局游戏中加入商店」,与
     # env 批特邀专家完全同构的付费购买期权语义
-    '停云顾问': GiftGrant(chars_immediate=('停云',), advisor=True),
-    '加拉赫顾问': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
-    '战术专家:佩拉': GiftGrant(chars_immediate=('佩拉',), advisor=True),
-    '潜行专家:貊泽': GiftGrant(chars_immediate=('貊泽',), advisor=True),
-    '琼玉专家:青雀': GiftGrant(chars_immediate=('青雀',), advisor=True),
-    '调饮专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
-    # 贸易专家:停云(360401):箱条目直读「获得4个【简易武装箱】」(数量 =
-    # 元素重复约定;顾问解锁效果条目 chars_immediate+advisor 原行零动;扳手×1 =
-    # PICK 组合登记行承载,装备效果条目零 STRATEGY_GRANTS 登记 = 装备效果条目唯一出现
-    # 点纪律[T-290 族裁定];金币效果条目「10金币」经 STRATEGY_ECONOMY instant_gold=10
-    # 已登记零改动,状态副本写端缺口维持 strategy-env-impacts.md §4 族级待办)。
-    '贸易专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True,
-                              items_immediate=('简易武装箱',) * 4),
-    '锻冶专家:刃': GiftGrant(chars_immediate=('刃',), advisor=True),
-    '领航专家:姬子': GiftGrant(chars_immediate=('姬子',), advisor=True),
-    '骇客专家:银狼': GiftGrant(chars_immediate=('银狼',), advisor=True),
-    '摸个鱼吧I': GiftGrant(chars_immediate=('青雀',), advisor=True),
     # —— 白得型 72 条(绑定母体 68 + 反扫补网 4)——
     # 星徽单件族(金):「获得1个【X星徽】,和1个【角色】」即时直读
-    '仙舟星徽': GiftGrant(chars_immediate=('藿藿',)),
-    '减益星徽': GiftGrant(chars_immediate=('黄泉',)),
     '击破星徽': GiftGrant(chars_immediate=('阮·梅',)),
-    '列车同行星徽': GiftGrant(chars_immediate=('丹恒·饮月',)),
-    '命运圣杯星徽': GiftGrant(chars_immediate=('远坂凛',)),
-    '夜之半神星徽': GiftGrant(chars_immediate=('万敌',)),
-    '战技点星徽': GiftGrant(chars_immediate=('丹恒·饮月',)),
-    '护盾星徽': GiftGrant(chars_immediate=('砂金',)),
     '持续伤害星徽': GiftGrant(chars_immediate=('卡芙卡',)),
     '星间旅人星徽': GiftGrant(chars_immediate=('银枝',)),
-    '昼之半神星徽': GiftGrant(chars_immediate=('风堇',)),
     '欢愉星徽': GiftGrant(chars_immediate=('绯英',)),
     '治疗星徽': GiftGrant(chars_immediate=('风堇',)),
-    '燃血星徽': GiftGrant(chars_immediate=('万敌',)),
-    '狼狩星徽': GiftGrant(chars_immediate=('椒丘',)),
-    '盛会之星星徽': GiftGrant(chars_immediate=('花火',)),
     '群攻星徽': GiftGrant(chars_immediate=('翡翠',)),
     '能量星徽': GiftGrant(chars_immediate=('星期日',)),
     '追击星徽': GiftGrant(chars_immediate=('飞霄',)),
-    '量子同频星徽': GiftGrant(chars_immediate=('希儿',)),
-    '贝洛伯格星徽': GiftGrant(chars_immediate=('希儿',)),
-    '银河学者星徽': GiftGrant(chars_immediate=('艾丝妲',)),
     # 星徽套组族(棱彩):「获得1个【X星徽】,和1个【角色】,以及1个【装备】」
-    '仙舟星徽套组': GiftGrant(chars_immediate=('藿藿',)),
-    '减益星徽套组': GiftGrant(chars_immediate=('黄泉',)),
     '击破星徽套组': GiftGrant(chars_immediate=('阮·梅',)),
-    '列车同行星徽套组': GiftGrant(chars_immediate=('丹恒·饮月',)),
-    '夜之半神星徽套组': GiftGrant(chars_immediate=('万敌',)),
-    '战技点星徽套组': GiftGrant(chars_immediate=('丹恒·饮月',)),
-    '护盾星徽套组': GiftGrant(chars_immediate=('砂金',)),
     '持续伤害星徽套组': GiftGrant(chars_immediate=('卡芙卡',)),
     '星间旅人星徽套组': GiftGrant(chars_immediate=('银枝',)),
-    '昼之半神星徽套组': GiftGrant(chars_immediate=('风堇',)),
     '治疗星徽套组': GiftGrant(chars_immediate=('风堇',)),
-    '燃血星徽套组': GiftGrant(chars_immediate=('万敌',)),
-    '狼狩星徽套组': GiftGrant(chars_immediate=('椒丘',)),
-    '盛会之星星徽套组': GiftGrant(chars_immediate=('花火',)),
     '群攻星徽套组': GiftGrant(chars_immediate=('翡翠',)),
     '能量星徽套组': GiftGrant(chars_immediate=('星期日',)),
     '追击星徽套组': GiftGrant(chars_immediate=('飞霄',)),
-    '追击星徽套组(二)': GiftGrant(chars_immediate=('飞霄',)),
-    '量子同频星徽套组': GiftGrant(chars_immediate=('希儿',)),
-    '贝洛伯格星徽套组': GiftGrant(chars_immediate=('希儿',)),
-    '银河学者星徽套组': GiftGrant(chars_immediate=('艾丝妲',)),
     # 阵容专属机制强化族:「获得…【角色】」即时直读
-    '人在旅途': GiftGrant(chars_immediate=('绯英', '银枝')),
-    '借力打力': GiftGrant(chars_immediate=('黑塔', '缇宝')),
-    '偶像经济': GiftGrant(chars_immediate=('火花',)),
-    '双人舞': GiftGrant(chars_immediate=('千冶·刃', '卡芙卡')),
-    '双龙会': GiftGrant(chars_immediate=('丹恒·腾荒', '丹恒·饮月')),
-    '梦境大舞台': GiftGrant(chars_immediate=('花火',)),
-    '月光宝盒': GiftGrant(chars_immediate=('赛飞儿', '万敌')),
-    '摸个鱼吧II': GiftGrant(chars_immediate=('青雀',)),
-    '摸个鱼吧III': GiftGrant(chars_immediate=('青雀',)),
-    '燃起来了': GiftGrant(chars_immediate=('万敌', '千冶·刃')),
-    '赞美太阳': GiftGrant(chars_immediate=('那刻夏',)),
-    '装备党': GiftGrant(chars_immediate=('椒丘', '飞霄')),
-    '读博深造': GiftGrant(chars_immediate=('艾丝妲', '阮·梅')),
-    '超充站': GiftGrant(chars_immediate=('阿格莱雅', '藿藿')),
-    '量子力学': GiftGrant(chars_immediate=('希儿',)),
-    '钢铁美学': GiftGrant(chars_immediate=('希儿',)),
     # 兼即时效果条目与条件效果条目(条件效果条目 = 「获得3星【黑塔】时
     # 获得【大黑塔】」再得);216 张【黑塔】入商店系可购买供给非发放,不入册;
     # 运行时通道 = 即时效果条目走 PICK_INVEST_EFFECTS 行、条件效果条目走
     # STRATEGY_MERGE_GRANTS + cw_gain_chain.check_strategy_merge_grants
     # (本条目 = 估值域登记,不进运行时判据)
-    '黑塔纪元': GiftGrant(
-        chars_immediate=('大黑塔',),
-        chars_conditional=(('大黑塔', '你获得3星【黑塔】时获得【大黑塔】'),),
-    ),
-    # 本姑娘就是罗刹:首句「获得2星【三月七】」即时;「化身【罗刹】」系
     # 变身机制非发放,不入册
-    '本姑娘就是罗刹': GiftGrant(chars_immediate=('三月七',)),
-    # 白衣伙伴:「获得【白厄】」即时 +「3个节点后获得【星期日】」条件
-    '白衣伙伴': GiftGrant(
-        chars_immediate=('白厄',),
-        chars_conditional=(('星期日', '3个节点后获得'),),
-    ),
-    # 盗用身份:「进入第二位面的首领节点时」条件发放【火花】;「1个【开拓者】」
     # 分支的开拓者 ∉ CHARACTER_ROSTER 排除
-    '盗用身份': GiftGrant(
-        chars_conditional=(('火花', '进入第二位面的首领节点时'),),
-    ),
-    # 砂里淘金:「合成2星2费角色时」条件发放(估值域登记,本条目零状态副本
     # 发放运行时消费;状态副本发放通道 = STRATEGY_MERGE_GRANTS +
     # cw_gain_chain.check_strategy_merge_grants)
-    '砂里淘金': GiftGrant(
-        chars_conditional=(('砂金', '合成2星2费角色时'),),
-    ),
-    # 迷之旅人:两条分支均条件(激活4巡海游侠时 2星黄泉/下一奖励节点 波提欧)
     # 状态副本发放通道 = STRATEGY_FACTION_COUNT_GRANTS +
     # STRATEGY_REWARD_NODE_GRANTS(cw_gain_chain.check_strategy_gift_grants);
     # 本条目 = 估值域注释性底册,零运行时发放消费
-    '迷之旅人': GiftGrant(
-        chars_conditional=(
-            ('黄泉', '激活4巡海游侠时获得2星黄泉'),
-            ('波提欧', '进入下一个奖励节点时'),
-        ),
-    ),
-    # 轮回不止:「获得【白厄】」即时;「进入第二/三位面时再获得一次」系
     # 同角色重复发放分支,角色集不变不入条件集
-    '轮回不止': GiftGrant(chars_immediate=('白厄',)),
     # 飞光双件:「获得【彦卿】和【景元】」/「获得【镜流】和特殊的1费【景元】」
-    '飞光·传剑': GiftGrant(chars_immediate=('彦卿', '景元')),
-    '飞光·映月': GiftGrant(chars_immediate=('镜流', '景元')),
     # —— 反扫补网 4 条(无角色绑定的「获得…」直读发放)——
-    '龙虎兄弟狸': GiftGrant(chars_immediate=('狸小龙', '狸小虎'),
-                        items_immediate=('简易武装箱', '简易武装箱')),
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
-    '艾丝妲的猛犬！': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
     # —— 开箱分支(占席道具发放;效果原文对账 id = cw_invest_data.
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
@@ -4412,18 +3895,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 数据源缺口禁猜——两条分支查无登记即安静不写,真值归实机/数据源勘误。
     '战术义眼+': GiftGrant(items_immediate=('简易武装箱',)),
     '战术义眼++': GiftGrant(items_immediate=('进阶武装箱',)),
-    '保守派': GiftGrant(items_immediate=('进阶武装箱',)),
-    '快请专家·彩': GiftGrant(items_immediate=('进阶武装箱',)),
     # 军火贸易:「获得1个【简易武装箱】」直读;金条目「获得4金币」经
     # STRATEGY_ECONOMY instant_gold=4 已登记(经济聚合面),不属本表登记范围。
     '军火贸易': GiftGrant(items_immediate=('简易武装箱',)),
     # 军火贸易+:「获得1个【简易武装箱】」直读;金条目「获得8金币」经
     # STRATEGY_ECONOMY instant_gold=8 已登记(经济聚合面),不属本表登记范围。
     '军火贸易+': GiftGrant(items_immediate=('简易武装箱',)),
-    # 步狸村之谜:箱条目直读「和一个【简易武装箱】」(狸狸条目零建模 = 快请
     # 专家·彩部分登记先例,禁猜;穿戴条目
     # 零建模 = T-16 §8-1 用户裁定同判,披露键申报)。
-    '步狸村之谜': GiftGrant(items_immediate=('简易武装箱',)),
     '阿哈大悦': GiftGrant(items_immediate=('简易武装箱',)),
     # 天降救兵:箱条目直读「获得1个【简易武装箱】」(随机角色条目 = PICK 组合
     # 登记行随机星档工厂承载,不入本表);含两条效果条目的卡不入
@@ -4472,19 +3951,14 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 用名「狸狸」不在注册表(角色/系统单位两段均无此名),反扫零命中 =
     # 统一排除口径自动排除
     # 不逐条记因):登记名按实机录名「狸职狸狸」归一,依据 = cw_chars.py
-    # 该员 source 注记逐字辖本卡 id 204001(source="live:狸职手续204001"),
     # 按卡面用名登记会被角色名漂移哨炸,归一为唯一可行登记形态;数量 3
     # 不进登记(估值档位与只数无关,摸个鱼吧II 单名先例同判),承载于状态副本
-    # 发放条目 cw_gain_effects._STRATEGY_CHAR_GRANTS('狸职手续' → ×3);穿戴
     # 句/周期离场句零建模 = STRATEGY_DESC_UNMODELED_KEYS 两键申报。
-    '狸职手续': GiftGrant(chars_immediate=('狸职狸狸',)),
-    # 狸财经狸:获得句「获得1个【狸狸】」直读,发放对象为卡面用名「狸狸」
     # 不在注册表(反扫结构性零命中),登记名按名称归一纪律「狸狸」→「狸职狸狸」(实机浮窗名,成本=0 后台召唤单位)
     # (cw_chars.py 员表 source 注记同源系族;龙虎兄弟狸/狸职狸狸同形在码);
     # 息条目每回合利息+2 = STRATEGY_ECONOMY interest_flat 注册行在役(登记
     # 非运行时发放,零实现义务);30 本金/取款/存款/位面首领取款分支
     # PENDING 维持待实机证实;尾句彩蛋零建模。
-    '狸财经狸': GiftGrant(chars_immediate=('狸职狸狸',)),
     # 孪生姵姵(id 302501):获得句「获得一个姵姵，它看起来和你的佩佩一模一样！」
     # 直读,发放对象「姵姵」∈ SYSTEM_UNITS 注册段(系统单位,孪生佩佩族)——
     # 反扫词表 GUARD_ALL_UNIT_NAMES 命中,自 roster-外人工排除条目注册转正;
@@ -4496,11 +3970,9 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 赋予卡使用面七处引用已登记零改动;装备效果条目归 PICK 组合行承载,条目参数唯一
     # 出现点纪律)。
     '优势火力论': GiftGrant(items_immediate=('简易武装箱',)),
-    # 大变活狸:箱条目直读「获得2个【星徽秘典】」(对账 id 304301;句①「最
     # 右边3个【狸狸】重新随机星徽」零登记零建模 = 型③实机和模拟器两边盲家族[佩戴面
     # 用户裁定 2026-10-15+随机资产面 §6.3/§6.4+触发词缺失判读申报制;
     # sim 结构不可达],知识域判读零行为分叉)。
-    '大变活狸': GiftGrant(items_immediate=('星徽秘典', '星徽秘典')),
     # 终身学习(330901):箱条目直读「获得1个【星徽秘典】」(即时效果条目;延时
     # 效果条目归 STRATEGY_PLANE_START_GRANTS 位面开始专表,双表分治;条目参数
     # 唯一出现点纪律,装备效果条目/延时效果条目均不在本条目重复登记)。
@@ -4552,9 +4024,6 @@ BENCH_ITEM_KINDS: dict[str, str] = {
 BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
 
 # 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
-# - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」
-#   字样,非直读发放;
-# - 快请专家·金/彩:「获得1个【】/2个【】」空名不可具名(注册键各自独立)。
 # 統一排除口径覆盖未来同类:roster-外目标与空名发放天然不产反扫命中,自动
 # 排除不逐条记因;本白名单只收现存例外。
 # (溜佩佩/溜佩佩+ 两键已随注册入 STRATEGY_GRANTS 退役——记因「实发放但
@@ -4563,9 +4032,6 @@ BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
 # 反扫词表 GUARD_ALL_UNIT_NAMES 命中 → 注册转正入 STRATEGY_GRANTS,
 # 排除记因「发放对象不在 CHARACTER_ROSTER」随拆分失效删除。)
 _STRATEGY_GRANTS_SCAN_EXCLUSIONS: dict[str, str] = {
-    '愚者恶作剧': '概率变形发放、无「获得」字样',
-    '快请专家·金': '「获得1个【】」空名不可具名',
-    '快请专家·彩': '「获得2个【】」空名不可具名',
 }
 
 
@@ -5132,9 +4598,6 @@ STRATEGY_DEATH_SAVE_ASSUMPTION_KEYS: tuple[str, ...] = (
 # docs/game/currency_war/research/combat.md §3「完胜 = 胜利 ∧ 本节点未损失
 # 小队生命值」+ fields.md §3.5.3b 瞬时位域规格。
 STRATEGY_PERFECT_RESCUE_GRANTS: dict[str, tuple[str, int]] = {
-    # 都是这家伙的错！(id 352801 原文直读,cw_invest_data.PLAZA_AUGMENTS
-    # 同 id 行):徽名 命运圣杯星徽 / 配额 3(卡面明写)。
-    '都是这家伙的错！': ('命运圣杯星徽', 3),
 }
 
 
@@ -5270,7 +4733,6 @@ _validate_env_boss_grants()
 ENV_MERGE_GRANTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     # 花火和缇宝升星时,随机获得【符玄】或【希儿】(id 125 原文直读,
     # cw_invest_data PlazaPortal('125'))
-    '量子同频契约': (('花火', '缇宝'), ('符玄', '希儿')),
 }
 
 
@@ -5324,15 +4786,11 @@ _validate_env_merge_grants()
 # 事件携带事实无 done 标记;四发火点 = 买牌上报/晶矿角色入账分支/
 # 补给级联/获得链顶层,与 check_env_merge_grants 同点独立 try 并排)。
 STRATEGY_MERGE_GRANTS: dict[str, tuple[int, int, str, str]] = {
-    # 砂里淘金(id 201501 原文直读,cw_invest_data.py「合成2星2费角色时，
     # 获得1张【砂金】。」):判据 2星+2费,卡面不限定角色 → 判据角色名
     # 空串 = 通配任意,发放 1 个砂金(2 费,cw_chars)
-    '砂里淘金': (2, 2, '', '砂金'),
-    # 黑塔纪元(id 352601 原文直读,cw_invest_data.py「你获得3星【黑塔】时
     # 获得【大黑塔】」):判据 3星+1费+具名黑塔(黑塔注册 cost=1 与判据费用
     # 相符),发放 1 个大黑塔(4 费,cw_chars);216 张黑塔入商店系可购买供给
     # 非发放,不入本表(STRATEGY_GRANTS 同卡条目段注裁定同源)
-    '黑塔纪元': (3, 1, '黑塔', '大黑塔'),
 }
 
 
@@ -5396,7 +4854,6 @@ _validate_strategy_merge_grants()
 ENV_INTEREST_GRANTS: dict[str, tuple[int, str]] = {
     # 累计获得40利息后,获得【托帕&账账】(id 126 原文直读,
     # cw_invest_data PlazaPortal('126');阈值 40 卡面直读,发放单数缺省)
-    '公司契约': (40, '托帕&账账'),
 }
 
 
@@ -5514,12 +4971,7 @@ class EnvBattleGrant:
 
 
 ENV_BATTLE_GRANTS: dict[str, EnvBattleGrant] = {
-    # 星核猎手契约(id 129 原文直读):「刃或千冶·刃、卡芙卡、银狼LV.999
     # 或银狼一起参与一次战斗后,获得流萤,在2个节点后才能将其上场」
-    '星核猎手契约': EnvBattleGrant(
-        presence_groups=(('刃', '千冶·刃'), ('卡芙卡',), ('银狼LV.999', '银狼')),
-        reward_char='流萤',
-        deploy_lock_nodes=2),
 }
 
 
@@ -5649,14 +5101,11 @@ ENV_DELAYED_ITEM_GRANTS: dict[str, EnvDelayedItemGrant] = {
     # 命运礼物(id 134 原文直读,cw_invest_data.py:402)
     '命运礼物': EnvDelayedItemGrant(item='惊喜盒', open_delay_nodes=12,
                                     perfect_win_accel=True),
-    # 偶像经济(id 303401 原文直读,cw_invest_data.py:277)——策略卡
     # 倒计时件首例:角色条目「获得【火花】」住 STRATEGY_GRANTS
     # (chars_immediate 具名送卡通道),礼盒条目住本表 = 双条目分表(策略卡
     # 获得插入位置 = on_strategy_gained,与环境道 on_env_gained 同构两道);
     # 开盒内容「提供大量奖励」卡面无载 = 投资建模边界裁定放弃
     # (docs/game/currency_war/research/invest_effects.md §5 裁定行)。
-    '偶像经济': EnvDelayedItemGrant(item='火花礼盒', open_delay_nodes=10,
-                                    perfect_win_accel=True),
 }
 
 
@@ -5992,23 +5441,11 @@ STRATEGY_DELAYED_OFFERS: dict[str, tuple[StrategyDelayedOffer, ...]] = {
     StrategyDelayedOffer(id='302201', delay_nodes=3,
     offer_quality='金',
     refresh_count=3)),
-    # 摸个鱼吧I:官方「获得专家顾问【青雀】，并使其在本局游戏中加入商店。
     # 获得6金币。深思熟虑5个节点后，青雀会想出黄金投资策略！」
     # (cw_invest_data.py, id 260101)。延时条目:深思熟虑 5 节点 → 金投资
     # 提议(delay_nodes=5/offer_quality=金,refresh_count 缺省=可刷新基形
     # 沿 201103 先例);条目1 顾问解锁/条目2 金6 已登记零动作(grants 面白得
     # 桶,本表零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
-    '摸个鱼吧I': (StrategyDelayedOffer(id='260101', delay_nodes=5,
-                                 offer_quality='金'),),
-    # 摸个鱼吧II:官方「获得2个【青雀】和6金币。深思熟虑5个节点后，青雀会
-    # 想出棱彩投资策略！」(cw_invest_data.py, id 260201)。延时条目:深思熟
-    # 虑 5 节点 → 棱彩投资提议(delay_nodes=5/offer_quality=棱彩,refresh_
-    # count 缺省=可刷新基形沿 201103 先例);条目1「2个青雀」= 注册行维持
-    # 单元素,数量 2 失真申报(估值集合级零影响,
-    # 族批统一口径提级呈报)/条目2 金6 已登记零动作(grants 面白得桶,本表
-    # 零条目);PICK 延时族条目派生式表驱动自动覆盖,零工厂直用。
-    '摸个鱼吧II': (StrategyDelayedOffer(id='260201', delay_nodes=5,
-                                 offer_quality='棱彩'),),
 }
 
 
@@ -6764,12 +6201,8 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # gain_equipment;获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES))
     '好运令牌·彩': StrategyDelayedGrant(id='331601', delay_nodes=4,
                                         item='好运令牌', repeat=True),
-    # 完美进化(id 331901 原文直读,cw_invest_data.py:325;卡文「4个节点
     # 后，获得一个【战场进化手册】。」延时效果条目;与即时效果条目双条目工厂分治,
     # 人才激励同形;计数起点 = 拿卡节点后继窗家族口径)。
-    '完美进化': StrategyDelayedGrant(id='331901', delay_nodes=4,
-    item='战场进化手册'),
-    # 是钻石总会发光(id 131101 原文直读,cw_invest_data.py:96;卡文
     # 「2个节点后，获得【红钻】或【蓝钻】。」纯延时单句零即时条目,登记条目
     # 载体 = cw_gain_effects 延时-only 单条目工厂;发放物 = 红钻/蓝钻具名
     # 二元封闭集(族内首个随机发放行,item='' 占位走 item_choices,掷骰
@@ -6779,9 +6212,6 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # NAMES 负成员,禁入占席通道),到点走装备分道 gain_equipment;
     # 获得时点零级联(∉ EQUIP_ACQUIRE_CONSEQUENCES);概率红/蓝均匀 v0
     # = 建模假设,披露键申报)
-    '是钻石总会发光': StrategyDelayedGrant(
-        id='131101', delay_nodes=2, item='',
-        item_choices=('红钻', '蓝钻')),
     # 回收计划(id 230701 原文直读,cw_invest_data.py:185;卡文延时条目 =
     # 「并在5个节点后获得1件随机简易装备」→ 类别池形(item_category
     # 族首例,item='' 占位,简易 8 件全集即目标全集,掷骰时点 = 到点
@@ -6810,14 +6240,11 @@ STRATEGY_DELAYED_GRANTS: dict[str, StrategyDelayedGrant] = {
     # EFFECTS 组合登记行承载,两条效果条目异构不入泛化表防撞键);到点 BENCH
     # 分道 gain_bench_item(rand=False),四查 BENCH 分支过)。
     '蓝钻闪耀': StrategyDelayedGrant(id='231301', delay_nodes=3, item='简易武装箱'),
-    # 快请专家·金(id 260401 原文直读,cw_invest_data.py:237;卡文延时条目 =
     # 「4个节点后，获得2个【员工投影仪】」→ 定名道具直填形 + count=2
     # (T-144 count 先例);即时条目「获得1个【】」空名道具 = 零建模维持
     # (排除白名单已登记,desc 未写明不实机查),不在本表——延时-only
     # 单句卡,PICK_INVEST_EFFECTS 延时-only 显式行承载;到点 BENCH
     # 分道 gain_bench_item(rand=False)×2。
-    '快请专家·金': StrategyDelayedGrant(id='260401', delay_nodes=4,
-                                      item='员工投影仪', count=2),
     # 军备供应链(id 330501 原文直读,cw_invest_data.py:311;卡文「获得1个
     # 【简易武装箱】，接下来5个节点开始时，获得1个【简易武装箱】。」
     # 两效果条目分治:即时 1 箱由 PICK_INVEST_EFFECTS 双条目工厂承载(人才激励
@@ -6922,7 +6349,6 @@ class StrategyPlaneStartCharGrant:
 
 
 STRATEGY_PLANE_START_CHAR_GRANTS: dict[str, StrategyPlaneStartCharGrant] = {
-    # 轮回不止(效果原文「获得【白厄】和一件【轮回者】装备。进入第二/
     # 三位面时，再获得一次。」直读;效果原文对账 id = cw_invest_data
     # .PLAZA_AUGMENTS 同 id 行;即时效果条目「获得【白厄】」由
     # cw_gain_effects._STRATEGY_CHAR_GRANTS 工厂同批注册,不入本表;
@@ -6931,8 +6357,6 @@ STRATEGY_PLANE_START_CHAR_GRANTS: dict[str, StrategyPlaneStartCharGrant] = {
     # 中途拿卡不补发 = 用户裁定,无选卡拍补发效果条目——与本表同通道的
     # 「每个位面开始时」族 item 形补发效果条目(STRATEGY_PLANE_START_GRANTS
     # 辖域)不因本表扩辖,角色子形只被位面开始窗检查函数消费)
-    '轮回不止': StrategyPlaneStartCharGrant(id='332201', planes=(2, 3),
-                                             char='白厄', star=1),
 }
 
 
@@ -7261,7 +6685,6 @@ _validate_strategy_bench_count_xp_grants()
 # 直用本通道」接入。
 
 STRATEGY_BENCH_LEAVE_GOLD_GRANTS: dict[str, tuple[tuple[str, int, int], ...]] = {
-    # 愚者恶作剧:官方「商店中出现的的2/4费卡有20%的概率变为【花火】/
     # 【火花】，进入新节点时，备战席的1星【花火】/【火花】会留下2/4金币
     # 并去别处找乐子。」(id 260701 原文直读,cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行;「的的」双字系数据源原文勿当笔误修);值 = ((角色名, 星级,
@@ -7271,7 +6694,6 @@ STRATEGY_BENCH_LEAVE_GOLD_GRANTS: dict[str, tuple[tuple[str, int, int], ...]] = 
     # 公式,离场 = 单位移出备战席(非出售退款语义)。辖域 = 备战席槽位
     # 单位面(bench_units_of 读口语义:占位件与空槽不计,desc「角色」
     # 文义直读;上阵位/溢出位不在 desc「备战席」文义内)。
-    '愚者恶作剧': (('花火', 1, 2), ('火花', 1, 4)),
 }
 
 
@@ -7406,7 +6828,6 @@ def _validate_strategy_bond_tier_grants() -> None:
 # 携带装备 = 装备域入栏(非穿戴:补给列契约语义「角色入席不带装备、
 # 装备入栏」,契约权威版本 = cw_events.SupplyOption docstring;'' = 无装备条目)。
 STRATEGY_FACTION_COUNT_GRANTS: dict[str, tuple[str, int, str, int, str]] = {
-    '迷之旅人': ('巡海游侠', 4, '黄泉', 2, '星间旅人星徽'),
 }
 # 条目2:节点类型条件(卡面「进入下一个奖励节点时，获得【波提欧】」直读)。
 # 值 = (发放角色, 星级);星级 1 = desc 未标 1★ 先验(获得链规范
@@ -7415,7 +6836,6 @@ STRATEGY_FACTION_COUNT_GRANTS: dict[str, tuple[str, int, str, int, str]] = {
 # 「下一个奖励节点」判定 = 持卡后首个 kind=='reward' 节点入窗
 # (触发函数内嵌,表不设节点键——形状单一,扩形状各建各表)。
 STRATEGY_REWARD_NODE_GRANTS: dict[str, tuple[str, int]] = {
-    '迷之旅人': ('波提欧', 1),
 }
 
 
@@ -7476,7 +6896,6 @@ def _validate_strategy_gift_grants() -> None:
 # 「按装备持有件数给经验」卡按注册行直用本通道接入。
 
 STRATEGY_EQUIP_COUNT_XP_GRANTS: dict[str, int] = {
-    # 赞美太阳:官方「每拥有一件【白昼装备】以及其原型装备，在进入新节点时
     # 就获得1点经验。」(id 252401 原文直读,cw_invest_data.PLAZA_AUGMENTS
     # 同 id 行;值 = 每件每节点 XP 量,卡面明写)。计数域 = 白昼系名集
     # DAYLIGHT_EQUIP_XP_NAME_SET(见下);拥有口径 = 四源持有
@@ -7484,7 +6903,6 @@ STRATEGY_EQUIP_COUNT_XP_GRANTS: dict[str, int] = {
     # 可见优于漏计静默);动态计数禁挂 xp_per_node 无条件通道(静态挂值 =
     # 零拥有局虚计/多件局漏计,空仓/人才空洞族同判,STRATEGY_ECONOMY 零
     # 条目维持)。
-    '赞美太阳': 1,
 }
 # —— 条件 XP 族第 4 形(备战席左一角色基础费用,量 = 单角色属性直读
 # 「族内首例」;计数乘法形三表 :5668/:5708/:5966 之外另立成员集合——
@@ -7541,7 +6959,6 @@ def _validate_strategy_reward_ore_grants() -> None:
 # 零建模(获得时点形态不可知禁猜,STRATEGY_GRANTS 条目注释同口径)。
 # 表内零采样零金零装备入栏效果条目。
 STRATEGY_PLANE_BOSS_GRANTS: dict[str, tuple[int, str, str, int]] = {
-    '盗用身份': (2, 'boss', '火花', 1),
 }
 
 
