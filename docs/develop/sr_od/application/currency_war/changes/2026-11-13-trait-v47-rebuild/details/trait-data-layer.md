@@ -4,7 +4,7 @@
 
 ## 问题与约束
 
-- 输入源三份：`config_v4.7.json`（骨架：trait_id/trait_name/trait_icon/trait_type 有值，layers/role_ids/simple_desc 空——11 种参数变体实测一致，勿再试）；`lineups_Hot.jsonl`（1000 篇 v4.7 Hot 帖，2026-11-13 实采于 `.debug/game_data/currency_war/plaza/`）；米游社 wiki 频道 240（27 词条，content/info 详情 `contents[].text` HTML 内嵌「羁绊分级效果」全文——社区维护，质量未逐条核验）。
+- 输入源四份：`config_v4.7.json` 骨架（trait_info_list：trait_id/trait_name/trait_icon/trait_type 有值，layers/role_ids/simple_desc 空——11 种参数变体实测一致，勿再试）；`config_v4.7.json` 角色条目 `role_list[].trait_details[]`（count_mode 引文源——千星商会三星原文在此，trait_info_list 的 simple_desc 实测为空串不可用；trait_details[].id 与 trait_id 对齐）；`lineups_Hot.jsonl`（1000 篇 v4.7 Hot 帖，2026-11-13 实采于 `.debug/game_data/currency_war/plaza/`）；米游社 wiki 频道 240（27 词条，content/info 详情 `contents[].text` HTML 内嵌「羁绊分级效果」全文——社区维护，质量未逐条核验）。
 - trait_type=3（400xxx 五条）不进本数据域（主角光环专属，总纲 §1 范围外）：聚合器读 config 骨架时按 `trait_type in (0, 1, 2)` 过滤 → 29 条。
 - 翻译依赖角色注册表 v4.7 版（id → 规范名查表）；成员对拍依赖角色自报（factions/schools/independent）。前置 = 角色会话批已落。
 - 落点纪律：拉取缓存已统一 `.debug/game_data/currency_war/plaza/`（temp 清理不波及）；生成器脚本住 `skills/sr-od-dev-currency-war/scripts/`。
@@ -48,15 +48,16 @@ def members_of(trait_name: str) -> tuple[str, ...]:
 ### 2. 聚合算法（生成器核心）
 
 1. **骨架基座**：读 `config_v4.7.json.trait_info_list`，过滤 `trait_type in (0,1,2)` → 29 条基座（trait_id/trait_name/trait_icon/trait_type 直接采用；官方字段，零转写）。
-2. **帖子聚合**：遍历 `lineups_Hot.jsonl` 每帖 `tourn_detail.role_stages[].traits[]`（键集实测 = trait_id/trait_name/trait_icon/trait_type/current_role_count/layers/remarks/role_ids/simple_desc）：
+2. **帖子聚合**：遍历 `lineups_Hot.jsonl` 每帖 `tourn_detail.role_stages[].traits[]`（键集实测 = trait_id/trait_name/trait_icon/trait_type/current_role_count/layers/remarks/role_ids/simple_desc；**remarks 字段不采**——实测均为空或冗余引文，无消费价值）：
    - 按 trait_id 分桶；**去重规则**：每 trait 取 `len(layers)` 最大的帖（并列时取 `created_at` 新者）——防旧帖降级快照（实测例：100602 旧帖仅 1 层且 desc 空串，调研报告 trait_api_research.md §跨帖验证节）；
    - `role_ids` 取各帖并集（成员名单跨帖互补；不同帖激活档不同不影响成员集）；
-   - `simple_desc` 同 layers 最大帖（与 layers 同源一致）。
+   - `simple_desc` 同 layers 最大帖（与 layers 同源一致）；
+   - **渲染管线沿用**：`layers[].trait_desc` 富文本 → 纯文本渲染复用旧 `gen_factions.py` 的 `render_rich` 逻辑（`<property type=X display=all>` → config `role_property_list` 属性中文名 / `display=icon` 删除 / `<color>` 删除；未知 property type 保留原标签 + 打印警告不静默）。
 3. **翻译**：`role_ids` → 角色规范名——查角色注册表（`cw_chars.CHARACTERS` + plaza id 索引）；规则：
    - **同名多档合并**：同一角色的多费用档 id（如星神★阿哈 151112/151122/151132）翻译为同一规范名后去重（成员是「角色」非「档位」）；
    - **隐藏条目过滤**：config `is_hide=true` 的角色条目不翻译（旧赛季布洛妮娅隐藏变体先例，裁决 = 注册表按可见条目）；被过滤的 id 计入对拍差异报告人裁；
    - **查表失败即 fail-closed**：role_ids 中任一 id 翻译失败（角色未建/已删）→ 生成器打印该 id 并非零退出——禁静默丢弃（成员缺失 = 对拍与策略双双失真）。
-4. **count_mode 判定**：生成器内 29 条默认 `TOTAL`，显式覆盖表仅一行：`{"千星商会": "STAR3"}`（依据 = 官方 desc 原文「每上场1位3星【千星商会】角色，将激活1级羁绊效果」，config_v4.7 role id 150302 trait 100602；用户裁定 2026-11-13「按最新的文本模式来建模」）。覆盖表逐条带 desc 引文校验：desc 与覆盖表不符即非零退出（防版本文案变化后口径过期）。
+4. **count_mode 判定**：生成器内 29 条默认 `TOTAL`，显式覆盖表仅一行：`{"千星商会": "STAR3"}`（依据 = 官方 desc 原文「每上场1位3星【千星商会】角色，将激活1级羁绊效果」，**引文源 = config `role_list[].trait_details[]`（role id 150302，trait_detail id 100602）**——trait_info_list 的 simple_desc 为空串不可用；用户裁定 2026-11-13「按最新的文本模式来建模」）。覆盖表逐条带 desc 引文校验：desc 与覆盖表不符即非零退出（防版本文案变化后口径过期）。**接线边界**：板面三星并行计数与激活判定口径选取不在本迭代（总纲 §2.1-5「建模不接线」，归策略暂缓批恢复后的首个策略迭代）。
 5. **wiki 交叉验证（报告，不落数据）**：wiki 频道 240 的 27 词条（content_id 实测清单 8210-8236）拉详情，解析「羁绊分级效果」文本与聚合 `layers[].trait_desc` 做**包含性比对**（wiki 文本为社区改写，不要求逐字相等；比对维度 = 档数一致 + 关键数值词命中）；差异输出到三源报告供人裁，**不自动写数据**。wiki 缺收的 2 条（守护/治疗，实测）与帖内独有的差集同报。
 
 ### 3. 对拍设计（生成器末段，非零退出语义）
