@@ -39,12 +39,14 @@ count_mode 判定(建模不接线):29 条默认 TOTAL;覆盖表仅千星商会 =
     independent 含该羁绊名的角色集合);差异两类(官方多出/自报多出)逐条人裁
     ——放行进例外清单(键 = (trait_id, role_id),首版为空待人裁)或修注册表。
 
-产出(不落 src 数据层,落库执行归迭代 3.3):
+产出:
   - plaza 目录 traits_intermediate_v<版本>.json: 29 条 id 形态 Trait 全量
     (member_ids = role_ids 并集原始形态;members 名字形态是运行期派生字段,
-    唯一出口 = 渲染预览,不回写中间产物);
-  - cw_traits_data.py 全文预览 -> .debug/temp/currency_war/cw_traits_data.py
-    (dry-run;子进程 uv run 按真实模块名 import 烟测,失败非零退出);
+    唯一出口 = 渲染产物,不回写中间产物);
+  - cw_traits_data.py 全文: 默认 dry-run -> .debug/temp/currency_war/ 预览
+    (子进程 uv run 按真实模块名 import 烟测,失败非零退出);--land 落库
+    src/sr_od/application/currency_war/data/cw_traits_data.py(同一渲染函数
+    产物,与预览逐字一致;烟测按 src 真身完整模块名导入);
   - 三源交叉报告 + 成员对拍报告(stdout,样本落 .debug/temp/currency_war/);
   - wiki 拉取缓存落 plaza 目录(重跑免网络;--refresh-wiki 强制重拉)。
 
@@ -54,7 +56,7 @@ count_mode 引文校验、查表覆盖守卫、翻译 fail-closed、成员对拍
 口径漂移——任一不一致退出码 1。
 
 用法(项目根):
-  uv run python skills/sr-od-dev-currency-war/scripts/gen_traits.py [--refresh-wiki]
+  uv run python skills/sr-od-dev-currency-war/scripts/gen_traits.py [--land] [--refresh-wiki]
 """
 from __future__ import annotations
 
@@ -72,6 +74,8 @@ REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))  # 翻译/成员对拍查角色注册表(先例 gen_factions.py)
 PLAZA_DIR = REPO / ".debug/game_data/currency_war/plaza"
 REPORT_SAMPLE_DIR = REPO / ".debug/temp/currency_war"
+# 落库目标(--land):src 数据层真身;模块导入路径 = sr_od.application.currency_war.data
+LAND_TARGET = REPO / "src/sr_od/application/currency_war/data/cw_traits_data.py"
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E402
 
@@ -605,7 +609,7 @@ def write_intermediate(products: dict[str, dict], version: str) -> Path:
     return path
 
 
-# ===== cw_traits_data.py 全文渲染(3.2;dry-run 预览,落库执行归 3.3)=====
+# ===== cw_traits_data.py 全文渲染与落库(dry-run 预览 / --land 落库)=====
 
 
 def _tuple_lit(items: list[str]) -> str:
@@ -709,10 +713,9 @@ def render_traits_module(products: dict[str, dict], version: str) -> str:
 
 
 def write_traits_preview(text: str) -> Path:
-    """dry-run 预览落盘(文件名与目标模块一致,烟测按真实模块名导入;不落 src)。
+    """dry-run 预览落盘(文件名与目标模块一致,烟测按顶层模块名导入;不落 src)。
 
-    落库执行归迭代 3.3:届时全文写入 data/cw_traits_data.py,与本预览逐字一致
-    (同一渲染函数产物)。
+    落库真身 = land_traits_module(--land):同一渲染函数产物,与预览逐字一致。
     """
     path = REPORT_SAMPLE_DIR / "cw_traits_data.py"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -721,17 +724,34 @@ def write_traits_preview(text: str) -> Path:
     return path
 
 
-def smoke_import_preview(preview_path: Path) -> None:
-    """预览 import 烟测:子进程 uv run 按真实模块名导入,验证数据层合法可导入。
+def land_traits_module(text: str) -> Path:
+    """--land 落库:渲染全文写入 src 数据层真身。
 
+    纯写入不做内容加工——落库内容 = 渲染产物本身,幂等性由渲染确定性保证
+    (键序 trait_id 升序、无时间戳):连续落库两次字节一致;落库后由调用方
+    以 src 真身完整模块名跑 import 烟测。
+    """
+    path = LAND_TARGET
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    print(f"[落库] cw_traits_data.py 全文落 src({len(text)} 字符) -> {path}")
+    return path
+
+
+def smoke_import_data_module(sys_path: Path, module: str) -> None:
+    """数据模块 import 烟测:子进程 uv run 按真实模块名导入,验证数据层合法可导入。
+
+    sys_path/module 显式传入:dry-run 传预览目录 + 顶层模块名(预览目录插
+    sys.path[0],src 落了同名模块也先命中预览,烟测对象恒为本跑产物);落库传
+    src 根 + 完整包路径(烟测对象 = 落库真身,连带校验父包导入链)。
     断言 = TRAITS 与 trait_by_name 键数一致 + 名字索引回指同对象 + tiers 投影
-    自洽(结构守卫的最小运行时集;守卫测试落仓归 3.3)。预览目录插 sys.path[0]
-    ——将来 src 落了同名模块也先命中预览,烟测对象恒为本跑产物。
+    自洽(结构不变量守卫测试落仓
+    sr-od-test/test/sr_od/application/currency_war/data/test_cw_traits_data.py)。
     """
     code = (
         "import sys\n"
-        f"sys.path.insert(0, r'{preview_path.parent}')\n"
-        "import cw_traits_data as m\n"
+        f"sys.path.insert(0, r'{sys_path}')\n"
+        f"import {module} as m\n"
         "assert len(m.TRAITS) == len(m.trait_by_name)\n"
         "assert all(t.trait_name == n and m.TRAITS[t.trait_id] is t"
         " for n, t in m.trait_by_name.items())\n"
@@ -744,7 +764,7 @@ def smoke_import_preview(preview_path: Path) -> None:
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if proc.returncode != 0:
-        raise SystemExit(f"[烟测] 预览 import 失败:\n{proc.stdout}\n{proc.stderr}")
+        raise SystemExit(f"[烟测] {module} import 失败({sys_path}):\n{proc.stdout}\n{proc.stderr}")
 
 
 def _config_ver_key(p: Path) -> tuple[int, int]:
@@ -782,6 +802,9 @@ def main() -> None:
     ap.add_argument("--config", default="", help="config 快照路径(默认 plaza 目录最新 config_v*.json)")
     ap.add_argument("--lineups", default="", help="帖 jsonl 路径(默认 plaza 目录 lineups_Hot.jsonl)")
     ap.add_argument("--refresh-wiki", action="store_true", help="强制重拉 wiki(默认缓存命中即用)")
+    ap.add_argument("--land", action="store_true",
+                    help="落库:全文写入 src/sr_od/application/currency_war/data/cw_traits_data.py"
+                         "(默认 dry-run 只落 temp 预览,不碰 src)")
     args = ap.parse_args()
 
     cfg_path = Path(args.config) if args.config else latest_config_path()
@@ -903,11 +926,18 @@ def main() -> None:
         report.save(REPORT_SAMPLE_DIR / f"gen_traits_report_v{version}.txt")
         raise SystemExit(1)
     write_intermediate(products, version)
-    preview_path = write_traits_preview(render_traits_module(products, version))
-    smoke_import_preview(preview_path)
+    module_text = render_traits_module(products, version)
+    preview_path = write_traits_preview(module_text)
+    smoke_import_data_module(preview_path.parent, "cw_traits_data")
     report.line(f"[烟测] cw_traits_data.py 预览 import 通过 -> {preview_path}")
+    if args.land:
+        land_path = land_traits_module(module_text)
+        smoke_import_data_module(REPO / "src", "sr_od.application.currency_war.data.cw_traits_data")
+        report.line(f"[落库] {land_path}(src 真身完整模块名 import 烟测通过)")
     report.line("[result] PASS——骨架/全覆盖/成员对拍零 diff,count_mode 引文校验通过;"
-                "wiki 差异见上(报告供人裁,不落数据);预览 dry-run 落 temp(落库归 3.3)")
+                "wiki 差异见上(报告供人裁,不落数据);"
+                + ("已落库 src 数据层,预览落 temp 供比对"
+                   if args.land else "预览 dry-run 落 temp(--land 落库 src)"))
     report.save(REPORT_SAMPLE_DIR / f"gen_traits_report_v{version}.txt")
 
 
