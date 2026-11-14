@@ -1,7 +1,7 @@
 # 画面额外识别器（per-screen recognizer）
 
 > `analyze_screen` / `/game/analyze` 画面**精准命中**后,按 `screen_name` 自动跑该画面声明的额外识别器,把**结构化领域事实**塞进返回的 `extras` 字段。本文讲怎么加一个识别器。
-> 设计背景见 spec `docs/superpowers/specs/2026-08-09-screen-recognizer-design.md`;原则见 [design-principles.md](design-principles.md) **P2**（server 给领域事实）。
+> 原则见 [design-principles.md](design-principles.md) **P2**（server 给领域事实）。
 
 ## 机制一句话
 
@@ -117,7 +117,6 @@ class FooRecognizer(ScreenRecognizer):
 
 ## 相关
 
-- 设计 spec:`docs/superpowers/specs/2026-08-09-screen-recognizer-design.md`
 - 架构:[architecture.md](architecture.md)「画面额外识别器」节
 - MCP:[mcp.md](mcp.md) `analyze_screen` / HTTP:[http.md](http.md) `/game/analyze`
 - 原则:[design-principles.md](design-principles.md) P2 / P6 / P11 / P14
