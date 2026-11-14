@@ -1,32 +1,34 @@
-"""行迹 TAB → 角色技能(行迹)升级 operation(把目标主技能升到当前上限)。
+"""行迹面板升级 operation(起点=面板态,把面板技能升到当前上限)。
 
-角色养成系列装备/技能线 op:角色技能升级。交互与光锥晋阶
-(upgrade_light_cone)结构同构,差异(行迹树实机摸底):
-- 入口 = 行迹 TAB 行迹树上的主技能节点(点击坐标按面板关闭态校准——
-  面板开关间树位移约 25px,点击热区紧,非节点区域点击=关闭面板);
-- 节点 → 技能名映射(藿藿样本实测):普攻(1002,583)/战技(1288,578)/
-  终结技(1147,600)/天赋(1140,458)/秘技(1147,758)。**逐角色一致性未验**,
-  不同角色布局若不同,实测修正映射表;
-- 节点详情为**同屏面板态**(非独立 screen):选中态锚 = 「简略描述」开关
-  (常显;「下一级」按钮在满级面板消失,不可作锚);
-- 按钮态:材料足 = 白底「快速升级」;缺专属材料 = 「使用通用材料补全」
-  (fill_generic 授权后自动确认);全缺 = 灰字(未实测,推理);满级 = 按钮
-  消失显示蓝字「已达最大等级」。
-- 行迹等级上限随角色晋阶解锁(藿藿 80 级:普攻上限 6、其余 8~10、秘技 1)。
+角色养成系列 op 的行迹线。负责人裁定契约:节点选择归 agent——树形随命途/
+角色变,程序层不做技能树节点选择;本 op 起点 = 角色-行迹·面板态(agent 在
+树态读节点三态、点开目标技能面板后调本 op),终点 = 关面板回树态。
 
-材料说明:行迹与光锥晋阶**共用属性材料池**(样本:永恒之花/永寿幼芽
-同批不足)——常规刷取一次可补多线缺口。官方 wiki trace_graph 无材料字段,
-材料数量表未固化(全角色统一固定表,待外部源可达后补)——缺口判定以
-游戏内面板按钮态实读为准。快速升级开关默认开(开=自动填材料;关态行为
-未实测);信用点不足形态未实测(预期判停兜底,报告理由可能误标为材料不足)。
+起跑闸(零消耗):「简略描述」开关(面板态锚)在场 + 读区-技能分类现读 ==
+target 等值——不符显式失败,拦住点错节点。匹配基准 = target 本身,不维护
+固定枚举(新命途分类免改码)。分类不符细分两态:开关不在场(真无面板/未知
+态)直落 fail 不经收尾;开关在场但分类不符(面板开着别的技能)经收尾关面板
+回树态再 fail(树态是 agent 重新选点的前置)。
 
-auto_farm/fill_generic 参数语义与消耗声明同 upgrade_character /
-upgrade_light_cone:auto_farm 的单次消耗按行迹材料档位=拟造花萼(赤)
-(开拓力 10/次,券数以实刷为准);**启用即真实资源消耗,调用方发起前必须
-向用户说明消耗并获明确同意**。
+op 自动闭环 = 升级循环 + 通用材料补全(双形态:「使用通用材料补全」/
+「材料合成」同位不同文,与光锥线同构平移)+ 花萼券刷路线(面板「快速刷取」
+→ 培养资源窗口 → 花萼行券按钮 → 共用快速刷取弹窗 → 连刷次数设置 → 回
+面板)。确认刷取后的返回落点未实测(探索时 E2E 授权未批停在控件前;取消
+路径已实测回资源窗口),为实机券刷 E2E 的验证项。
 
-前置:角色行迹 TAB(由 GotoCharacterDetail + SelectCharacterOp +
-SwitchCharacterTabOp('行迹') 保证);列表遮挡态显式失败。
+手动刷本划出 op 边界(负责人裁定):结算后回不到面板态,op 判停交还
+agent——周本走 ChallengeEchoOfWarByName;花萼手动刷由调用方按行迹缺料
+材料自行导航至对应副本挑战画面(FarmTraceMaterialOp 立项前过渡态;
+FarmLightConeMaterialOp 只认光锥缺料格,行迹判停后不可用,勿套用)。
+
+面板态交互(实机摸底):面板按钮三态——白底「快速升级」= 材料足;
+「使用通用材料补全」/「材料合成」= 缺料两形态(fill_generic 授权自动
+确认);「已达最大等级」蓝字 = 满级;「可提升至N级」文本在场且按钮带无
+可用钮 = 全缺判停态。确认框滑条次数不记忆(重开恒 1)。开拓力不足时
+挑战/刷取静默无反应——链路重试预算耗尽即判停,不空烧轮次。
+
+⚠️ farm_dungeon 发起即真实消耗(每次刷取开拓力 10 + 券 1/次,实测定案),
+调用方发起前必须向用户说明并获明确同意,本 op 不代替调用方做这个确认。
 """
 
 import re
@@ -41,71 +43,71 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 _TRACE_SCREEN: str = '角色-行迹'
-# 快速刷取两弹窗独立画面(与光锥/角色线同构,见 upgrade_light_cone 常量注)
 _FAST_FARM_DIALOG: str = '快速刷取弹窗'
 _FAST_FARM_RESULT: str = '快速刷取结果弹窗'
+_RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
 
-# 主技能名清单(节点点击坐标的 screen_info 单一真相源 =
-# 「角色-行迹」screen 的 点击区-节点-<技能名> area,藿藿样本实测;
-# 逐角色一致性待验,布局不同的角色实测修正 area)
-_SKILL_NAMES: list[str] = ['普攻', '战技', '终结技', '天赋', '秘技']
-
-# 升级执行后的稳定等待(反馈形态未实测,首跑按 2.5s 起步)
+# 升级执行后的稳定等待(反馈形态实测后随实机批回填)
 _TRACE_SETTLE_SEC: float = 2.5
-# 快速刷取消耗:行迹材料出自拟造花萼(赤),单次开拓力=10(指南档位数据);
-# 券数为先例同款未实测,首刷后回填修正
+# 快速刷取消耗:行迹材料出自拟造花萼(赤)。券耗实测定案=1(弹窗消耗行实读,
+# 与角色晋阶线 30+3 不同,券耗随副本类型变化勿复用)
 _FARM_TRAILBLAZE_PER: int = 10
-_FARM_TICKET_PER: int = 3
+_FARM_TICKET_PER: int = 1
+# 券刷确认后的连刷轮询间隔(自动连刷时长由设置次数决定)
 _FARM_POLL_SEC: float = 20.0
+# 收尾关面板连等封顶:纯定位区点击 + until_not 无界等待的防线(超时限 60s)
+_CLOSE_PANEL_MAX_ROUNDS: int = 5
 
 
 class UpgradeTraceOp(SrOperation):
-    """把指定主技能(行迹)升到当前上限,消耗行迹材料。
-    起点:角色-行迹 TAB(树态);终点:角色-行迹 TAB(目标技能已升满或材料判停)。
+    """把面板当前技能升到当前上限(起点=面板态,终点=关面板回树态)。
 
-    结果状态:MAX_LEVEL(已满,含起点即满)/ 升满当前上限 / MATERIAL_CAPPED
-    (材料不足停在当前等级,日志带等级)。
+    结果状态:MAX_LEVEL(已达最大等级,含升满当前上限语义)/ MATERIAL_CAPPED
+    (材料不足判停,日志带收尾等级)/ 不在目标技能面板(起跑校验或循环内
+    画面异动 fail——前者零消耗直落,后者经收尾关面板回树态)。
 
-    路线优先级:通用材料补全(fill_generic,默认开,通用材料非稀缺——用户
-    裁定的最优先路线)→ auto_farm 刷取(真实消耗开拓力 10+快速刷取券 3,
-    券数以实刷为准)。**auto_farm 发起前调用方必须向用户说明消耗并获明确
-    同意**,本 op 不代替调用方做这个确认。"""
+    路线优先级:通用材料补全(fill_generic,默认开——通用材料非稀缺,用户
+    裁定的最优先路线)→ farm_dungeon 券刷(真实消耗开拓力 10+券 1/次)。
+    **farm_dungeon 发起前调用方必须向用户说明消耗并获明确同意**。
+    """
 
-    def __init__(self, ctx: SrContext, target: str,
-                 fill_generic: bool = True, auto_farm: bool = False,
+    def __init__(self, ctx: SrContext, target: str, fill_generic: bool = True,
+                 farm_dungeon: bool = False,
                  farm_times_per_round: int = -1, farm_rounds_max: int = 1):
         """
         :param ctx: 上下文
-        :param target: 目标技能名(普攻/战技/终结技/天赋/秘技)
-        :param fill_generic: 缺专属材料时是否自动确认「通用材料补全」
-        (默认 True)
-        :param auto_farm: 缺材料时自动「快速刷取」补材料(常规资源,
-        独立先行,不依赖 fill_generic);刷取预算耗尽后若 fill_generic 也
-        开启则转通用材料补全,两路均关则判停
-        :param farm_times_per_round: 每轮刷取次数,正数或 -1(拉满)。默认
-            -1,与光锥/角色线同构——⚠️ 实现待补:行迹快速刷取弹窗的连刷
-            次数当前由游戏自身控制,本参数已接收校验但逻辑未接入。
-        :param farm_rounds_max: 刷取轮数预算(耗尽转通用材料补全/判停)。
-            默认 1 轮,与光锥/角色线同构。
+        :param target: 面板技能分类名(普攻/战技/终结技/天赋/秘技/欢愉技…)
+            ——与面板读区现读分类等值校验,不符显式失败;不设固定枚举
+        :param fill_generic: 缺料时是否自动确认补全(默认 True;双形态
+            「材料补全」/「材料合成」确认框一并支持)
+        :param farm_dungeon: 缺料时走花萼券刷路线补料(仅券刷——手动刷本
+            划出 op 边界)。**真实消耗开拓力 10 + 券 1/次**
+        :param farm_times_per_round: 券刷确认框连刷次数。正数 = 设到目标;
+            -1(默认)= 点「^」拉满
+        :param farm_rounds_max: 券刷轮数预算(耗尽转通用材料补全/判停)。
+            默认 1,与光锥/角色线同构——多轮连刷缺口由调用方显式续跑
         """
         self.target: str = target.strip()
-        if self.target not in _SKILL_NAMES:
-            raise ValueError(f'未知技能名: {target}(可选: {"/".join(_SKILL_NAMES)})')
+        if not self.target:
+            raise ValueError('target(面板技能分类名)不能为空')
         if farm_times_per_round == 0 or farm_times_per_round < -1:
             raise ValueError(f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')
         if farm_rounds_max < 1:
             raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
         self.fill_generic: bool = fill_generic
-        self.auto_farm: bool = auto_farm
-        self.farm_times_per_round: int = farm_times_per_round  #: 占位,见 docstring(实现待补)
+        self.farm_dungeon: bool = farm_dungeon
+        self.farm_times_per_round: int = farm_times_per_round
         self.farm_rounds_max: int = farm_rounds_max
         SrOperation.__init__(self, ctx, op_name=gt('行迹升级') + '-' + self.target,
                              node_max_retry_times=24)
-        self._capped: bool = False
-        self._capped_level: int | None = None
-        self._farm_rounds: int = 0
-        if auto_farm:
-            log.info('行迹升级: auto_farm 已启用(每次消耗开拓力 %d + 券 %d)',
+        self._farm_rounds: int = 0  #: 已执行的券刷轮数(预算控制)
+        self._farm_times_set: int = 0  #: 确认框实际设到的连刷次数(券耗记账)
+        self._chain_farm_done: bool = False  #: 券刷链内状态机:确认已点=True(窗口分支据此关窗而非再点券钮)
+        self._final_status: str | None = None  #: 终态 status(收尾节点携带落账)
+        self._close_rounds: int = 0  #: 收尾关面板连等计数(纯定位区无界等待防线)
+        self._end_level: int | None = None  #: 收尾面板等级(日志对照)
+        if farm_dungeon:
+            log.info('行迹升级: farm_dungeon 已启用(每次消耗开拓力 %d + 券 %d)',
                      _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
 
     #------------------- 识别辅助 -------------------#
@@ -123,198 +125,275 @@ class UpgradeTraceOp(SrOperation):
         return None
 
     def _read_panel_category(self) -> str | None:
-        """面板技能分类标签(读区-技能分类:终结技/战技/普攻/天赋/秘技)。
+        """面板技能分类现读文本(读区-技能分类首个非空行,strip 后返回)。
 
-        用于校验「面板当前显示的是目标技能」——面板关闭后节点保持选中态,
-        再点同一节点是无操作,面板可能停留在别的技能上。"""
+        等值校验在调用方与 target 比较——不设白名单,新命途分类免改码。"""
         screen = self.screenshot()
         area = self.ctx.screen_loader.get_area(_TRACE_SCREEN, '读区-技能分类')
         results = self.ctx.ocr_service.get_ocr_result_list(
             image=screen, rect=area.pc_rect, crop_first=True)
         for r in results:
             text = str(r.data or '').strip()
-            if text in _SKILL_NAMES:
+            if text:
                 return text
         return None
 
+    def _panel_category_ok(self) -> bool:
+        """面板分类现读 == target(normalize 后等值)。"""
+        category = self._read_panel_category()
+        return category is not None and category == self.target
+
     #------------------- 节点图 -------------------#
 
-    @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
+    @operation_node(name='入口校验', is_start_node=True, node_max_retry_times=3)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:须在行迹 TAB 且无列表遮挡。"""
+        """起跑闸(零消耗):面板态双锚校验,不符拦住点错节点。"""
         screen = self.last_screenshot
-        if self.round_by_find_area(screen, '角色-列表', '标题-角色列表').is_success:
-            return self.round_fail('列表浮层开着(遮挡态):先由调用方收列表')
-        if not self.round_by_find_area(screen, _TRACE_SCREEN, '标题-行迹').is_success:
-            return self.round_fail('不在行迹 TAB(前置:前三步 op + 切「行迹」页签)')
-        return self.round_success(status='AT_TREE')
+        if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
+            return self.round_fail('不在面板态(简略描述开关不在场):'
+                                   'agent 先在树态点开目标技能面板再调本 op')
+        if not self._panel_category_ok():
+            # OCR 瞬时噪声复读一次(防误拦零消耗起跑)
+            time.sleep(1)
+            if not self._panel_category_ok():
+                # 面板开着别的技能:置 fail 终态经收尾关面板回树态
+                # (树态是 agent 重新选点的前置,不留面板态破口)
+                self._final_status = '不在目标技能面板'
+                return self.round_success('CLOSE_PANEL')
+        return self.round_success()
 
-    @node_from(from_name='入口核对', status='AT_TREE')
-    @operation_node(name='打开节点面板', node_max_retry_times=6)
-    def open_panel(self) -> OperationRoundResult:
-        """点目标技能节点 → 面板态(until=简略描述开关)。
-
-        实测坑:面板关闭后节点保持选中态——再点该节点是「无操作」,面板
-        不重弹。所以**不先关面板**:面板开着点目标节点 = 切换选中(自然
-        生效),面板关着点 = 打开。目标是否真选中由升级循环的分类标签
-        校验兜底(本节点的 until 只保证面板态存在)。"""
-        screen = self.last_screenshot
-        # 开场先无条件点一次面板外空白:锁定属性节点的面板(「需要解锁前置
-        # 行迹节点」)是模态的,不先关掉会吃掉后续所有节点点击(实测)
-        self.ctx.controller.click(
-            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
-        time.sleep(2.0)
-        screen = self.last_screenshot
-        result = self.round_by_find_and_click_area(
-            screen, _TRACE_SCREEN, f'点击区-节点-{self.target}',
-            until_find_all=[(_TRACE_SCREEN, '开关-简略描述')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
-        if result.is_success:
-            return self.round_success(status='PANEL_OPEN')
-        return self.round_retry('点击未进面板态,重试', wait=2)
-
-    @node_from(from_name='打开节点面板', status='PANEL_OPEN')
+    @node_from(from_name='入口校验')
+    @node_from(from_name='券刷链')
     @operation_node(name='升级循环', node_max_retry_times=30)
     def upgrade_loop(self) -> OperationRoundResult:
-        """flat loop:材料补全弹窗 → 满级判定 → 判停收尾 → 升级执行。
+        """flat loop(面板态):补全确认弹窗(双形态确认框同款)→ 满级+分类
+        校验 → 按钮三态 → 券刷路由 → 全缺判停。判停/完成置 _final_status
+        后转收尾关面板;循环内画面异动(面板不在/分类不符)同走收尾 fail。
 
-        每轮分类(优先级):
-        ① 已判停(_capped) → 点空白关面板 → 到树态就 MATERIAL_CAPPED 成功;
-        ② 满级锚(「已达最大等级」)在 → MAX_LEVEL 成功;
-        ③ 不在面板态(简略描述不在) → 重新点节点打开;
-        ④ 面板态 → 按钮三态:快速升级命中 = 材料足,点击执行;
-           使用通用材料补全命中 = 缺料,fill_generic 授权才点(弹窗下一轮
-           确认),否则判停;
-        ⑤ 两按钮都不命中 = 灰字全缺态 → 判停。
         升级执行的反馈形态未实测(横幅 or 等级直跳):执行后统一等
-        _TRACE_SETTLE_SEC 重入,由满级锚/等级读数自然收敛;异常形态由
-        节点重试预算兜底耗尽显式失败。"""
+        _TRACE_SETTLE_SEC 重入,由满级锚/按钮态自然收敛;异常形态由节点
+        重试预算兜底耗尽显式失败。"""
         screen = self.last_screenshot
 
-        # ⓪ 材料补全确认弹窗(授权流④点出后弹,模态盖住面板)——优先处理
+        # ⓪ 材料补全确认弹窗(fill_generic 路线点出后弹,模态盖住面板;
+        # 「材料补全」/「材料合成」两形态确认框同款)——优先处理
         if self.round_by_find_area(screen, _TRACE_SCREEN, '标题-材料补全弹窗').is_success:
             if self.fill_generic:
                 self.ctx.controller.click(
                     self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-确认材料补全').rect.center)
-                log.info('行迹升级: 确认通用材料补全(消耗通用材料合成替代缺口)')
-                return self.round_retry('通用材料补全已确认,等界面刷新', wait=2.5)
-            # fill_generic=False 不应到达(④ 已拦);防御处理 = 取消+判停
+                log.info('行迹升级: 确认材料补全(消耗通用材料合成替代缺口)')
+                return self.round_retry('材料补全已确认,等界面刷新', wait=2.5)
+            # fill_generic=False 不应到达(下方缺料分支已拦);防御 = 取消+判停
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-取消材料补全').rect.center)
-            self._capped = True
-            self._capped_level = self._read_panel_level()
-            return self.round_retry('取消材料补全,关闭面板收尾', wait=1.5)
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            return self.round_retry('取消材料补全,转收尾关面板', wait=1.5)
 
-        # ① 已判停 → 关面板回树态,到了就成功结束
-        if self._capped:
-            if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-                log.info('行迹升级: 收尾,当前等级 %s,快速刷取 %d 次'
-                         '(消耗开拓力 %d + 券 %d)',
-                         self._capped_level, self._farm_rounds,
-                         self._farm_rounds * _FARM_TRAILBLAZE_PER,
-                         self._farm_rounds * _FARM_TICKET_PER)
-                return self.round_success(status='MATERIAL_CAPPED', wait=1.5)
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
-            return self.round_retry('关闭面板,返回树态收尾', wait=1.5)
-
-        # ② 满级锚 + 分类校验(锚命中先于分类校验会把「别的满级
-        # 技能的面板」误报成目标满级——锚命中后必须确认面板就是目标技能)
+        # ① 满级锚 + 分类校验(锚命中后必须确认面板就是目标技能——别的
+        # 满级技能面板会误报)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-已达最大等级').is_success:
-            category = self._read_panel_category()
-            if category != self.target:
-                self.ctx.controller.click(
-                    self.ctx.screen_loader.get_area(
-                        _TRACE_SCREEN, f'点击区-节点-{self.target}').rect.center)
-                return self.round_retry(
-                    f'满级锚在场但面板为 [{category}],再点目标节点切换', wait=1.5)
+            if not self._panel_category_ok():
+                self._final_status = '不在目标技能面板'
+                return self.round_success('CLOSE_PANEL')
             log.info('行迹升级: %s 已达最大等级', self.target)
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
-            return self.round_success(status='MAX_LEVEL', wait=1.5)
+            self._final_status = 'MAX_LEVEL'
+            return self.round_success('CLOSE_PANEL')
 
-        # ③ 面板态判定 + 目标校验
+        # ② 面板态判定:开关不在 = 画面异动(面板被意外关闭)——节点选择
+        # 归 agent,op 不自纠(不重新点节点),fail 交 agent 重新发起
         if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _TRACE_SCREEN, f'点击区-节点-{self.target}',
-                until_find_all=[(_TRACE_SCREEN, '开关-简略描述')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=2,
-            )
-            if result.is_success:
-                return self.round_retry('节点面板已打开,重入分类', wait=1)
-            # 不透传失败结果(透传不计本节点重试预算),显式计预算
-            return self.round_retry('点击节点未进面板态,计入预算重试', wait=2)
-        # 面板在但显示的不是目标技能(选中态残留/切换未生效) → 再点目标节点
-        category = self._read_panel_category()
-        if category != self.target:
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, f'点击区-节点-{self.target}').rect.center)
-            return self.round_retry(f'面板当前为 [{category}],再点目标节点切换', wait=1.5)
+            self._final_status = '不在目标技能面板'
+            return self.round_success('CLOSE_PANEL')
+
+        # ③ 分类校验:面板在但显示的不是 target(选中态残留/切换未生效)
+        if not self._panel_category_ok():
+            self._final_status = '不在目标技能面板'
+            return self.round_success('CLOSE_PANEL')
 
         # ④ 升级执行(两按钮同位不同文,find 按 text 区分)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-快速升级').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
+
+        # ⑤ 缺料两形态(「使用通用材料补全」/「材料合成」同位不同文):
+        # fill_generic 授权自动确认;farm_dungeon 预算内 → 券刷路线;
+        # 均不可用判停。材料合成形态刷取无收益(原料已足,快速刷取机制
+        # 无可刷缺口——光锥线同款裁定)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-通用材料补全').is_success:
-            # 授权路由对齐光锥先例:auto_farm 独立先行(刷取是
-            # 常规资源路线,不依赖 fill_generic),预算耗尽再转通用材料补全,
-            # 均未授权才判停
-            if self.auto_farm and self._farm_rounds < self.farm_rounds_max:
-                return self._farm_substep(screen)
+            if self.farm_dungeon and self._farm_rounds < self.farm_rounds_max:
+                return self.round_success('NEED_FARM')
             if self.fill_generic:
                 self.ctx.controller.click(
                     self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-通用材料补全').rect.center)
                 return self.round_retry('已点通用材料补全,等确认弹窗', wait=1.5)
-            self._capped = True
-            self._capped_level = self._read_panel_level()
-            log.info('行迹升级: 缺专属材料(fill_generic/auto_farm 均未授权),判停于等级 %s',
-                     self._capped_level)
-            return self.round_retry('材料不足,关闭面板收尾', wait=1)
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 缺专属材料(farm_dungeon/fill_generic 均未授权),'
+                     '判停于等级 %s', self._end_level)
+            return self.round_success('CLOSE_PANEL')
 
-        # ④b auto_farm 独立刷取路径:缺料但按钮为「使用通用材料补全」之外的
-        # 形态(如快速刷取可直接用的形态)——刷取按钮/弹窗四态推进(照光锥 op)
-        if self.auto_farm:
-            result = self._farm_substep(screen)
-            if result is not None:
-                return result
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-材料合成').is_success:
+            if self.fill_generic:
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-材料合成').rect.center)
+                return self.round_retry('已点材料合成,等确认弹窗', wait=1.5)
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 材料合成形态(券刷无收益)且 fill_generic 未授权,'
+                     '判停于等级 %s', self._end_level)
+            return self.round_success('CLOSE_PANEL')
 
-        # ⑤ 两按钮都不命中分两态(锚在=真缺;锚不在=动画过渡期按钮暂隐):
-        # 「可提升至」锚可见 = 真灰字全缺判停;锚不可见 = 执行后
-        # 动画/过渡期按钮暂隐(反馈形态未实测) → 点面板外空白重试不判停
-        # ——误报判停比多等一轮危害大
+        # ⑥ 无补全钮形态:仅剩券刷路线(缺可刷材料时「快速刷取」钮在场)
+        if self.farm_dungeon and self._farm_rounds < self.farm_rounds_max \
+                and self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-快速刷取').is_success:
+            return self.round_success('NEED_FARM')
+
+        # ⑦ 两按钮都不命中分两态(锚在=真全缺判停;锚不在=执行后动画/过渡
+        # 期按钮暂隐[反馈形态未实测] → 点空白重试不判停——误报判停比多等
+        # 一轮危害大)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
-            self._capped = True
-            self._capped_level = self._read_panel_level()
-            log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._capped_level)
-            return self.round_retry('材料不足,关闭面板收尾', wait=1)
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._end_level)
+            return self.round_success('CLOSE_PANEL')
         self.ctx.controller.click(
             self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
         return self.round_retry('疑似动画/过渡态,点空白重试', wait=2)
 
-    def _farm_substep(self, screen) -> OperationRoundResult | None:
-        """auto_farm 快速刷取子流程一步(照光锥 op 四态推进)。
+    @node_from(from_name='升级循环', status='NEED_FARM')
+    @operation_node(name='券刷链', timeout_seconds=300, node_max_retry_times=30)
+    def farm_ticket_chain(self) -> OperationRoundResult:
+        """花萼券刷链(按探索裁定新链):面板「快速刷取」→ 培养资源窗口 →
+        花萼行券按钮(行锚+按钮双锚防误点「进入」副本)→ 共用快速刷取弹窗
+        (连刷次数按 farm_times_per_round 设置)→ 确认 → 结果框关 → 资源
+        窗口关 → 回面板态交回升级循环。
 
-        返回 None = 预算耗尽(调用方继续走通用材料补全/判停)。"""
-        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取').is_success:
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-确认快速刷取').rect.center)
-            self._farm_rounds += 1
-            log.info('行迹升级: 第 %d 次快速刷取开始(消耗开拓力 %d + 券 %d)',
-                     self._farm_rounds, _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
-            return self.round_retry('连刷进行中', wait=_FARM_POLL_SEC)
+        依据分态:取消路径已实测(取消回资源窗口→关窗回面板);确认刷取后
+        的返回落点未实测(探索时 E2E 授权未批停在控件前)——回面板以
+        「简略描述」开关回归为成功锚,确认路径落点为实机券刷 E2E 验证项。
+        预算在升级循环路由时已核(本链单轮执行,确认后 _farm_rounds+1)。
+        连刷轮询用 round_wait 慢询(不计重试——连刷时长随次数不可预估,
+        硬上限 = 节点 timeout_seconds)。"""
+        screen = self.last_screenshot
+
+        # 快速刷取弹窗在:未确认(设次数+确认)/连刷进行中(确认钮已消失)
+        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
+            if self.round_by_find_area(
+                    screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取').is_success:
+                if self._farm_times_set == 0:
+                    set_result = self._set_farm_times(self.farm_times_per_round)
+                    if not set_result.is_success:
+                        return set_result
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-确认快速刷取').rect.center)
+                self._farm_rounds += 1
+                log.info('行迹升级: 第 %d 轮券刷确认(连刷 %d 次,消耗开拓力 %d + 券 %d/次)',
+                         self._farm_rounds, self._farm_times_set,
+                         _FARM_TRAILBLAZE_PER, _FARM_TICKET_PER)
+                # 链内状态机切「已确认刷完」(资源窗口关窗分支依据);记账
+                # 读数已入日志,消费后清零备下一轮
+                self._chain_farm_done = True
+                self._farm_times_set = 0
+                return self.round_wait('连刷进行中', wait=_FARM_POLL_SEC)
+            return self.round_wait('连刷进行中,慢询等待', wait=_FARM_POLL_SEC)
+
+        # 结果框(领奖完成):关闭后回资源窗口
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_FAST_FARM_RESULT, '按钮-关闭刷取结果').rect.center)
-            return self.round_retry('刷取完成,关闭回面板', wait=2)
-        if self._farm_rounds >= self.farm_rounds_max:
-            log.info('行迹升级: 快速刷取预算(%d 轮)耗尽', self.farm_rounds_max)
-            return None
-        # 刷取确认弹窗不在场 = 面板态,点「快速刷取」开弹窗;弹窗在场(模态
-        # 遮住面板锚)或都没命中 = 确认/连刷过渡,慢询等待
+            return self.round_retry('刷取结果框已关,回资源窗口', wait=1.5)
+
+        # 资源窗口在:状态机分流——券未确认(_chain_farm_done=False)时行锚+
+        # 券按钮双锚在场才点(防误点「进入」副本——进入按钮同行右侧,走到挑战
+        # 画面是设计外链路);确认已点(_chain_farm_done=True)→ 关窗回面板态
+        # (取消/确认路径同落点,取消路径已实测)
+        if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
+            if not self._chain_farm_done:
+                if not self.round_by_find_area(
+                        screen, _RESOURCE_WINDOW_SCREEN, '行锚-本周可领取奖励次数').is_success:
+                    return self.round_wait('资源窗口行锚未现,等加载', wait=1.5)
+                self.ctx.controller.click(
+                    self.ctx.screen_loader.get_area(_RESOURCE_WINDOW_SCREEN, '按钮-花萼行券按钮').rect.center)
+                return self.round_retry('已点花萼行券按钮,等快速刷取弹窗', wait=2)
+            result = self.round_by_find_and_click_area(
+                screen, _RESOURCE_WINDOW_SCREEN, '按钮-关闭资源窗口',
+                until_not_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('资源窗口已关,回面板态', wait=1)
+            return result
+
+        # 面板态(简略描述回归)= 链路收口,交回升级循环重判(材料够则继续
+        # 升级,不够且预算尽则判停);链内状态机复位备下一轮
         if self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
-            self.ctx.controller.click(
-                self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速刷取').rect.center)
-            return self.round_retry('打开快速刷取确认', wait=2)
-        return self.round_retry('连刷中,慢询等待', wait=_FARM_POLL_SEC)
+            self._chain_farm_done = False
+            return self.round_success('回面板', wait=1)
+
+        return self.round_wait('券刷链过渡态,慢询等待', wait=_FARM_POLL_SEC)
+
+    def _set_farm_times(self, target: int) -> OperationRoundResult:
+        """确认框内把连刷次数设到目标(光锥线同款平移):target=-1 = 点「^」
+        拉满;正数 = OCR 读「刷取次数 N」现值 → 点「+」补差值 → 达标即成。"""
+        if target == -1:
+            max_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数拉满')
+            self.ctx.controller.click(max_area.rect.center)
+            time.sleep(1)  # 滑条动画
+            current = self._read_farm_times()
+            if current is None:
+                time.sleep(1)
+                current = self._read_farm_times()
+            if current is None:
+                return self.round_fail('拉满后无法读取刷取次数')
+            self._farm_times_set = current
+            log.info('行迹升级: 券刷连刷次数已拉满至 %d', current)
+            return self.round_success()
+        plus_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数加')
+        for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
+            current = self._read_farm_times()
+            if current is None:
+                return self.round_fail('无法读取确认框刷取次数')
+            if current >= target:
+                self._farm_times_set = current
+                return self.round_success()
+            self.ctx.controller.click(plus_area.rect.center)
+            time.sleep(0.4)  # 滑条动画
+        return self.round_fail(f'券刷连刷次数未能设到 {target}')
+
+    def _read_farm_times(self) -> int | None:
+        """确认框「刷取次数 N」OCR 取 N。"""
+        screen = self.screenshot()
+        area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '读区-刷取次数')
+        results = self.ctx.ocr_service.get_ocr_result_list(
+            image=screen, rect=area.pc_rect, crop_first=True)
+        for r in results:
+            m = re.search(r'\d+', str(r.data or ''))
+            if m:
+                return int(m.group())
+        return None
+
+    @node_from(from_name='入口校验', status='CLOSE_PANEL')
+    @node_from(from_name='升级循环', status='CLOSE_PANEL')
+    @operation_node(name='收尾关面板', timeout_seconds=60, node_max_retry_times=8)
+    def close_panel(self) -> OperationRoundResult:
+        """一切出口的必经:点空白关面板回树态,落 _final_status。
+
+        空白区取右下安全域(面板态右下被升级/补全/刷取按钮带占据,误触
+        升级 = 真实材料消耗;避让清单见画面档「点击区-关面板空白」)。
+        纯定位区点击 + until_not 无界等待的防线 = 连等封顶 + 节点限 60s,
+        未关闭显式失败交调用方处置。"""
+        final = self._final_status if self._final_status else 'MAX_LEVEL'
+        screen = self.last_screenshot
+        if not self.round_by_find_area(screen, _TRACE_SCREEN, '开关-简略描述').is_success:
+            # 面板已关(重入轮):回树态,落终态
+            log.info('行迹升级: 收尾完成,面板已关,终态 %s,等级 %s',
+                     final, self._end_level)
+            return self.round_success(final, wait=1)
+        self._close_rounds += 1
+        if self._close_rounds >= _CLOSE_PANEL_MAX_ROUNDS:
+            return self.round_fail('面板连续未关闭(空白点击未生效),交调用方处置')
+        self.ctx.controller.click(
+            self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-关面板空白').rect.center)
+        return self.round_retry('关闭面板,返回树态', wait=1.5)
