@@ -514,9 +514,9 @@ class UpgradeCharacterOp(SrOperation):
     def open_farm_window(self) -> OperationRoundResult:
         """界面左下点「快速刷取」→「培养还需获取资源」窗口(until=窗口标题)。
 
-        ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR 但点击静默无反应
-        (光锥线同位实测,游戏提示当前并未缺少可通过快速刷取获取的材料)
-        ——点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
+        ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR,点击被游戏拒绝并弹
+        短暂 toast 提示(帧短,截图轮从未捕获——故不靠 toast 判定)——
+        点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
         原样透传会无界自旋挂死一条龙。按钮真消失(not-found 的 RETRY)
         与静默无反应(WAIT)同由连等封顶收口判停:第 4 轮封顶先于引擎
         重试预算生效(第 3 次 RETRY 后引擎仍重跑本节点,不转 FAIL);
