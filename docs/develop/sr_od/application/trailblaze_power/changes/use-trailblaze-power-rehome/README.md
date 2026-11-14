@@ -21,3 +21,5 @@
 ## 状态
 
 已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 A，details/fail-adaptation.md §1——迁移件与失败适配同批，占位草案（回链定滑条/连败关副本/超时判负委托/记账不变）已吸收进节点卡）。本占位不再单独立项。
+
+落地落点：主仓 `074a8e968`（迁移 + 等待窗常量抽 battle_wait_windows）、`bbd2be39c`（失败形态适配）；测试仓 `6656870c`（镜像迁移）、`ddcc3b0f`（判据同步 + mock 五场景）。

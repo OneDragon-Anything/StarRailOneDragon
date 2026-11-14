@@ -10,3 +10,5 @@
 ## 状态
 
 已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 B/C，details/fail-adaptation.md §2/§3——设计期核实：角色线手动路线战斗循环在 manual_fight/back_to_ascend，光锥线在 手动挑战战斗/back_after_farm，两线失败画面均无分支）。本占位不再单独立项。
+
+落地落点：主仓 `eeda21c42`（两线失败分支 + 内联预算检查 + 重发回链）、测试仓 `55174271`（mock 十场景）。

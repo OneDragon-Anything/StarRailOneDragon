@@ -60,7 +60,7 @@ app 是节点图（复用 Operation 机制），主链：
 | `src/sr_od/application/trailblaze_power/trailblaze_power_app_factory.py` | 约定式自动注册 |
 | `src/sr_od/gui/interface/one_dragon/sr_power_plan_interface.py` | 体力计划 GUI（计划卡片增删改 / 排序 / 循环开关） |
 | `src/sr_od/application/div_uni/operations/ornamenet_extraction.py` | 饰品提取执行链（见类型文档） |
-| `src/sr_od/challenge_mission/use_trailblaze_power.py` | 标准副本执行链 |
+| `src/sr_od/application/trailblaze_power/use_trailblaze_power.py` | 标准副本执行链(op 迁入本域;战斗等待窗常量已抽 `challenge_mission/battle_wait_windows.py` 共享模块,周本挑战核心同源消费) |
 
 ## 迭代设计
 

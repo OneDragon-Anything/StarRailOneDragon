@@ -61,9 +61,30 @@ src/sr_od/application/cultivation/
 
 | 域 | op | 状态 |
 |---|---|---|
-| character | UpgradeCharacterOp / UpgradeTraceOp | 可用(auto_farm/fill_generic 消耗路线全链未实测) |
+| character | UpgradeCharacterOp / UpgradeTraceOp | 可用(fill_generic/farm_dungeon 消耗路线全链未实测;行迹线起点=面板态,详见 §6) |
 | character | CharacterLightConeRecognizer(识别器) | 注册可用 |
 | character | FarmCharacterAscensionMaterialOp | 立项候实机窗 |
 | light_cone | EquipLightConeOp / UpgradeLightConeOp / SuperimposeLightConeOp / OpenLightConeReplaceOp | 可用 |
 | light_cone | FarmLightConeMaterialOp | 可用(全链实机验证过,原 FarmMaterialOp 改名迁入) |
 | relic | EquipRelicOp / EquipRelicEnhanceOp / SelectBagRelicOp / OpenRelicReplaceOp | 可用(抢件 allow_take_over=True 全链候实机窗) |
+
+## 6. 升级 op 家族失败适配
+
+角色晋阶线 / 光锥线 / 行迹线的「刷本路线」在战斗失败时自动继续,不再放弃:
+失败画面委托共享失败继续件 `ResumeFromBattleFail`(challenge_mission 包,自带
+新/旧两态失败画面分流,周本挑战核心同款)回挑战画面后重发。
+
+- 角色晋阶线(`UpgradeCharacterOp`):失败分支在返回分类节点首位;预算检查
+  **内联在失败分支**(重发环不经过升级循环的预算判停,必须在分支内)——预算内
+  重发回「副本刷取」分流,预算耗尽关副本回大世界走既有 BACK_TO_WORLD 出口
+  交重走入口链,由升级循环判停收尾;共享件失败原样透传交调用方。
+- 光锥线(`UpgradeLightConeOp`):与角色线同构,重发回「副本刷取分流」;计场
+  时机维持现状(点击时计,与角色线的进本计轮不统一,刻意保留)。
+- 行迹线(`UpgradeTraceOp`):契约改面板态——起点 = 角色-行迹·面板态(agent
+  在树态读节点三态、点开目标技能面板后调用),起跑闸以「简略描述」开关 +
+  分类读区现读与 target 等值校验(不维护固定枚举,新命途分类免改码),不符
+  显式失败(零消耗拦点错节点);终点 = 一切出口先关面板回树态(_final_status
+  携带终态)。节点选择归 agent,op 不做技能树选择;手动刷本划出 op 边界
+  (花萼侧调用方按行迹缺料自行导航,FarmTraceMaterialOp 立项前过渡态)。
+- 券刷消耗实测定案:行迹材料出自拟造花萼(赤)= 开拓力 10 + 券 1/次(与角色
+  晋阶线 30+3、光锥线 10+1 各自独立,勿互相复用常量)。

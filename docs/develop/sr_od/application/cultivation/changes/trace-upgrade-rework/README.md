@@ -10,3 +10,5 @@
 ## 状态
 
 已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 D，details/trace-rework.md）。本占位不再单独立项。
+
+落地落点：主仓 `0617d3ba0`（面板态契约重构 + 画面档四 area 变更）、测试仓 `3c1f3b6e`（判据同步全量改写 + 新契约八场景）。
