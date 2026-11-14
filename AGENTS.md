@@ -92,6 +92,7 @@ uv run ruff check --fix src/你修改的文件.py
 - round 系列函数的 wait 参数一律**显式声明**，按实机动画过渡时间填写，不使用默认值：
   - `round_success/round_wait/round_retry/round_fail` 用 `wait`；`round_by_goto_screen`/`round_by_find_and_click_area` 用 `pre_delay`（点击前）/`success_wait`（成功后）/`retry_wait`（重试间隔）。
   - `wait_round_time` 语义 = 「等待总时长减去本轮已耗时」，不是「再睡多久」。
+- op 的节点流转用 MCP 的 `describe_operation_flow` 查看：一张图列出全部节点、分支和跳转关系。改 op 前先看图了解现状，改完再看图核对——新加的分支有没有拦断原有路径、边有没有接错，以图为准，不凭记忆。核对符合预期后，再做下一个改动；不符合就先修到符合，不往上叠加。
 - 完整方法论（round 结果语义、节点粒度、循环结构选型、调试纪律）见 skill `od-dev-write-operation`。
 
 ## 4.Application 最佳实践
@@ -106,7 +107,7 @@ uv run ruff check --fix src/你修改的文件.py
 - **所有画面都应建档到 screen_info**（`assets/game_data/screen_info/<screen_id>.yml`）：bot 会遇到、需要交互的画面都要建档保存；需要识别、交互、读取的内容都要建成 area——screen_info 是画面识别与交互的唯一事实源。
 - **每个画面尽量找到自己独有的 id_mark 组合**：id_mark = 画面独有的稳定元素（文本或模板），组合内全部命中才算精准匹配（`is_precise`）；通常 1-2 个即可，别把所有 area 都标成 id_mark。只有少数没有独有稳定锚的浮层（如点击空白处关闭的弹窗）找不到不冲突的 id_mark，才不设。
 - **画面判定优先用框架方法，别手写截图 + OCR 比对**：判断「是不是目标画面」用 `screen_utils.is_target_screen`；识别「当前在哪个画面」用 `screen_utils.get_match_screen_name`（op 内用 `check_and_update_current_screen`，识别并保存结果）。
-- 运行失败、流程卡死时，第一步先弄清 bot 当前停在哪个画面（截图识别，可用 MCP 的 `analyze_screen`）；陌生/未建档画面先走 `od-dev-screen-onboarding` 建档，再继续修——别凭猜改。
+- 运行失败、流程卡死、结果和预期不符时，第一步先看实际画面（`analyze_screen` + 亲自看图）和详细日志，再分析原因。陌生/未建档画面先走 `od-dev-screen-onboarding` 建档，再继续修——别凭猜改。
 - 视觉大模型负责画面理解，辅助新画面建档以及对已建档内容纠错。
 - **坐标系统一**：框架提供的截图、画面识别、鼠标点击等，均统一至 1920×1080。唯一例外：离线分析外部传入的非 1080p 图片时，返回坐标是该图的像素空间。
 - **坐标单一真相源**：所有识别、点击的坐标区域都要使用 screen_info 保存、获取，避免代码中硬编码。
@@ -114,6 +115,14 @@ uv run ruff check --fix src/你修改的文件.py
 - **图像数据全项目统一按 RGB(A) 流转**。cv2 一族（imread/imdecode/imencode/imwrite）输入输出恒为 BGR：cv2 读入后立即 cvtColor 转 RGB 再进入后续处理，存盘前转回 BGR，或直接走框架 cv2_utils.save_image（RGB 口径）。禁止跨口径传递：cv2 产物不转换不得交给 RGB 口径函数/存盘函数，RGB 数据不得直接交给 cv2 写盘函数；图像处理函数的 docstring 必须声明输入输出的通道口径。
 - 图片读写一律走框架 `cv2_utils`（read_image/save_image：兼容中文路径、统一 RGB 口径），临时调试脚本与 fixture 归档同样适用；裸 cv2.imwrite 中文路径静默失败。
 - 模板资产：模板读取优先走框架服务（TemplateLoader），裁模板用 webp 无损归档。
+
+### 5.1. 如何看懂游戏画面
+
+用 `analyze_screen` 解读画面时，信息可信度分三层，按此纪律解读：
+
+- **建档命中才可信**：返回 `areas[]` 的命中项是识别层按建档 area 实测的结果，area 名携带建档时确认过的语义——只有这里说「这一块是什么」才能作为操作依据。`unmatched_areas` 表示建档了但当前未命中，说明该元素此刻不在画面上，不是建档错了。
+- **OCR 只提供坐标，不提供结论**：开启 OCR 的价值是给出「哪里有什么字」的精确坐标，弥补看图定位不准；没有建档背书时，不从 OCR 文本推断业务含义（属于什么按钮、数字是什么资源），推断只能当待验证线索，验证靠建档确认或向负责人求证。
+- **亲自看图补建档盲区**：用了 analyze_screen 也要亲自看图，目的是发现建档未覆盖的信息：新增或改版元素、布局位移、未建档浮层。看图时禁止自由解读图标、头像、资源的业务含义——agent 的游戏知识是落后的，这部分语义只能以建档提醒为准；看图发现的内容建档确认后才可信。
 
 ## 6.MCP
 
