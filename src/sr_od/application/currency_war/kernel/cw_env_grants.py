@@ -192,7 +192,7 @@ DELAYED_OPEN_ACCEL_KEY: str = 'delayed_open_accel'
 
 #: done 域条件键前缀:羁绊档位触发器(T-41 特邀专家:加拉赫;格式
 #: 'bond_tier_<档位>',每档一键,一次性封账降档再回不重发——祈愿
-#: 「首达档一次」用户裁定同口径;档位单一源 = FACTIONS[bond].tiers,
+#: 「首达档一次」用户裁定同口径;档位单一源 = trait_by_name[bond].tiers,
 #: 键形先例 = ore_open#<阈值> 阈值嵌键族)。
 BOND_TIER_KEY_PREFIX: str = 'bond_tier_'
 

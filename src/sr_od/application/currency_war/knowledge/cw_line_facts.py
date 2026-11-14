@@ -5,7 +5,7 @@
 统一保护集迭代删除。这些符号是攻略/实盘数据依据(出处逐条随行注明),
 不是决策拍值,归知识层。
 
-依赖方向:本模块只 import 数据注册表(cw_chars/cw_factions),不 import
+依赖方向:本模块只 import 数据注册表(cw_chars),不 import
 任何 kernel 判据/决策符号(知识层单向依赖,禁反向 import 判据/决策层)。
 
 单一源纪律:**新增消费一律 import 本模块,禁重建数据副本**;cw_line_defs/

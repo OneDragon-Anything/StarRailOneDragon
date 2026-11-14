@@ -593,7 +593,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
         for c in CHARACTERS:
             #  修法2:目标集判定用「阵营 ∪ 流派」全集与档位键
             # 作交集——旧版只查 c.factions,而档位键常含**流派系羁绊**
-            # (万敌单C 档 0 燃血=schools、DOT 持续伤害、黄泉减益、击破等),
+            # (流派轴羁绊如持续伤害、反击、击破等,单看 factions 轴会漏),
             # schools 成员(刃/镜流/布洛妮娅 等)被目标集排除 → 终局阵容锁定采购面残
             # ( Ring1:燃血 8 成员 3 名缺位)。泛化修正,非万敌特判
             # (candidates 的 _char_factions 同式全集口径)。

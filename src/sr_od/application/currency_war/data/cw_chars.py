@@ -270,7 +270,8 @@ def chars_by_cost(cost: int) -> list[Character]:
 def chars_by_faction(faction: str, include_schools: bool = True) -> list[Character]:
     """属某阵营的角色(include_schools=True 则也匹配流派羁绊)。
 
-    成员关系派生自 CHARACTERS(角色自报 factions/schools)—— FactionInfo.members() 调本函数。
+    成员关系派生自 CHARACTERS(角色自报 factions/schools),本函数即羁绊
+    成员读口的单一实现(fixture 快照生成器等直接调本函数)。
     """
     out = [c for c in CHARACTERS if faction in c.factions]
     if include_schools:

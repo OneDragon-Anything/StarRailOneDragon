@@ -405,7 +405,7 @@ RUST_AFFIX_NAME: str = '库藏生锈'
 
 
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
-# (本注册表单一源。)faction_reqs 档 0 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
+# (本注册表单一源。)faction_reqs 档 0 用羁绊注册表 tier 设"成型"里程碑;data 待实玩精确。
 
 # 家族键(9 键;plaza 统计分组命名空间——cw_plugins 过半统计/cw_system_cards
 # 意向映射的键空间,绯英/银狼同归欢愉族为统计分组口径)。
@@ -534,7 +534,7 @@ COMP_LIBRARY: list[Comp] = [
         # (进 flex),星间旅人升主羁绊(下限 2 档,成员=绯英本人在 core 即可达成)。
         name="绯英欢愉", core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
         faction_reqs={0: {"欢愉": 4, "星间旅人": 2}},
-        # 欢愉下限 4 = 教义「欢愉 4-6 档(≤4 档即主流)」;档位谱真值 = FACTIONS.tiers
+        # 欢愉下限 4 = 教义「欢愉 4-6 档(≤4 档即主流)」;档位谱真值 = 羁绊注册表 tiers
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         # 成型羁绊队:欢愉 4-6 档乘区
@@ -938,7 +938,7 @@ COMP_LIBRARY: list[Comp] = [
     Comp(
         name="万敌单C", core_chars=["万敌", "千冶·刃", "长夜月", "刻律德菈", "缇宝"],
         faction_reqs={0: {"夜之半神": 2, "燃血": 4}, 1: {"战技点": 2}},   # 档1 = 战技点 2(90%,第三引擎);风堇=第二记录器(治疗转伤害)
-        # 燃血档 = 教义「4-6 档」(下限 4;档位谱真值 = FACTIONS.tiers)。
+        # 燃血档 = 教义「4-6 档」(下限 4;档位谱真值 = 羁绊注册表 tiers)。
         #   ⚠️ 行为面:form_progress 成型判定按燃血 4 判(意图内)。
         # V4.4 评级(76807134):万敌 = B 级;【debuff=buff 典型】反伤/AoE/持续伤害 利燃血;攻略(77056698)
         # ↺ (plaza 40 篇校准)B→A:use 榜 #2(11.2w,「万敌无脑单挂A850 7人成型」);3星率 0.93
@@ -1091,7 +1091,7 @@ class TransitionBond:
     """过渡羁绊构造块:组合条目的生成原料;不是阵容、不进 TRANSITION_LIBRARY、不可锁定。"""
     name: str                        # 块短名(组合条目名与 parts 索引的组成部分)
     bond: str                        # 羁绊规范名(组合条目 faction_reqs 档 0 键)
-    tier: int                        # 达标人数阈值(体系判据档 = FACTIONS[...].tiers[0] 口径)
+    tier: int                        # 达标人数阈值(体系判据档 = 羁绊注册表[...].tiers[0] 口径)
     named: tuple[str, ...]           # 点名件(空 = 羁绊型:不限定人)
     need_star: tuple[tuple[str, int], ...]   # 点名件星级目标(键 ⊆ named;frozen 结构用 tuple 对)
     hybrid: bool                     # 羁绊半边是否计入持有分(点名型 False / 羁绊型与混合型 True)
@@ -1099,7 +1099,7 @@ class TransitionBond:
 
 #: 五块数值表(知识源 = 旧 3.3 条目表 + game/research/transition_combos.md
 #: 四体系表;依据逐块就地标注)。tier 口径 = 体系卡判据档
-#: (FACTIONS[...].tiers[0]:仙舟 3/持续伤害 2/列车同行 2/量子同频 2/
+#: (羁绊注册表[...].tiers[0] 口径,迁移前 V4.4 表值:仙舟 3/持续伤害 2/列车同行 2/量子同频 2/
 #: 贝洛伯格 2)。费段已核 CHARACTERS.cost(点名件 1-3 费,位面 1 可刷;
 #: 校验⑤表达——费段解锁真值 = cw_shop_odds 的 REFRESH_PROB:等级 1-3
 #: 仅 1 费/4 级起解锁 1-3 费/5 级起 4 费)。

@@ -2,7 +2,7 @@
 docs/develop/sr_od/application/currency_war/screens/op-layer.md)。
 
 观察面 = 入口门判定 + 卡阵营名 OCR(「X星徽」去后缀,x 升序;标准化
-生产半住观察侧——读数经 FACTIONS 注册表两段转换 + 候选点解算后组装
+生产半住观察侧——读数经羁绊注册表(trait_by_name)两段转换 + 候选点解算后组装
 obs,op-layer.md §1.1 观察标准化门/选择坐标观察上报)。report 摄入点 =
 operations/cw_screen/cw_screen_bookcard.py::
 ``CwScreenBookcard.observe``(观察 node);适用范围边界:动作事实
@@ -24,7 +24,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 class CwScreenBookcardObs:
     """星徽秘典屏观察结果(摄入口 = :func:`report_screen_bookcard_obs`)。
 
-    [索引定义] ``options`` = 「X星徽」去后缀阵营名经 FACTIONS 注册表两段
+    [索引定义] ``options`` = 「X星徽」去后缀阵营名经羁绊注册表(trait_by_name)两段
     转换的标准注册名(观察标准化门,任一候选转换失败/多候选命中同一
     注册名 = 观察失败,report 不达);列表序 = 画面物理卡位序(x 升序
     左→右,恒稳);空 = OCR 未读得,report 不写(双域一体)。
