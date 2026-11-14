@@ -816,7 +816,18 @@ class Operation(OperationBase):
 
     def round_wait(self, status: str | None = None, data: Any = None,
                    wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
-        """创建等待的轮次结果。
+        """创建等待的轮次结果：本轮结束后原样重跑当前节点。
+
+        引擎行为：不查边、不切换节点，下一轮从当前节点函数第一行重新执行；
+        清空 node_retry_times（等待不进失败方向的计数），不会因等待次数
+        转 FAIL，兜底只有节点 timeout_seconds 与指令 timeout_seconds。
+
+        写节点的约束：
+        - 节点函数必须重入安全：点击/记账类副作用只在确认本轮已生效后才
+          执行，否则重入会重复记账；
+        - 若对该状态「会自然过去」的判断失准（如点击持续成功但画面不变），
+          WAIT 会无限继续——预期等待也需要连等封顶（如连续 N 轮未达 until
+          即转 FAIL）。
 
         Args:
             status: 可选状态消息。默认为None。
@@ -832,7 +843,11 @@ class Operation(OperationBase):
 
     def round_retry(self, status: str | None = None, data: Any = None,
                     wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:
-        """创建重试的轮次结果。
+        """创建重试的轮次结果：本轮结束后原样重跑当前节点，并计入重试计数。
+
+        引擎行为：node_retry_times + 1，超过 node_max_retry_times 即转 FAIL；
+        下一轮从当前节点函数第一行重新执行（节点函数重入安全要求同
+        round_wait）。
 
         Args:
             status: 可选状态消息。默认为None。
