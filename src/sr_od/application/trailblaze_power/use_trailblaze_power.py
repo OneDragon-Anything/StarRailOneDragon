@@ -17,6 +17,7 @@ from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.challenge_mission.choose_support_in_team import ChooseSupportInTeam
 from sr_od.challenge_mission.click_challenge import ClickChallenge
 from sr_od.challenge_mission.click_start_challenge import ClickStartChallenge
+from sr_od.challenge_mission.resume_from_battle_fail import ResumeFromBattleFail
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 from sr_od.interastral_peace_guide.guide_transport import GuideTransport
@@ -80,6 +81,7 @@ class UseTrailblazePower(SrOperation):
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='传送')
+    @node_from(from_name='失败画面继续', status='失败重发')
     @operation_node(name='选择次数')
     def _before_click_challenge(self) -> OperationRoundResult:
         """
@@ -269,7 +271,13 @@ class UseTrailblazePower(SrOperation):
             return self._click_exit_after_result(screen)
         elif state == battle_screen_state.ScreenState.BATTLE_FAIL.value:
             log.info('超时后战斗结束 战斗失败')
-            return self._click_exit_after_result(screen)
+            # 失败画面已切新形态(无退出关卡按钮可点):委托共享失败继续件回挑战
+            # 画面后关副本收尾;超时语境不重试(连败阈值不适用)
+            op = ResumeFromBattleFail(self.ctx)
+            op_result = op.execute()
+            if not op_result.success:
+                return self.round_by_op_result(op_result)
+            return self.round_success('超时判负关副本')
         else:
             # 游戏内战斗仍在自打:继续观察(wait 长轮询即可,结算信号由上面分支识别)
             return self.round_wait('超时后继续等待战斗结束', wait=5)
@@ -283,15 +291,39 @@ class UseTrailblazePower(SrOperation):
         return self.round_by_find_and_click_area(screen, '战斗画面', '退出关卡按钮',
                                                  success_wait=2, retry_wait=1)
 
-    @node_from(from_name='等待战斗结果')
+    @node_from(from_name='等待战斗结果',
+               status=battle_screen_state.ScreenState.BATTLE_FAIL.value)
+    @operation_node(name='失败画面继续')
+    def after_battle_fail(self) -> OperationRoundResult:
+        """
+        战斗失败 → 委托共享失败继续件回挑战画面,按连败阈值分流重发/关副本退出。
+
+        失败画面已切新形态(无结算按钮,点空白回挑战画面):ResumeFromBattleFail
+        (challenge_mission 包)自带两态分流,周本挑战核心「失败画面继续」同款委托
+        先例。失败场不计完成次数、不触发回调(记账语义见 _wait_battle_result);
+        委托 fail 原样透传(现场交调用方,不收尾)。重发回「选择次数」节点——
+        滑条按 plan_times-finish_times 重算本轮次数,记账自洽。
+        :return:
+        """
+        op = ResumeFromBattleFail(self.ctx)
+        op_result = op.execute()
+        if not op_result.success:
+            return self.round_by_op_result(op_result)
+        if self.battle_fail_times >= 5:
+            # 连败止损:回挑战画面后交既有收尾(BackToNormalWorldPlus 幂等回家)
+            return self.round_success('连败关副本')
+        return self.round_success('失败重发')
+
+    @node_from(from_name='等待战斗结果',
+               status=battle_screen_state.ScreenState.BATTLE_SUCCESS.value)
     @operation_node(name='战斗结果处理')
     def _after_battle_result(self) -> OperationRoundResult:
         """
-        战斗结果出来后 点击再来一次或退出
+        战斗胜利后 点击再来一次或退出(只接胜利——失败走失败画面继续节点)。
         :return:
         """
         screen = self.last_screenshot
-        if self.battle_fail_times >= 5 or self.finish_times >= self.plan_times:  # 失败过多或者完成指定次数了 退出
+        if self.finish_times >= self.plan_times:  # 完成指定次数了 退出
             return self.round_by_find_and_click_area(screen, '战斗画面', '退出关卡按钮',
                                                      success_wait=2, retry_wait=1)
         else:  # 还需要继续挑战
@@ -334,7 +366,8 @@ class UseTrailblazePower(SrOperation):
 
     @node_from('点击挑战后确认', success=False)
     @node_from('点击挑战后确认', status='开拓力弹框-取消')
-    @node_from('点击挑战后确认', status='退出关卡按钮')
+    @node_from(from_name='失败画面继续', status='连败关副本')
+    @node_from(from_name='战斗超时收尾', status='超时判负关副本')
     @node_from(from_name='战斗超时收尾', status='退出关卡按钮')
     @operation_node(name='完成后退出')
     def back_at_last(self) -> OperationRoundResult:
