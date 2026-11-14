@@ -80,7 +80,7 @@
 ### 3.4 NOT_FOUND 告警的可见通道
 
 NOT_FOUND（商品消失/关键词失配）是唯一「每天 SUCCESS 却在漏东西」的形态，告警走两道：
-1. n2 节点挂 `@node_notify(when=NotifyTiming.CURRENT_DONE, detail=True)`，终轮 status 写人读摘要（含 skip_note 全文）——用户通知配置开启细节模式时，结束通知带该状态行；
+1. n2 节点挂 `@node_notify(when=NotifyTiming.CURRENT_DONE, detail=True)`，出口状态为固定两态 `ALL_PROCESSED` / `ALL_PROCESSED_WITH_SKIP`（后者即提示查阅明细；明细本体不进状态串——状态需可被节点边精确匹配）——用户通知配置开启细节模式时，结束通知带该状态行；
 2. 运行记录 `skip_note` 持久留痕（GUI 运行卡片不展示业务字段，查 yml：`config/<idx>/app_run_record/monthly_embers_exchange.yml`）。
 
 接受「细节通知关闭且未查记录时告警不可见」的边界；不做专用推送机制（v2 若实发生活失配再升级）。

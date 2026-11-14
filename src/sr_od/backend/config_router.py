@@ -19,6 +19,9 @@ from sr_od.application.echo_of_war.echo_of_war_config import (
     EchoOfWarConfig,
     get_war_mission_list,
 )
+from sr_od.application.monthly_embers_exchange import (
+    monthly_embers_exchange_const,
+)
 from sr_od.application.trailblaze_power.trailblaze_power_config import (
     TrailblazePowerConfig,
     TrailblazePowerPlanItem,
@@ -312,6 +315,26 @@ def _echo_of_war_update(config: object, item_id: str, item: object) -> bool:
     return config.update_plan_by_mission_id(item_id, item)  # type: ignore[attr-defined]
 
 
+# === monthly_embers_exchange helpers(每月余烬兑换,field-only 六字段) ===
+
+def _monthly_embers_exchange_get_config(
+    ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
+) -> object:
+    # 经 run_context 取 factory 缓存实例(与 app 运行/GUI 同一份,写立即生效);
+    # instance/group 空值由 run_context 落到当前运行值
+    return ctx.run_context.get_config(
+        monthly_embers_exchange_const.APP_ID,
+        instance_idx=instance_idx,
+        group_id=group_id,
+    )
+
+
+def _noop_item_from_dict(data: dict) -> object:
+    # field-only 配置无列表项:add/update/delete 均不支持(supported_ops 限定),
+    # 本占位仅满足 RouterEntry 必填字段,照 _group 条目的借用形态
+    return data
+
+
 # === ROUTES(含 field_schema + item_schema) ===
 
 def _build_routes() -> dict[str, RouterEntry]:
@@ -397,8 +420,7 @@ def _build_routes() -> dict[str, RouterEntry]:
             id_kind='mission_id',
             item_kind='dataclass',
             supported_ops=('get', 'update', 'describe'),
-            item_schema=[
-                {'name': 'mission_id', 'type': 'str', 'required': True,
+            item_schema=[                {'name': 'mission_id', 'type': 'str', 'required': True,
                  'note': '周本关卡唯一 id:「生存索引 历战余响 {关卡} {区域}」;可用关卡先 get_config 读现有列表'},
                 {'name': 'plan_times', 'type': 'int', 'required': True,
                  'note': '计划挑战次数(周本每周 3 次有额外奖励,超过也有基础奖励)'},
@@ -411,6 +433,28 @@ def _build_routes() -> dict[str, RouterEntry]:
                 {'name': 'diff', 'type': 'int', 'required': False, 'default': 0,
                  'note': '难度,0=自动选最高'},
             ],
+        ),
+        'monthly_embers_exchange': RouterEntry(
+            app_id='monthly_embers_exchange',
+            description='每月余烬兑换:余烬兑换 tab 月限三件套(星轨专票/星轨通票/命运的足迹)的开关与优先级;'
+                        '纯字段配置无列表项(set 直改字段,下一次 run 立即生效);'
+                        '数量固定拉满不可配(用户裁定)',
+            item_from_dict=_noop_item_from_dict,
+            get_config=_monthly_embers_exchange_get_config,
+            validate_item=lambda ctx, item: None,  # field-only:无列表项可校验
+            add=None,
+            delete=None,
+            id_kind='app_id',  # field-only 占位(无列表项定位语义),照 _group 条目
+            item_kind='dict',
+            supported_ops=('get', 'set', 'describe'),
+            field_schema={
+                'special_pass_enabled': {'type': 'bool', 'desc': '兑换 星轨专票(90余烬/张,月限5) 开关'},
+                'special_pass_priority': {'type': 'int', 'desc': '星轨专票优先级(升序兑换,默认10最高)'},
+                'pass_enabled': {'type': 'bool', 'desc': '兑换 星轨通票(90余烬/张,月限额度动态) 开关'},
+                'pass_priority': {'type': 'int', 'desc': '星轨通票优先级(默认20)'},
+                'tracks_of_destiny_enabled': {'type': 'bool', 'desc': '兑换 命运的足迹(60余烬/张,月限1) 开关'},
+                'tracks_of_destiny_priority': {'type': 'int', 'desc': '命运的足迹优先级(默认30)'},
+            },
         ),
     }
 
