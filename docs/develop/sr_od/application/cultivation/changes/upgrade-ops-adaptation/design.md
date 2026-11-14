@@ -38,10 +38,12 @@ weekly-challenge-core 迭代（`docs/develop/sr_od/application/echo_of_war/chang
 - **UpgradeTraceOp 的手动刷本 op 化**——维持负责人裁定：手动刷（花萼直进/周本）划出 op 边界，agent 层编排（行迹侧周本手动刷已由 `ChallengeEchoOfWarByName` 承接；花萼侧走 `FarmLightConeMaterialOp`，其委托链的卡死风险由块 A 收口）。
 - **角色/光锥线 farm_dungeon 券路线（use_fast_ticket=True）**——游戏内快速刷取直领奖，无战斗画面，零适配。
 
+范围红线的豁免声明：块 A 迁移会改 `challenge_echo_of_war_core.py` 的等待窗常量 import 行（:15-18，源文件迁出 challenge_mission 后断链）——该文件是 weekly-challenge-core 落地的核心 op，非周本 app（`ChallengeEchoOfWar`）；改动限于 import 行、零行为变更，属迁移机械修正而非范围扩展（消费方明细见 details/fail-adaptation.md §1.1）。
+
 ## 3. 方案概览
 
 - **共享件复用**：全部失败分支消费 `ResumeFromBattleFail`（challenge_mission 包，weekly-challenge-core 3.1 落地，含两态分流/连等封顶/转态验锚，本迭代零改动零新增消费接口）。家族先例 = 周本核心 ⑪ 失败画面继续节点（weekly-core.md 节点卡）。
-- **重发/判停策略按循环语义各定**：UseTrailblazePower 失败重发回链定死「选择次数」节点（滑条重算本轮次数，记账自洽——占位草案既定）；连败达阈值（家族口径 5）→ 关副本退出交既有收尾。角色/光锥线失败计场（开拓力已扣）→ 按既有 `farm_rounds_max` 预算重发（预算天然封顶，不另设连败阈值——每轮失败消耗已获 farm_dungeon 授权，重发边际成本即一场开拓力；预算耗尽判停即自然报告）。
+- **重发/判停策略按循环语义各定**：UseTrailblazePower 失败重发回链定死「选择次数」节点（滑条重算本轮次数，记账自洽——占位草案既定）；连败达阈值（家族口径 5）→ 关副本退出交既有收尾。**阈值语义取舍记录**：连败阈值 5 > `plan_times` 时全败会打满 5 场才止损（保留现状行为，失败场不计完成次数，日志如实带失败计数）。角色/光锥线失败计场（开拓力已扣）→ **失败分支内联预算检查**（重发/预算耗尽判停/透传三分支——升级循环的预算判停对失败重发环不可达，检查必须在失败分支内），按既有 `farm_rounds_max` 预算封顶，不另设连败阈值（每轮失败消耗已获 farm_dungeon 授权，预算耗尽判停即如实报告）。
 - **迁移机械件**：UseTrailblazePower 迁移 = 文件搬移 + 三处 import 消费方（trailblaze_power_app.py:15、farm_material.py:40、challenge_echo_of_war_core.py:15-18 常量消费）+ 等待窗常量抽 `challenge_mission/battle_wait_windows.py`（跨域 import 方向不固化）+ 测试镜像路径同步；类名/签名/行为除失败分支外零变更。
 - **判据同步声明**：`sr-od-test/test/sr_od/challenge_mission/test_use_trailblaze_power_timeout.py:112-129` 锁「超时收尾见战斗失败 → 点战斗画面·退出关卡按钮」旧行为，块 A 改为「委托共享件 → 关副本退出」后该断言必红——落地时同步改写（不是回归）。
 
