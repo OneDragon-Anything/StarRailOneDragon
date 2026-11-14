@@ -2693,7 +2693,12 @@ def _build_strategies() -> dict[str, InvestmentStrategy]:
 
 
 def _build_envs() -> dict[str, InvestmentEnv]:
-    """base 83 条 → 注册表;category/faction 从 overlay 挂;孤儿键报错。"""
+    """base 73 条 → 注册表;category/faction 从 overlay 挂;孤儿键报错。
+
+    覆盖语义披露:base 存在同名双 id 环境(群攻概念股 id 1015/2208,V4.7
+    换季重名对):注册表按 canon 名键,后入列表者覆盖前者,仅一张效果文本
+    存活(实测存活 = id 2208);两版本文本差异与覆盖方向裁归建模期(挂账)。
+    """
     out: dict[str, InvestmentEnv] = {}
     for p in PLAZA_PORTALS:
         out[p.name] = InvestmentEnv(
