@@ -155,6 +155,7 @@ class UpgradeLightConeOp(SrOperation):
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取分流有界自旋用)
         self._start_level: int | None = None  #: 入口读到的起始等级(收尾报告「起始→结束」口径)
         self._ascend_banner_count: int = 0  #: 晋阶横幅关闭次数(=完成的晋阶次数;通用补全触发的自动升级不经快速升级按钮)
+        self._promo_banner_seen: bool = False  #: 晋阶横幅沿计数标志(关闭点击未生效的 WAIT 重入轮不重计)
         self._farm_rounds: int = 0          #: 已执行的刷取轮数(预算控制;券轮=1次确认框,手动轮=1场)
         self._farm_draws: int = 0           #: 券刷累计次数(券消耗;确认框实际设到的次数)
         self._manual_fights: int = 0        #: 手动战斗场数(开拓力消耗)
@@ -329,15 +330,25 @@ class UpgradeLightConeOp(SrOperation):
 
         # ② 晋阶横幅/材料返还页(升满/晋阶成功时先后出现的全屏浮层,点击
         # 空白处关闭;实测顺序:晋阶横幅 → 材料返还 → 回等级提升)
-        for banner in ((_LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅'),
-                       (_LC_RETURN_SCREEN, '标题-材料返还')):
-            if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
-                self.ctx.controller.click(Point(960, 120))
-                if banner[1] == '标题-晋阶横幅':
-                    # 晋阶横幅每次出现 = 完成一次晋阶(统计口径:通用补全触发
-                    # 的自动升级/晋阶不经快速升级按钮,按横幅计数)
-                    self._ascend_banner_count += 1
-                return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
+        banner_up = (self.round_by_find_area(
+                        screen, _LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅').is_success
+                     or self.round_by_find_area(
+                        screen, _LC_RETURN_SCREEN, '标题-材料返还').is_success)
+        if not banner_up:
+            self._promo_banner_seen = False  # 横幅消失:沿计数归位,下条新横幅重新计
+        else:
+            for banner in ((_LC_PROMO_BANNER_SCREEN, '标题-晋阶横幅'),
+                           (_LC_RETURN_SCREEN, '标题-材料返还')):
+                if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
+                    self.ctx.controller.click(Point(960, 120))
+                    if banner[1] == '标题-晋阶横幅':
+                        # 晋阶横幅每次新出现 = 完成一次晋阶(沿计数:关闭点击
+                        # 未生效的 WAIT 重入轮不重计;统计口径:通用补全触发
+                        # 的自动升级/晋阶不经快速升级按钮,按横幅计数)
+                        if not self._promo_banner_seen:
+                            self._promo_banner_seen = True
+                            self._ascend_banner_count += 1
+                    return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
 
         # ③ 已判停 → 关 X 回光锥 TAB → 到了就以 _stop_status 结束
         if self._capped:
