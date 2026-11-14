@@ -9,37 +9,23 @@ class OcrText:
 
     Attributes:
         text: 识别出的文本内容。
-        x: 文本框左上角横坐标(1080p 游戏空间像素)。
-        y: 文本框左上角纵坐标(1080p 游戏空间像素)。
-        width: 文本框宽度(1080p 游戏空间像素)。
-        height: 文本框高度(1080p 游戏空间像素)。
+        pc_rect: 文本框 ``[x1, y1, x2, y2]``(1080p 游戏空间,与建档 pc_rect 同形)。
     """
 
     text: str
-    x: int
-    y: int
-    width: int
-    height: int
+    pc_rect: list[int]
 
 
 @dataclass
 class AnalyzeScreenResult:
-    """分析游戏画面结果(截图 + OCR + 画面匹配)。
+    """画面识别结果(纯识别数据;失败经异常通道上报,不占返回结构)。
 
     Attributes:
-        success: 是否成功截图并完成分析。
-        ocr_texts: 全图原始 OCR 文本列表(含未归类到任何 area 的散落文本)。
-        error: 失败时的错误描述。
+        ocr_texts: 全图原始 OCR 文本列表(include_ocr=False 时为空;读屏幕零散文字时显式开启)。
         screens: 画面匹配结果(精准命中=[1 个 is_precise=True];否则 top_n 个
-            is_precise=False 候选)。决策优先看 screens;需看散落文本再看 ocr_texts。
-            精准命中时 ``screens[0].unmatched_areas`` 给出该画面「未命中」的 area 及原因
-            (``no_method``=纯定位区无识别方法、带坐标可点击;``sub_state``=有识别方法但当前
-            不可见的子态区、带 text/template_id),用于点击定位区 / 判断当前子态。
+            is_precise=False 候选)。决策优先看 screens。
         screenshot_path: 本次 analyze 新存的截图绝对路径;实时+save_image=True 时有值,
             其余 None。**有值 ⟺ 这次实时模式新存了张图**(离线模式不存)。
-        vision_hint: 能力边界提示(仅 ``success=True`` 时填):提醒本结果仅含 OCR 文字 +
-            模板匹配命中项,是画面的部分识别,不等同完整视觉理解;需要全面判断画面时配合
-            视觉工具 / 多模态再看。失败(截图 / 分析失败)时为 None。
         extras: 精准命中画面且该画面注册了额外识别器(recognizer)时,填充识别器返回的
             结构化领域事实(画面特定结构,如备战画面的前后台 / 备战席角色 + 金币 / 阶段);
             否则 None。识别器异常不中断 analyze(extras=None,详见日志)。离线模式
@@ -50,12 +36,9 @@ class AnalyzeScreenResult:
             就拿到字段语义,零跳查;识别器异常时仍返回(extras=None 时可对照排障)。
     """
 
-    success: bool
     ocr_texts: list[OcrText]
-    error: str | None = None
     screens: list[ScreenMatch] = field(default_factory=list)
     screenshot_path: str | None = None
-    vision_hint: str | None = None
     extras: dict | None = None
     extras_doc: dict[str, str] | None = None
 

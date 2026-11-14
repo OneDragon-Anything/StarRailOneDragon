@@ -63,15 +63,13 @@ if TYPE_CHECKING:
     from one_dragon.base.operation.operation import Operation
 
 
-# analyze_screen 返回的能力边界提示:本结果仅含 OCR + 模板匹配的部分识别,
-# 提醒调用方(智能体)需要全面判断画面时,补一步视觉工具 / 多模态再看。
-# 见 docs/develop/sr_od/backend/design-principles.md P6/P13。
-_VISION_HINT = (
-    '本工具=识别层对账(画面身份判定/area 命中坐标/结构化数据),与视觉判读互补:'
-    '理解画面布局、图标语义、状态或未建档元素 → 用视觉模型直接看截图'
-    '(save_image=True 回传 screenshot_path);本结果与视觉判读不一致时,'
-    '优先怀疑建档漂移(area 坐标/文本过期),回验 screen_info。'
-)
+class AnalyzeScreenError(Exception):
+    """画面分析失败(窗口未就绪 / 截图失败 / 截图读取失败 / 识别内部异常)。
+
+    失败走异常通道(MCP 层转 tool error、HTTP 层转错误响应),不占成功返回结构。
+    """
+
+    pass
 
 
 def _iso(ts: float | None) -> str | None:
@@ -852,8 +850,8 @@ class SrBackendContext:
         screenshot 省略 → 截当前游戏画面(需游戏窗口就绪);精准命中回写
         ``ctx.screen_loader.update_current_screen_name``,为下次 BFS 提供起点。
         screenshot 传入 → 解析指定截图,**无需游戏窗口就绪**:绝对路径按路径读,
-        纯名字到 ``.debug/images/<名字>.png`` 读;读不到返失败(error 带解析后完整路径)。
-        **不回写**识别状态(离线 / 可能是旧图,不污染实时识别)。
+        纯名字到 ``.debug/images/<名字>.png`` 读;读不到抛 ``AnalyzeScreenError``
+        (带解析后完整路径)。**不回写**识别状态(离线 / 可能是旧图,不污染实时识别)。
 
         save_image=True(**仅实时模式生效**)→ 把截到的内存图落盘到
         ``.debug/sr_od_mcp/screenshot/``,路径写入 ``screenshot_path`` 返回,
@@ -870,10 +868,13 @@ class SrBackendContext:
             include_ocr: 是否返回全量散落 OCR 文本(默认 False)。
 
         Returns:
-            分析结果:成功标志、OCR 文本列表(include_ocr=False 时为空)、
-            画面匹配列表、错误描述、
+            识别结果(纯数据):OCR 文本列表(include_ocr=False 时为空)、画面匹配列表、
             screenshot_path(本次新存的截图路径,实时+save_image=True 时有值)、
-            vision_hint(成功时填的分工提示,失败时 None)。
+            extras / extras_doc(精准命中画面的结构化领域数据与字段说明,无注册识别器时 None)。
+
+        Raises:
+            BackendNotReadyError: backend 未就绪。
+            AnalyzeScreenError: 游戏窗口未就绪 / 截图失败 / 截图读取失败 / 识别内部异常。
         """
         self._ensure_ready()
         should_save: bool = save_image and screenshot is None
@@ -881,17 +882,17 @@ class SrBackendContext:
         if screenshot is None:
             controller = self._ctx.controller
             if controller is None or not controller.is_game_window_ready:
-                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='游戏窗口未就绪')
+                raise AnalyzeScreenError('游戏窗口未就绪(先 check_game_window / open_game)')
             image = controller.get_screenshot(independent=False)
             if image is None:
-                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error='截图失败')
+                raise AnalyzeScreenError('截图失败')
             # 打码 UID:对齐 controller.screenshot(),analyze 的 OCR / 画面匹配不依赖 UID 区域。
             image = controller.fill_uid_black(image)
             write_back = True
         else:
             image, resolved = self._resolve_screenshot(screenshot)
             if image is None:
-                return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=f'读取截图失败: {resolved}')
+                raise AnalyzeScreenError(f'读取截图失败: {resolved}')
             write_back = False
         try:
             if should_save:
@@ -905,7 +906,8 @@ class SrBackendContext:
             if include_ocr:
                 ocr_result_list = self._ctx.ocr_service.get_ocr_result_list(image=image, crop_first=False)
                 ocr_texts = [
-                    OcrText(text=r.data, x=int(r.x), y=int(r.y), width=int(r.w), height=int(r.h))
+                    OcrText(text=r.data,
+                            pc_rect=[int(r.x), int(r.y), int(r.x) + int(r.w), int(r.y) + int(r.h)])
                     for r in ocr_result_list
                 ]
             screens = find_screen_matches(self._ctx, image)
@@ -930,11 +932,12 @@ class SrBackendContext:
                     log.warning(f'recognizer[{screens[0].screen_name}] 异常: {e}')
                     extras = None
 
-            return AnalyzeScreenResult(success=True, ocr_texts=ocr_texts, screens=screens, error=None,
-                                       screenshot_path=saved_path, vision_hint=_VISION_HINT,
+            return AnalyzeScreenResult(ocr_texts=ocr_texts, screens=screens,
+                                       screenshot_path=saved_path,
                                        extras=extras, extras_doc=extras_doc)
-        except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:不回写,返失败(存盘已成功的仍回传路径排障)
-            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e), screenshot_path=saved_path)
+        except Exception as e:  # noqa: BLE001 OCR/匹配/存盘异常兜底:转领域异常(存盘已成功的把路径带进消息排障)
+            msg = f'{e}(本次截图已存: {saved_path})' if saved_path else str(e)
+            raise AnalyzeScreenError(msg) from e
 
     def upsert_screen_area(
         self,

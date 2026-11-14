@@ -40,6 +40,7 @@ from sr_od.backend.mcp.config_app import (
 )
 from sr_od.backend.mcp.game_config_tools import register_game_config_tools
 from sr_od.backend.mcp.light_cone_tools import register_light_cone_tools
+from sr_od.backend.mcp.markdown_render import render_screen_detail
 from sr_od.backend.mcp.mys_tools import register_mys_tools
 from sr_od.backend.mcp.prompts import (
     register_prompt_tools,
@@ -208,53 +209,46 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         save_image: Annotated[bool, Field(description="仅实时模式:把截图落盘并回传 screenshot_path 供视觉模型复用;离线模式忽略")] = False,
         include_ocr: Annotated[bool, Field(description="是否返回全量散落 OCR 文本(未归类到任何 area 的);默认 False 只回画面匹配+area 命中,读屏幕上的零散文字时才开")] = False,
     ) -> AnalyzeScreenResult:
-        """识别层的客观回读:画面身份判定 + area 命中坐标 + 结构化数据。观察类(只读,不改游戏状态)。
+        """识别层对账工具:画面身份判定 + area 命中详情 + 结构化数据。观察类(只读,不改游戏状态)。
 
-        **定位分工(当前模型有原生视觉,本工具不再是「眼睛」)**:
-        - 「看懂画面」(布局 / 图标语义 / 状态 / 未建档元素)→ 用你自己的视觉
-          (``read_image`` 截图文件;实时分析加 ``save_image=True`` 拿路径直接看)。
-        - 本工具管「**对账**」:①画面身份判定(对建档 screen_info 的确定性
-          ``is_precise`` 匹配,bot 运行时同源);②精确坐标与置信度(area 命中
-          rect,定坐标/验坐标的 ground truth);③结构化领域数据(extras);
-          ④零图像 token 的廉价轮询。视觉判读与本研究打架 = 建档漂移信号。
-        - 典型连招:新画面先视觉看懂 → 建档 → 用本工具对账;已知画面轮询
-          状态只调本工具(不带 save_image)。
+        **本工具管「核对与定位」,不管「看懂画面」**。使用场景:
+        - 判定当前在哪个画面(对建档 screen_info 的确定性匹配,以 is_precise=True 为准);
+        - 拿元素的实测坐标(pc_rect,定坐标/验坐标的 ground truth);
+        - 读画面注册的结构化领域数据(extras + extras_doc,字段语义随返回给全);
+        - 零图像 token 的廉价轮询(已知画面轮询状态时,不带 save_image 反复调用)。
 
-        **默认用法:不带参数直接调用**——自动截当前游戏画面并分析(需游戏在线),
-        **不要先调 capture_game_screen 再把路径传进来**。
+        **画面理解交给视觉**:布局、图标语义、状态、未建档元素,本工具读不出来——
+        需要时加 save_image=True 拿截图路径,自己看图。看图结论与识别结果不一致时,
+        优先怀疑建档漂移(area 坐标/文本过期),回验 screen_info,不偏信单方。
 
-        传 screenshot 仅用于**离线**场景(分析已存的历史截图,无需游戏在线):
-        绝对路径按路径读 / 纯名字到 ``.debug/images/<名字>.png`` 读;**不回写**
-        识别状态。用于离线校验/反哺 screen_info。
+        **结果解读纪律**:
+        - 只有 areas[] 的命中项可作操作依据:area 名携带建档时确认过的语义。
+        - 散落 OCR(ocr_texts)只提供「哪里有什么字」:没有建档背书,不要从 OCR
+          文本推断业务含义(是什么按钮/数字是什么资源),推断只能当待验证线索。
+        - 本工具与看图都只覆盖部分信息:看图发现的新元素/布局位移/未建档浮层,
+          建档确认后才可信——你的游戏知识可能过期,画面语义以建档为准。
+
+        **用法**:默认不带参数直接调——自动截当前画面并分析(需游戏在线);
+        不要先调 capture_game_screen 再把路径传进来。screenshot 仅用于离线场景
+        (分析已存的历史截图,无需游戏在线):绝对路径按路径读,纯名字到
+        .debug/images/<名字>.png 读;不回写识别状态。
 
         Returns:
-            ``AnalyzeScreenResult``:顶层字段 ``success`` / ``ocr_texts`` / ``screens`` /
-            ``error`` / ``screenshot_path`` / ``vision_hint`` / ``extras`` / ``extras_doc``。
-            决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选)。
+            顶层字段 ocr_texts / screens / screenshot_path / extras / extras_doc。
+            screens[]: ``{screen_name(中文), is_precise, areas[]}``——精准命中 1 个
+            (is_precise=True);否则按命中数返回 top_n 个候选(is_precise=False)。
+            areas[]: ``{area_name, pc_rect, matched_text, match_target}``——
+            pc_rect=[x1,y1,x2,y2] 为**实测**命中框(1080p 游戏空间,非建档配置值;
+            唯一例外:离线传入非 1080p 图片时是该图像素空间,别当游戏坐标喂点击);
+            matched_text=实际识别内容(模板区为 null);match_target=该区建档时的
+            原始匹配目标(期望文本或模板 id)。
+            ocr_texts 默认空列表,include_ocr=True 才返回全量散落 OCR。
+            extras / extras_doc(精准命中时):结构化领域数据与其字段语义;
+            无注册识别器或识别器异常时为 null。
 
-            **坐标系:统一 1920×1080 游戏空间**——``ocr_texts[]``、``screens[].areas[]``
-            的 x/y/width/height 与 ``unmatched_areas`` 的 ``pc_rect``、``click_game`` 点击
-            坐标同源,可直接互喂(controller 截图统一缩放到 1080p 后才做 OCR/匹配)。
-            **例外**:离线传入(``screenshot`` 参数)的**非 1080p 图片**未经缩放,返回坐标
-            是该图自身像素空间,别当游戏坐标直接喂点击。
-
-            ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
-            ``unmatched_areas`` 仅精准命中时填充,``reason`` 取值 ``no_method``(纯定位区,
-            无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
-            子态区,用于判断当前子态);模糊候选恒为空。``areas[]``(命中详情):
-            ``{area_name, area_type('text'|'template'), x, y, width, height, text, confidence}``。
-
-            ``ocr_texts[]`` 默认空列表,``include_ocr=True`` 才返回全量散落 OCR
-            (未归类到任何 area 的文本)。
-
-            ``extras``(精准命中时):该画面注册的识别器产出的结构化领域事实;
-            各字段语义直接读 ``extras_doc``(字段 → 一行语义),不必猜;无注册
-            识别器 / 识别器异常时为 None,不影响其余结果。
+        失败(窗口未就绪/截图失败/读图失败)→ 本 tool 返回 error,按提示处理。
         """
-        try:
-            return backend.analyze(screenshot, save_image, include_ocr)
-        except Exception as e:  # noqa: BLE001 工具层统一兜底，避免异常透传到 MCP 框架
-            return AnalyzeScreenResult(success=False, ocr_texts=[], screens=[], error=str(e))
+        return backend.analyze(screenshot, save_image, include_ocr)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="录屏(dev)"))
     def record_screen(
@@ -370,21 +364,25 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, title="读取画面档全集"))
     def get_screen_detail(
         screen_name: Annotated[str, Field(description="画面名,与 screen_info 的 screen_name 完全一致(如 邮件)")],
-    ) -> dict:
+    ) -> str:
         """读取单个画面档全集:全部 area(含 goto_list)+ 路由可达邻居。观察类(只读),无需游戏在线。
 
         ``analyze_screen`` 只回当前帧命中;本方法回建档全集——核对画面建档、
-        查「从这里能 goto 到哪」(goto_neighbors)、建档补漏用。
+        查「从这里能 goto 到哪」、建档补漏用。
 
         Returns:
-            dict: ``{success, screen_name, screen_id, pc_alt, area_count, areas[], goto_neighbors[], error}``。
+            自解释 markdown 文本：首行画面档概要(画面名/id/区域数)，随后
+            goto 可达邻居、pc_alt 提示与阈值缺省说明(仅有内容时出现)，最后
+            每个区域一行——识别方式、点击中心坐标、点击后跳转目标语义内嵌，
+            缺省值不逐行重复。
         """
         try:
-            return backend.get_screen_detail(screen_name)
+            result = backend.get_screen_detail(screen_name)
         except Exception as e:  # noqa: BLE001 工具层统一兜底
-            return {'success': False, 'screen_name': screen_name, 'screen_id': None,
-                    'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
-                    'error': str(e)}
+            result = {'success': False, 'screen_name': screen_name, 'screen_id': None,
+                      'pc_alt': None, 'area_count': 0, 'areas': [], 'goto_neighbors': [],
+                      'error': str(e)}
+        return render_screen_detail(result)
 
     @mcp.tool(annotations=ToolAnnotations(title="按路由导航画面"))  # 操作类:实际点击游戏
     def goto_screen(

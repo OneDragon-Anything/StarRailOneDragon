@@ -2,7 +2,8 @@
 
 三通道分工(MCP 协议对应;可见性均为客户端实现行为,非协议强制——spec 用 Optional/MAY):
 - ``instructions``:server 级「用户手册」,握手时返回;客户端**可选**注入 system prompt
-  (协议 Optional/MAY;Claude Code 等会注入)。放两边共通的操作哲学(三件套 / scope / 安全);详细步骤不进,保持精炼。
+  (协议 Optional/MAY;Claude Code 等会注入)。只放跨工具全局口径(截图分辨率/坐标
+  与矩形格式);操作指引归各 tool 描述与 usage guide,不重复。
 - ``prompts``(``@mcp.prompt()``):协议设计为 user-controlled(终端用户在 UI 手动选)。
   是否展示给模型由客户端决定;Claude Code 映射成 slash command,智能体平时不自动看到。
 - help tool(``list_mcp_usage_guides`` / ``get_mcp_usage_guide``):prompt 模板的 tool 镜像,
@@ -17,29 +18,11 @@ from mcp.types import ToolAnnotations
 
 
 def render_instructions() -> str:
-    """生成 server 级 instructions(共通操作哲学,握手时注入客户端 system prompt)。
+    """生成 server 级 instructions(跨工具全局口径:截图分辨率/坐标与矩形格式)。"""
+    return """星穹铁道一条龙MCP说明:
 
-    放所有消费者(使用者/开发者)每次交互都适用的共通核心;模式差异走 guide(mode 分流),不进此处。
-    保持精炼(MCP spec blog:instructions 过长是反模式),只放原则 + 指针,不放详细步骤。
-    """
-    return """星穹铁道一条龙 MCP:操作一台 Windows 上的星穹铁道实机(1080p)。
-
-工具分两类(非穷尽,完整列表见各 tool 描述):
-- 观察(不改游戏状态):analyze_screen / capture_game_screen / check_game_window / get_run_status / list_*
-- 操作(改游戏状态):click_game / key_tap / drag / input_text / open_game / run_operation / run_one_dragon / run_standalone_app / close_game / stop_run
-
-操作三件套(任何改状态的动作都按这个循环):
-1. 先看:analyze_screen 截当前画面 → 看 screens 命中 + ocr_texts 判断在哪。
-2. 再动:click_game(点 UI)/ key_tap(按键)/ run_operation(跑预设流程)。
-3. 后验:操作后画面常变,等 ~1s 再 analyze_screen / 视觉验证是否到达预期,别假设点击一定成功。
-
-约束:
-- 输入注入到活跃游戏窗口,需游戏在线(先 check_game_window);大世界等锁光标画面,click_game 传 pc_alt=True。
-- 配置生效:server 启动时把配置(当前实例 / 账号 / 各 yml)读进内存缓存,运行时不再重读文件。故 GUI 改配置、手改 yml、改 op 代码,server 都不自动跟随 —— 经 daemon 重启 server(`restart_sr_od_mcp_server`)即生效(客户端**无需**重连)。只有改 MCP 自身元信息(instructions / tool 描述 / 增减 method)才需客户端 /mcp 重连获取新元信息。遇到"改了配置 / 代码但行为没变",先想这条。
-- 出错别猜:画面不对 / op 失败 → 先 analyze_screen 看现状 + 查 server 运行日志(.log/mcp_server.log,框架日志专属文件),再决定;main_server.log 只是 stdout 兜底(uvicorn 启动行/traceback),不再承载 op 日志。
-- 安全:不主动改用户配置(yml);消耗周限的玩法先向用户确认再跑。
-
-开发者场景(验证 op / 画面建档 / 调试):调 get_mcp_usage_guide('sr_dev_validate_op')。"""
+- 游戏画面相关的截图，分辨率/坐标系统一使用 1920*1080
+- 描述矩形区域时，统一使用 (x1, y1, x2, y2)"""
 
 
 

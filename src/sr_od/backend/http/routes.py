@@ -19,7 +19,11 @@ from mcp.server.fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from sr_od.backend.backend_context import BackendNotReadyError, SrBackendContext
+from sr_od.backend.backend_context import (
+    AnalyzeScreenError,
+    BackendNotReadyError,
+    SrBackendContext,
+)
 from sr_od.backend.http.service_routes import register_service_routes
 
 
@@ -103,7 +107,7 @@ async def handle_game_capture(backend: SrBackendContext, _request: Request | Non
 
 
 async def handle_game_analyze(backend: SrBackendContext, request: Request | None = None) -> Response:
-    """处理 ``GET /game/analyze``：返回画面分析（截图 + OCR）结果 JSON。
+    """处理 ``GET /game/analyze``：返回画面识别结果 JSON。
 
     save_image=true(query,**仅实时模式**)→ 截图落盘并把路径放进响应 ``screenshot_path``
     (供 vision 复用,省掉第二次截图)。默认 false。
@@ -113,23 +117,21 @@ async def handle_game_analyze(backend: SrBackendContext, request: Request | None
         request: Starlette 请求对象(读 query 中的 save_image)。
 
     Returns:
-        200 + 分析结果 JSON(success / ocr_texts / screens / error / screenshot_path / vision_hint /
-        extras / extras_doc);backend 未就绪时返回 503。决策优先看 ``screens``,散落文本看
+        200 + 识别结果 JSON(ocr_texts / screens / screenshot_path / extras / extras_doc,
+        纯识别数据,失败经错误响应上报);决策优先看 ``screens``,散落文本看
         ``ocr_texts``;精准命中画面若注册了额外识别器,``extras`` 带该画面的结构化领域事实
         (否则 None),``extras_doc`` 带与 extras 平级的字段说明(识别器声明,否则 None)。
+        backend 未就绪 / 窗口未就绪 / 识别失败 → 503 + 错误 JSON。
     """
     try:
         save_image = _query_bool(request, 'save_image', False)
         result = await asyncio.to_thread(backend.analyze, None, save_image)
-    except BackendNotReadyError as e:
+    except (BackendNotReadyError, AnalyzeScreenError) as e:
         return _err(str(e))
     return JSONResponse({
-        "success": result.success,
         "ocr_texts": [asdict(t) for t in result.ocr_texts],
         "screens": [asdict(s) for s in result.screens],
-        "error": result.error,
         "screenshot_path": result.screenshot_path,
-        "vision_hint": result.vision_hint,
         "extras": result.extras,
         "extras_doc": result.extras_doc,
     })
