@@ -96,16 +96,19 @@ _ENTRY_BTN_STRENGTHEN: str = '按钮-强化'
 class UpgradeLightConeOp(SrOperation):
     """把当前角色的光锥升到 80 级满级(经验升级+晋阶突破),材料不足时按授权
     走通用材料补全或快速刷取补料继续。起点:角色-光锥 TAB(列表浮层已收);
-    终点:角色-光锥 TAB。结果状态:LIGHT_CONE_CAPPED(已满级 / 材料耗尽停在
-    当前等级,日志注明等级与消耗)。
+    终点:角色-光锥 TAB。结果状态:LIGHT_CONE_CAPPED(已满级 / 材料耗尽停
+    在当前等级)/ POWER_CAPPED(开拓力+备用耗尽刷取被拦,原路清场返回
+    光锥 TAB,开拓力随时间恢复,续跑即继续)。
 
     ⚠️ farm_dungeon=True 真实刷副本:券路线(use_fast_ticket=True)消耗 =
     券刷次数合计 × (开拓力 10 + 券 1)——券只免战斗,开拓力照扣:先扣开拓
     力再以备用开拓力补足(确认框消耗行实证),不耗星琼/燃料;手动路线消耗
     = 手动场数 × 开拓力 10(不耗券)。farm_rounds_max 限制刷取轮数(券轮=
     一次确认框执行、手动轮=一场战斗)。开拓力+备用亦尽时游戏弹「开拓力
-    补充」弹窗,本 op 不处理、预算内轮次失败判停。**发起前调用方必须按
-    最坏消耗向用户说明并获同意**(通用材料默认授权,见 fill_generic)。
+    补充」弹窗拦截刷取:守卫识别后原路清场(取消弹窗/关副本/关资源窗口)
+    返回光锥 TAB,状态 POWER_CAPPED——开拓力随时间恢复,续跑即继续。
+    **发起前调用方必须按最坏消耗向用户说明并获同意**(通用材料默认授权,
+    见 fill_generic)。
 
     :param ctx: 上下文
     :param fill_generic: 缺料时用「使用通用材料补全」路线(通用材料合成
@@ -148,6 +151,7 @@ class UpgradeLightConeOp(SrOperation):
         self._char_name: str | None = None  #: 入口记下的角色名(手动刷取回大世界后重选用)
         self._capped: bool = False          #: 材料不足已判停(回光锥 TAB 收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
+        self._stop_status: str = 'LIGHT_CONE_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_rounds: int = 0          #: 已执行的刷取轮数(预算控制;券轮=1次确认框,手动轮=1场)
         self._farm_draws: int = 0           #: 券刷累计次数(券消耗;确认框实际设到的次数)
         self._manual_fights: int = 0        #: 手动战斗场数(开拓力消耗)
@@ -282,6 +286,7 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='入口核对', status='ALREADY_ASCEND')
     @node_from(from_name='刷取返回分类', status='FARMED')
     @node_from(from_name='重走入口链', status='FARMED')
+    @node_from(from_name='打开资源窗口', status='FARM_WINDOW_FAIL')
     @operation_node(name='升级循环', node_max_retry_times=40)
     def upgrade_loop(self) -> OperationRoundResult:
         """flat loop:补全弹窗 → 横幅浮层 → 判停收尾 → 界面重开 → 满级判 →
@@ -325,15 +330,18 @@ class UpgradeLightConeOp(SrOperation):
                 self.ctx.controller.click(Point(960, 120))
                 return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
 
-        # ③ 已判停 → 关 X 回光锥 TAB → 到了就结束
+        # ③ 已判停 → 关 X 回光锥 TAB → 到了就以 _stop_status 结束
         if self._capped:
             if self.round_by_find_area(screen, _LC_TAB_SCREEN, '标题-角色光锥').is_success:
-                log.info('光锥晋阶: 收尾,当前光锥等级 %s,升级 %d 次/刷取 %d 轮'
+                if self._capped_level is None:
+                    self._capped_level = self._read_lc_level()
+                log.info('光锥晋阶: 收尾(%s),当前光锥等级 %s,升级 %d 次/刷取 %d 轮'
                          '(券刷 %d 次耗券 %d,手动 %d 场耗开拓力 %d)',
+                         self._stop_status,
                          self._capped_level, self._upgrade_count, self._farm_rounds,
                          self._farm_draws, self._farm_draws * _LC_FARM_TICKET_PER,
                          self._manual_fights, self._manual_fights * _LC_FARM_TRAILBLAZE_PER)
-                return self.round_success(status='LIGHT_CONE_CAPPED', wait=1.5)
+                return self.round_success(status=self._stop_status, wait=1.5)
             result = self.round_by_find_and_click_area(
                 screen, _LC_ASCEND_SCREEN, '按钮-关闭X',
                 until_find_all=[(_LC_TAB_SCREEN, '标题-角色光锥')],
@@ -443,8 +451,11 @@ class UpgradeLightConeOp(SrOperation):
         if result.is_success:
             return result
         if result.is_fail:
-            return self.round_fail('打开快速刷取资源窗口失败——大概率缺不可刷材料'
-                                   '(游戏判定无可刷缺口),改用 fill_generic 通用材料补全')
+            self._capped = True
+            self._stop_status = 'LIGHT_CONE_CAPPED'
+            log.info('光锥晋阶: 资源窗口未打开(无可刷缺口),判停收尾'
+                     '——可改用 fill_generic 通用材料补全路线')
+            return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
         return result
 
     @node_from(from_name='打开资源窗口')
@@ -507,8 +518,11 @@ class UpgradeLightConeOp(SrOperation):
         # 次数设置与确认点击
         if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
             self._farm_draws -= self._farm_times_set  # 本轮未成交,回滚确认前计数
-            return self.round_fail('开拓力不足:游戏弹「开拓力补充」弹窗拦截刷取,'
-                                   '判停待开拓力/备用开拓力恢复')
+            self._capped = True
+            self._stop_status = 'POWER_CAPPED'
+            log.info('光锥晋阶: 开拓力不足判停,原路清场返回光锥 TAB'
+                     '(可待开拓力恢复后续跑)')
+            return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
@@ -580,6 +594,13 @@ class UpgradeLightConeOp(SrOperation):
         「挑战按钮」坐标巧合重叠,单 area 判定会在副本画面误命中导致无限
         开战(实测 23 场事故,星琼被自动购开拓力)。"""
         screen = self.last_screenshot
+        # 开拓力不足时「开始挑战」点击无反应或弹补充框拦路:识别即判停,原路
+        # 清场返回——盲点重试会空烧战斗轮预算
+        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            self._capped = True
+            self._stop_status = 'POWER_CAPPED'
+            log.info('光锥晋阶: 手动路线开拓力不足判停,原路清场返回光锥 TAB')
+            return self.round_success(status='POWER_BLOCKED', wait=2)
         in_team = self.round_by_find_area(
             screen, _CHALLENGE_SCREEN, '队伍标题').is_success
         in_dungeon = self.round_by_find_area(

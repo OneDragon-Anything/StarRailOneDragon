@@ -77,7 +77,8 @@ class UpgradeCharacterOp(SrOperation):
     起点:角色-详情画面·详情 TAB·列表已收起;终点:角色-详情画面(详情 TAB)。
 
     结果状态:MAX_LEVEL(已到 80 满级)/ MATERIAL_CAPPED(材料耗尽停在
-    当前等级,结果文本带等级与消耗)。已满级起点直接成功(MAX_LEVEL)。
+    当前等级)/ POWER_CAPPED(开拓力+备用耗尽刷取被拦,原路清场返回详情页,
+    开拓力随时间恢复,续跑即继续)。已满级起点直接成功(MAX_LEVEL)。
 
     界面右下按钮按文本分流:「快速升级」直接执行;「使用通用材料补全」按
     fill_generic 走确认框(消耗灵之珠泪合成补齐);灰底「材料不足」判停。
@@ -85,12 +86,12 @@ class UpgradeCharacterOp(SrOperation):
 
     fill_generic=True(默认)会消耗通用材料灵之珠泪(非稀缺,用户裁定的
     最优先路线);farm_dungeon=True 会真实刷副本:**总消耗上限 =
-    farm_times_per_round × farm_rounds_max 次 ×(开拓力 30/次,
-    use_fast_ticket=True 时每次另以快速刷取券 3 张抵扣部分开拓力)**,
-    开拓力不足部分由游戏自动以备用开拓力等量抵扣(玩家自存体力池,非
-    稀有货币);备用亦耗尽时游戏弹「开拓力补充」弹窗,本 op 不处理该弹窗、
-    会预算耗尽显式失败——**调用方发起前必须按最坏消耗向用户说明并获
-    明确同意**,本 op 不代替调用方做这个确认。"""
+    farm_times_per_round × farm_rounds_max 次 ×(开拓力 30/次 +
+    快速刷取券 3/次;券只免战斗,开拓力照扣)**,开拓力不足部分由备用
+    开拓力补足(玩家自存体力池,非稀有货币),两者都不耗星琼;备用亦耗尽
+    时游戏弹「开拓力补充」弹窗拦截刷取:守卫识别后原路清场(取消弹窗/
+    关副本)返回详情页,状态 POWER_CAPPED——**调用方发起前必须按最坏
+    消耗向用户说明并获明确同意**,本 op 不代替调用方做这个确认。"""
 
     def __init__(self, ctx: SrContext, fill_generic: bool = True,
                  farm_dungeon: bool = False, use_fast_ticket: bool = True,
@@ -134,6 +135,7 @@ class UpgradeCharacterOp(SrOperation):
         self._entry_btn_area: str = _ENTRY_BTN_ASCEND  #: 入口命中的按钮 area(打开界面用)
         self._capped: bool = False         #: 材料不足已判停(回详情页收尾途中标志)
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
+        self._stop_status: str = 'MATERIAL_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_rounds: int = 0         #: 本次运行已执行的刷取轮数(消耗统计)
         self._ascend_count: int = 0        #: 本次运行已执行的升级次数(日志统计)
         self._promotion_count: int = 0     #: 本次运行已执行的晋阶次数(日志统计)
@@ -275,17 +277,20 @@ class UpgradeCharacterOp(SrOperation):
                 return self.round_retry('横幅已关,重入分类', wait=1.5)
             return result
 
-        # ③ 材料耗尽已判 → 返回箭头回详情页,到了就成功结束(报告消耗)
+        # ③ 材料耗尽已判 → 返回箭头回详情页,到了就以 _stop_status 结束(报告消耗)
         if self._capped:
+            if self._capped_level is None:
+                self._capped_level = self._read_ascend_level()
             if self.round_by_find_area(screen, _DETAIL_SCREEN, '按钮-属性详情').is_success:
                 total_farms = self._farm_rounds * self.farm_times_per_round
-                log.info('晋阶: 收尾,当前等级 %s,升级 %d 次/晋阶 %d 次/刷取 %d 轮×%d 次'
+                log.info('晋阶: 收尾(%s),当前等级 %s,升级 %d 次/晋阶 %d 次/刷取 %d 轮×%d 次'
                          '(消耗开拓力 %d + 券 %d)',
+                         self._stop_status,
                          self._capped_level, self._ascend_count, self._promotion_count,
                          self._farm_rounds, self.farm_times_per_round,
                          total_farms * _FARM_TRAILBLAZE_PER,
                          total_farms * _FARM_TICKET_PER)
-                return self.round_success(status='MATERIAL_CAPPED', wait=1.5)
+                return self.round_success(status=self._stop_status, wait=1.5)
             result = self.round_by_find_and_click_area(
                 screen, _ASCEND_SCREEN, '按钮-返回箭头',
                 until_find_all=[(_DETAIL_SCREEN, '按钮-属性详情')],
@@ -416,8 +421,11 @@ class UpgradeCharacterOp(SrOperation):
         # 交返回分类;两弹窗都不在 = 刷取进行中慢询等待;只有确认框在才执行
         # 次数设置与确认点击
         if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
-            return self.round_fail('开拓力不足:游戏弹「开拓力补充」弹窗拦截刷取,'
-                                   '判停待开拓力/备用开拓力恢复')
+            self._capped = True
+            self._stop_status = 'POWER_CAPPED'
+            log.info('晋阶: 开拓力不足判停,原路清场返回详情页'
+                     '(可待开拓力恢复后续跑)')
+            return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
@@ -480,6 +488,14 @@ class UpgradeCharacterOp(SrOperation):
     def manual_fight(self) -> OperationRoundResult:
         """编队画面开始挑战 → 自动战斗(约 1-2 分钟,until 重试覆盖)
         → 结算点「退出关卡」回副本画面。"""
+        # 开拓力不足时「开始挑战」点击无反应或弹补充框拦路:识别即判停,原路
+        # 清场返回——盲点重试会空烧战斗轮预算
+        if self.round_by_find_area(self.last_screenshot,
+                                   '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            self._capped = True
+            self._stop_status = 'POWER_CAPPED'
+            log.info('晋阶: 手动路线开拓力不足判停,原路清场返回详情页')
+            return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(self.last_screenshot,
                                    _CHALLENGE_SCREEN, '按钮-开始编队挑战').is_success:
             self.ctx.controller.click(
