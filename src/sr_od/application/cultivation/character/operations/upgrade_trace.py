@@ -235,6 +235,17 @@ class UpgradeTraceOp(SrOperation):
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
 
+        # ④b 材料不足灰态(按钮带禁用文本,独立于两可点形态):升下一级的
+        # 材料缺口超出通用补全与合成覆盖 = 升级不可行,直接判停(该文本与
+        # 「材料合成」四字前缀同形,lcs 相似度恰好 0.5 踩线,area 侧已收紧
+        # 阈值 0.75,此处再前置判停双保险,避免误入合成分支空点禁用钮)
+        if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-材料不足').is_success:
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 按钮带「材料不足」(缺口超出补全/合成覆盖),判停于等级 %s',
+                     self._end_level)
+            return self.round_success('CLOSE_PANEL')
+
         # ⑤ 缺料两形态(「使用通用材料补全」/「材料合成」同位不同文):
         # fill_generic 授权自动确认;farm_dungeon 预算内 → 券刷路线;
         # 均不可用判停。材料合成形态刷取无收益(原料已足,快速刷取机制
