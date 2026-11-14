@@ -7,7 +7,8 @@
 ### 1.1 迁移件（机械，先做）
 
 - 文件：`src/sr_od/challenge_mission/use_trailblaze_power.py` → `src/sr_od/application/trailblaze_power/use_trailblaze_power.py`。
-- import 消费方同步（grep 全量为准，现状两处）：`trailblaze_power_app.py:15`、`farm_material.py:40`。
+- import 消费方同步（grep 全量，现状三处）：`trailblaze_power_app.py:15`、`farm_material.py:40`、**`challenge_echo_of_war_core.py:15-18`（从该文件导入 `WAIT_RESULT_TIMEOUT_SECONDS`/`WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS` 两常量——迁移直接断周本域 import）**。
+- **常量归属裁定**：两等待窗常量随迁移抽到 `challenge_mission/battle_wait_windows.py`（挑战域共享常量模块，新建）——「周本从开拓力域 import 常量」的跨域方向不固化；`use_trailblaze_power.py` 与 `challenge_echo_of_war_core.py` 均改从新模块 import，值与注释语义零变更（「迁移机械件」范围含此小抽取）。
 - 测试镜像：`sr-od-test/test/sr_od/challenge_mission/test_use_trailblaze_power_timeout.py` → `sr-od-test/test/sr_od/application/trailblaze_power/`（路径随迁；断言面变化见 1.3 判据同步）。
 - 类名/构造签名/除失败分支外行为：零变更。
 
@@ -29,12 +30,12 @@
 - 内部逻辑不变：达标（`finish_times >= plan_times`）或连败判定……连败判定移除（连败改走「失败画面继续」→「连败关副本」出口）；仅剩达标退出/再来一次（胜利结算画面按钮真实存在，现状行为保留）。
 - 边界说明：旧形态失败（若某些副本类型仍出旧结算画面）不再经过本节点——共享件两态分流已在「失败画面继续」处理，本节点只见真胜利。
 
-**「失败画面继续」的两个出口的落点节点**
+**「失败画面继续」的出口落点节点**
 - `'失败重发'` → `@node_from(status='失败重发')` 挂到**「选择次数」**节点（use_trailblaze_power.py:85-98）：滑条节点每轮重算 `plan_times - finish_times`（:105）本轮次数，失败重发经过它记账自洽；「回点击挑战则滑条不重放、下轮用画面残留值」的备选废弃（占位草案既定）。
-- `'连败关副本'` → 新终局出口：点「挑战副本·按钮-关闭副本」（:1838,38-1888,95 已建档）→ until 大世界 → 既有 `back_at_last`（幂等收尾）。实现形态：`round_by_find_and_click_area('挑战副本', '按钮-关闭副本', until_find_all=[('大世界','…锚')])` 后 `round_by_op_result(BackToNormalWorldPlus)` —— 二段幂等（关闭副本已落大世界时 BackToNormalWorldPlus 快速成功）。
+- `'连败关副本'` 与 `'超时判负关副本'` 共享终局出口节点**「关副本退出」**（两条 status 入边，单一落点拓扑）：点「挑战副本·按钮-关闭副本」（:1838,38-1888,95 已建档）→ until 大世界 → 既有 `back_at_last`（幂等收尾）。实现形态：`round_by_find_and_click_area('挑战副本', '按钮-关闭副本', until_find_all=[('大世界','…锚')])` 后 `round_by_op_result(BackToNormalWorldPlus)` —— 二段幂等（关闭副本已落大世界时 BackToNormalWorldPlus 快速成功）。
 
 **「战斗超时收尾」判负分支改委托**（use_trailblaze_power.py:273-275）
-- `state == '战斗失败'` → 委托 `ResumeFromBattleFail` → success → `round_success('超时判负关副本')` → 沿边进「连败关副本」的关闭副本出口（超时语境不重试——占位草案既定）；共享件 fail → 透传。
+- `state == '战斗失败'` → 委托 `ResumeFromBattleFail` → success → `round_success('超时判负关副本')` → 沿边进「关副本退出」（超时语境不重试——占位草案既定）；共享件 fail → 透传。
 - 判胜分支（:265-272 补记+点退出关卡）不变——胜利结算画面按钮存在。
 
 **既有测试判据同步（必红改写，非回归）**
@@ -60,34 +61,38 @@
 
 **`back_to_ascend` 增加首位分支「失败画面」**
 - 锚：`round_by_find_area('大世界-战斗失败', '标题-战斗失败')`（置于等级提升锚之后、结算分支之前——顺序无冲突，画面互斥）。
-- 行为：委托 `ResumeFromBattleFail` → success（挑战画面回归）→ `round_success('失败重发')`；fail → `round_by_op_result` 透传（现场交上层）。
+- 行为：委托 `ResumeFromBattleFail` → success（挑战画面回归）→ **预算检查：`_farm_rounds >= farm_rounds_max` → `round_success('预算耗尽判停')`；未超 → `round_success('失败重发')`**；共享件 fail → `round_by_op_result` 透传（现场交上层）。
 - 落点依据：花萼手动路线失败回挑战画面（= 资源窗口「进入」的落点形态，`挑战副本` 画面档已建，共享件挑战锚「挑战副本·挑战按钮」对该帧命中）。
 
-**失败重发的回链（零新节点）**
+**失败分支的三个出口（预算检查必须在失败分支内——不可依赖升级循环）**
+- 预算判停的物理位置在 `upgrade_loop` ⑥（upgrade_character.py:500-510），**只有胜利后的 FARMED 回链可达；失败重发环（back_to_ascend → farm_in_dungeon → manual_fight）不经过升级循环**——预算检查必须内联在失败分支委托成功之后，否则连败无止损、烧穿开拓力（角色线 30/场）至游戏级开拓力拦截。
 - `'失败重发'` → `@node_from(status='失败重发')` 挂回 **`farm_in_dungeon`**（:572 副本画面分流——挑战画面命中挑战锚 → 编队态交 `manual_fight` 重发；既有分流链原样复用）。
-- 预算兜底：失败场已计入 `_farm_rounds`（开拓力已扣，计场正确）；连败烧完 `farm_rounds_max` → 既有预算判停分支（:500-503）自然接管，**不另设连败阈值**（重发边际成本 = 一场开拓力，已获 farm_dungeon 授权；预算耗尽判停即如实报告）。
+- `'预算耗尽判停'` → 回家链复用既有节点：沿边进「关闭副本回大世界」段（点「挑战副本·按钮-关闭副本」→ 大世界 → 既有 BACK_TO_WORLD 分支交 `reenter_from_world` 重走入口链 → `upgrade_loop` ⑥ 的预算判停自然触发收尾，既有判停 status 与日志原样）。
+- 失败计场：失败场已计入 `_farm_rounds`（开拓力已扣，计场正确）；**止损 = 失败分支内联预算检查**，不依赖升级循环、不设独立连败阈值（重发边际成本 = 一场开拓力，已获 farm_dungeon 授权；预算耗尽判停即如实报告）。
 - 老形态失败（旧结算画面带退出关卡按钮）：既有结算分支行为保留（点退出关卡 → 副本画面 → 点关闭X → 按栈回退）——新分支只截「大世界-战斗失败」新形态，互斥不冲突。
 
 ### 2.3 mock 场景
 
-1. 手动路线失败一次 → 共享件 → 挑战画面 → 重发 → 胜 → FARMED（`_farm_rounds` 含败场计 2）。
-2. 预算 1 + 首场败 → 共享件回挑战画面 → 预算判停（既有判停 status，日志含败场）。
-3. 共享件 fail → op fail 透传。
-4. 券路线回归确认（无失败画面帧 → 行为与现状一致）。
+1. 手动路线失败一次（预算充足）→ 共享件 → 挑战画面 → 失败重发 → 胜 → FARMED（`_farm_rounds` 含败场计 2）。
+2. 预算 1 + 首场败 → 共享件回挑战画面 → **失败分支内预算检查命中** → 「预算耗尽判停」→ 关闭副本 → 大世界 → 重走入口链 → upgrade_loop 判停收尾（既有判停 status，日志含败场）。
+3. 连败至预算耗尽（预算 2 + 败×2）→ 第二败后判停（同场景 2 路径，验证重发环每轮都过预算检查）。
+4. 共享件 fail → op fail 透传。
+5. 券路线回归确认（无失败画面帧 → 行为与现状一致）。
 
 ## 3. 块 C：光锥线手动路线失败适配（UpgradeLightConeOp）
 
 与块 B 同构，差异就地标注：
 
 - 断点：`back_after_farm`（upgrade_light_cone.py:696+）同样无失败画面分支（结算锚 MISS → 过渡帧慢询 → 300s 超时 FAIL）。
-- 分支锚/委托/出口同块 B；**失败重发回链挂 `副本刷取分流`**（farm_in_dungeon，:529——副本画面 → 编队态 → `MANUAL_FIGHT` 交 `manual_fight`）。
+- 分支锚/委托/**出口三分支（失败重发/预算耗尽判停/透传）同块 B——预算检查同样内联在失败分支**（光锥线预算检查在 upgrade_loop 内 :413，失败重发环同样绕过它）；**失败重发回链挂 `副本刷取分流`**（farm_in_dungeon，:529——副本画面 → 编队态 → `MANUAL_FIGHT` 交 `manual_fight`）。
+- 「预算耗尽判停」回家链：光锥线手动路线副本关闭直接落大世界（浮层栈卸载，:701-702 既有事实）——判停出口 = 点「挑战副本·按钮-关闭副本」→ 大世界 → 既有 BACK_TO_WORLD 分支交 `reenter_from_world` 重走入口链 → `upgrade_loop` 预算判停收尾。
 - 计场差异保留现状：光锥线在 `manual_fight` 点击时计场（:686-688），失败时已计，不统一两线计场时机（不扩面）。
 - 光锥线特有：失败后重发走「手动路线落点=大世界」的差异已被共享件消解（失败直接回挑战画面，不经大世界）——返回分类既有「手动路线副本关闭落大世界 → BACK_TO_WORLD 重走入口链」分支不受影响（那是正常完成路径）。
-- mock 场景同块 B 三条 + 券路线回归确认，帧用光锥线同款（挑战画面/失败画面帧共享）。
+- mock 场景同块 B 五条，帧用光锥线同款（挑战画面/失败画面帧共享）。
 
 ## 4. 关键取舍
 
 - **失败重发回链定死滑条节点（块 A）/既有分流节点（块 B/C）**——重发必须经过「重算本轮次数」或「既有画面分流」，禁止跳过记账直点挑战；备选（直回点击挑战）废弃：滑条不重放会用画面残留次数，记账漂移。
-- **失败计场即重发，不设连败阈值（块 B/C）**——预算 `farm_rounds_max` 天然封顶；块 A 保留连败 5 阈值（体力计划一条龙场景单场成本 30 开拓力×连打，阈值关副本止损是占位草案既定）。
+- **块 B/C 止损 = 失败分支内联预算检查，块 A = 连败 5 阈值关副本**——两域止损策略不同源：块 A 单场 30 开拓力且一条龙无人盯守，阈值关副本止损是占位草案既定；块 B/C 场次小（默认预算 1）、有人审跑日志，预算内联检查是必要且充分的止损（检查位置必须在失败分支内——升级循环的预算判停对失败重发环不可达，见 §2.2）。
 - **旧形态失败由共享件两态分流兜住**——三个消费方都不自带形态判断，形态事实单一源在共享件（家族先例周本核心 ⑪ 同款）。
 - **迁移与适配同迭代同批（块 A）**——同文件同函数触碰两次不如一次；迁移是机械件，适配是行为件，landing 分两个提交。

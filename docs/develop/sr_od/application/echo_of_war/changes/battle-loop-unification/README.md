@@ -11,3 +11,4 @@
 
 ## 状态
 未立项（占位）。风险声明：weekly-challenge-core 落地后家族仍有 3 份战斗循环实现（UseTrailblazePower / ChallengeEchoOfWar / 核心），收敛面已通过共享失败继续件缩小。
+⚠️ 同文件占位：`echo-of-war-fail-adaptation/`（失败适配+超时防线，改动同文件 `challenge_ehco_of_war.py`）——本占位立项（app 切核心）会把失败适配大部分范围吸收进核心，两占位禁各自独立落地，立项时先裁定收口顺序。
