@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QFrame,
     QListView,
     QListWidget,
     QListWidgetItem,
@@ -37,30 +38,35 @@ class ExchangeOrderCard(MultiLineSettingCard):
     """
 
     def _pill_qss(self) -> str:
-        """badge 风格(用户 2026-11-14 反馈去掉包裹矩形):无底无边框,只留
-        强调色左条做顺序标记与 hover 反馈;强调色随用户主题色(qconfig),
-        浅深主题两套中性文字色。"""
+        """badge 风格:每个选项可见底色+描边(一眼可辨为可拖选项),容器自身
+        无框无底(外框由代码 setFrameShape(NoFrame) 关,样式表盖不掉 QFrame)。
+        强调色随用户主题色(qconfig)只出现在 hover/选中。"""
         accent = qconfig.themeColor.value
-        text = '#f5f5f5' if isDarkTheme() else '#1f1f1f'
+        if isDarkTheme():
+            bg, border, text = ('rgba(255, 255, 255, 0.08)',
+                                'rgba(255, 255, 255, 0.16)', '#f5f5f5')
+            hover_bg, hover_border = ('rgba(255, 255, 255, 0.14)', accent)
+        else:
+            bg, border, text = ('#ffffff', 'rgba(0, 0, 0, 0.14)', '#1f1f1f')
+            hover_bg, hover_border = ('#f5f5f5', accent)
         return f'''
-        QListWidget {{ background: transparent; outline: none; }}
+        QListWidget {{ background: transparent; border: none; outline: none; }}
         QListWidget::item {{
-            background: transparent;
-            border: none;
-            border-left: 3px solid {accent};
-            border-radius: 2px;
-            padding: 3px 12px;
-            margin: 0px 4px;
+            background: {bg};
+            border: 1px solid {border};
+            border-radius: 4px;
+            padding: 4px 16px;
+            margin: 0px 5px;
             color: {text};
             font-size: 13px;
         }}
         QListWidget::item:hover {{
-            color: {accent};
-            border-left: 3px solid {accent};
+            background: {hover_bg};
+            border: 1px solid {hover_border};
         }}
         QListWidget::item:selected {{
-            color: {accent};
-            border-left: 3px solid {accent};
+            background: {bg};
+            border: 1px solid {accent};
         }}
         '''
 
@@ -80,6 +86,9 @@ class ExchangeOrderCard(MultiLineSettingCard):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setFixedHeight(36)
         self._list.setMinimumWidth(360)
+        # 容器自身不带框不描底:QFrame 的 frame 画在样式表之外,必须代码关
+        self._list.setFrameShape(QFrame.Shape.NoFrame)
+        self._list.viewport().setAutoFillBackground(False)
         self._list.setStyleSheet(self._pill_qss())
         self._list.model().rowsMoved.connect(self._on_reordered)
         self._reload(config.exchange_order)
