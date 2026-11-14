@@ -137,6 +137,9 @@ class UpgradeCharacterOp(SrOperation):
         self._capped_level: int | None = None  #: 判停时的当前等级(报告用)
         self._stop_status: str = 'MATERIAL_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取有界自旋用)
+        self._start_level: int | None = None  #: 首入晋阶界面读到的起始等级(收尾报告「起始→结束」口径)
+        self._banner_upgrade_count: int = 0  #: 升级结果横幅计数(=实际完成升级次数;通用补全触发的自动升级不经按钮)
+        self._banner_promotion_count: int = 0  #: 晋阶结果横幅计数(=实际完成晋阶次数)
         self._farm_rounds: int = 0         #: 本次运行已执行的刷取轮数(消耗统计)
         self._ascend_count: int = 0        #: 本次运行已执行的升级次数(日志统计)
         self._promotion_count: int = 0     #: 本次运行已执行的晋阶次数(日志统计)
@@ -184,11 +187,24 @@ class UpgradeCharacterOp(SrOperation):
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
-        """入口核对:须在详情 TAB(属性详情锚);按右下按钮三态分流。
+        """入口核对:常规起点在详情 TAB(属性详情锚),按右下按钮三态分流;
+        刷取链残留现场(开拓力不足判停/中断遗留的弹窗与副本画面)按画面锚
+        接管,LEFTOVER 交返回养成界面清场走回家继续升级。
 
         列表开着等遮挡态不在本 op 范围(按钮被遮挡时不命中 = 走
         「已满级」误判——先显式判列表遮挡)。"""
         screen = self.last_screenshot
+
+        # 刷取链残留现场接管(开拓力判停/中断遗留,盖住一切锚):按残留弹窗/
+        # 副本画面识别,交返回养成界面清场走回家,继续当前角色升级——行走链
+        # 终点为本角色晋阶界面,身份由游戏自身导航保持
+        for leftover_screen, leftover_anchor in (
+                ('开拓力补充弹窗', '标题-开拓力补充弹窗'),
+                (_FAST_FARM_DIALOG, '标题-快速刷取弹窗'),
+                (_FAST_FARM_RESULT, '标题-快速刷取弹窗'),
+                (_CHALLENGE_SCREEN, '挑战按钮')):
+            if self.round_by_find_area(screen, leftover_screen, leftover_anchor).is_success:
+                return self.round_success(status='LEFTOVER')
 
         if self.round_by_find_area(screen, '角色-列表', '标题-角色列表').is_success:
             return self.round_fail('列表浮层开着(遮挡态):先由调用方收列表')
@@ -244,6 +260,10 @@ class UpgradeCharacterOp(SrOperation):
            「晋阶执行」= 晋阶态材料足,点执行;全部不命中 = 灰底全缺,判停。
         异常形态(材料足但点击没生效)由节点重试预算兜底耗尽显式失败。"""
         screen = self.last_screenshot
+        # 起始等级(统计口径):首次抵达晋阶界面时读,收尾报「起始→结束」
+        if self._start_level is None and self.round_by_find_area(
+                screen, _ASCEND_SCREEN, '标题-等级提升').is_success:
+            self._start_level = self._read_ascend_level()
 
         # ⓪ 材料返还覆盖页(晋阶后游戏返还差额材料,全屏覆盖挡住一切锚)
         if self.round_by_find_area(screen, _ASCEND_SCREEN, '文本-材料返还').is_success:
@@ -270,9 +290,17 @@ class UpgradeCharacterOp(SrOperation):
             self._capped_level = self._read_ascend_level()
             return self.round_retry('取消材料补全,返回收尾', wait=1.5)
 
-        # ② 执行结果横幅(升级/晋阶共用关闭动作)
-        if (self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-升级结果').is_success
-                or self.round_by_find_area(screen, _ASCEND_SCREEN, '标题-晋阶结果').is_success):
+        # ② 执行结果横幅(升级/晋阶共用关闭动作;横幅计数=补全合成触发自动
+        # 升级/晋阶的统计口径,这类执行不经按钮)
+        upgrade_banner = self.round_by_find_area(
+            screen, _ASCEND_SCREEN, '标题-升级结果').is_success
+        promotion_banner = self.round_by_find_area(
+            screen, _ASCEND_SCREEN, '标题-晋阶结果').is_success
+        if upgrade_banner or promotion_banner:
+            if upgrade_banner:
+                self._banner_upgrade_count += 1
+            if promotion_banner:
+                self._banner_promotion_count += 1
             result = self._close_result_banner()
             if result.is_success:
                 return self.round_retry('横幅已关,重入分类', wait=1.5)
@@ -284,10 +312,17 @@ class UpgradeCharacterOp(SrOperation):
                 self._capped_level = self._read_ascend_level()
             if self.round_by_find_area(screen, _DETAIL_SCREEN, '按钮-属性详情').is_success:
                 total_farms = self._farm_rounds * self.farm_times_per_round
-                log.info('晋阶: 收尾(%s),当前等级 %s,升级 %d 次/晋阶 %d 次/刷取 %d 轮×%d 次'
+                # 统计口径:升级/晋阶按钮次数=按钮执行;通用补全触发的自动
+                # 升级/晋阶不经按钮,以横幅计数与等级差呈现
+                level_text = (f'{self._start_level}→{self._capped_level}'
+                              if self._start_level is not None
+                              else str(self._capped_level))
+                log.info('晋阶: 收尾(%s),等级 %s,升级按钮 %d 次(横幅计 %d)/'
+                         '晋阶按钮 %d 次(横幅计 %d)/刷取 %d 轮×%d 次'
                          '(消耗开拓力 %d + 券 %d)',
-                         self._stop_status,
-                         self._capped_level, self._ascend_count, self._promotion_count,
+                         self._stop_status, level_text,
+                         self._ascend_count, self._banner_upgrade_count,
+                         self._promotion_count, self._banner_promotion_count,
                          self._farm_rounds, self.farm_times_per_round,
                          total_farms * _FARM_TRAILBLAZE_PER,
                          total_farms * _FARM_TICKET_PER)
@@ -521,6 +556,7 @@ class UpgradeCharacterOp(SrOperation):
 
     @node_from(from_name='券确认刷取')
     @node_from(from_name='手动挑战战斗')
+    @node_from(from_name='入口核对', status='LEFTOVER')
     @operation_node(name='返回养成界面', node_max_retry_times=10)
     def back_to_ascend(self) -> OperationRoundResult:
         """逐层回退:关结果框(如有)→ 关副本 X → 关资源窗口 X → 回等级
