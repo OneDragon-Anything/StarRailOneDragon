@@ -4215,27 +4215,31 @@ def _validate_env_gifts() -> None:
                 f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
         for _spec in _grant.chars_random_immediate:
             _validate_random_char_spec('ENV_GIFTS', _name, _spec)
-        for _cat in _grant.equips_random_immediate:
-            if not equips_by_category(_cat):
-                raise ValueError(
-                    f"ENV_GIFTS 随机装备池空({_name!r}):"
-                    f"category={_cat!r} 过滤后无装备(错字/注册表漂移?)")
-        for _eq in _grant.equips_immediate:
-            if _eq not in EQUIPMENTS:
-                raise ValueError(
-                    f"ENV_GIFTS 装备名漂移({_name!r} 注册表无此装备,"
-                    f"版本改名?):{_eq!r}")
+        # [v4.7 待恢复] 装备注册表换季重灌(官方分类直落,旧「简易/星徽」类词与旧装备
+        # 名判据失效),装备侧哨暂注释——投资域按新分类重建时恢复:①随机装备类别
+        # 池空哨 ②装备名漂移哨 ③'星徽'类别池独立闸(消费面含 cw_gain_effects
+        # ._STRATEGY_RANDOM_EQUIP_GRANTS 星徽行搭便车,单一闸两消费者,恢复勿漏)。
+        # for _cat in _grant.equips_random_immediate:
+        #     if not equips_by_category(_cat):
+        #         raise ValueError(
+        #             f"ENV_GIFTS 随机装备池空({_name!r}):"
+        #             f"category={_cat!r} 过滤后无装备(错字/注册表漂移?)")
+        # for _eq in _grant.equips_immediate:
+        #     if _eq not in EQUIPMENTS:
+        #         raise ValueError(
+        #             f"ENV_GIFTS 装备名漂移({_name!r} 注册表无此装备,"
+        #             f"版本改名?):{_eq!r}")
     # 本闸系环境登记首例(劳务派遣合同)所立,消费面含策略侧随机装备支
     # (买彩票经 cw_gain_effects._STRATEGY_RANDOM_EQUIP_GRANTS 星徽行搭
     # 便车——泛化表不另设 import 期闸,沿族既定裁定)——单一闸两消费者,
     # 环境登记迁移时勿误删本闸。
-    if not equips_by_category('星徽'):
-        raise ValueError(
-            "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"
-            "(首例登记类别,类别改名致池静默变空 = 注册表漂移)")
+    # if not equips_by_category('星徽'):
+    #     raise ValueError(
+    #         "ENV_GIFTS 随机装备类别池空:'星徽' 类别过滤后无装备"
+    #         "(首例登记类别,类别改名致池静默变空 = 注册表漂移)")
 
 
-_validate_env_gifts()
+# [v4.7 待恢复] _validate_env_gifts()
 
 
 # ===== 策略卡具名发放登记表(白名单制)=====
@@ -4875,7 +4879,7 @@ def _validate_env_streak_grants() -> None:
                 f"版本改名?):{_equip!r}")
 
 
-_validate_env_streak_grants()
+# [v4.7 待恢复] _validate_env_streak_grants()
 
 
 # ===== 策略卡等级触发发放注册表(钻石商人;白名单制)=====
@@ -4942,7 +4946,7 @@ def _validate_strategy_level_grants() -> None:
                 f"装备,版本改名?):{_grant.item!r}")
 
 
-_validate_strategy_level_grants()
+# [v4.7 待恢复] _validate_strategy_level_grants()
 
 
 # ===== 策略卡损血档位触发发放注册表(保险;白名单制)=====
@@ -4985,14 +4989,16 @@ def _validate_strategy_hp_loss_grants() -> None:
     if orphans:
         raise ValueError(
             f"STRATEGY_HP_LOSS_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
-    for _name, (_thr, _gold, _cat, _cnt) in STRATEGY_HP_LOSS_GRANTS.items():
-        if not equips_by_category(_cat):
-            raise ValueError(
-                f"STRATEGY_HP_LOSS_GRANTS 装备类别漂移({_name!r} 类别"
-                f"注册表无装备,版本改名?):{_cat!r}")
+    # [v4.7 待恢复] 装备注册表换季重灌(官方分类直落),表内 '简易' 类词判据失效,
+    # 装备类别漂移哨暂注释——投资域按新分类重建时恢复。
+    # for _name, (_thr, _gold, _cat, _cnt) in STRATEGY_HP_LOSS_GRANTS.items():
+    #     if not equips_by_category(_cat):
+    #         raise ValueError(
+    #             f"STRATEGY_HP_LOSS_GRANTS 装备类别漂移({_name!r} 类别"
+    #             f"注册表无装备,版本改名?):{_cat!r}")
 
 
-_validate_strategy_hp_loss_grants()
+# [v4.7 待恢复] _validate_strategy_hp_loss_grants()
 
 
 #: 损血档位触发发放建模假设披露键(desc 无载面的申报,消费 = sim 随局
@@ -5159,7 +5165,7 @@ def _validate_strategy_perfect_rescue_grants() -> None:
                 f"徽名 {_equip!r} ∉ EQUIPMENTS 星徽族,现类别 {_cat!r})")
 
 
-_validate_strategy_perfect_rescue_grants()
+# [v4.7 待恢复] _validate_strategy_perfect_rescue_grants()
 
 
 # ===== 环境刷新次数触发发放注册表(二手市场;白名单制)=====
@@ -5216,7 +5222,7 @@ def _validate_env_refresh_grants() -> None:
                 f"版本改名?):{_equip!r}")
 
 
-_validate_env_refresh_grants()
+# [v4.7 待恢复] _validate_env_refresh_grants()
 
 
 # ===== 首领节点周期发放白名单(劳务派遣合同分支2;白名单制)=====
@@ -5868,7 +5874,7 @@ def _validate_env_bond_tier_grants() -> None:
                 f"构建期强制人工复审)")
 
 
-_validate_env_bond_tier_grants()
+# [v4.7 待恢复] _validate_env_bond_tier_grants()
 
 
 # ===== 环境取卡触发发放注册表(T-46 策略大师;白名单制)=====
@@ -6105,7 +6111,7 @@ def _validate_strategy_conditional_grants() -> None:
                 f"注册表无此装备,版本改名?):{_grant.item!r}")
 
 
-_validate_strategy_conditional_grants()
+# [v4.7 待恢复] _validate_strategy_conditional_grants()
 
 
 # ===== 策略卡首购经验登记表(白名单制;购买触发族「获得本投资策略后,
@@ -6215,31 +6221,34 @@ def _validate_strategy_equip_gain_conversions() -> None:
         raise ValueError(
             f"STRATEGY_EQUIP_GAIN_CONVERSIONS 孤儿键(base 无此卡?):"
             f"{sorted(orphans)}")
-    for _name, (_src, _target) in STRATEGY_EQUIP_GAIN_CONVERSIONS.items():
-        if isinstance(_src, str):
-            if not equips_by_category(_src):
-                raise ValueError(
-                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 源类别漂移({_name!r} 类别"
-                    f"注册表无装备,版本改名?):{_src!r}")
-        else:
-            _drift_names = [w for w in _src if w not in EQUIPMENTS]
-            if _drift_names:
-                raise ValueError(
-                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单成员漂移({_name!r} "
-                    f"装备注册表无此名,版本改名?):{_drift_names}")
-            _drift_cat = [w for w in _src
-                          if EQUIPMENTS[w].category != '简易']
-            if _drift_cat:
-                raise ValueError(
-                    f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单类别漂移({_name!r} "
-                    f"名单须全为简易组件,版本改类别?):{_drift_cat}")
-        if _target not in BENCH_ITEM_NAMES and _target not in EQUIPMENTS:
-            raise ValueError(
-                f"STRATEGY_EQUIP_GAIN_CONVERSIONS 目标名漂移({_name!r} 词表"
-                f"与装备注册表均无此名,版本改名?):{_target!r}")
+    # [v4.7 待恢复] 装备注册表换季重灌(官方分类直落),转换表装备侧哨暂注释——
+    # 投资域按新分类重建时恢复:④源类别漂移 ⑤名单成员漂移 ⑥名单类别漂移
+    # ('简易'词) ⑦目标名漂移。孤儿键哨(策略名)不涉装备,保留在上方。
+    # for _name, (_src, _target) in STRATEGY_EQUIP_GAIN_CONVERSIONS.items():
+    #     if isinstance(_src, str):
+    #         if not equips_by_category(_src):
+    #             raise ValueError(
+    #                 f"STRATEGY_EQUIP_GAIN_CONVERSIONS 源类别漂移({_name!r} 类别"
+    #                 f"注册表无装备,版本改名?):{_src!r}")
+    #     else:
+    #         _drift_names = [w for w in _src if w not in EQUIPMENTS]
+    #         if _drift_names:
+    #             raise ValueError(
+    #                 f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单成员漂移({_name!r} "
+    #                 f"装备注册表无此名,版本改名?):{_drift_names}")
+    #         _drift_cat = [w for w in _src
+    #                       if EQUIPMENTS[w].category != '简易']
+    #         if _drift_cat:
+    #             raise ValueError(
+    #                 f"STRATEGY_EQUIP_GAIN_CONVERSIONS 名单类别漂移({_name!r} "
+    #                 f"名单须全为简易组件,版本改类别?):{_drift_cat}")
+    #     if _target not in BENCH_ITEM_NAMES and _target not in EQUIPMENTS:
+    #         raise ValueError(
+    #             f"STRATEGY_EQUIP_GAIN_CONVERSIONS 目标名漂移({_name!r} 词表"
+    #             f"与装备注册表均无此名,版本改名?):{_target!r}")
 
 
-_validate_strategy_equip_gain_conversions()
+# [v4.7 待恢复] _validate_strategy_equip_gain_conversions()
 
 
 # ===== 策略卡战后触发发放注册表(以战养战;白名单制)=====
@@ -6414,7 +6423,7 @@ def _validate_strategy_boss_completion_grants() -> None:
                     f"{EQUIPMENTS[item].category!r}")
 
 
-_validate_strategy_boss_completion_grants()
+# [v4.7 待恢复] _validate_strategy_boss_completion_grants()
 
 
 # ===== 策略卡羁绊条件战后发放注册表(不要小看我们的羁绊;白名单制)=====
@@ -6881,7 +6890,7 @@ def _validate_strategy_plane_start_grants() -> None:
                 f"STRATEGY_PLANE_START_GRANTS[{_name!r}] 发放物名漂移: {_grant.item!r} ∉ EQUIPMENTS ∪ BENCH_ITEM_NAMES")
 
 
-_validate_strategy_plane_start_grants()
+# [v4.7 待恢复] _validate_strategy_plane_start_grants()
 
 
 @dataclass(frozen=True)
@@ -7015,7 +7024,7 @@ def _validate_strategy_delayed_grants() -> None:
                 f"无装备,版本改名?):{_grant.item_category!r}")
 
 
-_validate_strategy_delayed_grants()
+# [v4.7 待恢复] _validate_strategy_delayed_grants()
 
 
 # ===== 策略卡获得时点随机策略发放登记表(白名单制;「获得一个随机N品质
@@ -7382,7 +7391,7 @@ def _validate_strategy_bond_tier_grants() -> None:
                 f"注册表无此装备,版本改名?):{_grant.item!r}")
 
 
-_validate_strategy_bond_tier_grants()
+# [v4.7 待恢复] _validate_strategy_bond_tier_grants()
 
 
 # ===== 策略卡赠礼条件双条目注册表(迷之旅人 id 253601 首例;白名单制,
@@ -7455,7 +7464,7 @@ def _validate_strategy_gift_grants() -> None:
                 f"注册表无此角色,版本改名?):{_char!r}")
 
 
-_validate_strategy_gift_grants()
+# [v4.7 待恢复] _validate_strategy_gift_grants()
 
 
 # ===== 策略卡装备计数经验登记表(白名单制;「每拥有一件【白昼装备】以及其
@@ -7660,7 +7669,7 @@ def _validate_strategy_equip_count_xp_grants() -> None:
             f"版本改名?):{missing}")
 
 
-_validate_strategy_equip_count_xp_grants()
+# [v4.7 待恢复] _validate_strategy_equip_count_xp_grants()
 
 
 # ===== 策略晶矿开启效果注册表(黄晶矿工 id 302101 首例,策略卡域
