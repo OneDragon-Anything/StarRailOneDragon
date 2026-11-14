@@ -38,7 +38,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_TO_NEXT_LEVEL,
     effective_cost,
@@ -1502,7 +1502,7 @@ def _board_rescue_xy(faction: str, data: str, max_count: int) -> tuple[int, int]
     """
     if not data.isdigit() or len(data) < 2:
         return None
-    tiers = FACTIONS[faction].tiers if faction in FACTIONS else ()
+    tiers = trait_by_name[faction].tiers if faction in trait_by_name else ()
     candidates = [data] + [data[:i] + data[i + 1:] for i, ch in enumerate(data) if ch == '1']
     for trimmed in candidates:
         for k in range(1, len(trimmed)):
@@ -1565,7 +1565,7 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
     fallback_rows: list[tuple[str, float, int | None]] = []   # (阵营,名称行 y, expected 兜底值|None)
     honest = False
     for i, r in enumerate(results):
-        faction = next((f for f in FACTIONS if f in (r.data or '')), None)
+        faction = next((f for f in trait_by_name if f in (r.data or '')), None)
         if faction is None or faction in pairs:
             continue
         badge_cnt: int | None = None
@@ -1609,8 +1609,8 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
             # 低估最后一环(见 docstring ⑤);徽标小格重读(④)在后统一翻案。
             exp = expected.get(faction) if expected else None
             if exp is not None and 1 <= exp <= max(max_count, 1):
-                nt_exp = next((t for t in FACTIONS[faction].tiers if t > exp), 0) \
-                    if faction in FACTIONS else 0
+                nt_exp = next((t for t in trait_by_name[faction].tiers if t > exp), 0) \
+                    if faction in trait_by_name else 0
                 pairs[faction] = (exp, nt_exp)
             else:
                 exp = None
@@ -1621,17 +1621,17 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
         # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
         cnt = cnt if 1 <= cnt <= max(max_count, 1) else 1
         nt = xy[1] if (xy is not None and 1 <= xy[1] <= 12) else 0
-        if nt == 0 and faction in FACTIONS:
+        if nt == 0 and faction in trait_by_name:
             # 徽标/容错源无 Y → 注册表 tiers 推下一档(>count 的最小档;无更高档 → 0)
-            nt = next((t for t in FACTIONS[faction].tiers if t > cnt), 0)
+            nt = next((t for t in trait_by_name[faction].tiers if t > cnt), 0)
         pairs[faction] = (cnt, nt)
     # 第四级:逐兜底行徽标小格放大重读,只翻兜底行的案(有徽标/X/Y/容错行的帧零额外开销)。
     if fallback_rows:
         for faction, row_y, _exp in fallback_rows:
             badge = _read_badge_cell(ctx, screen, row_y)
             if badge is not None:
-                nt = next((t for t in FACTIONS[faction].tiers if t > badge), 0) \
-                    if faction in FACTIONS else 0
+                nt = next((t for t in trait_by_name[faction].tiers if t > badge), 0) \
+                    if faction in trait_by_name else 0
                 pairs[faction] = (badge, nt)
                 honest = True
     return pairs, honest

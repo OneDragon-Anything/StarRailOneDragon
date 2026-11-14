@@ -33,7 +33,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import str_utils
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_obs_core import A_BOARD, SCREEN_NAME
 
 if TYPE_CHECKING:
@@ -117,9 +117,9 @@ def _match_faction(raw: str) -> str | None:
     「昼之半神/夜之半神」仅一字差,并列/低比例一律不猜(返回 None 进
     unmatched 计数,宁缺勿错配)。
     """
-    if raw in FACTIONS:
+    if raw in trait_by_name:
         return raw
-    names = list(FACTIONS)
+    names = list(trait_by_name)
     best = str_utils.find_best_match_by_lcs(
         raw, names, lcs_percent_threshold=_NAME_LCS_THRESHOLD)
     if best is None:

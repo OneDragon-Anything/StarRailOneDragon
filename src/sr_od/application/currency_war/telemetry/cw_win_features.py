@@ -13,7 +13,7 @@ sim 与离线训练脚本共用;M2 接入 sim 结算器时直接 import。
 
 数值单一源:
 - 阵营计数复用 ``cw_battle_calib._board_factions_of``(factions+schools 并计口径);
-- 激活阈值读 ``cw_factions.FACTIONS[*].tiers``(不复制数值);
+- 激活阈值读 ``cw_traits_data.trait_by_name[*].tiers``(不复制数值);
 - 角色费用读 ``cw_chars.get_char(name).cost``。
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
 
 
@@ -31,7 +31,7 @@ def _tier_of(faction: str, count: int) -> int:
     独立羁绊(单人专属,tiers=(1,))场上 1 人即 tier1——按注册表
     阈值通用计算,不特判。
     """
-    info = FACTIONS.get(faction)
+    info = trait_by_name.get(faction)
     if info is None:
         return 0
     return sum(1 for t in info.tiers if count >= t)
@@ -60,7 +60,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     - ``faction_counts``:阵营计数(``_board_factions_of`` 口径,
       factions+schools 并计);
     - ``tier_hist``:羁绊档位直方图({1:..,2:..,3:..,4:..},
-      每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
+      每羁绊激活到第几层,阈值对照 ``trait_by_name[*].tiers``);
     - ``max_tier``:最高激活档位(阵容成型度粗粒度代理);
     - ``tier3_count``:tier_hist 中档位==3 的羁绊个数。压测实证
       (原始件已灭失(清理)):

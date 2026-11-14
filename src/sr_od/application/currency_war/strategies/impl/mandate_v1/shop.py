@@ -82,12 +82,12 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
     reencounter_window_frames,
     refresh_prob,
 )
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel import cw_intention
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
 from sr_od.application.currency_war.kernel.cw_comps import (
@@ -1758,7 +1758,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
                 | set(board_by_row([], [_u]).back)
             _gap = False
             for _tag in _tags:
-                _info = FACTIONS.get(_tag)
+                _info = trait_by_name.get(_tag)
                 if _info is None or not _info.tiers:
                     continue
                 _c = _board_tags.get(_tag, 0)

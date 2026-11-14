@@ -43,7 +43,7 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_bond_equips import (
     unit_bond_tags,
 )
@@ -149,12 +149,12 @@ class DeploySearchPanel:
 
 
 def _fallback_tier_index(bond: str, head_count: int) -> int:
-    """人数阈值 → 档序(FACTIONS.tiers 中 ≥ 人数的最小档序;1 基)。
+    """人数阈值 → 档序(trait_by_name.tiers 中 ≥ 人数的最小档序;1 基)。
 
     Comp.faction_reqs 各档值 = 人数阈值(字段契约「几人激活算
     成型」);档位完成度分母 = 该人数对应档序(D-3 显式选端:经注册
     表档序换算,禁读梯末)。"""
-    tiers = FACTIONS[bond].tiers if bond in FACTIONS else ()
+    tiers = trait_by_name[bond].tiers if bond in trait_by_name else ()
     for i, t in enumerate(tiers, start=1):
         if t >= head_count:
             return i
@@ -163,7 +163,7 @@ def _fallback_tier_index(bond: str, head_count: int) -> int:
 
 def _achieved_tiers(bond: str, count: int) -> int:
     """羁绊计数 → 已达档数(≥ tiers[i] 的最大 i;0 = 一档未成)。"""
-    tiers = FACTIONS[bond].tiers if bond in FACTIONS else ()
+    tiers = trait_by_name[bond].tiers if bond in trait_by_name else ()
     n = 0
     for t in tiers:
         if count >= t:
@@ -364,7 +364,7 @@ def _prefix_cuts(pool: list[SearchUnit], keys: tuple[str, ...]) \
     if not keys:
         cuts.update(range(len(pool) + 1))
     for k in keys:
-        tiers = FACTIONS[k].tiers if k in FACTIONS else ()
+        tiers = trait_by_name[k].tiers if k in trait_by_name else ()
         for t in tiers:
             if t <= len(pool):
                 cuts.add(t)

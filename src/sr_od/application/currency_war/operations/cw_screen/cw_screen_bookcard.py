@@ -7,7 +7,7 @@ OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关);入口 id_mark
 形态(screens/op-layer.md 两 node 形态):观察 node + 决策动作 node 两
 段直继承 SrOperation。观察 node = 入口门(标识-星徽秘典,miss = round_fail
 返回主循环重新判定)+ 卡阵营名一次读(全屏 OCR「X星徽」去后缀,x 升序;入口帧
-一次读,与现役决策体读同帧等价)→ 观察标准化门(阵营名经 FACTIONS 注册表
+一次读,与现役决策体读同帧等价)→ 观察标准化门(阵营名经羁绊注册表
 两段转换:精确命中 → LCS 相似 + 次高分差拒判;任一候选转换失败/歧义/
 多候选命中同一注册名 = 观察失败 round_fail 零写零上报返回主循环重读,
 op-layer.md §1.1 观察标准化门)+
@@ -38,7 +38,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
     lcs_resolve_strict,
@@ -56,9 +56,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
 )
 from sr_od.context.sr_context import SrContext
 
-#: FACTIONS 注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
+#: trait_by_name 注册表键集定序列表(观察标准化门第二段 LCS 兜底的遍历域;
 #: sorted 定序保证同分取注册表序首个,确定性不随 dict 迭代序漂移)。
-_FACTION_NAMES: list[str] = sorted(FACTIONS)
+_FACTION_NAMES: list[str] = sorted(trait_by_name)
 
 #: 观察标准化门第二段 LCS 相似阈值(LCS 占比,相对注册表名长度;取值同
 #: 装备名收敛批门槛 = 0.75——阵营名「昼之半神/夜之半神」仅一字差,降阈值
@@ -118,7 +118,7 @@ class CwScreenBookcard(CwOperation):
             self, cards: list[tuple[str, int]]) -> list[tuple[str, int]] | None:
         """观察标准化门(op-layer.md §1.1 观察标准化门):``_read_card_factions``
         读出后、组装 obs 前逐候选两段转换——①形变归一(去「星徽」后缀 +
-        空白剥离,读链既有)后精确命中 ``data/cw_factions.py::FACTIONS``;
+        空白剥离,读链既有)后精确命中 ``data/cw_traits_data.py::trait_by_name``;
         ②不中再 LCS 相似(``lcs_resolve_strict``,阈值 =
         ``_FACTION_LCS_THRESHOLD`` ∧ 最高分与次高分差 ≥
         ``_FACTION_LCS_AMBIGUITY_MARGIN``——分差过近 = 注册表内歧义不可
@@ -127,11 +127,11 @@ class CwScreenBookcard(CwOperation):
 
         星徽四选一为选项互斥屏:多候选命中同一注册名 = 识别质量不足以
         区分,同判转换失败(op-layer.md §1.1 已登记互斥判);状态容器
-        ``star_tome_opts`` 值域自此 = FACTIONS 标准注册名(标准化后决策
+        ``star_tome_opts`` 值域自此 = trait_by_name 标准注册名(标准化后决策
         消费标准名,动作上报只携 idx)。"""
         resolved: list[tuple[str, int]] = []
         for name, x in cards:
-            canon = name if name in FACTIONS else ''
+            canon = name if name in trait_by_name else ''
             if not canon:
                 canon = lcs_resolve_strict(
                     name, _FACTION_NAMES,
@@ -184,7 +184,7 @@ class CwScreenBookcard(CwOperation):
             self._read_card_factions(screen))
         if cards is None:
             log.warning('[cw-flow-bookcard] 观察标准化门失败:阵营名转换不到'
-                        'FACTIONS 标准注册名(零写零上报,交回重观察)')
+                        '羁绊注册表标准名(零写零上报,交回重观察)')
             return self.round_fail('阵营名标准化失败(零写零上报,交回重观察)')
         points = self._resolve_option_points(cards)
         if points is None:

@@ -1351,15 +1351,15 @@ def bench_is_full(gs: GameState) -> bool | None:
 def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
     """board 下档阈值派生(§3.2.6/§8.8 准入③:计算函数不存储)。
 
-    语义 = 左面板「X/Y」的 Y:对注册表 ``FACTIONS[].tiers`` 取 >当前人数
+    语义 = 左面板「X/Y」的 Y:对注册表 ``trait_by_name[].tiers`` 取 >当前人数
     的最小档,无更高档不计入。**本函数 = 该推导的 kernel 单一源**——
     迁移批次二起,obs computed 支(cw_observation read_game_state)
     委托至此,禁第三份推导。
     """
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
     out: dict[str, int] = {}
     for _f, _c in board_factions.items():
-        _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
+        _tiers = trait_by_name[_f].tiers if _f in trait_by_name else ()
         _nt = next((t for t in _tiers if t > _c), 0)
         if _nt:
             out[_f] = _nt

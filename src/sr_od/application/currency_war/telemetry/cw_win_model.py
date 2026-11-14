@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 # 符号解耦(淘汰计划 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
@@ -41,12 +41,12 @@ _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 
 #: 引擎实体单一源(原先三组具名字面量统一为 import/派生):
 #: - 铁三角 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(注册表 import 不复制);
-#: - DOT 件池 = ``FACTIONS['持续伤害']`` 成员的 ≤2 费子集(过渡件口径,
+#: - DOT 件池 = ``trait_by_name['持续伤害'].members`` 的 ≤2 费子集(过渡件口径,
 #:   海瑟音4/黑天鹅5 是终局件不进池);
 #: - 希儿 = ``SYSTEM_CARDS['seele'].engine_required``(卡注册表)。
 _TRIO = tuple(sorted(_CORE_TRIO))
 _DOT_POOL = tuple(sorted(
-    m for m in FACTIONS['持续伤害'].members()
+    m for m in trait_by_name['持续伤害'].members
     if (ch := get_char(m)) is not None and ch.cost <= 2))
 _SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')

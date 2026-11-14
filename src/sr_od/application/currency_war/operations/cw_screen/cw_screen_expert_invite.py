@@ -73,12 +73,12 @@ CASH_AREA: str = '卡-现金为王'
 def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
     """单卡区域内 OCR → 该卡的有效羁绊名(无依据 → None)。
 
-    解析优先级:① 文本命中 FACTIONS 键(阵营/流派标签,如「仙舟」「能量」);
-    ② 文本含 FACTIONS 键(OCR 噪声容错);③ 文本 = 角色注册表名 → 取其首个
+    解析优先级:① 文本命中羁绊注册表键(trait_by_name,阵营/流派标签,如「能量」「追击」);
+    ② 文本含羁绊注册表键(OCR 噪声容错);③ 文本 = 角色注册表名 → 取其首个
     羁绊(factions 优先,空则 schools)。全部未命中 → None(策略层走兜底)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.data.cw_traits_data import trait_by_name
     from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 
     rect = _area_rect(ctx, card_area, INVITE_SCREEN)
@@ -94,10 +94,10 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
         if rect.x1 <= cx <= rect.x2 and rect.y1 <= cy <= rect.y2:
             texts.append(t)
     for t in texts:
-        if t in FACTIONS:
+        if t in trait_by_name:
             return t
     for t in texts:
-        hit = next((f for f in FACTIONS if f in t), None)
+        hit = next((f for f in trait_by_name if f in t), None)
         if hit is not None:
             return hit
     for t in texts:
