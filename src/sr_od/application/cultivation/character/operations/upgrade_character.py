@@ -352,7 +352,7 @@ class UpgradeCharacterOp(SrOperation):
     @node_from(from_name='打开晋阶')
     @node_from(from_name='入口核对', status='ALREADY_ASCEND')
     @node_from(from_name='返回养成界面')  # 刷取链收口:副本刷完回养成界面重入本循环
-    @node_from(from_name='打开资源窗口', status='FARM_WINDOW_FAIL')  # 快速刷取静默无反应(无可刷缺口):回循环判停收尾
+    @node_from(from_name='打开资源窗口', status='FARM_WINDOW_FAIL')  # 无可刷缺口(toast 正判或漏检兜底):回循环判停收尾
     @node_from(from_name='重走入口链', status='FARMED')  # 手动链收口:大世界重走入口链回到养成界面
     @operation_node(name='升级循环', node_max_retry_times=40)
     def upgrade_loop(self) -> OperationRoundResult:
