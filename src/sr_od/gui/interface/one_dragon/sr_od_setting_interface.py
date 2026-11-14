@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QWidget,
 )
-from qfluentwidgets import FluentIcon, SettingCardGroup, isDarkTheme
+from qfluentwidgets import FluentIcon, SettingCardGroup, isDarkTheme, qconfig
 
 from one_dragon.base.operation.application import application_const
 from one_dragon.utils.i18_utils import gt
@@ -36,34 +36,40 @@ class ExchangeOrderCard(MultiLineSettingCard):
     读取(缺失补尾/未知剔除/去重),拖拽只写显式顺序。
     """
 
-    _PILL_QSS_DARK = '''
-    QListWidget { background: transparent; outline: none; }
-    QListWidget::item {
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        border-radius: 10px;
-        padding: 3px 14px;
-        margin: 0px 5px;
-        color: #f5f5f5;
-        font-size: 13px;
-    }
-    QListWidget::item:hover { background: rgba(255, 255, 255, 0.24); }
-    QListWidget::item:selected { background: rgba(255, 255, 255, 0.10); }
-    '''
-    _PILL_QSS_LIGHT = '''
-    QListWidget { background: transparent; outline: none; }
-    QListWidget::item {
-        background: rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(0, 0, 0, 0.18);
-        border-radius: 10px;
-        padding: 3px 14px;
-        margin: 0px 5px;
-        color: #1f1f1f;
-        font-size: 13px;
-    }
-    QListWidget::item:hover { background: rgba(0, 0, 0, 0.10); }
-    QListWidget::item:selected { background: rgba(0, 0, 0, 0.04); }
-    '''
+    def _pill_qss(self) -> str:
+        """Fluent 风格 pill:小圆角/中性底,强调色只出现在左序号条与 hover——
+        强调色随用户主题色(qconfig)取,浅深主题两套中性色。"""
+        accent = qconfig.themeColor.value
+        if isDarkTheme():
+            bg, border, text = ('rgba(255, 255, 255, 0.07)',
+                                'rgba(255, 255, 255, 0.14)', '#f5f5f5')
+            hover_bg = 'rgba(255, 255, 255, 0.12)'
+        else:
+            bg, border, text = ('#f9f9f9', 'rgba(0, 0, 0, 0.10)', '#1f1f1f')
+            hover_bg = 'rgba(0, 0, 0, 0.05)'
+        return f'''
+        QListWidget {{ background: transparent; outline: none; }}
+        QListWidget::item {{
+            background: {bg};
+            border: 1px solid {border};
+            border-left: 3px solid {accent};
+            border-radius: 4px;
+            padding: 3px 14px;
+            margin: 0px 5px;
+            color: {text};
+            font-size: 13px;
+        }}
+        QListWidget::item:hover {{
+            background: {hover_bg};
+            border: 1px solid {accent};
+            border-left: 3px solid {accent};
+        }}
+        QListWidget::item:selected {{
+            border: 1px solid {accent};
+            border-left: 3px solid {accent};
+            background: {bg};
+        }}
+        '''
 
     def __init__(self, config):
         self._config = config
@@ -81,8 +87,7 @@ class ExchangeOrderCard(MultiLineSettingCard):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._list.setFixedHeight(36)
         self._list.setMinimumWidth(360)
-        self._list.setStyleSheet(
-            self._PILL_QSS_DARK if isDarkTheme() else self._PILL_QSS_LIGHT)
+        self._list.setStyleSheet(self._pill_qss())
         self._list.model().rowsMoved.connect(self._on_reordered)
         self._reload(config.exchange_order)
 
