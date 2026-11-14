@@ -7,9 +7,6 @@ from sr_od.context.sr_context import SrContext
 from sr_od.gui.interface.one_dragon.sr_echo_of_war_setting_interface import (
     EchoOfWarSettingInterface,
 )
-from sr_od.gui.interface.one_dragon.sr_monthly_embers_exchange_setting_interface import (
-    MonthlyEmbersExchangeSettingInterface,
-)
 from sr_od.gui.interface.one_dragon.sr_od_setting_interface import SrOdSettingInterface
 from sr_od.gui.interface.one_dragon.sr_one_dragon_run_interface import (
     SrOneDragonRunInterface,
@@ -35,5 +32,4 @@ class SrOneDragonInterface(PivotNavigatorInterface):
         self.add_sub_interface(SrOneDragonRunInterface(self.ctx))
         self.add_sub_interface(PowerPlanInterface(self.ctx))
         self.add_sub_interface(EchoOfWarSettingInterface(self.ctx))
-        self.add_sub_interface(MonthlyEmbersExchangeSettingInterface(self.ctx))
         self.add_sub_interface(SrOdSettingInterface(self.ctx))
