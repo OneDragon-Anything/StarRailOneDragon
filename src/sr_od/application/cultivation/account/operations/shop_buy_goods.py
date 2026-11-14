@@ -90,6 +90,10 @@ _SC_TAB_LIGHT_CONE: str = 'light_cone_redemption'
 _CT_ANCHOR: str = '文本-战略合作协议'
 _POST_MAX_ROUNDS: int = 40
 """后购收尾的手动轮数上限(覆盖最长展示动画;框架节点预算仅作兜底)"""
+_CONFIRM_MAX_WAIT_ROUNDS: int = 12
+"""确认后弹窗未消失的连等封顶(轮):until_not 等待是 round_wait 无界
+(WAIT 不烧重试预算),弹窗不消失(确认按钮禁用等异形)会挂死一条龙——
+封顶转 FAIL,不判定购买结果(对照 back_to_normal_world_plus 同型教训)"""
 _SKIP_POS: Point = Point(1875, 68)
 """后购画面右上角通用点击点:展示画面=跳过键,获得物品弹窗=「点击空白处
 关闭」的可关区,一笔通吃;商店页识别命中时不会走到此点击(该位置在商店页
@@ -127,6 +131,12 @@ _SCROLL_SAME_TEXT_ROUNDS: int = 2
 
 # 卡不可购态角标关键词:命中即 fail,不进弹窗(售罄弹窗确认按钮禁用,进了也无法购买)
 _BADGE_UNAVAILABLE_KEYWORDS: tuple[str, ...] = ('已售罄', '已达上限', '未解锁')
+# 角标关键词 → fail_status(语义分支用;已达上限/未解锁同属「卡面不可购」)
+_BADGE_FAIL_STATUS: dict[str, str] = {
+    '已售罄': 'SOLD_OUT',
+    '已达上限': 'CARD_UNAVAILABLE',
+    '未解锁': 'CARD_UNAVAILABLE',
+}
 # 弹窗状态横条(与列表角标同源的不可购提示,弹窗内出现时点取消诚实失败)
 _POPUP_STATUS_KEYWORDS: tuple[tuple[str, str], ...] = (
     ('已售罄', 'SOLD_OUT'),
@@ -306,7 +316,16 @@ class ExchangeShopBuyGoods(SrOperation):
     - ``PURCHASED``:购买完成回列表页,data 带 ``goods``/``tab``/``bought``
       (实际购买数量)/``unit_price``(单价)/``balance_left``(购买后余额)/
       ``monthly_left``(期限限购商品的购买后剩余额度;不限量商品为 None);
-    失败:起点不在商店页、商品标识符未注册、tab 切换失败、商品不在列表
+    失败分类(供编排分支的机器可读语义,``status`` 保持人读诊断句不变):
+    失败出口的 data 带 ``fail_status`` 与英文标识符口径的 ``goods``——
+    ``SOLD_OUT``=本期额度已尽(列表角标已售罄/弹窗横条已售罄)、
+    ``CARD_UNAVAILABLE``=卡面不可购(角标已达上限/未解锁)、
+    ``NOT_FOUND``=商品不在列表(到底未命中/首屏未命中/滚动上限)、
+    ``INSUFFICIENT_MATERIALS``=余额/额度不够换满(弹窗横条兑换材料不足/
+    余额预判/超月限预判);其余失败 data 无 ``fail_status`` = 非预期失败
+    (起点不在商店页/弹窗商品名不符/确认未生效/余额终验不符/画面未回
+    商店页等,编排方按中止处理)。
+    其余失败:起点不在商店页、商品标识符未注册、tab 切换失败、商品不在列表
     (滚动到底未命中)、目标卡不可购(已售罄/已达上限/未解锁)、弹窗状态
     横条(售罄/兑换材料不足)、数量超月限或超余额(不截断)、数量调不到
     目标、确认未生效、余额差值终验不符、确认后画面未回商店页(此时购买
@@ -385,6 +404,8 @@ class ExchangeShopBuyGoods(SrOperation):
         """单价探测点击前的弹窗价格(None = 未在探测;下一轮价差=单价,0=已到顶)"""
         self._post_rounds: int = 0
         """后购收尾已用轮数(达 _POST_MAX_ROUNDS 判画面不收敛,带语境失败)"""
+        self._confirm_wait_rounds: int = 0
+        """确认后弹窗未消失的连等轮数(达 _CONFIRM_MAX_WAIT_ROUNDS 转 FAIL)"""
         SrOperation.__init__(self, ctx, op_name=gt('商店购买'),
                              node_max_retry_times=60)
 
@@ -528,19 +549,24 @@ class ExchangeShopBuyGoods(SrOperation):
                     and self._same_text_rounds >= _SCROLL_SAME_TEXT_ROUNDS):
                 return self.round_fail(
                     f'列表已到底,未找到商品 {self._goods_cn}({self._goods_cn} '
-                    f'可能未在售或本期额度形态变化)')
+                    f'可能未在售或本期额度形态变化)',
+                    data={'goods': self._goods, 'fail_status': 'NOT_FOUND'})
             if not self._scroll_search:
                 return self.round_fail(
-                    f'首屏未找到商品 {self._goods_cn}(scroll_search=False 不滚动)')
+                    f'首屏未找到商品 {self._goods_cn}(scroll_search=False 不滚动)',
+                    data={'goods': self._goods, 'fail_status': 'NOT_FOUND'})
             if self._scroll_rounds >= _SCROLL_MAX_ROUNDS:
                 return self.round_fail(
-                    f'滚动 {_SCROLL_MAX_ROUNDS} 次仍未找到商品 {self._goods_cn},中止')
+                    f'滚动 {_SCROLL_MAX_ROUNDS} 次仍未找到商品 {self._goods_cn},中止',
+                    data={'goods': self._goods, 'fail_status': 'NOT_FOUND'})
             return self.round_success(status='SCROLL_NEXT', wait=0.5)
         unavailable = self._read_badge_state(card_rect)
         if unavailable is not None:
             return self.round_fail(
                 f'目标商品卡不可购(角标: {unavailable})', data={
-                    'goods': self._goods_cn})
+                    'goods': self._goods,
+                    'fail_status': _BADGE_FAIL_STATUS.get(unavailable, 'CARD_UNAVAILABLE'),
+                })
         self._card_rect = card_rect
         self._click_rect_center(self._shop_screen, card_rect)
         return self.round_retry('已点商品卡,下一轮验证兑换弹窗', wait=1.5)
@@ -593,7 +619,8 @@ class ExchangeShopBuyGoods(SrOperation):
             keyword, status = status_bar
             self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
             return self.round_fail(
-                f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
+                f'弹窗出现不可购横条「{keyword}」,已点取消({status})', data={
+                    'goods': self._goods, 'fail_status': status})
         price = parse_count(self._popup_price_text(anchor))
         current: int | None = parse_count(
             self._area_count_text(self.last_screenshot, _POPUP_SCREEN, _AREA_COUNT))
@@ -638,7 +665,9 @@ class ExchangeShopBuyGoods(SrOperation):
                     and self._count * self._unit_price > self._pre_balance):
                 return self.round_fail(
                     f'余额不足:购买 {self._count} × {self._unit_price} 超过余额 '
-                    f'{self._pre_balance},不截断执行;如需拉满请传 count=None')
+                    f'{self._pre_balance},不截断执行;如需拉满请传 count=None',
+                    data={'goods': self._goods,
+                          'fail_status': 'INSUFFICIENT_MATERIALS'})
         if self._count is None:
             # 拉满点滑条到顶后重复点击无效;但「数量同值」有两种可能——已到顶,
             # 或该次点击丢失。首轮同值再点一次,连续两轮同值才判到顶
@@ -659,7 +688,9 @@ class ExchangeShopBuyGoods(SrOperation):
         if self._monthly_left is not None and self._count > self._monthly_left:
             return self.round_fail(
                 f'购买 {self._count} 超本期限剩余额度({self._monthly_left}),'
-                f'不截断执行;如需全换请传 count=None(拉满)')
+                f'不截断执行;如需全换请传 count=None(拉满)',
+                data={'goods': self._goods,
+                      'fail_status': 'INSUFFICIENT_MATERIALS'})
         if current == self._count:
             self._bought = current
             return self.round_success(status='COUNT_READY', wait=1)
@@ -686,12 +717,19 @@ class ExchangeShopBuyGoods(SrOperation):
                 return self.round_retry('确认未生效,礼包弹窗仍在,重点确认', wait=1.5)
             return self.round_success(status='CONFIRMED', wait=1.5)
         if self._exchange_popup_visible():
+            if self.node_clicked:
+                self._confirm_wait_rounds += 1
+                if self._confirm_wait_rounds > _CONFIRM_MAX_WAIT_ROUNDS:
+                    return self.round_fail(
+                        '已点确认但兑换弹窗未消失(连等封顶)——确认可能未生效,'
+                        '不判定购买结果')
             status_bar = self._popup_status_bar()
             if status_bar is not None:
                 keyword, status = status_bar
                 self._click_area_center(_POPUP_SCREEN, _AREA_CANCEL)
                 return self.round_fail(
-                    f'弹窗出现不可购横条「{keyword}」,已点取消({status})')
+                    f'弹窗出现不可购横条「{keyword}」,已点取消({status})', data={
+                        'goods': self._goods, 'fail_status': status})
             result = self.round_by_find_and_click_area(
                 self.last_screenshot, _POPUP_SCREEN, _AREA_CONFIRM,
                 until_not_find_all=[(_POPUP_SCREEN, _AREA_POPUP_MARK)],
