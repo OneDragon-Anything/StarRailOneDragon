@@ -15,6 +15,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.config.config_item import ConfigItem
+from one_dragon.base.operation.application import application_const
 from sr_od.application.echo_of_war.echo_of_war_config import (
     EchoOfWarConfig,
     get_war_mission_list,
@@ -321,11 +322,14 @@ def _monthly_embers_exchange_get_config(
     ctx: 'SrContext', instance_idx: int | None, group_id: str | None,
 ) -> object:
     # 经 run_context 取 factory 缓存实例(与 app 运行/GUI 同一份,写立即生效);
-    # instance/group 空值由 run_context 落到当前运行值
+    # 空 instance/group 自行落默认(一条龙外调用时 current_group_id 为空,
+    # 不能依赖 run_context 的空值回退)
+    idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
+    gid = group_id if group_id else application_const.DEFAULT_GROUP_ID
     return ctx.run_context.get_config(
         monthly_embers_exchange_const.APP_ID,
-        instance_idx=instance_idx,
-        group_id=group_id,
+        instance_idx=idx,
+        group_id=gid,
     )
 
 

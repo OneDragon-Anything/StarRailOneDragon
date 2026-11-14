@@ -16,6 +16,15 @@ class MonthlyEmbersExchangeConfig(ApplicationConfig):
             instance_idx=instance_idx,
             group_id=group_id,
         )
+        # 默认值补进内存 data(不落盘):MCP get_config 读原始 data 字典,
+        # 缺省键会读到 null 误导调用方(describe 的默认值语义同样靠它)
+        for field, default in (
+                ('special_pass_enabled', True), ('special_pass_priority', 10),
+                ('pass_enabled', True), ('pass_priority', 20),
+                ('tracks_of_destiny_enabled', True),
+                ('tracks_of_destiny_priority', 30)):
+            if field not in self.data:
+                self.data[field] = default
 
     @property
     def special_pass_enabled(self) -> bool:
