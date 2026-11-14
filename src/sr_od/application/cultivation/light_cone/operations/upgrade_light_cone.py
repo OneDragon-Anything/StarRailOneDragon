@@ -266,14 +266,12 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='入口核对', status='CAN_UPGRADE')
     @operation_node(name='打开等级提升', node_max_retry_times=6)
     def open_ascend(self) -> OperationRoundResult:
-        """光锥 TAB 点「强化」→ 等级提升界面(until 双锚:标题+升级 TAB)。"""
+        """光锥 TAB 点「强化」→ 等级提升界面(until=标题锚:标题唯一,且左列
+        第三项随晋阶状态在 升级/晋阶 间改名,不能作 until 锚)。"""
         screen = self.last_screenshot
         return self.round_by_find_and_click_area(
             screen, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
-            until_find_all=[
-                (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                (_LC_ASCEND_SCREEN, 'TAB-升级'),
-            ],
+            until_find_all=[(_LC_ASCEND_SCREEN, '标题-光锥详情')],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
 
@@ -347,10 +345,7 @@ class UpgradeLightConeOp(SrOperation):
             if self.round_by_find_area(screen, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN).is_success:
                 result = self.round_by_find_and_click_area(
                     screen, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
-                    until_find_all=[
-                        (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                        (_LC_ASCEND_SCREEN, 'TAB-升级'),
-                    ],
+                    until_find_all=[(_LC_ASCEND_SCREEN, '标题-光锥详情')],
                     pre_delay=0.5, success_wait=1.5, retry_wait=2,
                 )
                 if result.is_success:
@@ -721,10 +716,7 @@ class UpgradeLightConeOp(SrOperation):
                 if seen == self._char_name:
                     result = self.round_by_find_and_click_area(
                         self.last_screenshot, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
-                        until_find_all=[
-                            (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                            (_LC_ASCEND_SCREEN, 'TAB-升级'),
-                        ],
+                        until_find_all=[(_LC_ASCEND_SCREEN, '标题-光锥详情')],
                         pre_delay=0.5, success_wait=1.5, retry_wait=2,
                     )
                     if result.is_success:
@@ -753,10 +745,7 @@ class UpgradeLightConeOp(SrOperation):
             return self.round_fail(f'切光锥 TAB 失败: {tab_result.status}')
         result = self.round_by_find_and_click_area(
             self.last_screenshot, _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN,
-            until_find_all=[
-                (_LC_ASCEND_SCREEN, '标题-光锥详情'),
-                (_LC_ASCEND_SCREEN, 'TAB-升级'),
-            ],
+            until_find_all=[(_LC_ASCEND_SCREEN, '标题-光锥详情')],
             pre_delay=0.5, success_wait=1.5, retry_wait=2,
         )
         if result.is_success:
