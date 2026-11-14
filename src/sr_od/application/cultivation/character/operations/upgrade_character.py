@@ -53,7 +53,6 @@ farm_dungeon 控制:False(默认,安全)= 判停收尾(零额外消耗);True =
 """
 
 import re
-import time
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -62,6 +61,7 @@ from one_dragon.base.screen import screen_utils
 from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.cultivation import upgrade_common
 from sr_od.challenge_mission.resume_from_battle_fail import ResumeFromBattleFail
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.select_character import SelectCharacterOp
@@ -70,15 +70,16 @@ from sr_od.operations.switch_character_tab import SwitchCharacterTabOp
 
 _DETAIL_SCREEN: str = '角色-详情'
 _ASCEND_SCREEN: str = '角色-等级提升'
-_CHALLENGE_SCREEN: str = '挑战副本'
+_CHALLENGE_SCREEN: str = upgrade_common.CHALLENGE_SCREEN
 _WORLD_SCREEN: str = '大世界-普通'
 _BATTLE_SCREEN: str = '战斗画面'
 _BATTLE_FAIL_SCREEN: str = '大世界-战斗失败'
 # 快速刷取两弹窗独立建档(选次数/结果两个弹窗,标题同名不同位,各自
 # id_mark=标题;模态盖住副本 id_mark,识别与交互都走弹窗画面)
-_FAST_FARM_DIALOG: str = '快速刷取弹窗'
-_FAST_FARM_RESULT: str = '快速刷取结果弹窗'
-_RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
+_FAST_FARM_DIALOG: str = upgrade_common.FAST_FARM_DIALOG_SCREEN
+_FAST_FARM_RESULT: str = upgrade_common.FAST_FARM_RESULT_SCREEN
+_RESOURCE_WINDOW_SCREEN: str = upgrade_common.RESOURCE_WINDOW_SCREEN
+_POWER_DIALOG: str = upgrade_common.POWER_DIALOG_SCREEN
 _LIST_SCREEN: str = '角色-列表'
 
 # 升级/晋阶执行的横幅+动画稳定等待(实测约 2s,点空白后再收尾)
@@ -93,6 +94,20 @@ _FARM_TICKET_PER: int = 3
 # 详情页入口按钮两 area 同 rect 不同 text,OCR find 天然互斥
 _ENTRY_BTN_RISE: str = '按钮-升级'
 _ENTRY_BTN_ASCEND: str = '按钮-晋阶'
+
+# 本线接入参数(线私有值单一源;消耗常量定义保留在上方,spec 只作入参搬运)
+_SPEC = upgrade_common.UpgradeLineSpec(
+    log_prefix='晋阶',
+    stop_status='MATERIAL_CAPPED',
+    ascend_screen=_ASCEND_SCREEN,
+    dungeon_title_areas=('标题-拟造花萼', '标题-凝滞虚影'),
+    name_read_screens=(_DETAIL_SCREEN, _ASCEND_SCREEN),
+    reentry_hint='手动刷取链需凭入口读名在返回后重选角色,'
+                 '左上读名区 OCR 未读到(就地起跑)——'
+                 '请从目标角色详情 TAB 重新发起,或改用券路线',
+    trailblaze_per=_FARM_TRAILBLAZE_PER,
+    ticket_per=_FARM_TICKET_PER,
+)
 
 
 class UpgradeCharacterOp(SrOperation):
@@ -146,10 +161,7 @@ class UpgradeCharacterOp(SrOperation):
             调用方可续跑)。默认 1 = 只刷一轮(拉满),回来不够即判停报告
             ——多轮连刷的缺口应由调用方按剩余预算显式续跑。
         """
-        if farm_times_per_round == 0 or farm_times_per_round < -1:
-            raise ValueError(f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')
-        if farm_rounds_max < 1:
-            raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
+        upgrade_common.validate_farm_params(farm_times_per_round, farm_rounds_max)
         self.fill_generic: bool = fill_generic
         self.farm_dungeon: bool = farm_dungeon
         self.use_fast_ticket: bool = use_fast_ticket
@@ -328,7 +340,7 @@ class UpgradeCharacterOp(SrOperation):
             for probe_screen, probe_anchor, probe_status in (
                     (_FAST_FARM_DIALOG, '标题-快速刷取弹窗', 'LEFTOVER'),
                     (_FAST_FARM_RESULT, '标题-快速刷取弹窗', 'LEFTOVER'),
-                    ('开拓力补充弹窗', '标题-开拓力补充弹窗', 'LEFTOVER'),
+                    (_POWER_DIALOG, '标题-开拓力补充弹窗', 'LEFTOVER'),
                     (_BATTLE_SCREEN, '按钮-退出关卡', 'LEFTOVER'),
                     (_CHALLENGE_SCREEN, '挑战按钮', 'LEFTOVER'),
                     (_ASCEND_SCREEN, '标题-等级提升', 'ALREADY_ASCEND'),
@@ -671,7 +683,7 @@ class UpgradeCharacterOp(SrOperation):
         # 本轮未成交,作废次数记录(WAIT 循环无重试上限,不判停会空转烧穿
         # 预算;补充弹窗「确认」是星琼购开拓力,永不触碰);两弹窗都不在 =
         # 刷取进行中慢询等待;只有确认框在才执行次数设置与确认点击
-        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+        if self.round_by_find_area(screen, _POWER_DIALOG, '标题-开拓力补充弹窗').is_success:
             self._farm_times_set = 0  # 未成交未记账,本轮作废,不动历史账
             self._capped = True
             self._stop_status = 'POWER_CAPPED'
@@ -702,16 +714,7 @@ class UpgradeCharacterOp(SrOperation):
         """本轮券刷取记账(幂等):确认点击生效的两个等效证据(重入轮看到
         结果框 / helper 返回 success)共用;以 _farm_times_set 非零为未记账
         判据,记账后归零,WAIT 重入轮不会重复计。"""
-        if self._farm_times_set == 0:
-            return
-        self._farm_rounds += 1
-        self._farm_draws += self._farm_times_set
-        log.info('晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
-                 '券免战斗开拓力照扣)',
-                 self._farm_rounds, self._farm_times_set,
-                 self._farm_times_set * _FARM_TRAILBLAZE_PER,
-                 self._farm_times_set * _FARM_TICKET_PER)
-        self._farm_times_set = 0
+        upgrade_common.settle_farm_accounting(self, _SPEC)
 
     def _set_farm_times(self, target: int) -> OperationRoundResult:
         """快速刷取确认框内把次数设到目标:target=-1 = 点「^」拉满(滑条
@@ -719,43 +722,11 @@ class UpgradeCharacterOp(SrOperation):
         补差值 → OCR 复核达标即成。实际设到的值写 _farm_times_set(消耗
         统计口径:配置值 -1 是拉满指令,真实消耗以读数为准)。失败显式
         返回,交由节点预算兜底。"""
-        self._farm_times_set = 0
-        if target == -1:
-            max_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数拉满')
-            self.ctx.controller.click(max_area.rect.center)
-            time.sleep(1)  # 滑条动画
-            current = self._read_farm_times()
-            if current is None:
-                time.sleep(1)
-                current = self._read_farm_times()
-            if current is None:
-                return self.round_fail('拉满后无法读取刷取次数')
-            self._farm_times_set = current
-            log.info('晋阶: 刷取次数已拉满至 %d', current)
-            return self.round_success()
-        plus_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数加')
-        for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
-            current = self._read_farm_times()
-            if current is None:
-                return self.round_fail('无法读取确认框刷取次数')
-            if current >= target:
-                self._farm_times_set = current
-                return self.round_success()
-            self.ctx.controller.click(plus_area.rect.center)
-            time.sleep(0.4)  # 滑条动画:点击后立即复读会读到旧值再点,越过目标多耗开拓力
-        return self.round_fail(f'刷取次数未能设到 {target}')
+        return upgrade_common.set_farm_times(self, _SPEC, target)
 
     def _read_farm_times(self) -> int | None:
         """确认框「刷取次数 N」OCR 取 N(打开即游戏记忆的上次值,非恒 1)。"""
-        screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '读区-刷取次数')
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
-        for r in results:
-            m = re.search(r'\d+', str(r.data or ''))
-            if m:
-                return int(m.group())
-        return None
+        return upgrade_common.read_farm_times(self)
 
     @node_from(from_name='副本刷取', status='MANUAL_FIGHT')
     @operation_node(name='手动挑战战斗', node_max_retry_times=30)
@@ -871,10 +842,10 @@ class UpgradeCharacterOp(SrOperation):
         # 券确认刷取的两类残留弹窗(开拓力不足判停/中断现场遗留,盖住副本/
         # 养成锚致整帧识别 None):点取消清场后重入分类——补充弹窗「确认」是
         # 星琼购开拓力,永不触碰
-        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+        if self.round_by_find_area(screen, _POWER_DIALOG, '标题-开拓力补充弹窗').is_success:
             result = self.round_by_find_and_click_area(
-                screen, '开拓力补充弹窗', '按钮-取消',
-                until_not_find_all=[('开拓力补充弹窗', '标题-开拓力补充弹窗')],
+                screen, _POWER_DIALOG, '按钮-取消',
+                until_not_find_all=[(_POWER_DIALOG, '标题-开拓力补充弹窗')],
                 pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
             )
             if result.is_success:

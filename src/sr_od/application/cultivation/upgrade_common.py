@@ -1,0 +1,260 @@
+"""三升级 op(角色晋阶/光锥晋阶/行迹升级)共用 helper——域根平铺,单一源。
+
+出处:域 README §2.3 评估口径「第三份同构复制出现时评估归并」——行迹线券
+刷链落地即第三份同构,机械复制面(次数设置对/事务式记账/券确认骨架/toast
+门控/记名防线/等级读区/副本分流/开拓力守卫)按 upgrade-align-3 设计收进本
+模块。策略差异(按钮分流/计场时机/判停返回词表/收尾载体)留各线 op,不进
+helper;helper 不持状态(状态归 op 账本属性)、不做线间策略分叉。
+
+缝保留规则(测试锁前提,三条):
+1. 各线 op 私有方法保留为委托缝——签名不变、方法体改一行委托到本模块,
+   测试的 monkeypatch 目标与「包装真实现再替换」写法照常生效;
+2. helper 经首参 op 的实例属性访问一切识别/回合/账本依赖(不引用模块级
+   函数),类级桩在属性查找上生效,helper 代码在测试里自动走桩;
+3. helper 之间禁止直调:凡缝语义(读/设次数、记账、读名、守卫、副本态
+   判定等)一律经 op.<缝方法>(...) 委托,直调会绕开类级桩。
+
+消费方式:各线 op 模块以模块常量实例化一份 UpgradeLineSpec(线私有值单一
+源留在 op 模块),helper 只收引用;本模块不含 Operation 子类,不影响 op
+注册扫描;__init__.py 不暴露本模块,消费方直接 import 模块路径。
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Protocol
+
+from one_dragon.base.operation import operation as _framework_operation
+from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils.log_utils import log
+from sr_od.context.sr_context import SrContext
+
+# 滑条动画等待经框架基座模块的 time 引用而非裸 import:helper 不在 op 类族
+# MRO 内,测试 harness 的 fast_sleep 只替换基座模块与 op 类族模块的 time
+# 属性,裸 import 的 sleep 在流程测试里不会被短路(基座引用恒被替换)。
+_framework_sleep = _framework_operation.time.sleep
+
+# ---------------- 共享画面名常量(三线同值,单一源上移) ---------------- #
+# 快速刷取两弹窗/资源窗口/挑战副本/开拓力补充弹窗五画面三线共用同一建档,
+# 字面量上移消掉三份重复(笔误漂移面);area 名按 helper 需要内联于签名处。
+
+FAST_FARM_DIALOG_SCREEN: str = '快速刷取弹窗'
+FAST_FARM_RESULT_SCREEN: str = '快速刷取结果弹窗'
+RESOURCE_WINDOW_SCREEN: str = '培养资源窗口'
+CHALLENGE_SCREEN: str = '挑战副本'
+POWER_DIALOG_SCREEN: str = '开拓力补充弹窗'
+
+
+@dataclass(frozen=True)
+class UpgradeLineSpec:
+    """单线接入参数(线私有值:画面名/日志前缀/判停词/锚表/消耗常量)。
+
+    每线 op 模块以模块常量实例化一份;消耗数值的常量定义不迁移,spec 只作
+    入参搬运(域 README §6:三线消耗常量各自独立、勿互相复用)。必填字段不
+    设默认值——新线接入漏填构造期即报错,不运行期 None 传播。"""
+
+    log_prefix: str
+    """日志前缀(晋阶 / 光锥晋阶 / 行迹升级)。"""
+
+    stop_status: str
+    """材料判停返回词(char MATERIAL_CAPPED / LC LIGHT_CONE_CAPPED)。"""
+
+    ascend_screen: str
+    """养成界面画面名(角色-等级提升 / 光锥-等级提升 / 角色-行迹)。"""
+
+    dungeon_title_areas: tuple[str, ...]
+    """挑战副本画面副本类型标题锚表(编队双锚反证用;锚表内容=建档覆盖面,
+    各线保留现状,扩充归补建档批次)。"""
+
+    name_read_screens: tuple[str, ...]
+    """读名区双屏迭代序(手动路线记名用;area 未建档的画面跳过不报错)。"""
+
+    reentry_hint: str
+    """读名失败指引文案(就地起跑形态;入口形态由调用点传 hint 覆盖)。"""
+
+    trailblaze_per: int
+    """每次刷取消耗开拓力(记账日志用,常量定义留各 op 模块)。"""
+
+    ticket_per: int
+    """每次刷取消耗快速刷取券(记账日志用)。"""
+
+    farm_open_max_attempts: int = 4
+    """开窗/面板钮漏检封顶(点击尝试次数;尝试发出即增,计数 ≥ 此值判停)。"""
+
+
+class UpgradeFarmHost(Protocol):
+    """helper 所需的 op 宿主面(结构化类型,三 op 隐式满足,不继承)。
+
+    声明 helper 访问的全部成员:识别/回合接口、构造参数、账本状态与各
+    委托缝私有方法。运行时不做结构校验(结构化类型仅约束注解);trace 按
+    迁移步骤补齐同名账本字段后接入对应 helper(_farm_draws /
+    _farm_window_wait_rounds 等),部分成员(手动路线相关)仅 char/LC 具备。"""
+
+    ctx: SrContext
+    last_screenshot: object
+    farm_times_per_round: int
+    farm_dungeon: bool
+    use_fast_ticket: bool
+    _farm_rounds: int
+    _farm_draws: int
+    _farm_times_set: int
+    _farm_window_wait_rounds: int
+    _farm_dialog_wait_rounds: int
+    _capped: bool
+    _stop_status: str
+    _char_name: str | None
+
+    def screenshot(self) -> object:
+        """截取当前画面。"""
+        ...
+
+    def save_screenshot(self, prefix: str | None = None) -> str:
+        """现场留证截图(判停路径取证用)。"""
+        ...
+
+    def round_by_find_area(self, screen: object, screen_name: str,
+                           area_name: str) -> OperationRoundResult:
+        """识别查询(命中/未命中/未配置 → 对应轮次结果)。"""
+        ...
+
+    def round_by_find_and_click_area(self, screen: object, screen_name: str,
+                                     area_name: str, pre_delay: float = 0.3,
+                                     success_wait: float | None = None,
+                                     retry_wait: float | None = None,
+                                     until_find_all: list[tuple[str, str]] | None = None,
+                                     until_not_find_all: list[tuple[str, str]] | None = None,
+                                     ) -> OperationRoundResult:
+        """识别点击(带 until 时点击一次,锚验证在重入轮开头)。"""
+        ...
+
+    def round_success(self, status: str | None = None,
+                      wait: float | None = None) -> OperationRoundResult:
+        """成功轮次结果。"""
+        ...
+
+    def round_wait(self, status: str | None = None,
+                   wait: float | None = None) -> OperationRoundResult:
+        """等待轮次结果(原样重跑节点,不计重试)。"""
+        ...
+
+    def round_retry(self, status: str | None = None,
+                    wait: float | None = None) -> OperationRoundResult:
+        """重试轮次结果(计入重试预算)。"""
+        ...
+
+    def round_fail(self, status: str | None = None) -> OperationRoundResult:
+        """失败轮次结果。"""
+        ...
+
+    # -------- 委托缝私有方法(helper 经这些缝互调,禁直调兄弟 helper) -------- #
+
+    def _set_farm_times(self, target: int) -> OperationRoundResult:
+        """确认框次数设置缝(H2)。"""
+        ...
+
+    def _read_farm_times(self) -> int | None:
+        """确认框次数读数缝(H2)。"""
+        ...
+
+    def _settle_farm_accounting(self) -> None:
+        """事务式记账缝(H3)。"""
+        ...
+
+    def _read_character_name(self) -> str | None:
+        """读名缝(H6)。"""
+        ...
+
+    def _guard_unnamed_manual_farm(self, *, hint: str | None = None
+                                   ) -> OperationRoundResult | None:
+        """记名防线缝(H6)。"""
+        ...
+
+    def _in_dungeon_state(self, screen: object) -> bool:
+        """副本态判定缝(H8)。"""
+        ...
+
+
+# ---------------- H1 构造校验 ---------------- #
+
+def validate_farm_params(farm_times_per_round: int, farm_rounds_max: int) -> None:
+    """三线 __init__ 共用的 farm 参数校验(文案与拆并前逐字一致)。
+
+    trace 的 target 非空校验是线私有(行迹线专有参数),留 trace 自持。"""
+    if farm_times_per_round == 0 or farm_times_per_round < -1:
+        raise ValueError(
+            f'farm_times_per_round 须为正数或 -1(拉满), 得到 {farm_times_per_round}')
+    if farm_rounds_max < 1:
+        raise ValueError(f'farm_rounds_max 必须 >= 1, 得到 {farm_rounds_max}')
+
+
+# ---------------- H2 确认框次数设置对 ---------------- #
+
+def read_farm_times(op: UpgradeFarmHost) -> int | None:
+    """确认框「刷取次数 N」OCR 取 N(选次数弹窗共用建档,三线同区名)。"""
+    screen = op.screenshot()
+    area = op.ctx.screen_loader.get_area(FAST_FARM_DIALOG_SCREEN, '读区-刷取次数')
+    results = op.ctx.ocr_service.get_ocr_result_list(
+        image=screen, rect=area.pc_rect, crop_first=True)
+    for r in results:
+        m = re.search(r'\d+', str(r.data or ''))
+        if m:
+            return int(m.group())
+    return None
+
+
+def set_farm_times(op: UpgradeFarmHost, spec: UpgradeLineSpec,
+                   target: int) -> OperationRoundResult:
+    """确认框内把次数设到 target(三线同一算法,差异仅日志前缀):
+    target=-1 = 点「^」拉满(滑条上限,随副本类型);正数 = OCR 现读 →
+    点「+」补差 → 达标即成。实际设到的值写 op._farm_times_set(消耗统计
+    口径:配置 -1 是拉满指令,真实消耗以读数为准);入口清判据位——设置
+    失败不得残留旧值,否则重入轮拿旧判据跳过设次数直接确认(三线统一
+    收敛:原 trace 无清位,收敛无行为变化——其调用点前置判据非零才进本
+    函数且失败路径全部显式失败,不存在失败重入;统一防未来接入点踩残留)。"""
+    op._farm_times_set = 0
+    if target == -1:
+        max_area = op.ctx.screen_loader.get_area(
+            FAST_FARM_DIALOG_SCREEN, '按钮-刷取次数拉满')
+        op.ctx.controller.click(max_area.rect.center)
+        _framework_sleep(1)  # 滑条动画
+        current = op._read_farm_times()
+        if current is None:
+            _framework_sleep(1)
+            current = op._read_farm_times()
+        if current is None:
+            return op.round_fail('拉满后无法读取刷取次数')
+        op._farm_times_set = current
+        log.info('%s: 刷取次数已拉满至 %d', spec.log_prefix, current)
+        return op.round_success()
+    plus_area = op.ctx.screen_loader.get_area(
+        FAST_FARM_DIALOG_SCREEN, '按钮-刷取次数加')
+    for _ in range(target + 3):  # 点数上界 = 目标+3(防 OCR 偏差死循环)
+        current = op._read_farm_times()
+        if current is None:
+            return op.round_fail('无法读取确认框刷取次数')
+        if current >= target:
+            op._farm_times_set = current
+            return op.round_success()
+        op.ctx.controller.click(plus_area.rect.center)
+        # 滑条动画:点击后立即复读会读到旧值再点,越过目标多耗开拓力
+        _framework_sleep(0.4)
+    return op.round_fail(f'刷取次数未能设到 {target}')
+
+
+# ---------------- H3 事务式记账 commit ---------------- #
+
+def settle_farm_accounting(op: UpgradeFarmHost, spec: UpgradeLineSpec) -> None:
+    """本轮券刷取记账(幂等):以 op._farm_times_set 非零为未记账判据,
+    记账后归零——WAIT 重入轮不会重复计。_farm_draws 语义 = 券刷累计次数
+    (确认框实际设到的值),与开拓力/券消耗记账共用口径。"""
+    if op._farm_times_set == 0:
+        return
+    op._farm_rounds += 1
+    op._farm_draws += op._farm_times_set
+    log.info('%s: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
+             '券免战斗开拓力照扣)',
+             spec.log_prefix, op._farm_rounds, op._farm_times_set,
+             op._farm_times_set * spec.trailblaze_per,
+             op._farm_times_set * spec.ticket_per)
+    op._farm_times_set = 0
