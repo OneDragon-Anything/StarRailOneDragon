@@ -986,7 +986,31 @@ class Operation(OperationBase):
         crop_first: bool = False,
         center_x: bool = False,
     ) -> OperationRoundResult:
-        """在屏幕上查找并点击目标区域。
+        """在屏幕上找到目标区域并点击。
+
+        不带 until（until_find_all 与 until_not_find_all 均为 None）：
+        点击成功即 round_success，没有画面转移验证——「点了」≠「成了」，
+        需验证转移时必须传 until。
+
+        带 until：点击成功后返回 round_wait，每轮先验证锚、未满足则再次
+        点击，直到满足才 round_success。until_find_all 要求全部锚出现；
+        until_not_find_all 要求全部锚消失。锚验证仅在节点已成功点击过
+        至少一次后进行（node_clicked 守卫，首轮必先点击）。
+
+        引擎重入（带 until 必读）：round_wait 重跑的是整个节点函数，
+        不只是本函数——本函数调用之前的节点代码每轮重入执行，记账类
+        副作用必须幂等或挪到确认生效之后。
+
+        等待的失败出口：等待中点击目标消失（画面过渡）返回 round_retry
+        计入重试预算，耗尽由引擎转 FAIL；而「点击恒成功但锚恒不出现」
+        是 round_wait 无界，节点需自设连等封顶。
+
+        纯定位区（text 与 template 均为空的 area）恒返回点击成功，在
+        任何画面上都「成功」——不带 until 即盲成功（源头行为见
+        screen_utils.find_and_click_area）。
+
+        其余返回：未找到区域 / 点击失败 / 未知状态 → round_retry；
+        未指定画面区域 / 区域未配置 → round_fail。
 
         Args:
             screen: 截图图像。默认为None（将截取新截图）。
