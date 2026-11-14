@@ -197,7 +197,7 @@ class WarpOp(SrOperation):
           是中央点击落在可点击的转化卡面上导致的）：点其「按钮-关闭」自愈
           返回展示流。
         - 其他未识别帧（逐件展示/抽卡动画）：点右上角**跳过**直达总览页，
-          等 2s 重判。跳过与总览页「关闭」同位——点击安全性由分支顺序保证：
+          等 3s 重判。跳过与总览页「关闭」同位——点击安全性由分支顺序保证：
           总览页在上方精确分支已分流，走到本分支 = 左上「结果展示」标题未
           命中 = 非总览页，右上角此刻不可能是关闭；未识别帧点击前存图留证
           （同位误关的审计线索）。
@@ -216,11 +216,11 @@ class WarpOp(SrOperation):
         if current == _CHAR_DETAIL_SCREEN:
             self._click_area_center(_CHAR_DETAIL_SCREEN, '按钮-关闭')
             return self.round_retry('角色-详情误入,自愈关闭后重判', wait=1.5)
-        # 未识别帧：右上角跳过（安全性依据见 docstring 分流说明），等 2s 重判
+        # 未识别帧：右上角跳过（安全性依据见 docstring 分流说明），等 3s 重判
         shot = self.save_screenshot(prefix='warp_result_skip')
         self._click_area_center(_WARP_SCREEN_RESULT, '按钮-跳过')
         return self.round_retry(
-            f'逐件展示未结束,右上角跳过(存图={shot or "无"}),等待重判', wait=2)
+            f'逐件展示未结束,右上角跳过(存图={shot or "无"}),等待重判', wait=3)
 
     def _click_area_center(self, screen_name: str, area_name: str) -> None:
         """点指定 area 中心（press_time=0.1，点击有效性由调用方轮询验证）。"""
