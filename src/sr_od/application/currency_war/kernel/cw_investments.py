@@ -3855,6 +3855,31 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '群攻星徽': GiftGrant(chars_immediate=('翡翠',)),
     '能量星徽': GiftGrant(chars_immediate=('星期日',)),
     '追击星徽': GiftGrant(chars_immediate=('飞霄',)),
+    # —— V4.7 新增单件(12 张,序 = 官方 id 序)——
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '仙舟舰队星徽': GiftGrant(chars_immediate=('桂乃芬',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '奇兽花园星徽': GiftGrant(chars_immediate=('那刻夏',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '幻月游戏星徽': GiftGrant(chars_immediate=('火花',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '开拓银轨星徽': GiftGrant(chars_immediate=('瓦尔特',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '星核猎手星徽': GiftGrant(chars_immediate=('流萤',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '小小巨人星徽': GiftGrant(chars_immediate=('刻律德菈',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '梦境交织星徽': GiftGrant(chars_immediate=('黑天鹅',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '黄金大饭店星徽': GiftGrant(chars_immediate=('万敌',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '连击星徽': GiftGrant(chars_immediate=('那刻夏',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '召唤星徽': GiftGrant(chars_immediate=('景元',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '反击星徽': GiftGrant(chars_immediate=('云璃',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '守护星徽': GiftGrant(chars_immediate=('真珠',)),
     # 星徽套组族(棱彩):「获得1个【X星徽】,和1个【角色】,以及1个【装备】」
     '击破星徽套组': GiftGrant(chars_immediate=('阮·梅',)),
     '持续伤害星徽套组': GiftGrant(chars_immediate=('卡芙卡',)),
@@ -3863,6 +3888,33 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     '群攻星徽套组': GiftGrant(chars_immediate=('翡翠',)),
     '能量星徽套组': GiftGrant(chars_immediate=('星期日',)),
     '追击星徽套组': GiftGrant(chars_immediate=('飞霄',)),
+    # —— V4.7 新增套组(12 张,序 = 官方 id 序;卡文装备半句不在本表辖域)——
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '仙舟舰队星徽套组': GiftGrant(chars_immediate=('桂乃芬',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '奇兽花园星徽套组': GiftGrant(chars_immediate=('那刻夏',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '幻月游戏星徽套组': GiftGrant(chars_immediate=('火花',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '开拓银轨星徽套组': GiftGrant(chars_immediate=('瓦尔特',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '星核猎手星徽套组': GiftGrant(chars_immediate=('流萤',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '小小巨人星徽套组': GiftGrant(chars_immediate=('刻律德菈',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '梦境交织星徽套组': GiftGrant(chars_immediate=('黑天鹅',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '黄金大饭店星徽套组': GiftGrant(chars_immediate=('万敌',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '连击星徽套组': GiftGrant(chars_immediate=('那刻夏',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '召唤星徽套组': GiftGrant(chars_immediate=('景元',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '反击星徽套组': GiftGrant(chars_immediate=('云璃',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '守护星徽套组': GiftGrant(chars_immediate=('真珠',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    '欢愉星徽套组': GiftGrant(chars_immediate=('火花',)),
     # 阵容专属机制强化族:「获得…【角色】」即时直读
     # 兼即时效果条目与条件效果条目(条件效果条目 = 「获得3星【黑塔】时
     # 获得【大黑塔】」再得);216 张【黑塔】入商店系可购买供给非发放,不入册;
@@ -3881,6 +3933,13 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # —— 反扫补网 4 条(无角色绑定的「获得…」直读发放)——
     '佩佩驾到': GiftGrant(chars_immediate=('佩佩',)),
     '招财狗': GiftGrant(chars_immediate=('佩佩',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    # 佩佩=系统单位非角色,细化归建模期
+    '伙伴总动员': GiftGrant(chars_immediate=('佩佩',)),
+    # V4.7 换季机械事实直读登记(卡文『获得N个【名】』直读,零效果建模判断)
+    # 奇美能量域未建模挂账,本条目仅辖直读发放半句(「奇美拉投影仪」道具
+    # 不在 BENCH_ITEM_KINDS 闭集,不登 items 通道)
+    '奇美成长记': GiftGrant(chars_immediate=('那刻夏',)),
     # —— 开箱分支(占席道具发放;效果原文对账 id = cw_invest_data.
     # PLAZA_AUGMENTS,首例:战术义眼++ 350403/保守派 351501/快请专家·彩
     # 360201/军火贸易 101401/军火贸易+ 101402,含箱条目的卡随批扩员;跨组对账:
