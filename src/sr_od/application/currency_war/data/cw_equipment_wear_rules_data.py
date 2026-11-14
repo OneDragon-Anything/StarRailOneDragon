@@ -159,7 +159,9 @@ def check_equipment_wear_rule_coverage() -> list[str]:
                 f'「{_COVERAGE_KEYWORD}」,前置措辞漂移,须对拍后更新)')
         if entry.prose_ref != name:
             warnings.append(f'结构化前置条目[{name}]名参照键错位(prose_ref={entry.prose_ref})')
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_dropped_names import (
+        GUARD_CHARACTER_ROSTER,
+    )
     for name in ITEM_WEAR_GATES:
         if name not in EQUIPMENTS:
             warnings.append(f'件级穿戴门条目[{name}]在装备注册表无同名行(孤儿条目)')
@@ -169,6 +171,6 @@ def check_equipment_wear_rule_coverage() -> list[str]:
     for _gate in CATEGORY_WEAR_GATES.values():
         _gate_chars.update(_gate)
     for _char in sorted(_gate_chars):
-        if _char not in CHARACTERS:
+        if _char not in GUARD_CHARACTER_ROSTER:
             warnings.append(f'可穿性门白名单角色[{_char}]不在角色注册表(错字或改名)')
     return warnings

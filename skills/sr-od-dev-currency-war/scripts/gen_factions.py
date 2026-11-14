@@ -8,7 +8,7 @@ V4.4 过滤;采集器 .debug/temp/cw_trait_probe_14*.py 版本更新重跑)
   1. **tiers 对拍**:traits.json 的激活阈值逐键比 `cw_factions.FACTIONS[name].tiers`
      (键空间 33↔33,含命运圣杯);不一致打印 diff 并**非零退出**。
   2. **成员对拍**:官方成员名单逐键比 `chars_by_faction(name)` 集合(成员关系单一源 =
-     CHARACTERS 自报 factions/flows;命运圣杯官方未提供 roles,以 FACTIONS 为准跳过);
+     CHARACTERS 自报 factions/schools;命运圣杯官方未提供 roles,以 FACTIONS 为准跳过);
      不一致打印 diff 并**非零退出**。
   3. **stdout 效果对拍输出**:逐羁绊渲染 effect_rich 全文,供版本更新时人工
      对拍 `cw_factions.FACTIONS` 的 desc(效果全文单一源在注册表 desc 字段)。
@@ -155,10 +155,10 @@ def main() -> None:
             continue
         n_roles += 1
         # 派生集合 = 阵营/流派成员(chars_by_faction)+ 独立羁绊成员(Character.independent,
-        # 独立羁绊不在 factions/flows 里,chars_by_faction 覆盖不到)
+        # 独立羁绊不在 factions/schools 里,chars_by_faction 覆盖不到)
         from sr_od.application.currency_war.data.cw_chars import CHARACTERS
         derived = {c.name for c in chars_by_faction(name)}
-        derived |= {c.name for c in CHARACTERS.values() if c.independent == name}
+        derived |= {c.name for c in CHARACTERS if c.independent == name}
         extra = official - derived
         missing = derived - official
         for m in sorted(extra):

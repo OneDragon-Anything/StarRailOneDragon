@@ -9,8 +9,9 @@
 三段搜索结构(正本 §1.2):
 - 段 0 枚举准备(build_deploy_panel 装配):唯一性键归一(开拓者各排
   形态互斥)、同键多副本取最高星(落场后形态:银狼 3★ 上场即 1★)、
-  召唤物/系统件(cost=0)固定后台剔除、未知身份件保留现位不入枚举
-  (禁挤)、上场锁过滤(虚拟件 uid=None 名命中锁名单按
+  召唤物/系统件(SYSTEM_UNITS 注册段)固定后台剔除、未知身份件保留现位
+  不入枚举(禁挤)、上场锁过滤(虚拟件 uid=None 名
+  命中锁名单按
   fail-closed,D-8 事故复活路径封死;无上阵窗口硬约束——entry_signals
   整体退役,上场时机 = 骨架/L1 完成度自适应);
 - 段 1 圈人:候选族按窗口分域(未终局锁定帧任意位面 = 过渡层组合条目
@@ -850,12 +851,13 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
     """搜索面板生产装配(状态容器读口全列一次现取;正本 §1.1 虚拟面板字段域)。
 
     段 0 过滤在此执行:上场锁(uid 命中记录;虚拟件 uid=None 名
-    命中锁名单即视为锁,fail-closed)/召唤物系统件(cost=0,固定后台
+    命中锁名单即视为锁,fail-closed)/召唤物系统件(SYSTEM_UNIT_ROSTER,
+    固定后台
     末位剔除)/未知身份件不入枚举但占 K 占格(正本 §1.2 段 0)。
     **无窗口硬约束**(entry_signals 整体退役,2026-11 用户终裁):上场
     时机 = 骨架/L1 完成度自适应(终局件在未成型面板自然被 L1 递减挤出)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import SYSTEM_UNIT_ROSTER
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     from sr_od.application.currency_war.kernel.cw_economy import (
         effective_cost,
@@ -936,11 +938,10 @@ def build_deploy_panel(session: StrategySession, gs: GameState,
                 if row == 'back':
                     unknown_in_back += 1
                 continue
-            ch = CHARACTERS.get(cid)
-            if ch is not None and not ch.cost:
-                # 召唤物/系统件(cost=0,狸小虎族):固定后台,剔除出
-                # 枚举,占 K 占格(判定 = predicates.is_unsellable_
-                # system_unit 同一 cost=0 口径,单一源对齐)。
+            if cid in SYSTEM_UNIT_ROSTER:
+                # 召唤物/系统件(狸小虎族,注册表 SYSTEM_UNITS 段):固定
+                # 后台,剔除出枚举,占 K 占格(判定 = predicates
+                # .is_unsellable_system_unit 同一系统单位口径,单一源对齐)。
                 system_on_board += 1
                 if row == 'back':
                     system_in_back += 1

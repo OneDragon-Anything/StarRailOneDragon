@@ -76,12 +76,12 @@ def _crosses_engine_tier(gs: GameState, name: str) -> bool:
     ∩ TRANSITION_TRAITS(与 scoring._cand_system_bonds 同口径)。
     A-1 刀法:仅此判定为真的件计入容量,未跨档期权件(q<1,`w469_convergence_ab/`
     已实测死法)不计。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         TRANSITION_TRAITS,
         engines_count,
     )
-    ch = CHARACTERS.get(name)
+    ch = get_char(name)
     if ch is None:
         return False
     bonds = set(ch.factions or ()) | set(ch.schools or ())

@@ -68,7 +68,7 @@ from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_POOL_REWRITE,
     INVESTMENT_STRATEGIES,
@@ -168,7 +168,7 @@ def _is_real_archive(p: Path) -> bool:
 
 def _char_cost(char_id: str) -> int:
     """角色费用(注册表查不得 = 0,星级事件按未知费用不计 2 费合成)。"""
-    c = CHARACTERS.get(char_id)
+    c = get_char(char_id)
     return int(c.cost) if c is not None and c.cost else 0
 
 

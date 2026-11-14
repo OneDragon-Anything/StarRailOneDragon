@@ -32,7 +32,7 @@ from cv2.typing import MatLike
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
+    CHARACTER_ROSTER,
     chars_by_faction,
     trailblazer_form,
 )
@@ -292,7 +292,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
                 continue
             cid = getattr(unit, 'char_id', '') or ''
             name = trailblazer_form(cid, row_name)
-            if name and name in CHARACTERS and name not in seen:
+            if name and name in CHARACTER_ROSTER and name not in seen:
                 seen.add(name)
                 domain.append(name)
     return domain

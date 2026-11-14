@@ -54,17 +54,20 @@ def p_bar_faction(tag: str, level: int) -> float:
     多标签联合分布按标签独立取(DESIGN §附5 诚实列表:联合概率高估,
     设计内承认的近似)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import (
+        CHARACTERS,
+        get_char,
+    )
     from sr_od.application.currency_war.data.cw_shop_odds import (
         DISTINCT_CARDS_PER_COST,
         POOL_COPIES_PER_CARD,
         REFRESH_PROB,
     )
-    names = [n for n, ch in CHARACTERS.items()
-             if getattr(ch, 'cost', 0) and char_has_tag(ch, tag)]
+    names = [ch.name for ch in CHARACTERS
+             if ch.cost and char_has_tag(ch, tag)]
     if not names:
         return 0.0
-    costs = sorted({ch.cost for ch in CHARACTERS.values()
+    costs = sorted({ch.cost for ch in CHARACTERS
                     if char_has_tag(ch, tag)})
     p_hit_once = 0.0
     shop_slots = 5    # cw_shop_odds.SHOP_SLOTS
@@ -76,7 +79,7 @@ def p_bar_faction(tag: str, level: int) -> float:
         v = DISTINCT_CARDS_PER_COST.get(cost, 13)
         total = v * a
         a_tgt = len([n for n in names
-                     if CHARACTERS[n].cost == cost]) * a
+                     if get_char(n).cost == cost]) * a
         if a_tgt <= 0:
             continue
         for m in range(1, shop_slots + 1):

@@ -29,7 +29,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_economy import (
     REFRESH_COST_BASE,
 )
@@ -1356,12 +1356,12 @@ def _s_reserve(frame: MandateFrame, session: StrategySession) -> int:
 def cheapest_member_cost(frame: MandateFrame) -> int:
     """线成员最廉成本(注册表派生,R196 症6:字面量 3 改单一源)。
 
-    = K 成员在 CHARACTERS 注册表的最低 cost;成员全部未注册 ⇒
+    = K 成员在角色注册表的最低 cost(get_char 起始费口径;成员全部未注册 ⇒
     ``bench_char_cost`` 同款保守估 3(未知名中费估,注册表先例)。
     消费面 = 硬约束①的金需求侧(entry 支付支撑通道)。
     """
     costs = [ch.cost for m in frame.k_members
-             if (ch := CHARACTERS.get(m)) is not None and ch.cost]
+             if (ch := get_char(m)) is not None and ch.cost]
     if costs:
         return min(costs)
     # 成员全部未注册(探针/语料名)⇒ 中费保守估 3(bench_char_cost 同款

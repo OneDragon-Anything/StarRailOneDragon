@@ -12,11 +12,12 @@
      官方多档 icon URL 全同视觉同图,底色取起始档 rarity);
   3. 官方装备模板库 equip_plaza(混合:plaza 进阶 art + 手工简易/特权);
   4. 注册表段片段 .debug/game_data/currency_war/plaza/registry_chars_v<版本>.py —
-     官方逐条 `_ch(...)` 调用文本(参数序 = cw_chars._ch 工厂签名),版本更新时组装进
-     cw_chars.py 官方段(两侧生成段标记注释;首次组装人工,标记建立后按标记重写);
+     官方逐条 `_ch(...),` 调用文本(行尾逗号合法语句形态,与 cw_chars.py 官方段
+     现状一致;参数序 = cw_chars._ch 工厂签名),片段两侧标记注释与 cw_chars.py
+     官方段标记逐字一致——版本更新按标记整段替换直接接入,零人工补逗号;
   5. 掉出名单 diff 报告 .debug/game_data/currency_war/plaza/dropped_v<版本>.md —
      旧注册表名单 − 新官方名单,分「纯角色掉出(文档删除清单)」与「系统单位迁出
-     (转 SYSTEM_UNITS,非删除)」两类;**掉出方向的唯一出口**。
+     (SYSTEM_UNITS 注册段 − 新官方名单,非删除)」两类;**掉出方向的唯一出口**。
 
 名字归一口径:官方 name U+2022(•)统一为 U+00B7(·)——全仓规范名均为间隔号,
 canon() 为归一单一源;守卫加严:产出段名字含 • 直接报错(防归一被绕过)。
@@ -201,7 +202,8 @@ def _py_tuple(vals: tuple[str, ...]) -> str:
 
 
 def _ch_line(f: dict) -> str:
-    """单条注册表段行:_ch(位置参数 name/cost/position/category_tags, 关键字参数按签名序)。
+    """单条注册表段行:_ch(位置参数 name/cost/position/category_tags, 关键字参数按签名序),
+    行尾逗号 = 合法语句形态(与 cw_chars.py 官方段现状一致,按标记重写可直贴零人工)。
 
     与默认值同形的实参省略(factions/schools 空、independent 空、is_expert/is_hide
     False);source 恒非空恒输出。is_hide=True 附行内注(HIDE_INLINE_NOTE)。
@@ -218,7 +220,7 @@ def _ch_line(f: dict) -> str:
         parts.append("is_expert=True")
     if f["is_hide"]:
         parts.append("is_hide=True")
-    line = "_ch(" + ", ".join(parts) + ")"
+    line = "_ch(" + ", ".join(parts) + "),"
     if f["is_hide"]:
         line += "  " + HIDE_INLINE_NOTE
     return line
@@ -227,19 +229,23 @@ def _ch_line(f: dict) -> str:
 def gen_registry_fragment(fields: list[dict], version: str, n_bullet: int) -> Path:
     """产物4:官方注册表段片段(registry_chars_v<版本>.py,每条一行 _ch 调用)。
 
-    片段 = 组装原料:版本更新时人工拼进 cw_chars.py 官方段(两侧生成段标记注释),
-    骨架与系统单位人工段不动;标记建立后按标记自动重写。
+    片段条目行尾带逗号(合法语句形态)、两侧标记注释与 cw_chars.py 官方段
+    标记逐字一致——版本更新按标记整段替换直接接入,零人工补逗号;片段
+    自身仍可独立 exec 对拍(--check-only 往返解析,注释行不参与)。
     """
     PLAZA_DIR.mkdir(parents=True, exist_ok=True)
     lines = [
         "# -*- coding: utf-8 -*-",
-        f"# CW v{version} 官方注册表段(生成器产,勿手改)。重生成:",
+        f"# CW v{version} 官方注册表段片段(生成器产,勿手改)。重生成:",
         "#   uv run python skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py",
         f"# 数据源:攻略广场 game/config API role_list({len(fields)} 条);名字已归一"
         f"(U+2022→U+00B7,{n_bullet} 名 bullet 角色);_ch 参数序 = cw_chars._ch 工厂签名;"
         "is_hide 条目语义见行内注。",
+        "# 标记注释与 cw_chars.py 官方段两侧标记逐字一致,按标记整段替换即接入。",
+        "# === 官方段(生成器产,勿手改;重写入口 gen_plaza_chars.py) ===",
     ]
     lines += [_ch_line(f) for f in fields]
+    lines.append("# === 官方段结束 ===")
     path = PLAZA_DIR / f"registry_chars_v{version}.py"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[frag] 官方注册表段 {len(fields)} 条(归一 {n_bullet} 名 bullet 角色) -> {path}")
@@ -250,25 +256,26 @@ def gen_diff_report(roles: list, version: str) -> Path:
     """产物5:掉出名单 diff 报告(dropped_v<版本>.md;掉出方向的唯一出口)。
 
     口径:旧注册表名单(现役 cw_chars.CHARACTERS) − 新官方名单(canon 规范名)。
-    系统单位识别 = cost==0(旧注册表借形登记的 cost=0 条目)。分两类:
+    系统单位识别 = SYSTEM_UNITS 注册段(注册表拆分后系统单位独立人工段,
+    不再借形 cost=0 入 CHARACTERS)。分两类:
     - 纯角色掉出 = 文档删除清单(下一阶段执行删除;本生成器对文档只增不删);
-    - 系统单位迁出 = 转 SYSTEM_UNITS 人工段(非删除)。
+    - 系统单位迁出 = SYSTEM_UNITS 注册段名单对照(非删除)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS, SYSTEM_UNITS
 
     new_names = {canon(r["name"]) for r in roles}
-    old = CHARACTERS.values() if hasattr(CHARACTERS, "values") else CHARACTERS
-    old_entries = list(old)
-    old_sys = [c for c in old_entries if c.cost == 0]
-    old_pure = {c.name for c in old_entries} - {c.name for c in old_sys}
+    old_entries = list(CHARACTERS)
+    old_pure = {c.name for c in old_entries}
     dropped = sorted(old_pure - new_names)
-    migrated = sorted((c for c in old_sys if c.name not in new_names), key=lambda c: c.name)
+    migrated = sorted((SYSTEM_UNITS[n] for n in set(SYSTEM_UNITS) - new_names),
+                      key=lambda c: c.name)
     lines = [
         f"# CW v{version} 掉出名单 diff 报告",
         "",
         "生成器:skills/sr-od-dev-currency-war/scripts/gen_plaza_chars.py(掉出方向唯一出口)。",
-        f"口径:旧注册表名单({len(old_entries)} 条,含 {len(old_sys)} 系统单位) "
-        f"− 新官方名单({len(new_names)} 名)。",
+        f"口径:旧注册表名单({len(old_entries)} 条纯角色) "
+        f"− 新官方名单({len(new_names)} 名);系统单位迁出对照域 = "
+        f"SYSTEM_UNITS 注册段({len(SYSTEM_UNITS)} 条)。",
         "",
         f"## A. 纯角色掉出({len(dropped)} 名)= 文档删除清单(下一阶段执行删除;生成器只增不删)",
         "",
@@ -276,7 +283,7 @@ def gen_diff_report(roles: list, version: str) -> Path:
     lines += [f"- {n}(docs/game/currency_war/data/characters/{n}.md)" for n in dropped]
     lines += [
         "",
-        f"## B. 系统单位迁出({len(migrated)} 名)= 转 SYSTEM_UNITS 人工段(非删除)",
+        f"## B. 系统单位迁出对照({len(migrated)} 名)= SYSTEM_UNITS 注册段 − 新官方名单(非删除)",
         "",
     ]
     lines += [f"- {c.name}(旧 source={c.source!r})" for c in migrated]

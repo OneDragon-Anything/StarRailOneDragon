@@ -182,8 +182,8 @@ def _advisor_line_bonus(advisor_name: str, comp) -> int:
     """顾问入商店通道(批 2;档位与目标线语义见 ``ENV_ADVISOR_CHARS``
     表注):顾问角色羁绊 ∩ 线核心键 → 中档;仅 flex → 0(中档降档规则);
     顾问角色不在注册表 → 0(fail 方向不误伤)。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    ch = CHARACTERS.get(advisor_name)
+    from sr_od.application.currency_war.data.cw_chars import get_char
+    ch = get_char(advisor_name)
     if ch is None:
         return 0
     return max((_faction_hit_bonus(f, INVEST_MID, comp)
@@ -285,8 +285,11 @@ def strategy_line_bonuses(strategy_name: str) -> dict[str, int]:
 def _validate_manual_tables() -> None:
     """构建校验(import 即炸):手编表卡名必须落在对应注册表(版本改名/
     移除后静默失联防线,沿 ENV_ECONOMY 孤儿键校验先例);顾问表卡名落
-    对应注册表 + 顾问角色名 ∈ CHARACTERS(写错名 = 通道静默 0)。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    对应注册表 + 顾问角色名 ∈ 角色注册表(GUARD_CHARACTER_ROSTER,
+    写错名 = 通道静默 0)。"""
+    from sr_od.application.currency_war.data.cw_dropped_names import (
+        GUARD_CHARACTER_ROSTER,
+    )
     for card, line in EVIDENCE_UPGRADE:
         if card not in INVESTMENT_ENVS and card not in INVESTMENT_STRATEGIES:
             raise ValueError(f'实证覆盖升档表孤儿卡名(注册表无此卡):{card!r}')
@@ -304,15 +307,15 @@ def _validate_manual_tables() -> None:
     for card in ENV_ADVISOR_CHARS:
         if card not in INVESTMENT_ENVS:
             raise ValueError(f'env 顾问表孤儿卡名(环境注册表无此卡):{card!r}')
-        if ENV_ADVISOR_CHARS[card] not in CHARACTERS:
+        if ENV_ADVISOR_CHARS[card] not in GUARD_CHARACTER_ROSTER:
             raise ValueError(
-                f'env 顾问表角色不在 CHARACTERS:{card!r}×{ENV_ADVISOR_CHARS[card]!r}')
+                f'env 顾问表角色不在角色注册表:{card!r}×{ENV_ADVISOR_CHARS[card]!r}')
     for card in STRATEGY_ADVISOR_CHARS:
         if card not in INVESTMENT_STRATEGIES:
             raise ValueError(f'策略顾问表孤儿卡名(策略注册表无此卡):{card!r}')
-        if STRATEGY_ADVISOR_CHARS[card] not in CHARACTERS:
+        if STRATEGY_ADVISOR_CHARS[card] not in GUARD_CHARACTER_ROSTER:
             raise ValueError(
-                f'策略顾问表角色不在 CHARACTERS:{card!r}×{STRATEGY_ADVISOR_CHARS[card]!r}')
+                f'策略顾问表角色不在角色注册表:{card!r}×{STRATEGY_ADVISOR_CHARS[card]!r}')
 
 
 def _line_exists(line_name: str) -> bool:

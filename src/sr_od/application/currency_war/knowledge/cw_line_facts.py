@@ -60,9 +60,9 @@ def bond_members(bond: str) -> set[str]:
     else:
         bonds = {bond}
         out = set()
-    for name, c in CHARACTERS.items():
+    for c in CHARACTERS:
         if (set(c.factions) | set(c.schools)) & bonds:
-            out.add(name)
+            out.add(c.name)
     return out
 
 
@@ -79,4 +79,6 @@ def framework_members(framework: str) -> list[str]:
     members: set[str] = set()
     for bond in bonds:
         members |= bond_members(bond)
-    return [name for name in CHARACTERS if name in members]
+    # 同名多档(阿哈 4/5/7)按首档位归并,保注册表声明序
+    return list(dict.fromkeys(c.name for c in CHARACTERS
+                              if c.name in members))

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     level_of,
@@ -178,7 +178,7 @@ def bench_char_cost(bc, gs: GameState | None = None) -> int:
     benchchar-retirement P4 状态容器形)。
     公共名(跨模块私有符号收敛:跨模块消费统一走本名;
     下划线旧名保留为别名,存量消费点不破)。"""
-    c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
+    c = get_char(bc.char_id) if getattr(bc, 'char_id', '') else None
     if c is None or not c.cost:
         return 3
     if bc.char_id in (_LV999_ID, _YINGYUE_ID) and gs is not None:
@@ -212,8 +212,8 @@ def effective_cost(gs: GameState, char_id: str) -> int:
       check_env_merge_grants 合并升星入口升星拍);未拿卡(None)落既有
       静态读 = 注册表起始 5 费——None = 未拿卡与「拿卡后档恰为 5(3★
       显式写 5)」两态可分,静态回落语义 = 未拿卡;
-    - 其余角色 → 注册表 ``CHARACTERS[char_id].cost``(静态);**未注册名 → 0**
-      (无费用语义,禁用于金额计算——与 :func:`bench_char_cost` 未知 → 3
+    - 其余角色 → 注册表 ``get_char(char_id).cost``(静态起始费);**未注册名
+      → 0**(无费用语义,禁用于金额计算——与 :func:`bench_char_cost` 未知 → 3
       「退款保守估」分野,两口径不互借);
     - **语义双轨边界**:本口 = 当前费用档;静态画像族(低费集合/费用分布/
       telemetry 特征)语义 = 起始费,直读注册表,永不经本口(变费中间态
@@ -229,7 +229,7 @@ def effective_cost(gs: GameState, char_id: str) -> int:
         tier = getattr(gs.yingyue_cost_tier, 'value', None)
         if tier in (1, 3, 5):
             return tier
-    c = CHARACTERS.get(char_id)
+    c = get_char(char_id)
     return c.cost if c and c.cost else 0
 
 
@@ -1110,12 +1110,11 @@ def _vd_core_of(session: StrategySession) -> str:
 def _target_peak_level(gs: GameState, session: StrategySession) -> int:
     """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 缺省 3 费;
     核心解析单一源 = _vd_core_of 与其缺省扩展)。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         peak_refresh_level,
     )
     core = _schedule_target_core(session)
-    ch = CHARACTERS.get(core) if core else None
+    ch = get_char(core) if core else None
     cost = ch.cost if ch is not None and ch.cost else 3
     return peak_refresh_level(cost)
 
@@ -1138,8 +1137,7 @@ def _target_core_cost(session: StrategySession) -> tuple[str, int]:
     """排程目标核心 → (核心名,费用档)(与 _target_peak_level 的解析链
     同源拆值,供概率校准分量消费;核心解析单一源=_schedule_target_core)。"""
     core = _schedule_target_core(session)
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    ch = CHARACTERS.get(core) if core else None
+    ch = get_char(core) if core else None
     cost = ch.cost if ch is not None and ch.cost else 3
     return core, cost
 

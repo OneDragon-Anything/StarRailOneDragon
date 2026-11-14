@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
+    get_char,
     is_trailblazer,
     side_pick_bond,
     trailblazer_form,
@@ -57,7 +57,7 @@ def _trait_tags(unit: Unit, row: str,
     char_id = str(getattr(unit, 'char_id', '') or '')
     if char_id and is_trailblazer(char_id):
         char_id = trailblazer_form(char_id, row)
-    ch = CHARACTERS.get(char_id) if char_id else None
+    ch = get_char(char_id) if char_id else None
     if ch is None:
         return ()
     if peers is not None:

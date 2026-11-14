@@ -12,8 +12,8 @@
 **池参数**:
 - a = 每种牌副本数(1/2费=27 可升4星 / 3/4/5费=9 最高3星;均 3 倍数,3合1 决定;权威源 V3.7 必修二,
   5费=9 与 [NGA tid=45557485](https://bbs.nga.cn/read.php?tid=45557485) 实测吻合;用户确认)
-- v = 同费用种类数(由角色注册表 CHARACTERS 派生,专家顾问排除,当前 1费14/2费14/3费13/4费13/5费9;
-  单一源 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
+- v = 同费用种类数(由角色注册表 CHARACTERS 派生,专家顾问与官方隐藏态排除;
+  现值 = 本文件 ``DISTINCT_CARDS_PER_COST``,随注册表自动传导)
 - p(level, cost) = 刷新概率(Lv1-10 × 1-5费 权威表,2026-08-11 游戏内"商店刷新概率"实机 OCR,见 REFRESH_PROB;D-91)
 
 供 刷新找牌蒙特卡洛估值用(替代粗近似采样):
@@ -36,8 +36,12 @@ POOL_COPIES_PER_CARD: dict[int, int] = {1: 27, 2: 27, 3: 9, 4: 9, 5: 9}
 # 其采集时点的注册表快照,与当前派生不一致时不作交叉核对基准
 # 专家顾问排除(economy.md §1:初始不参与普通商店招募 → 不可刷的种类不进
 # 普通池分母;p/v 类计算口径与 cw_pool.fixed_pool 基础池一致)
+# is_hide 排除(牌池口径,registry 详设 2.7):官方隐藏态(数据保留但剔出
+# 玩家可见列表)不可刷 → 不进概率分母;数据层查询不过滤、购买/概率语义
+# 消费方过滤——本派生即消费方之一。
 DISTINCT_CARDS_PER_COST: dict[int, int] = {
-    cost: len([c for c in chars_by_cost(cost) if not c.is_expert])
+    cost: len([c for c in chars_by_cost(cost)
+               if not c.is_expert and not c.is_hide])
     for cost in range(1, 6)
 }
 

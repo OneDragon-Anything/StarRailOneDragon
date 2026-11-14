@@ -81,7 +81,7 @@ import math
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS, get_char
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
@@ -527,7 +527,7 @@ def spot2_direct_out_card(cands: list[ShopCard], name: str, level: int,
       关闭(fixtures/cw_ab.py;strategy-work §3「A/B 对照手段不进生产
       代码」)。j=2 帧归 M2b(P77 备注5:DIY 再买 1★ 严格占优,禁重开)。
     """
-    char = CHARACTERS.get(name)
+    char = get_char(name)
     if char is None or not char.cost:
         return None
     base = int(char.cost)
@@ -558,7 +558,7 @@ def _s_reserve_remeet_frames(level: int, bench, deployed,
     ``reencounter_window_frames``(P77 §1.4「再遇窗 1/q(自然帧)」)。
     """
     name = card.name or ''
-    char = CHARACTERS.get(name)
+    char = get_char(name)
     base = int(char.cost) if char is not None and char.cost \
         else card_cost(card)
     held = 0
@@ -1525,7 +1525,12 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             if not cands1 else None
         if _spot2 is not None:
             card = _spot2
-            cost = card.cost or 3 * int(CHARACTERS[m].cost)
+            _m_ch = get_char(m)
+            # 起始费口径(费用语义分层挂账,升费机制批接入当前费);
+            # 注册表外残名(V4.4 过渡库残余成员)按中费 3 保底(未知名先例),
+            # 禁 KeyError/AttributeError 型响停
+            cost = card.cost or 3 * int(
+                _m_ch.cost if _m_ch is not None and _m_ch.cost else 3)
         elif cands1:
             card = cands1[0]
             cost = card_cost(card)
@@ -1603,7 +1608,7 @@ def decide_shop_action(gs: GameState, session: StrategySession,
             and not (getattr(_st, 'transition_candidates', None) or ()):
         for card in _buy_view('cold_start_buy'):
                 _cs_name = card.name or ''
-                _cs_ch = CHARACTERS.get(_cs_name) if _cs_name else None
+                _cs_ch = get_char(_cs_name) if _cs_name else None
                 if _cs_ch is None or int(_cs_ch.cost or 0) != 1 \
                         or int(card.star or 1) != 1:
                     continue

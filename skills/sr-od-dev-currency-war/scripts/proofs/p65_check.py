@@ -319,20 +319,20 @@ def _pair_achievable(target: tuple[str, ...]) -> bool:
     for k in target:
         if k == '希儿系':
             bench_names.append('希儿')
-            amps = [name for name, ch in CHARACTERS.items()
-                    if name != '希儿'
-                    and ('量子同频' in ch.flows
+            amps = [ch.name for ch in CHARACTERS
+                    if ch.name != '希儿'
+                    and ('量子同频' in ch.schools
                          or '贝洛伯格' in ch.factions)
                     and not (set(ch.factions)
-                             | set(ch.flows)) & tier_keys]
+                             | set(ch.schools)) & tier_keys]
             assert amps, '注册表无纯标签希儿放大器(构造前提漂移)'
             bench_names.append(amps[0])
             continue
         need = tiers[k]
-        members = [name for name, ch in CHARACTERS.items()
-                   if k in (set(ch.factions) | set(ch.flows))
+        members = [ch.name for ch in CHARACTERS
+                   if k in (set(ch.factions) | set(ch.schools))
                    and not (set(ch.factions)
-                            | set(ch.flows)) & (tier_keys - {k})]
+                            | set(ch.schools)) & (tier_keys - {k})]
         assert len(members) >= need, (
             f'体系 {k} 注册表纯标签成员不足 {need}: {members}')
         bench_names.extend(members[:need])

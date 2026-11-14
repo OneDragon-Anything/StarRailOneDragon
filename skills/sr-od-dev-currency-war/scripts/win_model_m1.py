@@ -44,7 +44,7 @@ from sklearn.preprocessing import StandardScaler
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / 'src'))
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E402
+from sr_od.application.currency_war.data.cw_chars import get_char  # noqa: E402
 from sr_od.application.currency_war.kernel.cw_battle_calib import (  # noqa: E402
     _engines_count,
 )
@@ -98,8 +98,8 @@ def extra_features(deployed: list[dict], feats: dict) -> dict:
     th = {int(k): v for k, v in feats['tier_hist'].items()}
     engine_pieces = sum(
         1 for cid in bow
-        if (set(getattr(CHARACTERS.get(cid), 'factions', ()))
-            | set(getattr(CHARACTERS.get(cid), 'flows', ())))
+        if (set(getattr(get_char(cid), 'factions', ()))
+            | set(getattr(get_char(cid), 'schools', ())))
         & ENGINE_FACTIONS)
     core2 = sum(1 for d in deployed
                 if (d.get('char_id') or '').strip() in CORE_CHARS

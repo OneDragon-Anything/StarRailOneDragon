@@ -34,7 +34,10 @@ from dataclasses import dataclass, field
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
+    get_char,
+)
+from sr_od.application.currency_war.data.cw_dropped_names import (
+    GUARD_CHARACTER_ROSTER,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
@@ -1160,18 +1163,22 @@ def _build_transition_combos() -> list[Comp]:
 
 def _validate_transition_combos(bonds: tuple[TransitionBond, ...],
                                 parts: dict[str, tuple[str, str]],
-                                library: list[Comp]) -> None:
+                                library: list[Comp],
+                                *, enforce_piece_cost_gate: bool = True) -> None:
     """建库校验五条(or-reqs-retirement 3.2 设计 §4;非法 raise ValueError)。
 
     模块级对真值调用一次 = import 期防线(手改五块表或生成器破坏约定
     即炸);测试负面用例直接以非法构造调本函数断言 ValueError。校验面:
     ① 库长 = C(len(bonds),2) 且 parts 键集 = 条目名集;
     ② 五块 bond 互斥(两两组合无键冲突——生成器结构保证,校验防御手改);
-    ③ named ∪ need_star 键 ∈ CHARACTERS 注册表;
+    ③ named ∪ need_star 键 ∈ GUARD_CHARACTER_ROSTER 注册表;
     ④ need_star 键 ⊆ named;
     ⑤ 点名件费段位面 1 可刷(cost ≤ 3,费段真值对应关系:
        lv1-3 仅 1 费/lv4 起解锁 1-3 费/lv5 起 4 费——cw_shop_odds 的
-       REFRESH_PROB;位面 1 等级覆盖区间 = cw_economy 位面-等级骨架)。
+       REFRESH_PROB;位面 1 等级覆盖区间 = cw_economy 位面-等级骨架;
+       enforce_piece_cost_gate=False 时本面跳过——v4.7 换赛季费用重排使
+       V4.4 过渡库点名件费段不再满足(藿藿4/丹恒·饮月5),库整体归策略
+       适配批重审,中间态 import 期放行本面、机器与负例面保留)。
     """
     if len(library) != len(bonds) * (len(bonds) - 1) // 2:
         raise ValueError(
@@ -1186,18 +1193,27 @@ def _validate_transition_combos(bonds: tuple[TransitionBond, ...],
         if not star_keys <= set(b.named):
             raise ValueError(f'{b.name}: need_star 键 ⊄ named')
         for n in (*b.named, *star_keys):
-            if n not in CHARACTERS:
-                raise ValueError(f'{b.name}: 点名件 {n} 不在 CHARACTERS 注册表')
+            if n not in GUARD_CHARACTER_ROSTER:
+                raise ValueError(f'{b.name}: 点名件 {n} 不在角色注册表')
+        if not enforce_piece_cost_gate:
+            continue
         for n in b.named:
-            if CHARACTERS[n].cost > 3:
+            _ch = get_char(n)
+            if _ch is None:
+                continue   # 已确认掉出名(哨放行集),位面可刷性无从谈起
+            if _ch.cost > 3:
                 raise ValueError(
-                    f'{b.name}: 点名件 {n} 费段 {CHARACTERS[n].cost} > 3,'
+                    f'{b.name}: 点名件 {n} 费段 {_ch.cost} > 3,'
                     f'位面 1 商店不可刷')
 
 
 TRANSITION_LIBRARY: list[Comp] = _build_transition_combos()   # 恒 C(5,2)=10 条
+# 中间态放行⑤费段闸:v4.7 换赛季费用重排使 V4.4 过渡库点名件费段不再满足
+# 位面 1 可刷(藿藿 4 费/丹恒·饮月 5 费),库整体归策略适配批重审(挂账板
+# v4.7 换赛季适配欠账族);①-④结构与改名哨照常。
 _validate_transition_combos(TRANSITION_BONDS, TRANSITION_COMBO_PARTS,
-                            TRANSITION_LIBRARY)
+                            TRANSITION_LIBRARY,
+                            enforce_piece_cost_gate=False)
 
 
 def transition_bond_of(name: str) -> TransitionBond | None:
@@ -1767,8 +1783,8 @@ def equip_allocation(comp: Comp | None,
         """
         if not item.endswith('星徽') or len(item) <= 2:
             return True
-        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-        _info = CHARACTERS.get(char)
+        from sr_od.application.currency_war.data.cw_chars import get_char
+        _info = get_char(char)
         return _info is None or item[:-2] not in _info.factions
 
     def _assign(char: str, item: str) -> None:

@@ -71,22 +71,24 @@ GRANT_BUCKET_UNIFORM_BY_NAME_V0: str = 'grant_bucket_uniform_by_name_v0'
 
 
 def fixed_pool() -> dict[str, int]:
-    """基础固定牌库(名 → 副本数;**不含专家顾问**)。
+    """基础固定牌库(名 → 副本数;**不含专家顾问与官方隐藏态**)。
 
     = 注册表非专家角色 × ``POOL_COPIES_PER_CARD`` 按费取副本。专家顾问
     (``Character.is_expert``)初始不参与普通商店招募(economy.md §1),
     解锁后经 :func:`remaining_pool` 系列从 ``gs.unlocked_experts`` 并入
-    ——入池是本局解锁状态的结果,不在纯注册表派生里。纯注册表派生:
-    剩余池按名计、费用桶只在查询时现分,档不进本函数签名、gs 不入纯
-    派生。
-    """
+    ——入池是本局解锁状态的结果,不在纯注册表派生里。官方隐藏态
+    (``Character.is_hide``,v4.7 = 饮月绑定随从)剔出玩家可见列表 → 不进
+    牌池(牌池排除归购买/概率语义消费方,本函数即消费方之一)。纯注册表
+    派生:剩余池按名计、费用桶只在查询时现分,档不进本函数签名、gs 不入
+    纯派生。多档角色(同名多 cost 条目)按名归并——副本数全档一致
+    (POOL_COPIES_PER_CARD 档内同值),任一档的值即归并值。"""
     pool: dict[str, int] = {}
-    for name, ch in CHARACTERS.items():
-        if ch.is_expert:
+    for ch in CHARACTERS:
+        if ch.is_expert or ch.is_hide:
             continue
         copies = POOL_COPIES_PER_CARD.get(ch.cost, 0)
         if copies > 0:
-            pool[name] = copies
+            pool[ch.name] = copies
     return pool
 
 

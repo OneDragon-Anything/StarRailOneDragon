@@ -22,8 +22,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
     SIDE_PICK_DUAL_BONDS,
+    get_char,
     side_pick_bond,
 )
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
@@ -145,7 +145,7 @@ def board_target_line_weight(
 
 def _bonds_named(char_id: str) -> set[str]:
     """按名字查全羁绊(factions+schools);未识别/未注册 → 空集。"""
-    ch = CHARACTERS.get(char_id) if char_id else None
+    ch = get_char(char_id) if char_id else None
     if ch is None:
         return set()
     return set(ch.factions) | set(ch.schools)
@@ -173,7 +173,7 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     out: dict[str, int] = {}
     cids = list(deployed_cids)
     for cid in cids:
-        ch = CHARACTERS.get(cid) if cid else None
+        ch = get_char(cid) if cid else None
         if ch is None:
             continue
         if cid in SIDE_PICK_DUAL_BONDS:

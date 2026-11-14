@@ -37,7 +37,10 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import str_utils
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
+from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTER_ROSTER,
+    SYSTEM_UNIT_ROSTER,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     BENCH_CAPACITY_DEFAULT,
     BenchSlot,
@@ -61,20 +64,24 @@ from sr_od.context.sr_context import SrContext
 
 
 def resolve_char_name(avatar_id: str) -> str | None:
-    """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(``CHARACTER_ROSTER`` 成员)。
+    """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(注册表成员,双 roster)。
 
     **半身立绘库(``currency_war/character_avatar``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
-    ``姬子·启行`` / ``千冶·刃``)→ ``identify_character`` 返回的 avatar_id 已是规范名 → 本函数
-    第 54 行 ``avatar_id in CHARACTER_ROSTER`` 直接命中返。变体**可被 SIFT 区分**(D-54 验:
+    ``姬子·启行`` / ``千冶·刃``;系统单位 = 实拍模板,如 ``佩佩``)→ ``identify_character`` 返回的
+    avatar_id 已是规范名 → 本函数 ``avatar_id in CHARACTER_ROSTER`` /
+    ``in SYSTEM_UNIT_ROSTER`` 直接命中返(角色/系统单位双 roster,识别链
+    语义 = registry 详设 2.10)。变体**可被 SIFT 区分**(D-54 验:
     deployed_p1r9 后排-2 姬子·启行 inliers=38,基础姬子 <7 连 top3 未进 —— 共脸对分数拉开,
     非无法区分;旧「脸库归一·SIFT 无法区分变体」结论是脸库时代产物,已废)。
 
-    56-65 行(``get_character_by_id`` 英文 id→cn + 子串消歧)是 **legacy 脸库路径**(英文 id),
-    半身立绘库基本不走;留作兜底。仍无 → None(SIFT 命中但不在货币战争 roster,如开拓者 roster 缺、
-    脸库误匹配)。
+    legacy 脸库路径(``get_character_by_id`` 英文 id→cn + 子串消歧)是
+    英文 id 兜底,半身立绘库基本不走;两 roster 都不在 → 走 legacy →
+    仍无 → None(SIFT 命中但不在货币战争注册表,如脸库误匹配)。
     """
     if avatar_id in CHARACTER_ROSTER:
         return avatar_id   # CW 立绘库 key 是中文规范名(plaza 烘焙),直接返(非主游英文 id)
+    if avatar_id in SYSTEM_UNIT_ROSTER:
+        return avatar_id   # 系统单位模板(实拍 key 同为规范名)
     c = get_character_by_id(avatar_id)
     if c is None:
         return None
@@ -727,12 +734,13 @@ def check_system_unit_layout(
 
     模型(用户口述权威):狸猫(狸小虎/狸小龙)/佩佩类系统召唤单位恒占布局**最右
     槽位(们)**,布局格数变 → 其 x 跟着最右格移动。判别:后排读到系统单位
-    (char_id 判定 = roster cost==0 段)时,SIFT 实测其 x,与所选档最右 k 格中心
+    (char_id 判定 = SYSTEM_UNIT_ROSTER 注册段)时,SIFT 实测其 x,与所选档最右 k 格中心
     (k=系统单位数)交叉核对;任一差 > ``_SYSTEM_UNIT_LAYOUT_TOL_PX`` →
     ``obs_conflict('layout_mismatch_by_system_unit')``(节流 300s)。
 
     与空槽签名法交叉实证过(三触发帧狸猫@1329/1467 只与 8 格自洽)。纯读
-    best-effort,失败不抛。佩佩暂无 roster/模板条目 → 现覆盖狸猫对(有模板者)。
+    best-effort,失败不抛。姵姵暂无模板条目(SYSTEM_UNITS 在册、识别不可达
+    已知缺口)→ 现覆盖有模板成员。
     ``back_hits`` = 后排命中对(``(槽号, Unit)``;只消费 char_id,槽位不覆盖)。
     """
     import time as _time
@@ -740,8 +748,7 @@ def check_system_unit_layout(
     try:
         sys_units = []
         for _s, c in (back_hits or []):
-            ch = get_char(c.char_id) if c.char_id else None
-            if ch is not None and ch.cost == 0:
+            if c.char_id and c.char_id in SYSTEM_UNIT_ROSTER:
                 sys_units.append(c.char_id)
         if not sys_units:
             return

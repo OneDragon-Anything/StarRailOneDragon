@@ -39,9 +39,9 @@ from dataclasses import dataclass, field, replace
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
     EXPERT_CHARS,
     assert_expert_names,
+    get_char,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import (
     CONSUMABLE_EQUIP_CATEGORIES,
@@ -1433,10 +1433,10 @@ def check_strategy_merge_grants(gs: GameState,
     1. 持卡交集空(active_strategies ∩ 表键,未持卡/表外卡同路——表外
        卡禁从效果原文自动猜装)→ 零动作;
     2. facts 过滤后零命中(判据 = 产物 ``new_star`` == 表星级 ∧
-       ``CHARACTERS.get(cid)`` 命中且 ``.cost`` == 表费用 ∧ 具名判据行
+       ``get_char(cid)`` 命中且 ``.cost`` == 表费用 ∧ 具名判据行
        事件角色名同名——判据角色名空串 = 通配任意〔砂里淘金形,费用/
        星级双匹配即发〕,非空 = 「获得N星【具名角色】时获得X」类卡面
-       双具名直读〔黑塔纪元形〕;.get 为 None = 注册表外名该条视为不
+       双具名直读〔黑塔纪元形〕;get_char 为 None = 注册表外名该条视为不
        匹配跳过——facts 现值恒出自注册表两源,防未来源扩转抛)→ 零动作;
     3. sim 门控(函数内惰性 ``sim_backend_installed``,kernel→sim.ports
        判据消费先例形):未装配(live 形态)→ 零写——策略卡发牌族权威版本
@@ -1473,7 +1473,7 @@ def check_strategy_merge_grants(gs: GameState,
              judge_char, _reward) = STRATEGY_MERGE_GRANTS[card]
             if int(new_star) != want_star:
                 continue
-            ch = CHARACTERS.get(cid)
+            ch = get_char(cid)
             if ch is None or ch.cost != want_cost:
                 continue
             if judge_char != '' and cid != judge_char:

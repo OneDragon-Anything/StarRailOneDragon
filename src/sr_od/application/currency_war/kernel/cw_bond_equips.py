@@ -25,8 +25,8 @@ from __future__ import annotations
 import re
 
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTERS,
     SIDE_PICK_DUAL_BONDS,
+    get_char,
     is_trailblazer,
     side_pick_bond,
     trailblazer_form,
@@ -138,7 +138,7 @@ def unit_bond_tags(bc, row: str | None = None,
     eff_row = row or (getattr(bc, 'position_pref', 'back') or 'back')
     if is_trailblazer(cid):
         cid = trailblazer_form(cid, eff_row)
-    ch = CHARACTERS.get(cid)
+    ch = get_char(cid)
     if ch is None:
         return ()
     tags: list[str] = [*ch.factions, *ch.schools]

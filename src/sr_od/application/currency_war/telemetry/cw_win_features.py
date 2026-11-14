@@ -14,7 +14,7 @@ sim 与离线训练脚本共用;M2 接入 sim 结算器时直接 import。
 数值单一源:
 - 阵营计数复用 ``cw_battle_calib._board_factions_of``(factions+schools 并计口径);
 - 激活阈值读 ``cw_factions.FACTIONS[*].tiers``(不复制数值);
-- 角色费用读 ``cw_chars.CHARACTERS[*].cost``。
+- 角色费用读 ``cw_chars.get_char(name).cost``。
 """
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
     equip_count = 0
     total_cost = 0
     unknown_char_count = 0
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
 
     for d in deployed or []:
         cid = (d.get('char_id') or '').strip()
@@ -92,7 +92,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
         star_sum += star
         star_hist[star] = star_hist.get(star, 0) + 1
         equip_count += len(d.get('equips') or [])
-        ch = CHARACTERS.get(cid)
+        ch = get_char(cid)
         if ch is None:
             unknown_char_count += 1
         else:

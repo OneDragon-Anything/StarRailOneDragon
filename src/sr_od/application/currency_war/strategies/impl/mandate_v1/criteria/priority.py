@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
 from sr_od.application.currency_war.kernel.cw_intention import (
@@ -502,14 +502,14 @@ def _unit_cost(unit: HeldUnit | ShopUnit) -> int:
 
     商店牌 = 牌面自报费用;手持牌 = 牌面实费档(:attr:`HeldUnit.cost`,
     变费卡升费后由装配方按 cw_economy.effective_cost 现值供给),
-    缺省回退注册表现查起始费(CHARACTERS.cost,单一源)。未知名/缺值
+    缺省回退注册表现查起始费(get_char,单一源)。未知名/缺值
     按中费 3 保守估(注册表先例 = mandate.cheapest_member_cost 与
     shop 侧同款口径)。"""
     if isinstance(unit, ShopUnit):
         return int(unit.cost)
     if unit.cost is not None:
         return int(unit.cost)
-    ch = CHARACTERS.get(unit.name)
+    ch = get_char(unit.name)
     return int(ch.cost) if ch is not None and ch.cost else 3
 
 
@@ -533,7 +533,7 @@ def _tier7_bond_member(name: str) -> bool:
     """档 9 成员判定(原档 7,名单与判定规则不变、仅档号位移;
     角色自报 factions/schools 与用户决定名单求交;
     注册表现查,单一真相源 = cw_chars 自报 × cw_factions 键)。"""
-    ch = CHARACTERS.get(name)
+    ch = get_char(name)
     if ch is None:
         return False
     return bool((set(ch.factions) | set(ch.schools)) & TIER7_BOND_NAMES)

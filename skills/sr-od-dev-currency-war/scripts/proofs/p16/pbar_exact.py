@@ -28,17 +28,17 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 
 def char_has_tag(ch, tag: str) -> bool:
     return tag in (getattr(ch, 'factions', None) or ()) \
-        or tag in (getattr(ch, 'flows', None) or ())
+        or tag in (getattr(ch, 'schools', None) or ())
 
 
 def tier_stats(tag: str) -> dict[int, tuple[int, int]]:
     """{cost: (目标张数 A, 池总张数 T)}。"""
     out: dict[int, tuple[int, int]] = {}
-    for cost in sorted({ch.cost for ch in CHARACTERS.values()
+    for cost in sorted({ch.cost for ch in CHARACTERS
                         if char_has_tag(ch, tag)}):
         a = POOL_COPIES_PER_CARD[cost]
         v = DISTINCT_CARDS_PER_COST[cost]
-        n = len([ch for ch in CHARACTERS.values()
+        n = len([ch for ch in CHARACTERS
                  if ch.cost == cost and char_has_tag(ch, tag)])
         if n:
             out[cost] = (n * a, v * a)

@@ -77,7 +77,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
     ② 文本含 FACTIONS 键(OCR 噪声容错);③ 文本 = 角色注册表名 → 取其首个
     羁绊(factions 优先,空则 schools)。全部未命中 → None(策略层走兜底)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
     from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 
@@ -101,7 +101,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
         if hit is not None:
             return hit
     for t in texts:
-        ch = CHARACTERS.get(t)
+        ch = get_char(t)
         if ch is not None:
             if ch.factions:
                 return ch.factions[0]

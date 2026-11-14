@@ -44,10 +44,14 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
 
 from sr_od.application.currency_war.data.cw_chars import (
-    CHARACTER_ROSTER,
-    CHARACTERS,
     chars_by_cost,
     chars_by_faction,
+    get_char,
+)
+from sr_od.application.currency_war.data.cw_dropped_names import (
+    GUARD_ALL_UNIT_NAMES,
+    GUARD_CHARACTER_ROSTER,
+    v47_dropped_bonds,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIPMENTS,
@@ -510,8 +514,8 @@ class RandomCharSpec:
       = 填 1 的先验值(先验语义不因显式化而消失,披露键
       ``ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS`` 随卡保留——先验错走
       随机态观察覆盖,不响停);
-    - type_tag: 非空 = 角色 ``char_type`` 按 '、' 切分后须含该标签才
-      入池(取值 = 注册表 char_type 标签闭集,构建期校验);空 = 不过滤。
+    - type_tag: 非空 = 角色 ``category_tags`` 元组须含该标签才
+      入池(取值 = 注册表 category_tags 标签闭集,构建期校验);空 = 不过滤。
       两轴通用过滤词。
     """
     cost: int | None = None
@@ -3460,7 +3464,7 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
     """投资策略的阵容指向集(STRATEGY_BINDINGS 阵营分支 + 角色入账分支两源;§2.1)。
 
     - 阵营分支:绑定阵营直接入集;
-    - 角色入账分支 ch 两源:① ``CHARACTERS[ch].factions`` **全集**入集(多阵营
+    - 角色入账分支 ch 两源:① ``get_char(ch).factions`` **全集**入集(多阵营
       角色全展开,用户裁定「从角色去关联对应的阵容」,如丹恒·饮月 =
       仙舟/列车同行);② 成员分支:ch ∈ Comp.members(终局成员集)的
       线,该线 factions 全集入集——角色是某线登记成员 = 卡服务该线
@@ -3481,7 +3485,7 @@ def strategy_faction_scope(strategy_name: str) -> frozenset[str]:
     # 每套重算并集
     lib_members = [(comp, comp.members) for comp in COMP_LIBRARY]
     for ch in bound_chars:
-        chd = CHARACTERS.get(ch)
+        chd = get_char(ch)
         if chd is not None:
             out |= set(chd.factions)
         for comp, members in lib_members:
@@ -3679,7 +3683,7 @@ ENV_GIFTS: dict[str, GiftGrant] = {
     '人才引进': GiftGrant(chars_random_immediate=(RandomCharSpec(cost=4, star=1),)),
     # 类型过滤随机支首例(id 136 效果原文「获得1个随机2星1费的输出角色」
     # 直读,PlazaPortal('136'));星级 2 = 卡面明写非先验;「输出」=
-    # char_type 按 '、' 切分含标签即入池(多标签计入,用户裁定 2026-10-21,
+    # category_tags 元组含标签即入池(多标签计入,用户裁定 2026-10-21,
     # 池为注册表现值派生非固定名单);采样/先验披露随家族常量
     # ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS 携带;属性加成分支(「进入新节点
     # 永久随机属性加成」)该分支整体不建模,披露键 env_char_buff_unmodeled
@@ -4025,7 +4029,7 @@ _DUAL_FORM_MERGE: dict[str, str] = {'开拓者·记忆': '开拓者·欢愉'}
 def random_char_pool(spec: RandomCharSpec) -> list[str]:
     """规格过滤池(注册表派生,零硬编码第二源):采样轴内 + 类型标签含入
     (阵营轴 = chars_by_faction 默认含流派匹配,费用轴 = chars_by_cost;
-    char_type 按 '、' 切分含标签,两轴通用过滤词)。尾部开拓者双形态按
+    category_tags 元组含标签,两轴通用过滤词)。尾部开拓者双形态按
     角色位合并收尾(键侧条目剔除,采样即发放名 = 值侧形态,单一源 =
     模块级 ``_DUAL_FORM_MERGE``)。**静态基底池**:构建期非空校验
     (``_validate_env_gifts``/``_validate_env_deploy_lock_grants``)与
@@ -4035,7 +4039,7 @@ def random_char_pool(spec: RandomCharSpec) -> list[str]:
     空池 = 注册表漂移(或全专家域未解锁),发放分支再查一道防御。"""
     base = chars_by_faction(spec.faction) if spec.faction else chars_by_cost(spec.cost)
     pool = [c.name for c in base
-            if not spec.type_tag or spec.type_tag in c.char_type.split('、')]
+            if not spec.type_tag or spec.type_tag in c.category_tags]
     return [n for n in pool if n not in _DUAL_FORM_MERGE]
 
 
@@ -4255,7 +4259,14 @@ def _validate_random_char_spec(table: str, name: str, spec: RandomCharSpec) -> N
     规格过滤池非空单一哨——手写错字与版本漂移(阵营/费用档改名)都表现为
     池空,一道闸兼顾两类;治理口径(防登记笔误的值域四查移除)见
     :func:`_validate_env_gifts` docstring。table/name = 报错定位
-    (文案沿各表现款句式)。"""
+    (文案沿各表现款句式)。
+
+    v4.7 换赛季收缩中间态:阵营轴落在已确认掉出羁绊键
+    (``v47_dropped_bonds``,FACTIONS 旧键不再被现役注册表角色自报)的
+    登记条目放行——池空是已确认的换赛季收缩非新漂移,登记残余归羁绊
+    消费点迁移批清偿(放行集语义见 data/cw_dropped_names 模块注)。"""
+    if spec.faction and spec.faction in v47_dropped_bonds():
+        return
     if not random_char_pool(spec):
         raise ValueError(
             f"{table} 随机赠卡池空({name!r}):"
@@ -4273,9 +4284,9 @@ def _validate_env_gifts() -> None:
     测试拦。本函数只留「能被游戏版本变更独立触发」的漂移哨:
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联 → 炸);
-    ② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER(版本改名
-    不静默);③ 随机赠卡规格过滤池非空(共享助手
-    ``_validate_random_char_spec``,错字与版本漂移都致池空);④ 随机装备
+    ② 角色名漂移:发放角色(即时∪条件)必须在 GUARD_ALL_UNIT_NAMES(发放
+    角色闸——发放对象可为系统单位,版本改名不静默);③ 随机赠卡规格过滤池非空
+    (共享助手 ``_validate_random_char_spec``,错字与版本漂移都致池空);④ 随机装备
     类别过滤池非空(类别错字/改名致池空);⑤ 装备名漂移:逐名 ∈
     EQUIPMENTS(版本改名;武装箱系不在装备注册表,误入本通道天然被拒);
     ⑥ '星徽' 类别池独立非空闸(首例登记类别,类别改名致池静默变空)。
@@ -4286,7 +4297,7 @@ def _validate_env_gifts() -> None:
     for _name, _grant in ENV_GIFTS.items():
         _drift = [c for c in (*_grant.chars_immediate,
                               *(c for c, _note in _grant.chars_conditional))
-                  if c not in CHARACTER_ROSTER]
+                  if c not in GUARD_ALL_UNIT_NAMES]
         if _drift:
             raise ValueError(
                 f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
@@ -4319,14 +4330,15 @@ _validate_env_gifts()
 # 底册 = 双母体对账(现值总数由计数锁钉死 = mandate_v1/test_invest_strategy
 # .test_grants_registry_counts_and_closed_set):①STRATEGY_BINDINGS 角色绑定
 # 条目 ∩ 「获得…直读」形态机械预筛(白得 + 顾问,顾问型 advisor=True 集中
-# 表头);②全表效果文本反扫(「获得…roster 名」)补网(龙虎兄弟狸/佩佩驾到/
-# 艾丝妲的猛犬!/招财狗——无角色绑定的直读发放,佩佩 ∈ CHARACTER_ROSTER);
+# 表头);②全表效果文本反扫(「获得…全单位名」,词表 = GUARD_ALL_UNIT_NAMES)
+# 补网(龙虎兄弟狸/佩佩驾到/
+# 艾丝妲的猛犬!/招财狗——无角色绑定的直读发放,佩佩 ∈ SYSTEM_UNITS 注册段);
 # ③开箱分支(「获得…【箱】」占席道具直读,箱名 = items 元素,数量 = 元素
 # 重复次数;箱条目卡随批扩员);④非直读
 # 人工转正(溜佩佩/溜佩佩+,卡面「佩佩逛街」句 = 效果实现发放但非「获得」
 # 直读引导,人工裁定入册,反扫白名单两键同批退役;这么大的钻石 = 用户裁定
 # 2026-11-02 读法 B「佩佩真实入后台」,佩佩携钻句同判入册);⑤非候选直读
-# 登记(狸职手续,「获得」直读但发放对象为卡面用名「狸狸」∉ CHARACTER_ROSTER,
+# 登记(狸职手续,「获得」直读但发放对象为卡面用名「狸狸」不在注册表,
 # 反扫零命中自动排除,按实机录名归一登记);⑥选择型具名装备(独家代言,
 # 「从3件进阶装备中选择一件获取」人工登记)。
 # 发放角色归属 = 效果原文机制事实,宪法五
@@ -4334,7 +4346,7 @@ _validate_env_gifts()
 # advisor 折减 = 策略层 gift_value.grant_gift_value(消费位 =
 # strategies/impl/mandate_v1/invest_strategy.py)。逐条登记判据(「获得…
 # 角色名/占席道具」直读才入册、顾问型 advisor=True、即时/条件分档 = 效果原文时点
-# 语义;roster-外目标与空名发放自动排除)= 29 号稿 §2.3;键 = 注册表规范
+# 语义;注册表外目标与空名发放自动排除)= 29 号稿 §2.3;键 = 注册表规范
 # 名(canon),与 INVESTMENT_STRATEGIES 同键空间。
 STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # —— 顾问型 11 条(advisor=True,付费期权沿 ×0.5 折减)——
@@ -4493,7 +4505,7 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # STRATEGY_ECONOMY instant_gold=8 已登记(经济聚合面),不属本表登记范围。
     '军火贸易+': GiftGrant(items_immediate=('简易武装箱',)),
     # 步狸村之谜:箱条目直读「和一个【简易武装箱】」(狸狸条目零建模 = 快请
-    # 专家·彩部分登记 + 孪生姵姵 roster-外处置双已登记先例,禁猜;穿戴条目
+    # 专家·彩部分登记先例,禁猜;穿戴条目
     # 零建模 = T-16 §8-1 用户裁定同判,披露键申报)。
     '步狸村之谜': GiftGrant(items_immediate=('简易武装箱',)),
     '阿哈大悦': GiftGrant(items_immediate=('简易武装箱',)),
@@ -4541,7 +4553,8 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 后继同形卡 +1 行复用)。星级实参 1 占位(佩佩无星级已登记裁定同判)。
     '佩佩客串': GiftGrant(chars_immediate=('佩佩',)),
     # —— 非候选直读登记 1 条(「获得3个…【狸狸】」直读,但发放对象为卡面
-    # 用名「狸狸」∉ CHARACTER_ROSTER,反扫零命中 = 统一排除口径自动排除
+    # 用名「狸狸」不在注册表(角色/系统单位两段均无此名),反扫零命中 =
+    # 统一排除口径自动排除
     # 不逐条记因):登记名按实机录名「狸职狸狸」归一,依据 = cw_chars.py
     # 该员 source 注记逐字辖本卡 id 204001(source="live:狸职手续204001"),
     # 按卡面用名登记会被角色名漂移哨炸,归一为唯一可行登记形态;数量 3
@@ -4550,12 +4563,19 @@ STRATEGY_GRANTS: dict[str, GiftGrant] = {
     # 句/周期离场句零建模 = STRATEGY_DESC_UNMODELED_KEYS 两键申报。
     '狸职手续': GiftGrant(chars_immediate=('狸职狸狸',)),
     # 狸财经狸:获得句「获得1个【狸狸】」直读,发放对象为卡面用名「狸狸」
-    # ∉ CHARACTER_ROSTER(反扫结构性零命中),登记名按名称归一纪律「狸狸」→「狸职狸狸」(实机浮窗名,成本=0 后台召唤单位)
+    # 不在注册表(反扫结构性零命中),登记名按名称归一纪律「狸狸」→「狸职狸狸」(实机浮窗名,成本=0 后台召唤单位)
     # (cw_chars.py 员表 source 注记同源系族;龙虎兄弟狸/狸职狸狸同形在码);
     # 息条目每回合利息+2 = STRATEGY_ECONOMY interest_flat 注册行在役(登记
     # 非运行时发放,零实现义务);30 本金/取款/存款/位面首领取款分支
     # PENDING 维持待实机证实;尾句彩蛋零建模。
     '狸财经狸': GiftGrant(chars_immediate=('狸职狸狸',)),
+    # 孪生姵姵(id 302501):获得句「获得一个姵姵，它看起来和你的佩佩一模一样！」
+    # 直读,发放对象「姵姵」∈ SYSTEM_UNITS 注册段(系统单位,孪生佩佩族)——
+    # 反扫词表 GUARD_ALL_UNIT_NAMES 命中,自 roster-外人工排除条目注册转正;
+    # 模板目录现无「姵姵」→ 在册但 SIFT 永不命中(识别不可达)为已知缺口,
+    # 状态容器可能出现姵姵名而板面识别同名 miss,收敛 = 实机批现场采集模板
+    # (cw_chars SYSTEM_UNITS 段注同源);尾句「一模一样」对比句零建模非发放。
+    '孪生姵姵': GiftGrant(chars_immediate=('姵姵',)),
     # 优势火力论:箱效果条目直读「获得1个【简易武装箱】」(对账 id 330101;特权
     # 赋予卡使用面七处引用已登记零改动;装备效果条目归 PICK 组合行承载,条目参数唯一
     # 出现点纪律)。
@@ -4618,25 +4638,26 @@ BENCH_ITEM_NAMES: frozenset[str] = frozenset(BENCH_ITEM_KINDS)
 # 反扫候选闭集防线的排除/假阳性白名单(逐条记因;键必须在注册表):
 # - 愚者恶作剧:概率变形发放(2/4 费卡概率变为【花火】/【火花】),无「获得」
 #   字样,非直读发放;
-# - 快请专家·金/彩:「获得1个【】/2个【】」空名不可具名(注册键各自独立);
-# - 孪生姵姵:发放对象「姵姵」∉ CHARACTER_ROSTER(反扫命中的「佩佩」系
-#   「和你的佩佩一模一样」对比句非发放)。
+# - 快请专家·金/彩:「获得1个【】/2个【】」空名不可具名(注册键各自独立)。
 # 統一排除口径覆盖未来同类:roster-外目标与空名发放天然不产反扫命中,自动
 # 排除不逐条记因;本白名单只收现存例外。
 # (溜佩佩/溜佩佩+ 两键已随注册入 STRATEGY_GRANTS 退役——记因「实发放但
-# 非『获得』引导」在注册后失真,防线由注册表覆盖,删留行为等价取洁净。)
+# 非『获得』引导」在注册后失真,防线由注册表覆盖,删留行为等价取洁净;
+# 孪生姵姵同批退役:发放对象「姵姵」已入 SYSTEM_UNITS 注册段(系统单位),
+# 反扫词表 GUARD_ALL_UNIT_NAMES 命中 → 注册转正入 STRATEGY_GRANTS,
+# 排除记因「发放对象不在 CHARACTER_ROSTER」随拆分失效删除。)
 _STRATEGY_GRANTS_SCAN_EXCLUSIONS: dict[str, str] = {
     '愚者恶作剧': '概率变形发放、无「获得」字样',
     '快请专家·金': '「获得1个【】」空名不可具名',
     '快请专家·彩': '「获得2个【】」空名不可具名',
-    '孪生姵姵': '发放对象姵姵不在 CHARACTER_ROSTER',
 }
 
 
 def _scan_strategy_grant_candidates(window: int = 30) -> set[str]:
-    """机械反扫:效果文本中「获得」后 window 字内出现 CHARACTER_ROSTER 名的
-    全部策略卡名(候选闭集防线的数据面;window=30 覆盖「获得1个携带着3个
-    永久附着星徽的【佩佩】」类长修饰直读形态)。"""
+    """机械反扫:效果文本中「获得」后 window 字内出现 GUARD_ALL_UNIT_NAMES
+    名的全部策略卡名(候选闭集防线的数据面;window=30 覆盖「获得1个携带着3个
+    永久附着星徽的【佩佩】」类长修饰直读形态)。词表 = 现役 roster 全单位
+    (角色+系统单位;发放对象可为系统单位,反扫词表按 capable 口径取宽)。"""
     hits: set[str] = set()
     for _name, _st in INVESTMENT_STRATEGIES.items():
         _start = 0
@@ -4645,7 +4666,7 @@ def _scan_strategy_grant_candidates(window: int = 30) -> set[str]:
             if _idx < 0:
                 break
             _seg = _st.effect[_idx + len('获得'): _idx + len('获得') + window]
-            if any(_c in _seg for _c in CHARACTER_ROSTER):
+            if any(_c in _seg for _c in GUARD_ALL_UNIT_NAMES):
                 hits.add(_name)
                 break
             _start = _idx + 1
@@ -4657,9 +4678,10 @@ def _validate_strategy_grants() -> None:
     治理口径同源——只留漂移哨,防登记笔误类校验见其 docstring):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后静默
-    失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER;
+    失联);② 角色名漂移:发放角色(即时∪条件)必须在 GUARD_ALL_UNIT_NAMES
+    (发放角色闸——发放对象可为系统单位);
     ③ **反扫候选
-    闭集防线**:机械反扫(「获得…roster 名」全表命中)候选集
+    闭集防线**:机械反扫(「获得…全单位名」全表命中)候选集
     ⊆ STRATEGY_GRANTS ∪ 排除/假阳性白名单——新增「获得」直读发放卡漏登记
     即炸;白名单键孤儿同样炸(防记因指向已删卡后防线空转)。
     """
@@ -4669,7 +4691,7 @@ def _validate_strategy_grants() -> None:
     for _name, _grant in STRATEGY_GRANTS.items():
         _drift = [c for c in (*_grant.chars_immediate,
                               *(c for c, _note in _grant.chars_conditional))
-                  if c not in CHARACTER_ROSTER]
+                  if c not in GUARD_ALL_UNIT_NAMES]
         if _drift:
             raise ValueError(
                 f"STRATEGY_GRANTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
@@ -5339,17 +5361,19 @@ def _validate_env_merge_grants() -> None:
     2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
-    ② 角色名漂移:触发角色集与发放池逐名必须在 CHARACTERS(版本改名
-    不静默)。值形非空属防登记笔误类,已移除。
+    ② 角色名漂移:触发角色集与发放池逐名必须在注册表(触发角色集 =
+    GUARD_CHARACTER_ROSTER 纯角色语义闸;发放池 = GUARD_ALL_UNIT_NAMES
+    发放对象可为系统单位)。值形非空属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_MERGE_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
         raise ValueError(
             f"ENV_MERGE_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_triggers, _pool) in ENV_MERGE_GRANTS.items():
-        for _label, _names in (('触发角色集', _triggers), ('发放池', _pool)):
+        for _label, _names, _roster in (('触发角色集', _triggers, GUARD_CHARACTER_ROSTER),
+                                        ('发放池', _pool, GUARD_ALL_UNIT_NAMES)):
             for _name in _names:
-                if _name not in CHARACTERS:
+                if _name not in _roster:
                     raise ValueError(
                         f"ENV_MERGE_GRANTS 角色名漂移({_n!r} {_label},"
                         f"角色注册表无此名,版本改名?):{_name!r}")
@@ -5401,10 +5425,12 @@ def _validate_strategy_merge_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
     失联);
-    ② 发放角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默);
-    ③ 判据角色名闭集:判据角色名必须为空串(通配形)或 ∈ CHARACTER_ROSTER
-    (游戏改名不静默——具名判据行改名后事件角色名永不匹配 = 永假判据,
-    属游戏数值/词表改版会触发的漂移哨非笔误哨);
+    ② 发放角色名漂移:发放角色必须在 GUARD_ALL_UNIT_NAMES(发放角色闸——
+    发放对象可为系统单位,版本改名不静默);
+    ③ 判据角色名闭集:判据角色名必须为空串(通配形)或 ∈ GUARD_CHARACTER_ROSTER
+    (判据角色闸——判据对象恒为角色;游戏改名不静默——具名判据行改名后
+    事件角色名永不匹配 = 永假判据,属游戏数值/词表改版会触发的漂移哨非
+    笔误哨);
     ④ 判据费用一致性:判据角色名非空时,该角色注册费用必须等于判据费用
     (游戏改费漂移使具名判据永假;通配行无具名角色可对,费用本身即判据,
     无一致性面)。判据值域(星级/费用)与非负属防登记笔误类,已移除
@@ -5416,18 +5442,19 @@ def _validate_strategy_merge_grants() -> None:
         raise ValueError(
             f"STRATEGY_MERGE_GRANTS 孤儿键(base 无此卡?):{sorted(orphans)}")
     for _n, (_star, _cost, _judge, _char) in STRATEGY_MERGE_GRANTS.items():
-        if _char not in CHARACTER_ROSTER:
+        if _char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"STRATEGY_MERGE_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                 f"版本改名?):{_char!r}")
-        if _judge != '' and _judge not in CHARACTER_ROSTER:
+        if _judge != '' and _judge not in GUARD_CHARACTER_ROSTER:
             raise ValueError(
                 f"STRATEGY_MERGE_GRANTS 判据角色名漂移({_n!r} 注册表无此人,"
                 f"具名判据永不匹配,版本改名?):{_judge!r}")
-        if _judge != '' and CHARACTERS[_judge].cost != _cost:
+        _judge_ch = get_char(_judge) if _judge else None
+        if _judge_ch is not None and _judge_ch.cost != _cost:
             raise ValueError(
                 f"STRATEGY_MERGE_GRANTS 判据费用失配({_n!r} 判据角色"
-                f"{_judge!r} 注册 cost={CHARACTERS[_judge].cost} ≠ 判据费用"
+                f"{_judge!r} 注册 cost={_judge_ch.cost} ≠ 判据费用"
                 f"{_cost},游戏改费漂移产生永假判据?)")
 
 
@@ -5460,7 +5487,8 @@ def _validate_env_interest_grants() -> None:
     2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
-    ② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默)。
+    ② 角色名漂移:发放角色必须在 GUARD_ALL_UNIT_NAMES(发放角色闸,版本
+    改名不静默)。
     阈值形/角色名形/双源对账(ENV_GIFTS.chars_conditional 首元对拍)属
     防登记笔误/单侧改名类,已移除。
     """
@@ -5469,7 +5497,7 @@ def _validate_env_interest_grants() -> None:
         raise ValueError(
             f"ENV_INTEREST_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_threshold, _char) in ENV_INTEREST_GRANTS.items():
-        if _char not in CHARACTER_ROSTER:
+        if _char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"ENV_INTEREST_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                 f"版本改名?):{_char!r}")
@@ -5504,10 +5532,11 @@ def _validate_env_ore_open_grants() -> None:
     2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
-    ② 具名角色名漂移:具名角色元组逐名必须在 CHARACTER_ROSTER(版本
-    改名不静默);
+    ② 具名角色名漂移:具名角色元组逐名必须在 GUARD_ALL_UNIT_NAMES(发放
+    角色闸,版本改名不静默);
     ③ 随机羁绊池现值非空:``chars_by_faction(随机羁绊名)`` 非空(羁绊名
-    错字/版本改名都表现为池空)。值形属防登记笔误类,已移除。
+    错字/版本改名都表现为池空;已确认掉出羁绊键放行,见
+    ``_validate_random_char_spec``)。值形属防登记笔误类,已移除。
     """
     orphans = [n for n in ENV_ORE_OPEN_GRANTS if n not in INVESTMENT_ENVS]
     if orphans:
@@ -5515,11 +5544,11 @@ def _validate_env_ore_open_grants() -> None:
             f"ENV_ORE_OPEN_GRANTS 孤儿键(base 无此环境?):{sorted(orphans)}")
     for _n, (_first, _step, _chars, _faction) in ENV_ORE_OPEN_GRANTS.items():
         for _name in _chars:
-            if _name not in CHARACTER_ROSTER:
+            if _name not in GUARD_ALL_UNIT_NAMES:
                 raise ValueError(
                     f"ENV_ORE_OPEN_GRANTS 角色名漂移({_n!r} 注册表无此人,"
                     f"版本改名?):{_name!r}")
-        if not chars_by_faction(_faction):
+        if _faction not in v47_dropped_bonds() and not chars_by_faction(_faction):
             raise ValueError(
                 f"ENV_ORE_OPEN_GRANTS 随机羁绊池空({_n!r}):"
                 f"chars_by_faction({_faction!r}) 现值非空校验失败"
@@ -5581,9 +5610,10 @@ def _validate_env_battle_grants() -> None:
     2026-10-28,见 _validate_env_gifts docstring——只留漂移哨):
 
     ① 孤儿键:键必须在 INVESTMENT_ENVS(版本更新改名/移除后静默失联);
-    ② 参与名漂移:presence_groups 逐名 ∈ CHARACTER_ROSTER(版本改名
-    不静默);
-    ③ 发放角色漂移:reward_char ∈ CHARACTER_ROSTER(版本改名不静默)。
+    ② 参与名漂移:presence_groups 逐名 ∈ GUARD_CHARACTER_ROSTER(参与名
+    闸——参与对象恒为角色,版本改名不静默);
+    ③ 发放角色漂移:reward_char ∈ GUARD_ALL_UNIT_NAMES(发放角色闸,版本
+    改名不静默)。
     组形/名形/锁期形/双源对账(ENV_GIFTS.chars_conditional 首元对拍)属
     防登记笔误/单侧改名类,已移除。
     """
@@ -5594,11 +5624,11 @@ def _validate_env_battle_grants() -> None:
     for _n, _grant in ENV_BATTLE_GRANTS.items():
         for _group in _grant.presence_groups:
             for _name in _group:
-                if _name not in CHARACTER_ROSTER:
+                if _name not in GUARD_CHARACTER_ROSTER:
                     raise ValueError(
                         f"ENV_BATTLE_GRANTS 参与名漂移({_n!r} 注册表无此人,"
                         f"版本改名?):{_name!r}")
-        if _grant.reward_char not in CHARACTER_ROSTER:
+        if _grant.reward_char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"ENV_BATTLE_GRANTS 发放角色漂移({_n!r} 注册表无此人,"
                 f"版本改名?):{_grant.reward_char!r}")
@@ -6950,7 +6980,7 @@ class StrategyPlaneStartCharGrant:
     - planes: 触发位面集(位面序位,1 基 = NodePos[0] 同坐标系;卡面
       「进入第二/三位面时」直读 (2, 3);触发时机 = 该位面第 1 节点窗
       (r==1),item 形同窗先例。表值 = 登记期快照恒稳,非执行期现读);
-    - char: 发放角色名(∈ CHARACTER_ROSTER;语义 = 「再获得一次」对效果条目1
+    - char: 发放角色名(∈ GUARD_ALL_UNIT_NAMES;语义 = 「再获得一次」对效果条目1
       整组的重复,与同卡 STRATEGY_GRANTS 条目 chars_immediate ∪
       chars_conditional 角色集一致——一致性对账归表域测试,不设
       import 哨,箱条目镜像一致性测试同层);
@@ -6994,8 +7024,8 @@ def _validate_strategy_plane_start_char_grants() -> None:
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除
     后静默失联);② id 双匹配:登记 id 必须等于 base 溯源 id;③
-    发放角色漂移:char ∈ CHARACTER_ROSTER(游戏角色词表改名/移除
-    可独立触发)。
+    发放角色漂移:char ∈ GUARD_ALL_UNIT_NAMES(发放角色闸,游戏角色词表
+    改名/移除可独立触发)。
     """
     orphans = [n for n in STRATEGY_PLANE_START_CHAR_GRANTS
                if n not in INVESTMENT_STRATEGIES]
@@ -7009,10 +7039,10 @@ def _validate_strategy_plane_start_char_grants() -> None:
             raise ValueError(
                 f"STRATEGY_PLANE_START_CHAR_GRANTS id 漂移:{_name!r} "
                 f"登记 id={_grant.id} base={_base.source}")
-        if _grant.char not in CHARACTER_ROSTER:
+        if _grant.char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"STRATEGY_PLANE_START_CHAR_GRANTS[{_name!r}] "
-                f"发放角色漂移: {_grant.char!r} ∉ CHARACTER_ROSTER")
+                f"发放角色漂移: {_grant.char!r} 不在角色注册表")
 
 
 _validate_strategy_plane_start_char_grants()
@@ -7330,7 +7360,8 @@ def _validate_strategy_bench_leave_gold_grants() -> None:
     docstring——本表落孤儿键/角色名两哨):
 
     孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默
-    失联)。角色名:必须在 CHARACTER_ROSTER(游戏角色词表改版即触发,
+    失联)。角色名:必须在 GUARD_CHARACTER_ROSTER(离场判据角色闸——
+    判据对象恒为角色;游戏角色词表改版即触发,
     漂移哨)。星级/金币量系卡面手抄常量,游戏数值改版只改「正确值」,
     正确转录值恒在域内(哨不响),纯笔误类值形/值域查按治理裁定不加,
     对账归本表域测试把关(行值精确断言 + id 对拍 plaza:260701,防线
@@ -7343,10 +7374,10 @@ def _validate_strategy_bench_leave_gold_grants() -> None:
             f"{sorted(orphans)}")
     unknown_chars = sorted({
         row[0] for rows in STRATEGY_BENCH_LEAVE_GOLD_GRANTS.values()
-        for row in rows} - set(CHARACTER_ROSTER))
+        for row in rows} - set(GUARD_CHARACTER_ROSTER))
     if unknown_chars:
         raise ValueError(
-            f"STRATEGY_BENCH_LEAVE_GOLD_GRANTS 角色名不在 CHARACTER_ROSTER:"
+            f"STRATEGY_BENCH_LEAVE_GOLD_GRANTS 角色名不在角色注册表:"
             f"{unknown_chars}")
 
 
@@ -7477,11 +7508,11 @@ def _validate_strategy_gift_grants() -> None:
     归表域测试把关,防线强于 import 期形查):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(防版本更新改名/移除后
-    静默失联);② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本
-    改名不静默——错名运行期 = gain_character 对未注册名零落位或幻影,
-    import 期哨是唯一响亮拦截面);③ 阵营名漂移:判据阵营必须在
-    FACTIONS(判据源失联 = 条件条目静默永不达标);④ 装备名漂移:携带
-    装备 '' 或在 EQUIPMENTS(同 _validate_strategy_conditional_grants
+    静默失联);② 角色名漂移:发放角色必须在 GUARD_ALL_UNIT_NAMES(发放
+    角色闸,版本改名不静默——错名运行期 = gain_character 对未注册名零
+    落位或幻影,import 期哨是唯一响亮拦截面);③ 阵营名漂移:判据阵营
+    必须在 FACTIONS(判据源失联 = 条件条目静默永不达标);④ 装备名漂移:
+    携带装备 '' 或在 EQUIPMENTS(同 _validate_strategy_conditional_grants
     装备名漂移哨同形——错名 = 盲追加幻影装备入栏)。
     """
     for table, label in ((STRATEGY_FACTION_COUNT_GRANTS, 'FACTION_COUNT'),
@@ -7493,7 +7524,7 @@ def _validate_strategy_gift_grants() -> None:
                 f"{sorted(orphans)}")
     for _name, (_faction, _n, _char, _star, _equip) \
             in STRATEGY_FACTION_COUNT_GRANTS.items():
-        if _char not in CHARACTER_ROSTER:
+        if _char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"STRATEGY_FACTION_COUNT_GRANTS 角色名漂移({_name!r} "
                 f"注册表无此角色,版本改名?):{_char!r}")
@@ -7506,7 +7537,7 @@ def _validate_strategy_gift_grants() -> None:
                 f"STRATEGY_FACTION_COUNT_GRANTS 装备名漂移({_name!r} "
                 f"注册表无此装备,版本改名?):{_equip!r}")
     for _name, (_char, _star) in STRATEGY_REWARD_NODE_GRANTS.items():
-        if _char not in CHARACTER_ROSTER:
+        if _char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f"STRATEGY_REWARD_NODE_GRANTS 角色名漂移({_name!r} "
                 f"注册表无此角色,版本改名?):{_char!r}")
@@ -7601,9 +7632,9 @@ def _validate_strategy_plane_boss_grants() -> None:
     行值精确断言与双源对账归表域测试把关,防线强于 import 期形查):
 
     ① 孤儿键:键必须在 INVESTMENT_STRATEGIES(版本更新改名/移除后静默失联);
-    ② 角色名漂移:发放角色必须在 CHARACTER_ROSTER(版本改名不静默——错名
-    运行期 = gain_character 对未注册名零落位或幻影,import 期哨是唯一响亮
-    拦截面);③ 合取可达性:(位面, 节点类型) 必须在该位面节点日程真值表
+    ② 角色名漂移:发放角色必须在 GUARD_ALL_UNIT_NAMES(发放角色闸,版本
+    改名不静默——错名运行期 = gain_character 对未注册名零落位或幻影,
+    import 期哨是唯一响亮拦截面);③ 合取可达性:(位面, 节点类型) 必须在该位面节点日程真值表
     (PLANE_NODE_TABLES)序列内至少出现一次——日程真值表随游戏版本变更时,
     注册进永不触发节点的条目在构建期响亮,不静默永不发放(位面越界/节点
     类型词集外同哨并查,均表现为合取不在序列内)。
@@ -7616,7 +7647,7 @@ def _validate_strategy_plane_boss_grants() -> None:
             f'{sorted(orphans)}(规范名漂移/移除后未清;禁静默失联)')
     for _name, (_plane, _kind, _char, _star) \
             in STRATEGY_PLANE_BOSS_GRANTS.items():
-        if _char not in CHARACTER_ROSTER:
+        if _char not in GUARD_ALL_UNIT_NAMES:
             raise ValueError(
                 f'STRATEGY_PLANE_BOSS_GRANTS 角色名漂移({_name!r} '
                 f'注册表无此角色,版本改名?):{_char!r}')

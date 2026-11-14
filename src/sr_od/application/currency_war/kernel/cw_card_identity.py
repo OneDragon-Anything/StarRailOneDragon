@@ -32,8 +32,8 @@ def is_engine_piece(name: str) -> bool:
     无 knowledge 侧权威
     副本,本 import 是既有判定核的消费边非复制。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    ch = CHARACTERS.get(name or '')
+    from sr_od.application.currency_war.data.cw_chars import get_char
+    ch = get_char(name or '')
     if ch is None:
         return False
     bonds = set(ch.factions) | set(ch.schools)

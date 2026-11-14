@@ -88,7 +88,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
     定型的稳定键/rng 局面哈希播种,unified-deploy-order §1),金尽稳态由
     收益耗尽分支兜底(判据与 出战就绪零耦合)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     front, back = deployed_rows_of(gs)
     deployed = [d for d in (*front, *back) if d is not None]
     view = set(getattr(comp, 'all_factions', None) or [])
@@ -102,7 +102,7 @@ def launch_board_quality_report(gs: GameState, comp: Comp, *,
         if name in sanctioned:
             line_weight += 1
             continue
-        ch = CHARACTERS.get(name) if name else None
+        ch = get_char(name) if name else None
         if ch is None:
             continue   # 未识别件支撑不认(fail-closed)
         if (set(ch.factions) | set(ch.schools)) & view:

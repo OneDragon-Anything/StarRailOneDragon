@@ -49,7 +49,7 @@ def refresh_warranted(state: GameState,
     saturation_line + 停留目标实费档)= 调用方装配,不在本函数。
     返回 (是否值得刷,拒因键——判读归因)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
     from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_units_of,
@@ -83,7 +83,7 @@ def refresh_warranted(state: GameState,
             for m in _candidate_members(comp_name):
                 if m in held:
                     continue
-                ch = CHARACTERS.get(m)
+                ch = get_char(m)
                 if ch is None or not ch.cost:
                     continue
                 lo, _hi = levelup.prob_band_of_cost(int(ch.cost))
@@ -163,12 +163,12 @@ def qualified_member_costs(buy_members: tuple[str, ...],
     过滤序 = 成型先序(2★ 出域先于可追性判定);注册表缺项/无 cost
     成员跳过。返回升序列表,空列表 = 合格集空(该级无可追成员)。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 
     costs: list[int] = []
     for m in buy_members:
-        ch = CHARACTERS.get(m)
+        ch = get_char(m)
         if ch is None or not ch.cost:
             continue
         copies = [c for c in list(bench) + list(deployed)

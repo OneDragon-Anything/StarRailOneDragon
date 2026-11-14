@@ -70,20 +70,20 @@ def item_slot_unsellable(unit: BenchSlot) -> bool:
 
 
 def is_unsellable_system_unit(name: str) -> bool:
-    """系统召唤单位物理门(cost=0 注册表单位,卖出资格跨通道共享谓词)。
+    """系统召唤单位物理门(SYSTEM_UNITS 注册单位,卖出资格跨通道共享谓词)。
 
-    真值 = 注册表登记 cost=0(现行 = 狸小虎/狸小龙/佩佩/狸职狸狸——
-    投资策略召唤单位,恒占后排、不可拖/不可卖,数据基准 = cw_chars.py
-    特殊召唤单位段)。真卖出系统单位是游戏无效交互;同时 cost=0 在
-    实费档缺失时会按中费 3 估(priority 档 10 概率分档),让位排序对它
-    产生无意义键值——本门 = 场景判据件池构建面唯一的系统单位防线,
-    与 :func:`item_slot_unsellable`(占位件物理门)同向互补:那面防
-    「非角色占席」误卖,本面防「cost=0 角色」误卖。未登记名(识别
-    残缺)不拦——按 mid-fee 估参与排序,卖出失败由上报链负结果兜底。
+    真值 = 注册表系统单位段登记(现行 = 佩佩/狸小虎/狸小龙/狸职狸狸/
+    姵姵——投资策略召唤单位,恒占后排、不可拖/不可卖,数据基准 =
+    cw_chars.py SYSTEM_UNITS 人工段)。真卖出系统单位是游戏无效交互;
+    同时非购买单位若混进卖出序,实费档缺失会按中费 3 估(priority 档
+    10 概率分档),让位排序对它产生无意义键值——本门 = 场景判据件池构
+    建面唯一的系统单位防线,与 :func:`item_slot_unsellable`(占位件物
+    理门)同向互补:那面防「非角色占席」误卖,本面防「系统单位」误卖。
+    未登记名(识别残缺)不拦——按 mid-fee 估参与排序,卖出失败由上报
+    链负结果兜底。
     """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    c = CHARACTERS.get(name)
-    return c is not None and not c.cost
+    from sr_od.application.currency_war.data.cw_chars import SYSTEM_UNIT_ROSTER
+    return name in SYSTEM_UNIT_ROSTER
 
 
 def p1_blood_floor(state: GameState) -> bool:
@@ -271,14 +271,14 @@ def advances_four_system(name: str) -> bool:
     """
     if not name:
         return False
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         is_seele_system_member,
     )
     from sr_od.application.currency_war.kernel.cw_system_cards import (
         SYSTEM_CARDS,
     )
-    ch = CHARACTERS.get(name)
+    ch = get_char(name)
     if ch is None:
         return False
     bonds = {card.judge_factions[0]

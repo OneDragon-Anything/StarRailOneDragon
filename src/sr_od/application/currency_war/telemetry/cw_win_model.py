@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
@@ -47,7 +47,7 @@ _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 _TRIO = tuple(sorted(_CORE_TRIO))
 _DOT_POOL = tuple(sorted(
     m for m in FACTIONS['持续伤害'].members()
-    if m in CHARACTERS and CHARACTERS[m].cost <= 2))
+    if (ch := get_char(m)) is not None and ch.cost <= 2))
 _SEELE = SYSTEM_CARDS['seele'].engine_required[0]
 _NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 

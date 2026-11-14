@@ -11,7 +11,7 @@ from __future__ import annotations
 import itertools
 import math
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS, get_char
 from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     POOL_COPIES_PER_CARD,
@@ -126,14 +126,22 @@ def _char_has_tag(ch: object, tag: str) -> bool:
 
 
 def _tier_stats(tag: str) -> dict[int, tuple[int, int]]:
-    """{cost: (目标张数 A,池总张数 T)}——阵营/流派标签圈目标集(P16 口径)。"""
+    """{cost: (目标张数 A,池总张数 T)}——阵营/流派标签圈目标集(P16 口径)。
+
+    is_hide 过滤(牌池口径,registry 详设 2.7:数据层查询不过滤、概率
+    统计消费方过滤——本函数即消费方之一):官方隐藏态不可刷,不进费段
+    统计。费用域 = POOL_COPIES_PER_CARD 键域(1-5,概率模型参数域;
+    刷新概率表 REFRESH_PROB 同域,域外费档无模型参数、不可刷不出)。
+    """
     out: dict[int, tuple[int, int]] = {}
-    for cost in sorted({ch.cost for ch in CHARACTERS.values()
-                        if _char_has_tag(ch, tag)}):
+    for cost in sorted({ch.cost for ch in CHARACTERS
+                        if not ch.is_hide and ch.cost in POOL_COPIES_PER_CARD
+                        and _char_has_tag(ch, tag)}):
         a = POOL_COPIES_PER_CARD[cost]
         v = DISTINCT_CARDS_PER_COST[cost]
-        n = len([ch for ch in CHARACTERS.values()
-                 if ch.cost == cost and _char_has_tag(ch, tag)])
+        n = len([ch for ch in CHARACTERS
+                 if ch.cost == cost and not ch.is_hide
+                 and _char_has_tag(ch, tag)])
         if n:
             out[cost] = (n * a, v * a)
     return out
@@ -192,16 +200,18 @@ def slot_q_tag_by_cost(tag: str, level: int,
     """
     held = held_counts or {}
     extra = extra_copies_by_cost or {}
-    member_names = {n for n, ch in CHARACTERS.items()
-                    if getattr(ch, 'cost', 0) and _char_has_tag(ch, tag)}
+    member_names = {ch.name for ch in CHARACTERS
+                    if ch.cost and _char_has_tag(ch, tag)}
     out: dict[int, float] = {}
     for cost, p in sorted(REFRESH_PROB.get(level, {}).items()):
         if p <= 0:
             continue
         a = POOL_COPIES_PER_CARD[cost]
         v = DISTINCT_CARDS_PER_COST[cost]
+        # 起始费口径(费用语义分层,升费机制批接入当前费):按名取档 =
+        # get_char 起始档,多档角色只入起始费档
         members = [n for n in member_names
-                   if getattr(CHARACTERS[n], 'cost', 0) == cost]
+                   if get_char(n).cost == cost]
         n_c = len(members)
         if n_c <= 0:
             continue
@@ -210,7 +220,8 @@ def slot_q_tag_by_cost(tag: str, level: int,
             + int(extra.get(cost, 0))
         t_c = sum(cnt for name, cnt in held.items()
                   if name not in member_set
-                  and getattr(CHARACTERS.get(name), 'cost', None) == cost)
+                  and (ch := get_char(name)) is not None
+                  and ch.cost == cost)
         denom = v * a - j_c - t_c
         numer = n_c * a - j_c
         if denom <= 0 or numer <= 0:

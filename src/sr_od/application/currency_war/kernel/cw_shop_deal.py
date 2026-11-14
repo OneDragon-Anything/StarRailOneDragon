@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import random
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.data.cw_shop_odds import (
     REFRESH_PROB,
     SHOP_SLOTS,
@@ -82,7 +82,7 @@ def sample_shop_deal(gs: GameState, rng: random.Random, *, level: int,
             names = drawable_names(gs, cost)
             if names:
                 name = rng.choice(names)
-                ch = CHARACTERS[name]
+                ch = get_char(name)
                 star = 1
                 if two_star_p > 0 and rng.random() < two_star_p:
                     star = 2
@@ -158,7 +158,7 @@ def sample_shop_deal_forced(gs: GameState, rng: random.Random, *, cost: int,
         else:
             slots.append(ShopSlot(kind='empty'))
             continue
-        ch = CHARACTERS[name]
+        ch = get_char(name)
         star = 1
         if two_star_p > 0 and rng.random() < two_star_p:
             star = 2

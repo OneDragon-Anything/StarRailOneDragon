@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import sys
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import get_char
 from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
 from sr_od.application.currency_war.kernel.cw_economy import (
     DEFAULT_INTEREST_CAP,
@@ -118,7 +118,7 @@ def comp_cost(comp) -> tuple[int, int, dict[str, int]]:
         if char in seen:
             continue
         seen.add(char)
-        ch = CHARACTERS.get(char)
+        ch = get_char(char)
         if ch is None:
             detail[f'{char}(注册表缺)'] = 0
             continue

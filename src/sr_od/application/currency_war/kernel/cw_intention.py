@@ -30,7 +30,11 @@ import contextlib
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_chars import (
+    CHARACTER_ROSTER,
+    CHARACTERS,
+    get_char,
+)
 from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
@@ -243,7 +247,7 @@ def encounter_window_rounds(char_name: str, level: int) -> float:
     同费剩余池比(忽略 depletion 细节,取 1/v);5 格商店至少一张 q = 1-(1-r)^5;
     期望轮 = 1/q。窗口未开(p=0)→ inf。
     """
-    ch = CHARACTERS.get(char_name)
+    ch = get_char(char_name)
     if ch is None:
         return 0.0   # 未识别角色:不构成不可达证据,按立即可达处理
     p = refresh_prob(level, ch.cost)
@@ -296,7 +300,7 @@ def _core_miss_q(core: str, level: int) -> float:
 
     窗口未开(refresh_prob=0)或角色未识别 → 0.0(调用方按上限保险
     接管,不进闭式)。"""
-    ch = CHARACTERS.get(core)
+    ch = get_char(core)
     if ch is None:
         return 0.0
     p = refresh_prob(level, ch.cost)
@@ -586,7 +590,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     chars = set(comp.members)
     factions = set(comp.core_faction_reqs) | set(comp.bonus_faction_reqs)
     if factions:
-        for name, c in CHARACTERS.items():
+        for c in CHARACTERS:
             #  修法2:目标集判定用「阵营 ∪ 流派」全集与档位键
             # 作交集——旧版只查 c.factions,而档位键常含**流派系羁绊**
             # (万敌单C 档 0 燃血=schools、DOT 持续伤害、黄泉减益、击破等),
@@ -594,7 +598,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
             # ( Ring1:燃血 8 成员 3 名缺位)。泛化修正,非万敌特判
             # (candidates 的 _char_factions 同式全集口径)。
             if (set(c.factions) | set(c.schools)) & factions:
-                chars.add(name)
+                chars.add(c.name)
     equips = set(derive_key_equips(comp))
     return chars, equips
 
@@ -856,13 +860,14 @@ def locked_buy_membership(ist: IntentionState | None,
 def _obligation_rank(names: set[str] | frozenset[str]) -> list[str]:
     """截断级内序:cost 升序,注册表声明序
     tie-break。确定性关键:候选序从注册表声明序出发(迭代 CHARACTERS
-    过滤),稳定排序保声明序——从 set 迭代会因哈希序使同费 tie-break
+    过滤,同名多档按首档归并——dict.fromkeys 保序去重),稳定排序保声明序
+    ——从 set 迭代会因哈希序使同费 tie-break
     跨进程不确定(禁)。注册表外残名(识别占位类)排末尾(名序稳定),
     不参与费率比较。"""
-    known = sorted(
-        (n for n in CHARACTERS if n in names),
-        key=lambda n: int(CHARACTERS[n].cost or 0))
-    return known + sorted(n for n in names if n not in CHARACTERS)
+    ordered = list(dict.fromkeys(c.name for c in CHARACTERS
+                                 if c.name in names))
+    known = sorted(ordered, key=lambda n: int(get_char(n).cost or 0))
+    return known + sorted(n for n in names if n not in CHARACTER_ROSTER)
 
 
 def _obligation_truncate(scope: set[str], core_shared: set[str],
