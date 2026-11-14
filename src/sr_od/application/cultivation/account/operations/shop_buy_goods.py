@@ -34,11 +34,31 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils import cv2_utils, str_utils
+from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.cultivation.account.operations.read_warp_status import (
     parse_count,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    BADGE_UNAVAILABLE_KEYWORDS as _BADGE_UNAVAILABLE_KEYWORDS,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    MONTHLY_TRIO,
+    locate_cards,
+    parse_monthly_left,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    NAME_OFFSET_FROM_TOP as _NAME_OFFSET_FROM_TOP,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    badge_rect as _badge_rect_of,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    ocr_rect_text as _ocr_rect_text_of,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    read_count_two_pass as _read_count_two_pass_of,
 )
 from sr_od.application.cultivation.account.operations.shop_switch_tab import (
     TAB_EMBERS,
@@ -99,25 +119,9 @@ _SKIP_POS: Point = Point(1875, 68)
 关闭」的可关区,一笔通吃;商店页识别命中时不会走到此点击(该位置在商店页
 是关闭 X,误点会关店,故点击严格放在画面识别为非商店页之后)"""
 
-# 商品网格几何(1080p):6 列 × N 行,列距 245、卡宽约 216。列位置固定不随
-# 滚动变,行位置随滚动吸附态漂移(常规行距 325,列表底部对齐态行位偏移)——
-# 目标卡定位 = 名字文本中心归列 + 名字中心反推卡顶(商品名在卡内垂直偏移
-# 恒定,与滚动态无关),任意吸附态均可定位。
-_GRID_COL_WINDOWS: list[tuple[int, int]] = [
-    (305, 560), (550, 805), (795, 1050),
-    (1040, 1295), (1285, 1540), (1530, 1785),
-]
-_CARD_WIDTH: int = 216
-_CARD_HEIGHT: int = 285
-_NAME_OFFSET_FROM_TOP: int = 195
-"""商品名文本框中心相对卡顶的垂直偏移(1080p 实测标定,标定样本见
-test_shop_buy_goods 流程测试素材)"""
-_LIST_Y_MIN: int = 110
-"""卡顶反推的合理上界(列表区上沿之上视为异帧残留,拒绝)"""
-# 卡左上角限额角标区(「可兑换 X/Y」/「已达上限」/「已售罄」/「未解锁」),
-# 按卡槽 rect 推演;角标为悬挂样式(文字框左缘超出卡左缘约 25px,实拍标定),
-# x1 需左移容纳;窗口 y 不盖住角标下方的倒计时文本框
-_BADGE_OFFSET: tuple[int, int, int, int] = (-25, 8, 175, 52)
+# 商品网格几何/卡定位/角标读取管线平移至 shop_goods_scan 单一源模块
+# (识别器与购买 op 共用;本模块经上方别名导入消费)
+
 _SCROLL_STEP: int = 300
 """单次滚动拖距(px),行高 325 且列表按行吸附,300 拖距吸附 1 行,连续帧
 至少完整露出一行商品,不漏扫"""
@@ -130,7 +134,6 @@ _SCROLL_SAME_TEXT_ROUNDS: int = 2
 连续 2 轮防拖拽动画过渡帧/轮间时序导致的单轮同帧误判)"""
 
 # 卡不可购态角标关键词:命中即 fail,不进弹窗(售罄弹窗确认按钮禁用,进了也无法购买)
-_BADGE_UNAVAILABLE_KEYWORDS: tuple[str, ...] = ('已售罄', '已达上限', '未解锁')
 # 角标关键词 → fail_status(语义分支用;已达上限/未解锁同属「卡面不可购」)
 _BADGE_FAIL_STATUS: dict[str, str] = {
     '已售罄': 'SOLD_OUT',
@@ -170,8 +173,6 @@ def _is_target_popup_title(title: str | None, goods_cn: str) -> bool:
                                      percent=_TITLE_MATCH_LCS))
 
 
-_COUNT_OCR_SCALE: float = 3.0
-"""数量型 area 的 OCR 放大倍数(单字符数字兜底,同 ReadWarpStatusOp 口径)"""
 _BALANCE_TOLERANCE: int = 2
 """余额差值终验容差(顶部货币读数的 OCR 个位抖动)"""
 
@@ -181,9 +182,11 @@ _GOODS_META: dict[str, tuple[str, str, str]] = {
     # 关键词 = 卡面商品名的唯一子串(去书名号/逗号等装饰,防 OCR 抖动)
     # ——对照表来源:2026-11-12 实机中英双态走查(见 .debug/temp/operation-explore/
     #   2026-11-12-shop-buy-goods/screen-flow.md,永久副本归档后指针随测试固化)
-    'special_pass': (_SHOP_EXCHANGE, TAB_EMBERS, '星轨专票'),
-    'pass': (_SHOP_EXCHANGE, TAB_EMBERS, '星轨通票'),
-    'tracks_of_destiny': (_SHOP_EXCHANGE, TAB_EMBERS, '命运的足迹'),
+    # 月限三件套关键词引自 shop_goods_scan.MONTHLY_TRIO(识别器共用单一源)
+    'special_pass': (_SHOP_EXCHANGE, TAB_EMBERS, MONTHLY_TRIO['special_pass']),
+    'pass': (_SHOP_EXCHANGE, TAB_EMBERS, MONTHLY_TRIO['pass']),
+    'tracks_of_destiny': (_SHOP_EXCHANGE, TAB_EMBERS,
+                          MONTHLY_TRIO['tracks_of_destiny']),
     'adventure_log': (_SHOP_EXCHANGE, TAB_EMBERS, '冒险记录'),
     'condensed_aether': (_SHOP_EXCHANGE, TAB_EMBERS, '凝缩以太'),
     'lost_gold_fragment': (_SHOP_EXCHANGE, TAB_EMBERS, '遗失碎金'),
@@ -292,19 +295,8 @@ _GOODS_META: dict[str, tuple[str, str, str]] = {
     'herta_contract_resource_supply_v2': (_SHOP_CONTRACT, None, '材料支持协议'),
 }
 
-
-def parse_monthly_left(text: str | None) -> int | None:
-    """「可兑换 X/Y」月限文本 → 剩余次数 X。
-
-    斜杠对须用 ``\\d+\\s*/\\s*\\d+`` 分别取值——get_positive_digits 对「5/5」
-    会取成 55(同 ShopSwitchTabOp 口径);X 为本期限剩余可兑换数。
-    """
-    if not text:
-        return None
-    m = re.search(r'(\d+)\s*/\s*(\d+)', text)
-    if m is None:
-        return None
-    return int(m.group(1))
+# parse_monthly_left 已平移至 shop_goods_scan(斜杠对单一源),本模块经
+# 顶部导入保留同名符号(存量 import 兼容);re 仅供 _slider_cap 上限条解析。
 
 
 class ExchangeShopBuyGoods(SrOperation):
@@ -785,38 +777,15 @@ class ExchangeShopBuyGoods(SrOperation):
     def _scan_goods(self, screen) -> tuple[Rect | None, str]:
         """商品列表区 OCR 扫描,返回 (目标卡槽位 rect 或 None, 本帧全文)。
 
-        商品名用**包含匹配**——不引入模糊兜底:同名易混对(星轨通票/星轨
-        专票一字之差)模糊匹配会误命中,后果是读错卡的角标甚至点错卡,
-        比漏扫(诚实失败)严重。
+        定位逻辑在 shop_goods_scan.locate_cards(单一源,识别器共用),
+        本方法只做单目标过滤与全文拼接。
         """
         area = self.ctx.screen_loader.get_area(self._shop_screen, _AREA_LIST_REGION)
         ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(
             screen, rect=area.rect)
         full_text = ''.join(result.data for result in ocr_result_list)
-        for result in ocr_result_list:
-            text = result.data or ''
-            if self._goods_cn not in text:
-                continue
-            center = result.center
-            col = self._locate_window(center.x, _GRID_COL_WINDOWS)
-            if col is None:
-                # 商品名文字不在任何列窗口(异帧残留等),跳过
-                continue
-            card_top = int(center.y) - _NAME_OFFSET_FROM_TOP
-            if card_top < _LIST_Y_MIN:
-                continue
-            col_center = sum(_GRID_COL_WINDOWS[col]) // 2
-            return Rect(col_center - _CARD_WIDTH // 2, card_top,
-                        col_center + _CARD_WIDTH // 2, card_top + _CARD_HEIGHT), full_text
-        return None, full_text
-
-    def _locate_window(self, value: float,
-                       windows: list[tuple[int, int]]) -> int | None:
-        """值落在哪个窗口,返回下标;都不在返回 None。"""
-        for idx, (low, high) in enumerate(windows):
-            if low <= value <= high:
-                return idx
-        return None
+        cards = locate_cards(ocr_result_list, {self._goods_cn})
+        return cards.get(self._goods_cn), full_text
 
     def _read_badge_state(self, card_rect: Rect) -> str | None:
         """读目标卡左上角限额角标,返回不可购态关键词;可购/读不出返回 None。
@@ -834,11 +803,8 @@ class ExchangeShopBuyGoods(SrOperation):
         return None
 
     def _badge_rect(self, card_rect: Rect) -> Rect:
-        """卡槽位 rect → 左上角限额角标区 rect(窗口不盖住角标下方倒计时)。"""
-        return Rect(card_rect.x1 + _BADGE_OFFSET[0],
-                    card_rect.y1 + _BADGE_OFFSET[1],
-                    card_rect.x1 + _BADGE_OFFSET[2],
-                    card_rect.y1 + _BADGE_OFFSET[3])
+        """卡槽位 rect → 左上角限额角标区 rect(实现见 shop_goods_scan)。"""
+        return _badge_rect_of(card_rect)
 
     def _popup_status_bar(self) -> tuple[str, str] | None:
         """读弹窗状态横条,返回 (关键词, fail status);无横条返回 None。
@@ -943,29 +909,11 @@ class ExchangeShopBuyGoods(SrOperation):
         return self._ocr_rect_text(screen=screen, rect=area.rect)
 
     def _ocr_rect_text(self, screen, rect: Rect) -> str | None:
-        """读指定 rect 的 OCR 文本(空 = None)。"""
-        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(
-            screen, rect=rect)
-        if len(ocr_result_list) == 0:
-            return None
-        return ''.join(result.data for result in ocr_result_list)
+        """读指定 rect 的 OCR 文本(实现见 shop_goods_scan 单一源)。"""
+        return _ocr_rect_text_of(self.ctx.ocr_service, screen, rect)
 
     def _area_count_text(self, screen, screen_name: str, area_name: str) -> str | None:
-        """读数量型 area:两层取数——全图 OCR+rect 过滤 → 非数字时 3 倍放大裁剪兜底。
-
-        全图 OCR 对单个小数字易出噪声字形(实测兑换数量 4 全图读成 'a'/'O',
-        静态 rect 命中非空但不可解析),只判空会漏触发兜底;非数字结果一律走
-        放大裁剪二次识别,数字可读性显著更好。
-        """
+        """读数量型 area:两层取数(实现见 shop_goods_scan 单一源,强化版口径)。"""
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
-        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area.rect)
-        if len(ocr_result_list) > 0:
-            joined = ''.join(result.data for result in ocr_result_list)
-            if parse_count(joined) is not None:
-                return joined
-        cropped = cv2_utils.crop_image_only(screen, area.rect)
-        big = cv2_utils.scale_image(cropped, scale=_COUNT_OCR_SCALE)
-        raw = self.ctx.ocr.run_ocr(big)
-        if len(raw) == 0:
-            return None
-        return ''.join(raw.keys())
+        return _read_count_two_pass_of(self.ctx.ocr_service, self.ctx.ocr,
+                                       screen, area)

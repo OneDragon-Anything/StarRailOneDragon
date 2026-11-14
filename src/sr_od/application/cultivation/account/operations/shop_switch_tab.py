@@ -18,15 +18,18 @@ Undying Starlight:换票 20 星芒/张,不限量);余烬兑换 tab 是光锥转�
 入口从跃迁页进商店见 [EnterShopFromWarpOp](enter_shop_from_warp.py)。
 """
 
-import re
-
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.cultivation.account.operations.read_warp_status import (
     parse_count,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    parse_exchange_pair,
+)
+from sr_od.application.cultivation.account.operations.shop_goods_scan import (
+    read_count_two_pass as _read_count_two_pass_of,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -134,10 +137,10 @@ class ShopSwitchTabOp(SrOperation):
                                        _SHOP_SCREEN, _AREA_FIRST_SLOT_MONTHLY)
         data['first_slot_monthly_text'] = monthly_text
         if monthly_text is not None:
-            m = re.search(r'(\d+)\s*/\s*(\d+)', monthly_text)
-            if m is not None:
-                data['first_slot_monthly_left'] = int(m.group(1))
-                data['first_slot_monthly_total'] = int(m.group(2))
+            pair = parse_exchange_pair(monthly_text)
+            if pair is not None:
+                data['first_slot_monthly_left'] = pair[0]
+                data['first_slot_monthly_total'] = pair[1]
         return self.round_success(status=_tab_status(self._tab), data=data,
                                   wait=0.5)
 
@@ -150,14 +153,9 @@ class ShopSwitchTabOp(SrOperation):
         return ''.join(result.data for result in ocr_result_list)
 
     def _area_count_text(self, screen, screen_name: str, area_name: str) -> str | None:
-        """读数量型 area:两层取数——全图 OCR+rect 过滤 → 3 倍放大裁剪兜底。"""
+        """读数量型 area:两层取数(实现见 shop_goods_scan 单一源,强化版口径
+        ——原弱化版首层非空即返回,漏触发放大兜底;行为升级为强化的唯一
+        变化点,健壮性提升)。"""
         area = self.ctx.screen_loader.get_area(screen_name, area_name)
-        ocr_result_list = self.ctx.ocr_service.get_ocr_result_list(screen, rect=area.rect)
-        if len(ocr_result_list) > 0:
-            return ''.join(result.data for result in ocr_result_list)
-        cropped = cv2_utils.crop_image_only(screen, area.rect)
-        big = cv2_utils.scale_image(cropped, scale=_COUNT_OCR_SCALE)
-        raw = self.ctx.ocr.run_ocr(big)
-        if len(raw) == 0:
-            return None
-        return ''.join(raw.keys())
+        return _read_count_two_pass_of(self.ctx.ocr_service, self.ctx.ocr,
+                                       screen, area)
