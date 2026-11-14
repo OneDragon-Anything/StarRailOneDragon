@@ -10,7 +10,7 @@ area_list:
   - 1245
   - 640
   text: 兑换数量
-  lcs_percent: 0.5
+  lcs_percent: 0.75
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7

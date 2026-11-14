@@ -271,7 +271,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: tab-星芒兑换
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 340
   - 145

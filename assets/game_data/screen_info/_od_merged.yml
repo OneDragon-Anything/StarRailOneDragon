@@ -11858,7 +11858,7 @@
     color_range: null
     goto_list: []
   - area_name: tab-星芒兑换
-    id_mark: true
+    id_mark: false
     pc_rect:
     - 340
     - 145
@@ -21483,7 +21483,7 @@
     - 1245
     - 640
     text: 兑换数量
-    lcs_percent: 0.5
+    lcs_percent: 0.75
     template_sub_dir: ''
     template_id: ''
     template_match_threshold: 0.7

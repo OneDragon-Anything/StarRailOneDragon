@@ -136,7 +136,11 @@ class MonthlyEmbersExchangeApp(SrApplication):
         order = resolve_exchange_order(items)
         stop_idx: int | None = None
         for idx, goods in enumerate(order):
-            result = ExchangeShopBuyGoods(self.ctx, goods, count=None).execute()
+            # scroll_search=False(用户优化 2026-11-14):月限三件套可用排前、
+            # 售罄沉底——首屏没有 = 本期已尽,无需滚动扫描(切 tab 默认回顶,
+            # 首屏判定对位置敏感由购买 op 内置回顶保证)
+            result = ExchangeShopBuyGoods(self.ctx, goods, count=None,
+                                          scroll_search=False).execute()
             branch = classify_purchase_result(
                 result.success,
                 (result.data or {}).get('fail_status'))
