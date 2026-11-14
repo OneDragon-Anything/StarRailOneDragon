@@ -233,7 +233,7 @@ area_list:
   - 213
   - 445
   - 252
-  text: 难度03
+  text: ''
   lcs_percent: 0.85
   template_sub_dir: ''
   template_id: ''
@@ -247,7 +247,7 @@ area_list:
   - 213
   - 445
   - 252
-  text: 难度04
+  text: ''
   lcs_percent: 0.85
   template_sub_dir: ''
   template_id: ''

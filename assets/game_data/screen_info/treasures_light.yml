@@ -513,7 +513,7 @@ area_list:
   - 230
   - 280
   - 272
-  text: 记忆紊流
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

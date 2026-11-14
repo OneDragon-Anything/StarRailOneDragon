@@ -149,7 +149,7 @@ area_list:
   - 659
   - 1110
   - 692
-  text: 已售罄
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

@@ -183,7 +183,7 @@ area_list:
   - 222
   - 1665
   - 268
-  text: 等级80/80
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -211,7 +211,7 @@ area_list:
   - 342
   - 1895
   - 385
-  text: '4411'
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -225,7 +225,7 @@ area_list:
   - 378
   - 1895
   - 420
-  text: '1708'
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -239,7 +239,7 @@ area_list:
   - 414
   - 1895
   - 458
-  text: '1346'
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -253,7 +253,7 @@ area_list:
   - 450
   - 1895
   - 494
-  text: '141'
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -267,7 +267,7 @@ area_list:
   - 486
   - 1895
   - 530
-  text: 10.8%
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -281,7 +281,7 @@ area_list:
   - 522
   - 1895
   - 568
-  text: 223.0%
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

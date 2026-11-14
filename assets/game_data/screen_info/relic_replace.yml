@@ -211,7 +211,7 @@ area_list:
   - 158
   - 1905
   - 218
-  text: 先驱的绝热围壳
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

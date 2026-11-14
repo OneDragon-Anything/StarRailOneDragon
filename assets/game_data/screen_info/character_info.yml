@@ -113,7 +113,7 @@ area_list:
   - 262
   - 1905
   - 302
-  text: 贝洛伯格
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

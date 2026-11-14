@@ -127,7 +127,7 @@ area_list:
   - 220
   - 840
   - 275
-  text: 养精蓄锐
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -141,7 +141,7 @@ area_list:
   - 200
   - 1255
   - 255
-  text: 快速行军
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -155,7 +155,7 @@ area_list:
   - 405
   - 1695
   - 460
-  text: 鼓炮齐鸣
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -169,7 +169,7 @@ area_list:
   - 880
   - 1495
   - 935
-  text: 攻其不备
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -183,7 +183,7 @@ area_list:
   - 845
   - 1010
   - 900
-  text: 所向克捷
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
@@ -197,7 +197,7 @@ area_list:
   - 765
   - 555
   - 820
-  text: 气贯长虹
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

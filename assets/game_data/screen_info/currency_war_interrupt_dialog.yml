@@ -65,7 +65,7 @@ area_list:
   - 505
   - 1520
   - 568
-  text: '3'
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''

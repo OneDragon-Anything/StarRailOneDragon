@@ -177,7 +177,7 @@ area_list:
   - 708
   - 1890
   - 742
-  text: 可提升至40级
+  text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
   template_id: ''
