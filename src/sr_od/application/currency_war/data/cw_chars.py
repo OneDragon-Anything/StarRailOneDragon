@@ -37,13 +37,6 @@ class Character:
     # gain_chain(env/strategy advisor 道 + 装备通道),状态容器状态 =
     # GameState.unlocked_experts,池消费 = cw_pool。
     is_expert: bool = False
-    # 「挂后台效果」单位级载体(游戏数据字段):该单位坐备战席
-    # 即生效的效果族标签(空串=无,纯燃料/战力件)。当前已登记:'星级供强'
-    # (黑塔:备战席小黑塔星级合计供给大黑塔前后台强度,final_daheita_aoe §1
-    # 备战席经济学)。(原判据消费 predicates.bench_effect_qualified 已随
-    # 旧评估器退役删除——统一让位优先级迭代 3.4:该维度由统一序列档 9
-    # 判定承载,本字段保留为游戏数据。)
-    bench_effect: str = ""
 
     def position_pref(self) -> str:
         """部署站位偏好 → "front"/"back"(common 默认 back,可被阵容层 char_positions 覆盖)。
@@ -95,13 +88,13 @@ def is_trailblazer(name: str) -> bool:
 
 def _ch(name: str, cost: int, position: str, char_type: str,
         factions: str = "", schools: str = "", independent: str = "", source: str = "",
-        bench_effect: str = "", is_expert: bool = False) -> Character:
+        is_expert: bool = False) -> Character:
     """构造助手:阵营/流派用"、"分隔的字符串 → tuple。空串 → 空 tuple。"""
     return Character(
         name=name, cost=cost, position=position, char_type=char_type,
         factions=tuple(f for f in factions.split("、") if f) if factions else (),
         schools=tuple(f for f in schools.split("、") if f) if schools else (),
-        independent=independent, source=source, bench_effect=bench_effect,
+        independent=independent, source=source,
         is_expert=is_expert,
     )
 
@@ -113,8 +106,7 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("乱破", 1, "front", "输出", "巡海游侠", "击破", source="6551"),
     _ch("大丽花", 1, "common", "输出", "盛会之星", "击破", source="6999"),
     _ch("艾丝妲", 1, "front", "辅助", "银河学者", "持续伤害", source="6536"),
-    _ch("黑塔", 1, "common", "输出", "银河学者", "群攻", source="6535",
-         bench_effect="星级供强"),
+    _ch("黑塔", 1, "common", "输出", "银河学者", "群攻", source="6535"),
     _ch("青雀", 1, "front", "输出", "仙舟", "战技点", source="6534", is_expert=True),
     _ch("飞霄", 1, "front", "输出", "狼狩", "追击", source="6373"),
     _ch("椒丘", 1, "front", "治疗、辅助", "狼狩", "持续伤害、减益", source="6531"),  # trait 对齐 plaza:+狼狩(characters.md 阵营速查早已有,注册表漏)

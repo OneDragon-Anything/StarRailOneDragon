@@ -7,8 +7,7 @@ cw_comps.Comp.members;口径 = strategy-docs/12_line_and_intention.md
 
 (「挂后台效果」资格谓词族 bench_effect_qualified/bench_effect_context
 已随旧评估器退役删除——统一让位优先级迭代 3.4:四处消费位整批退役,
-该维度由统一序列档 9 判定承载;cw_chars 的 bench_effect 数据字段保留
-为游戏数据。)
+该维度由统一序列档 9 判定承载。)
 """
 from __future__ import annotations
 
