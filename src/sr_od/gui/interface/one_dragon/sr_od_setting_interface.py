@@ -37,37 +37,33 @@ class ExchangeOrderCard(MultiLineSettingCard):
     """
 
     def _pill_qss(self) -> str:
-        """Fluent 风格 pill:小圆角/中性底,强调色只出现在左序号条与 hover——
-        强调色随用户主题色(qconfig)取,浅深主题两套中性色。"""
+        """badge 风格(用户 2026-11-14 反馈去掉包裹矩形):无底无边框,只留
+        强调色左条做顺序标记与 hover 反馈;强调色随用户主题色(qconfig),
+        浅深主题两套中性文字色。"""
         accent = qconfig.themeColor.value
         if isDarkTheme():
-            bg, border, text = ('rgba(255, 255, 255, 0.07)',
-                                'rgba(255, 255, 255, 0.14)', '#f5f5f5')
-            hover_bg = 'rgba(255, 255, 255, 0.12)'
+            text = '#f5f5f5'
         else:
-            bg, border, text = ('#f9f9f9', 'rgba(0, 0, 0, 0.10)', '#1f1f1f')
-            hover_bg = 'rgba(0, 0, 0, 0.05)'
+            text = '#1f1f1f'
         return f'''
         QListWidget {{ background: transparent; outline: none; }}
         QListWidget::item {{
-            background: {bg};
-            border: 1px solid {border};
+            background: transparent;
+            border: none;
             border-left: 3px solid {accent};
-            border-radius: 4px;
-            padding: 3px 14px;
-            margin: 0px 5px;
+            border-radius: 2px;
+            padding: 3px 12px;
+            margin: 0px 4px;
             color: {text};
             font-size: 13px;
         }}
         QListWidget::item:hover {{
-            background: {hover_bg};
-            border: 1px solid {accent};
+            color: {accent};
             border-left: 3px solid {accent};
         }}
         QListWidget::item:selected {{
-            border: 1px solid {accent};
+            color: {accent};
             border-left: 3px solid {accent};
-            background: {bg};
         }}
         '''
 
