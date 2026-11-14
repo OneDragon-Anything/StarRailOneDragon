@@ -6,7 +6,8 @@
 
 产出(只写 assets/docs 产物,**不再写任何 src 文件**):
   1. docs/game/currency_war/data/characters/<名>.md — 每角色一档(技能星级效果全文/trait 官方描述);
-  2. 官方立绘/装备模板库(assets/template/currency_war/portrait_plaza、equip_plaza);
+  2. 官方立绘/装备模板库(assets/template/currency_war/character_avatar、equip_plaza;
+     立绘图源 = plaza 接口 role_list[].big_icon 烘焙);
   3. **对拍报告(stdout)**:plaza 条目 vs `cw_chars.CHARACTERS` 注册表逐条比 cost/position/traits,
      不一致打印 diff 并**非零退出**。曾持久生成的 `cw_chars_data.py`(PLAZA_ROLES 数据层)
      已删——注册表是单一源,版本更新对拍靠本脚本重跑,不靠平行数据模块。
@@ -33,7 +34,7 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "src"))  # 供 gen_templates import sr_od 注册表
 DOC_DIR = REPO / "docs/game/currency_war/data/characters"
-TPL_DIR = REPO / "assets/template/currency_war/portrait_plaza"  # 官方立绘模板库(替代手采库)
+TPL_DIR = REPO / "assets/template/currency_war/character_avatar"  # 官方立绘模板库(替代手采库)
 EQUIP_TPL_DIR = REPO / "assets/template/currency_war/equip_plaza"  # 官方装备模板库(混合:plaza进阶art+手工简易/特权)
 
 CONFIG_URL = "https://act-api-takumi.miyoushe.com/event/rpgcurrencywar/game/config?game=hkrpg"

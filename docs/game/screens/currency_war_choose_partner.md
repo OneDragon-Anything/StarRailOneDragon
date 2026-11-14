@@ -48,7 +48,7 @@ source_image: screens/货币战争-列车同行/伙伴遮罩-未选中.webp
 
 ## automation 要读信息
 
-- **候选流派 label**:OCR 候选行(y 带 [340,400],x 带 [450,1550],2-4 字流派名)→ `decide_partner` 候选。真按角色选需 SIFT 立绘识别(已接,portrait_plaza 库)。
+- **候选流派 label**:OCR 候选行(y 带 [340,400],x 带 [450,1550],2-4 字流派名)→ `decide_partner` 候选。真按角色选需 SIFT 立绘识别(已接,character_avatar 库)。
 - **未选中态**:「请选择强化角色」提示 area 命中 = 确认钮置灰实证(点选未生效/未做)。
 - **目标阵营**(指令句阵营名)→ 限定候选范围。
 

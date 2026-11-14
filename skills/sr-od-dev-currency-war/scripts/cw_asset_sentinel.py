@@ -14,7 +14,7 @@ OCR 模型 / avatar 脸库等运行时资产目录多次被外部清空(最近�
   外部模型库**,junction 悬空/目标侧被清是真实清空形态,必须能抓)+ `ppocrv6`
   (GUI 可选档,非缺省 → watch 档不即退)。关键文件清单 = det/rec/cls/simfang.ttf
   + `<模型名>_dict.txt`(语义 = onnx_ocr_matcher.get_final_file_list 下载完成判定)。
-- CW 立绘 SIFT 模板库 `assets/template/currency_war/portrait_plaza`(唯一库,git 管内)
+- CW 立绘 SIFT 模板库 `assets/template/currency_war/character_avatar`(唯一库,git 管内)
 - CW 首领头像库 `assets/template/currency_war/boss_avatar`(git 管内)
 
 ## 分级(学 cw_sentinel v5.2 的 HIT 分级形态)
@@ -121,9 +121,9 @@ def build_targets() -> dict[str, dict]:
                       '(get_ocr_model_dir/get_final_file_list)+'
                       'one_dragon/base/config/basic_model_config.py(BasicModelConfig.ocr)',
         }
-    targets['cw_portrait_plaza'] = {
+    targets['cw_character_avatar'] = {
         'label': 'CW 立绘 SIFT 模板库(唯一库)',
-        'path': ['assets', 'template', 'currency_war', 'portrait_plaza'],
+        'path': ['assets', 'template', 'currency_war', 'character_avatar'],
         'level': 'critical',
         # 无单文件关键清单:库内任一角色模板缺失只降该角色识别率(运行不断),
         # 走 general 证据;目录消失/清空才是 critical
@@ -340,7 +340,7 @@ def evidence_body(findings: list[dict], first_seen: dict[str, str]) -> list[str]
         '## 判读与处置(哨兵只报不修,恢复走既有链路)',
         '1. OCR 模型目录/关键文件缺失 → 框架下载链恢复(GUI 模型页;'
         'OnnxOcrMatcher 下载器),完成后 --rebaseline 收敛基线',
-        '2. 模板库(portrait_plaza/boss_avatar)缺损 → git 管内资产,'
+        '2. 模板库(character_avatar/boss_avatar)缺损 → git 管内资产,'
         '`git status assets/template` 核对后 checkout 恢复',
         '3. junction 悬空/链接形态变化 → 先看明细里的 link_target(外部模型库侧'
         '被清或链接被删),修链接或恢复库本体后 --rebaseline',

@@ -2,7 +2,7 @@
 
 与 ``cw_observation``(OCR 字段)互补:本模块读 OCR 看不见的**身份** —— 备战栏 / 舞台槽内角色
 立绘 → 规范名(``read_deployed_rows`` / ``read_bench_view``),用 ``currency_war_char_id`` 的
-SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
+SIFT 匹配器对模板库(生产用 ``currency_war/character_avatar`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
 **与状态容器跟踪的关系**(设计):备战席/上场位默认由 bot 跟踪(动作推演 + 观察对账写状态容器,
 见 kernel/cw_game_state)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
@@ -63,7 +63,7 @@ from sr_od.context.sr_context import SrContext
 def resolve_char_name(avatar_id: str) -> str | None:
     """SIFT 的 avatar_id(模板目录名)→ 货币战争规范名(``CHARACTER_ROSTER`` 成员)。
 
-    **半身立绘库(``currency_war/portrait_plaza``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
+    **半身立绘库(``currency_war/character_avatar``)key = 中文规范名**(官方 plaza 烘焙,含变体独立模板,如
     ``姬子·启行`` / ``千冶·刃``)→ ``identify_character`` 返回的 avatar_id 已是规范名 → 本函数
     第 54 行 ``avatar_id in CHARACTER_ROSTER`` 直接命中返。变体**可被 SIFT 区分**(D-54 验:
     deployed_p1r9 后排-2 姬子·启行 inliers=38,基础姬子 <7 连 top3 未进 —— 共脸对分数拉开,
@@ -88,7 +88,7 @@ def resolve_char_name(avatar_id: str) -> str | None:
 
 
 def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
-    """确保 ctx 缓存 ``currency_war/portrait_plaza`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
+    """确保 ctx 缓存 ``currency_war/character_avatar`` 立绘 SIFT 模板;返 templates 或 None(目录缺)。
 
     首次 load 缓存 ``ctx.cw_portrait_templates``;后续读缓存。**shop SIFT**(D-55,``read_shop_cards``)
     + deployed/bench SIFT 身份识别的模板加载点(deploy_bench 也读写此缓存)。**幂等**:同值重 load 无害。
@@ -99,7 +99,7 @@ def ensure_portrait_templates(ctx: SrContext) -> AvatarTemplates | None:
     templates = getattr(ctx, 'cw_portrait_templates', None)
     if templates is None:
         base = get_project_root() / 'assets' / 'template'
-        portrait_dir = base / 'currency_war' / 'portrait_plaza'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删)
+        portrait_dir = base / 'currency_war' / 'character_avatar'   # 官方立绘库(plaza big_icon 烘焙,含 mask;唯一库,旧手采库已删)
         if not portrait_dir.is_dir():
             return None
         templates = load_avatar_templates(portrait_dir)
@@ -913,7 +913,7 @@ def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
     # 召唤物/特殊形态建档(用户定调):
     # 槽位占用(slot_occupied CV)真 + SIFT 认不出 = 未建档单位现身 → **停机保画面**,
     # AI 现场点该槽 → 右侧详情面板出角色名(身份 ground truth 源)+ 外观对照 → 定名建档
-    # (portrait_plaza/<名>/raw.png 白框法裁剪 + roster 核条目)→ 处理完删 flag
+    # (character_avatar/<名>/raw.png 白框法裁剪 + roster 核条目)→ 处理完删 flag
     # (钩子段在识别覆盖该物品变体前保留)。
     # ⚠️ r78 新误触模式守卫:**角色详情面板开着时跳过** —— 详情面板(x1400+)盖住 bench
     # 右端(slot7-9),被遮槽 SIFT 看到的是面板 UI(已实测确认:summon_unknown__e1fb06c8 帧

@@ -144,7 +144,7 @@ def record_live(session: str = '', interval: float = 0.8) -> None:
 
     ctx = SrContext()
     ctx.init_by_config()
-    templates = load_avatar_templates(Path('assets/template/currency_war/portrait_plaza'))
+    templates = load_avatar_templates(Path('assets/template/currency_war/character_avatar'))
     session = session or datetime.now().strftime('rec_%Y%m%d_%H%M%S')
     out = _REC_ROOT / session
     out.mkdir(parents=True, exist_ok=True)
@@ -206,7 +206,7 @@ def replay_dir(dir_path: Path) -> None:
 
     ctx = SrContext()
     ctx.init_by_config()
-    templates = load_avatar_templates(Path('assets/template/currency_war/portrait_plaza'))
+    templates = load_avatar_templates(Path('assets/template/currency_war/character_avatar'))
     jsonl = dir_path / 'frames.jsonl'
     _ver = 2
     while jsonl.exists():
