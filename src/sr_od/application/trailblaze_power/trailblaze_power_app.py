@@ -1,20 +1,27 @@
-from typing import ClassVar, Optional
+from typing import ClassVar
 
 from one_dragon.base.operation.operation_edge import node_from
-from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.application.trailblaze_power import trailblaze_power_const
-from sr_od.application.div_uni.operations.ornamenet_extraction import ChallengeOrnamentExtraction
+from sr_od.application.div_uni.operations.ornamenet_extraction import (
+    ChallengeOrnamentExtraction,
+)
 from sr_od.application.sim_universe.sim_uni_app import SimUniApp
 from sr_od.application.sim_universe.sim_uni_data import SimUniWorldEnum
 from sr_od.application.sr_application import SrApplication
-from sr_od.application.trailblaze_power.trailblaze_power_config import TrailblazePowerPlanItem
-from sr_od.challenge_mission.use_trailblaze_power import UseTrailblazePower
+from sr_od.application.trailblaze_power import trailblaze_power_const
+from sr_od.application.trailblaze_power.trailblaze_power_config import (
+    TrailblazePowerPlanItem,
+)
+from sr_od.application.trailblaze_power.use_trailblaze_power import UseTrailblazePower
 from sr_od.context.sr_context import SrContext
-from sr_od.interastral_peace_guide.guide_check_power import GuideCheckPower, GuidePowerResult
+from sr_od.interastral_peace_guide.guide_check_power import (
+    GuideCheckPower,
+    GuidePowerResult,
+)
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 
@@ -34,7 +41,7 @@ class TrailblazePowerApp(SrApplication):
                                op_name=gt('开拓力'),
                                run_record=ctx.power_record)
 
-        self.last_mission: Optional[GuideMission] = None  # 上一个挑战副本
+        self.last_mission: GuideMission | None = None  # 上一个挑战副本
         self.power: int = 0  # 剩余开拓力
         self.qty: int = 0  # 沉浸器数量
 
@@ -45,7 +52,7 @@ class TrailblazePowerApp(SrApplication):
         :return:
         """
         self.ctx.power_config.check_plan_run_times()
-        plan: Optional[TrailblazePowerPlanItem] = self.ctx.power_config.get_next_plan()
+        plan: TrailblazePowerPlanItem | None = self.ctx.power_config.get_next_plan()
 
         if plan is None:
             return self.round_success(status=TrailblazePowerApp.STATUS_NO_PLAN)
@@ -68,12 +75,12 @@ class TrailblazePowerApp(SrApplication):
     @operation_node(name='执行开拓力计划')
     def execute_plan(self) -> OperationRoundResult:
         self.ctx.power_config.check_plan_run_times()
-        plan: Optional[TrailblazePowerPlanItem] = self.ctx.power_config.get_next_plan()
+        plan: TrailblazePowerPlanItem | None = self.ctx.power_config.get_next_plan()
         for _ in range(100):
             if plan is None:
                 return self.round_success(TrailblazePowerApp.STATUS_NO_PLAN)
 
-            mission: Optional[GuideMission] = self.ctx.guide_data.get_mission_by_unique_id(plan.mission_id)
+            mission: GuideMission | None = self.ctx.guide_data.get_mission_by_unique_id(plan.mission_id)
             if mission is None:
                 return self.round_success(TrailblazePowerApp.STATUS_NO_PLAN)
 

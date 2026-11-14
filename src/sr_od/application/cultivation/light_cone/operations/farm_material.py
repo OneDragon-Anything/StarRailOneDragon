@@ -37,7 +37,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from one_dragon.utils.str_utils import find_best_match_by_difflib
-from sr_od.challenge_mission.use_trailblaze_power import UseTrailblazePower
+from sr_od.application.trailblaze_power.use_trailblaze_power import UseTrailblazePower
 from sr_od.config.dungeon_drop_const import (
     MATERIAL_MISSIONS,
     find_missions_by_material,

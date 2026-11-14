@@ -9,6 +9,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.challenge_mission.battle_wait_windows import (
+    WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS,
+    WAIT_RESULT_TIMEOUT_SECONDS,
+)
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.challenge_mission.choose_support_in_team import ChooseSupportInTeam
 from sr_od.challenge_mission.click_challenge import ClickChallenge
@@ -22,13 +26,6 @@ from sr_od.operations.team.choose_team import ChooseTeam
 from sr_od.operations.wait.wait_in_world import WaitInWorld
 from sr_od.screen_state import battle_screen_state
 from sr_od.sr_map.operations.transport_to_recover import TransportToRecover
-
-# 「贪饕侵蚀」机制(2026-08-26 版本)把拟造花萼常规战斗时长拉长到不可控:侵蚀怪致死不灭+
-# 立即回血,需把生命压制到阈值比例才可击杀,实测最长 20分49秒(run 48,2026-08-27)。
-# 等待本身是信号驱动的(见 _wait_battle_result:每轮识别结算画面),下列上限只是防真死锁的
-# 兜底窗,放大不影响正常时长;收尾窗给超时后的游戏内残余战斗继续自行打完的余量。
-WAIT_RESULT_TIMEOUT_SECONDS: int = 25 * 60  # 主等待窗:覆盖实测最坏(20分49秒)+ 余量
-WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS: int = 25 * 60  # 超时收尾观察窗;两窗合计 = 单次挑战硬顶
 
 
 class UseTrailblazePower(SrOperation):

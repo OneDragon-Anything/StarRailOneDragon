@@ -8,14 +8,14 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.challenge_mission.battle_wait_windows import (
+    WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS,
+    WAIT_RESULT_TIMEOUT_SECONDS,
+)
 from sr_od.challenge_mission.choose_support_in_team import ChooseSupportInTeam
 from sr_od.challenge_mission.click_challenge import ClickChallenge
 from sr_od.challenge_mission.click_start_challenge import ClickStartChallenge
 from sr_od.challenge_mission.resume_from_battle_fail import ResumeFromBattleFail
-from sr_od.challenge_mission.use_trailblaze_power import (
-    WAIT_RESULT_CLEANUP_TIMEOUT_SECONDS,
-    WAIT_RESULT_TIMEOUT_SECONDS,
-)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.operations.team.choose_team import ChooseTeam
@@ -30,7 +30,7 @@ SCREEN_WEEKLY: str = '挑战副本-历战余响'
 # 退出关卡/再来一次是即时交互,不搬 25 分钟战斗等待窗口径。
 RESULT_SETTLE_TIMEOUT_SECONDS: int = 3 * 60
 
-# 战斗等待窗家族口径:单一源在 use_trailblaze_power(WAIT_RESULT_TIMEOUT_SECONDS,
+# 战斗等待窗家族口径:单一源在 challenge_mission/battle_wait_windows(WAIT_RESULT_TIMEOUT_SECONDS,
 # 贪饕侵蚀实测最坏 20分49秒 + 余量;周本实测约 2分23秒/场,属兜底口径挪用)。
 # 主窗(等待战斗结果)与二次观察窗(战斗超时收尾)同取,二次窗内仍无结算才是真死锁。
 
