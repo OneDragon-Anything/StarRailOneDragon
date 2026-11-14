@@ -56,7 +56,7 @@ trait_by_name: dict[str, Trait] = {...}   # 键 = trait_name（模块级派生�
    - `role_ids` 取各帖并集（成员名单跨帖互补；不同帖激活档不同不影响成员集）；
    - `simple_desc` 同 layers 最大帖（与 layers 同源一致）；
    - **渲染管线沿用**：`layers[].trait_desc` 富文本 → 纯文本渲染复用旧 `gen_factions.py` 的 `render_rich` 逻辑（`<property type=X display=all>` → config `role_property_list` 属性中文名 / `display=icon` 删除 / `<color>` 删除；未知 property type 保留原标签 + 打印警告不静默）。
-3. **翻译**：`role_ids` → 角色规范名——查角色注册表（`cw_chars.CHARACTERS` + plaza id 索引，**索引覆盖范围契约见 consumer-migration.md「跨迭代查表契约」——须含升格高费档等例外档 id**）；规则：
+3. **翻译**：`role_ids` → 角色规范名——查角色注册表（运行期派生映射 `{c.source: c.name for c in cw_chars.CHARACTERS}`，**查表契约=派生形态，见 consumer-migration.md「跨迭代查表契约」——映射须含升格高费档等例外档 id，生成器保留覆盖对拍守卫**）；规则：
    - **同名多档合并**：同一角色的多费用档 id（如星神★阿哈 151112/151122/151132，帖内三档均有出场——实测 149/21/81 帖）翻译为同一规范名后去重（成员是「角色」非「档位」）；
    - **隐藏条目过滤（可组队员口径，第二轮复攻 B2）**：config `is_hide=true` 的角色条目不翻译（现役仅腾荒一条 = 双龙吟召唤物，帖内上场 0 次）——members 落「可组队员」口径；被过滤 id 计入对拍差异报告人裁（召唤物不算成员的裁决与差集声明见 §1）；
    - **查表失败即 fail-closed**：role_ids 中任一 id 翻译失败（角色未建/已删，且不属于同名多档合并可归并的档位）→ 生成器打印该 id 并非零退出——禁静默丢弃（成员缺失 = 对拍与策略双双失真）。
