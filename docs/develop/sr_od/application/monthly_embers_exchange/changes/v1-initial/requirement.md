@@ -1,4 +1,4 @@
-# 月度限量兑换 app · 需求记录（迭代沉淀版）
+# 每月余烬兑换 app（探索期工作名「月度限量兑换」） · 需求记录（迭代沉淀版）
 
 > 沉淀自探索目录 `.debug/temp/app-explore/2026-11-13-monthly-exchange/requirement.md`，自本目录起为单一源（探索目录停更）。流程走查见 flow.md，op 拆解见 decomposition.md。
 

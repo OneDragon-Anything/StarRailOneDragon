@@ -35,7 +35,6 @@
 | `badge_rect(card_rect)` | shop_buy_goods `_badge_rect` | 原逻辑平移 |
 | `ocr_rect_text(ocr_service, screen, rect)` | 抽自 shop_buy_goods `_ocr_rect_text` | 角标读取管线（读关键词必备件） |
 | `read_count_two_pass(ocr_service, ocr, screen, area)` | 取 **shop_buy_goods 版**口径 | 两层取数（全图过滤 → 放大兜底）现网两份实现已漂移（shop_switch_tab 的弱化版首层非数字即返回；shop_buy_goods 的强化版非数字一律放大重试）——同族第二件升单一源，统一到强化版；`ShopSwitchTabOp.finish` 与购买 op 的余额读取都改调它（switch_tab 读数健壮性提升为唯一行为变化） |
-| `read_count_two_pass(ocr_service, ocr, screen, area)` | 取 **shop_buy_goods 版**口径 | 两层取数（全图过滤 → 放大兜底）现网两份实现已漂移（shop_switch_tab 的弱化版首层非数字即返回；shop_buy_goods 的强化版非数字一律放大重试）——同族第二件升单一源，统一到强化版；`ShopSwitchTabOp.finish` 与购买 op 的余额读取都改调它（switch_tab 读数健壮性提升为唯一行为变化） |
 
 `shop_buy_goods.py` / `shop_switch_tab.py` 保留同名薄包装或直接改导入（对外符号与行为不变），注释指向新模块。
 
