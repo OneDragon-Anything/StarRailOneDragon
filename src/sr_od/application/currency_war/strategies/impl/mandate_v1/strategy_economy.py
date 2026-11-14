@@ -251,25 +251,9 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
 
     '人才济济': '备战席计数经验发放已建状态副本写入通道 STRATEGY_BENCH_COUNT_XP_GRANTS;'
               '估值零登记维持',
-    # 愚者恶作剧:双效果条目分治——离场金效果条目(备战席 1星花火/火花进节点留 2/4 金
-    # 离场)已建状态副本侧通道 = cw_investments.STRATEGY_BENCH_LEAVE_GOLD_GRANTS
-    # + kernel 纯判定 + sim 节点窗插入位置;商店变形效果条目(2/4 费 20% 变花火/火花)
-    # = 随机资产面零建模申报(effect-domain §6.4 用户裁定直辖,市场活力
-    # 同型,live 观察覆盖,sim 收益面低估);估值零登记维持
-    '愚者恶作剧': '离场金发放已建状态副本写入通道 STRATEGY_BENCH_LEAVE_GOLD_GRANTS;'
-              '商店变形分支随机资产面零建模申报(观察覆盖);估值零登记维持',
-    # 赞美太阳:节点条件 XP 效果条目(每拥有一件【白昼装备】以及其原型装备,
-    # 进入新节点每件 +1)已建状态副本侧通道 = cw_investments
-    # .STRATEGY_EQUIP_COUNT_XP_GRANTS(计数域 = DAYLIGHT_EQUIP_XP_NAME_SET
-    # 白昼系名集)+ kernel 纯判定 + sim 节点窗插入位置;动态计数挂 xp_per_node
-    # 无条件通道 = 系统性失真(零拥有局虚计/多件局漏计,空仓/人才空洞
-    # 同判),STRATEGY_ECONOMY 零条目维持
-    '赞美太阳': '装备计数经验发放已建状态副本写入通道 STRATEGY_EQUIP_COUNT_XP_GRANTS;'
-              '估值零登记维持',
-    # 狸财经狸:利息分支已计(interest_flat_per_node=2);取款/存款分支无字段
-    # (金<20 取 10、P3 首领取全部存款——存款累计值消费端推,行为条件流)
-    '狸财经狸': '取款分支(金<20 取 10)+存款分支(P3 首领取全部存款)无字段载体;'
-               '30 本金系非玩家收入语境值不进账',
+    # 免费升舱:V4.7 卡文删除「立刻获得4金币」尾句,即时金效果条目随之注销,
+    # 注册行保持全默认占位(键保留防 OCR 形变 miss,入场卡文经 base 单一源)。
+    '免费升舱': '即时金尾句已随 V4.7 卡文删除,条目全默认占位;无待建模分支',
     # 超发货币:gold_at_node 族字段已挂值(归时点大额族字段待建模),
     # 但「失去现有全部金」负向分支无字段且方向不明——兼无字段分支在卡级已登记
     '超发货币': '正向分支兑现条件(5 节点后)概率未建模(gold_at_node 族字段'
@@ -301,13 +285,6 @@ STRATEGY_ECONOMY_PENDING_MODELING: dict[str, str] = {
     # (缺口单一源 = fields.md §4 SellBench 修饰行),闭合前状态副本侧退款按
     # 基础公式记(sim 低估申报制)。
     '大裁员': '卖全场退款分支无字段载体(依赖场上构成,非估值常量);'
-              '×2 卖价修饰(sell_price_mult)施径口径待实采,'
-              '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
-    # 降本增效:免费购买效果条目已建(uses 载体 duration_uses=6,状态副本侧通道 =
-    # STRATEGY_EFFECTS 条目 + 买牌上报免费闸);估值未入现金通道(免
-    # 费省下的购牌金依赖后续购买行为,轨迹依赖族);×2 卖价修饰同大裁员
-    # (sell_price_mult 轨迹依赖族待建模,施径口径待实采)。
-    '降本增效': '免费购买分支(6 次,uses 载体已建,估值未入现金通道);'
               '×2 卖价修饰(sell_price_mult)施径口径待实采,'
               '字段级估值 pending 归 _PENDING_MODELING_FIELDS',
 }
@@ -455,8 +432,8 @@ def _validate_pending_modeling_registry() -> None:
     ① 键 = 注册表规范名(孤儿即炸);② 值非空(描述分支清单);
     ③ 「economy 条目已登记而 EconomyEffect 全字段默认的登记条目必须已登记」
     (现仅孪生素数——全默认卡不入字段分类校验视野,唯卡级登记可覆盖);
-    ④ 按适用范围规则派生的登记卡闭集必须已登记(直调 5 张:固定理财/固定理财+/
-    孪生素数/狸财经狸/超发货币——前两者兼「字段已登记未挂值」分支,后三者
+    ④ 按适用范围规则派生的登记卡闭集必须已登记(直调 4 张:固定理财/固定理财+/
+    孪生素数/超发货币——前两者兼「字段已登记未挂值」分支,后两者
     兼「无字段」分支)。混合卡的分支级明细不可自动验证,靠行为申报清单
     (29 号稿 §2.1)人工对账兜底。"""
     for _name in STRATEGY_ECONOMY_PENDING_MODELING:
@@ -472,9 +449,9 @@ def _validate_pending_modeling_registry() -> None:
     if _missing_default:
         raise ValueError(
             f"全默认 economy 条目缺卡级待建模登记:{sorted(_missing_default)}")
-    # ④ 适用范围规则派生闭集必须已登记(直调 5 张;固定理财系兼未挂值分支、
-    # 后三者兼无字段分支——两适用范围形态各由本断言覆盖住代表)
-    _required_closed_set = ('固定理财', '固定理财+', '孪生素数', '狸财经狸', '超发货币')
+    # ④ 适用范围规则派生闭集必须已登记(直调 4 张;固定理财系兼未挂值分支、
+    # 后两者兼无字段分支——两适用范围形态各由本断言覆盖住代表)
+    _required_closed_set = ('固定理财', '固定理财+', '孪生素数', '超发货币')
     _missing_closed = [n for n in _required_closed_set
                        if n not in STRATEGY_ECONOMY_PENDING_MODELING]
     if _missing_closed:
