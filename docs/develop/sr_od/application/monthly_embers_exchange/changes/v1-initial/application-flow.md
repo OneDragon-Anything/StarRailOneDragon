@@ -75,6 +75,7 @@
 | `balance_left` | int \| None | 最后一项兑换后余额（尽力留痕，读不出 = None） |
 
 - **写入时机**：业务字段随循环逐项即时写入（PURCHASED / 跳过即写，非收尾统一写）——非预期失败中止时保留已写部分，失败日的已购数量与余额不丢失，便于人工对账。
+- **生命周期**：`bought_*` = 当日周期累计（同日重跑累加，失败重跑不丢已购数量）；`skip_note` = 单次运行诊断，运行开始（handle_init）清零，防跨次叠加过期观察；`balance_left` = 最近一次观测。日界翻转由 reset_record 全清。
 - **构造注入**：run_record 的 `game_refresh_hour_offset` 由 factory 从 `GameAccountConfig(instance_idx)` 注入（同 trick_snack 样板）——当日翻转边界与游戏刷新时刻对齐，不用缺省 0（日历午夜）。
 - `reset_record` 覆写：状态复位 + 上述字段清零（父类只复位状态，业务字段各 app 自清——父类注释约定）；周期重置由框架按 dt 判定触发。
 

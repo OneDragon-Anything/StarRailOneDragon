@@ -109,6 +109,12 @@ class MonthlyEmbersExchangeApp(SrApplication):
                                op_name=gt('每月余烬兑换', 'game'),
                                run_record=run_record)
 
+    def handle_init(self) -> None:
+        """运行前初始化:清空上次的跳过明细(单次运行诊断,防跨次叠加);
+        bought_* 保留当日累计(失败重跑不丢已购数量)。"""
+        SrApplication.handle_init(self)
+        self._record.clear_skip_note()
+
     @operation_node(name='到达兑换商店', is_start_node=True)
     def navigate(self) -> OperationRoundResult:
         """导航段:OpenExchangeShop 到兑换商店列表页;失败转失败收尾。"""

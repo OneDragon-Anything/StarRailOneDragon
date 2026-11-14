@@ -12,8 +12,9 @@ class MonthlyEmbersExchangeRunRecord(AppRunRecord):
     解锁后都最迟次日补上(设计文档 design.md §2.4);「已换不重买」由
     购买 op 的售罄拦截承担,不靠记录层月内跳过。
 
-    业务字段随循环逐项即时写入(非收尾统一写)——非预期失败中止时保留
-    已写部分,失败日的已购数量与余额不丢失,便于人工对账。
+    字段生命周期:bought_* 当日周期累计(同日重跑累加,失败重跑不丢已购);
+    skip_note 单次运行诊断(运行开始清零,防跨次叠加过期观察);
+    balance_left 最近一次观测。日界翻转 reset_record 全清。
     """
 
     def __init__(self, instance_idx: int | None = None,
@@ -54,6 +55,15 @@ class MonthlyEmbersExchangeRunRecord(AppRunRecord):
             self.update('skip_note', note_entry)
         else:
             self.update('skip_note', f'{existing};{note_entry}')
+
+    def clear_skip_note(self) -> None:
+        """清空跳过明细(每次运行开始调用)。
+
+        字段生命周期:bought_* = 当日周期累计(失败重跑不丢已购数量),
+        skip_note = 单次运行的诊断(跨次叠加会混入上次的过期观察),
+        balance_left = 最近一次观测。日界翻转由 reset_record 全清。
+        """
+        self.update('skip_note', '')
 
     def record_balance_left(self, balance_left: int | None) -> None:
         """记录最后一项兑换后余额(尽力留痕,读不出 = None)。"""
