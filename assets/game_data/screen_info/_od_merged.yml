@@ -14300,7 +14300,7 @@
     - 110
     - 1850
     - 170
-    text: 但战斗还未结束
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14314,7 +14314,7 @@
     - 165
     - 1625
     - 210
-    text: 同谐
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14328,7 +14328,7 @@
     - 222
     - 1665
     - 268
-    text: 等级80/80
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14342,7 +14342,7 @@
     - 550
     - 1660
     - 590
-    text: 叠影1阶
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14356,7 +14356,7 @@
     - 592
     - 1650
     - 632
-    text: 继承人
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14370,7 +14370,7 @@
     - 305
     - 1895
     - 350
-    text: '1164'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14384,7 +14384,7 @@
     - 340
     - 1895
     - 385
-    text: '529'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
@@ -14398,7 +14398,7 @@
     - 375
     - 1895
     - 420
-    text: '463'
+    text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''
