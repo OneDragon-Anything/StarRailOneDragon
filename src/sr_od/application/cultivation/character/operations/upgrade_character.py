@@ -39,12 +39,14 @@
 必须双锚(队伍标题在 + 副本类型标题不在);锚只覆盖上述两类副本,其他类型
 实机遇到时补建档再泛化。
 
-补料路线与优先级:通用材料补全(fill_generic 默认 True,确认即执行——
-通用材料非稀缺,用户裁定的最优先路线)优先于刷取——右下按钮可点时不进
-刷取流程;右下全灰(「材料不足」)时由 farm_dungeon 控制:False(默认,
-安全)= 判停收尾(零额外消耗);True = 走快速刷取(刷取真实消耗开拓力
-30/次,消耗记账以确认框实际设到的次数为准,配置值 -1 是「拉满」指令而非
-次数)。
+补料路线与优先级(负责人裁定):通用材料补全 → 快速刷取券 → 手动战斗
+——通用材料非稀缺优先消耗;券免战斗次之;手动战斗场耗开拓力最后。
+角色线行为后缀:右下「使用通用材料补全」按钮在场 = 缺口可由合成覆盖,
+授权补全(fill_generic 默认 True)时优先补全、不刷取——刷取会被游戏以
+无可刷缺口拒绝;未授权补全时判停。右下全灰(「材料不足」)时由
+farm_dungeon 控制:False(默认,安全)= 判停收尾(零额外消耗);True =
+走刷取路线,按 use_fast_ticket 分流(刷取真实消耗开拓力 30/次,消耗
+记账以确认框实际设到的次数为准,配置值 -1 是「拉满」指令而非次数)。
 
 前置:角色详情画面·详情 TAB·列表已收起(前三步保证);本 op 不选角色、
 不切页签——起点不符显式失败,组合编排归调用方。
@@ -202,22 +204,42 @@ class UpgradeCharacterOp(SrOperation):
         return None
 
     def _read_character_name(self) -> str | None:
-        """角色详情·详情TAB 左上读名区 OCR「命途/角色名」取「/」后段。
+        """角色详情 / 等级提升 左上读名区 OCR「命途/角色名」取「/」后段
+        (两界面左上布局同位,分别建档)。
 
         用途:手动刷取返回链会落到大世界,角色详情不记忆上次角色(实测显示
-        列表首位),需凭此名重选。area 未建档/读不出返回 None,返回链到重选
-        步时显式失败,不影响升级主流程。"""
-        area = self.ctx.screen_loader.get_area(_DETAIL_SCREEN, '读名区-左上')
-        if area is None:
-            return None
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=self.screenshot(), rect=area.pc_rect, crop_first=True)
-        for r in results:
-            text = str(r.data or '').strip()
-            if '/' in text:
-                name = text.rsplit('/', maxsplit=1)[-1].strip()
-                if name:
-                    return name
+        列表首位),需凭此名重选;ALREADY_ASCEND 就地起跑(中断现场直落等级
+        提升界面,详情页锚不可见)时读名区取自等级提升画面。
+
+        area 未建档/读不出返回 None:某画面读名区未建档时 get_area 返回
+        None,该画面跳过不报错(等级提升读名区缺档期间由详情画面单屏兜底);
+        两屏皆读不出走入口 fail-fast,不影响升级主流程。"""
+        for screen_name in (_DETAIL_SCREEN, _ASCEND_SCREEN):
+            area = self.ctx.screen_loader.get_area(screen_name, '读名区-左上')
+            if area is None:
+                continue
+            results = self.ctx.ocr_service.get_ocr_result_list(
+                image=self.screenshot(), rect=area.pc_rect, crop_first=True)
+            for r in results:
+                text = str(r.data or '').strip()
+                if '/' in text:
+                    name = text.rsplit('/', maxsplit=1)[-1].strip()
+                    if name:
+                        return name
+        return None
+
+    def _guard_unnamed_manual_farm(self) -> OperationRoundResult | None:
+        """入口 ALREADY_ASCEND 出口统一记名防线(直入与 None 帧探针共用):
+        就地起跑也读名——手动刷取返回链落大世界后凭记名重选角色(角色详情
+        不记忆上次角色),漏读会在战后重选防线处白烧一场开拓力,故消耗前
+        拦截。读名成功写入 _char_name 返回 None;手动链(farm_dungeon 且
+        非券路线)授权且读名失败返回 round_fail;券路线/未授权刷取无需
+        记名,读名失败不拦截。"""
+        self._char_name = self._read_character_name()
+        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
+            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
+                                   '左上读名区 OCR 未读到(就地起跑)——'
+                                   '请从目标角色详情 TAB 重新发起,或改用券路线')
         return None
 
     def _in_dungeon_state(self, screen) -> bool:
@@ -275,10 +297,12 @@ class UpgradeCharacterOp(SrOperation):
         逐锚接管,锚序 = 三类残留弹窗标题 → 战斗结算退出钮 → 副本挑战锚 →
         等级提升标题 → 详情页锚;全 MISS 显式失败(禁止对未知画面盲操作)。
 
-        列表浮层开着会遮挡入口按钮(遮挡态),显式失败提示先收列表。手动
-        刷取链(farm_dungeon + 非 use_fast_ticket)授权时读名失败 = 消耗前
-        判停——返回链落大世界后需凭记名重选角色(角色详情不记忆上次角色),
-        打完一场才发现无名会白烧开拓力。"""
+        列表浮层开着会遮挡入口按钮(遮挡态),显式失败提示先收列表。刷取链
+        残留现场按画面接管(直入/逐锚探针),全部 ALREADY_ASCEND 出口经
+        统一记名防线(_guard_unnamed_manual_farm):手动刷取链(farm_dungeon
+        + 非 use_fast_ticket)授权时读名失败 = 消耗前判停——返回链落大世界
+        后需凭记名重选角色(角色详情不记忆上次角色),打完一场才发现无名会
+        白烧开拓力。"""
         screen = self.last_screenshot
         current = self.check_and_update_current_screen(
             screen, screen_name_list=[_DETAIL_SCREEN, _ASCEND_SCREEN,
@@ -287,7 +311,11 @@ class UpgradeCharacterOp(SrOperation):
         if current == _LIST_SCREEN:
             return self.round_fail('列表浮层开着(遮挡态):先由调用方收列表')
         if current == _ASCEND_SCREEN:
-            # 中断现场直接落在等级提升界面:直入升级循环(起始等级由循环首轮补读)
+            # 中断现场直接落在等级提升界面:直入升级循环(起始等级由循环首轮
+            # 补读);就地起跑同样记名(统一防线见 _guard_unnamed_manual_farm)
+            guard = self._guard_unnamed_manual_farm()
+            if guard is not None:
+                return guard
             return self.round_success(status='ALREADY_ASCEND')
         if current == _CHALLENGE_SCREEN:
             # 刷取中断现场(副本画面):交返回分类收口(栈回退/大世界分流在彼端)
@@ -308,6 +336,11 @@ class UpgradeCharacterOp(SrOperation):
                 if screen_utils.find_area(
                         self.ctx, screen,
                         probe_screen, probe_anchor) == FindAreaResultEnum.TRUE:
+                    if probe_status == 'ALREADY_ASCEND':
+                        # 接管等级提升界面的探针出口同样过记名防线
+                        guard = self._guard_unnamed_manual_farm()
+                        if guard is not None:
+                            return guard
                     return self.round_success(status=probe_status)
             if screen_utils.find_area(
                     self.ctx, screen,

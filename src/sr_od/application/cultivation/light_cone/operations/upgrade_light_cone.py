@@ -37,10 +37,12 @@ docs/game/screens/光锥-等级提升.md):
 开拓力不足时快速刷取/挑战按钮静默无反应(白底与可用态无视觉差异)——
 open_farm_window/手动挑战的重试预算耗尽即判停,不空烧轮次。
 
-补料路线与优先级:通用材料补全(fill_generic,默认开)优先于刷取
-(farm_dungeon)优先于手动刷——通用材料非稀缺,用户裁定为默认授权的
-最优先路线;刷取类真实消耗开拓力与快速刷取券,发起前调用方必须向用户
-说明并获同意。
+补料路线与优先级(负责人裁定):通用材料补全 → 快速刷取券 → 手动战斗
+——通用材料非稀缺优先消耗;券免战斗次之;手动战斗场耗开拓力最后。
+光锥线行为后缀:授权补全(fill_generic 默认开)时优先补全;未授权补全时
+转刷取路线(farm_dungeon),由游戏的无可刷缺口 toast 探测兜底判停;
+快速刷取券/手动战斗为 use_fast_ticket 配置二选一,无自动降级。刷取类
+真实消耗开拓力与快速刷取券,发起前调用方必须向用户说明并获同意。
 
 前置:光锥 TAB(列表浮层已收);终点:光锥 TAB(升满或材料判停)。
 """
@@ -207,6 +209,20 @@ class UpgradeLightConeOp(SrOperation):
 
     #------------------- 节点图 -------------------#
 
+    def _guard_unnamed_manual_farm(self) -> OperationRoundResult | None:
+        """入口 ALREADY_ASCEND 出口统一记名防线(等级提升直入与 None 帧探针
+        共用):就地起跑也读名——手动刷取返回链落大世界后凭记名重选角色
+        (角色详情不记忆上次角色),漏读会在战后重选防线处白烧一场开拓力,
+        故消耗前拦截。读名成功写入 _char_name 返回 None;手动链(farm_dungeon
+        且非券路线)授权且读名失败返回 round_fail;券路线/未授权刷取无需
+        记名,读名失败不拦截。"""
+        self._char_name = self._read_character_name()
+        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
+            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
+                                   '左上读名区 OCR 未读到(就地起跑)——'
+                                   '请从光锥 TAB 重新发起,或改用券路线')
+        return None
+
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
         """画面级判定:光锥 TAB(强化入口)或已在等级提升(中断接管);记下角色
@@ -234,11 +250,15 @@ class UpgradeLightConeOp(SrOperation):
             # 浮层/过渡帧整帧画面识别失败:逐锚接管——材料补全弹窗开启查弹窗
             # 自身锚;刷取中断(结算画面/重建副本画面/升级过渡帧)查等级提升
             # 左上锚与战斗结算退出钮;快速刷取确认框/结果框态(挑战按钮被
-            # 模态遮住,副本 id_mark 不命中)查弹窗标题锚
+            # 模态遮住,副本 id_mark 不命中)查弹窗标题锚。等级提升锚命中 =
+            # 接管养成界面,过统一记名防线(同直入分支)
             for anchor in ('标题-材料补全弹窗', '标题-光锥详情'):
                 if screen_utils.find_area(
                         self.ctx, self.last_screenshot,
                         _LC_ASCEND_SCREEN, anchor) == FindAreaResultEnum.TRUE:
+                    guard = self._guard_unnamed_manual_farm()
+                    if guard is not None:
+                        return guard
                     return self.round_success(status='ALREADY_ASCEND')
             if screen_utils.find_area(
                     self.ctx, self.last_screenshot,
@@ -258,11 +278,10 @@ class UpgradeLightConeOp(SrOperation):
         if current == _LC_ASCEND_SCREEN:
             # 就地起跑同样记名:读名区左上在 TAB/等级提升两态同位——手动链
             # 返回后凭记名重选角色,漏读会在战后防线处白烧一场开拓力
-            self._char_name = self._read_character_name()
-            if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
-                return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
-                                       '左上读名区 OCR 未读到(就地起跑)——'
-                                       '请从光锥 TAB 重新发起,或改用券路线')
+            # (统一防线,与 None 帧探针出口共用)
+            guard = self._guard_unnamed_manual_farm()
+            if guard is not None:
+                return guard
             self._start_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             return self.round_success(status='ALREADY_ASCEND')
         if current != _LC_TAB_SCREEN:
@@ -585,51 +604,75 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='副本刷取分流', status='USE_TICKET')
     @operation_node(name='券确认刷取', node_max_retry_times=6)
     def confirm_ticket_farm(self) -> OperationRoundResult:
-        """确认框内把刷取次数设到 farm_times_per_round → 点确认 → until
-        结果框「关闭」出现(结果框为独立画面「快速刷取结果弹窗」,出现 =
-        领奖完成)。
+        """确认框内把刷取次数设到 farm_times_per_round(OCR 现读 + 点「+」
+        补偿;光锥确认框次数不记忆,重开恒 1,现读+补偿式设置两种情况天然
+        兼容)→ 点确认 → until 结果框「关闭」按钮出现(结果框为独立画面
+        「快速刷取结果弹窗」,与确认框同名不同位;结果框出现 = 领奖完成)。
 
-        次数设置注意:光锥确认框次数不记忆(重开恒 1,与角色晋阶线不同),
-        现读+补偿式设置两种情况天然兼容。"""
+        记账口径(幂等,以 _farm_times_set 非零为未记账判据,与角色晋阶线
+        同款):确认点击生效的两个等效证据 = 重入轮看到结果框(领奖完成,
+        主记账点)/ helper 返回 success——带 until 的 helper 一次调用只点击
+        一次、until 验证在下一次调用开头,重入时结果框探测先于 helper 命中,
+        记账必须两处共用 _settle_farm_accounting,只挂 helper success 则
+        生产时序下不可达(预算失效+统计恒 0);确认被开拓力不足拦截 = 本轮
+        未成交未记账,作废本轮次数记录即可,不动历史账。"""
         screen = self.last_screenshot
         # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
         # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
-        # 分流:开拓力补充弹窗在 = 券已扣但开拓力不够,刷取被拦,显式判停
-        # (WAIT 循环无重试上限,不判停会空转烧穿预算);结果框在 = 刷取完成
-        # 交返回分类;两弹窗都不在 = 刷取进行中慢询等待;只有确认框在才执行
-        # 次数设置与确认点击
+        # 分流:结果框在 = 领奖完成(主记账点);开拓力补充弹窗在 = 确认被拦,
+        # 本轮未成交,作废次数记录(WAIT 循环无重试上限,不判停会空转烧穿
+        # 预算;补充弹窗「确认」是星琼购开拓力,永不触碰);两弹窗都不在 =
+        # 刷取进行中慢询等待;只有确认框在才执行次数设置与确认点击
         if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
-            self._farm_draws -= self._farm_times_set  # 本轮未成交,回滚确认前计数
+            self._farm_times_set = 0  # 未成交未记账,本轮作废,不动历史账
             self._capped = True
             self._stop_status = 'POWER_CAPPED'
-            log.info('光锥晋阶: 开拓力不足判停,原路清场返回光锥 TAB'
-                     '(可待开拓力恢复后续跑)')
+            log.info('光锥晋阶: 确认已发出但被开拓力不足拦截,本轮未成交——'
+                     '原路清场返回光锥 TAB(可待开拓力恢复后续跑)')
             return self.round_success(status='POWER_BLOCKED', wait=2)
         if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
+            self._settle_farm_accounting()
             return self.round_success(status='RESULT_OPEN', wait=1.5)
         if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
             return self.round_wait('刷取执行中,等结果框', wait=2)
-        self._farm_rounds += 1
-        set_result = self._set_farm_times(self.farm_times_per_round)
-        if not set_result.is_success:
-            return set_result
-        self._farm_draws += self._farm_times_set
-        log.info('光锥晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 券 %d,'
-                 '券免战斗开拓力照扣)',
-                 self._farm_rounds, self._farm_times_set,
-                 self._farm_times_set * _LC_FARM_TRAILBLAZE_PER,
-                 self._farm_times_set * _LC_FARM_TICKET_PER)
-        screen = self.last_screenshot
-        return self.round_by_find_and_click_area(
+        # 确认框在:次数未设则先设;已设(重入:确认点击未生效)跳过设次数
+        # 只重发确认
+        if self._farm_times_set == 0:
+            set_result = self._set_farm_times(self.farm_times_per_round)
+            if not set_result.is_success:
+                return set_result
+        result = self.round_by_find_and_click_area(
             screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取',
             until_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
             pre_delay=0.5, success_wait=2, retry_wait=2,
         )
+        if result.is_success:
+            self._settle_farm_accounting()
+        return result
+
+    def _settle_farm_accounting(self) -> None:
+        """本轮券刷取记账(幂等):确认点击生效的两个等效证据(重入轮看到
+        结果框 / helper 返回 success)共用;以 _farm_times_set 非零为未记账
+        判据,记账后归零,WAIT 重入轮不会重复计。"""
+        if self._farm_times_set == 0:
+            return
+        self._farm_rounds += 1
+        self._farm_draws += self._farm_times_set
+        log.info('光锥晋阶: 第 %d 轮券刷取 %d 次(消耗开拓力 %d + 快速刷取券 %d,'
+                 '券免战斗开拓力照扣)',
+                 self._farm_rounds, self._farm_times_set,
+                 self._farm_times_set * _LC_FARM_TRAILBLAZE_PER,
+                 self._farm_times_set * _LC_FARM_TICKET_PER)
+        self._farm_times_set = 0
 
     def _set_farm_times(self, target: int) -> OperationRoundResult:
         """确认框内把次数设到目标:target=-1 = 点「^」拉满(滑条上限随副本
         类型,拟造花萼实测24);正数 = OCR 读「刷取次数 N」现值 → 点「+」补
-        差值 → 达标即成。失败显式返回,交由节点预算兜底。"""
+        差值 → 达标即成。实际设到的值写 _farm_times_set(消耗统计口径:配置
+        -1 是拉满指令,真实消耗以读数为准);入口先清判据位——设置失败不得
+        残留旧值,否则重入轮会拿旧判据跳过设次数直接确认。失败显式返回,
+        交由节点预算兜底。"""
+        self._farm_times_set = 0
         if target == -1:
             max_area = self.ctx.screen_loader.get_area(_FAST_FARM_DIALOG, '按钮-刷取次数拉满')
             self.ctx.controller.click(max_area.rect.center)
