@@ -33,8 +33,8 @@ from sr_od.context.sr_context import SrContext
 
 # 滑条动画等待经框架基座模块的 time 引用而非裸 import:helper 不在 op 类族
 # MRO 内,测试 harness 的 fast_sleep 只替换基座模块与 op 类族模块的 time
-# 属性,裸 import 的 sleep 在流程测试里不会被短路(基座引用恒被替换)。
-_framework_sleep = _framework_operation.time.sleep
+# 属性——因此必须调用期动态解析 `_framework_operation.time.sleep(...)`,
+# import 期预绑定函数对象会绕开替换,流程测试里滑条等待不会被短路。
 
 # ---------------- 共享画面名常量(三线同值,单一源上移) ---------------- #
 # 快速刷取两弹窗/资源窗口/挑战副本/开拓力补充弹窗五画面三线共用同一建档,
@@ -218,10 +218,10 @@ def set_farm_times(op: UpgradeFarmHost, spec: UpgradeLineSpec,
         max_area = op.ctx.screen_loader.get_area(
             FAST_FARM_DIALOG_SCREEN, '按钮-刷取次数拉满')
         op.ctx.controller.click(max_area.rect.center)
-        _framework_sleep(1)  # 滑条动画
+        _framework_operation.time.sleep(1)  # 滑条动画
         current = op._read_farm_times()
         if current is None:
-            _framework_sleep(1)
+            _framework_operation.time.sleep(1)
             current = op._read_farm_times()
         if current is None:
             return op.round_fail('拉满后无法读取刷取次数')
@@ -239,7 +239,7 @@ def set_farm_times(op: UpgradeFarmHost, spec: UpgradeLineSpec,
             return op.round_success()
         op.ctx.controller.click(plus_area.rect.center)
         # 滑条动画:点击后立即复读会读到旧值再点,越过目标多耗开拓力
-        _framework_sleep(0.4)
+        _framework_operation.time.sleep(0.4)
     return op.round_fail(f'刷取次数未能设到 {target}')
 
 
