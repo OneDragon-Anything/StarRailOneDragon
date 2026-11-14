@@ -153,11 +153,13 @@ class UpgradeLightConeOp(SrOperation):
         self._capped_level: int | None = None  #: 判停时的光锥等级(报告用)
         self._stop_status: str = 'LIGHT_CONE_CAPPED'  #: 判停收尾的最终状态(材料耗尽/开拓力耗尽可恢复)
         self._farm_dialog_wait_rounds: int = 0  #: 确认框连开失败的连续等待轮数(副本刷取分流有界自旋用)
+        self._start_level: int | None = None  #: 入口读到的起始等级(收尾报告「起始→结束」口径)
+        self._ascend_banner_count: int = 0  #: 晋阶横幅关闭次数(=完成的晋阶次数;通用补全触发的自动升级不经快速升级按钮)
         self._farm_rounds: int = 0          #: 已执行的刷取轮数(预算控制;券轮=1次确认框,手动轮=1场)
         self._farm_draws: int = 0           #: 券刷累计次数(券消耗;确认框实际设到的次数)
         self._manual_fights: int = 0        #: 手动战斗场数(开拓力消耗)
         self._farm_times_set: int = 0       #: 本轮确认框实际设到的次数(_set_farm_times 写入)
-        self._upgrade_count: int = 0        #: 升级执行次数(日志统计)
+        self._upgrade_count: int = 0        #: 快速升级按钮执行次数(补全合成触发的自动升级不计入此项,以晋阶横幅数计)
         if farm_dungeon:
             log.info('光锥晋阶: farm_dungeon 已启用——缺可刷材料将刷副本,路线=%s,'
                      '每轮 %s 次,预算 %d 轮——每次刷取消耗开拓力 %d + 快速刷取券 %d',
@@ -252,6 +254,7 @@ class UpgradeLightConeOp(SrOperation):
                     return self.round_success(status='IN_CHALLENGE')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
+            self._start_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             return self.round_success(status='ALREADY_ASCEND')
         if current != _LC_TAB_SCREEN:
             return self.round_fail(f'不在光锥 TAB(当前画面判定: {current};'
@@ -265,6 +268,7 @@ class UpgradeLightConeOp(SrOperation):
                                    '或改用券路线(use_fast_ticket=True)')
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN) == FindAreaResultEnum.TRUE:
+            self._start_level = self._read_lc_level()
             return self.round_success(status='CAN_UPGRADE')
         return self.round_fail('光锥 TAB 无强化按钮(画面状态未知),请实机确认')
 
@@ -329,6 +333,10 @@ class UpgradeLightConeOp(SrOperation):
                        (_LC_RETURN_SCREEN, '标题-材料返还')):
             if self.round_by_find_area(screen, banner[0], banner[1]).is_success:
                 self.ctx.controller.click(Point(960, 120))
+                if banner[1] == '标题-晋阶横幅':
+                    # 晋阶横幅每次出现 = 完成一次晋阶(统计口径:通用补全触发
+                    # 的自动升级/晋阶不经快速升级按钮,按横幅计数)
+                    self._ascend_banner_count += 1
                 return self.round_retry(f'{banner[1]}已点空白关闭,等下页', wait=2.0)
 
         # ③ 已判停 → 关 X 回光锥 TAB → 到了就以 _stop_status 结束
@@ -336,11 +344,18 @@ class UpgradeLightConeOp(SrOperation):
             if self.round_by_find_area(screen, _LC_TAB_SCREEN, '标题-角色光锥').is_success:
                 if self._capped_level is None:
                     self._capped_level = self._read_lc_level()
-                log.info('光锥晋阶: 收尾(%s),当前光锥等级 %s,升级 %d 次/刷取 %d 轮'
-                         '(券刷 %d 次耗券 %d,手动 %d 场耗开拓力 %d)',
-                         self._stop_status,
-                         self._capped_level, self._upgrade_count, self._farm_rounds,
-                         self._farm_draws, self._farm_draws * _LC_FARM_TICKET_PER,
+                # 统计口径:升级次数=快速升级按钮执行;通用补全触发的自动升级
+                # 不经按钮,以晋阶横幅计数与等级差呈现
+                level_text = (f'{self._start_level}→{self._capped_level}'
+                              if self._start_level is not None
+                              else str(self._capped_level))
+                log.info('光锥晋阶: 收尾(%s),光锥等级 %s,快速升级按钮 %d 次/'
+                         '晋阶 %d 次/刷取 %d 轮(券刷 %d 次耗券 %d,手动 %d 场'
+                         '耗开拓力 %d)',
+                         self._stop_status, level_text,
+                         self._upgrade_count, self._ascend_banner_count,
+                         self._farm_rounds, self._farm_draws,
+                         self._farm_draws * _LC_FARM_TICKET_PER,
                          self._manual_fights, self._manual_fights * _LC_FARM_TRAILBLAZE_PER)
                 return self.round_success(status=self._stop_status, wait=1.5)
             result = self.round_by_find_and_click_area(
