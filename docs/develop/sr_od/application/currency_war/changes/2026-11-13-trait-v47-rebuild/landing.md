@@ -12,11 +12,11 @@
 
 - **角色注册表 v4.7 重建**（另一会话）：阶段 3.2/3.6 的硬前置——members 翻译与**查表契约**（角色批须暴露 plaza id → 角色规范名索引符号，契约见 design.md §2.3；缺失时 3.2 停手）、成员对拍、开拓者条目消失。未就绪时仅阶段 3.1 可开工。
 
-### 3.1 聚合器核心（gen_factions 改造·生成段）
+### 3.1 聚合器核心（gen_traits.py 生成段）
 
-**范围**：`gen_factions.py` 重写为聚合生成器——config 骨架过滤（type 0/1/2）+ 帖子聚合（layers/role_ids/simple_desc，去重规则 = 层数最多、新帖优先）+ count_mode 判定表（千星商会 STAR3 带引文校验；**只建模不接线**——板面计数接线不在本迭代，design.md §2.1-5）+ 富文本渲染管线（沿用 render_rich）+ wiki 交叉验证报告段；产出**中间产物**（id 形态 Trait 全量 + 三源报告 stdout）。边界：不含成员翻译（3.2）、不落 `cw_traits_data.py`（3.3）、不动消费点。
+**范围**：`gen_factions.py` 重写并更名 **gen_traits.py**（对齐官方 trait 口径，第二轮复攻 B6）为聚合生成器——config 骨架过滤（type 0/1/2）+ 帖子聚合（layers/role_ids/simple_desc，去重规则 = 层数最多、新帖优先）+ count_mode 判定表（千星商会 STAR3 带引文校验；**只建模不接线**——板面计数接线不在本迭代，design.md §2.1-5）+ 富文本渲染管线（沿用 render_rich）+ wiki 交叉验证报告段；产出**中间产物**（id 形态 Trait 全量 + 三源报告 stdout）。边界：不含成员翻译（3.2）、不落 `cw_traits_data.py`（3.3）、不动消费点。
 **设计依据**：design.md §2.1-2/§2.1-5；details/trait-data-layer.md §2/§4
-**文件面**：`skills/sr-od-dev-currency-war/scripts/gen_factions.py`；报告样本落 `.debug/temp/currency_war/`
+**文件面**：新增 `skills/sr-od-dev-currency-war/scripts/gen_traits.py`；旧 `gen_factions.py` 随 3.2 完成删除（git 历史可溯）；报告样本落 `.debug/temp/currency_war/`
 **依赖**：无（角色表未就绪亦可开工）
 **优先级建议**：8
 **完成判据**：
@@ -26,11 +26,11 @@
 - <完成前常规检查（本文首节）>
 **验收凭据形式**：三源报告 + 中间产物文件；覆盖对拍零 diff
 
-### 3.2 翻译与对拍闭环（gen_factions·生成段续）
+### 3.2 翻译与对拍闭环（gen_traits.py 翻译/对拍段）
 
 **范围**：role_ids → 角色规范名翻译（查表契约见 design.md §2.3；同名多档合并/隐藏条目过滤/fail-closed）+ 成员对拍（官方 vs 注册表自报，例外清单机制）+ `cw_traits_data.py` 全文渲染功能就绪。边界：不执行落库（3.3 执行），例外清单首版为空待人裁。
 **设计依据**：design.md §2.1/§2.3；details/trait-data-layer.md §2 翻译/§3 对拍
-**文件面**：`skills/sr-od-dev-currency-war/scripts/gen_factions.py`
+**文件面**：`skills/sr-od-dev-currency-war/scripts/gen_traits.py`（3.1 已建，本阶段续写翻译/对拍段）
 **依赖**：3.1；角色注册表 v4.7 重建 + 查表契约（外部前置）
 **优先级建议**：7
 **完成判据**：

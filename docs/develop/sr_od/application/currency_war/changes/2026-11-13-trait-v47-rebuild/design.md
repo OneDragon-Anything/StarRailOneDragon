@@ -29,7 +29,7 @@
 ### 2.1 系统级变化（读一遍知全貌）
 
 1. **数据层换模块**：`data/cw_factions.py`（`FactionInfo` 手维护判断层）退役 → `data/cw_traits_data.py`（生成器产物，纯官方，结构见详设 trait-data-layer.md §1）：`Trait{trait_id, trait_name, trait_type, layers, members, simple_desc, trait_icon, count_mode}`，提供 `TRAITS`（id 索引）与 `trait_by_name`（名字索引，消费侧兼容）。`category`/`note` 不建（category 零消费点；note 语义由 `simple_desc`/`layers[].trait_desc` 官方全文承接）。
-2. **生成器换职责与数据源**：`skills/sr-od-dev-currency-war/scripts/gen_factions.py` 从「纯对拍器」恢复为「聚合生成器 + 三源对拍」——数据源 = 本地拉取缓存 `.debug/game_data/currency_war/plaza/lineups_Hot.jsonl`（1000 篇 v4.7 帖，2026-11-13 实采）聚合 + `config_v4.7.json` 骨架过滤（34 条取 trait_type 0/1/2 共 29 条）+ wiki 频道 240 交叉验证（27 词条 diff 报告）。旧 `.debug/temp` trait_detail.json 通道废弃。
+2. **生成器换职责与数据源**：`skills/sr-od-dev-currency-war/scripts/gen_factions.py` 重写并更名 **gen_traits.py**（factions 为旧翻译词，官方口径 = trait，与数据模块 cw_traits_data 对齐——第二轮复攻 B6）为「聚合生成器 + 三源对拍」——数据源 = 本地拉取缓存 `.debug/game_data/currency_war/plaza/lineups_Hot.jsonl`（1000 篇 v4.7 帖，2026-11-13 实采）聚合 + `config_v4.7.json` 骨架过滤（34 条取 trait_type 0/1/2 共 29 条）+ wiki 频道 240 交叉验证（27 词条 diff 报告）。旧 `.debug/temp` trait_detail.json 通道废弃。
 3. **消费点迁移**：`FACTIONS[name].tiers/desc/members()` → 新数据层投影，实测引用面 55 文件 / 355 处（含注释字面；2026-11-13 grep，清单按 consumer-migration.md §问题与约束的实测命令与分组判据动态生成）；旧羁绊名硬编码逐点迁移（映射表见 consumer-migration.md §1——沿用 10、疑似改名 2、消失 20、新增 17，消失项对应消费逻辑标注「需重写」）。
 4. **机制死代码清理**（与消费点迁移同批）：开拓者双形态（`is_trailblazer/trailblazer_form/trailblazer_row_unit` 等）与布洛妮娅选边（`SIDE_PICK_DUAL_BONDS/side_pick_bond`）在新名单无持有者，随本批删除（用户裁定 2026-11-13；挂账板 `.debug/progress/CW跨迭代挂账.md` §一.0 条款批归属以本设计 landing 为准回写）。
 5. **count_mode 口径建模（本迭代只建模不接线）**（用户裁定：千星商会按官方文本建模）：`Trait.count_mode` 字段（`TOTAL` 总上场人数 / `STAR3` 三星上场数），千星商会 = `STAR3`（官方 desc 原文「每上场1位3星【千星商会】角色，将激活1级羁绊效果」），其余 28 个 = `TOTAL`。**接线（板面计数侧并行产出三星计数、激活判定按 count_mode 选取）归策略暂缓批恢复后的首个策略迭代**——本迭代策略层无运行时消费（用户裁定暂缓），先落数据字段；接线设计随该策略迭代另立。取舍论证见 trait-data-layer.md §4。
@@ -43,12 +43,12 @@
     - `TRAITS: dict[str, Trait]`——键 = `trait_id`；
     - `trait_by_name: dict[str, Trait]`——键 = `trait_name`（官方中文名，消费侧标签体系的既有键型）；
     - `Trait.tiers` 便捷属性 = `tuple(layer.layer for layer in self.layers)`（官方 layers[].layer 投影，兼容 20+ 处激活判定消费）；
-    - **`Trait.members` 为 dataclass 字段**（`tuple[str, ...]` 成员角色名，生成期由官方 role_ids 翻译落定）——旧 `FactionInfo.members()` 方法不保留，唯一无参调用点 `telemetry/cw_win_model.py:49` 迁移为字段读；
+    - **`Trait.members` 为 dataclass 字段**（`tuple[str, ...]` 成员角色名，生成期由官方 role_ids 翻译落定；口径 = 可组队员（is_hide 过滤后），召唤物不算成员、差集进对拍例外清单人裁——第二轮复攻 B2；召唤型激活特例与 count_mode 接线同批归策略批）——旧 `FactionInfo.members()` 方法不保留，唯一无参调用点 `telemetry/cw_win_model.py:49` 迁移为字段读；
     - 羁绊标签键型不变 = `trait_name` 中文名（板面计数/遥测/成型判定的既有键型，迁移消费点只换数据来源不改键型）。
   - **count_mode 契约（建模不接线）**：本迭代数据层落 `count_mode` 字段（总纲 §2.1-5）；板面计数并行三星计数与激活判定口径选取**不在本迭代范围**（归策略暂缓批恢复后的首个策略迭代，理由见 §2.1-5）。
   - **迁移批次边界**：消费点迁移阶段动 `cw_bond_equips` 时**同时承担**开拓者/选边死代码删除（前置 = 角色注册表重建批已落，注册表无开拓者条目）；角色注册表条目本身的删改归角色会话批，不在本迭代文件面。
 
 ### 2.3 依赖与顺序
 
-- **前置（外部）**：角色注册表 v4.7 重建（另一会话进行中）——本迭代三个硬依赖：①生成器 members 翻译（role_ids → 角色名查表）；②成员对拍（官方名单 vs 自报派生）；③**查表契约**（第一轮对抗 A15 立项）：角色批须暴露「plaza id → 角色规范名」索引符号（形态 = `dict[str plaza_id, str 规范名]` 或等价；具体符号名以角色批交付为准）——缺失或形态不符时本批停手，回角色批对齐，禁自行补建平行索引。聚合器构建与消费点映射表梳理不受阻，可先行。
+- **前置（外部）**：角色注册表 v4.7 重建（另一会话进行中）——本迭代三个硬依赖：①生成器 members 翻译（role_ids → 角色名查表）；②成员对拍（官方名单 vs 自报派生）；③**查表契约**（第一轮对抗 A15 立项）：角色批须暴露「plaza id → 角色规范名」索引符号（形态 = `dict[str plaza_id, str 规范名]` 或等价；具体符号名以角色批交付为准；**覆盖范围 = config role_list 全部条目 id 含升格高费档等例外档——第二轮复攻 B1，帖内阿哈 5/7 费档 id 出场 21/81 帖，索引缺它们则翻译 fail-closed 误炸**）——缺失或形态不符时本批停手，回角色批对齐，禁自行补建平行索引。聚合器构建与消费点映射表梳理不受阻，可先行。
 - **并行**：装备域/投资域重建与本迭代文件面不相交（装备 = cw_equipment_data，投资 = cw_invest_data），可并行。
