@@ -317,3 +317,106 @@ def read_level_ratio(op: UpgradeFarmHost, screen_name: str,
         if m:
             return int(m.group(1))
     return None
+
+
+# ---------------- H4 券确认节点骨架 ---------------- #
+
+def confirm_ticket_farm_step(op: UpgradeFarmHost,
+                             spec: UpgradeLineSpec) -> OperationRoundResult:
+    """券确认刷取节点体(char/LC 逐字同构,查询顺序与拆并前逐条一致):
+    WAIT 重入幂等分类——①补充弹窗 probe 在 = 确认被拦,判据位清零 + 判停
+    置位 + POWER_BLOCKED(「确认」是星琼购开拓力,永不触碰);②结果框 probe
+    在 = 领奖完成,经 op._settle_farm_accounting() 记账 + RESULT_OPEN;
+    ③确认框不在 = 刷取进行中慢询;④确认框在 = 未设次数先经
+    op._set_farm_times(...) 设次数,再点确认,helper success 后经
+    op._settle_farm_accounting() 记账——缝间调用方向遵守缝保留规则 3。
+
+    记账口径:确认点击生效的两个等效证据(重入轮看到结果框 / helper 返回
+    success)共用同一幂等判据(_farm_times_set 非零为未记账),只挂其一则
+    生产时序下记账分支不可达。"""
+    screen = op.last_screenshot
+    if op.round_by_find_area(screen, POWER_DIALOG_SCREEN,
+                             '标题-开拓力补充弹窗').is_success:
+        op._farm_times_set = 0  # 未成交未记账,本轮作废,不动历史账
+        op._capped = True
+        op._stop_status = 'POWER_CAPPED'
+        log.info('%s: 确认已发出但被开拓力不足拦截,本轮未成交——'
+                 '原路清场(可待开拓力恢复后续跑)', spec.log_prefix)
+        return op.round_success(status='POWER_BLOCKED', wait=2)
+    if op.round_by_find_area(screen, FAST_FARM_RESULT_SCREEN,
+                             '按钮-关闭刷取结果').is_success:
+        op._settle_farm_accounting()
+        return op.round_success(status='RESULT_OPEN', wait=1.5)
+    if not op.round_by_find_area(screen, FAST_FARM_DIALOG_SCREEN,
+                                 '标题-快速刷取弹窗').is_success:
+        return op.round_wait('刷取执行中,等结果框', wait=2)
+    # 确认框在:次数未设则先设;已设(重入:确认点击未生效)跳过设次数
+    # 只重发确认
+    if op._farm_times_set == 0:
+        set_result = op._set_farm_times(op.farm_times_per_round)
+        if not set_result.is_success:
+            return set_result
+    result = op.round_by_find_and_click_area(
+        screen, FAST_FARM_DIALOG_SCREEN, '按钮-确认快速刷取',
+        until_find_all=[(FAST_FARM_RESULT_SCREEN, '按钮-关闭刷取结果')],
+        pre_delay=0.5, success_wait=2, retry_wait=2,
+    )
+    if result.is_success:
+        op._settle_farm_accounting()
+    return result
+
+
+# ---------------- H5 toast 门控开窗 ---------------- #
+
+def no_farm_gap_toast_hit(op: UpgradeFarmHost, toast_screen: str,
+                          attempts: int) -> bool:
+    """「提示-无可刷缺口」toast 探测谓词(H5a 探测门内联实现自身查询,
+    不经本函数;本函数供 trace 链入口段复用——trace 反应不同:转 CLOSE_PANEL
+    落账,载体差异留 trace)。attempts ≤1 放行探测:慢开窗时冗余二次点击
+    被拒再弹的 toast 不得误读为无可刷缺口,计数 ≥2 抑制。"""
+    return attempts <= 1 and op.round_by_find_area(
+        op.last_screenshot, toast_screen, '提示-无可刷缺口').is_success
+
+
+def open_farm_window_step(op: UpgradeFarmHost,
+                          spec: UpgradeLineSpec) -> OperationRoundResult:
+    """打开资源窗口节点体(char/LC 逐字同构,查询顺序与拆并前逐条一致):
+    探测门(尝试计数 ≤1 时查 toast,命中 → 判停收口留证)→ 点击-until
+    资源窗口 → 成功复位计数;失败或封顶(漏检兜底)→ FARM_WINDOW_FAIL
+    判停收口。封顶语义 = 尝试发出即增:点击尝试后计数自增,计数 ≥
+    spec.farm_open_max_attempts 判停——第 4 次尝试发出后判停,探测发生在
+    第 1、2 次尝试轮。"""
+    screen = op.last_screenshot
+    if op._farm_window_wait_rounds <= 1 and op.round_by_find_area(
+            screen, spec.ascend_screen, '提示-无可刷缺口').is_success:
+        op._farm_window_wait_rounds = 0
+        op._capped = True
+        op._stop_status = spec.stop_status
+        op.save_screenshot(prefix='快速刷取无可刷缺口')
+        log.info('%s: 无可刷缺口(游戏 toast 命中),判停收尾——'
+                 '可改用 fill_generic 通用材料补全路线', spec.log_prefix)
+        return op.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
+    result = op.round_by_find_and_click_area(
+        screen, spec.ascend_screen, '按钮-快速刷取',
+        until_find_all=[(RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
+        pre_delay=0.5, success_wait=0.3, retry_wait=2,
+    )
+    if result.is_success:
+        op._farm_window_wait_rounds = 0
+        return result
+    op._farm_window_wait_rounds += 1  # 尝试发出即增
+    if result.is_fail or op._farm_window_wait_rounds >= spec.farm_open_max_attempts:
+        op._farm_window_wait_rounds = 0
+        op._capped = True
+        op._stop_status = spec.stop_status
+        if result.is_fail:
+            log.info('%s: 资源窗口打开失败(%s),判停收尾——'
+                     '可改用 fill_generic 通用材料补全路线',
+                     spec.log_prefix, result.status)
+        else:
+            op.save_screenshot(prefix='打开资源窗口')
+            log.info('%s: 资源窗口连续未打开(toast 漏检,兜底封顶),'
+                     '现场已截图,判停收尾——可改用 '
+                     'fill_generic 通用材料补全路线', spec.log_prefix)
+        return op.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
+    return result

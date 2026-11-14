@@ -489,45 +489,7 @@ class UpgradeLightConeOp(SrOperation):
         命中即判停收口;helper 的 WAIT(not-found 的 RETRY 同)不计重试,
         toast 漏检由连等 4 轮封顶兜底判停(第 4 轮先于引擎重试预算生效);
         is_fail 仅「区域未配置」可达(全区已建档,兜底防线)。"""
-        screen = self.last_screenshot
-        if self._farm_window_wait_rounds <= 1 and self.round_by_find_area(
-                screen, _LC_ASCEND_SCREEN, '提示-无可刷缺口').is_success:
-            self._farm_window_wait_rounds = 0
-            self._capped = True
-            self._stop_status = 'LIGHT_CONE_CAPPED'
-            self.save_screenshot(prefix='快速刷取无可刷缺口')
-            log.info('光锥晋阶: 无可刷缺口(游戏 toast 命中),判停收尾'
-                     '——可改用 fill_generic 通用材料补全路线')
-            return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
-        result = self.round_by_find_and_click_area(
-            screen, _LC_ASCEND_SCREEN, '按钮-快速刷取',
-            until_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
-            pre_delay=0.5, success_wait=0.3, retry_wait=2,
-        )
-        if result.is_success:
-            self._farm_window_wait_rounds = 0
-            return result
-        # 点击「假成功」(按钮白底常在可 OCR)但窗口不开:点击被拒弹的
-        # toast 已由节点开头的前两轮探测承接(见 docstring),此处为 toast
-        # 漏检兜底——helper 恒 WAIT(not-found 的 RETRY 同)不计重试,
-        # 原样透传会无界自旋挂死一条龙,连等封顶收口判停:第 4 轮封顶
-        # 先于引擎重试预算生效(第 3 次 RETRY 后引擎仍重跑本节点,
-        # 不转 FAIL);is_fail 仅「区域未配置」可达(全区已建档,兜底防线)
-        if result.is_fail or self._farm_window_wait_rounds >= 3:
-            self._farm_window_wait_rounds = 0
-            self._capped = True
-            self._stop_status = 'LIGHT_CONE_CAPPED'
-            if result.is_fail:
-                log.info('光锥晋阶: 资源窗口打开失败(%s),判停收尾'
-                         '——可改用 fill_generic 通用材料补全路线', result.status)
-            else:
-                self.save_screenshot(prefix='打开资源窗口')
-                log.info('光锥晋阶: 资源窗口连续未打开(toast 漏检,兜底封顶),'
-                         '现场已截图,判停收尾——可改用 '
-                         'fill_generic 通用材料补全路线')
-            return self.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
-        self._farm_window_wait_rounds += 1
-        return result
+        return upgrade_common.open_farm_window_step(self, _SPEC)
 
     @node_from(from_name='打开资源窗口')
     @operation_node(name='进入副本', node_max_retry_times=3)
@@ -604,39 +566,7 @@ class UpgradeLightConeOp(SrOperation):
         记账必须两处共用 _settle_farm_accounting,只挂 helper success 则
         生产时序下不可达(预算失效+统计恒 0);确认被开拓力不足拦截 = 本轮
         未成交未记账,作废本轮次数记录即可,不动历史账。"""
-        screen = self.last_screenshot
-        # WAIT 重入幂等:带 until 的 round_by_find_and_click_area 未等到锚时
-        # 以 WAIT 返回,引擎会原样重跑本节点——重入时确认点击已发出,按画面态
-        # 分流:结果框在 = 领奖完成(主记账点);开拓力补充弹窗在 = 确认被拦,
-        # 本轮未成交,作废次数记录(WAIT 循环无重试上限,不判停会空转烧穿
-        # 预算;补充弹窗「确认」是星琼购开拓力,永不触碰);两弹窗都不在 =
-        # 刷取进行中慢询等待;只有确认框在才执行次数设置与确认点击
-        if self.round_by_find_area(screen, _POWER_DIALOG, '标题-开拓力补充弹窗').is_success:
-            self._farm_times_set = 0  # 未成交未记账,本轮作废,不动历史账
-            self._capped = True
-            self._stop_status = 'POWER_CAPPED'
-            log.info('光锥晋阶: 确认已发出但被开拓力不足拦截,本轮未成交——'
-                     '原路清场返回光锥 TAB(可待开拓力恢复后续跑)')
-            return self.round_success(status='POWER_BLOCKED', wait=2)
-        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
-            self._settle_farm_accounting()
-            return self.round_success(status='RESULT_OPEN', wait=1.5)
-        if not self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
-            return self.round_wait('刷取执行中,等结果框', wait=2)
-        # 确认框在:次数未设则先设;已设(重入:确认点击未生效)跳过设次数
-        # 只重发确认
-        if self._farm_times_set == 0:
-            set_result = self._set_farm_times(self.farm_times_per_round)
-            if not set_result.is_success:
-                return set_result
-        result = self.round_by_find_and_click_area(
-            screen, _FAST_FARM_DIALOG, '按钮-确认快速刷取',
-            until_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
-            pre_delay=0.5, success_wait=2, retry_wait=2,
-        )
-        if result.is_success:
-            self._settle_farm_accounting()
-        return result
+        return upgrade_common.confirm_ticket_farm_step(self, _SPEC)
 
     def _settle_farm_accounting(self) -> None:
         """本轮券刷取记账(幂等):确认点击生效的两个等效证据(重入轮看到
