@@ -22,6 +22,7 @@ helper;helper 不持状态(状态归 op 账本属性)、不做线间策略分叉
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -420,3 +421,88 @@ def open_farm_window_step(op: UpgradeFarmHost,
                      'fill_generic 通用材料补全路线', spec.log_prefix)
         return op.round_success(status='FARM_WINDOW_FAIL', wait=1.5)
     return result
+
+
+# ---------------- H8 副本态判定与副本刷取分流 ---------------- #
+
+def is_dungeon_state(op: UpgradeFarmHost, spec: UpgradeLineSpec,
+                     screen: object) -> bool:
+    """副本画面判定:spec.dungeon_title_areas 任一副本类型标题在场。
+    锚表逐项短路查询(与前实现 `A or B` 逐条一致);锚表内容 = 各线建档
+    覆盖面(char 双锚 / LC 单锚),扩充归补建档批次。"""
+    return any(op.round_by_find_area(screen, CHALLENGE_SCREEN, area).is_success
+               for area in spec.dungeon_title_areas)
+
+
+def farm_in_dungeon_step(op: UpgradeFarmHost,
+                         spec: UpgradeLineSpec) -> OperationRoundResult:
+    """副本刷取分流节点体(char/LC 逐字同构,查询顺序与拆并前逐条一致):
+    券路 = 点「快速刷取副本」→ 确认框连开有界自旋(_farm_dialog_wait_rounds
+    连等 ≥4 留证显式失败);手动路 = 编队双锚判定(op._in_dungeon_state 经缝
+    调用——「队伍标题在 + 副本标题不在」三态分流)+ 点挑战按钮。⚠️ 编队态
+    判定必须双锚:「挑战按钮」area 的 rect/text 与编队画面「开始编队挑战」
+    坐标重叠、文本相似,无副本态前置判定会在编队画面误点开新战斗(实测
+    事故,资源被连环消耗)——安全判定收敛为单一实现,单源优先。"""
+    screen = op.last_screenshot
+    if op.use_fast_ticket:
+        result = op.round_by_find_and_click_area(
+            screen, CHALLENGE_SCREEN, '按钮-快速刷取副本',
+            until_find_all=[(FAST_FARM_DIALOG_SCREEN, '标题-快速刷取弹窗')],
+            pre_delay=0.5, success_wait=1.5, retry_wait=2,
+        )
+        if result.is_success:
+            op._farm_dialog_wait_rounds = 0
+            return op.round_success(status='USE_TICKET')
+        # 确认框偶发不开:helper 的 WAIT 返回无重试上限,原样返回会无限
+        # 自旋——连等超限 = 异常现场,留证后显式失败
+        op._farm_dialog_wait_rounds += 1
+        if op._farm_dialog_wait_rounds >= 4:
+            op.save_screenshot(prefix='副本刷取分流')
+            return op.round_fail('快速刷取确认框连续未打开,现场已截图')
+        return result
+    if not op._in_dungeon_state(screen):
+        # 编队态:交手动战斗节点点开始挑战
+        if op.round_by_find_area(screen, CHALLENGE_SCREEN, '队伍标题').is_success:
+            return op.round_success(status='MANUAL_FIGHT')
+        # 挑战按钮在但副本类型标题都读不到 = 未识别副本类型(未建档类型/
+        # 标题 OCR 持续失败):交手动路线会零消耗空转(不计场的 BATTLE_DONE
+        # 反复回环开窗进本)——计重试(瞬时 OCR 失败可自愈),耗尽显式失败
+        # 强制补档
+        if op.round_by_find_area(screen, CHALLENGE_SCREEN, '挑战按钮').is_success:
+            return op.round_retry('副本类型标题未识别(未建档类型/OCR 未读出),等重判', wait=2)
+        # 战斗/结算态:交手动战斗节点分类(char 计场在离开编队态时发生,
+        # LC 在点击时计——计场时机是策略差异,留各线 manual_fight 节点)
+        return op.round_success(status='MANUAL_FIGHT')
+    result = op.round_by_find_and_click_area(
+        screen, CHALLENGE_SCREEN, '挑战按钮',
+        until_find_all=[(CHALLENGE_SCREEN, '按钮-开始编队挑战')],
+        pre_delay=0.5, success_wait=1.5, retry_wait=2,
+    )
+    if result.is_success:
+        return op.round_success(status='MANUAL_FIGHT')
+    return result
+
+
+# ---------------- H9 开拓力守卫(单发拦截形状) ---------------- #
+
+def guard_power_blocked(op: UpgradeFarmHost, spec: UpgradeLineSpec,
+                        screen: object, *,
+                        on_intercept: Callable[[], None] | None = None
+                        ) -> OperationRoundResult | None:
+    """手动路线开拓力守卫:「开拓力补充弹窗」在场 → on_intercept()(可注入
+    回调,char 传作废 _squad_clicked 旗标;LC 点击时计场无需回调)→ 判停
+    置位 + POWER_BLOCKED 交返回分类原路清场;弹窗不在返回 None。
+    「确认」是星琼购开拓力,永不触碰(星琼红线在本实现内声明)。
+    confirm 内拦截语义不同(需作废账本判据位)不复用本函数,归 H4;
+    返回分类的补充弹窗取消层归浮层清场(H10);trace 守卫为链内自持清场
+    形状(置位后留守节点逐轮清场,终态载体 _final_status),不接入本函数。"""
+    if not op.round_by_find_area(screen, POWER_DIALOG_SCREEN,
+                                 '标题-开拓力补充弹窗').is_success:
+        return None
+    if on_intercept is not None:
+        on_intercept()
+    op._capped = True
+    op._stop_status = 'POWER_CAPPED'
+    log.info('%s: 手动路线开拓力不足判停,原路清场(可待开拓力恢复后续跑)',
+             spec.log_prefix)
+    return op.round_success(status='POWER_BLOCKED', wait=2)

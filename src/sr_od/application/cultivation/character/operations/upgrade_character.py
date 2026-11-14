@@ -234,10 +234,7 @@ class UpgradeCharacterOp(SrOperation):
 
         边界:只覆盖两类已建档副本标题,其他类型(侵蚀之隧等)实机遇到时
         补建档再泛化;战斗/结算画面由「按钮-退出关卡」分支先行处理。"""
-        return (self.round_by_find_area(
-                    screen, _CHALLENGE_SCREEN, '标题-拟造花萼').is_success
-                or self.round_by_find_area(
-                    screen, _CHALLENGE_SCREEN, '标题-凝滞虚影').is_success)
+        return upgrade_common.is_dungeon_state(self, _SPEC, screen)
 
     def _log_final_summary(self, stop_status: str, level_text: str) -> None:
         """收尾统计日志(判停收尾与满级终态共用):按钮次数与横幅计数分列
@@ -560,48 +557,11 @@ class UpgradeCharacterOp(SrOperation):
     @node_from(from_name='返回养成界面', status='失败重发')
     @operation_node(name='副本刷取')
     def farm_in_dungeon(self) -> OperationRoundResult:
-        """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。"""
-        screen = self.last_screenshot
-        if self.use_fast_ticket:
-            result = self.round_by_find_and_click_area(
-                screen, _CHALLENGE_SCREEN, '按钮-快速刷取副本',
-                until_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=2,
-            )
-            if result.is_success:
-                self._farm_dialog_wait_rounds = 0
-                return self.round_success(status='USE_TICKET')
-            # 确认框偶发不开:helper 的 WAIT 返回无重试上限,原样返回会无限
-            # 自旋——连等超限 = 异常现场,留证后显式失败
-            self._farm_dialog_wait_rounds += 1
-            if self._farm_dialog_wait_rounds >= 4:
-                self.save_screenshot(prefix='副本刷取分流')
-                return self.round_fail('快速刷取确认框连续未打开,现场已截图')
-            return result
-        # 副本态锚(副本类型标题)在场才点挑战;否则按画面态三分——⚠️
-        # 「挑战按钮」area 的 rect/text 与编队画面「开始编队挑战」坐标
-        # 重叠、文本相似,无副本态前置判定会在编队画面误点开新战斗
-        # (光锥线同位实测事故,资源被连环消耗)
-        if not self._in_dungeon_state(screen):
-            # 编队态:交手动战斗节点点开始挑战
-            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
-                return self.round_success(status='MANUAL_FIGHT')
-            # 挑战按钮在但两类副本标题都读不到 = 未识别副本类型(未建档
-            # 类型/标题 OCR 持续失败):交手动路线会零消耗空转(不计场的
-            # BATTLE_DONE 反复回环开窗进本)——计重试(瞬时 OCR 失败可
-            # 自愈),耗尽显式失败强制补档
-            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '挑战按钮').is_success:
-                return self.round_retry('副本类型标题未识别(未建档类型/OCR 未读出),等重判', wait=2)
-            # 战斗/结算态:交手动战斗节点分类(计场在离开编队态时发生)
-            return self.round_success(status='MANUAL_FIGHT')
-        result = self.round_by_find_and_click_area(
-            screen, _CHALLENGE_SCREEN, '挑战按钮',
-            until_find_all=[(_CHALLENGE_SCREEN, '按钮-开始编队挑战')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
-        if result.is_success:
-            return self.round_success(status='MANUAL_FIGHT')
-        return result
+        """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。
+
+        ⚠️ 手动路编队双锚防线说明见 upgrade_common.farm_in_dungeon_step
+        (单一实现,本节点保留编排与策略出口)。"""
+        return upgrade_common.farm_in_dungeon_step(self, _SPEC)
 
     @node_from(from_name='副本刷取', status='USE_TICKET')
     @operation_node(name='券确认刷取', node_max_retry_times=6)
@@ -650,14 +610,16 @@ class UpgradeCharacterOp(SrOperation):
         连环误开战(光锥线同位实测事故,资源被连环消耗)。"""
         screen = self.last_screenshot
         # 开拓力不足时「开始挑战」点击无反应或弹补充框拦路:识别即判停,原路
-        # 清场返回——盲点重试会空烧战斗轮预算
-        if self.round_by_find_area(screen,
-                                   '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+        # 清场返回——盲点重试会空烧战斗轮预算(char 计场在离开编队态时发生,
+        # 拦截即未开战,作废旗标经 on_intercept 回调注入)
+
+        def _void_squad_flag() -> None:
             self._squad_clicked = False  # 未开战,本旗标作废(计场在离开编队态时)
-            self._capped = True
-            self._stop_status = 'POWER_CAPPED'
-            log.info('晋阶: 手动路线开拓力不足判停,原路清场返回详情页')
-            return self.round_success(status='POWER_BLOCKED', wait=2)
+
+        guard = upgrade_common.guard_power_blocked(self, _SPEC, screen,
+                                                   on_intercept=_void_squad_flag)
+        if guard is not None:
+            return guard
         in_team = self.round_by_find_area(
             screen, _CHALLENGE_SCREEN, '队伍标题').is_success
         if not (in_team and not self._in_dungeon_state(screen)):

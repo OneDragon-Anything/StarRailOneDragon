@@ -212,6 +212,16 @@ class UpgradeLightConeOp(SrOperation):
         记名,读名失败不拦截。"""
         return upgrade_common.guard_unnamed_manual_farm(self, _SPEC, hint=hint)
 
+    def _in_dungeon_state(self, screen) -> bool:
+        """副本画面判定(委托缝):本线锚表=单锚「拟造花萼」,与角色线双锚
+        覆盖面不同(锚表内容=建档覆盖面,留 spec;其他副本类型实机遇到时
+        补建档再泛化)。挑战按钮 area 的 rect/text 与编队画面「开始编队
+        挑战」坐标巧合重叠,无副本态前置判定会在编队画面误点开新战斗
+        (实测 23 场事故,星琼被自动购开拓力);原为 farm_in_dungeon/
+        manual_fight 两处内联单锚查询,收敛为缝供 helper 经 op 缝互调
+        (缝保留规则 3)。"""
+        return upgrade_common.is_dungeon_state(self, _SPEC, screen)
+
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
         """画面级判定:光锥 TAB(强化入口)或已在等级提升(中断接管);记下角色
@@ -506,50 +516,11 @@ class UpgradeLightConeOp(SrOperation):
     @node_from(from_name='刷取返回分类', status='失败重发')
     @operation_node(name='副本刷取分流')
     def farm_in_dungeon(self) -> OperationRoundResult:
-        """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。"""
-        screen = self.last_screenshot
-        if self.use_fast_ticket:
-            result = self.round_by_find_and_click_area(
-                screen, _CHALLENGE_SCREEN, '按钮-快速刷取副本',
-                until_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=2,
-            )
-            if result.is_success:
-                self._farm_dialog_wait_rounds = 0
-                return self.round_success(status='USE_TICKET')
-            # 确认框偶发不开:helper 的 WAIT 返回无重试上限,原样返回会无限
-            # 自旋——连等超限 = 异常现场,留证后显式失败
-            self._farm_dialog_wait_rounds += 1
-            if self._farm_dialog_wait_rounds >= 4:
-                self.save_screenshot(prefix='副本刷取分流')
-                return self.round_fail('快速刷取确认框连续未打开,现场已截图')
-            return result
-        # 副本态锚(「拟造花萼」标题)在场才点挑战;否则按画面态三分——⚠️
-        # 「挑战按钮」area 的 rect/text 与编队画面「开始挑战」坐标巧合重叠,
-        # 无副本态前置判定会在编队画面误点开新战斗(实测 23 场事故,星琼被
-        # 自动购开拓力)。边界:锚只覆盖拟造花萼类副本,其他副本类型(侵蚀
-        # 之隧等)实机遇到时补建档再泛化
-        if not self.round_by_find_area(
-                screen, _CHALLENGE_SCREEN, '标题-拟造花萼').is_success:
-            # 编队态:交手动战斗节点点开始挑战
-            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
-                return self.round_success(status='MANUAL_FIGHT')
-            # 挑战按钮在但副本标题读不到 = 未识别副本类型(未建档类型/标题
-            # OCR 持续失败):交手动路线会零消耗空转(不计场的 BATTLE_DONE
-            # 反复回环开窗进本)——计重试(瞬时 OCR 失败可自愈),耗尽
-            # 显式失败强制补档
-            if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '挑战按钮').is_success:
-                return self.round_retry('副本类型标题未识别(未建档类型/OCR 未读出),等重判', wait=2)
-            # 战斗/结算态:交手动战斗节点分类
-            return self.round_success(status='MANUAL_FIGHT')
-        result = self.round_by_find_and_click_area(
-            screen, _CHALLENGE_SCREEN, '挑战按钮',
-            until_find_all=[(_CHALLENGE_SCREEN, '按钮-开始编队挑战')],
-            pre_delay=0.5, success_wait=1.5, retry_wait=2,
-        )
-        if result.is_success:
-            return self.round_success(status='MANUAL_FIGHT')
-        return result
+        """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。
+
+        ⚠️ 手动路编队双锚防线说明见 upgrade_common.farm_in_dungeon_step
+        (单一实现,本节点保留编排与策略出口)。"""
+        return upgrade_common.farm_in_dungeon_step(self, _SPEC)
 
     @node_from(from_name='副本刷取分流', status='USE_TICKET')
     @operation_node(name='券确认刷取', node_max_retry_times=6)
@@ -597,16 +568,14 @@ class UpgradeLightConeOp(SrOperation):
         开战(实测 23 场事故,星琼被自动购开拓力)。"""
         screen = self.last_screenshot
         # 开拓力不足时「开始挑战」点击无反应或弹补充框拦路:识别即判停,原路
-        # 清场返回——盲点重试会空烧战斗轮预算
-        if self.round_by_find_area(screen, _POWER_DIALOG, '标题-开拓力补充弹窗').is_success:
-            self._capped = True
-            self._stop_status = 'POWER_CAPPED'
-            log.info('光锥晋阶: 手动路线开拓力不足判停,原路清场返回光锥 TAB')
-            return self.round_success(status='POWER_BLOCKED', wait=2)
+        # 清场返回——盲点重试会空烧战斗轮预算(LC 计场在点击时发生,拦截即
+        # 未点击,无旗标需作废)
+        guard = upgrade_common.guard_power_blocked(self, _SPEC, screen)
+        if guard is not None:
+            return guard
         in_team = self.round_by_find_area(
             screen, _CHALLENGE_SCREEN, '队伍标题').is_success
-        in_dungeon = self.round_by_find_area(
-            screen, _CHALLENGE_SCREEN, '标题-拟造花萼').is_success
+        in_dungeon = self._in_dungeon_state(screen)
         if not (in_team and not in_dungeon):
             # 非编队态(战斗中/结算/副本画面):交回返回分类收口
             log.info('光锥晋阶: 已离开编队画面(战斗/结算态),交返回分类')
