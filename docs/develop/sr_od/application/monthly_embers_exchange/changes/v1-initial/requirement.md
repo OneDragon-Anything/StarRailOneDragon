@@ -1,0 +1,37 @@
+# 月度限量兑换 app · 需求记录（迭代沉淀版）
+
+> 沉淀自探索目录 `.debug/temp/app-explore/2026-11-13-monthly-exchange/requirement.md`，自本目录起为单一源（探索目录停更）。流程走查见 flow.md，op 拆解见 decomposition.md。
+
+## 1. 需求一句话
+
+每月去常驻商店·兑换商店（余烬兑换 tab），把月限稀有商品（三件套）按配置兑换掉；进一条龙默认组每日跑，月内已换自动跳过。
+
+## 2. 兑换范围（v1 只换余烬月限三件套）
+
+| 商品 | op 标识符 | 月限 | 说明 |
+|---|---|---|---|
+| 命运的足迹 | `tracks_of_destiny` | 1 | 行迹材料，突破 6→7 用 |
+| 星轨专票 | `special_pass` | 5 | 90 余烬/张（docs/game/screens/store.md §0 实档） |
+| 星轨通票 | `pass` | 动态读角标 | 余烬月限渠道（op 折扣价优先语义已内建） |
+
+消费方：`ExchangeShopBuyGoods`（src/sr_od/application/cultivation/account/operations/shop_buy_goods.py），实机联调已完成（commit 0ae89ceff / 4e535a152）。
+
+## 3. 用户裁定（2026-11-13，人类老莫逐条确认）
+
+1. **优先级语义**：余烬不够覆盖所有开启项时，按优先级从高到低换到换不动为止（前面的换满、后面的放弃）。
+2. **数量**：不可配，全部拉满；配置项只有每项开关 + 优先级。
+3. **星芒回退**：不做。余烬月限用完/不够就停，不回退星芒不限量渠道。
+4. **一条龙接入**：默认进一条龙组（DEFAULT_GROUP），每日跑、月内跳过。
+5. **单项兑换失败 = 中止 app**（不继续下一项）；编排层面必须显式设计失败情况的流程流转——落地见 application-flow.md §3（预期内结果与真实失败的区分在该节裁定）。
+6. **渠道范围收口**：只做余烬的、限量的（星芒渠道整条不进 v1，含其独立 1/1 额度）；**app 定名「每月余烬兑换」**；app_id 定稿 `monthly_embers_exchange`（编排设计步，2026-11-13）。
+7. **通票本期剩 2/5**：留给 app 端到端实测（真实购买用例：2 张 × 90 余烬），不手动换。
+8. **默认优先级**：专票 > 通票 > 足迹（可配置覆盖）。
+
+## 4. 框架与读数的方向裁定
+
+- 运行记录周期：框架 `AppRunRecordPeriod` 新增 MONTHLY（动公共包 one_dragon，配 SR→ZZZ 同步件）；月度重置点 = 每月 1 日游戏刷新时刻（`game_refresh_hour_offset` 生效）——设计见 details/framework-monthly-period.md。
+- 读数：不造一次性读数 op，读数走画面识别器 extras 通道（`StoreExchangeRecognizer`）——设计见 details/store-exchange-recognizer.md；app 主链不依赖它（购买 op 自带月限与余额判定）。
+
+## 5. 本月实机状态（摸流程日 2026-11-13 核实）
+
+通票 2/5 可换（超值 90/原价 160）；专票、命运的足迹已售罄灰卡滞留列表末尾；余烬余额 41562、星芒 4。期限窗口口径=版本周（倒计时 ≈12-01 到期，本期恰与月初重合；下期才能分辨月历/版本口径——app 用 MONTHLY 运行记录 + op 动态读剩余额度，两口径下都稳健）。
