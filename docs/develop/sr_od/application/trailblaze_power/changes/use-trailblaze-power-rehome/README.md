@@ -19,4 +19,5 @@
 - mock 三场景：主链失败→重发成功；主链连败→关副本退出；超时判负→失败继续→退出。
 
 ## 状态
-未立项（占位）。现状风险：体力计划一条龙与 FarmLightConeMaterialOp 委托链遇战斗失败即卡死。
+
+已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 A，details/fail-adaptation.md §1——迁移件与失败适配同批，占位草案（回链定滑条/连败关副本/超时判负委托/记账不变）已吸收进节点卡）。本占位不再单独立项。

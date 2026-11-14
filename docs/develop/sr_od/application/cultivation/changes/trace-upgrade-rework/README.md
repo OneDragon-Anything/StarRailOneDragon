@@ -8,4 +8,5 @@
 重构 `UpgradeTraceOp`：起点/终点改面板态↔树态契约；删除固定节点点击区路线，改 agent 选节点 + op 校验；auto_farm 券刷链补齐（连刷次数参数接入 + `_FARM_TICKET_PER` 常量按实测回填为花萼赤 10+券 1/次）；参数面与光锥/角色线对齐（`auto_farm`→`farm_dungeon`、补 `use_fast_ticket` 或显式声明差异、`node_max_retry_times` 对齐）；收尾日志改实际值记账（修配置值 -1 打负数问题）。
 
 ## 状态
-未立项（占位）。前置：weekly-challenge-core 落地后，行迹侧手动刷周本才有可用机制（`ChallengeEchoOfWarByName`）。
+
+已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 D，details/trace-rework.md）。本占位不再单独立项。

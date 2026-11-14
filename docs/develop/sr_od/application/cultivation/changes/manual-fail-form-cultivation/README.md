@@ -8,4 +8,5 @@
 `UpgradeLightConeOp` 与 `UpgradeCharacterOp` 手动刷取路径的失败消费点接入共享失败继续件 `ResumeFromBattleFail`（challenge_mission 包，源迭代 3.1 落地后可用），并核定各自失败后的回家链（光锥/角色各自的资源窗口/详情页落点未实测，落地前先补实测）。
 
 ## 状态
-未立项（占位）。现状风险：两 op 失败后找不存在的按钮无限重试，靠 op 级重试/看门狗兜底。
+
+已并入迭代 `cultivation/changes/upgrade-ops-adaptation/`（块 B/C，details/fail-adaptation.md §2/§3——设计期核实：角色线手动路线战斗循环在 manual_fight/back_to_ascend，光锥线在 手动挑战战斗/back_after_farm，两线失败画面均无分支）。本占位不再单独立项。
