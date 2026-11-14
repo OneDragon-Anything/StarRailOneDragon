@@ -108,6 +108,39 @@ _SPEC = upgrade_common.UpgradeLineSpec(
     ticket_per=_FARM_TICKET_PER,
 )
 
+# 返回分类机械清场层表(顺序与拆并前逐条一致:结果框→补充弹窗→选次数框→
+# 资源窗口→编队画面;结算层与副本画面层是策略段留节点体内):
+# - 补充弹窗「确认」是星琼购开拓力,永不触碰,点其取消清场;
+# - 编队画面(队伍标题在场)点右上 X 回副本画面再逐层回退——X 与副本关闭
+#   钮同槽位,点击生效以队伍锚消失验证。
+_BACK_CLEAR_LAYERS = (
+    upgrade_common.OverlayLayer(
+        probe_screen=_FAST_FARM_RESULT, probe_area='按钮-关闭刷取结果',
+        click_area='按钮-关闭刷取结果',
+        until_not=((_FAST_FARM_RESULT, '按钮-关闭刷取结果'),),
+        success_log='刷取结果框已关,重入分类', settle_wait=1),
+    upgrade_common.OverlayLayer(
+        probe_screen=_POWER_DIALOG, probe_area='标题-开拓力补充弹窗',
+        click_area='按钮-取消',
+        until_not=((_POWER_DIALOG, '标题-开拓力补充弹窗'),),
+        success_log='开拓力补充弹窗已关,重入分类'),
+    upgrade_common.OverlayLayer(
+        probe_screen=_FAST_FARM_DIALOG, probe_area='标题-快速刷取弹窗',
+        click_area='按钮-取消',
+        until_not=((_FAST_FARM_DIALOG, '标题-快速刷取弹窗'),),
+        success_log='选次数确认框已取消,重入分类'),
+    upgrade_common.OverlayLayer(
+        probe_screen=_RESOURCE_WINDOW_SCREEN, probe_area='标题-培养资源窗口',
+        click_area='按钮-关闭资源窗口',
+        until_not=((_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口'),),
+        success_log='资源窗口已关,重入分类', settle_wait=1),
+    upgrade_common.OverlayLayer(
+        probe_screen=_CHALLENGE_SCREEN, probe_area='队伍标题',
+        click_area='按钮-关闭副本',
+        until_not=((_CHALLENGE_SCREEN, '队伍标题'),),
+        success_log='编队画面已关,重入分类'),
+)
+
 
 class UpgradeCharacterOp(SrOperation):
     """把当前角色升到 80 级满级(或材料耗尽判停),消耗养成材料与晋阶材料。
@@ -702,56 +735,11 @@ class UpgradeCharacterOp(SrOperation):
             if result.is_success:
                 return self.round_retry('结算已退出,重入分类', wait=2)
             return result
-        if self.round_by_find_area(screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _FAST_FARM_RESULT, '按钮-关闭刷取结果',
-                until_not_find_all=[(_FAST_FARM_RESULT, '按钮-关闭刷取结果')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
-            )
-            if result.is_success:
-                return self.round_retry('刷取结果框已关,重入分类', wait=1)
-            return result
-        # 券确认刷取的两类残留弹窗(开拓力不足判停/中断现场遗留,盖住副本/
-        # 养成锚致整帧识别 None):点取消清场后重入分类——补充弹窗「确认」是
-        # 星琼购开拓力,永不触碰
-        if self.round_by_find_area(screen, _POWER_DIALOG, '标题-开拓力补充弹窗').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _POWER_DIALOG, '按钮-取消',
-                until_not_find_all=[(_POWER_DIALOG, '标题-开拓力补充弹窗')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
-            )
-            if result.is_success:
-                return self.round_retry('开拓力补充弹窗已关,重入分类', wait=1.5)
-            return result
-        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _FAST_FARM_DIALOG, '按钮-取消',
-                until_not_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
-            )
-            if result.is_success:
-                return self.round_retry('选次数确认框已取消,重入分类', wait=1.5)
-            return result
-        if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _RESOURCE_WINDOW_SCREEN, '按钮-关闭资源窗口',
-                until_not_find_all=[(_RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
-            )
-            if result.is_success:
-                return self.round_retry('资源窗口已关,重入分类', wait=1)
-            return result
-        # 编队画面(队伍标题在场):点右上 X 回副本画面再逐层回退——手动路线
-        # 开拓力被拦(补充弹窗取消后)的落点;X 与副本关闭钮同槽位,点击生效
-        # 以队伍锚消失验证
-        if self.round_by_find_area(screen, _CHALLENGE_SCREEN, '队伍标题').is_success:
-            result = self.round_by_find_and_click_area(
-                screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
-                until_not_find_all=[(_CHALLENGE_SCREEN, '队伍标题')],
-                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
-            )
-            if result.is_success:
-                return self.round_retry('编队画面已关,重入分类', wait=1.5)
+        # 机械清场层表(结果框/补充弹窗/选次数框/资源窗口/编队画面,顺序见
+        # _BACK_CLEAR_LAYERS):命中层点其关闭控件重入分类——补充弹窗「确认」
+        # 是星琼购开拓力,永不触碰(红线声明在层表注释)
+        result = upgrade_common.close_matching_overlay(self, _BACK_CLEAR_LAYERS)
+        if result is not None:
             return result
         # 副本画面(拟造花萼精准判定在/凝滞虚影仅锚可证):关闭后按路线落点
         # 重判(券路线回资源窗口、手动路线回大世界)——编队态不进此分支

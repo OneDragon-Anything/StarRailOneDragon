@@ -22,7 +22,7 @@ helper;helper 不持状态(状态归 op 账本属性)、不做线间策略分叉
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -506,3 +506,52 @@ def guard_power_blocked(op: UpgradeFarmHost, spec: UpgradeLineSpec,
     log.info('%s: 手动路线开拓力不足判停,原路清场(可待开拓力恢复后续跑)',
              spec.log_prefix)
     return op.round_success(status='POWER_BLOCKED', wait=2)
+
+
+# ---------------- H10 返回分类浮层清场 ---------------- #
+
+@dataclass(frozen=True)
+class OverlayLayer:
+    """清场层表单层定义:探测锚 → 关闭控件 → until_not 验证 → 重入。"""
+
+    probe_screen: str
+    """探测画面名(弹窗/浮层自身画面档)。"""
+
+    probe_area: str
+    """探测锚 area(命中 = 该层浮层在场)。"""
+
+    click_area: str
+    """关闭控件 area(与探测锚可同区:点结果框自身的关闭钮)。"""
+
+    until_not: tuple[tuple[str, str], ...]
+    """点击生效验证锚(全部消失才算关闭成功)。"""
+
+    success_log: str
+    """关闭成功后重入分类的 round_retry 文案(测试断言依据)。"""
+
+    settle_wait: float = 1.5
+    """关闭成功后 round_retry 的 wait(重入轮节奏,现实现逐层标定:
+    结果框/资源窗口 1s,其余 1.5s)。"""
+
+
+def close_matching_overlay(op: UpgradeFarmHost,
+                           layers: Sequence[OverlayLayer]
+                           ) -> OperationRoundResult | None:
+    """按层表顺序逐层探测,命中即点关闭控件(until_not 验证)+ round_retry
+    交回返回分类重判;全 MISS 返回 None,交调用方继续后续层(结算层/副本
+    画面层/画面级回退是策略段,留各线 op——结算层 until_find 形态与副本
+    画面层的落点分流不同构,不进层表)。层表顺序必须与拆并前逐条一致
+    (剧本测试的逐查询序锁定);点击等待参数五层统一(0.5/1.5/1.5)。"""
+    screen = op.last_screenshot
+    for layer in layers:
+        if op.round_by_find_area(
+                screen, layer.probe_screen, layer.probe_area).is_success:
+            result = op.round_by_find_and_click_area(
+                screen, layer.probe_screen, layer.click_area,
+                until_not_find_all=list(layer.until_not),
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return op.round_retry(layer.success_log, wait=layer.settle_wait)
+            return result
+    return None
