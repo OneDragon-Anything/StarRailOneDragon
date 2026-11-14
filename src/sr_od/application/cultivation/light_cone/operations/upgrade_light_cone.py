@@ -47,7 +47,6 @@ open_farm_window/手动挑战的重试预算耗尽即判停,不空烧轮次。
 前置:光锥 TAB(列表浮层已收);终点:光锥 TAB(升满或材料判停)。
 """
 
-import re
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
@@ -187,16 +186,10 @@ class UpgradeLightConeOp(SrOperation):
 
     def _read_lc_level(self, screen_name: str = _LC_TAB_SCREEN) -> int | None:
         """等级读数(「等级NN/MM」取当前值);光锥 TAB 与等级提升界面读区各自建档。"""
-        screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(screen_name, '读区-等级'
-                                               if screen_name == _LC_TAB_SCREEN else '读区-当前等级')
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
-        for r in results:
-            m = re.search(r'(\d+)\s*/\s*\d+', str(r.data or ''))
-            if m:
-                return int(m.group(1))
-        return None
+        # 画面→area 名映射是线私有知识(两界面读区建档名不同),留缝方法内
+        area_name = ('读区-等级' if screen_name == _LC_TAB_SCREEN
+                     else '读区-当前等级')
+        return upgrade_common.read_level_ratio(self, screen_name, area_name)
 
     def _read_character_name(self) -> str | None:
         """光锥 TAB / 等级提升 左上读名区 OCR「命途/角色名」取「/」后段
@@ -205,35 +198,19 @@ class UpgradeLightConeOp(SrOperation):
         用途:手动刷取返回链会落到大世界,角色详情不记忆上次角色(实测显示
         列表首位),需凭此名重选。area 未建档/读不出返回 None,返回链到重选
         步时显式失败,不影响升级主流程。"""
-        for screen_name in (_LC_TAB_SCREEN, _LC_ASCEND_SCREEN):
-            area = self.ctx.screen_loader.get_area(screen_name, '读名区-左上')
-            if area is None:
-                continue
-            results = self.ctx.ocr_service.get_ocr_result_list(
-                image=self.screenshot(), rect=area.pc_rect, crop_first=True)
-            for r in results:
-                text = str(r.data or '').strip()
-                if '/' in text:
-                    name = text.rsplit('/', maxsplit=1)[-1].strip()
-                    if name:
-                        return name
-        return None
+        return upgrade_common.read_character_name(self, _SPEC)
 
     #------------------- 节点图 -------------------#
 
-    def _guard_unnamed_manual_farm(self) -> OperationRoundResult | None:
+    def _guard_unnamed_manual_farm(self, *, hint: str | None = None
+                                   ) -> OperationRoundResult | None:
         """入口 ALREADY_ASCEND 出口统一记名防线(等级提升直入与 None 帧探针
         共用):就地起跑也读名——手动刷取返回链落大世界后凭记名重选角色
         (角色详情不记忆上次角色),漏读会在战后重选防线处白烧一场开拓力,
         故消耗前拦截。读名成功写入 _char_name 返回 None;手动链(farm_dungeon
         且非券路线)授权且读名失败返回 round_fail;券路线/未授权刷取无需
         记名,读名失败不拦截。"""
-        self._char_name = self._read_character_name()
-        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
-            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
-                                   '左上读名区 OCR 未读到(就地起跑)——'
-                                   '请从光锥 TAB 重新发起,或改用券路线')
-        return None
+        return upgrade_common.guard_unnamed_manual_farm(self, _SPEC, hint=hint)
 
     @operation_node(name='入口核对', is_start_node=True, node_max_retry_times=5)
     def check_entry(self) -> OperationRoundResult:
@@ -299,13 +276,12 @@ class UpgradeLightConeOp(SrOperation):
         if current != _LC_TAB_SCREEN:
             return self.round_fail(f'不在光锥 TAB(当前画面判定: {current};'
                                    f'前置:进详情 + 选角色 + 切「光锥」页签)')
-        self._char_name = self._read_character_name()
-        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
-            # 手动链返回后需凭记名重选角色(角色详情不记忆上次角色),读不到
-            # 就在消耗前拦住——等打完一场再失败会白烧 1 场开拓力
-            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
-                                   '左上读名区 OCR 未读到——请实机确认画面,'
-                                   '或改用券路线(use_fast_ticket=True)')
+        guard = self._guard_unnamed_manual_farm(
+            hint='手动刷取链需凭入口读名在返回后重选角色,'
+                 '左上读名区 OCR 未读到——请实机确认画面,'
+                 '或改用券路线(use_fast_ticket=True)')
+        if guard is not None:
+            return guard
         if screen_utils.find_area(self.ctx, self.last_screenshot,
                                   _LC_TAB_SCREEN, _ENTRY_BTN_STRENGTHEN) == FindAreaResultEnum.TRUE:
             self._start_level = self._read_lc_level()

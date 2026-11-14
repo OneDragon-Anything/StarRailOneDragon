@@ -258,3 +258,62 @@ def settle_farm_accounting(op: UpgradeFarmHost, spec: UpgradeLineSpec) -> None:
              op._farm_times_set * spec.trailblaze_per,
              op._farm_times_set * spec.ticket_per)
     op._farm_times_set = 0
+
+
+# ---------------- H6 无名记名防线 ---------------- #
+
+def read_character_name(op: UpgradeFarmHost,
+                        spec: UpgradeLineSpec) -> str | None:
+    """读名区 OCR「命途/名字」取「/」后段(屏序入 spec.name_read_screens,
+    双屏迭代;两界面左上布局同位、area 同名分别建档)。
+
+    area 未建档/读不出返回 None:某画面读名区未建档时 get_area 返回 None,
+    该画面跳过不报错(保持各线现行为);两屏皆读不出由防线判停,不影响升级
+    主流程。"""
+    for screen_name in spec.name_read_screens:
+        area = op.ctx.screen_loader.get_area(screen_name, '读名区-左上')
+        if area is None:
+            continue
+        results = op.ctx.ocr_service.get_ocr_result_list(
+            image=op.screenshot(), rect=area.pc_rect, crop_first=True)
+        for r in results:
+            text = str(r.data or '').strip()
+            if '/' in text:
+                name = text.rsplit('/', maxsplit=1)[-1].strip()
+                if name:
+                    return name
+    return None
+
+
+def guard_unnamed_manual_farm(op: UpgradeFarmHost, spec: UpgradeLineSpec, *,
+                              hint: str | None = None
+                              ) -> OperationRoundResult | None:
+    """入口记名防线(ALREADY_ASCEND 直入/None 帧探针/入口常规路径共用):
+    读名写入 op._char_name;读名失败且「farm_dungeon 且非券路线」授权时
+    round_fail 拦截——手动刷取返回链落大世界后凭记名重选(角色详情不记忆
+    上次角色),漏读会在战后重选防线处白烧一场开拓力,故消耗前拦截。
+    券路线/未授权刷取无需记名,读名失败不拦截返回 None。
+
+    拦截文案:就地起跑形态 = spec.reentry_hint;入口常规形态由调用点传
+    hint 覆盖(两形态指引落点不同:重发起入口 vs 实机确认画面)。"""
+    op._char_name = op._read_character_name()
+    if op._char_name is None and op.farm_dungeon and not op.use_fast_ticket:
+        return op.round_fail(hint if hint else spec.reentry_hint)
+    return None
+
+
+# ---------------- H7 等级读区(NN/MM 比例形态) ---------------- #
+
+def read_level_ratio(op: UpgradeFarmHost, screen_name: str,
+                     area_name: str) -> int | None:
+    """画面 + area 内 OCR「NN/MM」取当前值(char 晋阶等级/LC 光锥等级
+    同 regex 同构;trace「等级N」无比例形态不同构,留 trace 自持)。"""
+    screen = op.screenshot()
+    area = op.ctx.screen_loader.get_area(screen_name, area_name)
+    results = op.ctx.ocr_service.get_ocr_result_list(
+        image=screen, rect=area.pc_rect, crop_first=True)
+    for r in results:
+        m = re.search(r'(\d+)\s*/\s*\d+', str(r.data or ''))
+        if m:
+            return int(m.group(1))
+    return None

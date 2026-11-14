@@ -52,7 +52,6 @@ farm_dungeon 控制:False(默认,安全)= 判停收尾(零额外消耗);True =
 不切页签——起点不符显式失败,组合编排归调用方。
 """
 
-import re
 
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -205,15 +204,7 @@ class UpgradeCharacterOp(SrOperation):
 
     def _read_ascend_level(self) -> int | None:
         """晋阶界面左侧当前等级(读区-当前等级 OCR「等级NN/MM」取当前值)。"""
-        screen = self.screenshot()
-        area = self.ctx.screen_loader.get_area(_ASCEND_SCREEN, '读区-当前等级')
-        results = self.ctx.ocr_service.get_ocr_result_list(
-            image=screen, rect=area.pc_rect, crop_first=True)
-        for r in results:
-            m = re.search(r'(\d+)\s*/\s*\d+', str(r.data or ''))
-            if m:
-                return int(m.group(1))
-        return None
+        return upgrade_common.read_level_ratio(self, _ASCEND_SCREEN, '读区-当前等级')
 
     def _read_character_name(self) -> str | None:
         """角色详情 / 等级提升 左上读名区 OCR「命途/角色名」取「/」后段
@@ -226,33 +217,17 @@ class UpgradeCharacterOp(SrOperation):
         area 未建档/读不出返回 None:某画面读名区未建档时 get_area 返回
         None,该画面跳过不报错(等级提升读名区缺档期间由详情画面单屏兜底);
         两屏皆读不出走入口 fail-fast,不影响升级主流程。"""
-        for screen_name in (_DETAIL_SCREEN, _ASCEND_SCREEN):
-            area = self.ctx.screen_loader.get_area(screen_name, '读名区-左上')
-            if area is None:
-                continue
-            results = self.ctx.ocr_service.get_ocr_result_list(
-                image=self.screenshot(), rect=area.pc_rect, crop_first=True)
-            for r in results:
-                text = str(r.data or '').strip()
-                if '/' in text:
-                    name = text.rsplit('/', maxsplit=1)[-1].strip()
-                    if name:
-                        return name
-        return None
+        return upgrade_common.read_character_name(self, _SPEC)
 
-    def _guard_unnamed_manual_farm(self) -> OperationRoundResult | None:
+    def _guard_unnamed_manual_farm(self, *, hint: str | None = None
+                                   ) -> OperationRoundResult | None:
         """入口 ALREADY_ASCEND 出口统一记名防线(直入与 None 帧探针共用):
         就地起跑也读名——手动刷取返回链落大世界后凭记名重选角色(角色详情
         不记忆上次角色),漏读会在战后重选防线处白烧一场开拓力,故消耗前
         拦截。读名成功写入 _char_name 返回 None;手动链(farm_dungeon 且
         非券路线)授权且读名失败返回 round_fail;券路线/未授权刷取无需
         记名,读名失败不拦截。"""
-        self._char_name = self._read_character_name()
-        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
-            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
-                                   '左上读名区 OCR 未读到(就地起跑)——'
-                                   '请从目标角色详情 TAB 重新发起,或改用券路线')
-        return None
+        return upgrade_common.guard_unnamed_manual_farm(self, _SPEC, hint=hint)
 
     def _in_dungeon_state(self, screen) -> bool:
         """副本画面判定:副本类型标题(拟造花萼/凝滞虚影)任一在场。
@@ -362,13 +337,12 @@ class UpgradeCharacterOp(SrOperation):
         if current != _DETAIL_SCREEN:
             return self.round_fail(f'不在角色详情(当前画面判定: {current});'
                                    f'前置:前三步 op 保证进详情+选角色+切「详情」页签')
-        self._char_name = self._read_character_name()
-        if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
-            # 手动链返回后需凭记名重选角色(角色详情不记忆上次角色),读不到
-            # 就在消耗前拦住——等打完一场再失败会白烧 1 场开拓力
-            return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
-                                   '左上读名区 OCR 未读到——请实机确认画面,'
-                                   '或改用券路线(use_fast_ticket=True)')
+        guard = self._guard_unnamed_manual_farm(
+            hint='手动刷取链需凭入口读名在返回后重选角色,'
+                 '左上读名区 OCR 未读到——请实机确认画面,'
+                 '或改用券路线(use_fast_ticket=True)')
+        if guard is not None:
+            return guard
         if self.round_by_find_area(screen, _DETAIL_SCREEN, _ENTRY_BTN_ASCEND).is_success:
             self._entry_btn_area = _ENTRY_BTN_ASCEND
             return self.round_success(status='CAN_ASCEND')
