@@ -39,14 +39,16 @@ class ExchangeOrderCard(MultiLineSettingCard):
     _PILL_QSS = '''
     QListWidget { background: transparent; outline: none; }
     QListWidget::item {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 10px;
-        padding: 8px 18px;
-        margin: 0px 6px;
+        padding: 8px 16px;
+        margin: 0px 5px;
         color: white;
         font-size: 14px;
     }
-    QListWidget::item:selected { background: rgba(255, 255, 255, 0.18); }
+    QListWidget::item:hover { background: rgba(255, 255, 255, 0.22); }
+    QListWidget::item:selected { background: rgba(255, 255, 255, 0.10); }
     '''
 
     def __init__(self, config):
@@ -76,6 +78,9 @@ class ExchangeOrderCard(MultiLineSettingCard):
             content=gt('拖动交换位置;仅余额不够换满时有意义(先到先得)'),
             line_list=[[self._list]],
         )
+        # 单行卡默认 60px(内容区仅 ~28px),装不下 52px 的 pill 列表会溢出
+        # 把卡撑开——显式加高(16 顶边距 + 52 列表 + 20 底部呼吸 = 88)
+        self.setFixedHeight(88)
 
     def _reload(self, order: list[str]) -> None:
         """按顺序清单重建条目(构造与拖动落位后的序号重排共用)。"""
