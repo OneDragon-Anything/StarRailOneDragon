@@ -114,6 +114,7 @@ class UpgradeTraceOp(SrOperation):
         self._final_status: str | None = None  #: 终态 status(收尾节点携带落账)
         self._close_rounds: int = 0  #: 收尾关面板连等计数(纯定位区无界等待防线)
         self._feedback_clicks: int = 0  #: 反馈遮罩期连续盲点计数(连续 6 轮无面板锚判画面异动)
+        self._buttonless_rounds: int = 0  #: 升级循环按钮带全空连续计数(连续 3 轮=材料不足灰态判停;任一按钮命中复位)
         self._end_level: int | None = None  #: 收尾面板等级(日志对照)
         if farm_dungeon:
             log.info('行迹升级: farm_dungeon 已启用(每次消耗开拓力 %d + 券 %d)',
@@ -231,26 +232,17 @@ class UpgradeTraceOp(SrOperation):
 
         # ④ 升级执行(两按钮同位不同文,find 按 text 区分)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-快速升级').is_success:
+            self._buttonless_rounds = 0
             self.ctx.controller.click(
                 self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-快速升级').rect.center)
             return self.round_retry('快速升级已执行', wait=_TRACE_SETTLE_SEC)
-
-        # ④b 材料不足灰态(按钮带禁用文本,独立于两可点形态):升下一级的
-        # 材料缺口超出通用补全与合成覆盖 = 升级不可行,直接判停(该文本与
-        # 「材料合成」四字前缀同形,lcs 相似度恰好 0.5 踩线,area 侧已收紧
-        # 阈值 0.75,此处再前置判停双保险,避免误入合成分支空点禁用钮)
-        if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-材料不足').is_success:
-            self._final_status = 'MATERIAL_CAPPED'
-            self._end_level = self._read_panel_level()
-            log.info('行迹升级: 按钮带「材料不足」(缺口超出补全/合成覆盖),判停于等级 %s',
-                     self._end_level)
-            return self.round_success('CLOSE_PANEL')
 
         # ⑤ 缺料两形态(「使用通用材料补全」/「材料合成」同位不同文):
         # fill_generic 授权自动确认;farm_dungeon 预算内 → 券刷路线;
         # 均不可用判停。材料合成形态刷取无收益(原料已足,快速刷取机制
         # 无可刷缺口——光锥线同款裁定)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-通用材料补全').is_success:
+            self._buttonless_rounds = 0
             if self.farm_dungeon and self._farm_rounds < self.farm_rounds_max:
                 return self.round_success('NEED_FARM')
             if self.fill_generic:
@@ -264,6 +256,7 @@ class UpgradeTraceOp(SrOperation):
             return self.round_success('CLOSE_PANEL')
 
         if self.round_by_find_area(screen, _TRACE_SCREEN, '按钮-材料合成').is_success:
+            self._buttonless_rounds = 0
             if self.fill_generic:
                 self.ctx.controller.click(
                     self.ctx.screen_loader.get_area(_TRACE_SCREEN, '按钮-材料合成').rect.center)
@@ -280,12 +273,21 @@ class UpgradeTraceOp(SrOperation):
             return self.round_success('NEED_FARM')
 
         # ⑦ 两按钮都不命中分两态(锚在=真全缺判停;锚不在=执行后动画/过渡
-        # 期按钮暂隐[反馈形态未实测] → 点空白重试不判停——误报判停比多等
-        # 一轮危害大)
+        # 期按钮暂隐 → 点空白重试不判停——误报判停比多等一轮危害大)。
+        # 另一态:材料不足灰态(禁用钮+无可提升标记+快速刷取入口消失,重试
+        # 永不收敛)——用连续轮次区分:按钮带全空连续 3 轮 = 灰态判停;过渡
+        # 态一两轮内按钮回归,计数复位(④⑤⑤b 命中处复位)
         if self.round_by_find_area(screen, _TRACE_SCREEN, '文本-可提升至').is_success:
             self._final_status = 'MATERIAL_CAPPED'
             self._end_level = self._read_panel_level()
             log.info('行迹升级: 按钮为禁用态(全缺),判停于等级 %s', self._end_level)
+            return self.round_success('CLOSE_PANEL')
+        self._buttonless_rounds += 1
+        if self._buttonless_rounds >= 3:
+            self._final_status = 'MATERIAL_CAPPED'
+            self._end_level = self._read_panel_level()
+            log.info('行迹升级: 按钮带连续 %d 轮全空(材料不足灰态),判停于等级 %s',
+                     self._buttonless_rounds, self._end_level)
             return self.round_success('CLOSE_PANEL')
         self.ctx.controller.click(
             self.ctx.screen_loader.get_area(_TRACE_SCREEN, '点击区-面板外空白').rect.center)
