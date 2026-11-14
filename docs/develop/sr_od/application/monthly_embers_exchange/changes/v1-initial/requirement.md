@@ -11,7 +11,7 @@
 | 商品 | op 标识符 | 月限 | 说明 |
 |---|---|---|---|
 | 命运的足迹 | `tracks_of_destiny` | 1 | 行迹材料，突破 6→7 用 |
-| 星轨专票 | `special_pass` | 5 | 90 余烬/张（docs/game/screens/store.md §0 实档） |
+| 星轨专票 | `special_pass` | 5 | 90 余烬/张（docs/game/screens/store.md 开篇兑换商店 tab 全景表） |
 | 星轨通票 | `pass` | 动态读角标 | 余烬月限渠道（op 折扣价优先语义已内建） |
 
 消费方：`ExchangeShopBuyGoods`（src/sr_od/application/cultivation/account/operations/shop_buy_goods.py），实机联调已完成（commit 0ae89ceff / 4e535a152）。
@@ -27,11 +27,11 @@
 7. **通票本期剩 2/5**：留给 app 端到端实测（真实购买用例：2 张 × 90 余烬），不手动换。
 8. **默认优先级**：专票 > 通票 > 足迹（可配置覆盖）。
 
-## 4. 框架与读数的方向裁定
+## 4. 周期与读数的方向裁定
 
-- 运行记录周期：框架 `AppRunRecordPeriod` 新增 MONTHLY（动公共包 one_dragon，配 SR→ZZZ 同步件）；月度重置点 = 每月 1 日游戏刷新时刻（`game_refresh_hour_offset` 生效）——设计见 details/framework-monthly-period.md。
+- ~~运行记录周期：框架 `AppRunRecordPeriod` 新增 MONTHLY~~ → **改版（2026-11-14，周期语义缺陷修订）**：周期件撤销，运行记录用框架现成的 **DAILY**。原因：期限口径实为「版本周」未分辨，若额度随版本在月中刷新，MONTHLY 的「月内跳过」会让新额度延迟到下月 1 日才兑换（一条龙的跳过判据发生在 app 运行前，op 动态读数防不住被跳过）；DAILY + 预期内完成照常标完成，两口径下都零延迟，代价是买完后每日一次约 70 秒空跑（取舍全文见 design.md §2.4）。用户裁定 4「每日跑、月内跳过」中的跳过语义由 op 层售罄拦截承担（不重买）。
 - 读数：不造一次性读数 op，读数走画面识别器 extras 通道（`StoreExchangeRecognizer`）——设计见 details/store-exchange-recognizer.md；app 主链不依赖它（购买 op 自带月限与余额判定）。
 
 ## 5. 本月实机状态（摸流程日 2026-11-13 核实）
 
-通票 2/5 可换（超值 90/原价 160）；专票、命运的足迹已售罄灰卡滞留列表末尾；余烬余额 41562、星芒 4。期限窗口口径=版本周（倒计时 ≈12-01 到期，本期恰与月初重合；下期才能分辨月历/版本口径——app 用 MONTHLY 运行记录 + op 动态读剩余额度，两口径下都稳健）。
+通票 2/5 可换（超值 90/原价 160）；专票、命运的足迹已售罄灰卡滞留列表末尾；余烬余额 41562、星芒 4。期限窗口口径=版本周（倒计时 ≈12-01 到期，本期恰与月初重合，**下期才能分辨口径**——运行记录周期按 design.md §2.4 取 DAILY，两口径下都稳健）。

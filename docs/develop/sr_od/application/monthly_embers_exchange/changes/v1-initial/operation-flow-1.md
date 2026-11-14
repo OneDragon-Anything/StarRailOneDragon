@@ -22,7 +22,7 @@
   --> 商店·兑换商店列表页  [结束]
 ```
 
-- 判定与锚（画面名+区域名，全部已建档）：`商店` / `tab-常驻商店`（store.yml 第 77 行区域）、`菜单` / `入口-商店`（phone_menu.yml 第 206 行区域）、`tab-余烬兑换`（store.yml 第 259 行区域，未选中白字文本常显，作「兑换子页已打开」的证据）。
+- 判定与锚（画面名+区域名，全部已建档）：`商店` / `tab-常驻商店`（store.yml 第 77 行区域）、`菜单` / `入口-商店`（phone_menu.yml 第 206 行区域）、`tab-余烬兑换`（store.yml 第 259 行区域，未选中白字文本常显，作「兑换子页已打开」的证据；兑换子页共五个 tab：星芒兑换/余烬兑换/星尘之礼/光锥呈现/戏言成真，后三个不在本 op 与本 app 范围）。
 - 转移验证全部走 until（点了 ≠ 成了）：入口-商店的 until 用目标页 tab 区锚；tab-常驻商店的 until 用兑换子 tab 锚。禁止不传 until 的点击。
 - 幂等：起点已在商店页时直接跳到最后一跳（切常驻商店），不重复开菜单。
 - 键盘使用说明：开菜单走 `OpenPhoneMenu`（内部按菜单键 ESC）——框架标准路径，左上手机图标手点无效（实测，flow.md §4.1-3）；本 op 不直接发键。
@@ -38,4 +38,4 @@
 
 ## 6. 放置位置
 
-`src/sr_od/operations/shop/open_exchange_shop.py`（operations 顶层包新建 shop 子包）。判定依据：商店是跨玩法通用画面，此导航链不依赖任何 app 的业务配置，属跨 app 复用件；对照现有先例——跃迁页进商店的 `enter_shop_from_warp` 放在特定业务包（cultivation/account），因其入口绑定跃迁业务；本 op 入口是通用手机菜单，归顶层 operations。构造参数只有 ctx（无参业务参数），MCP registry 可直接构造（对照：`ClickPhoneMenuItem` 的 `PhoneMenuItem` 参数无法经 MCP 构造，实测 2026-11-13，decomposition.md §2）。
+`src/sr_od/operations/store/open_exchange_shop.py`（operations 顶层包**已有的 store 子包**——商店域现有家：store_const / click_store_item / buy_store_item，本 op 并入同域，不另立 shop/ 双包）。判定依据：商店是跨玩法通用画面，此导航链不依赖任何 app 的业务配置，属跨 app 复用件；对照现有先例——跃迁页进商店的 `enter_shop_from_warp` 放在特定业务包（cultivation/account），因其入口绑定跃迁业务；本 op 入口是通用手机菜单，归顶层 operations 的商店域子包。构造参数只有 ctx（无参业务参数），MCP registry 可直接构造（对照：`ClickPhoneMenuItem` 的 `PhoneMenuItem` 参数无法经 MCP 构造，实测 2026-11-13，decomposition.md §2）。
