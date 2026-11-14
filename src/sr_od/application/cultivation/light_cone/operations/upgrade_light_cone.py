@@ -56,6 +56,7 @@ from one_dragon.base.screen import screen_utils
 from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.challenge_mission.resume_from_battle_fail import ResumeFromBattleFail
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.select_character import SelectCharacterOp
 from sr_od.operations.sr_operation import SrOperation
@@ -75,6 +76,7 @@ _CHALLENGE_SCREEN: str = '挑战副本'
 _FAST_FARM_DIALOG: str = '快速刷取弹窗'
 _FAST_FARM_RESULT: str = '快速刷取结果弹窗'
 _BATTLE_SCREEN: str = '战斗画面'
+_BATTLE_FAIL_SCREEN: str = '大世界-战斗失败'
 _LC_PROMO_BANNER_SCREEN: str = '光锥-等级提升-晋阶横幅'
 _LC_RETURN_SCREEN: str = '光锥-等级提升-材料返还'
 
@@ -525,6 +527,7 @@ class UpgradeLightConeOp(SrOperation):
         )
 
     @node_from(from_name='进入副本')
+    @node_from(from_name='刷取返回分类', status='失败重发')
     @operation_node(name='副本刷取分流')
     def farm_in_dungeon(self) -> OperationRoundResult:
         """副本画面按 use_fast_ticket 分流:券免战斗 / 正常挑战自动战斗。"""
@@ -711,6 +714,31 @@ class UpgradeLightConeOp(SrOperation):
         if self.round_by_find_area(screen, _LC_ASCEND_SCREEN, '标题-光锥详情').is_success:
             log.info('光锥晋阶: 刷取完成回到等级提升,已刷 %d 轮', self._farm_rounds)
             return self.round_success(status='FARMED', wait=1)
+        # 失败画面(新形态,标题锚):委托共享失败继续件回挑战画面。两态锚不
+        # 互斥(旧结算画面的「战斗失败」大字落入标题搜索区会误命中),误命中
+        # 代价 = 共享件按新形态空转 5 轮(~10s)后转旧形态恢复,行为收敛正确;
+        # 形态判定真相源在共享件,本分支只做疑似失败态快筛。委托 fail 原样
+        # 透传(现场交调用方)。
+        if self.round_by_find_area(screen, _BATTLE_FAIL_SCREEN, '标题-战斗失败').is_success:
+            op = ResumeFromBattleFail(self.ctx)
+            op_result = op.execute()
+            if not op_result.success:
+                return self.round_by_op_result(op_result)
+            if self._farm_rounds >= self.farm_rounds_max:
+                # 预算检查必须内联在本分支(升级循环的预算判停对失败重发环
+                # 不可达):判停出口不走新状态边——关副本回大世界,落既有
+                # BACK_TO_WORLD 出口交重走入口链,由升级循环判停收尾
+                screen = self.screenshot()  # 共享件已把画面交还挑战画面,重取帧
+                result = self.round_by_find_and_click_area(
+                    screen, _CHALLENGE_SCREEN, '按钮-关闭副本',
+                    until_find_all=[(_WORLD_SCREEN, '右上图标-角色详情')],
+                    pre_delay=0.5, success_wait=1.5, retry_wait=2,
+                )
+                if result.is_success:
+                    return self.round_success(status='BACK_TO_WORLD', wait=1)
+                return result
+            # 预算未超:失败场已计场(开拓力已扣),交回副本刷取分流重发
+            return self.round_success(status='失败重发', wait=1)
         # 结算画面(战斗已胜,含退出关卡/再来一次):点退出关卡回副本画面
         if self.round_by_find_area(screen, _BATTLE_SCREEN, '按钮-退出关卡').is_success:
             result = self.round_by_find_and_click_area(
