@@ -517,6 +517,27 @@ class UpgradeCharacterOp(SrOperation):
             if result.is_success:
                 return self.round_retry('刷取结果框已关,重入分类', wait=1)
             return result
+        # 券确认刷取的两类残留弹窗(开拓力不足判停/中断现场遗留,盖住副本/
+        # 养成锚致整帧识别 None):点取消清场后重入分类——补充弹窗「确认」是
+        # 星琼购开拓力,永不触碰
+        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '开拓力补充弹窗', '按钮-取消',
+                until_not_find_all=[('开拓力补充弹窗', '标题-开拓力补充弹窗')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('开拓力补充弹窗已关,重入分类', wait=1.5)
+            return result
+        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _FAST_FARM_DIALOG, '按钮-取消',
+                until_not_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('选次数确认框已取消,重入分类', wait=1.5)
+            return result
         if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
             result = self.round_by_find_and_click_area(
                 screen, _RESOURCE_WINDOW_SCREEN, '按钮-关闭资源窗口',

@@ -235,11 +235,15 @@ class UpgradeLightConeOp(SrOperation):
                     self.ctx, self.last_screenshot,
                     _BATTLE_SCREEN, '按钮-退出关卡') == FindAreaResultEnum.TRUE:
                 return self.round_success(status='IN_CHALLENGE')
-            # 快速刷取两弹窗按独立画面识别(标题同名不同位,各自 id_mark)
-            for dialog_screen in (_FAST_FARM_DIALOG, _FAST_FARM_RESULT):
+            # 券确认刷取链的三类弹窗残留(选次数/结果/开拓力补充)按各自画面
+            # 标题识别接管,交返回分类逐层清场
+            for dialog_screen, dialog_title in (
+                    (_FAST_FARM_DIALOG, '标题-快速刷取弹窗'),
+                    (_FAST_FARM_RESULT, '标题-快速刷取弹窗'),
+                    ('开拓力补充弹窗', '标题-开拓力补充弹窗')):
                 if screen_utils.find_area(
                         self.ctx, self.last_screenshot,
-                        dialog_screen, '标题-快速刷取弹窗') == FindAreaResultEnum.TRUE:
+                        dialog_screen, dialog_title) == FindAreaResultEnum.TRUE:
                     return self.round_success(status='IN_CHALLENGE')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
@@ -626,6 +630,27 @@ class UpgradeLightConeOp(SrOperation):
             )
             if result.is_success:
                 return self.round_retry('刷取结果框已关,重入分类', wait=1)
+            return result
+        # 券确认刷取的两类残留弹窗(开拓力不足判停/中断现场遗留,盖住副本
+        # 锚致整帧识别 None,不走此分支会落进过渡帧兜底空转烧预算):点取消
+        # 清场后重入分类——补充弹窗「确认」是星琼购开拓力,永不触碰
+        if self.round_by_find_area(screen, '开拓力补充弹窗', '标题-开拓力补充弹窗').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '开拓力补充弹窗', '按钮-取消',
+                until_not_find_all=[('开拓力补充弹窗', '标题-开拓力补充弹窗')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('开拓力补充弹窗已关,重入分类', wait=1.5)
+            return result
+        if self.round_by_find_area(screen, _FAST_FARM_DIALOG, '标题-快速刷取弹窗').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, _FAST_FARM_DIALOG, '按钮-取消',
+                until_not_find_all=[(_FAST_FARM_DIALOG, '标题-快速刷取弹窗')],
+                pre_delay=0.5, success_wait=1.5, retry_wait=1.5,
+            )
+            if result.is_success:
+                return self.round_retry('选次数确认框已取消,重入分类', wait=1.5)
             return result
         if self.round_by_find_area(screen, _RESOURCE_WINDOW_SCREEN, '标题-培养资源窗口').is_success:
             result = self.round_by_find_and_click_area(
