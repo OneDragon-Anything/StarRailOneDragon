@@ -4054,7 +4054,7 @@ def equips_by_category(category: str) -> tuple[str, ...]:
 #:   logic_rand_outcome 行掷骰名 vs bench 实读逐局积累);
 #: - star_prior: desc 未标星时 star=1 为先验非结构值(直出高星由 bench
 #:   观察星级覆盖模型值,随机态不响灯);
-#: - type_tag: 类型过滤口径 = char_type 含标签(本键随家族常量携带,
+#: - type_tag: 类型过滤口径 = category_tags 含标签(本键随家族常量携带,
 #:   空标签卡不消费)。
 ENV_RANDOM_CHAR_GRANT_ASSUMPTION_KEYS: tuple[str, ...] = (
     'env_gift_random_char_uniform',

@@ -276,7 +276,7 @@ def _megastar_match_domain(gs: GameState | None) -> list[str]:
     「平分取序首」确定性的基础;域成员恒为注册表规范名(动态分支未注册
     身份不入域——域外标准名出口不存在,转换不了就在门上显式失败)。"""
     domain: list[str] = [c.name for c in chars_by_faction(
-        _MEGASTAR_FACTION, include_flows=False)]
+        _MEGASTAR_FACTION, include_schools=False)]
     if gs is None:
         return domain
     seen = set(domain)

@@ -293,13 +293,13 @@ def chars_by_cost(cost: int) -> list[Character]:
     return [c for c in CHARACTERS if c.cost == cost]
 
 
-def chars_by_faction(faction: str, include_flows: bool = True) -> list[Character]:
-    """属某阵营的角色(include_flows=True 则也匹配流派羁绊)。
+def chars_by_faction(faction: str, include_schools: bool = True) -> list[Character]:
+    """属某阵营的角色(include_schools=True 则也匹配流派羁绊)。
 
     成员关系派生自 CHARACTERS(角色自报 factions/schools)—— FactionInfo.members() 调本函数。
     """
     out = [c for c in CHARACTERS if faction in c.factions]
-    if include_flows:
+    if include_schools:
         out += [c for c in CHARACTERS if faction in c.schools and c not in out]
     return out
 

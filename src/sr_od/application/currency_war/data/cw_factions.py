@@ -33,14 +33,14 @@ class FactionInfo:
     note: str = ""  # 简述效果(人判注记)
     desc: str = ""  # 效果原文(官方 config API 逐字,r155 灌入;效果全文单一源=本字段,版本更新重跑生成器 stdout 交叉核对)
 
-    def members(self, include_flows: bool = True) -> list[str]:
-        """该羁绊的成员角色名(从 CHARACTERS 反查;include_flows=True 含流派羁绊成员)。
+    def members(self, include_schools: bool = True) -> list[str]:
+        """该羁绊的成员角色名(从 CHARACTERS 反查;include_schools=True 含流派羁绊成员)。
 
         成员关系是**派生**的(角色自报 factions/schools),不在 FactionInfo 重复硬编码 ——
         改 CHARACTERS 自动传导,单一真相源(工程化原则)。
         """
         from sr_od.application.currency_war.data.cw_chars import chars_by_faction
-        return [c.name for c in chars_by_faction(self.cn, include_flows=include_flows)]
+        return [c.name for c in chars_by_faction(self.cn, include_schools=include_schools)]
 
 
 # 米游社百科 V4.4 权威(tiers 单一源 = 本表;官方交叉核对 = 重跑 skills/sr-od-dev-currency-war/scripts/gen_factions.py,
