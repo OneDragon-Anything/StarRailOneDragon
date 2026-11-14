@@ -256,6 +256,13 @@ class UpgradeLightConeOp(SrOperation):
                     return self.round_success(status='IN_CHALLENGE')
             return self.round_fail('画面识别失败(None)且无已知浮层锚,请实机确认现场')
         if current == _LC_ASCEND_SCREEN:
+            # 就地起跑同样记名:读名区左上在 TAB/等级提升两态同位——手动链
+            # 返回后凭记名重选角色,漏读会在战后防线处白烧一场开拓力
+            self._char_name = self._read_character_name()
+            if self._char_name is None and self.farm_dungeon and not self.use_fast_ticket:
+                return self.round_fail('手动刷取链需凭入口读名在返回后重选角色,'
+                                       '左上读名区 OCR 未读到(就地起跑)——'
+                                       '请从光锥 TAB 重新发起,或改用券路线')
             self._start_level = self._read_lc_level(_LC_ASCEND_SCREEN)
             return self.round_success(status='ALREADY_ASCEND')
         if current != _LC_TAB_SCREEN:
