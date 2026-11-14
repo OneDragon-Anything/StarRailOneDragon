@@ -517,10 +517,10 @@ class UpgradeCharacterOp(SrOperation):
         ⚠️ 按钮禁用盲区:无可刷缺口时按钮白底可 OCR 但点击静默无反应
         (光锥线同位实测,游戏提示当前并未缺少可通过快速刷取获取的材料)
         ——点击「假成功」但窗口不开时 helper 恒以 WAIT 返回(不计重试),
-        原样透传会无界自旋挂死一条龙:连等 4 轮超限转判停。is_fail 仅
-        「区域未配置」可达(全区已建档,兜底防线);按钮真消失走 helper
-        not-found 的节点重试,3 次耗尽 = op 整体失败(中断而非判停,
-        静默无反应才是实测主形态)。"""
+        原样透传会无界自旋挂死一条龙。按钮真消失(not-found 的 RETRY)
+        与静默无反应(WAIT)同由连等封顶收口判停:第 4 轮封顶先于引擎
+        重试预算生效(第 3 次 RETRY 后引擎仍重跑本节点,不转 FAIL);
+        is_fail 仅「区域未配置」可达(全区已建档,兜底防线)。"""
         screen = self.last_screenshot
         result = self.round_by_find_and_click_area(
             screen, _ASCEND_SCREEN, '按钮-快速刷取',

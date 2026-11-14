@@ -477,10 +477,10 @@ class UpgradeLightConeOp(SrOperation):
             self._farm_window_wait_rounds = 0
             return result
         # 点击「假成功」(按钮白底常在可 OCR)但窗口不开:helper 恒 WAIT 不计
-        # 重试,原样透传会无界自旋挂死一条龙——连等 4 轮超限转判停;is_fail
-        # 仅「区域未配置」可达(全区已建档,兜底防线),按钮真消失走 helper
-        # not-found 的节点重试,3 次耗尽 = op 整体失败(中断而非判停,
-        # 静默无反应才是实测主形态)
+        # 重试,原样透传会无界自旋挂死一条龙——按钮真消失(not-found 的
+        # RETRY)与静默无反应(WAIT)同由连等封顶收口判停:第 4 轮封顶先于
+        # 引擎重试预算生效(第 3 次 RETRY 后引擎仍重跑本节点,不转 FAIL);
+        # is_fail 仅「区域未配置」可达(全区已建档,兜底防线)
         if result.is_fail or self._farm_window_wait_rounds >= 3:
             self._farm_window_wait_rounds = 0
             self._capped = True
