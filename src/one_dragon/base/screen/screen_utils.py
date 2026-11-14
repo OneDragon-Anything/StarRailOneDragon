@@ -304,7 +304,17 @@ def find_and_click_area(
     center_x: bool = False,
 ) -> OcrClickResultEnum:
     """
-    在一个区域匹配成功后进行点击
+    在指定画面中找到目标区域并点击，按区域类型分三种行为：
+
+    - 文本区：区域内 OCR 命中目标文本才点击，点其命中位置；
+    - 模板区：区域内模板匹配达标才点击，点其命中位置；
+    - 纯定位区（text 与 template 均为空）：不做任何匹配，直接点区域
+      中心坐标，恒返回 OCR_CLICK_SUCCESS（click 执行失败也返回成功，
+      仅记日志）——无论当前实际是什么画面。
+
+    调用方注意：纯定位区没有匹配条件，坐标点击在任何画面上都会发出并
+    返回成功——使用前须自行确认当前画面（画面级判定），或点后用
+    until 锚验证转移（round_by_find_and_click_area 的 until 即为此设计）。
 
     Args:
         ctx: 运行上下文
