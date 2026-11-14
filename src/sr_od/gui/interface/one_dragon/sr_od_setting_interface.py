@@ -53,14 +53,14 @@ class SrOdSettingInterface(VerticalScrollInterface):
         group = SettingCardGroup(gt('每月余烬兑换', 'game'))
 
         self.mee_special_pass_enabled_opt = SwitchSettingCard(
-            icon=FluentIcon.SHOP, title='兑换 星轨专票',
+            icon=FluentIcon.GAME, title='兑换 星轨专票',
             content='90 余烬/张,月限 5 张(跃迁抽卡票)')
         self.mee_special_pass_enabled_opt.init_with_adapter(
             YamlConfigAdapter(config, 'special_pass_enabled', True))
         group.addSettingCard(self.mee_special_pass_enabled_opt)
 
         self.mee_special_pass_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.SHOP, title='星轨专票 优先级',
+            icon=FluentIcon.GAME, title='星轨专票 优先级',
             content='升序兑换;同优先级按 专票>通票>足迹 兜底', minimum=0,
             maximum=99)
         self.mee_special_pass_priority_opt.init_with_adapter(
@@ -69,14 +69,14 @@ class SrOdSettingInterface(VerticalScrollInterface):
         group.addSettingCard(self.mee_special_pass_priority_opt)
 
         self.mee_pass_enabled_opt = SwitchSettingCard(
-            icon=FluentIcon.SHOP, title='兑换 星轨通票',
+            icon=FluentIcon.GAME, title='兑换 星轨通票',
             content='90 余烬/张,月限额度动态(余烬渠道折扣价优先)')
         self.mee_pass_enabled_opt.init_with_adapter(
             YamlConfigAdapter(config, 'pass_enabled', True))
         group.addSettingCard(self.mee_pass_enabled_opt)
 
         self.mee_pass_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.SHOP, title='星轨通票 优先级',
+            icon=FluentIcon.GAME, title='星轨通票 优先级',
             content='升序兑换', minimum=0, maximum=99)
         self.mee_pass_priority_opt.init_with_adapter(
             YamlConfigAdapter(config, 'pass_priority', 20,
@@ -84,14 +84,14 @@ class SrOdSettingInterface(VerticalScrollInterface):
         group.addSettingCard(self.mee_pass_priority_opt)
 
         self.mee_tracks_enabled_opt = SwitchSettingCard(
-            icon=FluentIcon.SHOP, title='兑换 命运的足迹',
+            icon=FluentIcon.GAME, title='兑换 命运的足迹',
             content='60 余烬/张,月限 1 张(行迹 6→7 突破材料)')
         self.mee_tracks_enabled_opt.init_with_adapter(
             YamlConfigAdapter(config, 'tracks_of_destiny_enabled', True))
         group.addSettingCard(self.mee_tracks_enabled_opt)
 
         self.mee_tracks_priority_opt = SpinBoxSettingCard(
-            icon=FluentIcon.SHOP, title='命运的足迹 优先级',
+            icon=FluentIcon.GAME, title='命运的足迹 优先级',
             content='升序兑换', minimum=0, maximum=99)
         self.mee_tracks_priority_opt.init_with_adapter(
             YamlConfigAdapter(config, 'tracks_of_destiny_priority', 30,
